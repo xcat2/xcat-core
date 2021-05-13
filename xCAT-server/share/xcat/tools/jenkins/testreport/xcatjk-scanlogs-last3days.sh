@@ -30,4 +30,4 @@ while read -r ; do echo "${REPLY}" ; done <<EOF
 
 EOF
 
-"${xCATjkScanLogs}" --recent /xCATjk/log
+"${xCATjkScanLogs}" --recent /install/jenkins/log 

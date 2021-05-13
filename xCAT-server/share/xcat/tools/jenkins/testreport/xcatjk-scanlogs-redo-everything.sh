@@ -40,4 +40,4 @@ EOF
 
 while read -r ; do echo "${REPLY}" ; done <"${SQLofCreateTables}"
 
-"${xCATjkScanLogs}" /xCATjk/log
+"${xCATjkScanLogs}" /jenkins/log

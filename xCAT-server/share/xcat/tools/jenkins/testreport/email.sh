@@ -3,8 +3,10 @@
 #
 # Author:   GONG Jie <gongjie@linux.vnet.ibm.com>
 # Create:   2016-05-27
-# Update:   2016-06-07
-# Version:  0.99
+# Update:   2017-03-07
+# Version:  1.0.1
+#
+# Requires bash version 4.0 or later
 #
 # EXAMPLE
 #   #!/bin/bash
@@ -19,6 +21,7 @@
 #   $report_setCc trent@example.org
 #   $report_setBcc eve@example.org
 #   $report_setFrom Alice alice@example.org
+#   $report_setReplyTo alex@example.org
 #   $report_setSubject "A Sample Email Report"
 #
 #   $report_setText <<-EOF
@@ -29,6 +32,8 @@
 #   $report_addAttachmentFile /path/to/doc/onepage-a4.pdf
 #
 #   $report_send
+#
+#   unset ${!report_@}
 #
 # SEE ALSO
 #    RFC 2045, RFC 2046, RFC 2047, RFC 2822, RFC 5322, RFC 5321

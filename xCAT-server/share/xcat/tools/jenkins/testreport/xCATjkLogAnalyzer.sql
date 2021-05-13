@@ -1,8 +1,8 @@
--- MySQL dump 10.14  Distrib 5.5.47-MariaDB, for Linux (ppc64)
+-- MySQL dump 10.14  Distrib 5.5.52-MariaDB, for Linux (ppc64)
 --
 -- Host: localhost    Database: xCATjkLogAnalyzer
 -- ------------------------------------------------------
--- Server version	5.5.47-MariaDB
+-- Server version	5.5.52-MariaDB
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -31,6 +31,30 @@ CREATE TABLE `ArchDict` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `BuildDict`
+--
+
+DROP TABLE IF EXISTS `BuildDict`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `BuildDict` (
+  `BuildId` int(11) NOT NULL AUTO_INCREMENT,
+  `BuildVersion` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL,
+  `BuildRelease` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL,
+  `BuildDateTime` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL,
+  `BuildCommitId` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL,
+  `BuildBranch` varchar(255) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL,
+  `BuildMachine` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL,
+  `BuildType` enum('deb','rpm') CHARACTER SET utf8 COLLATE utf8_bin NOT NULL,
+  PRIMARY KEY (`BuildId`),
+  UNIQUE KEY `BuildInfo` (`BuildVersion`,`BuildRelease`,`BuildDateTime`,`BuildCommitId`,`BuildMachine`,`BuildType`) USING BTREE,
+  KEY `BuildCommitId` (`BuildCommitId`),
+  KEY `BuildBranch` (`BuildBranch`),
+  KEY `BuildType` (`BuildType`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Temporary table structure for view `FailedTestCasesTopList`
 --
 
@@ -49,28 +73,34 @@ SET character_set_client = utf8;
 SET character_set_client = @saved_cs_client;
 
 --
--- Temporary table structure for view `LatestDailyMailReportSubject`
+-- Temporary table structure for view `LatestDailyMailReportSubjectV2`
 --
 
-DROP TABLE IF EXISTS `LatestDailyMailReportSubject`;
-/*!50001 DROP VIEW IF EXISTS `LatestDailyMailReportSubject`*/;
+DROP TABLE IF EXISTS `LatestDailyMailReportSubjectV2`;
+/*!50001 DROP VIEW IF EXISTS `LatestDailyMailReportSubjectV2`*/;
 SET @saved_cs_client     = @@character_set_client;
 SET character_set_client = utf8;
-/*!50001 CREATE TABLE `LatestDailyMailReportSubject` (
+/*!50001 CREATE TABLE `LatestDailyMailReportSubjectV2` (
   `Subject` tinyint NOT NULL
 ) ENGINE=MyISAM */;
 SET character_set_client = @saved_cs_client;
 
 --
--- Temporary table structure for view `LatestDailyReport`
+-- Temporary table structure for view `LatestDailyReportV2`
 --
 
-DROP TABLE IF EXISTS `LatestDailyReport`;
-/*!50001 DROP VIEW IF EXISTS `LatestDailyReport`*/;
+DROP TABLE IF EXISTS `LatestDailyReportV2`;
+/*!50001 DROP VIEW IF EXISTS `LatestDailyReportV2`*/;
 SET @saved_cs_client     = @@character_set_client;
 SET character_set_client = utf8;
-/*!50001 CREATE TABLE `LatestDailyReport` (
+/*!50001 CREATE TABLE `LatestDailyReportV2` (
   `Title` tinyint NOT NULL,
+  `BuildVersion` tinyint NOT NULL,
+  `BuildRelease` tinyint NOT NULL,
+  `BuildTime` tinyint NOT NULL,
+  `CommitId` tinyint NOT NULL,
+  `BuildMachine` tinyint NOT NULL,
+  `seq` tinyint NOT NULL,
   `Arch` tinyint NOT NULL,
   `OS` tinyint NOT NULL,
   `Duration` tinyint NOT NULL,
@@ -151,6 +181,23 @@ CREATE TABLE `OSDict` (
   UNIQUE KEY `OSName` (`OSName`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Temporary table structure for view `PreviousBuild`
+--
+
+DROP TABLE IF EXISTS `PreviousBuild`;
+/*!50001 DROP VIEW IF EXISTS `PreviousBuild`*/;
+SET @saved_cs_client     = @@character_set_client;
+SET character_set_client = utf8;
+/*!50001 CREATE TABLE `PreviousBuild` (
+  `BuildId` tinyint NOT NULL,
+  `BuildCommitId` tinyint NOT NULL,
+  `PreviousBuildCommitId` tinyint NOT NULL,
+  `BuildBranch` tinyint NOT NULL,
+  `BuildType` tinyint NOT NULL
+) ENGINE=MyISAM */;
+SET character_set_client = @saved_cs_client;
 
 --
 -- Table structure for table `ResultDict`
@@ -250,11 +297,11 @@ CREATE TABLE `TestResult` (
   `ResultId` int(11) NOT NULL,
   `DurationTime` int(11) NOT NULL,
   PRIMARY KEY (`TestRunId`,`TestCaseId`),
-  KEY `Result` (`ResultId`),
   KEY `TestCaseId` (`TestCaseId`),
-  CONSTRAINT `ResutId` FOREIGN KEY (`ResultId`) REFERENCES `ResultDict` (`ResultId`),
+  KEY `ResultId` (`ResultId`),
+  CONSTRAINT `TestRunId` FOREIGN KEY (`TestRunId`) REFERENCES `TestRun` (`TestRunId`),
   CONSTRAINT `TestCaseId` FOREIGN KEY (`TestCaseId`) REFERENCES `TestCase` (`TestCaseId`),
-  CONSTRAINT `TestRunId` FOREIGN KEY (`TestRunId`) REFERENCES `TestRun` (`TestRunId`)
+  CONSTRAINT `ResutId` FOREIGN KEY (`ResultId`) REFERENCES `ResultDict` (`ResultId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -272,14 +319,18 @@ CREATE TABLE `TestRun` (
   `EndTime` datetime NOT NULL,
   `ArchId` int(11) NOT NULL,
   `OSId` int(11) NOT NULL,
-  `xCATgitCommit` varchar(255) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL,
+  `BuildId` int(11) DEFAULT NULL,
   `Memo` text NOT NULL,
   PRIMARY KEY (`TestRunId`),
   UNIQUE KEY `TestRunName` (`TestRunName`),
+  KEY `StartTime` (`StartTime`),
+  KEY `EndTime` (`EndTime`),
   KEY `ArchId` (`ArchId`),
   KEY `OSId` (`OSId`),
+  KEY `BuildId` (`BuildId`),
   CONSTRAINT `ArchId` FOREIGN KEY (`ArchId`) REFERENCES `ArchDict` (`ArchId`),
-  CONSTRAINT `OSId` FOREIGN KEY (`OSId`) REFERENCES `OSDict` (`OSId`)
+  CONSTRAINT `OSId` FOREIGN KEY (`OSId`) REFERENCES `OSDict` (`OSId`),
+  CONSTRAINT `BuildId` FOREIGN KEY (`BuildId`) REFERENCES `BuildDict` (`BuildId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -340,7 +391,7 @@ SET character_set_client = @saved_cs_client;
 --
 -- Dumping routines for database 'xCATjkLogAnalyzer'
 --
-/*!50003 DROP PROCEDURE IF EXISTS `CreateLatestDailyMailReport` */;
+/*!50003 DROP PROCEDURE IF EXISTS `CreateLatestDailyMailReportV2` */;
 /*!50003 SET @saved_cs_client      = @@character_set_client */ ;
 /*!50003 SET @saved_cs_results     = @@character_set_results */ ;
 /*!50003 SET @saved_col_connection = @@collation_connection */ ;
@@ -350,7 +401,7 @@ SET character_set_client = @saved_cs_client;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = '' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `CreateLatestDailyMailReport`()
+CREATE DEFINER=`root`@`localhost` PROCEDURE `CreateLatestDailyMailReportV2`()
 BEGIN
 SET group_concat_max_len := @@max_allowed_packet;
 SELECT CONCAT(
@@ -369,20 +420,7 @@ SELECT CONCAT(
 '</tr>', "\n",
 '</table>', "\n",
 '<p style="font-size: 12pt; font-weight: 700; text-align: center;"></p>', "\n",
-'<table style="border-collapse: collapse; border-style: none; border-width: 0; box-shadow: 1px 2px 3px #cccccc; text-align: left; margin: auto; width: 680px;">', "\n",
-'<tr style="background-color: #003366; color: #ffffff; font-weight: 700; text-align: center; vertical-align: baseline;">', "\n",
-'<th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; width: 60px">Arch</th>', "\n",
-'<th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; width: 100px;">OS</th>', "\n",
-'<th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; width: 80px">Duration</th>', "\n",
-'<th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; width: 75px;">Passed</th>', "\n",
-'<th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; width: 75px;">Failed</th>', "\n",
-'<th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; width: 75px;">No run</th>', "\n",
-'<th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; width: 75px;">Subtotal</th>', "\n",
-'<th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;">Pass rate</th>', "\n",
-'</tr>', "\n",
-LatestDailyReportContents.HTML,
-LatestDailyReportSummary.HTML,
-'</table>', "\n",
+LatestDailyReportTables.HTML,
 '<hr style="background-color: #cccccc; border-width: 0; box-shadow: 1px 2px 3px #cccccc; height: 1px; width: 680px;" />', "\n",
 '<p style="font-size: 12pt; font-weight: 700; text-align: center;">Failed Test Cases</p>', "\n",
 '<table style="border-collapse: collapse; border-style: none; border-width: 0; box-shadow: 1px 2px 3px #cccccc; text-align: left; margin: auto; width: 680px;">', "\n",
@@ -466,12 +504,42 @@ NOW(), ' ', REPLACE(CONCAT('+', TIME_FORMAT(TIMEDIFF(NOW(), UTC_TIMESTAMP), '%H%
 '</html>'
 ) AS HTML
 FROM (
-SELECT IFNULL(GROUP_CONCAT(HTML SEPARATOR ''), '') AS HTML
+SELECT IFNULL(CONCAT(GROUP_CONCAT(HTML SEPARATOR ''), '</table>', "\n", (
+SELECT GROUP_CONCAT(HTML SEPARATOR '') FROM (
+SELECT CONCAT("<!-- `git log ", PreviousBuildCommitId, "...", BuildCommitId, "` for branch ",
+    BuildBranch, ", ", BuildType, " build -->", "\n") AS HTML
+FROM PreviousBuild WHERE BuildCommitId=@commitid AND BuildCommitId!=PreviousBuildCommitId ORDER BY BuildType DESC
+) AS tmp89
+)), '') AS HTML
 FROM (
 SELECT CONCAT(
+IF (@commitid = CommitId, '',
+CONCAT(
+IF (@commitid = '', '', CONCAT('</table>', "\n", (
+SELECT GROUP_CONCAT(HTML SEPARATOR '') FROM (
+SELECT CONCAT("<!-- `git log ", PreviousBuildCommitId, "...", BuildCommitId, "` for branch ",
+    BuildBranch, ", ", BuildType, " build -->", "\n") AS HTML
+FROM PreviousBuild WHERE BuildCommitId=@commitid AND BuildCommitId!=PreviousBuildCommitId ORDER BY BuildType DESC
+) AS tmp88
+))),
+'<p style="font-size: 12pt; font-weight: 700; text-align: center;">Build version', "\n",
+'<span style="color: #003366; font-family: monospace;">', BuildVersion, '</span>', "\n",
+'commit <span style="color: #003366; font-family: monospace;">', CommitId, '</span></p>', "\n",
+'<table style="border-collapse: collapse; border-style: none; border-width: 0; box-shadow: 1px 2px 3px #cccccc; text-align: left; margin: auto; width: 680px;">', "\n",
+'<tr style="background-color: #003366; color: #ffffff; font-weight: 700; text-align: center; vertical-align: baseline;">', "\n",
+'<th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; width: 60px">Arch</th>', "\n",
+'<th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; width: 100px;">OS</th>', "\n",
+'<th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; width: 80px">Duration</th>', "\n",
+'<th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; width: 75px;">Passed</th>', "\n",
+'<th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; width: 75px;">Failed</th>', "\n",
+'<th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; width: 75px;">No run</th>', "\n",
+'<th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; width: 75px;">Subtotal</th>', "\n",
+'<th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;">Pass rate</th>', "\n",
+'</tr>', "\n")),
 '<tr style="background-color: ',
 IF (@color = '#e0e0e0', @color := '#a0d0ff', @color := '#e0e0e0'),
-'; vertical-align: baseline;" title="', Title, '">', "\n",
+'; vertical-align: baseline;" title="', Title, '&#13;', BuildVersion, '-', BuildRelease, '&#13;',
+BuildTime, '&#13;', @commitid := CommitId, '">', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;">',
 Arch, '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;">',
@@ -490,36 +558,18 @@ Subtotal, '</td>', "\n",
 `Pass rate`, '</td>', "\n",
 '</tr>', "\n"
 ) AS HTML
-FROM LatestDailyReport,
-( SELECT @color := '' ) AS tmp00
+FROM LatestDailyReportV2,
+( SELECT @color := '' ) AS tmp00,
+( SELECT @commitid := '' ) AS tmp01
 ) AS tmp10
-) AS LatestDailyReportContents, (
-SELECT CONCAT(
-'<tr style="background-color: #cccccc; vertical-align: baseline;">', "\n",
-'<th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;">Total</th>', "\n",
-'<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;">-</td>', "\n",
-'<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-IFNULL(SEC_TO_TIME(SUM(TIME_TO_SEC(Duration))), 'N/A'), '</td>', "\n"
-'<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-IFNULL(SUM(Passed), 'N/A'), '</td>', "\n",
-'<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-IFNULL(SUM(Failed), 'N/A'), '</td>', "\n",
-'<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-IFNULL(SUM(`No run`), 'N/A'), '</td>', "\n",
-'<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-IFNULL(SUM(Subtotal), 'N/A'), '</td>', "\n",
-'<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-IFNULL(CONCAT(ROUND(SUM(Passed) / (SUM(Passed) + SUM(Failed)) * 100, 2), '%'), 'N/A'), '</td>', "\n",
-'</tr>', "\n"
-) AS HTML
-FROM LatestDailyReport
-) AS LatestDailyReportSummary, (
+) AS LatestDailyReportTables, (
 SELECT IFNULL(GROUP_CONCAT(HTML SEPARATOR ''), '') AS HTML
 FROM (
 SELECT CONCAT(
 '<tr style="background-color: ',
 IF (@color = '#e0e0e0', @color := '#a0d0ff', @color := '#e0e0e0'),
-'; vertical-align: baseline;" title="', Title, '">', "\n",
+'; vertical-align: baseline;" title="', Title, '&#13;', BuildVersion, '-', BuildRelease, '&#13;',
+BuildTime, '&#13;', @commitid := CommitId, '">', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;">',
 Arch, '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;">',
@@ -530,7 +580,7 @@ IF (@color = '#e0e0e0', '#f0f0f0', '#d0e8ff'),
 `Failed test cases`, '</td>', "\n",
 '</tr>' , "\n"
 ) AS HTML
-FROM LatestDailyReport,
+FROM LatestDailyReportV2,
 ( SELECT @color := '' ) AS tmp00
 ) AS tmp10
 ) AS FailedTestCasesReport, (
@@ -577,7 +627,7 @@ IFNULL(SUM(`No run`), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
 IFNULL(SUM(Subtotal), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-IFNULL(CONCAT(ROUND(SUM(Passed) / (SUM(Passed) + SUM(Failed)) * 100, 2), '%'), 'N/A'), '</td>', "\n",
+IFNULL(CONCAT(ROUND(SUM(Passed) / SUM(Subtotal) * 100, 2), '%'), 'N/A'), '</td>', "\n",
 '</tr>', "\n"
 ) AS HTML
 FROM SevenDayLookBack
@@ -625,7 +675,7 @@ IFNULL(SUM(`No run`), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
 IFNULL(SUM(Subtotal), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-IFNULL(CONCAT(ROUND(SUM(Passed) / (SUM(Passed) + SUM(Failed)) * 100, 2), '%'), 'N/A'), '</td>', "\n",
+IFNULL(CONCAT(ROUND(SUM(Passed) / SUM(Subtotal) * 100, 2), '%'), 'N/A'), '</td>', "\n",
 '</tr>', "\n"
 ) AS HTML
 FROM ThirtyDayLookBack
@@ -673,7 +723,7 @@ IFNULL(SUM(`No run`), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
 IFNULL(SUM(Subtotal), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-IFNULL(CONCAT(ROUND(SUM(Passed) / (SUM(Passed) + SUM(Failed)) * 100, 2), '%'), 'N/A'), '</td>', "\n",
+IFNULL(CONCAT(ROUND(SUM(Passed) / SUM(Subtotal) * 100, 2), '%'), 'N/A'), '</td>', "\n",
 '</tr>', "\n"
 ) AS HTML
 FROM NinetyDayLookBack
@@ -738,11 +788,11 @@ DELIMITER ;
 /*!50001 SET collation_connection      = @saved_col_connection */;
 
 --
--- Final view structure for view `LatestDailyMailReportSubject`
+-- Final view structure for view `LatestDailyMailReportSubjectV2`
 --
 
-/*!50001 DROP TABLE IF EXISTS `LatestDailyMailReportSubject`*/;
-/*!50001 DROP VIEW IF EXISTS `LatestDailyMailReportSubject`*/;
+/*!50001 DROP TABLE IF EXISTS `LatestDailyMailReportSubjectV2`*/;
+/*!50001 DROP VIEW IF EXISTS `LatestDailyMailReportSubjectV2`*/;
 /*!50001 SET @saved_cs_client          = @@character_set_client */;
 /*!50001 SET @saved_cs_results         = @@character_set_results */;
 /*!50001 SET @saved_col_connection     = @@collation_connection */;
@@ -751,17 +801,17 @@ DELIMITER ;
 /*!50001 SET collation_connection      = utf8_general_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `LatestDailyMailReportSubject` AS select concat('[xCAT Jenkins] ','Passed: ',ifnull(sum(`LatestDailyReport`.`Passed`),'N/A'),' Failed: ',ifnull(sum(`LatestDailyReport`.`Failed`),'N/A'),' No run: ',ifnull(sum(`LatestDailyReport`.`No run`),'N/A')) AS `Subject` from `LatestDailyReport` */;
+/*!50001 VIEW `LatestDailyMailReportSubjectV2` AS select concat('Total: ',ifnull(sum(`LatestDailyReportV2`.`Subtotal`),'N/A'),' Pass rate: ',ifnull(concat(round(((sum(`LatestDailyReportV2`.`Passed`) / sum(`LatestDailyReportV2`.`Subtotal`)) * 100),2),'%'),'N/A'),' Passed: ',ifnull(sum(`LatestDailyReportV2`.`Passed`),'N/A'),' Failed: ',ifnull(sum(`LatestDailyReportV2`.`Failed`),'N/A'),' No run: ',ifnull(sum(`LatestDailyReportV2`.`No run`),'N/A')) AS `Subject` from `LatestDailyReportV2` */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
 
 --
--- Final view structure for view `LatestDailyReport`
+-- Final view structure for view `LatestDailyReportV2`
 --
 
-/*!50001 DROP TABLE IF EXISTS `LatestDailyReport`*/;
-/*!50001 DROP VIEW IF EXISTS `LatestDailyReport`*/;
+/*!50001 DROP TABLE IF EXISTS `LatestDailyReportV2`*/;
+/*!50001 DROP VIEW IF EXISTS `LatestDailyReportV2`*/;
 /*!50001 SET @saved_cs_client          = @@character_set_client */;
 /*!50001 SET @saved_cs_results         = @@character_set_results */;
 /*!50001 SET @saved_col_connection     = @@collation_connection */;
@@ -770,7 +820,7 @@ DELIMITER ;
 /*!50001 SET collation_connection      = utf8_general_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `LatestDailyReport` AS select `TestRun`.`TestRunName` AS `Title`,`ArchDict`.`ArchName` AS `Arch`,`OSDict`.`OSName` AS `OS`,timediff(`TestRun`.`EndTime`,`TestRun`.`StartTime`) AS `Duration`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'Passed')))) AS `Passed`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'Failed')))) AS `Failed`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'No run')))) AS `No run`,(select count(0) from `TestResult` where (`TestResult`.`TestRunId` = `TestRun`.`TestRunId`)) AS `Subtotal`,ifnull(concat(round((((select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'Passed')))) / ((select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'Passed')))) + (select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'Failed')))))) * 100),2),'%'),'N/A') AS `Pass rate`,(select ifnull(group_concat(`TestCase`.`TestCaseName` separator ' '),'') from (`TestResult` left join `TestCase` on((`TestResult`.`TestCaseId` = `TestCase`.`TestCaseId`))) where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'Failed')))) AS `Failed test cases` from ((`TestRun` left join `ArchDict` on((`TestRun`.`ArchId` = `ArchDict`.`ArchId`))) left join `OSDict` on((`TestRun`.`OSId` = `OSDict`.`OSId`))) where `TestRun`.`TestRunId` in (select max(`TestRun`.`TestRunId`) AS `TestRunId` from `TestRun` where (`TestRun`.`StartTime` > (now() - interval 2 day)) group by `TestRun`.`ArchId`,`TestRun`.`OSId`) order by `OSDict`.`OSName`,`ArchDict`.`ArchName` */;
+/*!50001 VIEW `LatestDailyReportV2` AS select `TestRun`.`TestRunName` AS `Title`,`BuildDict`.`BuildVersion` AS `BuildVersion`,`BuildDict`.`BuildRelease` AS `BuildRelease`,`BuildDict`.`BuildDateTime` AS `BuildTime`,`BuildDict`.`BuildCommitId` AS `CommitId`,`BuildDict`.`BuildMachine` AS `BuildMachine`,(select max(`BuildDictTwo`.`BuildId`) from `BuildDict` `BuildDictTwo` where (`BuildDict`.`BuildCommitId` = `BuildDictTwo`.`BuildCommitId`)) AS `seq`,`ArchDict`.`ArchName` AS `Arch`,`OSDict`.`OSName` AS `OS`,timediff(`TestRun`.`EndTime`,`TestRun`.`StartTime`) AS `Duration`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'Passed')))) AS `Passed`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'Failed')))) AS `Failed`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'No run')))) AS `No run`,(select count(0) from `TestResult` where (`TestResult`.`TestRunId` = `TestRun`.`TestRunId`)) AS `Subtotal`,ifnull(concat(round((((select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'Passed')))) / (select count(0) from `TestResult` where (`TestResult`.`TestRunId` = `TestRun`.`TestRunId`))) * 100),2),'%'),'N/A') AS `Pass rate`,(select ifnull(group_concat(`TestCase`.`TestCaseName` separator ' '),'') from (`TestResult` left join `TestCase` on((`TestResult`.`TestCaseId` = `TestCase`.`TestCaseId`))) where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'Failed')))) AS `Failed test cases` from (((`TestRun` left join `ArchDict` on((`TestRun`.`ArchId` = `ArchDict`.`ArchId`))) left join `OSDict` on((`TestRun`.`OSId` = `OSDict`.`OSId`))) left join `BuildDict` on((`TestRun`.`BuildId` = `BuildDict`.`BuildId`))) where `TestRun`.`TestRunId` in (select max(`TestRun`.`TestRunId`) AS `TestRunId` from `TestRun` where `TestRun`.`BuildId` in (select max(`BuildDict`.`BuildId`) AS `BuildId` from `BuildDict` where `BuildDict`.`BuildCommitId` in (select distinct `BuildDict`.`BuildCommitId` AS `BuildCommitId` from (`TestRun` left join `BuildDict` on((`TestRun`.`BuildId` = `BuildDict`.`BuildId`))) where (`TestRun`.`EndTime` > (now() - interval 25 hour))) group by `BuildDict`.`BuildCommitId`,`BuildDict`.`BuildType`) group by `TestRun`.`ArchId`,`TestRun`.`OSId`,`TestRun`.`BuildId`) order by (0 + substring_index(`BuildDict`.`BuildVersion`,'.',1)) desc,(0 + substring_index(substring_index(`BuildDict`.`BuildVersion`,'.',2),'.',-(1))) desc,(0 + substring_index(substring_index(`BuildDict`.`BuildVersion`,'.',3),'.',-(1))) desc,(select max(`BuildDictTwo`.`BuildId`) from `BuildDict` `BuildDictTwo` where (`BuildDict`.`BuildCommitId` = `BuildDictTwo`.`BuildCommitId`)) desc,`BuildDict`.`BuildCommitId`,`OSDict`.`OSName`,`ArchDict`.`ArchName` */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -808,7 +858,7 @@ DELIMITER ;
 /*!50001 SET collation_connection      = utf8_general_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `NinetyDayLookBack` AS select `ArchDict`.`ArchName` AS `Arch`,`OSDict`.`OSName` AS `OS`,count(0) AS `Test runs`,sum(`NinetyDayReport`.`Passed`) AS `Passed`,sum(`NinetyDayReport`.`Failed`) AS `Failed`,sum(`NinetyDayReport`.`No run`) AS `No run`,sum(`NinetyDayReport`.`Subtotal`) AS `Subtotal`,ifnull(concat(round(((sum(`NinetyDayReport`.`Passed`) / (sum(`NinetyDayReport`.`Passed`) + sum(`NinetyDayReport`.`Failed`))) * 100),2),'%'),'N/A') AS `Pass rate` from ((`NinetyDayReport` left join `ArchDict` on((`NinetyDayReport`.`ArchId` = `ArchDict`.`ArchId`))) left join `OSDict` on((`NinetyDayReport`.`OSId` = `OSDict`.`OSId`))) group by `NinetyDayReport`.`ArchId`,`NinetyDayReport`.`OSId` order by `OSDict`.`OSName`,`ArchDict`.`ArchName` */;
+/*!50001 VIEW `NinetyDayLookBack` AS select `ArchDict`.`ArchName` AS `Arch`,`OSDict`.`OSName` AS `OS`,count(0) AS `Test runs`,sum(`NinetyDayReport`.`Passed`) AS `Passed`,sum(`NinetyDayReport`.`Failed`) AS `Failed`,sum(`NinetyDayReport`.`No run`) AS `No run`,sum(`NinetyDayReport`.`Subtotal`) AS `Subtotal`,ifnull(concat(round(((sum(`NinetyDayReport`.`Passed`) / sum(`NinetyDayReport`.`Subtotal`)) * 100),2),'%'),'N/A') AS `Pass rate` from ((`NinetyDayReport` left join `ArchDict` on((`NinetyDayReport`.`ArchId` = `ArchDict`.`ArchId`))) left join `OSDict` on((`NinetyDayReport`.`OSId` = `OSDict`.`OSId`))) group by `NinetyDayReport`.`ArchId`,`NinetyDayReport`.`OSId` order by `OSDict`.`OSName`,`ArchDict`.`ArchName` */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -827,7 +877,26 @@ DELIMITER ;
 /*!50001 SET collation_connection      = utf8_general_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `NinetyDayReport` AS select `TestRun`.`ArchId` AS `ArchId`,`TestRun`.`OSId` AS `OSId`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'Passed')))) AS `Passed`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'Failed')))) AS `Failed`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'No run')))) AS `No run`,(select count(0) from `TestResult` where (`TestResult`.`TestRunId` = `TestRun`.`TestRunId`)) AS `Subtotal` from `TestRun` where `TestRun`.`TestRunId` in (select `TestRun`.`TestRunId` from `TestRun` where (`TestRun`.`StartTime` > (now() - interval 90 day))) */;
+/*!50001 VIEW `NinetyDayReport` AS select `TestRun`.`ArchId` AS `ArchId`,`TestRun`.`OSId` AS `OSId`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'Passed')))) AS `Passed`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'Failed')))) AS `Failed`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'No run')))) AS `No run`,(select count(0) from `TestResult` where (`TestResult`.`TestRunId` = `TestRun`.`TestRunId`)) AS `Subtotal` from `TestRun` where `TestRun`.`TestRunId` in (select `TestRun`.`TestRunId` from `TestRun` where (`TestRun`.`EndTime` > (now() - interval 2161 hour))) */;
+/*!50001 SET character_set_client      = @saved_cs_client */;
+/*!50001 SET character_set_results     = @saved_cs_results */;
+/*!50001 SET collation_connection      = @saved_col_connection */;
+
+--
+-- Final view structure for view `PreviousBuild`
+--
+
+/*!50001 DROP TABLE IF EXISTS `PreviousBuild`*/;
+/*!50001 DROP VIEW IF EXISTS `PreviousBuild`*/;
+/*!50001 SET @saved_cs_client          = @@character_set_client */;
+/*!50001 SET @saved_cs_results         = @@character_set_results */;
+/*!50001 SET @saved_col_connection     = @@collation_connection */;
+/*!50001 SET character_set_client      = utf8 */;
+/*!50001 SET character_set_results     = utf8 */;
+/*!50001 SET collation_connection      = utf8_general_ci */;
+/*!50001 CREATE ALGORITHM=UNDEFINED */
+/*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
+/*!50001 VIEW `PreviousBuild` AS select `BuildDict`.`BuildId` AS `BuildId`,`BuildDict`.`BuildCommitId` AS `BuildCommitId`,ifnull((select `PreviousBuildDict`.`BuildCommitId` from `BuildDict` `PreviousBuildDict` where ((`PreviousBuildDict`.`BuildBranch` = `BuildDict`.`BuildBranch`) and (`PreviousBuildDict`.`BuildType` = `BuildDict`.`BuildType`) and (`PreviousBuildDict`.`BuildId` < `BuildDict`.`BuildId`)) order by `PreviousBuildDict`.`BuildId` desc limit 1),'') AS `PreviousBuildCommitId`,`BuildDict`.`BuildBranch` AS `BuildBranch`,`BuildDict`.`BuildType` AS `BuildType` from `BuildDict` */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -865,7 +934,7 @@ DELIMITER ;
 /*!50001 SET collation_connection      = utf8_general_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `SevenDayLookBack` AS select `ArchDict`.`ArchName` AS `Arch`,`OSDict`.`OSName` AS `OS`,count(0) AS `Test runs`,sum(`SevenDayReport`.`Passed`) AS `Passed`,sum(`SevenDayReport`.`Failed`) AS `Failed`,sum(`SevenDayReport`.`No run`) AS `No run`,sum(`SevenDayReport`.`Subtotal`) AS `Subtotal`,ifnull(concat(round(((sum(`SevenDayReport`.`Passed`) / (sum(`SevenDayReport`.`Passed`) + sum(`SevenDayReport`.`Failed`))) * 100),2),'%'),'N/A') AS `Pass rate` from ((`SevenDayReport` left join `ArchDict` on((`SevenDayReport`.`ArchId` = `ArchDict`.`ArchId`))) left join `OSDict` on((`SevenDayReport`.`OSId` = `OSDict`.`OSId`))) group by `SevenDayReport`.`ArchId`,`SevenDayReport`.`OSId` order by `OSDict`.`OSName`,`ArchDict`.`ArchName` */;
+/*!50001 VIEW `SevenDayLookBack` AS select `ArchDict`.`ArchName` AS `Arch`,`OSDict`.`OSName` AS `OS`,count(0) AS `Test runs`,sum(`SevenDayReport`.`Passed`) AS `Passed`,sum(`SevenDayReport`.`Failed`) AS `Failed`,sum(`SevenDayReport`.`No run`) AS `No run`,sum(`SevenDayReport`.`Subtotal`) AS `Subtotal`,ifnull(concat(round(((sum(`SevenDayReport`.`Passed`) / sum(`SevenDayReport`.`Subtotal`)) * 100),2),'%'),'N/A') AS `Pass rate` from ((`SevenDayReport` left join `ArchDict` on((`SevenDayReport`.`ArchId` = `ArchDict`.`ArchId`))) left join `OSDict` on((`SevenDayReport`.`OSId` = `OSDict`.`OSId`))) group by `SevenDayReport`.`ArchId`,`SevenDayReport`.`OSId` order by `OSDict`.`OSName`,`ArchDict`.`ArchName` */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -884,7 +953,7 @@ DELIMITER ;
 /*!50001 SET collation_connection      = utf8_general_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `SevenDayReport` AS select `TestRun`.`ArchId` AS `ArchId`,`TestRun`.`OSId` AS `OSId`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'Passed')))) AS `Passed`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'Failed')))) AS `Failed`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'No run')))) AS `No run`,(select count(0) from `TestResult` where (`TestResult`.`TestRunId` = `TestRun`.`TestRunId`)) AS `Subtotal` from `TestRun` where `TestRun`.`TestRunId` in (select `TestRun`.`TestRunId` from `TestRun` where (`TestRun`.`StartTime` > (now() - interval 7 day))) */;
+/*!50001 VIEW `SevenDayReport` AS select `TestRun`.`ArchId` AS `ArchId`,`TestRun`.`OSId` AS `OSId`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'Passed')))) AS `Passed`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'Failed')))) AS `Failed`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'No run')))) AS `No run`,(select count(0) from `TestResult` where (`TestResult`.`TestRunId` = `TestRun`.`TestRunId`)) AS `Subtotal` from `TestRun` where `TestRun`.`TestRunId` in (select `TestRun`.`TestRunId` from `TestRun` where (`TestRun`.`EndTime` > (now() - interval 169 hour))) */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -922,7 +991,7 @@ DELIMITER ;
 /*!50001 SET collation_connection      = utf8_general_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `ThirtyDayLookBack` AS select `ArchDict`.`ArchName` AS `Arch`,`OSDict`.`OSName` AS `OS`,count(0) AS `Test runs`,sum(`ThirtyDayReport`.`Passed`) AS `Passed`,sum(`ThirtyDayReport`.`Failed`) AS `Failed`,sum(`ThirtyDayReport`.`No run`) AS `No run`,sum(`ThirtyDayReport`.`Subtotal`) AS `Subtotal`,ifnull(concat(round(((sum(`ThirtyDayReport`.`Passed`) / (sum(`ThirtyDayReport`.`Passed`) + sum(`ThirtyDayReport`.`Failed`))) * 100),2),'%'),'N/A') AS `Pass rate` from ((`ThirtyDayReport` left join `ArchDict` on((`ThirtyDayReport`.`ArchId` = `ArchDict`.`ArchId`))) left join `OSDict` on((`ThirtyDayReport`.`OSId` = `OSDict`.`OSId`))) group by `ThirtyDayReport`.`ArchId`,`ThirtyDayReport`.`OSId` order by `OSDict`.`OSName`,`ArchDict`.`ArchName` */;
+/*!50001 VIEW `ThirtyDayLookBack` AS select `ArchDict`.`ArchName` AS `Arch`,`OSDict`.`OSName` AS `OS`,count(0) AS `Test runs`,sum(`ThirtyDayReport`.`Passed`) AS `Passed`,sum(`ThirtyDayReport`.`Failed`) AS `Failed`,sum(`ThirtyDayReport`.`No run`) AS `No run`,sum(`ThirtyDayReport`.`Subtotal`) AS `Subtotal`,ifnull(concat(round(((sum(`ThirtyDayReport`.`Passed`) / sum(`ThirtyDayReport`.`Subtotal`)) * 100),2),'%'),'N/A') AS `Pass rate` from ((`ThirtyDayReport` left join `ArchDict` on((`ThirtyDayReport`.`ArchId` = `ArchDict`.`ArchId`))) left join `OSDict` on((`ThirtyDayReport`.`OSId` = `OSDict`.`OSId`))) group by `ThirtyDayReport`.`ArchId`,`ThirtyDayReport`.`OSId` order by `OSDict`.`OSName`,`ArchDict`.`ArchName` */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -941,7 +1010,7 @@ DELIMITER ;
 /*!50001 SET collation_connection      = utf8_general_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `ThirtyDayReport` AS select `TestRun`.`ArchId` AS `ArchId`,`TestRun`.`OSId` AS `OSId`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'Passed')))) AS `Passed`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'Failed')))) AS `Failed`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'No run')))) AS `No run`,(select count(0) from `TestResult` where (`TestResult`.`TestRunId` = `TestRun`.`TestRunId`)) AS `Subtotal` from `TestRun` where `TestRun`.`TestRunId` in (select `TestRun`.`TestRunId` from `TestRun` where (`TestRun`.`StartTime` > (now() - interval 30 day))) */;
+/*!50001 VIEW `ThirtyDayReport` AS select `TestRun`.`ArchId` AS `ArchId`,`TestRun`.`OSId` AS `OSId`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'Passed')))) AS `Passed`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'Failed')))) AS `Failed`,(select count(0) from `TestResult` where ((`TestResult`.`TestRunId` = `TestRun`.`TestRunId`) and `TestResult`.`ResultId` in (select `ResultDict`.`ResultId` from `ResultDict` where (`ResultDict`.`ResultName` = 'No run')))) AS `No run`,(select count(0) from `TestResult` where (`TestResult`.`TestRunId` = `TestRun`.`TestRunId`)) AS `Subtotal` from `TestRun` where `TestRun`.`TestRunId` in (select `TestRun`.`TestRunId` from `TestRun` where (`TestRun`.`EndTime` > (now() - interval 721 hour))) */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -955,4 +1024,4 @@ DELIMITER ;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2016-08-22  4:06:36
+-- Dump completed on 2018-04-12  4:47:02

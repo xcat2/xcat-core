@@ -30,6 +30,7 @@ my $mn;
 my $err_record="";
 my $installlog="/var/log/xcat/autotest.log";
 my $isodir="$homedir/iso";
+my $plugindir="$homedir/plugin";
 my $orgclusterconffile="";
 my $newclusterconffile="";
 my $all_reg_time_consumption=0;
@@ -38,23 +39,44 @@ my $totalcase=0;
 my $alltestpass=0;
 my $teststopflag=0;
 my $lastcase;
-#my $defaultmail="huweihua\@cn.ibm.com,litingt\@cn.ibm.com,junxiaw\@cn.ibm.com,wxp\@cn.ibm.com,gongjie\@cn.ibm.com,bjcaomm\@cn.ibm.com,vhu\@us.ibm.com";
-my $defaultmail="huweihua\@cn.ibm.com,litingt\@cn.ibm.com";
+my $defaultmail="besawn\@us.ibm.com,gurevich\@us.ibm.com,wpeter\@us.ibm.com";
 my $sub_process_rt=0;
 my $proid;
+my $timeout = 12;  #units is hours
+my @attachfiles;
+
+my $automation_mountpoint="/tmp/automation_mountpoint";
+my $extra_resource_path="hpcsrv:/gpfs/c910gpfs2/xcat/jk";
+my $login_node_nameserver="10.0.0.104";
+$extra_resource_path = $ENV{'EXTRA_RESOUCE_DIR'} if exists $ENV{'EXTRA_RESOUCE_DIR'};
+
+#build information
+my $commitnum=undef;
+my $buildtime=undef;
+my $xcatversion=undef;
+my $xcatrelease=undef;
+my $buildserver=undef;
+
+# Use MySQL database for the xCAT hierarchy support
+my $xcat_database = "MySQL";
 
 # command line arguments
 my $cluster_name;
 my $os;
 my $xcatcore_addr;
 my $xcatdep_addr;
+my $xcattest_addr;
+my $xcattest_pkg;
 my $bucket;
-my $mail_list = "";
+my $mail_list;
 my $quiet=0;
 my $hold=0;
 my $needhelp  = 0;
 my $proname="";
 my $proruntime="";
+my $regstarttime = 0;
+my $regendtime = 0;
+my $plugin=undef;
 
 
 #######################################
@@ -71,7 +93,7 @@ sub send_msg {
     } elsif($num == 2) {
         $content = "Notice:";
     }
-    my $timestamp = `date +"%Y%m%d%H%M%S"`;
+    my $timestamp = `date +"%Y-%m-%d %H:%M:%S"`;
     chomp($timestamp);
     if ( !open (LOGFILE, ">> $logfiledir/$logfile") ) {
        return 1;
@@ -94,14 +116,16 @@ sub runcmd {
     my $outref = [];
 
     @$outref = `$cmd 2>&1`;
-    if ($?)
-    {
-        $rc = $? ;
+    $rc = $? ;
+    chomp(@$outref);
+    if ($rc) {
+        my $tmpoutput1 = join(' ', @$outref);
+        send_msg(0, "[runcmd] failed to run $cmd: $tmpoutput1");
         $::RUNCMD_RC = $rc;
     }
-    chomp(@$outref);
     return @$outref;
 }
+
 #######################################
 # parse cluser.conf file
 #######################################
@@ -140,7 +164,7 @@ sub load_cluster_conf {
             }
         }elsif ($type eq "Object") {
             ##OBJECT BLOCK##
-            if($line =~ /(\w+)\s*=\s*([:\w\.\-\/]+)/) {
+            if($line =~ /(\w+)\s*=\s*([:,\w\.\-\/]+)/) {
                $attr = $1;
                $value = $2;
                if($attr eq "Name"){
@@ -232,7 +256,7 @@ sub get_netboot_value{
             }else{
                 $netbootv="yaboot";
             }
-        }elsif($1 =~ /sles/i){
+        }elsif($1 =~ /sle/i){
             if($version<11.4){
                 $netbootv="yaboot";
             }else{
@@ -240,7 +264,7 @@ sub get_netboot_value{
             }
         }
     }elsif($archv =~ /ppc64le/i  || $archv =~ /ppc64el/i){
-        if($mgtv =~ /^ipmi$/i){
+        if($mgtv =~ /^ipmi$/i || $mgtv =~ /^openbmc$/i){
             $netbootv="petitboot";
         }else{
             $netbootv="grub2";
@@ -257,7 +281,7 @@ sub init{
     $logfile="log.$proid";
     $logfiledir="$homedir/log/$proname/$proruntime";
     $xcatpackagesdir="$homedir/xcatpackages/$proname/$proruntime";
-    $orgclusterconffile="$homedir/$cluster_name/default.conf";
+    $orgclusterconffile="$homedir/nodes/$cluster_name/default.conf";
     $newclusterconffile="$logfiledir/cluster.conf";
     $mailfile="$logfiledir/mail.$proid";
 
@@ -279,7 +303,9 @@ sub read_conf{
         return 1;
     }
     while ($line = <$myfile>) {
-        $line =~ s/\s//g;
+        # $line =~ s/\s//g;   Do not remove spaces for the line.
+        # Remove the newline character from each line.
+        chomp($line);
         next if($line =~ /^#/);
         next if($line eq "");
         my @attr=split(/=/,$line);
@@ -319,6 +345,8 @@ sub usage{
     --num: Required, specifys this is how many times does this project run.\n
     --xcat-core: Required, a web address, specify where to download the xcat-core package\n
     --xcat-dep: Required, a web address, specify where to download the xcat-dep package\n
+    --xcat-test: Optional, a URL to specify where to download the xcat-test package\n
+    --database: Optional, \`MySQL' by default, can be \`PostgreSQL'\n
     --email: a mail address, sepcify who should receive the test result report\n
     --quiet: don't output to screen, just keep output in log file. output to screen by default\n
     --hold: hold environment for 24 hours if some case stop and need to hold environment\n\n";
@@ -329,39 +357,181 @@ sub usage{
     return;
 }
 
+
+#######################################
+# get xcat-test package
+#######################################
+sub get_xcattest{
+    return 0 unless($xcattest_addr);
+
+    send_msg(2, "start to get xcat-test........");
+
+    my $xcat_test = (split("/", $xcattest_addr))[-1];
+    my @output  = runcmd("wget $xcattest_addr --retry-connrefused -nv -O $xcatpackagesdir/$xcat_test");
+    if($::RUNCMD_RC){
+        my $errstr = join(";", @output);
+        if($errstr){
+            send_msg(0, "[get_xcattest] Can't download xcat-test package: $errstr");
+        }else{
+            send_msg(0, "[get_xcattest] Failed to download xcat-test due to network problem");
+        }
+        return 1;
+    }
+    $xcattest_pkg = "$xcatpackagesdir/$xcat_test";
+    return 0;
+}
 #######################################
 # get build from build server
 #######################################
 sub get_build{
     send_msg(2, "start to get xcat build........");
 
-    &runcmd("cd $xcatpackagesdir >/dev/null 2>&1 && wget $xcatcore_addr >/dev/null 2>&1");
-    if($?){
-        send_msg(0, "[get_build] Can't download xcat-core from $xcatcore_addr");
+    my $xcat_core = (split("/", $xcatcore_addr))[-1];
+    my @output  = runcmd("wget $xcatcore_addr --retry-connrefused -nv -O $xcatpackagesdir/$xcat_core");
+    if($::RUNCMD_RC){
+        my $errstr = join(";", @output);
+        if($errstr){
+            send_msg(0, "[get_build] Can't download xcat-core package: $errstr");
+        }else{
+            send_msg(0, "[get_build] Failed to download xcat-core due to network problem");
+        }
         return 1;
     }
 
-    &runcmd("cd $xcatpackagesdir >/dev/null 2>&1 && wget $xcatdep_addr >/dev/null 2>&1");
-    if($?){
-        send_msg(0, "[get_build] Can't download xcat-dep from $xcatdep_addr");
+    my $xcat_dep = (split("/", $xcatdep_addr))[-1];
+    @output  = runcmd("wget  $xcatdep_addr --retry-connrefused -nv -O $xcatpackagesdir/$xcat_dep");
+    if($::RUNCMD_RC){
+        my $errstr = join(";", @output);
+        if($errstr){
+            send_msg(0, "[get_build] Can't download xcat-dep package: $errstr");
+        }else{
+            send_msg(0, "[get_build] Failed to download xcat-dep due to network problem");
+        }
         return 1;
     }
 
-    &runcmd("cd $xcatpackagesdir >/dev/null 2>&1 && wget http://xcat.org/files/go-xcat >/dev/null 2>&1");
-    if($?){
-        send_msg(0, "[get_build] Can't download go-xcat from xcat.org");
+    @output  = runcmd("wget https://raw.githubusercontent.com/xcat2/xcat-core/master/xCAT-server/share/xcat/tools/go-xcat --no-check-certificate --retry-connrefused -nv -O $xcatpackagesdir/go-xcat");
+    if($::RUNCMD_RC){
+        my $errstr = join(";", @output);
+        if($errstr){
+            send_msg(0, "[get_build] Can't download script go-xcat: $errstr");
+        }else{
+            send_msg(0, "[get_build] Failed to download go-xcat due to network problem");
+        }
         return 1;
     }
 
-    send_msg(2, "get xcat build........[done]");
+    send_msg(2, "[get_build] get xcat build........[done]");
     return 0;
 }
 
 #######################################
+# get bundle from build
+#######################################
+sub get_bundle {
+    send_msg(2, "[get_bundle] start to collect case summary...");
+    my $xcatcore = `ls -l /$xcatpackagesdir |grep core |grep "tar.bz2" |awk '{print \$9}'`;
+    chomp($xcatcore);
+    if ($xcatcore eq "") {
+        send_msg(0, "[get_bundle] can't find xcat core under /$xcatpackagesdir");
+        return 1;
+    }
+    send_msg(2, "[get_bundle]  xcat core = $xcatcore");
+
+    my $curpath = `pwd`;
+    chomp($curpath);
+    send_msg(2, "[get_bundle] The current workspace is $curpath");
+
+    &runcmd("cd /$xcatpackagesdir && tar xvf /$xcatpackagesdir/$xcatcore");
+    if ($::RUNCMD_RC) {
+        send_msg(0, "[get_bundle] decompress /$xcatpackagesdir/$xcatcore failed");
+        return 1;
+    }
+    send_msg(2, "[get_bundle] decompress /$xcatpackagesdir/$xcatcore to /$xcatpackagesdir succeed");
+
+    &runcmd("mkdir /$xcatpackagesdir/xcat-test");
+
+    if (-d "/$xcatpackagesdir/xcat-core/pool/main/x/xcat-test/") {
+        $xcattest_pkg="/$xcatpackagesdir/xcat-core/pool/main/x/xcat-test/xcat-test_*.deb" unless ($xcattest_pkg);
+        &runcmd("cp $xcattest_pkg /$xcatpackagesdir/xcat-test/");
+        if ($::RUNCMD_RC) {
+            send_msg(0, "[get_bundle] cp $xcattest_pkg to /$xcatpackagesdir/xcat-test failed");
+            return 1;
+        }
+        &runcmd("cd /$xcatpackagesdir/xcat-test/ && ar x /$xcatpackagesdir/xcat-test/xcat-test_*.deb && tar -Jxf data.tar.xz");
+        if ($::RUNCMD_RC) {
+            send_msg(0, "[get_bundle] cd /$xcatpackagesdir/xcat-test/ && ar x /$xcatpackagesdir/xcat-test/xcat-test_*.deb && tar -Jxf data.tar.xz failed");
+            return 1;
+        }
+    } elsif (-d "/$xcatpackagesdir/xcat-core/") {
+        if ((!-e "/usr/bin/rpm2cpio") && (-f "/etc/lsb-release")) {
+            &runcmd("apt-get install -y rpm2cpio");
+        }
+        $xcattest_pkg="/$xcatpackagesdir/xcat-core/xCAT-test-*.rpm" unless ($xcattest_pkg);
+        &runcmd("rpm2cpio $xcattest_pkg | (cd /$xcatpackagesdir/xcat-test && cpio -idmv)");
+    } else {
+        send_msg(0, "[get_bundle] can't find xcat-test package");
+        return 1;
+    }
+
+    my $bundle = undef;
+    if ($bucket =~ /^all$/i) {
+        $bundle = $os . "_" . $arch . ".bundle";
+    } else {
+        $bundle = "customize.bundle";
+        my @caselist = split(" ", $bucket);
+        my $fd;
+        if (!open($fd, "> $xcatpackagesdir/xcat-test/opt/xcat/share/xcat/tools/autotest/bundle/$bundle")) {
+            send_msg(0, "[get_bundle] Failed to create $bundle to write:$!");
+            return 1;
+        }
+        foreach my $line (@caselist) {
+            if ($line =~ /^INCLUDE:/) {
+                $line =~ s/(.*)/#$1#/;
+            }
+            print $fd "$line\n";
+        }
+        close($fd);
+    }
+
+    chmod 0755, "/$xcatpackagesdir/xcat-test/opt/xcat/bin/xcattest";
+    &runcmd("/$xcatpackagesdir/xcat-test/opt/xcat/bin/xcattest -l caselist -b $bundle  > $logfiledir/$bundle");
+    if ($::RUNCMD_RC) {
+        send_msg(0, "[get_bundle] xcattest calculate $bundle failed");
+        return 1;
+    }
+
+    return 0;
+}
+sub get_build_info{
+    my $fd = undef;
+    if(!open($fd, "< /$xcatpackagesdir/xcat-core/buildinfo")){
+        send_msg(0, "[get_build_info] Failed to open /$xcatpackagesdir/xcat-core/buildinfo:$!");
+        return 1;
+    }
+
+    while (my $line = <$fd>) {
+        $line =~ s/^\s+|\s+$//g;
+        if($line =~ /^COMMIT_ID=(.+)/){
+            $commitnum = $1;
+        }elsif($line =~ /^BUILD_TIME=(.+)/){
+             $buildtime = $1;
+        }elsif($line =~ /^VERSION=(.+)/){
+            $xcatversion=$1;
+        }elsif($line =~ /^RELEASE=(.+)/){
+            $xcatrelease=$1;
+        }elsif($line =~ /^BUILD_MACHINE=(.+)/){
+            $buildserver=$1;
+        }
+    }
+    $xcatrelease = 'N/A' unless ($xcatrelease);
+    close($fd);
+    return 0;
+}
+#######################################
 # do clean uo job when exit
 #######################################
 sub cleanup{
-    unlink("/tmp/totalcase.$proid") if(-e "/tmp/totalcase.$proid");
     unlink("/tmp/failed_case_detail.$proid") if(-e "/tmp/failed_case_detail.$proid");
     #rmdir("$xcatpackagesdir") if(-d "$xcatpackagesdir");
 }
@@ -382,8 +552,8 @@ sub exit_test{
 sub env_check {
     send_msg(2, "start to environment checking..........");
 
-    if(! -d "$homedir/$cluster_name"){
-        send_msg(0, "can't find $cluster_name under $homedir");
+    if(! -d "$homedir/nodes/$cluster_name"){
+        send_msg(0, "can't find $cluster_name under $homedir/nodes");
         return 1;
     }
 
@@ -403,7 +573,7 @@ sub env_check {
 
     &load_cluster_conf;
     if(!exists($config{object}{node}{$config{var}{CN}}{arch})){
-        send_msg(0, "can't fine arch of CN in $orgclusterconffile");
+        send_msg(0, "can't find arch of CN in $orgclusterconffile");
         return 1;
     }
 
@@ -417,6 +587,16 @@ sub env_check {
       return 1;
     }
 
+    if($plugin){
+        if( ! -e "$plugindir/$plugin"){
+            send_msg(0, "can't find customize plugin $plugin under $plugindir");
+            return 1;
+        }else{
+            chmod 0755, "$plugindir/$plugin";
+        }
+
+    }
+
     send_msg(2, "environment checking..........[done]");
     return 0;
 }
@@ -428,7 +608,7 @@ sub mn_install {
     send_msg(2, "[mn_install] start to install mn $mn.......");
 
     &runcmd("lsdef|grep $mn");
-    if($?){
+    if($::RUNCMD_RC){
         send_msg(0, "[mn_install] Can't find definition of $mn in current control node");
         return 1;
     }
@@ -440,7 +620,7 @@ sub mn_install {
 
     my $osimage= $confkeys{"$os-$arch-image"};
     &runcmd("lsdef -t osimage|grep $osimage");
-    if($?){
+    if($::RUNCMD_RC){
         send_msg(0, "[mn_install] Can't find definition of $osimage in current control node");
         return 1;
     }
@@ -451,17 +631,17 @@ sub mn_install {
     my $netboot=get_netboot_value("$os","$arch","$mgt");
     send_msg(2, "[mn_install] plan to set netboot of $mn [mgt=$mgt] to $netboot......");
     &runcmd("chdef $mn netboot=$netboot");
-    if($?){
+    if($::RUNCMD_RC){
         send_msg(0, "[mn_install] set netboot of $mn to $netboot failed");
         return 1;
     }
     send_msg(2, "[mn_install] set netboot of $mn to $netboot..[done]");
 
     &runcmd("lsdef $mn -i postscripts|grep setupntp");
-    if($?){
+    if($::RUNCMD_RC){
         send_msg(2, "[mn_install] plan to set setupntp as $mn 's postscript......");
         &runcmd("chdef $mn -p postscripts=setupntp");
-        if($?){
+        if($::RUNCMD_RC){
             send_msg(0, "[mn_install] set setupntp as $mn 's postscript failed");
             return 1;
         }
@@ -470,66 +650,113 @@ sub mn_install {
 
     if($os =~ /ubuntu/i){
         if($arch =~ /le/i || $arch =~ /el/i){
-            my $miniisopath=$logfiledir;
-            my $downloadpath=$confkeys{"$os-$arch-miniiso"};
-            &runcmd("cd $miniisopath >/dev/null 2>&1 && wget $downloadpath >/dev/null 2>&1");
-            if($?){
-                send_msg(0, "[mn_install] Can't download mini.iso from $downloadpath");
-                return 1;
+            if(exists $confkeys{"$os-$arch-miniiso"}){
+                my $miniisopath=$logfiledir;
+                my $downloadpath=$confkeys{"$os-$arch-miniiso"};
+                my $miniisoname = (split("/", $downloadpath))[-1];
+                my @output=runcmd("wget $downloadpath --retry-connrefused -nv -O $miniisopath/$miniisoname");
+                if($::RUNCMD_RC){
+                    my $errstr = join(";", @output);
+                    if($errstr){
+                        send_msg(0, "[mn_install] Can't download mini.iso: $errstr");
+                    }else{
+                        send_msg(0, "[mn_install] failed to download mini.iso due to network problem");
+                    }
+                    return 1;
+                }
+                send_msg(2, "[mn_install] download mini.iso from $downloadpath  ....[done]");
+                mkpath("/install/$os/ppc64el/install/netboot") if(! -e "/install/$os/ppc64el/install/netboot");
+                rename("/install/$os/ppc64el/install/netboot/initrd.gz", "/install/$os/ppc64el/install/netboot/initrd.gz.bakupby$proid") if(-e "/install/$os/ppc64el/install/netboot/initrd.gz");
+                mkpath("$miniisopath/mountpoint");
+                &runcmd("mount -o loop $miniisopath/mini.iso $miniisopath/mountpoint");
+                &runcmd("cp $miniisopath/mountpoint/install/initrd.gz /install/$os/ppc64el/install/netboot/");
+                &runcmd("umount $miniisopath/mountpoint");
+                unlink("$miniisopath/mountpoint");
+            }else{
+                send_msg(2, "[mn_install] there is no miniiso configuration for $os");
             }
-            send_msg(2, "[mn_install] download mini.iso from $downloadpath  ....[done]");
-            mkpath("/install/$os/ppc64el/install/netboot") if(! -e "/install/$os/ppc64el/install/netboot");
-            rename("/install/$os/ppc64el/install/netboot/initrd.gz", "/install/$os/ppc64el/install/netboot/initrd.gz.bakupby$proid") if(-e "/install/$os/ppc64el/install/netboot/initrd.gz");
-            mkpath("$miniisopath/mountpoint");
-            &runcmd("mount -o loop $miniisopath/mini.iso $miniisopath/mountpoint");
-            &runcmd("cp $miniisopath/mountpoint/install/initrd.gz /install/$os/ppc64el/install/netboot/");
-            &runcmd("umount $miniisopath/mountpoint");
-            unlink("$miniisopath/mountpoint");
         }
     }
 
-    &runcmd("nodeset $mn osimage=$osimage");
-    if($?){
-        send_msg(0, "[mn_install] running nodeset error, please checking your configuration");
-        return 1;
-    }
-    send_msg(2, "[mn_install] nodeset $mn osimage=$osimage...[done]");
+    my $installmnsuccess = 0;
+    my $tryreinstall = 5;
+    while($tryreinstall){
+        send_msg(2, "[mn_install] [$tryreinstall] Try to install $mn ...");
 
-    if( $arch !~ /^ppc64$/i){
-        &runcmd("rpower $mn boot");
-        if($?){
-            send_msg(0, "[mn_install] rpower $mn boot error, please checking your configuration");
-            return 1;
+        my $tryreboot = 5;
+        my $returncode=0;
+        my @output = ();
+        my $rebootcmd = "rinstall $mn osimage=$osimage";
+        while($tryreboot){
+            @output = runcmd("$rebootcmd");
+            $returncode = $::RUNCMD_RC;
+            send_msg(2, "[mn_install] [$tryreboot] $rebootcmd returncode=$returncode");
+            last if (!$returncode);
+            --$tryreboot;
+            &runcmd("makeconservercf $mn") if($arch =~ /^ppc64$/i);
+            sleep 2;
         }
-    }else{
-        &runcmd("rnetboot $mn");
-        if($?){
-            send_msg(0, "[mn_install] rnetboot $mn error, please checking your configuration");
-            return 1;
+
+        if($returncode){
+            my $outputstr = join(";", @output);
+            send_msg(0, "[mn_install] reboot $mn error: $outputstr");
+            last;
         }
+        my $sleep_seconds = 300;
+        my $sleep_interval = 30;
+        my $sleep_loops = 40; # 20 min (40*30/60)
+
+        send_msg(2, "[mn_install] reboot $mn ...[done], wait $sleep_seconds sec for install to start, then check node status every $sleep_interval sec for $sleep_loops iterations ...");
+
+        # initial sleep while waiting for installation 
+        sleep $sleep_seconds;
+
+        my $a = 1;
+        while ($a < $sleep_loops) {
+            my @output = runcmd("lsdef -l $mn -i status -c");
+            my $status_output = join(";", @output);
+            send_msg(2, "[mn_install] [$a] $status_output");
+           
+            if ($status_output =~ /failed/i) {
+                # If status=failed, nothing is changing so why retry? 
+                send_msg(0, "[mn_install] [$a] install $osimage on mn $mn failed on postscripts.");
+                return 1;
+            } elsif ($status_output =~ /booted/i) {
+                last;
+            }
+            sleep $sleep_interval;
+            ++$a;
+        }
+              
+        &runcmd("lsdef -l $mn -i status -c | grep booted >/dev/null");
+        my $tobooted = $::RUNCMD_RC;
+
+        &runcmd("ping -c 2 $mn  > /dev/null");
+        my $pingable =  $::RUNCMD_RC;
+
+        &runcmd("xdsh $mn date > /dev/null");
+        my $canruncmd = $::RUNCMD_RC;
+
+        $installmnsuccess = !($canruncmd | $tobooted | $pingable);
+        last if($installmnsuccess);
+        --$tryreinstall;
     }
-    send_msg(2, "[mn_install] reboot $mn ...[done]");
 
-    #sleep while for installation.
-    &runcmd("sleep 360");
-    &runcmd("a=0;while ! `lsdef -l $mn|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ \$a -gt 400 ];then break;fi done");
-
-    &runcmd("lsdef -l $mn|grep status|grep booted >/dev/null");
-    if($?){
+    if(!$installmnsuccess){
         send_msg(0, "[mn_install] install $osimage on mn $mn failed");
         return 1;
     }
 
-    &runcmd("ping -c 2 $mn  > /dev/null");
-    if($?){
-        send_msg(0, "[mn_install] ping $mn failed after installation");
-        return 1;
-    }
 
-    &runcmd("xdsh $mn date > /dev/null");
-    if($?){
-        send_msg(0, "[mn_install] xdsh $mn date failed after installation");
-        return 1;
+    if($os =~ /sle15/i){
+        my $snapper_rpm = "snapper";
+        # For SLES15 remove snapper RPM on management node, too much disk space is taken by snapshots
+        &runcmd("xdsh $mn zypper remove -y $snapper_rpm");
+        if($::RUNCMD_RC){
+            send_msg(0, "[mn_install] removal of $snapper_rpm package from $mn failed");
+            return 1;
+        }
+        send_msg(2, "[mn_install] removed $snapper_rpm package from $mn ...[done]");
     }
 
     send_msg(2, "install mn $mn .....[done]");
@@ -544,12 +771,18 @@ sub mn_install {
 sub prepare_mn {
     send_msg(2, "[prepare_mn] start to prepare mn $mn.......");
 
-    if($os =~ /rhels7/i){
+    if($os =~ /rhels7/i || $os =~ /ol7/i){
         &runcmd("xdsh $mn \"yum -y install bzip2 \" >/dev/null 2>&1");
     }
 
-    my $xcatcore=`ls -l /$xcatpackagesdir |grep core |awk '{print \$9}'`;
-    my $xcatdep=`ls -l /$xcatpackagesdir |grep dep|awk '{print \$9}'`;
+    # Attempt to insall on bzip2 on SLES. Some versions do not have it
+    # installed by default. If already there, command will do nothing
+    if($os =~ /sle/i){
+        &runcmd("xdsh $mn \"zypper install -y bzip2 \" >/dev/null 2>&1");
+    }
+
+    my $xcatcore=`ls -l /$xcatpackagesdir |grep core |grep "tar.bz2" |awk '{print \$9}'`;
+    my $xcatdep=`ls -l /$xcatpackagesdir |grep dep |awk '{print \$9}'`;
     chomp($xcatcore);
     chomp($xcatdep);
     if($xcatcore eq ""){
@@ -563,7 +796,7 @@ sub prepare_mn {
 
     send_msg(2, "[prepare_mn] starting to copy $xcatcore and $xcatdep to $mn");
     &runcmd("scp /$xcatpackagesdir/$xcatcore /$xcatpackagesdir/$xcatdep root\@$mn:/  >/dev/null");
-    if($?){
+    if($::RUNCMD_RC){
         send_msg(0, "[prepare_mn] copy $xcatcore and $xcatdep to $mn failed");
         return 1;
     }
@@ -571,7 +804,7 @@ sub prepare_mn {
 
     send_msg(2, "[prepare_mn] starting to copy go-xcat to $mn");
     &runcmd("scp /$xcatpackagesdir/go-xcat root\@$mn:/  >/dev/null");
-    if($?){
+    if($::RUNCMD_RC){
        send_msg(0, "[prepare_mn] copy go-xcat to $mn failed");
        return 1;
     }
@@ -579,71 +812,95 @@ sub prepare_mn {
 
     send_msg(2, "[prepare_mn] starting to decompress xcat packages.....");
     &runcmd("xdsh $mn 'cd / && tar xvf /$xcatcore' >/dev/null 2>&1");
-    if($?){
+    if($::RUNCMD_RC){
         send_msg(0, "[prepare_mn] decompress $xcatcore on $mn failed");
         return 1;
     }
+    unless ($xcatcore =~ /^core/) {
+        &runcmd("xdsh $mn 'cd / && ln -s /$xcatcore core-testing-snap.tar.bz2' >/dev/null 2>&1");
+    }
+
     &runcmd("xdsh $mn 'cd / && tar xvf /$xcatdep' >/dev/null 2>&1");
-    if($?){
+    if($::RUNCMD_RC){
         send_msg(0, "[prepare_mn] decompress $xcatdep on $mn failed");
         return 1;
     }
     send_msg(2, "[prepare_mn] decompress xcat packages....[done]");
 
+
+    &runcmd("scp $xcattest_pkg root\@$mn:/  >/dev/null");
+    if($::RUNCMD_RC){
+       send_msg(0, "[prepare_mn] copy $xcattest_pkg to $mn failed");
+       return 1;
+    }
+
     #prepare /etc/hosts file on MN
     &runcmd("scp /etc/hosts root\@$mn:/etc  >/dev/null");
-    if ($?){
+    if ($::RUNCMD_RC){
         send_msg(0, "[prepare_mn] generate /etc/hosts on $mn failed");
         return 1;
     }
     send_msg(2, "[prepare_mn] generate /etc/hosts on $mn...[done]");
 
     #prepare specific files on mn for each platform
-    if($os =~ /rhel/i){
-        if($arch =~ /ppc64le/i || $arch =~ /ppc64el/i){
-            &runcmd("scp /install/$os/ppc64le/RPM-GPG-KEY-redhat-release root\@$mn:/  >/dev/null");
-        }else{
-            &runcmd("scp /install/$os/$arch/RPM-GPG-KEY-redhat-release root\@$mn:/  >/dev/null");
+    if($os =~ /rhel/i || $os =~ /ol/i){
+        my $rpm_pgp_key_file="RPM-GPG-KEY-redhat-release";
+        if($os =~ /ol/i){
+            $rpm_pgp_key_file="RPM-GPG-KEY-oracle";
         }
-        if($?){
-            send_msg(0, "[prepare_mn] copy RPM-GPG-KEY-redhat-release to $mn failed");
+        my $osimage=$confkeys{"$os-$arch-image"};
+        my @pkgdir=runcmd("lsdef -t osimage $osimage -i pkgdir -c|awk -F'=' '{print \$2}'");
+        
+        send_msg(2, "[prepare_mn] the location of $rpm_pgp_key_file is $pkgdir[0]");
+        &runcmd("scp $pkgdir[0]/$rpm_pgp_key_file root\@$mn:/  >/dev/null");
+        if($::RUNCMD_RC){
+            send_msg(0, "[prepare_mn] copy $rpm_pgp_key_file to $mn failed");
             return 1;
         }
-        send_msg(2, "[prepare_mn] copy RPM-GPG-KEY-redhat-release to $mn...[done]");
+        send_msg(2, "[prepare_mn] copy $rpm_pgp_key_file to $mn...[done]");
     }
 
     my $iso= $confkeys{"$os-$arch-iso"};
     if ($iso eq ""){
-        send_msg(0, "[prepare_mn] can't find iso for $mn in golbal conf file");
+        send_msg(0, "[prepare_mn] can't find iso for $mn in global conf file");
         return 1;
     }
-    if(! -e "$isodir/$iso"){
-        send_msg(0, "[prepare_mn] can't find $iso under $isodir");
-        return 1;
-    }
-    send_msg(2, "[prepare_mn] find $iso for os=$os and arch=$arch");
 
-    &runcmd("scp $isodir/$iso root\@$mn:/  >/dev/null");
-    if($?){
-        send_msg(0, "[prepare_mn] copy $iso to $mn failed");
-        return 1;
+
+    # In case there are multiple ISO files.
+    my @iso_array=split(' ', $iso);
+
+    foreach my $each_iso (@iso_array){
+       if(! -e "$isodir/$each_iso"){
+          send_msg(0, "[prepare_mn] can't find $each_iso under $isodir");
+          return 1;
+      }
+      send_msg(2, "[prepare_mn] find $each_iso for os=$os and arch=$arch");
+
+      &runcmd("scp $isodir/$each_iso root\@$mn:/  >/dev/null");
+      if($::RUNCMD_RC){
+          send_msg(0, "[prepare_mn] copy $each_iso to $mn failed");
+          return 1;
+      }
+      send_msg(2, "[prepare_mn] copy $each_iso to $mn...[done]");
     }
-    send_msg(2, "[prepare_mn] copy $iso to $mn...[done]");
 
     if($os =~ /ubuntu/i){
         if($arch =~ /le/i || $arch =~ /el/i){
-            my $miniisopath=$logfiledir;
-            &runcmd("scp $miniisopath/mini.iso root\@$mn:/ >/dev/null 2>&1");
-            if($?){
-                send_msg(0, "[prepare_mn] copy $miniisopath/mini.iso to $mn failed");
-                return 1;
+            if(exists $confkeys{"$os-$arch-miniiso"}){
+                my $miniisopath=$logfiledir;
+                &runcmd("scp $miniisopath/mini.iso root\@$mn:/ >/dev/null 2>&1");
+                if($::RUNCMD_RC){
+                    send_msg(0, "[prepare_mn] copy $miniisopath/mini.iso to $mn failed");
+                    return 1;
+                }
+                send_msg(2, "[prepare_mn] copy $miniisopath/mini.iso to $mn...[done]");
             }
-            send_msg(2, "[prepare_mn] copy $miniisopath/mini.iso to $mn...[done]");
         }
     }
 
     &load_cluster_conf;
-    if(exists ($config{var}{SN})){
+    if(exists ($config{var}{SN}) && $config{var}{SN} ne "NULL"){
         if(!exists($config{object}{node}{$config{var}{SN}}{arch})){
             send_msg(0, "[prepare_mn] SN without arch attribute in $orgclusterconffile");
             return 1;
@@ -695,6 +952,8 @@ sub prepare_mn {
 
     if(exists ($config{var}{ISO})){
         $config{var}{ISO}="/$iso";
+        # Add "/" before additional ISO files. 
+        $config{var}{ISO}=~ s/\s/ \//;
     }
 
     if(exists ($config{var}{OS})){
@@ -702,8 +961,51 @@ sub prepare_mn {
             $config{var}{OS}="$1";
         }
     }
+
+    # the default.conf defined eth0/eth1/eth2 for nic name
+    # The confignetwork script failed for rehls8 because there are no such nic name
+    # eth0/eth1/eth2 nic name works for other interface except rhels8
+    # replace with real interface name for rhels8 cluster instead of eth0/eth1/eth2
+    if($os =~ /rhels8/i && $arch =~ /ppc64/i){
+        if(exists ($config{var}{NICNAME})){
+            $config{var}{NICNAME}="enp0s1";
+        }
+        if (exists ($config{var}{SECONDNIC})){
+            $config{var}{SECONDNIC}="enp0s2";
+        }
+        if (exists ($config{var}{THIRDNIC})) {
+            $config{var}{THIRDNIC}="enp0s3";
+        }
+    }
+
+    $config{var}{XCAT_DATABASE}="$xcat_database";
+
     &reset_cluster_conf;
 
+    send_msg(2, "Try to mount extra resource directory to $mn");
+    &runcmd("xdsh $mn 'mkdir -p $automation_mountpoint'");
+    if($::RUNCMD_RC){
+       send_msg(0, "[prepare_mn] create automation mount point for extra resource on $mn failed");
+       return 1;
+    }
+    # Insert login node as a nameserver so the GPFS server name can be resolved
+    &runcmd("xdsh $mn \"sed -i \'/nameserver.*/i nameserver $login_node_nameserver\' /etc/resolv.conf\"");
+    if($::RUNCMD_RC){
+       send_msg(0, "[prepare_mn] modifying /etc/resolv.conf to add nameserver $login_node_nameserver failed");
+       return 1;
+    }
+    &runcmd("xdsh $mn 'mount $extra_resource_path $automation_mountpoint'");
+    if($::RUNCMD_RC){
+       send_msg(0, "[prepare_mn] mount extra resource $extra_resource_path to $mn $automation_mountpoint failed");
+       return 1;
+    }
+
+    # Remove login node as a nameserver so the local nameserving resumes
+    &runcmd("xdsh $mn 'sed -i \'/$login_node_nameserver/d\' /etc/resolv.conf'");
+    if($::RUNCMD_RC){
+       send_msg(0, "[prepare_mn] modifying /etc/resolv.conf to restore original nameserver failed");
+       return 1;
+    }
     send_msg(2, "prepare mn $mn .....[done]");
     return 0;
 }
@@ -713,8 +1015,13 @@ sub prepare_mn {
 # install xcat-test package and other dependency packages
 ############################################################
 sub install_xcattest {
-    send_msg(2, "[install_xcattest] starting to install xcat-test in $mn");
-    if($os =~ /rhel/i){
+    send_msg(2, "[install_xcattest] starting to install xcat-test on $mn");
+    send_msg(2, "[install_xcattest] xcat_database = $xcat_database");
+    if($os =~ /rhel/i || $os =~ /ol/i ){
+        my $rpm_pgp_key_file="RPM-GPG-KEY-redhat-release";
+        if($os =~ /ol/i){
+            $rpm_pgp_key_file="RPM-GPG-KEY-oracle";
+        }
         $os =~ /(\D+)(\d+)\.?(\d?)/;
         &runcmd("xdsh $mn \"cd /xcat-core && ./mklocalrepo.sh\" >/dev/null 2>&1");
         my $version=$2;
@@ -723,20 +1030,30 @@ sub install_xcattest {
         }else{
             &runcmd("xdsh $mn \"cd /xcat-dep/rh$version/$arch && ./mklocalrepo.sh\" >/dev/null 2>&1");
         }
-        &runcmd("xdsh $mn \"rpm --import /RPM-GPG-KEY-redhat-release\" >/dev/null 2>&1");
-        &runcmd("xdsh $mn \"rpm -ivh /xcat-core/xCAT-test-*.rpm --nodeps > $installlog 2>&1 \" >/dev/null 2>&1");
-        &runcmd("xdsh $mn \"yum -y install createrepo expect\" >/dev/null 2>&1");
+        &runcmd("xdsh $mn \"rpm --import /$rpm_pgp_key_file\" >/dev/null 2>&1");
+        &runcmd("xdsh $mn \"yum -y install createrepo expect perl-Getopt-Long perl-Data-Dumper\" >/dev/null 2>&1");
+        &runcmd("xdsh $mn \"rpm -ivh /xCAT-test-*.rpm --nodeps > $installlog 2>&1 \" >/dev/null 2>&1");
 
-        if($os =~ /rhels7/i){
-            &runcmd("xdsh $mn \"yum -y install mariadb-devel mariadb-libs mariadb-server mariadb-bench mariadb perl-DBD-MySQL mysql-connector-odbc unixODBC\">/dev/null 2>&1");
-        }elsif($os =~ /rhels6/i){
-            &runcmd("xdsh $mn \"yum -y install mysql-server mysql mysql-bench mysql-devel mysql-connector-odbc\" >/dev/null 2>&1");
+        if ($xcat_database eq "PostgreSQL") {
+           send_msg(2, "[install_xcattest] installing PostgreSQL rpms on $mn for $os");
+           &runcmd("xdsh $mn \"yum -y install postgresql-server postgresql perl-DBD-Pg\" >/dev/null 2>&1");
+        } else {
+            if($os =~ /rhels7/i || $os =~ /ol7/i){
+                send_msg(2, "[install_xcattest] installing MariaDB rpms on $mn for $os");
+                &runcmd("xdsh $mn \"yum -y install mariadb-libs mariadb-server mariadb mysql-connector-odbc perl-DBD-MySQL unixODBC\" >/dev/null 2>&1");
+            } elsif ($os =~ /rhels6/i) {
+                send_msg(2, "[install_xcattest] installing MySQL rpms on $mn for $os");
+                &runcmd("xdsh $mn \"yum -y install mysql-server mysql mysql-connector-odbc perl-DBD-MySQL\" >/dev/null 2>&1");
+            } elsif ($os =~ /rhels8/i || $os =~ /ol8/i){
+                send_msg(2, "[install_xcattest] installing MariaDB rpms on $mn for $os");
+                &runcmd("xdsh $mn \"yum -y install mariadb-server mariadb perl-DBD-MySQL mariadb-connector-odbc\" >/dev/null 2>&1");
+            }
         }
 
         if($arch =~ /x86/i){
             &runcmd("xdsh $mn \"yum install -y perl-Sys-Virt\" >/dev/null 2>&1");
         }
-    }elsif($os =~ /sles/i){
+    }elsif($os =~ /sle/i){
         $os =~ /(\D+)(\d+)\.?(\d?)/;
         my $version=$2;
         if($arch =~ /ppc64le/i || $arch =~ /ppc64el/i){
@@ -747,98 +1064,110 @@ sub install_xcattest {
         &runcmd("xdsh $mn \"zypper ar file:///xcat-core xCAT-core\" >/dev/null 2>&1");
         &runcmd("xdsh $mn \"zypper sl -U\" >/dev/null 2>&1");
         &runcmd("xdsh $mn \"zypper --gpg-auto-import-keys search --match-exact -s screen\" >/dev/null 2>&1");
-        &runcmd("xdsh $mn \"rpm -ivh /xcat-core/xCAT-test-*.rpm --nodeps > $installlog 2>&1 \" >/dev/null 2>&1");
-        &runcmd("xdsh $mn \"zypper -n install createrepo expect\" >/dev/null 2>&1");
-        &runcmd("xdsh $mn \"zypper -n install mysql-client libmysqlclient_r15  libqt4-sql-mysql libmysqlclient15 perl-DBD-mysql mysql unixODBC\" >/dev/null 2>&1");
+        &runcmd("xdsh $mn \"rpm -ivh /xCAT-test-*.rpm --nosignature --nodeps > $installlog 2>&1 \" >/dev/null 2>&1");
+        if ($os =~ /sle15/i){
+           &runcmd("xdsh $mn \"zypper -n install createrepo_c expect\" >/dev/null 2>&1");
+        } else {
+           &runcmd("xdsh $mn \"zypper -n install createrepo expect\" >/dev/null 2>&1");
+       }
 
-        if($arch =~ /le/i || $arch =~ /el/i){
+       if ($xcat_database eq "PostgreSQL") {
+           if ($os =~ /sle15/i){
+               &runcmd("xdsh $mn \"zypper -n install perl-DBD-Pg postgresql postgresql-server >> $installlog 2>&1\">/dev/null 2>&1");
+           } else {
+               &runcmd("xdsh $mn \"zypper -n install postgresql93 postgresql93-libs postgresql93-server perl-DBD-Pg >> $installlog 2>&1\">/dev/null 2>&1");
+           }
+       } else {
+           if ($os =~ /sle15/i) {
+               &runcmd("xdsh $mn \"zypper -n install mariadb-client mariadb mariadb-errormessages perl-DBD-mysql libmariadb-devel mariadb-tools libmariadb_plugins >> $installlog 2>&1\">/dev/null 2>&1");
+           } elsif ($os =~ /sles12/i) {
+               &runcmd("xdsh $mn \"zypper -n install mariadb-client mariadb mariadb-errormessages libmysqlclient18 perl-DBD-mysql >> $installlog 2>&1\">/dev/null 2>&1");
+           } elsif ($os =~ /sles11/i) {
+               &runcmd("xdsh $mn \"zypper -n install mysql-client libmysqlclient_r15 libmysqlclient15 perl-DBD-mysql mysql unixODBC >> $installlog 2>&1\" >/dev/null 2>&1");
+           }
+       }
+        if($arch =~ /ppc64le/i || $arch =~ /ppc64el/i) {
+           if ($os =~ /sles/i) {
             &runcmd ("xdsh  $mn \"zypper -n install perl-Net-DNS-0.80-1.ppc64le\">/dev/null 2>&1");
+           }
         }
         if($arch =~ /x86/i){
             &runcmd("xdsh $mn \"zypper -n install perl-Sys-Virt\" >/dev/null 2>&1");
         }
     }elsif($os =~ /ubuntu/i){
-        &runcmd("xdsh $mn \"echo \"nameserver 9.0.2.1\" >> /etc/resolv.conf\" >/dev/null 2>&1");
         &runcmd("xdsh $mn 'apt-get -y install software-properties-common' >/dev/null 2>&1");
-        if($?){
+        if($::RUNCMD_RC){
             send_msg(0, "[install_xcattest] apt-get -y install software-properties-common in $mn failed");
             return 1;
         }
 
+        my $mirror_location="";
         if($arch =~ /x86/i){
-            &runcmd("xdsh $mn 'add-apt-repository \"deb http://archive.ubuntu.com/ubuntu \$(lsb_release -sc) main\"' >/dev/null 2>&1");
-            &runcmd("xdsh $mn 'add-apt-repository \"deb http://archive.ubuntu.com/ubuntu \$(lsb_release -sc)-updates main\"' >/dev/null 2>&1");
-            &runcmd("xdsh $mn 'add-apt-repository \"deb http://archive.ubuntu.com/ubuntu \$(lsb_release -sc) universe\"' >/dev/null 2>&1");
-            &runcmd("xdsh $mn 'add-apt-repository \"deb http://archive.ubuntu.com/ubuntu \$(lsb_release -sc)-updates universe\"' >/dev/null 2>&1");
-        }elsif($arch =~ /le/i || $arch =~ /el/i){
-            &runcmd("xdsh $mn 'add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc) main\"' >/dev/null 2>&1");
-            if($?){
-                send_msg(0, "[install_xcattest] add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc) main\" in $mn failed");
-                return 1;
-            }
-            &runcmd("xdsh $mn 'add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc)-updates main\"' >/dev/null 2>&1");
-            if($?){
-                send_msg(0, "[install_xcattest] add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc)-updates main\" in $mn failed");
-                return 1;
-            }
-            &runcmd("xdsh $mn 'add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc) universe\"' >/dev/null 2>&1");
-            if($?){
-                send_msg(0, "[install_xcattest] add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc) universe\" in $mn failed");
-                return 1;
-            }
-            &runcmd("xdsh $mn 'add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc)-updates universe\"' >/dev/null 2>&1");
-            if($?){
-                send_msg(0, "[install_xcattest] add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc)-updates universe\" in $mn failed");
-                return 1;
-            }
+            $mirror_location="http://archive.ubuntu.com/ubuntu";
+        } elsif($arch =~ /ppc64le/i || $arch =~ /ppc64el/i) {
+            $mirror_location="http://ports.ubuntu.com/ubuntu-ports";
         }
+        &runcmd("xdsh $mn 'add-apt-repository \"deb $mirror_location \$(lsb_release -sc) main\"' >/dev/null 2>&1");
+        &runcmd("xdsh $mn 'add-apt-repository \"deb $mirror_location \$(lsb_release -sc)-updates main\"' >/dev/null 2>&1");
+        &runcmd("xdsh $mn 'add-apt-repository \"deb $mirror_location \$(lsb_release -sc) universe\"' >/dev/null 2>&1");
+        &runcmd("xdsh $mn 'add-apt-repository \"deb $mirror_location \$(lsb_release -sc)-updates universe\"' >/dev/null 2>&1");
+        send_msg(2, "[install_xcattest] add $mirror_location to the source.list of $mn");
 
-        &runcmd("xdsh $mn \"wget -O - \"http://sourceforge.net/projects/xcat/files/ubuntu/apt.key/download\" | apt-key add -\" >/dev/null 2>&1");
-        if($?){
-            send_msg(0, "[install_xcattest] \"wget -O - \"http://sourceforge.net/projects/xcat/files/ubuntu/apt.key/download\" | apt-key add -\" in $mn failed");
+        &runcmd("xdsh $mn \"/xcat-core/mklocalrepo.sh\" >/dev/null 2>&1");
+        if($::RUNCMD_RC){
+            send_msg(0, "[install_xcattest] /xcat-core/mklocalrepo.sh in $mn failed");
             return 1;
         }
+        &runcmd("xdsh $mn \"/xcat-dep/mklocalrepo.sh\" >/dev/null 2>&1");
+        if($::RUNCMD_RC){
+            send_msg(0, "[install_xcattest] /xcat-dep/mklocalrepo.sh in $mn failed");
+            return 1;
+        }
+
+        &runcmd("xdsh $mn 'rm -rf /var/lib/apt/lists/*'");
         &runcmd("xdsh $mn 'apt-get clean all' >/dev/null 2>&1");
-        if($?){
-            send_msg(0, "[install_xcattest] apt-get clean all  in $mn failed");
+        if($::RUNCMD_RC){
+            send_msg(0, "[install_xcattest] apt-get clean all in $mn failed");
             return 1;
         }
         &runcmd("xdsh $mn 'apt-get update' >/dev/null 2>&1");
-        &runcmd("xdsh $mn 'apt-get -y install build-essential dpkg-dev dh-make debhelper fakeroot gnupg lintian pbuilder quilt reprepro libsoap-lite-perl libdbi-perl' >/dev/null 2>&1");
-        if($?){
-            send_msg(0, "[install_xcattest] apt-get -y install build-essential dpkg-dev dh-make debhelper fakeroot gnupg lintian pbuilder quilt reprepro libsoap-lite-perl libdbi-perl in $mn failed");
+
+        my @output = runcmd("xdsh $mn \"wget \"http://xcat.org/files/xcat/repos/apt/apt.key\" --retry-connrefused -nv -O - >/tmp/apt.key\"");
+        if($::RUNCMD_RC){
+             my $errstr = join(",", @output);
+             if($errstr){
+                 send_msg(0, "[install_xcattest] download apt.key error: $errstr");
+             }else{
+                 send_msg(0, "[install_xcattest] failed to download apt.key due to network problem");
+             }
+             return 1;
+        }
+
+        #&runcmd("xdsh $mn 'apt-get -y install gnupg perl' >/dev/null 2>&1");
+        @output=runcmd("xdsh $mn 'apt-get -y install gnupg perl' >/dev/null 2>&1");
+        if($::RUNCMD_RC){
+            my $errstr = join(",", @output);
+            if($errstr){ 
+                send_msg(0, "[install_xcattest] apt-get -y install gnupg perl in $mn failed: $errstr");
+            }else{
+                send_msg(0, "[install_xcattest] apt-get -y install gnupg perl in $mn failed");
+            }
             return 1;
         }
 
-        if($arch=~ /x86/i){
-            &runcmd("xdsh $mn \"/xcat-core/mklocalrepo.sh\" >/dev/null 2>&1");
-            &runcmd("xdsh $mn \"/xcat-dep/mklocalrepo.sh\" >/dev/null 2>&1");
-            &runcmd("xdsh $mn 'apt-get clean all' >/dev/null 2>&1");
-            &runcmd("xdsh $mn 'apt-get update' >/dev/null 2>&1");
-            &runcmd("xdsh $mn \"dpkg -i /xcat-core/pool/main/x/xcat-test/xcat-test_*.deb > $installlog 2>&1\" >/dev/null 2>&1");
-        }elsif($arch =~ /le/i || $arch =~ /el/i){
-            &runcmd("xdsh $mn \"/xcat-core/mklocalrepo.sh\" >/dev/null 2>&1");
-            if($?){
-                send_msg(0, "[install_xcattest] /xcat-core/mklocalrepo.sh in $mn failed");
-                return 1;
-            }
-            &runcmd("xdsh $mn \"/xcat-dep/mklocalrepo.sh\" >/dev/null 2>&1");
-            if($?){
-                send_msg(0, "[install_xcattest] /xcat-dep/mklocalrepo.sh in $mn failed");
-                return 1;
-            }
-            &runcmd("xdsh $mn 'apt-get clean all' >/dev/null 2>&1");
-            if($?){
-                send_msg(0, "[install_xcattest] apt-get clean all in $mn failed");
-                return 1;
-            }
-            &runcmd("xdsh $mn 'apt-get update' >/dev/null 2>&1");
-            &runcmd("xdsh $mn \"dpkg -i /xcat-core/pool/main/x/xcat-test/xcat-test_*.deb > $installlog 2>&1\" >/dev/null 2>&1");
-            if($?){
-                send_msg(0, "[install_xcattest] apt-get -y install xcat-test in $mn failed");
-            }else{
-                &runcmd("xdsh $mn 'mkdir -p /install/$os/%arch/install/netboot '");
-                &runcmd("scp /install/$os/%arch/install/netboot/initrd.gz $mn:/install/%os/%arch/install/netboot  ");
+        &runcmd("xdsh $mn 'apt-key add /tmp/apt.key 2>&1'");
+        if($::RUNCMD_RC){
+            send_msg(0, "[install_xcattest] apt-key add /tmp/apt.key in $mn failed");
+            return 1;
+        }
+
+        &runcmd("xdsh $mn \"dpkg -i /xcat-test_*.deb > $installlog 2>&1\" >/dev/null 2>&1");
+        if($::RUNCMD_RC){
+            send_msg(0, "[install_xcattest] apt-get -y install xcat-test in $mn failed");
+        }else{
+            if($arch =~ /le/i || $arch =~ /el/i){
+               &runcmd("xdsh $mn 'mkdir -p /install/$os/%arch/install/netboot '");
+               &runcmd("scp /install/$os/%arch/install/netboot/initrd.gz $mn:/install/%os/%arch/install/netboot  ");
             }
         }
     }
@@ -846,20 +1175,20 @@ sub install_xcattest {
     &runcmd("scp $mn:/$installlog $logfiledir/new_xcattest_installation.log >/dev/null 2>&1");
 
     #check if xcat-test is installed successfully on mn
-    if($os =~ /rhel/i || $os =~ /sles/i){
-       &runcmd("xdsh $mn \"rpm -qa |grep -i xCAT-test\" >/dev/null 2>&1");
+    if($os =~ /rhel/i || $os =~ /sle/i || $os =~ /ol/i){
+       &runcmd("xdsh $mn \"rpm -qa --nosignature |grep -i xCAT-test\" >/dev/null 2>&1");
     }else{
        &runcmd("xdsh $mn 'dpkg -l |grep -i xcat-test' >/dev/null 2>&1");
     }
 
-    if($?){
+    if($::RUNCMD_RC){
        send_msg(0, "[install_xcattest] install xcat-test in $mn failed");
        return 1;
     }
 
     #export some environment variables
     &runcmd("xdsh $mn \"touch /etc/profile.d/xcatjk.sh; echo -e \\\"XCATROOT=/opt/xcat\nPATH=\$XCATROOT/bin:\$XCATROOT/sbin:\$XCATROOT/share/xcat/tools:\$PATH\nMANPATH=\$XCATROOT/share/man:\$MANPATH\nexport XCATROOT PATH MANPATH\nexport PERL_BADLANG=0\\\" >> /etc/profile.d/xcatjk.sh;source /etc/profile.d/xcatjk.sh\" >/dev/null 2>&1");
-    if($?){
+    if($::RUNCMD_RC){
        send_msg(2, "[install_xcattest] set environment variables failed");
        return 1;
      }else{
@@ -875,119 +1204,115 @@ sub install_xcattest {
 # do test
 #######################################
 sub do_test {
-    my $casestop=0;
-    my $installcasestop=0;
+    my $casestop        = 0;
+    my $installcasestop = 0;
 
     send_msg(2, "[do_test] starting to run regression test in $mn");
 
     &runcmd("scp $newclusterconffile root\@$mn:/opt/xcat/share/xcat/tools/autotest/default.conf  >/dev/null");
-    if ($?){
+    if ($::RUNCMD_RC) {
         send_msg(0, "[do_test] copy $newclusterconffile to $mn failed");
         return 1;
     }
     send_msg(2, "[do_test] copy $newclusterconffile to $mn successfully");
 
     #this is a workaround in ubuntu environment
-    if($os =~ /ubuntu/i){
+    if ($os =~ /ubuntu/i) {
         send_msg(2, "[do_test] change /bin/sh setting in ubuntu environment");
         runcmd("xdsh $mn \"rm -rf /bin/sh\" >/dev/null 2>&1");
         runcmd("xdsh $mn \"ln -s /bin/bash /bin/sh\"");
     }
 
-    if($bucket =~ /^all$/i){
-        my $bundle=$os."_".$arch.".bundle";
-
-        &runcmd("xdsh $mn 'ls -l /opt/xcat/share/xcat/tools/autotest/bundle/|grep $bundle' >/dev/null 2>&1");
-        if($?){
-            send_msg(0, "[do_test] can't find $bundle under $mn:/opt/xcat/share/xcat/tools/autotest/bundle/ ");
-            return 1;
-        }
-
-        &runcmd("scp -r $mn:/opt/xcat/share/xcat/tools/autotest/bundle/$bundle $logfiledir >/dev/null 2>&1");
-        if($?){
-            send_msg(0, "[do_test] can't copy $mn:/opt/xcat/share/xcat/tools/autotest/bundle/$bundle back");
-            return 1;
-        }
-
-        if(!open(FILE, "<$logfiledir/$bundle")){
-             send_msg(0, "[do_test] can't open $logfiledir/$bundle");
-             return 1;
-        }
-
-        my $casecnt=0;
-        my $line="";
-        while($line=<FILE>){
-            $line =~ s/^\s+|#.+|\s+$//g;
-            next if(length($line) == 0);
-            $casecnt++;
-        }
-        close(FILE);
-        &runcmd("echo $casecnt > /tmp/totalcase.$proid");
-
-      #run the special install_xcat case first
-      my $rst1=0;
-      my @output1;
-      send_msg(2, "[do_test] doing test for case install_xcat in $mn.....");
-      if($os !~ /ubuntu/i){
-         @output1=runcmd("xdsh $mn \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf:System  -t install_xCAT_on_rhels_sles >/dev/null\"");
-         $rst1=$?;
-       }else{
-         @output1=runcmd("ssh -t $mn 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf:System -t  install_xCAT_on_ubuntu >/dev/null\"'");
-         $rst1=$?;
-       }
-
-      if($rst1){
-          $installcasestop=1;
-          my $tmpoutput1=join(' ', @output1);
-          send_msg(2, "[do_test] install_xcat output of trigger xcattest: $tmpoutput1");
-          send_msg(2, "[do_test] the install_xcat case on $mn was STOPPED for some reason");
-       }else{
-          send_msg(2, "[do_test] run install_xcat in $mn finished");
-       }
-
-       if($installcasestop)
-       {
-           &runcmd("scp -r $mn:/opt/xcat/share/xcat/tools/autotest/result/* $logfiledir >/dev/null 2>&1");
-           if ($?){
-            send_msg(0, "[do_test] copy install_case result to $logfiledir failed");
-           }
-           return 2;
-       }
-
-        #then run other cases with the bundle file
-
-        my $rst=0;
-        my @output;
-        send_msg(2, "[do_test] doing test [$bundle] in $mn.....");
-        if($os !~ /ubuntu/i){
-            @output=runcmd("xdsh $mn \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -b $bundle >/dev/null\"");
-            $rst=$?;
-        }else{
-            @output=runcmd("ssh -t $mn 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -b $bundle >/dev/null\"'");
-            $rst=$?;
-        }
-        my $tmpoutput=join(' ', @output);
-        send_msg(2, "[do_test] output of trigger xcattest: $tmpoutput");
-        if($rst){
-            $casestop=1;
-            send_msg(2, "[do_test] the regression job in $mn was STOPPED for some one case");
-        }else{
-            send_msg(2, "[do_test] run the whole regression test in $mn finished");
-        }
-
-        &runcmd("scp -r $mn:/opt/xcat/share/xcat/tools/autotest/result/* $logfiledir >/dev/null 2>&1");
-        if ($?){
-            send_msg(0, "[do_test] copy regression result to $logfiledir failed");
-            return 1;
-        }
-        send_msg(2, "[do_test] copy regression result to $logfiledir successfully");
-    }else{
-        #to do part
+    #run the special install_xcat case first
+    my $rst1 = 0;
+    my @output1;
+    send_msg(2, "[do_test] doing test for case install_xcat in $mn.....");
+    if ($os !~ /ubuntu/i) {
+        @output1 = runcmd("xdsh $mn \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf:System  -t install_xCAT_on_rhels_sles >/dev/null\"");
+        $rst1 = $::RUNCMD_RC;
+    } else {
+        @output1 = runcmd("ssh -t $mn 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf:System -t  install_xCAT_on_ubuntu >/dev/null\"'");
+        $rst1 = $::RUNCMD_RC;
     }
 
+    if ($rst1) {
+        $installcasestop = 1;
+        my $tmpoutput1 = join(' ', @output1);
+        send_msg(2, "[do_test] install_xcat output of trigger xcattest: $tmpoutput1");
+        send_msg(2, "[do_test] the install_xcat case on $mn was STOPPED for some reason");
+    } else {
+        send_msg(2, "[do_test] run install_xcat in $mn successful");
+    }
 
+    if ($installcasestop)
+    {
+        &runcmd("scp -r $mn:/opt/xcat/share/xcat/tools/autotest/result/* $logfiledir >/dev/null 2>&1");
+        &runcmd("rm -rf $logfiledir/rpower.*  $logfiledir/getcons.*  >/dev/null 2>&1");
+        if ($::RUNCMD_RC) {
+            send_msg(0, "[do_test] copy install_case result to $logfiledir failed");
+        }
+        return 2;
+    }
 
-    return 2 if($casestop);
+    #if set PostgrepSQL as default DB, should running all commands test against PostgreSQL
+    if ($xcat_database eq "PostgreSQL") {
+        &runcmd("xdsh $mn \"XCATPGPW=12345 /opt/xcat/bin/pgsqlsetup -i -V  2>&1 >/tmp/PostgreSQL_setup.log\"");
+        if($::RUNCMD_RC){
+             send_msg(0, "[do_test] pgsqlsetup -i -V failed");
+             return 1;
+        }
+        &runcmd("xdsh $mn \"echo 'host  all  all  0.0.0.0/0  md5' >> /var/lib/pgsql/data/pg_hba.conf\"");
+        &runcmd("xdsh $mn \"echo 'host  all  all      ::0/0  md5' >> /var/lib/pgsql/data/pg_hba.conf\"");
+        &runcmd("xdsh $mn \"service postgresql restart >> /tmp/PostgreSQL_setup.log \"");
+
+        &runcmd("xdsh $mn \"lsxcatd -d\" |grep 'dbengine=Pg' > /dev/null");
+        if($::RUNCMD_RC){
+            send_msg(0, "[do_test] switch DB from SQLite to PostgreSQL failed");
+            return 1;
+        }
+    }
+
+    #then run other cases with the bundle file
+    my $bundle = undef;
+    if ($bucket =~ /^all$/i) {
+        $bundle = $os . "_" . $arch . ".bundle";
+    } else {
+        $bundle = "customize.bundle";
+        &runcmd("scp $logfiledir/$bundle $mn:/opt/xcat/share/xcat/tools/autotest/bundle/ >/dev/null 2>&1");
+        if ($::RUNCMD_RC) {
+            send_msg(0, "[do_test] copy $logfiledir/$bundle to $mn:/opt/xcat/share/xcat/tools/autotest/bundle/ failed");
+            return 1;
+        }
+    }
+
+    my $rst = 0;
+    my @output;
+    send_msg(2, "[do_test] doing test [$bundle] in $mn.....");
+    if ($os !~ /ubuntu/i) {
+        @output = runcmd("xdsh $mn \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -b $bundle >/dev/null\"");
+        $rst = $::RUNCMD_RC;
+    } else {
+        @output = runcmd("ssh -t $mn 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -b $bundle >/dev/null\"'");
+        $rst = $::RUNCMD_RC;
+    }
+    my $tmpoutput = join(' ', @output);
+    send_msg(2, "[do_test] output of trigger xcattest: $tmpoutput");
+    if ($rst) {
+        $casestop = 1;
+        send_msg(2, "[do_test] the regression job in $mn was STOPPED for some one case");
+    } else {
+        send_msg(2, "[do_test] run the whole regression test in $mn finished");
+    }
+
+    &runcmd("scp -r $mn:/opt/xcat/share/xcat/tools/autotest/result/* $logfiledir >/dev/null 2>&1");
+    &runcmd("rm -rf $logfiledir/rpower.*  $logfiledir/getcons.*  >/dev/null 2>&1");
+    if ($::RUNCMD_RC) {
+        send_msg(0, "[do_test] copy regression result to $logfiledir failed");
+        return 1;
+    }
+    send_msg(2, "[do_test] copy regression result to $logfiledir successfully");
+
+    return 2 if ($casestop);
     return 0;
 }
 
@@ -997,10 +1322,68 @@ sub do_test {
 sub create_report{
     send_msg(2, "[create_report] start to create test report");
 
+    #Due to trigger case "install_xCAT" independently, so add this case into bundle for xCAT Jenkins Mail Bot
+    my $fd = undef;
+    my $bundlefile = undef;
+    my $line=undef;
+    my @cases=();
+    my $insertcase=undef;
+
+    if($bucket =~ /^all$/i){
+        $bundlefile = "$logfiledir/$os"."_"."$arch.bundle";
+    }else{
+        $bundlefile = "$logfiledir/customize.bundle";
+    }
+
+    if($os !~ /ubuntu/i){
+        $insertcase="install_xCAT_on_rhels_sles";
+    }else{
+        $insertcase="install_xCAT_on_ubuntu";
+    }
+
+    if(!open($fd, "< $bundlefile")){
+        send_msg(0, "[create_report] Failed to open $bundlefile to read:$!");
+        return 1;
+    }
+
+    push @cases, $line while ($line = <$fd>);
+    close($fd);
+
+    unshift @cases, "$insertcase\n";
+
+    if(!open($fd, ">  $bundlefile")){
+         send_msg(0, "[create_report] Failed to open $bundlefile to write:$!");
+         return 1;
+    }
+
+    foreach my $line (@cases){
+        next if($line =~ /^description/);
+        print $fd $line;
+        $line =~ s/^\s+|#.+|\s+$//g;
+        if(length($line) != 0){
+            ++$totalcase;
+        }
+    }
+    close($fd);
+
     my $mailreport .= "======================================\n";
     $mailreport .= "  Test Result for Project $proid\n";
     $mailreport .= "======================================\n\n";
     $mailreport .= "[$os+$arch]\n\n";
+
+    $regendtime=($regstarttime + $all_reg_time_consumption);
+    my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst);
+    my $datetime;
+    ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime($regstarttime);
+    $year += 1900;
+    $mon += 1;
+    $datetime = sprintf ("%d-%02d-%02d %02d:%02d:%02d", $year,$mon,$mday,$hour,$min,$sec);
+    $mailreport .= "\tStart time: $datetime\n\n";
+    ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime($regendtime);
+    $year += 1900;
+    $mon += 1;
+    $datetime = sprintf ("%d-%02d-%02d %02d:%02d:%02d", $year,$mon,$mday,$hour,$min,$sec);
+    $mailreport .= "\tEnd time  : $datetime\n\n";
 
     if($sub_process_rt){
         my $h=int($all_reg_time_consumption/3600);
@@ -1014,53 +1397,90 @@ sub create_report{
            $s=($env_dply_time_consumption- $h*3600)%60;
            $mailreport .= "\tDeploy test environment time consumption: $h hours $m minutes $s seconds\n\n";
        }
+    }else{
+        $mailreport .= "\tTime consumption exceeded $timeout hours!!!!!!\n\n";
+    }
 
-        if($err_record ne ""){
-            $mailreport .= "\tDeploy MN result: $err_record\n\n";
-        }else{
-            if(-e "/tmp/totalcase.$proid"){
-                my $tmp = `cat /tmp/totalcase.$proid`;
-                chomp($tmp);
-                $totalcase=$tmp;
-            }
+    $mailreport .= "\txcat core : $xcatversion-$xcatrelease\n\n";
+    $mailreport .= "\txcat dep  : $xcatdep_addr\n\n";
+    $mailreport .= "\tcommit num: $commitnum\n\n" if(defined $commitnum);
 
-            my $totalcnt=0;
-            my $failcnt=0;
-            my $faillist="";
-            opendir(DIR, "$logfiledir");
-            foreach my $file (readdir DIR){
-                next if($file !~ /xcattest.log/);
-                my $cnt = `cat $logfiledir/$file |grep -- "------END::"|wc -l`;
-                $totalcnt+=int($cnt);
-                for(my $i=1;$i<$cnt+1;$i++){
-                    my $line=`cat $logfiledir/$file |grep -- "------END::"|sed -n ${i}p`;
-                    chomp($line);
-                    if($line =~ /------END::([a-zA-Z0-9_-]+)::([a-zA-Z0-9_-]+)::Time.+/){
-                        my $failedcase=$1;
-                        if($2 =~ /Failed/){
-                            $failcnt++;
-                            $faillist.=$failedcase.", ";
-                        }
-                    }
+    if($err_record ne ""){
+        $mailreport .= "\tSetting test environment: $err_record\n\n";
+    }
+
+    if($plugin){
+       send_msg(2, "[create_report] start to run $logfiledir/plugin.log");
+       &runcmd("HOME_DIR=\"$homedir\" PROJECT_NAME=\"$proname\" PROJECT_RUNNUM=\"$proruntime\"  $plugindir/$plugin > $logfiledir/plugin.log 2>&1 ");
+       my @output = runcmd("cat  $logfiledir/plugin.log");
+       my $content=0;
+       my $attachment=0;
+       foreach (@output){
+           chomp($_);
+           if($_ =~ /\[content\]/){
+               $content=1;
+               $attachment=0;
+           }elsif($_ =~ /\[attachment\]/){
+               $content=0;
+               $attachment=1;
+           }elsif($content){
+               $mailreport .= "\t$_\n";
+           }elsif($attachment){
+               push @attachfiles, "$_";
+           }
+       }
+       $mailreport .= "\n";
+    }
+
+    my $totalcnt=0;
+    my $failcnt=0;
+    my $faillist="";
+    my $longlist="None";
+    my $toolong_time_min=30;
+    opendir(DIR, "$logfiledir");
+    foreach my $file (readdir DIR){
+        next if($file !~ /xcattest.log/);
+        my $cnt = `grep -c -- "------END::" "$logfiledir/$file"`;
+        $totalcnt+=int($cnt);
+        for(my $i=1;$i<$cnt+1;$i++){
+            my $line=`grep -- "------END::" "$logfiledir/$file" |sed -n ${i}p`;
+            chomp($line);
+            if($line =~ /------END::([a-zA-Z0-9_-]+)::([a-zA-Z0-9_-]+)::Time.+/){
+                my $failedcase=$1;
+                if($2 =~ /Failed/){
+                    $failcnt++;
+                    $faillist.=$failedcase.", ";
                 }
             }
-            closedir(DIR);
-            $mailreport .= "\tTotalCase $totalcase TotalRun $totalcnt Failed $failcnt\n\n\tFailed cases: $faillist\n\n";
-
-            if($teststopflag){
-                my $lastfile = `ls -l $logfiledir|grep "xcattest.log"|tail -1|awk '{print \$9}'`;
-                chomp($lastfile);
-                my $lastline=`cat $logfiledir/$lastfile |grep -- "------END::"|tail -1`;
-                chomp($lastline);
-                $lastcase=$1 if($lastline =~ /------END::([a-zA-Z0-9_-]+)::([a-zA-Z0-9_-]+)::Time.+/);
-                $mailreport .= "\tFinal environment stop at $lastcase\n";
+            # List all testcases that took longer than 30 min
+            if($line =~ /::Duration::([0-9_-]+) sec.+/){
+                my $duration=$1;
+                if(scalar($duration >= $toolong_time_min*60)) {
+                    if($longlist =~ /None/) {
+                        $longlist="";
+                    }
+                    my $long_time=sprintf("%02d h %02d min", $duration/3600, ($duration/60) % 60);
+                    $longlist.=$line." ($long_time)\n";
+                }
             }
-
-            $alltestpass=1 if($totalcase!=0 && $failcnt==0 && $totalcnt==$totalcase);
         }
-    }else{
-        $mailreport .= "\tTime consumption: Out of 8 hours!!!!!!\n";
     }
+    closedir(DIR);
+
+    my $passcnt = $totalcnt - $failcnt;
+    my $noruncnt = $totalcase - $totalcnt;
+    $mailreport .= "\tTotalCase $totalcase Pass $passcnt Failed $failcnt NoRun $noruncnt\n\n\tFailed cases: $faillist\n\n\tCases longer than $toolong_time_min min:\n\n$longlist\n";
+
+    if($teststopflag){
+        my $lastfile = `ls $logfiledir | grep "xcattest.log"| tail -1`;
+        chomp($lastfile);
+        my $lastline=`grep -- "------END::" "$logfiledir/$lastfile" | tail -1`;
+        chomp($lastline);
+        $lastcase=$1 if($lastline =~ /------END::([a-zA-Z0-9_-]+)::([a-zA-Z0-9_-]+)::Time.+/);
+        $mailreport .= "\tFinal environment stop at $lastcase\n";
+    }
+
+    $alltestpass=1 if($totalcase!=0 && $passcnt==$totalcase);
 
     $mailreport .= "\n-------------------------------------------\nCluster Information:\n";
     $mailreport .= "\t MN: $mn\n";
@@ -1074,48 +1494,58 @@ sub create_report{
 }
 
 sub send_mail{
-    my $totalcnt=0;
+    my $passcnt = 0;
     my $failcnt=0;
     my $subject="";
     my $attachfile="";
 
-    if($err_record ne ""){
-         $subject = "[JK][$proid][FAILED] $err_record";
-    }else{
-        my $output = `cat $mailfile |grep "Total"|grep "Failed"`;
-        chomp($output);
-        if($output =~ /TotalCase (\d+) TotalRun (\d+) Failed (\d+)/){
-            $totalcnt=$2;
-            $failcnt=$3;
-        }
+    my $buildflag = undef;
+    $buildflag=$1 if( $xcatcore_addr =~ /xcat2_autobuild_daily_builds\/([\d\.]+)\/.*/ );
 
-        if($failcnt > 0){
-            $attachfile="/tmp/failed_case_detail.$proid";
-            opendir(DIR, "$logfiledir");
-            foreach my $file (readdir DIR){
-                next if($file !~ /^failedcases/);
-                next if(-z "$logfiledir/$file");
-                &runcmd("cat $logfiledir/$file >> $attachfile");
-            }
-            close(DIR);
-        }
-
-        if($teststopflag){
-            $subject = "[JK][$proid][STOP for $lastcase] TotalCase:$totalcase TotalRun:$totalcnt Fail:$failcnt";
-        }else{
-            if($alltestpass){
-                $subject = "[JK][$proid][SUCCESS] TotalCase:$totalcase TotalRun:$totalcnt Fail:$failcnt";
-            }else{
-                $subject = "[JK][$proid][FAILED] TotalCase:$totalcase TotalRun:$totalcnt Fail:$failcnt";
-            }
-        }
+    my $output = `grep "TotalCase" "$mailfile" | grep "Failed"`;
+    $output =~ s/^\s+|\s+$//g;
+    if($output =~ /Pass (\d+) Failed (\d+)/){
+        $passcnt=$1;
+        $failcnt=$2;
     }
 
-    my $sendto = "$mail_list $defaultmail";
     if($failcnt > 0){
-       &runcmd("cat $mailfile | /bin/mail -s \"$subject\" -a $attachfile \"$sendto\"");
+        $attachfile="/tmp/failed_case_detail.$proid";
+        opendir(DIR, "$logfiledir");
+        foreach my $file (readdir DIR){
+            next if($file !~ /^failedcases/);
+            next if(-z "$logfiledir/$file");
+            &runcmd("cat $logfiledir/$file >> $attachfile");
+        }
+        close(DIR);
+    }
+
+    push @attachfiles, "$attachfile";
+
+    my $passrate = $passcnt/$totalcase*100;
+    my $judgement = "FAILED";
+    $judgement = "SUCCESS" if($alltestpass);
+    $judgement = "STOP for $lastcase" if($teststopflag);
+    if(defined ($buildflag)){
+        $subject = sprintf "[%s][%s][%s][PassRate:%.2f%%]%s", $buildflag, $proid, $judgement, $passrate, $output;
     }else{
-       &runcmd("cat $mailfile | /bin/mail -s \"$subject\" \"$sendto\"");
+        $subject = sprintf "[%s][%s][PassRate:%.2f%%]%s", $proid, $judgement, $passrate, $output;
+    }
+
+    if($judgement ne "SUCCESS") {
+        send_msg(2, "[send_mail] Title: $subject");
+        if(@attachfiles){
+            my $attachstr ="";
+            foreach (@attachfiles){
+                if(-e "$_"){
+                    $attachstr.= "-a $_ ";
+                }
+            }
+            send_msg(0, "/bin/mail -s \"$subject\" $attachstr  \"$mail_list\" <$mailfile");
+            &runcmd("/bin/mail -s \"$subject\" $attachstr  \"$mail_list\" <$mailfile");
+        }else{
+            &runcmd("/bin/mail -s \"$subject\" \"$mail_list\" <$mailfile");
+        }
     }
     unlink($attachfile);
 }
@@ -1131,8 +1561,11 @@ if (
                 "testcase=s" => \$bucket,
                 "project-name=s" => \$proname,
                 "num=s" => \$proruntime,
+                "database=s" => \$xcat_database,
                 "xcat-core=s" => \$xcatcore_addr,
                 "xcat-dep=s" => \$xcatdep_addr,
+                "xcat-test=s" => \$xcattest_addr,
+                "plugin=s"   => \$plugin,
                 "email=s" => \$mail_list)
 ){
     &usage;
@@ -1151,6 +1584,15 @@ unless(defined($os) && defined($proname) && defined($proruntime) && defined($buc
     exit 1;
 }
 
+unless($xcat_database eq "MySQL" || $xcat_database eq "PostgreSQL")
+{
+    &usage;
+    exit 1;
+}
+
+unless(defined($mail_list)){
+    $mail_list = $defaultmail;
+}
 &init;
 
 my $rst=0;
@@ -1172,9 +1614,14 @@ send_msg(2,"project $proid description:");
 send_msg(2,"cluster  => $cluster_name");
 send_msg(2,"os       => $os");
 send_msg(2,"case     => $bucket");
+send_msg(2,"database => $xcat_database");
 send_msg(2,"xcatcore => $xcatcore_addr");
 send_msg(2,"xcatdep  => $xcatdep_addr");
+send_msg(2,"xcattest => $xcattest_addr") if($xcattest_addr);
 send_msg(2,"user     => $mail_list");
+if($plugin){
+    send_msg(2,"plugin   => $plugin");
+}
 if($hold){
     send_msg(2,"hold     => ON");
 }else{
@@ -1182,7 +1629,6 @@ if($hold){
 }
 send_msg(2,"........................");
 #######################################
-
 $rst = env_check();
 if($rst) {
     send_msg(0, "environment check failed...........exit");
@@ -1207,6 +1653,29 @@ if($rst) {
     exit_test 1;
 }
 
+$rst = get_xcattest();
+if($rst) {
+    send_msg(0, "get xcat-test failed...........exit");
+    exit_test 1;
+}
+
+$rst = get_bundle();
+if($rst) {
+    send_msg(0, "get bundle file failed...........exit");
+    exit_test 1;
+}
+
+$rst = get_build_info();
+if($rst){
+    send_msg(0, "Get build information failed");
+}else{
+    send_msg(2,"version => $xcatversion");
+    send_msg(2,"release => $xcatrelease");
+    send_msg(2,"commit number => $commitnum");
+    send_msg(2,"build time => $buildtime");
+    send_msg(2,"build server => $buildserver");
+}
+
 pipe CONTROLREAD,MNWRITE;
 my $pid = fork();
 if ( !defined($pid) ) {
@@ -1222,7 +1691,7 @@ if ( !defined($pid) ) {
 
     send_msg(2, "..........fork process[pid=$$] for doing test..........");
     close CONTROLREAD;
-    my $res;
+    my $res=0;
 
     #install mn
     send_msg(2, "[$$]:Running mn_install...............");
@@ -1255,6 +1724,18 @@ if ( !defined($pid) ) {
 
     send_msg(2, "[$$] Running do_test...............");
     $res = do_test();
+
+    #below code has nothing to do with xCAT autotest main job
+    #just in order to collect logs and data to do xCAT product further analyse
+    #----------start----------------
+    &runcmd("scp -r $mn:/var/log/messages $mn:/var/log/xcat/computes.log $mn:/var/log/xcat/cluster.log $mn:/var/log/xcat/commands.log  $logfiledir >/dev/null 2>&1");
+    &runcmd("scp -r $mn:/var/log/httpd/access*  $logfiledir >/dev/null 2>&1");
+    &runcmd("scp -r $mn:/var/log/apache2/access*  $logfiledir >/dev/null 2>&1");
+    my $console_log = "$logfiledir/console_log";
+    mkpath("$console_log") unless(-d "$console_log");
+    &runcmd("scp -r $mn:/var/log/consoles/*  $console_log >/dev/null 2>&1");
+    #-----------end-----------------
+
     if ($res) {
         if($res == 2){
             syswrite MNWRITE,"[$$][$deployenvtime]:do test stopped for some case\n";
@@ -1264,12 +1745,6 @@ if ( !defined($pid) ) {
         exit 1;
     }
     send_msg(2, "[$$] Run do_test...............[OK]");
-
-    #below code has nothing to do with xCAT autotest main job
-    #just in order to collect logs and data to do xCAT product further analyse
-    #----------start----------------
-    &runcmd("scp -r $mn:/var/log/messages $mn:/var/log/xcat/computes.log $mn:/var/log/xcat/cluster.log $mn:/var/log/xcat/commands.log  $logfiledir >/dev/null 2>&1");
-    #-----------end-----------------
 
     send_msg(2, "[$$]:whole regression test on $cluster_name finished");
     syswrite MNWRITE,"[$$][$deployenvtime]:whole regression test are successful\n";
@@ -1303,7 +1778,7 @@ $SIG{TERM} = $SIG{INT} = sub {
 };
 
 close MNWRITE;
-my $regstarttime = time();
+$regstarttime = time();
 my $select = new IO::Select;
 $select->add(\*CONTROLREAD);
 while(! $sub_process_rt) {
@@ -1334,8 +1809,18 @@ while(! $sub_process_rt) {
         }
     }
 
-    if(time() - $regstarttime > 36000) {
-        send_msg(1, "[timing] 10 hours is expired");
+    if(time() - $regstarttime > $timeout * 3600) {
+        send_msg(1, "[timing] $timeout hours is expired");
+
+        #copy the test result which we have now back
+        &runcmd("scp -r $mn:/opt/xcat/share/xcat/tools/autotest/result/* $logfiledir >/dev/null 2>&1");
+        &runcmd("rm -rf $logfiledir/rpower.*  $logfiledir/getcons.*  >/dev/null 2>&1");
+        if($::RUNCMD_RC){
+            send_msg(1, "[[main]]: copy regression result to $logfiledir failed");
+        }else{
+            send_msg(2, "[[main]]: copy regression result to $logfiledir successfully");
+        }
+
         last;
     }
     sleep 1;
@@ -1375,13 +1860,13 @@ if($sub_process_rt) {
 
 $all_reg_time_consumption=time()-$regstarttime;
 
-send_msg(2, "[[main]]: creat test result report...........");
+send_msg(2, "[[main]]: create test result report...........");
 $rst = create_report();
 if($rst){
-    send_msg(0, "[[main]]: creat test result report failed");
+    send_msg(0, "[[main]]: create test result report failed");
     exit_test 1;
 }else{
-    send_msg(2, "[[main]]: creat test result report....[done]");
+    send_msg(2, "[[main]]: create test result report....[done]");
     send_msg(2, "[[main]]: send test result by mail.......");
     send_mail();
     send_msg(2, "[[main]]: send test result........[done]");

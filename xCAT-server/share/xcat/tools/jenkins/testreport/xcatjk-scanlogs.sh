@@ -13,7 +13,7 @@ function usage()
 
 	Examples:
 
-	  ${script} --recent /xCATjk/log
+	  ${script} --recent /jenkins/log
 	EOF
 }
 
@@ -224,7 +224,7 @@ done
 [ -z "${xCATjkLog_TopDir}" ] && usage >&2 && exit 1
 
 [ -d "${xCATjkLog_TopDir}" ]
-exit_if_bad "$?" "${xCATjkLog_TopDir}: No such directory"
+exit_if_bad "$?" "${xCATjkLog_TopDir}: no such directory"
 
 while read -r ; do echo "${REPLY}" ; done <<EOF
 -- xCATjkScanLogs - version ${VERSION}
@@ -235,7 +235,7 @@ while read -r ; do echo "${REPLY}" ; done <<EOF
 
 EOF
 
-find "${xCATjkLog_TopDir}" -name 'log.*-*-*' "${FIND_ARGS[@]}" -print0 |
+find -L "${xCATjkLog_TopDir}" -name 'log.*-*-*' "${FIND_ARGS[@]}" -print0 |
 	xargs -r -n 1 -0 awk '{ print $1, FILENAME; exit }' | sort -k 1 |
 	awk '{ print $2 }' | xargs -r -n 1 dirname |
 	xargs -r -n 1 "${xCATjkLog2SQL}"

@@ -196,17 +196,17 @@ function xcattestlog2sql()
 
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	--
-	-- Test run has name '${test_run_name}'
+	-- Test run has the name '${test_run_name}'
 	--
 
 	EOF
 
 	[ -f "${logfile}" ]
-	warn_if_bad "$?" "${logfile}: No such log file" || return 1
+	warn_if_bad "$?" "${logfile}: no such log file" || return 1
 
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	--
-	-- Analysis file '${logfile}'
+	-- Analyzing file '${logfile}'
 	--
 
 	EOF
@@ -215,13 +215,15 @@ function xcattestlog2sql()
 	do
 		while read -r ; do echo "${REPLY}" ; done <<-EOF
 		INSERT INTO TestCase (TestCaseId, TestCaseName)
-		SELECT * FROM (SELECT NULL, '${test_case_name}') AS tmp
+		SELECT * FROM (SELECT NULL AS TestCaseId,
+		    '${test_case_name}' AS TestCaseName) AS tmp
 		WHERE NOT EXISTS (
 		    SELECT TestCaseId FROM TestCase WHERE TestCaseName = '${test_case_name}'
 		) LIMIT 1;
 
 		INSERT INTO ResultDict (ResultId, ResultName)
-		SELECT * FROM (SELECT NULL, '${test_case_result}') AS tmp
+		SELECT * FROM (SELECT NULL AS ResultId,
+		    '${test_case_result}' AS ResultName) AS tmp
 		WHERE NOT EXISTS (
 		    SELECT ResultId FROM ResultDict WHERE ResultName = '${test_case_result}'
 		) LIMIT 1;
@@ -267,15 +269,16 @@ function xcattestbundle2sql()
 	EOF
 
 	[ -f "${logfile}" ]
-	warn_if_bad "$?" "${logfile}: No such log file" || return 1
+	warn_if_bad "$?" "${logfile}: no such log file" || return 1
 
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	--
-	-- Analysis file '${logfile}'
+	-- Analyzing file '${logfile}'
 	--
 
 	INSERT INTO ResultDict (ResultId, ResultName)
-	SELECT * FROM (SELECT NULL, '${test_case_result}') AS tmp
+	SELECT * FROM (SELECT NULL AS ResultId,
+	    '${test_case_result}' AS ResultName) AS tmp
 	WHERE NOT EXISTS (
 	    SELECT ResultId FROM ResultDict WHERE ResultName = '${test_case_result}'
 	) LIMIT 1;
@@ -292,7 +295,8 @@ function xcattestbundle2sql()
 
 		while read -r ; do echo "${REPLY}" ; done <<-EOF
 		INSERT INTO TestCase (TestCaseId, TestCaseName)
-		SELECT * FROM (SELECT NULL, '${test_case_name}') AS tmp
+		SELECT * FROM (SELECT NULL AS TestCaseId,
+		    '${test_case_name}' AS TestCaseName) AS tmp
 		WHERE NOT EXISTS (
 		    SELECT TestCaseId FROM TestCase WHERE TestCaseName = '${test_case_name}'
 		) LIMIT 1;
@@ -327,65 +331,137 @@ function jenkinsprojectlog2sql()
 	local end_time=""
 	local os=""
 	local arch=""
-	local xcat_git_commit=""
+	local xcat_version=""
+	local xcat_release=""
+	local build_datetime=""
+	local build_commit_id=""
+	local build_branch=""
+	local build_machine=""
+	local build_type=""
 	local memo=""
 
 	[ -f "${logfile}" ]
-	warn_if_bad "$?" "${logfile}: No such log file" || return 1
+	warn_if_bad "$?" "${logfile}: no such log file" || return 1
 
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	--
-	-- Analysis file '${logfile}'
+	-- Analyzing file '${logfile}'
 	--
 
 	EOF
 
 	test_run_name="$(tr -d '\r' <"${logfile}" |
-		 awk '/project.*description/ { print $(NF - 1) }')"
+		 awk '/project.*description/ { print $(NF - 1); exit }')"
 	[ -n "${test_run_name}" ]
 	warn_if_bad "$?" "${test_run_name}: fail to parse test run name" || return 1
 
-	foo="$(tr -d '\r' <"${logfile}" | head -n 1 | cut -d ' ' -f 1)"
-	[ "${#foo}" = 14 ]
-	warn_if_bad "$?" "${foo}: fail to parse test start time" || return 1
-	start_time="${foo:0:4}-${foo:4:2}-${foo:6:2} ${foo:8:2}:${foo:10:2}:${foo:12:2}"
+	start_time="$(tr -d '\r' <"${logfile}" | head -n 1 | cut -d ' ' -f 1,2)"
+        # Start time expected format YYYY-MM-DD HH:MM:SS
+	[ "${#start_time}" = 19 ]
+	warn_if_bad "$?" "${start_time}: fail to parse test start time" || return 1
 
-	foo="$(tr -d '\r' <"${logfile}" | tail -n 1 | cut -d ' ' -f 1)"
-	[ "${#foo}" = 14 ]
-	warn_if_bad "$?" "${foo}: fail to parse test end time" || return 1
-	end_time="${foo:0:4}-${foo:4:2}-${foo:6:2} ${foo:8:2}:${foo:10:2}:${foo:12:2}"
+	end_time="$(tr -d '\r' <"${logfile}" | tail -n 1 | cut -d ' ' -f 1,2)"
+	# End time expected format YYYY-MM-DD HH:MM:SS
+	[ "${#end_time}" = 19 ]
+	warn_if_bad "$?" "${end_time}: fail to parse test end time" || return 1
 
-	arch="$(tr -d '\r' <"${logfile}" | awk -F - '/project.*description/ { print $2 }')"
+	arch="$(tr -d '\r' <"${logfile}" |
+		awk -F - '/project.*description/ { print $4; exit }')"
+	# If arch is "ppc64el" change to "ppc64le" to be consistent with other formats
 	[ "${arch}" = "ppc64el" ] && arch="ppc64le"
+	# If arch is "alt" check the next field for actual arch
+	[ "${arch}" = "alt" ] && arch="$(tr -d '\r' <"${logfile}" |
+		awk -F - '/project.*description/ { print $5; exit }')"
 	[ -n "${arch}" ]
 	warn_if_bad "$?" "${arch}: fail to parse arch" || return 1
 
-	os="$(tr -d '\r' <"${logfile}" | awk '/os.*=>/ { print $NF }')"
+	os="$(tr -d '\r' <"${logfile}" | awk '/os.*=>/ { print $NF; exit }')"
 	[ -n "${os}" ]
 	warn_if_bad "$?" "${os}: fail to parse operating system" || return 1
+
+	xcat_version="$(tr -d '\r' <"${logfile}" |
+		awk '/version.*=>/ { print $NF; exit }')"
+	xcat_release="$(tr -d '\r' <"${logfile}" |
+		awk '/release.*=>/ { print $NF; exit }')"
+	build_datetime="$(tr -d '\r' <"${logfile}" |
+		awk '/build time.*=>/ { match($0, /=> +(.*)$/, a); print substr($0, a[1, "start"], a[1, "length"]); exit }')"
+	build_commit_id="$(tr -d '\r' <"${logfile}" |
+		awk '/commit number.*=>/ { print $NF; exit }')"
+	build_branch="$(tr -d '\r' <"${logfile}" |
+		awk '/xcatcore.*=>/ { match($0, /\/([^/]*)\/core-[a-z-]+\.tar\.bz2/, a); $branch = substr($0, a[1, "start"], a[1, "length"]); if ("devel" == $branch) $branch = "master"; print $branch; exit }')"
+	build_machine="$(tr -d '\r' <"${logfile}" |
+		awk '/build server.*=>/ { print $NF; exit }')"
+	build_type="$(tr -d '\r' <"${logfile}" |
+		awk '/xcatcore.*=>/ { match($0, /(deb|rpm)/, a); print substr($0, a[1, "start"], a[1, "length"]); exit }')"
 
 	memo="$(tr -d '\r' <"${logfile}" | grep -A 7 'project.*description' | cut -d ' ' -f 4-)"
 
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	INSERT INTO ArchDict (ArchId, ArchName)
-	SELECT * FROM (SELECT NULL, '${arch}') AS tmp
+	SELECT * FROM (SELECT NULL AS ArchId,
+	    '${arch}' AS ArchName) AS tmp
 	WHERE NOT EXISTS (
 	    SELECT ArchId FROM ArchDict WHERE ArchName = '${arch}'
 	) LIMIT 1;
 
 	INSERT INTO OSDict (OSId, OSName)
-	SELECT * FROM (SELECT NULL, '${os}') AS tmp
+	SELECT * FROM (SELECT NULL AS OSId,
+	    '${os}' AS OSName) AS tmp
 	WHERE NOT EXISTS (
 	    SELECT OSId FROM OSDict WHERE OSName = '${os}'
 	) LIMIT 1;
 
+	EOF
+
+	if [ -n "${xcat_version}" -a -n "${xcat_release}" -a \
+		-n "${build_datetime}" -a -n "${build_commit_id}" -a \
+		-n "${build_machine}" -a -n "${build_type}" ]
+	then
+		while read -r ; do echo "${REPLY}" ; done <<-EOF
+		INSERT INTO BuildDict (BuildId, BuildVersion, BuildRelease,
+		    BuildDateTime, BuildCommitId, BuildBranch, BuildMachine, BuildType)
+		SELECT * FROM (SELECT NULL AS BuildId,
+		    '${xcat_version}' AS BuildVersion,
+		    '${xcat_release}' AS BuildRelease,
+		    '${build_datetime}' AS BuildDateTime,
+		    '${build_commit_id}' AS BuildCommitId,
+		    '${build_branch}' AS BuildBranch,
+		    '${build_machine}' AS BuildMachine,
+		    '${build_type}' AS BuildType
+		) AS tmp
+		WHERE NOT EXISTS (
+		    SELECT BuildId FROM BuildDict WHERE BuildVersion = '${xcat_version}'
+		        AND BuildRelease = '${xcat_release}'
+		        AND BuildDateTime = '${build_datetime}'
+		        AND BuildCommitId = '${build_commit_id}'
+		        AND BuildMachine = '${build_machine}'
+		        AND BuildType = '${build_type}'
+		) LIMIT 1;
+
+		EOF
+	else
+		warn_if_bad 1 "${logfile}: xcat build information not available"
+		while read -r ; do echo "${REPLY}" ; done <<-EOF
+		-- xCAT build information not available
+
+		EOF
+	fi
+
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	INSERT IGNORE INTO TestRun
-	    (TestRunId, TestRunName, StartTime, EndTime, ArchId, OSId, xCATgitCommit, Memo)
+	    (TestRunId, TestRunName, StartTime, EndTime, ArchId, OSId, BuildId, Memo)
 	SELECT NULL, '${test_run_name}', '${start_time}', '${end_time}', (
 	    SELECT ArchId FROM ArchDict WHERE ArchName = '${arch}'
 	) AS ArchId, (
 	    SELECT OSId FROM OSDict WHERE OSName = '${os}'
-	) AS OSId, '${xcat_git_commit}', '${memo}';
+	) AS OSId, (
+	    SELECT BuildId FROM BuildDict WHERE BuildVersion = '${xcat_version}'
+	        AND BuildRelease = '${xcat_release}'
+	        AND BuildDateTime = '${build_datetime}'
+	        AND BuildCommitId = '${build_commit_id}'
+	        AND BuildMachine = '${build_machine}'
+	        AND BuildType = '${build_type}'
+	) AS BuildId, '${memo}';
 
 	EOF
 
@@ -396,7 +472,7 @@ function jenkinsprojectlog2sql()
 
 # Main
 
-declare VERSION="0.00.1"
+declare VERSION="1.0.1"
 
 declare xCATjkLog_DIR=""
 declare TestRunName=""
@@ -424,7 +500,7 @@ done
 [ -z "${xCATjkLog_DIR}" ] && usage >&2 && exit 1
 
 [ -d "${xCATjkLog_DIR}" ]
-exit_if_bad "$?" "${xCATjkLog_DIR}: No such directory"
+exit_if_bad "$?" "${xCATjkLog_DIR}: no such directory"
 
 # Check if the mail log is there. If it is not, exit directly
 JenkinsMailLog="$(echo "${xCATjkLog_DIR}/mail."*)"
@@ -435,7 +511,7 @@ while read -r ; do echo "${REPLY}" ; done <<EOF
 -- xCATjkLog2SQL - version ${VERSION}
 --
 -- Run on host ${HOSTNAME}
--- Database: xcatjkloganalyzer
+-- Database: xCATjkLogAnalyzer
 -- ------------------------------------------------------
 -- Log directory    '${xCATjkLog_DIR}'
 
@@ -456,7 +532,7 @@ do
 done
 
 while read -r ; do echo "${REPLY}" ; done <<EOF
--- Logs parse completed on $(date "+%Y-%m-%d %H:%M:%S %z")
+-- Log files parsing completed on $(date "+%Y-%m-%d %H:%M:%S %z")
 EOF
 
 exit 0
