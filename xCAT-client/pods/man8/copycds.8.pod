@@ -4,7 +4,7 @@ B<copycds> - Copies Linux distributions and service levels from DVDs/ISOs to the
 
 =head1 SYNOPSIS
 
-B<copycds> [{B<-n|--name|--osver>}=I<distroname>] [{B<-a|--arch>}=I<architecture>] [{B<-p|--path>}=I<ospkgpath>] [B<-o>|B<--noosimage>] [B<-w>|B<--nonoverwrite>] {I<iso | device-path>} ...
+B<copycds> [{B<-n|--name|--osver>} I<distroname>] [{B<-a|--arch>} I<architecture>] [{B<-p|--path>} I<ospkgpath>] [B<-o>|B<--noosimage>] [B<-w>|B<--nonoverwrite>] {I<iso | device-path>} ...
 
 B<copycds> [B<-i>|B<--inspection>] {I<iso | device-path>}
 
@@ -22,15 +22,15 @@ You can get xCAT to recognize new DVDs/ISOs by adding them to /opt/xcat/lib/perl
 
 =over 6
 
-=item B<-n|--name|--osver>=I<distroname>
+=item B<-n|--name|--osver> I<distroname>
 
 The linux distro name and version that the ISO/DVD contains.  Examples:  rhels6.3, sles11.2, fedora9.  Note the 's' in rhels6.3 which denotes the Server version of RHEL, which is typically used.
 
-=item B<-a|--arch>=I<architecture>
+=item B<-a|--arch> I<architecture>
 
 The architecture of the linux distro on the ISO/DVD.  Examples: x86, x86_64, ppc64, s390x.
 
-=item B<-p|--path>=I<ospkgpath>
+=item B<-p|--path> I<ospkgpath>
 
 The destination directory to which the contents of ISO/DVD will be copied. When this option is not specified, the default destination directory will be formed from the B<installdir> site table attribute and the distro name and architecture, for example: /install/rhel6.3/x86_64. This option is only supported for distributions of sles, redhat and windows.
 

@@ -3,6 +3,7 @@ tabdump_servicenode
 reg_linux_diskless_installation_hierarchy
 tabdump_servicenode
 reg_linux_diskfull_installation_hierarchy
+makentp_extntpserver_value
 tabdump_servicenode
 updatenode_P_script1
 updatenode_P_script1_script2
@@ -140,6 +141,7 @@ makeknownhosts_node_d
 tabdump_servicenode
 makentp_h
 makentp_v
+makenetworks_d_V
 mkdef_null
 mkdef_regex_bmc
 mkdef_regex_ip

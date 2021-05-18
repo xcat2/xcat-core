@@ -117,9 +117,7 @@ my $dispatch_requests = 1;    # govern whether commands are dispatchable
 use IO::Socket;
 use IO::Handle;
 use IO::Select;
-use XML::Simple;
-$XML::Simple::PREFERRED_PARSER = 'XML::Parser';
-use XML::LibXML;
+use xCAT::XML;
 use xCAT::Table;
 my $dbmaster;
 use xCAT::ExtTab;
@@ -692,12 +690,9 @@ sub do_discovery_process {
             IO::Uncompress::Gunzip::gunzip(\$data, \$bigdata);
             $data = $bigdata;
         }
-        my $req = eval { XMLin($data, SuppressEmpty => undef, ForceArray => qr/.*/, ParserOpts => [
-            load_ext_dtd => 0,
-            ext_ent_handler => undef,
-            no_network => 1,
-            expand_entities => 0,
-        ]) };
+        my $xs = xCAT::XML->new();
+        my $req = eval { $xs->XMLin($data, SuppressEmpty => undef, ForceArray => qr/.*/) };
+        xCAT::MsgUtils->message("S", "xcatd: Error parsing XML data - $@") if $@;
         if ($req and $req->{command} and ($req->{command}->[0] eq "findme" and $sport < 1000)) { # only consider priveleged port requests to start with
             $req->{'_xcat_clientip'}   = $clientip;
             $req->{'_xcat_clientport'} = $sport;
@@ -2688,14 +2683,14 @@ sub send_response {
                     }
                 }
             }
-            $xml = XMLout($response, KeyAttr => [], NoAttr => 1, KeepRoot => 1);
+            $xml = xCAT::XML::XMLout($response, KeyAttr => [], NoAttr => 1, KeepRoot => 1);
         } else {
             if ($MYXCATSERVER) {
                 unless (exists($response->{serverdone})) {
                     $response->{xcatdsource}->[0] = $MYXCATSERVER;
                 }
             }
-            $xml = XMLout($response, RootName => 'xcatresponse', NoAttr => 1);
+            $xml = xCAT::XML::XMLout($response, RootName => 'xcatresponse', NoAttr => 1);
         }
         $xml =~ tr/\011-\177/?/c;
 
@@ -2720,12 +2715,8 @@ sub send_response {
         my $cmdlog_xml = "<massresponse>";
         $tmp_xml =~ s/\e/xxxxESCxxxx/g;
         $cmdlog_xml .= $tmp_xml . "</massresponse>";
-        my $cmdlog_rsp = XMLin($cmdlog_xml, SuppressEmpty => undef, ForceArray => qr/.*/, ParserOpts => [
-            load_ext_dtd => 0,
-            ext_ent_handler => undef,
-            no_network => 1,
-            expand_entities => 0,
-        ]);
+        my $xs = xCAT::XML->new();
+        my $cmdlog_rsp = $xs->XMLin($cmdlog_xml, SuppressEmpty => undef, ForceArray => qr/.*/ );
         cmdlog_collectlog($cmdlog_rsp);
 
         # ----used for command log end --------
@@ -2782,12 +2773,10 @@ sub get_request {
                 return undef;
             }
         }
-        return eval { XMLin($request, SuppressEmpty => undef, ForceArray => qr/.*/, ParserOpts => [
-            load_ext_dtd => 0,
-            ext_ent_handler => undef,
-            no_network => 1,
-            expand_entities => 0,
-        ]) };
+        my $xs = xCAT::XML->new();
+        my $request_hash = eval { $xs->XMLin($request, SuppressEmpty => undef, ForceArray => qr/.*/) };
+        xCAT::MsgUtils->message("S", "xcatd: Error parsing XML request - $@") if $@;
+        return $request_hash;
     } elsif ($encode eq "storable") {
         my $return = eval { fd_retrieve($sock); };   # suppres end of stream err
         return $return;

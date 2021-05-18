@@ -61,7 +61,7 @@ Now set some of the common attributes for the SNs at the group level: ::
                          provmethod=rhels7-x86_64-install-service
 
 Add Service Nodes to the ``servicenode`` Table
-------------------------------------------
+----------------------------------------------
 
 An entry must be created in the ``servicenode`` table for each service node or the
 **service** group. This table describes all the services you would like xcat to

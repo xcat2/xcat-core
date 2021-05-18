@@ -1,6 +1,8 @@
 Configure a Database
 ====================
 
+SQLite
+------
 xCAT uses the SQLite database (https://www.sqlite.org/) as the default database and it is initialized during xCAT installation of the Management Node.  If using Service Nodes, SQLite **cannot** be used because Service Nodes require remote access to the xCAT database.  One of the following databases should be used:
 
     * :ref:`mysql_reference_label`

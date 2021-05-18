@@ -48,7 +48,7 @@ Description:
 Options:
     -h : Get usage information of $program_name
     -V : Output more information for debug
-    -i : Specify the network interface name of provision network on management node. if not specified, will guess the provision network from site table master attribute. Recommand to use -i option. If there is vlan in the network interface, provide the network interface with vlan infomation, such as '-i <nic>.<vlan>'.
+    -i : Specify the network interface name of provision network on management node. if not specified, will guess the provision network from 'site' table 'master' attribute. Use of '-i' option is recommended. If there is vlan in the network interface, provide the network interface with vlan information, such as '-i <nic>.<vlan>'.
 ";
 
 sub do_main_job {
@@ -62,7 +62,7 @@ sub do_main_job {
     #check if all xcat daemons are running
     ($rst, $flag) = check_all_xcat_daemons(\$checkpoint, \@error);
     print_check_result($checkpoint, $flag, $rst, \@error);
-    $rst = 0 if ($flag == "w");
+    $rst = 0 if ($flag eq "w");
     return $rst if ($rst);
 
     #check if xcatd can receive request
@@ -89,13 +89,13 @@ sub do_main_job {
     #check important directory
     ($rst, $flag) = check_directory(\%sitetable, \$checkpoint, \@error);
     print_check_result($checkpoint, $flag, $rst, \@error);
-    $rst = 0 if ($flag == "w");
+    $rst = 0 if ($flag eq "w");
     $rc |= $rst;
 
     #check if SElinux is disabled
     ($rst, $flag) = check_selinux(\$checkpoint, \@error);
     print_check_result($checkpoint, $flag, $rst, \@error);
-    $rst = 0 if ($flag == "w");
+    $rst = 0 if ($flag eq "w");
     $rc |= $rst;
 
     #check http service
@@ -106,12 +106,13 @@ sub do_main_job {
     #check tftp service
     ($rst, $flag) = check_tftp_service($installnicip, \$checkpoint, \@error);
     print_check_result($checkpoint, $flag, $rst, \@error);
-    $rst = 0 if ($flag == "w");
+    $rst = 0 if ($flag eq "w");
     $rc |= $rst;
 
     #check DNS service
-    $rst = check_dns_service(\%sitetable, $installnicip, \$checkpoint, \@error);
-    print_check_result($checkpoint, "f", $rst, \@error);
+    ($rst, $flag) = check_dns_service(\%sitetable, $installnicip, \$checkpoint, \@error);
+    print_check_result($checkpoint, $flag, $rst, \@error);
+    $rst = 0 if ($flag == "w");
     $rc |= $rst;
 
     #check DHCP service
@@ -151,7 +152,7 @@ sub do_main_job {
     print_check_result($checkpoint, $flag, $rst, \@error);
     $rc |= $rst;
 
-    #some sepecific check points in MN
+    #some specific check points in MN
     if (!$is_sn) {
 
         #check xCAT daemon attributes configuration
@@ -173,11 +174,12 @@ sub do_main_job {
         $rst        = check_dhcp_leases(\$checkpoint, \@error);
         print_check_result($checkpoint, "w", $rst, \@error);
         $rc |= $rst;
-    } else {
-        $rst = check_db_pkgs(\$checkpoint, \@error);
-        print_check_result($checkpoint, "f", $rst, \@error);
-        $rc |= $rst;
     }
+
+    #check if database packages are installed
+    $rst = check_db_pkgs(\$checkpoint, \@error);
+    print_check_result($checkpoint, "f", $rst, \@error);
+    $rc |= $rst;
 
     cleanup();
     return $rc;
@@ -310,7 +312,7 @@ sub check_all_xcat_daemons {
     foreach my $daemon (@daemon_list) {
         my $counter = $output =~ s/$daemon/$daemon/g;
         if ($counter > 1) {
-            if ($daemon == "SSL listener")  {
+            if ($daemon eq "SSL listener")  {
                 my $cur_pid = `cat /var/run/xcatd.pid`;
                 my @ssl_pids = `ps aux 2>&1|grep -v grep|grep "xcatd: $daemon"|awk -F' ' '{print \$2}'`;
                 foreach my $ssl_pid (@ssl_pids) {
@@ -320,7 +322,7 @@ sub check_all_xcat_daemons {
                     $rst_type = "w" if ($child_pid);
                 }
             }
-            push @$error_ref, "More Daemon '$daemon' is running";
+            push @$error_ref, "More than one instance of '$daemon' is running";
             $rst = 1;
         } elsif ($counter == 0) {
             push @$error_ref, "Daemon '$daemon' isn't running";
@@ -348,7 +350,7 @@ sub check_xcatd_receive_request {
         push @$error_ref, $_ foreach (@lines);
         $rst = 1;
     }elsif($cmdoutput =~ /Permission denied for request/){
-        push @$error_ref, "Permission denied for request, please checking xcatd";
+        push @$error_ref, "Permission denied for request, check xcatd";
         $rst = 1;
     }
     return $rst if ($rst);
@@ -361,7 +363,7 @@ sub check_xcatd_receive_request {
         if ($port) {
             my $cmdoutput = `netstat -ant 2>&1|grep LISTEN|grep $port`;
             if ($?) {
-                push @$error_ref, "Attribute '$port_attr' in site table is set to $port, but xcatd isn't listening on $port";
+                push @$error_ref, "Attribute '$port_attr' in 'site' table is set to $port, but xcatd isn't listening on $port";
                 $rst = 1;
             }
         } else {
@@ -396,10 +398,10 @@ sub check_site_table {
             if (($attr eq "master") and (!xCAT::NetworkUtils->isIpaddr("$value"))) {
                 my $masterip = xCAT::NetworkUtils->getipaddr("$value");
                 if (! defined $masterip){
-                    push @$error_ref, "The value of 'master' in 'site' table isn't an IP addres and can not be resolved to a IP addres";
+                    push @$error_ref, "The value of 'master' in 'site' table isn't an IP address and can not be resolved to a IP address";
                     $rst = 1;
                 }else{
-                    probe_utils->send_msg("$output", "i", "The value of 'master' in 'site' table is $value,  can be resolve to $masterip") if($verbose);
+                    probe_utils->send_msg("$output", "i", "The value of 'master' in 'site' table is $value, can be resolved to $masterip") if($verbose);
                     $value = $masterip;
                 }
             }
@@ -488,7 +490,7 @@ sub check_network {
                 my @tmp1 = split("\\\\", $str);
                 my @tmp2 = split(" ", $tmp1[0]);
                 $installnic=$tmp2[-1];
-                probe_utils->send_msg("$output", "w", "No interface provided by '-i' option, detected site table IP attribute $$serverip_ref, checking xCAT configuration using interface: $installnic");
+                probe_utils->send_msg("$output", "w", "No interface provided by '-i' option, detected 'site' table IP attribute $$serverip_ref, checking xCAT configuration using interface: $installnic");
                 probe_utils->send_msg("$output", "w", "If this is incorrect, rerun with -i <ifname> option");
             }
         }
@@ -551,7 +553,7 @@ sub check_directory {
             $rst = 1;
         } else {
             if (!-e "$sitetable_ref->{$dir}") {
-                push @$error_ref, "There isn't '$sitetable_ref->{$dir}' directory on current server, there is something wrong during xCAT installation";
+                push @$error_ref, "There isn't '$sitetable_ref->{$dir}' directory on current server, something went wrong during xCAT installation";
                 $rst = 1;
             } else {
                 if ($is_sn) {
@@ -571,7 +573,7 @@ sub check_directory {
                         }
 
                         if ($mountip ne $sitetable_ref->{master}) {
-                            push @$error_ref, "$dir '$sitetable_ref->{$dir}' isn't mounted from the management node,please check SN's configuration";
+                            push @$error_ref, "$dir '$sitetable_ref->{$dir}' isn't mounted from the management node, check SN's configuration";
                             $rst = 1;
                         }
                     } elsif (($dir eq "tftpdir" and $sitetable_ref->{sharedtftp} ne "1") or
@@ -659,7 +661,7 @@ sub check_disk {
                 }
                 my $mountmun = $#{$mountpointinfo{$mountpoint}{mount}} +1 ;
                 if($mountmun >1){
-                    $msg .= "these directories are parts of file system '$mountpoint'. The free space available in directory '$mountpoint' is $mountpointinfo{$mountpoint}{available} GiB, it is not enough.";
+                    $msg .= "these directories are part of file system '$mountpoint'. The free space available in directory '$mountpoint' is $mountpointinfo{$mountpoint}{available} GiB, it is not enough.";
                 }else{
                     $msg .= "this directory is a part of file system '$mountpoint'. The free space available in directory '$mountpoint' is $mountpointinfo{$mountpoint}{available} GiB, it is not enough.";
                 }
@@ -727,7 +729,7 @@ sub check_http_service {
 
     `which wget > /dev/null 2>&1`;
     if ($?) {
-        push @$error_ref, "HTTP check need 'wget' tool, please install 'wget' tool and try again";
+        push @$error_ref, "HTTP check needs 'wget' tool, install 'wget' tool and try again";
     } else {
         {
             my $httpinfo = `lsdef -t site -i installdir,httpport -c 2>&1`;
@@ -787,13 +789,13 @@ sub check_tftp_service {
     if ($checktftp) {
         `which tftp > /dev/null 2>&1`;
         if ($?) {
-            push @$error_ref, "TFTP check need 'tftp' tool, please install 'tftp' tool and try again";
+            push @$error_ref, "TFTP check needs 'tftp' tool, install 'tftp' tool and try again";
         } else {
             {
                 my $tftpdir = `lsdef -t site -i tftpdir -c 2>&1| awk -F'=' '{print \$2}'`;
                 chomp($tftpdir);
                 unless($tftpdir){
-                    push @$error_ref, "TFTP work path isn't configured in 'sit' table";
+                    push @$error_ref, "TFTP work path isn't configured in 'site' table";
                     last;
                 }
                 unless(-d "$tftpdir"){
@@ -893,7 +895,7 @@ sub check_log_record {
 
     my @grep_logs = `grep "$log_msg on SN" $log_file | grep -v "Allowing" | grep -v "dispatch"`;
     foreach my $grep_log (@grep_logs) {
-        if ($grep_log =~ /.+ \d+:\d+:\d+ (\w+) xcat:  $log_msg on SN/) {
+        if ($grep_log =~ /.+ \d+:\d+:\d+ (\w+) xcat.*: .* $log_msg on SN/) {
             push @checked_nodes, $1;
         }
     }
@@ -901,7 +903,7 @@ sub check_log_record {
     my %hash_pass = map{$_=>1} @checked_nodes;
     my @error_nodes = grep {!$hash_pass{$_}} @valid_nodes;
     if (@error_nodes) {
-        push @$error_ref, "Failed to store logs come from " . join(",", @error_nodes) . " to $log_file on MN";
+        push @$error_ref, "Failed to store logs sent from SN " . join(",", @error_nodes) . " to $log_file on MN";
         $rst = 1;
     }
     if (@invld_nodes) {
@@ -924,7 +926,7 @@ sub check_ntp_service{
     if($?){
         `which ntpq > /dev/null 2>&1`;
         if ($?) {
-            push @$error_ref, "ntp service check need 'ntpq' or 'chronyc' tool, please install and try again";
+            push @$error_ref, "ntp service check needs 'ntpq' or 'chronyc' tool, install and try again";
             $rst = 1;
         } else {
             my $error;
@@ -979,7 +981,7 @@ sub check_dns_service {
     if ($checkdns) {
         `which nslookup > /dev/null 2>&1`;
         if ($?) {
-            push @$error_ref, "DNS check need 'nslookup' tool, please install 'nslookup' tool and try again";
+            push @$error_ref, "DNS check needs 'nslookup' tool, install 'nslookup' tool and try again";
             $rst = 1;
         } else {
             if ($is_sn) {
@@ -1005,12 +1007,31 @@ sub check_dns_service {
                     }
                 } else {
 
-                    # if there is no sn, nslookup mnip
+                    # if there is no sn, "nslookup mnip mnip"
                     my $nslkp = `nslookup -type=A $serverip $serverip 2>&1`;
                     chomp($nslkp);
                     my $tmp = grep { $_ =~ "Server:[\t\s]*$serverip" } split(/\n/, $nslkp);
                     if (!$tmp) {
                         $rc = 1;
+                    } else {
+                        # "nslookup mnip mnip" was ok,
+                        # now check if nameserver in /etc/resolv.conf can resolve server name
+                        my $nslkp = `nslookup -type=A $serverip 2>&1`;
+                        chomp($nslkp);
+                        my $nameserverip = "n/a";
+                        if ($nslkp =~ /Server:[\t\s]*(\d+).(\d+).(\d+).(\d+)/) {
+                            $nameserverip = "$1.$2.$3.$4";
+                        }
+                        if ($nslkp =~ /server can't find/) {
+                            push @$error_ref, "DNS nameserver $nameserverip can not resolve $serverip";
+                            # Just a warning
+                            return (1, 'w');
+                        }
+                        if ($nslkp =~ /no servers could be reached/) {
+                            push @$error_ref, "DNS nameserver can not be reached";
+                            # Just a warning
+                            return (1, 'w');
+                        }
                     }
                 }
                 if ($rc) {
@@ -1023,7 +1044,7 @@ sub check_dns_service {
         $rst = 2;
     }
 
-    return $rst;
+    return ($rst, 'f');
 }
 
 
@@ -1197,7 +1218,7 @@ sub check_ulimits {
 
     my $percent = $open_num/$nofile_num;
     unless ($percent < 0.8) {
-        push @$error_ref, "The number of open files is not enough for xcatd service, increase the limits for it according to xCAT document";
+        push @$error_ref, "The number of open files is not enough for xcatd service, increase the limits for it according to xCAT documentation";
         $rst = 1;
         if ($percent >= 1) {
             $rst_type = "f";
@@ -1226,7 +1247,7 @@ sub check_network_parameter {
 
     my $percent = $arp_num/$net_gc_thresh;
     unless ($percent < 0.8) {
-        push @$error_ref, "Most ARP has been used, please tuning network parameter as document";
+        push @$error_ref, "Most ARP has been used, tune network parameters";
         $rst = 1;
         if ($percent >= 1) {
             $rst_type = "f";
@@ -1284,13 +1305,18 @@ sub check_db_pkgs {
     my $error_ref      = shift;
     my $rst            = 0; 
 
-    $$checkpoint_ref = "Checking DB packages installatio...";
+    $$checkpoint_ref = "Checking DB packages installation...";
     @$error_ref = ();
 
     my $cfgloc_file = "/etc/xcat/cfgloc";
     if (! -e $cfgloc_file) {
-        push @$error_ref, "$cfgloc_file does not exist, please check xcat installation.";
-        return 1;
+        # no $cfgloc_file, check if running with default SQLite
+        if (-d "/etc/xcat") {
+            return 0; #Default SQLite
+        } else {
+            push @$error_ref, "Can not find $cfgloc_file or /etc/xcat, check xcat database installation.";
+            return 1;
+        }
     }
     my $db_type = `cat $cfgloc_file | awk -F ':' '{print \$1}'`;
     chomp($db_type);
@@ -1298,13 +1324,13 @@ sub check_db_pkgs {
     my $db_name;
     if ($db_type eq "mysql") {
         $db_name = "perl-DBD-MySQL or perl-DBD-mysql";
-        $db_pkg = `rpm qa | grep -e perl-DBD-MySQL -e perl-DBD-mysql`;
+        $db_pkg = `rpm -qa | grep -e perl-DBD-MySQL -e perl-DBD-mysql`;
     } elsif ($db_type eq "Pg") {
         $db_name = "perl-DBD-Pg";
         $db_pkg = `rpm -qa | grep $db_name`;
     }
     if (!$db_pkg) {
-        push @$error_ref, "$db_name is not installed, please install it.";
+        push @$error_ref, "$db_name is not installed.";
         $rst = 1;
     }
     return $rst;

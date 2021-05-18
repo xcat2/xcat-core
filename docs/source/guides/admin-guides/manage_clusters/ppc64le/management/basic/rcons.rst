@@ -19,7 +19,7 @@ Open a console to ``compute1``: ::
 
     rcons compute1
 
-**Note:** The keystroke ``ctrl+e c .`` will disconnect you from the console.
+.. note:: The keystroke ``ctrl+e c .`` will disconnect you from the console.
 
 
 Troubleshooting
@@ -30,14 +30,14 @@ General
 
 ``xCAT`` has been integrated with 3 kinds of console server service, they are
 
-    - `conserver <http://www.conserver.com/>`_
+    - `conserver <http://www.conserver.com/>`_ **[Deprecated]**
     - `goconserver <https://github.com/xcat2/goconserver/>`_
     - `confluent <https://github.com/xcat2/confluent/>`_
 
 ``rcons`` command relies on one of them. The ``conserver`` and ``goconserver``
 packages should have been installed with xCAT as they are part of the xCAT
-dependency packages. If you hope to try ``confluent``,
-see `confluent </advanced/confluent/>`_.
+dependency packages. If you want to try ``confluent``,
+see :doc:`confluent server </advanced/confluent/server/confluent_server>`.
 
 For systemd based systems, ``goconserver`` is used by default. If you are
 having problems seeing the console, try the following.
@@ -56,7 +56,7 @@ having problems seeing the console, try the following.
 
    #. Invoke the console again: ``rcons <node>``
 
-More details for goconserver, see `goconserver documentation </advanced/goconserver/>`_.
+More details for goconserver, see :doc:`goconserver documentation </advanced/goconserver/index>`.
 
 **[Deprecated]** If ``conserver`` is used, try the following.
 

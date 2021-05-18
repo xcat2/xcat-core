@@ -72,7 +72,7 @@ You can use the ``updatenode`` command to perform the following functions after 
   * Rerun postscripts defined in the postscripts table.
   * Run any additional postscript one time.
 
-Go to :ref:`Using-Postscript-label` to see how to configure postscript.
+Go to :ref:`Using Postscript <Using-Postscript-label>` to see how to configure postscript.
 
 Go to :ref:`Using-Prescript-label` to see how to configure prepostscript.
 

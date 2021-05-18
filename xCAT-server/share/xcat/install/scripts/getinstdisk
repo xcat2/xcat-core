@@ -4,16 +4,17 @@
 #
 # Get proper disk to install OS
 #
-# 1. Check all partitions list in /proc/partitions, whether
-#    there is disk had OS installed. If there is, add it to
+# 1. Check all partitions listed in /proc/partitions, whether
+#    there is a disk that had OS installed. If there is, add it to
 #    the disk array.
-# 2. If there is disk had OS installed, check disks list
-#    generated in Step 1. Else, check all disks get from
-#    /proc/partitions file. Sort them by WWN/PATH and driver
-#    type, select the first one.
-# 3. Select the default one: /dev/sda.
+# 2. If there is no disk that had OS installed found
+#    in Step 1, then check all disks in
+#    /proc/partitions file. Sort them by driver type, then by WWN/PATH
+#    select the first one.
+# 3. If no disks selected in Steps 1 or 2, then
+#    select the default disk: /dev/sda.
 #
-# Output: /tmp/xcat.install_disk
+# Output: Install disk name written to /tmp/xcat.install_disk
 #
 #-----------------------------------------------------------
 
@@ -31,7 +32,7 @@ tmpfile="$tmpdir/getinstalldisk_"
 
 if [ -z "$install_disk" ]; then
 
-    echo "[get_install_disk]Information from /proc/partitions:"
+    echo "[get_install_disk]Contents of /proc/partitions:"
     cat /proc/partitions
     echo ""
 
@@ -44,9 +45,10 @@ if [ -z "$install_disk" ]; then
 
     # Classify entries by DEVTYPE
     for entry in $entries; do
-        DEVSIZE=$(udevadm info --attribute-walk --name=$entry|grep size| sed -e 's/[^"]*"//' -e 's/"//'|tail -n 1)
+        DEVSIZE=$(udevadm info --attribute-walk --name=$entry|grep \{size\}| sed -e 's/[^"]*"//' -e 's/"//'|tail -n 1)
         if [ -z "$DEVSIZE" -o $DEVSIZE -lt 262144 ]; then
             # ignore small devices, that are likely remote media or similar
+            echo "[get_install_disk]    Skipping partition $entry. Size too small: $DEVSIZE"
             continue
         fi
 
@@ -67,6 +69,7 @@ if [ -z "$install_disk" ]; then
     mkdir -p $mount_dir;
 
     disk_array=""
+    umount_rc=0
 
     for partition in $partitions; do
         echo "[get_install_disk]Check the partition $partition."
@@ -106,8 +109,17 @@ if [ -z "$install_disk" ]; then
             # If there is kernel file, add partition's disk into disk_array
             # It seems the kernel file in ubuntu and sles are named like vmlinux, but in RH it is called vmlinuz
             # To check both vmlinux and vmlinuz, use regular expression "vmlinu*" to match them
-            for i in $ker_dir/vmlinu*; do
-                disk_part=${partition%%[0-9]*}
+            for i in $(find $ker_dir -maxdepth 1 -name "vmlinu*"); do
+                case $partition in
+                    nvme*)
+                        # Expected nvme partition format example: nvme0n1p1
+                        disk_part=${partition%%p*}
+                    ;;
+                    *)
+                        # Expected sd partition format example: sda1
+                        disk_part=${partition%%[0-9]*}
+                    ;;
+                esac
                 touch "$tmpfile$disk_part"
                 disk_array=$disk_array"$disk_part "
                 echo "[get_install_disk]    The partition $partition has kernel file."
@@ -115,6 +127,10 @@ if [ -z "$install_disk" ]; then
             done
 
             umount -l $mount_dir || echo "[get_install_disk]    $partition umount failed."
+            if [ $? -ne 0 ]; then
+                # Preserve a umount failure RC
+                umount_rc=$?
+            fi
         else
             echo "[get_install_disk]    Partition $partition mount failed or the partition is swap."
         fi
@@ -128,7 +144,13 @@ if [ -z "$install_disk" ]; then
         echo ""
     fi
 
-    rmdir $mount_dir;
+    if [ $umount_rc -eq 0 ]; then
+        rmdir $mount_dir;
+    else
+        # Do not remove $mount_dir if there was a umount failure, as it might wipe out
+        # the contents of a still mounted disk
+        echo "[get_install_disk]There was a umount failure earlier, not removing $mount_dir"
+    fi
 
     for file in $tmpfile*; do
         rm $file;
@@ -162,7 +184,7 @@ if [ -z "$install_disk" ]; then
             disk_data=$disk_wwn
         elif [ $has_wwn -eq 1 ]; then
             echo "[get_install_disk]    The disk $disk has no wwn info."
-            echo "[get_install_disk]    There is other disk has wwn info, so don't record this disk."
+            echo "[get_install_disk]    There is another disk with wwn info, so don't record this disk."
             continue;
         elif [ "$disk_path" ]; then
             has_path=1
@@ -170,7 +192,7 @@ if [ -z "$install_disk" ]; then
             disk_data=$disk_path
         elif [ $has_path -eq 1 ]; then
             echo "[get_install_disk]    The disk $disk has no wwn or path info."
-            echo "[get_install_disk]    There is other disk has path info, so don't record this disk."
+            echo "[get_install_disk]    There is another disk with path info, so don't record this disk."
             continue;
         else
            file_pre="other"
@@ -215,7 +237,7 @@ rm -rf $tmpdir;
 # Cannot find proper disk for OS install, select the default one "/dev/sda"
 if [ -z "$install_disk" ]; then
     install_disk="/dev/sda"
-    echo "[get_install_disk]The default install_disk is $install_disk."
+    echo "[get_install_disk]Choosing default install_disk $install_disk."
 fi
 
 # Output the result to $install_disk_file

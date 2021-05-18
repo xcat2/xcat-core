@@ -58,7 +58,7 @@ Requires: grub2-xcat >= 2.02-0.76.el7.1.snap201905160255 perl-Net-HTTPS-NB perl-
 %else
 %ifos linux
 # do this for non-fsm linux
-Requires: perl-IO-Tty perl-Crypt-SSLeay make
+Requires: perl-IO-Tty perl-Crypt-SSLeay make httpd
 %endif
 %endif
 

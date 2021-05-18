@@ -26,7 +26,7 @@ Identify the scripts to be run for each node by adding entries to the prescripts
 Format for naming prescripts
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The general format for the prescripts-begin or prescripts-end attribute is: ::
+The general format for the ``prescripts-begin`` or ``prescripts-end`` attribute is: ::
 
     [action1:]s1,s2...[|action2:s3,s4,s5...]
 
@@ -42,19 +42,17 @@ If actions are omitted, the scripts apply to all actions.
 
 Examples:
 
-    * myscript1,myscript2 - run scripts for all supported commands
-    * install:myscript1,myscript2|netboot:myscript3
+    * ``myscript1,myscript2`` - run scripts for all supported commands
+    * ``install:myscript1,myscript2|netboot:myscript3`` - Run scripts ``myscript1`` and ``myscript2`` for nodeset(install), runs ``myscript3`` for nodeset(netboot).
 
-Run scripts 1,2 for nodeset(install), runs script3 for nodeset(netboot).
-
-All the scripts should be copied to /install/prescripts directory and made executable for root and world readable for mounting. If you have service nodes in your cluster with a local /install directory (i.e. /install is not mounted from the xCAT management node to the service nodes), you will need to synchronize your /install/prescripts directory to your service node anytime you create new scripts or make changes to existing scripts.
+All the scripts should be copied to ``/install/prescripts`` directory and made executable for root and world readable for mounting. If you have service nodes in your cluster with a local ``/install`` directory (i.e. ``/install`` is not mounted from the xCAT management node to the service nodes), you will need to synchronize your ``/install/prescripts`` directory to your service node anytime you create new scripts or make changes to existing scripts.
 
 The following two environment variables will be passed to each script:
 
-    * NODES - a comma separated list of node names on which to run the script
-    * ACTION - current nodeset action.
+    * ``NODES`` - a comma separated list of node names on which to run the script
+    * ``ACTION`` - current nodeset action.
 
-By default, the script will be invoked once for all nodes. However, if **'#xCAT setting:MAX_INSTANCE=number'** is specified in the script, the script will be invoked for each node in parallel, but no more than number of instances specified in **number** will be invoked at at a time.
+By default, the script will be invoked once for all nodes. However, if ``#xCAT setting:MAX_INSTANCE=<number>`` is specified in the script, the script will be invoked for each node in parallel, but no more than number of instances specified in ``<number>`` will be invoked at a time.
 
 Exit values for prescripts
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -67,7 +65,7 @@ If there is no error, a prescript should return with 0. If an error occurs, it s
 
 If one of the prescripts returns 1, the command will finish the rest of the prescripts in that section and then exit out with value 1. For example, a node has three begin prescripts s1,s2 and s3, three end prescripts s4,s5,s6. If s2 returns 1, the prescript s3 will be executed, but other code and the end prescripts will not be executed by the command.
 
-If one of the prescripts returns 2 or greater, then the command will exit out immediately. This only applies to the scripts that do not have **'#xCAT setting:MAX_INSTANCE=number'**.
+If one of the prescripts returns 2 or greater, then the command will exit out immediately. This only applies to the scripts that do not have ``#xCAT setting:MAX_INSTANCE=<number>``.
 
 
 

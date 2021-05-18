@@ -7,13 +7,16 @@ node=$1
 osimage=$2
 vmhost=`lsdef $node -i vmhost -c | cut -d '=' -f 2`
 times=3
+wait_for_provision=30 #Min to wait for node to provision
+check_status=10 #Sec to keep checking status
+iterations=$wait_for_provision*60/$check_status #Iterations to check for "booted" status
 
 if [ $# -eq 3 ];
 then
     times=$3
 fi
 
-echo "Try to rinstall for $times  times ......" 
+echo "Try to rinstall for $times times (allowing $wait_for_provision min for each try) ......" 
 
 for (( tryreinstall = 1 ; tryreinstall <= $times ; ++tryreinstall ))
 do
@@ -43,11 +46,11 @@ do
     sleep 360
     while [ ! `lsdef -l $node|grep status|grep booted` ]
     do 
-        sleep 10
+        sleep $check_status
         stat=`lsdef $node -i status -c | cut -d '=' -f 2`
         echo "[$a] The status is not booted... ($stat)" 
         a=++a 
-        if [ $a -gt 400 ];then
+        if [ $a -gt $(($iterations + 0)) ];then
             a=0 
             break
         fi

@@ -299,12 +299,20 @@ unless ($onlyinitrd) {
             if (-d "$dir/1") {
                 $ddir .= "/1";
             }
-            system("zypper -R $rootimg_dir $non_interactive ar file:$ddir $osver-$i");
-            $i++;
-            if (-d "$dir/2") {
-                $ddir = $dir . "/2";
+            if (-d "$ddir/Product-SLES" && -d "$ddir/Module-Basesystem" && -d "$ddir/Module-Legacy") {
+                # If "Module" and "Product" directories are there, use them for package repositories
+                system("zypper -R $rootimg_dir $non_interactive ar file:$ddir/Product-SLES $osver-$i-Product-SLES");
+                system("zypper -R $rootimg_dir $non_interactive ar file:$ddir/Module-Basesystem $osver-$i-Module-Basesystem");
+                system("zypper -R $rootimg_dir $non_interactive ar file:$ddir/Module-Legacy $osver-$i-Module-Legacy");
+
+            } else {
                 system("zypper -R $rootimg_dir $non_interactive ar file:$ddir $osver-$i");
                 $i++;
+                if (-d "$dir/2") {
+                    $ddir = $dir . "/2";
+                    system("zypper -R $rootimg_dir $non_interactive ar file:$ddir $osver-$i");
+                    $i++;
+                }
             }
         }
 
@@ -1998,8 +2006,21 @@ sub generic_post { # This function is meant to leave the image in a state approx
     print $cfgfile "NETWORKING=yes\n";
     close($cfgfile);
 
-    # SLE15 has a symlink to /run/netconfig/resolv.conf and does not need a dummy file
+    # Check resolv.conf file.
+    # If it is a link and link leads to an empty file, remove that link
+    # If it is a link and link leads to a non emply file, leave it alone
+    # If it is not a link, fill it it with some "dummy" text
+    if (-l "$rootimg_dir/etc/resolv.conf" ) {
+        my $link_file = readlink "$rootimg_dir/etc/resolv.conf";
+        if (-z "$rootimg_dir/$link_file") {
+            # Link leading to an empty file
+            # Remove resolv.conf, so that link is gone and code below will
+            # create a dummy file
+            unlink("$rootimg_dir/etc/resolv.conf");
+        }
+    }
     if (! -l "$rootimg_dir/etc/resolv.conf") {
+        # Not a link, fill in with "dummy" text
         open($cfgfile, ">", "$rootimg_dir/etc/resolv.conf");
         print $cfgfile "#Dummy resolv.conf to make boot cleaner";
         close($cfgfile);

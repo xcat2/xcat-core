@@ -16,14 +16,13 @@ B<genimage> [B<-h> | B<--help> | B<-v> | B<--version>]
 
 Generates a stateless and a statelite image that can be used to boot xCAT nodes in a diskless mode.
 
-genimage will use the osimage definition for information to generate this image.  Additional options specified on the command line will override any corresponding previous osimage settings, and will be written back to the osimage definition.
+B<genimage> will use the osimage definition for information to generate this image.  Additional options specified on the command line will override any corresponding previous osimage settings and will be written back to the osimage definition.
 
 If B<genimage> runs on the management node, both the I<osimage> table and I<linuximage> table will be updated with the given values from the options.
 
-The B<genimage> command will generate two initial ramdisks for B<stateless> and B<statelite>, one is B<initrd-stateless.gz>, the other one is B<initrd-statelite.gz>.
+The B<genimage> command will generate two initial ramdisks, B<initrd-stateless.gz> for B<stateless> mode, and B<initrd-statelite.gz> for B<statelite> mode.
 
-After your image is generated, you can chroot to the
-image, install any additional software you would like, or make modifications to files, and then run the following command to prepare the image for deployment.
+After your image is generated, you can chroot to the image, install any additional software you would like, or make modifications to files, and then run the following command to prepare the image for deployment.
 
 for stateless: B<packimage>
 
@@ -33,8 +32,7 @@ Besides prompting for some parameter values, the B<genimage> command takes defau
 
 If B<--onlyinitrd> is specified, genimage only regenerates the initrd for a stateless image to be used for a diskless install.
 
-The B<genimage> command must be run on a system that is the same architecture and same distro with same major release version as the nodes it will be
-used on.  If the management node is not the same architecture or same distro level, copy the contents of
+The B<genimage> command must be run on a system that is the same architecture and same distro with same major release version as the nodes it will be used on.  If the management node is not the same architecture or same distro level, copy the contents of
 /opt/xcat/share/xcat/netboot/<os> to a system that is the proper architecture, and mount /install from
 the management node to that system. Then change directory to /opt/xcat/share/xcat/netboot/<os> and run ./genimage.
 
@@ -50,11 +48,11 @@ I<imagename> specifies the name of an os image definition to be used. The specif
 
 =item B<-a> I<arch>
 
-The hardware architecture of this node: x86_64, ppc64, x86, ia64, etc. If omitted, the current hardware architecture will be used.
+The hardware architecture of this node: ppc64le, x86_64, ppc64, x86, ia64, etc.  If omitted, the current hardware architecture will be used.
 
 =item B<-o> I<osver>
 
-The operating system for the image:  fedora8, rhel5, sles10, etc.  The OS packages must be in
+The operating system for the image: rhels8.2.0, sle15, ubuntu18.04.2, etc.  The OS packages must be in
 /install/<osver>/<arch> (use L<copycds(8)|copycds.8>).
 
 =item B<-p> I<profile>
@@ -88,10 +86,9 @@ The maximum size allowed for the root file system in the image.  Specify in byte
 Regenerates the initrd for a stateless image to be used for a diskless install.
 
 
-Regenerates the initrd that is part of a stateless/statelite image that is used to boot xCAT nodes in a stateless/stateli
-te mode.
+Regenerates the initrd that is part of a stateless/statelite image that is used to boot xCAT nodes in a stateless/statelite mode.
 
-The B<genimage --onlyinitrd> command will generate two initial ramdisks, one is B<initrd-statelite.gz> for B<statelite> mode, the other one is B<initrd-stateless.gz> for B<stateless> mode.
+The B<genimage --onlyinitrd> command will generate two initial ramdisks, B<initrd-stateless.gz> for B<stateless> mode, and B<initrd-statelite.gz> for B<statelite> mode.
 
 =item B<--permission> I<permission>
 

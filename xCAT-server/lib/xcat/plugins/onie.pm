@@ -306,7 +306,7 @@ sub nodeset {
         my $flag=0;
         if (-r $image_pkgdir) {
             my @filestat = `file $image_pkgdir`;
-            if (grep /$image_pkgdir: data/, @filestat) {
+            if ((grep /$image_pkgdir: data/, @filestat) || (grep /$image_pkgdir: .* \(binary data/, @filestat)) {
                 $flag=1;
             }
         }

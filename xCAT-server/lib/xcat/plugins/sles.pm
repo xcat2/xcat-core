@@ -1631,6 +1631,7 @@ sub copycd
     #parse the disc info of the os media to get the distribution, arch of the os
     my $discnumber;
     my $darch;
+    my $linktwo = 0;
     if (-r $mntpath . "/content")
     {
         my $dinfo;
@@ -1769,6 +1770,16 @@ sub copycd
                     $distname = "sle15";
                 }
             };
+        } elsif ($dsc =~ /SLE-15/ and $dsc =~ /Full/) {
+            $discnumber = 1;
+	    $linktwo = 1;
+            unless ($distname) {
+                if ($dsc =~ /SLE-15-SP(\d)/) {
+                    $distname = "sle15.$1";
+                } else {
+                    $distname = "sle15";
+                }
+            };
         }
     }
 
@@ -1894,6 +1905,7 @@ sub copycd
         rmtree($ospkgpath);
     }
     mkpath("$ospkgpath");
+    if ($linktwo) { symlink("$path/$discnumber", "$path/2"); }
 
     my $omask = umask 0022;
     umask $omask;

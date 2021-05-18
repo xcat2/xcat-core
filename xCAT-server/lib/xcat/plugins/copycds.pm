@@ -65,7 +65,7 @@ sub process_request {
         'w|nonoverwrite' => \$nonoverwrite,
     );
     if ($help) {
-        $callback->({ info => "copycds [{-p|--path}=path] [{-n|--name|--osver}=distroname] [{-a|--arch}=architecture] [-i|--inspection] [{-o|--noosimage}] [{-w|--nonoverwrite}] 1st.iso [2nd.iso ...]." });
+        $callback->({ info => "copycds [{-p|--path} path] [{-n|--name|--osver} distroname] [{-a|--arch} architecture] [-i|--inspection] [{-o|--noosimage}] [{-w|--nonoverwrite}] 1st.iso [2nd.iso ...]." });
         return;
     }
     if ($arch and $arch =~ /i.86/) {
@@ -115,7 +115,7 @@ sub process_request {
 
                 return;
             }
-            if (grep /$file: data/, @filestat) {
+            if ((grep /$file: data/, @filestat) || (grep /$file: .* \(binary data/, @filestat)) {
                 if ($xcatdebugmode) {
                     $callback->({ info => "run copydata for data file = $file" });
                 }

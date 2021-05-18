@@ -35,9 +35,9 @@ The \ **makenetworks**\  command can be used to gather network information from 
 
 Every network that will be used to install a cluster node must be defined in the xCAT database.
 
-The default behavior is to gather network information from the management node, and any configured xCAT service nodes, and automatically save this information in the xCAT database.
+The default behavior is to gather network information from the management node, and any configured xCAT service nodes, and automatically save that information in the xCAT database.
 
-You can use the "-d" option to display the network information without writing it to the database.
+You can use the \ **-d**\  option to display the network information without writing it to the database.
 
 You can also redirect the output to a file that can be used with the xCAT \ **mkdef**\  command to define the networks.
 
@@ -53,9 +53,9 @@ For example:
 
 This features allows you to verify and modify the network information before writing it to the database.
 
-When the network information is gathered a default value is created for the "netname" attribute.  This is done to make it possible to use the mkdef, chdef, lsdef, and rmdef commands to manage this data.
+When the network information is gathered a default value is created for the "netname" attribute.  This is done to make it possible to use the \ **mkdef**\ , \ **chdef**\ , \ **lsdef**\ , and \ **rmdef**\  commands to manage this data.
 
-The default naming convention is to use a hyphen separated "net" and "mask" value with the "." replace by "_". (ex. "8_124_47_64-255_255_255_0")
+The default naming convention is to use a hyphen separated "net" and "mask" values with the "." replaced by "_". (ex. "8_124_47_64-255_255_255_0")
 
 You can also modify the xCAT "networks" database table directly using the xCAT \ **tabedit**\  command.
 
@@ -121,13 +121,19 @@ EXAMPLES
   	makenetworks -d
  
  
- The output would be one or more stanzas of information similar to the following. The line that ends with a colon is the value of the "netname" attribute and is the name of the network object to use with the lsdef, mkdef, chdef and rmdef commands.
+ The output would be one or more stanzas of information similar to the following. The line that ends with a colon is the value of the "netname" attribute and is the name of the network object to use with the \ **lsdef**\ , \ **mkdef**\ , \ **chdef**\  and \ **rmdef**\  commands.
  
- 9_114_37_0-255_255_255_0:
-     objtype=network
-     gateway=9.114.37.254
-     mask=255.255.255.0
-     net=9.114.37.0
+ 
+ .. code-block:: perl
+ 
+   9_114_37_0-255_255_255_0:
+      objtype=network
+      gateway=9.114.37.254
+      mask=255.255.255.0
+      net=9.114.37.0
+      mgtifname=ens3
+      mtu=1500
+ 
  
 
 
