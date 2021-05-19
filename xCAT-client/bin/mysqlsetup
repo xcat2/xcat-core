@@ -146,7 +146,8 @@ if (-e "/etc/debian_version") {
 }
 
 # determine whether redhat or sles
-$::linuxos = xCAT::Utils->osver();
+$::linuxos = xCAT::Utils->osver("all"); # returns "name,version.release"
+$::linuxos =~ tr/,//d; # remove comma separating release name and version numbers
 
 # is this MariaDB or MySQL
 $::MariaDB = 0;
