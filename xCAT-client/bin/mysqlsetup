@@ -900,14 +900,12 @@ sub initmysqldb
         }
 
         $cmd = "$sqlcmd --user=mysql";
-        #on rhels7.7, /usr/bin/mysql_install_db requires /usr/libexec/resolveip, 
-        #but it's available at the /usr/bin/resolveip
-        if ($::linuxos eq "rhels7.7") {
-            my $resolveip="/usr/libexec/resolveip";
-            if (!(-x ($resolveip))) {
-                my $linkcmd="ln -s /usr/bin/resolveip $resolveip";
-                xCAT::Utils->runcmd($linkcmd, 0);
-            }
+        # On rhels7.7, /usr/bin/mysql_install_db requires /usr/libexec/resolveip
+        # Link it to /usr/bin/resolveip for all OSes, just in case some future releases have the same requirement
+        my $resolveip="/usr/libexec/resolveip";
+        if (!(-x ($resolveip))) {
+            my $linkcmd="ln -s /usr/bin/resolveip $resolveip";
+            xCAT::Utils->runcmd($linkcmd, 0);
         }
     }
     xCAT::Utils->runcmd($cmd, 0);
