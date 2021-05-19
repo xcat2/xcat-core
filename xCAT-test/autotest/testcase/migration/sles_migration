@@ -45,7 +45,7 @@ check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN "rm -rf /oldxcat"
 cmd:xdsh $$CN "mkdir -p /oldxcat"
 check:rc==0
-cmd:xdsh $$CN "zypper install bzip2"
+cmd:xdsh $$CN "zypper -n install bzip2"
 check:rc==0
 cmd:xdsh $$CN "cd /oldxcat;wget $$MIGRATION1_DEP"
 check:rc==0
@@ -164,7 +164,7 @@ check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN "rm -rf /oldxcat"
 cmd:xdsh $$CN "mkdir -p /oldxcat"
 check:rc==0
-cmd:xdsh $$CN "zypper install bzip2"
+cmd:xdsh $$CN "zypper -n install bzip2"
 check:rc==0
 cmd:xdsh $$CN "cd /oldxcat;wget $$MIGRATION2_CORE"
 check:rc==0
