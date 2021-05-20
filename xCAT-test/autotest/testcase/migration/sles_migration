@@ -189,7 +189,7 @@ check:rc==0
 cmd:xdsh $$CN "zypper -n install xCAT"
 check:rc==0
 # Name of createrepo package on sles15 is different from sles12
-cmd:if [ "__GETNODEATTR($$CN,os)__" = "sle15" ]; then xdsh $$CN "zypper -n install createrepo_c"; else xdsh $$CN "zypper -n install createrepo";fi
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "sle15" ]]; then xdsh $$CN "zypper -n install createrepo_c"; else xdsh $$CN "zypper -n install createrepo";fi
 check:rc==0
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh"
 check:rc==0
