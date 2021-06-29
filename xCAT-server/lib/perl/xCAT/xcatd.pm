@@ -271,6 +271,7 @@ sub validate {
                         $saveArglist = "$first$restcommand";
                    }
                 }
+                # Replace passwords with 'x'
                 if ($arglist)  { $logst .= redact_password($request->{command}->[0], $saveArglist); }
                 if ($peername) { $logst .= " for " . $request->{username}->[0] }
                 if ($peerhost) { $logst .= " from " . $peerhost }
@@ -490,20 +491,20 @@ sub verifytoken {
 
                       $class: Calling module name, for example:
                           xCAT::xcatd
-                      $request: Single line string of the command + arguments, for example:
-                          [Request]    rspconfig f6u13k18 'HMC_passwd=123' '*_passwd=abc,xyz'
+                      $request: Single line string of the header + command + arguments, for example:
+                          header [Request]    rspconfig f6u13k18 'HMC_passwd=123' '*_passwd=abc,xyz'
 
                   Type 2:
                       Called from this module to log command to /var/log/messages and
                                                                 /var/log/xcat/cluster.log
 
                       $class: Command name sting, for example:
-                          respconfig
+                          rspconfig
                       $request: Single line string of arguments, for example:
-                          f6u13k18 'HMC_passwd=123' '*_passwd=abc,xyz'
+                          'HMC_passwd=123' '*_passwd=abc,xyz'
      Returns string:
                   Type 1:
-                      [Request]    rspconfig f6u13k18 'HMC_passwd=xxx' '*_passwd=xxxxxxx'
+                      header [Request]    rspconfig f6u13k18 'HMC_passwd=xxx' '*_passwd=xxxxxxx'
 
                   Type 2:
                       'HMC_passwd=xxx' '*_passwd=xxxxxxx'
@@ -517,6 +518,9 @@ sub redact_password {
     my %commads_with_password = (
         bmcdiscover => {
             flags => ["-p ", "-n "],
+        },
+        mkhwconn => {
+            flags => ["-P "],
         },
         rspconfig => {
             flags => ["admin_passwd=","HMC_passwd=","general_passwd=","*_passwd=","USERID="],
