@@ -397,7 +397,7 @@ Kinds of variables in the template
     NTYPE=$NTYPE
     export NTYPE
 
-**Type 2:** This is the syntax to get the value of one attribute from the ``<tablename>`` and its key is ``$NODE``. It does not support tables with two keys. Some of the tables with two keys are ``litefile``, ``prodkey``, ``deps``, ``monsetting``, ``mpa``, ``networks``. It does not support tables with key other than ``$NODE``. Some of the tables with not ``$NODE`` keys are ``passwd``, ``rack``, ``token`` ::
+**Type 2:** This is the syntax to get the value of one attribute from the ``<tablename>`` and its key is ``$NODE``. It does not support tables with two keys. Some of the tables with two keys are ``litefile``, ``prodkey``, ``deps``, ``monsetting``, ``mpa``, ``networks``. It does not support tables with keys other than ``$NODE``. Some of the tables that do not use ``$NODE`` as the key, are ``passwd``, ``rack``, ``token`` ::
 
     VARNAME=#TABLE:tablename:$NODE:attribute#
 
