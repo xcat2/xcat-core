@@ -514,6 +514,7 @@ sub verifytoken {
 sub redact_password {
     my $class = shift;
     my $request = shift;
+    my $redact_string = "xxxxxxxx";
 
     my %commads_with_password = (
         bmcdiscover => {
@@ -550,13 +551,13 @@ sub redact_password {
                 if ($flag_index >= 0) {
                     # Passed in command contains one of the flags, redact pw
                     my ($passwd, $rest) = split(/\s+/,substr($parameters, $flag_index+length($password_flag)));
+                    my $pw_replacement = $redact_string;
                     if (index($passwd, "'") > 0) {
-                        # Password and password flag was enclosed in "'", do not replace that quote with 'x'
-                        substr($parameters, $flag_index+length($password_flag), length($passwd)) = "x" x (length($passwd)-1) . "'";
-                    } else {
-                        # Replace password with the same number of 'x'
-                        substr($parameters, $flag_index+length($password_flag), length($passwd)) = "x" x length($passwd);
+                        # Password and password flag was enclosed in "'", preserve that quote
+                        $pw_replacement .= "'";
                     }
+                    # Replace password with $pw_replacement
+                    substr($parameters, $flag_index+length($password_flag), length($passwd)) = $pw_replacement;
                 }
             }
         }
