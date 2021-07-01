@@ -271,7 +271,8 @@ sub validate {
                         $saveArglist = "$first$restcommand";
                    }
                 }
-                if ($arglist)  { $logst .= $saveArglist; }
+                # Replace passwords with 'x'
+                if ($arglist)  { $logst .= redact_password($request->{command}->[0], $saveArglist); }
                 if ($peername) { $logst .= " for " . $request->{username}->[0] }
                 if ($peerhost) { $logst .= " from " . $peerhost }
 
@@ -475,6 +476,97 @@ sub verifytoken {
     } else {
         # Token entry was not found
         return undef;
+    }
+}
+# --------------------------------------------------------------------------------
+
+=head3 redact_password
+
+     Used to redact the password in command line parameters with 'x'
+     For example, command: rspconfig f6u13k18 'HMC_passwd=123' '*_passwd=abc,xyz'
+
+     Arguments:
+                  Type 1:
+                      Called from sbin/xcatd to log command to /var/log/xcat/commands.log
+
+                      $class: Calling module name, for example:
+                          xCAT::xcatd
+                      $request: Single line string of the header + command + arguments, for example:
+                          header [Request]    rspconfig f6u13k18 'HMC_passwd=123' '*_passwd=abc,xyz'
+
+                  Type 2:
+                      Called from this module to log command to /var/log/messages and
+                                                                /var/log/xcat/cluster.log
+
+                      $class: Command name sting, for example:
+                          rspconfig
+                      $request: Single line string of arguments, for example:
+                          'HMC_passwd=123' '*_passwd=abc,xyz'
+     Returns string:
+                  Type 1:
+                      header [Request]    rspconfig f6u13k18 'HMC_passwd=xxx' '*_passwd=xxxxxxx'
+
+                  Type 2:
+                      'HMC_passwd=xxx' '*_passwd=xxxxxxx'
+=cut
+
+# --------------------------------------------------------------------------------
+sub redact_password {
+    my $class = shift;
+    my $request = shift;
+    my $redact_string = "xxxxxxxx";
+
+    my %commads_with_password = (
+        bmcdiscover => {
+            flags => ["-p ", "-n "],
+        },
+        mkhwconn => {
+            flags => ["-P "],
+        },
+        rspconfig => {
+            flags => ["admin_passwd=","HMC_passwd=","general_passwd=","*_passwd=","USERID="],
+        },
+    );
+
+    my $full_command;
+    my $header;
+    # split out command and its parameters and flags
+    if ($request =~ '\[Request\]') {
+        ($header, $full_command) = split('\[Request\]',$request,2);
+    } else {
+        $full_command = $class . " " . $request;
+    }
+    my ($command, $parameters) = split(' ',$full_command,2);
+
+    # Check if passed in $command appears in the %commads_with_password hash
+    for (keys %commads_with_password) {
+        if ($_ eq $command) {
+            my @all_command_flags = split(' ', $parameters);
+            my $ref = $commads_with_password{$command}{flags};
+            my @flags_array = @$ref;
+            foreach my $password_flag (@flags_array) {
+                # For each flag of the command from hash, check if passed in
+                # command flags match
+                my $flag_index = index ($parameters, $password_flag);
+                if ($flag_index >= 0) {
+                    # Passed in command contains one of the flags, redact pw
+                    my ($passwd, $rest) = split(/\s+/,substr($parameters, $flag_index+length($password_flag)));
+                    my $pw_replacement = $redact_string;
+                    if (index($passwd, "'") > 0) {
+                        # Password and password flag was enclosed in "'", preserve that quote
+                        $pw_replacement .= "'";
+                    }
+                    # Replace password with $pw_replacement
+                    substr($parameters, $flag_index+length($password_flag), length($passwd)) = $pw_replacement;
+                }
+            }
+        }
+    }
+    # Return original request with password replaced by 'x' in $parameters string
+    if ($request =~ '\[Request\]') {
+        return $header . "[Request]    " . $command . " " . $parameters;
+    } else {
+        return " " . $parameters;
     }
 }
 1;
