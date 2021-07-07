@@ -816,6 +816,8 @@ sub addnode
                                   ]
                             }
                         );
+                        print $omshell "close\n";
+                        next;
                     }
                 }
                 if ($lstatements)
