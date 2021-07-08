@@ -666,8 +666,8 @@ function check_repo_version_dnf()
                    echo "${ver[last_index]}"
                 # If a package has multiple versions, more work needs to be done.
                 else
-	               # Get the current version of the package. 
-	               current_version=`rpm -q --qf '%{version}-%{release}\n' $1`
+                   # Get the current version of the package. 
+                   current_version=`rpm -q --qf '%{version}-%{release}\n' $1`
 
                    # Is xCAT currently installed?
                    is_xcat_installed=`rpm -qa | grep -i xcat`
@@ -788,8 +788,8 @@ function check_repo_version_yum()
                    echo "${ver[last_index]}"
                 # If a package has multiple versions, more work needs to be done.
                 else
-	               # Get the current version of the package. 
-	               current_version=`rpm -q --qf '%{version}-%{release}\n' $1`
+                   # Get the current version of the package. 
+                   current_version=`rpm -q --qf '%{version}-%{release}\n' $1`
 
                    # Is xCAT currently installed?
                    is_xcat_installed=`rpm -qa | grep -i xcat`
