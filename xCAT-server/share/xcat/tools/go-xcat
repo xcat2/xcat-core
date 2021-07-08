@@ -633,7 +633,7 @@ function check_repo_version_dnf()
 	local num_version=0
 
 	# The following while loop scans the array entries. last_index points to the last
-	# entry. 
+	# entry of the current package being looked at.
 	local last_index=0
 
 	# Obtain the version of a package currently installed on the system.
@@ -755,7 +755,7 @@ function check_repo_version_yum()
 	local num_version=0
 
 	# The following while loop scans the array entries. last_index points to the last
-	# entry. 
+	# entry of the current package being looked at.
 	local last_index=0
 
 	# Obtain the version of a package currently installed on the system.
