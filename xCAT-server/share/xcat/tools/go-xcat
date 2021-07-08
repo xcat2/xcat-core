@@ -38,6 +38,7 @@
 #     - Add support for Oracle Linux
 #
 
+
 function usage()
 {
 	local script="${0##*/}"
@@ -618,14 +619,14 @@ function check_repo_version_dnf()
 	done < <(dnf repoquery -q --qf '%{name} %{version}-%{release}' "$@" 2>/dev/null)
 	local -i i
 
-	# The above query returns an array of package names. Most "xcat-dep" packages
-	# have only one version. However, some do have multiple versions. Note that,
+	# The above query returns an array of package names and versions. Most "xcat-dep"
+	# packages have only one version. However, some do have multiple versions. Note that,
 	# given multiple versions for a package, the LATEST version MAY NOT be the right
 	# version for older operating systems. In addition, if there are 4 versions (or
-	# entires) in the array, the last entry may not be the latest version anyway
+	# entires) in the array, the last entry may not be the latest version either 
 	# due to alphanumeric sorting. Therefore, an additional dnf command is needed to
 	# provide the correct version to be installed. 
-	# Note that dnf is available on RHEL 8.x distros.
+	# Note that dnf is not available before RHEL 8.x distros.
 
 	# In the following while loop, num_version keeps track on the number of versions
 	# of each package as the package list is scanned.
@@ -647,26 +648,26 @@ function check_repo_version_dnf()
 	do
                 num_version=0
 
-                # Given a package name, locate the beginning entry of that package.
+		# Given a package name, locate the beginning entry of that package.
 		for i in "${!name[@]}"
 		do
 			if [[ "$1" = "${name[i]}" ]]
 			then
-                          (( num_version++ ))
-                          last_index=$i
+			   (( num_version++ ))
+			   last_index=$i
 			fi
 		done
 
                 # If a package has no entry.
                 if [[ $num_version == "0" ]]; then
                    echo "(not found)"
-                # If a package has one version, just return that version.
+                # If a package has one version, that version is returned.
                 elif [[ $num_version == "1" ]]; then
                    echo "${ver[last_index]}"
                 # If a package has multiple versions, more work needs to be done.
                 else
-                   # Get the current version of the package. 
-	           current_version=`rpm -q --qf '%{version}-%{release}\n' $1`
+	               # Get the current version of the package. 
+	               current_version=`rpm -q --qf '%{version}-%{release}\n' $1`
 
                    # Is xCAT currently installed?
                    is_xcat_installed=`rpm -qa | grep -i xcat`
@@ -687,7 +688,7 @@ function check_repo_version_dnf()
                          # cut, sed and rev are used to get the version only.
                          cat /tmp/$1-2 | cut -d ":" -f2 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
                       else
-                       # If the output has the word "Installing". Remove the epoch number as needed.
+                      # If the output has the word "Installing". Remove the epoch number as needed.
                          grep $1 /tmp/$1-1 | grep -v installed | awk '{print $3}' | cut -d ":" -f2
                       fi
 
@@ -729,20 +730,22 @@ function check_repo_version_dnf()
 function check_repo_version_yum()
 {
 	type yum >/dev/null 2>&1 || return 255
+	check_executes repoquery
+	exit_if_bad "$?" "Install the \`yum-utils' or \`dnf-utils' package and rerun."
 	local -a name=()
 	local -a ver=()
 	while read -r name ver
 	do
 		name+=("${name}")
 		ver+=("${ver}")
-	done < <(repoquery -q --qf '%{name} %{version}-%{release}' "$@" 2>/dev/null)
+	done < <(repoquery -qf '%{name} %{version}-%{release}' "$@" 2>/dev/null)
 	local -i i
 
-	# The above query returns an array of package names. Most "xcat-dep" packages
-	# have only one version. However, some do have multiple versions. Note that,
+	# The above query returns an array of package names and versions. Most "xcat-dep"
+	# packages have only one version. However, some do have multiple versions. Note that,
 	# given multiple versions for a package, the LATEST version MAY NOT be the right
 	# version for older operating systems. In addition, if there are 4 versions (or
-	# entires) in the array, the last entry may not be the latest version anyway
+	# entires) in the array, the last entry may not be the latest version either 
 	# due to alphanumeric sorting. Therefore, an additional yum command is needed to
 	# provide the correct version to be installed. 
 
@@ -767,13 +770,13 @@ function check_repo_version_yum()
 	do
                 num_version=0
 
-                # Given a package name, locate the beginning entry of that package.
+		# Given a package name, locate the beginning entry of that package.
 		for i in "${!name[@]}"
 		do
 			if [[ "$1" = "${name[i]}" ]]
 			then
-                          (( num_version++ ))
-                          last_index=$i
+			   (( num_version++ ))
+			   last_index=$i
 			fi
 		done
 
@@ -785,8 +788,8 @@ function check_repo_version_yum()
                    echo "${ver[last_index]}"
                 # If a package has multiple versions, more work needs to be done.
                 else
-                   # Get the current version of the package. 
-	           current_version=`rpm -q --qf '%{version}-%{release}\n' $1`
+	               # Get the current version of the package. 
+	               current_version=`rpm -q --qf '%{version}-%{release}\n' $1`
 
                    # Is xCAT currently installed?
                    is_xcat_installed=`rpm -qa | grep -i xcat`
