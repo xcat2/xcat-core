@@ -1,4 +1,4 @@
-#!/bin/bash
+
 #
 # go-xcat - Install xCAT automatically.
 #
@@ -37,7 +37,6 @@
 # 2021-05-07 Mark Gurevich <gurevich@us.ibm.com>
 #     - Add support for Oracle Linux
 #
-
 
 function usage()
 {
@@ -604,6 +603,11 @@ function check_package_version()
 #       $@      package names
 function check_repo_version_dnf()
 {
+	# Note that check_repo_version_dnf must be defined before check_repo_version_yum.
+	# "compgen -A function check_repo_version_" returns _dnf before _yum.
+	# Since RHEL 8.x distros can run yum as well. If _yum is defined before _dnf,
+	# the _dnf function will never be used.
+
 	type dnf >/dev/null 2>&1 || return 255
 	local -a name=()
 	local -a ver=()
@@ -613,18 +617,109 @@ function check_repo_version_dnf()
 		ver+=("${ver}")
 	done < <(dnf repoquery -q --qf '%{name} %{version}-%{release}' "$@" 2>/dev/null)
 	local -i i
+
+	# The above query returns an array of package names. Most "xcat-dep" packages
+	# have only one version. However, some do have multiple versions. Note that,
+	# given multiple versions for a package, the LATEST version MAY NOT be the right
+	# version for older operating systems. In addition, if there are 4 versions (or
+	# entires) in the array, the last entry may not be the latest version anyway
+	# due to alphanumeric sorting. Therefore, an additional dnf command is needed to
+	# provide the correct version to be installed. 
+	# Note that dnf is available on RHEL 8.x distros.
+
+	# In the following while loop, num_version keeps track on the number of versions
+	# of each package as the package list is scanned.
+	local num_version=0
+
+	# The following while loop scans the array entries. last_index points to the last
+	# entry. 
+	local last_index=0
+
+	# Obtain the version of a package currently installed on the system.
+	local current_version=0
+
+	# Has xCAT already installed on the system?
+	local is_xcat_installed=0
+
+	local tmp_result=0
+
 	while [[ -n "$1" ]]
 	do
+                num_version=0
+
+                # Given a package name, locate the beginning entry of that package.
 		for i in "${!name[@]}"
 		do
 			if [[ "$1" = "${name[i]}" ]]
 			then
-				echo "${ver[i]}"
-				unset "name[${i}]" "ver[${i}]"
-				shift && continue 2
+                          (( num_version++ ))
+                          last_index=$i
 			fi
 		done
-		echo "(not found)"
+
+                # If a package has no entry.
+                if [[ $num_version == "0" ]]; then
+                   echo "(not found)"
+                # If a package has one version, just return that version.
+                elif [[ $num_version == "1" ]]; then
+                   echo "${ver[last_index]}"
+                # If a package has multiple versions, more work needs to be done.
+                else
+                   # Get the current version of the package. 
+	           current_version=`rpm -q --qf '%{version}-%{release}\n' $1`
+
+                   # Is xCAT currently installed?
+                   is_xcat_installed=`rpm -qa | grep -i xcat`
+
+                   # If xCAT has not been installed yet.
+                   if [[ -z $is_xcat_installed ]]
+                   then 
+                      # Use "dnf install" to gather more data about the package.
+                      dnf -v install $1 --assumeno 2> /tmp/$1-err 1> /tmp/$1-1
+                      tmp_result=`grep $1 /tmp/$1-1 | grep -v Installing`
+
+                      # If the output does not have the word "Installing".
+                      if [[ -z $tmp_result ]]
+                      then
+                         # Parse the $1-err file.
+                         grep $1 /tmp/$1-err | head -1 | awk '{print $9}' > /tmp/$1-2
+                         # The string may have an epoch number at the front and arch at the end.
+                         # cut, sed and rev are used to get the version only.
+                         cat /tmp/$1-2 | cut -d ":" -f2 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
+                      else
+                       # If the output has the word "Installing". Remove the epoch number as needed.
+                         grep $1 /tmp/$1-1 | grep -v installed | awk '{print $3}' | cut -d ":" -f2
+                      fi
+
+                      # Remove temporary files.
+                      rm -f /tmp/$1-1 /tmp/$1-2 /tmp/$1-err
+                   # If xCAT has been installed.
+                   else
+                      # Use "dnf update" to gather more data about the package.
+                      dnf -v update $1 --assumeno 2> /tmp/$1-err 1> /tmp/$1-1
+                      grep " $1\." /tmp/$1-1 | grep "an upgrade" | grep -v None > /tmp/$1-2
+
+                      # If the output has the word "upgrade".
+                      if [[ -s /tmp/$1-2 ]]
+                      then
+                         awk '{print $4}' /tmp/$1-2 | cut -d ":" -f2
+                      else
+                         grep "Nothing to do" /tmp/$1-1 > /tmp/$1-3
+                         # If the output has the phrase "Nothing to do", then just return the 
+                         # current version.
+                         if [[ -s /tmp/$1-3 ]]
+                         then
+                            echo $current_version
+                         else
+                         # Else, parse the $1-err file.
+                            grep $1 /tmp/$1-err | head -1 | awk '{print $10}' > /tmp/$1-4
+                            cat /tmp/$1-4 | cut -d ":" -f2 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
+                         fi
+                      fi
+                      # Remove temporary files.
+                      rm -f /tmp/$1-1 /tmp/$1-2 /tmp/$1-3 /tmp/$1-4 /tmp/$1-err
+                   fi
+                fi
 		shift
 	done
 	return 0
@@ -634,28 +729,117 @@ function check_repo_version_dnf()
 function check_repo_version_yum()
 {
 	type yum >/dev/null 2>&1 || return 255
-	check_executes repoquery
-	exit_if_bad "$?" "Install the \`yum-utils' or \`dnf-utils' package and rerun."
 	local -a name=()
 	local -a ver=()
 	while read -r name ver
 	do
 		name+=("${name}")
 		ver+=("${ver}")
-	done < <(repoquery --qf '%{name} %{version}-%{release}' "$@" 2>/dev/null)
+	done < <(repoquery -q --qf '%{name} %{version}-%{release}' "$@" 2>/dev/null)
 	local -i i
+
+	# The above query returns an array of package names. Most "xcat-dep" packages
+	# have only one version. However, some do have multiple versions. Note that,
+	# given multiple versions for a package, the LATEST version MAY NOT be the right
+	# version for older operating systems. In addition, if there are 4 versions (or
+	# entires) in the array, the last entry may not be the latest version anyway
+	# due to alphanumeric sorting. Therefore, an additional yum command is needed to
+	# provide the correct version to be installed. 
+
+
+	# In the following while loop, num_version keeps track on the number of versions
+	# of each package as the package list is scanned.
+	local num_version=0
+
+	# The following while loop scans the array entries. last_index points to the last
+	# entry. 
+	local last_index=0
+
+	# Obtain the version of a package currently installed on the system.
+	local current_version=0
+
+	# Has xCAT already installed on the system?
+	local is_xcat_installed=0
+
+	local tmp_result=0
+
 	while [[ -n "$1" ]]
 	do
+                num_version=0
+
+                # Given a package name, locate the beginning entry of that package.
 		for i in "${!name[@]}"
 		do
 			if [[ "$1" = "${name[i]}" ]]
 			then
-				echo "${ver[i]}"
-				unset "name[${i}]" "ver[${i}]"
-				shift && continue 2
+                          (( num_version++ ))
+                          last_index=$i
 			fi
 		done
-		echo "(not found)"
+
+                # If a package has no entry.
+                if [[ $num_version == "0" ]]; then
+                   echo "(not found)"
+                # If a package has one version, just return that version.
+                elif [[ $num_version == "1" ]]; then
+                   echo "${ver[last_index]}"
+                # If a package has multiple versions, more work needs to be done.
+                else
+                   # Get the current version of the package. 
+	           current_version=`rpm -q --qf '%{version}-%{release}\n' $1`
+
+                   # Is xCAT currently installed?
+                   is_xcat_installed=`rpm -qa | grep -i xcat`
+
+                   # If xCAT has not been installed yet.
+                   if [[ -z $is_xcat_installed ]]
+                   then 
+                      # Use "yum install" to gather more data about the package.
+                      yum -v install $1 --assumeno 2> /tmp/$1-err 1> /tmp/$1-1
+                      tmp_result=`grep $1 /tmp/$1-1 | grep -v Installing`
+
+                      # If the output does not have the word "Installing".
+                      if [[ -z $tmp_result ]]
+                      then
+                         # Parse the $1-err file.
+                         grep $1 /tmp/$1-err | head -1 | awk '{print $9}' > /tmp/$1-2
+                         # The string may have an epoch number at the front and arch at the end.
+                         # cut, sed and rev are used to get the version only.
+                         cat /tmp/$1-2 | cut -d ":" -f2 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
+                      else
+                       # If the output has the word "Installing". Remove the epoch number as needed.
+                         grep $1 /tmp/$1-1 | grep -v installed | awk '{print $3}' | cut -d ":" -f2
+                      fi
+
+                      # Remove temporary files.
+                      rm -f /tmp/$1-1 /tmp/$1-2 /tmp/$1-err
+                   # If xCAT has been installed.
+                   else
+                      # Use "yum update" to gather more data about the package.
+                      yum -v update $1 --assumeno 2> /tmp/$1-err 1> /tmp/$1-1
+                      grep " $1\." /tmp/$1-1 | grep "an upgrade" | grep -v None > /tmp/$1-2
+
+                      # If the output has the word "upgrade".
+                      if [[ -s /tmp/$1-2 ]]
+                      then
+                         awk '{print $4}' /tmp/$1-2 | cut -d ":" -f2
+                      else
+                         grep "Nothing to do" /tmp/$1-1 > /tmp/$1-3
+                         # If the output has the phrase "Nothing to do", then just return the 
+                         # current version.
+                         if [[ -s /tmp/$1-3 ]]
+                         then
+                            echo $current_version
+                         else
+                         # Else, parse the $1-err file.
+                            grep $1 /tmp/$1-err | head -1 | awk '{print $10}' > /tmp/$1-4
+                            cat /tmp/$1-4 | cut -d ":" -f2 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
+                         fi
+                      fi
+                      # Remove temporary files.
+                      rm -f /tmp/$1-1 /tmp/$1-2 /tmp/$1-3 /tmp/$1-4 /tmp/$1-err
+                   fi
+                fi
 		shift
 	done
 	return 0
