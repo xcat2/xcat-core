@@ -688,7 +688,7 @@ function check_repo_version_dnf()
                          # cut, sed and rev are used to get the version only.
                          cat /tmp/$1-2 | cut -d ":" -f2 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
                       else
-                      # If the output has the word "Installing". Remove the epoch number as needed.
+                      # If the output has the word "Installing", remove the epoch number as needed.
                          grep $1 /tmp/$1-1 | grep -v installed | awk '{print $3}' | cut -d ":" -f2
                       fi
 
@@ -810,7 +810,7 @@ function check_repo_version_yum()
                          # cut, sed and rev are used to get the version only.
                          cat /tmp/$1-2 | cut -d ":" -f2 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
                       else
-                       # If the output has the word "Installing". Remove the epoch number as needed.
+                       # If the output has the word "Installing", remove the epoch number as needed.
                          grep $1 /tmp/$1-1 | grep -v installed | awk '{print $3}' | cut -d ":" -f2
                       fi
 
