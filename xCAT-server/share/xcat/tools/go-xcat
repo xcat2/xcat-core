@@ -738,7 +738,7 @@ function check_repo_version_yum()
 	do
 		name+=("${name}")
 		ver+=("${ver}")
-	done < <(repoquery -qf '%{name} %{version}-%{release}' "$@" 2>/dev/null)
+	done < <(repoquery -q --qf '%{name} %{version}-%{release}' "$@" 2>/dev/null)
 	local -i i
 
 	# The above query returns an array of package names and versions. Most "xcat-dep"
