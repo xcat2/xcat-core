@@ -139,6 +139,12 @@ fi
 " >> /xcatpost/mypostscript.post
 fi
 
+CLEANUPXCATPOST=`grep CLEANUPXCATPOST= /xcatpost/mypostscript |awk -F = '{print $2}' | tr -d \'\" | tr A-Z a-z`
+if [[ "$CLEANUPXCATPOST" =~ ^(1|yes|y)$ ]]; then
+  echo "cd /" >> /xcatpost/mypostscript.post
+  echo "rm -rf /xcatpost/*" >> /xcatpost/mypostscript.post
+fi
+
 
 chmod +x /xcatpost/mypostscript.post
 if [ -x /xcatpost/mypostscript.post ];then
