@@ -39,6 +39,7 @@ if($help){
     print $omshell "key "
       . $id . " \""
       . $passwd . "\"\n";
+    print $omshell "key-algorithm HMAC-SHA512\n";
     print $omshell "connect\n";
 
     if($hostname){
