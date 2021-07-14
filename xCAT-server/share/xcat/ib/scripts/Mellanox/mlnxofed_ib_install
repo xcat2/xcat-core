@@ -162,7 +162,7 @@ function hack_uname()
                             for d in \$(ls /lib/modules | sort -V) 
                             do 
                                 rpm -q kernel-\$d >/dev/null 2>&1
-                                if [ "\$?" == "0" ] ; then
+                                if [ "\$?" -eq "0" ] ; then
                                     echo \$d
                                     break 
                                 fi
