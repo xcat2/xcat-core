@@ -88,8 +88,8 @@ end
 start:rmdef_dynamic_group
 description:rmdef to remove dynamic node group
 label:mn_only,ci_test,db
-cmd:lsdef testnode1;if [ $? -eq 0 ]; then lsdef -l testnode1 -z >/tmp/testnode1.standa ; rmdef testnode1;fi
-cmd:lsdef testnode2;if [ $? -eq 0 ]; then lsdef -l testnode2 -z >/tmp/testnode2.standa ; rmdef testnode2;fi
+cmd:lsdef testnode1;if [ $? -eq 0 ]; then lsdef -l testnode1 -z >/tmp/testnode1.stanza ; rmdef testnode1;fi
+cmd:lsdef testnode2;if [ $? -eq 0 ]; then lsdef -l testnode2 -z >/tmp/testnode2.stanza ; rmdef testnode2;fi
 cmd:tabdump nodegroup
 cmd:tabdump nodelist
 cmd:mkdef -t node -o testnode1-testnode2 mgt=hmc cons=hmc groups=all,systemp
@@ -113,8 +113,8 @@ check:rc==0
 cmd:tabdump nodegroup
 cmd:lsdef -t group -o dyngrp
 check:output=~Could not find an object named 'dyngrp' of type 'group'.
-cmd:if [ -e /tmp/testnode1.standa ]; then cat /tmp/testnode1.standa | mkdef -z; rm -rf /tmp/testnode1.standa; fi
-cmd:if [ -e /tmp/testnode2.standa ]; then cat /tmp/testnode2.standa | mkdef -z; rm -rf /tmp/testnode2.standa; fi
+cmd:if [ -e /tmp/testnode1.stanza ]; then cat /tmp/testnode1.stanza | mkdef -z; rm -rf /tmp/testnode1.stanza; fi
+cmd:if [ -e /tmp/testnode2.stanza ]; then cat /tmp/testnode2.stanza | mkdef -z; rm -rf /tmp/testnode2.stanza; fi
 end
 
 #start:rmdef_f_all
