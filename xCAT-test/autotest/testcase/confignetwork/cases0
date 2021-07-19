@@ -800,9 +800,9 @@ cmd:cnip=__GETNODEATTR($$CN,ip)__;echo $cnip;var1=103;var2=`echo $cnip |sed -r '
 check:rc==0
 cmd:updatenode $$CN -P confignetwork -t 1800
 check:rc==0
-cmd:br0_netmask=`xdsh $$CN ifconfig br0 | grep netmask | awk '{print $5}'`;if [[ $br0_netmask = "255.255.255.0" ]]; then echo YES; else echo NO; fi
+cmd:xdsh $$CN ifconfig br0 | grep netmask | awk '{print $5}'
 check:rc==0
-check:output=~YES
+check:output=~255.255.255.0
 cmd:xdsh $$CN "ls /sys/class/net"
 check:output=~br0
 cmd:xdsh $$CN "cat /sys/class/net/bonding_masters"
