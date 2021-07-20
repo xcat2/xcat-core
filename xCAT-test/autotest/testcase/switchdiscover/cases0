@@ -15,7 +15,7 @@ check:output=~switch
 end
 start:switchdiscover_range_default_w
 label:others,discovery,Swtich
-cmd:lsdef -l switch -z >/tmp/switch.standa
+cmd:lsdef -l switch -z >/tmp/switch.stanza
 cmd:rmdef switch
 cmd:switchdiscover --range $$range -w
 check:rc==0
@@ -27,8 +27,8 @@ check:rc==0
 check:output=~switch
 cmd:rmdef switch
 check:rc==0
-cmd:cat /tmp/switch.standa |mkdef -z
-cmd:rm -rf /tmp/switch.standa
+cmd:cat /tmp/switch.stanza |mkdef -z
+cmd:rm -rf /tmp/switch.stanza
 check:rc==0
 end
 start:switchdiscover_range_s
