@@ -190,7 +190,7 @@ sub geninitrd {
         mkpath $tftppath;
     }
     if ($arch =~ /x86/) {
-        if ($osvers =~ /(^ol[0-9].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)/) {
+        if ($osvers =~ /(^ol[0-9].*)|(centos.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)/) {
             $kernelpath = "$tftppath/vmlinuz";
             copy("$pkgdir/images/pxeboot/vmlinuz", $kernelpath);
             $initrdpath = "$tftppath/initrd.img";
@@ -205,7 +205,7 @@ sub geninitrd {
             return;
         }
     } elsif ($arch =~ /ppc/) {
-        if ($osvers =~ /(^ol[0-9].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)|(pkvm.*)/) {
+        if ($osvers =~ /(^ol[0-9].*)|(centos.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)|(pkvm.*)/) {
             $kernelpath = "$tftppath/vmlinuz";
             copy("$pkgdir/ppc/ppc64/vmlinuz", $kernelpath);
             if (-r "$pkgdir/ppc/ppc64/ramdisk.image.gz") {
@@ -231,7 +231,7 @@ sub geninitrd {
     # call the insert_dd function in the anaconda or sles to hack the initrd that:
     # 1. Get the new kernel from update distro and copy it to /tftpboot
     # 2. Inject the drivers to initrd in /tftpboot base on the new kernel ver
-    if ($osvers =~ /(^ol[0-9].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)/) {
+    if ($osvers =~ /(^ol[0-9].*)|(centos.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)/) {
         require xCAT_plugin::anaconda;
         xCAT_plugin::anaconda->insert_dd($callback, $osvers, $arch, $initrdpath, $kernelpath, $driverupdatesrc, $netdrivers, $osdisupdir, $ignorekernelchk);
     } elsif ($osvers =~ /(sles.*)|(suse.*)/) {

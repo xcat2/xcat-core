@@ -217,6 +217,7 @@ sub create_new_lun {
     my %osmap = (
         'rh.*'     => 'linux',
         'centos.*' => 'linux',
+        'rocky.*' => 'linux',
         'sles.*'   => 'linux',
         'win2k8'   => 'windows_2008',
         'win2k3'   => 'windows',

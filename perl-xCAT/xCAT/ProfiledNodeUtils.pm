@@ -1466,8 +1466,8 @@ sub get_netboot_attr {
     my $os_arch          = $osdistro_tab_entry->{'arch'};
     $osdistro_tab->close;
 
-    # Treate os name rhel,centos,rhelhpc same as rhels
-    if ($os_name eq 'centos' || $os_name eq 'rhelhpc' || $os_name eq 'rhel')
+    # Treate os name rhel,centos,rhelhpc,rocky same as rhels
+    if ($os_name eq 'centos' || $os_name eq 'rhelhpc' || $os_name eq 'rhel' || $os_name eq 'rocky')
     {
         $os_name = 'rhels';
     }
