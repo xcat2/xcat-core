@@ -142,7 +142,8 @@ fi
 CLEANUPXCATPOST=`grep CLEANUPXCATPOST= /xcatpost/mypostscript |awk -F = '{print $2}' | tr -d \'\" | tr A-Z a-z`
 if [[ "$CLEANUPXCATPOST" =~ ^(1|yes|y)$ ]]; then
   echo "cd /" >> /xcatpost/mypostscript.post
-  echo "rm -rf /xcatpost/*" >> /xcatpost/mypostscript.post
+  echo "find /xcatpost/ -type f -not -name 'updateflag.awk' -delete" >> /xcatpost/mypostscript.post
+  echo "find /xcatpost/ -type d -empty -delete" >> /xcatpost/mypostscript.post
 fi
 
 
