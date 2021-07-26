@@ -41,10 +41,10 @@ sub handled_commands
 {
     return {
         copycd => "anaconda",
-        mknetboot => "nodetype:os=(^ol[0-9].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
-        mkinstall => "nodetype:os=(pkvm.*)|(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
-        mksysclone => "nodetype:os=(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
-        mkstatelite => "nodetype:os=(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
+        mknetboot => "nodetype:os=(^ol[0-9].*)|(centos.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)",
+        mkinstall => "nodetype:os=(pkvm.*)|(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rocky.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
+        mksysclone => "nodetype:os=(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rocky.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
+        mkstatelite => "nodetype:os=(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)",
 
     };
 }
@@ -145,7 +145,7 @@ sub process_request
 sub using_dracut
 {
     my $os = shift;
-    if ($os =~ /(rhels|rhel|centos)(\d+)/) {
+    if ($os =~ /(rhels|rhel|centos|rocky)(\d+)/) {
         if ($2 >= 6) {
             return 1;
         }
@@ -2013,6 +2013,7 @@ sub copycd
     }
     if ($distname
         and $distname !~ /^centos/
+        and $distname !~ /^rocky/
         and $distname !~ /^fedora/
         and $distname !~ /^SL/
         and $distname !~ /^ol/
@@ -2065,6 +2066,8 @@ sub copycd
         }
     } elsif ($desc and $desc =~ /CentOS Linux (.*)/) {
           $distname = "centos" . $1;
+    } elsif ($desc and $desc =~ /Rocky Linux (.*)/) {
+          $distname = "rocky" . $1;
     }
 
     unless ($dno) {
@@ -2138,6 +2141,9 @@ sub copycd
                 next if /^\s*$/;    #-- skip empty lines
                 if ($_ =~ /family\s*=\s*CentOS/i) {
                     $distname = "centos" . $desc;
+                    last;
+                } elsif ($_ =~ /family\s*=\s*Rocky/i) {
+                    $distname = "rocky" . $desc;
                     last;
                 }
             }
@@ -2389,6 +2395,10 @@ sub getplatform {
     elsif ($os =~ /centos.*/)
     {
         $platform = "centos";
+    }
+    elsif ($os =~ /rocky.*/)
+    {
+        $platform = "rocky";
     }
     elsif ($os =~ /fedora.*/)
     {
