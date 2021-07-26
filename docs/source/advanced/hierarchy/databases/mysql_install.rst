@@ -37,8 +37,8 @@ Red Hat Enterprise Linux
 
 * For RHEL 8, MariaDB is shipped. Using ``dnf``, ensure that the following packages are installed on the management node: ::
 
-       mariadb-server-5.*
-       mariadb-5.*
+       mariadb-server-10.*
+       mariadb-10.*
        perl-DBD-MySQL*
        mariadb-connector-odbc-*
 
