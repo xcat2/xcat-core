@@ -2140,7 +2140,7 @@ sub copycd
             # ex: "Rocky Linux 8"
             #
             my @rl_version = split / /, $desc;
-            $distname = "rocky" . $ol_version[-1];
+            $distname = "rocky" . $rl_version[-1];
         }
         elsif ($desc =~ /^[\d\.]+$/)
         {
