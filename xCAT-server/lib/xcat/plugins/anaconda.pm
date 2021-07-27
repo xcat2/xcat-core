@@ -2132,6 +2132,16 @@ sub copycd
             my @ol_version = split /[- ]/, $desc;
             $distname = "ol" . $ol_version[1];
         }
+        elsif ($desc =~ /Rocky Linux/)
+        {
+            #
+            # Attempt to auto-detect for Rocky Linux OS, the last element 
+            # (accessed with [-1] array index) has typically been the version
+            # ex: "Rocky Linux 8"
+            #
+            my @rl_version = split / /, $desc;
+            $distname = "rocky" . $ol_version[-1];
+        }
         elsif ($desc =~ /^[\d\.]+$/)
         {
             open($dinfo, $mntpath . "/.treeinfo");
