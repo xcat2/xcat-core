@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.49
+# Version 1.0.50
 #
 # Copyright (C) 2016 - 2021 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -38,6 +38,8 @@
 #     - Add support for Oracle Linux
 # 2021-07-08 Peter Wong <wpeter@us.ibm.com>
 #     - Provide correct versions of packages to be installed 
+# 2021-07-27 Mark Gurevich <gurevich@us.ibm.com>
+#     - Add support for Rocky Linux
 #
 
 
@@ -1589,6 +1591,7 @@ function add_xcat_dep_repo_yum_or_zypper()
 	case "${distro}" in
 	"centos"*)             distro="rh${distro#centos}" ;;
 	"ol"*)                 distro="rh${distro#ol}" ;;
+	"rocky"*)              distro="rh${distro#rocky}" ;;
 	"fedora10"|"fedora11") distro="fedora9" ;;
 	"fedora1"[678])        distro="rh6" ;;
 	"fedora19"|"fedora2"?) distro="rh7" ;;
@@ -2288,7 +2291,7 @@ Version:            ${GO_XCAT_LINUX_VERSION}
 EOF
 
 case "${GO_XCAT_LINUX_DISTRO}" in
-"centos"|"fedora"|"rhel"|"sles"|"ubuntu"|"ol")
+"centos"|"fedora"|"rhel"|"sles"|"ubuntu"|"ol"|"rocky")
 	;;
 *)
 	warn_if_bad 1 "${GO_XCAT_LINUX_DISTRO}: unsupported Linux distro"
