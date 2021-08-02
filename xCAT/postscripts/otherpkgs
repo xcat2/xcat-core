@@ -340,7 +340,8 @@ fi
         # (1)for rhels6, there is one repodata in the os base dir; so keep it here, and handle the other cases below
         # (2)for sles, we should specified the baseurl should be ./install/sles11/ppc64/1
         # (3)for SL5, we should append the /SL
-        # (4) for other os, we just keep it here.
+        # (4)for rhels8, centos8, ol8, and rocky8 we should append /BaseOS and /AppStream to base directory
+        # (5) for other os, we just keep it here.
         # For other pkg paths, we just keep it here.
         if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
             if ( pmatch "$OSVER" "sle*" ); then
@@ -351,9 +352,18 @@ fi
                 ospkgdir="$ospkgdir/SL"
             fi
         fi
-        array_set_element os_path $index $ospkgdir
+        if ( ! pmatch "$OSVER" "rhels8*" && 
+             ! pmatch "$OSVER" "centos8*" && 
+             ! pmatch "$OSVER" "rocky8*" &&
+             ! pmatch "$OSVER" "ol8*"); then
+        # For rhels8, centos8, ol8, and rocky8 do not put $ospkgdir by itself
+            array_set_element os_path $index $ospkgdir
+        fi
 
-        if ( pmatch "$OSVER" "rhel*" ); then
+        if ( pmatch "$OSVER" "rhel*" || 
+             pmatch "$OSVER" "centos*" || 
+             pmatch "$OSVER" "rocky*" ||
+             pmatch "$OSVER" "ol*"); then
             #default_pkgdir="$INSTALLDIR/$OSVER/$ARCH"
             if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
 
@@ -386,6 +396,17 @@ fi
                              array_set_element os_path $index $ospkgdir_ok
                          done
                      fi   # x86_64
+                elif ( pmatch "$OSVER" "rhels8*" || 
+                       pmatch "$OSVER" "centos8*" || 
+                       pmatch "$OSVER" "rocky8*" ||
+                       pmatch "$OSVER" "ol8*"); then
+                     # for rhels8, centos8 and rocky8 the repodata is in ./BaseOS, ./AppStream, not in ./
+                     for arg in "BaseOS" "AppStream"
+                     do
+                         ospkgdir_ok="$ospkgdir/$arg"
+                         array_set_element os_path $index $ospkgdir_ok
+                         index=$(expr $index + 1)
+                     done
                 fi # if...elif..fi
              fi  # eq default_pkgdir
           fi    # match rhel*
@@ -544,10 +565,10 @@ if ( ! ( pmatch "$OSVER" "sles10*" ) && [ $haszypper -eq 1 ] ); then
     result=`zypper --non-interactive --no-gpg-checks refresh 2>&1`
 
 elif ( ((pmatch "$OSVER" "rhel*") || (pmatch "$OSVER" "centos*") || (pmatch "$OSVER" "SL*")) && [ $hasyum -eq 1 ] ); then
-    #remove old repo
+    #remove old repo files
     mkdir -p /etc/yum.repos.d
-    if [ -r "/etc/yum.repos.d/local-repository.repo" ]; then
-        result=`rm /etc/yum.repos.d/local-repository.repo 2>&1`
+    if [ `ls -1 /etc/yum.repos.d/local-repository*.repo 2>/dev/null | wc -l` -gt 0 ]; then
+        result=`rm /etc/yum.repos.d/local-repository*.repo 2>&1`
     fi
     rm /etc/yum.repos.d/$OSVER-path*.repo >/dev/null 2>&1
     result=`rm /etc/yum.repos.d/xCAT-$OSVER-path*.repo 2>&1`
