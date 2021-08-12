@@ -261,6 +261,10 @@ site Attributes:
                      directory on the stateless and statelite nodes after the
                      postscripts are run. Default is no.
   
+   cleanupdiskfullxcatpost:  (yes/1 or no/0). Set to 'yes' or '1' to clean up the /xcatpost
+                     directory on the diskfull nodes after the
+                     postscripts are run with no errors. Default is no.
+  
    db2installloc:  The location which the service nodes should mount for
                    the db2 code to install. Format is hostname:/path.  If hostname is
                    omitted, it defaults to the management node. Default is /mntdb2.

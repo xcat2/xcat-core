@@ -13,4 +13,49 @@ cmd:cat /tmp/diff.list
 check:rc==0
 
 cmd:rm -fr /tmp/mn; rm -fr /tmp/cn; rm /tmp/mn.tar; rm /tmp/diff.list
+
+end
+
+start:cleanup_postscripts_diskfull
+os:Linux
+label:provision
+description: Verify postscripts cleaned up after diskfull installation
+cmd:chdef -t site clustersite cleanupdiskfullxcatpost="yes"
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute 1
+check:rc==0
+check:output=~Provision node\(s\)\: $$CN
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:rc==0
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+cmd:xdsh $$CN ls /xcatpost | wc -l
+check:rc==0
+check:output==1
+cmd:chdef -t site clustersite cleanupdiskfullxcatpost="no"
+end
+
+start:cleanup_postscripts_diskless
+os:Linux
+label:provision
+description: Verify postscripts cleaned up after diskless installation
+cmd:chdef -t site clustersite cleanupxcatpost="yes"
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute 1
+check:rc==0
+check:output=~Provision node\(s\)\: $$CN
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:rc==0
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+cmd:xdsh $$CN ls /xcatpost | wc -l
+check:rc==0
+check:output==0
+cmd:chdef -t site clustersite cleanupxcatpost="no"
 end

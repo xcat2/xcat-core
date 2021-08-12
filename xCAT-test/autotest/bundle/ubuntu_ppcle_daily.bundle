@@ -1,8 +1,10 @@
 reg_linux_diskless_installation_flat
+cleanup_postscripts_diskless
 reg_linux_diskless_installation_flat_squashfs
 reg_linux_diskfull_installation_flat
 makentp_extntpserver_value
 compare_postscripts
+cleanup_postscripts_diskfull
 assign_certain_command_permission
 bmcdiscover_help
 bmcdiscover_q

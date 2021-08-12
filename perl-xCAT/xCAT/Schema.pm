@@ -1156,6 +1156,9 @@ passed as argument rather than by table value',
 " cleanupxcatpost:  (yes/1 or no/0). Set to 'yes' or '1' to clean up the /xcatpost\n" .
 "                   directory on the stateless and statelite nodes after the\n" .
 "                   postscripts are run. Default is no.\n\n" .
+" cleanupdiskfullxcatpost:  (yes/1 or no/0). Set to 'yes' or '1' to clean up the /xcatpost\n" .
+"                   directory on the diskfull nodes after the\n" .
+"                   postscripts are run with no errors. Default is no.\n\n" .
 " db2installloc:  The location which the service nodes should mount for\n" .
 "                 the db2 code to install. Format is hostname:/path.  If hostname is\n" .
 "                 omitted, it defaults to the management node. Default is /mntdb2.\n\n" .

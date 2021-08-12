@@ -721,7 +721,7 @@ group Attributes:
 
 \ **os**\  (nodetype.os)
  
- The operating system deployed on this node.  Valid values: AIX, rhels\*,rhelc\*, rhas\*,centos\*,SL\*, fedora\*, sles\* (where \* is the version #). As a special case, if this is set to "boottarget", then it will use the initrd/kernel/parameters specified in the row in the boottarget table in which boottarget.bprofile equals nodetype.profile.
+ The operating system deployed on this node.  Valid values: AIX, rhels\*,rhelc\*, rhas\*,centos\*,rocky\*,SL\*, fedora\*, sles\* (where \* is the version #). As a special case, if this is set to "boottarget", then it will use the initrd/kernel/parameters specified in the row in the boottarget table in which boottarget.bprofile equals nodetype.profile.
  
 
 
