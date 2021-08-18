@@ -52,6 +52,7 @@ cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__
 check:rc==0
 cmd:lsdef $$CN | grep vmothersetting
 check:rc==0
+check:output=~invalid
 cmd:tabdump kvm_nodedata | egrep '/name|machine' | grep -v partition
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute 1
@@ -64,6 +65,7 @@ cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__
 check:rc==0
 cmd:lsdef $$CN | grep vmothersetting
 check:rc==0
+check:output=~machine:
 cmd:tabdump kvm_nodedata | egrep '/name|machine' | grep -v partition
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
