@@ -97,7 +97,7 @@ node Attributes:
  
  or
  
- The BMC password.
+ The BMC password. If not specified, the key=openbmc row in the passwd table is used as the default.
  
 
 
@@ -153,7 +153,7 @@ node Attributes:
  
  or
  
- The BMC userid.
+ The BMC userid. If not specified, the key=openbmc row in the passwd table is used as the default.
  
 
 
@@ -471,7 +471,7 @@ node Attributes:
 
 \ **kcmdline**\  (bootparams.kcmdline)
  
- Arguments to be passed to the kernel
+ (Deprecated, use addkcmdline instead) Arguments to be passed to the kernel.
  
 
 

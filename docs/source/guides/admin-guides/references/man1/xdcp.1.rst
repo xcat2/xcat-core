@@ -19,7 +19,7 @@ xdcp.1
 ****************
 
 
-\ **xdcp**\  \ *noderange*\   [[\ **-B**\  | \ **-**\ **-bypass**\ ] [\ **-f**\  \ *fanout*\ ] [\ **-L**\ ]  [\ **-l**\   \ *userID*\ ] [\ **-o**\  \ *node_options*\ ] [\ **-p**\ ] [\ **-P**\ ] [\ **-r**\  \ *node remote copy command] [\ \*\*-R\*\*\ ] [\ \*\*-t\*\*\  \ \*timeout\*\ ] [\ \*\*-T\*\*\ ] [\ \*\*-v\*\*\ ] [\ \*\*-q\*\*\ ] [\ \*\*-X\*\*\  \ \*env_list\*\ ] \ \*sourcefile.... targetpath\*\ *\ 
+\ **xdcp**\  \ *noderange*\   [[\ **-B**\  | \ **-**\ **-bypass**\ ] [\ **-f**\  \ *fanout*\ ] [\ **-L**\ ]  [\ **-l**\   \ *user_ID*\ ] [\ **-o**\  \ *node_options*\ ] [\ **-p**\ ] [\ **-P**\ ] [\ **-r**\  \ *node remote copy command*\ ] [\ **-R**\ ] [\ **-t**\  \ *timeout*\ ] [\ **-T**\ ] [\ **-v**\ ] [\ **-q**\ ] [\ **-X**\  \ *env_list*\ ] \ *sourcefile.... targetpath*\ 
 
 \ **xdcp**\  \ *noderange*\   [\ **-F**\  \ *rsynclist input file*\ ] [\ **-r**\  \ *node remote copy command*\ ]
 
@@ -46,7 +46,7 @@ If the Management Node is target node, it must be defined in the xCAT database w
 
 \ **REMOTE**\  \ **USER**\ :
 
-A user_ID can be specified for the remote copy command. Remote user
+A \ *user_ID*\  can be specified for the remote copy command. Remote user
 specification is identical for the \ **xdcp**\  and \ **xdsh**\  commands. 
 See the \ **xdsh**\  command for more information.
 
@@ -165,8 +165,8 @@ standard output or standard error is displayed.
 \ **-P | -**\ **-pull**\ 
  
  Pulls (copies) the files from the targets and places  them  in
- the  \ *targetpath*\   directory on the local host. The \ *targetpath*\ 
- must be a directory. Files pulled from  remote  machines  have
+ the \ *targetpath*\  directory on the local host. The \ *targetpath*\  must
+ be a directory. Files pulled from  remote  machines  have
  \ **._target**\   appended  to  the  file  name to distinguish between
  them. When the \ **-P**\  flag is used with the \ **-R**\  flag,  \ **._target**\   is
  appended to the directory. Only one file per invocation of the
@@ -201,7 +201,7 @@ standard output or standard error is displayed.
  
 
 
-\ **-R | -**\ **-recursive**\  \ *recursive*\ 
+\ **-R | -**\ **-recursive**\ 
  
  Recursively  copies files from a local directory to the remote
  targets, or when specified with the \ **-P**\  flag, recursively pulls

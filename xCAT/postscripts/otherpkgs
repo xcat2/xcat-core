@@ -867,9 +867,9 @@ EOF`
         fi
     elif [ $haszypper -eq 1 ]; then
         if [ $VERBOSE  ]; then
-          echo "$envlist zypper --non-interactive update --auto-agree-with-license"
+          echo "$envlist zypper --non-interactive update --auto-agree-with-licenses"
         fi
-	result=`eval $envlist zypper --non-interactive update --auto-agree-with-license 2>&1`
+	result=`eval $envlist zypper --non-interactive update --auto-agree-with-licenses 2>&1`
 
         R=$?
         if [ $R -ne 0 ]; then

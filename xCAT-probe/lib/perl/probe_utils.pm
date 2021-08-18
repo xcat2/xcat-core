@@ -282,15 +282,11 @@ sub is_firewall_open {
 
     my $output = `iptables -nvL -t filter 2>&1`;
 
-    `echo "$output" |grep "Chain INPUT (policy ACCEPT" > /dev/null  2>&1`;
-    $rst = 1 if ($?);
-
-    `echo "$output" |grep "Chain FORWARD (policy ACCEPT" > /dev/null  2>&1`;
-    $rst = 1 if ($?);
-
-    `echo "$output" |grep "Chain OUTPUT (policy ACCEPT" > /dev/null  2>&1`;
-    $rst = 1 if ($?);
-
+    if ($output =~ /DROP|RETURN/) {
+        # If output contains DROP or RETURN rules, assume firewall
+        # is blocking some traffic
+        $rst=1;
+    }
     return $rst;
 }
 

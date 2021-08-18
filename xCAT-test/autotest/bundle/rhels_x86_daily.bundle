@@ -2,6 +2,7 @@ SN_setup_case
 reg_linux_diskless_installation_hierarchy
 reg_linux_diskless_installation_hierarchy_squashfs
 reg_linux_diskfull_installation_hierarchy
+makentp_extntpserver_value
 compare_postscripts
 updatenode_P_script1
 updatenode_P_script1_script2
@@ -141,6 +142,7 @@ makehosts_null
 makeknownhosts_node_d
 makentp_h
 makentp_v
+makenetworks_d_V
 mkdef_null
 mkdef_regex_bmc
 mkdef_regex_ip

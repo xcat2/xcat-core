@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **copycds**\  [{\ **-n|-**\ **-name|-**\ **-osver**\ }=\ *distroname*\ ] [{\ **-a|-**\ **-arch**\ }=\ *architecture*\ ] [{\ **-p|-**\ **-path**\ }=\ *ospkgpath*\ ] [\ **-o | -**\ **-noosimage**\ ] [\ **-w | -**\ **-nonoverwrite**\ ] {\ *iso | device-path*\ } ...
+\ **copycds**\  [{\ **-n|-**\ **-name|-**\ **-osver**\ } \ *distroname*\ ] [{\ **-a|-**\ **-arch**\ } \ *architecture*\ ] [{\ **-p|-**\ **-path**\ } \ *ospkgpath*\ ] [\ **-o | -**\ **-noosimage**\ ] [\ **-w | -**\ **-nonoverwrite**\ ] {\ *iso | device-path*\ } ...
 
 \ **copycds**\  [\ **-i | -**\ **-inspection**\ ] {\ *iso | device-path*\ }
 
@@ -44,19 +44,19 @@ OPTIONS
 
 
 
-\ **-n|-**\ **-name|-**\ **-osver**\ =\ *distroname*\ 
+\ **-n|-**\ **-name|-**\ **-osver**\  \ *distroname*\ 
  
  The linux distro name and version that the ISO/DVD contains.  Examples:  rhels6.3, sles11.2, fedora9.  Note the 's' in rhels6.3 which denotes the Server version of RHEL, which is typically used.
  
 
 
-\ **-a|-**\ **-arch**\ =\ *architecture*\ 
+\ **-a|-**\ **-arch**\  \ *architecture*\ 
  
  The architecture of the linux distro on the ISO/DVD.  Examples: x86, x86_64, ppc64, s390x.
  
 
 
-\ **-p|-**\ **-path**\ =\ *ospkgpath*\ 
+\ **-p|-**\ **-path**\  \ *ospkgpath*\ 
  
  The destination directory to which the contents of ISO/DVD will be copied. When this option is not specified, the default destination directory will be formed from the \ **installdir**\  site table attribute and the distro name and architecture, for example: /install/rhel6.3/x86_64. This option is only supported for distributions of sles, redhat and windows.
  

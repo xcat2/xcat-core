@@ -22,4 +22,4 @@ perl-DBD-mysql
 mariadb-client
 #libmysqlclient18
 vim
-
+wget

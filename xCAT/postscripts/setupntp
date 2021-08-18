@@ -145,7 +145,7 @@ fi
 unset MASTER
 unset NTPSERVERS
 
-check_exec_or_exit cp cat logger
+check_exec_or_exit cp cat logger grep
 check_exec_or_exit systemctl timedatectl hwclock
 
 systemctl stop ntp.service 2>/dev/null
@@ -167,6 +167,16 @@ warn_if_bad "$?" "Failed to configure the system to maintain the RTC in universa
 
 # Synchronize and set the system clock once
 logger -t $log_label -p local4.info "Syncing the clock ..."
+
+if [ -f /etc/os-release ] && cat /etc/os-release |grep NAME|grep Ubuntu>/dev/null
+then
+       # Some versions of chronyd on Ubuntu distros have an issue
+       # with the valid option "pidfile /dev/null".
+       pidfile_option=""
+else
+       pidfile_option="pidfile /dev/null"
+fi
+
 chronyd -f /dev/null -q "$(
 	if [ "${#NTP_SERVERS[@]}" -gt "0" ]
 	then
@@ -174,7 +184,7 @@ chronyd -f /dev/null -q "$(
 	else
 		echo "pool pool.ntp.org iburst"
 	fi
-)" "pidfile /dev/null"
+)" "$pidfile_option"
 
 rm -f /etc/adjtime
 # Set the hardware clock from the system clock

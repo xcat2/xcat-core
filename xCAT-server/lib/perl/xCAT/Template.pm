@@ -299,7 +299,7 @@ sub subvars {
             my $writerepo;
             my $c = 0;
             foreach my $pkgdir (@pkgdirs) {
-                if ($platform =~ /^(rh|SL|centos|fedora)$/) {
+                if ($platform =~ /^(rh|SL|centos|ol|fedora)$/) {
                     if ($c == 0) {
                         # After some tests, if we put the repo in  pre scripts in the kickstart like for rhels6.x
                         # the rhels5.9 will not be installed successfully. So put in kickstart directly.
@@ -342,6 +342,9 @@ sub subvars {
                             $product_dir=$subdir;
                             if($subdir =~ /^Module-/){
                                 $product_name="sle-".lc($subdir);
+                            }elsif($subdir =~ /^Product-SUSE-Manager-Server|^Product-SLES_SAP|^Product-SLED/){
+                                # Skip product directories that are not "SLES", causes conflict on SLE15.2
+                                next;
                             }elsif($subdir =~ /^Product-/){
                                 $subdir=~s/Product-//;
                                 $product_name=$subdir;

@@ -4,7 +4,7 @@ B<xdcp> - Concurrently copies files to or from multiple nodes. In addition, prov
 
 =head1 B<SYNOPSIS>
 
-B<xdcp> I<noderange>  [[B<-B> | B<--bypass>] [B<-f> I<fanout>] [B<-L>]  [B<-l>  I<userID>] [B<-o> I<node_options>] [B<-p>] [B<-P>] [B<-r> I<node remote copy command] [B<-R>] [B<-t> I<timeout>] [B<-T>] [B<-v>] [B<-q>] [B<-X> I<env_list>] I<sourcefile.... targetpath>
+B<xdcp> I<noderange>  [[B<-B> | B<--bypass>] [B<-f> I<fanout>] [B<-L>]  [B<-l>  I<user_ID>] [B<-o> I<node_options>] [B<-p>] [B<-P>] [B<-r> I<node remote copy command>] [B<-R>] [B<-t> I<timeout>] [B<-T>] [B<-v>] [B<-q>] [B<-X> I<env_list>] I<sourcefile.... targetpath>
 
 B<xdcp> I<noderange>  [B<-F> I<rsynclist input file>] [B<-r> I<node remote copy command>]
 
@@ -28,7 +28,7 @@ If the Management Node is target node, it must be defined in the xCAT database w
 
 B<REMOTE> B<USER>:
 
-A user_ID can be specified for the remote copy command. Remote user
+A I<user_ID> can be specified for the remote copy command. Remote user
 specification is identical for the B<xdcp> and B<xdsh> commands. 
 See the B<xdsh> command for more information.
 
@@ -130,8 +130,8 @@ the configured remote copy command.
 =item B<-P>|B<--pull>
 
 Pulls (copies) the files from the targets and places  them  in
-the  I<targetpath>  directory on the local host. The I<targetpath>
-must be a directory. Files pulled from  remote  machines  have
+the I<targetpath> directory on the local host. The I<targetpath> must
+be a directory. Files pulled from  remote  machines  have
 B<._target>  appended  to  the  file  name to distinguish between
 them. When the B<-P> flag is used with the B<-R> flag,  B<._target>  is
 appended to the directory. Only one file per invocation of the
@@ -162,7 +162,7 @@ Note: The synclist processing for B<-r /usr/bin/scp> has some differences with B
 3) if the destination file specified in synclist file is an existing directory on target node, B<xdcp -r /usr/bin/scp> will fail with "scp: <destination file>: Is a directory"
 
 
-=item B<-R>|B<--recursive> I<recursive>
+=item B<-R>|B<--recursive>
 
 Recursively  copies files from a local directory to the remote
 targets, or when specified with the B<-P> flag, recursively pulls

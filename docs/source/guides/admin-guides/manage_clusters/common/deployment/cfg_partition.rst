@@ -33,7 +33,7 @@ The partition file must follow the partitioning syntax of the respective install
      * The file ``/root/anaconda-ks.cfg`` is a sample kickstart file created by RedHat installing during the installation process based on the options that you selected.
      * system-config-kickstart is a tool with graphical interface for creating kickstart files
 
-   * SLES: `Autoyast documentation  <https://doc.opensuse.org/projects/autoyast/configuration.html#CreateProfile.Partitioning>`_ 
+   * SLES: `Autoyast documentation  <https://doc.opensuse.org/projects/autoyast/#CreateProfile-Partitioning>`_ 
 
      * Use yast2 autoyast in GUI or CLI mode to customize the installation options and create autoyast file
      * Use yast2 clone_system to create autoyast configuration file ``/root/autoinst.xml`` to clone an existing system
@@ -384,7 +384,7 @@ Create a shell script that will be run on the node during the install process to
 
 The purpose of the partition script is to create the ``/tmp/partionfile`` that will be inserted into the kickstart/autoyast/preseed template, the script could include complex logic like select which disk to install and even configure RAID, etc
 
-**Note**: the partition script feature is not thoroughly tested on SLES, there might be problems, use this feature on SLES at your own risk.
+.. note:: the partition script feature is not thoroughly tested on SLES, there might be problems, use this feature on SLES at your own risk.
 
 .. END_Partition_Definition_Script_Create_partition_script_content
 
@@ -460,7 +460,7 @@ Run below commands to associate partition script with osimage: ::
 
 - The ``s:`` preceding the filename tells nodeset that this is a script.
 - For RedHat, when nodeset runs and generates the ``/install/autoinst`` file for a node, it will add the execution of the contents of this script to the %pre section of that file. The ``nodeset`` command will then replace the ``#XCAT_PARTITION_START#...#XCAT_PARTITION_END#`` directives from the osimage template file with ``%include /tmp/partitionfile`` to dynamically include the tmp definition file your script created.
-    - For Ubuntu, when nodeset runs and generates the ``/install/autoinst`` file for a node, it will replace the ``#XCA_PARTMAN_RECIPE_SCRIPT#`` directive and add the execution of the contents of this script to the ``/install/autoinst/<node>.pre``, the ``/install/autoinst/<node>.pre`` script will be run in the preseed/early_command.
+- For Ubuntu, when nodeset runs and generates the ``/install/autoinst`` file for a node, it will replace the ``#XCA_PARTMAN_RECIPE_SCRIPT#`` directive and add the execution of the contents of this script to the ``/install/autoinst/<node>.pre``, the ``/install/autoinst/<node>.pre`` script will be run in the preseed/early_command.
 
 .. END_Partition_Definition_Script_Associate_partition_script_with_osimage_common
 

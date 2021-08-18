@@ -1,8 +1,7 @@
 os: linux
-dist: xenial
-sudo: required
+dist: bionic
 before_install:
-- sudo apt-get install -y git fakeroot reprepro devscripts debhelper libcapture-tiny-perl libjson-perl libsoap-lite-perl libdbi-perl quilt openssh-server dpkg looptools genometools software-properties-common
+- sudo apt-get install -y git fakeroot reprepro devscripts debhelper libcapture-tiny-perl libjson-perl libsoap-lite-perl libdbi-perl libcgi-pm-perl quilt openssh-server dpkg looptools genometools software-properties-common
 - perl -v
 #- echo "yes" | sudo cpan -f -i Capture::Tiny
 

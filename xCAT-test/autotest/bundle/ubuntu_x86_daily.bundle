@@ -1,6 +1,7 @@
 reg_linux_diskless_installation_flat
 reg_linux_diskless_installation_flat_squashfs
 reg_linux_diskfull_installation_flat
+makentp_extntpserver_value
 compare_postscripts
 assign_certain_command_permission
 bmcdiscover_help
@@ -70,6 +71,7 @@ makehosts_help
 makehosts_n
 makehosts_n_noderange
 makeknownhosts_node_d
+makenetworks_d_V
 mkdef_null
 mkdef_regex_bmc
 mkdef_regex_ip

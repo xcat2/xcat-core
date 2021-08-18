@@ -33,7 +33,7 @@ DESCRIPTION
 
 \ **makedns**\  configures a DNS server on the system you run it on, which is typically the xCAT management node.
 
-The list of nodes to include comes from either the \ **noderange**\  provided on the command line or the entries in the local /etc/hosts files.
+The list of nodes to include comes from either the \ **noderange**\  provided on the command line or the entries in the local \ */etc/hosts*\  files.
 
 There are several bits of information that must be included in the xCAT database before running this command.
 
@@ -45,12 +45,11 @@ An xCAT \ **network**\  definition must be defined for each network used in the 
 
 A network \ **domain**\  and \ **nameservers**\  values must be provided either in the \ **network**\  definition corresponding to the node or in the \ **site**\  definition.
 
-Only entries in /etc/hosts or the hosts specified by \ **noderange**\  that have a corresponding xCAT network definition will be added to DNS.
+Only entries in \ */etc/hosts*\  or the hosts specified by \ **noderange**\  that have a corresponding xCAT network definition will be added to DNS.
 
-By default, \ **makedns**\  sets up the \ **named**\  service and updates the DNS records on the local system (management node). If the -e flag is specified, it will also update the DNS records on any external DNS server that is listed in the /etc/resolv.conf on the management node. (Assuming the external DNS server can recognize the xCAT key as authentication.)
+By default, \ **makedns**\  sets up the \ **named**\  service and updates the DNS records on the local system (management node). If the \ **-e**\  flag is specified, it will also update the DNS records on any external DNS server that is listed in the \ */etc/resolv.conf*\  on the management node. (Assuming the external DNS server can recognize the xCAT key as authentication.)
 
-For more information on Cluster Name Resolution:
-Cluster_Name_Resolution
+For more information on Cluster Name Resolution see https://xcat-docs.readthedocs.io/en/stable/advanced/domain_name_resolution/domain_name_resolution.html
 
 
 *******
@@ -79,13 +78,13 @@ OPTIONS
 
 \ **-e | -**\ **-external**\ 
  
- Update DNS records to the external DNS server listed in /etc/resolv.conf.
+ Update DNS records to the external DNS server listed in \ */etc/resolv.conf*\ .
  
- Enabling the site attribute \ *externaldns*\  means use 'external' DNS by default. If setting \ *externaldns*\  to 1, you need NOT use \ **-e**\  flag in every makedns call.
+ Enabling the site attribute \ *externaldns*\  means use 'external' DNS by default. If setting \ *externaldns*\  to 1, you need NOT use \ **-e**\  flag in every \ **makedns**\  call.
  
 
 
-\ **noderange**\ 
+\ *noderange*\ 
  
  A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
  
