@@ -1204,6 +1204,7 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=dnshandler site.value=ddns;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=vsftp site.value=n;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=cleanupxcatpost site.value=no;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=cleanupdiskfullxcatpost site.value=no;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=dhcplease site.value=43200;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=auditnosyslog site.value=0;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=xcatsslversion site.value=;";
