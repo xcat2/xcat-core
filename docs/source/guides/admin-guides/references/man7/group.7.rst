@@ -277,7 +277,19 @@ group Attributes:
 
 \ **dockerflag**\  (vm.othersettings)
  
- This allows specifying a semicolon delimited list of key->value pairs to include in a vmx file of VMware or KVM. For partitioning on normal power machines, this option is used to specify the hugepage and/or bsr information, the value is like:'hugepage:1,bsr=2'. For KVM cpu mode use either:'cpumode:host-passthrough' or 'cpumode:host-model'. This improves performance on x86 VMs significantly. For KVM cpu pinning, this option is used to specify the physical cpu set on the host, the value is like:"vcpupin:'0-15,^8'",Its syntax is a comma separated list and a special markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed, the '-' denotes the range and the '^' denotes exclusive. For KVM memory binding, the value is like:'membind:0', restrict a guest to allocate memory from the specified set of NUMA nodes. For PCI passthrough, the value is like:'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0', the value for PCI device format also can be like:'devpassthrough:0001:01:00.1', the PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively, the devices list are a list of PCI device names delimited with comma, the PCI device names can be obtained by running \ **virsh nodedev-list**\  on the host.
+ This is a semicolon-delimited list of key-value pairs to be included in a vmx file of VMware or KVM. DO NOT use 'chdef <node> -p|-m vmothersetting=...' to add options to it or delete options from it because chdef uses commas, not semicolons, to separate items.
+           Hugepage on POWER systems:
+              Specify the hugepage and/or bsr (Barrier Synchronization Register) values, e.g., 'hugepage:1,bsr=2'.
+           KVM CPU mode:
+              Specify how the host CPUs are utilized, e.g., 'cpumode:host-passthrough', 'cpumode:host-model'. With the passthrough mode, the performance of x86 VMs can be improved significantly.
+           KVM CPU pinning:
+              Specify which host CPUs are used, e.g., 'vcpupin:'0-15,^8', where '-' denotes the range and '^' denotes exclusion. This option allows a comma-delimited list.
+           KVM memory binding:
+              Specify which nodes that host memory are used, e.g., 'membind:0', where the memory in node0 of the hypervisor is used. /sys/devices/system/node has node0 and node8 on some POWER systems, node0 and node1 on some x86_64 systems. This option allows a guest VM to access specific memory regions.
+           PCI passthrough:
+              PCI devices can be assigned to a virtual machine for exclusive usage, e.g., 'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0'. A PCI device can also be expressed as 'devpassthrough:0001:01:00.1'. The devices are put in a comma-delimited list. The PCI device names can be obtained by running \ **virsh nodedev-list**\  on the host.
+           VM machine type:
+              Specify a machine type for VM creation on the host, e.g., 'machine:pc'. Typical machine types are pc, q35, and pseries.
  
 
 
@@ -1330,7 +1342,19 @@ group Attributes:
 
 \ **vmothersetting**\  (vm.othersettings)
  
- This allows specifying a semicolon delimited list of key->value pairs to include in a vmx file of VMware or KVM. For partitioning on normal power machines, this option is used to specify the hugepage and/or bsr information, the value is like:'hugepage:1,bsr=2'. For KVM cpu mode use either:'cpumode:host-passthrough' or 'cpumode:host-model'. This improves performance on x86 VMs significantly. For KVM cpu pinning, this option is used to specify the physical cpu set on the host, the value is like:"vcpupin:'0-15,^8'",Its syntax is a comma separated list and a special markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed, the '-' denotes the range and the '^' denotes exclusive. For KVM memory binding, the value is like:'membind:0', restrict a guest to allocate memory from the specified set of NUMA nodes. For PCI passthrough, the value is like:'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0', the value for PCI device format also can be like:'devpassthrough:0001:01:00.1', the PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively, the devices list are a list of PCI device names delimited with comma, the PCI device names can be obtained by running \ **virsh nodedev-list**\  on the host.
+ This is a semicolon-delimited list of key-value pairs to be included in a vmx file of VMware or KVM. DO NOT use 'chdef <node> -p|-m vmothersetting=...' to add options to it or delete options from it because chdef uses commas, not semicolons, to separate items.
+           Hugepage on POWER systems:
+              Specify the hugepage and/or bsr (Barrier Synchronization Register) values, e.g., 'hugepage:1,bsr=2'.
+           KVM CPU mode:
+              Specify how the host CPUs are utilized, e.g., 'cpumode:host-passthrough', 'cpumode:host-model'. With the passthrough mode, the performance of x86 VMs can be improved significantly.
+           KVM CPU pinning:
+              Specify which host CPUs are used, e.g., 'vcpupin:'0-15,^8', where '-' denotes the range and '^' denotes exclusion. This option allows a comma-delimited list.
+           KVM memory binding:
+              Specify which nodes that host memory are used, e.g., 'membind:0', where the memory in node0 of the hypervisor is used. /sys/devices/system/node has node0 and node8 on some POWER systems, node0 and node1 on some x86_64 systems. This option allows a guest VM to access specific memory regions.
+           PCI passthrough:
+              PCI devices can be assigned to a virtual machine for exclusive usage, e.g., 'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0'. A PCI device can also be expressed as 'devpassthrough:0001:01:00.1'. The devices are put in a comma-delimited list. The PCI device names can be obtained by running \ **virsh nodedev-list**\  on the host.
+           VM machine type:
+              Specify a machine type for VM creation on the host, e.g., 'machine:pc'. Typical machine types are pc, q35, and pseries.
  
 
 
