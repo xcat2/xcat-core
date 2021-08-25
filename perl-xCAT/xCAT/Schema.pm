@@ -228,7 +228,7 @@ qq{ link,ro - The file is readonly, and will be placed in tmpfs on the booted no
 'powerstate' => "This flag is used by xCAT to track the last known power state of the VM.",
 'othersettings' => "This is a semicolon-delimited list of key-value pairs to be included in a vmx file of VMware or KVM. DO NOT use 'chdef <node> -p|-m vmothersetting=...' to add options to it or delete options from it because chdef uses commas, not semicolons, to separate items.
           Hugepage on POWER systems:
-             Specify the hugepage and/or bsr (Barrier Synchronization Register) values, e.g., 'hugepage:1,bsr=2'.
+             Specify the hugepage and/or bsr (Barrier Synchronization Register) values, e.g., 'hugepage:1,bsr:2'.
           KVM CPU mode:
              Specify how the host CPUs are utilized, e.g., 'cpumode:host-passthrough', 'cpumode:host-model'. With the passthrough mode, the performance of x86 VMs can be improved significantly.
           KVM CPU pinning:
