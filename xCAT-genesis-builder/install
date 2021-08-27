@@ -4,11 +4,11 @@ dracut_install wget openssl tar mstflint ipmitool cpio gzip lsmod ethtool modpro
 dracut_install netstat # broadcom update requires
 dracut_install uniq # mellanox update requires
 dracut_install grep ip hostname /usr/bin/awk egrep grep dirname expr
-dracut_install mount.nfs sshd vi reboot lspci parted screen mkfs mkfs.ext4 mkfs.xfs xfs_db #mkfs.btrfs removed
+dracut_install mount.nfs sshd vi reboot lspci parted screen mkfs mkfs.ext4 mkfs.xfs xfs_db
 #dracut_install libvirtd /usr/share/libvirt/cpu_map.xml /usr/bin/qemu-img /usr/libexec/qemu-kvm
-dracut_install mkswap df brctl vconfig ifenslave ssh-keygen scp clear dhclient lldpad
+dracut_install mkswap df vconfig ifenslave ssh-keygen scp clear dhclient lldpad
 dracut_install /lib64/libnss_dns-2.12.so /lib64/libnss_dns.so.2
-dracut_install poweroff ntpq ntpd ntp-wait hwclock date /usr/share/terminfo/x/xterm /usr/share/terminfo/s/screen /etc/nsswitch.conf /etc/services
+dracut_install poweroff hwclock date /usr/share/terminfo/x/xterm /usr/share/terminfo/s/screen /etc/nsswitch.conf /etc/services
 dracut_install /sbin/rsyslogd /etc/protocols umount /bin/rpm /usr/lib/rpm/rpmrc
 dracut_install chmod /sbin/route /sbin/ifconfig /usr/bin/whoami /usr/bin/head /usr/bin/tail basename /etc/redhat-release ping tr lsusb /usr/share/hwdata/usb.ids #ibm fw wrapper requirements
 dracut_install efibootmgr lldptool dmidecode #uxspi prereqs, but will use dmidecode to improve decision on loading ipmi_si
@@ -605,7 +605,6 @@ dracut_install /lib64/rsyslog/lmtcpsrv.so
 dracut_install /lib64/rsyslog/lmnsd_ptcp.so
 dracut_install /lib64/rsyslog/imtcp.so
 dracut_install /lib64/rsyslog/lmnet.so
-dracut_install /lib64/rsyslog/lmstrmsrv.so
 dracut_install /lib64/rsyslog/imuxsock.so
 dracut_install /usr/lib64/libnfsidmap/nsswitch.so
 dracut_install killall logger nc nslookup bc chown chroot dd expr kill mkdosfs parted rsync shutdown sort ssh-keygen tr blockdev findfs insmod kexec lvm mdadm mke2fs pivot_root sshd swapon tune2fs mkreiserfs reiserfstune  pvcreate lvremove vgremove vgcreate  lvcreate  lvscan  lvchange vgchange pvdisplay lvdisplay vgdisplay blkid dmsetup sfdisk # for sysclone
