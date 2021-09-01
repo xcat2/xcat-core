@@ -762,7 +762,7 @@ sub mknetboot
         }
 
         # turn off the selinux
-        if ($osver =~ m/(fedora12|fedora13|rhels7|rhels8)/) {
+        if ($osver =~ m/(fedora12|fedora13|rhels7|rhels8|ol7|ol8|rocky8)/) {
             $kcmdline .= " selinux=0 ";
         }
 
