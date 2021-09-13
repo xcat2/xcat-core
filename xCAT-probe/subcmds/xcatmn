@@ -969,7 +969,7 @@ sub check_dns_service {
         $checkdns = `lsdef $nodename -i setupnameserver -c  2>&1| awk -F'=' '{print \$2}'`;
         chomp($checkdns);
     } else { # management node
-        my $dns_is_external = `lsdef -t site -i externaldns -c 2>&1 | awk -F'=' {print \$2}'`;
+        my $dns_is_external = `lsdef -t site -i externaldns -c 2>&1 | awk -F'=' '{print \$2}'`;
         chomp($dns_is_external);
         if ($dns_is_external eq "1") {
           $checkdns = 0;
