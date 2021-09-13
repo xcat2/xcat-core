@@ -25,7 +25,7 @@ fi
 
 
 cat >/tmp/baz.py <<EOF
-#!/usr/bin/python
+#!/usr/bin/python2
 import socket
 import sys
 
@@ -43,7 +43,7 @@ EOF
 
 
 cat >/tmp/foo.py <<EOF
-#!/usr/bin/python
+#!/usr/bin/python2
 
 import socket
 import os

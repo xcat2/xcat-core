@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 class SelfServerException(Exception) :
     def __init__(self, message, detail_msg= "", host_and_port="") :
