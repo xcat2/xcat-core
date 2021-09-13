@@ -41,10 +41,10 @@ sub handled_commands
 {
     return {
         copycd => "anaconda",
-        mknetboot => "nodetype:os=(^ol[0-9].*)|(centos.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)",
-        mkinstall => "nodetype:os=(pkvm.*)|(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rocky.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
-        mksysclone => "nodetype:os=(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rocky.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
-        mkstatelite => "nodetype:os=(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)",
+        mknetboot => "nodetype:os=(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)",
+        mkinstall => "nodetype:os=(pkvm.*)|(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
+        mksysclone => "nodetype:os=(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
+        mkstatelite => "nodetype:os=(esx[34].*)|(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)",
 
     };
 }
@@ -145,7 +145,7 @@ sub process_request
 sub using_dracut
 {
     my $os = shift;
-    if ($os =~ /(rhels|rhel|centos|rocky)(\d+)/) {
+    if ($os =~ /(rhels|rhel|centos|alma|rocky)(\d+)/) {
         if ($2 >= 6) {
             return 1;
         }
@@ -762,7 +762,7 @@ sub mknetboot
         }
 
         # turn off the selinux
-        if ($osver =~ m/(fedora12|fedora13|rhels7|rhels8|ol7|ol8|rocky8)/) {
+        if ($osver =~ m/(fedora12|fedora13|rhels7|rhels8|ol7|ol8|alma8|rocky8)/) {
             $kcmdline .= " selinux=0 ";
         }
 
@@ -2013,6 +2013,7 @@ sub copycd
     }
     if ($distname
         and $distname !~ /^centos/
+        and $distname !~ /^alma/
         and $distname !~ /^rocky/
         and $distname !~ /^fedora/
         and $distname !~ /^SL/
@@ -2068,6 +2069,8 @@ sub copycd
           $distname = "centos" . $1;
     } elsif ($desc and $desc =~ /Rocky Linux (.*)/) {
           $distname = "rocky" . $1;
+    } elsif ($desc and $desc =~ /Alma Linux (.*)/) {
+          $distname = "alma" . $1;
     }
 
     unless ($dno) {
@@ -2145,7 +2148,11 @@ sub copycd
                 } elsif ($_ =~ /family\s*=\s*Rocky/i) {
                     $distname = "rocky" . $desc;
                     last;
+                } elsif ($_ =~ /family\s*=\s*Alma/i) {
+                    $distname = "alma" . $desc;
+                    last;
                 }
+		
             }
             close($dinfo);
         }
@@ -2395,6 +2402,10 @@ sub getplatform {
     elsif ($os =~ /centos.*/)
     {
         $platform = "centos";
+    }
+    elsif ($os =~ /alma.*/)
+    {
+        $platform = "alma";
     }
     elsif ($os =~ /rocky.*/)
     {

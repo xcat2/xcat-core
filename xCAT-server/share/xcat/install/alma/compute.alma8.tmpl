@@ -1,0 +1,59 @@
+#version=ALMA8
+# Use text install
+text
+# Use network installation
+%include /tmp/repos
+# Keyboard layouts
+keyboard --vckeymap=gb --xlayouts='gb'
+# System language
+lang en_GB.UTF-8
+
+# Network information
+#KICKSTARTNET#
+# Root password
+rootpw --iscrypted #CRYPT:passwd:key=system,username=root:password#
+# Not run the Setup Agent on first boot
+firstboot --disable
+# Do not configure the X Window System
+skipx
+# System services
+#services --enabled="chronyd"
+# System timezone
+timezone #TABLE:site:key=timezone:value# --isUtc
+# Partition clearing information
+zerombr
+clearpart --all --initlabel
+#XCAT_PARTITION_START#
+%include /tmp/partitionfile
+#XCAT_PARTITION_END#
+
+# Do not configure any iptables rules
+firewall --disable
+selinux --disable
+reboot
+
+%packages
+#INCLUDE_DEFAULT_PKGLIST#
+
+%end
+
+%anaconda
+pwpolicy root --minlen=6 --minquality=1 --notstrict --nochanges --emptyok
+pwpolicy user --minlen=6 --minquality=1 --notstrict --nochanges --emptyok
+pwpolicy luks --minlen=6 --minquality=1 --notstrict --nochanges --emptyok
+%end
+%pre
+{
+echo "Running Kickstart Pre-installation script..."
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.rhels8#
+} &>>/tmp/pre-install.log
+%end
+%post --interpreter=/bin/bash
+mkdir -p /var/log/xcat/
+cat /tmp/pre-install.log >>/var/log/xcat/xcat.log
+{
+echo "Running Kickstart Post-installation script..."
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.xcat.ng#
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.rhels8#
+} &>>/var/log/xcat/xcat.log
+%end
