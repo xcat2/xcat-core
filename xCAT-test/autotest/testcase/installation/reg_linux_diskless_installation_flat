@@ -46,39 +46,35 @@ cmd:rm -rf /tmp/mountoutput
 cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 
-cmd:str1=`lsdef $$CN | grep vmothersetting | cut -d '=' -f 2`;str2=";"; str3="machine:invalid"; if [ -z $str1 ]; then str4=$str3; else str4=$str1$str2$str3;fi; chdef $$CN vmothersetting=$str4
+cmd:if [ "__GETNODEATTR($$CN,mgt)__" == "kvm" ]; then str1=`lsdef $$CN | grep vmothersetting | cut -d '=' -f 2`;str2=";"; str3="machine:invalid"; if [ -z $str1 ]; then str4=$str3; else str4=$str1$str2$str3;fi; chdef $$CN vmothersetting=$str4; fi
 check:rc==0
-cmd:lsdef $$CN | grep vmothersetting
+cmd:if [ "__GETNODEATTR($$CN,mgt)__" == "kvm" ]; then str=`lsdef $$CN | grep vmothersetting`; if [[ $str =~ "invalid" ]]; then exit 0; else exit 1; fi; fi
 check:rc==0
-check:output=~invalid
 cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" -a "__GETNODEATTR($$CN,mgt)__" != "openbmc" ];then echo "CN node $$CN is a VM, mgt is __GETNODEATTR($$CN,mgt)__, starting to recreate the vm"; echo "rpower $$CN off"; rpower $$CN off; sleep 3; echo "rpower $$CN stat"; rpower $$CN stat; var=`expr substr "__GETNODEATTR($$CN,vmstorage)__" 1 3`; echo "The disk type of $$CN is $var"; if [ "$var" = "phy" ]; then echo "mkvm $$CN"; mkvm $$CN; echo "rmvm $$CN -f -p"; rmvm $$CN -f -p; echo "mkvm $$CN"; mkvm $$CN; exit $?; elif [ "$var" = "dir" ]; then echo "mkvm $$CN -s 30G -f"; mkvm $$CN -s 30G -f; echo "rmvm $$CN -f -p"; rmvm $$CN -f -p; echo "mkvm $$CN -s 30G -f"; mkvm $$CN -s 30G -f; exit $?; elif ["$var" = "nfs" -o "$var" = "lvm" ];then echo  "Need to fix disk type $var"; exit 2; else echo "Unsupported disk type $var"; exit 3;fi;else echo "CN node $$CN is not a VM; do not need to recreate it";fi
 check:rc==0
-cmd:tabdump kvm_nodedata | egrep '/name|machine' | grep -v partition
+cmd:if [ "__GETNODEATTR($$CN,mgt)__" == "kvm" ]; then str=`tabdump kvm_nodedata | egrep '/name|machine' | grep -v partition`; echo $str; fi
 check:rc==0
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute 1
-check:rc!=0
-check:output=~Failed to run \'rpower\'
+cmd:if [ "__GETNODEATTR($$CN,mgt)__" == "kvm" ]; then str=`/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute 1`; if [[ $str =~ "failed" ]]; then exit 0; else exit 1; fi; fi
+check:rc==0
 
-cmd:str1=`lsdef $$CN | grep vmothersetting | cut -d '=' -f 2`;str2="machine:invalid"; if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then str3="machine:pseries"; elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]]; then str3="machine:pc";fi; if [ $str1 == $str2 ]; then str5=$str3; else str4=`echo $str1 | sed -e "s/$str2//"`;str5=$str4$str3;fi; chdef $$CN vmothersetting=$str5
+cmd:if [ "__GETNODEATTR($$CN,mgt)__" == "kvm" ]; then str1=`lsdef $$CN | grep vmothersetting | cut -d '=' -f 2`;str2="machine:invalid"; if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then str3="machine:pseries"; elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]]; then str3="machine:pc";fi; if [ $str1 == $str2 ]; then str5=$str3; else str4=`echo $str1 | sed -e "s/$str2//"`;str5=$str4$str3;fi; chdef $$CN vmothersetting=$str5; fi
 check:rc==0
-cmd:lsdef $$CN | grep vmothersetting
+cmd:if [ "__GETNODEATTR($$CN,mgt)__" == "kvm" ]; then str=`lsdef $$CN | grep vmothersetting`; if [[ $str =~ "machine" ]]; then exit 0; else exit 1; fi; fi
 check:rc==0
-check:output=~machine:
 cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" -a "__GETNODEATTR($$CN,mgt)__" != "openbmc" ];then echo "CN node $$CN is a VM, mgt is __GETNODEATTR($$CN,mgt)__, starting to recreate the vm"; echo "rpower $$CN off"; rpower $$CN off; sleep 3; echo "rpower $$CN stat"; rpower $$CN stat; var=`expr substr "__GETNODEATTR($$CN,vmstorage)__" 1 3`; echo "The disk type of $$CN is $var"; if [ "$var" = "phy" ]; then echo "mkvm $$CN"; mkvm $$CN; echo "rmvm $$CN -f -p"; rmvm $$CN -f -p; echo "mkvm $$CN"; mkvm $$CN; exit $?; elif [ "$var" = "dir" ]; then echo "mkvm $$CN -s 30G -f"; mkvm $$CN -s 30G -f; echo "rmvm $$CN -f -p"; rmvm $$CN -f -p; echo "mkvm $$CN -s 30G -f"; mkvm $$CN -s 30G -f; exit $?; elif ["$var" = "nfs" -o "$var" = "lvm" ];then echo  "Need to fix disk type $var"; exit 2; else echo "Unsupported disk type $var"; exit 3;fi;else echo "CN node $$CN is not a VM; do not need to recreate it";fi
 check:rc==0
-cmd:tabdump kvm_nodedata | egrep '/name|machine' | grep -v partition
+cmd:if [ "__GETNODEATTR($$CN,mgt)__" == "kvm" ]; then str=`tabdump kvm_nodedata | egrep '/name|machine' | grep -v partition`; echo $str; fi
 check:rc==0
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+cmd:if [ "__GETNODEATTR($$CN,mgt)__" == "kvm" ]; then str=`/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute`; echo $str; if [[ $str =~ "The provision succeeded" ]]; then exit 0; else exit 1; fi; fi
 check:rc==0
-check:output=~Provision node\(s\)\: $$CN
 
-cmd:str1=`lsdef $$CN | grep vmothersetting | cut -d '=' -f 2`;str2=";"; if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then str3="machine:pseries"; elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]]; then str3="machine:pc";fi; if [ $str1 == $str3 ]; then chdef $$CN vmothersetting=; else str4=`echo $str1 | sed -e "s/$str2$str3//"`; chdef $$CN vmothersetting=$str4;fi
+cmd:if [ "__GETNODEATTR($$CN,mgt)__" == "kvm" ]; then str1=`lsdef $$CN | grep vmothersetting | cut -d '=' -f 2`;str2=";"; if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then str3="machine:pseries"; elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]]; then str3="machine:pc";fi; if [ $str1 == $str3 ]; then chdef $$CN vmothersetting=; else str4=`echo $str1 | sed -e "s/$str2$str3//"`; chdef $$CN vmothersetting=$str4;fi; fi
 check:rc==0
 cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" -a "__GETNODEATTR($$CN,mgt)__" != "openbmc" ];then echo "CN node $$CN is a VM, mgt is __GETNODEATTR($$CN,mgt)__, starting to recreate the vm"; echo "rpower $$CN off"; rpower $$CN off; sleep 3; echo "rpower $$CN stat"; rpower $$CN stat; var=`expr substr "__GETNODEATTR($$CN,vmstorage)__" 1 3`; echo "The disk type of $$CN is $var"; if [ "$var" = "phy" ]; then echo "mkvm $$CN"; mkvm $$CN; echo "rmvm $$CN -f -p"; rmvm $$CN -f -p; echo "mkvm $$CN"; mkvm $$CN; exit $?; elif [ "$var" = "dir" ]; then echo "mkvm $$CN -s 30G -f"; mkvm $$CN -s 30G -f; echo "rmvm $$CN -f -p"; rmvm $$CN -f -p; echo "mkvm $$CN -s 30G -f"; mkvm $$CN -s 30G -f; exit $?; elif ["$var" = "nfs" -o "$var" = "lvm" ];then echo  "Need to fix disk type $var"; exit 2; else echo "Unsupported disk type $var"; exit 3;fi;else echo "CN node $$CN is not a VM; do not need to recreate it";fi
 check:rc==0
-cmd:tabdump kvm_nodedata | egrep '/name|machine' | grep -v partition
+cmd:if [ "__GETNODEATTR($$CN,mgt)__" == "kvm" ]; then str=`tabdump kvm_nodedata | egrep '/name|machine' | grep -v partition`; echo $str; fi
 check:rc==0
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
