@@ -2066,6 +2066,8 @@ sub copycd
         }
     } elsif ($desc and $desc =~ /CentOS Linux (.*)/) {
           $distname = "centos" . $1;
+    } elsif ($desc and $desc =~ /CentOS Stream (.*)/) {
+          $distname = "centos-stream" . $1;
     } elsif ($desc and $desc =~ /Rocky Linux (.*)/) {
           $distname = "rocky" . $1;
     }
