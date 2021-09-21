@@ -9,8 +9,7 @@ reqtime=0
 maxresptime=180
 
 minixcatd.awk &
-PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout 2> /dev/null|grep -v "PUBLIC KEY"`
-PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
+PUBKEY="$(openssl rsa -in /etc/xcat/privkey.pem -pubout 2> /dev/null|awk '!/ PUBLIC KEY/{printf $0}')"
 export PUBKEY
 
 logger -s -t $log_label -p local4.info "Beginning node discovery process..."
@@ -98,8 +97,8 @@ if [ -r /sys/devices/virtual/dmi/id/product_name ]; then  #x86
 			fi
 			if [ -z "$MTM" -o "$MTM" == ":" ]; then
 				logger -s -t $log_label -p local4.warning "Couldn't find MTM information in FRU, falling back to DMI (MTMS-based discovery may fail)"
-				m=`cat /sys/devices/virtual/dmi/id/sys_vendor`
-				n=`cat /sys/devices/virtual/dmi/id/product_name`
+				read -r m </sys/devices/virtual/dmi/id/sys_vendor
+				read -r n </sys/devices/virtual/dmi/id/product_name
 				MTM="$m:$n"
 			fi
 		fi
@@ -128,7 +127,7 @@ elif [ -r /proc/device-tree/model ]; then #POWER
 fi
 
 # The MEMORY will look like this: 32868920
-MEMORY=`cat /proc/meminfo |grep MemTotal|awk '{printf "%.0fMB\n", $2/1024}'`
+MEMORY="$(awk '/MemTotal/{printf "%.0fMB\n", $2/1024}' /proc/meminfo)"
 
 # The DISKSIZE will look like this: sda:960GB,sdb:960GB,sdc:480GB,sdd:480GB (sorted by major,minor)
 DISKSIZE="$(grep -v name /proc/partitions |sort -g -k 1,2 |awk 'BEGIN{sep=""} /[^0-9]$/{printf("%s%s:%.0fGB", sep, $4, $3/1024^2) ; sep=","}')"
@@ -191,7 +190,7 @@ if [ -f "/usr/sbin/dmidecode" ]; then
 	if [ ${onboard#*.} = 0 ]; then
 		truncslot=${onboard%.*}
 		for obslot in `grep $truncslot /sys/class/net/*/device/uevent|sed -e s/.*=//`; do
-			if ! dmidecode -t 41|grep $obslot > /dev/null; then
+			if ! dmidecode -t 41|grep -q $obslot; then
 				obdevs=("${obdevs[@]}" $obslot)
 			fi
 		done
@@ -271,7 +270,7 @@ for dev in `ip link|grep -B1 ether|grep UP|awk '{print $2}'|sed -e s/://|grep -v
         echo "</nic>" >> /tmp/discopacket
 done
 if [ "$UUID" == "unknown" ]; then
-    UUID=`echo $MTM-$SERIAL-$MAC_OF_FIRST_UP_NIC | tr /A-Z/ /a-z/`
+    UUID="${MTM,,}-${SERIAL,,}-${MAC_OF_FIRST_UP_NIC,,}"
     echo "<uuid>$UUID</uuid>" >> /tmp/discopacket
 fi
 echo "<xcatpubkey>$PUBKEY</xcatpubkey>" >> /tmp/discopacket #this is not secure to use by itself, switch sourced pubkey for security
