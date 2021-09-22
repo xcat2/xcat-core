@@ -12,9 +12,16 @@ DIR=`dirname $0`
 #DIR=`realpath $DIR`
 DIR=`readlink -f $DIR`
 BUILDARCH=`uname -m`
+REQUIRED_PACKAGES="rpmdevtools rpm-build screen lldpad mstflint epel-release ipmitool pciutils mdadm dosfstools usbutils bind-utils psmisc nmap-ncat"
 
 # Install required packages
-yum -y install rpmdevtools rpm-build screen lldpad mstflint
+for required_package in $REQUIRED_PACKAGES; do
+    yum -y install $required_package
+    if [ $? -ne 0 ]; then
+        echo "ERROR: Can not install required packages $required_package, make sure EPEL repository is configured"
+        exit 1
+    fi
+done
 
 rpmdev-setuptree
 
@@ -44,9 +51,7 @@ fi
 # get all modules in the kernel
 cd $DIR
 KERVER=`uname -r`
-if [ ! -e "./default_module_list" ]; then
-    mv ./installkernel ./default_module_list
-fi
+
 echo "#!/bin/bash" > ./installkernel
 for line in `cat /lib/modules/$KERVER/modules.dep | awk -F: '{print \$1}'`; do
     basename $line >> ./installkernel;
@@ -149,7 +154,7 @@ libnss_pkgname=`find /usr/lib64/ -name libnss_dns-2*.so | xargs basename`
 sed -i "s/\/lib64\/libnss_dns-2.12.so/\/usr\/lib64\/$libnss_pkgname/g" $DRACUTMODDIR/install
 sed -i 's/\/lib64\/libnss_dns.so.2/\/usr\/lib64\/libnss_dns.so.2/' $DRACUTMODDIR/install
 
-# Based on cmdlist_check, makesure the commands are included in $DRACUTMODDIR/install
+# Based on cmdlist_check, make sure the commands are included in $DRACUTMODDIR/install
 if [ -e "${DRACUTMODDIR}/cmdlist_check" ]; then
     miss_cmd=0
     for cmd in `cat ${DRACUTMODDIR}/cmdlist_check`; do
@@ -202,6 +207,8 @@ for d in `echo $PERL_LIB_DIR`; do
     fi
 done
 
+# create directory for ssh-keygen
+mkdir -p /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/fs/etc/ssh
 
 # create the predictable naming for nics
 LIB_UDEV_RULES="/lib/udev/rules.d/"

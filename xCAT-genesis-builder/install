@@ -581,6 +581,13 @@ inst "$moddir/xcatroot" "/sbin/xcatroot"
 inst "$moddir/dhclient.conf" "/etc/dhclient.conf"
 inst "$moddir/dhclient-script" "/sbin/dhclient-script"
 inst "$moddir/rsyslog.conf" "/etc/rsyslog.conf"
+dracut_install rngd
+dracut_install chronyc chronyd rpcbind systemd-tmpfiles
+dracut_install /etc/ssh
+dracut_install /etc/chrony.conf
+dracut_install /etc/chrony.keys
+dracut_install /run/rpcbind
+dracut_install /etc/systemd/system.conf
 dracut_install /sbin/rpc.statd /usr/sbin/sm-notify /etc/netconfig rpcbind /etc/host.conf /usr/sbin/rpc.idmapd
 dracut_install ps free find #debug
 inst_dir /var/lib/nfs

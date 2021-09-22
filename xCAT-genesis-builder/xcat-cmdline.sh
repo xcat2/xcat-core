@@ -50,6 +50,13 @@ sleep 20
 ARCH="$(uname -m)"
 
 if [[ ${ARCH} =~ ppc64 ]]; then
+    # load all network driver modules listed in /lib/modules/<kernel>/modules.dep file
+    KERVER=`uname -r`
+    for line in `cat /lib/modules/$KERVER/modules.dep | awk -F: '{print \$1}' | sed -e "s/\(.*\)\.ko.*/\1/"`; do
+        if [[ $line =~ "kernel/drivers/net" ]]; then
+            modprobe `basename $line`
+        fi
+    done
     waittime=2
     ALL_NICS=$(ip link show | grep -v "^ " | awk '{print $2}' | sed -e 's/:$//' | grep -v lo)
     for tmp in $ALL_NICS; do
