@@ -10,13 +10,13 @@ To support the Power9 hardware, changes are made to the kernel in the Red Hat En
 Work-around
 -----------
 
-.. note:: The genesis-base must be compiled on the Power9 hardware, running RHEL7.  If the management node is not Power9 hardware, manually provision a RHEL7 compute node, build the genesis-base RPM, then install it on the management node.
+.. note:: The genesis-base must be compiled on the Power9 hardware, running RHEL8.  If the management node is not Power9 hardware, manually provision a RHEL8 compute node, build the genesis-base RPM, then install it on the management node.
 
-xCAT cannot ship a kernel based on RHEL distribution, so the customer needs to build a version of the ``xCAT-genesis-base`` on-site using a server running Red Hat Enterprise Linux 7. Building ``xCAT-genesis-base`` on a server running Red Hat Enterprise Linux 8 is currently not supported.
+xCAT cannot ship a kernel based on RHEL distribution, so the customer needs to build a version of the ``xCAT-genesis-base`` on-site using a server running Red Hat Enterprise Linux 8. Building ``xCAT-genesis-base`` on a server running Red Hat Enterprise Linux 7 is no longer supported.
 
 1. Download the latest timestamp version of the ``xCAT-genesis-builder`` RPM provided here: http://xcat.org/files/xcat/xcat-dep/2.x_Linux/beta/
 
-2. Install the ``xCAT-genesis-builder`` RPM on a node that is installed with the RHEL version 7. 
+2. Install the ``xCAT-genesis-builder`` RPM on a node that is installed with the RHEL version 8. 
 
 3. Build the ``xCAT-genesis-base`` RPM: ::
 
