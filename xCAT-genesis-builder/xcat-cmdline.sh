@@ -15,6 +15,7 @@ sshd:x:30:30:SSH User:/var/empty/sshd:/sbin/nologin
 rpc:x:32:32:Rpcbind Daemon:/var/cache/rpcbind:/sbin/nologin
 rpcuser:x:29:29:RPC Service User:/var/lib/nfs:/sbin/nologin
 qemu:x:107:107:qemu user:/:/sbin/nologin
+chrony:x:995:991::/var/lib/chrony:/sbin/nologin
 __ENDL
 # Fedora 20 ppc64 uses /lib/dracut/hooks/initqueue/finished
 # CentOS 7 probably uses /lib/dracut/hooks/initqueue/finished also
@@ -50,6 +51,13 @@ sleep 20
 ARCH="$(uname -m)"
 
 if [[ ${ARCH} =~ ppc64 ]]; then
+    # load all network driver modules listed in /lib/modules/<kernel>/modules.dep file
+    KERVER=`uname -r`
+    for line in `cat /lib/modules/$KERVER/modules.dep | awk -F: '{print \$1}' | sed -e "s/\(.*\)\.ko.*/\1/"`; do
+        if [[ $line =~ "kernel/drivers/net" ]]; then
+            modprobe `basename $line`
+        fi
+    done
     waittime=2
     ALL_NICS=$(ip link show | grep -v "^ " | awk '{print $2}' | sed -e 's/:$//' | grep -v lo)
     for tmp in $ALL_NICS; do
