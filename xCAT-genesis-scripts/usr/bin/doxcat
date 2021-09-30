@@ -17,6 +17,8 @@ fi
 if [ -f /var/run/rsyslogd.pid ]; then
     kill -TERM `cat /var/run/rsyslogd.pid`
 fi
+# wait for rsyslog to terminate
+sleep 2
 
 if [ $RSYSLOGD_VERSION -ge 8 ]; then
     /sbin/rsyslogd
@@ -82,6 +84,10 @@ if [ $? -ne 0 ]; then
 	ssh-keygen -q -t dsa -f /etc/ssh/ssh_host_dsa_key -C '' -N ''
 fi
 
+# On some systems /usr/share/empty.sshd needs to be created before calling sshd
+if [ ! -e /usr/share/empty.sshd ]; then
+    mkdir -p /usr/share/empty.sshd
+fi
 echo 'Protocol 2' >> /etc/ssh/sshd_config
 /usr/sbin/sshd
 mkdir -p /etc/xcat
@@ -300,6 +306,8 @@ fi
 if [ -f /var/run/rsyslogd.pid ]; then
     kill -TERM `cat /var/run/rsyslogd.pid`
 fi
+# wait for rsyslog to terminate
+sleep 2
 
 if [ "$RSYSLOGD_VERSION" -ge 8 ]; then
     /sbin/rsyslogd
