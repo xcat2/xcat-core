@@ -2134,6 +2134,15 @@ sub copycd
             my @ol_version = split /[- ]/, $desc;
             $distname = "ol" . $ol_version[1];
         }
+        elsif ($desc =~ /Fedora/)
+        {
+            # Attempt to auto-detect for Fedora OS, the first element
+            # (after " ") has typically been the version
+            # ex: Fedora 34
+            #
+            my @fedora_version = split /[- ]/, $desc;
+            $distname = "fedora" . $fedora_version[1];
+        }
         elsif ($desc =~ /^[\d\.]+$/)
         {
             open($dinfo, $mntpath . "/.treeinfo");
