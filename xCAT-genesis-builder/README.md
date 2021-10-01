@@ -1,29 +1,43 @@
 # xCAT-genesis-builder
 
-xCAT-genesis-builder is a utility for building base initrd images for deploying
-diskless nodes in your cluster.  This tool is required only if you have the
-intention of deploying diskless nodes within your xCAT cluster.
+`xCAT-genesis-builder` is a utility for building base initrd images for deploying diskless nodes in your cluster for discovery. This tool is required only if you have the intention of building your own version of `xCAT-genesis-base` RPM which is available in `xcat-dep` (latest version was built on Fedora34).
 
 # Background
 
-For every architecture in your cluster, be it x86_64, ppc64, or arm, you need to have a default
-initrd image for performing the initial boot and deploying the diskless operating system.
+For every architecture in your cluster, be it x86_64, or ppc64, you need to have a default
+`initrd` image for performing the initial boot and deploying the diskless operating system.
 
-If for some reason, the versions included in the xCAT repository are insufficient, you can simply
-run this utility on the target architecture which will build an RPM designed for the target
-architecture.  You can then transfer that RPM to your xCAT servers, install it, and then rebuild
+If for some reason, the versions included in the xCAT `xcat-dep` repository are insufficient, you can simply
+run this utility on the target architecture which will build a `xCAT-genesis-base` RPM designed for the target
+architecture.  You can then transfer that RPM to your xCAT Management Node, install it, and then rebuild
 the various netboot images.
 
 # Pre-requisites
 
-The xCAT-genesis-builder package is designed to be run from a Red Hat compatible operating system
+The `xCAT-genesis-builder` package is designed to be run from a Red Hat compatible operating system
 that support the Red Hat Package Manager (rpm) development tools.  The script `buildrpm` will
 attempt to install some of these core packages if they are not already present.
 
-## Instructions
+## Instructions for buiding `xCAT-genesis-builder` RPM
+Latest version 2.16.3 of `xCAT-genesis-builder` RPM available at https://www.xcat.org/files/xcat/xcat-dep/2.x_Linux/beta and was verified to install and run on Fedora34 and Red Hat 8. Earlier version 2.14.5 of `xCAT-genesis-builder` RPM available at https://www.xcat.org/files/xcat/xcat-dep/2.x_Linux/beta and was verified to install and run on Fedora26 and Red Hat 7.
+If a new version of `xCAT-genesis-builder` RPM needs to be built:
 
-First, you need to clone the xcat-core repo to the target architecture using the following
-command:
+1. Clone `xcat-core` git repository:
+
+```sh
+git clone -b master https://github.com/xcat2/xcat-core.git
+```
+
+2. Build new `xCAT-genesis-builder` RPM:
+
+```sh
+cd xcat-core
+./makerpm-genesisbuilder
+```
+
+## Instructions for buiding `xCAT-genesis-base` RPM
+
+First, you need to clone the `xcat-core` repo to the target architecture using the following command:
 
 ```sh
 git clone -b master https://github.com/xcat2/xcat-core.git
@@ -38,12 +52,11 @@ sed -i 's/%%REPLACE_CURRENT_VERSION%%/2.16.10/g' xCAT-genesis-base.spec
 buildrpm
 ```
 
-If this command is successful, runs error free, it will generate an RPM that you can transfer
+If this command is successful, runs error free, it will generate a `xCAT-genesis-base` RPM that you can transfer
 to your xCAT server and install and then rebuild your netboot images prior to deploying
 the netboot images to your nodes.
 
-The RPM will be placed into the following directory `/root/rpmbuild/RPMS/noarch` if the build
-is successful.
+The RPM will be placed into the following directory `/root/rpmbuild/RPMS/noarch` if the build is successful.
 
 When running the `buildrpm` the output should look similar to the following:
 
@@ -132,31 +145,14 @@ To install the new RPM, issue the following command, using the 2.16.10 example f
 rpm -ivh xCAT-genesis-base*.rpm
 ```
 
-Now, assuming that the architecture that you have built the xCAT-genesis-base for was ppc64,
+Now, assuming that the architecture that you have built the `xCAT-genesis-base` for was `ppc64`,
 you would then, on the xCAT server run the following command:
 
 ```sh
 mknb ppc64
 ```
 
-At this point in time, you can re-generate your netboot images by running the following
-commands:
-
-```sh
-rmimage rhels8.4.0-ppc64le-netboot-image
-genimage rhels8.4.0-ppc64le-netboot-image
-packimage rhels8.4.0-ppc64le-netboot-image
-```
-
-Finally, attempt a re-imaging of a host using the following command:
-
-```sh
-rinstall hostname
-rcons hostname
-```
-
-If you rcons into the hosts, you can watch the actual initilization of the operating
-system with the resulting netboot image.
+At this point in time, you can discover nodes by following https://xcat-docs.readthedocs.io/en/stable/guides/admin-guides/manage_clusters/ppc64le/discovery/mtms/discovery.html
 
 # Open Source License
 
