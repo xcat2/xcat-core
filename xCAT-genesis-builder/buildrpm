@@ -12,7 +12,7 @@ DIR=`dirname $0`
 #DIR=`realpath $DIR`
 DIR=`readlink -f $DIR`
 BUILDARCH=`uname -m`
-REQUIRED_PACKAGES="rpmdevtools rpm-build screen lldpad mstflint epel-release ipmitool pciutils mdadm dosfstools usbutils bind-utils psmisc nmap-ncat"
+REQUIRED_PACKAGES="rpmdevtools rpm-build screen lldpad mstflint epel-release ipmitool pciutils mdadm dosfstools usbutils bind-utils psmisc nmap-ncat ethtool kexec-tools"
 
 # Install required packages
 for required_package in $REQUIRED_PACKAGES; do

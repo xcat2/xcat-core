@@ -1,5 +1,5 @@
 #!/bin/sh
-VER=`git describe`
+VER=`cat Version`
 VER=${VER/-/.post}
 VER=${VER/-/.}
 rpmbuild --version > /dev/null
