@@ -179,7 +179,7 @@ sub rungenesiscmd {
         $value = 1;
 
         #means runcmd test using test scripts genesistest.pl writes
-        send_msg(2, "no runcmd scripts for test prepared.");
+        send_msg(2, "No runcmd scripts for test prepared. Will generate.");
         open(TESTCMD, ">$runcmd_script")
           or die "Can't open testscripts for writing: $!";
         print TESTCMD join("\n", "#!/bin/bash"),                       "\n";
@@ -198,14 +198,16 @@ sub rungenesiscmd {
     `mknb $arch`;
     if ($?) {
         send_msg(0, "mknb $arch failed for runcmd test.");
+        $value = -1;
     }
     my $rinstall_cmd = "rinstall $noderange \"runcmd=cmdtest,shell\"";
     `$rinstall_cmd`;
     if ($?) {
-      send_msg(0, "Command \"$rinstall_cmd\" failed for runcmd test");
+        send_msg(0, "Command \"$rinstall_cmd\" failed for runcmd test");
+        $value = -1;
     }
     else {
-      send_msg(2, "Installing with \"$rinstall_cmd\" for runcmd test");
+        send_msg(2, "Installing with \"$rinstall_cmd\" for runcmd test");
     }
     return $value;
 }
@@ -223,7 +225,7 @@ sub rungenesisimg {
         $value = 2;
 
         #means runimg test using test scripts genesistest.pl writes
-        send_msg(2, "no runimg scripts for test are prepared.");
+        send_msg(2, "No runimg scripts for test are prepared. Will generate.");
         open(TESTIMG, ">$runimg_script")
           or die "Can't open test scripts for writing: $!";
         print TESTIMG join("\n", "#!/bin/bash"),                       "\n";
@@ -243,6 +245,7 @@ sub rungenesisimg {
     `rinstall $noderange "runimage=http://$master/install/my_image/my_image.tgz",shell`;
     if ($?) {
         send_msg(0, "rinstall noderange runimage=* failed\n");
+        $value = -1;
     }
     return $value;
 }
@@ -265,7 +268,11 @@ sub testxdsh {
     } elsif ($value == 3) {
         $checkstring = "destiny=shell";
         $checkfile   = "/proc/cmdline";
+    } elsif ($value == -1) {
+        send_msg(2,"Error setting up the node for testxdsh");
+        return 1;
     }
+
     my $xdsh_command="xdsh $noderange -t 2 cat $checkfile 2>&1|grep $checkstring";
     if (($value == 1) || ($value == 2) || ($value == 3)) {
         `$xdsh_command`;
