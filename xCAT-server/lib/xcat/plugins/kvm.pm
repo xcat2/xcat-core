@@ -655,6 +655,7 @@ sub build_nicstruct {
         my $rethash;
         my $nic = shift @nics;
         my $type = 'virtio'; #better default fake nic than rtl8139, relevant to most
+        my $nictype = 'bridge';
         unless ($nic) {
             last;    #Don't want to have multiple vnics tied to the same switch
         }
@@ -666,9 +667,17 @@ sub build_nicstruct {
         if ($nic =~ /=/) {
             ($nic, $type) = split /=/, $nic, 2;
         }
-        $rethash->{type}             = 'bridge';
+        if ($nic =~ /\|/) {
+            ($nic, $nictype) = split /\|/, $nic, 2;
+        }
+        $rethash->{type}             = $nictype;
         $rethash->{mac}->{address}   = $_;
-        $rethash->{source}->{bridge} = $nic;
+        if ($nictype eq 'bridge') {
+            $rethash->{source}->{bridge} = $nic;
+        } elsif ($nictype eq 'direct') {
+            $rethash->{source}->{dev} = $nic;
+            $rethash->{source}->{mode} = 'bridge';
+        }
         $rethash->{model}->{type}    = $type;
         push @rethashes, $rethash;
     }
@@ -3082,6 +3091,7 @@ sub fixup_clone_network {
         my $bridge = shift @nics;
         $bridge =~ s/.*://;
         $bridge =~ s/=.*//;
+        $bridge =~ s/\|.*//;
         $nicstruct->findnodes("./mac")->[0]->setAttribute("address" => shift @macs);
         $nicstruct->findnodes("./source")->[0]->setAttribute("bridge" => $bridge);
     }
@@ -3089,6 +3099,7 @@ sub fixup_clone_network {
     my $deviceroot = $newnodexml->findnodes("/domain/devices")->[0];
     foreach $nic (@nics) {    #need more xml to throw at it..
         my $type = 'virtio'; #better default fake nic than rtl8139, relevant to most
+        my $nictype = 'bridge';
         $nic =~ s/.*://;     #the detail of how the bridge was built is of no
                              #interest to this segment of code
         if ($confdata->{vm}->{$node}->[0]->{nicmodel}) {
@@ -3097,7 +3108,16 @@ sub fixup_clone_network {
         if ($nic =~ /=/) {
             ($nic, $type) = split /=/, $nic, 2;
         }
-        my $xmlsnippet = "<interface type='bridge'><mac address='" . (shift @macs) . "'/><source bridge='" . $nic . "'/><model type='$type'/></interface>";
+        if ($nic =~ /\|/) {
+            ($nic, $nictype) = split /\|/, $nic, 2;
+        }
+        my $xmlsnippet = "<interface type='" . $nictype . "'><mac address='" . (shift @macs) . "'/>";
+        if ($nictype eq 'bridge') {
+            $xmlsnippet .= "<source bridge='" . $nic . "'/>";
+        } elsif ($nictype eq 'direct') {
+            $xmlsnippet .= "<source dev='" . $nic . "' mode='bridge'/>";
+        }
+        $xmlsnippet .= "<model type='$type'/></interface>";
         my $chunk = $parser->parse_balanced_chunk($xmlsnippet);
         $deviceroot->appendChild($chunk);
     }
