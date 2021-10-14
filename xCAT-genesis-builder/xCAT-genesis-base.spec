@@ -12,8 +12,6 @@ Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
 %endif
 BuildArch: noarch
 %define name	xCAT-genesis-base-%{tarch}
-# Use xz compression instead of default gzip on Fedora34
-%define _binary_payload w7.xzdio
 %define __spec_install_post :
 %define debug_package %{nil}
 %define __prelink_undo_cmd %{nil}

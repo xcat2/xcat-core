@@ -254,7 +254,6 @@ sub rungenesisimg {
 #########################################
 sub testxdsh {
     my $value = shift;
-    send_msg(2, "The input parameter for testxdsh() is $value \n");
     my $checkstring;
     my $checkfile;
     my $nodestatus;
@@ -273,6 +272,7 @@ sub testxdsh {
         return 1;
     }
 
+    send_msg(2, "Node $noderange has been installed with genesis shell. Checking $checkfile file on that node contains '$checkstring' \n");
     my $xdsh_command="xdsh $noderange -t 2 cat $checkfile 2>&1|grep $checkstring";
     if (($value == 1) || ($value == 2) || ($value == 3)) {
         `$xdsh_command`;

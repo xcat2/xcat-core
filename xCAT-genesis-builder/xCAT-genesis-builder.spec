@@ -4,7 +4,7 @@ Version: %{?version:%{version}}%{!?version:%(cat Version)}
 Release: %{?release:%{release}}%{!?release:%(cat Release)}
 Epoch: 1
 AutoReq: false
-Requires: ipmitool screen lldpad rpm-build mstflint xfsprogs nc rpmdevtools libstdc++-devel pciutils bridge-utils iprutils psmisc mdadm bind-utils dosfstools usbutils libusbx bc rpmdevtools 
+Requires: ipmitool screen lldpad rpm-build mstflint xfsprogs nc rpmdevtools libstdc++-devel pciutils bridge-utils iprutils psmisc mdadm bind-utils dosfstools usbutils libusbx bc rpmdevtools rng-tools
 Prefix: /opt/xcat
 AutoProv: false
 
