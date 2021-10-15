@@ -58,6 +58,11 @@ if [[ ${ARCH} =~ ppc64 ]]; then
             modprobe `basename $line`
         fi
     done
+    # Check if running on a VM, and load "virtio_pci" module
+    cat /proc/cpuinfo | grep "machine" | grep "emulated"
+    if [ $? -eq 0 ]; then
+        modprobe virtio_pci
+    fi
     waittime=2
     ALL_NICS=$(ip link show | grep -v "^ " | awk '{print $2}' | sed -e 's/:$//' | grep -v lo)
     for tmp in $ALL_NICS; do

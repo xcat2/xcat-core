@@ -1,6 +1,6 @@
 # xCAT-genesis-builder
 
-`xCAT-genesis-builder` is a utility for building base initrd images for deploying diskless nodes in your cluster for discovery. This tool is required only if you have the intention of building your own version of `xCAT-genesis-base` RPM which is available in `xcat-dep` (latest version was built on Fedora34).
+`xCAT-genesis-builder` is a utility for building base initrd images for deploying diskless nodes in your cluster for discovery. This tool is required only if you have the intention of building your own version of `xCAT-genesis-base` RPM which is available in `xcat-dep` (latest version was built on Fedora28).
 
 # Background
 
@@ -19,7 +19,7 @@ that support the Red Hat Package Manager (rpm) development tools.  The script `b
 attempt to install some of these core packages if they are not already present.
 
 ## Instructions for buiding `xCAT-genesis-builder` RPM
-Latest version 2.16.3 of `xCAT-genesis-builder` RPM available at https://www.xcat.org/files/xcat/xcat-dep/2.x_Linux/beta and was verified to install and run on Fedora34 and Red Hat 8. Earlier version 2.14.5 of `xCAT-genesis-builder` RPM available at https://www.xcat.org/files/xcat/xcat-dep/2.x_Linux/beta and was verified to install and run on Fedora26 and Red Hat 7.
+Latest version 2.16.3 of `xCAT-genesis-builder` RPM available at https://www.xcat.org/files/xcat/xcat-dep/2.x_Linux/beta and was verified to install and run on Fedora28 and Red Hat 8. Earlier version 2.14.5 of `xCAT-genesis-builder` RPM available at https://www.xcat.org/files/xcat/xcat-dep/2.x_Linux/beta and was verified to install and run on Fedora26 and Red Hat 7.
 If a new version of `xCAT-genesis-builder` RPM needs to be built:
 
 1. Clone `xcat-core` git repository:

@@ -5,7 +5,7 @@
 #            this whole dir into it somewhere (like /tmp).
 # Then run this script.  The optional 1st arg should be mcp if you are building against mcp.
 
-# Currently, *Fedora 34* and *RedHat 8* are the only OSes supported to build genesis-base for ppc64, and Centos 6.5 for x86_64
+# Currently, *Fedora 28* and *RedHat 8* are the only OSes supported to build genesis-base for ppc64, and Centos 6.5 for x86_64
 
 HOSTOS="$1"
 DIR=`dirname $0`

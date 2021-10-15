@@ -2138,7 +2138,7 @@ sub copycd
         {
             # Attempt to auto-detect for Fedora OS, the first element
             # (after " ") has typically been the version
-            # ex: Fedora 34
+            # ex: Fedora 28
             #
             my @fedora_version = split /[- ]/, $desc;
             $distname = "fedora" . $fedora_version[1];
