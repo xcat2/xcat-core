@@ -327,7 +327,9 @@ sub process_request {
                 close($cfg);
                 open($cfg, ">", "$tftpdir/xcat/xnba/nets/$net.uefi");
                 print $cfg "#!gpxe\n";
-                print $cfg 'chain http://${next-server}:'.$httpport.'/tftpboot/xcat/elilo-x64.efi -C /tftpboot/xcat/xnba/nets/' . "$net.elilo\n";
+                print $cfg 'imgfetch -n kernel http://${next-server}:'.$httpport.'/tftpboot/xcat/genesis.kernel.' . "$arch\nimgload kernel\n";
+                print $cfg "imgargs kernel quiet xcatd=" . $normnets->{$_} . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/machyp}' . " destiny=discover initrd=initrd\n";
+                print $cfg 'imgfetch -n initrd http://${next-server}:'.$httpport.'/tftpboot/xcat/genesis.fs.' . "$arch.gz\nimgexec kernel\n";
                 close($cfg);
             }
         } elsif ($arch =~ /ppc/) {
