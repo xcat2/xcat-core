@@ -9,5 +9,5 @@ inst "$moddir/xcat-updateflag" "/tmp/updateflag"
 inst "$moddir/xcatroot" "/sbin/xcatroot"
 inst_hook cmdline 10 "$moddir/xcat-cmdline.sh"
 for file in /etc/udev/rules.d/*;do
-	grep -qi xcat $file && inst_rules $(basename $file)
+	grep -qi xcat $file && inst $file $file
 done
