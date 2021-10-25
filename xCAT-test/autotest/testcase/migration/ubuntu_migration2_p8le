@@ -4,7 +4,7 @@ description:update xCAT from $$UBUNTU_MIGRATION2_VERSION to latest version, thes
 label:others,migration,invoke_provision
 cmd:copycds $$ISO
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,os)__" < "ubuntu16.04.2" ]];then mkdir /tmp/iso; mount -o loop $$MINIISO /tmp/iso ;  mkdir -p  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot; cp  /tmp/iso/install/initrd.gz  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot;umount /tmp/iso; rmdir /tmp/iso; fi
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]] && [[ "__GETNODEATTR($$CN,os)__" < "ubuntu16.04.2" ]];then mkdir /tmp/iso; mount -o loop $$MINIISO /tmp/iso ;  mkdir -p  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot; cp  /tmp/iso/install/initrd.gz  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot;umount /tmp/iso; rmdir /tmp/iso; fi
 check:rc==0
 check:output!~failed to setup loop device
 cmd:makedhcp -n
