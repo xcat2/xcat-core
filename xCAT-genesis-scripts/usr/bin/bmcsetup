@@ -110,6 +110,7 @@ fi
 
 # Add ipmi_devintf module to allow the ipmitool operation in-band
 modprobe ipmi_devintf
+modprobe ipmi_si
 
 for parm in `cat /proc/cmdline`; do
     key=`echo $parm|awk -F= '{print $1}'`
