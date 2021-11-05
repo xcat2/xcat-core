@@ -25,14 +25,14 @@ DESCRIPTION
 
 \ **makentp**\  command sets up the NTP server on the xCAT management node and the service node.
 
-By default, it sets up the NTP server for xCAT management node. If -a flag is specified, the command will setup the ntp servers for management node as well as all the service nodes that have \ *servicenode.ntpserver*\  set. It honors the site table attributes \ *extntpservers*\  and \ *ntpservers*\  described below:
+By default, it sets up the NTP server for xCAT management node. If \ **-a**\  flag is specified, the command will setup the ntp servers for management node as well as all the service nodes that have \ *servicenode.ntpserver*\  set. It honors the site table attributes \ *extntpservers*\  and \ *ntpservers*\  described below:
 
 
 \ *site.extntpservers*\  -- the NTP servers for the management node to sync with. If it is empty then the NTP server will use the management node's own hardware clock to calculate the system date and time.
 
 \ *site.ntpservers*\  -- the NTP servers for the service node and compute node to sync with. The keyword <xcatmaster> means that the node's NTP server is the node that is managing it (either its service node or the management node).
 
-To setup NTP on the compute node, add \ **setupntp**\  postscript to the \ *postscripts*\  table and run \ *updatenode node -P setupntp*\  command.
+To setup NTP on the compute node, add \ *setupntp*\  postscript to the \ *postscripts*\  table and run \ **updatenode node -P setupntp**\  command.
 
 
 *******
@@ -43,7 +43,7 @@ OPTIONS
 
 \ **-a|-**\ **-all**\ 
  
- Setup NTP servers for both management node and the service node. If management node has SLES installed and used as \ *ntpservers*\ , it is recommanded to use the \ **setupntp**\  postscript to set up NTP server for service nodes.
+ Setup NTP servers for both management node and the service node. If management node has SLES installed and used as \ *ntpservers*\ , it is recommanded to use the \ *setupntp*\  postscript to set up NTP server for service nodes.
  
 
 

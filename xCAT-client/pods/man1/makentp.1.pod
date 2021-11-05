@@ -18,7 +18,7 @@ B<makentp [-a|--all] [-V|--verbose]>
 
 B<makentp> command sets up the NTP server on the xCAT management node and the service node.
 
-By default, it sets up the NTP server for xCAT management node. If -a flag is specified, the command will setup the ntp servers for management node as well as all the service nodes that have I<servicenode.ntpserver> set. It honors the site table attributes I<extntpservers> and I<ntpservers> described below:
+By default, it sets up the NTP server for xCAT management node. If B<-a> flag is specified, the command will setup the ntp servers for management node as well as all the service nodes that have I<servicenode.ntpserver> set. It honors the site table attributes I<extntpservers> and I<ntpservers> described below:
 
 =over 4
 
@@ -28,7 +28,7 @@ I<site.ntpservers> -- the NTP servers for the service node and compute node to s
 
 =back
 
-To setup NTP on the compute node, add B<setupntp> postscript to the I<postscripts> table and run I<updatenode node -P setupntp> command.
+To setup NTP on the compute node, add I<setupntp> postscript to the I<postscripts> table and run B<updatenode node -P setupntp> command.
 
 
 =head1 OPTIONS
@@ -38,7 +38,7 @@ To setup NTP on the compute node, add B<setupntp> postscript to the I<postscript
 
 =item B<-a|--all>
 
-Setup NTP servers for both management node and the service node. If management node has SLES installed and used as I<ntpservers>, it is recommanded to use the B<setupntp> postscript to set up NTP server for service nodes.
+Setup NTP servers for both management node and the service node. If management node has SLES installed and used as I<ntpservers>, it is recommanded to use the I<setupntp> postscript to set up NTP server for service nodes.
 
 
 =item B<-h|--help>
