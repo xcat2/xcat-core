@@ -344,25 +344,20 @@ sub getNodeData {
         my $imagegroups = $osimagetab->getAttribs({ imagename => $image }, @imagegroupsattr);
         if ($imagegroups and $imagegroups->{groups}) {
 
-            # get the directories with no names
-            push @imageInfo, $tab->getAttribs({ image => '' }, @attrs);
-
             # get for the image groups specific directories
             push @imageInfo, $tab->getAttribs({ image => $imagegroups->{groups} }, @attrs);
 
-            # get for the image specific directories
-            push @imageInfo, $tab->getAttribs({ image => $image }, @attrs);
-        } else {
-
-            # get the directories with no names
-            push @imageInfo, $tab->getAttribs({ image => '' }, @attrs);
-
-            # get the ALL directories
-            push @imageInfo, $tab->getAttribs({ image => 'ALL' }, @attrs);
-
-            # get for the image specific directories
-            push @imageInfo, $tab->getAttribs({ image => $image }, @attrs);
         }
+        # These cases should run for all images
+        # get the directories with no names
+        push @imageInfo, $tab->getAttribs({ image => '' }, @attrs);
+
+        # get the ALL directories
+        push @imageInfo, $tab->getAttribs({ image => 'ALL' }, @attrs);
+
+        # get for the image specific directories
+        push @imageInfo, $tab->getAttribs({ image => $image }, @attrs);
+        
     }
 
     # pass back a reference to the directory
