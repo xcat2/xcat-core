@@ -369,6 +369,8 @@ To generate the configuration, run the ``nodeset`` command: ::
 
 .. note:: **RedHat:** Running ``nodeset`` will generate the ``/install/autoinst`` file for the node.  It will replace the ``#XCAT_PARTITION_START#`` and ``#XCAT_PARTITION_END#`` directives with the contents of your custom partition file.
 
+.. note:: **SLES:** Running ``nodeset`` will generate the ``/install/autoinst`` file for the node.  It will replace the ``#XCAT-PARTITION-START#`` and ``#XCAT-PARTITION-END#`` directives with the contents of your custom partition file. Do not include ``<partitioning config:type="list">`` and ``</partitioning>`` tags, they will be added by xCAT.
+
 .. note:: **Ubuntu:** Running ``nodeset`` will generate the ``/install/autoinst`` file for the node. It will write the partition file to ``/tmp/partitionfile`` and replace the ``#XCA_PARTMAN_RECIPE_SCRIPT#`` directive in ``/install/autoinst/<node>.pre`` with the contents of your custom partition file. 
 
 .. END_partition_definition_file_Associate_partition_file_with_osimage_common

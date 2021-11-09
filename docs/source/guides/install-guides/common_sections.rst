@@ -74,17 +74,17 @@ The following sections describe the different methods for installing xCAT.
 
 **[xcat-core]**
 
-#. Download xcat-core: ::
+#. Download ``xcat-core``: ::
 
-        # downloading the latest development build, core-rpms-snap.tar.bz2
+        # downloading the latest stable build, xcat-core-<version>-linux.tar.bz2
         mkdir -p ~/xcat
         cd ~/xcat/
-        wget http://xcat.org/files/xcat/xcat-core/devel/Linux/core-snap/core-rpms-snap.tar.bz2
+        wget http://xcat.org/files/xcat/xcat-core/<version>.x_Linux/xcat-core/xcat-core-<version>-linux.tar.bz2
 
 
-#. Extract xcat-core: ::
+#. Extract ``xcat-core``: ::
 
-        tar jxvf core-rpms-snap.tar.bz2
+        tar xcat-core-<version>-linux.tar.bz2
 
 #. Configure the local repository for xcat-core by running ``mklocalrepo.sh`` script in the ``xcat-core`` directory: ::
 
@@ -98,17 +98,17 @@ The following sections describe the different methods for installing xCAT.
 
 **[xcat-core]**
 
-#. Download xcat-core: ::
+#. Download ``xcat-core``: ::
 
-        # downloading the latest development build, core-rpms-snap.tar.bz2
+        # downloading the latest stable build, xcat-core-<version>-ubuntu.tar.bz2
         mkdir -p ~/xcat
         cd ~/xcat/
-        wget http://xcat.org/files/xcat/xcat-core/devel/Ubuntu/core-snap/core-debs-snap.tar.bz2
+        wget http://xcat.org/files/xcat/xcat-core/<version>.x_Ubuntu/xcat-core/xcat-core-<version>-ubuntu.tar.bz2
 
 
-#. Extract xcat-core: ::
+#. Extract ``xcat-core``: ::
 
-        tar jxvf core-debs-snap.tar.bz2
+        tar jxvf xcat-core-<version>-ubuntu.tar.bz2
 
 #. Configure the local repository for xcat-core by running ``mklocalrepo.sh`` script in the ``xcat-core`` directory: ::
 
@@ -122,24 +122,24 @@ The following sections describe the different methods for installing xCAT.
 
 **[xcat-dep]**
 
-Unless you are downloading ``xcat-dep`` to match a specific package tested with a GA release, it's recommended to download the latest version of xcat-dep.
+Unless you are downloading ``xcat-dep`` to match a specific version of xCAT, it's recommended to download the latest version of ``xcat-dep``.
 
 
-#. Download xcat-dep: ::
+#. Download ``xcat-dep``: ::
 
-        # if downloading xcat-dep from June 11, 2015, xcat-dep-201506110324.tar.bz2
+        # downloading the latest stable version, xcat-dep-<version>-linux.tar.bz2
         mkdir -p ~/xcat/
         cd ~/xcat
-        wget http://xcat.org/files/xcat/xcat-dep/2.x_Linux/xcat-dep-201506110324.tar.bz2
+        wget http://xcat.org/files/xcat/xcat-dep/2.x_Linux/xcat-dep-<version>-linux.tar.bz2
 
-#. Extract xcat-dep: ::
+#. Extract ``xcat-dep``: ::
 
-        tar jxvf xcat-dep-201506110324.tar.bz2
+        tar jxvf xcat-dep-<version>-linux.tar.bz2
 
 #. Configure the local repository for xcat-dep by switching to the architecture and os subdirectory of the node you are installing on, then run the ``mklocalrepo.sh`` script: ::
 
         cd ~/xcat/xcat-dep/
-        # Example, on redhat 7.1 ppc64le: cd rh7/ppc64le
+        # On redhat 7.1 ppc64le: cd rh7/ppc64le
         cd <os>/<arch>
         ./mklocalrepo.sh
 
@@ -149,19 +149,19 @@ Unless you are downloading ``xcat-dep`` to match a specific package tested with 
 
 **[xcat-dep]**
 
-Unless you are downloading ``xcat-dep`` to match a specific package tested with a GA release, it's recommended to download the latest version of xcat-dep.
+Unless you are downloading ``xcat-dep`` to match a specific version of xCAT, it's recommended to download the latest version of ``xcat-dep``.
 
 
 #. Download xcat-dep: ::
 
-        # if downloading xcat-dep from June 11, 2015, xcat-dep-ubuntu-snap20150611.tar.bz
+        # downloading the latest stable version, xcat-dep-<version>-ubuntu.tar.bz2
         mkdir -p ~/xcat/
         cd ~/xcat
-        wget http://xcat.org/files/xcat/xcat-dep/2.x_Ubuntu/xcat-dep-ubuntu-snap20150611.tar.bz
+        wget http://xcat.org/files/xcat/xcat-dep/2.x_Ubuntu/xcat-dep-<version>-ubuntu.tar.bz2
 
 #. Extract xcat-dep: ::
 
-        tar jxvf xcat-dep-ubuntu-snap20150611.tar.bz
+        tar jxvf xcat-dep-<version>-ubuntu.tar.bz2
 
 #. Configure the local repository for xcat-dep by running the ``mklocalrepo.sh`` script: ::
 

@@ -1354,6 +1354,7 @@ sub change_profile {
     if ($os) {
         if    ($os =~ /rh.*/)     { $platform = "rh"; }
         elsif ($os =~ /centos.*/) { $platform = "centos"; }
+        elsif ($os =~ /rocky.*/) { $platform = "rocky"; }
         elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
         elsif ($os =~ /sles.*/)   { $platform = "sles"; }
         elsif ($os =~ /SL.*/)     { $platform = "SL"; }

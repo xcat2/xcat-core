@@ -81,12 +81,12 @@ end
 start:osdeploy_n_invalidnode
 description: osdeploy -n node invalid
 label:others,xcatprobe
-cmd:test=`lsdef test_node`;if [ $test eq 0 ]; then lsdef -l test_node -z >/tmp/node.standa ;rmdef test_node;fi
+cmd:test=`lsdef test_node`;if [ $test eq 0 ]; then lsdef -l test_node -z >/tmp/node.stanza ;rmdef test_node;fi
 check:rc==0
 cmd:xcatprobe osdeploy -n test_node
 check:rc==1
 check:output~=without node definition
-cmd:if [ -e /tmp/node.standa ]; then cat /tmp/node.standa | mkdef -z; rm -rf /tmp/node.standa; fi
+cmd:if [ -e /tmp/node.stanza ]; then cat /tmp/node.stanza | mkdef -z; rm -rf /tmp/node.stanza; fi
 check:rc==0
 end
 start:osdeploy_n_p_invalid

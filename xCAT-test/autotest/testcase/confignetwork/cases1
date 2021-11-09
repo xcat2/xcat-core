@@ -1,7 +1,7 @@
 start:confignetwork_secondarynic_third_regex_updatenode
 description:this case is to verify if confignetwork could config serveral nics with regex patten.This case is to verify defect 3602.
 label:others,network
-cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
+cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.stanza ;fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
 cmd:xdsh $$CN "mkdir -p /tmp/backupnet/"
@@ -38,7 +38,7 @@ cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifc
 check:rc==0
 cmd:xdsh $$CN "ip addr del 30.0.0.9/8 dev $$SECONDNIC"
 cmd:xdsh $$CN "ip addr del 40.0.0.8/8 dev $$THIRDNIC"
-cmd:if [ -e /tmp/CN.standa ]; then rmdef $$CN; cat /tmp/CN.standa | mkdef -z; rm -rf /tmp/CN.standa; fi
+cmd:if [ -e /tmp/CN.stanza ]; then rmdef $$CN; cat /tmp/CN.stanza | mkdef -z; rm -rf /tmp/CN.stanza; fi
 check:rc==0
 cmd:mv -f /etc/hosts.bak /etc/hosts
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/sysconfig/network/"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/sysconfig/network-scripts/"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/network/interfaces.d/";else echo "Sorry,this is not supported os"; fi

@@ -397,7 +397,7 @@ function get_network_attr {
    while [ $index -le $NETWORKS_LINES ]
    do
        eval netline=\$NETWORKS_LINE$index
-       echo "$netline" | grep -sq ".*netname=$netname" && break;
+       echo "$netline" | grep -sq ".*netname=$netname||" && break;
        ((index+=1))
    done
 

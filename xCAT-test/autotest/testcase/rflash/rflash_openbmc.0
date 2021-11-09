@@ -529,7 +529,7 @@ description:this case is to check if -d support relative directory path. This ca
 os:Linux
 hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
-cmd:lsdef testnode;if [ $? -eq 0 ]; then lsdef -l testnode -z >/tmp/testnode.standa ; rmdef testnode;fi
+cmd:lsdef testnode;if [ $? -eq 0 ]; then lsdef -l testnode -z >/tmp/testnode.stanza ; rmdef testnode;fi
 cmd:mkdef -t node -o testnode groups=all arch=ppc64le bmc=testnode-bmc bmcvlantag=11 cons=openbmc mgt=openbmc
 check:rc == 0
 cmd:dir="/tmp/rflashdir";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi
@@ -547,5 +547,5 @@ cmd:dir="/tmp/rflashnotexist"; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir;
 cmd:dir="/tmp/rflashdir"; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 cmd:rmdef -t node -o testnode
 check:rc == 0
-cmd:if [ -e /tmp/testnode.standa ]; then cat /tmp/testnode.standa | mkdef -z; rm -rf /tmp/testnode.standa; fi
+cmd:if [ -e /tmp/testnode.stanza ]; then cat /tmp/testnode.stanza | mkdef -z; rm -rf /tmp/testnode.stanza; fi
 end

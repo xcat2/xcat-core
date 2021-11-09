@@ -13,6 +13,7 @@ if [ -f /xcatpost/mypostscript.post ]; then
     OSVER=`grep '^OSVER=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
     NODE=`grep '^NODE=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
     IMAGE=`grep '^PROVMETHOD=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
+    CLEANUPDISKFULLXCATPOST=`grep CLEANUPDISKFULLXCATPOST= /xcatpost/mypostscript |awk -F = '{print $2}' | tr -d \'\" | tr A-Z a-z`
 fi
 
 
@@ -139,6 +140,18 @@ fi
 " >> /xcatpost/mypostscript.post
 fi
 
+# If "cleanupdiskfullxcatpost" install was requested, remove all /xcapost
+# files (except updateflag.awk ) if postscripts ran without an error
+if [[ "$CLEANUPDISKFULLXCATPOST" =~ ^(1|yes|y)$ ]]; then
+echo "
+if [ \"\$return_value\" -eq \"0\" ]; then
+  cd /
+  find /xcatpost/ -type f -not -name 'updateflag.awk' -delete
+  find /xcatpost/ -type d -empty -delete
+  msgutil_r \$MASTER_IP \"info\" \"cleanup of /xcatpost completed.(\$NODE)\" \"/var/log/xcat/xcat.log\" \"\$log_label\"
+fi
+" >> /xcatpost/mypostscript.post
+fi
 
 chmod +x /xcatpost/mypostscript.post
 if [ -x /xcatpost/mypostscript.post ];then

@@ -655,7 +655,10 @@ sub copybootscript {
         copy("$installroot/postscripts/xcatdsklspost", "$rootimg_dir/opt/xcat/xcatdsklspost");
         if ($timezone[0]) {
             unlink("$rootimg_dir/etc/localtime");
-            copy("$rootimg_dir/usr/share/zoneinfo/$timezone[0]", "$rootimg_dir/etc/localtime");
+            # Copy timezone file to /etc and link 'localtime' to it
+            mkpath(dirname("$rootimg_dir/etc/$timezone[0]"));
+            copy("$rootimg_dir/usr/share/zoneinfo/$timezone[0]", "$rootimg_dir/etc/$timezone[0]");
+            symlink("./$timezone[0]", "$rootimg_dir/etc/localtime");
         }
 
 
