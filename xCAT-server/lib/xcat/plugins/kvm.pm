@@ -731,6 +731,7 @@ sub build_xmldesc {
     my @passthrudevices;
     my $memnumanodes;
     my $cpumode;
+    my $machine_type;
     my $advsettings = undef;
     if (defined $confdata->{vm}->{$node}->[0]->{othersettings}) {
         $advsettings = $confdata->{vm}->{$node}->[0]->{othersettings};
@@ -742,6 +743,7 @@ sub build_xmldesc {
     #pci passthrough:    "devpassthrough:<pci device name1>,<pci device name2>..."
     #memory binding:     "membind:<numa node set>"
     #cpu mode:           "cpumode:<host-model|host-passthrough>"
+    #machine type:       "machine:<pc|q35|any valid VM machine type>"
     if ($advsettings) {
         my @tmp_array = split ";", $advsettings;
         foreach (@tmp_array) {
@@ -767,7 +769,15 @@ sub build_xmldesc {
             if (/cpumode:(.*)/) {
                 $cpumode = $1;
             }
+            if (/machine:(.*)/) {
+                $machine_type = $1;
+            }
         }
+    }
+
+    # Support VM machine types specified through vm.othersettings, e.g., q35, pseries-rhel7.4.0.
+    if (defined $machine_type) {
+        $xtree{os}->{type}->{machine} = $machine_type;
     }
 
     #prepare the xml hash for memory binding

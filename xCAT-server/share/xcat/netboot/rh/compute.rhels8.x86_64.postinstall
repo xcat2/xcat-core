@@ -41,13 +41,15 @@ then
 fi
 #--for redhat 8 and 8.1
 #-- Need to disable firewalld, otherwise, the remoteshell script will not able to get all the SSH keys
-if [ -f "$installroot/etc/systemd/system/multi-user.target.wants/firewalld.service" ]
+FIREWALLD="$installroot/etc/systemd/system/multi-user.target.wants/firewalld.service"
+if [[ -f "$FIREWALLD" || -L "$FIREWALLD" ]]
 then
-    rm -rf $installroot/etc/systemd/system/multi-user.target.wants/firewalld.service
+    rm -f $FIREWALLD
 fi
-if [ -f "$installroot/etc/systemd/system/dbus-org.fedoraproject.FirewallD1.service" ]
+FIREWALLD1="$installroot/etc/systemd/system/dbus-org.fedoraproject.FirewallD1.service"
+if [[ -f "$FIREWALLD1" || -L "$FIREWALLD1" ]]
 then
-    rm -rf $installroot/etc/systemd/system/dbus-org.fedoraproject.FirewallD1.service
+    rm -f $FIREWALLD1
 fi
 
 

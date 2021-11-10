@@ -41,13 +41,13 @@ cmd:xdsh $$SN 'cat /etc/exports|grep nodedata; if [ "$?" -ne "0" ]; then echo "/
 check:rc==0
 cmd:xdsh $$SN 'cd /etc; export exports;cd -'
 check:rc==0
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then xdsh $$SN 'service nfsserver restart'; elif cat /etc/*release |grep "Red Hat" >/dev/null;then xdsh $$SN 'if [ -f /usr/lib/systemd/system/nfs-server.service ]; then service nfs-server restart; else service nfs restart;fi'; fi
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then xdsh $$SN 'service nfsserver restart'; elif cat /etc/*release |grep "Red Hat\|Rocky" >/dev/null;then xdsh $$SN 'if [ -f /usr/lib/systemd/system/nfs-server.service ]; then service nfs-server restart; else service nfs restart;fi'; fi
 check:rc==0
 
 cmd:chtab node=$$CN statelite.statemnt="$$SN:/nodedata"
 check:rc==0
 
-cmd:if cat /etc/*release |grep SUSE >/dev/null; then cp /opt/xcat/share/xcat/tools/autotest/testcase/installation/litefile_sles.csv /tmp/litefile.csv; tabrestore /tmp/litefile.csv; elif cat /etc/*release |grep "Red Hat" >/dev/null; then  tabrestore /opt/xcat/share/xcat/tools/autotest/testcase/installation/litefile.csv; fi
+cmd:if cat /etc/*release |grep SUSE >/dev/null; then cp /opt/xcat/share/xcat/tools/autotest/testcase/installation/litefile_sles.csv /tmp/litefile.csv; tabrestore /tmp/litefile.csv; elif cat /etc/*release |grep "Red Hat\|Rocky" >/dev/null; then  tabrestore /opt/xcat/share/xcat/tools/autotest/testcase/installation/litefile.csv; fi
 check:rc==0
 cmd:tabdump litefile
 check:rc==0

@@ -2862,6 +2862,8 @@ sub service_connection {
                     }
                 }
             }
+            # Replace passwords with 'x'
+            $cmdlog_alllog = xCAT::xcatd->redact_password($cmdlog_alllog);
             $cmdlog_alllog .= "\n[Response]\n";
 
             # ----used for command log end----------

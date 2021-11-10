@@ -8,13 +8,13 @@ Internet Repository
 
 **[xcat-core]**
 
-For the xCAT build you want to install, download the ``xcat-core.repo`` file and copy to ``/etc/yum.repos.d``
+For the xCAT version you want to install, download the ``xcat-core.repo`` file and copy it to ``/etc/yum.repos.d``
 
 **[xcat-dep]**
 
-From the `xCAT-dep Online Repository <http://xcat.org/files/xcat/repos/yum/xcat-dep/>`_, navigate to the correct subdirectory for the target machine and download the ``xcat-dep.repo`` file and copy to ``/etc/yum.repos.d``.
+From the `xCAT-dep Online Repository <http://xcat.org/files/xcat/repos/yum/xcat-dep/>`_, navigate to the correct subdirectory for the target machine and download the ``xcat-dep.repo`` file and copy it to ``/etc/yum.repos.d``.
 
-If using internet repositories, continue to the next step to install xCAT.
+Continue to the next section to install xCAT.
 
 Local Repository
 ----------------

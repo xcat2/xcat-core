@@ -969,7 +969,7 @@ sub check_dns_service {
         $checkdns = `lsdef $nodename -i setupnameserver -c  2>&1| awk -F'=' '{print \$2}'`;
         chomp($checkdns);
     } else { # management node
-        my $dns_is_external = `lsdef -t site -i externaldns -c 2>&1 | awk -F'=' {print \$2}'`;
+        my $dns_is_external = `lsdef -t site -i externaldns -c 2>&1 | awk -F'=' '{print \$2}'`;
         chomp($dns_is_external);
         if ($dns_is_external eq "1") {
           $checkdns = 0;
@@ -1143,8 +1143,15 @@ sub check_dhcp_service {
                     last;
                 }
                 chomp($tmp);
+                if (length($tmp) == 0) {
+                    # makedhcp -q did not return anything, and RC was 0
+                    push @$error_ref, "DHCP server returned no data for 'makedhcp -q xcatmntest'";
+                    returncmdoutput($tmp, $error_ref) if ($verbose);
+                    $rc = 1;
+                    last;
+                }
                 if ($tmp !~ /xcatmntest: ip-address = $serverip, hardware-address = aa:aa:aa:aa:aa:aa/) {
-                    push @$error_ref, "DHCP server reply is wrong";
+                    push @$error_ref, "DHCP server reply does not match expected IP and MAC";
                     returncmdoutput($tmp, $error_ref) if ($verbose);
                     $rc = 1;
                     `makedhcp -d xcatmntest 2>&1 &&  rmdef xcatmntest 2>&1`;
