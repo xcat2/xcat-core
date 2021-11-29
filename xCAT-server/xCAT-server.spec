@@ -460,6 +460,9 @@ fi
 ln -sf $RPM_INSTALL_PREFIX0/sbin/xcatd /usr/sbin/xcatd
 ln -sf $RPM_INSTALL_PREFIX0/share/xcat/install/sles $RPM_INSTALL_PREFIX0/share/xcat/install/sle
 ln -sf $RPM_INSTALL_PREFIX0/share/xcat/netboot/sles $RPM_INSTALL_PREFIX0/share/xcat/netboot/sle
+
+ln -sf $RPM_INSTALL_PREFIX0/share/xcat/install/centos $RPM_INSTALL_PREFIX0/share/xcat/install/centos-stream
+ln -sf $RPM_INSTALL_PREFIX0/share/xcat/netboot/centos $RPM_INSTALL_PREFIX0/share/xcat/netboot/centos-stream
 if [ "$1" = "1" ]; then #Only if installing for the first time..
    if [ -x /usr/lib/systemd/systemd ]; then
        /usr/bin/systemctl daemon-reload

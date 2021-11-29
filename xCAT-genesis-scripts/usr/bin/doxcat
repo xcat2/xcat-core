@@ -8,12 +8,17 @@ log_label="xcat.genesis.doxcat"
 # Start rsyslogd and log into a local file specified in /etc/rsyslog.conf
 # Later, once xCAT MN is known, dhclient-script will change
 # rsyslog.conf file to send log entries to xCAT MN
-RSYSLOGD_VERSION=`rsyslogd -v | grep "rsyslogd" | cut -d" " -f2 | cut -d"." -f1`
+RSYSLOGD_VERSION=`rsyslogd -v | grep -m1 "rsyslogd" | tr -s ' ' | cut -d" " -f2 | cut -d"." -f1`
 
 # if syslog is running and there's a pid file, kill it before restarting syslogd
 if [ -f /var/run/syslogd.pid ]; then
     kill -TERM `cat /var/run/syslogd.pid`
 fi
+if [ -f /var/run/rsyslogd.pid ]; then
+    kill -TERM `cat /var/run/rsyslogd.pid`
+fi
+# wait for rsyslog to terminate
+sleep 2
 
 if [ $RSYSLOGD_VERSION -ge 7 ]; then
     /sbin/rsyslogd
@@ -71,6 +76,10 @@ fi
 rpcbind
 rpc.statd
 
+# Generate some entropy, needed for ssh-keygen to unblock getrandom()
+if [ -e /usr/sbin/rngd ]; then
+    /usr/sbin/rngd
+fi
 # Try -A available on more current version of ssh-keygen to generate all keys
 ssh-keygen -A 2> /dev/null
 if [ $? -ne 0 ]; then
@@ -80,6 +89,10 @@ if [ $? -ne 0 ]; then
 	ssh-keygen -q -t dsa -f /etc/ssh/ssh_host_dsa_key -C '' -N ''
 fi
 
+# On some systems /usr/share/empty.sshd needs to be created before calling sshd
+if [ ! -e /usr/share/empty.sshd ]; then
+    mkdir -p /usr/share/empty.sshd
+fi
 echo 'Protocol 2' >> /etc/ssh/sshd_config
 echo 'Port 22' >> /etc/ssh/sshd_config
 echo 'Port 3389' >> /etc/ssh/sshd_config
@@ -271,17 +284,22 @@ logger -s -t $log_label -p local4.info "Acquired IPv4 address on $bootnic"
 
 ip -4 -o a show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|awk '{print $4}'
 
-logger -s -t $log_label -p local4.info "Starting ntpd..."
-ntpd -g -x
+if [ -e /usr/sbin/ntpd ]; then
+    logger -s -t $log_label -p local4.info "Starting ntpd..."
+    ntpd -g -x
 
-#TODO(jjohnson2): Replace with some python to get ntp time
-#and sync, don't need ntpd per se for this
-#logger -s -t $log_label -p local4.info "Waiting for ntpd to synchronize..."
-#ntp-wait -n 1999 -s 1 -v
-#if [ $? -ne 0 ]
-#then
-#    logger -s -t $log_label -p local4.info "... ntpd did not synchronize."
-#fi
+    # ntp-wait defaults to 6 seconds between retries, wait for 1 minute
+    NTP_TRIES=10
+    NTP_SLEEP=6
+    logger -s -t $log_label -p local4.info "Waiting for $NTP_TRIES x $NTP_SLEEP seconds for ntpd to synchronize..."
+    ntp-wait -n $NTP_TRIES -s $NTP_SLEEP -v
+    if [ $? -ne 0 ]; then
+        logger -s -t $log_label -p local4.info "... ntpd did not synchronize."
+    fi
+else
+    logger -s -t $log_label -p local4.info "Starting chronyd..."
+    chronyd -s
+fi
 
 if [ -e "/dev/rtc" ]; then
     logger -s -t $log_label -p local4.info "Attempting to sync hardware clock..."
@@ -290,17 +308,15 @@ if [ -e "/dev/rtc" ]; then
 fi
 
 logger -s -t $log_label -p local4.info "Restarting syslog..."
-if [ -r /var/run/syslogd.pid ]; then
-	read -r RSYSLOG_PID </var/run/syslogd.pid 2>/dev/null
-	kill "$RSYSLOG_PID" 2>/dev/null
-	while kill -0 "$RSYSLOG_PID" 2>/dev/null
-	do
-	    sleep 0.5
-	done
-	unset RSYSLOG_PID
+if [ -f /var/run/syslogd.pid ]; then
+    kill -TERM `cat /var/run/syslogd.pid`
 fi
+if [ -f /var/run/rsyslogd.pid ]; then
+    kill -TERM `cat /var/run/rsyslogd.pid`
+fi
+# wait for rsyslog to terminate
+sleep 2
 
-RSYSLOGD_VERSION=`rsyslogd -v | awk '/rsyslogd/ { split($2, a, "."); print a[1]; }'`
 if [ "$RSYSLOGD_VERSION" -ge 7 ]; then
     /sbin/rsyslogd
 else

@@ -226,7 +226,19 @@ qq{ link,ro - The file is readonly, and will be placed in tmpfs on the booted no
 'vncport' => 'Tracks the current VNC display port (currently not meant to be set',
 'textconsole' => 'Tracks the Psuedo-TTY that maps to the serial port or console of a VM',
 'powerstate' => "This flag is used by xCAT to track the last known power state of the VM.",
-'othersettings' => "This allows specifying a semicolon delimited list of key->value pairs to include in a vmx file of VMware or KVM. For partitioning on normal power machines, this option is used to specify the hugepage and/or bsr information, the value is like:'hugepage:1,bsr=2'. For KVM cpu mode use either:'cpumode:host-passthrough' or 'cpumode:host-model'. This improves performance on x86 VMs significantly. For KVM cpu pinning, this option is used to specify the physical cpu set on the host, the value is like:\"vcpupin:'0-15,^8'\",Its syntax is a comma separated list and a special markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed, the '-' denotes the range and the '^' denotes exclusive. For KVM memory binding, the value is like:'membind:0', restrict a guest to allocate memory from the specified set of NUMA nodes. For PCI passthrough, the value is like:'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0', the value for PCI device format also can be like:'devpassthrough:0001:01:00.1', the PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively, the devices list are a list of PCI device names delimited with comma, the PCI device names can be obtained by running B<virsh nodedev-list> on the host.",
+'othersettings' => "This is a semicolon-delimited list of key-value pairs to be included in a vmx file of VMware or KVM. DO NOT use 'chdef <node> -p|-m vmothersetting=...' to add options to it or delete options from it because chdef uses commas, not semicolons, to separate items.
+          Hugepage on POWER systems:
+             Specify the hugepage and/or bsr (Barrier Synchronization Register) values, e.g., 'hugepage:1,bsr:2'.
+          KVM CPU mode:
+             Specify how the host CPUs are utilized, e.g., 'cpumode:host-passthrough', 'cpumode:host-model'. With the passthrough mode, the performance of x86 VMs can be improved significantly.
+          KVM CPU pinning:
+             Specify which host CPUs are used, e.g., 'vcpupin:'0-15,^8', where '-' denotes the range and '^' denotes exclusion. This option allows a comma-delimited list.
+          KVM memory binding:
+             Specify which nodes that host memory are used, e.g., 'membind:0', where the memory in node0 of the hypervisor is used. /sys/devices/system/node has node0 and node8 on some POWER systems, node0 and node1 on some x86_64 systems. This option allows a guest VM to access specific memory regions.
+          PCI passthrough:
+             PCI devices can be assigned to a virtual machine for exclusive usage, e.g., 'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0'. A PCI device can also be expressed as 'devpassthrough:0001:01:00.1'. The devices are put in a comma-delimited list. The PCI device names can be obtained by running B<virsh nodedev-list> on the host.
+          VM machine type:
+             Specify a machine type for VM creation on the host, e.g., 'machine:pc'. Typical machine types are pc, q35, and pseries.",
 'guestostype' => "This allows administrator to specify an identifier for OS to pass through to virtualization stack.  Normally this should be ignored as xCAT will translate from nodetype.os rather than requiring this field be used\n",
 'beacon' => "This flag is used by xCAT to track the state of the identify LED with respect to the VM.",
 'datacenter' => "Optionally specify a datacenter for the VM to exist in (only applicable to VMWare)",
@@ -744,7 +756,7 @@ passed as argument rather than by table value',
         table_desc => 'A few hardware and software characteristics of the nodes.',
         descriptions => {
             node => 'The node name or group name.',
-            os => 'The operating system deployed on this node.  Valid values: AIX, rhels*,rhelc*, rhas*,centos*,SL*, fedora*, sles* (where * is the version #). As a special case, if this is set to "boottarget", then it will use the initrd/kernel/parameters specified in the row in the boottarget table in which boottarget.bprofile equals nodetype.profile.',
+            os => 'The operating system deployed on this node.  Valid values: AIX, rhels*,rhelc*, rhas*,centos*,rocky*,SL*, fedora*, sles* (where * is the version #). As a special case, if this is set to "boottarget", then it will use the initrd/kernel/parameters specified in the row in the boottarget table in which boottarget.bprofile equals nodetype.profile.',
             arch => 'The hardware architecture of this node.  Valid values: x86_64, ppc64, x86, ia64.',
             profile => 'The string to use to locate a kickstart or autoyast template to use for OS deployment of this node.  If the provmethod attribute is set to an osimage name, that takes precedence, and profile need not be defined.  Otherwise, the os, profile, and arch are used to search for the files in /install/custom first, and then in /opt/xcat/share/xcat.',
             provmethod => 'The provisioning method for node deployment. The valid values are install, netboot, statelite or an os image name from the osimage table. If an image name is specified, the osimage definition stored in the osimage table and the linuximage table (for Linux) or nimimage table (for AIX) are used to locate the files for templates, pkglists, syncfiles, etc. On Linux, if install, netboot or statelite is specified, the os, profile, and arch are used to search for the files in /install/custom first, and then in /opt/xcat/share/xcat.',
@@ -787,7 +799,7 @@ passed as argument rather than by table value',
             cfmdir => 'CFM directory name for PCM. Set to /install/osimages/<osimage name>/cfmdir by PCM. ',
             profile => 'The node usage category. For example compute, service.',
             osname  => 'Operating system name- AIX or Linux.',
-            osvers => 'The Linux operating system deployed on this node.  Valid values:  rhels*,rhelc*, rhas*,centos*,SL*, fedora*, sles* (where * is the version #).',
+            osvers => 'The Linux operating system deployed on this node.  Valid values:  rhels*,rhelc*, rhas*,centos*,rocky*,SL*, fedora*, sles* (where * is the version #).',
             osarch => 'The hardware architecture of this node.  Valid values: x86_64, ppc64, x86, ia64.',
             synclists => 'The fully qualified name of a file containing a list of files to synchronize on the nodes. Can be a comma separated list of multiple synclist files. The synclist generated by PCM named /install/osimages/<imagename>/synclist.cfm is reserved for use only by PCM and should not be edited by the admin.',
             postscripts => 'Comma separated list of scripts that should be run on this image after diskful installation or diskless boot. For installation of RedHat, CentOS, Fedora, the scripts will be run before the reboot. For installation of SLES, the scripts will be run after the reboot but before the init.d process. For diskless deployment, the scripts will be run at the init.d time, and xCAT will automatically add the list of scripts from the postbootscripts attribute to run after postscripts list. For installation of AIX, the scripts will run after the reboot and acts the same as the postbootscripts attribute.  For AIX, use the postbootscripts attribute. See the site table runbootscripts attribute.',
@@ -1156,6 +1168,9 @@ passed as argument rather than by table value',
 " cleanupxcatpost:  (yes/1 or no/0). Set to 'yes' or '1' to clean up the /xcatpost\n" .
 "                   directory on the stateless and statelite nodes after the\n" .
 "                   postscripts are run. Default is no.\n\n" .
+" cleanupdiskfullxcatpost:  (yes/1 or no/0). Set to 'yes' or '1' to clean up the /xcatpost\n" .
+"                   directory on the diskfull nodes after the\n" .
+"                   postscripts are run with no errors. Default is no.\n\n" .
 " db2installloc:  The location which the service nodes should mount for\n" .
 "                 the db2 code to install. Format is hostname:/path.  If hostname is\n" .
 "                 omitted, it defaults to the management node. Default is /mntdb2.\n\n" .

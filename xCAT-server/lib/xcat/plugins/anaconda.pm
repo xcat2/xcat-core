@@ -41,10 +41,10 @@ sub handled_commands
 {
     return {
         copycd => "anaconda",
-        mknetboot => "nodetype:os=(^ol[0-9].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
-        mkinstall => "nodetype:os=(pkvm.*)|(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
-        mksysclone => "nodetype:os=(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
-        mkstatelite => "nodetype:os=(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
+        mknetboot => "nodetype:os=(^ol[0-9].*)|(centos.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)",
+        mkinstall => "nodetype:os=(pkvm.*)|(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rocky.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
+        mksysclone => "nodetype:os=(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rocky.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
+        mkstatelite => "nodetype:os=(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)",
 
     };
 }
@@ -145,7 +145,7 @@ sub process_request
 sub using_dracut
 {
     my $os = shift;
-    if ($os =~ /(rhels|rhel|centos)(\d+)/) {
+    if ($os =~ /(rhels|rhel|centos|rocky|ol)(\d+)/) {
         if ($2 >= 6) {
             return 1;
         }
@@ -762,7 +762,7 @@ sub mknetboot
         }
 
         # turn off the selinux
-        if ($osver =~ m/(fedora12|fedora13|rhels7)/) {
+        if ($osver =~ m/(fedora12|fedora13|rhels7|rhels8|ol7|ol8|rocky8)/) {
             $kcmdline .= " selinux=0 ";
         }
 
@@ -2017,6 +2017,7 @@ sub copycd
     }
     if ($distname
         and $distname !~ /^centos/
+        and $distname !~ /^rocky/
         and $distname !~ /^fedora/
         and $distname !~ /^SL/
         and $distname !~ /^ol/
@@ -2076,6 +2077,10 @@ sub copycd
         }
     } elsif ($desc and $desc =~ /Red Hat Enterprise Linux (.*)/) {
         $distname = "rhels" . $1;
+    } elsif ($desc and $desc =~ /CentOS Stream (.*)/) {
+          $distname = "centos-stream" . $1;
+    } elsif ($desc and $desc =~ /Rocky Linux (.*)/) {
+          $distname = "rocky" . $1;
     } elsif (-r $mntpath . "/isolinux/isolinux.cfg") {
         my $icfg;
 
@@ -2159,6 +2164,15 @@ sub copycd
             my @ol_version = split /[- ]/, $desc;
             $distname = "ol" . $ol_version[1];
         }
+        elsif ($desc =~ /Fedora/)
+        {
+            # Attempt to auto-detect for Fedora OS, the first element
+            # (after " ") has typically been the version
+            # ex: Fedora 28
+            #
+            my @fedora_version = split /[- ]/, $desc;
+            $distname = "fedora" . $fedora_version[1];
+        }
         elsif ($desc =~ /^[\d\.]+$/)
         {
             open($dinfo, $mntpath . "/.treeinfo");
@@ -2168,6 +2182,9 @@ sub copycd
                 next if /^\s*$/;    #-- skip empty lines
                 if ($_ =~ /family\s*=\s*CentOS/i) {
                     $distname = "centos" . $desc;
+                    last;
+                } elsif ($_ =~ /family\s*=\s*Rocky/i) {
+                    $distname = "rocky" . $desc;
                     last;
                 }
             }
@@ -2419,6 +2436,10 @@ sub getplatform {
     elsif ($os =~ /centos.*/)
     {
         $platform = "centos";
+    }
+    elsif ($os =~ /rocky.*/)
+    {
+        $platform = "rocky";
     }
     elsif ($os =~ /fedora.*/)
     {

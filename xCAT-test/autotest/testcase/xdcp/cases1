@@ -26,5 +26,5 @@ cmd:xdsh $$CN "userdel xyzzy"
 check:rc==0
 cmd:servicenode=`lsdef $$CN |grep servicenode |awk -F= '{print $2}'`; if [ -n "$servicenode" ]; then xdsh $servicenode "userdel xyzzy";userdel xyzzy;else userdel xyzzy;fi
 check:rc==0
-cmd:if [ -e /tmp/site.standa ]; then cat /tmp/site.standa | mkdef -z -f; rm -rf /tmp/site.standa; fi
+cmd:if [ -e /tmp/site.stanza ]; then cat /tmp/site.stanza | mkdef -z -f; rm -rf /tmp/site.stanza; fi
 end

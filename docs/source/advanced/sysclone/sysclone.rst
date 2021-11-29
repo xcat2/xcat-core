@@ -1,6 +1,8 @@
 Using System Clone to Deploy Diskful Node
 =========================================
 
+.. note:: This feature has been deprecated
+
 When we want to deploy large numbers of nodes which have the same configuration, the simplest way is to clone. This means the user can customize and tweak one node's configuration according to his needs. They can verify it's proper operation, then make this node as template. They can capture an osimage from this template node, and deploy the rest of the nodes with this osimage quickly. xCat (2.8.2 and above) provides this feature which we call Sysclone to help you handle this scenario.
 
 List of Supported Arch and OS
