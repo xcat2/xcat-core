@@ -5,7 +5,7 @@ Most of the content is general information for xCAT, the focus and examples are 
 
 IBM OpenPOWER Servers
   * based on POWER8 Processor Technology is IPMI managed
-  * based on POWER9 Processor Technology is OpenBMC managed [**Alpha**]
+  * based on POWER9 Processor Technology is OpenBMC managed
 
 
 .. toctree::
