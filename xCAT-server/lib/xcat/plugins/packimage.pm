@@ -351,6 +351,8 @@ sub process_request {
             
                 # Add the zoneinfo to the include list
                 $excludetext .= "+./usr/share/zoneinfo/$timezone[0]\n";
+            } else {
+                $callback->({ info => ["No timezone defined in site table, skipping timezone configuration"] });
             }
 
             #handle the #INLCUDE# tag recursively
