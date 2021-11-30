@@ -277,6 +277,8 @@ sub testxdsh {
     if (($value == 1) || ($value == 2) || ($value == 3)) {
         `$xdsh_command`;
         if ($?) {
+            # First attempt to run xdsh failed, display console log to see what happened, then try few more times
+            `nodels $noderange | xargs -I % tail -v --lines 25 /var/log/consoles/%.log`;
             my @i = (1..5);
             for (@i) {
                 sleep 300;
