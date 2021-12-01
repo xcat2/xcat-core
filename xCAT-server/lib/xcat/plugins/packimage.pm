@@ -351,6 +351,10 @@ sub process_request {
             
                 # Add the zoneinfo to the include list
                 $excludetext .= "+./usr/share/zoneinfo/$timezone[0]\n";
+                
+                if (not stat "$rootimg_dir/etc/localtime") {
+                    $callback->({ warning => ["Unable to set timezone to \'$timezone[0]\', check this is a valid timezone"] });
+                } 
             } else {
                 $callback->({ info => ["No timezone defined in site table, skipping timezone configuration"] });
             }
