@@ -1886,7 +1886,7 @@ function is_connection_activate_intime {
 
 function wait_nic_connect_intime {
     nic_name=$1
-    time_out=40
+    time_out=80
     con_name=''
     if [ ! -z "$2" ]; then
         time_out=$2
