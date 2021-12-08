@@ -352,6 +352,15 @@ sub process_request {
                 # Add the zoneinfo to the include list
                 $excludetext .= "+./usr/share/zoneinfo/$timezone[0]\n";
                 
+                # /usr/share/zoneinfo can have many levels of links
+                # If the configured timezone is a link, also add the link target to the include list
+                # Note: this logic can only handle 2 levels of linking
+                my $realtimezonefile = Cwd::abs_path("$rootimg_dir/usr/share/zoneinfo/$timezone[0]");
+                if ("$rootimg_dir/usr/share/zoneinfo/$timezone[0]" ne "$realtimezonefile") {
+                    my $relativetzpath = substr($realtimezonefile, length($rootimg_dir));
+                    $excludetext .= "+.$relativetzpath\n";
+                }
+                
                 if (not stat "$rootimg_dir/etc/localtime") {
                     $callback->({ warning => ["Unable to set timezone to \'$timezone[0]\', check this is a valid timezone"] });
                 } 
