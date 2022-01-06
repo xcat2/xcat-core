@@ -237,3 +237,27 @@ cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVA
 check:rc==0
 check:output=~'vmmemori' is not a valid attribute name for an object type
 end
+
+start:restapi_nodeshell_cmd_root
+description: Call nodeshell method to execute a command by root user
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X POST -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/$$CN/nodeshell?userName=$username&userPW=$password' -H Content-Type:application/json --data '{\"command\":\"id\"}'"
+check:rc==0
+check:output=~root
+end
+
+start:restapi_nodeshell_cmd_non_root
+description: Call nodeshell method to execute a command by non-root user
+label:restapi
+cmd:useradd -u 99 nonroot
+cmd:echo nonrootpw | passwd --stdin nonroot
+cmd:tabch key=xcat,username=nonroot passwd.password=nonrootpw
+cmd:mkdef -t policy 9 name=nonroot rule=allow
+cmd:xdsh $$CN "useradd -u 99 nonroot"
+cmd:xdsh $$CN "echo nonrootpw | passwd --stdin nonroot"
+cmd:/opt/xcat/share/xcat/scripts/setup-local-client.sh nonroot -f
+cmd:runuser -l nonroot -c 'echo nonrootpw | xdsh $$CN -K'
+cmd:username=nonroot;password=nonrootpw;xdsh $$CN "curl -X POST -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/$$CN/nodeshell?userName=$username&userPW=$password' -H Content-Type:application/json --data '{\"command\":\"id\"}'"
+check:rc==0
+check:output=~nonroot
+end
