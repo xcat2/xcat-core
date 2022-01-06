@@ -25,4 +25,5 @@ restapi_list_wrong_osimage
 restapi_modify_wrong_field_CN
 restapi_delete_temp_CN_put
 restapi_nodeshell_cmd_root
+restapi_nodeshell_cmd_non_root
 restapi_cleanup_on_MN_CN
