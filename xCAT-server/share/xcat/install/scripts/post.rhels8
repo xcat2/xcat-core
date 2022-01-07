@@ -18,3 +18,14 @@ do
         sed -i 's/ONBOOT=no/ONBOOT=yes/' "$i"
     fi
 done
+
+# List of internal repos to be disabled
+
+internet_repo_file_list="oracle-linux-ol8.repo uek-ol8.repo Rocky-AppStream.repo Rocky-BaseOS.repo Rocky-Extras.repo CentOS-Base.repo"
+
+for repo_file in $internet_repo_file_list
+do
+  if [ -f /etc/yum.repos.d/$repo_file ]; then
+    sed -i -e 's/enabled=1/enabled=0/' /etc/yum.repos.d/$repo_file
+  fi
+done
