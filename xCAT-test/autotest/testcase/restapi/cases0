@@ -249,13 +249,20 @@ end
 start:restapi_nodeshell_cmd_non_root
 description: Call nodeshell method to execute a command by non-root user
 label:restapi
+# Create nonroot user on MN
 cmd:useradd -u 99 nonroot
-cmd:echo nonrootpw | passwd --stdin nonroot
+cmd:echo "nonroot:nonrootpw" | chpasswd
 cmd:tabch key=xcat,username=nonroot passwd.password=nonrootpw
 cmd:mkdef -t policy 9 name=nonroot rule=allow
+# Create nonroot user on SN
+cmd:xdsh $$SN "useradd -u 99 nonroot"
+cmd:xdsh $$SN "echo \"nonroot:nonrootpw\" | chpasswd"
+# Create nonroot user on CN
 cmd:xdsh $$CN "useradd -u 99 nonroot"
-cmd:xdsh $$CN "echo nonrootpw | passwd --stdin nonroot"
+cmd:xdsh $$CN "echo \"nonroot:nonrootpw\" | chpasswd"
 cmd:/opt/xcat/share/xcat/scripts/setup-local-client.sh nonroot -f
+# Setup ssh keys on SN and CN
+cmd:runuser -l nonroot -c 'echo nonrootpw | xdsh $$SN -K'
 cmd:runuser -l nonroot -c 'echo nonrootpw | xdsh $$CN -K'
 cmd:username=nonroot;password=nonrootpw;xdsh $$CN "curl -X POST -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/$$CN/nodeshell?userName=$username&userPW=$password' -H Content-Type:application/json --data '{\"command\":\"id\"}'"
 check:rc==0
