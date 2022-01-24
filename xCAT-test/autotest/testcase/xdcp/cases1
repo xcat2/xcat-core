@@ -22,7 +22,7 @@ cmd:su -c "xdcp $$CN /etc/sysctl.conf /tmp/sysctl.conf" - xyzzy
 check:rc==0
 cmd:xdsh $$CN "stat -c '%U' /tmp/sysctl.conf"
 check:output=~xyzzy
-cmd:xdsh $$CN "userdel xyzzy"
+cmd:xdsh $$CN "userdel xyzzy"; if [ $? == 1 ]; then sleep 11; xdsh $$CN "userdel xyzzy"; fi
 check:rc==0
 cmd:servicenode=`lsdef $$CN |grep servicenode |awk -F= '{print $2}'`; if [ -n "$servicenode" ]; then xdsh $servicenode "userdel xyzzy";userdel xyzzy;else userdel xyzzy;fi
 check:rc==0
