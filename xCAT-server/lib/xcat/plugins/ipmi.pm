@@ -1619,7 +1619,7 @@ sub isopenpower {
     if ($sessdata->{prod_id} == 43707 and $sessdata->{mfg_id} == 0) {
         # mft_id 0 and prod_id 43707 is for Firestone,Minsky
         return 1;
-    } elsif (($sessdata->{prod_id} =~ /0|2355|2437/) and $sessdata->{mfg_id} == 10876) {
+    } elsif (($sessdata->{prod_id} =~ /^(?:0|2355|2437)$/) and $sessdata->{mfg_id} == 10876) {
         # mfg_id 10876 is for IBM Power S822LC for Big Data (Supermicro), prod_id 2355 for B&S, and 0 or 2437 for Boston
         return 1;
     } else {
