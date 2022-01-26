@@ -164,6 +164,19 @@ sub using_dracut
     return 0;
 }
 
+# Check whether the new subiquity installer is used by this os
+sub using_subiquity
+{
+    my $os = shift;
+    if ($os =~ /ubuntu(\d+\.\d+)/) {
+        if ($1 >= 20.04) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 sub copyAndAddCustomizations {
     my $source = shift;
     my $dest   = shift;
@@ -567,6 +580,12 @@ sub mkinstall {
                         my $pltfrm = getplatform($ref->{'osvers'});
                         my $tmplfile = xCAT::SvrUtils::get_tmpl_file_name("$installroot/custom/install/$pltfrm",
                             $ref->{'profile'}, $ref->{'osvers'}, $ref->{'osarch'}, $ref->{'osvers'});
+                        if (using_subiquity($os)) {
+
+                            # in this context we use the genos parameter to search for the subiquity template
+                            $tmplfile = xCAT::SvrUtils::get_tmpl_file_name("$installroot/custom/install/$pltfrm",
+                                $ref->{'profile'}, $ref->{'osvers'}, $ref->{'osarch'}, $ref->{'osvers'}, "subiquity");
+                        }
                         if (!$tmplfile) {
                             $tmplfile = xCAT::SvrUtils::get_tmpl_file_name("$::XCATROOT/share/xcat/install/$pltfrm",
                                 $ref->{'profile'}, $ref->{'osvers'}, $ref->{'osarch'}, $ref->{'osvers'});
@@ -716,9 +735,27 @@ sub mkinstall {
             $tmperr = "Unable to find template in $installroot/custom/install/$platform or $::XCATROOT/share/xcat/install/$platform (for $profile/$os/$arch combination)";
         }
         if (-r "$tmplfile") {
+            my $autoinstfile = "$installroot/autoinst/" . $node;
+
+            # handle nocloud-net datasource for ubuntu 20.04+
+            if (using_subiquity($os)) {
+
+                # clean up existing files to make way for the new directory
+                if (-f $autoinstfile) {
+                    unlink($autoinstfile);
+                }
+                mkpath($autoinstfile);
+
+                # create empty meta-data file
+                open(my $fh, ">", $autoinstfile . "/meta-data");
+                close($fh);
+
+                # point the template output at the /user-data file
+                $autoinstfile = "$autoinstfile/user-data";
+            }
             $tmperr =
               xCAT::Template->subvars($tmplfile,
-                "$installroot/autoinst/" . $node,
+                $autoinstfile,
                 $node,
                 $pkglistfile,
                 $pkgdir,
@@ -728,7 +765,11 @@ sub mkinstall {
               );
         }
 
+        # maybe Debian will decide to use subiquity at some point?
         my $prescript = "$::XCATROOT/share/xcat/install/scripts/pre.$platform";
+        if (using_subiquity($os)) {
+            $prescript = $prescript . ".subiquity";
+        }
         my $postscript = "$::XCATROOT/share/xcat/install/scripts/post.$platform";
 
         # for powerkvm VM ubuntu LE#
@@ -801,6 +842,16 @@ sub mkinstall {
                             and $kernpath = "$pkgdir/install/netboot/vmlinuz"
                             and -r "$pkgdir/install/netboot/initrd.gz"
                             and $initrdpath = "$pkgdir/install/netboot/initrd.gz"
+                        ) or
+                        (-r "$pkgdir/casper/hwe-vmlinuz"
+                            and $kernpath = "$pkgdir/casper/hwe-vmlinuz"
+                            and -r "$pkgdir/casper/hwe-initrd"
+                            and $initrdpath = "$pkgdir/casper/hwe-initrd"
+                        ) or
+                        (-r "$pkgdir/casper/vmlinuz"
+                            and $kernpath = "$pkgdir/casper/vmlinuz"
+                            and -r "$pkgdir/casper/initrd"
+                            and $initrdpath = "$pkgdir/casper/initrd"
                         )
                     )
                 ) or (
@@ -844,7 +895,12 @@ sub mkinstall {
             if ($docopy) {
                 mkpath("$tftppath");
                 copy($kernpath, "$tftppath/vmlinuz");
-                copyAndAddCustomizations($initrdpath, "$tftppath/initrd.img");
+                # we don't want to customise the subiquity initrd
+                if (using_subiquity($os)) {
+                    copy($initrdpath, "$tftppath/initrd.img");
+                } else {
+                    copyAndAddCustomizations($initrdpath, "$tftppath/initrd.img");
+                }
             }
 
             # We have a shot...
@@ -869,10 +925,32 @@ sub mkinstall {
                 $instserver = $ent->{nfsserver};
             }
 
-            my $kcmdline = "nofb utf8 auto url=http://" . $instserver . ":$httpport/install/autoinst/" . $node;
+            my $kcmdline = "nofb utf8 auto xcatd=" . $instserver;
 
-            $kcmdline .= " xcatd=" . $instserver;
-            $kcmdline .= " mirror/http/hostname=" . $instserver.":$httpport";
+            if (using_subiquity($os)) {
+                $kcmdline .= " autoinstall ip=dhcp netboot=nfs nfsroot=${instserver}:${pkgdir}";
+                $kcmdline .= " ds=nocloud-net;s=http://${instserver}:${httpport}/install/autoinst/${node}/";
+            } else {
+                $kcmdline .= " url=http://${instserver}:$httpport/install/autoinst/$node";
+                $kcmdline .= " mirror/http/hostname=${instserver}:$httpport";
+
+                # default answers as much as possible, we don't want any interactiveness :)
+                $kcmdline .= " priority=critical";
+
+                # parse Mac table to get one mac address in case there are multiples.
+                my $net_params = xCAT::NetworkUtils->gen_net_boot_params($ent->{installnic}, $ent->{primarynic}, $mac);
+                if (exists($net_params->{nicname})) {
+                    $kcmdline .= " netcfg/choose_interface=" . $net_params->{nicname};
+                } elsif (exists($net_params->{mac})) {
+                    $kcmdline .= " netcfg/choose_interface=" . $net_params->{mac};
+                }
+
+                #from 12.10, the live install changed, so add the live-installer
+                if (-r "$pkgdir/install/filesystem.squashfs") {
+                    $kcmdline .= " live-installer/net-image=http://${instserver}:$httpport${pkgdir}/install/filesystem.squashfs";
+                }
+            }
+
             if ($maxmem) {
                 $kcmdline .= " mem=$maxmem";
             }
@@ -881,13 +959,6 @@ sub mkinstall {
             my $mac;
             if ($macent->{mac}) {
                 $mac = xCAT::Utils->parseMacTabEntry($macent->{mac}, $node);
-            }
-
-            my $net_params = xCAT::NetworkUtils->gen_net_boot_params($ent->{installnic}, $ent->{primarynic}, $mac);
-            if (exists($net_params->{nicname})) {
-                $kcmdline .= " netcfg/choose_interface=" . $net_params->{nicname};
-            } elsif (exists($net_params->{mac})) {
-                $kcmdline .= " netcfg/choose_interface=" . $net_params->{mac};
             }
 
             #TODO: dd=<url> for driver disks
@@ -913,9 +984,6 @@ sub mkinstall {
 
             #$kcmdline .= " netcfg/wireless_wep= netcfg/get_hostname= netcfg/get_domain=";
 
-            # default answers as much as possible, we don't want any interactiveness :)
-            $kcmdline .= " priority=critical";
-
             # Automatically detect all HDD
             # $kcmdline .= " all-generic-ide irqpoll";
 
@@ -930,11 +998,6 @@ sub mkinstall {
             # I don't need the timeout for ubuntu, but for debian there is a problem with getting dhcp in a timely manner
             # safer way to set hostname, avoid problems with nameservers
             $kcmdline .= " hostname=" . $node;
-
-            #from 12.10, the live install changed, so add the live-installer
-            if (-r "$pkgdir/install/filesystem.squashfs") {
-                $kcmdline .= " live-installer/net-image=http://${instserver}:$httpport${pkgdir}/install/filesystem.squashfs";
-            }
 
             xCAT::MsgUtils->trace($verbose_on_off, "d", "debian->mkinstall: kcmdline=$kcmdline kernal=$rtftppath/vmlinuz initrd=$rtftppath/initrd.img");
             $bootparams->{$node}->[0]->{kernel} = "$rtftppath/vmlinuz";
