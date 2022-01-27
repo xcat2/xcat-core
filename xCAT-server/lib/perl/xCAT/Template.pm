@@ -1576,6 +1576,11 @@ sub includefile
     }
 
     chomp($text);
+    if (($pkglist == 2) && (length($text)) < 1) {
+        # If processing a "pattern" (pkglist==2), and no patterns 
+        # were listed in pkglist file, just return start and end tags
+        $text="$pkgb$pkge"
+    }
     return ($text);
 }
 
