@@ -387,7 +387,7 @@ Removes a processor from an active virtual machine's configuration.
 
 =item B<--removeloaddev> I<wwpn> I<lun>
 
-Removes the LOADDEV statement from a virtual machines's directory entry.
+Removes the LOADDEV statement from a virtual machine's directory entry.
 
 =item B<--removezfcp> I<device_address> I<wwpn> I<lun>
 
@@ -515,7 +515,7 @@ then run the command:
 
  cat /tmp/lparfile | chvm lpar4 --p775
 
-5. To change the I/O slot profile for lpar1-lpar8 using the configuration data in the file /tmp/lparfile. Users can use the output of lsvm.and remove the cec information, and  modify the lpar id  before each I/O, and run the command as following:
+5. To change the I/O slot profile for lpar1-lpar8 using the configuration data in the file /tmp/lparfile. Users can use the output of lsvm, remove the cec information, modify the lpar id before each I/O, and run the command as following:
 
  chvm lpar1-lpar8 --p775 -p /tmp/lparfile
 

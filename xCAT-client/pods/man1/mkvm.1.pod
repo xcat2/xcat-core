@@ -297,7 +297,7 @@ After a node object is defined, the resources that will be used for the partitio
 
  chdef lpar1 vmcpus=1/4/16 vmmemory=1G/4G/32G vmphyslots=0x21010201,0x21010200 vmothersetting=bsr:128,hugepage:2
 
-Then, create the partion on the specified cec.
+Then, create the partition on the specified cec.
 
  mkvm lpar1
 
@@ -305,7 +305,7 @@ Option 2:
 
  mkvm lpar1 vmcpus=1/4/16 vmmemory=1G/4G/32G vmphyslots=0x21010201,0x21010200 vmothersetting=bsr:128,hugepage:2
 
-The outout is similar to:
+The output is similar to:
 
  lpar1: Done
 
