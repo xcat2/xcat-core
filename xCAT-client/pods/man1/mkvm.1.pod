@@ -54,7 +54,7 @@ Note that the B<mkvm> command currently only supports creating standard LPARs, n
 
 With option I<full>, a partition using all the resources on a normal power machine will be created.
 
-If no option is specified, a partition using the parameters specified with attributes such as 'vmcpus', 'vmmory', 'vmphyslots', 'vmothersetting', 'vmnics', 'vmstorage' will be created. Those attributes can either be specified with '*def' commands running before or be specified with this command.
+If no option is specified, a partition using the parameters specified with attributes such as 'vmcpus', 'vmmemory', 'vmphyslots', 'vmothersetting', 'vmnics', 'vmstorage' will be created. Those attributes can either be specified with '*def' commands running before or be specified with this command.
 
 =head2 For KVM and VMware:
 
