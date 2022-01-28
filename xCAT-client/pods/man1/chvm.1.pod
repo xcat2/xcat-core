@@ -576,7 +576,7 @@ Note: The physical I/O resources specified with I<add_physlots> will be appended
 
 =head2 VMware/KVM specific:
 
- chvm vm1 -a 8,16 --mem 512 --cpus 2
+ chvm vm1 -a 8,16 --mem 4096 --cpus 2
 
 Output is similar to:
 
