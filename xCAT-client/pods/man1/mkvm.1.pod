@@ -106,7 +106,8 @@ The partition name of the source.
 
 =item B<--mem>
 
-Memory size in MB for the kvm/vmware virtual machine being created.
+Memory size for the kvm/vmware virtual machine being created. Specify units in MB
+or append K (4194304K) for KB, M (4096M) for MB, or G (4G) for GB.
 
 =item B<-p>
 
@@ -231,9 +232,21 @@ Output is similar to:
  gpok4: Detatching source disk (0100) at (1100)
  gpok4: Starting LNX3... Done
 
-7. To create a new kvm/vmware virtual machine with 10G storage, 4096M memory and 2 cpus.
+7. To create a new kvm/vmware virtual machine with 10G storage, 4096M memory, and 2 cpus.
 
  mkvm vm1 -s 10G --mem 4096 --cpus 2
+
+or 
+
+ mkvm vm1 -s 10G --mem 4194304K --cpus 2
+
+or
+ 
+ mkvm vm1 -s 10G --mem 4096M --cpus 2
+
+or
+ 
+ mkvm vm1 -s 10G --mem 4G --cpus 2
 
 8. To create a full partition on normal power machine.
 
