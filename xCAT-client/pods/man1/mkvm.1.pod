@@ -58,7 +58,7 @@ If no option is specified, a partition using the parameters specified with attri
 
 =head2 For KVM and VMware:
 
-The B<mkvm> command creates new virtual machine(s) with the I<disksize> size of hard disk, I<memsize> size of memory and I<cpucount> number of cpu.
+The B<mkvm> command creates a new virtual machine with I<disksize> GB of storage space, I<memsize> MB of memory, and I<cpucount> cpu(s).
 
 =head2 For zVM:
 
@@ -80,7 +80,7 @@ The cec (fsp) name for the destination.
 
 =item B<--cpus>
 
-The cpu count which will be created for the kvm/vmware virtual machine.
+Number of CPUs for the kvm/vmware virtual machine being created.
 
 =item B<--full>
 
@@ -106,7 +106,7 @@ The partition name of the source.
 
 =item B<--mem>
 
-The memory size which will be used for the new created kvm/vmware virtual machine. Unit is Megabyte.
+Memory size in MB for the kvm/vmware virtual machine being created.
 
 =item B<-p>
 
@@ -114,7 +114,7 @@ The file that contains the profiles for the source partitions.
 
 =item B<-s|--size>
 
-The size of storage which will be created for the kvm/vmware virtual machine.
+Storage size in GB for the kvm/vmware virtual machine being created.
 
 =item B<-v|--version>
 
