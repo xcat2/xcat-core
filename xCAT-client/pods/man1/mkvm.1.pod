@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<mkvm> - Creates HMC-, DFM-, IVM-, and zVM-managed partitions or other virtual machines.
+B<mkvm> - Creates HMC-, DFM-, IVM-, KVM-, VMware-, and zVM-managed partitions or virtual machines.
 
 =head1 SYNOPSIS
 

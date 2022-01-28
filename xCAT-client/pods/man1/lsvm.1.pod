@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<lsvm> - Lists partition profile information for HMC-, DFM-, IVM-, KVM-, VMware- and zVM-managed nodes. For Power 775, it lists the LPARs' I/O slots information and CEC configuration.
+B<lsvm> - Lists information about HMC-, DFM-, IVM-, KVM-, VMware-, and zVM-managed partitions or virtual machines. For Power 775, it lists the LPARs' I/O slots information and CEC configuration.
 
 =head1 SYNOPSIS
 
@@ -28,7 +28,7 @@ B<lsvm> I<noderange>
 
 =head1 DESCRIPTION
 
-The B<lsvm> command lists all partition profiles defined for the partitions specified in I<noderange>. If I<noderange> is a CEC, all the partitions associated with that CEC are displayed.
+The B<lsvm> command lists all profiles defined for the partitions or virtual machines specified in I<noderange>. If I<noderange> is a CEC, all the partitions associated with that CEC are displayed.
 
 =head2 For PPC (using Direct FSP Management):
 

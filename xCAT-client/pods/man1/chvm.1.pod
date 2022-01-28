@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<chvm> - Changes HMC-, DFM-, IVM-, and zVM-managed partition profiles or virtual machines. For Power 775, chvm could be used to change the octant configuration values for generating LPARs; change the I/O slots assignment to LPARs within the same CEC.
+B<chvm> - Changes HMC-, DFM-, IVM-, KVM-, VMware-, and zVM-managed partition profiles or virtual machine attributes. For Power 775, chvm could be used to change the octant configuration values for generating LPARs; change the I/O slots assignment to LPARs within the same CEC.
 
 =head1 SYNOPSIS
 
