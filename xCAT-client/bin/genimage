@@ -61,7 +61,7 @@ sub print_usage
     print '    genimage [-o <osver>] [-a <arch>] [-p <profile>] [-i <nodebootif>] [-n <nodenetdrivers>] [--onlyinitrd] [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-m statelite] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>] [--interactive] [--dryrun] [--noupdate] <imagename>' . "\n\n";
     print "      --permission is used for statelite only\n";
     print "      -g is used for SLES only\n\n";
-    print "      -m is used for urbuntu, debian and fedora12 only\n\n";
+    print "      -m is used for Ubuntu, Debian and legacy Fedora versions only\n\n";
     print "Examples:\n";
     print "    genimage\n";
     print "    genimage --interactive\n";
