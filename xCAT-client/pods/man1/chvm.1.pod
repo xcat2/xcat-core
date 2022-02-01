@@ -240,7 +240,7 @@ Deregister the Hard disk but leave the backing files.  Multiple can be done with
 
 =item B<--mem> I<memory>
 
-Set the memory, defaults to MB.
+Set the memory size for kvm/vmware virtual machines, default unit is MB. Specify in MB or append K for KB, M for MB, or G for GB.
 
 =item B<-p> I<disk>
 

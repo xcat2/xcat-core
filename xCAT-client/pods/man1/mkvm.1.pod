@@ -106,7 +106,7 @@ The partition name of the source.
 
 =item B<--mem>
 
-Memory size for the kvm/vmware virtual machine being created. Specify units in MB (default) or append K for KB, M for MB, or G for GB.
+Set the memory size for kvm/vmware virtual machines, default unit is MB. Specify in MB or append K for KB, M for MB, or G for GB.
 
 =item B<-p>
 
@@ -114,7 +114,7 @@ The file that contains the profiles for the source partitions.
 
 =item B<-s|--size>
 
-Storage size for the kvm/vmware virtual machine being created. Specify units in GB (default) or append K for KB, M for MB, G for GB.
+Set the storage size for kvm/vmware virtual machines, default unit is GB. Specify in GB or append K for KB, M for MB, G for GB.
 
 =item B<-v|--version>
 
