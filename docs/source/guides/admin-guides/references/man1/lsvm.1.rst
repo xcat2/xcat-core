@@ -11,7 +11,7 @@ NAME
 ****
 
 
-\ **lsvm**\  - Lists partition profile information for HMC-, DFM-, IVM-, KVM-, VMware- and zVM-managed nodes. For Power 775, it lists the LPARs' I/O slots information and CEC configuration.
+\ **lsvm**\  - Lists information about HMC-, DFM-, IVM-, KVM-, VMware-, and zVM-managed partitions or virtual machines. For Power 775, it lists the LPARs' I/O slots information and CEC configuration.
 
 
 ********
@@ -56,7 +56,7 @@ DESCRIPTION
 ***********
 
 
-The \ **lsvm**\  command lists all partition profiles defined for the partitions specified in \ *noderange*\ . If \ *noderange*\  is a CEC, all the partitions associated with that CEC are displayed.
+The \ **lsvm**\  command lists all profiles defined for the partitions or virtual machines specified in \ *noderange*\ . If \ *noderange*\  is a CEC, all the partitions associated with that CEC are displayed.
 
 For PPC (using Direct FSP Management):
 ======================================

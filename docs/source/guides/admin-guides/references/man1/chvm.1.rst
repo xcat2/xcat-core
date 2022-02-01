@@ -11,7 +11,7 @@ NAME
 ****
 
 
-\ **chvm**\  - Changes HMC-, DFM-, IVM-, and zVM-managed partition profiles or virtual machines. For Power 775, chvm could be used to change the octant configuration values for generating LPARs; change the I/O slots assignment to LPARs within the same CEC.
+\ **chvm**\  - Changes HMC-, DFM-, IVM-, KVM-, VMware-, and zVM-managed partition profiles or virtual machine attributes. For Power 775, chvm could be used to change the octant configuration values for generating LPARs; change the I/O slots assignment to LPARs within the same CEC.
 
 
 ********
@@ -324,7 +324,7 @@ VMware/KVM specific:
 
 \ **-**\ **-mem**\  \ *memory*\ 
  
- Set the memory, defaults to MB.
+ Set the memory size for kvm/vmware virtual machines, default unit is MB. Specify in MB or append K for KB, M for MB, or G for GB.
  
 
 
@@ -527,7 +527,7 @@ zVM specific:
 
 \ **-**\ **-removeloaddev**\  \ *wwpn*\  \ *lun*\ 
  
- Removes the LOADDEV statement from a virtual machines's directory entry.
+ Removes the LOADDEV statement from a virtual machine's directory entry.
  
 
 
@@ -749,7 +749,7 @@ then run the command:
   cat /tmp/lparfile | chvm lpar4 --p775
 
 
-5. To change the I/O slot profile for lpar1-lpar8 using the configuration data in the file /tmp/lparfile. Users can use the output of lsvm.and remove the cec information, and  modify the lpar id  before each I/O, and run the command as following:
+5. To change the I/O slot profile for lpar1-lpar8 using the configuration data in the file /tmp/lparfile. Users can use the output of lsvm, remove the cec information, modify the lpar id before each I/O, and run the command as following:
 
 
 .. code-block:: perl
@@ -848,7 +848,7 @@ VMware/KVM specific:
 
 .. code-block:: perl
 
-  chvm vm1 -a 8,16 --mem 512 --cpus 2
+  chvm vm1 -a 8,16 --mem 4096 --cpus 2
 
 
 Output is similar to:
