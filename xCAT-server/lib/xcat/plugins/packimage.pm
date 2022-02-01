@@ -75,6 +75,7 @@ sub process_request {
     my $callback    = shift;
     my $doreq       = shift;
     my $installroot = xCAT::TableUtils->getInstallDir();
+    my @timezone    = xCAT::TableUtils->get_site_attribute("timezone");
 
     my $args;
     if (defined($request->{arg})) {
@@ -342,6 +343,30 @@ sub process_request {
                 $excludetext .= $_;
             }
             close($exlist);
+
+            # timedatectl requires /etc/localtime link to the zoneinfo in /usr/share/zoneinfo
+            if ($timezone[0]) {
+                unlink("$rootimg_dir/etc/localtime");
+                symlink("../usr/share/zoneinfo/$timezone[0]", "$rootimg_dir/etc/localtime");
+            
+                # Add the zoneinfo to the include list
+                $excludetext .= "+./usr/share/zoneinfo/$timezone[0]\n";
+                
+                # /usr/share/zoneinfo can have many levels of links
+                # If the configured timezone is a link, also add the link target to the include list
+                # Note: this logic can only handle 2 levels of linking
+                my $realtimezonefile = Cwd::abs_path("$rootimg_dir/usr/share/zoneinfo/$timezone[0]");
+                if ("$rootimg_dir/usr/share/zoneinfo/$timezone[0]" ne "$realtimezonefile") {
+                    my $relativetzpath = substr($realtimezonefile, length($rootimg_dir));
+                    $excludetext .= "+.$relativetzpath\n";
+                }
+                
+                if (not stat "$rootimg_dir/etc/localtime") {
+                    $callback->({ warning => ["Unable to set timezone to \'$timezone[0]\', check this is a valid timezone"] });
+                } 
+            } else {
+                $callback->({ info => ["No timezone defined in site table, skipping timezone configuration"] });
+            }
 
             #handle the #INLCUDE# tag recursively
             my $idir         = dirname($exlistlocname);
@@ -645,7 +670,6 @@ sub copybootscript {
     my $arch        = shift;
     my $profile     = shift;
     my $callback    = shift;
-    my @timezone    = xCAT::TableUtils->get_site_attribute("timezone");
 
     if (-f "$installroot/postscripts/xcatdsklspost") {
 
@@ -653,15 +677,6 @@ sub copybootscript {
         mkpath("$rootimg_dir/opt/xcat");
 
         copy("$installroot/postscripts/xcatdsklspost", "$rootimg_dir/opt/xcat/xcatdsklspost");
-        if ($timezone[0]) {
-            unlink("$rootimg_dir/etc/localtime");
-            # Copy timezone file to /etc and link 'localtime' to it
-            mkpath(dirname("$rootimg_dir/etc/$timezone[0]"));
-            copy("$rootimg_dir/usr/share/zoneinfo/$timezone[0]", "$rootimg_dir/etc/$timezone[0]");
-            symlink("./$timezone[0]", "$rootimg_dir/etc/localtime");
-        }
-
-
         chmod(0755, "$rootimg_dir/opt/xcat/xcatdsklspost");
 
     } else {
