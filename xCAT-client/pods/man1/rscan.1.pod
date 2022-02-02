@@ -193,7 +193,7 @@ Output is similar to:
   type    name                           id      type-model  serial-number  address
   fsp     Server-9125-F2A-SN0262672-B    3       9125-F2A    0262672        192.168.200.243
 
-5. To collects the node information from one or more hardware control points on zVM AND populate the database with details collected by rscan:
+5. To collect the node information from one or more hardware control points on zVM AND populate the database with details collected by rscan:
 
  rscan gpok2 -w
 

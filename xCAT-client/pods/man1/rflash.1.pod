@@ -71,7 +71,7 @@ Any previously activated code on the affected systems will be automatically acce
 
 B<IMPORTANT!>  If the power subsystem is recycled, all of its attached managed systems will be recycled.
 
-If it outputs B<"Timeout waiting for prompt"> during the upgrade, set the B<"ppctimeout"> larger in the B<site> table. After the upgrade, remeber to change it back. If run the B<"rflash"> command on an AIX management node, need to make sure the value of B<"useSSHonAIX"> is B<"yes"> in the site table.
+If it outputs B<"Timeout waiting for prompt"> during the upgrade, set the B<"ppctimeout"> larger in the B<site> table. After the upgrade, remember to change it back. If run the B<"rflash"> command on an AIX management node, need to make sure the value of B<"useSSHonAIX"> is B<"yes"> in the site table.
 
 =head2 PPC (using Direct FSP Management) specific:
 
@@ -123,7 +123,7 @@ B<Note:> When using B<rflash> in hierarchical environment, the .tar file must be
 
 B<-d>:
 
-This option steamlines the update, activate, reboot BMC and reboot HOST procedure. It expects a directory containing both BMC and Host .tar files. When BMC and Host tar files are provided, the command will upload and activate firmware. After BMC becomes activate, it will reboot BMC. If BMC state is Ready, the command will reboot the HOST. If BMC state is NotReady, the command will exit.
+This option streamlines the update, activate, reboot BMC and reboot HOST procedure. It expects a directory containing both BMC and Host .tar files. When BMC and Host tar files are provided, the command will upload and activate firmware. After BMC becomes activate, it will reboot BMC. If BMC state is Ready, the command will reboot the HOST. If BMC state is NotReady, the command will exit.
 
 B<--delete>:
 
@@ -238,7 +238,7 @@ To update the firmware on OpenPOWER machine specify the node name and the file p
 
  rflash fs3 /firmware/8335_810.1543.20151021b_update.hpm
 
-Print verbose message to rflash log file (/var/log/xcat/rflash/fs3.log) when updading firmware:
+Print verbose message to rflash log file (/var/log/xcat/rflash/fs3.log) when updating firmware:
 
  rflash fs3 /firmware/8335_810.1543.20151021b_update.hpm -V
 
@@ -248,7 +248,7 @@ To update the firmware on IBM Power S822LC for Big Data machine specify the node
  rflash briggs01 -d /root/supermicro/OP825
 
 =item 7.
-To update the firmware on the OpenBMC machine, specify the firmare update file to upload and activate:
+To update the firmware on the OpenBMC machine, specify the firmware update file to upload and activate:
 
  rflash p9euh02 -a /tmp/witherspoon.pnor.squashfs.tar
 
