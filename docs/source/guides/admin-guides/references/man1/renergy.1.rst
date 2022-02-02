@@ -567,7 +567,7 @@ so no additional plugins are needed for BladeCenter.)
  module node.
  
  Note: for the attribute without the leading 'pd1' which
- means there's only one power doamin in the chassis.
+ means there's only one power domain in the chassis.
  
 
 
@@ -870,7 +870,7 @@ so no additional plugins are needed for BladeCenter.)
  
 
 
-5. Query all the attirbutes for blade server node blade1.
+5. Query all the attributes for blade server node blade1.
  
  
  .. code-block:: perl

@@ -25,7 +25,7 @@ DESCRIPTION
 ***********
 
 
-Runs the a command to the noderange using the console.
+Runs a command to the noderange using the console.
 
 
 ********

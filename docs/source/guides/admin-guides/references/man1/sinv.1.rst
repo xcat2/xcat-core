@@ -94,7 +94,7 @@ Command Protocol can be used. See man \ **xdsh**\  for more details.
  which will automatically build the template for you from the
  seed node named.
  
- If a a seed node is not provided, then command will automatically use the first node in the noderange as
+ If a seed node is not provided, then command will automatically use the first node in the noderange as
  the seed node.
  
 

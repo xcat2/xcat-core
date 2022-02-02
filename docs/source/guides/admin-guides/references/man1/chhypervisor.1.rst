@@ -132,7 +132,7 @@ RHEV specific :
  
  \ **netmask**\  - The network mask for the interface.
  
- \ **gateway**\  - The gateay for the interface. This field only can be set when
+ \ **gateway**\  - The gateway for the interface. This field only can be set when
  the interface is added to 'rhevm' network.
  
 

@@ -173,7 +173,7 @@ EXAMPLES
  
 
 
-4. To process switch-based switch discovery, the core switch has to be configured and top-of-rack (edge) switch has to be predefine into xCAT databse with attribute \ **switch**\  and \ **switchport**\  to core switch:
+4. To process switch-based switch discovery, the core switch has to be configured and top-of-rack (edge) switch has to be predefine into xCAT database with attribute \ **switch**\  and \ **switchport**\  to core switch:
  
  
  .. code-block:: perl

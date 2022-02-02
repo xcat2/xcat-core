@@ -446,7 +446,7 @@ zVM specific:
  carved up in the storage controller and configured with a WWPN/LUN before it can
  be added to the xCAT storage pool. z/VM does not have the ability to communicate
  directly with the storage controller to carve up disks dynamically. xCAT will
- find the a zFCP device in the specified pool that meets the size required, if
+ find a zFCP device in the specified pool that meets the size required, if
  the WWPN and LUN are not given. The device address can be automatically assigned
  by specifying 'auto'. The WWPN/LUN can be set as the LOADDEV in the directory
  entry if (1) is specified as the 'loaddev'.

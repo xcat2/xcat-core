@@ -128,7 +128,7 @@ EXAMPLES
   addkitcomp -a -i rhels6.2-ppc64-netboot-compute comp-test2-1.0-1-rhels-6.2-ppc64
 
 
-3. To add a kit component to osimage with incompatable osarch, osversion or ostype, use the -f (force) option:
+3. To add a kit component to osimage with incompatible osarch, osversion or ostype, use the -f (force) option:
 
 
 .. code-block:: perl

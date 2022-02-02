@@ -172,7 +172,7 @@ right sides:
 Any  combination  or  multiple  combinations of inclusive and exclusive
 ranges of nodes and groups is legal.  There is no precedence implied in
 the  order  of  the  arguments.   Exclusive ranges have precedence over
-inclusive.  Parentheses can be used to explicitly specify precendence of any operators.
+inclusive.  Parentheses can be used to explicitly specify precedence of any operators.
 
 Nodes have precedence over groups.  If a node range match is made then
 no group range match will be attempted.
@@ -194,7 +194,7 @@ Throughout this man page the term \ **xCAT Node Name Format**\  is used.
 
 
 In  plain  English,  a  node or group name is in \ **xCAT Node Name Format**\  if starting
-from the begining there are:
+from the beginning there are:
 
 
 \* one or more alpha characters  of  any  case and  any  number  of "-" in any combination
