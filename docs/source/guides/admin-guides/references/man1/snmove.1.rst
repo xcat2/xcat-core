@@ -126,7 +126,7 @@ OPTIONS
 
 \ **-s|-**\ **-source**\ 
  
- Specifies the hostname of the current (source) service node sa known by (facing) the management node.
+ Specifies the hostname of the current (source) service node as known by (facing) the management node.
  
 
 

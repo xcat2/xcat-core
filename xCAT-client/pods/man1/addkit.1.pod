@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<addkit> - Adds product software Kits to an xCAT cluster environmnet.
+B<addkit> - Adds product software Kits to an xCAT cluster environment.
 
 =head1 SYNOPSIS
 

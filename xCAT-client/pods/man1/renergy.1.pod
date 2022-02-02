@@ -509,7 +509,7 @@ Query the status of power domain 1 for blade management
 module node.
 
 Note: for the attribute without the leading 'pd1' which
-means there's only one power doamin in the chassis.
+means there's only one power domain in the chassis.
 
 =item B<pd1policy | powerpolicy>
 
@@ -728,7 +728,7 @@ The output of the query operation:
     mm1: thermaloutput: 9717.376000 BTU/hour
 
 =item 5.
-Query all the attirbutes for blade server node blade1.
+Query all the attributes for blade server node blade1.
 
  renergy blade1 all
 

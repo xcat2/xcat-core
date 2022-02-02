@@ -38,7 +38,7 @@ definition and the command that you wish to have run in the spot.
 
 Be very careful when using this command!!!  Make sure you are
 very clear about exactly what you are changing so that you do
-not accidently corrupt the image.
+not accidentally corrupt the image.
 
 As a precaution it is advisable to make a copy of the original
 spot in case your changes wind up corrupting the image.

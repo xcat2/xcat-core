@@ -61,11 +61,11 @@ To list the contents of the xCAT osimage definition use the xCAT B<lsdef> comman
 
 To check the validity of a SPOT or lpp_source resource
 
-To remove an xCAT osimage definition along with the associated NIM resource definitions use the B<rmnimimage> command. Be careful not to accidently remove NIM resources if they are still needed.
+To remove an xCAT osimage definition along with the associated NIM resource definitions use the B<rmnimimage> command. Be careful not to accidentally remove NIM resources if they are still needed.
 
 To list a NIM resource definition use the AIX B<lsnim> command ("lsnim -l <resource_name>").
 
-To check the validity of a SPOT or lpp_source resource use the AIX B<nim> command ("nim -o check <resourec-name>").
+To check the validity of a SPOT or lpp_source resource use the AIX B<nim> command ("nim -o check <resource-name>").
 
 To remove specific NIM resource definitions use the AIX B<nim> command. ("nim -o remove <resource-name>").
 

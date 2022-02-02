@@ -66,7 +66,7 @@ OPTIONS
 
 \ **-d|-**\ **-delete**\ 
  
- Delete any files or directories that were left after the "nim -o remove" command was run. This option will also remove the lpp_source resouce and all files contained in the lpp_source directories. When this command completes all definitions and files will be completely erased so use with caution!
+ Delete any files or directories that were left after the "nim -o remove" command was run. This option will also remove the lpp_source resource and all files contained in the lpp_source directories. When this command completes all definitions and files will be completely erased so use with caution!
  
 
 

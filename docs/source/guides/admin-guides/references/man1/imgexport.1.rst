@@ -61,7 +61,7 @@ For statelite:
 
 where x is the name of the profile.
 
-Any files specified by the \ **-e**\  flag will also be exported. If \ **-p**\  flag is specified, the names of the postscripts and the postbootscripts for the given node will be exported. The postscripts themselves need to be manualy exported using \ **-e**\  flag.
+Any files specified by the \ **-e**\  flag will also be exported. If \ **-p**\  flag is specified, the names of the postscripts and the postbootscripts for the given node will be exported. The postscripts themselves need to be manually exported using \ **-e**\  flag.
 
 For statelite, the litefile table settings for the image will also be exported. The litetree and statelite tables are not exported.
 

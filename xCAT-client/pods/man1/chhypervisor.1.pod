@@ -118,7 +118,7 @@ B<IP> - The IP address for the interface.
 
 B<netmask> - The network mask for the interface.
 
-B<gateway> - The gateay for the interface. This field only can be set when
+B<gateway> - The gateway for the interface. This field only can be set when
 the interface is added to 'rhevm' network.
 
 =back

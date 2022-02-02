@@ -106,7 +106,7 @@ Any previously activated code on the affected systems will be automatically acce
 
 \ **IMPORTANT!**\   If the power subsystem is recycled, all of its attached managed systems will be recycled.
 
-If it outputs \ **"Timeout waiting for prompt"**\  during the upgrade, set the \ **"ppctimeout"**\  larger in the \ **site**\  table. After the upgrade, remeber to change it back. If run the \ **"rflash"**\  command on an AIX management node, need to make sure the value of \ **"useSSHonAIX"**\  is \ **"yes"**\  in the site table.
+If it outputs \ **"Timeout waiting for prompt"**\  during the upgrade, set the \ **"ppctimeout"**\  larger in the \ **site**\  table. After the upgrade, remember to change it back. If run the \ **"rflash"**\  command on an AIX management node, need to make sure the value of \ **"useSSHonAIX"**\  is \ **"yes"**\  in the site table.
 
 
 PPC (using Direct FSP Management) specific:
@@ -170,7 +170,7 @@ To apply the firmware level, a reboot is required to BMC and HOST.
 
 \ **-d**\ :
 
-This option steamlines the update, activate, reboot BMC and reboot HOST procedure. It expects a directory containing both BMC and Host .tar files. When BMC and Host tar files are provided, the command will upload and activate firmware. After BMC becomes activate, it will reboot BMC. If BMC state is Ready, the command will reboot the HOST. If BMC state is NotReady, the command will exit.
+This option streamlines the update, activate, reboot BMC and reboot HOST procedure. It expects a directory containing both BMC and Host .tar files. When BMC and Host tar files are provided, the command will upload and activate firmware. After BMC becomes activate, it will reboot BMC. If BMC state is Ready, the command will reboot the HOST. If BMC state is NotReady, the command will exit.
 
 \ **-**\ **-delete**\ :
 
@@ -345,7 +345,7 @@ This delete option will delete update image from BMC. It expects an ID as the in
    rflash fs3 /firmware/8335_810.1543.20151021b_update.hpm
  
  
- Print verbose message to rflash log file (/var/log/xcat/rflash/fs3.log) when updading firmware:
+ Print verbose message to rflash log file (/var/log/xcat/rflash/fs3.log) when updating firmware:
  
  
  .. code-block:: perl
@@ -365,7 +365,7 @@ This delete option will delete update image from BMC. It expects an ID as the in
  
 
 
-7. To update the firmware on the OpenBMC machine, specify the firmare update file to upload and activate:
+7. To update the firmware on the OpenBMC machine, specify the firmware update file to upload and activate:
  
  
  .. code-block:: perl
