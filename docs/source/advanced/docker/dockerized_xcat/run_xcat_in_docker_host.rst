@@ -1,7 +1,7 @@
 Quick Start to Use xCAT Docker Image
 ====================================
 
-A new Docker image will be published for each new release of xCAT. Use ``docker search xcat2`` to list all Docker images xCAT has released. xCAT Docker image offical organization is ``xcat``, repository is ``xcat2``. ::
+A new Docker image will be published for each new release of xCAT. Use ``docker search xcat2`` to list all Docker images xCAT has released. xCAT Docker image official organization is ``xcat``, repository is ``xcat2``. ::
 
     [dockerhost]# sudo docker search xcat2 
     NAME               DESCRIPTION                      STARS     OFFICIAL   AUTOMATED
