@@ -20,7 +20,7 @@ How to prepare a image for ``runimage`` in ``chain``
 
         mkdir -p /install/my_image
 
-    * Go to the direcotry and copy the rpm file into it: ::
+    * Go to the directory and copy the rpm file into it: ::
 
         cd /install/my_image
         cp /tmp/a.rpm /install/my_image
