@@ -71,6 +71,9 @@ cmd:lsdef -l $$CN
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
+# Check node ends up in boot state
+cmd:lsdef $$CN -i currstate -c
+check:output==boot
 cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 cmd:xdsh $$CN "cat /test.synclist"
 check:rc==0

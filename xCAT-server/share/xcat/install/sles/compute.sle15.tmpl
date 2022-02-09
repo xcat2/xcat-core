@@ -9,7 +9,7 @@
     <general>
       <mode>
         <confirm config:type="boolean">false</confirm>
-        <final_reboot config:type="boolean">true</final_reboot>
+        <final_reboot config:type="boolean">false</final_reboot>
       </mode>
       <signature-handling>
          <accept_non_trusted_gpg_key config:type="boolean">true</accept_non_trusted_gpg_key>
@@ -74,6 +74,7 @@
           <startmode>onboot</startmode>
         </interface>
       </interfaces>
+      <keep_install_network config:type="boolean">true</keep_install_network>
       <routing>
         <ipv4_forward config:type="boolean">false</ipv4_forward>
       </routing>

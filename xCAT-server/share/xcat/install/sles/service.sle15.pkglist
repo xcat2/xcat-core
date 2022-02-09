@@ -20,6 +20,5 @@ postgresql-server
 postgresql
 perl-DBD-mysql
 mariadb-client
-#libmysqlclient18
 vim
 wget
