@@ -41,7 +41,7 @@ By managing the inventory file under source control system, you can manage the x
 
 *Notice:*
 
-1. The cluster inventory data exported by ``xcat-inventory`` does not include intermidiate data, transiate data and historical data in xCAT DataBase, such as node status, auditlog table
+1. The cluster inventory data exported by ``xcat-inventory`` does not include intermediate data, transient data and historical data in xCAT DataBase, such as node status, auditlog table
 
 2.  We suggest you backup your xCAT database by ``dumpxCATdb`` before your trial on this feature, although we have run sufficient test on this
 

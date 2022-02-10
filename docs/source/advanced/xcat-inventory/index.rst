@@ -9,7 +9,7 @@ xcat-inventory
 
 * inventory templates for typical clusters, which help user to defines a cluster easily
 
-* ability to intergrate with Ansible(Comming Soon)
+* ability to integrate with Ansible(Coming Soon)
 
 
 This section presents 2 typical user case of ``xcat-inventory``
