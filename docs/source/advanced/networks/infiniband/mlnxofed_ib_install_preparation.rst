@@ -36,7 +36,7 @@ The ``mlnxofed_ib_install`` is a sample script intended to assist with the insta
    |         |                  || of the string to mark the completion of the option list |
    |         |                  || option list.                                            |
    |         |                  ||                                                         |
-   |         |                  || If nothing is specified, xCAT passes the the following  |
+   |         |                  || If nothing is specified, xCAT passes the following  |
    |         |                  || ``--without-32bit --without-fw-update --force``         |
    +---------+------------------+----------------------------------------------------------+
    |``-i``   | For diskless     || The image root path of the diskless image               |

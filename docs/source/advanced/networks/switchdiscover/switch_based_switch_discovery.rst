@@ -55,7 +55,7 @@ In order to do switch-based switch discovery, the admin
       "192_168_0_0-255_255_0_0","192.168.0.0","255.255.0.0","enP4p1s0f2","<xcatmaster>",,"192.168.3.29",,,,"192.168.5.150-192.168.5.170",,,,,,,,,
 
 
-dhcp should be restarted after seting up dynamic IP range.
+dhcp should be restarted after setting up dynamic IP range.
 
 
 Discover Switches

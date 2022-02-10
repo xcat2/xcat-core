@@ -20,7 +20,7 @@ Prepare the Cumulus Linux files on the xCAT Management Node.
 Cumulus osimage
 ---------------
 
-xCAT can able to create a cumulus osimage defintion via ``copycds`` command.  ``copycds`` will copy cumulus installer to a destination directory, and create several relevant osimage definitions. **cumulus<release>-<arch>** is the default osimage name. ::
+xCAT can able to create a cumulus osimage definition via ``copycds`` command.  ``copycds`` will copy cumulus installer to a destination directory, and create several relevant osimage definitions. **cumulus<release>-<arch>** is the default osimage name. ::
 
     #run copycds command
     # copycds cumulus-linux-3.5.2-bcm-armel.bin

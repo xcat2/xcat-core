@@ -24,7 +24,7 @@ Switch Port and VLAN Configuration
 
 xCAT places the front-panel port configuration in ``/etc/network/interfaces.d/xCAT.intf``.
 
-The ``configinterface`` postscript can be used to pull switch interface configuration from the xCAT Management Node (MN) to the switch.  Place the switch specific confguration files in the following directory on the MN: ``/install/custom/sw_os/cumulus/interface/``.
+The ``configinterface`` postscript can be used to pull switch interface configuration from the xCAT Management Node (MN) to the switch.  Place the switch specific configuration files in the following directory on the MN: ``/install/custom/sw_os/cumulus/interface/``.
 
 xCAT will look for files in the above directory in the following order:
 
