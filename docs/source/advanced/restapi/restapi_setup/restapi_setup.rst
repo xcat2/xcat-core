@@ -86,7 +86,7 @@ Set Up an Account for Web Service Access
 
 User needs a username and password to access the REST API. When the REST API request is passed to xcatd, the username and password will be verified based on the :doc:`xCAT passwd Table </guides/admin-guides/references/man5/passwd.5>`, and then xcatd will look in the :doc:`xCAT policy Table </guides/admin-guides/references/man5/policy.5>` to see if the user is allowed to perform the requested operation.
 
-The account with key of **xcat** will be used for the REST API authentication. The username and password should be passed in as the attirbutes of URL:
+The account with key of **xcat** will be used for the REST API authentication. The username and password should be passed in as the attributes of URL:
 
 :userName: Pass the username of the account
 :userPW: Pass the password of the account (xCAT 2.10)
