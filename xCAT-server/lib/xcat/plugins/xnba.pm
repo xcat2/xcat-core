@@ -174,6 +174,13 @@ sub setstate {
                 $kcmdlinehack = $cmdhashref->{volatile};
             }
 
+            if ($cmdhashref and $cmdhashref->{persistent}) {
+                # If "volitile" kcmdline was not set,
+                # Set kcmdlinehack to blank,
+                # because, it contains "R::<persistent>" at this point.
+                $kcmdlinehack = "";
+            }
+
 
             while ($kcmdlinehack =~ /#NODEATTRIB:([^:#]+):([^:#]+)#/) {
                 my $natab = xCAT::Table->new($1);

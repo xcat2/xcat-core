@@ -212,8 +212,21 @@ cmd:grep "debug" /tftpboot/xcat/xnba/nodes/testnode1
 check:rc==0
 cmd:grep "debug" /tftpboot/xcat/xnba/nodes/testnode1.elilo
 check:rc==0
-#cmd:makedhcp -q testnode1 | grep ^testnode1:
-#check:rc==0
+# Verify persistent kcmdline setting does not get inserted into boot file
+cmd:chdef testnode1 netboot=xnba addkcmdline=R::debug
+cmd:nodeset testnode1 osimage=rhels6.99-x86_64-install-compute
+check:rc==0
+cmd:grep "debug" /tftpboot/xcat/xnba/nodes/testnode1
+check:rc!=0
+# Verify persistent kcmdline setting does not get inserted into boot file, but
+# temporary one does
+cmd:chdef testnode1 netboot=xnba addkcmdline="R::debug debug2"
+cmd:nodeset testnode1 osimage=rhels6.99-x86_64-install-compute
+check:rc==0
+cmd:grep "debug2" /tftpboot/xcat/xnba/nodes/testnode1
+check:rc==0
+cmd:grep "R::" /tftpboot/xcat/xnba/nodes/testnode1
+check:rc!=0
 cmd:nodeset testnode1 offline
 check:rc==0
 cmd:grep "debug" /tftpboot/xcat/xnba/nodes/testnode1
@@ -258,14 +271,25 @@ cmd:grep "debug" /tftpboot/boot/grub2/grub.cfg-01-e6-d4-d2-3a-ad-06
 check:rc==0
 cmd:grep "debug" /tftpboot/boot/grub2/grub.cfg-0[aA]0101[cC]8
 check:rc==0
-#cmd:makedhcp -q testnode1 | grep ^testnode1:
-#check:rc==0
+# Verify persistent kcmdline setting does not get inserted into boot file
+cmd:chdef testnode1 netboot=grub2 addkcmdline=R::debug
+cmd:nodeset testnode1 osimage=rhels7.99-ppc64-install-compute
+check:rc==0
+cmd:grep "debug" /tftpboot/boot/grub2/testnode1
+check:rc!=0
+# Verify persistent kcmdline setting does not get inserted into boot file, but
+# temporary one does
+cmd:chdef testnode1 netboot=grub2 addkcmdline="R::debug debug2"
+cmd:nodeset testnode1 osimage=rhels7.99-ppc64-install-compute
+check:rc==0
+cmd:grep "debug2" /tftpboot/boot/grub2/testnode1
+check:rc==0
+cmd:grep "R::" /tftpboot/boot/grub2/testnode1
+check:rc!=0
 cmd:nodeset testnode1 offline
 check:rc==0
 cmd:grep "debug" /tftpboot/boot/grub2/testnode1
 check:rc!=0
-#cmd:makedhcp -q testnode1 | grep ^testnode1:
-#check:rc!=0
 cmd:chdef -t node -o testnode1 ip=
 check:rc==0
 cmd:sed -i /testnode1/d /etc/hosts
@@ -303,14 +327,25 @@ cmd:nodeset testnode1 osimage=rhels7.99-ppc64le-install-compute
 check:rc==0
 cmd:grep "debug" /tftpboot/petitboot/testnode1
 check:rc==0
-#cmd:makedhcp -q testnode1 | grep ^testnode1:
-#check:rc==0
+# Verify persistent kcmdline setting does not get inserted into boot file
+cmd:chdef testnode1 netboot=petitboot addkcmdline=R::debug
+cmd:nodeset testnode1 osimage=rhels7.99-ppc64le-install-compute
+check:rc==0
+cmd:grep "debug" /tftpboot/petitboot/testnode1
+check:rc!=0
+# Verify persistent kcmdline setting does not get inserted into boot file, but
+# temporary one does
+cmd:chdef testnode1 netboot=petitboot addkcmdline="R::debug debug2"
+cmd:nodeset testnode1 osimage=rhels7.99-ppc64le-install-compute
+check:rc==0
+cmd:grep "debug2" /tftpboot/petitboot/testnode1
+check:rc==0
+cmd:grep "R::" /tftpboot/petitboot/testnode1
+check:rc!=0
 cmd:nodeset testnode1 offline
 check:rc==0
 cmd:grep "debug" /tftpboot/petitboot/testnode1
 check:rc!=0
-#cmd:makedhcp -q testnode1 | grep ^testnode1:
-#check:rc!=0
 cmd:chdef -t node -o testnode1 ip=
 check:rc==0
 cmd:sed -i /testnode1/d /etc/hosts.xcattestbak

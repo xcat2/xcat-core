@@ -133,17 +133,27 @@ sub setstate {
         }
     }
 
-
+    my $addkcmdline;
     if ($kern->{addkcmdline}) {
-        $kern->{kcmdline} .= " " . $kern->{addkcmdline};
+        $addkcmdline .= $kern->{addkcmdline} . " ";
     }
 
     if ($linuximghash and $linuximghash->{'addkcmdline'})
     {
         unless ($linuximghash->{'boottarget'})
         {
-            $kern->{kcmdline} .= " " . $linuximghash->{'addkcmdline'};
+            $addkcmdline .= $linuximghash->{'addkcmdline'} . " ";
         }
+    }
+
+    my $cmdhashref;
+    if ($addkcmdline) {
+        $cmdhashref = xCAT::Utils->splitkcmdline($addkcmdline);
+    }
+
+    if ($cmdhashref and $cmdhashref->{volatile})
+    {
+        $kern->{kcmdline} .= " " . $cmdhashref->{volatile};
     }
 
     my $bootloader_root = "$tftpdir/petitboot";

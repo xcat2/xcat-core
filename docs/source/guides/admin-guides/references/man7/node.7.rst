@@ -41,7 +41,7 @@ node Attributes:
 
 \ **addkcmdline**\  (bootparams.addkcmdline)
  
- User specified kernel options for os provision process(no prefix) or the provisioned os(with prefix "R::"). The options should be delimited with spaces(" ")
+ User specified kernel options for os provision process (no prefix) or the provisioned os (with prefix "R::"). Multiple options should be delimited with spaces (" ") and surrounded with quotes. To have the same option used for os provision process and for provisioned os, specify that option with and without the prefix: addkcmdline="R::display=3 display=3"
  
 
 
