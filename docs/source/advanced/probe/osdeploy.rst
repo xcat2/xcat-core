@@ -88,7 +88,7 @@ To replay history of OS provision from 1 hour 20 minutes ago, use command as ::
 
     xcatprobe osdeploy -n cn1 -r 1h20m
 
-Outout will be similar to: ::
+Output will be similar to: ::
 
     # xcatprobe osdeploy -n c910f03c17k20
     The install NIC in current server is enp0s1                                                                       [INFO]
