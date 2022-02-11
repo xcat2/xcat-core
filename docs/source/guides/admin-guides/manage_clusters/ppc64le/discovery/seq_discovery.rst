@@ -28,7 +28,7 @@ In order to do BMC configuration during the discovery process, set ``runcmd=bmcs
 
     chdef cn1 chain="runcmd=bmcsetup"
 
-**[Optional]** More operation plan to do after hardware disocvery is done, ``ondiscover`` option can be used.
+**[Optional]** More operation plan to do after hardware discovery is done, ``ondiscover`` option can be used.
 
    For example, configure console, copy SSH key for **OpenBMC**, then disable ``powersupplyredundancy`` ::
 

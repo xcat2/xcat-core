@@ -85,7 +85,7 @@ The BMC IP address is obtained by the open range dhcp server and the plan is to 
 
        chdef cn01 chain="runcmd=bmcsetup"
 
-#. **[Optional]** More operation plan to do after hardware disocvery is done, ``ondiscover`` option can be used.
+#. **[Optional]** More operation plan to do after hardware discovery is done, ``ondiscover`` option can be used.
 
    For example, configure console, copy SSH key for **OpenBMC**, then disable ``powersupplyredundancy`` ::
 

@@ -67,7 +67,7 @@ rmigrate fails with "Error: 38, message: failed to create directory '<dir-name>'
     vm1: Error: 38, message: failed to create directory '<dir-name>': File exists: Unknown issue libvirt error code.
 
    **Solution**:
-     Ususally happens when `nfs:` is specified for vmstorage attribute but that NFS directory is no longer mounted. Make sure the directory /var/lib/xcat/pools is empty on the destination kvmhost.
+     Usually happens when `nfs:` is specified for vmstorage attribute but that NFS directory is no longer mounted. Make sure the directory /var/lib/xcat/pools is empty on the destination kvmhost.
 
 
 Error: Cannot communicate via libvirt to kvmhost1
