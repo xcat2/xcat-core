@@ -4,7 +4,7 @@ Configure VLAN Based on Ethernet Adapter
 The following example set the xCAT properties for compute node ``cn1`` to create:
 
   * Compute node ``cn1`` has one physical NIC: eth0
-  * Confgure 2 vlans: eth0.6 and eth0.7 based on eth0
+  * Configure 2 vlans: eth0.6 and eth0.7 based on eth0
   * Assign ip ``60.5.106.9`` to eth0.6 and ``70.5.106.9`` to eth0.7
 
 Define the additional networks to xCAT

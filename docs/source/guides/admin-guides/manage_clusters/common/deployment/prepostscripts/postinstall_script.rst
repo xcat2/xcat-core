@@ -32,7 +32,7 @@ When do ``postinstall`` scripts run?
 High level flow of ``genimage`` process:
 
 a) install the packages specified by ``pkglist`` into ``rootimgdir`` directory
-b) cumstomize the ``rootimgdir`` directory
+b) customize the ``rootimgdir`` directory
 c) generate the initrd based on the ``rootimgdir`` directory
 
 The ``postinstall`` scripts are executed in step b).
