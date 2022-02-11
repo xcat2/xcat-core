@@ -26,7 +26,7 @@ Diskless Installation
                   /install/postscripts/mlnxofed_ib_install \
                      -p /install/<path-to>/<MLNX_OFED_LINUX.iso> -i $1 -n genimage
 
-              .. note:: The ``$1`` is a argument that is passed to the the postinstall script at runtime.
+              .. note:: The ``$1`` is a argument that is passed to the postinstall script at runtime.
 
    .. tip:: **Kernel Mismatch**
 

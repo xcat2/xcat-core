@@ -6,7 +6,7 @@ A detailed description of this issue can be seen in the following blog posting: 
 Advisory CVEs
 -------------
 
-`CVE-2015-7575 <https://access.redhat.com/security/cve/CVE-2015-7575>`_ - TLS 1.2 Transcipt Collision attacks against MD5 in key exchange protocol (SLOTH)
+`CVE-2015-7575 <https://access.redhat.com/security/cve/CVE-2015-7575>`_ - TLS 1.2 Transcript Collision attacks against MD5 in key exchange protocol (SLOTH)
 
 Action
 ------

@@ -141,7 +141,7 @@ Restore xCAT management node
 
 2.2 Configure new xCAT management server using the same ip and hostname as old xCAT management server. Configure the same additional network for hardware management network if needed, for example, bmc network or hmc network. xCAT management server setup refer to :doc:`Prepare the Management Node <../../guides/install-guides/yum/prepare_mgmt_node>`
 
-2.3 Overwrite files/directories methioned in above 1.2, 1.3, 1.4 from backup server to new xCAT management server
+2.3 Overwrite files/directories mentioned in above 1.2, 1.3, 1.4 from backup server to new xCAT management server
 
 2.4 Download xcat-core and xcat-dep tar ball, then install xCAT in new xCAT management server, refer to :doc:`install xCAT <../../guides/install-guides/yum/install>`
 
@@ -159,11 +159,11 @@ Restore xCAT management node
 
         restorexCATdb -a -p /dbbackup/db
 
-    c. (optinal) Overwrite files in above 1.11, restart ``PostgreSQL``: ::
+    c. (optional) Overwrite files in above 1.11, restart ``PostgreSQL``: ::
 
         service postgresql restart
 
-2.8 Overwrite remaining files/directories methioned in above 1.1, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.12; If needed, check if files exist based on above 1.13 and 1.16.
+2.8 Overwrite remaining files/directories mentioned in above 1.1, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.12; If needed, check if files exist based on above 1.13 and 1.16.
 
 2.9 Verify xCAT: ::
 

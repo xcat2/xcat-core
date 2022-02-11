@@ -9,7 +9,7 @@ To list the repos defined in the buildkit.conf: ::
 
   buildkit listrepo
 
-To build the repositories, specifiy a particular reporitory: ::
+To build the repositories, specify a particular repository: ::
 
   buildkit buildrepo <kit repo name>
 

@@ -1,7 +1,7 @@
 Configure Additional Network Interfaces - confignetwork
 -------------------------------------------------------
 
-The ``confignetwork`` postscript can be used to configure the network interfaces on the compute nodes to support Ethernet adapters, VLAN, BONDs, and BRIDGES. ``confignetwork`` can be used in postscripts during OS privision, it can also be executed in ``updatenode``. The way the ``confignetwork`` postscript decides what IP address to give the secondary adapter is by checking the ``nics`` table, in which the nic configuration information is stored. In order for the ``confignetwork`` postscript to run successfully, the following attributes must be configured for the node in the ``nics`` table:
+The ``confignetwork`` postscript can be used to configure the network interfaces on the compute nodes to support Ethernet adapters, VLAN, BONDs, and BRIDGES. ``confignetwork`` can be used in postscripts during OS provisioning, it can also be executed in ``updatenode``. The way the ``confignetwork`` postscript decides what IP address to give the secondary adapter is by checking the ``nics`` table, in which the nic configuration information is stored. In order for the ``confignetwork`` postscript to run successfully, the following attributes must be configured for the node in the ``nics`` table:
 
     * ``nicips``
     * ``nictypes``

@@ -71,7 +71,7 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -97,11 +97,11 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: {attr1:v1,att2:v2,...}.
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody: {attr1:v1,attr2:v2,...}.
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -116,11 +116,11 @@ Refer to the man page: :doc:`mkdef </guides/admin-guides/references/man1/mkdef.1
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: {options:{opt1:v1,opt2:v2},attr1:v1,att2:v2,...}.
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody: {options:{opt1:v1,opt2:v2},attr1:v1,attr2:v2,...}.
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -135,7 +135,7 @@ Refer to the man page: :doc:`rmdef </guides/admin-guides/references/man1/rmdef.1
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -155,7 +155,7 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -181,7 +181,7 @@ Refer to the man page: :doc:`makehosts </guides/admin-guides/references/man8/mak
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -201,7 +201,7 @@ Refer to the man page: :doc:`makedns </guides/admin-guides/references/man8/maked
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -216,7 +216,7 @@ Refer to the man page: :doc:`makedns </guides/admin-guides/references/man8/maked
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -234,7 +234,7 @@ Refer to the man page: :doc:`makedhcp </guides/admin-guides/references/man8/make
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -249,7 +249,7 @@ Refer to the man page: :doc:`makedhcp </guides/admin-guides/references/man8/make
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -315,7 +315,7 @@ Refer to the man page: :doc:`rscan </guides/admin-guides/references/man1/rscan.1
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -377,7 +377,7 @@ Refer to the man page: :doc:`rpower </guides/admin-guides/references/man1/rpower
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -395,7 +395,7 @@ Refer to the man page: :doc:`renergy </guides/admin-guides/references/man1/rener
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -418,11 +418,11 @@ Refer to the man page: :doc:`renergy </guides/admin-guides/references/man1/rener
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: {powerattr:value}.
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody: {powerattr:value}.
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -440,7 +440,7 @@ Refer to the man page: :doc:`renergy </guides/admin-guides/references/man1/rener
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -465,7 +465,7 @@ Refer to the man page: :doc:`rspconfig </guides/admin-guides/references/man1/rsp
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -486,11 +486,11 @@ Refer to the man page: :doc:`rspconfig </guides/admin-guides/references/man1/rsp
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: {community:public}.
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody: {community:public}.
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -508,7 +508,7 @@ Refer to the man page: :doc:`rsetboot </guides/admin-guides/references/man1/rset
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -529,11 +529,11 @@ Refer to the man page: :doc:`rsetboot </guides/admin-guides/references/man1/rset
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: {order:net/hd}.
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody: {order:net/hd}.
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -551,7 +551,7 @@ Refer to the man page: :doc:`nodeset </guides/admin-guides/references/man1/nimno
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -572,11 +572,11 @@ Refer to the man page: :doc:`nodeset </guides/admin-guides/references/man1/nimno
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: {osimage:xxx}/{state:offline}.
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody: {osimage:xxx}/{state:offline}.
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -594,11 +594,11 @@ Refer to the man page: :doc:`rvitals </guides/admin-guides/references/man1/rvita
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
-Get all the vitails attributes for the node1. ::
+Get all the vitals attributes for the node1. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/vitals?userName=root&userPW=cluster&pretty=1'
@@ -625,7 +625,7 @@ Refer to the man page: :doc:`rvitals </guides/admin-guides/references/man1/rvita
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -656,7 +656,7 @@ Refer to the man page: :doc:`rinv </guides/admin-guides/references/man1/rinv.1>`
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -687,7 +687,7 @@ Refer to the man page: :doc:`rinv </guides/admin-guides/references/man1/rinv.1>`
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -712,7 +712,7 @@ Refer to the man page: :doc:`reventlog </guides/admin-guides/references/man1/rev
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -735,7 +735,7 @@ Refer to the man page: :doc:`reventlog </guides/admin-guides/references/man1/rev
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -762,7 +762,7 @@ Refer to the man page: :doc:`rbeacon </guides/admin-guides/references/man1/rbeac
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -785,11 +785,11 @@ Refer to the man page: :doc:`rbeacon </guides/admin-guides/references/man1/rbeac
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: {action:on/off/blink}.
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody: {action:on/off/blink}.
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -855,7 +855,7 @@ Refer to the man page: :doc:`updatenode </guides/admin-guides/references/man1/up
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -885,11 +885,11 @@ Refer to the man page: :doc:`updatenode </guides/admin-guides/references/man1/up
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: {scripts:[p1,p2,p3,...]}.
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody: {scripts:[p1,p2,p3,...]}.
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -921,11 +921,11 @@ Refer to the man page: :doc:`xdsh </guides/admin-guides/references/man1/xdsh.1>`
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: set environment {ENV:{en1:v1,en2:v2}}, raw command {raw:[op1,op2]}, direct command {command:[cmd1,cmd2]}.
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody: set environment {ENV:{en1:v1,en2:v2}}, raw command {raw:[op1,op2]}, direct command {command:[cmd1,cmd2]}.
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -951,11 +951,11 @@ Refer to the man page: :doc:`xdcp </guides/admin-guides/references/man1/xdcp.1>`
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: {src:[file1,file2],target:dir}.
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody: {src:[file1,file2],target:dir}.
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -977,14 +977,14 @@ Refer to the man page: :doc:`chvm </guides/admin-guides/references/man1/chvm.1>`
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody:
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody:
     Set memory size - {"memorysize":"sizeofmemory(MB)"}
     Add new disk - {"adddisk":"sizeofdisk1(GB),sizeofdisk2(GB)"}
     Purge disk - {"purgedisk":"scsi_id1,scsi_id2"}
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example1:**
 
@@ -1011,7 +1011,7 @@ Refer to the man page: :doc:`mkvm </guides/admin-guides/references/man1/mkvm.1>`
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody:
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody:
     Set CPU count - {"cpucount":"numberofcpu"}
     Set memory size - {"memorysize":"sizeofmemory(MB)"}
     Set disk size - {"disksize":"sizeofdisk"}
@@ -1019,7 +1019,7 @@ Refer to the man page: :doc:`mkvm </guides/admin-guides/references/man1/mkvm.1>`
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -1034,13 +1034,13 @@ Refer to the man page: :doc:`rmvm </guides/admin-guides/references/man1/rmvm.1>`
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody:
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody:
     Purge disk - {"purge":"yes"}
     Do it by force - {"force":"yes"}
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -1060,7 +1060,7 @@ Refer to the man page: :doc:`clonevm </guides/admin-guides/references/man1/clone
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody:
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody:
     Clone a master named "mastername" - {"tomaster":"mastername"}
     Clone a node from master "mastername" - {"frommaster":"mastername"}
     Use Detach mode - {"detach":"yes"}
@@ -1100,7 +1100,7 @@ Refer to the man page: :doc:`rmigrate </guides/admin-guides/references/man1/rmig
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: {"target":"targethost"}.
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody: {"target":"targethost"}.
 
 **Example:**
 
@@ -1145,11 +1145,11 @@ Refer to the man page: :doc:`copycds </guides/admin-guides/references/man8/copyc
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: {iso:isoname\file:filename,params:[{attr1:value1,attr2:value2}]}
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody: {iso:isoname\file:filename,params:[{attr1:value1,attr2:value2}]}
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example1:**
 
@@ -1175,7 +1175,7 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -1206,15 +1206,15 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: {attr1:v1,attr2:v2...}
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody: {attr1:v1,attr2:v2...}
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
-Change the 'osvers' and 'osarch' attributes for the osiamge. ::
+Change the 'osvers' and 'osarch' attributes for the osimage. ::
 
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/osimages/sles11.2-ppc64-install-compute/?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"osvers":"sles11.3","osarch":"x86_64"}'
@@ -1225,11 +1225,11 @@ Refer to the man page: :doc:`mkdef </guides/admin-guides/references/man1/mkdef.1
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: {attr1:v1,attr2:v2]
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody: {attr1:v1,attr2:v2]
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -1244,7 +1244,7 @@ Refer to the man page: :doc:`rmdef </guides/admin-guides/references/man1/rmdef.1
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -1291,11 +1291,11 @@ Refer to the man page: :doc:` </guides/admin-guides/references/>`
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: {action:gen\pack\export,params:[{attr1:value1,attr2:value2...}]}
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody: {action:gen\pack\export,params:[{attr1:value1,attr2:value2...}]}
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example1:**
 
@@ -1322,7 +1322,7 @@ Refer to the man page: :doc:`rmimage </guides/admin-guides/references/man1/rmima
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -1370,11 +1370,11 @@ Refer to the man page: :doc:`makenetworks </guides/admin-guides/references/man8/
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: {attr1:v1,att2:v2,...}.
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody: {attr1:v1,attr2:v2,...}.
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -1394,7 +1394,7 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -1420,11 +1420,11 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: {attr1:v1,att2:v2,...}.
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody: {attr1:v1,attr2:v2,...}.
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -1432,18 +1432,18 @@ Change the attributes mgtifname=eth0 and net=10.1.0.0. ::
 
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/networks/network1?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"mgtifname":"eth0","net":"10.1.0.0"}'
-POST - Create the network {netname}. DataBody: {attr1:v1,att2:v2...}.
+POST - Create the network {netname}. DataBody: {attr1:v1,attr2:v2...}.
 `````````````````````````````````````````````````````````````````````
 
 Refer to the man page: :doc:`mkdef </guides/admin-guides/references/man1/mkdef.1>`
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: {attr1:v1,att2:v2,...}.
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody: {attr1:v1,attr2:v2,...}.
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -1458,7 +1458,7 @@ Refer to the man page: :doc:`rmdef </guides/admin-guides/references/man1/rmdef.1
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -1478,7 +1478,7 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -1504,13 +1504,13 @@ The URI list which can be used to create, query, change and manage policy entrie
 GET - Get all the policies in xCAT.
 ```````````````````````````````````
 
-It will dislplay all the policy resource.
+It will display all the policy resource.
 
 Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1>`
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -1539,7 +1539,7 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -1563,11 +1563,11 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: {attr1:v1,att2:v2,...}.
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody: {attr1:v1,attr2:v2,...}.
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -1575,20 +1575,20 @@ Set the name attribute for policy 3. ::
 
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/policy/3?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"name":"root"}'
-POST - Create the policy {policyname}. DataBody: {attr1:v1,att2:v2...}.
+POST - Create the policy {policyname}. DataBody: {attr1:v1,attr2:v2...}.
 ```````````````````````````````````````````````````````````````````````
 
-It will creat a new policy resource.
+It will create a new policy resource.
 
 Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1>`
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: {attr1:v1,att2:v2,...}.
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody: {attr1:v1,attr2:v2,...}.
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -1605,7 +1605,7 @@ Refer to the man page: :doc:`rmdef </guides/admin-guides/references/man1/rmdef.1
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -1627,7 +1627,7 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -1687,7 +1687,7 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -1708,11 +1708,11 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: {attr1:v1,att2:v2,...}.
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody: {attr1:v1,attr2:v2,...}.
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -1730,7 +1730,7 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -1764,7 +1764,7 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -1792,7 +1792,7 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -1816,11 +1816,11 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: {attr1:v1,att2:v2,...}.
+* Json format: An object which includes multiple 'attr:value' pairs. DataBody: {attr1:v1,attr2:v2,...}.
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -1831,13 +1831,13 @@ Change/Add the domain attribute. ::
 DELETE - Remove the site attributes.
 ````````````````````````````````````
 
-Used for femove one or more global attributes.
+Used to remove one or more global attributes.
 
 Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1>`
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -1860,7 +1860,7 @@ Refer to the man page: :doc:`makedns </guides/admin-guides/references/man8/maked
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -1878,7 +1878,7 @@ Refer to the man page: :doc:`makedhcp </guides/admin-guides/references/man8/make
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -1896,7 +1896,7 @@ Refer to the man page: :doc:`makehosts </guides/admin-guides/references/man8/mak
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -1914,7 +1914,7 @@ Refer to the man page: :doc:`lsslp </guides/admin-guides/references/man1/lsslp.1
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -1950,7 +1950,7 @@ Refer to the man page: :doc:`lsslp </guides/admin-guides/references/man1/lsslp.1
 
 **Returns:**
 
-* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+* Json format: An object which includes multiple '<name> : {attr:value, attr:value ...}' pairs.
 
 **Example:**
 
@@ -2075,11 +2075,11 @@ PUT - Change the node table attributes for {noderange}.
 
 **Parameters:**
 
-* A hash of table names and attribute objects.  DataBody: {table1:{attr1:v1,att2:v2,...}}.
+* A hash of table names and attribute objects.  DataBody: {table1:{attr1:v1,attr2:v2,...}}.
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -2196,11 +2196,11 @@ PUT - Change the non-node table attributes for the row that matches the {keys}.
 
 **Parameters:**
 
-* A hash of attribute names and values.  DataBody: {attr1:v1,att2:v2,...}.
+* A hash of attribute names and values.  DataBody: {attr1:v1,attr2:v2,...}.
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 
@@ -2213,7 +2213,7 @@ DELETE - Delete rows from a non-node table that have the attribute values specif
 
 **Returns:**
 
-* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errorcode:errornum}.
 
 **Example:**
 

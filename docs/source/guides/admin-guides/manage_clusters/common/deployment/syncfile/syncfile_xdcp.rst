@@ -25,7 +25,7 @@ For Linux nodes, you can use ``xdcp`` command **-i** option with **-F** to sync 
 
     xdcp -i /install/<inst_type>/<os>/<arch>/<profile>/rootimg -F /install/custom/<inst_type>/<os>/<profile>.synclist
 
-You can use the ``xdcp`` **-s** option to sync the files only to the service nodes for the node group named **compute**. The files will be placed in the default **/var/xcat/syncfiles** directory or in the directory as indicated in the **site.SNsyncfiledir** attribute. If you want the files synched to the same directory on the service node that they come from on the Management Node, set **site.SNsyncfiledir=/** attribute. This can be setup before a node install, to have the files available to be synced during the install: ::
+You can use the ``xdcp`` **-s** option to sync the files only to the service nodes for the node group named **compute**. The files will be placed in the default **/var/xcat/syncfiles** directory or in the directory as indicated in the **site.SNsyncfiledir** attribute. If you want the files synced to the same directory on the service node that they come from on the Management Node, set **site.SNsyncfiledir=/** attribute. This can be setup before a node install, to have the files available to be synced during the install: ::
 
     xdcp compute -s -F /install/custom/<inst_type>/<os>/<profile>.synclist
 

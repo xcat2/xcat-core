@@ -214,7 +214,7 @@ Setup xCAT on the Standby Management Node
 File Synchronization
 ====================
 
-For the files that are changed constantly such as xcat database, ``/etc/xcat/*``, we have to put the files on the shared data; but for the files that are not changed frequently or unlikely to be changed at all, we can simply copy the the files from the primary management node to the standby management node or use crontab and rsync to keep the files synchronized between primary management node and standby management node. Here are some files we recommend to keep synchronization between the primary management node and standby management node:
+For the files that are changed constantly such as xcat database, ``/etc/xcat/*``, we have to put the files on the shared data; but for the files that are not changed frequently or unlikely to be changed at all, we can simply copy the files from the primary management node to the standby management node or use crontab and rsync to keep the files synchronized between primary management node and standby management node. Here are some files we recommend to keep synchronization between the primary management node and standby management node:
 
 SSL Credentials and SSH Keys
 --------------------------------

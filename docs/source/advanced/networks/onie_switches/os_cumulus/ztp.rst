@@ -55,7 +55,7 @@ Leveraging the ZTP mechanism, xCAT provides the capability to setup ONIE switche
 
 5. Plug the ONIE switches into the cluster according to the network plan and power on them.
 
-   For the white-box ONIE switches, the Cumulus OS will be installed, then the switches will be discovered and configured automaticaly, the whole process will take about 1 hour.
+   For the white-box ONIE switches, the Cumulus OS will be installed, then the switches will be discovered and configured automatically, the whole process will take about 1 hour.
 
    For the ONIE switches already with Cumulus OS installed, please make sure the ZTP have been enabled and none of the following manual configuration have been made:
 

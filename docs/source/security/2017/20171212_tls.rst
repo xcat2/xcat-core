@@ -1,7 +1,7 @@
 2017-12-12 - TLS Vulnerabilities
 ================================
 
-*Dec 12, 2017*, TLS implementations may disclose side channel information via discrepencies between valid and invalid PKCS#1 padding
+*Dec 12, 2017*, TLS implementations may disclose side channel information via discrepancies between valid and invalid PKCS#1 padding
 
 Advisory CVEs
 -------------

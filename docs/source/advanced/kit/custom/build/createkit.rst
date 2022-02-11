@@ -9,7 +9,7 @@ Use the :doc:`buildkit </guides/admin-guides/references/man1/buildkit.1>` comman
 Kit Directory
 -------------
 
-The Kit directory location will be automatically  populated with additional subdirecotries and samples:
+The Kit directory location will be automatically  populated with additional subdirectories and samples:
 
 **buildkit.conf** -  The sample Kit build configuration file.
 

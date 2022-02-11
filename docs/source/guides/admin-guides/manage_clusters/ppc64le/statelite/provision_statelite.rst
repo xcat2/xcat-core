@@ -119,7 +119,7 @@ Set up Post scripts for statelite
 
 The rules to create post install scripts for statelite image is the same as the rules for stateless/diskless install images.
 
-There're two kinds of postscripts for statelite (also for stateless/diskless).
+There are two kinds of postscripts for statelite (also for stateless/diskless).
 
 The first kind of postscript is executed at genimage time, it is executed again the image itself on the MN . It was setup in The postinstall file section before the image was generated.
 
@@ -207,7 +207,7 @@ Boot the statelite node
 
 Make sure you have set up all the attributes in your node definitions correctly following the node installation instructions corresponding to your hardware:
 
-You can now deploy the node by running the following commmands: ::
+You can now deploy the node by running the following commands: ::
 
     rinstall <noderange>
 

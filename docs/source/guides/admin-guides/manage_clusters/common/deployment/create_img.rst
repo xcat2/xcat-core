@@ -79,7 +79,7 @@ If this is the same distro version as what your management node uses, create a `
     enabled=1
     gpgcheck=0
 	
-This way, if you need to install some additional RPMs into your MN later, you can simply install them with ``yum``. Or if you are installing a software on your MN that depends some RPMs from this disto, those RPMs will be found and installed automatically.
+This way, if you need to install some additional RPMs into your MN later, you can simply install them with ``yum``. Or if you are installing a software on your MN that depends some RPMs from this distro, those RPMs will be found and installed automatically.
 
 **[Tips 2]**
 

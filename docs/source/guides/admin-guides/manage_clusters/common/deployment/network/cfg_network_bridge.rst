@@ -4,7 +4,7 @@ Configure Bridge Based On Ethernet NIC
 The following example set the xCAT properties for compute node ``cn1`` to create:
 
   * Compute node ``cn1`` has one physical NIC: eth1
-  * User wants to confgure 1 bridge br1 based on eth1
+  * User wants to configure 1 bridge br1 based on eth1
   * Assign ip ``30.5.106.9`` to br0
 
 Add network object into the networks table

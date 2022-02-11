@@ -79,7 +79,7 @@ If 'osupdatename' is specified, the kernel shipped with the 'osupdatename' will 
 
 - If putting the driver disk in <installroot>/driverdisk/<os>/<arch>:
 
-Running 'nodeset <nodenrage>' in anyway will load the driver disk
+Running 'nodeset <noderange>' in anyway will load the driver disk
 
 .. END_inject_into_initrd__for_diskful_for_DUD
 
