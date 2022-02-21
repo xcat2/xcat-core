@@ -95,6 +95,9 @@ check:output=~/opt/xcat/share/xcat/tools/autotest/kdumpdir
 # Verify kdump parameters are in /proc/cmdline file
 cmd:xdsh $$CN cat /proc/cmdline
 
+# Check how much memory was really allocated for crashkernel
+cmd:xdsh $$CN grep "Reserving" /var/log/messages
+
 # Verify no error configuring kdump server
 cmd:xdsh $$CN cat /var/log/xcat/xcat.log | grep "The kdump server is not configured"
 check:output!="The kdump server is not configured"
