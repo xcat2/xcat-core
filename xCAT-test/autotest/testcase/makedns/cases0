@@ -163,9 +163,9 @@ check:output=~Server:\s*$$MN
 check:output!~Can't find dnstestnode
 cmd:if [ -f "/etc/named.conf" ]; then a="/etc/named.conf"; elif [ -f "/etc/bind/named.conf" ]; then a="/etc/bind/named.conf";fi; cat $a > /tmp/makedns_named_conf.new
 check:rc==0
-cmd:diff /tmp/makedns_named_conf.org   /tmp/makedns_named_conf.new
+cmd:diff -s /tmp/makedns_named_conf.org   /tmp/makedns_named_conf.new
 check:rc==0
-check:output=~
+check:output=~are identical
 cmd:rm -f /tmp/makedns_named_conf.org /tmp/makedns_named_conf.new
 check:rc==0
 cmd:yes|cp -rf /etc/hosts.testbak   /etc/hosts
