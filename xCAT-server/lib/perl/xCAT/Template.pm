@@ -298,6 +298,8 @@ sub subvars {
             my $source_in_pre;
             my $writerepo;
             my $c = 0;
+            my $space10 = " " x 10;
+            my $space12 = " " x 12;
             foreach my $pkgdir (@pkgdirs) {
                 if ($platform =~ /^(rh|SL|centos|ol|fedora|rocky)$/) {
                     if ($c == 0) {
@@ -350,13 +352,14 @@ sub subvars {
                                 $product_name=$subdir;
                             }
                             if (defined($product_name) && defined($product_dir)){
-                                $source .="<listentry><media_url>http://XCATNEXTSERVERHOOK$httpportsuffix$pkgdir</media_url><product>$product_name</product><product_dir>/$product_dir</product_dir></listentry>";
+                                $source .="<listentry>\n$space12<media_url>http://XCATNEXTSERVERHOOK$httpportsuffix$pkgdir</media_url>\n$space12<product>$product_name</product>\n$space12<product_dir>/$product_dir</product_dir>\n$space12</listentry>\n$space10";
                             } 
                         }
                     }
                 }
                 $c++;
             }
+            $source =~ s/\s+$//; # trim end of string
             $inc =~ s/#INSTALL_SOURCES#/$source/g;
             $inc =~ s/#INSTALL_SOURCES_IN_PRE#/$source_in_pre/g;
             if (("ubuntu" eq $platform) || ("debian" eq $platform)) {
