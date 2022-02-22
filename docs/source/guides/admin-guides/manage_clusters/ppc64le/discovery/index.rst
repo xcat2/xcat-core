@@ -15,7 +15,7 @@ xCAT provides several *automatic hardware discovery* methods to assist with hard
    manually_define.rst
    manually_discovery.rst
 
-.. note:: You can optionaly add drivers or modules to the network boot image used during the discovery: :doc:`xCAT Genesis Base </references/coral/known_issues/genesis_base>`
+.. note:: You can optionally add drivers or modules to the network boot image used during the discovery: :doc:`xCAT Genesis Base </references/coral/known_issues/genesis_base>`
 
 Following are the brief characteristics and adaptability of each method, you can select a proper one according to your cluster size and other consideration.
 

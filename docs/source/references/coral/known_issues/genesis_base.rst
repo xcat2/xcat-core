@@ -3,7 +3,7 @@ xCAT Genesis Base
 
 xCAT ships a ``xCAT-genesis-base`` package as part of xcat-deps.  This is a light-weight diskless linux image based currently on Fedora28, that is used by xCAT to do hardware discovery.
 
-Follow the steps below to build your own version of the ``xCAT-genesis-base`` on-site.  Your can include additonal drivers or modules or you can build your own version of the ``xCAT-genesis-base`` on-site using a server running OS other than Fedora28, like Red Hat Enterprise Linux 8. Building ``xCAT-genesis-base`` on a server running Red Hat Enterprise Linux 7 or earlier, is no longer supported.
+Follow the steps below to build your own version of the ``xCAT-genesis-base`` on-site.  You can include additional drivers or modules or you can build your own version of the ``xCAT-genesis-base`` on-site using a server running OS other than Fedora28, like Red Hat Enterprise Linux 8. Building ``xCAT-genesis-base`` on a server running Red Hat Enterprise Linux 7 or earlier, is no longer supported.
 
 1. Download the latest timestamp version of the ``xCAT-genesis-builder`` RPM provided here: http://xcat.org/files/xcat/xcat-dep/2.x_Linux/beta/
 
