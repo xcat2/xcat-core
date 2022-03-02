@@ -1860,7 +1860,7 @@ function is_connection_activate_intime {
     fi
     i=0
     while [ $i -lt "$time_out" ]; do
-        con_state=$($nmcli con show $con_name | grep -i state| awk '{print $2}');
+        con_state=$(LC_ALL=C $nmcli con show $con_name | grep -i state| awk '{print $2}');
         if [ ! -z "$con_state" -a "$con_state" = "activated" ]; then
             break
         fi
