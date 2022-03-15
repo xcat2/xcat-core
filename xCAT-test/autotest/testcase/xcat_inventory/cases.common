@@ -84,17 +84,17 @@ diff -y --ignore-blank-lines --ignore-matching-lines="^#"  /tmp/xcat_inventory_e
 check:rc==0
 cmd:xcat-inventory export -t node -o bogusnode -f
 check:rc!=0
-check:output ~=usage
-check:output ~= error: argument -f/--path: expected one argument
+check:output =~usage
+check:output =~ error: argument -f/--path: expected one argument
 cmd:xcat-inventory export -t node -o bogusnode --path
 check:rc!=0
-check:output ~=usage
-check:output ~= error: argument -f/--path: expected one argument
+check:output =~usage
+check:output =~ error: argument -f/--path: expected one argument
 cmd:mkdir /tmp/xcat_inventory_export_option_f/testdir
 check:rc==0
 cmd:xcat-inventory export -t node -o bogusnode -f /tmp/xcat_inventory_export_option_f/testdir
 check:rc!=0
-check:output ~= Error: the specified file /tmp/xcat_inventory_export_option_f/testdir already exists, is not a file!
+check:output =~ Error: the specified file /tmp/xcat_inventory_export_option_f/testdir already exists, is not a file!
 cmd:rmdef bogusnode
 check:rc==0
 cmd:if [[ -e /tmp/xcat_inventory_export_option_f/bogusnode.stanza ]]; then cat /tmp/xcat_inventory_export_option_f/bogusnode.stanza | mkdef -z;fi
