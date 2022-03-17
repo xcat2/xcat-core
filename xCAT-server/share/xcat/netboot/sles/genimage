@@ -2080,9 +2080,9 @@ sub generic_post { # This function is meant to leave the image in a state approx
         print $cfgfile "# Short-Description: gettyset\n";
         print $cfgfile "# Description:\n";
         print $cfgfile "### END INIT INFO\n";
-        print $cfgfile "VERS=`grep VERSION /etc/SuSE-release`\n";
+        print $cfgfile "VERS=`grep VERSION= /etc/os-release`\n";
         print $cfgfile "if [ -n \"\$VERS\" ]; then\n";
-        print $cfgfile "  VERNUM=`echo \$VERS|awk -F= \'{print \$2}\'|sed -e \'s/ //g\'`\n";
+        print $cfgfile "  VERNUM=`echo \$VERS|awk -F= \'{print \$2}\'|awk -F- \'{print \$1}\'|sed -e \'s/ //g\'|sed -e \'s/\"//g\'`\n";
         print $cfgfile "fi\n";
         print $cfgfile "if [ \"\$VERNUM\" -gt 10 ]; then\n";
         print $cfgfile "  exit\n";
