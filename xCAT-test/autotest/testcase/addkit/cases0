@@ -2,16 +2,16 @@ start:addkit_v
 label:others,KIT
 cmd:addkit -v
 check:rc==0
-check:output~=Version
-check:output~=kitframework
-check:output~=compatible_frameworks
+check:output=~Version
+check:output=~kitframework
+check:output=~compatible_frameworks
 end
 
 start:addkit_h
 label:others,KIT
 cmd:addkit -h
 check:rc==0
-check:output~=Usage
+check:output=~Usage
 check:outpur!~error
 end
 
