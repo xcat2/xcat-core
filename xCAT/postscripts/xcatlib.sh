@@ -512,11 +512,15 @@ function restartservice {
    fi
 
    #for the linux distributions with systemd support
-   #In the chrooted env, the system management commands(start/stop/restart) will be ignored and the return code is 0
-   #need to return the proper code in the chrooted scenario
    local retmsg
    retmsg=`$cmd 2>&1`
    retval=$?
+   
+   #If non 0 return code, display failure message
+   [ "$retval" = "1" ] && echo "$retmsg"
+
+   #In the chrooted env, the system management commands(start/stop/restart) will be ignored and the return code is 0
+   #need to return the proper code in the chrooted scenario
    [ "$retval" = "0" ] && (echo "$retmsg" | grep -i "Running in chroot,\s*ignoring request.*" >/dev/null 2>&1) && retval=1
 
    return $retval
