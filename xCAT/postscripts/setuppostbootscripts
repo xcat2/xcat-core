@@ -29,10 +29,10 @@ if [ ! -d "/opt/xcat" ]; then
     mkdir -p /opt/xcat
 fi
 infofile="/opt/xcat/xcatinfo"
-if [ "$RUNBOOTSCRIPTS" = "yes" ] || [ "$RUNBOOTSCRIPTS" = "YES" ]; then
-       RUNBOOTSCRIPTS=yes
-else
+if [[ ! "$RUNBOOTSCRIPTS" =~ ^(1|yes|y)$ ]]; then
        RUNBOOTSCRIPTS=no
+else
+       RUNBOOTSCRIPTS=yes
 fi
 #  check to see if current setting is already in the file, if so nothing to do
 if [ -f $infofile ]; then
