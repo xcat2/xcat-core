@@ -41,7 +41,7 @@ cmd:cd /etc; export exports;cd -;service nfs-server restart
 cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute dump=nfs://$$MN/opt/xcat/share/xcat/tools/autotest/kdumpdir
 check:rc==0
 
-cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute crashkernelsize=auto
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64le" ]] && [[ "__GETNODEATTR($$CN,os)__" =~ "rhels8.5" ]]; then chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute crashkernelsize=512M@64M; else chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute crashkernelsize=auto; fi
 check:rc==0
 
 cmd:chdef -t node $$CN -p postscripts=enablekdump
