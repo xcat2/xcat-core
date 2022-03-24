@@ -107,7 +107,10 @@ check:rc==0
 cmd:sitetz=`lsdef -t site -i timezone | awk -F= '{print $2}'`;nodetz=`xdsh $$CN "timedatectl | grep 'Time zone'" | awk -F: '{print $3}' | awk '{print $1}'`; test $sitetz = $nodetz
 check:rc==0
 
-# Check node ends up in boot state
-cmd:lsdef $$CN -i currstate -c
-check:output==boot
+# Check node can be rebooted from disk
+cmd:xdsh $$CN shutdown -r now
+cmd:sleep 300
+cmd:xdsh $$CN uptime
+check:rc==0
+check:output=~up
 end
