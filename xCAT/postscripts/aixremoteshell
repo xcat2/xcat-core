@@ -226,6 +226,27 @@ sub setupSSH
             `logger -t xcat  -p local4.err $msg`;
         }
     }
+
+    # is there is a ed25519 host key on the node, then get the one from the MN/SN
+    my $filename = "/etc/ssh/ssh_host_ed25519_key";
+    if (-e $filename) {
+        my $response = &getresponse("ssh_ed25519_hostkey");
+        if (defined($response)) {
+            my $fd;
+            &runcmd("mkdir -p /etc/ssh");
+            open($fd, '>', $filename);
+            print $fd $response;
+            close($fd);
+
+            # set the permissions
+            my $cmd = "chmod 600 $filename > /dev/null 2>&1";
+            &runcmd($cmd);
+        }
+        else {
+            $msg = "aixremoteshell: Could not get ssh_host_ed25519_key file.\n";
+            `logger -t xcat  -p local4.err $msg`;
+        }
+    }
     if ($nodetype eq "service") {
         &runcmd("mkdir -p /etc/xcat/hostkeys; cp /etc/ssh/ssh* /etc/xcat/hostkeys/. > /dev/null 2>&1");
     }
