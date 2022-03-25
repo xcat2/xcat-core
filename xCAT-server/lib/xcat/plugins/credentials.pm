@@ -216,6 +216,17 @@ sub process_request
                 xCAT::MsgUtils->trace(0, 'E', "credentials: Unable to read private ECDSA key");
                 next;
             }
+        } elsif ($parm =~ /ssh_ed25519_hostkey/) {
+            xCAT::MsgUtils->trace(0, 'I', "credentials: sending $parm to $client");
+            if (-r "/etc/xcat/hostkeys/$client/ssh_host_ed25519_key") {
+                $tfilename = "/etc/xcat/hostkeys/$client/ssh_host_ed25519_key";
+            } elsif (-r "/etc/xcat/hostkeys/ssh_host_ed25519_key") {
+                $tfilename = "/etc/xcat/hostkeys/ssh_host_ed25519_key";
+            } else {
+                push @{ $rsp->{'error'} }, "Unable to read private ed25519 key from /etc/xcat/hostkeys";
+                xCAT::MsgUtils->trace(0, 'E', "credentials: Unable to read private ed25519 key");
+                next;
+            }
         } elsif ($parm =~ /xcat_cfgloc/) {
             xCAT::MsgUtils->trace(0, 'I', "credentials: sending $parm to $client");
             unless (-r "/etc/xcat/cfgloc") {
