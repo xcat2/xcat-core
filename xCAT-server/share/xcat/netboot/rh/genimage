@@ -1965,6 +1965,10 @@ sub using_systemd {
         if ($1 >= 7) {
             return 1;
         }
+    } elsif ($os =~ /rocky(\d+)/) {
+        if ($1 >= 8) {
+            return 1;
+        }
     } elsif ($os =~ /ol(\d+)/) {
         if ($1 >= 7) {
             return 1;
