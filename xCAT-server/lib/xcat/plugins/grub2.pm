@@ -289,7 +289,7 @@ sub setstate {
         my $os_version = $nodeos;
         $os_version =~ s/sles//i; # Strip sles if there
         $os_version =~ s/sle//i; # String sle if there
-        if ($os_version ge "15") {
+        if ($os_version >= "15") {
             # Make sure for SLES15 or higher can still boot 
             # from disk in "standby" state
             unlink("grub2-$node");
