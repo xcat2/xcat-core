@@ -285,8 +285,15 @@ sub setstate {
     chdir("$bootloader_root");
     if ($cref->{currstate} eq "offline" or $cref->{currstate} eq "boot") {
         unlink("grub2-$node");
-    } elsif ($cref->{currstate} eq "standby" and $nodeos =~ /^sle15/i) {
-        unlink("grub2-$node"); #Make sure SLES15 can still boot from disk in "standby" state
+    } elsif ($cref->{currstate} eq "standby" and $nodeos =~ /^sle/i) {
+        my $os_version = $nodeos;
+        $os_version =~ s/sles//i; # Strip sles if there
+        $os_version =~ s/sle//i; # String sle if there
+        if ($os_version ge "15") {
+            # Make sure for SLES15 or higher can still boot 
+            # from disk in "standby" state
+            unlink("grub2-$node");
+        }
     } elsif (! -e "grub2-$node") {
         symlink("grub2." . $nodearch, "grub2-$node");
     }
