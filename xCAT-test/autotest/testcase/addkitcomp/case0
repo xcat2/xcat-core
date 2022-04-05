@@ -152,7 +152,7 @@ check:rc==0
 check:output=~Assigning kit component ubuntukit-compute-2
 cmd:lsdef -t osimage -o testimage
 check:rc==0
-check:output!=~postbootscripts
+check:output!~postbootscripts
 cmd:rmkitcomp -i testimage -f ubuntukit-compute-1-1.0-1-ubuntu-14.04-ppc64el
 check:rc==0
 check:output=~Removing kitcomponent ubuntukit-compute-1-1.0-1-ubuntu-14.04-ppc64el from osimage testimage

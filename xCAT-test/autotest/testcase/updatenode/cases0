@@ -618,7 +618,7 @@ cmd:xdsh $$C2 ls /tmp/file.post2
 check:rc!=0
 cmd:xdsh $$C2 "cat /tmp/test2"
 check:rc!=0
-check:output!=~hello2
+check:output!~hello2
 cmd:chdef -t osimage -o  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=
 check:rc==0
 cmd:rm -rf /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
