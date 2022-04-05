@@ -44,7 +44,7 @@ check:output=~Version
 check:output =~git commit
 cmd:rbeacon --version
 check:rc==0
-check:output=~~Version
+check:output=~Version
 check:output =~git commit
 end
 

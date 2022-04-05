@@ -20,9 +20,12 @@ end
 
 start:xdsh_Q_command
 label:cn_os_ready,parallel_cmds
-cmd:xdsh $$CN -Q "ps -ef"
+cmd:xdsh $$CN -Q "ps -ef" > /tmp/abc
 check:rc==0
-check:output=~
+cmd:if [ -s /tmp/abc ]; then echo "File has content"; else echo "File is empty";fi
+check:output=~empty
+cmd:rm -f /tmp/abc
+check:rc==0
 end
 
 start:xdsh_c_sn
@@ -35,7 +38,7 @@ cmd: echo Y | xdsh $$SN -c 2>/dev/null
 check:rc==0
 cmd:xdsh $$SN "ls -l /var/xcat/syncfiles"
 check:rc==0
-check:output=~
+check:output=~total 0
 end
 
 start:xdsh_c_cn
@@ -48,7 +51,7 @@ cmd: echo Y | xdsh $$CN -c 2>/dev/null
 check:rc==0
 cmd:xdsh $$CN "ls -l /var/xcat/node"
 check:rc==0
-check:output=~
+check:output=~total 0
 end
 
 start:xdsh_e_filename
@@ -75,7 +78,7 @@ cmd:echo 'export DSH_FANOUT=8' > /tmp/xdsh.test
 check:rc==0
 cmd:xdsh $$CN -E /tmp/xdsh.test  "export |grep DSH_FANOUT"
 check:rc==0
-check:output=$$CN: declare -x DSH_FANOUT="8"
+check:output=~$$CN: declare -x DSH_FANOUT="8"
 cmd:rm -r /tmp/xdsh.test
 check:rc==0
 end
@@ -101,9 +104,9 @@ check:rc!=0
 check:output=~Error: (\[.*?\]: )?Caught SIGINT - terminating the child processes.
 cmd:date +%s > /tmp/end.txt
 check:rc==0
-cmd:a=`cat /tmp/start.txt`;b=`cat /tmp/end.txt`;c=$[$b-$a];echo $c
+cmd:a=`cat /tmp/start.txt`;b=`cat /tmp/end.txt`;c=$[$b-$a];if [ $c -lt 7 ]; then echo "diff is less than 7 seconds"; else echo "diff is at least 7 seconds";fi
 check:rc==0
-check:output<7
+check:output=~less than
 cmd:rm -f /tmp/start.txt /tmp/end.txt
 end
 

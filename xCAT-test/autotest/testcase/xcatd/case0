@@ -171,11 +171,11 @@ check:output=~xcatd service|xcatd.service
 check:output=~xcatd service is running|active \(running\)
 cmd:XCATBYPASS=YES lsxcatd -a
 check:rc==0
-check:output!=~Error|ERROR
+check:output!~Error|ERROR
 cmd:XCATBYPASS=YES service xcatd status
 check:rc==0
-check:output!=~Error|ERROR
+check:output!~Error|ERROR
 cmd:XCATBYPASS=YES service xcatd restart
 check:rc==0
-check:output!=~Error|ERROR 
+check:output!~Error|ERROR 
 end

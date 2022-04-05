@@ -70,10 +70,10 @@ check:output!~testnode2
 check:output!~testnode4
 cmd:lsdef testnode1
 check:rc==0
-check:output=~=all,systemp,testgrp
+check:output=~all,systemp,testgrp
 cmd:lsdef testnode3
 check:rc==0
-check:output=~=all,systemx,testgrp
+check:output=~all,systemx,testgrp
 cmd:rmdef -t group testgrp
 check:rc==0
 cmd:lsdef testgrp
@@ -82,12 +82,12 @@ cmd:lsdef -t group -o testgrp
 check:output=~Could not find an object named 'testgrp'
 cmd:lsdef testnode1
 check:rc==0
-check:output=~=all,systemp
-check:output!~=testgrp
+check:output=~all,systemp
+check:output!~testgrp
 cmd:lsdef testnode3
 check:rc==0
-check:output=~=all,systemx
-check:output!~=testgrp
+check:output=~all,systemx
+check:output!~testgrp
 cmd:rmdef -t node -o testnode1-testnode4
 check:rc==0
 end
