@@ -1,5 +1,5 @@
 start:set_up_env_for_support_openbmc_in_python
-description:this case is used to test environment setup for supporting openbmc in python
+description:this case is used to test environment setup for supporting openbmc in python on RH7
 label:others,hctrl_openbmc
 os:Linux
 hcp:openbmc,kvm
@@ -30,15 +30,31 @@ cmd:sed -i "s|__REPLACE_PATH__EXTRAS__|$$PYTHON_DEP_EXTRAS_DIR|g" /etc/yum.repos
 check:rc==0
 cmd:sed -i "s|__REPLACE_PATH__FED__|$$PYTHON_DEP_FED_DIR|" /etc/yum.repos.d/xcat-dep-python-local.repo
 check:rc==0
-cmd: cat /etc/yum.repos.d/xcat-dep-python-local.repo
+cmd:cat /etc/yum.repos.d/xcat-dep-python-local.repo
+check:rc==0 
+cmd:wget https://xcat.org/files/xcat/xcat-dep/2.x_Linux/beta/xCAT-openbmc-py-RH7-2.14.6-snap202204090016.noarch.rpm -O /tmp/xCAT-openbmc-py-RH7.noarch.rpm
+cmd:ls -l /tmp/xCAT-openbmc-py-RH7-2.14.6.rpm
 check:rc==0
-cmd:yum install -y  xCAT-openbmc-py
+cmd:yum install -y /tmp/xCAT-openbmc-py-RH7.noarch.rpm
 check:rc==0
-cmd:rpm -qa|grep "^xCAT-openbmc-py"
-check:output=~ xCAT-openbmc-py-\d
+cmd:rpm -qa|grep "^xCAT-openbmc-py-RH7"
+check:output=~ xCAT-openbmc-py-RH7\d
 check:rc==0
 cmd:rm -rf /tmp/set_up_env_for_support_openbmc_in_python
 check:rc==0
 end
 
+start:set_up_env_for_RH8_support_openbmc_in_python
+description:this case is used to test environment setup for supporting openbmc in python on RH8
+label:others,hctrl_openbmc
+os:Linux
+hcp:openbmc,kvm
+cmd:yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+check:rc==0
+cmd:yum install -y xCAT-openbmc-py
+check:rc==0
+cmd:rpm -qa|grep "^xCAT-openbmc-py"
+check:output=~ xCAT-openbmc-py-\d
+check:rc==0
+end
 
