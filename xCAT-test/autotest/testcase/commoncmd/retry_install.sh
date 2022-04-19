@@ -49,6 +49,10 @@ do
         sleep $check_status
         stat=`lsdef $node -i status -c | cut -d '=' -f 2`
         echo "[$a] The status is not booted... ($stat)" 
+        if [ $stat = "failed" ]; then
+            # Installation failed, no reason to keep checking
+            break
+        fi
         a=++a 
         if [ $a -gt $(($iterations + 0)) ];then
             a=0 
