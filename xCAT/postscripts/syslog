@@ -273,6 +273,7 @@ config_rsyslog_V8()
 
         [ -f "$conf_file" ] && sed -i '/#\$ModLoad \+imudp\|imtcp\|imudp.so\|imtcp.so/s/^#//;
                        /#\$InputTCPServerRun\|UDPServerRun.*/s/^#//' $conf_file
+        [ -f "$conf_file" ] && sed -i '/mtcp.html/s/^/#/' $conf_file
 
         [ -f "/etc/rsyslog.d/xcat-cluster.conf" ] && rm -f "/etc/rsyslog.d/xcat-cluster.conf" ;
         [ -f "/etc/rsyslog.d/xcat-compute.conf" ] && rm -f "/etc/rsyslog.d/xcat-compute.conf" ;
