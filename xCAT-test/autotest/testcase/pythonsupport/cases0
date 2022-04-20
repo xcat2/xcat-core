@@ -49,7 +49,7 @@ description:this case is used to test environment setup for supporting openbmc i
 label:others,hctrl_openbmc
 os:Linux
 hcp:openbmc,kvm
-cmd:yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+cmd:yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
 check:rc==0
 cmd:yum install -y xCAT-openbmc-py
 check:rc==0
