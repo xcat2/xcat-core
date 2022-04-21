@@ -152,7 +152,7 @@ check:rc==0
 #Remove last generated dump
 cmd: rspconfig $$CN dump -l | tail -1 | cut -d ' ' -f2 | tr -d "[]" | xargs -i{} rspconfig $$CN dump -c {}
 check:rc==0
-check:output=clear
+check:output==clear
 end
 
 start:openbmc_rspconfig_ntpservers
