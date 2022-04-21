@@ -1435,8 +1435,7 @@ sub run_case {
                         log_this($running_log_fd, "CHECK:rc $op $rvalue\t[Pass]");
                         push(@caselog, "CHECK:rc $op $rvalue\t[Pass]");
                     }
-                } elsif ($check =~ /output\s*([=!~]+)\s*(\S.*)/
-                    && $check !~ /output\s*([=!~])\1/) {
+                } elsif ($check =~ /output\s*(==|!=|=~|!~)\s*(\S.*)/) {
                     my $lvalue = join("\n", @output);
                     my $op     = $1;
                     my $rvalue = $2;
