@@ -1,0 +1,77 @@
+start:xcattest_checkoutput_exactmatch
+description:check:output== match an exact string
+label:mn_only,ci_test
+cmd:echo "Test"
+check:output==Test
+end
+
+start:xcattest_checkoutput_not_exactmatch
+description:check:output!= check that the output does not match an exact string
+label:mn_only,ci_test
+cmd:echo "Test"
+check:output!=Tes
+end
+
+start:xcattest_checkoutput_regexmatch_full
+description:check:output=~ matching a full string
+label:mn_only,ci_test
+cmd:echo "Running test now"
+check:output=~Running test now
+end
+
+start:xcattest_checkoutput_regexmatch_start
+description:checkoutput=~ matching a partial string from the start of the output 
+label:mn_only,ci_test
+cmd:echo "Running test now"
+check:output=~Running te
+end
+
+start:xcattest_checkoutput_regexmatch_middle
+description:checkoutput=~ matching a partial string in the middle of the output
+label:mn_only,ci_test
+cmd:echo "Running test now"
+check:output=~ing test
+end
+
+start:xcattest_checkoutput_regexmatch_end
+description:checkoutput=~ matching a partial string up to the end of the output
+label:mn_only,ci_test
+cmd:echo "Running test now"
+check:output=~ now
+end
+
+start:xcattest_checkoutput_not_regexmatch_independent
+description:check:output!~ two unrelated strings
+label:mn_only,ci_test
+cmd:echo "Running test now"
+check:output!~uptime
+end
+
+start:xcattest_checkoutput_not_regexmatch_superstring
+description:check:output!~ where the tested string is larger than the output
+label:mn_only,ci_test
+cmd:echo "Running test now"
+check:output!~Running test now, please wait
+end
+
+start:xcattest_checkoutput_not_regexmatch_start
+description:check:output!~ where the tested string fails near the start
+label:mn_only,ci_test
+cmd:echo "Running test now"
+check:output!~Running tess
+end
+
+start:xcattest_checkoutput_not_regexmatch_middle
+description:check:output!~ where the tested string fails in the middle
+label:mn_only,ci_test
+cmd:echo "Running test now"
+check:output!~ing  test
+end
+
+start:xcattest_checkoutput_not_regexmatch_end
+description:check:output!~ where the tested string fails near the end 
+label:mn_only,ci_test
+cmd:echo "Running test now"
+check:output!~est now pl
+end
+

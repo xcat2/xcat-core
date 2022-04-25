@@ -27,7 +27,7 @@ cmd:gettab -H groups=master site.key
 check:rc!=0
 cmd:gettab -H key=master site.groups
 check:rc==0
-check:output=site.groups:
+check:output==site.groups:
 end
 
 

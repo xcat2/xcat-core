@@ -1435,8 +1435,7 @@ sub run_case {
                         log_this($running_log_fd, "CHECK:rc $op $rvalue\t[Pass]");
                         push(@caselog, "CHECK:rc $op $rvalue\t[Pass]");
                     }
-                } elsif ($check =~ /output\s*([=!~]+)\s*(\S.*)/
-                    && $check !~ /output\s*([=!~])\1/) {
+                } elsif ($check =~ /output\s*(==|!=|=~|!~)\s*(\S.*)/) {
                     my $lvalue = join("\n", @output);
                     my $op     = $1;
                     my $rvalue = $2;
@@ -1447,6 +1446,11 @@ sub run_case {
                         || (($op eq '==') && ($lvalue ne $rvalue))
                         || (($op eq '!=') && ($lvalue eq $rvalue))) {
                         $failflag = 1;
+                    } elsif (($op ne '=~') && ($op ne '!~') && ($op ne '==') && ($op ne '!=')) {
+                        $failflag = 1;
+                        log_this($running_log_fd, "CHECK:output unrecognized operator: $op\t[Failed]");
+                        push(@caselog, "CHECK:output unrecognized operator: $op\t[Failed]");
+                        last;
                     }
                     if ($failflag) {
                         log_this($running_log_fd, "CHECK:output $op $rvalue\t[Failed]");
@@ -1491,7 +1495,13 @@ sub run_case {
                     } else {
                         log_this($running_log_fd, "CHECK:output $op $rvalue\t[Pass]");
                         push(@caselog, "CHECK:output $op $rvalue\t[Pass]");
-                    } } }
+                    } 
+                } else {
+                    $failflag = 1;
+                    log_this($running_log_fd, "Unrecognized testcase syntax: CHECK:$check\t[Failed]");
+                    push(@caselog, "Unrecognized testcase syntax: CHECK:$check\t[Failed]");
+                } 
+            }
             foreach my $cmdcheck (@{ $cases_ref->[ $case_name_index_map_ref->{$case} ]->{cmdcheck}->[$j] }) {
                 if ($cmdcheck) {
                     &runcmd($cmdcheck);
