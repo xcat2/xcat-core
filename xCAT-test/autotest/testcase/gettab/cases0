@@ -18,16 +18,17 @@ check:output=~site.value:
 end
 
 start:gettab_err
-description:gettab with error symble ,error key ,error attr.
+description:gettab with invalid option, invalid key, and invalid attribute
 label:mn_only,ci_test,db
 cmd:gettab -c
 check:rc!=0
 check:output=~Usage
 cmd:gettab -H groups=master site.key
 check:rc!=0
+check:output=~Error:
 cmd:gettab -H key=master site.groups
 check:rc==0
-check:output==site.groups:
+check:output=~^$
 end
 
 
