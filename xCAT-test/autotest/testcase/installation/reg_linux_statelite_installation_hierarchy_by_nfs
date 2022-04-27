@@ -80,7 +80,7 @@ check:rc==0
 check:output=~$$SN: done
 check:output!~write failed
 
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute 1
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
@@ -92,6 +92,7 @@ check:output=~64 bytes from $$CN
 cmd:lsdef -l $$CN | grep status
 check:rc==0
 check:output=~booted
+cmd:cat /var/log/consoles/$$CN.log
 cmd:xdsh $$CN date
 check:rc==0
 check:output=~\d\d:\d\d:\d\d
