@@ -12,7 +12,7 @@ label:others,KIT
 cmd:addkit -h
 check:rc==0
 check:output=~Usage
-check:outpur!~error
+check:output!~error
 end
 
 start:chkkitcomp_V
