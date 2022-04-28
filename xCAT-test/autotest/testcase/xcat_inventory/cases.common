@@ -2,17 +2,17 @@ start:xcat_inventory_option_h
 description:This case is used to test xcat-inventory usage information
 label:others,inventory_ci
 cmd:xcat-inventory -h
-check:ouptut=~usage: xcat-inventory
-check:ouptut!~usage: xcat-inventory export
-check:ouptut!~usage: xcat-inventory import
+check:output=~usage: xcat-inventory
+check:output!~usage: xcat-inventory export
+check:output!~usage: xcat-inventory import
 check:rc==0
 cmd:xcat-inventory help
-check:ouptut=~usage: xcat-inventory
-check:ouptut!~usage: xcat-inventory export
-check:ouptut!~usage: xcat-inventory import
+check:output=~usage: xcat-inventory
+check:output!~usage: xcat-inventory export
+check:output!~usage: xcat-inventory import
 check:rc==0
 cmd:xcat-inventory help export
-check:ouptut=~usage: xcat-inventory export
+check:output=~usage: xcat-inventory export
 check:rc==0
 cmd:xcat-inventory help import
 check:output=~usage: xcat-inventory import
@@ -27,7 +27,7 @@ start:xcat_inventory_option_V
 description:This case is used to test xcat-inventory option V which used to get version information
 label:others,inventory_ci
 cmd:xcat-inventory -V
-check:ouptut=~\d\.\d
+check:output=~\d\.\d
 check:rc==0
 end
 
