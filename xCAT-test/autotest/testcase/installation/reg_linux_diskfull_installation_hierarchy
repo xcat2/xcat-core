@@ -109,7 +109,10 @@ check:rc==0
 
 # Check node can be rebooted from disk
 cmd:xdsh $$CN shutdown -r now
-cmd:sleep 360
+
+# Wait for node to reboot (10sec x 60)
+cmd:a=0;while ! `xdsh $$CN -t 5 uptime 2>&1 | grep up >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+
 cmd:xdsh $$CN uptime
 check:rc==0
 check:output=~up
