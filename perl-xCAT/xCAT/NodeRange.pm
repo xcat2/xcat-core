@@ -4,6 +4,7 @@ use Text::Balanced qw/extract_bracketed/;
 require xCAT::Table;
 require Exporter;
 use strict;
+use xCAT::MsgUtils;
 
 #Perl implementation of noderange
 our @ISA       = qw(Exporter);
@@ -293,6 +294,9 @@ sub expandatom {
                     #my @grouplist = $grptab->getAllAttribs('groupname');
                 for my $row (@grplist) {
                     if ($row->{groupname} eq $atom) {
+                        my $rsp;
+                        $rsp->{data}->[0] = "$atom is a defined group name, so Node $atom is not created.";
+                        xCAT::MsgUtils->message("E", $rsp, $::callback);
                         return ();
                     }
                 }

@@ -150,3 +150,20 @@ check:rc==0
 cmd:rmdef -t group -o xcattest_tmp_group_regex
 check:rc==0
 end
+
+start:mkdef_nodename_hit_groupname
+cmd:mkdef -t group -o tempgroup13579
+check:rc==0
+cmd:mkdef -t node -o tempgroup13579 groups=tempgroup13579
+check:rc==1
+check:output=~a defined group name
+check:output=~No object names were provided
+cmd:mkdef -t node -o tempnode02468,tempgroup13579 groups=tempgroup13579
+check:rc==1
+check:output=~a defined group name
+check:output=~1 object definitions have been created
+cmd:rmdef -t node -o tempnode02468
+check:rc==0
+cmd:rmdef -t group -o tempgroup13579
+check:rc==0
+end
