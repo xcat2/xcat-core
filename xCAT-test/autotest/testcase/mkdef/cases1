@@ -162,8 +162,7 @@ cmd:mkdef -t node -o tempgroup13579 groups=all
 check:rc==1
 check:output=~A definition for a group object with the same name already exists.
 check:output=~No object names were provided
-#cmd:mkdef -t node -o tempnode02468,tempgroup13579 groups=tempgroup13579
-cmd:mkdef -t node -o tempgroup13579,tempnode02468 groups=tempgroup13579
+cmd:mkdef -t node -o tempnode02468,tempgroup13579 groups=tempgroup13579
 check:rc==0
 check:output=~A definition for a group object with the same name already exists.
 check:output=~1 object definitions have been created
