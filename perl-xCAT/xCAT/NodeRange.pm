@@ -295,8 +295,8 @@ sub expandatom {
                 for my $row (@grplist) {
                     if ($row->{groupname} eq $atom) {
                         my $rsp;
-                        $rsp->{data}->[0] = "$atom is a defined group name, so Node $atom is not created.";
-                        xCAT::MsgUtils->message("E", $rsp, $::callback);
+                        $rsp->{data}->[0] = "Could not create an object named \'$atom\' of type 'node'. A definition for a group object with the same name already exists.";
+                        xCAT::MsgUtils->message("W", $rsp, $::callback);
                         return ();
                     }
                 }
