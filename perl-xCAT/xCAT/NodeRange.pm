@@ -296,7 +296,7 @@ sub expandatom {
                     if ($row->{groupname} eq $atom) {
                         my $rsp;
                         $rsp->{data}->[0] = "Could not create an object named \'$atom\' of type 'node'. A definition for a group object with the same name already exists.";
-                        xCAT::MsgUtils->message("W", $rsp, $::callback);
+                        xCAT::MsgUtils->message("E", $rsp, $::callback);
                         return ();
                     }
                 }
