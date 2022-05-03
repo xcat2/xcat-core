@@ -107,6 +107,10 @@ check:rc==0
 cmd:sitetz=`lsdef -t site -i timezone | awk -F= '{print $2}'`;nodetz=`xdsh $$CN "timedatectl | grep 'Time zone'" | awk -F: '{print $3}' | awk '{print $1}'`; test $sitetz = $nodetz
 check:rc==0
 
+# Check there are no load host key warnings
+cmd:xdsh $$CN "grep 'load host key' /var/log/xcat/xcat.log || echo 'No load hostkey warning' >&2"
+check:output=~No load hostkey warning
+
 # Check node can be rebooted from disk
 cmd:xdsh $$CN shutdown -r now
 

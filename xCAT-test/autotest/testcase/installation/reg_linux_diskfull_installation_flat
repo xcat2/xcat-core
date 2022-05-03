@@ -74,6 +74,9 @@ check:output=~64 bytes from $$CN
 cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 cmd:xdsh $$CN "cat /test.synclist"
 check:rc==0
+# Check there are no load host key warnings
+cmd:xdsh $$CN "grep 'load host key' /var/log/xcat/xcat.log || echo 'No load hostkey warning' >&2"
+check:output=~No load hostkey warning
 # Check node can be rebooted from disk
 cmd:xdsh $$CN shutdown -r now
 cmd:sleep 300
