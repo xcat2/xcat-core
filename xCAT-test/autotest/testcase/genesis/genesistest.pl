@@ -288,15 +288,13 @@ sub testxdsh {
     if (($value == 1) || ($value == 2) || ($value == 3)) {
         `$xdsh_command | grep $checkstring`;
         if ($?) {
-            # First attempt to run xdsh failed, display console log to see what happened, then try few more times
-            my $console_log = `nodels $noderange | xargs -I % tail -v --lines 25 /var/log/consoles/%.log`;
-            send_msg(2, "Console log: $console_log \n");
+            # First attempt to run xdsh failed, then try few more times
             my @i = (1..3);
             for (@i) {
                 $xdsh_out=`$xdsh_command`;
                 $nodestatus=`lsdef $noderange -i status -c  2>&1 | awk -F'=' '{print \$2}'`;
-                send_msg(1,"[$_] \"$xdsh_command\" returned: $xdsh_out. Node status: $nodestatus");
-                sleep 180;
+                send_msg(2,"[$_] Command \"$xdsh_command\" looking for $checkstring returned:\n $xdsh_out.\n Node status: $nodestatus");
+                sleep 10;
                 `$xdsh_command | grep $checkstring`;
                 last if ($? == 0);
             }
@@ -344,6 +342,7 @@ sub clearenv {
     `cat $nodestanza | chdef -z`;
     unlink("$nodestanza");
     }
+    sleep 120; # wait 2 min for reboot to finish
     return 0;
 }
 ####################################
