@@ -120,6 +120,11 @@ cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
 cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
+
+# Check there are no load host key warnings
+cmd:xdsh $$CN "grep 'load host key' /var/log/xcat/xcat.log || echo 'No load hostkey warning' >&2"
+check:output=~No load hostkey warning
+
 cmd:rm -rf /tmp/image;mkdir /tmp/image
 check:rc==0
 cmd:imgexport __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute /tmp/image/image.tgz
