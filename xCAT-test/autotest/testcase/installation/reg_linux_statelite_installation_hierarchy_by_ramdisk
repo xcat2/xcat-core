@@ -85,7 +85,6 @@ check:output=~64 bytes from $$CN
 cmd:lsdef -l $$CN | grep status
 check:rc==0
 check:output=~booted
-cmd:cat /var/log/consoles/$$CN.log
 cmd:xdsh $$CN date
 check:rc==0
 check:output=~\d\d:\d\d:\d\d

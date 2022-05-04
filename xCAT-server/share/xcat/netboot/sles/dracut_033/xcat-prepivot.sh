@@ -120,6 +120,11 @@ if [ ! -z $SNAPSHOTSERVER ]; then
 fi
 
 # TODO: handle the dhclient/resolv.conf/ntp, etc
+
+# On systems with no /bin/bash, create a link to /usr/bin/bash
+if [ ! -e /bin/bash ] && [ -e /usr/bin/bash ]; then
+    ln -s /usr/bin/bash /bin/bash
+fi
 logger $SYSLOGHOST -t $log_label -p local4.info "Enabling localdisk ..."
 echo "Enable localdisk ..."
 $NEWROOT/etc/init.d/localdisk
@@ -153,7 +158,8 @@ function getdevfrommac() {
     done
 }
 
-bootif=$(ls /tmp/net.*.conf|sed -e s/.*net\.// -e s/\.conf//)
+# get boot interface name and generate network/ifcfg-<name> file
+bootif=$(ls /tmp/net.*.up|grep -v ":"|sed -e s/.*net\.// -e s/\.up//)
 cat <<EOF >  $NEWROOT/etc/sysconfig/network/ifcfg-$bootif
 BOOTPROTO='dhcp'
 STARTMODE='auto'
