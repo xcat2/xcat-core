@@ -167,8 +167,11 @@ ResolveLinks () {
     i=0
     while read type path
     do
-        ELIST[$i]="$type $path";
-        i=$[ $i+1 ];
+        if [ -n "$path" ]; then
+            # Only add non empty entries
+            ELIST[$i]="$type $path";
+            i=$[ $i+1 ];
+        fi
     done
 
     num=${#ELIST[@]}

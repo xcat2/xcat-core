@@ -92,7 +92,6 @@ check:output=~64 bytes from $$CN
 cmd:lsdef -l $$CN | grep status
 check:rc==0
 check:output=~booted
-cmd:cat /var/log/consoles/$$CN.log
 cmd:xdsh $$CN date
 check:rc==0
 check:output=~\d\d:\d\d:\d\d
@@ -107,7 +106,7 @@ cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 cmd:xdsh $$CN "echo "test"> /test.statelite"
 check:rc!=0
 cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
-cmd:output=$(xdsh $$CN ls -al / |grep test.statelite);if [[ $? -eq 0 ]];then  xdsh $$CN rm -rf /test.tatelite;fi
+cmd:output=$(xdsh $$CN ls -al / |grep test.statelite);if [[ $? -eq 0 ]];then  xdsh $$CN rm -rf /test.statelite;fi
 cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then rm -rf $rootimgdir;fi
 check:rc==0
 end
