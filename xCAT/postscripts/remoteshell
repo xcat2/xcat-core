@@ -313,6 +313,86 @@ if ssh-keygen -t ecdsa -f /tmp/ecdsa_key -P "" &>/dev/null ; then
   rm /tmp/ssh_ecdsa_hostkey
 fi
 
+# if node supports ed25519 host key then download the replacement from the MN/SN
+# remove the /tmp/ed25519_key first, otherwise the "ssh-keygen" below might hang
+# at waiting for user confirmation to overwritten the existing file
+rm -rf /tmp/ed25519_key >/dev/null 2>&1
+if ssh-keygen -t ed25519 -f /tmp/ed25519_key -P "" &>/dev/null ; then
+  # download the host ed25519 key
+  if [ $useflowcontrol = "1" ]; then
+    #first contact daemon  xcatflowrequest <server> 3001
+    logger -t $log_label -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
+    /$xcatpost/xcatflowrequest $master 3001
+    rc=$?
+    logger -t $log_label -p local4.info "remoteshell:xcatflowrequest return=$rc"
+    if [ $rc -ne 0 ]; then
+      logger -t $log_label -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
+      useflowcontrol=0
+    fi
+  fi
+
+  getcredentials.awk ssh_ed25519_hostkey | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>' | sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_ed25519_hostkey
+
+  #check whether the message is an error or not
+  grep -E '<error>' /tmp/ssh_ed25519_hostkey > /dev/null 2>&1
+  if [ $? -ne 0 ]; then
+	#the message received is the data we request
+	cat /tmp/ssh_ed25519_hostkey | grep -E -v '</{0,1}errorcode>|/{0,1}data>|</{0,1}content>|</{0,1}desc>' >/etc/ssh/ssh_host_ed25519_key
+	logger -t $log_label -p local4.info ssh_ed25519_hostkey
+	MYCONT=`cat /etc/ssh/ssh_host_ed25519_key`
+   MAX_RETRIES=10
+   RETRY=0
+	while [ -z "$MYCONT" ]; do
+              # not using flow control , need to sleep
+              if [ $useflowcontrol = "0" ]; then
+                let SLI=$RANDOM%10
+                let SLI=SLI+10
+                sleep $SLI
+              fi
+                RETRY=$(($RETRY+1))
+                if [ $RETRY -eq $MAX_RETRIES ]
+                then
+                  break
+                fi
+                if [ $useflowcontrol = "1" ]; then
+                  #first contact daemon  xcatflowrequest <server> 3001
+                  logger -t $log_label -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
+                  /$xcatpost/xcatflowrequest $master 3001
+                  rc=$?
+                  logger -t $log_label -p local4.info "remoteshell:xcatflowrequest return=$rc"
+                  if [ $rc -ne 0 ]; then
+                      logger -t $log_label -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
+                      useflowcontrol=0
+                  fi
+                fi
+
+    		getcredentials.awk ssh_ed25519_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_ed25519_key
+    		MYCONT=`cat /etc/ssh/ssh_host_ed25519_key`
+	done
+	egrep  -i "^ssh_keys:" /etc/group >/dev/null 2>&1 && chown root:ssh_keys /etc/ssh/ssh_host_ed25519_key 2>/dev/null && chmod 640 /etc/ssh/ssh_host_ed25519_key
+	if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_ed25519_key > /dev/null 2>&1 ; then
+   		rm /etc/ssh/ssh_host_ed25519_key
+	else
+		# Because of openssh version differs, provisioning errors may happen when MN support ed25519 while CN don't ed25519.
+		# Judge CN support ed25519 or not. "-t ed25519" indicate the key type, "-P "" " avoid hang-on and wait for input passphrase when CN don't support ed25519.
+		# If ture, means support ed25519, then generate corresponding key.pub.
+		# If false, remove ssh_host_ed25519_key useless file, to avoid future errors.
+		if ssh-keygen -t ed25519 -y -f /etc/ssh/ssh_host_ed25519_key -P "" &>/dev/null ; then
+			ssh-keygen -y -f /etc/ssh/ssh_host_ed25519_key -P "" > /etc/ssh/ssh_host_ed25519_key.pub
+			chmod 644 /etc/ssh/ssh_host_ed25519_key.pub
+			chown root /etc/ssh/ssh_host_ed25519_key.pub
+		else
+			rm -fr /etc/ssh/ssh_host_ed25519_key
+		fi
+	fi
+  else
+	#This is an error message
+	ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/ssh_ed25519_hostkey`
+	logger -s -t $log_label -p local4.err Error: $ERR_MSG
+  fi
+  rm /tmp/ssh_ed25519_hostkey
+fi
+
 if [[ $NTYPE = service ]]; then
    mkdir -p /etc/xcat/hostkeys
    cp /etc/ssh/ssh* /etc/xcat/hostkeys/.
