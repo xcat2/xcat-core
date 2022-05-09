@@ -199,6 +199,10 @@ sub new {
     unless ($args{'port'}) {    #default to port 623 unless specified
         $self->{'port'} = 623;
     }
+    else
+    {
+        $self->{'port'} = $args{'port'} ;
+    }
     unless ($socket) {
         if ($doipv6) {
             $socket = IO::Socket::INET6->new(Proto => 'udp');
