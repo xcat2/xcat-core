@@ -102,7 +102,8 @@ if ($genesis_nodesetshell_test) {
     }
     else {
         send_msg(2, "Installing with \"nodeset $noderange shell\" for shell test");
-        sleep 180; # wait 3 min for install to finish
+        sleep 120; # wait 2 min for install to finish
+        wait_for_boot();
     }
     #run nodeshell test
     send_msg(2, "prepare for nodeshell script.");
@@ -212,7 +213,8 @@ sub rungenesiscmd {
     }
     else {
         send_msg(2, "Installing with \"$rinstall_cmd\" for runcmd test");
-        sleep 180; # wait 3 min for install to finish
+        sleep 120; # wait 2 min for install to finish
+        wait_for_boot();
     }
     return $value;
 }
@@ -254,7 +256,8 @@ sub rungenesisimg {
         $value = -1;
     } else {
         send_msg(2, "Installing with \"$rinstall_cmd\" for runimage test\n");
-        sleep 180; # wait 3 min for install to finish
+        sleep 120; # wait 2 min for install to finish
+        wait_for_boot();
     }
     return $value;
 }
@@ -343,6 +346,7 @@ sub clearenv {
     unlink("$nodestanza");
     }
     sleep 120; # wait 2 min for reboot to finish
+    wait_for_boot();
     return 0;
 }
 ####################################
@@ -409,4 +413,23 @@ sub send_msg {
     print LOGFILE "$date $$ $content $msg\n";
     close LOGFILE;
 
+}
+#########################################
+### Wait for node to be in "booted" state
+##########################################
+sub wait_for_boot {
+    my $iterations = 30; # Max wait 30x10 = 5 min
+    my $sleep_interval = 10;
+    my $boot_status;
+
+    foreach my $i (1..$iterations) {
+        $boot_status = `lsdef $noderange -i status -c | cut -d'=' -f2`;
+        chop($boot_status);
+        if ($boot_status eq "booted") {
+            return 0;
+        }
+        sleep $sleep_interval;
+    }
+    print "After $iterations iterations node status: $boot_status \n";
+    return 1;
 }
