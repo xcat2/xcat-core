@@ -62,8 +62,8 @@ cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-ne
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
-# Verify kdump related attributes showup in tftpboot file and file was changed
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "x86_64" ]]; then cat /tftpboot/xcat/xnba/nodes/$$CN; else cat /tftpboot/boot/grub2/$$CN; fi
+# Verify that the kdump attribute is included in the node file under either /tftpboot/boot/grub2 or /tftpboot/petitboot.
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "x86_64" ]]; then cat /tftpboot/xcat/xnba/nodes/$$CN; elif [[ "__GETNODEATTR($$CN,netboot)__" = "grub2" ]]; then cat /tftpboot/boot/grub2/$$CN; elif [[ "__GETNODEATTR($$CN,netboot)__" = "petitboot" ]]; then cat /tftpboot/petitboot/$$CN; fi;
 check:output=~dump
 
 cmd:sleep 300
