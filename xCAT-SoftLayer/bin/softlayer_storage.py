@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 """
 Usage:
     softlayer_storage.py --type=<type> [--hostname=<hostname> --username=<username> --password=<password> --mountpoint=<mountpoint> ] (mount | unmount)
