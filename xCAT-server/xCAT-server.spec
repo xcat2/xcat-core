@@ -70,10 +70,6 @@ xCAT-server provides the core server and configuration management components of 
 
 %define zvm %(if [ "$zvm" = "1" ];then echo 1; else echo 0; fi)
 
-# %define VERBOSE %(if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ];then echo 1; else echo 0; fi)
-# %define NOVERBOSE %(if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ];then echo 0; else echo 1; fi)
-# %define NOVERBOSE %{?VERBOSE:1}%{!?VERBOSE:0}
-
 %prep
 # %if %NOVERBOSE
 # echo NOVERBOSE is on
@@ -398,8 +394,6 @@ rm -rf $RPM_BUILD_ROOT
 %else
 /etc/init.d/xcatd
 /usr/lib/systemd/system/xcatd.service
-#/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24
-#/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache22
 /etc/apache2/conf.d/xcat-ws.conf
 /etc/httpd/conf.d/xcat-ws.conf
 %endif

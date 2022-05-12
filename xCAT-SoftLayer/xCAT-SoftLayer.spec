@@ -26,10 +26,6 @@ Provides: xCAT-SoftLayer = %{epoch}:%{version}
 %description
 xCAT-SoftLayer provides Utilities to make xCAT work in a SoftLayer environment.  This package should be installed on your management server
 
-# %define VERBOSE %(if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ];then echo 1; else echo 0; fi)
-# %define NOVERBOSE %(if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ];then echo 0; else echo 1; fi)
-# %define NOVERBOSE %{?VERBOSE:1}%{!?VERBOSE:0}
-
 %prep
 # %if %NOVERBOSE
 # echo NOVERBOSE is on
