@@ -1,3 +1,4 @@
+#!/bin/bash
 #step 1, determine the realm and such
 DNSDOMAIN=`dnsdomainname`
 UPDNSDOMAIN=`echo $DNSDOMAIN|tr a-z A-Z`
