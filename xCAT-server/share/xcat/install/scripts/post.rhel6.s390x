@@ -1,4 +1,4 @@
-
+#!/bin/bash
 # Get hostname
 export HOSTNAME=$(host $IP 2>/dev/null | awk '{print $5}' | awk -F. '{print $1}')
 hostname $HOSTNAME

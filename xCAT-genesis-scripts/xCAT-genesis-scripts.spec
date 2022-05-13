@@ -70,7 +70,6 @@ touch /etc/xcat/genesis-scripts-updated
 
 %Files
 %defattr(-,root,root)
-#%dir %attr(-,root,root) %{rpminstallroot}
 %{rpminstallroot}/usr/bin/allowcred.awk
 %{rpminstallroot}/usr/bin/bmcsetup
 %{rpminstallroot}/usr/bin/raidcmd
