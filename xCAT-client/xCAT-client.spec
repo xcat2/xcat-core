@@ -30,7 +30,7 @@ Requires: cpio
 # fping or nmap is needed by pping (in case xCAT-client is installed by itself on a remote client)
 %ifos linux
 Requires: nmap perl-XML-Simple perl-XML-Parser
-Suggests: perl-Sys-Syslog perl-Text-Balanced perl-JSON perl-Expect
+Recommends: perl-Sys-Syslog perl-Text-Balanced perl-JSON perl-Expect
 %else
 Requires: expat
 %endif
