@@ -2685,7 +2685,7 @@ sub insert_dd {
                 # and copy it to the /tftpboot
                 my @new_kernels = <$dd_dir/rpm/boot/vmlinuz*>;
                 foreach my $new_kernel (@new_kernels) {
-                    if (-r $new_kernel && $new_kernel =~ /\/vmlinuz-(.*(x86_64|ppc64|el\d+|ppc64le))$/) {
+                    if (-r $new_kernel && $new_kernel =~ /\/vmlinuz-(.*(x86_64|ppc64|el\d+|ppc64le|aarch64))$/) {
                         $new_kernel_ver = $1;
                         $cmd            = "/bin/mv -f $new_kernel $kernelpath";
                         xCAT::Utils->runcmd($cmd, -1);
