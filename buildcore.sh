@@ -371,6 +371,8 @@ if [ "$OSNAME" != "AIX" ]; then
             if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-genesis-scripts-x86_64"; fi
             ./makerpm xCAT-genesis-scripts ppc64 "$EMBED"
             if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-genesis-scripts-ppc64"; fi
+            ./makerpm xCAT-genesis-scripts aarch64 "$EMBED"
+            if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-genesis-scripts-aarch64"; fi
             if [ "$FAILEDRPMS" = "$ORIGFAILEDRPMS" ]; then    # all succeeded
                 rm -f $DESTDIR/xCAT-genesis-scripts*rpm
                 rm -f $SRCDIR/xCAT-genesis-scripts*rpm
@@ -392,7 +394,7 @@ for rpmname in xCAT xCATsn; do
             ./makerpm $rpmname "$EMBED"
             if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname"; fi
         else
-            for arch in x86_64 ppc64 ppc64le s390x; do
+            for arch in x86_64 ppc64 ppc64le s390x aarch64; do
                 if [ "$rpmname" = "xCAT-OpenStack" -a "$arch" != "x86_64" ] || [ "$rpmname" = "xCAT-OpenStack-baremetal" -a "$arch" != "x86_64" ] ; then continue; fi         # only bld openstack for x86_64 for now
                 ./makerpm $rpmname $arch "$EMBED"
                 if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname-$arch"; fi
