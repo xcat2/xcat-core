@@ -2742,7 +2742,7 @@ sub addnet
         push @netent, "        filename \"elilo.efi\";\n";
         push @netent,
           "    } else if option client-architecture = 00:0b { #aaarch64\n ";
-        push @netent, "      filename \"armgrub/grubaa64.efi\";\n";
+        push @netent, "      filename \"boot/grub2/grub2.aarch64\";\n";
         push @netent,
           "    } else if option client-architecture = 00:0e { #OPAL-v3\n ";
         push @netent, "        option conf-file = \"http://$tftp:$httpport/tftpboot/pxelinux.cfg/p/" . $net . "_" . $maskbits . "\";\n";
