@@ -371,8 +371,9 @@ if [ "$OSNAME" != "AIX" ]; then
             if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-genesis-scripts-x86_64"; fi
             ./makerpm xCAT-genesis-scripts ppc64 "$EMBED"
             if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-genesis-scripts-ppc64"; fi
-            ./makerpm xCAT-genesis-scripts aarch64 "$EMBED"
-            if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-genesis-scripts-aarch64"; fi
+            # Do not build xCAT-genesis-scripts-aarch64 yet
+            #./makerpm xCAT-genesis-scripts aarch64 "$EMBED"
+            #if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-genesis-scripts-aarch64"; fi
             if [ "$FAILEDRPMS" = "$ORIGFAILEDRPMS" ]; then    # all succeeded
                 rm -f $DESTDIR/xCAT-genesis-scripts*rpm
                 rm -f $SRCDIR/xCAT-genesis-scripts*rpm
