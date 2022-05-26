@@ -27,23 +27,23 @@ The ``mlnxofed_ib_install`` is a sample script intended to assist with the insta
    +---------+------------------+----------------------------------------------------------+
    | Option  | Required         | Description                                              |
    +=========+==================+==========================================================+
-   |``-p``   | Yes              || The full path to the MLNX_OFED ISO image                |
+   |``-p``   | Yes              |  The full path to the MLNX_OFED ISO image                |
    +---------+------------------+----------------------------------------------------------+
-   |``-m``   | No               || Use this option to pass arguments to the Mellanox OFED  |
-   |         |                  || installation script ``mlnxofedinstall``.                |
-   |         |                  ||                                                         |
-   |         |                  || The special keyword ``-end-`` must be added to the end  |
-   |         |                  || of the string to mark the completion of the option list |
-   |         |                  || option list.                                            |
-   |         |                  ||                                                         |
-   |         |                  || If nothing is specified, xCAT passes the following  |
-   |         |                  || ``--without-32bit --without-fw-update --force``         |
+   |``-m``   | No               |  Use this option to pass arguments to the Mellanox OFED  |
+   |         |                  |  installation script ``mlnxofedinstall``.                |
+   |         |                  |                                                          |
+   |         |                  |  The special keyword ``-end-`` must be added to the end  |
+   |         |                  |  of the string to mark the completion of the option list |
+   |         |                  |  option list.                                            |
+   |         |                  |                                                          |
+   |         |                  |  If nothing is specified, xCAT passes the following      |
+   |         |                  |  ``--without-32bit --without-fw-update --force``         |
    +---------+------------------+----------------------------------------------------------+
-   |``-i``   | For diskless     || The image root path of the diskless image               |
-   |         |                  ||                                                         |
+   |``-i``   | For diskless     |  The image root path of the diskless image               |
+   |         |                  |                                                          |
    +---------+------------------+----------------------------------------------------------+
-   |``-n``   | For diskless     || nodeset status, value is ``genimage``                   |
-   |         |                  ||                                                         |
+   |``-n``   | For diskless     |  nodeset status, value is ``genimage``                   |
+   |         |                  |                                                          |
    +---------+------------------+----------------------------------------------------------+
 
 
