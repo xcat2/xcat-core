@@ -261,7 +261,7 @@ sub gettab
     foreach my $tabn (keys %tabhash) {
         foreach my $kcheck (keys %keyhash) {
             unless (grep /^$kcheck$/, @{ $xCAT::Schema::tabspec{$tabn}->{cols} }) {
-                $callback->({ error => ["Unkown key $kcheck to $tabn"], errorcode => [1] });
+                $callback->({ error => ["Unknown key $kcheck to $tabn"], errorcode => [1] });
                 return;
             }
         }

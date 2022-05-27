@@ -1,3 +1,4 @@
+#!/bin/bash
 export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
 if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
     set -x

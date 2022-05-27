@@ -114,14 +114,19 @@ if [ "$OSNAME" != "AIX" ]; then
     GSA=http://pokgsa.ibm.com/projects/x/xcat/build/linux
 
         if [ "$(id -u)" == "0" ]; then
-        # Get a lock, so can not do 2 builds at once
-        exec 8>/var/lock/xcatbld-$REL.lock
-        if ! flock -n 8; then
+            # Some docker containers are missing /var/run/lock to which
+            # /var/lock is linked. Add here if missing.
+            if [ ! -e /var/run/lock ]; then
+                mkdir -p /var/run/lock
+            fi
+            # Get a lock, so can not do 2 builds at once
+            exec 8>/var/lock/xcatbld-$REL.lock
+            if ! flock -n 8; then
                 echo "Can't get lock /var/lock/xcatbld-$REL.lock.  Someone else must be doing a build right now.  Exiting...."
                 exit 1
-        fi
-        # This is so rpm and gpg will know home, even in sudo
-        export HOME=/root
+            fi
+            # This is so rpm and gpg will know home, even in sudo
+            export HOME=/root
         fi
 fi
 
