@@ -20,5 +20,5 @@ To use the generated RPM from the step above for node discovery:
 1. Uninstall the old ``xCAT-genesis-base`` RPM and install the newly built ``xCAT-genesis-base`` RPM on the xCAT Management node 
 2. Execute: ``mknb ppc64``
 
-3. Follow :doc:`discover nodes </guides/admin-guides/manage_clusters/ppc64le/discovery/mtms/discovery.html>`
+3. Follow :doc:`discover nodes </guides/admin-guides/manage_clusters/ppc64le/discovery/mtms/discovery>`
 

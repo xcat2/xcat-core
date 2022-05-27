@@ -1433,7 +1433,7 @@ Change the attributes mgtifname=eth0 and net=10.1.0.0. ::
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/networks/network1?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"mgtifname":"eth0","net":"10.1.0.0"}'
 POST - Create the network {netname}. DataBody: {attr1:v1,attr2:v2...}.
-`````````````````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````````````````
 
 Refer to the man page: :doc:`mkdef </guides/admin-guides/references/man1/mkdef.1>`
 
@@ -1576,7 +1576,7 @@ Set the name attribute for policy 3. ::
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/policy/3?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"name":"root"}'
 POST - Create the policy {policyname}. DataBody: {attr1:v1,attr2:v2...}.
-```````````````````````````````````````````````````````````````````````
+````````````````````````````````````````````````````````````````````````
 
 It will create a new policy resource.
 

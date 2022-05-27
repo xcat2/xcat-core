@@ -20,12 +20,12 @@ Configure ``otherpkgdir`` and ``otherpkglist`` for service node osimage
           otherpkgdir=/install/post/otherpkgs/rhels7/x86_64
     [root@fs4 xcat]# mkdir -p /install/post/otherpkgs/rhels7/x86_64/xcat
 
- * Download or copy `xcat-core` and `xcat-dep` .bz2 files into that `xcat` directory ::
+ * Download or copy ``xcat-core`` and ``xcat-dep`` .bz2 files into that ``xcat`` directory ::
 
     wget https://xcat.org/files/xcat/xcat-core/<version>_Linux/xcat-core/xcat-core-<version>-linux.tar.bz2
     wget https://xcat.org/files/xcat/xcat-dep/<version>_Linux/xcat-dep-<version>-linux.tar.bz2
 
- * untar the `xcat-core` and `xcat-dep` .bz2 files ::
+ * untar the ``xcat-core`` and ``xcat-dep`` .bz2 files ::
 
     cd /install/post/otherpkgs/<os>/<arch>/xcat
     tar jxvf core-rpms-snap.tar.bz2
@@ -50,7 +50,7 @@ Configure ``otherpkgdir`` and ``otherpkglist`` for service node osimage
        xcat/xcat-dep/rh7/x86_64/perl-Net-Telnet
        xcat/xcat-dep/rh7/x86_64/perl-Expect
 
-.. note:: You will be installing the xCAT Service Node RPM ``xCATsn`` on the Service Node, not the xCAT Management Node RPM.  Do not install both.
+.. note:: You will be installing the xCAT Service Node RPM ``xCATsn-<version>`` on the Service Node, not the xCAT Management Node RPM ``xCAT-<version>``.  Do not install xCAT Management Node RPM ``xCAT-<version>`` on the Service Node.
 
 Update the rhels6 RPM repository (rhels6 only)
 ----------------------------------------------
@@ -103,7 +103,7 @@ For example ::
 Monitor the Installation
 ------------------------
 
-Watch the installation progress using either wcons or rcons: ::
+Watch the installation progress using either ``wcons`` or ``rcons`` and monitor log messages: ::
 
     wcons service     # make sure DISPLAY is set to your X server/VNC or
     rcons <node_name>
@@ -116,20 +116,20 @@ Update Service Node Diskful Image
 
 To update the xCAT software on the Service Node:
 
-#. Remove previous xcat-core, xcat-dep, and tar files in the NFS mounted ``/install/post/otherpkgs/`` directory: ::
+#. Remove previous ``xcat-core``, ``xcat-dep``, and tar files in the NFS mounted ``/install/post/otherpkgs/`` directory: ::
 
-    rm /install/post/otherpkgs/<os>/<arch>/xcat/xcat-core
-    rm /install/post/otherpkgs/<os>/<arch>/xcat/xcat-dep
+    rm -rf /install/post/otherpkgs/<os>/<arch>/xcat/xcat-core
+    rm -rf /install/post/otherpkgs/<os>/<arch>/xcat/xcat-dep
     rm /install/post/otherpkgs/<os>/<arch>/xcat/<xcat-core.tar>
     rm /install/post/otherpkgs/<os>/<arch>/xcat/<xcat-dep.tar>
 
-#. Download the desired tar files from xcat.org on to the Management Node, and untar them in the same NFS mounted ``/install/post/otherpkgs/`` directory: ::
+#. Download the desired tar files from http://xcat.org/download.html to the Management Node, and untar them in the same NFS mounted ``/install/post/otherpkgs/`` directory: ::
 
     cd /install/post/otherpkgs/<os>/<arch>/xcat/
     tar jxvf <new-xcat-core.tar>
     tar jxvf <new-xcat-dep.tar>
 
-#. On the Service Node, run the package manager commands relative to the OS to update xCAT.  For example, on RHEL, use the following yum commands: ::
+#. On the Service Node, run the package manager commands relative to the OS to update xCAT.  For example, on RHEL, use the following ``yum`` commands: ::
 
     yum clean metadata # or yum clean all
     yum update '*xCAT*'
