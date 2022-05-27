@@ -4,7 +4,8 @@ Attribute: $$CN-The operation object of rpower command
 label:cn_bmc_ready,hctrl_general
 cmd:rpower $$CN on
 cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
-check:ouptut=~Running|on
+cmd:rpower $$CN stat
+check:output=~Running|on
 cmd:rpower $$CN off
 check:rc==0
 cmd:a=0;while ! `rpower $$CN stat|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
@@ -143,7 +144,8 @@ Attribute: $$CN-The operation object of rpower command
 label:cn_bmc_ready,hctrl_fsp,hctrl_openbmc
 cmd:rpower $$CN on
 cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
-check:ouptut=~Running|on
+cmd:rpower $$CN stat
+check:output=~Running|on
 cmd:rpower $$CN softoff
 check:rc==0
 cmd:a=0;while ! `rpower $$CN stat|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
@@ -163,7 +165,7 @@ cmd:rpower $$CN stat
 check:output=~Not Activated|off
 cmd:rpower $$CN onstandby
 cmd:a=0;while ! `rpower $$CN stat|grep "standby\|Standby" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
-check:ouptut=~standby|Standby
+check:output=~standby|Standby
 end
 
 start:rpower_wrongpasswd

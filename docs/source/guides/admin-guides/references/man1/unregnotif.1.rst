@@ -11,7 +11,7 @@ NAME
 ****
 
 
-\ **unregnotif**\  - unregister a Perl module or a command that was watching for the changes of  the desired xCAT database tables.
+\ **unregnotif**\  - unregister a Perl module or a command that was watching for the changes of the desired xCAT database tables.
 
 
 ********

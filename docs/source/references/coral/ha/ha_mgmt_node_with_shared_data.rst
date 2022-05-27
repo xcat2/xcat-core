@@ -4,9 +4,9 @@
 HA Solution Overview
 ====================
 
-While a xCAT management node ``xcatmn1`` is running as a primary management node, another node - ``xcatmn2`` can be configured to act as primary management node in case ``xcatmn1`` becomes unavailable. The process is manual and requires disabling primary ``xcatmn1`` and activating backup ``xcatmn2``. Both nodes require access to shared storage described below. Use of Virtual IP is also requred.
+While a xCAT management node ``xcatmn1`` is running as a primary management node, another node - ``xcatmn2`` can be configured to act as primary management node in case ``xcatmn1`` becomes unavailable. The process is manual and requires disabling primary ``xcatmn1`` and activating backup ``xcatmn2``. Both nodes require access to shared storage described below. Use of Virtual IP is also required.
 
-An interactive sample script `xcatha.py <https://github.com/xcat2/xcat-extensions/blob/master/HA/xcatha.py>`_ is availabe to guide through the steps of disabling and activation of xCAT management nodes. ``Dryrun`` option in that scrip allows viewing the actions without executing them.
+An interactive sample script `xcatha.py <https://github.com/xcat2/xcat-extensions/blob/master/HA/xcatha.py>`_ is available to guide through the steps of disabling and activation of xCAT management nodes. ``Dryrun`` option in that scrip allows viewing the actions without executing them.
 
 Configure and Activate Primary xCAT Management Node
 ===================================================
@@ -95,12 +95,12 @@ The following xCAT directory structure should be accessible from primary xCAT ma
 Synchronize ``/etc/hosts``
 ``````````````````````````
 
-Since the ``/etc/hosts`` is used by xCAT commands, the ``/etc/hosts`` should be synchronized between the primary management node and bakup management node.
+Since the ``/etc/hosts`` is used by xCAT commands, the ``/etc/hosts`` should be synchronized between the primary management node and backup management node.
 
 Synchronize Clock
 `````````````````
 
-It is recommended that the clocks are synchrinized between the primary management node and bakup management node.
+It is recommended that the clocks are synchronized between the primary management node and backup management node.
 
 Activate Primary xCAT Management Node
 `````````````````````````````````````

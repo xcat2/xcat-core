@@ -1,7 +1,7 @@
 Open Network Install Environment Switches
 =========================================
 
-The Open Network Install Environment, or "ONIE" [1]_. is an open source project definining an **install environment** for bare metal switches.  This environment allows choice for the end users when selecting a network operating system to install onto these bare metal switches.
+The Open Network Install Environment, or "ONIE" [1]_. is an open source project defining an **install environment** for bare metal switches.  This environment allows choice for the end users when selecting a network operating system to install onto these bare metal switches.
 
 .. toctree::
    :maxdepth: 2

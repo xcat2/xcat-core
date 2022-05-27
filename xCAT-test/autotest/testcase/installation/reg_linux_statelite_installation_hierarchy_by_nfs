@@ -80,7 +80,7 @@ check:rc==0
 check:output=~$$SN: done
 check:output!~write failed
 
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute 1
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
@@ -105,8 +105,13 @@ check:output=~$$CN: $$CN
 cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 cmd:xdsh $$CN "echo "test"> /test.statelite"
 check:rc!=0
+
+# Check there are no load host key warnings
+cmd:xdsh $$CN "grep 'load host key' /var/log/xcat/xcat.log || echo 'No load hostkey warning' >&2"
+check:output=~No load hostkey warning
+
 cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
-cmd:output=$(xdsh $$CN ls -al / |grep test.statelite);if [[ $? -eq 0 ]];then  xdsh $$CN rm -rf /test.tatelite;fi
+cmd:output=$(xdsh $$CN ls -al / |grep test.statelite);if [[ $? -eq 0 ]];then  xdsh $$CN rm -rf /test.statelite;fi
 cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then rm -rf $rootimgdir;fi
 check:rc==0
 end

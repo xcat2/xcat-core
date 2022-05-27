@@ -24,7 +24,7 @@ After making any changes to these configuration values, ``xcatd`` must be restar
     service restart xcatd
 
 
-If any mistakes have been made and communiation is lost to xCAT, use ``XCATBYPASS`` to fix/remove the bad configuration: ::
+If any mistakes have been made and communication is lost to xCAT, use ``XCATBYPASS`` to fix/remove the bad configuration: ::
 
     XCATBYPASS=1 tabedit site
 
@@ -42,7 +42,7 @@ Use the ``openssl`` command to validate the SSL configuration is valid and expec
 
     openssl s_client -connect localhost:3001 -ssl3
 
-  You should get a reponse similar to: ::
+  You should get a response similar to: ::
 
     70367087597568:error:14094410:SSL routines:SSL3_READ_BYTES:sslv3 alert handshake failure:s3_pkt.c:1259:SSL alert number 40
     70367087597568:error:1409E0E5:SSL routines:SSL3_WRITE_BYTES:ssl handshake failure:s3_pkt.c:598:

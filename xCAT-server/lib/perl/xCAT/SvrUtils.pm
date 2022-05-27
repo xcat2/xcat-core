@@ -718,8 +718,15 @@ sub update_tables_with_templates
     $genos =~ s/\..*//;
     if ($genos =~ /rh.*s(\d*)/) {
         $genos = "rhels$1";
+    } elsif ($osver =~ /ubuntu/) {
+        # for Focal and later Ubuntu we repurpose genos to indicate the use
+        # of the subiquity installer
+        if ($osver =~ /ubuntu(\d+\.\d+)/) {
+            if ($1 >= 20.04) {
+                $genos = "subiquity";
+            }
+        }
     }
-
 
     #print "osver=$osver, arch=$arch, osname=$osname, genos=$genos\n";
     my $installroot = xCAT::TableUtils->getInstallDir();

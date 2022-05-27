@@ -51,7 +51,7 @@ OPTIONS
 
 \ **-h | -**\ **-help**\           Display usage message.
 
-\ **-r | -**\ **-remote**\         Specifies that the operation will also be performed on the nodes. For example, the3rd party monitoring software daemons on the nodes will also be started.
+\ **-r | -**\ **-remote**\         Specifies that the operation will also be performed on the nodes. For example, the 3rd party monitoring software daemons on the nodes will also be started.
 
 \ **-v | -**\ **-version**\        Command Version.
 

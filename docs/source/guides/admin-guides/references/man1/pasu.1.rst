@@ -34,9 +34,9 @@ DESCRIPTION
 The \ **pasu**\  command runs the ASU command in out-of-band mode in parallel to multiple nodes.  Out-of-band mode means
 that ASU connects from the xCAT management node to the IMM (BMC) of each node to set or query the ASU settings.  To
 see all of the ASU settings available on the node, use the "show all" command.  To query or set multiple values,
-use the \ **-b**\  (batch) option.  To group similar output from multiple nodes, use xcoll(1)|xcoll.1.
+use the \ **-b**\  (batch) option.  To group similar output from multiple nodes, use \ **xcoll**\ .
 
-Before running \ **pasu**\ , you must install the ASU RPM from IBM.  You can download it from the IBM Fix Central site.
+Before running \ **pasu**\ , you must install the ASU RPM.  At the time of this writing, the latest version can be downloaded from https://support.lenovo.com/us/en/solutions/ht115050-advanced-settings-utility-asu Older versions can be found on the IBM Fix Central site.
 You also must configure the IMMs properly according to xCAT documentation.  Run "\ **rpower**\  \ *noderange*\  \ **stat**\ "
 to confirm that the IMMs are configured properly.
 
@@ -49,14 +49,14 @@ OPTIONS
 
 \ **-l|-**\ **-loginname**\  \ *username*\ 
  
- The username to use to connect to the IMMs.  If not specified, the row in the xCAT \ **passwd**\  table with key "ipmi"
+ The username to use to connect to the IMMs.  If not specified, the row in the xCAT \ *passwd*\  table with key "ipmi"
  will be used to get the username.
  
 
 
 \ **-p|-**\ **-passwd**\  \ *passwd*\ 
  
- The password to use to connect to the IMMs.  If not specified, the row in the xCAT passwd table with key "ipmi"
+ The password to use to connect to the IMMs.  If not specified, the row in the xCAT \ *passwd*\  table with key "ipmi"
  will be used to get the password.
  
 
@@ -76,7 +76,7 @@ OPTIONS
 
 \ **-d|-**\ **-donotfilter**\ 
  
- By default, pasu filters out (i.e. does not display) the standard initial output from ASU:
+ By default, \ **pasu**\  filters out (i.e. does not display) the standard initial output from ASU:
  
  
  .. code-block:: perl

@@ -75,7 +75,7 @@ testnode:
 check:rc==0
 cmd:cat testfile|chdef -z
 cmd:lsdef testnode
-check:output!~=MS02.ppd.pok.com
+check:output!~MS02.ppd.pok.com
 cmd:rmdef -t node testnode
 cmd:rm -f testfile
 end

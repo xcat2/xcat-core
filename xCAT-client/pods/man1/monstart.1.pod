@@ -27,7 +27,7 @@ I<noderange> is the nodes to be monitored. If omitted, all nodes will be monitor
 
 B<-h | --help>          Display usage message.
 
-B<-r | --remote>        Specifies that the operation will also be performed on the nodes. For example, the3rd party monitoring software daemons on the nodes will also be started.
+B<-r | --remote>        Specifies that the operation will also be performed on the nodes. For example, the 3rd party monitoring software daemons on the nodes will also be started.
 
 B<-v | --version>       Command Version.
 

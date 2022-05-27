@@ -231,7 +231,7 @@ running commands, are terminated (SIGTERM).
  of relevant device configuration file. The devicetype value must
  correspond to a valid device configuration file.
  xCAT ships some default configuration files
- for Ethernet switches and and IB switches under
+ for Ethernet switches and IB switches under
  \ */opt/xcat/share/xcat/devicetype*\  directory. If you want to overwrite
  any of the configuration files, copy them to \ */var/opt/xcat/*\ 
  directory and customize.

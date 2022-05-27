@@ -1860,7 +1860,7 @@ function is_connection_activate_intime {
     fi
     i=0
     while [ $i -lt "$time_out" ]; do
-        con_state=$($nmcli con show $con_name | grep -i state| awk '{print $2}');
+        con_state=$(LC_ALL=C $nmcli con show $con_name | grep -i state| awk '{print $2}');
         if [ ! -z "$con_state" -a "$con_state" = "activated" ]; then
             break
         fi
@@ -1886,7 +1886,7 @@ function is_connection_activate_intime {
 
 function wait_nic_connect_intime {
     nic_name=$1
-    time_out=40
+    time_out=80
     con_name=''
     if [ ! -z "$2" ]; then
         time_out=$2

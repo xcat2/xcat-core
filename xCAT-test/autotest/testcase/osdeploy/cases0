@@ -3,9 +3,9 @@ description: osdeploy check usage
 label:others,xcatprobe
 cmd:xcatprobe osdeploy -h
 check:rc==0
-check:output~=Usage
-check:output~=osdeploy -h
-check:output~=Description
+check:output=~Usage
+check:output=~osdeploy -h
+check:output=~Description
 end
 
 start:osdeploy_n
@@ -85,7 +85,7 @@ cmd:test=`lsdef test_node`;if [ $test eq 0 ]; then lsdef -l test_node -z >/tmp/n
 check:rc==0
 cmd:xcatprobe osdeploy -n test_node
 check:rc==1
-check:output~=without node definition
+check:output=~without node definition
 cmd:if [ -e /tmp/node.stanza ]; then cat /tmp/node.stanza | mkdef -z; rm -rf /tmp/node.stanza; fi
 check:rc==0
 end
@@ -94,10 +94,10 @@ description:osdeploy -n node -p invalid parameter
 label:others,xcatprobe
 cmd:xcatprobe osdeploy -n $$CN -p dsdf
 check:rc==1
-check:output~=Usage:
-check:output~="'compact': Elapsed time of provision for each node."
-check:output~="'phase'  : Elapsed time for DHCP, INSTALL, POSTSCRIPTS and POSTBOOTSCRIPTS stages, and time for whole provis"
-check:output~="'origin' : Show origin start time of each stage."
+check:output=~Usage:
+check:output=~"'compact': Elapsed time of provision for each node."
+check:output=~"'phase'  : Elapsed time for DHCP, INSTALL, POSTSCRIPTS and POSTBOOTSCRIPTS stages, and time for whole provis"
+check:output=~"'origin' : Show origin start time of each stage."
 end
 
 start:osdeploy_n_r_invalid
@@ -105,10 +105,10 @@ description:osdeploy -n node -r invalid parameter
 label:others,xcatprobe
 cmd:xcatprobe osdeploy -n $$CN -r dadf
 check:rc==1
-check:output~=Usage:
-check:output~="'compact': Elapsed time of provision for each node."
-check:output~="'phase'  : Elapsed time for DHCP, INSTALL, POSTSCRIPTS and POSTBOOTSCRIPTS stages, and time for whole provis"
-check:output~="'origin' : Show origin start time of each stage."
+check:output=~Usage:
+check:output=~"'compact': Elapsed time of provision for each node."
+check:output=~"'phase'  : Elapsed time for DHCP, INSTALL, POSTSCRIPTS and POSTBOOTSCRIPTS stages, and time for whole provis"
+check:output=~"'origin' : Show origin start time of each stage."
 end
 
 start:osdeploy_n_t_invalid
@@ -116,10 +116,10 @@ description:osdeploy -n node -t invalid parameter
 label:others,xcatprobe
 cmd:xcatprobe osdeploy -n $$CN -t dadf
 check:rc==1
-check:output~=Usage:
-check:output~="'compact': Elapsed time of provision for each node."
-check:output~="'phase'  : Elapsed time for DHCP, INSTALL, POSTSCRIPTS and POSTBOOTSCRIPTS stages, and time for whole provis"
-check:output~="'origin' : Show origin start time of each stage."
+check:output=~Usage:
+check:output=~"'compact': Elapsed time of provision for each node."
+check:output=~"'phase'  : Elapsed time for DHCP, INSTALL, POSTSCRIPTS and POSTBOOTSCRIPTS stages, and time for whole provis"
+check:output=~"'origin' : Show origin start time of each stage."
 end
 
 start:osdeploy_n_p_origin

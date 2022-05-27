@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<unregnotif> - unregister a Perl module or a command that was watching for the changes of  the desired xCAT database tables.
+B<unregnotif> - unregister a Perl module or a command that was watching for the changes of the desired xCAT database tables.
 
 
 =head1 SYNOPSIS

@@ -7,3 +7,6 @@ net-tools-deprecated
 rsyslog
 nfs-client
 wget
+openssh
+zypper
+chrony

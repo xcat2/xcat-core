@@ -100,6 +100,11 @@ if ($genesis_nodesetshell_test) {
         send_msg(0, "[$$]:rpower $noderange failed...............");
         exit 1;
     }
+    else {
+        send_msg(2, "Installing with \"nodeset $noderange shell\" for shell test");
+        sleep 120; # wait 2 min for install to finish
+        wait_for_boot();
+    }
     #run nodeshell test
     send_msg(2, "prepare for nodeshell script.");
     if ( &testxdsh(3)) {
@@ -208,6 +213,8 @@ sub rungenesiscmd {
     }
     else {
         send_msg(2, "Installing with \"$rinstall_cmd\" for runcmd test");
+        sleep 120; # wait 2 min for install to finish
+        wait_for_boot();
     }
     return $value;
 }
@@ -242,10 +249,15 @@ sub rungenesisimg {
     chmod 0755, "/install/my_image/runme.sh";
     `tar -zcvf /tmp/my_image.tgz -C /install/my_image .`;
     copy("/tmp/my_image.tgz", "/install/my_image") or die "Copy failed: $!";
-    `rinstall $noderange "runimage=http://$master/install/my_image/my_image.tgz",shell`;
+    my $rinstall_cmd = "rinstall $noderange runimage=http://$master/install/my_image/my_image.tgz,shell";
+    `$rinstall_cmd`;
     if ($?) {
-        send_msg(0, "rinstall noderange runimage=* failed\n");
+        send_msg(0, "Command \"$rinstall_cmd\" failed for runimage test\n");
         $value = -1;
+    } else {
+        send_msg(2, "Installing with \"$rinstall_cmd\" for runimage test\n");
+        sleep 120; # wait 2 min for install to finish
+        wait_for_boot();
     }
     return $value;
 }
@@ -257,6 +269,7 @@ sub testxdsh {
     my $checkstring;
     my $checkfile;
     my $nodestatus;
+    my $xdsh_out;
     if ($value == 1) {
         #mean runcmd test using test scripts genesistest.pl writes
         $checkstring = "testcmd";
@@ -268,21 +281,24 @@ sub testxdsh {
         $checkstring = "destiny=shell";
         $checkfile   = "/proc/cmdline";
     } elsif ($value == -1) {
-        send_msg(2,"Error setting up the node for testxdsh");
+        send_msg(0,"Error setting up the node for testxdsh");
         return 1;
     }
 
-    send_msg(2, "Node $noderange has been installed with genesis shell. Checking $checkfile file on that node contains '$checkstring' \n");
-    my $xdsh_command="xdsh $noderange -t 2 cat $checkfile 2>&1|grep $checkstring";
+    send_msg(2, "Node $noderange has been installed with genesis shell for test value $value \n");
+    send_msg(2, "Checking $checkfile file on that node contains '$checkstring' \n");
+    my $xdsh_command="xdsh $noderange -t 2 cat $checkfile 2>&1";
     if (($value == 1) || ($value == 2) || ($value == 3)) {
-        `$xdsh_command`;
+        `$xdsh_command | grep $checkstring`;
         if ($?) {
-            my @i = (1..5);
+            # First attempt to run xdsh failed, then try few more times
+            my @i = (1..3);
             for (@i) {
-                sleep 300;
+                $xdsh_out=`$xdsh_command`;
                 $nodestatus=`lsdef $noderange -i status -c  2>&1 | awk -F'=' '{print \$2}'`;
-                send_msg(1,"[$_] Running \"$xdsh_command\" to check results. Node status: $nodestatus");
-                `$xdsh_command`;
+                send_msg(2,"[$_] Command \"$xdsh_command\" looking for $checkstring returned:\n $xdsh_out.\n Node status: $nodestatus");
+                sleep 10;
+                `$xdsh_command | grep $checkstring`;
                 last if ($? == 0);
             }
         }
@@ -329,6 +345,8 @@ sub clearenv {
     `cat $nodestanza | chdef -z`;
     unlink("$nodestanza");
     }
+    sleep 120; # wait 2 min for reboot to finish
+    wait_for_boot();
     return 0;
 }
 ####################################
@@ -372,7 +390,9 @@ sub send_msg {
     my $logfile    = "";
     my $logfiledir = "/tmp/genesistestlog";
     my $date = `date  +"%Y%m%d"`;
+    my $time = `date  +"%T"`;
     chomp($date);
+    chomp($time);
     if (!-e $logfiledir)
     {
         mkpath( $logfiledir );
@@ -383,14 +403,33 @@ sub send_msg {
     } elsif ($log_level == 1) {
         $content = "Warning:";
     } elsif ($log_level == 2) {
-        $content = "Notice:";
+        $content = "Info:";
     }
     if (!open(LOGFILE, ">> $logfiledir/$logfile")) {
         return 1;
     }
     
-    print "$date $$ $content $msg\n";
+    print "$date $time $$ $content $msg\n";
     print LOGFILE "$date $$ $content $msg\n";
     close LOGFILE;
 
+}
+#########################################
+### Wait for node to be in "booted" state
+##########################################
+sub wait_for_boot {
+    my $iterations = 30; # Max wait 30x10 = 5 min
+    my $sleep_interval = 10;
+    my $boot_status;
+
+    foreach my $i (1..$iterations) {
+        $boot_status = `lsdef $noderange -i status -c | cut -d'=' -f2`;
+        chop($boot_status);
+        if ($boot_status eq "booted") {
+            return 0;
+        }
+        sleep $sleep_interval;
+    }
+    print "After $iterations iterations node status: $boot_status \n";
+    return 1;
 }

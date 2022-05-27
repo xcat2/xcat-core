@@ -1,12 +1,88 @@
 Using RPM (recommended)
 =======================
 
-.. note:: Supported only on RHEL 7.5 for POWER9
+.. note:: Supported only on RHEL 7 and RHEL 8 for POWER9
 
 .. note:: In a herarchical environment ``xCAT-openbmc-py`` must be installed on both Management and Service nodes. On Service node ``xCAT-openbmc-py`` can be installed directly by following instructions in **Install xCAT-openbmc-py on MN**, or ``xCAT-openbmc-py`` can be installed on Service node from Management node by following instructions in **Install xCAT-openbmc-py on SN from MN**
 
-Install xCAT-openbmc-py on MN
------------------------------
+Install xCAT-openbmc-py on RHEL 8 MN
+------------------------------------
+#. Configure RHEL 8 EPEL repository ::
+
+      yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+
+#. Install ``xCAT-openbmc-py`` ::
+
+      yum install xCAT-openbmc-py
+
+Install xCAT-openbmc-py on RHEL 8 SN from MN
+--------------------------------------------
+
+.. attention:: Instructions below assume Service node has access to the Internet.
+
+#. Choose one of the 2 methods below to complete the installation
+
+Install on diskful SN using updatenode or rinstall
+``````````````````````````````````````````````````
+
+#. Make the target repository directory on the MN: ::
+
+    mkdir -p /install/post/otherpkgs/rhels8.5.0/ppc64le/epel/Packages
+
+#. Download the RHEL 8 EPEL rpm: ::
+
+    wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm -O /install/post/otherpkgs/rhels8.5.0/ppc64le/epel/Packages/epel-release-latest-8.noarch.rpm
+
+#. Create a repository in that directory: ::
+
+    cd /install/post/otherpkgs/rhels8.5.0/ppc64le/epel/Packages/
+    createrepo .
+
+#. Configure ``otherpkglist`` attribute of the osimage ::
+
+    chdef -t osimage rhels8.5.0-ppc64le-install-service otherpkglist=/opt/xcat/share/xcat/install/rh/service.rhels8.ppc64le.otherpkgs.pkglist
+
+#. Add the following entries to the contents of ``/opt/xcat/share/xcat/install/rh/service.rhels8.ppc64le.otherpkgs.pkglist`` ::
+
+    ...
+    #NEW_INSTALL_LIST#
+    epel/Packages/epel-release-latest-8
+    #NEW_INSTALL_LIST#
+    xcat/xcat-core/xCAT-openbmc-py
+
+#. If SN was initially installed without ``xCAT-openbmc-py`` package, ``updatenode`` can be used to install that package ::
+
+    updatenode <SN> -S
+
+#. If this is a new SN installation ::
+
+    rinstall <SN> osimage=rhels8.5.0-ppc64le-install-service
+
+Install on diskless SN using rinstall
+`````````````````````````````````````
+
+#. Add EPEL online repository https://dl.fedoraproject.org/pub/epel/8/ppc64le to ``pkgdir`` attribute of existing diskless RHEL 8 service osimage::
+
+    chdef -t osimage -o rhels8.5.0-ppc64le-netboot-service -p pkgdir=https://dl.fedoraproject.org/pub/epel/8/Everything/ppc64le
+
+#. Configure ``otherpkglist`` attribute of the osimage ::
+
+    chdef -t osimage rhels8.5.0-ppc64le-netboot-service otherpkglist=/opt/xcat/share/xcat/install/rh/service.rhels8.ppc64le.otherpkgs.pkglist
+
+#. Add the following entries to the contents of ``/opt/xcat/share/xcat/install/rh/service.rhels8.ppc64le.otherpkgs.pkglist`` ::
+
+    ...
+    #NEW_INSTALL_LIST#
+    xcat/xcat-core/xCAT-openbmc-py
+
+#. Install diskless SN ::
+
+    genimage rhels8.5.0-ppc64le-netboot-service
+    packimage rhels8.5.0-ppc64le-netboot-service
+    rinstall <SN> osimage=rhels8.5.0-ppc64le-netboot-service
+
+Install xCAT-openbmc-py on RHEL 7 MN
+------------------------------------
 
 The following repositories should be configured on your Management Node.
 
@@ -19,7 +95,7 @@ The following repositories should be configured on your Management Node.
 
 #. Configure RHEL 7.5 Extras repository
 
-#. Configure EPEL repository ::
+#. Configure RHEL 7 EPEL repository ::
 
     yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 
@@ -50,12 +126,13 @@ The following repositories should be configured on your Management Node.
         enabled=1
         gpgcheck=0
         
-#. Install ``xCAT-openbmc-py`` : ::
+#. Download and install ``xCAT-openbmc-py`` : ::
 
-      yum install xCAT-openbmc-py
+      wget https://xcat.org/files/xcat/xcat-dep/2.x_Linux/beta/xCAT-openbmc-py-RH7-2.14.6-snap202204090016.noarch.rpm -O /tmp/xCAT-openbmc-py-RH7.noarch.rpm
+      yum install /tmp/xCAT-openbmc-py-RH7.noarch.rpm
 
-Install xCAT-openbmc-py on SN from MN
--------------------------------------
+Install xCAT-openbmc-py on RHEL 7 SN from MN
+--------------------------------------------
 
 .. attention:: Instructions below assume Service node has access to the Internet. If not, a local EPEL repository would need to be configured on the Management node, similar to the RHEL Extras repository.
 

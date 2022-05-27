@@ -56,7 +56,7 @@ When you run ``copycds``, xCAT will only create a Service Node stateful osimage 
     postinstall
     rootimgdir
 
-#. Create the exlist, pkglist and otherpkglist file.
+#. Create the ``exlist``, ``pkglist`` and ``otherpkglist`` files.
 
   xCAT ships a basic requirements lists that will create a fully functional Service Node. However, you may want to customize your service node by adding additional operating system packages or modifying the files excluded by the exclude list. Check the below files to see if it meets your needs. ::
 
@@ -67,7 +67,7 @@ When you run ``copycds``, xCAT will only create a Service Node stateful osimage 
 
   If you would like to change any of these files, copy them to a custom
   directory. This can be any directory you choose, but we recommend that you
-  keep it /install somewhere. A good location is something like ``/install/custom/netboot/<osimage>``.
+  keep it ``/install`` somewhere. A good location is something like ``/install/custom/netboot/<osimage>``.
 
   ::
 
@@ -95,11 +95,11 @@ When you run ``copycds``, xCAT will only create a Service Node stateful osimage 
     xcat/xcat-dep/rh7/ppc64le/perl-Net-Telnet
     xcat/xcat-dep/rh7/ppc64le/perl-Expect
 
-.. note:: You will be installing the xCAT Service Node RPM ``xCATsn`` on the Service Node, not the xCAT Management Node RPM.  Do not install both.
+.. note:: You will be installing the xCAT Service Node RPM ``xCATsn-<version>`` on the Service Node, not the xCAT Management Node RPM ``xCAT-<version>``. Do not install xCAT Management Node RPM ``xCAT-<version>`` on the Service Node.
 
 #. Create the postinstall script.
 
-  xCAT ships a default postinstall script for stateless Service Node. You may also choose to create an appropriate /etc/fstab file in your
+  xCAT ships a default postinstall script for stateless Service Node. You may also choose to create an appropriate ``/etc/fstab`` file in your
   Service Node image. :
 
   ::
@@ -151,7 +151,7 @@ When you run ``copycds``, xCAT will only create a Service Node stateful osimage 
   images, creating custom files and new custom osimage definitions as you need
   to.
 
-* Make your xCAT software available for otherpkgs processing
+* Make your xCAT software available for ``otherpkgs`` processing
 
   Option 1:
 
@@ -197,7 +197,7 @@ When you run ``copycds``, xCAT will only create a Service Node stateful osimage 
 
       genimage rhels7.3-ppc64le-netboot-service
 
-* Prevent DHCP from starting up until xcatd has had a chance to configure it:
+* Prevent DHCP from starting up until ``xcatd`` has had a chance to configure it:
 
   ::
 
@@ -205,7 +205,7 @@ When you run ``copycds``, xCAT will only create a Service Node stateful osimage 
     chroot $OSIMAGE_ROOT/rootimg chkconfig dhcpd off
     chroot $OSIMAGE_ROOT/rootimg chkconfig dhcrelay off
 
-* IF using NFS hybrid mode, export /install read-only in Service Node image:
+* IF using NFS hybrid mode, export ``/install`` read-only in Service Node image:
 
   ::
 
@@ -226,7 +226,7 @@ Install Service Nodes
 
     rinstall service osimage=rhels7.3-ppc64le-netboot-service
 
-  Watch the installation progress using either wcons or rcons:
+  Watch the installation progress using either ``wcons`` or ``rcons`` and monitor log messages:
 
   ::
 
@@ -300,10 +300,10 @@ Update Service Node Stateless Image
 
 To update the xCAT software in the image at a later time:
 
-  * Download the updated xcat-core and xcat-dep tarballs and place them in
-    your osimage's otherpkgdir xcat directory as you did above.
-  * Generate and repack the image and reboot your Service Node.
-  * Run image generation for your osimage definition.
+  * Download the updated ``xcat-core`` and ``xcat-dep`` tarballs from http://xcat.org/download.html and place them in
+    your osimage's ``otherpkgdir`` xcat directory as you did above.
+  * Generate and repack the image.
+  * Reinstall your Service Node.
 
   ::
 
@@ -314,6 +314,6 @@ To update the xCAT software in the image at a later time:
 .. note:: The Service Nodes are set up as NFS-root servers for the compute nodes.
  Any time changes are made to any compute image on the mgmt node it will be
  necessary to sync all changes to all Service Nodes. In our case the
- ``/install`` directory is mounted on the servicenodes, so the update to the
+ ``/install`` directory is mounted on the Service Nodes, so the update to the
  compute node image is automatically available.
 

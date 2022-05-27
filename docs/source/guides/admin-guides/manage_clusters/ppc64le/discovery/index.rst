@@ -15,8 +15,10 @@ xCAT provides several *automatic hardware discovery* methods to assist with hard
    manually_define.rst
    manually_discovery.rst
 
+.. note:: You can optionally add drivers or modules to the network boot image used during the discovery: :doc:`xCAT Genesis Base </references/coral/known_issues/genesis_base>`
 
 Following are the brief characteristics and adaptability of each method, you can select a proper one according to your cluster size and other consideration.
+
 
 * **Manually Define Nodes**
 
@@ -81,4 +83,5 @@ Following are the brief characteristics and adaptability of each method, you can
   * cons
 
     You have to strictly boot on the node in order if you want the node has the expected name. Generally you have to waiting for the discovery process finished before power on the next one.
+
 

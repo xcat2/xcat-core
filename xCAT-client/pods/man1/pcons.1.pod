@@ -16,7 +16,7 @@ B<pcons>
 
 =head1 DESCRIPTION
 
-Runs the a command to the noderange using the console.
+Runs a command to the noderange using the console.
 
 =head1 EXAMPLES
 

@@ -48,7 +48,7 @@ OPTIONS
 
 \ **-F|-**\ **-framework**\  \ *kit_path_name*\ 
  
- Use this option to display the framework values of the specified Kit tarfile.  This information is retreived directly from the tarfile and can be done before the Kit has been defined in the xCAT database.  This option cannot be combined with other options.
+ Use this option to display the framework values of the specified Kit tarfile.  This information is retrieved directly from the tarfile and can be done before the Kit has been defined in the xCAT database.  This option cannot be combined with other options.
  
 
 

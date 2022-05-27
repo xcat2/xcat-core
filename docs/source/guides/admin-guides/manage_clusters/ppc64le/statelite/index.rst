@@ -31,7 +31,7 @@ There are two solutions: ``NFSROOT-based`` and ``RAMdisk-based``.
 
 **Disadvantages**
 
-However, there're still several disadvantages, especially for the ``NFSROOT-based`` solution.
+However, there are still several disadvantages, especially for the ``NFSROOT-based`` solution.
 
 #. NFS Root requires more network traffic to run as the majority of the disk image runs over NFS. This may depend on your workload, but can be minimized. Since the bulk of the image is read-only, NFS caching on the server helps minimize the disk access on the server, and NFS caching on the client helps reduce the network traffic.
 #. NFS Root can be complex to set up. As more files are created in different places, there are greater chances for failures. This flexibility is also one of the great virtues of Statelite. The image can work in nearly any environment.

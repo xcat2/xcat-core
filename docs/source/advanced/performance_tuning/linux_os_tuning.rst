@@ -32,7 +32,7 @@ Adjusting Operating System tunables can improve large scale cluster performance,
         net.core.netdev_max_backlog=1500
 
 
-    And if you encounter **Neighbour table overflow** error, it meams there are two many ARP requests and the server cannot reply. Tune the ARP cache with below parameters.
+    And if you encounter **Neighbour table overflow** error, it means there are two many ARP requests and the server cannot reply. Tune the ARP cache with below parameters.
 
     ::
 

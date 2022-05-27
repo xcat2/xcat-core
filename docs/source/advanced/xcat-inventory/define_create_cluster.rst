@@ -17,7 +17,7 @@ The steps to create your first xCAT cluster is:
 
     cp /opt/xcat/share/xcat/inventory_templates/flat_cluster_template.yaml /git/cluster/mycluster.yaml
 
-2. custmize the cluster inventory file "mycluster.yaml" by modifying the attributs in the line under token ``#CHANGEME`` according to the setup of your phisical cluster. You can create new node definition by duplicating and modifying the node definition in the template.
+2. customize the cluster inventory file "mycluster.yaml" by modifying the attributes in the line under token ``#CHANGEME`` according to the setup of your physical cluster. You can create new node definition by duplicating and modifying the node definition in the template.
 
 3. import the cluster inventory file ::
 

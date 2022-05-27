@@ -1,0 +1,270 @@
+export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+    set -x
+fi
+
+#!/bin/sh
+
+# syslog is probably running from the syslog.socket service
+systemctl stop syslog.socket
+systemctl stop rsyslog
+# however, lets make sure . . .
+[ -e /var/run/rsyslogd.pid ] && kill -TERM $(cat /var/run/rsyslogd.pid)
+# bare minimum rsyslog.conf to support UDP forwarding
+cat <<EOF > /tmp/rsyslog.conf
+module(load="imuxsock")
+module(load="imklog" permitnonkernelfacility="on")
+*.* @#XCATVAR:XCATMASTER#
+EOF
+rsyslogd -f /tmp/rsyslog.conf
+log_label="xcat.deployment"
+logger -t $log_label -p "info" "============deployment starting============"
+logger -t $log_label -p "info" "Running preseeding early_command Installation script..."
+if [ ! -c /dev/vcs ]; then
+    mknod /dev/vcs c 7 0
+fi
+
+cat >/tmp/foo.sh <<EOF
+#!/bin/sh
+
+#
+#  If no arguments:
+#
+#     1) Start child process to connect as client to master, and re-execute this script to send
+#        "installmonitor" to master.  Do not wait for child process.
+#
+#     2) Loop forever.  For each iteration, start child process as server waiting for a client
+#        connection.  Once a connection is established, child process re-executes this script to
+#        handle request from that particular client.
+#
+
+if [ \$# -eq 0 ]; then
+    xcatdhost="#XCATVAR:XCATMASTER#"
+    xcatdport="#TABLE:site:key=xcatiport:value#"
+    NODESTATUS="#TABLEBLANKOKAY:site:key=nodestatus:value#"
+
+
+    /usr/bin/nc "\$xcatdhost" "\$xcatdport" -e /tmp/foo.sh install_monitor &
+
+    if [ -z "\$NODESTATUS" ] || [ "\$NODESTATUS" != "0" -a   "\$NODESTATUS" != "N"  -a  "\$NODESTATUS" != "n" ];
+ then
+
+        /usr/bin/nc "\$xcatdhost" "\$xcatdport" -e /tmp/foo.sh installstatus installing &
+
+    fi
+
+    while true; do
+        /usr/bin/nc -l -p 3054 -e /tmp/foo.sh serve_client
+    done
+
+    exit 1                        # never reached; reboot ends this
+fi
+
+#
+#  If the script was called with the "install_monitor" argument, stdin and stdout are
+#  connected to an xCAT daemon on the master.  Write the "installmonitor" request to the
+#  daemon.
+#
+
+if [ "\$1" = "install_monitor" ]; then
+    cmd=""
+    while [ "\$cmd" != "done" ]; do
+        read cmd remainder
+
+        if [ "\$cmd" == "ready" ]; then
+            echo "installmonitor"
+        fi
+    done
+
+    exit 0
+fi
+
+#
+#  If the script was called with the "installstatus" argument, stdin and stdout are
+#  connected to an xCAT daemon on the master.
+#  Write the "installstatus xx" request to the daemon to update thenode installation status.
+if [ "\$1" = "installstatus" ]; then
+    cmd=""
+    while [ "\$cmd" != "done" ]; do
+        read cmd remainder
+
+        if [ "\$cmd" == "ready" ]; then
+            echo "installstatus \$2"
+        fi
+    done
+
+    exit 0
+fi
+
+
+
+
+#
+#  When execution reaches here, script called with "serve_client" argument, which means
+#  stdin and stdout are connected to a client.  Read the request from the client, provide
+#  the answer to the client, and terminate.
+#
+
+read cmd arg remainder
+
+case "\$cmd" in
+#UNCOMMENTOENABLEDEBUGPORT#   "sh")                        #TODO: ENABLE IF DEBUG
+#UNCOMMENTOENABLEDEBUGPORT#       output=\$(eval \$arg \$remainder)
+#UNCOMMENTOENABLEDEBUGPORT#       echo "\$output"
+#UNCOMMENTOENABLEDEBUGPORT#       echo "EOO"
+#UNCOMMENTOENABLEDEBUGPORT#       ;;
+
+    "screendump")
+        output=\$(eval chvt \$arg; cat /dev/vcs)
+        echo "\$output"
+        ;;
+
+    "stat")
+        sedcmds='/^[^ ]+ +[^ ]+ +install /h; \${ g; s,^[^ ]+ +[^ ]+ +install +([^ ]+) +[^ ]+ ([^ ]+).*,installing \1 \2,; p }'
+        output=\$(sed -nre "\$sedcmds" /target/var/log/dpkg.log 2>/dev/null)
+
+        if [ -z "\$output" ]; then
+            output="installing prep"
+        fi
+
+        echo "\$output"
+        ;;
+esac
+
+exit 0
+EOF
+
+chmod 755 /tmp/foo.sh
+
+/tmp/foo.sh >/tmp/foo.log 2>&1 &
+
+base64decode()
+{
+	h0="0";  h1="1";  h2="2";  h3="3";  h4="4";  h5="5";  h6="6";  h7="7";
+	h8="8";  h9="9"; h10="A"; h11="B"; h12="C"; h13="D"; h14="E"; h15="F";
+
+	while :
+	do
+		i=0
+		while [ "$i" -lt 4 ]
+		do
+			read -n 1 c || return
+	
+			case "${c}" in
+			"A") d=0  ;; "B") d=1  ;; "C") d=2  ;; "D") d=3  ;;
+			"E") d=4  ;; "F") d=5  ;; "G") d=6  ;; "H") d=7  ;;
+			"I") d=8  ;; "J") d=9  ;; "K") d=10 ;; "L") d=11 ;;
+			"M") d=12 ;; "N") d=13 ;; "O") d=14 ;; "P") d=15 ;;
+			"Q") d=16 ;; "R") d=17 ;; "S") d=18 ;; "T") d=19 ;;
+			"U") d=20 ;; "V") d=21 ;; "W") d=22 ;; "X") d=23 ;;
+			"Y") d=24 ;; "Z") d=25 ;; "a") d=26 ;; "b") d=27 ;;
+			"c") d=28 ;; "d") d=29 ;; "e") d=30 ;; "f") d=31 ;;
+			"g") d=32 ;; "h") d=33 ;; "i") d=34 ;; "j") d=35 ;;
+			"k") d=36 ;; "l") d=37 ;; "m") d=38 ;; "n") d=39 ;;
+			"o") d=40 ;; "p") d=41 ;; "q") d=42 ;; "r") d=43 ;;
+			"s") d=44 ;; "t") d=45 ;; "u") d=46 ;; "v") d=47 ;;
+			"w") d=48 ;; "x") d=49 ;; "y") d=50 ;; "z") d=51 ;;
+			"0") d=52 ;; "1") d=53 ;; "2") d=54 ;; "3") d=55 ;;
+			"4") d=56 ;; "5") d=57 ;; "6") d=58 ;; "7") d=59 ;;
+			"8") d=60 ;; "9") d=61 ;; "+") d=62 ;; "/") d=63 ;;
+			"=") d=0  ;;
+			*) continue ;;
+			esac
+	
+			eval "a${i}=${c}"
+			eval "b${i}=${d}"
+
+			i=$(( i + 1 ))
+		done
+	
+		o0=$(( ((b0 << 2) | (b1 >> 4)) & 0xff ))
+		o1=$(( ((b1 << 4) | (b2 >> 2)) & 0xff ))
+		o2=$(( ((b2 << 6) | b3) & 0xff ))
+	
+		[ "${a2}" == "=" ] &&
+			eval "printf \"\\x\${h$(( o0 / 16 ))}\${h$(( o0 % 16
+				))}\"" &&
+			return
+		[ "${a3}" == "=" ] &&
+			eval "printf \"\\x\${h$(( o0 / 16 ))}\${h$(( o0 % 16
+				))}\\x\${h$(( o1 / 16 ))}\${h$(( o1 % 16
+				))}\"" &&
+			return
+		eval "printf \"\\x\${h$(( o0 / 16 ))}\${h$(( o0 % 16
+			))}\\x\${h$(( o1 / 16 ))}\${h$(( o1 % 16
+			))}\\x\${h$(( o2 / 16 ))}\${h$(( o2 % 16 ))}\""
+	done
+}
+# Note that the subiquity/curtin installation config is fairly picky about
+# the order in which things are specified - you have to specify all the
+# partitions before you can specify any filesystems, which means this is
+# hard to stitch together piecemeal. Instead we just do everything in
+# separate blocks . . .
+#
+# Also note that only /one/ partition can be given a variable size, and it
+# must be the last partition on the disk - this forces us to put swap before
+# the main root partition, and forces us to have a fixed size swap partition
+#
+# Also, the autoinstall.yaml file that this needs to be appended to is a
+# modified cloud-init.conf file, with the top level elided - hence the
+# storage block below needs to start with no indentation.
+logger -t $log_label -p "info" "Generate partition file..."
+if [ -e /tmp/xcat.install_disk ]; then
+        INSTALL_DISK=$(cat /tmp/xcat.install_disk)
+else
+        logger -t $log_label -p "err" "Failed to find partition file - getinstdisk must be run first"
+        logger -t $log_label -p "err" "Using fallback default disk /dev/sda"
+        INSTALL_DISK="/dev/sda"
+fi
+
+if [ -d /sys/firmware/efi ]; then
+        cat <<EOF >/tmp/partitionfile
+storage:
+  config:
+    - {id: disk-detected, ptable: gpt, path: $INSTALL_DISK, wipe: superblock,
+      preserve: false, name: '', grub_device: true, type: disk}
+    - {id: efi-part, device: disk-detected, size: 512MB, flag: boot,
+      type: partition, preserve: false}
+    - {id: swap-part, device: disk-detected, size: 2GB, flag: swap,
+      type: partition, preserve: false}
+    - {id: root-part, device: disk-detected, size: -1, type: partition,
+      preserve: false}
+    - {id: efi-part-fs, volume: efi-part, type: format, fstype: fat, label: efi}
+    - {id: swap-part-fs, volume: swap-part, type: format, fstype: swap}
+    - {id: root-part-fs, volume: root-part, type: format, fstype: ext4,
+      label: root}
+    - {id: efi-part-mount, device: efi-part-fs, type: mount, path: /boot/efi}
+    - {id: swap-part-mount, device: swap-part-fs, type: mount, path: none}
+    - {id: root-part-mount, device: root-part-fs, type: mount, path: /}
+EOF
+else
+        cat <<EOF >/tmp/partitionfile
+storage:
+  config:
+    - {id: disk-detected, ptable: msdos, path: $INSTALL_DISK, wipe: superblock,
+      preserve: false, name: '', grub_device: true, type: disk}
+    - {id: boot-part, device: disk-detected, size: 512MB, flag: boot,
+      type: partition, preserve: false}
+    - {id: swap-part, device: disk-detected, size: 2GB, flag: swap,
+      type: partition, preserve: false}
+    - {id: root-part, device: disk-detected, size: -1, type: partition,
+      preserve: false}
+    - {id: boot-part-fs, volume: boot-part, type: format, fstype: ext4, label: boot}
+    - {id: swap-part-fs, volume: swap-part, type: format, fstype: swap}
+    - {id: root-part-fs, volume: root-part, type: format, fstype: ext4,
+      label: root}
+    - {id: boot-part-mount, device: boot-part-fs, type: mount, path: /boot}
+    - {id: swap-part-mount, device: swap-part-fs, type: mount, path: none}
+    - {id: root-part-mount, device: root-part-fs, type: mount, path: /}
+EOF
+fi
+
+#XCA_PARTMAN_RECIPE_SCRIPT#
+#XCA_PARTMAN_DISK_SCRIPT#
+#XCA_PARTMAN_ADDITIONAL_CONFIG_SCRIPT#
+exit 0
+
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+then
+    set +x
+fi

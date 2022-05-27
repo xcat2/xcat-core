@@ -82,7 +82,7 @@ Group/Pattern Names
 
 It is only supported for stateful deployment.
 
-In Linux, a groups of rpms can be packaged together into one package. It is called a group on RedHat, CentOS, Fedora and Scientific Linux. To get the a list of available groups, run
+In Linux, a groups of rpms can be packaged together into one package. It is called a group on RedHat, CentOS, Fedora and Scientific Linux. To get the list of available groups, run
 
 * **[RHEL]** ::
 

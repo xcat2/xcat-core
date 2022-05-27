@@ -784,25 +784,15 @@ if ((-d "$rootimg_dir/usr/share/dracut") or (-d "$rootimg_dir/usr/lib/dracut")) 
     print "Enter the dracut mode. Dracut version: $dracutver. Dracut directory: $dracutdir.\n";
 }
 
+# List of internet repos to be disabled
 
-#-- for centos, disable the internet repository
-if (-e "$rootimg_dir/etc/yum.repos.d/CentOS-Base.repo") {
-    my $repo_content = `sed -e '/enabled/d' $rootimg_dir/etc/yum.repos.d/CentOS-Base.repo | sed -e '/^gpgkey/i enabled=0'`;
-    system("echo '$repo_content' > $rootimg_dir/etc/yum.repos.d/CentOS-Base.repo");
-}
-#
+my @internet_repo_file_list = ("oracle-linux-ol8.repo", "uek-ol8.repo", "Rocky-AppStream.repo", "Rocky-BaseOS.repo", "Rocky-Extras.repo", "CentOS-Base.repo");
 
-#-- Oracle Linux, disable internet repositories
-if (-e "$rootimg_dir/etc/yum.repos.d/oracle-linux-ol8.repo") {
-    my $repo_content = `sed -e '/enabled/d' $rootimg_dir/etc/yum.repos.d/oracle-linux-ol8.repo | sed -e '/^gpgkey/i enabled=0'`;
-    system("echo '$repo_content' > $rootimg_dir/etc/yum.repos.d/oracle-linux-ol8.repo");
+foreach ( @internet_repo_file_list ) {
+  if (-e "$rootimg_dir/etc/yum.repos.d/$_") {
+    system("sed -i -e 's/enabled=1/enabled=0/' $rootimg_dir/etc/yum.repos.d/$_");
+  }
 }
-
-if (-e "$rootimg_dir/etc/yum.repos.d/uek-ol8.repo") {
-    my $repo_content = `sed -e '/enabled/d' $rootimg_dir/etc/yum.repos.d/uek-ol8.repo | sed -e '/^gpgkey/i enabled=0'`;
-    system("echo '$repo_content' > $rootimg_dir/etc/yum.repos.d/uek-ol8.repo");
-}
-#
 
 #-- run postinstall script
 unless ($imagename) {
@@ -1973,6 +1963,10 @@ sub using_systemd {
         }
     } elsif ($os =~ /centos(\d+)/) {
         if ($1 >= 7) {
+            return 1;
+        }
+    } elsif ($os =~ /rocky(\d+)/) {
+        if ($1 >= 8) {
             return 1;
         }
     } elsif ($os =~ /ol(\d+)/) {

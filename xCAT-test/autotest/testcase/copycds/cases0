@@ -170,7 +170,7 @@ cmd:rm -rf /install/__GETNODEATTR($$CN,os)__
 check:rc==0
 cmd:copycds -w $$ISO
 check:rc==0
-check:output=~~Copying media to /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
+check:output=~Copying media to /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
 end
 
 
@@ -191,7 +191,7 @@ cmd:rm -rf /install/__GETNODEATTR($$CN,os)__
 check:rc==0
 cmd:copycds --nonoverwrite $$ISO
 check:rc==0
-check:output=~~Copying media to /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
+check:output=~Copying media to /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
 end
 
 

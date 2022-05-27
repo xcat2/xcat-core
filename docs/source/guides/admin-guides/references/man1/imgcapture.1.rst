@@ -140,7 +140,7 @@ RETRUN VALUE
 ************
 
 
-0 The command completed sucessfully.
+0 The command completed successfully.
 
 1 An error has occurred.
 

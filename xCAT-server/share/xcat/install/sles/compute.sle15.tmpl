@@ -1,33 +1,17 @@
 <?xml version="1.0"?>
-<!DOCTYPE profile SYSTEM "/usr/share/YaST2/include/autoinstall/profile.dtd">
+<!DOCTYPE profile>
 <profile xmlns="http://www.suse.com/1.0/yast2ns" xmlns:config="http://www.suse.com/1.0/configns">
-  <install>
     <bootloader>
-      <write_bootloader config:type="boolean">true</write_bootloader>
-      <activate config:type="boolean">true</activate>
-      <kernel_parameters></kernel_parameters>
-      <lba_support config:type="boolean">false</lba_support>
-      <linear config:type="boolean">false</linear>
-      <location>mbr</location>
+      <global>
+        <activate>true</activate>
+        <append>#XCATVAR:PERSKCMDLINE#</append>
+      </global>
     </bootloader>
     <general>
-      <clock>
-        <hwclock>UTC</hwclock>
-        <timezone>#TABLE:site:key=timezone:value#</timezone>
-      </clock>
-      <keyboard>
-        <keymap>english-us</keymap>
-      </keyboard>
-      <language>en_US</language>
       <mode>
         <confirm config:type="boolean">false</confirm>
-        <forceboot config:type="boolean">false</forceboot>
-        <interactive_boot config:type="boolean">false</interactive_boot>
-        <reboot config:type="boolean">true</reboot>
+        <final_reboot config:type="boolean">false</final_reboot>
       </mode>
-      <mouse>
-        <id>non</id>
-      </mouse>
       <signature-handling>
          <accept_non_trusted_gpg_key config:type="boolean">true</accept_non_trusted_gpg_key>
          <accept_unknown_gpg_key config:type="boolean">true</accept_unknown_gpg_key>
@@ -35,6 +19,16 @@
          <accept_verification_failed config:type="boolean">true</accept_verification_failed>
       </signature-handling>
     </general>
+    <timezone>
+      <hwclock>UTC</hwclock>
+      <timezone>#TABLE:site:key=timezone:value#</timezone>
+    </timezone>
+    <keyboard>
+      <keymap>english-us</keymap>
+    </keyboard>
+    <language>
+      <language>en_US</language>
+    </language>
     <partitioning config:type="list">
       <!-- XCAT-PARTITION-START -->
       <drive>
@@ -46,22 +40,20 @@
     </partitioning>
     <add-on>
         <add_on_products config:type="list">
-            #INSTALL_SOURCES# 
+          #INSTALL_SOURCES#
         </add_on_products>
     </add-on>
     <software>
       <products config:type="list">
-          <product>SLES</product>
+        <product>SLES</product>
       </products>
       <patterns config:type="list">
         #INCLUDE_DEFAULT_PTRNLIST_S#
       </patterns>
       <packages config:type="list">
-    	#INCLUDE_DEFAULT_PKGLIST_S#
+        #INCLUDE_DEFAULT_PKGLIST_S#
       </packages>
     </software>
-  </install>
-  <configure>
     <users config:type="list">
       <user>
         <username>root</username>
@@ -72,10 +64,8 @@
       </user>
     </users>
     <networking>
-      <dns>
+       <dns>
         <dhcp_hostname config:type="boolean">true</dhcp_hostname>
-        <dhcp_resolv config:type="boolean">true</dhcp_resolv>
-        <domain>local</domain>
         <hostname>linux</hostname>
       </dns>
       <interfaces config:type="list">
@@ -85,9 +75,9 @@
           <startmode>onboot</startmode>
         </interface>
       </interfaces>
+      <keep_install_network config:type="boolean">true</keep_install_network>
       <routing>
-        <ip_forward config:type="boolean">false</ip_forward>
-        <routes config:type="list"/>
+        <ipv4_forward config:type="boolean">false</ipv4_forward>
       </routing>
     </networking>
     <scripts>
@@ -95,5 +85,4 @@
    #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/chroot.sles#
    #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.sle#
     </scripts>
-  </configure>
 </profile>

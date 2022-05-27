@@ -919,7 +919,7 @@ sub scan_plugins {
         /.*\/([^\/]*).pm$/;
         my $modname = $1;
         unless (eval { require "$_" }) {
-            xCAT::MsgUtils->message("S", "Error loading module " . $_ . "  ...skipping");
+            xCAT::MsgUtils->message("S", "Error loading module " . $_ . "  ...skipping. \n Run \"perl -c $_\" to view details of the failure");
 
             next;
         }

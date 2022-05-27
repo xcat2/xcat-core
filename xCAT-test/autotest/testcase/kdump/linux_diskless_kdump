@@ -41,7 +41,7 @@ cmd:cd /etc; export exports;cd -;service nfs-server restart
 cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute dump=nfs://$$MN/opt/xcat/share/xcat/tools/autotest/kdumpdir
 check:rc==0
 
-cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute crashkernelsize=auto
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64le" ]] && [[ "__GETNODEATTR($$CN,os)__" =~ "rhels8.5" ]]; then chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute crashkernelsize=512M@64M; else chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute crashkernelsize=auto; fi
 check:rc==0
 
 cmd:chdef -t node $$CN -p postscripts=enablekdump
@@ -62,10 +62,9 @@ cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-ne
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
-# Verify kdump related attributes showup in tftpboot file and file was changed
-cmd:ls -l /tftpboot/boot/grub2/$$CN
-cmd:cat /tftpboot/boot/grub2/$$CN
-check:output=dump
+# Verify that the kdump attribute is included in the node file under either /tftpboot/boot/grub2 or /tftpboot/petitboot.
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "x86_64" ]]; then cat /tftpboot/xcat/xnba/nodes/$$CN; elif [[ "__GETNODEATTR($$CN,netboot)__" = "grub2" ]]; then cat /tftpboot/boot/grub2/$$CN; elif [[ "__GETNODEATTR($$CN,netboot)__" = "petitboot" ]]; then cat /tftpboot/petitboot/$$CN; fi;
+check:output=~dump
 
 cmd:sleep 300
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
@@ -95,6 +94,9 @@ check:output=~/opt/xcat/share/xcat/tools/autotest/kdumpdir
 
 # Verify kdump parameters are in /proc/cmdline file
 cmd:xdsh $$CN cat /proc/cmdline
+
+# Check how much memory was really allocated for crashkernel
+cmd:xdsh $$CN grep "Reserving" /var/log/messages
 
 # Verify no error configuring kdump server
 cmd:xdsh $$CN cat /var/log/xcat/xcat.log | grep "The kdump server is not configured"

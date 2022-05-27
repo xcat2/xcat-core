@@ -58,10 +58,6 @@ check:output=~Provision node\(s\)\: $$CN
 cmd:xdsh $$SN "if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi"
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc" ]]; then sleep 120;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then sleep 200;else sleep 180;fi
 
-#cmd:lsdef -l $$CN | grep status
-#check:rc==0
-#check:output!~booted
-
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
@@ -100,4 +96,28 @@ cmd:xdsh $$CN "cd /xcatpost; rmdir -p dir1/dir2/dir3"
 check:rc==0
 cmd:chdef -m -t node -o $$CN postscripts="dir1/dir2/dir3/foo.bar"
 check:rc==0
+
+# Check site table timezone
+cmd:lsdef -t site -i timezone | awk -F= '{print $2}'
+check:rc==0
+# Check compute node timezone
+cmd:xdsh $$CN "timedatectl | grep 'Time zone'" | awk -F: '{print $3}' | awk '{print $1}'
+check:rc==0
+# Verify the compute node timezone matches the site table timezone
+cmd:sitetz=`lsdef -t site -i timezone | awk -F= '{print $2}'`;nodetz=`xdsh $$CN "timedatectl | grep 'Time zone'" | awk -F: '{print $3}' | awk '{print $1}'`; test $sitetz = $nodetz
+check:rc==0
+
+# Check there are no load host key warnings
+cmd:xdsh $$CN "grep 'load host key' /var/log/xcat/xcat.log || echo 'No load hostkey warning' >&2"
+check:output=~No load hostkey warning
+
+# Check node can be rebooted from disk
+cmd:xdsh $$CN shutdown -r now
+
+# Wait for node to reboot (10sec x 60)
+cmd:a=0;while ! `xdsh $$CN -t 5 uptime 2>&1 | grep up >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+
+cmd:xdsh $$CN uptime
+check:rc==0
+check:output=~up
 end

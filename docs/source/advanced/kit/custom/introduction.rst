@@ -42,7 +42,7 @@ Once the kit components are added to xCAT osimage definitions, administrators ca
 #. ``genimage`` command to create a diskless OS image installing the kit components for diskless OS provisioning
 #. ``updatenode`` command to install the kit components on existing deployed nodes
 
-The ``kitcomponent`` metadata defines the kit packages as dependency packages and the OS package manager (``yum``, ``zypper``, ``apt-get``) automatically installes the required packages during the xCAT ``otherpkgs`` install process.
+The ``kitcomponent`` metadata defines the kit packages as dependency packages and the OS package manager (``yum``, ``zypper``, ``apt-get``) automatically installs the required packages during the xCAT ``otherpkgs`` install process.
 
 Kit Framework
 -------------

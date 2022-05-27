@@ -61,11 +61,11 @@ if [ "$(uname -s)" = "Linux" ]; then
 	apt-get install ubuntu-cloud-keyring -y
 	apt-get update
 
-	echo "Added the OpenStack ${opsrelease} version for Ubunto ${urelease} release to the repository, Please modify this script if you need a different version."
+	echo "Added the OpenStack ${opsrelease} version for Ubuntu ${urelease} release to the repository, Please modify this script if you need a different version."
 
     elif ( pmatch "$OSVER" "rh*" ) || [ -f /etc/redhat-release ]; then
 	#use yum repository
-	echo "Redhat. Please refer to http://sourceforge.net/apps/mediawiki/xcat/index.php?title=Deploying_OpenStack for how to setup OpenStack repository for RedHat".
+	echo "Red Hat. Please refer to http://sourceforge.net/apps/mediawiki/xcat/index.php?title=Deploying_OpenStack for how to setup OpenStack repository for Red Hat".
     else
 	echo "OpenStack deployment with xCAT is not supported on this platform yet.".
     fi

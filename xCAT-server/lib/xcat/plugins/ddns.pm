@@ -1282,6 +1282,13 @@ sub update_namedconf {
                 push @newnamed, "\t\t$_;\n";
             }
             push @newnamed, "\t};\n";
+            my $bind_version_cmd="/usr/sbin/named -v | cut -d' ' -f2";
+            my @bind_version =xCAT::Utils->runcmd($bind_version_cmd, 0);
+            # Turn off DNSSEC if running with bind vers 9.16.6 or higher
+            if ((scalar @bind_version > 0) && ($bind_version[0] ge "9.16.6")) {
+                push @newnamed, "\tdnssec-enable no;\n";
+                push @newnamed, "\tdnssec-validation no;\n";
+            }
         }
 
         if ($ctx->{forwardmode}){

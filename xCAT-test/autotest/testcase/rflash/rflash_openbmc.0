@@ -521,7 +521,7 @@ check:rc != 0
 check:output =~$$CN\s*:\s*(\[.*?\]: )?Error: Deleting currently active firmware on powered on host is not supported
 cmd:activenum=`rflash $$CN -l |grep -w "BMC\s*Active(\*)" |awk '{print $2}'`;rflash $$CN $activenum --delete
 check:rc != 0
-check:output =~~$$CN\s*:\s*(\[.*?\]: )?Error: Deleting currently active BMC firmware is not supported
+check:output =~$$CN\s*:\s*(\[.*?\]: )?Error: Deleting currently active BMC firmware is not supported
 end
 
 start:rflash_d_relative_path

@@ -1,0 +1,18 @@
+start:verify_timezone
+os:Linux
+label:timezone
+#stop:yes
+
+# Check site table timezone
+cmd:lsdef -t site -i timezone | awk -F= '{print $2}'
+check:rc==0
+
+# Check compute node timezone
+cmd:xdsh $$CN "timedatectl | grep 'Time zone'" | awk -F: '{print $3}' | awk '{print $1}'
+check:rc==0
+
+# Verify the compute node timezone matches the site table timezone
+cmd:sitetz=`lsdef -t site -i timezone | awk -F= '{print $2}'`;nodetz=`xdsh $$CN "timedatectl | grep 'Time zone'" | awk -F: '{print $3}' | awk '{print $1}'`; test $sitetz = $nodetz
+check:rc==0
+
+end

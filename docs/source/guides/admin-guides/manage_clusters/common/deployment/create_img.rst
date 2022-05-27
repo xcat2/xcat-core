@@ -9,9 +9,9 @@ If using an ISO, copy it to (or NFS mount it on) the management node, and then r
 
     copycds <path>/<specific-distro>.iso
 
-.. note:: While sle15 contains installer medium and packages medium, need ``copycds`` copy all contents of DVD1 of the installer medium and DVD1 of the packages medium, for example: ::
-    
-    copycds SLE-15-Installer-DVD-ppc64le-GM-DVD1.iso SLE-15-Packages-ppc64le-GM-DVD1.iso
+.. note:: While sle15 contains installer medium and packages medium, need ``copycds`` copy all contents of DVD1 of the installer medium and DVD1 of the packages medium, for example:
+
+ ``copycds SLE-15-Installer-DVD-ppc64le-GM-DVD1.iso SLE-15-Packages-ppc64le-GM-DVD1.iso``
 	
 If using a DVD, put it in the DVD drive of the management node and run: ::
 
@@ -79,7 +79,7 @@ If this is the same distro version as what your management node uses, create a `
     enabled=1
     gpgcheck=0
 	
-This way, if you need to install some additional RPMs into your MN later, you can simply install them with ``yum``. Or if you are installing a software on your MN that depends some RPMs from this disto, those RPMs will be found and installed automatically.
+This way, if you need to install some additional RPMs into your MN later, you can simply install them with ``yum``. Or if you are installing a software on your MN that depends some RPMs from this distro, those RPMs will be found and installed automatically.
 
 **[Tips 2]**
 

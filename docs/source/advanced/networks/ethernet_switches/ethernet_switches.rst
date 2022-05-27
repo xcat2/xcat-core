@@ -62,7 +62,7 @@ Switch Management
 
 When managing Ethernet switches, the admin often logs into the switches one by one using SSH or Telnet and runs the switch commands. However, it becomes time consuming when there are a lot of switches in a cluster. In a very large cluster, the switches are often identical and the configurations are identical. It helps to configure and monitor them in parallel from a single command.
 
-For managing Mellanox IB switches and  Qlogic IB switches, see :doc:`Mellanox IB switches and Qlogic IB switches </advanced/networks/infiniband/index>`
+For managing Mellanox IB switches and Qlogic IB switches, see :doc:`Mellanox IB switches and Qlogic IB switches </advanced/networks/infiniband/index>`
 
 xCAT will not do a lot of switch management functions. Instead, it will configure the switch so that the admin can run remote command such as ``xdsh`` for it. Thus, the admin can use the ``xdsh`` to run proprietary switch commands remotely from the xCAT mn to enable **VLAN**, **bonding**, **SNMP** and others.
 
@@ -77,7 +77,7 @@ Add the switch in xCAT DB. Refer to the "Discovering Switches" section if you wa
 
      mkdef bntc125 groups=switch mgt=switch ip=10.4.25.1 nodetype=switch switchtype=BNT
 
-Set the ssh or telnet username an d password. ::
+Set the ssh or telnet username and password. ::
 
        chdef bntc125 username=admin \
                      password=password \

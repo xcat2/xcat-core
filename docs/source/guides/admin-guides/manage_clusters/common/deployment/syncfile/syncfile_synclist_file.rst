@@ -115,7 +115,7 @@ The **EXECUTE** clause is used to list all the postsync scripts (<filename>.post
 
 **EXECUTEALWAYS**
 
-The **EXECUTEALWAYS** clause is used to list all the postsync scripts you would like to run after the files are synced, whether or not any file is actually updated. The files in this list must be added to the list of files to sync.  If noderange is used in the synclist for the file listed in the **EXECUTEALWAYS** clause, the script will only be exectuted on the nodes in that noderange.
+The **EXECUTEALWAYS** clause is used to list all the postsync scripts you would like to run after the files are synced, whether or not any file is actually updated. The files in this list must be added to the list of files to sync.  If noderange is used in the synclist for the file listed in the **EXECUTEALWAYS** clause, the script will only be executed on the nodes in that noderange.
 
 .. note:: The path to the file to EXECUTE or EXECUTEALWAYS, is the location of the file on the MN.
 

@@ -179,26 +179,32 @@ config_rsyslog_V8()
     cp -f $conf_file $conf_file.XCATORIG
   fi
 
-  # check if already an old entry by xCAT. If so, we need to remove it
-  grep "$xCATSettingsOLD$" $conf_file 2>&1 1> /dev/null
-  if [ $? -eq 0 ]; then
-       sed -i "/$xCATSettingsOLD/,+1 d" $conf_file
+  if [ -e $conf_file ]; then
+      # check if already an old entry by xCAT. If so, we need to remove it
+      grep "$xCATSettingsOLD$" $conf_file 2>&1 1> /dev/null
+      if [ $? -eq 0 ]; then
+          sed -i "/$xCATSettingsOLD/,+1 d" $conf_file
+      fi
+
+      # check if already a previous entry by xCAT. If so, we need to remove it
+      grep "$xCATSettingsSTART" $conf_file 2>&1 1> /dev/null
+      if [ $? -eq 0 ]; then
+          sed -i "/$xCATSettingsSTART/,/$xCATSettingsEND/ d" $conf_file
+      fi
   fi
 
-  grep "$xCATSettingsOLD$" $remoteconf 2>&1 1> /dev/null
-  if [ $? -eq 0 ]; then
-       sed -i "/$xCATSettingsOLD/,+1 d" $remoteconf
-  fi
+  if [ -e $remoteconf ]; then
+      # check if already an old entry by xCAT. If so, we need to remove it
+      grep "$xCATSettingsOLD$" $remoteconf 2>&1 1> /dev/null
+      if [ $? -eq 0 ]; then
+          sed -i "/$xCATSettingsOLD/,+1 d" $remoteconf
+      fi
 
-  # check if already a previous entry by xCAT. If so, we need to remove it
-  grep "$xCATSettingsSTART" $conf_file 2>&1 1> /dev/null
-  if [ $? -eq 0 ]; then
-        sed -i "/$xCATSettingsSTART/,/$xCATSettingsEND/ d" $conf_file
-  fi
-
-  grep "$xCATSettingsSTART" $remoteconf 2>&1 1> /dev/null
-  if [ $? -eq 0 ]; then
-     sed -i "/$xCATSettingsSTART/,/$xCATSettingsEND/ d" $remoteconf
+      # check if already a previous entry by xCAT. If so, we need to remove it
+      grep "$xCATSettingsSTART" $remoteconf 2>&1 1> /dev/null
+      if [ $? -eq 0 ]; then
+          sed -i "/$xCATSettingsSTART/,/$xCATSettingsEND/ d" $remoteconf
+      fi
   fi
 
   if [ $goLocal -eq 1 ]; then
@@ -267,6 +273,7 @@ config_rsyslog_V8()
 
         [ -f "$conf_file" ] && sed -i '/#\$ModLoad \+imudp\|imtcp\|imudp.so\|imtcp.so/s/^#//;
                        /#\$InputTCPServerRun\|UDPServerRun.*/s/^#//' $conf_file
+        [ -f "$conf_file" ] && sed -i '/mtcp.html/s/^/#/' $conf_file
 
         [ -f "/etc/rsyslog.d/xcat-cluster.conf" ] && rm -f "/etc/rsyslog.d/xcat-cluster.conf" ;
         [ -f "/etc/rsyslog.d/xcat-compute.conf" ] && rm -f "/etc/rsyslog.d/xcat-compute.conf" ;

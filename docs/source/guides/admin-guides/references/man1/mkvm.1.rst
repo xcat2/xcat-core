@@ -11,7 +11,7 @@ NAME
 ****
 
 
-\ **mkvm**\  - Creates HMC-, DFM-, IVM-, and zVM-managed partitions or other virtual machines.
+\ **mkvm**\  - Creates HMC-, DFM-, IVM-, KVM-, VMware-, and zVM-managed partitions or virtual machines.
 
 
 ********
@@ -96,14 +96,14 @@ For PPC (using Direct FSP Management) specific:
 
 With option \ *full*\ , a partition using all the resources on a normal power machine will be created.
 
-If no option is specified, a partition using the parameters specified with attributes such as 'vmcpus', 'vmmory', 'vmphyslots', 'vmothersetting', 'vmnics', 'vmstorage' will be created. Those attributes can either be specified with '\*def' commands running before or be specified with this command.
+If no option is specified, a partition using the parameters specified with attributes such as 'vmcpus', 'vmmemory', 'vmphyslots', 'vmothersetting', 'vmnics', 'vmstorage' will be created. Those attributes can either be specified with '\*def' commands running before or be specified with this command.
 
 
 For KVM and VMware:
 ===================
 
 
-The \ **mkvm**\  command creates new virtual machine(s) with the \ *disksize*\  size of hard disk, \ *memsize*\  size of memory and \ *cpucount*\  number of cpu.
+The \ **mkvm**\  command creates a new virtual machine with \ *disksize*\  GB of storage space, \ *memsize*\  MB of memory, and \ *cpucount*\  cpu(s).
 
 
 For zVM:
@@ -136,7 +136,7 @@ OPTIONS
 
 \ **-**\ **-cpus**\ 
  
- The cpu count which will be created for the kvm/vmware virtual machine.
+ Number of CPUs for the kvm/vmware virtual machine being created.
  
 
 
@@ -150,7 +150,7 @@ OPTIONS
  
  To specify the parameters which are used to create a partition. The \ *vmcpus*\ , \ *vmmemory*\  are necessary, and the value specified with this command have a more high priority. If the value of any of the three options is not specified, the corresponding value specified for the node object will be used. If any of the three attributes is neither specified with this command nor specified with the node object, error information will be returned. To reference to lsvm(1)|lsvm.1 for more information about 'drc_index' for \ *vmphyslots*\ .
  
- The option \ *vios*\  is used to specify the partition that will be created is a VIOS partition. If specified, the value for \ *vmstorage*\  shall be number which indicate the number of vSCSI server adapter will be created, and if no value specified for \ *vmphyslots*\ , all the physical slot of the power machine will be asigned to VIOS partition. If not specified, it shall be in form of \ *vios_name:server_slotid*\  to specify the vios and the virtual slot id of the vSCSI server adapter that will be connected from the Logical partition.
+ The option \ *vios*\  is used to specify the partition that will be created is a VIOS partition. If specified, the value for \ *vmstorage*\  shall be number which indicate the number of vSCSI server adapter will be created, and if no value specified for \ *vmphyslots*\ , all the physical slot of the power machine will be assigned to VIOS partition. If not specified, it shall be in form of \ *vios_name:server_slotid*\  to specify the vios and the virtual slot id of the vSCSI server adapter that will be connected from the Logical partition.
  
 
 
@@ -174,7 +174,7 @@ OPTIONS
 
 \ **-**\ **-mem**\ 
  
- The memory size which will be used for the new created kvm/vmware virtual machine. Unit is Megabyte.
+ Set the memory size for kvm/vmware virtual machines, default unit is MB. Specify in MB or append K for KB, M for MB, or G for GB.
  
 
 
@@ -186,7 +186,7 @@ OPTIONS
 
 \ **-s|-**\ **-size**\ 
  
- The size of storage which will be created for the kvm/vmware virtual machine.
+ Set the storage size for kvm/vmware virtual machines, default unit is GB. Specify in GB or append K for KB, M for MB, G for GB.
  
 
 
@@ -374,12 +374,36 @@ Output is similar to:
   gpok4: Starting LNX3... Done
 
 
-7. To create a new kvm/vmware virtual machine with 10G storage, 2048M memory and 2 cpus.
+7. To create a new kvm/vmware virtual machine with 20 GB of storage, 4096 MB of memory, and 2 cpus.
 
 
 .. code-block:: perl
 
-  mkvm vm1 -s 10G --mem 2048 --cpus 2
+  mkvm vm1 -s 20 --mem 4096 --cpus 2
+
+
+or
+
+
+.. code-block:: perl
+
+  mkvm vm1 -s 20G --mem 4194304K --cpus 2
+
+
+or
+
+
+.. code-block:: perl
+
+  mkvm vm1 -s 20480M --mem 4096M --cpus 2
+
+
+or
+
+
+.. code-block:: perl
+
+  mkvm vm1 -s 20971520K --mem 4G --cpus 2
 
 
 8. To create a full partition on normal power machine.
@@ -454,7 +478,7 @@ After a node object is defined, the resources that will be used for the partitio
   chdef lpar1 vmcpus=1/4/16 vmmemory=1G/4G/32G vmphyslots=0x21010201,0x21010200 vmothersetting=bsr:128,hugepage:2
 
 
-Then, create the partion on the specified cec.
+Then, create the partition on the specified cec.
 
 
 .. code-block:: perl
@@ -470,7 +494,7 @@ Option 2:
   mkvm lpar1 vmcpus=1/4/16 vmmemory=1G/4G/32G vmphyslots=0x21010201,0x21010200 vmothersetting=bsr:128,hugepage:2
 
 
-The outout is similar to:
+The output is similar to:
 
 
 .. code-block:: perl

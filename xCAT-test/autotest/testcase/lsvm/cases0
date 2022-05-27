@@ -33,7 +33,7 @@ description:lsvm -a/--all could work as design, to display all the information f
 label:others,hctrl_kvm
 cmd:rpower $$CN on
 cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
-check:ouptut=~Running|on
+check:output=~Running|on
 cmd:lsvm $$CN
 check:rc==0 
 check:output=~$$CN: Id:\s*\w+
@@ -69,11 +69,11 @@ label:others,hctrl_kvm
 cmd:rpower $$CN on
 cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN stat
-check:ouptut=~Running|on
+check:output=~Running|on
 cmd:rpower $$SN on
 cmd:a=0;while ! `rpower $$SN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$SN stat
-check:ouptut=~Running|on
+check:output=~Running|on
 cmd:lsvm $$CN,$$SN
 check:rc==0
 check:output=~$$CN: Id:\s*\w+
@@ -113,11 +113,11 @@ label:others,hctrl_kvm
 cmd:rpower $$CN off
 cmd:a=0;while ! `rpower $$CN stat|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN stat
-check:ouptut=~Not Activated|off
+check:output=~Not Activated|off
 cmd:rpower $$SN on
 cmd:a=0;while ! `rpower $$SN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$SN stat
-check:ouptut=~Running|on
+check:output=~Running|on
 cmd:lsvm $$CN,$$SN
 check:output=~$$SN: Id:\s*\w+
 check:output=~$$SN: Host:\s*\w+

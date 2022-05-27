@@ -342,13 +342,13 @@ OPTIONS
 
 \ **frame**\ ={\ *framenumber*\  | \*}
  
- Set or get frame number.  If no framenumber and \* specified, framenumber for the nodes will be displayed and updated in xCAAT database.  If framenumber is specified, it only supports single node and the framenumber will be set for that frame.  If \* is specified, it supports noderange and all the frame numbers for the noderange will be read from xCAT database and set to frames. Setting the frame number is a disruptive command which requires all CECs to be powered off prior to issuing the command.
+ Set or get frame number.  If no framenumber and \* specified, framenumber for the nodes will be displayed and updated in the xCAT database.  If framenumber is specified, it only supports single node and the framenumber will be set for that frame.  If \* is specified, it supports noderange and all the frame numbers for the noderange will be read from xCAT database and set to frames. Setting the frame number is a disruptive command which requires all CECs to be powered off prior to issuing the command.
  
 
 
 \ **cec_off_policy**\ ={\ **poweroff | stayon**\ }
  
- Set or get cec off policy after lpars are powered off.  If no cec_off_policy value specified, the cec_off_policy for the nodes will be displayed. the cec_off_policy has two values: \ **poweroff**\  and \ **stayon**\ . \ **poweroff**\  means Power off when last partition powers off. \ **stayon**\  means Stay running after last partition powers off. If cec_off_policy value is specified, the cec off policy will be set for that cec.
+ Set or get cec off policy after lpars are powered off.  If no cec_off_policy value specified, the cec_off_policy for the nodes will be displayed. The cec_off_policy has two values: \ **poweroff**\  and \ **stayon**\ . \ **poweroff**\  means Power off when last partition powers off. \ **stayon**\  means Stay running after last partition powers off. If cec_off_policy value is specified, the cec off policy will be set for that cec.
  
 
 
@@ -670,7 +670,7 @@ OPTIONS
 
 \ **sysname**\ 
  
- Query or set sysname for CEC or Frame. If no value specified, means to query sysname of the specified nodes. If '\*' specified, it means to set sysname for the specified nodes, and the sysname values would get from xCAT datebase. If a string is specified, it means to use the string as sysname value to set for the specified node.
+ Query or set sysname for CEC or Frame. If no value specified, means to query sysname of the specified nodes. If '\*' specified, it means to set sysname for the specified nodes, and the sysname values would get from xCAT database. If a string is specified, it means to use the string as sysname value to set for the specified node.
  
 
 

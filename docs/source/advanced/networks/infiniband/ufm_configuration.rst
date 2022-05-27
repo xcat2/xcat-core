@@ -55,7 +55,7 @@ The default port is 162. For example: ::
 	[Notifications]
 	snmp_listeners = 10.0.0.1
 
-Where 10.0.0.1 is the the ip address of the management node.
+Where 10.0.0.1 is the ip address of the management node.
 
 3. On the UFM host, restart the ufmd ::
 

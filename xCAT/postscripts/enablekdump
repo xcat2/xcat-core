@@ -85,6 +85,7 @@ if [ ! -z "$DUMP" ]; then
     KDPATH=${KDPATH/\/\//}
     KDIP=`echo $KDPATH | cut -d'/' -f1`
     KDPATH=${KDPATH/$KDIP/}
+    retval=0
 
     # if "dump=<proto>:///<directory>", use $xcatmaster as the default NFS server
     if [ -z $KDIP ]; then
@@ -182,6 +183,7 @@ EOF
                 /bin/rm -rf "/var/tmp/tempinit"
                 #service kdump restart
                 restartservice kdump
+                retval=$?
             else
                 /bin/mount -o nolock $KDIP:$KDPATH $MOUNTPATH
 	        KDTEMPPATH=${KDPATH//\//\\\/}
@@ -264,6 +266,7 @@ EOF
                fi
                [ -f /etc/dracut.conf ] && mv /etc/dracut.conf  /tmp/dracut.conf
                restartservice kdump
+               retval=$?
                [ -f /tmp/dracut.conf ] && mv /tmp/dracut.conf /etc/dracut.conf
 	    elif (pmatch $OSVER "fedora*") || (pmatch $OSVER "rhel6*") || (pmatch $OSVER "rhels6*") || [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ];then
                 /bin/mount -o nolock $KDIP:$KDPATH $MOUNTPATH
@@ -271,6 +274,7 @@ EOF
                 echo "link_delay 180" >> /etc/kdump.conf
 		#/etc/init.d/kdump restart
 		restartservice kdump
+		retval=$?
 	    fi
 	fi
     fi
@@ -280,4 +284,4 @@ else
     /bin/echo "The kdump server is not configured"
 fi
 
-exit 0
+exit $retval

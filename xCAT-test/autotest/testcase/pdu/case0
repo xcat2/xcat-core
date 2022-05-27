@@ -190,6 +190,6 @@ check:output=~Error
 cmd:oldpdu=`cat /tmp/pduvalue`;chdef $$CN pdu=$oldpdu
 cmd:rpower $$CN pduof
 check:rc!=0
-check:outpu=~Unsupported command
+check:output=~Unsupported command
 cmd:rmdef $$PDU
 end

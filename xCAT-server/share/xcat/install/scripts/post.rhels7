@@ -1,3 +1,4 @@
+#!/bin/bash
 #the nic name might change between the installation and 1st boot
 #active all the nics with network link during system boot
 

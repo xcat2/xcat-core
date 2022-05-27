@@ -9,9 +9,9 @@ cmd:mkdocker  $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag=
 check:rc==0
 cmd:rpower $$DOCKERCN stop
 check:rc==0
-check:ouptut=~container already stopped
+check:output=~container already stopped
 cmd:rpower $$DOCKERCN restart
-check:ouptut=~success
+check:output=~success
 cmd:rpower $$DOCKERCN state
 check:rc==0
 check:output=~running
@@ -156,7 +156,7 @@ check:rc==0
 cmd:rpower $$DOCKERCN start
 check:rc==0
 cmd:rpower $$DOCKERCN pause
-check:ouptut=~paused
+check:output=~paused
 cmd:rpower $$DOCKERCN unpause
 check:rc==0
 check:output=~success

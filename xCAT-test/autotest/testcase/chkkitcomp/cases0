@@ -2,17 +2,17 @@ start:chkkitcomp_v
 label:others,KIT
 cmd:chkkitcomp -v
 check:rc==0
-check:output~=Version
-check:output~=kitframework
-check:output~=compatible_frameworks
+check:output=~Version
+check:output=~kitframework
+check:output=~compatible_frameworks
 end
 
 start:chkkitcomp_h
 label:others,KIT
 cmd:addkit -h
 check:rc==0
-check:output~=Usage
-check:outpur!~error
+check:output=~Usage
+check:output!~error
 end
 
 start:chkkitcomp_V

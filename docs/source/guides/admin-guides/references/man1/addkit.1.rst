@@ -11,7 +11,7 @@ NAME
 ****
 
 
-\ **addkit**\  - Adds product software Kits to an xCAT cluster environmnet.
+\ **addkit**\  - Adds product software Kits to an xCAT cluster environment.
 
 
 ********

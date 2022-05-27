@@ -86,7 +86,7 @@ If the NFS server is the Service Node or Management Node, the server can be left
 The ``crashkernelsize`` attribute
 ---------------------------------
 
-To allow the Operating System to automatically reserve the appropriate amount of memory for the ``kdump`` kernel, set ``crashkernelsize=auto``.
+To allow the Operating System to automatically reserve the appropriate amount of memory for the ``kdump`` kernel, set ``crashkernelsize=auto``. For RHELS 8.5 on System P machines, do not use ``auto``, instead set specific size (see below).
 
 For setting specific sizes, use the following example:
 
@@ -101,6 +101,10 @@ For setting specific sizes, use the following example:
 * For System P machines, set the ``crashkernelsize`` using this format: ::
 
     chdef -t osimage <image name> crashkernelsize=<size>@32M
+
+* For System P machines running RHELS 8.5 , set the ``crashkernelsize`` using this format: ::
+
+    chdef -t osimage <image name> crashkernelsize=<size>@64M
 
 .. note:: The value of the ``crashkernelsize`` depends on the total physical memory size on the machine. For more about size, refer to `Appedix`_
 

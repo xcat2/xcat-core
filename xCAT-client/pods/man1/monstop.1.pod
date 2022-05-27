@@ -27,7 +27,7 @@ I<noderange> is the nodes to be stopped for monitoring. If omitted, all nodes wi
 
 B<-h | -help>          Display usage message.
 
-B<-r | --remote>       Specifies that the operation will also be performed on the nodes. For example, the3rd party monitoring software daemons on the nodes will also be stopped.
+B<-r | --remote>       Specifies that the operation will also be performed on the nodes. For example, the 3rd party monitoring software daemons on the nodes will also be stopped.
 
 B<-v | -version>       Command Version.
 
