@@ -2741,10 +2741,11 @@ sub reseat_node {
         }
         my $fpc     = $mpent->{mpa};
         my $ipmitab = xCAT::Table->new("ipmi");
-        my $ipmihash = $ipmitab->getNodesAttribs([$fpc], [ 'bmc', 'username', 'password' ]);
+        my $ipmihash = $ipmitab->getNodesAttribs([$fpc], [ 'bmc', 'username', 'password', 'port' ]);
         my $authdata = xCAT::PasswordUtils::getIPMIAuth(noderange => [$fpc], ipmihash => $ipmihash);
         my $nodeuser = $authdata->{$fpc}->{username};
         my $nodepass = $authdata->{$fpc}->{password};
+	my $nodeport = $ipmihash->{$fpc}->[0]->{port};
         $sessdata->{slotnumber} = $mpent->{id};
 	if (exists $fpcsessions{$mpent->{mpa}}) {
             $sessdata->{fpcipmisession} = $fpcsessions{$mpent->{mpa}};
@@ -2755,7 +2756,7 @@ sub reseat_node {
 		    data => [ $sessdata->{slotnumber}, 2 ],
 		    callback => \&fpc_node_reseat_complete, callback_args => $sessdata);
 	} else {
-            $sessdata->{fpcipmisession} = xCAT::IPMI->new(bmc => $mpent->{mpa}, userid => $nodeuser, password => $nodepass);
+            $sessdata->{fpcipmisession} = xCAT::IPMI->new(bmc => $mpent->{mpa}, userid => $nodeuser, password => $nodepass, port => $nodeport);
 	    $fpcsessions{$mpent->{mpa}} = $sessdata->{fpcipmisession};
             $sessdata->{fpcipmisession}->login(callback => \&fpc_node_reseat, callback_args => $sessdata);
         }
@@ -8513,13 +8514,14 @@ sub preprocess_request {
 sub getipmicons {
     my $argr = shift;
 
-    #$argr is [$node,$nodeip,$nodeuser,$nodepass];
+    #$argr is [$node,$nodeip,$nodeport,$nodeuser,$nodepass];
     my $cb = shift;
     my $ipmicons = { node => [ { name => [ $argr->[0] ] } ] };
     $ipmicons->{node}->[0]->{bmcaddr}->[0] = $argr->[1];
-    $ipmicons->{node}->[0]->{bmcuser}->[0] = $argr->[2];
-    $ipmicons->{node}->[0]->{bmcpass}->[0] = $argr->[3];
-    my $ipmisess = xCAT::IPMI->new(bmc => $argr->[1], userid => $argr->[2], password => $argr->[3]);
+    $ipmicons->{node}->[0]->{nodeport}->[0]= $argr->[2];
+    $ipmicons->{node}->[0]->{bmcuser}->[0] = $argr->[3];
+    $ipmicons->{node}->[0]->{bmcpass}->[0] = $argr->[4];
+    my $ipmisess = xCAT::IPMI->new(bmc => $argr->[1], port => $argr->[2], userid => $argr->[3], password => $argr->[4]);
     if ($ipmisess->{error}) {
         xCAT::SvrUtils::sendmsg([ 1, $ipmisess->{error} ], $cb, $argr->[0], %allerrornodes);
         return;
@@ -8895,13 +8897,14 @@ sub process_request {
         my $vpdtab = xCAT::Table->new('vpd');
         $vpdhash = $vpdtab->getNodesAttribs($noderange, [qw(serial mtm asset)]);
     }
-    my $ipmihash = $ipmitab->getNodesAttribs($noderange, [ 'bmc', 'username', 'password' ]);
+    my $ipmihash = $ipmitab->getNodesAttribs($noderange, [ 'bmc', 'username', 'password', 'port' ]);
     my $authdata = xCAT::PasswordUtils::getIPMIAuth(noderange => $noderange, ipmihash => $ipmihash);
     foreach (@$noderange) {
         my $node     = $_;
         my $nodeuser = $authdata->{$node}->{username};
         my $nodepass = $authdata->{$node}->{password};
         my $nodeip   = $node;
+	my $nodeport = $ipmihash->{$node}->[0]->{port};
         my $ent;
         if (defined($ipmitab)) {
             $ent = $ipmihash->{$node}->[0];
@@ -8910,12 +8913,12 @@ sub process_request {
         if ($nodeip =~ /,/ and grep ({ $_ eq $request->{command}->[0] } qw/rinv reventlog rvitals rspconfig/)) { #multi-node x3950 X5, for example
             my $bmcnum = 1;
             foreach (split /,/, $nodeip) {
-                push @donargs, [ $node, $_, $nodeuser, $nodepass, $bmcnum ];
+                push @donargs, [ $node, $_, $nodeport, $nodeuser, $nodepass, $bmcnum ];
                 $bmcnum += 1;
             }
         } else {
             $nodeip =~ s/,.*//;    #stri
-            push @donargs, [ $node, $nodeip, $nodeuser, $nodepass, 1 ];
+            push @donargs, [ $node, $nodeip, $nodeport, $nodeuser, $nodepass, 1 ];
         }
     }
     if ($request->{command}->[0] eq "getipmicons") {
@@ -9008,7 +9011,7 @@ sub process_request {
     }
     else {
         foreach (@donargs) {
-            donode($_->[0], $_->[1], $_->[2], $_->[3], $_->[4], $ipmitimeout, $ipmitrys, $command, -args => \@exargs);
+            donode($_->[0], $_->[1], $_->[2], $_->[3], $_->[4], $_->[5], $ipmitimeout, $ipmitrys, $command, -args => \@exargs);
         }
         while (xCAT::IPMI->waitforrsp()) { yield }
     }
@@ -9085,6 +9088,7 @@ sub process_request {
 sub donode {
     my $node      = shift;
     my $bmcip     = shift;
+    my $nodeport  = shift;
     my $user      = shift;
     my $pass      = shift;
     my $bmcnum    = shift;
@@ -9097,7 +9101,7 @@ sub donode {
     $sessiondata{$node} = {
         node => $node, #this seems redundant, but some code will not be privy to what the key was
         bmcnum => $bmcnum,
-        #ipmisession => xCAT::IPMI->new(bmc => $bmcip, userid => $user, password => $pass),
+        #ipmisession => xCAT::IPMI->new(bmc => $bmcip, port => $nodeport, userid => $user, password => $pass),
         command    => $command,
         extraargs  => \@exargs,
         subcommand => $exargs[0],
@@ -9108,7 +9112,7 @@ sub donode {
         on_bmc_connect(0, $sessiondata{$node});
         return 0;
     }
-    $sessiondata{$node}->{ipmisession} = xCAT::IPMI->new(bmc => $bmcip, userid => $user, password => $pass, node => $node);
+    $sessiondata{$node}->{ipmisession} = xCAT::IPMI->new(bmc => $bmcip, port => $nodeport, userid => $user, password => $pass, node => $node);
     if ($sessiondata{$node}->{ipmisession}->{error}) {
         xCAT::SvrUtils::sendmsg([ 1, $sessiondata{$node}->{ipmisession}->{error} ], $callback, $node, %allerrornodes);
     } else {
