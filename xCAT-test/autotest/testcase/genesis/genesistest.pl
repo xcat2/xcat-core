@@ -285,7 +285,15 @@ sub testxdsh {
         return 1;
     }
 
-    send_msg(2, "Node $noderange has been installed with genesis shell for test value $value \n");
+    # Check shell prompt on the node to verify it is running Genesis
+    `xdsh $noderange -t 2 "echo \\\$PS1" | grep "Genesis"`;
+    if ($?) {
+        send_msg(2, "Failed to install node $noderange with genesis shell for test value $value \n");
+        return 1;
+    } else {
+        send_msg(2, "Node $noderange has been installed with genesis shell for test value $value \n");
+    }
+
     send_msg(2, "Checking $checkfile file on that node contains '$checkstring' \n");
     my $xdsh_command="xdsh $noderange -t 2 cat $checkfile 2>&1";
     if (($value == 1) || ($value == 2) || ($value == 3)) {
