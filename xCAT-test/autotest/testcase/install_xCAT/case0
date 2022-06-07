@@ -20,16 +20,6 @@ cmd:service xcatd status
 check:rc==0
 check:output=~running
 cmd:rm -rf /install_xCAT_xcat-core.tar.bz2 /install_xCAT_xcat-dep.tar.bz2
-
-# Check host keys supported by the current OS.
-cmd:echo -e "dsa\necdsa\ned25519\nrsa\nrsa1" > /tmp/known_host_keys
-check:rc==0
-cmd:ssh-keygen --help 2>&1 | grep "\[-t" | cut -d "[" -f4 | cut -d "]" -f1 | sed 's/-t//' | sed 's/|//g' | xargs -n 1 > /tmp/current_os_host_keys
-check:rc==0
-cmd:diff /tmp/known_host_keys /tmp/current_os_host_keys
-check:output!~>
-cmd:rm -f /tmp/known_host_keys /tmp/current_os_host_keys
-check:rc==0
 end
 
 
@@ -67,16 +57,6 @@ cmd:service conserver stop
 cmd:sleep 5
 cmd:service goconserver status
 cmd:service conserver status
-
-# Check host keys supported by the current OS.
-cmd:echo -e "dsa\necdsa\ned25519\nrsa\nrsa1" > /tmp/known_host_keys
-check:rc==0
-cmd:ssh-keygen --help 2>&1 | grep "\[-t" | cut -d "[" -f4 | cut -d "]" -f1 | sed 's/-t//' | sed 's/|//g' | xargs -n 1 > /tmp/current_os_host_keys
-check:rc==0
-cmd:diff /tmp/known_host_keys /tmp/current_os_host_keys
-check:output!~>
-cmd:rm -f /tmp/known_host_keys /tmp/current_os_host_keys
-check:rc==0
 end
 
 
