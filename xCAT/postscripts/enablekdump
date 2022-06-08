@@ -247,6 +247,8 @@ EOF
 
                echo "nfs $KDIP:$KDPATH" > /etc/kdump.conf
                echo "default shell" >> /etc/kdump.conf
+               echo "path /var/crash" >> /etc/kdump.conf
+               echo "core_collector makedumpfile -c --message-level 1 -d 31" >> /etc/kdump.conf
                #strip "xcat" out of the initramfs for kdump
                echo "dracut_args --omit \"xcat\"" >> /etc/kdump.conf
                #strip the unnecessary kernel options from /proc/cmdline

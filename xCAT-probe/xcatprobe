@@ -100,7 +100,10 @@ sub format_cmd_output {
     $msg =~ s/\t/        /g;
     my $flaglen      = 6;
     my $desiredwidth = 120;
-    my $screenwidth  = (`tput cols` + 0);
+    my $screenwidth = 80;
+    if ($ENV{'TERM'}) {
+        $screenwidth  = (`tput cols` + 0);
+    }
     my $maxlen = ($screenwidth > $desiredwidth ? $desiredwidth : $screenwidth);
 
     my @finalmsg = ();
@@ -194,7 +197,10 @@ sub listvalidsubcmd {
     $maxlen += 4;
 
     my $desiredwidth = 120;
-    my $screenwidth  = (`tput cols` + 0);
+    my $screenwidth = 80;
+    if ($ENV{'TERM'}) {
+        $screenwidth  = (`tput cols` + 0);
+    }
     my $finallen = ($screenwidth > $desiredwidth ? $desiredwidth : $screenwidth);
 
     print "Supported sub commands are:\n";
