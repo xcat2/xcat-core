@@ -259,6 +259,19 @@ foreach my $attr (@tmpargv) {
     }
 }
 
+# Create symlink /opt/xcat/probe/subcmds/bin/switchprobe -> /opt/xcat/bin/xcatclient if not already there
+my $switchprobe_link = $plugin_dir."/bin/switchprobe";
+unless (-l $switchprobe_link) {
+    my $xcatclient = `which xcatclient`;
+    chomp($xcatclient);
+    if ($xcatclient) {
+        symlink($xcatclient, $switchprobe_link);
+    }
+    else {
+        print "Can not create symbolic link $switchprobe_link to xcatclient. xCAT-client package not installed.\n";
+        exit 1;
+    }
+}
 
 &loadsubcmds;
 if (defined($pluginname)) {
