@@ -30,10 +30,6 @@ cmd:diff /tmp/known_host_keys /tmp/current_os_host_keys
 check:output!~>
 cmd:rm -f /tmp/known_host_keys /tmp/current_os_host_keys
 check:rc==0
-
-# Obtain the highest version of TLS supported by OpenSSL/TLS.
-cmd:openssl s_client --help 2>&1 | grep "\-tls1" | awk '{print $1}' | sort | tail -1
-check:rc==0
 end
 
 start:install_xCAT_on_ubuntu
@@ -79,9 +75,5 @@ check:rc==0
 cmd:diff /tmp/known_host_keys /tmp/current_os_host_keys
 check:output!~>
 cmd:rm -f /tmp/known_host_keys /tmp/current_os_host_keys
-check:rc==0
-
-# Obtain the highest version of TLS supported by OpenSSL/TLS.
-cmd:openssl s_client --help 2>&1 | grep "\-tls1" | awk '{print $1}' | sort | tail -1
 check:rc==0
 end
