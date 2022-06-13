@@ -71,10 +71,6 @@ if [ -e %{prefix}/probe/subcmds/bin/switchprobe ]; then
 else
     mkdir -p %{prefix}/probe/subcmds/bin/
 fi
-cd %{prefix}/probe/subcmds/bin/
-if [ -e %{prefix}/bin/xcatclient ]; then
-    ln -s %{prefix}/bin/xcatclient switchprobe
-fi
 
 %preun
 #remove the bin directory if not on upgrade
