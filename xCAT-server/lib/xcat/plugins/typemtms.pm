@@ -26,9 +26,10 @@ sub findme {
     my $mtms       = $request->{'mtm'}->[0] . "*" . $request->{'serial'}->[0];
     my $tmp_nodes  = $::XCATVPDHASH{$mtms};
     my @nodes      = ();
-    my @bmc_nodes = ();
-    my $bmc_node = undef;
+    my @bmc_nodes  = ();
+    my $bmc_node   = undef;
     foreach (@$tmp_nodes) {
+
         if ($::XCATMPHASH{$_}) {
             push @bmc_nodes, $_;
         } else {
@@ -56,13 +57,14 @@ sub findme {
         xCAT::MsgUtils->message("S", "xcat.discovery.mtms: ($request->{_xcat_clientmac}->[0]) Found node: $nodes[0]");
         $request->{discoverymethod}->[0] = 'mtms';
         my $req = {%$request};
-        $req->{command}   = ['discovered'];
-        $req->{noderange} = [ $nodes[0] ];
-        $req->{bmc_node}  = [$bmc_node];
+        $req->{command}      = ['discovered'];
+        $req->{noderange}    = [ $nodes[0] ];
+        $req->{bmc_node}     = [$bmc_node];
         $req->{updateswitch} = ['yes'];
         $subreq->($req);
+
         if (defined($req->{error})) {
-            $request->{error}->[0] = '1';
+            $request->{error}->[0]     = '1';
             $request->{error_msg}->[0] = $req->{error_msg}->[0];
         }
         %{$req} = ();

@@ -1089,9 +1089,10 @@ sub send_cmd {
     if ($result[3] =~ s/Rc=([0-9])+\r\n//) {
         if ($1 != 0) {
             if ($cmd =~ "lssyscfg -r frame -F") {
+
                 # On HMC V10 the "lssyscfg -r frame -F" command returns error,
                 # ON HMC V9 the same command returns "No results were found"
-                # Try to catch that command here and return 
+                # Try to catch that command here and return
                 # "No results were found" like we would on V9
                 return ([ NR_ERROR, "No results were found" ]);
             } else {

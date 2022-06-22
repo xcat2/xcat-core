@@ -54,7 +54,7 @@ sub mknetboot
     if ($req->{command}->[0] =~ 'mkstatelite') {
         $statelite = "true";
     }
-    my $bootparams = ${$req->{bootparams}};
+    my $bootparams = ${ $req->{bootparams} };
 
     my $nodes           = @{ $req->{node} };
     my @nodes           = @{ $req->{node} };
@@ -65,7 +65,7 @@ sub mknetboot
     my $pkgdir;
     my $osimagetab;
 
-    my $installroot = xCAT::TableUtils->getInstallDir();
+    my $installroot   = xCAT::TableUtils->getInstallDir();
     my $globaltftpdir = xCAT::TableUtils->getTftpDir();
     xCAT::MsgUtils->trace(0, "d", "sles->mknetboot: installroot=$installroot globaltftpdir=$globaltftpdir");
 
@@ -89,10 +89,10 @@ sub mknetboot
         $nodestatus = $t_entry;
     }
 
-    my @myself     = xCAT::NetworkUtils->determinehostname();
-    my $myname     = $myself[ (scalar @myself) - 1 ];
+    my @myself = xCAT::NetworkUtils->determinehostname();
+    my $myname = $myself[ (scalar @myself) - 1 ];
 
-    my $ostab           = xCAT::Table->new('nodetype');
+    my $ostab = xCAT::Table->new('nodetype');
     my $ntents = $ostab->getNodesAttribs($req->{node}, [ 'os', 'arch', 'profile', 'provmethod' ]);
     my %img_hash = ();
 
@@ -202,6 +202,7 @@ sub mknetboot
                 $rootimgdir = "$installroot/netboot/$osver/$arch/$profile";
             }
         } else {
+
             # This is deprecated mode to define node's provmethod, not supported now.
             my @ents = xCAT::TableUtils->get_site_attribute("disablenodesetwarning");
             my $site_ent = $ents[0];
@@ -235,8 +236,8 @@ sub mknetboot
                 }
             } else {
                 xCAT::MsgUtils->report_node_error($callback, $node,
-                    qq{Cannot find the linux image called "$osver-$arch-$imgname-$profile", maybe you need to use the "nodeset <nr> osimage=<osimage name>" command to set the boot state}
-                    );
+qq{Cannot find the linux image called "$osver-$arch-$imgname-$profile", maybe you need to use the "nodeset <nr> osimage=<osimage name>" command to set the boot state}
+                );
                 next;
             }
 
@@ -276,8 +277,8 @@ sub mknetboot
             }
             else {
                 xCAT::MsgUtils->report_node_error($callback, $node,
-                    qq{Cannot find the linux image called "$osver-$arch-$imgname-$profile", maybe you need to use the "nodeset <nr> osimage=<osimage name>" command to set the boot state}
-                    );
+qq{Cannot find the linux image called "$osver-$arch-$imgname-$profile", maybe you need to use the "nodeset <nr> osimage=<osimage name>" command to set the boot state}
+                );
                 next;
             }
             $rootimgdir = "$installroot/netboot/$osver/$arch/$profile";
@@ -301,27 +302,27 @@ sub mknetboot
             $platform = "sles";
         }
 
-        my $compressedrootimg=xCAT::SvrUtils->searchcompressedrootimg("$rootimgdir");
+        my $compressedrootimg = xCAT::SvrUtils->searchcompressedrootimg("$rootimgdir");
 
         if ($statelite) {
             unless (-r "$rootimgdir/kernel") {
                 xCAT::MsgUtils->report_node_error($callback, $node,
-                    qq{Did you run "genimage" before running "liteimg"? kernel cannot be found at $rootimgdir/kernel on $myname}
-                    );
+qq{Did you run "genimage" before running "liteimg"? kernel cannot be found at $rootimgdir/kernel on $myname}
+                );
                 next;
             }
             if ($rootfstype eq "ramdisk" and !-r "$rootimgdir/rootimg-statelite.gz") {
                 xCAT::MsgUtils->report_node_error($callback, $node,
-                    qq{No packed rootimage for the platform $osver, arch $arch and profile $profile, please run liteimg to create it}
-                    );
+qq{No packed rootimage for the platform $osver, arch $arch and profile $profile, please run liteimg to create it}
+                );
                 next;
             }
 
             if (!-r "$rootimgdir/initrd-statelite.gz") {
                 if (!-r "$rootimgdir/initrd.gz") {
                     xCAT::MsgUtils->report_node_error($callback, $node,
-                        qq{Did you run "genimage" before running "liteimg"? initrd.gz or initrd-statelite.gz cannot be found}
-                        );
+qq{Did you run "genimage" before running "liteimg"? initrd.gz or initrd-statelite.gz cannot be found}
+                    );
                     next;
                 }
                 else {
@@ -332,15 +333,15 @@ sub mknetboot
         } else {
             unless (-r "$rootimgdir/kernel") {
                 xCAT::MsgUtils->report_node_error($callback, $node,
-                    qq{Did you run "genimage" before running "packimage"? kernel cannot be found at $rootimgdir/kernel on $myname}
-                    );
+qq{Did you run "genimage" before running "packimage"? kernel cannot be found at $rootimgdir/kernel on $myname}
+                );
                 next;
             }
             if (!-r "$rootimgdir/initrd-stateless.gz") {
                 if (!-r "$rootimgdir/initrd.gz") {
                     xCAT::MsgUtils->report_node_error($callback, $node,
-                        qq{Did you run "genimage" before running "packimage"? initrd.gz or initrd-stateless.gz cannot be found}
-                        );
+qq{Did you run "genimage" before running "packimage"? initrd.gz or initrd-stateless.gz cannot be found}
+                    );
                     next;
                 }
                 else {
@@ -350,8 +351,8 @@ sub mknetboot
 
             unless (-r -f "$rootimgdir/$compressedrootimg") {
                 xCAT::MsgUtils->report_node_error($callback, $node,
-                    qq{No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage before nodeset}
-                    );
+qq{No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage before nodeset}
+                );
                 next;
             }
         }
@@ -427,7 +428,7 @@ sub mknetboot
 
         if ($ient and $ient->{nfsserver} and $ient->{nfsserver} ne '<xcatmaster>') {
             $imgsrv = $ient->{nfsserver};
-        }elsif ($ient and $ient->{tftpserver} and $ient->{tftpserver} ne '<xcatmaster>') {
+        } elsif ($ient and $ient->{tftpserver} and $ient->{tftpserver} ne '<xcatmaster>') {
             $imgsrv = $ient->{tftpserver};
         } else {
             $imgsrv = $xcatmaster;
@@ -512,7 +513,7 @@ sub mknetboot
         else
         {
             $kcmdline =
-              "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/$compressedrootimg ";
+"imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/$compressedrootimg ";
         }
         $kcmdline .= "XCAT=$xcatmaster:$xcatdport quiet ";
         $kcmdline .= " XCATHTTPPORT=$httpport ";
@@ -582,15 +583,15 @@ sub mknetboot
 
             #my $sent = $hmtab->getNodeAttribs($node,['serialspeed','serialflow']);
             unless ($sent->{serialspeed}) {
-                xCAT::MsgUtils->report_node_error($callback, $node,"serialport defined, but no serialspeed for $node in nodehm table");
+                xCAT::MsgUtils->report_node_error($callback, $node, "serialport defined, but no serialspeed for $node in nodehm table");
                 next;
             }
             if ($arch =~ /ppc64le/i) {
                 $kcmdline .=
-                    "console=tty0 console=hvc" . $sent->{serialport} . "," . $sent->{serialspeed};
+"console=tty0 console=hvc" . $sent->{serialport} . "," . $sent->{serialspeed};
             } else {
                 $kcmdline .=
-                    "console=tty0 console=ttyS" . $sent->{serialport} . "," . $sent->{serialspeed};
+"console=tty0 console=ttyS" . $sent->{serialport} . "," . $sent->{serialspeed};
             }
             if ($sent->{serialflow} =~ /(hard|tcs|ctsrts)/)
             {
@@ -642,8 +643,8 @@ sub mknetboot
                 $kcmdline .= " MNTOPTS=$mntoptions";
             }
         }
-        $bootparams->{$node}->[0]->{kernel} = "$rtftppath/kernel";
-        $bootparams->{$node}->[0]->{initrd} = $initrdstr;
+        $bootparams->{$node}->[0]->{kernel}   = "$rtftppath/kernel";
+        $bootparams->{$node}->[0]->{initrd}   = $initrdstr;
         $bootparams->{$node}->[0]->{kcmdline} = $kcmdline;
     }
 }
@@ -681,13 +682,13 @@ sub process_request
 
 sub mkinstall
 {
-    my $request       = shift;
-    my $callback      = shift;
-    my $doreq         = shift;
+    my $request  = shift;
+    my $callback = shift;
+    my $doreq    = shift;
 
     my $noupdateinitrd  = $request->{'noupdateinitrd'};
     my $ignorekernelchk = $request->{'ignorekernelchk'};
-    my $bootparams = ${$request->{bootparams}};
+    my $bootparams      = ${ $request->{bootparams} };
     my @nodes           = @{ $request->{node} };
     my $node;
 
@@ -721,7 +722,7 @@ sub mkinstall
       $restab->getNodesAttribs(
         \@nodes,
         [
-            'nfsserver', 'tftpdir', 'xcatmaster',
+            'nfsserver',  'tftpdir',    'xcatmaster',
             'primarynic', 'installnic', 'tftpserver'
         ]
       );
@@ -729,7 +730,7 @@ sub mkinstall
       $hmtab->getNodesAttribs(\@nodes, [ 'serialport', 'serialspeed', 'serialflow' ]);
 
     my $globaltftpdir = xCAT::TableUtils->getTftpDir();
-    my $installroot = xCAT::TableUtils->getInstallDir();
+    my $installroot   = xCAT::TableUtils->getInstallDir();
     xCAT::MsgUtils->trace($verbose_on_off, "d", "sles->mkinstall: installroot=$installroot globaltftpdir=$globaltftpdir");
 
     my %donetftp;
@@ -762,7 +763,7 @@ sub mkinstall
             $tftpdir = $globaltftpdir;
         }
 
-        if ($resents and $resents->{$node}->[0]->{xcatmaster} ) {
+        if ($resents and $resents->{$node}->[0]->{xcatmaster}) {
             $tmpl_hash{"xcatmaster"} = $resents->{$node}->[0]->{xcatmaster};
         }
         if ($resents and $resents->{$node}->[0]->{tftpserver}) {
@@ -907,8 +908,8 @@ sub mkinstall
             }
             else {
                 xCAT::MsgUtils->report_node_error($callback, $node,
-                    qq{ Cannot find the linux image called "$imgname", maybe you need to use the "nodeset <nr> osimage=<your_image_name>" command to set the boot state}
-                    );
+qq{ Cannot find the linux image called "$imgname", maybe you need to use the "nodeset <nr> osimage=<your_image_name>" command to set the boot state}
+                );
             }
         }
 
@@ -923,8 +924,8 @@ sub mkinstall
         unless (-r "$tmplfile")
         {
             xCAT::MsgUtils->report_node_error($callback, $node,
-                "No AutoYaST template exists for " . $ent->{profile} . " in directory $installroot/custom/install/$plat or $::XCATROOT/share/xcat/install/$plat"
-                );
+"No AutoYaST template exists for " . $ent->{profile} . " in directory $installroot/custom/install/$plat or $::XCATROOT/share/xcat/install/$plat"
+            );
             next;
         }
 
@@ -937,9 +938,9 @@ sub mkinstall
 
         # trim the "/" in /install/sles11.3/x86_64/
         $pkgdir =~ s/\/$//;
-        if ( -d "$pkgdir/2") {
+        if (-d "$pkgdir/2") {
             $srcdirs[0] = "$pkgdir/1,$pkgdir/2";
-        }else{
+        } else {
             $srcdirs[0] = "$pkgdir/1";
         }
         $tmppkgdir = join(",", @srcdirs);
@@ -1234,8 +1235,8 @@ sub mkinstall
                 $kernelpath = "$rtftppath/linux";
                 $initrdpath = "$rtftppath/initrd";
                 xCAT::MsgUtils->trace($verbose_on_off, "d", "sles->mkinstall: kcmdline=$kcmdline kernal=$kernelpath initrd=$initrdpath");
-                $bootparams->{$node}->[0]->{kernel} = $kernelpath;
-                $bootparams->{$node}->[0]->{initrd} = $initrdpath;
+                $bootparams->{$node}->[0]->{kernel}   = $kernelpath;
+                $bootparams->{$node}->[0]->{initrd}   = $initrdpath;
                 $bootparams->{$node}->[0]->{kcmdline} = $kcmdline;
             }
             elsif ($arch eq "ppc64")
@@ -1248,8 +1249,8 @@ sub mkinstall
                     $kernelpath = "$rtftppath/linux64";
                     $initrdpath = "$rtftppath/initrd64";
                     xCAT::MsgUtils->trace($verbose_on_off, "d", "sles->mkinstall: kcmdline=$kcmdline kernal=$kernelpath initrd=$initrdpath");
-                    $bootparams->{$node}->[0]->{kernel} = $kernelpath;
-                    $bootparams->{$node}->[0]->{initrd} = $initrdpath;
+                    $bootparams->{$node}->[0]->{kernel}   = $kernelpath;
+                    $bootparams->{$node}->[0]->{initrd}   = $initrdpath;
                     $bootparams->{$node}->[0]->{kcmdline} = $kcmdline;
                 }
                 elsif (-r "$tftppath/inst64") {
@@ -1258,8 +1259,8 @@ sub mkinstall
                     #suseboot/inst64 can not be run on Power8 BE
                     $kernelpath = "$rtftppath/inst64";
                     xCAT::MsgUtils->trace($verbose_on_off, "d", "sles->mkinstall: kcmdline=$kcmdline kernal=$kernelpath initrd=");
-                    $bootparams->{$node}->[0]->{kernel} = $kernelpath;
-                    $bootparams->{$node}->[0]->{initrd} = "";
+                    $bootparams->{$node}->[0]->{kernel}   = $kernelpath;
+                    $bootparams->{$node}->[0]->{initrd}   = "";
                     $bootparams->{$node}->[0]->{kcmdline} = $kcmdline;
                 }
             }
@@ -1268,7 +1269,7 @@ sub mkinstall
             xCAT::MsgUtils->report_node_error($callback, $node, "Failed to detect copycd configured install source at /install/$os/$arch");
             next;
         }
-    } # end foreach node
+    }    # end foreach node
 
     #my $rc = xCAT::TableUtils->create_postscripts_tar();
     #if ($rc != 0)
@@ -1279,15 +1280,15 @@ sub mkinstall
 
 sub mksysclone
 {
-    my $request  = shift;
-    my $callback = shift;
-    my $doreq    = shift;
-    my @nodes    = @{ $request->{node} };
-    my $bootparams = ${$request->{bootparams}};
+    my $request    = shift;
+    my $callback   = shift;
+    my $doreq      = shift;
+    my @nodes      = @{ $request->{node} };
+    my $bootparams = ${ $request->{bootparams} };
     my $osimagetab;
     my %img_hash = ();
 
-    my $installroot = xCAT::TableUtils->getInstallDir();
+    my $installroot   = xCAT::TableUtils->getInstallDir();
     my $globaltftpdir = xCAT::TableUtils->getTftpDir();
     xCAT::MsgUtils->trace(0, "d", "sles->mksysclone: installroot=$installroot globaltftpdir=$globaltftpdir");
 
@@ -1478,8 +1479,8 @@ sub mksysclone
             if (-r "$tftpdir/xcat/genesis.fs.$arch.lzma") {
                 $i = "xcat/genesis.fs.$arch.lzma";
             }
-            $bootparams->{$node}->[0]->{kernel} = "xcat/genesis.kernel.$arch";
-            $bootparams->{$node}->[0]->{initrd} = $i;
+            $bootparams->{$node}->[0]->{kernel}   = "xcat/genesis.kernel.$arch";
+            $bootparams->{$node}->[0]->{initrd}   = $i;
             $bootparams->{$node}->[0]->{kcmdline} = $kcmdline;
         }
         else
@@ -1559,7 +1560,7 @@ erver, if so, stop it first and try again" ],
 sub using_dracut
 {
     my $rootimgdir = shift;
-    if ( -f "$rootimgdir/rootimg/etc/dracut.conf" ) {
+    if (-f "$rootimgdir/rootimg/etc/dracut.conf") {
         return 1;
     } else {
         return 0;
@@ -1676,7 +1677,7 @@ sub copycd
                 open($mfile, $mntpath . "/" . $pname . "/products");
                 my $prod = <$mfile>;
                 close($mfile);
-    
+
                 if ($prod =~ m/SUSE-Linux-Enterprise-Server/ || $prod =~ m/SUSE-Linux-Enterprise-Software-Development-Kit/ || $prod =~ m/SLES/ || $prod =~ m/SDK/)
                 {
                     if (-f "$mntpath/content") {
@@ -1692,7 +1693,7 @@ sub copycd
                             }
                             unless ($distname) {
                                 if (/^DISTRO/ || /^LABEL/) {
-    
+
                                     # only set to $1 if the regex was successful
                                     if ($_ =~ /sles:(\d+),/) {
                                         $distname = "sles" . $1;
@@ -1730,7 +1731,7 @@ sub copycd
                         }
                         $discnumber = 'sdk' . $discnumber;
                     }
-    
+
                     # check media.1/products for text.
                     # the cselx is a special GE built version.
                     # openSUSE is the normal one.
@@ -1738,19 +1739,19 @@ sub copycd
                     $distname    = "suse11";
                     $detdistname = "suse11";
                 }
-    
+
             }
         }
-    
+
         closedir($dirh);
     } elsif (-r $mntpath . "/media.1/media") {
         my $dinfo;
         open($dinfo, $mntpath . "/media.1/media");
         my $dsc = <$dinfo>;
         if ($dsc =~ /x86_64/) {
-            $darch = "x86_64";        
+            $darch = "x86_64";
         } elsif ($dsc =~ /ppc64le/) {
-            $darch = "ppc64le" ;
+            $darch = "ppc64le";
         }
         if ($dsc =~ /Installer/ and $dsc =~ /SLE-15/) {
             $discnumber = 1;
@@ -1760,7 +1761,7 @@ sub copycd
                 } else {
                     $distname = "sle15";
                 }
-            };
+            }
         } elsif ($dsc =~ /SLE-15/ and $dsc =~ /Packages/) {
             $discnumber = 2;
             unless ($distname) {
@@ -1769,21 +1770,21 @@ sub copycd
                 } else {
                     $distname = "sle15";
                 }
-            };
+            }
         } elsif ($dsc =~ /SLE-15/ and $dsc =~ /Full/) {
             $discnumber = 1;
-	    $linktwo = 1;
+            $linktwo    = 1;
             unless ($distname) {
                 if ($dsc =~ /SLE-15-SP(\d)/) {
                     $distname = "sle15.$1";
                 } else {
                     $distname = "sle15";
                 }
-            };
+            }
         }
     }
 
-    
+
     unless ($distname and $discnumber)
     {
         #failed to parse the disc info
@@ -2082,9 +2083,9 @@ sub copycd
             if ($ret[0] != 0) {
                 $callback->({ data => "Error when updating the osimage tables for stateless: " . $ret[1] });
             }
-            my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite",$path,$osdistroname);
+            my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite", $path, $osdistroname);
             if ($ret[0] != 0) {
-              $callback->({data => "Error when updating the osimage tables for statelite: " . $ret[1]});
+                $callback->({ data => "Error when updating the osimage tables for statelite: " . $ret[1] });
             }
 
         }

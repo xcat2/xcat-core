@@ -106,6 +106,7 @@ sub preprocess_request {
         $request = {};
         return;
     }
+
     # The cleanup shall run on both MN and all SNs
     if ($::CLEANUP) {
         if ($noderange && @$noderange > 0) {
@@ -114,7 +115,7 @@ sub preprocess_request {
             return;
         }
         my @sns = xCAT::ServiceNodeUtils->getSNList();
-        unless ( @sns > 0 ) {
+        unless (@sns > 0) {
             return xCAT::Scope->get_parallel_scope($request);
         }
         return xCAT::Scope->get_broadcast_scope_with_parallel($request, \@sns);
@@ -341,6 +342,7 @@ sub docfheaders {
             $siteondemand = 1;
         }
         elsif (lc($site_entry) ne "no") {
+
             # consoleondemand attribute is set, but it is not "yes" or "no"
             xCAT::SvrUtils::sendmsg([ 1, "Unexpected value $site_entry for consoleondemand attribute in site table" ], $cb);
         }
@@ -378,7 +380,7 @@ sub makeconservercf {
         push @filecontent, $_;
     }
     close $cfile;
-    docfheaders(\@filecontent,$cb);
+    docfheaders(\@filecontent, $cb);
 
     my $isSN     = xCAT::Utils->isServiceNode();
     my @hostinfo = xCAT::NetworkUtils->determinehostname();
@@ -441,15 +443,15 @@ sub makeconservercf {
             xCAT::SvrUtils::sendmsg([ 1, "Bad configuration, check attributes under the nodehm category" ], $cb, $node);
         }
     } elsif ($::CLEANUP) {
-        my $nodelstab = xCAT::Table->new('nodelist');
-        my @allnodeset = $nodelstab->getAllAttribs('node');
+        my $nodelstab   = xCAT::Table->new('nodelist');
+        my @allnodeset  = $nodelstab->getAllAttribs('node');
         my %allnodehash = map { $_->{node} => 1 } @allnodeset;
         my $rmnodes = delete_undefined_nodes_entry(\@filecontent, \%allnodehash);
         my $rsp;
         if (!defined($rmnodes)) {
             $rsp->{data}->[0] = "Nothing removed";
-        } else{
-            $rsp->{data}->[0] = "Remove console entry for the nodes:".join(',', @$rmnodes);
+        } else {
+            $rsp->{data}->[0] = "Remove console entry for the nodes:" . join(',', @$rmnodes);
         }
         xCAT::MsgUtils->message("I", $rsp, $cb);
     } else {    #no nodes specified, do em all up
@@ -613,8 +615,8 @@ sub donodeent {
             # either there is no console method (shouldnt happen) or not one of the supported terminal servers
             return $node;
         }
-        if (!grep(/^$cmeth$/, @cservers) && ! -x $::XCATROOT . "/share/xcat/cons/" . $cmeth) {
-            xCAT::SvrUtils::sendmsg([ 0, "ignore, ". $::XCATROOT . "/share/xcat/cons/$cmeth is not excutable. Please check mgt or cons attribute." ], $::callback, $node);
+        if (!grep(/^$cmeth$/, @cservers) && !-x $::XCATROOT . "/share/xcat/cons/" . $cmeth) {
+            xCAT::SvrUtils::sendmsg([ 0, "ignore, " . $::XCATROOT . "/share/xcat/cons/$cmeth is not excutable. Please check mgt or cons attribute." ], $::callback, $node);
             next;
         }
         push @$content, "#xCAT BEGIN $node CONS\n";
@@ -642,6 +644,7 @@ sub donodeent {
             }
         }
         if (defined($cfgent->{consoleondemand})) {
+
             # consoleondemand attribute for node can be "1", "yes", "0" and "no"
             if ((($cfgent->{consoleondemand} eq "1") || lc($cfgent->{consoleondemand}) eq "yes") && !$siteondemand) {
                 push @$content, "  options ondemand;\n";
@@ -655,24 +658,26 @@ sub donodeent {
     }
     return 0;
 }
+
 # Remove cons entries for the undefined nodes
 sub delete_undefined_nodes_entry {
-    my $content = shift;
+    my $content      = shift;
     my $allnodeshash = shift;
-    my $idx      = 0;
-    my $toidx    = -1;
-    my $skip     = 0;
-    my $skipnext = 0;
-    my @rmnodes = ();
+    my $idx          = 0;
+    my $toidx        = -1;
+    my $skip         = 0;
+    my $skipnext     = 0;
+    my @rmnodes      = ();
     while ($idx <= $#$content) {
+
         if ($content->[$idx] =~ /^#xCAT BEGIN (\S+) CONS/) {
-            $toidx   = $idx;
+            $toidx = $idx;
             my $node = $1;
             unless (exists($allnodeshash->{$node})) {
-                $skip  = 1;
+                $skip     = 1;
                 $skipnext = 1;
                 push @rmnodes, $node;
-                print __LINE__."===== push node: $node==\n";
+                print __LINE__. "===== push node: $node==\n";
             }
         } elsif ($content->[$idx] =~ /^#xCAT END/) {
             $skipnext = 0;

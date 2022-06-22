@@ -574,7 +574,7 @@ sub setSSHcfg {
     my $sw_prompt     = "^.*\] > ";
     my $enable_prompt = "^.*\] \#";
     my $config_prompt = "^.*\\\(config\\\) \#";
-    my $init_prompt   = "Do you want to use the wizard for initial configuration?";
+    my $init_prompt = "Do you want to use the wizard for initial configuration?";
 
 
     my $debug = 0;

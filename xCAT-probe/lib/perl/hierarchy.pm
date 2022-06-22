@@ -104,7 +104,7 @@ sub calculate_dispatch_cmd {
         my $args = join(" ", @$argv_ref);
         $self->{dispatchcmd}->{mn} = "$::XCATROOT/probe/subcmds/$self->{program_name} $args -H 2>&1";
         if (@snlist) {
-            my $sns  = join(",", @snlist);
+            my $sns = join(",", @snlist);
             $self->{dispatchcmd}->{$sns} = "$::XCATROOT/probe/subcmds/$self->{program_name} $args -H 2>&1";
         }
     }

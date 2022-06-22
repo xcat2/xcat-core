@@ -247,18 +247,18 @@ sub process_request {
     my $ntp_servers = $entries[0];
 
     if (!xCAT::Utils->isMN() && ((!$ntp_servers) ||
-        (($ntp_servers) && ($ntp_servers =~ /<xcatmaster>/)))) {
+            (($ntp_servers) && ($ntp_servers =~ /<xcatmaster>/)))) {
         my $retdata = xCAT::ServiceNodeUtils->readSNInfo($nodename);
         $ntp_servers = $retdata->{'master'};
     }
 
     # Handle chronyd here,
     if (-x "/usr/sbin/chronyd" &&
-		(-x "/usr/bin/systemctl" || -x "/bin/systemctl")) {
+        (-x "/usr/bin/systemctl" || -x "/bin/systemctl")) {
         send_msg(\%request, 0, "Will configure chronyd instead.");
 
         my $cmd = "/install/postscripts/setupntp " .
-            join(' ', split(',', $ntp_servers));
+          join(' ', split(',', $ntp_servers));
         send_msg(\%request, 0, "Calling ... " . $cmd);
 
         my $result = xCAT::Utils->runcmd($cmd, 0);
@@ -269,7 +269,7 @@ sub process_request {
 
         send_msg(\%request, 0, "Daemon chronyd configured.");
 
-	# Cannot find a better way other than use goto statement :-/
+        # Cannot find a better way other than use goto statement :-/
         goto HANDLE_MAKENTP_A;
     }
 
@@ -331,7 +331,7 @@ sub process_request {
         }
     }
 
-    my $os          = xCAT::Utils->osver("all");
+    my $os = xCAT::Utils->osver("all");
 
     #for sles, /var/lib/ntp/drift is a dir
     if (xCAT::Utils->isAIX()) {
@@ -441,14 +441,14 @@ sub process_request {
         $grep_cmd = "grep -i SYNC_HWCLOCK /etc/sysconfig/ntpd";
         $rc = xCAT::Utils->runcmd($grep_cmd, 0);
         if ($::RUNCMD_RC == 0) {
-            `sed -i 's/.*SYNC_HWCLOCK.*/SYNC_HWCLOCK=\"yes\"/' /etc/sysconfig/ntpd`;
+`sed -i 's/.*SYNC_HWCLOCK.*/SYNC_HWCLOCK=\"yes\"/' /etc/sysconfig/ntpd`;
         } else {
             `echo SYNC_HWCLOCK=\"yes\" >> /etc/sysconfig/ntpd`;
         }
     } elsif (-f "/etc/sysconfig/ntp") {
-        `sed -i 's/.*SYNC_HWCLOCK.*/NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP=\"yes\"/' /etc/sysconfig/ntp`;
-        `sed -i 's/^NTPD_FORCE_SYNC_ON.*/NTPD_FORCE_SYNC_ON_STARTUP=\"yes\"/' /etc/sysconfig/ntp`;
-        `sed -i 's/.*RUN_CHROOTED.*/NTPD_RUN_CHROOTED=\"yes\"/' /etc/sysconfig/ntp`;
+`sed -i 's/.*SYNC_HWCLOCK.*/NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP=\"yes\"/' /etc/sysconfig/ntp`;
+`sed -i 's/^NTPD_FORCE_SYNC_ON.*/NTPD_FORCE_SYNC_ON_STARTUP=\"yes\"/' /etc/sysconfig/ntp`;
+`sed -i 's/.*RUN_CHROOTED.*/NTPD_RUN_CHROOTED=\"yes\"/' /etc/sysconfig/ntp`;
     } else {
         my $cron_file = "/etc/cron.daily/xcatsethwclock";
         if (!-f "$cron_file") {
@@ -477,7 +477,7 @@ sub process_request {
     }
     xCAT::Utils->enableservice($ntp_service);
 
-HANDLE_MAKENTP_A:
+  HANDLE_MAKENTP_A:
 
     #now handle sn that has ntpserver=1 set in servicenode table.
     # this part is called by makentp -a.
@@ -494,7 +494,7 @@ HANDLE_MAKENTP_A:
                 },
                 $sub_req, -1, 1
               );
-            my $retcode=$::RUNCMD_RC;
+            my $retcode = $::RUNCMD_RC;
             my $msg;
             foreach my $line (@$ret) {
                 $msg .= "$line\n";

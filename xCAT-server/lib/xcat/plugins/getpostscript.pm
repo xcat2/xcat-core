@@ -98,9 +98,9 @@ sub process_request
         $rsp->{data} = \@scriptcontents;
         $callback->($rsp);
     } else {          # version 2, make files, do not return array
-        #  make the mypostscript.<nodename> file
-        # or the mypostscript.<nodename>.tmp file if precreatemypostscripts=0
-        # xcatdsklspost will wget the file
+           #  make the mypostscript.<nodename> file
+           # or the mypostscript.<nodename>.tmp file if precreatemypostscripts=0
+           # xcatdsklspost will wget the file
         $notmpfiles = 0;
         $nofiles    = 0;
         xCAT::Postage::makescript([$client], $state, $callback, $notmpfiles, $nofiles);

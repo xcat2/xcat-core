@@ -89,12 +89,12 @@ my $dbtracelevel;
 my %elapsed;
 
 use constant BUILD_CACHE_TYPE => "build_cache";
-use constant CACHE_HIT_TYPE => "cache_hit";
-use constant START_TYPE => "start";
-use constant END_TYPE => "end";
-use constant START_SQL_TYPE => "start_sql";
-use constant END_SQL_TYPE => "end_sql";
-use constant INFO_TYPE => "info";
+use constant CACHE_HIT_TYPE   => "cache_hit";
+use constant START_TYPE       => "start";
+use constant END_TYPE         => "end";
+use constant START_SQL_TYPE   => "start_sql";
+use constant END_SQL_TYPE     => "end_sql";
+use constant INFO_TYPE        => "info";
 
 my %trace_level_mapping = (START_TYPE() => 1, END_TYPE() => 1, BUILD_CACHE_TYPE() => 2,
     CACHE_HIT_TYPE() => 3, START_SQL_TYPE() => 4, END_SQL_TYPE() => 4, INFO_TYPE() => 5);
@@ -192,17 +192,17 @@ sub dbc_submit {
 sub _trace_log
 {
     my ($type, $msg) = @_;
-    if( $type eq START_TYPE || $type eq START_SQL_TYPE) {
-        $elapsed{$trace_level_mapping{$type}} = time();
+    if ($type eq START_TYPE || $type eq START_SQL_TYPE) {
+        $elapsed{ $trace_level_mapping{$type} } = time();
     }
     my %hash = ("type" => $type, "msg" => $msg);
-    if($type eq END_TYPE || $type eq END_SQL_TYPE) {
-        if (!$elapsed{$trace_level_mapping{$type}}) {
+    if ($type eq END_TYPE || $type eq END_SQL_TYPE) {
+        if (!$elapsed{ $trace_level_mapping{$type} }) {
             return;
         }
-        $hash{"elapsed"} = sprintf("%.5fs", time() - $elapsed{$trace_level_mapping{$type}});
+        $hash{"elapsed"} = sprintf("%.5fs", time() - $elapsed{ $trace_level_mapping{$type} });
     }
-    xCAT::MsgUtils->message("S", "[DB Trace]: ".encode_json(\%hash));
+    xCAT::MsgUtils->message("S", "[DB Trace]: " . encode_json(\%hash));
 }
 
 
@@ -241,7 +241,7 @@ sub trace_db {
     if (!$dbtracelevel) {
         return;
     }
-    if($dbworkerpid > 0) {
+    if ($dbworkerpid > 0) {
         return;
     }
     $type = INFO_TYPE if (!$type);
@@ -250,15 +250,16 @@ sub trace_db {
         return;
     }
     if (($trace_level_mapping{$type} == 1) && (caller(2))[3] ne "xCAT::Table::handle_dbc_request") {
+
         # ignore internal calls
         return;
     }
 
     if ($trace_level_mapping{$type} <= $dbtracelevel) {
         my $msg;
-        $msg->{"table"} = $self->{tabname};
+        $msg->{"table"}  = $self->{tabname};
         $msg->{"method"} = (caller(1))[3];
-        $msg->{"addon"} = $addon if $addon;
+        $msg->{"addon"}  = $addon if $addon;
         _trace_log($type, $msg);
     }
 }
@@ -295,7 +296,7 @@ sub init_dbworker {
         die "Error spawining database worker";
     }
     unless ($dbworkerpid) {
-        $intendedpid = $$;
+        $intendedpid  = $$;
         $dbtracelevel = xCAT::TableUtils->get_site_attribute("dbtracelevel");
         $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { } }; #avoid zombies from notification framework
              #This process is the database worker, it's job is to manage database queries to reduce required handles and to permit cross-process caching
@@ -311,7 +312,7 @@ sub init_dbworker {
         $SIG{HUP} = sub {
             $dbtracelevel = xCAT::TableUtils->get_site_attribute("dbtracelevel");
             xCAT::MsgUtils->message("S", "dbtracelevel has been reloaded, current value is $dbtracelevel");
-            foreach my $item ( keys %elapsed) {
+            foreach my $item (keys %elapsed) {
                 $elapsed{$item} = undef;
             }
         };
@@ -960,24 +961,24 @@ sub new
         }
 
         my $oldumask = umask 0077;
-        my $retry = 0;
+        my $retry    = 0;
         while (!$::XCAT_DBHS->{ $self->{connstring}, $self->{dbuser}, $self->{dbpass}, $self->{realautocommit} }) {
             eval {
                 local $SIG{__WARN__} = sub {
                     my $message = shift;
                     if ($retry == 3 && $message) {
-                        xCAT::MsgUtils->message("S", "Failed to connect to ".$self->{tabname}." table after retrying $retry times: $message");
+                        xCAT::MsgUtils->message("S", "Failed to connect to " . $self->{tabname} . " table after retrying $retry times: $message");
                     }
                 };
                 $::XCAT_DBHS->{ $self->{connstring}, $self->{dbuser}, $self->{dbpass}, $self->{realautocommit} } =
-                    DBI->connect($self->{connstring}, $self->{dbuser}, $self->{dbpass}, { AutoCommit => $self->{realautocommit} });
+                  DBI->connect($self->{connstring}, $self->{dbuser}, $self->{dbpass}, { AutoCommit => $self->{realautocommit} });
             };
             if ($::XCAT_DBHS->{ $self->{connstring}, $self->{dbuser}, $self->{dbpass}, $self->{realautocommit} }) {
                 last;
             } elsif ($retry == 3) {
                 last;
             } else {
-                sleep (2**$retry);
+                sleep(2**$retry);
             }
             $retry++;
         }
@@ -1844,14 +1845,14 @@ sub setAttribs
         $self->trace_db(START_SQL_TYPE, $qstring);
         my $sth = $self->{dbh}->prepare($cmd);
         unless ($sth) {
-            $self->trace_db(END_TYPE, "LINE ".__LINE__.": Error attempting requested DB operation");
+            $self->trace_db(END_TYPE, "LINE " . __LINE__ . ": Error attempting requested DB operation");
             return (undef, "Error attempting requested DB operation");
         }
         my $err = $sth->execute(@bind);
         $self->trace_db(END_SQL_TYPE);
         if (not defined($err))
         {
-            $self->trace_db(END_TYPE, "LINE ".__LINE__.": ".$sth->errstr);
+            $self->trace_db(END_TYPE, "LINE " . __LINE__ . ": " . $sth->errstr);
             return (undef, $sth->errstr);
         }
         $sth->finish;
@@ -1863,16 +1864,17 @@ sub setAttribs
         @bind   = ();
         $cols   = "";
         my %newpairs;
+
         # NOTE(chenglch): Just work around, set the default value to '' due to
         # null value can not be allowed in composite primary keys in standard
         # SQL rules. As auto increment key is uesd by 'eventlog' and 'auditlog'
         # table, just skip these tables.
         if ($self->{tabname} ne "eventlog" && $self->{tabname} ne "auditlog") {
             my $descr = $xCAT::Schema::tabspec{ $self->{tabname} };
-            my @pkeys = @{$descr->{keys}};
+            my @pkeys = @{ $descr->{keys} };
             for my $p (@pkeys) {
-                if(!defined($elems->{$p}) && !defined($pKeypairs->{$p})) {
-                    $elems->{$p}= '';
+                if (!defined($elems->{$p}) && !defined($pKeypairs->{$p})) {
+                    $elems->{$p} = '';
                 }
             }
         }
@@ -1912,7 +1914,7 @@ sub setAttribs
         $self->trace_db(END_SQL_TYPE, $qstring);
         if (not defined($err))
         {
-            $self->trace_db(END_TYPE, "LINE ".__LINE__.": ". $sth->errstr);
+            $self->trace_db(END_TYPE, "LINE " . __LINE__ . ": " . $sth->errstr);
             return (undef, $sth->errstr);
         }
         $sth->finish;
@@ -1986,6 +1988,7 @@ sub setAttribsWhere
     my @bind         = ();
     my $action;
     my @notif_data;
+
     if (not $self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
 
         #search this code for the other if statement just like it for an explanation of why I do this
@@ -2041,7 +2044,7 @@ sub setAttribsWhere
     $self->trace_db(END_SQL_TYPE);
     if (not defined($err))
     {
-        $self->trace_db(END_TYPE, "LINE ".__LINE__.": ".$sth->errstr);
+        $self->trace_db(END_TYPE, "LINE " . __LINE__ . ": " . $sth->errstr);
         return (undef, $sth->errstr);
     }
 
@@ -2209,6 +2212,7 @@ sub setNodesAttribs {
         $query->execute(@currnodes);
         $self->trace_db(END_SQL_TYPE);
         my $rec;
+
         while ($rec = $query->fetchrow_hashref()) {
             $updatenodes{ $rec->{$nodekey} } = 1;
         }
@@ -2234,6 +2238,7 @@ sub setNodesAttribs {
             $columns =~ s/, $//;
             my $instring = "INSERT INTO " . $self->{tabname} . " ($columns) VALUES ($bindhooks)";
             $self->trace_db(START_SQL_TYPE, $instring);
+
             #print $instring;
             $insertsth = $self->{dbh}->prepare($instring);
         }
@@ -2311,7 +2316,7 @@ sub setNodesAttribs {
 
 #--------------------------------------------------------------------------------
 sub getNodesAttribs {
-    my $self = shift;
+    my $self     = shift;
     my $nodelist = shift;
     unless ($nodelist) { $nodelist = []; } #common to be invoked with undef seemingly
     my %options = ();
@@ -2527,12 +2532,12 @@ sub a2zidx {
 
 #--------------------------------------------------------------------------------
 sub dim2idx {
-    my $val = 0; # value to return
-    my $fn = 0;  # math function to apply, 0 is add, 1 is multiply
+    my $val = 0;    # value to return
+    my $fn  = 0;    # math function to apply, 0 is add, 1 is multiply
     while (defined(my $element = shift)) {
-            $val += $element - 1 if !$fn;
-            $val *= $element if $fn;
-            $fn = 1 - $fn;
+        $val += $element - 1 if !$fn;
+        $val *= $element if $fn;
+        $fn = 1 - $fn;
     }
     return $val + 1;
 }
@@ -2559,14 +2564,14 @@ sub skip {
     my $idx = my $val = shift;
     my $skips = shift;
     foreach my $element (split /,/, $skips) {
-            my ($start, $count) = split /:/, $element;
-            $count = 1 if ! defined($count);
-            if ($idx >= $start) {
-                    if ($idx < $start + $count) {return -1;}
-                    $val-= $count;
-            } else {
-                    last;
-            }
+        my ($start, $count) = split /:/, $element;
+        $count = 1 if !defined($count);
+        if ($idx >= $start) {
+            if ($idx < $start + $count) { return -1; }
+            $val -= $count;
+        } else {
+            last;
+        }
     }
     return $val;
 }
@@ -2601,8 +2606,8 @@ sub ipadd {
     use integer;
     my ($b1, $b2, $b3, $b4, $toadd, $skipstart, $skipend) = @_;
     my $offset = ($b4 >= $skipstart) ? $b4 - $skipstart : 0;
-    $b3 += ($offset + $toadd) / (256-$skipstart-$skipend);
-    $b4 = ($offset + $toadd) % (256-$skipstart-$skipend) + $skipstart;
+    $b3 += ($offset + $toadd) / (256 - $skipstart - $skipend);
+    $b4 = ($offset + $toadd) % (256 - $skipstart - $skipend) + $skipstart;
     return join('.', $b1, $b2, $b3, $b4);
 }
 
@@ -2670,7 +2675,7 @@ sub transRegexAttrs
         $retval = $parts[1];
 
         ($curr, $next, $prev) =
-            extract_bracketed($retval, '()', qr/[^()]*/);
+          extract_bracketed($retval, '()', qr/[^()]*/);
         unless ($curr) { #If there were no paramaters to save, treat this one like a plain regex
             undef $@; #extract_bracketed would have set $@ if it didn't return, undef $@
             $retval = $node;
@@ -2687,7 +2692,7 @@ sub transRegexAttrs
             $value  = $evalcpt->reval('use integer;' . $value);
             $retval = $prev . $value . $next;
             ($curr, $next, $prev) =
-                extract_bracketed($retval, '()', qr/[^()]*/);
+              extract_bracketed($retval, '()', qr/[^()]*/);
         }
         undef $@;
 
@@ -2797,11 +2802,12 @@ sub getNodeAttribs
     unless (scalar keys %{ $data[0] }) {
         return undef;
     }
-    if (!exists($options{keep_raw})){
+    if (!exists($options{keep_raw})) {
         my $attrib;
         foreach $datum (@data) {
             foreach $attrib (@attribs) {
                 unless (defined $datum->{$attrib}) {
+
                     #skip undefined values, save time
                     next;
                 }
@@ -2996,7 +3002,7 @@ sub getNodeAttribs_nosub_returnany
     my $attrib;
     my $result;
     my $hierarchy_attrs = $options{hierarchy_attrs};
-    my $data = $results[0];
+    my $data            = $results[0];
     if (defined {$data}) { #if there was some data for the node, loop through and check it
         foreach $result (@results) {
             foreach $attrib (keys %attribsToDo) {
@@ -3306,6 +3312,7 @@ sub getAllAttribsWhere
     my @results = ();
     my $query;
     my $query2;
+
     if (ref($clause) eq 'ARRAY') {
         $whereclause = &buildWhereClause($clause);
     } else {
@@ -3530,7 +3537,7 @@ sub getAllAttribs
     $self->trace_db(START_TYPE);
     if (!defined($self->{dbh})) {
         xCAT::MsgUtils->message("S", "xcatd: DBI is missing, Please check the db access process.");
-        $self->trace_db(END_TYPE, "LINE ".__LINE__.": DBI is missing");
+        $self->trace_db(END_TYPE, "LINE " . __LINE__ . ": DBI is missing");
         return undef;
     }
 
@@ -3687,6 +3694,7 @@ sub delEntries
             my $query = $self->{dbh}->prepare($qstring);
             $query->execute(@qargs);
             $self->trace_db(END_SQL_TYPE);
+
             #prepare the notification data
             #put the column names at the very front
             push(@notif_data, $query->{NAME});
@@ -3875,7 +3883,7 @@ sub getAttribs
     $self->trace_db(START_SQL_TYPE, $statement);
     my $query = $self->{dbh}->prepare($statement);
     unless (defined $query) {
-        $self->trace_db(END_TYPE, "LINE ".__LINE__.": undef");
+        $self->trace_db(END_TYPE, "LINE " . __LINE__ . ": undef");
         return undef;
     }
     $query->execute(@exeargs);
@@ -3947,10 +3955,11 @@ sub getTable
     my @return;
     my $statement = 'SELECT * FROM ' . $self->{tabname};
     $self->trace_db(START_SQL_TYPE, $statement);
-    my $query     = $self->{dbh}->prepare($statement);
+    my $query = $self->{dbh}->prepare($statement);
     $query->execute();
     $self->trace_db(END_SQL_TYPE);
     my $data;
+
     while ($data = $query->fetchrow_hashref())
     {
         my $attrib;
@@ -4329,11 +4338,11 @@ sub delimitcol {
 
 #--------------------------------------------------------------------------------
 sub buildWhereClause {
-    my $attrvalstr = shift;    # array of atr<op>val strings
+    my $attrvalstr  = shift;    # array of atr<op>val strings
     my $getkeysonly = shift;
-    my $whereclause;           # Where Clause
+    my $whereclause;            # Where Clause
     my $firstpass = 1;
-    my @gotkeys = ();
+    my @gotkeys   = ();
     foreach my $m (@{$attrvalstr})
     {
         my $attr;
@@ -4446,7 +4455,7 @@ sub writeAllEntries
     unless (open($fh, " > $filename")) {
         my $msg = "Unable to open $filename for write \n.";
         `logger -p local4.err  -t xcat $msg`;
-        $self->trace_db(END_TYPE, "LINE ".__LINE__.": ".$msg);
+        $self->trace_db(END_TYPE, "LINE " . __LINE__ . ": " . $msg);
         return 1;
     }
     my $query;
@@ -4538,7 +4547,7 @@ sub writeAllAttribsWhere
     unless (open($fh, " > $filename")) {
         my $msg = "Unable to open $filename for write \n.";
         `logger -p local4.err -t xcat $msg`;
-        $self->trace_db(END_TYPE, "LINE ".__LINE__.": ".$msg);
+        $self->trace_db(END_TYPE, "LINE " . __LINE__ . ": " . $msg);
         return 1;
     }
     my $header;
@@ -4562,6 +4571,7 @@ sub writeAllAttribsWhere
     $self->trace_db(END_SQL_TYPE);
     while (my $data = $query->fetchrow_hashref())
     {
+
         foreach (keys %$data) {
 
             if ($data->{$_} =~ /^$/)

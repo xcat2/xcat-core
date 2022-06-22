@@ -139,7 +139,7 @@ sub process_request {
             return 1;
         }
 
-        (my $ref_osimage_tab) = $osimagetab->getAttribs({ imagename => $imagename }, 'osvers', 'osarch', 'profile', 'provmethod','environvar');
+        (my $ref_osimage_tab) = $osimagetab->getAttribs({ imagename => $imagename }, 'osvers', 'osarch', 'profile', 'provmethod', 'environvar');
         unless ($ref_osimage_tab) {
             $callback->({ error => ["Cannot find image \'$imagename\' from the osimage table."], errorcode => [1] });
             return 1;
@@ -196,7 +196,7 @@ sub process_request {
         $postinstall_filename = $ref_linuximage_tab->{'postinstall'};
         if ($postinstall_filename ne "") {
             foreach my $rawfile (split ',', $postinstall_filename) {
-                my ($file,@args)=split(" ",$rawfile);
+                my ($file, @args) = split(" ", $rawfile);
                 if (!-r $file) {
                     $callback->({ error => ["The postinstall_filename specified \'$file\' does not exist!"], errorcode => [1] });
                     return 1;
@@ -309,25 +309,26 @@ sub process_request {
     if ($osver)   { $cmd .= " -o $osver"; }
     if ($profile) { $cmd .= " -p $profile"; }
 
-    if ($netdriver)   { $cmd .= " -n $netdriver"; }
-    if ($prinic)      { $cmd .= " -i $prinic"; }
-    if ($othernics)   { $cmd .= " -r $othernics"; }
-    if ($rootlimit)   { $cmd .= " -l $rootlimit"; }
-    if ($tmplimit)    { $cmd .= " -t $tmplimit"; }
-    if ($kernelver)   { $cmd .= " -k $kernelver"; }
-    if ($krpmver)     { $cmd .= " -g $krpmver"; }
-    if ($mode)        { $cmd .= " -m $mode"; }
-    if ($permission)  { $cmd .= " --permission $permission"; }
-    if ($kerneldir)   { $cmd .= " --kerneldir $kerneldir"; }
-    if ($interactive) { $cmd .= " --interactive" }
-    if ($onlyinitrd)  { $cmd .= " --onlyinitrd" }
-    if ($envar)       { $cmd .= " --env $envar"; }
+    if ($netdriver)        { $cmd .= " -n $netdriver"; }
+    if ($prinic)           { $cmd .= " -i $prinic"; }
+    if ($othernics)        { $cmd .= " -r $othernics"; }
+    if ($rootlimit)        { $cmd .= " -l $rootlimit"; }
+    if ($tmplimit)         { $cmd .= " -t $tmplimit"; }
+    if ($kernelver)        { $cmd .= " -k $kernelver"; }
+    if ($krpmver)          { $cmd .= " -g $krpmver"; }
+    if ($mode)             { $cmd .= " -m $mode"; }
+    if ($permission)       { $cmd .= " --permission $permission"; }
+    if ($kerneldir)        { $cmd .= " --kerneldir $kerneldir"; }
+    if ($interactive)      { $cmd .= " --interactive" }
+    if ($onlyinitrd)       { $cmd .= " --onlyinitrd" }
+    if ($envar)            { $cmd .= " --env $envar"; }
     if ($srcdir)           { $cmd .= " --srcdir \"$srcdir\""; }
     if ($pkglist)          { $cmd .= " --pkglist $pkglist"; }
     if ($srcdir_otherpkgs) { $cmd .= " --otherpkgdir \"$srcdir_otherpkgs\""; }
     if ($otherpkglist)     { $cmd .= " --otherpkglist $otherpkglist"; }
     if ($postinstall_filename) { $cmd .= " --postinstall \"$postinstall_filename\""; }
     if ($destdir) { $cmd .= " --rootimgdir $destdir"; }
+
     if ($tempfile) {
         if (!$dryrun) { $cmd .= " --tempfile $tempfile"; }
     }

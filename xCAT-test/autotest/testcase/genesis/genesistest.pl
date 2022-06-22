@@ -76,11 +76,11 @@ if ($check_genesis_file) {
         send_msg(2, "genesis packages are installed");
     }
 }
-my $master=`lsdef -t site -i master -c  2>&1 | awk -F'=' '{print \$2}'`;
-if (!$master) { $master=hostname(); }
+my $master = `lsdef -t site -i master -c  2>&1 | awk -F'=' '{print \$2}'`;
+if (!$master) { $master = hostname(); }
 chomp($master);
 print "xcat management node is $master\n";
-$nodestanza="/tmp/$noderange.stanza";
+$nodestanza = "/tmp/$noderange.stanza";
 if (!(-e $nodestanza)) {
     `lsdef $noderange -z > $nodestanza`;
     `chdef $noderange xcatmaster= `;
@@ -102,12 +102,13 @@ if ($genesis_nodesetshell_test) {
     }
     else {
         send_msg(2, "Installing with \"nodeset $noderange shell\" for shell test");
-        sleep 120; # wait 2 min for install to finish
+        sleep 120;    # wait 2 min for install to finish
         wait_for_boot();
     }
+
     #run nodeshell test
     send_msg(2, "prepare for nodeshell script.");
-    if ( &testxdsh(3)) {
+    if (&testxdsh(3)) {
         send_msg(0, "[$$]:Could not verify test results using xdsh...............");
         exit 1;
     }
@@ -213,7 +214,7 @@ sub rungenesiscmd {
     }
     else {
         send_msg(2, "Installing with \"$rinstall_cmd\" for runcmd test");
-        sleep 120; # wait 2 min for install to finish
+        sleep 120;    # wait 2 min for install to finish
         wait_for_boot();
     }
     return $value;
@@ -256,7 +257,7 @@ sub rungenesisimg {
         $value = -1;
     } else {
         send_msg(2, "Installing with \"$rinstall_cmd\" for runimage test\n");
-        sleep 120; # wait 2 min for install to finish
+        sleep 120;    # wait 2 min for install to finish
         wait_for_boot();
     }
     return $value;
@@ -271,6 +272,7 @@ sub testxdsh {
     my $nodestatus;
     my $xdsh_out;
     if ($value == 1) {
+
         #mean runcmd test using test scripts genesistest.pl writes
         $checkstring = "testcmd";
         $checkfile   = "/tmp/testresult";
@@ -281,7 +283,7 @@ sub testxdsh {
         $checkstring = "destiny=shell";
         $checkfile   = "/proc/cmdline";
     } elsif ($value == -1) {
-        send_msg(0,"Error setting up the node for testxdsh");
+        send_msg(0, "Error setting up the node for testxdsh");
         return 1;
     }
 
@@ -295,16 +297,17 @@ sub testxdsh {
     }
 
     send_msg(2, "Checking $checkfile file on that node contains '$checkstring' \n");
-    my $xdsh_command="xdsh $noderange -t 2 cat $checkfile 2>&1";
+    my $xdsh_command = "xdsh $noderange -t 2 cat $checkfile 2>&1";
     if (($value == 1) || ($value == 2) || ($value == 3)) {
         `$xdsh_command | grep $checkstring`;
         if ($?) {
+
             # First attempt to run xdsh failed, then try few more times
-            my @i = (1..3);
+            my @i = (1 .. 3);
             for (@i) {
-                $xdsh_out=`$xdsh_command`;
-                $nodestatus=`lsdef $noderange -i status -c  2>&1 | awk -F'=' '{print \$2}'`;
-                send_msg(2,"[$_] Command \"$xdsh_command\" looking for $checkstring returned:\n $xdsh_out.\n Node status: $nodestatus");
+                $xdsh_out = `$xdsh_command`;
+                $nodestatus = `lsdef $noderange -i status -c  2>&1 | awk -F'=' '{print \$2}'`;
+                send_msg(2, "[$_] Command \"$xdsh_command\" looking for $checkstring returned:\n $xdsh_out.\n Node status: $nodestatus");
                 sleep 10;
                 `$xdsh_command | grep $checkstring`;
                 last if ($? == 0);
@@ -321,10 +324,11 @@ sub clearenv {
     my $runcmd_script    = "/tmp/cmdtest";
     my $runimg_script    = "/tmp/imgtest";
     my $runme            = "/install/my_image/runme.sh";
-    my $runmetar            = "/install/my_image/my_image.tgz";
-    my $runmetar_tmp         = "/tmp/my_image.tgz";
+    my $runmetar         = "/install/my_image/my_image.tgz";
+    my $runmetar_tmp     = "/tmp/my_image.tgz";
     my $runmedir         = "/install/my_image";
     my $genesis_base_dir = "/opt/xcat/share/xcat/netboot/genesis";
+
     if (-e "$runimg_script") {
         unlink("$runme");
         unlink("$runmetar_tmp");
@@ -350,10 +354,10 @@ sub clearenv {
         exit 1;
     }
     if (-e "$nodestanza") {
-    `cat $nodestanza | chdef -z`;
-    unlink("$nodestanza");
+        `cat $nodestanza | chdef -z`;
+        unlink("$nodestanza");
     }
-    sleep 120; # wait 2 min for reboot to finish
+    sleep 120;    # wait 2 min for reboot to finish
     wait_for_boot();
     return 0;
 }
@@ -376,16 +380,16 @@ sub get_os {
 #get arch
 ###################################
 sub get_arch {
-     use POSIX qw(uname);
-     my @uname = uname();
-     my $arch = $uname[4];
-     if ($arch =~ /ppc64/i) {
-         $arch = "ppc64";
-     } elsif (($arch =~ /x86/i)&&($os =~ /ubuntu/i)) {
-         if ($check_genesis_file) {
-             $arch = "amd64";
-         }
-     }
+    use POSIX qw(uname);
+    my @uname = uname();
+    my $arch  = $uname[4];
+    if ($arch =~ /ppc64/i) {
+        $arch = "ppc64";
+    } elsif (($arch =~ /x86/i) && ($os =~ /ubuntu/i)) {
+        if ($check_genesis_file) {
+            $arch = "amd64";
+        }
+    }
     return $arch;
 }
 #######################################
@@ -393,17 +397,18 @@ sub get_arch {
 ########################################
 sub send_msg {
     my $log_level = shift;
-    my $msg = shift;
+    my $msg       = shift;
     my $content;
     my $logfile    = "";
     my $logfiledir = "/tmp/genesistestlog";
-    my $date = `date  +"%Y%m%d"`;
-    my $time = `date  +"%T"`;
+    my $date       = `date  +"%Y%m%d"`;
+    my $time       = `date  +"%T"`;
     chomp($date);
     chomp($time);
+
     if (!-e $logfiledir)
     {
-        mkpath( $logfiledir );
+        mkpath($logfiledir);
     }
     $logfile = "genesis" . $date . ".log";
     if ($log_level == 0) {
@@ -416,7 +421,7 @@ sub send_msg {
     if (!open(LOGFILE, ">> $logfiledir/$logfile")) {
         return 1;
     }
-    
+
     print "$date $time $$ $content $msg\n";
     print LOGFILE "$date $$ $content $msg\n";
     close LOGFILE;
@@ -426,11 +431,11 @@ sub send_msg {
 ### Wait for node to be in "booted" state
 ##########################################
 sub wait_for_boot {
-    my $iterations = 30; # Max wait 30x10 = 5 min
+    my $iterations     = 30;    # Max wait 30x10 = 5 min
     my $sleep_interval = 10;
     my $boot_status;
 
-    foreach my $i (1..$iterations) {
+    foreach my $i (1 .. $iterations) {
         $boot_status = `lsdef $noderange -i status -c | cut -d'=' -f2`;
         chop($boot_status);
         if ($boot_status eq "booted") {

@@ -96,7 +96,7 @@ sub setstate {
     my $tftpdir      = shift;
     my %nrhash       = %{ shift() };
     my $linuximghash = shift();
-    my $kern = $bphash{$node}->[0];
+    my $kern         = $bphash{$node}->[0];
     if ($kern->{kcmdline} =~ /!myipfn!/) {
         my $ipfn;
         my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
@@ -424,14 +424,14 @@ sub preprocess_request {
     }
 
 
-    my $ret=xCAT::Usage->validateArgs($command,@ARGV);
-    if ($ret->[0]!=0) {
-         if ($usage{$command}) {
-             my %rsp;
-             $rsp{error}->[0] = $ret->[1];
-             $rsp{data}->[1] = $usage{$command};
-             $rsp{errorcode}->[0] = $ret->[0];
-             $callback1->(\%rsp);
+    my $ret = xCAT::Usage->validateArgs($command, @ARGV);
+    if ($ret->[0] != 0) {
+        if ($usage{$command}) {
+            my %rsp;
+            $rsp{error}->[0]     = $ret->[1];
+            $rsp{data}->[1]      = $usage{$command};
+            $rsp{errorcode}->[0] = $ret->[0];
+            $callback1->(\%rsp);
         }
         return;
     }
@@ -575,11 +575,11 @@ sub process_request {
     unless ($args[0] eq 'stat') {    # or $args[0] eq 'enact') {
         xCAT::MsgUtils->trace($verbose_on_off, "d", "yaboot: issue setdestiny request");
         $sub_req->({ command => ['setdestiny'],
-                node     => \@nodes,
-                inittime => [$inittime],
-                arg      => \@args,
-                bootparams => \%bphash},
-                \&pass_along);
+                node       => \@nodes,
+                inittime   => [$inittime],
+                arg        => \@args,
+                bootparams => \%bphash },
+            \&pass_along);
     }
     if ($errored) { return; }
 

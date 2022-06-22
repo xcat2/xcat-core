@@ -19,36 +19,37 @@ use JSON;
 use File::Path;
 use IO::Socket::SSL qw( SSL_VERIFY_PEER );
 
-my $go_api_port = 12429;
-my $go_cons_port = 12430;
+my $go_api_port   = 12429;
+my $go_cons_port  = 12430;
 my $bmc_cons_port = "2200";
-my $isSN = xCAT::Utils->isServiceNode();
+my $isSN          = xCAT::Utils->isServiceNode();
 
 use constant CONSOLE_LOG_DIR => "/var/log/consoles";
-use constant PRINT_FORMAT => "%-32s %-32s %s";
+use constant PRINT_FORMAT    => "%-32s %-32s %s";
 unless (-d CONSOLE_LOG_DIR) {
     mkpath(CONSOLE_LOG_DIR, 0, 0755);
 }
 
 sub http_request {
     my ($method, $url, $data) = @_;
-    my @user          = getpwuid($>);
-    my $homedir       = $user[7];
+    my @user    = getpwuid($>);
+    my $homedir = $user[7];
     my $rsp;
-    my $brower = LWP::UserAgent->new( ssl_opts => {
-            SSL_key_file    => xCAT::Utils->getHomeDir() . "/.xcat/client-cred.pem",
-            SSL_cert_file   => xCAT::Utils->getHomeDir() . "/.xcat/client-cred.pem",
+    my $brower = LWP::UserAgent->new(ssl_opts => {
+            SSL_key_file => xCAT::Utils->getHomeDir() . "/.xcat/client-cred.pem",
+            SSL_cert_file => xCAT::Utils->getHomeDir() . "/.xcat/client-cred.pem",
             SSL_ca_file     => xCAT::Utils->getHomeDir() . "/.xcat/ca.pem",
             SSL_use_cert    => 1,
             verify_hostname => 0,
-            SSL_verify_mode => SSL_VERIFY_PEER,  }, );
+            SSL_verify_mode => SSL_VERIFY_PEER, },);
     my $header = HTTP::Headers->new('Content-Type' => 'application/json');
+
     #    $data = encode_json $data if defined($data);
     $data = JSON->new->encode($data) if defined($data);
-    my $request = HTTP::Request->new( $method, $url, $header, $data );
+    my $request = HTTP::Request->new($method, $url, $header, $data);
     my $response = $brower->request($request);
     if (!$response->is_success()) {
-        xCAT::MsgUtils->message("S", "Failed to send request to $url, rc=".$response->status_line());
+        xCAT::MsgUtils->message("S", "Failed to send request to $url, rc=" . $response->status_line());
         return undef;
     }
     my $content = $response->content();
@@ -69,21 +70,22 @@ sub gen_request_data {
             $ondemand = \0;
         }
         my $cmd;
-        my $cmeth  = $v->{cons};
+        my $cmeth = $v->{cons};
         if ($cmeth eq "openbmc") {
             push @openbmc_nodes, $k;
-        }  else {
+        } else {
             my $env = "";
             my $locerror = $isSN ? "PERL_BADLANG=0 " : '';
             if (defined($ENV{'XCATSSLVER'})) {
                 $env = "XCATSSLVER=$ENV{'XCATSSLVER'} ";
             }
-            $data->{$k}->{params}->{env} = $locerror.$env;
+            $data->{$k}->{params}->{env} = $locerror . $env;
             $data->{$k}->{driver} = "cmd";
-            $data->{$k}->{params}->{cmd} = $::XCATROOT . "/share/xcat/cons/$cmeth"." ".$k;
+            $data->{$k}->{params}->{cmd} = $::XCATROOT . "/share/xcat/cons/$cmeth" . " " . $k;
             $data->{$k}->{name} = $k;
         }
         if (defined($v->{consoleondemand})) {
+
             # consoleondemand attribute for node can be "1", "yes", "0" and "no"
             if (($v->{consoleondemand} eq "1") || lc($v->{consoleondemand}) eq "yes") {
                 $ondemand = \1;
@@ -99,7 +101,7 @@ sub gen_request_data {
         my $passwd_hash = $passwd_table->getAttribs({ 'key' => 'openbmc' }, qw(username password));
         $passwd_table->close();
         my $openbmc_table = xCAT::Table->new('openbmc');
-        my $openbmc_hash = $openbmc_table->getNodesAttribs(\@openbmc_nodes, ['bmc','consport', 'username', 'password']);
+        my $openbmc_hash = $openbmc_table->getNodesAttribs(\@openbmc_nodes, [ 'bmc', 'consport', 'username', 'password' ]);
         $openbmc_table->close();
         foreach my $node (@openbmc_nodes) {
             if (defined($openbmc_hash->{$node}->[0])) {
@@ -132,7 +134,7 @@ sub gen_request_data {
                 } else {
                     $data->{$node}->{params}->{port} = $bmc_cons_port;
                 }
-                $data->{$node}->{name} = $node;
+                $data->{$node}->{name}   = $node;
                 $data->{$node}->{driver} = "ssh";
             }
         }
@@ -164,12 +166,12 @@ sub init_local_console {
     foreach (@hostinfo) {
         $iphash{$_} = 1;
     }
-    my $retry = 0;
-    my $api_url = "https://$host:". get_api_port();
-    my $response = http_request("GET", $api_url."/nodes");
-    while(!defined($response) && $retry < 3) {
-        $response = http_request("GET", $api_url."/nodes");
-        $retry ++;
+    my $retry    = 0;
+    my $api_url  = "https://$host:" . get_api_port();
+    my $response = http_request("GET", $api_url . "/nodes");
+    while (!defined($response) && $retry < 3) {
+        $response = http_request("GET", $api_url . "/nodes");
+        $retry++;
         sleep 1;
     }
     if (!defined($response)) {
@@ -177,6 +179,7 @@ sub init_local_console {
         return;
     }
     if ($response->{nodes}->[0]) {
+
         # node data exist, maybe this is not diskless sn.
         return;
     }
@@ -192,8 +195,8 @@ sub init_local_console {
             unless ($_->{cons}) {
                 $_->{cons} = $_->{mgt};
             }
-            if ( $_->{cons} ne 'openbmc' && ! -x $::XCATROOT . "/share/xcat/cons/".$_->{cons}) {
-                xCAT::MsgUtils->message("S", $_->{node} .": ignore, ". $::XCATROOT . "/share/xcat/cons/".$_->{cons}." is not excutable. Please check mgt or cons attribute.");
+            if ($_->{cons} ne 'openbmc' && !-x $::XCATROOT . "/share/xcat/cons/" . $_->{cons}) {
+                xCAT::MsgUtils->message("S", $_->{node} . ": ignore, " . $::XCATROOT . "/share/xcat/cons/" . $_->{cons} . " is not excutable. Please check mgt or cons attribute.");
                 next;
             }
             if ($_->{conserver} && exists($iphash{ $_->{conserver} })) {
@@ -201,24 +204,24 @@ sub init_local_console {
             }
         }
     }
-    my @entries    = xCAT::TableUtils->get_site_attribute("consoleondemand");
-    my $site_entry = $entries[0];
+    my @entries      = xCAT::TableUtils->get_site_attribute("consoleondemand");
+    my $site_entry   = $entries[0];
     my $siteondemand = 0;
     if (defined($site_entry)) {
         if (lc($site_entry) eq "yes") {
             $siteondemand = 1;
         }
         elsif (lc($site_entry) ne "no") {
-            xCAT::MsgUtils->message("S", $host.": Unexpected value $site_entry for consoleondemand attribute in site table");
+            xCAT::MsgUtils->message("S", $host . ": Unexpected value $site_entry for consoleondemand attribute in site table");
         }
     }
     my $data = gen_request_data(\%cons_map, $siteondemand, 1, undef);
-    if (! $data) {
-        xCAT::MsgUtils->message("S", $host.": Could not generate the request data");
+    if (!$data) {
+        xCAT::MsgUtils->message("S", $host . ": Could not generate the request data");
         return;
     }
     if (create_nodes($api_url, $data, undef)) {
-        xCAT::MsgUtils->message("S", $host.": Failed to create console entry in goconserver. ");
+        xCAT::MsgUtils->message("S", $host . ": Failed to create console entry in goconserver. ");
     }
 }
 
@@ -249,7 +252,7 @@ sub enable_nodes_in_db {
 sub delete_nodes {
     my ($api_url, $node_map, $delmode, $callback) = @_;
     my $url = "$api_url/bulk/nodes";
-    my @a = ();
+    my @a   = ();
     my ($data, $rsp, $ret, @update_nodes);
     $data->{nodes} = \@a;
     foreach my $node (keys %{$node_map}) {
@@ -330,13 +333,13 @@ sub list_nodes {
         xCAT::MsgUtils->info_message("Could not find any node.", $callback);
         return 0;
     }
-    $rsp->{data}->[0] = sprintf("\n".PRINT_FORMAT, "NODE", "SERVER", "STATE");
+    $rsp->{data}->[0] = sprintf("\n" . PRINT_FORMAT, "NODE", "SERVER", "STATE");
     xCAT::MsgUtils->message("I", $rsp, $callback);
-    foreach my $node (sort {$a->{name} cmp $b->{name}} @{$response->{nodes}}) {
-        if (!$node_map->{$node->{name}}) {
+    foreach my $node (sort { $a->{name} cmp $b->{name} } @{ $response->{nodes} }) {
+        if (!$node_map->{ $node->{name} }) {
             next;
         }
-        $node_map->{$node->{name}}->{vis} = 1;
+        $node_map->{ $node->{name} }->{vis} = 1;
         if (!$node->{host} || !$node->{state}) {
             xCAT::MsgUtils->error_message(sprintf(PRINT_FORMAT, $node->{name}, "", "Unable to parse the response message"), $callback);
             next;
@@ -346,7 +349,7 @@ sub list_nodes {
     }
     my %node_hash = %{$node_map};
     for my $node (sort keys %node_hash) {
-        if(!$node_hash{$node}->{vis}) {
+        if (!$node_hash{$node}->{vis}) {
             $rsp->{data}->[0] = sprintf(PRINT_FORMAT, $node, "", "unregistered");
             xCAT::MsgUtils->message("I", $rsp, $callback);
         }
@@ -357,8 +360,8 @@ sub list_nodes {
 sub cleanup_nodes {
     my $callback = shift;
     my @hostinfo = xCAT::NetworkUtils->determinehostname();
-    my $host = $hostinfo[-1];
-    my $api_url = "https://$host:". get_api_port();
+    my $host     = $hostinfo[-1];
+    my $api_url  = "https://$host:" . get_api_port();
     my $rsp;
     my $response = http_request("GET", "$api_url/nodes");
     if (!defined($response)) {
@@ -370,16 +373,17 @@ sub cleanup_nodes {
     }
     my %delete_map;
     my %cons_map = get_cons_map(undef);
-    foreach my $node (@{$response->{nodes}}) {
+    foreach my $node (@{ $response->{nodes} }) {
+
         # not in xcatdb but exist in goconserver
-        $delete_map{$node->{name}} = 1 if !exists($cons_map{$node->{name}});
+        $delete_map{ $node->{name} } = 1 if !exists($cons_map{ $node->{name} });
     }
     return delete_nodes($api_url, \%delete_map, 1, $callback);
 }
 
 sub get_cons_map {
-    my $req = shift;
-    my %iphash   = ();
+    my $req    = shift;
+    my %iphash = ();
     my %cons_map;
     my $hmtab = xCAT::Table->new('nodehm');
     my @cons_nodes;
@@ -387,9 +391,11 @@ sub get_cons_map {
     foreach (@hostinfo) {
         $iphash{$_} = 1;
     }
-    if (defined($req) && (($req->{node} and @{$req->{node}} > 0) or $req->{noderange}->[0])) {
+    if (defined($req) && (($req->{node} and @{ $req->{node} } > 0) or $req->{noderange}->[0])) {
+
         # Note: do not consider terminal server currently
         @cons_nodes = $hmtab->getNodesAttribs($req->{node}, [ 'node', 'cons', 'serialport', 'mgt', 'conserver', 'consoleondemand' ]);
+
         # Adjust the data structure to make the result consistent with the getAllNodeAttribs() call we make if a noderange was not specified
         my @tmpcons_nodes;
         foreach my $ent (@cons_nodes)
@@ -410,18 +416,18 @@ sub get_cons_map {
         if ($_->{cons} or defined($_->{'serialport'})) {
             unless ($_->{cons}) { $_->{cons} = $_->{mgt}; } #populate with fallback
             if ($isSN && $_->{conserver} && exists($iphash{ $_->{conserver} }) || !$isSN) {
-                if ( $_->{cons} ne 'openbmc' && ! -x $::XCATROOT . "/share/xcat/cons/".$_->{cons}) {
-                    $rsp->{data}->[0] = $_->{node} .": ignore, ". $::XCATROOT . "/share/xcat/cons/".$_->{cons}." is not excutable. Please check mgt or cons attribute.";
+                if ($_->{cons} ne 'openbmc' && !-x $::XCATROOT . "/share/xcat/cons/" . $_->{cons}) {
+                    $rsp->{data}->[0] = $_->{node} . ": ignore, " . $::XCATROOT . "/share/xcat/cons/" . $_->{cons} . " is not excutable. Please check mgt or cons attribute.";
                     xCAT::MsgUtils->message("I", $rsp, $::callback);
                     next;
                 }
                 $cons_map{ $_->{node} } = $_; # also put the ref to the entry in a hash for quick look up
             } else {
-                $rsp->{data}->[0] = $_->{node} .": ignore, the host for conserver could not be determined.";
+                $rsp->{data}->[0] = $_->{node} . ": ignore, the host for conserver could not be determined.";
                 xCAT::MsgUtils->message("I", $rsp, $::callback);
             }
         } else {
-            $rsp->{data}->[0] = $_->{node} .": ignore, cons attribute or serialport attribute is not specified.";
+            $rsp->{data}->[0] = $_->{node} . ": ignore, cons attribute or serialport attribute is not specified.";
             xCAT::MsgUtils->message("I", $rsp, $::callback);
         }
     }
@@ -502,6 +508,7 @@ sub is_goconserver_running {
 #-------------------------------------------------------------------------------
 sub switch_goconserver {
     my $callback = shift;
+
     # ignore SN as it is handled by AAsn
     if ((-x "/usr/bin/systemctl" || -x "/bin/systemctl") && !$isSN) {
         my $cmd = "systemctl disable conserver";
@@ -536,6 +543,7 @@ sub switch_goconserver {
 #-------------------------------------------------------------------------------
 sub switch_conserver {
     my $callback = shift;
+
     # ignore SN as it is handled by AAsn
     if ((-x "/usr/bin/systemctl" || -x "/bin/systemctl") && !$isSN) {
         my $cmd = "systemctl disable goconserver";
@@ -572,6 +580,7 @@ sub switch_conserver {
 
 #-------------------------------------------------------------------------------
 sub is_conserver_running {
+
     # On ubuntu system 'service conserver status' can not get the correct status of conserver,
     # use 'pidof conserver' like what we did in rcons.
     my $cmd = "pidof conserver";
@@ -600,46 +609,47 @@ sub is_conserver_running {
 
 #-------------------------------------------------------------------------------
 sub build_conf {
+
     # try to backup the original configuration file, no matter sunccess or not
     move('/etc/goconserver/server.conf', '/etc/goconserver/server.conf.bak');
-    my $config = "#generated by xcat ".xCAT::Utils->Version()."\n".
-                 "global:\n".
-                 "  host: 0.0.0.0\n".
-                 "  ssl_key_file: /etc/xcat/cert/server-cred.pem\n".
-                 "  ssl_cert_file: /etc/xcat/cert/server-cred.pem\n".
-                 "  ssl_ca_cert_file: /etc/xcat/cert/ca.pem\n".
-                 "  logfile: /var/log/goconserver/server.log             # the log for goconserver\n".
-                 "api:\n".
-                 "  port: $go_api_port                                   # the port for rest api\n".
-                 "console:\n".
-                 "  datadir: /var/lib/goconserver/                       # the data file to save the hosts\n".
-                 "  port: $go_cons_port                                  # the port for console\n".
-                 "  log_timestamp: true                                  # log the timestamp at the beginning of line\n".
-                 "  # time precison for tcp or udp logger, precison for file logger is always second\n".
-                 "  time_precision: microsecond                          # Valid options: second, millisecond, microsecond, nanosecond\n".
-                 "  reconnect_interval: 10                               # retry interval in second if console could not be connected\n".
-                 "  logger:                                              # multiple logger targets could be specified\n".
-                 "    file:                                              # file logger, valid fields: name,logdir. Accept array in yaml format\n".
-                 "      - name: default                                  # the identity name customized by user\n".
-                 "        logdir: ".CONSOLE_LOG_DIR."                    # default log directory of xcat\n".
-                 "      #- name: goconserver                             \n".
-                 "      #  logdir: /var/log/goconserver/nodes            \n".
-                 "    #tcp:                                              # valied fields: name, host, port, timeout, ssl_key_file, ssl_cert_file, ssl_ca_cert_file, ssl_insecure\n".
-                 "      #- name: logstash                                \n".
-                 "      #  host: 127.0.0.1                               \n".
-                 "      #  port: 9653                                    \n".
-                 "      #  timeout:  3                                   # default 3 second\n".
-                 "      #- name: filebeat                                \n".
-                 "      #  host: <hostname or ip>                        \n".
-                 "      #  port: <port>                                  \n".
-                 "    #udp:                                              # valid fiedls: name, host, port, timeout\n".
-                 "      #- name: rsyslog                                 \n".
-                 "      #  host: 127.0.0.1                               \n".
-                 "      #  port: 512                                     \n".
-                 "      #  timeout: 3                                    # default 3 second\n";
+    my $config = "#generated by xcat " . xCAT::Utils->Version() . "\n" .
+      "global:\n" .
+      "  host: 0.0.0.0\n" .
+      "  ssl_key_file: /etc/xcat/cert/server-cred.pem\n" .
+      "  ssl_cert_file: /etc/xcat/cert/server-cred.pem\n" .
+      "  ssl_ca_cert_file: /etc/xcat/cert/ca.pem\n" .
+"  logfile: /var/log/goconserver/server.log             # the log for goconserver\n" .
+      "api:\n" .
+"  port: $go_api_port                                   # the port for rest api\n" .
+      "console:\n" .
+"  datadir: /var/lib/goconserver/                       # the data file to save the hosts\n" .
+"  port: $go_cons_port                                  # the port for console\n" .
+"  log_timestamp: true                                  # log the timestamp at the beginning of line\n" .
+"  # time precison for tcp or udp logger, precison for file logger is always second\n" .
+"  time_precision: microsecond                          # Valid options: second, millisecond, microsecond, nanosecond\n" .
+"  reconnect_interval: 10                               # retry interval in second if console could not be connected\n" .
+"  logger:                                              # multiple logger targets could be specified\n" .
+"    file:                                              # file logger, valid fields: name,logdir. Accept array in yaml format\n" .
+"      - name: default                                  # the identity name customized by user\n" .
+"        logdir: " . CONSOLE_LOG_DIR . "                    # default log directory of xcat\n" .
+      "      #- name: goconserver                             \n" .
+      "      #  logdir: /var/log/goconserver/nodes            \n" .
+"    #tcp:                                              # valied fields: name, host, port, timeout, ssl_key_file, ssl_cert_file, ssl_ca_cert_file, ssl_insecure\n" .
+      "      #- name: logstash                                \n" .
+      "      #  host: 127.0.0.1                               \n" .
+      "      #  port: 9653                                    \n" .
+"      #  timeout:  3                                   # default 3 second\n" .
+      "      #- name: filebeat                                \n" .
+      "      #  host: <hostname or ip>                        \n" .
+      "      #  port: <port>                                  \n" .
+"    #udp:                                              # valid fiedls: name, host, port, timeout\n" .
+      "      #- name: rsyslog                                 \n" .
+      "      #  host: 127.0.0.1                               \n" .
+      "      #  port: 512                                     \n" .
+"      #  timeout: 3                                    # default 3 second\n";
 
     my $file;
-    my $ret = open ($file, '>', '/etc/goconserver/server.conf');
+    my $ret = open($file, '>', '/etc/goconserver/server.conf');
     if ($ret == 0) {
         xCAT::MsgUtils->message("S", "Could not open file /etc/goconserver/server.conf");
         return 1;
@@ -729,6 +739,7 @@ sub stop_conserver_service {
     }
     return 0;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3  restart_service

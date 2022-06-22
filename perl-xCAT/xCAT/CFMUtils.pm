@@ -365,7 +365,7 @@ sub updateCFMSynclistFile {
             {
                 my $rsp = {};
                 $rsp->{error}->[0] =
-                  "Update /etc/passwd, shadow, gshadow, group merge files failed.";
+"Update /etc/passwd, shadow, gshadow, group merge files failed.";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                 return 1;
             }
@@ -889,10 +889,10 @@ sub arrayops {
     foreach my $element (@$array1, @$array2)
     {
         $count{$element}++;
-        push @union, $element unless ( $count{$element} > 1 );
+        push @union, $element unless ($count{$element} > 1);
     }
 
-    unless( defined($ordered) and $ordered ) {
+    unless (defined($ordered) and $ordered) {
         @union = keys %count;
     }
 

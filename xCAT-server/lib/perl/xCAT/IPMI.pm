@@ -87,13 +87,13 @@ my %command_info = (
         60 => "Close Session",
         58 => "activate session",
         57 => "Get Session Challenge",
-        1 => "Get Device ID",
-        2 => "Cold Reset",
+        1  => "Get Device ID",
+        2  => "Cold Reset",
         55 => "Get System GUID",
-        64  => "Set Channel Access",
+        64 => "Set Channel Access",
         76 => "Set User Payload Access",
         10 => "Get Command Support",
-    },	
+    },
     4 => {
         18 => "Set PEF Configuration Parameters",
         19 => "Get PEF Configuration Parameters",
@@ -107,8 +107,8 @@ my %command_info = (
         1 => "Get Chassis Status",
     },
     12 => {
-        1 => "Set LAN Configuration Parameters",
-        2 => "Get LAN Configuration Parameters",
+        1  => "Set LAN Configuration Parameters",
+        2  => "Get LAN Configuration Parameters",
         33 => "Set SOL Configuration Parameters",
         34 => "Get SOL Configuration Parameters",
     },
@@ -127,13 +127,14 @@ my %command_info = (
 );
 
 my %netfn_types = (
-    0 => "Chassis",
-    2 => "Bridge",
-    4 => "Sensor/Event",
-    6 => "App",
-    8 => "Firmware",
+    0  => "Chassis",
+    2  => "Bridge",
+    4  => "Sensor/Event",
+    6  => "App",
+    8  => "Firmware",
     10 => "Storage",
     12 => "Transport",
+
     # do we need to define anymore then these?
 );
 
@@ -209,12 +210,13 @@ sub new {
             my $sysctl;
             open($sysctl, "<", "/proc/sys/net/core/rmem_max");
             my $maxrcvbuf = <$sysctl>;
+
             # select() on a socket will never succeed if the buffer is too large (i.e. near INT_MAX)
-            my $cap_maxrcvbuf = 2047*1024*1024;
+            my $cap_maxrcvbuf = 2047 * 1024 * 1024;
             if ($maxrcvbuf > $cap_maxrcvbuf) {
                 $maxrcvbuf = $cap_maxrcvbuf;
             }
-            my $rcvbuf    = $socket->sockopt(SO_RCVBUF);
+            my $rcvbuf = $socket->sockopt(SO_RCVBUF);
             if ($maxrcvbuf > $rcvbuf) {
                 $socket->sockopt(SO_RCVBUF, $maxrcvbuf / 2);
             }
@@ -480,17 +482,17 @@ sub subcmd {
     my $self = shift;
     my %args = @_;
     while ($self->{incommand}) {
-        $self->waitforrsp(timeout=>1);
+        $self->waitforrsp(timeout => 1);
     }
     $self->{incommand} = 1;
 
     $self->{expectedcmd}   = $args{command};
     $self->{expectednetfn} = $args{netfn} + 1;
     if ($self->{onlogon_args}->{xcatdebugmode}) {
-        my $command_string = $command_info{$args{netfn}}->{$args{command}};
-        my $data_values = join ", ", @{$args{data}};
-        my $msg = sprintf ("[ipmi_debug] $self->{onlogon_args}->{command}:$self->{onlogon_args}->{subcommand}(@{$self->{onlogon_args}->{extraargs}}), raw_cmd: netfn(0x%02x=>%s), cmd(0x%02x=>%s), data=[%s]", $args{netfn}, $netfn_types{$args{netfn}}, $args{command}, $command_string, $data_values);
-        xCAT::SvrUtils::sendmsg([0, $msg], $self->{onlogon_args}->{outfunc}, $self->{node});
+        my $command_string = $command_info{ $args{netfn} }->{ $args{command} };
+        my $data_values = join ", ", @{ $args{data} };
+        my $msg = sprintf("[ipmi_debug] $self->{onlogon_args}->{command}:$self->{onlogon_args}->{subcommand}(@{$self->{onlogon_args}->{extraargs}}), raw_cmd: netfn(0x%02x=>%s), cmd(0x%02x=>%s), data=[%s]", $args{netfn}, $netfn_types{ $args{netfn} }, $args{command}, $command_string, $data_values);
+        xCAT::SvrUtils::sendmsg([ 0, $msg ], $self->{onlogon_args}->{outfunc}, $self->{node});
     }
     my $seqincrement = 7;
     while ($tabooseq{ $self->{expectednetfn} }->{ $self->{expectedcmd} }->{ $self->{seqlun} } and $seqincrement) { #avoid using a seqlun formerly marked 'taboo', but don't advance by more than 7, just in case
@@ -585,8 +587,8 @@ sub timedout {
     if ($self->{timeout} > 5) {    #giveup, really
         $self->{timeout} = $initialtimeout + (0.5 * rand());
         my $rsp = {};
-        $rsp->{error} = "timeout";
-	$self->{incommand} = 0;
+        $rsp->{error}      = "timeout";
+        $self->{incommand} = 0;
         $self->{ipmicallback}->($rsp, $self->{ipmicallback_args});
         $self->{nowait} = 0;
         return;
@@ -688,7 +690,7 @@ sub handle_ipmi_packet {
                 $encrypted = 1;
             }
 
-#------------------------modified to support openbmc ipmi command----------------
+            #------------------------modified to support openbmc ipmi command----------------
             unless ($rsp[5] & 0b01000000) {
                 if ($self->{max_privilege} != 0) {
                     return 3; #we refuse to examine unauthenticated packets in this context
@@ -854,7 +856,7 @@ sub init {
       #should circumstances suggest that we are about to transmit a packet with a taboo combination, we bump sequence number until no longer taboo, no more than 8 bumps.
       #if we should incur 7 bumps, clear the taboo list and continue on, hoping for best (pessimistically assuming the spec means seq number or that someone could at least interpret it that way)
       #I'll implement this later...
-    $self->{'logged'} = 0;
+    $self->{'logged'}    = 0;
     $self->{'incommand'} = 0;
 }
 
@@ -1027,10 +1029,10 @@ sub parse_ipmi_payload {
     splice @payload, 0, 5;    #remove rsaddr/netfs/lun/checksum/rq/seq/lun
     pop @payload;             #remove checksum
     my $rsp;
-    $rsp->{cmd}      = shift @payload;
-    $rsp->{code}     = shift @payload;
-    $rsp->{data}     = \@payload;
-    $self->{timeout} = $initialtimeout + (0.5 * rand());
+    $rsp->{cmd}        = shift @payload;
+    $rsp->{code}       = shift @payload;
+    $rsp->{data}       = \@payload;
+    $self->{timeout}   = $initialtimeout + (0.5 * rand());
     $self->{incommand} = 0;
     $self->{ipmicallback}->($rsp, $self->{ipmicallback_args});
     return 0;

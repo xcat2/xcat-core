@@ -15,7 +15,7 @@ Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 
 my $xcatdebugmode = 0;
-my $processed = 0;
+my $processed     = 0;
 my $callback;
 
 sub handled_commands {
@@ -173,10 +173,10 @@ sub process_request {
             if ($path)
             {
 
-                if(-e $path) {
-                    $path=Cwd::realpath($path);
+                if (-e $path) {
+                    $path = Cwd::realpath($path);
                 }
-                unless((substr($path,0,length("/install/")) eq "/install/") or ($path eq "/install")){
+                unless ((substr($path, 0, length("/install/")) eq "/install/") or ($path eq "/install")) {
                     $callback->({ warning => "copycds: the specified path \"$path\" is not a subdirectory under /install. Make sure this path is configured for httpd/apache, otherwise, the provisioning with this iso will fail!" });
                 }
                 push @{ $newreq->{arg} }, ("-p", $path);

@@ -325,6 +325,7 @@ sub donets
                     # - compare net and mask values
                     my $foundmatch = 0;
                     foreach my $netn (@netlist) {
+
                         # split definition mask
                         my ($dm1, $dm2, $dm3, $dm4) = split('\.', $nethash{$netn}{'mask'});
 
@@ -371,15 +372,15 @@ sub donets
         # For Linux systems
         my @ip6table = split /\n/, `/sbin/ip -6 route`;
         my @rtable   = split /\n/, `/sbin/ip -4 route`;
-        my @mtable   = split /\n/, `/sbin/ip link|grep BROADCAST`;  
+        my @mtable   = split /\n/, `/sbin/ip link|grep BROADCAST`;
 
         my %netgw = ();
         foreach my $rtent (@rtable)
         {
             my @entarr = split /\s+/, $rtent;
-            if ($entarr[1] eq 'via' )
+            if ($entarr[1] eq 'via')
             {
-                $netgw{$entarr[0]} = $entarr[2];
+                $netgw{ $entarr[0] } = $entarr[2];
             }
         }
 
@@ -447,7 +448,7 @@ sub donets
         foreach (@rtable)
         { #should be the lines to think about, do something with U, and something else with UG
 
-            my $foundmatch = 0;
+            my $foundmatch   = 0;
             my $netnamematch = 0;
             my $rsp;
             my $net;
@@ -473,8 +474,8 @@ sub donets
             {
                 $netandmask = $ent[0];
                 $mgtifname  = $ent[2];
-		($net, $mask) = split('/', $netandmask);
-		$mask = xCAT::NetworkUtils::formatNetmask($mask, 1, 0);
+                ($net, $mask) = split('/', $netandmask);
+                $mask = xCAT::NetworkUtils::formatNetmask($mask, 1, 0);
                 if (defined($netgw{'default'}))
                 {
                     if (xCAT::NetworkUtils->ishostinsubnet($netgw{'default'}, $mask, $net))
@@ -510,11 +511,13 @@ sub donets
                 my ($n1, $n2, $n3, $n4) = split('\.', $net);
 
                 foreach my $netn (@netlist) {
+
                     # check if this netname is already defined
-                    if ( $netname eq $netn ) {
+                    if ($netname eq $netn) {
                         $netnamematch = 1;
                         last;
                     }
+
                     # split definition mask
                     my ($dm1, $dm2, $dm3, $dm4) = split('\.', $nethash{$netn}{'mask'});
 
@@ -554,6 +557,7 @@ sub donets
                         push @{ $rsp->{data} }, "    mtu=$mtu";
                     }
                 } else {
+
                     # if this net entry exists, go to next line in networks table
                     if ($netnamematch) {
                         $callback->({ warning => "The network entry \'$netname\' already exists in xCAT networks table. Cannot create a definition for \'$netname\'" });
@@ -564,7 +568,7 @@ sub donets
                     }
                 }
 
-                my $tent=$nethash{$netname};
+                my $tent = $nethash{$netname};
                 unless ($tent and $tent->{tftpserver})
                 {
                     my $netdev = $ent[2];

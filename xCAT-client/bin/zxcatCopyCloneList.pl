@@ -10,6 +10,7 @@
 ###############################################################################
 
 use strict;
+
 #use warnings;
 use Capture::Tiny ':all';
 use Getopt::Long;
@@ -19,12 +20,12 @@ my $source_file   = 'DOCLONE.COPY';
 my $file_name     = 'doclone.txt';
 my $tempPattern   = 'doclone.XXXXXXXX';
 my $source_vdev   = '193';
-my $version = "1.0";
+my $version       = "1.0";
 my $out;
 my $err;
 my $returnvalue;
-my $displayHelp = 0;            # Display help information
-my $versionOpt = 0;             # Show version information flag
+my $displayHelp = 0;    # Display help information
+my $versionOpt  = 0;    # Show version information flag
 
 my $usage_string = "This script copies the DOCLONE COPY from the MAINT 193
 to the $file_location$file_name\n\n
@@ -41,11 +42,11 @@ sub get_disk($)
 {
     my ($id_user) = @_;
     my $id = hex $id_user;
-    my $hex_id = sprintf '%x', $id;
+    my $hex_id    = sprintf '%x', $id;
     my $completed = 1;
-    my $dev_path = sprintf '/sys/bus/ccw/drivers/dasd-eckd/0.0.%04x', $id;
+    my $dev_path  = sprintf '/sys/bus/ccw/drivers/dasd-eckd/0.0.%04x', $id;
     if (!-d $dev_path) {
-       $dev_path = sprintf '/sys/bus/ccw/drivers/dasd-fba/0.0.%04x', $id;
+        $dev_path = sprintf '/sys/bus/ccw/drivers/dasd-fba/0.0.%04x', $id;
     }
     if (!-d $dev_path) {
         print "(Error) Unable to find a path to the $source_vdev in /sys/bus/ccw/drivers/\n";
@@ -53,7 +54,7 @@ sub get_disk($)
     -d $dev_path or return undef;
 
     #offline the disk so that a new online will pick up the current file
-    my @sleepTimes = ( 1, 2, 3, 5, 8, 15, 22, 34, 60);
+    my @sleepTimes = (1, 2, 3, 5, 8, 15, 22, 34, 60);
     system("echo 0 > $dev_path/online");
 
     my $dev_block = "$dev_path/block";
@@ -77,6 +78,7 @@ sub get_disk($)
     }
 
     system("echo 1 > $dev_path/online");
+
     # Bring the device online if offline
     if (!-d $dev_block) {
         $completed = 0;
@@ -96,7 +98,7 @@ sub get_disk($)
     if (opendir(my $dir, $dev_block)) {
         my $dev;
         while ($dev = readdir $dir) {
-            last if (!( $dev eq '.' || $dev eq '..' ) );
+            last if (!($dev eq '.' || $dev eq '..'));
         }
         closedir $dir;
         if (!defined $dev) {
@@ -104,35 +106,36 @@ sub get_disk($)
         }
         defined $dev ? "/dev/$dev" : undef;
     } else {
-       print "(Error) Unable to opendir $dev_block\n";
-       return undef;
+        print "(Error) Unable to opendir $dev_block\n";
+        return undef;
     }
 }
 
 # ***********************************************************
 # Mainline. Parse any arguments, usually no arguments
 $Getopt::Long::ignorecase = 0;
-Getopt::Long::Configure( "bundling" );
+Getopt::Long::Configure("bundling");
 
 GetOptions(
-    'h|help'          => \$displayHelp,
-    'v'               => \$versionOpt );
+    'h|help' => \$displayHelp,
+    'v'      => \$versionOpt);
 
-if ( $versionOpt ) {
+if ($versionOpt) {
     print "Version: $version\n";
     exit 0;
 }
 
-if ( $displayHelp ) {
+if ($displayHelp) {
     print $usage_string;
     exit 0;
 }
 
-my $tempFileName = '';
-my $rc = 0;
+my $tempFileName  = '';
+my $rc            = 0;
 my $oldFileExists = 0;
-my $dev = get_disk($source_vdev);
+my $dev           = get_disk($source_vdev);
 if (defined($dev)) {
+
     # make sure directory exists
     if (!-d $file_location) {
         $returnvalue = mkdir "$file_location", 0755;
@@ -144,13 +147,16 @@ if (defined($dev)) {
         }
     }
     my $oldFiletime;
+
     # Create a temp file name to use while validating
     $tempFileName = `/bin/mktemp -p $file_location $tempPattern`;
     chomp($tempFileName);
+
     # if we are overwriting an existing file, save time stamp
     if (-e "$file_location$file_name") {
+
         # stat will return results in $returnvalue
-        ( $out, $err, $returnvalue ) = eval { capture { `stat \'-c%y\' $file_location$file_name` } };
+        ($out, $err, $returnvalue) = eval { capture { `stat \'-c%y\' $file_location$file_name` } };
         chomp($out);
         chomp($err);
         chomp($returnvalue);
@@ -160,14 +166,15 @@ if (defined($dev)) {
             goto MAIN_EXIT;
         }
         $oldFileExists = 1;
-        $oldFiletime = $returnvalue;
+        $oldFiletime   = $returnvalue;
     }
 
-    ( $out, $err, $returnvalue ) = eval { capture { `/sbin/cmsfscp -d $dev -a $source_file $tempFileName` } };
+    ($out, $err, $returnvalue) = eval { capture { `/sbin/cmsfscp -d $dev -a $source_file $tempFileName` } };
     chomp($out);
     chomp($err);
     chomp($returnvalue);
     if (length($err) > 0) {
+
         # skip any blksize message for other blksize
         if ($err =~ 'does not match device blksize') {
         } else {
@@ -178,7 +185,7 @@ if (defined($dev)) {
     }
 
     if ($oldFileExists == 1) {
-        ( $out, $err, $returnvalue ) = eval { capture { `stat \'-c%y\' $tempFileName` } };
+        ($out, $err, $returnvalue) = eval { capture { `stat \'-c%y\' $tempFileName` } };
         chomp($out);
         chomp($err);
         chomp($returnvalue);
@@ -204,13 +211,13 @@ if (defined($dev)) {
         $rc = 1;
         goto MAIN_EXIT;
     }
-    my @lines = split('\n',$out);
-    my %hash = ();
+    my @lines      = split('\n', $out);
+    my %hash       = ();
     my %imagenames = ();
-    my $count = @lines;
+    my $count      = @lines;
     if ($count < 1) {
         print "(Error) $tempFileName does not have any data.\n";
-        ( $out, $err, $returnvalue ) = eval { capture { `rm $tempFileName` } };
+        ($out, $err, $returnvalue) = eval { capture { `rm $tempFileName` } };
         chomp($out);
         chomp($err);
         chomp($returnvalue);
@@ -222,98 +229,105 @@ if (defined($dev)) {
     }
 
     # loop for any lines found
-    for (my $i=0; $i < $count; $i++) {
+    for (my $i = 0 ; $i < $count ; $i++) {
+
         # skip comment lines, * or /*
-        if ( $lines[$i] =~ '^\s*[\*]') {
+        if ($lines[$i] =~ '^\s*[\*]') {
             next;
         }
-        if ( $lines[$i] =~ '^\s*/[*]') {
+        if ($lines[$i] =~ '^\s*/[*]') {
             next;
         }
+
         # is this a blank line? if so skip it
-        if ($lines[$i] =~/^\s*$/) {
+        if ($lines[$i] =~ /^\s*$/) {
             next;
         }
         my $semicolons = $lines[$i] =~ tr/\;//;
         if ($semicolons < 3) {
-            print "(Error) Semicolons need to end each key=value on line ".($i+1)."\n";
+            print "(Error) Semicolons need to end each key=value on line " . ($i + 1) . "\n";
             $rc = 1;
         }
 
-        %hash = ('IMAGE_NAME' => 0,'CLONE_FROM' => 0,'ECKD_POOL' => 0, 'FBA_POOL' => 0 );
+        %hash = ('IMAGE_NAME' => 0, 'CLONE_FROM' => 0, 'ECKD_POOL' => 0, 'FBA_POOL' => 0);
+
         # IMAGE_NAME=imgBoth; CLONE_FROM=testFBA; ECKD_POOL=POOLECKD; FBA_POOL=POOLFBA
-        my @parms = split( ';', $lines[$i]);
+        my @parms = split(';', $lines[$i]);
         my $parmcount = @parms;
+
         # get the key and value for this item, store in hash
-        for (my $j=0; $j < $parmcount; $j++) {
+        for (my $j = 0 ; $j < $parmcount ; $j++) {
+
             # if this token is all blanks skip it. Could be reading blanks at the end of the line
             if ($parms[$j] =~ /^\s*$/) {
                 next;
             }
             my $parmlength = length($parms[$j]);
-            my @keyvalue = split('=', $parms[$j]);
-            my $key   = $keyvalue[0];
-            $key =~ s/^\s+|\s+$//g; # get rid of leading and trailing blanks
+            my @keyvalue   = split('=', $parms[$j]);
+            my $key        = $keyvalue[0];
+            $key =~ s/^\s+|\s+$//g;    # get rid of leading and trailing blanks
 
-            if ( length( $key ) == 0 ) {
-                print "(Error) Missing keyword on line ".($i+1)."\n";
+            if (length($key) == 0) {
+                print "(Error) Missing keyword on line " . ($i + 1) . "\n";
                 $rc = 1;
                 next;
             }
             my $value = $keyvalue[1];
             $value =~ s/^\s+|\s+$//g;
-            if ( length( $value ) == 0 ) {
-                print "(Error) Missing value for key $key on line ".($i+1)."\n";
+            if (length($value) == 0) {
+                print "(Error) Missing value for key $key on line " . ($i + 1) . "\n";
                 $rc = 1;
                 next
             }
+
             #uppercase both key and value;
             my $UCkey   = uc $key;
             my $UCvalue = uc $value;
             $hash{$UCkey} = $hash{$UCkey} + 1;
             if ($UCkey eq "IMAGE_NAME") {
                 if (exists $imagenames{$UCvalue}) {
-                    print "(Error) Duplicate IMAGE_NAME found on line ".($i+1)." with value: $value\n";
+                    print "(Error) Duplicate IMAGE_NAME found on line " . ($i + 1) . " with value: $value\n";
                     $rc = 1;
                 } else {
                     $imagenames{$UCvalue} = 1;
                 }
             }
             if ($UCkey ne "IMAGE_NAME" && $UCkey ne "CLONE_FROM" && $UCkey ne "ECKD_POOL" && $UCkey ne "FBA_POOL") {
-                print "(Error) Unknown keyword $key found on line ".($i+1)."\n";
+                print "(Error) Unknown keyword $key found on line " . ($i + 1) . "\n";
                 $rc = 1;
             }
         }
+
         # Check to make sure they have at least an image name, from and one pool
-        if ($hash{IMAGE_NAME} == 1 && $hash{CLONE_FROM} == 1 && ($hash{ECKD_POOL} ==1 || $hash{FBA_POOL} ==1 )) {
+        if ($hash{IMAGE_NAME} == 1 && $hash{CLONE_FROM} == 1 && ($hash{ECKD_POOL} == 1 || $hash{FBA_POOL} == 1)) {
             next;
         } else {
             if ($hash{IMAGE_NAME} == 0) {
-                print "(Error) Missing IMAGE_NAME key=value on line ".($i+1)."\n";
+                print "(Error) Missing IMAGE_NAME key=value on line " . ($i + 1) . "\n";
                 $rc = 1;
             }
             if ($hash{IMAGE_NAME} > 1) {
-                print "(Error) Multiple IMAGE_NAME keys found on line ".($i+1)."\n";
+                print "(Error) Multiple IMAGE_NAME keys found on line " . ($i + 1) . "\n";
                 $rc = 1;
             }
             if ($hash{CLONE_FROM} == 0) {
-                print "(Error) Missing CLONE_FROM key=value on line ".($i+1)."\n";
+                print "(Error) Missing CLONE_FROM key=value on line " . ($i + 1) . "\n";
                 $rc = 1;
             }
             if ($hash{CLONE_FROM} > 1) {
-                print "(Error) Multiple CLONE_FROM keys found on line ".($i+1)."\n";
+                print "(Error) Multiple CLONE_FROM keys found on line " . ($i + 1) . "\n";
                 $rc = 1;
             }
             if ($hash{ECKD_POOL} == 0 && $hash{FBA_POOL} == 0) {
-                print "(Error) Missing ECKD_POOL or FBA_POOL on line ".($i+1)."\n";
+                print "(Error) Missing ECKD_POOL or FBA_POOL on line " . ($i + 1) . "\n";
                 $rc = 1;
             }
             if ($hash{ECKD_POOL} > 1) {
-                print "(Error) Multiple ECKD_POOL keys found on line ".($i+1)."\n";
+                print "(Error) Multiple ECKD_POOL keys found on line " . ($i + 1) . "\n";
                 $rc = 1;
             }
             if ($hash{FBA_POOL} > 1) {
-                print "(Error) Multiple FBA_POOL keys found on line ".($i+1)."\n";
+                print "(Error) Multiple FBA_POOL keys found on line " . ($i + 1) . "\n";
                 $rc = 1;
             }
         }
@@ -322,12 +336,14 @@ if (defined($dev)) {
     print "(Error) Unable to access the $source_vdev disk.\n";
     $rc = 1;
 }
+
 # Main exit for this routine.  Handles any necessary clean up.
 MAIN_EXIT:
-if (length($tempFileName) > 0 ) {
+if (length($tempFileName) > 0) {
+
     # If a good rc, Copy the temp file to the correct file
     if ($rc == 0) {
-        ( $out, $err, $returnvalue ) = eval { capture { `/bin/cp -f $tempFileName $file_location$file_name` } };
+        ($out, $err, $returnvalue) = eval { capture { `/bin/cp -f $tempFileName $file_location$file_name` } };
         print $out;
         print $err;
         print $returnvalue;
@@ -341,7 +357,7 @@ if (length($tempFileName) > 0 ) {
             print "Validation completed. Temporary file copied to $file_location$file_name.\nIt is ready to use\n";
         }
     }
-    ( $out, $err, $returnvalue ) = eval { capture { `rm $tempFileName` } };
+    ($out, $err, $returnvalue) = eval { capture { `rm $tempFileName` } };
     chomp($out);
     chomp($err);
     chomp($returnvalue);

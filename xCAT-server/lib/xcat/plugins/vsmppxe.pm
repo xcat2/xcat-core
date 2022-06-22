@@ -408,17 +408,17 @@ sub process_request {
     if (!$inittime) { $inittime = 0; }
     unless ($args[0] eq 'stat') {    # or $args[0] eq 'enact') {
         $sub_req->({ command => ['setdestiny'],
-                node     => \@nodes,
-                inittime => [$inittime],
-                arg      => [ $args[0] ],
+                node       => \@nodes,
+                inittime   => [$inittime],
+                arg        => [ $args[0] ],
                 bootparams => \%bphash
-                }, \&pass_along);
+        }, \&pass_along);
     }
     if ($errored) { return; }
 
     #Time to actually configure the nodes, first extract database data with the scalable calls
     my $chaintab = xCAT::Table->new('chain');
-    my $mactab = xCAT::Table->new('mac');    #to get all the hostnames
+    my $mactab   = xCAT::Table->new('mac');     #to get all the hostnames
     my %chainhash = %{ $chaintab->getNodesAttribs(\@nodes, [qw(currstate)]) };
     my %machash = %{ $mactab->getNodesAttribs(\@nodes, [qw(mac)]) };
     foreach (@nodes) {

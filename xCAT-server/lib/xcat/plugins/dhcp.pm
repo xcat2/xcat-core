@@ -58,8 +58,8 @@ use Math::BigInt;
 my $dhcpconffile = $^O eq 'aix' ? '/etc/dhcpsd.cnf' : '/etc/dhcpd.conf';
 my %dynamicranges; #track dynamic ranges defined to see if a host that resolves is actually a dynamic address
 my %netcfgs;
-my $distro = xCAT::Utils->osver();
-my $checkdomain=0;
+my $distro      = xCAT::Utils->osver();
+my $checkdomain = 0;
 
 # dhcp 4.x will use /etc/dhcp/dhcpd.conf as the config file
 my $dhcp6conffile;
@@ -488,11 +488,11 @@ sub addnode
     my $ntent;
     my $tftpserver;
 
-    my $httpport="80";
-     my @hports=xCAT::TableUtils->get_site_attribute("httpport");
-     if ($hports[0]){
-         $httpport=$hports[0];
-     }
+    my $httpport = "80";
+    my @hports   = xCAT::TableUtils->get_site_attribute("httpport");
+    if ($hports[0]) {
+        $httpport = $hports[0];
+    }
 
     if ($chainents and $chainents->{$node}) {
         $chainent = $chainents->{$node}->[0];
@@ -533,7 +533,7 @@ sub addnode
         {
             $guess_next_server = 1;
         }
-        if ($nrent->{netboot} and ($nrent->{netboot} eq 'petitboot' or $nrent->{netboot} eq 'onie' )) {
+        if ($nrent->{netboot} and ($nrent->{netboot} eq 'petitboot' or $nrent->{netboot} eq 'onie')) {
             if ($guess_next_server) {
                 my $node_server = undef;
                 if ($nrent->{xcatmaster}) {
@@ -614,7 +614,7 @@ sub addnode
         {
             $callback->(
                 {
-                    error => ["Invalid mac address $mac for $node"],
+                    error     => ["Invalid mac address $mac for $node"],
                     errorcode => [1]
                 }
             );
@@ -645,7 +645,7 @@ sub addnode
             $callback->(
                 {
                     warning => [
-                        "The hostname $hname of node $node could not be resolved."
+"The hostname $hname of node $node could not be resolved."
                       ]
                 }
             );
@@ -686,12 +686,12 @@ sub addnode
                         if (proxydhcp($nrent)) { #proxy dhcp required in uefi invocation
                             $lstatements = 'if option client-architecture = 00:00 or option client-architecture = 00:07 or option client-architecture = 00:09 { filename = \"\"; option vendor-class-identifier \"PXEClient\"; } else { filename = \"\"; }' . $lstatements; #If proxydhcp daemon is enable, use it.
                         } else {
-                            $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { always-broadcast on; filename = \"http://' . $nxtsrv . ':' . $httpport  . '/tftpboot/xcat/xnba/nodes/' . $node . '\"; } else if option client-architecture = 00:07 or option client-architecture = 00:09 { filename = \"\"; option vendor-class-identifier \"PXEClient\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }' . $lstatements; #Only PXE compliant clients should ever receive xNBA
+                            $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { always-broadcast on; filename = \"http://' . $nxtsrv . ':' . $httpport . '/tftpboot/xcat/xnba/nodes/' . $node . '\"; } else if option client-architecture = 00:07 or option client-architecture = 00:09 { filename = \"\"; option vendor-class-identifier \"PXEClient\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }' . $lstatements; #Only PXE compliant clients should ever receive xNBA
                         }
                     } elsif ($douefi and $chainent->{currstate} ne "boot" and $chainent->{currstate} ne "iscsiboot") {
-                        $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { always-broadcast on; filename = \"http://' . $nxtsrv . ':' . $httpport . '/tftpboot/xcat/xnba/nodes/' . $node . '\"; } else if option user-class-identifier = \"xNBA\" and option client-architecture = 00:09 { filename = \"http://' . $nxtsrv .':' . $httpport . '/tftpboot/xcat/xnba/nodes/' . $node . '.uefi\"; } else if option client-architecture = 00:07 { filename = \"xcat/xnba.efi\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }' . $lstatements; #Only PXE compliant clients should ever receive xNBA
+                        $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { always-broadcast on; filename = \"http://' . $nxtsrv . ':' . $httpport . '/tftpboot/xcat/xnba/nodes/' . $node . '\"; } else if option user-class-identifier = \"xNBA\" and option client-architecture = 00:09 { filename = \"http://' . $nxtsrv . ':' . $httpport . '/tftpboot/xcat/xnba/nodes/' . $node . '.uefi\"; } else if option client-architecture = 00:07 { filename = \"xcat/xnba.efi\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }' . $lstatements; #Only PXE compliant clients should ever receive xNBA
                     } else {
-                        $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { filename = \"http://' . $nxtsrv .':' . $httpport . '/tftpboot/xcat/xnba/nodes/' . $node . '\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }' . $lstatements; #Only PXE compliant clients should ever receive xNBA
+                        $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { filename = \"http://' . $nxtsrv . ':' . $httpport . '/tftpboot/xcat/xnba/nodes/' . $node . '\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }' . $lstatements; #Only PXE compliant clients should ever receive xNBA
                     }
                 }
             }    #TODO: warn when windows
@@ -708,7 +708,7 @@ sub addnode
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} =~ /^grub2[-]?.*$/) {
             $lstatements = 'filename = \"/boot/grub2/grub2-' . $node . '\";' . $lstatements;
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'petitboot') {
-            $lstatements = 'option conf-file \"http://' . $nxtsrv .':' . $httpport . '/tftpboot/petitboot/' . $node . '\";' . $lstatements;
+            $lstatements = 'option conf-file \"http://' . $nxtsrv . ':' . $httpport . '/tftpboot/petitboot/' . $node . '\";' . $lstatements;
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'onie') {
             my $provmethod = $ntent->{provmethod};
             if ($provmethod) {
@@ -716,24 +716,24 @@ sub addnode
                 my $imagetab = $linuximagetab->getAttribs({ imagename => $provmethod }, 'pkgdir');
                 if ($imagetab) {
                     my $image_pkgdir = $imagetab->{'pkgdir'};
-                    my @pkgdirs = split(/,/,$image_pkgdir);
+                    my @pkgdirs = split(/,/, $image_pkgdir);
                     my $validpkgdir;
-                    foreach my $mypkgdir (@pkgdirs){
+                    foreach my $mypkgdir (@pkgdirs) {
                         if (-f $mypkgdir) {
-                            $lstatements = 'if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { option www-server = \"http://' . $nxtsrv .':' . $httpport . $mypkgdir . '\";}' . $lstatements;
+                            $lstatements = 'if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { option www-server = \"http://' . $nxtsrv . ':' . $httpport . $mypkgdir . '\";}' . $lstatements;
                             $validpkgdir = 1;
                             last;
                         }
-                     }
-                     unless ($validpkgdir) {
-                        $callback->({ warning => ["osimage $provmethod pkgdir doesn't exists"]});
-                     }
-                 } else {
-                    $callback->({ warning => ["osimage $provmethod is not defined in the osimage table"]});
-                 }
-             } else {
-                $callback->({ warning => ["provmethod is not defined for $node"]});
-             }
+                    }
+                    unless ($validpkgdir) {
+                        $callback->({ warning => ["osimage $provmethod pkgdir doesn't exists"] });
+                    }
+                } else {
+                    $callback->({ warning => ["osimage $provmethod is not defined in the osimage table"] });
+                }
+            } else {
+                $callback->({ warning => ["provmethod is not defined for $node"] });
+            }
 
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'nimol') {
             $lstatements = 'supersede server.filename=\"/vios/nodes/' . $node . '\";' . $lstatements;
@@ -764,9 +764,9 @@ sub addnode
                         $hostname = $1 . "-hf" . $count;
                     }
                 }
-            } elsif (length($mac) == 23) { # 8 bytes of mac address
-		# Currently the only thing that has 8 bytes is an infiniband
-		# or infiniband like device, which is type 32 (0x20).
+            } elsif (length($mac) == 23) {    # 8 bytes of mac address
+                    # Currently the only thing that has 8 bytes is an infiniband
+                    # or infiniband like device, which is type 32 (0x20).
                 $hardwaretype = 32;
             }
 
@@ -812,7 +812,7 @@ sub addnode
                         $callback->(
                             {
                                 warning => [
-            "The ip address $ip of node $node overlaps with the DHCP dynamic range specified in networks table, will not add this ip address into dhcpd.leases file."
+"The ip address $ip of node $node overlaps with the DHCP dynamic range specified in networks table, will not add this ip address into dhcpd.leases file."
                                   ]
                             }
                         );
@@ -834,7 +834,7 @@ sub addnode
                 unless (grep /#definition for host $node aka host $hostname/, @dhcpconf)
                 {
                     push @dhcpconf,
-                    "#definition for host $node aka host $hostname can be found in the dhcpd.leases file (typically /var/lib/dhcpd/dhcpd.leases)\n";
+"#definition for host $node aka host $hostname can be found in the dhcpd.leases file (typically /var/lib/dhcpd/dhcpd.leases)\n";
                 }
             }
         }
@@ -1117,17 +1117,19 @@ sub preprocess_request
     xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: disjointdhcps=$t_entry");
     my @requests     = ();
     my $hasHierarchy = 0;
-    my @snlist = xCAT::ServiceNodeUtils->getSNList('dhcpserver');
+    my @snlist       = xCAT::ServiceNodeUtils->getSNList('dhcpserver');
     if (@snlist > 0) { $hasHierarchy = 1; }
     xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: hasHierarchy=$hasHierarchy");
 
     my @dhcpsvrs = ();
     if ($hasHierarchy) {
+
         #hierarchy detected, enforce more rigorous sanity
         my $ntab = xCAT::Table->new('networks');
         if ($ntab) {
             foreach (@{ $ntab->getAllEntries() }) {
                 next unless ($_->{dynamicrange});
+
                 # if dynamicrange specified but dhcpserver was not - issue error message
                 unless ($_->{dhcpserver}) {
                     $callback->({ error => [ "Hierarchy requested, therefore networks.dhcpserver must be set for net=" . $_->{net} . "" ], errorcode => [1] });
@@ -1221,6 +1223,7 @@ sub preprocess_request
     xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: nodes are $str_node");
 
     my $issn = xCAT::Utils->isServiceNode();
+
     #check if this node is the service node for any input node
     my @hostinfo = xCAT::NetworkUtils->determinehostname();
     my %iphash   = ();
@@ -1252,11 +1255,12 @@ sub preprocess_request
                     }
                 }
             } else {
-                my $handled4me = 0;     # indicate myself is already handled.
-                my %prehandledhash = ();# the servers which is already handled.
+                my $handled4me     = 0;  # indicate myself is already handled.
+                my %prehandledhash = (); # the servers which is already handled.
                 foreach (@dhcpsvrs) {
+
                     # It is required to handle the whole noderange for the dhcp server which serving dynamic range
-                    if (! exists($iphash{$_})) {
+                    if (!exists($iphash{$_})) {
                         my $reqcopy = {%$req};
                         $reqcopy->{'node'}                 = \@nodes;
                         $reqcopy->{'_xcatdest'}            = $_;
@@ -1265,7 +1269,7 @@ sub preprocess_request
                         $prehandledhash{$_} = 1;
                     } elsif ($handled4me == 0) {
                         my $reqcopy = {%$req};
-                        $reqcopy->{'node'}                 = \@nodes;
+                        $reqcopy->{'node'} = \@nodes;
                         $reqcopy->{_xcatpreprocessed}->[0] = 1;
                         push @requests, $reqcopy;
                         $handled4me = 1;
@@ -1274,9 +1278,10 @@ sub preprocess_request
 
                 # create a request for each service node
                 foreach (keys %$sn_hash) {
+
                     # to check if the SN already handled
                     next if (exists($prehandledhash{$_}));
-                    if (! exists($iphash{$_})) {
+                    if (!exists($iphash{$_})) {
                         my $reqcopy = {%$req};
                         $reqcopy->{'node'}                 = $sn_hash->{$_};
                         $reqcopy->{'_xcatdest'}            = $_;
@@ -1304,7 +1309,7 @@ sub preprocess_request
         unless ($localonly || $hasHierarchy == 0) {
 
             # If running on SN, get site.master from DB and dispatch to it as MN will not be in SN list.
-            if ( $issn ) {
+            if ($issn) {
                 my @entries = xCAT::TableUtils->get_site_attribute("master");
                 my $reqcopy = {%$req};
                 $reqcopy->{'_xcatdest'} = $entries[0];
@@ -1469,6 +1474,7 @@ sub process_request
     my $querynics = 1;
 
     if (xCAT::Utils->isServiceNode() and $dhcpinterfaces and $dhcpinterfaces->{dhcpinterfaces}) {
+
         # The keyword 'noboot' was appended to the NICs that doesn't need to reply DHCP configuration file, only used for mknb at present.
         $dhcpinterfaces->{dhcpinterfaces} =~ s/:noboot//g;
         my @dhcpifs = split ',', $dhcpinterfaces->{dhcpinterfaces};
@@ -1492,6 +1498,7 @@ sub process_request
           #depending on complexity of network wished to be described
         {
             my $dhcpinterfaces = $t_entry;
+
             # The keyword 'noboot' was appended to the NICs that doesn't need to reply DHCP configuration file, only used for mknb at present.
             $dhcpinterfaces =~ s/:noboot//g;
 
@@ -1982,11 +1989,11 @@ sub process_request
     }
     if ($checkdomain)
     {
-         $callback->({ error => [ "above error fail to generate new dhcp configuration file, restore dhcp configuration file $dhcpconffile" ], errorcode => [1] });
-         my $backupfile = $dhcpconffile.".xcatbak";
-         rename("$backupfile", $dhcpconffile);
-         xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: Restore dhcp configuration file to  $dhcpconffile");
-         exit 1;
+        $callback->({ error => ["above error fail to generate new dhcp configuration file, restore dhcp configuration file $dhcpconffile"], errorcode => [1] });
+        my $backupfile = $dhcpconffile . ".xcatbak";
+        rename("$backupfile", $dhcpconffile);
+        xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: Restore dhcp configuration file to  $dhcpconffile");
+        exit 1;
     }
     foreach (@nrn6) {    #do the ipv6 networks
         addnet6($_);     #already did all the filtering before putting into nrn6
@@ -2059,7 +2066,7 @@ sub process_request
         } else {
             $chainents = undef;
         }
-        $nrhash = $nrtab->getNodesAttribs($req->{node}, [ 'tftpserver', 'netboot', 'proxydhcp', 'xcatmaster', 'servicenode']);
+        $nrhash = $nrtab->getNodesAttribs($req->{node}, [ 'tftpserver', 'netboot', 'proxydhcp', 'xcatmaster', 'servicenode' ]);
         my $nodetypetab;
         $nodetypetab = xCAT::Table->new('nodetype', -create => 0);
         if ($nodetypetab) {
@@ -2396,11 +2403,11 @@ sub addnet
     my $mask = shift;
     my $nic;
     my $domain;
-    my $httpport="80";
-     my @hports=xCAT::TableUtils->get_site_attribute("httpport");
-     if ($hports[0]){
-         $httpport=$hports[0];
-     }
+    my $httpport = "80";
+    my @hports   = xCAT::TableUtils->get_site_attribute("httpport");
+    if ($hports[0]) {
+        $httpport = $hports[0];
+    }
     my $firstoctet = $net;
     $firstoctet =~ s/^(\d+)\..*/$1/;
     if ($net eq "169.254.0.0" or ($firstoctet >= 224 and $firstoctet <= 239)) {
@@ -2503,11 +2510,11 @@ sub addnet
                 $callback->(
                     {
                         error => [
-                            "No domain defined for $net entry in networks table, and no domain defined in site table."
-                          ],
+"No domain defined for $net entry in networks table, and no domain defined in site table."
+                        ],
                         errorcode => [1]
                     });
-                $checkdomain=1;
+                $checkdomain = 1;
             }
 
             if ($ent and $ent->{nameservers})
@@ -2522,7 +2529,7 @@ sub addnet
                     $callback->(
                         {
                             warning => [
-                            "No $net specific entry for nameservers, and no nameservers defined in site table."
+"No $net specific entry for nameservers, and no nameservers defined in site table."
                               ]
                         }
                     );
@@ -2581,7 +2588,7 @@ sub addnet
                 $callback->(
                     {
                         warning => [
-                        "No dynamic range specified for $net. If hardware discovery is being used, a dynamic range is required."
+"No dynamic range specified for $net. If hardware discovery is being used, a dynamic range is required."
                           ]
                     }
                 );
@@ -2606,8 +2613,8 @@ sub addnet
         if ($^O eq 'aix')
         {
             return gen_aix_net($myip, $net, $mask, $gateway, $tftp,
-                $logservers, $ntpservers, $domain,
-                $nameservers, $range, $mtu);
+                $logservers,  $ntpservers, $domain,
+                $nameservers, $range,      $mtu);
         }
         my @netent;
 
@@ -2636,7 +2643,7 @@ sub addnet
                 $callback->(
                     {
                         error => [
-                        "Specified gateway $gateway is not valid for $net/$mask, must be on same network"
+"Specified gateway $gateway is not valid for $net/$mask, must be on same network"
                         ],
                         errorcode => [1]
                     }
@@ -2683,6 +2690,7 @@ sub addnet
                 push @netent, "    option domain-search  $domainstring;\n";
             }
         }
+
         #for cumulus ZTP process
         push @netent, "    option cumulus-provision-url \"http://$tftp:$httpport/install/postscripts/cumulusztp\";\n";
 
@@ -2735,7 +2743,7 @@ sub addnet
           "    } else if option client-architecture = 00:07 { #x86_64 uefi\n ";
         push @netent, "        filename \"xcat/xnba.efi\";\n";
         push @netent,
-          "    } else if option client-architecture = 00:09 { #x86_64 uefi alternative id\n ";
+"    } else if option client-architecture = 00:09 { #x86_64 uefi alternative id\n ";
         push @netent, "        filename \"xcat/xnba.efi\";\n";
         push @netent,
           "    } else if option client-architecture = 00:02 { #ia64\n ";
@@ -2744,10 +2752,10 @@ sub addnet
           "    } else if option client-architecture = 00:0e { #OPAL-v3\n ";
         push @netent, "        option conf-file = \"http://$tftp:$httpport/tftpboot/pxelinux.cfg/p/" . $net . "_" . $maskbits . "\";\n";
         push @netent,
-          "    } else if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { #for onie on cumulus switch\n";
+"    } else if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { #for onie on cumulus switch\n";
         push @netent, "        option www-server = \"http://$tftp:$httpport/install/onie/onie-installer\";\n";
         push @netent,
-          "    } else if substring(filename,0,1) = null { #otherwise, provide yaboot if the client isn't specific\n ";
+"    } else if substring(filename,0,1) = null { #otherwise, provide yaboot if the client isn't specific\n ";
         push @netent, "        filename \"/yaboot\";\n";
         push @netent, "    }\n";
 
@@ -2817,7 +2825,7 @@ sub gen_aix_net
             $callback->(
                 {
                     error => [
-                    "Specified gateway $gateway is not valid for $net/$mask, must be on same network"
+"Specified gateway $gateway is not valid for $net/$mask, must be on same network"
                     ],
                     errorcode => [1]
                 }
@@ -3024,12 +3032,12 @@ sub newconfig
     push @dhcpconf, "option www-server code 114 = string;\n";
     push @dhcpconf, "option cumulus-provision-url code 239 = text;\n";
     push @dhcpconf, "\n";
-    push @dhcpconf, "omapi-port 7911;\n";            #Enable omapi...
+    push @dhcpconf, "omapi-port 7911;\n";        #Enable omapi...
     push @dhcpconf, "key xcat_key {\n";
     push @dhcpconf, "  algorithm hmac-md5;\n";
     (my $passent) =
       $passtab->getAttribs({ key => 'omapi', username => 'xcat_key' }, 'password');
-    my $secret = encode_base64(genpassword(32));     #Random from set of  62^32
+    my $secret = encode_base64(genpassword(32));    #Random from set of  62^32
     chomp $secret;
     if ($passent->{password}) { $secret = $passent->{password}; }
     else

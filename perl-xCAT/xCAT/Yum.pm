@@ -9,13 +9,13 @@ my $distname;
 my $arch;
 my $installpfx;
 
-my $distrepopfx="/install/postscripts/repos";
+my $distrepopfx = "/install/postscripts/repos";
 
 sub localize_yumrepo {
-    my $self        = shift;
+    my $self   = shift;
     my $pkgdir = shift;
-    $distname=shift;
-    $arch=shift;
+    $distname = shift;
+    $arch     = shift;
 
     mkpath("$distrepopfx/$pkgdir");
     open($yumrepofile, ">", "$distrepopfx/$pkgdir/local-repository.tmpl");
@@ -29,7 +29,7 @@ sub localize_yumrepo {
 
 
 sub remove_yumrepo {
-    my $self        = shift;
+    my $self   = shift;
     my $pkgdir = shift;
     rmtree("$distrepopfx/$pkgdir/local-repository.tmpl");
 }
@@ -54,7 +54,7 @@ sub generate_repo
     my $dirlocation = shift;
     my @dircomps    = File::Spec->splitdir($dirlocation);
     pop(@dircomps);
-    my $reponame = join("-",@dircomps);
+    my $reponame = join("-", @dircomps);
     my $yumurl = File::Spec->catdir(@dircomps);
 
     print $yumrepofile "[local-$distname-$arch-$reponame]\n";
@@ -62,7 +62,7 @@ sub generate_repo
     print $yumrepofile "baseurl=$yumurl\n";
     print $yumrepofile "enabled=1\n";
     print $yumrepofile "gpgcheck=0\n\n";
-}	
+}
 
 sub fix_directory {
 

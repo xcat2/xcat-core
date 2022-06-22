@@ -19,13 +19,13 @@ use IO::Socket::UNIX qw( SOCK_STREAM );
 use xCAT_monitoring::monitorctrl;
 use xCAT::TableUtils;
 
-my $LOCK_DIR = "/var/lock/xcat/";
-my $LOCK_PATH = "/var/lock/xcat/agent.lock";
-my $AGENT_SOCK_PATH = "/var/run/xcat/agent.sock";
-my $PYTHON_LOG_PATH = "/var/log/xcat/agent.log";
+my $LOCK_DIR          = "/var/lock/xcat/";
+my $LOCK_PATH         = "/var/lock/xcat/agent.lock";
+my $AGENT_SOCK_PATH   = "/var/run/xcat/agent.sock";
+my $PYTHON_LOG_PATH   = "/var/log/xcat/agent.log";
 my $PYTHON_AGENT_FILE = "/opt/xcat/lib/python/agent/agent.py";
-my $MSG_TYPE = "message";
-my $DB_TYPE = "db";
+my $MSG_TYPE          = "message";
+my $DB_TYPE           = "db";
 my $lock_fd;
 
 my %module_type = (
@@ -43,17 +43,17 @@ my %module_type = (
 
 #-------------------------------------------------------
 sub parse_node_info {
-    my $noderange = shift;
-    my $module = shift;
+    my $noderange     = shift;
+    my $module        = shift;
     my $node_info_ref = shift;
-    my $callback = shift;
-    my $rst = 0;
+    my $callback      = shift;
+    my $rst           = 0;
 
     my $passwd_table = xCAT::Table->new('passwd');
     my $passwd_hash = $passwd_table->getAttribs({ 'key' => $module }, qw(username password));
 
     my $openbmc_table = xCAT::Table->new('openbmc');
-    my $openbmc_hash = $openbmc_table->getNodesAttribs(\@$noderange, ['bmc', 'username', 'password']);
+    my $openbmc_hash = $openbmc_table->getNodesAttribs(\@$noderange, [ 'bmc', 'username', 'password' ]);
 
     foreach my $node (@$noderange) {
         if (defined($openbmc_hash->{$node}->[0])) {
@@ -61,13 +61,13 @@ sub parse_node_info {
                 $node_info_ref->{$node}->{bmc} = $openbmc_hash->{$node}->[0]->{'bmc'};
                 $node_info_ref->{$node}->{bmcip} = xCAT::NetworkUtils::getNodeIPaddress($openbmc_hash->{$node}->[0]->{'bmc'});
             }
-            unless($node_info_ref->{$node}->{bmc}) {
+            unless ($node_info_ref->{$node}->{bmc}) {
                 xCAT::SvrUtils::sendmsg("Error: Unable to get attribute bmc", $callback, $node);
                 delete $node_info_ref->{$node};
                 $rst = 1;
                 next;
             }
-            unless($node_info_ref->{$node}->{bmcip}) {
+            unless ($node_info_ref->{$node}->{bmcip}) {
                 xCAT::SvrUtils::sendmsg("Error: Unable to resolve ip address for bmc: $node_info_ref->{$node}->{bmc}", $callback, $node);
                 delete $node_info_ref->{$node};
                 $rst = 1;
@@ -109,9 +109,10 @@ sub acquire_lock {
     $ppid = shift if (($ppid) && ($ppid =~ /AGENT/));
 
     mkpath($LOCK_DIR);
+
     # always create a new lock file
     if ($ppid) {
-        $LOCK_PATH = "$LOCK_PATH.$ppid";
+        $LOCK_PATH       = "$LOCK_PATH.$ppid";
         $AGENT_SOCK_PATH = "$AGENT_SOCK_PATH.$ppid";
     }
     unlink($LOCK_PATH);
@@ -121,7 +122,7 @@ sub acquire_lock {
 }
 
 sub exists_python_agent {
-    if ( -e $PYTHON_AGENT_FILE) {
+    if (-e $PYTHON_AGENT_FILE) {
         return 1;
     }
     return 0;
@@ -146,7 +147,7 @@ sub start_python_agent {
     if (!defined $pid) {
         xCAT::MsgUtils->message("S", "start_python_agent() Error: Unable to fork process");
         return undef;
-    } elsif ($pid){
+    } elsif ($pid) {
         open($fd, '>', $AGENT_SOCK_PATH) && close($fd);
         $SIG{INT} = $SIG{TERM} = \&python_agent_reaper;
         return $pid;
@@ -154,11 +155,12 @@ sub start_python_agent {
 
     $SIG{CHLD} = 'DEFAULT';
     if (!$pid) {
+
         # child
         open($fd, ">>", $PYTHON_LOG_PATH) && close($fd);
-        open(STDOUT, '>>', $PYTHON_LOG_PATH) or die("open: $!");
-        open(STDERR, '>>&', \*STDOUT) or die("open: $!");
-        my @args = ( "$PYTHON_AGENT_FILE --sock $AGENT_SOCK_PATH --lockfile $LOCK_PATH" );
+        open(STDOUT, '>>',  $PYTHON_LOG_PATH) or die("open: $!");
+        open(STDERR, '>>&', \*STDOUT)         or die("open: $!");
+        my @args = ("$PYTHON_AGENT_FILE --sock $AGENT_SOCK_PATH --lockfile $LOCK_PATH");
         my $ret = exec @args;
         if (!defined($ret)) {
             xCAT::MsgUtils->message("S", "start_python_agent() Error: Failed to start the xCAT Python agent.");
@@ -169,24 +171,24 @@ sub start_python_agent {
 
 sub handle_message {
     my ($data, $callback) = @_;
-    if($data->{type} eq $MSG_TYPE) {
+    if ($data->{type} eq $MSG_TYPE) {
         my $msg = $data->{msg};
         if ($msg->{type} eq 'info') {
-            xCAT::MsgUtils->message("I", { data => [$msg->{data}] }, $callback);
+            xCAT::MsgUtils->message("I", { data => [ $msg->{data} ] }, $callback);
         } elsif ($msg->{type} eq 'warning') {
-            xCAT::MsgUtils->message("W", { data => [$msg->{data}] }, $callback);
-        } elsif ($msg->{type} eq 'error'){
+            xCAT::MsgUtils->message("W", { data => [ $msg->{data} ] }, $callback);
+        } elsif ($msg->{type} eq 'error') {
             xCAT::SvrUtils::sendmsg([ 1, $msg->{data} ], $callback, $msg->{node});
-        } elsif ($msg->{type} eq 'syslog'){
+        } elsif ($msg->{type} eq 'syslog') {
             xCAT::MsgUtils->message("S", $msg->{data});
         } elsif ($msg->{type} eq 'info_with_host') {
-            xCAT::MsgUtils->message("I", { data => [$msg->{data}], host => [1] }, $callback);
+            xCAT::MsgUtils->message("I", { data => [ $msg->{data} ], host => [1] }, $callback);
         }
     } elsif ($data->{type} eq $DB_TYPE) {
         my $attribute = $data->{attribute};
         if ($attribute->{name} eq 'status' and $attribute->{method} eq 'set' and $attribute->{type} eq 'node') {
-             my %new_status = ($attribute->{value} => [$attribute->{node}]);
-             xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%new_status, 1)
+            my %new_status = ($attribute->{value} => [ $attribute->{node} ]);
+            xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%new_status, 1)
         }
     }
 }
@@ -195,7 +197,7 @@ sub submit_agent_request {
     my ($pid, $req, $module, $nodeinfo, $callback) = @_;
     my $sock;
     my $retry = 0;
-    while($retry < 30) {
+    while ($retry < 30) {
         $sock = IO::Socket::UNIX->new(Peer => $AGENT_SOCK_PATH, Type => SOCK_STREAM, Timeout => 10, Blocking => 1);
         if (!defined($sock)) {
             sleep(0.1);
@@ -214,15 +216,16 @@ sub submit_agent_request {
     my %env_hash = ();
     $env_hash{debugmode} = $xcatdebugmode;
     my ($data, $sz, $ret, $buf);
-    $data->{module} = $module;
-    $data->{command} = $req->{command}->[0];
-    $data->{args} = $req->{arg};
-    $data->{cwd} = $req->{cwd};
-    $data->{nodes} = $req->{node};
+    $data->{module}   = $module;
+    $data->{command}  = $req->{command}->[0];
+    $data->{args}     = $req->{arg};
+    $data->{cwd}      = $req->{cwd};
+    $data->{nodes}    = $req->{node};
     $data->{nodeinfo} = $nodeinfo;
-    $data->{envs} = \%env_hash;
-    $buf = encode_json($data);
+    $data->{envs}     = \%env_hash;
+    $buf              = encode_json($data);
     $sz = pack('i', length($buf));
+
     # send length of data first
     $ret = $sock->send($sz);
     if (!$ret) {
@@ -231,6 +234,7 @@ sub submit_agent_request {
         kill('TERM', $pid);
         return;
     }
+
     # send data
     $ret = $sock->send($buf);
     if (!$ret) {
@@ -239,13 +243,15 @@ sub submit_agent_request {
         kill('TERM', $pid);
         return;
     }
-    while(1) {
+    while (1) {
         $ret = $sock->recv($buf, 4);
         if (!$ret) {
             last;
         }
+
         # receive the length of data
         $sz = unpack('i', $buf);
+
         # read data with length is $sz
         $ret = $sock->recv($buf, $sz);
         if (!$ret) {
@@ -255,6 +261,7 @@ sub submit_agent_request {
         $data = decode_json($buf);
         handle_message($data, $callback);
     }
+
     # no message received, the socket on the agent side should be closed.
     $sock->close();
 }

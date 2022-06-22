@@ -5,6 +5,7 @@ package xCAT::SSH;
 
 # cannot use strict
 use base xCAT::DSHRemoteShell;
+
 # Determine if OS is AIX or Linux
 # Configure standard locations of commands based on OS
 
@@ -135,12 +136,12 @@ sub remote_copy_command {
     my @src_files = ();
     my @dest_file = ();
 
-    if ($$config{'destDir_srcFile'}){
+    if ($$config{'destDir_srcFile'}) {
         my $dest_dir_list = join ' ', keys %{ $$config{'destDir_srcFile'} };
         my $dest_user_host = $$config{'dest-host'};
         if ($::SYNCSN == 1)
-        {                                                 # syncing service node
-            #todo
+        {    # syncing service node
+                #todo
             $scpfile = "/tmp/scp_$$config{'dest-host'}";
         }
         else
@@ -162,25 +163,25 @@ sub remote_copy_command {
         }
 
         print SCPCMDFILE
-            "/usr/bin/ssh  $dest_user_host '/bin/mkdir -p $dest_dir_list'\n";
+          "/usr/bin/ssh  $dest_user_host '/bin/mkdir -p $dest_dir_list'\n";
 
-        foreach my $dest_dir (keys %{ $$config{'destDir_srcFile'} }){
-            if($$config{'destDir_srcFile'}{$dest_dir}{'same_dest_name'}){
+        foreach my $dest_dir (keys %{ $$config{'destDir_srcFile'} }) {
+            if ($$config{'destDir_srcFile'}{$dest_dir}{'same_dest_name'}) {
                 my @src_file =
                   @{ $$config{'destDir_srcFile'}{$dest_dir}{'same_dest_name'} };
                 my $src_file_list = join ' ', @src_file;
                 print SCPCMDFILE
-                    "$exec_path -p -r $src_file_list $dest_user_host:$dest_dir\n";
+                  "$exec_path -p -r $src_file_list $dest_user_host:$dest_dir\n";
             }
 
-            if($$config{'destDir_srcFile'}{$dest_dir}{'diff_dest_name'}){
+            if ($$config{'destDir_srcFile'}{$dest_dir}{'diff_dest_name'}) {
                 my %diff_dest_hash =
-                    %{ $$config{'destDir_srcFile'}{$dest_dir}{'diff_dest_name'} };
+                  %{ $$config{'destDir_srcFile'}{$dest_dir}{'diff_dest_name'} };
                 foreach my $src_file_diff_dest (keys %diff_dest_hash)
                 {
                     my $diff_basename = $diff_dest_hash{$src_file_diff_dest};
                     print SCPCMDFILE
-                        "$exec_path -p -r $src_file_diff_dest $dest_user_host:$dest_dir/$diff_basename\n";
+"$exec_path -p -r $src_file_diff_dest $dest_user_host:$dest_dir/$diff_basename\n";
                 }
             }
         }
@@ -188,7 +189,7 @@ sub remote_copy_command {
         close SCPCMDFILE;
         chmod 0755, $scpfile;
         @command = ('/bin/sh', '-c', $scpfile);
-    }else{
+    } else {
         my @src_file_list = split $::__DCP_DELIM, $$config{'src-file'};
 
         foreach $src_file (@src_file_list) {

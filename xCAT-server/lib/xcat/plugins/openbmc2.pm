@@ -4,9 +4,9 @@
 package xCAT_plugin::openbmc2;
 
 BEGIN
-    {
-        $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
-    }
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
 use lib "$::XCATROOT/lib/perl";
 use strict;
 use warnings "all";
@@ -30,14 +30,14 @@ use xCAT::AGENT;
 
 sub handled_commands {
     return {
-        rbeacon        => 'nodehm:mgt=openbmc',
-        rflash         => 'nodehm:mgt=openbmc',
-        rinv           => 'nodehm:mgt=openbmc',
-        rpower         => 'nodehm:mgt=openbmc',
-        rsetboot       => 'nodehm:mgt=openbmc',
-        rvitals        => 'nodehm:mgt=openbmc',
-        rspconfig      => 'nodehm:mgt=openbmc',
-        reventlog      => 'nodehm:mgt=openbmc',
+        rbeacon   => 'nodehm:mgt=openbmc',
+        rflash    => 'nodehm:mgt=openbmc',
+        rinv      => 'nodehm:mgt=openbmc',
+        rpower    => 'nodehm:mgt=openbmc',
+        rsetboot  => 'nodehm:mgt=openbmc',
+        rvitals   => 'nodehm:mgt=openbmc',
+        rspconfig => 'nodehm:mgt=openbmc',
+        reventlog => 'nodehm:mgt=openbmc',
     };
 }
 
@@ -60,11 +60,11 @@ $::VERBOSE = 0;
 #-------------------------------------------------------
 sub preprocess_request {
     my $request = shift;
-    $callback  = shift;
+    $callback = shift;
 
-    my $command   = $request->{command}->[0];
+    my $command = $request->{command}->[0];
     my ($rc, $msg) = xCAT::OPENBMC->run_cmd_in_perl($command, $request->{environment});
-    if ($rc != 0) { $request = {}; return;}
+    if ($rc != 0) { $request = {}; return; }
 
     my $noderange = $request->{node};
     my $extrargs  = $request->{arg};
@@ -74,11 +74,13 @@ sub preprocess_request {
     if (ref($extrargs)) {
         @exargs = @$extrargs;
     }
+
     # Request usage for openbmc sections only
     my $usage_string = xCAT::Usage->parseCommand($command . ".openbmc", @exargs);
 
     if ($usage_string) {
         if ($usage_string =~ /cannot be found/) {
+
             # Could not find usage for openbmc section, try getting usage for all sections
             $usage_string = xCAT::Usage->parseCommand($command, @exargs);
         }
@@ -90,8 +92,8 @@ sub preprocess_request {
     #pdu commands will be handled in the pdu plugin
     if ($command eq "rpower") {
         my $subcmd = $exargs[0];
-        if(($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat') || ($subcmd eq 'pdureset')){
-             return;
+        if (($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat') || ($subcmd eq 'pdureset')) {
+            return;
         }
     }
 
@@ -102,7 +104,7 @@ sub preprocess_request {
             $error_data .= "\n" if ($error_data);
             $error_data .= "$node: Error: " . "$parse_result->[1]";
         }
-        $callback->({ errorcode => [$parse_result->[0]], data => [$error_data] });
+        $callback->({ errorcode => [ $parse_result->[0] ], data => [$error_data] });
         $request = {};
         return;
     }
@@ -147,7 +149,7 @@ sub process_request {
         return;
     }
     $callback->({ errorcode => [$check] }) if ($check);
-    return unless(%node_info);
+    return unless (%node_info);
 
     # If we can't start the python agent, exit immediately
     my $pid = xCAT::AGENT::start_python_agent($$);
@@ -161,7 +163,7 @@ sub process_request {
 }
 
 my @rsp_common_options = qw/autoreboot bootmode thermalmode powersupplyredundancy powerrestorepolicy timesyncmethod
-                            ip netmask gateway hostname vlan ntpservers/;
+  ip netmask gateway hostname vlan ntpservers/;
 my @rspconfig_set_options = (@rsp_common_options, qw/admin_passwd/);
 my %rsp_set_valid_values = (
     autoreboot            => "0|1",
@@ -172,6 +174,7 @@ my %rsp_set_valid_values = (
     timesyncmethod        => "manual|ntp",
 );
 my @rspconfig_get_options = (@rsp_common_options, qw/ipsrc sshcfg gard dump/);
+
 #-------------------------------------------------------
 
 =head3  parse_args
@@ -182,14 +185,14 @@ my @rspconfig_get_options = (@rsp_common_options, qw/ipsrc sshcfg gard dump/);
 
 #-------------------------------------------------------
 sub parse_args {
-    my $command  = shift;
-    my $extrargs = shift;
-    my $noderange = shift;
+    my $command    = shift;
+    my $extrargs   = shift;
+    my $noderange  = shift;
     my $subcommand = undef;
 
     unless (GetOptions(
-        'V|verbose'  => \$::VERBOSE,
-    )) {
+            'V|verbose' => \$::VERBOSE,
+        )) {
         return ([ 1, "Error parsing arguments." ]);
     }
 
@@ -203,23 +206,23 @@ sub parse_args {
 
     if ($command eq "rbeacon") {
         unless ($subcommand =~ /^on$|^off$|^stat$/) {
-            return ([ 1, "Only 'on', 'off' and 'stat' are supported for OpenBMC managed nodes."]);
+            return ([ 1, "Only 'on', 'off' and 'stat' are supported for OpenBMC managed nodes." ]);
         }
     } elsif ($command eq "rflash") {
         my ($activate, $check, $delete, $directory, $list, $upload) = (0) x 6;
         my $no_host_reboot;
         GetOptions(
-            'a|activate' => \$activate,
-            'c|check'    => \$check,
-            'delete'     => \$delete,
-            'd'          => \$directory,
-            'l|list'     => \$list,
-            'u|upload'   => \$upload,
+            'a|activate'     => \$activate,
+            'c|check'        => \$check,
+            'delete'         => \$delete,
+            'd'              => \$directory,
+            'l|list'         => \$list,
+            'u|upload'       => \$upload,
             'no-host-reboot' => \$no_host_reboot,
         );
-        my $option_num = $activate+$check+$delete+$directory+$list+$upload;
+        my $option_num = $activate + $check + $delete + $directory + $list + $upload;
         if ($option_num >= 2) {
-            return ([ 1, "Multiple options are not supported."]);
+            return ([ 1, "Multiple options are not supported." ]);
         } elsif ($option_num == 0) {
             for my $arg (@ARGV) {
                 if ($arg =~ /^-/) {
@@ -229,9 +232,9 @@ sub parse_args {
             return ([ 1, "No options specified." ]);
         }
         if ($activate or $check or $delete or $upload) {
-            return ([ 1, "More than one firmware specified is not supported."]) if ($#ARGV >= 1);
+            return ([ 1, "More than one firmware specified is not supported." ]) if ($#ARGV >= 1);
             if ($check) {
-                return ([ 1, "Invalid firmware specified with '-c|--check'."]) if (@ARGV and ($ARGV[0] !~ /.*\.tar$/i or $#ARGV >= 1));
+                return ([ 1, "Invalid firmware specified with '-c|--check'." ]) if (@ARGV and ($ARGV[0] !~ /.*\.tar$/i or $#ARGV >= 1));
             }
             if ($activate or $delete or $upload) {
                 my $option = "-a|--activate";
@@ -240,28 +243,30 @@ sub parse_args {
                 } elsif ($delete) {
                     $option = "--delete"
                 }
-                return ([ 1, "Invalid firmware specified with '$option'"]) if (!@ARGV);
+                return ([ 1, "Invalid firmware specified with '$option'" ]) if (!@ARGV);
                 my $param = $ARGV[0];
-                return ([ 1, "Invalid firmware specified with '$option': $param"]) if (($delete and $param !~ /^[[:xdigit:]]+$/i)
+                return ([ 1, "Invalid firmware specified with '$option': $param" ]) if (($delete and $param !~ /^[[:xdigit:]]+$/i)
                     or ($activate and $param !~ /^[[:xdigit:]]+$/i and $param !~ /.*\.tar$/i) or ($upload and $param !~ /.*\.tar$/i));
             }
         }
         if ($directory) {
-            return ([ 1, "More than one directory specified is not supported."]) if ($#ARGV >= 1);
-            return ([ 1, "Invalid option specified with '-d'."]) if (!@ARGV);
+            return ([ 1, "More than one directory specified is not supported." ]) if ($#ARGV >= 1);
+            return ([ 1, "Invalid option specified with '-d'." ]) if (!@ARGV);
         }
         if ($list) {
-            return ([ 1, "Invalid option specified with '-l|--list'."]) if (@ARGV);
+            return ([ 1, "Invalid option specified with '-l|--list'." ]) if (@ARGV);
         }
     } elsif ($command eq "rinv") {
         if (!defined($ARGV[0])) {
             $subcommand = "all";
         } else {
             foreach my $each_subcommand (@ARGV) {
+
                 # Check if each passed subcommand is valid
                 if ($each_subcommand =~ /^all$|^cpu$|^dimm$|^firm$|^model$|^serial$/) {
                     $subcommand .= $each_subcommand . " ";
                 } else {
+
                     # Exit once we find an invalid subcommand
                     return ([ 1, "Unsupported command: $command $each_subcommand" ]);
                 }
@@ -273,7 +278,7 @@ sub parse_args {
         }
     } elsif ($command eq "rsetboot") {
         my $persistant;
-        GetOptions('p'  => \$persistant);
+        GetOptions('p' => \$persistant);
         return ([ 1, "Only one option is supported at the same time for $command" ]) if (@ARGV > 1);
         $subcommand = "stat" if (!defined($ARGV[0]));
         unless ($subcommand =~ /^net$|^hd$|^cd$|^def$|^default$|^stat$/) {
@@ -288,40 +293,40 @@ sub parse_args {
         my $num_subcommand = @ARGV;
         my ($set, $get);
         my $all_subcommand = "";
-        my %set_net_info = ();
+        my %set_net_info   = ();
         foreach $subcommand (@ARGV) {
             my ($key, $value);
             if ($subcommand =~ /^(\w+)=(.*)/) {
-                $key = $1;
+                $key   = $1;
                 $value = $2;
-                $set = 1;
+                $set   = 1;
             } else {
                 $key = $subcommand;
                 $get = 1;
             }
             if ($set and $get) {
-                return ([1, "Can not set and query OpenBMC information at the same time"]);
+                return ([ 1, "Can not set and query OpenBMC information at the same time" ]);
             } elsif ($set and $value eq '' and ($key ne "ntpservers")) {
-                return ([1, "Invalid parameter for option $key"]);
+                return ([ 1, "Invalid parameter for option $key" ]);
             } elsif ($set and $value ne '' and exists($rsp_set_valid_values{$key})) {
                 unless ($value =~ /^($rsp_set_valid_values{$key})$/) {
-                    return([1, "Invalid value '$value' for '$key', Valid values: " . join(',', split('\|',$rsp_set_valid_values{$key}))]);
+                    return ([ 1, "Invalid value '$value' for '$key', Valid values: " . join(',', split('\|', $rsp_set_valid_values{$key})) ]);
                 }
             }
             if (($set and !grep /$key/, @rspconfig_set_options) or
                 ($get and !grep /$key/, @rspconfig_get_options)) {
-                return ([1, "Unsupported command: $command $subcommand"]);
+                return ([ 1, "Unsupported command: $command $subcommand" ]);
             }
             if ($set) {
                 if ($key =~ /^hostname$|^admin_passwd$|^ntpservers$/ and $num_subcommand > 1) {
-                    return([1, "The option '$key' can not work with other options"]);
+                    return ([ 1, "The option '$key' can not work with other options" ]);
                 } elsif ($key eq "admin_passwd") {
                     if ($value =~ /^([^,]*),([^,]*)$/) {
                         if ($1 eq '' or $2 eq '') {
-                            return([1, "Invalid parameter for option $key: $value"]);
+                            return ([ 1, "Invalid parameter for option $key: $value" ]);
                         }
                     } else {
-                        return([1, "Invalid parameter for option $key: $value"]);
+                        return ([ 1, "Invalid parameter for option $key: $value" ]);
                     }
                 } elsif ($key eq "netmask") {
                     if (!xCAT::NetworkUtils->isIpaddr($value)) {
@@ -343,7 +348,7 @@ sub parse_args {
                             return ([ 1, "Invalid parameter for option $key: $value" ]);
                         }
                         $set_net_info{"ip"} = 1;
-                    } elsif($num_subcommand > 1) {
+                    } elsif ($num_subcommand > 1) {
                         return ([ 1, "Setting ip=dhcp must be issued without other options." ]);
                     }
                 }
@@ -352,7 +357,7 @@ sub parse_args {
                     return ([ 1, "Configure sshcfg must be issued without other options." ]);
                 } elsif ($key eq "gard") {
                     if ($num_subcommand > 2) {
-                        return  ([ 1, "Clear GARD cannot be issued with other options." ]);
+                        return ([ 1, "Clear GARD cannot be issued with other options." ]);
                     } elsif (!defined($ARGV[1]) or $ARGV[1] !~ /^-c$|^--clear$/) {
                         return ([ 1, "Invalid parameter for $command $key" ]);
                     }
@@ -428,9 +433,9 @@ sub parse_args {
 #-------------------------------------------------------
 
 sub refactor_args {
-    my $request = shift;
-    my $command   = $request->{command}->[0];
-    my $extrargs  = $request->{arg};
+    my $request  = shift;
+    my $command  = $request->{command}->[0];
+    my $extrargs = $request->{arg};
     my $subcommand;
     if ($command eq "rspconfig") {
         $subcommand = $extrargs->[0];
@@ -442,15 +447,16 @@ sub refactor_args {
             }
         }
         if ($subcommand eq "dump") {
-            if (defined($extrargs->[1]) and $extrargs->[1] =~ /-c|--clear|-d|--download/){
+            if (defined($extrargs->[1]) and $extrargs->[1] =~ /-c|--clear|-d|--download/) {
                 splice(@$extrargs, 2, 0, "--id");
             }
         }
     }
     if ($command eq "reventlog") {
         if ((!defined($extrargs->[0])) or ($extrargs->[0] =~ /^-V/)) {
+
             # If no parameters are passed, default to list all records
-            $request->{arg} = ["list","all"];
+            $request->{arg} = [ "list", "all" ];
         }
         else {
             $subcommand = $extrargs->[0];
@@ -458,10 +464,10 @@ sub refactor_args {
         if ($subcommand =~ /^\d+$/) {
             unshift @$extrargs, "list";
         }
-        elsif ($subcommand =~/^resolved=(.*)/) {
+        elsif ($subcommand =~ /^resolved=(.*)/) {
             unshift @$extrargs, "resolved";
         }
-        elsif ($subcommand =~/^all$/) {
+        elsif ($subcommand =~ /^all$/) {
             unshift @$extrargs, "list";
         }
     }

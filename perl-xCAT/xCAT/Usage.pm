@@ -4,6 +4,7 @@
 package xCAT::Usage;
 use Getopt::Long;
 use xCAT::Utils;
+
 #-------------------------------------------------------------------------------
 
 =head1  xCAT::Usage
@@ -24,13 +25,13 @@ my %usage = (
        rnetboot <noderange> [ipl= address]",
     "rpower" => "",
     "rpower.common" =>
-    "Usage:
+      "Usage:
     Common:
        rpower <noderange> [--nodeps] [on|onstandby|off|suspend|reset|stat|state|boot] [-V|--verbose] [-m table.colum==expectedstatus][-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
        rpower [-h|--help|-v|--version]
     ",
     "rpower.begin" =>
-    "BMC (using IPMI):
+      "BMC (using IPMI):
        rpower noderange [on|off|softoff|reset|boot|cycle|stat|state|status|wake|suspend [-w timeout] [-o] [-r]]
        rpower noderange [pduon|pduoff|pdustat]
     OpenPOWER BMC:
@@ -38,11 +39,11 @@ my %usage = (
        rpower noderange [pduon|pduoff|pdustat]
     ",
     "rpower.openbmc" =>
-    "OpenPOWER OpenBMC:
+      "OpenPOWER OpenBMC:
        rpower noderange [on|off|softoff|reset|boot|bmcreboot|bmcstate|stat|state|status]
     ",
     "rpower.end" =>
-    "KVM Virtualization specific:
+      "KVM Virtualization specific:
        rpower <noderange> [boot] [ -c <path to iso> ]
     PPC (with IVM or HMC) specific:
        rpower <noderange> [--nodeps] [of] [-V|--verbose]
@@ -72,20 +73,20 @@ my %usage = (
        rpower noderange [off|on|stat|status|reset]
        rpower noderange [pduoff|pduon|pdustat|pdustatus|pdureset]
 ",
-    "rbeacon" =>"",
+    "rbeacon" => "",
     "rbeacon.common" =>
       "Usage:
     Common:
        rbeacon [-h|--help|-v|--version|-V|--verbose]
     ",
     "rbeacon.begin" =>
-    "BMC specific:
+      "BMC specific:
        rbeacon [on|blink|off|stat]
     OpenPOWER (IPMI) specific:
        rbeacon [on|blink|off|stat]
     ",
     "rbeacon.openbmc" =>
-    "OpenPOWER (OpenBMC) specific:
+      "OpenPOWER (OpenBMC) specific:
        rbeacon [on|off|stat]
     ",
     "rvitals" => "",
@@ -95,7 +96,7 @@ my %usage = (
        rvitals [-h|--help|-v|--version]
     ",
     "rvitals.begin" =>
-    "FSP/LPAR (with HMC) specific:
+      "FSP/LPAR (with HMC) specific:
        rvitals noderange {temp|voltage|lcds|all}
     CEC/LPAR/Frame (using Direct FSP Management) specific:
        rvitals noderange {rackenv|lcds|all}
@@ -109,11 +110,11 @@ my %usage = (
        rvitals noderange [temp|voltage|wattage|fanspeed|power|leds|chassis|all]
     ",
     "rvitals.openbmc" =>
-    "OpenPOWER (OpenBMC) specific:
+      "OpenPOWER (OpenBMC) specific:
        rvitals noderange [temp|voltage|wattage|fanspeed|power|leds|altitude|all]
     ",
     "rvitals.end" =>
-    "MIC specific:
+      "MIC specific:
        rvitals noderange {thermal|all}
     pdu specific:
        rvitals noderange ",
@@ -129,17 +130,17 @@ my %usage = (
        rinv [-h|--help|-v|--version]
     ",
     "rinv.begin" =>
-    "BMC/MPA specific:
+      "BMC/MPA specific:
        rinv <noderange> [model|serial|asset|vpd|deviceid|guid|firm|dimm|mprom|all]
     OpenPOWER (IPMI) server specific:
        rinv <noderange> [model|serial|deviceid|uuid|guid|vpd|mprom|firm|all]
     ",
     "rinv.openbmc" =>
-    "OpenPOWER (OpenBMC) server specific:
+      "OpenPOWER (OpenBMC) server specific:
        rinv <noderange> [model][serial][firm][cpu][dimm][all] [-V|--verbose]
     ",
     "rinv.end" =>
-    "PPC specific(with HMC):
+      "PPC specific(with HMC):
        rinv <noderange> [all|bus|config|serial|model|firm]
     PPC specific(using Direct FSP Management):
        rinv <noderange> [firm]
@@ -157,7 +158,7 @@ my %usage = (
     pdu specific:
        rinv noderange ",
     "rsetboot" =>
-"Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-u] [-p]
+      "Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-u] [-p]
        rsetboot [-h|--help|-v|--version]",
     "rbootseq" =>
       "Usage:
@@ -199,7 +200,7 @@ my %usage = (
        rspconfig <noderange> autoreboot={0|1}
 ",
     "rspconfig.begin" =>
-   "BMC/MPA Common:
+      "BMC/MPA Common:
        rspconfig <noderange> [snmpdest|alert|community] [-V|--verbose]
        rspconfig <noderange> [snmpdest=<dest ip address>|alert=<on|off|en|dis|enable|disable>|community=<string>]
    BMC specific:
@@ -208,7 +209,7 @@ my %usage = (
        rspconfig <noderange> [userid=<userid> username=<username> password=<password>]
    ",
     "rspconfig.end" =>
-   "iDataplex specific:
+      "iDataplex specific:
        rspconfig <noderange> [thermprofile]
        rspconfig <noderange> [thermprofile=<two digit number from chassis>]
    MPA specific:
@@ -404,12 +405,12 @@ my %usage = (
        makentp [-a|--all] [-V|--verbose]",
     "rflash" => "",
     "rflash.common" =>
-    "Usage:
+      "Usage:
     Common:
         rflash [ -h|--help|-v|--version|-V|--verbose]
     ",
     "rflash.begin" =>
-    "PPC (with HMC) specific:
+      "PPC (with HMC) specific:
 	rflash <noderange> -p <rpm_directory> [--activate {concurrent | disruptive}]
 	rflash <noderange> {--commit | --recover}
     PPC (using Direct FSP Management) specific:
@@ -421,7 +422,7 @@ my %usage = (
         rflash <noderange> --recover <bmc_file_path>
     ",
     "rflash.openbmc" =>
-    "OpenPOWER OpenBMC specific:
+      "OpenPOWER OpenBMC specific:
         rflash <noderange> {[-c|--check] | [-l|--list]}
         rflash <noderange> <tar_file_path> {[-c|--check] | [-a|--activate] | [-u|--upload]}
         rflash <noderange> <tar_file_diretory> [-d]
@@ -609,53 +610,53 @@ Options:
 
 # Rebuild full command usage from its components
 $usage{"rspconfig"} = $usage{"rspconfig.common"} .
-                      $usage{"rspconfig.begin"} .
-                      $usage{"rspconfig.openbmc"} .
-                      "   " .
-                      $usage{"rspconfig.end"};
+  $usage{"rspconfig.begin"} .
+  $usage{"rspconfig.openbmc"} .
+  "   " .
+  $usage{"rspconfig.end"};
 
 $usage{"rspconfig.openbmc"} = $usage{"rspconfig.common"} .
-                      $usage{"rspconfig.openbmc"};
+  $usage{"rspconfig.openbmc"};
 
 $usage{"rinv"} = $usage{"rinv.common"} .
-                      $usage{"rinv.begin"} .
-                      $usage{"rinv.openbmc"} .
-                      $usage{"rinv.end"};
+  $usage{"rinv.begin"} .
+  $usage{"rinv.openbmc"} .
+  $usage{"rinv.end"};
 
 $usage{"rinv.openbmc"} = $usage{"rinv.common"} .
-                      $usage{"rinv.openbmc"};
+  $usage{"rinv.openbmc"};
 
 $usage{"rbeacon"} = $usage{"rbeacon.common"} .
-                      $usage{"rbeacon.begin"} .
-                      $usage{"rbeacon.openbmc"};
+  $usage{"rbeacon.begin"} .
+  $usage{"rbeacon.openbmc"};
 
 $usage{"rbeacon.openbmc"} = $usage{"rbeacon.common"} .
-                      $usage{"rbeacon.openbmc"};
+  $usage{"rbeacon.openbmc"};
 
 $usage{"rvitals"} = $usage{"rvitals.common"} .
-                      $usage{"rvitals.begin"} .
-                      $usage{"rvitals.openbmc"} .
-                      $usage{"rvitals.end"};
+  $usage{"rvitals.begin"} .
+  $usage{"rvitals.openbmc"} .
+  $usage{"rvitals.end"};
 
 $usage{"rvitals.openbmc"} = $usage{"rvitals.common"} .
-                      $usage{"rvitals.openbmc"};
+  $usage{"rvitals.openbmc"};
 
 $usage{"rflash"} = $usage{"rflash.common"} .
-                      $usage{"rflash.begin"} .
-                      $usage{"rflash.openbmc"} .
-                      "   " .
-                      $usage{"rflash.end"};
+  $usage{"rflash.begin"} .
+  $usage{"rflash.openbmc"} .
+  "   " .
+  $usage{"rflash.end"};
 
 $usage{"rflash.openbmc"} = $usage{"rflash.common"} .
-                      $usage{"rflash.openbmc"};
+  $usage{"rflash.openbmc"};
 
 $usage{"rpower"} = $usage{"rpower.common"} .
-                      $usage{"rpower.begin"} .
-                      $usage{"rpower.openbmc"} .
-                      $usage{"rpower.end"};
+  $usage{"rpower.begin"} .
+  $usage{"rpower.openbmc"} .
+  $usage{"rpower.end"};
 
 $usage{"rpower.openbmc"} = $usage{"rpower.common"} .
-                      $usage{"rpower.openbmc"};
+  $usage{"rpower.openbmc"};
 
 my $vers    = xCAT::Utils->Version();
 my %version = (
@@ -783,22 +784,23 @@ sub parseCommand {
 #-------------------------------------------------------------------------------
 
 sub validateArgs {
-    my $command=shift;
+    my $command = shift;
     if ($command =~ /xCAT::Usage/) { $command = shift; }
 
-    my $count=0;
-    my @extrargs=@_;
-    if($command =~ m/^(nodeset|rinstall|winstall)$/ ){
+    my $count    = 0;
+    my @extrargs = @_;
+    if ($command =~ m/^(nodeset|rinstall|winstall)$/) {
+
         #suppose that argument like "-p foo" have been processed and
         #filtered by GetOpt subroutine
         #fortunately the commands in this branch does not have such options
-        foreach(@extrargs){
-            if($_ and $_ !~ m/^-[-]?\S+/){
-                $count+=1;
+        foreach (@extrargs) {
+            if ($_ and $_ !~ m/^-[-]?\S+/) {
+                $count += 1;
             }
         }
-        unless (($command =~ m/^(rinstall|winstall)$/ and $count==0) or $count==1) {
-           return [1,"Invalid argument: '".join(" ",@extrargs)."'"];
+        unless (($command =~ m/^(rinstall|winstall)$/ and $count == 0) or $count == 1) {
+            return [ 1, "Invalid argument: '" . join(" ", @extrargs) . "'" ];
         }
     }
 

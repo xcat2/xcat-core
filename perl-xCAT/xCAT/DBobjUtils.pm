@@ -94,16 +94,16 @@ sub getObjectsOfType
         # if this is type "group" we need to check the nodelist table
         if ($type eq 'group') {
             my $table         = "nodelist";
-            my %ext_groups = ();
+            my %ext_groups    = ();
             my @TableRowArray = xCAT::DBobjUtils->getDBtable($table);
             foreach my $r (@TableRowArray) {
                 my @tmplist = split(',', $r->{'groups'});
                 foreach (@tmplist) {
-                    $ext_groups{$_} = 1 unless exists($ext_groups{$_}) ;
+                    $ext_groups{$_} = 1 unless exists($ext_groups{$_});
                 }
             }
             foreach (@objlist) {
-                $ext_groups{$_} = 1 unless exists($ext_groups{$_}) ;
+                $ext_groups{$_} = 1 unless exists($ext_groups{$_});
             }
             @objlist = sort keys %ext_groups;
         }
@@ -143,6 +143,7 @@ sub getobjattrs
     my $class    = shift;
     my $ref_hash = shift;
     my @attrs;
+
     # The $attrs is an optional argument
     if (ref $_[0]) {
         @attrs = @{ shift() };
@@ -166,6 +167,7 @@ sub getobjattrs
 
         # only do node and nodegroup type for now
         if ($objtype eq 'node' || $objtype eq 'group') {
+
             # find the list of tables and corresponding attrs
             # - for this object type
             # get the object type description from Schema.pm
@@ -176,8 +178,8 @@ sub getobjattrs
             # list of object names
             foreach my $table (keys %tableattrs) {
                 next if ($table eq 'nodegroup'); #getNodesAttribs cannot handle this table now
-                # open the table
-                # with autocommit => 0, it does not work on Ubuntu running mysql
+                                                 # open the table
+                  # with autocommit => 0, it does not work on Ubuntu running mysql
                 my $thistable = xCAT::Table->new($table, -create => 1, -autocommit => 1);
                 if (!$thistable) {
                     my $rsp;
@@ -188,11 +190,11 @@ sub getobjattrs
 
                 my $rec;
                 if ($objtype eq 'node') {
-                    $rec = $thistable->getNodesAttribs(\@objlist, @{$tableattrs{$table}});
+                    $rec = $thistable->getNodesAttribs(\@objlist, @{ $tableattrs{$table} });
                 } else {
                     my %options = ();
                     $options{keep_raw} = 1;
-                    $rec = $thistable->getNodesAttribs(\@objlist, \@{$tableattrs{$table}}, %options);
+                    $rec = $thistable->getNodesAttribs(\@objlist, \@{ $tableattrs{$table} }, %options);
                 }
 
                 # fill in %tabhash with any values that are set
@@ -250,12 +252,13 @@ sub gettbldesc {
     my $class   = shift;
     my $objtype = shift;
     my @attrs;
+
     # The $attrs is an optional argument
     if (ref $_[0]) {
         @attrs = @{ shift() };
     }
     my %tableattrs = ();
-    my $datatype = $xCAT::Schema::defspec{$objtype};
+    my $datatype   = $xCAT::Schema::defspec{$objtype};
     foreach my $this_attr (@{ $datatype->{'attrs'} }) {
         my $attr = $this_attr->{attr_name};
         if (scalar(@attrs) > 0) {    # Only query specific attributes
@@ -311,12 +314,12 @@ sub getobjdefs
     my ($class, $hash_ref, $verbose, $attrs_ref, $chname_ref) = @_;
 
     my %typehash = %$hash_ref;
-    my @attrs;     # required attributes
+    my @attrs;    # required attributes
     if (ref($attrs_ref)) {
         @attrs = @$attrs_ref;
     }
-    my %objhash;   # fetched result will be stored in this hash
-    my %tabhash;   # used to cache the some result for node/group
+    my %objhash;    # fetched result will be stored in this hash
+    my %tabhash;    # used to cache the some result for node/group
 
     @::foundTableList = ();
 
@@ -443,10 +446,11 @@ sub getobjdefs
             # - but this saves lots of time
             if ($objtype eq 'node' or $objtype eq 'group') {
                 if (scalar(@attrs) > 0) {
+
                     # Only get specific attributes of the object
                     # find the onlyif key for the attributes
-                    REDO:
-                    foreach my $this_attr (@{$datatype->{'attrs'}}) {
+                  REDO:
+                    foreach my $this_attr (@{ $datatype->{'attrs'} }) {
                         my $attr = $this_attr->{attr_name};
                         if (exists($this_attr->{only_if})) {
                             my ($onlyif_key, $onlyif_value) = split('\=', $this_attr->{only_if});
@@ -465,6 +469,7 @@ sub getobjdefs
 
             # get the key to look for, for this object type
             my $objkey = $datatype->{'objkey'};
+
             # go through the list of valid attrs
             foreach my $this_attr (@{ $datatype->{'attrs'} }) {
 
@@ -491,19 +496,21 @@ sub getobjdefs
                 #  ex. noderes.nfsdir
                 my ($tab, $tabattr) = split('\.', $this_attr->{tabentry});
 
-                my $check_attr = undef;
+                my $check_attr  = undef;
                 my $check_value = undef;
                 if (exists $this_attr->{only_if}) {
                     ($check_attr, $check_value) = split('\=', $this_attr->{only_if});
                 }
 
                 foreach my $objname (sort @{ $type_obj{$objtype} }) {
+
                     # get table lookup info from Schema.pm
                     #  !!!! some tables depend on the value of certain attrs
                     #   we need to look up attrs in the correct order or we will
                     #   not be able to determine what tables to look
                     #   in for some attrs.
                     if (defined($check_attr) && defined($check_value)) {
+
                         # if the object value is not the value we need
                         #   to match then try the next only_if value
                         next if (!($objhash{$objname}{$check_attr} =~ /\b$check_value\b/));
@@ -512,6 +519,7 @@ sub getobjdefs
                     $objhash{$objname}{'objtype'} = $objtype;
 
                     my %tabentry = ();
+
                     # def commands need to support multiple keys in one table
                     # the subroutine parse_access_tabentry is used for supporting multiple keys
                     my $rc = xCAT::DBobjUtils->parse_access_tabentry($objname, $this_attr->{access_tabentry}, \%tabentry);
@@ -528,6 +536,7 @@ sub getobjdefs
                     my $intabhash    = 0;
                     my $notsearched  = 0;
                     foreach my $lookup_attr (keys %{ $tabentry{'lookup_attrs'} }) {
+
                         # Check whether the attribute is already in %tabhash
                         # The %tabhash is for performance considerations
                         my $tabspec = $xCAT::Schema::tabspec{$lookup_table};
@@ -552,9 +561,11 @@ sub getobjdefs
                             $notsearched = 1;
                         }
                     }
+
                     # Not in tabhash,
                     # Need to lookup the table
                     if ($intabhash == 0 && $notsearched == 1) {
+
                         # look up attr values
                         my @rows = xCAT::DBobjUtils->getDBtable($lookup_table);
                         if (@rows) {
@@ -719,6 +730,7 @@ sub setobjdefs
     foreach my $objname (keys %objhash) {
 
         my $obj_need_update = 0;
+
         # get attr=val that are set in the DB ??
         my $type = $objhash{$objname}{objtype};
 
@@ -945,18 +957,19 @@ sub setobjdefs
         }
 
         my @attrprovided = ();
+
         #get group objects data
         my %DBgroupsattr;
         my %tmpghash;
         my @tmplgrplist;
         my %grpvalidattr;
-        if (defined($objhash{$objname}{'groups'})){
+        if (defined($objhash{$objname}{'groups'})) {
 
             @tmplgrplist = split(",", $objhash{$objname}{'groups'});
             foreach my $tmpgrp (@tmplgrplist) {
                 $tmpghash{$tmpgrp} = "group";
             }
-            %DBgroupsattr=xCAT::DBobjUtils->getobjdefs(\%tmpghash);
+            %DBgroupsattr = xCAT::DBobjUtils->getobjdefs(\%tmpghash);
         }
 
         # check FINALATTRS to see if all the attrs are valid
@@ -1052,11 +1065,11 @@ sub setobjdefs
                         $checkedattrs{$attr_name} = 1;
                         if ($invalidattr->{$attr_name}->{valid} != 1) {
                             $invalidattr->{$attr_name}->{valid} = 0;
-                            $invalidattr->{$attr_name}->{condition}=$check_attr;
+                            $invalidattr->{$attr_name}->{condition} = $check_attr;
                             if (defined($conditionlist->{$check_attr})) {
-                                $conditionlist->{$check_attr}=$conditionlist->{$check_attr}.",".$check_value;
+                                $conditionlist->{$check_attr} = $conditionlist->{$check_attr} . "," . $check_value;
                             } else {
-                                $conditionlist->{$check_attr}=$check_value;
+                                $conditionlist->{$check_attr} = $check_value;
                             }
                         }
 
@@ -1066,11 +1079,11 @@ sub setobjdefs
                     if (!($objhash{$objname}{$check_attr} =~ /\b$check_value\b/) && !($DBattrvals{$objname}{$check_attr} =~ /\b$check_value\b/)) {
                         if ($invalidattr->{$attr_name}->{valid} != 1) {
                             $invalidattr->{$attr_name}->{valid} = 0;
-                            $invalidattr->{$attr_name}->{condition}=$check_attr;
+                            $invalidattr->{$attr_name}->{condition} = $check_attr;
                             if (defined($conditionlist->{$check_attr})) {
-                                $conditionlist->{$check_attr}=$conditionlist->{$check_attr}.",".$check_value;
+                                $conditionlist->{$check_attr} = $conditionlist->{$check_attr} . "," . $check_value;
                             } else {
-                                $conditionlist->{$check_attr}=$check_value;
+                                $conditionlist->{$check_attr} = $check_value;
                             }
                         }
 
@@ -1201,7 +1214,7 @@ sub setobjdefs
             # Set the values into %allupdates
             # the key is 'tabattrs'
             $allupdates{$lookup_table}{$objname}{$attr_name}{'tabattrs'}{$::tabattr} = $val;
-            $setattrs = 1;
+            $setattrs        = 1;
             $obj_need_update = 1;
             push(@setattrlist, $attr_name);
 
@@ -1212,22 +1225,23 @@ sub setobjdefs
 
         my $rsp;
         foreach my $att (keys %$invalidattr) {
-            my $pickvalidattr=0;
+            my $pickvalidattr = 0;
             if ($invalidattr->{$att}->{valid} != 1) {
                 my $tt = $invalidattr->{$att}->{valid};
+
                 #if attribute is set invalid, check if its pre-check attribute exists in group objects, pick the attribute into valid.
                 # ex. like if I want to set hdwctrlpoint I will have
                 # to match the right value for mgtmethod
                 # if mgtmethod exists in group objects and its value match the one of only_if value, set hdwctrlpoint valid
-                my $conditionkey=$invalidattr->{$att}->{condition};
+                my $conditionkey = $invalidattr->{$att}->{condition};
                 foreach my $tmpgrp (@tmplgrplist) {
                     if (($DBgroupsattr{$tmpgrp}{$conditionkey}) && ($conditionlist->{$conditionkey} =~ $DBgroupsattr{$tmpgrp}{$conditionkey})) {
-                        $pickvalidattr=1;
+                        $pickvalidattr = 1;
                         last;
                     }
                 }
                 if ($pickvalidattr != 1) {
-                    $conditionlist->{$conditionkey}=~s/,/ or /g;
+                    $conditionlist->{$conditionkey} =~ s/,/ or /g;
                     push @{ $rsp->{data} }, "Cannot set the attr=\'$att\' attribute unless $invalidattr->{$att}->{condition} value is $conditionlist->{$conditionkey}.";
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
                 }
@@ -1721,7 +1735,7 @@ sub readFileInput
 
             if ($objectname =~ /^default-([^-]+)$/) {
 
-                $objtype = $1;
+                $objtype    = $1;
                 $objectname = 'default';
 
                 next;
@@ -2646,6 +2660,7 @@ sub expandnicsattr()
         #$nicval Value: node(d+)|eth0!192.1.1.($1+10)
         if (($nicval) && ($nicval =~ /\|/)) {
             my ($str1, $str2) = split('\|', $nicval);
+
             #$nivval Value: eth0!192.1.1.($1+10)
             $nicval = $str2;
         }
@@ -2673,10 +2688,12 @@ sub expandnicsattr()
                 }
             }
         }
+
         # print group attributes in original format
         if (!$is_group) {
-            $nicv[1]= xCAT::Table::transRegexAttrs($node, $nicv[1]);
+            $nicv[1] = xCAT::Table::transRegexAttrs($node, $nicv[1]);
         }
+
         # ignore the line that does not have nicname or value
         if ($nicv[0] && $nicv[1]) {
             $ret .= "    $nicattr.$nicv[0]=$nicv[1]\n";
@@ -2728,7 +2745,7 @@ sub collapsenicsattr()
     if (($nodeattrhash) && ($nodeattrhash =~ /xCAT::/)) {
         $nodeattrhash = shift;
     }
-    my $objname = shift;
+    my $objname  = shift;
     my %nicattrs = ();
     foreach my $nodeattr (keys %{$nodeattrhash}) {
 

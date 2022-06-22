@@ -29,26 +29,26 @@ our %global_mac_identity = (
 
 #the hash to lookup switch type with vendor
 our %global_switch_type = (
-    Juniper => "Juniper",
-    juniper => "Juniper",
-    Cisco => "Cisco",
-    cisco => "Cisco",
-    BNT => "BNT",
-    Blade => "BNT",
-    G8052 => "BNT",
+    Juniper    => "Juniper",
+    juniper    => "Juniper",
+    Cisco      => "Cisco",
+    cisco      => "Cisco",
+    BNT        => "BNT",
+    Blade      => "BNT",
+    G8052      => "BNT",
     RackSwitch => "BNT",
-    Mellanox => "Mellanox",
-    mellanox => "Mellanox",
-    MLNX => "Mellanox",
-    MELLAN => "Mellanox",
-    Cumulus => "onie",
-    cumulus => "onie",
-    Edgecore => "onie",
-    sLEN => "irpdu",
-    sIBM => "irpdu",
-    coral => "crpdu",
-    Dell => "Dell",
-    dell => "Dell"
+    Mellanox   => "Mellanox",
+    mellanox   => "Mellanox",
+    MLNX       => "Mellanox",
+    MELLAN     => "Mellanox",
+    Cumulus    => "onie",
+    cumulus    => "onie",
+    Edgecore   => "onie",
+    sLEN       => "irpdu",
+    sIBM       => "irpdu",
+    coral      => "crpdu",
+    Dell       => "Dell",
+    dell       => "Dell"
 );
 
 

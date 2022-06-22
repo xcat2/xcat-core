@@ -7,32 +7,34 @@ use Getopt::Long;
 use Data::Dumper;
 use Term::ANSIColor;
 use Time::Local;
+
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
 }
 use lib "$::XCATROOT/lib/perl";
 my $osver;
-my $log="/tmp/pkg.log";
-my $needhelp  = 0;
-my $setupenv = 0;
-my $clearenv = 0;
+my $log             = "/tmp/pkg.log";
+my $needhelp        = 0;
+my $setupenv        = 0;
+my $clearenv        = 0;
 my $setupenvinclude = 0;
-my $removerpm = 0;
-my $ospkg = 0;
+my $removerpm       = 0;
+my $ospkg           = 0;
 my $osimg;
 my $attr;
 my $int;
+
 if (
-    !GetOptions("h|?"  => \$needhelp,
-                "s" => \$setupenv,
-                "c"=>\$clearenv,
-                "i"=>\$setupenvinclude,
-                "r"=>\$removerpm,
-                "o"=>\$ospkg,
-                "g=s"=>\$::OSIMG,
-                "t=s"=>\$::ATTR,
-                "v=s"=>\$::OSVERSION)
+    !GetOptions("h|?" => \$needhelp,
+        "s"   => \$setupenv,
+        "c"   => \$clearenv,
+        "i"   => \$setupenvinclude,
+        "r"   => \$removerpm,
+        "o"   => \$ospkg,
+        "g=s" => \$::OSIMG,
+        "t=s" => \$::ATTR,
+        "v=s" => \$::OSVERSION)
   )
 {
     &usage;
@@ -57,111 +59,113 @@ sub getimgattr
     my @output = `lsdef -t osimage -o  $osimg -i $attr`;
     my $pkglistvalue;
     print " output is @output \n";
-    if($?){
+    if ($?) {
         print "unkonw";
         return "Unknown";
-       }
-    if($? == 0){
-        foreach my $output1 (@output){
-             if($output1 =~ /$attr=(.*)/){
-             print "output1 is $output1 ,attrs is  value is $1 \n";
-             $pkglistvalue = $1 ;
-             }
-    }    }
+    }
+    if ($? == 0) {
+        foreach my $output1 (@output) {
+            if ($output1 =~ /$attr=(.*)/) {
+                print "output1 is $output1 ,attrs is  value is $1 \n";
+                $pkglistvalue = $1;
+            }
+        } }
     return $pkglistvalue;
 }
 
 sub setupenv
 {
-      my $int = shift;
-      if ($ospkg){
-      `mkdir -p $int`;
-      `cp -rf /xcat-core/* $int`;
-       }else{
-            `cat "$int" >> /tmp/pkgtest.bak`;
-            }
-       if (($osver =~ /ubuntu/)&&($ospkg ==0)){
-           `echo "rpm" >>/tmp/pkgtest.bak `;
-           }else{
-           `echo "xCAT-test" >>/tmp/pkgtest.bak `;
-           }
+    my $int = shift;
+    if ($ospkg) {
+        `mkdir -p $int`;
+        `cp -rf /xcat-core/* $int`;
+    } else {
+        `cat "$int" >> /tmp/pkgtest.bak`;
+    }
+    if (($osver =~ /ubuntu/) && ($ospkg == 0)) {
+        `echo "rpm" >>/tmp/pkgtest.bak `;
+    } else {
+        `echo "xCAT-test" >>/tmp/pkgtest.bak `;
+    }
 }
+
 sub clearenv
 {
     my $int = shift;
-    if ($ospkg ==0){
-    `rm -rf /tmp/pkgtest.* `;
-    `rm -rf /install/pkgtest`;
-     }else{
-     `rm -rf /tmp/pkgtest.* `;
-     `rm -rf $int`;
-     }
+    if ($ospkg == 0) {
+        `rm -rf /tmp/pkgtest.* `;
+        `rm -rf /install/pkgtest`;
+    } else {
+        `rm -rf /tmp/pkgtest.* `;
+        `rm -rf $int`;
+    }
 }
 
 sub setupenvinclude
 {
     my $int = shift;
-    if ($ospkg){
-    `mkdir -p $int`;
-    `cp -rf /xcat-core/* $int`;
-     }else{
-         ` cat $int >> /tmp/pkgtest.bak`;
-          }
-    if (($osver =~ /ubuntu/)&&($ospkg ==0)){
+    if ($ospkg) {
+        `mkdir -p $int`;
+        `cp -rf /xcat-core/* $int`;
+    } else {
+        ` cat $int >> /tmp/pkgtest.bak`;
+    }
+    if (($osver =~ /ubuntu/) && ($ospkg == 0)) {
         `echo "rpm" >>/tmp/pkgtest.bak `;
-        }else{
+    } else {
         `echo "xCAT-test" >> /tmp/pkgtest.includelist `;
-        }
+    }
     `echo "#INCLUDE:/tmp/pkgtest.includelist#">>/tmp/pkgtest.bak `;
 }
+
 sub removerpm
 {
     my $int = shift;
-    if ($ospkg){
-    `mkdir -p $int`;
-    `cp -rf /xcat-core/* $int`;
-        }else{
-     `cat "$int" >> /tmp/pkgtest.bak`;
-          }
-    if (($osver =~ /ubuntu/)&&($ospkg ==0)){
-    `echo "-rpm" >>/tmp/pkgtest.bak `;
-    }elsif(($osver =~ /ubuntu/)&&($ospkg !=0)){
-    `echo "-xcat-test">>/tmp/pkgtest.bak`;
-    }else{
-    `echo "-xCAT-test" >>/tmp/pkgtest.bak`;
+    if ($ospkg) {
+        `mkdir -p $int`;
+        `cp -rf /xcat-core/* $int`;
+    } else {
+        `cat "$int" >> /tmp/pkgtest.bak`;
+    }
+    if (($osver =~ /ubuntu/) && ($ospkg == 0)) {
+        `echo "-rpm" >>/tmp/pkgtest.bak `;
+    } elsif (($osver =~ /ubuntu/) && ($ospkg != 0)) {
+        `echo "-xcat-test">>/tmp/pkgtest.bak`;
+    } else {
+        `echo "-xCAT-test" >>/tmp/pkgtest.bak`;
     }
 }
 
-if  ($needhelp)
+if ($needhelp)
 {
     &usage;
     exit 0;
 }
-if($::OSIMG)
+if ($::OSIMG)
 {
     $osimg = $::OSIMG;
 }
-if($::ATTR)
+if ($::ATTR)
 {
     $attr = $::ATTR;
 }
-if($::OSVERSION)
+if ($::OSVERSION)
 {
-   $osver = $::OSVERSION;
+    $osver = $::OSVERSION;
 }
 $int = getimgattr;
-if ( ($setupenv) || ($setupenvinclude) ||($removerpm))
+if (($setupenv) || ($setupenvinclude) || ($removerpm))
 {
-    if (! -f "/tmp/int"){
-    `echo $int >> /tmp/int`;
-    }else{
-    print "please clear the pkg test environment first \n";
-    exit 1;
+    if (!-f "/tmp/int") {
+        `echo $int >> /tmp/int`;
+    } else {
+        print "please clear the pkg test environment first \n";
+        exit 1;
     }
 }
 if ($setupenv)
 {
-   &setupenv($int);
+    &setupenv($int);
 }
 if ($setupenvinclude)
 {
@@ -173,31 +177,31 @@ if ($removerpm)
 }
 if ($clearenv)
 {
-    if (-f "/tmp/int"){
-    my $int=`cat /tmp/int`;
-    &clearenv($int);
-    `rm -rf /tmp/int`;
-    exit 0;
-    }else{
-    print "please set the pkg test environment first \n";
-    exit 1;
+    if (-f "/tmp/int") {
+        my $int = `cat /tmp/int`;
+        &clearenv($int);
+        `rm -rf /tmp/int`;
+        exit 0;
+    } else {
+        print "please set the pkg test environment first \n";
+        exit 1;
     }
 }
-if (($setupenv) || ($setupenvinclude) ||($removerpm))
+if (($setupenv) || ($setupenvinclude) || ($removerpm))
 {
     `mkdir -p /install/pkgtest`;
     `cp -rf /xcat-core/* /install/pkgtest`;
-    if (($osver !~ /ubuntu/)&&($ospkg ==0)){
-    `chdef -t osimage -o $osimg pkgdir=/install/pkgtest pkglist=/tmp/pkgtest.bak `;
-    }elsif (($osver !~ /ubuntu/)&&($ospkg !=0)){
-    `chdef -t osimage -o $osimg otherpkglist=/tmp/pkgtest.bak`;
-    }elsif(($osver =~ /ubuntu/)&&($ospkg !=0)){
-    `chdef -t osimage -o  $osimg otherpkglist="/tmp/pkgtest.bak" otherpkgdir="http://xcat.org/files/xcat/repos/apt/2.12/xcat-core trusty main"`;
-    }elsif(($osver =~ /ubuntu/)&&($ospkg ==0)){
-    `chdef -t osimage -o $osimg pkglist=/tmp/pkgtest.bak`;
+    if (($osver !~ /ubuntu/) && ($ospkg == 0)) {
+`chdef -t osimage -o $osimg pkgdir=/install/pkgtest pkglist=/tmp/pkgtest.bak `;
+    } elsif (($osver !~ /ubuntu/) && ($ospkg != 0)) {
+        `chdef -t osimage -o $osimg otherpkglist=/tmp/pkgtest.bak`;
+    } elsif (($osver =~ /ubuntu/) && ($ospkg != 0)) {
+`chdef -t osimage -o  $osimg otherpkglist="/tmp/pkgtest.bak" otherpkgdir="http://xcat.org/files/xcat/repos/apt/2.12/xcat-core trusty main"`;
+    } elsif (($osver =~ /ubuntu/) && ($ospkg == 0)) {
+        `chdef -t osimage -o $osimg pkglist=/tmp/pkgtest.bak`;
     }
 }
 if ($?)
 {
-     return 0;
+    return 0;
 }

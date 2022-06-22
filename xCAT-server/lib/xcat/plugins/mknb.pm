@@ -20,10 +20,10 @@ sub process_request {
     my $serialspeed;
     my $serialflow;
     my %nobootnicips = ();
-    my $initrd_file = undef;
-    my $xcatdport   = 3001;
-    my @entries     = xCAT::TableUtils->get_site_attribute("defserialport");
-    my $t_entry     = $entries[0];
+    my $initrd_file  = undef;
+    my $xcatdport    = 3001;
+    my @entries      = xCAT::TableUtils->get_site_attribute("defserialport");
+    my $t_entry      = $entries[0];
     if (defined($t_entry)) {
         $serialport = $t_entry;
     }
@@ -46,10 +46,10 @@ sub process_request {
         $xcatdport = $t_entry;
     }
 
-    my $httpport="80";
-    my @hports=xCAT::TableUtils->get_site_attribute("httpport");
-    if ($hports[0]){
-        $httpport=$hports[0];
+    my $httpport = "80";
+    my @hports   = xCAT::TableUtils->get_site_attribute("httpport");
+    if ($hports[0]) {
+        $httpport = $hports[0];
     }
 
     @entries = xCAT::TableUtils->get_site_attribute("dhcpinterfaces");
@@ -61,11 +61,11 @@ sub process_request {
                 my $isself = 0;
                 (my $ngroup, $dhcpif) = split /\|/, $dhcpif;
                 foreach my $host (noderange($ngroup)) {
-                    unless(xCAT::NetworkUtils->thishostisnot($host)) {
+                    unless (xCAT::NetworkUtils->thishostisnot($host)) {
                         $isself = 1;
                     }
                 }
-                unless(xCAT::NetworkUtils->thishostisnot($ngroup)) {
+                unless (xCAT::NetworkUtils->thishostisnot($ngroup)) {
                     $isself = 1;
                 }
                 unless ($isself) {
@@ -81,6 +81,7 @@ sub process_request {
         }
         my $nicips = xCAT::NetworkUtils->get_nic_ip();
         foreach (keys %$nicips) {
+
             # To support tagged vlan, create entries in the hash for the
             # interface name removing the physical interface ending:
             # 'enP1p12s0f0.2@enP1p12s0f0' => 'enP1p12s0f0.2'
@@ -91,9 +92,9 @@ sub process_request {
             }
         }
 
-        foreach (keys %nobootnics)  {
+        foreach (keys %nobootnics) {
             if (defined($nicips->{$_})) {
-                $nobootnicips{$nicips->{$_}} = 1;
+                $nobootnicips{ $nicips->{$_} } = 1;
             }
         }
     }
@@ -266,7 +267,7 @@ sub process_request {
     }
     my $dopxe = 0;
     foreach (keys %{$normnets}) {
-        my $net = $_;
+        my $net   = $_;
         my $nicip = $normnets->{$net};
         $net =~ s/\//_/;
         if (defined($nobootnicips{$nicip})) {
@@ -299,15 +300,15 @@ sub process_request {
             open($cfg, ">", "$tftpdir/xcat/xnba/nets/$net");
             print $cfg "#!gpxe\n";
             if ($invisibletouch) {
-                print $cfg 'imgfetch -n kernel http://${next-server}:'.$httpport.'/tftpboot/xcat/genesis.kernel.' . "$arch quiet xcatd=" . $normnets->{$_} . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/machyp}' . "\n";
+                print $cfg 'imgfetch -n kernel http://${next-server}:' . $httpport . '/tftpboot/xcat/genesis.kernel.' . "$arch quiet xcatd=" . $normnets->{$_} . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/machyp}' . "\n";
                 if ($lzma_exit_value) {
-                    print $cfg 'imgfetch -n nbfs http://${next-server}:'.$httpport.'/tftpboot/xcat/genesis.fs.' . "$arch.gz\n";
+                    print $cfg 'imgfetch -n nbfs http://${next-server}:' . $httpport . '/tftpboot/xcat/genesis.fs.' . "$arch.gz\n";
                 } else {
-                    print $cfg 'imgfetch -n nbfs http://${next-server}:'.$httpport.'/tftpboot/xcat/genesis.fs.' . "$arch.lzma\n";
+                    print $cfg 'imgfetch -n nbfs http://${next-server}:' . $httpport . '/tftpboot/xcat/genesis.fs.' . "$arch.lzma\n";
                 }
             } else {
-                print $cfg 'imgfetch -n kernel http://${next-server}:'.$httpport.'/tftpboot/xcat/nbk.' . "$arch quiet xcatd=" . $normnets->{$_} . ":$xcatdport $consolecmdline\n";
-                print $cfg 'imgfetch -n nbfs http://${next-server}:'.$httpport.'/tftpboot/xcat/nbfs.' . "$arch.gz\n";
+                print $cfg 'imgfetch -n kernel http://${next-server}:' . $httpport . '/tftpboot/xcat/nbk.' . "$arch quiet xcatd=" . $normnets->{$_} . ":$xcatdport $consolecmdline\n";
+                print $cfg 'imgfetch -n nbfs http://${next-server}:' . $httpport . '/tftpboot/xcat/nbfs.' . "$arch.gz\n";
             }
             print $cfg "imgload kernel\n";
             print $cfg "imgexec kernel\n";
@@ -327,9 +328,9 @@ sub process_request {
                 close($cfg);
                 open($cfg, ">", "$tftpdir/xcat/xnba/nets/$net.uefi");
                 print $cfg "#!gpxe\n";
-                print $cfg 'imgfetch -n kernel http://${next-server}:'.$httpport.'/tftpboot/xcat/genesis.kernel.' . "$arch\nimgload kernel\n";
+                print $cfg 'imgfetch -n kernel http://${next-server}:' . $httpport . '/tftpboot/xcat/genesis.kernel.' . "$arch\nimgload kernel\n";
                 print $cfg "imgargs kernel quiet xcatd=" . $normnets->{$_} . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/mac:hexhyp}' . " destiny=discover initrd=initrd\n";
-                print $cfg 'imgfetch -n initrd http://${next-server}:'.$httpport.'/tftpboot/xcat/genesis.fs.' . "$arch.gz\nimgexec kernel\n";
+                print $cfg 'imgfetch -n initrd http://${next-server}:' . $httpport . '/tftpboot/xcat/genesis.fs.' . "$arch.gz\nimgexec kernel\n";
                 close($cfg);
             }
         } elsif ($arch =~ /ppc/) {

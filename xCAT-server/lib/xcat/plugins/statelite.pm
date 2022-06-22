@@ -174,6 +174,7 @@ sub process_request {
     my $rsp;
     push @{ $rsp->{data} }, "Modifying $rootimg_dir ...";
     xCAT::MsgUtils->message("I", $rsp, $callback);
+
     #copy $installroot/postscripts into the image at /xcatpost
     if (-e "$rootimg_dir/xcatpost") {
         system("rm -rf $rootimg_dir/xcatpost");
@@ -183,7 +184,7 @@ sub process_request {
     system("cp -r $installroot/postscripts/* $rootimg_dir/xcatpost/");
 
     # update rw to ro for sles
-    updateFstab($rootimg_dir,$profile,$arch);
+    updateFstab($rootimg_dir, $profile, $arch);
 
     #get the root password for the node
     my $pass = xCAT::PasswordUtils::crypt_system_password();
@@ -199,6 +200,7 @@ sub process_request {
     open($shadow, ">", "$rootimg_dir/etc/shadow");
     print $shadow "root:$pass:13880:0:99999:7:::\n";
     foreach (@shadents) {
+
         unless (/^root:/) {
             print $shadow "$_";
         }
@@ -236,7 +238,7 @@ sub process_request {
     if (defined($syncfile) && -d $rootimg_dir) {
         my @filelist = split ',', $syncfile;
         foreach my $synclistfile (@filelist) {
-            if ( -f $synclistfile) {
+            if (-f $synclistfile) {
                 print "sync files from $synclistfile to the $rootimg_dir\n";
                 `$::XCATROOT/bin/xdcp -i $rootimg_dir -F $synclistfile`;
             }
@@ -1001,8 +1003,8 @@ sub liteItem {
 sub updateFstab {
 
     $rootimg_dir = shift;
-    $profile = shift;
-    $arch = shift;
+    $profile     = shift;
+    $arch        = shift;
 
     my $rootfs_name = $profile . "_" . $arch;
 
@@ -1013,7 +1015,7 @@ sub updateFstab {
 
     open($tfstab, ">", "$rootimg_dir/etc/fstab");
     foreach my $line (@fsdents) {
-        if ( $line =~ /^$rootfs_name/ ) {
+        if ($line =~ /^$rootfs_name/) {
             $line =~ s/\brw\b/ro/;
         }
         print $tfstab $line;

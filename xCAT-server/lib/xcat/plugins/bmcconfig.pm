@@ -93,9 +93,9 @@ sub ok_with_node {
 }
 
 sub process_request {
-    my $request  = shift;
-    my $callback = shift;
-    my $node     = $request->{'_xcat_clienthost'}->[0];
+    my $request       = shift;
+    my $callback      = shift;
+    my $node          = $request->{'_xcat_clienthost'}->[0];
     my $bmc_mgmt_type = "ipmi";
     if ($request->{isopenbmc}->[0]) {
         $bmc_mgmt_type = "openbmc";

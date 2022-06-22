@@ -41,8 +41,8 @@ my $DEBUGGING = 0;
 my $ROUTINE = "zvmdiagnostics";
 my $COMMAND = "diagnostics";
 
-my $NOTIFY_FILENAME = "/var/lib/sspmod/appliance_system_role";
-my $NOTIFY_KEYWORD = "notify";
+my $NOTIFY_FILENAME          = "/var/lib/sspmod/appliance_system_role";
+my $NOTIFY_KEYWORD           = "notify";
 my $NOTIFY_KEYWORD_DELIMITER = "=";
 
 # If the following line ("1;") is not included, you get:
@@ -73,8 +73,8 @@ sub handled_commands {
 
 #-------------------------------------------------------
 sub preprocess_request {
-    my $req      = shift;
-    my $callback = shift;
+    my $req        = shift;
+    my $callback   = shift;
     my $SUBROUTINE = "preprocess_request";
 
     # Hash array
@@ -86,12 +86,12 @@ sub preprocess_request {
     # Array
     my @requests;
 
-    if ( $DEBUGGING == 1 ) {
+    if ($DEBUGGING == 1) {
         xCAT::zvmUtils->printSyslog("$ROUTINE $SUBROUTINE entry");
     }
 
     # If already preprocessed, go straight to request
-    if ( $req->{_xcatpreprocessed}->[0] == 1 ) {
+    if ($req->{_xcatpreprocessed}->[0] == 1) {
         return [$req];
     }
     my $nodes   = $req->{node};
@@ -100,10 +100,10 @@ sub preprocess_request {
     # Find service nodes for requested nodes
     # Build an individual request for each service node
     if ($nodes) {
-        $sn = xCAT::ServiceNodeUtils->get_ServiceNode( $nodes, $service, "MN" );
+        $sn = xCAT::ServiceNodeUtils->get_ServiceNode($nodes, $service, "MN");
 
         # Build each request for each service node
-        foreach my $snkey ( keys %$sn ) {
+        foreach my $snkey (keys %$sn) {
             my $n = $sn->{$snkey};
             print "snkey=$snkey, nodes=@$n\n";
             my $reqcopy = {%$req};
@@ -122,7 +122,7 @@ sub preprocess_request {
         my $rsp;
         $rsp->{data}->[0] =
           "Input noderange missing. Usage: $ROUTINE <noderange> \n";
-        xCAT::MsgUtils->message( "I", $rsp, $callback, 0 );
+        xCAT::MsgUtils->message("I", $rsp, $callback, 0);
         return 1;
     }
 }
@@ -138,19 +138,19 @@ sub preprocess_request {
 #-------------------------------------------------------
 sub process_request {
     my $SUBROUTINE = "process_request";
-    my $request  = shift;
-    my $callback = shift;
-    my $nodes    = $request->{node};
-    my $command  = $request->{command}->[0];
-    my $args     = $request->{arg};
-    my $envs     = $request->{env};
+    my $request    = shift;
+    my $callback   = shift;
+    my $nodes      = $request->{node};
+    my $command    = $request->{command}->[0];
+    my $args       = $request->{arg};
+    my $envs       = $request->{env};
     $::STDIN = $request->{stdin}->[0];
     my %rsp;
     my $rsp;
     my @nodes = @$nodes;
     my $host  = hostname();
 
-    if ( $DEBUGGING == 1 ) {
+    if ($DEBUGGING == 1) {
         xCAT::zvmUtils->printSyslog("$ROUTINE $SUBROUTINE entry");
     }
 
@@ -161,25 +161,26 @@ sub process_request {
     my @children = ();
 
     #*** Collect or manage diagnostics***
-    if ( $command eq $COMMAND ) {
+    if ($command eq $COMMAND) {
         foreach (@nodes) {
             $pid = xCAT::Utils->xfork();
 
             # Parent process
             if ($pid) {
-                push( @children, $pid );
+                push(@children, $pid);
             }
 
             # Child process
-            elsif ( $pid == 0 ) {
-                if ( xCAT::zvmUtils->isHypervisor($_) ) {
+            elsif ($pid == 0) {
+                if (xCAT::zvmUtils->isHypervisor($_)) {
+
                     #TODO should this be handled inside the subroutine, ala rmvm?
-                    if ( $DEBUGGING == 1 ) {
-                          xCAT::zvmUtils->printSyslog("$ROUTINE for hypervisor - semantically coherent?");
+                    if ($DEBUGGING == 1) {
+                        xCAT::zvmUtils->printSyslog("$ROUTINE for hypervisor - semantically coherent?");
                     }
                 }
                 else {
-                    collectDiags( $callback, $_, $args );
+                    collectDiags($callback, $_, $args);
                 }
 
                 # Exit process
@@ -196,7 +197,7 @@ sub process_request {
 
     # Wait for all processes to end
     foreach (@children) {
-        waitpid( $_, 0 );
+        waitpid($_, 0);
     }
 
     return;
@@ -218,35 +219,35 @@ sub collectDiags {
     my $SUBROUTINE = "collectDiags";
 
     # Get inputs
-    my ( $callback, $node, $args ) = @_;
+    my ($callback, $node, $args) = @_;
     my $rc;
 
-    if ( $DEBUGGING == 1 ) {
-          xCAT::zvmUtils->printSyslog("$ROUTINE $SUBROUTINE entry");
+    if ($DEBUGGING == 1) {
+        xCAT::zvmUtils->printSyslog("$ROUTINE $SUBROUTINE entry");
     }
 
     # Get node properties from 'zvm' table
-    my @propNames = ( 'hcp', 'userid', 'discovered' );
-    my $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
+    my @propNames = ('hcp', 'userid', 'discovered');
+    my $propVals = xCAT::zvmUtils->getNodeProps('zvm', $node, @propNames);
 
     # Get zHCP
     my $hcp = $propVals->{'hcp'};
-    if ( !$hcp ) {
-        xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node HCP" );
+    if (!$hcp) {
+        xCAT::zvmUtils->printLn($callback, "$node: (Error) Missing node HCP");
         return;
     }
 
     # Get node user ID
     my $userId = $propVals->{'userid'};
-    if ( !$userId ) {
-        xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing user ID" );
+    if (!$userId) {
+        xCAT::zvmUtils->printLn($callback, "$node: (Error) Missing user ID");
         return;
     }
 
     # Capitalize user ID
     $userId =~ tr/a-z/A-Z/;
 
-    if ( $DEBUGGING == 1 ) {
+    if ($DEBUGGING == 1) {
         xCAT::zvmUtils->printSyslog("$ROUTINE $SUBROUTINE sudoer:$::SUDOER zHCP:$hcp sudo:$::SUDO userid:$::userId");
     }
     my $out;
@@ -267,17 +268,19 @@ sub collectDiags {
         );
     }
 
-    my $xcatnotify = "OPERATOR";  # Default value
-    my $xcatnotify_found = 0;     # Not found yet
+    my $xcatnotify       = "OPERATOR";      # Default value
+    my $xcatnotify_found = 0;               # Not found yet
     my (@array, $varname);
-    open( FILE, "<$NOTIFY_FILENAME" );
+    open(FILE, "<$NOTIFY_FILENAME");
+
     #TODO If file not found ("should never happen"), log error but continue
     while (<FILE>) {
+
         # Find record in file with NOTIFY=something on it, optionally delimited with whitespace
-        next unless ( /^[\s]*$NOTIFY_KEYWORD[\s]*$NOTIFY_KEYWORD_DELIMITER[\s]*(\S+)[\s]*$/i );
+        next unless (/^[\s]*$NOTIFY_KEYWORD[\s]*$NOTIFY_KEYWORD_DELIMITER[\s]*(\S+)[\s]*$/i);
         $xcatnotify_found = 1;
-        $xcatnotify = $1;  # First parenthesized expression in regex above, that is: \S+
-        if ( $DEBUGGING == 1 ) {
+        $xcatnotify = $1; # First parenthesized expression in regex above, that is: \S+
+        if ($DEBUGGING == 1) {
             xCAT::zvmUtils->printSyslog("$ROUTINE $SUBROUTINE xCAT will notify $xcatnotify.");
         }
         last; # Ignore anything past the first matching record.  Absent a bug elsewhere, there is only one value to find.
@@ -285,20 +288,22 @@ sub collectDiags {
     close(FILE);
     if (not $xcatnotify_found) {
         xCAT::zvmUtils->printSyslog(
-            "$ROUTINE $SUBROUTINE error: failed to parse $NOTIFY_KEYWORD$NOTIFY_KEYWORD_DELIMITER " .
-            "from $NOTIFY_FILENAME, defaulting to notify $xcatnotify");
+"$ROUTINE $SUBROUTINE error: failed to parse $NOTIFY_KEYWORD$NOTIFY_KEYWORD_DELIMITER " .
+              "from $NOTIFY_FILENAME, defaulting to notify $xcatnotify");
     }
+
     #TODO add COZ... message ID
     my $msg = "vmcp MSG $xcatnotify deployment failed: node $node userid $userId on zHCP $hcp";
     xCAT::zvmUtils->printSyslog("$ROUTINE $SUBROUTINE $msg");
     system($msg);
+
     #TODO check system()'s rc
 
     #TODO Capture diagnostic files
 
     xCAT::zvmUtils->printSyslog("$ROUTINE $SUBROUTINE ... rest of implementation stubbed out ");
 
-    if ( $DEBUGGING == 1 ) {
+    if ($DEBUGGING == 1) {
         xCAT::zvmUtils->printSyslog("$ROUTINE $SUBROUTINE exit");
     }
     return;

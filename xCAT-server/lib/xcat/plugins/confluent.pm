@@ -226,7 +226,7 @@ sub makeconfluentcfg {
     # Get db info for the nodes related to console
     my $hmtab      = xCAT::Table->new('nodehm');
     my $nodepostab = xCAT::Table->new('nodepos');
-    my $mptab = xCAT::Table->new('mp');
+    my $mptab      = xCAT::Table->new('mp');
     my @cfgents1; # = $hmtab->getAllNodeAttribs(['cons','serialport','mgt','conserver','termserver','termport']);
     my @cfgents2;
     my @cfgents3;
@@ -343,7 +343,7 @@ sub makeconfluentcfg {
                     die "confluent does not currently support termserver";
                     $termservers{ $_->{termserver} } = 1; # dont add this one again
                 }
-                if ($type{$_->{node}} and $type{ $_->{node} } =~ /fsp|bpa|hmc|ivm/) {
+                if ($type{ $_->{node} } and $type{ $_->{node} } =~ /fsp|bpa|hmc|ivm/) {
                     $keepdoing = 0;    # these types dont have consoles
                 }
             }
@@ -458,9 +458,9 @@ sub donodeent {
               $ipmiauthdata->{$node}->{password};
             my $bmc = $ipmientries->{$node}->[0]->{bmc};
             if ($bmc) {
-		 $bmc =~ s/,.*//;
-            	$parameters{'hardwaremanagement.manager'} = $bmc;
-             }
+                $bmc =~ s/,.*//;
+                $parameters{'hardwaremanagement.manager'} = $bmc;
+            }
         }
         if (defined($cfgent->{consoleondemand})) {
             if ($cfgent->{consoleondemand} == 'yes') {
@@ -472,7 +472,7 @@ sub donodeent {
         } elsif ($::XCATSITEVALS{'consoleondemand'} and $::XCATSITEVALS{'consoleondemand'} !~ m/^n/) {
             $parameters{'console.logging'} = 'none';
         }
-	elsif ($::XCATSITEVALS{'consoleondemand'} and $::XCATSITEVALS{'consoleondemand'} == 'no') {
+        elsif ($::XCATSITEVALS{'consoleondemand'} and $::XCATSITEVALS{'consoleondemand'} == 'no') {
             $parameters{'console.logging'} = 'full';
         }
 

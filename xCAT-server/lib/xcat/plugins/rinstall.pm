@@ -99,36 +99,38 @@ sub rinstall {
     }
 
     if (($command =~ /rinstall/) or ($command =~ /winstall/)) {
-        my $ret=xCAT::Usage->validateArgs($command,@ARGV);
-        if ($ret->[0]!=0) {
-             $rsp->{error}->[0] = $ret->[1];
-             $rsp->{errorcode}->[0] = $ret->[0];
-             xCAT::MsgUtils->message("E", $rsp, $callback);
-             &usage($command,$callback);
-             return;
+        my $ret = xCAT::Usage->validateArgs($command, @ARGV);
+        if ($ret->[0] != 0) {
+            $rsp->{error}->[0]     = $ret->[1];
+            $rsp->{errorcode}->[0] = $ret->[0];
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            &usage($command, $callback);
+            return;
         }
 
         my $state = $ARGV[0];
         chomp($state);
         if ($state =~ /^osimage=(\S+)/) {
-           $OSIMAGE = $1; # osimage was specified
-           xCAT::MsgUtils->message("I", $rsp, $callback);
+            $OSIMAGE = $1;    # osimage was specified
+            xCAT::MsgUtils->message("I", $rsp, $callback);
         }
         elsif ($state =~ /^boot$|^shell$|^osimage$|^runcmd=|^runimage=/) {
-           # the rest are valid actions, just pass to nodeset
-           $STATES=$state;
+
+            # the rest are valid actions, just pass to nodeset
+            $STATES = $state;
         }
         elsif ($state =~ /^-/) {
-           # if starts with dash, let GetOptions below to process
+
+            # if starts with dash, let GetOptions below to process
         }
         else {
-           if ($state) {
-               $rsp->{errorcode}->[0]=1;
-               $rsp->{error}->[0]="Invalid option $state";
-               xCAT::MsgUtils->message("E",$rsp,$callback);
-               &usage($command, $callback);
-               return 1;
-           }
+            if ($state) {
+                $rsp->{errorcode}->[0] = 1;
+                $rsp->{error}->[0]     = "Invalid option $state";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                &usage($command, $callback);
+                return 1;
+            }
         }
 
         Getopt::Long::Configure("bundling");
@@ -162,11 +164,11 @@ sub rinstall {
         return 1;
     }
 
-    if($command eq "rinstall" and scalar(@nodes) > 1 and $CONSOLE){
-       $rsp->{errorcode}->[0]=1;
-       $rsp->{error}->[0]="rinstall -c/--console can only be run against one node! Please use winstall -c/--console for multiple nodes.";
-       xCAT::MsgUtils->message("E",$rsp,$callback);
-       return 1;
+    if ($command eq "rinstall" and scalar(@nodes) > 1 and $CONSOLE) {
+        $rsp->{errorcode}->[0] = 1;
+        $rsp->{error}->[0] = "rinstall -c/--console can only be run against one node! Please use winstall -c/--console for multiple nodes.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
     }
 
     my $rc = 0;
@@ -193,6 +195,7 @@ sub rinstall {
         $osimagetable->close();
 
         unless ($ref) {
+
             # Nothing was returned from getAttrbs for the specified image
             $rsp->{data}->[0] = "Cannot find the OS image $OSIMAGE in the osimage table.";
             xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -235,7 +238,7 @@ sub rinstall {
             }
             my $nodetypearch = $nodetypeattribs->{'arch'};
             if ($nodetypearch ne $osimagearch) {
-	        unless(($nodetypearch =~ /^ppc64(le|el)?$/i) and ($osimagearch =~ /^ppc64(le|el)?$/i)){
+                unless (($nodetypearch =~ /^ppc64(le|el)?$/i) and ($osimagearch =~ /^ppc64(le|el)?$/i)) {
                     $rsp->{error}->[0] = "$node: The value of 'arch' attribute of node does not match the 'osarch' attribute of osimage.";
                     $rsp->{errorcode}->[0] = 1;
                     xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -315,7 +318,8 @@ sub rinstall {
 
     }
 
-    if ( grep( /osimage/, @parameter ) ) {
+    if (grep(/osimage/, @parameter)) {
+
         # Task is osimage, check --ignorekernelchk and --noupdateinitrd flags and set if needed
 
         if ($ignorekernelchk) {
@@ -359,26 +363,29 @@ sub rinstall {
     }
 
     unless ($rc == 0) {
+
         # We got an error with the nodeset
         my @successnodes;
         my @failurenodes;
         my @failuresns;
         my $snfailure;
+
         # copy into a temporary variable to avoid of circular reference
         my @lines = @$res;
         foreach my $line (@lines) {
             $rsp->{data}->[0] = $line;
-            if($line =~ /The (\S+) can not be resolved/){
-                push @failurenodes,$1;
+            if ($line =~ /The (\S+) can not be resolved/) {
+                push @failurenodes, $1;
             }
             if ($line =~ /dhcp server is not running/) {
                 my $rsp = {};
-                $rsp->{error}->[0]     = "Fatal error: dhcp server is not running";
+                $rsp->{error}->[0] = "Fatal error: dhcp server is not running";
                 $rsp->{errorcode}->[0] = 1;
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 return 1;
             }
             if ($line =~ /Cannot wget/) {
+
                 # If nodeset returns error that runimage can not be downloaded by wget,
                 # display the error from nodeset (if not alredy displayed by VERBOSE above), stop processing and return.
                 unless ($VERBOSE) {
@@ -388,19 +395,20 @@ sub rinstall {
             }
 
             if ($line =~ /Unable to dispatch hierarchical sub-command to (\S+):3001/) {
-                $snfailure=1;
-                push @failuresns,$1;
+                $snfailure = 1;
+                push @failuresns, $1;
             }
             xCAT::MsgUtils->message("I", $rsp, $callback);
         }
 
         # if only provision one node and failed nodeset, will exit the command
         # instead of continue with rnetboot/rsetboot, rpower.
-        if ( (scalar(@nodes) == 1) ) {
+        if ((scalar(@nodes) == 1)) {
+
             #exit the command if it's service node failure
             if ($snfailure) {
-                my $node = $nodes[0];
-                my $nrtab = xCAT::Table->new('noderes');
+                my $node   = $nodes[0];
+                my $nrtab  = xCAT::Table->new('noderes');
                 my $nrents = $nrtab->getNodeAttribs($node, [qw(servicenode)]);
                 my $nodesn = $nrents->{servicenode};
                 foreach my $tmpsn (@failuresns) {
@@ -423,7 +431,7 @@ sub rinstall {
             delete $nodes{$node};
         }
 
-        if (0+@failurenodes > 0) {
+        if (0 + @failurenodes > 0) {
             $rsp->{error}->[0] = "Failed to run 'nodeset' against the following nodes: @failurenodes";
             $rsp->{errorcode}->[0] = 1;
             xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -443,7 +451,7 @@ sub rinstall {
     foreach my $hmkey (keys %hmhash) {
         $::RUNCMD_RC = 0;
         my @nodes = @{ $hmhash{$hmkey} };
-        unless ($hmkey =~ /^(ipmi|blade|hmc|ivm|fsp|kvm|esx|rhevm|openbmc)$/)  {
+        unless ($hmkey =~ /^(ipmi|blade|hmc|ivm|fsp|kvm|esx|rhevm|openbmc)$/) {
             $rsp->{error}->[0] = "@nodes: rinstall only support nodehm.mgt type 'ipmi', 'blade', 'hmc', 'ivm', 'fsp', 'kvm', 'esx', 'rhevm', 'openbmc'.";
             $rsp->{errorcode}->[0] = 1;
             xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -472,6 +480,7 @@ sub rinstall {
 
                 # We got an error with the rnetboot
                 my @failurenodes;
+
                 # copy into a temporary variable to avoid of circular reference
                 my @lines = @$res;
                 foreach my $line (@lines) {
@@ -489,7 +498,7 @@ sub rinstall {
                         push @failurenodes, $node;
                     }
                 }
-                if (0+@failurenodes > 0) {
+                if (0 + @failurenodes > 0) {
                     $rsp->{error}->[0] = "Failed to run 'rnetboot' against the following nodes: @failurenodes";
                     $rsp->{errorcode}->[0] = 1;
                     xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -508,15 +517,15 @@ sub rinstall {
                     push @rsetbootarg, "-u";
                 }
 
-                my %req=(
-                        command => ["rsetboot"],
-                        node    => \@nodes,
-                        arg     => \@rsetbootarg
-                    );
+                my %req = (
+                    command => ["rsetboot"],
+                    node    => \@nodes,
+                    arg     => \@rsetbootarg
+                );
 
                 #TODO: When OPENBMC support is finished, this line should be removed
-                if($hmkey =~ /^openbmc$/){
-                    $req{environment}{XCAT_OPENBMC_DEVEL}= "YES";
+                if ($hmkey =~ /^openbmc$/) {
+                    $req{environment}{XCAT_OPENBMC_DEVEL} = "YES";
                 }
 
                 my $res =
@@ -534,9 +543,11 @@ sub rinstall {
                     xCAT::MsgUtils->message("D", $rsp, $callback);
                 }
                 unless ($rc == 0) {
+
                     # We got an error with the rsetboot
                     my @successnodes;
                     my @failurenodes;
+
                     # copy into a temporary variable to avoid of circular reference
                     my @lines = @$res;
                     foreach my $line (@lines) {
@@ -556,7 +567,7 @@ sub rinstall {
                         }
                     }
                     my $rsp = {};
-                    if (0+@failurenodes > 0) {
+                    if (0 + @failurenodes > 0) {
                         $rsp->{error}->[0] = "Failed to run 'rsetboot' against the following nodes: @failurenodes";
                         $rsp->{errorcode}->[0] = 1;
                         xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -571,10 +582,10 @@ sub rinstall {
             # Run rpower $noderange boot
             my @rpowerarg;
             push @rpowerarg, "boot";
-            my %req=(
-                    command => ["rpower"],
-                    node    => \@nodes,
-                    arg     => \@rpowerarg
+            my %req = (
+                command => ["rpower"],
+                node    => \@nodes,
+                arg     => \@rpowerarg
             );
 
             my $res =
@@ -590,8 +601,10 @@ sub rinstall {
                 xCAT::MsgUtils->message("D", $rsp, $callback);
             }
             unless ($rc == 0) {
+
                 # We got an error with the rpower
                 my @failurenodes;
+
                 # copy into a temporary variable to avoid of circular reference
                 my @lines = @$res;
                 foreach my $line (@lines) {
@@ -610,7 +623,7 @@ sub rinstall {
                     }
                 }
                 my $rsp = {};
-                if (0+@failurenodes > 0) {
+                if (0 + @failurenodes > 0) {
                     $rsp->{error}->[0] = "Failed to run 'rpower' against the following nodes: @failurenodes";
                     $rsp->{errorcode}->[0] = 1;
                     xCAT::MsgUtils->message("E", $rsp, $callback);

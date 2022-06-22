@@ -637,6 +637,7 @@ sub getNodeStatusFromNodesetState {
 
 #--------------------------------------------------------------------------------
 sub setNodeStatusAttributes {
+
     #print "monitorctrl::setNodeStatusAttributes called\n";
     my $temp = shift;
     if ($temp =~ /xCAT_monitoring::monitorctrl/) {
@@ -703,8 +704,10 @@ sub setNodeStatusAttributes {
             if (@$nodes > 0) {
                 $updates{'status'}     = $_;
                 $updates{'statustime'} = $currtime;
+
                 #my $nodestate = "@$nodes status: $updates{'status'} statustime: $updates{'statustime'}";
                 foreach my $node (@$nodes) {
+
                     # To make the log clear, iterate for each node. This might be potential performance issue!
                     my $nodestate = "xcat.updatestatus - $node: changing status=$updates{'status'}";
                     xCAT::MsgUtils->message('S', "$nodestate");

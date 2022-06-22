@@ -29,49 +29,53 @@ sub split_node_array {
     if ($source =~ /xCAT::Scope/) {
         $source = shift;
     }
-    my $max_sub = shift;
+    my $max_sub  = shift;
     my $capacity = shift;
 
-    if ($max_sub < 2) {return [$source];}
+    if ($max_sub < 2) { return [$source]; }
 
-    my @dest = ();
+    my @dest  = ();
     my $total = $#{$source} + 1;
-    my $n_sub = int ($total / $capacity);
-    unless ($n_sub * $capacity == $total) { $n_sub++;} #POSIX::ceil
+    my $n_sub = int($total / $capacity);
+    unless ($n_sub * $capacity == $total) { $n_sub++; }    #POSIX::ceil
 
-    if ( $n_sub <= 1 ) {
+    if ($n_sub <= 1) {
+
         # Only 1 subset is enough
         $dest[0] = $source;
 
-    } elsif ( $n_sub > $max_sub ) {
+    } elsif ($n_sub > $max_sub) {
+
         # Exceed, then to recaculate the capacity of each subset as we only allow max_sub
-        $capacity = int ($total / $max_sub);
-        if ( $total % $max_sub > 0 ) {
+        $capacity = int($total / $max_sub);
+        if ($total % $max_sub > 0) {
             $capacity += 1;
         }
         my $start = $end = 0;
-        for (1..$max_sub) {
+        for (1 .. $max_sub) {
             $end = $start + $capacity - 1;
-            if ( $end > $total - 1 ) {
+            if ($end > $total - 1) {
                 $end = $total - 1
             }
 
-            my @temp = @$source[$start..$end];
-            $dest[$_-1]=\@temp;
+            my @temp = @$source[ $start .. $end ];
+            $dest[ $_ - 1 ] = \@temp;
             $start = $end + 1;
         }
 
     } else {
+
         # Only n_sub subsets are required, split the noderange into each subset
         my $start = $end = 0;
-        for (1..$n_sub) {
+        for (1 .. $n_sub) {
             $end = $start + $capacity - 1;
-            if ( $end > $total - 1 ) {
+            if ($end > $total - 1) {
                 $end = $total - 1
             }
+
             #print "subset #$_: $start to $end";
-            my @temp = @$source[$start..$end];
-            $dest[$_-1]=\@temp;
+            my @temp = @$source[ $start .. $end ];
+            $dest[ $_ - 1 ] = \@temp;
             $start = $end + 1;
         }
     }
@@ -104,11 +108,13 @@ sub get_parallel_scope {
         $req = shift;
     }
     my ($max_sub, $capacity) = @_;
+
     #TODO, make the value configurable
-    unless ($max_sub) { $max_sub = 5; }
+    unless ($max_sub)  { $max_sub  = 5; }
     unless ($capacity) { $capacity = 250; }
 
-    my $subsets = split_node_array(\@{$req->{node}}, $max_sub, $capacity);
+    my $subsets = split_node_array(\@{ $req->{node} }, $max_sub, $capacity);
+
     # Just return the origin one if node range is not big enough.
     if ($#{$subsets} < 1) { return [$req]; }
 
@@ -145,6 +151,7 @@ sub get_broadcast_scope_with_parallel {
     if ($req =~ /xCAT::Scope/) {
         $req = shift;
     }
+
     #Exit if the packet has been preprocessed in its history
     if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
     $req->{_xcatpreprocessed}->[0] = 1;
@@ -153,14 +160,14 @@ sub get_broadcast_scope_with_parallel {
 
     my $reqs = get_parallel_scope($req);
 
-    my @requests = (); # The request array will be return.
+    my @requests = ();    # The request array will be return.
     push @requests, @$reqs;
 
     # when this method is called on service node, it is required to broadcast to MN too.
     # get site.master from DB in order to dispatch to MN ( MN will not be added in servicenode table)
-    if ( xCAT::Utils->isServiceNode() ) {
+    if (xCAT::Utils->isServiceNode()) {
         my @entries = xCAT::TableUtils->get_site_attribute("master");
-        my $master = $entries[0];
+        my $master  = $entries[0];
         foreach (@$reqs) {
             my $reqcopy = {%$_};
             $reqcopy->{'_xcatdest'} = $master;
@@ -208,25 +215,27 @@ sub get_broadcast_disjoint_scope_with_parallel {
     if ($req =~ /xCAT::Scope/) {
         $req = shift;
     }
+
     #Exit if the packet has been preprocessed in its history
     if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
     $req->{_xcatpreprocessed}->[0] = 1;
 
     my $sn_hash = shift;
-    my $extras = shift;
+    my $extras  = shift;
 
-    my @requests = (); # The request array will be return.
-    my $reqs = get_parallel_scope($req);
+    my @requests = ();                       # The request array will be return.
+    my $reqs     = get_parallel_scope($req);
 
-    my $handled4me = 0;  # indicate myself is already handled.
-    if (xCAT::Utils->isMN()) { # For MN, add itself always.
+    my $handled4me = 0;    # indicate myself is already handled.
+    if (xCAT::Utils->isMN()) {    # For MN, add itself always.
         push @requests, @$reqs;
         $handled4me = 1;
     }
-    my %prehandledhash = ();# the servers which is already handled.
+    my %prehandledhash = ();      # the servers which is already handled.
     foreach (@$extras) {
         my $xcatdest = $_;
         if (xCAT::NetworkUtils->thishostisnot($xcatdest)) {
+
             # TODO, To avoid sending request to a multi-home server many times.
             foreach (@$reqs) {
                 my $reqcopy = {%$_};
@@ -243,13 +252,14 @@ sub get_broadcast_disjoint_scope_with_parallel {
     #Broadcast the request to all available service nodes
     foreach (keys %$sn_hash) {
         my $xcatdest = $_;
+
         # to check if the SN already handled
         next if (exists($prehandledhash{$xcatdest}));
 
         if (xCAT::NetworkUtils->thishostisnot($xcatdest)) {
             my $reqcopy = {%$req};
             $reqcopy->{'_xcatdest'} = $xcatdest;
-            $reqcopy->{'node'} = $sn_hash->{$xcatdest};
+            $reqcopy->{'node'}      = $sn_hash->{$xcatdest};
 
             $reqs = get_parallel_scope($reqcopy);
             push @requests, @$reqs;

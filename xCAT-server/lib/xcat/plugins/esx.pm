@@ -410,6 +410,7 @@ sub process_request {
     if ($command eq "rpower" and grep(/^pduon|pduoff|pdureset|pdustat$/, @exargs)) {
         return;
     }
+
     #my $sitetab = xCAT::Table->new('site');
     #if($sitetab){
     #(my $ref) = $sitetab->getAttribs({key => 'usehostnamesforvcenter'}, 'value');
@@ -4937,7 +4938,7 @@ sub mkcommonboot {
     my $restab = xCAT::Table->new('noderes', -create => 0);
     my $resents;
     if ($restab) {
-        $resents = $restab->getNodesAttribs(\@nodes, [ 'tftpdir', 'nfsserver', 'xcatmaster', 'tftpserver']);
+        $resents = $restab->getNodesAttribs(\@nodes, [ 'tftpdir', 'nfsserver', 'xcatmaster', 'tftpserver' ]);
     }
 
     my %tablecolumnsneededforaddkcmdline;
@@ -4980,7 +4981,7 @@ sub mkcommonboot {
         } else {
             $tftpdir = $globaltftpdir;
         }
-        if ($resents and $resents->{$node}->[0]->{xcatmaster} ) {
+        if ($resents and $resents->{$node}->[0]->{xcatmaster}) {
             $tmpl_hash{"xcatmaster"} = $resents->{$node}->[0]->{xcatmaster};
         }
         if ($resents and $resents->{$node}->[0]->{tftpserver}) {
@@ -5139,10 +5140,10 @@ sub mkcommonboot {
 
 
 
-        my $bootparams = ${$req->{bootparams}};
-        $bootparams->{$node}->[0]->{kernel} = $kernel;
+        my $bootparams = ${ $req->{bootparams} };
+        $bootparams->{$node}->[0]->{kernel}   = $kernel;
         $bootparams->{$node}->[0]->{kcmdline} = $append;
-        $bootparams->{$node}->[0]->{initrd} = "";
+        $bootparams->{$node}->[0]->{initrd}   = "";
     }    # end of node loop
 
 }

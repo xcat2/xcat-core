@@ -25,22 +25,23 @@ sub process_request {
         if (!defined($req->{discoverymethod}) or !defined($req->{discoverymethod}->[0]) or ($req->{discoverymethod}->[0] eq 'undef') or defined($req->{error})) {
             my $error_msg = ".";
             if (defined($req->{error_msg}) and defined($req->{error_msg}->[0])) {
-                $error_msg = ": ". $req->{error_msg}->[0];
+                $error_msg = ": " . $req->{error_msg}->[0];
             }
             my $rsp = {};
-            $rsp->{error}->[0] = "The discovery request can not be processed".$error_msg;
+            $rsp->{error}->[0] = "The discovery request can not be processed" . $error_msg;
             $cb->($rsp);
-            xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: ($req->{_xcat_clientmac}->[0]) Failed for node discovery".$error_msg);
+            xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: ($req->{_xcat_clientmac}->[0]) Failed for node discovery" . $error_msg);
 
             #now, notify the node that its findme request has been processed
             my $client_ip = $req->{'_xcat_clientip'};
-            xCAT::MsgUtils->message("S","xcat.discovery.zzzdiscovery: Notify $client_ip that its findme request has been processed");
+            xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: Notify $client_ip that its findme request has been processed");
+
             #notify the client that its request is been processing
-            my $ret=xCAT::NetworkUtils->send_tcp_msg($client_ip,3001,"processed");
-            if($ret){
+            my $ret = xCAT::NetworkUtils->send_tcp_msg($client_ip, 3001, "processed");
+            if ($ret) {
                 xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: Failed to notify $client_ip that its findme request has been processed");
             }
-        }else{
+        } else {
             xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: ($req->{_xcat_clientmac}->[0]) Successfully discovered the node using $req->{discoverymethod}->[0] discovery method.");
         }
 

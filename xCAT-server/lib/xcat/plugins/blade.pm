@@ -4582,7 +4582,7 @@ sub process_request {
         $req->{discoverymethod} = ['blade'];
         $doreq->($req);
         if (defined($req->{error})) {
-            $request->{error}->[0] = '1';
+            $request->{error}->[0]     = '1';
             $request->{error_msg}->[0] = $req->{error_msg}->[0];
         }
         %{$req} = ();    #Clear request. it is done

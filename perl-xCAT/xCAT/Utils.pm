@@ -19,6 +19,7 @@ use lib "$::XCATROOT/lib/perl";
 # needing it to avoid reprocessing of user tables ( ExtTab.pm) for each command call
 use POSIX qw(ceil);
 use File::Path;
+
 #use Data::Dumper;
 use Socket;
 use strict;
@@ -577,7 +578,7 @@ sub Version
     my $version = shift;
 
     #force reload the xCAT::Version in case the perl-xcat is upgraded but xcatd is not restarted
-    if($INC{'xCAT/Version.pm'}){
+    if ($INC{'xCAT/Version.pm'}) {
         delete $INC{'xCAT/Version.pm'};
     }
 
@@ -605,14 +606,15 @@ sub Version
 sub get_conserver_version
 {
     my $cmd = "/usr/sbin/conserver -V";
+
     # output format:
     # conserver: conserver.com version 8.2.1
     # conserver: default access type `r'
-    my @out  = xCAT::Utils->runcmd("$cmd", -1);
+    my @out = xCAT::Utils->runcmd("$cmd", -1);
     if ($::RUNCMD_RC != 0 || @out < 1) {
         return undef;
     }
-    my @parts = split(' ',$out[0]);
+    my @parts = split(' ', $out[0]);
     if (@parts < 4) {
         return undef;
     }
@@ -1320,7 +1322,7 @@ sub runxcmd
     }
 
     $::CALLBACK = $save_CALLBACK;    # in case the subreq call changed it
-    $::callback = $save_callback;    # To keep $::callback also since some module use this global variable
+    $::callback = $save_callback; # To keep $::callback also since some module use this global variable
     if ($::RUNCMD_RC)
     {
         my $displayerror = 1;
@@ -2294,7 +2296,7 @@ sub osver
             $os = $id_like;
         }
 
-        if (!$os ) {
+        if (!$os) {
             $os = "unknown";
         }
 
@@ -2303,7 +2305,7 @@ sub osver
             $verrel = $version_id;
         }
 
-        if (!$verrel ) {
+        if (!$verrel) {
             $verrel = "unknown";
         }
 
@@ -2481,8 +2483,8 @@ sub acquire_lock {
         flock($tlock->{fd}, LOCK_EX) or return undef;
     }
 
-    truncate $tlock->{fd},0;
-    syswrite $tlock->{fd} ,$$;
+    truncate $tlock->{fd}, 0;
+    syswrite $tlock->{fd}, $$;
     $tlock->{fd}->autoflush(1);
     return $tlock;
 }
@@ -3395,8 +3397,8 @@ sub noderangecontainsMn
     my @mnames;   # management node names in the database, members of __mgmtnode
     my $tab = xCAT::Table->new('nodelist');
 
-    my @nodelist = $tab->getAllAttribsWhere("node in ("."\'".join("\',\'", @noderange)."\'".") and groups like '%__mgmtnode%'",'node');
-    return map {$_->{node}} @nodelist;            # if no MN in the noderange, return nothing
+    my @nodelist = $tab->getAllAttribsWhere("node in (" . "\'" . join("\',\'", @noderange) . "\'" . ") and groups like '%__mgmtnode%'", 'node');
+    return map { $_->{node} } @nodelist; # if no MN in the noderange, return nothing
 }
 
 sub noderangecontainsMn_orig
@@ -3914,20 +3916,21 @@ sub gettimezone
 #--------------------------------------------------------------------------------
 sub time2string
 {
-     my $unixtime = shift;
-     my $date_separator;
-     if ($unixtime =~ /xCAT::Utils/)
-     {
-         $unixtime = shift;
-         $date_separator = shift // "/"; # Optional date separator, if not specified, default to "/"
-     }
-     my $time_separator = ":";
+    my $unixtime = shift;
+    my $date_separator;
+    if ($unixtime =~ /xCAT::Utils/)
+    {
+        $unixtime = shift;
+        $date_separator = shift // "/"; # Optional date separator, if not specified, default to "/"
+    }
+    my $time_separator = ":";
 
-     my ($sec, $min, $hour, $mday, $mon, $year) = localtime($unixtime);
-     $year += 1900;
-     $mon  += 1;
-     return $year . $date_separator . $mon . $date_separator . $mday . " " . $hour . $time_separator . $min . $time_separator . $sec;
+    my ($sec, $min, $hour, $mday, $mon, $year) = localtime($unixtime);
+    $year += 1900;
+    $mon  += 1;
+    return $year . $date_separator . $mon . $date_separator . $mday . " " . $hour . $time_separator . $min . $time_separator . $sec;
 }
+
 #--------------------------------------------------------------------------------
 
 =head3  specialservicemgr
@@ -4068,14 +4071,14 @@ sub servicemap {
     # (general service name) => {list of possible service names}
     #
     my %svchash = (
-        "dhcp"      => [ "dhcp3-server", "dhcpd", "isc-dhcp-server" ],
-        "nfs"       => [ "nfsserver",    "nfs-server", "nfs", "nfs-kernel-server" ],
-        "named"     => [ "named",        "bind9" ],
-        "syslog"    => [ "syslog",       "syslogd", "rsyslog" ],
-        "firewall"  => [ "iptables",     "firewalld", "ufw" ],
-        "http"      => [ "apache2",      "httpd" ],
-        "ntpserver" => [ "ntpd",         "ntp" ],
-        "mysql"     => [ "mysqld",       "mysql", "mariadb" ],
+        "dhcp" => [ "dhcp3-server", "dhcpd", "isc-dhcp-server" ],
+        "nfs" => [ "nfsserver", "nfs-server", "nfs", "nfs-kernel-server" ],
+        "named"     => [ "named",    "bind9" ],
+        "syslog"    => [ "syslog",   "syslogd", "rsyslog" ],
+        "firewall"  => [ "iptables", "firewalld", "ufw" ],
+        "http"      => [ "apache2",  "httpd" ],
+        "ntpserver" => [ "ntpd",     "ntp" ],
+        "mysql"     => [ "mysqld",   "mysql", "mariadb" ],
     );
 
     my $path       = undef;
@@ -4933,25 +4936,25 @@ sub get_nmapversion {
 #--------------------------------------------------------------------------------
 
 sub acquire_lock_imageop {
-    my $self=shift;
-    my $rootimg_dir=shift;
-    my $NON_BLOCK=shift;
+    my $self        = shift;
+    my $rootimg_dir = shift;
+    my $NON_BLOCK   = shift;
 
-    $NON_BLOCK=1 unless(defined $NON_BLOCK);
-    my $mylockfile=Cwd::realpath($rootimg_dir);
-    my $mymd5=md5_hex($mylockfile);
-    $mylockfile=~s/\//./g;
-    $mylockfile=$mylockfile.".".$mymd5;
+    $NON_BLOCK = 1 unless (defined $NON_BLOCK);
+    my $mylockfile = Cwd::realpath($rootimg_dir);
+    my $mymd5      = md5_hex($mylockfile);
+    $mylockfile =~ s/\//./g;
+    $mylockfile = $mylockfile . "." . $mymd5;
 
     my $lock = xCAT::Utils->acquire_lock("$mylockfile", $NON_BLOCK);
-    unless ($lock){
+    unless ($lock) {
         my $pidfd;
-        open($pidfd,"<","/var/lock/xcat/$mylockfile");
-        my $pid=<$pidfd>;
+        open($pidfd, "<", "/var/lock/xcat/$mylockfile");
+        my $pid = <$pidfd>;
         close($pidfd);
         return (1, "failed to acquire lock, seems there is another genimage/packimage/rmimage process $pid running on root image dir \"$rootimg_dir\"");
     }
-    return (0,$lock);
+    return (0, $lock);
 }
 
 #--------------------------------------------------------------------------------
@@ -4962,24 +4965,24 @@ sub acquire_lock_imageop {
 
 #--------------------------------------------------------------------------------
 sub natural_sort_cmp($$) {
-    my $left = shift;
+    my $left  = shift;
     my $right = shift;
-    while() {
-        if( !($left =~ /\d+(\.\d+)?/) ) {
+    while () {
+        if (!($left =~ /\d+(\.\d+)?/)) {
             return $left cmp $right;
         }
         my $before = $`;
-        my $match = $&;
-        my $after = $';
-        if( !($right =~ /\d+(\.\d+)?/) ) {
+        my $match  = $&;
+        my $after  = $';
+        if (!($right =~ /\d+(\.\d+)?/)) {
             return $left cmp $right;
         }
-        if( $before ne $` ) {
+        if ($before ne $`) {
             return $left cmp $right;
-        } elsif( $match != $& ) {
+        } elsif ($match != $&) {
             return $match <=> $&;
         } else {
-            $left = $after;
+            $left  = $after;
             $right = $';
         }
     }
@@ -4994,9 +4997,10 @@ sub natural_sort_cmp($$) {
 
 #--------------------------------------------------------------------------------
 sub console_sleep {
-    my $time = shift;
+    my $time    = shift;
     my $message = shift;
-    if($ENV{CONSOLE_TYPE} && $ENV{CONSOLE_TYPE} eq "gocons") {
+    if ($ENV{CONSOLE_TYPE} && $ENV{CONSOLE_TYPE} eq "gocons") {
+
         # sleep time is handled by goconserver itself
         exit(1);
     }
@@ -5007,19 +5011,19 @@ sub console_sleep {
 
 # replace the variables in $line with the values in dict ref $refvardict
 # return the substitued $line
-sub varsubinline{
-    my $class=shift;
-    my $line=shift;
-    my $refvardict=shift;
+sub varsubinline {
+    my $class      = shift;
+    my $line       = shift;
+    my $refvardict = shift;
 
-    my @varsinline= $line =~ /\$\{?(\w+)\}?/g;
+    my @varsinline = $line =~ /\$\{?(\w+)\}?/g;
     my @unresolvedvars;
-    foreach my $var(@varsinline){
-        if(exists $refvardict->{$var}){
-            $line=~ s/\$\{$var\}/$refvardict->{$var}/g;
-            $line=~ s/\$$var/$refvardict->{$var}/g;
-        }else{
-            push @unresolvedvars,$var;
+    foreach my $var (@varsinline) {
+        if (exists $refvardict->{$var}) {
+            $line =~ s/\$\{$var\}/$refvardict->{$var}/g;
+            $line =~ s/\$$var/$refvardict->{$var}/g;
+        } else {
+            push @unresolvedvars, $var;
         }
     }
 
@@ -5027,9 +5031,9 @@ sub varsubinline{
 }
 
 #remove the left and right white spaces from string
-sub strim{
-    my $class=shift;
-    my $str=shift;
+sub strim {
+    my $class = shift;
+    my $str   = shift;
     $str =~ s/^\s+|\s+$//g;
     return $str;
 }

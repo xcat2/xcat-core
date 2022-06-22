@@ -348,6 +348,7 @@ sub getNodeData {
             push @imageInfo, $tab->getAttribs({ image => $imagegroups->{groups} }, @attrs);
 
         }
+
         # These cases should run for all images
         # get the directories with no names
         push @imageInfo, $tab->getAttribs({ image => '' }, @attrs);
@@ -357,7 +358,7 @@ sub getNodeData {
 
         # get for the image specific directories
         push @imageInfo, $tab->getAttribs({ image => $image }, @attrs);
-        
+
     }
 
     # pass back a reference to the directory

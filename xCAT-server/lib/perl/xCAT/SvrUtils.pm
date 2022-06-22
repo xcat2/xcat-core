@@ -401,7 +401,7 @@ sub getsynclistfile()
                 if ($os) {
                     if    ($os =~ /rh.*/)     { $platform = "rh"; }
                     elsif ($os =~ /centos.*/) { $platform = "centos"; }
-                    elsif ($os =~ /rocky.*/) { $platform = "rocky"; }
+                    elsif ($os =~ /rocky.*/)  { $platform = "rocky"; }
                     elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
                     elsif ($os =~ /sles.*/)   { $platform = "sles"; }
                     elsif ($os =~ /SL.*/)     { $platform = "SL"; }
@@ -432,7 +432,7 @@ sub getsynclistfile()
         if ($os) {
             if    ($os =~ /rh.*/)     { $platform = "rh"; }
             elsif ($os =~ /centos.*/) { $platform = "centos"; }
-            elsif ($os =~ /rocky.*/) { $platform = "rocky"; }
+            elsif ($os =~ /rocky.*/)  { $platform = "rocky"; }
             elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
             elsif ($os =~ /sles.*/)   { $platform = "sles"; }
             elsif ($os =~ /SL.*/)     { $platform = "SL"; }
@@ -484,6 +484,7 @@ sub getsynclistfile()
 
 sub get_os_search_list {
     my $os = shift;
+
     #example: for os=rhels7.6-alternate
     my ($baseos, $alter) = split(/\-/, $os);
     my @word = split(/\./, $baseos);
@@ -597,6 +598,7 @@ sub get_postinstall_file_name {
     if (-x "$searchpath/$profile.$osbase.$extension") {
         return "$searchpath/$profile.$osbase.$extension";
     }
+
     # If the osimge name was specified with -n, the name might contain multiple "."
     # Chop them off one at a time until filename match is found
     while ($dotpos > 0) {
@@ -606,6 +608,7 @@ sub get_postinstall_file_name {
         if (-x "$searchpath/$profile.$osbase.$extension") {
             return "$searchpath/$profile.$osbase.$extension";
         }
+
         # Chop off "." from the end and try again
         $dotpos = rindex($osbase, ".");
         $osbase = substr($osbase, 0, $dotpos);
@@ -615,7 +618,7 @@ sub get_postinstall_file_name {
     #then pick one number follow by leading string, like centos7, rhels7
     if ($os =~ m/([a-zA-Z]+\d\d)/)
     {
-        $osbase=$1;
+        $osbase = $1;
         if (-x "$searchpath/$profile.$osbase.$arch.$extension") {
             return "$searchpath/$profile.$osbase.$arch.$extension";
         }
@@ -719,6 +722,7 @@ sub update_tables_with_templates
     if ($genos =~ /rh.*s(\d*)/) {
         $genos = "rhels$1";
     } elsif ($osver =~ /ubuntu/) {
+
         # for Focal and later Ubuntu we repurpose genos to indicate the use
         # of the subiquity installer
         if ($osver =~ /ubuntu(\d+\.\d+)/) {
@@ -846,8 +850,8 @@ sub update_tables_with_templates
                     osdistroname => $osdistroname);
 
                 #for service node osimage, add service node to the postscripts attributes
-                if($profile eq "service"){
-                    $tb_cols{postscripts}="servicenode";
+                if ($profile eq "service") {
+                    $tb_cols{postscripts} = "servicenode";
                 }
 
 
@@ -1675,7 +1679,7 @@ sub sendmsg {
         $rc   = $text->[0];
         $text = $text->[1];
     }
-    my $text_origin = $text; # Save original text string
+    my $text_origin = $text;    # Save original text string
     if ($text =~ /:/) {
         ($descr, $text) = split /:/, $text, 2;
     }
@@ -2223,26 +2227,26 @@ sub getplatform {
 #        on success: the basename of the compressed rootimage
 #        on fail:    undef
 #--------------------------------------------------------------------------------------------------------
-sub searchcompressedrootimg{
+sub searchcompressedrootimg {
     my $rootimgdir = shift;
     if (($rootimgdir) && ($rootimgdir =~ /xCAT::SvrUtils/)) {
         $rootimgdir = shift;
     }
 
-    my $cpsdrootimg=undef;
-    if (-f -r "$rootimgdir/rootimg.sfs"){
-        $cpsdrootimg="rootimg.sfs";
-    }elsif(-f -r "$rootimgdir/rootimg.gz"){
-        $cpsdrootimg="rootimg.gz";
+    my $cpsdrootimg = undef;
+    if (-f -r "$rootimgdir/rootimg.sfs") {
+        $cpsdrootimg = "rootimg.sfs";
+    } elsif (-f -r "$rootimgdir/rootimg.gz") {
+        $cpsdrootimg = "rootimg.gz";
     }
 
-    if(-f -r "$rootimgdir/rootimg.cpio.gz"){
+    if (-f -r "$rootimgdir/rootimg.cpio.gz") {
         $cpsdrootimg = 'rootimg.cpio.gz';
-    }elsif(-f -r "$rootimgdir/rootimg.cpio.xz"){
+    } elsif (-f -r "$rootimgdir/rootimg.cpio.xz") {
         $cpsdrootimg = 'rootimg.cpio.xz';
-    }elsif(-f -r "$rootimgdir/rootimg.tar.gz"){
+    } elsif (-f -r "$rootimgdir/rootimg.tar.gz") {
         $cpsdrootimg = 'rootimg.tar.gz';
-    }elsif(-f -r "$rootimgdir/rootimg.tar.xz"){
+    } elsif (-f -r "$rootimgdir/rootimg.tar.xz") {
         $cpsdrootimg = 'rootimg.tar.xz';
     }
 

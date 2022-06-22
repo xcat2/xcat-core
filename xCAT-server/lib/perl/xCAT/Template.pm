@@ -56,7 +56,7 @@ sub subvars {
     my $media_dir        = shift;
     my $platform         = shift;
     my $partitionfileval = shift;
-    my $tmpl_hash = shift;
+    my $tmpl_hash        = shift;
     my %namedargs = @_; #further expansion of this function will be named arguments, should have happened sooner.
 
     unless ($namedargs{reusemachinepass}) {
@@ -146,7 +146,8 @@ sub subvars {
     }
     $ENV{HTTPPORT} = $httpport;
 
-    my $httpportsuffix=":$httpport";
+    my $httpportsuffix = ":$httpport";
+
     #replace the env with the right value so that correct include files can be found
     $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
     my $res;
@@ -297,12 +298,14 @@ sub subvars {
             my $source;
             my $source_in_pre;
             my $writerepo;
-            my $c = 0;
+            my $c       = 0;
             my $space10 = " " x 10;
             my $space12 = " " x 12;
             foreach my $pkgdir (@pkgdirs) {
+
                 if ($platform =~ /^(rh|SL|centos|ol|fedora|rocky)$/) {
                     if ($c == 0) {
+
                         # After some tests, if we put the repo in  pre scripts in the kickstart like for rhels6.x
                         # the rhels5.9 will not be installed successfully. So put in kickstart directly.
                         $source_in_pre .= "echo 'url --url http://'\$nextserver'$httpportsuffix/$pkgdir' >> /tmp/repos";
@@ -311,18 +314,18 @@ sub subvars {
                         $source_in_pre .= "\necho 'repo --name=pkg$c --baseurl=http://'\$nextserver'$httpportsuffix/$pkgdir' >> /tmp/repos";
                         $source .= "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#$httpportsuffix/$pkgdir\n"; #for rhels5.9
                     }
-                    my $distrepofile="/install/postscripts/repos/$pkgdir/local-repository.tmpl";
-                    if( -f "$distrepofile"){
+                    my $distrepofile = "/install/postscripts/repos/$pkgdir/local-repository.tmpl";
+                    if (-f "$distrepofile") {
                         my $repofd;
                         my $repo_in_post;
-                        local $/=undef;
-                        open($repofd,"<","$distrepofile");
+                        local $/ = undef;
+                        open($repofd, "<", "$distrepofile");
                         $repo_in_post = <$repofd>;
                         close($repofd);
                         $repo_in_post =~ s#baseurl=#baseurl=http://$master$httpportsuffix/#g;
                         $writerepo .= "\ncat >/etc/yum.repos.d/local-repository-$c.repo << 'EOF'\n";
-                        $writerepo .="$repo_in_post\n";
-                        $writerepo .="EOF\n";
+                        $writerepo .= "$repo_in_post\n";
+                        $writerepo .= "EOF\n";
                     }
                 } elsif ($platform =~ /^(sles|suse)/) {
                     my $http = "http://#TABLE:noderes:\$NODE:nfsserver#$httpportsuffix/$pkgdir";
@@ -335,31 +338,32 @@ sub subvars {
              </listentry>";
                     $source_in_pre .= "<listentry><media_url>http://'\$nextserver'$httpportsuffix$pkgdir</media_url><product>SuSE-Linux-pkg$c</product><product_dir>/</product_dir><ask_on_error config:type=\"boolean\">false</ask_on_error><name>SuSE-Linux-pkg$c</name></listentry>";
                 } elsif ($platform =~ /^sle15*/) {
-                    if ( -d "$pkgdir") {
-                        opendir(DIR,$pkgdir);
-                        my @subpkgdir=grep(!/\.\.?$|^media.1$/, readdir DIR);
-                        foreach my $subdir (@subpkgdir){
+                    if (-d "$pkgdir") {
+                        opendir(DIR, $pkgdir);
+                        my @subpkgdir = grep(!/\.\.?$|^media.1$/, readdir DIR);
+                        foreach my $subdir (@subpkgdir) {
                             my $product_name;
                             my $product_dir;
-                            $product_dir=$subdir;
-                            if($subdir =~ /^Module-/){
-                                $product_name="sle-".lc($subdir);
-                            }elsif($subdir =~ /^Product-SUSE-Manager-Server|^Product-SLES_SAP|^Product-SLED/){
+                            $product_dir = $subdir;
+                            if ($subdir =~ /^Module-/) {
+                                $product_name = "sle-" . lc($subdir);
+                            } elsif ($subdir =~ /^Product-SUSE-Manager-Server|^Product-SLES_SAP|^Product-SLED/) {
+
                                 # Skip product directories that are not "SLES", causes conflict on SLE15.2
                                 next;
-                            }elsif($subdir =~ /^Product-/){
-                                $subdir=~s/Product-//;
-                                $product_name=$subdir;
+                            } elsif ($subdir =~ /^Product-/) {
+                                $subdir =~ s/Product-//;
+                                $product_name = $subdir;
                             }
-                            if (defined($product_name) && defined($product_dir)){
-                                $source .="<listentry>\n$space12<media_url>http://XCATNEXTSERVERHOOK$httpportsuffix$pkgdir</media_url>\n$space12<product>$product_name</product>\n$space12<product_dir>/$product_dir</product_dir>\n$space12</listentry>\n$space10";
-                            } 
+                            if (defined($product_name) && defined($product_dir)) {
+                                $source .= "<listentry>\n$space12<media_url>http://XCATNEXTSERVERHOOK$httpportsuffix$pkgdir</media_url>\n$space12<product>$product_name</product>\n$space12<product_dir>/$product_dir</product_dir>\n$space12</listentry>\n$space10";
+                            }
                         }
                     }
                 }
                 $c++;
             }
-            $source =~ s/\s+$//; # trim end of string
+            $source =~ s/\s+$//;    # trim end of string
             $inc =~ s/#INSTALL_SOURCES#/$source/g;
             $inc =~ s/#INSTALL_SOURCES_IN_PRE#/$source_in_pre/g;
             if (("ubuntu" eq $platform) || ("debian" eq $platform)) {
@@ -407,7 +411,7 @@ sub subvars {
             $inc =~ s/#UNCOMMENTOENABLESSH#/ /g;
         }
 
-        my $sles_sdk_media = "http://" . $tmpl_hash->{tftpserver}.$httpportsuffix . $media_dir . "/sdk1";
+        my $sles_sdk_media = "http://" . $tmpl_hash->{tftpserver} . $httpportsuffix . $media_dir . "/sdk1";
 
         $inc =~ s/#SLES_SDK_MEDIA#/$sles_sdk_media/eg;
 
@@ -546,7 +550,7 @@ sub subvars {
             }
         }
         elsif ("ubuntu" eq $platform) {
-            my $default_script = "    wget http://`cat /tmp/xcatserver`".':'.$ENV{HTTPPORT} . $ENV{INSTALLDIR} . "/autoinst/getinstdisk; chmod u+x getinstdisk; ./getinstdisk;";
+            my $default_script = "    wget http://`cat /tmp/xcatserver`" . ':' . $ENV{HTTPPORT} . $ENV{INSTALLDIR} . "/autoinst/getinstdisk; chmod u+x getinstdisk; ./getinstdisk;";
             $inc =~ s/#INCLUDE_GET_INSTALL_DISK_SCRIPT#/$default_script/;
         }
         else {
@@ -1132,7 +1136,7 @@ sub mirrorspec {
             if (!$pkgdir) {
                 $pkgdir = $_;
             } else {
-                my $osuurl = "http://" . $masternode.':'.$ENV{httpport} . $_ . " ./";
+                my $osuurl = "http://" . $masternode . ':' . $ENV{httpport} . $_ . " ./";
                 push @mirrors, $osuurl;
             }
         }
@@ -1165,9 +1169,9 @@ sub yast2network {
     my $line;
     my $hoststab;
     my $mactab = xCAT::Table->new('mac', -create => 0);
-    unless ($mactab) { $tmplerr="mac table should always exist prior to template processing when doing autoula"; return;}
+    unless ($mactab) { $tmplerr = "mac table should always exist prior to template processing when doing autoula"; return; }
     my $ent = $mactab->getNodeAttribs($node, ['mac'], prefetchcache => 1);
-    unless ($ent and $ent->{mac}) { $tmplerr="missing mac data for $node"; return; }
+    unless ($ent and $ent->{mac}) { $tmplerr = "missing mac data for $node"; return; }
     my $suffix = xCAT::Utils->parseMacTabEntry($ent->{mac}, $node);
     $suffix = lc($suffix);
 
@@ -1522,7 +1526,7 @@ sub includefile
                             #2 means pattern list, pattern list starts with @,
          #3 means remove package list, packages to be removed start with -.
     my $text = "";
-    $file=xCAT::Utils->varsubinline($file,\%ENV);
+    $file = xCAT::Utils->varsubinline($file, \%ENV);
     unless ($file =~ /^\//) {
         $file = $idir . "/" . $file;
     }
@@ -1580,9 +1584,10 @@ sub includefile
 
     chomp($text);
     if (($pkglist == 2) && (length($text)) < 1) {
-        # If processing a "pattern" (pkglist==2), and no patterns 
+
+        # If processing a "pattern" (pkglist==2), and no patterns
         # were listed in pkglist file, just return start and end tags
-        $text="$pkgb$pkge"
+        $text = "$pkgb$pkge"
     }
     return ($text);
 }
@@ -1620,7 +1625,7 @@ sub envvar
 sub crydb
 {
     my ($table, $key, $field) = @_;
-    my @fields = [$field, 'cryptmethod'];
+    my @fields = [ $field, 'cryptmethod' ];
     my $kp;
 
     my $get_query_map = sub {
@@ -1637,7 +1642,7 @@ sub crydb
     };
     $kp = $get_query_map->($key);
     return undef if (!defined($kp));
-    return '*' if ($::XCATSITEVALS{secureroot} eq "1");
+    return '*'   if ($::XCATSITEVALS{secureroot} eq "1");
     return xCAT::PasswordUtils::crypt_system_password($table, $kp, \@fields);
 }
 

@@ -210,7 +210,7 @@ sub bldnonrootSSHFiles
     if (xCAT::Utils->isMN()) {    # if on Management Node
         $cmd = " cp $home/.ssh/id_rsa.pub $home/.ssh/tmp/authorized_keys";
     } else {                      # SN
-        if(!(-e "$home/.ssh/authorized_keys")){
+        if (!(-e "$home/.ssh/authorized_keys")) {
             $rsp->{data}->[0] = "$home/.ssh/authorized_keys does not exist, make sure you have setup the ssh-keys on this service node.\n";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return (1);
@@ -351,7 +351,7 @@ sub setupSSH
 
     # Get the home directory
     my $home = xCAT::Utils->getHomeDir($from_userid);
-    unless($home){
+    unless ($home) {
         $rsp->{data}->[0] = "Cannot get the home directory for user \"$from_userid\", please make sure \"$from_userid\" user exists!";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 1;
@@ -368,7 +368,7 @@ sub setupSSH
         # generates new keys for root, if they do not already exist ~/.ssh
 
         # nodes not used on this option but in there to preserve the interface
-        if($::VERBOSE){
+        if ($::VERBOSE) {
             $rsp->{data}->[0] = "Generating SSH keys for $from_userid.\n";
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         }
@@ -379,17 +379,18 @@ sub setupSSH
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         }
     }
+
     # build the shell copy script, needed Perl not always there
     # for root and non-root ids
-    if($::VERBOSE){
+    if ($::VERBOSE) {
         $rsp->{data}->[0] = "Creating helper script \"$home/.ssh/copy.sh\" to install the ssh key files, which will be sent and invoked to target node then.\n";
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     }
 
 
-    unless(open(FILE, ">$home/.ssh/copy.sh"))
+    unless (open(FILE, ">$home/.ssh/copy.sh"))
     {
-        $rsp->{data}->[0] ="cannot create file $home/.ssh/copy.sh, please make sure the directory \"$home/.ssh\" exists and ssh keys have been setup on this node!\n";
+        $rsp->{data}->[0] = "cannot create file $home/.ssh/copy.sh, please make sure the directory \"$home/.ssh\" exists and ssh keys have been setup on this node!\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 1;
     }
@@ -1301,7 +1302,7 @@ sub get_site_attribute
 
         }
     }
-    return $values if ( defined $values);
+    return $values if (defined $values);
     return $dvalue;
 }
 
@@ -1565,6 +1566,7 @@ sub getHierarchyAttrs
     my %hierarchy_attrs = ();
     my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
     if ($hierarchy_field) {
+
         # $hierarchy_field should be `attr1_name:delimiter1,attr2,attr3:delimiter2`
         foreach my $item (split(/,/, $hierarchy_field)) {
             $item = xCAT::Utils->strim($item);
@@ -1572,8 +1574,8 @@ sub getHierarchyAttrs
             my ($attr, $del) = split(/\s*:\s*/, $item, 2);
             $del = ',' unless ($del);
             $hierarchy_attrs{$attr} = $del if ($attr);
-            }
         }
+    }
 
     return \%hierarchy_attrs;
 }

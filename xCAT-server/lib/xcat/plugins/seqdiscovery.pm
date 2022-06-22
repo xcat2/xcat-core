@@ -63,7 +63,7 @@ sub findme {
         return;
     }
     unless ($SEQdiscover[0]) {
-         return;
+        return;
     }
 
     # Get the parameters for the sequential discovery
@@ -131,7 +131,7 @@ sub findme {
             $node = $allnodes[0];
         }
     }
-    my $bmc_node = undef;
+    my $bmc_node  = undef;
     my @bmc_nodes = ();
     if ($request->{'mtm'}->[0] and $request->{'serial'}->[0]) {
         my $mtms = $request->{'mtm'}->[0] . "*" . $request->{'serial'}->[0];
@@ -396,14 +396,14 @@ sub findme {
         xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{_xcat_clientmac}->[0]) Found node: $node");
         $request->{discoverymethod} = ['sequential'];
         my $req = {%$request};
-        $req->{command}      = ['discovered'];
-        $req->{noderange}    = [$node];
-        $req->{bmc_node} = [$bmc_node];
+        $req->{command}   = ['discovered'];
+        $req->{noderange} = [$node];
+        $req->{bmc_node}  = [$bmc_node];
 
         $req->{updateswitch} = ['yes'];
         $subreq->($req);
         if (defined($req->{error})) {
-            $request->{error}->[0] = '1';
+            $request->{error}->[0]     = '1';
             $request->{error_msg}->[0] = $req->{error_msg}->[0];
         }
 
@@ -513,7 +513,7 @@ Usage:
 
     # Check the zvmhost= has been specified which is the flag that this is for z/VM discovery.
     # Otherwise, fall thru to handle either sequential or profile discovery.
-    if ( defined( $orgargs{zvmhost} ) ) {
+    if (defined($orgargs{zvmhost})) {
         return;
     }
 
@@ -761,13 +761,13 @@ Usage:
         my $rsp;
         push @{ $rsp->{data} }, "Sequential Discovery is stopped.";
         push @{ $rsp->{data} }, "Profile Discovery is stopped.";
-        push @{$rsp->{data}}, "z/VM Discovery is stopped.";
+        push @{ $rsp->{data} }, "z/VM Discovery is stopped.";
         xCAT::MsgUtils->message("E", $rsp, $callback, 1);
         return;
     }
 
     my $DBname = xCAT::Utils->get_DBName;    # support for DB2
-    # Go through discoverydata table and display the sequential discovery entries
+      # Go through discoverydata table and display the sequential discovery entries
     my $distab = xCAT::Table->new('discoverydata');
     unless ($distab) {
         my $rsp;
@@ -844,7 +844,7 @@ Usage:
     if ($args) {
         @ARGV = @$args;
     }
-    my ($type, $uuid, $long, $help, $ver, $zvmHost );
+    my ($type, $uuid, $long, $help, $ver, $zvmHost);
     if (!GetOptions(
             't=s'         => \$type,
             'u=s'         => \$uuid,
@@ -852,7 +852,7 @@ Usage:
             'h|help'      => \$help,
             'V|verbose'   => \$::VERBOSE,
             'v|version'   => \$ver,
-            'z|zvmhost=s' => \$zvmHost )) {
+            'z|zvmhost=s' => \$zvmHost)) {
         $usage->($callback);
         return;
     }
@@ -867,7 +867,7 @@ Usage:
     }
 
     # If the type is specified, display the corresponding type of nodes
-    my ( @SEQDiscover, @ZVMDiscover );
+    my (@SEQDiscover, @ZVMDiscover);
     if ($type) {
         if ($type !~ /^(seq|profile|switch|blade|manual|mtms|undef|zvm|all)$/) {
             $usage->($callback, "The discovery type \'$type\' is not supported.");
@@ -883,12 +883,15 @@ Usage:
         if ($SEQDiscover[0]) {
             $type = "seq";
         } elsif ($PCMDiscover[0]) {
+
             #return directly if profile discovery is running.
             return;
-        } elsif ( $ZVMDiscover[0] ) {
+        } elsif ($ZVMDiscover[0]) {
+
             # zvmdiscovery handles requests for a running z/VM discovery.
-                return;
+            return;
         } else {
+
             # no type, no seq and no profile, then just display all
             $type = "all";
         }
@@ -896,13 +899,14 @@ Usage:
 
     # If a zvmHost was specified then let zvmdiscovery handle it.
     # Specifying '-u' will keep processing within seqdiscovery.
-    if ( !$uuid && ( $zvmHost || ( $type && $type eq 'zvm' )) ) {
+    if (!$uuid && ($zvmHost || ($type && $type eq 'zvm'))) {
+
         # zvmdiscovery handles request specific to z/VM.
         return;
     }
 
     my $DBname = xCAT::Utils->get_DBName;    # support for DB2
-    # Go through discoverydata table and display the discovery entries
+         # Go through discoverydata table and display the discovery entries
     my $distab = xCAT::Table->new('discoverydata');
     unless ($distab) {
         my $rsp;
@@ -955,8 +959,8 @@ Usage:
     }
 
     my $rsp;
-    if (($SEQDiscover[0] && $type eq "sequential" ) or
-        ( $type && $type eq "all" )) {
+    if (($SEQDiscover[0] && $type eq "sequential") or
+        ($type && $type eq "all")) {
         push @{ $rsp->{data} }, "Discovered $discoverednum node.";
     }
     if (@discoverednodes) {
@@ -1035,13 +1039,14 @@ Usage:
         my $rsp;
         push @{ $rsp->{data} }, "Node discovery for all nodes using profiles is running";
         xCAT::MsgUtils->message("I", $rsp, $callback);
-    } elsif ( $ZVMDiscover[0] ) {
+    } elsif ($ZVMDiscover[0]) {
+
         # z/VM discovery is a more complex response so we let its handler return the response.
     } else {
         my $rsp;
         push @{ $rsp->{data} }, "Sequential Discovery is stopped.";
         push @{ $rsp->{data} }, "Profile Discovery is stopped.";
-        push @{$rsp->{data}}, "z/VM Discovery is stopped.";
+        push @{ $rsp->{data} }, "z/VM Discovery is stopped.";
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
 
@@ -1057,8 +1062,8 @@ sub nodediscoverdef {
     my $subreq   = shift;
     my $args     = shift;
 
-    my @inputZvmHosts;       # Input list of z/VM host nodes to stop
-    my $zvmHost;             # Small scope variable to temporarily hold a z/VM host node value
+    my @inputZvmHosts;    # Input list of z/VM host nodes to stop
+    my $zvmHost; # Small scope variable to temporarily hold a z/VM host node value
 
     # The subroutine used to display the usage message
     my $usage = sub {
@@ -1091,14 +1096,14 @@ Usage:
     }
     my ($type, $uuid, $node, $remove, $help, $ver);
     if (!GetOptions(
-            'u=s'       => \$uuid,
-            'n=s'       => \$node,
-            't=s'       => \$type,
-            'r'         => \$remove,
-            'h|help'    => \$help,
-            'V|verbose' => \$::VERBOSE,
-            'v|version' => \$ver,
-        'z|zvmhost=s' => \$zvmHost )) {
+            'u=s'         => \$uuid,
+            'n=s'         => \$node,
+            't=s'         => \$type,
+            'r'           => \$remove,
+            'h|help'      => \$help,
+            'V|verbose'   => \$::VERBOSE,
+            'v|version'   => \$ver,
+            'z|zvmhost=s' => \$zvmHost)) {
         $usage->($callback);
         return;
     }
@@ -1113,30 +1118,32 @@ Usage:
     }
 
     my $DBname = xCAT::Utils->get_DBName;    # support for DB2
-    # Put any specified zvmhosts into an array for later use.
-    if ( $zvmHost ) {
-        $type = 'zvm' if ( !$type );
-        if ( $type ne 'zvm' ) {
-            xCAT::MsgUtils->message("E", {data=>["Discovery Error: Type must be 'zvm' when '-z' or '--zvmhost' is specified."]}, $callback);
+         # Put any specified zvmhosts into an array for later use.
+    if ($zvmHost) {
+        $type = 'zvm' if (!$type);
+        if ($type ne 'zvm') {
+            xCAT::MsgUtils->message("E", { data => ["Discovery Error: Type must be 'zvm' when '-z' or '--zvmhost' is specified."] }, $callback);
             return;
         }
-        if ( index( $zvmHost, ',' ) != -1 ) {
+        if (index($zvmHost, ',') != -1) {
+
             # Must have specified multiple host node names
-            my @hosts = split( /,/, $zvmHost );
-            foreach $zvmHost ( @hosts ) {
-                if ( !$zvmHost ) {
+            my @hosts = split(/,/, $zvmHost);
+            foreach $zvmHost (@hosts) {
+                if (!$zvmHost) {
+
                     # Tolerate zvmhost value beginning with a comma.
                     # It is wrong but not worth an error message.
                     next;
                 }
-                push( @inputZvmHosts, $zvmHost );
+                push(@inputZvmHosts, $zvmHost);
             }
         } else {
-            push( @inputZvmHosts, $zvmHost );
+            push(@inputZvmHosts, $zvmHost);
         }
     }
 
-         # open the discoverydata table for the subsequent using
+    # open the discoverydata table for the subsequent using
     my $distab = xCAT::Table->new("discoverydata");
     unless ($distab) {
         xCAT::MsgUtils->message("S", "Discovery Error: Could not open table: discoverydata.");
@@ -1210,22 +1217,24 @@ Usage:
                 if ($type =~ /^seq/) {
                     $type = "sequential";
                 }
+
                 # If a noderange of z/VM hosts was specified then delete
                 # all z/VM discovered systems for those hosts.  'zvm' type
                 # must be used when z/VM hosts are specified.
-                if ( @inputZvmHosts ) {
+                if (@inputZvmHosts) {
                     my %keyhash;
                     $keyhash{'method'} = 'zvm';
-                    foreach $zvmHost ( @inputZvmHosts ) {
+                    foreach $zvmHost (@inputZvmHosts) {
                         $keyhash{'otherdata'} = "zvmhost." . $zvmHost;
-                        $distab->delEntries( \%keyhash );
+                        $distab->delEntries(\%keyhash);
                     }
                     $distab->commit();
                 } else {
+
                     # Otherwise, Delete all systems discovered using the specified method.
-                $distab->delEntries({ method => $type });
-                $distab->commit();
-            }
+                    $distab->delEntries({ method => $type });
+                    $distab->commit();
+                }
 
             }
         }

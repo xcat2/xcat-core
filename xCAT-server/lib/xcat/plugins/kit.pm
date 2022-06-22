@@ -100,7 +100,7 @@ sub process_request
     }
 
     my ($sysos, $sysver) = split /,/, $tempstring;
-    if ( ($sysos =~ /rh/) && ($sysver ge 8) ) {
+    if (($sysos =~ /rh/) && ($sysver ge 8)) {
         $callback->({ error => ["KITs are not supported on rhel8 or above"], errorcode => [1] });
         return 1;
     }
@@ -1114,7 +1114,7 @@ sub read_kit_config
                 $key =~ s/\s+//g;
                 $value =~ s/\s+//g;
             } else {
-                ($key, $value) = split(/=/, $line,2);
+                ($key, $value) = split(/=/, $line, 2);
             }
         }
 
@@ -1812,14 +1812,14 @@ sub rmkit
 sub check_minorversion
 {
     my $kitminor = shift;
-    my $osminor = shift;
+    my $osminor  = shift;
 
     if ($kitminor eq $osminor) {
         return 0;
     }
 
     if (($kitminor =~ />/) || ($kitminor =~ /</) || ($kitminor =~ /==/)) {
-        if (eval ($osminor. $kitminor)) {
+        if (eval($osminor . $kitminor)) {
             return 0;
         }
     }
@@ -3632,7 +3632,7 @@ sub chkkitcomp
             return 1;
         }
 
-        if ($kitcomps{$kitcomp}{osminorversion} ) {
+        if ($kitcomps{$kitcomp}{osminorversion}) {
             if (check_minorversion($kitcomps{$kitcomp}{osminorversion}, $os{$osimage}{minorversion}))
             {
                 my %rsp;
@@ -5110,7 +5110,7 @@ sub get_compat_kitreponames {
             next;
         }
         if (defined($kitrepo->{osminorversion})) {
-            if (check_minorversion($kitrepo->{osminorversion},$osdistro->{minorversion}))
+            if (check_minorversion($kitrepo->{osminorversion}, $osdistro->{minorversion}))
             {
                 next;
             }

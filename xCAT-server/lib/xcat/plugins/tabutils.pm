@@ -733,7 +733,7 @@ sub tabdump
                 push @attrarray, $w;
             }
             my $keys = xCAT::Table::buildWhereClause(\@attrarray, "1");
-            if (ref($keys) ne 'ARRAY')  {
+            if (ref($keys) ne 'ARRAY') {
                 $cb->({ error => ["$keys"], errorcode => [1] });
                 return;
             } else {
@@ -2168,7 +2168,7 @@ sub nodels
             }
         }
         $callback->($rsp);
-        $nodenum = scalar (@$nodes);
+        $nodenum = scalar(@$nodes);
     }
     else
     {
@@ -2220,7 +2220,7 @@ sub nodels
 
                 #}
             }
-            $nodenum = scalar (@nodes);
+            $nodenum = scalar(@nodes);
         }
     }
     my $rsp_info;
@@ -2314,8 +2314,8 @@ sub tabch {
             if (!defined($key) || !defined($val))
             {
                 my %rsp;
-                $rsp{data}->[0] = "Incorrect argument \"$_\".\n";
-                $rsp{data}->[1] = "Check man tabch or tabch -h\n";
+                $rsp{data}->[0]      = "Incorrect argument \"$_\".\n";
+                $rsp{data}->[1]      = "Check man tabch or tabch -h\n";
                 $rsp{errorcode}->[0] = 1;
                 $callback->(\%rsp);
                 return 1;
@@ -2336,8 +2336,8 @@ sub tabch {
         if (@tables_to_del == 0)
         {
             my %rsp;
-            $rsp{data}->[0] = "Missing table name.\n";
-            $rsp{data}->[1] = "Check man tabch or tabch -h\n";
+            $rsp{data}->[0]      = "Missing table name.\n";
+            $rsp{data}->[1]      = "Check man tabch or tabch -h\n";
             $rsp{errorcode}->[0] = 1;
             $callback->(\%rsp);
             return 1;
@@ -2348,7 +2348,7 @@ sub tabch {
             my $tab = xCAT::Table->new($_, -create => 1, -autocommit => 0);
             unless ($tab) {
                 my %rsp;
-                $rsp{data}->[0] = "Table $_ does not exist.";
+                $rsp{data}->[0]      = "Table $_ does not exist.";
                 $rsp{errorcode}->[0] = 1;
                 $callback->(\%rsp);
                 next;
@@ -2375,7 +2375,7 @@ sub tabch {
                     $tables{$table} = $tab;
                 } else {
                     my %rsp;
-                    $rsp{data}->[0] = "Table $table does not exist.\n";
+                    $rsp{data}->[0]      = "Table $table does not exist.\n";
                     $rsp{errorcode}->[0] = 1;
                     $callback->(\%rsp);
                     return 1;

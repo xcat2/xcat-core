@@ -29,16 +29,16 @@ my %cmds = (
         entries   => [ "Error/Event Logs", \&entries ],
         clear     => [ "Error/Event Logs", \&clear ] },
     rspconfig => {
-        memdecfg  => [ "Memory Deconfiguration",         \&memdecfg ],
-        decfg     => [ "Deconfiguration Policies",       \&decfg ],
-        procdecfg => [ "Processor Deconfiguration",      \&procdecfg ],
-        iocap     => [ "I/O Adapter Enlarged Capacity",  \&iocap ],
-        time      => [ "Time Of Day",                    \&time ],
-        date      => [ "Time Of Day",                    \&date ],
-        autopower => [ "Auto Power Restart",             \&autopower ],
-        sysdump   => [ "System Dump",                    \&sysdump ],
-        spdump    => [ "Service Processor Dump",         \&spdump ],
-        network   => [ "Network Configuration",          \&netcfg ]},
+        memdecfg  => [ "Memory Deconfiguration",        \&memdecfg ],
+        decfg     => [ "Deconfiguration Policies",      \&decfg ],
+        procdecfg => [ "Processor Deconfiguration",     \&procdecfg ],
+        iocap     => [ "I/O Adapter Enlarged Capacity", \&iocap ],
+        time      => [ "Time Of Day",                   \&time ],
+        date      => [ "Time Of Day",                   \&date ],
+        autopower => [ "Auto Power Restart",            \&autopower ],
+        sysdump   => [ "System Dump",                   \&sysdump ],
+        spdump    => [ "Service Processor Dump",        \&spdump ],
+        network   => [ "Network Configuration",         \&netcfg ] },
 );
 
 

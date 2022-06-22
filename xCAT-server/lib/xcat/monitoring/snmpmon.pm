@@ -419,10 +419,11 @@ sub deconfig {
 
 #--------------------------------------------------------------------------------
 sub deconfigSNMP {
-   return (0, "");
+    return (0, "");
 }
 
 #--------------------------------------------------------------------------------
+
 =head3    configBMC
       This function configures BMC to setup the snmp destination, enable/disable
     PEF policy table entry number 1.

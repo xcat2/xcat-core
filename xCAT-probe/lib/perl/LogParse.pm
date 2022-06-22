@@ -50,7 +50,7 @@ sub new {
     my @args  = @_;
     my $self  = {};
     my $class = shift;
-    $self->{verbose} = shift;
+    $self->{verbose}   = shift;
     $self->{load_type} = shift;
 
     my %log_open_info;
@@ -65,7 +65,7 @@ sub new {
         my $logfiledir = "/tmp/xcatprobedebug/";
         mkpath("$logfiledir") unless (-d "$logfiledir");
         $self->{debuglogpath} = $logfiledir;
-        $self->{debuglogfd} = undef;
+        $self->{debuglogfd}   = undef;
     }
 
     bless($self, ref($class) || $class);
@@ -127,12 +127,12 @@ sub obtain_log_file_list {
     my %candidate_log;
 
     my @loglist = ("/var/log/messages",
-                   "/var/log/xcat/cluster.log",
-                   "/var/log/xcat/computes.log",
-                   "/var/log/syslog");
+        "/var/log/xcat/cluster.log",
+        "/var/log/xcat/computes.log",
+        "/var/log/syslog");
 
     my @candidate_log_set;
-    foreach my $log (@loglist){
+    foreach my $log (@loglist) {
         push @candidate_log_set, $log if (-e "$log");
     }
 
@@ -545,15 +545,15 @@ sub obtain_log_content {
         if ($split_line[3] =~ /(\d+)\/(\w+)\/(\d+):(\d+):(\d+):(\d+)/) {
             $log_content{time_record} = "$4:$5:$6";
         }
-        $log_content{time}   = $self->convert_to_epoch_seconds($split_line[3]);
+        $log_content{time} = $self->convert_to_epoch_seconds($split_line[3]);
         if (!xCAT::NetworkUtils->isIpaddr($split_line[0])) {
             my @sender_tmp = split(/\./, $split_line[0]);
             $log_content{sender} = $sender_tmp[0];
         } else {
             $log_content{sender} = $split_line[0];
         }
-        $log_content{label}  = $::LOGLABEL_HTTP;
-        $log_content{msg}    = join(" ", @split_line[ 5 .. @split_line - 1 ]);
+        $log_content{label} = $::LOGLABEL_HTTP;
+        $log_content{msg} = join(" ", @split_line[ 5 .. @split_line - 1 ]);
     }
     return \%log_content;
 }
@@ -724,7 +724,7 @@ sub debuglogger {
     my $self = shift;
     my $msg  = shift;
     if ($self->{debug}) {
-        print {$self->{debuglogfd}} "$msg\n";
+        print { $self->{debuglogfd} } "$msg\n";
     }
 }
 1;

@@ -89,7 +89,7 @@ sub process_request {
 
     } elsif ($request->{command}->[0] eq 'nextdestiny') {
         xCAT::MsgUtils->trace(0, "d", "destiny->process_request: starting nextdestiny...");
-        nextdestiny(0, 1);    #it is called within dodestiny
+        nextdestiny(0, 1);      #it is called within dodestiny
 
     } elsif ($request->{command}->[0] eq 'setdestiny') {
         xCAT::MsgUtils->trace(0, "d", "destiny->process_request: starting setdestiny...");
@@ -109,16 +109,17 @@ sub relay_response {
     }
 
     my $failure = 0;
+
     # Partial error on nodes, it allows to continue the rest of business on the sucessful nodes.
     foreach (@{ $resp->{node} }) {
         if ($_->{error} or $_->{errorcode}) {
             $failure = 1;
             if ($_->{name}) {
-                $failurenodes{$_->{name}->[0]} = 2;
+                $failurenodes{ $_->{name}->[0] } = 2;
             }
         }
     }
-    if ( $failure ) {
+    if ($failure) {
         $errored = $failure;
     }
 }
@@ -150,12 +151,13 @@ sub setdestiny {
         xCAT::MsgUtils->trace($verbose, "d", "destiny->setdestiny: no nodes left to process, we are done");
         return;
     }
-    my @nodes = @{ $req->{node} };
-    my $bptab = xCAT::Table->new('bootparams', -create => 1);
+    my @nodes  = @{ $req->{node} };
+    my $bptab  = xCAT::Table->new('bootparams', -create => 1);
     my %tempbh = %{ $bptab->getNodesAttribs(\@nodes, [qw(addkcmdline)]) };
-    while(my ($key, $value) = each(%tempbh)) {
+    while (my ($key, $value) = each(%tempbh)) {
         if ($value && $value->[0]->{"addkcmdline"}) {
             my $addkcmdline = $value->[0]->{"addkcmdline"};
+
             # $key is node name
             $bphash->{$key}->[0]->{"addkcmdline"} = $addkcmdline;
         }
@@ -165,6 +167,7 @@ sub setdestiny {
     my $state = $ARGV[0];
     my $reststates;
     my %nstates;
+
     # to support the case that the state could be runimage=xxx,runimage=yyy,osimage=xxx
     ($state, $reststates) = split(/,/, $state, 2);
     chomp($state);
@@ -236,7 +239,7 @@ sub setdestiny {
         if ($state =~ /=/) {
             ($state, $target) = split '=', $state, 2;
         }
-        if(!$target){
+        if (!$target) {
             $callback->({ error => "invalid argument: \"$state\"", errorcode => [1] });
             return;
         }
@@ -244,7 +247,7 @@ sub setdestiny {
         foreach my $tmpnode (@{ $req->{node} }) {
             foreach my $cmd (@cmds) {
                 my $action;
-               ($cmd, $action) = split ':', $cmd;
+                ($cmd, $action) = split ':', $cmd;
                 my $runcmd = "$cmd $tmpnode $action";
                 xCAT::Utils->runcmd($runcmd, 0);
                 xCAT::MsgUtils->trace($verbose, "d", "run ondiscover command: $runcmd");
@@ -253,11 +256,11 @@ sub setdestiny {
     } elsif ($state =~ /^install[=\$]/ or $state eq 'install' or $state =~ /^netboot[=\$]/ or $state eq 'netboot' or $state eq "image" or $state eq "winshell" or $state =~ /^osimage/ or $state =~ /^statelite/) {
         my $target;
         my $action;
-        my $rawstate=$state;
+        my $rawstate = $state;
         if ($state =~ /=/) {
             ($state, $target) = split '=', $state, 2;
 
-            if(!$target){
+            if (!$target) {
                 $callback->({ error => "invalid argument: \"$rawstate\"", errorcode => [1] });
                 return;
             }
@@ -272,6 +275,7 @@ sub setdestiny {
         }
         xCAT::MsgUtils->trace($verbose, "d", "destiny->setdestiny: state=$state, target=$target, action=$action");
         my %state_hash;
+
         # 1, Set an initial state for all requested nodes
         foreach my $tmpnode (@{ $req->{node} }) {
             next if ($failurenodes{$tmpnode});
@@ -299,8 +303,8 @@ sub setdestiny {
                     foreach (@{ $req->{node} }) {
                         if ($archentries->{$_}->[0]->{supportedarchs} and $archentries->{$_}->[0]->{supportedarchs} !~ /(^|,)$nodearch(\z|,)/) {
                             xCAT::MsgUtils->report_node_error($callback, $_,
-                                "Requested architecture " . $nodearch . " is not one of the architectures supported by $_  (per nodetype.supportedarchs, it supports " . $archentries->{$_}->[0]->{supportedarchs} . ")"
-                                );
+"Requested architecture " . $nodearch . " is not one of the architectures supported by $_  (per nodetype.supportedarchs, it supports " . $archentries->{$_}->[0]->{supportedarchs} . ")"
+                            );
                             $failurenodes{$_} = 1;
                             next;
                         }
@@ -355,7 +359,7 @@ sub setdestiny {
                 $updateattribs->{os}         = $ref->{osvers};
                 $updateattribs->{arch}       = $ref->{osarch};
                 my @tmpnodelist = ();
-                foreach ( @nodes ) {
+                foreach (@nodes) {
                     if (exists($failurenodes{$_})) {
                         delete $state_hash{$_};
                         next;
@@ -376,7 +380,7 @@ sub setdestiny {
 
                     my $osimage = $ntents{$tmpnode}->[0]->{provmethod};
                     if (($osimage) && ($osimage ne 'install') && ($osimage ne 'netboot') && ($osimage ne 'statelite')) {
-                        if (exists($updatestuff->{$osimage})) { #valid osimage
+                        if (exists($updatestuff->{$osimage})) {   #valid osimage
                             my $vnodes = $updatestuff->{$osimage}->{nodes};
                             push(@$vnodes, $tmpnode);
                             $state_hash{$tmpnode} = $updatestuff->{$osimage}->{state};
@@ -421,6 +425,7 @@ sub setdestiny {
                             }
                         }
                     } else {
+
                         # not supported legacy mode
                         push(@{ $invalidosimghash->{__xcat_legacy_provmethod_mode}->{nodes} }, $tmpnode);
                         $invalidosimghash->{__xcat_legacy_provmethod_mode}->{error}->[0] = "OS image name must be specified in nodetype.provmethod";
@@ -457,10 +462,10 @@ sub setdestiny {
                 }
             }
 
-            if (%state_hash) { # To valide mac here
+            if (%state_hash) {                      # To valide mac here
                 my @tempnodes = keys(%state_hash);
-                my $mactab = xCAT::Table->new('mac', -create => 1);
-                my $machash = $mactab->getNodesAttribs(\@tempnodes, ['mac']);
+                my $mactab    = xCAT::Table->new('mac', -create => 1);
+                my $machash   = $mactab->getNodesAttribs(\@tempnodes, ['mac']);
 
                 foreach (@tempnodes) {
                     my $macs = $machash->{$_}->[0];
@@ -476,8 +481,9 @@ sub setdestiny {
         #print Dumper(\%state_hash);
         my @validnodes = keys(%state_hash);
         unless (@validnodes) {
+
             # just return if no valid nodes left
-            $callback->({ errorcode => [1]});
+            $callback->({ errorcode => [1] });
             return;
         }
 
@@ -497,9 +503,9 @@ sub setdestiny {
 
         # 3, if precreatemypostscripts=1, create each mypostscript for each valid node
         # otherwise, create it during installation /updatenode
-        my $notmpfiles = 0;    # create tmp files if precreate=0
-        my $nofiles    = 0;    # create files, do not return array
-        my $reqcopy = {%$req};
+        my $notmpfiles = 0;         # create tmp files if precreate=0
+        my $nofiles    = 0;         # create files, do not return array
+        my $reqcopy    = {%$req};
         $reqcopy->{node} = \@validnodes;
         require xCAT::Postage;
         xCAT::Postage::create_mypostscript_or_not($reqcopy, $callback, $subreq, $notmpfiles, $nofiles);
@@ -521,8 +527,9 @@ sub setdestiny {
                     node            => $samestatenodes,
                     noupdateinitrd  => $noupdateinitrd,
                     ignorekernelchk => $ignorekernelchk,
-                    bootparams => \$bphash}, \&relay_response);
+                    bootparams      => \$bphash }, \&relay_response);
             if ($errored) {
+
                 # The error messeage for mkinstall/mknetboot/mkstatelite had been output within relay_response function above, don't need to output more
                 xCAT::MsgUtils->trace($verbose_on_off, "d", "destiny->setdestiny: Failed in processing mk$tempstate.");
                 next if ($errored > 1);
@@ -532,7 +539,7 @@ sub setdestiny {
             my $ntents = $nodetypetable->getNodesAttribs($samestatenodes, [qw(os arch profile)]);
             my $updates;
             foreach (@{$samestatenodes}) {
-                next if (exists($failurenodes{$_})); #Filter the failure nodes
+                next if (exists($failurenodes{$_}));   #Filter the failure nodes
 
                 $nstates{$_} = $tempstate; #local copy of state variable for mod
                 my $ntent = $ntents->{$_}->[0]; #$nodetype->getNodeAttribs($_,[qw(os arch profile)]);
@@ -583,7 +590,7 @@ sub setdestiny {
         }
     } elsif ($state eq "shell" or $state eq "standby" or $state =~ /^runcmd/ or $state =~ /^runimage/) {
 
-        if ($state =~ /^runimage/) {         # try to check the existence of the image for runimage
+        if ($state =~ /^runimage/) { # try to check the existence of the image for runimage
 
             my @runimgcmds;
             push @runimgcmds, $state;
@@ -603,7 +610,7 @@ sub setdestiny {
                     my $cmd = "wget --spider --timeout 3 --tries=1 $path";
                     my @output = xCAT::Utils->runcmd("$cmd", -1);
                     unless (grep /^Remote file exists/, @output) {
-                        $callback->({ error => ["Cannot wget $path. Verify it's downloadable."], errorcode => [1], errorabort => [1]});
+                        $callback->({ error => ["Cannot wget $path. Verify it's downloadable."], errorcode => [1], errorabort => [1] });
                         return;
                     }
                 } else {
@@ -650,7 +657,7 @@ sub setdestiny {
             }
 
             #if node.xcatmaster not specified, take the ip address facing the node
-            unless($master){
+            unless ($master) {
                 my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($_);
                 unless ($nxtsrvd[0]) {
                     $master = $nxtsrvd[1];
@@ -658,7 +665,7 @@ sub setdestiny {
             }
 
             #the site.master takes the last precedence
-            unless($master){
+            unless ($master) {
                 if (defined($master_entry)) {
                     $master = $master_entry;
                 }
@@ -711,13 +718,13 @@ sub setdestiny {
                     $bphash->{$_}->[0]->{initrd} = "xcat/genesis.fs.$arch.$othersuffix";
                     $bphash->{$_}->[0]->{kcmdline} = $kcmdline . "xcatd=$master:$xcatdport destiny=$state";
                 }
-            } else {    # genesis.kernel file is not there, assume 'legacy' environment
+            } else { # genesis.kernel file is not there, assume 'legacy' environment
                 if (-r "$tftpdir/xcat/nbk.$arch") {
                     $bphash->{$_}->[0]->{kernel} = "xcat/nbk.$arch";
                     $bphash->{$_}->[0]->{initrd} = "xcat/nkfs.$arch.gz";
                     $bphash->{$_}->[0]->{kcmdline} = $kcmdline . "xcatd=$master:$xcatdport";
-                    $callback->({ warning => ["No genesis.kernel.$arch file found. Defaulting to legacy nbk.$arch"]});
-                } else { # can not find genesis.kernel or nbk file
+                    $callback->({ warning => ["No genesis.kernel.$arch file found. Defaulting to legacy nbk.$arch"] });
+                } else {    # can not find genesis.kernel or nbk file
                     $callback->({ error => ["Could not find genesis.kernel.$arch or legacy nbk.$arch files"], errorcode => [1] });
                     exit(1);
                 }
@@ -734,7 +741,7 @@ sub setdestiny {
     #Exclude the failure nodes
     my @normalnodes = ();
     foreach (@nodes) {
-        next if (exists($failurenodes{$_})); #Filter the failure nodes
+        next if (exists($failurenodes{$_}));    #Filter the failure nodes
         push @normalnodes, $_;
     }
 
@@ -828,6 +835,7 @@ sub nextdestiny {
             $node = $request->{username}->[0];
         } else {
             unless ($request->{'_xcat_clienthost'}->[0]) {
+
                 #ERROR? malformed request
                 xCAT::MsgUtils->trace(0, "d", "destiny->nextdestiny: Cannot determine the client from the received request");
                 return;                                   #nothing to do here...
@@ -836,6 +844,7 @@ sub nextdestiny {
         }
         ($node) = noderange($node);
         unless ($node) {
+
             #not a node, don't trust it
             xCAT::MsgUtils->trace(0, "d", "destiny->nextdestiny: $node is not managed yet.");
             return;
@@ -859,7 +868,7 @@ sub nextdestiny {
         }
         unless ($ref->{currchain}) {    #If no current chain, copy the default
             $ref->{currchain} = $ref->{chain};
-        } elsif ($ref->{currchain} !~ /[,;]/){
+        } elsif ($ref->{currchain} !~ /[,;]/) {
             if ($ref->{currstate} and ($ref->{currchain} =~ /$ref->{currstate}/)) {
                 $ref->{currchain} = 'standby';
                 $callnodeset = 0;
@@ -905,7 +914,7 @@ sub nextdestiny {
 
 
 sub getdestiny {
-    my $flag = shift;
+    my $flag  = shift;
     my $nodes = shift;
 
     # flag value:

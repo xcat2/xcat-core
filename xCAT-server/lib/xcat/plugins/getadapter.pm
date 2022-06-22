@@ -68,7 +68,7 @@ sub route_request {
         }
         my $nics = \@{ $request->{nic} };
         xCAT::MsgUtils->message("S", "$node: callback message from getadapter received");
-        if (update_nics_info($node, $nics)!=0) {
+        if (update_nics_info($node, $nics) != 0) {
             return xCAT::State->REQUEST_ERROR;
         }
     }
@@ -76,14 +76,14 @@ sub route_request {
 }
 
 sub update_nics_info {
-    my $node = shift;
+    my $node     = shift;
     my $nics_ptr = shift;
     my (@nics, @data, %updates);
     @nics = @{$nics_ptr};
 
     my $update_nics_table_func = sub {
-        my $node = shift;
-        my $nics = shift;
+        my $node       = shift;
+        my $nics       = shift;
         my $nics_table = xCAT::Table->new('nics');
         unless ($nics_table) {
             xCAT::MsgUtils->message("S", "Unable to open nics table for getadapter, denying");
@@ -98,23 +98,23 @@ sub update_nics_info {
         return 0;
     };
 
-    for (my $i = 0; $i < scalar(@nics); $i++) {
+    for (my $i = 0 ; $i < scalar(@nics) ; $i++) {
         if ($nics[$i]->{interface}) {
             my @nic_attrs = ();
             if ($nics[$i]->{mac}) {
-                push(@nic_attrs, "mac=".$nics[$i]->{mac}->[0]);
+                push(@nic_attrs, "mac=" . $nics[$i]->{mac}->[0]);
             }
             if ($nics[$i]->{linkstate}) {
-                push (@nic_attrs, "linkstate=". (split(' ', $nics[$i]->{linkstate}->[0]))[0]);
+                push(@nic_attrs, "linkstate=" . (split(' ', $nics[$i]->{linkstate}->[0]))[0]);
             }
-            if($nics[$i]->{pcilocation}) {
+            if ($nics[$i]->{pcilocation}) {
                 push(@nic_attrs, "pci=" . $nics[$i]->{pcilocation}->[0]);
             }
             if ($nics[$i]->{predictablename}) {
                 push(@nic_attrs, "candidatename=" . $nics[$i]->{predictablename}->[0]);
             }
             if (@nic_attrs) {
-                push(@data, $nics[$i]->{interface}->[0]."!".join(" ", @nic_attrs));
+                push(@data, $nics[$i]->{interface}->[0] . "!" . join(" ", @nic_attrs));
             }
         }
     }

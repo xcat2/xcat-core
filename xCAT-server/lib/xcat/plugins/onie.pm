@@ -26,17 +26,17 @@ use xCAT::TableUtils;
 use xCAT::SvrUtils;
 use xCAT::Table;
 my $xcatdebugmode = 0;
-$::VERBOSE        = 0;
+$::VERBOSE = 0;
 
 sub handled_commands {
     return {
-        nodeset => 'nodehm:mgt=switch',
-        copydata => 'onie',
+        nodeset   => 'nodehm:mgt=switch',
+        copydata  => 'onie',
         rspconfig => 'switches:switchtype',
       }
 }
 
-my $CALLBACK;                       # used to hanel the output from xdsh
+my $CALLBACK;    # used to hanel the output from xdsh
 
 sub preprocess_request {
     my $request  = shift;
@@ -92,13 +92,13 @@ sub process_request {
     my $nodes   = $request->{node};
     my $command = $request->{command}->[0];
     my $args    = $request->{arg};
-    my @exargs    = ($request->{arg});
+    my @exargs  = ($request->{arg});
     if (ref($args)) {
         @exargs = @$args;
     }
 
 
-    if ($::XCATSITEVALS{xcatdebugmode} != 0) { $::VERBOSE = 1}
+    if ($::XCATSITEVALS{xcatdebugmode} != 0) { $::VERBOSE = 1 }
 
     if ($command eq "copydata") {
         copydata($request, $callback);
@@ -120,8 +120,8 @@ sub copydata {
     my $request  = shift;
     my $callback = shift;
     my $file;
-    my $inspection   = undef;
-    my $noosimage    = undef;
+    my $inspection  = undef;
+    my $noosimage   = undef;
     my $nooverwrite = undef;
 
     # get arguments
@@ -144,8 +144,8 @@ sub copydata {
     #get install dir
     my $installroot = "/install";
     my $sitetab     = xCAT::Table->new('site');
-    my @ents     = xCAT::TableUtils->get_site_attribute("installdir");
-    my $site_ent = $ents[0];
+    my @ents        = xCAT::TableUtils->get_site_attribute("installdir");
+    my $site_ent    = $ents[0];
     if (defined($site_ent))
     {
         $installroot = $site_ent;
@@ -156,41 +156,41 @@ sub copydata {
     my $release;
     my $osname;
     my $filename = basename($file);
-    my $output = `$file`;
+    my $output   = `$file`;
     if ($inspection) {
         $callback->({ data => "file output: $output" });
         return;
     }
     foreach my $line (split /[\r\n]+/, $output) {
         if ($line =~ /^Architecture/) {
-            ($desc, $arch) = split /: /, $line ;
+            ($desc, $arch) = split /: /, $line;
             chomp $arch;
         }
         if ($line =~ /^Release/) {
-            ($desc, $release) = split /: /, $line ;
+            ($desc, $release) = split /: /, $line;
             chomp $release;
         }
         if ($line =~ /cumulus/) {
-            $osname = "cumulus" ;
+            $osname = "cumulus";
         }
     }
     unless ($osname) {
-        $osname="image";
+        $osname = "image";
     }
 
-    my $distname = $osname . $release;
-    my $imagename = $distname . "-" . $arch;
+    my $distname    = $osname . $release;
+    my $imagename   = $distname . "-" . $arch;
     my $defaultpath = "$installroot/$distname/$arch";
 
     #check if file exists
-    if ( (-e "$defaultpath/$filename") && ($nooverwrite)){
+    if ((-e "$defaultpath/$filename") && ($nooverwrite)) {
         chmod 0755, "$defaultpath/$filename";
         $callback->({ data => "$defaultpath/$filename is already exists, will not overwrite" });
     } else {
         $callback->({ data => "Copying media to $defaultpath" });
-        mkpath ("$defaultpath");
+        mkpath("$defaultpath");
         cp "$file", "$defaultpath";
-        chmod 0755, "$defaultpath/$filename"; 	
+        chmod 0755, "$defaultpath/$filename";
         $callback->({ data => "Media copy operation successful" });
     }
 
@@ -250,7 +250,7 @@ sub nodeset {
     my $subreq   = shift;
 
     my $switches = $request->{'node'};
-    my $args  = $request->{arg};
+    my $args     = $request->{arg};
     my $provmethod;
     my $image_pkgdir;
 
@@ -264,8 +264,8 @@ sub nodeset {
     my $switchestab = xCAT::Table->new('switches');
     my $switcheshash = $switchestab->getNodesAttribs($switches, ['switchtype']);
 
-    my $nodetab  = xCAT::Table->new('nodetype');
-    my $nodehash = $nodetab->getNodesAttribs($switches, [ 'provmethod' ]);
+    my $nodetab = xCAT::Table->new('nodetype');
+    my $nodehash = $nodetab->getNodesAttribs($switches, ['provmethod']);
 
     foreach my $switch (@$switches) {
         if ($switcheshash->{$switch}->[0]->{switchtype} ne "onie") {
@@ -280,17 +280,17 @@ sub nodeset {
             $provmethod = $nodehash->{$switch}->[0]->{provmethod};
         }
         if ($::VERBOSE) {
-            if (!defined($::DISABLENODESETWARNING)) { # set by AAsn.pm
-                xCAT::MsgUtils->message("I", { data => [ "$switch has provmethod=$provmethod" ] }, $callback);
+            if (!defined($::DISABLENODESETWARNING)) {    # set by AAsn.pm
+                xCAT::MsgUtils->message("I", { data => ["$switch has provmethod=$provmethod"] }, $callback);
             }
         }
 
         #get pkgdir from osimage
         my $linuximagetab = xCAT::Table->new('linuximage');
-        my $osimagetab = xCAT::Table->new('osimage');
-        my $imagetab = $linuximagetab->getAttribs({ imagename => $provmethod },'pkgdir');
-        my $osimghash = $osimagetab->getAttribs({ imagename => $provmethod },'osvers','osarch');
-        unless($imagetab and $osimghash){
+        my $osimagetab    = xCAT::Table->new('osimage');
+        my $imagetab = $linuximagetab->getAttribs({ imagename => $provmethod }, 'pkgdir');
+        my $osimghash = $osimagetab->getAttribs({ imagename => $provmethod }, 'osvers', 'osarch');
+        unless ($imagetab and $osimghash) {
             if (!defined($::DISABLENODESETWARNING)) {    # set by AAsn.pm
                 xCAT::MsgUtils->message("E", { error => ["cannot find osimage \"$provmethod\" for $switch, please make sure the osimage specified in command line or node.provmethod exists!"], errorcode => ["1"] }, $callback);
             }
@@ -298,16 +298,16 @@ sub nodeset {
         }
 
 
-        my %attribs=('provmethod' => $provmethod,'os'=>$osimghash->{'osvers'},'arch'=>$osimghash->{'osarch'} );
+        my %attribs = ('provmethod' => $provmethod, 'os' => $osimghash->{'osvers'}, 'arch' => $osimghash->{'osarch'});
         $nodetab->setAttribs({ 'node' => $switch }, \%attribs);
         $image_pkgdir = $imagetab->{'pkgdir'};
 
         #validate the image pkgdir
-        my $flag=0;
+        my $flag = 0;
         if (-r $image_pkgdir) {
             my @filestat = `file $image_pkgdir`;
             if ((grep /$image_pkgdir: data/, @filestat) || (grep /$image_pkgdir: .* \(binary data/, @filestat)) {
-                $flag=1;
+                $flag = 1;
             }
         }
         unless ($flag) {
@@ -332,13 +332,13 @@ sub nodeset {
 
 sub process_sshcfg {
     my $noderange = shift;
-    my $callback = shift;
+    my $callback  = shift;
 
     my $password = "CumulusLinux!";
-    my $userid = "cumulus";
-    my $timeout = 30;
-    my $keyfile = "/root/.ssh/id_rsa.pub";
-    my $rootkey = `cat /root/.ssh/id_rsa.pub`;
+    my $userid   = "cumulus";
+    my $timeout  = 30;
+    my $keyfile  = "/root/.ssh/id_rsa.pub";
+    my $rootkey  = `cat /root/.ssh/id_rsa.pub`;
 
     foreach my $switch (@$noderange) {
         my $ip = xCAT::NetworkUtils->getipaddr($switch);
@@ -371,57 +371,57 @@ sub process_sshcfg {
 }
 
 sub cumulus_connect {
-     my $server   = shift;
-     my $userid   = shift;
-     my $password = shift;
-     my $timeout  = shift;
+    my $server   = shift;
+    my $userid   = shift;
+    my $password = shift;
+    my $timeout  = shift;
 
-     my $ssh      = Expect->new;
-     my $command     = 'ssh';
-     my @parameters  = ($userid . "@" . $server);
+    my $ssh        = Expect->new;
+    my $command    = 'ssh';
+    my @parameters = ($userid . "@" . $server);
 
-     $ssh->debug(0);
-     $ssh->log_stdout(0);    # suppress stdout output..
+    $ssh->debug(0);
+    $ssh->log_stdout(0);    # suppress stdout output..
 
-     unless ($ssh->spawn($command, @parameters))
-     {
-         my $err = $!;
-         $ssh->soft_close();
-         my $rsp;
-         return(undef, "unable to run command $command $err\n");
-     }
+    unless ($ssh->spawn($command, @parameters))
+    {
+        my $err = $!;
+        $ssh->soft_close();
+        my $rsp;
+        return (undef, "unable to run command $command $err\n");
+    }
 
-     $ssh->expect($timeout,
-                   [ "-re", qr/WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED/, sub {die "WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!\n"; } ],
-                   [ "-re", qr/\(yes\/no\)\?\s*$/, sub { $ssh->send("yes\n");  exp_continue; } ],
-                   [ "-re", qr/ password:/,        sub {$ssh->send("$password\n"); exp_continue; } ],
-                   [ "-re", qr/:~\$/,              sub { $ssh->send("sudo su\n"); exp_continue; } ],
-                   [ "-re", qr/ password for cumulus:/, sub { $ssh->send("$password\n"); exp_continue; } ],
-                   [ "-re", qr/.*\/home\/cumulus#/, sub { $ssh->clear_accum(); } ],
-                   [ timeout => sub { die "No login.\n"; } ]
-                  );
-     $ssh->clear_accum();
-     return ($ssh);
+    $ssh->expect($timeout,
+        [ "-re", qr/WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED/, sub { die "WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!\n"; } ],
+        [ "-re", qr/\(yes\/no\)\?\s*$/, sub { $ssh->send("yes\n"); exp_continue; } ],
+        [ "-re", qr/ password:/, sub { $ssh->send("$password\n"); exp_continue; } ],
+        [ "-re", qr/:~\$/, sub { $ssh->send("sudo su\n"); exp_continue; } ],
+        [ "-re", qr/ password for cumulus:/, sub { $ssh->send("$password\n"); exp_continue; } ],
+        [ "-re", qr/.*\/home\/cumulus#/, sub { $ssh->clear_accum(); } ],
+        [ timeout => sub { die "No login.\n"; } ]
+    );
+    $ssh->clear_accum();
+    return ($ssh);
 }
 
 sub cumulus_exec {
-     my $exp = shift;
-     my $cmd = shift;
-     my $timeout    = shift;
-     my $prompt =  shift;
+    my $exp     = shift;
+    my $cmd     = shift;
+    my $timeout = shift;
+    my $prompt  = shift;
 
-     $timeout = 10 unless defined $timeout;
-     $prompt = qr/.*\/home\/cumulus#/ unless defined $prompt;
+    $timeout = 10 unless defined $timeout;
+    $prompt = qr/.*\/home\/cumulus#/ unless defined $prompt;
 
 
-     $exp->clear_accum();
-     $exp->send("$cmd\n");
-     my ($mpos, $merr, $mstr, $mbmatch, $mamatch) = $exp->expect(6,  "-re", $prompt);
+    $exp->clear_accum();
+    $exp->send("$cmd\n");
+    my ($mpos, $merr, $mstr, $mbmatch, $mamatch) = $exp->expect(6, "-re", $prompt);
 
-     if (defined $merr) {
-         return(undef,$merr);
-     }
-     return($mbmatch);
+    if (defined $merr) {
+        return (undef, $merr);
+    }
+    return ($mbmatch);
 }
 
 

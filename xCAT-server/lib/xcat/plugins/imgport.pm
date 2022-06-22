@@ -132,12 +132,14 @@ sub ximport {
     }
 
     if ($#ARGV == -1) {
+
         # if no arguments left after processing the options, then bundle name is missing
         $xusage->(1);
     } else {
+
         # first extract the bundle
         my $bundle = shift @ARGV;
-        extract_bundle($request, $callback, $bundle, $nodes, $new_profile, $remoteHost, $nozip );
+        extract_bundle($request, $callback, $bundle, $nodes, $new_profile, $remoteHost, $nozip);
     }
 
 }
@@ -617,14 +619,14 @@ sub get_files {
                         $kernel = "$rootimgdir/kernel";
                     }
 
-                    my $compressedrootimg=xCAT::SvrUtils->searchcompressedrootimg("$rootimgdir");
+                    my $compressedrootimg = xCAT::SvrUtils->searchcompressedrootimg("$rootimgdir");
                     $rootimg = "$rootimgdir/$compressedrootimg";
 
                 } else {
                     $ramdisk = look_for_file('initrd-stateless.gz', $callback, $attrs, @arr);
                     $kernel = look_for_file('kernel', $callback, $attrs, @arr);
 
-                    my @rootimg_array = ("rootimg.cpio.xz","rootimg.cpio.gz","rootimg.tar.xz","rootimg.tar.gz","rootimg.gz");
+                    my @rootimg_array = ("rootimg.cpio.xz", "rootimg.cpio.gz", "rootimg.tar.xz", "rootimg.tar.gz", "rootimg.gz");
                     foreach my $ra (@rootimg_array) {
                         $rootimg = look_for_file("$ra", $callback, $attrs, @arr);
                         if ($rootimg) {
@@ -1124,7 +1126,7 @@ sub extract_bundle {
     my $nodes       = shift;
     my $new_profile = shift;
     my $remoteHost  = shift;
-    my $nozip = shift;
+    my $nozip       = shift;
 
     my $xml;
     my $data;
@@ -1197,18 +1199,18 @@ sub extract_bundle {
     my $rc;
     if ($nozip) {
         if ($::VERBOSE) {
-            $callback->({data=>["tar xvf $bundle -C $tpath"]});
+            $callback->({ data => ["tar xvf $bundle -C $tpath"] });
             $rc = system("tar xvf $bundle -C $tpath");
         } else {
             $rc = system("tar xf $bundle -C $tpath");
         }
     } else {
         if ($::VERBOSE) {
-        $callback->({ data => ["tar zxvf $bundle -C $tpath"] });
-        $rc = system("tar zxvf $bundle -C $tpath");
-    } else {
-        $rc = system("tar zxf $bundle -C $tpath");
-    }
+            $callback->({ data => ["tar zxvf $bundle -C $tpath"] });
+            $rc = system("tar zxvf $bundle -C $tpath");
+        } else {
+            $rc = system("tar zxf $bundle -C $tpath");
+        }
     }
 
     if ($rc) {
@@ -1354,7 +1356,7 @@ sub change_profile {
     if ($os) {
         if    ($os =~ /rh.*/)     { $platform = "rh"; }
         elsif ($os =~ /centos.*/) { $platform = "centos"; }
-        elsif ($os =~ /rocky.*/) { $platform = "rocky"; }
+        elsif ($os =~ /rocky.*/)  { $platform = "rocky"; }
         elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
         elsif ($os =~ /sles.*/)   { $platform = "sles"; }
         elsif ($os =~ /SL.*/)     { $platform = "SL"; }

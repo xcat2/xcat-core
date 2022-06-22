@@ -106,15 +106,15 @@ sub process_request {
     my $lock;
 
     GetOptions(
-        "profile|p=s" => \$profile,
-        "arch|a=s"    => \$arch,
-        "osver|o=s"   => \$osver,
-        "method|m=s"  => \$method,
-        "compress|c=s"  => \$compress,
-        "tracker=s"   => \$dotorrent,
-        'nosyncfiles'      => \$nosyncfiles,
-        "help|h"      => \$help,
-        "version|v"   => \$version
+        "profile|p=s"  => \$profile,
+        "arch|a=s"     => \$arch,
+        "osver|o=s"    => \$osver,
+        "method|m=s"   => \$method,
+        "compress|c=s" => \$compress,
+        "tracker=s"    => \$dotorrent,
+        'nosyncfiles'  => \$nosyncfiles,
+        "help|h"       => \$help,
+        "version|v"    => \$version
     );
     if ($arch or $osver or $profile) {
         $callback->({ error => ["-o, -p and -a options are obsoleted, please use 'packimage <osimage name>' instead."], errorcode => [1] });
@@ -155,7 +155,7 @@ sub process_request {
             $callback->({ error => ["The linuximage table cannot be opened."], errorcode => [1] });
             return 1;
         }
-        (my $ref) = $osimagetab->getAttribs({ imagename => $imagename }, 'osvers', 'osarch', 'profile', 'provmethod', 'synclists','environvar');
+        (my $ref) = $osimagetab->getAttribs({ imagename => $imagename }, 'osvers', 'osarch', 'profile', 'provmethod', 'synclists', 'environvar');
         unless ($ref) {
             $callback->({ error => ["Cannot find image \'$imagename\' from the osimage table."], errorcode => [1] });
             return 1;
@@ -210,9 +210,9 @@ sub process_request {
 
 
     my $retcode;
-    ($retcode,$lock)=xCAT::Utils->acquire_lock_imageop($rootimg_dir);
-    if($retcode){
-        $callback->({ error => ["$lock"], errorcode => [1]});
+    ($retcode, $lock) = xCAT::Utils->acquire_lock_imageop($rootimg_dir);
+    if ($retcode) {
+        $callback->({ error => ["$lock"], errorcode => [1] });
         return 1;
     }
 
@@ -348,10 +348,10 @@ sub process_request {
             if ($timezone[0]) {
                 unlink("$rootimg_dir/etc/localtime");
                 symlink("../usr/share/zoneinfo/$timezone[0]", "$rootimg_dir/etc/localtime");
-            
+
                 # Add the zoneinfo to the include list
                 $excludetext .= "+./usr/share/zoneinfo/$timezone[0]\n";
-                
+
                 # /usr/share/zoneinfo can have many levels of links
                 # If the configured timezone is a link, also add the link target to the include list
                 # Note: this logic can only handle 2 levels of linking
@@ -360,10 +360,10 @@ sub process_request {
                     my $relativetzpath = substr($realtimezonefile, length($rootimg_dir));
                     $excludetext .= "+.$relativetzpath\n";
                 }
-                
+
                 if (not stat "$rootimg_dir/etc/localtime") {
                     $callback->({ warning => ["Unable to set timezone to \'$timezone[0]\', check this is a valid timezone"] });
-                } 
+                }
             } else {
                 $callback->({ info => ["No timezone defined in site table, skipping timezone configuration"] });
             }
@@ -426,7 +426,7 @@ sub process_request {
     if (!defined($pass)) {
         $pass = 'cluster';
     }
-    my @secure_root    = xCAT::TableUtils->get_site_attribute("secureroot");
+    my @secure_root = xCAT::TableUtils->get_site_attribute("secureroot");
     if ($secure_root[0] == 1) {
         $pass = '*';
     }
@@ -437,6 +437,7 @@ sub process_request {
     close($shadow);
     open($shadow, ">", "$rootimg_dir/etc/shadow");
     print $shadow "root:$pass:13880:0:99999:7:::\n";
+
     foreach (@shadents) {
         unless (/^root:/) {
             print $shadow "$_";
@@ -446,16 +447,17 @@ sub process_request {
     umask($oldmask);
 
     if (not $nosyncfiles) {
+
         # sync fils configured in the synclist to the rootimage
         $syncfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot", $imagename);
-        if ( defined($syncfile) && -d $rootimg_dir) {
-            my $myenv='';
-            if($envars){
-                $myenv.=" XCAT_OSIMAGE_ENV=$envars";
+        if (defined($syncfile) && -d $rootimg_dir) {
+            my $myenv = '';
+            if ($envars) {
+                $myenv .= " XCAT_OSIMAGE_ENV=$envars";
             }
             my @filelist = split ',', $syncfile;
             foreach my $synclistfile (@filelist) {
-                if ( -f $synclistfile) {
+                if (-f $synclistfile) {
                     print "Syncing files from $synclistfile to root image dir: $rootimg_dir\n";
                     my $cmd = "$myenv $::XCATROOT/bin/xdcp -i $rootimg_dir -F $synclistfile";
                     xCAT::Utils->runcmd($cmd, 0, 1);
@@ -526,7 +528,7 @@ sub process_request {
         $callback->({ info => ["compress method:$compress"] });
     }
 
-    $suffix = $method.".".$suffix;
+    $suffix = $method . "." . $suffix;
     unlink glob("$destdir/rootimg.*");
 
     if ($method =~ /cpio/) {
@@ -574,9 +576,9 @@ sub process_request {
     }
     chdir("$rootimg_dir");
     my $outputmsg = `$excludestr 2>&1`;
-    unless($?){
+    unless ($?) {
         $callback->({ info => ["$outputmsg"] });
-    }else{
+    } else {
         $callback->({ info => ["$outputmsg"] });
         $callback->({ error => ["packimage failed while running: \n $excludestr"], errorcode => [1] });
         system("rm -rf $xcat_packimg_tmpfile");

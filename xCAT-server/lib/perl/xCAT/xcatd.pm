@@ -64,7 +64,7 @@ sub validate {
     my $peerhostorg     = shift;
     my $deferredmsgargs = shift;
 
-    my @filtered_cmds   = qw( getdestiny getbladecons getipmicons getopenbmccons getcons);
+    my @filtered_cmds = qw( getdestiny getbladecons getipmicons getopenbmccons getcons);
 
     # now check the policy table if user can run the command
     my $policytable = xCAT::Table->new('policy');
@@ -100,8 +100,8 @@ sub validate {
     if (defined $request->{noderange}->[0]) {
         my @tmpn = xCAT::NodeRange::noderange($request->{noderange}->[0]);
         $req_noderange_info{leftnodenum} = @tmpn;
-        if($req_noderange_info{leftnodenum}){
-            $req_noderange_info{leftnodes} =  \@tmpn;
+        if ($req_noderange_info{leftnodenum}) {
+            $req_noderange_info{leftnodes} = \@tmpn;
         }
     }
 
@@ -119,9 +119,10 @@ sub validate {
             #TODO: time ranges
         }
         if ($rule->{host} and $rule->{host} ne '*') {
+
             #TODO: more complex matching (lists, noderanges?, wildcards)
             if (defined($remote_host) and $remote_host ne '') {
-                my @tmp_hosts = split(",",$remote_host);
+                my @tmp_hosts = split(",", $remote_host);
                 my $found = 0;
                 foreach my $tmp_host (@tmp_hosts) {
                     if ($tmp_host eq $rule->{host}) {
@@ -146,9 +147,9 @@ sub validate {
             if ($found == 0) {    # no command match
                 next;
             }
-         }
+        }
 
-         if ($rule->{parameters} and $rule->{parameters} ne '*') {
+        if ($rule->{parameters} and $rule->{parameters} ne '*') {
             my $parms;
             if ($request->{arg}) {
                 $parms = join(' ', @{ $request->{arg} });
@@ -161,8 +162,8 @@ sub validate {
             }
         }
         if ($rule->{noderange} and $rule->{noderange} ne '*') {
-            unless($req_noderange_info{leftnodenum}){
-               next RULE;
+            unless ($req_noderange_info{leftnodenum}) {
+                next RULE;
             }
 
             my $allow = 0;
@@ -177,20 +178,20 @@ sub validate {
 
             my $hitnum = 0;
             my @non_hit_nodes;
-            foreach (@{$req_noderange_info{leftnodes}}) {
+            foreach (@{ $req_noderange_info{leftnodes} }) {
                 if (defined($rulenodes{$_})) {
                     ++$hitnum;
-                }else{
+                } else {
                     push @non_hit_nodes, $_;
                 }
             }
 
-            if($hitnum == 0){
+            if ($hitnum == 0) {
                 next RULE;
-            }elsif($hitnum && $hitnum != $req_noderange_info{leftnodenum}){
-                if($allow){
+            } elsif ($hitnum && $hitnum != $req_noderange_info{leftnodenum}) {
+                if ($allow) {
                     $req_noderange_info{leftnodenum} = @non_hit_nodes;
-                    $req_noderange_info{leftnodes} = \@non_hit_nodes;
+                    $req_noderange_info{leftnodes}   = \@non_hit_nodes;
                     next RULE;
                 }
             }
@@ -213,7 +214,7 @@ sub validate {
                 $status = "Denied";
                 $rc     = 0;
             }
-            if (! grep { /$request->{command}->[0]/ } @filtered_cmds) {
+            if (!grep { /$request->{command}->[0]/ } @filtered_cmds) {
 
                 # set username authenticated to run command
                 # if from Trusted host, use input username,  else set from creds
@@ -253,26 +254,28 @@ sub validate {
                 if ($request->{command}->[0] eq "mkvm") {
                     my $first;
                     my $restcommand;
-                    my $passw = index ($saveArglist, '--password');
+                    my $passw = index($saveArglist, '--password');
                     if ($passw > -1) {
                         $passw = $passw + 11;
-                        my $first = substr($saveArglist,0,$passw). "******** ";
-                        my $restcommand = substr($saveArglist,$passw);
+                        my $first = substr($saveArglist, 0, $passw) . "******** ";
+                        my $restcommand = substr($saveArglist, $passw);
                         $restcommand =~ s/^\S+\s*//;
                         $saveArglist = "$first$restcommand";
                     }
+
                     # now check for -w with password
-                    $passw = index ($saveArglist, '-w');
+                    $passw = index($saveArglist, '-w');
                     if ($passw > -1) {
                         $passw = $passw + 3;
-                        $first = substr($saveArglist,0,$passw). "******** ";
-                        $restcommand = substr($saveArglist,$passw);
+                        $first = substr($saveArglist, 0, $passw) . "******** ";
+                        $restcommand = substr($saveArglist, $passw);
                         $restcommand =~ s/^\S+\s*//;
                         $saveArglist = "$first$restcommand";
-                   }
+                    }
                 }
+
                 # Replace passwords with 'x'
-                if ($arglist)  { $logst .= redact_password($request->{command}->[0], $saveArglist); }
+                if ($arglist) { $logst .= redact_password($request->{command}->[0], $saveArglist); }
                 if ($peername) { $logst .= " for " . $request->{username}->[0] }
                 if ($peerhost) { $logst .= " from " . $peerhost }
 
@@ -362,17 +365,17 @@ sub validate {
     }    # end RULE
          #Reached end of policy table, reject by default.
 
-    if($req_noderange_info{leftnodenum}){
-        my $leftnodes = join(",", @{$req_noderange_info{leftnodes}});
+    if ($req_noderange_info{leftnodenum}) {
+        my $leftnodes = join(",", @{ $req_noderange_info{leftnodes} });
         xCAT::MsgUtils->message("S", "Request matched no policy rule: peername=$peername, peerhost=$peerhost $request->{command}->[0] to $leftnodes");
-    }else{
+    } else {
         xCAT::MsgUtils->message("S", "Request matched no policy rule: peername=$peername, peerhost=$peerhost  " . $request->{command}->[0]);
     }
     return 0;
 }
 
-my $one_day = 86400;      # one day in seconds
-my $days = 1;             # default days for token expiration
+my $one_day     = 86400;     # one day in seconds
+my $days        = 1;         # default days for token expiration
 my $never_label = "never";
 
 # this subroutine creates a new token in token table
@@ -387,8 +390,8 @@ sub gettoken {
     my $req   = shift;
 
     my $current_time = time();
-    my $user    = $req->{gettoken}->[0]->{username}->[0];
-    my $tokentb = xCAT::Table->new('token');
+    my $user         = $req->{gettoken}->[0]->{username}->[0];
+    my $tokentb      = xCAT::Table->new('token');
     unless ($tokentb) {
         return undef;
     }
@@ -398,36 +401,43 @@ sub gettoken {
     foreach my $token (@{$tokens}) {
 
         if ($token->{'expire'} and looks_like_number($token->{'expire'})) {
+
             # Expiration field contains only digits -> this is a old style token with unix DateTime format
 
             if ($token->{'expire'} and ($token->{'expire'} < $current_time)) {
+
                 # Clean expired token with old unix DateTime format
                 $tokentb->delEntries({ tokenid => $token->{tokenid} });
             } else {
+
                 # Change non-expired old style token to new human readable format
-                $tokentb->setAttribs({ tokenid => $token->{tokenid}, username => $token->{'username'} }, {expire => xCAT::Utils->time2string($token->{'expire'}, "-")});
+                $tokentb->setAttribs({ tokenid => $token->{tokenid}, username => $token->{'username'} }, { expire => xCAT::Utils->time2string($token->{'expire'}, "-") });
             }
         }
     }
 
     # create a new token id
-    my $uuid       = xCAT::Utils->genUUID();
+    my $uuid = xCAT::Utils->genUUID();
+
     # extract site table setting for number of days before token expires
     my $token_days = xCAT::TableUtils->get_site_attribute("tokenexpiredays");
-    my $expiretime = $current_time + $one_day; # default is one day
+    my $expiretime = $current_time + $one_day;    # default is one day
     my $expire_time_string = xCAT::Utils->time2string($expiretime, "-");
     if ($token_days and (uc($token_days) eq uc($never_label))) {
+
         # Tokens never expire
-        $expiretime = $never_label;
+        $expiretime         = $never_label;
         $expire_time_string = $never_label;
     }
-    elsif ($token_days and $token_days >  0) {
+    elsif ($token_days and $token_days > 0) {
+
         # Use number of days from site table
-        $days = $token_days;
-        $expiretime = $current_time + $one_day * $days;
+        $days               = $token_days;
+        $expiretime         = $current_time + $one_day * $days;
         $expire_time_string = xCAT::Utils->time2string($expiretime, "-");
     }
     my $access_time_string = xCAT::Utils->time2string($current_time, "-");
+
     # create a new token and set its expiration and creation time
     $tokentb->setAttribs({ tokenid => $uuid, username => $user },
         { expire => $expire_time_string, created => $access_time_string });
@@ -442,8 +452,8 @@ sub verifytoken {
     my $req   = shift;
 
     my $current_time = time();
-    my $tokenid = $req->{tokens}->[0]->{tokenid}->[0];
-    my $tokentb = xCAT::Table->new('token');
+    my $tokenid      = $req->{tokens}->[0]->{tokenid}->[0];
+    my $tokentb      = xCAT::Table->new('token');
     unless ($tokentb) {
         return undef;
     }
@@ -451,33 +461,40 @@ sub verifytoken {
     if (defined($token) && defined($token->{'username'}) && defined($token->{'expire'})) {
 
         if ($token->{'expire'} and looks_like_number($token->{'expire'})) {
+
             # Expiration field contains only digits -> this is a old style token with unix DateTime format
             if ($token->{'expire'} and $token->{'expire'} < $current_time) {
+
                 # Clean expired token with old unix DateTime format
                 $tokentb->delEntries({ 'tokenid' => $token->{tokenid} });
                 return undef;
             } else {
+
                 # Change non-expired old style token to new human readable format
                 $tokentb->setAttribs({ tokenid => $tokenid, username => $token->{'username'} },
-                                     {access => xCAT::Utils->time2string($current_time, "-"),
-                                      expire => xCAT::Utils->time2string($token->{'expire'}, "-")});
+                    { access => xCAT::Utils->time2string($current_time, "-"),
+                        expire => xCAT::Utils->time2string($token->{'expire'}, "-") });
                 return $token->{'username'};
             }
         } else {
             if ($token->{'expire'} and ($token->{'expire'} ne "never") and str2time($token->{'expire'}) < $current_time) {
+
                 # Expired new style token
                 return undef;
             } else {
+
                 # Not expired new style token - update current access time
-                $tokentb->setAttribs({ tokenid => $tokenid, username => $token->{'username'} }, {access => xCAT::Utils->time2string($current_time, "-")});
+                $tokentb->setAttribs({ tokenid => $tokenid, username => $token->{'username'} }, { access => xCAT::Utils->time2string($current_time, "-") });
                 return $token->{'username'};
             }
         }
     } else {
+
         # Token entry was not found
         return undef;
     }
 }
+
 # --------------------------------------------------------------------------------
 
 =head3 redact_password
@@ -512,56 +529,62 @@ sub verifytoken {
 
 # --------------------------------------------------------------------------------
 sub redact_password {
-    my $class = shift;
-    my $request = shift;
+    my $class         = shift;
+    my $request       = shift;
     my $redact_string = "xxxxxxxx";
 
     my %commads_with_password = (
         bmcdiscover => {
-            flags => ["-p ", "-n "],
+            flags => [ "-p ", "-n " ],
         },
         mkhwconn => {
             flags => ["-P "],
         },
         rspconfig => {
-            flags => ["admin_passwd=","HMC_passwd=","general_passwd=","*_passwd=","USERID="],
+            flags => [ "admin_passwd=", "HMC_passwd=", "general_passwd=", "*_passwd=", "USERID=" ],
         },
     );
 
     my $full_command;
     my $header;
+
     # split out command and its parameters and flags
     if ($request =~ '\[Request\]') {
-        ($header, $full_command) = split('\[Request\]',$request,2);
+        ($header, $full_command) = split('\[Request\]', $request, 2);
     } else {
         $full_command = $class . " " . $request;
     }
-    my ($command, $parameters) = split(' ',$full_command,2);
+    my ($command, $parameters) = split(' ', $full_command, 2);
 
     # Check if passed in $command appears in the %commads_with_password hash
     for (keys %commads_with_password) {
         if ($_ eq $command) {
             my @all_command_flags = split(' ', $parameters);
-            my $ref = $commads_with_password{$command}{flags};
-            my @flags_array = @$ref;
+            my $ref               = $commads_with_password{$command}{flags};
+            my @flags_array       = @$ref;
             foreach my $password_flag (@flags_array) {
+
                 # For each flag of the command from hash, check if passed in
                 # command flags match
-                my $flag_index = index ($parameters, $password_flag);
+                my $flag_index = index($parameters, $password_flag);
                 if ($flag_index >= 0) {
+
                     # Passed in command contains one of the flags, redact pw
-                    my ($passwd, $rest) = split(/\s+/,substr($parameters, $flag_index+length($password_flag)));
+                    my ($passwd, $rest) = split(/\s+/, substr($parameters, $flag_index + length($password_flag)));
                     my $pw_replacement = $redact_string;
                     if (index($passwd, "'") > 0) {
+
                         # Password and password flag was enclosed in "'", preserve that quote
                         $pw_replacement .= "'";
                     }
+
                     # Replace password with $pw_replacement
-                    substr($parameters, $flag_index+length($password_flag), length($passwd)) = $pw_replacement;
+                    substr($parameters, $flag_index + length($password_flag), length($passwd)) = $pw_replacement;
                 }
             }
         }
     }
+
     # Return original request with password replaced by 'x' in $parameters string
     if ($request =~ '\[Request\]') {
         return $header . "[Request]    " . $command . " " . $parameters;

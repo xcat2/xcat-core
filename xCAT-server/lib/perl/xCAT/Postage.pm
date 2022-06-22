@@ -415,8 +415,9 @@ sub makescript {
         }
 
         unless ($master) {
+
             #the ip address of the mn facing the compute node
-            my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
+            my @ipfnd       = xCAT::NetworkUtils->my_ip_facing($node);
             my $ipfndscalar = @ipfnd;
             unless ($ipfnd[0]) {
                 $master = $ipfnd[1];
@@ -444,6 +445,7 @@ sub makescript {
 
         #get the node ip address
         my $cnipaddr = xCAT::NetworkUtils->getipaddr($node);
+
         #print "hello $cnipaddr $node";
         #print Dumper($noderesent);
         #print Dumper($routes);
@@ -514,11 +516,11 @@ sub makescript {
         }
 
 
-        if($image_hash{$osimgname}{'environvar'}){
-            my $myenvstr=$image_hash{$osimgname}{'environvar'};
-            foreach my $myenv(split(',',$myenvstr)){
-                if($myenv =~ /\s*(\S+)\s*=\s*(\S+)\s*/) {
-                    $ENV{$1}=$2;
+        if ($image_hash{$osimgname}{'environvar'}) {
+            my $myenvstr = $image_hash{$osimgname}{'environvar'};
+            foreach my $myenv (split(',', $myenvstr)) {
+                if ($myenv =~ /\s*(\S+)\s*=\s*(\S+)\s*/) {
+                    $ENV{$1} = $2;
                 }
             }
         }
@@ -584,7 +586,7 @@ sub makescript {
             $master_ip = "$ipaddr";
         }
 
-        unless($master_ip){
+        unless ($master_ip) {
             my $rsp;
             $rsp->{data}->[0] = "makescript failed: unable to resolve xcatmaster \"$master\" for $node";
             xCAT::MsgUtils->message("SE", $rsp, $callback, 1);
@@ -598,6 +600,7 @@ sub makescript {
         $inc =~ s/#MASTER_IP_ADDR#/$master_ip/eg;
         $inc =~ s/\$NODE/$node/eg;
         $inc =~ s/#IPADDR#/$cnipaddr/eg;
+
         #$inc =~ s/#TABLE:([^:]+):([^:]+):([^:]+):BLANKOKAY#/tabdb($1,$2,$3,1)/eg;
         $inc =~ s/#TABLE:([^:]+):([^:]+):([^#]+)#/xCAT::Template::tabdb($1,$2,$3)/eg;
         $inc =~ s/#ROUTES_VARS_EXPORT#/$route_vars/eg;
@@ -1125,7 +1128,7 @@ sub getImage
     if ($^O =~ /^linux/i) {
         my $linuximagetab = xCAT::Table->new('linuximage', -create => 1);
 
-        my @et2 = $linuximagetab->getAllAttribs('imagename', 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir','environvar');
+        my @et2 = $linuximagetab->getAllAttribs('imagename', 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'environvar');
         if (@et2) {
             foreach my $tmp_et2 (@et2) {
                 my $imagename = $tmp_et2->{imagename};
@@ -1202,11 +1205,11 @@ sub getImageitems_for_node
                     $result .= "export OTHERPKGDIR\n";
                 }
             }
-            if ($ref1->{'environvar'}){
-                foreach my $myenvar(split(',',$ref1->{'environvar'})){
-                    $result .=$myenvar."\n";
-                    my ($varname,$value)=split('=',$myenvar);
-                    $result .='export '.$varname."\n";
+            if ($ref1->{'environvar'}) {
+                foreach my $myenvar (split(',', $ref1->{'environvar'})) {
+                    $result .= $myenvar . "\n";
+                    my ($varname, $value) = split('=', $myenvar);
+                    $result .= 'export ' . $varname . "\n";
                 }
             }
         }
@@ -1222,7 +1225,7 @@ sub getImageitems_for_node
             {
                 if    ($os =~ /rh.*/)     { $platform = "rh"; }
                 elsif ($os =~ /centos.*/) { $platform = "centos"; }
-                elsif ($os =~ /rocky.*/) { $platform = "rocky"; }
+                elsif ($os =~ /rocky.*/)  { $platform = "rocky"; }
                 elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
                 elsif ($os =~ /SL.*/)     { $platform = "SL"; }
                 elsif ($os =~ /sles.*/)   { $platform = "sles"; }
@@ -1483,7 +1486,9 @@ sub getDisklessNet()
     return $result;
 
 }
+
 #---------------------------------------------------
+
 =head3 get_nics_nicips
 
     Description: If nicips contain regular expression,
@@ -1501,10 +1506,11 @@ sub getDisklessNet()
     Comments:
         none
 =cut
+
 #---------------------------------------------------
 sub get_nics_nicips
 {
-    my $node = shift;
+    my $node       = shift;
     my $old_nicips = shift;
     my $new_nicips;
     my $nicname;
@@ -1522,20 +1528,23 @@ sub get_nics_nicips
             if (!$nicip) {
                 next;
             }
+
             #If there is one nicip in  nicips, and it is regular expression
             #for example: eth0!|\D+(\d+)\D+|10.80.1.($1*2+103)|
             #Does not support: there is regular expression in multple nicips
             if ($nicip =~ /^\|\S*\|$/) {
+
                 #transform the regular expression attribute to the target ip
                 $nicip = xCAT::Table::transRegexAttrs($node, $nicip);
             }
+
             #generate new nicips
             if (defined($new_nicips)) {
-                $new_nicips.=",".$nicname."!".$nicip;
+                $new_nicips .= "," . $nicname . "!" . $nicip;
             } else {
-                $new_nicips=$nicname."!".$nicip;
+                $new_nicips = $nicname . "!" . $nicip;
             }
-       }
+        }
 
     }
     return $new_nicips;
@@ -1577,6 +1586,7 @@ sub collect_all_attribs_for_tables_in_template
                     if ($ent->{$node}->[0]) {
                         foreach my $attrib (@attribs) {
                             $::GLOBAL_TAB_HASH{$tabname}{$node}{$attrib} = $ent->{$node}->[0]->{$attrib};
+
                             #for noderes.xcatmaster
                             if ($tabname =~ /^noderes$/ && $attrib =~ /^xcatmaster$/ &&
                                 (!exists($::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster}) ||
@@ -1625,10 +1635,11 @@ sub collect_all_attribs_for_tables_in_template
                         !defined($::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster})) {
                         $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster} = $::XCATSITEVALS{master};
                     }
+
                     #If nicips contains regular expression
                     if (exists($::GLOBAL_TAB_HASH{nics}{$node}{nicips}) && $::GLOBAL_TAB_HASH{nics}{$node}{nicips} =~ /\S*\!\|\S*/)
                     {
-                        $::GLOBAL_TAB_HASH{nics}{$node}{nicips}=get_nics_nicips($node,$ent->{$node}->[0]->{nicips});
+                        $::GLOBAL_TAB_HASH{nics}{$node}{nicips} = get_nics_nicips($node, $ent->{$node}->[0]->{nicips});
                     }
                     if (!defined($::GLOBAL_TAB_HASH{noderes}{$node}{nfsserver})) {
                         $::GLOBAL_TAB_HASH{noderes}{$node}{nfsserver} = $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster};
@@ -1636,6 +1647,7 @@ sub collect_all_attribs_for_tables_in_template
                     if (!defined($::GLOBAL_TAB_HASH{noderes}{$node}{tftpserver})) {
                         $::GLOBAL_TAB_HASH{noderes}{$node}{tftpserver} = $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster};
                     }
+
                     #if the values are not got, we will set them to '';
                     foreach my $attrib (@attribs) {
                         if (!defined($::GLOBAL_TAB_HASH{$tabname}) || !defined($::GLOBAL_TAB_HASH{$tabname}{$node}) || !defined($::GLOBAL_TAB_HASH{$tabname}{$node}{$attrib})) {
@@ -1703,6 +1715,7 @@ sub dump_all_attribs_in_tabs
                 } else {
                     $values .= "$attrib=$val||";
                     if ($attrib =~ /^disable$/) {
+
                         # Updated on 2017-03-22 for issue 2634 Quotes in tables' comment field break mypostscript
                         # The original line is : $values .= "comments=$t";
                         # In order to fix issue 2634, change this line to : $values .= "comments=";
@@ -1834,7 +1847,7 @@ sub includefile
     my $idir = shift;
     my @text = ();
 
-    $file=xCAT::Utils->varsubinline($file,\%ENV);
+    $file = xCAT::Utils->varsubinline($file, \%ENV);
     unless ($file =~ /^\//)
     {
         $file = $idir . "/" . $file;
@@ -1970,7 +1983,7 @@ sub getScripts
     $script_hash{default_postboot} = $et->{'postbootscripts'};
 
 
-    my @et2 = $ostab->getAllAttribs('imagename', 'postscripts', 'postbootscripts', 'osvers', 'osarch', 'profile', 'provmethod', 'synclists', 'kitcomponents','environvar');
+    my @et2 = $ostab->getAllAttribs('imagename', 'postscripts', 'postbootscripts', 'osvers', 'osarch', 'profile', 'provmethod', 'synclists', 'kitcomponents', 'environvar');
     if (@et2) {
         foreach my $tmp_et2 (@et2) {
             my $imagename = $tmp_et2->{imagename};
@@ -1981,7 +1994,7 @@ sub getScripts
             $image_hash->{$imagename}->{profile}    = $tmp_et2->{profile};
             $image_hash->{$imagename}->{provmethod} = $tmp_et2->{provmethod};
             $image_hash->{$imagename}->{synclists}  = $tmp_et2->{synclists};
-            $image_hash->{$imagename}->{environvar}  = $tmp_et2->{environvar};
+            $image_hash->{$imagename}->{environvar} = $tmp_et2->{environvar};
             $image_hash->{$imagename}->{kitcomponents} = $tmp_et2->{kitcomponents} if ($tmp_et2->{kitcomponents});
         }
     }
@@ -2110,11 +2123,11 @@ sub getPostScripts
         {
             $nodecfg = "$tftpdir/pxelinux.cfg/$node";
 
-        } elsif($netboot eq "petitboot"){
+        } elsif ($netboot eq "petitboot") {
             $nodecfg = "$tftpdir/petitboot/$node";
         }
 
-        if( -f "$nodecfg"){
+        if (-f "$nodecfg") {
             my $rc = system("grep net.ifnames=0 $nodecfg >/dev/null 2>&1");
             if ($rc == 0)
             {

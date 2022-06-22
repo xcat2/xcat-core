@@ -204,9 +204,9 @@ sub addotherinterfaces
 
             #lookup the domain for the ip address
             #if failed, use the domain passed in
-            my ($mydomain,$mynet)=getIPdomain($ip);
-            if($mydomain){
-               $domain=$mydomain;
+            my ($mydomain, $mynet) = getIPdomain($ip);
+            if ($mydomain) {
+                $domain = $mydomain;
             }
             addnode $callback, $itf, $ip, '', $domain;
         }
@@ -653,6 +653,7 @@ sub donics
             if (!$nicip) {
                 next;
             }
+
             #Only support format for nicips is :<nic1>!<ip1>|<ip2>|... or <nic1>!<one regular expression>
             if ($nicip =~ /^\|\S*\|$/) {
                 $nicip = xCAT::Table::transRegexAttrs($node, $nicip);
@@ -723,11 +724,12 @@ sub donics
                 if (!$nich->{$nic}->{nicsufx}->[$i] && !$nich->{$nic}->{nicprfx}->[$i]) {
 
                     if ($nic =~ /\./) {
-                         my $rsp;
-                         push @{ $rsp->{data} }, "$node: since \'$nic\' contains dot, nics.nichostnamesuffixes.$nic should be configured without dot for \'$nic\' interface.";
-                         xCAT::MsgUtils->message("E", $rsp, $callback);
-                         next;
+                        my $rsp;
+                        push @{ $rsp->{data} }, "$node: since \'$nic\' contains dot, nics.nichostnamesuffixes.$nic should be configured without dot for \'$nic\' interface.";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        next;
                     }
+
                     # then we have no suffix at all for this
                     # so set a default
                     $nich->{$nic}->{nicsufx}->[$i] = "-$nic";

@@ -807,37 +807,37 @@ sub fork_fanout_dcp
 
 
         my %envardict;
-        foreach my $varstr (split(',',$$target_properties{'envar'})){
-            if($varstr =~ m/(.*)=(.*)/){
-               my ($myvar,$myvalue)=($1,$2);
-               $envardict{$myvar}=$myvalue;
+        foreach my $varstr (split(',', $$target_properties{'envar'})) {
+            if ($varstr =~ m/(.*)=(.*)/) {
+                my ($myvar, $myvalue) = ($1, $2);
+                $envardict{$myvar} = $myvalue;
             }
         }
 
-        if(%envardict){
-            my $dest_srcdict=$$options{'destDir_srcFile'}{$user_target};
-            for my $dest (keys %{$dest_srcdict}){
-                my $newdest=$dest;
-                $newdest=xCAT::Utils->varsubinline($newdest,\%envardict);
-                for my $label(keys %{$$dest_srcdict{$dest}}){
+        if (%envardict) {
+            my $dest_srcdict = $$options{'destDir_srcFile'}{$user_target};
+            for my $dest (keys %{$dest_srcdict}) {
+                my $newdest = $dest;
+                $newdest = xCAT::Utils->varsubinline($newdest, \%envardict);
+                for my $label (keys %{ $$dest_srcdict{$dest} }) {
                     my $myref;
-                    if('ARRAY' eq ref($$dest_srcdict{$dest}{$label})){
-                        for my $path(@{$$dest_srcdict{$dest}{$label}}){
-                            $path=xCAT::Utils->varsubinline($path,\%envardict);
+                    if ('ARRAY' eq ref($$dest_srcdict{$dest}{$label})) {
+                        for my $path (@{ $$dest_srcdict{$dest}{$label} }) {
+                            $path = xCAT::Utils->varsubinline($path, \%envardict);
                         }
-                    }elsif('HASH' eq ref($$dest_srcdict{$dest}{$label})){
-                        for my $path(keys(%{$$dest_srcdict{$dest}{$label}})){
-                            my $newpath=$path;
-                            $newpath=xCAT::Utils->varsubinline($newpath,\%envardict);
-                            if($newpath ne $path){
-                                $$dest_srcdict{$dest}{$label}{$newpath}=$$dest_srcdict{$dest}{$label}{$path};
+                    } elsif ('HASH' eq ref($$dest_srcdict{$dest}{$label})) {
+                        for my $path (keys(%{ $$dest_srcdict{$dest}{$label} })) {
+                            my $newpath = $path;
+                            $newpath = xCAT::Utils->varsubinline($newpath, \%envardict);
+                            if ($newpath ne $path) {
+                                $$dest_srcdict{$dest}{$label}{$newpath} = $$dest_srcdict{$dest}{$label}{$path};
                                 delete $$dest_srcdict{$dest}{$label}{$path};
                             }
                         }
                     }
                 }
-                if($newdest ne $dest){
-                    $$dest_srcdict{$newdest}=$$dest_srcdict{$dest};
+                if ($newdest ne $dest) {
+                    $$dest_srcdict{$newdest} = $$dest_srcdict{$dest};
                     delete $$dest_srcdict{$dest};
                 }
 
@@ -878,7 +878,7 @@ sub fork_fanout_dcp
 
                 my @target_file = split '/', $$options{'source'};
                 $rcp_config{'dest-file'} =
-                "$$options{'target'}/$target_file[$#target_file]._$$target_properties{'hostname'}";
+"$$options{'target'}/$target_file[$#target_file]._$$target_properties{'hostname'}";
 
             }
 
@@ -894,7 +894,8 @@ sub fork_fanout_dcp
             }
 
             $dsh_trace
-                && ($rcp_config{'trace'} = 1);
+              && ($rcp_config{'trace'} = 1);
+
             #eval "require RemoteShell::$rsh_extension";
             eval "require xCAT::$rsh_extension";
             my $remoteshell = "xCAT::$rsh_extension";
@@ -1027,7 +1028,7 @@ sub fork_fanout_dsh
 
     #get username and passeword for switches
     if (($$options{'devicetype'} =~ /EthSwitch/) ||
-        (($$options{'devicetype'} =~ /IBSwitch/) && !($$options{'user'})) ){
+        (($$options{'devicetype'} =~ /IBSwitch/) && !($$options{'user'}))) {
         if (@$targets_waiting > 0) {
             if ($ENV{'DSH_REMOTE_PASSWORD'}) {
                 foreach my $t (keys(%$resolved_targets)) {
@@ -1065,7 +1066,7 @@ sub fork_fanout_dsh
                             $password = $passwd_ent[0]->{password};
                         }
                     }
-                    if (!$protocol){
+                    if (!$protocol) {
                         if (defined($passwd_ent[0]->{comments}) && ($passwd_ent[0]->{comments} eq "telnet")) {
                             $protocol = $passwd_ent[0]->{comments};
                         }
@@ -3355,16 +3356,16 @@ sub bld_resolve_nodes_hash
             $localhost = $target;
         }
 
-        my $envar=undef;
-        my $ent = $oents{$target}->[0];
+        my $envar = undef;
+        my $ent   = $oents{$target}->[0];
         if ($ent and $ent->{provmethod} and \
-               ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
+            ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
 
             my $imagename = $ent->{provmethod};
             my $osimagetab = xCAT::Table->new('osimage', -create => 1);
             (my $ref) = $osimagetab->getAttribs({ imagename => $imagename }, 'environvar');
-            if($ref){
-                $envar=$ref->{'environvar'};
+            if ($ref) {
+                $envar = $ref->{'environvar'};
             }
         }
 
@@ -3374,7 +3375,7 @@ sub bld_resolve_nodes_hash
             'localhost'  => $localhost,
             'user'       => $user,
             'context'    => $context,
-            'envar'    => $envar,
+            'envar'      => $envar,
             'unresolved' => $target
         );
 
@@ -4201,7 +4202,7 @@ sub parse_and_run_dsh
         # with error, if the Management Node is in the Database and in the
         # noderange
         my @mname = xCAT::Utils->noderangecontainsMn(@nodelist);
-        if ( @mname and !$options{'ip'} ) {    # MN in the nodelist and --ip not specified
+        if (@mname and !$options{'ip'}) { # MN in the nodelist and --ip not specified
             my $nodes = join(',', @mname);
             my $rsp = {};
             $rsp->{error}->[0] =
@@ -4312,15 +4313,17 @@ sub parse_and_run_dsh
         my $rc;
 
         # If 'show' was specified then pass the value in an environment variable.
-        if ( $options{'show'} ) {
+        if ($options{'show'}) {
             $ENV{'DSH_SHOW'} = $options{'show'};
         }
 
         # Go perform the setup of the SSH keys.
-        if ( $options{'ip'} ) {
+        if ($options{'ip'}) {
+
             # If IPs were passed then use them as the target of the unlock.
-            $rc = xCAT::TableUtils->setupSSH($options{'ip'} );
+            $rc = xCAT::TableUtils->setupSSH($options{'ip'});
         } else {
+
             # Unlock the nodes
             $rc = xCAT::TableUtils->setupSSH($options{'nodes'}, $options{'timeout'});
         }
@@ -4528,13 +4531,14 @@ sub parse_and_run_dcp
 
     unless ($options{'user'})
     {
-            # user was not specified with -l flag, check it user calling the command
-            # was saved in DSH_FROM_USERID environment variable
-            my $current_userid = $ENV{'DSH_FROM_USERID'};
-            if (defined($current_userid)) {
-                # Set userid from value in DSH_FROM_USERID environment variable
-                $options{'user'} = $current_userid;
-            }
+        # user was not specified with -l flag, check it user calling the command
+        # was saved in DSH_FROM_USERID environment variable
+        my $current_userid = $ENV{'DSH_FROM_USERID'};
+        if (defined($current_userid)) {
+
+            # Set userid from value in DSH_FROM_USERID environment variable
+            $options{'user'} = $current_userid;
+        }
     }
 
     if (defined($options{'rootimg'}))
@@ -4634,19 +4638,19 @@ sub parse_and_run_dcp
     if ($options{'node-rcp'}) {
         if (!-f $options{'node-rcp'} || !-x $options{'node-rcp'})
         {
-             my $rsp = {};
-             $rsp->{error}->[0] =
-                 "Remote command: $remotecopycommand does not exist or is not executable.";
-             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-             return;
+            my $rsp = {};
+            $rsp->{error}->[0] =
+"Remote command: $remotecopycommand does not exist or is not executable.";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+            return;
         }
 
-        if ($remotecopycommand !~ /\/(rcp|scp|rsync)$/){
-             my $rsp = {};
-             $rsp->{error}->[0] =
-                 "Remote command: $remotecopycommand is invalid, the support remote commands: scp,rcp,rsync.";
-             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-             return;
+        if ($remotecopycommand !~ /\/(rcp|scp|rsync)$/) {
+            my $rsp = {};
+            $rsp->{error}->[0] =
+"Remote command: $remotecopycommand is invalid, the support remote commands: scp,rcp,rsync.";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+            return;
         }
     }
     #
@@ -4794,7 +4798,7 @@ sub parse_and_run_dcp
             my $rsp = {};
             $rsp->{error}->[0] = "Error parsing the rsync file:$syncfile.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-            $::FAILED_NODES=scalar @nodelist;
+            $::FAILED_NODES = scalar @nodelist;
             return;
         }
 
@@ -4980,10 +4984,10 @@ sub rsync_to_image
     my $rc = 0;
 
     my %osimgenv;
-    if($ENV{'XCAT_OSIMAGE_ENV'}){
-        foreach my $myenv(split(',',$ENV{'XCAT_OSIMAGE_ENV'})){
-            if($myenv =~ /\s*(\S+)\s*=\s*(\S+)\s*/) {
-                $osimgenv{$1}=$2;
+    if ($ENV{'XCAT_OSIMAGE_ENV'}) {
+        foreach my $myenv (split(',', $ENV{'XCAT_OSIMAGE_ENV'})) {
+            if ($myenv =~ /\s*(\S+)\s*=\s*(\S+)\s*/) {
+                $osimgenv{$1} = $2;
             }
         }
     }
@@ -4996,12 +5000,12 @@ sub rsync_to_image
             next;
         }
 
-        if ($line =~ /.+ -> \(.+\) .+/)    # skip syncfile entries containing noderange
+        if ($line =~ /.+ -> \(.+\) .+/) # skip syncfile entries containing noderange
         {
             next;
         }
 
-        $line=xCAT::Utils->varsubinline($line,\%osimgenv);
+        $line = xCAT::Utils->varsubinline($line, \%osimgenv);
 
         # process no more lines, do not exec
         # do not execute postscripts when syncing images
@@ -5289,7 +5293,7 @@ sub parse_rsync_input_file_on_MN
                     # skip the node if it's NOT in the permitted list and if
                     # it's not a SN doing a hierarchical mode transfer
                     if ($dest_node && !(grep /^$target_node$/, @dest_nodes)
-                        && ($rsyncSN != 1) ) {
+                        && ($rsyncSN != 1)) {
                         next;
                     }
                     $$options{'destDir_srcFile'}{$target_node} ||= {};
@@ -5304,10 +5308,12 @@ sub parse_rsync_input_file_on_MN
                         if ($rsyncSN == 1)
                         {    #  syncing the SN
                             $dest_dir = $syncdir;    # the SN sync dir
-                            if($srcfile =~ /\/$/){
+                            if ($srcfile =~ /\/$/) {
+
                                 #the srcfile is a directory
                                 $dest_dir .= $srcfile;
-                            }else{
+                            } else {
+
                                 #the srcfile is a file
                                 $dest_dir .= dirname($srcfile);
                             }
@@ -5371,10 +5377,10 @@ sub parse_rsync_input_file_on_MN
         $$options{'nodes'} = join ',', keys %{ $$options{'destDir_srcFile'} };
     }
 
-    my $remotecopycommand=$$options{'node-rcp'};
-    if($remotecopycommand !~ /\/rsync$/ and @::postscripts){
+    my $remotecopycommand = $$options{'node-rcp'};
+    if ($remotecopycommand !~ /\/rsync$/ and @::postscripts) {
         my $rsp = {};
-        $rsp->{error}->[0] ="key word 'EXECUTE' is unavailable when the remote copy command specified by '-r|--node-rcp' is $remotecopycommand. Does 'EXECUTEALWAYS' work for you?";
+        $rsp->{error}->[0] = "key word 'EXECUTE' is unavailable when the remote copy command specified by '-r|--node-rcp' is $remotecopycommand. Does 'EXECUTEALWAYS' work for you?";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return 1;
     }
@@ -5814,7 +5820,7 @@ sub parse_rsync_input_file_on_SN
                 foreach my $target_node (@dest_host)
                 {
                     # skip the node if it's NOT in the permitted list
-                    if ($dest_node && ! grep /^$target_node$/, @dest_nodes) {
+                    if ($dest_node && !grep /^$target_node$/, @dest_nodes) {
                         next;
                     }
                     $$options{'destDir_srcFile'}{$target_node} ||= {};
@@ -5877,10 +5883,10 @@ sub parse_rsync_input_file_on_SN
         $$options{'nodes'} = join ',', keys %{ $$options{'destDir_srcFile'} };
     }
 
-    my $remotecopycommand=$$options{'node-rcp'};
-    if($remotecopycommand !~ /\/rsync$/ and @::postscripts){
+    my $remotecopycommand = $$options{'node-rcp'};
+    if ($remotecopycommand !~ /\/rsync$/ and @::postscripts) {
         my $rsp = {};
-        $rsp->{error}->[0] ="key word 'EXECUTE' is unavailable when the remote copy command specified by '-r|--node-rcp' is $remotecopycommand. Does 'EXECUTEALWAYS' work for you?";
+        $rsp->{error}->[0] = "key word 'EXECUTE' is unavailable when the remote copy command specified by '-r|--node-rcp' is $remotecopycommand. Does 'EXECUTEALWAYS' work for you?";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return 1;
     }
@@ -5943,7 +5949,7 @@ sub run_rsync_postscripts
 
         # now remove .post from the postscript file for the compare
         # with the returned file name
-        my($tp,$post) = split(/\.post/,$tmppostfile);
+        my ($tp, $post) = split(/\.post/, $tmppostfile);
         $tmppostfile = $tp;
 
         foreach my $line (@rsync_output) {
@@ -5961,7 +5967,7 @@ sub run_rsync_postscripts
 
             #the $postsfile <file>.post will be run if:
             # the <file> is updated, or
-            if ($ps eq $tmppostfile ) {
+            if ($ps eq $tmppostfile) {
 
                 # build xdsh queue
                 # build host and all scripts to execute
@@ -6324,31 +6330,32 @@ sub run_always_rsync_postscripts
         }
 
         foreach my $host (@hosts) {
+
             # build xdsh queue
             # build host and all scripts to execute
             # EXECUTEALWAYS will only execute the syncfile in the syncfile list
-            foreach my $key (keys %{$$options{'destDir_srcFile'}{$host}}) {
+            foreach my $key (keys %{ $$options{'destDir_srcFile'}{$host} }) {
                 foreach my $key1 (keys %{ $$options{'destDir_srcFile'}{$host}->{$key} }) {
                     my $index = 0;
                     my $key1_ref = $$options{'destDir_srcFile'}{$host}->{$key}->{$key1};
                     if (ref $key1_ref eq 'ARRAY') { #stored as ARRAY for same_dest_name
-                        while (my $src_file =$key1_ref->[$index] ) {
+                        while (my $src_file = $key1_ref->[$index]) {
                             if ($src_file eq $tmppostfile) {
                                 push(@{ $dshparms->{'postscripts'}{$postsfile} }, $host);
                             }
                             $index++;
-                        }  
-                    } else { #stroed as hash table for diff_dest_name
+                        }
+                    } else {    #stroed as hash table for diff_dest_name
                         foreach my $src_file (keys %{$key1_ref}) {
                             if ($src_file eq $tmppostfile) {
                                 push(@{ $dshparms->{'postscripts'}{$postsfile} }, $host);
-                            }  
-                        }     
-                    } #end else
-                } #end foreach key1 
-            } #end foreach key
-        } #end foreach host 
-    } #end foreach postsfile 
+                            }
+                        }
+                    }    #end else
+                }    #end foreach key1
+            }    #end foreach key
+        }    #end foreach host
+    }    #end foreach postsfile
 
     # now if we have postscripts to run, run xdsh
     my $out;

@@ -735,17 +735,18 @@ Usage:
             $warnstr .= "Details: $retstrref->[1]";
         }
     }
+
     # For each node in the noderange remove its configureation files in $config_dir, if file exists
     setrsp_progress("Removing configuration files...");
     my $config_dir = "/install/autoinst/";
     foreach my $one_node (@$nodes) {
-        if ( -e "$config_dir/$one_node") {
+        if (-e "$config_dir/$one_node") {
             unlink "$config_dir/$one_node";
         }
-        if ( -e "$config_dir/$one_node.post") {
+        if (-e "$config_dir/$one_node.post") {
             unlink "$config_dir/$one_node.post";
         }
-        if ( -e "$config_dir/$one_node.pre") {
+        if (-e "$config_dir/$one_node.pre") {
             unlink "$config_dir/$one_node.pre";
         }
     }
@@ -1010,10 +1011,10 @@ Usage:
 
         # Add BMC/FSP as reserve NICs and not remove it form nics table
         foreach my $oldNic (keys %$oldNicsRef) {
-            if ($oldNicsRef->{$oldNic}->{'type'} ne 'BMC' and $oldNicsRef->{$oldNic}->{'type'} ne 'FSP'){
-                if ($oldNicsRef->{$oldNic}->{'network'} eq $newNicsRef->{$oldNic}->{'network'}){
+            if ($oldNicsRef->{$oldNic}->{'type'} ne 'BMC' and $oldNicsRef->{$oldNic}->{'type'} ne 'FSP') {
+                if ($oldNicsRef->{$oldNic}->{'network'} eq $newNicsRef->{$oldNic}->{'network'}) {
                     $reserveNicsHash{$oldNic} = 1;
-                    if(exists $updateNicsHash{$oldNic})
+                    if (exists $updateNicsHash{$oldNic})
                     {
                         delete($updateNicsHash{$oldNic});
                     }

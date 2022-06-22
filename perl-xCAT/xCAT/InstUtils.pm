@@ -734,10 +734,10 @@ sub getOSnodes
 #-------------------------------------------------------------------------------
 sub get_server_nodes
 {
-    my $class    = shift;
-    my $callback = shift;
-    my $nodes    = shift;
-    my $skipfacing=shift;
+    my $class      = shift;
+    my $callback   = shift;
+    my $nodes      = shift;
+    my $skipfacing = shift;
 
     my @nodelist;
     if ($nodes)
@@ -768,7 +768,7 @@ sub get_server_nodes
             my @servd = xCAT::NetworkUtils->my_ip_facing($node);
             unless ($servd[0]) { $serv = $servd[1]; }
         }
-        else{
+        else {
             next;
         }
         chomp $serv;

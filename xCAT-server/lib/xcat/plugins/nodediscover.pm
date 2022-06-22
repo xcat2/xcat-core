@@ -236,27 +236,29 @@ sub process_request {
             $nrtab->setNodeAttribs($node, { netboot => 'petitboot' });
         } elsif ($request->{arch}->[0] =~ /ppc/ and $currboot !~ /yaboot/) {
             $nrtab->setNodeAttribs($node, { netboot => 'yaboot' });
-        } elsif($request->{arch}->[0] =~ /armv7l/ and $currboot !~ /onie/) {
+        } elsif ($request->{arch}->[0] =~ /armv7l/ and $currboot !~ /onie/) {
+
             #for onie switch, the netboot should be "onie"
             $nrtab->setNodeAttribs($node, { netboot => 'onie' });
         }
     }
 
-    if(defined $request->{nodetype} and $request->{nodetype}->[0] = 'switch' and $request->{_xcat_clientmac}->[0]){
+    if (defined $request->{nodetype} and $request->{nodetype}->[0] = 'switch' and $request->{_xcat_clientmac}->[0]) {
+
         #for onie switch, lookup and set the switchtype via mac of mgt interface
         my $switchestab = xCAT::Table->new('switches');
         if ($switchestab) {
             my $switchtype;
-            my $switchvendor=$xCAT::data::switchinfo::global_mac_identity{substr(lc($request->{_xcat_clientmac}->[0]),0,8)};
-            if(defined $switchvendor){
+            my $switchvendor = $xCAT::data::switchinfo::global_mac_identity{ substr(lc($request->{_xcat_clientmac}->[0]), 0, 8) };
+            if (defined $switchvendor) {
                 my $search_string = join '|', keys(%xCAT::data::switchinfo::global_switch_type);
                 if ($switchvendor =~ /($search_string)/) {
-                    $switchtype=$xCAT::data::switchinfo::global_switch_type{$1};
+                    $switchtype = $xCAT::data::switchinfo::global_switch_type{$1};
                 }
             }
 
-            if($switchtype){
-                $switchestab->setNodeAttribs($node,{ switchtype => $switchtype });
+            if ($switchtype) {
+                $switchestab->setNodeAttribs($node, { switchtype => $switchtype });
             }
             $switchestab->close();
         }
@@ -279,6 +281,7 @@ sub process_request {
         my %bydriverindex;
         my $forcenic = 0; #-1 is force skip, 0 is use default behavior, 1 is force to be declared even if hosttag is skipped to do so
         my $localnic = 0;
+
         foreach (@{ $request->{mac} }) {
             @ifinfo = split /\|/;
 
@@ -319,6 +322,7 @@ sub process_request {
                     my $hosttag = gethosttag($node, $netn, @ifinfo[1], \%usednames);
                     unless ($hosttag) {
                         my $nettagname = $usednames_for_net{$netn};
+
                         # For nics not in the install network, don't deal with them if not an available hostname get
                         # In case another nic in install network get a hosttag other than nodename, need to compare the IP address they can convert to
                         if ($nettagname and (inet_aton($nettagname) eq inet_aton($node))) {
@@ -326,6 +330,7 @@ sub process_request {
                             push @hostnames_to_update, $hosttag;
                         }
                     }
+
                     #print Dumper($hosttag) . "\n";
                     if ($hosttag) {
                         $usednames{$hosttag} = 1;
@@ -363,11 +368,11 @@ sub process_request {
             my $hosttab = xCAT::Table->new('hosts');
             if ($hosttab) {
                 my ($ent) = $hosttab->getNodeAttribs($node, ['hostnames']);
-                if ($ent and $ent->{hostnames})  {
+                if ($ent and $ent->{hostnames}) {
                     my @hostnames_array = split /,/, $ent->{hostnames};
-                    push @hostnames_to_update,@hostnames_array;
+                    push @hostnames_to_update, @hostnames_array;
                 }
-                my %allhostnames = map { $_=>1 } @hostnames_to_update;
+                my %allhostnames = map { $_ => 1 } @hostnames_to_update;
                 my $hostnames = join(",", (keys %allhostnames));
                 $hosttab->setNodeAttribs($node, { hostnames => $hostnames });
                 $hosttab->commit();
@@ -415,6 +420,7 @@ sub process_request {
         foreach my $nic (@{ $request->{nic} }) {
             if (defined($nic->{'hwaddr'}) && $nic->{'hwaddr'}->[0] =~ /$firstmac/i) {
                 if (defined($nic->{'switchname'}) && defined($nic->{'switchport'})) {
+
                     # update the switch table
                     my $switchtab = xCAT::Table->new('switch');
                     if ($switchtab) {
@@ -424,6 +430,7 @@ sub process_request {
 
                 }
                 next;
+
                 # Don't create switch definition in nodelist, hosts, switches table
                 if (defined($nic->{'switchname'}) && defined($nic->{'switchaddr'})) {
 
@@ -477,8 +484,8 @@ sub process_request {
         xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: remove gocons session for $bmc_node");
         require xCAT::Goconserver;
         if (xCAT::Goconserver::is_goconserver_running()) {
-            my $api_url = "https://localhost:". xCAT::Goconserver::get_api_port();
-            xCAT::Goconserver::delete_nodes($api_url, {"$bmc_node" => 1}, 1, $callback);
+            my $api_url = "https://localhost:" . xCAT::Goconserver::get_api_port();
+            xCAT::Goconserver::delete_nodes($api_url, { "$bmc_node" => 1 }, 1, $callback);
         }
     } else {
         xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: After discovery done, please use 'makeconservercf -C' to clean up undefined nodes from conserver");
@@ -501,6 +508,7 @@ sub process_request {
             if ($bmc_node =~ /\,/) {
                 xCAT::MsgUtils->message("W", "Multiple BMC nodes matched with no bmcinband specified, please remove manually");
             } else {
+
                 # Only BMC that doesn't support in-band configuration need to run rspconfig out-of-band, such as S822L running in OPAL model
                 xCAT::MsgUtils->message("S", "No bmcinband specified, need to configure BMC out-of-band");
                 xCAT::Utils->cleanup_for_powerLE_hardware_discovery($request, $doreq);

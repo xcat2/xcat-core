@@ -304,7 +304,7 @@ sub process_request
                 chomp;
                 my ($type, $expiry, $revoke, $serial, $fname, $subject) = split /\t/;
                 if ($type eq 'V' and $subject =~ /CN=$client\z/) { #we already have a valid certificate, new request replaces it, revoke old
-                    #print "The time of replacing is at hand for $client\n";
+                        #print "The time of replacing is at hand for $client\n";
                     xCAT::MsgUtils->trace(0, 'I', "credentials: The time of replacing is at hand for $client");
                     system("openssl ca -config /etc/xcat/ca/openssl.cnf -revoke /etc/xcat/ca/certs/$serial.pem");
                 }
@@ -330,11 +330,11 @@ sub process_request
 
         } elsif ($parm =~ /xcat_secure_pw:/) {
             xCAT::MsgUtils->trace(0, 'I', "credentials: sending $parm to $client");
-            my @users=split(/:/,$parm);
+            my @users = split(/:/, $parm);
             if (defined($users[1]) and $users[1] eq 'root') {
                 my $pass = xCAT::PasswordUtils::crypt_system_password();
                 if ($pass) {
-                    push @{$rsp->{'data'}}, { content => [ $pass ], desc => [ $parm ] };
+                    push @{ $rsp->{'data'} }, { content => [$pass], desc => [$parm] };
                 }
             }
             next;

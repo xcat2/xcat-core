@@ -22,7 +22,7 @@ sub parse_args {
     my $args    = $request->{arg};
     my $node    = $request->{node};
     my @VERSION = qw( 2.6 );
-    my @dev = qw(hfi net);
+    my @dev     = qw(hfi net);
 
     #############################################
     # Responds with usage statement

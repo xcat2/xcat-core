@@ -567,7 +567,7 @@ sub message
 sub error_message
 {
     shift;
-    my $msg = shift;
+    my $msg      = shift;
     my $callback = shift;
     my $rsp;
     $rsp->{data}->[0] = $msg;
@@ -600,7 +600,7 @@ sub error_message
 sub info_message
 {
     shift;
-    my $msg = shift;
+    my $msg      = shift;
     my $callback = shift;
     my $rsp;
     $rsp->{data}->[0] = $msg;
@@ -633,7 +633,7 @@ sub info_message
 sub warn_message
 {
     shift;
-    my $msg = shift;
+    my $msg      = shift;
     my $callback = shift;
     my $rsp;
     $rsp->{data}->[0] = $msg;
@@ -897,7 +897,7 @@ sub trace() {
     if (($level eq "I") || ($level eq "i")) { $prefix = "INFO"; }
     if (($level eq "D") || ($level eq "d")) { $prefix = "DEBUG"; }
 
-    return unless ($prefix); #unknown level, do nothing.
+    return unless ($prefix);    #unknown level, do nothing.
 
     if (($verbose == 0) && ($prefix eq "DEBUG")) {
         my @tmp = xCAT::TableUtils->get_site_attribute("xcatdebugmode");
@@ -927,13 +927,13 @@ sub trace() {
 sub _perf_log
 {
     my $type = shift;
-    my $msg = shift;
+    my $msg  = shift;
     my $fh;
     my $ret = open($fh, '>>', PERF_LOG);
     if (!$ret) {
         xCAT::MsgUtils->message("S", "Open perf log file error: $!");
     }
-    my $line = localtime()."\t$type\t$msg\n";
+    my $line = localtime() . "\t$type\t$msg\n";
     print $fh $line;
     close $fh;
 }

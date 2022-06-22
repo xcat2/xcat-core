@@ -92,9 +92,10 @@ sub getstate {
 }
 
 my %efistubcache;
+
 sub has_efistub {
-    my $kern = shift;
-    my $node = shift;
+    my $kern     = shift;
+    my $node     = shift;
     my $filename = $globaltftpdir . "/" . $kern;
     if (defined $efistubcache{$filename}) {
         return $efistubcache{$filename};
@@ -110,6 +111,7 @@ sub has_efistub {
         return 0;
     }
 }
+
 sub setstate {
 
 =pod
@@ -126,15 +128,15 @@ sub setstate {
     my $tftpdir         = shift;
     my $linuximghashref = shift;
 
-    my $kern = $bphash{$node}->[0];
+    my $kern           = $bphash{$node}->[0];
     my $imgaddkcmdline = $linuximghashref->{'addkcmdline'};
-    my $imgboottarget = $linuximghashref->{'boottarget'};
+    my $imgboottarget  = $linuximghashref->{'boottarget'};
 
-    my $httpport="80";
-     my @hports=xCAT::TableUtils->get_site_attribute("httpport");
-     if ($hports[0]){
-         $httpport=$hports[0];
-     }
+    my $httpport = "80";
+    my @hports   = xCAT::TableUtils->get_site_attribute("httpport");
+    if ($hports[0]) {
+        $httpport = $hports[0];
+    }
 
     # get kernel and initrd from boottarget table
     my $bttab;
@@ -151,7 +153,7 @@ sub setstate {
             #Implement the kcmdline append here for
             #most generic, least code duplication
 
-        ###hack start
+            ###hack start
             # This is my comment. There are many others like it, but this one is mine.
             # My comment is my best friend. It is my life. I must master it as I must master my life.
             # Without me, my comment is useless. Without my comment, I am useless.
@@ -201,7 +203,7 @@ sub setstate {
 
             #$kern->{kcmdline} .= " ".$kern->{addkcmdline};
             $kern->{kcmdline} .= " " . $kcmdlinehack;
-        ###hack end
+            ###hack end
 
         }
     }
@@ -271,7 +273,7 @@ sub setstate {
             my $kernel;
             ($kernel, $hypervisor) = split /!/, $kern->{kernel};
             print $pcfg " set 209:string xcat/xnba/nodes/$node.pxelinux\n";
-            print $pcfg " set 210:string http://" . '${next-server}'. ':' . $httpport . "/tftpboot/\n";
+            print $pcfg " set 210:string http://" . '${next-server}' . ':' . $httpport . "/tftpboot/\n";
             print $pcfg " imgfetch -n pxelinux.0 http://" . '${next-server}' . ':' . $httpport . "/tftpboot/xcat/pxelinux.0\n";
             print $pcfg " imgload pxelinux.0\n";
             print $pcfg " imgexec pxelinux.0\n";
@@ -311,11 +313,11 @@ sub setstate {
                         $kern->{kcmdline} =~ s/xcat\/netboot/\/tftpboot\/xcat\/netboot/;
                     }
                     print $ucfg "#!gpxe\n";
-                    print $ucfg 'chain http://${next-server}:'.$httpport.'/tftpboot/xcat/esxboot-x64.efi ' . $kern->{kcmdline} . "\n";
+                    print $ucfg 'chain http://${next-server}:' . $httpport . '/tftpboot/xcat/esxboot-x64.efi ' . $kern->{kcmdline} . "\n";
                     close($ucfg);
                 }
             } else { #other than comboot/multiboot, we won't have need of pxelinux
-                print $pcfg "imgfetch -n kernel http://" . '${next-server}:' . $httpport.'/tftpboot/' . $kern->{kernel} . "\n";
+                print $pcfg "imgfetch -n kernel http://" . '${next-server}:' . $httpport . '/tftpboot/' . $kern->{kernel} . "\n";
                 print $pcfg "imgload kernel\n";
                 if ($kern->{kcmdline}) {
                     print $pcfg "imgargs kernel " . $kern->{kcmdline} . ' BOOTIF=01-${netX/machyp}' . "\n";
@@ -331,28 +333,28 @@ sub setstate {
                     open($ucfg, '>', $tftpdir . "/xcat/xnba/nodes/" . $node . ".uefi");
                     if (has_efistub($kern->{kernel}, $node)) {
                         print $ucfg "#!gpxe\n";
-                        print $ucfg "imgfetch -n kernel http://" . '${next-server}:' . $httpport.'/tftpboot/' . $kern->{kernel} . "\n";
+                        print $ucfg "imgfetch -n kernel http://" . '${next-server}:' . $httpport . '/tftpboot/' . $kern->{kernel} . "\n";
                         print $ucfg "imgload kernel\n";
                         if ($kern->{kcmdline}) {
-                             print $ucfg "imgargs kernel " . $kern->{kcmdline} . ' BOOTIF=01-${netX/mac:hexhyp} initrd=initrd' . "\n";
+                            print $ucfg "imgargs kernel " . $kern->{kcmdline} . ' BOOTIF=01-${netX/mac:hexhyp} initrd=initrd' . "\n";
                         } else {
-                             print $ucfg "imgargs kernel BOOTIF=" . '${netX/mac} initrd=initrd' . "\n";
+                            print $ucfg "imgargs kernel BOOTIF=" . '${netX/mac} initrd=initrd' . "\n";
                         }
                         print $ucfg "imgfetch -n initrd http://" . '${next-server}:' . "$httpport/tftpboot/" . $kern->{initrd} . "\n";
                         print $ucfg "imgexec kernel\n";
                         close($ucfg);
-                   } else {
-                       print $ucfg "#!gpxe\n";
-                       print $ucfg 'chain http://${next-server}:'.$httpport.'/tftpboot/xcat/elilo-x64.efi -C /tftpboot/xcat/xnba/nodes/' . $node . ".elilo\n";
-                       close($ucfg);
-                       open($ucfg, '>', $tftpdir . "/xcat/xnba/nodes/" . $node . ".elilo");
-                       print $ucfg 'default="xCAT"' . "\n";
-                       print $ucfg "delay=0\n\n";
-                       print $ucfg "image=/tftpboot/" . $kern->{kernel} . "\n";
-                       print $ucfg "   label=\"xCAT\"\n";
-                       print $ucfg "   initrd=/tftpboot/" . $kern->{initrd} . "\n";
-                       print $ucfg "   append=\"" . $elilokcmdline . ' BOOTIF=%B"' . "\n";
-                   }
+                    } else {
+                        print $ucfg "#!gpxe\n";
+                        print $ucfg 'chain http://${next-server}:' . $httpport . '/tftpboot/xcat/elilo-x64.efi -C /tftpboot/xcat/xnba/nodes/' . $node . ".elilo\n";
+                        close($ucfg);
+                        open($ucfg, '>', $tftpdir . "/xcat/xnba/nodes/" . $node . ".elilo");
+                        print $ucfg 'default="xCAT"' . "\n";
+                        print $ucfg "delay=0\n\n";
+                        print $ucfg "image=/tftpboot/" . $kern->{kernel} . "\n";
+                        print $ucfg "   label=\"xCAT\"\n";
+                        print $ucfg "   initrd=/tftpboot/" . $kern->{initrd} . "\n";
+                        print $ucfg "   append=\"" . $elilokcmdline . ' BOOTIF=%B"' . "\n";
+                    }
                 }
             }
         }
@@ -368,6 +370,7 @@ sub setstate {
 
 my $errored = 0;
 my %failurenodes;
+
 sub pass_along {
     my $resp = shift;
     return unless ($resp);
@@ -387,20 +390,20 @@ sub pass_along {
     foreach (@{ $resp->{node} }) {
         if ($_->{_addkcmdlinehandled}) {
             $::XNBA_addkcmdlinehandled->{ $_->{name}->[0] } = 1;
-            return;    #Don't send back to client this internal hint
+            return;            #Don't send back to client this internal hint
         }
 
         if ($_->{error} or $_->{errorcode}) {
-            $failure = 1 unless ($failure); # keep its value if $failure is 2
+            $failure = 1 unless ($failure);    # keep its value if $failure is 2
             if ($_->{name}) {
-                $failurenodes{$_->{name}->[0]} = 2;
+                $failurenodes{ $_->{name}->[0] } = 2;
             }
         }
     }
     $::XNBA_callback->($resp);
 
     # Set the module scope error flag.
-    if ( $failure ) {
+    if ($failure) {
         $errored = $failure;
     }
 }
@@ -431,7 +434,7 @@ sub preprocess_request {
     my $VERBOSE;
     if (!GetOptions('h|?|help' => \$HELP,
             'v|version' => \$VERSION,
-            'a'           =>\$ALLFLAG,
+            'a'         => \$ALLFLAG,
             'V'         => \$VERBOSE    #>>>>>>>used for trace log>>>>>>>
         )) {
         if ($usage{$command}) {
@@ -465,14 +468,14 @@ sub preprocess_request {
         return;
     }
 
-    my $ret=xCAT::Usage->validateArgs($command,@ARGV);
-    if ($ret->[0]!=0) {
-         if ($usage{$command}) {
-             my %rsp;
-             $rsp{error}->[0] = $ret->[1];
-             $rsp{data}->[1] = $usage{$command};
-             $rsp{errorcode}->[0] = $ret->[0];
-             $callback1->(\%rsp);
+    my $ret = xCAT::Usage->validateArgs($command, @ARGV);
+    if ($ret->[0] != 0) {
+        if ($usage{$command}) {
+            my %rsp;
+            $rsp{error}->[0]     = $ret->[1];
+            $rsp{data}->[1]      = $usage{$command};
+            $rsp{errorcode}->[0] = $ret->[0];
+            $callback1->(\%rsp);
         }
         return;
     }
@@ -507,7 +510,7 @@ sub preprocess_request {
                 my %rsp;
                 $rsp{errorcode}->[0] = 1;
                 $rsp{error}->[0] =
-        "Nodeset was run with a noderange containing both service nodes and compute nodes. This is not valid. You must submit with either compute nodes in the noderange or service nodes. \n";
+"Nodeset was run with a noderange containing both service nodes and compute nodes. This is not valid. You must submit with either compute nodes in the noderange or service nodes. \n";
                 $callback1->(\%rsp);
                 return;
             }
@@ -518,13 +521,13 @@ sub preprocess_request {
 
             # 1, Non-hierarchy, run on locally with parallel
             my @sn = xCAT::ServiceNodeUtils->getSNList();
-            unless ( @sn > 0 ) {
+            unless (@sn > 0) {
                 return if (xCAT::Utils->isServiceNode()); # in case the wrong configuration
                 return xCAT::Scope->get_parallel_scope($req);
             }
 
             # To check site table to see if disjoint mode
-            my $mynodeonly  = 0;
+            my $mynodeonly = 0;
             my @entries = xCAT::TableUtils->get_site_attribute("disjointdhcps");
             my $t_entry = $entries[0];
             if (defined($t_entry)) {
@@ -536,6 +539,7 @@ sub preprocess_request {
             # 2, Non-disjoint mode, broadcast to all service nodes,
             #    but for SN init time (AAsn.pm), only run locally without parallel.
             if ($mynodeonly == 0 || $ALLFLAG) {
+
                 # broadcast to all service nodes, but for SN init time (AAsn.pm), only run locally.
                 if ($inittime) {
                     $req->{_xcatpreprocessed}->[0] = 1;
@@ -549,7 +553,7 @@ sub preprocess_request {
             #    but for SN init time (AAsn.pm), only run locally without parallel.
             my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@CN, "xcat", "MN");
             if ($inittime) {
-                foreach my $sn ( keys %$sn_hash ) {
+                foreach my $sn (keys %$sn_hash) {
                     unless (xCAT::NetworkUtils->thishostisnot($sn)) {
                         $req->{node} = $sn_hash->{$sn};
                         $req->{_xcatpreprocessed}->[0] = 1;
@@ -558,7 +562,7 @@ sub preprocess_request {
                 }
             }
             my @dhcpsvrs = ();
-            my $ntab = xCAT::Table->new('networks');
+            my $ntab     = xCAT::Table->new('networks');
             if ($ntab) {
                 foreach (@{ $ntab->getAllEntries() }) {
                     next unless ($_->{dynamicrange});
@@ -568,9 +572,11 @@ sub preprocess_request {
             return xCAT::Scope->get_broadcast_disjoint_scope_with_parallel($req, $sn_hash, \@dhcpsvrs);
         }
     } elsif ($inittime) {
+
         # Shared TFTP, no need to run on service node booting (AAsn.pm)
         return;
     }
+
     # Do not dispatch to service nodes if non-sharedtftp or the node range contains only SNs.
     return xCAT::Scope->get_parallel_scope($req);
 }
@@ -632,13 +638,14 @@ sub process_request {
     }
 
     my @nodes = ();
+
     # Filter those nodes which have bad DNS: not resolvable or inconsistent IP
     my %preparednodes = ();
     foreach (@rnodes) {
-        my $ipret = xCAT::NetworkUtils->checkNodeIPaddress($_);
+        my $ipret    = xCAT::NetworkUtils->checkNodeIPaddress($_);
         my $errormsg = $ipret->{'error'};
-        my $nodeip = $ipret->{'ip'};
-        if ($errormsg) {# Add the node to failure set
+        my $nodeip   = $ipret->{'ip'};
+        if ($errormsg) {    # Add the node to failure set
             xCAT::MsgUtils->trace(0, "E", "xnba: Defined IP address of $_ is $nodeip. $errormsg");
             unless ($nodeip) {
                 $failurenodes{$_} = 1;
@@ -651,8 +658,9 @@ sub process_request {
 
     #if not shared tftpdir, then filter, otherwise, set up everything
     if ($::XNBA_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
-        # Filter those nodes not in the same subnet, and print error message in log file.
+         # Filter those nodes not in the same subnet, and print error message in log file.
         foreach (keys %preparednodes) {
+
             # Only handle its boot configuration files if the node in same subnet
             if (xCAT::NetworkUtils->nodeonmynet($preparednodes{$_})) {
                 push @nodes, $_;
@@ -666,9 +674,9 @@ sub process_request {
     }
 
     my $str_node = '';
-    my $total = $#nodes;
+    my $total    = $#nodes;
     if ($total > 20) {
-        $str_node = join(" ", @nodes[0..19]) . " ...";
+        $str_node = join(" ", @nodes[ 0 .. 19 ]) . " ...";
     } else {
         $str_node = join(" ", @nodes);
     }
@@ -680,8 +688,10 @@ sub process_request {
 
         # If non-shared tftproot and non disjoint mode, need to figure out if no nodes here is a normal case.
         if ($::XNBA_request->{'_disparatetftp'}->[0] && $::XNBA_request->{'_disjointmode'}->[0] != 1) {
+
             # Find out which nodes are really mine only when not sharedtftp and not disjoint mode.
-            my %iphash   = ();
+            my %iphash = ();
+
             # flag the IPs or names in iphash
             foreach (@hostinfo) { $iphash{$_} = 1; }
 
@@ -696,14 +706,16 @@ sub process_request {
                 }
             }
             if ($req2manage == 0) {
+
                 #No nodes are required to be handled, quit without error.
                 return;
             }
         }
+
         # Okay, now report error as no nodes are handled.
         my $rsp;
         $rsp->{errorcode}->[0] = 1;
-        $rsp->{error}->[0]     = "Failed to generate xnba configurations for some node(s) on $::myxcatname. Check xCAT log file for more details.";
+        $rsp->{error}->[0] = "Failed to generate xnba configurations for some node(s) on $::myxcatname. Check xCAT log file for more details.";
         $::XNBA_callback->($rsp);
         return;
     }
@@ -755,11 +767,11 @@ sub process_request {
         $errored = 0;
         xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: issue setdestiny request");
         $sub_req->({ command => ['setdestiny'],
-                node     => \@nodes,
-                inittime => [$inittime],
-                arg      => \@args ,
-                bootparams => \%bphash},
-                \&pass_along);
+                node       => \@nodes,
+                inittime   => [$inittime],
+                arg        => \@args,
+                bootparams => \%bphash },
+            \&pass_along);
         if ($errored) {
             xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: Failed in processing setdestiny.");
             return if ($errored > 1);
@@ -767,6 +779,7 @@ sub process_request {
     }
 
     xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: starting to handle configuration...");
+
     #Time to actually configure the nodes, first extract database data with the scalable calls
     my $chaintab = xCAT::Table->new('chain');
     my $noderestab = xCAT::Table->new('noderes'); #in order to detect per-node tftp directories
@@ -774,7 +787,7 @@ sub process_request {
     my %chainhash = %{ $chaintab->getNodesAttribs(\@nodes, [qw(currstate)]) };
     my %iscsihash;
     my $iscsitab = xCAT::Table->new('iscsi');
-    my %machash = ();
+    my %machash  = ();
 
     if ($iscsitab) {
         %iscsihash = %{ $iscsitab->getNodesAttribs(\@nodes, [qw(server target)]) };
@@ -794,7 +807,7 @@ sub process_request {
 
         my %response;
         $response{node}->[0]->{name}->[0] = $_;
-        if ($args[0]) { # Send it on to the destiny plugin, then setstate
+        if ($args[0]) {    # Send it on to the destiny plugin, then setstate
             my $rc;
             my $errstr;
             my $ent          = $typehash->{$_}->[0];
@@ -806,8 +819,8 @@ sub process_request {
             ($rc, $errstr) = setstate($_, \%bphash, \%chainhash, \%machash, \%iscsihash, $tftpdir, $linuximghash);
             if ($rc) {
                 $response{node}->[0]->{errorcode}->[0] = $rc;
-                $response{node}->[0]->{error}->[0]    = $errstr;
-                $failurenodes{$_} = 1;
+                $response{node}->[0]->{error}->[0]     = $errstr;
+                $failurenodes{$_}                      = 1;
                 $::XNBA_callback->(\%response);
             } else {
                 push @normalnodeset, $_;
@@ -819,11 +832,12 @@ sub process_request {
     #dhcp stuff -- inittime is set when xcatd on sn is started
     unless ($inittime) {
         my $do_dhcpsetup = 1;
-        my @entries = xCAT::TableUtils->get_site_attribute("dhcpsetup");
-        my $t_entry = $entries[0];
+        my @entries      = xCAT::TableUtils->get_site_attribute("dhcpsetup");
+        my $t_entry      = $entries[0];
         if (defined($t_entry)) {
             if ($t_entry =~ /0|n|N/) { $do_dhcpsetup = 0; }
         }
+
         # For offline operation, remove the dhcp entries whatever dhcpset is disabled in site ( existing code logic, just keep it as is)
         if ($do_dhcpsetup || $args[0] eq 'offline') {
             my @parameter;
@@ -832,8 +846,8 @@ sub process_request {
             xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: issue makedhcp request");
 
             $sub_req->({ command => ['makedhcp'],
-                         arg => \@parameter,
-                         node => \@normalnodeset }, $::XNBA_callback);
+                    arg => \@parameter,
+                    node => \@normalnodeset }, $::XNBA_callback);
         } else {
             xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: dhcpsetup=$do_dhcpsetup");
         }
@@ -862,7 +876,7 @@ sub process_request {
     if (%failurenodes) {
         my $rsp;
         $rsp->{errorcode}->[0] = 1;
-        $rsp->{error}->[0]     = "Failed to generate xnba configurations for some node(s) on $::myxcatname. Check xCAT log file for more details.";
+        $rsp->{error}->[0] = "Failed to generate xnba configurations for some node(s) on $::myxcatname. Check xCAT log file for more details.";
         $::XNBA_callback->($rsp);
         return;
     }

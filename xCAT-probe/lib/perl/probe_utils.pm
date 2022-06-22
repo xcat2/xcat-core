@@ -40,9 +40,9 @@ use List::Util qw/sum/;
 sub send_msg {
     my $output = shift;
     $output = shift if (($output) && ($output =~ /probe_utils/));
-    my $tag = shift;
-    my $msg = shift;
-    my $flag="";
+    my $tag  = shift;
+    my $msg  = shift;
+    my $flag = "";
 
     if ($tag eq "d") {
         $flag = "[debug]  :";
@@ -58,7 +58,7 @@ sub send_msg {
 
     if ($output eq "stdout") {
         print "$flag$msg\n";
-    } elsif($output) {
+    } elsif ($output) {
         syswrite $output, "$flag$msg\n";
     } else {
         if (!open(LOGFILE, ">> $output")) {
@@ -256,7 +256,7 @@ sub is_selinux_enforcing {
     if (-e "/usr/sbin/getenforce") {
         my $enforce_mode = `/usr/sbin/getenforce`;
         chomp $enforce_mode;
-	if ($enforce_mode eq "Enforcing") {
+        if ($enforce_mode eq "Enforcing") {
             $retval = 1;
         }
     }
@@ -283,9 +283,10 @@ sub is_firewall_open {
     my $output = `iptables -nvL -t filter 2>&1`;
 
     if ($output =~ /DROP|RETURN/) {
+
         # If output contains DROP or RETURN rules, assume firewall
         # is blocking some traffic
-        $rst=1;
+        $rst = 1;
     }
     return $rst;
 }
@@ -307,8 +308,8 @@ sub is_firewall_open {
 sub is_http_ready {
     my $mnip = shift;
     $mnip = shift if (($mnip) && ($mnip =~ /probe_utils/));
-    my $httpport = shift;
-    my $installdir = shift;
+    my $httpport     = shift;
+    my $installdir   = shift;
     my $errormsg_ref = shift;
 
     my $http_status = `netstat -tnlp | grep -e "httpd" -e "apache" 2>&1`;
@@ -323,32 +324,32 @@ sub is_http_ready {
 
     my $http      = "http://$mnip:$httpport/$installdir/postscripts/$test_file";
     my %httperror = (
-    "400" => "The request $http could not be understood by the server due to malformed syntax",
-    "401" => "The request requires user authentication.",
-    "403" => "The server understood the request, but is refusing to fulfill it.",
-    "404" => "The server has not found anything matching the test Request-URI $http.",
-    "405" => "The method specified in the Request-Line $http is not allowe.",
-    "406" => "The method specified in the Request-Line $http is not acceptable.",
-    "407" => "The wget client must first authenticate itself with the proxy.",
-    "408" => "The client did not produce a request within the time that the server was prepared to wait. The client MAY repeat the request without modifications at any later time.",
-    "409" => "The request could not be completed due to a conflict with the current state of the resource.",
-    "410" => "The requested resource $http is no longer available at the server and no forwarding address is known.",
-    "411" => "The server refuses to accept the request without a defined Content- Length.",
-    "412" => "The precondition given in one or more of the request-header fields evaluated to false when it was tested on the server.",
-    "413" => "The server is refusing to process a request because the request entity is larger than the server is willing or able to process.",
-    "414" => "The server is refusing to service the request because the Request-URI is longer than the server is willing to interpret.",
-    "415" => "The server is refusing to service the request because the entity of the request is in a format not supported by the requested resource for the requested method.",
-    "416" => "Requested Range Not Satisfiable",
-    "417" => "The expectation given in an Expect request-header field could not be met by this server",
-    "500" => "The server encountered an unexpected condition which prevented it from fulfilling the request.",
-    "501" => "The server does not recognize the request method and is not capable of supporting it for any resource.",
-    "502" => "The server, while acting as a gateway or proxy, received an invalid response from the upstream server it accessed in attempting to fulfill the reques.",
-    "503" => "The server is currently unable to handle the request due to a temporary overloading or maintenance of the server.",
-    "504" => "The server, while acting as a gateway or proxy, did not receive a timely response from the upstream server specified by the URI or some other auxiliary server it needed to access in attempting to complete the request.",
-    "505" => "The server does not support, or refuses to support, the HTTP protocol version that was used in the request message.");
+"400" => "The request $http could not be understood by the server due to malformed syntax",
+        "401" => "The request requires user authentication.",
+"403" => "The server understood the request, but is refusing to fulfill it.",
+"404" => "The server has not found anything matching the test Request-URI $http.",
+"405" => "The method specified in the Request-Line $http is not allowe.",
+"406" => "The method specified in the Request-Line $http is not acceptable.",
+"407" => "The wget client must first authenticate itself with the proxy.",
+"408" => "The client did not produce a request within the time that the server was prepared to wait. The client MAY repeat the request without modifications at any later time.",
+"409" => "The request could not be completed due to a conflict with the current state of the resource.",
+"410" => "The requested resource $http is no longer available at the server and no forwarding address is known.",
+"411" => "The server refuses to accept the request without a defined Content- Length.",
+"412" => "The precondition given in one or more of the request-header fields evaluated to false when it was tested on the server.",
+"413" => "The server is refusing to process a request because the request entity is larger than the server is willing or able to process.",
+"414" => "The server is refusing to service the request because the Request-URI is longer than the server is willing to interpret.",
+"415" => "The server is refusing to service the request because the entity of the request is in a format not supported by the requested resource for the requested method.",
+        "416" => "Requested Range Not Satisfiable",
+"417" => "The expectation given in an Expect request-header field could not be met by this server",
+"500" => "The server encountered an unexpected condition which prevented it from fulfilling the request.",
+"501" => "The server does not recognize the request method and is not capable of supporting it for any resource.",
+"502" => "The server, while acting as a gateway or proxy, received an invalid response from the upstream server it accessed in attempting to fulfill the reques.",
+"503" => "The server is currently unable to handle the request due to a temporary overloading or maintenance of the server.",
+"504" => "The server, while acting as a gateway or proxy, did not receive a timely response from the upstream server specified by the URI or some other auxiliary server it needed to access in attempting to complete the request.",
+"505" => "The server does not support, or refuses to support, the HTTP protocol version that was used in the request message.");
 
     my $tmpdir = "/tmp/xcatprobe$$/";
-    if(! mkpath("$tmpdir")){
+    if (!mkpath("$tmpdir")) {
         $$errormsg_ref = "Prepare test environment error: $!";
         return 0;
     }
@@ -358,7 +359,7 @@ sub is_http_ready {
 
     if ((!$rst) && (-e "$tmpdir/$test_file")) {
         unlink("$tmpdir/$test_file");
-        rmdir ("$tmpdir");
+        rmdir("$tmpdir");
         return 1;
     } elsif ($rst == 4) {
         $$errormsg_ref = "Network failure, the server refuse connection. Please check if httpd service is running first.";
@@ -370,15 +371,16 @@ sub is_http_ready {
         my $returncode = $outputtmp[2];
         chomp($returncode);
         $returncode =~ s/.+(\d\d\d).+/$1/g;
-        if(exists($httperror{$returncode})){
+        if (exists($httperror{$returncode})) {
             $$errormsg_ref = $httperror{$returncode};
-        }else{
+        } else {
+
             #should not hit this block normally
             $$errormsg_ref = "Unknown return code of wget <$returncode>.";
         }
     }
     unlink("$tmpdir/$test_file");
-    if(! rmdir ("$tmpdir")){
+    if (!rmdir("$tmpdir")) {
         $$errormsg_ref .= " Clean test environment error(rmdir $tmpdir): $!";
     }
     return 0;
@@ -400,7 +402,7 @@ sub is_http_ready {
 sub is_tftp_ready {
     my $mnip = shift;
     $mnip = shift if (($mnip) && ($mnip =~ /probe_utils/));
-    my $tftpdir = shift;
+    my $tftpdir  = shift;
     my $test_dir = $tftpdir . "/tftptest/";
     system("mkdir -p $test_dir");
 
@@ -450,10 +452,10 @@ sub is_dns_ready {
         return 0;
     } else {
         chomp($output);
-        my $tmp = grep {$_ =~ "Server:[\t\s]*$serverip"} split(/\n/, $output);
+        my $tmp = grep { $_ =~ "Server:[\t\s]*$serverip" } split(/\n/, $output);
         return 0 if ($tmp == 0);
 
-        $tmp = grep {$_ =~ "name = $hostname\.$domain"} split(/\n/, $output);
+        $tmp = grep { $_ =~ "name = $hostname\.$domain" } split(/\n/, $output);
         return 0 if ($tmp == 0);
         return 1;
     }
@@ -503,20 +505,20 @@ sub get_network {
 =cut
 
 #------------------------------------------
-sub is_dir_has_enough_space{
-    my $targetdir=shift;
+sub is_dir_has_enough_space {
+    my $targetdir = shift;
     $targetdir = shift if (($targetdir) && ($targetdir =~ /probe_utils/));
     my $expect_free_space = shift;
-    my @output = `df -k`;
+    my @output            = `df -k`;
 
-    foreach my $line (@output){
+    foreach my $line (@output) {
         chomp($line);
         my @line_array = split(/\s+/, $line);
-        if($line_array[5] =~ /^$targetdir$/){
-            my $left_space = $line_array[3]/1048576;
-            if($left_space >= $expect_free_space){
+        if ($line_array[5] =~ /^$targetdir$/) {
+            my $left_space = $line_array[3] / 1048576;
+            if ($left_space >= $expect_free_space) {
                 return 1;
-            }else{
+            } else {
                 return 0;
             }
         }
@@ -538,7 +540,7 @@ sub is_dir_has_enough_space{
 #------------------------------------------
 sub parse_node_range {
     my $noderange = shift;
-    $noderange= shift if (($noderange) && ($noderange =~ /probe_utils/));
+    $noderange = shift if (($noderange) && ($noderange =~ /probe_utils/));
     my @nodeslist = `nodels $noderange`;
     chomp @nodeslist;
     return @nodeslist;
@@ -593,7 +595,7 @@ sub is_chrony_ready {
 =cut
 
 #------------------------------------------
-sub is_ntp_ready{
+sub is_ntp_ready {
     my $errormsg_ref = shift;
     $errormsg_ref = shift if (($errormsg_ref) && ($errormsg_ref =~ /probe_utils/));
 
@@ -601,19 +603,19 @@ sub is_ntp_ready{
     $| = 1;
 
     #wait 5 seconds for ntpd synchronize at most
-    for (my $i = 0; $i < 5; ++$i) {
-        if(!open(NTP, $cmd." 2>&1 |")){
+    for (my $i = 0 ; $i < 5 ; ++$i) {
+        if (!open(NTP, $cmd . " 2>&1 |")) {
             $$errormsg_ref = "Can't start ntpq: $!";
             return 0;
-        }else{
-            while(<NTP>) {
+        } else {
+            while (<NTP>) {
                 chomp;
                 if (/^associd=0 status=(\S{4}) (\S+),/) {
-                    my $leap=$2;
+                    my $leap = $2;
 
                     last if ($leap =~ /(sync|leap)_alarm/);
 
-                    if ($leap =~ /leap_(none|((add|del)_sec))/){
+                    if ($leap =~ /leap_(none|((add|del)_sec))/) {
                         close(NTP);
                         return 1;
                     }
@@ -622,11 +624,12 @@ sub is_ntp_ready{
                     $$errormsg_ref = "Unexpected ntpq output ('leap' status <$leap>), please contact xCAT team";
                     close(NTP);
                     return 0;
-                }elsif(/Connection refused/) {
+                } elsif (/Connection refused/) {
                     $$errormsg_ref = "ntpd service is not running! Please setup ntp in current node";
                     close(NTP);
                     return 0;
-                }else{
+                } else {
+
                     #should not hit this block normally
                     $$errormsg_ref = "Unexpected ntpq output <$_>, please contact xCAT team";
                     close(NTP);
@@ -656,10 +659,10 @@ sub is_ntp_ready{
 #------------------------------------------
 sub is_rsyslog_ready {
     my $errormsg_ref = shift;
-    $errormsg_ref= shift if (($errormsg_ref) && ($errormsg_ref =~ /probe_utils/));
+    $errormsg_ref = shift if (($errormsg_ref) && ($errormsg_ref =~ /probe_utils/));
 
     my $is_active = 1;
-    my $tmp = `pidof systemd`;
+    my $tmp       = `pidof systemd`;
     chomp($tmp);
     if ($tmp) {
         `systemctl is-active --quiet rsyslog 2>&1`;
@@ -712,7 +715,7 @@ sub convert_second_to_time {
         }
 
         if ($tmp_second < 10) {
-            push @time,  "0$tmp_second";
+            push @time, "0$tmp_second";
         } else {
             push @time, "$tmp_second";
         }
@@ -741,17 +744,17 @@ sub convert_second_to_time {
 
 #------------------------------------------
 sub list_files_to_file {
-    my $src_dir        = shift;
-    $src_dir           = shift if (($src_dir) && ($src_dir =~ /probe_utils/));
-    my $target_file    = shift;
-    my $errormsg_ref   = shift;
+    my $src_dir = shift;
+    $src_dir = shift if (($src_dir) && ($src_dir =~ /probe_utils/));
+    my $target_file  = shift;
+    my $errormsg_ref = shift;
 
     my @files = ();
     get_files_recursive("$src_dir", \@files);
     my $all_file = join("\n", @files);
 
-    if (!open f,"> $target_file") {
-        $$errormsg_ref = "Can not open file $target_file to save files list"; 
+    if (!open f, "> $target_file") {
+        $$errormsg_ref = "Can not open file $target_file to save files list";
         return 1;
     }
     print f $all_file;
@@ -849,7 +852,7 @@ sub print_table {
 
     my @length_array;
     foreach my $row (@$content) {
-        for (my $i = 0; $i < @{$row}; $i++) {
+        for (my $i = 0 ; $i < @{$row} ; $i++) {
             my $ele_length = length(${$row}[$i]);
             $length_array[$i] = $ele_length if ($length_array[$i] < $ele_length);
         }
@@ -861,7 +864,7 @@ sub print_table {
     my $whole_length;
     foreach my $row (@$content) {
         @row_new = ();
-        for (my $i = 0; $i < @{$row}; $i++) {
+        for (my $i = 0 ; $i < @{$row} ; $i++) {
             push @row_new, ${$row}[$i] . " " x ($length_array[$i] - length(${$row}[$i]));
         }
         $row_line = "| " . join(" | ", @row_new) . " |";
@@ -875,7 +878,7 @@ sub print_table {
         if ($whole_length - 1 <= $title_length) {
             $title_new = $title;
         } else {
-            $title_new = " " x (($whole_length - 2 - $title_length)/2) . "$title";
+            $title_new = " " x (($whole_length - 2 - $title_length) / 2) . "$title";
             $title_new .= " " x ($whole_length - 2 - length($title_new));
             $title_new = "|" . $title_new . "|";
         }
@@ -883,7 +886,7 @@ sub print_table {
 
     my $format_line = "-" x $whole_length;
     print $format_line . "\n" if ($has_title);
-    print $title_new . "\n" if ($has_title);
+    print $title_new . "\n"   if ($has_title);
     print $format_line . "\n";
     foreach (@content_new) {
         print $_ . "\n";

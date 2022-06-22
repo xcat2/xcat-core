@@ -760,7 +760,7 @@ sub delete_route {
             deletePersistentRoute_RH($callback, $net, $mask, $gw_ip, $gw, $ifname);
         }
     }
-    else {                                     #AIX
+    else {                                           #AIX
             # chdev -l inet0 -a delroute=net,-hopcount,0,,0,192.168.1.1
          # chdev -l inet0 -a delroute=net,-hopcount,255.255.255.128,,,,,192.168.3.128,192.168.2.1
         my $rsp = {};

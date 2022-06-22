@@ -10,18 +10,18 @@ use File::Basename;
 use File::Path;
 use Cwd qw(realpath);
 
-sub varsubinline{
-    my $line=shift;
-    my $refvardict=shift;
+sub varsubinline {
+    my $line       = shift;
+    my $refvardict = shift;
 
-    my @varsinline= $line =~ /\$\{?(\w+)\}?/g;
+    my @varsinline = $line =~ /\$\{?(\w+)\}?/g;
     my @unresolvedvars;
-    foreach my $var(@varsinline){
-        if(exists $refvardict->{$var}){
-            $line=~ s/\$\{$var\}/$refvardict->{$var}/g;
-            $line=~ s/\$$var/$refvardict->{$var}/g;
-        }else{
-            push @unresolvedvars,$var;
+    foreach my $var (@varsinline) {
+        if (exists $refvardict->{$var}) {
+            $line =~ s/\$\{$var\}/$refvardict->{$var}/g;
+            $line =~ s/\$$var/$refvardict->{$var}/g;
+        } else {
+            push @unresolvedvars, $var;
         }
     }
 
@@ -73,7 +73,7 @@ sub include_file
     my $idir = shift;
     my @text = ();
 
-    $file=varsubinline($file,\%ENV);
+    $file = varsubinline($file, \%ENV);
     unless ($file =~ /^\//) {
         $file = $idir . "/" . $file;
     }
@@ -137,6 +137,7 @@ sub get_package_names {
                         $pkgtext =~ s/#INCLUDE:([^#^\n]+)#/include_file($1,$idir)/eg;
                     }
                 }
+
                 #print "\n\npkgtext=$pkgtext\n\n";
                 my @tmp = split(',', $pkgtext);
                 my $pass = 1;

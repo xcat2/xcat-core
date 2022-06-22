@@ -2718,7 +2718,7 @@ sub web_getrepospace() {
 }
 
 sub web_verifynode() {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
     my $cmdOpts = '';
     my $out;
 
@@ -2727,8 +2727,8 @@ sub web_verifynode() {
     # we know is much larger than the expected number of arguments.  This prevents
     # the loop from going on forever should there be an error on the javascript side
     # an the 'end' was not passed.
-    for ( my $i = 0 ; $i < 500 ; $i++ ) {
-        if ( $request->{arg}->[$i] ne 'end' ) {
+    for (my $i = 0 ; $i < 500 ; $i++) {
+        if ($request->{arg}->[$i] ne 'end') {
             $cmdOpts = "$cmdOpts $request->{arg}->[$i]";
         } else {
             last;
@@ -2737,7 +2737,7 @@ sub web_verifynode() {
 
     $out = `/opt/xcat/bin/verifynode $cmdOpts`;
 
-    $callback->( { info => $out });
+    $callback->({ info => $out });
 }
 
 1;

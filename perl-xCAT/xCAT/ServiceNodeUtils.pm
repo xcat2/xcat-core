@@ -14,6 +14,7 @@ if ($^O =~ /^aix/i) {
 }
 use lib "$::XCATROOT/lib/perl";
 use strict;
+
 #-----------------------------------------------------------------------------
 
 =head3 readSNInfo
@@ -358,7 +359,7 @@ sub getSNList
     my ($class, $service, $options) = @_;
     my @servicenodes;
     my $servicenodetab = xCAT::Table->new('servicenode');
-    my $nodetab = xCAT::Table->new('nodelist');
+    my $nodetab        = xCAT::Table->new('nodelist');
     unless ($servicenodetab)    # no  servicenode table
     {
         xCAT::MsgUtils->message('I', "Unable to open servicenode table.\n");
@@ -367,19 +368,19 @@ sub getSNList
     }
 
 
-    if($service){
-        @servicenodes = $servicenodetab->getAllAttribsWhere(["$service==1"],'node');
-    }else{
+    if ($service) {
+        @servicenodes = $servicenodetab->getAllAttribsWhere(["$service==1"], 'node');
+    } else {
         @servicenodes = $servicenodetab->getAllAttribs(('node'));
     }
 
-    @servicenodes=xCAT::NodeRange::noderange(join(',',map {$_->{node}} @servicenodes));
-    if($options eq "ALL"){
+    @servicenodes = xCAT::NodeRange::noderange(join(',', map { $_->{node} } @servicenodes));
+    if ($options eq "ALL") {
         return @servicenodes;
     }
 
-    @servicenodes = $nodetab->getAllAttribsWhere("node in ("."\'".join("\',\'", @servicenodes)."\'".") and groups not like '%__mgmtnode%'",'node');
-    return map {$_->{node}} @servicenodes;
+    @servicenodes = $nodetab->getAllAttribsWhere("node in (" . "\'" . join("\',\'", @servicenodes) . "\'" . ") and groups not like '%__mgmtnode%'", 'node');
+    return map { $_->{node} } @servicenodes;
 }
 
 sub getSNList_orig
@@ -509,8 +510,8 @@ sub get_ServiceNode
 
     # get site.master this will be the default
     my $master = xCAT::TableUtils->get_site_Master();
-    unless($master){
-        xCAT::MsgUtils->message('SW',"site.master is not set!\n");
+    unless ($master) {
+        xCAT::MsgUtils->message('SW', "site.master is not set!\n");
     }
 
     $noderestab = xCAT::Table->new('noderes');
@@ -551,7 +552,7 @@ sub get_ServiceNode
                     my $key = $rec->{$snattribute};
                     push @{ $snhash{$key} }, $node;
                 }
-                elsif($master)                                  # use site.master
+                elsif ($master)                       # use site.master
                 {
                     push @{ $snhash{$master} }, $node;
                 }
@@ -598,7 +599,7 @@ sub get_ServiceNode
                             my $key = $rec->{$snattribute};
                             push @{ $snhash{$key} }, $node;
                         }
-                        elsif($master)
+                        elsif ($master)
                         {                                     # use site.master
                             push @{ $snhash{$master} }, $node;
                         }
@@ -634,7 +635,7 @@ sub get_ServiceNode
                                 my $key = $rec->{$snattribute};
                                 push @{ $snhash{$key} }, $node;
                             }
-                            elsif($master)
+                            elsif ($master)
                             {    # use site.master
                                 push @{ $snhash{$master} }, $node;
                             }
@@ -678,7 +679,7 @@ sub get_ServiceNode
                                 my $key = $sn->{$snattribute};
                                 push @{ $snhash{$key} }, $node;
                             }
-                            elsif($master)
+                            elsif ($master)
                             {          # no service node use master
                                 push @{ $snhash{$master} }, $node;
                             }

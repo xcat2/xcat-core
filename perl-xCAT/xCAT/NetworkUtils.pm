@@ -272,33 +272,35 @@ sub getipaddr
     #    #pass in an ip and only want an ip??
     #    return $iporhost;
     #}
-    my $isip=0;
-    if ($iporhost and ($iporhost =~ /\d+\.\d+\.\d+\.\d+/) || ($iporhost =~ /:/)){
-        $isip=1;
+    my $isip = 0;
+    if ($iporhost and ($iporhost =~ /\d+\.\d+\.\d+\.\d+/) || ($iporhost =~ /:/)) {
+        $isip = 1;
     }
 
 
-#print "============================\n";
-#print Dumper(\%::hostiphash);
-#print "\n";
-#print Dumper(\%extraarguments);
-#print "\n";
-#print "iporhost=$iporhost";
-#print "\n";
-#print "============================\n";
+    #print "============================\n";
+    #print Dumper(\%::hostiphash);
+    #print "\n";
+    #print Dumper(\%extraarguments);
+    #print "\n";
+    #print "iporhost=$iporhost";
+    #print "\n";
+    #print "============================\n";
 
     #cache, do not lookup DNS each time
     if (
-        ((not $extraarguments{OnlyV6}) and (not $extraarguments{GetAllAddresses}))  and defined($::hostiphash{$iporhost}) and $::hostiphash{$iporhost})
+        ((not $extraarguments{OnlyV6}) and (not $extraarguments{GetAllAddresses})) and defined($::hostiphash{$iporhost}) and $::hostiphash{$iporhost})
     {
 
-        if($extraarguments{GetNumber} ) {
-            if($::hostiphash{$iporhost}{Number}){
-        #print "YYYYYYYYYY GetNumber Cache Hit!!!YYYYYYYYY\n";
+        if ($extraarguments{GetNumber}) {
+            if ($::hostiphash{$iporhost}{Number}) {
+
+                #print "YYYYYYYYYY GetNumber Cache Hit!!!YYYYYYYYY\n";
                 return $::hostiphash{$iporhost}{Number};
             }
-        } elsif($::hostiphash{$iporhost}{hostip}) {
-        #print "YYYYYYYYYY dns  Cache Hit!!!YYYYYYYYY\n";
+        } elsif ($::hostiphash{$iporhost}{hostip}) {
+
+            #print "YYYYYYYYYY dns  Cache Hit!!!YYYYYYYYY\n";
             return $::hostiphash{$iporhost}{hostip};
         }
     }
@@ -313,19 +315,19 @@ sub getipaddr
             $reqfamily = AF_INET;
         }
         my @addrinfo;
-        if($isip) {
-            @addrinfo=Socket6::getaddrinfo($iporhost, 0, $reqfamily, SOCK_STREAM, 6,Socket6::AI_NUMERICHOST());
-        }else{
-            @addrinfo=Socket6::getaddrinfo($iporhost, 0, $reqfamily, SOCK_STREAM, 6);
+        if ($isip) {
+            @addrinfo = Socket6::getaddrinfo($iporhost, 0, $reqfamily, SOCK_STREAM, 6, Socket6::AI_NUMERICHOST());
+        } else {
+            @addrinfo = Socket6::getaddrinfo($iporhost, 0, $reqfamily, SOCK_STREAM, 6);
         }
         my ($family, $socket, $protocol, $ip, $name) = splice(@addrinfo, 0, 5);
-        unless($reqfamily == AF_INET6){
-            if($isip){
-               if($name){
-                   $::hostiphash{$iporhost}{hostip}=$name;
-               }
-            }elsif($ip){
-                $::hostiphash{$iporhost}{hostip}=$ip;
+        unless ($reqfamily == AF_INET6) {
+            if ($isip) {
+                if ($name) {
+                    $::hostiphash{$iporhost}{hostip} = $name;
+                }
+            } elsif ($ip) {
+                $::hostiphash{$iporhost}{hostip} = $ip;
             }
         }
         while ($ip)
@@ -338,10 +340,10 @@ sub getipaddr
                     $bignumber->badd($_);
                 }
                 push(@returns, $bignumber);
-                $::hostiphash{$iporhost}{Number}=$returns[0];
+                $::hostiphash{$iporhost}{Number} = $returns[0];
             } else {
                 push @returns, (Socket6::getnameinfo($ip, Socket6::NI_NUMERICHOST()))[0];
-                $::hostiphash{$iporhost}{hostip}=$returns[0];
+                $::hostiphash{$iporhost}{hostip} = $returns[0];
             }
             if (scalar @addrinfo and $extraarguments{GetAllAddresses}) {
                 ($family, $socket, $protocol, $ip, $name) = splice(@addrinfo, 0, 5);
@@ -370,15 +372,15 @@ sub getipaddr
             return undef;
         }
 
-        my $myip=inet_ntoa($packed_ip);
+        my $myip = inet_ntoa($packed_ip);
 
-        unless($isip) {
-            $::hostiphash{$iporhost}{hostip}=$myip;
+        unless ($isip) {
+            $::hostiphash{$iporhost}{hostip} = $myip;
         }
 
-        if ($extraarguments{GetNumber}) { #only 32 bits, no for loop needed.
-            my $number=Math::BigInt->new(unpack("N*", $packed_ip));
-            $::hostiphash{$iporhost}{Number}=$number;
+        if ($extraarguments{GetNumber}) {    #only 32 bits, no for loop needed.
+            my $number = Math::BigInt->new(unpack("N*", $packed_ip));
+            $::hostiphash{$iporhost}{Number} = $number;
             return $number;
         }
 
@@ -487,7 +489,7 @@ sub linklocaladdr {
 =cut
 
 #-------------------------------------------------------------------------------
-sub ishostinsubnet{
+sub ishostinsubnet {
     my ($class, $ip, $mask, $subnet) = @_;
 
     #safe guard
@@ -496,26 +498,26 @@ sub ishostinsubnet{
         return 0;
     }
 
-    my $maskType=0;
+    my $maskType = 0;
 
     #CIDR notation supported
     if ($subnet && ($subnet =~ /\//)) {
         ($subnet, $mask) = split /\//, $subnet, 2;
         $subnet =~ s/\/.*$//;
-        $maskType=1;
-    }elsif ($mask) {
+        $maskType = 1;
+    } elsif ($mask) {
         if ($mask =~ /\//) {
             $mask =~ s/^\///;
-            $maskType=1;
-        } elsif($mask =~ /^0x/i ) {
-            $maskType=2;
+            $maskType = 1;
+        } elsif ($mask =~ /^0x/i) {
+            $maskType = 2;
         }
     }
 
-    my $ret=xCAT::NetworkUtils::isInSameSubnet( $ip, $subnet, $mask, $maskType);
-    if(defined $ret and $ret==1){
+    my $ret = xCAT::NetworkUtils::isInSameSubnet($ip, $subnet, $mask, $maskType);
+    if (defined $ret and $ret == 1) {
         return 1;
-    }else{
+    } else {
         return 0;
     }
 }
@@ -813,7 +815,7 @@ sub get_nic_ip
                     delete $iphash{$interface};
                 }
                 $keepcurrentiface = 0;
-                $interface = "";
+                $interface        = "";
                 if (!($line =~ /LOOPBACK/) and
                     $line =~ /UP( |,|>)/ and
                     $line =~ /$mode/) {
@@ -2010,10 +2012,11 @@ sub determinehostname
     eval {
         $hostname = hostname;
     };
-    if($@){
-        xCAT::MsgUtils->message("S","Fail to get hostname: $@\n");
+    if ($@) {
+        xCAT::MsgUtils->message("S", "Fail to get hostname: $@\n");
         exit -1;
     }
+
     #get all potentially valid abbreviations, and pick the one that is ok
     #by 'noderange'
     my @hostnamecandidates;
@@ -2799,6 +2802,7 @@ sub gen_net_boot_params
 }
 
 #--------------------------------------------------------------------------------
+
 =head3  send_tcp_msg
       establish a tcp socket to the specified IP address and port, then send the specifid message via the socket
       Arguments:
@@ -2808,24 +2812,25 @@ sub gen_net_boot_params
       Returns:
          0  on success, 1 on fail
 =cut
+
 #--------------------------------------------------------------------------------
 sub send_tcp_msg {
-    my $self=shift;
-    my $destip=shift;
-    my $destport=shift;
-    my $msg=shift;
+    my $self     = shift;
+    my $destip   = shift;
+    my $destport = shift;
+    my $msg      = shift;
 
     my $sock = new IO::Socket::INET(
-                PeerAddr => $destip,
-                PeerPort => $destport,
-                Timeout  => '1',
-                Proto    => 'tcp'
-            );
+        PeerAddr => $destip,
+        PeerPort => $destport,
+        Timeout  => '1',
+        Proto    => 'tcp'
+    );
     if ($sock) {
         print $sock $msg;
         close($sock);
         return 0;
-    }else{
+    } else {
         return 1;
     }
 }

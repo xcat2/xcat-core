@@ -478,10 +478,10 @@ sub process_request {
     }
 
     #end prescripts code
-    my @pxelinuxpaths=("/usr/lib/syslinux/pxelinux.0","/usr/share/syslinux/pxelinux.0","/usr/lib/PXELINUX/pxelinux.0","/opt/xcat/share/xcat/netboot/syslinux/pxelinux.0");
+    my @pxelinuxpaths = ("/usr/lib/syslinux/pxelinux.0", "/usr/share/syslinux/pxelinux.0", "/usr/lib/PXELINUX/pxelinux.0", "/opt/xcat/share/xcat/netboot/syslinux/pxelinux.0");
     foreach $path (@pxelinuxpaths) {
         if (-r "$path") {
-            copy("$path","$globaltftpdir/pxelinux.0");
+            copy("$path", "$globaltftpdir/pxelinux.0");
             chmod(0644, "$globaltftpdir/pxelinux.0");
             last;
         }
@@ -499,23 +499,23 @@ sub process_request {
     unless ($args[0] eq 'stat') {    # or $args[0] eq 'enact') {
         xCAT::MsgUtils->trace($verbose_on_off, "d", "pxe: issue setdestiny request");
         $sub_req->({ command => ['setdestiny'],
-                node     => \@nodes,
-                inittime => [$inittime],
-                arg      => \@args,
+                node       => \@nodes,
+                inittime   => [$inittime],
+                arg        => \@args,
                 bootparams => \%bphash
-                }, \&pass_along);
+        }, \&pass_along);
     }
     if ($errored) { return; }
 
     #Time to actually configure the nodes, first extract database data with the scalable calls
     my $chaintab = xCAT::Table->new('chain');
-    my $mactab  = xCAT::Table->new('mac');        #to get all the hostnames
-    my $typetab = xCAT::Table->new('nodetype');
-    my $restab  = xCAT::Table->new('noderes');
+    my $mactab   = xCAT::Table->new('mac');        #to get all the hostnames
+    my $typetab  = xCAT::Table->new('nodetype');
+    my $restab   = xCAT::Table->new('noderes');
     my $linuximgtab = xCAT::Table->new('linuximage', -create => 1);
-    my %nrhash = %{ $restab->getNodesAttribs(\@nodes, [qw(tftpdir)]) };
-    my %chainhash = %{ $chaintab->getNodesAttribs(\@nodes, [qw(currstate)]) };
-    my %machash = %{ $mactab->getNodesAttribs(\@nodes, [qw(mac)]) };
+    my %nrhash      = %{ $restab->getNodesAttribs(\@nodes, [qw(tftpdir)]) };
+    my %chainhash   = %{ $chaintab->getNodesAttribs(\@nodes, [qw(currstate)]) };
+    my %machash     = %{ $mactab->getNodesAttribs(\@nodes, [qw(mac)]) };
     my %nthash = %{ $typetab->getNodesAttribs(\@nodes, [qw(os provmethod)]) };
 
     foreach (@nodes) {

@@ -140,7 +140,7 @@ sub process_request
 
     $::request  = shift;
     $::callback = shift;
-    $doreq = shift;
+    $doreq      = shift;
 
     my $ret;
     my $msg;
@@ -617,7 +617,7 @@ sub processArgs
     }
 
     # check the new object name specified with -n
-    if ($::command eq "chdef" && $::opt_n && (!isobjnamevalid($::opt_n,$::opt_t))) {
+    if ($::command eq "chdef" && $::opt_n && (!isobjnamevalid($::opt_n, $::opt_t))) {
         my $rsp;
         $rsp->{data}->[0] = "The new object name \'$::opt_n\' is not valid.Please refer to \"man xcatdb\" for the valid \"xCAT Object Name Format\" ";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
@@ -1560,22 +1560,22 @@ sub defmk
         &defmk_usage;
         return 1;
     } else {
-        my $invalidobjname = ();
+        my $invalidobjname  = ();
         my $invalidnodename = ();
-        my $nodewithdomain = ();
+        my $nodewithdomain  = ();
         foreach my $node (@::allobjnames) {
-            my $myobjtype=$::opt_t;
-            if(!$myobjtype and $::FILEATTRS{$node}{'objtype'}){
-                $myobjtype=$::FILEATTRS{$node}{'objtype'};
+            my $myobjtype = $::opt_t;
+            if (!$myobjtype and $::FILEATTRS{$node}{'objtype'}) {
+                $myobjtype = $::FILEATTRS{$node}{'objtype'};
             }
 
-            unless(isobjnamevalid($node,$myobjtype)){
-               $invalidobjname .= ",$node";
+            unless (isobjnamevalid($node, $myobjtype)) {
+                $invalidobjname .= ",$node";
             }
             if (((!$::opt_t) && (!$::FILEATTRS{$node}{'objtype'})) || ($::FILEATTRS{$node}{'objtype'} eq "node") || ($::opt_t eq "node")) {
-                if($node =~ /[A-Z]/){
+                if ($node =~ /[A-Z]/) {
                     $invalidnodename .= ",$node";
-                }elsif($node =~ /\./){
+                } elsif ($node =~ /\./) {
                     $nodewithdomain .= ",$node";
                 }
             }
@@ -1716,6 +1716,7 @@ sub defmk
         $numobjrequest++;
 
         my $type = $::FINALATTRS{$obj}{objtype};
+
         # check to make sure we have type
         if (!$type)
         {
@@ -1736,8 +1737,9 @@ sub defmk
             my @nets = xCAT::DBobjUtils->getObjectsOfType('network');
             my %objhash;
             foreach my $n (@nets) {
+
                 # netname is duplicate
-                if ( $obj eq $n ) {
+                if ($obj eq $n) {
                     my $rsp;
                     $rsp->{data}->[0] = "A network definition called \'$n\' already exists. Cannot create a definition for \'$obj\'.";
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
@@ -1747,6 +1749,7 @@ sub defmk
                 }
                 $objhash{$n} = $type;
             }
+
             # When adding a new network entry, net and mask cannot be empty
             if (!($::FINALATTRS{$obj}{net} && $::FINALATTRS{$obj}{mask}))
             {
@@ -1759,6 +1762,7 @@ sub defmk
             }
             my %nethash = xCAT::DBobjUtils->getobjdefs(\%objhash);
             foreach my $o (keys %nethash) {
+
                 # there is a network entry contains the same net and mask
                 if (($nethash{$o}{net} eq $::FINALATTRS{$obj}{net}) && ($nethash{$o}{mask} eq $::FINALATTRS{$obj}{mask})) {
                     my $rsp;
@@ -2043,9 +2047,9 @@ sub defmk
     }
     else
     {
-        my $nodenum = 0;
-        my $totalnumobj = 0;
-        my $ret = 0;
+        my $nodenum       = 0;
+        my $totalnumobj   = 0;
+        my $ret           = 0;
         my @nodes_updated = ();
         foreach my $node (keys %::FINALATTRS) {
             $totalnumobj++;
@@ -2065,13 +2069,14 @@ sub defmk
             xCAT::MsgUtils->message("I", $rsp, $::callback);
 
             my $n = 1;
-            foreach my $o (sort( @nodes_updated))
+            foreach my $o (sort(@nodes_updated))
             {
                 $rsp->{data}->[$n] = "$o";
                 $n++;
             }
             $rsp->{numofnodes}->[0] = $totalnumobj;
             if ($n > 1) {
+
                 # Some objects were created ($n was increased), report as success
                 $rsp->{data}->[0] = "The database was updated for the following objects:";
                 xCAT::MsgUtils->message("I", $rsp, $::callback);
@@ -2086,6 +2091,7 @@ sub defmk
         $rsp->{data}->[0] = "$nodenum object definitions have been created or modified.";
         $rsp->{numofnodes}->[0] = $totalnumobj;
         if ($nodenum > 0) {
+
             # Some objects were created, report as success
             xCAT::MsgUtils->message("I", $rsp, $::callback);
         }
@@ -2391,7 +2397,7 @@ sub defch
     }
     my $nodewithdomain;
     my $invalidobjname = ();
-    my $numobjrequest = 0;
+    my $numobjrequest  = 0;
     foreach my $obj (keys %::FINALATTRS)
     {
         $numobjrequest++;
@@ -2420,7 +2426,7 @@ sub defch
             delete($::FINALATTRS{$obj});
             next;
         }
-        unless(isobjnamevalid($obj,$type)){
+        unless (isobjnamevalid($obj, $type)) {
             $invalidobjname .= ",$obj";
             delete($::FINALATTRS{$obj});
             next;
@@ -2433,13 +2439,14 @@ sub defch
         if ($type eq 'network')
         {
             my $isInvalid = 0;
+
             # When adding a new network entry, net and mask cannot be empty
             if (!$isDefined && !($::FINALATTRS{$obj}{'net'} && $::FINALATTRS{$obj}{'mask'}))
             {
                 my $rsp;
                 $rsp->{data}->[0] = "Net or mask value should not be empty for xCAT network object \'$obj\'.";
                 xCAT::MsgUtils->message("E", $rsp, $::callback);
-                $error = 1;
+                $error     = 1;
                 $isInvalid = 1;
                 delete($::FINALATTRS{$obj});
                 next;
@@ -2449,53 +2456,57 @@ sub defch
             foreach my $n (@nets) {
                 $objhash{$n} = $type;
             }
+
             # get original networks data
             my %nethash = xCAT::DBobjUtils->getobjdefs(\%objhash);
             foreach my $o (keys %nethash) {
+
                 # the netname already exists
                 if ($isDefined)
                 {
                     # when net is empty, chdef command should add net value, $::FINALATTRS{$obj}{net} should have value
                     if ((!$nethash{$o}{net}) && (!$::FINALATTRS{$obj}{net}))
                     {
-                        $isInvalid=1;
+                        $isInvalid = 1;
                         my $rsp;
                         $rsp->{data}->[0] = "Attribute \'net\' is not specified for network entry \'$obj\', skipping.";
                         xCAT::MsgUtils->message("E", $rsp, $::callback);
                         $error = 1;
                         last;
-                     }
-                     # when mask is empty, chdef command should add mask value, $::FINALATTRS{$obj}{mask} should have value
-                     if ((!$nethash{$o}{mask}) && (!$::FINALATTRS{$obj}{mask}))
-                     {
-                         $isInvalid=1;
-                         my $rsp;
-                         $rsp->{data}->[0] = "Attribute \'mask\' is not specified for network entry \'$obj\', skipping.";
-                         xCAT::MsgUtils->message("E", $rsp, $::callback);
-                         $error = 1;
-                         last;
-                     }
+                    }
+
+                    # when mask is empty, chdef command should add mask value, $::FINALATTRS{$obj}{mask} should have value
+                    if ((!$nethash{$o}{mask}) && (!$::FINALATTRS{$obj}{mask}))
+                    {
+                        $isInvalid = 1;
+                        my $rsp;
+                        $rsp->{data}->[0] = "Attribute \'mask\' is not specified for network entry \'$obj\', skipping.";
+                        xCAT::MsgUtils->message("E", $rsp, $::callback);
+                        $error = 1;
+                        last;
+                    }
                 }
+
                 # the netname does not exist
                 else {
-                     # there is a network definition already contains the same net and mask, it is duplicate
-                     if (($nethash{$o}{net} eq $::FINALATTRS{$obj}{net}) && ($nethash{$o}{mask} eq $::FINALATTRS{$obj}{mask}))
-                     {
-                         $isInvalid=1;
-                         my $rsp;
-                         $rsp->{data}->[0] = "A network definition called \'$o\' already exists that contains the same net and mask values. Cannot create a definition for \'$obj\'.";
-                         xCAT::MsgUtils->message("E", $rsp, $::callback);
-                         $error = 1;
-                         last;
-                     }
+                    # there is a network definition already contains the same net and mask, it is duplicate
+                    if (($nethash{$o}{net} eq $::FINALATTRS{$obj}{net}) && ($nethash{$o}{mask} eq $::FINALATTRS{$obj}{mask}))
+                    {
+                        $isInvalid = 1;
+                        my $rsp;
+                        $rsp->{data}->[0] = "A network definition called \'$o\' already exists that contains the same net and mask values. Cannot create a definition for \'$obj\'.";
+                        xCAT::MsgUtils->message("E", $rsp, $::callback);
+                        $error = 1;
+                        last;
+                    }
 
                 }
 
             }
-            if($isInvalid)
+            if ($isInvalid)
             {
-               delete($::FINALATTRS{$obj});
-               next;
+                delete($::FINALATTRS{$obj});
+                next;
             }
         }
         if (!$isDefined && ($type eq 'node') && (!defined($::FINALATTRS{$obj}{'groups'}) || !$::FINALATTRS{$obj}{'groups'}))
@@ -2933,10 +2944,10 @@ sub defch
     }
     else
     {
-        my $nodenum = 0;
-        my $ret = 0;
+        my $nodenum       = 0;
+        my $ret           = 0;
         my @nodes_updated = ();
-        my $totalnumobj = 0;
+        my $totalnumobj   = 0;
         foreach my $node (keys %::FINALATTRS) {
             $totalnumobj++;
             if ($::FINALATTRS{$node}{updated}) {
@@ -3156,6 +3167,7 @@ sub setFINALattrs
                     }
                 }
             }
+
             # $tmphash{nicips} = "eth0!1.1.1.1|1.2.1.1,eth1!2.1.1.1|2.2.1.1"
             foreach my $nicattr (keys %tmphash)
             {
@@ -4174,12 +4186,12 @@ sub defls
         $rsp_info->{numofnodes}->[0] = $totalnumobj;
         xCAT::MsgUtils->message("I", $rsp_info, $::callback);
     } else {
-       if ( $totalnumobj > 0) {
-           my $rsp;
-           $rsp->{data}->[0] = "No object definitions have been found";
-           $rsp->{numofnodes}->[0] = $totalnumobj;
-           xCAT::MsgUtils->message("I", $rsp, $::callback);
-       }
+        if ($totalnumobj > 0) {
+            my $rsp;
+            $rsp->{data}->[0]       = "No object definitions have been found";
+            $rsp->{numofnodes}->[0] = $totalnumobj;
+            xCAT::MsgUtils->message("I", $rsp, $::callback);
+        }
     }
 
     return 0;
@@ -4326,7 +4338,7 @@ sub defrm
     # if the object to remove is a group then the "groups" attr of
     #    the memberlist nodes must be updated.
 
-    my $numobjects = 0;
+    my $numobjects  = 0;
     my $totalnumobj = 0;
     my %objTypeLists;
     foreach my $obj (keys %objhash)
@@ -4470,37 +4482,42 @@ sub defrm
     }
 
     if ($::opt_cleanup) {
+
         # Call nodeset offline on each node to cleanup its boot configuration files from /tftpboot directory
         if ($doreq) {
+
             # Go through each object and make sure it is a node type
             my @allnodes;
             foreach my $single_object (keys %objhash) {
                 if ($objhash{$single_object} eq "node") {
+
                     # build a list of nodes to offline
                     push @allnodes, $single_object;
                 }
             }
+
             # If cleaning up (issuing nodeset offline) for more than cleanup_msg_trigger node,
             # issue info message
             if (@allnodes > $cleanup_msg_trigger) {
-               my $rsp;
-               $rsp->{data}->[0] = "Performing configuration cleanup. This might take a some time.";
-               xCAT::MsgUtils->message("I", $rsp, $::callback);
+                my $rsp;
+                $rsp->{data}->[0] = "Performing configuration cleanup. This might take a some time.";
+                xCAT::MsgUtils->message("I", $rsp, $::callback);
             }
+
             # Run nodeset offline and capture output.
             # But the output can be ignored since we do not want to prevent user from doing rmdef if
             # nodeset returns some error.
             my @output = xCAT::Utils->runxcmd({
-                command => ['nodeset'],
-                node => [@allnodes],
-                arg  => ['offline'],
-            }, $doreq, 0 ,1);
+                    command => ['nodeset'],
+                    node    => [@allnodes],
+                    arg     => ['offline'],
+            }, $doreq, 0, 1);
 
             # Run makeconservercf -d <node>
             @output = xCAT::Utils->runxcmd({
-                command => ['makeconservercf'],
-                node => [@allnodes],
-                arg => ['-d'],}, $doreq, 0, 1);
+                    command => ['makeconservercf'],
+                    node    => [@allnodes],
+                    arg     => ['-d'], }, $doreq, 0, 1);
             if (-x "/usr/bin/goconserver") {
                 require xCAT::Goconserver;
                 if (xCAT::Goconserver::is_goconserver_running()) {
@@ -4795,22 +4812,23 @@ sub initialize_variables
 #          1: valid
 #          0: invalid
 #-----------------------
-sub isobjnamevalid{
-    my $objname=shift;
-    my $objtype=shift;
+sub isobjnamevalid {
+    my $objname = shift;
+    my $objtype = shift;
     my %options;
-    $options{keepmissing}=1;
-    $options{genericrange}=1;
-    $objtype="node" unless(defined $objtype and ($objtype ne ""));
-    if($objtype eq "node"){
+    $options{keepmissing}  = 1;
+    $options{genericrange} = 1;
+    $objtype = "node" unless (defined $objtype and ($objtype ne ""));
+    if ($objtype eq "node") {
+
         #the ip address as a valid node object name is a hack for p7IH support
-        if(($objname !~ /^[a-zA-Z0-9-_]+$/) and !xCAT::NetworkUtils->isIpaddr($objname)){
+        if (($objname !~ /^[a-zA-Z0-9-_]+$/) and !xCAT::NetworkUtils->isIpaddr($objname)) {
             return 0;
         }
-    } elsif ($objtype eq "group"){
-        my @tmpnodes=xCAT::NodeRange::noderange($objname,0,0,%options);
-        if(scalar(@tmpnodes)>1 || $tmpnodes[0] ne $objname ){
-           return 0;
+    } elsif ($objtype eq "group") {
+        my @tmpnodes = xCAT::NodeRange::noderange($objname, 0, 0, %options);
+        if (scalar(@tmpnodes) > 1 || $tmpnodes[0] ne $objname) {
+            return 0;
         }
     }
     return 1;

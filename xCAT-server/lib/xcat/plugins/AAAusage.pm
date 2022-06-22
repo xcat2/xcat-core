@@ -32,16 +32,16 @@ sub handled_commands {
         rmdocker  => 'AAAusage',
 
         #lsslp     => 'AAAusage',
-        rflash   => 'AAAusage',
-        mkhwconn => 'AAAusage',
-        rmhwconn => 'AAAusage',
-        lshwconn => 'AAAusage',
-        renergy  => 'AAAusage',
-        nodeset  => 'AAAusage',
-        rspreset => 'AAAusage',
+        rflash       => 'AAAusage',
+        mkhwconn     => 'AAAusage',
+        rmhwconn     => 'AAAusage',
+        lshwconn     => 'AAAusage',
+        renergy      => 'AAAusage',
+        nodeset      => 'AAAusage',
+        rspreset     => 'AAAusage',
         rmhypervisor => 'AAAusage',
-        rmigrate => 'AAAusage',
-        rshutdown => 'AAAusage',
+        rmigrate     => 'AAAusage',
+        rshutdown    => 'AAAusage',
     };
 }
 

@@ -447,7 +447,7 @@ sub process_request {
                 next;
             }
             $invalid = "";
-            @eachhost = split(/ /,$names);
+            @eachhost = split(/ /, $names);
             foreach my $hname (@eachhost) {
                 if ($hname =~ /^\./) {
                     xCAT::SvrUtils::sendmsg(":Ignoring line $_ in /etc/hosts, name $hname start with . ", $callback);
@@ -592,7 +592,7 @@ sub process_request {
         $ctx->{forwarders} = \@forwarders;
     }
 
-    my @options = xCAT::TableUtils->get_site_attribute("emptyzonesenable");
+    my @options     = xCAT::TableUtils->get_site_attribute("emptyzonesenable");
     my $empty_zones = $options[0];
     if (defined($empty_zones)) {
         if ($empty_zones =~ /^yes$|^no$/) {
@@ -627,7 +627,7 @@ sub process_request {
     my @dnsifinsite = xCAT::TableUtils->get_site_attribute("dnsinterfaces");
     if (@dnsifinsite)
 
-    #syntax should be like host|ifname1,ifname2;host2|ifname3,ifname2 etc or simply ifname,ifname2
+      #syntax should be like host|ifname1,ifname2;host2|ifname3,ifname2 etc or simply ifname,ifname2
     {
         my $dnsinterfaces = $dnsifinsite[0];
         my $listenonifs;
@@ -778,6 +778,7 @@ sub process_request {
             #We manipulate local namedconf
             $ctx->{dbdir}    = get_dbdir();
             $ctx->{zonesdir} = get_zonesdir();
+
             #backup named directory permission
             $permissionmode = (stat($ctx->{dbdir}))[2] & 07777;
             chmod 0775, $ctx->{dbdir}; # assure dynamic dns can actually execute against the directory
@@ -885,6 +886,7 @@ sub process_request {
         else
         {
             my $needtostart = 1;
+
             # If named is already restarted in the same time, then to avoid starting it again.
             # Rare case (#3082): to avoid two named daemon co-existing
             if ($ctx->{restartneeded}) {
@@ -921,9 +923,10 @@ sub process_request {
     unless ($ret) {
         xCAT::SvrUtils::sendmsg("DNS setup is completed", $callback);
     }
+
     #restore named directory permission
     if (defined($permissionmode)) {
-        chmod $permissionmode, $ctx->{dbdir};   
+        chmod $permissionmode, $ctx->{dbdir};
     }
     umask($oldmask);
 }
@@ -943,14 +946,14 @@ sub get_zonesdir {
 
 sub get_forwardmode {
     my $forwardmode;
-    my @entries    = xCAT::TableUtils->get_site_attribute("dnsforwardmode"); 
+    my @entries    = xCAT::TableUtils->get_site_attribute("dnsforwardmode");
     my $site_entry = $entries[0];
     if (defined($site_entry)) {
         if ($site_entry =~ /^only$|^first$/) {
             $forwardmode = $site_entry;
         } elsif ($site_entry =~ /^no$/) {
             $forwardmode = ""
-        }else {
+        } else {
             my $rsp = {};
             $rsp->{data}->[0] = "forward mode $site_entry is not supported, supported value: only, first, no.";
             xCAT::MsgUtils->message("S", "forward mode $site_entry is not supported, supported value: only, first, no.");
@@ -1282,8 +1285,9 @@ sub update_namedconf {
                 push @newnamed, "\t\t$_;\n";
             }
             push @newnamed, "\t};\n";
-            my $bind_version_cmd="/usr/sbin/named -v | cut -d' ' -f2";
-            my @bind_version =xCAT::Utils->runcmd($bind_version_cmd, 0);
+            my $bind_version_cmd = "/usr/sbin/named -v | cut -d' ' -f2";
+            my @bind_version = xCAT::Utils->runcmd($bind_version_cmd, 0);
+
             # Turn off DNSSEC if running with bind vers 9.16.6 or higher
             if ((scalar @bind_version > 0) && ($bind_version[0] ge "9.16.6")) {
                 push @newnamed, "\tdnssec-enable no;\n";
@@ -1291,11 +1295,11 @@ sub update_namedconf {
             }
         }
 
-        if ($ctx->{forwardmode}){
+        if ($ctx->{forwardmode}) {
             push @newnamed, "\tforward " . $ctx->{forwardmode} . ";\n";
         }
 
-        if ($ctx->{empty_zones_enable}){
+        if ($ctx->{empty_zones_enable}) {
             push @newnamed, "\tempty-zones-enable " . $ctx->{empty_zones_enable} . ";\n";
         }
 
@@ -1337,18 +1341,18 @@ sub update_namedconf {
     }
 
     # include external configuration file(s) if present in site.namedincludes
-    my @entries = xCAT::TableUtils->get_site_attribute("namedincludes");
+    my @entries    = xCAT::TableUtils->get_site_attribute("namedincludes");
     my $site_entry = $entries[0];
     if (defined($site_entry)) {
         my @includes = split /[ ,]/, $site_entry;
         foreach (@includes) {
             if (defined($_)) {
                 my $line = "include \"$_\";\n";
-                unless (grep{/$line/} @newnamed) {
+                unless (grep { /$line/ } @newnamed) {
                     push @newnamed, "include \"$_\";\n";
                 }
             }
-        push @newnamed, "\n";
+            push @newnamed, "\n";
         }
     }
 

@@ -26,7 +26,7 @@ use IO::Select;
 use xCAT::TableUtils;
 use xCAT::ServiceNodeUtils;
 use strict;
-use feature "switch"; # For given-when block
+use feature "switch";    # For given-when block
 
 #use warnings;
 my $use_xhrm = 0; #xCAT Hypervisor Resource Manager, to satisfy networking and storage prerequisites, default to not using it for the moment
@@ -80,8 +80,8 @@ sub handled_commands {
 
         #rvitals => 'nodehm:mgt',
         #rinv => 'nodehm:mgt',
-        getrvidparms  => 'nodehm:mgt',
-        lsvm          => ['nodehm:mgt=ipmi', 'nodehm:mgt=kvm'], #allow both hypervisor and VMs as params
+        getrvidparms => 'nodehm:mgt',
+        lsvm => [ 'nodehm:mgt=ipmi', 'nodehm:mgt=kvm' ], #allow both hypervisor and VMs as params
         rbeacon       => 'nodehm:mgt',
         revacuate     => 'hypervisor:type',
         vmstatenotify => 'hypervisor:type',
@@ -591,7 +591,7 @@ sub build_diskstruct {
     # Normally for vmstoragemodel=virtio, we would set prefix of "vd", but device name vd*
     # doesn't work for CDROM, so for now use the same prefix "sd" as for vmstoragemodel=scsi.
     if ($storagemodel eq 'virtio') {
-        $cdprefix='sd';
+        $cdprefix = 'sd';
     } elsif ($storagemodel eq 'scsi') {
         $cdprefix = 'sd';
     }
@@ -803,12 +803,13 @@ sub build_xmldesc {
     #prepare the xml hash for pci passthrough
     my @prdevarray;
     foreach my $devname (@passthrudevices) {
+
         #This is for SR-IOV vfio
         #Change vfio format 0000:01:00.2 to pci_0000_01_00_2
-        if ( $devname =~ m/(\w:)+(\w)+.(\w)/ ){
+        if ($devname =~ m/(\w:)+(\w)+.(\w)/) {
             $devname =~ s/[:|.]/_/g;
-            if ( $devname !~ /^pci_/ ) {
-                $devname ="pci_".$devname
+            if ($devname !~ /^pci_/) {
+                $devname = "pci_" . $devname
             }
         }
 
@@ -834,40 +835,40 @@ sub build_xmldesc {
 
             if (ref $devhash->{'capability'}->{'iommuGroup'}->{'address'} ne 'ARRAY')
             {
-               # There is only one record of address.
+                # There is only one record of address.
 
-               $tmphash{source}->{address}->[0] = \%{ $devhash->{'capability'}->{'iommuGroup'}->{'address'} };
+                $tmphash{source}->{address}->[0] = \%{ $devhash->{'capability'}->{'iommuGroup'}->{'address'} };
             }
             else
             {
-               # There are multiple records of address. Extract the function portion of the PCI devname.
+                # There are multiple records of address. Extract the function portion of the PCI devname.
 
-               my $numaddr;
-               my $tmpval;
-               my $devfunction;
-               my $tmpfunction;
+                my $numaddr;
+                my $tmpval;
+                my $devfunction;
+                my $tmpfunction;
 
-               $devname =~ /pci_([0-9]*)_([0-9]*)_([0-9]*)_([0-9]*)/;
+                $devname =~ /pci_([0-9]*)_([0-9]*)_([0-9]*)_([0-9]*)/;
 
-               $devfunction = $4;
+                $devfunction = $4;
 
-               $numaddr = length (ref $devhash->{'capability'}->{'iommuGroup'}->{'address'});
+                $numaddr = length(ref $devhash->{'capability'}->{'iommuGroup'}->{'address'});
 
-               for (my $i = 0; $i < $numaddr; $i++)
-               {
-                  $tmpval = $devhash->{'capability'}->{'iommuGroup'}->{'address'}->[$i]->{'function'};
+                for (my $i = 0 ; $i < $numaddr ; $i++)
+                {
+                    $tmpval = $devhash->{'capability'}->{'iommuGroup'}->{'address'}->[$i]->{'function'};
 
-                  $tmpval =~ /0x([0-9]*)/;
+                    $tmpval =~ /0x([0-9]*)/;
 
-                  $tmpfunction = $1;
+                    $tmpfunction = $1;
 
-                  # Compare the function portion of the PCI devname against that of the XML structure.:w
-                  if ($devfunction eq $tmpfunction)
-                  {
-                     $tmphash{source}->{address}->[0] = \%{ $devhash->{'capability'}->{'iommuGroup'}->{'address'}->[$i] };
-                     last;
-                  }
-               }
+                    # Compare the function portion of the PCI devname against that of the XML structure.:w
+                    if ($devfunction eq $tmpfunction)
+                    {
+                        $tmphash{source}->{address}->[0] = \%{ $devhash->{'capability'}->{'iommuGroup'}->{'address'}->[$i] };
+                        last;
+                    }
+                }
             }
 
             push(@prdevarray, \%tmphash);
@@ -967,6 +968,7 @@ sub build_xmldesc {
     if (defined($hypcpumodel) and $hypcpumodel eq 'ppc64') {
         $xtree{devices}->{emulator}->{content} = "/usr/bin/qemu-system-ppc64";
     } elsif (defined($hypcpumodel) and $hypcpumodel eq 'ppc64le') {
+
         # do nothing for ppc64le, do not support sound at this time
         ;
     } else {
@@ -1851,6 +1853,7 @@ sub rmvm {
             unless ($driver[0]) { next; }
             my $drivertype = $driver[0]->getAttribute("type");
             if (($drivertype eq "raw") || ($disktype eq "block")) {
+
                 # For raw or block devices, do not remove device, even if purge was specified. Display info message.
                 xCAT::SvrUtils::sendmsg("Not purging raw or block storage device: $disk", $callback, $node);
                 next;
@@ -2001,6 +2004,7 @@ sub chvm {
         my @diskstoadd;
         my $location = $confdata->{vm}->{$node}->[0]->{storage};
         unless ($location) {
+
             # Calling add disk for a vm with no storage defined
             xCAT::SvrUtils::sendmsg([ 1, "Can not add storage, vmstorage attribute not defined." ], $callback, $node);
             return;
@@ -2202,34 +2206,44 @@ sub chvm {
     }
     if ($resize) {
         my $shrinking_not_supported = "qcow2 doesn't support shrinking images yet";
+
         # Get a list of disk=size pairs
         my @resize_disks = split(/,/, $resize);
         for my $single_disk (@resize_disks) {
+
             # For each comma separated disk, get disk name and the size to change it to
             my ($disk_to_resize, $value) = split(/=/, $single_disk);
             if ($disk_to_resize) {
                 unless (exists $useddisks{$disk_to_resize}) {
+
                     # Disk name given does not match any disks for this vm
                     xCAT::SvrUtils::sendmsg([ 1, "Disk $disk_to_resize does not exist" ], $callback, $node);
                     next;
                 }
+
                 # Get desired (new) disk size
                 $value = getUnits($value, "G", 1);
+
                 # Now search kvm_nodedata table to find the volume for this disk
                 my $myxml    = $parser->parse_string($vmxml);
                 my @alldisks = $myxml->findnodes("/domain/devices/disk");
+
                 # Look through all the disk entries
                 foreach my $disknode (@alldisks) {
                     my $devicetype = $disknode->getAttribute("device");
+
                     # Skip cdrom devices
                     if ($devicetype eq "cdrom") { next; }
+
                     # Get name of the disk
                     my $diskname = $disknode->findnodes('./target')->[0]->getAttribute('dev');
+
                     # Is this a disk we were looking for to resize ?
                     if ($diskname eq $disk_to_resize) {
                         my $file = $disknode->findnodes('./source')->[0]->getAttribute('file');
                         my $vol = $hypconn->get_storage_volume_by_path($file);
                         if ($vol) {
+
                             # Always pass RESIZE_SHRINK flag to resize(). It is required when shrinking
                             # the volume size and is ignored when growing volume size
                             eval {
@@ -2237,6 +2251,7 @@ sub chvm {
                             };
                             if ($@) {
                                 if ($@ =~ /$shrinking_not_supported/) {
+
                                     # qcow2 does not support shrinking volumes, display more readable error
                                     xCAT::SvrUtils::sendmsg([ 1, "Resizing disk $disk_to_resize failed, $shrinking_not_supported" ], $callback, $node);
                                 }
@@ -3223,10 +3238,10 @@ sub power {
                 $allnodestatus{$node} = $::STATUS_POWERING_ON;
             }
         } elsif (not $dom->is_active()) {
-            eval{
+            eval {
                 $dom->create();
             };
-            if($@){
+            if ($@) {
                 return (1, "Error: $@");
             }
             $allnodestatus{$node} = $::STATUS_POWERING_ON;
@@ -3238,10 +3253,10 @@ sub power {
             my $newxml = $dom->get_xml_description();
             $updatetable->{kvm_nodedata}->{$node}->{xml} = $newxml;
             if ($dom->is_active()) {
-                eval{
+                eval {
                     $dom->destroy();
                 };
-                if($@){
+                if ($@) {
                     return (1, "Error: $@");
                 }
                 $allnodestatus{$node} = $::STATUS_POWERING_OFF;
@@ -3265,8 +3280,8 @@ sub power {
             if ($newxml) {    #need to destroy and repower..
                 $updatetable->{kvm_nodedata}->{$node}->{xml} = $newxml;
                 my $persist = $dom->is_persistent();
-                eval {$dom->destroy();};
-                if($@){
+                eval { $dom->destroy(); };
+                if ($@) {
                     return (1, "Error: $@");
                 }
                 $allnodestatus{$node} = $::STATUS_POWERING_OFF;
@@ -3599,11 +3614,12 @@ sub rscan {
 
 sub lsvm {
     my $host = shift;
-    my $vm = shift;
+    my $vm   = shift;
     my @doms = $hypconn->list_domains();
     my @vms;
 
     if ($host ne $vm) {
+
         # Processing lsvm for a VM, display details about that VM
         foreach (@doms) {
             if ($_->get_name() eq $vm) {
@@ -3618,27 +3634,28 @@ sub lsvm {
                     push @vms, "CPU: " . $domain_info->{"nrVirtCpu"};
                 }
                 if (exists $domain_info->{"state"}) {
-                    my $state =  $domain_info->{"state"};
+                    my $state = $domain_info->{"state"};
                     my $state_string;
                     if ($state == &Sys::Virt::Domain::STATE_NOSTATE)
-                        {$state_string = "The domain is active, but is not running / blocked (eg idle)";}
+                    { $state_string = "The domain is active, but is not running / blocked (eg idle)"; }
                     elsif ($state == &Sys::Virt::Domain::STATE_RUNNING)
-                        {$state_string = "The domain is active and running";}
+                    { $state_string = "The domain is active and running"; }
                     elsif ($state == &Sys::Virt::Domain::STATE_BLOCKED)
-                        {$state_string = "The domain is active, but execution is blocked";}
+                    { $state_string = "The domain is active, but execution is blocked"; }
                     elsif ($state == &Sys::Virt::Domain::STATE_PAUSED)
-                        {$state_string = "The domain is active, but execution has been paused";}
+                    { $state_string = "The domain is active, but execution has been paused"; }
                     elsif ($state == &Sys::Virt::Domain::STATE_SHUTDOWN)
-                        {$state_string = "The domain is active, but in the shutdown phase";}
+                    { $state_string = "The domain is active, but in the shutdown phase"; }
                     elsif ($state == &Sys::Virt::Domain::STATE_SHUTOFF)
-                        {$state_string = "The domain is inactive, and shut down";}
+                    { $state_string = "The domain is inactive, and shut down"; }
                     elsif ($state == &Sys::Virt::Domain::STATE_CRUSHED)
-                        {$state_string = "The domain is inactive, and crashed";}
+                    { $state_string = "The domain is inactive, and crashed"; }
                     elsif ($state == &Sys::Virt::Domain::STATE_PMSUSPENDED)
-                        {$state_string = "The domain is active, but in power management suspend state";}
-                    else {$state_string = "Unknown"};
+                    { $state_string = "The domain is active, but in power management suspend state"; }
+                    else { $state_string = "Unknown" }
                     push @vms, "State :" . $domain_info->{"state"} . " ($state_string)";
                 }
+
                 # The following block of code copied from rscan command processng for disks
                 my $currxml = $_->get_xml_description();
                 if ($currxml) {
@@ -3671,6 +3688,7 @@ sub lsvm {
             push @vms, $_->get_name();
         }
     }
+
     # Check if we were able to get any data
     unless (@vms) {
         push @vms, "Could not get any information about specified object";
@@ -3976,7 +3994,7 @@ sub process_request {
     my $sub_fds = new IO::Select;
     %hyphash = ();
 
-    if ($command eq 'rscan') { #command intended for hypervisors, not guests
+    if ($command eq 'rscan') {    #command intended for hypervisors, not guests
         foreach (@$noderange) { $hyphash{$_}->{nodes}->{$_} = 1; }
     } else {
         foreach (keys %{ $confdata->{vm} }) {
@@ -4021,8 +4039,10 @@ sub process_request {
             #              $hyphash{'!@!XCATDUMMYHYPERVISOR!@!'}->{nodes}->{$_}=1;
             #          }
         } elsif ($command eq "lsvm") {
+
             # Special processing for lsvm command, which takes vm name or hypervisor name
             unless (%hyphash) {
+
                 # if hyperhash has not been set already, we are processing vms, set it here
                 foreach (@$noderange) { $hyphash{$_}->{nodes}->{$_} = 1; }
             }
@@ -4223,6 +4243,7 @@ sub dohyp {
 
     foreach $node (sort (keys %{ $hyphash{$hyp}->{nodes} })) {
         unless ($confdata->{vm}->{$node}->[0]->{storagemodel}) {
+
             # Storage model is not set, default to  scsi for all architectures
             $confdata->{vm}->{$node}->[0]->{storagemodel} = "scsi";
         }
@@ -4251,7 +4272,7 @@ sub dohyp {
                 $desc =~ s/^\s+//;
                 $desc =~ s/\s+$//;
                 if ($desc) {
-                    if($rc == 0){
+                    if ($rc == 0) {
                         $output{node}->[0]->{data}->[0]->{desc}->[0] = $desc;
                     }
                 }
@@ -4310,15 +4331,18 @@ sub get_cdrom_device_names() {
 
     my $myxml    = $parser->parse_string($xml);
     my @alldisks = $myxml->findnodes("/domain/devices/disk");
+
     # Look through all the disk entries defined in the xml
     foreach my $disknode (@alldisks) {
-         my $devicetype = $disknode->getAttribute("device");
-         # Check if it is cdrom
-         if ($devicetype eq "cdrom") {
-             # Get name of the cdrom
-             $device_name = $disknode->findnodes('./target')->[0]->getAttribute('dev');
-             push @cdrom_device_names, $device_name;
-         }
+        my $devicetype = $disknode->getAttribute("device");
+
+        # Check if it is cdrom
+        if ($devicetype eq "cdrom") {
+
+            # Get name of the cdrom
+            $device_name = $disknode->findnodes('./target')->[0]->getAttribute('dev');
+            push @cdrom_device_names, $device_name;
+        }
     }
     return @cdrom_device_names;
 }

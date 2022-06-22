@@ -251,15 +251,15 @@ sub process_request {
                     $cb->({ node => [ { name => $switch, data => ["PASS"] } ] });
                     next;
                 }
-                foreach my $port (map{$_->[0]}sort{$a->[1] cmp $b->[1] || $a->[2] <=> $b->[2]}map{[$_, /^(.*?)(\d+)?$/]} keys %{ $macinfo->{$switch} }) {
+                foreach my $port (map { $_->[0] } sort { $a->[1] cmp $b->[1] || $a->[2] <=> $b->[2] } map { [ $_, /^(.*?)(\d+)?$/ ] } keys %{ $macinfo->{$switch} }) {
                     my $node = '';
                     if (defined($macinfo->{$switch}->{$port}->{Node})) {
                         $node = $macinfo->{$switch}->{$port}->{Node};
                     }
 
-                    my $mtu = '';
+                    my $mtu    = '';
                     my $vlanid = '';
-                    my @vlans = ();
+                    my @vlans  = ();
                     if (defined($macinfo->{$switch}->{$port}->{Vlanid})) {
                         @vlans = @{ $macinfo->{$switch}->{$port}->{Vlanid} };
                     }
@@ -273,7 +273,7 @@ sub process_request {
                             $vlanid = $vlans[$ind];
                             my $mac_vlan;
                             if (!$mac) {
-                                $mac_vlan="N/A";
+                                $mac_vlan = "N/A";
                             } elsif ($vlanid) {
                                 $mac_vlan = "$mac($vlanid)";
                             } else {
@@ -335,7 +335,7 @@ sub process_request {
                 if ($node) { last; }
             }
         }
-        my $bmc_node = undef;
+        my $bmc_node  = undef;
         my @bmc_nodes = ();
         if ($req->{'mtm'}->[0] and $req->{'serial'}->[0]) {
             my $mtms      = $req->{'mtm'}->[0] . "*" . $req->{'serial'}->[0];
@@ -374,7 +374,7 @@ sub process_request {
             $request->{bmc_node}  = [$bmc_node] if $bmc_node;
             $doreq->($request);
             if (defined($request->{error})) {
-                $req->{error}->[0] = '1';
+                $req->{error}->[0]     = '1';
                 $req->{error_msg}->[0] = $request->{error_msg}->[0];
             }
             %{$request} = ();    #Clear req structure, it's done..
@@ -420,6 +420,7 @@ sub process_switch_config {
                     xCAT::MellanoxIB::setConfig($nodes, $callback, $subreq, $subcommand, $argument);
                 }
             } else {
+
                 #onie switch will processed in the onie plug in
                 unless ($t =~ /onie/i) {
                     my $rsp = {};

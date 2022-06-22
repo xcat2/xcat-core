@@ -265,12 +265,13 @@ sub submit_request {
             %sslargs,
         );
     } else {
-        print "warning: the client certificates under $homedir/.xcat/ are not setup correctly, please run '/opt/xcat/share/xcat/scripts/setup-local-client.sh"." $ENV{'USER'}' as 'root' to generate the client certificates; otherwise, the SSL connection between xcat client and xcatd will be setup without certificate verification and open to Man-In-The-Middle attacks.\n";
+        print "warning: the client certificates under $homedir/.xcat/ are not setup correctly, please run '/opt/xcat/share/xcat/scripts/setup-local-client.sh" . " $ENV{'USER'}' as 'root' to generate the client certificates; otherwise, the SSL connection between xcat client and xcatd will be setup without certificate verification and open to Man-In-The-Middle attacks.\n";
+
         #Using the default of SSL_verify_mode of SSL_VERIFY_NONE for client is deprecated!
         #need to specify SSL_verify_mode => SSL_VERIFY_NONE explicitly
         $client = IO::Socket::SSL->start_SSL($pclient,
             SSL_verify_mode => SSL_VERIFY_NONE,
-            Timeout => 0,
+            Timeout         => 0,
         );
     }
     unless ($client) {
@@ -1038,8 +1039,8 @@ sub populate_site_hash {
         $::XCATSITEVALS{ $_->{key} } = $_->{value};
     }
 
-    unless (exists($::XCATSITEVALS{'httpport'}) and ($::XCATSITEVALS{'httpport'} ne "")){
-        $::XCATSITEVALS{'httpport'}="80";
+    unless (exists($::XCATSITEVALS{'httpport'}) and ($::XCATSITEVALS{'httpport'} ne "")) {
+        $::XCATSITEVALS{'httpport'} = "80";
     }
 
 }
@@ -1198,6 +1199,7 @@ sub handle_response {
         }
     }
     if ($rsp->{info}) {
+
         #print "printing info\n";
         if (ref($rsp->{info}) eq 'ARRAY') {
             foreach my $text (@{ $rsp->{info} }) {

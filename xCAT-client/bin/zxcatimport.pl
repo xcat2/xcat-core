@@ -22,35 +22,35 @@ use xCAT::Table;
 use xCAT::zvmUtils;
 use xCAT::MsgUtils;
 
-my $lvmPath = "/dev/xcat/repo";
-my $lvmMountPoint = "/install2";
-my $lvmImportDir = "/install2/xcatmigrate";
-my $lvmImportTablesDir = "/install2/xcatmigrate/xcattables";
-my $lvmImportFcpConfigsDir = "/install2/xcatmigrate/fcpconfigs";
+my $lvmPath                   = "/dev/xcat/repo";
+my $lvmMountPoint             = "/install2";
+my $lvmImportDir              = "/install2/xcatmigrate";
+my $lvmImportTablesDir        = "/install2/xcatmigrate/xcattables";
+my $lvmImportFcpConfigsDir    = "/install2/xcatmigrate/fcpconfigs";
 my $lvmImportFcpOtherFilesDir = "/install2/xcatmigrate/fcpotherfiles";
-my $lvmImportDocloneFilesDir = "/install2/xcatmigrate/doclone";
-my $lvmInfoFile = "lvminformation";
-my $lsdasdInfoFile = "lsdasdinformation";
-my $zvmVirtualDasdInfoFile = "zvmvirtualdasdinformation";
-my $vgName = "xcat";
-my $persistentMountPoint = "/persistent2";
+my $lvmImportDocloneFilesDir  = "/install2/xcatmigrate/doclone";
+my $lvmInfoFile               = "lvminformation";
+my $lsdasdInfoFile            = "lsdasdinformation";
+my $zvmVirtualDasdInfoFile    = "zvmvirtualdasdinformation";
+my $vgName                    = "xcat";
+my $persistentMountPoint      = "/persistent2";
 my @defaultTables = ("hosts", "hypervisor", "linuximage", "mac", "networks", "nodelist",
-                     "nodetype", "policy", "zvm");
+    "nodetype", "policy", "zvm");
 
 my $version = "1.0";
 my $out;
 my $err;
 my $returnValue;
 
-my $copyLvmFiles = 0;           # Copy files under old /install to new /install
-my $replaceAllXcatTables = 0;   # Copy one or all xcat tables
-my $addTableData = '*none*';    # Add node data to one table or default tables
-my $copyFcpConfigs = 0;         # copy old zhcp fcp *.conf files
-my $copyDoclone = 0;            # copy old doclone.txt file
-my $replaceSshKeys = 0;         # replace SSH keys with old xCAT SSH keys
-my $displayHelp = 0;            # Display help information
-my $versionOpt = 0;             # Show version information flag
-my $rc = 0;
+my $copyLvmFiles         = 0;    # Copy files under old /install to new /install
+my $replaceAllXcatTables = 0;    # Copy one or all xcat tables
+my $addTableData   = '*none*';   # Add node data to one table or default tables
+my $copyFcpConfigs = 0;          # copy old zhcp fcp *.conf files
+my $copyDoclone    = 0;          # copy old doclone.txt file
+my $replaceSshKeys = 0;          # replace SSH keys with old xCAT SSH keys
+my $displayHelp    = 0;          # Display help information
+my $versionOpt     = 0;          # Show version information flag
+my $rc             = 0;
 
 my $usage_string = "This script will mount or copy the old xcat lvm and old persistent disk\n
 to this appliance. The old xCAT LVM volumes and the persistent disk on XCAT userid must \n
@@ -91,8 +91,8 @@ They will be mounted as /install2 and /persistent2\n\n
 =cut
 
 #-------------------------------------------------------
-sub chompall{
-    my ( $arg1, $arg2, $arg3 ) = @_;
+sub chompall {
+    my ($arg1, $arg2, $arg3) = @_;
     chomp($$arg1);
     chomp($$arg2);
     chomp($$arg3);
@@ -101,8 +101,8 @@ sub chompall{
 # =======unit test/debugging routine ==========
 # print the return data from tiny capture return
 # data for: out, err, return value
-sub printreturndata{
-    my ( $arg1, $arg2, $arg3 ) = @_;
+sub printreturndata {
+    my ($arg1, $arg2, $arg3) = @_;
     print "=============================\n";
     print "Return value ($$arg3)\n";
     print "out ($$arg1)\n";
@@ -119,22 +119,23 @@ sub get_disk($)
     my $hex_id = sprintf '%x', $id;
     my $dev_path = sprintf '/sys/bus/ccw/drivers/dasd-eckd/0.0.%04x', $id;
     unless (-d $dev_path) {
-       $dev_path = sprintf '/sys/bus/ccw/drivers/dasd-fba/0.0.%04x', $id;
+        $dev_path = sprintf '/sys/bus/ccw/drivers/dasd-fba/0.0.%04x', $id;
     }
     -d $dev_path or return undef;
     my $dev_block = "$dev_path/block";
     unless (-d $dev_block) {
-         # Try bringing the device online
-         for (1..5) {
-             system("echo 1 > $dev_path/online");
-             last if -d $dev_block;
-             sleep(10);
-         }
+
+        # Try bringing the device online
+        for (1 .. 5) {
+            system("echo 1 > $dev_path/online");
+            last if -d $dev_block;
+            sleep(10);
+        }
     }
     opendir(my $dir, $dev_block) or return undef;
     my $dev;
     while ($dev = readdir $dir) {
-         last unless $dev eq '.' || $dev eq '..';
+        last unless $dev eq '.' || $dev eq '..';
     }
     closedir $dir;
     defined $dev ? "/dev/$dev" : undef;
@@ -154,7 +155,7 @@ sub get_disk($)
 =cut
 
 #-------------------------------------------------------
-sub mountOldLVM{
+sub mountOldLVM {
 
     my $saveMsg;
     my $saveErr;
@@ -163,7 +164,7 @@ sub mountOldLVM{
     #Check for /install2 If already mounted should get a return value(8192) and $err output
     #Check $err for "is already mounted on", if found we are done.
     print "Checking for $lvmMountPoint.\n";
-    ( $out, $err, $returnValue ) = eval { capture { system( "mount $lvmMountPoint"); } };
+    ($out, $err, $returnValue) = eval { capture { system("mount $lvmMountPoint"); } };
     chompall(\$out, \$err, \$returnValue);
     if (index($err, "already mounted on $lvmMountPoint") > -1) {
         print "Old xCAT LVM is already mounted at $lvmMountPoint\n";
@@ -171,20 +172,22 @@ sub mountOldLVM{
     }
 
     print "Importing $vgName\n";
-    ( $out, $err, $returnValue ) = eval { capture { system( "/sbin/vgimport $vgName"); } };
+    ($out, $err, $returnValue) = eval { capture { system("/sbin/vgimport $vgName"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue) {
+
         # There could be a case where the LVM has been imported already
         # Save this error information and do the next step (vgchange)
-        $saveMsg = "Error rv:$returnValue trying to vgimport $vgName";
-        $saveErr = "$err";
+        $saveMsg         = "Error rv:$returnValue trying to vgimport $vgName";
+        $saveErr         = "$err";
         $saveReturnValue = $returnValue;
     }
 
     print "Activating LVM $vgName\n";
-    ( $out, $err, $returnValue ) = eval { capture { system( "/sbin/vgchange -a y $vgName"); } };
+    ($out, $err, $returnValue) = eval { capture { system("/sbin/vgchange -a y $vgName"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue) {
+
         # If the import failed previously, put out that message instead.
         if (!defined $saveMsg) {
             print "$saveMsg\n";
@@ -198,7 +201,7 @@ sub mountOldLVM{
     }
 
     print "Making $lvmMountPoint directory\n";
-    ( $out, $err, $returnValue ) = eval { capture { system( "mkdir -p $lvmMountPoint"); } };
+    ($out, $err, $returnValue) = eval { capture { system("mkdir -p $lvmMountPoint"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue) {
         print "Error rv:$returnValue trying to mkdir -p $lvmMountPoint\n";
@@ -207,7 +210,7 @@ sub mountOldLVM{
     }
 
     print "Mounting LVM $lvmPath at $lvmMountPoint\n";
-    ( $out, $err, $returnValue ) = eval { capture { system( "mount -t ext3 $lvmPath $lvmMountPoint"); } };
+    ($out, $err, $returnValue) = eval { capture { system("mount -t ext3 $lvmPath $lvmMountPoint"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue) {
         print "Error rv:$returnValue trying to mkdir -p $lvmMountPoint\n";
@@ -233,12 +236,12 @@ sub mountOldLVM{
 =cut
 
 #-------------------------------------------------------
-sub mountOldPersistent{
+sub mountOldPersistent {
 
     #Check for /persistent2 If already mounted should get a return value(8192) and $err output
     #Check $err for "is already mounted on", if found we are done.
     print "Checking for $persistentMountPoint.\n";
-    ( $out, $err, $returnValue ) = eval { capture { system( "mount $persistentMountPoint"); } };
+    ($out, $err, $returnValue) = eval { capture { system("mount $persistentMountPoint"); } };
     chompall(\$out, \$err, \$returnValue);
     if (index($err, "already mounted on $persistentMountPoint") > -1) {
         print "The old xCAT /persistent disk already mounted at $persistentMountPoint\n";
@@ -252,9 +255,9 @@ sub mountOldPersistent{
         print "Unable to find dasda information in $lvmImportDir/$lsdasdInfoFile\n";
         return 1;
     }
-    my @tokens = split(/\s+/, $dasda);
-    my @vdevparts = split (/\./, $tokens[0]);
-    my $vdev = $vdevparts[2];
+    my @tokens    = split(/\s+/, $dasda);
+    my @vdevparts = split(/\./,  $tokens[0]);
+    my $vdev      = $vdevparts[2];
     if (!(length($vdev))) {
         print "Unable to find a vdev value for dasda\n";
         return 1;
@@ -276,7 +279,7 @@ sub mountOldPersistent{
 
     # Now display the current zVM query v dasd to see if they have the volid listed
     # and what vdev it is mounted on
-    ( $out, $err, $returnValue ) = eval { capture { system( "vmcp q v dasd 2>&1"); } };
+    ($out, $err, $returnValue) = eval { capture { system("vmcp q v dasd 2>&1"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue) {
         print "Error rv:$returnValue trying to vmcp q v dasd\n";
@@ -286,7 +289,7 @@ sub mountOldPersistent{
 
     # get the current VDEV the old volid is now using
     # If not they they did not update the directory to link to the old classic disk
-    ( $out, $err, $returnValue ) = eval { capture { system( "echo \"$out\" | egrep -i $volid"); } };
+    ($out, $err, $returnValue) = eval { capture { system("echo \"$out\" | egrep -i $volid"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue) {
         print "Error rv:$returnValue trying to echo $out\n";
@@ -306,6 +309,7 @@ sub mountOldPersistent{
 
     # Now get the Linux disk name that is being used for this vdev (/dev/dasdx)
     my $devname = get_disk($currentvdev);
+
     #print "Devname found: $devname\n";
     if (!(defined $devname)) {
         print "Unable to find a Linux disk for address $currentvdev volume id $volid\n";
@@ -313,7 +317,7 @@ sub mountOldPersistent{
     }
 
     # Create the directory for the mount of old persistent disk
-    ( $out, $err, $returnValue ) = eval { capture { system( "mkdir -p -m 0755 $persistentMountPoint"); } };
+    ($out, $err, $returnValue) = eval { capture { system("mkdir -p -m 0755 $persistentMountPoint"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue) {
         print "Error rv:$returnValue trying to create $persistentMountPoint:\n";
@@ -323,7 +327,7 @@ sub mountOldPersistent{
 
     # Mount the old persistent disk, must be partition 1
     my $partition = 1;
-    ( $out, $err, $returnValue ) = eval { capture { system( "mount -t ext3 $devname$partition $persistentMountPoint"); } };
+    ($out, $err, $returnValue) = eval { capture { system("mount -t ext3 $devname$partition $persistentMountPoint"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue) {
         print "Error rv:$returnValue trying to mount -t ext3 $devname$partition $persistentMountPoint\n";
@@ -333,10 +337,11 @@ sub mountOldPersistent{
     print "The old xCAT /persistent disk is mounted at $persistentMountPoint\n";
     return 0;
 }
+
 # ***********************************************************
 # Mainline. Parse any arguments
 $Getopt::Long::ignorecase = 0;
-Getopt::Long::Configure( "bundling" );
+Getopt::Long::Configure("bundling");
 
 GetOptions(
     'installfiles'     => \$copyLvmFiles,
@@ -346,14 +351,14 @@ GetOptions(
     'doclonefile'      => \$copyDoclone,
     'replaceSSHkeys'   => \$replaceSshKeys,
     'h|help'           => \$displayHelp,
-    'v'                => \$versionOpt );
+    'v'                => \$versionOpt);
 
-if ( $versionOpt ) {
+if ($versionOpt) {
     print "Version: $version\n";
     exit 0;
 }
 
-if ( $displayHelp ) {
+if ($displayHelp) {
     print $usage_string;
     exit 0;
 }
@@ -374,7 +379,7 @@ if ($rc != 0) {
 
 # *****************************************************************************
 # **** Copy the LVM files from old xCAT LVM to current LVM
-if ( $copyLvmFiles ) {
+if ($copyLvmFiles) {
     $rc = chdir("$lvmMountPoint");
     if (!$rc) {
         print "Error rv:$rc trying to chdir $lvmMountPoint\n";
@@ -386,21 +391,23 @@ if ( $copyLvmFiles ) {
         print "Error rv:$? trying to copy from $lvmMountPoint to /install. $out\n";
         exit $?;
     }
-    print "Old LVM Files copied from $lvmMountPoint to /install\n" ;
+    print "Old LVM Files copied from $lvmMountPoint to /install\n";
 }
 
 # *****************************************************************************
 # **** Replace all the current xCAT tables with the old xCAT tables
-if ( $replaceAllXcatTables ) {
+if ($replaceAllXcatTables) {
     print "Restoring old xCAT tables from $lvmImportTablesDir\n";
+
     # restorexCATdb - restores the xCAT db tables from the directory  -p path
-    ( $out, $err, $returnValue ) = eval { capture { system( ". /etc/profile.d/xcat.sh; /opt/xcat/sbin/restorexCATdb -p $lvmImportTablesDir"); } };
+    ($out, $err, $returnValue) = eval { capture { system(". /etc/profile.d/xcat.sh; /opt/xcat/sbin/restorexCATdb -p $lvmImportTablesDir"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue) {
         print "Error rv:$returnValue trying to restore the xcat tables from $lvmImportTablesDir:\n";
         print "$err\n";
         exit 1;
     }
+
     # There is a chance the return value is 0, and the $out says "Restore of Database Complete.";
     # Yet some of the tables had failures. That information is in $err
     if (length($err)) {
@@ -412,13 +419,15 @@ if ( $replaceAllXcatTables ) {
 # *****************************************************************************
 # **** Copy the zhcp FCP config files
 if ($copyFcpConfigs) {
+
     # Check if there are any FCP config files to copy
-    ( $out, $err, $returnValue ) = eval { capture { system( "ls $lvmImportFcpConfigsDir/*.conf"); } };
+    ($out, $err, $returnValue) = eval { capture { system("ls $lvmImportFcpConfigsDir/*.conf"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue == 0) {
+
         # Save any *.conf files
         print "Copying $lvmImportFcpConfigsDir/*.conf files to /var/opt/zhcp/zfcp\n";
-        ( $out, $err, $returnValue ) = eval { capture { system( "mkdir -p /var/opt/zhcp/zfcp && cp -R $lvmImportFcpConfigsDir/*.conf /var/opt/zhcp/zfcp/"); } };
+        ($out, $err, $returnValue) = eval { capture { system("mkdir -p /var/opt/zhcp/zfcp && cp -R $lvmImportFcpConfigsDir/*.conf /var/opt/zhcp/zfcp/"); } };
         chompall(\$out, \$err, \$returnValue);
         if ($returnValue) {
             print "Error rv:$returnValue trying to use cp to copy files from $lvmImportFcpConfigsDir\n";
@@ -428,13 +437,15 @@ if ($copyFcpConfigs) {
     } else {
         print "There were not any zhcp FCP *.conf files to copy\n";
     }
+
     # Check if there are any other FCP files to copy
-    ( $out, $err, $returnValue ) = eval { capture { system( "ls $lvmImportFcpOtherFilesDir/*"); } };
+    ($out, $err, $returnValue) = eval { capture { system("ls $lvmImportFcpOtherFilesDir/*"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue == 0) {
+
         # Save any files
         print "Copying $lvmImportFcpOtherFilesDir/* files to /opt/zhcp/conf\n";
-        ( $out, $err, $returnValue ) = eval { capture { system( "mkdir -p /opt/zhcp/conf && cp -R $lvmImportFcpOtherFilesDir/* /opt/zhcp/conf/"); } };
+        ($out, $err, $returnValue) = eval { capture { system("mkdir -p /opt/zhcp/conf && cp -R $lvmImportFcpOtherFilesDir/* /opt/zhcp/conf/"); } };
         chompall(\$out, \$err, \$returnValue);
         if ($returnValue) {
             print "Error rv:$returnValue trying to use cp to copy files from $lvmImportFcpOtherFilesDir\n";
@@ -449,13 +460,15 @@ if ($copyFcpConfigs) {
 # *****************************************************************************
 # **** Copy the doclone.txt file if it exists
 if ($copyDoclone) {
+
     # Check if there is a doclone.txt to copy
-    ( $out, $err, $returnValue ) = eval { capture { system( "ls $lvmImportDocloneFilesDir/doclone.txt"); } };
+    ($out, $err, $returnValue) = eval { capture { system("ls $lvmImportDocloneFilesDir/doclone.txt"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue == 0) {
+
         # Save this file in correct location
         print "Copying $lvmImportDocloneFilesDir/doclone.txt file to /var/opt/xcat/doclone.txt\n";
-        ( $out, $err, $returnValue ) = eval { capture { system( "cp -R $lvmImportDocloneFilesDir/doclone.txt /var/opt/xcat/"); } };
+        ($out, $err, $returnValue) = eval { capture { system("cp -R $lvmImportDocloneFilesDir/doclone.txt /var/opt/xcat/"); } };
         chompall(\$out, \$err, \$returnValue);
         if ($returnValue) {
             print "Error rv:$returnValue trying to use cp to copy doclone.txt file from $lvmImportDocloneFilesDir\n";
@@ -470,53 +483,66 @@ if ($copyDoclone) {
 # *****************************************************************************
 # **** Add old xCAT table data to a table
 my $test = length($addTableData);
+
 # Add old xCAT data to an existing table. Admin may need to delete out duplicates using the GUI
-if ((length($addTableData)==0) || $addTableData ne "*none*") {
+if ((length($addTableData) == 0) || $addTableData ne "*none*") {
+
     #defaultTables = ("hosts", "hypervisor", "linuximage", "mac", "networks", "nodelist",
     #                  "nodetype", "policy", "zvm");
     my @tables = @defaultTables;
-    if (length($addTableData)>1 ) {
+    if (length($addTableData) > 1) {
+
         # use the table specified
         @tables = ();
-        @tables = split(' ',$addTableData);
+        @tables = split(' ', $addTableData);
     }
     foreach my $atable (@tables) {
         print "Adding data to table $atable\n";
+
         # the current xCAT code we have does not support the -a option
         # use xCAT::Table functions
 
         my $tabledata = `cat "$lvmImportTablesDir\/$atable\.csv"`;
         if (length($tabledata) <= 10) {
-                print "Unable to find table information for $atable in $lvmImportTablesDir\n";
-                return 1;
+            print "Unable to find table information for $atable in $lvmImportTablesDir\n";
+            return 1;
         }
+
         # remove the hash tag from front
         $tabledata =~ s/\#//;
         my @rows = split('\n', $tabledata);
         my @keys;
         my @values;
         my $tab;
+
         # loop through all the csv rows, first are the header keys, rest is data
         foreach my $i (0 .. $#rows) {
             my %record;
+
             #print "row $i data($rows[$i])\n";
             if ($i == 0) {
                 @keys = split(',', $rows[0]);
+
                 #print "Keys found:(@keys)\n";
             } else {
+
                 # now that we know we have data, lets create table
                 if (!defined $tab) {
                     $tab = xCAT::Table->new($atable, -create => 1, -autocommit => 0);
                 }
+
                 # put the data into the new table.
                 @values = split(',', $rows[$i]);
                 foreach my $v (0 .. $#values) {
+
                     # Strip off any leading and trailing double quotes
                     $values[$v] =~ s/"(.*?)"\z/$1/s;
-                    $record{$keys[$v]} = $values[$v];
+                    $record{ $keys[$v] } = $values[$v];
+
                     #print "Row $i matches key $keys[$v] Value found:($values[$v])\n";
                 }
             }
+
             # write out the row if any keys added to the hash
             if (%record) {
                 my @dbrc = $tab->setAttribs(\%record, \%record);
@@ -528,12 +554,13 @@ if ((length($addTableData)==0) || $addTableData ne "*none*") {
                 }
             }
         }
+
         # if we made it here and $tab is defined, commit it.
         if (defined $tab) {
             $tab->commit;
             print "Data successfully added and committed to $atable.\n*****! Remember to check the table and remove any rows not needed\n";
         }
-    }#end for each table
+    }    #end for each table
 }
 
 # *****************************************************************************
@@ -541,33 +568,34 @@ if ((length($addTableData)==0) || $addTableData ne "*none*") {
 
 # First copy the current keys and copy the old xCAT keys into unique file names
 if ($replaceSshKeys) {
+
     # Make temp file names to hold the current and old ssh public and private key
-    my $copySshKey= `/bin/mktemp -p /root/.ssh/ id_rsa.pub_XXXXXXXX`;
+    my $copySshKey = `/bin/mktemp -p /root/.ssh/ id_rsa.pub_XXXXXXXX`;
     chomp($copySshKey);
-    my $copySshPrivateKey= `/bin/mktemp -p /root/.ssh/ id_rsa_XXXXXXXX`;
+    my $copySshPrivateKey = `/bin/mktemp -p /root/.ssh/ id_rsa_XXXXXXXX`;
     chomp($copySshPrivateKey);
 
     # Make temp files for the RSA backup keys in appliance
-    my $copyHostSshKey= `/bin/mktemp -p /etc/ssh/ ssh_host_rsa_key.pub_XXXXXXXX`;
+    my $copyHostSshKey = `/bin/mktemp -p /etc/ssh/ ssh_host_rsa_key.pub_XXXXXXXX`;
     chomp($copyHostSshKey);
-    my $copyHostSshPrivateKey= `/bin/mktemp -p /etc/ssh/ ssh_host_rsa_key_XXXXXXXX`;
+    my $copyHostSshPrivateKey = `/bin/mktemp -p /etc/ssh/ ssh_host_rsa_key_XXXXXXXX`;
     chomp($copyHostSshPrivateKey);
 
     # Save old keys in unique names
-    my $oldSshKey= `/bin/mktemp -p /root/.ssh/ id_rsa.pub_OldMachineXXXXXXXX`;
+    my $oldSshKey = `/bin/mktemp -p /root/.ssh/ id_rsa.pub_OldMachineXXXXXXXX`;
     chomp($oldSshKey);
-    my $oldSshPrivateKey= `/bin/mktemp -p /root/.ssh/ id_rsa_OldMachineXXXXXXXX`;
+    my $oldSshPrivateKey = `/bin/mktemp -p /root/.ssh/ id_rsa_OldMachineXXXXXXXX`;
     chomp($oldSshPrivateKey);
 
     print "Making backup copies of current xCAT SSH keys\n";
-    ( $out, $err, $returnValue ) = eval { capture { system( "cp \-p /root/.ssh/id_rsa.pub $copySshKey"); } };
+    ($out, $err, $returnValue) = eval { capture { system("cp \-p /root/.ssh/id_rsa.pub $copySshKey"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue) {
         print "Error rv:$returnValue trying to use cp to copy /root/.ssh/id_rsa.pub to $copySshKey\n";
         print "$err\n";
         exit 1;
     }
-    ( $out, $err, $returnValue ) = eval { capture { system( "cp \-p /root/.ssh/id_rsa $copySshPrivateKey"); } };
+    ($out, $err, $returnValue) = eval { capture { system("cp \-p /root/.ssh/id_rsa $copySshPrivateKey"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue) {
         print "Error rv:$returnValue trying to use cp to copy /root/.ssh/id_rsa to $copySshPrivateKey\n";
@@ -576,14 +604,14 @@ if ($replaceSshKeys) {
     }
 
     # Save appliance backup keys
-    ( $out, $err, $returnValue ) = eval { capture { system( "cp \-p /etc/ssh/ssh_host_rsa_key.pub $copyHostSshKey"); } };
+    ($out, $err, $returnValue) = eval { capture { system("cp \-p /etc/ssh/ssh_host_rsa_key.pub $copyHostSshKey"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue) {
         print "Error rv:$returnValue trying to use cp to copy /etc/ssh/ssh_host_rsa_key.pub to $copyHostSshKey\n";
         print "$err\n";
         exit 1;
     }
-    ( $out, $err, $returnValue ) = eval { capture { system( "cp \-p /etc/ssh/ssh_host_rsa_key $copyHostSshPrivateKey"); } };
+    ($out, $err, $returnValue) = eval { capture { system("cp \-p /etc/ssh/ssh_host_rsa_key $copyHostSshPrivateKey"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue) {
         print "Error rv:$returnValue trying to use cp to copy /etc/ssh/ssh_host_rsa_key to $copyHostSshPrivateKey\n";
@@ -593,14 +621,14 @@ if ($replaceSshKeys) {
 
     # Copy the old public key and make sure the permissions are 644
     print "Copying old xCAT SSH keys (renamed) from /persistent2 to /root/.ssh\n";
-    ( $out, $err, $returnValue ) = eval { capture { system( "cp /persistent2/root/.ssh/id_rsa.pub $oldSshKey"); } };
+    ($out, $err, $returnValue) = eval { capture { system("cp /persistent2/root/.ssh/id_rsa.pub $oldSshKey"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue) {
         print "Error rv:$returnValue trying to use cp to copy /persistent2/root/.ssh/id_rsa.pub to $oldSshKey\n";
         print "$err\n";
         exit 1;
     }
-    ( $out, $err, $returnValue ) = eval { capture { system( "chmod 644 $oldSshKey"); } };
+    ($out, $err, $returnValue) = eval { capture { system("chmod 644 $oldSshKey"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue) {
         print "Error rv:$returnValue trying to chmod 644 $oldSshKey\n";
@@ -609,14 +637,14 @@ if ($replaceSshKeys) {
     }
 
     # Copy the private key and make sure the permissions are 600
-    ( $out, $err, $returnValue ) = eval { capture { system( "cp /persistent2/root/.ssh/id_rsa $oldSshPrivateKey"); } };
+    ($out, $err, $returnValue) = eval { capture { system("cp /persistent2/root/.ssh/id_rsa $oldSshPrivateKey"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue) {
         print "Error rv:$returnValue trying to use cp to copy /persistent2/root/.ssh/id_rsa to $oldSshPrivateKey\n";
         print "$err\n";
         exit 1;
     }
-    ( $out, $err, $returnValue ) = eval { capture { system( "chmod 600 $oldSshPrivateKey"); } };
+    ($out, $err, $returnValue) = eval { capture { system("chmod 600 $oldSshPrivateKey"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue) {
         print "Error rv:$returnValue trying to chmod 600 $oldSshPrivateKey\n";
@@ -642,40 +670,40 @@ if ($replaceSshKeys) {
     # Scan the xCAT tables to get the zhcp node name
     # Print out a message and stop if any errors found
     @entries = xCAT::TableUtils->get_site_attribute("master");
-    $xcatIp = $entries[0];
-    if ( !$xcatIp ) {
+    $xcatIp  = $entries[0];
+    if (!$xcatIp) {
         print "xCAT site table is missing a master with ip address\n";
         exit 1;
     }
 
     # Get xcat node name from 'hosts' table using IP as key
-    @propNames = ( 'node');
+    @propNames = ('node');
     $propVals = xCAT::zvmUtils->getTabPropsByKey('hosts', 'ip', $xcatIp, @propNames);
     $xcatNodeName = $propVals->{'node'};
-    if ( !$xcatNodeName ) {
+    if (!$xcatNodeName) {
         print "xCAT hosts table is missing a node with ip address of $xcatIp\n";
         exit 1;
     }
 
     # Get hcp hostname for xcat from the zvm table using xcat node name
-    @propNames = ( 'hcp');
-    $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $xcatNodeName, @propNames );
+    @propNames = ('hcp');
+    $propVals = xCAT::zvmUtils->getNodeProps('zvm', $xcatNodeName, @propNames);
     $zhcpHostName = $propVals->{'hcp'};
-    if ( !$zhcpHostName ) {
+    if (!$zhcpHostName) {
         print "xCAT zvm table is missing hcp value for $xcatNodeName\n";
         exit 1;
     }
 
     # Get zhcp IP and node from 'hosts' table using hostname as key
-    @propNames = ( 'ip', 'node');
+    @propNames = ('ip', 'node');
     $propVals = xCAT::zvmUtils->getTabPropsByKey('hosts', 'hostnames', $zhcpHostName, @propNames);
     $zhcpIp = $propVals->{'ip'};
-    if ( !$zhcpIp ) {
+    if (!$zhcpIp) {
         print "xCAT hosts table is missing a zhcp node IP with hostname of $zhcpHostName\n";
         exit 1;
     }
     $zhcpNode = $propVals->{'node'};
-    if ( !$zhcpNode ) {
+    if (!$zhcpNode) {
         print "xCAT hosts table is missing a zhcp node with hostname of $zhcpHostName\n";
         exit 1;
     }
@@ -683,28 +711,31 @@ if ($replaceSshKeys) {
     if ($zhcpIp eq $xcatIp) {
         print "xCAt and zhcp are on same IP, only need to update public and private keys\n";
     } else {
+
         # Need to append the old SSH key to zhcp authorized_keys file
         my $target = "$::SUDOER\@$zhcpHostName";
         print "Copying old SSH key to zhcp\n";
-        ( $out, $err, $returnValue ) = eval { capture { system( "scp $oldSshKey $target:$oldSshKey"); } };
+        ($out, $err, $returnValue) = eval { capture { system("scp $oldSshKey $target:$oldSshKey"); } };
         chompall(\$out, \$err, \$returnValue);
         if ($returnValue) {
             print "Error rv:$returnValue trying to use scp to copy $oldSshKey to zhcp $oldSshKey\n";
             print "$err\n";
             exit 1;
         }
+
         # Adding the old SSH key to the authorized_keys file
         # Make a copy of the old authorized_users file
         my $suffix = '_' . substr($oldSshKey, -8);
-        ( $out, $err, $returnValue ) = eval { capture { system( "ssh $target cp \"/root/.ssh/authorized_keys /root/.ssh/authorized_keys$suffix\""); } };
+        ($out, $err, $returnValue) = eval { capture { system("ssh $target cp \"/root/.ssh/authorized_keys /root/.ssh/authorized_keys$suffix\""); } };
         chompall(\$out, \$err, \$returnValue);
         if ($returnValue) {
             print "Error rv:$returnValue trying to make a copy of the /root/.ssh/authorized_keys file\n";
             print "$err\n";
             exit 1;
         }
+
         # Add the key to zhcp authorized_keys file
-        ( $out, $err, $returnValue ) = eval { capture { system( "ssh $target cat \"$oldSshKey >> /root/.ssh/authorized_keys\""); } };
+        ($out, $err, $returnValue) = eval { capture { system("ssh $target cat \"$oldSshKey >> /root/.ssh/authorized_keys\""); } };
         chompall(\$out, \$err, \$returnValue);
         if ($returnValue) {
             print "Error rv:$returnValue trying to append zhcp $oldSshKey to /root/.ssh/authorized_keys\n";
@@ -712,39 +743,42 @@ if ($replaceSshKeys) {
             exit 1;
         }
     }
+
     # We need to replace the xCAT public and private key with the old keys
     # and add the old key to the authorized_keys on xCAT
-    ( $out, $err, $returnValue ) = eval { capture { system( "cat $oldSshKey >> /root/.ssh/authorized_keys"); } };
+    ($out, $err, $returnValue) = eval { capture { system("cat $oldSshKey >> /root/.ssh/authorized_keys"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue) {
         print "Error rv:$returnValue trying to append xcat $oldSshKey to /root/.ssh/authorized_keys\n";
         print "$err\n";
         exit 1;
     }
-    ( $out, $err, $returnValue ) = eval { capture { system( "cp \-f $oldSshKey /root/.ssh/id_rsa.pub"); } };
+    ($out, $err, $returnValue) = eval { capture { system("cp \-f $oldSshKey /root/.ssh/id_rsa.pub"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue) {
         print "Error rv:$returnValue trying to replace the /root/.ssh/id_rsa.pub with the $oldSshKey\n";
         print "$err\n";
         exit 1;
     }
-    ( $out, $err, $returnValue ) = eval { capture { system( "cp \-f $oldSshPrivateKey /root/.ssh/id_rsa"); } };
+    ($out, $err, $returnValue) = eval { capture { system("cp \-f $oldSshPrivateKey /root/.ssh/id_rsa"); } };
     chompall(\$out, \$err, \$returnValue);
+
     #printreturndata(\$out, \$err, \$returnValue);
     if ($returnValue) {
         print "Error rv:$returnValue trying to replace the /root/.ssh/id_rsa with the $oldSshPrivateKey\n";
         print "$err\n";
         exit 1;
     }
+
     # Copy old keys into appliance saved key locations
-    ( $out, $err, $returnValue ) = eval { capture { system( "cp \-f $oldSshKey /etc/ssh/ssh_host_rsa_key.pub"); } };
+    ($out, $err, $returnValue) = eval { capture { system("cp \-f $oldSshKey /etc/ssh/ssh_host_rsa_key.pub"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue) {
         print "Error rv:$returnValue trying to replace the /etc/ssh/ssh_host_rsa_key.pub with the $oldSshKey\n";
         print "$err\n";
         exit 1;
     }
-    ( $out, $err, $returnValue ) = eval { capture { system( "cp \-f $oldSshPrivateKey /etc/ssh/ssh_host_rsa_key"); } };
+    ($out, $err, $returnValue) = eval { capture { system("cp \-f $oldSshPrivateKey /etc/ssh/ssh_host_rsa_key"); } };
     chompall(\$out, \$err, \$returnValue);
     if ($returnValue) {
         print "Error rv:$returnValue trying to replace the /etc/ssh/ssh_host_rsa_key with the $oldSshPrivateKey\n";

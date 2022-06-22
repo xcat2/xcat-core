@@ -335,8 +335,8 @@ sub parse_xdcp_cmd
     }
     my $changedfile = 0;
 
-    if ($options{'node-rcp'}){
-        $::RCP=$options{'node-rcp'};
+    if ($options{'node-rcp'}) {
+        $::RCP = $options{'node-rcp'};
     }
 
 
@@ -656,6 +656,7 @@ sub process_servicenodes_xdcp
         }
 
         if (defined($req->{username}) && ($req->{username}->[0] ne "root")) {
+
             # Using `root` when sync temporary files to `site.SNsyncfiledir` (default: /var/xcat/syncfiles)
             push(@{ $addreq->{arg} }, "-l");
             push(@{ $addreq->{arg} }, "root");
@@ -667,7 +668,8 @@ sub process_servicenodes_xdcp
         $addreq->{command}->[0] = $cmd;
         $addreq->{cwd}->[0]     = $req->{cwd}->[0];
         $addreq->{env}          = $req->{env};
-        if($::RCP){
+
+        if ($::RCP) {
             push(@{ $addreq->{arg} }, "-r");
             push(@{ $addreq->{arg} }, "$::RCP");
         }

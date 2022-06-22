@@ -25,17 +25,18 @@ use xCAT::TableUtils;
 my $PYTHON_AGENT_FILE = "/opt/xcat/lib/python/agent/agent.py";
 
 my $header = HTTP::Headers->new('Content-Type' => 'application/json');
+
 # Currently not used, example of header to use for authorization
 #my $header = HTTP::Headers->new('X-Auth-Token' => 'xfMHrrxdMgbiITnX0TlN');
 
 sub new {
     my $async = shift;
     $async = shift if (($async) && ($async =~ /OPENBMC/));
-    my $url = shift;
+    my $url     = shift;
     my $content = shift;
-    my $method = 'POST';
+    my $method  = 'POST';
 
-    my $id = send_request( $async, $method, $url, $content );
+    my $id = send_request($async, $method, $url, $content);
 
     return $id;
 }
@@ -43,16 +44,17 @@ sub new {
 sub send_request {
     my $async = shift;
     $async = shift if (($async) && ($async =~ /OPENBMC/));
-    my $method = shift;
-    my $url = shift;
-    my $content = shift;
+    my $method   = shift;
+    my $url      = shift;
+    my $content  = shift;
     my $username = shift;
     my $password = shift;
 
-    my $request = HTTP::Request->new( $method, $url, $header, $content );
+    my $request = HTTP::Request->new($method, $url, $header, $content);
     if (defined $username and defined $password) {
+
         # If username and password were passed in use authorization_basic()
-        # This is required to connect to BMC with OP940 level, ignored for 
+        # This is required to connect to BMC with OP940 level, ignored for
         # lower OP levels
         $request->authorization_basic($username, $password);
     }
@@ -78,12 +80,12 @@ sub send_request {
 #--------------------------------------------------------------------------------
 sub run_cmd_in_perl {
     my ($class, $command, $env) = @_;
-    if (! -e $PYTHON_AGENT_FILE) {
-        return (1, ''); # Go Perl: agent file is not there
+    if (!-e $PYTHON_AGENT_FILE) {
+        return (1, '');    # Go Perl: agent file is not there
     }
 
-    my @entries = xCAT::TableUtils->get_site_attribute("openbmcperl");
-    my $site_entry = $entries[0];
+    my @entries      = xCAT::TableUtils->get_site_attribute("openbmcperl");
+    my $site_entry   = $entries[0];
     my $support_obmc = undef;
     if (ref($env) eq 'ARRAY' and ref($env->[0]->{XCAT_OPENBMC_DEVEL}) eq 'ARRAY') {
         $support_obmc = $env->[0]->{XCAT_OPENBMC_DEVEL}->[0];
@@ -96,23 +98,24 @@ sub run_cmd_in_perl {
         return (-1, "Invalid value $support_obmc for XCAT_OPENBMC_DEVEL, only 'YES' and 'NO' are supported.");
     }
     if ($site_entry and ($site_entry =~ $command or uc($site_entry) eq "ALL")) {
-        return (1, ''); # Go Perl: command listed in "openbmcperl" or "ALL"
+        return (1, '');    # Go Perl: command listed in "openbmcperl" or "ALL"
     }
 
     # List of commands currently not supported in Python
     my @unsupported_in_python_commands = ('rflash', 'getopenbmccons');
 
-    my @temp = grep ({$command =~ $_ } @unsupported_in_python_commands);
-    if ( $command eq $temp[0]) {
+    my @temp = grep ({ $command =~ $_ } @unsupported_in_python_commands);
+    if ($command eq $temp[0]) {
+
         # Command currently not supported in Python
         if ($support_obmc and uc($support_obmc) eq 'YES') {
             return (0, ''); # Go Python: unsuppored command, but XCAT_OPENBMC_DEVEL=YES overrides
         } else {
-            return (1, ''); # Go Perl: unsuppored command
+            return (1, '');    # Go Perl: unsuppored command
         }
     }
 
-    return (0, ''); # Go Python: default
+    return (0, '');            # Go Python: default
 }
 
 1;

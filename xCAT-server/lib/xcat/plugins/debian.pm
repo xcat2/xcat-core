@@ -454,12 +454,12 @@ sub copycd
 
 sub mkinstall {
     xCAT::MsgUtils->message("S", "Doing debian mkinstall");
-    my $request  = shift;
-    my $callback = shift;
-    my $doreq    = shift;
-    my @nodes    = @{ $request->{node} };
-    my $bootparams = ${$request->{bootparams}};
-    my $sitetab  = xCAT::Table->new('site');
+    my $request    = shift;
+    my $callback   = shift;
+    my $doreq      = shift;
+    my @nodes      = @{ $request->{node} };
+    my $bootparams = ${ $request->{bootparams} };
+    my $sitetab    = xCAT::Table->new('site');
     my $linuximagetab;
     my $osimagetab;
     my %img_hash = ();
@@ -811,9 +811,9 @@ sub mkinstall {
 
         if ($arch =~ /ppc64/i and !(-e "$pkgdir/install/netboot/initrd.gz") and
             !(-e "$pkgdir/install/netboot/ubuntu-installer/$darch/initrd.gz")) {
-            xCAT::MsgUtils->report_node_error($callback, $node, 
-                "The network boot initrd.gz is not found in $pkgdir/install/netboot.  This is provided by Ubuntu, please download and retry."
-                );
+            xCAT::MsgUtils->report_node_error($callback, $node,
+"The network boot initrd.gz is not found in $pkgdir/install/netboot.  This is provided by Ubuntu, please download and retry."
+            );
             next;
         }
         my $tftpdir = "/tftpboot";
@@ -895,6 +895,7 @@ sub mkinstall {
             if ($docopy) {
                 mkpath("$tftppath");
                 copy($kernpath, "$tftppath/vmlinuz");
+
                 # we don't want to customise the subiquity initrd
                 if (using_subiquity($os)) {
                     copy($initrdpath, "$tftppath/initrd.img");
@@ -915,10 +916,10 @@ sub mkinstall {
                 $instserver = '!myipfn!';
             }
 
-            my $httpport="80";
-            my @hports=xCAT::TableUtils->get_site_attribute("httpport");
-            if ($hports[0]){
-                $httpport=$hports[0];
+            my $httpport = "80";
+            my @hports   = xCAT::TableUtils->get_site_attribute("httpport");
+            if ($hports[0]) {
+                $httpport = $hports[0];
             }
 
             if ($ent and $ent->{nfsserver}) {
@@ -1000,15 +1001,15 @@ sub mkinstall {
             $kcmdline .= " hostname=" . $node;
 
             xCAT::MsgUtils->trace($verbose_on_off, "d", "debian->mkinstall: kcmdline=$kcmdline kernal=$rtftppath/vmlinuz initrd=$rtftppath/initrd.img");
-            $bootparams->{$node}->[0]->{kernel} = "$rtftppath/vmlinuz";
-            $bootparams->{$node}->[0]->{initrd} = "$rtftppath/initrd.img";
+            $bootparams->{$node}->[0]->{kernel}   = "$rtftppath/vmlinuz";
+            $bootparams->{$node}->[0]->{initrd}   = "$rtftppath/initrd.img";
             $bootparams->{$node}->[0]->{kcmdline} = $kcmdline;
         }
         else {
             xCAT::MsgUtils->report_node_error($callback, $node, "Install image not found in $installroot/$os/$arch");
             next;
         }
-    }# end foreach node
+    }    # end foreach node
 }
 
 sub mknetboot
@@ -1021,13 +1022,13 @@ sub mknetboot
     if ($req->{command}->[0] =~ 'mkstatelite') {
         $statelite = "true";
     }
-    my $bootparams = ${$req->{bootparams}};
-    my $tftpdir = "/tftpboot";
-    my $nodes   = @{ $req->{node} };
-    my @args    = @{ $req->{arg} };
-    my @nodes   = @{ $req->{node} };
-    my $ostab   = xCAT::Table->new('nodetype');
-    my $sitetab = xCAT::Table->new('site');
+    my $bootparams = ${ $req->{bootparams} };
+    my $tftpdir    = "/tftpboot";
+    my $nodes      = @{ $req->{node} };
+    my @args       = @{ $req->{arg} };
+    my @nodes      = @{ $req->{node} };
+    my $ostab      = xCAT::Table->new('nodetype');
+    my $sitetab    = xCAT::Table->new('site');
     my $linuximagetab;
     my $osimagetab;
     my %img_hash = ();
@@ -1036,7 +1037,7 @@ sub mknetboot
     my $xcatdport  = "3001";
     my $xcatiport  = "3002";
     my $nodestatus = "y";
-    my $httpport="80";
+    my $httpport   = "80";
     my @myself     = xCAT::NetworkUtils->determinehostname();
     my $myname     = $myself[ (scalar @myself) - 1 ];
 
@@ -1196,8 +1197,8 @@ sub mknetboot
                 }
             } else {
                 xCAT::MsgUtils->report_node_error($callback, $node,
-                    qq{Cannot find the linux image called "$osver-$arch-$imgname-$profile", maybe you need to use the "nodeset <nr> osimage=<osimage name>" command to set the boot state}
-                    );
+qq{Cannot find the linux image called "$osver-$arch-$imgname-$profile", maybe you need to use the "nodeset <nr> osimage=<osimage name>" command to set the boot state}
+                );
                 next;
             }
 
@@ -1214,8 +1215,8 @@ sub mknetboot
                 }
             } else {
                 xCAT::MsgUtils->report_node_error($callback, $node,
-                    qq{Cannot find the linux image called "$osver-$arch-$imgname-$profile", maybe you need to use the "nodeset <nr> osimage=<osimage name>" command to set the boot state}
-                    );
+qq{Cannot find the linux image called "$osver-$arch-$imgname-$profile", maybe you need to use the "nodeset <nr> osimage=<osimage name>" command to set the boot state}
+                );
                 next;
             }
         }
@@ -1228,21 +1229,21 @@ sub mknetboot
         }
 
         $platform = xCAT_plugin::debian::getplatform($osver);
-        my $compressedrootimg=xCAT::SvrUtils->searchcompressedrootimg("$rootimgdir");
+        my $compressedrootimg = xCAT::SvrUtils->searchcompressedrootimg("$rootimgdir");
 
         # statelite images are not packed.
         if ($statelite) {
             unless (-r "$rootimgdir/kernel") {
                 xCAT::MsgUtils->report_node_error($callback, $node,
-                    qq{Did you run "genimage" before running "liteimg"? kernel cannot be found at $rootimgdir/kernel on $myname}
-                    );
+qq{Did you run "genimage" before running "liteimg"? kernel cannot be found at $rootimgdir/kernel on $myname}
+                );
                 next;
             }
             if (!-r "$rootimgdir/initrd-statelite.gz") {
                 if (!-r "$rootimgdir/initrd.gz") {
                     xCAT::MsgUtils->report_node_error($callback, $node,
-                        qq{Did you run "genimage" before running "liteimg"? initrd.gz or initrd-statelite.gz cannot be found}
-                        );
+qq{Did you run "genimage" before running "liteimg"? initrd.gz or initrd-statelite.gz cannot be found}
+                    );
                     next;
                 }
                 else {
@@ -1251,22 +1252,22 @@ sub mknetboot
             }
             if ($rootfstype eq "ramdisk" and !-r "$rootimgdir/rootimg-statelite.gz") {
                 xCAT::MsgUtils->report_node_error($callback, $node,
-                    qq{No packed image for platform $osver, architecture $arch and profile $profile, please run "liteimg" to create it.}
-                    );
+qq{No packed image for platform $osver, architecture $arch and profile $profile, please run "liteimg" to create it.}
+                );
                 next;
             }
         } else {
             unless (-r "$rootimgdir/kernel") {
                 xCAT::MsgUtils->report_node_error($callback, $node,
-                    qq{Did you run "genimage" before running "packimage"? kernel cannot be found at $rootimgdir/kernel on $myname}
-                    );
+qq{Did you run "genimage" before running "packimage"? kernel cannot be found at $rootimgdir/kernel on $myname}
+                );
                 next;
             }
             if (!-r "$rootimgdir/initrd-stateless.gz") {
                 if (!-r "$rootimgdir/initrd.gz") {
                     xCAT::MsgUtils->report_node_error($callback, $node,
-                        qq{Did you run "genimage" before running "packimg"? initrd.gz or initrd-statelite.gz cannot be found}
-                        );
+qq{Did you run "genimage" before running "packimg"? initrd.gz or initrd-statelite.gz cannot be found}
+                    );
                     next;
                     next;
                 }
@@ -1276,8 +1277,8 @@ sub mknetboot
             }
             unless (-f -r "$rootimgdir/$compressedrootimg") {
                 xCAT::MsgUtils->report_node_error($callback, $node,
-                    "No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage (e.g.  packimage -o $osver -p $profile -a $arch)"
-                    );
+"No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage (e.g.  packimage -o $osver -p $profile -a $arch)"
+                );
                 next;
             }
         }
@@ -1363,7 +1364,7 @@ sub mknetboot
 
         if ($ient and $ient->{nfsserver} and $ient->{nfsserver} ne '<xcatmaster>') {
             $imgsrv = $ient->{nfsserver};
-        }elsif ($ient and $ient->{tftpserver} and $ient->{tftpserver} ne '<xcatmaster>') {
+        } elsif ($ient and $ient->{tftpserver} and $ient->{tftpserver} ne '<xcatmaster>') {
             $imgsrv = $ient->{tftpserver};
         } else {
             $imgsrv = $xcatmaster;
@@ -1462,14 +1463,14 @@ sub mknetboot
             $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
         }
 
-        
+
         # if site.nodestatus='n', add "nonodestatus" to kcmdline to inform the node not to update nodestatus during provision
         if (($nodestatus eq "n") or ($nodestatus eq "N") or ($nodestatus eq "0")) {
             $kcmdline .= " nonodestatus ";
         }
 
 
-        $kcmdline .=" XCATHTTPPORT=$httpport ";
+        $kcmdline .= " XCATHTTPPORT=$httpport ";
         if (($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")) {
 
             my ($host, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($xcatmaster);
@@ -1531,15 +1532,15 @@ sub mknetboot
 
             #my $sent = $hmtab->getNodeAttribs($node,['serialspeed','serialflow']);
             unless ($sent->{serialspeed}) {
-                xCAT::MsgUtils->report_node_error($callback, $node,"serialport defined, but no serialspeed for $node in nodehm table");
+                xCAT::MsgUtils->report_node_error($callback, $node, "serialport defined, but no serialspeed for $node in nodehm table");
                 next;
             }
             if ($arch =~ /ppc64/i) {
                 $kcmdline .=
-                    "console=tty0 console=hvc" . $sent->{serialport} . "," . $sent->{serialspeed};
+"console=tty0 console=hvc" . $sent->{serialport} . "," . $sent->{serialspeed};
             } else {
                 $kcmdline .=
-                    "console=tty0 console=ttyS" . $sent->{serialport} . "," . $sent->{serialspeed};
+"console=tty0 console=ttyS" . $sent->{serialport} . "," . $sent->{serialspeed};
             }
             if ($sent->{serialflow} =~ /(hard|tcs|ctsrts)/)
             {
@@ -1592,8 +1593,8 @@ sub mknetboot
                 $kcmdline .= " MNTOPTS=$mntoptions";
             }
         }
-        $bootparams->{$node}->[0]->{kernel} = $kernstr;
-        $bootparams->{$node}->[0]->{initrd} = $initrdstr;
+        $bootparams->{$node}->[0]->{kernel}   = $kernstr;
+        $bootparams->{$node}->[0]->{initrd}   = $initrdstr;
         $bootparams->{$node}->[0]->{kcmdline} = $kcmdline;
     }
 

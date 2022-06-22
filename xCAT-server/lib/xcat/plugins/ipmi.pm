@@ -48,11 +48,11 @@ my $global_sessdata;
 my %child_pids;
 my $xcatdebugmode = 0;
 
-my $IPMIXCAT  = "/opt/xcat/bin/ipmitool-xcat";
-my $NON_BLOCK = 1;
+my $IPMIXCAT                = "/opt/xcat/bin/ipmitool-xcat";
+my $NON_BLOCK               = 1;
 my $BIG_DATA_MACHINE_MODELS = "8001-22C|9006-22C|5104-22C|8001-12C|9006-12C";
-my $PUPDATE_UPDATE_BMC=1;
-my $PUPDATE_UPDATE_PNOR=1;
+my $PUPDATE_UPDATE_BMC      = 1;
+my $PUPDATE_UPDATE_PNOR     = 1;
 use constant RFLASH_LOG_DIR => "/var/log/xcat/rflash";
 if (-d RFLASH_LOG_DIR) {
     chmod 0700, RFLASH_LOG_DIR;
@@ -946,11 +946,11 @@ sub setnetinfo {
         }
         @cmd = (0x01, $channel_number, 12, @mask);
     } elsif ($subcommand =~ m/vlan/) {
-        unless ( int($argument) == $argument ) {
+        unless (int($argument) == $argument) {
             $callback->({ errorcode => [1], error => ["The input $argument is invalid, please input an integer"] });
             return;
         }
-        unless (($argument>=1) && ($argument<=4096)) {
+        unless (($argument >= 1) && ($argument <= 4096)) {
             $callback->({ errorcode => [1], error => ["The input $argument is invalid, valid value [1-4096]"] });
             return;
         }
@@ -1160,8 +1160,8 @@ sub getnetinfo_response {
     } elsif ($subcommand eq "vlan") {
         if (($returnd[3] >> 7) & 0x01) {
             xCAT::SvrUtils::sendmsg(sprintf("$format %d" . $bmcifo,
-                "BMC VLAN ID enabled:",
-                (($returnd[3] & 0x0f) << 8) | $returnd[2]), $callback, $sessdata->{node}, %allerrornodes);
+                    "BMC VLAN ID enabled:",
+                    (($returnd[3] & 0x0f) << 8) | $returnd[2]), $callback, $sessdata->{node}, %allerrornodes);
         } else {
             xCAT::SvrUtils::sendmsg("BMC VLAN disabled" . $bmcifo, $callback, $sessdata->{node}, %allerrornodes);
         }
@@ -1617,9 +1617,11 @@ sub isfpc {
 sub isopenpower {
     my $sessdata = shift;
     if ($sessdata->{prod_id} == 43707 and $sessdata->{mfg_id} == 0) {
+
         # mft_id 0 and prod_id 43707 is for Firestone,Minsky
         return 1;
     } elsif (($sessdata->{prod_id} =~ /^(?:0|2355|2437)$/) and $sessdata->{mfg_id} == 10876) {
+
         # mfg_id 10876 is for IBM Power S822LC for Big Data (Supermicro), prod_id 2355 for B&S, and 0 or 2437 for Boston
         return 1;
     } else {
@@ -1667,10 +1669,10 @@ sub check_firmware_version {
 
     # GET TARGET UPGRADE CAPABILITIES
     $sessdata->{ipmisession}->subcmd(netfn => 0x2c, command => 0x2e,
-            data => [ 0 ],
-            callback      => \&_on_receive_ugp,
-            callback_args => $sessdata);
-        while (xCAT::IPMI->waitforrsp()) { yield }
+        data          => [0],
+        callback      => \&_on_receive_ugp,
+        callback_args => $sessdata);
+    while (xCAT::IPMI->waitforrsp()) { yield }
 
 
     foreach my $c_id (@{ $sessdata->{component_ids} }) {
@@ -1737,25 +1739,26 @@ sub calc_ipmitool_version {
 #        0 when no response from bmc
 #----------------------------------------------------------------#
 sub check_bmc_status_with_ipmitool {
-    my $pre_cmd      = shift;
-    my $interval     = shift;
-    my $retry        = shift;
-    my $zz_retry     = shift;
-    my $sessdata     = shift;
-    my $verbose      = shift;
-    my $use_rc       = shift;
-    my $count        = 0;
-    my $zz_count     = 0;
-    my $bmc_response = 0;
-    my $cmd          = $pre_cmd . " raw 0x3a 0x0a";
+    my $pre_cmd        = shift;
+    my $interval       = shift;
+    my $retry          = shift;
+    my $zz_retry       = shift;
+    my $sessdata       = shift;
+    my $verbose        = shift;
+    my $use_rc         = shift;
+    my $count          = 0;
+    my $zz_count       = 0;
+    my $bmc_response   = 0;
+    my $cmd            = $pre_cmd . " raw 0x3a 0x0a";
     my $bmc_ready_code = "00";
-    my $code_type    = "ready";
+    my $code_type      = "ready";
 
     if ($use_rc) {
         $cmd            = $cmd . " >> /dev/null 2>&1 ; echo \$?";
         $bmc_ready_code = "0";
         $code_type      = "return";
     }
+
     # BMC response of " c0" means BMC still running IPL
     # BMC response of " 00" means ready to flash
     #
@@ -1767,6 +1770,7 @@ sub check_bmc_status_with_ipmitool {
         $bmc_response = xCAT::Utils->runcmd($cmd, -1);
         if ($bmc_response =~ /$bmc_ready_code/) {
             if ($zz_count > $zz_retry) {
+
                 # zero-zero ready code was received for $zz_count iterations - good to exit
                 if ($verbose) {
                     xCAT::SvrUtils::sendmsg("Received BMC $code_type code $bmc_ready_code for $zz_count iterations - BMC is ready.", $callback, $sessdata->{node}, %allerrornodes);
@@ -1783,6 +1787,7 @@ sub check_bmc_status_with_ipmitool {
         }
         else {
             if ($zz_count > 0) {
+
                 # zero-zero was received before, but now we get something else.
                 # reset the zero-zero counter to make sure we get $zz_count iterations of zero-zero
                 if ($verbose) {
@@ -1816,38 +1821,40 @@ sub wait_for_os_to_reboot {
     my $initial_sleep = shift;
     my $interval      = shift;
     my $retry         = shift;
-    my $sessdata     = shift;
-    my $verbose      = shift;
+    my $sessdata      = shift;
+    my $verbose       = shift;
     my $cmd;
     my $output;
-        if ($verbose) {
-            xCAT::SvrUtils::sendmsg("Sleeping for a few min waiting for node to power on before attempting to continue", $callback, $sessdata->{node}, %allerrornodes);
-        }
-        sleep($initial_sleep); # sleep initially for $initial_sleep seconds for node to reboot
-        # Start testing every $interval sec for node to be booted. Give up after $retry times.
-        foreach (1..$retry) {
-            # Test node is booted in to OS
-            $cmd = "nodestat $sessdata->{node} | /usr/bin/grep sshd";
-            $output = xCAT::Utils->runcmd($cmd, -1);
-            if ($::RUNCMD_RC == 0) {
-                # Node is ready to retry an upgrage
-                if ($verbose) {
-                    xCAT::SvrUtils::sendmsg("Detected node booted. Will retry upgrade", $callback, $sessdata->{node}, %allerrornodes);
-                }
-                return 1; #Node booted
+    if ($verbose) {
+        xCAT::SvrUtils::sendmsg("Sleeping for a few min waiting for node to power on before attempting to continue", $callback, $sessdata->{node}, %allerrornodes);
+    }
+    sleep($initial_sleep); # sleep initially for $initial_sleep seconds for node to reboot
+     # Start testing every $interval sec for node to be booted. Give up after $retry times.
+    foreach (1 .. $retry) {
+
+        # Test node is booted in to OS
+        $cmd = "nodestat $sessdata->{node} | /usr/bin/grep sshd";
+        $output = xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC == 0) {
+
+            # Node is ready to retry an upgrage
+            if ($verbose) {
+                xCAT::SvrUtils::sendmsg("Detected node booted. Will retry upgrade", $callback, $sessdata->{node}, %allerrornodes);
             }
-            else {
-                # Still not booted, wait for $interval sec and try again
-                if ($verbose) {
-                    $cmd = "nodestat $sessdata->{node}";
-                    $output = xCAT::Utils->runcmd($cmd, -1);
-                    my ($nodename, $state) = split(/:/, $output);
-                    xCAT::SvrUtils::sendmsg("($_) Node still not ready. Current state - $state, test again in $interval sec.", $callback, $sessdata->{node}, %allerrornodes);
-                }
-                sleep($interval);
-            }
+            return 1;    #Node booted
         }
-    return 0; #Node did not boot after requested delay
+        else {
+            # Still not booted, wait for $interval sec and try again
+            if ($verbose) {
+                $cmd = "nodestat $sessdata->{node}";
+                $output = xCAT::Utils->runcmd($cmd, -1);
+                my ($nodename, $state) = split(/:/, $output);
+                xCAT::SvrUtils::sendmsg("($_) Node still not ready. Current state - $state, test again in $interval sec.", $callback, $sessdata->{node}, %allerrornodes);
+            }
+            sleep($interval);
+        }
+    }
+    return 0;    #Node did not boot after requested delay
 }
 
 sub do_firmware_update {
@@ -1855,7 +1862,7 @@ sub do_firmware_update {
     my $ret;
     my $ipmitool_ver;
     my $verbose = 0;
-    my $retry = 2;
+    my $retry   = 2;
     my $verbose_opt;
     my $is_firestone = 0;
     my $firestone_update_version;
@@ -1867,7 +1874,7 @@ sub do_firmware_update {
     # Update node status to indicate firmware update started
     my $set_fw_update_status_func = sub {
         my ($node, $callback) = @_;
-        my $status = "updating firmware";
+        my $status         = "updating firmware";
         my $nodelist_table = xCAT::Table->new('nodelist');
         if (!$nodelist_table) {
             xCAT::MsgUtils->message("S", "Unable to open nodelist table, denying");
@@ -1880,7 +1887,7 @@ sub do_firmware_update {
 
     my $exit_with_error_func = sub {
         my ($node, $callback, $message) = @_;
-        my $status = "failed to update firmware";
+        my $status         = "failed to update firmware";
         my $nodelist_table = xCAT::Table->new('nodelist');
         if (!$nodelist_table) {
             xCAT::MsgUtils->message("S", "Unable to open nodelist table, denying");
@@ -1888,14 +1895,14 @@ sub do_firmware_update {
             $nodelist_table->setNodeAttribs($node, { status => $status });
             $nodelist_table->close();
         }
-        xCAT::MsgUtils->message("S", $node.": ".$message);
+        xCAT::MsgUtils->message("S", $node . ": " . $message);
         $callback->({ error => "$node: $message", errorcode => 1 });
         exit -1;
     };
 
     my $exit_with_success_func = sub {
         my ($node, $callback, $message) = @_;
-        my $status = "success updating firmware";
+        my $status         = "success updating firmware";
         my $nodelist_table = xCAT::Table->new('nodelist');
         if (!$nodelist_table) {
             xCAT::MsgUtils->message("S", "Unable to open nodelist table, denying");
@@ -1903,7 +1910,7 @@ sub do_firmware_update {
             $nodelist_table->setNodeAttribs($node, { status => $status });
             $nodelist_table->close();
         }
-        xCAT::MsgUtils->message("S", $node.": ".$message);
+        xCAT::MsgUtils->message("S", $node . ": " . $message);
         $callback->({ data => "$node: $message" });
         exit 0;
     };
@@ -1929,7 +1936,7 @@ sub do_firmware_update {
         $hpm_file = xCAT::Utils->full_path($hpm_file, $::cwd);
     }
 
-    my $rflash_log_file = xCAT::Utils->full_path($sessdata->{node}.".log", RFLASH_LOG_DIR);
+    my $rflash_log_file = xCAT::Utils->full_path($sessdata->{node} . ".log", RFLASH_LOG_DIR);
 
     # NOTE (chenglch) lanplus should be used for the task of hpm update
     # which indicate the bmc support ipmi protocol version 2.0.
@@ -1943,7 +1950,7 @@ sub do_firmware_update {
 
     # check for 8335-GTB Model Type to adjust buffer size
     my $buffer_size = "30000";
-    my $cmd = $pre_cmd . " fru print 3";
+    my $cmd         = $pre_cmd . " fru print 3";
     $output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0) {
         $exit_with_error_func->($sessdata->{node}, $callback,
@@ -1961,14 +1968,15 @@ sub do_firmware_update {
     }
 
     # check verbose, buffersize, and retry options
-    for my $opt (@{$sessdata->{'extraargs'}}) {
+    for my $opt (@{ $sessdata->{'extraargs'} }) {
         if ($opt =~ /-V{1,4}/) {
             $verbose_opt = lc($opt);
-            $verbose = 1;
+            $verbose     = 1;
         }
         if ($opt =~ /buffersize=/) {
             my ($attribute, $buffer_value) = split(/=/, $opt);
             if ($buffer_value) {
+
                 # buffersize option was passed in, reset the default if valid
                 if (looks_like_number($buffer_value) and $buffer_value > 0) {
                     $buffer_size = $buffer_value;
@@ -1982,6 +1990,7 @@ sub do_firmware_update {
         if ($opt =~ /retry=/) {
             my ($attribute, $retry_value) = split(/=/, $opt);
             if (defined $retry_value) {
+
                 # retry option was passed in, reset the default if valid
                 if (looks_like_number($retry_value) and $retry_value >= 0) {
                     $retry = $retry_value;
@@ -1999,14 +2008,18 @@ sub do_firmware_update {
     # firmware update is done using pUpdate utility expected to be in the
     # specified data directory along with the update files .bin for BMC or .pnor for Host
     if ($output =~ /$BIG_DATA_MACHINE_MODELS/) {
+
         # Verify valid data directory was specified
         if (defined $directory_name) {
             unless (File::Spec->file_name_is_absolute($directory_name)) {
+
                 # Directory name was passed in as relative path, prepend current working dir
                 $directory_name = xCAT::Utils->full_path($directory_name, $::cwd);
             }
+
             # directory was passed in, verify it is valid
             if (-d $directory_name) {
+
                 # Passed in directory name exists
                 $pUpdate_directory = $directory_name;
             }
@@ -2017,15 +2030,17 @@ sub do_firmware_update {
         else {
             $exit_with_error_func->($sessdata->{node}, $callback, "Directory name is required to update IBM Power S822LC for Big Data machines.");
         }
+
         # Verify specified directory contains pUpdate utility
         unless (-e "$pUpdate_directory/pUpdate") {
             $exit_with_error_func->($sessdata->{node}, $callback,
-                "Can not find pUpdate utility in data directory $pUpdate_directory.");
+"Can not find pUpdate utility in data directory $pUpdate_directory.");
         }
+
         # Verify specified directory contains executable pUpdate utility
         unless (-x "$pUpdate_directory/pUpdate") {
             $exit_with_error_func->($sessdata->{node}, $callback,
-                "Execute permission is not set for pUpdate utility in data directory $pUpdate_directory.");
+"Execute permission is not set for pUpdate utility in data directory $pUpdate_directory.");
         }
 
         # Verify there is at least one of update files inside data directory - .bin or .pnor
@@ -2034,15 +2049,17 @@ sub do_firmware_update {
         my @bmc_files  = <"$pUpdate_directory/*.bin">;  # Get a list of all .bin files
 
         if (scalar(@pnor_files) > 1) {
+
             # Error if more than one .pnor file in data directory
             $exit_with_error_func->($sessdata->{node}, $callback,
-                "Multiple Host update files detected in data directory $pUpdate_directory.");
+"Multiple Host update files detected in data directory $pUpdate_directory.");
         }
 
         if (scalar(@bmc_files) > 1) {
+
             # Error if more than one .bin file in data directory
             $exit_with_error_func->($sessdata->{node}, $callback,
-                "Multiple BMC update files detected in data directory $pUpdate_directory.");
+"Multiple BMC update files detected in data directory $pUpdate_directory.");
         }
 
         my $pnor_file;
@@ -2058,9 +2075,10 @@ sub do_firmware_update {
         # At least one update file is needed, .bmc or .pnor
         unless ($pnor_file || $bmc_file) {
             $exit_with_error_func->($sessdata->{node}, $callback,
-                "At least one update file (.bin or .pnor) needs to be in data directory $pUpdate_directory.");
+"At least one update file (.bin or .pnor) needs to be in data directory $pUpdate_directory.");
         }
         xCAT::MsgUtils->message("S", "The PUPDATE options: UPDATE_BMC=$PUPDATE_UPDATE_BMC and UPDATE_PNOR=$PUPDATE_UPDATE_PNOR");
+
         # All checks are done, run pUpdate utility on each of the update files found in
         # the specified data directory
         xCAT::SvrUtils::sendmsg("rflash started, Please wait...", $callback, $sessdata->{node});
@@ -2077,16 +2095,17 @@ sub do_firmware_update {
         }
         unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 10, 2, $sessdata, $verbose, 1)) {
             $exit_with_error_func->($sessdata->{node}, $callback,
-            "Timeout to check the bmc status");
+                "Timeout to check the bmc status");
         }
 
         # step 2 update BMC file or Host file, or both
         if ($bmc_file and $PUPDATE_UPDATE_BMC) {
+
             # BMC file was found in data directory, run update with it
-            my $pUpdate_bmc_cmd = "$pUpdate_directory/pUpdate -f $bmc_file -i lan -h $bmc_addr -u $bmc_userid -p $bmc_password >".$rflash_log_file." 2>&1";
+            my $pUpdate_bmc_cmd = "$pUpdate_directory/pUpdate -f $bmc_file -i lan -h $bmc_addr -u $bmc_userid -p $bmc_password >" . $rflash_log_file . " 2>&1";
             if ($verbose) {
                 xCAT::SvrUtils::sendmsg([ 0,
-                    "rflashing BMC, see the detail progress :\"tail -f $rflash_log_file\"" ],
+"rflashing BMC, see the detail progress :\"tail -f $rflash_log_file\"" ],
                     $callback, $sessdata->{node});
             }
             my $output = xCAT::Utils->runcmd($pUpdate_bmc_cmd, -1);
@@ -2094,21 +2113,23 @@ sub do_firmware_update {
                 $exit_with_error_func->($sessdata->{node}, $callback,
                     "Error running command $pUpdate_bmc_cmd");
             }
+
             # Wait for BMC to reboot before continuing to next step.
             # Since this is a IBM Power S822LC for Big Data (Supermicro) machine, use RC to check if ready
             unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 10, $sessdata, $verbose, 1)) {
                 $exit_with_error_func->($sessdata->{node}, $callback,
-                "Timeout to check the bmc status");
+                    "Timeout to check the bmc status");
             }
         }
 
 
         if ($pnor_file and $PUPDATE_UPDATE_PNOR) {
+
             # Host file was found in data directory, run update with it
-            my $pUpdate_pnor_cmd = "$pUpdate_directory/pUpdate -pnor $pnor_file -i lan -h $bmc_addr -u $bmc_userid -p $bmc_password >>".$rflash_log_file." 2>&1";
+            my $pUpdate_pnor_cmd = "$pUpdate_directory/pUpdate -pnor $pnor_file -i lan -h $bmc_addr -u $bmc_userid -p $bmc_password >>" . $rflash_log_file . " 2>&1";
             if ($verbose) {
                 xCAT::SvrUtils::sendmsg([ 0,
-                    "rflashing Host, see the detail progress :\"tail -f $rflash_log_file\"" ],
+"rflashing Host, see the detail progress :\"tail -f $rflash_log_file\"" ],
                     $callback, $sessdata->{node});
             }
             my $output = xCAT::Utils->runcmd($pUpdate_pnor_cmd, -1);
@@ -2117,6 +2138,7 @@ sub do_firmware_update {
                     "Error running command $pUpdate_pnor_cmd");
             }
         }
+
         # step 3 power on
         $cmd = $pre_cmd . " chassis power on";
         $output = xCAT::Utils->runcmd($cmd, -1);
@@ -2145,8 +2167,8 @@ sub do_firmware_update {
         || !exists($hpm_data_hash{productID})) {
         $exit_with_error_func->($sessdata->{node}, $callback, "Extract data from .hpm update file failed, no deviceID, productID or manufactureID got");
     } elsif (($hpm_data_hash{deviceID} ne $sessdata->{device_id}) ||
-             ($hpm_data_hash{productID} ne $sessdata->{prod_id}) ||
-             ($hpm_data_hash{manufactureID} ne $sessdata->{mfg_id})) {
+        ($hpm_data_hash{productID} ne $sessdata->{prod_id}) ||
+        ($hpm_data_hash{manufactureID} ne $sessdata->{mfg_id})) {
         $exit_with_error_func->($sessdata->{node}, $callback, "The image file doesn't match target machine: \n$output");
     }
 
@@ -2161,24 +2183,26 @@ sub do_firmware_update {
         my $grs_version = $output =~ /OP8_.*v(\d*\.\d*_\d*\.\d*)/;
         if ($grs_version =~ /\d\.(\d+)_(\d+\.\d+)/) {
             my $prim_grs_version = $1;
-            my $sec_grs_version = $2;
+            my $sec_grs_version  = $2;
             if ($prim_grs_version <= 7 && $sec_grs_version < 2.55) {
                 $exit_with_error_func->($sessdata->{node}, $callback,
-                    "Error: Current firmware level OP8v_$grs_version requires one-time manual update to at least version OP8v_1.7_2.55");
+"Error: Current firmware level OP8v_$grs_version requires one-time manual update to at least version OP8v_1.7_2.55");
             }
         }
 
     }
+
     # For Firestone the update from 810 to 820 or from 820 to 810 needs to be done in 3 steps
     # instead of usual one.
     if ($output =~ /8335-GCA|8335-GTA/) {
         $is_firestone = 1;
-        $cmd = $pre_cmd . " fru print 47";
-        $output = xCAT::Utils->runcmd($cmd, -1);
+        $cmd          = $pre_cmd . " fru print 47";
+        $output       = xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0) {
             $exit_with_error_func->($sessdata->{node}, $callback,
                 "Running ipmitool command $cmd failed: $output");
         }
+
         # Check what firmware version is currently running on the machine
         if ($output =~ /OP8_.*v\d\.\d+_(\d+)\.\d+/) {
             my $frs_version = $1;
@@ -2191,7 +2215,7 @@ sub do_firmware_update {
         }
         else {
             $exit_with_error_func->($sessdata->{node}, $callback,
-                "Unable to determine firmware version currently installed. Verify that \"$cmd | grep OP8_v\" command returns a version.");
+"Unable to determine firmware version currently installed. Verify that \"$cmd | grep OP8_v\" command returns a version.");
         }
 
         # Check what firmware version is specified in htm file
@@ -2201,9 +2225,11 @@ sub do_firmware_update {
             $exit_with_error_func->($sessdata->{node}, $callback,
                 "Running ipmitool command $cmd failed: $output");
         }
+
         # Parse out build date from the description string
         if ($output =~ /FW_DESC=8335 \w+ \w+ \w+ (\w+)/) {
-            my $htm_date= $1;
+            my $htm_date = $1;
+
             # Parse out the year from "mmddyyyy" (skip 4 digits, grab last 4)
             if ($htm_date =~ /\d{4}(\d+)/) {
                 my $htm_year = $1;
@@ -2223,16 +2249,16 @@ sub do_firmware_update {
 
     if ($is_firestone and $firestone_update_version and
         (($firestone_update_version eq "820" and $htm_update_version eq "810") or
-         ($firestone_update_version eq "810" and $htm_update_version eq "820"))
-       ) {
+            ($firestone_update_version eq "810" and $htm_update_version eq "820"))
+      ) {
         xCAT::SvrUtils::sendmsg("rflash started, Please wait...", $callback, $sessdata->{node}, %allerrornodes);
-        $retry = 0; # No retry support for 3 step update process
+        $retry = 0;    # No retry support for 3 step update process
     }
     else {
         xCAT::SvrUtils::sendmsg("rflash started, upgrade failure will be retried up to $retry times. Please wait...", $callback, $sessdata->{node}, %allerrornodes);
     }
 
-RETRY_UPGRADE:
+  RETRY_UPGRADE:
     my $failed_upgrade = 0;
 
     # step 1 power off
@@ -2273,78 +2299,81 @@ RETRY_UPGRADE:
     # extra steps are needed. Hanled in "if" block, "else" block is normal update in a single step.
     if ($is_firestone and
         (($firestone_update_version eq "820" and $htm_update_version eq "810") or
-         ($firestone_update_version eq "810" and $htm_update_version eq "820"))
-       ) {
+            ($firestone_update_version eq "810" and $htm_update_version eq "820"))
+      ) {
 
         # Step 4.1
         $cmd = $pre_cmd . " -z " . $buffer_size . " hpm upgrade $hpm_file component 0 force ";
         $cmd .= $verbose_opt;
 
-        $cmd .= " >".$rflash_log_file." 2>&1";
+        $cmd .= " >" . $rflash_log_file . " 2>&1";
         if ($verbose) {
             xCAT::SvrUtils::sendmsg([ 0,
-                "rflashing component 0, see the detail progress :\"tail -f $rflash_log_file\"" ],
+"rflashing component 0, see the detail progress :\"tail -f $rflash_log_file\"" ],
                 $callback, $sessdata->{node});
         }
         $output = xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0) {
+
             # Since "hpm update" command in step 4.1 above redirects standard out and error to a log file,
             # nothing gets returned from execution of the command. Here if RC is not zero, we
             # extract all lines containing "Error" from that log file and display them in the sendmsg below
             my $get_error_cmd = "/usr/bin/grep Error $rflash_log_file";
             $output = xCAT::Utils->runcmd($get_error_cmd, 0);
             $exit_with_error_func->($sessdata->{node}, $callback,
-                "Running ipmitool command $cmd failed with rc=$::RUNCMD_RC and the following error messages:\n$output\nSee the $rflash_log_file for details.");
+"Running ipmitool command $cmd failed with rc=$::RUNCMD_RC and the following error messages:\n$output\nSee the $rflash_log_file for details.");
         }
 
-        sleep(1); # Sleep for a second before next step
+        sleep(1);    # Sleep for a second before next step
 
         # Step 4.2
         $cmd = $pre_cmd . " -z " . $buffer_size . " hpm upgrade $hpm_file component 1 force ";
         $cmd .= $verbose_opt;
 
-        $cmd .= " >>".$rflash_log_file." 2>&1";
+        $cmd .= " >>" . $rflash_log_file . " 2>&1";
         if ($verbose) {
             xCAT::SvrUtils::sendmsg([ 0,
-                "rflashing component 1, see the detail progress :\"tail -f $rflash_log_file\"" ],
+"rflashing component 1, see the detail progress :\"tail -f $rflash_log_file\"" ],
                 $callback, $sessdata->{node});
         }
         $output = xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0) {
+
             # Since "hpm update" command in step 4.2 above redirects standard out and error to a log file,
             # nothing gets returned from execution of the command. Here if RC is not zero, we
             # extract all lines containing "Error" from that log file and display them in the sendmsg below
             my $get_error_cmd = "/usr/bin/grep Error $rflash_log_file";
             $output = xCAT::Utils->runcmd($get_error_cmd, 0);
             $exit_with_error_func->($sessdata->{node}, $callback,
-                "Running ipmitool command $cmd failed with rc=$::RUNCMD_RC and the following error messages:\n$output\nSee the $rflash_log_file for details.");
+"Running ipmitool command $cmd failed with rc=$::RUNCMD_RC and the following error messages:\n$output\nSee the $rflash_log_file for details.");
         }
 
         # Wait for BMC to reboot before continuing to next step
         unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 10, $sessdata, $verbose, 0)) {
             $exit_with_error_func->($sessdata->{node}, $callback,
-                "Timeout waiting for the bmc ready status. Firmware update suspended");
+"Timeout waiting for the bmc ready status. Firmware update suspended");
         }
 
         # Step 4.3
         $cmd = $pre_cmd . " -z " . $buffer_size . " hpm upgrade $hpm_file component 2 force ";
         $cmd .= $verbose_opt;
 
-        $cmd .= " >>".$rflash_log_file." 2>&1";
+        $cmd .= " >>" . $rflash_log_file . " 2>&1";
         if ($verbose) {
             xCAT::SvrUtils::sendmsg([ 0,
-                "rflashing component 2, see the detail progress :\"tail -f $rflash_log_file\"" ],
+"rflashing component 2, see the detail progress :\"tail -f $rflash_log_file\"" ],
                 $callback, $sessdata->{node});
         }
         $output = xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0) {
+
             # Since "hpm update" command in step 4.3 above redirects standard out and error to a log file,
             # nothing gets returned from execution of the command. Here if RC is not zero, we
             # extract all lines containing "Error" from that log file and display them in the sendmsg below
             my $get_error_cmd = "/usr/bin/grep Error $rflash_log_file";
             $output = xCAT::Utils->runcmd($get_error_cmd, 0);
             $exit_with_error_func->($sessdata->{node}, $callback,
-                "Running ipmitool command $cmd failed with rc=$::RUNCMD_RC and the following error messages:\n$output\nSee the $rflash_log_file for details.");
+"Running ipmitool command $cmd failed with rc=$::RUNCMD_RC and the following error messages:\n$output\nSee the $rflash_log_file for details.");
         }
     }
 
@@ -2352,27 +2381,30 @@ RETRY_UPGRADE:
         $cmd = $pre_cmd . " -z " . $buffer_size . " hpm upgrade $hpm_file force ";
         $cmd .= $verbose_opt;
 
-        $cmd .= " >".$rflash_log_file." 2>&1";
+        $cmd .= " >" . $rflash_log_file . " 2>&1";
         if ($verbose) {
             xCAT::SvrUtils::sendmsg([ 0,
-                "rflashing ... See the detail progress :\"tail -f $rflash_log_file\"" ],
+"rflashing ... See the detail progress :\"tail -f $rflash_log_file\"" ],
                 $callback, $sessdata->{node});
         }
 
         $output = xCAT::Utils->runcmd($cmd, -1);
+
         # if upgrade command failed and we exausted number of retries
         # report an error, exit to the caller and leave node in powered off state
         # otherwise report an error, power on the node  and try upgrade again
         if ($::RUNCMD_RC != 0) {
+
             # Since "hpm update" command in step 4 above redirects standard out and error to a log file,
             # nothing gets returned from execution of the command. Here if RC is not zero, we
             # extract all lines containing "Error" from that log file and display them in the sendmsg below
             my $get_error_cmd = "/usr/bin/grep Error $rflash_log_file";
             $output = xCAT::Utils->runcmd($get_error_cmd, 0);
             if ($retry == 0) {
+
                 # No more retries left, report an error and exit
                 $exit_with_error_func->($sessdata->{node}, $callback,
-                    "Running ipmitool command $cmd failed with rc=$::RUNCMD_RC and the following error messages:\n$output\nSee the $rflash_log_file for details.");
+"Running ipmitool command $cmd failed with rc=$::RUNCMD_RC and the following error messages:\n$output\nSee the $rflash_log_file for details.");
             }
             else {
                 # Error upgrading, set a flag to attempt a retry
@@ -2407,18 +2439,19 @@ RETRY_UPGRADE:
     }
 
     if ($failed_upgrade) {
+
         # Update has failed in step 4. Wait for node to reboot and try again
-        my $node_ready_for_retry = wait_for_os_to_reboot(300,10,30,$sessdata,$verbose);
+        my $node_ready_for_retry = wait_for_os_to_reboot(300, 10, 30, $sessdata, $verbose);
         if ($node_ready_for_retry) {
-            $retry--;   # decrement number of retries left
-            # Yes, it is a goto statement here. Ugly, but removes the need to restructure
-            # the above block of code.
+            $retry--;    # decrement number of retries left
+             # Yes, it is a goto statement here. Ugly, but removes the need to restructure
+             # the above block of code.
             goto RETRY_UPGRADE;
         }
         else {
             # After 10 min of waiting node has not rebooted. Give up retrying.
             $exit_with_error_func->($sessdata->{node}, $callback,
-                "Giving up waiting for the node to reboot. No further retries will be attempted.");
+"Giving up waiting for the node to reboot. No further retries will be attempted.");
         }
 
     }
@@ -2429,7 +2462,7 @@ RETRY_UPGRADE:
 }
 
 sub rflash {
-    my $sessdata = shift;
+    my $sessdata       = shift;
     my $directory_flag = 0;
     if (isopenpower($sessdata)) {
 
@@ -2438,16 +2471,19 @@ sub rflash {
         foreach my $opt (@{ $sessdata->{extraargs} }) {
             if ($opt =~ /^(-c|--check)$/i) {
                 $sessdata->{subcommand} = "check";
+
                 # support verbose options for ipmitool command
             } elsif ($opt =~ /^-d$/) {
+
                 # special handling if -d option which can be followed by a directory name
                 $directory_flag = 1; # set a flag that directory option was given
             } elsif ($opt !~ /.*\.hpm$/i && $opt !~ /^-V{1,4}$|^--buffersize=|^--retry=/) {
+
                 # An unexpected flag was passed, but it could be a directory name. Display error only if not -d option
                 unless ($directory_flag) {
-                    my $node =  $sessdata->{node};
+                    my $node = $sessdata->{node};
                     $callback->({ data => "$node: Error: The option $opt is not supported or invalid update file specified",
-                        errorcode => 1 });
+                            errorcode => 1 });
                     return;
                 }
             }
@@ -2511,13 +2547,14 @@ sub do_rflash_process {
                 $callback, $node);
             exit(1);
         }
-        my $extra = $_[8];
-        my @exargs = @$extra;
+        my $extra    = $_[8];
+        my @exargs   = @$extra;
         my $programe = \$0;
         $$programe = "$node: rflash child process";
         if (grep(/^(-c|--check)$/i, @exargs)) {
             $SIG{INT} = $SIG{TERM} = $SIG{HUP} = "DEFAULT";
         }
+
         # NOTE (chenglch): Actually if multiple client or rest api works on the same node,
         # the bmc of the node may not be protected while rflash is running. As xcat may not
         # support lock on node level, just require a lock for rflash command for specific node.
@@ -2528,13 +2565,13 @@ sub do_rflash_process {
             exit(1);
         }
         my $recover_image;
-        if (grep(/^(--recover)$/, @{ $extra })) {
-            if (@{ $extra } != 2) {
+        if (grep(/^(--recover)$/, @{$extra})) {
+            if (@{$extra} != 2) {
                 xCAT::SvrUtils::sendmsg([ 1, "The command format for recovery is invalid. Only support 'rflash <noderange> --recover <bmc_file_path>'" ],
                     $callback, $node);
                 exit(1);
             }
-            my @argv = @{ $extra };
+            my @argv = @{$extra};
             if ($argv[0] eq "--recover") {
                 $recover_image = $argv[1];
             } elsif ($argv[1] eq "--recover") {
@@ -2545,16 +2582,17 @@ sub do_rflash_process {
             if ($recover_image !~ /^\//) {
                 $recover_image = xCAT::Utils->full_path($recover_image, $::cwd);
             }
-            unless(-x "/usr/bin/tftp") {
+            unless (-x "/usr/bin/tftp") {
                 $callback->({ error => "Could not find executable file /usr/bin/tftp, please setup tftp client.",
                         errorcode => 1 });
                 exit(1);
             }
-            my $bmcip     = $_[0];
-            my $cmd = "/usr/bin/tftp $bmcip -m binary -c put $recover_image ".basename($recover_image);
+            my $bmcip = $_[0];
+            my $cmd = "/usr/bin/tftp $bmcip -m binary -c put $recover_image " . basename($recover_image);
             my $output = xCAT::Utils->runcmd($cmd, -1);
             if ($::RUNCMD_RC != 0) {
                 if ($output =~ "timed out") {
+
                     # Time out running tftp command. One possible reason is BMC not in "brick protection" mode
                     $output .= " BMC might not be in 'Brick protection' state";
                 }
@@ -2562,13 +2600,14 @@ sub do_rflash_process {
                         errorcode => 1 });
                 exit(1);
             }
+
             # Sometimes tftp command retrun error message but without nonzero error code
-            if($output) {
+            if ($output) {
                 $callback->({ error => "Running tftp command \'$cmd\' failed. Output: $output",
                         errorcode => 1 });
                 exit(1);
             }
-            $callback->({ data => "$node: Successfully updated recovery image. BMC is restarting and will not be reachable for 5-10 minutes."});
+            $callback->({ data => "$node: Successfully updated recovery image. BMC is restarting and will not be reachable for 5-10 minutes." });
             exit(0);
         }
         donode($node, @_);
@@ -2593,9 +2632,10 @@ sub start_rflash_processes {
     my %namedargs   = @_;
     my $extra       = $namedargs{-args};
     my @exargs      = @$extra;
+
     # rflash processes can not be terminated from client
     if (!grep(/^(-c|--check)$/i, @exargs)) {
-        $SIG{INT} = $SIG{TERM} = $SIG{HUP}="IGNORE";
+        $SIG{INT} = $SIG{TERM} = $SIG{HUP} = "IGNORE";
     } else {
         $SIG{INT} = $SIG{TERM} = $SIG{HUP} = sub {
             foreach (keys %child_pids) {
@@ -2746,17 +2786,18 @@ sub reseat_node {
         my $nodeuser = $authdata->{$fpc}->{username};
         my $nodepass = $authdata->{$fpc}->{password};
         $sessdata->{slotnumber} = $mpent->{id};
-	if (exists $fpcsessions{$mpent->{mpa}}) {
-            $sessdata->{fpcipmisession} = $fpcsessions{$mpent->{mpa}};
-	    until ($sessdata->{fpcipmisession}->{logged}) {
-                $sessdata->{fpcipmisession}->waitforrsp(timeout=>1);
+
+        if (exists $fpcsessions{ $mpent->{mpa} }) {
+            $sessdata->{fpcipmisession} = $fpcsessions{ $mpent->{mpa} };
+            until ($sessdata->{fpcipmisession}->{logged}) {
+                $sessdata->{fpcipmisession}->waitforrsp(timeout => 1);
             }
-	    $sessdata->{fpcipmisession}->subcmd(netfn => 0x32, command => 0xa4,
-		    data => [ $sessdata->{slotnumber}, 2 ],
-		    callback => \&fpc_node_reseat_complete, callback_args => $sessdata);
-	} else {
+            $sessdata->{fpcipmisession}->subcmd(netfn => 0x32, command => 0xa4,
+                data => [ $sessdata->{slotnumber}, 2 ],
+                callback => \&fpc_node_reseat_complete, callback_args => $sessdata);
+        } else {
             $sessdata->{fpcipmisession} = xCAT::IPMI->new(bmc => $mpent->{mpa}, userid => $nodeuser, password => $nodepass);
-	    $fpcsessions{$mpent->{mpa}} = $sessdata->{fpcipmisession};
+            $fpcsessions{ $mpent->{mpa} } = $sessdata->{fpcipmisession};
             $sessdata->{fpcipmisession}->login(callback => \&fpc_node_reseat, callback_args => $sessdata);
         }
     }
@@ -3081,14 +3122,14 @@ sub beacon {
         $ipmiv2 = 1;
     }
     if ($subcommand ne "on" and $subcommand ne "off") {
-        xCAT::SvrUtils::sendmsg([ 1, "Only 'on' or 'off' is supported for IPMI managed nodes."], $callback, $sessdata->{node}, %allerrornodes);
+        xCAT::SvrUtils::sendmsg([ 1, "Only 'on' or 'off' is supported for IPMI managed nodes." ], $callback, $sessdata->{node}, %allerrornodes);
     }
 
     #if stuck with 1.5, say light for 255 seconds.  In 2.0, specify to turn it on forever
     if ($subcommand eq "on") {
         if ($sessdata->{mfg_id} == 19046 and $sessdata->{prod_id} == 13616) { # Lenovo SD350
             $sessdata->{ipmisession}->subcmd(netfn => 0x3a, command => 6, data => [ 1, 1 ], callback => \&beacon_answer, callback_args => $sessdata);
-	} elsif ($ipmiv2) {
+        } elsif ($ipmiv2) {
             $sessdata->{ipmisession}->subcmd(netfn => 0, command => 4, data => [ 0, 1 ], callback => \&beacon_answer, callback_args => $sessdata);
         } else {
             $sessdata->{ipmisession}->subcmd(netfn => 0, command => 4, data => [0xff], callback => \&beacon_answer, callback_args => $sessdata);
@@ -3127,7 +3168,7 @@ sub beacon_answer {
 
 sub inv {
     my $sessdata   = shift;
-    my $command = $sessdata->{command};
+    my $command    = $sessdata->{command};
     my $subcommand = $sessdata->{subcommand};
 
     my $rc = 0;
@@ -3286,7 +3327,7 @@ sub add_textual_frus {
     if ($desc =~ /System Firmware/i and $category =~ /product/i) {
         $type = 'firmware,bmc';
     }
-    if ( ($desc =~ /NODE \d+/ or $desc =~ /Backplane/) and $category =~ /chassis/) {
+    if (($desc =~ /NODE \d+/ or $desc =~ /Backplane/) and $category =~ /chassis/) {
         add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Part Number", $category, "partnumber", 'model', $sessdata);
         add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Serial Number", $category, "serialnumber", 'serial', $sessdata);
     } else {
@@ -3912,15 +3953,17 @@ sub initfru_zero {
         }
         $sessdata->{fru_hash}->{ $frudex++ } = $fru;
     }
+
     #Ok, done with fru 0, on to the other fru devices from SDR
     $sessdata->{frudex} = $frudex;
     if ($sessdata->{skipotherfru}) {    #skip non-primary fru devices
 
         if ($sessdata->{skipotherfru} and isopenpower($sessdata)) {
+
             # For openpower Big Data servers, fru 2 has MTM/Serial and fru 43 has firmware information
             # For openpower HPC servers, fru 3 has MTM/Serial and fru 47 has firmware information
-            @{$sessdata->{frus_for_openpower}} = qw(2 3 43 47);
-            my %fruids_hash = map {$_ => 1} @{$sessdata->{frus_for_openpower}};
+            @{ $sessdata->{frus_for_openpower} } = qw(2 3 43 47);
+            my %fruids_hash = map { $_ => 1 } @{ $sessdata->{frus_for_openpower} };
             foreach my $key (keys %{ $sessdata->{sdr_hash} }) {
                 my $sdr = $sessdata->{sdr_hash}->{$key};
                 unless ($sdr->rec_type == 0x11) {
@@ -3931,8 +3974,8 @@ sub initfru_zero {
                     $sessdata->{sdr_info_for_openpower}->{$fru_id} = $sdr;
                 }
             }
-            $sessdata->{currfruid} = shift @{$sessdata->{frus_for_openpower}};
-            $sessdata->{currfrusdr} = $sessdata->{sdr_info_for_openpower}->{$sessdata->{currfruid}};
+            $sessdata->{currfruid} = shift @{ $sessdata->{frus_for_openpower} };
+            $sessdata->{currfrusdr} = $sessdata->{sdr_info_for_openpower}->{ $sessdata->{currfruid} };
             $sessdata->{ipmisession}->subcmd(netfn => 0xa, command => 0x10, data => [ $sessdata->{currfruid} ], callback => \&process_currfruid, callback_args => $sessdata);
             return;
         }
@@ -3950,8 +3993,8 @@ sub initfru_zero {
             next;
         }
 
-        if ($sdr->id_string =~ "DIMM") {      #DIMM. 
-            # Can not always use "fru_subtype=1" for DIMM, sometimes on Power it is 2
+        if ($sdr->id_string =~ "DIMM") {     #DIMM.
+             # Can not always use "fru_subtype=1" for DIMM, sometimes on Power it is 2
             push @{ $sessdata->{dimmfru} }, $sdr;
         } elsif ($sdr->fru_subtype == 0 or $sdr->fru_subtype == 2) {
             push @{ $sessdata->{genhwfru} }, $sdr;
@@ -4215,13 +4258,14 @@ sub add_fruhash {
     } elsif ($sessdata->{currfrutype} and $sessdata->{currfrutype} eq 'dimm') {
         $fruhash = decode_spd(@{ $sessdata->{currfrudata} });
         if ($fruhash->{product}->{model} =~ "Unrecognized SPD") {
+
             # If decode_spd() was not able to parse SPD data for DIMM, try parsefru()
-            # 
+            #
             # Yes, it is a goto statement here. Ugly, but removes the need to restructure
             goto PARSEFRU_DIMM;
         }
     } else {
-PARSEFRU_DIMM:
+      PARSEFRU_DIMM:
         my $err;
         $global_sessdata = $sessdata; #pass by global, evil, but practical this time
         ($err, $fruhash) = parsefru($sessdata->{currfrudata});
@@ -4234,7 +4278,7 @@ PARSEFRU_DIMM:
                 $fru->rec_type("hw");
             }
             $fru->value($err);
-            if ($sessdata->{currfrusdr} and scalar keys %{$sessdata->{currfrusdr}} ) {
+            if ($sessdata->{currfrusdr} and scalar keys %{ $sessdata->{currfrusdr} }) {
                 $fru->desc($sessdata->{currfrusdr}->id_string);
             }
             if (exists($sessdata->{frudex})) {
@@ -4262,9 +4306,9 @@ PARSEFRU_DIMM:
     }
 
     if ($sessdata->{skipotherfru}) {
-        if (scalar @{$sessdata->{frus_for_openpower}}) {
-            $sessdata->{currfruid} = shift @{$sessdata->{frus_for_openpower}};
-            $sessdata->{currfrusdr} = $sessdata->{sdr_info_for_openpower}->{$sessdata->{currfruid}};
+        if (scalar @{ $sessdata->{frus_for_openpower} }) {
+            $sessdata->{currfruid} = shift @{ $sessdata->{frus_for_openpower} };
+            $sessdata->{currfrusdr} = $sessdata->{sdr_info_for_openpower}->{ $sessdata->{currfruid} };
             $sessdata->{ipmisession}->subcmd(netfn => 0xa, command => 0x10, data => [ $sessdata->{currfruid} ], callback => \&process_currfruid, callback_args => $sessdata);
             return;
         }
@@ -4810,6 +4854,7 @@ sub extractfield { #idx is location of the type/length byte, returns something a
     my $language = shift;
     my $data;
     if ($idx >= scalar @$area) {
+
         # The global_sessdata store the sessdata for a node when parsefru, and it is cleaned after parsefru
         xCAT::SvrUtils::sendmsg([ 1, "Error encountered when parsing FRU data from BMC" ], $callback, $global_sessdata->{node}, %allerrornodes);
         return 0, undef, undef;
@@ -6853,9 +6898,9 @@ sub vitals {
     if ($sensor_filters{energy}) {
         if ($iem_support) {
             push @{ $sessdata->{sensorstoread} }, "energy";
-        } #elsif (not $doall) {
-            #xCAT::SvrUtils::sendmsg([ 1, ":Energy data requires additional IBM::EnergyManager plugin in conjunction with IMM managed IBM equipment" ], $callback, $sessdata->{node}, %allerrornodes);
-        #}
+        }    #elsif (not $doall) {
+         #xCAT::SvrUtils::sendmsg([ 1, ":Energy data requires additional IBM::EnergyManager plugin in conjunction with IMM managed IBM equipment" ], $callback, $sessdata->{node}, %allerrornodes);
+         #}
 
         #my @energies;
         #($rc,@energies)=readenergy();
@@ -7530,13 +7575,13 @@ sub initsdr {
 }
 
 sub initsdr_withrepinfo {
-    my $sessdata  = shift;
-    my $mfg_id    = $sessdata->{mfg_id};
-    my $prod_id   = $sessdata->{prod_id};
-    my $device_id = $sessdata->{device_id};
-    my $dev_rev   = $sessdata->{device_rev};
-    my $fw_rev1   = $sessdata->{firmware_rev1};
-    my $fw_rev2   = $sessdata->{firmware_rev2};
+    my $sessdata        = shift;
+    my $mfg_id          = $sessdata->{mfg_id};
+    my $prod_id         = $sessdata->{prod_id};
+    my $device_id       = $sessdata->{device_id};
+    my $dev_rev         = $sessdata->{device_rev};
+    my $fw_rev1         = $sessdata->{firmware_rev1};
+    my $fw_rev2         = $sessdata->{firmware_rev2};
     my $num_sdr_records = $sessdata->{sdr_info}->{rec_count};
 
     #TODO: beware of dynamic SDR contents
@@ -8254,7 +8299,7 @@ sub loadsdrcache {
     eval {
         $r = retrieve_fd($fh);
     };
-    if($@){
+    if ($@) {
         xCAT::MsgUtils->message("S", "loadsdrcache: Fatal error while retrieving data from $file, $@");
         return 1;
     }
@@ -8326,14 +8371,14 @@ sub preprocess_request {
                 $error_data .= "\n" if ($error_data);
                 $error_data .= "$_: Please enter an action (eg: boot,off,on, etc) when using mgt=ipmi.";
             }
-            $callback->({ errorcode => [1], data => [ $error_data ] });
+            $callback->({ errorcode => [1], data => [$error_data] });
             $request = {};
             return 0;
         }
 
         #pdu commands will be handled in the pdu plugin
-        if(($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat') || ($subcmd eq 'pdureset')){
-             return 0;
+        if (($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat') || ($subcmd eq 'pdureset')) {
+            return 0;
         }
 
         if (($subcmd ne 'reseat') && ($subcmd ne 'stat') && ($subcmd ne 'state') && ($subcmd ne 'status') && ($subcmd ne 'on') && ($subcmd ne 'off') && ($subcmd ne 'softoff') && ($subcmd ne 'nmi') && ($subcmd ne 'cycle') && ($subcmd ne 'reset') && ($subcmd ne 'boot') && ($subcmd ne 'wake') && ($subcmd ne 'suspend')) {
@@ -8345,7 +8390,7 @@ sub preprocess_request {
                 $error_data .= "\n" if ($error_data);
                 $error_data .= "$_: Error: Unsupported command: $command $subcmd when using mgt=ipmi.";
             }
-            $callback->({ errorcode => [1], data => [ $error_data ] });
+            $callback->({ errorcode => [1], data => [$error_data] });
             $request = {};
             return;
         }
@@ -8370,6 +8415,7 @@ sub preprocess_request {
         xCAT::Utils->filter_nodes($request, undef, undef, \@bmcnodes, \@nohandle);
         $realnoderange = \@bmcnodes;
     } elsif ($command eq "rspconfig") {
+
         # filter out the nodes which should be handled by ipmi.pm
         my (@bmcnodes, @nohandle);
         xCAT::Utils->filter_nodes($request, undef, undef, \@bmcnodes, \@nohandle);
@@ -8386,7 +8432,7 @@ sub preprocess_request {
                             $error_data .= "\n" if ($error_data);
                             $error_data .= "$_: Usage Error: Cannot display and change attributes on the same command when using mgt=ipmi..";
                         }
-                        $callback->({ errorcode => [1], data => [ $error_data] });
+                        $callback->({ errorcode => [1], data => [$error_data] });
                         $request = {};
                         return;
                     }
@@ -8398,7 +8444,7 @@ sub preprocess_request {
                             $error_data .= "\n" if ($error_data);
                             $error_data .= "$_: Usage Error: Cannot display and change attributes on the same command when using mgt=ipmi.";
                         }
-                        $callback->({ errorcode => [1], data => [ $error_data] });
+                        $callback->({ errorcode => [1], data => [$error_data] });
                         $request = {};
                         return;
                     }
@@ -8410,7 +8456,7 @@ sub preprocess_request {
                         $error_data .= "\n" if ($error_data);
                         $error_data .= "$_: Error: Unsupported command: $command $option when using mgt=ipmi.";
                     }
-                    $callback->({ errorcode => [1], data => [ $error_data ] });
+                    $callback->({ errorcode => [1], data => [$error_data] });
                     $request = {};
                     return;
                 }
@@ -8425,7 +8471,7 @@ sub preprocess_request {
                 $error_data .= "\n" if ($error_data);
                 $error_data .= "$_: option '-t' can only work with 'all' or 'vpd' when using mgt=ipmi.";
             }
-            $callback->({ errorcode => [1], data => [ $error_data ] });
+            $callback->({ errorcode => [1], data => [$error_data] });
             $request = {};
             return 0;
         }
@@ -8855,9 +8901,10 @@ sub process_request {
     my $extrargs  = $request->{arg};
     my @exargs    = ($request->{arg});
     $::cwd = $request->{cwd}->[0];
-    my $env_xcat_pupdate_bmc = 0;
+    my $env_xcat_pupdate_bmc  = 0;
     my $env_xcat_pupdate_pnor = 0;
-    my $env = $request->{environment};
+    my $env                   = $request->{environment};
+
     if (ref($env) eq 'ARRAY') {
         if (ref($env->[0]->{XCAT_PUPDATE_BMC}) eq 'ARRAY') {
             $env_xcat_pupdate_bmc = 1;
@@ -8866,14 +8913,17 @@ sub process_request {
             $env_xcat_pupdate_pnor = 1;
         }
     }
+
     # update PNOR only, when XCAT_PUPDATE_PNOR specified and XCAT_PUPDATE_BMC not specified
     if ($env_xcat_pupdate_pnor and !$env_xcat_pupdate_bmc) {
         $PUPDATE_UPDATE_BMC = 0;
     }
+
     # update BMC only, when XCAT_PUPDATE_BMC specified and XCAT_PUPDATE_PNOR not specified
     if ($env_xcat_pupdate_bmc and !$env_xcat_pupdate_pnor) {
         $PUPDATE_UPDATE_PNOR = 0;
     }
+
     # for both XCAT_PUPDATE_BMC and XCAT_PUPDATE_PNOR are specified or not specified, shall update both
     if (ref($extrargs)) {
         @exargs = @$extrargs;
@@ -9097,12 +9147,13 @@ sub donode {
     $sessiondata{$node} = {
         node => $node, #this seems redundant, but some code will not be privy to what the key was
         bmcnum => $bmcnum,
+
         #ipmisession => xCAT::IPMI->new(bmc => $bmcip, userid => $user, password => $pass),
-        command    => $command,
-        extraargs  => \@exargs,
-        subcommand => $exargs[0],
+        command       => $command,
+        extraargs     => \@exargs,
+        subcommand    => $exargs[0],
         xcatdebugmode => $xcatdebugmode,
-        outfunc => $callback,
+        outfunc       => $callback,
     };
     if ($command eq "rpower" and $exargs[0] eq "reseat") {
         on_bmc_connect(0, $sessiondata{$node});

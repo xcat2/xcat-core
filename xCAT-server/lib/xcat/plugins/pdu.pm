@@ -40,7 +40,7 @@ use SNMP;
 use Expect;
 use Net::Ping;
 
-my $VERBOSE = 0;
+my $VERBOSE       = 0;
 my %allerrornodes = ();
 my $callback;
 my $pdutab;
@@ -60,12 +60,12 @@ Return list of commands handled by this plugin
 sub handled_commands
 {
     return {
-       rpower => ["nodehm:mgt","pduoutlet:pdu=\.\*"],
-       rinv   => ["nodehm:mgt"],
-       rvitals => ["nodehm:mgt"],
-       nodeset => ["nodehm:mgt"],
-       rspconfig => ["nodehm:mgt"],
-       pdudiscover => "pdu",
+        rpower => [ "nodehm:mgt", "pduoutlet:pdu=\.\*" ],
+        rinv => ["nodehm:mgt"],
+        rvitals     => ["nodehm:mgt"],
+        nodeset     => ["nodehm:mgt"],
+        rspconfig   => ["nodehm:mgt"],
+        pdudiscover => "pdu",
     };
 }
 
@@ -73,7 +73,7 @@ sub pdu_usage
 {
     my ($callback, $command) = @_;
     my $usagemsg =
-    "Usage:
+      "Usage:
      The following commands support both type of PDUs :
         pdudiscover [<noderange>|--range ipranges] [-r|-x|-z] [-w] [-V|--verbose] [--setup]
         rpower pdunodes [off|on|stat|reset]
@@ -106,33 +106,35 @@ sub pdu_usage
 }
 
 #--------------------------------------------------------------------------------
+
 =head3   preprocess_request
 
 Parse the arguments and display the usage or the version string.
 
 =cut
+
 #--------------------------------------------------------------------------------
 sub preprocess_request {
     my $req = shift;
     if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
-    my $callback=shift;
+    my $callback = shift;
     my @requests;
 
-    my $command = $req->{command}->[0];
+    my $command   = $req->{command}->[0];
     my $noderange = $req->{node};           #Should be arrayref
-    my $extrargs = $req->{arg};
-    my @exargs=($req->{arg});
+    my $extrargs  = $req->{arg};
+    my @exargs    = ($req->{arg});
     if (ref($extrargs)) {
-        @exargs=@$extrargs;
+        @exargs = @$extrargs;
     }
 
-    my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
+    my $usage_string = xCAT::Usage->parseCommand($command, @exargs);
     if ($usage_string) {
-         &pdu_usage($callback, $command);
-         return 1;
+        &pdu_usage($callback, $command);
+        return 1;
     }
 
-    if ((!$noderange) && ($command ne "pdudiscover") ){
+    if ((!$noderange) && ($command ne "pdudiscover")) {
         &pdu_usage($callback, $command);
         return;
     }
@@ -156,10 +158,10 @@ sub preprocess_request {
 #-------------------------------------------------------
 sub process_request
 {
-    my $request  = shift;
-    my $callback = shift;
-    my $subreq   = shift;
-    my $command  = $request->{command}->[0];
+    my $request   = shift;
+    my $callback  = shift;
+    my $subreq    = shift;
+    my $command   = $request->{command}->[0];
     my $noderange = $request->{node};           #Should be arrayref
     my $extrargs  = $request->{arg};
     my @exargs    = ($request->{arg});
@@ -169,7 +171,7 @@ sub process_request
     }
 
     # get all entries from pdu table
-    my @attrs=();
+    my @attrs  = ();
     my $schema = xCAT::Table->getTableSchema('pdu');
     my $desc   = $schema->{descriptions};
     foreach my $c (@{ $schema->{cols} }) {
@@ -181,18 +183,21 @@ sub process_request
         $pduhash = $pdutab->getAllNodeAttribs(\@attrs, 1);
     }
 
-    if( $command eq "rinv") {
+    if ($command eq "rinv") {
+
         #for higher performance, handle node in batch
         return showMFR($noderange, $callback);
-    }elsif ($command eq "rvitals") {
+    } elsif ($command eq "rvitals") {
         return showMonitorData($noderange, $callback);
-    }elsif ($command eq "rpower") {
-        my $subcmd = $exargs[0];
+    } elsif ($command eq "rpower") {
+        my $subcmd  = $exargs[0];
         my $subcmd2 = $exargs[1];
-        if (($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat')|| ($subcmd eq 'pdureset') ){
+        if (($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat') || ($subcmd eq 'pdureset')) {
+
             #if one day, pdu node have pdu attribute, handle in this section too
             return powerpduoutlet($noderange, $subcmd, $callback);
         } else {
+
             #-------------------------------------------
             #there are 2 cases will enter this block
             #one is if node's mgt is pdu
@@ -200,44 +205,45 @@ sub process_request
             #if the node has pdu attribute but mgt isn't pdu,
             #should do nothing for this node, let other plugin to hanle this node
             #-------------------------------------------
-            my @allpdunodes=();
-            my $nodehm = xCAT::Table->new('nodehm');
-            my $nodehmhash = $nodehm->getNodesAttribs($noderange, ['mgt']);
+            my @allpdunodes = ();
+            my $nodehm      = xCAT::Table->new('nodehm');
+            my $nodehmhash  = $nodehm->getNodesAttribs($noderange, ['mgt']);
             foreach my $node (@$noderange) {
-                if($nodehmhash->{$node}->[0]->{mgt} eq 'pdu'){
+                if ($nodehmhash->{$node}->[0]->{mgt} eq 'pdu') {
                     push @allpdunodes, $node;
                 }
             }
-            if(@allpdunodes) {
-                if ( ($subcmd =~ /relay/) || ($subcmd2 =~ /relay/) ) {
-                    process_powerrelay($request,$subreq,\@allpdunodes,$callback);
-                } elsif(($subcmd eq 'on') || ($subcmd eq 'off') || ($subcmd eq 'stat') || ($subcmd eq 'state') || ($subcmd eq 'reset') ){
+            if (@allpdunodes) {
+                if (($subcmd =~ /relay/) || ($subcmd2 =~ /relay/)) {
+                    process_powerrelay($request, $subreq, \@allpdunodes, $callback);
+                } elsif (($subcmd eq 'on') || ($subcmd eq 'off') || ($subcmd eq 'stat') || ($subcmd eq 'state') || ($subcmd eq 'reset')) {
                     return powerpdu(\@allpdunodes, $subcmd, $callback);
                 } else {
-                    my $pdunode = join (",", @allpdunodes);
-                    $callback->({ errorcode => [1],error => "The option $subcmd is not support for pdu node(s) $pdunode."});
+                    my $pdunode = join(",", @allpdunodes);
+                    $callback->({ errorcode => [1], error => "The option $subcmd is not support for pdu node(s) $pdunode." });
                     &pdu_usage($callback, $command);
                 }
             }
         }
-    }elsif($command eq "rspconfig") {
+    } elsif ($command eq "rspconfig") {
         my $subcmd = $exargs[0];
         if ($subcmd eq 'sshcfg') {
             process_sshcfg($noderange, $subcmd, $callback);
-        }elsif ($subcmd eq 'snmpcfg') {
+        } elsif ($subcmd eq 'snmpcfg') {
             process_snmpcfg($noderange, $subcmd, $callback);
-        }elsif ($subcmd =~ /ip|gateway|netmask|hostname/) {
+        } elsif ($subcmd =~ /ip|gateway|netmask|hostname/) {
             process_netcfg($request, $subreq, $subcmd, $callback);
         } else {
-            $callback->({ errorcode => [1],error => "The input $command $subcmd is not support for pdu"});
+            $callback->({ errorcode => [1], error => "The input $command $subcmd is not support for pdu" });
             &pdu_usage($callback, $command);
         }
-    }elsif($command eq "pdudiscover") {
+    } elsif ($command eq "pdudiscover") {
         process_pdudiscover($request, $subreq, $callback);
-    }elsif($command eq "nodeset") {
-        $callback->({ errorcode => [1],error => "The input $command is not support for pdu"});
+    } elsif ($command eq "nodeset") {
+        $callback->({ errorcode => [1], error => "The input $command is not support for pdu" });
         &pdu_usage($callback, $command);
-    }else{
+    } else {
+
         #reserve for other new command in future
     }
 
@@ -254,17 +260,17 @@ sub process_request
 
 #-------------------------------------------------------
 sub fill_outletCount {
-    my $session = shift;
-    my $pdu = shift;
-    my $callback = shift;
+    my $session   = shift;
+    my $pdu       = shift;
+    my $callback  = shift;
     my $outletoid = ".1.3.6.1.4.1.2.6.223.8.2.1.0";
-    my $pdutab = xCAT::Table->new('pdu');
+    my $pdutab    = xCAT::Table->new('pdu');
 
     my $count = $session->get("$outletoid");
     if ($count) {
-        $pdutab->setNodeAttribs($pdu, {outlet => $count});
+        $pdutab->setNodeAttribs($pdu, { outlet => $count });
     } else {
-        xCAT::SvrUtils::sendmsg("Invalid Outlet number ", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg("Invalid Outlet number ", $callback, $pdu);
     }
 
     return $count;
@@ -283,22 +289,22 @@ sub fill_outletCount {
 #-------------------------------------------------------
 sub powerpdu {
     my $noderange = shift;
-    my $subcmd = shift;
-    my $callback = shift;
+    my $subcmd    = shift;
+    my $callback  = shift;
 
-    if (($subcmd eq "stat") || ($subcmd eq "state")){
+    if (($subcmd eq "stat") || ($subcmd eq "state")) {
         return powerstat($noderange, $callback);
     }
 
     foreach my $node (@$noderange) {
         if ($pduhash->{$node}->[0]->{pdutype} eq 'crpdu') {
-            process_relay($node,$subcmd,$callback,1,3);
+            process_relay($node, $subcmd, $callback, 1, 3);
             next;
         }
 
-        my $session = connectTopdu($node,$callback);
+        my $session = connectTopdu($node, $callback);
         if (!$session) {
-            $callback->({ errorcode => [1],error => "Couldn't connect to $node"});
+            $callback->({ errorcode => [1], error => "Couldn't connect to $node" });
             next;
         }
         my $count = $pduhash->{$node}->[0]->{outlet};
@@ -309,21 +315,21 @@ sub powerpdu {
         my $value;
         my $statstr;
         if ($subcmd eq "off") {
-            $value = 0;
+            $value   = 0;
             $statstr = "off";
-        } elsif ( $subcmd eq "on") {
-            $value = 1;
+        } elsif ($subcmd eq "on") {
+            $value   = 1;
             $statstr = "on";
-        } else  {
-            $value = 2;
+        } else {
+            $value   = 2;
             $statstr = "reset";
         }
 
-        for (my $outlet =1; $outlet <= $count; $outlet++)
+        for (my $outlet = 1 ; $outlet <= $count ; $outlet++)
         {
             outletpower($session, $outlet, $value);
             if ($session->{ErrorStr}) {
-                $callback->({ errorcode => [1],error => "Failed to get outlet status for $node"});
+                $callback->({ errorcode => [1], error => "Failed to get outlet status for $node" });
             } else {
                 my $output = " outlet $outlet is $statstr";
                 xCAT::SvrUtils::sendmsg($output, $callback, $node, %allerrornodes);
@@ -344,8 +350,8 @@ sub powerpdu {
 #-------------------------------------------------------
 sub powerpduoutlet {
     my $noderange = shift;
-    my $subcmd = shift;
-    my $callback = shift;
+    my $subcmd    = shift;
+    my $callback  = shift;
     my $output;
     my $value;
     my $statstr;
@@ -353,12 +359,13 @@ sub powerpduoutlet {
     my $tmpnodestr = join(",", @$noderange);
 
     my $nodetab = xCAT::Table->new('pduoutlet');
-    my $nodepdu = $nodetab->getNodesAttribs($noderange,['pdu']);
+    my $nodepdu = $nodetab->getNodesAttribs($noderange, ['pdu']);
 
     foreach my $node (@$noderange) {
+
         # the pdu attribute needs to be set
-        if(! $nodepdu->{$node}->[0]->{pdu}){
-            $callback->({ error => "$node: without pdu attribute"});
+        if (!$nodepdu->{$node}->[0]->{pdu}) {
+            $callback->({ error => "$node: without pdu attribute" });
             next;
         }
 
@@ -366,43 +373,43 @@ sub powerpduoutlet {
         foreach my $pdu_outlet (@pdus) {
             my ($pdu, $outlet) = split /:/, $pdu_outlet;
             if ($pduhash->{$pdu}->[0]->{pdutype} eq 'crpdu') {
-                $callback->({ error => "$node: This command doesn't supports CONSTELLATION PDU with pdutype=crpdu for $pdu"});
+                $callback->({ error => "$node: This command doesn't supports CONSTELLATION PDU with pdutype=crpdu for $pdu" });
                 next;
             }
-            my $session = connectTopdu($pdu,$callback);
+            my $session = connectTopdu($pdu, $callback);
             if (!$session) {
-                $callback->({ errorcode => [1],error => "$node: Couldn't connect to $pdu"});
+                $callback->({ errorcode => [1], error => "$node: Couldn't connect to $pdu" });
                 next;
             }
             my $count = $pduhash->{$pdu}->[0]->{outlet};
             unless ($count) {
                 $count = fill_outletCount($session, $pdu, $callback);
             }
-            if ($outlet > $count ) {
-                $callback->({ error => "$node: $pdu outlet number $outlet is invalid"});
+            if ($outlet > $count) {
+                $callback->({ error => "$node: $pdu outlet number $outlet is invalid" });
                 next;
             }
             my $cmd;
             if ($subcmd eq "pdustat") {
-                $statstr=outletstat($session, $outlet);
+                $statstr = outletstat($session, $outlet);
             } elsif ($subcmd eq "pduoff") {
-                $value = 0;
+                $value   = 0;
                 $statstr = "off";
                 outletpower($session, $outlet, $value);
             } elsif ($subcmd eq "pduon") {
-                $value = 1;
+                $value   = 1;
                 $statstr = "on";
                 outletpower($session, $outlet, $value);
             } elsif ($subcmd eq "pdureset") {
-                $value = 2;
+                $value   = 2;
                 $statstr = "reset";
                 outletpower($session, $outlet, $value);
             } else {
-                $callback->({ error => "$subcmd is not support"});
+                $callback->({ error => "$subcmd is not support" });
             }
 
             if ($session->{ErrorStr}) {
-                $callback->({ errorcode => [1],error => "$node: $pdu outlet $outlet has error = $session->{ErrorStr}"});
+                $callback->({ errorcode => [1], error => "$node: $pdu outlet $outlet has error = $session->{ErrorStr}" });
             } else {
                 $output = "$pdu operational state for outlet $outlet is $statstr";
                 xCAT::SvrUtils::sendmsg($output, $callback, $node, %allerrornodes);
@@ -422,10 +429,10 @@ sub powerpduoutlet {
 #-------------------------------------------------------
 sub outletpower {
     my $session = shift;
-    my $outlet = shift;
-    my $value = shift;
+    my $outlet  = shift;
+    my $value   = shift;
 
-    my $oid = ".1.3.6.1.4.1.2.6.223.8.2.2.1.11";
+    my $oid  = ".1.3.6.1.4.1.2.6.223.8.2.2.1.11";
     my $type = "INTEGER";
     if ($session->{newmib}) {
         $oid = ".1.3.6.1.4.1.2.6.223.8.2.2.1.13";
@@ -447,7 +454,7 @@ sub outletpower {
 #-------------------------------------------------------
 sub powerstat {
     my $noderange = shift;
-    my $callback = shift;
+    my $callback  = shift;
     my $output;
 
     foreach my $pdu (@$noderange) {
@@ -460,52 +467,53 @@ sub powerstat {
                 if ((defined $snmpuser) && (defined $seclevel)) {
                     my $authtype = $pduhash->{$pdu}->[0]->{authtype};
                     if (!defined $authtype) {
-                        $authtype="MD5";
+                        $authtype = "MD5";
                     }
-                    my $authkey = $pduhash->{$pdu}->[0]->{authkey};
+                    my $authkey  = $pduhash->{$pdu}->[0]->{authkey};
                     my $privtype = $pduhash->{$pdu}->[0]->{privtype};
                     if (!defined $privtype) {
-                        $privtype="DES";
+                        $privtype = "DES";
                     }
                     my $privkey = $pduhash->{$pdu}->[0]->{privkey};
                     if (!defined $privkey) {
                         if (defined $authkey) {
-                            $privkey=$authkey;
+                            $privkey = $authkey;
                         }
                     }
                     if ($seclevel eq "authNoPriv") {
                         $snmpcmd = "snmpwalk -v3 -u $snmpuser -a $authtype -A $authkey -l $seclevel";
                     } elsif ($seclevel eq "authPriv") {
                         $snmpcmd = "snmpwalk -v3 -u $snmpuser -a $authtype -A $authkey -l $seclevel -x $privtype -X $privkey";
-                    } else {   #default to notAuthNoPriv
+                    } else {    #default to notAuthNoPriv
                         $snmpcmd = "snmpwalk -v3 -u $snmpuser -l $seclevel";
                     }
                 } else {
-                    xCAT::SvrUtils::sendmsg("ERROR: No snmpuser or Security level defined for snmpV3 configuration", $callback,$pdu);
-                    xCAT::SvrUtils::sendmsg("    use chdef command to add pdu snmpV3 attributes to pdu table", $callback,$pdu);
-                    xCAT::SvrUtils::sendmsg("    ex:  chdef coral-pdu snmpversion=3, snmpuser=admin, authtype=MD5 authkey=password1 privtype=DES privkey=password2 seclevel=authPriv", $callback,$pdu);
-                    xCAT::SvrUtils::sendmsg("    then run 'rspconfig $pdu snmpcfg' command ", $callback,$pdu);
+                    xCAT::SvrUtils::sendmsg("ERROR: No snmpuser or Security level defined for snmpV3 configuration", $callback, $pdu);
+                    xCAT::SvrUtils::sendmsg("    use chdef command to add pdu snmpV3 attributes to pdu table", $callback, $pdu);
+                    xCAT::SvrUtils::sendmsg("    ex:  chdef coral-pdu snmpversion=3, snmpuser=admin, authtype=MD5 authkey=password1 privtype=DES privkey=password2 seclevel=authPriv", $callback, $pdu);
+                    xCAT::SvrUtils::sendmsg("    then run 'rspconfig $pdu snmpcfg' command ", $callback, $pdu);
                     next;
                 }
             } else {
+
                 # use default value
                 $snmpcmd = "snmpwalk -v3 -u admin -a MD5 -A password1 -l authPriv -x DES -X password2";
             }
-            for (my $relay = 1; $relay <= 3; $relay++) {
+            for (my $relay = 1 ; $relay <= 3 ; $relay++) {
                 relaystat($pdu, $relay, $snmpcmd, $callback);
             }
             next;
         }
-        my $session = connectTopdu($pdu,$callback);
+        my $session = connectTopdu($pdu, $callback);
         if (!$session) {
-            $callback->({ errorcode => [1],error => "Couldn't connect to $pdu"});
+            $callback->({ errorcode => [1], error => "Couldn't connect to $pdu" });
             next;
         }
         my $count = $pduhash->{$pdu}->[0]->{outlet};
         unless ($count) {
             $count = fill_outletCount($session, $pdu, $callback);
         }
-        for (my $outlet =1; $outlet <= $count; $outlet++)
+        for (my $outlet = 1 ; $outlet <= $count ; $outlet++)
         {
             my $statstr = outletstat($session, $outlet);
             my $msg = " operational state for the outlet $outlet is $statstr";
@@ -532,7 +540,7 @@ sub powerstat {
 #-------------------------------------------------------
 sub outletstat {
     my $session = shift;
-    my $outlet = shift;
+    my $outlet  = shift;
 
     my $oid = ".1.3.6.1.4.1.2.6.223.8.2.2.1.11";
     my $output;
@@ -555,7 +563,7 @@ sub outletstat {
     } elsif ($output eq 5) {
         $statstr = "delaySwitch60";
     } else {
-        $statstr = "$output(unknown state)" ;
+        $statstr = "$output(unknown state)";
     }
     return $statstr;
 }
@@ -570,7 +578,7 @@ sub outletstat {
 
 #-------------------------------------------------------
 sub connectTopdu {
-    my $pdu = shift;
+    my $pdu      = shift;
     my $callback = shift;
 
     #get community string from pdu table if defined,
@@ -584,7 +592,7 @@ sub connectTopdu {
 
     my $snmpver = "1";
     my $session;
-    my $msg = "connectTopdu";
+    my $msg        = "connectTopdu";
     my $versionoid = ".1.3.6.1.4.1.2.6.223.7.3.0";
 
     $session = new SNMP::Session(
@@ -630,9 +638,9 @@ sub connectTopdu {
 
 #-------------------------------------------------------
 sub process_netcfg {
-    my $request = shift;
-    my $subreq    = shift;
-    my $subcmd    = shift;
+    my $request  = shift;
+    my $subreq   = shift;
+    my $subcmd   = shift;
     my $callback = shift;
     my $hostname;
     my $ip;
@@ -641,13 +649,13 @@ sub process_netcfg {
     my $exp;
     my $errstr;
 
-    my $extrargs  = $request->{arg};
-    my @exargs    = ($request->{arg});
+    my $extrargs = $request->{arg};
+    my @exargs   = ($request->{arg});
     if (ref($extrargs)) {
         @exargs = @$extrargs;
     }
 
-    my $nodes = $request->{node};
+    my $nodes       = $request->{node};
     my $node_number = @$nodes;
     if ($node_number gt "1") {
         xCAT::SvrUtils::sendmsg("Can not configure more than 1 nodes", $callback);
@@ -658,8 +666,8 @@ sub process_netcfg {
     my $rsp = {};
 
     my $nodetab = xCAT::Table->new('hosts');
-    my $nodehash = $nodetab->getNodesAttribs($nodes,['ip','otherinterfaces']);
-    my $static_ip = $nodehash->{$pdu}->[0]->{ip};
+    my $nodehash = $nodetab->getNodesAttribs($nodes, [ 'ip', 'otherinterfaces' ]);
+    my $static_ip   = $nodehash->{$pdu}->[0]->{ip};
     my $discover_ip = $nodehash->{$pdu}->[0]->{otherinterfaces};
 
     unless ($pduhash->{$pdu}->[0]->{pdutype} eq "crpdu") {
@@ -670,9 +678,9 @@ sub process_netcfg {
     # connect to PDU
     my $username = $pduhash->{$pdu}->[0]->{username};
     my $password = $pduhash->{$pdu}->[0]->{password};
-    ($exp, $errstr) = session_connect($static_ip, $discover_ip,$username,$password);
+    ($exp, $errstr) = session_connect($static_ip, $discover_ip, $username, $password);
     if (defined $errstr) {
-        xCAT::SvrUtils::sendmsg("Failed to connect", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg("Failed to connect", $callback, $pdu);
         return;
     }
 
@@ -682,9 +690,9 @@ sub process_netcfg {
             $hostname = $value;
             my ($ret, $err) = session_exec($exp, "echo $hostname > /etc/hostname;/etc/init.d/hostname.sh");
             if (defined $err) {
-               xCAT::SvrUtils::sendmsg("Failed to set hostname", $callback);
+                xCAT::SvrUtils::sendmsg("Failed to set hostname", $callback);
             }
-        }elsif ($key =~ /ip/) {
+        } elsif ($key =~ /ip/) {
             $ip = $value;
         } elsif ($key =~ /netmask/) {
             $netmask = $value;
@@ -702,21 +710,22 @@ sub process_netcfg {
         $opt = $opt . "-n $netmask";
     }
     if ($opt) {
-        my $dshcmd = $args . $opt ;
+        my $dshcmd = $args . $opt;
         my ($ret, $err) = session_exec($exp, $dshcmd);
         if (defined $err) {
+
             #session will be hung if ip address changed
             my $p = Net::Ping->new();
-            if  ( ($p->ping($ip)) && ($err =~ /TIMEOUT/) ) {
-               xCAT::SvrUtils::sendmsg("$ip is reachable", $callback);
+            if (($p->ping($ip)) && ($err =~ /TIMEOUT/)) {
+                xCAT::SvrUtils::sendmsg("$ip is reachable", $callback);
             } else {
                 xCAT::SvrUtils::sendmsg("Failed to run $dshcmd, error=$err", $callback);
                 return;
             }
         }
         xCAT::SvrUtils::sendmsg("$dshcmd ran successfully", $callback);
-        xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$pdu,"ip=$ip","otherinterfaces="] }, $subreq, 0, 1);
-        xCAT::Utils->runxcmd({ command => ['makehosts'], node => [$pdu] },  $subreq, 0, 1);
+        xCAT::Utils->runxcmd({ command => ['chdef'], arg => [ '-t', 'node', '-o', $pdu, "ip=$ip", "otherinterfaces=" ] }, $subreq, 0, 1);
+        xCAT::Utils->runxcmd({ command => ['makehosts'], node => [$pdu] }, $subreq, 0, 1);
     }
     if (defined $exp) {
         $exp->hard_close();
@@ -736,19 +745,19 @@ sub process_netcfg {
 #-------------------------------------------------------
 sub process_sshcfg {
     my $noderange = shift;
-    my $subcmd = shift;
-    my $callback = shift;
+    my $subcmd    = shift;
+    my $callback  = shift;
 
     my $keyfile = "/root/.ssh/id_rsa.pub";
     my $rootkey = `cat /root/.ssh/id_rsa.pub`;
     my $cmd;
 
     my $nodetab = xCAT::Table->new('hosts');
-    my $nodehash = $nodetab->getNodesAttribs($noderange,['ip','otherinterfaces']);
+    my $nodehash = $nodetab->getNodesAttribs($noderange, [ 'ip', 'otherinterfaces' ]);
 
     foreach my $pdu (@$noderange) {
         unless ($pduhash->{$pdu}->[0]->{pdutype} eq "crpdu") {
-            xCAT::SvrUtils::sendmsg("This command only supports CONSTELLATION PDU with pdutype=crpdu", $callback,$pdu);
+            xCAT::SvrUtils::sendmsg("This command only supports CONSTELLATION PDU with pdutype=crpdu", $callback, $pdu);
             next;
         }
 
@@ -759,12 +768,12 @@ sub process_sshcfg {
         $cmd = "ssh-keygen -R $pdu";
         xCAT::Utils->runcmd($cmd, 0);
 
-        my $static_ip = $nodehash->{$pdu}->[0]->{ip};
+        my $static_ip   = $nodehash->{$pdu}->[0]->{ip};
         my $discover_ip = $nodehash->{$pdu}->[0]->{otherinterfaces};
-        my $username = $pduhash->{$pdu}->[0]->{username};
-        my $password = $pduhash->{$pdu}->[0]->{password};
+        my $username    = $pduhash->{$pdu}->[0]->{username};
+        my $password    = $pduhash->{$pdu}->[0]->{password};
 
-        my ($exp, $errstr) = session_connect($static_ip, $discover_ip,$username,$password);
+        my ($exp, $errstr) = session_connect($static_ip, $discover_ip, $username, $password);
         if (!defined $exp) {
             $msg = " Failed to connect $errstr";
             xCAT::SvrUtils::sendmsg($msg, $callback, $pdu, %allerrornodes);
@@ -796,9 +805,9 @@ sub process_sshcfg {
 #-------------------------------------------------------
 sub session_connect {
     my $static_ip   = shift;
-    my $discover_ip   = shift;
-    my $userid = shift;
-    my $password = shift;
+    my $discover_ip = shift;
+    my $userid      = shift;
+    my $password    = shift;
 
     #default password for coral pdu
     if (!defined $userid) {
@@ -817,34 +826,34 @@ sub session_connect {
     } elsif ($p->ping($discover_ip)) {
         $ssh_ip = $discover_ip;
     } else {
-        return(undef, " is not reachable\n");
+        return (undef, " is not reachable\n");
     }
 
-    my $ssh      = Expect->new;
-    my $command     = 'ssh';
-    my @parameters  = ($userid . "@" . $ssh_ip);
+    my $ssh        = Expect->new;
+    my $command    = 'ssh';
+    my @parameters = ($userid . "@" . $ssh_ip);
 
-     $ssh->debug(0);
-     $ssh->log_stdout(0);    # suppress stdout output..
+    $ssh->debug(0);
+    $ssh->log_stdout(0);    # suppress stdout output..
 
-     unless ($ssh->spawn($command, @parameters))
-     {
-         my $err = $!;
-         $ssh->soft_close();
-         my $rsp;
-         return(undef, "unable to run command $command $err\n");
-     }
+    unless ($ssh->spawn($command, @parameters))
+    {
+        my $err = $!;
+        $ssh->soft_close();
+        my $rsp;
+        return (undef, "unable to run command $command $err\n");
+    }
 
-     $ssh->expect($timeout,
-                   [ "-re", qr/WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED/, sub {die "WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!\n"; } ],
-                   [ "-re", qr/\(yes\/no\)\?\s*$/, sub { $ssh->send("yes\n");  exp_continue; } ],
-                   [ "-re", qr/ password:/,        sub {$ssh->send("$password\n"); exp_continue; } ],
-                   [ "-re", qr/:~\$/,              sub { $ssh->send("sudo su\n"); exp_continue; } ],
-                   [ "-re", qr/.*#/,               sub { $ssh->clear_accum(); } ],
-                   [ timeout => sub { die "No login.\n"; } ]
-                  );
-     $ssh->clear_accum();
-     return ($ssh);
+    $ssh->expect($timeout,
+        [ "-re", qr/WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED/, sub { die "WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!\n"; } ],
+        [ "-re", qr/\(yes\/no\)\?\s*$/, sub { $ssh->send("yes\n"); exp_continue; } ],
+        [ "-re", qr/ password:/, sub { $ssh->send("$password\n"); exp_continue; } ],
+        [ "-re", qr/:~\$/, sub { $ssh->send("sudo su\n"); exp_continue; } ],
+        [ "-re", qr/.*#/, sub { $ssh->clear_accum(); } ],
+        [ timeout => sub { die "No login.\n"; } ]
+    );
+    $ssh->clear_accum();
+    return ($ssh);
 }
 
 #-------------------------------------------------------
@@ -857,23 +866,23 @@ sub session_connect {
 
 #-------------------------------------------------------
 sub session_exec {
-     my $exp = shift;
-     my $cmd = shift;
-     my $timeout    = shift;
-     my $prompt =  shift;
+    my $exp     = shift;
+    my $cmd     = shift;
+    my $timeout = shift;
+    my $prompt  = shift;
 
-     $timeout = 30 unless defined $timeout;
-     $prompt = qr/.*#/ unless defined $prompt;
+    $timeout = 30      unless defined $timeout;
+    $prompt  = qr/.*#/ unless defined $prompt;
 
 
-     $exp->clear_accum();
-     $exp->send("$cmd\n");
-     my ($mpos, $merr, $mstr, $mbmatch, $mamatch) = $exp->expect(6,  "-re", $prompt);
+    $exp->clear_accum();
+    $exp->send("$cmd\n");
+    my ($mpos, $merr, $mstr, $mbmatch, $mamatch) = $exp->expect(6, "-re", $prompt);
 
-     if (defined $merr) {
-         return(undef,$merr);
-     }
-     return($mbmatch);
+    if (defined $merr) {
+        return (undef, $merr);
+    }
+    return ($mbmatch);
 }
 
 #-----------------------------------------------------------------
@@ -895,16 +904,16 @@ sub process_pdudiscover {
     my $extrargs = $request->{arg};
     my @exargs   = ($request->{arg});
     if (ref($extrargs)) {
-        @exargs=@$extrargs;
+        @exargs = @$extrargs;
     }
 
     #check case in GetOptions
     $Getopt::Long::ignorecase = 0;
-    Getopt::Long::Configure( "bundling" );
+    Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("no_pass_through");
     my %opt;
-    if (!GetOptions( \%opt,
-                    qw(h|help V|verbose x z w r range=s setup))) {
+    if (!GetOptions(\%opt,
+            qw(h|help V|verbose x z w r range=s setup))) {
         my $usage_string = xCAT::Usage->getUsage($request->{command}->[0]);
         $callback->({ data => $usage_string });
         return;
@@ -937,11 +946,11 @@ sub process_pdudiscover {
 
 sub showMFR {
     my $noderange = shift;
-    my $callback = shift;
+    my $callback  = shift;
     my $output;
 
     my $nodetab = xCAT::Table->new('hosts');
-    my $nodehash = $nodetab->getNodesAttribs($noderange,['ip','otherinterfaces']);
+    my $nodehash = $nodetab->getNodesAttribs($noderange, [ 'ip', 'otherinterfaces' ]);
 
     foreach my $pdu (@$noderange) {
         unless ($pduhash->{$pdu}->[0]->{pdutype} eq "crpdu") {
@@ -950,12 +959,12 @@ sub showMFR {
         }
 
         # connect to PDU
-        my $static_ip = $nodehash->{$pdu}->[0]->{ip};
+        my $static_ip   = $nodehash->{$pdu}->[0]->{ip};
         my $discover_ip = $nodehash->{$pdu}->[0]->{otherinterfaces};
-        my $username = $pduhash->{$pdu}->[0]->{username};
-        my $password = $pduhash->{$pdu}->[0]->{password};
+        my $username    = $pduhash->{$pdu}->[0]->{username};
+        my $password    = $pduhash->{$pdu}->[0]->{password};
 
-        my ($exp, $errstr) = session_connect($static_ip, $discover_ip,$username,$password);
+        my ($exp, $errstr) = session_connect($static_ip, $discover_ip, $username, $password);
         if (defined $errstr) {
             xCAT::SvrUtils::sendmsg("Failed to connect: $errstr", $callback);
         }
@@ -967,8 +976,8 @@ sub showMFR {
         if (defined $ret) {
             foreach my $line (split /[\r\n]+/, $ret) {
                 if ($line) {
-                    $line = join(' ',split(' ',$line));
-                    xCAT::SvrUtils::sendmsg("$line", $callback,$pdu);
+                    $line = join(' ', split(' ', $line));
+                    xCAT::SvrUtils::sendmsg("$line", $callback, $pdu);
                 }
             }
         }
@@ -979,49 +988,56 @@ sub showMFR {
 
 sub rinv_for_irpdu
 {
-    my $pdu = shift;
+    my $pdu      = shift;
     my $callback = shift;
     my $output;
 
-    my $session = connectTopdu($pdu,$callback);
+    my $session = connectTopdu($pdu, $callback);
     if (!$session) {
-        $callback->({ errorcode => [1],error => "Couldn't connect to $pdu"});
+        $callback->({ errorcode => [1], error => "Couldn't connect to $pdu" });
         next;
     }
+
     #ibmPduSoftwareVersion
     $output = $session->get(".1.3.6.1.4.1.2.6.223.7.3.0");
     if ($output) {
-        xCAT::SvrUtils::sendmsg("PDU Software Version: $output", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg("PDU Software Version: $output", $callback, $pdu);
     }
+
     #ibmPduMachineType
     $output = $session->get(".1.3.6.1.4.1.2.6.223.7.4.0");
     if ($output) {
-        xCAT::SvrUtils::sendmsg("PDU Machine Type: $output", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg("PDU Machine Type: $output", $callback, $pdu);
     }
+
     #ibmPduModelNumber
     $output = $session->get(".1.3.6.1.4.1.2.6.223.7.5.0");
     if ($output) {
-        xCAT::SvrUtils::sendmsg("PDU Model Number: $output", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg("PDU Model Number: $output", $callback, $pdu);
     }
+
     #ibmPduPartNumber
     $output = $session->get(".1.3.6.1.4.1.2.6.223.7.6.0");
     if ($output) {
-        xCAT::SvrUtils::sendmsg("PDU Part Number: $output", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg("PDU Part Number: $output", $callback, $pdu);
     }
+
     #ibmPduName
     $output = $session->get(".1.3.6.1.4.1.2.6.223.7.7.0");
     if ($output) {
-        xCAT::SvrUtils::sendmsg("PDU Name: $output", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg("PDU Name: $output", $callback, $pdu);
     }
+
     #ibmPduSerialNumber
     $output = $session->get(".1.3.6.1.4.1.2.6.223.7.9.0");
     if ($output) {
-        xCAT::SvrUtils::sendmsg("PDU Serial Number: $output", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg("PDU Serial Number: $output", $callback, $pdu);
     }
+
     #ibmPduDescription
     $output = $session->get(".1.3.6.1.4.1.2.6.223.7.10.0");
     if ($output) {
-        xCAT::SvrUtils::sendmsg("PDU Description: $output", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg("PDU Description: $output", $callback, $pdu);
     }
 }
 
@@ -1044,17 +1060,17 @@ sub rinv_for_irpdu
 #-------------------------------------------------------
 sub showMonitorData {
     my $noderange = shift;
-    my $callback = shift;
+    my $callback  = shift;
     my $output;
 
     my $nodetab = xCAT::Table->new('hosts');
-    my $nodehash = $nodetab->getNodesAttribs($noderange,['ip','otherinterfaces']);
+    my $nodehash = $nodetab->getNodesAttribs($noderange, [ 'ip', 'otherinterfaces' ]);
 
     foreach my $pdu (@$noderange) {
         unless ($pduhash->{$pdu}->[0]->{pdutype} eq "crpdu") {
-            my $session = connectTopdu($pdu,$callback);
+            my $session = connectTopdu($pdu, $callback);
             if (!$session) {
-                $callback->({ errorcode => [1],error => "Couldn't connect to $pdu"});
+                $callback->({ errorcode => [1], error => "Couldn't connect to $pdu" });
                 next;
             }
             my $count = $pduhash->{$pdu}->[0]->{outlet};
@@ -1068,12 +1084,12 @@ sub showMonitorData {
         }
 
         # connect to PDU
-        my $static_ip = $nodehash->{$pdu}->[0]->{ip};
+        my $static_ip   = $nodehash->{$pdu}->[0]->{ip};
         my $discover_ip = $nodehash->{$pdu}->[0]->{otherinterfaces};
-        my $username = $pduhash->{$pdu}->[0]->{username};
-        my $password = $pduhash->{$pdu}->[0]->{password};
+        my $username    = $pduhash->{$pdu}->[0]->{username};
+        my $password    = $pduhash->{$pdu}->[0]->{password};
 
-        my ($exp, $errstr) = session_connect($static_ip, $discover_ip,$username,$password);
+        my ($exp, $errstr) = session_connect($static_ip, $discover_ip, $username, $password);
 
         my $ret;
         my $err;
@@ -1085,8 +1101,8 @@ sub showMonitorData {
         if (defined $ret) {
             foreach my $line (split /[\r\n]+/, $ret) {
                 if ($line) {
-                    $line = join(' ',split(' ',$line));
-                    xCAT::SvrUtils::sendmsg("$line", $callback,$pdu);
+                    $line = join(' ', split(' ', $line));
+                    xCAT::SvrUtils::sendmsg("$line", $callback, $pdu);
                 }
             }
         }
@@ -1098,40 +1114,44 @@ sub showMonitorData {
 
 sub rvitals_for_irpdu
 {
-    my $pdu = shift;
-    my $count = shift;
-    my $session = shift;
+    my $pdu      = shift;
+    my $count    = shift;
+    my $session  = shift;
     my $callback = shift;
     my $output;
 
     #ibmPduVoltageWarning:  (voltageNormal(0),voltageOutOfRange(1))
     my $voltagewarning = ".1.3.6.1.4.1.2.6.223.0.1.1.7.0";
     $output = $session->get("$voltagewarning");
-    xCAT::SvrUtils::sendmsg("Voltage Warning: $output", $callback,$pdu);
+    xCAT::SvrUtils::sendmsg("Voltage Warning: $output", $callback, $pdu);
 
     # get power info for each outlet
     # starts oid .2.6.223.8.2.2.1.7  to .2.6.223.8.2.2.1.14
     #ibmPduOutletCurrent
     my $outletcurrent = ".1.3.6.1.4.1.2.6.223.8.2.2.1.7";
+
     #ibmPduOutletMaxCapacity
     my $outletmaxcap = ".1.3.6.1.4.1.2.6.223.8.2.2.1.8";
+
     #ibmPduOutletCurrentThresholdWarning
     my $currentthrewarning = ".1.3.6.1.4.1.2.6.223.8.2.2.1.9";
+
     #ibmPduOutletCurrentThresholdCritical
     my $currentthrecrit = ".1.3.6.1.4.1.2.6.223.8.2.2.1.10";
+
     #ibmPduOutletLastPowerReading
     my $lastpowerreading = ".1.3.6.1.4.1.2.6.223.8.2.2.1.13";
-    for (my $outlet = 1; $outlet <= $count; $outlet++) {
+    for (my $outlet = 1 ; $outlet <= $count ; $outlet++) {
         $output = $session->get("$outletcurrent.$outlet");
-        xCAT::SvrUtils::sendmsg("outlet $outlet Current: $output mA", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg("outlet $outlet Current: $output mA", $callback, $pdu);
         $output = $session->get("$outletmaxcap.$outlet");
-        xCAT::SvrUtils::sendmsg("outlet $outlet Max Capacity of the current: $output mA", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg("outlet $outlet Max Capacity of the current: $output mA", $callback, $pdu);
         $output = $session->get("$currentthrewarning.$outlet");
-        xCAT::SvrUtils::sendmsg("outlet $outlet Current Threshold Warning: $output mA", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg("outlet $outlet Current Threshold Warning: $output mA", $callback, $pdu);
         $output = $session->get("$currentthrecrit.$outlet");
-        xCAT::SvrUtils::sendmsg("outlet $outlet Current Threshold Critical: $output mA", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg("outlet $outlet Current Threshold Critical: $output mA", $callback, $pdu);
         $output = $session->get("$lastpowerreading.$outlet");
-        xCAT::SvrUtils::sendmsg("outlet $outlet Last Power Reading: $output Watts", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg("outlet $outlet Last Power Reading: $output Watts", $callback, $pdu);
     }
 
 }
@@ -1150,9 +1170,9 @@ sub rvitals_for_irpdu
 
 #-------------------------------------------------------
 sub relaystat {
-    my $pdu = shift;
-    my $relay = shift;
-    my $snmpcmd = shift;
+    my $pdu      = shift;
+    my $relay    = shift;
+    my $snmpcmd  = shift;
     my $callback = shift;
 
     my $relayoid = $relay + 12;
@@ -1161,10 +1181,10 @@ sub relaystat {
     my $cmd = "$snmpcmd $pdu 1.3.6.1.4.1.2.6.262.15.2.$relayoid";
 
     my $result = xCAT::Utils->runcmd($cmd, 0);
-    my ($msg,$stat) = split /: /, $result;
-    if ($stat eq "1" ) {
+    my ($msg, $stat) = split /: /, $result;
+    if ($stat eq "1") {
         xCAT::SvrUtils::sendmsg(" relay $relay is on", $callback, $pdu, %allerrornodes);
-    } elsif ( $stat eq "0" ) {
+    } elsif ($stat eq "0") {
         xCAT::SvrUtils::sendmsg(" relay $relay is off", $callback, $pdu, %allerrornodes);
     } else {
         xCAT::SvrUtils::sendmsg(" relay $relay is $stat=unknown", $callback, $pdu, %allerrornodes);
@@ -1183,16 +1203,16 @@ sub relaystat {
 
 #-------------------------------------------------------
 sub process_powerrelay {
-    my $request = shift;
-    my $subreq    = shift;
-    my $subcmd    = shift;
+    my $request  = shift;
+    my $subreq   = shift;
+    my $subcmd   = shift;
     my $callback = shift;
 
     my $relay;
     my $action;
 
-    my $extrargs  = $request->{arg};
-    my @exargs    = ($request->{arg});
+    my $extrargs = $request->{arg};
+    my @exargs   = ($request->{arg});
     if (ref($extrargs)) {
         @exargs = @$extrargs;
     }
@@ -1200,14 +1220,14 @@ sub process_powerrelay {
     my $nodes = $request->{node};
 
     foreach my $cmd (@exargs) {
-        if ($cmd =~ /=/ ) {
+        if ($cmd =~ /=/) {
             my ($key, $value) = split(/=/, $cmd);
             $relay = $value;
         } else {
             $action = $cmd;
         }
     }
-    if ( (defined $relay) && (defined $action) ) {
+    if ((defined $relay) && (defined $action)) {
         my $relay_count = 1;
         foreach my $pdu (@$nodes) {
             process_relay($pdu, $action, $callback, $relay, $relay_count);
@@ -1228,44 +1248,44 @@ sub process_powerrelay {
 
 #-------------------------------------------------------
 sub process_relay {
-    my $pdu = shift;
-    my $subcmd = shift;
-    my $callback = shift;
-    my $relay_num = shift;
+    my $pdu         = shift;
+    my $subcmd      = shift;
+    my $callback    = shift;
+    my $relay_num   = shift;
     my $relay_count = shift;
 
-    if ( !defined $relay_count ) {
-        $relay_num = 1;
+    if (!defined $relay_count) {
+        $relay_num   = 1;
         $relay_count = 3;
     }
 
-    my $nodetab = xCAT::Table->new('hosts');
-    my $nodehash = $nodetab->getNodeAttribs($pdu,['ip','otherinterfaces']);
+    my $nodetab  = xCAT::Table->new('hosts');
+    my $nodehash = $nodetab->getNodeAttribs($pdu, [ 'ip', 'otherinterfaces' ]);
     my $username = $pduhash->{$pdu}->[0]->{username};
-    my $passwd = $pduhash->{$pdu}->[0]->{password};
+    my $passwd   = $pduhash->{$pdu}->[0]->{password};
 
     # connect to PDU
-    my $static_ip = $nodehash->{$pdu}->[0]->{ip};
+    my $static_ip   = $nodehash->{$pdu}->[0]->{ip};
     my $discover_ip = $nodehash->{$pdu}->[0]->{otherinterfaces};
-    my ($session, $errstr) = session_connect($static_ip, $discover_ip,$username,$passwd);
+    my ($session, $errstr) = session_connect($static_ip, $discover_ip, $username, $passwd);
 
     my $ret;
     my $err;
     my $statestr;
 
 
-    for (my $i = 0; $i < $relay_count; $i++) {
+    for (my $i = 0 ; $i < $relay_count ; $i++) {
         my $relay = $relay_num;
-        xCAT::SvrUtils::sendmsg(" power $subcmd for relay $relay_num", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg(" power $subcmd for relay $relay_num", $callback, $pdu);
         if ($subcmd eq "off") {
             relay_action($session, $pdu, $relay, "OFF", $callback);
-        } elsif ( $subcmd eq "on") {
+        } elsif ($subcmd eq "on") {
             relay_action($session, $pdu, $relay, "ON", $callback);
-        } elsif ( $subcmd eq "reset") {
+        } elsif ($subcmd eq "reset") {
             relay_action($session, $pdu, $relay, "OFF", $callback);
-            relay_action($session, $pdu, $relay, "ON", $callback);
+            relay_action($session, $pdu, $relay, "ON",  $callback);
         } else {
-            xCAT::SvrUtils::sendmsg(" subcmd $subcmd is not support", $callback,$pdu);
+            xCAT::SvrUtils::sendmsg(" subcmd $subcmd is not support", $callback, $pdu);
         }
         $relay_num++;
     }
@@ -1283,10 +1303,10 @@ sub process_relay {
 
 #-------------------------------------------------------
 sub relay_action {
-    my $session = shift;
-    my $pdu = shift;
-    my $relay = shift;
-    my $action = shift;
+    my $session  = shift;
+    my $pdu      = shift;
+    my $relay    = shift;
+    my $action   = shift;
     my $callback = shift;
 
     my ($ret, $err) = session_exec($session, "/dev/shm/bin/PduManager -r $relay -v $action");
@@ -1294,7 +1314,7 @@ sub relay_action {
         xCAT::SvrUtils::sendmsg("Failed to process relay action: $err", $callback);
     }
     if (defined $ret) {
-        xCAT::SvrUtils::sendmsg("$ret", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg("$ret", $callback, $pdu);
     }
 }
 
@@ -1308,51 +1328,51 @@ sub relay_action {
 
 #-------------------------------------------------------
 sub process_snmpcfg {
-    my $noderange = shift;
-    my $subcmd = shift;
-    my $callback = shift;
-    my $snmp_conf="/etc/snmp/snmpd.conf";
-    my $xCATSettingsSTART="xCAT settings START";
-    my $xCATSettingsEND="xCAT settings END";
-    my $xCATSettingsInfo="Entries between the START and END lines will be replaced each time by xCAT command";
+    my $noderange         = shift;
+    my $subcmd            = shift;
+    my $callback          = shift;
+    my $snmp_conf         = "/etc/snmp/snmpd.conf";
+    my $xCATSettingsSTART = "xCAT settings START";
+    my $xCATSettingsEND   = "xCAT settings END";
+    my $xCATSettingsInfo = "Entries between the START and END lines will be replaced each time by xCAT command";
 
 
     my $nodetab = xCAT::Table->new('hosts');
-    my $nodehash = $nodetab->getNodesAttribs($noderange,['ip','otherinterfaces']);
+    my $nodehash = $nodetab->getNodesAttribs($noderange, [ 'ip', 'otherinterfaces' ]);
 
     foreach my $pdu (@$noderange) {
         unless ($pduhash->{$pdu}->[0]->{pdutype} eq "crpdu") {
-            xCAT::SvrUtils::sendmsg("This command only supports CONSTELLATION PDU with pdutype=crpdu", $callback,$pdu);
+            xCAT::SvrUtils::sendmsg("This command only supports CONSTELLATION PDU with pdutype=crpdu", $callback, $pdu);
             next;
         }
 
-        my $community = $pduhash->{$pdu}->[0]->{community};
+        my $community   = $pduhash->{$pdu}->[0]->{community};
         my $snmpversion = $pduhash->{$pdu}->[0]->{snmpversion};
-        my $snmpuser = $pduhash->{$pdu}->[0]->{snmpuser};
-        my $authtype = $pduhash->{$pdu}->[0]->{authtype};
+        my $snmpuser    = $pduhash->{$pdu}->[0]->{snmpuser};
+        my $authtype    = $pduhash->{$pdu}->[0]->{authtype};
         if (!defined $authtype) {
-            $authtype="MD5";
+            $authtype = "MD5";
         }
-        my $authkey = $pduhash->{$pdu}->[0]->{authkey};
+        my $authkey  = $pduhash->{$pdu}->[0]->{authkey};
         my $privtype = $pduhash->{$pdu}->[0]->{privtype};
         if (!defined $privtype) {
-            $privtype="DES";
+            $privtype = "DES";
         }
         my $privkey = $pduhash->{$pdu}->[0]->{privkey};
         if (!defined $privkey) {
             if (defined $authkey) {
-                $privkey=$authkey;
+                $privkey = $authkey;
             }
         }
         my $seclevel = $pduhash->{$pdu}->[0]->{seclevel};
 
         # connect to PDU
-        my $static_ip = $nodehash->{$pdu}->[0]->{ip};
+        my $static_ip   = $nodehash->{$pdu}->[0]->{ip};
         my $discover_ip = $nodehash->{$pdu}->[0]->{otherinterfaces};
-        my $username = $pduhash->{$pdu}->[0]->{username};
-        my $password = $pduhash->{$pdu}->[0]->{password};
+        my $username    = $pduhash->{$pdu}->[0]->{username};
+        my $password    = $pduhash->{$pdu}->[0]->{password};
 
-        my ($exp, $errstr) = session_connect($static_ip, $discover_ip,$username,$password);
+        my ($exp, $errstr) = session_connect($static_ip, $discover_ip, $username, $password);
 
         my $ret;
         my $err;
@@ -1363,6 +1383,7 @@ sub process_snmpcfg {
         if (defined $community) {
             ($ret, $err) = session_exec($exp, "echo 'com2sec readwrite  default        $community' >> $snmp_conf");
         }
+
         #set snmpv3 configuration
         if ($snmpversion =~ /3/) {
             if ((defined $snmpuser) && (defined $seclevel)) {
@@ -1371,7 +1392,7 @@ sub process_snmpcfg {
                     $msg1 = "createUser $snmpuser $authtype $authkey";
                 } elsif ($seclevel eq "authPriv") {
                     $msg1 = "createUser $snmpuser $authtype $authkey $privtype $privkey";
-                } else {   #default to notAuthNoPriv
+                } else {    #default to notAuthNoPriv
                     $msg1 = "createUser $snmpuser";
                 }
                 my $msg2 = "rwuser $snmpuser $seclevel .1.3.6.1.4.1.2.6.262";
@@ -1403,28 +1424,29 @@ sub process_snmpcfg {
   change hostname and network setting for IR PDU.
 
 =cut
+
 #-------------------------------------------------------
 sub netcfg_for_irpdu {
-    my $pdu = shift;
-    my $static_ip = shift;
+    my $pdu         = shift;
+    my $static_ip   = shift;
     my $discover_ip = shift;
-    my $request = shift;
-    my $subreq = shift;
-    my $callback = shift;
+    my $request     = shift;
+    my $subreq      = shift;
+    my $callback    = shift;
     my $hostname;
     my $ip;
     my $gateway;
     my $netmask;
 
-    my $extrargs  = $request->{arg};
-    my @exargs    = ($request->{arg});
+    my $extrargs = $request->{arg};
+    my @exargs   = ($request->{arg});
     if (ref($extrargs)) {
         @exargs = @$extrargs;
     }
 
     #get user/password from pdu table if defined
     #default password for irpdu
-    my $passwd = "1001";
+    my $passwd   = "1001";
     my $username = "ADMIN";
 
     if ($pduhash->{$pdu}->[0]->{username}) {
@@ -1434,19 +1456,19 @@ sub netcfg_for_irpdu {
         $passwd = $pduhash->{$pdu}->[0]->{password};
     }
 
-    my $timeout = 10;
+    my $timeout     = 10;
     my $send_change = "N";
 
     my $login_ip;
 
     # somehow, only system command works for checking if irpdu is pingable
     # Net::Ping Module and xCAT::NetworkUtils::isPingable both are not working
-    if (system("ping -c 2 $static_ip") == 0 ) {
+    if (system("ping -c 2 $static_ip") == 0) {
         $login_ip = $static_ip;
     } elsif (system("ping -c 2 $discover_ip") == 0) {
         $login_ip = $discover_ip;
     } else {
-        xCAT::SvrUtils::sendmsg(" is not reachable", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg(" is not reachable", $callback, $pdu);
         return;
     }
 
@@ -1457,30 +1479,30 @@ sub netcfg_for_irpdu {
             xCAT::SvrUtils::sendmsg("change pdu hostname to $hostname", $callback);
         }
         if ($key =~ /ip/) {
-            $ip = $value;
+            $ip          = $value;
             $send_change = "Y";
             xCAT::SvrUtils::sendmsg("change ip address for $pdu to $ip", $callback);
         }
         if ($key =~ /gateway/) {
-            $gateway = $value;
+            $gateway     = $value;
             $send_change = "Y";
             xCAT::SvrUtils::sendmsg("change gateway for $pdu to $gateway", $callback);
         }
         if ($key =~ /netmask/) {
-            $netmask = $value;
+            $netmask     = $value;
             $send_change = "Y";
             xCAT::SvrUtils::sendmsg("change netmask for $pdu to $netmask", $callback);
         }
 
     }
 
-    my $login_cmd = "telnet $login_ip\r";
+    my $login_cmd   = "telnet $login_ip\r";
     my $user_prompt = " Login: ";
-    my $pwd_prompt = "Password: ";
-    my $pdu_prompt = "Please Enter Your Selection => ";
-    my $send_zero = 0;
-    my $send_one = 1;
-    my $send_two = 2;
+    my $pwd_prompt  = "Password: ";
+    my $pdu_prompt  = "Please Enter Your Selection => ";
+    my $send_zero   = 0;
+    my $send_one    = 1;
+    my $send_two    = 2;
 
     my $mypdu = new Expect;
 
@@ -1519,10 +1541,12 @@ sub netcfg_for_irpdu {
                 $mypdu->clear_accum();
                 $mypdu->send("$send_one\r");
                 $mypdu->send("$send_one\r");
+
                 #change hostname
                 $mypdu->send("$send_one\r");
                 $mypdu->send("$hostname\r");
                 $mypdu->send("$send_zero\r");
+
                 #change network setting
                 $mypdu->send("$send_two\r");
                 $mypdu->send("$send_one\r");
@@ -1530,6 +1554,7 @@ sub netcfg_for_irpdu {
                 $mypdu->send("$gateway\r");
                 $mypdu->send("$netmask\r");
                 $mypdu->send("$send_change\r");
+
                 # go back Previous Menu
                 $mypdu->send("$send_zero\r");
                 $mypdu->send("$send_zero\r");
@@ -1541,16 +1566,16 @@ sub netcfg_for_irpdu {
     {
         my $errmsg = $result[1];
         $mypdu->soft_close();
-        xCAT::SvrUtils::sendmsg("Failed expect command: $errmsg", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg("Failed expect command: $errmsg", $callback, $pdu);
         return;
     }
     $mypdu->soft_close();
 
     xCAT::SvrUtils::sendmsg("hostname or network setting changed, update node definition ", $callback);
-    xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$pdu,"otherinterfaces="] }, $subreq, 0, 1);
-    if ( (defined $ip) and ($static_ip ne $ip) ) {
-        xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$pdu,"ip=$ip",'status=configured'] }, $subreq, 0, 1);
-        xCAT::Utils->runxcmd({ command => ['makehosts'], node => [$pdu] },  $subreq, 0, 1);
+    xCAT::Utils->runxcmd({ command => ['chdef'], arg => [ '-t', 'node', '-o', $pdu, "otherinterfaces=" ] }, $subreq, 0, 1);
+    if ((defined $ip) and ($static_ip ne $ip)) {
+        xCAT::Utils->runxcmd({ command => ['chdef'], arg => [ '-t', 'node', '-o', $pdu, "ip=$ip", 'status=configured' ] }, $subreq, 0, 1);
+        xCAT::Utils->runxcmd({ command => ['makehosts'], node => [$pdu] }, $subreq, 0, 1);
     }
 
     return;

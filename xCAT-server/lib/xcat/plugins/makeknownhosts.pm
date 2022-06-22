@@ -89,6 +89,7 @@ sub process_request
         return 0;
     }
     if ($nodes eq "") {
+
         # no noderange
         my $rsp = {};
         $rsp->{data}->[0] = "The Noderange is missing.";
@@ -97,6 +98,7 @@ sub process_request
     }
     my $hostkey = "/etc/xcat/hostkeys/ssh_host_rsa_key.pub";
     if (!(-e $hostkey)) {
+
         # the key is missing, cannot create known_hosts
         my $rsp = {};
         $rsp->{data}->[0] =

@@ -181,9 +181,9 @@ sub process_request {
 
 
     my $retcode;
-    ($retcode,$lock)=xCAT::Utils->acquire_lock_imageop("$imagedir/rootimg");
-    if($retcode){
-        $callback->({ error => ["$lock"], errorcode => [1]});
+    ($retcode, $lock) = xCAT::Utils->acquire_lock_imageop("$imagedir/rootimg");
+    if ($retcode) {
+        $callback->({ error => ["$lock"], errorcode => [1] });
         return 1;
     }
 
@@ -197,20 +197,21 @@ sub process_request {
     }
 
     my @filestoremove = ("$imagedir/kernel", "$imagedir/initrd-stateless.gz", "$imagedir/initrd-statelite.gz");
-    my @rootimgtars=glob "$imagedir/rootimg.*";
-    push @filestoremove,@rootimgtars;
+    my @rootimgtars = glob "$imagedir/rootimg.*";
+    push @filestoremove, @rootimgtars;
+
     #unmount all the mount points under rootimg directory
     #to avoid removing the directory/files on management node by mistake
-    $realimagedir=realpath("$imagedir/rootimg");
+    $realimagedir = realpath("$imagedir/rootimg");
     my @mntptlist;
-    my $FILEHD=undef;
-    open($FILEHD,"<","/proc/mounts");
-    while(<$FILEHD>){
-        my @arr=split / /;
-        push @mntptlist,$arr[1] if(substr($arr[1],0,length($realimagedir)) eq $realimagedir);
+    my $FILEHD = undef;
+    open($FILEHD, "<", "/proc/mounts");
+    while (<$FILEHD>) {
+        my @arr = split / /;
+        push @mntptlist, $arr[1] if (substr($arr[1], 0, length($realimagedir)) eq $realimagedir);
     }
     close($FILEHD);
-    foreach my $mntpt (@mntptlist){
+    foreach my $mntpt (@mntptlist) {
         system("umount -l $mntpt >/dev/null 2>&1")
     }
 

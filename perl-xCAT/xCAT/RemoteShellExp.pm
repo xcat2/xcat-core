@@ -466,7 +466,7 @@ sub testkeys
             return 0;
         } else {
             my $rsp = {};
-            $rsp->{error}->[0] = "Testing the ssh connection to $nodes failed:".$msg;
+            $rsp->{error}->[0] = "Testing the ssh connection to $nodes failed:" . $msg;
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return 1;
         }
@@ -541,7 +541,7 @@ sub sendnodeskeys
 
         # command to make the temp directory on the node
         my $spawnmkdir =
-          "$remoteshell -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null $node -l $to_userid  /bin/mkdir -p /tmp/$to_userid/.ssh";
+"$remoteshell -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null $node -l $to_userid  /bin/mkdir -p /tmp/$to_userid/.ssh";
 
         # command to copy the needed files to the node
 
@@ -588,7 +588,7 @@ sub sendnodeskeys
         ##########################################
         # Expect error - report
         ##########################################
-        if($rc==1){
+        if ($rc == 1) {
             my $rsp = {};
             $rsp->{error}->[0] = "Permission denied, please make sure the user $to_userid has been created on the node $node and the input password is right\n";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
@@ -720,7 +720,7 @@ sub sendnodeskeys
 
         # command to run copy.sh
         my $spawnruncopy =
-          "$remoteshell -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null  $node -l $to_userid /tmp/$to_userid/.ssh/copy.sh $to_userid";
+"$remoteshell -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null  $node -l $to_userid /tmp/$to_userid/.ssh/copy.sh $to_userid";
 
         # send mkdir command
         unless ($sendkeys->spawn($spawnruncopy))

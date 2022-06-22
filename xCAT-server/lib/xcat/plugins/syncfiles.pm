@@ -47,7 +47,7 @@ sub process_request
     my $callback = shift;
     my $subreq   = shift;
 
-    my $args= $request->{arg};    # argument
+    my $args = $request->{arg};    # argument
     @ARGV = @{$args};
     my $client;
     if ($request->{'_xcat_clienthost'}) {
@@ -55,13 +55,13 @@ sub process_request
     }
 
 
-    my %options  = ();
+    my %options = ();
     Getopt::Long::Configure("posix_default");
     Getopt::Long::Configure("no_gnu_compat");
     Getopt::Long::Configure("bundling");
     if (
         !GetOptions(
-            'r|c|node-rcp=s'        => \$options{'node-rcp'},
+            'r|c|node-rcp=s' => \$options{'node-rcp'},
         )
       )
     {
@@ -69,8 +69,8 @@ sub process_request
         return;
     }
 
-    if ($options{'node-rcp'}){
-         $::RCP=$options{'node-rcp'};
+    if ($options{'node-rcp'}) {
+        $::RCP = $options{'node-rcp'};
     }
 
     if ($client) { ($client) = noderange($client) }
@@ -123,9 +123,9 @@ sub syncfiles {
     foreach my $synclistfile (@sl) {
 
         # call the xdcp plugin to handle the syncfile operation
-        my $args = [ "-F", "$synclistfile"];
-        if($::RCP){
-            push @$args,"-r";
+        my $args = [ "-F", "$synclistfile" ];
+        if ($::RCP) {
+            push @$args, "-r";
             push @$args, "$::RCP";
         }
         my $env = ["DSH_RSYNC_FILE=$synclistfile"];

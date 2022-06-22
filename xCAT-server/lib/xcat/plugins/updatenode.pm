@@ -232,7 +232,7 @@ sub preprocess_updatenode
             'fanout=i'      => \$fanout,
             't|timetout=i'  => \$timeout,
             'n|noverify'    => \$NOVERIFY,
-            'r|node-rcp=s'  =>\$RCP,
+            'r|node-rcp=s'  => \$RCP,
 
         )
       )
@@ -315,31 +315,31 @@ sub preprocess_updatenode
 
     # get server names as known by the nodes
     my %servernodes =
-      %{ xCAT::InstUtils->get_server_nodes($callback, $request->{node},1) };
+      %{ xCAT::InstUtils->get_server_nodes($callback, $request->{node}, 1) };
 
     # it's possible that the nodes could have diff server names
     # do all the nodes for a particular server at once
 
     my @invalidnodes;
-    if($servernodes{undef}){
-        push @invalidnodes,@{$servernodes{undef}};
+    if ($servernodes{undef}) {
+        push @invalidnodes, @{ $servernodes{undef} };
     }
 
-    if ($servernodes{""}){
-        push @invalidnodes,@{$servernodes{""}};
+    if ($servernodes{""}) {
+        push @invalidnodes, @{ $servernodes{""} };
     }
 
-    if (@invalidnodes){
-        my %allnodes=map {$_,1} @{$request->{node}};
-        foreach my $node (@invalidnodes){
-           xCAT::MsgUtils->report_node_error($callback,$node,"Could not determine or resolve xcatmaster for $node. Will skip this node.");
-           delete $allnodes{$node};
+    if (@invalidnodes) {
+        my %allnodes = map { $_, 1 } @{ $request->{node} };
+        foreach my $node (@invalidnodes) {
+            xCAT::MsgUtils->report_node_error($callback, $node, "Could not determine or resolve xcatmaster for $node. Will skip this node.");
+            delete $allnodes{$node};
         }
-        $request->{node}=[];
-        push @{$request->{node}}, map  $_ ,keys %allnodes;
+        $request->{node} = [];
+        push @{ $request->{node} }, map $_, keys %allnodes;
     }
 
-    unless (scalar @{$request->{node}}){
+    unless (scalar @{ $request->{node} }) {
         return;
     }
 
@@ -434,7 +434,7 @@ sub preprocess_updatenode
         return;
     }
 
-    if (($RCP) and (!$FILESYNC) and (!$SNFILESYNC)){
+    if (($RCP) and (!$FILESYNC) and (!$SNFILESYNC)) {
         my $rsp = {};
         $rsp->{data}->[0] = "-r|--node-rcp option is valid when option -f or -F is specified";
         $rsp->{errorcode}->[0] = 1;
@@ -674,8 +674,8 @@ sub preprocess_updatenode
         $request->{SNFileSyncing}->[0] = "yes";
     }
 
-    if ($RCP){
-        $request->{rcp}->[0]=$RCP;
+    if ($RCP) {
+        $request->{rcp}->[0] = $RCP;
     }
 
     # If -F  or -f then,  call CFMUtils  to check if any PCM CFM data is to be
@@ -1179,7 +1179,7 @@ sub updatenode
             'fanout=i'      => \$fanout,
             't|timetout=i'  => \$timeout,
             'n|noverify'    => \$NOVERIFY,
-            'r|node-rcp=s'   => \$RCP,
+            'r|node-rcp=s'  => \$RCP,
         )
       )
     {
@@ -1564,10 +1564,10 @@ sub updatenoderunps
     if ($fc[0] && ($fc[0] =~ /1|Yes|yes|YES|Y|y/)) {
         $flowcontrol = 1;
     }
-    my $httpport="80";
-    my @hports=xCAT::TableUtils->get_site_attribute("httpport");
-    if ($hports[0]){
-        $httpport=$hports[0];
+    my $httpport = "80";
+    my @hports   = xCAT::TableUtils->get_site_attribute("httpport");
+    if ($hports[0]) {
+        $httpport = $hports[0];
     }
 
     # if running postscript report status here, if requested.
@@ -1597,7 +1597,7 @@ sub updatenoderunps
         if ((!defined($snkey)) or ($snkey eq "")) { # if we could not find the xcatmaster
 
             my $rsp = {};
-            $rsp->{errorcode}->[0]=1;
+            $rsp->{errorcode}->[0] = 1;
             $rsp->{error}->[0] = "Could not find xcatmaster for @{$servernodes{$snkey}}. Will skip this node. ";
             $callback->($rsp);
             next;
@@ -1760,6 +1760,7 @@ sub updatenodesyncfiles
     }
 
     my $dsh_from_user_env;
+
     # get the Environment Variables and set DSH_FROM_USERID if possible (From updatenode client)
     if (defined($request->{environment})) {
         foreach my $envar (@{ $request->{environment} })
@@ -1771,6 +1772,7 @@ sub updatenodesyncfiles
         }
     }
     unless ($dsh_from_user_env) {
+
         # $request->{username} is gotten from CN in client certificate
         if (($request->{username}) && defined($request->{username}->[0])) {
             $dsh_from_user_env = 'DSH_FROM_USERID=' . $request->{username}->[0];
@@ -1861,49 +1863,49 @@ sub updatenodesyncfiles
             $CALLBACK = $callback;
 
 
-            if($::RCP){
+            if ($::RCP) {
                 push @$args, "--node-rcp";
                 push @$args, "$::RCP";
             }
             $output =
               xCAT::Utils->runxcmd(
                 {
-                    command => ["xdcp"],
-                    node    => $syncfile_node{$synclist},
+                    command  => ["xdcp"],
+                    node     => $syncfile_node{$synclist},
                     username => $request->{username},
-                    arg     => $args,
-                    env     => $env
+                    arg      => $args,
+                    env      => $env
                 },
                 $subreq, -1, 1);
 
             # build the list of good and bad nodes
             &buildnodestatus(\@$output, $callback);
-            if($::RUNCMD_RC and !@::FAILEDNODES){
-                 push @::FAILEDNODES,@{$syncfile_node{$synclist}};
+            if ($::RUNCMD_RC and !@::FAILEDNODES) {
+                push @::FAILEDNODES, @{ $syncfile_node{$synclist} };
             }
         }
 
         if ($request->{SNFileSyncing}->[0] eq "yes") {
             my $rsp = {};
-            if(@::SUCCESSFULLNODES){
-                $rsp->{data}->[0] = "File synchronization has completed for service nodes: \"".join(',',@::SUCCESSFULLNODES)."\"";
+            if (@::SUCCESSFULLNODES) {
+                $rsp->{data}->[0] = "File synchronization has completed for service nodes: \"" . join(',', @::SUCCESSFULLNODES) . "\"";
             }
             if (@::FAILEDNODES) {
                 $rsp->{errorcode}->[0] = 1;
-                $rsp->{data}->[0] = "File synchronization failed for service nodes: \"".join(',',@::FAILEDNODES)."\"";
+                $rsp->{data}->[0] = "File synchronization failed for service nodes: \"" . join(',', @::FAILEDNODES) . "\"";
             }
             $callback->($rsp);
         }
 
         if ($request->{FileSyncing}->[0] eq "yes") {
             my $rsp = {};
-            if(@::SUCCESSFULLNODES){
-                $rsp->{data}->[0] = "File synchronization has completed for nodes: \"".join(',',@::SUCCESSFULLNODES)."\"";
+            if (@::SUCCESSFULLNODES) {
+                $rsp->{data}->[0] = "File synchronization has completed for nodes: \"" . join(',', @::SUCCESSFULLNODES) . "\"";
             }
 
             if (@::FAILEDNODES) {
                 $rsp->{errorcode}->[0] = 1;
-                $rsp->{data}->[0] = "File synchronization failed for nodes: \"".join(',',@::FAILEDNODES)."\"";
+                $rsp->{data}->[0] = "File synchronization failed for nodes: \"" . join(',', @::FAILEDNODES) . "\"";
             }
             $callback->($rsp);
         }
@@ -2089,10 +2091,10 @@ sub updatenodesoftware
         $flowcontrol = 1;
     }
 
-    my $httpport="80";
-    my @hports=xCAT::TableUtils->get_site_attribute("httpport");
-    if ($hports[0]){
-        $httpport=$hports[0];
+    my $httpport = "80";
+    my @hports   = xCAT::TableUtils->get_site_attribute("httpport");
+    if ($hports[0]) {
+        $httpport = $hports[0];
     }
 
     # this drives getdata to report status complete for software updatees
@@ -2367,7 +2369,7 @@ s/Running of postscripts has completed/Redeliver security files has completed/;
             }
         }
     }
-    if($response->{errorcode}) {
+    if ($response->{errorcode}) {
         $rsp->{errorcode} = $response->{errorcode};
     }
     $CALLBACK->($rsp);
@@ -3312,10 +3314,10 @@ sub updateOS
     # Get install directory
     my $installDIR = xCAT::TableUtils->getInstallDir();
 
-    my $httpport="80";
-    my @hports=xCAT::TableUtils->get_site_attribute("httpport");
-    if ($hports[0]){
-        $httpport=$hports[0];
+    my $httpport = "80";
+    my @hports   = xCAT::TableUtils->get_site_attribute("httpport");
+    if ($hports[0]) {
+        $httpport = $hports[0];
     }
 
     # Get HTTP server

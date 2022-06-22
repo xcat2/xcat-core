@@ -47,15 +47,15 @@ sub process_request {
     my $argc = scalar @ARGV;
 
     my $usage = "Usage: imgcapture <node> -t|--type {diskless|sysclone} [-p | --profile <profile>] " .
-                "[-o|--osimage <osimage>] [-i <nodebootif>] [-n <nodenetdrivers>] " .
-                "[-d | --device <devicesToCapture>] [-c | --compress <compressionLevel>] [-V | --verbose] \n\n" .
-                "imgcapture <node> -t|--type sysclone -o|--osimage <osimage> [-V | --verbose] \n" .
-                "imgcapture [-h|--help] \n" .
-                "imgcapture [-v|--version]";
+      "[-o|--osimage <osimage>] [-i <nodebootif>] [-n <nodenetdrivers>] " .
+"[-d | --device <devicesToCapture>] [-c | --compress <compressionLevel>] [-V | --verbose] \n\n" .
+"imgcapture <node> -t|--type sysclone -o|--osimage <osimage> [-V | --verbose] \n" .
+      "imgcapture [-h|--help] \n" .
+      "imgcapture [-v|--version]";
 
     my $os;
     my $arch;
-    my $compression;                     # Supported by the s390x architecture
+    my $compression;    # Supported by the s390x architecture
     my $device;
     my $profile;
     my $bootif;
@@ -66,16 +66,16 @@ sub process_request {
     my $type;
 
     GetOptions(
-        "profile|p=s" => \$profile,
-        "i=s"         => \$bootif,
-        'n=s'         => \$netdriver,
-        'osimage|o=s' => \$osimg,
-        "device|d=s"  => \$device,
+        "profile|p=s"  => \$profile,
+        "i=s"          => \$bootif,
+        'n=s'          => \$netdriver,
+        'osimage|o=s'  => \$osimg,
+        "device|d=s"   => \$device,
         "compress|c=s" => \$compression,
-        "help|h"      => \$help,
-        "version|v"   => \$version,
-        "verbose|V"   => \$verbose,
-        "type|t=s"    => \$type
+        "help|h"       => \$help,
+        "version|v"    => \$version,
+        "verbose|V"    => \$verbose,
+        "type|t=s"     => \$type
     );
 
     if (defined($ARGV[0])) {

@@ -4,9 +4,9 @@
 package xCAT_plugin::redfish;
 
 BEGIN
-    {
-        $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
-    }
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
 use lib "$::XCATROOT/lib/perl";
 use strict;
 use warnings "all";
@@ -29,13 +29,13 @@ use Data::Dumper;
 
 sub handled_commands {
     return {
-        rbeacon        => 'nodehm:mgt',
-        reventlog      => 'nodehm:mgt',
-        rinv           => 'nodehm:mgt',
-        rpower         => 'nodehm:mgt',
-        rsetboot       => 'nodehm:mgt',
-        rspconfig      => 'nodehm:mgt',
-        rvitals        => 'nodehm:mgt',
+        rbeacon   => 'nodehm:mgt',
+        reventlog => 'nodehm:mgt',
+        rinv      => 'nodehm:mgt',
+        rpower    => 'nodehm:mgt',
+        rsetboot  => 'nodehm:mgt',
+        rspconfig => 'nodehm:mgt',
+        rvitals   => 'nodehm:mgt',
     };
 }
 
@@ -55,7 +55,7 @@ $::VERBOSE = 0;
 
 sub preprocess_request {
     my $request = shift;
-    $callback  = shift;
+    $callback = shift;
     my $command   = $request->{command}->[0];
     my $noderange = $request->{node};
     my $extrargs  = $request->{arg};
@@ -64,7 +64,7 @@ sub preprocess_request {
 
     if (ref($extrargs)) {
         @exargs = @$extrargs;
-    } 
+    }
 
     my $usage_string = xCAT::Usage->parseCommand($command, @exargs);
     if ($usage_string) {
@@ -80,7 +80,7 @@ sub preprocess_request {
             $error_data .= "\n" if ($error_data);
             $error_data .= "$node: Error: " . "$parse_result->[1]";
         }
-        $callback->({ errorcode => [$parse_result->[0]], data => [$error_data] });
+        $callback->({ errorcode => [ $parse_result->[0] ], data => [$error_data] });
         $request = {};
         return;
     }
@@ -119,7 +119,7 @@ sub process_request {
     my $noderange = $request->{node};
     my $check = xCAT::AGENT::parse_node_info($noderange, "redfish", \%node_info, $callback);
     $callback->({ errorcode => [$check] }) if ($check);
-    return unless(%node_info);
+    return unless (%node_info);
 
     my $pid = xCAT::AGENT::start_python_agent();
     if (!defined($pid)) {
@@ -142,14 +142,14 @@ sub process_request {
 #-------------------------------------------------------
 
 sub parse_args {
-    my $command  = shift;
-    my $extrargs = shift;
-    my $noderange = shift;
+    my $command    = shift;
+    my $extrargs   = shift;
+    my $noderange  = shift;
     my $subcommand = undef;
 
     unless (GetOptions(
-        'V|verbose'  => \$::VERBOSE,
-    )) {
+            'V|verbose' => \$::VERBOSE,
+        )) {
         return ([ 1, "Error parsing arguments." ]);
     }
 
@@ -167,7 +167,7 @@ sub parse_args {
         }
     } elsif ($command eq "rsetboot") {
         my $persistant;
-        GetOptions('p'  => \$persistant);
+        GetOptions('p' => \$persistant);
         return ([ 1, "Only one option is supported at the same time for $command" ]) if (@ARGV > 1);
         $subcommand = "stat" if (!defined($ARGV[0]));
         unless ($subcommand =~ /^net$|^hd$|^cd$|^def$|^default$|^stat$|^setup$|^floppy$/) {
