@@ -1,0 +1,8 @@
+name: xcat_test
+on: [push]
+jobs:
+  xcat_build:
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v3
+    - run: ./build-ubunturepo -c UP=0 BUILDALL=1 GPGSIGN=0
