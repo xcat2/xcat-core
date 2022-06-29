@@ -325,7 +325,8 @@ sub build_xcat_core{
 #--------------------------------------------------------
 sub install_xcat{
 
-    my @cmds = ("cd ./../../xcat-core && sudo ./mklocalrepo.sh",
+    my @cmds = ("pwd",
+               "cd ./../../xcat-core && sudo ./mklocalrepo.sh",
                "sudo chmod 777 /etc/apt/sources.list",
                "sudo echo \"deb [arch=amd64 allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep bionic main\" >> /etc/apt/sources.list",
                "sudo echo \"deb [arch=ppc64el allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep bionic main\" >> /etc/apt/sources.list",
@@ -342,6 +343,10 @@ sub install_xcat{
             $check_result_str .= "> **INSTALL XCAT ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information ";
             #send_back_comment("$check_result_str");
             return 1;
+        }
+        else {
+            print "[install_xcat] Command success:\n";
+            print Dumper \@output;
         }
     }
 
