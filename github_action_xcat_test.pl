@@ -633,14 +633,4 @@ if($rst){
 }
 mark_time("run_fast_regression_test");
 
-if ($redo_check_pr) {
-    print GREEN "\n------ Checking Pull Request Format ------\n";
-    $rst  = check_pr_format();
-    if($rst){
-        print RED "Check of pull request format failed\n";
-        exit $rst;
-    }
-    mark_time("check_pr_format");
-}
-
 exit 0;

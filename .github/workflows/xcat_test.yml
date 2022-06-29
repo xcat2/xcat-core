@@ -3,7 +3,7 @@ on:
   pull_request:
     types: [review_requested]
 jobs:
-  xcat_build:
+  xcat_pr_test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
