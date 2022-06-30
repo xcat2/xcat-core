@@ -1,7 +1,6 @@
 name: xcat_test
 on:
-  pull_request:
-    types: [review_requested]
+  push
 jobs:
   xcat_pr_test:
     runs-on: ubuntu-latest

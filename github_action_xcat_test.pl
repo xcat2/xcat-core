@@ -15,6 +15,7 @@ use Encode::CN;
 use JSON;
 use URI::Escape;
 use LWP::Simple;
+use Cwd;
 
 use Term::ANSIColor qw(:constants);
 $Term::ANSIColor::AUTORESET = 1;
@@ -333,6 +334,14 @@ sub install_xcat{
                "sudo wget -q -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -",
                "sudo apt-get -qq --allow-insecure-repositories update");
     my @output;
+    my $dir = cwd;
+    print "[MG] Current working dir $dir";
+    @output = runcmd("cd $dir");
+    if($::RUNCMD_RC){
+        print RED "[MG] cd to $dir ...[Failed]\n";
+        print "[MG] error message:\n";
+        print Dumper \@output;
+    }
     foreach my $cmd (@cmds){
         print "[install_xcat] running $cmd\n";
         @output = runcmd("$cmd");
