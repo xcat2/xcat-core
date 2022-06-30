@@ -505,6 +505,8 @@ sub run_fast_regression_test{
     chomp($hostname);
     print "hostname = $hostname\n";
     my $conf_file = "$ENV{'PWD'}/regression.conf";
+    print "MG about to chmod 0777 file $conf_file";
+    chmod 0777, $conf_file;
     print "MG about to open file $conf_file";
     open(my $fh, '>', $conf_file) or die "Could not open test configuration file $!";
     print "MG file opened";
