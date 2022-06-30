@@ -334,8 +334,16 @@ sub install_xcat{
                "sudo wget -q -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -",
                "sudo apt-get -qq --allow-insecure-repositories update");
     my @output;
-    my $dir = cwd;
-    print "[MG] Current working dir $dir";
+    my $dir = cwd();
+    print "[MG] {1} Current working dir $dir\n";
+    @output = runcmd("cd $dir");
+    if($::RUNCMD_RC){
+        print RED "[MG] cd to $dir ...[Failed]\n";
+        print "[MG] error message:\n";
+        print Dumper \@output;
+    }
+    $dir = "/home/runner/work";
+    print "[MG] {2} Current working dir $dir\n";
     @output = runcmd("cd $dir");
     if($::RUNCMD_RC){
         print RED "[MG] cd to $dir ...[Failed]\n";
