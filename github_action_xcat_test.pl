@@ -377,9 +377,11 @@ sub install_xcat{
         print "\n------Config xcat and verify xcat is working correctly-----\n";
         @cmds = ("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis",
                  "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow",
-                 "sudo /etc/profile.d/xcat.sh && sudo tabdump policy",
-                 "sudo /etc/profile.d/xcat.sh && sudo tabdump site",
-                 "sudo /etc/profile.d/xcat.sh && sudo lsxcatd -a",
+                 "sudo cat /etc/profile.d/xcat.sh",
+                 "/etc/profile.d/xcat.sh ",
+                 "sudo /opt/xcat/sbin/tabdump policy",
+                 "sudo /opt/xcat/sbin/tabdump site",
+                 "sudo /opt/xcat/bin/lsxcatd -a",
                  "ls /opt/xcat/sbin",
                  "sudo service xcatd status");
         my $ret = 0;
