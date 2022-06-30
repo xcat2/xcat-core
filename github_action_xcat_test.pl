@@ -336,11 +336,12 @@ sub install_xcat{
     foreach my $cmd (@cmds){
         print "[install_xcat] running $cmd\n";
         @output = runcmd("$cmd");
+        print "[install_xcat] RC was $::RUNCMD_RC\n";
         if($::RUNCMD_RC){
             print RED "[install_xcat] $cmd. ...[Failed]\n";
             print "[install_xcat] error message:\n";
             print Dumper \@output;
-            $check_result_str .= "> **INSTALL XCAT ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information ";
+            #$check_result_str .= "> **INSTALL XCAT ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information ";
             #send_back_comment("$check_result_str");
             return 1;
         }
