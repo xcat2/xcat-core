@@ -334,22 +334,10 @@ sub install_xcat{
                "sudo wget -q -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -",
                "sudo apt-get -qq --allow-insecure-repositories update");
     my @output;
-    my $dir = cwd();
-    print "[MG] {1} Current working dir $dir\n";
-    $dir = "/home/runner/work";
-    print "[MG] {2} Current working dir $dir\n";
-    chdir $dir;
+    chdir $ENV{RUNNER_WORKSPACE};;
+    print "[MG] getcwd()";
     print getcwd();
-    system 'pwd';
-    #@output = runcmd("env");
-    #print "[MG] {3} running env\n";
-    #print "[MG] env output:\n";
-    #print Dumper \@output;
-
-    my $workspace = $ENV{RUNNER_WORKSPACE};
-    print "[MG] {4} RUNNER_WORKSPACE running chdir $workspace\n";
-    chdir $workspace;
-    print getcwd();
+    print "[MG] system pwd";
     system 'pwd';
 
     foreach my $cmd (@cmds){
