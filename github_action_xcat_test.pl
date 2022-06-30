@@ -505,7 +505,8 @@ sub run_fast_regression_test{
     chomp($hostname);
     print "hostname = $hostname\n";
     my $conf_file = "$ENV{'PWD'}/regression.conf";
-    open(my $fh, '>', $conf_file) or die "Could not open test configuration file '$conf_file' $!";
+    print "MG about to open file $conf_file";
+    open(my $fh, '>', $conf_file) or die "Could not open test configuration file $!";
     print "MG file opened";
     #$cmd = "sudo echo '[System]' > $conf_file; sudo echo 'MN=$hostname' >> $conf_file; sudo echo '[Table_site]' >> $conf_file; sudo echo 'key=domain' >>$conf_file; sudo echo 'value=pok.stglabs.ibm.com' >> $conf_file";
     print $fh "[System]\nMN=$hostname\n[Table_site]\nkey=domain\nvalue=pok.stglabs.ibm.com\n";
