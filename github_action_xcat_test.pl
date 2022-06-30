@@ -41,6 +41,7 @@ sub runcmd
     my $rc = 0;
     $::RUNCMD_RC = 0;
     my $outref = [];
+    print "[[MG]] About to execute $cmd";
     @$outref = `$cmd 2>&1`;
     if ($?)
     {
@@ -351,10 +352,17 @@ sub install_xcat{
         print Dumper \@output;
     }
     @output = runcmd("env");
-    print "[MG] running env\n";
+    print "[MG] {3} running env\n";
     print "[MG] env output:\n";
     print Dumper \@output;
 
+    my $workspace = $ENV{RUNNER_WORKSPACE};
+    @output = runcmd("cd $workspace");
+    print "[MG] {4} running cd $workspace\n";
+    print "[MG] cd output:\n";
+    print Dumper \@output;
+
+    print "[MG] RUNNER_WORKSPACE=$workspace\n";
     foreach my $cmd (@cmds){
         print "[install_xcat] running $cmd\n";
         @output = runcmd("$cmd");
