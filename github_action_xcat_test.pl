@@ -505,16 +505,17 @@ sub run_fast_regression_test{
     chomp($hostname);
     print "hostname = $hostname\n";
     my $conf_file = "$ENV{'PWD'}/regression.conf";
-    print "MG about to chmod 0777 file $conf_file";
-    chmod 0777, $conf_file;
-    print "MG about to open file $conf_file";
+    print "MG about to chmod 0777 file $conf_file\n";
+    #chmod 0777, $conf_file;
+    system "sudo chmod 777 $conf_file";
+    print "MG about to open file $conf_file\n";
     open(my $fh, '>', $conf_file) or die "Could not open test configuration file $!";
-    print "MG file opened";
+    print "MG file opened\n";
     #$cmd = "sudo echo '[System]' > $conf_file; sudo echo 'MN=$hostname' >> $conf_file; sudo echo '[Table_site]' >> $conf_file; sudo echo 'key=domain' >>$conf_file; sudo echo 'value=pok.stglabs.ibm.com' >> $conf_file";
     print $fh "[System]\nMN=$hostname\n[Table_site]\nkey=domain\nvalue=pok.stglabs.ibm.com\n";
-    print "MG file written";
+    print "MG file written\n";
     close($fh);
-    print "MG file closed";
+    print "MG file closed\n";
     #@output = runcmd("$cmd");
     #if($::RUNCMD_RC){
     #     print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
