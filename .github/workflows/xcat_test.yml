@@ -1,9 +1,11 @@
 name: xcat_test
-on: [push]
+on:
+  pull_request:
+    types: [review_requested]
 jobs:
-  xcat_build:
+  xcat_pr_test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - run: sudo apt-get install -y fakeroot reprepro devscripts debhelper libcapture-tiny-perl libjson-perl libsoap-lite-perl libdbi-perl libcgi-pm-perl quilt openssh-server dpkg looptools genometools software-properties-common
-      - run: sudo ./build-ubunturepo -c UP=0 BUILDALL=1 GPGSIGN=0
+      - run: perl github_action_xcat_test.pl
