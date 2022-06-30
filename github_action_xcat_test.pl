@@ -505,7 +505,8 @@ sub run_fast_regression_test{
     chomp($hostname);
     print "hostname = $hostname\n";
     my $conf_file = "$ENV{'PWD'}/regression.conf";
-    $cmd = "sudo echo '[System]' > $conf_file; sudo echo 'MN=$hostname' >> $conf_file; sudo echo '[Table_site]' >> $conf_file; sudo echo 'key=domain' >>$conf_file; sudo echo 'value=pok.stglabs.ibm.com' >> $conf_file";
+    #$cmd = "sudo echo '[System]' > $conf_file; sudo echo 'MN=$hostname' >> $conf_file; sudo echo '[Table_site]' >> $conf_file; sudo echo 'key=domain' >>$conf_file; sudo echo 'value=pok.stglabs.ibm.com' >> $conf_file";
+    $cmd = "sudo echo '[System]' > $conf_file";
     @output = runcmd("$cmd");
     if($::RUNCMD_RC){
          print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
