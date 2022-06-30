@@ -505,15 +505,17 @@ sub run_fast_regression_test{
     chomp($hostname);
     print "hostname = $hostname\n";
     my $conf_file = "$ENV{'PWD'}/regression.conf";
+    open(my $FH, '>', $conf_file) or die "Could not open test configuration file '$conf_file' $!i";
     #$cmd = "sudo echo '[System]' > $conf_file; sudo echo 'MN=$hostname' >> $conf_file; sudo echo '[Table_site]' >> $conf_file; sudo echo 'key=domain' >>$conf_file; sudo echo 'value=pok.stglabs.ibm.com' >> $conf_file";
-    $cmd = "sudo echo '[System]' > $conf_file";
-    @output = runcmd("$cmd");
-    if($::RUNCMD_RC){
-         print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
-         print "[run_fast_regression_test] error dumper:\n";
-         print Dumper \@output;
-         #return 1;
-    }
+    print $FH "[System]\nMN=$hostname\n[Table_site]\nkey=domain\nvalue=pok.stglabs.ibm.com\n";
+    close($FH);
+    #@output = runcmd("$cmd");
+    #if($::RUNCMD_RC){
+    #     print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
+    #     print "[run_fast_regression_test] error dumper:\n";
+    #     print Dumper \@output;
+    #     #return 1;
+    #}
 
     print "Dumper regression conf file:\n";
     @output = runcmd("cat $conf_file");
