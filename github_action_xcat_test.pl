@@ -41,7 +41,6 @@ sub runcmd
     my $rc = 0;
     $::RUNCMD_RC = 0;
     my $outref = [];
-    print "    [[MG]] About to execute $cmd\n";
     @$outref = `$cmd 2>&1`;
     if ($?)
     {
@@ -507,10 +506,10 @@ sub run_fast_regression_test{
     chomp($hostname);
     print "hostname = $hostname\n";
     my $conf_file = "$ENV{'PWD'}/regression.conf";
-    $cmd = "echo '[System]' > $conf_file; echo 'MN=$hostname' >> $conf_file; echo '[Table_site]' >> $conf_file; echo 'key=domain' >>$conf_file; echo 'value=pok.stglabs.ibm.com' >> $conf_file";
+    $cmd = "sudo echo '[System]' > $conf_file; sudo echo 'MN=$hostname' >> $conf_file; sudo echo '[Table_site]' >> $conf_file; sudo echo 'key=domain' >>$conf_file; sudo echo 'value=pok.stglabs.ibm.com' >> $conf_file";
     @output = runcmd("$cmd");
     if($::RUNCMD_RC){
-         print RED "[run_fast_regression_test] $cmd ....[Failed]";
+         print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
          print "[run_fast_regression_test] error dumper:\n";
          print Dumper \@output;
          return 1;
@@ -520,7 +519,7 @@ sub run_fast_regression_test{
     @output = runcmd("cat $conf_file");
     print Dumper \@output;
 
-    $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh && xcattest -s \"ci_test\" -l'";
+    $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh && sudo xcattest -s \"ci_test\" -l'";
     my  @caseslist = runcmd("$cmd");
     if($::RUNCMD_RC){
          print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
@@ -541,7 +540,7 @@ sub run_fast_regression_test{
     my $failnum = 0;
     foreach my $case (@caseslist){
         ++$x;
-        $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -t $case'";
+        $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh && sudo xcattest -f $conf_file -t $case'";
         print "[run_fast_regression_test] run $x: $cmd\n";
         @output = runcmd("$cmd");
         #print Dumper \@output;
