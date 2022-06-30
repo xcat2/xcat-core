@@ -293,8 +293,8 @@ sub build_xcat_core{
 
     my $cmd = "sudo ./build-ubunturepo -c UP=0 BUILDALL=1 GPGSIGN=0";
     @output = runcmd("$cmd");
-    print ">>>>>Dumper the output of '$cmd'\n";
-    print Dumper \@output;
+    #print ">>>>>Dumper the output of '$cmd'\n";
+    #print Dumper \@output;
     if($::RUNCMD_RC){
         my $lastline = $output[-1];
         $lastline =~ s/[\r\n\t\\"']*//g;
@@ -327,8 +327,7 @@ sub build_xcat_core{
 #--------------------------------------------------------
 sub install_xcat{
 
-    my @cmds = ("sudo pwd",
-               "sudo cd ./../../xcat-core && sudo ./mklocalrepo.sh",
+    my @cmds = ("sudo cd ./../../xcat-core && sudo ./mklocalrepo.sh",
                "sudo chmod 777 /etc/apt/sources.list",
                "sudo echo \"deb [arch=amd64 allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep bionic main\" >> /etc/apt/sources.list",
                "sudo echo \"deb [arch=ppc64el allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep bionic main\" >> /etc/apt/sources.list",
@@ -337,33 +336,21 @@ sub install_xcat{
     my @output;
     my $dir = cwd();
     print "[MG] {1} Current working dir $dir\n";
-    @output = runcmd("cd $dir");
-    if($::RUNCMD_RC){
-        print RED "[MG] cd to $dir ...[Failed]\n";
-        print "[MG] RC was $::RUNCMD_RC\n";
-        print "[MG] error message:\n";
-        print Dumper \@output;
-    }
     $dir = "/home/runner/work";
     print "[MG] {2} Current working dir $dir\n";
-    @output = runcmd("cd $dir");
-    if($::RUNCMD_RC){
-        print RED "[MG] cd to $dir ...[Failed]\n";
-        print "[MG] RC was $::RUNCMD_RC\n";
-        print "[MG] error message:\n";
-        print Dumper \@output;
-    }
-    @output = runcmd("env");
-    print "[MG] {3} running env\n";
-    print "[MG] env output:\n";
-    print Dumper \@output;
+    chdir $dir;
+    print getcwd();
+    system 'pwd';
+    #@output = runcmd("env");
+    #print "[MG] {3} running env\n";
+    #print "[MG] env output:\n";
+    #print Dumper \@output;
 
     my $workspace = $ENV{RUNNER_WORKSPACE};
-    @output = runcmd("cd $workspace");
-    print "[MG] {4} RUNNER_WORKSPACE running cd $workspace\n";
-    print "[MG] RC was $::RUNCMD_RC\n";
-    print "[MG] cd output:\n";
-    print Dumper \@output;
+    print "[MG] {4} RUNNER_WORKSPACE running chdir $workspace\n";
+    chdir $workspace;
+    print getcwd();
+    system 'pwd';
 
     foreach my $cmd (@cmds){
         print "[install_xcat] running $cmd\n";
