@@ -350,6 +350,11 @@ sub install_xcat{
         print "[MG] error message:\n";
         print Dumper \@output;
     }
+    @output = runcmd("env");
+    print "[MG] running env\n";
+    print "[MG] env output:\n";
+    print Dumper \@output;
+
     foreach my $cmd (@cmds){
         print "[install_xcat] running $cmd\n";
         @output = runcmd("$cmd");
