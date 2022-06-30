@@ -327,7 +327,7 @@ sub build_xcat_core{
 #--------------------------------------------------------
 sub install_xcat{
 
-    my @cmds = ("sudo cd ./../../xcat-core && sudo ./mklocalrepo.sh",
+    my @cmds = ("sudo ./mklocalrepo.sh",
                "sudo chmod 777 /etc/apt/sources.list",
                "sudo echo \"deb [arch=amd64 allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep bionic main\" >> /etc/apt/sources.list",
                "sudo echo \"deb [arch=ppc64el allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep bionic main\" >> /etc/apt/sources.list",
@@ -335,9 +335,9 @@ sub install_xcat{
                "sudo apt-get -qq --allow-insecure-repositories update");
     my @output;
     chdir $ENV{RUNNER_WORKSPACE};;
-    print "[MG] getcwd()";
+    print "[MG] getcwd(): ";
     print getcwd();
-    print "[MG] system pwd";
+    print "\n[MG] system pwd: ";
     system 'pwd';
 
     foreach my $cmd (@cmds){
