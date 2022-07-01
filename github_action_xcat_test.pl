@@ -507,17 +507,12 @@ sub run_fast_regression_test{
     my $conf_file = "$ENV{'PWD'}/regression.conf";
     print "MG about to touch file $conf_file\n";
     system "sudo touch $conf_file";
-    print "MG about to chmod 0777 file $conf_file\n";
+    #print "MG about to chmod 0777 file $conf_file\n";
     #chmod 0777, $conf_file;
-    system "sudo chmod 777 $conf_file";
-    #print "MG about to open file $conf_file\n";
+    #system "sudo chmod 777 $conf_file";
     open(my $fh, '>', $conf_file) or die "Could not open test configuration file $!";
-    print "MG file opened\n";
-    #$cmd = "sudo echo '[System]' > $conf_file; sudo echo 'MN=$hostname' >> $conf_file; sudo echo '[Table_site]' >> $conf_file; sudo echo 'key=domain' >>$conf_file; sudo echo 'value=pok.stglabs.ibm.com' >> $conf_file";
     print $fh "[System]\nMN=$hostname\n[Table_site]\nkey=domain\nvalue=pok.stglabs.ibm.com\n";
-    print "MG file written\n";
     close($fh);
-    print "MG file closed\n";
     #@output = runcmd("$cmd");
     #if($::RUNCMD_RC){
     #     print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
@@ -571,10 +566,12 @@ sub run_fast_regression_test{
     if($failnum){
         my $log_str = join (",", @failcase );
         $check_result_str .= "> **FAST REGRESSION TEST Failed**: Totalcase $casenum Passed $passnum Failed $failnum FailedCases: $log_str.  Please click ``Details`` label in ``Merge pull request`` box for detailed information";
+        print $check_result_str;
         #send_back_comment("$check_result_str");
         return 1;
     }else{
         $check_result_str .= "> **FAST REGRESSION TEST Successful**: Totalcase $casenum Passed $passnum Failed $failnum";
+        print $check_result_str;
         #send_back_comment("$check_result_str");
     }
 
