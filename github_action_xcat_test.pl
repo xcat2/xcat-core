@@ -551,7 +551,7 @@ sub run_fast_regression_test{
     my $failnum = 0;
     foreach my $case (@caseslist){
         ++$x;
-        $cmd = "sudo /opt/xcat/bin/xcattest -f $conf_file -t $case'";
+        $cmd = "sudo /opt/xcat/bin/xcattest -f $conf_file -t $case";
         print "[run_fast_regression_test] run $x: $cmd\n";
         @output = runcmd("$cmd");
         #print Dumper \@output;
