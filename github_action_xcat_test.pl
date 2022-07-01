@@ -530,7 +530,7 @@ sub run_fast_regression_test{
     @output = runcmd("cat $conf_file");
     print Dumper \@output;
 
-    $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh && sudo xcattest -s \"ci_test\" -l'";
+    $cmd = "sudo /opt/xcat/bin/xcattest -s \"ci_test\" -l'";
     my  @caseslist = runcmd("$cmd");
     if($::RUNCMD_RC){
          print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
@@ -551,7 +551,7 @@ sub run_fast_regression_test{
     my $failnum = 0;
     foreach my $case (@caseslist){
         ++$x;
-        $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh && sudo xcattest -f $conf_file -t $case'";
+        $cmd = "sudo /opt/xcat/bin/xcattest -f $conf_file -t $case'";
         print "[run_fast_regression_test] run $x: $cmd\n";
         @output = runcmd("$cmd");
         #print Dumper \@output;
