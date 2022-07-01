@@ -507,8 +507,8 @@ sub run_fast_regression_test{
     my $conf_file = "$ENV{'PWD'}/regression.conf";
     print "MG about to touch file $conf_file\n";
     system "sudo touch $conf_file";
-    #print "MG about to chmod 0777 file $conf_file\n";
-    #chmod 0777, $conf_file;
+    print "MG about to chmod 0777 file $conf_file\n";
+    chmod 0777, $conf_file;
     #system "sudo chmod 777 $conf_file";
     open(my $fh, '>', $conf_file) or die "Could not open test configuration file $!";
     print $fh "[System]\nMN=$hostname\n[Table_site]\nkey=domain\nvalue=pok.stglabs.ibm.com\n";
