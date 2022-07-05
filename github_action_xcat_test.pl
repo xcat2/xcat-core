@@ -278,42 +278,21 @@ sub send_back_comment{
 #--------------------------------------------------------
 sub build_xcat_core{
     my @output;
-    #my @cmds = ("gpg --list-keys",
-    #            "sed -i '/SignWith: /d' $ENV{'PWD'}/build-ubunturepo");
-    #foreach my $cmd (@cmds){
-    #    print "[build_xcat_core] running $cmd\n";
-    #    @output = runcmd("$cmd");
-    #    if($::RUNCMD_RC){
-    #        print "[build_xcat_core] $cmd ....[Failed]\n";
-    #        send_back_comment("> **BUILD ERROR** : $cmd failed. Please click ``Details`` label in ``Merge pull request`` box for detailed information");
-    #        return 1;
-    #    }
-    #}
 
     my $cmd = "sudo ./build-ubunturepo -c UP=0 BUILDALL=1 GPGSIGN=0";
     @output = runcmd("$cmd");
-    #print ">>>>>Dumper the output of '$cmd'\n";
-    #print Dumper \@output;
     if($::RUNCMD_RC){
         my $lastline = $output[-1];
         $lastline =~ s/[\r\n\t\\"']*//g;
         print "[build_xcat_core] $cmd ....[Failed]\n";
-        #print ">>>>>Dumper the output of '$cmd'\n";
-        #print Dumper \@output;
         $check_result_str .= "> **BUILD ERROR**, Please click ``Details`` label in ``Merge pull request`` box for detailed information";
-        #send_back_comment("$check_result_str");
+        print $check_result_str;
         return 1;
     }else{
         print "[build_xcat_core] $cmd ....[Pass]\n";
         $check_result_str .= "> **BUILD SUCCESSFUL** ";
-        #send_back_comment("$check_result_str");
+        print $check_result_str;
     }
-
-#    my $buildpath ="/home/travis/build/xcat-core/";
-#    my @buildfils = ();
-#    get_files_recursive("$buildpath", \@buildfils);
-#    print "\n-----------Dumper build files-----------\n";
-#    print Dumper \@buildfils;
 
     return 0;
 }
@@ -332,35 +311,24 @@ sub install_xcat{
                "sudo echo \"deb [arch=ppc64el allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep bionic main\" >> /etc/apt/sources.list",
                "sudo wget -q -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -",
                "sudo apt-get -qq --allow-insecure-repositories update");
-    my @output;
     chdir $ENV{RUNNER_WORKSPACE};;
-    print "[MG] getcwd(): ";
-    print getcwd();
-    print "\n[MG] system pwd: ";
-    system 'pwd';
 
+    my @output;
     foreach my $cmd (@cmds){
         print "[install_xcat] running $cmd\n";
         @output = runcmd("$cmd");
-        print "[install_xcat] RC was $::RUNCMD_RC\n";
         if($::RUNCMD_RC){
             print RED "[install_xcat] $cmd. ...[Failed]\n";
             print "[install_xcat] error message:\n";
             print Dumper \@output;
-            #$check_result_str .= "> **INSTALL XCAT ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information ";
-            #send_back_comment("$check_result_str");
+            $check_result_str .= "> **INSTALL XCAT ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information ";
+            print $check_result_str;
             return 1;
-        }
-        else {
-            print "[install_xcat] Command success:\n";
-            print Dumper \@output;
         }
     }
 
     my $cmd = "sudo apt-get install xcat --allow-remove-essential --allow-unauthenticated";
     @output = runcmd("$cmd");
-    #print ">>>>>Dumper the output of '$cmd'\n";
-    #print Dumper \@output;
     if($::RUNCMD_RC){
         my $lastline = $output[-1];
         $lastline =~ s/[\r\n\t\\"']*//g;
@@ -368,7 +336,7 @@ sub install_xcat{
         print ">>>>>Dumper the output of '$cmd'\n";
         print Dumper \@output;
         $check_result_str .= "> **INSTALL XCAT ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information";
-        #send_back_comment("$check_result_str");
+        print $check_result_str;
         return 1;
     }else{
         print "[install_xcat] $cmd ....[Pass]\n";
@@ -407,12 +375,12 @@ sub install_xcat{
 
         if($ret){
             $check_result_str .= "> **INSTALL XCAT ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information";
-            #send_back_comment("$check_result_str");
+            print $check_result_str;
             return 1;
         }
 
         $check_result_str .= "> **INSTALL XCAT SUCCESSFUL**";
-        #send_back_comment("$check_result_str");
+        print $check_result_str;
     }
     return 0;
 }
@@ -446,12 +414,6 @@ sub check_syntax{
                     push @syntax_err, @output;
                     $ret = 1;
                 }
-            #}elsif($output[0] =~ /shell/i){
-            #    @output = runcmd("sudo bash -c '. /etc/profile.d/xcat.sh && sh -n $file'");
-            #    if($::RUNCMD_RC){
-            #        push @syntax_err, @output;
-            #        $ret = 1;
-            #    }
             }
         }
     }
@@ -461,11 +423,11 @@ sub check_syntax{
         print "[check_syntax] Dumper error message:\n";
         print Dumper @syntax_err;
         $check_result_str .= "> **CODE SYNTAX ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information";
-        #send_back_comment("$check_result_str");
+        print $check_result_str;
     }else{
         print "[check_syntax] syntax checking ....[Pass]\n";
         $check_result_str .= "> **CODE SYNTAX CORRECT**";
-        #send_back_comment("$check_result_str");
+        print $check_result_str;
     }
 
     return $ret;
@@ -505,20 +467,11 @@ sub run_fast_regression_test{
     chomp($hostname);
     print "hostname = $hostname\n";
     my $conf_file = "$ENV{'PWD'}/regression.conf";
-    print "MG about to touch file $conf_file\n";
     system "sudo touch $conf_file";
-    print "MG about to chmod 0777 file $conf_file\n";
     system "sudo chmod 777 $conf_file";
     open(my $fh, '>', $conf_file) or die "Could not open test configuration file $!";
     print $fh "[System]\nMN=$hostname\n[Table_site]\nkey=domain\nvalue=pok.stglabs.ibm.com\n";
     close($fh);
-    #@output = runcmd("$cmd");
-    #if($::RUNCMD_RC){
-    #     print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
-    #     print "[run_fast_regression_test] error dumper:\n";
-    #     print Dumper \@output;
-    #     #return 1;
-    #}
 
     print "Dumper regression conf file:\n";
     @output = runcmd("cat $conf_file");
@@ -536,8 +489,6 @@ sub run_fast_regression_test{
          print Dumper \@caseslist;
     }
 
-
-    #my @caseslist = runcmd("sudo bash -c '. /etc/profile.d/xcat.sh && xcattest -l caselist -b MN_basic.bundle'");
     my $casenum = @caseslist;
     my $x = 0;
     my @failcase;
@@ -566,12 +517,10 @@ sub run_fast_regression_test{
         my $log_str = join (",", @failcase );
         $check_result_str .= "> **FAST REGRESSION TEST Failed**: Totalcase $casenum Passed $passnum Failed $failnum FailedCases: $log_str.  Please click ``Details`` label in ``Merge pull request`` box for detailed information";
         print $check_result_str;
-        #send_back_comment("$check_result_str");
         return 1;
     }else{
         $check_result_str .= "> **FAST REGRESSION TEST Successful**: Totalcase $casenum Passed $passnum Failed $failnum";
         print $check_result_str;
-        #send_back_comment("$check_result_str");
     }
 
     return 0;
