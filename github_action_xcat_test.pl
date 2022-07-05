@@ -342,8 +342,8 @@ sub install_xcat{
         print "[install_xcat] $cmd ....[Pass]\n";
 
         print "\n------Config xcat and verify xcat is working correctly-----\n";
-        @cmds = ("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis",
-                 "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow",
+        @cmds = ("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f githubaction",
+                 "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=githubaction policy.rule=allow",
                  "/etc/profile.d/xcat.sh ",
                  "sudo /opt/xcat/sbin/tabdump policy",
                  "sudo /opt/xcat/sbin/tabdump site",
