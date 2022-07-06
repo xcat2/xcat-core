@@ -89,6 +89,7 @@ cmd: copycds $$ISO
 check:rc==0
 cmd: genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
+check:output!~WARNING
 cmd: xdsh -i /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg  "rpm -qa|grep uuid"
 check:rc==0
 check:output=~libuuid
