@@ -1,6 +1,6 @@
 name: xcat_test
 on:
-  push
+  pull_request
 jobs:
   xcat_pr_test:
     runs-on: ubuntu-18.04
