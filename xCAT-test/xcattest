@@ -1568,7 +1568,7 @@ sub setup_env_by_configure_file {
         #MG
         my @output = &runcmd($cmd);
         if ($::RUNCMD_RC != 0) {
-            $$error_ref = "Failed to run $cmd OUTPUT: @output";
+            $$error_ref = "Failed1 to run $cmd OUTPUT: @output";
             log_this($running_log_fd, "$cmd", "OUTPUT ", @output);
             return 1;
         }
@@ -1582,9 +1582,9 @@ sub setup_env_by_configure_file {
                     $cmd = $cmd . " $attr=$$config_ref{object}{$type}{$name}{$attr}";
                 }
                 log_this($running_log_fd, "$cmd");
-                runcmd($cmd);
+                my @output = runcmd($cmd);
                 if ($::RUNCMD_RC != 0) {
-                    $$error_ref = "Fail to run $cmd";
+                    $$error_ref = "Failed2 to run $cmd";
                     return 1;
                 }
             }
@@ -1601,9 +1601,9 @@ sub setup_env_by_configure_file {
                     }
                 }
                 log_this($running_log_fd, "$cmd");
-                &runcmd($cmd);
+                my @output = &runcmd($cmd);
                 if ($::RUNCMD_RC != 0) {
-                    $$error_ref = "Fail to run $cmd";
+                    $$error_ref = "Failed3 to run $cmd OUTPUT: @output";
                     return 1;
                 }
             }
