@@ -1594,7 +1594,7 @@ sub setup_env_by_configure_file {
     if (exists $$config_ref{table}) {
         foreach my $type (keys %{ $$config_ref{table} }) {
             foreach my $name (keys %{ $$config_ref{table}{$type} }) {
-                $cmd = "chtab $$config_ref{table}{$type}{$name}{__KEY__}=$name";
+                $cmd = "sudo chtab $$config_ref{table}{$type}{$name}{__KEY__}=$name";
                 foreach my $attr (keys %{ $$config_ref{table}{$type}{$name} }) {
                     if ($attr ne '__KEY__') {
                         $cmd = $cmd . " $type.$attr=$$config_ref{table}{$type}{$name}{$attr}";
@@ -1605,7 +1605,11 @@ sub setup_env_by_configure_file {
                 if ($::RUNCMD_RC != 0) {
                     $$error_ref = "Failed3 to run $cmd OUTPUT: @output";
                     print Dumper \@output;
-                    my @output2 = &runcmd("lsdef -t site clustersite -i domain -c");
+                    print "MG Running verification lsdef";
+                    my @output2 = &runcmd("sudo lsdef -t site clustersite -i domain -c");
+                    print "MG_LSDEF:\n " . Dumper \@output2;
+                    print "MG Running verification tabdump";
+                    my @output2 = &runcmd("sudo tabdump site");
                     print "MG_LSDEF:\n " . Dumper \@output2;
                     return 1;
                 }
