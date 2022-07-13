@@ -499,7 +499,7 @@ sub run_fast_regression_test{
         $cmd = "sudo /opt/xcat/bin/xcattest -f $conf_file -t $case";
         print "[run_fast_regression_test] run $x: $cmd\n";
         @output = runcmd("$cmd");
-        #print Dumper \@output;
+        print Dumper \@output;
         for(my $i = $#output; $i>-1; --$i){
             if($output[$i] =~ /------END::(.+)::Failed/){
                 push @failcase, $1;
