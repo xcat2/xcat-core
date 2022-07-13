@@ -1605,6 +1605,8 @@ sub setup_env_by_configure_file {
                 if ($::RUNCMD_RC != 0) {
                     $$error_ref = "Failed3 to run $cmd OUTPUT: @output";
                     print Dumper \@output;
+                    my @output2 = &runcmd("lsdef -t site clustersite -i domain -c");
+                    print "MG_LSDEF:\n " . Dumper \@output2;
                     return 1;
                 }
             }

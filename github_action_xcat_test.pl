@@ -515,11 +515,11 @@ sub run_fast_regression_test{
 
     if($failnum){
         my $log_str = join (",", @failcase );
-        $check_result_str .= "> **FAST REGRESSION TEST Failed**: Totalcase $casenum Passed $passnum Failed $failnum FailedCases: $log_str.  Please click ``Details`` label in ``Merge pull request`` box for detailed information";
+        $check_result_str .= "> **FAST REGRESSION TEST Failed**: Totalcase $casenum Passed $passnum Failed $failnum FailedCases: $log_str.  Please click ``Details`` label in ``Merge pull request`` box for detailed information\n";
         print $check_result_str;
         return 1;
     }else{
-        $check_result_str .= "> **FAST REGRESSION TEST Successful**: Totalcase $casenum Passed $passnum Failed $failnum";
+        $check_result_str .= "> **FAST REGRESSION TEST Successful**: Totalcase $casenum Passed $passnum Failed $failnum\n";
         print $check_result_str;
     }
 
