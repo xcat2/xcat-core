@@ -477,7 +477,7 @@ sub run_fast_regression_test{
     @output = runcmd("cat $conf_file");
     print Dumper \@output;
 
-    $cmd = "sudo /opt/xcat/bin/xcattest -s \"ci_test\" -l";
+    $cmd = "sudo /opt/xcat/bin/xcattest -s \"ci_test\" -l | grep restorexcatdb_p";
     my  @caseslist = runcmd("$cmd");
     if($::RUNCMD_RC){
          print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
