@@ -81,7 +81,7 @@ For PPC (with HMC) specific:
 ============================
 
 
-The first form of \ **mkvm**\  command creates new partition(s) with the same profile/resources as the partition specified by \ *singlenode*\ . The -i and \ *noderange*\  specify the starting numeric partition number and the \ *noderange*\  for the newly created partitions, respectively. The LHEA port numbers and the HCA index numbers will be automatically increased if they are defined in the source partition.
+The first form of \ **mkvm**\  command creates new partition(s) with the same profile/resources as the partition specified by \ *singlenode*\ . The \ **-i**\  and \ *noderange*\  specify the starting numeric partition number and the \ *noderange*\  for the newly created partitions, respectively. The LHEA port numbers and the HCA index numbers will be automatically increased if they are defined in the source partition.
 
 The second form of this command duplicates all the partitions from the source specified by \ *profile*\  to the destination specified by \ *destcec*\ . The source and destination CECs can be managed by different HMCs.
 
@@ -94,9 +94,9 @@ For PPC (using Direct FSP Management) specific:
 ===============================================
 
 
-With option \ *full*\ , a partition using all the resources on a normal power machine will be created.
+With option \ **-**\ **-full**\ , a partition using all the resources on a normal power machine will be created.
 
-If no option is specified, a partition using the parameters specified with attributes such as 'vmcpus', 'vmmemory', 'vmphyslots', 'vmothersetting', 'vmnics', 'vmstorage' will be created. Those attributes can either be specified with '\*def' commands running before or be specified with this command.
+If no option is specified, a partition using the parameters specified with attributes such as \ **vmcpus**\ , \ **vmmemory**\ , \ **vmphyslots**\ , \ **vmothersetting**\ , \ **vmnics**\ , \ **vmstorage**\  will be created. Those attributes can either be specified with '\*def' commands running before or be specified with this command.
 
 
 For KVM and VMware:
@@ -148,9 +148,9 @@ OPTIONS
 
 \ **vmcpus=**\  \ *value*\  \ **vmmemory=**\  \ *value*\  \ **vmphyslots=**\  \ *value*\  \ **vmothersetting=**\  \ *value*\  \ **vmnics=**\  \ *value*\  \ **vmstorage=**\  \ *value*\  [\ **-**\ **-vios**\ ]
  
- To specify the parameters which are used to create a partition. The \ *vmcpus*\ , \ *vmmemory*\  are necessary, and the value specified with this command have a more high priority. If the value of any of the three options is not specified, the corresponding value specified for the node object will be used. If any of the three attributes is neither specified with this command nor specified with the node object, error information will be returned. To reference to lsvm(1)|lsvm.1 for more information about 'drc_index' for \ *vmphyslots*\ .
+ To specify the parameters which are used to create a partition. The \ **vmcpus**\ , \ **vmmemory**\  are necessary, and the value specified with this command have a more high priority. If the value of any of the three options is not specified, the corresponding value specified for the node object will be used. If any of the three attributes is neither specified with this command nor specified with the node object, error information will be returned. To reference to lsvm(1)|lsvm.1 for more information about 'drc_index' for \ *vmphyslots*\ .
  
- The option \ *vios*\  is used to specify the partition that will be created is a VIOS partition. If specified, the value for \ *vmstorage*\  shall be number which indicate the number of vSCSI server adapter will be created, and if no value specified for \ *vmphyslots*\ , all the physical slot of the power machine will be assigned to VIOS partition. If not specified, it shall be in form of \ *vios_name:server_slotid*\  to specify the vios and the virtual slot id of the vSCSI server adapter that will be connected from the Logical partition.
+ The option \ **vios**\  is used to specify the partition that will be created is a VIOS partition. If specified, the value for \ **vmstorage**\  shall be number which indicate the number of vSCSI server adapter will be created, and if no value specified for \ **vmphyslots**\ , all the physical slot of the power machine will be assigned to VIOS partition. If not specified, it shall be in form of \ **vios_name:server_slotid**\  to specify the vios and the virtual slot id of the vSCSI server adapter that will be connected from the Logical partition.
  
 
 
