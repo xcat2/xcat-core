@@ -1565,9 +1565,11 @@ sub setup_env_by_configure_file {
     my $cmd = undef;
     foreach $cmd (@{ $$config_ref{script_prev} }) {
         log_this($running_log_fd, "$cmd");
-        &runcmd($cmd);
+        #MG
+        my @output = &runcmd($cmd);
         if ($::RUNCMD_RC != 0) {
-            $$error_ref = "Fail to run $cmd";
+            $$error_ref = "Failed to run $cmd OUTPUT: @output";
+            log_this($running_log_fd, "$cmd", "OUTPUT ", @output);
             return 1;
         }
     }
