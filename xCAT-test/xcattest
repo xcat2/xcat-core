@@ -178,7 +178,7 @@ if($search_expression){
         print "------The total labels are:---------\n";
         print Dumper \@total_label_set;
         print "------The case and its labels:-------\n";
-        print Dumper \%case_label_map
+        print Dumper \%case_label_map;
     }
 }
 
@@ -258,7 +258,7 @@ if (defined $list) {
             print "------The total labels are:---------\n";
             print Dumper \@total_label_set;
             print "------The case and its labels:-------\n";
-            print Dumper \%case_label_map
+            print Dumper \%case_label_map;
         }
         my %label_conut;
         my %case_label_str_map;
@@ -1604,6 +1604,7 @@ sub setup_env_by_configure_file {
                 my @output = &runcmd($cmd);
                 if ($::RUNCMD_RC != 0) {
                     $$error_ref = "Failed3 to run $cmd OUTPUT: @output";
+                    print Dumper \@output;
                     return 1;
                 }
             }
