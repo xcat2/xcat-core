@@ -344,6 +344,8 @@ sub install_xcat{
         print "\n------Config xcat and verify xcat is working correctly-----\n";
         @cmds = ("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f githubaction",
                  "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=githubaction policy.rule=allow",
+                 "sed -i '1i set -x' /etc/profile.d/xcat.sh ",
+                 "cat /etc/profile.d/xcat.sh ",
                  "/etc/profile.d/xcat.sh ",
                  "sudo /opt/xcat/sbin/tabdump policy",
                  "sudo /opt/xcat/sbin/tabdump site",
@@ -477,7 +479,7 @@ sub run_fast_regression_test{
     @output = runcmd("cat $conf_file");
     print Dumper \@output;
 
-    $cmd = "sudo /opt/xcat/bin/xcattest -s \"ci_test\" -l | grep chdef_t";
+    $cmd = "sudo /opt/xcat/bin/xcattest -s \"ci_test\" -l";
     my  @caseslist = runcmd("$cmd");
     if($::RUNCMD_RC){
          print RED "[run_fast_regression_test] $cmd ....[Failed]\n";

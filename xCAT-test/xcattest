@@ -1609,8 +1609,8 @@ sub setup_env_by_configure_file {
                     my @output2 = &runcmd("sudo lsdef -t site clustersite -i domain -c");
                     print "MG_LSDEF:\n " . Dumper \@output2;
                     print "MG Running verification tabdump";
-                    my @output2 = &runcmd("sudo tabdump site");
-                    print "MG_LSDEF:\n " . Dumper \@output2;
+                    my @output3 = &runcmd("sudo tabdump site");
+                    print "MG_LSDEF:\n " . Dumper \@output3;
                     return 1;
                 }
             }
