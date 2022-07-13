@@ -1689,10 +1689,10 @@ sub runcmd
     if ($?)
     {
         $rc          = $?;
-        print "MG rc=" $rc; 
+        print "MG rc=$rc";
         $rc          = $rc >> 8;
         $::RUNCMD_RC = $rc;
-        print "MG RUNCMD_RC=" $::RUNCMD_RC; 
+        print "MG RUNCMD_RC=$::RUNCMD_RC";
     }
     print Dumper \@$outref;
     print Dumper \@outref;
