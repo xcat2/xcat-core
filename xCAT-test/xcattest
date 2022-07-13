@@ -1695,7 +1695,7 @@ sub runcmd
         print "MG RUNCMD_RC=$::RUNCMD_RC";
     }
     print "MG1 " . Dumper \@$outref;
-    print "MG2 " . Dumper @outref;
+    print "MG2 " . Dumper @$outref;
     print "MG3 " . Dumper $outref;
     chomp(@$outref);
     return @$outref;
