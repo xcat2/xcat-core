@@ -174,12 +174,12 @@ if($search_expression){
         log_this($running_log_fd, "$error");
         to_exit(1);
     }
-    if($xcatdebug){
+    #if($xcatdebug){
         print "------The total labels are:---------\n";
         print Dumper \@total_label_set;
         print "------The case and its labels:-------\n";
         print Dumper \%case_label_map;
-    }
+    #}
 }
 
 $rst = calculate_cases_to_be_run(\@cases_to_be_run, \$error);
@@ -1577,7 +1577,7 @@ sub setup_env_by_configure_file {
     if (exists $$config_ref{object}) {
         foreach my $type (keys %{ $$config_ref{object} }) {
             foreach my $name (keys %{ $$config_ref{object}{$type} }) {
-                $cmd = "chdef -t $type -o $name";
+                $cmd = "sudo /opt/xcat/bin/chdef -t $type -o $name";
                 foreach my $attr (keys %{ $$config_ref{object}{$type}{$name} }) {
                     $cmd = $cmd . " $attr=$$config_ref{object}{$type}{$name}{$attr}";
                 }
@@ -1594,7 +1594,7 @@ sub setup_env_by_configure_file {
     if (exists $$config_ref{table}) {
         foreach my $type (keys %{ $$config_ref{table} }) {
             foreach my $name (keys %{ $$config_ref{table}{$type} }) {
-                $cmd = "sudo chtab $$config_ref{table}{$type}{$name}{__KEY__}=$name";
+                $cmd = "sudo /opt/xcat/sbin/chtab $$config_ref{table}{$type}{$name}{__KEY__}=$name";
                 foreach my $attr (keys %{ $$config_ref{table}{$type}{$name} }) {
                     if ($attr ne '__KEY__') {
                         $cmd = $cmd . " $type.$attr=$$config_ref{table}{$type}{$name}{$attr}";
@@ -2128,7 +2128,7 @@ sub scan_existed_labels {
 
             my @labels = ();
             if ($line =~ /^start\s*:\s*(.*)/) {
-                $current_case_name                                     = $1;
+                $current_case_name = $1;
                 if ($cmd_cases_belong_to){
                     $case_label_map_ref->{$current_case_name}->{labels} = [$cmd_cases_belong_to];
                     push @$total_label_set_ref, $cmd_cases_belong_to unless(inarray($total_label_set_ref, $cmd_cases_belong_to));
