@@ -344,9 +344,10 @@ sub install_xcat{
         print "\n------Config xcat and verify xcat is working correctly-----\n";
         @cmds = ("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f githubaction",
                  "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=githubaction policy.rule=allow",
-                 "sed -i '1i set -x' /etc/profile.d/xcat.sh ",
+                 "sudo sed -i '1i set -x' /etc/profile.d/xcat.sh ",
                  "cat /etc/profile.d/xcat.sh ",
                  "/etc/profile.d/xcat.sh ",
+                 "echo \$PATH",
                  "sudo /opt/xcat/sbin/tabdump policy",
                  "sudo /opt/xcat/sbin/tabdump site",
                  "sudo /opt/xcat/bin/lsxcatd -a",
@@ -376,7 +377,7 @@ sub install_xcat{
         }
 
         if($ret){
-            $check_result_str .= "> **INSTALL XCAT ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information";
+            $check_result_str .= "> **INSTALL XCAT ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information\n";
             print $check_result_str;
             return 1;
         }
