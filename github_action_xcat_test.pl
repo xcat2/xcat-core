@@ -344,10 +344,11 @@ sub install_xcat{
         print "\n------Config xcat and verify xcat is working correctly-----\n";
         @cmds = ("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f githubaction",
                  "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=githubaction policy.rule=allow",
+                 "sudo sed -i '1i #!/bin/bash' /etc/profile.d/xcat.sh ",
                  "sudo sed -i '1i set -x' /etc/profile.d/xcat.sh ",
-                 "cat /etc/profile.d/xcat.sh ",
+                 "cat /etc/profile.d/xcat.sh",
                  "echo \$PATH",
-                 "sudo source /etc/profile.d/xcat.sh ",
+                 "/etc/profile.d/xcat.sh",
                  "echo \$PATH",
                  "sudo tabdump policy",
                  "sudo tabdump site",
