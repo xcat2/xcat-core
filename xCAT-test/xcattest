@@ -1577,7 +1577,7 @@ sub setup_env_by_configure_file {
     if (exists $$config_ref{object}) {
         foreach my $type (keys %{ $$config_ref{object} }) {
             foreach my $name (keys %{ $$config_ref{object}{$type} }) {
-                $cmd = "sudo /opt/xcat/bin/chdef -t $type -o $name";
+                $cmd = "chdef -t $type -o $name";
                 foreach my $attr (keys %{ $$config_ref{object}{$type}{$name} }) {
                     $cmd = $cmd . " $attr=$$config_ref{object}{$type}{$name}{$attr}";
                 }
@@ -1594,23 +1594,18 @@ sub setup_env_by_configure_file {
     if (exists $$config_ref{table}) {
         foreach my $type (keys %{ $$config_ref{table} }) {
             foreach my $name (keys %{ $$config_ref{table}{$type} }) {
-                $cmd = "sudo /opt/xcat/sbin/chtab $$config_ref{table}{$type}{$name}{__KEY__}=$name";
+                $cmd = "chtab $$config_ref{table}{$type}{$name}{__KEY__}=$name";
                 foreach my $attr (keys %{ $$config_ref{table}{$type}{$name} }) {
                     if ($attr ne '__KEY__') {
                         $cmd = $cmd . " $type.$attr=$$config_ref{table}{$type}{$name}{$attr}";
                     }
                 }
                 log_this($running_log_fd, "$cmd");
-                my @output = &runcmd($cmd);
+                #my @output = &runcmd($cmd);
+                &runcmd($cmd);
                 if ($::RUNCMD_RC != 0) {
-                    $$error_ref = "Failed3 to run $cmd OUTPUT: @output";
-                    print Dumper \@output;
-                    print "MG Running verification lsdef";
-                    my @output2 = &runcmd("sudo lsdef -t site clustersite -i domain -c");
-                    print "MG_LSDEF:\n " . Dumper \@output2;
-                    print "MG Running verification tabdump";
-                    my @output3 = &runcmd("sudo tabdump site");
-                    print "MG_LSDEF:\n " . Dumper \@output3;
+                    #$$error_ref = "MG Failed3 to run $cmd OUTPUT: @output";
+                    $$error_ref = "Failed to run $cmd";
                     return 1;
                 }
             }
@@ -1700,7 +1695,7 @@ sub runcmd
         $::RUNCMD_RC = $rc;
         print " RUNCMD_RC=$::RUNCMD_RC\n";
     }
-    print "MG3 " . Dumper $outref;
+    #print "MG3 " . Dumper $outref;
     chomp(@$outref);
     return @$outref;
 
