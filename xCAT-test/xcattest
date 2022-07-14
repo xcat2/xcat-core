@@ -174,12 +174,12 @@ if($search_expression){
         log_this($running_log_fd, "$error");
         to_exit(1);
     }
-    #if($xcatdebug){
+    if($xcatdebug){
         print "------The total labels are:---------\n";
         print Dumper \@total_label_set;
         print "------The case and its labels:-------\n";
         print Dumper \%case_label_map;
-    #}
+    }
 }
 
 $rst = calculate_cases_to_be_run(\@cases_to_be_run, \$error);
@@ -1565,11 +1565,9 @@ sub setup_env_by_configure_file {
     my $cmd = undef;
     foreach $cmd (@{ $$config_ref{script_prev} }) {
         log_this($running_log_fd, "$cmd");
-        #MG
-        my @output = &runcmd($cmd);
+        &runcmd($cmd);
         if ($::RUNCMD_RC != 0) {
-            $$error_ref = "Failed1 to run $cmd OUTPUT: @output";
-            log_this($running_log_fd, "$cmd", "OUTPUT ", @output);
+            $$error_ref = "Failed to run $cmd";
             return 1;
         }
     }
@@ -1582,9 +1580,9 @@ sub setup_env_by_configure_file {
                     $cmd = $cmd . " $attr=$$config_ref{object}{$type}{$name}{$attr}";
                 }
                 log_this($running_log_fd, "$cmd");
-                my @output = runcmd($cmd);
+                runcmd($cmd);
                 if ($::RUNCMD_RC != 0) {
-                    $$error_ref = "Failed2 to run $cmd";
+                    $$error_ref = "Failed to run $cmd";
                     return 1;
                 }
             }
@@ -1601,10 +1599,8 @@ sub setup_env_by_configure_file {
                     }
                 }
                 log_this($running_log_fd, "$cmd");
-                #my @output = &runcmd($cmd);
                 &runcmd($cmd);
                 if ($::RUNCMD_RC != 0) {
-                    #$$error_ref = "MG Failed3 to run $cmd OUTPUT: @output";
                     $$error_ref = "Failed to run $cmd";
                     return 1;
                 }
@@ -1690,12 +1686,9 @@ sub runcmd
     if ($?)
     {
         $rc          = $?;
-        print "MG rc=$rc";
         $rc          = $rc >> 8;
         $::RUNCMD_RC = $rc;
-        print " RUNCMD_RC=$::RUNCMD_RC\n";
     }
-    #print "MG3 " . Dumper $outref;
     chomp(@$outref);
     return @$outref;
 
