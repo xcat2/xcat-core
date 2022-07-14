@@ -342,9 +342,9 @@ sub install_xcat{
         print "[install_xcat] $cmd ....[Pass]\n";
 
         print "\n------Config xcat and verify xcat is working correctly-----\n";
-        @cmds = ("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh",
+        @cmds = ("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f runner",
                  "cat /etc/passwd",
-                 #"sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=githubaction policy.rule=allow",
+                 "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=runner policy.rule=allow",
                  #"sudo sed -i '1i set -x' /etc/profile.d/xcat.sh ",
                  #"sudo sed -i '1i #!/bin/bash' /etc/profile.d/xcat.sh ",
                  #"cat /etc/profile.d/xcat.sh",
