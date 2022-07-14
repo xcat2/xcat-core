@@ -494,6 +494,7 @@ sub run_fast_regression_test{
     }else{
          print "[run_fast_regression_test] $cmd .....:\n";
          print Dumper \@caseslist;
+         return 1;
     }
 
     my $casenum = @caseslist;
