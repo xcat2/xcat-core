@@ -354,7 +354,7 @@ sub install_xcat{
                  "echo \$PATH",
                  ". /etc/profile.d/xcat.sh && tabdump policy",
                  ". /etc/profile.d/xcat.sh && tabdump site",
-                 "lsxcatd -a",
+                 ". /etc/profile.d/xcat.sh && lsxcatd -a",
                  "ls /opt/xcat/sbin",
                  "service xcatd status");
         my $ret = 0;
@@ -389,9 +389,7 @@ sub install_xcat{
         $check_result_str .= "> **INSTALL XCAT SUCCESSFUL**";
         print $check_result_str;
     }
-    # MG
-    return 1;
-    # return 0;
+    return 0;
 }
 
 
@@ -486,7 +484,7 @@ sub run_fast_regression_test{
     @output = runcmd("cat $conf_file");
     print Dumper \@output;
 
-    $cmd = "sudo /opt/xcat/bin/xcattest -s \"ci_test\" -l";
+    $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh && xcattest -s \"ci_test\" -l'";
     my  @caseslist = runcmd("$cmd");
     if($::RUNCMD_RC){
          print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
@@ -505,10 +503,10 @@ sub run_fast_regression_test{
     my $failnum = 0;
     foreach my $case (@caseslist){
         ++$x;
-        $cmd = "sudo /opt/xcat/bin/xcattest -f $conf_file -t $case";
+        $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -t $case'";
         print "[run_fast_regression_test] run $x: $cmd\n";
         @output = runcmd("$cmd");
-        print Dumper \@output;
+        #print Dumper \@output;
         for(my $i = $#output; $i>-1; --$i){
             if($output[$i] =~ /------END::(.+)::Failed/){
                 push @failcase, $1;
