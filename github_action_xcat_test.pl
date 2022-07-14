@@ -347,7 +347,7 @@ sub install_xcat{
                  "sudo sed -i '1i set -x' /etc/profile.d/xcat.sh ",
                  "cat /etc/profile.d/xcat.sh ",
                  "echo \$PATH",
-                 "source /etc/profile.d/xcat.sh ",
+                 "sudo source /etc/profile.d/xcat.sh ",
                  "echo \$PATH",
                  "sudo tabdump policy",
                  "sudo tabdump site",
