@@ -342,14 +342,13 @@ sub install_xcat{
         print "[install_xcat] $cmd ....[Pass]\n";
 
         print "\n------Config xcat and verify xcat is working correctly-----\n";
-        @cmds = ("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f githubaction",
-                 "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=githubaction policy.rule=allow",
-                 "/etc/profile.d/xcat.sh ",
-                 "sudo /opt/xcat/sbin/tabdump policy",
-                 "sudo /opt/xcat/sbin/tabdump site",
-                 "sudo /opt/xcat/bin/lsxcatd -a",
+        @cmds = ("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f runner",
+                 "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=runner policy.rule=allow",
+                 ". /etc/profile.d/xcat.sh && tabdump policy",
+                 ". /etc/profile.d/xcat.sh && tabdump site",
+                 ". /etc/profile.d/xcat.sh && lsxcatd -a",
                  "ls /opt/xcat/sbin",
-                 "sudo service xcatd status");
+                 "service xcatd status");
         my $ret = 0;
         foreach my $cmd (@cmds){
             print "\n[install_xcat] running $cmd.....\n";
@@ -374,7 +373,7 @@ sub install_xcat{
         }
 
         if($ret){
-            $check_result_str .= "> **INSTALL XCAT ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information";
+            $check_result_str .= "> **INSTALL XCAT ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information\n";
             print $check_result_str;
             return 1;
         }
@@ -477,7 +476,7 @@ sub run_fast_regression_test{
     @output = runcmd("cat $conf_file");
     print Dumper \@output;
 
-    $cmd = "sudo /opt/xcat/bin/xcattest -s \"ci_test\" -l";
+    $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh && xcattest -s \"ci_test\" -l'";
     my  @caseslist = runcmd("$cmd");
     if($::RUNCMD_RC){
          print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
@@ -496,7 +495,7 @@ sub run_fast_regression_test{
     my $failnum = 0;
     foreach my $case (@caseslist){
         ++$x;
-        $cmd = "sudo /opt/xcat/bin/xcattest -f $conf_file -t $case";
+        $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -t $case'";
         print "[run_fast_regression_test] run $x: $cmd\n";
         @output = runcmd("$cmd");
         #print Dumper \@output;
@@ -515,11 +514,11 @@ sub run_fast_regression_test{
 
     if($failnum){
         my $log_str = join (",", @failcase );
-        $check_result_str .= "> **FAST REGRESSION TEST Failed**: Totalcase $casenum Passed $passnum Failed $failnum FailedCases: $log_str.  Please click ``Details`` label in ``Merge pull request`` box for detailed information";
+        $check_result_str .= "> **FAST REGRESSION TEST Failed**: Totalcase $casenum Passed $passnum Failed $failnum FailedCases: $log_str.  Please click ``Details`` label in ``Merge pull request`` box for detailed information\n";
         print $check_result_str;
         return 1;
     }else{
-        $check_result_str .= "> **FAST REGRESSION TEST Successful**: Totalcase $casenum Passed $passnum Failed $failnum";
+        $check_result_str .= "> **FAST REGRESSION TEST Successful**: Totalcase $casenum Passed $passnum Failed $failnum\n";
         print $check_result_str;
     }
 
