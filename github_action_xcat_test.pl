@@ -344,14 +344,6 @@ sub install_xcat{
         print "\n------Config xcat and verify xcat is working correctly-----\n";
         @cmds = ("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f runner",
                  "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=runner policy.rule=allow",
-                 #"sudo sed -i '1i set -x' /etc/profile.d/xcat.sh ",
-                 #"sudo sed -i '1i #!/bin/bash' /etc/profile.d/xcat.sh ",
-                 #"cat /etc/profile.d/xcat.sh",
-                 #"echo \$PATH",
-                 #"/etc/profile.d/xcat.sh && export PATH",
-                 #"echo \$PATH",
-                 #"export PATH=/opt/xcat/bin:/opt/xcat/sbin/:\$PATH",
-                 "echo \$PATH",
                  ". /etc/profile.d/xcat.sh && tabdump policy",
                  ". /etc/profile.d/xcat.sh && tabdump site",
                  ". /etc/profile.d/xcat.sh && lsxcatd -a",
@@ -494,7 +486,6 @@ sub run_fast_regression_test{
     }else{
          print "[run_fast_regression_test] $cmd .....:\n";
          print Dumper \@caseslist;
-         return 1;
     }
 
     my $casenum = @caseslist;
