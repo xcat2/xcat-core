@@ -346,11 +346,12 @@ sub install_xcat{
                  "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=githubaction policy.rule=allow",
                  "sudo sed -i '1i set -x' /etc/profile.d/xcat.sh ",
                  "cat /etc/profile.d/xcat.sh ",
-                 "/etc/profile.d/xcat.sh ",
                  "echo \$PATH",
-                 "sudo /opt/xcat/sbin/tabdump policy",
-                 "sudo /opt/xcat/sbin/tabdump site",
-                 "sudo /opt/xcat/bin/lsxcatd -a",
+                 "source /etc/profile.d/xcat.sh ",
+                 "echo \$PATH",
+                 "sudo tabdump policy",
+                 "sudo tabdump site",
+                 "sudo lsxcatd -a",
                  "ls /opt/xcat/sbin",
                  "sudo service xcatd status");
         my $ret = 0;
@@ -385,7 +386,9 @@ sub install_xcat{
         $check_result_str .= "> **INSTALL XCAT SUCCESSFUL**";
         print $check_result_str;
     }
-    return 0;
+    # MG
+    return 1;
+    # return 0;
 }
 
 
