@@ -353,11 +353,11 @@ sub install_xcat{
                  #"echo \$PATH",
                  #"export PATH=/opt/xcat/bin:/opt/xcat/sbin/:\$PATH",
                  "echo \$PATH",
-                 ". /etc/profile.d/xcat.sh && sudo tabdump policy",
+                 ". /etc/profile.d/xcat.sh && tabdump policy",
                  "sudo tabdump site",
                  "lsxcatd -a",
                  "ls /opt/xcat/sbin",
-                 "sudo service xcatd status");
+                 "service xcatd status");
         my $ret = 0;
         foreach my $cmd (@cmds){
             print "\n[install_xcat] running $cmd.....\n";
