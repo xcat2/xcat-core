@@ -346,7 +346,7 @@ sub install_xcat{
                  "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=githubaction policy.rule=allow",
                  "sudo sed -i '1i set -x' /etc/profile.d/xcat.sh ",
                  "sudo sed -i '1i #!/bin/bash' /etc/profile.d/xcat.sh ",
-                 "sudo echo 'export PATH' >> /etc/profile.d/xcat.sh ",
+                 "sudo sed -i '\$aexport PATH' /etc/profile.d/xcat.sh ",
                  "cat /etc/profile.d/xcat.sh",
                  "echo \$PATH",
                  "/etc/profile.d/xcat.sh",
