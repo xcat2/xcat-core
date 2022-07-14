@@ -353,7 +353,7 @@ sub install_xcat{
                  #"export PATH=/opt/xcat/bin:/opt/xcat/sbin/:\$PATH",
                  "echo \$PATH",
                  ". /etc/profile.d/xcat.sh && tabdump policy",
-                 ". /etc/profile.d/xcat.sh && sudo tabdump site",
+                 ". /etc/profile.d/xcat.sh && tabdump site",
                  "lsxcatd -a",
                  "ls /opt/xcat/sbin",
                  "service xcatd status");
