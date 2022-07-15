@@ -22,28 +22,43 @@ B<rmvm [-p]> I<noderange>
 
 The B<rmvm> command removes the partitions specified in I<noderange>. If I<noderange> is an CEC, all the partitions associated with that CEC will be removed. Note that removed partitions are automatically removed from the xCAT database. For IVM-managed systems, care must be taken to not remove the VIOS partition, or all the associated partitions will be removed as well.
 
-For DFM-managed (short For Direct FSP Management mode) normal power machines, only partitions can be removed. No options is needed.
+For DFM-managed (short For Direct FSP Management mode) normal Power machines, only partitions can be removed. No options are needed.
 
 =head1 OPTIONS
 
+=over 10
 
-B<-h|--help>          Display usage message.
+=item B<-h|--help>
 
-B<-v|--version>       Command Version.
+Display usage message.
 
-B<-V|--verbose>       Verbose output.
+=item B<-v|--version>
 
-B<-r>          Retain the data object definitions of the nodes.
+Command Version.
 
-B<--service>   Remove the service partitions of the specified CECs.
+=item B<-V|--verbose>
 
-B<-p>          
+Verbose output.
+
+=item B<-r>
+
+Retain the data object definitions of the nodes.
+
+=item B<--service>
+
+Remove the service partitions of the specified CECs.
+
+=item B<-p>
 
 KVM: Purge the existence of the VM from persistent storage. This will erase all storage related to the VM in addition to removing it from the active virtualization configuration. Storage devices of "raw" or "block" type are not removed.
 
-PPC: Remove the specified partition on normal power machine.
+PPC: Remove the specified partition on normal Power machine.
 
-B<-f>          Force remove the VM, even if the VM appears to be online.  This will bring down a live VM if requested.
+=item B<-f>
+
+Force remove the VM, even if the VM appears to be online.  This will bring down a live VM if requested.
+
+=back
 
 =head1 RETURN VALUE
 
@@ -97,7 +112,7 @@ Output is similar to:
  gpok4: Deleting virtual server LNX4... Done
 
 
-6. To remove a DFM-managed partition on normal power machine:
+6. To remove a DFM-managed partition on normal Power machine:
 
  rmvm lpar1
 
