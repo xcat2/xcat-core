@@ -3,7 +3,8 @@
 # Sample postscript that can be executed to help update the firmware level on
 # Mellanox hardware adapters on the target nodes
 #
-# This script requires passing in the path of the Mellanox OFED ISO
+# This script requires passing in an optional force (-f) flag and
+# the path of the Mellanox OFED ISO
 # located on the xCAT Management node under the /install directory.
 #
 # If OFED file is located here:
@@ -11,10 +12,24 @@
 #
 # Call the script as follows:
 #    updatenode <noderange> -P "update_mlnx_adapter_firmware /install/mlnxofed/MLNX_OFED_LINUX-4.1-4.0.7.1-rhel7.4alternate-ppc64le.iso"
+#         or
+#    updatenode <noderange> -P "update_mlnx_adapter_firmware -f /install/mlnxofed/MLNX_OFED_LINUX-4.1-4.0.7.1-rhel7.4alternate-ppc64le.iso"
 #
+
+FORCE=""
+while getopts "f" option
+do
+   case "${option}" in
+       f) FORCE="--force-fw-update"
+          shift;;
+       *) echo "Usage: ${0} [-f] <path to MLNX OFED ISO file>"
+          exit 1;;
+   esac
+done
+
 MLNX_OFED_PATH=${1}
 
-if [[ -z ${1} ]]; then
+if [[ -z ${MLNX_OFED_PATH} ]]; then
    echo "Error: you must provide the path of the MLNX OFED ISO file"
    exit 1
 fi
@@ -41,7 +56,7 @@ mkdir -p ${MOUNT_DIR}
 mount -o ro,loop ${TARGET_ISO_FILE} ${MOUNT_DIR}
 ls -ltr ${MOUNT_DIR}
 
-${MOUNT_DIR}/mlnxofedinstall --fw-update-only
+${MOUNT_DIR}/mlnxofedinstall --fw-update-only ${FORCE}
 
 #
 # Clean up
