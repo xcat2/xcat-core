@@ -13,6 +13,9 @@ Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 Requires: xCAT-client = 4:%{version}-%{release}
 
+# Disable shebang mangling of python scripts
+%undefine __brp_mangle_shebangs
+
 %ifos linux
 BuildArch: noarch
 %endif
