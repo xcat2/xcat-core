@@ -143,7 +143,7 @@ if (-f "/etc/redhat-release")
     #system($cmd);
     xCAT::Utils->enableservice("iptables");
 }
-elsif (-f "/etc/SuSE-release")
+elsif ((-f "/etc/SuSE-release") || (-f "/etc/SUSE-brand"))
 {
     my $conffile;
     my $conf;

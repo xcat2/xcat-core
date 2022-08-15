@@ -3352,7 +3352,7 @@ sub updateOS
         $version =~ s/[^0-9]*([0-9]+).*/$1/;
     }
 
-    # SUSE Linux
+    # SUSE Linux 12 and earlier
     elsif (
 `ssh -o ConnectTimeout=5 $node "test -f /etc/SuSE-release && echo 'SuSE'"`
       )
@@ -3360,6 +3360,17 @@ sub updateOS
         $installOS = "sles";
         chomp($version =
               `ssh $node "tr -d '.' < /etc/SuSE-release" | head -n 1`);
+        $version =~ s/[^0-9]*([0-9]+).*/$1/;
+    }
+
+    # SUSE Linux 15 and later
+    elsif (
+`ssh -o ConnectTimeout=5 $node "test -f /etc/SUSE-brand && echo 'SuSE'"`
+      )
+    {
+        $installOS = "sles";
+        chomp($version =
+              `ssh $node "tr -d '.' < /etc/SUSE-brand" | grep VERSION`);
         $version =~ s/[^0-9]*([0-9]+).*/$1/;
     }
 

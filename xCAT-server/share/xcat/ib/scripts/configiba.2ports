@@ -57,7 +57,7 @@ then
     if [ -f /etc/redhat-release ]
     then
         OS_name="redhat"
-    elif [ -f /etc/SuSE-release ]
+    elif [ -f /etc/SuSE-release ] || [ -f /etc/SUSE-brand ]
     then
         OS_name="suse"
     else
@@ -142,7 +142,7 @@ do
             if [ -f /etc/redhat-release ]
             then
                 OS_name="redhat"
-            elif [ -f /etc/SuSE-release ]
+            elif [ -f /etc/SuSE-release ] || [ -f /etc/SUSE-brand ]
             then
                 OS_name="suse"
             else
