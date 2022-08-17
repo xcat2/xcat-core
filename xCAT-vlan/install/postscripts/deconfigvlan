@@ -15,7 +15,7 @@ if [[ -z $VLANMAXINDEX ]] || [[ $VLANMAXINDEX -eq 0 ]]; then
 fi
 
 if [[ $OSTYPE = linux* ]]; then
-  if [[ $OSVER = sles* ]] || [[ $OSVER = suse* ]] || [[ -f /etc/SuSE-release ]]; then
+  if [[ $OSVER = sles* ]] || [[ $OSVER = suse* ]] || [[ -f /etc/SuSE-release ]] || [[ -f /etc/SUSE-brand ]]; then
       nwdir="/etc/sysconfig/network"
       isSLES=1
   else
@@ -206,7 +206,7 @@ while [ $index -le $VLANMAXINDEX ]; do
 	hostname $NODE
 	
         #change the hostname permanently
-	if [ -f /etc/SuSE-release ]
+	if [ -f /etc/SuSE-release ] || [ -f /etc/SUSE-brand ]
 	then
             #SLES x
 	    echo $NODE > /etc/HOSTNAME

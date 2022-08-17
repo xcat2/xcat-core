@@ -515,6 +515,7 @@ function check_linux_distro()
 		echo "${ID}")"
 	[[ -z "${distro}" && -f /etc/redhat-release ]] && distro="rhel"
 	[[ -z "${distro}" && -f /etc/SuSE-release ]] && distro="sles"
+	[[ -z "${distro}" && -f /etc/SUSE-brand ]] && distro="sles"
 	echo "${distro}"
 }
 
@@ -528,6 +529,8 @@ function check_linux_version()
 			/etc/redhat-release)"
 	[[ -z "${ver}" && -f /etc/SuSE-release ]] &&
 		ver="$(awk '/VERSION/ { print $NF }' /etc/SuSE-release)"
+	[[ -z "${ver}" && -f /etc/SUSE-brand ]] &&
+		ver="$(awk '/VERSION/ { print $NF }' /etc/SUSE-brand)"
 	echo "${ver}"
 }
 

@@ -3449,7 +3449,7 @@ sub fetchParameters {
         # in the sles 11.x, the 'PUTDATA' param is not supported for PUT method
         # so we have to work around it by getting it by myself
         unless ($pdata) {
-            if (-f "/etc/SuSE-release") {    # SUSE os
+            if ((-f "/etc/SuSE-release") || (-f "/etc/SUSE-brand")) {    # SUSE os
                 if ($ENV{'CONTENT_TYPE'} =~ /json/) {
                     $q->read_from_client(\$pdata, $ENV{'CONTENT_LENGTH'});
                 }

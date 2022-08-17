@@ -191,6 +191,8 @@ my $OSVER = "unknown";
 
 if (-e '/etc/SuSE-release') {
     $OSVER = `grep -h VERSION /etc/SuSE-release |awk '{print $3}'`
+} elsif (-e '/etc/SUSE-brand') {
+    $OSVER = `grep -h VERSION /etc/SUSE-brand |awk '{print $3}'`
 } elsif (-e '/etc/redhat-release') {
     $OSVER = "rhels" . `cat /etc/redhat-release |cut -f7 -d' '`;
     chomp($OSVER);
