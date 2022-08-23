@@ -1,0 +1,52 @@
+start:reg_linux_diskless_installation_flat_modules_and_groups
+description:Test provision and updatenode with yum groups and modules. Runs only on RH7 and RH8
+os:Linux
+label:flat_cn_diskless,provision
+cmd:a=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute -i osvers -c | cut -d":" -f2 | cut -d"=" -f2 | cut -d"." -f1`; cp /opt/xcat/share/xcat/netboot/rh/compute.$a.__GETNODEATTR($$CN,arch)__.pkglist /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:echo "yum" >> /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:echo "@Security Tools" >> /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhels8" ]] ; then echo "@ruby:2.6" >> /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules; fi
+cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute pkglist=/opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+check:rc==0
+cmd:cat /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:rmimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+check:output=~Provision node\(s\)\: $$CN
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:rc==0
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+# Verify group and module (on RH8) were installed. Can not use "yum group"
+# since .repo files are not setup at this point
+cmd:xdsh $$CN rpm -q xml-common
+check:rc==0
+check:output=~xml-common
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhels8" ]] ; then xdsh $$CN yum module list --installed; else echo "ruby 2.6"; fi
+check:output=~ruby
+check:output=~2.6
+
+# Verify group and module (on RH8) can be removed
+cmd:a=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute -i osvers -c | cut -d":" -f2 | cut -d"=" -f2 | cut -d"." -f1`; cp /opt/xcat/share/xcat/netboot/rh/compute.$a.__GETNODEATTR($$CN,arch)__.pkglist /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:echo "-@Security Tools" >> /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhels8" ]] ; then echo "-@ruby:2.6" >> /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules; fi
+cmd:cat /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:updatenode $$CN -P ospkgs
+check:rc==0
+cmd:xdsh $$CN yum group list installed
+check:output!~Security Tools
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhels8" ]] ; then xdsh $$CN yum module list --installed; else echo ""; fi
+check:output!~ruby
+# Cleanup
+cmd:a=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute -i osvers -c | cut -d":" -f2 | cut -d"=" -f2 | cut -d"." -f1`; chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute pkglist=/opt/xcat/share/xcat/netboot/rh/compute.$a.__GETNODEATTR($$CN,arch)__.pkglist
+cmd:rm /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+end

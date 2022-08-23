@@ -77,31 +77,33 @@ where **/install/post/custom/<distro>/myotherlist** is another package list file
 
 Note: the trailing **"#"** character at the end of the line. It is important to specify this character for correct pkglist parsing.
 
-Group/Pattern Names
-'''''''''''''''''''
+Module/Group/Pattern Names
+''''''''''''''''''''''''''
 
-It is only supported for stateful deployment.
+.. note:: On SLES pattern names are not supported for diskless deployment
 
-In Linux, a groups of rpms can be packaged together into one package. It is called a group on RedHat, CentOS, Fedora and Scientific Linux. To get the list of available groups, run
+On Linux, groups of rpms can be packaged together into one package. It can be a module or a group on RedHat, CentOS, Fedora and Scientific Linux. To get the list of available groups, run
 
 * **[RHEL]** ::
 
-   yum grouplist
+   yum group list
+   yum module list
 
 * **[SLES]** ::
 
    zypper se -t pattern
 
-You can specify in this file the group/pattern names by adding a **'@'** and a space before the group/pattern names. For example: ::
+You can specify module/group/pattern names by adding a **'@'** before the module/group/pattern names. For example: ::
 
-    @ base
+    @base
+    @Security Tools
+    @ruby:2.6
 
 Remove RPMs After Installing
 ''''''''''''''''''''''''''''
 
-It is only supported for stateful deployment.
-
-You can specify in this file that certain rpms to be removed after installing the new software. This is done by adding **'-'** before the rpm names you want to remove. For example: ::
+You can specify that certain rpms to be removed after installing the new software. This is done by adding **'-'** before the rpm names you want to remove. For example: ::
 
     -ntp
+    -@ruby:2.6
 
