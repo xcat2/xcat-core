@@ -1,5 +1,5 @@
-%define version %(rpm -q xCAT --qf "%{VERSION}" 2>/dev/null)
-Version: %{?version:%{version}}%{!?version:%(cat Version)}
+%global version %(rpm -q xCAT --qf "%{VERSION}" 2>/dev/null | grep -Po '[0-9\.]+' || cat ../Version)
+Version: %{version}
 Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
 %ifarch i386 i586 i686 x86
 %define tarch x86
