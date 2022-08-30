@@ -702,6 +702,15 @@ elif [ "$1" = "-s" ];then
         hostname $NODE
         echo $NODE > /etc/HOSTNAME
     else
+        # Extract the first numeric part of the VERSION_ID, ignoring any non-numeric characters.
+        os_major_version=`cat /etc/os* | grep VERSION_ID | cut -d '=' -f2 | sed s/\"//g | cut -d "." -f1`
+
+        if [[ -z "${os_major_version}" ]] ; then
+          logger -t xcat -p local4.err "configeth: Could not determine the OS version, defaulting to the RHEL 7 behavior"
+          log_warn "configeth on $NODE: Could not determine the OS version, defaulting to the RHEL 7 behavior"
+          os_major_version=7
+        fi 
+    
         #write ifcfg-* file for redhat
         con_name="xcat-"${str_inst_nic}
         str_inst_prefix=$(v4mask2prefix ${str_inst_mask})
@@ -732,7 +741,11 @@ elif [ "$1" = "-s" ];then
             echo "ONBOOT=yes" >> $str_conf_file
             echo "NAME=${con_name}" >> $str_conf_file
             echo "HWADDR=${str_inst_mac}" >> $str_conf_file
-            echo "GATEWAY=${str_inst_gateway}" >> $str_conf_file
+
+            # Add GATEWAY to $str_conf_file only if the OS version is above RHEL 7.x.
+            if (( $os_major_version > 7 )) ; then
+              echo "GATEWAY=${str_inst_gateway}" >> $str_conf_file
+            fi
         fi
         if [ $networkmanager_active -eq 2 ]; then
             echo "AUTOCONNECT_PRIORITY=9" >> $str_conf_file
@@ -748,6 +761,18 @@ elif [ "$1" = "-s" ];then
             else
                 echo "MTU=${str_inst_mtu}" >> $str_conf_file
 	        fi
+        fi
+
+        # Add GATEWAY to the network file only if the OS version is RHEL 7.x or below.
+        if (( $os_major_version < 8 )) ; then
+          if [ -n "$str_inst_gateway" ];then
+              grep -i "GATEWAY" /etc/sysconfig/network
+              if [ $? -eq 0 ];then
+                  sed -i "s/.*GATEWAY.*/GATEWAY=${str_inst_gateway}/i" /etc/sysconfig/network
+              else
+                  echo "GATEWAY=${str_inst_gateway}" >> /etc/sysconfig/network
+              fi
+          fi
         fi
 	    #add extra params
         i=0
