@@ -79,7 +79,6 @@ mkdef_regex_kvm
 mkdef_regex_nicsip
 mkdef_t_o_error
 mkdef_z
-mkdef_nodename_hit_groupname
 nodeadd_err_symbol
 nodeadd_h
 nodeadd_noderange
