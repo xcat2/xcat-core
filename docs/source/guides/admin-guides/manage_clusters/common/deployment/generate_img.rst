@@ -23,7 +23,7 @@ However it's recommended that all changes to the image are made via post install
 Pack Diskless Image
 ===================
 
-After runing ``genimage`` to create the image, run ``packimage`` to create the ramdisk: ::
+After running ``genimage`` to create the image, run ``packimage`` to create the ramdisk: ::
 
         packimage rhels8.5.0-ppc64le-netboot-compute
 
