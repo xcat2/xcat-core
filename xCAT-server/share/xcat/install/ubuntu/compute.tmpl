@@ -143,6 +143,8 @@ d-i preseed/late_command string \
      mount -o bind /dev/pts /target/dev/pts -t devpts; \
      mount -o bind /sys /target/sys; \
      chroot /target /root/post.script; \
-     cp /target/etc/network/interfaces /etc/network/interfaces; \
+     if [ -f /target/etc/network/interfaces ]; then \
+       cp /target/etc/network/interfaces /etc/network/interfaces; \
+     fi; \
      } >>/target/var/log/xcat/xcat.log 2>&1
 

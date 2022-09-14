@@ -168,8 +168,9 @@ sub using_dracut
 sub using_subiquity
 {
     my $os = shift;
+    my $tmplfile = shift;
     if ($os =~ /ubuntu(\d+\.\d+)/) {
-        if ($1 >= 20.04) {
+        if (($1 >= 20.04) and ($tmplfile =~ /subiquity/)) {
             return 1;
         }
     }
@@ -258,6 +259,7 @@ sub copycd
     close($dinfo);
 
     my $isnetinst = 0;
+    my $legacyUB20 = "";          # Is this a Ubuntu20.04.1 legacy ISO
     my $prod      = $line2[0];    # The product should be the first word
     my $ver       = $line2[1];    # The version should be the second word
     my $darch     = $line2[6];    # The architecture should be the seventh word
@@ -339,11 +341,16 @@ sub copycd
             return;
         }
     }
+    if ((-r $path . "/install/vmlinuz") and ($distname =~ /ubuntu20.04/))
+    {
+        # Presence of /install/vmlinuz file on Ubuntu20.04 iso indicates
+        # a legacy (non subiquity installer) image
+        $legacyUB20 = "(legacy)";
+    }
     if ($inspection) {
         $callback->(
             {
-                info =>
-"DISTNAME:$distname\n" . "ARCH:$debarch\n" . "DISCNO:$discno\n"
+                info => "DISTNAME:$distname" . "$legacyUB20" ." \n" . "ARCH:$debarch\n" . "DISCNO:$discno\n"
             }
         );
         return;
@@ -440,7 +447,7 @@ sub copycd
 
         $callback->({ data => "Media copy operation successful" });
         unless ($noosimage) {
-            my @ret = xCAT::SvrUtils->update_tables_with_templates($distname, $arch, $temppath, $osdistroname);
+            my @ret = xCAT::SvrUtils->update_tables_with_templates($distname, $arch, $temppath, $osdistroname, $legacyUB20);
             if ($ret[0] != 0) {
                 $callback->({ data => "Error when updating the osimage tables: " . $ret[1] });
             }
@@ -580,7 +587,7 @@ sub mkinstall {
                         my $pltfrm = getplatform($ref->{'osvers'});
                         my $tmplfile = xCAT::SvrUtils::get_tmpl_file_name("$installroot/custom/install/$pltfrm",
                             $ref->{'profile'}, $ref->{'osvers'}, $ref->{'osarch'}, $ref->{'osvers'});
-                        if (using_subiquity($os)) {
+                        if (using_subiquity($os,$tmplfile)) {
 
                             # in this context we use the genos parameter to search for the subiquity template
                             $tmplfile = xCAT::SvrUtils::get_tmpl_file_name("$installroot/custom/install/$pltfrm",
@@ -738,7 +745,7 @@ sub mkinstall {
             my $autoinstfile = "$installroot/autoinst/" . $node;
 
             # handle nocloud-net datasource for ubuntu 20.04+
-            if (using_subiquity($os)) {
+            if (using_subiquity($os,$tmplfile)) {
 
                 # clean up existing files to make way for the new directory
                 if (-f $autoinstfile) {
@@ -767,7 +774,7 @@ sub mkinstall {
 
         # maybe Debian will decide to use subiquity at some point?
         my $prescript = "$::XCATROOT/share/xcat/install/scripts/pre.$platform";
-        if (using_subiquity($os)) {
+        if (using_subiquity($os,$tmplfile)) {
             $prescript = $prescript . ".subiquity";
         }
         my $postscript = "$::XCATROOT/share/xcat/install/scripts/post.$platform";
@@ -896,7 +903,7 @@ sub mkinstall {
                 mkpath("$tftppath");
                 copy($kernpath, "$tftppath/vmlinuz");
                 # we don't want to customise the subiquity initrd
-                if (using_subiquity($os)) {
+                if (using_subiquity($os,$tmplfile)) {
                     copy($initrdpath, "$tftppath/initrd.img");
                 } else {
                     copyAndAddCustomizations($initrdpath, "$tftppath/initrd.img");
@@ -927,7 +934,7 @@ sub mkinstall {
 
             my $kcmdline = "nofb utf8 auto xcatd=" . $instserver;
 
-            if (using_subiquity($os)) {
+            if (using_subiquity($os,$tmplfile)) {
                 $kcmdline .= " autoinstall ip=dhcp netboot=nfs nfsroot=${instserver}:${pkgdir}";
                 $kcmdline .= " ds=nocloud-net;s=http://${instserver}:${httpport}/install/autoinst/${node}/";
             } else {

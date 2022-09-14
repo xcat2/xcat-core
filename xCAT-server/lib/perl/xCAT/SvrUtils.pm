@@ -691,6 +691,7 @@ sub update_tables_with_templates
     my $arch         = shift;    #like ppc64, x86, x86_64
     my $ospkgdir     = shift;
     my $osdistroname = shift;
+    my $legacyUB20   = shift;
     my %args         = @_;
 
     my $osname    = $osver;;     #like sles, rh, centos, windows
@@ -722,7 +723,7 @@ sub update_tables_with_templates
         # for Focal and later Ubuntu we repurpose genos to indicate the use
         # of the subiquity installer
         if ($osver =~ /ubuntu(\d+\.\d+)/) {
-            if ($1 >= 20.04) {
+            if (($1 >= 20.04) and ($legacyUB20 !~ /legacy/)) {
                 $genos = "subiquity";
             }
         }
