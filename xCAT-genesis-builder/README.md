@@ -48,8 +48,12 @@ do the following (assuming 2.16.10 is your xCAT version):
 
 ```sh
 cd xcat-core/xCAT-genesis-builder
-sed -i 's/%%REPLACE_CURRENT_VERSION%%/2.16.10/g' xCAT-genesis-base.spec
-buildrpm
+```
+
+If needed, update version number inside `xCAT-genesis-base.spec`
+
+```
+./buildrpm
 ```
 
 If this command is successful, runs error free, it will generate a `xCAT-genesis-base` RPM that you can transfer
