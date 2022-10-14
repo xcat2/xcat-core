@@ -239,9 +239,22 @@ if ! $GREP -q '%_gpg_name' $MACROS 2>/dev/null; then
 	echo '%_gpg_name xCAT Automatic Signing Key' >> $MACROS
 fi
 
-# Sign the rpms that are not already signed.  The "standard input reopened" warnings are normal.
-echo "===> Signing RPMs..."
-$XCATCOREDIR/build-utils/rpmsign.exp `find . -type f -name '*.rpm'` | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
+# Sign the rpms that are not already signed. The "standard input reopened" warnings are normal.
+# First, sign all non RH9 RPMS with DEFAULT algorithm, if running this script on RH7, most likely it will be SHA1
+echo "===> Signing RPMs with DEFAULT algorithm..."
+$XCATCOREDIR/build-utils/rpmsign.exp `find . -type f -name '*.rpm' ! -path './rh9/*'` | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
+
+# Update $MACROS file so that RPMS will be signed with SHA256 algorithm
+if ! $GREP -q '%_gpg_sign_cmd' $MACROS 2>/dev/null; then
+	echo '%__gpg_sign_cmd %{__gpg} gpg --force-v3-sigs --batch --verbose --no-armor --passphrase-fd 3 --no-secmem-warning -u "%{_gpg_name}" -sbo %{__signature_filename} --digest-algo sha256 %{__plaintext_filename}' >> $MACROS
+fi
+
+# Second, sign all RH9 RPMS with SHA256 algorithm
+echo "===> Signing RH9 RPMs with SHA265 algorithm..."
+$XCATCOREDIR/build-utils/rpmsign.exp `find rh9 -type f -name '*.rpm'` | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
+
+# Remove SHA256 algorithm statement from $MACROS file, back to DEFAULT
+sed -i '/__gpg_sign_cmd/d' $MACROS
 
 # Create the repodata dirs
 echo "===> Creating repodata directories..."
