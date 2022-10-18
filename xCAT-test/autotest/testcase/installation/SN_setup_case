@@ -30,7 +30,7 @@ cmd:chdef -t node $$SN groups=service,all
 check:rc==0
 cmd:chdef -t group -o service profile=service  primarynic=mac installnic=mac
 check:rc==0
-cmd:chdef -t group -o service setupnfs=1 setupdhcp=1 setuptftp=1 setupnameserver=1 setupconserver=1 setupntp=1
+cmd:chdef -t group -o service setupnfs=1 setupdhcp=1 setuptftp=1 setupnameserver=1 setupconserver=2 setupntp=1
 check:rc==0
 cmd:chdef -t group -o service nfsserver=$$MN tftpserver=$$MN xcatmaster=$$MN monserver=$$MN
 check:rc==0
