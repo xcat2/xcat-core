@@ -41,7 +41,7 @@ check:rc==0
 check:output=~running
 
 #Uninstall xCAT, then install again and verify public keys
-cmd:xdsh $$CN "cd /; ./go-xcat completely uninstall"
+cmd:xdsh $$CN "cd /; ./go-xcat -y completely uninstall"
 check:rc==0
 check:output=~xCAT has been uninstalled
 
