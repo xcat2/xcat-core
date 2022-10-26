@@ -139,6 +139,9 @@ check:rc==0
 cmd:copycds $$ISO
 check:rc==0
 
+#Move .iso out of the way to free up disk space
+cmd:if [[ "$$OS" =~ "sle" ]]; then mv $$ISO /home; fi
+
 cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then mv $rootimgdir $rootimgdir.regbak -f;fi
 check:rc==0
 cmd:if [[ -f /test.synclist ]] ;then mv -f /test.synclist /test.synclist.bak;fi;
@@ -213,4 +216,7 @@ cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconserverc
 cmd:if [[ -f /test.synclist.bak ]] ;then mv -f /test.synclist.bak /test.synclist;else rm -rf /test.synclist;fi
 cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute synclists=
 check:rc==0
+
+#Move .iso back
+cmd:if [[ "$$OS" =~ "sle" ]]; then mv /home/$$ISO /; fi
 end
