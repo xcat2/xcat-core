@@ -62,11 +62,11 @@ check:rc==0
 check:output=~running
 
 #Verify xCAT public key was installed
-cmd:if xdsh $$CN "grep \"Ubuntu\" /etc/*release >/dev/null"; then xdsh $$CN "apt-key list"; else xdsh $$CN "rpm -q gpg-pubkey --qf '%{name}-%{version}-%{release} --> %{summary}\n'"; fi
+cmd:if [[ "$$OS" =~ "ubuntu" ]]; then xdsh $$CN "apt-key list"; else xdsh $$CN "rpm -q gpg-pubkey --qf '%{name}-%{version}-%{release} --> %{summary}\n'"; fi
 check:output=~xCAT Automatic Signing Key
 
 #Remove public key on non-Ubuntu system. It was installed during go-xcat RPM installs
-cmd:if xdsh $$CN "grep -v \"Ubuntu\" /etc/*release >/dev/null"; then xdsh $$CN "rpm -e gpg-pubkey-ca548a47-5b2c830b"; fi
+cmd:if [[ "$$OS" !~ "ubuntu" ]]; then xdsh $$CN "rpm -e gpg-pubkey-ca548a47-5b2c830b"; fi
 
 cmd:xdsh $$CN "service xcatd stop"
 end
