@@ -46,7 +46,7 @@ cmd:lsdef -t site -o clustersite -i extntpservers -c >/tmp/extntpserver
 check:rc==0
 cmd:chtab key=extntpservers site.value="$$extntpserversip"
 check:rc==0
-cmd:date | awk '{print $6}' > /tmp/currentyear
+cmd:date +"%Y" > /tmp/currentyear
 check:rc==0
 cmd:date -s 20000101
 check:rc==0
