@@ -24,6 +24,8 @@ check:rc==0
 cmd:copycds $$ISO
 check:rc==0
 
+#Move .iso out of the way to free up disk space
+cmd:if [[ "$$OS" =~ "sle" ]]; then mv $$ISO /home; fi
 
 cmd:if cat /etc/*release |grep SUSE >/dev/null; then  cp /opt/xcat/share/xcat/tools/autotest/testcase/installation/litefile_sles.csv /tmp/litefile.csv;tabrestore /tmp/litefile.csv; elif cat /etc/*release |grep "Red Hat\|Rocky" >/dev/null; then  tabrestore /opt/xcat/share/xcat/tools/autotest/testcase/installation/litefile.csv;fi
 check:rc==0
@@ -132,4 +134,7 @@ check:rc==0
 cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
 check:rc==0
+
+#Move .iso back
+cmd:if [[ "$$OS" =~ "sle" ]]; then mv /home/$$ISO /; fi
 end
