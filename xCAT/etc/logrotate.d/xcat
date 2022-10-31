@@ -1,8 +1,11 @@
 /var/log/xcat/*.log {
+    rotate 7
     missingok
     sharedscripts
     copytruncate
+    compress
     delaycompress
+    daily
     postrotate
         test -f /var/run/rsyslogd.pid && kill -HUP `cat /var/run/rsyslogd.pid 2> /dev/null` 2> /dev/null || true
         test -f /var/run/syslogd.pid && kill -HUP `cat /var/run/syslogd.pid 2> /dev/null` 2> /dev/null || true
