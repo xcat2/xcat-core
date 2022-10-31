@@ -41,7 +41,7 @@ BuildArch: noarch
 Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser
 %else
 BuildRequires: perl-generators
-Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser perl-Digest-SHA1 perl(LWP::Protocol::https) perl-XML-LibXML
+Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser perl-Digest-SHA1 perl(LWP::Protocol::https) perl-XML-LibXML (initscripts or insserv-compat)
 %endif
 Obsoletes: atftp-xcat
 %endif
