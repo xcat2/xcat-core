@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.50
+# Version 1.0.51
 #
 # Copyright (C) 2016 - 2021 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -40,6 +40,8 @@
 #     - Provide correct versions of packages to be installed 
 # 2021-07-27 Mark Gurevich <gurevich@us.ibm.com>
 #     - Add support for Rocky Linux
+# 2022-11-01 Mark Gurevich <gurevich@us.ibm.com>
+#     - Make sure initscripts installed on RH family of OSes
 #
 
 
@@ -1709,6 +1711,7 @@ function install_packages_dnf()
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	dnf --nogpgcheck "${yes[@]}" install "$@"
+	dnf --nogpgcheck "${yes[@]}" install initscripts
 }
 
 function install_packages_yum()
@@ -1717,6 +1720,7 @@ function install_packages_yum()
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	yum --nogpgcheck "${yes[@]}" install "$@"
+	yum --nogpgcheck "${yes[@]}" install initscripts
 }
 
 # Dirty workaround on SLES 11 SP4
