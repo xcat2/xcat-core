@@ -133,18 +133,34 @@ sub process_request
         my $sshrootkeydir    = "$root/.ssh";    # old default
         if ((($parm =~ /^ssh_root_key/) || ($parm =~ /^ssh_root_pub_key/)) && ($foundkeys == 0)) {
             my ($rootkeyparm, $zonename) = split(/:/, $parm);
+            my $client_zonename = xCAT::Zone->getmyzonename($client);
+            my $default_zonename = xCAT::Zone->getdefaultzone();
+            
             if ($zonename) {
                 $parm = $rootkeyparm;           # take the zone off
                 xCAT::MsgUtils->trace(0, 'I', "credentials: The node ($client) is asking for sshkeys of zone: $zonename.");
-                $sshrootkeydir = xCAT::Zone->getzonekeydir($zonename);
-                if ($sshrootkeydir == 1) {      # error return
-                    xCAT::MsgUtils->trace(0, 'W', "credentials: The zone: $zonename is not defined.");
+                if ($client_zonename eq $zonename) {
+                    my $sshbetweenodes_allowed = xCAT::Zone->enableSSHbetweennodes($client);
+                    if (($sshbetweenodes_allowed == 1) || ($parm =~ /^ssh_root_pub_key/)) { # check if sshbetweennodes is allowed or pub key is requested
+                        $sshrootkeydir = xCAT::Zone->getzonekeydir($zonename);
+                        if ($sshrootkeydir == 1) {    # error return
+                            xCAT::MsgUtils->trace(0, 'W', "credentials: The zone: $zonename is not defined.");
+                        } else {
+                            $foundkeys = 1; # don't want to read the zone data twice
+                        }
+                    } else {
+                        xCAT::MsgUtils->trace(0, 'E', "credentials: Not allowed to read root's private ssh key because sshbetweennodes is disabled.");
+                        $sshrootkeydir = 1;
+                    }
                 } else {
-                    $foundkeys = 1;    # don't want to read the zone data twice
+                    xCAT::MsgUtils->trace(0, 'E', "credentials: Not allowed to read root's private ssh key of different zone.");
+                    $sshrootkeydir = 1;
                 }
+            } elsif ($client_zonename ne $default_zonename) { # check if no zonename is submitted but node is not in default zone
+                xCAT::MsgUtils->trace(0, 'E', "credentials: Not allowed to read root's private ssh key of default zone.");
+                $sshrootkeydir = 1;
             }
         }
-
         if ($parm =~ /ssh_root_key/) {
             unless (-r "$sshrootkeydir/id_rsa") {
                 push @{ $rsp->{'error'} }, "Unable to read root's private ssh key";
