@@ -23,6 +23,7 @@ get_xcat_postscripts_loginfo
 nodeset_cmdline
 nodeset_runimg
 nodeset_shell
+nodeset_shell_lzma
 reg_linux_diskfull_installation_flat
 compare_postscripts
 cleanup_postscripts_diskfull

@@ -104,7 +104,7 @@ sub process_request {
         $callback->({ error => "Need to specify architecture (x86, x86_64 or ppc64)" }, { errorcode => [1] });
         return;
     } elsif ($arch eq "ppc64le" or $arch eq "ppc64el") {
-        $callback->({ data => "The arch:$arch is not supported at present, use \"ppc64\" instead" });
+        $callback->({ data => "The arch:$arch is not supported, using \"ppc64\" instead" });
         $arch = 'ppc64';
         $request->{arg}->[0] = $arch;
     }
