@@ -1,5 +1,5 @@
 start:nodeset_shell_lzma
-os:rhels
+os:rhels8
 label:others,genesis
 description: verify could log in genesis shell lzma compression
 cmd:yum install -y https://rpmfind.net/linux/centos/8-stream/PowerTools/__GETNODEATTR($$CN,arch)__/os/Packages/xz-lzma-compat-5.2.4-3.el8.__GETNODEATTR($$CN,arch)__.rpm
