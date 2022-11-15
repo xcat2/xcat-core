@@ -436,9 +436,9 @@ do
 
         #categorize the groups according to the action(install/remove)
         if [ $remove -eq 0 ]; then
-    	   groups="$groups $tmp"
+    	   groups="$groups @$tmp"
         else
-           groups_d="$groups_d $tmp"
+           groups_d="$groups_d @$tmp"
         fi
     else
         if ( pmatch  "$x" "cuda*" ); then
@@ -945,8 +945,8 @@ else
 
     #install new groups if any
     if [ -n "$groups" ]; then
-	#cmd="echo $groups| $ENVLIST xargs yum -y groupinstall"
-	cmd="$ENVLIST yum -y groupinstall $groups"
+	#cmd="$ENVLIST yum -y groupinstall $groups"
+	cmd="$ENVLIST yum -y install $groups"
 	result=`eval $cmd 2>&1`
         R=$?
         if [ $R -ne 0 ]; then
@@ -1005,7 +1005,8 @@ else
 
     #remove some groups if specified
     if [ -n "$groups_d" ]; then
-        cmd="$ENVLIST yum -y groupremove $groups_d"
+        #cmd="$ENVLIST yum -y groupremove $groups_d"
+        cmd="$ENVLIST yum -y remove $groups_d"
         result=`eval $cmd 2>&1`
         R=$?
         if [ $R -ne 0 ]; then
