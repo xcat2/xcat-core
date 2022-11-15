@@ -123,7 +123,7 @@ To run specified test cases with I</tmp/config> file:
 
 =item 4.
 
-To add a new test case to test B<chvm>. In this example, we assume that the B<min_mem> should not be equal to 16 in the lpar profile of computenode. The case name is B<chvm_customi>. It creates a test lpar named B<testnode> first, then changes the B<min_mem> of the lpar to 16 using B<chvm>, then checks if B<min_mem> have changed correctly. Finally, the B<testnode> is removed.
+To add a new test case to test B<chvm>. In this example, we assume that the B<min_mem> should not be equal to 16 in the lpar profile of computenode. The case name is B<chvm_custom>. It creates a test lpar named B<testnode> first, then changes the B<min_mem> of the lpar to 16 using B<chvm>, then checks if B<min_mem> have changed correctly. Finally, the B<testnode> is removed.
 
   add a new test case file in /opt/xcat/share/xcat/tools/autotest/chvm
   edit filename

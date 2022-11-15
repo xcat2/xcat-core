@@ -193,7 +193,7 @@ EXAMPLES
 
 4.
  
- To add a new test case to test \ **chvm**\ . In this example, we assume that the \ **min_mem**\  should not be equal to 16 in the lpar profile of computenode. The case name is \ **chvm_customi**\ . It creates a test lpar named \ **testnode**\  first, then changes the \ **min_mem**\  of the lpar to 16 using \ **chvm**\ , then checks if \ **min_mem**\  have changed correctly. Finally, the \ **testnode**\  is removed.
+ To add a new test case to test \ **chvm**\ . In this example, we assume that the \ **min_mem**\  should not be equal to 16 in the lpar profile of computenode. The case name is \ **chvm_custom**\ . It creates a test lpar named \ **testnode**\  first, then changes the \ **min_mem**\  of the lpar to 16 using \ **chvm**\ , then checks if \ **min_mem**\  have changed correctly. Finally, the \ **testnode**\  is removed.
  
  
  .. code-block:: perl
