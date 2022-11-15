@@ -270,12 +270,12 @@ sub getmyzonename
 
 =head3    enableSSHbetweennodes
     Arguments:
-      zonename
+      nodename
     Returns:
      1 if the  sshbetweennodes attribute is yes/1 or undefined
      0 if the  sshbetweennodes attribute is no/0
     Example:
-     xCAT::Zone->enableSSHbetweennodes($zonename);
+     xCAT::Zone->enableSSHbetweennodes($nodename);
 =cut
 
 #--------------------------------------------------------------------------------

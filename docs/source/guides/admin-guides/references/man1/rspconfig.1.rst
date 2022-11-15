@@ -777,9 +777,7 @@ EXAMPLES
  
 
 
-4.
- 
- To display the frame number for frame 9A00-10000001
+4. To display the frame number for frame 9A00-10000001
  
  
  .. code-block:: perl
