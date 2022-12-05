@@ -118,4 +118,12 @@ cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/kdumpdir
 cmd:cat /tmp/node.stanza | chdef -z;rm -rf /tmp/node.stanza
 cmd:cat /tmp/osimage.stanza | chdef -z;rm -rf /tmp/osimage.stanza
 cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then mv $rootimgdir.regbak $rootimgdir -f;fi
+
+# Remove crashkernelsize and dump from the osimage definition and enablekdump from the node defintion
+cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute crashkernelsize=
+check:rc==0
+cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute dump=
+check:rc==0
+cmd:chdef -t node $$CN -m postscripts=enablekdump
+check:rc==0
 end
