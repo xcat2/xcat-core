@@ -42,6 +42,8 @@
 #     - Add support for Rocky Linux
 # 2022-11-01 Mark Gurevich <gurevich@us.ibm.com>
 #     - Make sure initscripts installed on RH family of OSes
+# 2022-12-06 Mark Gurevich <gurevich@us.ibm.com>
+#     - Check for EPEL and CRB repository on EL9 family of OSes
 #
 
 
@@ -205,6 +207,8 @@ GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
 
 PATH="/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
+EL9_EPEL_TEST_RPM="perl-Crypt-CBC"
+EL9_CRB_TEST_RPM="perl-IO-Tty"
 
 #
 # warn_if_bad		Put out warning message(s) if $1 has bad RC.
@@ -1708,6 +1712,7 @@ function update_repo()
 function install_packages_dnf()
 {
 	type dnf >/dev/null 2>&1 || return 255
+	el9_epel_and_crb_check dnf
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	dnf --nogpgcheck "${yes[@]}" install "$@"
@@ -1717,6 +1722,7 @@ function install_packages_dnf()
 function install_packages_yum()
 {
 	type yum >/dev/null 2>&1 || return 255
+	el9_epel_and_crb_check yum
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	yum --nogpgcheck "${yes[@]}" install "$@"
@@ -1729,6 +1735,55 @@ function github_issue_5503_workaround()
 	[[ "${GO_XCAT_LINUX_DISTRO}" = "sles" ]] || return 0
 	[[ "${GO_XCAT_LINUX_VERSION}" =~ ^11(\.[0-4]){0,1}$ ]] || return 0
 	rpm -e --allmatches gpg-pubkey-ca548a47-5b2c830b >/dev/null 2>&1
+	return 0
+}
+
+# Check for EPEL and CRB repositories when installing on RH family of OSes
+function el9_epel_and_crb_check()
+{
+	action="$@" # Passed parameter will only be 'yum' or 'dnf'
+	if [[ "${GO_XCAT_LINUX_DISTRO}" = "fedora" ]]
+	then
+		# For Fedora, version 35 is equivalent to EL9
+		# But since xCAT currently does not support that version, just
+		# return and let 'yum install' fail if needed packages are not
+		# found
+		return 0
+	else
+		[[ "${GO_XCAT_LINUX_VERSION}" =~ ^9(\.[0-9]) ]] || return 0
+	fi
+	${action} list available -q ${EL9_EPEL_TEST_RPM} 
+	ret="$?"
+	case "${ret}" in
+	"1")
+		# Can not find EL9_EPEL_TEST_RPM
+		echo "
+Installation on ${GO_XCAT_LINUX_DISTRO} ${GO_XCAT_LINUX_VERSION} requires EPEL repository to be enabled"
+		echo "Running '${action} install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm' will enable EPEL repository"
+		exit 1
+		;;
+	esac
+	${action} list available -q ${EL9_CRB_TEST_RPM} 
+	ret="$?"
+	case "${ret}" in
+	"1")
+		# Ccan not find EL9_CRB_TEST_RPM
+		echo "
+Installation on ${GO_XCAT_LINUX_DISTRO} ${GO_XCAT_LINUX_VERSION} requires CRB repository to be enabled"
+		echo "Try adding the following entries to new or existing '.repo' file:"
+		echo "
+[crb]
+name=CentOS Stream $releasever - CRB
+metalink=https://mirrors.centos.org/metalink?repo=centos-crb-$stream&arch=$basearch&protocol=https,http
+gpgcheck=0
+repo_gpgcheck=0
+metadata_expire=6h
+countme=1
+enabled=1
+		"
+		exit 1
+		;;
+	esac
 	return 0
 }
 
