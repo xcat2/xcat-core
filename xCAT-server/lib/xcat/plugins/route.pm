@@ -669,7 +669,7 @@ sub set_route {
         } elsif ($os =~ /ubuntu|debian/) {    #ubuntu or Debian?
             addPersistentRoute_Debian($callback, $net, $mask, $gw_ip, $gw, $ifname);
         }
-        elsif ($os =~ /rh|fedora|centos|rocky/) {    #RH, Ferdora, CentOS
+        elsif ($os =~ /rh|fedora|centos|alma|rocky/) {    #RH, Ferdora, CentOS
             addPersistentRoute_RH($callback, $net, $mask, $gw_ip, $gw, $ifname);
         }
     } else {    #AIX
@@ -756,7 +756,7 @@ sub delete_route {
         } elsif ($os =~ /ubuntu/) {    #ubuntu or Debian?
             deletePersistentRoute_Debian($callback, $net, $mask, $gw_ip, $gw, $ifname);
         }
-        elsif ($os =~ /rh|fedora|centos|rocky/) {    #RH, Ferdora
+        elsif ($os =~ /rh|fedora|centos|alma|rocky/) {    #RH, Ferdora
             deletePersistentRoute_RH($callback, $net, $mask, $gw_ip, $gw, $ifname);
         }
     }
