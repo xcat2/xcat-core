@@ -1,0 +1,10 @@
+#!/bin/sh
+echo $drivers
+dracut_install wget tar cpio gzip dash modprobe touch echo cut wc xz
+dracut_install -o ctorrent
+dracut_install grep ifconfig hostname awk egrep grep dirname expr
+dracut_install mount.nfs
+dracut_install parted mke2fs bc mkswap swapon chmod mkfs mkfs.ext4 mkfs.xfs xfs_db
+inst "$moddir/xcat-updateflag" "/tmp/updateflag"
+inst "$moddir/xcatroot" "/sbin/xcatroot"
+inst_hook cmdline 10 "$moddir/xcat-cmdline.sh"
