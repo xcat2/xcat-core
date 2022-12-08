@@ -1,0 +1,385 @@
+#!/bin/bash
+log_label="xcat.deployment"
+
+NEWROOT=$3
+RWDIR=.statelite
+
+. /lib/dracut-lib.sh
+XCAT="$(getarg XCAT=)"
+XCATMASTER=$XCAT
+STATEMNT="$(getarg STATEMNT=)"
+rootlimit="$(getarg rootlimit=)"
+xcatdebugmode="$(getarg xcatdebugmode=)"
+rflags="$(getarg rootflags=)"
+getarg nonodestatus
+NODESTATUS=$?
+
+MASTER=`echo $XCATMASTER |awk -F: '{print $1}'`
+XCATIPORT="$(getarg XCATIPORT=)"
+if [ $? -ne 0 ]; then
+    XCATIPORT="3002"
+fi
+
+[ "$xcatdebugmode" = "1" -o "$xcatdebugmode" = "2" ] && SYSLOGHOST="" || SYSLOGHOST="-n $MASTER"
+logger $SYSLOGHOST -t $log_label -p local4.info "=============deployment starting===================="
+logger $SYSLOGHOST -t $log_label -p local4.info "Executing xcatroot to prepare for netbooting (dracut_33)..."
+[ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "MASTER=$MASTER XCATIPORT=$XCATIPORT NODESTATUS=$NODESTATUS"
+
+if [ "$NODESTATUS" != "0" ]; then
+    logger $SYSLOGHOST -t $log_label -p local4.info "Sending request to $MASTER:$XCATIPORT for changing status to netbooting..."
+    /tmp/updateflag $MASTER $XCATIPORT "installstatus netbooting"
+fi
+
+
+imgurl="$(getarg imgurl=)";
+if [ ! -z "$imgurl" ]; then
+    if [ xhttp = x${imgurl%%:*} ]; then
+        logger $SYSLOGHOST -t $log_label -p local4.info "Downloading rootfs image from $imgurl..."
+        NFS=0
+        FILENAME=${imgurl##*/}
+        while [ ! -r "$FILENAME" ]; do
+            [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Downloading $imgurl..."
+            echo Getting $imgurl...
+            if ! curl --fail $imgurl -o $FILENAME; then
+                logger $SYSLOGHOST -t $log_label -p local4.error "Downloading $imgurl FAILED, retrying..."
+                rm -f $FILENAME
+                echo Failed to get the image, waiting for next retrying...
+                sleep 27
+            fi
+        done
+        [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Download complete."
+    elif [ xnfs = x${imgurl%%:*} ]; then
+        NFS=1
+        SERVER=${imgurl#nfs:}
+        SERVER=${SERVER#/}
+        SERVER=${SERVER#/}
+        ROOTDIR=$SERVER
+        SERVER=${SERVER%%/*}
+        SERVER=${SERVER%:}
+        ROOTDIR=/${ROOTDIR#*/}
+        [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "SERVER=$SERVER ROOTDIR=$ROOTDIR"
+    fi
+fi
+#echo 0 > /proc/sys/vm/zone_reclaim_mode #Avoid kernel bug
+
+if [ -r /rootimg.sfs ]; then
+    echo Setting up squashfs with ram overlay.
+    mknod /dev/loop0 b 7 0
+    mkdir -p /ro
+    mkdir -p /rw
+    mount -t squashfs /rootimg.sfs /ro
+    mount -t tmpfs rw /rw
+    modprobe overlay
+    if [ $? -eq 0 ]; then
+        echo "Mounting $NEWROOT with type overlay"
+        mkdir -p /rw/upper
+        mkdir -p /rw/work
+        mount -t overlay -o lowerdir=/ro,upperdir=/rw/upper,workdir=/rw/work mergedroot $NEWROOT
+    else
+        echo "Mounting $NEWROOT with type aufs"
+        mount -t aufs -o dirs=/rw:/ro mergedroot $NEWROOT
+        mkdir -p $NEWROOT/ro
+        mkdir -p $NEWROOT/rw
+        mount --move /ro $NEWROOT/ro
+        mount --move /rw $NEWROOT/rw
+    fi
+elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
+    logger $SYSLOGHOST -t $log_label -p local4.info "Setting up RAM-root tmpfs on downloaded rootimg.cpio.[gz/xz]..."
+    echo Setting up RAM-root tmpfs.
+    rootopts="mode=755"
+    if [ -n "$rflags" ]; then
+        rootopts="$rootopts","$rflags"
+    fi
+    if [ -z "$rootlimit" ];then
+        mount -t tmpfs -o $rootopts rootfs $NEWROOT
+    else
+        mount -t tmpfs -o "$rootopts",size=$rootlimit rootfs $NEWROOT
+    fi
+
+    cd $NEWROOT
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Extracting the root filesystem..."
+    echo "Extracting the root filesystem..."
+    if [ -r /rootimg.cpio.gz ]; then
+        if [ -x /bin/cpio ]; then
+            gzip -cd /rootimg.cpio.gz |/bin/cpio -idum
+        else
+            gzip -cd /rootimg.cpio.gz |cpio -idum
+        fi
+    elif [ -r /rootimg.cpio.xz ]; then
+        if [ -x /bin/cpio ]; then
+            xz -cd /rootimg.cpio.xz |/bin/cpio -idum
+        else
+            xz -cd /rootimg.cpio.xz |cpio -idum
+        fi
+    fi
+    $NEWROOT/etc/init.d/localdisk
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Done extracting the root filesystem..."
+    echo "Done extracting the root filesystem..."
+elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
+    logger $SYSLOGHOST -t $log_label -p local4.info "Setting up RAM-root tmpfs on downloaded rootimg.tar.[gz/xz]..."
+    echo Setting up RAM-root tmpfs.
+    if [ -z $rootlimit ];then
+        mount -t tmpfs -o mode=755 rootfs $NEWROOT
+    else
+        mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
+    fi
+
+    cd $NEWROOT
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Extracting the root filesystem..."
+    echo "Extracting the root filesystem..."
+    if [ -r /rootimg.tar.gz ]; then
+        tar --selinux --xattrs-include='*' -zxf /rootimg.tar.gz
+        if [ $? -ne 0 ]; then
+            tar --selinux -zxf /rootimg.tar.gz
+        fi
+    elif [ -r /rootimg.tar.xz ]; then
+        tar --selinux --xattrs-include='*' -Jxf /rootimg.tar.xz
+        if [ $? -ne 0 ]; then
+            tar --selinux -Jxf /rootimg.tar.xz
+        fi
+    fi
+    $NEWROOT/etc/init.d/localdisk
+    msg="Done extracting the root filesystem."
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "$msg"
+    echo "$msg"
+elif [ -r /rootimg-statelite.gz ]; then
+    msg="Setting up RAM-root tmpfs for statelite mode."
+    logger $SYSLOGHOST -t $log_label -p local4.info "$msg"
+    echo "$msg"
+
+    if [ -z $rootlimit];then
+        mount -t tmpfs -o mode=755 rootfs $NEWROOT
+    else
+        mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
+    fi
+
+    cd $NEWROOT
+    msg="Extracting root filesystem..."
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "$msg"
+    echo "$msg"
+    if [ -x /bin/cpio ]; then
+        gzip -cd /rootimg-statelite.gz |/bin/cpio -idum
+    else
+        gzip -cd /rootimg-statelite.gz |cpio -idum
+    fi
+    msg="Done extracting the root filesystem."
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "$msg"
+    echo "$msg"
+    # then, the statelite staffs will be processed
+    msg="Setting up Statelite..."
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "$msg"
+    echo "$msg"
+
+    modprobe nfs
+    MAXTRIES=7
+    ITER=0
+    if [ ! -e "$NEWROOT/$RWDIR" ]; then
+        echo ""
+        echo "The /$RWDIR directory doesn't exist in the rootimg... "
+        echo ""
+        logger $SYSLOGHOST -t $log_label -p local4.err "The /$RWDIR directory doesn't exist in the rootimg..."
+        /bin/sh
+    fi
+
+    if [ ! -e "$NEWROOT/etc/init.d/statelite" ]; then
+        echo ""
+        echo "$NEWROOT/etc/init.d/statelite doesn't exist... "
+        echo ""
+        logger $SYSLOGHOST -t $log_label -p local4.err "$NEWROOT/etc/init.d/statelite doesn't exist... " 
+        /bin/sh
+    fi
+
+    mount -t tmpfs rw $NEWROOT/$RWDIR
+    mkdir -p $NEWROOT/$RWDIR/tmpfs
+    ME=`hostname -s`
+    if [ ! -z $NODE ]; then
+        ME=$NODE
+    fi
+
+
+    # mount the SNAPSHOT directory here for persistent use.
+    if [ ! -z $STATEMNT ]; then
+        SNAPSHOTSERVER=${STATEMNT%:*}
+        SNAPSHOTROOT=${STATEMNT#*/}
+        if [ -z $SNAPSHOTROOT ]; then
+            SNAPSHOTROOT=$SNAPSHOTSERVER
+            SNAPSHOTSERVER=
+        fi
+    fi
+
+    if [ ! -z $SNAPSHOTSERVER ]; then
+        mkdir -p $NEWROOT/$RWDIR/persistent
+        MAXTRIES=5
+        ITER=0
+        if [ -z $MNTOPTS ]; then
+            MNT_OPTIONS="nolock,rsize=32768,tcp,timeo=14"
+        else
+            MNT_OPTIONS=$MNTOPTS
+        fi
+        while ! mount $SNAPSHOTSERVER:/$SNAPSHOTROOT $NEWROOT/$RWDIR/persistent -o $MNT_OPTIONS; do
+            ITER=$(( ITER + 1 ))
+            if [ "$ITER" == "$MAXTRIES" ]; then
+                msg="You are dead, rpower $ME boot to play again.
+                     Possible problems:
+    1.  $SNAPSHOTSERVER is not exporting $SNAPSHOTROOT ?
+    2.  Is DNS set up? Maybe that's why I can't mount $SNAPSHOTSERVER."
+                echo "$msg"
+                logger $SYSLOGHOST -t $log_label -p local4.err "$msg"
+                /bin/sh
+                exit
+            fi
+            RS=$(( $RANDOM % 20 ))
+            echo "Trying again in $RS seconds ..."
+            sleep $RS
+        done
+
+        # create directory which is named after my node name
+        mkdir -p $NEWROOT/$RWDIR/persistent/$ME
+        ITER=0
+        # umount current persistent mount
+        while ! umount -l $NEWROOT/$RWDIR/persistent; do
+            ITER=$(( ITER + 1 ))
+            if [ "$ITER" == "$MAXTRIES" ]; then
+                msg="Your are dead, rpower $ME boot to play again.
+                     Cannot umount $NEWROOT/$RWDIR/persistent."
+                echo "$msg"
+                logger $SYSLOGHOST -t $log_label -p local4.err "$msg"
+                /bin/sh
+                exit
+            fi
+            RS=$(( $RANDOM % 20 ))
+            echo "Trying again in $RS seconds..."
+            sleep $RS
+        done
+
+        # mount persistent to server:/rootpath/nodename
+        ITER=0
+        while ! mount $SNAPSHOTSERVER:/$SNAPSHOTROOT/$ME  $NEWROOT/$RWDIR/persistent -o $MNT_OPTIONS; do
+            ITER=$(( ITER + 1 ))
+            if [ "$ITER" == "$MAXTRIES" ]; then
+                msg="Your are dead, rpower $ME boot to play again.
+                     Possible problems: cannot mount to $SNAPSHOTSERVER:/$SNAPSHOTROOT/$ME."
+                echo "$msg"
+                logger $SYSLOGHOST -t $log_label -p local4.err "$msg"
+                /bin/sh
+                exit
+            fi
+            RS=$(( $RANDOM % 20 ))
+            echo "Trying again in $RS seconds..."
+            sleep $RS
+        done
+    fi
+
+    logger $SYSLOGHOST -t $log_label -p local4.info "Enabling localdisk ..."
+    $NEWROOT/etc/init.d/localdisk
+    logger $SYSLOGHOST -t $log_label -p local4.info "Preparing mount points ..."
+    $NEWROOT/etc/init.d/statelite
+    fastboot=yes
+    export fastboot
+    keep_old_ip=yes
+    export keep_old_ip
+
+    mount -n --bind /dev $NEWROOT/dev
+    mount -n --bind /proc $NEWROOT/proc
+    mount -n --bind /sys $NEWROOT/sys
+
+else
+    msg="Failed to download image, panic in 5..."
+    logger $SYSLOGHOST -t $log_label -p local4.error "$msg"
+    echo -n "$msg"
+    for i in 4 3 2 1 0; do
+        /bin/sleep 1
+        [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "$i..."
+        echo -n $i...
+    done
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "You're dead.  rpower nodename reset to play again."
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "* Did you packimage with -m cpio, -m squashfs, or -m nfs?"
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "* If using -m squashfs did you include aufs.ko with geninitrd? e.g.:  -n tg3,squashfs,aufs,loop"
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "If using -m nfs did you export NFS and sync rootimg?  And did you include the aufs and nfs modules in the proper order: e.g.:  -n tg3,aufs,loop,sunrpc,lockd,nfs_acl,nfs"
+
+    echo
+    echo "You're dead.  rpower nodename reset to play again.
+
+* Did you packimage with -m cpio, -m squashfs, or -m nfs?
+* If using -m squashfs did you include aufs.ko with geninitrd?
+  e.g.:  -n tg3,squashfs,aufs,loop
+* If using -m nfs did you export NFS and sync rootimg?  And
+  did you include the aufs and nfs modules in the proper order:
+  e.g.:  -n tg3,aufs,loop,sunrpc,lockd,nfs_acl,nfs
+
+"
+    /bin/sh
+    exit
+fi
+cd /
+
+function getdevfrommac() {
+    boothwaddr=$1
+    ip link show | while read line
+    do
+        dev=`echo $line | egrep "^[0-9]+: [0-9A-Za-z]+" | cut -d ' ' -f 2 | cut -d ':' -f 1`
+        if [ "X$dev" != "X" ]; then
+            devname=$dev
+        fi
+
+        if [ "X$devname" != "X" ]; then
+            hwaddr=`echo $line | egrep "^[ ]*link" | awk '{print $2}'`
+            if [ "X$hwaddr" = "X$boothwaddr" ]; then
+                echo $devname
+            fi
+        fi
+    done
+}
+
+
+if [ -z $STATEMNT ]; then
+    for lf in /tmp/dhclient.*.lease; do
+        netif=${lf#*.}
+        netif=${netif%.*}
+        cp $lf  "$NEWROOT/var/lib/dhclient/dhclient-$netif.leases"
+        [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Saving $NEWROOT/var/lib/dhclient/dhclient-$netif.leases"
+    done
+
+    ifname="$(getarg ifname=)"
+    netdev="$(getarg netdev=)"
+    BOOTIF="$(getarg BOOTIF=)"
+    if [ ! -z "$ifname" ]; then
+        MACX=${ifname#*:}
+        ETHX=${ifname%:$MACX*}
+    elif [ ! -z "$netdev" ]; then
+        ETHX=$netdev
+        MACX=`ip link show $netdev | grep ether | awk '{print $2}'`
+    elif [ ! -z "$BOOTIF" ]; then
+        MACX=$BOOTIF
+        MACX=${MACX#01-}
+        MACX=${MACX//-/:}
+        ETHX=$(getdevfrommac $MACX)
+    fi
+
+
+    if [ ! -z "$MACX" ] && [ ! -z "$ETHX" ]; then
+        if [ ! -e $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX ]; then
+            [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Creating $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX"
+            touch $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
+        fi
+        [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Writing $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX: DEVICE=$ETHX;BOOTPROTO=dhcp;HWADDR=$MACX;ONBOOT=yes"
+        echo "DEVICE=$ETHX" > $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
+        echo "BOOTPROTO=dhcp" >> $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
+        echo "HWADDR=$MACX" >> $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
+        echo "ONBOOT=yes" >> $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
+    fi
+fi
+
+[ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Saving $NEWROOT/etc/resolv.conf"
+cp /etc/resolv.conf "$NEWROOT/etc/"
+
+if [ -d "$NEWROOT/etc/sysconfig" -a ! -e "$NEWROOT/etc/sysconfig/selinux" ]; then
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "disable selinux ..."
+    echo "SELINUX=disabled" >> "$NEWROOT/etc/sysconfig/selinux"
+fi
+
+logger $SYSLOGHOST -t $log_label -p local4.info "Exiting xcatroot..."
+# inject new exit_if_exists
+echo 'settle_exit_if_exists="--exit-if-exists=/dev/root"; rm "$job"' > $hookdir/initqueue/xcat.sh
+# force udevsettle to break
+> $hookdir/initqueue/work
