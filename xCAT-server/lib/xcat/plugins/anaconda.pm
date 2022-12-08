@@ -41,10 +41,10 @@ sub handled_commands
 {
     return {
         copycd => "anaconda",
-        mknetboot => "nodetype:os=(^ol[0-9].*)|(centos.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)",
-        mkinstall => "nodetype:os=(pkvm.*)|(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rocky.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
-        mksysclone => "nodetype:os=(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rocky.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
-        mkstatelite => "nodetype:os=(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)",
+        mknetboot => "nodetype:os=(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)",
+        mkinstall => "nodetype:os=(pkvm.*)|(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
+        mksysclone => "nodetype:os=(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
+        mkstatelite => "nodetype:os=(esx[34].*)|(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)",
 
     };
 }
