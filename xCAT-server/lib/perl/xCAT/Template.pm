@@ -301,7 +301,7 @@ sub subvars {
             my $space10 = " " x 10;
             my $space12 = " " x 12;
             foreach my $pkgdir (@pkgdirs) {
-                if ($platform =~ /^(rh|SL|centos|ol|fedora|rocky)$/) {
+                if ($platform =~ /^(rh|SL|centos|alma|ol|fedora|rocky)$/) {
                     if ($c == 0) {
                         # After some tests, if we put the repo in  pre scripts in the kickstart like for rhels6.x
                         # the rhels5.9 will not be installed successfully. So put in kickstart directly.
