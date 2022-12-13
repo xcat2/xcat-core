@@ -25,6 +25,7 @@
 +./usr/share/locale/locale.alias
 +./usr/lib/locale/locale-archive
 +./usr/lib/locale/en*
++./usr/lib/locale/C*
 ./usr/share/man*
 ./usr/share/omf*
 ./usr/share/vim/site/doc*
