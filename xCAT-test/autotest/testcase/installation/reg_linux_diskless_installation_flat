@@ -20,7 +20,7 @@ cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
-cmd:a=0;while true; do [ $a -eq 100 ] && { echo "After 100 iterations, makedhcp -q $$CN did not return any output"; makedhcp -q all; exit 1; }; output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;echo "[$a] Waiting for makedhcp -q $$CN to return output"; a=$[$a+1]; sleep 1;done
+cmd:a=0;while true; do [ $a -eq 10 ] && { echo "After 10 iterations, makedhcp -q $$CN did not return any output"; makedhcp -q all; exit 1; }; [ $a -eq 5 ] && { echo "After 5 iterations, makedhcp -q $$CN did not return any output. Retrying makedhcp -a again"; makedhcp -a; }; output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;echo "[$a] Waiting for makedhcp -q $$CN to return output"; a=$[$a+1]; sleep 1;done
 check:rc==0
 cmd:copycds $$ISO
 check:rc==0
@@ -134,7 +134,7 @@ cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
-cmd:a=0;while true; do [ $a -eq 100 ] && { echo "After 100 iterations, makedhcp -q $$CN did not return any output"; makedhcp -q all; exit 1; }; output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;echo "[$a] Waiting for makedhcp -q $$CN to return output"; a=$[$a+1]; sleep 1;done
+cmd:a=0;while true; do [ $a -eq 10 ] && { echo "After 10 iterations, makedhcp -q $$CN did not return any output"; makedhcp -q all; exit 1; }; [ $a -eq 5 ] && { echo "After 5 iterations, makedhcp -q $$CN did not return any output. Retrying makedhcp -a again"; makedhcp -a; }; output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;echo "[$a] Waiting for makedhcp -q $$CN to return output"; a=$[$a+1]; sleep 1;done
 check:rc==0
 cmd:copycds $$ISO
 check:rc==0
