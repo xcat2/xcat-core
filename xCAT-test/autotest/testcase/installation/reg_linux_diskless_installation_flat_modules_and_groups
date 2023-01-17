@@ -34,6 +34,7 @@ check:output=~xml-common
 cmd:xdsh $$CN yum module list --installed
 check:output=~ruby
 check:output=~2.6
+end
 
 # Verify group and module can be removed
 cmd:cp /opt/xcat/share/xcat/netboot/rh/compute.rhels8.__GETNODEATTR($$CN,arch)__.pkglist /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
