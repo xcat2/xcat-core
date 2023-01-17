@@ -812,15 +812,28 @@ Start capturing every message during OS provision process....
         my @hdls;
         my $starttime = time();
         my @candidate_mn_hostname_in_log = $log_parse->obtain_candidate_mn_hostname_in_log();
+        my $log_content_ref_last;
 
-        #read log realtimely, then handle each log
+        # Loop forever, reading each log file
         for (; ;) {
             if (@hdls = $select->can_read(0)) {
                 foreach my $hdl (@hdls) {
                     my $line = "";
                     chomp($line = <$hdl>);
                     my $log_content_ref = $log_parse->obtain_log_content($fd_filetype_map{$hdl}, $line);
-                    dispatch_log_to_handler($log_content_ref, \@candidate_mn_hostname_in_log, \%node_state);
+                    if ($log_content_ref->{label} == $::LOGLABEL_XCAT) {
+                        # If reading computes or cluster log files, try to eliminate duplicated lines
+                        unless (($log_content_ref_last->{time_record} eq $log_content_ref->{time_record}) && 
+                                ($log_content_ref_last->{sender} eq $log_content_ref->{sender}) && 
+                                ($log_content_ref_last->{msg} eq $log_content_ref->{msg})) {
+                            dispatch_log_to_handler($log_content_ref, \@candidate_mn_hostname_in_log, \%node_state);
+                        }
+                        # Save messages details for later duplicate detection
+                        $log_content_ref_last = { %$log_content_ref };
+                    }
+                    else {
+                        dispatch_log_to_handler($log_content_ref, \@candidate_mn_hostname_in_log, \%node_state);
+                    }
                 }
             }
 
