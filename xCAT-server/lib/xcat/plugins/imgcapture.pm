@@ -463,6 +463,8 @@ sub getplatform {
         $platform = "rh";
     } elsif ($os =~ m/centos.*/) {
         $platform = "centos";
+    } elsif ($os =~ m/alma.*/) {
+        $platform = "alma";
     } elsif ($os =~ m/rocky.*/) {
         $platform = "rocky";
     } elsif ($os =~ m/fedora.*/) {
@@ -843,6 +845,12 @@ sub getOsVersion {
     }
     elsif (grep (/CentOS/, @lines)) {
         $os      = "centos";
+        $version = $lines[0];
+        $version =~ s/[^0-9]*([0-9.]+).*/$1/;
+        $os = $os . $version;
+    } 
+    elsif (grep (/Alma Linux/, @lines)) {
+        $os      = "alma";
         $version = $lines[0];
         $version =~ s/[^0-9]*([0-9.]+).*/$1/;
         $os = $os . $version;
