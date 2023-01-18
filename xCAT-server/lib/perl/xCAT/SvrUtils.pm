@@ -401,6 +401,7 @@ sub getsynclistfile()
                 if ($os) {
                     if    ($os =~ /rh.*/)     { $platform = "rh"; }
                     elsif ($os =~ /centos.*/) { $platform = "centos"; }
+		    elsif ($os =~ /alma.*/) { $platform = "alma"; }
                     elsif ($os =~ /rocky.*/) { $platform = "rocky"; }
                     elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
                     elsif ($os =~ /sles.*/)   { $platform = "sles"; }
@@ -432,6 +433,7 @@ sub getsynclistfile()
         if ($os) {
             if    ($os =~ /rh.*/)     { $platform = "rh"; }
             elsif ($os =~ /centos.*/) { $platform = "centos"; }
+	    elsif ($os =~ /alma.*/) { $platform = "alma"; }
             elsif ($os =~ /rocky.*/) { $platform = "rocky"; }
             elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
             elsif ($os =~ /sles.*/)   { $platform = "sles"; }
@@ -2172,6 +2174,10 @@ sub getplatform {
     elsif ($os =~ /centos.*/)
     {
         $platform = "centos";
+    }
+    elsif ($os =~ /alma.*/)
+    {
+        $platform = "alma";
     }
     elsif ($os =~ /rocky.*/)
     {
