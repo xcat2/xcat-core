@@ -22,7 +22,7 @@ done
 
 # List of internal repos to be disabled
 
-internet_repo_file_list="oracle-linux-ol8.repo uek-ol8.repo Rocky-AppStream.repo Rocky-BaseOS.repo Rocky-Extras.repo CentOS-Base.repo"
+internet_repo_file_list="oracle-linux-ol8.repo uek-ol8.repo Rocky-AppStream.repo Rocky-BaseOS.repo Rocky-Extras.repo CentOS-Base.repo almalinux-ha.repo almalinux-nfv.repo almalinux-powertools.repo almalinux.repo almalinux-resilientstorage.repo almalinux-rt.repo"
 
 for repo_file in $internet_repo_file_list
 do

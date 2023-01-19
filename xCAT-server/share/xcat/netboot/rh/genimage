@@ -786,7 +786,7 @@ if ((-d "$rootimg_dir/usr/share/dracut") or (-d "$rootimg_dir/usr/lib/dracut")) 
 
 # List of internet repos to be disabled
 
-my @internet_repo_file_list = ("oracle-linux-ol8.repo", "uek-ol8.repo", "Rocky-AppStream.repo", "Rocky-BaseOS.repo", "Rocky-Extras.repo", "CentOS-Base.repo");
+my @internet_repo_file_list = ("oracle-linux-ol8.repo", "uek-ol8.repo", "Rocky-AppStream.repo", "Rocky-BaseOS.repo", "Rocky-Extras.repo", "CentOS-Base.repo", "almalinux-ha.repo", "almalinux-nfv.repo", "almalinux-plus.repo", "almalinux-powertools.repo", "almalinux.repo", "almalinux-resilientstorage.repo", "almalinux-rt.repo");
 
 foreach ( @internet_repo_file_list ) {
   if (-e "$rootimg_dir/etc/yum.repos.d/$_") {

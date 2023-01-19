@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.52
+# Version 1.0.53
 #
 # Copyright (C) 2016 - 2021 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -44,6 +44,8 @@
 #     - Make sure initscripts installed on RH family of OSes
 # 2022-12-06 Mark Gurevich <gurevich@us.ibm.com>
 #     - Check for EPEL and CRB repository on EL9 family of OSes
+# 2023-01-19 Mark Gurevich <gurevich@us.ibm.com>
+#     - Add support for Alma Linux
 #
 
 
@@ -1601,6 +1603,7 @@ function add_xcat_dep_repo_yum_or_zypper()
 	"centos"*)             distro="rh${distro#centos}" ;;
 	"ol"*)                 distro="rh${distro#ol}" ;;
 	"rocky"*)              distro="rh${distro#rocky}" ;;
+	"alma"*)               distro="rh${distro#almalinux}" ;;
 	"fedora10"|"fedora11") distro="fedora9" ;;
 	"fedora1"[678])        distro="rh6" ;;
 	"fedora19"|"fedora2"?) distro="rh7" ;;
@@ -2353,7 +2356,7 @@ Version:            ${GO_XCAT_LINUX_VERSION}
 EOF
 
 case "${GO_XCAT_LINUX_DISTRO}" in
-"centos"|"fedora"|"rhel"|"sles"|"ubuntu"|"ol"|"rocky")
+"centos"|"fedora"|"rhel"|"sles"|"ubuntu"|"ol"|"rocky"|"almalinux")
 	;;
 *)
 	warn_if_bad 1 "${GO_XCAT_LINUX_DISTRO}: unsupported Linux distro"
