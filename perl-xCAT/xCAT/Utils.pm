@@ -2201,7 +2201,7 @@ sub CheckVersion
     my $index = 0;
     my $max_index = ($len_a > $len_b) ? $len_a : $len_b;
 
-    for ($index = 0 ; $index <= $max_index ; $index++)
+    for ($index = 0 ; $index < $max_index ; $index++)
     {
         my $val_a = ($len_a < $index) ? 0 : $a[$index];
         my $val_b = ($len_b < $index) ? 0 : $b[$index];
