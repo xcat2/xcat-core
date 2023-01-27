@@ -14,7 +14,6 @@ use xCAT::SvrUtils;
 use Socket;
 use Fcntl qw/:flock/;
 use Data::Dumper;
-use version;
 
 # This is a rewrite of DNS management using nsupdate rather than
 #	direct zone mangling
