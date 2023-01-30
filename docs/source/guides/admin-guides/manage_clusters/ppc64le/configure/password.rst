@@ -10,7 +10,7 @@ Configure passwords
 
    * Encrypted using ``openssl``: ::
 
-       chtab key=system passwd.username=root passwd.password=`openssl passwd -1 abc123`
+       chtab key=system passwd.username=root passwd.password=`openssl passwd -6 abc123`
 
 
 #. Configure the passwords for Management modules of the compute nodes.
