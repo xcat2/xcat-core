@@ -329,6 +329,18 @@ sub process_request {
     xCAT::Utils->runcmd("cp /opt/xcat/share/xcat/netboot/rh/dracut_033/install.netboot $rootimg_dir/usr/lib/dracut/modules.d/97xcat/install", 0, 1);
 
 
+    # timedatectl requires /etc/localtime link to the zoneinfo in /usr/share/zoneinfo
+    if ($timezone[0]) {
+        unlink("$rootimg_dir/etc/localtime");
+        symlink("../usr/share/zoneinfo/$timezone[0]", "$rootimg_dir/etc/localtime");
+            
+        if (not stat "$rootimg_dir/etc/localtime") {
+            $callback->({ warning => ["Unable to set timezone to \'$timezone[0]\', check this is a valid timezone"] });
+        } 
+    } else {
+        $callback->({ info => ["No timezone defined in site table, skipping timezone /etc/localtime configuration"] });
+    }
+
     my $xcat_packimg_tmpfile = "/tmp/xcat_packimg.$$";
     my $excludestr           = "find . -xdev ";
     my $includestr;
@@ -344,11 +356,7 @@ sub process_request {
             }
             close($exlist);
 
-            # timedatectl requires /etc/localtime link to the zoneinfo in /usr/share/zoneinfo
             if ($timezone[0]) {
-                unlink("$rootimg_dir/etc/localtime");
-                symlink("../usr/share/zoneinfo/$timezone[0]", "$rootimg_dir/etc/localtime");
-            
                 # Add the zoneinfo to the include list
                 $excludetext .= "+./usr/share/zoneinfo/$timezone[0]\n";
                 
@@ -361,11 +369,8 @@ sub process_request {
                     $excludetext .= "+.$relativetzpath\n";
                 }
                 
-                if (not stat "$rootimg_dir/etc/localtime") {
-                    $callback->({ warning => ["Unable to set timezone to \'$timezone[0]\', check this is a valid timezone"] });
-                } 
             } else {
-                $callback->({ info => ["No timezone defined in site table, skipping timezone configuration"] });
+                $callback->({ info => ["No timezone defined in site table, skipping timezone exlist configuration"] });
             }
 
             #handle the #INLCUDE# tag recursively
