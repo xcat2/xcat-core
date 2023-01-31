@@ -1718,8 +1718,8 @@ function install_packages_dnf()
 	el9_epel_and_crb_check dnf
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
-	dnf --nogpgcheck "${yes[@]}" install "$@"
 	dnf --nogpgcheck "${yes[@]}" install initscripts
+	dnf --nogpgcheck "${yes[@]}" install "$@"
 }
 
 function install_packages_yum()
@@ -1728,8 +1728,8 @@ function install_packages_yum()
 	el9_epel_and_crb_check yum
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
-	yum --nogpgcheck "${yes[@]}" install "$@"
 	yum --nogpgcheck "${yes[@]}" install initscripts
+	yum --nogpgcheck "${yes[@]}" install "$@"
 }
 
 # Dirty workaround on SLES 11 SP4
@@ -1770,7 +1770,7 @@ Installation on ${GO_XCAT_LINUX_DISTRO} ${GO_XCAT_LINUX_VERSION} requires EPEL r
 	ret="$?"
 	case "${ret}" in
 	"1")
-		# Ccan not find EL9_CRB_TEST_RPM
+		# Can not find EL9_CRB_TEST_RPM
 		echo "
 Installation on ${GO_XCAT_LINUX_DISTRO} ${GO_XCAT_LINUX_VERSION} requires CRB repository to be enabled"
 		echo "Try adding the following entries to new or existing '.repo' file:"
