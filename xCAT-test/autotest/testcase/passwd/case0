@@ -228,7 +228,7 @@ cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
 check:rc==0
 cmd:gettab key=system passwd.password > /tmp/tmppassword
 check:rc==0
-cmd:chtab key=system passwd.username=root passwd.password=`openssl passwd -1 abc123`
+cmd:chtab key=system passwd.username=root passwd.password=`openssl passwd -6 abc123`
 check:rc==0
 cmd:gettab key=system passwd.password > /tmp/tmpcryptedpasswd
 check:rc==0
@@ -254,7 +254,7 @@ cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
 check:rc==0
 cmd:gettab key=system passwd.password > /tmp/tmppassword
 check:rc==0
-cmd:chtab key=system passwd.username=root passwd.password=`openssl passwd -1 abc123`
+cmd:chtab key=system passwd.username=root passwd.password=`openssl passwd -6 abc123`
 check:rc==0
 cmd:gettab key=system passwd.password |grep '\$1\$'
 check:rc==0

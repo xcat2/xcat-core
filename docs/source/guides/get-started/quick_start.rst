@@ -43,10 +43,10 @@ Prepare the Management Node ``xcatmn.mydomain.com``
 
     wget https://raw.githubusercontent.com/xcat2/xcat-core/master/xCAT-server/share/xcat/tools/go-xcat -O - >/tmp/go-xcat
     chmod +x /tmp/go-xcat
-    go-xcat --yes install
+    /tmp/go-xcat --yes install
     source /etc/profile.d/xcat.sh
    
-#. Configure the system password for the root user on the compute nodes: ::
+#. Configure the system password for the ```root`` user on the compute nodes: ::
 
     chtab key=system passwd.username=root passwd.password=abc123
 
@@ -89,7 +89,7 @@ Stage 2 Provision a node and manage it with parallel shell
 
     copycds RHEL-7.6-20181010.0-Server-x86_64-dvd1.iso
 
-   After ``copycds``, the corresponding basic osimage will be generated automatically. And then you can list the new osimage name here. You can refer document to customize the package list or postscript for target compute nodes, but here just use the default one: ::
+   After ``copycds``, the corresponding basic osimage will be generated automatically. Later, package list or postscripts for target compute nodes can be customised. List generated osimages: ::
 
     lsdef -t osimage
 
