@@ -14,7 +14,6 @@ use xCAT::SvrUtils;
 use Socket;
 use Fcntl qw/:flock/;
 use Data::Dumper;
-use version;
 
 # This is a rewrite of DNS management using nsupdate rather than
 #	direct zone mangling
@@ -1286,7 +1285,7 @@ sub update_namedconf {
             my $bind_version_cmd="/usr/sbin/named -v | cut -d' ' -f2 | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+'";
             my @bind_version =xCAT::Utils->runcmd($bind_version_cmd, 0);
             # Turn off DNSSEC if running with bind vers 9.16.6 or higher
-            if ((scalar @bind_version > 0) && (version->parse($bind_version[0]) >= version->parse(9.16.6))) {
+            if ((scalar @bind_version > 0) && (xCAT::Utils::CheckVersion($bind_version[0], "9.16.6") >= 0)) {
                 push @newnamed, "\tdnssec-enable no;\n";
                 push @newnamed, "\tdnssec-validation no;\n";
             }
