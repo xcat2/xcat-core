@@ -345,7 +345,7 @@ setenv PERL_BADLANG 0
 # If /usr/local/share/perl5 is not already in @INC, add it to PERL5LIB
 perl -e "print \"@INC\"" | egrep "(^|\W)/usr/local/share/perl5($| )" > /dev/null
 if [ \$? = 1 ]; then
-    setenv PERL5LIB /usr/local/share/perl5:\$PERL5LIB
+    setenv PERL5LIB /usr/local/share/perl5:\${PERL5LIB}
 fi
 EOF
 chmod 755 /etc/profile.d/xcat.*
