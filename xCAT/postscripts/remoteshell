@@ -640,6 +640,12 @@ else
     fi
     restartservice sshd
 fi
+
+if [[ $OSVER == rocky* || $OSVER == rhels8* || $OSVER == rhels9 ]]; then
+    pkill -9 sshd # Get rid of any previously started sshd, e.g. from anaconda inst.sshd
+    /sbin/sshd -f /etc/ssh/sshd_config || echo "ERR: Could not start sshd in chroot!"
+fi
+
 #if the service restart with "service/systemctl" failed
 #try to kill the process and start
 if [ "$?" != "0" ];then
