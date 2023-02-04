@@ -970,7 +970,7 @@ sub build_xmldesc {
         # do nothing for ppc64le, do not support sound at this time
         ;
     } else {
-        $xtree{devices}->{sound}->{model} = 'ac97';
+        $xtree{devices}->{sound}->{model} = 'ich6';
     }
 
     $xtree{devices}->{console}->{type} = 'pty';
