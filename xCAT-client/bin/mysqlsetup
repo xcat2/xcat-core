@@ -952,7 +952,7 @@ sub mysqlstart
     else
     {
         if ($::MariaDB == 1) {    # running MariaDB
-            if ( ($::linuxos =~ /rh.*/) || ($::linuxos =~ /sles15.*/) ) {
+            if ( $::linuxos =~ /rh.*|ol.*|rocky.*|alma.*|sles15.*/) {
                 $ret = xCAT::Utils->startservice("mariadb");
             } else {              # sles
                 $ret = xCAT::Utils->startservice("mysql");
@@ -960,7 +960,7 @@ sub mysqlstart
 
         } else {    # it is mysql
 
-            if ($::linuxos =~ /rh.*/)
+            if ($::linuxos =~ /rh.*|ol.*|rocky.*|alma.*/)
             {
                 $ret = xCAT::Utils->startservice("mysqld");
             }
@@ -1063,7 +1063,7 @@ sub mysqlreboot
     {
         if ($::MariaDB == 1) {    # MariaDB not MySQL
 
-            if ( ($::linuxos =~ /rh.*/) || ($::linuxos =~ /sles15.*/) ){
+            if ($::linuxos =~ /rh.*|ol.*|rocky.*|alma.*|sles15.*/) {
                 $cmd = "chkconfig mariadb on";
             } else {              #sles
                 $cmd = "chkconfig mysql on";
@@ -1073,7 +1073,7 @@ sub mysqlreboot
 
             }
         } else {    # mysql
-            if ($::linuxos =~ /rh.*/)
+            if ($::linuxos =~ /rh.*|ol.*|rocky.*|alma.*/)
             {
                 $cmd = "chkconfig mysqld on";
             }
@@ -1611,7 +1611,7 @@ sub setupODBC
     }
 
     # for aix and redhat
-    if (($::linuxos =~ /rh.*/) || ($::osname eq 'AIX'))
+    if (($::linuxos =~ /rh.*|ol.*|rocky.*|alma.*/) || ($::osname eq 'AIX'))
     {
         $cmd = "rpm -qa | grep mysql-connector-odbc";
         xCAT::Utils->runcmd($cmd, 0);
@@ -1699,7 +1699,7 @@ sub setupODBC
     (my $connstring, my $adminid, my $passwd) = split(/\|/, $output[0]);
     (my $database,   my $id,      my $server) = split(/=/,  $connstring);
 
-    if (($::linuxos =~ /rh.*/) || ($::osname eq 'AIX'))
+    if (($::linuxos =~ /rh.*|ol.*|rocky.*|alma.*/) || ($::osname eq 'AIX'))
     {
         $odbcinstfile = "/etc/odbcinst.ini";
         $odbcfile     = "/etc/odbc.ini";
