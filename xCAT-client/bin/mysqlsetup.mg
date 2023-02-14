@@ -150,6 +150,7 @@ $::linuxos = xCAT::Utils->osver();
 
 # is this MariaDB or MySQL
 $::MariaDB = 0;
+$::db_service = "mysqld";
 my $cmd;
 if ($::debianflag) {
     $cmd = "dpkg -l | grep mariadb";
@@ -159,13 +160,16 @@ if ($::debianflag) {
 xCAT::Utils->runcmd($cmd, -1);
 if ($::RUNCMD_RC == 0) {
     $::MariaDB = 1;
+    if ( $::linuxos =~ /rh.*|ol.*|rocky.*|alma.*|sles15.*/) {
+        $::db_service = "mariadbd";
+    }
 }
 
 #
 # check to see if mysql is installed
 #
 $cmd = "rpm -qa | grep -i perl-DBD-mysql";
-my $msg = "\nperl-DBD-mysql ";
+my $msg = "\nMySQL perl DBD ";
 if ($::debianflag) {
     if ($::MariaDB) {
         $cmd = "dpkg -l | grep -i mariadb-server";
@@ -184,41 +188,39 @@ if ($::RUNCMD_RC != 0)
     exit(1);
 }
 
-# check to see if MySQL or MariaDB is running
+# check to see if  MySQL  is running
 $::mysqlrunning     = 0;
 $::xcatrunningmysql = 0;
+my $cmd        = "ps -ef | grep mysqld";
+my @output     = xCAT::Utils->runcmd($cmd, 0);
+my $mysqlcheck = "mysql.sock";                   # see if really running
+if (grep(/$mysqlcheck/, @output))
+{
 
-my $cmd = "pidof mysqld";
-xCAT::Utils->runcmd($cmd, 0);
-if ($::RUNCMD_RC == 0) {
-    $::mysqlrunning = 1;
-    if ($::INIT) {
-        my $message = "MySQL is already running. Database initialization will not take place.";
+    if ($::INIT)
+    {
+        my $message =
+          "MySQL is running.  Database initialization will not take place.";
         xCAT::MsgUtils->message("I", "$message");
-        my $ret = xCAT::Utils->stopservice("mysql");
-        if ($ret != 0) {
-            xCAT::MsgUtils->message("E", " failed to stop MySQL.");
-            exit(1);
-        } else {
-            $::mysqlrunning = 0; # service was stopped
-        } 
     }
+    $::mysqlrunning = 1;
 }
 
-$cmd = "pidof mariadbd";
-xCAT::Utils->runcmd($cmd, 0);
-if ($::RUNCMD_RC == 0) {
-    $::mysqlrunning = 1;
-    if ($::INIT) {
-        my $message = "MariaDB is already running. Database initialization will not take place.";
-        xCAT::MsgUtils->message("I", "$message");
-        my $ret = xCAT::Utils->stopservice("mariadb");
-        if ($ret != 0) {
-            xCAT::MsgUtils->message("E", " failed to stop MariaDB.");
+# Stop mysql in order to setup init xcat mysql
+$cmd = "pidof $::db_service";
+xCAT::Utils->runcmd($cmd, -1);
+if ($::RUNCMD_RC == 0)
+{
+    if ($::INIT)
+    {
+        my $ret = xCAT::Utils->stopservice("mysql");
+        if ($ret != 0)
+        {
+            xCAT::MsgUtils->message("E", " failed to stop $::db_service.");
             exit(1);
-        } else {
-            $::mysqlrunning = 0; # service was stopped
-        } 
+        }
+    } else {
+        $::mysqlrunning = 1;
     }
 }
 
@@ -978,26 +980,25 @@ sub mysqlstart
         exit(1);
     }
 
-    # make sure service has started. On some OSes, mariadb service starts mysql daemon
-    # on others, mariadb service starts mariadb daemon. Check a few times for one,
-    # then the other
-    my @db_service_name_list = ("mysqld", "mariadb");
-    foreach my $db_service_name (@db_service_name_list) {
-        $cmd = "ps -ef | grep $db_service_name | grep -v grep";
-        for (my $i = 0 ; $i < 6 ; $i++) {
-            my @output = xCAT::Utils->runcmd($cmd, 0);
-            my $mysqlcheck = $db_service_name;
+    # make sure running
+    $cmd = "ps -ef | grep $::db_service | grep -v grep";
+    for (my $i = 0 ; $i < 12 ; $i++)
+    {
+        my @output = xCAT::Utils->runcmd($cmd, 0);
+        $mysqlcheck = $::db_service;
 
-            if (grep(/$mysqlcheck/, @output)) {
-                sleep 10;    # give a few extra seconds to be sure
-                return;
-            } else {
-                sleep 10;    # wait for daemon
-            }
+        if (grep(/$mysqlcheck/, @output))
+        {
+            sleep 10;    # give a few extra seconds to be sure
+            return;
+        }
+        else
+        {
+            sleep 10;    # wait for daemon
         }
     }
     xCAT::MsgUtils->message("E",
-        " Could not start the mysql/mariadb daemon in time allocated (2 minutes)");
+        " Could not start the $::db_service daemon, in time allocated (2 minutes)");
     exit(1);
 
 }

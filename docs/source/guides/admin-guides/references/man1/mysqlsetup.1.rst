@@ -37,11 +37,9 @@ DESCRIPTION
 ***********
 
 
-\ **mysqlsetup**\  - Sets up the MySQL or MariaDB database (linux only for MariaDB) for xCAT to use. The mysqlsetup script is run on the Management Node as root after the MySQL code or MariaDB code has been installed. Before running the init option, the MySQL server should be stopped, if it is running.  The xCAT daemon, xcatd, must be running, do not stop it. No xCAT commands should be run during the init process, because we will be migrating the xCAT database to MySQL or MariaDB and restarting the xcatd daemon as well as the MySQL daemon. For full information on all the steps that will be done, read the "Configure MySQL and Migrate xCAT Data to MySQL" sections in
+\ **mysqlsetup**\  - Sets up the MySQL or MariaDB database (linux only for MariaDB) for xCAT to use. The \ **mysqlsetup**\  script is run on the Management Node as root after the MySQL or MariaDB packages have been installed. Before running the \ **-**\ **-init**\  option, the MySQL server should be stopped, if it is running.  The xCAT daemon, \ **xcatd**\ , must be running, do not stop it. No xCAT commands should be run during the init process, because we will be migrating the xCAT database to MySQL or MariaDB and restarting the \ **xcatd**\  daemon as well as the MySQL daemon. For more information, see https://xcat-docs.readthedocs.io/en/stable/advanced/hierarchy/databases/index.html#mysql-mariadb
 
-\ **Setting_Up_MySQL_as_the_xCAT_DB**\ 
-
-Two passwords must be supplied for the setup,  a password for the xcatadmin id and a password for the root id in the MySQL database.  These will be prompted for interactively, unless the environment variables XCATMYSQLADMIN_PW and  XCATMYSQLROOT_PW are set to the passwords for the xcatadmin id and root id in the database,resp.
+Two passwords must be supplied for the setup, a password for the xcatadmin id and a password for the root id in the MySQL database.  These will be prompted for interactively, unless the environment variables \ **XCATMYSQLADMIN_PW**\  and \ **XCATMYSQLROOT_PW**\  are set to the passwords for the xcatadmin id and root id in the database,respectively.
 
 Note below we refer to MySQL but it works the same for MariaDB.
 
@@ -72,14 +70,14 @@ OPTIONS
 
 \ **-i|-**\ **-init**\ 
  
- The init option is used to setup a xCAT database on an installed MySQL or MariaDB server for xCAT to use. The mysqlsetup script will check for the installed MariaDB server rpm first and will use MariaDB if it is installed.   This involves creating the xcatdb database, the xcatadmin id, allowing access to the xcatdb database by the Management Node. It customizes the my.cnf configuration file for xcat and starts the MySQL server.  It also backs up the current xCAT database and restores it into the newly setup xcatdb MySQL database.  It creates the /etc/xcat/cfgloc file to point the xcatd daemon to the MySQL database and restarts the xcatd daemon using the database.
- On AIX, it additionally setup the mysql id and group and corrects the permissions in the MySQL install directories. For AIX, you should be using the MySQL rpms available from the xCAT website. For Linux, you should use the MySQL or MariaDB rpms shipped with the OS. You can chose the -f and/or the -o option, to run after the init.
+ The \ **-**\ **-init**\  option is used to setup a xCAT database on an installed MySQL or MariaDB server for xCAT to use. The \ **mysqlsetup**\  script will check for the installed MariaDB server rpm first and will use MariaDB if it is installed. This involves creating the xcatdb database, the xcatadmin id, allowing access to the xcatdb database by the Management Node. It customizes the \ **my.cnf**\  configuration file for xcat and starts the MySQL server.  It also backs up the current xCAT database and restores it into the newly setup xcatdb MySQL database.  It creates the \ **/etc/xcat/cfgloc**\  file to point the xcatd daemon to the MySQL database and restarts the xcatd daemon using the database.
+ On AIX, it additionally setup the mysql id and group and corrects the permissions in the MySQL install directories. For AIX, you should be using the MySQL rpms available from the xCAT website. For Linux, you should use the MySQL or MariaDB rpms shipped with the OS. You can chose the \ **-f**\  and/or the \ **-o**\  option, to run after the <-**\ **-init>.
  
 
 
 \ **-u|-**\ **-update**\ 
  
- To run the update option,  you must first have run the -i option and have xcat successfully running on the MySQL database. You can chose the -f and/or the -o option, to update.
+ To run the update option, you must first have run the \ **-i**\  option and have xcat successfully running on the MySQL database. You can chose the \ **-f**\  and/or the \ **-o**\  option, to update.
  
 
 
@@ -91,17 +89,13 @@ OPTIONS
 
 \ **-o|-**\ **-odbc**\ 
  
- This option sets up the ODBC  /etc/../odbcinst.ini, /etc/../odbc.ini and the .odbc.ini file in roots home directory will be created and initialized to run off the xcatdb MySQL database.
- See "Add ODBC Support" in
- Setting_Up_MySQL_as_the_xCAT_DB
+ This option sets up the ODBC  \ **/etc/../odbcinst.ini**\ , \ **/etc/../odbc.ini**\  and the \ **.odbc.ini**\  file in roots home directory will be created and initialized to run off the xcatdb MySQL database.
  
 
 
 \ **-L|-**\ **-LL**\ 
  
  Additional database configuration specifically for the LoadLeveler product.
- See "Add ODBC Support" in
- Setting_Up_MySQL_as_the_xCAT_DB
  
 
 
