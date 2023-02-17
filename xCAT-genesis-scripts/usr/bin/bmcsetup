@@ -109,6 +109,11 @@ if ! ipmitool -V 2>/dev/null| grep "version"; then
 fi
 
 # Add ipmi_devintf module to allow the ipmitool operation in-band
+if grep -q "^ppc64" <<< "$(uname -m)"; then
+    modprobe ipmi_powernv
+else
+    modprobe ipmi_si
+fi
 modprobe ipmi_devintf
 
 for parm in `cat /proc/cmdline`; do
