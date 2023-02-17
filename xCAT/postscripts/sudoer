@@ -43,7 +43,7 @@ sleep 1
 rm -rf $HOME/.ssh/authorized_keys
 
 #-----------------
-# Retrieve DSA key
+# Retrieve RSA key
 #-----------------
 KEY=`cat /xcatpost/hostkeys/ssh_host_rsa_key.pub`
 
@@ -52,7 +52,7 @@ echo -e $KEY >> $HOME/.ssh/authorized_keys
 
 
 #-----------------
-# Retrieve RSA key
+# Retrieve DSA key
 #-----------------
 KEY=`cat /xcatpost/hostkeys/ssh_host_dsa_key.pub`
 
