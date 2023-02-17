@@ -984,26 +984,25 @@ sub mysqlstart
         exit(1);
     }
 
-    # make sure service has started. On some OSes, mariadb service starts mysql daemon
+    # Make sure service has started. On some OSes, mariadb service starts mysql daemon
     # on others, mariadb service starts mariadb daemon. Check a few times for one,
     # then the other
-    my @db_service_name_list = ("mysqld", "mariadb");
-    foreach my $db_service_name (@db_service_name_list) {
-        $cmd = "ps -ef | grep $db_service_name | grep -v grep";
-        for (my $i = 0 ; $i < 6 ; $i++) {
-            my @output = xCAT::Utils->runcmd($cmd, 0);
-            my $mysqlcheck = $db_service_name;
+    my $mariadb_process_name = "mariadbd";
+    my $mysql_process_name = "mysqld";
+    my $db_process_name_pattern = "\'".$mariadb_process_name."\|".$mysql_process_name."\'";
+    for (my $i = 0 ; $i < 6 ; $i++) {
+        $cmd = "ps -ef | grep -E $db_process_name_pattern | grep -v grep";
+        my @output = xCAT::Utils->runcmd($cmd, 0);
 
-            if (grep(/$mysqlcheck/, @output)) {
-                sleep 10;    # give a few extra seconds to be sure
-                return;
-            } else {
-                sleep 10;    # wait for daemon
-            }
+        if (grep(/$mariadb_process_name/, @output) || grep(/$mysql_process_name/, @output)) {
+            sleep 10;    # give a few extra seconds to be sure
+            return;
+        } else {
+            sleep 10;    # wait for daemon
         }
     }
     xCAT::MsgUtils->message("E",
-        " Could not start the mysql/mariadb daemon in time allocated (2 minutes)");
+        " Could not start the mysql/mariadb daemon in time allocated (1 minute)");
     exit(1);
 
 }
