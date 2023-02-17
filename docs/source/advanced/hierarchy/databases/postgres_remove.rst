@@ -32,9 +32,9 @@ To remove ``xcatdb`` completely from the PostgreSQL database and restore xCAT da
       rm -rf *
       exit
 
-#. Move, or remove, the  ``/etc/xcat/cfglog`` file as it points xCAT to PostgreSQL.  (without this file, xCAT defaults to SQLite): ::
+#. Move, or remove, the  ``/etc/xcat/cfgloc`` file as it points xCAT to PostgreSQL.  (without this file, xCAT defaults to SQLite): ::
 
-      mv /etc/xcat/cfgloc /etc/xcat/cfglog.postgres
+      mv /etc/xcat/cfgloc /etc/xcat/cfgloc.postgres
 
 #. Restore the PostgreSQL database into SQLite: ::
 

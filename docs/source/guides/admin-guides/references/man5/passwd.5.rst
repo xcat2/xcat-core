@@ -50,7 +50,7 @@ passwd Attributes:
 
 \ **password**\ 
  
- The default password for this type of component. On Linux, a crypted form could be provided. Hashes starting with $1$, $5$ and $6$ (md5, sha256 and sha512 respectively) are supported.
+ The default password for this type of component. On Linux, a crypted form could be provided for the "system" component, which will be used during initial node provisioning. Hashes starting with $1$, $5$ and $6$ (md5, sha256 and sha512 respectively) are supported.
  
 
 
