@@ -666,7 +666,7 @@ if ((-d "$rootimg_dir/usr/share/dracut") or (-d "$rootimg_dir/usr/lib/dracut")) 
     $dracutmode = 1;
 
     # get dracut version
-    $dracutver = `chroot $rootimg_dir rpm -qi dracut | awk '/Version/{print \$3}' | awk -F. '{print \$1}'`;
+    $dracutver = `chroot $rootimg_dir rpm -qi dracut | awk '/Version/ {print \$3}' | awk -F[.+] '{print \$1}'`;
     chomp($dracutver);
     if ($dracutver =~ /^\d\d\d$/) {
         if ($dracutver >= "033") {
