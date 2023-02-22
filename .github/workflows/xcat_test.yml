@@ -1,7 +1,5 @@
 name: xcat_test
-on:
-  pull_request
-  workflow_dispatch
+on: [pull_request, workflow_dispatch]
 jobs:
   xcat_pr_test:
     runs-on: ubuntu-20.04
