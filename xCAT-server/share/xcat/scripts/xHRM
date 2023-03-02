@@ -246,7 +246,7 @@ elif [ "bridgeprereq" = "$1" ]; then
     fi
 
     #now save the settings into the config files so that they will be persistent among reboots
-    if [[ $OSVER = sles* ]] || [[ $OSVER = suse* ]] || [[ -f /etc/SuSE-release ]]; then
+    if [[ $OSVER = sles* ]] || [[ $OSVER = suse* ]] || [[ -f /etc/SuSE-release ]] || [[ -f /etc/SUSE-brand ]]; then
         nwdir="/etc/sysconfig/network"
         isSLES=1
     elif [ -f "/etc/debian_version" ];then

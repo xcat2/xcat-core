@@ -128,15 +128,15 @@ The xCAT-test test cases are in flat text format, the testing framework will par
    #optional, description of the test case
    description: what the test case is for?
    #optional, environment requirements
-   os:AIX/Linux
+   os:AIX/Linux/sles/ubuntu/rhels/rhels7/rhels8
    #optional, environment requirements
-   arch:ppc/x86
+   arch:ppc/ppc64/ppc64le/x86_64
    #optional, environment requirements
-   hcp:hmc/mm/bmc/fsp
+   hcp:hmc/mm/bmc/fsp/ipmi/openbmc
    #optional, label
    label:label1
    #required, command need to run
-   cmd:comand
+   cmd:command
    #optional, check return code of last executed command
    check:rc == or != return code
    #optional, check output of last executed command
@@ -155,7 +155,7 @@ EXAMPLES
 
 1.
  
- To run all  test cases related command rpower:
+ To run all test cases related to command \ **rpower**\ :
  
  
  .. code-block:: perl
@@ -167,7 +167,7 @@ EXAMPLES
 
 2.
  
- To run customized bundle with /tmp/config file:
+ To run customized bundle with \ */tmp/config*\  file:
  
  
  .. code-block:: perl
@@ -181,7 +181,7 @@ EXAMPLES
 
 3.
  
- To run specified test cases with /tmp/config file:
+ To run specified test cases with \ */tmp/config*\  file:
  
  
  .. code-block:: perl
@@ -193,7 +193,7 @@ EXAMPLES
 
 4.
  
- To add a new case to test \ **chvm**\ . In the example, we assume that the min_mem should not be equal to 16 in the lpar profile of computenode. The case name is chvm_custom. It create a test lpar named testnode firstly, that change the min_mem of the lpar to 16 using chvm, then check if min_mem have changed correctly. At last, the testnode be remove to ensure no garbage produced in the cases.
+ To add a new test case to test \ **chvm**\ . In this example, we assume that the \ **min_mem**\  should not be equal to 16 in the lpar profile of computenode. The case name is \ **chvm_custom**\ . It creates a test lpar named \ **testnode**\  first, then changes the \ **min_mem**\  of the lpar to 16 using \ **chvm**\ , then checks if \ **min_mem**\  have changed correctly. Finally, the \ **testnode**\  is removed.
  
  
  .. code-block:: perl

@@ -228,15 +228,14 @@ cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
 check:rc==0
 cmd:gettab key=system passwd.password > /tmp/tmppassword
 check:rc==0
-cmd:chtab key=system passwd.username=root passwd.password=`openssl passwd -1 abc123`
+cmd:chtab key=system passwd.username=root passwd.password=`openssl passwd -6 abc123`
 check:rc==0
 cmd:gettab key=system passwd.password > /tmp/tmpcryptedpasswd
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then if [ ! -e /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/initrd.gz ]; then copycds $$ISO;mkdir -p /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/;touch /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/initrd.gz;fi;fi
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-cmd:if grep SUSE /etc/*release;then grep '\$1\$' /install/autoinst/$$CN | awk 'gsub(/^ *| *$/,"")'| awk -v head="<user_password>" -v tail="</user_password>" '{print substr($0, index($0,head)+length(head),index($0,tail)-index($0,head)-length(head))}' > /tmp/instcryptedpasswd; elif grep -E "Red Hat|CentOS|Rocky" /etc/*release;then grep '\$1\$' /install/autoinst/$$CN |awk -F " " '{print $3}' > /tmp/instcryptedpasswd; elif grep Ubuntu /etc/*release;then grep '\$1\$' /install/autoinst/$$CN |awk -F " " '{print $4}' > /tmp/instcryptedpasswd;else echo "Sorry,this is not supported os"; fi
-#cmd:grep '\$1\$' /install/autoinst/$$CN |awk -F " " '{print $3}' > /tmp/instcryptedpasswd
+cmd:if grep SUSE /etc/*release;then grep '\$6\$' /install/autoinst/$$CN | awk 'gsub(/^ *| *$/,"")'| awk -v head="<user_password>" -v tail="</user_password>" '{print substr($0, index($0,head)+length(head),index($0,tail)-index($0,head)-length(head))}' > /tmp/instcryptedpasswd; elif grep -E "Red Hat|CentOS|Rocky|Alma" /etc/*release;then grep '\$6\$' /install/autoinst/$$CN |awk -F " " '{print $3}' > /tmp/instcryptedpasswd; elif grep Ubuntu /etc/*release;then grep '\$6\$' /install/autoinst/$$CN |awk -F " " '{print $4}' > /tmp/instcryptedpasswd;else echo "Sorry,this is not supported os"; fi
 check:rc==0
 cmd:diff /tmp/tmpcryptedpasswd /tmp/instcryptedpasswd
 check:rc==0
@@ -254,9 +253,9 @@ cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
 check:rc==0
 cmd:gettab key=system passwd.password > /tmp/tmppassword
 check:rc==0
-cmd:chtab key=system passwd.username=root passwd.password=`openssl passwd -1 abc123`
+cmd:chtab key=system passwd.username=root passwd.password=`openssl passwd -6 abc123`
 check:rc==0
-cmd:gettab key=system passwd.password |grep '\$1\$'
+cmd:gettab key=system passwd.password |grep '\$6\$'
 check:rc==0
 #config CN to do diskless provision
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
@@ -286,7 +285,7 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-net
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then rpower $$CN boot; fi
 check:rc==0
-cmd:sleep 900
+cmd:sleep 300
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
 cmd:ping $$CN -c 3
 check:rc==0
@@ -296,7 +295,7 @@ check:rc==0
 check:output=~booted
 cmd:scp $$CN:/etc/shadow /tmp
 check:rc==0
-cmd:grep 'root:\$1\$' /tmp/shadow
+cmd:grep 'root:\$6\$' /tmp/shadow
 check:rc==0
 cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
 check:rc==0

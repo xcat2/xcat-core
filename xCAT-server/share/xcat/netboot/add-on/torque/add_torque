@@ -101,7 +101,7 @@ echo "export PATH=\$PATH:$TORQUEDIR/\$XARCH/bin:$TORQUEDIR/\$XARCH/sbin" >>etc/p
 echo "export PBS_DEFAULT=$TORQUESERVER" >>etc/profile.d/torque.sh
 chmod 755 etc/profile.d/torque.*
 
-if [ -r /etc/SuSE-release ]
+if [ -r /etc/SuSE-release ] || [ -r /etc/SUSE-brand ]
 then
 	cp $XCATROOT/share/xcat/netboot/add-on/torque/pbs_mom.suse etc/init.d/pbs_mom
 	cp $XCATROOT/share/xcat/netboot/add-on/torque/pbs_mom.suse sbin/rcpbs_mom

@@ -178,7 +178,7 @@ if($search_expression){
         print "------The total labels are:---------\n";
         print Dumper \@total_label_set;
         print "------The case and its labels:-------\n";
-        print Dumper \%case_label_map
+        print Dumper \%case_label_map;
     }
 }
 
@@ -205,7 +205,7 @@ if (defined $list) {
                 log_this($running_log_fd, "$_");
             }
         } elsif (!@cases_to_be_run && $search_expression){
-            log_this($running_log_fd, "There is no cases match search expression $search_expression");
+            log_this($running_log_fd, "There are no cases match search expression $search_expression");
         } else {
 
             #list the cases shipped by xcat test package
@@ -219,7 +219,7 @@ if (defined $list) {
         }
     } elsif ($list eq "caseinfo") {
         if (!@cases_to_be_run && $search_expression){
-            log_this($running_log_fd, "There is no cases match search expression $search_expression");
+            log_this($running_log_fd, "There are no cases match search expression $search_expression");
         } else {
             $rst = show_case_info(\@cases_to_be_run, \$error);
             if ($rst) {
@@ -258,7 +258,7 @@ if (defined $list) {
             print "------The total labels are:---------\n";
             print Dumper \@total_label_set;
             print "------The case and its labels:-------\n";
-            print Dumper \%case_label_map
+            print Dumper \%case_label_map;
         }
         my %label_conut;
         my %case_label_str_map;
@@ -436,7 +436,7 @@ if ($stop_to_keep_env) {
 # Description: print message to log file and STDOUT.
 #              Set '-q' option in command line, just print message to log file
 # Atrributes: $logdf: the file description of openning log file
-# Retrun code: 0 Success  1 Failed
+# Return code: 0 Success  1 Failed
 #--------------------------------------------------------
 sub log_this {
     my $logdf = shift;
@@ -463,7 +463,7 @@ sub log_this {
 # Fuction name: pro_init
 # Description: Do program initialization
 # Atrributes:
-# Retrun code: 0 Success  1 Failed
+# Return code: 0 Success  1 Failed
 #--------------------------------------------------------
 sub pro_init {
     mkpath("$resultdir") unless (-d "$resultdir");
@@ -489,7 +489,7 @@ sub pro_init {
 #               The reference of array to save the cases to be handled
 #          $error_ref  (output attribe)
 #               The reference of scalar to save the error message generated during running current function
-# Retrun code:  0 Success  1 Failed
+# Return code:  0 Success  1 Failed
 #-------------------------------------------------------
 sub calculate_cases_to_be_run {
     my $cases_to_be_run_ref = shift;
@@ -596,7 +596,7 @@ sub calculate_cases_to_be_run {
 # Fuction name: expend_include_file
 # Description:  To support '#INCLUDE" label in bundle file, to expend the include file
 # Atrributes:  $bundle (input attribute): the name of bundle
-# Retrun code: 0 Success  1 Failed
+# Return code: 0 Success  1 Failed
 #--------------------------------------------------------
 sub expend_include_file {
     my $bundle = shift;
@@ -629,7 +629,7 @@ sub expend_include_file {
 # Fuction name: to_exit
 # Description: customize exit function, include clean up environment
 # Atrributes:
-# Retrun code:
+# Return code:
 #--------------------------------------------------------
 sub to_exit {
     my $exit_code = shift;
@@ -645,7 +645,7 @@ sub to_exit {
 # Atrributes:
 #          $error_ref  (output attribe)
 #               The reference of scalar to save the error message generated during running current function
-# Retrun code:  0 Success  1 Failed
+# Return code:  0 Success  1 Failed
 #--------------------------------------------------------
 sub check_option_validity {
     my $error_ref = shift;
@@ -675,7 +675,7 @@ sub check_option_validity {
 #               The reference of array to save the cases to be handled
 #          $error_ref  (output attribe)
 #               The reference of scalar to save the error message generated during running current function
-# Retrun code:  0 Success  1 Failed
+# Return code:  0 Success  1 Failed
 #--------------------------------------------------------
 sub show_case_info {
     my $cases_to_be_run_ref = shift;
@@ -715,7 +715,7 @@ sub show_case_info {
 # Atrributes:
 #          $error_ref  (output attribe)
 #               The reference of scalar to save the error message generated during running current function
-# Retrun code:  0 Success  1 Failed
+# Return code:  0 Success  1 Failed
 #--------------------------------------------------------
 sub show_bundle_info {
     my $error_ref = shift;
@@ -775,7 +775,7 @@ sub show_bundle_info {
 #                 config{var}{varname}
 #          $error_ref  (output attribe)
 #               The reference of scalar to save the error message generated during running current function
-# Retrun code:  0 Success  1 Failed
+# Return code:  0 Success  1 Failed
 #--------------------------------------------------------
 sub load_config_file {
     my $configfile = shift;
@@ -932,7 +932,7 @@ sub load_config_file {
 #               The flag of whether run these case nex.
 #               0 means no, just load case basic information, used by "searching informaiotn funtion of xcattest"
 #               1 means yes, load case basic information and parse the attribure at the sametime. used by "run case funtion of xcattest"
-# Retrun code:  0 Success  1 Failed
+# Return code:  0 Success  1 Failed
 #--------------------------------------------------------
 sub load_case {
     my $cases_to_be_run_ref     = shift;
@@ -1280,7 +1280,7 @@ sub load_case {
             }
         }
         if (@unexisted_cases) {
-            log_this($running_log_fd, "Not existed:", @unexisted_cases);
+            log_this($running_log_fd, "Does not exist:", @unexisted_cases);
             push @wrong_cases, @unexisted_cases;
             $caseerror = 2;
         }
@@ -1310,7 +1310,7 @@ sub load_case {
 # Atrributes:
 #          $error_ref  (output attribe)
 #               The reference of scalar to save the error message generated during running current function
-# Retrun code:  0 Success  1 Failed
+# Return code:  0 Success  1 Failed
 #--------------------------------------------------------
 sub bakup_current_env {
     my $error_ref = shift;
@@ -1330,7 +1330,7 @@ sub bakup_current_env {
 # Atrributes:
 #          $error_ref  (output attribe)
 #               The reference of scalar to save the error message generated during running current function
-# Retrun code:  0 Success  1 Failed
+# Return code:  0 Success  1 Failed
 #--------------------------------------------------------
 sub restore_current_env {
     my $error_ref = shift;
@@ -1354,7 +1354,7 @@ sub restore_current_env {
 #                 Due to there maybe is more than one implementation for one case
 #          $error_ref  (output attribe)
 #               The reference of scalar to save the error message generated during running current function
-# Retrun code:  0 Success  1 Failed
+# Return code:  0 Success  1 Failed
 #--------------------------------------------------------
 sub run_case {
     my $cases_to_be_run_ref     = shift;
@@ -1556,7 +1556,7 @@ sub run_case {
 #            The structure of %config please refer to the comment of function load_config_file
 #          $error_ref  (output attribe)
 #               The reference of scalar to save the error message generated during running current function
-# Retrun code:  0 Success  1 Failed
+# Return code:  0 Success  1 Failed
 #--------------------------------------------------------
 sub setup_env_by_configure_file {
     my $config_ref = shift;
@@ -1567,7 +1567,7 @@ sub setup_env_by_configure_file {
         log_this($running_log_fd, "$cmd");
         &runcmd($cmd);
         if ($::RUNCMD_RC != 0) {
-            $$error_ref = "Fail to run $cmd";
+            $$error_ref = "Failed to run $cmd";
             return 1;
         }
     }
@@ -1582,7 +1582,7 @@ sub setup_env_by_configure_file {
                 log_this($running_log_fd, "$cmd");
                 runcmd($cmd);
                 if ($::RUNCMD_RC != 0) {
-                    $$error_ref = "Fail to run $cmd";
+                    $$error_ref = "Failed to run $cmd";
                     return 1;
                 }
             }
@@ -1601,7 +1601,7 @@ sub setup_env_by_configure_file {
                 log_this($running_log_fd, "$cmd");
                 &runcmd($cmd);
                 if ($::RUNCMD_RC != 0) {
-                    $$error_ref = "Fail to run $cmd";
+                    $$error_ref = "Failed to run $cmd";
                     return 1;
                 }
             }
@@ -1620,7 +1620,7 @@ sub setup_env_by_configure_file {
 #            The structure of %config please refer to the comment of function load_config_file
 #          $error_ref  (output attribe)
 #               The reference of scalar to save the error message generated during running current function
-# Retrun code:  0 Success  1 Failed
+# Return code:  0 Success  1 Failed
 #--------------------------------------------------------
 sub detect_current_env {
     my $config_ref = shift;
@@ -1672,7 +1672,7 @@ sub detect_current_env {
 # Fuction name: runcmd
 # Description:  run a command after 'cmd' label in one case
 # Atrributes:
-# Retrun code:
+# Return code:
 #      $::RUNCMD_RC : the return code of command
 #      @$outref  : the output of command
 #--------------------------------------------------------
@@ -1701,7 +1701,7 @@ sub runcmd
 # Atrributes:
 #     $script_ref (input attribute)
 #       the reference of array where save every line of script
-# Retrun code:
+# Return code:
 #      $::RUNCMD_RC : the return code of command
 #      @$outref  : the output of command
 #--------------------------------------------------------
@@ -1730,7 +1730,7 @@ sub runscript {
 # Fuction name: getnodeattr
 # Description: get the value of node attribute from current environment
 # Atrributes:
-# Retrun code:
+# Return code:
 #--------------------------------------------------------
 sub getnodeattr {
     my $node   = shift;
@@ -1743,7 +1743,7 @@ sub getnodeattr {
 # Fuction name: getobjectattr
 # Description: get the value of object attribute from current DB
 # Atrributes:
-# Retrun code:
+# Return code:
 #--------------------------------------------------------
 sub getobjectattr {
     my $objtype   = shift;
@@ -1772,7 +1772,7 @@ sub getobjectattr {
 #              The target scan directory
 #         $files_path_ref (output attribute)
 #               the reference of array where save all vaild files under $dir
-# Retrun code:
+# Return code:
 #--------------------------------------------------------
 sub get_files_recursive
 {
@@ -1804,7 +1804,7 @@ sub get_files_recursive
 # Fuction name: is_valid_case_name
 # Description: to check if a case name is valid
 # Atrributes:  $casename (input atrribute): the target case name
-# Retrun code: 0 Success  1 Failed
+# Return code: 0 Success  1 Failed
 #--------------------------------------------------------
 sub is_valid_case_name {
     my $casename = shift;
@@ -1817,13 +1817,20 @@ sub is_valid_case_name {
 
 #-------------------------------------------------------
 # Fuction name: get_current_os
-# Description:
+# Description: Return name of current OS. For rhels, also return major number
 # Atrributes:
-# Retrun code:
+# Return code:
 #--------------------------------------------------------
 sub get_current_os {
     if (-f "/etc/redhat-release") {
-        return "rhels";
+        # Try to return "rhels" + major version, if can not get it, just return "rhels"
+        my $major_version = "";
+        my @output = &runcmd("cat /etc/redhat-release");
+        my $out_line = $output[0];
+        if ($out_line =~ (/(\d+)\.(\d*)/)) {
+             $major_version = $1;
+        }
+        return "rhels".$major_version;
     } elsif (-f "/etc/lsb-release") {
         return "ubuntu";
     } elsif (-f "/etc/os-release") {
@@ -1844,7 +1851,7 @@ sub get_current_os {
 # Fuction name: generate_performance_report
 # Description:
 # Atrributes:
-# Retrun code:
+# Return code:
 #--------------------------------------------------------
 sub generate_performance_report {
     my $runninglog     = shift;
@@ -1889,7 +1896,7 @@ sub generate_performance_report {
 # Fuction name: getvar
 # Description: replace specific attribute in case definition by the value set in config file
 # Atrributes:
-# Retrun code:
+# Return code:
 #--------------------------------------------------------
 sub getvar
 {
@@ -1913,7 +1920,7 @@ sub getvar
 # Fuction name: getfunc
 # Description:  replace specific funciton in case definition
 # Atrributes:
-# Retrun code:
+# Return code:
 #--------------------------------------------------------
 sub getfunc
 {
@@ -1952,7 +1959,7 @@ sub getfunc
 # Fuction name: gettablevalue
 # Description: get specific table value from current environment
 # Atrributes:
-# Retrun code:
+# Return code:
 #--------------------------------------------------------
 sub gettablevalue
 {
@@ -1965,7 +1972,7 @@ sub gettablevalue
 # Fuction name: print_table
 # Description: print a hash table in good format
 # Atrributes:
-# Retrun code:
+# Return code:
 #--------------------------------------------------------
 sub print_table {
     my $msg_ref = shift;
@@ -2116,7 +2123,7 @@ sub scan_existed_labels {
 
             my @labels = ();
             if ($line =~ /^start\s*:\s*(.*)/) {
-                $current_case_name                                     = $1;
+                $current_case_name = $1;
                 if ($cmd_cases_belong_to){
                     $case_label_map_ref->{$current_case_name}->{labels} = [$cmd_cases_belong_to];
                     push @$total_label_set_ref, $cmd_cases_belong_to unless(inarray($total_label_set_ref, $cmd_cases_belong_to));

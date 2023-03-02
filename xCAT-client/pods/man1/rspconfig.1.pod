@@ -572,7 +572,6 @@ Output is similar to:
  node4: BMC SNMP Destination 1: 9.114.47.227
 
 =item 4.
-
 To display the frame number for frame 9A00-10000001
 
  rspconfig> 9A00-10000001 frame

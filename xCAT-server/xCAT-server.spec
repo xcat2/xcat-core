@@ -28,6 +28,9 @@ AutoReqProv: no
 # Define a different location for various httpd configs in s390x mode
 %define httpconfigdir %(if [ "$s390x" = "1" ];then echo "xcathttpdsave"; else echo "xcat"; fi)
 
+# Disable shebang mangling of python scripts
+%undefine __brp_mangle_shebangs
+
 # AIX will build with an arch of "ppc"
 # also need to fix Requires for AIX
 %ifos linux
@@ -37,6 +40,7 @@ BuildArch: noarch
 %if %s390x
 Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser
 %else
+BuildRequires: perl-generators
 Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser perl-Digest-SHA1 perl(LWP::Protocol::https) perl-XML-LibXML
 %endif
 Obsoletes: atftp-xcat

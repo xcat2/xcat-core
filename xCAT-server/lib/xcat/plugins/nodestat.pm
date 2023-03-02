@@ -136,7 +136,7 @@ sub preprocess_request
 
         # parse the options
         $::UPDATE = 0;
-        $::QUITE  = 0;
+        $::QUIET  = 0;
         $::MON    = 0;
         $::POWER  = 0;
 
@@ -146,7 +146,7 @@ sub preprocess_request
         $Getopt::Long::ignorecase = 0;
         if (!GetOptions(
                 'm|usemon' => \$::MON,
-                'q|quite' => \$::QUITE, #this is a internal flag used by monitoring
+                'q|quiet' => \$::QUIET, #this is a internal flag used by monitoring
                 'u|updatedb'  => \$::UPDATE,
                 'p|powerstat' => \$::POWER,
                 'h|help'      => \$::HELP,
@@ -174,7 +174,7 @@ sub preprocess_request
         }
 
         $req->{'update'}->[0] = $::UPDATE;
-        $req->{'quite'}->[0]  = $::QUITE;
+        $req->{'quiet'}->[0]  = $::QUIET;
         $req->{'mon'}->[0]    = $::MON;
         $req->{'power'}->[0]  = $::POWER;
         return [$req];
@@ -1123,11 +1123,11 @@ sub process_request {
 
         #print Dumper($request);
         my $update = $request->{'update'}->[0];
-        my $quite  = $request->{'quite'}->[0];
+        my $quiet  = $request->{'quiet'}->[0];
 
 
         #show the output
-        if (!$quite) {
+        if (!$quiet) {
             foreach my $node1 (sort keys(%$status)) {
                 my %rsp;
                 $rsp{name} = [$node1];

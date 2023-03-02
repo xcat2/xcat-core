@@ -5,7 +5,7 @@ After=network.target syslog.service
 [Service]
 EnvironmentFile=-/etc/sysconfig/xcat
 Type=forking
-PIDFile=/var/run/xcatd.pid
+PIDFile=/run/xcatd.pid
 ExecStart=/etc/init.d/xcatd start
 ExecStop=/etc/init.d/xcatd stop
 LimitNOFILE=16000

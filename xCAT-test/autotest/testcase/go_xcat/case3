@@ -39,6 +39,35 @@ check:output=~Version
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
+
+#Uninstall xCAT, then install again and verify public keys
+cmd:xdsh $$CN "cd /; ./go-xcat -y completely uninstall"
+check:rc==0
+check:output=~xCAT has been uninstalled
+
+#Remove --nogpgcheck (yum/dnf) --no-gpg-checks (zypper) and --allow-unauthenticated (apt-get) flags from go-xcat 
+# to install xCAT public key when installing packages
+cmd:xdsh $$CN "sed -i 's/\-\-nogpgcheck//g' /go-xcat"
+cmd:xdsh $$CN "sed -i 's/\-\-no\-gpg\-checks//g' /go-xcat"
+cmd:xdsh $$CN "sed -i 's/\-\-allow\-unauthenticated//g' /go-xcat"
+
+#Install devel version of xCAT. If first attempt fails, try again
+cmd:xdsh $$CN "cd /; ./go-xcat --xcat-version=devel -y install"
+cmd:version=`xdsh $$CN /opt/xcat/bin/lsxcatd -v`; if [[ $version =~ "Version" ]]; then echo "xCAT installed successfully first time"; else echo "First attempt to install xCAT failed, attempting to install xCAT again"; xdsh $$CN "cd /; ./go-xcat --xcat-version=devel -y install"; fi
+
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh; lsxcatd -v"
+check:output=~Version
+cmd:xdsh $$CN "service xcatd status"
+check:rc==0
+check:output=~running
+
+#Verify xCAT public key was installed
+cmd:if [[ "$$OS" =~ "ubuntu" ]]; then xdsh $$CN "apt-key list"; else xdsh $$CN "rpm -q gpg-pubkey --qf '%{name}-%{version}-%{release} --> %{summary}\n'"; fi
+check:output=~xCAT Automatic Signing Key
+
+#Remove public key on non-Ubuntu system. It was installed during go-xcat RPM installs
+cmd:if [[ "$$OS" != "ubuntu" ]]; then xdsh $$CN "rpm -e gpg-pubkey-ca548a47-5b2c830b"; fi
+
 cmd:xdsh $$CN "service xcatd stop"
 end
 

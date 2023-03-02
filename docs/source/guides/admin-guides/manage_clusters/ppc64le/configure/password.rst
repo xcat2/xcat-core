@@ -1,15 +1,16 @@
 Configure passwords
 ===================
 
-#. Configure the system password for the ``root`` user on the compute nodes.
+#. Configure the system password for the ``root`` user on the compute nodes. This password can be provided in encrypted or clear text form using the :doc:`chtab </guides/admin-guides/references/man8/chtab.8>` command.
 
-   * Set using the :doc:`chtab </guides/admin-guides/references/man8/chtab.8>` command:  ::
+   * Clear text: ::
+
 
        chtab key=system passwd.username=root passwd.password=abc123
 
-     To encrypt the password using ``openssl``, use the following command: ::
+   * Encrypted using ``openssl``: ::
 
-       chtab key=system passwd.username=root passwd.password=`openssl passwd -1 abc123`
+       chtab key=system passwd.username=root passwd.password=`openssl passwd -6 abc123`
 
 
 #. Configure the passwords for Management modules of the compute nodes.

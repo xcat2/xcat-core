@@ -80,15 +80,15 @@ The xCAT-test test cases are in flat text format, the testing framework will par
   #optional, description of the test case
   description: what the test case is for?
   #optional, environment requirements
-  os:AIX/Linux
+  os:AIX/Linux/sles/ubuntu/rhels/rhels7/rhels8
   #optional, environment requirements
-  arch:ppc/x86
+  arch:ppc/ppc64/ppc64le/x86_64
   #optional, environment requirements
-  hcp:hmc/mm/bmc/fsp
+  hcp:hmc/mm/bmc/fsp/ipmi/openbmc
   #optional, label
   label:label1
   #required, command need to run
-  cmd:comand
+  cmd:command
   #optional, check return code of last executed command
   check:rc == or != return code
   #optional, check output of last executed command
@@ -103,13 +103,13 @@ B<Note>: Each test case can have more than one I<cmd> sections and each I<cmd> s
 
 =item 1.
 
-To run all  test cases related command rpower:
+To run all test cases related to command B<rpower>:
 
   xcattest -f /tmp/config -c rpower
 
 =item 2.
 
-To run customized bundle with /tmp/config file:
+To run customized bundle with I</tmp/config> file:
 
   xcattest -c lsdef -l  > /opt/xcat/share/xcat/tools/autotest/bundle/custom.bundle
   Modify custom.bundle
@@ -117,13 +117,13 @@ To run customized bundle with /tmp/config file:
 
 =item 3.
 
-To run specified test cases with /tmp/config file:
+To run specified test cases with I</tmp/config> file:
 
   xcattest -f /tmp/config -t lsdef_t_o_l_z
 
 =item 4.
 
-To add a new case to test B<chvm>. In the example, we assume that the min_mem should not be equal to 16 in the lpar profile of computenode. The case name is chvm_custom. It create a test lpar named testnode firstly, that change the min_mem of the lpar to 16 using chvm, then check if min_mem have changed correctly. At last, the testnode be remove to ensure no garbage produced in the cases.
+To add a new test case to test B<chvm>. In this example, we assume that the B<min_mem> should not be equal to 16 in the lpar profile of computenode. The case name is B<chvm_custom>. It creates a test lpar named B<testnode> first, then changes the B<min_mem> of the lpar to 16 using B<chvm>, then checks if B<min_mem> have changed correctly. Finally, the B<testnode> is removed.
 
   add a new test case file in /opt/xcat/share/xcat/tools/autotest/chvm
   edit filename

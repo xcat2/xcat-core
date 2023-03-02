@@ -33,6 +33,7 @@ check:rc==0
 cmd:cat /etc/yum.repos.d/xcat-dep-python-local.repo
 check:rc==0 
 cmd:wget https://xcat.org/files/xcat/xcat-dep/2.x_Linux/beta/xCAT-openbmc-py-RH7-2.14.6-snap202204090016.noarch.rpm --no-check-certificate  -O /tmp/xCAT-openbmc-py-RH7.noarch.rpm
+check:rc==0
 cmd:ls -l /tmp/xCAT-openbmc-py-RH7.noarch.rpm
 check:rc==0
 cmd:yum install -y /tmp/xCAT-openbmc-py-RH7.noarch.rpm

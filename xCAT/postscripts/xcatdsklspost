@@ -537,9 +537,13 @@ else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
     # download poscripts has not worked yet
     #try the dhcp server, this is used for initial boot for the node.
     if [ $downloaded -eq 0 ]; then
-        #setup $OSVER ,for SLES11
+        #setup $OSVER ,for SLES12 and earlier
         if [ -e '/etc/SuSE-release' ]; then
             OSVER=`grep -h VERSION /etc/SuSE-release |awk '{print $3}'`
+        fi
+        #setup $OSVER ,for SLES15 and later
+        if [ -e '/etc/SUSE-brand' ]; then
+            OSVER=`grep -h VERSION /etc/SUSE-brand |awk '{print $3}'`
         fi
         SIPS=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient*eth*.leases 2> /dev/null|awk '{print $3}'|sed -e 's/;//'`
         if [ -z "$SIPS" ]; then

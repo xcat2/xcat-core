@@ -29,6 +29,7 @@ Requires: cpio
 
 # fping or nmap is needed by pping (in case xCAT-client is installed by itself on a remote client)
 %ifos linux
+BuildRequires: perl-generators
 Requires: nmap perl-XML-Simple perl-XML-Parser
 %else
 Requires: expat
@@ -317,6 +318,11 @@ PATH=\$XCATROOT/bin:\$XCATROOT/sbin:\$XCATROOT/share/xcat/tools:\$PATH
 MANPATH=\$XCATROOT/share/man:\$MANPATH
 export XCATROOT PATH MANPATH
 export PERL_BADLANG=0
+# If /usr/local/share/perl5 is not already in @INC, add it to PERL5LIB
+perl -e "print \"@INC\"" | egrep "(^|\W)/usr/local/share/perl5($| )" > /dev/null
+if [ \$? = 1 ]; then
+    export PERL5LIB=/usr/local/share/perl5:\$PERL5LIB
+fi
 EOF
 
 # export XCATSSLVER for sles11. Others OS can work without this setting.
@@ -336,6 +342,11 @@ else
      setenv MANPATH \${XCATROOT}/share/man:\${MANPATH}
 endif
 setenv PERL_BADLANG 0
+# If /usr/local/share/perl5 is not already in @INC, add it to PERL5LIB
+perl -e "print \"@INC\"" | egrep "(^|\W)/usr/local/share/perl5($| )" > /dev/null
+if [ \$? = 1 ]; then
+    setenv PERL5LIB /usr/local/share/perl5:\${PERL5LIB}
+fi
 EOF
 chmod 755 /etc/profile.d/xcat.*
 

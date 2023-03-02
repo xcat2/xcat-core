@@ -1,0 +1,99 @@
+start:reg_linux_diskless_installation_flat_modules_and_groups_rh8
+description:Test provision and updatenode with yum groups and modules. Runs only on RH8
+os:rhels8
+label:flat_cn_diskless,provision
+cmd:cp /opt/xcat/share/xcat/netboot/rh/compute.rhels8.__GETNODEATTR($$CN,arch)__.pkglist /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:echo "yum" >> /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:echo "@Security Tools" >> /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:echo "@ruby:2.6" >> /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute pkglist=/opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+check:rc==0
+cmd:cat /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:rmimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+check:output=~Provision node\(s\)\: $$CN
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:rc==0
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+# Verify group and module were installed. Can not use "yum group"
+# since .repo files are not setup at this point
+cmd:xdsh $$CN rpm -q xml-common
+check:rc==0
+check:output=~xml-common
+cmd:xdsh $$CN yum module list --installed
+check:output=~ruby
+check:output=~2.6
+end
+
+# Verify group and module can be removed
+cmd:cp /opt/xcat/share/xcat/netboot/rh/compute.rhels8.__GETNODEATTR($$CN,arch)__.pkglist /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:echo "-@Security Tools" >> /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:echo "-@ruby:2.6" >> /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:cat /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:updatenode $$CN -P ospkgs
+check:rc==0
+cmd:xdsh $$CN yum group list installed
+check:output!~Security Tools
+cmd:xdsh $$CN yum module list --installed
+check:output!~ruby
+# Cleanup
+cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute pkglist=/opt/xcat/share/xcat/netboot/rh/compute.rhels8.__GETNODEATTR($$CN,arch)__.pkglist
+cmd:rm /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+end
+
+start:reg_linux_diskless_installation_flat_groups_rh7
+description:Test provision and updatenode with yum groups. Runs only on RH7
+os:rhels7
+label:flat_cn_diskless,provision
+cmd:cp /opt/xcat/share/xcat/netboot/rh/compute.rhels7.__GETNODEATTR($$CN,arch)__.pkglist /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:echo "yum" >> /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:echo "@Security Tools" >> /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute pkglist=/opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+check:rc==0
+cmd:cat /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:rmimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+check:output=~Provision node\(s\)\: $$CN
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:rc==0
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+# Verify group was installed. Can not use "yum group"
+# since .repo files are not setup at this point
+cmd:xdsh $$CN rpm -q xml-common
+check:rc==0
+check:output=~xml-common
+
+# Verify group can be removed
+cmd:cp /opt/xcat/share/xcat/netboot/rh/compute.rhels7.__GETNODEATTR($$CN,arch)__.pkglist /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:echo "-@Security Tools" >> /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:cat /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+cmd:updatenode $$CN -P ospkgs
+check:rc==0
+cmd:xdsh $$CN yum group list installed
+check:output!~Security Tools
+# Cleanup
+cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute pkglist=/opt/xcat/share/xcat/netboot/rh/compute.rhels7.__GETNODEATTR($$CN,arch)__.pkglist
+cmd:rm /opt/xcat/share/xcat/netboot/rh/compute.pkglist.modules
+end

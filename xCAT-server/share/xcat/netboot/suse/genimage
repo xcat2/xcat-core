@@ -211,8 +211,10 @@ unless (grep /af_packet/, @ndrivers) {
     unshift(@ndrivers, "af_packet.ko");
 }
 
+# Check both possible SLES files for version number. 
+# "--no-messages" suppresses "grep: <file>: No such file or directory"
 my $osver_host;
-if (`grep VERSION /etc/SuSE-release` =~ /VERSION = (\d+)/) {
+if (`grep --no-messages VERSION /etc/SuSE-release /etc/SUSE-brand` =~ /VERSION = (\d+)/) {
     $osver_host = $1;
 } else {
     $osver_host = 11;

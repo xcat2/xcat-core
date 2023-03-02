@@ -2201,7 +2201,7 @@ sub CheckVersion
     my $index = 0;
     my $max_index = ($len_a > $len_b) ? $len_a : $len_b;
 
-    for ($index = 0 ; $index <= $max_index ; $index++)
+    for ($index = 0 ; $index < $max_index ; $index++)
     {
         my $val_a = ($len_a < $index) ? 0 : $a[$index];
         my $val_b = ($len_b < $index) ? 0 : $b[$index];
@@ -3724,7 +3724,7 @@ sub filter_nostatusupdate {
     #filter out the nodes which support the node provision status feedback
     my @nodesfiltered = ();
     if (exists $inref->{$::STATUS_INSTALLING}) {
-        map { if ($nttabdata->{$_}->[0]->{os} !~ /(fedora|rh|centos|rocky|sles|ubuntu)/) { push @nodesfiltered, $_; } } @{ $inref->{$::STATUS_INSTALLING} };
+        map { if ($nttabdata->{$_}->[0]->{os} !~ /(fedora|rh|centos|alma|rocky|sles|ubuntu)/) { push @nodesfiltered, $_; } } @{ $inref->{$::STATUS_INSTALLING} };
         delete $inref->{$::STATUS_INSTALLING};
         if (@nodesfiltered) {
             @{ $inref->{$::STATUS_INSTALLING} } = @nodesfiltered;
@@ -3733,7 +3733,7 @@ sub filter_nostatusupdate {
 
     @nodesfiltered = ();
     if (exists $inref->{$::STATUS_NETBOOTING}) {
-        map { if ($nttabdata->{$_}->[0]->{os} !~ /(fedora|rh|centos|rocky|sles|ubuntu)/) { push @nodesfiltered, $_; } } @{ $inref->{$::STATUS_NETBOOTING} };
+        map { if ($nttabdata->{$_}->[0]->{os} !~ /(fedora|rh|centos|alma|rocky|sles|ubuntu)/) { push @nodesfiltered, $_; } } @{ $inref->{$::STATUS_NETBOOTING} };
         delete $inref->{$::STATUS_NETBOOTING};
         if (@nodesfiltered) {
             @{ $inref->{$::STATUS_NETBOOTING} } = @nodesfiltered;

@@ -1,3 +1,4 @@
+#!/bin/sh
 # esx setup
 # example on how to set up ESX.  We setup ssh and also add a basic
 # VLAN configuration

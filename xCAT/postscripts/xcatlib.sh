@@ -430,7 +430,7 @@ function startservice {
    local retmsg
    retmsg=`$cmd 2>&1`
    retval=$?
-   [ "$retval" = "0" ] && (echo "$retmsg" | grep -i "Running in chroot,\s*ignoring request.*" >/dev/null 2>&1)   && retval=1
+   [ "$retval" = "0" ] && (echo "$retmsg" | grep -i "Running in chroot,\s*ignoring .*" >/dev/null 2>&1)   && retval=1
 
    return $retval
 }
@@ -474,7 +474,7 @@ function stopservice {
    local retmsg
    retmsg=`$cmd 2>&1`
    retval=$?
-   [ "$retval" = "0" ] && (echo "$retmsg" | grep -i "Running in chroot,\s*ignoring request.*" >/dev/null 2>&1) && retval=1
+   [ "$retval" = "0" ] && (echo "$retmsg" | grep -i "Running in chroot,\s*ignoring .*" >/dev/null 2>&1) && retval=1
    return $retval
 }
 
@@ -522,7 +522,7 @@ function restartservice {
 
    #In the chrooted env, the system management commands(start/stop/restart) will be ignored and the return code is 0
    #need to return the proper code in the chrooted scenario
-   [ "$retval" = "0" ] && (echo "$retmsg" | grep -i "Running in chroot,\s*ignoring request.*" >/dev/null 2>&1) && retval=1
+   [ "$retval" = "0" ] && (echo "$retmsg" | grep -i "Running in chroot,\s*ignoring .*" >/dev/null 2>&1) && retval=1
 
    return $retval
 }

@@ -12,7 +12,7 @@ if [ -e "/etc/redhat-release" ]; then
    if [ "$?" != "0" ] ;then
        yum install -y tcpdump
    fi
-elif [ -e "/etc/SuSE-release" ]; then
+elif [ -e "/etc/SuSE-release" ] || [ -e "/etc/SUSE-brand" ]; then
     rpm -qa |grep tcpdump
     if [ "$?" != "0" ] ;then
        zypper -n install tcpdump

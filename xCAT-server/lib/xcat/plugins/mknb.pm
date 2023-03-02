@@ -104,7 +104,7 @@ sub process_request {
         $callback->({ error => "Need to specify architecture (x86, x86_64 or ppc64)" }, { errorcode => [1] });
         return;
     } elsif ($arch eq "ppc64le" or $arch eq "ppc64el") {
-        $callback->({ data => "The arch:$arch is not supported at present, use \"ppc64\" instead" });
+        $callback->({ data => "The arch:$arch is not supported, using \"ppc64\" instead" });
         $arch = 'ppc64';
         $request->{arg}->[0] = $arch;
     }
@@ -300,14 +300,10 @@ sub process_request {
             print $cfg "#!gpxe\n";
             if ($invisibletouch) {
                 print $cfg 'imgfetch -n kernel http://${next-server}:'.$httpport.'/tftpboot/xcat/genesis.kernel.' . "$arch quiet xcatd=" . $normnets->{$_} . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/machyp}' . "\n";
-                if ($lzma_exit_value) {
-                    print $cfg 'imgfetch -n nbfs http://${next-server}:'.$httpport.'/tftpboot/xcat/genesis.fs.' . "$arch.gz\n";
-                } else {
-                    print $cfg 'imgfetch -n nbfs http://${next-server}:'.$httpport.'/tftpboot/xcat/genesis.fs.' . "$arch.lzma\n";
-                }
+                print $cfg 'imgfetch -n nbfs http://${next-server}:'.$httpport . "$initrd_file\n";
             } else {
                 print $cfg 'imgfetch -n kernel http://${next-server}:'.$httpport.'/tftpboot/xcat/nbk.' . "$arch quiet xcatd=" . $normnets->{$_} . ":$xcatdport $consolecmdline\n";
-                print $cfg 'imgfetch -n nbfs http://${next-server}:'.$httpport.'/tftpboot/xcat/nbfs.' . "$arch.gz\n";
+                print $cfg 'imgfetch -n nbfs http://${next-server}:'.$httpport . "$initrd_file\n";
             }
             print $cfg "imgload kernel\n";
             print $cfg "imgexec kernel\n";
@@ -318,18 +314,14 @@ sub process_request {
                 print $cfg "   delay=5\n";
                 print $cfg '   image=/tftpboot/xcat/genesis.kernel.' . "$arch\n";
                 print $cfg "   label=\"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
-                if ($lzma_exit_value) {
-                    print $cfg "   initrd=/tftpboot/xcat/genesis.fs.$arch.gz\n";
-                } else {
-                    print $cfg "   initrd=/tftpboot/xcat/genesis.fs.$arch.lzma\n";
-                }
+                print $cfg "   initrd=$initrd_file\n";
                 print $cfg "   append=\"quiet xcatd=" . $normnets->{$_} . ":$xcatdport destiny=discover $consolecmdline BOOTIF=%B\"\n";
                 close($cfg);
                 open($cfg, ">", "$tftpdir/xcat/xnba/nets/$net.uefi");
                 print $cfg "#!gpxe\n";
                 print $cfg 'imgfetch -n kernel http://${next-server}:'.$httpport.'/tftpboot/xcat/genesis.kernel.' . "$arch\nimgload kernel\n";
                 print $cfg "imgargs kernel quiet xcatd=" . $normnets->{$_} . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/mac:hexhyp}' . " destiny=discover initrd=initrd\n";
-                print $cfg 'imgfetch -n initrd http://${next-server}:'.$httpport.'/tftpboot/xcat/genesis.fs.' . "$arch.gz\nimgexec kernel\n";
+                print $cfg 'imgfetch -n initrd http://${next-server}:'.$httpport . "$initrd_file\nimgexec kernel\n";
                 close($cfg);
             }
         } elsif ($arch =~ /ppc/) {
@@ -364,11 +356,12 @@ sub process_request {
             }
         }
         if ($dopxe) {
+            my ($ignored, $tftp_initrd) = split /\/tftpboot\//, $initrd_file, 2;
             open($cfgfile, ">", "$tftpdir/pxelinux.cfg/" . uc($_));
             print $cfgfile "DEFAULT xCAT\n";
             print $cfgfile "  LABEL xCAT\n";
             print $cfgfile "  KERNEL xcat/nbk.$arch\n";
-            print $cfgfile "  APPEND initrd=xcat/nbfs.$arch.gz quiet xcatd=" . $hexnets->{$_} . ":$xcatdport $consolecmdline\n";
+            print $cfgfile "  APPEND initrd=$tftp_initrd quiet xcatd=" . $hexnets->{$_} . ":$xcatdport $consolecmdline\n";
             close($cfgfile);
         } elsif ($arch =~ /ppc/) {
             open($cfgfile, ">", "$tftpdir/etc/" . lc($_));

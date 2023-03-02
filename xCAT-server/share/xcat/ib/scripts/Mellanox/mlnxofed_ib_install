@@ -376,7 +376,7 @@ EOF
 
         # Being called from <image>.postinstall script
         # Assume we are on the same machine
-        if [ -f /etc/SuSE-release ]; then
+        if [ -f /etc/SuSE-release ] || [ -f /etc/SUSE-brand ]; then
             chroot "$IMGROOTPATH" rpm -e --noscripts --allmatches mlnx-ofa_kernel-kmp-default 2>/dev/null
             chroot "$IMGROOTPATH" rpm -e --nodeps --allmatches libibverbs 2>/dev/null
         elif grep -q Ubuntu /etc/os-release 2>/dev/null; then

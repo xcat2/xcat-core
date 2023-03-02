@@ -24,13 +24,13 @@ check:rc==0
 cmd:makedhcp -a
 check:rc==0
 cmd:sleep 2
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$SN;elif cat /etc/*release |grep "Red Hat\|Rocky" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$SN;fi
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$SN;elif cat /etc/*release |grep "Red Hat\|Rocky\|AlmaLinux" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$SN;fi
 check:output=~$$SN
 cmd:chdef -t node $$SN groups=service,all
 check:rc==0
 cmd:chdef -t group -o service profile=service  primarynic=mac installnic=mac
 check:rc==0
-cmd:chdef -t group -o service setupnfs=1 setupdhcp=1 setuptftp=1 setupnameserver=1 setupconserver=1 setupntp=1
+cmd:chdef -t group -o service setupnfs=1 setupdhcp=1 setuptftp=1 setupnameserver=1 setupconserver=2 setupntp=1
 check:rc==0
 cmd:chdef -t group -o service nfsserver=$$MN tftpserver=$$MN xcatmaster=$$MN monserver=$$MN
 check:rc==0
@@ -46,13 +46,13 @@ check:rc==0
 cmd:cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-core && createrepo .
 check:rc==0
 
-cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";path2="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sle" ]];then path="sles";path2="sles";elif [[ "__GETNODEATTR($$SN,os)__" =~ "ol" ]];then path="ol";path2="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "rocky" ]];then path="rocky";path2="rh";fi; ver="__GETNODEATTR($$SN,os)__"; tmp=${ver%%.*};ver=`echo "$tmp"|sed 's:[a-zA-Z]::g'`;cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-dep/$path2$ver/__GETNODEATTR($$SN,arch)__ && createrepo .;
+cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";path2="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sle" ]];then path="sles";path2="sles";elif [[ "__GETNODEATTR($$SN,os)__" =~ "ol" ]];then path="ol";path2="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "rocky" ]];then path="rocky";path2="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "alma" ]];then path="alma";path2="rh";fi; ver="__GETNODEATTR($$SN,os)__"; tmp=${ver%%.*};ver=`echo "$tmp"|sed 's:[a-zA-Z]::g'`;cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-dep/$path2$ver/__GETNODEATTR($$SN,arch)__ && createrepo .;
 check:rc==0
 
 cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkgdir=/install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__
 check:rc==0
 
-cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sle" ]];then path="sles";elif [[ "__GETNODEATTR($$SN,os)__" =~ "ol" ]];then path="ol";elif [[ "    __GETNODEATTR($$SN,os)__" =~ "rocky" ]];then path="rocky";fi; ver="__GETNODEATTR($$SN,os)__"; chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/$path/service.${ver%%.*}.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist;
+cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sle" ]];then path="sles";elif [[ "__GETNODEATTR($$SN,os)__" =~ "ol" ]];then path="ol";elif [[ "__GETNODEATTR($$SN,os)__" =~ "rocky" ]];then path="rocky";elif [[ "__GETNODEATTR($$SN,os)__" =~ "alma" ]];then path="alma";fi; ver="__GETNODEATTR($$SN,os)__"; chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/$path/service.${ver%%.*}.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist;
 check:rc==0
 
 #add support python in sn
@@ -100,7 +100,7 @@ check:output=~IMAGENAME=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-inst
 cmd:if rpm -qa|grep xCAT-openbmc-py 2>&1; then xdsh $$SN "rpm -qa|grep xCAT-openbmc-py";else echo "There is no xCAT-openbmc-py installed in MN, skip check xCAT-openbmc-py installation in SN"; exit 0;fi
 check:rc==0
 cmd:xdsh $$SN  "cat /var/log/xcat/xcat.log"
-cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]]; then if [[ "__GETNODEATTR($$SN,os)__" =~ "sle" ]];then xdsh $$SN "zypper -n install perl-Sys-Virt"; elif [[ "__GETNODEATTR($$SN,os)__" =~ "rh" || "__GETNODEATTR($$SN,os)__" =~ "ol" || "__GETNODEATTR($$SN,os)__" =~ "rocky" ]];then xdsh $$SN "yum install -y perl-Sys-Virt";fi;fi
+cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]]; then if [[ "__GETNODEATTR($$SN,os)__" =~ "sle" ]];then xdsh $$SN "zypper -n install perl-Sys-Virt"; elif [[ "__GETNODEATTR($$SN,os)__" =~ "rh" || "__GETNODEATTR($$SN,os)__" =~ "ol" || "__GETNODEATTR($$SN,os)__" =~ "rocky" || "__GETNODEATTR($$SN,os)__" =~ "alma" ]];then xdsh $$SN "yum install -y perl-Sys-Virt";fi;fi
 check:rc==0
 cmd:makentp -a
 check:rc==0

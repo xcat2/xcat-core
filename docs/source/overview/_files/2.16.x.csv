@@ -1,5 +1,6 @@
 Version,Release Date,New OS Supported,Release Notes 
-2.16.4,2022-06-07,"RHEL 8.5,SLES15.3",`2.16.4 Release Notes <https://github.com/xcat2/xcat-core/wiki/XCAT_2.16.4_Release_Notes>`_
+2.16.5,2023-03-08,"RHEL 8.6",`2.16.5 Release Notes <https://github.com/xcat2/xcat-core/wiki/XCAT_2.16.5_Release_Notes>`_
+2.16.4,2022-06-20,"RHEL 8.5,SLES15.3",`2.16.4 Release Notes <https://github.com/xcat2/xcat-core/wiki/XCAT_2.16.4_Release_Notes>`_
 2.16.3,2021-11-17,"RHEL 8.4",`2.16.3 Release Notes <https://github.com/xcat2/xcat-core/wiki/XCAT_2.16.3_Release_Notes>`_
 2.16.2,2021-05-25,"RHEL 8.3",`2.16.2 Release Notes <https://github.com/xcat2/xcat-core/wiki/XCAT_2.16.2_Release_Notes>`_
 2.16.1,2020-11-06,"RHEL 8.2",`2.16.1 Release Notes <https://github.com/xcat2/xcat-core/wiki/XCAT_2.16.1_Release_Notes>`_

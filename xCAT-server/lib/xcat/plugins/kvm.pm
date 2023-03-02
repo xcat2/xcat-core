@@ -970,7 +970,7 @@ sub build_xmldesc {
         # do nothing for ppc64le, do not support sound at this time
         ;
     } else {
-        $xtree{devices}->{sound}->{model} = 'ac97';
+        $xtree{devices}->{sound}->{model} = 'ich6';
     }
 
     $xtree{devices}->{console}->{type} = 'pty';
@@ -2258,7 +2258,7 @@ sub chvm {
     }
     if ($cpucount or $memory) {
         if ($currstate eq 'on') {
-            if ($cpucount) { xCAT::SvrUtils::sendmsg([ 1, "Hot add of cpus not supported (VM must be powered down to successfuly change)" ], $callback, $node); }
+            if ($cpucount) { xCAT::SvrUtils::sendmsg([ 1, "Hot add of cpus not supported (VM must be powered down to successfully change)" ], $callback, $node); }
             if ($cpucount) {
 
                 #$dom->set_vcpus($cpucount); this didn't work out as well as I hoped..

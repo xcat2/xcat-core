@@ -261,7 +261,7 @@ do
     # (1)for rhels6, there is one repodata in the os base dir; so keep it here, and handle the other cases below
     # (2)for sles, we should specified the baseurl should be ./install/sles11/ppc64/1
     # (3)for SL5, we should append the /SL
-    # (4)for rhels8, centos8, ol8 and rocky8 we should append /BaseOS and /AppStream to base directory
+    # (4)for rhels8/9, centos8/9, ol8/9, alma8/9 and rocky8/9 we should append /BaseOS and /AppStream to base directory
     # (5) for other os, we just keep it here.
     # For other pkg paths, we just keep it here.
     if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
@@ -273,11 +273,12 @@ do
             ospkgdir="$ospkgdir/SL"
         fi
     fi
-    if ( ! pmatch "$OSVER" "rhels8*" && 
-         ! pmatch "$OSVER" "centos8*" &&
-         ! pmatch "$OSVER" "rocky8*" &&
-         ! pmatch "$OSVER" "ol8*"); then
-        # For rhels8, centos8, ol8 and rocky8 do not put $ospkgdir by itself
+    if ( ! pmatch "$OSVER" "rhels[89]*" && 
+         ! pmatch "$OSVER" "centos[89]*" &&
+         ! pmatch "$OSVER" "rocky[89]*" &&
+         ! pmatch "$OSVER" "alma[89]*" &&
+         ! pmatch "$OSVER" "ol[89]*"); then
+        # For rhels8/9, centos8/9, ol8/9, alma8/9 and rocky8 do not put $ospkgdir by itself
         array_set_element os_path $index $ospkgdir
     fi
     array_set_element os_path $index $ospkgdir
@@ -310,6 +311,7 @@ do
     if ( pmatch "$OSVER" "rhel*" || 
          pmatch "$OSVER" "centos*" || 
          pmatch "$OSVER" "rocky*" ||
+         pmatch "$OSVER" "alma*" ||
          pmatch "$OSVER" "ol*"); then
         #default_pkgdir="$INSTALLDIR/$OSVER/$ARCH"
         if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
@@ -343,11 +345,12 @@ do
                          array_set_element os_path $index $ospkgdir_ok
                      done
                  fi   # x86_64
-            elif ( pmatch "$OSVER" "rhels8*" || 
-                   pmatch "$OSVER" "centos8*" || 
-                   pmatch "$OSVER" "rocky8*" ||
-                   pmatch "$OSVER" "ol8*"); then
-                 # for rhels8, centos8, ol8 and rocky8 the repodata is in ./BaseOS, ./AppStream, not in ./
+            elif ( pmatch "$OSVER" "rhels[89]*" || 
+                   pmatch "$OSVER" "centos[89]*" || 
+                   pmatch "$OSVER" "rocky[89]*" ||
+                   pmatch "$OSVER" "alma[89]*" ||
+                   pmatch "$OSVER" "ol[89]*"); then
+                 # for rhels8/9, centos8/9, ol8/9, alma8/9 and rocky8/9 the repodata is in ./BaseOS, ./AppStream, not in ./
                  for arg in "BaseOS" "AppStream"
                  do
                      ospkgdir_ok="$ospkgdir/$arg"
@@ -436,9 +439,9 @@ do
 
         #categorize the groups according to the action(install/remove)
         if [ $remove -eq 0 ]; then
-    	   groups="$groups $tmp"
+    	   groups="$groups @$tmp"
         else
-           groups_d="$groups_d $tmp"
+           groups_d="$groups_d @$tmp"
         fi
     else
         if ( pmatch  "$x" "cuda*" ); then
@@ -945,8 +948,8 @@ else
 
     #install new groups if any
     if [ -n "$groups" ]; then
-	#cmd="echo $groups| $ENVLIST xargs yum -y groupinstall"
-	cmd="$ENVLIST yum -y groupinstall $groups"
+	#cmd="$ENVLIST yum -y groupinstall $groups"
+	cmd="$ENVLIST yum -y install $groups"
 	result=`eval $cmd 2>&1`
         R=$?
         if [ $R -ne 0 ]; then
@@ -1005,7 +1008,8 @@ else
 
     #remove some groups if specified
     if [ -n "$groups_d" ]; then
-        cmd="$ENVLIST yum -y groupremove $groups_d"
+        #cmd="$ENVLIST yum -y groupremove $groups_d"
+        cmd="$ENVLIST yum -y remove $groups_d"
         result=`eval $cmd 2>&1`
         R=$?
         if [ $R -ne 0 ]; then

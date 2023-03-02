@@ -717,7 +717,7 @@ sub handle_ipmi_packet {
             my @payload = splice(@rsp, 12, $psize);
             if ($encrypted) {
                 my $iv = pack("C*", splice @payload, 0, 16);
-                my $cipher = Crypt::CBC->new(-literal_key => 1, -key => $self->{aeskey}, -cipher => "Crypt::Rijndael", -header => "none", -iv => $iv, -keysize => 16, -blocksize => 16, -padding => \&cbc_pad);
+                my $cipher = Crypt::CBC->new(-literal_key => 1, -key => $self->{aeskey}, -cipher => "Crypt::Rijndael", -header => "none", -iv => $iv, -keysize => 16, -padding => \&cbc_pad);
                 my $crypted = pack("C*", @payload);
                 @payload = unpack("C*", $cipher->decrypt($crypted));
             }

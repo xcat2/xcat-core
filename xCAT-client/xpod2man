@@ -98,7 +98,7 @@ sub createDummyPods {
     mkdir "$poddir/man7";
     foreach my $d (@dummyPods) {
         if (!open(TMP, ">>$d")) { warn "Could not create dummy pod file $d ($!)\n"; }
-        else                    { close TMP; }
+        else                    { print TMP "=head1 NAME"; close TMP; }
     }
 
     return @dummyPods;

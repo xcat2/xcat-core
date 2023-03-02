@@ -1,3 +1,30 @@
+start:nodeset_shell_lzma
+os:rhels8
+label:others,genesis
+description: verify could log in genesis shell lzma compression
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]]; then yum install -y https://rpmfind.net/linux/centos/8-stream/PowerTools/__GETNODEATTR($$CN,arch)__/os/Packages/xz-lzma-compat-5.2.4-3.el8.__GETNODEATTR($$CN,arch)__.rpm; elif rpm -q xz; then yum download https://rpmfind.net/linux/centos/8-stream/PowerTools/__GETNODEATTR($$CN,arch)__/os/Packages/xz-lzma-compat-5.2.4-3.el8.__GETNODEATTR($$CN,arch)__.rpm; rpm -ivh --nodeps xz-lzma-compat-5.2.4-3.el8.__GETNODEATTR($$CN,arch)__.rpm; fi
+#Generate genesis network boot with lzma compression
+cmd:mknb __GETNODEATTR($$CN,arch)__
+check:rc==0
+cmd:nodeset $$CN shell
+check:rc==0
+cmd:ls -l /tftpboot/xcat/genesis.fs.*.lzma
+check:output=~genesis
+cmd:find /tftpboot -type f -name $$CN | xargs grep "lzma"
+check:output=~genesis
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -n $$CN  -g
+check:rc==0
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -n $$CN -s
+check:rc==0
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -n $$CN -c
+check:rc==0
+cmd:cat /tmp/genesistestlog/*
+#Remove lzma compression RPM, cleanup and generate default gz genesis network boot
+cmd:yum remove -y xz-lzma-compat
+cmd:rm -f /tftpboot/xcat/genesis.fs.*.lzma
+cmd:mknb __GETNODEATTR($$CN,arch)__
+end
+
 start:nodeset_shell
 label:others,genesis
 description: verify could log in genesis shell

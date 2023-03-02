@@ -1,0 +1,9 @@
+name: xcat_test
+on: [pull_request, workflow_dispatch]
+jobs:
+  xcat_pr_test:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+      - run: sudo apt-get install -y fakeroot reprepro devscripts debhelper libcapture-tiny-perl libjson-perl libsoap-lite-perl libdbi-perl libcgi-pm-perl quilt openssh-server dpkg looptools genometools software-properties-common
+      - run: perl github_action_xcat_test.pl

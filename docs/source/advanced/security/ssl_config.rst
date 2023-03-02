@@ -1,17 +1,16 @@
 OpenSSL Configuration
 =====================
 
-xCAT does not ship OpenSSL RPMS nor does it statically link to any OpenSSL libraries.  Communication between the xCAT client and daemon utilizes OpenSSL and the administrator can configure SSL_version and SSL_cipher that should be used by xCAT daemons.
+xCAT does not ship OpenSSL RPMS nor does it statically link to any OpenSSL libraries.  Communication between the xCAT client and daemon utilizes OpenSSL and the administrator can configure the SSL_version and SSL_cipher that should be used by xCAT daemons.
 
-The configuration is stored in the xCAT site table using the ``site.xcatsslversion`` and ``site.xcatsslciphers`` variables.
+The configuration is stored in the xCAT site table using the ``site.xcatsslversion`` and ``site.xcatsslciphers`` attributes.
 
 Configuration
 -------------
 
-``site.xcatsslversion`` is the ``SSL_version`` option ``xcatd`` used and passed to ``IO::Socket::SSL->start_SSL()``. By default, this value is set to empty. In this case, ``xcatd`` will use ``SSLv23:!SSLv2:!SSLv3:!TLSv1`` internally. For more detail, see https://metacpan.org/pod/IO::Socket::SSL
-By default, xCAT ships with an empty value for ``site.xcatsslversion``. In this case, ``xcatd`` will use ``SSLv23:!SSLv2:!SSLv3:!TLSv1`` internally.
+``site.xcatsslversion`` is the ``SSL_version`` option used by ``xcatd`` and passed to ``IO::Socket::SSL->start_SSL()``. See https://metacpan.org/pod/IO::Socket::SSL for more information. By default, xCAT ships with an empty value for ``site.xcatsslversion``. In this case, ``xcatd`` will use ``SSLv23:!SSLv2:!SSLv3:!TLSv1`` internally.
 
-Here is an example of change ``site.xcatsslversoin`` to a different value. Say, TLS 1.2 is preferred. ::
+Here is an example of changing ``site.xcatsslversion`` to a different value, ``TLSv1_2``, for example. ::
 
     chtab key=xcatsslversion site.value=TLSv1_2
 
@@ -23,8 +22,7 @@ After making any changes to these configuration values, ``xcatd`` must be restar
 
     service restart xcatd
 
-
-If any mistakes have been made and communication is lost to xCAT, use ``XCATBYPASS`` to fix/remove the bad configuration: ::
+If any mistakes have been made and communication is lost to xCAT, use ``XCATBYPASS`` to fix the bad configuration: ::
 
     XCATBYPASS=1 tabedit site
 

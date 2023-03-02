@@ -1,0 +1,80 @@
+start:reg_linux_diskfull_installation_flat_modules_and_groups_rh8
+description:Test provision and updatenode with yum groups and modules. Runs only on RH8
+os:rhels8
+label:flat_cn_diskful,provision
+cmd:cp /opt/xcat/share/xcat/install/rh/compute.rhels8.pkglist /opt/xcat/share/xcat/install/rh/compute.pkglist.modules
+cmd:echo "@Security Tools" >> /opt/xcat/share/xcat/install/rh/compute.pkglist.modules
+cmd:echo "@ruby:2.6" >> /opt/xcat/share/xcat/install/rh/compute.pkglist.modules
+cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute pkglist=/opt/xcat/share/xcat/install/rh/compute.pkglist.modules
+cmd:cat /opt/xcat/share/xcat/install/rh/compute.pkglist.modules
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+check:output=~Provision node\(s\)\: $$CN
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:rc==0
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+# Verify group and module were installed
+cmd:xdsh $$CN yum group list installed
+check:output=~Security Tools
+cmd:xdsh $$CN yum module list --installed
+check:output=~ruby 2.6
+# Verify group and module can be removed
+cmd:cp /opt/xcat/share/xcat/install/rh/compute.rhels8.pkglist /opt/xcat/share/xcat/install/rh/compute.pkglist.modules
+cmd:echo "-@Security Tools" >> /opt/xcat/share/xcat/install/rh/compute.pkglist.modules
+cmd:echo "-@ruby:2.6" >> /opt/xcat/share/xcat/install/rh/compute.pkglist.modules
+cmd:updatenode $$CN -P ospkgs
+check:rc==0
+cmd:xdsh $$CN yum group list installed
+check:output!~Security Tools
+cmd:xdsh $$CN yum module list --installed
+check:output!~ruby 2.6
+# Cleanup
+cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute pkglist=/opt/xcat/share/xcat/install/rh/compute.rhels8.pkglist
+cmd:rm /opt/xcat/share/xcat/install/rh/compute.pkglist.modules
+end
+
+start:reg_linux_diskfull_installation_flat_groups_rh7
+description:Test provision and updatenode with yum groups. Runs only on RH7
+os:rhels7
+label:flat_cn_diskful,provision
+cmd:cp /opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist /opt/xcat/share/xcat/install/rh/compute.pkglist.modules
+cmd:echo "@Security Tools" >> /opt/xcat/share/xcat/install/rh/compute.pkglist.modules
+cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute pkglist=/opt/xcat/share/xcat/install/rh/compute.pkglist.modules
+cmd:cat /opt/xcat/share/xcat/install/rh/compute.pkglist.modules
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+check:output=~Provision node\(s\)\: $$CN
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:rc==0
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+# Verify group was installed by cheking individual RPMs
+cmd:xdsh $$CN rpm -q xml-common openscap-scanner openscap scap-security-guide
+check:output=~xml-common-
+check:output=~openscap-scanner-
+check:output=~openscap-
+check:output=~scap-security-guide-
+# Verify group can be removed (manually install, then remove using updatenode)
+cmd:xdsh $$CN yum group install -y compat-libraries
+check:rc==0
+cmd:xdsh $$CN yum group list installed
+check:output=~Compatibility Libraries
+cmd:cp /opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist /opt/xcat/share/xcat/install/rh/compute.pkglist.modules
+cmd:echo "-@Compatibility Libraries" >> /opt/xcat/share/xcat/install/rh/compute.pkglist.modules
+cmd:updatenode $$CN -P ospkgs
+check:rc==0
+cmd:xdsh $$CN yum group list installed
+check:output!~Compatibility Libraries
+# Cleanup
+cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute pkglist=/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist
+cmd:rm /opt/xcat/share/xcat/install/rh/compute.pkglist.modules
+end

@@ -12,10 +12,10 @@ If you no longer want to use MySQL/MariaDB to maintain ``xcatdb``, and like to s
 
       XCATBYPASS=1 restorexCATdb -p ~/xcat-dbback
 
-*  Change to PostgreSQL, following documentation: :doc:`/advanced/hierarchy/databases/postgres_install`
+*  To switch to PostgreSQL, follow: :doc:`/advanced/hierarchy/databases/postgres_install`
 
 
-*  Change back to default xCAT database, SQLite (**Note**:  xCAT Hierarchy cluster will no longer work)
+*  To switch to default xCAT database, SQLite (**Note**:  xCAT Hierarchy cluster will no longer work):
 
   #. Stop the ``xcatd`` daemon on the management node. ::
 
@@ -33,7 +33,7 @@ If you no longer want to use MySQL/MariaDB to maintain ``xcatdb``, and like to s
 
        mysql> drop user xcatadm;
 
-  #. Move, or remove, the  ``/etc/xcat/cfglog`` file as it points xCAT to MySQL/MariaDB.  (without this file, xCAT defaults to SQLite): ::
+  #. Move, or remove, the  ``/etc/xcat/cfgloc`` file as it points xCAT to MySQL/MariaDB.  (without this file, xCAT defaults to SQLite): ::
 
       rm /etc/xcat/cfgloc
 

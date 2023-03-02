@@ -104,7 +104,7 @@ osimage Attributes:
 
 \ **osvers**\ 
  
- The Linux operating system deployed on this node.  Valid values:  rhels\*,rhelc\*, rhas\*,centos\*,rocky\*,SL\*, fedora\*, sles\* (where \* is the version #).
+ The Linux operating system deployed on this node.  Valid values:  rhels\*,rhelc\*, rhas\*,centos\*,alma\*, rocky\*,SL\*, fedora\*, sles\* (where \* is the version #).
  
 
 

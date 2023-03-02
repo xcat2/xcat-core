@@ -318,7 +318,7 @@ if (($INIT) && ($xcatrunningpgsql == 0))
                           # if that does not exist use resolved hostname
                           # double check site.master for resolution
         my $sitefile = "$::backupdir/site.csv";
-        my $cmd      = "grep \"master $sitefile";
+        my $cmd      = q{grep \"master } . $sitefile;
         my @output   = xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC == 0)    #  entry in site table
         {

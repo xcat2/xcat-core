@@ -79,7 +79,7 @@ cmd:xdsh $$CN "grep 'load host key' /var/log/xcat/xcat.log || echo 'No load host
 check:output=~No load hostkey warning
 # Check node can be rebooted from disk
 cmd:xdsh $$CN shutdown -r now
-cmd:sleep 300
+cmd:sleep 360
 cmd:xdsh $$CN uptime
 check:rc==0
 check:output=~up
