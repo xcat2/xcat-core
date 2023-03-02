@@ -1755,7 +1755,7 @@ function el9_epel_and_crb_check()
 	else
 		[[ "${GO_XCAT_LINUX_VERSION}" =~ ^9(\.[0-9]) ]] || return 0
 	fi
-	${action} list available -q ${EL9_EPEL_TEST_RPM} 
+	${action} list -q ${EL9_EPEL_TEST_RPM} 
 	ret="$?"
 	case "${ret}" in
 	"1")
@@ -1766,7 +1766,7 @@ Installation on ${GO_XCAT_LINUX_DISTRO} ${GO_XCAT_LINUX_VERSION} requires EPEL r
 		exit 1
 		;;
 	esac
-	${action} list available -q ${EL9_CRB_TEST_RPM} 
+	${action} list -q ${EL9_CRB_TEST_RPM} 
 	ret="$?"
 	case "${ret}" in
 	"1")
