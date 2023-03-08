@@ -1,0 +1,18 @@
+2023-03-08 - xCAT Vulnerabilities
+====================================
+
+*Mar 8, 2023*, xCAT announced the following security advisory: https://github.com/xcat2/xcat-core/security/advisories/GHSA-hpxg-7428-6jvv
+
+
+Advisory CVEs
+-------------
+
+* CVE-2023-27486 - **Insufficient authorization validation between zones when xCAT zones are enabled** (Severity: High)
+
+Please see the security bulletin above for patch, upgrade, or suggested work around information.
+
+Action
+------
+
+The issue described in CVE-2023-27486 only impacts users making use of the optional xCAT zones feature. xCAT zones are not enabled by default. Users making use of xCAT zones should upgrade to xCAT 2.16.5 or newer. Users that do not use xCAT zones are not impacted and do not need to upgrade.
+
