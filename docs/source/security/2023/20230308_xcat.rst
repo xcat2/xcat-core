@@ -1,5 +1,5 @@
 2023-03-08 - xCAT Vulnerabilities
-====================================
+=================================
 
 *Mar 8, 2023*, xCAT announced the following security advisory: https://github.com/xcat2/xcat-core/security/advisories/GHSA-hpxg-7428-6jvv
 
