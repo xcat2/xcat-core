@@ -31,33 +31,48 @@ DESCRIPTION
 
 The \ **imgimport**\  command will import an image that has been exported by \ **imgexport**\  from xCAT.  This is the easiest way to transfer, backup, change or share images created by xCAT whether they be stateless or stateful. The bundle file will be unpacked in the current working directory. The xCAT configuration such as \ *osimage*\  and \ *linuximage*\  tables will then be updated.
 
-For stateful, the following files will be copied to the appropriate directories.
-  x.pkglist
-  x.otherpkgs.pkglist
-  x.tmpl
-  x.synclist
-  kits related files
+\ **For stateful, the following files will be copied to the appropriate directories**\ 
 
-For stateless, the following files will be copied to the appropriate directories.
-  kernel
-  initrd.gz
-  rootimg.cpio.xz or rootimg.cpio.gz or rootimg.tar.xz or rootimg.tar.gz or rootimg.gz(for backward-compatibility)
-  x.pkglist
-  x.otherpkgs.pkglist
-  x.synclist
-  x.postinstall
-  x.exlist
-  kits related files
 
-For statelite, the following files will be copied to the appropriate directories.
-  kernel
-  initrd.gz
-  root image tree
-  x.pkglist
-  x.synclist
-  x.otherpkgs.pkglist
-  x.postinstall
-  x.exlist
+.. code-block:: perl
+
+   x.pkglist
+   x.otherpkgs.pkglist
+   x.tmpl
+   x.synclist
+   kits related files
+
+
+\ **For stateless, the following files will be copied to the appropriate directories**\ 
+
+
+.. code-block:: perl
+
+   kernel
+   initrd.gz
+   rootimg.cpio.xz or rootimg.cpio.gz or rootimg.tar.xz or rootimg.tar.gz or rootimg.gz(for backward-compatibility)
+   x.pkglist
+   x.otherpkgs.pkglist
+   x.synclist
+   x.postinstall
+   x.exlist
+   kits related files
+
+
+\ **For statelite, the following files will be copied to the appropriate directories**\ 
+
+
+.. code-block:: perl
+
+   kernel
+   initrd.gz
+   root image tree
+   x.pkglist
+   x.synclist
+   x.otherpkgs.pkglist
+   x.postinstall
+   x.exlist
+
 
 where x is the profile name.
 
@@ -71,18 +86,33 @@ If \ **-f**\  flag is not specified, all the files will be copied to the same di
 
 After this command, you can run the \ **nodeset**\  command and then start deploying the nodes. You can also choose to modify the files and run the following commands before the node deployment.
 
-For stateful:
-  nodeset
+\ **For stateful**\ :
 
-For stateless:
-  genimage
-  packimage
-  nodeset
 
-For statelite
-  genimage
-  liteimg
-  nodeset
+.. code-block:: perl
+
+   nodeset
+
+
+\ **For stateless**\ :
+
+
+.. code-block:: perl
+
+   genimage
+   packimage
+   nodeset
+
+
+\ **For statelite**\ :
+
+
+.. code-block:: perl
+
+   genimage
+   liteimg
+   nodeset
+
 
 
 *******

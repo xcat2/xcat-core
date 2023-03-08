@@ -12,14 +12,16 @@ B<imgimport> I<bundle_file_name> [B<-p>|B<--postscripts> I<nodelist>] [B<-f>|B<-
 
 The B<imgimport> command will import an image that has been exported by B<imgexport> from xCAT.  This is the easiest way to transfer, backup, change or share images created by xCAT whether they be stateless or stateful. The bundle file will be unpacked in the current working directory. The xCAT configuration such as I<osimage> and I<linuximage> tables will then be updated.
 
-For stateful, the following files will be copied to the appropriate directories.
+B<For stateful, the following files will be copied to the appropriate directories>
+
   x.pkglist
   x.otherpkgs.pkglist
   x.tmpl
   x.synclist
   kits related files
 
-For stateless, the following files will be copied to the appropriate directories.
+B<For stateless, the following files will be copied to the appropriate directories>
+
   kernel
   initrd.gz
   rootimg.cpio.xz or rootimg.cpio.gz or rootimg.tar.xz or rootimg.tar.gz or rootimg.gz(for backward-compatibility)
@@ -30,7 +32,8 @@ For stateless, the following files will be copied to the appropriate directories
   x.exlist
   kits related files
 
-For statelite, the following files will be copied to the appropriate directories.
+B<For statelite, the following files will be copied to the appropriate directories>
+
   kernel
   initrd.gz
   root image tree
@@ -52,15 +55,18 @@ If B<-f> flag is not specified, all the files will be copied to the same directo
 
 After this command, you can run the B<nodeset> command and then start deploying the nodes. You can also choose to modify the files and run the following commands before the node deployment.
 
-For stateful:
+B<For stateful>:
+
   nodeset
 
-For stateless:
+B<For stateless>:
+
   genimage
   packimage
   nodeset
 
-For statelite
+B<For statelite>:
+
   genimage
   liteimg
   nodeset
