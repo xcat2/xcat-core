@@ -31,33 +31,48 @@ DESCRIPTION
 
 The \ **imgexport**\  command will export an image that is being used by xCAT.  To export images, you must have the images defined in the \ *osimage*\  table. All the columns in the \ *osimage*\  and \ *linuximage*\  tables will be exported. If kits are used in stateful or stateless images, \ *kit*\ , \ *kitcomponent*\  and \ *kitrepo*\  tables will be exported. In addition, the following files will also be exported.
 
-For stateful:
-  x.pkglist
-  x.otherpkgs.pkglist
-  x.tmpl
-  x.synclist
-  kits related files
+\ **For stateful**\ :
 
-For stateless:
-  kernel
-  initrd.gz
-  rootimg.cpio.xz or rootimg.cpio.gz or rootimg.tar.xz or rootimg.tar.gz or rootimg.gz(for backward-compatibility)
-  x.pkglist
-  x.otherpkgs.pkglist
-  x.synclist
-  x.postinstall
-  x.exlist
-  kits related files
 
-For statelite:
-  kernel
-  initrd.gz
-  root image tree
-  x.pkglist
-  x.synclist
-  x.otherpkgs.pkglist
-  x.postinstall
-  x.exlist
+.. code-block:: perl
+
+   x.pkglist
+   x.otherpkgs.pkglist
+   x.tmpl
+   x.synclist
+   kits related files
+
+
+\ **For stateless**\ :
+
+
+.. code-block:: perl
+
+   kernel
+   initrd.gz
+   rootimg.cpio.xz or rootimg.cpio.gz or rootimg.tar.xz or rootimg.tar.gz or rootimg.gz(for backward-compatibility)
+   x.pkglist
+   x.otherpkgs.pkglist
+   x.synclist
+   x.postinstall
+   x.exlist
+   kits related files
+
+
+\ **For statelite**\ :
+
+
+.. code-block:: perl
+
+   kernel
+   initrd.gz
+   root image tree
+   x.pkglist
+   x.synclist
+   x.otherpkgs.pkglist
+   x.postinstall
+   x.exlist
+
 
 where x is the name of the profile.
 
@@ -110,7 +125,10 @@ OPTIONS
 
 \ *destination*\ 
  
- The output bundle file name.
+ The output bundle file name. If remote host is specified with \ **-**\ **-remotehost**\  option, 
+ the \ *destination*\  can include the path to the bundle file. If remote host is not
+ specified, the bundle file is placed in a local working directory, even if \ *destination*\ 
+ includes a path.
  
 
 
