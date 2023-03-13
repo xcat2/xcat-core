@@ -14,5 +14,4 @@ perl-Net-DNS
 perl-DBD-mysql
 mariadb-client
 libmysqlclient18
-perl-DBD-Pg
 
