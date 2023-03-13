@@ -1,2 +1,3 @@
 xcat/xcat-core/xCATsn
 xcat/xcat-dep/sles12/ppc64le/goconserver
+xcat/xcat-dep/sles12/ppc64le/perl-DBD-Pg
