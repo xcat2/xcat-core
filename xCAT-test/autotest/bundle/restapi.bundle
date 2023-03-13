@@ -15,6 +15,7 @@ restapi_list_temp_CN_2
 restapi_delete_temp_CN_2
 restapi_create_temp_CN_put
 restapi_add_id_temp_CN
+restapi_reset_id_temp_CN
 restapi_modify_vmmemory_temp_CN
 restapi_delete_id_temp_CN
 restapi_show_temp_CN_osimage
