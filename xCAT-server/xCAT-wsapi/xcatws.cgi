@@ -2093,7 +2093,7 @@ sub defhdl {
             push(@args, "$k=$val") if $val;
             next;
         }
-        push @args, "$k=$paramhash->{$k}" if $paramhash->{$k};
+        push @args, ($paramhash->{$k}) ? "$k=$paramhash->{$k}" : "$k=";
     }
 
     if ($params->{'resourcename'} eq "allnode") {
