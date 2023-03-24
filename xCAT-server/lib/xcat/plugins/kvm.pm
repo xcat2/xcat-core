@@ -962,7 +962,7 @@ sub build_xmldesc {
     if ($confdata->{vm}->{$node}->[0]->{vidpassword}) {
         $xtree{devices}->{graphics}->{password} = $confdata->{vm}->{$node}->[0]->{vidpassword};
     } else {
-        $xtree{devices}->{graphics}->{password} = genpassword(20);
+        $xtree{devices}->{graphics}->{password} = genpassword(8);
     }
     if (defined($hypcpumodel) and $hypcpumodel eq 'ppc64') {
         $xtree{devices}->{emulator}->{content} = "/usr/bin/qemu-system-ppc64";
@@ -1469,7 +1469,7 @@ sub makedom {
         if ($confdata->{vm}->{$node}->[0]->{vidpassword}) {
             $graphics->setAttribute("passwd", $confdata->{vm}->{$node}->[0]->{vidpassword});
         } else {
-            $graphics->setAttribute("passwd", genpassword(20));
+            $graphics->setAttribute("passwd", genpassword(8));
         }
         $graphics->setAttribute("listen", '0.0.0.0');
     }
