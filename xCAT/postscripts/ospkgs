@@ -357,6 +357,7 @@ do
                      array_set_element os_path $index $ospkgdir_ok
                      index=$(expr $index + 1)
                  done
+		 continue
             fi # if...elif..fi
          fi  # eq default_pkgdir
       fi    # match rhel*
