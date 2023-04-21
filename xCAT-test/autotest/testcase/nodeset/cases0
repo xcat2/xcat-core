@@ -384,10 +384,10 @@ description: Verify the disjointdhcps feature when petitboot is used for OS load
 label:others
 cmd:lsdef testnode1 > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef testnode1 -z >/tmp/testnode1.stanza ;rmdef testnode1;fi
 cmd:rm -f /tftpboot/petitboot/testnode1
-cmd:mkdef -t node -o testnode1 arch=ppc64le cons=bmc groups=ipmi ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=ipmi profile=compute os=rhels7.99
+cmd:first_two_octets=`xdsh $$SN ip route | grep src | awk '{print $10}'| cut -d '.' -f1-2`;mkdef -t node -o testnode1 arch=ppc64le cons=bmc groups=ipmi ip=$first_two_octets".1.200" mac=e6:d4:d2:3a:ad:06 mgt=ipmi profile=compute os=rhels7.99;lsdef testnode1
 check:rc==0
 cmd:cp -f /etc/hosts /etc/hosts.xcattestbak
-cmd:echo "10.1.1.200 testnode1" >> /etc/hosts
+cmd:first_two_octets=`xdsh $$SN ip route | grep src | awk '{print $10}'| cut -d '.' -f1-2`;echo $first_two_octets".1.200" testnode1 >> /etc/hosts
 cmd:makedns -n
 check:rc==0
 cmd:chdef testnode1 netboot=petitboot addkcmdline=debug
