@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #TODO: Delete the old files to support removing a man page
 
 import glob
@@ -34,7 +34,7 @@ if options.PREFIX:
         prefix_path = options.PREFIX
 
     if not cmd_exists("%s/bin/pod2rst" %(prefix_path)):
-        print "ERROR, %s requires pod2rst, not found in %s/bin/" %(os.path.basename(__file__), prefix_path)
+        print("ERROR, %s requires pod2rst, not found in %s/bin/" %(os.path.basename(__file__), prefix_path))
         parser.print_help()
         sys.exit(1)
 
@@ -42,12 +42,12 @@ if options.PREFIX:
     if not os.path.isdir(prefix_lib_path):
         prefix_lib_path = "%s/lib64" %(prefix_path)
         if not os.path.isdir(prefix_lib_path):
-            print "ERROR, Cannot find the Perl lib directory in %s/lib or %s/lib64" %(prefix_path, prefix_path)
+            print("ERROR, Cannot find the Perl lib directory in %s/lib or %s/lib64" %(prefix_path, prefix_path))
             sys.exit(1)
 
 else:
     if not cmd_exists(POD2RST):
-        print "ERROR, %s requires pod2rst to continue!" %(os.path.basename(__file__))
+        print("ERROR, %s requires pod2rst to continue!" %(os.path.basename(__file__)))
         parser.print_help()
         sys.exit(1)
 
@@ -59,12 +59,12 @@ MANPAGE_DEST="./docs/source/guides/admin-guides/references/man"
 # add the following to delete the generate files before creating them
 # essentially this allows us to remove man pages and they will be
 # removed in the generation
-print "Cleaning up the generated man pages in %s" %(MANPAGE_DEST)
+print("Cleaning up the generated man pages in %s" %(MANPAGE_DEST))
 allfiles = glob("%s*/*.rst" %(MANPAGE_DEST))
 for d in allfiles:
     # Skip over the index.rst file
     if not "index.rst" in d:
-        print "Removing file %s" %(d)
+        print("Removing file %s" %(d))
         os.remove(d)
 
 # The database man pages are created in the perl-xCAT subdirectory
@@ -132,7 +132,7 @@ for component in COMPONENTS:
                 cmd += " --infile=%s --outfile=%s --title=%s.%s" %(pod_input, rst_output, title, man_ver)
                 # print cmd
                 os.system(cmd)
-		if man_ver == '1' or man_ver == '8':
+                if man_ver == '1' or man_ver == '8':
                     fix_vertical_bar(rst_output)
                     fix_double_dash(rst_output)
 
