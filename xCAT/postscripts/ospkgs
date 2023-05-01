@@ -354,8 +354,8 @@ do
                  for arg in "BaseOS" "AppStream"
                  do
                      ospkgdir_ok="$ospkgdir/$arg"
-                     array_set_element os_path $index $ospkgdir_ok
                      index=$(expr $index + 1)
+                     array_set_element os_path $index $ospkgdir_ok
                  done
             fi # if...elif..fi
          fi  # eq default_pkgdir
