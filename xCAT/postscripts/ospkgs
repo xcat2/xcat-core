@@ -196,7 +196,7 @@ fi
 
 
 argnum=$#;
-args=$@
+args="$*"
 keeprepo=0
 if [ $argnum -gt 0 ]; then
     if ( pmatch  "$args" "*keeprepo*" ); then
@@ -247,122 +247,93 @@ array_empty os_path
 index=0
 for dir in  ${array_ospkgdirs[@]}
 do
-
-    default_pkgdir="$INSTALLDIR/$OSVER/$ARCH"
-    OSPKGDIR="$OSPKGDIR"
+    # Strip trailing slash if it exists
+    dir="$(echo $dir|sed 's#/$##')"
     if [ $mounted -eq 0 ]; then
-        #OSPKGDIR="$OSPKGDIR"
         ospkgdir="${NFSSERVER}:${HTTPPORT}$dir"
     else
         ospkgdir="$dir"
     fi
 
-    # for the os base pkg dir(default_pkgdir) , there are some special cases.
-    # (1)for rhels6, there is one repodata in the os base dir; so keep it here, and handle the other cases below
-    # (2)for sles, we should specified the baseurl should be ./install/sles11/ppc64/1
-    # (3)for SL5, we should append the /SL
-    # (4)for rhels8/9, centos8/9, ol8/9, alma8/9 and rocky8/9 we should append /BaseOS and /AppStream to base directory
-    # (5) for other os, we just keep it here.
-    # For other pkg paths, we just keep it here.
-    if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
-        if ( pmatch "$OSVER" "sle*" ); then
-            OSPKGDIR="$OSPKGDIR/1"
-            ospkgdir="$ospkgdir/1"
-        elif ( pmatch "$OSVER" "SL5*" ); then
-            OSPKGDIR="$OSPKGDIR/SL"
-            ospkgdir="$ospkgdir/SL"
-        fi
-    fi
-    if ( ! pmatch "$OSVER" "rhels[89]*" && 
-         ! pmatch "$OSVER" "centos[89]*" &&
-         ! pmatch "$OSVER" "rocky[89]*" &&
-         ! pmatch "$OSVER" "alma[89]*" &&
-         ! pmatch "$OSVER" "ol[89]*"); then
-        # For rhels8/9, centos8/9, ol8/9, alma8/9 and rocky8 do not put $ospkgdir by itself
-        array_set_element os_path $index $ospkgdir
-    fi
-    array_set_element os_path $index $ospkgdir
-    if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
-        ospkgdir=$(echo $ospkgdir|sed 's/\/1$/\/2/')
+    if [ $index -eq 0 ]; then
+        # For the default pkg dir (first element of osimage.pkgdir), there are some special cases.
+        # Specialized matches first, before more generalized matches
+        # (1)for sle15*, we append the list of repos to the baseurl with /2/ as infix i.e. ./install/sles15*/$ARCH/2/
+        # (2)for other sle*, we should specified the baseurl should be ./install/sles*/$ARCH/1
+        # (3)for SL5, we should append the /SL
+        # (4)for rhels8/9, centos8/9, ol8/9, alma8/9 and rocky8/9 we should append /BaseOS and /AppStream to base directory
+        # (5) for other os, we just keep it here.
+        # (1)for rhels6, there is one repodata in the os base dir; so keep it here, and handle the other cases below
+        # For other pkg paths, we just keep it here.
         if ( pmatch "$OSVER" "sle15*" ); then
-            if [ $ARCH == "x86_64" ]; then
-                for arg in "Product-SLES" "Module-Desktop-Applications" "Module-Live-Patching" \
-                           "Module-Web-Scripting" "Module-Basesystem" "Module-Development-Tools" "Module-Public-Cloud" \
-                           "Product-HA" "Product-SLES_SAP" "Module-CAP-Tools" "Module-HPC" "Module-SAP-Applications" \
-                           "Product-HPC" "Product-WE" "Module-Containers" "Module-Legacy" "Module-Server-Applications" "Product-SLED"
+            # Common repository paths
+            for arg in "Product-SLES" "Module-Desktop-Applications" "Module-Live-Patching" \
+                       "Module-Web-Scripting" "Module-Basesystem" "Module-Development-Tools" "Module-Public-Cloud" \
+                       "Product-HA" "Product-SLES_SAP" "Module-SAP-Applications" \
+                       "Module-Containers" "Module-Legacy" "Module-Server-Applications"
+            do
+                array_set_element os_path $index "$ospkgdir/2/$arg"
+                index=$(expr $index + 1)
+            done
+            # extra repository paths for x86_64
+            if [ "$ARCH" == "x86_64" ]; then
+                for arg in "Module-CAP-Tools" "Module-HPC" "Product-HPC" "Product-WE" "Product-SLED"
                 do
-                    ospkgdir_ok="$ospkgdir/$arg"
+                    array_set_element os_path $index "$ospkgdir/2/$arg"
                     index=$(expr $index + 1)
-                    array_set_element os_path $index $ospkgdir_ok
-                done
-            elif [ $ARCH == "ppc64le" ]; then
-                for arg in "Product-SLES" "Module-Desktop-Applications" "Module-Live-Patching" \
-                           "Module-Web-Scripting" "Module-Basesystem" "Module-Development-Tools" "Module-Public-Cloud" \
-                           "Product-HA" "Product-SLES_SAP" "Module-SAP-Applications" \
-                           "Module-Containers" "Module-Legacy" "Module-Server-Applications"
-                do
-                    ospkgdir_ok="$ospkgdir/$arg"
-                    index=$(expr $index + 1)
-                    array_set_element os_path $index $ospkgdir_ok
                 done
             fi
-        fi
-    fi 
-    if ( pmatch "$OSVER" "rhel*" || 
-         pmatch "$OSVER" "centos*" || 
-         pmatch "$OSVER" "rocky*" ||
-         pmatch "$OSVER" "alma*" ||
-         pmatch "$OSVER" "ol*"); then
-        #default_pkgdir="$INSTALLDIR/$OSVER/$ARCH"
-        if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
+        elif ( pmatch "$OSVER" "sle*" ); then
+            array_set_element os_path $index "$ospkgdir/1"
+        elif ( pmatch "$OSVER" "SL5*" ); then
+            array_set_element os_path $index "$ospkgdir/SL"
+        elif ( pmatch "$OSVER" "rhels[89]*" || 
+               pmatch "$OSVER" "centos[89]*" ||
+               pmatch "$OSVER" "rocky[89]*" ||
+               pmatch "$OSVER" "alma[89]*" ||
+               pmatch "$OSVER" "ol[89]*"); then
+              # For rhels8/9, ol8/9, and supported clones, repodata is in ./BaseOS, ./AppStream, not in ./
+            for arg in "BaseOS" "AppStream"
+            do
+                array_set_element os_path $index "$ospkgdir/$arg"
+                index=$(expr $index + 1)
+            done
+        elif ( pmatch "$OSVER" "rhels6*" ); then
+            # for rhels6, the repodata is in ./Server, ./ScalableFileSystem, ./HighAvailability, ./ResilientStorage, ./LoadBalancer, not in ./
+            # Common for all rhels6 ARCH
+            array_set_element os_path $index "$ospkgdir/Server"
+            index=$(expr $index + 1)
 
-            if ( pmatch "$OSVER" "rhels6*" ); then
-               if [ $ARCH == "ppc64" ]; then
-                   ospkgdir_ok="$ospkgdir/Server"
-                   index=$(expr $index + 1)
-                   array_set_element os_path $index $ospkgdir_ok
-               fi
-
-               if [ $ARCH == "x86_64" ]; then
-                    for arg in "Server" "ScalableFileSystem" "HighAvailability" "ResilientStorage" "LoadBalancer"
+            # Extras for all rhels6 x86_64
+            if [ "$ARCH" == "x86_64" ]; then
+                    for arg in "ScalableFileSystem" "HighAvailability" "ResilientStorage" "LoadBalancer"
                     do
-                        ospkgdir_ok="$ospkgdir/$arg"
+                        array_set_element os_path $index "$ospkgdir/$arg"
                         index=$(expr $index + 1)
-                        array_set_element os_path $index $ospkgdir_ok
                     done
-                fi
+            fi
+        elif ( pmatch "$OSVER" "rhels5*" ); then
+                # for rhels5, the repodata is in ./Server, ./Cluster, ./CusterStorage, not in ./
+                array_set_element os_path $index "$ospkgdir/Server"
+                index=$(expr $index + 1)
 
-            elif ( pmatch "$OSVER" "rhels5*" ); then
-                 # for rhels5, the repodata is in ./Server, ./Cluster, ./CusterStorage, not in ./
-                 ospkgdir_ok="$ospkgdir/Server"
-                 array_set_element os_path $index $ospkgdir_ok
-
-                 if [ $ARCH == "x86_64" ]; then
-                     for arg in "Cluster" "ClusterStorage"
-                     do
-                         ospkgdir_ok="$ospkgdir/$arg"
-                         index=$(expr $index + 1)
-                         array_set_element os_path $index $ospkgdir_ok
-                     done
-                 fi   # x86_64
-            elif ( pmatch "$OSVER" "rhels[89]*" || 
-                   pmatch "$OSVER" "centos[89]*" || 
-                   pmatch "$OSVER" "rocky[89]*" ||
-                   pmatch "$OSVER" "alma[89]*" ||
-                   pmatch "$OSVER" "ol[89]*"); then
-                 # for rhels8/9, centos8/9, ol8/9, alma8/9 and rocky8/9 the repodata is in ./BaseOS, ./AppStream, not in ./
-                 for arg in "BaseOS" "AppStream"
-                 do
-                     ospkgdir_ok="$ospkgdir/$arg"
-                     index=$(expr $index + 1)
-                     array_set_element os_path $index $ospkgdir_ok
-                 done
-            fi # if...elif..fi
-         fi  # eq default_pkgdir
-      fi    # match rhel*
-
-      index=$(expr $index + 1)
-
+                if [ "$ARCH" == "x86_64" ]; then
+                    for arg in "Cluster" "ClusterStorage"
+                    do
+                        array_set_element os_path $index "$ospkgdir/$arg"
+                        index=$(expr $index + 1)
+                    done
+                fi   # x86_64
+        else
+            # all the rest is the standard, i.e. "$INSTALLDIR/$OSVER/$ARCH"
+            array_set_element os_path $index $ospkgdir
+            index=$(expr $index + 1)
+        fi  # eq default_pkgdir
+    else 
+        # Not the first index anymore, just attach as expected. no special processing.
+        array_set_element os_path $index $ospkgdir
+        index=$(expr $index + 1)
+    fi
 done
 
 IFS=$OIFS
