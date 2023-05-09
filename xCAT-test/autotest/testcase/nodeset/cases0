@@ -237,11 +237,11 @@ start:nodeset_grub2
 description: Verify when grub2 is used for OS loader, whether the configuration files under /tftpboot can be generated corrently
 label:others
 cmd:lsdef testnode1 > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef testnode1 -z >/tmp/testnode1.stanza ;rmdef testnode1;fi
-cmd:rm -f  /tftpboot/boot/grub2/{testnode1,grub.cfg-{01-e6-d4-d2-3a-ad-06,0[aA]0101[cC]8}}
-cmd:mkdef -t node -o testnode1 arch=ppc64 cons=hmc groups=lpar ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=hmc profile=compute os=rhels7.99
+cmd:temp=`lsdef $$SN | grep ip= | cut -d '=' -f2 | cut -d '.' -f1`;first_octet=`printf "%02x" $temp`;first_octet="${first_octet^^}";temp=`lsdef $$SN | grep ip= | cut -d '=' -f2 | cut -d '.' -f2`;second_octet=`printf "%02x" $temp`;second_octet="${second_octet^^}";rm -f /tftpboot/boot/grub2/grub.cfg-{01-e6-d4-d2-3a-ad-06,${first_octet}${second_octet}01C8}
+cmd:first_two_octets=`lsdef $$SN | grep ip= | cut -d '=' -f2 | cut -d '.' -f1-2`;mkdef -t node -o testnode1 arch=ppc64le cons=bmc groups=ipmi ip=$first_two_octets".1.200" mac=e6:d4:d2:3a:ad:06 mgt=ipmi profile=compute os=rhels7.99
 check:rc==0
 cmd:cp -f /etc/hosts /etc/hosts.xcattestbak
-cmd:echo "10.1.1.200 testnode1" >> /etc/hosts
+cmd:first_two_octets=`lsdef $$SN | grep ip= | cut -d '=' -f2 | cut -d '.' -f1-2`;echo $first_two_octets".1.200" testnode1 >> /etc/hosts
 cmd:makedns -n
 check:rc==0
 cmd:chdef testnode1 netboot=grub2 addkcmdline=debug
@@ -256,7 +256,7 @@ cmd:grep "debug" /tftpboot/boot/grub2/testnode1
 check:rc==0
 cmd:grep "debug" /tftpboot/boot/grub2/grub.cfg-01-e6-d4-d2-3a-ad-06
 check:rc==0
-cmd:grep "debug" /tftpboot/boot/grub2/grub.cfg-0[aA]0101[cC]8
+cmd:temp=`lsdef $$SN | grep ip= | cut -d '=' -f2 | cut -d '.' -f1`;first_octet=`printf "%02x" $temp`;first_octet="${first_octet^^}";temp=`lsdef $$SN | grep ip= | cut -d '=' -f2 | cut -d '.' -f2`;second_octet=`printf "%02x" $temp`;second_octet="${second_octet^^}";grep "debug" /tftpboot/boot/grub2/grub.cfg-${first_octet}${second_octet}01C8
 check:rc==0
 #cmd:makedhcp -q testnode1 | grep ^testnode1:
 #check:rc==0
@@ -285,11 +285,11 @@ description: Verify when petitboot is used for OS loader, whether the configurat
 label:others
 cmd:lsdef testnode1 > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef testnode1 -z >/tmp/testnode1.stanza ;rmdef testnode1;fi
 cmd:rm -f  /tftpboot/petitboot/testnode1
-cmd:mkdef -t node -o testnode1 arch=ppc64le cons=bmc groups=ipmi ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=ipmi profile=compute os=rhels7.99
+cmd:first_two_octets=`lsdef $$SN | grep ip= | cut -d '=' -f2 | cut -d '.' -f1-2`;mkdef -t node -o testnode1 arch=ppc64le cons=bmc groups=ipmi ip=$first_two_octets".1.200" mac=e6:d4:d2:3a:ad:06 mgt=ipmi profile=compute os=rhels7.99
 check:rc==0
 cmd:cp -f /etc/hosts /etc/hosts.bak
 cmd:cp -f /etc/hosts /etc/hosts.xcattestbak
-cmd:echo "10.1.1.200 testnode1" >> /etc/hosts
+cmd:first_two_octets=`lsdef $$SN | grep ip= | cut -d '=' -f2 | cut -d '.' -f1-2`;echo $first_two_octets".1.200" testnode1 >> /etc/hosts
 cmd:makedns -n
 check:rc==0
 cmd:chdef testnode1 netboot=petitboot addkcmdline=debug
@@ -384,10 +384,10 @@ description: Verify the disjointdhcps feature when petitboot is used for OS load
 label:others
 cmd:lsdef testnode1 > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef testnode1 -z >/tmp/testnode1.stanza ;rmdef testnode1;fi
 cmd:rm -f /tftpboot/petitboot/testnode1
-cmd:mkdef -t node -o testnode1 arch=ppc64le cons=bmc groups=ipmi ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=ipmi profile=compute os=rhels7.99
+cmd:first_two_octets=`lsdef $$SN | grep ip= | cut -d '=' -f2 | cut -d '.' -f1-2`;mkdef -t node -o testnode1 arch=ppc64le cons=bmc groups=ipmi ip=$first_two_octets".1.200" mac=e6:d4:d2:3a:ad:06 mgt=ipmi profile=compute os=rhels7.99
 check:rc==0
 cmd:cp -f /etc/hosts /etc/hosts.xcattestbak
-cmd:echo "10.1.1.200 testnode1" >> /etc/hosts
+cmd:first_two_octets=`lsdef $$SN | grep ip= | cut -d '=' -f2 | cut -d '.' -f1-2`;echo $first_two_octets".1.200" testnode1 >> /etc/hosts
 cmd:makedns -n
 check:rc==0
 cmd:chdef testnode1 netboot=petitboot addkcmdline=debug
