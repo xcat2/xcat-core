@@ -42,6 +42,7 @@ end
 
 start:bmcdiscover_nmap_range
 label:others,discovery
+cmd:nic=`ip -4 -brief addr | grep -v "127.0.0" | cut -d" " -f1`; ip route replace 10.30.0.0/16 via 10.10.1.1 dev $nic
 cmd:bmcdiscover -s nmap --range $$bmcrange -u $$bmcusername -p $$bmcpasswd
 check:rc==0
 check:output=~$$bmcrange
@@ -82,4 +83,5 @@ label:others,discovery
 cmd:bmcdiscover --range  $$bmcrange -u $$bmcusername -p $$bmcpasswd -z
 check:rc==0
 check:output=~bmc=$$bmcrange
+cmd:ip route del 10.30.0.0/16
 end
