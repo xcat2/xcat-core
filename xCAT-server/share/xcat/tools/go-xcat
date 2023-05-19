@@ -1741,6 +1741,15 @@ function github_issue_5503_workaround()
 	return 0
 }
 
+# Workaround for SLES 15 deprecating old initscript commands
+function github_issue_6525_workaround()
+{
+	[[ "${GO_XCAT_LINUX_DISTRO}" = "sles" ]] || return 0
+	[[ "${GO_XCAT_LINUX_VERSION}" =~ ^15 ]] || return 0
+	zypper install net-tools-deprecated insserv-compat
+	return 0
+}
+
 # Check for EPEL and CRB repositories when installing on RH family of OSes
 function el9_epel_and_crb_check()
 {
@@ -1794,6 +1803,7 @@ function install_packages_zypper()
 {
 	type zypper >/dev/null 2>&1 || return 255
 	github_issue_5503_workaround
+	github_issue_6525_workaround
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-n") && shift
 	zypper --no-gpg-checks "${yes[@]}" install --force-resolution "$@"
