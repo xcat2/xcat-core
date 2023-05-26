@@ -579,8 +579,13 @@ sub process_request {
             }
         }
     }
+    my $omapiuser = "xcat_key";
+    my @omapiu = xCAT::TableUtils->get_site_attribute("omapi-username");
+    if ($omapiu[0]){
+	$omapiuser = $omapiu[0];
+    }
     my $passtab = xCAT::Table->new('passwd');
-    my $pent = $passtab->getAttribs({ key => 'omapi', username => 'xcat_key' }, ['password']);
+    my $pent = $passtab->getAttribs({ key => 'omapi', username => $omapiuser }, ['password']);
     if ($pent and $pent->{password}) {
         $ctx->{privkey} = $pent->{password};
     } #do not warn/error here yet, if we can't generate or extract, we'll know later
@@ -1119,6 +1124,11 @@ sub update_namedconf {
     my $gotkey     = 0;
     my %didzones;
 
+    my $omapiuser = "xcat_key";
+    my @omapiu = xCAT::TableUtils->get_site_attribute("omapi-username");
+    if ($omapiu[0]){
+	$omapiuser = $omapiu[0];
+    }
     if (-r $namedlocation) {
         my @currnamed = ();
         open($nameconf, "<", $namedlocation);
@@ -1194,7 +1204,7 @@ sub update_namedconf {
                         $i++;
                         $line = $currnamed[$i];
                         push @candidate, $line;
-                        if ($line =~ /key xcat_key/) {
+                        if ($line =~ /key $omapiuser/) {
                             $needreplace = 0;
                         }
                     } while ($line !~ /^\};/);    #skip the old file zone
@@ -1203,7 +1213,7 @@ sub update_namedconf {
                         next;
                     }
                     $ctx->{restartneeded} = 1;
-                    push @newnamed, "zone \"$currzone\" in {\n", "\ttype master;\n", "\tallow-update {\n", "\t\tkey xcat_key;\n";
+                    push @newnamed, "zone \"$currzone\" in {\n", "\ttype master;\n", "\tallow-update {\n", "\t\tkey $omapiuser;\n";
                     my @list;
                     if (not $ctx->{adzones}->{$currzone}) {
                         if ($ctx->{dnsupdaters}) {
@@ -1239,12 +1249,12 @@ sub update_namedconf {
                     } while ($line !~ /^\};/);
                 }
 
-            } elsif ($line =~ /^key xcat_key/) {
+            } elsif ($line =~ /^key $omapiuser/) {
                 $gotkey = 1;
                 if ($ctx->{privkey}) {
 
                     #for now, assume the field is correct
-                    #push @newnamed,"key xcat_key {\n","\talgorithm hmac-md5;\n","\tsecret \"".$ctx->{privkey}."\";\n","};\n\n";
+                    #push @newnamed,"key $omapiuser {\n","\talgorithm hmac-md5;\n","\tsecret \"".$ctx->{privkey}."\";\n","};\n\n";
                     push @newnamed, $line;
                     do {
                         $i++;
@@ -1256,7 +1266,7 @@ sub update_namedconf {
                     while ($line !~ /^\};/) {    #skip the old file zone
                         if ($line =~ /secret \"([^"]*)\"/) {
                             my $passtab = xCAT::Table->new("passwd", -create => 1);
-                            $passtab->setAttribs({ key => "omapi", username => "xcat_key" }, { password => $1 });
+                            $passtab->setAttribs({ key => "omapi", username => "$omapiuser" }, { password => $1 });
                         }
                         $i++;
                         $line = $currnamed[$i];
@@ -1282,13 +1292,6 @@ sub update_namedconf {
                 push @newnamed, "\t\t$_;\n";
             }
             push @newnamed, "\t};\n";
-            my $bind_version_cmd="/usr/sbin/named -v | cut -d' ' -f2 | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+'";
-            my @bind_version =xCAT::Utils->runcmd($bind_version_cmd, 0);
-            # Turn off DNSSEC if running with bind vers 9.16.6 or higher
-            if ((scalar @bind_version > 0) && (xCAT::Utils::CheckVersion($bind_version[0], "9.16.6") >= 0)) {
-                push @newnamed, "\tdnssec-enable no;\n";
-                push @newnamed, "\tdnssec-validation no;\n";
-            }
         }
 
         if ($ctx->{forwardmode}){
@@ -1352,13 +1355,26 @@ sub update_namedconf {
         }
     }
 
+    # Get HMAC algorithum from site table, if set
+    my $omapialgorithm = "HMAC-MD5";
+    my @omapia=xCAT::TableUtils->get_site_attribute("omapi-algorithm");
+    if ($omapia[0]){
+        $omapialgorithm=$omapia[0];
+    }
+    my $omapiuser = "xcat_key";
+    my @omapiu = xCAT::TableUtils->get_site_attribute("omapi-username");
+    if ($omapiu[0]){
+	$omapiuser = $omapiu[0];
+    }
+
+
     unless ($slave) {
         unless ($gotkey) {
             unless ($ctx->{privkey}) {    #need to generate one
                 $ctx->{privkey} = encode_base64(genpassword(32));
                 chomp($ctx->{privkey});
             }
-            push @newnamed, "key xcat_key {\n", "\talgorithm hmac-md5;\n", "\tsecret \"" . $ctx->{privkey} . "\";\n", "};\n\n";
+            push @newnamed, "key $omapiuser {\n", "\talgorithm $omapialgorithm;\n", "\tsecret \"" . $ctx->{privkey} . "\";\n", "};\n\n";
             $ctx->{restartneeded} = 1;
         }
     }
@@ -1374,7 +1390,7 @@ sub update_namedconf {
             push @newnamed, "\ttype slave;\n";
             push @newnamed, "\tmasters { $output[0]; };\n";
         } else {
-            push @newnamed, "\ttype master;\n", "\tallow-update {\n", "\t\tkey xcat_key;\n", "\t};\n";
+            push @newnamed, "\ttype master;\n", "\tallow-update {\n", "\t\tkey $omapiuser;\n", "\t};\n";
             foreach (@{ $ctx->{dnsupdaters} }) {
                 push @newnamed, "\t\t$_;\n";
             }
@@ -1401,7 +1417,7 @@ sub update_namedconf {
             push @newnamed, "\ttype slave;\n";
             push @newnamed, "\tmasters { $output[0]; };\n";
         } else {
-            push @newnamed, "\ttype master;\n", "\tallow-update {\n", "\t\tkey xcat_key;\n";
+            push @newnamed, "\ttype master;\n", "\tallow-update {\n", "\t\tkey $omapiuser;\n";
             foreach (@{ $ctx->{adservers} }) {
                 push @newnamed, "\t\t$_;\n";
             }
@@ -1461,10 +1477,15 @@ sub add_or_delete_records {
     my $ctx = shift;
 
     xCAT::SvrUtils::sendmsg("Updating DNS records, this may take several minutes for a large cluster.", $callback);
+    my $omapiuser = "xcat_key";
+    my @omapiu = xCAT::TableUtils->get_site_attribute("omapi-username");
+    if ($omapiu[0]){
+	$omapiuser = $omapiu[0];
+    }
 
     unless ($ctx->{privkey}) {
         my $passtab = xCAT::Table->new('passwd');
-        my $pent = $passtab->getAttribs({ key => 'omapi', username => 'xcat_key' }, ['password']);
+        my $pent = $passtab->getAttribs({ key => 'omapi', username => $omapiuser }, ['password']);
         if ($pent and $pent->{password}) {
             $ctx->{privkey} = $pent->{password};
         } else {
@@ -1549,6 +1570,31 @@ sub add_or_delete_records {
                 return 1;
             }
 
+            # Get HMAC algorithum from site table, if set
+            my $omapialgorithm = "HMAC-MD5";
+            my @omapia=xCAT::TableUtils->get_site_attribute("omapi-algorithm");
+            if ($omapia[0]){
+                $omapialgorithm=$omapia[0];
+            }
+	    my $omapiuser = "xcat_key";
+	    my @omapiu = xCAT::TableUtils->get_site_attribute("omapi-username");
+	    if ($omapiu[0]){
+		$omapiuser = $omapiu[0];
+	    }
+            my $RR_key_type=157;  # Default to MD5
+            if ($omapialgorithm =~ /HMAC-SHA1/i) {
+                $RR_key_type=161;
+            } elsif ($omapialgorithm =~ /HMAC-SHA224/i) {
+                $RR_key_type=162;
+            } elsif ($omapialgorithm =~ /HMAC-SHA256/i) {
+                $RR_key_type=163;
+            } elsif ($omapialgorithm =~ /HMAC-SHA384/i) {
+                $RR_key_type=164;
+            } elsif ($omapialgorithm =~ /HMAC-SHA512/i) {
+                $RR_key_type=165;
+            }
+            my $keyrr = new Net::DNS::RR("$omapiuser. IN KEY 512 3 ".$RR_key_type.' '.$ctx->{privkey});
+
             my $resolver = Net::DNS::Resolver->new(nameservers => [$ip]);
             my $entry;
             my $numreqs = 300; # limit to 300 updates in a payload, something broke at 644 on a certain sample, choosing 300 for now
@@ -1562,9 +1608,9 @@ sub add_or_delete_records {
                 $numreqs -= 1;
                 if ($numreqs == 0) {
 
-                    # sometimes even the xcat_key is correct, but named still replies NOTAUTH, so retry
+                    # sometimes even the key is correct, but named still replies NOTAUTH, so retry
                     for (1 .. 3) {
-                        $update->sign_tsig("xcat_key", $ctx->{privkey});
+			$update->sign_tsig($keyrr);
                         $numreqs = 300;
                         my $reply = $resolver->send($update);
                         if ($reply) {
@@ -1584,9 +1630,9 @@ sub add_or_delete_records {
                 }
             }
             if ($numreqs != 300) { #either no entries at all to begin with or a perfect multiple of 300
-                 # sometimes even the xcat_key is correct, but named still replies NOTAUTH, so retry
+                 # sometimes even the key is correct, but named still replies NOTAUTH, so retry
                 for (1 .. 3) {
-                    $update->sign_tsig("xcat_key", $ctx->{privkey});
+		    $update->sign_tsig($keyrr);
                     my $reply = $resolver->send($update);
                     if ($reply) {
                         if ($reply->header->rcode eq 'NOTAUTH') {
