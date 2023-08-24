@@ -260,11 +260,13 @@ elif [ "$IPMIMFG" == "674" ]; then # DELL
     BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
     logger -s -t $log_label -p local4.info "BMCPORT is $BMCPORT"
     if [ "$BMCPORT" == "0" ]; then # shared
-        ipmitool delloem lan set shared &>/dev/null
-        ipmitool delloem lan set shared with lom1 &>/dev/null
-        ipmitool delloem lan set shared with failover all loms &>/dev/null
+        # https://github.com/ipmitool/ipmitool/issues/18
+        # ipmitool raw 0x30 0x28 0xAA 0xBB, with:
+        #   AA: 01 = dedicated, 02...05 = shared with lom1...4
+        #   BB: 00 = no failover, 02...05 = failover on lom1...4, , 06 = failover on all loms
+        ipmitool raw 0x30 0x28 0x02 0x06
     elif [ "$BMCPORT" == "1" ]; then # dedicated
-        ipmitool delloem lan set dedicated &>/dev/null
+        ipmitool raw 0x30 0x28 0x01 0x00
     fi
 elif [ "$IPMIMFG" == "42817" -a "$XPROD" == "16975" ]; then # IBM OpenPOWER servers with OpenBMC (AC922)
     ISOPENBMC=1
