@@ -133,9 +133,9 @@ sub remote_copy_command
         # (no postscripts and no append lines)  then do not
         # get update file notification
         if (($::SYNCSN == 1) || ((!(@::postscripts)) && (!(@::appendlines)) && (!(@::mergelines)))) {
-            $sync_opt .= '-Lprogtz ';
+            $sync_opt .= '-Lprogtz -del ';
         } else {
-            $sync_opt .= '-Liprogtz --out-format=%f%L ';  # add notify of update
+            $sync_opt .= '-Liprogtz -del --out-format=%f%L ';  # add notify of update
         }
         $sync_opt .= $$config{'options'};
         if ($::SYNCSN == 1)
