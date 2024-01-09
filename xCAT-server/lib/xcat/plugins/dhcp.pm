@@ -1966,9 +1966,7 @@ sub process_request
         my $netif = $line[1];
         if ($netif =~ /!remote!\S+/) {
             $netif =~ s/!remote!\s*(.*)$/$1/;
-            if (!defined($activenics{"!remote!"})) {
-                next;
-            } elsif (!defined($activenics{$netif})) {
+            if (!defined($activenics{$netif})) {
                 addnic($netif, \@dhcpconf);
                 $activenics{$netif} = 1;
             }
