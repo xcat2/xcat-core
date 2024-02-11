@@ -105,7 +105,7 @@ for package in ${packages[@]}; do
 done
 
 # Supported distributions
-dists="saucy trusty utopic xenial bionic focal"
+dists="saucy trusty utopic xenial bionic focal jammy"
 
 c_flag=            # xcat-core (trunk-delvel) path
 d_flag=            # xcat-dep (trunk) path
