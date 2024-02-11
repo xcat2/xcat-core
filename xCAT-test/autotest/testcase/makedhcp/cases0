@@ -34,7 +34,7 @@ end
 
 start:makedhcp_n_linux
 description:Create a new dhcp configuration file with a network statement for each network the dhcp daemon should listen on
-label:others,ci_test
+label:others
 os:Linux
 cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then cp -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then cp -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
 cmd:makedhcp -n
