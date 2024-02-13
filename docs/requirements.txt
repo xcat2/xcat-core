@@ -1,1 +1,4 @@
-docutils==0.17
+sphinx==7.2.6
+sphinx_rtd_theme==2.0.0
+docutils==0.20.1
+readthedocs-sphinx-search==0.3.2

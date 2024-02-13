@@ -6,18 +6,9 @@ The xCAT docs are hosted here: https://xcat-docs.readthedocs.io/ and are written
 
 * Clone this project 
 
-* Install or update sphinx (See: https://pip.readthedocs.io/)
+* Install dependencies (See: https://pip.readthedocs.io/)
    ```
-   pip install sphinx
-   ```
-   or
-   ```
-   pip install sphinx --upgrade
-   ```
-
-* Install ReadTheDocs theme
-   ```
-   pip install sphinx_rtd_theme
+   pip install --user -r requirements.txt
    ```
 
 * Build the Docs
