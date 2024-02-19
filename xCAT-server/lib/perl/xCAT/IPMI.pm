@@ -55,7 +55,7 @@ my $ipmi2support;
 if (-f "/etc/debian_release" or -f "/etc/debian_version") {
     $ipmi2support = eval {
         require Digest::SHA;
-        Digest::SHA->import(qw/sha1/);
+        Digest::SHA->import(qw/sha1 hmac_sha256/);
         require Digest::HMAC_SHA1;
         Digest::HMAC_SHA1->import(qw/hmac_sha1/);
         1;
@@ -63,8 +63,8 @@ if (-f "/etc/debian_release" or -f "/etc/debian_version") {
 }
 else {
     $ipmi2support = eval {
-        require Digest::SHA1;
-        Digest::SHA1->import(qw/sha1/);
+        require Digest::SHA;
+        Digest::SHA->import(qw/sha1 hmac_sha256/);
         require Digest::HMAC_SHA1;
         Digest::HMAC_SHA1->import(qw/hmac_sha1/);
         1;
@@ -455,12 +455,26 @@ sub open_rmcpplus_request {
     $self->{sidm} = \@sidbytes;
     unless ($self->{rmcptag}) { $self->{rmcptag} = 1; }
     $self->{rmcptag} += 1;
-    my @payload = ($self->{rmcptag},    #message tag,
+    my @payload;
+    if ($self->{attempthash} == 256) {
+	$self->{hshfn} = \&hmac_sha256;
+	$self->{hshln} = 16;
+        @payload = ($self->{rmcptag},    #message tag,
+        0,    #requested privilege role, 0 is highest allowed
+        0, 0, #reserved
+        @sidbytes,
+        0, 0, 0, 8, 3, 0, 0, 0,     #table 13-17, request sha256
+        1, 0, 0, 8, 4, 0, 0, 0);    #sha256 integrity
+    } else {
+	$self->{hshfn} = \&hmac_sha1;
+	$self->{hshln} = 12;
+        @payload = ($self->{rmcptag},    #message tag,
         0,    #requested privilege role, 0 is highest allowed
         0, 0, #reserved
         @sidbytes,
         0, 0, 0, 8, 1, 0, 0, 0,     #table 13-17, request sha
         1, 0, 0, 8, 1, 0, 0, 0);    #sha integrity
+    }
     push @payload, (2, 0, 0, 8, 1, 0, 0, 0);    # aes
     $self->{sessionestablishmentcontext} = STATE_OPENSESSION;
     $self->sendpayload(payload => \@payload, type => $payload_types{'rmcpplusopenreq'});
@@ -696,9 +710,9 @@ sub handle_ipmi_packet {
             }
 
             splice(@rsp, 0, 4);    #ditch the rmcp header
-            my @authcode = splice(@rsp, -12); #strip away authcode and remember it
-            my @expectedcode = unpack("C*", hmac_sha1(pack("C*", @rsp), $self->{k1}));
-            splice(@expectedcode, 12);
+            my @authcode = splice(@rsp, 0-$self->{hshln}); #strip away authcode and remember it
+            my @expectedcode = unpack("C*", $self->{hshfn}->(pack("C*", @rsp), $self->{k1}));
+            splice(@expectedcode, $self->{hshln});
             foreach (@expectedcode) {
                 unless ($_ == shift @authcode) {
                     return 3;    #authcode bad, pretend it never existed
@@ -768,6 +782,11 @@ sub got_rmcp_response {
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
+        if ($self->{attempthash} == 256) {
+            $self->{attempthash} = 1;
+            $self->open_rmcpplus_request();
+            return 9;
+        }
         if ($rmcp_codes{$byte}) {
             $self->{onlogon}->("ERROR: " . $rmcp_codes{$byte}, $self->{onlogon_args}); #TODO: errors
         } else {
@@ -799,7 +818,7 @@ sub send_rakp3 {
     $self->{rmcptag} += 1;
     my @payload = ($self->{rmcptag}, 0, 0, 0, @{ $self->{pendingsessionid} });
     my @user = unpack("C*", $self->{userid});
-    push @payload, unpack("C*", hmac_sha1(pack("C*", @{ $self->{remoterandomnumber} }, @{ $self->{sidm} }, $self->{privlevel}, scalar @user, @user), $self->{password}));
+    push @payload, unpack("C*", $self->{hshfn}->(pack("C*", @{ $self->{remoterandomnumber} }, @{ $self->{sidm} }, $self->{privlevel}, scalar @user, @user), $self->{password}));
     $self->sendpayload(payload => \@payload, type => $payload_types{'rakp3'});
 }
 
@@ -823,6 +842,7 @@ sub send_rakp1 {
 
 sub init {
     my $self = shift;
+    $self->{attempthash} = 256;
     $self->{confalgo}                    = undef;
     $self->{integrityalgo}               = undef;
     $self->{sessionestablishmentcontext} = 0;
@@ -902,8 +922,8 @@ sub got_rakp4 {
         return 9;
     }
     splice @data, 0, 6;    #discard reserved bytes and session id
-    my @expectauthcode = unpack("C*", hmac_sha1(pack("C*", @{ $self->{randomnumber} }, @{ $self->{pendingsessionid} }, @{ $self->{remoteguid} }), $self->{sik}));
-    foreach (@expectauthcode[ 0 .. 11 ]) {
+    my @expectauthcode = unpack("C*", $self->{hshfn}->(pack("C*", @{ $self->{randomnumber} }, @{ $self->{pendingsessionid} }, @{ $self->{remoteguid} }), $self->{sik}));
+    foreach (@expectauthcode[ 0 .. ($self->{hshln} - 1) ]) {
         unless ($_ == (shift @data)) {
 
             #we'll just ignore this transgression...... *this time*
@@ -973,7 +993,7 @@ sub got_rakp2 {
     my @user = unpack("C*", $self->{userid});
     my $ulength = scalar @user;
     my $hmacdata = pack("C*", (@{ $self->{sidm} }, @{ $self->{pendingsessionid} }, @{ $self->{randomnumber} }, @{ $self->{remoterandomnumber} }, @{ $self->{remoteguid} }, $self->{privlevel}, $ulength, @user));
-    my @expectedhash = (unpack("C*", hmac_sha1($hmacdata, $self->{password})));
+    my @expectedhash = (unpack("C*", $self->{hshfn}->($hmacdata, $self->{password})));
     foreach (0 .. (scalar(@expectedhash) - 1)) {
         if ($expectedhash[$_] != $data[$_]) {
             $self->{sessionestablishmentcontext} = STATE_FAILED;
@@ -981,9 +1001,9 @@ sub got_rakp2 {
             return 9;
         }
     }
-    $self->{sik} = hmac_sha1(pack("C*", @{ $self->{randomnumber} }, @{ $self->{remoterandomnumber} }, $self->{privlevel}, $ulength, @user), $self->{password});
-    $self->{k1} = hmac_sha1(pack("C*", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1), $self->{sik});
-    $self->{k2} = hmac_sha1(pack("C*", 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2), $self->{sik});
+    $self->{sik} = $self->{hshfn}->(pack("C*", @{ $self->{randomnumber} }, @{ $self->{remoterandomnumber} }, $self->{privlevel}, $ulength, @user), $self->{password});
+    $self->{k1} = $self->{hshfn}->(pack("C*", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1), $self->{sik});
+    $self->{k2} = $self->{hshfn}->(pack("C*", 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2), $self->{sik});
     my @aeskey = unpack("C*", $self->{k2});
     $self->{aeskey} = pack("C*", (splice @aeskey, 0, 16));
     $self->{sessionestablishmentcontext} = STATE_EXPECTINGRAKP4;
@@ -1129,8 +1149,8 @@ sub sendpayload {
             push @msg,       7;
             push @integdata, 7;
             my $intdata = pack("C*", @integdata);
-            my @acode = unpack("C*", hmac_sha1($intdata, $self->{k1}));
-            push @msg, splice @acode, 0, 12;
+            my @acode = unpack("C*", $self->{hshfn}->($intdata, $self->{k1}));
+            push @msg, splice @acode, 0, $self->{hshln};
 
             #push integrity pad
             #push @msg,0x7; #reserved byte in 2.0
