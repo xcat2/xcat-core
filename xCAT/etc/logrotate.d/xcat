@@ -1,7 +1,6 @@
 /var/log/xcat/*.log {
     missingok
     sharedscripts
-    copytruncate
     delaycompress
     postrotate
         test -f /var/run/rsyslogd.pid && kill -HUP `cat /var/run/rsyslogd.pid 2> /dev/null` 2> /dev/null || true
