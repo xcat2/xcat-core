@@ -4987,6 +4987,26 @@ sub natural_sort_cmp($$) {
 
 #--------------------------------------------------------------------------------
 
+=head3  groups
+      Pure perl implementation of /bin/groups
+=cut
+
+#--------------------------------------------------------------------------------
+sub groups($) {
+    my ($name)=@_;
+    my @list;
+    my $n=(getpwnam($name))[3];
+    @list=((getgrgid($n))[0]);
+    while (my @l=getgrent()) {
+        if ($l[3] && $l[3] ne "" && $l[3] =~ /$name/) {
+            push @list, $l[0];
+        }
+    }
+    endgrent();
+}
+
+#--------------------------------------------------------------------------------
+
 =head3  console_sleep
       A wrap for sleep subroutine, if goconserver is used, just exit immidiately
       as goconserver has its own sleep mechanism.
