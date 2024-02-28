@@ -482,10 +482,10 @@ if [ "$OSNAME" != "AIX" ]; then
         gpg -a --detach-sign --default-key 5619700D $DESTDIR/repodata/repomd.xml
         gpg -a --detach-sign --default-key 5619700D $SRCDIR/repodata/repomd.xml
         if [ ! -f $DESTDIR/repodata/repomd.xml.key ]; then
-            ${WGET_CMD} -q -P $DESTDIR/repodata $GSA/keys/repomd.xml.key
+            ${WGET_CMD} --no-check-certificate -q -P $DESTDIR/repodata $GSA/keys/repomd.xml.key
         fi
         if [ ! -f $SRCDIR/repodata/repomd.xml.key ]; then
-            ${WGET_CMD} -P $SRCDIR/repodata $GSA/keys/repomd.xml.key
+            ${WGET_CMD} --no-check-certificate -P $SRCDIR/repodata $GSA/keys/repomd.xml.key
         fi
     else
         createrepo $DESTDIR
