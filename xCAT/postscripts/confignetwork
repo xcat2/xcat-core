@@ -12,6 +12,9 @@
 #       updatenode noderange confignetwork
 #  3. confignetwork can be used in postscripts or postbootscripts too.
 #
+#  4. To delete the config files for nics other than the install nic and those with xCAT config, you can run the following command on MN:
+#       updatenode noderange "confignetwork -r" 
+#
 ############################################################################
 
 # load library
@@ -85,6 +88,7 @@ function get_nic_cfg_file_content {
 #
 #####################################################################
 boot_install_nic=0
+remove_nics=0
 str_ib_nics=''
 num_iba_ports=
 for arg in "$@"
@@ -93,6 +97,8 @@ do
         boot_install_nic=1
     elif [ "${arg:0:10}" = "--ibaports" ];then
         num_iba_ports=${arg#--ibaports=}
+    elif [ "$arg" = "-r" ]; then
+	remove_nics=1
     fi
 done
 if [ "$SETINSTALLNIC" = "1" ] || [ "$SETINSTALLNIC" = "yes" ]; then
@@ -167,6 +173,7 @@ function parser_nic_attribute {
            str_all_nics=$str_all_nics"$key "
         fi
         hashset $nicattr $key "$str_temp"
+        hashset hash_defined_nics_tokeep $key "$str_temp"
         i=$((i+1))
     done
 
@@ -629,6 +636,36 @@ function configure_nicdevice {
     return $errorcode
 }
 
+
+######################################################################
+#
+# Delete extra nics
+# QMUL requirement - writen by Christopher J. Walker
+# based on some code from confinics
+#
+######################################################################
+function configure_remove_extra_nics {
+# First find extra nics - excluding install nic (which has $MACADDRESS
+    str_temp=$(ip -o link  | grep -vi $MACADDRESS | grep -vi loopback | grep -v SLAVE | grep -v MASTER | awk {'print $2'} | sed s/://)
+    old_ifs=$IFS
+    IFS=$'\n'
+    array_nics_temp=($str_temp)
+    IFS=$old_ifs
+    log_info "-r option selected - delete unconfigured nics"
+    for str_temp_nic in ${array_nics_temp[@]}
+    do
+        str_temp2=$(echo $(hashget hash_defined_nics_tokeep $str_temp_nic) | awk -F, '{print $1}')
+        if [ -n "$str_temp2" ]; then
+            log_info "-r option selected, but xCAT configuration found.  Leave: $str_temp_nic"
+        else
+	    log_info "-r option selected and card not configured by xCAT. Delete: $str_temp_nic"
+	    configeth -r $str_temp_nic
+        fi
+    done
+}
+
+
+
 ############################################################################
 #
 # Main process
@@ -703,6 +740,12 @@ parser_nic_attribute "$NICNETWORKS" "nicnetworks"
 
 #make hash for niccustomscripts
 parser_nic_attribute "$NICCUSTOMSCRIPTS" "niccustomscripts"
+
+#Delete configuration for network cards that are not configured by xCAT
+if [ $remove_nics -eq 1 ]; then
+    log_info "-r option selected, removing configuration for extra nics"
+    configure_remove_extra_nics 
+fi
 
 #get nic and its device pair, for example
 #eth0.6 eth0
