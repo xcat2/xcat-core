@@ -7,6 +7,9 @@
 %ifarch ppc ppc64
 %define tarch ppc64
 %endif
+%ifarch aarch64
+%define tarch aarch64
+%endif
 %define rpminstallroot /opt/xcat/share/xcat/netboot/genesis/%{tarch}/fs
 BuildArch: noarch
 %define name	xCAT-genesis-scripts-%{tarch}
