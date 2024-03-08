@@ -264,6 +264,9 @@ case "$(uname -m)" in
     echo "part prepboot --fstype=prepboot --asprimary --ondisk=$instdisk --size=8" >>/tmp/partitionfile
     ;;
 esac
+if [ `blockdev --getsz $instdisk` -gt 4294967295 ]; then
+    echo "part biosboot --ondisk=$instdisk --size=1" >> /tmp/partitionfile
+fi
 if [ -d /sys/firmware/efi ]
 then
     echo "part /boot/efi --fstype=$EFIFSTYPE --ondisk=$instdisk --size=256" >>/tmp/partitionfile

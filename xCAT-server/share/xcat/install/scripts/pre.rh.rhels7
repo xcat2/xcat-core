@@ -245,6 +245,9 @@ echo "ignoredisk --only-use=$instdisk" >> /tmp/partitionfile
 if [ `uname -m` = "ppc64" -o `uname -m` = "ppc64le" ]; then
 	echo 'part None --fstype "PPC PReP Boot" --ondisk '$instdisk' --size 8' >> /tmp/partitionfile
 fi
+if [ `blockdev --getsz $instdisk` -gt 4294967295 ]; then
+    echo 'part biosboot --size 1 --ondisk '$instdisk >> /tmp/partitionfile
+fi
 if [ -d /sys/firmware/efi ]; then
     echo 'part /boot/efi --size 50 --ondisk '$instdisk' --fstype '$EFIFSTYPE >> /tmp/partitionfile
 fi
