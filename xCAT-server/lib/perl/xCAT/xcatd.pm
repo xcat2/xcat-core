@@ -105,11 +105,17 @@ sub validate {
         }
     }
 
+    # Get groups for peername
+    my $usergroups = xCAT::Utils->groups($peername);
+
   RULE: foreach $rule (@sortedpolicies) {
         if ($rule->{name} and $rule->{name} ne '*') {
 
             #TODO: more complex matching (lists, wildcards)
-            next unless ($peername and $peername eq $rule->{name});
+	    if (!$usergroups or index($usergroups,$rule->{name}) < 0) {
+		# If the user's group is empty, or usergroups doesn't contain rule name then...
+                next unless ($peername and $peername eq $rule->{name});
+	    }
         }
         if ($rule->{name} and $rule->{name} eq '*') { #a name is required, but can be any name whatsoever....
             next unless ($peername);
