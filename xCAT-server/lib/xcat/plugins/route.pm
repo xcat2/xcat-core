@@ -753,7 +753,7 @@ sub delete_route {
         my $os = xCAT::Utils->osver();
         if ($os =~ /sles/) {         #sles
             deletePersistentRoute_Sles($callback, $net, $mask, $gw_ip, $gw, $ifname);
-        } elsif ($os =~ /ubuntu/) {    #ubuntu or Debian?
+        } elsif ($os =~ /ubuntu|debian/) {    #ubuntu or Debian?
             deletePersistentRoute_Debian($callback, $net, $mask, $gw_ip, $gw, $ifname);
         }
         elsif ($os =~ /rh|fedora|centos|alma|rocky/) {    #RH, Ferdora
