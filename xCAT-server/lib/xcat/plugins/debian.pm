@@ -438,7 +438,7 @@ sub copycd
     }
     else
     {
-        my $osdistoname = $distname . "-" . $arch;
+        my $osdistroname = $distname . "-" . $arch;
         my $temppath    = "$installroot/$distname/$arch";
         my @ret = xCAT::SvrUtils->update_osdistro_table($distname, $arch, $temppath, $osdistroname);
         if ($ret[0] != 0) {
