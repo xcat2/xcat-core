@@ -6,7 +6,7 @@ check:rc==0
 check:output=~$$CN:\s+[discover|boot|reboot|install|netboot|shell|standby]
 cmd:nodeset $$CN stat -V
 check:rc==0
-check:output=~$$CN:\s+\[\w+\]:\s+[discover|boot|reboot|install|netboot|shell|standby]
+check:output=~$$CN:\s+\[[a-zA-Z0-9\-]+\]:\s+[discover|boot|reboot|install|netboot|shell|standby]
 end
 
 start:nodeset_noderange
