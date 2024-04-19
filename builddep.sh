@@ -265,9 +265,9 @@ for i in `find -mindepth 2 -maxdepth 2 -type d `; do
 		createrepo $i >/dev/null
 	fi
 	rm -f $i/repodata/repomd.xml.asc
-	gpg -a --detach-sign --default-key 5619700D $i/repodata/repomd.xml
+	gpg -a --detach-sign --default-key "xCAT Automatic Signing Key" $i/repodata/repomd.xml
 	if [ ! -f $i/repodata/repomd.xml.key ]; then
-		cp $GSA/../keys/repomd.xml.key $i/repodata
+		gpg -a --export "xCAT Automatic Signing Key" > $i/repodata/repomd.xml.key
 	fi
 done
 
