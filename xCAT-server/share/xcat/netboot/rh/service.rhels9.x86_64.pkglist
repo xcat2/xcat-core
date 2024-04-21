@@ -10,6 +10,7 @@ util-linux
 wget
 perl-DBD-MySQL
 perl-DBD-Pg
+perl-lib
 python3
 tar
 bzip2
