@@ -479,13 +479,13 @@ if [ "$OSNAME" != "AIX" ]; then
         rm -f $SRCDIR/repodata/repomd.xml.asc
         rm -f $DESTDIR/repodata/repomd.xml.asc
         # Use the xCAT Automatic Signing Key to do the signing
-        gpg -a --detach-sign --default-key 5619700D $DESTDIR/repodata/repomd.xml
-        gpg -a --detach-sign --default-key 5619700D $SRCDIR/repodata/repomd.xml
+        gpg -a --detach-sign --default-key "xCAT Automatic Signing Key" $DESTDIR/repodata/repomd.xml
+        gpg -a --detach-sign --default-key "xCAT Automatic Signing Key" $SRCDIR/repodata/repomd.xml
         if [ ! -f $DESTDIR/repodata/repomd.xml.key ]; then
-            ${WGET_CMD} --no-check-certificate -q -P $DESTDIR/repodata $GSA/keys/repomd.xml.key
+            gpg -a --export "xCAT Automatic Signing Key" > $DESTDIR/repodata/repomd.xml.key
         fi
         if [ ! -f $SRCDIR/repodata/repomd.xml.key ]; then
-            ${WGET_CMD} --no-check-certificate -P $SRCDIR/repodata $GSA/keys/repomd.xml.key
+            gpg -a --export "xCAT Automatic Signing Key" > $SRCDIR/repodata/repomd.xml.key
         fi
     else
         createrepo $DESTDIR

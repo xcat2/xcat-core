@@ -373,7 +373,8 @@ __EOF__
            #echo "GPGSIGN=$GPGSIGN specified, the repo will not be signed"
            echo "" >> conf/distributions
        else
-           echo "SignWith: 5619700D" >> conf/distributions
+           keyid=$(gpg --list-keys --keyid-format long "xCAT Automatic Signing Key" | grep '^pub' | sed -e 's/.*\///' -e 's/ .*//')
+           echo "SignWith: $keyid" >> conf/distributions
            echo "" >> conf/distributions
        fi
     done
@@ -514,7 +515,8 @@ __EOF__
             echo "GPGSIGN=$GPGSIGN specified, the repo will not be signed"
             echo "" >> conf/distributions
         else
-            echo "SignWith: 5619700D" >> conf/distributions
+            keyid=$(gpg --list-keys --keyid-format long "xCAT Automatic Signing Key" | grep '^pub' | sed -e 's/.*\///' -e 's/ .*//')
+            echo "SignWith: $keyid" >> conf/distributions
             echo "" >> conf/distributions
         fi
 
