@@ -1,4 +1,4 @@
-#! /usr/bin/env perl
+#!/usr/bin/env perl
 
 # This script calls xCAT command 'nodestat' and 'xdsh' to
 # implement a status monitoring tool like CSM command 'csmstat

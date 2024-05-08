@@ -1,3 +1,4 @@
+#!/bin/bash
 # Build the xCAT-genesis-base rpm on a host system.
 # Option 1:  install the xCAT-genesis-builder rpm (that includes this file) on a system installed with
 #            the distro you want to use to build xCAT-genesis-base.

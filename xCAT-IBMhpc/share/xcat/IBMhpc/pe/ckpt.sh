@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 # Checkpoint/Restart related environment setup
 

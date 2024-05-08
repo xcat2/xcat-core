@@ -1,3 +1,4 @@
+#!/bin/bash
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #Redhcp, do the xcat part again
 FORCENICS=`cat /restart|awk '{print $2}'`

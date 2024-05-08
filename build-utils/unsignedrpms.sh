@@ -1,3 +1,4 @@
+#!/bin/sh
 # Check if the given rpm is not signed, and display its file name if not signed.
 # This would normally be run from find, e.g.: find . -type f -name '*.rpm' -exec ~/unsignedrpms.sh {} \;
 

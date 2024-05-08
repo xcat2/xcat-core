@@ -1,3 +1,4 @@
+#!/bin/sh
 # Sample script for diskless image changes for IB support
 #  Invoke this script from your
 #  /install/custom/netboot/<os>/<arch>/<profile>.postinstall script as:

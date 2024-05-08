@@ -30,7 +30,7 @@ Code Standard Example:
 
 ::
 
-    #! /usr/bin/perl
+    #!/usr/bin/perl
 
     # This is a perl program example to demo the recommended
     # style to write perl code
