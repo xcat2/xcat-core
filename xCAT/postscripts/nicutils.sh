@@ -1832,7 +1832,7 @@ function add_extra_params_nmcli {
             # For RHEL 9, use nmcli directly, otherwise use ifcfg scheme.
             if [[ "$OSVER" =~ rhels9 ]]; then
                 nmcli con modify "$con_name" "$name" "$value"
-                return $?
+                rc+=$?
             else
                 grep $name $str_conf_file >/dev/null 2>/dev/null
                 if [ $? -eq 0 ]; then
