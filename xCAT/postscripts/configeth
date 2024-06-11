@@ -580,6 +580,7 @@ elif [ "$1" = "-s" ];then
             str_inst_mask=`grep subnet-mask $str_lease_file | tail -n 1 | awk '{print $3}' | sed 's/;$//'`
             str_inst_gateway=`grep routers $str_lease_file | tail -n 1 | awk '{print $3}' | sed 's/;$//'`
             str_inst_dns=`grep domain-name-servers $str_lease_file | tail -n 1 | awk '{print $3}' | sed 's/;$//'`
+            str_inst_dns_search=`grep domain-search $str_lease_file | tail -n 1 | awk '{print $3}' | sed 's/;$//'`
         else
             if [ -n "$MACADDRESS" ];then
                 str_inst_mac=$MACADDRESS
@@ -594,6 +595,11 @@ elif [ "$1" = "-s" ];then
                     fi
                 fi
                 str_inst_gateway=`ip ro ls|grep default|awk '{print $3}'|head -1`
+		str_resolv_file=/var/run/NetworkManager/resolv.conf
+		if [ -f $str_resolv_file ];then
+                    str_inst_dns=`grep ^nameserver $str_resolv_file | sed 's/^nameserver //g'`
+                    str_inst_dns_search=`grep ^search $str_resolv_file | sed 's/^search //g'`
+	        fi
             fi
         fi
     fi
@@ -753,6 +759,11 @@ elif [ "$1" = "-s" ];then
         if [ -n "${str_inst_dns}" ];then
 	        if [ $networkmanager_active -eq 1 ]; then
 		        nmcli con modify $con_name ipv4.dns ${str_inst_dns}
+                fi
+        fi
+        if [ -n "${str_inst_dns_search}" ];then
+	        if [ $networkmanager_active -eq 1 ]; then
+		        nmcli con modify $con_name ipv4.dns-search "${str_inst_dns_search}"
                 fi
         fi
         if [ -n "${str_inst_mtu}" ];then
