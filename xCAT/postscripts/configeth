@@ -147,6 +147,7 @@ function configipv4(){
             echo "  vlan-raw-device ${parent_device}" >> $str_conf_file
         fi
     else
+        #redhat
         str_prefix=$(v4mask2prefix $str_v4mask)
         # Write the info to the ifcfg file for redhat
         con_name="xcat-"${str_if_name}
@@ -171,6 +172,7 @@ function configipv4(){
                 fi
             fi
         elif [ $networkmanager_active -eq 2 ]; then
+            # TODO does not work for EL9 yet
             str_conf_file="/etc/sysconfig/network-scripts/ifcfg-xcat-${str_if_name}"
             if [ $num_v4num -eq 0 ]; then
                 echo "DEVICE=${str_if_name}" > $str_conf_file
@@ -314,29 +316,56 @@ configipv6(){
         fi
     else
         #redhat
-        str_conf_file="/etc/sysconfig/network-scripts/ifcfg-${str_if_name}"
-        if [ $num_v4num -eq 0 -a $num_v6num -eq 0 ];then
-            echo "DEVICE=$str_if_name" > $str_conf_file
-            echo "BOOTPROTO=static" >> $str_conf_file
-            echo "NM_CONTROLLED=no" >> $str_conf_file
-            echo "ONBOOT=yes" >> $str_conf_file
-        fi
-        if [ $num_v6num -eq 0 ];then
-            echo "IPV6INIT=yes" >> $str_conf_file
-            echo "IPV6ADDR=${str_v6ip}/${str_v6prefix}" >> $str_conf_file
+        con_name="xcat-"${str_if_name}
+        if [ $networkmanager_active -eq 1 ]; then
+            if [ $num_v4num -eq 0 -a $num_v6num -eq 0 ];then
+                is_nmcli_connection_exist $con_name
+                if [ $? -eq 0 ]; then
+                    tmp_con_name=$con_name"-tmp"
+                    nmcli con modify $con_name connection.id $tmp_con_name
+                fi
+                nmcli con add type ethernet con-name $con_name ifname ${str_if_name} ipv6.method manual ipv6.addresses ${str_v6ip}/${str_v6prefix} connection.autoconnect-priority 9
+            fi
+            if [ $num_v6num -eq 0 ];then
+                nmcli con modify $con_name ipv6.method manual ipv6.addresses ${str_v6ip}/${str_v6prefix}
+            else
+                nmcli con modify $con_name ipv6.method manual +ipv6.addresses ${str_v6ip}/${str_v6prefix}
+            fi
+            if [[ "$str_v6gateway" != "$str_default_token" && ! "$str_v6gateway" =~ xcatmaster ]];then
+                nmcli con modify $con_name ipv6.gateway $str_v6gateway
+            fi
+        # TODO add networkmanager_active -eq 2 case
         else
-            echo "IPV6ADDR_SECONDARIES=${str_v6ip}/${str_v6prefix}" >> $str_conf_file
+            str_conf_file="/etc/sysconfig/network-scripts/ifcfg-xcat-${str_if_name}"
+            str_conf_file_1="/etc/sysconfig/network-scripts/ifcfg-xcat-${str_if_name}-1"
+            if [ -f $str_conf_file_1 ]; then
+                grep -x "NAME=$con_name" $str_conf_file_1 >/dev/null 2>/dev/null
+                if [ $? -eq 0 ]; then
+                    str_conf_file=$str_conf_file_1
+                fi
+            fi
+            if [ $num_v4num -eq 0 -a $num_v6num -eq 0 ];then
+                echo "DEVICE=$str_if_name" > $str_conf_file
+                echo "BOOTPROTO=static" >> $str_conf_file
+                echo "NM_CONTROLLED=no" >> $str_conf_file
+                echo "ONBOOT=yes" >> $str_conf_file
+            fi
+            if [ $num_v6num -eq 0 ];then
+                echo "IPV6INIT=yes" >> $str_conf_file
+                echo "IPV6ADDR=${str_v6ip}/${str_v6prefix}" >> $str_conf_file
+            else
+                echo "IPV6ADDR_SECONDARIES=${str_v6ip}/${str_v6prefix}" >> $str_conf_file
+            fi
+            if [[ "$str_v6gateway" != "$str_default_token" && ! "$str_v6gateway" =~ xcatmaster ]];then
+                echo "IPV6_DEFAULTGW=$str_v6gateway" >> $str_conf_file
+            fi
         fi
-        if [ "$str_v6gateway" != "$str_default_token" ] -a [ `echo $str_v6gateway | grep -v 'xcatmaster'` ];then
-            echo "IPV6_DEFAULTGW=$str_v6gateway" >> $str_conf_file
-        fi
-
         #add extra params
-	i=0
-	while [ $i -lt ${#array_extra_param_names[@]} ]
-	do
-	    name="${array_extra_param_names[$i]}"
-	    value="${array_extra_param_values[$i]}"
+        i=0
+        while [ $i -lt ${#array_extra_param_names[@]} ]
+        do
+            name="${array_extra_param_names[$i]}"
+            value="${array_extra_param_values[$i]}"
             echo "  $i: name=$name value=$value"
             grep -i "${name}" $str_conf_file
             if [ $? -eq 0 ];then
@@ -344,8 +373,8 @@ configipv6(){
             else
                 echo "${name}=${value}" >> $str_conf_file
             fi
-	    i=$((i+1))
-	done		
+            i=$((i+1))
+        done
     fi
 }
 
