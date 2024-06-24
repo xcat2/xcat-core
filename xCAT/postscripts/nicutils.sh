@@ -1808,14 +1808,18 @@ function add_extra_params_nmcli {
     nicdev=$1
     con_name=$2
     rc=0
-    str_conf_file="/etc/sysconfig/network-scripts/ifcfg-${con_name}"
-    str_conf_file_1="/etc/sysconfig/network-scripts/ifcfg-${con_name}-1"
-    if [ -f $str_conf_file_1 ]; then
-        grep -x "NAME=$con_name" $str_conf_file_1 >/dev/null 2>/dev/null
-        if [ $? -eq 0 ]; then
-            str_conf_file=$str_conf_file_1
+
+    if ! [[ $OSVER =~ (rhels9|alma9|rocky9) ]]; then
+        str_conf_file="/etc/sysconfig/network-scripts/ifcfg-${con_name}"
+        str_conf_file_1="/etc/sysconfig/network-scripts/ifcfg-${con_name}-1"
+        if [ -f $str_conf_file_1 ]; then
+            grep -x "NAME=$con_name" $str_conf_file_1 >/dev/null 2>/dev/null
+            if [ $? -eq 0 ]; then
+                str_conf_file=$str_conf_file_1
+            fi
         fi
     fi
+
     #query extra params
     query_extra_params $nicdev
     i=0
@@ -1823,13 +1827,20 @@ function add_extra_params_nmcli {
     do
         name="${array_extra_param_names[$i]}"
         value="${array_extra_param_values[$i]}"
+
         if [ -n "$name" -a -n "$value" ]; then
-            grep $name $str_conf_file >/dev/null 2>/dev/null
-            if [ $? -eq 0 ]; then
-                replacevalue="$name=$value"
-                sed -i "s/^$name=.*/$replacevalue/" $str_conf_file
+            # For RHEL 9, use nmcli directly, otherwise use ifcfg scheme.
+            if [[ "$OSVER" =~ (rhels9|alma9|rocky9) ]]; then
+                nmcli con modify "$con_name" "$name" "$value"
+                rc+=$?
             else
-                echo "$name="$value"" >> $str_conf_file
+                grep $name $str_conf_file >/dev/null 2>/dev/null
+                if [ $? -eq 0 ]; then
+                    replacevalue="$name=$value"
+                    sed -i "s/^$name=.*/$replacevalue/" $str_conf_file
+                else
+                    echo "$name="$value"" >> $str_conf_file
+                fi
             fi
         else
             log_error "invalid extra params $name $value, please check nics.nicextraparams"
@@ -1837,7 +1848,10 @@ function add_extra_params_nmcli {
         fi
         i=$((i+1))
     done
-    $nmcli con reload $str_conf_file
+
+    if [[ $OSVER != (rhels9|alma9|rocky9) ]]; then
+        $nmcli con reload $str_conf_file
+    fi
     return $rc
 }
 

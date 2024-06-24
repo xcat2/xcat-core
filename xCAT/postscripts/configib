@@ -433,21 +433,25 @@ IPADDR=$nicip" > $dir/ifcfg-$nic
                    fi
 
                    #add extra params
-				   i=0
-				   while [ $i -lt ${#array_extra_param_names[@]} ]
-				   do
-					   name="${array_extra_param_names[$i]}"
-					   value="${array_extra_param_values[$i]}"
-					   echo "  $i: name=$name value=$value"
-                                           grep -i "${name}" $dir/ifcfg-$nic
-                                           if [ $? -eq 0 ];then
-                                               sed -i "s/.*${name}.*/${name}=${value}/i" >> $dir/ifcfg-$nic
-                                           else
-                                               echo "${name}=${value}" >> $dir/ifcfg-$nic
-                                           fi
-					   i=$((i+1))
-				   done		
-			   else # not the first ip address
+                   i=0
+                   while [ $i -lt ${#array_extra_param_names[@]} ]
+                   do
+                       name="${array_extra_param_names[$i]}"
+                       value="${array_extra_param_values[$i]}"
+                       echo "  $i: name=$name value=$value"
+                       if [[ "$OSVER" =~ (rhels9|alma9|rocky9) ]]; then
+                           nmcli con modify $con_name $name $value
+                       else
+                           grep -i "${name}" $dir/ifcfg-$nic
+                           if [ $? -eq 0 ];then
+                               sed -i "s/.*${name}.*/${name}=${value}/i" >> $dir/ifcfg-$nic
+                           else
+                               echo "${name}=${value}" >> $dir/ifcfg-$nic
+                           fi
+                       fi
+                       i=$((i+1))
+                   done		
+                else # not the first ip address
                    echo "LABEL_$ipindex=$ipindex
 IPADDR_$ipindex=$nicip" >> $dir/ifcfg-$nic
                     # ipv6
@@ -465,20 +469,24 @@ IPADDR_$ipindex=$nicip" >> $dir/ifcfg-$nic
                        fi
                    fi
                    #add extra params
-				   i=0
-				   while [ $i -lt ${#array_extra_param_names[@]} ]
-				   do
-					   name="${array_extra_param_names[$i]}"
-					   value="${array_extra_param_values[$i]}"
-					   echo "  $i: name=$name value=$value"
-                                           grep -i "${name}" $dir/ifcfg-$nic
-                                           if [ $? -eq 0 ];then
-                                               sed -i "s/.*${name}.*/${name}=${value}/i" >> $dir/ifcfg-$nic
-                                           else
-                                               echo "${name}=${value}" >> $dir/ifcfg-$nic
-                                           fi
-					   i=$((i+1))
-				   done		
+                   i=0
+                   while [ $i -lt ${#array_extra_param_names[@]} ]
+                   do
+                       name="${array_extra_param_names[$i]}"
+                       value="${array_extra_param_values[$i]}"
+                       echo "  $i: name=$name value=$value"
+                       if [[ "$OSVER" =~ (rhels9|alma9|rocky9) ]]; then
+                           nmcli con modify $con_name $name $value
+                       else
+                           grep -i "${name}" $dir/ifcfg-$nic
+                           if [ $? -eq 0 ];then
+                               sed -i "s/.*${name}.*/${name}=${value}/i" >> $dir/ifcfg-$nic
+                           else
+                               echo "${name}=${value}" >> $dir/ifcfg-$nic
+                           fi
+                       fi
+                       i=$((i+1))
+                   done		
                 fi # end if [ $ipindex -eq 1 ]
             elif [ $OS_name == 'redhat' ]
             then
@@ -521,21 +529,25 @@ IPADDR=$nicip" > $dir/ifcfg-$nic
                     fi
 
 
-					#add extra params
-					i=0
-					while [ $i -lt ${#array_extra_param_names[@]} ]
-					do
-						name="${array_extra_param_names[$i]}"
-						value="${array_extra_param_values[$i]}"
-						echo "  $i: name=$name value=$value"
-                                                grep -i "${name}" $dir/ifcfg-$nic
-                                                if [ $? -eq 0 ];then
-                                                    sed -i "s/.*${name}.*/${name}=${value}/i" >> $dir/ifcfg-$nic
-                                                else
-                                                    echo "${name}=${value}" >> $dir/ifcfg-$nic
-                                                fi
-						i=$((i+1))
-					done		
+                    #add extra params
+                    i=0
+                    while [ $i -lt ${#array_extra_param_names[@]} ]
+                    do
+                        name="${array_extra_param_names[$i]}"
+                        value="${array_extra_param_values[$i]}"
+                        echo "  $i: name=$name value=$value"
+                        if [[ "$OSVER" =~ (rhels9|alma9|rocky9) ]]; then
+                            nmcli con modify $con_name $name $value
+                        else
+                            grep -i "${name}" $dir/ifcfg-$nic
+                            if [ $? -eq 0 ];then
+                                sed -i "s/.*${name}.*/${name}=${value}/i" >> $dir/ifcfg-$nic
+                            else
+                                echo "${name}=${value}" >> $dir/ifcfg-$nic
+                            fi
+                        fi
+                        i=$((i+1))
+                    done		
                else # not the first ip address
                    # ipv6
                    if echo $nicip | grep : 2>&1 1>/dev/null
@@ -586,21 +598,25 @@ IPADDR$ipindex=$nicip"
                             fi
                         fi
 
-						#add extra params
-						i=0
-						while [ $i -lt ${#array_extra_param_names[@]} ]
-						do
-							name="${array_extra_param_names[$i]}"
-							value="${array_extra_param_values[$i]}"
-							echo "  $i: name=$name value=$value"
-                                                        grep -i "${name}" $cfgfile
-                                                        if [ $? -eq 0 ];then
-                                                            sed -i "s/.*${name}.*/${name}=${value}/i" >> $cfgfile
-                                                        else
-                                                            echo "${name}=${value}" >> $cfgfile
-                                                        fi
-							i=$((i+1))
-						done		
+                        #add extra params
+                        i=0
+                        while [ $i -lt ${#array_extra_param_names[@]} ]
+                        do
+                            name="${array_extra_param_names[$i]}"
+                            value="${array_extra_param_values[$i]}"
+                            echo "  $i: name=$name value=$value"
+                            if [[ "$OSVER" =~ (rhels9|alma9|rocky9) ]]; then
+                                nmcli con modify $con_name $name $value
+                            else
+                                grep -i "${name}" $cfgfile
+                                if [ $? -eq 0 ]; then
+                                    sed -i "s/.*${name}.*/${name}=${value}/i" >> $cfgfile
+                                else
+                                    echo "${name}=${value}" >> $cfgfile
+                                fi
+                            fi
+                            i=$((i+1))
+                        done		
 
                         # need to run ifup eth1:1 for RedHat
                         if [ $nmcli_used -eq 0 ]; then
@@ -657,24 +673,24 @@ netmask $netmask" >> /etc/network/interfaces
                         #    echo "gateway $gateway" >> /etc/network/interfaces
                         #fi
                     fi
-				fi
-				#add extra params
-				i=0
-				while [ $i -lt ${#array_extra_param_names[@]} ]
-				do
-					name="${array_extra_param_names[$i]}"
-					value="${array_extra_param_values[$i]}"
-					echo "  $i: name=$name value=$value"
-                                        grep -i "${name}" /etc/network/interfaces
-                                        if [ $? -eq 0 ];then
-                                            sed -i "s/.*${name}.*/${name} ${value}/i" >> /etc/network/interfaces 
-                                        else
-                                            echo "${name} ${value}" >> /etc/network/interfaces 
-                                        fi
-					i=$((i+1))
-				done
+                fi
+                #add extra params
+                i=0
+                while [ $i -lt ${#array_extra_param_names[@]} ]
+                do
+                    name="${array_extra_param_names[$i]}"
+                    value="${array_extra_param_values[$i]}"
+                    echo "  $i: name=$name value=$value"
+                    grep -i "${name}" /etc/network/interfaces
+                    if [ $? -eq 0 ];then
+                        sed -i "s/.*${name}.*/${name} ${value}/i" >> /etc/network/interfaces 
+                    else
+                        echo "${name} ${value}" >> /etc/network/interfaces 
+                    fi
+                    i=$((i+1))
+                done
 
-           else
+            else
                 echo "Unsupported operating system"
                 logger -p local4.err -t $log_label "Unsupported operating system"
             fi
@@ -772,7 +788,9 @@ then
                 done
             else 
                 if [ $nmcli_used -eq 1 ]; then
-                    nmcli con reload $dir/ifcfg-$nic
+                    if ! [[ "$OSVER" =~ (rhels9|alma9|rocky9) ]]; then
+                        nmcli con reload $dir/ifcfg-$nic
+                    fi
                     nmcli con up $nic 2>&1
                 else
                     ifup $nic > /dev/null 2>&1

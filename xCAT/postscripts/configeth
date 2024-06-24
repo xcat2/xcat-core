@@ -215,11 +215,15 @@ function configipv4(){
         do
             name="${array_extra_param_names[$i]}"
             value="${array_extra_param_values[$i]}"
-            grep -i "${name}" $str_conf_file
-            if [ $? -eq 0 ];then
-                sed -i "s/.*${name}.*/${name}=${value}/i" $str_conf_file
+            if [[ "$OSVER" =~ (rhels9|alma9|rocky9) ]]; then
+                nmcli con modify $con_name $name $value
             else
-                echo "${name}=${value}" >> $str_conf_file
+                grep -i "${name}" $str_conf_file
+                if [ $? -eq 0 ];then
+                    sed -i "s/.*${name}.*/${name}=${value}/i" $str_conf_file
+                else
+                    echo "${name}=${value}" >> $str_conf_file
+                fi
             fi
     	    i=$((i+1))
         done
@@ -820,12 +824,16 @@ elif [ "$1" = "-s" ];then
         do
             name="${array_extra_param_names[$i]}"
             value="${array_extra_param_values[$i]}"
-            echo "$i: name=$name value=$value"
-            grep -i "${name}" $str_conf_file
-            if [ $? -eq 0 ];then
-                sed -i "s/.*${name}.*/${name}=${value}/i" $str_conf_file
+            if [[ "$OSVER" =~ (rhels9|alma9|rocky9) ]]; then
+                nmcli con modify $con_name $name $value
             else
-                echo "${name}=${value}" >> $str_conf_file
+                echo "$i: name=$name value=$value"
+                grep -i "${name}" $str_conf_file
+                if [ $? -eq 0 ];then
+                    sed -i "s/.*${name}.*/${name}=${value}/i" $str_conf_file
+                else
+                    echo "${name}=${value}" >> $str_conf_file
+                fi
             fi
             i=$((i+1))
         done		
