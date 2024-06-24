@@ -439,16 +439,16 @@ IPADDR=$nicip" > $dir/ifcfg-$nic
 					   name="${array_extra_param_names[$i]}"
 					   value="${array_extra_param_values[$i]}"
 					   echo "  $i: name=$name value=$value"
-                       if [[ "$OSVER" =~ (rhels9|alma9|rocky9) ]]; then
-                           nmcli con modify $con_name $name $value
-                       else
-                                           grep -i "${name}" $dir/ifcfg-$nic
-                                           if [ $? -eq 0 ];then
-                                               sed -i "s/.*${name}.*/${name}=${value}/i" >> $dir/ifcfg-$nic
-                                           else
-                                               echo "${name}=${value}" >> $dir/ifcfg-$nic
-                                           fi
-                       fi
+					   if [[ "$OSVER" =~ (rhels9|alma9|rocky9) ]]; then
+						   nmcli con modify $con_name $name $value
+					   else
+										   grep -i "${name}" $dir/ifcfg-$nic
+										   if [ $? -eq 0 ];then
+											   sed -i "s/.*${name}.*/${name}=${value}/i" >> $dir/ifcfg-$nic
+										   else
+											   echo "${name}=${value}" >> $dir/ifcfg-$nic
+										   fi
+					   fi
 					   i=$((i+1))
 				   done		
 			   else # not the first ip address
@@ -475,16 +475,16 @@ IPADDR_$ipindex=$nicip" >> $dir/ifcfg-$nic
 					   name="${array_extra_param_names[$i]}"
 					   value="${array_extra_param_values[$i]}"
 					   echo "  $i: name=$name value=$value"
-                       if [[ "$OSVER" =~ (rhels9|alma9|rocky9) ]]; then
-                           nmcli con modify $con_name $name $value
-                       else
-                                           grep -i "${name}" $dir/ifcfg-$nic
-                                           if [ $? -eq 0 ];then
-                                               sed -i "s/.*${name}.*/${name}=${value}/i" >> $dir/ifcfg-$nic
-                                           else
-                                               echo "${name}=${value}" >> $dir/ifcfg-$nic
-                                           fi
-                       fi
+					   if [[ "$OSVER" =~ (rhels9|alma9|rocky9) ]]; then
+						   nmcli con modify $con_name $name $value
+					   else
+										   grep -i "${name}" $dir/ifcfg-$nic
+										   if [ $? -eq 0 ];then
+											   sed -i "s/.*${name}.*/${name}=${value}/i" >> $dir/ifcfg-$nic
+										   else
+											   echo "${name}=${value}" >> $dir/ifcfg-$nic
+										   fi
+					   fi
 					   i=$((i+1))
 				   done		
                 fi # end if [ $ipindex -eq 1 ]
@@ -536,16 +536,16 @@ IPADDR=$nicip" > $dir/ifcfg-$nic
 						name="${array_extra_param_names[$i]}"
 						value="${array_extra_param_values[$i]}"
 						echo "  $i: name=$name value=$value"
-                        if [[ "$OSVER" =~ (rhels9|alma9|rocky9) ]]; then
-                            nmcli con modify $con_name $name $value
-                        else
-                                                grep -i "${name}" $dir/ifcfg-$nic
-                                                if [ $? -eq 0 ];then
-                                                    sed -i "s/.*${name}.*/${name}=${value}/i" >> $dir/ifcfg-$nic
-                                                else
-                                                    echo "${name}=${value}" >> $dir/ifcfg-$nic
-                                                fi
-                        fi
+						if [[ "$OSVER" =~ (rhels9|alma9|rocky9) ]]; then
+							nmcli con modify $con_name $name $value
+						else
+												grep -i "${name}" $dir/ifcfg-$nic
+												if [ $? -eq 0 ];then
+													sed -i "s/.*${name}.*/${name}=${value}/i" >> $dir/ifcfg-$nic
+												else
+													echo "${name}=${value}" >> $dir/ifcfg-$nic
+												fi
+						fi
 						i=$((i+1))
 					done		
                else # not the first ip address
@@ -605,16 +605,16 @@ IPADDR$ipindex=$nicip"
 							name="${array_extra_param_names[$i]}"
 							value="${array_extra_param_values[$i]}"
 							echo "  $i: name=$name value=$value"
-                            if [[ "$OSVER" =~ (rhels9|alma9|rocky9) ]]; then
-                                nmcli con modify $con_name $name $value
-                            else
-                                                        grep -i "${name}" $cfgfile
-                                                        if [ $? -eq 0 ];then
-                                                            sed -i "s/.*${name}.*/${name}=${value}/i" >> $cfgfile
-                                                        else
-                                                            echo "${name}=${value}" >> $cfgfile
-                                                        fi
-                            fi
+							if [[ "$OSVER" =~ (rhels9|alma9|rocky9) ]]; then
+								nmcli con modify $con_name $name $value
+							else
+														grep -i "${name}" $cfgfile
+														if [ $? -eq 0 ];then
+															sed -i "s/.*${name}.*/${name}=${value}/i" >> $cfgfile
+														else
+															echo "${name}=${value}" >> $cfgfile
+														fi
+							fi
 							i=$((i+1))
 						done		
 
