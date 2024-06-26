@@ -215,7 +215,7 @@ function configipv4(){
         do
             name="${array_extra_param_names[$i]}"
             value="${array_extra_param_values[$i]}"
-            if [[ "$OSVER" =~ (rhels9|alma9|rocky9) ]]; then
+            if [[ "$OSVER" =~ ^(rhels9|alma9|rocky9) ]]; then
                 nmcli con modify $con_name $name $value
             else
                 grep -i "${name}" $str_conf_file
@@ -824,7 +824,7 @@ elif [ "$1" = "-s" ];then
         do
             name="${array_extra_param_names[$i]}"
             value="${array_extra_param_values[$i]}"
-            if [[ "$OSVER" =~ (rhels9|alma9|rocky9) ]]; then
+            if [[ "$OSVER" =~ ^(rhels9|alma9|rocky9) ]]; then
                 nmcli con modify $con_name $name $value
             else
                 echo "$i: name=$name value=$value"
