@@ -10,6 +10,9 @@ Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
 %ifarch ppc ppc64 ppc64le
 %define tarch ppc64
 %endif
+%ifarch aarch64
+%define tarch aarch64
+%endif
 BuildArch: noarch
 %define name	xCAT-genesis-base-%{tarch}
 %define __spec_install_post :

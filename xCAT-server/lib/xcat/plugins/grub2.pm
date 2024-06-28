@@ -254,14 +254,19 @@ sub setstate {
                 $protocolrootdir = $tftpdir;
             }
 
+            my $efi = "";
+            if ($nodearch =~ /x86/i) {
+                $efi = "efi";
+            }
+
             if ($kern and $kern->{kcmdline}) {
-                print $pcfg "    linux $protocolrootdir/$kern->{kernel} $kern->{kcmdline}\n";
+                print $pcfg "    linux$efi $protocolrootdir/$kern->{kernel} $kern->{kcmdline} BOOTIF=\$net_default_mac\n";
             } else {
-                print $pcfg "    linux $protocolrootdir/$kern->{kernel}\n";
+                print $pcfg "    linux$efi $protocolrootdir/$kern->{kernel} BOOTIF=\$net_default_mac\n";
             }
             print $pcfg "    echo Loading initial ramdisk ...\n";
             if ($kern and $kern->{initrd}) {
-                print $pcfg "    initrd $protocolrootdir/$kern->{initrd}\n";
+                print $pcfg "    initrd$efi $protocolrootdir/$kern->{initrd}\n";
             }
 
             print $pcfg "}";

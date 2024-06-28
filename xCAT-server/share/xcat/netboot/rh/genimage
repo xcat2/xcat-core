@@ -277,6 +277,8 @@ if ($netdriver) {
 # Add the default driver list
 if ($arch eq 'x86' or $arch eq 'x86_64') {
     push @ndrivers, qw/tg3 bnx2 bnx2x e1000 e1000e igb mlx_en virtio_net be2net/;
+} elsif ($arch eq 'aarch64') {
+    push @ndrivers, qw/tg3 bnx2 bnx2x e1000e igb mlx_en virtio_net/;
 } elsif ($arch eq 'ppc64') {
     push @ndrivers, qw/e1000 e1000e igb ibmveth ehea/;
 } elsif ($arch eq 's390x') {
@@ -330,8 +332,20 @@ if($onlyinitrd){
     open($yumconfig, ">", "/tmp/genimage.$$.yum.conf");
 
     #yum/rpm/zypper has defect on calculating diskspace usage when installing rpm on a NFS mounted installroot
+    my $main_section = 0;
     if (isNFSdir("$rootimg_dir")) {
         print $yumconfig "[main]\ndiskspacecheck=0\n\n";
+        $main_section = 1;
+    }
+
+    # try to force non-native arch and use qemu-user-static if available
+    my $host_arch = `uname -m`;
+    chomp($host_arch);
+    $host_arch = "x86" if ($arch =~ /i.86$/);
+    if ($host_arch ne $arch) {
+        print $yumconfig "[main]\n" unless ($main_section);
+        print $yumconfig "arch=$arch\nignorearch=True\n\n";
+        $main_section = 1;
     }
 
     my $repnum = 0;
@@ -1843,7 +1857,7 @@ EOMS
         }
     }
 
-    if ($arch =~ /x86_64/) {
+    if ($arch =~ /x86_64/ or $arch =~ /aarch64/) {
         push @filestoadd, "lib64/libnss_dns.so.2";
         push @filestoadd, "lib64/libresolv.so.2";
     } else {
