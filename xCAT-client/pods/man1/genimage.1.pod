@@ -50,7 +50,7 @@ I<imagename> specifies the name of an os image definition to be used. The specif
 
 =item B<-a> I<arch>
 
-The hardware architecture of this node: ppc64le, x86_64, ppc64, x86, ia64, etc.  If omitted, the current hardware architecture will be used.
+The hardware architecture of this node: ppc64le, x86_64, ppc64, x86, ia64, aarch64 etc.  If omitted, the current hardware architecture will be used.
 
 =item B<-o> I<osver>
 

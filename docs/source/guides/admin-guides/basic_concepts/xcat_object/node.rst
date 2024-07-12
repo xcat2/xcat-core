@@ -13,7 +13,7 @@ Key Attributes
     The operating system deployed on this node. Valid values: AIX, rhels*, rhelc*, rhas*, centos*, SL*, fedora*, sles* (where * is the version #)
 
 * arch:
-    The hardware architecture of this node. Valid values: x86_64, ppc64, x86, ia64.
+    The hardware architecture of this node. Valid values: x86_64, ppc64, x86, ia64, aarch64.
 
 * groups:
     Usually, there are a set of nodes with some attributes in common, xCAT admin can define a node group containing these nodes, so that the management task can be issued against the group instead of individual nodes. A node can be a member of different groups, so the value of this attributes is a comma-delimited list of groups. At least one group is required to create a node. The new created group names should not be prefixed with "__" as this token has been preserved as the internal group name.
@@ -33,7 +33,7 @@ Key Attributes
               +--------------------------+----------------------+-----------------------------------+
               | Arch and Machine Type    |   OS                 |       valid netboot options       |
               +==========================+======================+===================================+
-              |       x86, x86_64        |   ALL                |       pxe, xnba                   |
+              |       x86, x86_64        |   ALL                |       pxe, xnba, grub2            |
               +--------------------------+----------------------+-----------------------------------+
               |         ppc64            | <=rhel6, <=sles11.3  |       yaboot                      |
               +--------------------------+----------------------+-----------------------------------+
@@ -42,6 +42,8 @@ Key Attributes
               |   ppc64le NonVirtualize  |    ALL               |       petitboot                   |
               +--------------------------+----------------------+-----------------------------------+
               |   ppc64le PowerKVM Guest |    ALL               |       grub2,grub2-http,grub2-tftp |
+              +--------------------------+----------------------+-----------------------------------+
+              |        aarch64           |    >=el8             |       grub2                       |
               +-------------------------------------------------+-----------------------------------+
 
 * postscripts:
