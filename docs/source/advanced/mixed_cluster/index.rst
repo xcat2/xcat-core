@@ -1,7 +1,7 @@
 Mixed Cluster
 =============
 
-The concept of mixed cluster support in xCAT is managing cluster which contain different hardware architectures.  Most commonly, this is usually a cluster consisting of both Power and x86 systems.
+The concept of mixed cluster support in xCAT is managing cluster which contain different hardware architectures.  Most commonly, this is usually a cluster consisting of both Power, ARM and x86 systems.
 
 .. toctree::
    :maxdepth: 2
