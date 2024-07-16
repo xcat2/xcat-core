@@ -18,8 +18,8 @@ check:output=~booted
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
 
-#Install additional packages on Red Hat and Rocky
-cmd:if xdsh $$CN "grep \"Red Hat\|Rocky\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils dnf-utils bzip2"; fi
+#Install additional packages on Red Hat, Rocky and Alma
+cmd:if xdsh $$CN "grep \"Red Hat\|Rocky\|Alma\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils dnf-utils bzip2"; fi
 
 #Install additional packages on Ubuntu
 cmd:if xdsh $$CN "grep \"Ubuntu\" /etc/*release >/dev/null"; then xdsh $$CN "DEBIAN_FRONTEND=noninteractive apt-get install -y gnupg"; fi
@@ -91,8 +91,8 @@ check:output=~booted
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
 
-#Install additional packages on Red Hat and Rocky
-cmd:if xdsh $$CN "grep \"Red Hat\|Rocky\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils dnf-utils bzip2"; fi
+#Install additional packages on Red Hat, Rocky and Alma
+cmd:if xdsh $$CN "grep \"Red Hat\|Rocky\|Alma\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils dnf-utils bzip2"; fi
 
 #Install additional packages on Ubuntu
 cmd:if xdsh $$CN "grep \"Ubuntu\" /etc/*release >/dev/null"; then xdsh $$CN "DEBIAN_FRONTEND=noninteractive apt-get install -y gnupg"; fi
@@ -135,8 +135,8 @@ check:output=~booted
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
 
-#Install additional packages on Red Hat and Rocky
-cmd:if xdsh $$CN "grep \"Red Hat\|Rocky\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils dnf-utils bzip2"; fi
+#Install additional packages on Red Hat, Rocky and Alma
+cmd:if xdsh $$CN "grep \"Red Hat\|Rocky\|Alma\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils dnf-utils bzip2"; fi
 
 #Install additional packages on Ubuntu
 cmd:if xdsh $$CN "grep \"Ubuntu\" /etc/*release >/dev/null"; then xdsh $$CN "DEBIAN_FRONTEND=noninteractive apt-get install -y gnupg"; fi
@@ -189,8 +189,8 @@ check:output=~booted
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
 
-#Install additional packages on Red Hat and Rocky
-cmd:if xdsh $$CN "grep \"Red Hat\|Rocky\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils dnf-utils bzip2"; fi
+#Install additional packages on Red Hat, Rocky and Alma
+cmd:if xdsh $$CN "grep \"Red Hat\|Rocky\|Alma\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils dnf-utils bzip2"; fi
 
 #Install additional packages on Ubuntu
 cmd:if xdsh $$CN "grep \"Ubuntu\" /etc/*release >/dev/null"; then xdsh $$CN "DEBIAN_FRONTEND=noninteractive apt-get install -y gnupg"; fi
