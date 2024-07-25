@@ -1,49 +1,50 @@
 Support Matrix
 ==============
 
-+---------+---------+---------+---------+---------+---------+---------+---------+---------+
-|         | RHEL    | SLES    | RHEL    | SLES    | Ubuntu  | RHEL    | SLES    | Ubuntu  |
-|         | ppc64   | ppc64   | x86_64  | x86_64  | x86_64  | ppc64le | ppc64le | ppc64el |
-|         | CN      | CN      | CN      | CN      | CN      | CN      | CN      | CN      |
-+=========+=========+=========+=========+=========+=========+=========+=========+=========+
-| RHEL    |         |         |         |         |         |         |         |         |
-| ppc64   |  yes    |  yes    | yes     | yes     | yes     |  yes    |  yes    |  yes    |
-| MN/SN   |         |         | [1]_    | [1]_    | [1]_    |         |         |         |
-+---------+---------+---------+---------+---------+---------+---------+---------+---------+
-| SLES    |         |         |         |         |         |         |         |         |
-| ppc64   |  yes    |  yes    | yes     | yes     | yes     |  yes    |  yes    |  yes    |
-| MN/SN   |         |         | [1]_    | [1]_    | [1]_    |         |         |         |
-+---------+---------+---------+---------+---------+---------+---------+---------+---------+
-| RHEL    |         |         |         |         |         |         |         |         |
-| x86_64  | yes     | yes     |  yes    |  yes    |  yes    |  yes    |  yes    |  yes    |
-| MN/SN   | [4]_    | [4]_    |         |         |         |         |         |         |
-+---------+---------+---------+---------+---------+---------+---------+---------+---------+
-| SLES    |         |         |         |         |         |         |         |         |
-| x86_64  | yes     | yes     |  yes    |  yes    |  yes    |  yes    |  yes    |  yes    |
-| MN/SN   | [4]_    | [4]_    |         |         |         |         |         |         |
-+---------+---------+---------+---------+---------+---------+---------+---------+---------+
-| Ubuntu  |         |         |         |         |         |         |         |         |
-| x86_64  | yes     | yes     |  yes    |  yes    |  yes    |  yes    |  yes    |  yes    |
-| MN/SN   | [5]_    | [5]_    |         |         |         |         |         |         |
-+---------+---------+---------+---------+---------+---------+---------+---------+---------+
-| RHEL    |         |         |         |         |         |         |         |         |
-| ppc64le | yes     | yes     |  yes    |  yes    |  yes    |  yes    |  yes    |  yes    |
-| MN/SN   | [2]_    | [2]_    |         |         |         |         |         |         |
-+---------+---------+---------+---------+---------+---------+---------+---------+---------+
-| SLES    |         |         |         |         |         |         |         |         |
-| ppc64le |  no     |  no     |  yes    |  yes    |  yes    |  yes    |  yes    |  yes    |
-| MN/SN   |         |         |         |         |         |         |         |         |
-+---------+---------+---------+---------+---------+---------+---------+---------+---------+
-| Ubuntu  |         |         |         |         |         |         |         |         |
-| ppc64el | yes     | yes     |  yes    |  yes    |  yes    |  yes    |  yes    |  yes    |
-| MN/SN   | [3]_    | [3]_    |         |         |         |         |         |         |
-+---------+---------+---------+---------+---------+---------+---------+---------+---------+
++---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
+|         | RHEL    | SLES    | RHEL    | SLES    | Ubuntu  | RHEL    | SLES    | Ubuntu  | RHEL    | SLES    | Ubuntu  |
+|         | ppc64   | ppc64   | x86_64  | x86_64  | x86_64  | ppc64le | ppc64le | ppc64el | aarch64 | aarch64 | aarch64 |
+|         | CN      | CN      | CN      | CN      | CN      | CN      | CN      | CN      | CN      | CN      | CN      |
++=========+=========+=========+=========+=========+=========+=========+=========+=========+=========+=========+=========+
+| RHEL    |         |         |         |         |         |         |         |         |         |         |         |
+| ppc64   |  yes    |  yes    | yes     | yes     | yes     |  yes    |  yes    |  yes    |  no     |  no     |  no     |
+| MN/SN   |         |         | [1]_    | [1]_    | [1]_    |         |         |         |         |         |         |
++---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
+| SLES    |         |         |         |         |         |         |         |         |         |         |         |
+| ppc64   |  yes    |  yes    | yes     | yes     | yes     |  yes    |  yes    |  yes    |  no     |  no     |  no     |
+| MN/SN   |         |         | [1]_    | [1]_    | [1]_    |         |         |         |         |         |         |
++---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
+| RHEL    |         |         |         |         |         |         |         |         |         |         |         |
+| x86_64  | yes     | yes     |  yes    |  yes    |  yes    |  yes    |  yes    |  yes    |  yes    |  no     |  no     |
+| MN/SN   | [4]_    | [4]_    |         |         |         |         |         |         |         |         |         |
++---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
+| SLES    |         |         |         |         |         |         |         |         |         |         |         |
+| x86_64  | yes     | yes     |  yes    |  yes    |  yes    |  yes    |  yes    |  yes    |  yes    |  no     |  no     |
+| MN/SN   | [4]_    | [4]_    |         |         |         |         |         |         |         |         |         |
++---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
+| Ubuntu  |         |         |         |         |         |         |         |         |         |         |         |
+| x86_64  | yes     | yes     |  yes    |  yes    |  yes    |  yes    |  yes    |  yes    |  yes    |  no     |  no     |
+| MN/SN   | [5]_    | [5]_    |         |         |         |         |         |         |         |         |         |
++---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
+| RHEL    |         |         |         |         |         |         |         |         |         |         |         |
+| ppc64le | yes     | yes     |  yes    |  yes    |  yes    |  yes    |  yes    |  yes    |  no     |  no     |  no     |
+| MN/SN   | [2]_    | [2]_    |         |         |         |         |         |         |         |         |         |
++---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
+| SLES    |         |         |         |         |         |         |         |         |         |         |         |
+| ppc64le |  no     |  no     |  yes    |  yes    |  yes    |  yes    |  yes    |  yes    |  no     |  no     |  no     |
+| MN/SN   |         |         |         |         |         |         |         |         |         |         |         |
++---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
+| Ubuntu  |         |         |         |         |         |         |         |         |         |         |         |
+| ppc64el | yes     | yes     |  yes    |  yes    |  yes    |  yes    |  yes    |  yes    |  no     |  no     |  no     |
+| MN/SN   | [3]_    | [3]_    |         |         |         |         |         |         |         |         |         |
++---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
+
 
 Notes:
 
 * The support statements refers to hardware control, operating system (os) provisioning, and general purpose system management where we do not see any obvious problems with the indicated combination.
 
-* For diskless mixed cluster support, the initial diskless image must be created on a node running the target operating system version and architecture. see :doc:`/advanced/mixed_cluster/building_stateless_images` for more details.
+* For xCAT < 2.17 diskless mixed cluster support, the initial diskless image must be created on a node running the target operating system version and architecture. On xCAT >= 2.17 with x86 based management nodes QEMU emulation can be used for different architectures (eg. ppc64 or aarch64) if qemu-user-static is installed and configured via systemd-binfmt. See :doc:`/advanced/mixed_cluster/building_stateless_images` for more details.
 
 .. rubric:: Footnotes
 

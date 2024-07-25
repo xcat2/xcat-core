@@ -50,7 +50,7 @@ nodetype Attributes:
 
 \ **arch**\ 
  
- The hardware architecture of this node.  Valid values: x86_64, ppc64, x86, ia64.
+ The hardware architecture of this node.  Valid values: x86_64, ppc64, x86, ia64, aarch64.
  
 
 

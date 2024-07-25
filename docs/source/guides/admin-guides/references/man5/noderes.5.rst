@@ -56,11 +56,12 @@ noderes Attributes:
  .. code-block:: perl
  
                          Arch                    OS                           valid netboot options
-                         x86, x86_64             ALL                          pxe, xnba
+                         x86, x86_64             ALL                          pxe, xnba, grub2
                          ppc64                   <=rhel6, <=sles11.3          yaboot
                          ppc64                   >=rhels7, >=sles11.4         grub2,grub2-http,grub2-tftp
                          ppc64le NonVirtualize   ALL                          petitboot
                          ppc64le PowerKVM Guest  ALL                          grub2,grub2-http,grub2-tftp
+                         aarch64                 >=el8                        grub2
  
  
 
