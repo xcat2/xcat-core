@@ -439,15 +439,11 @@ IPADDR=$nicip" > $dir/ifcfg-$nic
                        name="${array_extra_param_names[$i]}"
                        value="${array_extra_param_values[$i]}"
                        echo "  $i: name=$name value=$value"
-                       if [[ "$OSVER" =~ ^(rhels9|alma9|rocky9) ]]; then
-                           nmcli con modify $con_name $name $value
+                       grep -i "${name}" $dir/ifcfg-$nic
+                       if [ $? -eq 0 ];then
+                           sed -i "s/.*${name}.*/${name}=${value}/i" >> $dir/ifcfg-$nic
                        else
-                           grep -i "${name}" $dir/ifcfg-$nic
-                           if [ $? -eq 0 ];then
-                               sed -i "s/.*${name}.*/${name}=${value}/i" >> $dir/ifcfg-$nic
-                           else
-                               echo "${name}=${value}" >> $dir/ifcfg-$nic
-                           fi
+                           echo "${name}=${value}" >> $dir/ifcfg-$nic
                        fi
                        i=$((i+1))
                    done		
@@ -475,15 +471,11 @@ IPADDR_$ipindex=$nicip" >> $dir/ifcfg-$nic
                        name="${array_extra_param_names[$i]}"
                        value="${array_extra_param_values[$i]}"
                        echo "  $i: name=$name value=$value"
-                       if [[ "$OSVER" =~ ^(rhels9|alma9|rocky9) ]]; then
-                           nmcli con modify $con_name $name $value
+                       grep -i "${name}" $dir/ifcfg-$nic
+                       if [ $? -eq 0 ];then
+                           sed -i "s/.*${name}.*/${name}=${value}/i" >> $dir/ifcfg-$nic
                        else
-                           grep -i "${name}" $dir/ifcfg-$nic
-                           if [ $? -eq 0 ];then
-                               sed -i "s/.*${name}.*/${name}=${value}/i" >> $dir/ifcfg-$nic
-                           else
-                               echo "${name}=${value}" >> $dir/ifcfg-$nic
-                           fi
+                           echo "${name}=${value}" >> $dir/ifcfg-$nic
                        fi
                        i=$((i+1))
                    done		
@@ -493,15 +485,25 @@ IPADDR_$ipindex=$nicip" >> $dir/ifcfg-$nic
                # First ip address
                if [ $ipindex -eq 1 ]
                then
-                   nmcontrol=""
-                   devtype=""
-                   if [ $nmcli_used -eq 0 ]; then
-                        nmcontrol="NM_CONTROLLED=no"
+                   if [[ "$OSVER" =~ ^(rhels9|alma9|rocky9) ]]; then
+                       # ipv6
+                       if echo $nicip | grep : 2>&1 1>/dev/null
+                       then
+                           nmcli con add type infiniband con-name $nic ifname $nic ipv6.method manual ipv6.addresses $nicip
+                       else # ipv4
+                           prefix=$(convert_netmask_to_cidr $netmask)
+                           nmcli con add type infiniband con-name $nic ifname $nic ipv4.method manual ipv4.addresses $nicip/$prefix
+                       fi
                    else
-                        devtype="TYPE=InfiniBand"
-                   fi
-                   # Write the info to the ifcfg file
-                   echo "DEVICE=$nic
+                       nmcontrol=""
+                       devtype=""
+                       if [ $nmcli_used -eq 0 ]; then
+                            nmcontrol="NM_CONTROLLED=no"
+                       else
+                            devtype="TYPE=InfiniBand"
+                       fi
+                       # Write the info to the ifcfg file
+                       echo "DEVICE=$nic
 $nmcontrol
 $devtype
 BOOTPROTO=none
@@ -509,23 +511,24 @@ ONBOOT=yes
 DEFROUTE=no
 NAME=$nic
 IPADDR=$nicip" > $dir/ifcfg-$nic
-                    # ipv6
-                    if echo $nicip | grep : 2>&1 1>/dev/null
-                    then
-                        echo "PREFIXLEN=$netmask" >> $dir/ifcfg-$nic
-                    else
-                        if [[ "$OSVER" == rhels6* ]]
+                        # ipv6
+                        if echo $nicip | grep : 2>&1 1>/dev/null
                         then
-                            #get prefix from netmask, this is for IPv4 only
-                            prefix=24
-                            prefix=$(convert_netmask_to_cidr $netmask)
-                            echo "PREFIX=$prefix" >> $dir/ifcfg-$nic
+                            echo "PREFIXLEN=$netmask" >> $dir/ifcfg-$nic
                         else
-                            echo "NETMASK=$netmask" >> $dir/ifcfg-$nic
+                            if [[ "$OSVER" == rhels6* ]]
+                            then
+                                #get prefix from netmask, this is for IPv4 only
+                                prefix=24
+                                prefix=$(convert_netmask_to_cidr $netmask)
+                                echo "PREFIX=$prefix" >> $dir/ifcfg-$nic
+                            else
+                                echo "NETMASK=$netmask" >> $dir/ifcfg-$nic
+                            fi
                         fi
-                    fi
-                    if [ -n "$gateway" ]; then
-                       echo "GATEWAY=$gateway" >> $dir/ifcfg-$nic
+                        if [ -n "$gateway" ]; then
+                           echo "GATEWAY=$gateway" >> $dir/ifcfg-$nic
+                        fi
                     fi
 
 
@@ -549,52 +552,63 @@ IPADDR=$nicip" > $dir/ifcfg-$nic
                         i=$((i+1))
                     done		
                else # not the first ip address
-                   # ipv6
-                   if echo $nicip | grep : 2>&1 1>/dev/null
-                   then
-                       grep "IPV6INIT" $dir/ifcfg-$nic 2>&1 1>/dev/null
-                       # The first ipv6 address
-                       if [ $? -ne 0 ]
+                   if [[ "$OSVER" =~ ^(rhels9|alma9|rocky9) ]]; then
+                       # ipv6
+                       if echo $nicip | grep : 2>&1 1>/dev/null
                        then
-                           echo "IPV6INIT=yes
+                           nmcli con add type infiniband con-name $nic ifname $nic ipv6.method manual ipv6.addresses $nicip
+                       else # ipv4
+                           prefix=$(convert_netmask_to_cidr $netmask)
+                           nmcli con add type infiniband con-name $nic ifname $nic ipv4.method manual ipv4.addresses $nicip/$prefix
+                       fi
+                   else
+                       # ipv6
+                       if echo $nicip | grep : 2>&1 1>/dev/null
+                       then
+                           grep "IPV6INIT" $dir/ifcfg-$nic 2>&1 1>/dev/null
+                           # The first ipv6 address
+                           if [ $? -ne 0 ]
+                           then
+                               echo "IPV6INIT=yes
 IPV6ADDR=$nicip/$netmask" >> $dir/ifcfg-$nic
-                       else
-                           echo "IPV6ADDR_SECONDARIES=$nicip/$netmask" >> $dir/ifcfg-$nic
-                       fi
-                       if [ -n "$gateway" ]; then
-                           echo "IPV6_DEFAULTGW=$gateway" >> $dir/ifcfg-$nic
-                       fi
-                    else # ipv4 address
-                        if [ $nmcli_used -eq 0 ]; then
-                            cfgfile=$dir"/ifcfg-"$nic":"$ipindex
-                            cfgcontent= "DEVICE=$nic:$ipindex
+                           else
+                               echo "IPV6ADDR_SECONDARIES=$nicip/$netmask" >> $dir/ifcfg-$nic
+                           fi
+                           if [ -n "$gateway" ]; then
+                               echo "IPV6_DEFAULTGW=$gateway" >> $dir/ifcfg-$nic
+                           fi
+                        else # ipv4 address
+                            if [ $nmcli_used -eq 0 ]; then
+                                cfgfile=$dir"/ifcfg-"$nic":"$ipindex
+                                cfgcontent= "DEVICE=$nic:$ipindex
 NM_CONTROLLED=no
 BOOTPROTO=none
 ONBOOT=yes
 NETMASK=$netmask
 IPADDR=$nicip"
-                            echo "$cfgcontent" > $cfgfile
-                        else
-                            cfgfile=$dir"/ifcfg-"$nic
-                            cfgcontent="NETMASK$ipindex=$netmask
-IPADDR$ipindex=$nicip"
-                            echo "$cfgcontent" >> $cfgfile
-                        fi
-                        if [[ "$OSVER" == rhels6* ]]
-                        then
-                            #get prefix from netmask, this is for IPv4 only
-                            prefix=24
-                            prefix=$(convert_netmask_to_cidr $netmask)
-                            echo "PREFIX=$prefix" >> $cfgfile
-                        else
-                            echo "$nicnetmask" >> $cfgfile
-                        fi
-
-                        if [ -n "$gateway" ]; then
-                            if [ $nmcli_used -eq 0 ]; then 
-                                echo "GATEWAY=$gateway" >> $cfgfile
+                                echo "$cfgcontent" > $cfgfile
                             else
-                                echo "GATEWAY$ipindex=$gateway" >> $cfgfile
+                                cfgfile=$dir"/ifcfg-"$nic
+                                cfgcontent="NETMASK$ipindex=$netmask
+IPADDR$ipindex=$nicip"
+                                echo "$cfgcontent" >> $cfgfile
+                            fi
+                            if [[ "$OSVER" == rhels6* ]]
+                            then
+                                #get prefix from netmask, this is for IPv4 only
+                                prefix=24
+                                prefix=$(convert_netmask_to_cidr $netmask)
+                                echo "PREFIX=$prefix" >> $cfgfile
+                            else
+                                echo "$nicnetmask" >> $cfgfile
+                            fi
+
+                            if [ -n "$gateway" ]; then
+                                if [ $nmcli_used -eq 0 ]; then 
+                                    echo "GATEWAY=$gateway" >> $cfgfile
+                                else
+                                    echo "GATEWAY$ipindex=$gateway" >> $cfgfile
+                                fi
                             fi
                         fi
 
