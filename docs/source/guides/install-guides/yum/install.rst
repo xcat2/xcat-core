@@ -10,3 +10,4 @@ Installing xCAT
 
    automatic_install.rst
    manual_install.rst
+   grub2.rst

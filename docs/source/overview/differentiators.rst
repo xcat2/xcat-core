@@ -16,7 +16,7 @@ Differentiators
 
 * Support Multiple Hardware
 
-  IBM Power, IBM Power LE, x86_64
+  IBM Power, IBM Power LE, x86_64, aarch64 (alpha support)
 
 * Support Multiple Virtualization Infrastructures
 

@@ -49,7 +49,9 @@ Besides prompting for some parameter values, the \ **genimage**\  command takes 
 
 If \ **-**\ **-onlyinitrd**\  is specified, genimage only regenerates the initrd for a stateless image to be used for a diskless install.
 
-The \ **genimage**\  command must be run on a system that is the same architecture and same distro with same major release version as the nodes it will be used on.  If the management node is not the same architecture or same distro level, copy the contents of
+The \ **genimage**\  command must be run on a system that is the same architecture and same distro with same major release version as the nodes it will be used on.
+For different architectures, \ **genimage**\  will try to use QEMU emulation if qemu-user-static is installed and configured via systemd-binfmt.
+If this does not work or the management node is not the same distro level, copy the contents of
 /opt/xcat/share/xcat/netboot/<os> to a system that is the proper architecture, and mount /install from
 the management node to that system. Then change directory to /opt/xcat/share/xcat/netboot/<os> and run ./genimage.
 
@@ -70,7 +72,7 @@ OPTIONS
 
 \ **-a**\  \ *arch*\ 
  
- The hardware architecture of this node: ppc64le, x86_64, ppc64, x86, ia64, etc.  If omitted, the current hardware architecture will be used.
+ The hardware architecture of this node: ppc64le, x86_64, ppc64, x86, ia64, aarch64 etc.  If omitted, the current hardware architecture will be used.
  
 
 

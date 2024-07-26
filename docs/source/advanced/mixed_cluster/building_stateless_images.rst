@@ -9,6 +9,28 @@ In a homogeneous cluster, the management node is the same hardware architecture 
 
 The issues arises in a heterogeneous cluster, where the management node is running a different level operating system *or* hardware architecture as the compute nodes in which to deploy the image.  The ``genimage`` command that builds stateless images depends on various utilities provided by the base operating system and needs to be run on a node with the same hardware architecture and *major* Operating System release as the nodes that will be booted from the image.
 
+When running xCAT >= 2.17 on EL >= 8 based management node with x86_64 architecture, qemu-user-static can be used to cross-build ppc64* and aarch64 osimages. Therefore, you don't need to build images on systems with the target architecture anymore.
+
+Cross-build ppc64*/aarch64 stateless/statelite image on x86_64 management node
+------------------------------------------------------------------------------
+
+#. Download qemu-user-static binaries for ppc64le and/or aarch64: ::
+
+        wget https://github.com/multiarch/qemu-user-static/releases/latest/download/qemu-ppc64le-static -P /usr/bin
+        wget https://github.com/multiarch/qemu-user-static/releases/latest/download/qemu-aarch64-static -P /usr/bin
+        chmod 755 /usr/bin/qemu-*-static
+
+#. Configure systemd-binfmt accordingly: ::
+
+        wget https://raw.githubusercontent.com/qemu/qemu/master/scripts/qemu-binfmt-conf.sh
+        bash qemu-binfmt-conf.sh --systemd 'ALL' --qemu-path '/usr/bin' --qemu-suffix '-static' --persistent 'yes'
+        systemctl restart systemd-binfmt.service
+
+#. Make sure ``osimage.osarch`` of your image is set to your target architecture eg. ``ppc64le`` or ``aarch64``.
+
+        Now, ``genimage`` will use systemd-binfmt and the qemu-user-static binary to build the image for the specified architecture.
+
+
 Same Operating System, Different Architecture
 ---------------------------------------------
 
