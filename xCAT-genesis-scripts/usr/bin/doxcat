@@ -424,14 +424,14 @@ while :; do
 		if [ $IPMI_SUPPORT -ne 0 ]; then
                     # Set boot from network will cause OpenPOWER server wait at petitboot menu, so do nothing here
                     if uname -m | grep x86_64; then
-				ipmitool raw 0x00 0x08 0x03 0x08
+                ipmitool raw 0x00 0x08 0x03 0x08
 		        ipmitool chassis bootdev pxe
                     fi
 		fi
 		reboot -f
 	elif [ "$dest" = "install" -o "$dest" = "netboot" ]; then
 		if [ $IPMI_SUPPORT -ne 0 ]; then
-			ipmitool raw 0x00 0x08 0x03 0x08
+            ipmitool raw 0x00 0x08 0x03 0x08
 		    ipmitool chassis bootdev pxe
 		fi
 		logger -s -t $log_label -p local4.info "Reboot..."
