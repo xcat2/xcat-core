@@ -430,6 +430,15 @@ passed as argument rather than by table value',
                         2 2   Third interface on ML2 or mezzanine adapter
                         2 3   Fourth interface on ML2 or mezzanine adapter
 
+                For Dell systems, a second and third values can also be used:
+                        1st value:  0 = shared / 1 = dedicated
+                        2nd value   shared LOM (1-4)   (0 or no value means first available LOM)
+                        3rd value:  failover LOM (1-4) (0 means no failover, no value means all LOMs)
+                            0      Shared with first available interface, failover all LOMs (catch all mode)
+                            0 1    Shared with LOM1, failover all LOMs
+                            0 1 2  Shared with LOM1, failover LOM2
+                            0 2 0  Shared with LOM2, no failover
+                            1      Dedicated',
             taggedvlan => 'bmcsetup script will configure the network interface of the BMC to be tagged to the VLAN specified.',
             bmcid => 'Unique identified data used by discovery processes to distinguish known BMCs from unrecognized BMCs',
             username => 'The BMC userid.  If not specified, the key=ipmi row in the passwd table is used as the default.',
