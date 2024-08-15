@@ -630,7 +630,7 @@ elif [ "$1" = "-s" ];then
                 str_inst_gateway=`ip ro ls|grep default|awk '{print $3}'|head -1`
 		str_resolv_file=/var/run/NetworkManager/resolv.conf
 		if [ -f $str_resolv_file ];then
-                    str_inst_dns=`grep ^nameserver $str_resolv_file | sed 's/^nameserver //g'`
+                    str_inst_dns=`grep ^nameserver $str_resolv_file | sed 's/^nameserver //g' | sed ':a;N;$!ba;s/\n/,/g'`
                     str_inst_dns_search=`grep ^search $str_resolv_file | sed 's/^search //g'`
 	        fi
             fi
