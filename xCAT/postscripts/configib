@@ -177,7 +177,7 @@ then
         exit
     fi
 	
-    if [ $OS_name != 'ubuntu' ]; then
+    if [[ $OS_name != 'ubuntu' ]] && [[ ! "$OSVER" =~ ^(rhels9|alma9|rocky9) ]]; then
         if [ $OS_name == 'suse' ]
         then
             dir="/etc/sysconfig/network"
@@ -192,7 +192,7 @@ then
             rm -f $dir/ifcfg-$nic 2>&1 1>/dev/null
         done
 
-    else
+    elif [ $OS_name == 'ubuntu' ]; then
         interfaces="/etc/network/interfaces"
 
         for tmp  in `sed -n "/auto ib/=" ${interfaces}`
