@@ -681,58 +681,58 @@ function check_repo_version_dnf()
                 # If a package has multiple versions, more work needs to be done.
                 else
                    # Get the current version of the package. 
-                   current_version=`rpm -q --qf '%{version}-%{release}\n' $1`
+                   current_version=$(rpm -q --qf '%{version}-%{release}\n' "$1")
 
                    # Is xCAT currently installed?
-                   is_xcat_installed=`rpm -qa | grep -i xcat`
+                   is_xcat_installed=$(rpm -qa | grep -i xcat)
 
                    # If xCAT has not been installed yet.
                    if [[ -z $is_xcat_installed ]]
                    then 
                       # Use "dnf install" to gather more data about the package.
-                      dnf -v install $1 --assumeno 2> /tmp/$1-err 1> /tmp/$1-1
-                      tmp_result=`grep $1 /tmp/$1-1 | grep -v Installing`
+                      dnf -v install "$1" --assumeno 2> /tmp/"$1"-err 1> /tmp/"$1"-1
+                      tmp_result=$(grep "$1" /tmp/"$1"-1 | grep -v Installing)
 
                       # If the output does not have the word "Installing".
                       if [[ -z $tmp_result ]]
                       then
                          # Parse the $1-err file.
-                         grep $1 /tmp/$1-err | head -1 | awk '{print $9}' > /tmp/$1-2
+                         grep "$1" /tmp/"$1"-err | head -1 | awk '{print $9}' > /tmp/"$1"-2
                          # The string may have an epoch number at the front and arch at the end.
                          # cut, sed and rev are used to get the version only.
-                         cat /tmp/$1-2 | cut -d ":" -f2 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
+                         cut -d ":" -f2 /tmp/"$1"-2 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
                       else
                          # If the output has the word "Installing", remove the epoch number as needed.
-                         grep $1 /tmp/$1-1 | grep -v installed | awk '{print $3}' | cut -d ":" -f2
+                         grep "$1" /tmp/"$1"-1 | grep -v installed | awk '{print $3}' | cut -d ":" -f2
                       fi
 
                       # Remove temporary files.
-                      rm -f /tmp/$1-1 /tmp/$1-2 /tmp/$1-err
+                      rm -f /tmp/"$1"-1 /tmp/"$1"-2 /tmp/"$1"-err
                    # If xCAT has been installed.
                    else
                       # Use "dnf update" to gather more data about the package.
-                      dnf -v update $1 --assumeno 2> /tmp/$1-err 1> /tmp/$1-1
-                      grep " $1\." /tmp/$1-1 | grep "an upgrade" | grep -v None > /tmp/$1-2
+                      dnf -v update "$1" --assumeno 2> /tmp/"$1"-err 1> /tmp/"$1"-1
+                      grep " $1\." /tmp/"$1"-1 | grep "an upgrade" | grep -v None > /tmp/"$1"-2
 
                       # If the output has the word "upgrade".
-                      if [[ -s /tmp/$1-2 ]]
+                      if [[ -s /tmp/"$1"-2 ]]
                       then
-                         awk '{print $4}' /tmp/$1-2 | cut -d ":" -f2
+                         awk '{print $4}' /tmp/"$1"-2 | cut -d ":" -f2
                       else
-                         grep "Nothing to do" /tmp/$1-1 > /tmp/$1-3
+                         grep "Nothing to do" /tmp/"$1"-1 > /tmp/"$1"-3
                          # If the output has the phrase "Nothing to do", then just return the 
                          # current version.
-                         if [[ -s /tmp/$1-3 ]]
+                         if [[ -s /tmp/"$1"-3 ]]
                          then
-                            echo $current_version
+                            echo "$current_version"
                          else
                          # Else, parse the $1-err file.
-                            grep $1 /tmp/$1-err | head -1 | awk '{print $10}' > /tmp/$1-4
-                            cat /tmp/$1-4 | cut -d ":" -f2 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
+                            grep "$1" /tmp/"$1"-err | head -1 | awk '{print $10}' > /tmp/"$1"-4
+                            cut -d ":" -f2 /tmp/"$1"-4 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
                          fi
                       fi
                       # Remove temporary files.
-                      rm -f /tmp/$1-1 /tmp/$1-2 /tmp/$1-3 /tmp/$1-4 /tmp/$1-err
+                      rm -f /tmp/"$1"-1 /tmp/"$1"-2 /tmp/"$1"-3 /tmp/"$1"-4 /tmp/"$1"-err
                    fi
                 fi
 		shift
@@ -803,58 +803,58 @@ function check_repo_version_yum()
                 # If a package has multiple versions, more work needs to be done.
                 else
                    # Get the current version of the package. 
-                   current_version=`rpm -q --qf '%{version}-%{release}\n' $1`
+                   current_version=$(rpm -q --qf '%{version}-%{release}\n' "$1")
 
                    # Is xCAT currently installed?
-                   is_xcat_installed=`rpm -qa | grep -i xcat`
+                   is_xcat_installed=$(rpm -qa | grep -i xcat)
 
                    # If xCAT has not been installed yet.
                    if [[ -z $is_xcat_installed ]]
                    then 
                       # Use "yum install" to gather more data about the package.
-                      yum -v install $1 --assumeno 2> /tmp/$1-err 1> /tmp/$1-1
-                      tmp_result=`grep $1 /tmp/$1-1 | grep -v Installing`
+                      yum -v install "$1" --assumeno 2> /tmp/"$1"-err 1> /tmp/"$1"-1
+                      tmp_result=$(grep "$1" /tmp/"$1"-1 | grep -v Installing)
 
                       # If the output does not have the word "Installing".
                       if [[ -z $tmp_result ]]
                       then
                          # Parse the $1-err file.
-                         grep $1 /tmp/$1-err | head -1 | awk '{print $9}' > /tmp/$1-2
+                         grep "$1" /tmp/"$1"-err | head -1 | awk '{print $9}' > /tmp/"$1"-2
                          # The string may have an epoch number at the front and arch at the end.
                          # cut, sed and rev are used to get the version only.
-                         cat /tmp/$1-2 | cut -d ":" -f2 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
+                         cut -d ":" -f2 /tmp/"$1"-2 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
                       else
                          # If the output has the word "Installing", remove the epoch number as needed.
-                         grep $1 /tmp/$1-1 | grep -v installed | awk '{print $3}' | cut -d ":" -f2
+                         grep "$1" /tmp/"$1"-1 | grep -v installed | awk '{print $3}' | cut -d ":" -f2
                       fi
 
                       # Remove temporary files.
-                      rm -f /tmp/$1-1 /tmp/$1-2 /tmp/$1-err
+                      rm -f /tmp/"$1"-1 /tmp/"$1"-2 /tmp/"$1"-err
                    # If xCAT has been installed.
                    else
                       # Use "yum update" to gather more data about the package.
-                      yum -v update $1 --assumeno 2> /tmp/$1-err 1> /tmp/$1-1
-                      grep " $1\." /tmp/$1-1 | grep "an upgrade" | grep -v None > /tmp/$1-2
+                      yum -v update "$1" --assumeno 2> /tmp/"$1"-err 1> /tmp/"$1"-1
+                      grep " $1\." /tmp/"$1"-1 | grep "an upgrade" | grep -v None > /tmp/"$1"-2
 
                       # If the output has the word "upgrade".
-                      if [[ -s /tmp/$1-2 ]]
+                      if [[ -s /tmp/"$1"-2 ]]
                       then
-                         awk '{print $4}' /tmp/$1-2 | cut -d ":" -f2
+                         awk '{print $4}' /tmp/"$1"-2 | cut -d ":" -f2
                       else
-                         grep "Nothing to do" /tmp/$1-1 > /tmp/$1-3
+                         grep "Nothing to do" /tmp/"$1"-1 > /tmp/"$1"-3
                          # If the output has the phrase "Nothing to do", then just return the 
                          # current version.
-                         if [[ -s /tmp/$1-3 ]]
+                         if [[ -s /tmp/"$1"-3 ]]
                          then
-                            echo $current_version
+                            echo "$current_version"
                          else
                          # Else, parse the $1-err file.
-                            grep $1 /tmp/$1-err | head -1 | awk '{print $10}' > /tmp/$1-4
-                            cat /tmp/$1-4 | cut -d ":" -f2 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
+                            grep "$1" /tmp/"$1"-err | head -1 | awk '{print $10}' > /tmp/"$1"-4
+                            cut -d ":" -f2 /tmp/"$1"-4 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
                          fi
                       fi
                       # Remove temporary files.
-                      rm -f /tmp/$1-1 /tmp/$1-2 /tmp/$1-3 /tmp/$1-4 /tmp/$1-err
+                      rm -f /tmp/"$1"-1 /tmp/"$1"-2 /tmp/"$1"-3 /tmp/"$1"-4 /tmp/"$1"-err
                    fi
                 fi
 		shift
@@ -1755,7 +1755,7 @@ function github_issue_6525_workaround()
 # Check for EPEL and CRB repositories when installing on RH family of OSes
 function el9_epel_and_crb_check()
 {
-	action="$@" # Passed parameter will only be 'yum' or 'dnf'
+	action="$*" # Passed parameter will only be 'yum' or 'dnf'
 	if [[ "${GO_XCAT_LINUX_DISTRO}" = "fedora" ]]
 	then
 		# For Fedora, version 35 is equivalent to EL9
@@ -1766,7 +1766,7 @@ function el9_epel_and_crb_check()
 	else
 		[[ "${GO_XCAT_LINUX_VERSION}" =~ ^9(\.[0-9]) ]] || return 0
 	fi
-	${action} list -q ${EL9_EPEL_TEST_RPM} 
+	${action} list -q "${EL9_EPEL_TEST_RPM}"
 	ret="$?"
 	case "${ret}" in
 	"1")
@@ -1777,7 +1777,7 @@ Installation on ${GO_XCAT_LINUX_DISTRO} ${GO_XCAT_LINUX_VERSION} requires EPEL r
 		exit 1
 		;;
 	esac
-	${action} list -q ${EL9_CRB_TEST_RPM} 
+	${action} list -q "${EL9_CRB_TEST_RPM}"
 	ret="$?"
 	case "${ret}" in
 	"1")
@@ -1787,8 +1787,8 @@ Installation on ${GO_XCAT_LINUX_DISTRO} ${GO_XCAT_LINUX_VERSION} requires CRB re
 		echo "Try adding the following entries to new or existing '.repo' file:"
 		echo "
 [crb]
-name=CentOS Stream $releasever - CRB
-metalink=https://mirrors.centos.org/metalink?repo=centos-crb-$stream&arch=$basearch&protocol=https,http
+name=CentOS Stream \$releasever - CRB
+metalink=https://mirrors.centos.org/metalink?repo=centos-crb-\$stream&arch=\$basearch&protocol=https,http
 gpgcheck=0
 repo_gpgcheck=0
 metadata_expire=6h
@@ -1865,7 +1865,7 @@ function remove_package_apt()
 	# For each package, remove one at a time
 	for package in "$@"
 	do
-		apt-get --allow-unauthenticated remove "${yes[@]}" ${package}
+		apt-get --allow-unauthenticated remove "${yes[@]}" "${package}"
 		warn_if_bad "$?" "Unable to remove xCAT package ${package}"
 	done
 }
@@ -1884,7 +1884,7 @@ function purge_package_apt()
 	# For each package, remove one at a time
 	for package in "$@"
 	do
-		apt-get --allow-unauthenticated purge "${yes[@]}" ${package}
+		apt-get --allow-unauthenticated purge "${yes[@]}" "${package}"
 		warn_if_bad "$?" "Unable to purge xCAT package ${package}"
 	done
 }
@@ -2139,7 +2139,7 @@ function test_case_001_xcatd()
 		warn_if_bad "$?" "${f}: no such file" || continue
 
 		kill -0 "$(<"${f}")" >/dev/null 2>&1
-		warn_if_bad "$?" "Process with an ID $(<${f}) is not running"
+		warn_if_bad "$?" "Process with an ID $(<"${f}") is not running"
 		(( ret += $? ))
 	done
 
