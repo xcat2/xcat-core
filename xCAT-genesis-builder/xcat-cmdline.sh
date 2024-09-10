@@ -75,6 +75,14 @@ if [[ ${ARCH} =~ ppc64 ]]; then
     done
     # wait 2+number_of_nics seconds for all the LINKed NICs to be UP
     sleep $waittime
+elif [[ ${ARCH} =~ x86_64 ]]; then
+    # load all network driver modules listed in /lib/modules/<kernel>/modules.dep file
+    KERVER=`uname -r`
+    for line in `cat /lib/modules/$KERVER/modules.dep |grep -vE 'tunnel|ieee|ifb|bond|dummy|fjes|hv_netvsc|ntb_netdev|xen-netfront|hdlc_fr|dlci'| awk -F: '{print \$1}' | sed -e "s/\(.*\)\.ko.*/\1/"`; do
+        if [[ $line =~ "kernel/drivers/net" ]]; then
+            modprobe `basename $line`
+        fi
+    done
 fi
 
 while :; do screen -dr doxcat || screen -S doxcat -L -ln doxcat; done
