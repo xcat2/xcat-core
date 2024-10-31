@@ -216,6 +216,12 @@ doconfigure () {
             fi
             partnum=`expr $partnum + 1`
             partdev=$dev$partnum
+
+           # need to handle nvme device name, nvme0n1 so partnum is nvme0n1p1
+           if [[ $dev == *"nvme"* ]]; then
+                 partdev=${dev}p$partnum
+           fi
+
             echo "Create filesystem $fstype on $partdev" >>$LOG
             echo "mkfs.$fstype -f -q $partdev" >>$LOG
             `mkfs.$fstype -f -q $partdev  > /dev/null`
