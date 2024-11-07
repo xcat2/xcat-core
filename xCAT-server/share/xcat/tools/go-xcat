@@ -52,7 +52,7 @@
 function usage()
 {
 	local script="${0##*/}"
-	local version="$(version)"
+	local -r version="$(version)"
 
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	${script} version ${version}
@@ -106,7 +106,7 @@ function usage()
 #
 # verbose_usage		This function be will be called when user run
 #			`go-xcat --long-help'.
-#			Including a bunch of secert usage.
+#			Including a bunch of secret usage.
 #
 function verbose_usage()
 (
@@ -119,8 +119,7 @@ function verbose_usage()
 		local -i i
 		for (( i = 0 ; i < "$1" ; ++i ))
 		do
-			read -r -u 42
-			[[ "$?" -ne "0" ]] && break
+			read -r -u 42 || break
 			echo "${REPLY}"
 		done
 	}
@@ -135,7 +134,7 @@ function verbose_usage()
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	  check                         check the version of the installed packages
 	                                of xCAT and packages in the repository
-	  smoke test                    preform basic tests of the xCAT installation
+	  smoke test                    perform basic tests of the xCAT installation
 	EOF
 	println 11
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
@@ -230,7 +229,7 @@ function warn_if_bad()
 
 	# Broken
 	shift
-	echo "${script}: $@" >&2
+	echo "${script}: $*" >&2
 	return "${rc}"
 }
 
@@ -519,8 +518,8 @@ function check_arch()
 
 function check_linux_distro()
 {
-	local distro="$(source /etc/os-release >/dev/null 2>&1 &&
-		echo "${ID}")"
+	local distro
+	distro="$(awk -F= '/^ID=/{print $2}' /etc/os-release 2>/dev/null)"
 	[[ -z "${distro}" && -f /etc/redhat-release ]] && distro="rhel"
 	[[ -z "${distro}" && -f /etc/SuSE-release ]] && distro="sles"
 	[[ -z "${distro}" && -f /etc/SUSE-brand ]] && distro="sles"
@@ -529,8 +528,8 @@ function check_linux_distro()
 
 function check_linux_version()
 {
-	local ver="$(source /etc/os-release >/dev/null 2>&1 &&
-		echo "${VERSION_ID}")"
+	local ver
+	ver="$(awk -F= '/^VERSION_ID=/{print $2}' /etc/os-release 2>/dev/null)"
 	[[ -z "${ver}" && -f /etc/redhat-release ]] &&
 		# Need gawk to do this trick
 		ver="$(awk '{ match($0, /([.0-9]+)/, a); print substr($0, a[1, "start"], a[1, "length"]); }' \
@@ -613,7 +612,7 @@ function check_package_version_deb()
 
 function check_package_version()
 {
-	function_dispatch "${FUNCNAME}" "$@"
+	function_dispatch "${FUNCNAME[0]}" "$@"
 }
 
 #       $@      package names
@@ -682,58 +681,58 @@ function check_repo_version_dnf()
                 # If a package has multiple versions, more work needs to be done.
                 else
                    # Get the current version of the package. 
-                   current_version=`rpm -q --qf '%{version}-%{release}\n' $1`
+                   current_version=$(rpm -q --qf '%{version}-%{release}\n' "$1")
 
                    # Is xCAT currently installed?
-                   is_xcat_installed=`rpm -qa | grep -i xcat`
+                   is_xcat_installed=$(rpm -qa | grep -i xcat)
 
                    # If xCAT has not been installed yet.
                    if [[ -z $is_xcat_installed ]]
                    then 
                       # Use "dnf install" to gather more data about the package.
-                      dnf -v install $1 --assumeno 2> /tmp/$1-err 1> /tmp/$1-1
-                      tmp_result=`grep $1 /tmp/$1-1 | grep -v Installing`
+                      dnf -v install "$1" --assumeno 2> /tmp/"$1"-err 1> /tmp/"$1"-1
+                      tmp_result=$(grep "$1" /tmp/"$1"-1 | grep -v Installing)
 
                       # If the output does not have the word "Installing".
                       if [[ -z $tmp_result ]]
                       then
                          # Parse the $1-err file.
-                         grep $1 /tmp/$1-err | head -1 | awk '{print $9}' > /tmp/$1-2
+                         grep "$1" /tmp/"$1"-err | head -1 | awk '{print $9}' > /tmp/"$1"-2
                          # The string may have an epoch number at the front and arch at the end.
                          # cut, sed and rev are used to get the version only.
-                         cat /tmp/$1-2 | cut -d ":" -f2 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
+                         cut -d ":" -f2 /tmp/"$1"-2 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
                       else
                          # If the output has the word "Installing", remove the epoch number as needed.
-                         grep $1 /tmp/$1-1 | grep -v installed | awk '{print $3}' | cut -d ":" -f2
+                         grep "$1" /tmp/"$1"-1 | grep -v installed | awk '{print $3}' | cut -d ":" -f2
                       fi
 
                       # Remove temporary files.
-                      rm -f /tmp/$1-1 /tmp/$1-2 /tmp/$1-err
+                      rm -f /tmp/"$1"-1 /tmp/"$1"-2 /tmp/"$1"-err
                    # If xCAT has been installed.
                    else
                       # Use "dnf update" to gather more data about the package.
-                      dnf -v update $1 --assumeno 2> /tmp/$1-err 1> /tmp/$1-1
-                      grep " $1\." /tmp/$1-1 | grep "an upgrade" | grep -v None > /tmp/$1-2
+                      dnf -v update "$1" --assumeno 2> /tmp/"$1"-err 1> /tmp/"$1"-1
+                      grep " $1\." /tmp/"$1"-1 | grep "an upgrade" | grep -v None > /tmp/"$1"-2
 
                       # If the output has the word "upgrade".
-                      if [[ -s /tmp/$1-2 ]]
+                      if [[ -s /tmp/"$1"-2 ]]
                       then
-                         awk '{print $4}' /tmp/$1-2 | cut -d ":" -f2
+                         awk '{print $4}' /tmp/"$1"-2 | cut -d ":" -f2
                       else
-                         grep "Nothing to do" /tmp/$1-1 > /tmp/$1-3
+                         grep "Nothing to do" /tmp/"$1"-1 > /tmp/"$1"-3
                          # If the output has the phrase "Nothing to do", then just return the 
                          # current version.
-                         if [[ -s /tmp/$1-3 ]]
+                         if [[ -s /tmp/"$1"-3 ]]
                          then
-                            echo $current_version
+                            echo "$current_version"
                          else
                          # Else, parse the $1-err file.
-                            grep $1 /tmp/$1-err | head -1 | awk '{print $10}' > /tmp/$1-4
-                            cat /tmp/$1-4 | cut -d ":" -f2 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
+                            grep "$1" /tmp/"$1"-err | head -1 | awk '{print $10}' > /tmp/"$1"-4
+                            cut -d ":" -f2 /tmp/"$1"-4 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
                          fi
                       fi
                       # Remove temporary files.
-                      rm -f /tmp/$1-1 /tmp/$1-2 /tmp/$1-3 /tmp/$1-4 /tmp/$1-err
+                      rm -f /tmp/"$1"-1 /tmp/"$1"-2 /tmp/"$1"-3 /tmp/"$1"-4 /tmp/"$1"-err
                    fi
                 fi
 		shift
@@ -804,58 +803,58 @@ function check_repo_version_yum()
                 # If a package has multiple versions, more work needs to be done.
                 else
                    # Get the current version of the package. 
-                   current_version=`rpm -q --qf '%{version}-%{release}\n' $1`
+                   current_version=$(rpm -q --qf '%{version}-%{release}\n' "$1")
 
                    # Is xCAT currently installed?
-                   is_xcat_installed=`rpm -qa | grep -i xcat`
+                   is_xcat_installed=$(rpm -qa | grep -i xcat)
 
                    # If xCAT has not been installed yet.
                    if [[ -z $is_xcat_installed ]]
                    then 
                       # Use "yum install" to gather more data about the package.
-                      yum -v install $1 --assumeno 2> /tmp/$1-err 1> /tmp/$1-1
-                      tmp_result=`grep $1 /tmp/$1-1 | grep -v Installing`
+                      yum -v install "$1" --assumeno 2> /tmp/"$1"-err 1> /tmp/"$1"-1
+                      tmp_result=$(grep "$1" /tmp/"$1"-1 | grep -v Installing)
 
                       # If the output does not have the word "Installing".
                       if [[ -z $tmp_result ]]
                       then
                          # Parse the $1-err file.
-                         grep $1 /tmp/$1-err | head -1 | awk '{print $9}' > /tmp/$1-2
+                         grep "$1" /tmp/"$1"-err | head -1 | awk '{print $9}' > /tmp/"$1"-2
                          # The string may have an epoch number at the front and arch at the end.
                          # cut, sed and rev are used to get the version only.
-                         cat /tmp/$1-2 | cut -d ":" -f2 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
+                         cut -d ":" -f2 /tmp/"$1"-2 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
                       else
                          # If the output has the word "Installing", remove the epoch number as needed.
-                         grep $1 /tmp/$1-1 | grep -v installed | awk '{print $3}' | cut -d ":" -f2
+                         grep "$1" /tmp/"$1"-1 | grep -v installed | awk '{print $3}' | cut -d ":" -f2
                       fi
 
                       # Remove temporary files.
-                      rm -f /tmp/$1-1 /tmp/$1-2 /tmp/$1-err
+                      rm -f /tmp/"$1"-1 /tmp/"$1"-2 /tmp/"$1"-err
                    # If xCAT has been installed.
                    else
                       # Use "yum update" to gather more data about the package.
-                      yum -v update $1 --assumeno 2> /tmp/$1-err 1> /tmp/$1-1
-                      grep " $1\." /tmp/$1-1 | grep "an upgrade" | grep -v None > /tmp/$1-2
+                      yum -v update "$1" --assumeno 2> /tmp/"$1"-err 1> /tmp/"$1"-1
+                      grep " $1\." /tmp/"$1"-1 | grep "an upgrade" | grep -v None > /tmp/"$1"-2
 
                       # If the output has the word "upgrade".
-                      if [[ -s /tmp/$1-2 ]]
+                      if [[ -s /tmp/"$1"-2 ]]
                       then
-                         awk '{print $4}' /tmp/$1-2 | cut -d ":" -f2
+                         awk '{print $4}' /tmp/"$1"-2 | cut -d ":" -f2
                       else
-                         grep "Nothing to do" /tmp/$1-1 > /tmp/$1-3
+                         grep "Nothing to do" /tmp/"$1"-1 > /tmp/"$1"-3
                          # If the output has the phrase "Nothing to do", then just return the 
                          # current version.
-                         if [[ -s /tmp/$1-3 ]]
+                         if [[ -s /tmp/"$1"-3 ]]
                          then
-                            echo $current_version
+                            echo "$current_version"
                          else
                          # Else, parse the $1-err file.
-                            grep $1 /tmp/$1-err | head -1 | awk '{print $10}' > /tmp/$1-4
-                            cat /tmp/$1-4 | cut -d ":" -f2 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
+                            grep "$1" /tmp/"$1"-err | head -1 | awk '{print $10}' > /tmp/"$1"-4
+                            cut -d ":" -f2 /tmp/"$1"-4 | rev | sed s/[.]/:/ | cut -d ":" -f2 | rev
                          fi
                       fi
                       # Remove temporary files.
-                      rm -f /tmp/$1-1 /tmp/$1-2 /tmp/$1-3 /tmp/$1-4 /tmp/$1-err
+                      rm -f /tmp/"$1"-1 /tmp/"$1"-2 /tmp/"$1"-3 /tmp/"$1"-4 /tmp/"$1"-err
                    fi
                 fi
 		shift
@@ -898,7 +897,11 @@ function check_repo_version_zypper()
 function check_repo_version_apt()
 {
 	type apt-cache >/dev/null 2>&1 || return 255
+    # Shellcheck doesn't handle identical names in local contexts
+    # well: https://github.com/koalaman/shellcheck/wiki/SC2178#exceptions
+    # shellcheck disable=SC2178
 	local name=""
+    # shellcheck disable=SC2178
 	local ver=""
 	while read -r name ver
 	do
@@ -927,7 +930,7 @@ function check_repo_version_apt()
 
 function check_repo_version()
 {
-	function_dispatch "${FUNCNAME}" "$@"
+	function_dispatch "${FUNCNAME[0]}" "$@"
 }
 
 #       $1      repo id
@@ -1002,13 +1005,13 @@ function get_package_list_apt()
 #       $1      repo id
 function get_package_list()
 {
-	function_dispatch "${FUNCNAME}" "$@"
+	function_dispatch "${FUNCNAME[0]}" "$@"
 }
 
 function download_file_curl()
 {
 	local script="${0##*/}"
-	local version="$(version)"
+	local -r version="$(version)"
 	local user_agent="${script}/${version} (${GO_XCAT_OS}; ${GO_XCAT_ARCH}; ${GO_XCAT_LINUX_DISTRO} ${GO_XCAT_LINUX_VERSION})"
 	type curl >/dev/null 2>&1 || return 255
 	local url="$1"
@@ -1115,7 +1118,7 @@ function download_file_curl()
 function download_file_wget()
 {
 	local script="${0##*/}"
-	local version="$(version)"
+	local -r version="$(version)"
 	local user_agent="${script}/${version} (${GO_XCAT_OS}; ${GO_XCAT_ARCH}; ${GO_XCAT_LINUX_DISTRO} ${GO_XCAT_LINUX_VERSION})"
 	type wget >/dev/null 2>&1 || return 255
 	local url="$1"
@@ -1147,7 +1150,7 @@ function download_file_wget()
 
 function download_file()
 {
-	function_dispatch "${FUNCNAME}" "$@"
+	function_dispatch "${FUNCNAME[0]}" "$@"
 }
 
 #       $1      repo file
@@ -1245,7 +1248,7 @@ function add_repo_by_file_apt()
 
 function add_repo_by_file()
 {
-	function_dispatch "${FUNCNAME}" "$@"
+	function_dispatch "${FUNCNAME[0]}" "$@"
 }
 
 #       $1      archive
@@ -1256,7 +1259,7 @@ function extract_archive()
 	local archive="$1"
 	local repo_id="$2"
 	local install_path="$3"
-	local umask="$(umask)"
+	local -r umask="$(umask)"
 	local -i ret=0
 
 	[[ -f "${archive}" ]]
@@ -1276,7 +1279,7 @@ function extract_archive()
 		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
 			"${PIPESTATUS[2]}" -eq 1 ]]
 		warn_if_bad "$?" "${archive}: bad compressed tarball" || return 1
-		rm -rf "${install_path}/${repo_id}"
+		rm -rf "${install_path:-${GO_XCAT_DEFAULT_INSTALL_PATH}}/${repo_id}"
 		uncompress -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
 		;;
 	*".tz"|*".tgz"|*".tar.gz")
@@ -1285,7 +1288,7 @@ function extract_archive()
 		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
 			"${PIPESTATUS[2]}" -eq 1 ]]
 		exit_if_bad "$?" "${archive}: bad gzipped tarball" || return 1
-		rm -rf "${install_path}/${repo_id}"
+		rm -rf "${install_path:-${GO_XCAT_DEFAULT_INSTALL_PATH}}/${repo_id}"
 		gzip -d -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
 		;;
 	*".tbz"|*".tbz2"|*".tar.bz"|*".tar.bz2")
@@ -1294,7 +1297,7 @@ function extract_archive()
 		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
 			"${PIPESTATUS[2]}" -eq 1 ]]
 		warn_if_bad "$?" "${archive}: bad bzipped tarball" || return 1
-		rm -rf "${install_path}/${repo_id}"
+		rm -rf "${install_path:-${GO_XCAT_DEFAULT_INSTALL_PATH}}/${repo_id}"
 		bzip2 -d -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
 		;;
 	*".txz"|*".tar.xz")
@@ -1303,7 +1306,7 @@ function extract_archive()
 		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
 			"${PIPESTATUS[2]}" -eq 1 ]]
 		warn_if_bad "$?" "${archive}: bad xzed tarball" || return 1
-		rm -rf "${install_path}/${repo_id}"
+		rm -rf "${install_path:-${GO_XCAT_DEFAULT_INSTALL_PATH}}/${repo_id}"
 		xz -d -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
 		;;
 	*".tar")
@@ -1311,7 +1314,7 @@ function extract_archive()
 		tar -t -f "${archive}" | grep -v "^${repo_id}/"
 		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 1 ]]
 		warn_if_bad "$?" "${archive}: bad tarball" || return 1
-		rm -rf "${install_path}/${repo_id}"
+		rm -rf "${install_path:-${GO_XCAT_DEFAULT_INSTALL_PATH}}/${repo_id}"
 		( cd "${install_path}" && tar -x -f - ) <"${archive}"
 		;;
 	*)
@@ -1416,8 +1419,7 @@ function add_repo_by_url_apt()
 	local repo_id="$2"
 	local tmp=""
 	local install_path="${GO_XCAT_DEFAULT_INSTALL_PATH}"
-	local codename="$(source /etc/lsb-release >/dev/null 2>&1 &&
-		echo "${DISTRIB_CODENAME}")"
+	local -r codename="$(awk -F= '/^DISTRIB_CODENAME=/{print $2}' /etc/lsb-release 2>/dev/null)"
 	[[ -n "${codename}" ]]
 	warn_if_bad "$?" "unknown debian/ubuntu codename" || return 1
 	case "${url%%://*}" in
@@ -1467,7 +1469,7 @@ function add_repo_by_url_apt()
 
 function add_repo_by_url()
 {
-	function_dispatch "${FUNCNAME}" "$@"
+	function_dispatch "${FUNCNAME[0]}" "$@"
 }
 
 #       $1      repo id
@@ -1478,7 +1480,7 @@ function remove_repo_yum()
 	# This deleting method is not good enough. Since there could be more
 	# than one repository definitions in a single repo file.
 	# This is a quick and dirty method.
-	rm -f $(grep -l "^\[${repo_id}\]$" "/etc/yum.repos.d/"*".repo" 2>/dev/null)
+	grep -l "^\[${repo_id}\]$" "/etc/yum.repos.d/"*".repo" 2>/dev/null | xargs -r rm -f
 	case "${repo_id}" in
 	"xcat-core")
 		mv /etc/yum.repos.d/xCAT-core.repo{,.nouse} 2>/dev/null
@@ -1518,7 +1520,7 @@ function remove_repo_apt()
 
 function remove_repo()
 {
-	function_dispatch "${FUNCNAME}" "$@"
+	function_dispatch "${FUNCNAME[0]}" "$@"
 }
 
 #       $1      URL
@@ -1584,7 +1586,7 @@ function add_xcat_core_repo_apt()
 
 function add_xcat_core_repo()
 {
-	function_dispatch "${FUNCNAME}" "$@"
+	function_dispatch "${FUNCNAME[0]}" "$@"
 }
 
 function add_xcat_dep_repo_yum_or_zypper()
@@ -1675,7 +1677,7 @@ function add_xcat_dep_repo_apt()
 
 function add_xcat_dep_repo()
 {
-	function_dispatch "${FUNCNAME}" "$@"
+	function_dispatch "${FUNCNAME[0]}" "$@"
 }
 
 function update_repo_dnf()
@@ -1709,7 +1711,7 @@ function update_repo_apt()
 
 function update_repo()
 {
-	function_dispatch "${FUNCNAME}" "$@"
+	function_dispatch "${FUNCNAME[0]}" "$@"
 }
 
 function install_packages_dnf()
@@ -1753,7 +1755,7 @@ function github_issue_6525_workaround()
 # Check for EPEL and CRB repositories when installing on RH family of OSes
 function el9_epel_and_crb_check()
 {
-	action="$@" # Passed parameter will only be 'yum' or 'dnf'
+	action="$*" # Passed parameter will only be 'yum' or 'dnf'
 	if [[ "${GO_XCAT_LINUX_DISTRO}" = "fedora" ]]
 	then
 		# For Fedora, version 35 is equivalent to EL9
@@ -1764,7 +1766,7 @@ function el9_epel_and_crb_check()
 	else
 		[[ "${GO_XCAT_LINUX_VERSION}" =~ ^9(\.[0-9]) ]] || return 0
 	fi
-	${action} list -q ${EL9_EPEL_TEST_RPM} 
+	${action} list -q "${EL9_EPEL_TEST_RPM}"
 	ret="$?"
 	case "${ret}" in
 	"1")
@@ -1775,7 +1777,7 @@ Installation on ${GO_XCAT_LINUX_DISTRO} ${GO_XCAT_LINUX_VERSION} requires EPEL r
 		exit 1
 		;;
 	esac
-	${action} list -q ${EL9_CRB_TEST_RPM} 
+	${action} list -q "${EL9_CRB_TEST_RPM}"
 	ret="$?"
 	case "${ret}" in
 	"1")
@@ -1785,8 +1787,8 @@ Installation on ${GO_XCAT_LINUX_DISTRO} ${GO_XCAT_LINUX_VERSION} requires CRB re
 		echo "Try adding the following entries to new or existing '.repo' file:"
 		echo "
 [crb]
-name=CentOS Stream $releasever - CRB
-metalink=https://mirrors.centos.org/metalink?repo=centos-crb-$stream&arch=$basearch&protocol=https,http
+name=CentOS Stream \$releasever - CRB
+metalink=https://mirrors.centos.org/metalink?repo=centos-crb-\$stream&arch=\$basearch&protocol=https,http
 gpgcheck=0
 repo_gpgcheck=0
 metadata_expire=6h
@@ -1819,7 +1821,7 @@ function install_packages_apt()
 
 function install_packages()
 {
-	function_dispatch "${FUNCNAME}" "$@"
+	function_dispatch "${FUNCNAME[0]}" "$@"
 }
 
 function remove_package_dnf()
@@ -1863,14 +1865,14 @@ function remove_package_apt()
 	# For each package, remove one at a time
 	for package in "$@"
 	do
-		apt-get --allow-unauthenticated remove "${yes[@]}" ${package}
+		apt-get --allow-unauthenticated remove "${yes[@]}" "${package}"
 		warn_if_bad "$?" "Unable to remove xCAT package ${package}"
 	done
 }
 
 function remove_package()
 {
-	function_dispatch "${FUNCNAME}" "$@"
+	function_dispatch "${FUNCNAME[0]}" "$@"
 }
 
 #       $1      -y
@@ -1882,7 +1884,7 @@ function purge_package_apt()
 	# For each package, remove one at a time
 	for package in "$@"
 	do
-		apt-get --allow-unauthenticated purge "${yes[@]}" ${package}
+		apt-get --allow-unauthenticated purge "${yes[@]}" "${package}"
 		warn_if_bad "$?" "Unable to purge xCAT package ${package}"
 	done
 }
@@ -1895,7 +1897,7 @@ function purge_package_others()
 #       $1      -y
 function purge_package()
 {
-	function_dispatch "${FUNCNAME}" "$@"
+	function_dispatch "${FUNCNAME[0]}" "$@"
 }
 
 #       $1      -y
@@ -2004,7 +2006,8 @@ function list_xcat_packages()
 	[ "${#GO_XCAT_DEP_PACKAGE_LIST[@]}"  -gt "0" ]
 	warn_if_bad "$?" "Failed to get package list from repository \`xcat-dep'."  || return 1
 
-	local -i cols="$(type tput >/dev/null 2>&1 && tput cols)"
+	local -i cols
+	cols="$(type tput >/dev/null 2>&1 && tput cols)"
 	[[ "${cols}" -lt 80 ]] && cols=80
 	[[ "${cols}" -gt 90 ]] && cols=90
 	[[ -t 1 ]] || cols=90
@@ -2136,7 +2139,7 @@ function test_case_001_xcatd()
 		warn_if_bad "$?" "${f}: no such file" || continue
 
 		kill -0 "$(<"${f}")" >/dev/null 2>&1
-		warn_if_bad "$?" "Process with an ID $(<${f}) is not running"
+		warn_if_bad "$?" "Process with an ID $(<"${f}") is not running"
 		(( ret += $? ))
 	done
 
@@ -2147,7 +2150,7 @@ function test_case_001_xcatd()
 # Check if command lsdef can be run
 function test_case_002_lsdef()
 {
-	(source /etc/profile.d/xcat.sh && lsdef) >/dev/null 2>&1
+	bash -c "source /etc/profile.d/xcat.sh && lsdef" >/dev/null 2>&1
 	warn_if_bad "$?" "Attempt of run \`lsdef' failed"
 }
 
