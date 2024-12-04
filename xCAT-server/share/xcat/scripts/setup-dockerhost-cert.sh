@@ -60,7 +60,7 @@ if [ ! -e $XCATDOCKERCADIR/certs ]; then
 fi
 
 openssl genrsa -out ca/dockerhost-key.pem 2048
-openssl req -config ca/openssl.cnf -new -key ca/dockerhost-key.pem -out cert/dockerhost-req.pem -extensions server -subj "/CN=$CNA"
+openssl req -config ca/openssl.cnf -new -key ca/dockerhost-key.pem -out cert/dockerhost-req.pem -subj "/CN=$CNA"
 mv cert/dockerhost-req.pem  ca/$CNA\.csr
 cd -
 cd $XCATDOCKERCADIR

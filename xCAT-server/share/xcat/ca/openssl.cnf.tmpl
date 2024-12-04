@@ -167,7 +167,7 @@ basicConstraints=CA:FALSE
 nsCertType			= server, client, objsign
 nsComment			= "OpenSSL Generated Server Certificate"
 subjectKeyIdentifier=hash
-authorityKeyIdentifier=keyid,issuer
+#authorityKeyIdentifier=keyid,issuer
 keyUsage = digitalSignature,keyAgreement,keyEncipherment
 extendedKeyUsage = serverAuth, clientAuth
 
@@ -205,7 +205,7 @@ nsComment			= "OpenSSL Generated Client Certificate"
 
 # PKIX recommendations harmless if included in all certificates.
 subjectKeyIdentifier=hash
-authorityKeyIdentifier=keyid,issuer
+#authorityKeyIdentifier=keyid,issuer
 
 # This stuff is for subjectAltName and issuerAltname.
 # Import the email address.
