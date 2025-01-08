@@ -32,7 +32,7 @@ cp $XCATROOT/share/xcat/ca/Makefile $XCATCADIR/
 touch $XCATCADIR/index.attr
 cd $XCATCADIR
 make init
-#openssl req -nodes -config openssl.cnf -days 7300 -x509 -newkey rsa:2048 -out ca-cert.pem -extensions v3_ca -outform PEM -subj /CN="$CNA"
+#openssl req -nodes -config openssl.cnf -days 7300 -x509 -newkey rsa:2048 -out ca-cert.pem -outform PEM -subj /CN="$CNA"
 openssl genrsa -out private/ca-key.pem 2048
 chmod 600 private/ca-key.pem
 openssl req -new -key private/ca-key.pem -config openssl.cnf -out ca-req.csr -subj /CN="$CNA" -outform PEM

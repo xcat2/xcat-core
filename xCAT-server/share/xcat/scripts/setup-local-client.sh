@@ -70,9 +70,9 @@ mkdir -p $USERHOME/.xcat
 cd $USERHOME/.xcat
 openssl genrsa -out client-key.pem 2048
 if [ $FORCE -eq 0 ]; then
-  openssl req -config $XCATCADIR/openssl.cnf -new -key client-key.pem -out client-req.pem -extensions usr_cert -subj "/CN=$CNA"
+  openssl req -config $XCATCADIR/openssl.cnf -new -key client-key.pem -out client-req.pem -subj "/CN=$CNA"
 else
-  openssl req -config $XCATCADIR/openssl.cnf -new -key client-key.pem -out client-req.pem -extensions usr_cert -subj "/CN=$CNA" -batch
+  openssl req -config $XCATCADIR/openssl.cnf -new -key client-key.pem -out client-req.pem -subj "/CN=$CNA" -batch
 fi
 cp client-req.pem $XCATDIR/ca/root.csr
 cd - >/dev/null

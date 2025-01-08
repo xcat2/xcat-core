@@ -358,7 +358,7 @@ if($onlyinitrd){
 
     my $yumcmd = "yum $non_interactive -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir/ --disablerepo=* ";
 
-    if ($osver =~ /^rhel\D*(\d*)[.\d]*.*$/) {
+    if ($osver =~ /^(?:rhel|rocky)\D*(\d*)[.\d]*.*$/) {
         $majorrel = $1;
         if ($majorrel > 7) {
             $yumcmd .= "--releasever=" . $majorrel . " ";
