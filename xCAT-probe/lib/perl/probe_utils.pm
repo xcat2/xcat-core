@@ -197,6 +197,15 @@ sub is_static_ip {
         }
     }
 
+    `which netplan > /dev/null 2>&1`;
+    unless ($?) {
+        my $dhcp_status = `netplan get ethernets.$nic.dhcp4 2>&1`;
+        unless ($?) {
+            $rst = 1 if ( $dhcp_status =~ /false/);
+            return $rst;
+        }
+    }
+
     if ($os =~ /redhat/) {
         my $output1 = `cat /etc/sysconfig/network-scripts/ifcfg-$nic 2>&1 |grep -i IPADDR`;
         my $output2 = `cat /etc/sysconfig/network-scripts/ifcfg-$nic 2>&1 |grep -i BOOTPROTO`;
