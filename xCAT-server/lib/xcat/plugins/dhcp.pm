@@ -186,10 +186,24 @@ sub listnode
         }
     }
 
+    # Get path for omshell from site table, if set
+    my $omshellbin="/usr/bin/omshell";
+    my @oms=xCAT::TableUtils->get_site_attribute("omshell");
+    if ($oms[0]){
+        $omshellbin=$oms[0];
+    }
+    # Get HMAC algorithum from site table, if set
+    my $omapialgorithm = "HMAC-MD5";
+    my @omapia=xCAT::TableUtils->get_site_attribute("omapi-algorithm");
+    if ($omapia[0]){
+        $omapialgorithm=$omapia[0];
+    }
+
     # open ipv4 omshell file handles - $OMOUT will contain the response
-    open2($OMOUT, $OMIN, "/usr/bin/omshell ");
+    open2($OMOUT, $OMIN, "$omshellbin ");
 
     # setup omapi for the connection and check for the node requested
+    print $OMIN "key-algorithm $omapialgorithm\n";
     print $OMIN "key "
       . $omapiuser . " \""
       . $omapikey . "\"\n";
@@ -252,9 +266,10 @@ sub listnode
 
     # if using IPv6 addresses check using omshell IPv6 port
     if ($usingipv6) {
-        open2($OMOUT6, $OMIN6, "/usr/bin/omshell ");
+        open2($OMOUT6, $OMIN6, "$omshellbin ");
         print $OMOUT6 "port 7912\n";
         print $OMOUT6 "connect\n";
+        print $OMOUT6 "key-algorithm $omapialgorithm\n";
         print $OMIN6 "key "
           . $omapiuser . " \""
           . $omapikey . "\"\n";
@@ -2029,9 +2044,22 @@ sub process_request
                 return;
             }    # TODO sane err
 
+            # Get path for omshell from site table, if set
+            my $omshellbin="/usr/bin/omshell";
+            my @oms=xCAT::TableUtils->get_site_attribute("omshell");
+            if ($oms[0]){
+                $omshellbin=$oms[0];
+            }
+            # Get HMAC algorithum from site table, if set
+            my $omapialgorithm = "HMAC-MD5";
+            my @omapia=xCAT::TableUtils->get_site_attribute("omapi-algorithm");
+            if ($omapia[0]){
+                $omapialgorithm=$omapia[0];
+            }
+
             #Have nodes to update
-            #open2($omshellout,$omshell,"/usr/bin/omshell");
-            open($omshell, "|/usr/bin/omshell > /dev/null");
+            open($omshell, "|$omshellbin > /dev/null");
+            print $omshell "key-algorithm $omapialgorithm\n";
             print $omshell "key "
               . $ent->{username} . " \""
               . $ent->{password} . "\"\n";
@@ -2040,11 +2068,12 @@ sub process_request
             }
             print $omshell "connect\n";
             if ($usingipv6) {
-                open($omshell6, "|/usr/bin/omshell > /dev/null");
+                open($omshell6, "|$omshellbin > /dev/null");
                 if ($::XCATSITEVALS{externaldhcpservers}) {
                     print $omshell "server $::XCATSITEVALS{externaldhcpservers}\n";
                 }
                 print $omshell6 "port 7912\n";
+                print $omshell6 "key-algorithm $omapialgorithm\n";
                 print $omshell6 "key "
                   . $ent->{username} . " \""
                   . $ent->{password} . "\"\n";
@@ -2366,17 +2395,23 @@ sub addnet6
         $ddnsdomain = $netcfgs{$net}->{ddnsdomain};
     }
     if ($::XCATSITEVALS{dnshandler} =~ /ddns/) {
+	my $omapiuser = "xcat_key";
+	my @omapiu = xCAT::TableUtils->get_site_attribute("omapi-username");
+	if ($omapiu[0]){
+	    $omapiuser = $omapiu[0];
+	}
+
         if ($ddnsdomain) {
             push @netent, "    ddns-domainname \"" . $ddnsdomain . "\";\n";
             push @netent, "    zone $ddnsdomain. {\n";
         } else {
             push @netent, "    zone $netdomain. {\n";
         }
-        push @netent, "       primary $ddnserver; key xcat_key; \n";
+        push @netent, "       primary $ddnserver; key $omapiuser; \n";
         push @netent, "    }\n";
         foreach (getzonesfornet($net)) {
             push @netent, "    zone $_ {\n";
-            push @netent, "       primary $ddnserver; key xcat_key; \n";
+            push @netent, "       primary $ddnserver; key $omapiuser; \n";
             push @netent, "    }\n";
         }
     }
@@ -2693,6 +2728,11 @@ sub addnet
             $ddnsdomain = $netcfgs{$net}->{ddnsdomain};
         }
         if ($::XCATSITEVALS{dnshandler} =~ /ddns/) {
+	    my $omapiuser = "xcat_key";
+	    my @omapiu = xCAT::TableUtils->get_site_attribute("omapi-username");
+	    if ($omapiu[0]){
+		$omapiuser = $omapiu[0];
+	    }
             if ($ddnsdomain) {
                 push @netent, "    ddns-domainname \"" . $ddnsdomain . "\";\n";
                 push @netent, "    zone $ddnsdomain. {\n";
@@ -2701,14 +2741,14 @@ sub addnet
             }
             if ($ddnserver)
             {
-                push @netent, "       primary $ddnserver; key xcat_key; \n";
+                push @netent, "       primary $ddnserver; key $omapiuser; \n";
             }
             push @netent, "    }\n";
             foreach (getzonesfornet($net, $mask)) {
                 push @netent, "    zone $_ {\n";
                 if ($ddnserver)
                 {
-                    push @netent, "       primary $ddnserver; key xcat_key; \n";
+                    push @netent, "       primary $ddnserver; key $omapiuser; \n";
                 }
                 push @netent, "    }\n";
             }
@@ -2956,6 +2996,19 @@ sub writeout
 sub newconfig6 {
     if ($::XCATSITEVALS{externaldhcpservers}) { return; }
 
+    # Get HMAC algorithum from site table, if set
+    my $omapialgorithm = "HMAC-MD5";
+    my @omapia=xCAT::TableUtils->get_site_attribute("omapi-algorithm");
+    if ($omapia[0]){
+        $omapialgorithm=$omapia[0];
+    }
+    my $omapiuser = "xcat_key";
+    my @omapiu = xCAT::TableUtils->get_site_attribute("omapi-username");
+    if ($omapiu[0]){
+        $omapiuser = $omapiu[0];
+    }
+
+
     #phase 1, basic working
     #phase 2, ddns too, evaluate other stuff from dhcpv4 as applicable
     push @dhcp6conf, "#xCAT generated dhcp configuration\n";
@@ -2965,11 +3018,11 @@ sub newconfig6 {
 
     #    push @dhcp6conf, "update-static-leases on;\n";
     push @dhcp6conf, "omapi-port 7912;\n";        #Enable omapi...
-    push @dhcp6conf, "key xcat_key {\n";
-    push @dhcp6conf, "  algorithm hmac-md5;\n";
+    push @dhcp6conf, "key $omapiuser {\n";
+    push @dhcp6conf, "  algorithm $omapialgorithm;\n";
     my $passtab = xCAT::Table->new('passwd', -create => 1);
     (my $passent) =
-      $passtab->getAttribs({ key => 'omapi', username => 'xcat_key' }, 'password');
+      $passtab->getAttribs({ key => 'omapi', username => $omapiuser }, 'password');
     my $secret = encode_base64(genpassword(32));    #Random from set of  62^32
     chomp $secret;
     if ($passent->{password}) { $secret = $passent->{password}; }
@@ -2982,12 +3035,12 @@ sub newconfig6 {
             }
         );
         $passtab->setAttribs({ key => 'omapi' },
-            { username => 'xcat_key', password => $secret });
+            { username => $omapiuser, password => $secret });
     }
 
     push @dhcp6conf, "  secret \"" . $secret . "\";\n";
     push @dhcp6conf, "};\n";
-    push @dhcp6conf, "omapi-key xcat_key;\n";
+    push @dhcp6conf, "omapi-key $omapiuser;\n";
 
     #that is all for pristine ipv6 config
 }
@@ -2996,6 +3049,18 @@ sub newconfig
 {
     if ($::XCATSITEVALS{externaldhcpservers}) { return; }
     return newconfig_aix() if ($^O eq 'aix');
+
+    # Get HMAC algorithum from site table, if set
+    my $omapialgorithm = "HMAC-MD5";
+    my @omapia=xCAT::TableUtils->get_site_attribute("omapi-algorithm");
+    if ($omapia[0]){
+        $omapialgorithm=$omapia[0];
+    }
+    my $omapiuser = "xcat_key";
+    my @omapiu = xCAT::TableUtils->get_site_attribute("omapi-username");
+    if ($omapiu[0]){
+        $omapiuser = $omapiu[0];
+    }
 
     # This function puts a standard header in and enough to make omapi work.
     my $passtab = xCAT::Table->new('passwd', -create => 1);
@@ -3028,10 +3093,10 @@ sub newconfig
     push @dhcpconf, "option cumulus-provision-url code 239 = text;\n";
     push @dhcpconf, "\n";
     push @dhcpconf, "omapi-port 7911;\n";            #Enable omapi...
-    push @dhcpconf, "key xcat_key {\n";
-    push @dhcpconf, "  algorithm hmac-md5;\n";
+    push @dhcpconf, "key $omapiuser {\n";
+    push @dhcpconf, "  algorithm $omapialgorithm;\n";
     (my $passent) =
-      $passtab->getAttribs({ key => 'omapi', username => 'xcat_key' }, 'password');
+      $passtab->getAttribs({ key => 'omapi', username => $omapiuser }, 'password');
     my $secret = encode_base64(genpassword(32));     #Random from set of  62^32
     chomp $secret;
     if ($passent->{password}) { $secret = $passent->{password}; }
@@ -3044,12 +3109,12 @@ sub newconfig
             }
         );
         $passtab->setAttribs({ key => 'omapi' },
-            { username => 'xcat_key', password => $secret });
+            { username => $omapiuser, password => $secret });
     }
 
     push @dhcpconf, "  secret \"" . $secret . "\";\n";
     push @dhcpconf, "};\n";
-    push @dhcpconf, "omapi-key xcat_key;\n";
+    push @dhcpconf, "omapi-key $omapiuser;\n";
     push @dhcpconf, ('class "pxe" {' . "\n", "   match if substring (option vendor-class-identifier, 0, 9) = \"PXEClient\";\n", "   ddns-updates off;\n", "    max-lease-time 600;\n", "}\n");
 }
 
