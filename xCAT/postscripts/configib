@@ -388,10 +388,6 @@ do
 
            if [ -f /etc/sysctl.conf ]
            then
-               TMP1=`sed "/net.ipv4.conf.$nic.arp_filter=1/d" /etc/sysctl.conf`
-	       echo "$TMP1" > /etc/sysctl.conf
-               TMP2=`sed "/net.ipv4.conf.$nic.arp_ignore=1/d" /etc/sysctl.conf`
-	       echo "$TMP2" > /etc/sysctl.conf
                cfg="net.ipv4.conf.$nic.arp_filter=1"
                grep "$cfg" /etc/sysctl.conf 2>&1 1>/dev/null
                if [ $? -ne 0 ]
@@ -489,10 +485,10 @@ IPADDR_$ipindex=$nicip" >> $dir/ifcfg-$nic
                        # ipv6
                        if echo $nicip | grep : 2>&1 1>/dev/null
                        then
-                           nmcli con add type infiniband con-name $nic ifname $nic ipv6.method manual ipv6.addresses $nicip
+                           nmcli con modify $nic type infiniband con-name $nic ifname $nic ipv6.method manual ipv6.addresses $nicip
                        else # ipv4
                            prefix=$(convert_netmask_to_cidr $netmask)
-                           nmcli con add type infiniband con-name $nic ifname $nic ipv4.method manual ipv4.addresses $nicip/$prefix
+                           nmcli con modify $nic type infiniband con-name $nic ifname $nic ipv4.method manual ipv4.addresses $nicip/$prefix
                        fi
                    else
                        nmcontrol=""
@@ -540,7 +536,7 @@ IPADDR=$nicip" > $dir/ifcfg-$nic
                         value="${array_extra_param_values[$i]}"
                         echo "  $i: name=$name value=$value"
                         if [[ "$OSVER" =~ ^(rhels9|alma9|rocky9) ]]; then
-                            nmcli con modify $con_name $name $value
+                            nmcli con modify $nic $name $value
                         else
                             grep -i "${name}" $dir/ifcfg-$nic
                             if [ $? -eq 0 ];then
@@ -556,10 +552,10 @@ IPADDR=$nicip" > $dir/ifcfg-$nic
                        # ipv6
                        if echo $nicip | grep : 2>&1 1>/dev/null
                        then
-                           nmcli con add type infiniband con-name $nic ifname $nic ipv6.method manual ipv6.addresses $nicip
+                           nmcli con modify $nic type infiniband con-name $nic ifname $nic ipv6.method manual ipv6.addresses $nicip
                        else # ipv4
                            prefix=$(convert_netmask_to_cidr $netmask)
-                           nmcli con add type infiniband con-name $nic ifname $nic ipv4.method manual ipv4.addresses $nicip/$prefix
+                           nmcli con modify $nic type infiniband con-name $nic ifname $nic ipv4.method manual ipv4.addresses $nicip/$prefix
                        fi
                    else
                        # ipv6
@@ -620,7 +616,7 @@ IPADDR$ipindex=$nicip"
                             value="${array_extra_param_values[$i]}"
                             echo "  $i: name=$name value=$value"
                             if [[ "$OSVER" =~ ^(rhels9|alma9|rocky9) ]]; then
-                                nmcli con modify $con_name $name $value
+                                nmcli con modify $nic $name $value
                             else
                                 grep -i "${name}" $cfgfile
                                 if [ $? -eq 0 ]; then
