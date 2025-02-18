@@ -482,13 +482,25 @@ IPADDR_$ipindex=$nicip" >> $dir/ifcfg-$nic
                if [ $ipindex -eq 1 ]
                then
                    if [[ "$OSVER" =~ ^(rhels9|alma9|rocky9) ]]; then
-                       # ipv6
-                       if echo $nicip | grep : 2>&1 1>/dev/null
-                       then
-                           nmcli con modify $nic type infiniband con-name $nic ifname $nic ipv6.method manual ipv6.addresses $nicip
-                       else # ipv4
-                           prefix=$(convert_netmask_to_cidr $netmask)
-                           nmcli con modify $nic type infiniband con-name $nic ifname $nic ipv4.method manual ipv4.addresses $nicip/$prefix
+                       if nmcli --field connection.id con show $nic 2>&1 1>/dev/null
+                       then # create new connection
+                            # ipv6
+                            if echo $nicip | grep : 2>&1 1>/dev/null
+                            then
+                                nmcli con add type infiniband con-name $nic ifname $nic ipv6.method manual ipv6.addresses $nicip
+                            else # ipv4
+                                prefix=$(convert_netmask_to_cidr $netmask)
+                                nmcli con add type infiniband con-name $nic ifname $nic ipv4.method manual ipv4.addresses $nicip/$prefix
+                            fi
+                       else # modify current connection
+                            # ipv6
+                            if echo $nicip | grep : 2>&1 1>/dev/null
+                            then
+                                nmcli con modify $nic type infiniband con-name $nic ifname $nic ipv6.method manual ipv6.addresses $nicip
+                            else # ipv4
+                                prefix=$(convert_netmask_to_cidr $netmask)
+                                nmcli con modify $nic type infiniband con-name $nic ifname $nic ipv4.method manual ipv4.addresses $nicip/$prefix
+                            fi
                        fi
                    else
                        nmcontrol=""
@@ -549,13 +561,25 @@ IPADDR=$nicip" > $dir/ifcfg-$nic
                     done		
                else # not the first ip address
                    if [[ "$OSVER" =~ ^(rhels9|alma9|rocky9) ]]; then
-                       # ipv6
-                       if echo $nicip | grep : 2>&1 1>/dev/null
-                       then
-                           nmcli con modify $nic type infiniband con-name $nic ifname $nic ipv6.method manual ipv6.addresses $nicip
-                       else # ipv4
-                           prefix=$(convert_netmask_to_cidr $netmask)
-                           nmcli con modify $nic type infiniband con-name $nic ifname $nic ipv4.method manual ipv4.addresses $nicip/$prefix
+                       if nmcli --field connection.id con show $nic 2>&1 1>/dev/null
+                       then # create new connection
+                            # ipv6
+                            if echo $nicip | grep : 2>&1 1>/dev/null
+                            then
+                                nmcli con add type infiniband con-name $nic ifname $nic ipv6.method manual ipv6.addresses $nicip
+                            else # ipv4
+                                prefix=$(convert_netmask_to_cidr $netmask)
+                                nmcli con add type infiniband con-name $nic ifname $nic ipv4.method manual ipv4.addresses $nicip/$prefix
+                            fi
+                       else # modify current connection
+                            # ipv6
+                            if echo $nicip | grep : 2>&1 1>/dev/null
+                            then
+                                nmcli con modify $nic type infiniband con-name $nic ifname $nic ipv6.method manual ipv6.addresses $nicip
+                            else # ipv4
+                                prefix=$(convert_netmask_to_cidr $netmask)
+                                nmcli con modify $nic type infiniband con-name $nic ifname $nic ipv4.method manual ipv4.addresses $nicip/$prefix
+                            fi
                        fi
                    else
                        # ipv6
