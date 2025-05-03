@@ -90,6 +90,16 @@ For example: ::
 
 Edit **/etc/resolv.conf** to contain the cluster domain value you set in the site table's **domain**  attribute above, and to point to the same DNS server you will be using for your nodes (if you are using DNS).
 
+By default xCAT uses HMAC-MD5 as the DNS signing algorithm.  It's possible that a different algorithm is required or desired for your installation.  You can set the omapi-algorithm value in the site table to choose a different algorithm. ::
+
+      chdef -t site omapi-algorithm=HMAC-SHA256
+
+If you choose to update the algorithm, you will also need to supply a new secret for the omapi entry in the passwd table. This can be done using the dnssec-keygen command.  For example something like ::
+
+       dnssec-keygen -a HMAC-SHA256 -b 128 -n host xcat_key
+
+This should generate files with the needed key.  This key will need to be entered into the passwd table and the DNS and DHCP files will need to be recreated (makedns, makedhcp) to use the new method.
+
 Option #1: Running DNS on Your Management Node
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -162,6 +172,14 @@ The **domain** and **nameservers** values must be set correctly in **/etc/resolv
     * To update the name resolution entries from ``/etc/hosts`` or hosts table of xCAT MN to external DNS, run ``makedns -e``
 
       Alternatively, you can set site.externaldns=1 and run ``makedns``
+
+It's possible that the external DNS provider will not allow you to choose the key name and they may provide both the key name and the secret to you.  I this case you will need to update the passwd table with the proper key and username.  You will also need to set the site table value for omapi-username to match the username used in the passwd table ::
+
+        chdef -t site omapi-username=mydnsuser
+        tabdump -w key==omapi passwd
+        #key,username,password,cryptmethod,authdomain,comments,disable
+        "omapi","mydnsuser","<my super secret stuff here>",,,,
+
 
 Option #3: Run DNS on Management Node and Service Nodes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
