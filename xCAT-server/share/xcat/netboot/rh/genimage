@@ -372,15 +372,7 @@ if($onlyinitrd){
 
     my $yumcmd = "yum $non_interactive -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir/ --disablerepo=* ";
 
-    if ($osver =~ /^rhel\D*(\d*)[.\d]*.*$/) {
-        $majorrel = $1;
-        if ($majorrel > 7) {
-            $yumcmd .= "--releasever=" . $majorrel . " ";
-            $yumcmd .= "--setopt=module_platform_id=platform:el" . $majorrel . " ";
-        }
-    }
-    
-    if ($osver =~ /^ol\D*(\d*)[.\d]*.*$/) {
+    if ($osver =~ /^(?:rhel|rocky|alma|ol)\D*(\d*)[.\d]*.*$/) {
         $majorrel = $1;
         if ($majorrel > 7) {
             $yumcmd .= "--releasever=" . $majorrel . " ";
@@ -1982,6 +1974,10 @@ sub using_systemd {
             return 1;
         }
     } elsif ($os =~ /rocky(\d+)/) {
+        if ($1 >= 8) {
+            return 1;
+        }
+    } elsif ($os =~ /alma(\d+)/) {
         if ($1 >= 8) {
             return 1;
         }
