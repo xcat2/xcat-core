@@ -94,7 +94,7 @@ if [ -r /sys/devices/virtual/dmi/id/product_name ]; then  #x86
 		if [ -z "$MTM" ]; then
 			FRU=`ipmitool fru print 0`
 			if [ $? -eq 0 ]; then
-				MTM=`echo "$FRU" | awk -F': ' '/Product Manufacturer/ {m=$2} /Product Name|Product Part Number/ {if (n==""||n~/\s+/||n=="NONE") {n=$2}} END {print m":"n}'`
+				MTM=`echo "$FRU" | awk -F': ' '/Product Manufacturer/ {m=$2} /Product Name|Product Part Number/ {if (n==""||n~/^\s+$/||n=="NONE") {n=$2}} END {print m":"n}'`
 			fi
 			if [ -z "$MTM" -o "$MTM" == ":" ]; then
 				logger -s -t $log_label -p local4.warning "Couldn't find MTM information in FRU, falling back to DMI (MTMS-based discovery may fail)"
