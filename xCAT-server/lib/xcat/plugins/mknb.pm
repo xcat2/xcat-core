@@ -120,19 +120,54 @@ sub process_request {
     } elsif ($configfileonly) {
         goto CREAT_CONF_FILE;
     }
-    unless (-r "/root/.ssh/id_rsa.pub") {
+    # Grab all the standard ssh public keys we can
+    my @ssh_pub_keys = ();
+    if (-r "/root/.ssh/id_rsa.pub") {
+        push(@ssh_pub_keys, 'id_rsa.pub');
+    }
+    if (-r "/root/.ssh/id_ed25519.pub") {
+        push(@ssh_pub_keys, 'id_ed25519.pub');
+    }
+    if (-r "/root/.ssh/id_ecdsa.pub") {
+        push(@ssh_pub_keys, 'id_ecdsa.pub');
+    }
+    if (scalar @ssh_pub_keys == 0) {
+        # We have no public keys.
+        # See if we have any private keys we can extract pubkeys from
         if (-r "/root/.ssh/id_rsa") {
-            $callback->({ data => ["Extracting ssh public key from private key"] });
+            $callback->({ data => ["Extracting rsa ssh public key from private key"] });
             my $rc = system('ssh-keygen -y -f /root/.ssh/id_rsa > /root/.ssh/id_rsa.pub');
             if ($rc) {
-                $callback->({ error => ["Failure executing ssh-keygen for root"], errorcode => [1] });
+                $callback->({ error => ["Failure executing ssh-keygen for root when extracting rsa ssh public key from private key"], errorcode => [1] });
+            } else {
+                push(@ssh_pub_keys, 'id_rsa.pub');
             }
-        } else {
-            $callback->({ data => ["Generating ssh private key for root"] });
-            my $rc = system('ssh-keygen -t rsa -q -b 2048 -N "" -f  /root/.ssh/id_rsa');
+        } elsif (-r "/root/.ssh/id_ed25519") {
+            $callback->({ data => ["Extracting ed25519 ssh public key from private key"] });
+            my $rc = system('ssh-keygen -y -f /root/.ssh/id_ed25519 > /root/.ssh/id_ed25519.pub');
             if ($rc) {
-                $callback->({ error => ["Failure executing ssh-keygen for root"], errorcode => [1] });
+                $callback->({ error => ["Failure executing ssh-keygen for root when extracting ed25519 ssh public key from private key"], errorcode => [1] });
+            } else {
+                push(@ssh_pub_keys, 'id_ed25519.pub');
             }
+        } elsif (-r "/root/.ssh/id_ecdsa") {
+            $callback->({ data => ["Extracting ecdsa ssh public key from private key"] });
+            my $rc = system('ssh-keygen -y -f /root/.ssh/id_ecdsa > /root/.ssh/id_ecdsa.pub');
+            if ($rc) {
+                $callback->({ error => ["Failure executing ssh-keygen for root when extracting ecdsa ssh public key from private key"], errorcode => [1] });
+            } else {
+                push(@ssh_pub_keys, 'id_ecdsa.pub');
+            }
+        }
+    }
+    if (scalar @ssh_pub_keys == 0) {
+        # Looks like we didn't have any private keys either, so generate one
+        $callback->({ data => ["Generating rsa ssh private key for root"] });
+        my $rc = system('ssh-keygen -t rsa -q -b 2048 -N "" -f  /root/.ssh/id_rsa');
+        if ($rc) {
+            $callback->({ error => ["Failure executing ssh-keygen for root when generating rsa ssh private key"], errorcode => [1] });
+        } else {
+            push(@ssh_pub_keys, 'id_rsa.pub');
         }
     }
     my $tempdir = tempdir("mknb.$$.XXXXXX", TMPDIR => 1);
@@ -169,7 +204,15 @@ sub process_request {
     }
     mkpath($tempdir . "$sshdir");
     chmod(0700, $tempdir . "$sshdir");
-    copy("/root/.ssh/id_rsa.pub", "$tempdir$sshdir/authorized_keys");
+    open(my $authkeys_fh, '>:raw', "$tempdir$sshdir/authorized_keys");
+    foreach my $keyfile (@ssh_pub_keys) {
+        open(my $pubkey_fh, '<:raw', "/root/.ssh/$keyfile");
+	while(my $line = <$pubkey_fh>) {
+	    print($authkeys_fh $line);
+	}
+        close($pubkey_fh);
+    }
+    close($authkeys_fh);
     chmod(0600, "$tempdir$sshdir/authorized_keys");
     if (not $invisibletouch and -r "/etc/xcat/hostkeys/ssh_host_rsa_key") {
         copy("/etc/xcat/hostkeys/ssh_host_rsa_key", "$tempdir/etc/ssh_host_rsa_key");
