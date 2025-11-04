@@ -44,7 +44,7 @@ In summary:
 
 We want to sincerely thank the community for the years of contributions, support, and participation in shaping xCAT. We now look forward to continuing that journey with you in the **Confluent community**, where the future of open, vendor-agnostic cluster management will continue to grow.
 
-For more information on **Confluent** and how to get started, please visit the **Confluent**: [Project Page](https://github.com/xcat2/confluent), [Documentation](https://xcat2.github.io/confluent-docs/) or [Confluent vs xCAT comparison](https://xcat2.github.io/confluent-docs/miscellaneous/confluentvxcat/).
+For more information on **Confluent** and how to get started, please visit the **Confluent**: `Project Page <https://github.com/xcat2/confluent>`_, `Documentation <https://xcat2.github.io/confluent-docs/>`_ or `Confluent vs xCAT comparison <https://xcat2.github.io/confluent-docs/miscellaneous/confluentvxcat/>`_.
 
 With thanks,
 
