@@ -1885,6 +1885,17 @@ sub plugin_command {
             }
         }
     }
+    if ($req->{node} and not(defined xCAT::TableUtils->get_site_attribute('master'))) {
+        my $rsp = { error => ["site.master is not set, unable to dispatch '$req->{command}->[0]'"], errorcode => [1] };
+        $rsp->{serverdone} = [undef];
+        if ($sock) {
+            send_response($rsp, $sock);
+        } else {
+            $callback->($rsp);
+        }
+        return;
+    }
+
     my %xcatresponses = (xcatresponse => []);
     $plugin_numchildren = 0;
     %plugin_children    = ();
