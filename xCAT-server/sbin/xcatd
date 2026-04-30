@@ -1885,7 +1885,8 @@ sub plugin_command {
             }
         }
     }
-    if ($req->{node} and not(defined xCAT::TableUtils->get_site_attribute('master'))) {
+    my $sitemaster = xCAT::TableUtils->get_site_attribute('master');
+    if ($req->{node} and not($sitemaster)) {
         my $rsp = { error => ["site.master is not set, unable to dispatch '$req->{command}->[0]'"], errorcode => [1] };
         $rsp->{serverdone} = [undef];
         if ($sock) {
