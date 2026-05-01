@@ -323,6 +323,35 @@ fi
     array_ospkgdirs=($OSPKGDIR)
     IFS=$OIFS
     array_empty os_path
+
+    is_el_modular_pkgdir()
+    {
+        pmatch "$OSVER" "rhel[89]*" ||
+        pmatch "$OSVER" "rhel1[0-9]*" ||
+        pmatch "$OSVER" "rhels[89]*" ||
+        pmatch "$OSVER" "rhels1[0-9]*" ||
+        pmatch "$OSVER" "centos[89]*" ||
+        pmatch "$OSVER" "centos1[0-9]*" ||
+        pmatch "$OSVER" "rocky[89]*" ||
+        pmatch "$OSVER" "rocky1[0-9]*" ||
+        pmatch "$OSVER" "alma[89]*" ||
+        pmatch "$OSVER" "alma1[0-9]*" ||
+        pmatch "$OSVER" "almalinux[89]*" ||
+        pmatch "$OSVER" "almalinux1[0-9]*" ||
+        pmatch "$OSVER" "ol[89]*" ||
+        pmatch "$OSVER" "ol1[0-9]*"
+    }
+
+    is_el_yum_distro()
+    {
+        pmatch "$OSVER" "rhel*" ||
+        pmatch "$OSVER" "centos*" ||
+        pmatch "$OSVER" "rocky*" ||
+        pmatch "$OSVER" "alma*" ||
+        pmatch "$OSVER" "ol*" ||
+        pmatch "$OSVER" "SL*"
+    }
+
     index=0
     for dir in  ${array_ospkgdirs[@]}
     do
@@ -352,12 +381,9 @@ fi
                 ospkgdir="$ospkgdir/SL"
             fi
         fi
-        if ( ! pmatch "$OSVER" "rhels[89]*" && 
-             ! pmatch "$OSVER" "centos[89]*" && 
-             ! pmatch "$OSVER" "rocky[89]*" &&
-             ! pmatch "$OSVER" "alma[89]*" &&
-             ! pmatch "$OSVER" "ol[89]*"); then
-        # For rhels8/9, centos8/9, ol8/9, and rocky8/9 do not put $ospkgdir by itself
+        if ! is_el_modular_pkgdir || \
+           { [ "$dir" != "$default_pkgdir" ] && [ "$dir" != "$default_pkgdir/" ]; }; then
+        # For EL8+ modular distros, only the base OS pkgdir expands to subrepos.
             array_set_element os_path $index $ospkgdir
         fi
 
@@ -398,18 +424,15 @@ fi
                              array_set_element os_path $index $ospkgdir_ok
                          done
                      fi   # x86_64
-                elif ( pmatch "$OSVER" "rhels[89]*" || 
-                       pmatch "$OSVER" "centos[89]*" || 
-                       pmatch "$OSVER" "rocky[89]*" ||
-                       pmatch "$OSVER" "alma[89]*" ||
-                       pmatch "$OSVER" "ol[89]*"); then
-                     # for rhels8/9, centos8/9, ol8/9, alma8/9 and rocky8/9 the repodata is in ./BaseOS, ./AppStream, not in ./
+                elif is_el_modular_pkgdir; then
+                     # for EL8+ modular distros the repodata is in ./BaseOS and ./AppStream, not in ./
                      for arg in "BaseOS" "AppStream"
                      do
                          ospkgdir_ok="$ospkgdir/$arg"
                          array_set_element os_path $index $ospkgdir_ok
                          index=$(expr $index + 1)
                      done
+                     continue
                 fi # if...elif..fi
              fi  # eq default_pkgdir
           fi    # match rhel*
@@ -567,7 +590,7 @@ if ( ! ( pmatch "$OSVER" "sles10*" ) && [ $haszypper -eq 1 ] ); then
 
     result=`zypper --non-interactive --no-gpg-checks refresh 2>&1`
 
-elif ( ((pmatch "$OSVER" "rhel*") || (pmatch "$OSVER" "centos*") || (pmatch "$OSVER" "SL*")) && [ $hasyum -eq 1 ] ); then
+elif ( is_el_yum_distro && [ $hasyum -eq 1 ] ); then
     #remove old repo files
     mkdir -p /etc/yum.repos.d
     if [ `ls -1 /etc/yum.repos.d/local-repository*.repo 2>/dev/null | wc -l` -gt 0 ]; then
@@ -1121,4 +1144,3 @@ EOF`
 done
 
 exit $RETURNVAL
-

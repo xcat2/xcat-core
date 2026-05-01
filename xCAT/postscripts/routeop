@@ -49,12 +49,12 @@ fi
 
 # use nummask to know whether the netmask format is 255.255.255.0 or CIDR (a number)
 nummask=0
-echo $mask | egrep "^[.0123456789]+$" > /dev/null
+echo $mask | grep -E "^[.0123456789]+$" > /dev/null
 if [ $? -ne 0 ]; then
     echo "Error: invalid format of netmask $mask."
     exit 1
 else
-    echo $mask | egrep "^[0123456789]+$" > /dev/null
+    echo $mask | grep -E "^[0123456789]+$" > /dev/null
     if [ $? -eq 0 ]; then # only has digital
         nummask=1    # the netmask is the length of network mask.
         if [ $mask -ge 128 ]; then
@@ -124,21 +124,26 @@ function debianpreconf(){
 
 route_exists()
 {
-    net=$1
-    mask=$2
-    gw=$3
-    ret=0
+    local route_net=$1
+    local route_mask=$2
+    local route_gw=$3
+    local route_ifname
+    local ret=0
+    local result
+    local os_type
 
     if [ -n "$4" ]; then
-        ifname=$4
+        route_ifname=$4
+    else
+        route_ifname=$ifname
     fi
 
     os_type=$(uname -s)
 
     # ipv6
-    if echo $net | grep : 2>&1 1>/dev/null
+    if echo $route_net | grep : 2>&1 1>/dev/null
     then
-        result=`ip -6 route show $net/$mask`
+        result=`ip -6 route show $route_net/$route_mask`
         if [ $? -ne 0 ] || [ -z "$result" ]
         then
             ret=0
@@ -146,16 +151,53 @@ route_exists()
             ret=1
         fi
     else
-        result=`netstat -nr|grep $net`;
-        if [ $? -eq 0 ] && [ -n "$result" ]; then
-            for x in `echo "$result"|tr -s " " ","`
-                do
+        if [ "$os_type" = "Linux" ] && command -v ip >/dev/null 2>&1; then
+            local route_prefix=$route_mask
+            local line
+
+            if ! echo "$route_prefix" | grep -E "^[0123456789]+$" >/dev/null 2>&1; then
+                if type v4mask2prefix >/dev/null 2>&1; then
+                    route_prefix=$(v4mask2prefix "$route_mask")
+                fi
+            fi
+
+            if [ "$route_net" = "default" ]; then
+                result=$(ip route show default 2>/dev/null)
+            elif echo "$route_prefix" | grep -E "^[0123456789]+$" >/dev/null 2>&1; then
+                result=$(ip route show "$route_net/$route_prefix" 2>/dev/null)
+            else
+                result=$(ip route show "$route_net" 2>/dev/null)
+            fi
+
+            while IFS= read -r line
+            do
+                [ -n "$line" ] || continue
+                if [ -n "$route_gw" ] && [ "$route_gw" != "0.0.0.0" ]; then
+                    case " $line " in
+                        *" via $route_gw "*) ;;
+                        *) continue ;;
+                    esac
+                fi
+                if [ -n "$route_ifname" ]; then
+                    case " $line " in
+                        *" dev $route_ifname "*) ;;
+                        *) continue ;;
+                    esac
+                fi
+                ret=1
+                break
+            done <<< "$result"
+        else
+            result=`netstat -nr|grep $route_net`;
+            if [ $? -eq 0 ] && [ -n "$result" ]; then
+                for x in `echo "$result"|tr -s " " ","`
+                    do
                 if [ "$os_type" = "Linux" ]; then
                     net1=`echo $x|cut -d',' -f1`
                     gw1=`echo $x|cut -d',' -f2`
                     mask1=`echo $x|cut -d',' -f3`
                     ifname1=`echo $x|cut -d',' -f8`
-                    if [ "$net" = "$net1" ] && [ "$mask" = "$mask1" ] && [ "$gw" = "$gw1" ] && [ "$ifname" = "$ifname1"  ]; then
+                    if [ "$route_net" = "$net1" ] && [ "$route_mask" = "$mask1" ] && [ "$route_gw" = "$gw1" ] && [ "$route_ifname" = "$ifname1"  ]; then
                         ret=1
                         break
                     fi
@@ -163,10 +205,10 @@ route_exists()
                     tmp1=`echo $x|cut -d',' -f1`
                     gw1=`echo $x|cut -d',' -f2`
 
-                    n1=`echo $net |cut -d'.' -f1`
-                    n2=`echo $net |cut -d'.' -f2`
-                    n3=`echo $net |cut -d'.' -f3`
-                    n4=`echo $net |cut -d'.' -f4`
+                    n1=`echo $route_net |cut -d'.' -f1`
+                    n2=`echo $route_net |cut -d'.' -f2`
+                    n3=`echo $route_net |cut -d'.' -f3`
+                    n4=`echo $route_net |cut -d'.' -f4`
 
                     netnum="$(( ($n1 << 24) + ($n2 << 16) + ($n3 << 8) + $n4 ))"
                     bits=32
@@ -176,18 +218,235 @@ route_exists()
                         netnum="$(( $netnum >> 1 ))"
                     done
 
-                    tmp2="$net/$bits";
+                    tmp2="$route_net/$bits";
                     #echo "$tmp2=$tmp2"
-                    if [ "$tmp1" = "$tmp2" ] && [ "$gw" = "$gw1" ]; then
+                    if [ "$tmp1" = "$tmp2" ] && [ "$route_gw" = "$gw1" ]; then
                         ret=1
                         break
                     fi
                 fi
-                done
+                    done
+            fi
         fi
     fi
 
     echo $ret
+}
+
+is_ipv6_route()
+{
+    case "$1" in
+        *:*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+ipv4_route_prefix()
+{
+    local route_mask=$1
+
+    if echo "$route_mask" | grep -E "^[0123456789]+$" >/dev/null 2>&1; then
+        echo "$route_mask"
+    elif type v4mask2prefix >/dev/null 2>&1; then
+        v4mask2prefix "$route_mask"
+    else
+        echo "$route_mask"
+    fi
+}
+
+ipv4_route_destination()
+{
+    local route_net=$1
+    local route_mask=$2
+
+    if [ "$route_net" = "default" ]; then
+        echo "default"
+    else
+        echo "$route_net/$(ipv4_route_prefix "$route_mask")"
+    fi
+}
+
+redhat_uses_nmcli_routes()
+{
+    [ "$OS_name" = "redhat" ] || return 1
+    command -v nmcli >/dev/null 2>&1 || return 1
+
+    if [[ "$OSVER" =~ ^(rhel|rhels|alma|almalinux|rocky|centos|ol)(9|1[0-9]) ]]; then
+        return 0
+    fi
+
+    [ -r /etc/os-release ] || return 1
+    local os_id
+    local version_major
+    os_id=$(sed -n 's/^ID=//p' /etc/os-release | head -1 | tr -d '"')
+    version_major=$(sed -n 's/^VERSION_ID=//p' /etc/os-release | head -1 | tr -d '"' | cut -d. -f1)
+
+    case "$os_id" in
+        rhel|rocky|almalinux|centos|ol)
+            case "$version_major" in
+                ''|*[!0-9]*) return 1 ;;
+            esac
+            [ "$version_major" -ge 9 ]
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+route_ifname()
+{
+    local route_net=$1
+    local route_gw=$2
+    local requested_ifname=$3
+
+    if [ -n "$requested_ifname" ]; then
+        echo "$requested_ifname"
+        return 0
+    fi
+
+    if [ "$route_net" = "default" ]; then
+        if is_ipv6_route "$route_gw"; then
+            ip -6 route show default 2>/dev/null | awk '{for (i = 1; i <= NF; i++) if ($i == "dev") {print $(i + 1); exit}}'
+        else
+            ip route show default 2>/dev/null | awk '{for (i = 1; i <= NF; i++) if ($i == "dev") {print $(i + 1); exit}}'
+        fi
+    fi
+}
+
+nm_connection_for_ifname()
+{
+    local dev=$1
+    local con_name
+
+    [ -n "$dev" ] || return 1
+
+    con_name=$(nmcli -g GENERAL.CONNECTION device show "$dev" 2>/dev/null | head -1)
+    if [ -n "$con_name" ] && [ "$con_name" != "--" ]; then
+        echo "$con_name"
+        return 0
+    fi
+
+    con_name=$(nmcli -g NAME,DEVICE connection show --active 2>/dev/null | awk -F: -v dev="$dev" '$2 == dev {print $1; exit}')
+    if [ -n "$con_name" ]; then
+        echo "$con_name"
+        return 0
+    fi
+
+    if nmcli connection show "$dev" >/dev/null 2>&1; then
+        echo "$dev"
+        return 0
+    fi
+
+    return 1
+}
+
+nmcli_remove_routes_by_destination()
+{
+    local con_name=$1
+    local family=$2
+    local route_dest=$3
+    local current_routes
+    local current_route
+
+    current_routes=$(nmcli -g "$family.routes" connection show "$con_name" 2>/dev/null | tr ',' '\n')
+    while IFS= read -r current_route
+    do
+        current_route=$(echo "$current_route" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        [ -n "$current_route" ] || continue
+        case "$current_route" in
+            "$route_dest"|"$route_dest "*)
+                nmcli connection modify "$con_name" -"$family.routes" "$current_route" >/dev/null 2>&1
+                ;;
+        esac
+    done <<< "$current_routes"
+}
+
+nmcli_persistent_route()
+{
+    local route_action=$1
+    local route_net=$2
+    local route_mask=$3
+    local route_gw=$4
+    local route_dev
+    local con_name
+    local family
+    local route_dest
+    local route_value
+    local empty_gw
+    local rc
+
+    route_dev=$(route_ifname "$route_net" "$route_gw" "$5")
+    if [ -z "$route_dev" ]; then
+        echo "Error: the device name is necessary to configure a NetworkManager persistent route."
+        return 1
+    fi
+
+    con_name=$(nm_connection_for_ifname "$route_dev")
+    if [ -z "$con_name" ]; then
+        echo "Error: unable to find a NetworkManager connection for $route_dev."
+        return 1
+    fi
+
+    if is_ipv6_route "$route_net" || is_ipv6_route "$route_gw"; then
+        family="ipv6"
+        empty_gw="::"
+    else
+        family="ipv4"
+        empty_gw="0.0.0.0"
+    fi
+
+    if [ "$route_net" = "default" ]; then
+        if [ "$route_action" = "delete" ]; then
+            nmcli connection modify "$con_name" "$family.gateway" ""
+            rc=$?
+            [ $rc -eq 0 ] && echo "Persistent default route removed from NetworkManager connection \"$con_name\"."
+            return $rc
+        elif [ -n "$route_gw" ] && [ "$route_gw" != "$empty_gw" ]; then
+            nmcli connection modify "$con_name" "$family.gateway" "$route_gw" "$family.never-default" no
+            rc=$?
+            [ $rc -eq 0 ] && echo "Persistent default route via $route_gw added to NetworkManager connection \"$con_name\"."
+            return $rc
+        else
+            if [ "$family" = "ipv6" ]; then
+                route_value="::/0"
+            else
+                route_value="0.0.0.0/0"
+            fi
+            nmcli connection modify "$con_name" -"$family.routes" "$route_value" >/dev/null 2>&1
+            nmcli connection modify "$con_name" +"$family.routes" "$route_value"
+            rc=$?
+            [ $rc -eq 0 ] && echo "Persistent default route for $route_dev added to NetworkManager connection \"$con_name\"."
+            return $rc
+        fi
+    else
+        if [ "$family" = "ipv4" ]; then
+            route_dest=$(ipv4_route_destination "$route_net" "$route_mask")
+        else
+            route_dest="$route_net/$route_mask"
+        fi
+        route_value="$route_dest"
+        if [ -n "$route_gw" ] && [ "$route_gw" != "$empty_gw" ]; then
+            route_value="$route_value $route_gw"
+        fi
+
+        if [ "$route_action" = "delete" ]; then
+            nmcli connection modify "$con_name" -"$family.routes" "$route_value"
+            rc=$?
+            [ $rc -eq 0 ] && echo "Persistent route \"$route_value\" removed from NetworkManager connection \"$con_name\"."
+            return $rc
+        else
+            if [ "$route_action" = "replace" ]; then
+                nmcli_remove_routes_by_destination "$con_name" "$family" "$route_dest"
+            else
+                nmcli connection modify "$con_name" -"$family.routes" "$route_value" >/dev/null 2>&1
+            fi
+            nmcli connection modify "$con_name" +"$family.routes" "$route_value"
+            rc=$?
+            [ $rc -eq 0 ] && echo "Persistent route \"$route_value\" added to NetworkManager connection \"$con_name\"."
+            return $rc
+        fi
+    fi
 }
 
 # handle the route replace operation that adding the setting to configuration file
@@ -256,7 +515,7 @@ replace_persistent_route()
                 fi
             fi
             if [ -f $filename ]; then
-                egrep "^$routedest" $filename 2>&1 1>/dev/null
+                grep -E "^$routedest" $filename 2>&1 1>/dev/null
                 if [ $? -ne 0 ]; then #route does not exist
                     echo $route >> $filename
                     echo "Persistent route \"$route\" has been added in $filename."
@@ -276,6 +535,10 @@ replace_persistent_route()
             if [ -z "$ifname" -a "$net" != "default" ]; then
                 echo "Error: the device name is necessary to configure static route."
                 return 1
+            fi
+            if redhat_uses_nmcli_routes; then
+                nmcli_persistent_route replace "$net" "$mask" "$gw" "$ifname"
+                return $?
             fi
 
             if echo $net | grep : 2>&1 1>/dev/null
@@ -309,7 +572,7 @@ replace_persistent_route()
                 routedest1=$routedest
             fi
             if [ -f $filename ]; then
-                egrep "^$routedest" $filename 2>&1 1>/dev/null
+                grep -E "^$routedest" $filename 2>&1 1>/dev/null
                 if [ $? -ne 0 ]; then #route does not exist
                     echo $route >> $filename
                     echo "Persistent route \"$route\" has been added in $filename."
@@ -583,6 +846,10 @@ add_persistent_route()
         ;;
         redhat)
         #echo "rh/fedora/centos"
+        if redhat_uses_nmcli_routes; then
+            nmcli_persistent_route add "$net" "$mask" "$gw" "$ifname"
+            return $?
+        fi
         # ipv6 net
         if echo $net | grep : 2>&1 1>/dev/null
         then
@@ -729,6 +996,10 @@ rm_persistent_route()
         ;;
         redhat)
         #echo "rh/fedora/centos"
+        if redhat_uses_nmcli_routes; then
+            nmcli_persistent_route delete "$net" "$mask" "$gw" "$ifname"
+            return $?
+        fi
         #ipv6
         if echo $net | grep : 2>&1 1>/dev/null
         then
@@ -796,12 +1067,19 @@ if [ "$op" = "add" ]; then
                 cmd="ip -6 route add $net/$mask via $gw"
             fi
         else
-            if [ "$(uname -s)" = "Linux" ]; then
-            if [ "$gw" = "" -o "$gw" = "0.0.0.0" ] ; then
+        if [ "$(uname -s)" = "Linux" ]; then
+            if command -v ip >/dev/null 2>&1; then
+                route_dest=$(ipv4_route_destination "$net" "$mask")
+                if [ "$gw" = "" -o "$gw" = "0.0.0.0" ] ; then
+                    cmd="ip route add $route_dest dev $ifname"
+                else
+                    cmd="ip route add $route_dest via $gw"
+                fi
+            elif [ "$gw" = "" -o "$gw" = "0.0.0.0" ] ; then
                     cmd="route add -net $net netmask $mask dev $ifname"
-        else
+            else
                     cmd="route add -net $net netmask $mask gw $gw"
-        fi
+            fi
             else
                 cmd="route add -net $net -netmask $mask $gw"
             fi
@@ -845,12 +1123,19 @@ elif [ "$op" = "delete" ]; then
                 cmd="ip -6 route delete $net/$mask via $gw"
             fi
         else
-            if [ "$(uname -s)" = "Linux" ]; then
-            if [ "$gw" = "" -o "$gw" = "0.0.0.0" ] ; then
+        if [ "$(uname -s)" = "Linux" ]; then
+            if command -v ip >/dev/null 2>&1; then
+                route_dest=$(ipv4_route_destination "$net" "$mask")
+                if [ "$gw" = "" -o "$gw" = "0.0.0.0" ] ; then
+                    cmd="ip route delete $route_dest dev $ifname"
+                else
+                    cmd="ip route delete $route_dest via $gw"
+                fi
+            elif [ "$gw" = "" -o "$gw" = "0.0.0.0" ] ; then
                     cmd="route delete -net $net netmask $mask dev $ifname"
-        else
+            else
                     cmd="route delete -net $net netmask $mask gw $gw"
-        fi
+            fi
             else
                 cmd="route delete -net $net -netmask $mask $gw"
             fi

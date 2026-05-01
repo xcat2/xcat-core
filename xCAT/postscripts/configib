@@ -177,7 +177,7 @@ then
         exit
     fi
 	
-    if [[ $OS_name != 'ubuntu' ]] && [[ ! "$OSVER" =~ ^(rhels9|alma9|rocky9) ]]; then
+    if [[ $OS_name != 'ubuntu' ]] && [[ ! "$OSVER" =~ ^(rhel|rhels|alma|almalinux|rocky|centos|ol)(9|1[0-9]) ]]; then
         if [ $OS_name == 'suse' ]
         then
             dir="/etc/sysconfig/network"
@@ -485,7 +485,7 @@ IPADDR_$ipindex=$nicip" >> $dir/ifcfg-$nic
                # First ip address
                if [ $ipindex -eq 1 ]
                then
-                   if [[ "$OSVER" =~ ^(rhels9|alma9|rocky9) ]]; then
+                   if [[ "$OSVER" =~ ^(rhel|rhels|alma|almalinux|rocky|centos|ol)(9|1[0-9]) ]]; then
                        if nmcli --field connection.id con show $nic 2>&1 1>/dev/null
                        then # modify current connection
                             # ipv6
@@ -551,7 +551,7 @@ IPADDR=$nicip" > $dir/ifcfg-$nic
                         name="${array_extra_param_names[$i]}"
                         value="${array_extra_param_values[$i]}"
                         echo "  $i: name=$name value=$value"
-                        if [[ "$OSVER" =~ ^(rhels9|alma9|rocky9) ]]; then
+                        if [[ "$OSVER" =~ ^(rhel|rhels|alma|almalinux|rocky|centos|ol)(9|1[0-9]) ]]; then
                             nmcli con modify $nic $name $value
                         else
                             grep -i "${name}" $dir/ifcfg-$nic
@@ -564,7 +564,7 @@ IPADDR=$nicip" > $dir/ifcfg-$nic
                         i=$((i+1))
                     done		
                else # not the first ip address
-                   if [[ "$OSVER" =~ ^(rhels9|alma9|rocky9) ]]; then
+                   if [[ "$OSVER" =~ ^(rhel|rhels|alma|almalinux|rocky|centos|ol)(9|1[0-9]) ]]; then
                        if nmcli --field connection.id con show $nic 2>&1 1>/dev/null
                        then # modify current connection
                             # ipv6
@@ -643,7 +643,7 @@ IPADDR$ipindex=$nicip"
                             name="${array_extra_param_names[$i]}"
                             value="${array_extra_param_values[$i]}"
                             echo "  $i: name=$name value=$value"
-                            if [[ "$OSVER" =~ ^(rhels9|alma9|rocky9) ]]; then
+                            if [[ "$OSVER" =~ ^(rhel|rhels|alma|almalinux|rocky|centos|ol)(9|1[0-9]) ]]; then
                                 nmcli con modify $nic $name $value
                             else
                                 grep -i "${name}" $cfgfile
@@ -826,7 +826,7 @@ then
                 done
             else 
                 if [ $nmcli_used -eq 1 ]; then
-                    if ! [[ "$OSVER" =~ ^(rhels9|alma9|rocky9) ]]; then
+                    if ! [[ "$OSVER" =~ ^(rhel|rhels|alma|almalinux|rocky|centos|ol)(9|1[0-9]) ]]; then
                         nmcli con reload $dir/ifcfg-$nic
                     fi
                     nmcli con up $nic 2>&1

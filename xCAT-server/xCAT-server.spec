@@ -40,7 +40,12 @@ BuildArch: noarch
 %if %s390x
 Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser
 %else
+%if 0%{?rhel} >= 8
 BuildRequires: perl-generators
+%endif
+%if 0%{?fedora}
+BuildRequires: perl-generators
+%endif
 Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser perl-Digest-SHA1 perl(LWP::Protocol::https) perl-XML-LibXML
 %endif
 Obsoletes: atftp-xcat

@@ -6,27 +6,56 @@
 [ "$MASTER_IP" ] || export MASTER_IP="#ENV:MASTER_IP#"
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
 
-for i in $(ls /etc/sysconfig/network-scripts/ifcfg-* | grep -v ifcfg-lo)
-do
-    nicname="${i##*-}"
-    if ethtool $nicname | grep -E -i -q "Link detected.*yes" >/dev/null 2>&1
-    then
-        case "$XCATDEBUGMODE" in
-	"1"|"2")
-            msgutil_r "$MASTER_IP" "info" "set NIC $nicname to be activated on system boot" "/var/log/xcat/xcat.log"
-            ;;
-	esac
-        sed -i 's/ONBOOT=no/ONBOOT=yes/' "$i"
+activate_nm_connections()
+{
+    nmcli -g NAME,STATE con show | \
+        awk -F: '$1 != "lo" && $2 == "activated" {print $1}' | \
+        while IFS= read -r con_name
+        do
+            [ -n "$con_name" ] || continue
+            case "$XCATDEBUGMODE" in
+            "1"|"2")
+                msgutil_r "$MASTER_IP" "info" "set connection $con_name to be activated on system boot" "/var/log/xcat/xcat.log"
+                ;;
+            esac
+            nmcli con mod "$con_name" connection.autoconnect yes
+        done
+}
+
+activated_ifcfg=0
+if compgen -G "/etc/sysconfig/network-scripts/ifcfg-*" >/dev/null 2>&1; then
+    for i in /etc/sysconfig/network-scripts/ifcfg-*
+    do
+        [ "${i##*/}" = "ifcfg-lo" ] && continue
+        nicname="${i##*-}"
+        if ethtool "$nicname" 2>/dev/null | grep -E -i -q "Link detected.*yes" >/dev/null 2>&1
+        then
+            case "$XCATDEBUGMODE" in
+	    "1"|"2")
+                msgutil_r "$MASTER_IP" "info" "set NIC $nicname to be activated on system boot" "/var/log/xcat/xcat.log"
+                ;;
+	    esac
+            sed -i 's/ONBOOT=no/ONBOOT=yes/' "$i"
+            activated_ifcfg=1
+        fi
+    done
+
+    if [ "$activated_ifcfg" -eq 0 ] && command -v nmcli >/dev/null 2>&1; then
+        activate_nm_connections
     fi
-done
+elif command -v nmcli >/dev/null 2>&1; then
+    activate_nm_connections
+fi
 
 # List of internal repos to be disabled
 
-internet_repo_file_list="oracle-linux-ol8.repo uek-ol8.repo Rocky-AppStream.repo Rocky-BaseOS.repo Rocky-Extras.repo CentOS-Base.repo almalinux-ha.repo almalinux-nfv.repo almalinux-powertools.repo almalinux.repo almalinux-resilientstorage.repo almalinux-rt.repo"
+internet_repo_file_list="oracle-linux-ol8.repo oracle-linux-ol9.repo uek-ol8.repo uek-ol9.repo Rocky-AppStream.repo Rocky-BaseOS.repo Rocky-Extras.repo rocky.repo rocky-extras.repo CentOS-Base.repo centos.repo centos-addons.repo almalinux-ha.repo almalinux-nfv.repo almalinux-powertools.repo almalinux.repo almalinux-resilientstorage.repo almalinux-rt.repo"
 
 for repo_file in $internet_repo_file_list
 do
   if [ -f /etc/yum.repos.d/$repo_file ]; then
-    sed -i -e 's/enabled=1/enabled=0/' /etc/yum.repos.d/$repo_file
+    sed -i -e 's/^[[:space:]]*enabled[[:space:]]*=[[:space:]]*1/enabled=0/' /etc/yum.repos.d/$repo_file
   fi
 done
+
+exit 0

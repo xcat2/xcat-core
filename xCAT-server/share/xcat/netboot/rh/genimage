@@ -798,11 +798,11 @@ if ((-d "$rootimg_dir/usr/share/dracut") or (-d "$rootimg_dir/usr/lib/dracut")) 
 
 # List of internet repos to be disabled
 
-my @internet_repo_file_list = ("oracle-linux-ol8.repo", "uek-ol8.repo", "Rocky-AppStream.repo", "Rocky-BaseOS.repo", "Rocky-Extras.repo", "CentOS-Base.repo", "almalinux-ha.repo", "almalinux-nfv.repo", "almalinux-plus.repo", "almalinux-powertools.repo", "almalinux.repo", "almalinux-resilientstorage.repo", "almalinux-rt.repo");
+my @internet_repo_file_list = ("oracle-linux-ol8.repo", "oracle-linux-ol9.repo", "oracle-linux-ol10.repo", "uek-ol8.repo", "uek-ol9.repo", "uek-ol10.repo", "Rocky-AppStream.repo", "Rocky-BaseOS.repo", "Rocky-Extras.repo", "rocky.repo", "rocky-extras.repo", "CentOS-Base.repo", "centos.repo", "centos-addons.repo", "almalinux-ha.repo", "almalinux-nfv.repo", "almalinux-plus.repo", "almalinux-powertools.repo", "almalinux.repo", "almalinux-resilientstorage.repo", "almalinux-rt.repo");
 
 foreach ( @internet_repo_file_list ) {
   if (-e "$rootimg_dir/etc/yum.repos.d/$_") {
-    system("sed -i -e 's/enabled=1/enabled=0/' $rootimg_dir/etc/yum.repos.d/$_");
+    system("sed -i -e 's/^[[:space:]]*enabled[[:space:]]*=[[:space:]]*1/enabled=0/' $rootimg_dir/etc/yum.repos.d/$_");
   }
 }
 
@@ -930,6 +930,7 @@ unless (-f "$cwd/../add-on/statelite/rc.statelite") {
     exit 1;
 }
 
+mkpath "$rootimg_dir/etc/init.d";
 system("cp $cwd/../add-on/statelite/rc.statelite $rootimg_dir/etc/init.d/statelite");
 system("cp $cwd/../add-on/statelite/rc.localdisk $rootimg_dir/etc/init.d/localdisk");
 
@@ -2587,5 +2588,4 @@ sub usage {
 
     return 0;
 }
-
 
