@@ -2398,11 +2398,7 @@ sub copycd
 
             my @ret = xCAT::SvrUtils->update_tables_with_mgt_image($distname, $arch, $path, $osdistroname);
 
-            # @FIXME: (2.19+) dhcp-client is pulled by genimage but not provided by OS repositories. Because
-            #  of that we provide it as an xCAT dependency in xCAT 2.18 unified repository and copy it
-            #  to /install/dhcp_packages/ during post install, and append to the pkgdir of the netboot image below.
-            #  Remove this in 2.19+ and use a supported DHCP implementation.
-            my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot", "$path,/install/dhcp_pkgs/", $osdistroname);
+            my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot", $path, $osdistroname);
 
             #if ($ret[0] != 0) {
             #$callback->({data => "Error when updating the osimage tables for stateless: " . $ret[1]});

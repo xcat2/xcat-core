@@ -541,16 +541,6 @@ then
    cp /etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24 /etc/apache2/conf.d/xcat-ws.conf
 fi
 
-# @FIXME: (for v2.19+) Remove this and use the supported dhcp
-%ifos linux
-# In EL10 dhcp-client is not provided by the O.S repositories anymore
-# so we download it to a directory which is appended to netboot
-# pkgdir during copycds, s.t. genimage <netboot> succeds without
-# need for human intervention. At the moment of writing the dhcp-client
-# is provided by xCAT 2.18 unified repository as a dependency.
-dnf download --destdir=/install/dhcp_pkgs/ dhcp-client
-%endif
-
 exit 0
 
 %preun
