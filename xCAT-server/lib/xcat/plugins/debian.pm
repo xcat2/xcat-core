@@ -178,6 +178,31 @@ sub using_subiquity
     return 0;
 }
 
+sub is_ubuntu_live_media
+{
+    my $media_path = shift;
+
+    return 0 unless ($media_path && -d "$media_path/casper");
+    return 1 if (-r "$media_path/casper/install-sources.yaml");
+
+    my @squashfs_images = glob("$media_path/casper/*.squashfs");
+    return scalar(@squashfs_images) ? 1 : 0;
+}
+
+sub warn_ubuntu_live_media_pkg_source
+{
+    my $callback = shift;
+    my $media_path = shift;
+
+    return unless is_ubuntu_live_media($media_path);
+
+    $callback->({
+        warning => [
+            "Ubuntu live media was copied successfully, but this media is not a complete Ubuntu apt package mirror. Install osimages can use it, but netboot/statelite image generation with genimage may require additional package sources through linuximage.pkgdir or linuximage.otherpkgdir, such as a local mirror or an explicitly configured HTTP/HTTPS Ubuntu apt repository."
+        ]
+    });
+}
+
 sub copyAndAddCustomizations {
     my $source = shift;
     my $dest   = shift;
@@ -462,6 +487,10 @@ sub copycd
         my @ret = xCAT::SvrUtils->update_osdistro_table($distname, $arch, $temppath, $osdistroname);
         if ($ret[0] != 0) {
             $callback->({ data => "Error when updating the osdistro tables: " . $ret[1] });
+        }
+
+        if (($prod eq "Ubuntu") || ($prod eq "Ubuntu-Server")) {
+            warn_ubuntu_live_media_pkg_source($callback, $temppath);
         }
 
         $callback->({ data => "Media copy operation successful" });

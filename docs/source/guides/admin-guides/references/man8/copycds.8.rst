@@ -33,6 +33,8 @@ DESCRIPTION
 
 The \ **copycds**\  command copies all contents of Distribution DVDs/ISOs or Service Pack DVDs/ISOs to a destination directory. The destination directory can be specified by the \ **-p**\  option. If no path is specified, the default destination directory will be formed from the \ **installdir**\  site table attribute, distro name and architecture, for example: /install/rhels6.3/x86_64. The \ **copycds**\  command can copy from one or more ISO files, or the CD/DVD device path.
 
+For Ubuntu live-server media, \ **copycds**\  copies the installer media and can create install osimages, but the copied media is not a complete Ubuntu apt package mirror. Ubuntu netboot or statelite image generation with \ **genimage**\  may require additional package sources configured through \ **linuximage.pkgdir**\  or \ **linuximage.otherpkgdir**\ , such as a local mirror or an explicitly configured HTTP/HTTPS Ubuntu apt repository.
+
 You can specify \ **-i**\  or \ **-**\ **-inspection**\  option to check whether the DVDs/ISOs can be recognized by xCAT. If recognized, the distribution name, architecture and the disc no (the disc sequence number of DVDs/ISOs in multi-disk distribution) of the DVD/ISO is displayed. If xCAT doesn't recognize the DVD/ISO, you must manually specify the distro name and architecture using the \ **-n**\  and \ **-a**\  options. This is sometimes the case for distros that have very recently been released, and the xCAT code hasn't been updated for it yet.
 
 You can get xCAT to recognize new DVDs/ISOs by adding them to /opt/xcat/lib/perl/xCAT/data/discinfo.pm (the key of the hash is the first line of .discinfo) and reloading xcatd (\ **service xcatd reload**\ ).
@@ -175,4 +177,3 @@ SEE ALSO
 
 
 nodeset(8)|nodeset.8, site(5)|site.5, nodetype(5)|nodetype.5
-
