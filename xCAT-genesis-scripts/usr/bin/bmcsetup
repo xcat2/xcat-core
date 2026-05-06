@@ -481,9 +481,27 @@ for user in $BMCUS; do
     if [ "$user" = "" ]; then
         continue
     fi
-    DISABLEUSERS=$(ipmitool user list $LANCHAN|awk '{print $1}'|grep -v ID)
+    if USERLIST=$(ipmitool -d $idev user list "$LANCHAN") && [ -n "$USERLIST" ]; then
+        DISABLEUSERS=$(echo "$USERLIST" | awk '$1 != "ID" && $1 ~ /^[0-9]+$/ {print $1}')
+        ENABLEDUSERS=$(echo "$USERLIST" | awk '
+            $1 == "ID" { next }
+            $1 !~ /^[0-9]+$/ { next }
+            {
+                ipmi_msg = $(NF - 1)
+                if ($(NF - 1) == "NO" && $NF == "ACCESS") {
+                    ipmi_msg = $(NF - 2)
+                }
+                if (ipmi_msg == "true") {
+                    print $1
+                }
+            }')
+    else
+        DISABLEUSERS=$(ipmitool user list "$LANCHAN"|awk '{print $1}'|grep -v ID)
+        ENABLEDUSERS="$DISABLEUSERS"
+        logger -s -t $log_label -p local4.warning "Could not read IPMI user list for device $idev, falling back to disabling all non-target users"
+    fi
     # Get the User Slots
-    USERSLOT=`ipmitool -d $idev user list $LANCHAN |grep -v ^ID|awk '{print $1 " " $2}'|grep -w "$BMCUS"|awk '{print $1}'`
+    USERSLOT=$(echo "$USERLIST" | awk -v user="$user" '$1 != "ID" && $2 == user {print $1; exit}')
     if [ -z "$USERSLOT" ]; then
         USERSLOT=$((`ipmitool raw 6 0x44 1 1|awk '{print $3}'` + 1))
     fi
@@ -498,7 +516,7 @@ for user in $BMCUS; do
         done
     fi
     # fall back to userslot 2 as a last resort
-    if [ "$USERSLOT" == 0 ]; then $USERSLOT = 2; fi
+    if [ "$USERSLOT" = 0 ]; then USERSLOT=2; fi
     if [ "$ISITE" = 1 ]; then
         allowcred.awk &
         CREDPID=$!
@@ -510,13 +528,15 @@ for user in $BMCUS; do
     fi
 
     # Get the specified user
-    CURRENTUSER=`ipmitool -d $idev user list $LANCHAN|grep ^$USERSLOT|awk '{print $2}'`
-    DISABLEUSERS=`echo $DISABLEUSERS|sed -e s/$USERSLOT//`
+    CURRENTUSER=$(echo "$USERLIST" | awk -v slot="$USERSLOT" '$1 == slot {print $2; exit}')
+    DISABLEUSERS=$(echo "$DISABLEUSERS" | awk -v slot="$USERSLOT" '$1 != slot {print $1}')
     logger -s -t $log_label -p local4.info "CURRENTUSER=$CURRENTUSER, DISABLEUSERS=$DISABLEUSERS"
     for userid in $DISABLEUSERS; do
         TRIES=0
+        # user disable is not idempotent on several BMCs; skip slots already disabled.
+        echo "$ENABLEDUSERS" | grep -q "^${userid}$" || continue
         # Disable the non-specified user
-        while ! ipmitool -d $idev user disable $userid; do
+        while ! ipmitool -d $idev user disable "$userid"; do
             sleep 1
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then break; fi
