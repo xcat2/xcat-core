@@ -11,7 +11,6 @@ use lib "$::XCATROOT/lib/perl";
 
 use Getopt::Long;
 use Fcntl ':flock';
-use xCAT::DHCP::Backend;
 
 sub usage{
     print "Usage: dhcphelper -h \n";
@@ -39,6 +38,7 @@ if($help){
     &usage;
     exit 0;
 }elsif($rmop){
+    require xCAT::DHCP::Backend;
     my $backend = xCAT::DHCP::Backend->new_backend();
     if (ref($backend) ne 'HASH' && $backend->name eq 'kea') {
         if ($mac && $mac !~ /:/) {
