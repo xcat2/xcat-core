@@ -825,7 +825,7 @@ sub send_rakp3 {
     $self->{rmcptag} += 1;
     my @payload = ($self->{rmcptag}, 0, 0, 0, @{ $self->{pendingsessionid} });
     my @user = unpack("C*", $self->{userid});
-    push @payload, unpack("C*", $self->{hshfn}->(pack("C*", @{ $self->{remoterandomnumber} }, @{ $self->{sidm} }, $self->{privlevel}, scalar @user, @user), $self->{password}));
+    push @payload, unpack("C*", $self->{hshfn}->(pack("C*", @{ $self->{remoterandomnumber} }, @{ $self->{sidm} }, $self->{rakp_privbyte}, scalar @user, @user), $self->{password}));
     $self->sendpayload(payload => \@payload, type => $payload_types{'rakp3'});
 }
 
@@ -839,7 +839,8 @@ sub send_rakp1 {
         push @{ $self->{randomnumber} }, $randomnumber;
     }
     push @payload, @{ $self->{randomnumber} };
-    push @payload, ($self->{privlevel}, 0, 0);    # request priv
+    $self->{rakp_privbyte} = $self->{privlevel} | 0x10;
+    push @payload, ($self->{rakp_privbyte}, 0, 0);    # request priv, with name-only lookup
     my @user = unpack("C*", $self->{userid});
     push @payload, scalar @user;
     push @payload, @user;
@@ -1007,7 +1008,7 @@ sub got_rakp2 {
     #Data now represents authcode.. sha1 only..
     my @user = unpack("C*", $self->{userid});
     my $ulength = scalar @user;
-    my $hmacdata = pack("C*", (@{ $self->{sidm} }, @{ $self->{pendingsessionid} }, @{ $self->{randomnumber} }, @{ $self->{remoterandomnumber} }, @{ $self->{remoteguid} }, $self->{privlevel}, $ulength, @user));
+    my $hmacdata = pack("C*", (@{ $self->{sidm} }, @{ $self->{pendingsessionid} }, @{ $self->{randomnumber} }, @{ $self->{remoterandomnumber} }, @{ $self->{remoteguid} }, $self->{rakp_privbyte}, $ulength, @user));
     my @expectedhash = (unpack("C*", $self->{hshfn}->($hmacdata, $self->{password})));
     foreach (0 .. (scalar(@expectedhash) - 1)) {
         if ($expectedhash[$_] != $data[$_]) {
@@ -1016,7 +1017,7 @@ sub got_rakp2 {
             return 9;
         }
     }
-    $self->{sik} = $self->{hshfn}->(pack("C*", @{ $self->{randomnumber} }, @{ $self->{remoterandomnumber} }, $self->{privlevel}, $ulength, @user), $self->{password});
+    $self->{sik} = $self->{hshfn}->(pack("C*", @{ $self->{randomnumber} }, @{ $self->{remoterandomnumber} }, $self->{rakp_privbyte}, $ulength, @user), $self->{password});
     $self->{k1} = $self->{hshfn}->(pack("C*", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1), $self->{sik});
     $self->{k2} = $self->{hshfn}->(pack("C*", 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2), $self->{sik});
     my @aeskey = unpack("C*", $self->{k2});
