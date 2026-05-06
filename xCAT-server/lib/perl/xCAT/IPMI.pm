@@ -973,6 +973,12 @@ sub got_rakp2 {
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
+        if (($byte == 0x9 or $byte == 0xd) and $self->{attempthash} == 256) {
+            $self->{attempthash} = 1;
+            $self->{sessionestablishmentcontext} = 0;
+            $self->open_rmcpplus_request();
+            return;
+        }
         if (($byte == 0x9 or $byte == 0xd) and $self->{privlevel} == 4) {
 
             # this is probably an environment that wants to give us only operator
