@@ -780,8 +780,12 @@ sub got_rmcp_response {
         #we would ignore an RMCP+ open session response if we are not in an IPMI2 negotiation, so we have to have *some* state that isn't established for this to be kosher
         return 9;    #now's not the time for this response, ignore it
     }
-    unless ($byte == $self->{rmcptag}) { #make sure this rmcp response is specifically the last one we sent.... we don't want to happily proceed with the risk a retry request blew up our temp session id without letting us know
-        return 9;
+    unless ($byte == $self->{rmcptag}) {
+        return 9 unless $byte == 0;
+        my @sid_check = @data[3..6];
+        unless (pack("C4", @sid_check) eq pack("C4", @{ $self->{sidm} })) {
+            return 9;
+        }
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
@@ -895,8 +899,12 @@ sub got_rakp4 {
     unless ($self->{sessionestablishmentcontext} == STATE_EXPECTINGRAKP4) { #ignore rakp4 unless we are explicitly expecting RAKP4
         return 9;    #now's not the time for this response, ignore it
     }
-    unless ($byte == $self->{rmcptag}) { #make sure this rmcp response is specifically the last one we sent.... we don't want to happily proceed with the risk a retry request blew up our temp session id without letting us know
-        return 9;
+    unless ($byte == $self->{rmcptag}) {
+        return 9 unless $byte == 0;
+        my @sid_check = @data[3..6];
+        unless (pack("C4", @sid_check) eq pack("C4", @{ $self->{sidm} })) {
+            return 9;
+        }
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
@@ -955,8 +963,12 @@ sub got_rakp2 {
         #the reason being that if an old rakp1 retry actually made it and we were just too aggressive, then a previous rakp2 is invalidated and invalid session id or the integrity check value is bad
         return 9;    #now's not the time for this response, ignore it
     }
-    unless ($byte == $self->{rmcptag}) { #make sure this rmcp response is specifically the last one we sent.... we don't want to happily proceed with the risk a retry request blew up our temp session id without letting us know
-        return 9;
+    unless ($byte == $self->{rmcptag}) {
+        return 9 unless $byte == 0;
+        my @sid_check = @data[3..6];
+        unless (pack("C4", @sid_check) eq pack("C4", @{ $self->{sidm} })) {
+            return 9;
+        }
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
