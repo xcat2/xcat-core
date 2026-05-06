@@ -415,6 +415,7 @@ end
 start:mkdef_node_no_attrs
 description:mkdef -t node with no attributes should fail and mention groups
 label:mn_only,ci_test,db
+cmd:rmdef -t node testnode_noattr
 cmd:mkdef -t node -o testnode_noattr
 check:rc!=0
 check:output=~groups
@@ -425,12 +426,13 @@ end
 start:mkdef_node_no_groups
 description:mkdef -t node with attributes but no groups should fail
 label:mn_only,ci_test,db
+cmd:rmdef -t node testnode_nogrp
 cmd:mkdef -t node -o testnode_nogrp ip=10.0.0.99
 check:rc!=0
 check:output=~groups
 cmd:lsdef testnode_nogrp
 check:rc!=0
-cmd:rmdef -t node -o testnode_nogrp
+cmd:rmdef -t node testnode_nogrp
 end
 
 start:mkdef_nonnode_no_attrs
@@ -439,6 +441,163 @@ label:mn_only,ci_test,db
 cmd:mkdef -t network -o testnet_noattr
 check:rc!=0
 check:output=~no attributes were specified
-cmd:rmdef -t network -o testnet_noattr
+cmd:rmdef -t network testnet_noattr
 end
 
+start:mkdef_validation_error_no_partial_object
+description:mkdef should not create a partial node when an attribute fails validation
+label:mn_only,ci_test,db
+cmd:rmdef -t node testnode_partial
+cmd:mkdef -t node -o testnode_partial groups=test bmc=10.0.0.1
+check:rc!=0
+check:output=~Cannot set
+cmd:lsdef testnode_partial
+check:rc!=0
+cmd:rmdef -t node testnode_partial
+end
+
+start:mkdef_f_validation_error_preserves_old
+description:mkdef -f with validation error should preserve original object
+label:mn_only,ci_test,db
+cmd:rmdef -t node testnode_keepme
+cmd:mkdef -t node -o testnode_keepme groups=oldgroup mgt=openbmc bmc=1.2.3.4
+check:rc==0
+cmd:mkdef -f -t node -o testnode_keepme groups=newgroup bmc=5.6.7.8
+check:rc!=0
+cmd:lsdef -i groups testnode_keepme
+check:rc==0
+check:output=~groups=oldgroup
+cmd:lsdef -i mgt testnode_keepme
+check:rc==0
+check:output=~mgt=openbmc
+cmd:lsdef -i bmc testnode_keepme
+check:rc==0
+check:output=~bmc=1.2.3.4
+cmd:rmdef -t node testnode_keepme
+end
+
+start:mkdef_f_missing_groups_preserves_old
+description:mkdef -f without groups should preserve original node
+label:mn_only,ci_test,db
+cmd:rmdef -t node testnode_keepgrp
+cmd:mkdef -t node -o testnode_keepgrp groups=oldgroup mgt=openbmc bmc=1.2.3.4
+check:rc==0
+cmd:mkdef -f -t node -o testnode_keepgrp mgt=openbmc bmc=5.6.7.8
+check:rc!=0
+cmd:lsdef -i groups testnode_keepgrp
+check:rc==0
+check:output=~groups=oldgroup
+cmd:rmdef -t node testnode_keepgrp
+end
+
+start:mkdef_only_if_satisfied_explicit
+description:mkdef with only_if condition explicitly satisfied should succeed
+label:mn_only,ci_test,db
+cmd:rmdef -t node testnode_onlyif
+cmd:mkdef -t node -o testnode_onlyif groups=test mgt=openbmc bmc=10.0.0.1
+check:rc==0
+cmd:lsdef -i bmc testnode_onlyif
+check:rc==0
+check:output=~bmc=10.0.0.1
+cmd:rmdef -t node testnode_onlyif
+end
+
+start:mkdef_inherited_validation_via_group
+description:mkdef with only_if satisfied by group inheritance should write the attr
+label:mn_only,ci_test,db
+cmd:rmdef -t node testnode_inherit
+cmd:chtab node=openbmcgrp nodehm.mgt=openbmc
+check:rc==0
+cmd:mkdef -t node -o testnode_inherit groups=openbmcgrp bmc=10.0.0.1
+check:rc==0
+cmd:lsdef -i bmc testnode_inherit
+check:rc==0
+check:output=~bmc=10.0.0.1
+cmd:rmdef -t node testnode_inherit
+cmd:chtab -d node=openbmcgrp nodehm
+end
+
+start:mkdef_f_only_if_failure_preserves_old_bmc
+description:mkdef -f with only_if failure should preserve original bmc value
+label:mn_only,ci_test,db
+cmd:rmdef -t node testnode_keepbmc
+cmd:mkdef -t node -o testnode_keepbmc groups=oldgroup mgt=openbmc bmc=1.2.3.4
+check:rc==0
+cmd:mkdef -f -t node -o testnode_keepbmc groups=newgroup bmc=5.6.7.8
+check:rc!=0
+cmd:lsdef -i bmc testnode_keepbmc
+check:rc==0
+check:output=~bmc=1.2.3.4
+cmd:rmdef -t node testnode_keepbmc
+end
+
+start:mkdef_multi_object_valid_invalid
+description:single mkdef command with one valid and one invalid object (per-object atomic)
+label:mn_only,ci_test,db
+cmd:rmdef -t node testnode_good
+cmd:rmdef -t node testnode_bad
+cmd:printf "testnode_good:\n  objtype=node\n  groups=test\n  mgt=openbmc\n  bmc=10.0.0.1\n\ntestnode_bad:\n  objtype=node\n  groups=test\n  bmc=10.0.0.2\n" | mkdef -z
+check:rc!=0
+cmd:lsdef -i bmc testnode_good
+check:rc==0
+check:output=~bmc=10.0.0.1
+cmd:lsdef testnode_bad
+check:rc!=0
+cmd:rmdef -t node testnode_good
+cmd:rmdef -t node testnode_bad
+end
+
+start:mkdef_f_dynamic_group_missing_wherevals_preserves_old
+description:mkdef -f with grouptype=dynamic but no wherevals should preserve old group
+label:mn_only,ci_test,db
+cmd:rmdef -t node testmember1
+cmd:rmdef -t group testkeepgrp
+cmd:mkdef -t node -o testmember1 groups=all
+check:rc==0
+cmd:mkdef -t group -o testkeepgrp members=testmember1
+check:rc==0
+cmd:mkdef -f -t group -o testkeepgrp grouptype=dynamic
+check:rc!=0
+cmd:lsdef -t group testkeepgrp
+check:rc==0
+cmd:lsdef -s testkeepgrp
+check:output=~testmember1
+cmd:rmdef -t group testkeepgrp
+cmd:rmdef -t node testmember1
+end
+
+start:mkdef_f_dynamic_group_members_w_conflict_preserves_old
+description:mkdef -f -d -w with members should preserve old group
+label:mn_only,ci_test,db
+cmd:rmdef -t node testmember2
+cmd:rmdef -t group testkeepgrp2
+cmd:mkdef -t node -o testmember2 groups=all
+check:rc==0
+cmd:mkdef -t group -o testkeepgrp2 members=testmember2
+check:rc==0
+cmd:mkdef -f -t group -o testkeepgrp2 -d -w mgt==openbmc members=testmember2
+check:rc!=0
+cmd:lsdef -t group testkeepgrp2
+check:rc==0
+cmd:lsdef -s testkeepgrp2
+check:output=~testmember2
+cmd:rmdef -t group testkeepgrp2
+cmd:rmdef -t node testmember2
+end
+
+start:mkdef_failed_group_no_member_mutation
+description:failed group creation should not mutate member node groups
+label:mn_only,ci_test,db
+cmd:rmdef -t node testmember3
+cmd:rmdef -t group testbadgrp
+cmd:mkdef -t node -o testmember3 groups=all
+check:rc==0
+cmd:mkdef -t group -o testbadgrp members=testmember3 bmc=10.0.0.1
+check:rc!=0
+cmd:lsdef -t group testbadgrp
+check:rc!=0
+cmd:lsdef -i groups testmember3
+check:output!~testbadgrp
+cmd:rmdef -t node testmember3
+cmd:rmdef -t group testbadgrp
+end

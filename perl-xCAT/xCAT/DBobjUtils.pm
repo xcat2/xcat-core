@@ -959,6 +959,24 @@ sub setobjdefs
             %DBgroupsattr=xCAT::DBobjUtils->getobjdefs(\%tmpghash);
         }
 
+        my @only_if_failures = xCAT::DBobjUtils->validate_only_if_attrs(
+            $objname,
+            $type,
+            $objhash{$objname},
+            $DBattrvals{$objname} || {},
+            \%DBgroupsattr,
+        );
+        if (@only_if_failures) {
+            foreach my $failure (@only_if_failures) {
+                my $rsp;
+                $rsp->{data}->[0] = $failure->{message};
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+            }
+            $objhash{$objname}{error} = 1;
+            $ret = 1;
+            next;
+        }
+
         # check FINALATTRS to see if all the attrs are valid
         foreach my $attr (keys %{ $objhash{$objname} }) {
 
@@ -1032,7 +1050,16 @@ sub setobjdefs
                     #   as well as the attrs for this object that may be
                     #   already set in DB
 
-                    if (!($objhash{$objname}{$check_attr}) && !($DBattrvals{$objname}{$check_attr})) {
+                    # Also check group inheritance for the condition
+                    my $grp_has_check_attr = 0;
+                    foreach my $tmpgrp (@tmplgrplist) {
+                        if ($DBgroupsattr{$tmpgrp}{$check_attr}) {
+                            $grp_has_check_attr = 1;
+                            last;
+                        }
+                    }
+
+                    if (!($objhash{$objname}{$check_attr}) && !($DBattrvals{$objname}{$check_attr}) && !$grp_has_check_attr) {
 
                         # if I didn't already check for this attr
                         my $rsp;
@@ -1063,7 +1090,17 @@ sub setobjdefs
                         next;
                     }
 
-                    if (!($objhash{$objname}{$check_attr} =~ /\b$check_value\b/) && !($DBattrvals{$objname}{$check_attr} =~ /\b$check_value\b/)) {
+                    my $grp_matches_check_value = 0;
+                    foreach my $tmpgrp (@tmplgrplist) {
+                        if ($DBgroupsattr{$tmpgrp}{$check_attr} && $DBgroupsattr{$tmpgrp}{$check_attr} =~ /\b$check_value\b/) {
+                            $grp_matches_check_value = 1;
+                            last;
+                        }
+                    }
+
+                    my $obj_val = $objhash{$objname}{$check_attr} || '';
+                    my $db_val  = $DBattrvals{$objname}{$check_attr} || '';
+                    if (!($obj_val =~ /\b$check_value\b/) && !($db_val =~ /\b$check_value\b/) && !$grp_matches_check_value) {
                         if ($invalidattr->{$attr_name}->{valid} != 1) {
                             $invalidattr->{$attr_name}->{valid} = 0;
                             $invalidattr->{$attr_name}->{condition}=$check_attr;
@@ -1211,6 +1248,7 @@ sub setobjdefs
         }
 
         my $rsp;
+        my $object_failed_validation = 0;
         foreach my $att (keys %$invalidattr) {
             my $pickvalidattr=0;
             if ($invalidattr->{$att}->{valid} != 1) {
@@ -1230,33 +1268,17 @@ sub setobjdefs
                     $conditionlist->{$conditionkey}=~s/,/ or /g;
                     push @{ $rsp->{data} }, "Cannot set the attr=\'$att\' attribute unless $invalidattr->{$att}->{condition} value is $conditionlist->{$conditionkey}.";
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    $object_failed_validation = 1;
                 }
             }
         }
-
-
-        # TODO - need to get back to this
-        if (0) {
-            #
-            #  check to see if all the attrs got set
-            #
-
-            my @errlist;
-            foreach $a (@attrprovided) {
-
-                #  is this attr was not set then add it to the error list
-                if (!grep(/^$a$/, @setattrlist)) {
-                    push(@errlist, $a);
-                    $ret = 2;
-                }
-
+        if ($object_failed_validation) {
+            $objhash{$objname}{error} = 1;
+            delete $objhash{$objname}{updated};
+            foreach my $table (keys %allupdates) {
+                delete $allupdates{$table}{$objname};
             }
-            if ($ret == 2) {
-                my $rsp;
-                $rsp->{data}->[0] = "Could not set the following attributes for the \'$objname\' definition in the xCAT database: \'@errlist\'";
-                xCAT::MsgUtils->message("E", $rsp, $::callback);
-            }
-
+            $ret = 1;
         }
 
     }    # end - foreach object
@@ -2764,6 +2786,109 @@ sub collapsenicsattr()
         # eth0!1.1.1.1|1.2.1.1,eth1!2.1.1.1|2.2.1.1
         $nodeattrhash->{$nicattr} = join(',', @tmparray);
     }
+}
+
+#----------------------------------------------------------------------------
+
+=head3   validate_only_if_attrs
+
+        Validate Schema.pm only_if rules for attributes being set on one
+        object. The object is valid when any schema entry for the attribute is
+        unconditional or when one only_if condition is satisfied by the new
+        object attributes, existing database attributes, or group attributes.
+
+        Arguments:
+            $objname         - object name
+            $type            - object type
+            $attrs_ref       - attributes being set
+            $dbattrs_ref     - existing attributes to allow as conditions
+            $groupattrs_ref  - optional group attributes, keyed by group name
+
+        Returns:
+            @failures:
+                ({ attr => ..., message => ... }, ...)
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub validate_only_if_attrs
+{
+    my ($class, $objname, $type, $attrs_ref, $dbattrs_ref, $groupattrs_ref) = @_;
+    my @failures;
+    my $datatype = $xCAT::Schema::defspec{$type};
+    return @failures unless $datatype;
+
+    $attrs_ref ||= {};
+    $dbattrs_ref ||= {};
+
+    my %groupattrs;
+    if ($groupattrs_ref) {
+        %groupattrs = %$groupattrs_ref;
+    } elsif ($attrs_ref->{groups}) {
+        my %groups;
+        foreach my $group (split(",", $attrs_ref->{groups})) {
+            $groups{$group} = "group";
+        }
+        %groupattrs = xCAT::DBobjUtils->getobjdefs(\%groups) if %groups;
+    }
+
+    my %attr_has_unconditional;
+    my %attr_has_valid_condition;
+    my %invalidattr;
+    my %conditionlist;
+
+    foreach my $this_attr (@{ $datatype->{'attrs'} }) {
+        my $attr_name = $this_attr->{attr_name};
+        next unless defined($attrs_ref->{$attr_name});
+
+        if (!exists($this_attr->{only_if})) {
+            $attr_has_unconditional{$attr_name} = 1;
+            next;
+        }
+
+        next unless $this_attr->{only_if} =~ /^([^!=]+)=(.+)$/;
+        my ($check_attr, $check_value) = ($1, $2);
+
+        if (_only_if_value_matches($attrs_ref, $dbattrs_ref, \%groupattrs, $check_attr, $check_value)) {
+            $attr_has_valid_condition{$attr_name} = 1;
+            next;
+        }
+
+        next if $attr_has_valid_condition{$attr_name};
+        $invalidattr{$attr_name}{condition} = $check_attr;
+        $conditionlist{$check_attr}{$check_value} = 1;
+    }
+
+    foreach my $att (keys %invalidattr) {
+        next if $attr_has_unconditional{$att};
+        next if $attr_has_valid_condition{$att};
+        my $conditionkey = $invalidattr{$att}{condition};
+        my $condlist = join(" or ", sort keys %{ $conditionlist{$conditionkey} });
+        push @failures, {
+            attr    => $att,
+            message => "Cannot set the attr=\'$att\' attribute unless $conditionkey value is $condlist.",
+        };
+    }
+
+    return @failures;
+}
+
+sub _only_if_value_matches
+{
+    my ($attrs_ref, $dbattrs_ref, $groupattrs_ref, $check_attr, $check_value) = @_;
+
+    foreach my $source ($attrs_ref, $dbattrs_ref) {
+        next unless $source;
+        my $value = $source->{$check_attr};
+        return 1 if defined($value) && $value =~ /\b\Q$check_value\E\b/;
+    }
+
+    foreach my $group (keys %{ $groupattrs_ref || {} }) {
+        my $value = $groupattrs_ref->{$group}{$check_attr};
+        return 1 if defined($value) && $value =~ /\b\Q$check_value\E\b/;
+    }
+
+    return 0;
 }
 
 1;
