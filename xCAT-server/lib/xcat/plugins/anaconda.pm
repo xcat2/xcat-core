@@ -36,6 +36,25 @@ my $httpport       = "80";
 my $useflowcontrol = "0";
 
 
+sub _oracle_linux_distname
+{
+    my $desc = shift;
+
+    return unless defined($desc);
+
+    my $version;
+    if ($desc =~ /Oracle Linux\s+((?:\d+\.)*\d+)/) {
+        $version = $1;
+    } elsif ($desc =~ /OL-((?:\d+\.)*\d+)/) {
+        $version = $1;
+    } else {
+        return;
+    }
+
+    $version =~ s/^(\d+\.\d+)\.0$/$1/;
+    return "ol$version";
+}
+
 
 sub handled_commands
 {
@@ -2123,25 +2142,9 @@ sub copycd
             }
             close($dinfo);
         }
-        elsif ($desc =~ /Oracle Linux/)
+        elsif (my $ol_distname = _oracle_linux_distname($desc))
         {
-            #
-            # Attempt to auto-detect for OL8 OS, the last element 
-            # (accessed with [-1] array index) has typically been the version
-            # ex: "Oracle Linux 8.3.0"
-            #
-            my @ol_version = split / /, $desc;
-            $distname = "ol" . $ol_version[-1];
-        }
-        elsif ($desc =~ /OL-/)
-        {
-            #
-            # Attempt to auto-detect for OL7 OS, the first element 
-            # (after "-") has typically been the version
-            # ex: OL-7.9 Server.x86_64
-            #
-            my @ol_version = split /[- ]/, $desc;
-            $distname = "ol" . $ol_version[1];
+            $distname = $ol_distname;
         }
         elsif ($desc =~ /Fedora/)
         {

@@ -463,22 +463,22 @@ sub getsynclistfile()
         none
     Error:
     Example:
-         xCAT::SvrUtils->get_os_search_list("ubuntu18.04.2");
-         Will returns
-         #   ubuntu18.04.2
-         #   ubuntu18.04.1
-         #   ubuntu18.04.0
-         #   ubuntu18.04
-         #   ubuntu18.4
-         #   ubuntu18.03
-         #   ubuntu18.3
-         #   ubuntu18.02
-         #   ubuntu18.2
-         #   ubuntu18.01
-         #   ubuntu18.1
-         #   ubuntu18.00
-         #   ubuntu18.0
-         #   ubuntu18
+         xCAT::SvrUtils->get_os_search_list("ubuntu24.04.1");
+         Will return
+         #   ubuntu24.04.1
+         #   ubuntu24.04.0
+         #   ubuntu24.04
+
+         xCAT::SvrUtils->get_os_search_list("rocky9.6");
+         Will return
+         #   rocky9.6
+         #   rocky9.5
+         #   rocky9.4
+         #   rocky9.3
+         #   rocky9.2
+         #   rocky9.1
+         #   rocky9.0
+         #   rocky9
     Comments:
         none
 
@@ -491,8 +491,12 @@ sub get_os_search_list {
     my @word = split(/\./, $baseos);
     my @list = ();
 
-    while ($word[-1] =~ /^[0-9]+$/) {
+    while (@word && $word[-1] =~ /^[0-9]+$/) {
         my $last = pop(@word);
+        if ($last =~ /^0[0-9]+$/) {
+            push(@list, join('.', @word, $last));
+            return @list;
+        }
         while ($last >= 0) {
             push(@list, join('.', @word, $last));
             if ($last =~ /^0[0-9]/) {
@@ -515,17 +519,42 @@ sub get_os_search_list {
 sub _profile_file_matches {
     my ($filename, $osver, $shortosver, $genos, $arch) = @_;
 
-    # osver and arch specific, for example compute.sle15.x86_64.pkglist
-    if ($filename =~ /[^\.]*\.([^\.]*)\.([^\.]*)\./) {
-        return (($1 eq $osver || $1 eq $shortosver || $1 eq $genos) && $2 eq $arch);
+    my $stem = $filename;
+    foreach my $extension (qw(otherpkgs.pkglist imgcapture.exlist pkglist tmpl exlist postinstall synclist repolist)) {
+        if ($stem =~ s/\.\Q$extension\E$//) {
+            last;
+        }
+    }
+    $stem =~ s/\.[^.]+$// if $stem eq $filename;
+
+    my @parts = split(/\./, $stem);
+
+    # Not OS or architecture specific, for example compute.pkglist.
+    if (scalar(@parts) <= 1) {
+        return 1;
     }
 
-    # osver or arch specific, for example compute.sle15.pkglist
-    if ($filename =~ /[^\.]*\.([^\.]*)\./) {
-        return ($1 eq $osver || $1 eq $shortosver || $1 eq $genos || $1 eq $arch);
+    shift(@parts);    # profile
+
+    my $suffix = join('.', @parts);
+    if ($suffix eq $arch) {
+        return 1;
     }
 
-    return 1;
+    my %valid_os_suffix = map { $_ => 1 } xCAT::SvrUtils::get_os_search_list($osver);
+    $valid_os_suffix{$genos} = 1 if $genos;
+
+    if ($valid_os_suffix{$suffix}) {
+        return 1;
+    }
+
+    # OS and architecture specific, for example compute.ubuntu24.04.x86_64.pkglist.
+    if (scalar(@parts) > 1 && $parts[-1] eq $arch) {
+        pop(@parts);
+        return $valid_os_suffix{join('.', @parts)} ? 1 : 0;
+    }
+
+    return 0;
 }
 
 sub get_file_name {

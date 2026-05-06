@@ -9,6 +9,7 @@ use warnings "all";
 use File::Basename;
 use File::Path;
 use Cwd qw(realpath);
+use xCAT::SvrUtils;
 
 sub varsubinline{
     my $line=shift;
@@ -28,6 +29,19 @@ sub varsubinline{
     return $line;
 }
 
+sub _profile_lookup_osbase_list {
+    my $osver = shift;
+
+    # OS version on s390x can contain 'sp', e.g. sles11sp1
+    # If OS version contains 'sp', get the index of 'sp' instead of '.'
+    if ($osver =~ /sles/ && $osver =~ /sp/) {
+        my $dotpos = rindex($osver, "sp");
+        return (substr($osver, 0, $dotpos));
+    }
+
+    return grep { $_ ne $osver } xCAT::SvrUtils::get_os_search_list($osver);
+}
+
 sub get_profile_def_filename {
     my $osver   = shift;
     my $profile = shift;
@@ -39,34 +53,32 @@ sub get_profile_def_filename {
 
     my $ext = shift;
 
-    my $dotpos;
-
-    # OS version on s390x can contain 'sp', e.g. sles11sp1
-    # If OS version contains 'sp', get the index of 'sp' instead of '.'
-    if ($osver =~ /sles/ && $osver =~ /sp/) {
-        $dotpos = rindex($osver, "sp");
-    } else {
-        $dotpos = rindex($osver, ".");
-    }
-
-    my $osbase = substr($osver, 0, $dotpos);
+    my @osbase = _profile_lookup_osbase_list($osver);
     my $fallbackos;
     if ($osver =~ /^leap15/) {
         $fallbackos = "sle15";
     }
     if (-r "$base/$profile.$osver.$arch.$ext") {
         return "$base/$profile.$osver.$arch.$ext";
-    } elsif (-r "$base/$profile.$osbase.$arch.$ext") {
-        return "$base/$profile.$osbase.$arch.$ext";
-    } elsif ($fallbackos && -r "$base/$profile.$fallbackos.$arch.$ext") {
+    }
+    foreach my $osbase (@osbase) {
+        if (-r "$base/$profile.$osbase.$arch.$ext") {
+            return "$base/$profile.$osbase.$arch.$ext";
+        }
+    }
+    if ($fallbackos && -r "$base/$profile.$fallbackos.$arch.$ext") {
         return "$base/$profile.$fallbackos.$arch.$ext";
     } elsif (-r "$base/$profile.$arch.$ext") {
         return "$base/$profile.$arch.$ext";
     } elsif (-r "$base/$profile.$osver.$ext") {
         return "$base/$profile.$osver.$ext";
-    } elsif (-r "$base/$profile.$osbase.$ext") {
-        return "$base/$profile.$osbase.$ext";
-    } elsif ($fallbackos && -r "$base/$profile.$fallbackos.$ext") {
+    }
+    foreach my $osbase (@osbase) {
+        if (-r "$base/$profile.$osbase.$ext") {
+            return "$base/$profile.$osbase.$ext";
+        }
+    }
+    if ($fallbackos && -r "$base/$profile.$fallbackos.$ext") {
         return "$base/$profile.$fallbackos.$ext";
     } elsif (-r "$base/$profile.$ext") {
         return "$base/$profile.$ext";
