@@ -763,6 +763,9 @@ sub cbc_pad {
         unless ($count) {
             return pack("C*", @block);
         }
+        if ($count > scalar @block) {
+            return "";
+        }
         splice @block, 0 - $count;
         return pack("C*", @block);
     }
