@@ -473,13 +473,21 @@ site Attributes:
    xcatiport:  The port used by xcatd to receive install status updates from nodes.
   
    xcatlport:  The port used by xcatd command log writer process to collect command output.
-  
-   xcatsslversion:  This is the SSL_version option xcatd used and passed to 
-                    IO::Socket::SSL->start_SSL(). By default, this value is set to empty.
-                    In this case, xcatd will use SSLv23:!SSLv2:!SSLv3:!TLSv1 internally.
-                    For more detail, see https://metacpan.org/pod/IO::Socket::SSL
-  
-   xcatsslciphers:  The ssl cipher by xcatd. Default is 3DES.
+
+   xcattlspolicy:  The TLS protocol policy used by xcatd when xcatsslversion
+                   is empty. Valid values are modern and legacy. The modern
+                   policy is the default and allows TLS 1.2 or newer. The
+                   legacy policy allows TLS 1.0 or newer for older nodes or
+                   service nodes that cannot negotiate TLS 1.2.
+
+   xcatsslversion:  Administrator override for the SSL_version option xcatd
+                    passes to IO::Socket::SSL->start_SSL(). By default, this
+                    value is empty and xcatd uses xcattlspolicy. For more
+                    detail, see https://metacpan.org/pod/IO::Socket::SSL
+
+   xcatsslciphers:  Administrator override for the TLS cipher list used by
+                    xcatd. By default, this value is empty and xcatd uses the
+                    OpenSSL library defaults.
  
  
 
@@ -509,4 +517,3 @@ SEE ALSO
 
 
 \ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
-
