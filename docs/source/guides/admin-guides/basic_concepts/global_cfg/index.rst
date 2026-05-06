@@ -130,11 +130,11 @@ xCAT Daemon attributes
 * xcatlport:
   The port used by xcatd command log writer process to collect command output.
 
+* xcattlspolicy:
+  The TLS protocol policy used by xcatd when xcatsslversion is empty. Valid values are ``modern`` and ``legacy``. Default is ``modern``, which allows TLS 1.2 or newer. Use ``legacy`` only for older nodes or service nodes that cannot negotiate TLS 1.2.
+
 * xcatsslversion:
-  The ssl version by xcatd. Default is ``SSLv3``.
+  Administrator override for the SSL_version option passed to IO::Socket::SSL by xcatd. Default is empty, which makes xcatd use xcattlspolicy.
 
 * xcatsslciphers:
-  The ssl cipher by xcatd. Default is ``3DES``.
-
-
-
+  Administrator override for the TLS cipher list used by xcatd. Default is empty, which makes xcatd use the OpenSSL library defaults.

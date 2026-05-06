@@ -46,6 +46,7 @@ use lib "$::XCATROOT/lib/perl";
 use Storable qw(freeze thaw nstore_fd store_fd fd_retrieve);
 use Sys::Hostname;
 use xCAT::Utils;
+use xCAT::TLSPolicy qw(resolve_xcatd_tls_settings);
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
@@ -1550,8 +1551,8 @@ until ($quit) {
         populate_site_hash();
         my %extrasslargs;
 
-        if ($::XCATSITEVALS{xcatsslversion}) { $extrasslargs{SSL_version} = $::XCATSITEVALS{xcatsslversion}; }
-        $extrasslargs{SSL_version} = "SSLv23:!SSLv2:!SSLv3:!TLSv1" unless length $extrasslargs{SSL_version};
+        my $tls_settings = resolve_xcatd_tls_settings(\%::XCATSITEVALS);
+        $extrasslargs{SSL_version} = $tls_settings->{ssl_version};
 
         if ($::XCATSITEVALS{xcatsslciphers}) { $extrasslargs{SSL_cipher_list} = $::XCATSITEVALS{xcatsslciphers}; }
         use Data::Dumper;
@@ -3675,4 +3676,3 @@ sub cmdlog_submitlog() {
         return 1;
     }
 }
-

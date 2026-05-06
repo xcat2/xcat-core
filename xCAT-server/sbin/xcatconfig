@@ -25,6 +25,7 @@ use strict;
 use xCAT::Utils;
 use xCAT::SvrUtils;
 use xCAT::DHCP::Backend;
+use xCAT::TLSPolicy qw(tls_setting_warnings);
 use xCAT::NetworkUtils;
 use Getopt::Long;
 use xCAT::MsgUtils;
@@ -1255,6 +1256,7 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=dhcplease site.value=43200;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=auditnosyslog site.value=0;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=xcatsslversion site.value=;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=xcattlspolicy site.value=modern;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=auditskipcmds site.value=ALL;";
 
         #$chtabcmds .= "$::XCATROOT/sbin/chtab key=useflowcontrol site.value=yes;"; # need to fix 4031
@@ -1545,6 +1547,18 @@ sub initDB
                 "+--------------------------------------------------------------+:|W|A|R|N|I|N|G|");
             xCAT::MsgUtils->message('I',
                 " ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::+-+-+-+-+-+-+-+");
+        }
+
+        my %sitevalues;
+        my $sitetab = xCAT::Table->new('site', -create => 0);
+        if ($sitetab) {
+            my @records = $sitetab->getAllAttribs(qw/key value/);
+            foreach my $record (@records) {
+                $sitevalues{ $record->{key} } = $record->{value};
+            }
+        }
+        foreach my $warning (tls_setting_warnings(\%sitevalues)) {
+            xCAT::MsgUtils->message('W', $warning);
         }
     }
 

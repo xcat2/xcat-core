@@ -1337,11 +1337,19 @@ passed as argument rather than by table value',
 " xcatdport:  The port used by the xcatd daemon for client/server communication.\n\n" .
 " xcatiport:  The port used by xcatd to receive install status updates from nodes.\n\n" .
 " xcatlport:  The port used by xcatd command log writer process to collect command output.\n\n" .
-" xcatsslversion:  This is the SSL_version option xcatd used and passed to \n" .
-"                  IO::Socket::SSL->start_SSL(). By default, this value is set to empty.\n" .
-"                  In this case, xcatd will use SSLv23:!SSLv2:!SSLv3:!TLSv1 internally.\n" .
-"                  For more detail, see https://metacpan.org/pod/IO::Socket::SSL\n\n" .
-" xcatsslciphers:  The ssl cipher by xcatd. Default is 3DES.\n\n",
+" xcattlspolicy:  The TLS protocol policy used by xcatd when xcatsslversion\n" .
+"                 is empty. Valid values are modern and legacy. The modern\n" .
+"                 policy is the default and allows TLS 1.2 or newer. The\n" .
+"                 legacy policy allows TLS 1.0 or newer for older nodes or\n" .
+"                 service nodes that cannot negotiate TLS 1.2.\n\n" .
+" xcatsslversion:  Administrator override for the SSL_version option xcatd\n" .
+"                  passes to IO::Socket::SSL->start_SSL(). By default, this\n" .
+"                  value is empty and xcatd uses xcattlspolicy. For more\n" .
+"                  detail, see\n" .
+"                  https://metacpan.org/pod/IO::Socket::SSL\n\n" .
+" xcatsslciphers:  Administrator override for the TLS cipher list used by\n" .
+"                  xcatd. By default, this value is empty and xcatd uses the\n" .
+"                  OpenSSL library defaults.\n\n",
             value => 'The value of the attribute specified in the "key" column.',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
