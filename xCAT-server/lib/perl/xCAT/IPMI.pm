@@ -763,6 +763,9 @@ sub cbc_pad {
         unless ($count) {
             return pack("C*", @block);
         }
+        if ($count > scalar @block) {
+            return "";
+        }
         splice @block, 0 - $count;
         return pack("C*", @block);
     }
@@ -777,8 +780,12 @@ sub got_rmcp_response {
         #we would ignore an RMCP+ open session response if we are not in an IPMI2 negotiation, so we have to have *some* state that isn't established for this to be kosher
         return 9;    #now's not the time for this response, ignore it
     }
-    unless ($byte == $self->{rmcptag}) { #make sure this rmcp response is specifically the last one we sent.... we don't want to happily proceed with the risk a retry request blew up our temp session id without letting us know
-        return 9;
+    unless ($byte == $self->{rmcptag}) {
+        return 9 unless $byte == 0;
+        my @sid_check = @data[3..6];
+        unless (pack("C4", @sid_check) eq pack("C4", @{ $self->{sidm} })) {
+            return 9;
+        }
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
@@ -818,7 +825,7 @@ sub send_rakp3 {
     $self->{rmcptag} += 1;
     my @payload = ($self->{rmcptag}, 0, 0, 0, @{ $self->{pendingsessionid} });
     my @user = unpack("C*", $self->{userid});
-    push @payload, unpack("C*", $self->{hshfn}->(pack("C*", @{ $self->{remoterandomnumber} }, @{ $self->{sidm} }, $self->{privlevel}, scalar @user, @user), $self->{password}));
+    push @payload, unpack("C*", $self->{hshfn}->(pack("C*", @{ $self->{remoterandomnumber} }, @{ $self->{sidm} }, $self->{rakp_privbyte}, scalar @user, @user), $self->{password}));
     $self->sendpayload(payload => \@payload, type => $payload_types{'rakp3'});
 }
 
@@ -832,7 +839,8 @@ sub send_rakp1 {
         push @{ $self->{randomnumber} }, $randomnumber;
     }
     push @payload, @{ $self->{randomnumber} };
-    push @payload, ($self->{privlevel}, 0, 0);    # request priv
+    $self->{rakp_privbyte} = $self->{privlevel} | 0x10;
+    push @payload, ($self->{rakp_privbyte}, 0, 0);    # request priv, with name-only lookup
     my @user = unpack("C*", $self->{userid});
     push @payload, scalar @user;
     push @payload, @user;
@@ -892,8 +900,12 @@ sub got_rakp4 {
     unless ($self->{sessionestablishmentcontext} == STATE_EXPECTINGRAKP4) { #ignore rakp4 unless we are explicitly expecting RAKP4
         return 9;    #now's not the time for this response, ignore it
     }
-    unless ($byte == $self->{rmcptag}) { #make sure this rmcp response is specifically the last one we sent.... we don't want to happily proceed with the risk a retry request blew up our temp session id without letting us know
-        return 9;
+    unless ($byte == $self->{rmcptag}) {
+        return 9 unless $byte == 0;
+        my @sid_check = @data[3..6];
+        unless (pack("C4", @sid_check) eq pack("C4", @{ $self->{sidm} })) {
+            return 9;
+        }
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
@@ -952,11 +964,21 @@ sub got_rakp2 {
         #the reason being that if an old rakp1 retry actually made it and we were just too aggressive, then a previous rakp2 is invalidated and invalid session id or the integrity check value is bad
         return 9;    #now's not the time for this response, ignore it
     }
-    unless ($byte == $self->{rmcptag}) { #make sure this rmcp response is specifically the last one we sent.... we don't want to happily proceed with the risk a retry request blew up our temp session id without letting us know
-        return 9;
+    unless ($byte == $self->{rmcptag}) {
+        return 9 unless $byte == 0;
+        my @sid_check = @data[3..6];
+        unless (pack("C4", @sid_check) eq pack("C4", @{ $self->{sidm} })) {
+            return 9;
+        }
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
+        if (($byte == 0x9 or $byte == 0xd) and $self->{attempthash} == 256) {
+            $self->{attempthash} = 1;
+            $self->{sessionestablishmentcontext} = 0;
+            $self->open_rmcpplus_request();
+            return;
+        }
         if (($byte == 0x9 or $byte == 0xd) and $self->{privlevel} == 4) {
 
             # this is probably an environment that wants to give us only operator
@@ -992,7 +1014,7 @@ sub got_rakp2 {
     #Data now represents authcode.. sha1 only..
     my @user = unpack("C*", $self->{userid});
     my $ulength = scalar @user;
-    my $hmacdata = pack("C*", (@{ $self->{sidm} }, @{ $self->{pendingsessionid} }, @{ $self->{randomnumber} }, @{ $self->{remoterandomnumber} }, @{ $self->{remoteguid} }, $self->{privlevel}, $ulength, @user));
+    my $hmacdata = pack("C*", (@{ $self->{sidm} }, @{ $self->{pendingsessionid} }, @{ $self->{randomnumber} }, @{ $self->{remoterandomnumber} }, @{ $self->{remoteguid} }, $self->{rakp_privbyte}, $ulength, @user));
     my @expectedhash = (unpack("C*", $self->{hshfn}->($hmacdata, $self->{password})));
     foreach (0 .. (scalar(@expectedhash) - 1)) {
         if ($expectedhash[$_] != $data[$_]) {
@@ -1001,7 +1023,7 @@ sub got_rakp2 {
             return 9;
         }
     }
-    $self->{sik} = $self->{hshfn}->(pack("C*", @{ $self->{randomnumber} }, @{ $self->{remoterandomnumber} }, $self->{privlevel}, $ulength, @user), $self->{password});
+    $self->{sik} = $self->{hshfn}->(pack("C*", @{ $self->{randomnumber} }, @{ $self->{remoterandomnumber} }, $self->{rakp_privbyte}, $ulength, @user), $self->{password});
     $self->{k1} = $self->{hshfn}->(pack("C*", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1), $self->{sik});
     $self->{k2} = $self->{hshfn}->(pack("C*", 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2), $self->{sik});
     my @aeskey = unpack("C*", $self->{k2});
