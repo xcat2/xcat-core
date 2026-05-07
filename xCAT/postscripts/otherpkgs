@@ -465,7 +465,7 @@ logger -p local4.info -t $log_label "OTHERPKGDIR=$OTHERPKGDIR"
 #    dhcpcd -n $PRIMARYNIC
 #fi
 
-#check if the node has yum or zypper installed, it will try yum first, then zypper and last rpm
+#check if the node has yum/dnf or zypper installed, it will try dnf first, then yum, then zypper and last rpm
 # for rpm based machines, or check if apt is installed, then it will use apt then dpkg
 
 hasrpm=0
@@ -473,6 +473,7 @@ hasyum=0
 haszypper=0
 hasapt=0
 hasdpkg=0
+yumcmd=""
 supdatecommand="rpm -Uvh --replacepkgs"
 sremovecommand="rpm -ev"
 
@@ -491,9 +492,12 @@ else
     result=`rpm --version 2>/dev/null`
     if [ $? -eq 0 ]; then
          hasrpm=1
-         result=`rpm -q yum`
-         if [ $? -eq 0 ]; then
+         if [ -x /usr/bin/dnf ]; then
               hasyum=1
+              yumcmd="dnf"
+         elif [ -x /usr/bin/yum ]; then
+              hasyum=1
+              yumcmd="yum"
          else
               result=`rpm -q zypper`
               if [ "$?" = "0" ]; then
@@ -600,7 +604,7 @@ elif ( is_el_yum_distro && [ $hasyum -eq 1 ] ); then
     result=`rm /etc/yum.repos.d/xCAT-$OSVER-path*.repo 2>&1`
     result=`rm /etc/yum.repos.d/xCAT-otherpkgs*.repo 2>&1`
 
-    result=`yum clean all`
+    result=`$yumcmd clean all`
 
     SUM=$(array_get_size os_path)
     i=0
@@ -646,7 +650,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     if [ $hasyum -eq 1 ]; then
         mkdir -p /etc/yum.repos.d
         result=`rm /etc/yum.repos.d/xCAT-otherpkgs*.repo 2>&1`
-        result=`yum clean all`
+        result=`$yumcmd clean all`
         repo_base="/etc/yum.repos.d"
     elif [ $haszypper -eq 1 ]; then
         #remove old repo
@@ -710,7 +714,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     pkgsarray=($pkglist)
     IFS=$oifs
     echo "pkgsarray: ${pkgsarray[@]}, ${#pkgsarray[@]}"
-    echo "yum: $hasyum, apt: $hasapt, zypper: $haszypper"
+    echo "yum/dnf: $hasyum ($yumcmd), apt: $hasapt, zypper: $haszypper"
     for x in ${pkgsarray[@]}
     do
         #check if the file name starts with -- or -.
@@ -792,7 +796,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	            echo "gpgcheck=0" >> $REPOFILE
                     echo "skip_if_unavailable=True" >> $REPOFILE
                 if [ $hasyum -eq 1 ]; then
-                    yum clean all
+                    $yumcmd clean all
                 fi
                 if [ $haszypper -eq 1 ]; then
 	                     result=`zypper --non-interactive refresh 2>&1`
@@ -814,8 +818,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 		fi
 	    fi
 	        if [ $hasyum -eq 1 ]; then
-	            #use yum
-		    result=`yum --showduplicates list $fn 2>&1`
+		    result=`$yumcmd --showduplicates list $fn 2>&1`
 		    if [ $? -eq 0 ]; then
 		        rc=0
 		        array_set_element repo_path $index $path
@@ -877,9 +880,9 @@ EOF`
     #now update all the existing rpms
     if [ $hasyum -eq 1 ]; then
         if [ $VERBOSE  ]; then
-          echo "$envlist yum -y upgrade"
+          echo "$envlist $yumcmd -y upgrade"
         fi
-        result=`eval $envlist yum -y upgrade 2>&1`
+        result=`eval $envlist $yumcmd -y upgrade 2>&1`
         R=$?
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
@@ -926,9 +929,9 @@ EOF`
     if [ "$repo_pkgs_preremove" != "" ]; then
         if [ $hasyum -eq 1 ]; then
             if [ $VERBOSE  ]; then
-              echo "$envlist yum -y remove $repo_pkgs_preremove"
+              echo "$envlist $yumcmd -y remove $repo_pkgs_preremove"
             fi
-            result=`eval $envlist yum -y remove $repo_pkgs_preremove 2>&1`
+            result=`eval $envlist $yumcmd -y remove $repo_pkgs_preremove 2>&1`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
@@ -983,17 +986,17 @@ EOF`
     fi
 
 
-    #installation using yum or zypper
+    #installation using yum/dnf or zypper
     if [ "$repo_pkgs" != "" ]; then
         if [ $hasyum -eq 1 ]; then
             if [ $VERBOSE  ]; then
-             echo "$envlist yum -y install $repo_pkgs"
+             echo "$envlist $yumcmd -y install $repo_pkgs"
             fi
-            result=`eval $envlist yum -y install $repo_pkgs 2>&1`
+            result=`eval $envlist $yumcmd -y install $repo_pkgs 2>&1`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
-              logger -p local4.err -t $log_label "$envlist yum -y install $repo_pkgs failed."
+              logger -p local4.err -t $log_label "$envlist $yumcmd -y install $repo_pkgs failed."
             fi
 	    logger -p local4.info -t $log_label "$repo_pkgs installed."
             if [ $VERBOSE  ]; then
@@ -1084,9 +1087,9 @@ EOF`
     if [ "$repo_pkgs_postremove" != "" ]; then
         if [ $hasyum -eq 1 ]; then
             if [ $VERBOSE  ]; then
-             echo "$envlist yum -y remove $repo_pkgs_postremove"
+             echo "$envlist $yumcmd -y remove $repo_pkgs_postremove"
             fi
-            result=`eval $envlist yum -y remove $repo_pkgs_postremove 2>&1`
+            result=`eval $envlist $yumcmd -y remove $repo_pkgs_postremove 2>&1`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
