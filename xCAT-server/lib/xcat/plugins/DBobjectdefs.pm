@@ -1671,14 +1671,23 @@ sub defmk
     #   Pull all the pieces together for the final hash
     #        - combines the command line attrs and input file attrs if provided
     #
+    my $command_level_error = $error ? 1 : 0;
     if (&setFINALattrs != 0)
     {
         $error = 1;
+        $command_level_error = 1;
+    }
+
+    if ($command_level_error)
+    {
+        %::FINALATTRS = ();
     }
 
     # If no object definitions ended up in FINALATTRS, there is nothing to create
-    if (!$error && !%::FINALATTRS)
+    if (!%::FINALATTRS)
     {
+        return 1 if $error;
+
         my $rsp;
         my $is_node_type = (grep { $_ eq "node" } @::finalTypeList) ||
                            ($::opt_t && $::opt_t =~ /\bnode\b/);
@@ -1790,34 +1799,107 @@ sub defmk
 
         }
 
-        # if object already exists
-        if (defined($objTypeListsHash{$type}{$obj}) && ($objTypeListsHash{$type}{$obj} == 1))
+        my $object_exists = (defined($objTypeListsHash{$type}{$obj}) && ($objTypeListsHash{$type}{$obj} == 1));
+        if ($object_exists && !$::opt_f)
         {
-            if ($::opt_f)
+            #  won't remove the old one unless the force option is used
+            my $rsp;
+            $rsp->{data}->[0] = "A definition for \'$obj\' already exists. No changes will be made.  Run again with \'-f\' option to force replace.";
+            xCAT::MsgUtils->message("W", $rsp, $::callback);
+            delete $::FINALATTRS{$obj};
+            next;
+        }
+
+        # Reject object-level validation failures before -f removes an old
+        # definition or group handling mutates member nodes.
+        if (($type eq "node") && (!defined($::FINALATTRS{$obj}{groups}) || !$::FINALATTRS{$obj}{groups}))
+        {
+            my $rsp;
+            $rsp->{data}->[0] = "Attribute \'groups\' is not specified for node \'$obj\', skipping to the next node.";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            $error = 1;
+            delete $::FINALATTRS{$obj};
+            next;
+        }
+
+        if ($type eq 'group')
+        {
+            my $is_dynamic_group = 0;
+            if (!$::FINALATTRS{$obj}{grouptype})
             {
-                # remove the old object
-                my %objhash;
-                $objhash{$obj} = $type;
-                if (xCAT::DBobjUtils->rmobjdefs(\%objhash) != 0)
+                if ($::opt_d)
                 {
-                    $error = 1;
-                    my $rsp;
-                    $rsp->{data}->[0] = "Could not remove the definition for \'$obj\'.";
-                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    if (scalar(keys %{ $::FINALATTRS{$obj} }) > 1)
+                    {
+                        my $rsp;
+                        $rsp->{data}->[0] = "Can not assign attributes to dynamic node group \'$obj\'.";
+                        xCAT::MsgUtils->message("E", $rsp, $::callback);
+                        $error = 1;
+                        delete $::FINALATTRS{$obj};
+                        next;
+                    }
+                    $is_dynamic_group = 1;
                 }
             }
-            else
+            elsif ($::FINALATTRS{$obj}{grouptype} eq 'dynamic')
             {
-
-                #  won't remove the old one unless the force option is used
-                my $rsp;
-                $rsp->{data}->[0] = "A definition for \'$obj\' already exists. No changes will be made.  Run again with \'-f\' option to force replace.";
-                xCAT::MsgUtils->message("W", $rsp, $::callback);
-                delete $::FINALATTRS{$obj};
-                next;
-
+                $is_dynamic_group = 1;
             }
 
+            if ($is_dynamic_group && !$::FINALATTRS{$obj}{wherevals} && !$::opt_w)
+            {
+                my $rsp;
+                $rsp->{data}->[0] = "The \'where\' attributes and values were not provided for dynamic group \'$obj\'.";
+                $rsp->{data}->[1] = "Skipping to the next group.";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                $error = 1;
+                delete $::FINALATTRS{$obj};
+                next;
+            }
+
+            if (!$is_dynamic_group && $::opt_w && $::FINALATTRS{$obj}{members})
+            {
+                my $rsp;
+                $rsp->{data}->[0] = "Cannot use a list of members together with the \'-w\' option.";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                $error = 1;
+                delete $::FINALATTRS{$obj};
+                next;
+            }
+        }
+
+        my @only_if_failures = xCAT::DBobjUtils->validate_only_if_attrs(
+            $obj,
+            $type,
+            $::FINALATTRS{$obj},
+            {},
+        );
+        if (@only_if_failures)
+        {
+            foreach my $failure (@only_if_failures) {
+                my $rsp;
+                $rsp->{data}->[0] = $failure->{message};
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+            }
+            $error = 1;
+            delete $::FINALATTRS{$obj};
+            next;
+        }
+
+        if ($object_exists && $::opt_f)
+        {
+            # remove the old object after the replacement definition is known valid
+            my %objhash;
+            $objhash{$obj} = $type;
+            if (xCAT::DBobjUtils->rmobjdefs(\%objhash) != 0)
+            {
+                $error = 1;
+                my $rsp;
+                $rsp->{data}->[0] = "Could not remove the definition for \'$obj\'.";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                delete $::FINALATTRS{$obj};
+                next;
+            }
         }
 
         # need to handle group definitions - special!
@@ -2021,6 +2103,7 @@ sub defmk
             $rsp->{data}->[0] = "Attribute \'groups\' is not specified for node \'$obj\', skipping to the next node.";
             xCAT::MsgUtils->message("E", $rsp, $::callback);
             $error = 1;
+            delete $::FINALATTRS{$obj};
             next;
         }
 
@@ -4835,4 +4918,3 @@ sub isobjnamevalid{
 }
 
 1;
-
