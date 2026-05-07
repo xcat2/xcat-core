@@ -90,6 +90,27 @@ For example: ::
 
 Edit **/etc/resolv.conf** to contain the cluster domain value you set in the site table's **domain**  attribute above, and to point to the same DNS server you will be using for your nodes (if you are using DNS).
 
+Legacy ISC DHCP and BIND TSIG Key Options
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+xCAT uses **xcat_key** with **hmac-md5** by default for legacy ISC DHCP OMAPI and BIND DDNS updates. Existing installations should keep that default unless a site policy or external DNS provider requires a different key.
+
+To use another supported algorithm, set **dhcpomapialgorithm** in the site table and update the matching **passwd** table secret. Supported values are **hmac-md5**, **hmac-sha1**, **hmac-sha224**, **hmac-sha256**, **hmac-sha384**, and **hmac-sha512**. For example: ::
+
+      chdef -t site dhcpomapialgorithm=hmac-sha256
+      dnssec-keygen -a HMAC-SHA256 -b 128 -n host xcat_key
+
+If your DNS provider requires a specific TSIG key name, set **dhcpomapikeyname** and store the secret under the matching **passwd** entry: ::
+
+      chdef -t site dhcpomapikeyname=mydnskey
+      chtab key=omapi username=mydnskey passwd.password="<secret from provider>"
+
+If a legacy ISC DHCP deployment uses an alternate ISC build, **dhcpomshellpath** can point xCAT at that build's ``omshell`` binary: ::
+
+      chdef -t site dhcpomshellpath=/opt/dhcp/bin/omshell
+
+After changing these values, rerun ``makedns`` and ``makedhcp`` so the generated DNS and DHCP configuration files use the same key settings.
+
 Option #1: Running DNS on Your Management Node
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -498,5 +519,4 @@ Execute ``confignetwork -s`` to configure provision IP address as static IP addr
     b. If the compute node is already running, use ``updatenode`` command to run ``confignetwork -s`` postscript without rebooting the node ::
 
         updatenode cn1 -P "confignetwork -s"
-
 

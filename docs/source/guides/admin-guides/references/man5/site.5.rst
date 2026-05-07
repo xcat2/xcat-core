@@ -92,6 +92,21 @@ site Attributes:
    -------------
   DHCP ATTRIBUTES
    -------------
+   dhcpomapialgorithm:  The TSIG/OMAPI algorithm used by legacy ISC DHCP and
+                        BIND DDNS integration. Valid values are hmac-md5,
+                        hmac-sha1, hmac-sha224, hmac-sha256, hmac-sha384,
+                        and hmac-sha512. The default is hmac-md5 for
+                        compatibility with existing ISC DHCP installations.
+
+   dhcpomapikeyname:  The TSIG/OMAPI key name used by legacy ISC DHCP and
+                     BIND DDNS integration. The default is xcat_key. The
+                     value maps to the passwd table entry where key=omapi
+                     and username is the selected key name.
+
+   dhcpomshellpath:  The absolute path to the omshell binary used by legacy
+                    ISC DHCP live OMAPI updates. The default is
+                    /usr/bin/omshell.
+
    dhcpinterfaces:  The network interfaces DHCP should listen on.  If it is the same for all
                     nodes, use a comma-separated list of the NICs.  To specify different NICs
                     for different nodes, use the format: "xcatmn|eth1,eth2;service|bond0", 

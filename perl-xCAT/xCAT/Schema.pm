@@ -1042,6 +1042,18 @@ passed as argument rather than by table value',
 "                  reservations use JSON render and reload unless Control\n" .
 "                  Agent operations are explicitly enabled and the Kea\n" .
 "                  host-commands hook is installed.\n\n" .
+" dhcpomapialgorithm:  The TSIG/OMAPI algorithm used by legacy ISC DHCP and\n" .
+"                      BIND DDNS integration. Valid values are hmac-md5,\n" .
+"                      hmac-sha1, hmac-sha224, hmac-sha256, hmac-sha384,\n" .
+"                      and hmac-sha512. The default is hmac-md5 for\n" .
+"                      compatibility with existing ISC DHCP installations.\n\n" .
+" dhcpomapikeyname:  The TSIG/OMAPI key name used by legacy ISC DHCP and\n" .
+"                   BIND DDNS integration. The default is xcat_key. The\n" .
+"                   value maps to the passwd table entry where key=omapi\n" .
+"                   and username is the selected key name.\n\n" .
+" dhcpomshellpath:  The absolute path to the omshell binary used by legacy\n" .
+"                  ISC DHCP live OMAPI updates. The default is\n" .
+"                  /usr/bin/omshell.\n\n" .
 " dhcpinterfaces:  The network interfaces DHCP should listen on.  If it is the same for all\n" .
 "                  nodes, use a comma-separated list of the NICs.  To specify different NICs\n" .
 "                  for different nodes, use the format: \"xcatmn|eth1,eth2;service|bond0\", \n" .
