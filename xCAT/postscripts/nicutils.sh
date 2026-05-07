@@ -2035,8 +2035,10 @@ function create_bridge_interface_nmcli {
         fi
         con_use_same_dev=$(wait_nic_connect_intime $_port)
         if [ "$con_use_same_dev" != "--" -a -n "$con_use_same_dev" ]; then
-            cmd="$nmcli con mod "$con_use_same_dev" master $ifname $_mtu connection.autoconnect-priority 9 autoconnect yes connection.autoconnect-slaves 1 connection.autoconnect-retries 0"
-            xcat_slave_con=$con_use_same_dev
+            # Resolve to UUID since connection names can contain spaces (e.g. "Wired connection 2")
+            con_uuid=$($nmcli --get-values connection.uuid c show "$con_use_same_dev")
+            cmd="$nmcli con mod $con_uuid master $ifname $_mtu connection.autoconnect-priority 9 autoconnect yes connection.autoconnect-slaves 1 connection.autoconnect-retries 0"
+            xcat_slave_con=$con_uuid
         else
             cmd="$nmcli con add type $_pretype con-name $xcat_slave_con ifname $_port master $ifname $_mtu connection.autoconnect-priority 9 autoconnect yes connection.autoconnect-slaves 1 connection.autoconnect-retries 0"
         fi
