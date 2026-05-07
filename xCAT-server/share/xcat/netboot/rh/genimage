@@ -92,6 +92,38 @@ sub majversion {
     return $majorrel;
 }
 
+sub el_major_version {
+    my $version = shift;
+
+    if (defined($version)
+        && $version =~ /^(?:rhels?|centos|rocky|alma(?:linux)?|ol)\D*(\d+)/)
+    {
+        return $1;
+    }
+
+    return;
+}
+
+sub rpm_installroot_command {
+    my $non_interactive = shift || "";
+    my $majorrel = el_major_version($osver);
+    my $pkgmgr = "yum";
+
+    # EL8 and newer are dnf-native. Keep yum as the fallback for legacy
+    # systems and minimal environments that still provide only yum.
+    if (defined($majorrel) && $majorrel > 7 && -x "/usr/bin/dnf") {
+        $pkgmgr = "dnf";
+    }
+
+    my $cmd = "$pkgmgr $non_interactive -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir/ --disablerepo=* ";
+    if (defined($majorrel) && $majorrel > 7) {
+        $cmd .= "--releasever=" . $majorrel . " ";
+        $cmd .= "--setopt=module_platform_id=platform:el" . $majorrel . " ";
+    }
+
+    return $cmd;
+}
+
 sub mount_chroot {
     my $rootimage_dir = shift;
 
@@ -374,15 +406,7 @@ if($onlyinitrd){
     my $non_interactive;
     if (!$prompt) { $non_interactive = "-y"; }
 
-    my $yumcmd = "yum $non_interactive -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir/ --disablerepo=* ";
-
-    if ($osver =~ /^(?:rhel|rocky|alma|ol)\D*(\d*)[.\d]*.*$/) {
-        $majorrel = $1;
-        if ($majorrel > 7) {
-            $yumcmd .= "--releasever=" . $majorrel . " ";
-            $yumcmd .= "--setopt=module_platform_id=platform:el" . $majorrel . " ";
-        }
-    }
+    my $yumcmd = rpm_installroot_command($non_interactive);
 
     foreach (0 .. $repnum) {
         $yumcmd .= "--enablerepo=$osver-$arch-$_ ";
@@ -479,7 +503,7 @@ if($onlyinitrd){
         print "$envlist $yumcmd install $pkgnames\n";
         my $rc = system("$envlist $yumcmd install $pkgnames");
         if ($rc) {
-            print "yum invocation failed\n";
+            print "RPM package manager invocation failed\n";
             umount_chroot($rootimg_dir);
             exit 1;
         }
@@ -548,7 +572,7 @@ if($onlyinitrd){
         }
         close($yumconfig);
         $index--;
-        my $yumcmd_base = "yum $non_interactive -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir/ --disablerepo=* ";
+        my $yumcmd_base = rpm_installroot_command($non_interactive);
 
         #yum/rpm/zypper has defect on calculating diskspace usage when installing rpm on a NFS mounted installroot
         if (isNFSdir("$rootimg_dir")) {
@@ -609,7 +633,7 @@ if($onlyinitrd){
                 print "$envlist $yumcmd\n";
                 my $rc = system("$envlist $yumcmd");
                 if ($rc) {
-                    print "yum invocation failed\n";
+                    print "RPM package manager invocation failed\n";
 
                     # remove the hacked uname file
                     unuse_hackuname();
@@ -2588,4 +2612,3 @@ sub usage {
 
     return 0;
 }
-
