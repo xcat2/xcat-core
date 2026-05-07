@@ -11,8 +11,10 @@ use strict;
 use IPC::Open2;
 use IPC::Open3;
 use IO::Select;
+use File::Temp qw(tempfile);
 use Symbol qw/gensym/;
 use POSIX qw/WNOHANG/;
+use Time::HiRes qw(sleep);
 use xCAT::Table;
 
 #use Data::Dumper;
@@ -31,6 +33,7 @@ use IPC::Open2;
 use xCAT::Utils;
 use xCAT::DHCP::BootPolicy;
 use xCAT::DHCP::Backend;
+use xCAT::DHCP::OmapiPolicy;
 use xCAT::DHCP::Range;
 use xCAT::TableUtils;
 use xCAT::NetworkUtils qw/getipaddr/;
@@ -47,6 +50,8 @@ my $site_domain;
 my @alldomains;
 my $omshell;
 my $omshell6;      #separate session to DHCPv6 instance of dhcp
+my $omshellpid;
+my $omshell6pid;
 my $statements;    #Hold custom statements to be slipped into host declarations
 my $localonly;     # flag for running only on local server - needs to be global
 my $callback;
@@ -153,6 +158,167 @@ sub handled_commands
     return { makedhcp => "dhcp", };
 }
 
+sub _omapi_settings
+{
+    my $cb = shift || $callback;
+
+    my $settings = xCAT::DHCP::OmapiPolicy->settings();
+    if ($settings->{error}) {
+        $cb->({ error => [ $settings->{error} ], errorcode => [1] }) if $cb;
+        syslog("local4|err", $settings->{error});
+        return;
+    }
+
+    return $settings;
+}
+
+sub _omapi_passwd_entry
+{
+    my $settings = shift;
+
+    my $passtab = xCAT::Table->new('passwd', -create => 1);
+    return unless $passtab;
+    return $passtab->getAttribs({ key => 'omapi', username => $settings->{key_name} }, qw(username password));
+}
+
+sub _ubuntu_isc_omapi_limited
+{
+    # Ubuntu's ISC DHCP 4.4 omshell can hang or crash on failed host opens
+    # and on next-server host statements. Use static local host blocks there.
+    return $distro =~ /^ubuntu(20|20\.04|22|22\.04)/;
+}
+
+sub _omapi_ip_lookup_supported
+{
+    return !_ubuntu_isc_omapi_limited();
+}
+
+sub _omapi_pre_create_cleanup_supported
+{
+    return !_ubuntu_isc_omapi_limited();
+}
+
+sub _omapi_next_server_statement
+{
+    my $server = shift;
+
+    return '' if _ubuntu_isc_omapi_limited();
+    return 'next-server ' . $server . ';';
+}
+
+sub _isc_static_host_fallback
+{
+    return _ubuntu_isc_omapi_limited() && !$::XCATSITEVALS{externaldhcpservers};
+}
+
+sub _delete_isc_static_host
+{
+    my $node = shift;
+
+    my @updated;
+    my $skip = 0;
+    foreach my $line (@dhcpconf) {
+        if ($line =~ /^#xCAT host declaration for \Q$node\E\b.* start$/) {
+            $skip = 1;
+            next;
+        }
+        if ($skip && $line =~ /^#xCAT host declaration for \Q$node\E\b.* end$/) {
+            $skip = 0;
+            next;
+        }
+        push @updated, $line unless $skip;
+    }
+    @dhcpconf = @updated;
+}
+
+sub _static_host_statements
+{
+    my $statements = shift || '';
+
+    $statements =~ s/ddns-hostname \\"([^"]+)\\";/ddns-hostname "$1";/g;
+    $statements =~ s/send host-name \\"([^"]+)\\";/option host-name "$1";/g;
+    $statements =~ s/\\"/"/g;
+
+    return $statements;
+}
+
+sub _add_isc_static_host
+{
+    my ($node, $hostname, $mac, $ip, $statements) = @_;
+
+    return unless $ip && $ip ne 'DENIED';
+
+    _delete_isc_static_host($node);
+
+    my $host_statements = _static_host_statements($statements);
+    push @dhcpconf, "#xCAT host declaration for $node aka host $hostname start\n";
+    push @dhcpconf, "host $hostname {\n";
+    push @dhcpconf, "    hardware ethernet $mac;\n";
+    push @dhcpconf, "    fixed-address $ip;\n";
+    push @dhcpconf, "    $host_statements\n" if $host_statements;
+    push @dhcpconf, "} #xCAT host declaration for $node aka host $hostname end\n";
+
+    $restartdhcp = 1;
+}
+
+sub _open_omshell_writer
+{
+    my $settings = shift;
+
+    mkdir "/tmp/xcat" unless -d "/tmp/xcat";
+    my ($omshell_stdin, $command_file) = tempfile('omshell.XXXXXX', DIR => '/tmp/xcat', UNLINK => 0);
+    return unless $omshell_stdin;
+
+    return ($omshell_stdin, { command_file => $command_file, omshell_path => $settings->{omshell_path} });
+}
+
+sub _run_omshell_command_file
+{
+    my ($command_file, $omshell_path) = @_;
+
+    my $pid = fork();
+    return unless defined $pid;
+
+    if ($pid == 0) {
+        open(STDIN, '<', $command_file) or exit 127;          ## no critic (InputOutput::RequireCheckedOpen)
+        open(STDOUT, '>', '/dev/null') or exit 127;           ## no critic (InputOutput::RequireCheckedOpen)
+        open(STDERR, '>', '/dev/null') or exit 127;           ## no critic (InputOutput::RequireCheckedOpen)
+        exec { $omshell_path } $omshell_path;
+        exit 127;
+    }
+
+    for (1 .. 100) {
+        if (waitpid($pid, WNOHANG) == $pid) {
+            sleep 1.0;
+            return 1;
+        }
+        sleep 0.1;
+    }
+
+    kill 'TERM', $pid;
+    for (1 .. 20) {
+        return if waitpid($pid, WNOHANG) == $pid;
+        sleep 0.1;
+    }
+
+    kill 'KILL', $pid;
+    waitpid($pid, 0);
+    return;
+}
+
+sub _close_omshell_writer
+{
+    my ($fh, $writer) = @_;
+
+    close($fh) if $fh;
+
+    return unless ref($writer) eq 'HASH';
+
+    my $ok = _run_omshell_command_file($writer->{command_file}, $writer->{omshell_path});
+    unlink $writer->{command_file};
+    syslog("local4|err", "omshell did not complete while updating DHCP reservations") unless $ok;
+}
+
 ######################################################
 # Run omshell to query a host and parse the output.
 # Uses a heredoc pipe instead of open2 to avoid deadlock
@@ -160,15 +326,15 @@ sub handled_commands
 ######################################################
 sub _omshell_query_host
 {
-    my $node      = shift;
-    my $omapiuser = shift;
-    my $omapikey  = shift;
-    my $port      = shift;
+    my $node     = shift;
+    my $settings = shift;
+    my $omapikey = shift;
+    my $port     = shift;
 
-    my $port_cmd = defined($port) ? "port $port\n" : "";
-    my $omcmds = "${port_cmd}key $omapiuser \"$omapikey\"\nconnect\nnew host\nset name = \"$node\"\nopen\nclose\n";
+    my $omcmds = xCAT::DHCP::OmapiPolicy->omshell_preamble($settings, secret => $omapikey, port => $port);
+    $omcmds .= "connect\nnew host\nset name = \"$node\"\nopen\nclose\n";
 
-    my @output = _run_omshell($omcmds);
+    my @output = _run_omshell($omcmds, $settings);
 
     return _parse_omshell_host_output($node, @output);
 }
@@ -176,10 +342,12 @@ sub _omshell_query_host
 sub _run_omshell
 {
     my $omcmds = shift;
+    my $settings = shift || _omapi_settings();
+    return () unless $settings;
 
     my ($in, $out);
     my $err = gensym;
-    my $pid = eval { open3($in, $out, $err, '/usr/bin/omshell') };
+    my $pid = eval { open3($in, $out, $err, $settings->{omshell_path}) };
     return () if $@ || !$pid;
 
     print $in $omcmds;
@@ -208,7 +376,7 @@ sub _run_omshell
 
     for (1 .. 10) {
         last if waitpid($pid, WNOHANG) == $pid;
-        select(undef, undef, undef, 0.1);
+        sleep 0.1;
     }
     if (waitpid($pid, WNOHANG) == 0) {
         kill 'KILL', $pid;
@@ -253,17 +421,15 @@ sub listnode
     my $callback = shift;
     my $rsp;
 
-    my $omapiuser;
-    my $omapikey;
+    my $settings = _omapi_settings($callback);
+    return unless $settings;
 
-    my $pwtab = xCAT::Table->new("passwd");
-    my @pws = $pwtab->getAllAttribs('key', 'username', 'password', 'cryptmethod', 'authdomain', 'comments', 'disable');
-    foreach (@pws) {
-        if ($_->{key} =~ "omapi") {
-            $omapiuser = $_->{username};
-            $omapikey  = $_->{password};
-        }
+    my $pent = _omapi_passwd_entry($settings);
+    unless ($pent && $pent->{password}) {
+        $callback->({ error => ["Unable to access omapi key from passwd table, add the key from dhcpd.conf or makedhcp -n to create a new one"], errorcode => [1] });
+        return;
     }
+    my $omapikey = $pent->{password};
 
     my $usingipv6;
     my $nettab = xCAT::Table->new("networks");
@@ -274,14 +440,14 @@ sub listnode
         }
     }
 
-    my ($nname, $ipaddr, $hwaddr) = _omshell_query_host($node, $omapiuser, $omapikey, undef);
+    my ($nname, $ipaddr, $hwaddr) = _omshell_query_host($node, $settings, $omapikey, undef);
     if ($ipaddr) {
         push @{ $rsp->{data} }, "$nname: $ipaddr, $hwaddr";
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
 
     if ($usingipv6) {
-        my ($nname6, $ipaddr6, $hwaddr6) = _omshell_query_host($node, $omapiuser, $omapikey, 7912);
+        my ($nname6, $ipaddr6, $hwaddr6) = _omshell_query_host($node, $settings, $omapikey, 7912);
         if ($ipaddr6) {
             push @{ $rsp->{data} }, "$nname6: $ipaddr6, $hwaddr6";
             xCAT::MsgUtils->message("I", $rsp, $callback);
@@ -293,6 +459,12 @@ sub delnode
 {
     my $node  = shift;
     my $inetn = inet_aton($node);
+
+    if (_isc_static_host_fallback()) {
+        _delete_isc_static_host($node);
+        $restartdhcp = 1;
+        return;
+    }
 
     my $mactab = xCAT::Table->new('mac');
     my $ent;
@@ -350,7 +522,7 @@ sub delnode
                 print $omshell "remove\n";
                 print $omshell "close\n";
             }
-            if ($inetn)
+            if ($inetn and _omapi_ip_lookup_supported())
             {
                 my $ip;
                 if (inet_aton($hostname))
@@ -374,7 +546,7 @@ sub delnode
     print $omshell "open\n";
     print $omshell "remove\n";
     print $omshell "close\n";
-    if ($inetn)
+    if ($inetn and _omapi_ip_lookup_supported())
     {
         my $ip = inet_ntoa(inet_aton($node));
         unless ($ip) { return; }
@@ -513,10 +685,7 @@ sub addnode
             }
             $tftpserver = inet_ntoa($tmp_name);
             $nxtsrv     = $tftpserver;
-            $lstatements =
-              'next-server '
-              . $tftpserver . ';'
-              . $statements;
+            $lstatements = _omapi_next_server_statement($tftpserver) . $statements;
         }
         else
         {
@@ -772,26 +941,45 @@ sub addnode
                 $hardwaretype = 32;
             }
 
+            if (_isc_static_host_fallback()) {
+                if ($ip ne "DENIED") {
+                    if ($lstatements) {
+                        $lstatements = 'ddns-hostname \"' . $node . '\"; send host-name \"' . $node . '\";' . $lstatements;
+                    } else {
+                        $lstatements = 'ddns-hostname \"' . $node . '\"; send host-name \"' . $node . '\";';
+                    }
+                } else {
+                    $lstatements = "deny booting;";
+                }
+                _add_isc_static_host($node, $hostname, $mac, $ip, $lstatements);
+                $count = $count + 2;
+                next;
+            }
+
             #syslog("local4|err", "Setting $node ($hname|$ip) to " . $mac);
-            print $omshell "new host\n";
-            print $omshell
-              "set name = \"$hostname\"\n";    #Find and destroy conflict name
-            print $omshell "open\n";
-            print $omshell "remove\n";
-            print $omshell "close\n";
-            if ($ip and $ip ne 'DENIED') {
+            if (_omapi_pre_create_cleanup_supported()) {
+                print $omshell "new host\n";
+                print $omshell
+                  "set name = \"$hostname\"\n";    #Find and destroy conflict name
+                print $omshell "open\n";
+                print $omshell "remove\n";
+                print $omshell "close\n";
+            }
+            if ($ip and $ip ne 'DENIED' and _omapi_ip_lookup_supported()) {
                 print $omshell "new host\n";
                 print $omshell "set ip-address = $ip\n"; #find and destroy ip conflict
                 print $omshell "open\n";
                 print $omshell "remove\n";
                 print $omshell "close\n";
             }
-            print $omshell "new host\n";
-            print $omshell "set hardware-address = " . $mac
-              . "\n";    #find and destroy mac conflict
-            print $omshell "open\n";
-            print $omshell "remove\n";
-            print $omshell "close\n";
+            if (_omapi_pre_create_cleanup_supported()) {
+                print $omshell "new host\n";
+                print $omshell "set hardware-address = " . $mac
+                  . "\n";    #find and destroy mac conflict
+                print $omshell "open\n";
+                print $omshell "remove\n";
+                print $omshell "close\n";
+            }
             print $omshell "new host\n";
             print $omshell "set name = \"$hostname\"\n";
             print $omshell "set hardware-address = " . $mac . "\n";
@@ -1988,12 +2176,13 @@ sub process_request
             }
         }
 
-        if ($^O ne 'aix')
+        if ($^O ne 'aix' and !_isc_static_host_fallback())
         {
-            my $passtab = xCAT::Table->new('passwd');
-            my $ent;
-            ($ent) = $passtab->getAttribs({ key => "omapi" }, qw(username password));
-            unless ($ent->{username} and $ent->{password})
+            my $settings = _omapi_settings();
+            return unless $settings;
+
+            my $ent = _omapi_passwd_entry($settings);
+            unless ($ent && $ent->{username} && $ent->{password})
             {
                 $callback->({ error => ["Unable to access omapi key from passwd table, add the key from dhcpd.conf or makedhcp -n to create a new one"], errorcode => [1] });
                 syslog("local4|err", "Unable to access omapi key from passwd table, unable to update DHCP configuration");
@@ -2002,23 +2191,28 @@ sub process_request
 
             #Have nodes to update
             #open2($omshellout,$omshell,"/usr/bin/omshell");
-            open($omshell, "|/usr/bin/omshell > /dev/null");
-            print $omshell "key "
-              . $ent->{username} . " \""
-              . $ent->{password} . "\"\n";
-            if ($::XCATSITEVALS{externaldhcpservers}) {
-                print $omshell "server $::XCATSITEVALS{externaldhcpservers}\n";
+            ($omshell, $omshellpid) = _open_omshell_writer($settings);
+            unless ($omshell) {
+                $callback->({ error => ["Unable to start $settings->{omshell_path}"], errorcode => [1] });
+                syslog("local4|err", "Unable to start $settings->{omshell_path}");
+                return;
             }
+            print $omshell xCAT::DHCP::OmapiPolicy->omshell_preamble($settings,
+                secret => $ent->{password},
+                server => $::XCATSITEVALS{externaldhcpservers});
             print $omshell "connect\n";
             if ($usingipv6) {
-                open($omshell6, "|/usr/bin/omshell > /dev/null");
-                if ($::XCATSITEVALS{externaldhcpservers}) {
-                    print $omshell "server $::XCATSITEVALS{externaldhcpservers}\n";
+                ($omshell6, $omshell6pid) = _open_omshell_writer($settings);
+                unless ($omshell6) {
+                    $callback->({ error => ["Unable to start $settings->{omshell_path}"], errorcode => [1] });
+                    syslog("local4|err", "Unable to start $settings->{omshell_path}");
+                    _close_omshell_writer($omshell, $omshellpid);
+                    return;
                 }
-                print $omshell6 "port 7912\n";
-                print $omshell6 "key "
-                  . $ent->{username} . " \""
-                  . $ent->{password} . "\"\n";
+                print $omshell6 xCAT::DHCP::OmapiPolicy->omshell_preamble($settings,
+                    secret => $ent->{password},
+                    port   => 7912,
+                    server => $::XCATSITEVALS{externaldhcpservers});
                 print $omshell6 "connect\n";
             }
         }
@@ -2079,8 +2273,8 @@ sub process_request
                 }
             }
         }
-        close($omshell) if ($^O ne 'aix');
-        close($omshell6) if ($omshell6 and $^O ne 'aix');
+        _close_omshell_writer($omshell, $omshellpid) if ($^O ne 'aix');
+        _close_omshell_writer($omshell6, $omshell6pid) if ($omshell6 and $^O ne 'aix');
     }
     writeout();
     if (not $::XCATSITEVALS{externaldhcpservers} and $restartdhcp) {
@@ -3589,17 +3783,20 @@ sub addnet6
         $ddnsdomain = $netcfgs{$net}->{ddnsdomain};
     }
     if ($::XCATSITEVALS{dnshandler} =~ /ddns/) {
+        my $settings = _omapi_settings();
+        return 1 unless $settings;
+
         if ($ddnsdomain) {
             push @netent, "    ddns-domainname \"" . $ddnsdomain . "\";\n";
             push @netent, "    zone $ddnsdomain. {\n";
         } else {
             push @netent, "    zone $netdomain. {\n";
         }
-        push @netent, "       primary $ddnserver; key xcat_key; \n";
+        push @netent, "       primary $ddnserver; key $settings->{key_name}; \n";
         push @netent, "    }\n";
         foreach (getzonesfornet($net)) {
             push @netent, "    zone $_ {\n";
-            push @netent, "       primary $ddnserver; key xcat_key; \n";
+            push @netent, "       primary $ddnserver; key $settings->{key_name}; \n";
             push @netent, "    }\n";
         }
     }
@@ -3915,6 +4112,9 @@ sub addnet
             $ddnsdomain = $netcfgs{$net}->{ddnsdomain};
         }
         if ($::XCATSITEVALS{dnshandler} =~ /ddns/) {
+            my $settings = _omapi_settings();
+            return 1 unless $settings;
+
             if ($ddnsdomain) {
                 push @netent, "    ddns-domainname \"" . $ddnsdomain . "\";\n";
                 push @netent, "    zone $ddnsdomain. {\n";
@@ -3923,14 +4123,14 @@ sub addnet
             }
             if ($ddnserver)
             {
-                push @netent, "       primary $ddnserver; key xcat_key; \n";
+                push @netent, "       primary $ddnserver; key $settings->{key_name}; \n";
             }
             push @netent, "    }\n";
             foreach (getzonesfornet($net, $mask)) {
                 push @netent, "    zone $_ {\n";
                 if ($ddnserver)
                 {
-                    push @netent, "       primary $ddnserver; key xcat_key; \n";
+                    push @netent, "       primary $ddnserver; key $settings->{key_name}; \n";
                 }
                 push @netent, "    }\n";
             }
@@ -4178,6 +4378,9 @@ sub writeout
 sub newconfig6 {
     if ($::XCATSITEVALS{externaldhcpservers}) { return; }
 
+    my $settings = _omapi_settings();
+    return 1 unless $settings;
+
     #phase 1, basic working
     #phase 2, ddns too, evaluate other stuff from dhcpv4 as applicable
     push @dhcp6conf, "#xCAT generated dhcp configuration\n";
@@ -4187,14 +4390,14 @@ sub newconfig6 {
 
     #    push @dhcp6conf, "update-static-leases on;\n";
     push @dhcp6conf, "omapi-port 7912;\n";        #Enable omapi...
-    push @dhcp6conf, "key xcat_key {\n";
-    push @dhcp6conf, "  algorithm hmac-md5;\n";
+    push @dhcp6conf, "key $settings->{key_name} {\n";
+    push @dhcp6conf, "  algorithm $settings->{algorithm};\n";
     my $passtab = xCAT::Table->new('passwd', -create => 1);
     (my $passent) =
-      $passtab->getAttribs({ key => 'omapi', username => 'xcat_key' }, 'password');
+      $passtab->getAttribs({ key => 'omapi', username => $settings->{key_name} }, 'password');
     my $secret = encode_base64(genpassword(32));    #Random from set of  62^32
     chomp $secret;
-    if ($passent->{password}) { $secret = $passent->{password}; }
+    if ($passent && $passent->{password}) { $secret = $passent->{password}; }
     else
     {
         $callback->(
@@ -4203,13 +4406,13 @@ sub newconfig6 {
                   ["The dhcp server must be restarted for OMAPI function to work"]
             }
         );
-        $passtab->setAttribs({ key => 'omapi' },
-            { username => 'xcat_key', password => $secret });
+        $passtab->setAttribs({ key => 'omapi', username => $settings->{key_name} },
+            { username => $settings->{key_name}, password => $secret });
     }
 
     push @dhcp6conf, "  secret \"" . $secret . "\";\n";
     push @dhcp6conf, "};\n";
-    push @dhcp6conf, "omapi-key xcat_key;\n";
+    push @dhcp6conf, "omapi-key $settings->{key_name};\n";
 
     #that is all for pristine ipv6 config
 }
@@ -4218,6 +4421,9 @@ sub newconfig
 {
     if ($::XCATSITEVALS{externaldhcpservers}) { return; }
     return newconfig_aix() if ($^O eq 'aix');
+
+    my $settings = _omapi_settings();
+    return 1 unless $settings;
 
     # This function puts a standard header in and enough to make omapi work.
     my $passtab = xCAT::Table->new('passwd', -create => 1);
@@ -4250,13 +4456,13 @@ sub newconfig
     push @dhcpconf, "option cumulus-provision-url code 239 = text;\n";
     push @dhcpconf, "\n";
     push @dhcpconf, "omapi-port 7911;\n";            #Enable omapi...
-    push @dhcpconf, "key xcat_key {\n";
-    push @dhcpconf, "  algorithm hmac-md5;\n";
+    push @dhcpconf, "key $settings->{key_name} {\n";
+    push @dhcpconf, "  algorithm $settings->{algorithm};\n";
     (my $passent) =
-      $passtab->getAttribs({ key => 'omapi', username => 'xcat_key' }, 'password');
+      $passtab->getAttribs({ key => 'omapi', username => $settings->{key_name} }, 'password');
     my $secret = encode_base64(genpassword(32));     #Random from set of  62^32
     chomp $secret;
-    if ($passent->{password}) { $secret = $passent->{password}; }
+    if ($passent && $passent->{password}) { $secret = $passent->{password}; }
     else
     {
         $callback->(
@@ -4265,13 +4471,13 @@ sub newconfig
                   ["The dhcp server must be restarted for OMAPI function to work"]
             }
         );
-        $passtab->setAttribs({ key => 'omapi' },
-            { username => 'xcat_key', password => $secret });
+        $passtab->setAttribs({ key => 'omapi', username => $settings->{key_name} },
+            { username => $settings->{key_name}, password => $secret });
     }
 
     push @dhcpconf, "  secret \"" . $secret . "\";\n";
     push @dhcpconf, "};\n";
-    push @dhcpconf, "omapi-key xcat_key;\n";
+    push @dhcpconf, "omapi-key $settings->{key_name};\n";
     push @dhcpconf, ('class "pxe" {' . "\n", "   match if substring (option vendor-class-identifier, 0, 9) = \"PXEClient\";\n", "   ddns-updates off;\n", "    max-lease-time 600;\n", "}\n");
 }
 

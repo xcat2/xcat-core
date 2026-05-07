@@ -43,6 +43,10 @@ The \ **makedhcp**\  command creates and updates the DHCP configuration on the m
 The \ **makedhcp**\  command is supported for both Linux and AIX clusters.
 On Linux, the DHCP implementation is selected by the ``site.dhcpbackend`` attribute.
 The ``auto`` setting keeps ISC DHCP on platforms where it is still available and uses Kea DHCP on platforms such as EL10 and Ubuntu 24.04.
+For legacy ISC DHCP deployments that need a non-default OMAPI/TSIG key, use
+``site.dhcpomapialgorithm`` and ``site.dhcpomapikeyname``. If the system uses
+an alternate ISC DHCP build, ``site.dhcpomshellpath`` can point xCAT at that
+build's ``omshell`` binary.
 
 
 1.

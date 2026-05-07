@@ -10,7 +10,14 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 
 use Getopt::Long;
+use File::Temp qw(tempfile);
 use Fcntl ':flock';
+use IPC::Open3;
+use POSIX qw/WNOHANG/;
+use Symbol qw/gensym/;
+use Time::HiRes qw(sleep);
+use xCAT::DHCP::OmapiPolicy;
+use xCAT::Table;
 
 sub usage{
     print "Usage: dhcphelper -h \n";
@@ -97,15 +104,21 @@ if($help){
         exit 0;
     }
 
-    my $out=qx(tabdump -w key==omapi -w username==xcat_key  passwd |tail -n1|awk -F, '{print \$2","\$3}');
-    $out =~ s/("|\n)//g;
-    my ($id,$passwd)=split(',',$out);
-    if(-z "$id" || -z "$passwd" ){
+    my $settings = xCAT::DHCP::OmapiPolicy->settings();
+    if ($settings->{error}) {
+        print "Error: $settings->{error}\n";
+        exit 1;
+    }
+
+    my $passtab = xCAT::Table->new('passwd');
+    my $pent = $passtab->getAttribs({ key => 'omapi', username => $settings->{key_name} }, qw(username password));
+    my $passwd = $pent ? $pent->{password} : undef;
+    if(!$passwd){
         print "Error: no 'omapi' entry defined in passwd table!";
         exit 1;
     }
 
-    my $omshell_commands = "key " . $id . " \"" . $passwd . "\"\n";
+    my $omshell_commands = xCAT::DHCP::OmapiPolicy->omshell_preamble($settings, secret => $passwd);
     $omshell_commands .= "connect\n";
 
     if($hostname){
@@ -133,11 +146,41 @@ if($help){
        $omshell_commands .= "close\n";
     }
 
-    my $omshell;
-    open($omshell, '|-', '/bin/sh', '-c', '/usr/bin/omshell >/dev/null')
-      or die "Unable to start omshell: $!";
+    mkdir "/tmp/xcat" unless -d "/tmp/xcat";
+    my ($omshell, $command_file) = tempfile('omshell.XXXXXX', DIR => '/tmp/xcat', UNLINK => 0);
+    die "Unable to start omshell: $!" unless $omshell;
     print $omshell $omshell_commands;
     close($omshell);
+
+    my $pid = fork();
+    die "Unable to start omshell: $!" unless defined $pid;
+    if ($pid == 0) {
+        open(STDIN, '<', $command_file) or exit 127;          ## no critic (InputOutput::RequireCheckedOpen)
+        open(STDOUT, '>', '/dev/null') or exit 127;           ## no critic (InputOutput::RequireCheckedOpen)
+        open(STDERR, '>', '/dev/null') or exit 127;           ## no critic (InputOutput::RequireCheckedOpen)
+        exec { $settings->{omshell_path} } $settings->{omshell_path};
+        exit 127;
+    }
+
+    for (1 .. 100) {
+        if (waitpid($pid, WNOHANG) == $pid) {
+            sleep 1.0;
+            unlink $command_file;
+            exit 0;
+        }
+        sleep 0.1;
+    }
+    kill 'TERM', $pid;
+    for (1 .. 20) {
+        if (waitpid($pid, WNOHANG) == $pid) {
+            unlink $command_file;
+            exit 0;
+        }
+        sleep 0.1;
+    }
+    kill 'KILL', $pid;
+    waitpid($pid, 0);
+    unlink $command_file;
 }else{
     &usage;
     exit 1;

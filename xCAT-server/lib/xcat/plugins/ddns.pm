@@ -4,6 +4,7 @@ use Getopt::Long;
 use Net::DNS;
 use File::Path;
 use xCAT::Table;
+use xCAT::DHCP::OmapiPolicy;
 use Sys::Hostname;
 use xCAT::TableUtils;
 use xCAT::NetworkUtils qw/getipaddr/;
@@ -26,26 +27,48 @@ my $service = "named";
 my $ddns_key_path = "/etc/xcat/ddns.key";
 
 # Net::DNS >= 1.36 removed support for sign_tsig($keyname, $secret) and now
-# expects a keyfile. Keep the keyfile in sync with the xcat_key secret.
+# expects a keyfile. Keep the keyfile in sync with the xCAT OMAPI secret.
 sub ddns_tsig_algorithm {
     my ($ctx) = @_;
 
-    # Older Net::DNS releases used by Ubuntu 22.04 cannot sign updates with the
-    # keyfile API, so keep the generated xCAT key on the legacy algorithm that
-    # both old and new Net::DNS can use.
-    return "hmac-md5" if (Net::DNS->VERSION < 1.36);
-    return $ctx->{tsig_algorithm} || "hmac-md5";
+    my $settings = $ctx->{omapi_settings} || xCAT::DHCP::OmapiPolicy->settings();
+
+    # Keep old Net::DNS on MD5 unless the administrator explicitly selects a
+    # different OMAPI algorithm. Old Net::DNS can sign non-MD5 updates only
+    # through a KEY RR, which ddns_sign_update builds below.
+    return "hmac-md5" if (Net::DNS->VERSION < 1.36 && !$settings->{algorithm_explicit});
+    return $ctx->{tsig_algorithm} || $settings->{algorithm};
 }
 
 sub ddns_key_contents {
     my ($ctx) = @_;
 
+    my $settings = $ctx->{omapi_settings} || xCAT::DHCP::OmapiPolicy->settings();
     my $algorithm = ddns_tsig_algorithm($ctx);
     return
-        "key \"xcat_key\" {\n"
+        "key \"$settings->{key_name}\" {\n"
       . "\talgorithm $algorithm;\n"
       . "\tsecret \"" . $ctx->{privkey} . "\";\n"
       . "};\n\n";
+}
+
+sub ddns_sign_update {
+    my ($ctx, $update) = @_;
+
+    my $settings = $ctx->{omapi_settings} || xCAT::DHCP::OmapiPolicy->settings();
+    if (Net::DNS->VERSION >= 1.36) {
+        $update->sign_tsig($ddns_key_path);
+        return;
+    }
+
+    if ($settings->{algorithm} eq 'hmac-md5') {
+        $update->sign_tsig($settings->{key_name}, $ctx->{privkey});
+        return;
+    }
+
+    my $owner = xCAT::DHCP::OmapiPolicy->key_owner($settings);
+    my $keyrr = Net::DNS::RR->new("$owner IN KEY 512 3 $settings->{key_rr_type} $ctx->{privkey}");
+    $update->sign_tsig($keyrr);
 }
 
 sub ensure_ddns_key_file {
@@ -267,6 +290,13 @@ sub process_request {
     my $external   = 0;
     my $slave      = 0;
     my $VERBOSE;
+
+    $ctx->{omapi_settings} = xCAT::DHCP::OmapiPolicy->settings();
+    if ($ctx->{omapi_settings}->{error}) {
+        xCAT::SvrUtils::sendmsg([ 1, $ctx->{omapi_settings}->{error} ], $callback);
+        umask($oldmask);
+        return;
+    }
 
     # Since the mandatory rpm perl-Net-DNS for makedns on sles12 (perl-Net-DNS-0.73-1.28)  has a bug,
     # user has to update it to a newer version
@@ -631,7 +661,7 @@ sub process_request {
         }
     }
     my $passtab = xCAT::Table->new('passwd');
-    my $pent = $passtab->getAttribs({ key => 'omapi', username => 'xcat_key' }, ['password']);
+    my $pent = $passtab->getAttribs({ key => 'omapi', username => $ctx->{omapi_settings}->{key_name} }, ['password']);
     if ($pent and $pent->{password}) {
         $ctx->{privkey} = $pent->{password};
     } #do not warn/error here yet, if we can't generate or extract, we'll know later
@@ -1169,6 +1199,9 @@ sub update_namedconf {
     my $gotoptions = 0;
     my $gotkey     = 0;
     my %didzones;
+    my $omapi_settings = $ctx->{omapi_settings} || xCAT::DHCP::OmapiPolicy->settings();
+    my $omapi_key_name = $omapi_settings->{key_name};
+    my $omapi_key_re   = $omapi_settings->{key_name_for_regex};
 
     if (-r $namedlocation) {
         my @currnamed = ();
@@ -1245,7 +1278,7 @@ sub update_namedconf {
                         $i++;
                         $line = $currnamed[$i];
                         push @candidate, $line;
-                        if ($line =~ /key\s+\"?xcat_key\"?\b/) {
+                        if ($line =~ /key\s+\"?$omapi_key_re\"?(?=\s|;|\{)/) {
                             $needreplace = 0;
                         }
                     } while ($line !~ /^\};/);    #skip the old file zone
@@ -1254,7 +1287,7 @@ sub update_namedconf {
                         next;
                     }
                     $ctx->{restartneeded} = 1;
-                    push @newnamed, "zone \"$currzone\" in {\n", "\ttype master;\n", "\tallow-update {\n", "\t\tkey xcat_key;\n";
+                    push @newnamed, "zone \"$currzone\" in {\n", "\ttype master;\n", "\tallow-update {\n", "\t\tkey $omapi_key_name;\n";
                     my @list;
                     if (not $ctx->{adzones}->{$currzone}) {
                         if ($ctx->{dnsupdaters}) {
@@ -1290,7 +1323,7 @@ sub update_namedconf {
                     } while ($line !~ /^\};/);
                 }
 
-            } elsif ($line =~ /^key\s+\"?xcat_key\"?\b/) {
+            } elsif ($line =~ /^key\s+\"?$omapi_key_re\"?(?=\s|\{)/) {
                 $gotkey = 1;
                 my $algorithmnow;
                 if ($ctx->{privkey}) {
@@ -1303,7 +1336,13 @@ sub update_namedconf {
                         }
                         push @keyblock, $line;
                     } while ($line !~ /^\};/);
-                    if ($algorithmnow && Net::DNS->VERSION < 1.36 && lc($algorithmnow) ne "hmac-md5") {
+                    if ($omapi_settings->{algorithm_explicit}
+                        && (!$algorithmnow || lc($algorithmnow) ne $omapi_settings->{algorithm}) )
+                    {
+                        $ctx->{tsig_algorithm} = $omapi_settings->{algorithm};
+                        push @newnamed, ddns_key_contents($ctx);
+                        $ctx->{restartneeded} = 1;
+                    } elsif ($algorithmnow && Net::DNS->VERSION < 1.36 && lc($algorithmnow) ne "hmac-md5") {
                         $ctx->{tsig_algorithm} = "hmac-md5";
                         push @newnamed, ddns_key_contents($ctx);
                         $ctx->{restartneeded} = 1;
@@ -1317,7 +1356,7 @@ sub update_namedconf {
                             $algorithmnow = $1;
                         } elsif ($line =~ /secret \"([^"]*)\"/) {
                             my $passtab = xCAT::Table->new("passwd", -create => 1);
-                            $passtab->setAttribs({ key => "omapi", username => "xcat_key" }, { password => $1 });
+                            $passtab->setAttribs({ key => "omapi", username => $omapi_key_name }, { password => $1 });
                             $ctx->{privkey} = $1;
                         }
                         $i++;
@@ -1325,7 +1364,7 @@ sub update_namedconf {
                         push @newnamed, $line;
                     }
                 }
-                if ($algorithmnow) {
+                if ($algorithmnow && !$omapi_settings->{algorithm_explicit}) {
                     $ctx->{tsig_algorithm} = $algorithmnow;
                 }
             } elsif ($line !~ /generated by xCAT/) {
@@ -1447,7 +1486,7 @@ sub update_namedconf {
             push @newnamed, "\ttype slave;\n";
             push @newnamed, "\tmasters { $output[0]; };\n";
         } else {
-            push @newnamed, "\ttype master;\n", "\tallow-update {\n", "\t\tkey xcat_key;\n", "\t};\n";
+            push @newnamed, "\ttype master;\n", "\tallow-update {\n", "\t\tkey $omapi_key_name;\n", "\t};\n";
             foreach (@{ $ctx->{dnsupdaters} }) {
                 push @newnamed, "\t\t$_;\n";
             }
@@ -1474,7 +1513,7 @@ sub update_namedconf {
             push @newnamed, "\ttype slave;\n";
             push @newnamed, "\tmasters { $output[0]; };\n";
         } else {
-            push @newnamed, "\ttype master;\n", "\tallow-update {\n", "\t\tkey xcat_key;\n";
+            push @newnamed, "\ttype master;\n", "\tallow-update {\n", "\t\tkey $omapi_key_name;\n";
             foreach (@{ $ctx->{adservers} }) {
                 push @newnamed, "\t\t$_;\n";
             }
@@ -1537,13 +1576,14 @@ sub add_or_delete_records {
 
     unless ($ctx->{privkey}) {
         my $passtab = xCAT::Table->new('passwd');
-        my $pent = $passtab->getAttribs({ key => 'omapi', username => 'xcat_key' }, ['password']);
+        my $pent = $passtab->getAttribs({ key => 'omapi', username => $ctx->{omapi_settings}->{key_name} }, ['password']);
         if ($pent and $pent->{password}) {
             $ctx->{privkey} = $pent->{password};
         } else {
             xCAT::SvrUtils::sendmsg([ 1, "Unable to find omapi key in passwd table" ], $callback);
         }
     }
+    ensure_ddns_key_file($ctx) if $ctx->{privkey};
     my $node;
     my @ips;
 
@@ -1635,13 +1675,9 @@ sub add_or_delete_records {
                 $numreqs -= 1;
                 if ($numreqs == 0) {
 
-                    # sometimes even the xcat_key is correct, but named still replies NOTAUTH, so retry
+                    # sometimes even the key is correct, but named still replies NOTAUTH, so retry
                     for (1 .. 3) {
-                        if (Net::DNS->VERSION >= 1.36) {
-                            $update->sign_tsig($ddns_key_path);
-                        } else {
-                            $update->sign_tsig("xcat_key", $ctx->{privkey});
-                        }
+                        ddns_sign_update($ctx, $update);
                         $numreqs = 300;
                         my $reply = $resolver->send($update);
                         if ($reply) {
@@ -1661,13 +1697,9 @@ sub add_or_delete_records {
                 }
             }
             if ($numreqs != 300) { #either no entries at all to begin with or a perfect multiple of 300
-                 # sometimes even the xcat_key is correct, but named still replies NOTAUTH, so retry
+                 # sometimes even the key is correct, but named still replies NOTAUTH, so retry
                 for (1 .. 3) {
-                    if (Net::DNS->VERSION >= 1.36) {
-                        $update->sign_tsig($ddns_key_path);
-                    } else {
-                        $update->sign_tsig("xcat_key", $ctx->{privkey});
-                    }
+                    ddns_sign_update($ctx, $update);
                     my $reply = $resolver->send($update);
                     if ($reply) {
                         if ($reply->header->rcode eq 'NOTAUTH') {
