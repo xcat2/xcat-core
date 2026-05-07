@@ -160,10 +160,16 @@ sub get_os {
 
 sub _netplan_get {
     my $key = shift;
-    open(my $fh, '-|', 'netplan', 'get', $key) or return undef;
+    my $pid = open(my $fh, '-|');
+    return unless defined $pid;
+    if ($pid == 0) {
+        open(STDERR, '>', '/dev/null');
+        exec 'netplan', 'get', $key;
+        exit 1;
+    }
     my $val = <$fh>;
     close $fh;
-    return undef if $?;
+    return if $?;
     chomp $val if defined $val;
     return $val;
 }
@@ -177,28 +183,111 @@ sub _command_available {
     return 0;
 }
 
-sub _netplan_has_static_ip {
-    my ($nic, $ip) = @_;
+sub _networkd_config_dirs {
+    return ('/run/systemd/network', '/etc/systemd/network');
+}
 
-    return 0 unless _command_available('netplan');
+sub _networkd_name_matches {
+    my ($names, $nic) = @_;
 
-    (my $escaped_nic = $nic) =~ s/\./\\./g;
-    for my $devtype (qw(ethernets bonds bridges vlans)) {
-        my $dev_obj = _netplan_get("$devtype.$escaped_nic");
-        next unless defined $dev_obj;
-        next if ($dev_obj eq 'null' || $dev_obj eq '');
-
-        my $addresses = _netplan_get("$devtype.$escaped_nic.addresses");
-        next unless defined $addresses;
-        next if ($addresses eq 'null' || $addresses eq '');
-        next unless $addresses =~ /(?:^|[\s\[,])\Q$ip\E(?:\/\d+)?(?:$|[\s\],])/m;
-
-        my $dhcp_val = _netplan_get("$devtype.$escaped_nic.dhcp4");
-        return 0 if defined $dhcp_val && $dhcp_val =~ /true/i;
-        return 1;
+    foreach my $name (split /\s+/, $names) {
+        return 1 if $name eq $nic;
     }
 
     return 0;
+}
+
+sub _networkd_address_matches {
+    my ($addresses, $ip) = @_;
+
+    foreach my $address (split /\s+/, $addresses) {
+        return 1 if $address =~ /^\Q$ip\E(?:\/\d+)?$/;
+    }
+
+    return 0;
+}
+
+sub _networkd_file_has_static_ip {
+    my ($file, $nic, $ip) = @_;
+    my $section = '';
+    my $matched_nic = 0;
+    my $matched_ip = 0;
+    my $dhcp4 = 0;
+
+    open(my $fh, '<', $file) or return 0;
+    while (my $line = <$fh>) {
+        chomp $line;
+        $line =~ s/^\s+|\s+$//g;
+        next if $line eq '' || $line =~ /^[#;]/;
+        $line =~ s/\s*[#;].*$//;
+
+        if ($line =~ /^\[([^\]]+)\]$/) {
+            $section = lc $1;
+            next;
+        }
+
+        if ($section eq 'match' && $line =~ /^Name\s*=\s*(.+)$/i) {
+            $matched_nic = 1 if _networkd_name_matches($1, $nic);
+            next;
+        }
+
+        if ($section eq 'network' && $line =~ /^Address\s*=\s*(.+)$/i) {
+            $matched_ip = 1 if _networkd_address_matches($1, $ip);
+            next;
+        }
+
+        if ($section eq 'network' && $line =~ /^DHCP\s*=\s*(.+)$/i) {
+            $dhcp4 = 1 if $1 =~ /^(?:yes|true|ipv4|both)$/i;
+        }
+    }
+    close $fh;
+
+    return $matched_nic && $matched_ip && !$dhcp4;
+}
+
+sub _networkd_has_static_ip {
+    my ($nic, $ip) = @_;
+
+    foreach my $dir (_networkd_config_dirs()) {
+        next unless -d $dir;
+        opendir(my $dh, $dir) or next;
+        foreach my $file (sort grep { /\.network$/ } readdir($dh)) {
+            return 1 if _networkd_file_has_static_ip("$dir/$file", $nic, $ip);
+        }
+        closedir $dh;
+    }
+
+    return 0;
+}
+
+sub _netplan_has_static_ip {
+    my ($nic, $ip) = @_;
+    my $netplan_get_supported = 0;
+
+    if (_command_available('netplan')) {
+        (my $escaped_nic = $nic) =~ s/\./\\./g;
+        for my $devtype (qw(ethernets bonds bridges vlans)) {
+            my $dev_obj = _netplan_get("$devtype.$escaped_nic");
+            $netplan_get_supported = 1 if defined $dev_obj;
+            next unless defined $dev_obj;
+            next if ($dev_obj eq 'null' || $dev_obj eq '');
+
+            my $addresses = _netplan_get("$devtype.$escaped_nic.addresses");
+            next unless defined $addresses;
+            next if ($addresses eq 'null' || $addresses eq '');
+            next unless $addresses =~ /(?:^|[\s\[,"'])\Q$ip\E(?:\/\d+)?(?:$|[\s\],"'])/m;
+
+            my $dhcp_val = _netplan_get("$devtype.$escaped_nic.dhcp4");
+            return 0 if defined $dhcp_val && $dhcp_val =~ /true/i;
+            return 1;
+        }
+    }
+
+    return 0 if $netplan_get_supported;
+
+    # Older netplan releases can render networkd files but do not support
+    # "netplan get", so use the generated files as a conservative fallback.
+    return _networkd_has_static_ip($nic, $ip);
 }
 
 sub dhcp_query_reply_mac {
