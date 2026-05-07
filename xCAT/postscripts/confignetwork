@@ -96,7 +96,7 @@ do
     fi
 done
 if [ "$SETINSTALLNIC" = "1" ] || [ "$SETINSTALLNIC" = "yes" ]; then
-    bool_install_nic=1
+    boot_install_nic=1
 fi
 
 ######################################################################
