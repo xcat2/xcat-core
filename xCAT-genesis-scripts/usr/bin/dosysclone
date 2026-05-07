@@ -19,7 +19,7 @@ ping_test
 
 get_scripts_directory
 
-if [ ! -z $HOSTNAME ]; then
+if [ ! -z "$HOSTNAME" ]; then
     logmsg
     logmsg "This hosts name is: $HOSTNAME"
 fi
