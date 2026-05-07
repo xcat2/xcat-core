@@ -16,16 +16,16 @@ while [ ! -f /tmp/destiny.xml ]; do
 	done
 	echo "                                                         " >&2;
 	if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then #use client cert if available
-		cat /tmp/destreq.xml | openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $XCATDEST -quiet 2> /dev/null > /tmp/destiny.xml
+		openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect "$XCATDEST" -quiet 2> /dev/null < /tmp/destreq.xml > /tmp/destiny.xml
 	else
-		cat /tmp/destreq.xml | openssl s_client -connect $XCATDEST -quiet 2> /dev/null > /tmp/destiny.xml
+		openssl s_client -connect "$XCATDEST" -quiet 2> /dev/null < /tmp/destreq.xml > /tmp/destiny.xml
 	fi
 	timer=60
 done
 rm /tmp/destreq.xml
-DESTINY=`grep '<destiny>' /tmp/destiny.xml | awk -F'>' '{print $2}'|awk -F'<' '{print $1}'`
+DESTINY="$(grep '<destiny>' /tmp/destiny.xml | awk -F'>' '{print $2}'|awk -F'<' '{print $1}')"
 if [ -z "$DESTINY" ]; then
-    ERROR=`grep '<error>' /tmp/destiny.xml | awk -F'>' '{print $2}'|awk -F'<' '{print $1}'`
+    ERROR="$(grep '<error>' /tmp/destiny.xml | awk -F'>' '{print $2}'|awk -F'<' '{print $1}')"
     if [ ! -z "$ERROR" ]; then
         DESTINY="error=$ERROR"
     else
@@ -33,4 +33,4 @@ if [ -z "$DESTINY" ]; then
     fi
 fi
 rm /tmp/destiny.xml
-echo $DESTINY
+echo "$DESTINY"
