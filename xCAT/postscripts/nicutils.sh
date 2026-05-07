@@ -1643,7 +1643,7 @@ function is_nmcli_connection_exist {
 
     str_con_name=$1
     # the device str_if_name active connectin
-    nmcli -g NAME connection show |grep -w $str_con_name >/dev/null 2>/dev/null
+    nmcli -g NAME connection show |grep -wF "$str_con_name" >/dev/null 2>/dev/null
     if [ $? -eq 0 ]; then
         return 0
     else
@@ -1874,7 +1874,7 @@ function is_connection_activate_intime {
     fi
     i=0
     while [ $i -lt "$time_out" ]; do
-        con_state=$(LC_ALL=C $nmcli con show $con_name | grep -i state| awk '{print $2}');
+        con_state=$(LC_ALL=C $nmcli con show "$con_name" | grep -i state| awk '{print $2}');
         if [ ! -z "$con_state" -a "$con_state" = "activated" ]; then
             break
         fi
@@ -1914,7 +1914,7 @@ function wait_nic_connect_intime {
         sleep 1
         i=$((i+1))
     done
-    echo $con_name
+    echo "$con_name"
 }
 
 ###############################################################################
@@ -2033,10 +2033,12 @@ function create_bridge_interface_nmcli {
                 return 1
             fi
         fi
+        xcat_slave_con_orig=$xcat_slave_con
         con_use_same_dev=$(wait_nic_connect_intime $_port)
         if [ "$con_use_same_dev" != "--" -a -n "$con_use_same_dev" ]; then
-            # Resolve to UUID since connection names can contain spaces (e.g. "Wired connection 2")
-            con_uuid=$($nmcli --get-values connection.uuid c show "$con_use_same_dev")
+            # Resolve to UUID via device — avoids spaces in names and duplicate name ambiguity
+            con_uuid=$(nmcli -g GENERAL.CON-UUID device show $_port)
+            log_info "reusing existing connection '$con_use_same_dev' ($con_uuid) on $_port as bridge slave"
             cmd="$nmcli con mod $con_uuid master $ifname $_mtu connection.autoconnect-priority 9 autoconnect yes connection.autoconnect-slaves 1 connection.autoconnect-retries 0"
             xcat_slave_con=$con_uuid
         else
@@ -2049,7 +2051,7 @@ function create_bridge_interface_nmcli {
             log_error "nmcli failed to add bridge slave $_port"
             is_nmcli_connection_exist $tmp_slave_con_name
             if [ $? -eq 0 ] ; then
-                $nmcli con modify $tmp_slave_con_name connection.id $xcat_slave_con
+                $nmcli con modify $tmp_slave_con_name connection.id $xcat_slave_con_orig
             fi
             return 1
         fi
@@ -2087,7 +2089,7 @@ function create_bridge_interface_nmcli {
         $nmcli con delete $xcat_slave_con
         is_nmcli_connection_exist $tmp_slave_con_name
         if [ $? -eq 0 ]; then
-            nmcli con modify $tmp_slave_con_name connection.id $xcat_slave_con
+            nmcli con modify $tmp_slave_con_name connection.id $xcat_slave_con_orig
         fi
     else
         is_nmcli_connection_exist $tmp_con_name
@@ -2260,8 +2262,11 @@ function create_bond_interface_nmcli {
         fi
         con_use_same_dev=$(nmcli dev show $ifslave|grep GENERAL.CONNECTION|awk -F: '{print $2}'|sed 's/^[ \t]*//g')
         if [ "$con_use_same_dev" != "--" -a "$con_use_same_dev" != "$xcat_slave_con" ]; then
-            $nmcli con down "$con_use_same_dev"
-            $nmcli con mod "$con_use_same_dev" autoconnect no
+            # Resolve to UUID via device — avoids spaces in names and duplicate name ambiguity
+            con_uuid=$(nmcli -g GENERAL.CON-UUID device show $ifslave)
+            log_info "deactivating existing connection '$con_use_same_dev' ($con_uuid) on $ifslave"
+            $nmcli con down $con_uuid
+            $nmcli con mod $con_uuid autoconnect no
             $ip link set dev $ifslave down 
             wait_for_ifstate $ifslave DOWN 20 2
         fi
