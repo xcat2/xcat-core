@@ -1671,7 +1671,11 @@ function get_first_addr_ipv4 {
             FIELD2=$(echo $IP|cut -d. -f2)
             FIELD3=$(echo $IP|cut -d. -f3)
             FIELD4=$(echo $IP|cut -d. -f4)
-            if [ $FIELD1 -gt 0 -a $FIELD1 -lt 255 -a $FIELD2 -le 255 -a $FIELD3 -le 255 -a $FIELD4 -le 255 -a $FIELD4 -gt 0 ]; then
+            FIELD1=$((10#$FIELD1))
+            FIELD2=$((10#$FIELD2))
+            FIELD3=$((10#$FIELD3))
+            FIELD4=$((10#$FIELD4))
+            if (( FIELD1 > 0 && FIELD1 < 224 && FIELD1 != 127 && FIELD2 <= 255 && FIELD3 <= 255 && FIELD4 <= 255 )); then
                 echo "$IP"
                 res=0
             else
