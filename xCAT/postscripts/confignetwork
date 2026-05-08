@@ -11,6 +11,8 @@
 #  2. If you want to configure nics except install nic, you can run the following command on MN:
 #       updatenode noderange confignetwork
 #  3. confignetwork can be used in postscripts or postbootscripts too.
+#  4. To remove configuration for nics not defined in xCAT (except install nic):
+#       updatenode noderange "confignetwork -r"
 #
 ############################################################################
 
@@ -85,12 +87,15 @@ function get_nic_cfg_file_content {
 #
 #####################################################################
 boot_install_nic=0
+remove_nics=0
 str_ib_nics=''
 num_iba_ports=
 for arg in "$@"
 do
     if [ "$arg" = "-s" ];then
         boot_install_nic=1
+    elif [ "$arg" = "-r" ];then
+        remove_nics=1
     elif [ "${arg:0:10}" = "--ibaports" ];then
         num_iba_ports=${arg#--ibaports=}
     fi
@@ -453,6 +458,55 @@ function sort_nics_device_order {
     echo "$new_order_list"
 }
 
+######################################################################
+#
+# Remove configuration for nics not defined in xCAT
+# Ported from deprecated confignics postscript
+#
+######################################################################
+function remove_undefined_nics {
+    str_temp=$(ip link show | grep -v link | grep -vi loopback | grep -v SLAVE | grep -v MASTER | awk '{print $2}' | sed 's/://')
+    old_ifs=$IFS
+    IFS=$'\n'
+    array_nics_temp=($str_temp)
+    IFS=$old_ifs
+
+    for str_temp_nic in "${array_nics_temp[@]}"
+    do
+        # skip non-ethernet interfaces
+        if ! echo "$str_temp_nic" | grep -qE "^e(n|th|m)[0-9a-zA-Z]+"; then
+            continue
+        fi
+
+        # skip if nic is part of a bridge
+        if brctl show 2>/dev/null | grep -q "$str_temp_nic"; then
+            continue
+        fi
+
+        # skip if nic is defined in xCAT
+        str_temp2=$(hashget hash_defined_nics "$str_temp_nic")
+        if [ -n "$str_temp2" ]; then
+            continue
+        fi
+
+        # skip the install nic
+        if [ "$str_temp_nic" = "$installnic" ]; then
+            continue
+        fi
+
+        # skip VLAN interfaces
+        if echo "$str_temp_nic" | grep -q '\.'; then
+            continue
+        fi
+
+        log_info "remove nic $str_temp_nic (not defined in xCAT)"
+        configeth -r "$str_temp_nic"
+        if [ $? -ne 0 ]; then
+            errorcode=1
+        fi
+    done
+}
+
 #####################################################################################
 #
 # framework to configure bond/vlan/bridge
@@ -703,6 +757,12 @@ parser_nic_attribute "$NICNETWORKS" "nicnetworks"
 
 #make hash for niccustomscripts
 parser_nic_attribute "$NICCUSTOMSCRIPTS" "niccustomscripts"
+
+#remove configuration for nics not defined in xCAT
+if [ $remove_nics -eq 1 ]; then
+    log_info "removing configuration for nics not defined in xCAT"
+    remove_undefined_nics
+fi
 
 #get nic and its device pair, for example
 #eth0.6 eth0
