@@ -552,12 +552,14 @@ sub is_tftp_ready {
     $mnip = shift if (($mnip) && ($mnip =~ /probe_utils/));
     my $tftpdir = shift;
     my $test_dir = $tftpdir . "/tftptest/";
+    my $old_umask = umask(022);
     system("mkdir -p $test_dir");
 
     rename("/$test_dir/tftptestt.tmp", "/$test_dir/tftptestt.tmp.old") if (-e "/$test_dir/tftptestt.tmp");
     rename("./tftptestt.tmp", "./tftptestt.tmp.old") if (-e "./tftptestt.tmp");
 
     system("date > /$test_dir/tftptestt.tmp");
+    umask($old_umask);
     my $output = `tftp -4 -v $mnip -c get /tftptest/tftptestt.tmp 2>&1`;
     if ((!$?) && (-s "./tftptestt.tmp")) {
         unlink("./tftptestt.tmp");
