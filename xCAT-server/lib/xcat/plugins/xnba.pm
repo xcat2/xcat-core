@@ -186,9 +186,10 @@ sub setstate {
                 $cmdhashref = xCAT::Utils->splitkcmdline($kcmdlinehack);
             }
 
-            if ($cmdhashref and $cmdhashref->{volatile})
-            {
-                $kcmdlinehack = $cmdhashref->{volatile};
+            if ($cmdhashref) {
+                # Use only volatile options for netboot; persistent (R::) options
+                # are handled separately for the installed OS via PERSKCMDLINE
+                $kcmdlinehack = $cmdhashref->{volatile} // "";
             }
 
 
