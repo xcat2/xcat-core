@@ -1691,37 +1691,44 @@ sub process_request
                 }
             }
         }
-        @entries = xCAT::TableUtils->get_site_attribute("nameservers");
-        $t_entry = $entries[0];
-        if (defined($t_entry)) {
-            $sitenameservers = $t_entry;
-        }
-        @entries = xCAT::TableUtils->get_site_attribute("ntpservers");
-        $t_entry = $entries[0];
-        if (defined($t_entry)) {
-            $sitentpservers = $t_entry;
-        }
-        @entries = xCAT::TableUtils->get_site_attribute("logservers");
-        $t_entry = $entries[0];
-        if (defined($t_entry)) {
-            $sitelogservers = $t_entry;
-        }
-        @entries = xCAT::TableUtils->get_site_attribute("domain");
-        $t_entry = $entries[0];
-
-        unless (defined($t_entry))
-        {
-            # this may not be an error
-            #    $callback->(
-            #         {error => ["No domain defined in site tabe"], errorcode => [1]}
-            #         );
-            #    return;
-        } else {
-            $site_domain = $t_entry;
-        }
-
-        xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: sitelogservers=$sitelogservers sitentpservers=$sitentpservers sitenameservers=$sitenameservers site_domain=$site_domain");
     }
+
+    # site nameservers/ntpservers/logservers/domain must be read regardless of how the DHCP
+    # interfaces were determined. They previously lived inside the `else` branch above, so a
+    # service node whose interfaces come from servicenode.dhcpinterfaces (the `if` branch)
+    # never read them -- leaving $site_domain empty and making the Kea backend abort with
+    # "No domain defined for <net> entry in networks table, and no domain defined in site
+    # table." Hoisted out so both branches populate them.
+    my @entries = xCAT::TableUtils->get_site_attribute("nameservers");
+    my $t_entry = $entries[0];
+    if (defined($t_entry)) {
+        $sitenameservers = $t_entry;
+    }
+    @entries = xCAT::TableUtils->get_site_attribute("ntpservers");
+    $t_entry = $entries[0];
+    if (defined($t_entry)) {
+        $sitentpservers = $t_entry;
+    }
+    @entries = xCAT::TableUtils->get_site_attribute("logservers");
+    $t_entry = $entries[0];
+    if (defined($t_entry)) {
+        $sitelogservers = $t_entry;
+    }
+    @entries = xCAT::TableUtils->get_site_attribute("domain");
+    $t_entry = $entries[0];
+
+    unless (defined($t_entry))
+    {
+        # this may not be an error
+        #    $callback->(
+        #         {error => ["No domain defined in site tabe"], errorcode => [1]}
+        #         );
+        #    return;
+    } else {
+        $site_domain = $t_entry;
+    }
+
+    xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: sitelogservers=$sitelogservers sitentpservers=$sitentpservers sitenameservers=$sitenameservers site_domain=$site_domain");
 
     if ( $backend->name eq 'kea' ) {
         kea_process_request($backend, $req, \%opt, \%activenics, $verbose_on_off);
@@ -2737,6 +2744,18 @@ sub kea_build_ddns_intent
         $dns =~ s/,.*//;
         next unless $dns;
 
+        # networks.nameservers / site.nameservers default to the <xcatmaster>
+        # placeholder.  Kea D2 validates dns-servers[].ip-address as a real IP,
+        # so resolve <xcatmaster> to the management IP facing this network the
+        # same way kea_subnet4_intent does for DHCP options.  Skip the network's
+        # DDNS domains if we can't resolve a real IP rather than emit an invalid one.
+        if ($dns =~ /<xcatmaster>/) {
+            my @myipd = xCAT::NetworkUtils->my_ip_facing($entry->{net});
+            my $myip = $myipd[0] ? undef : $myipd[1];
+            $dns =~ s/<xcatmaster>/$myip/g if $myip;
+        }
+        next if (!$dns || $dns =~ /<xcatmaster>/);
+
         my $domain = $entry->{ddnsdomain} || $entry->{domain} || $site_domain;
         if ($domain) {
             $domain .= '.' unless $domain =~ /\.$/;
@@ -2830,9 +2849,10 @@ sub kea_ddns_key
         return ($algorithm, $secret) if $secret;
     }
 
+    my $settings = xCAT::DHCP::OmapiPolicy->settings();
     my $passtab = xCAT::Table->new('passwd');
-    my $pent = $passtab ? $passtab->getAttribs({ key => 'omapi', username => 'xcat_key' }, ['password']) : undef;
-    return ('HMAC-SHA256', $pent->{password}) if $pent && $pent->{password};
+    my $pent = $passtab ? $passtab->getAttribs({ key => 'omapi', username => $settings->{key_name} }, ['password']) : undef;
+    return (uc($settings->{algorithm}), $pent->{password}) if $pent && $pent->{password};
     return;
 }
 

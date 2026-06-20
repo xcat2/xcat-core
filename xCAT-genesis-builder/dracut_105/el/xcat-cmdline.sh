@@ -40,9 +40,9 @@ mkdir -p /var/log
 ip link set lo up
 echo '127.0.0.1 localhost' >> /etc/hosts
 if grep -q console=ttyS /proc/cmdline; then
-        while :; do sleep 1; screen -S console -ln screen -x doxcat </dev/tty1 &>/dev/tty1; clear &>/dev/tty1 ; done &
+        while :; do sleep 1; tmux attach-session -t doxcat </dev/tty1 &>/dev/tty1; clear &>/dev/tty1 ; done &
 fi
-while :; do screen -ln < /dev/tty2 &> /dev/tty2 ; done &
+while :; do tmux new-session < /dev/tty2 &> /dev/tty2 ; done &
 
 # The section below is just for System P LE hardware discovery
 
@@ -87,4 +87,4 @@ elif [[ ${ARCH} =~ x86_64 ]]; then
     done
 fi
 
-while :; do screen -dr doxcat || screen -S doxcat -L -ln doxcat; done
+while :; do tmux attach-session -t doxcat || tmux new-session -s doxcat doxcat; done

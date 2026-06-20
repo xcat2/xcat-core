@@ -324,8 +324,8 @@ sub parse_xdcp_cmd
             'R|recursive'           => \$options{'recursive'},
             'T|trace'               => \$options{'trace'},
             'V|version'             => \$options{'version'},
-            'nodestatus|nodestatus' => \$options{'nodestatus'},
-            'sudo|sudo'             => \$options{'sudo'},
+            'nodestatus' => \$options{'nodestatus'},
+            'sudo'             => \$options{'sudo'},
             'X:s'                   => \$options{'ignore_env'}
         )
       )
@@ -488,8 +488,8 @@ sub parse_xdsh_cmd
             'V|version'                => \$options{'version'},
 
             'devicetype=s'               => \$options{'devicetype'},
-            'nodestatus|nodestatus'      => \$options{'nodestatus'},
-            'sudo|sudo'                  => \$options{'sudo'},
+            'nodestatus'      => \$options{'nodestatus'},
+            'sudo'                  => \$options{'sudo'},
             'command-name|commandName=s' => \$options{'command-name'},
             'command-description|commandDescription=s' =>
               \$options{'command-description'},

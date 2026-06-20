@@ -477,9 +477,9 @@ sub set_up_test_env_for_node_discovery {
         "makehosts -d $discovery_target_node",
         "rm -f /var/log/consoles/node-*",
         "rmdef $discovery_target_node",
-        "rm -f /var/lib/dhcp/*",
-        "touch /var/lib/dhcpd/dhcpd.leases",
-        "systemctl restart dhcpd",
+        "rm -f /var/lib/dhcp/* /var/lib/kea/kea-leases4.csv 2>/dev/null; true",
+        "if systemctl is-active kea-dhcp4 >/dev/null 2>&1; then true; else mkdir -p /var/lib/dhcpd; touch /var/lib/dhcpd/dhcpd.leases; fi",
+        "if systemctl is-active kea-dhcp4 >/dev/null 2>&1; then systemctl restart kea-dhcp4; elif cat /etc/*release | grep -qi ubuntu; then service isc-dhcp-server restart; else service dhcpd restart; fi",
         "$predef_node_cmd",
         "makehosts -a $discovery_prodefine_node_name_in_automation",
         "makedns $discovery_prodefine_node_name_in_automation");

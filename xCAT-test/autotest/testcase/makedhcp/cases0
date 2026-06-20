@@ -2,18 +2,17 @@ start:makedhcp_n
 description:Create a new dhcp configuration file with a network statement for each network the dhcp daemon should listen on
 os:Linux
 label:mn_only,ci_test,dhcp
-cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then cp -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then cp -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
+cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then cp -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then cp -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi; if [ -f "/etc/kea/kea-dhcp4.conf" ]; then cp -f /etc/kea/kea-dhcp4.conf /etc/kea/kea-dhcp4.conf.bak; fi
 cmd:makedhcp -n
 check:rc==0
-cmd:cat $(ls /etc/dhcp/dhcpd.conf || ls /etc/dhcpd.conf)
+cmd:cat /etc/dhcp/dhcpd.conf 2>/dev/null || cat /etc/dhcpd.conf 2>/dev/null || cat /etc/kea/kea-dhcp4.conf 2>/dev/null
 check:rc==0
 cmd:sleep 20
-cmd:ps -e | grep dhcpd
+cmd:ps -e | grep -E "dhcpd|kea-dhcp4" | grep -v grep
 check:rc==0
-check:output=~dhcpd
-cmd:if  cat /etc/*release |grep Ubuntu >/dev/null;then service isc-dhcp-server status;else service dhcpd status;fi
+cmd:if systemctl is-active kea-dhcp4 >/dev/null 2>&1; then systemctl status kea-dhcp4; elif cat /etc/*release | grep Ubuntu >/dev/null; then service isc-dhcp-server status; else service dhcpd status; fi
 check:output=~running
-cmd:if [ -f "/etc/dhcp/dhcpd.conf" ]; then mv -f /etc/dhcp/dhcpd.conf.bak /etc/dhcp/dhcpd.conf; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf.bak /etc/dhcpd.conf; fi
+cmd:if [ -f "/etc/dhcp/dhcpd.conf.bak" ]; then mv -f /etc/dhcp/dhcpd.conf.bak /etc/dhcp/dhcpd.conf; elif [ -f "/etc/dhcpd.conf.bak" ]; then mv -f /etc/dhcpd.conf.bak /etc/dhcpd.conf; fi; if [ -f "/etc/kea/kea-dhcp4.conf.bak" ]; then mv -f /etc/kea/kea-dhcp4.conf.bak /etc/kea/kea-dhcp4.conf; fi
 end
 
 start:makedhcp_h
@@ -59,7 +58,7 @@ cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then cp -f /etc/dhcp/dhcpd.conf /etc/dhcp/d
 cmd:makedhcp -n
 cmd:makedhcp -a
 check:rc==0
-cmd:if [ -f /var/lib/dhcpd/dhcpd.leases ]; then cat /var/lib/dhcpd/dhcpd.leases; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [ -f "/var/lib/dhcp/dhcpd.leases" ]; then cat /var/lib/dhcp/dhcpd.leases; fi
+cmd:if [ -f /var/lib/kea/kea-leases4.csv ]; then cat /var/lib/kea/kea-leases4.csv; elif [ -f /var/lib/dhcpd/dhcpd.leases ]; then cat /var/lib/dhcpd/dhcpd.leases; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [ -f "/var/lib/dhcp/dhcpd.leases" ]; then cat /var/lib/dhcp/dhcpd.leases; fi
 check:output=~testnode1
 check:output=~11:22:33:44:55:66
 cmd:cat /tmp/CN.stanza | chdef -z
@@ -90,10 +89,10 @@ cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then cp -f /etc/dhcp/dhcpd.conf /etc/dhcp/d
 cmd:makedhcp -n
 cmd:makedhcp -a
 check:rc==0
-cmd:if [ -f /var/lib/dhcpd/dhcpd.leases ]; then cat /var/lib/dhcpd/dhcpd.leases > /tmp/1; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then cat /var/lib/dhcp/db/dhcpd.leases > /tmp/1;elif [ -f /var/lib/dhcp/dhcpd.leases ]; then cat /var/lib/dhcp/dhcpd.leases > /tmp/1; fi
+cmd:if [ -f /var/lib/kea/kea-leases4.csv ]; then cat /var/lib/kea/kea-leases4.csv > /tmp/1; elif [ -f /var/lib/dhcpd/dhcpd.leases ]; then cat /var/lib/dhcpd/dhcpd.leases > /tmp/1; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then cat /var/lib/dhcp/db/dhcpd.leases > /tmp/1;elif [ -f /var/lib/dhcp/dhcpd.leases ]; then cat /var/lib/dhcp/dhcpd.leases > /tmp/1; fi
 cmd:makedhcp -a -d
 check:rc==0
-cmd:if [ -f /var/lib/dhcpd/dhcpd.leases ]; then cat /var/lib/dhcpd/dhcpd.leases > /tmp/2; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then cat /var/lib/dhcp/db/dhcpd.leases > /tmp/2;elif [ -f /var/lib/dhcp/dhcpd.leases ]; then cat /var/lib/dhcp/dhcpd.leases > /tmp/2; fi
+cmd:if [ -f /var/lib/kea/kea-leases4.csv ]; then cat /var/lib/kea/kea-leases4.csv > /tmp/2; elif [ -f /var/lib/dhcpd/dhcpd.leases ]; then cat /var/lib/dhcpd/dhcpd.leases > /tmp/2; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then cat /var/lib/dhcp/db/dhcpd.leases > /tmp/2;elif [ -f /var/lib/dhcp/dhcpd.leases ]; then cat /var/lib/dhcp/dhcpd.leases > /tmp/2; fi
 cmd:diff /tmp/1 /tmp/2
 check:output=~testnode1
 check:output=~deleted
@@ -115,10 +114,10 @@ cmd:lsdef -l testnode1 -z > /tmp/CN.stanza
 cmd:chdef -t node -o testnode1 mac=11:22:33:44:55:66
 cmd:makedhcp -n
 cmd:makedhcp testnode1
-cmd:if [ -f /var/lib/dhcpd/dhcpd.leases ]; then cat /var/lib/dhcpd/dhcpd.leases > /tmp/1; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then cat /var/lib/dhcp/db/dhcpd.leases > /tmp/1;elif [ -f /var/lib/dhcp/dhcpd.leases ]; then cat /var/lib/dhcp/dhcpd.leases > /tmp/1; fi
+cmd:if [ -f /var/lib/kea/kea-leases4.csv ]; then cat /var/lib/kea/kea-leases4.csv > /tmp/1; elif [ -f /var/lib/dhcpd/dhcpd.leases ]; then cat /var/lib/dhcpd/dhcpd.leases > /tmp/1; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then cat /var/lib/dhcp/db/dhcpd.leases > /tmp/1;elif [ -f /var/lib/dhcp/dhcpd.leases ]; then cat /var/lib/dhcp/dhcpd.leases > /tmp/1; fi
 cmd:makedhcp -d testnode1
 check:rc==0
-cmd:if [ -f /var/lib/dhcpd/dhcpd.leases ]; then cat /var/lib/dhcpd/dhcpd.leases > /tmp/2; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then cat /var/lib/dhcp/db/dhcpd.leases > /tmp/2;elif [ -f /var/lib/dhcp/dhcpd.leases ]; then cat /var/lib/dhcp/dhcpd.leases > /tmp/2; fi
+cmd:if [ -f /var/lib/kea/kea-leases4.csv ]; then cat /var/lib/kea/kea-leases4.csv > /tmp/2; elif [ -f /var/lib/dhcpd/dhcpd.leases ]; then cat /var/lib/dhcpd/dhcpd.leases > /tmp/2; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then cat /var/lib/dhcp/db/dhcpd.leases > /tmp/2;elif [ -f /var/lib/dhcp/dhcpd.leases ]; then cat /var/lib/dhcp/dhcpd.leases > /tmp/2; fi
 cmd:diff /tmp/1 /tmp/2
 check:output=~testnode1
 check:output=~deleted
@@ -150,7 +149,7 @@ cmd:lsdef -l $$CN -z > /tmp/$$CN.stanza
 cmd:chdef -t node -o $$CN mac=11:22:33:44:55:66
 cmd:makedhcp -a
 check:rc==0
-cmd:if [ -f /var/lib/dhcp/dhcpd.leases ]; then cat /var/lib/dhcp/dhcpd.leases;  fi
+cmd:if [ -f /var/lib/kea/kea-leases4.csv ]; then cat /var/lib/kea/kea-leases4.csv; elif [ -f /var/lib/dhcp/dhcpd.leases ]; then cat /var/lib/dhcp/dhcpd.leases;  fi
 check:output=~$$CN
 check:output=~11:22:33:44:55:66
 cmd:chdef -t node -o $$CN mac=
@@ -162,7 +161,7 @@ os:Linux
 label:cn_os_ready,dhcp
 cmd:makedhcp -a -d
 check:rc==0
-cmd:service dhcpd restart
+cmd:if systemctl is-active kea-dhcp4 >/dev/null 2>&1; then systemctl restart kea-dhcp4; elif cat /etc/*release | grep -qi ubuntu; then service isc-dhcp-server restart; else service dhcpd restart; fi
 cmd:makedhcp -q $$CN
 check:rc==0
 check:output!~$$CN
@@ -174,8 +173,8 @@ os:ubuntu
 label:cn_os_ready,dhcp
 cmd:makedhcp -a -d
 check:rc==0
-cmd:service isc-dhcp-server restart
-cmd:if [ -f /var/lib/dhcp/dhcpd.leases ]; then cat /var/lib/dhcp/dhcpd.leases | grep $$CN;  fi
+cmd:if systemctl is-active kea-dhcp4 >/dev/null 2>&1; then systemctl restart kea-dhcp4; elif cat /etc/*release | grep -qi ubuntu; then service isc-dhcp-server restart; else service dhcpd restart; fi
+cmd:if [ -f /var/lib/kea/kea-leases4.csv ]; then cat /var/lib/kea/kea-leases4.csv | grep $$CN; elif [ -f /var/lib/dhcp/dhcpd.leases ]; then cat /var/lib/dhcp/dhcpd.leases | grep $$CN;  fi
 check:output!~$$CN
 cmd:makedhcp -a
 end
@@ -185,7 +184,7 @@ os:Linux
 label:cn_os_ready,dhcp
 cmd:makedhcp -d $$CN
 check:rc==0
-cmd:service dhcpd restart
+cmd:if systemctl is-active kea-dhcp4 >/dev/null 2>&1; then systemctl restart kea-dhcp4; elif cat /etc/*release | grep -qi ubuntu; then service isc-dhcp-server restart; else service dhcpd restart; fi
 cmd:makedhcp -q $$CN
 check:output!~$$CN
 cmd:makedhcp -a
@@ -209,10 +208,10 @@ cmd:cat /etc/hosts
 cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -d testnode
-cmd:if [ -f /var/lib/dhcpd/dhcpd.leases ]; then a="/var/lib/dhcpd/dhcpd.leases"; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then a="/var/lib/dhcp/db/dhcpd.leases"; elif [ -f "/var/lib/dhcp/dhcpd.leases" ]; then a="/var/lib/dhcp/dhcpd.leases";fi; ls -l $a; cat $a
+cmd:if [ -f /var/lib/kea/kea-leases4.csv ]; then a="/var/lib/kea/kea-leases4.csv"; elif [ -f /var/lib/dhcpd/dhcpd.leases ]; then a="/var/lib/dhcpd/dhcpd.leases"; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then a="/var/lib/dhcp/db/dhcpd.leases"; elif [ -f "/var/lib/dhcp/dhcpd.leases" ]; then a="/var/lib/dhcp/dhcpd.leases";fi; ls -l $a; cat $a
 cmd:makedhcp testnode
 check:rc==0
-cmd:if [ -f /var/lib/dhcpd/dhcpd.leases ]; then a="/var/lib/dhcpd/dhcpd.leases"; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then a="/var/lib/dhcp/db/dhcpd.leases"; elif [ -f "/var/lib/dhcp/dhcpd.leases" ]; then a="/var/lib/dhcp/dhcpd.leases";fi; ls -l $a; cat $a
+cmd:if [ -f /var/lib/kea/kea-leases4.csv ]; then a="/var/lib/kea/kea-leases4.csv"; elif [ -f /var/lib/dhcpd/dhcpd.leases ]; then a="/var/lib/dhcpd/dhcpd.leases"; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then a="/var/lib/dhcp/db/dhcpd.leases"; elif [ -f "/var/lib/dhcp/dhcpd.leases" ]; then a="/var/lib/dhcp/dhcpd.leases";fi; ls -l $a; cat $a
 cmd:a=2;while true; do [ $a -eq 64 ] && exit 1;output=$(makedhcp -q testnode);[ $? -ne 0 ] && exit 1;echo $output|grep testnode 2>/dev/null && exit 0;a=$[$a*2]; makedhcp testnode; sleep $a;done
 check:rc==0
 check:output=~testnode: ip-address = 100.100.100.2

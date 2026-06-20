@@ -19,7 +19,7 @@ sub install_deps {
     esac
     dnf install -y perl-generators https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
     dnf install -y \$(/usr/lib/rpm/perl.req $0)
-    dnf install -y tar mock nginx createrepo podman rpmdevtools
+    dnf install -y tar mock nginx createrepo podman rpmdevtools rpm-sign
 
     systemctl enable --now nginx
 
@@ -42,6 +42,7 @@ use File::Path qw(make_path remove_tree);
 use File::Slurper qw(read_text write_text);
 use FindBin qw($Bin);
 use Getopt::Long qw(GetOptions);
+use POSIX qw(strftime);
 use Parallel::ForkManager;
 use Pod::Usage qw(pod2usage);
 
@@ -50,13 +51,27 @@ use autodie qw(cp);
 
 my $SOURCES = "$ENV{HOME}/rpmbuild/SOURCES";
 my $VERSION = read_text("Version");
-my $RELEASE = read_text("Release");
-my $GITINFO = read_text("Gitinfo");
 my $PWD = Cwd::cwd();
 
 chomp($VERSION);
-chomp($RELEASE);
+
+# Gitinfo is regenerated at each run with the current git revision.
+my $GITINFO = `git rev-parse HEAD 2>/dev/null`;
 chomp($GITINFO);
+$GITINFO = "unknown" unless $GITINFO;
+write_text("Gitinfo", "$GITINFO\n");
+
+my $SOURCE_DATE_EPOCH;
+if (-f "Gitepoch") {
+    $SOURCE_DATE_EPOCH = read_text("Gitepoch");
+    chomp($SOURCE_DATE_EPOCH);
+}
+unless ($SOURCE_DATE_EPOCH && $SOURCE_DATE_EPOCH =~ /^\d+$/) {
+    $SOURCE_DATE_EPOCH = `git log -1 --format=%ct HEAD 2>/dev/null`;
+    chomp($SOURCE_DATE_EPOCH);
+}
+$SOURCE_DATE_EPOCH = time() unless $SOURCE_DATE_EPOCH =~ /^\d+$/;
+$ENV{SOURCE_DATE_EPOCH} = $SOURCE_DATE_EPOCH;
 
 sub os_release {
     my %os;
@@ -82,10 +97,14 @@ sub arch {
 my $ARCH = arch();
 my %OS = os_release();
 my $DISTRO = $OS{ID};
+# mock's EPEL-enabled AlmaLinux templates are named alma+epel-*, there is no
+# almalinux+epel-* config, so translate the os-release ID accordingly.
+$DISTRO = "alma" if $DISTRO eq "almalinux";
 
 my @PACKAGES = qw(
     perl-xCAT
     xCAT
+    xCATsn
     xCAT-buildkit
     xCAT-client
     xCAT-confluent
@@ -109,10 +128,15 @@ my @TARGETS = (
 my %opts = (
     configure_nginx => 0,
     force => 0,
+    gpg_home => "",
+    gpg_key_name => "xCAT Automatic Signing Key",
+    gpg_sign => 0,
     help => 0,
+    mock_uniqueext => "",
     nginx_port => 8080,
     nproc => int(`nproc --all`),
     packages => \@PACKAGES,
+    release => "",
     repo_mode => "file",
     targets => \@TARGETS,
     verbose => 0,
@@ -122,16 +146,27 @@ my %opts = (
 GetOptions(
     "configure_nginx" => \$opts{configure_nginx},
     "force" => \$opts{force},
+    "gpg-home=s" => \$opts{gpg_home},
+    "gpg-key-name=s" => \$opts{gpg_key_name},
+    "gpg-sign" => \$opts{gpg_sign},
     "help" => \$opts{help},
+    "mock-uniqueext=s" => \$opts{mock_uniqueext},
     "nginx_port" => \$opts{nginx_port},
     "nproc=i" => \$opts{nproc},
     "package=s@" => \$opts{packages},
+    "release=s" => \$opts{release},
     "repo-mode=s" => \$opts{repo_mode},
     "target=s@" => \$opts{targets},
     "verbose" => \$opts{verbose},
     "xcat_dep_path=s" => \$opts{xcat_dep_path},
     "setup_local_repos" => \$opts{setup_local_repos},
 ) or usage();
+
+# Release is regenerated at each run so every build gets a fresh snapshot
+# release, unless pinned with --release (e.g. to rebuild a single package
+# matching the release the rest of the repo was built with).
+my $RELEASE = $opts{release} || strftime("snap%Y%m%d%H%M", localtime);
+write_text("Release", "$RELEASE\n");
 
 sub usage {
     my (%args) = @_;
@@ -219,7 +254,8 @@ EOF
 
 sub createmockconfig {
     my ($pkg, $target) = @_;
-    my $chroot = "$pkg-$target";
+    my $ext = $opts{mock_uniqueext} ? "-$opts{mock_uniqueext}" : "";
+    my $chroot = "$pkg-$target$ext";
     my $cfgfile = "/etc/mock/$chroot.cfg";
     return if -f $cfgfile && ! $opts{force};
     cp "/etc/mock/$target.cfg", $cfgfile;
@@ -230,6 +266,7 @@ sub createmockconfig {
         # exported by the RPM
         $contents .= "config_opts['chroot_additional_packages'] = 'perl-generators'\n";
     }
+    $contents .= "config_opts['environment']['SOURCE_DATE_EPOCH'] = '$SOURCE_DATE_EPOCH'\n";
     write_text($cfgfile, $contents);
 }
 
@@ -251,7 +288,7 @@ sub buildsources_genesis_base($) {
        "$staging_root/80-net-name-slot.rules";
 
     unlink $support_tarball if -f $support_tarball;
-    sh(qq(tar -cjf "$support_tarball" -C "$staging_parent" xCAT-genesis-base-build-support))
+    sh(qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -cjf "$support_tarball" -C "$staging_parent" xCAT-genesis-base-build-support))
         and die "Error creating $support_tarball";
 
     remove_tree($staging_parent);
@@ -268,39 +305,40 @@ sub buildsources {
         }
         sh(<<"EOF");
           cd xCAT
-          tar --exclude upflag -czf $SOURCES/postscripts.tar.gz  postscripts LICENSE.html
-          tar -czf $SOURCES/prescripts.tar.gz  prescripts
-          tar -czf $SOURCES/templates.tar.gz templates
-          tar -czf $SOURCES/winpostscripts.tar.gz winpostscripts
-          tar -czf $SOURCES/etc.tar.gz etc
+          tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" --exclude upflag -czf $SOURCES/postscripts.tar.gz  postscripts LICENSE.html
+          tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf $SOURCES/prescripts.tar.gz  prescripts
+          tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf $SOURCES/templates.tar.gz templates
+          tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf $SOURCES/winpostscripts.tar.gz winpostscripts
+          tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf $SOURCES/etc.tar.gz etc
           cp xcat.conf $SOURCES
           cp xcat.conf.apach24 $SOURCES
           cp xCATMN $SOURCES
 EOF
     } elsif ($pkg eq "xCAT-genesis-scripts") {
-      sh qq(tar -cjf "$SOURCES/$pkg.tar.bz2" $pkg);
+      sh qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -cjf "$SOURCES/$pkg.tar.bz2" $pkg);
     } elsif ($pkg eq "xCAT-genesis-base") {
         buildsources_genesis_base($target);
     } elsif ($pkg eq "xCATsn") {
       sh(<<"EOF");
-          tar -czf "$SOURCES/$pkg-$VERSION.tar.gz" $pkg
-          tar -czf "$SOURCES/license.tar.gz" -C $pkg LICENSE.html
-          tar -czf "$SOURCES/etc.tar.gz" -C xCAT etc
+          tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf "$SOURCES/$pkg-$VERSION.tar.gz" $pkg
+          tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf "$SOURCES/license.tar.gz" -C $pkg LICENSE.html
+          tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf "$SOURCES/etc.tar.gz" -C xCAT etc
           cp $pkg/xcat.conf $SOURCES
           cp $pkg/xcat.conf.apach24 $SOURCES
           cp $pkg/xCATSN $SOURCES
 EOF
       # xCATsn.spec consumes templates from xCAT shared templates payload.
-      sh qq(tar -czf "$SOURCES/templates.tar.gz" xCAT/templates) unless -f "$SOURCES/templates.tar.gz";
+      sh qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf "$SOURCES/templates.tar.gz" xCAT/templates) unless -f "$SOURCES/templates.tar.gz";
     } else {
-      sh qq(tar -czf "$SOURCES/$pkg-$VERSION.tar.gz" $pkg);
+      sh qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf "$SOURCES/$pkg-$VERSION.tar.gz" $pkg);
     }
 }
 
 sub buildspkgs {
     my ($pkg, $target) = @_;
 
-    my $chroot = "$pkg-$target";
+    my $ext = $opts{mock_uniqueext} ? "-$opts{mock_uniqueext}" : "";
+    my $chroot = "$pkg-$target$ext";
     my $targetarch = targetarch_from_target($target);
     my $genesis_tarch = genesis_tarch_from_targetarch($targetarch);
 
@@ -319,6 +357,7 @@ sub buildspkgs {
     my @opts;
     push @opts, "--quiet" unless $opts{verbose};
 
+
     say "Building $diskcache";
 
     sh(<<"EOF");
@@ -328,6 +367,9 @@ mock -r $chroot \\
     --define "version $VERSION" \\
     --define "release $RELEASE" \\
     --define "gitinfo $GITINFO" \\
+    --define "use_source_date_epoch_as_buildtime 1" \\
+    --define "clamp_mtime_to_source_date_epoch 1" \\
+    --define "_buildhost xcat-build" \\
     --buildsrpm \\
     --spec $dir/$pkg.spec \\
     --sources $SOURCES \\
@@ -338,14 +380,15 @@ EOF
 sub buildpkgs {
     my ($pkg, $target) = @_;
     my $optsref = \%opts;
-    my $chroot = "$pkg-$target";
+    my $ext = $opts{mock_uniqueext} ? "-$opts{mock_uniqueext}" : "";
+    my $chroot = "$pkg-$target$ext";
 
     my @native_pkgs = qw(
         xCAT
         xCAT-genesis-scripts
     );
 
-    # get x86_64 from rhel+epel-9-x86_64
+    # get x86_64 from alma+epel-9-x86_64
     my $targetarch = targetarch_from_target($target);
 
     # xCAT genesis packages include the translated target arch in their file names.
@@ -360,6 +403,7 @@ sub buildpkgs {
 
     my @opts;
     push @opts, "--quiet" unless $opts{verbose};
+
 
     my $spkgname = sub {
         return "${pkg}-${genesis_tarch}-${VERSION}-${RELEASE}.src.rpm"
@@ -379,6 +423,9 @@ mock -r $chroot \\
     --define "version $VERSION" \\
     --define "release $RELEASE" \\
     --define "gitinfo $GITINFO" \\
+    --define "use_source_date_epoch_as_buildtime 1" \\
+    --define "clamp_mtime_to_source_date_epoch 1" \\
+    --define "_buildhost xcat-build" \\
     --resultdir "dist/$target/rpms/" \\
     --rebuild dist/$target/srpms/$spkgname
 EOF
@@ -476,9 +523,13 @@ sub setup_local_repos {
         ? "file://$PWD/dist/$target/rpms"
         : "http://127.0.0.1:$opts{nginx_port}/$target"
     );
+    my $gpgkey = $opts{gpg_sign}
+        ? "file://$PWD/dist/$target/rpms/repodata/repomd.xml.key"
+        : undef;
     my $exit = setup_repo
         -id => "xcat-core-local",
-        -baseurl => $core_baseurl;
+        -baseurl => $core_baseurl,
+        -gpgkey => $gpgkey;
     return $exit if $exit;
     my %os = os_release();
     my $version = int $os{VERSION_ID};
@@ -502,6 +553,34 @@ sub update_repo {
     `createrepo --update dist/$target/rpms`;
 }
 
+sub sign_rpms {
+    my ($target) = @_;
+    my $key_name = $opts{gpg_key_name};
+    my $repodir = "dist/$target/rpms";
+
+    say "Signing RPMs in $repodir";
+    my @rpms = glob("$repodir/*.rpm");
+    if (@rpms) {
+        my $rpm_list = join " ", map { qq("$_") } @rpms;
+        sh(qq(rpmsign --define "%_gpg_name $key_name" --addsign $rpm_list))
+            and die "Failed to sign RPMs in $repodir";
+    }
+
+    # rpmsign --addsign rewrites the rpm files, so the checksums recorded by the
+    # earlier createrepo no longer match and dnf rejects them. Regenerate the repo
+    # metadata now (after signing, before signing repomd.xml) so it stays consistent.
+    say "Regenerating repo metadata after signing $repodir";
+    sh(qq(createrepo --update "$repodir"))
+        and die "Failed to regenerate repo metadata after signing";
+
+    say "Signing repomd.xml for $target";
+    my $repomd = "$repodir/repodata/repomd.xml";
+    unlink "$repomd.asc" if -f "$repomd.asc";
+    sh(qq(gpg -a --detach-sign --default-key "$key_name" "$repomd"))
+        and die "Failed to sign $repomd";
+    sh(qq(gpg -a --export "$key_name" > "$repomd.key"))
+        and die "Failed to export public key";
+}
 
 sub main {
     usage(verbose => 2, exitval => 0) if $opts{help};
@@ -535,8 +614,13 @@ sub main {
     }
     $pm->wait_all_children;
 
-    # Default run builds artifacts only.
-    # Repo setup/nginx configuration are explicit actions.
+    if ($opts{gpg_sign}) {
+        $ENV{GNUPGHOME} = $opts{gpg_home} if $opts{gpg_home};
+        for my $target ($opts{targets}->@*) {
+            sign_rpms($target);
+        }
+    }
+
     exit(0);
 }
 
@@ -590,6 +674,17 @@ Default: all host CPUs.
 
 Rebuild artifacts even if output files already exist.
 
+=item B<--release>=I<STRING>
+
+Override the auto-generated C<snapYYYYMMDDHHMM> release string. xCAT packages
+inter-depend on the exact C<Version-Release>, so use this to rebuild a single
+package that installs alongside an already-built repo:
+
+  ./buildrpms.pl --package xCAT-client --release snap202606060850 --force
+
+C<--force> is usually required: with a pinned release the existing RPM under
+C<dist/> matches the disk-cache check and the build would be skipped.
+
 =item B<--verbose>
 
 Print executed shell commands.
@@ -627,6 +722,22 @@ Write C</etc/yum.repos.d/xcat-core-local.repo> and
 C</etc/yum.repos.d/xcat-dep.repo> for the selected mode.
 This is an explicit action and does not run during the default build flow.
 
+=item B<--gpg-sign>
+
+Sign RPMs and repository metadata after build. Requires a GPG key
+in the active keyring (default C<~/.gnupg> or the directory set by
+C<--gpg-home>).
+
+=item B<--gpg-home>=I<PATH>
+
+Path to GNUPGHOME directory containing the signing key.
+If not specified, uses the default GPG keyring.
+
+=item B<--gpg-key-name>=I<NAME>
+
+Name of the GPG key to use for signing.
+Default: C<xCAT Automatic Signing Key>.
+
 =back
 
 =head1 DEFAULT FLOW
@@ -644,6 +755,10 @@ Builds all selected package/target combinations.
 Runs C<createrepo --update> for each selected target under C<dist/>.
 
 =item 3.
+
+If C<--gpg-sign> is set, signs RPMs and C<repomd.xml> for each target.
+
+=item 4.
 
 Exits without modifying nginx or yum repo files.
 

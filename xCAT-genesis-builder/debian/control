@@ -1,16 +1,18 @@
 Source: xcat-genesis-base-amd64
 Section: admin
-Priority: extra
+Priority: optional
 Maintainer: xCAT <xcat-user@lists.sourceforge.net>
-Build-Depends: debhelper (>= 9)
-Standards-Version: 3.9.4
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.0
 
 Package: xcat-genesis-base-amd64
 Architecture: all
-Depends:
+Depends: ${misc:Depends}
 Replaces: xcat-genesis-amd64
-Breaks: xcat-genesis-amd64
+Breaks: xcat-genesis-amd64, xcat-genesis-scripts-amd64 (<< 2.13.10)
 Description: xCAT Genesis netboot image
  xCAT genesis (Genesis Enhanced Netboot Environment for System Information
  and Servicing) is a small, embedded-like environment for xCAT's use in
  discovery and management actions when interaction with an OS is infeasible.
+ This package comprises the base platform with most of the xCAT specific
+ behavior left to the xcat-genesis-scripts package.

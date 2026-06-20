@@ -44,7 +44,7 @@ install() {
     dracut_install netstat # broadcom update requires
     dracut_install uniq # mellanox update requires
     dracut_install grep ip hostname /usr/bin/awk egrep grep dirname expr
-    dracut_install mount.nfs sshd vi reboot lspci parted screen mkfs mkfs.ext4 mkfs.xfs xfs_db
+    dracut_install mount.nfs sshd vi reboot lspci parted tmux mkfs mkfs.ext4 mkfs.xfs xfs_db
     #dracut_install libvirtd /usr/share/libvirt/cpu_map.xml /usr/bin/qemu-img /usr/libexec/qemu-kvm
     dracut_install mkswap df ifenslave ssh-keygen scp clear
     dracut_install dhclient lldpad

@@ -4039,9 +4039,9 @@ sub parse_and_run_dsh
             'T|trace'                  => \$options{'trace'},
             'V|version'                => \$options{'version'},
 
-            'devicetype|devicetype=s'    => \$options{'devicetype'},
-            'nodestatus|nodestatus'      => \$options{'nodestatus'},
-            'sudo|sudo'                  => \$options{'sudo'},
+            'devicetype=s'               => \$options{'devicetype'},
+            'nodestatus'                 => \$options{'nodestatus'},
+            'sudo'                       => \$options{'sudo'},
             'command-name|commandName=s' => \$options{'command-name'},
             'command-description|commandDescription=s' =>
               \$options{'command-description'},
@@ -4504,8 +4504,8 @@ sub parse_and_run_dcp
             'T|trace'               => \$options{'trace'},
             'V|version'             => \$options{'version'},
             'devicetype=s'          => \$options{'devicetype'},
-            'nodestatus|nodestatus' => \$options{'nodestatus'},
-            'sudo|sudo'             => \$options{'sudo'},
+            'nodestatus'            => \$options{'nodestatus'},
+            'sudo'                  => \$options{'sudo'},
             'X:s'                   => \$options{'ignore_env'}
         )
       )

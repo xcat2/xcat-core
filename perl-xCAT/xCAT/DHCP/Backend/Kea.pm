@@ -513,7 +513,23 @@ sub restart_services {
             my $enable_ret = xCAT::Utils->enableservice($unit);
             return { error => "Failed to enable $unit." } if $enable_ret != 0;
         }
-        my $ret = xCAT::Utils->restartservice($unit);
+        my $ret;
+        if ( xCAT::Utils->checkservicestatus($unit) == 0 ) {
+            # Already running: reload the config (SIGHUP) instead of a full restart.
+            # Kea reconfigures from the regenerated config file on SIGHUP, and -- unlike
+            # restart -- this does not count against systemd's start-rate limit
+            # (StartLimitBurst=5/10s on EL). A burst of makedhcp calls (e.g. the
+            # makedhcp_remote_network test loop, or rapid provisioning) would otherwise
+            # trip that limit and fail with "Failed to restart kea-dhcp4".
+            xCAT::Utils->runcmd("systemctl reload $unit", -1);
+            $ret = $::RUNCMD_RC;
+        }
+        if ( !defined($ret) || $ret != 0 ) {
+            # Not running (first start) or reload failed: clear any start-limit latch,
+            # then do a full restart.
+            xCAT::Utils->runcmd("systemctl reset-failed $unit", -1);
+            $ret = xCAT::Utils->restartservice($unit);
+        }
         return { error => "Failed to restart $unit." } if $ret != 0;
     }
 

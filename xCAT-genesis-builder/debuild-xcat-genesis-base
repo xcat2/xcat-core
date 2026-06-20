@@ -1,7 +1,8 @@
 #!/bin/bash
 #
-# This is a dirty script for convert an xCAT-genesis-base rpm package to
-# a debian package.
+# DEPRECATED: Use builddeb-genesis-base for native Ubuntu builds.
+# This script converts an EL-built RPM to .deb via alien.
+# Kept for backward compatibility only.
 #
 
 # xCAT-genesis-base-x86_64-2.13.10-snap201801090246.noarch.rpm

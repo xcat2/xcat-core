@@ -6,7 +6,7 @@ To improve the security between the REST API clients and server, enabling the se
 * **[RHEL6/7/8 (x86_64/ppc64/ppc64le) and RHEL5 (x86_64)]** ::
 
     yum install mod_ssl
-    service httpd restart
+    systemctl restart httpd
     yum install perl-JSON
 
 * **[RHEL5 (ppc64)]**
@@ -30,7 +30,7 @@ To improve the security between the REST API clients and server, enabling the se
 
     sudo a2enmod ssl
     ln -s ../sites-available/default-ssl.conf  /etc/apache2/sites-enabled/ssl.conf
-    sudo service apache2 restart
+    sudo systemctl restart apache2
 
     # verify it is loaded:
 
@@ -67,8 +67,8 @@ The steps to configure the certificate for https server: ::
     sed -i 's/^\(\s*\)SSLCertificateFile.*$/\1SSLCertificateFile \/etc\/xcat\/cert\/server-cred.pem/' $sslcfgfile
     sed -i 's/^\(\s*SSLCertificateKeyFile.*\)$/#\1/' $sslcfgfile
 
-    service httpd restart        # rhel
-    service apache2 restart      # sles/ubuntu
+    systemctl restart httpd        # rhel
+    systemctl restart apache2      # sles/ubuntu
 
 The REST API client needs to download the xCAT certificate CA from the xCAT http server to authenticate the certificate of the server. ::
 

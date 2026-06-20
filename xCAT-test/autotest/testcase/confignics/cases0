@@ -9,11 +9,11 @@ cmd:chdef $$CN nicips.$$SECONDNIC=100.1.0.100 nictypes.$$SECONDNIC=Ethernet nicn
 check:rc==0
 cmd:updatenode $$CN -P confignics
 check:rc==0
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh show $$SECONDNIC
 check:output=~100.1.0.100
 check:output=~MTU=1501
 cmd:rmdef -t network -o 100_1_0_0-255_255_0_0
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh del $$SECONDNIC
 cmd:if [ -e /tmp/CN.stanza ]; then rmdef $$CN; cat /tmp/CN.stanza | mkdef -z; rm -rf /tmp/CN.stanza; fi
 check:rc==0
 end
@@ -33,18 +33,18 @@ cmd:chdef $$CN nicips.$$THIRDNIC=200.1.0.100 nictypes.$$THIRDNIC=Ethernet nicnet
 check:rc==0
 cmd:updatenode $$CN -P confignics
 check:rc==0
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh show $$SECONDNIC
 check:output=~100.1.0.100
 check:output!~dhcp
 check:output=~MTU=1501
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh show $$THIRDNIC
 check:output=~200.1.0.100
 check:output!~dhcp
 check:output=~MTU=1502
 cmd:rmdef -t network -o 100_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 200_1_0_0-255_255_0_0
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf  /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf  /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh del $$SECONDNIC
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh del $$THIRDNIC
 cmd:if [ -e /tmp/CN.stanza ]; then rmdef $$CN; cat /tmp/CN.stanza | mkdef -z; rm -rf /tmp/CN.stanza; fi
 check:rc==0
 end
@@ -68,28 +68,28 @@ cmd:chdef $$CN nicips.$$THIRDNIC="13.1.0.100|14.1.0.100" nictypes.$$THIRDNIC=Eth
 check:rc==0
 cmd:updatenode $$CN -P confignics
 check:rc==0
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh show $$SECONDNIC
 check:output=~11.1.0.100
 check:output!~dhcp
 check:output=~MTU=1501
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC:1 ; elif [ "$$OS" = "rhels" ]; then xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1;else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh show $$SECONDNIC
 check:output=~12.1.0.100
 check:output!~dhcp
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh show $$THIRDNIC
 check:output=~13.1.0.100
 check:output!~dhcp
 check:output=~MTU=1503
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC:1 ; elif [ "$$OS" = "rhels" ]; then xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1;else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh show $$THIRDNIC
 check:output=~14.1.0.100
 check:output!~dhcp
 cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 12_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 13_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 14_1_0_0-255_255_0_0
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf  /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf  /etc/network/interfaces.d/$$SECONDNIC:1; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1; fi
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf  /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf  /etc/network/interfaces.d/$$THIRDNIC:1;  else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh del $$SECONDNIC
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh del $$SECONDNIC
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh del $$THIRDNIC
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh del $$THIRDNIC
 cmd:if [ -e /tmp/CN.stanza ]; then rmdef $$CN; cat /tmp/CN.stanza | mkdef -z; rm -rf /tmp/CN.stanza; fi
 check:rc==0
 end
@@ -122,28 +122,28 @@ check:output=~$$CN-$$THIRDNIC-1
 check:output=~$$CN-$$THIRDNIC-2
 cmd:updatenode $$CN -P confignics
 check:rc==0
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh show $$SECONDNIC
 check:output=~11.1.0.100
 check:output!~dhcp
 output=~MTU=1501
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC:1 ; elif [ "$$OS" = "rhels" ]; then xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1;else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh show $$SECONDNIC
 check:output=~12.1.0.100
 check:output!~dhcp
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh show $$THIRDNIC
 check:output=~13.1.0.100
 check:output!~dhcp
 output=~MTU=1503
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC:1 ; elif [ "$$OS" = "rhels" ]; then xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1;else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh show $$THIRDNIC
 check:output=~14.1.0.100
 check:output!~dhcp
 cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 12_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 13_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 14_1_0_0-255_255_0_0
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$SECONDNIC:1; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1; fi
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$THIRDNIC:1; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh del $$SECONDNIC
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh del $$SECONDNIC
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh del $$THIRDNIC
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh del $$THIRDNIC
 cmd:cp /etc/hosts.backup /etc/hosts
 cmd:if [ -e /tmp/CN.stanza ]; then rmdef $$CN; cat /tmp/CN.stanza | mkdef -z; rm -rf /tmp/CN.stanza; fi
 check:rc==0
@@ -175,16 +175,16 @@ check:output=~aliases2-1
 check:output=~aliases2-2
 cmd:updatenode $$CN -P confignics
 check:rc==0
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh show $$SECONDNIC
 check:output=~11.1.0.100
 check:output!~dhcp
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC:1 ; elif [ "$$OS" = "rhels" ]; then xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1;else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh show $$SECONDNIC
 check:output=~12.1.0.100
 check:output!~dhcp
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh show $$THIRDNIC
 check:output=~13.1.0.100
 check:output!~dhcp
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC:1 ; elif [ "$$OS" = "rhels" ]; then xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1;else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh show $$THIRDNIC
 check:output=~14.1.0.100
 check:output!~dhcp
 cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
@@ -195,10 +195,10 @@ cmd:xdsh $$CN "ip addr del 11.1.0.100/16 dev $$SECONDNIC"
 cmd:xdsh $$CN "ip addr del 12.1.0.100/16 dev $$SECONDNIC"
 cmd:xdsh $$CN "ip addr del 13.1.0.100/16 dev $$THIRDNIC"
 cmd:xdsh $$CN "ip addr del 14.1.0.100/16 dev $$THIRDNIC"
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$SECONDNIC:1; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1; fi
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
-cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$THIRDNIC:1;  else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh del $$SECONDNIC
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh del $$SECONDNIC
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh del $$THIRDNIC
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh del $$THIRDNIC
 cmd:if [ -e /tmp/CN.stanza ]; then rmdef $$CN; cat /tmp/CN.stanza | mkdef -z; rm -rf /tmp/CN.stanza; fi
 check:rc==0
 end
@@ -217,7 +217,7 @@ cmd:chtab node=$$CN nics.disable=yes
 check:rc==0
 cmd:updatenode $$CN -P confignics
 check:rc==0
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN cat /etc/sysconfig/network-scripts/ifcfg-$$SECONDNIC; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh show $$SECONDNIC
 check:output!~100.1.0.100
 output=~MTU=1501
 cmd:rmdef -t network -o 100_1_0_0-255_255_0_0
@@ -240,7 +240,7 @@ cmd:chtab node=$$CN nics.disable=1
 check:rc==0
 cmd:updatenode $$CN -P confignics
 check:rc==0
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN cat /etc/sysconfig/network-scripts/ifcfg-$$SECONDNIC; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh show $$SECONDNIC
 check:output!~100.1.0.100
 output=~MTU=1501
 cmd:rmdef -t network -o 100_1_0_0-255_255_0_0
@@ -265,7 +265,7 @@ check:rc==0
 cmd:updatenode $$CN  "confignics -s"
 check:rc==0
 check:output!~invalid
-cmd:if  cat /etc/*release |grep "Red Hat" >/dev/null ;then if [[ `xdsh $$CN  cat /etc/sysconfig/network-scripts/ifcfg-* ` =~ "IPADDR=$$NODEIP" ]] && [[ `xdsh $$CN  cat /etc/sysconfig/network-scripts/ifcfg-* ` =~ "MTU=1496" ]] ; then exit 0 ;else exit 1 ; fi ;elif  cat /etc/*release |grep SUSE >/dev/null ; then if [[ `xdsh $$CN cat /etc/sysconfig/network/ifcfg-* ` =~ "IPADDR=$$NODEIP" ]] && [[ `xdsh $$CN cat /etc/sysconfig/network/ifcfg-* ` =~ "MTU=1496" ]] ;then exit 0;else exit 1;fi;fi
+cmd:instnic=$(xdsh $$CN ip addr|grep $$NODEIP|awk -F" " '{print $NF}');out=$(xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh show $instnic);echo "$out"|grep -q "IPADDR=$$NODEIP" && echo "$out"|grep -q "MTU=1496" && exit 0 || exit 1
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/confignics/mtu_set_clean C 1496
 check:rc==0

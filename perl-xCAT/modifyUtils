@@ -1,5 +1,5 @@
 #!/bin/sh
-# Put the version, svn revision #, and build date into the Version function in Version.pm
+# Put the version and git commit into the Version function in Version.pm
 
 if [ -z "$2" ]
 	then
@@ -8,14 +8,11 @@ if [ -z "$2" ]
 fi
 
 VER=$1
-GITREF="git commit $2, "
-
-BUILDDATE=`date`
-#echo ". '(built $BUILDDATE)'"
+GITREF="git commit $2"
 
 if [ "$(uname)" = "AIX" ]
 then
-	sed -e s/"#XCATVERSIONSUBHERE"/". '$VER'"/ -e s/"#XCATSVNBUILDSUBHERE"/". ' (${GITREF}built $BUILDDATE)'"/ xCAT/Version.pm >xCAT/Version.pm.new
+	sed -e s/"#XCATVERSIONSUBHERE"/". '$VER'"/ -e s/"#XCATSVNBUILDSUBHERE"/". ' ($GITREF)'"/ xCAT/Version.pm >xCAT/Version.pm.new
 	mv xCAT/Version.pm.new xCAT/Version.pm
 else
         if [ -f "/etc/debian_version" ];then
@@ -23,5 +20,5 @@ else
         else
             FILENAME="xCAT/Version.pm"
         fi
-	sed -i -e s/"#XCATVERSIONSUBHERE"/". '$VER'"/ -e s/"#XCATSVNBUILDSUBHERE"/". ' (${GITREF}built $BUILDDATE)'"/ $FILENAME
+	sed -i -e s/"#XCATVERSIONSUBHERE"/". '$VER'"/ -e s/"#XCATSVNBUILDSUBHERE"/". ' ($GITREF)'"/ $FILENAME
 fi

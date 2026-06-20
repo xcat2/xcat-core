@@ -20,7 +20,7 @@ check:rc==0
 cmd:makedhcp -a
 check:rc==0
 cmd:sleep 10
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$CN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$CN;fi
+cmd:if [ -f /etc/kea/kea-dhcp4.conf ]; then grep $$CN /etc/kea/kea-dhcp4.conf; elif cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$CN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$CN;fi
 check:output=~$$CN
 cmd:copycds $$ISO
 check:rc==0
@@ -89,7 +89,7 @@ check:rc==0
 cmd:makedhcp -a
 check:rc==0
 cmd:sleep 10
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$CN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$CN;fi
+cmd:if [ -f /etc/kea/kea-dhcp4.conf ]; then grep $$CN /etc/kea/kea-dhcp4.conf; elif cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$CN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$CN;fi
 check:output=~$$CN
 cmd:chtab key=xcatdebugmode site.value="1"
 check:rc==0

@@ -114,7 +114,7 @@ sub parse_and_run_sinv
             'e|exactmatch'            => \$options{'exactmatch'},
             'i|ignorefirst'           => \$options{'ignorefirst'},
             'l|user=s'                => \$options{'user'},
-            'devicetype|devicetype=s' => \$options{'devicetype'},
+            'devicetype=s' => \$options{'devicetype'},
             'c|cmd=s'                 => \$options{'sinv_cmd'},
             'f|file=s'                => \$options{'sinv_cmd_file'},
             'v|version'               => \$options{'version'},

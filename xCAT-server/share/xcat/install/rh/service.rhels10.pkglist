@@ -1,0 +1,19 @@
+@Minimal Install
+kernel
+chrony
+net-tools
+nfs-utils
+openssh-server
+openssl
+rsync
+util-linux
+wget
+mariadb-connector-odbc
+perl-DBD-MySQL
+perl-DBD-Pg
+unixODBC
+python3
+tar
+bzip2
+perl-interpreter
+perl-lib

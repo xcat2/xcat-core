@@ -50,7 +50,7 @@ cmd:rinstall $$SN,$$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)
 check:rc==0
 #check:output=~Provision node\(s\)\: $$CN
 #check:output=~Provision node\(s\)\: $$SN
-cmd:if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
+cmd:if [[ -f /var/lib/kea/kea-leases4.csv ]]; then cat /var/lib/kea/kea-leases4.csv; elif [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
 
 #After starting installation, began run fake nodes testing on MN
 cmd:which yum &>/dev/null && yum install -y bridge-utils || apt install -y bridge-utils

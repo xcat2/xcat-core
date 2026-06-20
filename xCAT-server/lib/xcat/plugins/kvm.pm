@@ -3242,7 +3242,7 @@ sub power {
             else {
                 $allnodestatus{$node} = $::STATUS_POWERING_ON;
             }
-        } elsif (not $dom->is_active()) {
+        } elsif (not _dom_active($dom)) {
             eval{
                 $dom->create();
             };
@@ -3257,7 +3257,7 @@ sub power {
         if ($dom) {
             my $newxml = $dom->get_xml_description();
             $updatetable->{kvm_nodedata}->{$node}->{xml} = $newxml;
-            if ($dom->is_active()) {
+            if (_dom_active($dom)) {
                 eval{
                     $dom->destroy();
                 };
@@ -3276,7 +3276,7 @@ sub power {
             $allnodestatus{$node} = $::STATUS_POWERING_OFF;
         } else { $retstring .= "$status_noop"; }
     } elsif ($subcommand eq 'reset') {
-        if ($dom && $dom->is_active()) {
+        if ($dom && _dom_active($dom)) {
             my $oldxml = $dom->get_xml_description();
             my $newxml = reconfigvm($node, $oldxml);
 
@@ -4341,6 +4341,21 @@ sub get_cdrom_device_names() {
          }
     }
     return @cdrom_device_names;
+}
+
+# Return true if a libvirt domain is running. Some Sys::Virt versions on EL10 do
+# not expose Sys::Virt::Domain->is_active(); fall back to the domain info state
+# (VIR_DOMAIN_SHUTOFF == 5) so rpower/mkvm work across Sys::Virt versions.
+sub _dom_active {
+    my $dom = shift;
+    return 0 unless ($dom);
+    my $active;
+    eval { $active = $dom->is_active(); };
+    return $active unless ($@);
+    my $info;
+    eval { $info = $dom->get_info(); };
+    return 0 if ($@ || !$info || !defined($info->{state}));
+    return ($info->{state} != 5) ? 1 : 0;
 }
 
 1;

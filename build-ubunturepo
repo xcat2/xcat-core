@@ -26,6 +26,9 @@
 #
 #               LOCAL_KEY=1  Use local keys to sign repo instead of WGET from GSA. By default use GSA.
 #
+#               GPG_HOME=<path> - Use the specified directory as GNUPGHOME for signing (no passphrase assumed).
+#                                 Bypasses GSA download and LOCAL_KEY.
+#
 #               SETUP=1      Setup environment for build. By default do not setup environment.
 #
 #               LOG=<filename> - provide an LOG file option to redirect some output into log file
@@ -177,6 +180,9 @@ fi
 
 if [ "$GPGSIGN" = "0" ];then
     echo "GPGSIGN=$GPGSIGN specified, skip gnupg key downloading"
+elif [ -n "$GPG_HOME" ];then
+    echo "GPG_HOME=$GPG_HOME specified, using provided GNUPGHOME"
+    export GNUPGHOME="$GPG_HOME"
 else
     #sync the gpg key to the build machine local
     gsa_url=http://pokgsa.ibm.com/projects/x/xcat/build/linux
@@ -235,10 +241,18 @@ then
         ver=`cat Version`
         short_ver=`cat Version|cut -d. -f 1,2`
         short_short_ver=`cat Version|cut -d. -f 1`
-        build_time=`date`
-        build_machine=`hostname`
         commit_id_long=`git rev-parse HEAD`
         commit_id="${commit_id_long:0:7}"
+        if [ -f Gitepoch ]; then
+            source_date_epoch=$(cat Gitepoch)
+        else
+            source_date_epoch=$(git log -1 --format=%ct HEAD 2>/dev/null || date +%s)
+        fi
+        export SOURCE_DATE_EPOCH="$source_date_epoch"
+        export DEBEMAIL="xcat-build@xcat.org"
+        export DEBFULLNAME="xCAT Build"
+        build_time=$(date -d "@$source_date_epoch" --utc '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date -u)
+        build_machine=`hostname`
 
         if [ $code_change == 0 -a "$UP" != 1 -a "$BUILDALL" != 1 ]; then
             echo "Nothing new detected.  Exiting...."
@@ -252,10 +266,30 @@ then
         #the package type:  local | snap | alpha
         #the build introduce string
         build_string="Snap_Build"
-        xcat_release="snap$(date '+%Y%m%d%H%M')"
+        if [ -f Release ]; then
+            xcat_release=$(cat Release)
+        else
+            xcat_release="snap$(date -d "@$source_date_epoch" --utc '+%Y%m%d%H%M')"
+        fi
         pkg_version="${ver}-${xcat_release}"
 
         packages="xCAT-client xCAT-genesis-scripts perl-xCAT xCAT-server xCAT xCATsn xCAT-test xCAT-buildkit xCAT-vlan xCAT-confluent xCAT-probe"
+        if [ -n "$PACKAGE" ]; then
+            match=""
+            for p in $packages; do
+                p_low=$(echo "$p" | tr '[A-Z]' '[a-z]')
+                pkg_low=$(echo "$PACKAGE" | tr '[A-Z]' '[a-z]')
+                if [ "$p_low" = "$pkg_low" ]; then
+                    match="$p"
+                    break
+                fi
+            done
+            if [ -z "$match" ]; then
+                echo "ERROR: Package '$PACKAGE' not found. Valid packages: $packages"
+                exit 1
+            fi
+            packages="$match"
+        fi
         target_archs=(amd64 ppc64el)
         for file in $packages
         do
@@ -278,7 +312,9 @@ then
                     CURDIR=$(pwd)
 
                     find . -name '*.dch' -delete
-                    dch -v $pkg_version -b -c debian/changelog $build_string
+                    deterministic_date=$(date -R -d "@$SOURCE_DATE_EPOCH" --utc 2>/dev/null || date -R --utc)
+                    sed -i "1s/(.*)/(${pkg_version})/" debian/changelog
+                    sed -i "s/^ -- .*/ -- $DEBFULLNAME <$DEBEMAIL>  $deterministic_date/" debian/changelog
                     if [ "$target_arch" = "all" ]; then
                         #xcat probe use some functions shipped by xCAT, for below reasons we need to copy files to xCAT-probe directory
                         #1 make xcat probe code to be self-contained
@@ -337,7 +373,7 @@ then
             done
         done
 
-        find $PKGDIR/* ! -name *.deb | xargs rm -f
+        find $PKGDIR/* ! -name '*.deb' | xargs rm -f
     fi
 
     if [ "$PROMOTE" = 1 ]; then
@@ -386,11 +422,18 @@ __EOF__
        fi
     done
 
-    cat << __EOF__ > conf/options
+    if [ -n "$GPG_HOME" ]; then
+        cat << __EOF__ > conf/options
+verbose
+basedir .
+__EOF__
+    else
+        cat << __EOF__ > conf/options
 verbose
 ask-passphrase
 basedir .
 __EOF__
+    fi
 
     #import the deb packages into the repo
     amd_files=`ls ../$package_dir_name/*.deb | grep -v "ppc64el"`
@@ -531,11 +574,18 @@ __EOF__
 
 
 
-    cat << __EOF__ > conf/options
+    if [ -n "$GPG_HOME" ]; then
+        cat << __EOF__ > conf/options
+verbose
+basedir .
+__EOF__
+    else
+        cat << __EOF__ > conf/options
 verbose
 ask-passphrase
 basedir .
 __EOF__
+    fi
 
     #import the deb packages into the repo
     amd_files=`ls ../debs/*.deb | grep -v "ppc64el"`

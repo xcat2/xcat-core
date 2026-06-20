@@ -1,9 +1,19 @@
-Dracut modules for EL10
+Dracut modules for xCAT Genesis
 
+Subdirectories:
 
-Notes:
+* `el/`     — EL (RHEL/Rocky/Alma) dracut module
+* `ubuntu/` — Ubuntu dracut module (adapted library paths, dpkg instead of rpm)
 
-* For now `ubuntu` is just a symlink to EL module, we
-  may or may not need to diverge later.
-* These files were copied from ../ so we can adapt they
-  without breaking old behavior
+Both modules share the same xcat-cmdline.sh, dhclient.conf, dhclient-script,
+rsyslog.conf, and xcatroot files (copied, not symlinked, to avoid issues
+when cp -a copies the module into the dracut modules directory).
+
+Key differences in ubuntu/module-setup.sh vs el/module-setup.sh:
+* Uses dpkg instead of rpm
+* Uses /etc/os-release instead of /etc/redhat-release
+* rsyslog modules from /usr/lib/<triplet>/rsyslog/ instead of /lib64/rsyslog/
+* libnss_dns from /lib/<triplet>/ instead of /lib64/
+* udev rules from /usr/lib/udev/rules.d/ instead of /lib/udev/rules.d/
+* mkfs.btrfs instead of mkfs.xfs
+* chrony config checked at both /etc/chrony.conf and /etc/chrony/chrony.conf

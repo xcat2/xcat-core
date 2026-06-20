@@ -137,6 +137,17 @@ else
     #  install xcat from /install/xcat
     #  Copy Certificates, and config file to apprpriate directories
     #  from /install and restart xcat
+
+    # xCAT-server pulls perl deps (Crypt::CBC/PBKDF2, Expect, Net-DNS, ...) that
+    # live in EPEL; enable it here, before the otherpkgs postbootscript installs
+    # xCATsn, on EL service nodes. Tolerant by design: runcmd() only logs on
+    # failure, so RHEL nodes without epel-release in a default repo (or sites
+    # without EPEL reachability) do not fail service-node setup.
+    if (-e "/etc/os-release" && `grep -Ei 'platform:el' /etc/os-release 2>/dev/null`) {
+        `logger -t $log_label -p local4.info servicenode: ensuring EPEL is enabled for xCAT-server dependencies`;
+        &runcmd("dnf -y install epel-release");
+    }
+
     &runcmd("rpm -e OpenIPMI-tools");
 
     &copycerts;

@@ -1473,6 +1473,13 @@ sub update_namedconf {
         } else {
             ensure_ddns_key_file($ctx);
         }
+        # Persist the TSIG secret to the DB so service nodes (which have no local
+        # /etc/xcat/ddns.key) can retrieve it via kea_ddns_key()'s passwd fallback.
+        if ($ctx->{privkey}) {
+            my $passtab = xCAT::Table->new("passwd", -create => 1);
+            $passtab->setAttribs({ key => "omapi", username => $omapi_key_name },
+                                 { password => $ctx->{privkey} }) if $passtab;
+        }
     }
 
     my $cmd = "grep '^nameserver' /etc/resolv.conf | awk '{print \$2}'";

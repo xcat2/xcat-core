@@ -26,8 +26,6 @@ Includes xCAT::Table, xCAT::NodeRange, among others.
 
 %define zvm %(if [ "$zvm" = "1" ];then echo 1; else echo 0; fi)
 %define fsm %(if [ "$fsm" = "1" ];then echo 1; else echo 0; fi)
-
-%define builddate %(date)
 %prep
 %setup -q -n perl-xCAT
 %build

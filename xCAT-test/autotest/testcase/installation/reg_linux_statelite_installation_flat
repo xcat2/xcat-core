@@ -27,7 +27,7 @@ check:rc==0
 #On SLES remove rh dependency dirs to free up disk space
 cmd:if [[ "$$OS" =~ "sle" ]]; then rm -rf /xcat-dep/rh*; fi
 
-cmd:if cat /etc/*release |grep SUSE >/dev/null; then  cp /opt/xcat/share/xcat/tools/autotest/testcase/installation/litefile_sles.csv /tmp/litefile.csv;tabrestore /tmp/litefile.csv; elif cat /etc/*release |grep "Red Hat\|Rocky\|Alma" >/dev/null; then  tabrestore /opt/xcat/share/xcat/tools/autotest/testcase/installation/litefile.csv;fi
+cmd:if [ -f /var/lib/kea/kea-leases4.csv ]; then cp /opt/xcat/share/xcat/tools/autotest/testcase/installation/litefile_sles.csv /tmp/litefile.csv;tabrestore /tmp/litefile.csv; elif cat /etc/*release |grep SUSE >/dev/null;then cp /opt/xcat/share/xcat/tools/autotest/testcase/installation/litefile_sles.csv /tmp/litefile.csv;tabrestore /tmp/litefile.csv;elif cat /etc/*release |grep "Red Hat\|Rocky\|Alma" >/dev/null; then  tabrestore /opt/xcat/share/xcat/tools/autotest/testcase/installation/litefile.csv;fi
 check:rc==0
 cmd:tabdump litefile
 check:rc==0
@@ -40,7 +40,7 @@ cmd:cat /etc/exports|grep nodedata; if [ "$?" -ne "0" ]; then echo "/nodedata *(
 check:rc==0
 cmd:cd /etc; export exports;cd -
 check:rc==0
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then service nfsserver restart; elif cat /etc/*release |grep "Red Hat\|Rocky\|Alma" >/dev/null;then if [ -f /usr/lib/systemd/system/nfs-server.service ]; then service nfs-server restart; else service nfs restart;fi; fi
+cmd:if [ -f /var/lib/kea/kea-leases4.csv ]; then service nfsserver restart; elif cat /etc/*release |grep SUSE >/dev/null;then service nfsserver restart;elif cat /etc/*release |grep "Red Hat\|Rocky\|Alma" >/dev/null;then if [ -f /usr/lib/systemd/system/nfs-server.service ]; then service nfs-server restart; else service nfs restart;fi; fi
 check:rc==0
 cmd:chtab node=$$CN statelite.statemnt="$$MN:/nodedata"
 check:rc==0
@@ -64,7 +64,7 @@ cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$C
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
-cmd:if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
+cmd:if [[ -f /var/lib/kea/kea-leases4.csv ]]; then cat /var/lib/kea/kea-leases4.csv; elif [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
@@ -99,7 +99,7 @@ cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$C
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
-cmd:if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
+cmd:if [[ -f /var/lib/kea/kea-leases4.csv ]]; then cat /var/lib/kea/kea-leases4.csv; elif [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
 
 cmd:ping $$CN -c 3
 check:rc==0

@@ -1,4 +1,5 @@
 #!/bin/sh
+# DEPRECATED: This file is no longer used. See dracut_105/ubuntu/module-setup.sh
 echo $drivers
 version12=`awk '{print $2}' /etc/issue | grep 12`
 dracut_install wget openssl tar ipmitool cpio gzip lsmod ethtool modprobe touch echo cut wc

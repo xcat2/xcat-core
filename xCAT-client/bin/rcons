@@ -81,7 +81,7 @@ if [ "$CONSOLE_SERVICE_KEYWORD" == "consoleservice" ]; then
 fi
 
 if [ $USE_CONFLUENT != "1" ] && [ -f "/usr/bin/congo" ] && [ -f "/usr/bin/goconserver" ]; then
-    GOCONSERVER_RC=`service goconserver status >& /dev/null; echo $?`
+    GOCONSERVER_RC=`systemctl is-active goconserver >& /dev/null; echo $?`
     if [[ ${GOCONSERVER_RC} == 0 ]]; then
         USE_GOCONSERVER=1
     fi
@@ -101,7 +101,7 @@ if [ $USE_CONFLUENT == "1" ] && ([ -x "/opt/confluent/bin/confetty" ] || [ -x "/
         echo "Error: consoleservice is set to 'confluent' but conserver is running.  Stop conserver, run makeconfluentcfg, and retry..."
         exit 1
     fi
-    GOCONSERVER_RC=`service goconserver status >& /dev/null; echo $?`
+    GOCONSERVER_RC=`systemctl is-active goconserver >& /dev/null; echo $?`
     if [[ ${GOCONSERVER_RC} == 0 ]]; then
         echo "Error: consoleservice is set to 'confluent' but goconserver is running.  Stop goconserver, run makeconfluentcfg, and retry..."
         exit 1

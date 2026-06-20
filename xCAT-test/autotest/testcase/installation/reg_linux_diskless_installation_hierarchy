@@ -34,7 +34,7 @@ cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
-cmd:service dhcpd restart
+cmd:if systemctl is-active kea-dhcp4 >/dev/null 2>&1; then systemctl restart kea-dhcp4; elif cat /etc/*release | grep -qi ubuntu; then service isc-dhcp-server restart; else service dhcpd restart; fi
 check:rc==0
 cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
 check:rc==0
@@ -62,7 +62,7 @@ cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$C
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
-cmd:xdsh $$SN "if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi"
+cmd:xdsh $$SN "if [[ -f /var/lib/kea/kea-leases4.csv ]]; then cat /var/lib/kea/kea-leases4.csv; elif [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi"
 
 cmd:ping $$CN -c 3
 check:rc==0
@@ -139,7 +139,7 @@ cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
-cmd:service dhcpd restart
+cmd:if systemctl is-active kea-dhcp4 >/dev/null 2>&1; then systemctl restart kea-dhcp4; elif cat /etc/*release | grep -qi ubuntu; then service isc-dhcp-server restart; else service dhcpd restart; fi
 check:rc==0
 cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
 check:rc==0
@@ -180,7 +180,7 @@ cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$C
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
-cmd:xdsh $$SN "if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi"
+cmd:xdsh $$SN "if [[ -f /var/lib/kea/kea-leases4.csv ]]; then cat /var/lib/kea/kea-leases4.csv; elif [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi"
 
 cmd:ping $$CN -c 3
 check:rc==0

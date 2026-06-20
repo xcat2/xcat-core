@@ -20,11 +20,11 @@ cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep compute1;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep compute1;fi
+cmd:if [ -f /etc/kea/kea-dhcp4.conf ]; then grep compute1 /etc/kea/kea-dhcp4.conf; elif cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep compute1;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep compute1;fi
 check:output=~compute1
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then xdsh $$SN cat /var/lib/dhcp/db/dhcpd.leases|grep compute1;elif cat /etc/*release |grep "Red Hat" >/dev/null;then xdsh $$SN cat /var/lib/dhcpd/dhcpd.leases|grep compute1;fi
+cmd:if [ -f /etc/kea/kea-dhcp4.conf ]; then xdsh $$SN grep compute1 /etc/kea/kea-dhcp4.conf; elif cat /etc/*release |grep SUSE >/dev/null;then xdsh $$SN cat /var/lib/dhcp/db/dhcpd.leases|grep compute1;elif cat /etc/*release |grep "Red Hat" >/dev/null;then xdsh $$SN cat /var/lib/dhcpd/dhcpd.leases|grep compute1;fi
 check:output=~compute1
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then xdsh $$CN cat /var/lib/dhcp/db/dhcpd.leases|grep compute1;elif cat /etc/*release |grep "Red Hat" >/dev/null;then xdsh $$CN cat /var/lib/dhcpd/dhcpd.leases|grep compute1;fi
+cmd:if [ -f /etc/kea/kea-dhcp4.conf ]; then xdsh $$CN grep compute1 /etc/kea/kea-dhcp4.conf; elif cat /etc/*release |grep SUSE >/dev/null;then xdsh $$CN cat /var/lib/dhcp/db/dhcpd.leases|grep compute1;elif cat /etc/*release |grep "Red Hat" >/dev/null;then xdsh $$CN cat /var/lib/dhcpd/dhcpd.leases|grep compute1;fi
 check:output=~compute1
 cmd:nodeset compute1 osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-compute
 check:rc==0

@@ -202,4 +202,106 @@ ok(!xCAT_plugin::dhcp::dhcpd_sysconfig_uses_interface_key('opensuse-tumbleweed')
     is( $subnet->{dynamicrange}, $network_entry{dynamicrange}, 'owning Kea server renders dynamic pool' );
 }
 
+{
+    # Regression: networks.nameservers / site.nameservers default to the
+    # <xcatmaster> placeholder.  Kea D2 rejects a non-IP dns-servers ip-address,
+    # so kea_build_ddns_intent must resolve <xcatmaster> to the management IP
+    # facing the network (via my_ip_facing) before rendering DDNS domains.
+    no warnings 'redefine';
+    local *xCAT_plugin::dhcp::kea_ddns_enabled = sub { 1 };
+    local *xCAT_plugin::dhcp::kea_ddns_key     = sub { ( 'HMAC-SHA256', 'YWJjMTIz' ); };
+
+    local $xCAT::Table::networks = DHCPKeaIntentNetTable->new(
+        {
+            %network_entry,
+            nameservers => '<xcatmaster>',
+        }
+    );
+
+    my $ddns_intent = xCAT_plugin::dhcp::kea_build_ddns_intent();
+
+    ok( $ddns_intent && !$ddns_intent->{error}, 'kea_build_ddns_intent succeeds with <xcatmaster> nameservers' );
+    ok( scalar @{ $ddns_intent->{forward_domains} || [] }, 'kea_build_ddns_intent renders a forward DDNS domain' );
+    ok( scalar @{ $ddns_intent->{reverse_domains} || [] }, 'kea_build_ddns_intent renders a reverse DDNS domain' );
+
+    my @dns_ips =
+      map { $_->{'ip-address'} }
+      map { @{ $_->{'dns-servers'} || [] } }
+      ( @{ $ddns_intent->{forward_domains} || [] }, @{ $ddns_intent->{reverse_domains} || [] } );
+
+    ok( scalar @dns_ips, 'rendered DDNS domains carry dns-servers' );
+    foreach my $ip (@dns_ips) {
+        isnt( $ip, '<xcatmaster>', 'DDNS dns-server ip-address is never the literal <xcatmaster> placeholder' );
+        is( $ip, '10.0.0.1', 'DDNS dns-server ip-address resolves to the management IP facing the network' );
+        like( $ip, qr/^\d+\.\d+\.\d+\.\d+$/, 'DDNS dns-server ip-address is a valid IPv4 literal' );
+    }
+}
+
+{
+    # Regression: a service node (noderes.servicenode set, groups=service) must
+    # get a Kea host reservation exactly like a regular compute node.  The Kea
+    # reservation builder loops over every requested node without filtering on
+    # service-node membership, so kea_build_node_reservations must emit an
+    # ip/mac/hostname reservation whose next-server is resolved (via
+    # my_ip_facing) to the management server that serves the node's subnet.
+    package DHCPKeaResTable;
+    sub new { my ( $class, $rows ) = @_; return bless { rows => $rows }, $class; }
+    sub getNodesAttribs {
+        my ( $self, $nodes, $attrs ) = @_;
+        my %out;
+        $out{$_} = [ $self->{rows}{$_} || {} ] for @$nodes;
+        return \%out;
+    }
+    sub close { return; }
+
+    package main;
+
+    my %res_tables = (
+        noderes  => DHCPKeaResTable->new( { 'svc01' => { netboot => 'xnba', servicenode => '192.168.201.20', tftpserver => '<xcatmaster>' } } ),
+        chain    => DHCPKeaResTable->new( { 'svc01' => {} } ),
+        nodetype => DHCPKeaResTable->new( { 'svc01' => { arch => 'x86_64', provmethod => 'install', os => 'rhels9' } } ),
+        iscsi    => DHCPKeaResTable->new( {} ),
+        mac      => DHCPKeaResTable->new( { 'svc01' => { mac => '42:d7:c0:a8:c9:15' } } ),
+    );
+
+    no warnings 'redefine';
+    local *xCAT::Table::new = sub {
+        my ( $class, $name ) = @_;
+        return $res_tables{$name};
+    };
+    my $svc_getipaddr = sub {
+        my ( $host, %opt ) = @_;
+        return if $opt{OnlyV6};
+        return '192.168.201.21';
+    };
+    local *xCAT::NetworkUtils::getipaddr = $svc_getipaddr;
+    # dhcp.pm imports getipaddr into its own namespace at use-time, so override
+    # the imported copy as well.
+    local *xCAT_plugin::dhcp::getipaddr = $svc_getipaddr;
+    local *xCAT::NetworkUtils::my_ip_facing = sub { return ( 0, '192.168.201.20' ); };
+    local *xCAT_plugin::dhcp::ipIsDynamic = sub { return 0; };
+
+    my @errors;
+    local $xCAT_plugin::dhcp::callback = sub {
+        my $resp = shift;
+        push @errors, @{ $resp->{error} } if $resp->{error};
+    };
+
+    my $backend = bless {}, 'DHCPKeaResBackend';
+    {
+        package DHCPKeaResBackend;
+        sub subnet_id_for_ip { return 1; }
+    }
+
+    my $reservations = xCAT_plugin::dhcp::kea_build_node_reservations( $backend, {}, ['svc01'] );
+
+    is( scalar(@errors), 0, 'service node reservation builds without errors' );
+    is( scalar( @{ $reservations || [] } ), 1, 'service node yields exactly one Kea host reservation' );
+    my $r = $reservations->[0] || {};
+    is( $r->{'ip-address'},  '192.168.201.21',    'service node reservation carries the node IP' );
+    is( $r->{'hw-address'},  '42:d7:c0:a8:c9:15', 'service node reservation carries the node MAC' );
+    is( $r->{hostname},      'svc01',             'service node reservation carries the hostname' );
+    is( $r->{'next-server'}, '192.168.201.20',    'service node reservation next-server resolves to the serving management IP' );
+}
+
 done_testing();

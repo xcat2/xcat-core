@@ -272,7 +272,7 @@ check:rc==0
 #configure first MN as standby HA MN
 cmd:xdsh $$PRIMARYMN "service xcatd stop" 
 check:rc==0
-cmd:xdsh $$PRIMARYMN "sed -i 's/IPADDR=100.1.0.233/IPADDR=100.1.0.100/g' /etc/sysconfig/network-scripts/ifcfg-$$PMNSECONDNIC"
+cmd:xdsh $$PRIMARYMN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh setip $$PMNSECONDNIC 100.1.0.100
 check:rc==0
 cmd:xdsh $$PRIMARYMN "ifdown $$PMNSECONDNIC;ifup $$PMNSECONDNIC"
 check:rc==0
