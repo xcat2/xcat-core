@@ -106,12 +106,12 @@ cmd:chtab node=nouse_compute hosts.ip="|node(\d+)|1.2.3.(\$1+0)|" hosts.hostname
 check:rc==0
 cmd:chdef -t node -o node01 groups="nouse_compute"
 check:rc==0
-cmd:sleep 30
+cmd:sleep 5
 cmd:XCATBYPASS=1 makehosts -n
 check:rc==0
-cmd:sleep 30
+cmd:sleep 5
 cmd:cat /etc/hosts
-cmd:sleep 30
+cmd:sleep 5
 cmd:cp -f /etc/hosts /tmp/hosts
 cmd:cat /tmp/hosts |wc -l
 check:rc==0
@@ -131,10 +131,10 @@ cmd:chtab node=compute hosts.ip="|node(\d+)|1.2.3.(\$1+0)|" hosts.hostnames="|(.
 check:rc==0
 cmd:chdef -t node -o node01 groups="compute"
 check:rc==0
-cmd:sleep 30
+cmd:sleep 5
 cmd:XCATBYPASS=1 makehosts -n node01
 check:rc==0
-cmd:sleep 30
+cmd:sleep 5
 cmd:cp /etc/hosts /tmp/hosts -f
 cmd:cat /tmp/hosts |wc -l
 check:rc==0

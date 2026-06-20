@@ -216,7 +216,13 @@ function configipv4(){
             name="${array_extra_param_names[$i]}"
             value="${array_extra_param_values[$i]}"
             if [[ "$OSVER" =~ ^(rhel|rhels|alma|almalinux|rocky|centos|ol)(9|1[0-9]) ]]; then
-                nmcli con modify $con_name $name $value
+                # Best-effort: apply as a native NetworkManager property if one exists.
+                # Arbitrary ifcfg-style keys (e.g. CONNECTED_MODE) have no NM setting and
+                # are (re)persisted into the keyfile [user] section after ALL IPs are
+                # configured (post-loop block below), because the per-IP nmcli modify used
+                # for additional addresses re-serializes the keyfile and would otherwise
+                # drop anything appended here.
+                nmcli con modify $con_name $name $value 2>/dev/null || true
             else
                 grep -i "${name}" $str_conf_file
                 if [ $? -eq 0 ];then
@@ -763,7 +769,17 @@ elif [ "$1" = "-s" ];then
                 tmp_con_name=${str_inst_nic}"-tmp"
                 nmcli con modify $con_name connection.id $tmp_con_name
             fi
-            nmcli con add type ethernet con-name $con_name ifname ${str_inst_nic} ipv4.method manual ipv4.addresses  ${str_inst_ip}/${str_inst_prefix} connection.autoconnect-priority 9 gw4 ${str_inst_gateway}
+            if [ -z "$str_inst_gateway" ]; then
+                # EL10/NM: during updatenode the dhclient lease and MACADDRESS may be
+                # absent, leaving the gateway empty. Recover it from the live default
+                # route so the install NIC keeps its default route.
+                str_inst_gateway=`ip route show default | awk '{print $3}' | head -1`
+            fi
+            gw4_arg=""
+            # Never pass an empty gw4: nmcli rejects "value for 'gw4' is missing", the
+            # connection is not created, and the later down+reload leaves the NIC down.
+            [ -n "$str_inst_gateway" ] && gw4_arg="gw4 $str_inst_gateway"
+            nmcli con add type ethernet con-name $con_name ifname ${str_inst_nic} ipv4.method manual ipv4.addresses  ${str_inst_ip}/${str_inst_prefix} connection.autoconnect-priority 9 $gw4_arg
             str_conf_file_1="/etc/sysconfig/network-scripts/ifcfg-xcat-${str_inst_nic}-1"
             if [ -f $str_conf_file_1 ]; then
                 grep $con_name $str_conf_file_1 >/dev/null 2>/dev/null
@@ -1302,6 +1318,36 @@ if [ $networkmanager_active -eq 1 ] && [ -n "$tmp_con_name" ]; then
         nmcli con modify $tmp_con_name connection.id $con_name
     else
         nmcli con delete $tmp_con_name
+    fi
+fi
+# Persist nicextraparams that NetworkManager has no native setting for (e.g. CONNECTED_MODE)
+# into the connection keyfile's [user] section. Done here as the very last step: the
+# nmcli con reload/up in the restart phase above re-serializes the keyfile from NM's
+# in-memory model and drops anything NM does not model, so an earlier write would be lost.
+# On EL10 (keyfile-only) there is no ifcfg file to hold these. We do NOT reload after, so
+# the file keeps the section; NM tolerates an unknown [user] section in keyfile mode.
+if [ "$str_os_type" = "redhat" ] && [ "$networkmanager_active" = "1" ] && [[ "$OSVER" =~ ^(rhel|rhels|alma|almalinux|rocky|centos|ol)(9|1[0-9]) ]]; then
+    # Resolve the connection's keyfile by UUID -- NM may name it "<id>-<uuid>.nmconnection"
+    # (not the plain "<id>.nmconnection") when a same-named file already exists.
+    ep_con="xcat-${str_nic_name}"
+    ep_uuid=$(nmcli -g connection.uuid connection show "$ep_con" 2>/dev/null)
+    ep_kf=""
+    [ -n "$ep_uuid" ] && ep_kf=$(grep -l "uuid=$ep_uuid" /etc/NetworkManager/system-connections/*.nmconnection 2>/dev/null | head -1)
+    if [ -n "$ep_kf" ] && [ -f "$ep_kf" ]; then
+        for ep in "${array_nic_params[@]}"; do
+            [ -z "$ep" ] && continue
+            [ "$ep" = "$str_default_token" ] && continue
+            parse_nic_extra_params "$ep"
+            j=0
+            while [ $j -lt ${#array_extra_param_names[@]} ]; do
+                nm="${array_extra_param_names[$j]}"
+                vl="${array_extra_param_values[$j]}"
+                grep -q '^\[user\]' "$ep_kf" || printf '\n[user]\n' >> "$ep_kf"
+                grep -q "^xcat\.${nm}=" "$ep_kf" || echo "xcat.${nm}=${vl}" >> "$ep_kf"
+                j=$((j+1))
+            done
+        done
+        chmod 600 "$ep_kf"
     fi
 fi
 exit $error_code

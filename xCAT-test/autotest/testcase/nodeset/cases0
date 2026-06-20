@@ -500,7 +500,7 @@ check:rc==0
 cmd:imagename=`cat /tmp/imagename`;nodeset $$CN osimage=$imagename
 check:rc==0
 check:output=~$$CN:\s*install
-cmd:imagename=`cat /tmp/imagename`;osversion=`lsdef -t osimage -o $imagename |grep osvers|awk -F= '{print $2}'`;versionnum=`echo $osversion |sed 's:[a-zA-Z]::g'`;grep -w -A10 "$$CN" /var/lib/dhcpd/dhcpd.leases | grep "/install/$osversion/armel/cumulus-linux-$versionnum-bcm-armel.bin"
+cmd:imagename=`cat /tmp/imagename`;osversion=`lsdef -t osimage -o $imagename |grep osvers|awk -F= '{print $2}'`;versionnum=`echo $osversion |sed 's:[a-zA-Z]::g'`;if [ -f /var/lib/kea/kea-leases4.csv ]; then grep "/install/$osversion/armel/cumulus-linux-$versionnum-bcm-armel.bin" /etc/kea/kea-dhcp4.conf; else grep -w -A10 "$$CN" /var/lib/dhcpd/dhcpd.leases | grep "/install/$osversion/armel/cumulus-linux-$versionnum-bcm-armel.bin"; fi
 check:rc==0
 end
 

@@ -259,6 +259,21 @@ if [ -f "/proc/cmdline" ] && [ "x$(stat -c '%i %d' /)" == "x$(stat -c '%i %d' /p
 fi
 %endif
 
+%ifos linux
+# xCATsn is installed only on service nodes (it Conflicts: xCAT) and pulls in xCAT-server (xcatd)
+# plus the credentials/cfgloc the servicenode postscript already staged -- so this is the right,
+# autodeclarative place to bring xcatd up on a service node. Guard so it runs only on a real
+# running system (skip the genimage/diskless chroot, where there is no systemd), and start via
+# systemctl: on EL10 the SysV path (/etc/init.d/xcatd) cannot start xcatd.
+if [ -f "/proc/cmdline" ] && [ "x$(stat -c '%i %d' /)" == "x$(stat -c '%i %d' /proc/1/root/. 2>/dev/null)" ]; then
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl restart xcatd
+  else
+    service xcatd restart
+  fi
+fi
+%endif
+
 %clean
 
 %files

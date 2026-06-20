@@ -1,7 +1,7 @@
 Summary: xCAT openbmc python
 Name: xCAT-openbmc-py
 Version: %{?version:%{version}}%{!?version:%(cat Version)}
-Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
+Release: %{?release:%{release}}%{!?release:%(cat Release)}
 Epoch: 1
 License: EPL
 Group: Applications/System

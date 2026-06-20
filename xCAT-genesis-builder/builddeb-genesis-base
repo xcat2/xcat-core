@@ -1,0 +1,166 @@
+#!/bin/bash
+# Build xcat-genesis-base .deb package natively on Ubuntu.
+# Must run as root on an Ubuntu system (22.04, 24.04, or 26.04).
+# Parallel to buildrpm for EL targets.
+
+set -euo pipefail
+
+DIR=$(readlink -f "$(dirname "$0")")
+BUILDARCH=$(dpkg --print-architecture)
+TRIPLET=$(dpkg-architecture -qDEB_HOST_MULTIARCH)
+
+case "$BUILDARCH" in
+    amd64)   TARCH=x86_64 ;;
+    ppc64el) TARCH=ppc64 ;;
+    *)       echo "ERROR: unsupported architecture: $BUILDARCH" >&2; exit 1 ;;
+esac
+
+VERSION=$(cat "$DIR/../Version" 2>/dev/null || echo "2.18.0")
+RELEASE=$(cat "$DIR/../Release" 2>/dev/null || echo "snap$(date +%Y%m%d%H%M)")
+CODENAME=$(. /etc/os-release && echo "$VERSION_CODENAME")
+
+echo "Building xcat-genesis-base for $BUILDARCH ($TARCH) on Ubuntu $CODENAME"
+
+export DEBIAN_FRONTEND=noninteractive
+
+REQUIRED_PACKAGES="
+    dracut linux-image-generic
+    ipmitool lldpad ethtool iproute2 kexec-tools screen
+    openssh-server openssh-client rsyslog chrony
+    nfs-common rpcbind pciutils usbutils parted
+    dosfstools e2fsprogs lvm2 mdadm net-tools
+    bc psmisc rsync wget cpio
+    dpkg-dev debhelper fakeroot devscripts vim-tiny
+"
+if [ "$BUILDARCH" = "amd64" ]; then
+    REQUIRED_PACKAGES="$REQUIRED_PACKAGES dmidecode efibootmgr"
+fi
+
+echo "Installing build dependencies..."
+apt-get update -qq
+apt-get install -y --no-install-recommends $REQUIRED_PACKAGES
+
+# Set up dracut module
+if [ -d /usr/lib/dracut/modules.d ]; then
+    DRACUT_PARENT=/usr/lib/dracut/modules.d
+elif [ -d /usr/share/dracut/modules.d ]; then
+    DRACUT_PARENT=/usr/share/dracut/modules.d
+else
+    echo "ERROR: cannot find dracut modules directory" >&2
+    exit 1
+fi
+
+DRACUTMODDIR=$DRACUT_PARENT/97xcat
+
+GENESIS_TMPDIR=$(mktemp -d /tmp/xcat-genesis-deb.XXXXXX)
+GENESIS_ROOT=$GENESIS_TMPDIR/opt/xcat/share/xcat/netboot/genesis/$TARCH
+GENESIS_FS=$GENESIS_ROOT/fs
+DRACUT_IMAGE=$GENESIS_TMPDIR/genesis.rfs
+
+cleanup() {
+    rm -rf "$GENESIS_TMPDIR" "$DRACUTMODDIR"
+}
+trap cleanup EXIT
+
+rm -rf "$DRACUTMODDIR"
+mkdir -p "$DRACUTMODDIR"
+cp -a "$DIR/dracut_105/ubuntu/." "$DRACUTMODDIR/"
+chmod 0755 "$DRACUTMODDIR/module-setup.sh" "$DRACUTMODDIR/xcatroot" "$DRACUTMODDIR/dhclient-script"
+
+if [ "$BUILDARCH" != "amd64" ]; then
+    sed -i '/efibootmgr dmidecode/d' "$DRACUTMODDIR/module-setup.sh"
+fi
+
+KERNELVERSION=$(ls -1 /lib/modules | sort -V | tail -n 1)
+if [ -z "$KERNELVERSION" ]; then
+    echo "ERROR: no kernel modules found in /lib/modules" >&2
+    exit 1
+fi
+
+echo "Using kernel $KERNELVERSION"
+
+mkdir -p "$GENESIS_FS/etc/ssh"
+mkdir -p /run/rpcbind
+
+echo "Running dracut..."
+dracut --compress gzip -m "xcat base" --no-early-microcode -N -f "$DRACUT_IMAGE" "$KERNELVERSION"
+
+echo "Extracting initramfs..."
+(cd "$GENESIS_FS" && zcat "$DRACUT_IMAGE" | cpio -dumi)
+
+for script in \
+    "$GENESIS_FS/sbin/dhclient-script" \
+    "$GENESIS_FS/usr/sbin/dhclient-script" \
+    "$GENESIS_FS/sbin/xcatroot"
+do
+    [ -f "$script" ] && chmod 0755 "$script"
+done
+
+for perl_dir in \
+    /usr/share/perl5 \
+    "/usr/lib/$TRIPLET/perl5" \
+    /usr/local/share/perl5 \
+    "/usr/local/lib/$TRIPLET/perl5"
+do
+    if [ -d "$perl_dir" ]; then
+        echo "Adding perl library $perl_dir"
+        mkdir -p "$GENESIS_FS$perl_dir"
+        cp -a "$perl_dir/." "$GENESIS_FS$perl_dir/"
+    fi
+done
+
+mkdir -p "$GENESIS_FS/lib/udev/rules.d"
+if [ -e /usr/lib/udev/rules.d/80-net-name-slot.rules ]; then
+    cp /usr/lib/udev/rules.d/80-net-name-slot.rules "$GENESIS_FS/lib/udev/rules.d/"
+elif [ -e /lib/udev/rules.d/80-net-name-slot.rules ]; then
+    cp /lib/udev/rules.d/80-net-name-slot.rules "$GENESIS_FS/lib/udev/rules.d/"
+elif [ -e "$DIR/80-net-name-slot.rules" ]; then
+    cp "$DIR/80-net-name-slot.rules" "$GENESIS_FS/lib/udev/rules.d/"
+fi
+
+KERNEL_IMAGE=/boot/vmlinuz-$KERNELVERSION
+if [ ! -e "$KERNEL_IMAGE" ]; then
+    for candidate in \
+        "/boot/vmlinux-$KERNELVERSION" \
+        "/usr/lib/modules/$KERNELVERSION/vmlinuz" \
+        "/lib/modules/$KERNELVERSION/vmlinuz" \
+        "$(find /usr/lib/modules/"$KERNELVERSION" -maxdepth 2 -name 'vmlinuz*' -o -name 'vmlinux*' 2>/dev/null | head -n 1)" \
+        "$(find /lib/modules/"$KERNELVERSION" -maxdepth 2 -name 'vmlinuz*' -o -name 'vmlinux*' 2>/dev/null | head -n 1)" \
+        "$(ls -1 /boot/vmlinuz-* /boot/vmlinux-* 2>/dev/null | sort -V | tail -n 1)"
+    do
+        if [ -n "$candidate" ] && [ -e "$candidate" ]; then
+            KERNEL_IMAGE="$candidate"
+            break
+        fi
+    done
+fi
+if [ ! -e "$KERNEL_IMAGE" ]; then
+    echo "ERROR: cannot find kernel image" >&2
+    exit 1
+fi
+echo "Adding kernel $KERNEL_IMAGE"
+cp "$KERNEL_IMAGE" "$GENESIS_ROOT/kernel"
+
+find "$GENESIS_TMPDIR" -type c -delete
+
+# Stage for dpkg-buildpackage
+rm -rf "$DIR/opt"
+cp -a "$GENESIS_TMPDIR/opt" "$DIR/"
+
+# Adjust control file for target arch
+sed -i "s/xcat-genesis-base-amd64/xcat-genesis-base-$BUILDARCH/g" "$DIR/debian/control"
+sed -i "s/xcat-genesis-scripts-amd64/xcat-genesis-scripts-$BUILDARCH/g" "$DIR/debian/control"
+
+PKG_VERSION="${VERSION}-${RELEASE}~${CODENAME}"
+rm -f "$DIR/debian/changelog"
+dch --create --package "xcat-genesis-base-$BUILDARCH" \
+    --newversion "$PKG_VERSION" --distribution "$CODENAME" \
+    --controlmaint -c "$DIR/debian/changelog" \
+    "Native Ubuntu build on $CODENAME $BUILDARCH"
+
+echo "Building .deb package..."
+cd "$DIR"
+dpkg-buildpackage -rfakeroot -uc -us -b
+
+echo "Build complete. .deb files:"
+ls -la "$DIR/../"xcat-genesis-base*.deb 2>/dev/null || echo "Check parent directory for .deb files"

@@ -6,7 +6,7 @@ check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
 cmd:xdsh $$CN "mkdir -p /tmp/backupnet/"
 check:rc==0
-cmd:if grep SUSE /etc/*release;then xdsh $$CN "cp -f /etc/sysconfig/network/ifcfg-* /tmp/backupnet/"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "cp -f /etc/sysconfig/network-scripts/ifcfg-* /tmp/backupnet/"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cp -f /etc/network/interfaces.d/* /tmp/backupnet/";else echo "Sorry,this is not supported os"; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh backup
 check:rc==0
 cmd:mkdef -t network -o 30_0_0_0-255_255_0_0 net=30.0.0.0 mask=255.0.0.0 mgtifname=$$SECONDNIC
 check:rc==0
@@ -26,22 +26,22 @@ check:output=~$$CN-$$SECONDNIC
 check:output=~$$CN-$$THIRDNIC
 cmd:updatenode $$CN -P confignetwork
 check:rc==0
-cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 30.0.0.9 /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN  "grep 30.0.0.9 /etc/sysconfig/network-scripts/ifcfg-$$SECONDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep 30.0.0.9 /etc/network/interfaces.d/$$SECONDNIC";else echo "Sorry,this is not supported os"; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh show $$SECONDNIC | grep 30.0.0.9
 check:output=~30.0.0.9
-cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 40.0.0.8 /etc/sysconfig/network/ifcfg-$$THIRDNIC"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN  "grep 40.0.0.8 /etc/sysconfig/network-scripts/ifcfg-$$THIRDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep 40.0.0.8 /etc/network/interfaces.d/$$THIRDNIC";else echo "Sorry,this is not supported os"; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh show $$THIRDNIC | grep 40.0.0.8
 check:output=~40.0.0.8
 cmd:rmdef -t network -o 30_0_0_0-255_255_0_0
 cmd:rmdef -t network -o 40_0_0_0-255_255_0_0
-cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network-scripts/ifcfg-$$SECONDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /etc/network/interfaces.d/$$SECONDNIC";else echo "Sorry,this is not supported os"; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh del $$SECONDNIC
 check:rc==0
-cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifcfg-$$THIRDNIC"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network-scripts/ifcfg-$$THIRDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /etc/network/interfaces.d/$$THIRDNIC";else echo "Sorry,this is not supported os"; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh del $$THIRDNIC
 check:rc==0
 cmd:xdsh $$CN "ip addr del 30.0.0.9/8 dev $$SECONDNIC"
 cmd:xdsh $$CN "ip addr del 40.0.0.8/8 dev $$THIRDNIC"
 cmd:if [ -e /tmp/CN.stanza ]; then rmdef $$CN; cat /tmp/CN.stanza | mkdef -z; rm -rf /tmp/CN.stanza; fi
 check:rc==0
 cmd:mv -f /etc/hosts.bak /etc/hosts
-cmd:if grep SUSE /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/sysconfig/network/"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/sysconfig/network-scripts/"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/network/interfaces.d/";else echo "Sorry,this is not supported os"; fi
+cmd:xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/nic_cfg.sh backup
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
 end
 

@@ -1,0 +1,7 @@
+start:noop
+description:no-op smoke test -- runs 'echo ok' and verifies it; exercises the test harness without touching the cluster
+label:mn_only,ci_test
+cmd:echo ok
+check:rc==0
+check:output=~ok
+end

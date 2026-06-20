@@ -1,0 +1,670 @@
+#!/bin/bash
+
+check() {
+    return 0;
+}
+
+depends() {
+    echo ""
+}
+
+installkernel() {
+    local modules_dep modfile modname
+
+    if [[ -n "${kernel:-}" && -r "/lib/modules/$kernel/modules.dep" ]]; then
+        modules_dep="/lib/modules/$kernel/modules.dep"
+    elif [[ -n "${KERNELVERSION:-}" && -r "/lib/modules/$KERNELVERSION/modules.dep" ]]; then
+        modules_dep="/lib/modules/$KERNELVERSION/modules.dep"
+    else
+        modules_dep=$(ls -1 /lib/modules/*/modules.dep 2>/dev/null | head -n 1)
+    fi
+
+    [[ -r "$modules_dep" ]] || return 0
+
+    while IFS= read -r modfile; do
+        modfile=${modfile%%:*}
+        modname=${modfile##*/}
+        modname=${modname%.ko*}
+        instmods "$modname"
+    done < "$modules_dep"
+}
+
+_dracut_install_opt() {
+    local src="$1"
+    local dst=$2;
+    if [[ -z "$dst" ]]; then
+        test -e "$src" && dracut_install "$src"
+    else
+        test -e "$src" && dracut_install "$src" "$dst"
+    fi
+}
+
+install() {
+    # Ubuntu multiarch triplet for architecture-specific library paths
+    local TRIPLET
+    TRIPLET=$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || echo x86_64-linux-gnu)
+
+    dracut_install wget openssl tar ipmitool cpio gzip lsmod ethtool modprobe touch echo cut wc bash
+    _dracut_install_opt mstflint
+    dracut_install netstat # broadcom update requires
+    dracut_install uniq # mellanox update requires
+    dracut_install grep ip hostname /usr/bin/awk egrep grep dirname expr
+    dracut_install mount.nfs sshd vi reboot lspci parted screen mkfs mkfs.ext4 mkfs.btrfs
+    #dracut_install libvirtd /usr/share/libvirt/cpu_map.xml /usr/bin/qemu-img /usr/libexec/qemu-kvm
+    dracut_install mkswap df ifenslave ssh-keygen scp clear
+    dracut_install dhclient lldpad
+    _dracut_install_opt "/lib/$TRIPLET/libnss_dns.so.2"
+    dracut_install poweroff hwclock date /usr/share/terminfo/x/xterm /usr/share/terminfo/s/screen /etc/nsswitch.conf /etc/services
+    dracut_install /usr/sbin/rsyslogd /etc/protocols umount /usr/bin/dpkg
+    #dracut_install chmod /sbin/route /sbin/ifconfig /usr/bin/whoami /usr/bin/head /usr/bin/tail basename /etc/redhat-release ping tr lsusb /usr/share/hwdata/usb.ids #ibm fw wrapper requirements
+    dracut_install chmod ip /usr/bin/whoami /usr/bin/head /usr/bin/tail basename ping tr lsusb /usr/share/hwdata/usb.ids
+    _dracut_install_opt /etc/os-release
+    _dracut_install_opt /etc/lsb-release
+    _dracut_install_opt efibootmgr
+    _dracut_install_opt dmidecode
+    dracut_install lldptool
+    dracut_install /usr/share/zoneinfo/Zulu
+    dracut_install /usr/share/zoneinfo/GMT-0
+    dracut_install /usr/share/zoneinfo/Europe/Istanbul
+    dracut_install /usr/share/zoneinfo/Europe/San_Marino
+    dracut_install /usr/share/zoneinfo/Europe/Jersey
+    dracut_install /usr/share/zoneinfo/Europe/Bucharest
+    dracut_install /usr/share/zoneinfo/Europe/Gibraltar
+    dracut_install /usr/share/zoneinfo/Europe/Uzhgorod
+    dracut_install /usr/share/zoneinfo/Europe/Moscow
+    dracut_install /usr/share/zoneinfo/Europe/Brussels
+    dracut_install /usr/share/zoneinfo/Europe/Nicosia
+    dracut_install /usr/share/zoneinfo/Europe/Zurich
+    dracut_install /usr/share/zoneinfo/Europe/Berlin
+    dracut_install /usr/share/zoneinfo/Europe/Guernsey
+    dracut_install /usr/share/zoneinfo/Europe/Budapest
+    dracut_install /usr/share/zoneinfo/Europe/Kiev
+    dracut_install /usr/share/zoneinfo/Europe/Podgorica
+    dracut_install /usr/share/zoneinfo/Europe/Isle_of_Man
+    dracut_install /usr/share/zoneinfo/Europe/Mariehamn
+    dracut_install /usr/share/zoneinfo/Europe/Belgrade
+    dracut_install /usr/share/zoneinfo/Europe/Belfast
+    dracut_install /usr/share/zoneinfo/Europe/Ljubljana
+    dracut_install /usr/share/zoneinfo/Europe/Chisinau
+    dracut_install /usr/share/zoneinfo/Europe/Andorra
+    dracut_install /usr/share/zoneinfo/Europe/Athens
+    dracut_install /usr/share/zoneinfo/Europe/Stockholm
+    dracut_install /usr/share/zoneinfo/Europe/Vienna
+    dracut_install /usr/share/zoneinfo/Europe/Lisbon
+    dracut_install /usr/share/zoneinfo/Europe/London
+    dracut_install /usr/share/zoneinfo/Europe/Paris
+    dracut_install /usr/share/zoneinfo/Europe/Oslo
+    dracut_install /usr/share/zoneinfo/Europe/Zagreb
+    dracut_install /usr/share/zoneinfo/Europe/Helsinki
+    dracut_install /usr/share/zoneinfo/Europe/Warsaw
+    dracut_install /usr/share/zoneinfo/Europe/Copenhagen
+    dracut_install /usr/share/zoneinfo/Europe/Riga
+    dracut_install /usr/share/zoneinfo/Europe/Vaduz
+    dracut_install /usr/share/zoneinfo/Europe/Vilnius
+    dracut_install /usr/share/zoneinfo/Europe/Volgograd
+    dracut_install /usr/share/zoneinfo/Europe/Amsterdam
+    dracut_install /usr/share/zoneinfo/Europe/Tiraspol
+    dracut_install /usr/share/zoneinfo/Europe/Tallinn
+    dracut_install /usr/share/zoneinfo/Europe/Kaliningrad
+    dracut_install /usr/share/zoneinfo/Europe/Malta
+    dracut_install /usr/share/zoneinfo/Europe/Sarajevo
+    dracut_install /usr/share/zoneinfo/Europe/Madrid
+    dracut_install /usr/share/zoneinfo/Europe/Zaporozhye
+    dracut_install /usr/share/zoneinfo/Europe/Simferopol
+    dracut_install /usr/share/zoneinfo/Europe/Sofia
+    dracut_install /usr/share/zoneinfo/Europe/Skopje
+    dracut_install /usr/share/zoneinfo/Europe/Monaco
+    dracut_install /usr/share/zoneinfo/Europe/Rome
+    dracut_install /usr/share/zoneinfo/Europe/Prague
+    dracut_install /usr/share/zoneinfo/Europe/Luxembourg
+    dracut_install /usr/share/zoneinfo/Europe/Minsk
+    dracut_install /usr/share/zoneinfo/Europe/Vatican
+    dracut_install /usr/share/zoneinfo/Europe/Dublin
+    dracut_install /usr/share/zoneinfo/Europe/Samara
+    dracut_install /usr/share/zoneinfo/Europe/Tirane
+    dracut_install /usr/share/zoneinfo/Europe/Bratislava
+    dracut_install /usr/share/zoneinfo/Greenwich
+    dracut_install /usr/share/zoneinfo/US/Indiana-Starke
+    dracut_install /usr/share/zoneinfo/US/Alaska
+    dracut_install /usr/share/zoneinfo/US/Michigan
+    dracut_install /usr/share/zoneinfo/US/Aleutian
+    dracut_install /usr/share/zoneinfo/US/Hawaii
+    dracut_install /usr/share/zoneinfo/US/Central
+    dracut_install /usr/share/zoneinfo/US/Eastern
+    dracut_install /usr/share/zoneinfo/US/Pacific
+    dracut_install /usr/share/zoneinfo/US/Samoa
+    dracut_install /usr/share/zoneinfo/US/Mountain
+    dracut_install /usr/share/zoneinfo/US/Arizona
+    dracut_install /usr/share/zoneinfo/US/East-Indiana
+    dracut_install /usr/share/zoneinfo/EST
+    dracut_install /usr/share/zoneinfo/HST
+    dracut_install /usr/share/zoneinfo/Eire
+    dracut_install /usr/share/zoneinfo/America/Cancun
+    dracut_install /usr/share/zoneinfo/America/Santo_Domingo
+    dracut_install /usr/share/zoneinfo/America/Jujuy
+    dracut_install /usr/share/zoneinfo/America/Guatemala
+    dracut_install /usr/share/zoneinfo/America/Monterrey
+    dracut_install /usr/share/zoneinfo/America/Ensenada
+    dracut_install /usr/share/zoneinfo/America/Dawson_Creek
+    dracut_install /usr/share/zoneinfo/America/Mendoza
+    dracut_install /usr/share/zoneinfo/America/Coral_Harbour
+    dracut_install /usr/share/zoneinfo/America/Martinique
+    dracut_install /usr/share/zoneinfo/America/Cordoba
+    dracut_install /usr/share/zoneinfo/America/Recife
+    dracut_install /usr/share/zoneinfo/America/Cayman
+    dracut_install /usr/share/zoneinfo/America/Shiprock
+    dracut_install /usr/share/zoneinfo/America/Tortola
+    dracut_install /usr/share/zoneinfo/America/Lima
+    dracut_install /usr/share/zoneinfo/America/Antigua
+    dracut_install /usr/share/zoneinfo/America/Blanc-Sablon
+    dracut_install /usr/share/zoneinfo/America/Nipigon
+    dracut_install /usr/share/zoneinfo/America/Nome
+    dracut_install /usr/share/zoneinfo/America/Montserrat
+    dracut_install /usr/share/zoneinfo/America/Atka
+    dracut_install /usr/share/zoneinfo/America/St_Thomas
+    dracut_install /usr/share/zoneinfo/America/Halifax
+    dracut_install /usr/share/zoneinfo/America/Montreal
+    dracut_install /usr/share/zoneinfo/America/Curacao
+    dracut_install /usr/share/zoneinfo/America/Cuiaba
+    dracut_install /usr/share/zoneinfo/America/Winnipeg
+    dracut_install /usr/share/zoneinfo/America/North_Dakota/New_Salem
+    dracut_install /usr/share/zoneinfo/America/North_Dakota/Center
+    dracut_install /usr/share/zoneinfo/America/Panama
+    dracut_install /usr/share/zoneinfo/America/Rosario
+    dracut_install /usr/share/zoneinfo/America/Anguilla
+    dracut_install /usr/share/zoneinfo/America/Ojinaga
+    dracut_install /usr/share/zoneinfo/America/Guyana
+    dracut_install /usr/share/zoneinfo/America/Eirunepe
+    dracut_install /usr/share/zoneinfo/America/Grand_Turk
+    dracut_install /usr/share/zoneinfo/America/Rio_Branco
+    dracut_install /usr/share/zoneinfo/America/Santa_Isabel
+    dracut_install /usr/share/zoneinfo/America/Scoresbysund
+    dracut_install /usr/share/zoneinfo/America/Adak
+    dracut_install /usr/share/zoneinfo/America/Menominee
+    dracut_install /usr/share/zoneinfo/America/Resolute
+    dracut_install /usr/share/zoneinfo/America/Guadeloupe
+    dracut_install /usr/share/zoneinfo/America/Indianapolis
+    dracut_install /usr/share/zoneinfo/America/Vancouver
+    dracut_install /usr/share/zoneinfo/America/Glace_Bay
+    dracut_install /usr/share/zoneinfo/America/Buenos_Aires
+    dracut_install /usr/share/zoneinfo/America/Virgin
+    dracut_install /usr/share/zoneinfo/America/Belem
+    dracut_install /usr/share/zoneinfo/America/Catamarca
+    dracut_install /usr/share/zoneinfo/America/Bahia
+    dracut_install /usr/share/zoneinfo/America/Fort_Wayne
+    dracut_install /usr/share/zoneinfo/America/Hermosillo
+    dracut_install /usr/share/zoneinfo/America/Rankin_Inlet
+    dracut_install /usr/share/zoneinfo/America/Mexico_City
+    dracut_install /usr/share/zoneinfo/America/Belize
+    dracut_install /usr/share/zoneinfo/America/Maceio
+    dracut_install /usr/share/zoneinfo/America/Dominica
+    dracut_install /usr/share/zoneinfo/America/Swift_Current
+    dracut_install /usr/share/zoneinfo/America/St_Johns
+    dracut_install /usr/share/zoneinfo/America/St_Barthelemy
+    dracut_install /usr/share/zoneinfo/America/Yellowknife
+    dracut_install /usr/share/zoneinfo/America/Costa_Rica
+    dracut_install /usr/share/zoneinfo/America/Pangnirtung
+    dracut_install /usr/share/zoneinfo/America/Bogota
+    dracut_install /usr/share/zoneinfo/America/Port-au-Prince
+    dracut_install /usr/share/zoneinfo/America/Phoenix
+    dracut_install /usr/share/zoneinfo/America/Port_of_Spain
+    dracut_install /usr/share/zoneinfo/America/Matamoros
+    dracut_install /usr/share/zoneinfo/America/Puerto_Rico
+    dracut_install /usr/share/zoneinfo/America/Detroit
+    dracut_install /usr/share/zoneinfo/America/Edmonton
+    dracut_install /usr/share/zoneinfo/America/Toronto
+    dracut_install /usr/share/zoneinfo/America/Cambridge_Bay
+    dracut_install /usr/share/zoneinfo/America/Godthab
+    dracut_install /usr/share/zoneinfo/America/Atikokan
+    dracut_install /usr/share/zoneinfo/America/Juneau
+    dracut_install /usr/share/zoneinfo/America/Managua
+    dracut_install /usr/share/zoneinfo/America/Anchorage
+    dracut_install /usr/share/zoneinfo/America/Merida
+    dracut_install /usr/share/zoneinfo/America/Thunder_Bay
+    dracut_install /usr/share/zoneinfo/America/Porto_Velho
+    dracut_install /usr/share/zoneinfo/America/Argentina/Jujuy
+    dracut_install /usr/share/zoneinfo/America/Argentina/La_Rioja
+    dracut_install /usr/share/zoneinfo/America/Argentina/Mendoza
+    dracut_install /usr/share/zoneinfo/America/Argentina/Cordoba
+    dracut_install /usr/share/zoneinfo/America/Argentina/Ushuaia
+    dracut_install /usr/share/zoneinfo/America/Argentina/Rio_Gallegos
+    dracut_install /usr/share/zoneinfo/America/Argentina/Buenos_Aires
+    dracut_install /usr/share/zoneinfo/America/Argentina/San_Juan
+    dracut_install /usr/share/zoneinfo/America/Argentina/Catamarca
+    dracut_install /usr/share/zoneinfo/America/Argentina/San_Luis
+    dracut_install /usr/share/zoneinfo/America/Argentina/ComodRivadavia
+    dracut_install /usr/share/zoneinfo/America/Argentina/Salta
+    dracut_install /usr/share/zoneinfo/America/Argentina/Tucuman
+    dracut_install /usr/share/zoneinfo/America/Iqaluit
+    dracut_install /usr/share/zoneinfo/America/Chicago
+    dracut_install /usr/share/zoneinfo/America/Miquelon
+    dracut_install /usr/share/zoneinfo/America/Havana
+    dracut_install /usr/share/zoneinfo/America/Guayaquil
+    dracut_install /usr/share/zoneinfo/America/St_Vincent
+    dracut_install /usr/share/zoneinfo/America/St_Lucia
+    dracut_install /usr/share/zoneinfo/America/Boise
+    dracut_install /usr/share/zoneinfo/America/Yakutat
+    dracut_install /usr/share/zoneinfo/America/Santarem
+    dracut_install /usr/share/zoneinfo/America/Campo_Grande
+    dracut_install /usr/share/zoneinfo/America/Santiago
+    dracut_install /usr/share/zoneinfo/America/Porto_Acre
+    dracut_install /usr/share/zoneinfo/America/Sao_Paulo
+    dracut_install /usr/share/zoneinfo/America/Thule
+    dracut_install /usr/share/zoneinfo/America/New_York
+    dracut_install /usr/share/zoneinfo/America/Nassau
+    dracut_install /usr/share/zoneinfo/America/Dawson
+    dracut_install /usr/share/zoneinfo/America/Louisville
+    dracut_install /usr/share/zoneinfo/America/Asuncion
+    dracut_install /usr/share/zoneinfo/America/Inuvik
+    dracut_install /usr/share/zoneinfo/America/Paramaribo
+    dracut_install /usr/share/zoneinfo/America/Chihuahua
+    dracut_install /usr/share/zoneinfo/America/Mazatlan
+    dracut_install /usr/share/zoneinfo/America/Grenada
+    dracut_install /usr/share/zoneinfo/America/Denver
+    dracut_install /usr/share/zoneinfo/America/Los_Angeles
+    dracut_install /usr/share/zoneinfo/America/Marigot
+    dracut_install /usr/share/zoneinfo/America/Manaus
+    dracut_install /usr/share/zoneinfo/America/Regina
+    dracut_install /usr/share/zoneinfo/America/Barbados
+    dracut_install /usr/share/zoneinfo/America/Noronha
+    dracut_install /usr/share/zoneinfo/America/Montevideo
+    dracut_install /usr/share/zoneinfo/America/Caracas
+    dracut_install /usr/share/zoneinfo/America/Rainy_River
+    dracut_install /usr/share/zoneinfo/America/La_Paz
+    dracut_install /usr/share/zoneinfo/America/Jamaica
+    dracut_install /usr/share/zoneinfo/America/Moncton
+    dracut_install /usr/share/zoneinfo/America/Whitehorse
+    dracut_install /usr/share/zoneinfo/America/Fortaleza
+    dracut_install /usr/share/zoneinfo/America/Kentucky/Monticello
+    dracut_install /usr/share/zoneinfo/America/Kentucky/Louisville
+    dracut_install /usr/share/zoneinfo/America/Indiana/Marengo
+    dracut_install /usr/share/zoneinfo/America/Indiana/Indianapolis
+    dracut_install /usr/share/zoneinfo/America/Indiana/Knox
+    dracut_install /usr/share/zoneinfo/America/Indiana/Tell_City
+    dracut_install /usr/share/zoneinfo/America/Indiana/Petersburg
+    dracut_install /usr/share/zoneinfo/America/Indiana/Winamac
+    dracut_install /usr/share/zoneinfo/America/Indiana/Vincennes
+    dracut_install /usr/share/zoneinfo/America/Indiana/Vevay
+    dracut_install /usr/share/zoneinfo/America/Danmarkshavn
+    dracut_install /usr/share/zoneinfo/America/St_Kitts
+    dracut_install /usr/share/zoneinfo/America/Aruba
+    dracut_install /usr/share/zoneinfo/America/Boa_Vista
+    dracut_install /usr/share/zoneinfo/America/Bahia_Banderas
+    dracut_install /usr/share/zoneinfo/America/Tegucigalpa
+    dracut_install /usr/share/zoneinfo/America/Araguaina
+    dracut_install /usr/share/zoneinfo/America/El_Salvador
+    dracut_install /usr/share/zoneinfo/America/Cayenne
+    dracut_install /usr/share/zoneinfo/America/Tijuana
+    dracut_install /usr/share/zoneinfo/America/Knox_IN
+    dracut_install /usr/share/zoneinfo/America/Goose_Bay
+    dracut_install /usr/share/zoneinfo/EET
+    dracut_install /usr/share/zoneinfo/EST5EDT
+    dracut_install /usr/share/zoneinfo/MST
+    dracut_install /usr/share/zoneinfo/Iceland
+    dracut_install /usr/share/zoneinfo/Atlantic/Faeroe
+    dracut_install /usr/share/zoneinfo/Atlantic/Stanley
+    dracut_install /usr/share/zoneinfo/Atlantic/Reykjavik
+    dracut_install /usr/share/zoneinfo/Atlantic/St_Helena
+    dracut_install /usr/share/zoneinfo/Atlantic/Faroe
+    dracut_install /usr/share/zoneinfo/Atlantic/South_Georgia
+    dracut_install /usr/share/zoneinfo/Atlantic/Jan_Mayen
+    dracut_install /usr/share/zoneinfo/Atlantic/Azores
+    dracut_install /usr/share/zoneinfo/Atlantic/Cape_Verde
+    dracut_install /usr/share/zoneinfo/Atlantic/Madeira
+    dracut_install /usr/share/zoneinfo/Atlantic/Bermuda
+    dracut_install /usr/share/zoneinfo/Atlantic/Canary
+    dracut_install /usr/share/zoneinfo/GMT0
+    dracut_install /usr/share/zoneinfo/Poland
+    dracut_install /usr/share/zoneinfo/Indian/Chagos
+    dracut_install /usr/share/zoneinfo/Indian/Maldives
+    dracut_install /usr/share/zoneinfo/Indian/Comoro
+    dracut_install /usr/share/zoneinfo/Indian/Mauritius
+    dracut_install /usr/share/zoneinfo/Indian/Mayotte
+    dracut_install /usr/share/zoneinfo/Indian/Christmas
+    dracut_install /usr/share/zoneinfo/Indian/Antananarivo
+    dracut_install /usr/share/zoneinfo/Indian/Kerguelen
+    dracut_install /usr/share/zoneinfo/Indian/Mahe
+    dracut_install /usr/share/zoneinfo/Indian/Cocos
+    dracut_install /usr/share/zoneinfo/Indian/Reunion
+    dracut_install /usr/share/zoneinfo/Mexico/BajaNorte
+    dracut_install /usr/share/zoneinfo/Mexico/BajaSur
+    dracut_install /usr/share/zoneinfo/Mexico/General
+    dracut_install /usr/share/zoneinfo/Turkey
+    dracut_install /usr/share/zoneinfo/Egypt
+    dracut_install /usr/share/zoneinfo/Hongkong
+    dracut_install /usr/share/zoneinfo/GB
+    dracut_install /usr/share/zoneinfo/GMT+0
+    dracut_install /usr/share/zoneinfo/ROK
+    dracut_install /usr/share/zoneinfo/Antarctica/Mawson
+    dracut_install /usr/share/zoneinfo/Antarctica/Macquarie
+    dracut_install /usr/share/zoneinfo/Antarctica/South_Pole
+    dracut_install /usr/share/zoneinfo/Antarctica/Rothera
+    dracut_install /usr/share/zoneinfo/Antarctica/Davis
+    dracut_install /usr/share/zoneinfo/Antarctica/DumontDUrville
+    dracut_install /usr/share/zoneinfo/Antarctica/McMurdo
+    dracut_install /usr/share/zoneinfo/Antarctica/Casey
+    dracut_install /usr/share/zoneinfo/Antarctica/Vostok
+    dracut_install /usr/share/zoneinfo/Antarctica/Palmer
+    dracut_install /usr/share/zoneinfo/Antarctica/Syowa
+    dracut_install /usr/share/zoneinfo/Universal
+    dracut_install /usr/share/zoneinfo/CET
+    dracut_install /usr/share/zoneinfo/WET
+    dracut_install /usr/share/zoneinfo/Navajo
+    dracut_install /usr/share/zoneinfo/UTC
+    dracut_install /usr/share/zoneinfo/Pacific/Enderbury
+    dracut_install /usr/share/zoneinfo/Pacific/Johnston
+    dracut_install /usr/share/zoneinfo/Pacific/Pago_Pago
+    dracut_install /usr/share/zoneinfo/Pacific/Saipan
+    dracut_install /usr/share/zoneinfo/Pacific/Norfolk
+    dracut_install /usr/share/zoneinfo/Pacific/Chuuk
+    dracut_install /usr/share/zoneinfo/Pacific/Galapagos
+    dracut_install /usr/share/zoneinfo/Pacific/Palau
+    dracut_install /usr/share/zoneinfo/Pacific/Tarawa
+    dracut_install /usr/share/zoneinfo/Pacific/Fakaofo
+    dracut_install /usr/share/zoneinfo/Pacific/Rarotonga
+    dracut_install /usr/share/zoneinfo/Pacific/Wake
+    dracut_install /usr/share/zoneinfo/Pacific/Kosrae
+    dracut_install /usr/share/zoneinfo/Pacific/Tahiti
+    dracut_install /usr/share/zoneinfo/Pacific/Fiji
+    dracut_install /usr/share/zoneinfo/Pacific/Ponape
+    dracut_install /usr/share/zoneinfo/Pacific/Tongatapu
+    dracut_install /usr/share/zoneinfo/Pacific/Efate
+    dracut_install /usr/share/zoneinfo/Pacific/Honolulu
+    dracut_install /usr/share/zoneinfo/Pacific/Niue
+    dracut_install /usr/share/zoneinfo/Pacific/Kwajalein
+    dracut_install /usr/share/zoneinfo/Pacific/Guam
+    dracut_install /usr/share/zoneinfo/Pacific/Funafuti
+    dracut_install /usr/share/zoneinfo/Pacific/Majuro
+    dracut_install /usr/share/zoneinfo/Pacific/Midway
+    dracut_install /usr/share/zoneinfo/Pacific/Nauru
+    dracut_install /usr/share/zoneinfo/Pacific/Samoa
+    dracut_install /usr/share/zoneinfo/Pacific/Marquesas
+    dracut_install /usr/share/zoneinfo/Pacific/Kiritimati
+    dracut_install /usr/share/zoneinfo/Pacific/Noumea
+    dracut_install /usr/share/zoneinfo/Pacific/Truk
+    dracut_install /usr/share/zoneinfo/Pacific/Guadalcanal
+    dracut_install /usr/share/zoneinfo/Pacific/Pohnpei
+    dracut_install /usr/share/zoneinfo/Pacific/Pitcairn
+    dracut_install /usr/share/zoneinfo/Pacific/Port_Moresby
+    dracut_install /usr/share/zoneinfo/Pacific/Yap
+    dracut_install /usr/share/zoneinfo/Pacific/Easter
+    dracut_install /usr/share/zoneinfo/Pacific/Wallis
+    dracut_install /usr/share/zoneinfo/Pacific/Apia
+    dracut_install /usr/share/zoneinfo/Pacific/Auckland
+    dracut_install /usr/share/zoneinfo/Pacific/Gambier
+    dracut_install /usr/share/zoneinfo/Pacific/Chatham
+    dracut_install /usr/share/zoneinfo/Japan
+    dracut_install /usr/share/zoneinfo/Libya
+    dracut_install /usr/share/zoneinfo/ROC
+    dracut_install /usr/share/zoneinfo/Iran
+    dracut_install /usr/share/zoneinfo/Brazil/West
+    dracut_install /usr/share/zoneinfo/Brazil/East
+    dracut_install /usr/share/zoneinfo/Brazil/Acre
+    dracut_install /usr/share/zoneinfo/Brazil/DeNoronha
+    dracut_install /usr/share/zoneinfo/Arctic/Longyearbyen
+    dracut_install /usr/share/zoneinfo/Portugal
+    dracut_install /usr/share/zoneinfo/MET
+    dracut_install /usr/share/zoneinfo/W-SU
+    dracut_install /usr/share/zoneinfo/Kwajalein
+    dracut_install /usr/share/zoneinfo/CST6CDT
+    dracut_install /usr/share/zoneinfo/GB-Eire
+    dracut_install /usr/share/zoneinfo/Australia/Melbourne
+    dracut_install /usr/share/zoneinfo/Australia/Broken_Hill
+    dracut_install /usr/share/zoneinfo/Australia/Queensland
+    dracut_install /usr/share/zoneinfo/Australia/South
+    dracut_install /usr/share/zoneinfo/Australia/Eucla
+    dracut_install /usr/share/zoneinfo/Australia/Yancowinna
+    dracut_install /usr/share/zoneinfo/Australia/Lord_Howe
+    dracut_install /usr/share/zoneinfo/Australia/Hobart
+    dracut_install /usr/share/zoneinfo/Australia/NSW
+    dracut_install /usr/share/zoneinfo/Australia/West
+    dracut_install /usr/share/zoneinfo/Australia/LHI
+    dracut_install /usr/share/zoneinfo/Australia/Perth
+    dracut_install /usr/share/zoneinfo/Australia/ACT
+    dracut_install /usr/share/zoneinfo/Australia/Darwin
+    dracut_install /usr/share/zoneinfo/Australia/Lindeman
+    dracut_install /usr/share/zoneinfo/Australia/Sydney
+    dracut_install /usr/share/zoneinfo/Australia/North
+    dracut_install /usr/share/zoneinfo/Australia/Canberra
+    dracut_install /usr/share/zoneinfo/Australia/Adelaide
+    dracut_install /usr/share/zoneinfo/Australia/Brisbane
+    dracut_install /usr/share/zoneinfo/Australia/Victoria
+    dracut_install /usr/share/zoneinfo/Australia/Tasmania
+    dracut_install /usr/share/zoneinfo/Australia/Currie
+    dracut_install /usr/share/zoneinfo/UCT
+    dracut_install /usr/share/zoneinfo/Cuba
+    dracut_install /usr/share/zoneinfo/Singapore
+    dracut_install /usr/share/zoneinfo/GMT
+    dracut_install /usr/share/zoneinfo/NZ-CHAT
+    dracut_install /usr/share/zoneinfo/Asia/Istanbul
+    dracut_install /usr/share/zoneinfo/Asia/Kuwait
+    dracut_install /usr/share/zoneinfo/Asia/Saigon
+    dracut_install /usr/share/zoneinfo/Asia/Urumqi
+    dracut_install /usr/share/zoneinfo/Asia/Brunei
+    dracut_install /usr/share/zoneinfo/Asia/Ujung_Pandang
+    dracut_install /usr/share/zoneinfo/Asia/Muscat
+    dracut_install /usr/share/zoneinfo/Asia/Kashgar
+    dracut_install /usr/share/zoneinfo/Asia/Kamchatka
+    dracut_install /usr/share/zoneinfo/Asia/Manila
+    dracut_install /usr/share/zoneinfo/Asia/Vladivostok
+    dracut_install /usr/share/zoneinfo/Asia/Jayapura
+    dracut_install /usr/share/zoneinfo/Asia/Magadan
+    dracut_install /usr/share/zoneinfo/Asia/Almaty
+    dracut_install /usr/share/zoneinfo/Asia/Qyzylorda
+    dracut_install /usr/share/zoneinfo/Asia/Anadyr
+    dracut_install /usr/share/zoneinfo/Asia/Nicosia
+    dracut_install /usr/share/zoneinfo/Asia/Kathmandu
+    dracut_install /usr/share/zoneinfo/Asia/Qatar
+    dracut_install /usr/share/zoneinfo/Asia/Jerusalem
+    dracut_install /usr/share/zoneinfo/Asia/Yakutsk
+    dracut_install /usr/share/zoneinfo/Asia/Karachi
+    dracut_install /usr/share/zoneinfo/Asia/Samarkand
+    dracut_install /usr/share/zoneinfo/Asia/Kolkata
+    dracut_install /usr/share/zoneinfo/Asia/Ulaanbaatar
+    dracut_install /usr/share/zoneinfo/Asia/Irkutsk
+    dracut_install /usr/share/zoneinfo/Asia/Baku
+    dracut_install /usr/share/zoneinfo/Asia/Gaza
+    dracut_install /usr/share/zoneinfo/Asia/Seoul
+    dracut_install /usr/share/zoneinfo/Asia/Chungking
+    dracut_install /usr/share/zoneinfo/Asia/Amman
+    dracut_install /usr/share/zoneinfo/Asia/Kuala_Lumpur
+    dracut_install /usr/share/zoneinfo/Asia/Aqtobe
+    dracut_install /usr/share/zoneinfo/Asia/Katmandu
+    dracut_install /usr/share/zoneinfo/Asia/Tashkent
+    dracut_install /usr/share/zoneinfo/Asia/Oral
+    dracut_install /usr/share/zoneinfo/Asia/Dhaka
+    dracut_install /usr/share/zoneinfo/Asia/Hovd
+    dracut_install /usr/share/zoneinfo/Asia/Makassar
+    dracut_install /usr/share/zoneinfo/Asia/Bangkok
+    dracut_install /usr/share/zoneinfo/Asia/Tokyo
+    dracut_install /usr/share/zoneinfo/Asia/Macao
+    dracut_install /usr/share/zoneinfo/Asia/Riyadh
+    dracut_install /usr/share/zoneinfo/Asia/Rangoon
+    dracut_install /usr/share/zoneinfo/Asia/Jakarta
+    dracut_install /usr/share/zoneinfo/Asia/Aden
+    dracut_install /usr/share/zoneinfo/Asia/Calcutta
+    dracut_install /usr/share/zoneinfo/Asia/Ashkhabad
+    dracut_install /usr/share/zoneinfo/Asia/Beirut
+    dracut_install /usr/share/zoneinfo/Asia/Harbin
+    dracut_install /usr/share/zoneinfo/Asia/Novosibirsk
+    dracut_install /usr/share/zoneinfo/Asia/Omsk
+    dracut_install /usr/share/zoneinfo/Asia/Aqtau
+    dracut_install /usr/share/zoneinfo/Asia/Bahrain
+    dracut_install /usr/share/zoneinfo/Asia/Dili
+    dracut_install /usr/share/zoneinfo/Asia/Pontianak
+    dracut_install /usr/share/zoneinfo/Asia/Singapore
+    dracut_install /usr/share/zoneinfo/Asia/Baghdad
+    dracut_install /usr/share/zoneinfo/Asia/Novokuznetsk
+    dracut_install /usr/share/zoneinfo/Asia/Dubai
+    dracut_install /usr/share/zoneinfo/Asia/Dushanbe
+    dracut_install /usr/share/zoneinfo/Asia/Damascus
+    dracut_install /usr/share/zoneinfo/Asia/Krasnoyarsk
+    dracut_install /usr/share/zoneinfo/Asia/Tbilisi
+    dracut_install /usr/share/zoneinfo/Asia/Yerevan
+    dracut_install /usr/share/zoneinfo/Asia/Pyongyang
+    dracut_install /usr/share/zoneinfo/Asia/Bishkek
+    dracut_install /usr/share/zoneinfo/Asia/Colombo
+    dracut_install /usr/share/zoneinfo/Asia/Yekaterinburg
+    dracut_install /usr/share/zoneinfo/Asia/Chongqing
+    dracut_install /usr/share/zoneinfo/Asia/Ho_Chi_Minh
+    dracut_install /usr/share/zoneinfo/Asia/Hong_Kong
+    dracut_install /usr/share/zoneinfo/Asia/Thimbu
+    dracut_install /usr/share/zoneinfo/Asia/Thimphu
+    dracut_install /usr/share/zoneinfo/Asia/Ashgabat
+    dracut_install /usr/share/zoneinfo/Asia/Shanghai
+    dracut_install /usr/share/zoneinfo/Asia/Tehran
+    dracut_install /usr/share/zoneinfo/Asia/Tel_Aviv
+    dracut_install /usr/share/zoneinfo/Asia/Taipei
+    dracut_install /usr/share/zoneinfo/Asia/Kabul
+    dracut_install /usr/share/zoneinfo/Asia/Macau
+    dracut_install /usr/share/zoneinfo/Asia/Choibalsan
+    dracut_install /usr/share/zoneinfo/Asia/Vientiane
+    dracut_install /usr/share/zoneinfo/Asia/Dacca
+    dracut_install /usr/share/zoneinfo/Asia/Kuching
+    dracut_install /usr/share/zoneinfo/Asia/Phnom_Penh
+    dracut_install /usr/share/zoneinfo/Asia/Ulan_Bator
+    dracut_install /usr/share/zoneinfo/Asia/Sakhalin
+    dracut_install /usr/share/zoneinfo/MST7MDT
+    dracut_install /usr/share/zoneinfo/Canada/Atlantic
+    dracut_install /usr/share/zoneinfo/Canada/Central
+    dracut_install /usr/share/zoneinfo/Canada/Eastern
+    dracut_install /usr/share/zoneinfo/Canada/Yukon
+    dracut_install /usr/share/zoneinfo/Canada/Pacific
+    dracut_install /usr/share/zoneinfo/Canada/Saskatchewan
+    dracut_install /usr/share/zoneinfo/Canada/Mountain
+    dracut_install /usr/share/zoneinfo/Canada/Newfoundland
+    dracut_install /usr/share/zoneinfo/Israel
+    dracut_install /usr/share/zoneinfo/Africa/Lagos
+    dracut_install /usr/share/zoneinfo/Africa/Kigali
+    dracut_install /usr/share/zoneinfo/Africa/Lome
+    dracut_install /usr/share/zoneinfo/Africa/Niamey
+    dracut_install /usr/share/zoneinfo/Africa/Conakry
+    dracut_install /usr/share/zoneinfo/Africa/Asmera
+    dracut_install /usr/share/zoneinfo/Africa/Banjul
+    dracut_install /usr/share/zoneinfo/Africa/Abidjan
+    dracut_install /usr/share/zoneinfo/Africa/Bujumbura
+    dracut_install /usr/share/zoneinfo/Africa/Luanda
+    dracut_install /usr/share/zoneinfo/Africa/Kampala
+    dracut_install /usr/share/zoneinfo/Africa/Ouagadougou
+    dracut_install /usr/share/zoneinfo/Africa/Libreville
+    dracut_install /usr/share/zoneinfo/Africa/Lubumbashi
+    dracut_install /usr/share/zoneinfo/Africa/Dakar
+    dracut_install /usr/share/zoneinfo/Africa/Bamako
+    dracut_install /usr/share/zoneinfo/Africa/Nairobi
+    dracut_install /usr/share/zoneinfo/Africa/Bangui
+    dracut_install /usr/share/zoneinfo/Africa/Johannesburg
+    dracut_install /usr/share/zoneinfo/Africa/Accra
+    dracut_install /usr/share/zoneinfo/Africa/Bissau
+    dracut_install /usr/share/zoneinfo/Africa/Timbuktu
+    dracut_install /usr/share/zoneinfo/Africa/Nouakchott
+    dracut_install /usr/share/zoneinfo/Africa/Maputo
+    dracut_install /usr/share/zoneinfo/Africa/Ndjamena
+    dracut_install /usr/share/zoneinfo/Africa/Maseru
+    dracut_install /usr/share/zoneinfo/Africa/Tripoli
+    dracut_install /usr/share/zoneinfo/Africa/Blantyre
+    dracut_install /usr/share/zoneinfo/Africa/Gaborone
+    dracut_install /usr/share/zoneinfo/Africa/Addis_Ababa
+    dracut_install /usr/share/zoneinfo/Africa/Porto-Novo
+    dracut_install /usr/share/zoneinfo/Africa/Kinshasa
+    dracut_install /usr/share/zoneinfo/Africa/Dar_es_Salaam
+    dracut_install /usr/share/zoneinfo/Africa/Douala
+    dracut_install /usr/share/zoneinfo/Africa/Mogadishu
+    dracut_install /usr/share/zoneinfo/Africa/Monrovia
+    dracut_install /usr/share/zoneinfo/Africa/Mbabane
+    dracut_install /usr/share/zoneinfo/Africa/Algiers
+    dracut_install /usr/share/zoneinfo/Africa/Lusaka
+    dracut_install /usr/share/zoneinfo/Africa/Khartoum
+    dracut_install /usr/share/zoneinfo/Africa/Asmara
+    dracut_install /usr/share/zoneinfo/Africa/Tunis
+    dracut_install /usr/share/zoneinfo/Africa/Casablanca
+    dracut_install /usr/share/zoneinfo/Africa/Sao_Tome
+    dracut_install /usr/share/zoneinfo/Africa/Ceuta
+    dracut_install /usr/share/zoneinfo/Africa/El_Aaiun
+    dracut_install /usr/share/zoneinfo/Africa/Harare
+    dracut_install /usr/share/zoneinfo/Africa/Freetown
+    dracut_install /usr/share/zoneinfo/Africa/Windhoek
+    dracut_install /usr/share/zoneinfo/Africa/Djibouti
+    dracut_install /usr/share/zoneinfo/Africa/Malabo
+    dracut_install /usr/share/zoneinfo/Africa/Cairo
+    dracut_install /usr/share/zoneinfo/Africa/Brazzaville
+    dracut_install /usr/share/zoneinfo/Etc/Zulu
+    dracut_install /usr/share/zoneinfo/Etc/GMT-0
+    dracut_install /usr/share/zoneinfo/Etc/Greenwich
+    dracut_install /usr/share/zoneinfo/Etc/GMT+6
+    dracut_install /usr/share/zoneinfo/Etc/GMT+9
+    dracut_install /usr/share/zoneinfo/Etc/GMT-9
+    dracut_install /usr/share/zoneinfo/Etc/GMT+5
+    dracut_install /usr/share/zoneinfo/Etc/GMT0
+    dracut_install /usr/share/zoneinfo/Etc/GMT-10
+    dracut_install /usr/share/zoneinfo/Etc/GMT+0
+    dracut_install /usr/share/zoneinfo/Etc/Universal
+    dracut_install /usr/share/zoneinfo/Etc/GMT+12
+    dracut_install /usr/share/zoneinfo/Etc/GMT-5
+    dracut_install /usr/share/zoneinfo/Etc/GMT+2
+    dracut_install /usr/share/zoneinfo/Etc/UTC
+    dracut_install /usr/share/zoneinfo/Etc/GMT+8
+    dracut_install /usr/share/zoneinfo/Etc/GMT-11
+    dracut_install /usr/share/zoneinfo/Etc/GMT-4
+    dracut_install /usr/share/zoneinfo/Etc/GMT-12
+    dracut_install /usr/share/zoneinfo/Etc/GMT+11
+    dracut_install /usr/share/zoneinfo/Etc/GMT+3
+    dracut_install /usr/share/zoneinfo/Etc/GMT+4
+    dracut_install /usr/share/zoneinfo/Etc/GMT+1
+    dracut_install /usr/share/zoneinfo/Etc/GMT-14
+    dracut_install /usr/share/zoneinfo/Etc/UCT
+    dracut_install /usr/share/zoneinfo/Etc/GMT+7
+    dracut_install /usr/share/zoneinfo/Etc/GMT-6
+    dracut_install /usr/share/zoneinfo/Etc/GMT-2
+    dracut_install /usr/share/zoneinfo/Etc/GMT
+    dracut_install /usr/share/zoneinfo/Etc/GMT-3
+    dracut_install /usr/share/zoneinfo/Etc/GMT-8
+    dracut_install /usr/share/zoneinfo/Etc/GMT-7
+    dracut_install /usr/share/zoneinfo/Etc/GMT-13
+    dracut_install /usr/share/zoneinfo/Etc/GMT-1
+    dracut_install /usr/share/zoneinfo/Etc/GMT+10
+    dracut_install /usr/share/zoneinfo/PST8PDT
+    dracut_install /usr/share/zoneinfo/Jamaica
+    dracut_install /usr/share/zoneinfo/NZ
+    dracut_install /usr/share/zoneinfo/PRC
+    dracut_install /usr/share/zoneinfo/Chile/EasterIsland
+    dracut_install /usr/share/zoneinfo/Chile/Continental
+    inst "$moddir/xcatroot" "/sbin/xcatroot"
+    inst "$moddir/dhclient.conf" "/etc/dhclient.conf"
+    # dhclient executes this helper, so it must stay executable in initramfs.
+    inst_script "$moddir/dhclient-script" "/sbin/dhclient-script"
+    inst "$moddir/rsyslog.conf" "/etc/rsyslog.conf"
+    dracut_install chronyc chronyd rpcbind systemd-tmpfiles
+    dracut_install /etc/ssh
+    _dracut_install_opt /etc/chrony.conf
+    _dracut_install_opt /etc/chrony/chrony.conf
+    _dracut_install_opt /etc/chrony.keys
+    _dracut_install_opt /run/rpcbind
+    _dracut_install_opt /etc/systemd/system.conf
+    dracut_install /etc/netconfig rpcbind /etc/host.conf
+    _dracut_install_opt /sbin/rpc.statd
+    _dracut_install_opt /usr/sbin/rpc.statd
+    _dracut_install_opt /usr/sbin/sm-notify
+    _dracut_install_opt /sbin/sm-notify
+    _dracut_install_opt /usr/sbin/rpc.idmapd
+    dracut_install ps free find #debug
+    inst_dir /var/lib/nfs
+    inst_dir /var/lib/nfs/statd/sm
+    inst_dir /var/lib/nfs/statd/sm.bak
+    inst_dir /var/lib/nfs/rpc_pipefs/nfs
+    inst "/bin/bash" "/bin/sh"
+    inst "/usr/share/terminfo/l/linux"
+    inst "/usr/share/terminfo/v/vt100"
+    inst_hook cmdline 10 "$moddir/xcat-cmdline.sh"
+    # rsyslog modules — Ubuntu multiarch paths
+    for mod in lmtcpclt omtesting lmnetstrms imfile imklog lmzlibw immark imudp lmregexp lmtcpsrv lmnsd_ptcp imtcp lmnet imuxsock; do
+        _dracut_install_opt "/usr/lib/$TRIPLET/rsyslog/$mod.so"
+    done
+    _dracut_install_opt "/usr/lib/$TRIPLET/libnfsidmap/nsswitch.so"
+    dracut_install killall logger nc nslookup bc chown chroot dd expr kill mkdosfs parted rsync shutdown sort ssh-keygen tr blockdev findfs insmod kexec lvm mdadm mke2fs pivot_root sshd swapon tune2fs pvcreate lvremove vgremove vgcreate lvcreate lvscan lvchange vgchange pvdisplay lvdisplay vgdisplay blkid dmsetup sfdisk # for sysclone
+    _dracut_install_opt /usr/lib/udev/rules.d/10-dm.rules
+    _dracut_install_opt /usr/lib/udev/rules.d/11-dm-lvm.rules
+    _dracut_install_opt /usr/lib/udev/rules.d/13-dm-disk.rules
+    _dracut_install_opt /usr/lib/udev/rules.d/95-dm-notify.rules
+    _dracut_install_opt /usr/share/hwdata/pci.ids
+    _dracut_install_opt /etc/udev/hwdb.bin
+}

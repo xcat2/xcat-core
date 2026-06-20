@@ -36,7 +36,6 @@ BuildRequires: bc
 BuildRequires: bind-utils
 BuildRequires: chrony
 BuildRequires: cpio
-BuildRequires: dhcp-client
 BuildRequires: e2fsprogs
 BuildRequires: hostname
 %if "%{_target_cpu}" == "x86_64"
@@ -69,7 +68,7 @@ BuildRequires: procps-ng
 BuildRequires: psmisc
 BuildRequires: rsync
 BuildRequires: rsyslog
-BuildRequires: screen
+BuildRequires: tmux
 BuildRequires: usbutils
 BuildRequires: util-linux
 BuildRequires: vim-minimal

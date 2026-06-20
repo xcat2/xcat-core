@@ -27,9 +27,9 @@ cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
-cmd:if cat /etc/*release | grep SUSE >/dev/null ; then cat /var/lib/dhcp/db/dhcpd.leases | grep $$SN ; elif cat /etc/*release | grep "Red Hat" >/dev/null ; then cat /var/lib/dhcpd/dhcpd.leases | grep $$SN ; fi
+cmd:if [ -f /var/lib/kea/kea-leases4.csv ]; then cat /var/lib/kea/kea-leases4.csv | grep $$SN; elif cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases | grep $$SN;elif cat /etc/*release | grep "Red Hat" >/dev/null ; then cat /var/lib/dhcpd/dhcpd.leases | grep $$SN ; fi
 check:output=~$$SN
-cmd:if cat /etc/*release | grep SUSE >/dev/null ; then cat /var/lib/dhcp/db/dhcpd.leases | grep $$CN ; elif cat /etc/*release | grep "Red Hat" >/dev/null ; then cat /var/lib/dhcpd/dhcpd.leases | grep $$CN ; fi
+cmd:if [ -f /var/lib/kea/kea-leases4.csv ]; then cat /var/lib/kea/kea-leases4.csv | grep $$CN; elif cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases | grep $$CN;elif cat /etc/*release | grep "Red Hat" >/dev/null ; then cat /var/lib/dhcpd/dhcpd.leases | grep $$CN ; fi
 check:output=~$$CN
 cmd:chdef -t node $$SN,$$CN groups=service,all
 check:rc==0
@@ -64,7 +64,7 @@ cmd:rinstall $$SN,$$CN osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)
 check:rc==0
 check:output=~Provision node\(s\)\: $$SN $$CN
 
-cmd:if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
+cmd:if [[ -f /var/lib/kea/kea-leases4.csv ]]; then cat /var/lib/kea/kea-leases4.csv; elif [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/installation/customize_sleep_for_sn __GETNODEATTR($$SN,os)__ __GETNODEATTR($$SN,arch)__
 
 #Check status on SN after SN is installed

@@ -595,7 +595,7 @@ if ($::INITIALINSTALL || $::FORCE)
 
 }    #End - more - Linux-only config
 
-# Run mknb to put xCAT-genesis-scripts-x86_64 and xCAT-genesis-base-x86_64 together and in /tftpboot
+# Run mknb for each installed xCAT genesis architecture and place the image in /tftpboot
 if (($::INITIALINSTALL || $::UPDATEINSTALL) && $::osname eq 'Linux') {
     &mknb;
 }
@@ -1973,9 +1973,7 @@ sub setupLinuxexports
 =head3    mknb
 	
    Creates a network boot root image on Linux
-   Run mknb to put xCAT-genesis-scripts-x86_64 and xCAT-genesis-base-x86_64 together and in /tftpboot
-   From 2.12.2, both xCAT-genesis-scripts-x86_64 and xCAT-genesis-scripts-ppc64 will be installed.
-   So, will run mknb twice, one for ppc64 and another for x86_64
+   Run mknb for each installed xCAT-genesis-scripts/xCAT-genesis-base architecture and place the result in /tftpboot
 =cut
 
 #-----------------------------------------------------------------------------

@@ -163,7 +163,11 @@ if [ $? -ne 0 ]; then
 else
 	#the message received is an error, so parse it
 	ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/ssh_dsa_hostkey`
-	logger -s -t $log_label -p local4.err Error: $ERR_MSG
+	# DSA host keys are obsolete and absent on modern OpenSSH (EL9/EL10 removed
+	# ssh-dss), so the server has no ssh_dsa_hostkey to hand out. That is expected,
+	# not an error: log to syslog only (no -s) and without the word "Error" so it
+	# does not pollute postscript output (e.g. updatenode's "output !~ error" check).
+	logger -t $log_label -p local4.info "remoteshell: ssh_host_dsa_key unavailable, skipping ($ERR_MSG)"
 fi
 rm /tmp/ssh_dsa_hostkey
 
