@@ -110,6 +110,11 @@ done
 # Supported distributions. Set DISTS="jammy noble resolute" to limit local validation builds.
 dists="${DISTS:-saucy trusty utopic xenial bionic focal jammy noble resolute}"
 
+# GPG key used to sign the apt repo (reprepro SignWith). Defaults to the historic
+# name. Override with GPG_KEY_ID=<keyid|email> (space-free, since it is passed via
+# the attr=value parser above), e.g. GPG_KEY_ID=xcat-build@xcat.org
+GPG_KEY_ID="${GPG_KEY_ID:-xCAT Automatic Signing Key}"
+
 c_flag=            # xcat-core (trunk-delvel) path
 d_flag=            # xcat-dep (trunk) path
 r_flag=            #genesis base rpm package path
@@ -160,13 +165,15 @@ fi
 
 # for the git case, query the current branch and set REL (changing master to devel if necessary)
 function setbranch {
-    # Get the current branch name
-    branch=`git rev-parse --abbrev-ref HEAD`
+    # Get the current branch name. safe.directory='*' so this still works when the
+    # build runs as root against a repo owned by another user (otherwise git errors
+    # with "dubious ownership", returns empty, and REL collapses to an unstable value).
+    branch=`git -c safe.directory='*' rev-parse --abbrev-ref HEAD 2>/dev/null`
     if [ "$branch" = "master" ]; then
         REL="devel"
-    elif [ "$branch" = "HEAD" ]; then
+    elif [ "$branch" = "HEAD" ] || [ -z "$branch" ]; then
         # Special handling when in a 'detached HEAD' state
-        branch=`git describe --abbrev=0 HEAD`
+        branch=`git -c safe.directory='*' describe --abbrev=0 HEAD 2>/dev/null`
         [[ -n "$branch" ]] && REL=`echo $branch|cut -d. -f 1,2`
     else
         REL=$branch
@@ -206,6 +213,11 @@ REL=xcat-core
 if [ "$c_flag" ]
 then
     setbranch
+    # Sanitize REL into a stable, filesystem-safe token: replace any character that
+    # isn't [A-Za-z0-9._-] (e.g. the '/' in a branch like feat/ubuntu-e2e, which would
+    # otherwise create nested dirs) with '-', and never let it be empty.
+    REL=${REL//[^A-Za-z0-9._-]/-}
+    [ -z "$REL" ] && REL="local"
     package_dir_name=debs$REL
 
     #define the dep source code path, core build target path and dep build target path
@@ -416,7 +428,7 @@ __EOF__
            #echo "GPGSIGN=$GPGSIGN specified, the repo will not be signed"
            echo "" >> conf/distributions
        else
-           keyid=$(gpg --list-keys --keyid-format long "xCAT Automatic Signing Key" | grep '^pub' | sed -e 's/.*\///' -e 's/ .*//')
+           keyid=$(gpg --list-keys --keyid-format long "$GPG_KEY_ID" | grep '^pub' | sed -e 's/.*\///' -e 's/ .*//')
            echo "SignWith: $keyid" >> conf/distributions
            echo "" >> conf/distributions
        fi
@@ -565,7 +577,7 @@ __EOF__
             echo "GPGSIGN=$GPGSIGN specified, the repo will not be signed"
             echo "" >> conf/distributions
         else
-            keyid=$(gpg --list-keys --keyid-format long "xCAT Automatic Signing Key" | grep '^pub' | sed -e 's/.*\///' -e 's/ .*//')
+            keyid=$(gpg --list-keys --keyid-format long "$GPG_KEY_ID" | grep '^pub' | sed -e 's/.*\///' -e 's/ .*//')
             echo "SignWith: $keyid" >> conf/distributions
             echo "" >> conf/distributions
         fi
