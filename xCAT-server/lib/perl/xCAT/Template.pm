@@ -1652,11 +1652,49 @@ sub crydb_or_locked
     return '*';
 }
 
+sub ubuntu_subiquity_apt_mirror
+{
+    # Online apt mirror for Subiquity installs. When site.ubuntu_apt_mirror is set
+    # (e.g. http://archive.ubuntu.com/ubuntu or a local full mirror), the generated
+    # autoinstall apt config pulls from it so packages missing from the minimal
+    # live-server install media are fetched over the network. Unset => keep the
+    # airgapped file:///cdrom config (backward compatible).
+    my $site_tab = xCAT::Table->new('site');
+    return '' unless $site_tab;
+    my $ent = $site_tab->getAttribs({ key => 'ubuntu_apt_mirror' }, 'value');
+    return ($ent && defined($ent->{value}) && length($ent->{value})) ? $ent->{value} : '';
+}
+
 sub ubuntu_subiquity_apt_config
 {
     my ($media_dir) = @_;
     my $use_deb822 = ubuntu_subiquity_uses_deb822_sources($media_dir);
     my @otherpkg_sources = ubuntu_subiquity_otherpkg_sources();
+
+    my $online_mirror = ubuntu_subiquity_apt_mirror();
+    if ($online_mirror) {
+        # Online install: use the configured archive as the primary apt mirror so
+        # Subiquity/curtin can fetch whatever the minimal media lacks. No
+        # disable_suites / offline fallback here -- updates & security stay enabled.
+        my @lines = (
+            '  apt:',
+            '    preserve_sources_list: false',
+            '    geoip: false',
+            '    mirror-selection:',
+            '      primary:',
+            "      - uri: $online_mirror",
+        );
+        if (@otherpkg_sources) {
+            push @lines, '    sources:';
+            my $index = 0;
+            foreach my $source (@otherpkg_sources) {
+                push @lines, "      xcat-otherpkgs-$index.list:";
+                push @lines, qq(        source: "deb [trusted=yes] $source ./");
+                $index++;
+            }
+        }
+        return join( "\n", @lines );
+    }
 
     my @lines = (
         '  apt:',
