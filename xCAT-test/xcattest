@@ -1683,7 +1683,13 @@ sub runcmd
     my $rc = 0;
     $::RUNCMD_RC = 0;
     my $outref = [];
-    @$outref = `$cmd 2>&1`;
+    # xCAT-test cases use bashisms ([ x == y ], [[ ]]); on Ubuntu /bin/sh is dash, so run
+    # the command under bash. open('-|', LIST) execs bash directly -- no intervening
+    # /bin/sh, so the cases' embedded quotes/backticks are not re-parsed or re-expanded.
+    if (open(my $cfh, '-|', '/bin/bash', '-c', "$cmd 2>&1")) {
+        @$outref = <$cfh>;
+        close($cfh);          # sets $? just like the backtick did
+    }
     if ($?)
     {
         $rc          = $?;

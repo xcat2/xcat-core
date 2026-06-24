@@ -51,3 +51,27 @@ chroot $installroot \
  update-locale
 DEBIAN_FRONTEND=noninteractive chroot $installroot \
  dpkg-reconfigure locales
+
+#-- A shared diskless image must not carry the builder's identity. genimage's chroot shares
+#-- the build host's UTS namespace, so /etc/hostname ends up as the MN's name and every node
+#-- booting this image inherits it ("hostname poisoning"). Clear it so each node takes its name
+#-- at boot from DHCP (udhcpc option host-name) / xCAT instead of the build host.
+: > $installroot/etc/hostname
+
+#-- Ship a DHCP netplan so systemd-networkd configures the boot NIC. Without any netplan in the
+#-- image, systemd-networkd-wait-online has nothing to bring up and the unit fails. optional:true
+#-- keeps it from blocking boot; dhcp-identifier:mac matches xCAT's MAC-based DHCP.
+mkdir -p $installroot/etc/netplan
+cat <<'NETPLAN' > $installroot/etc/netplan/90-xcat-dhcp.yaml
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    xcat-cluster:
+      match:
+        name: "e*"
+      dhcp4: true
+      dhcp-identifier: mac
+      optional: true
+NETPLAN
+chmod 600 $installroot/etc/netplan/90-xcat-dhcp.yaml
