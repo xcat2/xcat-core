@@ -12,6 +12,11 @@ autoinstall:
     allow-pw: true
     authorized-keys: []
     install-server: true
+  identity:
+    realname: 'xCAT Admin'
+    username: xcatadm
+    hostname: #HOSTNAME#
+    password: "#CRYPTORLOCKED:passwd:key=system,username=root:password#"
 #UBUNTU_SUBIQUITY_APT_CONFIG#
   kernel:
     package: linux-generic
