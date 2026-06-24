@@ -1654,15 +1654,15 @@ sub crydb_or_locked
 
 sub ubuntu_subiquity_apt_mirror
 {
-    # Online apt mirror for Subiquity installs. When site.ubuntu_apt_mirror is set
-    # (e.g. http://archive.ubuntu.com/ubuntu or a local full mirror), the generated
-    # autoinstall apt config pulls from it so packages missing from the minimal
-    # live-server install media are fetched over the network. Unset => keep the
-    # airgapped file:///cdrom config (backward compatible).
+    # Apt mirror for Subiquity installs. site.ubuntu_apt_mirror overrides; otherwise default to the
+    # public archive. The minimal live-server install media is not a complete package source, so a
+    # real mirror is always required -- set site.ubuntu_apt_mirror to a local full mirror for
+    # airgapped clusters (or to a geo/ports mirror as needed).
+    my $default = 'http://archive.ubuntu.com/ubuntu';
     my $site_tab = xCAT::Table->new('site');
-    return '' unless $site_tab;
+    return $default unless $site_tab;
     my $ent = $site_tab->getAttribs({ key => 'ubuntu_apt_mirror' }, 'value');
-    return ($ent && defined($ent->{value}) && length($ent->{value})) ? $ent->{value} : '';
+    return ($ent && defined($ent->{value}) && length($ent->{value})) ? $ent->{value} : $default;
 }
 
 sub ubuntu_subiquity_apt_config
