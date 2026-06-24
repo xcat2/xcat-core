@@ -6,7 +6,9 @@ autoinstall:
   network:
     version: 2
     ethernets:
-      '#TABLE:noderes:$NODE:installnic#':
+      xcat-install:
+        match:
+          name: "e*"
         dhcp4: true
   ssh:
     allow-pw: true
@@ -74,9 +76,13 @@ autoinstall:
     cat /tmp/pre-install.log >> /target/var/log/xcat/xcat.log;
     installnic="#TABLE:noderes:$NODE:installnic#";
     installmac="#TABLE:mac:$NODE:mac#";
-    installmac="$(printf ''%s'' "${installmac}" | tr ''A-F'' ''a-f'')";
+    installmac="$(printf ''%s'' "${installmac}" | cut -d''|'' -f1 | cut -d''!'' -f1 | tr ''A-F'' ''a-f'')";
     mkdir -p /target/etc/netplan;
-    printf ''%s\n'' "network:" "  version: 2" "  ethernets:" "    xcat-install:" "      match:" "        macaddress: \"${installmac}\"" "      set-name: ${installnic}" "      dhcp4: true" >/target/etc/netplan/00-xcat-install.yaml;
+    if [ "${installnic}" = "mac" ]; then
+        printf ''%s\n'' "network:" "  version: 2" "  ethernets:" "    xcat-install:" "      match:" "        macaddress: \"${installmac}\"" "      dhcp4: true" >/target/etc/netplan/00-xcat-install.yaml;
+    else
+        printf ''%s\n'' "network:" "  version: 2" "  ethernets:" "    xcat-install:" "      match:" "        macaddress: \"${installmac}\"" "      set-name: ${installnic}" "      dhcp4: true" >/target/etc/netplan/00-xcat-install.yaml;
+    fi;
     chmod 600 /target/etc/netplan/00-xcat-install.yaml;
     printf ''%s\n'' ''#HOSTNAME#'' >/target/etc/hostname;
     if grep -q ''^127\.0\.1\.1'' /target/etc/hosts; then
