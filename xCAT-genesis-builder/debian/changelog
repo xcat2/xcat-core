@@ -1,3 +1,10 @@
+xcat-genesis-base-amd64 (2.18.0) stable; urgency=low
+
+  * Bump version to track current xCAT so the xcat-genesis-scripts dependency
+    (xcat-genesis-base-amd64 >= 2.13.10) is satisfiable.
+
+ -- xCAT <xcat-user@lists.sourceforge.net>  Tue, 23 Jun 2026 21:12:00 +0000
+
 xcat-genesis-base-amd64 (2.8) stable; urgency=low
 
   * Initial Release
