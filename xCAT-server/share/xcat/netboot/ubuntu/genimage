@@ -257,6 +257,35 @@ unless ($onlyinitrd) {
         }
     }
 
+    # If pkgdir provided no http mirror, fall back to site.ubuntu_apt_mirror -- the same knob the
+    # Subiquity diskful install uses (Template.pm::ubuntu_subiquity_apt_mirror). The Ubuntu
+    # live-server ISO that copycds imports is NOT a complete apt mirror, so debootstrap needs a
+    # real online/local mirror to build the netboot/statelite rootimg. The mirror is codename-
+    # independent (one URL serves all releases); the codename comes from the osimage's osvers.
+    # The parser below expects the entry as "<url> <codename>".
+    unless (@pkgdir_internet) {
+        # site.ubuntu_apt_mirror overrides; otherwise default to the public archive. A live-server
+        # ISO is never a complete debootstrap source, so a real mirror is always required here.
+        my @aptmirror = xCAT::TableUtils->get_site_attribute("ubuntu_apt_mirror");
+        my $mirror = (defined $aptmirror[0] && length $aptmirror[0])
+                   ? $aptmirror[0] : 'http://archive.ubuntu.com/ubuntu';
+        (my $codename = $osver) =~ s/^ubuntu//;
+        $codename =~ s/\.\d+$//;                  # 24.04.4 -> 24.04
+        my %cn = ('24.04' => 'noble', '22.04' => 'jammy', '20.04' => 'focal',
+                  '18.04' => 'bionic', '26.04' => 'resolute');
+        $codename = $cn{$codename} if exists $cn{$codename};
+        # "<url> <suite> <components>": debootstrap consumes only url+suite of the FIRST entry
+        # (ignores the rest); every entry becomes a line in the chroot's sources.list. The compute
+        # pkglist pulls from main + universe (busybox-static, dracut*), and needs the -updates /
+        # -security pockets too -- e.g. openssh-server depends on a security-updated openssh-client
+        # absent from the base release pocket. archive.ubuntu.com (and standard mirrors) serve all
+        # three pockets from the one base URL.
+        foreach my $pocket ($codename, "$codename-updates", "$codename-security") {
+            push @pkgdir_internet, "$mirror $pocket main universe";
+        }
+        print "genimage: pkgdir has no http mirror; using '$mirror' [$codename {,-updates,-security} main universe] (site.ubuntu_apt_mirror or default)\n";
+    }
+
     # Add the dir for kernel deb to be installed
     if ($kernelver) {
         find(\&isaptdir, <$kerneldir/>);
