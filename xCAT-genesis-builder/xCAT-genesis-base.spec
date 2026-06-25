@@ -131,13 +131,25 @@ dracut --compress gzip -m "xcat base" --no-early-microcode -N -f "$DRACUT_IMAGE"
     zcat "$DRACUT_IMAGE" | cpio -dumi
 )
 
-%if 0%{?rhel} > 0 && 0%{?rhel} <= 9
-# EL9 upgrade safety depends on this remaining a real directory.
+# xCAT 2.14.5 genesis payloads shipped usr/lib/dracut/hooks as a real directory.
+# Newer dracut (EL8+) makes it a symlink to ../../../var/lib/dracut/hooks. RPM
+# cannot replace a directory with a symlink across an upgrade, so a 2.17 -> 2.18
+# upgrade aborts with a file conflict on this path. Materialize the symlink back
+# into a real directory (with the hook contents) so the payload type matches the
+# installed 2.14.5 layout and the upgrade is conflict-free on EL8/EL9/EL10.
+if [ -L "$GENESIS_FS/usr/lib/dracut/hooks" ]; then
+    hooks_target="$GENESIS_FS/var/lib/dracut/hooks"
+    rm -f "$GENESIS_FS/usr/lib/dracut/hooks"
+    if [ -d "$hooks_target" ]; then
+        cp -a "$hooks_target" "$GENESIS_FS/usr/lib/dracut/hooks"
+    else
+        mkdir -p "$GENESIS_FS/usr/lib/dracut/hooks"
+    fi
+fi
 if [ ! -d "$GENESIS_FS/usr/lib/dracut/hooks" ] || [ -L "$GENESIS_FS/usr/lib/dracut/hooks" ]; then
-    echo "EL%{?rhel} genesis payload has invalid usr/lib/dracut/hooks layout" >&2
+    echo "genesis payload has invalid usr/lib/dracut/hooks layout" >&2
     exit 1
 fi
-%endif
 
 for script in \
     "$GENESIS_FS/sbin/dhclient-script" \
@@ -207,7 +219,7 @@ local tail_leaf_prefix = '`-- '
 local link_prefix = ' -> '
 
 local function printf(...)
-    io.write(string.format(unpack(arg)))
+    io.write(string.format(table.unpack({...})))
 end
 
 local function remove_directory(directory, level, prefix)
@@ -215,7 +227,7 @@ local function remove_directory(directory, level, prefix)
     local num_files = 0
     if posix.access(directory, "rw") then
     local files = posix.dir(directory)
-    local last_file_index = table.getn(files)
+    local last_file_index = #files
     table.sort(files)
     for i, name in ipairs(files) do
         if name ~= '.' and name ~= '..' then
@@ -277,8 +289,11 @@ remove_directory_deep("/opt/xcat/share/xcat/netboot/genesis/%{tarch}/fs/var/run"
 if [ "$1" == "2" ]; then #only on upgrade, as on install it's probably not going to work...
     if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
         . /etc/profile.d/xcat.sh
-        mknb %{tarch}
-        echo "If you are installing/updating xCAT-genesis-base separately, not as part of installing/updating all of xCAT, run 'mknb <arch>' manually"
+        # During a full 'dnf update xCAT', xcatd is stopped while xCAT is being
+        # upgraded, so mknb cannot reach it and exits non-zero. That must not fail
+        # the rpm transaction: drop the genesis-base-updated marker so the netboot
+        # image is regenerated later (xcatd post-start / manual 'mknb <arch>').
+        mknb %{tarch} || echo "mknb %{tarch} deferred (xcatd not reachable during upgrade); run 'mknb %{tarch}' after xcatd is up"
         mkdir -p /etc/xcat
         touch /etc/xcat/genesis-base-updated
     fi
