@@ -101,6 +101,13 @@ my $DISTRO = $OS{ID};
 # almalinux+epel-* config, so translate the os-release ID accordingly.
 $DISTRO = "alma" if $DISTRO eq "almalinux";
 
+# xCAT-genesis-base is intentionally NOT in the default build set below. Its
+# payload is a dracut-built initramfs that bundles the build chroot's kernel +
+# glibc/busybox/perl, so it is OS-dependent (an el10 build cannot boot el8/el9
+# nodes). It is built per target by the xcat-dep pipeline
+# (xcat-dep/mockbuild-all.pl, via `buildrpms.pl --package xCAT-genesis-base`)
+# and shipped in the per-EL repo xcat-dep/rh<N>, NOT in the flat xcat-core. The
+# build logic further down still supports `--package xCAT-genesis-base`.
 my @PACKAGES = qw(
     perl-xCAT
     xCAT
@@ -108,7 +115,6 @@ my @PACKAGES = qw(
     xCAT-buildkit
     xCAT-client
     xCAT-confluent
-    xCAT-genesis-base
     xCAT-genesis-scripts
     xCAT-openbmc-py
     xCAT-probe
@@ -162,10 +168,11 @@ GetOptions(
     "setup_local_repos" => \$opts{setup_local_repos},
 ) or usage();
 
-# Release is regenerated at each run so every build gets a fresh snapshot
-# release, unless pinned with --release (e.g. to rebuild a single package
-# matching the release the rest of the repo was built with).
-my $RELEASE = $opts{release} || strftime("snap%Y%m%d%H%M", localtime);
+# Release is derived from SOURCE_DATE_EPOCH (the git commit time), NOT wall-clock,
+# so identical sources -> identical Version-Release -> bit-reproducible packages
+# (a hard requirement for the content-addressed/Merkle-DAG CI). Override with
+# --release to rebuild a single package matching an existing repo's release.
+my $RELEASE = $opts{release} || strftime("snap%Y%m%d%H%M", gmtime($SOURCE_DATE_EPOCH));
 write_text("Release", "$RELEASE\n");
 
 sub usage {

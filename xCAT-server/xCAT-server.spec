@@ -68,7 +68,10 @@ Requires: perl-HTTP-Async >= 0.30-3
 Requires: initscripts
 Requires: chkconfig
 %endif
-%if 0%{?rhel} >= 10
+# openssl is present on all EL; require it uniformly (not just el10) so a single
+# flat xcat-core build is correct everywhere. Excluded on SLES, where the package
+# name differs and it was never required before.
+%if !0%{?suse_version}
 Requires: openssl
 %endif
 
