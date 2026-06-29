@@ -131,6 +131,19 @@ dracut --compress gzip -m "xcat base" --no-early-microcode -N -f "$DRACUT_IMAGE"
     zcat "$DRACUT_IMAGE" | cpio -dumi
 )
 
+# usrmerge collapse: on a usr-merged build host the extracted genesis fs can
+# contain /bin,/sbin,/lib,/lib64 as real directories that duplicate the files
+# already under /usr/*, which makes rpm reject the package with file conflicts.
+# Fold the top-level dirs into /usr and replace them with symlinks (a no-op on
+# hosts where the image already ships them as symlinks).
+for _d in bin sbin lib lib64; do
+    if [ -d "$GENESIS_FS/$_d" ] && [ ! -L "$GENESIS_FS/$_d" ] && [ -d "$GENESIS_FS/usr/$_d" ]; then
+        cp -a "$GENESIS_FS/$_d/." "$GENESIS_FS/usr/$_d/" 2>/dev/null || true
+        rm -rf "$GENESIS_FS/$_d"
+        ln -s "usr/$_d" "$GENESIS_FS/$_d"
+    fi
+done
+
 # xCAT 2.14.5 genesis payloads shipped usr/lib/dracut/hooks as a real directory.
 # Newer dracut (EL8+) makes it a symlink to ../../../var/lib/dracut/hooks. RPM
 # cannot replace a directory with a symlink across an upgrade, so a 2.17 -> 2.18
