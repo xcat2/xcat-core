@@ -17,7 +17,10 @@ BuildArch: noarch
 Requires: confluent_server
 
 Provides: xCAT-confluent = %{epoch}:%{version}
+# Pod::Html ships inside the core perl package on SUSE; there is no perl-Pod-Html
+%if !0%{?suse_version}
 BuildRequires: perl-Pod-Html
+%endif
 
 %description
 xCAT confluent provides the necessary integration pieces to utilize the confluent

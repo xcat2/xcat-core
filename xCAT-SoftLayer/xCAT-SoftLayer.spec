@@ -15,7 +15,10 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 BuildArch: noarch
 %endif
 Requires: xCAT-server
+# Pod::Html ships inside the core perl package on SUSE; there is no perl-Pod-Html
+%if !0%{?suse_version}
 BuildRequires: perl-Pod-Html
+%endif
 
 # perl-ExtUtils-MakeMaker, perl-CPAN, perl-Test-Harness are only available in rhel.
 # When this rpm supports being installed in sles, need to add these to xcat-dep.

@@ -20,7 +20,10 @@ BuildArch: noarch
 Provides: xCAT-OpenStack-baremetal = %{epoch}:%{version}
 
 Requires: xCAT-client
+# Pod::Html ships inside the core perl package on SUSE; there is no perl-Pod-Html
+%if !0%{?suse_version}
 BuildRequires: perl-Pod-Html
+%endif
 
 %description
 xCAT-OpenStack-baremetal provides the baremetal driver for OpenStack.
