@@ -32,7 +32,13 @@ Vendor: IBM Corp.
 Summary: xCAT Genesis netboot image - Core content
 URL:	 https://xcat.org/
 Source1: xCAT-genesis-scripts.tar.bz2
-Requires: xCAT-genesis-base-%{tarch} = 2:%{version}-%{release}
+# Require any same-version (or newer) genesis-base, NOT the exact snap. genesis-base
+# lives in the per-EL xcat-dep repo while this package ships in the flat xcat-core;
+# pinning the exact -%{release} forced the two repos to be republished in lockstep on
+# every core rebuild. >= 2:%{version} (epoch 2, version, no release) lets any 2.18.0
+# genesis-base snap satisfy it, so routine core snaps no longer require a genesis-base
+# re-publish. (RPM ignores release when the dependency omits it.)
+Requires: xCAT-genesis-base-%{tarch} >= 2:%{version}
 
 Buildroot: %{_localstatedir}/tmp/xCAT-genesis
 Packager: IBM Corp.
