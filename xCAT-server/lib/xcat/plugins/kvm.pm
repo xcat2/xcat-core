@@ -720,7 +720,11 @@ sub build_xmldesc {
     $xtree{name}->{content} = $node;
     $xtree{uuid}->{content} = getNodeUUID($node);
     $xtree{os}              = build_oshash();
-    if (defined($hypcpumodel) and $hypcpumodel eq "ppc64") {
+    # ppc64le hypervisors report cpumodel "ppc64le" (not "ppc64"); both are pseries
+    # guests whose libvirt <os> arch is "ppc64". Without this the guest is emitted
+    # as an x86-style domain (no machine, plus the pae/acpi/apic below) which libvirt
+    # rejects on ppc64le hosts: "machine type 'pseries-*' does not support ACPI".
+    if (defined($hypcpumodel) and ($hypcpumodel eq "ppc64" or $hypcpumodel eq "ppc64le")) {
         $xtree{os}->{type}->{arch}    = "ppc64";
         $xtree{os}->{type}->{machine} = "pseries";
         delete $xtree{os}->{bios};
@@ -936,9 +940,13 @@ sub build_xmldesc {
         }
     }
 
-    $xtree{features}->{pae}     = {};
-    $xtree{features}->{acpi}    = {};
-    $xtree{features}->{apic}    = {};
+    # pae/acpi/apic are x86 features; pseries (ppc64/ppc64le) guests do not support
+    # them and libvirt rejects the domain if they are present.
+    unless (defined($hypcpumodel) and ($hypcpumodel eq "ppc64" or $hypcpumodel eq "ppc64le")) {
+        $xtree{features}->{pae}     = {};
+        $xtree{features}->{acpi}    = {};
+        $xtree{features}->{apic}    = {};
+    }
     $xtree{features}->{content} = "\n";
     ($xtree{devices}->{disk}, my $errstr) = build_diskstruct($cdloc);
     if ($errstr) {
