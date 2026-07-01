@@ -69,12 +69,24 @@ until ($dsthost and $speed and $dstty) {
 }
 release_lock();
 
-# The screen command needs the TERM env var,
-# TERM might be empty for some unknown reasons,
-# for example, on SLES 12 and on PowerKVM
+# TERM may be empty (SLES 12, PowerKVM); a terminal multiplexer needs it.
 if (!$ENV{'TERM'}) {
     $ENV{'TERM'} = "vt100";
 }
 
-exec "ssh -t $dsthost screen -U -a -O -e ^]a -d -R -S serial-" . $ARGV[0] . "-cons -A $dstty $speed";
-
+# Attach to the KVM guest's serial console inside a shared tmux session on the
+# hypervisor. tmux (unlike screen) is present on every libvirt host we target,
+# incl. ppc64le power hosts that ship no screen; `new-session -A` gives the same
+# detach/reattach + multi-client behaviour screen provided (goconserver and an
+# interactive rcons share one session). The console itself is opened by
+# `virsh console` keyed on the domain name (== the xCAT node name for KVM), which
+# is stable across guest reboots (the raw serial pty is not). -x/-y size the
+# pane so the guest sees a sane terminal geometry.
+my $node = $ARGV[0];
+my $session = "serial-$node-cons";
+my $virshcons = "virsh -c qemu:///system console --force $node";
+# Create the session once, detached, with the status bar OFF so the captured
+# console log stays clean serial (no tmux chrome/clock redraws) -- matching what
+# screen gave; then attach. `new-session -d -A` is a no-op if it already exists,
+# so concurrent clients (goconserver + rcons) share the single session.
+exec "ssh -t $dsthost \"tmux -u new-session -d -A -x 200 -y 50 -s $session '$virshcons'; tmux set-option -t $session status off; exec tmux -u attach -t $session\"";
