@@ -149,6 +149,7 @@ my %opts = (
     xcat_dep_path => "$PWD/../xcat-dep/",
 );
 
+my @cli_packages;
 GetOptions(
     "configure_nginx" => \$opts{configure_nginx},
     "force" => \$opts{force},
@@ -159,7 +160,7 @@ GetOptions(
     "mock-uniqueext=s" => \$opts{mock_uniqueext},
     "nginx_port" => \$opts{nginx_port},
     "nproc=i" => \$opts{nproc},
-    "package=s@" => \$opts{packages},
+    "package=s@" => \@cli_packages,
     "release=s" => \$opts{release},
     "repo-mode=s" => \$opts{repo_mode},
     "target=s@" => \$opts{targets},
@@ -167,6 +168,12 @@ GetOptions(
     "xcat_dep_path=s" => \$opts{xcat_dep_path},
     "setup_local_repos" => \$opts{setup_local_repos},
 ) or usage();
+
+# --package REPLACES the default set (build exactly what was asked), so
+# `--package xCAT-genesis-base` builds only genesis-base for the dep pipeline.
+# The full default set is built on every arch (x86_64 and ppc64le alike), so each
+# arch produces a complete, self-contained xcat-core repo.
+$opts{packages} = \@cli_packages if @cli_packages;
 
 # Release is derived from SOURCE_DATE_EPOCH (the git commit time), NOT wall-clock,
 # so identical sources -> identical Version-Release -> bit-reproducible packages
@@ -392,6 +399,7 @@ sub buildpkgs {
 
     my @native_pkgs = qw(
         xCAT
+        xCATsn
         xCAT-genesis-scripts
     );
 
@@ -589,6 +597,68 @@ sub sign_rpms {
         and die "Failed to export public key";
 }
 
+# Emit the deployable repo metadata into dist/$target/rpms: xcat-core.repo,
+# mklocalrepo.sh and buildinfo.txt (templates ported from buildcore.sh). This makes
+# the built tree directly deployable to xcat.org and removes the need for
+# cluster-test.pl to re-collect / re-createrepo the dist output.
+sub write_repo_metadata {
+    my ($target) = @_;
+    my $repodir = "dist/$target/rpms";
+    return unless -d $repodir;
+
+    # Shipped baseurl points at xcat.org; mklocalrepo.sh rewrites baseurl/gpgkey to
+    # file:// at deploy time for local use.
+    my $baseurl = "https://xcat.org/files/xcat/repos/yum/devel/xcat-core";
+    my $gpgcheck = $opts{gpg_sign} ? 1 : 0;
+    my $gpgkey_line = $opts{gpg_sign}
+        ? "gpgkey=$baseurl/repodata/repomd.xml.key"
+        : "# gpgkey=";
+    write_text("$repodir/xcat-core.repo", <<"EOF");
+[xcat-core]
+name=xCAT 2 Core packages
+baseurl=$baseurl
+enabled=1
+gpgcheck=$gpgcheck
+$gpgkey_line
+EOF
+
+    write_text("$repodir/mklocalrepo.sh", <<'EOF2');
+#!/bin/sh
+cd `dirname $0`
+REPOFILE=`basename xcat-*.repo`
+if [[ $REPOFILE == "xcat-*.repo" ]]; then
+    echo "ERROR: For xcat-dep, please execute $0 in the correct <os>/<arch> subdirectory"
+    exit 1
+fi
+#
+# default to RHEL yum, if doesn't exist try Zypper
+#
+DIRECTORY="/etc/yum.repos.d"
+if [ ! -d "$DIRECTORY" ]; then
+    DIRECTORY="/etc/zypp/repos.d"
+fi
+sed -e 's|baseurl=.*|baseurl=file://'"`pwd`"'|' $REPOFILE | sed -e 's|gpgkey=.*|gpgkey=file://'"`pwd`"'/repodata/repomd.xml.key|' > "$DIRECTORY/$REPOFILE"
+if [ -f "$DIRECTORY/xCAT-core.repo" ]; then
+    mv "$DIRECTORY/xCAT-core.repo" "$DIRECTORY/xCAT-core.repo.nouse"
+fi
+cd -
+EOF2
+    chmod 0775, "$repodir/mklocalrepo.sh";
+
+    # BUILD_TIME from SOURCE_DATE_EPOCH keeps buildinfo reproducible across rebuilds.
+    my $build_time = strftime("%a %b %e %H:%M:%S %Z %Y", gmtime($SOURCE_DATE_EPOCH));
+    my $build_machine = `hostname`; chomp $build_machine;
+    my $commit_short = substr($GITINFO, 0, 7);
+    write_text("$repodir/buildinfo.txt", <<"EOF");
+VERSION=$VERSION
+RELEASE=$RELEASE
+BUILD_TIME=$build_time
+BUILD_MACHINE=$build_machine
+COMMIT_ID=$commit_short
+COMMIT_ID_LONG=$GITINFO
+EOF
+}
+
 sub main {
     usage(verbose => 2, exitval => 0) if $opts{help};
     my $mode = repo_mode();
@@ -626,6 +696,12 @@ sub main {
         for my $target ($opts{targets}->@*) {
             sign_rpms($target);
         }
+    }
+
+    # Emit deployable repo metadata (after signing, so the .repo gpgkey line matches
+    # the freshly written repomd.xml.key).
+    for my $target ($opts{targets}->@*) {
+        write_repo_metadata($target);
     }
 
     exit(0);
