@@ -50,6 +50,12 @@ use autodie;
 use autodie qw(cp);
 
 my $SOURCES = "$ENV{HOME}/rpmbuild/SOURCES";
+# Ensure the rpmbuild tree exists. buildrpms stages source tarballs into $SOURCES, but it only
+# runs rpmdev-setuptree in the one-time env-setup path -- so on a host where that never ran (or
+# $HOME/rpmbuild was cleaned) source staging fails with "SOURCES/...: No such file or directory",
+# no srpms/rpms are produced, and the run still exits 0. Create the tree up front so a build never
+# depends on prior manual setup.
+system('mkdir', '-p', map { "$ENV{HOME}/rpmbuild/$_" } qw(SOURCES SPECS BUILD BUILDROOT RPMS SRPMS));
 my $VERSION = read_text("Version");
 my $PWD = Cwd::cwd();
 
