@@ -1,3 +1,4 @@
 setup_vm
 #INCLUDE:rhels_x86_daily.bundle#
+xcatprobe_work
 clean_up_env

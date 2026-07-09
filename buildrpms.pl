@@ -40,6 +40,7 @@ use Data::Dumper;
 use File::Copy qw(cp);
 use File::Path qw(make_path remove_tree);
 use File::Slurper qw(read_text write_text);
+use File::Temp qw(tempdir tempfile);
 use FindBin qw($Bin);
 use Getopt::Long qw(GetOptions);
 use POSIX qw(strftime);
@@ -52,6 +53,11 @@ use autodie qw(cp);
 my $SOURCES = "$ENV{HOME}/rpmbuild/SOURCES";
 my $VERSION = read_text("Version");
 my $PWD = Cwd::cwd();
+my @XCAT_PROBE_HELPERS = qw(
+    GlobalDef.pm
+    NetworkUtils.pm
+    ServiceNodeUtils.pm
+);
 
 chomp($VERSION);
 
@@ -294,6 +300,38 @@ sub buildsources_genesis_base($) {
     remove_tree($staging_parent);
 }
 
+sub prepare_xcat_probe_source_tar {
+    my $staging_parent = tempdir("xcat-probe-source.XXXXXX", TMPDIR => 1, CLEANUP => 1);
+    my $staging_root = "$staging_parent/xCAT-probe";
+    my $helper_dir = "$staging_root/lib/perl/xCAT";
+    my $source_tarball = "$SOURCES/xCAT-probe-$VERSION.tar.gz";
+
+    sh(qq(cp -a "xCAT-probe" "$staging_root"))
+        and die "Error staging xCAT-probe sources";
+
+    remove_tree($helper_dir) if -e $helper_dir;
+    make_path($helper_dir);
+    chmod 0755, $helper_dir;
+    for my $helper (@XCAT_PROBE_HELPERS) {
+        my $destination = "$helper_dir/$helper";
+        cp "perl-xCAT/xCAT/$helper", $destination;
+        chmod 0644, $destination;
+    }
+
+    my ($archive_fh, $archive_path) = tempfile(
+        ".xCAT-probe-$VERSION.XXXXXX",
+        DIR => $SOURCES,
+        UNLINK => 1,
+    );
+    close $archive_fh;
+
+    sh(qq(tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="\@$SOURCE_DATE_EPOCH" --use-compress-program="gzip -n" -cf "$archive_path" -C "$staging_parent" xCAT-probe))
+        and die "Error creating $source_tarball";
+
+    chmod 0644, $archive_path;
+    rename $archive_path, $source_tarball;
+}
+
 sub buildsources {
     my ($pkg, $target) = @_;
 
@@ -329,6 +367,9 @@ EOF
 EOF
       # xCATsn.spec consumes templates from xCAT shared templates payload.
       sh qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf "$SOURCES/templates.tar.gz" xCAT/templates) unless -f "$SOURCES/templates.tar.gz";
+    } elsif ($pkg eq "xCAT-probe") {
+      # Prepared once before target builds fork so workers only read a complete archive.
+      return;
     } else {
       sh qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf "$SOURCES/$pkg-$VERSION.tar.gz" $pkg);
     }
@@ -590,6 +631,9 @@ sub main {
 
     return exit(configure_nginx()) if $opts{configure_nginx};
     return exit(setup_local_repos()) if $opts{setup_local_repos};
+
+    prepare_xcat_probe_source_tar()
+        if grep { $_ eq "xCAT-probe" } $opts{packages}->@*;
 
     my @rpms = product($opts{packages}, $opts{targets});
     my $pm = Parallel::ForkManager->new($opts{nproc});
