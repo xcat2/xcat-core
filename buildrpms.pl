@@ -19,7 +19,7 @@ sub install_deps {
     esac
     dnf install -y perl-generators https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
     dnf install -y \$(/usr/lib/rpm/perl.req $0)
-    dnf install -y tar mock nginx createrepo podman rpmdevtools rpm-sign
+    dnf install -y tar mock nginx createrepo_c podman rpmdevtools rpm-sign
 
     systemctl enable --now nginx
 
@@ -40,6 +40,7 @@ use Data::Dumper;
 use File::Copy qw(cp);
 use File::Path qw(make_path remove_tree);
 use File::Slurper qw(read_text write_text);
+use File::Temp qw(tempdir tempfile);
 use FindBin qw($Bin);
 use Getopt::Long qw(GetOptions);
 use POSIX qw(strftime);
@@ -50,8 +51,19 @@ use autodie;
 use autodie qw(cp);
 
 my $SOURCES = "$ENV{HOME}/rpmbuild/SOURCES";
+# Ensure the rpmbuild tree exists. buildrpms stages source tarballs into $SOURCES, but it only
+# runs rpmdev-setuptree in the one-time env-setup path -- so on a host where that never ran (or
+# $HOME/rpmbuild was cleaned) source staging fails with "SOURCES/...: No such file or directory",
+# no srpms/rpms are produced, and the run still exits 0. Create the tree up front so a build never
+# depends on prior manual setup.
+system('mkdir', '-p', map { "$ENV{HOME}/rpmbuild/$_" } qw(SOURCES SPECS BUILD BUILDROOT RPMS SRPMS));
 my $VERSION = read_text("Version");
 my $PWD = Cwd::cwd();
+my @XCAT_PROBE_HELPERS = qw(
+    GlobalDef.pm
+    NetworkUtils.pm
+    ServiceNodeUtils.pm
+);
 
 chomp($VERSION);
 
@@ -101,6 +113,13 @@ my $DISTRO = $OS{ID};
 # almalinux+epel-* config, so translate the os-release ID accordingly.
 $DISTRO = "alma" if $DISTRO eq "almalinux";
 
+# xCAT-genesis-base is intentionally NOT in the default build set below. Its
+# payload is a dracut-built initramfs that bundles the build chroot's kernel +
+# glibc/busybox/perl, so it is OS-dependent (an el10 build cannot boot el8/el9
+# nodes). It is built per target by the xcat-dep pipeline
+# (xcat-dep/mockbuild-all.pl, via `buildrpms.pl --package xCAT-genesis-base`)
+# and shipped in the per-EL repo xcat-dep/rh<N>, NOT in the flat xcat-core. The
+# build logic further down still supports `--package xCAT-genesis-base`.
 my @PACKAGES = qw(
     perl-xCAT
     xCAT
@@ -108,7 +127,6 @@ my @PACKAGES = qw(
     xCAT-buildkit
     xCAT-client
     xCAT-confluent
-    xCAT-genesis-base
     xCAT-genesis-scripts
     xCAT-openbmc-py
     xCAT-probe
@@ -129,7 +147,7 @@ my %opts = (
     configure_nginx => 0,
     force => 0,
     gpg_home => "",
-    gpg_key_name => "xCAT Automatic Signing Key",
+    gpg_key_name => "xCAT Signing Key",
     gpg_sign => 0,
     help => 0,
     mock_uniqueext => "",
@@ -143,6 +161,7 @@ my %opts = (
     xcat_dep_path => "$PWD/../xcat-dep/",
 );
 
+my @cli_packages;
 GetOptions(
     "configure_nginx" => \$opts{configure_nginx},
     "force" => \$opts{force},
@@ -153,19 +172,27 @@ GetOptions(
     "mock-uniqueext=s" => \$opts{mock_uniqueext},
     "nginx_port" => \$opts{nginx_port},
     "nproc=i" => \$opts{nproc},
-    "package=s@" => \$opts{packages},
+    "package=s@" => \@cli_packages,
     "release=s" => \$opts{release},
     "repo-mode=s" => \$opts{repo_mode},
     "target=s@" => \$opts{targets},
     "verbose" => \$opts{verbose},
     "xcat_dep_path=s" => \$opts{xcat_dep_path},
     "setup_local_repos" => \$opts{setup_local_repos},
+    "finalize-core=s" => \$opts{finalize_core},
 ) or usage();
 
-# Release is regenerated at each run so every build gets a fresh snapshot
-# release, unless pinned with --release (e.g. to rebuild a single package
-# matching the release the rest of the repo was built with).
-my $RELEASE = $opts{release} || strftime("snap%Y%m%d%H%M", localtime);
+# --package REPLACES the default set (build exactly what was asked), so
+# `--package xCAT-genesis-base` builds only genesis-base for the dep pipeline.
+# The full default set is built on every arch (x86_64 and ppc64le alike), so each
+# arch produces a complete, self-contained xcat-core repo.
+$opts{packages} = \@cli_packages if @cli_packages;
+
+# Release is derived from SOURCE_DATE_EPOCH (the git commit time), NOT wall-clock,
+# so identical sources -> identical Version-Release -> bit-reproducible packages
+# (a hard requirement for the content-addressed/Merkle-DAG CI). Override with
+# --release to rebuild a single package matching an existing repo's release.
+my $RELEASE = $opts{release} || strftime("snap%Y%m%d%H%M", gmtime($SOURCE_DATE_EPOCH));
 write_text("Release", "$RELEASE\n");
 
 sub usage {
@@ -294,6 +321,38 @@ sub buildsources_genesis_base($) {
     remove_tree($staging_parent);
 }
 
+sub prepare_xcat_probe_source_tar {
+    my $staging_parent = tempdir("xcat-probe-source.XXXXXX", TMPDIR => 1, CLEANUP => 1);
+    my $staging_root = "$staging_parent/xCAT-probe";
+    my $helper_dir = "$staging_root/lib/perl/xCAT";
+    my $source_tarball = "$SOURCES/xCAT-probe-$VERSION.tar.gz";
+
+    sh(qq(cp -a "xCAT-probe" "$staging_root"))
+        and die "Error staging xCAT-probe sources";
+
+    remove_tree($helper_dir) if -e $helper_dir;
+    make_path($helper_dir);
+    chmod 0755, $helper_dir;
+    for my $helper (@XCAT_PROBE_HELPERS) {
+        my $destination = "$helper_dir/$helper";
+        cp "perl-xCAT/xCAT/$helper", $destination;
+        chmod 0644, $destination;
+    }
+
+    my ($archive_fh, $archive_path) = tempfile(
+        ".xCAT-probe-$VERSION.XXXXXX",
+        DIR => $SOURCES,
+        UNLINK => 1,
+    );
+    close $archive_fh;
+
+    sh(qq(tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="\@$SOURCE_DATE_EPOCH" --use-compress-program="gzip -n" -cf "$archive_path" -C "$staging_parent" xCAT-probe))
+        and die "Error creating $source_tarball";
+
+    chmod 0644, $archive_path;
+    rename $archive_path, $source_tarball;
+}
+
 sub buildsources {
     my ($pkg, $target) = @_;
 
@@ -329,6 +388,9 @@ EOF
 EOF
       # xCATsn.spec consumes templates from xCAT shared templates payload.
       sh qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf "$SOURCES/templates.tar.gz" xCAT/templates) unless -f "$SOURCES/templates.tar.gz";
+    } elsif ($pkg eq "xCAT-probe") {
+      # Prepared once before target builds fork so workers only read a complete archive.
+      return;
     } else {
       sh qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf "$SOURCES/$pkg-$VERSION.tar.gz" $pkg);
     }
@@ -344,8 +406,8 @@ sub buildspkgs {
 
     my $diskcache = (
         $pkg eq 'xCAT-genesis-scripts' || $pkg eq 'xCAT-genesis-base'
-    ) ? "dist/$target/srpms/$pkg-$genesis_tarch-$VERSION-$RELEASE.src.rpm"
-      : "dist/$target/srpms/$pkg-$VERSION-$RELEASE.src.rpm";
+    ) ? "dist/$target/rpms/SRPMS/$pkg-$genesis_tarch-$VERSION-$RELEASE.src.rpm"
+      : "dist/$target/rpms/SRPMS/$pkg-$VERSION-$RELEASE.src.rpm";
     return if -f $diskcache and not $opts{force};
 
     my $dir = sub {
@@ -373,7 +435,7 @@ mock -r $chroot \\
     --buildsrpm \\
     --spec $dir/$pkg.spec \\
     --sources $SOURCES \\
-    --resultdir "dist/$target/srpms/"
+    --resultdir "dist/$target/rpms/SRPMS/"
 EOF
 }
 
@@ -385,6 +447,7 @@ sub buildpkgs {
 
     my @native_pkgs = qw(
         xCAT
+        xCATsn
         xCAT-genesis-scripts
     );
 
@@ -427,7 +490,7 @@ mock -r $chroot \\
     --define "clamp_mtime_to_source_date_epoch 1" \\
     --define "_buildhost xcat-build" \\
     --resultdir "dist/$target/rpms/" \\
-    --rebuild dist/$target/srpms/$spkgname
+    --rebuild dist/$target/rpms/SRPMS/$spkgname
 EOF
 }
 
@@ -546,40 +609,162 @@ sub setup_local_repos {
 }
 
 
+# Index one repo dir with deterministic, upstream-matching metadata. createrepo_c's
+# defaults already emit primary/filelists/other as *.xml.zst plus *.sqlite.bz2
+# (--database), exactly the upstream shape; --set-timestamp-to-revision pins the
+# repomd timestamp to SOURCE_DATE_EPOCH.
+sub createrepo_dir {
+    my ($dir, $extra) = @_;
+    $extra //= '';
+    sh(qq(createrepo_c --update --database )
+       . qq(--revision "$SOURCE_DATE_EPOCH" --set-timestamp-to-revision $extra "$dir"))
+        and die "Failed to createrepo_c $dir\n";
+}
+
+# A core repo dir holds binaries flat plus a SRPMS/ subdir carrying its own
+# repodata (the upstream xcat.org layout). mock --rebuild re-emits the .src.rpm
+# into the binary resultdir, but the canonical copy lives in SRPMS/, so drop the
+# top-level strays; then index the binaries EXCLUDING the SRPMS/ subdir so no
+# src.rpm enters the binary repomd, and index the SRPMS repo separately.
+sub index_repo {
+    my ($repodir) = @_;
+    say "Creating repository $repodir";
+    # Drop the top-level stray src.rpm and the mock logs (build.log/root.log/...)
+    # that mock leaves in the resultdir, so the dir is directly deployable (upstream
+    # ships neither). The canonical src.rpm lives in SRPMS/.
+    unlink($_) for glob("$repodir/*.src.rpm"), glob("$repodir/*.log"),
+                   glob("$repodir/SRPMS/*.log");
+    createrepo_dir($repodir, "--excludes 'SRPMS/*' --excludes '*.src.rpm'");
+    createrepo_dir("$repodir/SRPMS") if -d "$repodir/SRPMS";
+}
+
 sub update_repo {
     my ($target) = @_;
-    say "Creating repository dist/$target/rpms";
-    `find dist/$target/rpms -name ".src.rpm" -delete`;
-    `createrepo --update dist/$target/rpms`;
+    index_repo("dist/$target/rpms");
 }
 
 sub sign_rpms {
     my ($target) = @_;
-    my $key_name = $opts{gpg_key_name};
-    my $repodir = "dist/$target/rpms";
+    sign_repo_dir("dist/$target/rpms", $opts{gpg_key_name});
+}
+
+# Sign every rpm in a core repo dir -- the top-level binaries AND SRPMS/*.src.rpm --
+# then re-index (signing rewrites the rpms, invalidating checksums) and detach-sign
+# + export the key into BOTH the binary and the SRPMS repodata dirs.
+sub sign_repo_dir {
+    my ($repodir, $key_name) = @_;
 
     say "Signing RPMs in $repodir";
-    my @rpms = glob("$repodir/*.rpm");
-    if (@rpms) {
-        my $rpm_list = join " ", map { qq("$_") } @rpms;
-        sh(qq(rpmsign --define "%_gpg_name $key_name" --addsign $rpm_list))
+    my @bin = glob("$repodir/*.rpm");
+    if (@bin) {
+        sh(qq(rpmsign --define "%_gpg_name $key_name" --addsign )
+           . join(" ", map { qq("$_") } @bin))
             and die "Failed to sign RPMs in $repodir";
     }
+    my @src = glob("$repodir/SRPMS/*.src.rpm");
+    if (@src) {
+        sh(qq(rpmsign --define "%_gpg_name $key_name" --addsign )
+           . join(" ", map { qq("$_") } @src))
+            and die "Failed to sign SRPMs in $repodir/SRPMS";
+    }
 
-    # rpmsign --addsign rewrites the rpm files, so the checksums recorded by the
-    # earlier createrepo no longer match and dnf rejects them. Regenerate the repo
-    # metadata now (after signing, before signing repomd.xml) so it stays consistent.
-    say "Regenerating repo metadata after signing $repodir";
-    sh(qq(createrepo --update "$repodir"))
-        and die "Failed to regenerate repo metadata after signing";
+    # Regenerate both indexes (binary + SRPMS) after signing, before signing repomd.
+    index_repo($repodir);
 
-    say "Signing repomd.xml for $target";
-    my $repomd = "$repodir/repodata/repomd.xml";
-    unlink "$repomd.asc" if -f "$repomd.asc";
-    sh(qq(gpg -a --detach-sign --default-key "$key_name" "$repomd"))
-        and die "Failed to sign $repomd";
-    sh(qq(gpg -a --export "$key_name" > "$repomd.key"))
-        and die "Failed to export public key";
+    for my $rd ("$repodir/repodata",
+                (-d "$repodir/SRPMS/repodata" ? ("$repodir/SRPMS/repodata") : ())) {
+        my $repomd = "$rd/repomd.xml";
+        next unless -f $repomd;
+        say "Signing $repomd";
+        unlink "$repomd.asc" if -f "$repomd.asc";
+        sh(qq(gpg -a --detach-sign --default-key "$key_name" "$repomd"))
+            and die "Failed to sign $repomd";
+        sh(qq(gpg -a --export "$key_name" > "$rd/repomd.xml.key"))
+            and die "Failed to export public key to $rd";
+    }
+}
+
+# Emit the deployable repo metadata into dist/$target/rpms: xcat-core.repo,
+# mklocalrepo.sh and buildinfo.txt (templates ported from buildcore.sh). This makes
+# the built tree directly deployable to xcat.org and removes the need for
+# cluster-test.pl to re-collect / re-createrepo the dist output.
+sub write_repo_metadata {
+    my ($target) = @_;
+    write_repo_metadata_dir("dist/$target/rpms");
+}
+
+sub write_repo_metadata_dir {
+    my ($repodir) = @_;
+    return unless -d $repodir;
+
+    # Shipped baseurl points at xcat.org; mklocalrepo.sh rewrites baseurl/gpgkey to
+    # file:// at deploy time for local use.
+    my $baseurl = "https://xcat.org/files/xcat/repos/yum/devel/xcat-core";
+    my $gpgcheck = $opts{gpg_sign} ? 1 : 0;
+    my $gpgkey_line = $opts{gpg_sign}
+        ? "gpgkey=$baseurl/repodata/repomd.xml.key"
+        : "# gpgkey=";
+    write_text("$repodir/xcat-core.repo", <<"EOF");
+[xcat-core]
+name=xCAT 2 Core packages
+baseurl=$baseurl
+enabled=1
+gpgcheck=$gpgcheck
+$gpgkey_line
+EOF
+
+    write_text("$repodir/mklocalrepo.sh", <<'EOF2');
+#!/bin/sh
+cd `dirname $0`
+REPOFILE=`basename xcat-*.repo`
+if [[ $REPOFILE == "xcat-*.repo" ]]; then
+    echo "ERROR: For xcat-dep, please execute $0 in the correct <os>/<arch> subdirectory"
+    exit 1
+fi
+#
+# default to RHEL yum, if doesn't exist try Zypper
+#
+DIRECTORY="/etc/yum.repos.d"
+if [ ! -d "$DIRECTORY" ]; then
+    DIRECTORY="/etc/zypp/repos.d"
+fi
+sed -e 's|baseurl=.*|baseurl=file://'"`pwd`"'|' $REPOFILE | sed -e 's|gpgkey=.*|gpgkey=file://'"`pwd`"'/repodata/repomd.xml.key|' > "$DIRECTORY/$REPOFILE"
+if [ -f "$DIRECTORY/xCAT-core.repo" ]; then
+    mv "$DIRECTORY/xCAT-core.repo" "$DIRECTORY/xCAT-core.repo.nouse"
+fi
+cd -
+EOF2
+    chmod 0775, "$repodir/mklocalrepo.sh";
+
+    # BUILD_TIME from SOURCE_DATE_EPOCH keeps buildinfo reproducible across rebuilds.
+    my $build_time = strftime("%a %b %e %H:%M:%S %Z %Y", gmtime($SOURCE_DATE_EPOCH));
+    my $build_machine = `hostname`; chomp $build_machine;
+    my $commit_short = substr($GITINFO, 0, 7);
+    write_text("$repodir/buildinfo.txt", <<"EOF");
+VERSION=$VERSION
+RELEASE=$RELEASE
+BUILD_TIME=$build_time
+BUILD_MACHINE=$build_machine
+COMMIT_ID=$commit_short
+COMMIT_ID_LONG=$GITINFO
+EOF
+}
+
+# Turn an already-populated core dir into a signed repo in the upstream xcat.org
+# layout, reusing the same index/sign/metadata code as a per-target build. Used to
+# assemble the flat MULTI-ARCH core: the caller rsyncs each arch's dist/<t>/rpms/
+# (excluding repodata/) into <dir> first, then this does the single final
+# createrepo_c + repomd signing so no packages are moved by hand.
+sub finalize_core {
+    my $dir = $opts{finalize_core};
+    die "FATAL: --finalize-core dir '$dir' does not exist\n" unless -d $dir;
+    index_repo($dir);
+    if ($opts{gpg_sign}) {
+        $ENV{GNUPGHOME} = $opts{gpg_home} if $opts{gpg_home};
+        sign_repo_dir($dir, $opts{gpg_key_name});
+    }
+    write_repo_metadata_dir($dir);
+    return 0;
 }
 
 sub main {
@@ -590,6 +775,10 @@ sub main {
 
     return exit(configure_nginx()) if $opts{configure_nginx};
     return exit(setup_local_repos()) if $opts{setup_local_repos};
+    return exit(finalize_core()) if $opts{finalize_core};
+
+    prepare_xcat_probe_source_tar()
+        if grep { $_ eq "xCAT-probe" } $opts{packages}->@*;
 
     my @rpms = product($opts{packages}, $opts{targets});
     my $pm = Parallel::ForkManager->new($opts{nproc});
@@ -619,6 +808,12 @@ sub main {
         for my $target ($opts{targets}->@*) {
             sign_rpms($target);
         }
+    }
+
+    # Emit deployable repo metadata (after signing, so the .repo gpgkey line matches
+    # the freshly written repomd.xml.key).
+    for my $target ($opts{targets}->@*) {
+        write_repo_metadata($target);
     }
 
     exit(0);

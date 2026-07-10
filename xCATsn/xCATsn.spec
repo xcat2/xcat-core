@@ -48,13 +48,14 @@ Requires: /usr/bin/killall
 Requires: /usr/bin/bc
 # yaboot-xcat is pulled in so any SN can manage ppc nodes
 Requires: httpd nfs-utils nmap bind
-# On RHEL this pulls in dhcp, on SLES it pulls in dhcp-server. EL10 uses Kea.
-%if 0%{?rhel} >= 10
-Requires: kea
-Requires: kea-hooks
-%else
-Requires: /usr/sbin/dhcpd
-%endif
+# DHCP backend resolved at INSTALL time (not build time) via an RPM rich
+# dependency, so a single flat xcat-core build is correct on every EL: el10+
+# dropped ISC dhcp from its distro and uses Kea; el8/el9 use ISC dhcpd. SLES
+# has no "system-release" provide, so the condition is false there and it
+# falls to dhcp-server (/usr/sbin/dhcpd), preserving prior behavior.
+# system-release is versioned per release package (el10=10.x, el9=9.x, el8=8.x).
+Requires: (kea if (system-release >= 10) else /usr/sbin/dhcpd)
+Requires: (kea-hooks if (system-release >= 10))
 # On RHEL this pulls in openssh-server, on SLES it pulls in openssh
 Requires: /usr/bin/ssh
 %ifnarch s390x

@@ -19,7 +19,10 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 %define s390x %(if [ "$s390x" = "1" ];then echo 1; else echo 0; fi)
 %define nots390x %(if [ "$s390x" = "1" ];then echo 0; else echo 1; fi)
 
+# Pod::Html ships inside the core perl package on SUSE; there is no perl-Pod-Html
+%if !0%{?suse_version}
 BuildRequires: perl-Pod-Html
+%endif
 
 # AIX will build with an arch of "ppc"
 %ifos linux
@@ -31,7 +34,10 @@ Requires: cpio
 
 # fping or nmap is needed by pping (in case xCAT-client is installed by itself on a remote client)
 %ifos linux
+# perl-generators is a RHEL/Fedora-only build helper; SUSE generates perl deps itself
+%if !0%{?suse_version}
 BuildRequires: perl-generators
+%endif
 Requires: nmap perl-XML-Simple perl-XML-Parser
 %else
 Requires: expat
