@@ -53,6 +53,17 @@ like(
     qr/cp \$release_rpms\[0\], \$alias/,
     'repository export creates the stable bootstrap filename'
 );
+my $sign_call = rindex($builder, 'sign_rpms($target)');
+my $alias_call = rindex($builder, 'write_release_alias("dist/$target/rpms")');
+ok(
+    $sign_call >= 0 && $alias_call > $sign_call,
+    'stable bootstrap alias is created after signed metadata is finalized'
+);
+like(
+    $builder,
+    qr/sub finalize_core \{.*?write_repo_metadata_dir\(\$dir\);.*?write_release_alias\(\$dir\);/s,
+    'assembled core repository creates the stable alias after final metadata'
+);
 
 done_testing();
 

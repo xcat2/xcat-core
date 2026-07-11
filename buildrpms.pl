@@ -648,7 +648,6 @@ sub update_repo {
     my ($target) = @_;
     my $repodir = "dist/$target/rpms";
     index_repo($repodir);
-    write_release_alias($repodir);
 }
 
 sub write_release_alias {
@@ -783,6 +782,7 @@ sub finalize_core {
         sign_repo_dir($dir, $opts{gpg_key_name});
     }
     write_repo_metadata_dir($dir);
+    write_release_alias($dir);
     return 0;
 }
 
@@ -833,6 +833,12 @@ sub main {
     # the freshly written repomd.xml.key).
     for my $target ($opts{targets}->@*) {
         write_repo_metadata($target);
+    }
+
+    # Signing regenerates repository metadata, so create the direct-download
+    # alias only after the final metadata pass.
+    for my $target ($opts{targets}->@*) {
+        write_release_alias("dist/$target/rpms");
     }
 
     exit(0);
