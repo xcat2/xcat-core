@@ -12,6 +12,7 @@ my $repo_root = File::Spec->rel2abs(File::Spec->catdir($FindBin::Bin, '..', '..'
 my $spec = read_file('xcat-release/xcat-release.spec');
 like($spec, qr/^Name:\s+xcat-release$/m, 'package has the expected name');
 like($spec, qr/^BuildArch:\s+noarch$/m, 'package is architecture independent');
+like($spec, qr/^Requires:\s+dnf$/m, 'package is limited to DNF-based systems');
 like($spec, qr/^%config\(noreplace\) .*xcat-core\.repo$/m, 'core repo preserves local changes');
 like($spec, qr/^%config\(noreplace\) .*xcat-dep\.repo$/m, 'dependency repo preserves local changes');
 like($spec, qr{RPM-GPG-KEY-xCAT}, 'package installs the signing key');
@@ -59,6 +60,7 @@ sub assert_repo_security {
     my ($content, $label) = @_;
     like($content, qr/^enabled=1$/m, "$label repo is enabled");
     like($content, qr/^gpgcheck=1$/m, "$label repo verifies packages");
+    like($content, qr/^repo_gpgcheck=1$/m, "$label repo verifies repository metadata");
     like(
         $content,
         qr{^gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-xCAT$}m,
