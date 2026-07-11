@@ -1,8 +1,7 @@
 #Please make sure there is a space between @ and group name
 ntp
-nfs-utils
-sendmail-cf
-openssh-server
+nfs-client
+openssh
 util-linux
 tmux
 bridge-utils
