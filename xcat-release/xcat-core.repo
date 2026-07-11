@@ -1,0 +1,6 @@
+[xcat-core]
+name=xCAT Core packages
+baseurl=https://xcat.org/files/xcat/repos/yum/latest/xcat-core
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-xCAT
