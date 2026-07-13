@@ -260,6 +260,9 @@ sub login {
     $self->{onlogon}      = $args{callback};
     $self->{onlogon_args} = $args{callback_args};
     $self->{logontries}   = 5;
+    if (delete $self->{zero_rakp2_fallback}) {
+        $self->{attempthash} = 256;
+    }
     $self->get_channel_auth_cap();
 }
 
@@ -444,6 +447,17 @@ sub got_channel_auth_cap {
 
     }
 
+}
+
+sub retry_rmcpplus_after_zero_rakp2 {
+    my $self = shift;
+    return 0 if ($self->{attempthash} != 256 or $self->{zero_rakp2_fallback});
+
+    $self->{zero_rakp2_fallback} = 1;
+    $self->{attempthash} = 1;
+    $self->{sessionestablishmentcontext} = 0;
+    $self->open_rmcpplus_request();
+    return 1;
 }
 
 sub open_rmcpplus_request {
@@ -850,7 +864,7 @@ sub send_rakp1 {
 
 sub init {
     my $self = shift;
-    $self->{attempthash} = 256;
+    $self->{attempthash} = $self->{zero_rakp2_fallback} ? 1 : 256;
     $self->{confalgo}                    = undef;
     $self->{integrityalgo}               = undef;
     $self->{sessionestablishmentcontext} = 0;
@@ -964,12 +978,12 @@ sub got_rakp2 {
         #the reason being that if an old rakp1 retry actually made it and we were just too aggressive, then a previous rakp2 is invalidated and invalid session id or the integrity check value is bad
         return 9;    #now's not the time for this response, ignore it
     }
-    unless ($byte == $self->{rmcptag}) {
+    my $tag_matches = $byte == $self->{rmcptag};
+    my $sid_matches = scalar(@data) >= 7 &&
+        pack("C4", @data[3..6]) eq pack("C4", @{ $self->{sidm} });
+    unless ($tag_matches) {
         return 9 unless $byte == 0;
-        my @sid_check = @data[3..6];
-        unless (pack("C4", @sid_check) eq pack("C4", @{ $self->{sidm} })) {
-            return 9;
-        }
+        return 9 unless $sid_matches;
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
@@ -1016,8 +1030,18 @@ sub got_rakp2 {
     my $ulength = scalar @user;
     my $hmacdata = pack("C*", (@{ $self->{sidm} }, @{ $self->{pendingsessionid} }, @{ $self->{randomnumber} }, @{ $self->{remoterandomnumber} }, @{ $self->{remoteguid} }, $self->{rakp_privbyte}, $ulength, @user));
     my @expectedhash = (unpack("C*", $self->{hshfn}->($hmacdata, $self->{password})));
+    my $zero_authcode = $tag_matches && $sid_matches &&
+        $self->{attempthash} == 256 && scalar(@data) == 32 &&
+        !grep { $_ } @data;
     foreach (0 .. (scalar(@expectedhash) - 1)) {
         if ($expectedhash[$_] != $data[$_]) {
+            # Some BMCs accept suite 17 but return an invalid all-zero
+            # SHA256 RAKP2 code.  Never accept it; retry suite 3 once.
+            if ($zero_authcode and
+                $self->{sessionestablishmentcontext} == STATE_EXPECTINGRAKP2 and
+                $self->retry_rmcpplus_after_zero_rakp2()) {
+                return 9;
+            }
             $self->{sessionestablishmentcontext} = STATE_FAILED;
             $self->{onlogon}->("ERROR: Incorrect password provided", $self->{onlogon_args});
             return 9;
