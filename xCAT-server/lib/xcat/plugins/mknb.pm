@@ -13,6 +13,28 @@ sub handled_commands {
     };
 }
 
+sub _select_network_addresses {
+    my ($network_addresses, $preferred_addresses) = @_;
+    my %preferred = map { $_ => 1 } grep { defined($_) } @{$preferred_addresses};
+    my %legacy;
+    my %selected;
+
+    foreach my $network (keys %{$network_addresses}) {
+        my $addresses = $network_addresses->{$network};
+        next unless @{$addresses};
+        $legacy{$network}   = $addresses->[-1];
+        $selected{$network} = $addresses->[0];
+        foreach my $address (@{$addresses}) {
+            if (defined($address) && $preferred{$address}) {
+                $selected{$network} = $address;
+                last;
+            }
+        }
+    }
+
+    return (\%legacy, \%selected);
+}
+
 sub process_request {
     my $request  = shift;
     my $callback = shift;
@@ -272,8 +294,21 @@ sub process_request {
             return;
         }
     }
-    my $hexnets  = xCAT::NetworkUtils->my_hexnets();
-    my $normnets = xCAT::NetworkUtils->my_nets();
+    my $hexnet_addresses  = xCAT::NetworkUtils->my_hexnets('all');
+    my $normnet_addresses = xCAT::NetworkUtils->my_nets('all');
+    my @masters = xCAT::TableUtils->get_site_attribute("master");
+    my @master_addresses;
+    if ($masters[0]) {
+        @master_addresses = xCAT::NetworkUtils->getipaddr(
+            $masters[0], OnlyV4 => 1, GetAllAddresses => 1
+        );
+    }
+    my ($hexnets, $xcatdhexnets) = _select_network_addresses(
+        $hexnet_addresses, \@master_addresses
+    );
+    my ($normnets, $xcatdnormnets) = _select_network_addresses(
+        $normnet_addresses, \@master_addresses
+    );
     my $consolecmdline;
     if (defined($serialport) and $serialspeed) {
         if ($arch =~ /ppc/) {
@@ -311,6 +346,7 @@ sub process_request {
     foreach (keys %{$normnets}) {
         my $net = $_;
         my $nicip = $normnets->{$net};
+        my $xcatd_address = defined($xcatdnormnets->{$net}) ? $xcatdnormnets->{$net} : $nicip;
         $net =~ s/\//_/;
         if (defined($nobootnicips{$nicip})) {
             if ($arch =~ /ppc/ and -r "$tftpdir/pxelinux.cfg/p/$net") {
@@ -342,10 +378,10 @@ sub process_request {
             open($cfg, ">", "$tftpdir/xcat/xnba/nets/$net");
             print $cfg "#!gpxe\n";
             if ($invisibletouch) {
-                print $cfg 'imgfetch -n kernel http://${next-server}:'.$httpport.'/tftpboot/xcat/genesis.kernel.' . "$arch xcatd=" . $normnets->{$_} . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/machyp}' . "\n";
+                print $cfg 'imgfetch -n kernel http://${next-server}:'.$httpport.'/tftpboot/xcat/genesis.kernel.' . "$arch xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/machyp}' . "\n";
                 print $cfg 'imgfetch -n nbfs http://${next-server}:'.$httpport . "$initrd_file\n";
             } else {
-                print $cfg 'imgfetch -n kernel http://${next-server}:'.$httpport.'/tftpboot/xcat/nbk.' . "$arch xcatd=" . $normnets->{$_} . ":$xcatdport $consolecmdline\n";
+                print $cfg 'imgfetch -n kernel http://${next-server}:'.$httpport.'/tftpboot/xcat/nbk.' . "$arch xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline\n";
                 print $cfg 'imgfetch -n nbfs http://${next-server}:'.$httpport . "$initrd_file\n";
             }
             print $cfg "imgload kernel\n";
@@ -358,12 +394,12 @@ sub process_request {
                 print $cfg '   image=/tftpboot/xcat/genesis.kernel.' . "$arch\n";
                 print $cfg "   label=\"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
                 print $cfg "   initrd=$initrd_file\n";
-                print $cfg "   append=\"xcatd=" . $normnets->{$_} . ":$xcatdport destiny=discover $consolecmdline BOOTIF=%B\"\n";
+                print $cfg "   append=\"xcatd=" . $xcatd_address . ":$xcatdport destiny=discover $consolecmdline BOOTIF=%B\"\n";
                 close($cfg);
                 open($cfg, ">", "$tftpdir/xcat/xnba/nets/$net.uefi");
                 print $cfg "#!gpxe\n";
                 print $cfg 'imgfetch -n kernel http://${next-server}:'.$httpport.'/tftpboot/xcat/genesis.kernel.' . "$arch\nimgload kernel\n";
-                print $cfg "imgargs kernel xcatd=" . $normnets->{$_} . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/mac:hexhyp}' . " destiny=discover initrd=initrd\n";
+                print $cfg "imgargs kernel xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/mac:hexhyp}' . " destiny=discover initrd=initrd\n";
                 print $cfg 'imgfetch -n initrd http://${next-server}:'.$httpport . "$initrd_file\nimgexec kernel\n";
                 close($cfg);
             }
@@ -372,14 +408,15 @@ sub process_request {
             print $cfgfile "default \"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
             print $cfgfile "   delay=10\n";
             print $cfgfile "   label \"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
-            print $cfgfile "   kernel http://" . $normnets->{$_} . ":$httpport/$tftpdir/xcat/genesis.kernel.$arch\n";
-            print $cfgfile "   initrd http://" . $normnets->{$_} . ":$httpport/$initrd_file\n";
-            print $cfgfile '   append "xcatd=' . $normnets->{$_} . ":$xcatdport $consolecmdline\"\n";
+            print $cfgfile "   kernel http://" . $xcatd_address . ":$httpport/$tftpdir/xcat/genesis.kernel.$arch\n";
+            print $cfgfile "   initrd http://" . $xcatd_address . ":$httpport/$initrd_file\n";
+            print $cfgfile '   append "xcatd=' . $xcatd_address . ":$xcatdport $consolecmdline\"\n";
             close($cfgfile);
         }
     }
     $dopxe = 0;
     foreach (keys %{$hexnets}) {
+        my $xcatd_address = defined($xcatdhexnets->{$_}) ? $xcatdhexnets->{$_} : $hexnets->{$_};
         $dopxe = 0;
         if ($arch =~ /x86/) {    #only do pxe if just x86 or x86_64 and no x86
             if ($arch =~ /x86_64/) {
@@ -404,16 +441,16 @@ sub process_request {
             print $cfgfile "DEFAULT xCAT\n";
             print $cfgfile "  LABEL xCAT\n";
             print $cfgfile "  KERNEL xcat/nbk.$arch\n";
-            print $cfgfile "  APPEND initrd=$tftp_initrd xcatd=" . $hexnets->{$_} . ":$xcatdport $consolecmdline\n";
+            print $cfgfile "  APPEND initrd=$tftp_initrd xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline\n";
             close($cfgfile);
         } elsif ($arch =~ /ppc/) {
             open($cfgfile, ">", "$tftpdir/etc/" . lc($_));
             print $cfgfile "default \"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
             print $cfgfile "   delay=10\n";
             print $cfgfile "   label \"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
-            print $cfgfile "   kernel http://" . $hexnets->{$_} . ":$httpport/$tftpdir/xcat/genesis.kernel.$arch\n";
-            print $cfgfile "   initrd http://" . $hexnets->{$_} . ":$httpport/$initrd_file\n";
-            print $cfgfile '   append "xcatd=' . $hexnets->{$_} . ":$xcatdport $consolecmdline\"\n";
+            print $cfgfile "   kernel http://" . $xcatd_address . ":$httpport/$tftpdir/xcat/genesis.kernel.$arch\n";
+            print $cfgfile "   initrd http://" . $xcatd_address . ":$httpport/$initrd_file\n";
+            print $cfgfile '   append "xcatd=' . $xcatd_address . ":$xcatdport $consolecmdline\"\n";
             close($cfgfile);
         }
     }
