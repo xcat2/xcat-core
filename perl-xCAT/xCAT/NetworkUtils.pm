@@ -907,7 +907,8 @@ sub classful_networks_for_net_and_mask
 =head3   my_hexnets
 
     Arguments:
-        none
+        Optional: 'all' returns every IPv4 address found for each network in order.
+        The default behavior returns the last address found.
     Returns:
     Globals:
         none
@@ -922,6 +923,7 @@ sub classful_networks_for_net_and_mask
 #-------------------------------------------------------------------------------
 sub my_hexnets
 {
+    my $returnall = @_ && $_[-1] eq 'all';
     my $rethash;
     my @nets = split /\n/, `/sbin/ip addr`;
     foreach (@nets)
@@ -945,7 +947,12 @@ sub my_hexnets
         while ($nown <= $highn)
         {
             my $nowhex = sprintf("%08x", $nown);
-            $rethash->{ substr($nowhex, 0, $numchars) } = $curnet;
+            my $hexnet = substr($nowhex, 0, $numchars);
+            if ($returnall) {
+                push @{ $rethash->{$hexnet} }, $curnet;
+            } else {
+                $rethash->{$hexnet} = $curnet;
+            }
             $nown += 1 << (32 - $maskbits - $bitstoeven);
         }
     }
@@ -1046,7 +1053,8 @@ sub isPingable
         Return a hash ref that contains all subnet and netmask on the mn (or sn). This subroutine can be invoked on both Linux and AIX.
 
     Arguments:
-        none.
+        Optional: 'all' returns every address found for each network in order.
+        The default behavior returns the last address found.
 
     Returns:
         Return a hash ref. Each entry will be: <subnet/mask>=><existing ip>;
@@ -1070,6 +1078,7 @@ For an example
 #-----------------------------------------------------------------------
 sub my_nets
 {
+    my $returnall = @_ && $_[-1] eq 'all';
     require xCAT::Table;
     my $rethash;
     my @nets;
@@ -1122,11 +1131,19 @@ sub my_nets
             $nown = $nown & $curmask;
             my $textnet = inet_ntoa(pack("N", $nown));
             $textnet .= "/$maskbits";
-            $rethash->{$textnet} = $curnet;
+            if ($returnall) {
+                push @{ $rethash->{$textnet} }, $curnet;
+            } else {
+                $rethash->{$textnet} = $curnet;
+            }
         }
         else
         {
-            $rethash->{$v6net} = $v6ip;
+            if ($returnall) {
+                push @{ $rethash->{$v6net} }, $v6ip;
+            } else {
+                $rethash->{$v6net} = $v6ip;
+            }
         }
     }
 
@@ -1154,7 +1171,11 @@ sub my_nets
             $n .= "/$nm";
 
             #$rethash->{$n} = $if;
-            $rethash->{$n} = $master;
+            if ($returnall) {
+                push @{ $rethash->{$n} }, $master;
+            } else {
+                $rethash->{$n} = $master;
+            }
         }
     }
     return $rethash;
