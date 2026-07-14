@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **osimage Attributes:**\   \ *imagename*\ , \ *groups*\ , \ *profile*\ , \ *imagetype*\ , \ *description*\ , \ *provmethod*\ , \ *rootfstype*\ , \ *osdistroname*\ , \ *osupdatename*\ , \ *cfmdir*\ , \ *osname*\ , \ *osvers*\ , \ *osarch*\ , \ *synclists*\ , \ *postscripts*\ , \ *postbootscripts*\ , \ *serverrole*\ , \ *isdeletable*\ , \ *kitcomponents*\ , \ *environvar*\ , \ *comments*\ , \ *disable*\ 
+\ **osimage Attributes:**\   \ *imagename*\ , \ *groups*\ , \ *profile*\ , \ *imagetype*\ , \ *description*\ , \ *provmethod*\ , \ *rootfstype*\ , \ *nfsrootopts*\ , \ *osdistroname*\ , \ *osupdatename*\ , \ *cfmdir*\ , \ *osname*\ , \ *osvers*\ , \ *osarch*\ , \ *synclists*\ , \ *postscripts*\ , \ *postbootscripts*\ , \ *serverrole*\ , \ *isdeletable*\ , \ *kitcomponents*\ , \ *environvar*\ , \ *comments*\ , \ *disable*
 
 
 ***********
@@ -76,6 +76,11 @@ osimage Attributes:
  
  The filesystem type for the rootfs is used when the provmethod is statelite. The valid values are nfs or ramdisk. The default value is nfs
  
+
+
+**nfsrootopts**
+
+A comma-separated list of additional NFS mount options for the root filesystem of a dracut-based statelite image. The root filesystem is always mounted read-only; rw and defaults are not allowed.
 
 
 \ **osdistroname**\ 
@@ -175,4 +180,3 @@ SEE ALSO
 
 
 \ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
-

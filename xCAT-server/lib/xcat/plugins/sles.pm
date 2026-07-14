@@ -137,6 +137,7 @@ sub mknetboot
         my $dump;       #for kdump
         my $crashkernelsize;
         my $rootfstype;
+        my $nfsrootopts;
         my $cfgpart;
         my $imagename;    # set it if running of 'nodeset osimage=xxx'
 
@@ -147,12 +148,13 @@ sub mknetboot
                 if (!$osimagetab) {
                     $osimagetab = xCAT::Table->new('osimage', -create => 1);
                 }
-                (my $ref) = $osimagetab->getAttribs({ imagename => $imagename }, 'osvers', 'osarch', 'profile', 'rootfstype', 'provmethod');
+                (my $ref) = $osimagetab->getAttribs({ imagename => $imagename }, 'osvers', 'osarch', 'profile', 'rootfstype', 'nfsrootopts', 'provmethod');
                 if ($ref) {
                     $img_hash{$imagename}->{osver}      = $ref->{'osvers'};
                     $img_hash{$imagename}->{osarch}     = $ref->{'osarch'};
                     $img_hash{$imagename}->{profile}    = $ref->{'profile'};
                     $img_hash{$imagename}->{rootfstype} = $ref->{'rootfstype'};
+                    $img_hash{$imagename}->{nfsrootopts} = $ref->{'nfsrootopts'};
                     $img_hash{$imagename}->{provmethod} = $ref->{'provmethod'};
                     if (!$linuximagetab) {
                         $linuximagetab = xCAT::Table->new('linuximage', -create => 1);
@@ -204,6 +206,7 @@ sub mknetboot
             $arch            = $ph->{osarch};
             $profile         = $ph->{profile};
             $rootfstype      = $ph->{rootfstype};
+            $nfsrootopts     = $ph->{nfsrootopts};
             $nodebootif      = $ph->{nodebootif};
             $provmethod      = $ph->{provmethod};
             $dump            = $ph->{dump};
@@ -242,9 +245,10 @@ sub mknetboot
             }
 
             if ($osimagetab) {
-                my ($ref1) = $osimagetab->getAttribs({ imagename => $imgname }, 'rootfstype');
-                if (($ref1) && ($ref1->{'rootfstype'})) {
-                    $rootfstype = $ref1->{'rootfstype'};
+                my ($ref1) = $osimagetab->getAttribs({ imagename => $imgname }, 'rootfstype', 'nfsrootopts');
+                if ($ref1) {
+                    $rootfstype = $ref1->{'rootfstype'} if $ref1->{'rootfstype'};
+                    $nfsrootopts = $ref1->{'nfsrootopts'};
                 }
             } else {
                 xCAT::MsgUtils->report_node_error($callback, $node,
@@ -469,7 +473,12 @@ sub mknetboot
                     $nfsdir = $ient->{nfsdir} . "/netboot/$osver/$arch/$profile";
                 }
                 if (&using_dracut($rootimgdir)) {
-                    $kcmdline = "root=nfs:$nfssrv:$nfsdir/rootimg:ro STATEMNT=";
+                    my ($nfsroot, $error) = xCAT::SvrUtils->build_statelite_nfsroot_parameter($nfssrv, "$nfsdir/rootimg", $nfsrootopts);
+                    if ($error) {
+                        xCAT::MsgUtils->report_node_error($callback, $node, $error);
+                        next;
+                    }
+                    $kcmdline = "$nfsroot STATEMNT=";
                 } else {
                     $kcmdline = "NFSROOT=$nfssrv:$nfsdir STATEMNT=";
                 }
