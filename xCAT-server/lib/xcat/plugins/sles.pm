@@ -150,12 +150,12 @@ sub mknetboot
                 }
                 (my $ref) = $osimagetab->getAttribs({ imagename => $imagename }, 'osvers', 'osarch', 'profile', 'rootfstype', 'nfsrootopts', 'provmethod');
                 if ($ref) {
-                    $img_hash{$imagename}->{osver}      = $ref->{'osvers'};
-                    $img_hash{$imagename}->{osarch}     = $ref->{'osarch'};
-                    $img_hash{$imagename}->{profile}    = $ref->{'profile'};
-                    $img_hash{$imagename}->{rootfstype} = $ref->{'rootfstype'};
+                    $img_hash{$imagename}->{osver}       = $ref->{'osvers'};
+                    $img_hash{$imagename}->{osarch}      = $ref->{'osarch'};
+                    $img_hash{$imagename}->{profile}     = $ref->{'profile'};
+                    $img_hash{$imagename}->{rootfstype}  = $ref->{'rootfstype'};
                     $img_hash{$imagename}->{nfsrootopts} = $ref->{'nfsrootopts'};
-                    $img_hash{$imagename}->{provmethod} = $ref->{'provmethod'};
+                    $img_hash{$imagename}->{provmethod}  = $ref->{'provmethod'};
                     if (!$linuximagetab) {
                         $linuximagetab = xCAT::Table->new('linuximage', -create => 1);
                     }
