@@ -96,7 +96,9 @@ site Attributes:
                         BIND DDNS integration. Valid values are hmac-md5,
                         hmac-sha1, hmac-sha224, hmac-sha256, hmac-sha384,
                         and hmac-sha512. The default is hmac-md5 for
-                        compatibility with existing ISC DHCP installations.
+                        compatibility, or hmac-sha256 when the management
+                        node is running in FIPS mode. An explicit hmac-md5
+                        value is rejected in FIPS mode.
 
    dhcpomapikeyname:  The TSIG/OMAPI key name used by legacy ISC DHCP and
                      BIND DDNS integration. The default is xcat_key. The
