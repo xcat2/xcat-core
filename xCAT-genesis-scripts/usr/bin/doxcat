@@ -101,9 +101,17 @@ distinguished_name = nodedn
 
 [ nodedn ]" > /etc/pki/tls/openssl.cnf
 logger -s -t $log_label -p local4.info "Generating private key..."
-openssl genrsa -out /etc/xcat/privkey.pem 1024 >& /dev/null
+if grep -q '^1$' /proc/sys/crypto/fips_enabled 2>/dev/null; then
+	openssl ecparam -name prime256v1 -genkey -noout -out /etc/xcat/privkey.pem >& /dev/null
+else
+	openssl genrsa -out /etc/xcat/privkey.pem 1024 >& /dev/null
+fi
 logger -s -t $log_label -p local4.info "Done"
-PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout 2> /dev/null|grep -v "PUBLIC KEY"`
+if grep -q '^1$' /proc/sys/crypto/fips_enabled 2>/dev/null; then
+	PUBKEY=`openssl ec -in /etc/xcat/privkey.pem -pubout 2> /dev/null|grep -v "PUBLIC KEY"`
+else
+	PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout 2> /dev/null|grep -v "PUBLIC KEY"`
+fi
 PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
 export PUBKEY
 

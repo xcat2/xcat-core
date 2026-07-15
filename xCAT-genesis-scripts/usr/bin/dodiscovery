@@ -9,7 +9,11 @@ reqtime=0
 maxresptime=180
 
 minixcatd.awk &
-PUBKEY="$(openssl rsa -in /etc/xcat/privkey.pem -pubout 2> /dev/null|awk '!/ PUBLIC KEY/{printf $0}')"
+if grep -q '^1$' /proc/sys/crypto/fips_enabled 2>/dev/null; then
+	PUBKEY="$(openssl ec -in /etc/xcat/privkey.pem -pubout 2> /dev/null|awk '!/ PUBLIC KEY/{printf $0}')"
+else
+	PUBKEY="$(openssl rsa -in /etc/xcat/privkey.pem -pubout 2> /dev/null|awk '!/ PUBLIC KEY/{printf $0}')"
+fi
 export PUBKEY
 
 logger -s -t $log_label -p local4.info "Beginning node discovery process..."
