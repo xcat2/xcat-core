@@ -81,6 +81,10 @@ Requires: /usr/bin/killall
 # system-release is versioned per release package (el10=10.x, el9=9.x, el8=8.x).
 Requires: (kea if (system-release >= 10) else /usr/sbin/dhcpd)
 Requires: (kea-hooks if (system-release >= 10))
+%if 0%{?rhel} == 8
+# EL8 backported non-MD5 OMAPI authentication in dhcp-server 4.3.6-48.
+Requires: dhcp-server >= 12:4.3.6-48
+%endif
 # On RHEL this pulls in openssh-server, on SLES it pulls in openssh
 Requires: /usr/bin/ssh
 %if %nots390x
