@@ -13,6 +13,8 @@ use Getopt::Long;
 use Fcntl ':flock';
 
 my @hosts;    #Hold /etc/hosts data to be written back
+my %host_indexes_by_ip;
+my %host_indexes_by_node;
 my $LONGNAME;
 my $OTHERNAMESFIRST;
 my $ADDNAMES;
@@ -27,6 +29,119 @@ sub handled_commands
     return { makehosts => "hosts", };
 }
 
+sub _host_line_index_values
+{
+    my $line = shift;
+    return unless defined($line);
+
+    my ($ip) = $line =~ /^(\S+)\s/;
+    return unless defined($ip);
+
+    my @nodes;
+    if ($ip =~ /^\d+\.\d+\.\d+\.\d+$/)
+    {
+        my ($primary_name) = $line =~ /^\S+\s+(\S+)/;
+        if (defined($primary_name))
+        {
+            # Preserve matching a short node against an FQDN-first entry.
+            my $offset = 0;
+            while ((my $dot = index($primary_name, '.', $offset)) >= 0)
+            {
+                push @nodes, substr($primary_name, 0, $dot);
+                $offset = $dot + 1;
+            }
+            push @nodes, $primary_name;
+        }
+    }
+
+    return ($ip, \@nodes);
+}
+
+sub _index_host_line
+{
+    my $idx = shift;
+    my ($ip, $nodes) = _host_line_index_values($hosts[$idx]);
+    return unless defined($ip);
+
+    $host_indexes_by_ip{$ip}{$idx} = 1;
+    foreach my $node (@{$nodes})
+    {
+        $host_indexes_by_node{$node}{$idx} = 1;
+    }
+}
+
+sub _unindex_host_line
+{
+    my $idx = shift;
+    my ($ip, $nodes) = _host_line_index_values($hosts[$idx]);
+    return unless defined($ip);
+
+    if (exists($host_indexes_by_ip{$ip}))
+    {
+        delete $host_indexes_by_ip{$ip}{$idx};
+        delete $host_indexes_by_ip{$ip} unless keys %{ $host_indexes_by_ip{$ip} };
+    }
+    foreach my $node (@{$nodes})
+    {
+        if (exists($host_indexes_by_node{$node}))
+        {
+            delete $host_indexes_by_node{$node}{$idx};
+            delete $host_indexes_by_node{$node} unless keys %{ $host_indexes_by_node{$node} };
+        }
+    }
+}
+
+sub _rebuild_host_indexes
+{
+    %host_indexes_by_ip   = ();
+    %host_indexes_by_node = ();
+    foreach my $idx (0 .. $#hosts)
+    {
+        _index_host_line($idx);
+    }
+}
+
+sub _set_host_lines
+{
+    my $lines = shift;
+    @hosts = @{$lines};
+    _rebuild_host_indexes();
+    return \@hosts;
+}
+
+sub _set_host_line
+{
+    my ($idx, $line) = @_;
+    _unindex_host_line($idx);
+    $hosts[$idx] = $line;
+    _index_host_line($idx);
+}
+
+sub _push_host_line
+{
+    my $line = shift;
+    push @hosts, $line;
+    _index_host_line($#hosts);
+}
+
+sub _matching_host_indexes
+{
+    my ($node, $ip) = @_;
+    my %matches;
+
+    if (exists($host_indexes_by_ip{$ip}))
+    {
+        $matches{$_} = 1 foreach keys %{ $host_indexes_by_ip{$ip} };
+    }
+    if (exists($host_indexes_by_node{$node}))
+    {
+        $matches{$_} = 1 foreach keys %{ $host_indexes_by_node{$node} };
+    }
+
+    my @indexes = sort { $a <=> $b } keys %matches;
+    return @indexes;
+}
+
 sub delnode
 {
     my $node = shift;
@@ -39,16 +154,10 @@ sub delnode
 
     my $othernames = shift;
     my $domain     = shift;
-    my $idx        = 0;
 
-    while ($idx <= $#hosts)
+    foreach my $idx (_matching_host_indexes($node, $ip))
     {
-        if (($ip and $hosts[$idx] =~ /^${ip}\s/)
-            or $hosts[$idx] =~ /^\d+\.\d+\.\d+\.\d+\s+${node}[\s\.\r]/)
-        {
-            $hosts[$idx] = "";
-        }
-        $idx++;
+        _set_host_line($idx, "");
     }
 }
 
@@ -66,47 +175,40 @@ sub addnode
     my $othernames = shift;
     my $domain     = shift;
     my $nics       = shift;
-    my $idx        = 0;
-    my $foundone   = 0;
 
     # if this ip was already added then just update the entry
-    while ($idx <= $#hosts)
+    my @matches = _matching_host_indexes($node, $ip);
+    if (@matches)
     {
-        if ($hosts[$idx] =~ /^${ip}\s/
-            or $hosts[$idx] =~ /^\d+\.\d+\.\d+\.\d+\s+${node}[\s\.\r]/)
+        my $idx = shift @matches;
+        my $line;
+        if ($nics)
         {
-            if ($foundone)
-            {
-                $hosts[$idx] = "";
-            }
-            else
-            {
-                # we found a matching entry in the hosts list
-                if ($nics) {
+            # we're processing the nics table and we found an
+            #   existing entry for this ip so just add this
+            # node name as an alias for the existing entry
+            my $existing_line = $hosts[$idx];
+            chomp($existing_line);
+            my ($hip, $hnode, $hdom, $hother) = split(/ /, $existing_line);
 
-                    # we're processing the nics table and we found an
-                    #   existing entry for this ip so just add this
-                    # node name as an alias for the existing entry
-                    chomp($hosts[$idx]);
-                    my ($hip, $hnode, $hdom, $hother) = split(/ /, $hosts[$idx]);
-
-                    $hosts[$idx] = build_line($callback, $ip, $hnode, $domain, $othernames);
-                } else {
-
-                    # otherwise just try to completely update the existing
-                    # entry
-                    $hosts[$idx] = build_line($callback, $ip, $node, $domain, $othernames);
-                }
-            }
-            $foundone = 1;
+            $line = build_line($callback, $ip, $hnode, $domain, $othernames);
         }
-        $idx++;
+        else
+        {
+            # otherwise just try to completely update the existing entry
+            $line = build_line($callback, $ip, $node, $domain, $othernames);
+        }
+        _set_host_line($idx, $line);
+        foreach my $duplicate_idx (@matches)
+        {
+            _set_host_line($duplicate_idx, "");
+        }
+        return;
     }
-    if ($foundone) { return; }
 
     my $line = build_line($callback, $ip, $node, $domain, $othernames);
     if ($line) {
-        push @hosts, $line;
+        _push_host_line($line);
     }
 }
 
@@ -423,17 +525,17 @@ sub process_request
     my $bakname = "/etc/hosts.xcatbak";
     copy("/etc/hosts", $bakname);
 
-    @hosts = ();
+    my @host_lines;
     if ($REMOVE)
     {
         # add the localhost entry if trying to create the /etc/hosts from scratch
         if ($^O =~ /^aix/i)
         {
-            push @hosts, "127.0.0.1 loopback localhost\n";
+            push @host_lines, "127.0.0.1 loopback localhost\n";
         }
         else
         {
-            push @hosts, "127.0.0.1 localhost\n";
+            push @host_lines, "127.0.0.1 localhost\n";
         }
     }
     else
@@ -447,11 +549,12 @@ sub process_request
         {
             while (<$rconf>)
             {
-                push @hosts, $_;
+                push @host_lines, $_;
             }
             close($rconf);
         }
     }
+    _set_host_lines(\@host_lines);
 
     if ($req->{node})
     {
