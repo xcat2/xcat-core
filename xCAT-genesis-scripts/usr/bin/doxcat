@@ -82,7 +82,10 @@ if [ $? -ne 0 ]; then
 	# -A option did not work, must be running on older version of
 	# ssh-keygen, try generating needed keys one at a time
 	ssh-keygen -q -t rsa -f /etc/ssh/ssh_host_rsa_key -C '' -N ''
-	ssh-keygen -q -t dsa -f /etc/ssh/ssh_host_dsa_key -C '' -N ''
+	if ! grep -q '^1$' /proc/sys/crypto/fips_enabled 2>/dev/null; then
+		ssh-keygen -q -t dsa -f /etc/ssh/ssh_host_dsa_key -C '' -N '' 2>/dev/null ||
+			rm -f /etc/ssh/ssh_host_dsa_key /etc/ssh/ssh_host_dsa_key.pub
+	fi
 fi
 
 # On some systems /usr/share/empty.sshd needs to be created before calling sshd

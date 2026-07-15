@@ -216,12 +216,17 @@ sub process_request {
     chmod(0600, "$tempdir$sshdir/authorized_keys");
     if (not $invisibletouch and -r "/etc/xcat/hostkeys/ssh_host_rsa_key") {
         copy("/etc/xcat/hostkeys/ssh_host_rsa_key", "$tempdir/etc/ssh_host_rsa_key");
-        copy("/etc/xcat/hostkeys/ssh_host_dsa_key", "$tempdir/etc/ssh_host_dsa_key");
+        if (-r "/etc/xcat/hostkeys/ssh_host_dsa_key") {
+            copy("/etc/xcat/hostkeys/ssh_host_dsa_key", "$tempdir/etc/ssh_host_dsa_key");
+        }
         chmod(0600, <$tempdir/etc/ssh_*>);
     }
     unless ($invisibletouch or -r "$tempdir/etc/ssh_host_rsa_key") {
         system("ssh-keygen -t rsa -f $tempdir/etc/ssh_host_rsa_key -C '' -N ''");
-        system("ssh-keygen -t dsa -f $tempdir/etc/ssh_host_dsa_key -C '' -N ''");
+        my $platform = xCAT::Utils->osver("platform");
+        if (!xCAT::Utils->isFIPS() && ($platform !~ /el(\d+)/ || $1 < 10)) {
+            system("ssh-keygen -t dsa -f $tempdir/etc/ssh_host_dsa_key -C '' -N ''");
+        }
     }
     my $lzma_exit_value = 1;
     if ($invisibletouch) {

@@ -1485,8 +1485,10 @@ start_sshd() {
     logmsg "Using ssh-keygen to create this hosts private key"
     logmsg
     mkdir -p /var/empty || shellout
-    if [ ! -f /etc/ssh/ssh_host_dsa_key ]; then
-        ssh-keygen -t dsa -N "" -f /etc/ssh/ssh_host_dsa_key || shellout
+    if [ ! -f /etc/ssh/ssh_host_dsa_key ] &&
+       ! grep -q '^1$' /proc/sys/crypto/fips_enabled 2>/dev/null; then
+        ssh-keygen -t dsa -N "" -f /etc/ssh/ssh_host_dsa_key >/dev/null 2>&1 ||
+            rm -f /etc/ssh/ssh_host_dsa_key /etc/ssh/ssh_host_dsa_key.pub
     fi
     if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
         ssh-keygen -t rsa -N "" -f /etc/ssh/ssh_host_rsa_key || shellout

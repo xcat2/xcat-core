@@ -1014,8 +1014,12 @@ sub genSSHNodeHostKey
     }
 
 
-    # Skip DSA generation in EL10+
-    if (xCAT::Utils->osver("platform") =~ /el(\d+)/ and $1 < 10) {
+    # DSA is unavailable in FIPS mode and was removed from EL10 OpenSSH.
+    my $platform     = xCAT::Utils->osver("platform");
+    my $generate_dsa = !xCAT::Utils->isFIPS()
+      && $platform =~ /el(\d+)/
+      && $1 < 10;
+    if ($generate_dsa) {
         xCAT::MsgUtils->message('I', "Generating SSH2 DSA Key...");
         $cmd =
     "/usr/bin/ssh-keygen -t dsa -f /etc/xcat/hostkeys/ssh_host_dsa_key -C '' -N ''";
