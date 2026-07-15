@@ -54,6 +54,10 @@ Requires: kea
 Requires: kea-hooks
 %else
 Requires: /usr/sbin/dhcpd
+%if 0%{?rhel} == 8
+# EL8 backported non-MD5 OMAPI authentication in dhcp-server 4.3.6-48.
+Requires: dhcp-server >= 12:4.3.6-48
+%endif
 %endif
 # On RHEL this pulls in openssh-server, on SLES it pulls in openssh
 Requires: /usr/bin/ssh
