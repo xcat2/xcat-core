@@ -19,6 +19,12 @@ Requires: xCAT-server
 %if !0%{?suse_version}
 BuildRequires: perl-Pod-Html
 %endif
+# pod2man/Pod::Man/Pod::Html are in the full perl package on SUSE (the minimal build
+# chroot has only perl-base); pull them in for %build (xpod2man/pod2man).
+%if 0%{?suse_version}
+BuildRequires: perl(Pod::Man)
+BuildRequires: perl(Pod::Html)
+%endif
 
 # perl-ExtUtils-MakeMaker, perl-CPAN, perl-Test-Harness are only available in rhel.
 # When this rpm supports being installed in sles, need to add these to xcat-dep.

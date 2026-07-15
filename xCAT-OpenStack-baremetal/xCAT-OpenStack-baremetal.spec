@@ -24,6 +24,12 @@ Requires: xCAT-client
 %if !0%{?suse_version}
 BuildRequires: perl-Pod-Html
 %endif
+# pod2man/Pod::Man/Pod::Html are in the full perl package on SUSE (the minimal build
+# chroot has only perl-base); pull them in for %build (xpod2man/pod2man).
+%if 0%{?suse_version}
+BuildRequires: perl(Pod::Man)
+BuildRequires: perl(Pod::Html)
+%endif
 
 %description
 xCAT-OpenStack-baremetal provides the baremetal driver for OpenStack.
