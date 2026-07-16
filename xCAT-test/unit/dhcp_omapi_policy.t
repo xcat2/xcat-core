@@ -61,6 +61,63 @@ is(
     'existing EL9 installations retain their key algorithm choice'
 );
 
+is(
+    xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
+        is_new_install => 1,
+        os             => 'ubuntu,18.04'
+    ),
+    undef,
+    'new Ubuntu 18.04 installations retain the implicit MD5 default'
+);
+is(
+    xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
+        is_new_install => 1,
+        os             => 'ubuntu,20.04'
+    ),
+    'hmac-sha256',
+    'new Ubuntu 20.04 installations default to hmac-sha256'
+);
+is(
+    xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
+        is_new_install => 1,
+        os             => 'ubuntu,20.04.6'
+    ),
+    'hmac-sha256',
+    'Ubuntu 20.04 point releases default to hmac-sha256'
+);
+is(
+    xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
+        is_new_install => 1,
+        os             => 'ubuntu,22.04'
+    ),
+    'hmac-sha256',
+    'new Ubuntu 22.04 installations default to hmac-sha256'
+);
+is(
+    xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
+        is_new_install => 1,
+        os             => 'ubuntu,24.04'
+    ),
+    'hmac-sha256',
+    'new Ubuntu 24.04 installations default to hmac-sha256'
+);
+is(
+    xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
+        is_new_install => 1,
+        os             => 'ubuntu,26.04'
+    ),
+    'hmac-sha256',
+    'newer Ubuntu installations default to hmac-sha256'
+);
+is(
+    xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
+        is_new_install => 0,
+        os             => 'ubuntu,24.04'
+    ),
+    undef,
+    'existing Ubuntu installations retain their key algorithm choice'
+);
+
 my $explicit_md5 = xCAT::DHCP::OmapiPolicy->settings(
     site_values => { dhcpomapialgorithm => 'hmac-md5' }
 );

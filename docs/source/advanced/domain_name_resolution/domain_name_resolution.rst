@@ -93,7 +93,7 @@ Edit **/etc/resolv.conf** to contain the cluster domain value you set in the sit
 Legacy ISC DHCP and BIND TSIG Key Options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-xCAT uses **xcat_key** for BIND DDNS updates and legacy ISC DHCP OMAPI. New Enterprise Linux 9 or later installations set **hmac-sha256**. If **dhcpomapialgorithm** is not set, including on an existing installation, xCAT continues to use **hmac-md5** for compatibility. Kea does not use OMAPI, but Kea DDNS uses this TSIG algorithm.
+xCAT uses **xcat_key** for BIND DDNS updates and legacy ISC DHCP OMAPI. New installations on Enterprise Linux 9 or later and Ubuntu 20.04 or later set **hmac-sha256**. Ubuntu 18.04 leaves **dhcpomapialgorithm** unset because its bundled ``omshell`` does not support the ``key-algorithm`` command. If **dhcpomapialgorithm** is not set, including on an existing installation, xCAT continues to use **hmac-md5** for compatibility. Kea does not use OMAPI, but Kea DDNS uses this TSIG algorithm.
 
 To use another supported algorithm, set **dhcpomapialgorithm** in the site table and update the matching **passwd** table secret. Supported values are **hmac-md5**, **hmac-sha1**, **hmac-sha224**, **hmac-sha256**, **hmac-sha384**, and **hmac-sha512**. For example: ::
 

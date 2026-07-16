@@ -68,10 +68,15 @@ sub new_install_default_algorithm {
     my ( $class, %args ) = @_;
 
     my $platform = $args{platform};
+    my $os       = $args{os};
 
     return unless $args{is_new_install};
     return 'hmac-sha256'
       if defined($platform) && $platform =~ /^el(\d+)\b/i && $1 >= 9;
+    return 'hmac-sha256'
+      if defined($os)
+      && $os =~ /^ubuntu,(\d+\.\d+(?:\.\d+)*)\b/i
+      && _version_at_least( $1, '20.04' );
     return;
 }
 
@@ -118,6 +123,23 @@ sub omshell_preamble {
     $commands .= "server $args{server}\n"
       if defined( $args{server} ) && $args{server} ne '';
     return $commands;
+}
+
+sub _version_at_least {
+    my ( $version, $minimum ) = @_;
+
+    my @version_parts = split /\./, $version;
+    my @minimum_parts = split /\./, $minimum;
+    my $max = @version_parts > @minimum_parts ? @version_parts : @minimum_parts;
+
+    for my $idx ( 0 .. $max - 1 ) {
+        my $left  = $version_parts[$idx] || 0;
+        my $right = $minimum_parts[$idx] || 0;
+        return 1 if $left > $right;
+        return 0 if $left < $right;
+    }
+
+    return 1;
 }
 
 sub _site_value {

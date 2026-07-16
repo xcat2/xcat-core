@@ -1045,11 +1045,14 @@ passed as argument rather than by table value',
 " dhcpomapialgorithm:  The TSIG algorithm used by BIND DDNS and, for legacy\n" .
 "                      ISC DHCP, OMAPI. Valid values are hmac-md5,\n" .
 "                      hmac-sha1, hmac-sha224, hmac-sha256, hmac-sha384,\n" .
-"                      and hmac-sha512. New Enterprise Linux 9 or later\n" .
-"                      installations set hmac-sha256. When this attribute is\n" .
-"                      not set, including on an existing installation, xCAT\n" .
-"                      uses hmac-md5 for compatibility. Kea does not use\n" .
-"                      OMAPI, but Kea DDNS uses this TSIG algorithm.\n\n" .
+"                      and hmac-sha512. New installations on Enterprise Linux\n" .
+"                      9 or later and Ubuntu 20.04 or later set hmac-sha256.\n" .
+"                      Ubuntu 18.04 leaves this attribute unset because its\n" .
+"                      bundled omshell does not support the key-algorithm\n" .
+"                      command. When this attribute is not set, including on\n" .
+"                      an existing installation, xCAT uses hmac-md5 for\n" .
+"                      compatibility. Kea does not use OMAPI, but Kea DDNS\n" .
+"                      uses this TSIG algorithm.\n\n" .
 " dhcpomapikeyname:  The TSIG/OMAPI key name used by legacy ISC DHCP and\n" .
 "                   BIND DDNS integration. The default is xcat_key. The\n" .
 "                   value maps to the passwd table entry where key=omapi\n" .
