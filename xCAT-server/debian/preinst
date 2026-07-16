@@ -5,6 +5,60 @@
 
 set -e
 
+xcat_target_uses_systemd()
+{
+    if [ -d /run/systemd/system ]; then
+        return 0
+    fi
+
+    if [ -x /usr/lib/systemd/systemd ] || [ -x /lib/systemd/systemd ]; then
+        return 0
+    fi
+
+    if [ -L /sbin/init ]; then
+        init_target=$(readlink /sbin/init 2>/dev/null || true)
+        case "$init_target" in
+            *systemd*) return 0 ;;
+        esac
+    fi
+
+    if [ -r /etc/os-release ]; then
+        os_id=
+        os_version=
+        while IFS='=' read -r key value; do
+            value=${value#\"}
+            value=${value%\"}
+            value=${value#\'}
+            value=${value%\'}
+            case "$key" in
+                ID) os_id=$value ;;
+                VERSION_ID) os_version=$value ;;
+            esac
+        done < /etc/os-release
+
+        if [ "$os_id" = "debian" ] && [ -z "$os_version" ]; then
+            return 0
+        fi
+
+        os_major=${os_version%%.*}
+        case "$os_major" in
+            ''|*[!0-9]*) return 1 ;;
+        esac
+        case "$os_id" in
+            ubuntu) [ "$os_major" -ge 15 ] && return 0 ;;
+            debian) [ "$os_major" -ge 8 ] && return 0 ;;
+        esac
+    fi
+
+    return 1
+}
+
+if xcat_target_uses_systemd && \
+   command -v dpkg-maintscript-helper >/dev/null 2>&1 && \
+   dpkg-maintscript-helper supports rm_conffile; then
+    dpkg-maintscript-helper rm_conffile /etc/init.d/xcatd -- "$@"
+fi
+
 # summary of how this script can be called:
 #        * <new-preinst> `install'
 #        * <new-preinst> `install' <old-version>
