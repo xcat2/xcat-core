@@ -92,6 +92,39 @@ is(
 );
 
 is(
+    xCAT::DHCP::Backend->default_backend(
+        platform => '',
+        os       => 'sles12',
+        os_name  => 'sles',
+        version  => 12
+    ),
+    'isc',
+    'SLES 12 defaults to ISC'
+);
+
+is(
+    xCAT::DHCP::Backend->default_backend(
+        platform => '',
+        os       => 'sles15',
+        os_name  => 'sles',
+        version  => 15
+    ),
+    'isc',
+    'SLES 15 defaults to ISC'
+);
+
+is(
+    xCAT::DHCP::Backend->default_backend(
+        platform => '',
+        os       => 'opensuse-leap15',
+        os_name  => 'opensuse-leap',
+        version  => 15
+    ),
+    'isc',
+    'openSUSE Leap 15 defaults to ISC'
+);
+
+is(
     xCAT::DHCP::Backend->choose( requested => 'isc', os => 'rhel10', platform => 'el10' )->{name},
     'isc',
     'explicit ISC override wins on EL10'

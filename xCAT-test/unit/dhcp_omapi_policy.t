@@ -118,6 +118,39 @@ is(
     'existing Ubuntu installations retain their key algorithm choice'
 );
 
+is(
+    xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
+        is_new_install => 1,
+        os             => 'sles,12.5'
+    ),
+    undef,
+    'new SLES 12 installations retain the implicit MD5 default'
+);
+is(
+    xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
+        is_new_install => 1,
+        os             => 'sles,15.6'
+    ),
+    undef,
+    'new SLES 15 installations retain the implicit MD5 default'
+);
+is(
+    xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
+        is_new_install => 1,
+        os             => 'opensuse-leap,15.6'
+    ),
+    undef,
+    'new openSUSE Leap 15 installations retain the implicit MD5 default'
+);
+is(
+    xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
+        is_new_install => 0,
+        os             => 'sles,15.6'
+    ),
+    undef,
+    'existing SLES installations retain their key algorithm choice'
+);
+
 my $explicit_md5 = xCAT::DHCP::OmapiPolicy->settings(
     site_values => { dhcpomapialgorithm => 'hmac-md5' }
 );

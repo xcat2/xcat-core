@@ -1047,10 +1047,11 @@ passed as argument rather than by table value',
 "                      hmac-sha1, hmac-sha224, hmac-sha256, hmac-sha384,\n" .
 "                      and hmac-sha512. New installations on Enterprise Linux\n" .
 "                      9 or later and Ubuntu 20.04 or later set hmac-sha256.\n" .
-"                      Ubuntu 18.04 leaves this attribute unset because its\n" .
-"                      bundled omshell does not support the key-algorithm\n" .
-"                      command. When this attribute is not set, including on\n" .
-"                      an existing installation, xCAT uses hmac-md5 for\n" .
+"                      Ubuntu 18.04, SLES 12, SLES 15, and openSUSE Leap 15\n" .
+"                      leave this attribute unset because their bundled\n" .
+"                      omshell does not support the key-algorithm command.\n" .
+"                      When this attribute is not set, including on an\n" .
+"                      existing installation, xCAT uses hmac-md5 for\n" .
 "                      compatibility. Kea does not use OMAPI, but Kea DDNS\n" .
 "                      uses this TSIG algorithm.\n\n" .
 " dhcpomapikeyname:  The TSIG/OMAPI key name used by legacy ISC DHCP and\n" .
