@@ -224,12 +224,11 @@ if [ -e "/etc/redhat-release" ]; then
 else # SuSE
     apachedaemon='apache2'
 fi
-# start xcatd on linux
+# enable and reload the web server on linux
 [ -e "/etc/init.d/$apachedaemon" ] && chkconfig $apachedaemon on
 [ -e "/usr/lib/systemd/system/$apacheserviceunit" ] && systemctl enable $apacheserviceunit
 # prevent running it during install into chroot image
 if [ -f "/proc/cmdline" ] && [ "x$(stat -c '%i %d' /)" == "x$(stat -c '%i %d' /proc/1/root/. 2>/dev/null)" ]; then
-    XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd restart
     [ -e "/etc/init.d/$apachedaemon" ] && /etc/init.d/$apachedaemon reload
     [ -e "/usr/lib/systemd/system/$apacheserviceunit" ] && systemctl reload $apacheserviceunit
 fi
@@ -266,10 +265,10 @@ fi
 # running system (skip the genimage/diskless chroot, where there is no systemd), and start via
 # systemctl: on EL10 the SysV path (/etc/init.d/xcatd) cannot start xcatd.
 if [ -f "/proc/cmdline" ] && [ "x$(stat -c '%i %d' /)" == "x$(stat -c '%i %d' /proc/1/root/. 2>/dev/null)" ]; then
-  if command -v systemctl >/dev/null 2>&1; then
-    systemctl restart xcatd
-  else
-    service xcatd restart
+  if [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1; then
+    systemctl restart xcatd.service
+  elif [ -x /etc/init.d/xcatd ]; then
+    XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd restart
   fi
 fi
 %endif
