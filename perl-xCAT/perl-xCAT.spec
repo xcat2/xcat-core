@@ -16,6 +16,61 @@ BuildArch: noarch
 BuildRequires: perl perl-DBI perl-JSON
 # Do not need the SOAP rpm require, because rpm will generate it automatically if hpoa.pm is included
 #Requires: perl-SOAP-Lite
+
+# SUSE: xCAT installs its perl modules under /opt/xcat, where openSUSE's rpm perl dependency
+# generator does not emit perl(...) Requires (RHEL/Fedora use perl-generators, unavailable on
+# openSUSE). Declare them explicitly here, guarded by suse_version -- the set was extracted from
+# an EL xCAT install (`rpm -qR`). xCAT-internal perl(xCAT::*)/perl(xCAT_*) symbols are omitted:
+# SUSE does not auto-provide them, and inter-package deps use the package-level Requires above.
+%if 0%{?suse_version}
+Requires: perl(Carp)
+Requires: perl(Cwd)
+Requires: perl(DBI)
+Requires: perl(Data::Dumper)
+Requires: perl(Digest::MD5)
+Requires: perl(Encode)
+Requires: perl(Expect)
+Requires: perl(Fcntl)
+Requires: perl(File::Basename)
+Requires: perl(File::Copy)
+Requires: perl(File::Find)
+Requires: perl(File::Path)
+Requires: perl(File::Spec)
+Requires: perl(File::Temp)
+Requires: perl(File::stat)
+Requires: perl(Filter::Util::Call)
+Requires: perl(Getopt::Long)
+Requires: perl(HTML::Form)
+Requires: perl(HTTP::Cookies)
+Requires: perl(HTTP::Headers)
+Requires: perl(HTTP::Request)
+Requires: perl(IO::Handle)
+Requires: perl(IO::Select)
+Requires: perl(IO::Socket)
+Requires: perl(IO::Socket::SSL)
+Requires: perl(IPC::Open3)
+Requires: perl(JSON)
+Requires: perl(LWP)
+Requires: perl(LWP::UserAgent)
+Requires: perl(MIME::Base64)
+Requires: perl(Math::BigInt)
+Requires: perl(Net::Ping)
+Requires: perl(POSIX)
+Requires: perl(SNMP)
+Requires: perl(Safe)
+Requires: perl(Scalar::Util)
+Requires: perl(Socket)
+Requires: perl(Storable)
+Requires: perl(Symbol)
+Requires: perl(Sys::Hostname)
+Requires: perl(Sys::Syslog)
+Requires: perl(Text::Balanced)
+Requires: perl(Text::Wrap)
+Requires: perl(Thread)
+Requires: perl(Time::HiRes)
+Requires: perl(XML::LibXML)
+Requires: perl(XML::Simple)
+%endif
 %endif
 
 %description

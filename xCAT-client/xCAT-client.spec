@@ -38,6 +38,33 @@ BuildArch: noarch
 Requires: perl-xCAT = 4:%{version}-%{release}
 Requires: cpio
 
+# SUSE: xCAT installs its perl modules under /opt/xcat, where openSUSE's rpm perl dependency
+# generator does not emit perl(...) Requires (RHEL/Fedora use perl-generators, unavailable on
+# openSUSE). Declare them explicitly here, guarded by suse_version -- the set was extracted from
+# an EL xCAT install (`rpm -qR`). xCAT-internal perl(xCAT::*)/perl(xCAT_*) symbols are omitted:
+# SUSE does not auto-provide them, and inter-package deps use the package-level Requires above.
+%if 0%{?suse_version}
+Requires: perl(Cwd)
+Requires: perl(DBI)
+Requires: perl(Data::Dumper)
+Requires: perl(Expect)
+Requires: perl(File::Basename)
+Requires: perl(File::Path)
+Requires: perl(Getopt::Long)
+Requires: perl(Getopt::Std)
+Requires: perl(IO::Handle)
+Requires: perl(IO::Select)
+Requires: perl(IO::Socket)
+Requires: perl(IO::Socket::SSL)
+Requires: perl(IO::Socket::UNIX)
+Requires: perl(POSIX)
+Requires: perl(Socket)
+Requires: perl(Sys::Syslog)
+Requires: perl(Thread)
+Requires: perl(Time::HiRes)
+Requires: perl(XML::Simple)
+%endif
+
 # fping or nmap is needed by pping (in case xCAT-client is installed by itself on a remote client)
 %ifos linux
 # perl-generators is a RHEL/Fedora-only build helper; SUSE generates perl deps itself
