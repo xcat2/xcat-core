@@ -28,7 +28,7 @@ lib/xcat/dsh/Context/* opt/xcat/xdsh/Context
 lib/xcat/Confluent/* opt/xcat/lib/perl/Confluent/
 
 lib/xcat/shfunctions opt/xcat/lib
-etc/init.d/xcatd etc/init.d
+etc/init.d/xcatd opt/xcat/share/xcat/scripts
 etc/init.d/xcatd.service lib/systemd/system/
 xCAT-wsapi/* opt/xcat/ws/
 
