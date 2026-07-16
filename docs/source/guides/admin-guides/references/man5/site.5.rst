@@ -92,11 +92,14 @@ site Attributes:
    -------------
   DHCP ATTRIBUTES
    -------------
-   dhcpomapialgorithm:  The TSIG/OMAPI algorithm used by legacy ISC DHCP and
-                        BIND DDNS integration. Valid values are hmac-md5,
+   dhcpomapialgorithm:  The TSIG algorithm used by BIND DDNS and, for legacy
+                        ISC DHCP, OMAPI. Valid values are hmac-md5,
                         hmac-sha1, hmac-sha224, hmac-sha256, hmac-sha384,
-                        and hmac-sha512. The default is hmac-md5 for
-                        compatibility with existing ISC DHCP installations.
+                        and hmac-sha512. New Enterprise Linux 9 or later
+                        installations set hmac-sha256. When this attribute is
+                        not set, including on an existing installation, xCAT
+                        uses hmac-md5 for compatibility. Kea does not use
+                        OMAPI, but Kea DDNS uses this TSIG algorithm.
 
    dhcpomapikeyname:  The TSIG/OMAPI key name used by legacy ISC DHCP and
                      BIND DDNS integration. The default is xcat_key. The

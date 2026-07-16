@@ -28,6 +28,49 @@ is(
     'default omshell preamble keeps legacy key command without key-algorithm'
 );
 
+is(
+    xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
+        is_new_install => 1,
+        platform       => 'el9'
+    ),
+    'hmac-sha256',
+    'new EL9 installations default to hmac-sha256'
+);
+is(
+    xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
+        is_new_install => 1,
+        platform       => 'el8'
+    ),
+    undef,
+    'new EL8 installations retain the implicit MD5 default'
+);
+is(
+    xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
+        is_new_install => 1,
+        platform       => 'el10'
+    ),
+    'hmac-sha256',
+    'new EL10 installations default DDNS TSIG to hmac-sha256'
+);
+is(
+    xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
+        is_new_install => 0,
+        platform       => 'el9'
+    ),
+    undef,
+    'existing EL9 installations retain their key algorithm choice'
+);
+
+my $explicit_md5 = xCAT::DHCP::OmapiPolicy->settings(
+    site_values => { dhcpomapialgorithm => 'hmac-md5' }
+);
+is( $explicit_md5->{algorithm}, 'hmac-md5',
+    'an explicit hmac-md5 setting remains supported' );
+ok( $explicit_md5->{algorithm_explicit},
+    'an explicit hmac-md5 setting remains marked as explicit' );
+ok( !$explicit_md5->{needs_omshell_key_algorithm},
+    'explicit MD5 keeps the legacy omshell command format' );
+
 my $sha512 = xCAT::DHCP::OmapiPolicy->settings(
     site_values => {
         dhcpomapialgorithm => ' HMAC-SHA512 ',

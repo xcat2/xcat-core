@@ -25,6 +25,7 @@ use strict;
 use xCAT::Utils;
 use xCAT::SvrUtils;
 use xCAT::DHCP::Backend;
+use xCAT::DHCP::OmapiPolicy;
 use xCAT::TLSPolicy qw(tls_setting_warnings);
 use xCAT::NetworkUtils;
 use Getopt::Long;
@@ -133,6 +134,13 @@ else
 {
     $::osname = 'Linux';
 }
+
+# Record whether this invocation is creating a new site before database setup
+# runs.  Reinitializing an existing site must preserve its key algorithm.
+my $initializing_new_site =
+  $::INITIALINSTALL
+  && !-r "/etc/xcat/site.sqlite"
+  && !-r "/etc/xcat/cfgloc";
 
 # if on rhel6, check to see if perl-IO-Compress-Zlib* is installed
 if (($::INITIALINSTALL) || ($::UPDATEINSTALL))
@@ -1253,6 +1261,15 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=vsftp site.value=n;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=cleanupxcatpost site.value=no;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=cleanupdiskfullxcatpost site.value=no;";
+        my $omapi_algorithm =
+          xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
+            is_new_install => $initializing_new_site,
+            platform      => xCAT::Utils->osver("platform"),
+          );
+        if ($omapi_algorithm) {
+            $chtabcmds .=
+              "$::XCATROOT/sbin/chtab key=dhcpomapialgorithm site.value=$omapi_algorithm;";
+        }
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=dhcplease site.value=43200;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=auditnosyslog site.value=0;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=xcatsslversion site.value=;";
