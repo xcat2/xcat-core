@@ -1,0 +1,148 @@
+#!/bin/sh
+# Keep the xcatd SysV init script only on systems that actually use a
+# legacy init implementation.  XCAT_COMPAT_ROOT is used by image builders
+# and tests to operate on a target root without chrooting into it.
+
+compat_root=${XCAT_COMPAT_ROOT:-}
+compat_root=${compat_root%/}
+xcat_root=${XCATROOT:-/opt/xcat}
+
+case "$xcat_root" in
+    /*) ;;
+    *)
+        echo "XCATROOT must be an absolute path" >&2
+        exit 2
+        ;;
+esac
+
+legacy_init="$compat_root/etc/init.d/xcatd"
+legacy_template="$compat_root$xcat_root/share/xcat/scripts/xcatd"
+
+uses_systemd_os_release()
+{
+    os_release="$compat_root/etc/os-release"
+    [ -r "$os_release" ] || return 1
+
+    os_id=
+    os_version=
+    while IFS='=' read -r key value; do
+        value=${value#\"}
+        value=${value%\"}
+        value=${value#\'}
+        value=${value%\'}
+        case "$key" in
+            ID) os_id=$value ;;
+            VERSION_ID) os_version=$value ;;
+        esac
+    done < "$os_release"
+
+    # Debian testing/sid intentionally omits VERSION_ID.
+    if [ "$os_id" = "debian" ] && [ -z "$os_version" ]; then
+        return 0
+    fi
+
+    os_major=${os_version%%.*}
+    case "$os_major" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+
+    case "$os_id" in
+        rhel|centos|rocky|almalinux|ol|scientific)
+            [ "$os_major" -ge 7 ]
+            ;;
+        fedora|ubuntu)
+            [ "$os_major" -ge 15 ]
+            ;;
+        debian)
+            [ "$os_major" -ge 8 ]
+            ;;
+        sles|sled|opensuse|opensuse-leap|opensuse-tumbleweed)
+            [ "$os_major" -ge 12 ]
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+uses_systemd()
+{
+    if [ -d "$compat_root/run/systemd/system" ]; then
+        return 0
+    fi
+
+    # Chroots and minimal images may have systemd installed without a running
+    # manager or an /sbin/init link.
+    if [ -x "$compat_root/usr/lib/systemd/systemd" ] ||
+        [ -x "$compat_root/lib/systemd/systemd" ]; then
+        return 0
+    fi
+
+    if uses_systemd_os_release; then
+        return 0
+    fi
+
+    if [ -L "$compat_root/sbin/init" ]; then
+        init_target=$(readlink "$compat_root/sbin/init" 2>/dev/null || true)
+        case "$init_target" in
+            *systemd*) return 0 ;;
+        esac
+    fi
+
+    return 1
+}
+
+configure_legacy_init()
+{
+    replace_existing=${1:-}
+
+    if uses_systemd; then
+        rm -f "$legacy_init"
+        return
+    fi
+
+    # A broken link cannot provide a usable init script.  Replace it while
+    # preserving links whose administrator-managed target still exists.
+    if [ -L "$legacy_init" ] && [ ! -e "$legacy_init" ]; then
+        rm -f "$legacy_init"
+    fi
+
+    if [ -e "$legacy_init" ] || [ -L "$legacy_init" ]; then
+        if [ "$replace_existing" != "--replace" ]; then
+            return
+        fi
+        rm -f "$legacy_init"
+    fi
+
+    if [ ! -r "$legacy_template" ]; then
+        echo "Legacy xcatd init template not found: $legacy_template" >&2
+        exit 1
+    fi
+
+    mkdir -p "$compat_root/etc/init.d"
+    cp "$legacy_template" "$legacy_init"
+    chmod 755 "$legacy_init"
+}
+
+case "${1:-}" in
+    uses-systemd)
+        uses_systemd
+        ;;
+    configure)
+        case "${2:-}" in
+            ''|--replace) ;;
+            *)
+                echo "Usage: $0 {uses-systemd|configure [--replace]|remove}" >&2
+                exit 2
+                ;;
+        esac
+        configure_legacy_init "${2:-}"
+        ;;
+    remove)
+        rm -f "$legacy_init"
+        ;;
+    *)
+        echo "Usage: $0 {uses-systemd|configure [--replace]|remove}" >&2
+        exit 2
+        ;;
+esac
