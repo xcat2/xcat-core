@@ -9,7 +9,31 @@ use Test::More;
 
 use xCAT::DHCP::OmapiPolicy;
 
-my $defaults = xCAT::DHCP::OmapiPolicy->settings( site_values => {} );
+sub omapi_settings {
+    my (%overrides) = @_;
+    return xCAT::DHCP::OmapiPolicy->settings(
+        site_values => {
+            dhcpomapialgorithm => undef,
+            dhcpomapikeyname   => undef,
+            dhcpomshellpath    => undef,
+            %overrides,
+        }
+    );
+}
+
+# Model a populated xCAT site and require each fixture to override it fully.
+our %XCATSITEVALS;
+local %XCATSITEVALS = (
+    dhcpomapialgorithm => 'hmac-sha256',
+    dhcpomapikeyname   => 'site-key',
+    dhcpomshellpath    => '/opt/site/bin/omshell',
+);
+
+my $site_settings = xCAT::DHCP::OmapiPolicy->settings();
+is( $site_settings->{algorithm}, 'hmac-sha256',
+    'runtime settings read the configured site algorithm' );
+
+my $defaults = omapi_settings();
 is( $defaults->{algorithm},
     'hmac-md5', 'default OMAPI algorithm remains hmac-md5' );
 is( $defaults->{key_name}, 'xcat_key',
@@ -151,8 +175,8 @@ is(
     'existing SLES installations retain their key algorithm choice'
 );
 
-my $explicit_md5 = xCAT::DHCP::OmapiPolicy->settings(
-    site_values => { dhcpomapialgorithm => 'hmac-md5' }
+my $explicit_md5 = omapi_settings(
+    dhcpomapialgorithm => 'hmac-md5',
 );
 is( $explicit_md5->{algorithm}, 'hmac-md5',
     'an explicit hmac-md5 setting remains supported' );
@@ -161,12 +185,10 @@ ok( $explicit_md5->{algorithm_explicit},
 ok( !$explicit_md5->{needs_omshell_key_algorithm},
     'explicit MD5 keeps the legacy omshell command format' );
 
-my $sha512 = xCAT::DHCP::OmapiPolicy->settings(
-    site_values => {
-        dhcpomapialgorithm => ' HMAC-SHA512 ',
-        dhcpomapikeyname   => 'external.key-name',
-        dhcpomshellpath    => '/opt/dhcp/bin/omshell',
-    }
+my $sha512 = omapi_settings(
+    dhcpomapialgorithm => ' HMAC-SHA512 ',
+    dhcpomapikeyname   => 'external.key-name',
+    dhcpomshellpath    => '/opt/dhcp/bin/omshell',
 );
 is( $sha512->{algorithm},   'hmac-sha512',    'algorithm is canonicalized' );
 is( $sha512->{key_rr_type}, 165,              'SHA512 KEY RR type is mapped' );
@@ -194,32 +216,32 @@ is( xCAT::DHCP::OmapiPolicy->key_owner($sha512),
     'external.key-name.', 'DNS key owner is fully qualified' );
 
 like(
-    xCAT::DHCP::OmapiPolicy->settings(
-        site_values => { dhcpomapialgorithm => 'sha512' }
+    omapi_settings(
+        dhcpomapialgorithm => 'sha512',
     )->{error},
     qr/site\.dhcpomapialgorithm/,
     'invalid algorithm is rejected'
 );
 
 like(
-    xCAT::DHCP::OmapiPolicy->settings(
-        site_values => { dhcpomapikeyname => 'bad;name' }
+    omapi_settings(
+        dhcpomapikeyname => 'bad;name',
     )->{error},
     qr/site\.dhcpomapikeyname/,
     'unsafe key name is rejected'
 );
 
 like(
-    xCAT::DHCP::OmapiPolicy->settings(
-        site_values => { dhcpomshellpath => 'omshell' }
+    omapi_settings(
+        dhcpomshellpath => 'omshell',
     )->{error},
     qr/site\.dhcpomshellpath/,
     'relative omshell path is rejected'
 );
 
 like(
-    xCAT::DHCP::OmapiPolicy->settings(
-        site_values => { dhcpomshellpath => '/tmp/omshell;touch' }
+    omapi_settings(
+        dhcpomshellpath => '/tmp/omshell;touch',
     )->{error},
     qr/site\.dhcpomshellpath/,
     'shell metacharacters are rejected from omshell path'
