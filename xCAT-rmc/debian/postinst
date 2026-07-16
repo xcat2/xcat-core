@@ -58,8 +58,8 @@ case "$1" in
 
       if [[ `uname -s` = "Linux" ]] ; then
          if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
-           if [ -f /opt/xcat/sbin/xcatd  ]; then
-              /etc/init.d/xcatd reload
+           if [ -x /opt/xcat/sbin/restartxcatd ]; then
+              XCATROOT=/opt/xcat /opt/xcat/sbin/restartxcatd -r
            fi
          fi
       else
