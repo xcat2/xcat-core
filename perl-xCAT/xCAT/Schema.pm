@@ -1046,7 +1046,9 @@ passed as argument rather than by table value',
 "                      BIND DDNS integration. Valid values are hmac-md5,\n" .
 "                      hmac-sha1, hmac-sha224, hmac-sha256, hmac-sha384,\n" .
 "                      and hmac-sha512. The default is hmac-md5 for\n" .
-"                      compatibility with existing ISC DHCP installations.\n\n" .
+"                      compatibility, or hmac-sha256 when the management\n" .
+"                      node is running in FIPS mode. An explicit hmac-md5\n" .
+"                      value is rejected in FIPS mode.\n\n" .
 " dhcpomapikeyname:  The TSIG/OMAPI key name used by legacy ISC DHCP and\n" .
 "                   BIND DDNS integration. The default is xcat_key. The\n" .
 "                   value maps to the passwd table entry where key=omapi\n" .

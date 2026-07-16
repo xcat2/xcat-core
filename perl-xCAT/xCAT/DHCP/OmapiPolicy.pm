@@ -2,6 +2,7 @@ package xCAT::DHCP::OmapiPolicy;
 
 use strict;
 use warnings;
+use xCAT::Utils;
 
 my %ALGORITHMS = (
     'hmac-md5'    => 157,
@@ -15,14 +16,24 @@ my %ALGORITHMS = (
 sub settings {
     my ( $class, %args ) = @_;
 
+    my $fips_mode = exists $args{fips_mode}
+      ? ( $args{fips_mode} ? 1 : 0 )
+      : xCAT::Utils->isFIPS();
     my $raw_algorithm      = _site_value( 'dhcpomapialgorithm', %args );
     my $algorithm_explicit = defined($raw_algorithm) && $raw_algorithm ne '';
-    my $algorithm          = $class->normalize_algorithm($raw_algorithm);
+    my $default_algorithm  = $fips_mode ? 'hmac-sha256' : 'hmac-md5';
+    my $algorithm =
+      $class->normalize_algorithm($raw_algorithm, $default_algorithm);
     unless ($algorithm) {
         return {
             error => "Invalid site.dhcpomapialgorithm value '$raw_algorithm'. Valid values are: "
               . join( ', ', sort keys %ALGORITHMS )
               . ".",
+        };
+    }
+    if ($fips_mode && $algorithm eq 'hmac-md5') {
+        return {
+            error => 'site.dhcpomapialgorithm=hmac-md5 is not allowed while FIPS mode is enabled; use hmac-sha256 or stronger.',
         };
     }
 
@@ -44,7 +55,11 @@ sub settings {
 
     return {
         algorithm                   => $algorithm,
+        # Old Net::DNS otherwise falls back to MD5 when no site value exists.
+        # Treat the FIPS-selected default as mandatory for the same path.
         algorithm_explicit          => $algorithm_explicit,
+        algorithm_enforced          => $algorithm_explicit || $fips_mode,
+        fips_mode                    => $fips_mode,
         key_name                    => $key_name,
         key_name_for_regex          => quotemeta($key_name),
         key_rr_type                 => $ALGORITHMS{$algorithm},
@@ -53,10 +68,21 @@ sub settings {
     };
 }
 
-sub normalize_algorithm {
+sub key_rr_type {
     my ( $class, $algorithm ) = @_;
 
-    $algorithm = 'hmac-md5' unless defined($algorithm) && $algorithm ne '';
+    return unless defined($algorithm) && $algorithm ne '';
+    $algorithm =~ s/^\s+|\s+$//g;
+    $algorithm = lc($algorithm);
+
+    return $ALGORITHMS{$algorithm};
+}
+
+sub normalize_algorithm {
+    my ( $class, $algorithm, $default_algorithm ) = @_;
+
+    $default_algorithm ||= 'hmac-md5';
+    $algorithm = $default_algorithm unless defined($algorithm) && $algorithm ne '';
     $algorithm =~ s/^\s+|\s+$//g;
     $algorithm = lc($algorithm);
 

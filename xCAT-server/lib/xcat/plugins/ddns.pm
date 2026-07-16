@@ -29,14 +29,15 @@ my $ddns_key_path = "/etc/xcat/ddns.key";
 # Net::DNS >= 1.36 removed support for sign_tsig($keyname, $secret) and now
 # expects a keyfile. Keep the keyfile in sync with the xCAT OMAPI secret.
 sub ddns_tsig_algorithm {
-    my ($ctx) = @_;
+    my ( $ctx, $net_dns_version ) = @_;
 
     my $settings = $ctx->{omapi_settings} || xCAT::DHCP::OmapiPolicy->settings();
+    $net_dns_version = Net::DNS->VERSION unless defined($net_dns_version);
 
     # Keep old Net::DNS on MD5 unless the administrator explicitly selects a
     # different OMAPI algorithm. Old Net::DNS can sign non-MD5 updates only
     # through a KEY RR, which ddns_sign_update builds below.
-    return "hmac-md5" if (Net::DNS->VERSION < 1.36 && !$settings->{algorithm_explicit});
+    return "hmac-md5" if ($net_dns_version < 1.36 && !$settings->{algorithm_enforced});
     return $ctx->{tsig_algorithm} || $settings->{algorithm};
 }
 
@@ -61,14 +62,53 @@ sub ddns_sign_update {
         return;
     }
 
-    if ($settings->{algorithm} eq 'hmac-md5') {
+    my $algorithm = ddns_tsig_algorithm($ctx);
+    if ($algorithm eq 'hmac-md5') {
         $update->sign_tsig($settings->{key_name}, $ctx->{privkey});
         return;
     }
 
     my $owner = xCAT::DHCP::OmapiPolicy->key_owner($settings);
-    my $keyrr = Net::DNS::RR->new("$owner IN KEY 512 3 $settings->{key_rr_type} $ctx->{privkey}");
+    my $key_rr_type = xCAT::DHCP::OmapiPolicy->key_rr_type($algorithm);
+    my $keyrr = Net::DNS::RR->new("$owner IN KEY 512 3 $key_rr_type $ctx->{privkey}");
     $update->sign_tsig($keyrr);
+}
+
+sub ddns_reconcile_key_algorithm {
+    my ( $settings, $current_algorithm, $net_dns_version ) = @_;
+
+    my $current = defined($current_algorithm) ? lc($current_algorithm) : '';
+    $current =~ s/^\s+|\s+$//g;
+    $net_dns_version = Net::DNS->VERSION unless defined($net_dns_version);
+
+    if ($settings->{algorithm_explicit}) {
+        return {
+            algorithm => $settings->{algorithm},
+            replace   => $current ne $settings->{algorithm} ? 1 : 0,
+        };
+    }
+
+    if ($settings->{fips_mode}) {
+        if ( $current
+            && $current ne 'hmac-md5'
+            && xCAT::DHCP::OmapiPolicy->key_rr_type($current) )
+        {
+            return { algorithm => $current, replace => 0 };
+        }
+        return { algorithm => $settings->{algorithm}, replace => 1 };
+    }
+
+    if ( $current
+        && $net_dns_version < 1.36
+        && $current ne 'hmac-md5' )
+    {
+        return { algorithm => 'hmac-md5', replace => 1 };
+    }
+
+    return {
+        algorithm => $current || $settings->{algorithm},
+        replace   => 0,
+    };
 }
 
 sub ensure_ddns_key_file {
@@ -1326,46 +1366,36 @@ sub update_namedconf {
             } elsif ($line =~ /^key\s+\"?$omapi_key_re\"?(?=\s|\{)/) {
                 $gotkey = 1;
                 my $algorithmnow;
-                if ($ctx->{privkey}) {
-                    my @keyblock = ($line);
-                    do {
-                        $i++;
-                        $line = $currnamed[$i];
-                        if ($line =~ /^\s*algorithm\s+([^;\s]+)\s*;/) {
-                            $algorithmnow = $1;
-                        }
-                        push @keyblock, $line;
-                    } while ($line !~ /^\};/);
-                    if ($omapi_settings->{algorithm_explicit}
-                        && (!$algorithmnow || lc($algorithmnow) ne $omapi_settings->{algorithm}) )
-                    {
-                        $ctx->{tsig_algorithm} = $omapi_settings->{algorithm};
-                        push @newnamed, ddns_key_contents($ctx);
-                        $ctx->{restartneeded} = 1;
-                    } elsif ($algorithmnow && Net::DNS->VERSION < 1.36 && lc($algorithmnow) ne "hmac-md5") {
-                        $ctx->{tsig_algorithm} = "hmac-md5";
-                        push @newnamed, ddns_key_contents($ctx);
-                        $ctx->{restartneeded} = 1;
-                    } else {
-                        push @newnamed, @keyblock;
+                my $secret;
+                my @keyblock = ($line);
+                do {
+                    $i++;
+                    $line = $currnamed[$i];
+                    if ($line =~ /^\s*algorithm\s+([^;\s]+)\s*;/) {
+                        $algorithmnow = $1;
+                    } elsif (!$ctx->{privkey} && $line =~ /secret \"([^"]*)\"/) {
+                        $secret = $1;
                     }
-                } else {
-                    push @newnamed, $line;
-                    while ($line !~ /^\};/) {    #skip the old file zone
-                        if ($line =~ /^\s*algorithm\s+([^;\s]+)\s*;/) {
-                            $algorithmnow = $1;
-                        } elsif ($line =~ /secret \"([^"]*)\"/) {
-                            my $passtab = xCAT::Table->new("passwd", -create => 1);
-                            $passtab->setAttribs({ key => "omapi", username => $omapi_key_name }, { password => $1 });
-                            $ctx->{privkey} = $1;
-                        }
-                        $i++;
-                        $line = $currnamed[$i];
-                        push @newnamed, $line;
-                    }
+                    push @keyblock, $line;
+                } while ($line !~ /^\};/);
+
+                if (!$ctx->{privkey} && defined($secret)) {
+                    my $passtab = xCAT::Table->new("passwd", -create => 1);
+                    $passtab->setAttribs(
+                        { key => "omapi", username => $omapi_key_name },
+                        { password => $secret }
+                    );
+                    $ctx->{privkey} = $secret;
                 }
-                if ($algorithmnow && !$omapi_settings->{algorithm_explicit}) {
-                    $ctx->{tsig_algorithm} = $algorithmnow;
+                my $reconciliation = ddns_reconcile_key_algorithm(
+                    $omapi_settings, $algorithmnow
+                );
+                $ctx->{tsig_algorithm} = $reconciliation->{algorithm};
+                if ($reconciliation->{replace} && $ctx->{privkey}) {
+                    push @newnamed, ddns_key_contents($ctx);
+                    $ctx->{restartneeded} = 1;
+                } else {
+                    push @newnamed, @keyblock;
                 }
             } elsif ($line !~ /generated by xCAT/) {
                 push @newnamed, $line;

@@ -82,7 +82,10 @@ if [ $? -ne 0 ]; then
 	# -A option did not work, must be running on older version of
 	# ssh-keygen, try generating needed keys one at a time
 	ssh-keygen -q -t rsa -f /etc/ssh/ssh_host_rsa_key -C '' -N ''
-	ssh-keygen -q -t dsa -f /etc/ssh/ssh_host_dsa_key -C '' -N ''
+	if ! grep -q '^1$' /proc/sys/crypto/fips_enabled 2>/dev/null; then
+		ssh-keygen -q -t dsa -f /etc/ssh/ssh_host_dsa_key -C '' -N '' 2>/dev/null ||
+			rm -f /etc/ssh/ssh_host_dsa_key /etc/ssh/ssh_host_dsa_key.pub
+	fi
 fi
 
 # On some systems /usr/share/empty.sshd needs to be created before calling sshd
@@ -98,9 +101,17 @@ distinguished_name = nodedn
 
 [ nodedn ]" > /etc/pki/tls/openssl.cnf
 logger -s -t $log_label -p local4.info "Generating private key..."
-openssl genrsa -out /etc/xcat/privkey.pem 1024 >& /dev/null
+if grep -q '^1$' /proc/sys/crypto/fips_enabled 2>/dev/null; then
+	openssl ecparam -name prime256v1 -genkey -noout -out /etc/xcat/privkey.pem >& /dev/null
+else
+	openssl genrsa -out /etc/xcat/privkey.pem 1024 >& /dev/null
+fi
 logger -s -t $log_label -p local4.info "Done"
-PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout 2> /dev/null|grep -v "PUBLIC KEY"`
+if grep -q '^1$' /proc/sys/crypto/fips_enabled 2>/dev/null; then
+	PUBKEY=`openssl ec -in /etc/xcat/privkey.pem -pubout 2> /dev/null|grep -v "PUBLIC KEY"`
+else
+	PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout 2> /dev/null|grep -v "PUBLIC KEY"`
+fi
 PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
 export PUBKEY
 

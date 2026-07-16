@@ -46,7 +46,10 @@ The ``auto`` setting keeps ISC DHCP on platforms where it is still available and
 For legacy ISC DHCP deployments that need a non-default OMAPI/TSIG key, use
 ``site.dhcpomapialgorithm`` and ``site.dhcpomapikeyname``. If the system uses
 an alternate ISC DHCP build, ``site.dhcpomshellpath`` can point xCAT at that
-build's ``omshell`` binary.
+build's ``omshell`` binary. FIPS mode changes the default algorithm from
+``hmac-md5`` to ``hmac-sha256`` and rejects an explicit ``hmac-md5`` value.
+On RHEL 8, SHA-based OMAPI authentication requires ``dhcp-server``
+``12:4.3.6-48`` or later.
 
 
 1.

@@ -556,6 +556,43 @@ sub isLinux
 
 #-------------------------------------------------------------------------------
 
+=head3    isFIPS
+    returns 1 when the local Linux kernel is running in FIPS mode
+    Arguments:
+        optional path to the kernel FIPS status file
+    Returns:
+        1 - FIPS mode is enabled
+        0 - FIPS mode is disabled or cannot be determined
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         if (xCAT::Utils->isFIPS()) { blah; }
+    Comments:
+        Linux exposes the active FIPS state through
+        /proc/sys/crypto/fips_enabled.
+=cut
+
+#-------------------------------------------------------------------------------
+sub isFIPS
+{
+    my $status_file = shift;
+    if (defined($status_file) && $status_file eq __PACKAGE__) {
+        $status_file = shift;
+    }
+    $status_file ||= '/proc/sys/crypto/fips_enabled';
+
+    return 0 unless -r $status_file;
+    open(my $fh, '<', $status_file) or return 0;
+    my $enabled = <$fh>;
+    close($fh);
+
+    return (defined($enabled) && $enabled =~ /^\s*1\s*$/) ? 1 : 0;
+}
+
+#-------------------------------------------------------------------------------
+
 =head3   Version
     Arguments:
         Optional 'short' string to request only the version;

@@ -93,7 +93,7 @@ Edit **/etc/resolv.conf** to contain the cluster domain value you set in the sit
 Legacy ISC DHCP and BIND TSIG Key Options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-xCAT uses **xcat_key** with **hmac-md5** by default for legacy ISC DHCP OMAPI and BIND DDNS updates. Existing installations should keep that default unless a site policy or external DNS provider requires a different key.
+xCAT uses **xcat_key** for legacy ISC DHCP OMAPI and BIND DDNS updates. The default algorithm is **hmac-md5** for compatibility, except on a FIPS-enabled system where xCAT automatically uses **hmac-sha256**. An explicit **hmac-md5** setting is rejected while FIPS mode is enabled.
 
 To use another supported algorithm, set **dhcpomapialgorithm** in the site table and update the matching **passwd** table secret. Supported values are **hmac-md5**, **hmac-sha1**, **hmac-sha224**, **hmac-sha256**, **hmac-sha384**, and **hmac-sha512**. For example: ::
 
@@ -519,4 +519,3 @@ Execute ``confignetwork -s`` to configure provision IP address as static IP addr
     b. If the compute node is already running, use ``updatenode`` command to run ``confignetwork -s`` postscript without rebooting the node ::
 
         updatenode cn1 -P "confignetwork -s"
-
