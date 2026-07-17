@@ -1660,6 +1660,24 @@ sub _copycd_distname_supported
     return;
 }
 
+sub _sle15_supplemental_media_slot
+{
+    my ($description, $media_type, $primary_slot) = @_;
+
+    return $primary_slot unless $description and $media_type;
+
+    my $media_number;
+    if ($description =~ /Media(\d+)(?:\.iso)?/i) {
+        $media_number = $1;
+    } elsif ($description =~ /SOURCE/i) {
+        $media_number = 2;
+    }
+
+    return $primary_slot unless $media_number and $media_number > 1;
+
+    return $media_type . $media_number;
+}
+
 sub copycd
 {
     my $request     = shift;
@@ -1870,7 +1888,7 @@ sub copycd
             $distname = $opensuse_media_distname unless $distname;
             $darch = $opensuse_media_arch if $opensuse_media_arch;
         } elsif ($dsc =~ /Installer/ and $dsc =~ /SLE-15/) {
-            $discnumber = 1;
+            $discnumber = _sle15_supplemental_media_slot($dsc, "installer", 1);
             unless ($distname) {
                 if ($dsc =~ /SLE-15-SP(\d)/) {
                     $distname = "sle15.$1";
@@ -1879,7 +1897,7 @@ sub copycd
                 }
             };
         } elsif ($dsc =~ /SLE-15/ and $dsc =~ /Packages/) {
-            $discnumber = 2;
+            $discnumber = _sle15_supplemental_media_slot($dsc, "packages", 2);
             unless ($distname) {
                 if ($dsc =~ /SLE-15-SP(\d)/) {
                     $distname = "sle15.$1";
@@ -1909,7 +1927,6 @@ sub copycd
         }
     }
 
-    
     unless ($distname and $discnumber)
     {
         #failed to parse the disc info
