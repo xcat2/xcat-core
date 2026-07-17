@@ -183,6 +183,40 @@ sub _command_available {
     return 0;
 }
 
+sub _capture_command_output {
+    my @command = @_;
+    my $pid = open(my $fh, '-|');
+    unless (defined $pid) {
+        my $error = "unable to start '$command[0]': $!";
+        return wantarray ? (undef, $error) : undef;
+    }
+    if ($pid == 0) {
+        open(STDERR, '>', '/dev/null');
+        exec @command;
+        exit 127;
+    }
+
+    local $/;
+    my $output = <$fh>;
+    close $fh;
+    my $status = $?;
+    if ($status) {
+        my $error;
+        if ($status == -1) {
+            $error = "failed to execute: $!";
+        } elsif ($status & 127) {
+            $error = 'terminated by signal ' . ($status & 127);
+        } else {
+            $error = 'exited with status ' . ($status >> 8);
+        }
+        $error = "'$command[0]' $error";
+        return wantarray ? (undef, $error) : undef;
+    }
+
+    $output = '' unless defined $output;
+    return wantarray ? ($output, undef) : $output;
+}
+
 sub _networkd_config_dirs {
     return ('/run/systemd/network', '/etc/systemd/network');
 }
@@ -442,6 +476,80 @@ sub is_firewall_open {
 
 #------------------------------------------
 
+sub _tcp_listener_output {
+    my ($include_process, $errormsg_ref) = @_;
+    my @commands = $include_process
+      ? (['ss', '-lntp'], ['netstat', '-tnlp'])
+      : (['ss', '-lnt'], ['netstat', '-ant']);
+    my @available_commands;
+    my @errors;
+
+    foreach my $command (@commands) {
+        next unless _command_available($command->[0]);
+        push @available_commands, $command->[0];
+        my ($output, $error) = _capture_command_output(@$command);
+        return $output if defined $output;
+        push @errors, $error || "'$command->[0]' failed";
+    }
+
+    if ($errormsg_ref) {
+        if (@available_commands) {
+            $$errormsg_ref = 'Unable to inspect TCP listeners: ' . join('; ', @errors);
+        } else {
+            $$errormsg_ref = "Unable to inspect TCP listeners: neither 'ss' nor 'netstat' is available";
+        }
+    }
+    return;
+}
+
+sub _tcp_listener_output_has_port {
+    my ($output, $port, $process_pattern) = @_;
+
+    return 0 unless defined($output) && defined($port);
+    return 0 unless $port =~ /^\d+$/ && $port > 0 && $port <= 65535;
+
+    foreach my $line (split /\n/, $output) {
+        $line =~ s/^\s+|\s+$//g;
+        my @fields = split /\s+/, $line;
+        next unless @fields >= 4;
+        next unless grep { $_ eq 'LISTEN' } @fields;
+        next unless $fields[3] =~ /:(\d+)$/ && $1 == $port;
+        next if defined($process_pattern) && $line !~ $process_pattern;
+        return 1;
+    }
+
+    return 0;
+}
+
+=head3
+    Description:
+        Test if a TCP port has a listening socket. Prefer ss on modern Linux
+        systems and fall back to netstat for older installations.
+    Arguments:
+        port: TCP port number
+        process_pattern: optional regular expression that must match the
+                         listener line
+        errormsg_ref: optional output reference populated when listener
+                      inspection cannot be performed
+    Returns:
+        1 : listening
+        0 : inspected successfully and not listening
+        undef : listener inspection could not be performed
+=cut
+
+sub is_tcp_port_listening {
+    my $port = shift;
+    $port = shift if defined($port) && $port =~ /probe_utils/;
+    my $process_pattern = shift;
+    my $errormsg_ref = shift;
+
+    my $output = _tcp_listener_output(defined($process_pattern), $errormsg_ref);
+    return unless defined $output;
+    return _tcp_listener_output_has_port($output, $port, $process_pattern);
+}
+
+#------------------------------------------
+
 =head3
     Description:
         Test if http service is ready to use in current operating system
@@ -461,11 +569,13 @@ sub is_http_ready {
     my $installdir = shift;
     my $errormsg_ref = shift;
 
-    my $http_status = `netstat -tnlp | grep -e "httpd" -e "apache" 2>&1`;
-    if (!$http_status) {
-        $$errormsg_ref = "No HTTP listening status get by command 'netstat'";
+    my $listener_error;
+    my $http_listening = is_tcp_port_listening($httpport, qr/(?:httpd|apache)/, \$listener_error);
+    unless (defined $http_listening) {
+        $$errormsg_ref = $listener_error;
         return 0;
-    } elsif ($http_status !~ /\S*\s+\S*\s+\S*\s+\S*:$httpport\s+.+/) {
+    }
+    if (!$http_listening) {
         $$errormsg_ref = "The port defined in 'site' table HTTP is not listening";
         return 0;
     }
