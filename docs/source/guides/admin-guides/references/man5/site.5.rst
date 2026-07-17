@@ -102,8 +102,11 @@ site Attributes:
                         omshell does not support the key-algorithm command.
                         When this attribute is not set, including on an
                         existing installation, xCAT uses hmac-md5 for
-                        compatibility. Kea does not use OMAPI, but Kea DDNS
-                        uses this TSIG algorithm.
+                        compatibility. HMAC-MD5 is not approved for FIPS
+                        mode; a FIPS-mode site that needs OMAPI must provide
+                        an omshell supporting key-algorithm and explicitly
+                        select a SHA-2 algorithm. Kea does not use OMAPI, but
+                        Kea DDNS uses this TSIG algorithm.
 
    dhcpomapikeyname:  The TSIG/OMAPI key name used by legacy ISC DHCP and
                      BIND DDNS integration. The default is xcat_key. The

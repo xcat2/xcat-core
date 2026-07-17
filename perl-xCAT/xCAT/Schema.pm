@@ -1052,8 +1052,11 @@ passed as argument rather than by table value',
 "                      omshell does not support the key-algorithm command.\n" .
 "                      When this attribute is not set, including on an\n" .
 "                      existing installation, xCAT uses hmac-md5 for\n" .
-"                      compatibility. Kea does not use OMAPI, but Kea DDNS\n" .
-"                      uses this TSIG algorithm.\n\n" .
+"                      compatibility. HMAC-MD5 is not approved for FIPS\n" .
+"                      mode; a FIPS-mode site that needs OMAPI must provide\n" .
+"                      an omshell supporting key-algorithm and explicitly\n" .
+"                      select a SHA-2 algorithm. Kea does not use OMAPI, but\n" .
+"                      Kea DDNS uses this TSIG algorithm.\n\n" .
 " dhcpomapikeyname:  The TSIG/OMAPI key name used by legacy ISC DHCP and\n" .
 "                   BIND DDNS integration. The default is xcat_key. The\n" .
 "                   value maps to the passwd table entry where key=omapi\n" .
