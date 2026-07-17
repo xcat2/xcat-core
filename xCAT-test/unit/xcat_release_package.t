@@ -1,0 +1,100 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+use Digest::SHA qw(sha256_hex);
+use File::Spec;
+use FindBin;
+use Test::More;
+
+my $repo_root = File::Spec->rel2abs(File::Spec->catdir($FindBin::Bin, '..', '..'));
+
+my $spec = read_file('xCAT-release/xCAT-release.spec');
+like($spec, qr/^Name:\s+xCAT-release$/m, 'package has the expected name');
+like($spec, qr/^Source0:\s+xCAT-release-%\{version\}\.tar\.gz$/m, 'source archive follows the package name');
+like($spec, qr/^BuildArch:\s+noarch$/m, 'package is architecture independent');
+like($spec, qr/^Requires:\s+dnf$/m, 'package is limited to DNF-based systems');
+like($spec, qr/^%config\(noreplace\) .*xcat-core\.repo$/m, 'core repo preserves local changes');
+like($spec, qr/^%config\(noreplace\) .*xcat-dep\.repo$/m, 'dependency repo preserves local changes');
+like($spec, qr{RPM-GPG-KEY-xCAT}, 'package installs the signing key');
+
+my $core = read_file('xCAT-release/xcat-core.repo');
+assert_repo_security($core, 'core');
+like(
+    $core,
+    qr{^baseurl=https://xcat\.org/files/xcat/repos/yum/latest/xcat-core$}m,
+    'core repo uses the stable HTTPS endpoint'
+);
+
+my $dep = read_file('xCAT-release/xcat-dep.repo');
+assert_repo_security($dep, 'dependency');
+like(
+    $dep,
+    qr{^baseurl=https://xcat\.org/files/xcat/repos/yum/latest/xcat-dep/rh\$releasever/\$basearch$}m,
+    'dependency repo follows the DNF release and architecture variables'
+);
+
+my $key = read_file('xCAT-release/RPM-GPG-KEY-xCAT');
+like($key, qr/^-----BEGIN PGP PUBLIC KEY BLOCK-----$/m, 'signing key is ASCII armored');
+is(
+    sha256_hex($key),
+    '72076f25ce4929d34a67e305327a37f89c964d3cbf1821e3afad4907c9d91249',
+    'packaged key matches the published xCAT signing key'
+);
+
+my $builder = read_file('buildrpms.pl');
+like($builder, qr/^\s+xCAT-release\s*$/m, 'default RPM build includes xCAT-release');
+like(
+    $builder,
+    qr{\$repodir/xCAT-release-latest\.noarch\.rpm},
+    'stable bootstrap alias follows the package name'
+);
+like(
+    $builder,
+    qr{\$repodir/xCAT-release-\$VERSION-\$RELEASE\.noarch\.rpm},
+    'stable bootstrap alias selects the xCAT-release RPM'
+);
+like(
+    $builder,
+    qr/unlink \$alias.*?createrepo_dir\(\$repodir/s,
+    'stable bootstrap alias is excluded from repository metadata'
+);
+like(
+    $builder,
+    qr/cp \$release_rpms\[0\], \$alias/,
+    'repository export creates the stable bootstrap filename'
+);
+my $sign_call = rindex($builder, 'sign_rpms($target)');
+my $alias_call = rindex($builder, 'write_release_alias("dist/$target/rpms")');
+ok(
+    $sign_call >= 0 && $alias_call > $sign_call,
+    'stable bootstrap alias is created after signed metadata is finalized'
+);
+like(
+    $builder,
+    qr/sub finalize_core \{.*?write_repo_metadata_dir\(\$dir\);.*?write_release_alias\(\$dir\);/s,
+    'assembled core repository creates the stable alias after final metadata'
+);
+
+done_testing();
+
+sub assert_repo_security {
+    my ($content, $label) = @_;
+    like($content, qr/^enabled=1$/m, "$label repo is enabled");
+    like($content, qr/^gpgcheck=1$/m, "$label repo verifies packages");
+    like($content, qr/^repo_gpgcheck=1$/m, "$label repo verifies repository metadata");
+    like(
+        $content,
+        qr{^gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-xCAT$}m,
+        "$label repo uses the packaged signing key"
+    );
+}
+
+sub read_file {
+    my ($file) = @_;
+    my $path = File::Spec->catfile($repo_root, split m{/}, $file);
+    open(my $fh, '<', $path) or die "open $path: $!";
+    my $contents = do { local $/; <$fh> };
+    close($fh) or die "close $path: $!";
+    return $contents;
+}

@@ -6,13 +6,14 @@ xCAT software and repo files can be obtained from: `<http://xcat.org/download.ht
 Internet Repository
 -------------------
 
-**[xcat-core]**
+Install ``xCAT-release`` to configure both the ``xcat-core`` and ``xcat-dep``
+repositories and their signing key::
 
-For the xCAT version you want to install, download the ``xcat-core.repo`` file and copy it to ``/etc/yum.repos.d``
+    dnf install https://xcat.org/files/xcat/repos/yum/latest/xcat-core/xCAT-release-latest.noarch.rpm
 
-**[xcat-dep]**
-
-From the `xCAT-dep Online Repository <http://xcat.org/files/xcat/repos/yum/xcat-dep/>`_, navigate to the correct subdirectory for the target machine and download the ``xcat-dep.repo`` file and copy it to ``/etc/yum.repos.d``.
+The dependency repository is selected automatically from the operating-system
+release and architecture reported by DNF.  The installed repository files are
+marked as configuration files, so package upgrades preserve local changes.
 
 Continue to the next section to install xCAT.
 
@@ -28,4 +29,3 @@ Local Repository
 .. include:: ../common_sections.rst
    :start-after: BEGIN_configure_xcat_local_repo_xcat-dep_RPM
    :end-before: END_configure_xcat_local_repo_xcat-dep_RPM
-

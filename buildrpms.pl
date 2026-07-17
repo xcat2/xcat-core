@@ -134,6 +134,7 @@ my @PACKAGES = qw(
     xCAT-server
     xCAT-test
     xCAT-vlan
+    xCAT-release
 );
 
 my @TARGETS = (
@@ -628,6 +629,11 @@ sub createrepo_dir {
 # src.rpm enters the binary repomd, and index the SRPMS repo separately.
 sub index_repo {
     my ($repodir) = @_;
+    my $alias = "$repodir/xCAT-release-latest.noarch.rpm";
+
+    # The stable bootstrap filename is a direct-download convenience, not a
+    # second package. Keep it out of repository metadata.
+    unlink $alias if -f $alias;
     say "Creating repository $repodir";
     # Drop the top-level stray src.rpm and the mock logs (build.log/root.log/...)
     # that mock leaves in the resultdir, so the dir is directly deployable (upstream
@@ -640,7 +646,19 @@ sub index_repo {
 
 sub update_repo {
     my ($target) = @_;
-    index_repo("dist/$target/rpms");
+    my $repodir = "dist/$target/rpms";
+    index_repo($repodir);
+}
+
+sub write_release_alias {
+    my ($repodir) = @_;
+    my $alias = "$repodir/xCAT-release-latest.noarch.rpm";
+
+    my @release_rpms = glob("$repodir/xCAT-release-$VERSION-$RELEASE.noarch.rpm");
+    if (@release_rpms == 1) {
+        cp $release_rpms[0], $alias;
+        chmod 0644, $alias;
+    }
 }
 
 sub sign_rpms {
@@ -764,6 +782,7 @@ sub finalize_core {
         sign_repo_dir($dir, $opts{gpg_key_name});
     }
     write_repo_metadata_dir($dir);
+    write_release_alias($dir);
     return 0;
 }
 
@@ -814,6 +833,12 @@ sub main {
     # the freshly written repomd.xml.key).
     for my $target ($opts{targets}->@*) {
         write_repo_metadata($target);
+    }
+
+    # Signing regenerates repository metadata, so create the direct-download
+    # alias only after the final metadata pass.
+    for my $target ($opts{targets}->@*) {
+        write_release_alias("dist/$target/rpms");
     }
 
     exit(0);
