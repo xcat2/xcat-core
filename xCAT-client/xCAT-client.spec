@@ -324,8 +324,7 @@ MANPATH=\$XCATROOT/share/man:\$MANPATH
 export XCATROOT PATH MANPATH
 export PERL_BADLANG=0
 # If /usr/local/share/perl5 is not already in @INC, add it to PERL5LIB
-perl -e "print \"@INC\"" | grep -E "(^|\W)/usr/local/share/perl5($| )" > /dev/null
-if [ \$? = 1 ]; then
+if ! perl -e "print \"@INC\"" | grep -qE "(^|\W)/usr/local/share/perl5($| )"; then
     export PERL5LIB=/usr/local/share/perl5:\$PERL5LIB
 fi
 EOF
