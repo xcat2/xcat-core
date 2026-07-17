@@ -9,6 +9,16 @@ use Test::More;
 
 require probe_utils;
 
+is(
+    probe_utils::_capture_command_output($^X, '-e', 'print "captured output\\n"'),
+    "captured output\n",
+    'command output is captured without a shell'
+);
+ok(
+    !defined(probe_utils::_capture_command_output($^X, '-e', 'exit 1')),
+    'failed command does not return listener output'
+);
+
 my $ss_output = <<'EOF';
 State  Recv-Q Send-Q Local Address:Port Peer Address:Port Process
 LISTEN 0      128          0.0.0.0:3001      0.0.0.0:*
