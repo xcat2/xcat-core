@@ -23,6 +23,8 @@ my @affected_subcommands = qw(
 );
 
 my $builder = read_file('buildrpms.pl');
+my $rpm_spec = read_file('xCAT-probe/xCAT-probe.spec');
+my $debian_control = read_file('xCAT-probe/debian/control');
 like($builder, qr/sub prepare_xcat_probe_source_tar\b/, 'RPM builder has dedicated xCAT-probe source preparation');
 like(
     $builder,
@@ -43,6 +45,17 @@ my $worker_fanout = index($builder, 'Parallel::ForkManager->new');
 ok(
     $prepare_call >= 0 && $worker_fanout >= 0 && $prepare_call < $worker_fanout,
     'xCAT-probe source preparation runs before worker processes fork'
+);
+
+like(
+    $rpm_spec,
+    qr/%if 0%\{\?suse_version\}\s+Requires: iproute2\s+%else\s+Requires: iproute\s+%endif/s,
+    'RPM package requires the distro-specific provider of ss'
+);
+like(
+    $debian_control,
+    qr/^Depends:.*\biproute2\s*\|\s*net-tools\b/m,
+    'Debian package requires ss or the legacy netstat provider'
 );
 
 for my $helper (@helpers) {
