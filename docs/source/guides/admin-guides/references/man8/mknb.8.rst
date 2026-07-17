@@ -34,6 +34,8 @@ for the same architecture that the management node is.  So you normally do not n
 
 If you make custom changes to the network boot root image, you will need to run \ **mknb**\  again to regenerate the diskless image to include your changes.  If you have an xCAT Hierarchical Cluster with Service Nodes having local /tftpboot directories (site.sharedtftp=0), you will need to copy the generated root image to each Service Node.
 
+When multiple IPv4 addresses are configured for the same network, \ **mknb**\  uses a locally assigned ``site.master`` for the xcatd endpoint, or the first address reported by the operating system when ``site.master`` is not local. POWER discovery configurations also use this address for their kernel and initrd URLs.
+
 Presently, the architectures x86_64 and ppc64 are supported. For ppc64le, use the ppc64 architecture.
 
 
