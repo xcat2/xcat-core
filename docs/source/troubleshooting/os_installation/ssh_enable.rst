@@ -15,7 +15,24 @@ When ssh access to the installer is enabled, the admin can login into the instal
     ***  login using 'ssh -X root@<node>'  ***
     ***  run 'yast' to start the installation  ***
 
-   Just as the message above suggests, the admin can open 2 sessions and run ``ssh -X root@<node>`` with the configured system password in the ``passwd`` table to login into the installer, then run ``yast`` to continue installation in one session and inspect the installation process in the installer in the other session.
+   xCAT configures the SLES installer with the temporary root password ``cluster``.
+   This password is used only by the installer; it is not the installed system's
+   root password from the ``passwd`` table.
+
+   To use a different temporary installer password, add the SUSE SSH parameters
+   to the node's kernel command line and regenerate its boot configuration: ::
+
+     chdef -t node -o <node> addkcmdline="ssh=1 ssh.password=<temporary-password>"
+     nodeset <node> osimage=<osimage>
+
+   The temporary password is stored in the generated boot configuration and is
+   visible in the kernel command line. Do not reuse the installed system's root
+   password. Restore the node's previous ``addkcmdline`` value after debugging
+   and run ``nodeset`` again.
+
+   The admin can open 2 sessions and run ``ssh -X root@<node>`` with the
+   temporary installer password, then run ``yast`` to continue installation in
+   one session and inspect the installation process in the other session.
 
    After the installation is finished, the system requires a reboot. The installation will halt again before the system configuration, the console output looks like: ::
 
