@@ -1042,11 +1042,21 @@ passed as argument rather than by table value',
 "                  reservations use JSON render and reload unless Control\n" .
 "                  Agent operations are explicitly enabled and the Kea\n" .
 "                  host-commands hook is installed.\n\n" .
-" dhcpomapialgorithm:  The TSIG/OMAPI algorithm used by legacy ISC DHCP and\n" .
-"                      BIND DDNS integration. Valid values are hmac-md5,\n" .
+" dhcpomapialgorithm:  The TSIG algorithm used by BIND DDNS and, for legacy\n" .
+"                      ISC DHCP, OMAPI. Valid values are hmac-md5,\n" .
 "                      hmac-sha1, hmac-sha224, hmac-sha256, hmac-sha384,\n" .
-"                      and hmac-sha512. The default is hmac-md5 for\n" .
-"                      compatibility with existing ISC DHCP installations.\n\n" .
+"                      and hmac-sha512. New installations on Enterprise Linux\n" .
+"                      9 or later and Ubuntu 20.04 or later set hmac-sha256.\n" .
+"                      Ubuntu 18.04, SLES 12, SLES 15, and openSUSE Leap 15\n" .
+"                      leave this attribute unset because their bundled\n" .
+"                      omshell does not support the key-algorithm command.\n" .
+"                      When this attribute is not set, including on an\n" .
+"                      existing installation, xCAT uses hmac-md5 for\n" .
+"                      compatibility. HMAC-MD5 is not approved for FIPS\n" .
+"                      mode; a FIPS-mode site that needs OMAPI must provide\n" .
+"                      an omshell supporting key-algorithm and explicitly\n" .
+"                      select a SHA-2 algorithm. Kea does not use OMAPI, but\n" .
+"                      Kea DDNS uses this TSIG algorithm.\n\n" .
 " dhcpomapikeyname:  The TSIG/OMAPI key name used by legacy ISC DHCP and\n" .
 "                   BIND DDNS integration. The default is xcat_key. The\n" .
 "                   value maps to the passwd table entry where key=omapi\n" .

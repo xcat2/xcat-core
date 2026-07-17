@@ -21,7 +21,27 @@ else {
     require xCAT_plugin::ddns;
 }
 
-my $defaults = xCAT::DHCP::OmapiPolicy->settings( site_values => {} );
+sub omapi_settings {
+    my (%overrides) = @_;
+    return xCAT::DHCP::OmapiPolicy->settings(
+        site_values => {
+            dhcpomapialgorithm => undef,
+            dhcpomapikeyname   => undef,
+            dhcpomshellpath    => undef,
+            %overrides,
+        }
+    );
+}
+
+# Model a populated xCAT site and require each fixture to override it fully.
+our %XCATSITEVALS;
+local %XCATSITEVALS = (
+    dhcpomapialgorithm => 'hmac-sha256',
+    dhcpomapikeyname   => 'site-key',
+    dhcpomshellpath    => '/opt/site/bin/omshell',
+);
+
+my $defaults = omapi_settings();
 is(
     xCAT_plugin::ddns::ddns_key_contents(
         {
@@ -33,11 +53,9 @@ is(
     'default DDNS key remains xcat_key with hmac-md5'
 );
 
-my $sha512 = xCAT::DHCP::OmapiPolicy->settings(
-    site_values => {
-        dhcpomapialgorithm => 'hmac-sha512',
-        dhcpomapikeyname   => 'provider.key',
-    }
+my $sha512 = omapi_settings(
+    dhcpomapialgorithm => 'hmac-sha512',
+    dhcpomapikeyname   => 'provider.key',
 );
 
 is(
