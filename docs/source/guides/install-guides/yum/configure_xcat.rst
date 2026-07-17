@@ -6,10 +6,10 @@ xCAT software and repo files can be obtained from: `<http://xcat.org/download.ht
 Internet Repository
 -------------------
 
-Install ``xcat-release`` to configure both the ``xcat-core`` and ``xcat-dep``
+Install ``xCAT-release`` to configure both the ``xcat-core`` and ``xcat-dep``
 repositories and their signing key::
 
-    dnf install https://xcat.org/files/xcat/repos/yum/latest/xcat-core/xcat-release-latest.noarch.rpm
+    dnf install https://xcat.org/files/xcat/repos/yum/latest/xcat-core/xCAT-release-latest.noarch.rpm
 
 The dependency repository is selected automatically from the operating-system
 release and architecture reported by DNF.  The installed repository files are

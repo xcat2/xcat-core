@@ -134,7 +134,7 @@ my @PACKAGES = qw(
     xCAT-server
     xCAT-test
     xCAT-vlan
-    xcat-release
+    xCAT-release
 );
 
 my @TARGETS = (
@@ -629,7 +629,7 @@ sub createrepo_dir {
 # src.rpm enters the binary repomd, and index the SRPMS repo separately.
 sub index_repo {
     my ($repodir) = @_;
-    my $alias = "$repodir/xcat-release-latest.noarch.rpm";
+    my $alias = "$repodir/xCAT-release-latest.noarch.rpm";
 
     # The stable bootstrap filename is a direct-download convenience, not a
     # second package. Keep it out of repository metadata.
@@ -652,9 +652,9 @@ sub update_repo {
 
 sub write_release_alias {
     my ($repodir) = @_;
-    my $alias = "$repodir/xcat-release-latest.noarch.rpm";
+    my $alias = "$repodir/xCAT-release-latest.noarch.rpm";
 
-    my @release_rpms = glob("$repodir/xcat-release-$VERSION-$RELEASE.noarch.rpm");
+    my @release_rpms = glob("$repodir/xCAT-release-$VERSION-$RELEASE.noarch.rpm");
     if (@release_rpms == 1) {
         cp $release_rpms[0], $alias;
         chmod 0644, $alias;

@@ -9,15 +9,16 @@ use Test::More;
 
 my $repo_root = File::Spec->rel2abs(File::Spec->catdir($FindBin::Bin, '..', '..'));
 
-my $spec = read_file('xcat-release/xcat-release.spec');
-like($spec, qr/^Name:\s+xcat-release$/m, 'package has the expected name');
+my $spec = read_file('xCAT-release/xCAT-release.spec');
+like($spec, qr/^Name:\s+xCAT-release$/m, 'package has the expected name');
+like($spec, qr/^Source0:\s+xCAT-release-%\{version\}\.tar\.gz$/m, 'source archive follows the package name');
 like($spec, qr/^BuildArch:\s+noarch$/m, 'package is architecture independent');
 like($spec, qr/^Requires:\s+dnf$/m, 'package is limited to DNF-based systems');
 like($spec, qr/^%config\(noreplace\) .*xcat-core\.repo$/m, 'core repo preserves local changes');
 like($spec, qr/^%config\(noreplace\) .*xcat-dep\.repo$/m, 'dependency repo preserves local changes');
 like($spec, qr{RPM-GPG-KEY-xCAT}, 'package installs the signing key');
 
-my $core = read_file('xcat-release/xcat-core.repo');
+my $core = read_file('xCAT-release/xcat-core.repo');
 assert_repo_security($core, 'core');
 like(
     $core,
@@ -25,7 +26,7 @@ like(
     'core repo uses the stable HTTPS endpoint'
 );
 
-my $dep = read_file('xcat-release/xcat-dep.repo');
+my $dep = read_file('xCAT-release/xcat-dep.repo');
 assert_repo_security($dep, 'dependency');
 like(
     $dep,
@@ -33,7 +34,7 @@ like(
     'dependency repo follows the DNF release and architecture variables'
 );
 
-my $key = read_file('xcat-release/RPM-GPG-KEY-xCAT');
+my $key = read_file('xCAT-release/RPM-GPG-KEY-xCAT');
 like($key, qr/^-----BEGIN PGP PUBLIC KEY BLOCK-----$/m, 'signing key is ASCII armored');
 is(
     sha256_hex($key),
@@ -42,7 +43,17 @@ is(
 );
 
 my $builder = read_file('buildrpms.pl');
-like($builder, qr/^\s+xcat-release\s*$/m, 'default RPM build includes xcat-release');
+like($builder, qr/^\s+xCAT-release\s*$/m, 'default RPM build includes xCAT-release');
+like(
+    $builder,
+    qr{\$repodir/xCAT-release-latest\.noarch\.rpm},
+    'stable bootstrap alias follows the package name'
+);
+like(
+    $builder,
+    qr{\$repodir/xCAT-release-\$VERSION-\$RELEASE\.noarch\.rpm},
+    'stable bootstrap alias selects the xCAT-release RPM'
+);
 like(
     $builder,
     qr/unlink \$alias.*?createrepo_dir\(\$repodir/s,

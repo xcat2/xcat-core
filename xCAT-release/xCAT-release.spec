@@ -1,10 +1,10 @@
 Summary: xCAT DNF repository configuration
-Name: xcat-release
+Name: xCAT-release
 Version: %{?version:%{version}}%{!?version:%(cat Version)}
 Release: %{?release:%{release}}%{!?release:%(cat Release)}
 License: EPL
 URL: https://xcat.org/
-Source0: xcat-release-%{version}.tar.gz
+Source0: xCAT-release-%{version}.tar.gz
 BuildArch: noarch
 Requires: dnf
 
@@ -13,7 +13,7 @@ Installs the xCAT core and dependency DNF repository definitions and the public
 signing key used to verify their packages and repository metadata.
 
 %prep
-%setup -q -n xcat-release
+%setup -q -n xCAT-release
 
 %build
 
