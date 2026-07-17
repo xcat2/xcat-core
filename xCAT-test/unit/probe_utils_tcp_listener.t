@@ -14,9 +14,13 @@ is(
     "captured output\n",
     'command output is captured without a shell'
 );
-ok(
-    !defined(probe_utils::_capture_command_output($^X, '-e', 'exit 1')),
-    'failed command does not return listener output'
+my ($failed_output, $capture_error) =
+  probe_utils::_capture_command_output($^X, '-e', 'exit 7');
+ok(!defined($failed_output), 'failed command does not return listener output');
+like(
+    $capture_error,
+    qr/^'\Q$^X\E' exited with status 7$/,
+    'failed command reports its exit status'
 );
 
 my $ss_output = <<'EOF';
@@ -80,7 +84,11 @@ ok(!probe_utils::_tcp_listener_output_has_port($netstat_output, 'http'), 'non-nu
         return $_[0] eq 'ss' ? $ss_output : $netstat_output;
     };
 
-    ok(!probe_utils::is_tcp_port_listening(4000), 'successful ss output is authoritative when a port is absent');
+    is(
+        probe_utils::is_tcp_port_listening(4000),
+        0,
+        'successful ss output reports that an absent port is not listening'
+    );
     is(scalar(@commands), 1, 'missing port in successful ss output does not consult netstat');
 }
 
@@ -118,7 +126,42 @@ ok(!probe_utils::_tcp_listener_output_has_port($netstat_output, 'http'), 'non-nu
 {
     no warnings 'redefine';
     local *probe_utils::_command_available = sub { return 0; };
-    ok(!probe_utils::is_tcp_port_listening(3001), 'missing socket inspection commands fail cleanly');
+    my $error;
+    my $listening = probe_utils::is_tcp_port_listening(3001, undef, \$error);
+    ok(!defined($listening), 'missing socket inspection commands report inspection failure');
+    like(
+        $error,
+        qr/neither 'ss' nor 'netstat' is available/,
+        'missing socket inspection commands provide a diagnostic'
+    );
+}
+
+{
+    no warnings 'redefine';
+    local *probe_utils::_command_available = sub { return 1; };
+    local *probe_utils::_capture_command_output = sub {
+        return (undef, "'$_[0]' exited with status 1");
+    };
+    my $error;
+    my $listening = probe_utils::is_tcp_port_listening(3001, undef, \$error);
+    ok(!defined($listening), 'failed socket inspection commands report inspection failure');
+    like($error, qr/'ss' exited with status 1/, 'ss failure is included in the diagnostic');
+    like($error, qr/'netstat' exited with status 1/, 'netstat failure is included in the diagnostic');
+}
+
+{
+    no warnings 'redefine';
+    local *probe_utils::_command_available = sub { return 0; };
+    my $error;
+    ok(
+        !probe_utils::is_http_ready('127.0.0.1', 80, 'install', \$error),
+        'HTTP readiness fails when listeners cannot be inspected'
+    );
+    like(
+        $error,
+        qr/neither 'ss' nor 'netstat' is available/,
+        'HTTP readiness preserves the listener inspection diagnostic'
+    );
 }
 
 done_testing();
