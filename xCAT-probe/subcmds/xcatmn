@@ -361,8 +361,7 @@ sub check_xcatd_receive_request {
         my $port = `lsdef -t site -i $port_attr -c 2>&1| awk -F'=' '{print \$2}'`;
         chomp($port);
         if ($port) {
-            my $cmdoutput = `netstat -ant 2>&1|grep LISTEN|grep $port`;
-            if ($?) {
+            if (!probe_utils->is_tcp_port_listening($port)) {
                 push @$error_ref, "Attribute '$port_attr' in 'site' table is set to $port, but xcatd isn't listening on $port";
                 $rst = 1;
             }

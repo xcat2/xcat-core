@@ -183,6 +183,23 @@ sub _command_available {
     return 0;
 }
 
+sub _capture_command_output {
+    my @command = @_;
+    my $pid = open(my $fh, '-|');
+    return unless defined $pid;
+    if ($pid == 0) {
+        open(STDERR, '>', '/dev/null');
+        exec @command;
+        exit 1;
+    }
+
+    local $/;
+    my $output = <$fh>;
+    close $fh;
+    return if $?;
+    return defined($output) ? $output : '';
+}
+
 sub _networkd_config_dirs {
     return ('/run/systemd/network', '/etc/systemd/network');
 }
@@ -442,6 +459,65 @@ sub is_firewall_open {
 
 #------------------------------------------
 
+sub _tcp_listener_output {
+    my $include_process = shift;
+    my @commands = $include_process
+      ? (['ss', '-lntp'], ['netstat', '-tnlp'])
+      : (['ss', '-lnt'], ['netstat', '-ant']);
+
+    foreach my $command (@commands) {
+        next unless _command_available($command->[0]);
+        my $output = _capture_command_output(@$command);
+        return $output if defined $output;
+    }
+
+    return;
+}
+
+sub _tcp_listener_output_has_port {
+    my ($output, $port, $process_pattern) = @_;
+
+    return 0 unless defined($output) && defined($port);
+    return 0 unless $port =~ /^\d+$/ && $port > 0 && $port <= 65535;
+
+    foreach my $line (split /\n/, $output) {
+        $line =~ s/^\s+|\s+$//g;
+        my @fields = split /\s+/, $line;
+        next unless @fields >= 4;
+        next unless grep { $_ eq 'LISTEN' } @fields;
+        next unless $fields[3] =~ /:(\d+)$/ && $1 == $port;
+        next if defined($process_pattern) && $line !~ $process_pattern;
+        return 1;
+    }
+
+    return 0;
+}
+
+=head3
+    Description:
+        Test if a TCP port has a listening socket. Prefer ss on modern Linux
+        systems and fall back to netstat for older installations.
+    Arguments:
+        port: TCP port number
+        process_pattern: optional regular expression that must match the
+                         listener line
+    Returns:
+        1 : listening
+        0 : not listening or no supported inspection command is available
+=cut
+
+sub is_tcp_port_listening {
+    my $port = shift;
+    $port = shift if defined($port) && $port =~ /probe_utils/;
+    my $process_pattern = shift;
+
+    my $output = _tcp_listener_output(defined($process_pattern));
+    return 0 unless defined $output;
+    return _tcp_listener_output_has_port($output, $port, $process_pattern);
+}
+
+#------------------------------------------
+
 =head3
     Description:
         Test if http service is ready to use in current operating system
@@ -461,11 +537,7 @@ sub is_http_ready {
     my $installdir = shift;
     my $errormsg_ref = shift;
 
-    my $http_status = `netstat -tnlp | grep -e "httpd" -e "apache" 2>&1`;
-    if (!$http_status) {
-        $$errormsg_ref = "No HTTP listening status get by command 'netstat'";
-        return 0;
-    } elsif ($http_status !~ /\S*\s+\S*\s+\S*\s+\S*:$httpport\s+.+/) {
+    if (!is_tcp_port_listening($httpport, qr/(?:httpd|apache)/)) {
         $$errormsg_ref = "The port defined in 'site' table HTTP is not listening";
         return 0;
     }
