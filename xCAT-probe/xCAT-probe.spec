@@ -27,6 +27,12 @@ Requires: /usr/bin/tftp
 Requires: /usr/bin/wget
 # Tool detect_dhcpd requires tcpdump
 Requires: /usr/sbin/tcpdump
+# TCP listener checks use ss, which is packaged differently on SUSE.
+%if 0%{?suse_version}
+Requires: iproute2
+%else
+Requires: iproute
+%endif
 %endif
 
 %description
