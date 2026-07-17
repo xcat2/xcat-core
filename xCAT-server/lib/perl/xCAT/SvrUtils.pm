@@ -2415,13 +2415,12 @@ sub getplatform {
     return $platform;
 }
 
-# Build the dracut root=nfs parameter while preserving statelite's read-only
-# root filesystem contract.
-sub build_statelite_nfsroot_parameter {
-    shift if @_ && defined($_[0]) && $_[0] eq __PACKAGE__;
-    my ($server, $rootdir, $additional_options) = @_;
+# Parse statelite NFS root options once so command-time validation and the
+# dracut root=nfs renderer enforce the same rules.
+sub _parse_statelite_nfsroot_options {
+    my ($additional_options) = @_;
 
-    my @mount_options = ('ro');
+    my @mount_options;
     if (defined($additional_options) && $additional_options ne '') {
         foreach my $option (split(/,/, $additional_options, -1)) {
             if ($option eq '' || $option =~ /\s/) {
@@ -2438,6 +2437,29 @@ sub build_statelite_nfsroot_parameter {
         }
     }
 
+    return (\@mount_options, undef);
+}
+
+# Return an error message when statelite NFS root options violate the
+# read-only root filesystem contract.
+sub validate_statelite_nfsroot_options {
+    shift if @_ && defined($_[0]) && $_[0] eq __PACKAGE__;
+    my ($additional_options) = @_;
+
+    my ($mount_options, $error) = _parse_statelite_nfsroot_options($additional_options);
+    return $error;
+}
+
+# Build the dracut root=nfs parameter while preserving statelite's read-only
+# root filesystem contract.
+sub build_statelite_nfsroot_parameter {
+    shift if @_ && defined($_[0]) && $_[0] eq __PACKAGE__;
+    my ($server, $rootdir, $additional_options) = @_;
+
+    my ($additional_mount_options, $error) = _parse_statelite_nfsroot_options($additional_options);
+    return (undef, $error) if $error;
+
+    my @mount_options = ('ro', @{$additional_mount_options});
     return ('root=nfs:' . $server . ':' . $rootdir . ':' . join(',', @mount_options), undef);
 }
 

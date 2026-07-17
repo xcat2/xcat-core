@@ -38,7 +38,16 @@ foreach my $invalid ('rw', 'RW', 'noac,rw', 'defaults', 'noac, actimeo=0', 'noac
     ($parameter, $error) = build_nfsroot($invalid);
     is($parameter, undef, "invalid option list '$invalid' is rejected");
     like($error, qr/^nfsrootopts /, "invalid option list '$invalid' reports the attribute name");
+    like(
+        xCAT::SvrUtils->validate_statelite_nfsroot_options($invalid),
+        qr/^nfsrootopts /,
+        "command-time validation rejects '$invalid'"
+    );
 }
+
+is(xCAT::SvrUtils->validate_statelite_nfsroot_options(undef), undef, 'command-time validation accepts an unset value');
+is(xCAT::SvrUtils->validate_statelite_nfsroot_options(''), undef, 'command-time validation accepts an empty value');
+is(xCAT::SvrUtils->validate_statelite_nfsroot_options('noac,actimeo=0'), undef, 'command-time validation accepts valid options');
 
 ok(
     scalar(grep { $_ eq 'nfsrootopts' } @{ $xCAT::Schema::tabspec{osimage}->{cols} }),
