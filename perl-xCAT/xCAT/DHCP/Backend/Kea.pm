@@ -899,7 +899,10 @@ sub _use_modern_additional_class_syntax {
     return 0 if $self->{additional_class_syntax} && $self->{additional_class_syntax} eq 'legacy';
 
     my $version = $self->kea_version();
-    return _version_at_least( $version, '2.7.4' );
+    return 0 unless defined($version) && $version =~ /\A\d+(?:\.\d+)*(?:-[A-Za-z0-9]+)?\z/;
+
+    require xCAT::Utils;
+    return xCAT::Utils->version_cmp( $version, '2.7.4' ) >= 0 ? 1 : 0;
 }
 
 sub kea_version {
@@ -932,25 +935,6 @@ sub _first_defined {
     }
 
     return;
-}
-
-sub _version_at_least {
-    my ( $version, $minimum ) = @_;
-
-    return 0 unless defined($version) && $version =~ /^\d+(?:\.\d+)*/;
-
-    my @version_parts = split /\./, $version;
-    my @minimum_parts = split /\./, $minimum;
-    my $max = @version_parts > @minimum_parts ? @version_parts : @minimum_parts;
-
-    for my $idx ( 0 .. $max - 1 ) {
-        my $left  = $version_parts[$idx]  || 0;
-        my $right = $minimum_parts[$idx] || 0;
-        return 1 if $left > $right;
-        return 0 if $left < $right;
-    }
-
-    return 1;
 }
 
 sub _integer {
