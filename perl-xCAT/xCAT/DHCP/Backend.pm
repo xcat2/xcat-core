@@ -58,7 +58,7 @@ sub default_backend {
     }
 
     my $os_name = exists $args{os_name} ? $args{os_name} : $class->_osver('os');
-    my $version = exists $args{version} ? $args{version} : $class->_osver('version');
+    my $version = exists $args{version} ? $args{version} : ( split /,/, $class->_osver('all'), 2 )[1];
     if ( defined($os_name) && $os_name =~ /^ubuntu$/i && defined($version) && $version =~ /^\d+\.\d+(?:\.\d+)*$/ ) {
         require xCAT::Utils;
         return 'kea' if xCAT::Utils->version_cmp( $version, '22.04' ) >= 0;
