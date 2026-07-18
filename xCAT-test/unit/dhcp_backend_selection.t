@@ -155,7 +155,13 @@ is(
 );
 
 is(
-    xCAT::DHCP::Backend->choose( requested => 'auto', os => 'rhel9', platform => 'el9' )->{name},
+    xCAT::DHCP::Backend->choose(
+        requested => 'auto',
+        os        => 'rhel9',
+        platform  => 'el9',
+        os_name   => 'rhel',
+        version   => 9,
+    )->{name},
     'isc',
     'auto selects ISC on EL9'
 );
