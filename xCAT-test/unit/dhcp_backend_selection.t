@@ -8,6 +8,18 @@ use Test::More;
 
 use xCAT::DHCP::Backend;
 
+sub with_detected_osver {
+    my ( $values, $code ) = @_;
+
+    no warnings 'redefine';
+    local *xCAT::DHCP::Backend::_osver = sub {
+        my ( $class, $type ) = @_;
+        return $values->{ defined($type) ? $type : '' };
+    };
+
+    return $code->();
+}
+
 is( xCAT::DHCP::Backend->normalize(undef), 'auto', 'undefined backend defaults to auto' );
 is( xCAT::DHCP::Backend->normalize(' ISC '), 'isc', 'backend values are trimmed and lowercased' );
 is( xCAT::DHCP::Backend->normalize('kea'), 'kea', 'kea is valid' );
@@ -88,7 +100,7 @@ is(
 is(
     xCAT::DHCP::Backend->default_backend( platform => '', os => 'ubuntu24.04', os_name => 'ubuntu', version => '24' ),
     'isc',
-    'Ubuntu major-only version is not treated as a date-based release'
+    'injected Ubuntu major-only version remains conservative'
 );
 
 is(
@@ -143,6 +155,70 @@ is(
 );
 
 is(
+    with_detected_osver(
+        {
+            ''       => 'ubuntu20',
+            platform => '',
+            os       => 'ubuntu',
+            version  => '20',
+            release  => '04',
+            all      => 'ubuntu,20.04',
+        },
+        sub { xCAT::DHCP::Backend->default_backend() }
+    ),
+    'isc',
+    'detected Ubuntu 20.04 defaults to ISC using the osver contract'
+);
+
+is(
+    with_detected_osver(
+        {
+            ''       => 'ubuntu22',
+            platform => '',
+            os       => 'ubuntu',
+            version  => '22',
+            release  => '04',
+            all      => 'ubuntu,22.04',
+        },
+        sub { xCAT::DHCP::Backend->default_backend() }
+    ),
+    'kea',
+    'detected Ubuntu 22.04 defaults to Kea using the osver contract'
+);
+
+is(
+    with_detected_osver(
+        {
+            ''       => 'ubuntu24',
+            platform => '',
+            os       => 'ubuntu',
+            version  => '24',
+            release  => '04.4',
+            all      => 'ubuntu,24.04.4',
+        },
+        sub { xCAT::DHCP::Backend->choose( requested => 'auto' )->{name} }
+    ),
+    'kea',
+    'auto selects Kea for detected Ubuntu 24.04 point releases'
+);
+
+is(
+    with_detected_osver(
+        {
+            ''       => 'ubuntu24',
+            platform => '',
+            os       => 'ubuntu',
+            version  => '24',
+            release  => '',
+            all      => 'ubuntu,24',
+        },
+        sub { xCAT::DHCP::Backend->default_backend() }
+    ),
+    'isc',
+    'detected Ubuntu release without a minor version remains conservative'
+);
+
+is(
     xCAT::DHCP::Backend->choose( requested => 'isc', os => 'rhel10', platform => 'el10' )->{name},
     'isc',
     'explicit ISC override wins on EL10'
@@ -183,6 +259,27 @@ is(
     'kea',
     'auto selects Kea on Ubuntu 22.04'
 );
+
+SKIP: {
+    skip 'xCAT::Utils is not available for native OS detection', 1 unless eval { require xCAT::Utils; 1 };
+
+    my $os_name = xCAT::Utils->osver('os');
+    my $version = xCAT::Utils->osver('version');
+    my $release = xCAT::Utils->osver('release');
+    my $detected_osver = defined($version) ? $version : '';
+    $detected_osver .= ".$release" if defined($release) && $release ne '';
+    my $supported_ubuntu = defined($os_name) && $os_name eq 'ubuntu'
+      && $detected_osver =~ /^\d+\.\d+(?:\.\d+)*$/
+      && xCAT::Utils->version_cmp( $detected_osver, '22.04' ) >= 0;
+
+    skip 'native OS is not Ubuntu 22.04 or newer', 1 unless $supported_ubuntu;
+
+    is(
+        xCAT::DHCP::Backend->choose( requested => 'auto' )->{name},
+        'kea',
+        'native Ubuntu 22.04 or newer defaults to Kea'
+    );
+}
 
 like(
     xCAT::DHCP::Backend->choose( requested => 'invalid' )->{error},
