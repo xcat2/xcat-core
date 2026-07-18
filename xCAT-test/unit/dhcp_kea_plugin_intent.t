@@ -304,4 +304,174 @@ ok(!xCAT_plugin::dhcp::dhcpd_sysconfig_uses_interface_key('opensuse-tumbleweed')
     is( $r->{'next-server'}, '192.168.201.20',    'service node reservation next-server resolves to the serving management IP' );
 }
 
+my @normalized_mac_cases = (
+    [ 'Aa:Bb:Cc:Dd:Ee:Ff',          'aa:bb:cc:dd:ee:ff',          'six-octet colon MAC is lowercased' ],
+    [ '01-23-45-67-89-AB-CD',       '01:23:45:67:89:ab:cd',       'seven-octet hyphen MAC is canonicalized' ],
+    [ '01:23:45:67:89:AB:CD:EF',    '01:23:45:67:89:ab:cd:ef',    'eight-octet colon MAC is lowercased' ],
+    [ '01-23-45-67-89-AB-CD-EF-01', '01:23:45:67:89:ab:cd:ef:01', 'nine-octet hyphen MAC is canonicalized' ],
+);
+
+foreach my $case (@normalized_mac_cases) {
+    my ( $input, $expected, $description ) = @$case;
+    is( xCAT_plugin::dhcp::kea_normalize_mac($input), $expected, $description );
+}
+
+my @invalid_mac_cases = (
+    [ undef,                              'undefined MAC is rejected' ],
+    [ '',                                 'empty MAC is rejected' ],
+    [ '00:11:22:33:44',                   'five-octet MAC is rejected' ],
+    [ '00:11:22:33:44:55:66:77:88:99',    'ten-octet MAC is rejected' ],
+    [ '00:11-22:33:44:55',                'mixed MAC separators are rejected' ],
+    [ 'gg:11:22:33:44:55',                'non-hexadecimal MAC is rejected' ],
+    [ '001122334455',                      'compact MAC is rejected' ],
+    [ "00:11:22:33:44:55\n",              'MAC with a trailing newline is rejected' ],
+    [ ' 00:11:22:33:44:55',               'MAC with leading whitespace is rejected' ],
+);
+
+foreach my $case (@invalid_mac_cases) {
+    my ( $input, $description ) = @$case;
+    ok( !defined( xCAT_plugin::dhcp::kea_normalize_mac($input) ), $description );
+}
+
+{
+    my %mac_tables = (
+        noderes => DHCPKeaResTable->new(
+            {
+                macnode  => {},
+                duidnode => {},
+            }
+        ),
+        chain    => DHCPKeaResTable->new( {} ),
+        nodetype => DHCPKeaResTable->new( {} ),
+        iscsi    => DHCPKeaResTable->new( {} ),
+        mac      => DHCPKeaResTable->new(
+            {
+                macnode => {
+                    mac => 'Aa-Bb-Cc-Dd-Ee-Ff!node6|01-23-45-67-89-AB-CD-EF-01!node9|not-a-mac!badmac',
+                },
+                duidnode => {
+                    mac => 'not-a-mac!duid-alias',
+                },
+            }
+        ),
+        vpd => DHCPKeaResTable->new(
+            {
+                duidnode => {
+                    uuid => '00112233-4455-6677-8899-aabbccddeeff',
+                },
+            }
+        ),
+    );
+
+    no warnings 'redefine';
+    local *xCAT::Table::new = sub {
+        my ( $class, $name ) = @_;
+        return $mac_tables{$name};
+    };
+    local *xCAT_plugin::dhcp::getipaddr = sub {
+        my ( $host, %opt ) = @_;
+        return '2001:db8::25' if $opt{OnlyV6};
+        return '192.0.2.25';
+    };
+    local *xCAT_plugin::dhcp::ipIsDynamic = sub { return 0; };
+    local *xCAT_plugin::dhcp::kea_next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
+    local *xCAT_plugin::dhcp::kea_boot_for_node = sub { return {}; };
+
+    my $backend = bless {}, 'DHCPKeaMacBackend';
+    {
+        package DHCPKeaMacBackend;
+        sub subnet_id_for_ip { return 1; }
+    }
+
+    my @errors;
+    my $capture_error = sub {
+        my $resp = shift;
+        push @errors, @{ $resp->{error} } if $resp->{error};
+    };
+    local *xCAT::MsgUtils::message = sub { return; };
+    local *xCAT::MsgUtils::trace = sub { return; };
+    my $saved_umask = umask;
+    my $saved_ignorecase = $Getopt::Long::ignorecase;
+    {
+        local @ARGV;
+
+        # A conflicting option pair initializes the plugin's lexical callback
+        # and returns before any DHCP backend or service work begins.
+        xCAT_plugin::dhcp::process_request(
+            {
+                _xcatpreprocessed => [0],
+                arg               => [ '-q', '-a' ],
+            },
+            $capture_error
+        );
+    }
+    umask $saved_umask;
+    $Getopt::Long::ignorecase = $saved_ignorecase;
+    Getopt::Long::Configure('pass_through');
+
+    my $reservations4 = xCAT_plugin::dhcp::kea_build_node_reservations( $backend, {}, [ 'macnode', 'duidnode' ] );
+    is_deeply(
+        [ map { $_->{'hw-address'} } @$reservations4 ],
+        [ 'aa:bb:cc:dd:ee:ff', '01:23:45:67:89:ab:cd:ef:01' ],
+        'IPv4 reservations use canonical MAC addresses and omit malformed entries'
+    );
+    is_deeply(
+        \@errors,
+        [ 'Invalid mac address not-a-mac for macnode', 'Invalid mac address not-a-mac for duidnode' ],
+        'IPv4 reservations preserve invalid-MAC errors'
+    );
+
+    @errors = ();
+    my $reservations6 = xCAT_plugin::dhcp::kea_build_node_reservations6( $backend, {}, [ 'macnode', 'duidnode' ] );
+    is_deeply(
+        [ map { $_->{'hw-address'} } @$reservations6 ],
+        [ 'aa:bb:cc:dd:ee:ff', '01:23:45:67:89:ab:cd:ef:01' ],
+        'IPv6 reservations use canonical MAC addresses and omit malformed entries'
+    );
+    is_deeply(
+        \@errors,
+        [ 'Invalid mac address not-a-mac for macnode', 'Invalid mac address not-a-mac for duidnode' ],
+        'IPv6 reservations report malformed MACs even when a DUID is available'
+    );
+    ok( !grep( { $_->{duid} } @$reservations6 ), 'malformed MAC does not create a DUID-based IPv6 reservation' );
+
+    my $matches = xCAT_plugin::dhcp::kea_reservation_matches_for_nodes( [ 'macnode', 'duidnode' ] );
+    is_deeply(
+        [ map { $_->{'hw-address'} } grep { $_->{'hw-address'} } @$matches ],
+        [ 'aa:bb:cc:dd:ee:ff', '01:23:45:67:89:ab:cd:ef:01' ],
+        'query and delete matches use canonical MAC addresses and omit malformed entries'
+    );
+    ok(
+        grep( { ( $_->{hostname} || '' ) eq 'badmac' } @$matches ),
+        'query and delete retain alias matches when the associated MAC is malformed'
+    );
+    ok(
+        grep( { ( $_->{duid} || '' ) eq '00:04:00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff' } @$matches ),
+        'query and delete retain DUID matches when the associated MAC is malformed'
+    );
+}
+
+{
+    my %xnba_tables = (
+        noderes => DHCPKeaResTable->new( { xnba01 => { netboot => 'xnba' } } ),
+        mac     => DHCPKeaResTable->new( { xnba01 => { mac => 'AA-BB-CC-DD-EE-FF' } } ),
+    );
+
+    no warnings 'redefine';
+    local *xCAT::Table::new = sub {
+        my ( $class, $name ) = @_;
+        return $xnba_tables{$name};
+    };
+    local *xCAT_plugin::dhcp::kea_next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
+
+    my $classes = xCAT_plugin::dhcp::kea_xnba_client_classes_for_nodes(['xnba01']);
+    my ($bios_class) = grep { $_->{name} =~ /-bios\z/ } @$classes;
+    ok( $bios_class, 'hyphenated xNBA MAC produces a BIOS client class' );
+    is(
+        $bios_class ? $bios_class->{'user-context'}{'xcat-mac'} : undef,
+        'aa:bb:cc:dd:ee:ff',
+        'xNBA client-class context stores the canonical MAC address'
+    );
+}
+
 done_testing();
