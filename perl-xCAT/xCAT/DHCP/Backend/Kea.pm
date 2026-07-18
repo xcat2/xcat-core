@@ -7,6 +7,7 @@ use JSON;
 use File::Basename;
 use File::Path qw/make_path/;
 use Math::BigInt;
+use Text::ParseWords qw/shellwords/;
 use xCAT::DHCP::Range;
 use xCAT::NetworkUtils;
 
@@ -48,6 +49,12 @@ sub ctrl_agent_config_file {
 sub ddns_config_file {
     my ($self) = @_;
     return $self->{ddns_config_file} || '/etc/kea/kea-dhcp-ddns.conf';
+}
+
+sub control_socket_path {
+    my ( $self, $socket_name ) = @_;
+
+    return $self->_kea_socket_dir() . "/$socket_name";
 }
 
 sub render_dhcp4_config {
@@ -154,19 +161,19 @@ sub render_ctrl_agent_config {
     my %sockets = (
         dhcp4 => {
             'socket-type' => 'unix',
-            'socket-name' => $intent->{'dhcp4-socket'} || $self->_kea_control_socket('kea4-ctrl-socket'),
+            'socket-name' => $intent->{'dhcp4-socket'} || $self->control_socket_path('kea4-ctrl-socket'),
         },
     );
     if ( $intent->{dhcp6} || $intent->{'dhcp6-socket'} ) {
         $sockets{dhcp6} = {
             'socket-type' => 'unix',
-            'socket-name' => $intent->{'dhcp6-socket'} || $self->_kea_control_socket('kea6-ctrl-socket'),
+            'socket-name' => $intent->{'dhcp6-socket'} || $self->control_socket_path('kea6-ctrl-socket'),
         };
     }
     if ( $intent->{ddns} || $intent->{'ddns-socket'} ) {
         $sockets{d2} = {
             'socket-type' => 'unix',
-            'socket-name' => $intent->{'ddns-socket'} || $self->_kea_control_socket('kea-ddns-ctrl-socket'),
+            'socket-name' => $intent->{'ddns-socket'} || $self->control_socket_path('kea-ddns-ctrl-socket'),
         };
     }
 
@@ -911,21 +918,41 @@ sub kea_version {
     return $self->{kea_version} if defined $self->{kea_version};
     return $self->{_detected_kea_version} if defined $self->{_detected_kea_version};
 
-    my $command = $self->{kea_dhcp4_command} || _command_path('kea-dhcp4');
-    return unless $command;
-
-    my $output = '';
-    if ( open( my $version_fh, '-|', $command, '-V' ) ) {
-        local $/;
-        $output = <$version_fh> || '';
-        close($version_fh);
-    }
+    my $output = $self->_kea_command_output('-V') || '';
 
     if ( $output =~ /(\d+(?:\.\d+){1,2})/ ) {
         $self->{_detected_kea_version} = $1;
     }
 
     return $self->{_detected_kea_version};
+}
+
+sub _kea_build_report {
+    my ($self) = @_;
+
+    return $self->{kea_build_report} if defined $self->{kea_build_report};
+    return $self->{_detected_kea_build_report} if defined $self->{_detected_kea_build_report};
+
+    my $output = $self->_kea_command_output('-W') || '';
+
+    $self->{_detected_kea_build_report} = $output;
+    return $output;
+}
+
+sub _kea_command_output {
+    my ( $self, @args ) = @_;
+
+    my $command = $self->{kea_dhcp4_command} || _command_path('kea-dhcp4');
+    return unless $command;
+
+    my $output = '';
+    if ( open( my $command_fh, '-|', $command, @args ) ) {
+        local $/;
+        $output = <$command_fh> || '';
+        close($command_fh);
+    }
+
+    return $output;
 }
 
 sub _first_defined {
@@ -1028,21 +1055,101 @@ sub _kea_socket_dir {
 
     return $self->{kea_socket_dir} if defined $self->{kea_socket_dir};
 
+    if ( defined $self->{kea_socket_dirs} ) {
+        foreach my $dir ( @{ $self->{kea_socket_dirs} || [] } ) {
+            return $dir if -d $dir;
+        }
+        return '/var/run/kea';
+    }
+
+    my $build_report = $self->_kea_build_report();
+    if ($build_report) {
+        my $prefix = _kea_build_option( $build_report, 'prefix' );
+        if ( !defined($prefix) && $build_report =~ /^\s*Prefix:\s*(\/\S+)/m ) {
+            $prefix = $1;
+        }
+        $prefix = _expand_kea_build_path( $prefix, {} );
+
+        # Kea's Meson build unconditionally overrides the installed runtime
+        # directory for the /usr/local prefix, even when state directories
+        # are supplied as build options.
+        if ( defined($prefix) && $prefix eq '/usr/local' && $build_report =~ /^\s*Meson Version:/m ) {
+            return '/usr/local/var/run/kea';
+        }
+
+        my $local_state = _kea_build_option( $build_report, 'localstatedir' );
+        $local_state = _expand_kea_build_path( $local_state, { prefix => $prefix }, $prefix );
+        if ( !defined($local_state) && defined($prefix) ) {
+            if ( $build_report =~ /^\s*Meson Version:/m ) {
+                $local_state = '/var' if $prefix eq '/usr';
+            }
+            # Kea reverts Meson's /usr/local => /var/local default.
+            $local_state = _expand_kea_build_path( 'var', {}, $prefix ) unless defined($local_state);
+        }
+
+        my $run_state = _kea_build_option( $build_report, 'runstatedir' );
+        $run_state = _expand_kea_build_path(
+            $run_state,
+            {
+                prefix         => $prefix,
+                localstatedir  => $local_state,
+            },
+            $prefix,
+        );
+        $run_state = "$local_state/run" if !defined($run_state) && defined($local_state);
+        return $run_state eq '/' ? '/kea' : "$run_state/kea" if defined($run_state);
+    }
+
     # Kea validates Control Agent sockets against its packaged runtime
-    # directory, and newer packages reject /var/run/kea even when it resolves
-    # to /run/kea. Keep the legacy path as the unknown-state fallback for
-    # older Kea builds that validate before the runtime directory exists.
-    foreach my $dir ( @{ $self->{kea_socket_dirs} || [ '/run/kea', '/var/run/kea' ] } ) {
+    # directory, and newer packages reject a symlink-equivalent spelling.
+    # Filesystem probing is only a fallback for builds without a usable report.
+    foreach my $dir ( '/run/kea', '/var/run/kea' ) {
         return $dir if -d $dir;
     }
 
     return '/var/run/kea';
 }
 
-sub _kea_control_socket {
-    my ( $self, $socket_name ) = @_;
+sub _kea_build_option {
+    my ( $build_report, $option ) = @_;
 
-    return $self->_kea_socket_dir() . "/$socket_name";
+    return unless defined($build_report);
+    my $options = $build_report;
+    if ( $build_report =~ /^\s*(?:Configure arguments|Build Options):[ \t]*(.*?)(?=\n[ \t]*\n|^\s*C\+\+ Compiler:|\z)/ms ) {
+        $options = $1;
+    }
+
+    my @tokens = eval { shellwords($options) };
+    return if $@;
+
+    my $value;
+    for ( my $index = 0; $index < @tokens; $index++ ) {
+        my $token = $tokens[$index];
+        if ( $token =~ /^(?:--|-D)\Q$option\E=(.+)$/ ) {
+            $value = $1;
+        } elsif ( $token eq "--$option" && $index + 1 < @tokens ) {
+            $value = $tokens[ ++$index ];
+        }
+    }
+
+    return $value;
+}
+
+sub _expand_kea_build_path {
+    my ( $path, $variables, $relative_base ) = @_;
+
+    return unless defined($path);
+    foreach my $variable (qw/prefix localstatedir/) {
+        next unless defined( $variables->{$variable} );
+        $path =~ s/\$\{$variable\}/$variables->{$variable}/g;
+    }
+    if ( $path !~ m{^/} && defined($relative_base) ) {
+        $path = $relative_base eq '/' ? "/$path" : "$relative_base/$path";
+    }
+    $path =~ s{/$}{} if length($path) > 1;
+    return $path if $path =~ m{^/};
+
+    return;
 }
 
 sub _command_path {
