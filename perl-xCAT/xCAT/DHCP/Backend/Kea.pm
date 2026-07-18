@@ -17,6 +17,7 @@ my %KEA_SERVICE_CANDIDATES = (
     'kea-dhcp-ddns'  => [ 'kea-dhcp-ddns',  'kea-dhcp-ddns-server' ],
     'kea-ctrl-agent' => [ 'kea-ctrl-agent' ],
 );
+my @KEA_ACCOUNT_CANDIDATES = ( 'kea', '_kea' );
 
 sub new {
     my ( $class, %args ) = @_;
@@ -55,6 +56,19 @@ sub control_socket_path {
     my ( $self, $socket_name ) = @_;
 
     return $self->_kea_socket_dir() . "/$socket_name";
+}
+
+sub service_account {
+    foreach my $user (@KEA_ACCOUNT_CANDIDATES) {
+        my @entry = getpwnam($user);
+        return {
+            name => $entry[0],
+            uid  => $entry[2],
+            gid  => $entry[3],
+        } if @entry;
+    }
+
+    return;
 }
 
 sub render_dhcp4_config {
@@ -485,12 +499,12 @@ sub _validate_config_with {
 
     my $prefix = '';
     if ( $> == 0 ) {
-        my $kea_user = _kea_user();
+        my $service_account = $self->service_account();
         my $runuser  = _command_path('runuser');
         # Validate as the daemon user when possible so root does not hide
         # packaged Kea runtime-directory or config-readability failures.
-        $prefix = _shell_quote($runuser) . ' -u ' . _shell_quote($kea_user) . ' -- '
-          if $kea_user && $runuser;
+        $prefix = _shell_quote($runuser) . ' -u ' . _shell_quote( $service_account->{name} ) . ' -- '
+          if $service_account && $runuser;
     }
 
     my $cmd = $prefix . _shell_quote($kea) . " -t " . _shell_quote($path) . " 2>&1";
@@ -998,18 +1012,9 @@ sub _set_config_permissions {
 }
 
 sub _kea_group {
-    foreach my $group ( 'kea', '_kea' ) {
+    foreach my $group (@KEA_ACCOUNT_CANDIDATES) {
         my @entry = getgrnam($group);
         return ( $entry[0], $entry[2] ) if @entry;
-    }
-
-    return;
-}
-
-sub _kea_user {
-    foreach my $user ( 'kea', '_kea' ) {
-        my @entry = getpwnam($user);
-        return $entry[0] if @entry;
     }
 
     return;
