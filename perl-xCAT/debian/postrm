@@ -21,9 +21,9 @@ set -e
 
 case "$1" in
     upgrade)
-	if [ -x /etc/init.d/xcatd ] && [ -f "/proc/cmdline" ]; then
+	if [ -x /opt/xcat/sbin/restartxcatd ] && [ -f "/proc/cmdline" ]; then
 	    . /etc/profile.d/xcat.sh
-	    /etc/init.d/xcatd reload
+	    XCATROOT=/opt/xcat /opt/xcat/sbin/restartxcatd -r
 	fi
     ;;
     purge|remove|failed-upgrade|abort-install|abort-upgrade|disappear)

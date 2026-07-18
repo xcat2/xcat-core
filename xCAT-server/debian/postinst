@@ -10,6 +10,14 @@ xcat_can_use_systemctl()
     [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1
 }
 
+xcatd_init_compat=/opt/xcat/share/xcat/scripts/xcatd-init-compat
+
+if "$xcatd_init_compat" uses-systemd && \
+   command -v dpkg-maintscript-helper >/dev/null 2>&1 && \
+   dpkg-maintscript-helper supports rm_conffile; then
+    dpkg-maintscript-helper rm_conffile /etc/init.d/xcatd -- "$@"
+fi
+
 # summary of how this script can be called:
 #        * <postinst> `configure' <most-recently-configured-version>
 #        * <old-postinst> `abort-upgrade' <new version>
@@ -26,28 +34,42 @@ xcat_can_use_systemctl()
 case "$1" in
     configure)
         . /etc/profile.d/xcat.sh
+        xcat_server_upgrade=0
         if [ -f /tmp/xCAT-server_upgrade.tmp ]; then
-          if xcat_can_use_systemctl; then
-            if [ -f /run/systemd/generator.late/xcatd.service ]; then
-                # To cover the case upgrade from no xcatd systemd unit file (cannot enable by default for HA case)
-                if ls /etc/rc?.d/S??xcatd >/dev/null 2>&1; then
-                   [ -x /usr/sbin/update-rc.d ] && /usr/sbin/update-rc.d xcatd remove
-                   systemctl daemon-reload
-                   systemctl enable xcatd.service
-                fi
-            else
+            xcat_server_upgrade=1
+        fi
+
+        if "$xcatd_init_compat" uses-systemd; then
+            legacy_xcatd_enabled=0
+            if ls /etc/rc?.d/S??xcatd >/dev/null 2>&1; then
+                legacy_xcatd_enabled=1
+            fi
+            if [ "$xcat_server_upgrade" = "1" ] && command -v update-rc.d >/dev/null 2>&1; then
+                update-rc.d -f xcatd remove
+            fi
+
+            "$xcatd_init_compat" configure
+            if xcat_can_use_systemctl; then
                 systemctl daemon-reload
             fi
-          fi
-          # No need to reload xcatd here as it will be covered by xCAT/xCATsn now
-          rm /tmp/xCAT-server_upgrade.tmp
+            if command -v systemctl >/dev/null 2>&1 && \
+               { [ "$xcat_server_upgrade" = "0" ] || [ "$legacy_xcatd_enabled" = "1" ]; }; then
+                # Fresh installs are enabled by default.  Upgrades preserve the
+                # legacy enabled state so HA nodes remain disabled.
+                systemctl enable xcatd.service
+            fi
         else
-          if xcat_can_use_systemctl; then
-            systemctl daemon-reload
-            systemctl enable xcatd.service
-          elif command -v update-rc.d >/dev/null 2>&1; then
-            update-rc.d xcatd defaults
-          fi
+            "$xcatd_init_compat" configure
+            if [ "$xcat_server_upgrade" = "0" ] && \
+               [ -x /etc/init.d/xcatd ] && \
+               command -v update-rc.d >/dev/null 2>&1; then
+                update-rc.d xcatd defaults
+            fi
+        fi
+
+        if [ "$xcat_server_upgrade" = "1" ]; then
+            # No need to reload xcatd here as it will be covered by xCAT/xCATsn now.
+            rm -f /tmp/xCAT-server_upgrade.tmp
         fi
         ln -sf /opt/xcat/sbin/xcatd /usr/sbin/xcatd
     ;;

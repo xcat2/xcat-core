@@ -1,3 +1,11 @@
+start:xcatd_systemd_has_no_legacy_init_script
+description:systemd installations do not retain the legacy xcatd init script
+label:mn_only,ci_test,xcatd
+cmd:test -d /run/systemd/system && test ! -f /etc/init.d/xcatd
+check:rc==0
+end
+
+
 start:xcatd_start
 description:stop then start xcatd daemon, and check all the 6 processes are running
 label:mn_only,ci_test,xcatd

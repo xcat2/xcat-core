@@ -184,7 +184,9 @@ ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT%{prefix}/bin/webportal
     if [ "$1" = 1 ] || [ "$1" = 2 ]             # Install or upgrade
     then
         # Restart xCAT
-        /etc/init.d/xcatd restart
+        if [ -x $RPM_INSTALL_PREFIX0/sbin/restartxcatd ]; then
+            XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/restartxcatd
+        fi
 
         # Copy php.ini file into /opt/xcat/ui and turn off output_buffering
         if [ -e "/etc/redhat-release" ]; then

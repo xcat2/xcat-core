@@ -1990,8 +1990,8 @@ sub make_files {
     }
     if ($hasplugin) {
 
-        # Issue xcatd reload to load the new plugins
-        system("/etc/init.d/xcatd restart");
+        # Fast restart xcatd to load the new plugins without dropping this request
+        system("$::XCATROOT/sbin/restartxcatd");
         $hasplugin = 0;
     }
 
@@ -2230,4 +2230,3 @@ sub moveExtra {
     }
     return 1;
 }
-
