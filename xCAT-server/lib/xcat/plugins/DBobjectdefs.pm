@@ -369,6 +369,19 @@ sub parse_attr_for_osimage {
     return 0;
 }
 
+sub validate_osimage_nfsrootopts {
+    my $attr_hash = shift;
+    return 0 unless exists($attr_hash->{nfsrootopts});
+
+    my $validation_error = xCAT::SvrUtils->validate_statelite_nfsroot_options($attr_hash->{nfsrootopts});
+    return 0 unless $validation_error;
+
+    my $rsp;
+    $rsp->{data}->[0] = $validation_error;
+    xCAT::MsgUtils->message("E", $rsp, $::callback);
+    return 1;
+}
+
 #----------------------------------------------------------------------------
 
 =head3   processArgs
@@ -1886,6 +1899,13 @@ sub defmk
             next;
         }
 
+        if (($type eq 'osimage') && validate_osimage_nfsrootopts($::FINALATTRS{$obj}))
+        {
+            $error = 1;
+            delete $::FINALATTRS{$obj};
+            next;
+        }
+
         if ($object_exists && $::opt_f)
         {
             # remove the old object after the replacement definition is known valid
@@ -2529,6 +2549,13 @@ sub defch
         if (defined($objTypeListsHash{$type}{$obj}) && ($objTypeListsHash{$type}{$obj} == 1))
         {
             $isDefined = 1;
+        }
+
+        if (($type eq 'osimage') && !$::opt_m && validate_osimage_nfsrootopts($::FINALATTRS{$obj}))
+        {
+            $error = 1;
+            delete($::FINALATTRS{$obj});
+            next;
         }
 
         if ($type eq 'network')

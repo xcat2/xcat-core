@@ -65,8 +65,15 @@ check:rc==0
 cmd:lsdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
 
-cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute rootfstype=nfs
+cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute rootfstype=nfs nfsrootopts=noac
 check:rc==0
+cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute nfsrootopts=rw
+check:rc!=0
+check:output=~nfsrootopts cannot contain 'rw'; statelite NFS roots are always read-only
+cmd:lsdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute -i nfsrootopts
+check:rc==0
+check:output=~nfsrootopts=noac
+check:output!~nfsrootopts=rw
 
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
@@ -99,6 +106,8 @@ cmd:xdsh $$CN mount
 check:rc==0
 check:output=~/nodedata/$$CN on /.statelite/persistent
 check:output=~compute/rootimg on / type nfs
+cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [[ "__GETNODEATTR($$CN,os)__" =~ ^(rhels|rhel|centos|alma|rocky|ol)([6-9]|10) ]] || [[ "__GETNODEATTR($$CN,os)__" =~ ^fedora(1[2-9]|[2-9][0-9]) ]] || [[ "__GETNODEATTR($$CN,os)__" =~ ^SL([6-9]|10) ]] || [ -f "$rootimgdir/rootimg/etc/dracut.conf" ]; then xdsh $$CN mount | grep 'compute/rootimg on / type nfs' | grep 'noac'; fi
+check:rc==0
 cmd:xdsh $$CN hostname
 check:rc==0
 check:output=~$$CN: $$CN
@@ -112,6 +121,8 @@ check:output=~No load hostkey warning
 
 cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:output=$(xdsh $$CN ls -al / |grep test.statelite);if [[ $? -eq 0 ]];then  xdsh $$CN rm -rf /test.statelite;fi
+cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute nfsrootopts=
+check:rc==0
 cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then rm -rf $rootimgdir;fi
 check:rc==0
 end

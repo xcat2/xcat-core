@@ -34,6 +34,32 @@ cmd:rmdef -t node testnode
 check:rc==0
 end
 
+start:chdef_osimage_nfsrootopts_validation
+description:Reject invalid statelite NFS root options before provisioning without changing the osimage
+label:mn_only,ci_test,db,statelite,nfsrootopts
+cmd:rmdef -t node -o xcatnfsoptscinode >/dev/null 2>&1; rmdef -t osimage -o xcatnfsoptsciimage >/dev/null 2>&1; rm -rf /tmp/xcat-nfsrootopts-ci-root /tftpboot/xcat/osimage/xcatnfsoptsciimage; rm -f /tftpboot/xcat/xnba/nodes/xcatnfsoptscinode*
+cmd:mkdir -p /tmp/xcat-nfsrootopts-ci-root; touch /tmp/xcat-nfsrootopts-ci-root/kernel /tmp/xcat-nfsrootopts-ci-root/initrd-statelite.gz
+check:rc==0
+cmd:mkdef -t osimage -o xcatnfsoptsciimage imagetype=linux provmethod=statelite profile=compute osname=Linux osvers=rhels6.99 osarch=x86_64 rootfstype=nfs rootimgdir=/tmp/xcat-nfsrootopts-ci-root nfsrootopts=noac
+check:rc==0
+cmd:mkdef -t node -o xcatnfsoptscinode groups=all arch=x86_64 netboot=xnba os=rhels6.99 profile=compute ip=192.0.2.100 mac=02:00:00:00:00:01
+check:rc==0
+cmd:chdef -t osimage -o xcatnfsoptsciimage nfsrootopts=rw
+check:rc!=0
+check:output=~nfsrootopts cannot contain 'rw'; statelite NFS roots are always read-only
+cmd:lsdef -t osimage -o xcatnfsoptsciimage -i nfsrootopts
+check:rc==0
+check:output=~nfsrootopts=noac
+check:output!~nfsrootopts=rw
+cmd:old=`lsdef -t site clustersite -i dhcpsetup | grep 'dhcpsetup=' | awk -F= '{print $2}'`; trap 'chdef -t site clustersite dhcpsetup="$old" >/dev/null 2>&1' EXIT; chdef -t site clustersite dhcpsetup=n >/dev/null 2>&1 && nodeset xcatnfsoptscinode osimage=xcatnfsoptsciimage
+check:rc==0
+check:output!~nfsrootopts
+cmd:grep 'root=nfs:.*:ro,noac' /tftpboot/xcat/xnba/nodes/xcatnfsoptscinode
+check:rc==0
+cmd:rmdef -t node -o xcatnfsoptscinode; rmdef -t osimage -o xcatnfsoptsciimage; rm -rf /tmp/xcat-nfsrootopts-ci-root /tftpboot/xcat/osimage/xcatnfsoptsciimage; rm -f /tftpboot/xcat/xnba/nodes/xcatnfsoptscinode*
+check:rc==0
+end
+
 start:chdef_t_network
 description:chdef -t network
 label:mn_only,ci_test,db
@@ -324,4 +350,3 @@ cmd:rmdef -t network -o aaaaa_not_exist
 check:rc==0
 cmd:rm -rf /tmp/bbbbb_not_exist.def
 end
-

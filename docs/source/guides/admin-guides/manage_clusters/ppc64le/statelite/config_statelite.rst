@@ -136,3 +136,16 @@ noderes
 
 ``noderes.nfsdir`` can be set. If this is not set, the default is ``/install``
 
+NFS root mount options
+----------------------
+
+For dracut-based NFS statelite images, additional NFS root mount options can
+be set on the osimage. For example, to disable attribute caching::
+
+    chdef -t osimage -o rhels9-ppc64le-statelite-compute nfsrootopts=noac
+    nodeset compute osimage=rhels9-ppc64le-statelite-compute
+
+The value is a comma-separated list, such as ``noac,actimeo=0``. xCAT always
+includes ``ro`` and does not accept ``rw`` or ``defaults`` because the shared
+statelite root filesystem must remain read-only. The ``statelite.mntopts``
+attribute continues to control only the separate persistent directory.
