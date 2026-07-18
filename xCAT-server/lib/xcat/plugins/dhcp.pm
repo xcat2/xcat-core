@@ -2615,7 +2615,7 @@ sub kea_build_dhcp4_intent
     if (kea_control_agent_enabled()) {
         $intent->{'control-socket'} = {
             'socket-type' => 'unix',
-            'socket-name' => '/var/run/kea/kea4-ctrl-socket',
+            'socket-name' => $backend->control_socket_path('kea4-ctrl-socket'),
         };
         my $hook = $backend->host_cmds_hook_path();
         if ($hook) {
@@ -2670,7 +2670,7 @@ sub kea_build_dhcp6_intent
     if (kea_control_agent_enabled()) {
         $intent->{'control-socket'} = {
             'socket-type' => 'unix',
-            'socket-name' => '/var/run/kea/kea6-ctrl-socket',
+            'socket-name' => $backend->control_socket_path('kea6-ctrl-socket'),
         };
         my $hook = $backend->host_cmds_hook_path();
         if ($hook) {
