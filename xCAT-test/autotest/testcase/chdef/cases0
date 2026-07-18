@@ -51,7 +51,7 @@ cmd:lsdef -t osimage -o xcatnfsoptsciimage -i nfsrootopts
 check:rc==0
 check:output=~nfsrootopts=noac
 check:output!~nfsrootopts=rw
-cmd:nodeset xcatnfsoptscinode osimage=xcatnfsoptsciimage
+cmd:old=`lsdef -t site clustersite -i dhcpsetup | grep 'dhcpsetup=' | awk -F= '{print $2}'`; trap 'chdef -t site clustersite dhcpsetup="$old" >/dev/null 2>&1' EXIT; chdef -t site clustersite dhcpsetup=n >/dev/null 2>&1 && nodeset xcatnfsoptscinode osimage=xcatnfsoptsciimage
 check:rc==0
 check:output!~nfsrootopts
 cmd:grep 'root=nfs:.*:ro,noac' /tftpboot/xcat/xnba/nodes/xcatnfsoptscinode

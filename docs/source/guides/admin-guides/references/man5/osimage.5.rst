@@ -78,9 +78,9 @@ osimage Attributes:
  
 
 
-**nfsrootopts**
+\ **nfsrootopts**
 
-A comma-separated list of additional NFS mount options for the root filesystem of a dracut-based statelite image. The root filesystem is always mounted read-only; rw and defaults are not allowed.
+ A comma-separated list of additional NFS mount options for the root filesystem of a dracut-based statelite image. The root filesystem is always mounted read-only; rw and defaults are not allowed.
 
 
 \ **osdistroname**\ 

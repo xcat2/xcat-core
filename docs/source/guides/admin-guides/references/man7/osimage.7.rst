@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **osimage Attributes:**\   \ *addkcmdline*\ , \ *boottarget*\ , \ *bosinst_data*\ , \ *cfmdir*\ , \ *configdump*\ , \ *crashkernelsize*\ , \ *description*\ , \ *driverupdatesrc*\ , \ *dump*\ , \ *environvar*\ , \ *exlist*\ , \ *fb_script*\ , \ *groups*\ , \ *home*\ , \ *image_data*\ , \ *imagename*\ , \ *imagetype*\ , \ *installp_bundle*\ , \ *installto*\ , \ *isdeletable*\ , \ *kerneldir*\ , \ *kernelver*\ , \ *kitcomponents*\ , \ *krpmver*\ , \ *lpp_source*\ , \ *mksysb*\ , \ *netdrivers*\ , \ *nimmethod*\ , \ *nimtype*\ , \ *nfsrootopts*\ , \ *nodebootif*\ , \ *osarch*\ , \ *osdistroname*\ , \ *osname*\ , \ *osupdatename*\ , \ *osvers*\ , \ *otherifce*\ , \ *otherpkgdir*\ , \ *otherpkglist*\ , \ *otherpkgs*\ , \ *paging*\ , \ *partitionfile*\ , \ *permission*\ , \ *pkgdir*\ , \ *pkglist*\ , \ *postbootscripts*\ , \ *postinstall*\ , \ *postscripts*\ , \ *profile*\ , \ *provmethod*\ , \ *resolv_conf*\ , \ *root*\ , \ *rootfstype*\ , \ *rootimgdir*\ , \ *script*\ , \ *serverrole*\ , \ *shared_home*\ , \ *shared_root*\ , \ *spot*\ , \ *synclists*\ , \ *template*\ , \ *tmp*\ , \ *usercomment*\ , \ *winpepath*
+\ **osimage Attributes:**\   \ *addkcmdline*\ , \ *boottarget*\ , \ *bosinst_data*\ , \ *cfmdir*\ , \ *configdump*\ , \ *crashkernelsize*\ , \ *description*\ , \ *driverupdatesrc*\ , \ *dump*\ , \ *environvar*\ , \ *exlist*\ , \ *fb_script*\ , \ *groups*\ , \ *home*\ , \ *image_data*\ , \ *imagename*\ , \ *imagetype*\ , \ *installp_bundle*\ , \ *installto*\ , \ *isdeletable*\ , \ *kerneldir*\ , \ *kernelver*\ , \ *kitcomponents*\ , \ *krpmver*\ , \ *lpp_source*\ , \ *mksysb*\ , \ *netdrivers*\ , \ *nfsrootopts*\ , \ *nimmethod*\ , \ *nimtype*\ , \ *nodebootif*\ , \ *osarch*\ , \ *osdistroname*\ , \ *osname*\ , \ *osupdatename*\ , \ *osvers*\ , \ *otherifce*\ , \ *otherpkgdir*\ , \ *otherpkglist*\ , \ *otherpkgs*\ , \ *paging*\ , \ *partitionfile*\ , \ *permission*\ , \ *pkgdir*\ , \ *pkglist*\ , \ *postbootscripts*\ , \ *postinstall*\ , \ *postscripts*\ , \ *profile*\ , \ *provmethod*\ , \ *resolv_conf*\ , \ *root*\ , \ *rootfstype*\ , \ *rootimgdir*\ , \ *script*\ , \ *serverrole*\ , \ *shared_home*\ , \ *shared_root*\ , \ *spot*\ , \ *synclists*\ , \ *template*\ , \ *tmp*\ , \ *usercomment*\ , \ *winpepath*
 
 
 ***********
@@ -204,6 +204,11 @@ osimage Attributes:
  The ethernet device drivers of the nodes which will use this linux image, at least the device driver for the nodes' installnic should be included
  
 
+\ **nfsrootopts**\  (osimage.nfsrootopts)
+
+ A comma-separated list of additional NFS mount options for the root filesystem of a dracut-based statelite image. The root filesystem is always mounted read-only; rw and defaults are not allowed.
+
+
 
 \ **nimmethod**\  (nimimage.nimmethod)
  
@@ -215,12 +220,6 @@ osimage Attributes:
  
  The NIM client type- standalone, diskless, or dataless.
  
-
-
-\ **nfsrootopts**\  (osimage.nfsrootopts)
-
- A comma-separated list of additional NFS mount options for the root filesystem of a dracut-based statelite image. The root filesystem is always mounted read-only; rw and defaults are not allowed.
-
 
 
 \ **nodebootif**\  (linuximage.nodebootif)
