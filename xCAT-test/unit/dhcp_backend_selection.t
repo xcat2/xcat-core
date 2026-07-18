@@ -56,6 +56,18 @@ is(
 );
 
 is(
+    xCAT::DHCP::Backend->default_backend( platform => '', os => 'ubuntu22.04', os_name => 'ubuntu', version => '22.04.0' ),
+    'kea',
+    'Ubuntu release with a trailing zero component meets the minimum'
+);
+
+is(
+    xCAT::DHCP::Backend->default_backend( platform => '', os => 'ubuntu22.03.99', os_name => 'ubuntu', version => '22.03.99' ),
+    'isc',
+    'Ubuntu release below the minimum stays on ISC despite a newer point component'
+);
+
+is(
     xCAT::DHCP::Backend->default_backend( platform => '', os => 'ubuntu20.04', os_name => 'ubuntu', version => '20.04' ),
     'isc',
     'Ubuntu 20.04 defaults to ISC'
@@ -77,6 +89,12 @@ is(
     xCAT::DHCP::Backend->default_backend( platform => '', os => 'ubuntu24.04', os_name => 'ubuntu', version => '24' ),
     'isc',
     'Ubuntu major-only version is not treated as a date-based release'
+);
+
+is(
+    xCAT::DHCP::Backend->default_backend( platform => '', os => 'ubuntu24.04', os_name => 'ubuntu', version => '24.04-LTS' ),
+    'isc',
+    'Ubuntu version suffix is rejected by the numeric release contract'
 );
 
 is(
