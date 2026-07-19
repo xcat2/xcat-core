@@ -552,11 +552,17 @@ if [ "$1" -gt "1" ]; then #only on upgrade...
         systemctl enable xcatd.service
     fi
   else
-    legacy_xcatd_state=$("$xcatd_init_compat" legacy-state)
-    if [ "$legacy_xcatd_state" = unregistered ]; then
-        legacy_xcatd_state=$("$xcatd_init_compat" systemd-state)
-    fi
+    legacy_xcatd_state=$("$xcatd_init_compat" legacy-transition-state)
     "$xcatd_init_compat" disable-systemd
+
+    # systemctl may delegate to systemd-sysv-install and recreate K links for
+    # a pre-existing SysV script.  Restore the captured unregistered or masked
+    # state before materializing the package's replacement script.
+    case "$legacy_xcatd_state" in
+        masked|unregistered)
+            "$xcatd_init_compat" unregister-legacy
+            ;;
+    esac
 
     # This path was previously a regular RPM payload file, so upgrades replaced
     # it with the current package version rather than retaining an older copy.
@@ -566,7 +572,7 @@ if [ "$1" -gt "1" ]; then #only on upgrade...
         enabled|disabled)
             "$xcatd_init_compat" register-legacy "$legacy_xcatd_state"
             ;;
-        masked)
+        masked|unregistered)
             ;;
     esac
   fi

@@ -150,6 +150,35 @@ legacy_state()
     echo unregistered
 }
 
+has_legacy_provenance()
+{
+    [ -e "$legacy_init" ] || [ -L "$legacy_init" ] ||
+        [ -f "$managed_marker" ]
+}
+
+legacy_transition_state()
+{
+    transition_state=$(legacy_state)
+    if [ "$transition_state" != unregistered ]; then
+        echo "$transition_state"
+        return
+    fi
+
+    transition_state=$(systemd_state)
+    case "$transition_state" in
+        enabled|masked)
+            echo "$transition_state"
+            ;;
+        disabled)
+            if has_legacy_provenance; then
+                echo unregistered
+            else
+                echo disabled
+            fi
+            ;;
+    esac
+}
+
 systemd_state()
 {
     for systemd_mask in \
@@ -365,6 +394,9 @@ case "${1:-}" in
     legacy-state)
         legacy_state
         ;;
+    legacy-transition-state)
+        legacy_transition_state
+        ;;
     systemd-state)
         systemd_state
         ;;
@@ -398,7 +430,7 @@ case "${1:-}" in
         remove_managed_legacy_init
         ;;
     *)
-        echo "Usage: $0 {uses-systemd [--explicit-target]|legacy-state|systemd-state|register-legacy {enabled|disabled}|unregister-legacy|disable-systemd|unregister-all|configure [--replace] [--explicit-target] [--track-managed]|remove|remove-managed}" >&2
+        echo "Usage: $0 {uses-systemd [--explicit-target]|legacy-state|legacy-transition-state|systemd-state|register-legacy {enabled|disabled}|unregister-legacy|disable-systemd|unregister-all|configure [--replace] [--explicit-target] [--track-managed]|remove|remove-managed}" >&2
         exit 2
         ;;
 esac
