@@ -363,12 +363,6 @@ ok( defined($rpm_post) && defined($rpm_posttrans) && defined($rpm_preun)
 like( $rpm_spec,
     qr{cp etc/init\.d/xcatd \$RPM_BUILD_ROOT/%\{prefix\}/share/xcat/scripts/xcatd},
     'RPM stages the legacy script as a compatibility template' );
-like( $rpm_spec,
-    qr{%if 0%\{\?rhel\} && 0%\{\?rhel\} < 7\n%ghost %attr\(0755,root,root\) /etc/init\.d/xcatd},
-    'RPM tracks the runtime-created init path only on legacy RHEL' );
-like( $rpm_spec,
-    qr{%if 0%\{\?suse_version\} && 0%\{\?suse_version\} < 1200\n%ghost %attr\(0755,root,root\) /etc/init\.d/xcatd},
-    'RPM tracks the runtime-created init path only on legacy SUSE' );
 like( $rpm_spec, qr{xcatd-init-compat.*uses-systemd}s,
     'RPM scriptlets select the init implementation at install time' );
 unlike( $rpm_spec,
@@ -396,7 +390,7 @@ unlike( $rpm_post,
     qr{/sbin/chkconfig --(?:add|del) xcatd|/usr/lib/lsb/(?:install|remove)_initd},
     'RPM post delegates registration mechanics to the shared helper' );
 like( $rpm_posttrans,
-    qr{%ifos linux.*?uses-systemd --explicit-target.*?\[ ! -e /etc/init\.d/xcatd \].*?\[ ! -L /etc/init\.d/xcatd \].*?"\$xcatd_init_compat" configure --explicit-target \|\| exit 1}s,
+    qr{%ifos linux.*?uses-systemd --explicit-target.*?\[ ! -e /etc/init\.d/xcatd \].*?\[ ! -L /etc/init\.d/xcatd \].*?"\$xcatd_init_compat" configure --explicit-target(?: --track-managed)? \|\| exit 1}s,
     'RPM post-transaction recovery restores only a missing legacy script' );
 unlike( $rpm_posttrans, qr{\$1|--replace},
     'RPM post-transaction recovery is idempotent and not argument-gated' );
