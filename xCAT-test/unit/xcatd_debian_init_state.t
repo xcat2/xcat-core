@@ -373,6 +373,21 @@ is( run_state( $fresh_masked_root, 'prepare-systemd', 'fresh' ), 0,
 is( state_value( $fresh_masked_root, 'enabled' ), 'no',
     'a pre-existing mask is not overridden on fresh install' );
 
+my $runtime_masked_root = stage_root();
+my $runtime_masked_unit_dir =
+  File::Spec->catdir( $runtime_masked_root, 'run', 'systemd', 'system' );
+make_path($runtime_masked_unit_dir);
+symlink( '/dev/null',
+    File::Spec->catfile( $runtime_masked_unit_dir, 'xcatd.service' ) )
+  or die "Unable to stage runtime masked unit: $!";
+set_systemd_state( $runtime_masked_root, 'unknown' );
+is( run_state( $runtime_masked_root, 'prepare-systemd', 'fresh' ), 0,
+    'runtime masked systemd preparation succeeds' );
+is( state_value( $runtime_masked_root, 'enabled' ), 'no',
+    'a runtime mask is not treated as enabled offline' );
+is( state_value( $runtime_masked_root, 'origin' ), 'systemd',
+    'a runtime mask overrides fresh-install enablement' );
+
 my $pending_deleted_root = stage_root();
 make_path( state_dir($pending_deleted_root) );
 write_file( File::Spec->catfile( state_dir($pending_deleted_root), 'pending-deleted' ), "\n" );
