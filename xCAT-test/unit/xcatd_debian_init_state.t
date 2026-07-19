@@ -432,6 +432,40 @@ run_update_rc( $disabled_root, 'xcatd', 'enable' );
 ok( -l rc_link($disabled_root) && !-e rc_kill_link($disabled_root),
     'a restored registered-disabled service can be enabled later' );
 
+my $outside_disabled_root = stage_root();
+set_init_target( $outside_disabled_root, 'upstart' );
+is( run_state( $outside_disabled_root, 'configure-legacy', 'fresh' ), 0,
+    'outside-link fixture starts in legacy mode' );
+run_update_rc( $outside_disabled_root, 'xcatd', 'disable' );
+write_file( live_init($outside_disabled_root),
+    "outside-link customization\n", 0755 );
+is( run_state( $outside_disabled_root, 'prepare-systemd', 'upgrade' ), 0,
+    'outside-link fixture prepares for systemd' );
+set_init_target( $outside_disabled_root, '../lib/systemd/systemd' );
+is( run_compat( $outside_disabled_root, 'configure', '--explicit-target' ), 0,
+    'outside-link fixture configures systemd mode' );
+is( run_state( $outside_disabled_root, 'commit-systemd' ), 0,
+    'outside-link systemd state commits' );
+set_systemd_state( $outside_disabled_root, 'disabled' );
+run_update_rc( $outside_disabled_root, '-f', 'xcatd', 'remove' );
+my $outside_disabled_link = File::Spec->catfile(
+    $outside_disabled_root, 'etc', 'rc2.d', 'K42xcatd'
+);
+make_path( File::Spec->catdir( $outside_disabled_root, 'etc', 'rc2.d' ) );
+symlink( '../init.d/xcatd', $outside_disabled_link )
+  or die "Unable to stage rejected disabled registration: $!";
+set_init_target( $outside_disabled_root, 'upstart' );
+is( run_state( $outside_disabled_root, 'configure-legacy', 'upgrade' ), 0,
+    'a rejected outside-runlevel layout is rebuilt during restoration' );
+ok( !-e $outside_disabled_link,
+    'the unusable outside-runlevel link is removed' );
+is( registration_link_count($outside_disabled_root), 3,
+    'the rejected layout becomes a complete registered-disabled layout' );
+ok( -l rc_kill_link($outside_disabled_root),
+    'the rebuilt layout contains a declared-runlevel kill link' );
+is( state_value( $outside_disabled_root, 'enabled' ), 'no',
+    'the rebuilt layout retains registered-disabled state' );
+
 my $unregistered_root = stage_root();
 set_init_target( $unregistered_root, 'upstart' );
 is( run_state( $unregistered_root, 'configure-legacy', 'fresh' ), 0,
