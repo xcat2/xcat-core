@@ -146,6 +146,7 @@ case "${1:-}:${2:-}" in
         ;;
     xcatd:disable)
         toggle_links K S
+        [ ! -f "$root/fail-update-rc-disable" ] || exit 9
         ;;
     xcatd:enable)
         toggle_links S K
@@ -455,6 +456,18 @@ make_path( File::Spec->catdir( $outside_disabled_root, 'etc', 'rc2.d' ) );
 symlink( '../init.d/xcatd', $outside_disabled_link )
   or die "Unable to stage rejected disabled registration: $!";
 set_init_target( $outside_disabled_root, 'upstart' );
+my $disable_failure = File::Spec->catfile(
+    $outside_disabled_root, 'fail-update-rc-disable'
+);
+write_file( $disable_failure, "fail rebuilt disable\n", 0644 );
+is( run_state( $outside_disabled_root, 'configure-legacy', 'upgrade' ), 9,
+    'a failed rebuilt disable propagates from restoration' );
+is( state_value( $outside_disabled_root, 'mode' ), 'transition-legacy',
+    'a failed rebuilt disable leaves retryable transition state' );
+ok( -e File::Spec->catfile( state_dir($outside_disabled_root), 'xcatd' ),
+    'a failed rebuilt disable retains the durable script stash' );
+unlink($disable_failure)
+  or die "Unable to clear rebuilt-disable failure: $!";
 is( run_state( $outside_disabled_root, 'configure-legacy', 'upgrade' ), 0,
     'a rejected outside-runlevel layout is rebuilt during restoration' );
 ok( !-e $outside_disabled_link,
