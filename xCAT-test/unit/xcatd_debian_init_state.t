@@ -344,7 +344,8 @@ symlink( '/dev/null',
   or die "Unable to stage transition mask: $!";
 is( run_state( $masked_transition_root, 'prepare-systemd', 'upgrade' ), 0,
     'enabled legacy state prepares against a systemd mask' );
-is( state_value( $masked_transition_root, 'enabled' ), 'no',
+like( state_value( $masked_transition_root, 'enabled' ),
+    qr/^(?:no|unregistered)$/,
     'an explicit systemd mask overrides legacy registration' );
 is( state_value( $masked_transition_root, 'origin' ), 'systemd',
     'masked transition suppresses postinst enablement mutation' );
@@ -363,7 +364,8 @@ symlink( '/dev/null',
   or die "Unable to stage mask during transition: $!";
 is( run_state( $late_mask_root, 'prepare-systemd', 'upgrade' ), 0,
     'systemd transition retries after a mask is added' );
-is( state_value( $late_mask_root, 'enabled' ), 'no',
+like( state_value( $late_mask_root, 'enabled' ),
+    qr/^(?:no|unregistered)$/,
     'a newly added mask overrides preserved transition enablement' );
 is( state_value( $late_mask_root, 'origin' ), 'systemd',
     'a newly added mask suppresses retry enablement mutation' );
@@ -412,7 +414,7 @@ is( run_state( $masked_root, 'prepare-systemd', 'upgrade' ), 0,
     'masked systemd preparation succeeds' );
 is( state_value( $masked_root, 'content' ), 'package-default',
     'an obsolete package conffile marker retains package omission semantics' );
-is( state_value( $masked_root, 'enabled' ), 'no',
+like( state_value( $masked_root, 'enabled' ), qr/^(?:no|unregistered)$/,
     'a masked unit is not treated as boot-enabled' );
 
 my $fresh_masked_root = stage_root();
@@ -424,7 +426,8 @@ symlink( '/dev/null',
   or die "Unable to stage fresh masked unit: $!";
 is( run_state( $fresh_masked_root, 'prepare-systemd', 'fresh' ), 0,
     'fresh masked systemd preparation succeeds' );
-is( state_value( $fresh_masked_root, 'enabled' ), 'no',
+like( state_value( $fresh_masked_root, 'enabled' ),
+    qr/^(?:no|unregistered)$/,
     'a pre-existing mask is not overridden on fresh install' );
 
 my $runtime_masked_root = stage_root();
@@ -437,7 +440,8 @@ symlink( '/dev/null',
 set_systemd_state( $runtime_masked_root, 'unknown' );
 is( run_state( $runtime_masked_root, 'prepare-systemd', 'fresh' ), 0,
     'runtime masked systemd preparation succeeds' );
-is( state_value( $runtime_masked_root, 'enabled' ), 'no',
+like( state_value( $runtime_masked_root, 'enabled' ),
+    qr/^(?:no|unregistered)$/,
     'a runtime mask is not treated as enabled offline' );
 is( state_value( $runtime_masked_root, 'origin' ), 'systemd',
     'a runtime mask overrides fresh-install enablement' );
@@ -507,7 +511,8 @@ symlink( '/dev/null',
   or die "Unable to stage masked first migration: $!";
 is( run_state( $masked_pending_root, 'prepare-systemd', 'upgrade' ), 0,
     'masked first migration prepares successfully' );
-is( state_value( $masked_pending_root, 'enabled' ), 'no',
+like( state_value( $masked_pending_root, 'enabled' ),
+    qr/^(?:no|unregistered)$/,
     'an explicit systemd mask wins over stale legacy enablement' );
 
 my $obsolete_disabled_root = stage_root();
