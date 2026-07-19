@@ -1,0 +1,805 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+use File::Copy qw(copy);
+use File::Path qw(make_path);
+use File::Spec;
+use File::Temp qw(tempdir);
+use FindBin;
+use Test::More;
+
+my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
+my $state_helper = File::Spec->catfile(
+    $repo_root, 'xCAT-server', 'debian', 'xcatd-init-state'
+);
+my $compat_helper = File::Spec->catfile(
+    $repo_root, 'xCAT-server', 'share', 'xcat', 'scripts', 'xcatd-init-compat'
+);
+my $template = File::Spec->catfile(
+    $repo_root, 'xCAT-server', 'etc', 'init.d', 'xcatd'
+);
+
+sub write_file {
+    my ( $path, $contents, $mode ) = @_;
+    open( my $fh, '>', $path ) or die "Unable to write $path: $!";
+    print {$fh} $contents;
+    close($fh);
+    chmod $mode, $path if defined $mode;
+}
+
+sub read_file {
+    my ($path) = @_;
+    open( my $fh, '<', $path ) or die "Unable to read $path: $!";
+    my $contents = do { local $/; <$fh> };
+    close($fh);
+    return $contents;
+}
+
+sub stage_root {
+    my $root = tempdir( CLEANUP => 1 );
+    my $scripts = File::Spec->catdir(
+        $root, 'opt', 'xcat', 'share', 'xcat', 'scripts'
+    );
+    my $fake_bin = File::Spec->catdir( $root, 'test-bin' );
+    make_path( $scripts, $fake_bin, File::Spec->catdir( $root, 'sbin' ) );
+    copy( $template, File::Spec->catfile( $scripts, 'xcatd' ) )
+      or die "Unable to stage xcatd template: $!";
+
+    write_file(
+        File::Spec->catfile( $fake_bin, 'ucf' ),
+        <<'SH', 0755
+#!/bin/sh
+set -eu
+root=${XCAT_COMPAT_ROOT:?}
+[ ! -f "$root/fail-ucf" ] || exit 9
+new_file=$1
+destination=$2
+if [ ! -e "$destination" ] && [ ! -L "$destination" ]; then
+    mkdir -p "$(dirname "$destination")"
+    cp "$new_file" "$destination"
+    chmod 755 "$destination"
+fi
+if [ -f "$root/mutate-ucf" ]; then
+    printf '%s\n' '# ucf mutation' >> "$destination"
+fi
+SH
+    );
+    write_file(
+        File::Spec->catfile( $fake_bin, 'ucfr' ),
+        <<'SH', 0755
+#!/bin/sh
+set -eu
+root=${XCAT_COMPAT_ROOT:?}
+[ ! -f "$root/fail-ucfr" ] || exit 8
+exit 0
+SH
+    );
+    write_file(
+        File::Spec->catfile( $fake_bin, 'update-rc.d' ),
+        <<'SH', 0755
+#!/bin/sh
+set -eu
+root=${XCAT_COMPAT_ROOT:?}
+link="$root/etc/rc2.d/S20xcatd"
+if [ "${1:-}" = -f ]; then
+    rm -f "$link"
+else
+    mkdir -p "$(dirname "$link")"
+    ln -sfn ../init.d/xcatd "$link"
+fi
+SH
+    );
+    write_file(
+        File::Spec->catfile( $fake_bin, 'systemctl' ),
+        <<'SH', 0755
+#!/bin/sh
+set -eu
+root=${XCAT_COMPAT_ROOT:?}
+case "${1:-}" in
+    --root=*) shift ;;
+esac
+[ "${1:-}" = is-enabled ] || exit 0
+if [ -r "$root/systemctl-state" ]; then
+    status=$(sed -n '1p' "$root/systemctl-state")
+else
+    status=unknown
+fi
+printf '%s\n' "$status"
+[ "$status" = enabled ] && exit 0
+exit 1
+SH
+    );
+
+    return $root;
+}
+
+sub run_script {
+    my ( $root, $script, @arguments ) = @_;
+    local $ENV{XCAT_COMPAT_ROOT} = $root;
+    local $ENV{XCATROOT}         = '/opt/xcat';
+    local $ENV{PATH} = File::Spec->catdir( $root, 'test-bin' ) . ':/usr/bin:/bin';
+    system( '/bin/sh', $script, @arguments );
+    return $? >> 8;
+}
+
+sub run_state {
+    my ( $root, @arguments ) = @_;
+    return run_script( $root, $state_helper, @arguments );
+}
+
+sub run_compat {
+    my ( $root, @arguments ) = @_;
+    return run_script( $root, $compat_helper, @arguments );
+}
+
+sub live_init {
+    my ($root) = @_;
+    return File::Spec->catfile( $root, 'etc', 'init.d', 'xcatd' );
+}
+
+sub state_dir {
+    my ($root) = @_;
+    return File::Spec->catdir( $root, 'var', 'lib', 'xcat', 'xcatd-init-state' );
+}
+
+sub old_systemd_marker {
+    my ($root) = @_;
+    return File::Spec->catfile( $root, 'var', 'lib', 'xcat', 'xcatd-systemd-mode' );
+}
+
+sub state_value {
+    my ( $root, $field ) = @_;
+    my $state = read_file( File::Spec->catfile( state_dir($root), 'state' ) );
+    return $1 if $state =~ /^\Q$field\E=(.+)$/m;
+    return '';
+}
+
+sub set_init_target {
+    my ( $root, $target ) = @_;
+    my $init = File::Spec->catfile( $root, 'sbin', 'init' );
+    unlink($init) if -e $init || -l $init;
+    symlink( $target, $init ) or die "Unable to stage init target: $!";
+}
+
+sub set_systemd_state {
+    my ( $root, $state ) = @_;
+    write_file( File::Spec->catfile( $root, 'systemctl-state' ), "$state\n" );
+}
+
+sub rc_link {
+    my ($root) = @_;
+    return File::Spec->catfile( $root, 'etc', 'rc2.d', 'S20xcatd' );
+}
+
+my $round_trip_root = stage_root();
+set_init_target( $round_trip_root, 'upstart' );
+is( run_state( $round_trip_root, 'configure-legacy', 'fresh' ), 0,
+    'fresh legacy configuration succeeds' );
+ok( -x live_init($round_trip_root),
+    'fresh legacy configuration materializes the init script' );
+ok( -l rc_link($round_trip_root),
+    'fresh legacy configuration enables the init script' );
+
+write_file( live_init($round_trip_root), "administrator customization\n", 0755 );
+is( run_state( $round_trip_root, 'prepare-systemd', 'upgrade' ), 0,
+    'legacy to systemd preparation succeeds' );
+is( state_value( $round_trip_root, 'content' ), 'stashed',
+    'a customized init script is stashed before removal' );
+is( state_value( $round_trip_root, 'enabled' ), 'yes',
+    'SysV enablement is captured before removal' );
+set_init_target( $round_trip_root, '../lib/systemd/systemd' );
+is( run_compat( $round_trip_root, 'configure' ), 0,
+    'systemd compatibility configuration succeeds' );
+is( run_state( $round_trip_root, 'commit-systemd' ), 0,
+    'systemd transition state commits' );
+ok( !-e live_init($round_trip_root),
+    'systemd mode omits the live legacy script' );
+like( read_file( File::Spec->catfile( state_dir($round_trip_root), 'xcatd' ) ),
+    qr/administrator customization/,
+    'the exact customized script remains in the durable stash' );
+
+set_systemd_state( $round_trip_root, 'enabled' );
+set_init_target( $round_trip_root, 'upstart' );
+is( run_state( $round_trip_root, 'configure-legacy', 'upgrade' ), 0,
+    'systemd to legacy restoration succeeds' );
+is( read_file( live_init($round_trip_root) ), "administrator customization\n",
+    'the customized init script survives a mode round trip' );
+ok( -l rc_link($round_trip_root),
+    'systemd enablement maps back to SysV registration' );
+is( state_value( $round_trip_root, 'mode' ), 'legacy',
+    'the completed restoration records legacy mode' );
+
+unlink( live_init($round_trip_root) )
+  or die "Unable to stage administrator deletion: $!";
+is( run_state( $round_trip_root, 'prepare-systemd', 'upgrade' ), 0,
+    'deleted legacy state prepares for systemd' );
+is( state_value( $round_trip_root, 'content' ), 'deleted',
+    'administrator deletion is recorded separately from package omission' );
+set_init_target( $round_trip_root, '../lib/systemd/systemd' );
+is( run_state( $round_trip_root, 'commit-systemd' ), 0,
+    'deleted state commits in systemd mode' );
+set_systemd_state( $round_trip_root, 'disabled' );
+set_init_target( $round_trip_root, 'upstart' );
+is( run_state( $round_trip_root, 'configure-legacy', 'upgrade' ), 0,
+    'deleted state returns to legacy mode' );
+ok( !-e live_init($round_trip_root),
+    'administrator deletion survives a mode round trip' );
+ok( !-e rc_link($round_trip_root),
+    'a missing legacy script is not registered' );
+
+my $disabled_root = stage_root();
+set_init_target( $disabled_root, 'upstart' );
+is( run_state( $disabled_root, 'configure-legacy', 'fresh' ), 0,
+    'disabled fixture starts in legacy mode' );
+unlink( rc_link($disabled_root) ) or die "Unable to disable SysV fixture: $!";
+write_file( live_init($disabled_root), "disabled customization\n", 0755 );
+is( run_state( $disabled_root, 'prepare-systemd', 'upgrade' ), 0,
+    'disabled legacy fixture prepares for systemd' );
+is( state_value( $disabled_root, 'enabled' ), 'no',
+    'disabled SysV state is captured' );
+set_init_target( $disabled_root, '../lib/systemd/systemd' );
+is( run_compat( $disabled_root, 'configure' ), 0,
+    'disabled systemd fixture removes the live script' );
+is( run_state( $disabled_root, 'commit-systemd' ), 0,
+    'disabled systemd state commits' );
+set_systemd_state( $disabled_root, 'disabled' );
+set_init_target( $disabled_root, 'upstart' );
+is( run_state( $disabled_root, 'configure-legacy', 'upgrade' ), 0,
+    'disabled systemd fixture returns to legacy' );
+is( read_file( live_init($disabled_root) ), "disabled customization\n",
+    'disabled customization is restored' );
+ok( !-e rc_link($disabled_root),
+    'disabled systemd state stays disabled under SysV' );
+
+my $legacy_reinstall_root = stage_root();
+set_init_target( $legacy_reinstall_root, 'upstart' );
+is( run_state( $legacy_reinstall_root, 'configure-legacy', 'fresh' ), 0,
+    'legacy reinstall fixture starts enabled' );
+unlink( rc_link($legacy_reinstall_root) )
+  or die "Unable to simulate prerm registration removal: $!";
+is( run_state( $legacy_reinstall_root, 'configure-legacy', 'fresh' ), 0,
+    'legacy remove and reinstall configures as fresh' );
+ok( -l rc_link($legacy_reinstall_root),
+    'legacy remove and reinstall restores default enablement' );
+
+my $masked_transition_root = stage_root();
+set_init_target( $masked_transition_root, 'upstart' );
+is( run_state( $masked_transition_root, 'configure-legacy', 'fresh' ), 0,
+    'masked transition fixture starts enabled in legacy mode' );
+my $masked_transition_unit_dir =
+  File::Spec->catdir( $masked_transition_root, 'etc', 'systemd', 'system' );
+make_path($masked_transition_unit_dir);
+symlink( '/dev/null',
+    File::Spec->catfile( $masked_transition_unit_dir, 'xcatd.service' ) )
+  or die "Unable to stage transition mask: $!";
+is( run_state( $masked_transition_root, 'prepare-systemd', 'upgrade' ), 0,
+    'enabled legacy state prepares against a systemd mask' );
+is( state_value( $masked_transition_root, 'enabled' ), 'no',
+    'an explicit systemd mask overrides legacy registration' );
+is( state_value( $masked_transition_root, 'origin' ), 'systemd',
+    'masked transition suppresses postinst enablement mutation' );
+
+my $late_mask_root = stage_root();
+set_init_target( $late_mask_root, 'upstart' );
+is( run_state( $late_mask_root, 'configure-legacy', 'fresh' ), 0,
+    'late-mask fixture starts enabled in legacy mode' );
+is( run_state( $late_mask_root, 'prepare-systemd', 'upgrade' ), 0,
+    'late-mask fixture begins a systemd transition' );
+my $late_mask_unit_dir =
+  File::Spec->catdir( $late_mask_root, 'etc', 'systemd', 'system' );
+make_path($late_mask_unit_dir);
+symlink( '/dev/null',
+    File::Spec->catfile( $late_mask_unit_dir, 'xcatd.service' ) )
+  or die "Unable to stage mask during transition: $!";
+is( run_state( $late_mask_root, 'prepare-systemd', 'upgrade' ), 0,
+    'systemd transition retries after a mask is added' );
+is( state_value( $late_mask_root, 'enabled' ), 'no',
+    'a newly added mask overrides preserved transition enablement' );
+is( state_value( $late_mask_root, 'origin' ), 'systemd',
+    'a newly added mask suppresses retry enablement mutation' );
+
+my $fresh_systemd_root = stage_root();
+set_systemd_state( $fresh_systemd_root, 'disabled' );
+is( run_state( $fresh_systemd_root, 'prepare-systemd', 'fresh' ), 0,
+    'fresh systemd preparation succeeds for a newly unpacked disabled unit' );
+is( state_value( $fresh_systemd_root, 'enabled' ), 'yes',
+    'fresh systemd installs remain enabled by default' );
+is( state_value( $fresh_systemd_root, 'origin' ), 'fresh',
+    'fresh systemd state records a fresh transition' );
+
+my $masked_root = stage_root();
+my $masked_unit_dir = File::Spec->catdir( $masked_root, 'etc', 'systemd', 'system' );
+make_path($masked_unit_dir);
+symlink( '/dev/null', File::Spec->catfile( $masked_unit_dir, 'xcatd.service' ) )
+  or die "Unable to stage masked unit: $!";
+make_path( File::Spec->catdir( $masked_root, 'var', 'lib', 'xcat' ) );
+write_file( old_systemd_marker($masked_root), "marker\n" );
+is( run_state( $masked_root, 'prepare-systemd', 'upgrade' ), 0,
+    'masked systemd preparation succeeds' );
+is( state_value( $masked_root, 'content' ), 'package-default',
+    'an obsolete package conffile marker retains package omission semantics' );
+is( state_value( $masked_root, 'enabled' ), 'no',
+    'a masked unit is not treated as boot-enabled' );
+
+my $fresh_masked_root = stage_root();
+my $fresh_masked_unit_dir =
+  File::Spec->catdir( $fresh_masked_root, 'etc', 'systemd', 'system' );
+make_path($fresh_masked_unit_dir);
+symlink( '/dev/null',
+    File::Spec->catfile( $fresh_masked_unit_dir, 'xcatd.service' ) )
+  or die "Unable to stage fresh masked unit: $!";
+is( run_state( $fresh_masked_root, 'prepare-systemd', 'fresh' ), 0,
+    'fresh masked systemd preparation succeeds' );
+is( state_value( $fresh_masked_root, 'enabled' ), 'no',
+    'a pre-existing mask is not overridden on fresh install' );
+
+my $pending_deleted_root = stage_root();
+make_path( state_dir($pending_deleted_root) );
+write_file( File::Spec->catfile( state_dir($pending_deleted_root), 'pending-deleted' ), "\n" );
+write_file( File::Spec->catfile( state_dir($pending_deleted_root), 'pending-enabled' ), "no\n" );
+set_systemd_state( $pending_deleted_root, 'enabled' );
+is( run_state( $pending_deleted_root, 'prepare-systemd', 'upgrade' ), 0,
+    'explicit preinst deletion evidence prepares successfully' );
+is( state_value( $pending_deleted_root, 'content' ), 'deleted',
+    'a still-owned missing conffile remains an administrator deletion' );
+is( state_value( $pending_deleted_root, 'enabled' ), 'yes',
+    'existing native-systemd enablement survives legacy deletion evidence' );
+is( state_value( $pending_deleted_root, 'origin' ), 'legacy',
+    'explicit conffile deletion retains legacy provenance' );
+
+my $pending_enabled_root = stage_root();
+make_path( state_dir($pending_enabled_root) );
+write_file(
+    File::Spec->catfile( state_dir($pending_enabled_root), 'pending-xcatd' ),
+    "legacy content\n", 0755
+);
+write_file(
+    File::Spec->catfile( state_dir($pending_enabled_root), 'pending-enabled' ),
+    "yes\n"
+);
+set_systemd_state( $pending_enabled_root, 'disabled' );
+is( run_state( $pending_enabled_root, 'prepare-systemd', 'upgrade' ), 0,
+    'enabled legacy evidence prepares with disabled systemd state' );
+is( state_value( $pending_enabled_root, 'enabled' ), 'yes',
+    'first migration preserves enablement from either service manager' );
+
+my $both_disabled_root = stage_root();
+make_path( state_dir($both_disabled_root) );
+write_file(
+    File::Spec->catfile( state_dir($both_disabled_root), 'pending-xcatd' ),
+    "legacy content\n", 0755
+);
+write_file(
+    File::Spec->catfile( state_dir($both_disabled_root), 'pending-enabled' ),
+    "no\n"
+);
+set_systemd_state( $both_disabled_root, 'disabled' );
+is( run_state( $both_disabled_root, 'prepare-systemd', 'upgrade' ), 0,
+    'fully disabled first migration prepares successfully' );
+is( state_value( $both_disabled_root, 'enabled' ), 'no',
+    'first migration remains disabled when both managers are disabled' );
+
+my $masked_pending_root = stage_root();
+make_path(
+    state_dir($masked_pending_root),
+    File::Spec->catdir( $masked_pending_root, 'etc', 'systemd', 'system' )
+);
+write_file(
+    File::Spec->catfile( state_dir($masked_pending_root), 'pending-xcatd' ),
+    "legacy content\n", 0755
+);
+write_file(
+    File::Spec->catfile( state_dir($masked_pending_root), 'pending-enabled' ),
+    "yes\n"
+);
+symlink( '/dev/null',
+    File::Spec->catfile( $masked_pending_root, 'etc', 'systemd', 'system',
+        'xcatd.service' ) )
+  or die "Unable to stage masked first migration: $!";
+is( run_state( $masked_pending_root, 'prepare-systemd', 'upgrade' ), 0,
+    'masked first migration prepares successfully' );
+is( state_value( $masked_pending_root, 'enabled' ), 'no',
+    'an explicit systemd mask wins over stale legacy enablement' );
+
+my $obsolete_disabled_root = stage_root();
+make_path( File::Spec->catdir( $obsolete_disabled_root, 'var', 'lib', 'xcat' ) );
+write_file( old_systemd_marker($obsolete_disabled_root), "marker\n" );
+set_systemd_state( $obsolete_disabled_root, 'disabled' );
+is( run_state( $obsolete_disabled_root, 'prepare-systemd', 'upgrade' ), 0,
+    'disabled obsolete-conffile migration prepares successfully' );
+is( state_value( $obsolete_disabled_root, 'content' ), 'package-default',
+    'package-driven omission is not confused with administrator deletion' );
+is( state_value( $obsolete_disabled_root, 'enabled' ), 'no',
+    'disabled markerless systemd state remains disabled' );
+is( run_state( $obsolete_disabled_root, 'commit-systemd' ), 0,
+    'disabled markerless systemd state commits' );
+set_init_target( $obsolete_disabled_root, 'upstart' );
+is( run_state( $obsolete_disabled_root, 'configure-legacy', 'upgrade' ), 0,
+    'disabled package omission returns to legacy mode' );
+ok( -x live_init($obsolete_disabled_root),
+    'package omission restores the packaged legacy script' );
+ok( !-e rc_link($obsolete_disabled_root),
+    'disabled package omission remains unregistered under SysV' );
+
+my $same_systemd_root = stage_root();
+set_systemd_state( $same_systemd_root, 'disabled' );
+is( run_state( $same_systemd_root, 'prepare-systemd', 'fresh' ), 0,
+    'same-systemd fixture prepares as fresh' );
+is( run_state( $same_systemd_root, 'commit-systemd' ), 0,
+    'same-systemd fixture commits its initial state' );
+set_systemd_state( $same_systemd_root, 'enabled' );
+is( run_state( $same_systemd_root, 'prepare-systemd', 'upgrade' ), 0,
+    'same-systemd upgrade preparation succeeds' );
+is( state_value( $same_systemd_root, 'origin' ), 'systemd',
+    'same-systemd upgrades are distinguishable from mode changes' );
+
+my $reinstall_state_root = stage_root();
+set_init_target( $reinstall_state_root, 'upstart' );
+is( run_state( $reinstall_state_root, 'configure-legacy', 'fresh' ), 0,
+    'reinstall-state fixture starts in legacy mode' );
+write_file( live_init($reinstall_state_root), "reinstall customization\n", 0755 );
+is( run_state( $reinstall_state_root, 'prepare-systemd', 'upgrade' ), 0,
+    'reinstall-state fixture stashes its customization' );
+set_init_target( $reinstall_state_root, '../lib/systemd/systemd' );
+is( run_compat( $reinstall_state_root, 'configure' ), 0,
+    'reinstall-state fixture enters systemd mode' );
+is( run_state( $reinstall_state_root, 'commit-systemd' ), 0,
+    'reinstall-state fixture commits durable systemd state' );
+write_file(
+    File::Spec->catfile( state_dir($reinstall_state_root), 'pending-deleted' ),
+    "stale\n"
+);
+write_file(
+    File::Spec->catfile( state_dir($reinstall_state_root), 'pending-enabled' ),
+    "no\n"
+);
+set_systemd_state( $reinstall_state_root, 'disabled' );
+is( run_state( $reinstall_state_root, 'prepare-systemd', 'fresh' ), 0,
+    'remove and reinstall preparation uses durable state' );
+is( state_value( $reinstall_state_root, 'content' ), 'stashed',
+    'stale fallback deletion evidence cannot replace a durable stash' );
+is( state_value( $reinstall_state_root, 'enabled' ), 'yes',
+    'a genuine reinstall restores the default enabled state' );
+is( read_file( File::Spec->catfile( state_dir($reinstall_state_root), 'xcatd' ) ),
+    "reinstall customization\n",
+    'remove and reinstall preserves the exact administrator customization' );
+
+my $stale_pending_root = stage_root();
+set_init_target( $stale_pending_root, 'upstart' );
+is( run_state( $stale_pending_root, 'configure-legacy', 'fresh' ), 0,
+    'stale-pending fixture starts in legacy mode' );
+write_file( live_init($stale_pending_root), "current live content\n", 0755 );
+write_file(
+    File::Spec->catfile( state_dir($stale_pending_root), 'pending-xcatd' ),
+    "stale pending content\n", 0755
+);
+is( run_state( $stale_pending_root, 'prepare-systemd', 'upgrade' ), 0,
+    'stable legacy state ignores stale pending evidence' );
+is( read_file( File::Spec->catfile( state_dir($stale_pending_root), 'xcatd' ) ),
+    "current live content\n",
+    'current live content wins over stale pending content' );
+ok( !-e File::Spec->catfile( state_dir($stale_pending_root), 'pending-xcatd' ),
+    'successful systemd preparation clears stale pending evidence' );
+
+my $pending_cleanup_root = stage_root();
+make_path( state_dir($pending_cleanup_root) );
+for my $pending_name (qw(pending-xcatd pending-deleted pending-enabled)) {
+    write_file(
+        File::Spec->catfile( state_dir($pending_cleanup_root), $pending_name ),
+        "stale\n", 0755
+    );
+}
+set_init_target( $pending_cleanup_root, 'upstart' );
+is( run_state( $pending_cleanup_root, 'configure-legacy', 'fresh' ), 0,
+    'legacy convergence succeeds with stale pending evidence' );
+for my $pending_name (qw(pending-xcatd pending-deleted pending-enabled)) {
+    ok( !-e File::Spec->catfile( state_dir($pending_cleanup_root), $pending_name ),
+        "legacy convergence clears $pending_name" );
+}
+
+my $legacy_retry_root = stage_root();
+set_init_target( $legacy_retry_root, 'upstart' );
+is( run_state( $legacy_retry_root, 'configure-legacy', 'fresh' ), 0,
+    'same-mode retry fixture starts in legacy mode' );
+unlink( rc_link($legacy_retry_root) )
+  or die "Unable to disable same-mode retry fixture: $!";
+is( run_state( $legacy_retry_root, 'configure-legacy', 'upgrade' ), 0,
+    'disabled same-mode state is recorded' );
+set_systemd_state( $legacy_retry_root, 'enabled' );
+write_file( live_init($legacy_retry_root), "same-mode original\n", 0755 );
+write_file( File::Spec->catfile( $legacy_retry_root, 'mutate-ucf' ), "mutate\n" );
+write_file( File::Spec->catfile( $legacy_retry_root, 'fail-ucfr' ), "fail\n" );
+isnt( run_state( $legacy_retry_root, 'configure-legacy', 'upgrade' ), 0,
+    'same-mode failure after UCF mutation is reported' );
+is( state_value( $legacy_retry_root, 'origin' ), 'legacy',
+    'failed same-mode configuration retains its legacy origin' );
+is( read_file( File::Spec->catfile( state_dir($legacy_retry_root), 'xcatd' ) ),
+    "same-mode original\n",
+    'same-mode failure retains an exact transactional stash' );
+unlink( File::Spec->catfile( $legacy_retry_root, 'mutate-ucf' ) )
+  or die "Unable to clear same-mode UCF mutation: $!";
+unlink( File::Spec->catfile( $legacy_retry_root, 'fail-ucfr' ) )
+  or die "Unable to clear same-mode ucfr failure: $!";
+is( run_state( $legacy_retry_root, 'configure-legacy', 'upgrade' ), 0,
+    'same-mode legacy retry succeeds' );
+is( read_file( live_init($legacy_retry_root) ), "same-mode original\n",
+    'same-mode retry restores exact pre-failure content' );
+ok( !-e rc_link($legacy_retry_root),
+    'same-mode retry does not import stale systemd enablement' );
+
+my $admin_disabled_retry_root = stage_root();
+set_init_target( $admin_disabled_retry_root, 'upstart' );
+is( run_state( $admin_disabled_retry_root, 'configure-legacy', 'fresh' ), 0,
+    'admin-disabled retry fixture starts enabled' );
+unlink( rc_link($admin_disabled_retry_root) )
+  or die "Unable to stage current administrator disablement: $!";
+write_file(
+    File::Spec->catfile( $admin_disabled_retry_root, 'fail-ucfr' ),
+    "fail\n"
+);
+isnt( run_state( $admin_disabled_retry_root, 'configure-legacy', 'upgrade' ), 0,
+    'same-mode upgrade fails after current disablement is sampled' );
+is( state_value( $admin_disabled_retry_root, 'enabled' ), 'no',
+    'failed same-mode upgrade records current disabled rc state' );
+unlink( File::Spec->catfile( $admin_disabled_retry_root, 'fail-ucfr' ) )
+  or die "Unable to clear admin-disabled retry failure: $!";
+is( run_state( $admin_disabled_retry_root, 'configure-legacy', 'upgrade' ), 0,
+    'admin-disabled same-mode upgrade retries' );
+ok( !-e rc_link($admin_disabled_retry_root),
+    'retry does not undo a current administrator disablement' );
+
+my $admin_enabled_retry_root = stage_root();
+set_init_target( $admin_enabled_retry_root, 'upstart' );
+is( run_state( $admin_enabled_retry_root, 'configure-legacy', 'fresh' ), 0,
+    'admin-enabled retry fixture starts enabled' );
+unlink( rc_link($admin_enabled_retry_root) )
+  or die "Unable to stage disabled baseline: $!";
+is( run_state( $admin_enabled_retry_root, 'configure-legacy', 'upgrade' ), 0,
+    'disabled baseline is recorded' );
+make_path( File::Spec->catdir( $admin_enabled_retry_root, 'etc', 'rc2.d' ) );
+symlink( '../init.d/xcatd', rc_link($admin_enabled_retry_root) )
+  or die "Unable to stage current administrator enablement: $!";
+write_file(
+    File::Spec->catfile( $admin_enabled_retry_root, 'fail-ucfr' ),
+    "fail\n"
+);
+isnt( run_state( $admin_enabled_retry_root, 'configure-legacy', 'upgrade' ), 0,
+    'same-mode upgrade fails after current enablement is sampled' );
+is( state_value( $admin_enabled_retry_root, 'enabled' ), 'yes',
+    'failed same-mode upgrade records current enabled rc state' );
+unlink( File::Spec->catfile( $admin_enabled_retry_root, 'fail-ucfr' ) )
+  or die "Unable to clear admin-enabled retry failure: $!";
+is( run_state( $admin_enabled_retry_root, 'configure-legacy', 'upgrade' ), 0,
+    'admin-enabled same-mode upgrade retries' );
+ok( -l rc_link($admin_enabled_retry_root),
+    'retry does not undo a current administrator enablement' );
+
+my $markerless_enabled_root = stage_root();
+set_systemd_state( $markerless_enabled_root, 'enabled' );
+set_init_target( $markerless_enabled_root, 'upstart' );
+is( run_state( $markerless_enabled_root, 'configure-legacy', 'upgrade' ), 0,
+    'enabled markerless migration succeeds' );
+ok( -x live_init($markerless_enabled_root),
+    'strong systemd enablement evidence restores the packaged script' );
+ok( -l rc_link($markerless_enabled_root),
+    'strong systemd enablement evidence restores SysV registration' );
+
+my $markerless_unknown_root = stage_root();
+set_systemd_state( $markerless_unknown_root, 'unknown' );
+set_init_target( $markerless_unknown_root, 'upstart' );
+is( run_state( $markerless_unknown_root, 'configure-legacy', 'upgrade' ), 0,
+    'ambiguous markerless migration converges safely' );
+ok( !-e live_init($markerless_unknown_root),
+    'ambiguous absence is not silently resurrected' );
+ok( !-e rc_link($markerless_unknown_root),
+    'ambiguous enablement defaults to disabled' );
+
+my $legacy_target_obsolete_root = stage_root();
+make_path( File::Spec->catdir( $legacy_target_obsolete_root, 'var', 'lib', 'xcat' ) );
+write_file( old_systemd_marker($legacy_target_obsolete_root), "marker\n" );
+set_systemd_state( $legacy_target_obsolete_root, 'disabled' );
+set_init_target( $legacy_target_obsolete_root, 'upstart' );
+is( run_state( $legacy_target_obsolete_root, 'configure-legacy', 'upgrade' ), 0,
+    'obsolete conffile migrates directly to a legacy target' );
+ok( -x live_init($legacy_target_obsolete_root),
+    'direct legacy migration restores package-driven omission' );
+ok( !-e rc_link($legacy_target_obsolete_root),
+    'direct legacy migration preserves disabled systemd state' );
+
+my $legacy_target_live_root = stage_root();
+make_path( File::Spec->catdir( $legacy_target_live_root, 'etc', 'init.d' ) );
+write_file( live_init($legacy_target_live_root), "live first-migration content\n", 0755 );
+set_systemd_state( $legacy_target_live_root, 'enabled' );
+set_init_target( $legacy_target_live_root, 'upstart' );
+is( run_state( $legacy_target_live_root, 'configure-legacy', 'upgrade' ), 0,
+    'live conffile migrates directly to a legacy target' );
+is( read_file( live_init($legacy_target_live_root) ),
+    "live first-migration content\n",
+    'direct legacy migration preserves live administrator content' );
+ok( -l rc_link($legacy_target_live_root),
+    'native systemd enablement maps to SysV on first legacy migration' );
+
+my $legacy_target_deleted_root = stage_root();
+make_path( state_dir($legacy_target_deleted_root) );
+write_file(
+    File::Spec->catfile( state_dir($legacy_target_deleted_root), 'pending-deleted' ),
+    "deleted\n"
+);
+set_systemd_state( $legacy_target_deleted_root, 'enabled' );
+set_init_target( $legacy_target_deleted_root, 'upstart' );
+is( run_state( $legacy_target_deleted_root, 'configure-legacy', 'upgrade' ), 0,
+    'deleted conffile migrates directly to a legacy target' );
+ok( !-e live_init($legacy_target_deleted_root),
+    'direct legacy migration preserves administrator deletion' );
+ok( !-e rc_link($legacy_target_deleted_root),
+    'deleted conffile is never registered under SysV' );
+
+my $backup_root = stage_root();
+make_path( File::Spec->catdir( $backup_root, 'etc', 'init.d' ) );
+write_file( live_init($backup_root) . '.dpkg-bak', "recoverable customization\n", 0755 );
+set_systemd_state( $backup_root, 'disabled' );
+set_init_target( $backup_root, 'upstart' );
+is( run_state( $backup_root, 'configure-legacy', 'upgrade' ), 0,
+    'dpkg backup migration succeeds' );
+is( read_file( live_init($backup_root) ), "recoverable customization\n",
+    'a dpkg conffile backup is recovered through ucf' );
+
+my $origin_reversal_root = stage_root();
+set_init_target( $origin_reversal_root, 'upstart' );
+is( run_state( $origin_reversal_root, 'configure-legacy', 'fresh' ), 0,
+    'origin-reversal fixture starts in legacy mode' );
+write_file( live_init($origin_reversal_root), "origin customization\n", 0755 );
+is( run_state( $origin_reversal_root, 'prepare-systemd', 'upgrade' ), 0,
+    'origin-reversal fixture begins a systemd transition' );
+is( state_value( $origin_reversal_root, 'origin' ), 'legacy',
+    'legacy origin is recorded before systemd enablement runs' );
+write_file( File::Spec->catfile( $origin_reversal_root, 'mutate-ucf' ), "mutate\n" );
+write_file( File::Spec->catfile( $origin_reversal_root, 'fail-ucfr' ), "fail\n" );
+isnt( run_state( $origin_reversal_root, 'configure-legacy', 'upgrade' ), 0,
+    'reversed pre-enable transition can fail during legacy restoration' );
+is( state_value( $origin_reversal_root, 'origin' ), 'legacy',
+    'failed reversal preserves the original legacy provenance' );
+set_init_target( $origin_reversal_root, '../lib/systemd/systemd' );
+is( run_state( $origin_reversal_root, 'prepare-systemd', 'upgrade' ), 0,
+    'failed reversal can return toward systemd' );
+is( state_value( $origin_reversal_root, 'origin' ), 'legacy',
+    'second systemd attempt still requires legacy-origin enablement' );
+is( state_value( $origin_reversal_root, 'enabled' ), 'yes',
+    'second systemd attempt retains intended enablement' );
+
+my $registration_retry_root = stage_root();
+set_init_target( $registration_retry_root, 'upstart' );
+is( run_state( $registration_retry_root, 'configure-legacy', 'fresh' ), 0,
+    'registration retry fixture starts enabled in legacy mode' );
+is( run_state( $registration_retry_root, 'prepare-systemd', 'upgrade' ), 0,
+    'registration retry fixture begins a systemd transition' );
+unlink( rc_link($registration_retry_root) )
+  or die "Unable to simulate removed SysV registration: $!";
+write_file( File::Spec->catfile( $registration_retry_root, 'fail-ucfr' ), "fail\n" );
+isnt( run_state( $registration_retry_root, 'configure-legacy', 'upgrade' ), 0,
+    'legacy reversal fails before registration is restored' );
+unlink( File::Spec->catfile( $registration_retry_root, 'fail-ucfr' ) )
+  or die "Unable to clear registration retry failure: $!";
+is( run_state( $registration_retry_root, 'configure-legacy', 'upgrade' ), 0,
+    'legacy reversal retries successfully' );
+ok( -l rc_link($registration_retry_root),
+    'transition retry restores missing SysV registration' );
+
+my $retry_root = stage_root();
+set_init_target( $retry_root, 'upstart' );
+is( run_state( $retry_root, 'configure-legacy', 'fresh' ), 0,
+    'retry fixture starts in legacy mode' );
+write_file( live_init($retry_root), "retry customization\n", 0755 );
+is( run_state( $retry_root, 'prepare-systemd', 'upgrade' ), 0,
+    'retry fixture is durably stashed' );
+set_init_target( $retry_root, '../lib/systemd/systemd' );
+is( run_compat( $retry_root, 'configure' ), 0,
+    'retry fixture enters systemd mode' );
+is( run_state( $retry_root, 'commit-systemd' ), 0,
+    'retry fixture commits systemd state' );
+set_systemd_state( $retry_root, 'enabled' );
+set_init_target( $retry_root, 'upstart' );
+write_file( File::Spec->catfile( $retry_root, 'mutate-ucf' ), "mutate\n" );
+write_file( File::Spec->catfile( $retry_root, 'fail-ucfr' ), "fail\n" );
+isnt( run_state( $retry_root, 'configure-legacy', 'upgrade' ), 0,
+    'a failure after ucf mutation reports failure' );
+ok( -e File::Spec->catfile( state_dir($retry_root), 'xcatd' ),
+    'failed restoration retains the durable stash' );
+is( read_file( File::Spec->catfile( state_dir($retry_root), 'xcatd' ) ),
+    "retry customization\n",
+    'partial restoration cannot overwrite the original stash' );
+is( state_value( $retry_root, 'mode' ), 'transition-legacy',
+    'failed restoration remains explicitly transitional' );
+unlink( File::Spec->catfile( $retry_root, 'mutate-ucf' ) )
+  or die "Unable to clear injected ucf mutation: $!";
+unlink( File::Spec->catfile( $retry_root, 'fail-ucfr' ) )
+  or die "Unable to clear injected ucfr failure: $!";
+is( run_state( $retry_root, 'configure-legacy', 'upgrade' ), 0,
+    'a repeated configure completes the interrupted transition' );
+is( read_file( live_init($retry_root) ), "retry customization\n",
+    'retry preserves the customized content' );
+
+my $reversal_retry_root = stage_root();
+set_init_target( $reversal_retry_root, 'upstart' );
+is( run_state( $reversal_retry_root, 'configure-legacy', 'fresh' ), 0,
+    'reversal retry fixture starts in legacy mode' );
+write_file( live_init($reversal_retry_root), "reversal customization\n", 0755 );
+is( run_state( $reversal_retry_root, 'prepare-systemd', 'upgrade' ), 0,
+    'reversal retry fixture is durably stashed' );
+set_init_target( $reversal_retry_root, '../lib/systemd/systemd' );
+is( run_compat( $reversal_retry_root, 'configure' ), 0,
+    'reversal retry fixture enters systemd mode' );
+is( run_state( $reversal_retry_root, 'commit-systemd' ), 0,
+    'reversal retry fixture commits systemd state' );
+set_systemd_state( $reversal_retry_root, 'enabled' );
+set_init_target( $reversal_retry_root, 'upstart' );
+write_file( File::Spec->catfile( $reversal_retry_root, 'mutate-ucf' ), "mutate\n" );
+write_file( File::Spec->catfile( $reversal_retry_root, 'fail-ucfr' ), "fail\n" );
+isnt( run_state( $reversal_retry_root, 'configure-legacy', 'upgrade' ), 0,
+    'reversal retry fixture fails after UCF mutation' );
+set_init_target( $reversal_retry_root, '../lib/systemd/systemd' );
+is( run_state( $reversal_retry_root, 'prepare-systemd', 'upgrade' ), 0,
+    'a reversed transition prepares for systemd again' );
+is( read_file(
+        File::Spec->catfile( state_dir($reversal_retry_root), 'xcatd' )
+    ),
+    "reversal customization\n",
+    'reversing a failed restoration cannot overwrite the durable stash' );
+is( run_compat( $reversal_retry_root, 'configure' ), 0,
+    'reversed transition removes the partial live script' );
+is( run_state( $reversal_retry_root, 'commit-systemd' ), 0,
+    'reversed transition commits systemd state' );
+unlink( File::Spec->catfile( $reversal_retry_root, 'mutate-ucf' ) )
+  or die "Unable to clear reversed UCF mutation: $!";
+unlink( File::Spec->catfile( $reversal_retry_root, 'fail-ucfr' ) )
+  or die "Unable to clear reversed ucfr failure: $!";
+set_init_target( $reversal_retry_root, 'upstart' );
+is( run_state( $reversal_retry_root, 'configure-legacy', 'upgrade' ), 0,
+    'reversed transition can later return to legacy mode' );
+is( read_file( live_init($reversal_retry_root) ), "reversal customization\n",
+    'reversed transition eventually restores exact administrator content' );
+
+my $default_retry_root = stage_root();
+set_systemd_state( $default_retry_root, 'disabled' );
+is( run_state( $default_retry_root, 'prepare-systemd', 'fresh' ), 0,
+    'package-default retry fixture prepares as a fresh systemd install' );
+is( run_state( $default_retry_root, 'commit-systemd' ), 0,
+    'package-default retry fixture commits systemd state' );
+set_systemd_state( $default_retry_root, 'enabled' );
+set_init_target( $default_retry_root, 'upstart' );
+write_file( File::Spec->catfile( $default_retry_root, 'mutate-ucf' ), "mutate\n" );
+write_file( File::Spec->catfile( $default_retry_root, 'fail-ucfr' ), "fail\n" );
+isnt( run_state( $default_retry_root, 'configure-legacy', 'upgrade' ), 0,
+    'package-default restoration can fail after materialization' );
+is( state_value( $default_retry_root, 'content' ), 'package-default',
+    'partial package materialization is not promoted to customization' );
+unlink( File::Spec->catfile( $default_retry_root, 'mutate-ucf' ) )
+  or die "Unable to clear package-default UCF mutation: $!";
+unlink( File::Spec->catfile( $default_retry_root, 'fail-ucfr' ) )
+  or die "Unable to clear package-default ucfr failure: $!";
+is( run_state( $default_retry_root, 'configure-legacy', 'upgrade' ), 0,
+    'package-default restoration retries successfully' );
+is( read_file( live_init($default_retry_root) ), read_file($template),
+    'package-default retry rematerializes the exact packaged template' );
+ok( !-e File::Spec->catfile( state_dir($default_retry_root), 'xcatd' ),
+    'package-default retry does not create a durable customization stash' );
+
+my $malformed_root = stage_root();
+make_path( state_dir($malformed_root), File::Spec->catdir( $malformed_root, 'etc', 'init.d' ) );
+write_file( live_init($malformed_root), "must survive\n", 0755 );
+write_file( File::Spec->catfile( state_dir($malformed_root), 'state' ),
+    "format=9\nmode=legacy\ncontent=active\nenabled=yes\n" );
+isnt( run_state( $malformed_root, 'prepare-systemd', 'upgrade' ), 0,
+    'malformed persistent state fails closed' );
+is( read_file( live_init($malformed_root) ), "must survive\n",
+    'malformed state cannot delete the live init script' );
+
+write_file( File::Spec->catfile( state_dir($malformed_root), 'state' ),
+    "format=1\nmode=legacy\ncontent=active\nenabled=yes\n" );
+isnt( run_state( $malformed_root, 'prepare-systemd', 'upgrade' ), 0,
+    'incomplete persistent state fails closed' );
+is( read_file( live_init($malformed_root) ), "must survive\n",
+    'incomplete state cannot delete the live init script' );
+
+done_testing();
