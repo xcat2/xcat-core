@@ -84,6 +84,13 @@ sub legacy_init {
     return File::Spec->catfile( $root, 'etc', 'init.d', 'xcatd' );
 }
 
+sub managed_marker {
+    my ($root) = @_;
+    return File::Spec->catfile(
+        $root, 'var', 'lib', 'xcat', 'xcatd-init-compat-managed'
+    );
+}
+
 my $active_systemd_root = stage_root();
 make_path( File::Spec->catdir( $active_systemd_root, 'run', 'systemd', 'system' ) );
 make_path( File::Spec->catdir( $active_systemd_root, 'etc', 'init.d' ) );
@@ -340,6 +347,119 @@ is( run_helper( $custom_legacy_root, 'remove' ), 0,
 ok( !-e legacy_init($custom_legacy_root),
     'legacy cleanup removes the generated init script' );
 
+my $tracked_legacy_root = stage_root();
+is( run_helper( $tracked_legacy_root, 'configure', '--track-managed' ), 0,
+    'RPM-style configuration can track a generated legacy script' );
+ok( -x legacy_init($tracked_legacy_root),
+    'tracked configuration materializes an executable legacy script' );
+ok( -f managed_marker($tracked_legacy_root),
+    'tracked configuration records generated-file provenance' );
+is( ( stat( managed_marker($tracked_legacy_root) ) )[2] & 07777, 0600,
+    'managed-file provenance is private' );
+my $tracked_state_dir = File::Spec->catdir(
+    $tracked_legacy_root, 'var', 'lib', 'xcat'
+);
+is( ( stat($tracked_state_dir) )[2] & 07777, 0755,
+    'managed-file tracking keeps the shared xCAT state directory traversable' );
+is( run_helper( $tracked_legacy_root, 'remove-managed' ), 0,
+    'managed legacy cleanup succeeds' );
+ok( !-e legacy_init($tracked_legacy_root)
+      && !-e managed_marker($tracked_legacy_root),
+    'managed cleanup removes an unchanged generated script and its marker' );
+
+my $admin_legacy_root = stage_root();
+make_path( File::Spec->catdir( $admin_legacy_root, 'etc', 'init.d' ) );
+open( my $admin_init, '>', legacy_init($admin_legacy_root) )
+  or die "Unable to stage administrator init script: $!";
+print {$admin_init} "administrator-owned init script\n";
+close($admin_init);
+chmod 0755, legacy_init($admin_legacy_root);
+is( run_helper( $admin_legacy_root, 'configure', '--track-managed' ), 0,
+    'tracked configuration accepts a pre-existing administrator script' );
+ok( !-e managed_marker($admin_legacy_root),
+    'a pre-existing administrator script is not marked as generated' );
+is( run_helper( $admin_legacy_root, 'remove-managed' ), 0,
+    'managed cleanup accepts an unowned administrator script' );
+is( read_file( legacy_init($admin_legacy_root) ),
+    "administrator-owned init script\n",
+    'managed cleanup preserves an unowned administrator script' );
+
+my $identical_admin_root = stage_root();
+make_path( File::Spec->catdir( $identical_admin_root, 'etc', 'init.d' ) );
+copy( $template, legacy_init($identical_admin_root) )
+  or die "Unable to stage byte-identical administrator script: $!";
+chmod 0755, legacy_init($identical_admin_root);
+is( run_helper( $identical_admin_root, 'remove-managed' ), 0,
+    'managed cleanup accepts an unmarked byte-identical script' );
+ok( -f legacy_init($identical_admin_root),
+    'content equality alone does not grant ownership for cleanup' );
+is( read_file( legacy_init($identical_admin_root) ), read_file($template),
+    'managed cleanup preserves an unmarked byte-identical script' );
+
+my $admin_symlink_root = stage_root();
+my $admin_init_dir = File::Spec->catdir( $admin_symlink_root, 'etc', 'init.d' );
+make_path($admin_init_dir);
+my $admin_symlink_target = File::Spec->catfile( $admin_init_dir, 'xcatd.admin' );
+open( my $admin_target, '>', $admin_symlink_target )
+  or die "Unable to stage administrator symlink target: $!";
+print {$admin_target} "administrator symlink target\n";
+close($admin_target);
+symlink( 'xcatd.admin', legacy_init($admin_symlink_root) )
+  or die "Unable to stage administrator init symlink: $!";
+is( run_helper( $admin_symlink_root, 'configure', '--track-managed' ), 0,
+    'tracked configuration preserves a valid administrator symlink' );
+is( run_helper( $admin_symlink_root, 'remove-managed' ), 0,
+    'managed cleanup accepts an unowned administrator symlink' );
+ok( -l legacy_init($admin_symlink_root),
+    'managed cleanup preserves an unowned administrator symlink' );
+
+my $modified_managed_root = stage_root();
+is( run_helper( $modified_managed_root, 'configure', '--track-managed' ), 0,
+    'modified-file scenario starts with a tracked generated script' );
+open( my $modified_init, '>', legacy_init($modified_managed_root) )
+  or die "Unable to modify tracked init script: $!";
+print {$modified_init} "administrator modification\n";
+close($modified_init);
+is( run_helper( $modified_managed_root, 'remove-managed' ), 0,
+    'managed cleanup accepts an administrator-modified generated script' );
+is( read_file( legacy_init($modified_managed_root) ),
+    "administrator modification\n",
+    'managed cleanup preserves administrator changes' );
+ok( !-e managed_marker($modified_managed_root),
+    'managed cleanup clears provenance after preserving a modified script' );
+
+my $replace_managed_root = stage_root();
+make_path( File::Spec->catdir( $replace_managed_root, 'etc', 'init.d' ) );
+open( my $replace_init, '>', legacy_init($replace_managed_root) )
+  or die "Unable to stage replaceable init script: $!";
+print {$replace_init} "old package payload\n";
+close($replace_init);
+is( run_helper( $replace_managed_root, 'configure', '--replace', '--track-managed' ), 0,
+    'RPM upgrade replacement records generated-file provenance' );
+is( read_file( legacy_init($replace_managed_root) ), read_file($template),
+    'tracked replacement installs the current legacy template' );
+ok( -f managed_marker($replace_managed_root),
+    'tracked replacement creates a managed marker' );
+
+my $systemd_tracked_root = stage_root();
+is( run_helper( $systemd_tracked_root, 'configure', '--track-managed' ), 0,
+    'systemd-transition scenario starts with a tracked legacy script' );
+make_path( File::Spec->catdir( $systemd_tracked_root, 'run', 'systemd', 'system' ) );
+is( run_helper( $systemd_tracked_root, 'configure' ), 0,
+    'systemd configuration removes tracked legacy state' );
+ok( !-e legacy_init($systemd_tracked_root)
+      && !-e managed_marker($systemd_tracked_root),
+    'systemd configuration clears the generated script and its provenance' );
+
+my $legacy_remove_root = stage_root();
+is( run_helper( $legacy_remove_root, 'configure', '--track-managed' ), 0,
+    'legacy remove scenario starts with tracked state' );
+is( run_helper( $legacy_remove_root, 'remove' ), 0,
+    'legacy remove remains compatible with tracked state' );
+ok( !-e legacy_init($legacy_remove_root)
+      && !-e managed_marker($legacy_remove_root),
+    'legacy remove clears both the script and stale provenance' );
+
 my $rpm_spec = read_file(
     File::Spec->catfile( $repo_root, 'xCAT-server', 'xCAT-server.spec' )
 );
@@ -363,6 +483,9 @@ ok( defined($rpm_post) && defined($rpm_posttrans) && defined($rpm_preun)
 like( $rpm_spec,
     qr{cp etc/init\.d/xcatd \$RPM_BUILD_ROOT/%\{prefix\}/share/xcat/scripts/xcatd},
     'RPM stages the legacy script as a compatibility template' );
+unlike( $rpm_spec,
+    qr{touch \$RPM_BUILD_ROOT/etc/init\.d/xcatd|%ghost[^\n]*/etc/init\.d/xcatd},
+    'RPM leaves the runtime init script unowned so helper provenance controls erase' );
 like( $rpm_spec, qr{xcatd-init-compat.*uses-systemd}s,
     'RPM scriptlets select the init implementation at install time' );
 unlike( $rpm_spec,
@@ -386,6 +509,9 @@ like( $rpm_upgrade_legacy,
 like( $rpm_fresh,
     qr{if \[ "\$\("\$xcatd_init_compat" systemd-state\)" != masked \]; then\s+"\$xcatd_init_compat" register-legacy enabled}s,
     'RPM fresh legacy installs do not override a persistent systemd mask' );
+like( $rpm_fresh,
+    qr{uses-systemd --explicit-target; then\s+"\$xcatd_init_compat" configure --explicit-target \|\| exit 1.*?else\s+"\$xcatd_init_compat" configure --explicit-target --track-managed \|\| exit 1}s,
+    'RPM tracks only fresh legacy scripts as generated files' );
 unlike( $rpm_post,
     qr{/sbin/chkconfig --(?:add|del) xcatd|/usr/lib/lsb/(?:install|remove)_initd},
     'RPM post delegates registration mechanics to the shared helper' );
@@ -394,9 +520,18 @@ like( $rpm_posttrans,
     'RPM post-transaction recovery restores only a missing legacy script' );
 unlike( $rpm_posttrans, qr{\$1|--replace},
     'RPM post-transaction recovery is idempotent and not argument-gated' );
+like( $rpm_upgrade_legacy,
+    qr{configure --replace --explicit-target --track-managed \|\| exit 1},
+    'RPM legacy upgrades track the replacement script as generated' );
+like( $rpm_posttrans,
+    qr{configure --explicit-target --track-managed \|\| exit 1},
+    'RPM post-transaction recovery restores managed-file provenance' );
 like( $rpm_preun,
     qr{"\$xcatd_init_compat" unregister-all.*?"\$xcatd_init_compat" remove}s,
     'RPM erase cleans both managers before removing the generated script' );
+like( $rpm_preun,
+    qr{"\$xcatd_init_compat" unregister-all \|\| true.*?"\$xcatd_init_compat" remove-managed \|\| true}s,
+    'RPM erase preserves its recoverable cleanup policy with managed files' );
 unlike( $rpm_preun,
     qr{/sbin/chkconfig --del xcatd|/usr/lib/lsb/remove_initd},
     'RPM erase delegates cross-manager cleanup to the shared helper' );
