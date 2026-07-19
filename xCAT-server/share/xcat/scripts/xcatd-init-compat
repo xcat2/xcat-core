@@ -18,10 +18,10 @@ esac
 legacy_init="$compat_root/etc/init.d/xcatd"
 legacy_template="$compat_root$xcat_root/share/xcat/scripts/xcatd"
 
-uses_systemd_os_release()
+systemd_os_release_status()
 {
     os_release="$compat_root/etc/os-release"
-    [ -r "$os_release" ] || return 1
+    [ -r "$os_release" ] || return 2
 
     os_id=
     os_version=
@@ -43,42 +43,72 @@ uses_systemd_os_release()
 
     os_major=${os_version%%.*}
     case "$os_major" in
-        ''|*[!0-9]*) return 1 ;;
+        ''|*[!0-9]*) return 2 ;;
     esac
 
     case "$os_id" in
         rhel|centos|rocky|almalinux|ol|scientific)
-            [ "$os_major" -ge 7 ]
-            ;;
-        fedora|ubuntu)
-            [ "$os_major" -ge 15 ]
-            ;;
-        debian)
-            [ "$os_major" -ge 8 ]
-            ;;
-        sles|sled|opensuse|opensuse-leap|opensuse-tumbleweed)
-            [ "$os_major" -ge 12 ]
-            ;;
-        *)
+            [ "$os_major" -ge 7 ] && return 0
             return 1
             ;;
+        fedora|ubuntu)
+            [ "$os_major" -ge 15 ] && return 0
+            return 1
+            ;;
+        debian)
+            [ "$os_major" -ge 8 ] && return 0
+            return 1
+            ;;
+        sles|sled|opensuse|opensuse-leap|opensuse-tumbleweed)
+            [ "$os_major" -ge 12 ] && return 0
+            return 1
+            ;;
+        *)
+            return 2
+            ;;
     esac
+
 }
 
 uses_systemd()
 {
+    detection_mode=${1:-compat}
+
     if [ -d "$compat_root/run/systemd/system" ]; then
         return 0
     fi
 
-    # Chroots and minimal images may have systemd installed without a running
-    # manager or an /sbin/init link.
+    if [ "$detection_mode" = explicit ]; then
+        if [ -L "$compat_root/sbin/init" ]; then
+            init_target=$(readlink "$compat_root/sbin/init" 2>/dev/null || true)
+            case "$init_target" in
+                *systemd*) return 0 ;;
+                *) return 1 ;;
+            esac
+        fi
+
+        if [ -e "$compat_root/sbin/init" ]; then
+            return 1
+        fi
+
+        if systemd_os_release_status; then
+            return 0
+        else
+            os_release_status=$?
+            if [ "$os_release_status" -eq 1 ]; then
+                return 1
+            fi
+        fi
+    fi
+
+    # Preserve the historical fallback order unless every package lifecycle
+    # phase has explicitly opted in to authoritative /sbin/init detection.
     if [ -x "$compat_root/usr/lib/systemd/systemd" ] ||
         [ -x "$compat_root/lib/systemd/systemd" ]; then
         return 0
     fi
 
-    if uses_systemd_os_release; then
+    if systemd_os_release_status; then
         return 0
     fi
 
@@ -126,13 +156,22 @@ configure_legacy_init()
 
 case "${1:-}" in
     uses-systemd)
-        uses_systemd
+        detection_mode=compat
+        case "${2:-}" in
+            '') ;;
+            --explicit-target) detection_mode=explicit ;;
+            *)
+                echo "Usage: $0 uses-systemd [--explicit-target]" >&2
+                exit 2
+                ;;
+        esac
+        uses_systemd "$detection_mode"
         ;;
     configure)
         case "${2:-}" in
             ''|--replace) ;;
             *)
-                echo "Usage: $0 {uses-systemd|configure [--replace]|remove}" >&2
+                echo "Usage: $0 {uses-systemd [--explicit-target]|configure [--replace]|remove}" >&2
                 exit 2
                 ;;
         esac
@@ -142,7 +181,7 @@ case "${1:-}" in
         rm -f "$legacy_init"
         ;;
     *)
-        echo "Usage: $0 {uses-systemd|configure [--replace]|remove}" >&2
+        echo "Usage: $0 {uses-systemd [--explicit-target]|configure [--replace]|remove}" >&2
         exit 2
         ;;
 esac
