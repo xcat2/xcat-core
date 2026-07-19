@@ -36,6 +36,11 @@ sub read_file {
     return $contents;
 }
 
+sub path_mode {
+    my ($path) = @_;
+    return ( stat($path) )[2] & 07777;
+}
+
 sub stage_root {
     my $root = tempdir( CLEANUP => 1 );
     my $scripts = File::Spec->catdir(
@@ -174,8 +179,18 @@ sub rc_link {
 
 my $round_trip_root = stage_root();
 set_init_target( $round_trip_root, 'upstart' );
-is( run_state( $round_trip_root, 'configure-legacy', 'fresh' ), 0,
+my $saved_umask = umask 0022;
+my $fresh_configure_status =
+  run_state( $round_trip_root, 'configure-legacy', 'fresh' );
+umask $saved_umask;
+is( $fresh_configure_status, 0,
     'fresh legacy configuration succeeds' );
+is( path_mode( state_dir($round_trip_root) ), 0700,
+    'persistent init state remains private' );
+is( path_mode( File::Spec->catfile( state_dir($round_trip_root), 'state' ) ),
+    0600, 'the init state file remains private' );
+is( path_mode( File::Spec->catdir( $round_trip_root, 'etc', 'init.d' ) ),
+    0755, 'state writes do not leak their private umask into init directories' );
 ok( -x live_init($round_trip_root),
     'fresh legacy configuration materializes the init script' );
 ok( -l rc_link($round_trip_root),
