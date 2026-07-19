@@ -361,6 +361,12 @@ is( run_compat( $unregistered_root, 'configure', '--explicit-target' ), 0,
 is( run_state( $unregistered_root, 'commit-systemd' ), 0,
     'unregistered systemd state commits' );
 set_systemd_state( $unregistered_root, 'disabled' );
+is( run_state( $unregistered_root, 'prepare-systemd', 'upgrade' ), 0,
+    'unregistered state survives a same-systemd upgrade preparation' );
+is( state_value( $unregistered_root, 'enabled' ), 'unregistered',
+    'same-systemd disablement does not invent registered-disabled provenance' );
+is( run_state( $unregistered_root, 'commit-systemd' ), 0,
+    'unregistered same-systemd upgrade commits' );
 set_init_target( $unregistered_root, 'upstart' );
 is( run_state( $unregistered_root, 'configure-legacy', 'upgrade' ), 0,
     'unregistered systemd fixture returns to legacy' );
@@ -999,6 +1005,13 @@ make_path( state_dir($format1_root) );
 write_file( File::Spec->catfile( state_dir($format1_root), 'state' ),
     "format=1\nmode=systemd\ncontent=package-default\nenabled=no\norigin=unknown\n" );
 set_systemd_state( $format1_root, 'disabled' );
+set_init_target( $format1_root, '../lib/systemd/systemd' );
+is( run_state( $format1_root, 'prepare-systemd', 'upgrade' ), 0,
+    'format-1 disabled state survives a same-systemd upgrade preparation' );
+is( state_value( $format1_root, 'enabled' ), 'unregistered',
+    'same-systemd preparation retains recovered format-1 provenance' );
+is( run_state( $format1_root, 'commit-systemd' ), 0,
+    'recovered format-1 same-systemd state commits' );
 set_init_target( $format1_root, 'upstart' );
 is( run_state( $format1_root, 'configure-legacy', 'upgrade' ), 0,
     'format-1 disabled state converges safely' );

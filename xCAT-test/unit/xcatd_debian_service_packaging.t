@@ -136,6 +136,10 @@ like( $deb_init_state, qr{printf 'format=2},
 like( $deb_init_state,
     qr{state_format" = 1.*?state_enabled" = no.*?state_enabled=unregistered}s,
     'Debian preserves format-1 remove-all-links behavior' );
+my @unregistered_refresh_guards =
+  $deb_init_state =~ /state_enabled" != unregistered/g;
+is( scalar @unregistered_refresh_guards, 2,
+    'both systemd refresh paths retain unregistered provenance' );
 like( $deb_init_state,
     qr{init_compat=.*?xcatd-init-compat.*?shared_init_state\(\).*?"\$init_compat" "\$\@".*?debian-legacy-state.*?systemd-state --allow-unknown}s,
     'Debian delegates legacy and precise systemd state detection to the shared helper' );
