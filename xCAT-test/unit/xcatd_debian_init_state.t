@@ -216,6 +216,19 @@ sub rc_link {
     return File::Spec->catfile( $root, 'etc', 'rc2.d', 'S20xcatd' );
 }
 
+sub rc_kill_link {
+    my ($root) = @_;
+    return File::Spec->catfile( $root, 'etc', 'rc2.d', 'K80xcatd' );
+}
+
+sub registration_link_count {
+    my ($root) = @_;
+    my @links = glob( File::Spec->catfile(
+        $root, 'etc', 'rc?.d', '[SK]??xcatd'
+    ) );
+    return scalar @links;
+}
+
 my $round_trip_root = stage_root();
 set_init_target( $round_trip_root, 'upstart' );
 my $saved_umask = umask 0022;
@@ -228,6 +241,8 @@ is( path_mode( state_dir($round_trip_root) ), 0700,
     'persistent init state remains private' );
 is( path_mode( File::Spec->catfile( state_dir($round_trip_root), 'state' ) ),
     0600, 'the init state file remains private' );
+is( state_value( $round_trip_root, 'format' ), '2',
+    'new init state is written in registration-aware format 2' );
 is( path_mode( File::Spec->catdir( $round_trip_root, 'etc', 'init.d' ) ),
     0755, 'state writes do not leak their private umask into init directories' );
 ok( -x live_init($round_trip_root),
@@ -287,6 +302,8 @@ set_init_target( $disabled_root, 'upstart' );
 is( run_state( $disabled_root, 'configure-legacy', 'fresh' ), 0,
     'disabled fixture starts in legacy mode' );
 run_update_rc( $disabled_root, 'xcatd', 'disable' );
+ok( -l rc_kill_link($disabled_root),
+    'disabled fixture remains registered through a kill link' );
 write_file( live_init($disabled_root), "disabled customization\n", 0755 );
 is( run_state( $disabled_root, 'prepare-systemd', 'upgrade' ), 0,
     'disabled legacy fixture prepares for systemd' );
@@ -305,6 +322,38 @@ is( read_file( live_init($disabled_root) ), "disabled customization\n",
     'disabled customization is restored' );
 ok( !-e rc_link($disabled_root),
     'disabled systemd state stays disabled under SysV' );
+ok( -l rc_kill_link($disabled_root),
+    'registered-disabled SysV state restores its kill link' );
+run_update_rc( $disabled_root, 'xcatd', 'enable' );
+ok( -l rc_link($disabled_root) && !-e rc_kill_link($disabled_root),
+    'a restored registered-disabled service can be enabled later' );
+
+my $unregistered_root = stage_root();
+set_init_target( $unregistered_root, 'upstart' );
+is( run_state( $unregistered_root, 'configure-legacy', 'fresh' ), 0,
+    'unregistered fixture starts in legacy mode' );
+run_update_rc( $unregistered_root, '-f', 'xcatd', 'remove' );
+write_file( live_init($unregistered_root), "unregistered customization\n", 0755 );
+is( run_state( $unregistered_root, 'prepare-systemd', 'upgrade' ), 0,
+    'unregistered legacy fixture prepares for systemd' );
+is( state_value( $unregistered_root, 'enabled' ), 'unregistered',
+    'an absent SysV registration is distinct from registered-disabled' );
+set_init_target( $unregistered_root, '../lib/systemd/systemd' );
+is( run_compat( $unregistered_root, 'configure', '--explicit-target' ), 0,
+    'unregistered systemd fixture removes the live script' );
+is( run_state( $unregistered_root, 'commit-systemd' ), 0,
+    'unregistered systemd state commits' );
+set_systemd_state( $unregistered_root, 'disabled' );
+set_init_target( $unregistered_root, 'upstart' );
+is( run_state( $unregistered_root, 'configure-legacy', 'upgrade' ), 0,
+    'unregistered systemd fixture returns to legacy' );
+is( read_file( live_init($unregistered_root) ),
+    "unregistered customization\n",
+    'unregistered customization is restored' );
+is( registration_link_count($unregistered_root), 0,
+    'unregistered state returns without start or kill links' );
+is( state_value( $unregistered_root, 'enabled' ), 'unregistered',
+    'completed state retains unregistered metadata' );
 
 my $rpm_layout_root = stage_root();
 set_init_target( $rpm_layout_root, 'upstart' );
@@ -319,8 +368,21 @@ symlink( '/etc/init.d/xcatd',
   or die "Unable to stage RPM-only registration: $!";
 is( run_state( $rpm_layout_root, 'prepare-systemd', 'upgrade' ), 0,
     'RPM-only registration prepares for a Debian systemd transition' );
-isnt( state_value( $rpm_layout_root, 'enabled' ), 'yes',
+is( state_value( $rpm_layout_root, 'enabled' ), 'unregistered',
     'RPM-only links do not become Debian SysV enablement evidence' );
+
+my $missing_update_rc_root = stage_root();
+unlink( File::Spec->catfile(
+        $missing_update_rc_root, 'test-bin', 'update-rc.d'
+    ) )
+  or die "Unable to remove fake update-rc.d: $!";
+set_init_target( $missing_update_rc_root, 'upstart' );
+is( run_state( $missing_update_rc_root, 'configure-legacy', 'fresh' ), 0,
+    'fresh legacy configuration tolerates a missing update-rc.d' );
+ok( -x live_init($missing_update_rc_root),
+    'missing registration tooling does not prevent script materialization' );
+is( registration_link_count($missing_update_rc_root), 0,
+    'missing registration tooling leaves runlevel links untouched' );
 
 my $legacy_reinstall_root = stage_root();
 set_init_target( $legacy_reinstall_root, 'upstart' );
@@ -344,8 +406,7 @@ symlink( '/dev/null',
   or die "Unable to stage transition mask: $!";
 is( run_state( $masked_transition_root, 'prepare-systemd', 'upgrade' ), 0,
     'enabled legacy state prepares against a systemd mask' );
-like( state_value( $masked_transition_root, 'enabled' ),
-    qr/^(?:no|unregistered)$/,
+is( state_value( $masked_transition_root, 'enabled' ), 'unregistered',
     'an explicit systemd mask overrides legacy registration' );
 is( state_value( $masked_transition_root, 'origin' ), 'systemd',
     'masked transition suppresses postinst enablement mutation' );
@@ -364,8 +425,7 @@ symlink( '/dev/null',
   or die "Unable to stage mask during transition: $!";
 is( run_state( $late_mask_root, 'prepare-systemd', 'upgrade' ), 0,
     'systemd transition retries after a mask is added' );
-like( state_value( $late_mask_root, 'enabled' ),
-    qr/^(?:no|unregistered)$/,
+is( state_value( $late_mask_root, 'enabled' ), 'unregistered',
     'a newly added mask overrides preserved transition enablement' );
 is( state_value( $late_mask_root, 'origin' ), 'systemd',
     'a newly added mask suppresses retry enablement mutation' );
@@ -414,7 +474,7 @@ is( run_state( $masked_root, 'prepare-systemd', 'upgrade' ), 0,
     'masked systemd preparation succeeds' );
 is( state_value( $masked_root, 'content' ), 'package-default',
     'an obsolete package conffile marker retains package omission semantics' );
-like( state_value( $masked_root, 'enabled' ), qr/^(?:no|unregistered)$/,
+is( state_value( $masked_root, 'enabled' ), 'unregistered',
     'a masked unit is not treated as boot-enabled' );
 
 my $fresh_masked_root = stage_root();
@@ -426,8 +486,7 @@ symlink( '/dev/null',
   or die "Unable to stage fresh masked unit: $!";
 is( run_state( $fresh_masked_root, 'prepare-systemd', 'fresh' ), 0,
     'fresh masked systemd preparation succeeds' );
-like( state_value( $fresh_masked_root, 'enabled' ),
-    qr/^(?:no|unregistered)$/,
+is( state_value( $fresh_masked_root, 'enabled' ), 'unregistered',
     'a pre-existing mask is not overridden on fresh install' );
 
 my $runtime_masked_root = stage_root();
@@ -440,8 +499,7 @@ symlink( '/dev/null',
 set_systemd_state( $runtime_masked_root, 'unknown' );
 is( run_state( $runtime_masked_root, 'prepare-systemd', 'fresh' ), 0,
     'runtime masked systemd preparation succeeds' );
-like( state_value( $runtime_masked_root, 'enabled' ),
-    qr/^(?:no|unregistered)$/,
+is( state_value( $runtime_masked_root, 'enabled' ), 'unregistered',
     'a runtime mask is not treated as enabled offline' );
 is( state_value( $runtime_masked_root, 'origin' ), 'systemd',
     'a runtime mask overrides fresh-install enablement' );
@@ -511,8 +569,7 @@ symlink( '/dev/null',
   or die "Unable to stage masked first migration: $!";
 is( run_state( $masked_pending_root, 'prepare-systemd', 'upgrade' ), 0,
     'masked first migration prepares successfully' );
-like( state_value( $masked_pending_root, 'enabled' ),
-    qr/^(?:no|unregistered)$/,
+is( state_value( $masked_pending_root, 'enabled' ), 'unregistered',
     'an explicit systemd mask wins over stale legacy enablement' );
 
 my $obsolete_disabled_root = stage_root();
@@ -533,7 +590,9 @@ is( run_state( $obsolete_disabled_root, 'configure-legacy', 'upgrade' ), 0,
 ok( -x live_init($obsolete_disabled_root),
     'package omission restores the packaged legacy script' );
 ok( !-e rc_link($obsolete_disabled_root),
-    'disabled package omission remains unregistered under SysV' );
+    'disabled package omission remains off under SysV' );
+ok( -l rc_kill_link($obsolete_disabled_root),
+    'native systemd disablement maps to registered-disabled SysV state' );
 
 my $same_systemd_root = stage_root();
 set_systemd_state( $same_systemd_root, 'disabled' );
@@ -716,6 +775,8 @@ ok( -x live_init($legacy_target_obsolete_root),
     'direct legacy migration restores package-driven omission' );
 ok( !-e rc_link($legacy_target_obsolete_root),
     'direct legacy migration preserves disabled systemd state' );
+ok( -l rc_kill_link($legacy_target_obsolete_root),
+    'direct legacy migration records disabled systemd state with kill links' );
 
 my $legacy_target_live_root = stage_root();
 make_path( File::Spec->catdir( $legacy_target_live_root, 'etc', 'init.d' ) );
@@ -744,6 +805,8 @@ ok( !-e live_init($legacy_target_deleted_root),
     'direct legacy migration preserves administrator deletion' );
 ok( !-e rc_link($legacy_target_deleted_root),
     'deleted conffile is never registered under SysV' );
+is( registration_link_count($legacy_target_deleted_root), 0,
+    'deleted conffile gains neither start nor kill links' );
 
 my $backup_root = stage_root();
 make_path( File::Spec->catdir( $backup_root, 'etc', 'init.d' ) );
@@ -893,6 +956,21 @@ is( read_file( live_init($default_retry_root) ), read_file($template),
     'package-default retry rematerializes the exact packaged template' );
 ok( !-e File::Spec->catfile( state_dir($default_retry_root), 'xcatd' ),
     'package-default retry does not create a durable customization stash' );
+
+my $format1_root = stage_root();
+make_path( state_dir($format1_root) );
+write_file( File::Spec->catfile( state_dir($format1_root), 'state' ),
+    "format=1\nmode=systemd\ncontent=package-default\nenabled=no\norigin=unknown\n" );
+set_systemd_state( $format1_root, 'disabled' );
+set_init_target( $format1_root, 'upstart' );
+is( run_state( $format1_root, 'configure-legacy', 'upgrade' ), 0,
+    'format-1 disabled state converges safely' );
+is( state_value( $format1_root, 'format' ), '2',
+    'format-1 state is rewritten in registration-aware format 2' );
+is( state_value( $format1_root, 'enabled' ), 'unregistered',
+    'format-1 no preserves its historical remove-all-links behavior' );
+is( registration_link_count($format1_root), 0,
+    'format-1 no does not invent registered-disabled metadata' );
 
 my $malformed_root = stage_root();
 make_path( state_dir($malformed_root), File::Spec->catdir( $malformed_root, 'etc', 'init.d' ) );

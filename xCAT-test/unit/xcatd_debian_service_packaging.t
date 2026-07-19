@@ -2,7 +2,9 @@
 use strict;
 use warnings;
 
+use File::Path qw(make_path);
 use File::Spec;
+use File::Temp qw(tempdir);
 use FindBin;
 use Test::More;
 
@@ -29,6 +31,54 @@ sub pending_cleanup_block {
     return $1
       if $script =~ /(clear_xcatd_pending_state\(\)\n\{.*?\n\})\n/s;
     return '';
+}
+
+sub legacy_state_block {
+    my ($script) = @_;
+    return $1
+      if $script =~
+      /(xcatd_legacy_enable_state\(\)\n\{.*?\n\})\n\nif xcat_target_uses_systemd/s;
+    return '';
+}
+
+sub run_legacy_state_block {
+    my ( $block, $helper_source ) = @_;
+    my $root = tempdir( CLEANUP => 1 );
+    my $helper = File::Spec->catfile( $root, 'xcatd-init-compat' );
+    open( my $helper_fh, '>', $helper )
+      or die "Unable to stage compatibility helper: $!";
+    print {$helper_fh} $helper_source;
+    close($helper_fh);
+    chmod 0755, $helper;
+
+    my $rpm_runlevel =
+      File::Spec->catdir( $root, 'etc', 'rc.d', 'rc3.d' );
+    make_path($rpm_runlevel);
+    symlink( '/etc/init.d/xcatd',
+        File::Spec->catfile( $rpm_runlevel, 'S85xcatd' ) )
+      or die "Unable to stage RPM-only runlevel link: $!";
+
+    my $isolated_block = $block;
+    $isolated_block =~ s{/etc/rc}{\$fixture_root/etc/rc}g;
+    my $runner = File::Spec->catfile( $root, 'run-detector' );
+    open( my $runner_fh, '>', $runner )
+      or die "Unable to stage detector runner: $!";
+    print {$runner_fh} "#!/bin/sh\nset -e\n";
+    print {$runner_fh} "fixture_root=\${XCAT_TEST_ROOT:?}\n";
+    print {$runner_fh} "xcatd_init_compat=\${XCAT_TEST_HELPER:?}\n";
+    print {$runner_fh} "$isolated_block\n\nxcatd_legacy_enable_state\n";
+    close($runner_fh);
+    chmod 0755, $runner;
+
+    local $ENV{XCAT_TEST_ROOT}   = $root;
+    local $ENV{XCAT_TEST_HELPER} = $helper;
+    open( my $pipe, '-|', '/bin/sh', $runner )
+      or die "Unable to run preinst detector: $!";
+    my $output = do { local $/; <$pipe> };
+    close($pipe);
+    my $status = $? >> 8;
+    $output =~ s/\s+\z//;
+    return ( $status, $output );
 }
 
 my $deb_install = read_file(
@@ -76,6 +126,14 @@ like( $deb_init_state,
     qr{\[ -x "\$legacy_init" \].*?update-rc\.d xcatd defaults}s,
     'Debian registers SysV only after materializing an executable script' );
 like( $deb_init_state,
+    qr{apply_legacy_registration\(\).*?no\).*?update-rc\.d xcatd defaults.*?update-rc\.d xcatd disable.*?unregistered\|unknown\).*?update-rc\.d -f xcatd remove}s,
+    'Debian distinguishes registered-disabled from unregistered SysV state' );
+like( $deb_init_state, qr{printf 'format=2},
+    'Debian writes registration-aware state format 2' );
+like( $deb_init_state,
+    qr{state_format" = 1.*?state_enabled" = no.*?state_enabled=unregistered}s,
+    'Debian preserves format-1 remove-all-links behavior' );
+like( $deb_init_state,
     qr{init_compat=.*?xcatd-init-compat.*?shared_init_state\(\).*?"\$init_compat" "\$\@".*?debian-legacy-state.*?systemd-state --allow-unknown}s,
     'Debian delegates legacy and precise systemd state detection to the shared helper' );
 unlike( $deb_init_state,
@@ -84,6 +142,9 @@ unlike( $deb_init_state,
 like( $deb_postinst,
     qr{transition_origin=.*?get origin.*?fresh:yes\|legacy:yes.*?systemctl enable}s,
     'Debian changes systemd enablement only for fresh installs and init transitions' );
+like( $deb_postinst,
+    qr{legacy:no\|legacy:unregistered\) systemctl disable xcatd\.service},
+    'Debian maps both disabled SysV registration states to systemd disablement' );
 unlike( $deb_postinst, qr{systemd:yes.*?systemctl enable}s,
     'Debian same-systemd upgrades do not normalize existing enablement' );
 
@@ -111,6 +172,68 @@ foreach my $fallback_script (qw(preinst postrm)) {
 my $deb_preinst = read_file(
     File::Spec->catfile( $repo_root, 'xCAT-server', 'debian', 'preinst' )
 );
+my $preinst_legacy_state_block = legacy_state_block($deb_preinst);
+ok( $preinst_legacy_state_block ne '',
+    'preinst legacy registration detector can be extracted' );
+is_deeply(
+    [ run_legacy_state_block( $preinst_legacy_state_block, <<'SH' ) ],
+#!/bin/sh
+root=${XCAT_TEST_ROOT:?}
+case "${1:-}" in
+    legacy-state)
+        for link in "$root"/etc/rc.d/rc?.d/S??xcatd; do
+            if [ -e "$link" ] || [ -L "$link" ]; then
+                printf '%s\n' enabled
+                exit 0
+            fi
+        done
+        printf '%s\n' unregistered
+        ;;
+    *) exit 2 ;;
+esac
+SH
+    [ 0, 'unregistered' ],
+    'preinst falls back to Debian links when the installed helper lacks the command'
+);
+is_deeply(
+    [ run_legacy_state_block( $preinst_legacy_state_block, <<'SH' ) ],
+#!/bin/sh
+root=${XCAT_TEST_ROOT:?}
+case "${1:-}:$#" in
+    debian-legacy-state:1)
+        for link in "$root"/etc/rc?.d/S??xcatd; do
+            if [ -e "$link" ] || [ -L "$link" ]; then
+                printf '%s\n' enabled
+                exit 0
+            fi
+        done
+        printf '%s\n' unregistered
+        ;;
+    *) exit 2 ;;
+esac
+SH
+    [ 0, 'unregistered' ],
+    'preinst uses Debian-only state from a command-aware installed helper'
+);
+my ( $malformed_helper_status, $malformed_helper_output ) =
+  run_legacy_state_block( $preinst_legacy_state_block, <<'SH' );
+#!/bin/sh
+[ "${1:-}" = debian-legacy-state ] || exit 2
+printf '%s\n' malformed
+SH
+is( $malformed_helper_status, 1,
+    'preinst rejects malformed successful helper output' );
+is( $malformed_helper_output, '',
+    'preinst does not promote malformed helper output' );
+my ( $failed_helper_status, $failed_helper_output ) =
+  run_legacy_state_block( $preinst_legacy_state_block, <<'SH' );
+#!/bin/sh
+exit 7
+SH
+is( $failed_helper_status, 7,
+    'preinst fails closed on non-capability helper errors' );
+is( $failed_helper_output, '',
+    'preinst does not fall back after a real helper failure' );
 like( $deb_preinst,
     qr{write_xcatd_context\(\)\s*\(.*?umask 077.*?\n\)}s,
     'preinst confines the context-file umask to a subshell' );
@@ -130,6 +253,9 @@ like( $deb_preinst,
 like( $deb_preinst,
     qr{if \[ -n "\$conffile_record" \]; then.*?case "\$conffile_record" in.*?esac\s*else\s*# A retry without an installed conffile record.*?clear_xcatd_pending_state\s*fi}s,
     'preinst discards stale pending evidence when dpkg has no conffile record' );
+like( $deb_preinst,
+    qr{xcatd_legacy_enable_state\(\).*?"\$xcatd_init_compat" debian-legacy-state 2>/dev/null.*?detector_status=\$\?.*?"\$detector_status" -ne 2.*?/etc/rc\?\.d/S\?\?xcatd.*?/etc/rc\?\.d/K\?\?xcatd.*?unregistered}s,
+    'preinst reuses shared registration detection with a pre-unpack S/K fallback' );
 like( $deb_preinst,
     qr{upgrade\)\s*write_xcatd_context upgrade.*?install\)\s*write_xcatd_context fresh.*?abort-upgrade\)\s*rm -f "\$xcatd_context_file"}s,
     'preinst records explicit durable package transition context' );
