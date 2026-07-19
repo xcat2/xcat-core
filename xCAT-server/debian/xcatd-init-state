@@ -202,8 +202,11 @@ stash_candidate()
     ensure_state_dir
     stash_tmp="$state_stash.tmp.$$"
     rm -f "$stash_tmp"
-    cp -a "$stash_source" "$stash_tmp"
-    mv -f "$stash_tmp" "$state_stash"
+    if ! cp -a "$stash_source" "$stash_tmp" ||
+       ! mv -f "$stash_tmp" "$state_stash"; then
+        rm -f "$stash_tmp"
+        return 1
+    fi
 }
 
 shared_init_state()

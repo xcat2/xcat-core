@@ -101,8 +101,11 @@ write_xcatd_context()
     context_value=$1
     context_tmp="$xcatd_context_file.tmp.$$"
     umask 077
-    printf '%s\n' "$context_value" > "$context_tmp"
-    mv -f "$context_tmp" "$xcatd_context_file"
+    if ! printf '%s\n' "$context_value" > "$context_tmp" ||
+       ! mv -f "$context_tmp" "$xcatd_context_file"; then
+        rm -f "$context_tmp"
+        return 1
+    fi
 )
 
 clear_xcatd_pending_state()
@@ -204,8 +207,11 @@ elif [ -n "$xcatd_transition_context" ] && [ ! -x "$xcatd_init_state" ]; then
     elif [ -n "$recovery_candidate" ]; then
         clear_xcatd_pending_state
         pending_tmp="$xcatd_state_dir/pending-xcatd.tmp.$$"
-        cp -a "$recovery_candidate" "$pending_tmp"
-        mv -f "$pending_tmp" "$xcatd_state_dir/pending-xcatd"
+        if ! cp -a "$recovery_candidate" "$pending_tmp" ||
+           ! mv -f "$pending_tmp" "$xcatd_state_dir/pending-xcatd"; then
+            rm -f "$pending_tmp"
+            exit 1
+        fi
         rm -f "$xcatd_old_systemd_marker"
         known_legacy=yes
     else
