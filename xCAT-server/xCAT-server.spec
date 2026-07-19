@@ -499,18 +499,13 @@ ln -sf $RPM_INSTALL_PREFIX0/share/xcat/netboot/sles $RPM_INSTALL_PREFIX0/share/x
 
 ln -sf $RPM_INSTALL_PREFIX0/share/xcat/install/centos $RPM_INSTALL_PREFIX0/share/xcat/install/centos-stream
 ln -sf $RPM_INSTALL_PREFIX0/share/xcat/netboot/centos $RPM_INSTALL_PREFIX0/share/xcat/netboot/centos-stream
-xcat_can_use_systemctl()
-{
-   [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1
-}
-
 xcatd_init_compat=$RPM_INSTALL_PREFIX0/share/xcat/scripts/xcatd-init-compat
 export XCATROOT="$RPM_INSTALL_PREFIX0"
 
 if [ "$1" = "1" ]; then #Only if installing for the first time..
    if "$xcatd_init_compat" uses-systemd --explicit-target; then
        "$xcatd_init_compat" configure --explicit-target || exit 1
-       if xcat_can_use_systemctl; then
+       if "$xcatd_init_compat" can-use-systemctl; then
            systemctl daemon-reload
        fi
        if command -v systemctl >/dev/null 2>&1; then
@@ -546,7 +541,7 @@ if [ "$1" -gt "1" ]; then #only on upgrade...
     # packages own /etc/init.d, so leave that directory intact there.
     rmdir /etc/init.d 2>/dev/null || true
 %endif
-    if xcat_can_use_systemctl; then
+    if "$xcatd_init_compat" can-use-systemctl; then
         systemctl daemon-reload
     fi
     if [ "$legacy_xcatd_state" = enabled ] && command -v systemctl >/dev/null 2>&1; then
@@ -631,17 +626,12 @@ fi
 
 %preun
 %ifos linux
-xcat_can_use_systemctl()
-{
-   [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1
-}
-
 xcatd_init_compat=$RPM_INSTALL_PREFIX0/share/xcat/scripts/xcatd-init-compat
 export XCATROOT="$RPM_INSTALL_PREFIX0"
 
 if [ $1 == 0 ]; then  #This means only on -e
 	if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
-      if xcat_can_use_systemctl; then
+      if "$xcatd_init_compat" can-use-systemctl; then
           systemctl stop xcatd.service
       elif ! "$xcatd_init_compat" uses-systemd --explicit-target && [ -x /etc/init.d/xcatd ]; then
           /etc/init.d/xcatd stop
