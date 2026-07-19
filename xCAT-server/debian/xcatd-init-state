@@ -222,7 +222,10 @@ systemd_enable_state()
     fi
 
     for unit_link in \
-        "$compat_root"/etc/systemd/system/*.wants/xcatd.service; do
+        "$compat_root"/etc/systemd/system/*.wants/xcatd.service \
+        "$compat_root"/etc/systemd/system/*.requires/xcatd.service \
+        "$compat_root"/run/systemd/system/*.wants/xcatd.service \
+        "$compat_root"/run/systemd/system/*.requires/xcatd.service; do
         if [ -e "$unit_link" ] || [ -L "$unit_link" ]; then
             printf '%s\n' yes
             return
