@@ -521,6 +521,15 @@ ok( !-e legacy_init($legacy_remove_root)
       && !-e managed_marker($legacy_remove_root),
     'legacy remove clears both the script and stale provenance' );
 
+my $systemctl_ready_status = system(
+    '/bin/sh', '-c',
+    '[ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1'
+) >> 8;
+is( run_helper( stage_root(), 'can-use-systemctl' ), $systemctl_ready_status,
+    'shared helper preserves the host systemctl readiness predicate' );
+is( run_helper( stage_root(), 'can-use-systemctl', '--invalid' ), 2,
+    'systemctl readiness rejects unexpected arguments' );
+
 my $rpm_spec = read_file(
     File::Spec->catfile( $repo_root, 'xCAT-server', 'xCAT-server.spec' )
 );
@@ -558,6 +567,12 @@ unlike( $rpm_spec,
 unlike( $rpm_spec,
     qr{"\$xcatd_init_compat" configure(?![^\n]*--explicit-target)},
     'every RPM lifecycle configuration uses the matching explicit target mode' );
+unlike( $rpm_spec, qr{xcat_can_use_systemctl},
+    'RPM scriptlets do not duplicate the shared systemctl readiness guard' );
+my @systemctl_readiness_calls =
+  ( $rpm_spec =~ /"\$xcatd_init_compat" can-use-systemctl/g );
+is( scalar @systemctl_readiness_calls, 3,
+    'RPM delegates every active-systemd operation guard to the shared helper' );
 like( $rpm_spec,
     qr{xcatd_init_compat=.*?"\$xcatd_init_compat" configure --replace}s,
     'RPM upgrades refresh an existing SysV init script' );
