@@ -123,6 +123,11 @@ uses_systemd()
     return 1
 }
 
+can_use_systemctl()
+{
+    [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1
+}
+
 legacy_state()
 {
     for legacy_link in \
@@ -395,6 +400,15 @@ case "${1:-}" in
         esac
         uses_systemd "$detection_mode"
         ;;
+    can-use-systemctl)
+        case "${2:-}" in
+            '') can_use_systemctl ;;
+            *)
+                echo "Usage: $0 can-use-systemctl" >&2
+                exit 2
+                ;;
+        esac
+        ;;
     legacy-state)
         legacy_state
         ;;
@@ -441,7 +455,7 @@ case "${1:-}" in
         remove_managed_legacy_init
         ;;
     *)
-        echo "Usage: $0 {uses-systemd [--explicit-target]|legacy-state|legacy-transition-state|systemd-state|register-legacy {default|enabled|disabled}|unregister-legacy|disable-systemd [--links-only]|unregister-all|configure [--replace] [--explicit-target] [--track-managed]|remove|remove-managed}" >&2
+        echo "Usage: $0 {uses-systemd [--explicit-target]|can-use-systemctl|legacy-state|legacy-transition-state|systemd-state|register-legacy {default|enabled|disabled}|unregister-legacy|disable-systemd [--links-only]|unregister-all|configure [--replace] [--explicit-target] [--track-managed]|remove|remove-managed}" >&2
         exit 2
         ;;
 esac
