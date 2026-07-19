@@ -60,8 +60,14 @@ unlike( $deb_postinst,
     'every Debian postinst helper call uses explicit target detection' );
 unlike( $deb_postinst, qr{sub xcat_target_uses_systemd|xcat_target_uses_systemd\(\)},
     'Debian postinst does not carry weaker duplicate init detection' );
-like( $deb_postinst,
-    qr{\[ -x /etc/init\.d/xcatd \].*?update-rc\.d xcatd defaults}s,
+my $sysv_registration = $deb_postinst;
+my $deb_init_state_path = File::Spec->catfile(
+    $repo_root, 'xCAT-server', 'debian', 'xcatd-init-state'
+);
+$sysv_registration .= read_file($deb_init_state_path)
+  if -f $deb_init_state_path;
+like( $sysv_registration,
+    qr{\[ -x (?:/etc/init\.d/xcatd|"\$legacy_init") \].*?update-rc\.d xcatd defaults}s,
     'Debian postinst registers SysV only after materializing an executable script' );
 
 my %classifier_blocks;
