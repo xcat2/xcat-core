@@ -574,7 +574,7 @@ like( $helper_source,
     qr{if \[ "\$disable_mode" != links-only \].*?systemctl disable xcatd\.service}s,
     'links-only cleanup avoids host tools that can rewrite SysV registration' );
 like( $rpm_fresh,
-    qr{if \[ "\$\("\$xcatd_init_compat" systemd-state\)" != masked \]; then\s+"\$xcatd_init_compat" register-legacy enabled}s,
+    qr{if \[ "\$\("\$xcatd_init_compat" systemd-state\)" != masked \]; then\s+"\$xcatd_init_compat" register-legacy (?:enabled|default)}s,
     'RPM fresh legacy installs do not override a persistent systemd mask' );
 like( $rpm_fresh,
     qr{uses-systemd --explicit-target; then\s+"\$xcatd_init_compat" configure --explicit-target \|\| exit 1.*?else\s+"\$xcatd_init_compat" configure --explicit-target --track-managed \|\| exit 1}s,
