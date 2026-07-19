@@ -184,7 +184,7 @@ legacy_transition_state()
     esac
 }
 
-systemd_state()
+systemd_is_masked()
 {
     for systemd_mask in \
         "$compat_root/etc/systemd/system/xcatd.service" \
@@ -194,27 +194,17 @@ systemd_state()
             systemd_mask_target=$(readlink "$systemd_mask" 2>/dev/null || true)
             case "$systemd_mask_target" in
                 /dev/null|*/dev/null)
-                    echo masked
-                    return
+                    return 0
                     ;;
             esac
         fi
     done
 
-    if [ -z "$compat_root" ] && command -v systemctl >/dev/null 2>&1; then
-        detected_systemd_state=$(systemctl is-enabled xcatd.service 2>/dev/null || true)
-        case "$detected_systemd_state" in
-            enabled*)
-                echo enabled
-                return
-                ;;
-            masked*)
-                echo masked
-                return
-                ;;
-        esac
-    fi
+    return 1
+}
 
+systemd_links_enabled()
+{
     for systemd_link in \
         "$compat_root"/etc/systemd/system/*.wants/xcatd.service \
         "$compat_root"/etc/systemd/system/*.requires/xcatd.service \
@@ -222,10 +212,89 @@ systemd_state()
         "$compat_root"/run/systemd/system/*.requires/xcatd.service
     do
         if [ -e "$systemd_link" ] || [ -L "$systemd_link" ]; then
-            echo enabled
-            return
+            return 0
         fi
     done
+
+    return 1
+}
+
+systemctl_enable_state()
+{
+    detection_mode=${1:-compat}
+
+    command -v systemctl >/dev/null 2>&1 || return 1
+
+    if [ -n "$compat_root" ]; then
+        detected_systemd_state=$(systemctl --root="$compat_root" is-enabled xcatd.service 2>/dev/null || true)
+    else
+        detected_systemd_state=$(systemctl is-enabled xcatd.service 2>/dev/null || true)
+    fi
+    if [ "$detection_mode" = precise ]; then
+        case "$detected_systemd_state" in
+            enabled|enabled-runtime) echo enabled ;;
+            masked|masked-runtime) echo masked ;;
+            disabled|linked|linked-runtime|alias|static|indirect|generated|transient)
+                echo disabled
+                ;;
+            *) return 1 ;;
+        esac
+    else
+        case "$detected_systemd_state" in
+            enabled*) echo enabled ;;
+            masked*) echo masked ;;
+            disabled|linked|linked-runtime|alias|static|indirect|generated|transient)
+                echo disabled
+                ;;
+            *) return 1 ;;
+        esac
+    fi
+}
+
+systemd_state()
+{
+    detection_mode=${1:-compat}
+    detected_systemd_state=
+
+    if systemd_is_masked; then
+        echo masked
+        return
+    fi
+
+    if [ "$detection_mode" = allow-unknown ]; then
+        detected_systemd_state=$(systemctl_enable_state precise || true)
+        if [ "$detected_systemd_state" = masked ]; then
+            echo masked
+            return
+        fi
+    fi
+
+    # Preserve the historical host-first order for existing callers.
+    if [ "$detection_mode" = compat ] && [ -z "$compat_root" ]; then
+        detected_systemd_state=$(systemctl_enable_state || true)
+        case "$detected_systemd_state" in
+            enabled|masked)
+                echo "$detected_systemd_state"
+                return
+                ;;
+        esac
+    fi
+
+    if systemd_links_enabled; then
+        echo enabled
+        return
+    fi
+
+    if [ "$detection_mode" = allow-unknown ]; then
+        case "$detected_systemd_state" in
+            enabled|disabled)
+                echo "$detected_systemd_state"
+                return
+                ;;
+        esac
+        echo unknown
+        return
+    fi
 
     echo disabled
 }
@@ -416,7 +485,11 @@ case "${1:-}" in
         legacy_transition_state
         ;;
     systemd-state)
-        systemd_state
+        if [ "$#" -eq 2 ] && [ "${2:-}" = --allow-unknown ]; then
+            systemd_state allow-unknown
+        else
+            systemd_state
+        fi
         ;;
     register-legacy)
         case "${2:-}" in
@@ -455,7 +528,7 @@ case "${1:-}" in
         remove_managed_legacy_init
         ;;
     *)
-        echo "Usage: $0 {uses-systemd [--explicit-target]|can-use-systemctl|legacy-state|legacy-transition-state|systemd-state|register-legacy {default|enabled|disabled}|unregister-legacy|disable-systemd [--links-only]|unregister-all|configure [--replace] [--explicit-target] [--track-managed]|remove|remove-managed}" >&2
+        echo "Usage: $0 {uses-systemd [--explicit-target]|can-use-systemctl|legacy-state|legacy-transition-state|systemd-state [--allow-unknown]|register-legacy {default|enabled|disabled}|unregister-legacy|disable-systemd [--links-only]|unregister-all|configure [--replace] [--explicit-target] [--track-managed]|remove|remove-managed}" >&2
         exit 2
         ;;
 esac
