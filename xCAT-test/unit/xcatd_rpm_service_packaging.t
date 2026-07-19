@@ -528,6 +528,9 @@ my $helper_source = read_file($helper);
 like( $helper_source, qr{/sbin/chkconfig --level 345 xcatd on},
     'legacy registration enables only the init template runlevels' );
 like( $helper_source,
+    qr{case "\$desired_state" in\s+default\) : ;;\s+enabled\) /sbin/chkconfig --level 345 xcatd on ;;\s+disabled\) /sbin/chkconfig xcatd off ;;\s+esac}s,
+    'legacy registration can preserve script defaults without weakening explicit state restoration' );
+like( $helper_source,
     qr{if \[ -z "\$compat_root" \] &&\s+\{ \[ -e "\$legacy_init" \] \|\| \[ -L "\$legacy_init" \]; \}; then\s+if \[ -x /sbin/chkconfig \]; then\s+/sbin/chkconfig --del xcatd}s,
     'legacy cleanup invokes host registration tools only for an existing init script' );
 my ($rpm_post) = $rpm_spec =~ /^%post\n(.*?)^%posttrans\n/ms;
@@ -574,7 +577,7 @@ like( $helper_source,
     qr{if \[ "\$disable_mode" != links-only \].*?systemctl disable xcatd\.service}s,
     'links-only cleanup avoids host tools that can rewrite SysV registration' );
 like( $rpm_fresh,
-    qr{if \[ "\$\("\$xcatd_init_compat" systemd-state\)" != masked \]; then\s+"\$xcatd_init_compat" register-legacy (?:enabled|default)}s,
+    qr{if \[ "\$\("\$xcatd_init_compat" systemd-state\)" != masked \]; then\s+"\$xcatd_init_compat" register-legacy default}s,
     'RPM fresh legacy installs do not override a persistent systemd mask' );
 like( $rpm_fresh,
     qr{uses-systemd --explicit-target; then\s+"\$xcatd_init_compat" configure --explicit-target \|\| exit 1.*?else\s+"\$xcatd_init_compat" configure --explicit-target --track-managed \|\| exit 1}s,
