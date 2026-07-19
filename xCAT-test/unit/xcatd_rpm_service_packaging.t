@@ -246,8 +246,8 @@ is( scalar @empty_init_cleanup, 1,
 like( $rpm_spec,
     qr{%if 0%\{\?suse_version\}\s+%else\s+# Remove only an empty directory.*?rmdir /etc/init\.d 2>/dev/null \|\| true\s+%endif}s,
     'RPM upgrades preserve the SUSE-owned init directory' );
-like( $rpm_spec,
-    qr{if \[ -e "\$legacy_xcatd_link" \] \|\| \[ -L "\$legacy_xcatd_link" \]},
-    'RPM upgrade recognizes enabled state through dangling legacy links' );
+like( join( "\n", $rpm_spec, read_file($helper) ),
+    qr{if \[ -e "\$legacy(?:_xcatd)?_link" \] \|\| \[ -L "\$legacy(?:_xcatd)?_link" \]},
+    'xcatd init management recognizes enabled state through dangling legacy links' );
 
 done_testing();
