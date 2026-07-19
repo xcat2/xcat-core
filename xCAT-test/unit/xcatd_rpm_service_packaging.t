@@ -346,6 +346,30 @@ is( run_helper( $cleanup_root, 'register-legacy', 'enabled' ), 2,
 is( run_helper( $cleanup_root, 'register-legacy', 'invalid' ), 2,
     'legacy registration rejects an invalid desired state' );
 
+my $links_only_root = stage_root();
+my @preserved_legacy_links = (
+    stage_symlink(
+        $links_only_root, '/etc/init.d/xcatd',
+        qw(etc rc.d rc2.d K42xcatd)
+    ),
+    stage_symlink(
+        $links_only_root, '/etc/init.d/xcatd',
+        qw(etc rc.d rc3.d S17xcatd)
+    ),
+);
+my $removed_systemd_link = stage_symlink(
+    $links_only_root, '/usr/lib/systemd/system/xcatd.service',
+    qw(etc systemd system multi-user.target.wants xcatd.service)
+);
+is( run_helper( $links_only_root, 'disable-systemd', '--links-only' ), 0,
+    'links-only systemd cleanup succeeds' );
+ok( !-e $removed_systemd_link && !-l $removed_systemd_link,
+    'links-only cleanup removes native systemd enablement' );
+ok( !( grep { !-e $_ && !-l $_ } @preserved_legacy_links ),
+    'links-only cleanup preserves exact custom SysV registration links' );
+is( run_helper( $links_only_root, 'disable-systemd', '--invalid' ), 2,
+    'systemd cleanup rejects an invalid mode' );
+
 my $dangling_legacy_root = stage_root();
 make_path( File::Spec->catdir( $dangling_legacy_root, 'etc', 'init.d' ) );
 symlink( '/missing/xcatd', legacy_init($dangling_legacy_root) )
@@ -541,8 +565,14 @@ like( $rpm_upgrade_systemd,
     qr{legacy_xcatd_state=\$\("\$xcatd_init_compat" legacy-state\).*?"\$xcatd_init_compat" unregister-legacy.*?"\$xcatd_init_compat" configure.*?if \[ "\$legacy_xcatd_state" = enabled \].*?systemctl enable xcatd\.service}s,
     'RPM systemd transitions preserve enabled SysV state after unregistering it' );
 like( $rpm_upgrade_legacy,
-    qr{legacy_xcatd_state=\$\("\$xcatd_init_compat" legacy-transition-state\).*?"\$xcatd_init_compat" disable-systemd.*?masked\|unregistered\).*?"\$xcatd_init_compat" unregister-legacy.*?configure --replace.*?enabled\|disabled\).*?register-legacy "\$legacy_xcatd_state".*?masked\|unregistered\)}s,
+    qr{legacy_xcatd_registration=\$\("\$xcatd_init_compat" legacy-state\).*?legacy_xcatd_state=\$\("\$xcatd_init_compat" legacy-transition-state\).*?"\$xcatd_init_compat" disable-systemd --links-only.*?masked\|unregistered\).*?"\$xcatd_init_compat" unregister-legacy.*?configure --replace.*?enabled\|disabled\).*?if \[ "\$legacy_xcatd_registration" = unregistered \]; then.*?register-legacy "\$legacy_xcatd_state".*?masked\|unregistered\)}s,
     'RPM legacy transitions preserve prior state and clear systemd enablement' );
+like( $rpm_fresh,
+    qr{legacy_xcatd_state=\$\("\$xcatd_init_compat" legacy-state\).*?enabled\|disabled\)\s+# Preserve any pre-existing administrator runlevel layout\.\s+:\s+;;}s,
+    'RPM fresh installs preserve pre-existing custom SysV runlevel links' );
+like( $helper_source,
+    qr{if \[ "\$disable_mode" != links-only \].*?systemctl disable xcatd\.service}s,
+    'links-only cleanup avoids host tools that can rewrite SysV registration' );
 like( $rpm_fresh,
     qr{if \[ "\$\("\$xcatd_init_compat" systemd-state\)" != masked \]; then\s+"\$xcatd_init_compat" register-legacy enabled}s,
     'RPM fresh legacy installs do not override a persistent systemd mask' );
