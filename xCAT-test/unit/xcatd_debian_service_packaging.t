@@ -105,6 +105,9 @@ foreach my $fallback_script (qw(preinst postrm)) {
 my $deb_preinst = read_file(
     File::Spec->catfile( $repo_root, 'xCAT-server', 'debian', 'preinst' )
 );
+like( $deb_preinst,
+    qr{write_xcatd_context\(\)\s*\(.*?umask 077.*?\n\)}s,
+    'preinst confines the context-file umask to a subshell' );
 my $preinst_pending_cleanup = pending_cleanup_block($deb_preinst);
 like( $preinst_pending_cleanup,
     qr{pending-xcatd.*?pending-deleted.*?pending-enabled.*?pending-xcatd\.tmp\.}s,
