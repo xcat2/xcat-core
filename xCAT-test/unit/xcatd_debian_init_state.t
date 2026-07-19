@@ -50,6 +50,9 @@ sub stage_root {
     make_path( $scripts, $fake_bin, File::Spec->catdir( $root, 'sbin' ) );
     copy( $template, File::Spec->catfile( $scripts, 'xcatd' ) )
       or die "Unable to stage xcatd template: $!";
+    copy( $compat_helper, File::Spec->catfile( $scripts, 'xcatd-init-compat' ) )
+      or die "Unable to stage xcatd compatibility helper: $!";
+    chmod 0755, File::Spec->catfile( $scripts, 'xcatd-init-compat' );
 
     write_file(
         File::Spec->catfile( $fake_bin, 'ucf' ),
@@ -86,13 +89,42 @@ SH
 #!/bin/sh
 set -eu
 root=${XCAT_COMPAT_ROOT:?}
-link="$root/etc/rc2.d/S20xcatd"
-if [ "${1:-}" = -f ]; then
-    rm -f "$link"
-else
-    mkdir -p "$(dirname "$link")"
-    ln -sfn ../init.d/xcatd "$link"
-fi
+remove_links()
+{
+    rm -f "$root"/etc/rc?.d/[SK]??xcatd
+}
+defaults()
+{
+    remove_links
+    for runlevel in 0 1 2 3 4 5 6; do
+        mkdir -p "$root/etc/rc$runlevel.d"
+        case "$runlevel" in
+            2|3|4|5) prefix=S20 ;;
+            *) prefix=K80 ;;
+        esac
+        ln -sfn ../init.d/xcatd "$root/etc/rc$runlevel.d/${prefix}xcatd"
+    done
+}
+case "${1:-}:${2:-}" in
+    -f:xcatd)
+        [ "${3:-}" = remove ]
+        remove_links
+        ;;
+    xcatd:defaults)
+        defaults
+        ;;
+    xcatd:disable)
+        remove_links
+        for runlevel in 0 1 2 3 4 5 6; do
+            mkdir -p "$root/etc/rc$runlevel.d"
+            ln -sfn ../init.d/xcatd "$root/etc/rc$runlevel.d/K80xcatd"
+        done
+        ;;
+    xcatd:enable)
+        defaults
+        ;;
+    *) exit 2 ;;
+esac
 SH
     );
     write_file(
@@ -136,6 +168,13 @@ sub run_state {
 sub run_compat {
     my ( $root, @arguments ) = @_;
     return run_script( $root, $compat_helper, @arguments );
+}
+
+sub run_update_rc {
+    my ( $root, @arguments ) = @_;
+    my $update_rc = File::Spec->catfile( $root, 'test-bin', 'update-rc.d' );
+    my $status = run_script( $root, $update_rc, @arguments );
+    die "Fake update-rc.d failed with status $status" if $status;
 }
 
 sub live_init {
@@ -247,7 +286,7 @@ my $disabled_root = stage_root();
 set_init_target( $disabled_root, 'upstart' );
 is( run_state( $disabled_root, 'configure-legacy', 'fresh' ), 0,
     'disabled fixture starts in legacy mode' );
-unlink( rc_link($disabled_root) ) or die "Unable to disable SysV fixture: $!";
+run_update_rc( $disabled_root, 'xcatd', 'disable' );
 write_file( live_init($disabled_root), "disabled customization\n", 0755 );
 is( run_state( $disabled_root, 'prepare-systemd', 'upgrade' ), 0,
     'disabled legacy fixture prepares for systemd' );
@@ -271,8 +310,7 @@ my $legacy_reinstall_root = stage_root();
 set_init_target( $legacy_reinstall_root, 'upstart' );
 is( run_state( $legacy_reinstall_root, 'configure-legacy', 'fresh' ), 0,
     'legacy reinstall fixture starts enabled' );
-unlink( rc_link($legacy_reinstall_root) )
-  or die "Unable to simulate prerm registration removal: $!";
+run_update_rc( $legacy_reinstall_root, '-f', 'xcatd', 'remove' );
 is( run_state( $legacy_reinstall_root, 'configure-legacy', 'fresh' ), 0,
     'legacy remove and reinstall configures as fresh' );
 ok( -l rc_link($legacy_reinstall_root),
@@ -556,8 +594,7 @@ my $legacy_retry_root = stage_root();
 set_init_target( $legacy_retry_root, 'upstart' );
 is( run_state( $legacy_retry_root, 'configure-legacy', 'fresh' ), 0,
     'same-mode retry fixture starts in legacy mode' );
-unlink( rc_link($legacy_retry_root) )
-  or die "Unable to disable same-mode retry fixture: $!";
+run_update_rc( $legacy_retry_root, 'xcatd', 'disable' );
 is( run_state( $legacy_retry_root, 'configure-legacy', 'upgrade' ), 0,
     'disabled same-mode state is recorded' );
 set_systemd_state( $legacy_retry_root, 'enabled' );
@@ -586,8 +623,7 @@ my $admin_disabled_retry_root = stage_root();
 set_init_target( $admin_disabled_retry_root, 'upstart' );
 is( run_state( $admin_disabled_retry_root, 'configure-legacy', 'fresh' ), 0,
     'admin-disabled retry fixture starts enabled' );
-unlink( rc_link($admin_disabled_retry_root) )
-  or die "Unable to stage current administrator disablement: $!";
+run_update_rc( $admin_disabled_retry_root, 'xcatd', 'disable' );
 write_file(
     File::Spec->catfile( $admin_disabled_retry_root, 'fail-ucfr' ),
     "fail\n"
@@ -607,8 +643,7 @@ my $admin_enabled_retry_root = stage_root();
 set_init_target( $admin_enabled_retry_root, 'upstart' );
 is( run_state( $admin_enabled_retry_root, 'configure-legacy', 'fresh' ), 0,
     'admin-enabled retry fixture starts enabled' );
-unlink( rc_link($admin_enabled_retry_root) )
-  or die "Unable to stage disabled baseline: $!";
+run_update_rc( $admin_enabled_retry_root, 'xcatd', 'disable' );
 is( run_state( $admin_enabled_retry_root, 'configure-legacy', 'upgrade' ), 0,
     'disabled baseline is recorded' );
 make_path( File::Spec->catdir( $admin_enabled_retry_root, 'etc', 'rc2.d' ) );
@@ -728,8 +763,7 @@ is( run_state( $registration_retry_root, 'configure-legacy', 'fresh' ), 0,
     'registration retry fixture starts enabled in legacy mode' );
 is( run_state( $registration_retry_root, 'prepare-systemd', 'upgrade' ), 0,
     'registration retry fixture begins a systemd transition' );
-unlink( rc_link($registration_retry_root) )
-  or die "Unable to simulate removed SysV registration: $!";
+run_update_rc( $registration_retry_root, '-f', 'xcatd', 'remove' );
 write_file( File::Spec->catfile( $registration_retry_root, 'fail-ucfr' ), "fail\n" );
 isnt( run_state( $registration_retry_root, 'configure-legacy', 'upgrade' ), 0,
     'legacy reversal fails before registration is restored' );
