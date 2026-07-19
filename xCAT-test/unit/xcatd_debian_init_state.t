@@ -323,6 +323,30 @@ is( state_value( $fresh_systemd_root, 'enabled' ), 'yes',
 is( state_value( $fresh_systemd_root, 'origin' ), 'fresh',
     'fresh systemd state records a fresh transition' );
 
+for my $link_case (
+    [ 'persistent wants',   qw(etc wants) ],
+    [ 'persistent requires', qw(etc requires) ],
+    [ 'runtime wants',      qw(run wants) ],
+    [ 'runtime requires',   qw(run requires) ],
+) {
+    my ( $label, $scope, $relation ) = @{$link_case};
+    my $link_root = stage_root();
+    my $link_dir = File::Spec->catdir(
+        $link_root, $scope, 'systemd', 'system',
+        "multi-user.target.$relation"
+    );
+    make_path($link_dir);
+    symlink(
+        '/usr/lib/systemd/system/xcatd.service',
+        File::Spec->catfile( $link_dir, 'xcatd.service' )
+    ) or die "Unable to stage $label link: $!";
+    set_systemd_state( $link_root, 'unknown' );
+    is( run_state( $link_root, 'prepare-systemd', 'upgrade' ), 0,
+        "$label enablement prepares successfully" );
+    is( state_value( $link_root, 'enabled' ), 'yes',
+        "$label enablement is preserved" );
+}
+
 my $masked_root = stage_root();
 my $masked_unit_dir = File::Spec->catdir( $masked_root, 'etc', 'systemd', 'system' );
 make_path($masked_unit_dir);
