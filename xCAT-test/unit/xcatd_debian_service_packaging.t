@@ -325,5 +325,15 @@ like( $deb_prerm,
 unlike( $deb_prerm,
     qr{"\$xcatd_init_compat" uses-systemd(?! --explicit-target)},
     'every Debian prerm helper call uses explicit target detection' );
+unlike( $deb_postinst, qr{xcat_can_use_systemctl},
+    'Debian postinst does not duplicate the shared systemctl readiness guard' );
+like( $deb_postinst,
+    qr{if "\$xcatd_init_compat" can-use-systemctl; then\s+systemctl daemon-reload}s,
+    'Debian postinst delegates its active-systemd guard to the shared helper' );
+unlike( $deb_prerm, qr{xcat_can_use_systemctl},
+    'Debian prerm does not duplicate the shared systemctl readiness guard' );
+like( $deb_prerm,
+    qr{if "\$xcatd_init_compat" can-use-systemctl; then\s+systemctl stop xcatd\.service}s,
+    'Debian prerm delegates its active-systemd guard to the shared helper' );
 
 done_testing();
