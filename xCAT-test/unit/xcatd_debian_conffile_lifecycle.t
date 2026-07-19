@@ -95,7 +95,8 @@ like( $postrm, qr{ucf --purge /etc/init\.d/xcatd},
     'purge removes ucf checksum state' );
 like( $postrm, qr{ucfr --purge xcat-server /etc/init\.d/xcatd},
     'purge removes the ucf ownership registration' );
-like( $postrm, qr{/var/lib/xcat/xcatd-init-state/state},
+like( $postrm,
+    qr{xcatd_state_dir=/var/lib/xcat/xcatd-init-state.*?(?:/var/lib/xcat/xcatd-init-state/state|"\$xcatd_state_dir/state")}s,
     'purge removes the persistent init transition state' );
 
 done_testing();
