@@ -75,6 +75,12 @@ my $deb_init_state = read_file(
 like( $deb_init_state,
     qr{\[ -x "\$legacy_init" \].*?update-rc\.d xcatd defaults}s,
     'Debian registers SysV only after materializing an executable script' );
+like( $deb_init_state,
+    qr{init_compat=.*?xcatd-init-compat.*?shared_init_state\(\).*?"\$init_compat" "\$\@".*?debian-legacy-state.*?systemd-state --allow-unknown}s,
+    'Debian delegates legacy and precise systemd state detection to the shared helper' );
+unlike( $deb_init_state,
+    qr{systemctl (?:--root=.*? )?is-enabled|systemd/system/\*\.(?:wants|requires)/xcatd\.service|rc\?\.d/S\?\?xcatd},
+    'Debian init state does not duplicate shared service-state probes' );
 like( $deb_postinst,
     qr{transition_origin=.*?get origin.*?fresh:yes\|legacy:yes.*?systemctl enable}s,
     'Debian changes systemd enablement only for fresh installs and init transitions' );

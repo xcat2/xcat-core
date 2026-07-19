@@ -306,6 +306,22 @@ is( read_file( live_init($disabled_root) ), "disabled customization\n",
 ok( !-e rc_link($disabled_root),
     'disabled systemd state stays disabled under SysV' );
 
+my $rpm_layout_root = stage_root();
+set_init_target( $rpm_layout_root, 'upstart' );
+is( run_state( $rpm_layout_root, 'configure-legacy', 'fresh' ), 0,
+    'RPM-layout fixture starts in legacy mode' );
+run_update_rc( $rpm_layout_root, '-f', 'xcatd', 'remove' );
+my $rpm_runlevel_dir =
+  File::Spec->catdir( $rpm_layout_root, 'etc', 'rc.d', 'rc3.d' );
+make_path($rpm_runlevel_dir);
+symlink( '/etc/init.d/xcatd',
+    File::Spec->catfile( $rpm_runlevel_dir, 'S85xcatd' ) )
+  or die "Unable to stage RPM-only registration: $!";
+is( run_state( $rpm_layout_root, 'prepare-systemd', 'upgrade' ), 0,
+    'RPM-only registration prepares for a Debian systemd transition' );
+isnt( state_value( $rpm_layout_root, 'enabled' ), 'yes',
+    'RPM-only links do not become Debian SysV enablement evidence' );
+
 my $legacy_reinstall_root = stage_root();
 set_init_target( $legacy_reinstall_root, 'upstart' );
 is( run_state( $legacy_reinstall_root, 'configure-legacy', 'fresh' ), 0,

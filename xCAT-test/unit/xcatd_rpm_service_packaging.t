@@ -286,6 +286,34 @@ is( helper_output( $legacy_state_root, 'legacy-state' ), 'enabled',
 is( helper_output( $legacy_state_root, 'legacy-transition-state' ), 'enabled',
     'enabled SysV state takes precedence during a legacy transition' );
 
+my $rpm_layout_root = stage_root();
+stage_symlink(
+    $rpm_layout_root, '/etc/init.d/xcatd',
+    qw(etc rc.d rc3.d S85xcatd)
+);
+is( helper_output( $rpm_layout_root, 'legacy-state' ), 'enabled',
+    'default legacy state continues to recognize RPM runlevel layouts' );
+is( helper_output( $rpm_layout_root, 'debian-legacy-state' ),
+    'unregistered', 'Debian legacy state ignores RPM-only runlevel links' );
+is( helper_output( $rpm_layout_root, 'legacy-state', '--debian-layout' ),
+    'enabled', 'legacy state preserves ignored historical extra arguments' );
+is( run_helper( $rpm_layout_root, 'debian-legacy-state', 'extra' ), 2,
+    'Debian legacy state rejects extra arguments' );
+
+my $debian_layout_root = stage_root();
+stage_symlink(
+    $debian_layout_root, '/etc/init.d/xcatd',
+    qw(etc rc3.d K60xcatd)
+);
+is( helper_output( $debian_layout_root, 'debian-legacy-state' ),
+    'disabled', 'Debian legacy state recognizes native kill links' );
+stage_symlink(
+    $debian_layout_root, '/etc/init.d/xcatd',
+    qw(etc rc3.d S85xcatd)
+);
+is( helper_output( $debian_layout_root, 'debian-legacy-state' ),
+    'enabled', 'Debian legacy state gives native start links precedence' );
+
 my $unregistered_legacy_root = stage_root();
 make_path( File::Spec->catdir( $unregistered_legacy_root, 'etc', 'init.d' ) );
 copy( $template, legacy_init($unregistered_legacy_root) )
