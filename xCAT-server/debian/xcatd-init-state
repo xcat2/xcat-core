@@ -137,10 +137,15 @@ write_state()
 
     ensure_state_dir
     state_tmp="$state_file.tmp.$$"
-    umask 077
-    printf 'format=1\nmode=%s\ncontent=%s\nenabled=%s\norigin=%s\n' \
-        "$new_mode" "$new_content" "$new_enabled" "$new_origin" > "$state_tmp"
-    mv -f "$state_tmp" "$state_file"
+    if ! (
+        umask 077
+        printf 'format=1\nmode=%s\ncontent=%s\nenabled=%s\norigin=%s\n' \
+            "$new_mode" "$new_content" "$new_enabled" "$new_origin" > "$state_tmp" &&
+            mv -f "$state_tmp" "$state_file"
+    ); then
+        rm -f "$state_tmp"
+        return 1
+    fi
     state_mode=$new_mode
     state_content=$new_content
     state_enabled=$new_enabled
