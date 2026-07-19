@@ -5,6 +5,23 @@
 
 set -e
 
+xcatd_state_dir=/var/lib/xcat/xcatd-init-state
+xcatd_context_file=$xcatd_state_dir/context
+
+clear_xcatd_pending_state()
+{
+    rm -f "$xcatd_state_dir/pending-xcatd" \
+        "$xcatd_state_dir/pending-deleted" \
+        "$xcatd_state_dir/pending-enabled" \
+        "$xcatd_state_dir/pending-xcatd.tmp."*
+}
+
+if [ -L "$xcatd_state_dir" ] || \
+   { [ -e "$xcatd_state_dir" ] && [ ! -d "$xcatd_state_dir" ]; }; then
+    echo "Invalid xcatd init state directory: $xcatd_state_dir" >&2
+    exit 1
+fi
+
 xcat_systemd_os_release_status()
 {
     [ -r /etc/os-release ] || return 2
@@ -111,16 +128,47 @@ fi
 
 case "$1" in
     purge)
-       rm -f /etc/init.d/xcatd
+        rm -f /etc/init.d/xcatd \
+            /etc/init.d/xcatd.ucf-old \
+            /etc/init.d/xcatd.ucf-new \
+            /etc/init.d/xcatd.ucf-dist \
+            /etc/init.d/xcatd.dpkg-bak \
+            /etc/init.d/xcatd.dpkg-backup \
+            /etc/init.d/xcatd.dpkg-remove \
+            /var/lib/xcat/xcatd-systemd-mode
+        rm -f /var/lib/xcat/xcatd-init-state/state \
+            /var/lib/xcat/xcatd-init-state/xcatd \
+            /var/lib/xcat/xcatd-init-state/state.tmp.* \
+            /var/lib/xcat/xcatd-init-state/xcatd.tmp.*
+        clear_xcatd_pending_state
+        rm -f "$xcatd_context_file" "$xcatd_context_file.tmp."*
+        rmdir /var/lib/xcat/xcatd-init-state 2>/dev/null || true
+        if command -v ucf >/dev/null 2>&1; then
+            ucf --purge /etc/init.d/xcatd
+        fi
+        if command -v ucfr >/dev/null 2>&1; then
+            ucfr --purge xcat-server /etc/init.d/xcatd
+        fi
     ;;
 
-    upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+    abort-install)
+        clear_xcatd_pending_state
+        rm -f "$xcatd_context_file" "$xcatd_context_file.tmp."*
+        rmdir "$xcatd_state_dir" 2>/dev/null || true
+    ;;
+
+    abort-upgrade|disappear)
+        rm -f "$xcatd_context_file" "$xcatd_context_file.tmp."*
+    ;;
+
+    upgrade|failed-upgrade)
     ;;
 
     remove)
-       rm -f /usr/sbin/xcatd  #remove the symbolic
+        rm -f "$xcatd_context_file" "$xcatd_context_file.tmp."*
+        rm -f /usr/sbin/xcatd  #remove the symbolic
 
-       rm -f /etc/apache2/conf-enabled/xcat-ws.conf
+        rm -f /etc/apache2/conf-enabled/xcat-ws.conf
     ;;
 
     *)
