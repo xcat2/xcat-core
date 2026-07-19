@@ -143,9 +143,14 @@ is( scalar @unregistered_refresh_guards, 2,
 like( $deb_init_state,
     qr{init_compat=.*?xcatd-init-compat.*?shared_init_state\(\).*?"\$init_compat" "\$\@".*?debian-legacy-state.*?systemd-state --allow-unknown}s,
     'Debian delegates legacy and precise systemd state detection to the shared helper' );
+like( $deb_init_state,
+    qr{if ! detected_legacy_state=.*?return 1.*?if ! detected_systemd_state=.*?return 1}s,
+    'Debian propagates failures from both shared state probes' );
 unlike( $deb_init_state,
     qr{systemctl (?:--root=.*? )?is-enabled|systemd/system/\*\.(?:wants|requires)/xcatd\.service|rc\?\.d/S\?\?xcatd},
     'Debian init state does not duplicate shared service-state probes' );
+unlike( $deb_init_state, qr{systemd_is_masked},
+    'Debian does not hide detector failures in a boolean mask probe' );
 like( $deb_postinst,
     qr{transition_origin=.*?get origin.*?fresh:yes\|legacy:yes.*?systemctl enable}s,
     'Debian changes systemd enablement only for fresh installs and init transitions' );

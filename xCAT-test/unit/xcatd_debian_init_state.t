@@ -204,6 +204,14 @@ sub state_dir {
     return File::Spec->catdir( $root, 'var', 'lib', 'xcat', 'xcatd-init-state' );
 }
 
+sub staged_compat_helper {
+    my ($root) = @_;
+    return File::Spec->catfile(
+        $root, 'opt', 'xcat', 'share', 'xcat', 'scripts',
+        'xcatd-init-compat'
+    );
+}
+
 sub old_systemd_marker {
     my ($root) = @_;
     return File::Spec->catfile( $root, 'var', 'lib', 'xcat', 'xcatd-systemd-mode' );
@@ -426,6 +434,73 @@ is( read_file( live_init($failed_stash_root) ),
     'a failed stash leaves the live customization untouched' );
 is( state_value( $failed_stash_root, 'mode' ), 'legacy',
     'a failed stash does not advance durable transition state' );
+
+my $missing_helper_root = stage_root();
+unlink( staged_compat_helper($missing_helper_root) )
+  or die "Unable to remove staged compatibility helper: $!";
+isnt( run_state( $missing_helper_root, 'prepare-systemd', 'fresh' ), 0,
+    'fresh systemd preparation fails without the shared detector' );
+ok( !-e File::Spec->catfile( state_dir($missing_helper_root), 'state' ),
+    'missing shared detection cannot advance durable systemd state' );
+ok( !-e live_init($missing_helper_root),
+    'missing shared detection cannot materialize legacy content' );
+
+my $failing_helper_root = stage_root();
+write_file( staged_compat_helper($failing_helper_root),
+    "#!/bin/sh\nexit 7\n", 0755 );
+set_init_target( $failing_helper_root, 'upstart' );
+isnt( run_state( $failing_helper_root, 'configure-legacy', 'fresh' ), 0,
+    'fresh legacy configuration propagates shared detector failure' );
+ok( !-e File::Spec->catfile( state_dir($failing_helper_root), 'state' ),
+    'failing shared detection cannot advance durable legacy state' );
+ok( !-e live_init($failing_helper_root),
+    'failing shared detection cannot materialize the init script' );
+is( registration_link_count($failing_helper_root), 0,
+    'failing shared detection cannot create registration links' );
+
+my $malformed_systemd_helper_root = stage_root();
+write_file( staged_compat_helper($malformed_systemd_helper_root),
+    "#!/bin/sh\nprintf '%s\\n' malformed\n", 0755 );
+isnt( run_state( $malformed_systemd_helper_root, 'prepare-systemd', 'fresh' ),
+    0, 'successful malformed systemd detection fails closed' );
+ok( !-e File::Spec->catfile(
+        state_dir($malformed_systemd_helper_root), 'state'
+    ),
+    'malformed systemd detection cannot advance durable state' );
+ok( !-e live_init($malformed_systemd_helper_root),
+    'malformed systemd detection cannot materialize legacy content' );
+is( registration_link_count($malformed_systemd_helper_root), 0,
+    'malformed systemd detection cannot create registration links' );
+
+my $malformed_legacy_helper_root = stage_root();
+set_init_target( $malformed_legacy_helper_root, 'upstart' );
+is( run_state( $malformed_legacy_helper_root, 'configure-legacy', 'fresh' ), 0,
+    'malformed legacy fixture starts in stable legacy mode' );
+write_file( live_init($malformed_legacy_helper_root),
+    "malformed helper survivor\n", 0755 );
+my $legacy_state_before = read_file( File::Spec->catfile(
+    state_dir($malformed_legacy_helper_root), 'state'
+) );
+my $legacy_content_before = read_file( live_init($malformed_legacy_helper_root) );
+my $legacy_links_before = registration_link_count($malformed_legacy_helper_root);
+write_file( staged_compat_helper($malformed_legacy_helper_root), <<'SH', 0755 );
+#!/bin/sh
+case "${1:-}" in
+    systemd-state) printf '%s\n' disabled ;;
+    debian-legacy-state) printf '%s\n' malformed ;;
+    *) exit 7 ;;
+esac
+SH
+isnt( run_state( $malformed_legacy_helper_root, 'configure-legacy', 'upgrade' ),
+    0, 'successful malformed legacy detection fails closed' );
+is( read_file( File::Spec->catfile(
+        state_dir($malformed_legacy_helper_root), 'state'
+    ) ),
+    $legacy_state_before, 'malformed legacy detection preserves durable state' );
+is( read_file( live_init($malformed_legacy_helper_root) ),
+    $legacy_content_before, 'malformed legacy detection preserves live content' );
+is( registration_link_count($malformed_legacy_helper_root),
+    $legacy_links_before, 'malformed legacy detection preserves registration' );
 
 my $legacy_reinstall_root = stage_root();
 set_init_target( $legacy_reinstall_root, 'upstart' );
