@@ -523,8 +523,8 @@ xcatd_init_compat=$RPM_INSTALL_PREFIX0/share/xcat/scripts/xcatd-init-compat
 export XCATROOT="$RPM_INSTALL_PREFIX0"
 
 if [ "$1" = "1" ]; then #Only if installing for the first time..
-   if "$xcatd_init_compat" uses-systemd; then
-       "$xcatd_init_compat" configure || exit 1
+   if "$xcatd_init_compat" uses-systemd --explicit-target; then
+       "$xcatd_init_compat" configure --explicit-target || exit 1
        if xcat_can_use_systemctl; then
            systemctl daemon-reload
        fi
@@ -532,43 +532,27 @@ if [ "$1" = "1" ]; then #Only if installing for the first time..
            systemctl enable xcatd.service
        fi
    else
-       "$xcatd_init_compat" configure || exit 1
-       if [ -x /sbin/chkconfig ]; then
-           /sbin/chkconfig --add xcatd
-       elif [ -x /usr/lib/lsb/install_initd ]; then
-           /usr/lib/lsb/install_initd /etc/init.d/xcatd
-       else
-           echo "Unable to register init scripts on this system"
-       fi
+       "$xcatd_init_compat" configure --explicit-target || exit 1
+       legacy_xcatd_state=$("$xcatd_init_compat" legacy-state)
+       case "$legacy_xcatd_state" in
+           enabled|disabled)
+               "$xcatd_init_compat" register-legacy "$legacy_xcatd_state"
+               ;;
+           *)
+               if [ "$("$xcatd_init_compat" systemd-state)" != masked ]; then
+                   "$xcatd_init_compat" register-legacy enabled
+               fi
+               ;;
+       esac
    fi
 fi
 
 if [ "$1" -gt "1" ]; then #only on upgrade...
-  if "$xcatd_init_compat" uses-systemd; then
-    legacy_xcatd_enabled=0
-    for legacy_xcatd_link in \
-        /etc/rc.d/rc?.d/S??xcatd \
-        /etc/rc?.d/S??xcatd \
-        /etc/init.d/rc?.d/S??xcatd
-    do
-        if [ -e "$legacy_xcatd_link" ] || [ -L "$legacy_xcatd_link" ]; then
-            legacy_xcatd_enabled=1
-            break
-        fi
-    done
-    if [ -e /etc/init.d/xcatd ] || [ -L /etc/init.d/xcatd ]; then
-        if [ -x /sbin/chkconfig ]; then
-            /sbin/chkconfig --del xcatd
-        elif [ -x /usr/lib/lsb/remove_initd ]; then
-            /usr/lib/lsb/remove_initd /etc/init.d/xcatd
-        fi
-    fi
-    rm -f \
-        /etc/rc.d/rc?.d/[SK]??xcatd \
-        /etc/rc?.d/[SK]??xcatd \
-        /etc/init.d/rc?.d/[SK]??xcatd
+  if "$xcatd_init_compat" uses-systemd --explicit-target; then
+    legacy_xcatd_state=$("$xcatd_init_compat" legacy-state)
+    "$xcatd_init_compat" unregister-legacy
 
-    "$xcatd_init_compat" configure || exit 1
+    "$xcatd_init_compat" configure --explicit-target || exit 1
 %if 0%{?suse_version}
 %else
     # Remove only an empty directory left by an older xCAT RPM.  SUSE base
@@ -578,14 +562,28 @@ if [ "$1" -gt "1" ]; then #only on upgrade...
     if xcat_can_use_systemctl; then
         systemctl daemon-reload
     fi
-    if [ "$legacy_xcatd_enabled" = "1" ] && command -v systemctl >/dev/null 2>&1; then
+    if [ "$legacy_xcatd_state" = enabled ] && command -v systemctl >/dev/null 2>&1; then
         # Preserve the previous enabled state without enabling HA nodes by default.
         systemctl enable xcatd.service
     fi
   else
+    legacy_xcatd_state=$("$xcatd_init_compat" legacy-state)
+    if [ "$legacy_xcatd_state" = unregistered ]; then
+        legacy_xcatd_state=$("$xcatd_init_compat" systemd-state)
+    fi
+    "$xcatd_init_compat" disable-systemd
+
     # This path was previously a regular RPM payload file, so upgrades replaced
     # it with the current package version rather than retaining an older copy.
-    "$xcatd_init_compat" configure --replace || exit 1
+    "$xcatd_init_compat" configure --replace --explicit-target || exit 1
+
+    case "$legacy_xcatd_state" in
+        enabled|disabled)
+            "$xcatd_init_compat" register-legacy "$legacy_xcatd_state"
+            ;;
+        masked)
+            ;;
+    esac
   fi
   #migration issue for monitoring
   XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab filename=monitorctrl.pm notification -d
@@ -620,6 +618,21 @@ fi
 
 exit 0
 
+%posttrans
+%ifos linux
+xcatd_init_compat=$RPM_INSTALL_PREFIX0/share/xcat/scripts/xcatd-init-compat
+
+# During upgrades from pre-compatibility RPMs, old payload cleanup can remove
+# the generated init script after the new post-install scriptlet.  Restore only
+# a missing runtime script so fresh installs retain administrator-managed files.
+if [ -x "$xcatd_init_compat" ] &&
+   ! XCATROOT="$RPM_INSTALL_PREFIX0" "$xcatd_init_compat" uses-systemd --explicit-target &&
+   [ ! -e /etc/init.d/xcatd ] && [ ! -L /etc/init.d/xcatd ]; then
+    XCATROOT="$RPM_INSTALL_PREFIX0" \
+        "$xcatd_init_compat" configure --explicit-target || exit 1
+fi
+%endif
+
 %preun
 %ifos linux
 xcat_can_use_systemctl()
@@ -634,22 +647,12 @@ if [ $1 == 0 ]; then  #This means only on -e
 	if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
       if xcat_can_use_systemctl; then
           systemctl stop xcatd.service
-      elif ! "$xcatd_init_compat" uses-systemd && [ -x /etc/init.d/xcatd ]; then
+      elif ! "$xcatd_init_compat" uses-systemd --explicit-target && [ -x /etc/init.d/xcatd ]; then
           /etc/init.d/xcatd stop
       fi
   fi
 
-  if "$xcatd_init_compat" uses-systemd; then
-      if command -v systemctl >/dev/null 2>&1; then
-          systemctl disable xcatd.service
-      fi
-  else
-      if [ -x /sbin/chkconfig ]; then
-          /sbin/chkconfig --del xcatd
-      elif [ -x /usr/lib/lsb/remove_initd ]; then
-          /usr/lib/lsb/remove_initd /etc/init.d/xcatd
-      fi
-  fi
+  "$xcatd_init_compat" unregister-all
   "$xcatd_init_compat" remove
   rm -f /usr/sbin/xcatd  #remove the symbolic
 
