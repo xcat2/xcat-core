@@ -5,11 +5,6 @@
 
 set -e
 
-xcat_can_use_systemctl()
-{
-    [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1
-}
-
 xcatd_init_compat=/opt/xcat/share/xcat/scripts/xcatd-init-compat
 xcatd_init_state=/opt/xcat/share/xcat/scripts/xcatd-init-state
 xcatd_state_dir=/var/lib/xcat/xcatd-init-state
@@ -77,7 +72,7 @@ case "$1" in
             fi
 
             "$xcatd_init_compat" configure --explicit-target
-            if xcat_can_use_systemctl; then
+            if "$xcatd_init_compat" can-use-systemctl; then
                 systemctl daemon-reload
             fi
             desired_enabled=$("$xcatd_init_state" get enabled)

@@ -5,11 +5,6 @@
 
 set -e
 
-xcat_can_use_systemctl()
-{
-    [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1
-}
-
 xcatd_init_compat=/opt/xcat/share/xcat/scripts/xcatd-init-compat
 
 # summary of how this script can be called:
@@ -27,7 +22,7 @@ xcatd_init_compat=/opt/xcat/share/xcat/scripts/xcatd-init-compat
 case "$1" in
     remove)
        if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
-            if xcat_can_use_systemctl; then
+            if "$xcatd_init_compat" can-use-systemctl; then
                 systemctl stop xcatd.service
             elif ! "$xcatd_init_compat" uses-systemd --explicit-target && [ -x /etc/init.d/xcatd ]; then
                 /etc/init.d/xcatd stop
