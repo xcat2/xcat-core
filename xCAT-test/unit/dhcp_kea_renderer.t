@@ -11,6 +11,27 @@ use Test::More;
 use xCAT::DHCP::Backend::Kea;
 
 my $backend = xCAT::DHCP::Backend::Kea->new( kea_version => '2.4.1' );
+
+my @additional_class_syntax_cases = (
+    [ '2.7.3',       0, 'Kea release below 2.7.4 uses legacy additional-class fields' ],
+    [ '2.7.4',       1, 'Kea 2.7.4 uses modern additional-class fields' ],
+    [ '2.10',        1, 'Kea two-digit minor release uses modern additional-class fields' ],
+    [ '2.7',         0, 'Kea release with fewer components stays below 2.7.4' ],
+    [ '2.7.4.0',     1, 'Kea release with a trailing zero component meets the minimum' ],
+    [ '2.7.4-rc1',   1, 'Kea suffix above the 2.7.4 numeric core keeps modern fields' ],
+    [ '2.7.3-rc1',   0, 'Kea suffix below the 2.7.4 numeric core keeps legacy fields' ],
+    [ '',            0, 'empty Kea version keeps legacy additional-class fields' ],
+    [ 'not-a-version', 0, 'malformed Kea version keeps legacy additional-class fields' ],
+    [ '2.7foo',      0, 'digit-leading malformed Kea version keeps legacy additional-class fields' ],
+    [ 'v2.7.4',      0, 'prefixed Kea version keeps legacy additional-class fields' ],
+);
+
+foreach my $case (@additional_class_syntax_cases) {
+    my ( $version, $modern, $description ) = @$case;
+    my $version_backend = xCAT::DHCP::Backend::Kea->new( kea_version => $version );
+    is( $version_backend->_use_modern_additional_class_syntax(), $modern, $description );
+}
+
 my $unit_dir = tempdir( CLEANUP => 1 );
 foreach my $unit (qw/kea-dhcp4-server.service kea-dhcp6-server.service kea-dhcp-ddns-server.service kea-ctrl-agent.service/) {
     open( my $unit_fh, '>', "$unit_dir/$unit" ) or die "Unable to write $unit_dir/$unit: $!";
