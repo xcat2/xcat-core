@@ -189,7 +189,7 @@ is( state_value( $round_trip_root, 'content' ), 'stashed',
 is( state_value( $round_trip_root, 'enabled' ), 'yes',
     'SysV enablement is captured before removal' );
 set_init_target( $round_trip_root, '../lib/systemd/systemd' );
-is( run_compat( $round_trip_root, 'configure' ), 0,
+is( run_compat( $round_trip_root, 'configure', '--explicit-target' ), 0,
     'systemd compatibility configuration succeeds' );
 is( run_state( $round_trip_root, 'commit-systemd' ), 0,
     'systemd transition state commits' );
@@ -239,7 +239,7 @@ is( run_state( $disabled_root, 'prepare-systemd', 'upgrade' ), 0,
 is( state_value( $disabled_root, 'enabled' ), 'no',
     'disabled SysV state is captured' );
 set_init_target( $disabled_root, '../lib/systemd/systemd' );
-is( run_compat( $disabled_root, 'configure' ), 0,
+is( run_compat( $disabled_root, 'configure', '--explicit-target' ), 0,
     'disabled systemd fixture removes the live script' );
 is( run_state( $disabled_root, 'commit-systemd' ), 0,
     'disabled systemd state commits' );
@@ -442,7 +442,7 @@ write_file( live_init($reinstall_state_root), "reinstall customization\n", 0755 
 is( run_state( $reinstall_state_root, 'prepare-systemd', 'upgrade' ), 0,
     'reinstall-state fixture stashes its customization' );
 set_init_target( $reinstall_state_root, '../lib/systemd/systemd' );
-is( run_compat( $reinstall_state_root, 'configure' ), 0,
+is( run_compat( $reinstall_state_root, 'configure', '--explicit-target' ), 0,
     'reinstall-state fixture enters systemd mode' );
 is( run_state( $reinstall_state_root, 'commit-systemd' ), 0,
     'reinstall-state fixture commits durable systemd state' );
@@ -694,7 +694,7 @@ write_file( live_init($retry_root), "retry customization\n", 0755 );
 is( run_state( $retry_root, 'prepare-systemd', 'upgrade' ), 0,
     'retry fixture is durably stashed' );
 set_init_target( $retry_root, '../lib/systemd/systemd' );
-is( run_compat( $retry_root, 'configure' ), 0,
+is( run_compat( $retry_root, 'configure', '--explicit-target' ), 0,
     'retry fixture enters systemd mode' );
 is( run_state( $retry_root, 'commit-systemd' ), 0,
     'retry fixture commits systemd state' );
@@ -728,7 +728,7 @@ write_file( live_init($reversal_retry_root), "reversal customization\n", 0755 );
 is( run_state( $reversal_retry_root, 'prepare-systemd', 'upgrade' ), 0,
     'reversal retry fixture is durably stashed' );
 set_init_target( $reversal_retry_root, '../lib/systemd/systemd' );
-is( run_compat( $reversal_retry_root, 'configure' ), 0,
+is( run_compat( $reversal_retry_root, 'configure', '--explicit-target' ), 0,
     'reversal retry fixture enters systemd mode' );
 is( run_state( $reversal_retry_root, 'commit-systemd' ), 0,
     'reversal retry fixture commits systemd state' );
@@ -746,7 +746,7 @@ is( read_file(
     ),
     "reversal customization\n",
     'reversing a failed restoration cannot overwrite the durable stash' );
-is( run_compat( $reversal_retry_root, 'configure' ), 0,
+is( run_compat( $reversal_retry_root, 'configure', '--explicit-target' ), 0,
     'reversed transition removes the partial live script' );
 is( run_state( $reversal_retry_root, 'commit-systemd' ), 0,
     'reversed transition commits systemd state' );
