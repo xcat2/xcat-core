@@ -128,6 +128,9 @@ like( $deb_init_state,
 like( $deb_init_state,
     qr{apply_legacy_registration\(\).*?no\).*?update-rc\.d xcatd defaults.*?update-rc\.d xcatd disable.*?unregistered\|unknown\).*?update-rc\.d -f xcatd remove}s,
     'Debian distinguishes registered-disabled from unregistered SysV state' );
+like( $deb_init_state,
+    qr{stash_candidate\(\).*?if ! cp -a.*?\|\|\s*! mv -f.*?rm -f "\$stash_tmp".*?return 1}s,
+    'Debian removes a failed atomic stash temporary' );
 like( $deb_init_state, qr{printf 'format=2},
     'Debian writes registration-aware state format 2' );
 like( $deb_init_state,
@@ -237,6 +240,9 @@ is( $failed_helper_output, '',
 like( $deb_preinst,
     qr{write_xcatd_context\(\)\s*\(.*?umask 077.*?\n\)}s,
     'preinst confines the context-file umask to a subshell' );
+like( $deb_preinst,
+    qr{context_tmp=.*?if ! printf.*?\|\|\s*! mv -f.*?rm -f "\$context_tmp".*?return 1}s,
+    'preinst removes a failed context-file temporary' );
 my $preinst_pending_cleanup = pending_cleanup_block($deb_preinst);
 like( $preinst_pending_cleanup,
     qr{pending-xcatd.*?pending-deleted.*?pending-enabled.*?pending-xcatd\.tmp\.}s,
@@ -250,6 +256,9 @@ like( $deb_preinst,
 like( $deb_preinst,
     qr{\$xcatd_legacy_init\.dpkg-bak.*?\$xcatd_legacy_init\.dpkg-backup.*?\$xcatd_legacy_init\.dpkg-remove}s,
     'preinst recovers every conffile backup name used during interrupted removal' );
+like( $deb_preinst,
+    qr{pending_tmp=.*?if ! cp -a.*?\|\|\s*! mv -f.*?rm -f "\$pending_tmp".*?exit 1}s,
+    'preinst removes a failed pending-stash temporary' );
 like( $deb_preinst,
     qr{if \[ -n "\$conffile_record" \]; then.*?case "\$conffile_record" in.*?esac\s*else\s*# A retry without an installed conffile record.*?clear_xcatd_pending_state\s*fi}s,
     'preinst discards stale pending evidence when dpkg has no conffile record' );

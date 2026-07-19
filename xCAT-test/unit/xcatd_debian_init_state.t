@@ -147,6 +147,23 @@ printf '%s\n' "$status"
 exit 1
 SH
     );
+    write_file(
+        File::Spec->catfile( $fake_bin, 'mv' ),
+        <<'SH', 0755
+#!/bin/sh
+set -eu
+root=${XCAT_COMPAT_ROOT:?}
+destination=
+for argument in "$@"; do
+    destination=$argument
+done
+if [ -f "$root/fail-stash-move" ] &&
+   [ "$destination" = "$root/var/lib/xcat/xcatd-init-state/xcatd" ]; then
+    exit 7
+fi
+exec /bin/mv "$@"
+SH
+    );
 
     return $root;
 }
@@ -383,6 +400,26 @@ ok( -x live_init($missing_update_rc_root),
     'missing registration tooling does not prevent script materialization' );
 is( registration_link_count($missing_update_rc_root), 0,
     'missing registration tooling leaves runlevel links untouched' );
+
+my $failed_stash_root = stage_root();
+set_init_target( $failed_stash_root, 'upstart' );
+is( run_state( $failed_stash_root, 'configure-legacy', 'fresh' ), 0,
+    'failed-stash fixture starts in legacy mode' );
+write_file( live_init($failed_stash_root), "failed-stash customization\n", 0755 );
+write_file( File::Spec->catfile( $failed_stash_root, 'fail-stash-move' ),
+    "fail\n" );
+isnt( run_state( $failed_stash_root, 'prepare-systemd', 'upgrade' ), 0,
+    'a failed atomic stash move is reported' );
+my @failed_stash_temps = glob( File::Spec->catfile(
+    state_dir($failed_stash_root), 'xcatd.tmp.*'
+) );
+is( scalar @failed_stash_temps, 0,
+    'a failed atomic stash move removes its temporary file' );
+is( read_file( live_init($failed_stash_root) ),
+    "failed-stash customization\n",
+    'a failed stash leaves the live customization untouched' );
+is( state_value( $failed_stash_root, 'mode' ), 'legacy',
+    'a failed stash does not advance durable transition state' );
 
 my $legacy_reinstall_root = stage_root();
 set_init_target( $legacy_reinstall_root, 'upstart' );
