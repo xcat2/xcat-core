@@ -45,7 +45,7 @@ my $deb_postinst = read_file(
     File::Spec->catfile( $repo_root, 'xCAT-server', 'debian', 'postinst' )
 );
 like( $deb_postinst,
-    qr{if "\$xcatd_init_compat" uses-systemd; then},
+    qr{if "\$xcatd_init_compat" uses-systemd(?: --explicit-target)?; then},
     'Debian postinst delegates target init detection to the packaged helper' );
 unlike( $deb_postinst, qr{sub xcat_target_uses_systemd|xcat_target_uses_systemd\(\)},
     'Debian postinst does not carry weaker duplicate init detection' );
@@ -69,7 +69,7 @@ my $deb_prerm = read_file(
     File::Spec->catfile( $repo_root, 'xCAT-server', 'debian', 'prerm' )
 );
 like( $deb_prerm,
-    qr{if "\$xcatd_init_compat" uses-systemd; then.*?update-rc\.d -f xcatd remove}s,
+    qr{if "\$xcatd_init_compat" uses-systemd(?: --explicit-target)?; then.*?update-rc\.d -f xcatd remove}s,
     'Debian prerm removes registration through the detected init implementation' );
 
 done_testing();
