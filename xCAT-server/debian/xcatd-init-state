@@ -213,35 +213,41 @@ shared_init_state()
 {
     if [ ! -x "$init_compat" ]; then
         echo "Missing xcatd init compatibility helper: $init_compat" >&2
-        exit 1
+        return 1
     fi
     "$init_compat" "$@"
 }
 
 legacy_enable_state()
 {
-    detected_legacy_state=$(shared_init_state debian-legacy-state)
+    if ! detected_legacy_state=$(shared_init_state debian-legacy-state); then
+        return 1
+    fi
     case "$detected_legacy_state" in
         enabled) printf '%s\n' yes ;;
         disabled) printf '%s\n' no ;;
         unregistered) printf '%s\n' unregistered ;;
-        *) printf '%s\n' unknown ;;
+        *)
+            echo "Invalid legacy state from $init_compat: $detected_legacy_state" >&2
+            return 1
+            ;;
     esac
-}
-
-systemd_is_masked()
-{
-    [ "$(shared_init_state systemd-state --allow-unknown)" = masked ]
 }
 
 systemd_enable_state()
 {
-    detected_systemd_state=$(shared_init_state systemd-state --allow-unknown)
+    if ! detected_systemd_state=$(shared_init_state systemd-state --allow-unknown); then
+        return 1
+    fi
     case "$detected_systemd_state" in
         enabled) printf '%s\n' yes ;;
         disabled) printf '%s\n' no ;;
         masked) printf '%s\n' unregistered ;;
-        *) printf '%s\n' unknown ;;
+        unknown) printf '%s\n' unknown ;;
+        *)
+            echo "Invalid systemd state from $init_compat: $detected_systemd_state" >&2
+            return 1
+            ;;
     esac
 }
 
@@ -295,6 +301,7 @@ prepare_systemd()
             fi
             ;;
     esac
+    detected_systemd_enabled=$(systemd_enable_state)
 
     if [ "$had_state" = no ] && \
        { [ -e "$pending_stash" ] || [ -L "$pending_stash" ]; }; then
@@ -348,7 +355,6 @@ prepare_systemd()
         transition_origin=fresh
     elif [ "$from_systemd" = no ]; then
         rm -f "$state_stash"
-        detected_systemd_enabled=$(systemd_enable_state)
         if [ "$detected_systemd_enabled" = yes ]; then
             state_content=package-default
         else
@@ -356,7 +362,7 @@ prepare_systemd()
         fi
     fi
 
-    if systemd_is_masked; then
+    if [ "$detected_systemd_enabled" = unregistered ]; then
         state_enabled=unregistered
         transition_origin=systemd
     elif [ "$transition_context" = fresh ]; then
@@ -376,7 +382,6 @@ prepare_systemd()
         if [ "$legacy_enabled" = yes ]; then
             state_enabled=yes
         elif [ "$had_state" = no ]; then
-            detected_systemd_enabled=$(systemd_enable_state)
             if [ "$detected_systemd_enabled" = yes ]; then
                 state_enabled=yes
             else
@@ -390,7 +395,6 @@ prepare_systemd()
          [ "$state_enabled" != unknown ]; then
         :
     else
-        detected_systemd_enabled=$(systemd_enable_state)
         case "$detected_systemd_enabled" in
             yes) state_enabled=yes ;;
             no)
@@ -450,10 +454,18 @@ configure_legacy()
     refresh_systemd_enabled=no
     resuming_legacy_transition=no
     resuming_stashed_transition=no
+    stable_legacy_upgrade=no
+    detected_systemd_enabled=unknown
     transition_origin=legacy
     if [ -e "$state_file" ]; then
         read_state
         had_state=yes
+        if [ "$state_mode" = legacy ] && \
+           [ "$transition_context" = upgrade ]; then
+            stable_legacy_upgrade=yes
+        else
+            detected_systemd_enabled=$(systemd_enable_state)
+        fi
         if [ "$state_mode" = transition-legacy ]; then
             resuming_legacy_transition=yes
             if [ "$state_content" = stashed ] &&
@@ -489,6 +501,7 @@ configure_legacy()
         esac
     else
         had_state=no
+        detected_systemd_enabled=$(systemd_enable_state)
         state_mode=unknown
         state_content=unknown
         state_enabled=unknown
@@ -525,7 +538,6 @@ configure_legacy()
             returning_from_systemd=yes
             refresh_systemd_enabled=yes
             transition_origin=systemd
-            detected_systemd_enabled=$(systemd_enable_state)
             state_enabled=$detected_systemd_enabled
             if [ "$detected_systemd_enabled" = yes ]; then
                 state_content=package-default
@@ -542,10 +554,9 @@ configure_legacy()
         esac
     fi
 
-    if [ "$had_state" = yes ] && [ "$state_mode" = legacy ] && \
-       [ "$transition_context" = upgrade ]; then
+    if [ "$stable_legacy_upgrade" = yes ]; then
         :
-    elif systemd_is_masked; then
+    elif [ "$detected_systemd_enabled" = unregistered ]; then
         state_enabled=unregistered
         transition_origin=systemd
     elif [ "$transition_context" = fresh ]; then
@@ -561,7 +572,6 @@ configure_legacy()
             yes|no|unregistered) legacy_enabled=$pending_enabled_value ;;
             *) legacy_enabled=$(legacy_enable_state) ;;
         esac
-        detected_systemd_enabled=$(systemd_enable_state)
         if [ "$legacy_enabled" = yes ] || \
            [ "$detected_systemd_enabled" = yes ]; then
             state_enabled=yes
@@ -577,7 +587,6 @@ configure_legacy()
             state_enabled=$legacy_enabled
         fi
     elif [ "$refresh_systemd_enabled" = yes ]; then
-        detected_systemd_enabled=$(systemd_enable_state)
         case "$detected_systemd_enabled" in
             yes) state_enabled=yes ;;
             no)
