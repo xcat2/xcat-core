@@ -195,10 +195,16 @@ legacy_links_enabled()
 
 systemd_is_masked()
 {
-    top_level_unit="$compat_root/etc/systemd/system/xcatd.service"
-    if [ -L "$top_level_unit" ] && [ "$(readlink "$top_level_unit" 2>/dev/null || true)" = /dev/null ]; then
-        return 0
-    fi
+    for top_level_unit in \
+        "$compat_root/etc/systemd/system/xcatd.service" \
+        "$compat_root/run/systemd/system/xcatd.service"; do
+        if [ -L "$top_level_unit" ]; then
+            mask_target=$(readlink "$top_level_unit" 2>/dev/null || true)
+            case "$mask_target" in
+                /dev/null|*/dev/null) return 0 ;;
+            esac
+        fi
+    done
 
     if command -v systemctl >/dev/null 2>&1; then
         if [ -n "$compat_root" ]; then
