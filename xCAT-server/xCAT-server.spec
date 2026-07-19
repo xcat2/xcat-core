@@ -521,7 +521,8 @@ if [ "$1" = "1" ]; then #Only if installing for the first time..
        legacy_xcatd_state=$("$xcatd_init_compat" legacy-state)
        case "$legacy_xcatd_state" in
            enabled|disabled)
-               "$xcatd_init_compat" register-legacy "$legacy_xcatd_state"
+               # Preserve any pre-existing administrator runlevel layout.
+               :
                ;;
            *)
                if [ "$("$xcatd_init_compat" systemd-state)" != masked ]; then
@@ -552,8 +553,9 @@ if [ "$1" -gt "1" ]; then #only on upgrade...
         systemctl enable xcatd.service
     fi
   else
+    legacy_xcatd_registration=$("$xcatd_init_compat" legacy-state)
     legacy_xcatd_state=$("$xcatd_init_compat" legacy-transition-state)
-    "$xcatd_init_compat" disable-systemd
+    "$xcatd_init_compat" disable-systemd --links-only
 
     # systemctl may delegate to systemd-sysv-install and recreate K links for
     # a pre-existing SysV script.  Restore the captured unregistered or masked
@@ -570,7 +572,9 @@ if [ "$1" -gt "1" ]; then #only on upgrade...
 
     case "$legacy_xcatd_state" in
         enabled|disabled)
-            "$xcatd_init_compat" register-legacy "$legacy_xcatd_state"
+            if [ "$legacy_xcatd_registration" = unregistered ]; then
+                "$xcatd_init_compat" register-legacy "$legacy_xcatd_state"
+            fi
             ;;
         masked|unregistered)
             ;;

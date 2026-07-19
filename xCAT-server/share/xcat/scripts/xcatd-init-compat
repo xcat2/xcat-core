@@ -270,7 +270,10 @@ unregister_legacy_init()
 
 disable_systemd_init()
 {
-    if [ -z "$compat_root" ] && command -v systemctl >/dev/null 2>&1; then
+    disable_mode=${1:-host-tools}
+
+    if [ "$disable_mode" != links-only ] &&
+       [ -z "$compat_root" ] && command -v systemctl >/dev/null 2>&1; then
         systemctl disable xcatd.service >/dev/null 2>&1 || true
     fi
 
@@ -414,7 +417,14 @@ case "${1:-}" in
         unregister_legacy_init
         ;;
     disable-systemd)
-        disable_systemd_init
+        case "${2:-}" in
+            '') disable_systemd_init ;;
+            --links-only) disable_systemd_init links-only ;;
+            *)
+                echo "Usage: $0 disable-systemd [--links-only]" >&2
+                exit 2
+                ;;
+        esac
         ;;
     unregister-all)
         unregister_all_init
@@ -430,7 +440,7 @@ case "${1:-}" in
         remove_managed_legacy_init
         ;;
     *)
-        echo "Usage: $0 {uses-systemd [--explicit-target]|legacy-state|legacy-transition-state|systemd-state|register-legacy {enabled|disabled}|unregister-legacy|disable-systemd|unregister-all|configure [--replace] [--explicit-target] [--track-managed]|remove|remove-managed}" >&2
+        echo "Usage: $0 {uses-systemd [--explicit-target]|legacy-state|legacy-transition-state|systemd-state|register-legacy {enabled|disabled}|unregister-legacy|disable-systemd [--links-only]|unregister-all|configure [--replace] [--explicit-target] [--track-managed]|remove|remove-managed}" >&2
         exit 2
         ;;
 esac
