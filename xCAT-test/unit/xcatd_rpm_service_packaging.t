@@ -349,6 +349,17 @@ like( $helper_source, qr{/sbin/chkconfig --level 345 xcatd on},
 like( $helper_source,
     qr{if \[ -z "\$compat_root" \] &&\s+\{ \[ -e "\$legacy_init" \] \|\| \[ -L "\$legacy_init" \]; \}; then\s+if \[ -x /sbin/chkconfig \]; then\s+/sbin/chkconfig --del xcatd}s,
     'legacy cleanup invokes host registration tools only for an existing init script' );
+my ($rpm_post) = $rpm_spec =~ /^%post\n(.*?)^%posttrans\n/ms;
+my ($rpm_posttrans) = $rpm_spec =~ /^%posttrans\n(.*?)^%preun\n/ms;
+my ($rpm_preun) = $rpm_spec =~ /^%preun\n(.*)\z/ms;
+my ($rpm_fresh) = $rpm_post =~
+  /if \[ "\$1" = "1" \]; then(.*?)\nfi\n\nif \[ "\$1" -gt "1" \]; then/ms;
+my ( $rpm_upgrade_systemd, $rpm_upgrade_legacy ) = $rpm_post =~
+  /if \[ "\$1" -gt "1" \]; then.*?if "\$xcatd_init_compat" uses-systemd --explicit-target; then(.*?)\n  else\n(.*?)\n  fi/ms;
+ok( defined($rpm_post) && defined($rpm_posttrans) && defined($rpm_preun)
+      && defined($rpm_fresh) && defined($rpm_upgrade_systemd)
+      && defined($rpm_upgrade_legacy),
+    'RPM service lifecycle scriptlets can be inspected independently' );
 like( $rpm_spec,
     qr{cp etc/init\.d/xcatd \$RPM_BUILD_ROOT/%\{prefix\}/share/xcat/scripts/xcatd},
     'RPM stages the legacy script as a compatibility template' );
@@ -360,9 +371,41 @@ like( $rpm_spec,
     'RPM tracks the runtime-created init path only on legacy SUSE' );
 like( $rpm_spec, qr{xcatd-init-compat.*uses-systemd}s,
     'RPM scriptlets select the init implementation at install time' );
+unlike( $rpm_spec,
+    qr{"\$xcatd_init_compat" uses-systemd(?! --explicit-target)},
+    'every RPM lifecycle classifier opts into explicit target detection' );
+unlike( $rpm_spec,
+    qr{"\$xcatd_init_compat" configure(?![^\n]*--explicit-target)},
+    'every RPM lifecycle configuration uses the matching explicit target mode' );
 like( $rpm_spec,
     qr{xcatd_init_compat=.*?"\$xcatd_init_compat" configure --replace}s,
     'RPM upgrades refresh an existing SysV init script' );
+like( $rpm_fresh,
+    qr{"\$xcatd_init_compat" legacy-state.*?"\$xcatd_init_compat" systemd-state}s,
+    'RPM fresh installs query service state through the shared helper' );
+like( $rpm_upgrade_systemd,
+    qr{legacy_xcatd_state=\$\("\$xcatd_init_compat" legacy-state\).*?"\$xcatd_init_compat" unregister-legacy.*?"\$xcatd_init_compat" configure.*?if \[ "\$legacy_xcatd_state" = enabled \].*?systemctl enable xcatd\.service}s,
+    'RPM systemd transitions preserve enabled SysV state after unregistering it' );
+like( $rpm_upgrade_legacy,
+    qr{legacy_xcatd_state=\$\("\$xcatd_init_compat" legacy-state\).*?if \[ "\$legacy_xcatd_state" = unregistered \].*?systemd-state.*?"\$xcatd_init_compat" disable-systemd.*?configure --replace.*?register-legacy "\$legacy_xcatd_state"}s,
+    'RPM legacy transitions preserve prior state and clear systemd enablement' );
+like( $rpm_fresh,
+    qr{if \[ "\$\("\$xcatd_init_compat" systemd-state\)" != masked \]; then\s+"\$xcatd_init_compat" register-legacy enabled}s,
+    'RPM fresh legacy installs do not override a persistent systemd mask' );
+unlike( $rpm_post,
+    qr{/sbin/chkconfig --(?:add|del) xcatd|/usr/lib/lsb/(?:install|remove)_initd},
+    'RPM post delegates registration mechanics to the shared helper' );
+like( $rpm_posttrans,
+    qr{%ifos linux.*?uses-systemd --explicit-target.*?\[ ! -e /etc/init\.d/xcatd \].*?\[ ! -L /etc/init\.d/xcatd \].*?"\$xcatd_init_compat" configure --explicit-target \|\| exit 1}s,
+    'RPM post-transaction recovery restores only a missing legacy script' );
+unlike( $rpm_posttrans, qr{\$1|--replace},
+    'RPM post-transaction recovery is idempotent and not argument-gated' );
+like( $rpm_preun,
+    qr{"\$xcatd_init_compat" unregister-all.*?"\$xcatd_init_compat" remove}s,
+    'RPM erase cleans both managers before removing the generated script' );
+unlike( $rpm_preun,
+    qr{/sbin/chkconfig --del xcatd|/usr/lib/lsb/remove_initd},
+    'RPM erase delegates cross-manager cleanup to the shared helper' );
 my @xcatroot_exports =
   ( $rpm_spec =~ /^export XCATROOT="\$RPM_INSTALL_PREFIX0"$/mg );
 is( scalar @xcatroot_exports, 2,
