@@ -85,7 +85,7 @@ case "$1" in
             if command -v systemctl >/dev/null 2>&1; then
                 case "$transition_origin:$desired_enabled" in
                     fresh:yes|legacy:yes) systemctl enable xcatd.service ;;
-                    legacy:no) systemctl disable xcatd.service ;;
+                    legacy:no|legacy:unregistered) systemctl disable xcatd.service ;;
                 esac
             fi
             "$xcatd_init_state" commit-systemd

@@ -85,10 +85,17 @@ read_state()
 
     if [ "$seen_format" -ne 1 ] || [ "$seen_mode" -ne 1 ] ||
        [ "$seen_content" -ne 1 ] || [ "$seen_enabled" -ne 1 ] ||
-       [ "$seen_origin" -ne 1 ] || [ "$state_format" != 1 ]; then
+       [ "$seen_origin" -ne 1 ]; then
         echo "Invalid xcatd init state format: ${state_format:-missing}" >&2
         return 1
     fi
+    case "$state_format" in
+        1|2) ;;
+        *)
+            echo "Invalid xcatd init state format: ${state_format:-missing}" >&2
+            return 1
+            ;;
+    esac
     case "$state_mode" in
         legacy|systemd|transition-systemd|transition-legacy|unknown) ;;
         *)
@@ -105,6 +112,14 @@ read_state()
     esac
     case "$state_enabled" in
         yes|no|unknown) ;;
+        unregistered)
+            if [ "$state_format" = 2 ]; then
+                :
+            else
+                echo "Invalid xcatd init enablement state: $state_enabled" >&2
+                return 1
+            fi
+            ;;
         *)
             echo "Invalid xcatd init enablement state: $state_enabled" >&2
             return 1
@@ -117,6 +132,13 @@ read_state()
             return 1
             ;;
     esac
+
+    # Format 1 collapsed registered-disabled and unregistered into "no",
+    # then restored that value by removing every SysV link.  Preserve that
+    # behavior when recovering an interrupted pre-format-2 transaction.
+    if [ "$state_format" = 1 ] && [ "$state_enabled" = no ]; then
+        state_enabled=unregistered
+    fi
 }
 
 ensure_state_dir()
@@ -140,7 +162,7 @@ write_state()
     state_tmp="$state_file.tmp.$$"
     if ! (
         umask 077
-        printf 'format=1\nmode=%s\ncontent=%s\nenabled=%s\norigin=%s\n' \
+        printf 'format=2\nmode=%s\ncontent=%s\nenabled=%s\norigin=%s\n' \
             "$new_mode" "$new_content" "$new_enabled" "$new_origin" > "$state_tmp" &&
             mv -f "$state_tmp" "$state_file"
     ); then
@@ -198,14 +220,10 @@ legacy_enable_state()
     detected_legacy_state=$(shared_init_state debian-legacy-state)
     case "$detected_legacy_state" in
         enabled) printf '%s\n' yes ;;
-        disabled|unregistered) printf '%s\n' no ;;
+        disabled) printf '%s\n' no ;;
+        unregistered) printf '%s\n' unregistered ;;
         *) printf '%s\n' unknown ;;
     esac
-}
-
-legacy_links_enabled()
-{
-    [ "$(legacy_enable_state)" = yes ]
 }
 
 systemd_is_masked()
@@ -218,7 +236,8 @@ systemd_enable_state()
     detected_systemd_state=$(shared_init_state systemd-state --allow-unknown)
     case "$detected_systemd_state" in
         enabled) printf '%s\n' yes ;;
-        disabled|masked) printf '%s\n' no ;;
+        disabled) printf '%s\n' no ;;
+        masked) printf '%s\n' unregistered ;;
         *) printf '%s\n' unknown ;;
     esac
 }
@@ -335,7 +354,7 @@ prepare_systemd()
     fi
 
     if systemd_is_masked; then
-        state_enabled=no
+        state_enabled=unregistered
         transition_origin=systemd
     elif [ "$transition_context" = fresh ]; then
         state_enabled=yes
@@ -346,15 +365,10 @@ prepare_systemd()
         else
             pending_enabled_value=unknown
         fi
-        if [ "$pending_enabled_value" = yes ]; then
-            legacy_enabled=yes
-        elif [ "$pending_enabled_value" = no ]; then
-            legacy_enabled=no
-        elif legacy_links_enabled; then
-            legacy_enabled=yes
-        else
-            legacy_enabled=no
-        fi
+        case "$pending_enabled_value" in
+            yes|no|unregistered) legacy_enabled=$pending_enabled_value ;;
+            *) legacy_enabled=$(legacy_enable_state) ;;
+        esac
 
         if [ "$legacy_enabled" = yes ]; then
             state_enabled=yes
@@ -363,10 +377,10 @@ prepare_systemd()
             if [ "$detected_systemd_enabled" = yes ]; then
                 state_enabled=yes
             else
-                state_enabled=no
+                state_enabled=$legacy_enabled
             fi
         else
-            state_enabled=no
+            state_enabled=$legacy_enabled
         fi
     elif { [ "$previous_mode" = transition-systemd ] ||
            [ "$previous_mode" = transition-legacy ]; } && \
@@ -388,6 +402,34 @@ commit_systemd()
     read_state
     write_state systemd "$state_content" "$state_enabled" unknown
     rm -f "$old_systemd_marker"
+}
+
+apply_legacy_registration()
+{
+    command -v update-rc.d >/dev/null 2>&1 || return 0
+
+    case "$state_content" in
+        deleted|unknown)
+            update-rc.d -f xcatd remove
+            return
+            ;;
+    esac
+    if [ -x "$legacy_init" ]; then
+        case "$state_enabled" in
+            yes)
+                update-rc.d xcatd defaults
+                ;;
+            no)
+                update-rc.d xcatd defaults
+                update-rc.d xcatd disable
+                ;;
+            unregistered|unknown)
+                update-rc.d -f xcatd remove
+                ;;
+        esac
+    else
+        update-rc.d -f xcatd remove
+    fi
 }
 
 configure_legacy()
@@ -432,11 +474,7 @@ configure_legacy()
                     state_content=deleted
                 fi
                 if [ "$transition_context" = upgrade ]; then
-                    if legacy_links_enabled; then
-                        state_enabled=yes
-                    else
-                        state_enabled=no
-                    fi
+                    state_enabled=$(legacy_enable_state)
                 fi
                 ;;
         esac
@@ -499,7 +537,7 @@ configure_legacy()
        [ "$transition_context" = upgrade ]; then
         :
     elif systemd_is_masked; then
-        state_enabled=no
+        state_enabled=unregistered
         transition_origin=systemd
     elif [ "$transition_context" = fresh ]; then
         state_enabled=yes
@@ -510,23 +548,36 @@ configure_legacy()
         else
             pending_enabled_value=unknown
         fi
-        if [ "$pending_enabled_value" = yes ] || legacy_links_enabled; then
-            legacy_enabled=yes
-        else
-            legacy_enabled=no
-        fi
+        case "$pending_enabled_value" in
+            yes|no|unregistered) legacy_enabled=$pending_enabled_value ;;
+            *) legacy_enabled=$(legacy_enable_state) ;;
+        esac
         detected_systemd_enabled=$(systemd_enable_state)
         if [ "$legacy_enabled" = yes ] || \
            [ "$detected_systemd_enabled" = yes ]; then
             state_enabled=yes
-        else
+        elif [ "$transition_origin" = legacy ] && \
+             { [ "$legacy_enabled" = no ] || \
+               [ "$legacy_enabled" = unregistered ]; }; then
+            state_enabled=$legacy_enabled
+        elif [ "$detected_systemd_enabled" = no ]; then
             state_enabled=no
+        elif [ "$detected_systemd_enabled" = unregistered ]; then
+            state_enabled=unregistered
+        else
+            state_enabled=$legacy_enabled
         fi
     elif [ "$refresh_systemd_enabled" = yes ]; then
         detected_systemd_enabled=$(systemd_enable_state)
-        if [ "$detected_systemd_enabled" != unknown ]; then
-            state_enabled=$detected_systemd_enabled
-        fi
+        case "$detected_systemd_enabled" in
+            yes) state_enabled=yes ;;
+            no)
+                if [ "$state_enabled" != unregistered ]; then
+                    state_enabled=no
+                fi
+                ;;
+            unregistered) state_enabled=unregistered ;;
+        esac
     fi
 
     write_state transition-legacy "$state_content" "$state_enabled" "$transition_origin"
@@ -571,13 +622,7 @@ configure_legacy()
 
     if [ "$transition_context" = fresh ] || \
        [ "$returning_from_systemd" = yes ] || [ "$had_state" = no ]; then
-        if [ "$state_enabled" = yes ] && [ -x "$legacy_init" ]; then
-            if command -v update-rc.d >/dev/null 2>&1; then
-                update-rc.d xcatd defaults
-            fi
-        elif command -v update-rc.d >/dev/null 2>&1; then
-            update-rc.d -f xcatd remove
-        fi
+        apply_legacy_registration
     fi
 
     if legacy_init_exists; then
@@ -585,11 +630,7 @@ configure_legacy()
     else
         final_content=deleted
     fi
-    if legacy_links_enabled; then
-        final_enabled=yes
-    else
-        final_enabled=no
-    fi
+    final_enabled=$(legacy_enable_state)
     write_state legacy "$final_content" "$final_enabled" unknown
     rm -f "$state_stash" "$old_systemd_marker" \
         "$pending_stash" "$pending_deleted" "$pending_enabled" \

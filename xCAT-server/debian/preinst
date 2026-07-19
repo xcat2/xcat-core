@@ -90,6 +90,7 @@ xcat_target_uses_systemd()
 }
 
 xcatd_init_state=/opt/xcat/share/xcat/scripts/xcatd-init-state
+xcatd_init_compat=/opt/xcat/share/xcat/scripts/xcatd-init-compat
 xcatd_legacy_init=/etc/init.d/xcatd
 xcatd_state_dir=/var/lib/xcat/xcatd-init-state
 xcatd_old_systemd_marker=/var/lib/xcat/xcatd-systemd-mode
@@ -110,6 +111,48 @@ clear_xcatd_pending_state()
         "$xcatd_state_dir/pending-deleted" \
         "$xcatd_state_dir/pending-enabled" \
         "$xcatd_state_dir/pending-xcatd.tmp."*
+}
+
+xcatd_legacy_enable_state()
+{
+    if [ -x "$xcatd_init_compat" ]; then
+        if detected_legacy_state=$(
+            "$xcatd_init_compat" debian-legacy-state 2>/dev/null
+        ); then
+            case "$detected_legacy_state" in
+                enabled) printf '%s\n' yes ;;
+                disabled) printf '%s\n' no ;;
+                unregistered) printf '%s\n' unregistered ;;
+                *)
+                    echo "Invalid xcatd legacy state: $detected_legacy_state" >&2
+                    return 1
+                    ;;
+            esac
+            return
+        else
+            detector_status=$?
+            if [ "$detector_status" -ne 2 ]; then
+                echo "Unable to query xcatd Debian legacy state with $xcatd_init_compat" >&2
+                return "$detector_status"
+            fi
+        fi
+    fi
+
+    # Direct upgrades from a package without the Debian-specific command
+    # still need to capture registration before dpkg removes the conffile.
+    for rc_link in /etc/rc?.d/S??xcatd; do
+        if [ -e "$rc_link" ] || [ -L "$rc_link" ]; then
+            printf '%s\n' yes
+            return
+        fi
+    done
+    for rc_link in /etc/rc?.d/K??xcatd; do
+        if [ -e "$rc_link" ] || [ -L "$rc_link" ]; then
+            printf '%s\n' no
+            return
+        fi
+    done
+    printf '%s\n' unregistered
 }
 
 if xcat_target_uses_systemd; then
@@ -198,11 +241,7 @@ elif [ -n "$xcatd_transition_context" ] && [ ! -x "$xcatd_init_state" ]; then
     fi
 
     if [ "$known_legacy" = yes ]; then
-        if ls /etc/rc?.d/S??xcatd >/dev/null 2>&1; then
-            printf '%s\n' yes > "$xcatd_state_dir/pending-enabled"
-        else
-            printf '%s\n' no > "$xcatd_state_dir/pending-enabled"
-        fi
+        xcatd_legacy_enable_state > "$xcatd_state_dir/pending-enabled"
     fi
 fi
 
