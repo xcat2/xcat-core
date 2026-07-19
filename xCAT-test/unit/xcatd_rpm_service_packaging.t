@@ -504,8 +504,11 @@ like( $rpm_upgrade_systemd,
     qr{legacy_xcatd_state=\$\("\$xcatd_init_compat" legacy-state\).*?"\$xcatd_init_compat" unregister-legacy.*?"\$xcatd_init_compat" configure.*?if \[ "\$legacy_xcatd_state" = enabled \].*?systemctl enable xcatd\.service}s,
     'RPM systemd transitions preserve enabled SysV state after unregistering it' );
 like( $rpm_upgrade_legacy,
-    qr{legacy_xcatd_state=\$\("\$xcatd_init_compat" legacy-state\).*?if \[ "\$legacy_xcatd_state" = unregistered \].*?systemd-state.*?"\$xcatd_init_compat" disable-systemd.*?configure --replace.*?register-legacy "\$legacy_xcatd_state"}s,
+    qr{legacy_xcatd_state=\$\("\$xcatd_init_compat" legacy-(?:state|transition-state)\).*?"\$xcatd_init_compat" disable-systemd.*?configure --replace.*?register-legacy "\$legacy_xcatd_state"}s,
     'RPM legacy transitions preserve prior state and clear systemd enablement' );
+like( $rpm_upgrade_legacy,
+    qr{if \[ "\$legacy_xcatd_state" = unregistered \].*?systemd-state|legacy-transition-state}s,
+    'RPM legacy transitions resolve unregistered state through the shared helper' );
 like( $rpm_fresh,
     qr{if \[ "\$\("\$xcatd_init_compat" systemd-state\)" != masked \]; then\s+"\$xcatd_init_compat" register-legacy enabled}s,
     'RPM fresh legacy installs do not override a persistent systemd mask' );
