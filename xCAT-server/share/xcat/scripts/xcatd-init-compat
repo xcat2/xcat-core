@@ -17,6 +17,7 @@ esac
 
 legacy_init="$compat_root/etc/init.d/xcatd"
 legacy_template="$compat_root$xcat_root/share/xcat/scripts/xcatd"
+managed_marker="$compat_root/var/lib/xcat/xcatd-init-compat-managed"
 
 systemd_os_release_status()
 {
@@ -260,16 +261,52 @@ unregister_all_init()
     return "$unregister_status"
 }
 
+legacy_init_is_managed()
+{
+    [ -f "$managed_marker" ] &&
+        [ -f "$legacy_init" ] && [ ! -L "$legacy_init" ] &&
+        [ -r "$legacy_template" ] && cmp -s "$legacy_template" "$legacy_init"
+}
+
+mark_legacy_init_managed()
+{
+    marker_dir=${managed_marker%/*}
+    marker_tmp="$managed_marker.tmp.$$"
+    mkdir -p -m 0755 "$marker_dir" || return 1
+    umask 077
+    : > "$marker_tmp" || return 1
+    if ! mv -f "$marker_tmp" "$managed_marker"; then
+        rm -f "$marker_tmp"
+        return 1
+    fi
+}
+
+remove_legacy_init()
+{
+    rm -f "$legacy_init" || return 1
+    rm -f "$managed_marker"
+}
+
+remove_managed_legacy_init()
+{
+    if legacy_init_is_managed; then
+        rm -f "$legacy_init" || return 1
+    fi
+    rm -f "$managed_marker"
+}
+
 configure_legacy_init()
 {
     replace_existing=0
     detection_mode=compat
+    track_managed=0
     for configure_option in "$@"; do
         case "$configure_option" in
             --replace) replace_existing=1 ;;
             --explicit-target) detection_mode=explicit ;;
+            --track-managed) track_managed=1 ;;
             *)
-                echo "Usage: $0 configure [--replace] [--explicit-target]" >&2
+                echo "Usage: $0 configure [--replace] [--explicit-target] [--track-managed]" >&2
                 exit 2
                 ;;
         esac
@@ -277,6 +314,7 @@ configure_legacy_init()
 
     if uses_systemd "$detection_mode"; then
         rm -f "$legacy_init" || return 1
+        rm -f "$managed_marker" || return 1
         return
     fi
 
@@ -288,6 +326,9 @@ configure_legacy_init()
 
     if [ -e "$legacy_init" ] || [ -L "$legacy_init" ]; then
         if [ "$replace_existing" -ne 1 ]; then
+            if [ -f "$managed_marker" ] && ! legacy_init_is_managed; then
+                rm -f "$managed_marker" || return 1
+            fi
             return
         fi
         rm -f "$legacy_init" || return 1
@@ -301,6 +342,11 @@ configure_legacy_init()
     mkdir -p "$compat_root/etc/init.d" || return 1
     cp "$legacy_template" "$legacy_init" || return 1
     chmod 755 "$legacy_init" || return 1
+    if [ "$track_managed" -eq 1 ]; then
+        mark_legacy_init_managed || return 1
+    else
+        rm -f "$managed_marker" || return 1
+    fi
 }
 
 case "${1:-}" in
@@ -346,10 +392,13 @@ case "${1:-}" in
         configure_legacy_init "$@"
         ;;
     remove)
-        rm -f "$legacy_init"
+        remove_legacy_init
+        ;;
+    remove-managed)
+        remove_managed_legacy_init
         ;;
     *)
-        echo "Usage: $0 {uses-systemd [--explicit-target]|legacy-state|systemd-state|register-legacy {enabled|disabled}|unregister-legacy|disable-systemd|unregister-all|configure [--replace] [--explicit-target]|remove}" >&2
+        echo "Usage: $0 {uses-systemd [--explicit-target]|legacy-state|systemd-state|register-legacy {enabled|disabled}|unregister-legacy|disable-systemd|unregister-all|configure [--replace] [--explicit-target] [--track-managed]|remove|remove-managed}" >&2
         exit 2
         ;;
 esac

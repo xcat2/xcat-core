@@ -364,17 +364,6 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/shfunctions
 %ifos linux
 cp etc/init.d/xcatd $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts/xcatd
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts/xcatd
-# Keep ownership continuity only on legacy RPM targets where the script is
-# materialized at runtime.  Modern RPM versions can create /etc/init.d from a
-# ghost entry alone, which breaks later chkconfig/initscripts transactions.
-%if 0%{?rhel} && 0%{?rhel} < 7
-mkdir -p $RPM_BUILD_ROOT/etc/init.d
-touch $RPM_BUILD_ROOT/etc/init.d/xcatd
-%endif
-%if 0%{?suse_version} && 0%{?suse_version} < 1200
-mkdir -p $RPM_BUILD_ROOT/etc/init.d
-touch $RPM_BUILD_ROOT/etc/init.d/xcatd
-%endif
 mkdir -p $RPM_BUILD_ROOT/usr/lib/systemd/system
 cp etc/init.d/xcatd.service $RPM_BUILD_ROOT/usr/lib/systemd/system
 %else
@@ -448,12 +437,8 @@ rm -rf $RPM_BUILD_ROOT
 %if %fsm
 %else
 %ifos linux
-%if 0%{?rhel} && 0%{?rhel} < 7
-%ghost %attr(0755,root,root) /etc/init.d/xcatd
-%endif
-%if 0%{?suse_version} && 0%{?suse_version} < 1200
-%ghost %attr(0755,root,root) /etc/init.d/xcatd
-%endif
+# The compatibility helper owns runtime cleanup.  Listing this path as %ghost
+# would let RPM unlink preserved administrator content after %preun.
 /usr/lib/systemd/system/xcatd.service
 %else
 /etc/init.d/xcatd
@@ -532,7 +517,7 @@ if [ "$1" = "1" ]; then #Only if installing for the first time..
            systemctl enable xcatd.service
        fi
    else
-       "$xcatd_init_compat" configure --explicit-target || exit 1
+       "$xcatd_init_compat" configure --explicit-target --track-managed || exit 1
        legacy_xcatd_state=$("$xcatd_init_compat" legacy-state)
        case "$legacy_xcatd_state" in
            enabled|disabled)
@@ -575,7 +560,7 @@ if [ "$1" -gt "1" ]; then #only on upgrade...
 
     # This path was previously a regular RPM payload file, so upgrades replaced
     # it with the current package version rather than retaining an older copy.
-    "$xcatd_init_compat" configure --replace --explicit-target || exit 1
+    "$xcatd_init_compat" configure --replace --explicit-target --track-managed || exit 1
 
     case "$legacy_xcatd_state" in
         enabled|disabled)
@@ -629,7 +614,7 @@ if [ -x "$xcatd_init_compat" ] &&
    ! XCATROOT="$RPM_INSTALL_PREFIX0" "$xcatd_init_compat" uses-systemd --explicit-target &&
    [ ! -e /etc/init.d/xcatd ] && [ ! -L /etc/init.d/xcatd ]; then
     XCATROOT="$RPM_INSTALL_PREFIX0" \
-        "$xcatd_init_compat" configure --explicit-target || exit 1
+        "$xcatd_init_compat" configure --explicit-target --track-managed || exit 1
 fi
 %endif
 
@@ -652,8 +637,10 @@ if [ $1 == 0 ]; then  #This means only on -e
       fi
   fi
 
-  "$xcatd_init_compat" unregister-all
-  "$xcatd_init_compat" remove
+  # Preserve RPM's existing recoverable erase policy if local service state
+  # cannot be cleaned completely; no package payload remains afterward.
+  "$xcatd_init_compat" unregister-all || true
+  "$xcatd_init_compat" remove-managed || true
   rm -f /usr/sbin/xcatd  #remove the symbolic
 
 fi
