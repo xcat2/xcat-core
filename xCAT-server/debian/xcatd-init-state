@@ -434,7 +434,15 @@ apply_legacy_registration()
                 ;;
             no)
                 update-rc.d xcatd defaults
-                update-rc.d xcatd disable
+                if ! update-rc.d xcatd disable; then
+                    # defaults preserves any existing registration, including
+                    # links outside xcatd's declared start runlevels that the
+                    # native disable operation cannot toggle.  Canonicalize
+                    # only after that unusable layout is rejected.
+                    update-rc.d -f xcatd remove
+                    update-rc.d xcatd defaults
+                    update-rc.d xcatd disable
+                fi
                 ;;
             unregistered|unknown)
                 update-rc.d -f xcatd remove
