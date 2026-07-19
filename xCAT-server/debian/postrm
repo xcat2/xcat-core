@@ -136,13 +136,13 @@ case "$1" in
             /etc/init.d/xcatd.dpkg-backup \
             /etc/init.d/xcatd.dpkg-remove \
             /var/lib/xcat/xcatd-systemd-mode
-        rm -f /var/lib/xcat/xcatd-init-state/state \
-            /var/lib/xcat/xcatd-init-state/xcatd \
-            /var/lib/xcat/xcatd-init-state/state.tmp.* \
-            /var/lib/xcat/xcatd-init-state/xcatd.tmp.*
+        rm -f "$xcatd_state_dir/state" \
+            "$xcatd_state_dir/xcatd" \
+            "$xcatd_state_dir/state.tmp."* \
+            "$xcatd_state_dir/xcatd.tmp."*
         clear_xcatd_pending_state
         rm -f "$xcatd_context_file" "$xcatd_context_file.tmp."*
-        rmdir /var/lib/xcat/xcatd-init-state 2>/dev/null || true
+        rmdir "$xcatd_state_dir" 2>/dev/null || true
         if command -v ucf >/dev/null 2>&1; then
             ucf --purge /etc/init.d/xcatd
         fi
