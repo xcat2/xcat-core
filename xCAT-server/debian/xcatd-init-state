@@ -19,6 +19,7 @@ esac
 
 legacy_init="$compat_root/etc/init.d/xcatd"
 legacy_template="$compat_root$xcat_root/share/xcat/scripts/xcatd"
+init_compat="$compat_root$xcat_root/share/xcat/scripts/xcatd-init-compat"
 state_dir="$compat_root/var/lib/xcat/xcatd-init-state"
 state_file="$state_dir/state"
 state_stash="$state_dir/xcatd"
@@ -183,80 +184,43 @@ stash_candidate()
     mv -f "$stash_tmp" "$state_stash"
 }
 
+shared_init_state()
+{
+    if [ ! -x "$init_compat" ]; then
+        echo "Missing xcatd init compatibility helper: $init_compat" >&2
+        exit 1
+    fi
+    "$init_compat" "$@"
+}
+
+legacy_enable_state()
+{
+    detected_legacy_state=$(shared_init_state debian-legacy-state)
+    case "$detected_legacy_state" in
+        enabled) printf '%s\n' yes ;;
+        disabled|unregistered) printf '%s\n' no ;;
+        *) printf '%s\n' unknown ;;
+    esac
+}
+
 legacy_links_enabled()
 {
-    for rc_link in "$compat_root"/etc/rc?.d/S??xcatd; do
-        if [ -e "$rc_link" ] || [ -L "$rc_link" ]; then
-            return 0
-        fi
-    done
-    return 1
+    [ "$(legacy_enable_state)" = yes ]
 }
 
 systemd_is_masked()
 {
-    for top_level_unit in \
-        "$compat_root/etc/systemd/system/xcatd.service" \
-        "$compat_root/run/systemd/system/xcatd.service"; do
-        if [ -L "$top_level_unit" ]; then
-            mask_target=$(readlink "$top_level_unit" 2>/dev/null || true)
-            case "$mask_target" in
-                /dev/null|*/dev/null) return 0 ;;
-            esac
-        fi
-    done
-
-    if command -v systemctl >/dev/null 2>&1; then
-        if [ -n "$compat_root" ]; then
-            systemd_status=$(systemctl --root="$compat_root" is-enabled xcatd.service 2>/dev/null || true)
-        else
-            systemd_status=$(systemctl is-enabled xcatd.service 2>/dev/null || true)
-        fi
-        case "$systemd_status" in
-            masked|masked-runtime) return 0 ;;
-        esac
-    fi
-
-    return 1
+    [ "$(shared_init_state systemd-state --allow-unknown)" = masked ]
 }
 
 systemd_enable_state()
 {
-    if systemd_is_masked; then
-        printf '%s\n' no
-        return
-    fi
-
-    for unit_link in \
-        "$compat_root"/etc/systemd/system/*.wants/xcatd.service \
-        "$compat_root"/etc/systemd/system/*.requires/xcatd.service \
-        "$compat_root"/run/systemd/system/*.wants/xcatd.service \
-        "$compat_root"/run/systemd/system/*.requires/xcatd.service; do
-        if [ -e "$unit_link" ] || [ -L "$unit_link" ]; then
-            printf '%s\n' yes
-            return
-        fi
-    done
-
-    if command -v systemctl >/dev/null 2>&1; then
-        if [ -n "$compat_root" ]; then
-            systemd_status=$(systemctl --root="$compat_root" is-enabled xcatd.service 2>/dev/null || true)
-        else
-            systemd_status=$(systemctl is-enabled xcatd.service 2>/dev/null || true)
-        fi
-        case "$systemd_status" in
-            enabled|enabled-runtime)
-                printf '%s\n' yes
-                return
-                ;;
-            disabled|masked|masked-runtime|linked|linked-runtime|alias|static|indirect|generated|transient)
-                printf '%s\n' no
-                return
-                ;;
-        esac
-    fi
-
-    printf '%s\n' unknown
+    detected_systemd_state=$(shared_init_state systemd-state --allow-unknown)
+    case "$detected_systemd_state" in
+        enabled) printf '%s\n' yes ;;
+        disabled|masked) printf '%s\n' no ;;
+        *) printf '%s\n' unknown ;;
+    esac
 }
 
 validate_context()

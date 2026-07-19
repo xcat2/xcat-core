@@ -130,22 +130,32 @@ can_use_systemctl()
 
 legacy_state()
 {
-    for legacy_link in \
-        "$compat_root"/etc/rc.d/rc?.d/S??xcatd \
-        "$compat_root"/etc/rc?.d/S??xcatd \
-        "$compat_root"/etc/init.d/rc?.d/S??xcatd
-    do
+    detection_mode=${1:-compat}
+
+    if [ "$detection_mode" = debian-layout ]; then
+        set -- "$compat_root"/etc/rc?.d/S??xcatd
+    else
+        set -- \
+            "$compat_root"/etc/rc.d/rc?.d/S??xcatd \
+            "$compat_root"/etc/rc?.d/S??xcatd \
+            "$compat_root"/etc/init.d/rc?.d/S??xcatd
+    fi
+    for legacy_link in "$@"; do
         if [ -e "$legacy_link" ] || [ -L "$legacy_link" ]; then
             echo enabled
             return
         fi
     done
 
-    for legacy_link in \
-        "$compat_root"/etc/rc.d/rc?.d/K??xcatd \
-        "$compat_root"/etc/rc?.d/K??xcatd \
-        "$compat_root"/etc/init.d/rc?.d/K??xcatd
-    do
+    if [ "$detection_mode" = debian-layout ]; then
+        set -- "$compat_root"/etc/rc?.d/K??xcatd
+    else
+        set -- \
+            "$compat_root"/etc/rc.d/rc?.d/K??xcatd \
+            "$compat_root"/etc/rc?.d/K??xcatd \
+            "$compat_root"/etc/init.d/rc?.d/K??xcatd
+    fi
+    for legacy_link in "$@"; do
         if [ -e "$legacy_link" ] || [ -L "$legacy_link" ]; then
             echo disabled
             return
@@ -481,6 +491,13 @@ case "${1:-}" in
     legacy-state)
         legacy_state
         ;;
+    debian-legacy-state)
+        if [ "$#" -ne 1 ]; then
+            echo "Usage: $0 debian-legacy-state" >&2
+            exit 2
+        fi
+        legacy_state debian-layout
+        ;;
     legacy-transition-state)
         legacy_transition_state
         ;;
@@ -528,7 +545,7 @@ case "${1:-}" in
         remove_managed_legacy_init
         ;;
     *)
-        echo "Usage: $0 {uses-systemd [--explicit-target]|can-use-systemctl|legacy-state|legacy-transition-state|systemd-state [--allow-unknown]|register-legacy {default|enabled|disabled}|unregister-legacy|disable-systemd [--links-only]|unregister-all|configure [--replace] [--explicit-target] [--track-managed]|remove|remove-managed}" >&2
+        echo "Usage: $0 {uses-systemd [--explicit-target]|can-use-systemctl|legacy-state|debian-legacy-state|legacy-transition-state|systemd-state [--allow-unknown]|register-legacy {default|enabled|disabled}|unregister-legacy|disable-systemd [--links-only]|unregister-all|configure [--replace] [--explicit-target] [--track-managed]|remove|remove-managed}" >&2
         exit 2
         ;;
 esac
