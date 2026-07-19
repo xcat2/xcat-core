@@ -30,9 +30,29 @@ sub stage_root {
     my $scripts = File::Spec->catdir(
         $root, 'opt', 'xcat', 'share', 'xcat', 'scripts'
     );
-    make_path($scripts);
+    my $fake_bin = File::Spec->catdir( $root, 'test-bin' );
+    make_path( $scripts, $fake_bin );
     copy( $template, File::Spec->catfile( $scripts, 'xcatd' ) )
       or die "Unable to stage legacy init template: $!";
+    my $systemctl = File::Spec->catfile( $fake_bin, 'systemctl' );
+    open( my $systemctl_fh, '>', $systemctl )
+      or die "Unable to stage fake systemctl: $!";
+    print {$systemctl_fh} <<'SH';
+#!/bin/sh
+set -eu
+root=${XCAT_COMPAT_ROOT:?}
+case "${1:-}" in
+    --root=*) shift ;;
+esac
+[ "${1:-}" = is-enabled ] || exit 1
+if [ -r "$root/systemctl-state" ]; then
+    sed -n '1p' "$root/systemctl-state"
+else
+    echo unknown
+fi
+SH
+    close($systemctl_fh);
+    chmod 0755, $systemctl;
     return $root;
 }
 
@@ -49,10 +69,20 @@ sub stage_systemd_binary {
     return $binary;
 }
 
+sub set_systemd_state {
+    my ( $root, $state ) = @_;
+    my $path = File::Spec->catfile( $root, 'systemctl-state' );
+    open( my $fh, '>', $path )
+      or die "Unable to stage systemd state: $!";
+    print {$fh} "$state\n";
+    close($fh);
+}
+
 sub run_helper {
     my ( $root, @arguments ) = @_;
     local $ENV{XCAT_COMPAT_ROOT} = $root;
     local $ENV{XCATROOT}         = '/opt/xcat';
+    local $ENV{PATH} = File::Spec->catdir( $root, 'test-bin' ) . ':/usr/bin:/bin';
     system( '/bin/sh', $helper, @arguments );
     return $? >> 8;
 }
@@ -61,6 +91,7 @@ sub helper_output {
     my ( $root, @arguments ) = @_;
     local $ENV{XCAT_COMPAT_ROOT} = $root;
     local $ENV{XCATROOT}         = '/opt/xcat';
+    local $ENV{PATH} = File::Spec->catdir( $root, 'test-bin' ) . ':/usr/bin:/bin';
     open( my $pipe, '-|', '/bin/sh', $helper, @arguments )
       or die "Unable to run compatibility helper: $!";
     my $output = do { local $/; <$pipe> };
@@ -275,6 +306,11 @@ is( helper_output( $deleted_managed_root, 'legacy-transition-state' ),
 my $systemd_state_root = stage_root();
 is( helper_output( $systemd_state_root, 'systemd-state' ), 'disabled',
     'systemd state reports disabled when enablement links are absent' );
+is( helper_output( $systemd_state_root, 'systemd-state', '--allow-unknown' ),
+    'unknown', 'precise systemd state preserves indeterminate evidence' );
+set_systemd_state( $systemd_state_root, 'disabled' );
+is( helper_output( $systemd_state_root, 'systemd-state', '--allow-unknown' ),
+    'disabled', 'precise systemd state recognizes an explicit disablement' );
 stage_symlink(
     $systemd_state_root, '/usr/lib/systemd/system/xcatd.service',
     qw(etc systemd system multi-user.target.wants xcatd.service)
@@ -283,6 +319,63 @@ is( helper_output( $systemd_state_root, 'systemd-state' ), 'enabled',
     'systemd state recognizes persistent wants links' );
 is( helper_output( $systemd_state_root, 'legacy-transition-state' ), 'enabled',
     'enabled systemd state transfers to an enabled SysV service' );
+is( helper_output( $systemd_state_root, 'systemd-state', '--allow-unknown' ),
+    'enabled', 'enablement links override stale disabled manager output' );
+
+my $manager_masked_link_root = stage_root();
+set_systemd_state( $manager_masked_link_root, 'masked' );
+stage_symlink(
+    $manager_masked_link_root, '/usr/lib/systemd/system/xcatd.service',
+    qw(etc systemd system multi-user.target.wants xcatd.service)
+);
+is( helper_output( $manager_masked_link_root, 'systemd-state' ), 'enabled',
+    'compatibility state keeps historical link precedence for target roots' );
+is( helper_output(
+        $manager_masked_link_root, 'systemd-state', '--allow-unknown'
+    ),
+    'masked', 'precise systemd state gives a manager mask precedence over links' );
+
+for my $manager_state_case (
+    [ 'enabled',           'enabled' ],
+    [ 'enabled-runtime',   'enabled' ],
+    [ 'masked',            'masked' ],
+    [ 'masked-runtime',    'masked' ],
+    [ 'disabled',          'disabled' ],
+    [ 'linked',            'disabled' ],
+    [ 'linked-runtime',    'disabled' ],
+    [ 'alias',             'disabled' ],
+    [ 'static',            'disabled' ],
+    [ 'indirect',          'disabled' ],
+    [ 'generated',         'disabled' ],
+    [ 'transient',         'disabled' ],
+    [ 'enabled-garbage',   'unknown' ],
+    [ 'masked-garbage',    'unknown' ],
+) {
+    my ( $manager_state, $expected_state ) = @{$manager_state_case};
+    my $manager_state_root = stage_root();
+    set_systemd_state( $manager_state_root, $manager_state );
+    is( helper_output(
+            $manager_state_root, 'systemd-state', '--allow-unknown'
+        ),
+        $expected_state, "precise systemd state parses $manager_state exactly" );
+}
+
+for my $precise_link_case (
+    [ qw(etc wants) ],
+    [ qw(etc requires) ],
+    [ qw(run wants) ],
+    [ qw(run requires) ],
+) {
+    my ( $scope, $relation ) = @{$precise_link_case};
+    my $precise_link_root = stage_root();
+    stage_symlink(
+        $precise_link_root, '/usr/lib/systemd/system/xcatd.service',
+        $scope, 'systemd', 'system', "multi-user.target.$relation",
+        'xcatd.service'
+    );
+    is( helper_output( $precise_link_root, 'systemd-state', '--allow-unknown' ),
+        'enabled', "precise systemd state recognizes $scope $relation links" );
+}
 
 my $systemd_requires_root = stage_root();
 stage_symlink(
@@ -311,6 +404,24 @@ is( helper_output( $systemd_masked_root, 'systemd-state' ), 'masked',
     'systemd state preserves an administrator mask' );
 is( helper_output( $systemd_masked_root, 'legacy-transition-state' ), 'masked',
     'a systemd mask prevents SysV registration during a legacy transition' );
+is( helper_output( $systemd_masked_root, 'systemd-state', '--allow-unknown' ),
+    'masked', 'precise systemd state recognizes persistent masks' );
+
+my $systemd_runtime_masked_root = stage_root();
+stage_symlink(
+    $systemd_runtime_masked_root, '/dev/null',
+    qw(run systemd system xcatd.service)
+);
+is( helper_output( $systemd_runtime_masked_root,
+        'systemd-state', '--allow-unknown' ),
+    'masked', 'precise systemd state recognizes runtime masks' );
+my $systemd_argv_root = stage_root();
+is( helper_output( $systemd_argv_root, 'systemd-state', '--invalid' ),
+    'disabled', 'systemd state preserves ignored historical extra arguments' );
+is( helper_output(
+        $systemd_argv_root, 'systemd-state', '--allow-unknown', 'extra'
+    ),
+    'disabled', 'only the exact precision option activates precise state' );
 
 my $cleanup_root = stage_root();
 my @cleanup_links = (
