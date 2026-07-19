@@ -5,13 +5,59 @@
 
 set -e
 
-xcat_target_uses_systemd()
+xcat_systemd_os_release_status()
 {
-    if [ -d /run/systemd/system ]; then
+    [ -r /etc/os-release ] || return 2
+
+    os_id=
+    os_version=
+    while IFS='=' read -r key value; do
+        value=${value#\"}
+        value=${value%\"}
+        value=${value#\'}
+        value=${value%\'}
+        case "$key" in
+            ID) os_id=$value ;;
+            VERSION_ID) os_version=$value ;;
+        esac
+    done < /etc/os-release
+
+    if [ "$os_id" = "debian" ] && [ -z "$os_version" ]; then
         return 0
     fi
 
-    if [ -x /usr/lib/systemd/systemd ] || [ -x /lib/systemd/systemd ]; then
+    os_major=${os_version%%.*}
+    case "$os_major" in
+        ''|*[!0-9]*) return 2 ;;
+    esac
+
+    case "$os_id" in
+        rhel|centos|rocky|almalinux|ol|scientific)
+            [ "$os_major" -ge 7 ] && return 0
+            return 1
+            ;;
+        fedora|ubuntu)
+            [ "$os_major" -ge 15 ] && return 0
+            return 1
+            ;;
+        debian)
+            [ "$os_major" -ge 8 ] && return 0
+            return 1
+            ;;
+        sles|sled|opensuse|opensuse-leap|opensuse-tumbleweed)
+            [ "$os_major" -ge 12 ] && return 0
+            return 1
+            ;;
+        *)
+            return 2
+            ;;
+    esac
+
+}
+
+xcat_target_uses_systemd()
+{
+    if [ -d /run/systemd/system ]; then
         return 0
     fi
 
@@ -19,35 +65,25 @@ xcat_target_uses_systemd()
         init_target=$(readlink /sbin/init 2>/dev/null || true)
         case "$init_target" in
             *systemd*) return 0 ;;
+            *) return 1 ;;
         esac
     fi
 
-    if [ -r /etc/os-release ]; then
-        os_id=
-        os_version=
-        while IFS='=' read -r key value; do
-            value=${value#\"}
-            value=${value%\"}
-            value=${value#\'}
-            value=${value%\'}
-            case "$key" in
-                ID) os_id=$value ;;
-                VERSION_ID) os_version=$value ;;
-            esac
-        done < /etc/os-release
+    if [ -e /sbin/init ]; then
+        return 1
+    fi
 
-        if [ "$os_id" = "debian" ] && [ -z "$os_version" ]; then
-            return 0
+    if xcat_systemd_os_release_status; then
+        return 0
+    else
+        os_release_status=$?
+        if [ "$os_release_status" -eq 1 ]; then
+            return 1
         fi
+    fi
 
-        os_major=${os_version%%.*}
-        case "$os_major" in
-            ''|*[!0-9]*) return 1 ;;
-        esac
-        case "$os_id" in
-            ubuntu) [ "$os_major" -ge 15 ] && return 0 ;;
-            debian) [ "$os_major" -ge 8 ] && return 0 ;;
-        esac
+    if [ -x /usr/lib/systemd/systemd ] || [ -x /lib/systemd/systemd ]; then
+        return 0
     fi
 
     return 1

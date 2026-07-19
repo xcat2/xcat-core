@@ -12,7 +12,7 @@ xcat_can_use_systemctl()
 
 xcatd_init_compat=/opt/xcat/share/xcat/scripts/xcatd-init-compat
 
-if "$xcatd_init_compat" uses-systemd && \
+if "$xcatd_init_compat" uses-systemd --explicit-target && \
    command -v dpkg-maintscript-helper >/dev/null 2>&1 && \
    dpkg-maintscript-helper supports rm_conffile; then
     dpkg-maintscript-helper rm_conffile /etc/init.d/xcatd -- "$@"
@@ -39,7 +39,7 @@ case "$1" in
             xcat_server_upgrade=1
         fi
 
-        if "$xcatd_init_compat" uses-systemd; then
+        if "$xcatd_init_compat" uses-systemd --explicit-target; then
             legacy_xcatd_enabled=0
             if ls /etc/rc?.d/S??xcatd >/dev/null 2>&1; then
                 legacy_xcatd_enabled=1
@@ -48,7 +48,7 @@ case "$1" in
                 update-rc.d -f xcatd remove
             fi
 
-            "$xcatd_init_compat" configure
+            "$xcatd_init_compat" configure --explicit-target
             if xcat_can_use_systemctl; then
                 systemctl daemon-reload
             fi
@@ -59,7 +59,7 @@ case "$1" in
                 systemctl enable xcatd.service
             fi
         else
-            "$xcatd_init_compat" configure
+            "$xcatd_init_compat" configure --explicit-target
             if [ "$xcat_server_upgrade" = "0" ] && \
                [ -x /etc/init.d/xcatd ] && \
                command -v update-rc.d >/dev/null 2>&1; then

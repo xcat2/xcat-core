@@ -29,11 +29,11 @@ case "$1" in
        if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
             if xcat_can_use_systemctl; then
                 systemctl stop xcatd.service
-            elif ! "$xcatd_init_compat" uses-systemd && [ -x /etc/init.d/xcatd ]; then
+            elif ! "$xcatd_init_compat" uses-systemd --explicit-target && [ -x /etc/init.d/xcatd ]; then
                 /etc/init.d/xcatd stop
             fi
        fi
-       if "$xcatd_init_compat" uses-systemd; then
+       if "$xcatd_init_compat" uses-systemd --explicit-target; then
            if command -v systemctl >/dev/null 2>&1; then
                systemctl disable xcatd.service
            fi
