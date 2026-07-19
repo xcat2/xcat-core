@@ -391,9 +391,15 @@ prepare_systemd()
         :
     else
         detected_systemd_enabled=$(systemd_enable_state)
-        if [ "$detected_systemd_enabled" != unknown ]; then
-            state_enabled=$detected_systemd_enabled
-        fi
+        case "$detected_systemd_enabled" in
+            yes) state_enabled=yes ;;
+            no)
+                if [ "$state_enabled" != unregistered ]; then
+                    state_enabled=no
+                fi
+                ;;
+            unregistered) state_enabled=unregistered ;;
+        esac
     fi
 
     write_state transition-systemd "$state_content" "$state_enabled" "$transition_origin"
