@@ -36,6 +36,19 @@ sub stage_root {
     return $root;
 }
 
+sub stage_systemd_binary {
+    my ($root) = @_;
+    my $binary = File::Spec->catfile(
+        $root, 'usr', 'lib', 'systemd', 'systemd'
+    );
+    make_path( File::Spec->catdir( $root, 'usr', 'lib', 'systemd' ) );
+    open( my $fh, '>', $binary )
+      or die "Unable to stage systemd binary: $!";
+    close($fh);
+    chmod 0755, $binary;
+    return $binary;
+}
+
 sub run_helper {
     my ( $root, @arguments ) = @_;
     local $ENV{XCAT_COMPAT_ROOT} = $root;
@@ -63,6 +76,15 @@ is( run_helper( $active_systemd_root, 'configure' ), 0,
 ok( !-e legacy_init($active_systemd_root),
     'systemd configuration removes an upgraded legacy init script' );
 
+my $active_hybrid_root = stage_root();
+make_path( File::Spec->catdir( $active_hybrid_root, 'run', 'systemd', 'system' ) );
+make_path( File::Spec->catdir( $active_hybrid_root, 'sbin' ) );
+symlink( 'upstart', File::Spec->catfile( $active_hybrid_root, 'sbin', 'init' ) )
+  or die "Unable to stage stale upstart init symlink: $!";
+stage_systemd_binary($active_hybrid_root);
+is( run_helper( $active_hybrid_root, 'uses-systemd' ), 0,
+    'an active systemd manager overrides stale legacy target evidence' );
+
 my $systemd_image_root = stage_root();
 make_path( File::Spec->catdir( $systemd_image_root, 'sbin' ) );
 symlink( '../lib/systemd/systemd', File::Spec->catfile( $systemd_image_root, 'sbin', 'init' ) )
@@ -75,14 +97,7 @@ ok( !-e legacy_init($systemd_image_root),
     'systemd images do not receive the legacy init script' );
 
 my $minimal_systemd_root = stage_root();
-my $systemd_binary = File::Spec->catfile(
-    $minimal_systemd_root, 'usr', 'lib', 'systemd', 'systemd'
-);
-make_path( File::Spec->catdir( $minimal_systemd_root, 'usr', 'lib', 'systemd' ) );
-open( my $minimal_systemd, '>', $systemd_binary )
-  or die "Unable to stage minimal systemd binary: $!";
-close($minimal_systemd);
-chmod 0755, $systemd_binary;
+stage_systemd_binary($minimal_systemd_root);
 is( run_helper( $minimal_systemd_root, 'uses-systemd' ), 0,
     'an installed systemd binary identifies a stopped or minimal systemd target' );
 is( run_helper( $minimal_systemd_root, 'configure' ), 0,
@@ -109,8 +124,24 @@ open( my $legacy_os_release, '>', File::Spec->catfile( $legacy_os_root, 'etc', '
   or die "Unable to stage legacy os-release: $!";
 print {$legacy_os_release} qq{ID="sles"\nVERSION_ID="11.4"\n};
 close($legacy_os_release);
-isnt( run_helper( $legacy_os_root, 'uses-systemd' ), 0,
-    'SLES 11 remains classified as a legacy init target' );
+stage_systemd_binary($legacy_os_root);
+is( run_helper( $legacy_os_root, 'uses-systemd' ), 0,
+    'the compatibility classifier preserves installed systemd precedence on SLES 11' );
+isnt( run_helper( $legacy_os_root, 'uses-systemd', '--explicit-target' ), 0,
+    'SLES 11 overrides an installed but inactive systemd binary' );
+
+my $legacy_ubuntu_root = stage_root();
+make_path( File::Spec->catdir( $legacy_ubuntu_root, 'etc' ) );
+open( my $legacy_ubuntu_release, '>',
+    File::Spec->catfile( $legacy_ubuntu_root, 'etc', 'os-release' ) )
+  or die "Unable to stage legacy Ubuntu os-release: $!";
+print {$legacy_ubuntu_release} qq{ID=ubuntu\nVERSION_ID=14.04\n};
+close($legacy_ubuntu_release);
+stage_systemd_binary($legacy_ubuntu_root);
+is( run_helper( $legacy_ubuntu_root, 'uses-systemd' ), 0,
+    'the compatibility classifier preserves installed systemd precedence on Ubuntu 14.04' );
+isnt( run_helper( $legacy_ubuntu_root, 'uses-systemd', '--explicit-target' ), 0,
+    'Ubuntu 14.04 overrides an installed but inactive systemd binary' );
 
 my $debian_sid_root = stage_root();
 make_path( File::Spec->catdir( $debian_sid_root, 'etc' ) );
@@ -125,14 +156,33 @@ my $legacy_root = stage_root();
 make_path( File::Spec->catdir( $legacy_root, 'sbin' ) );
 symlink( 'upstart', File::Spec->catfile( $legacy_root, 'sbin', 'init' ) )
   or die "Unable to stage upstart init symlink: $!";
-isnt( run_helper( $legacy_root, 'uses-systemd' ), 0,
-    'an upstart target is not classified as systemd' );
-is( run_helper( $legacy_root, 'configure' ), 0,
-    'legacy configuration succeeds' );
-ok( -x legacy_init($legacy_root),
-    'legacy configuration materializes an executable init script' );
-is( read_file( legacy_init($legacy_root) ), read_file($template),
-    'the materialized legacy init script matches the packaged template' );
+stage_systemd_binary($legacy_root);
+is( run_helper( $legacy_root, 'uses-systemd' ), 0,
+    'the compatibility classifier preserves installed systemd precedence for upstart' );
+isnt( run_helper( $legacy_root, 'uses-systemd', '--explicit-target' ), 0,
+    'an explicit upstart target overrides an installed systemd binary' );
+
+my $real_sysvinit_root = stage_root();
+make_path(
+    File::Spec->catdir( $real_sysvinit_root, 'sbin' ),
+    File::Spec->catdir( $real_sysvinit_root, 'etc' )
+);
+open( my $real_sysvinit, '>',
+    File::Spec->catfile( $real_sysvinit_root, 'sbin', 'init' ) )
+  or die "Unable to stage real SysV init: $!";
+print {$real_sysvinit} "#!/bin/sh\n";
+close($real_sysvinit);
+chmod 0755, File::Spec->catfile( $real_sysvinit_root, 'sbin', 'init' );
+open( my $real_sysv_os_release, '>',
+    File::Spec->catfile( $real_sysvinit_root, 'etc', 'os-release' ) )
+  or die "Unable to stage modern Debian metadata: $!";
+print {$real_sysv_os_release} "ID=debian\nVERSION_ID=12\n";
+close($real_sysv_os_release);
+stage_systemd_binary($real_sysvinit_root);
+is( run_helper( $real_sysvinit_root, 'uses-systemd' ), 0,
+    'the compatibility classifier preserves installed systemd precedence for real SysV init' );
+isnt( run_helper( $real_sysvinit_root, 'uses-systemd', '--explicit-target' ), 0,
+    'a real SysV init binary overrides modern release and systemd fallback evidence' );
 
 my $dangling_legacy_root = stage_root();
 make_path( File::Spec->catdir( $dangling_legacy_root, 'etc', 'init.d' ) );
@@ -145,21 +195,27 @@ ok( !-l legacy_init($dangling_legacy_root),
 is( read_file( legacy_init($dangling_legacy_root) ), read_file($template),
     'the dangling init symlink replacement matches the packaged template' );
 
-open( my $custom_init, '>', legacy_init($legacy_root) )
+my $custom_legacy_root = stage_root();
+make_path( File::Spec->catdir( $custom_legacy_root, 'sbin' ) );
+symlink( 'upstart', File::Spec->catfile( $custom_legacy_root, 'sbin', 'init' ) )
+  or die "Unable to stage customization target: $!";
+is( run_helper( $custom_legacy_root, 'configure' ), 0,
+    'customizable legacy target configuration succeeds' );
+open( my $custom_init, '>', legacy_init($custom_legacy_root) )
   or die "Unable to customize staged init script: $!";
 print {$custom_init} "administrator customization\n";
 close($custom_init);
-is( run_helper( $legacy_root, 'configure' ), 0,
+is( run_helper( $custom_legacy_root, 'configure' ), 0,
     'reconfiguring a legacy target succeeds' );
-is( read_file( legacy_init($legacy_root) ), "administrator customization\n",
+is( read_file( legacy_init($custom_legacy_root) ), "administrator customization\n",
     'legacy reconfiguration preserves an existing init script' );
-is( run_helper( $legacy_root, 'configure', '--replace' ), 0,
+is( run_helper( $custom_legacy_root, 'configure', '--replace' ), 0,
     'RPM-style legacy upgrade configuration succeeds' );
-is( read_file( legacy_init($legacy_root) ), read_file($template),
+is( read_file( legacy_init($custom_legacy_root) ), read_file($template),
     'RPM-style legacy upgrades refresh the init script from the packaged template' );
-is( run_helper( $legacy_root, 'remove' ), 0,
+is( run_helper( $custom_legacy_root, 'remove' ), 0,
     'legacy cleanup succeeds' );
-ok( !-e legacy_init($legacy_root),
+ok( !-e legacy_init($custom_legacy_root),
     'legacy cleanup removes the generated init script' );
 
 my $rpm_spec = read_file(
