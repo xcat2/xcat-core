@@ -525,8 +525,9 @@ if [ "$1" = "1" ]; then #Only if installing for the first time..
                :
                ;;
            *)
+               # Preserve the script's declared defaults on first install.
                if [ "$("$xcatd_init_compat" systemd-state)" != masked ]; then
-                   "$xcatd_init_compat" register-legacy enabled
+                   "$xcatd_init_compat" register-legacy default
                fi
                ;;
        esac

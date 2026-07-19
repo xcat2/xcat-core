@@ -236,12 +236,13 @@ register_legacy_init()
 
     if [ -x /sbin/chkconfig ]; then
         /sbin/chkconfig --add xcatd || return
-        if [ "$desired_state" = enabled ]; then
-            /sbin/chkconfig --level 345 xcatd on
-        else
-            /sbin/chkconfig xcatd off
-        fi
-    elif [ "$desired_state" = enabled ] && [ -x /usr/lib/lsb/install_initd ]; then
+        case "$desired_state" in
+            default) : ;;
+            enabled) /sbin/chkconfig --level 345 xcatd on ;;
+            disabled) /sbin/chkconfig xcatd off ;;
+        esac
+    elif { [ "$desired_state" = default ] || [ "$desired_state" = enabled ]; } &&
+         [ -x /usr/lib/lsb/install_initd ]; then
         /usr/lib/lsb/install_initd /etc/init.d/xcatd
     elif [ "$desired_state" = disabled ] && [ -x /usr/lib/lsb/remove_initd ]; then
         # The LSB fallback has no portable register-but-disabled operation.
@@ -405,9 +406,9 @@ case "${1:-}" in
         ;;
     register-legacy)
         case "${2:-}" in
-            enabled|disabled) ;;
+            default|enabled|disabled) ;;
             *)
-                echo "Usage: $0 register-legacy {enabled|disabled}" >&2
+                echo "Usage: $0 register-legacy {default|enabled|disabled}" >&2
                 exit 2
                 ;;
         esac
@@ -440,7 +441,7 @@ case "${1:-}" in
         remove_managed_legacy_init
         ;;
     *)
-        echo "Usage: $0 {uses-systemd [--explicit-target]|legacy-state|legacy-transition-state|systemd-state|register-legacy {enabled|disabled}|unregister-legacy|disable-systemd [--links-only]|unregister-all|configure [--replace] [--explicit-target] [--track-managed]|remove|remove-managed}" >&2
+        echo "Usage: $0 {uses-systemd [--explicit-target]|legacy-state|legacy-transition-state|systemd-state|register-legacy {default|enabled|disabled}|unregister-legacy|disable-systemd [--links-only]|unregister-all|configure [--replace] [--explicit-target] [--track-managed]|remove|remove-managed}" >&2
         exit 2
         ;;
 esac
