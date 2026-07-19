@@ -142,6 +142,8 @@ print {$modern_os_release} qq{ID="rocky"\nVERSION_ID="9.6"\n};
 close($modern_os_release);
 is( run_helper( $modern_os_root, 'uses-systemd' ), 0,
     'a modern supported distro is systemd even in a stripped-down environment' );
+is( run_helper( $modern_os_root, 'uses-systemd', '--explicit-target' ), 0,
+    'explicit target detection accepts a modern distro without an init path' );
 is( run_helper( $modern_os_root, 'configure' ), 0,
     'stripped-down modern distro configuration succeeds' );
 ok( !-e legacy_init($modern_os_root),
@@ -234,18 +236,41 @@ ok( -x legacy_init($real_sysvinit_root),
 my $legacy_state_root = stage_root();
 is( helper_output( $legacy_state_root, 'legacy-state' ), 'unregistered',
     'legacy state reports no registration when rc links are absent' );
+is( helper_output( $legacy_state_root, 'legacy-transition-state' ), 'disabled',
+    'a disabled systemd service without legacy provenance becomes registered-off SysV' );
 stage_symlink(
     $legacy_state_root, '/etc/init.d/xcatd',
     qw(etc rc.d rc3.d K60xcatd)
 );
 is( helper_output( $legacy_state_root, 'legacy-state' ), 'disabled',
     'legacy state recognizes registered-off rc links' );
+is( helper_output( $legacy_state_root, 'legacy-transition-state' ), 'disabled',
+    'registered-off SysV state takes precedence during a legacy transition' );
 stage_symlink(
     $legacy_state_root, '/etc/init.d/xcatd',
     qw(etc rc.d rc3.d S85xcatd)
 );
 is( helper_output( $legacy_state_root, 'legacy-state' ), 'enabled',
     'legacy enabled state takes precedence when start and kill links coexist' );
+is( helper_output( $legacy_state_root, 'legacy-transition-state' ), 'enabled',
+    'enabled SysV state takes precedence during a legacy transition' );
+
+my $unregistered_legacy_root = stage_root();
+make_path( File::Spec->catdir( $unregistered_legacy_root, 'etc', 'init.d' ) );
+copy( $template, legacy_init($unregistered_legacy_root) )
+  or die "Unable to stage unregistered legacy init script: $!";
+is( helper_output( $unregistered_legacy_root, 'legacy-transition-state' ),
+    'unregistered',
+    'a present but administrator-unregistered SysV service stays unregistered' );
+
+my $deleted_managed_root = stage_root();
+make_path( File::Spec->catdir( $deleted_managed_root, 'var', 'lib', 'xcat' ) );
+open( my $deleted_managed_marker, '>', managed_marker($deleted_managed_root) )
+  or die "Unable to stage managed-file provenance: $!";
+close($deleted_managed_marker);
+is( helper_output( $deleted_managed_root, 'legacy-transition-state' ),
+    'unregistered',
+    'managed provenance preserves unregistered state after the init script is deleted' );
 
 my $systemd_state_root = stage_root();
 is( helper_output( $systemd_state_root, 'systemd-state' ), 'disabled',
@@ -256,6 +281,8 @@ stage_symlink(
 );
 is( helper_output( $systemd_state_root, 'systemd-state' ), 'enabled',
     'systemd state recognizes persistent wants links' );
+is( helper_output( $systemd_state_root, 'legacy-transition-state' ), 'enabled',
+    'enabled systemd state transfers to an enabled SysV service' );
 
 my $systemd_requires_root = stage_root();
 stage_symlink(
@@ -272,6 +299,8 @@ stage_symlink(
 );
 is( helper_output( $systemd_linked_root, 'systemd-state' ), 'disabled',
     'a linked unit without target enablement remains disabled' );
+is( helper_output( $systemd_linked_root, 'legacy-transition-state' ), 'disabled',
+    'a linked-but-disabled systemd unit becomes registered-off SysV' );
 
 my $systemd_masked_root = stage_root();
 stage_symlink(
@@ -280,6 +309,8 @@ stage_symlink(
 );
 is( helper_output( $systemd_masked_root, 'systemd-state' ), 'masked',
     'systemd state preserves an administrator mask' );
+is( helper_output( $systemd_masked_root, 'legacy-transition-state' ), 'masked',
+    'a systemd mask prevents SysV registration during a legacy transition' );
 
 my $cleanup_root = stage_root();
 my @cleanup_links = (
@@ -312,6 +343,8 @@ ok( -l $cleanup_mask,
     'cross-manager cleanup preserves an administrator systemd mask' );
 is( run_helper( $cleanup_root, 'register-legacy', 'enabled' ), 2,
     'legacy registration refuses to execute host tools for a target root' );
+is( run_helper( $cleanup_root, 'register-legacy', 'invalid' ), 2,
+    'legacy registration rejects an invalid desired state' );
 
 my $dangling_legacy_root = stage_root();
 make_path( File::Spec->catdir( $dangling_legacy_root, 'etc', 'init.d' ) );
@@ -420,6 +453,10 @@ open( my $modified_init, '>', legacy_init($modified_managed_root) )
   or die "Unable to modify tracked init script: $!";
 print {$modified_init} "administrator modification\n";
 close($modified_init);
+is( run_helper( $modified_managed_root, 'configure' ), 0,
+    'legacy reconfiguration accepts an administrator-modified managed script' );
+ok( !-e managed_marker($modified_managed_root),
+    'legacy reconfiguration clears stale managed-file provenance' );
 is( run_helper( $modified_managed_root, 'remove-managed' ), 0,
     'managed cleanup accepts an administrator-modified generated script' );
 is( read_file( legacy_init($modified_managed_root) ),
@@ -504,11 +541,8 @@ like( $rpm_upgrade_systemd,
     qr{legacy_xcatd_state=\$\("\$xcatd_init_compat" legacy-state\).*?"\$xcatd_init_compat" unregister-legacy.*?"\$xcatd_init_compat" configure.*?if \[ "\$legacy_xcatd_state" = enabled \].*?systemctl enable xcatd\.service}s,
     'RPM systemd transitions preserve enabled SysV state after unregistering it' );
 like( $rpm_upgrade_legacy,
-    qr{legacy_xcatd_state=\$\("\$xcatd_init_compat" legacy-(?:state|transition-state)\).*?"\$xcatd_init_compat" disable-systemd.*?configure --replace.*?register-legacy "\$legacy_xcatd_state"}s,
+    qr{legacy_xcatd_state=\$\("\$xcatd_init_compat" legacy-transition-state\).*?"\$xcatd_init_compat" disable-systemd.*?masked\|unregistered\).*?"\$xcatd_init_compat" unregister-legacy.*?configure --replace.*?enabled\|disabled\).*?register-legacy "\$legacy_xcatd_state".*?masked\|unregistered\)}s,
     'RPM legacy transitions preserve prior state and clear systemd enablement' );
-like( $rpm_upgrade_legacy,
-    qr{if \[ "\$legacy_xcatd_state" = unregistered \].*?systemd-state|legacy-transition-state}s,
-    'RPM legacy transitions resolve unregistered state through the shared helper' );
 like( $rpm_fresh,
     qr{if \[ "\$\("\$xcatd_init_compat" systemd-state\)" != masked \]; then\s+"\$xcatd_init_compat" register-legacy enabled}s,
     'RPM fresh legacy installs do not override a persistent systemd mask' );
