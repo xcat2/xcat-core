@@ -93,17 +93,48 @@ remove_links()
 {
     rm -f "$root"/etc/rc?.d/[SK]??xcatd
 }
+registered()
+{
+    for link in "$root"/etc/rc?.d/[SK]??xcatd; do
+        if [ -e "$link" ] || [ -L "$link" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+create_default_links()
+{
+    for runlevel in 3 4 5; do
+        mkdir -p "$root/etc/rc$runlevel.d"
+        ln -sfn ../init.d/xcatd "$root/etc/rc$runlevel.d/S01xcatd"
+    done
+}
 defaults()
 {
-    remove_links
-    for runlevel in 0 1 2 3 4 5 6; do
-        mkdir -p "$root/etc/rc$runlevel.d"
-        case "$runlevel" in
-            2|3|4|5) prefix=S20 ;;
-            *) prefix=K80 ;;
-        esac
-        ln -sfn ../init.d/xcatd "$root/etc/rc$runlevel.d/${prefix}xcatd"
+    registered && return 0
+    create_default_links
+}
+toggle_links()
+{
+    new_prefix=$1
+    old_prefix=$2
+    found=no
+    for runlevel in 3 4 5; do
+        for link in "$root/etc/rc$runlevel.d"/[SK]??xcatd; do
+            if [ -e "$link" ] || [ -L "$link" ]; then
+                found=yes
+                name=${link##*/}
+                case "$name" in
+                    "$old_prefix"??xcatd)
+                        sequence=${name#?}
+                        mv -f "$link" \
+                            "$root/etc/rc$runlevel.d/${new_prefix}${sequence}"
+                        ;;
+                esac
+            fi
+        done
     done
+    [ "$found" = yes ]
 }
 case "${1:-}:${2:-}" in
     -f:xcatd)
@@ -114,14 +145,10 @@ case "${1:-}:${2:-}" in
         defaults
         ;;
     xcatd:disable)
-        remove_links
-        for runlevel in 0 1 2 3 4 5 6; do
-            mkdir -p "$root/etc/rc$runlevel.d"
-            ln -sfn ../init.d/xcatd "$root/etc/rc$runlevel.d/K80xcatd"
-        done
+        toggle_links K S
         ;;
     xcatd:enable)
-        defaults
+        toggle_links S K
         ;;
     *) exit 2 ;;
 esac
@@ -187,10 +214,15 @@ sub run_compat {
     return run_script( $root, $compat_helper, @arguments );
 }
 
-sub run_update_rc {
+sub run_update_rc_status {
     my ( $root, @arguments ) = @_;
     my $update_rc = File::Spec->catfile( $root, 'test-bin', 'update-rc.d' );
-    my $status = run_script( $root, $update_rc, @arguments );
+    return run_script( $root, $update_rc, @arguments );
+}
+
+sub run_update_rc {
+    my ( $root, @arguments ) = @_;
+    my $status = run_update_rc_status( $root, @arguments );
     die "Fake update-rc.d failed with status $status" if $status;
 }
 
@@ -238,12 +270,12 @@ sub set_systemd_state {
 
 sub rc_link {
     my ($root) = @_;
-    return File::Spec->catfile( $root, 'etc', 'rc2.d', 'S20xcatd' );
+    return File::Spec->catfile( $root, 'etc', 'rc3.d', 'S01xcatd' );
 }
 
 sub rc_kill_link {
     my ($root) = @_;
-    return File::Spec->catfile( $root, 'etc', 'rc2.d', 'K80xcatd' );
+    return File::Spec->catfile( $root, 'etc', 'rc3.d', 'K01xcatd' );
 }
 
 sub registration_link_count {
@@ -253,6 +285,53 @@ sub registration_link_count {
     ) );
     return scalar @links;
 }
+
+my $update_rc_root = stage_root();
+is( run_update_rc_status( $update_rc_root, 'xcatd', 'enable' ), 1,
+    'native enable rejects an unregistered service' );
+is( registration_link_count($update_rc_root), 0,
+    'failed native enable does not invent registration links' );
+run_update_rc( $update_rc_root, 'xcatd', 'defaults' );
+is( registration_link_count($update_rc_root), 3,
+    'native defaults creates only the three declared start links' );
+for my $runlevel ( 3, 4, 5 ) {
+    ok( -l File::Spec->catfile(
+            $update_rc_root, 'etc', "rc$runlevel.d", 'S01xcatd'
+        ),
+        "native defaults creates the runlevel $runlevel start link" );
+}
+unlink File::Spec->catfile( $update_rc_root, 'etc', 'rc4.d', 'S01xcatd' );
+unlink File::Spec->catfile( $update_rc_root, 'etc', 'rc5.d', 'S01xcatd' );
+run_update_rc( $update_rc_root, 'xcatd', 'defaults' );
+is( registration_link_count($update_rc_root), 1,
+    'native defaults preserves a partial existing registration' );
+run_update_rc( $update_rc_root, 'xcatd', 'disable' );
+ok( -l rc_kill_link($update_rc_root),
+    'native disable converts only the existing start link' );
+is( registration_link_count($update_rc_root), 1,
+    'native disable does not synthesize missing runlevels' );
+run_update_rc( $update_rc_root, '-f', 'xcatd', 'remove' );
+my $priority_link = File::Spec->catfile(
+    $update_rc_root, 'etc', 'rc4.d', 'K17xcatd'
+);
+symlink( '../init.d/xcatd', $priority_link )
+  or die "Unable to stage custom-priority registration: $!";
+run_update_rc( $update_rc_root, 'xcatd', 'enable' );
+ok( -l File::Spec->catfile(
+        $update_rc_root, 'etc', 'rc4.d', 'S17xcatd'
+    ),
+    'native enable preserves the existing link priority' );
+run_update_rc( $update_rc_root, '-f', 'xcatd', 'remove' );
+my $outside_link = File::Spec->catfile(
+    $update_rc_root, 'etc', 'rc2.d', 'S42xcatd'
+);
+make_path( File::Spec->catdir( $update_rc_root, 'etc', 'rc2.d' ) );
+symlink( '../init.d/xcatd', $outside_link )
+  or die "Unable to stage outside-runlevel registration: $!";
+is( run_update_rc_status( $update_rc_root, 'xcatd', 'disable' ), 1,
+    'native disable rejects links outside the declared start runlevels' );
+ok( -l $outside_link,
+    'a rejected native toggle preserves the outside-runlevel link' );
 
 my $round_trip_root = stage_root();
 set_init_target( $round_trip_root, 'upstart' );
