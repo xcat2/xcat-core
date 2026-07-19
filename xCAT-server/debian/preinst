@@ -96,13 +96,13 @@ xcatd_old_systemd_marker=/var/lib/xcat/xcatd-systemd-mode
 xcatd_context_file=$xcatd_state_dir/context
 
 write_xcatd_context()
-{
+(
     context_value=$1
     context_tmp="$xcatd_context_file.tmp.$$"
     umask 077
     printf '%s\n' "$context_value" > "$context_tmp"
     mv -f "$context_tmp" "$xcatd_context_file"
-}
+)
 
 clear_xcatd_pending_state()
 {
