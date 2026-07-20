@@ -47,6 +47,11 @@ BuildRequires: perl-generators
 BuildRequires: perl-generators
 %endif
 Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser perl-Digest-SHA1 perl(LWP::Protocol::https) perl-XML-LibXML
+# AutoReqProv is off (above). Modules used only by xCAT-server code are
+# therefore not auto-required, and (unlike SNMP, Expect, JSON, Net::Ping,
+# Time::HiRes and Text::Balanced) are not pulled in transitively by perl-xCAT
+# either. List them here or the affected subcommands die at load time.
+Requires: perl-Net-Telnet perl-Net-DNS perl-Crypt-CBC perl-Crypt-Rijndael perl-DB_File
 %endif
 Obsoletes: atftp-xcat
 %endif
