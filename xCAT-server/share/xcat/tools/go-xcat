@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.53
+# Version 1.0.54
 #
 # Copyright (C) 2016 - 2021 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -46,6 +46,12 @@
 #     - Check for EPEL and CRB repository on EL9 family of OSes
 # 2023-01-19 Mark Gurevich <gurevich@us.ibm.com>
 #     - Add support for Alma Linux
+# 2026-07-20 Daniel Hilst <392820+dhilst@users.noreply.github.com>
+#     - Drop obsolete yaboot-xcat from the install list (kept in the uninstall
+#       list so existing installs are still cleaned up)
+#     - Do not let one unavailable package abort the whole EL install: pass
+#       `dnf --setopt=strict=0` so missing arch-specific packages are warned
+#       and skipped instead of failing the transaction
 #
 
 
@@ -188,7 +194,7 @@ GO_XCAT_DEP_PACKAGE_LIST=()
 GO_XCAT_INSTALL_LIST=(perl-xCAT xCAT-client xCAT xCAT-buildkit
 	xCAT-genesis-scripts-ppc64 xCAT-genesis-scripts-x86_64 xCAT-server
 	elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
-	xCAT-genesis-base-ppc64 xCAT-genesis-base-x86_64 xnba-undi yaboot-xcat)
+	xCAT-genesis-base-ppc64 xCAT-genesis-base-x86_64 xnba-undi)
 # For Debian/Ubuntu, it will need a slightly different package list
 type dpkg >/dev/null 2>&1 &&
 GO_XCAT_INSTALL_LIST=(perl-xcat xcat-client xcat xcat-buildkit
@@ -199,7 +205,7 @@ GO_XCAT_INSTALL_LIST=(perl-xcat xcat-client xcat xcat-buildkit
 GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
 	goconserver xCAT-SoftLayer xCAT-confluent xCAT-csm xCAT-genesis-builder
 	xCAT-openbmc-py xCAT-probe xCAT-test xCAT-vlan xCATsn xCAT-UI-deps
-    xCAT-buildkit conserver-xcat)
+    xCAT-buildkit conserver-xcat yaboot-xcat)
 # For Debian/Ubuntu, it will need a slightly different package list
 type dpkg >/dev/null 2>&1 &&
 GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
@@ -1718,7 +1724,7 @@ function install_packages_dnf()
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	dnf --nogpgcheck "${yes[@]}" install initscripts
-	dnf --nogpgcheck "${yes[@]}" install "$@"
+	dnf --nogpgcheck --setopt=strict=0 "${yes[@]}" install "$@"
 }
 
 function install_packages_yum()
