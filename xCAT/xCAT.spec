@@ -177,6 +177,7 @@ cd $RPM_BUILD_ROOT
 
 %ifos linux
 tar zxf %{SOURCE8}
+chmod 644 etc/logrotate.d/xcat
 %endif
 
 cd -
