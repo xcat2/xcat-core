@@ -1617,6 +1617,10 @@ sub envvar
         $envvar =~ s/^\$//;
     }
 
+    # $XCATROOT is reliably set as a package global even when it is absent from
+    # %ENV, so a template referencing it does not expand to undef.
+    if ($envvar eq 'XCATROOT') { return $::XCATROOT; }
+
     return ($ENV{$envvar});
 }
 
