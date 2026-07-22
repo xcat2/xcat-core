@@ -28,6 +28,10 @@ my $ddns_key_path = "/etc/xcat/ddns.key";
 
 # Net::DNS >= 1.36 removed support for sign_tsig($keyname, $secret) and now
 # expects a keyfile. Keep the keyfile in sync with the xCAT OMAPI secret.
+sub net_dns_uses_keyfile {
+    return xCAT::Utils->version_cmp(Net::DNS->VERSION, "1.36") >= 0;
+}
+
 sub ddns_tsig_algorithm {
     my ($ctx) = @_;
 
@@ -36,7 +40,7 @@ sub ddns_tsig_algorithm {
     # Keep old Net::DNS on MD5 unless the administrator explicitly selects a
     # different OMAPI algorithm. Old Net::DNS can sign non-MD5 updates only
     # through a KEY RR, which ddns_sign_update builds below.
-    return "hmac-md5" if (Net::DNS->VERSION < 1.36 && !$settings->{algorithm_explicit});
+    return "hmac-md5" if (!net_dns_uses_keyfile() && !$settings->{algorithm_explicit});
     return $ctx->{tsig_algorithm} || $settings->{algorithm};
 }
 
@@ -56,7 +60,7 @@ sub ddns_sign_update {
     my ($ctx, $update) = @_;
 
     my $settings = $ctx->{omapi_settings} || xCAT::DHCP::OmapiPolicy->settings();
-    if (Net::DNS->VERSION >= 1.36) {
+    if (net_dns_uses_keyfile()) {
         $update->sign_tsig($ddns_key_path);
         return;
     }
@@ -74,7 +78,7 @@ sub ddns_sign_update {
 sub ensure_ddns_key_file {
     my ($ctx) = @_;
 
-    return unless (Net::DNS->VERSION >= 1.36);
+    return unless net_dns_uses_keyfile();
     return unless ($ctx && $ctx->{privkey});
 
     my $contents = ddns_key_contents($ctx);
@@ -1342,7 +1346,7 @@ sub update_namedconf {
                         $ctx->{tsig_algorithm} = $omapi_settings->{algorithm};
                         push @newnamed, ddns_key_contents($ctx);
                         $ctx->{restartneeded} = 1;
-                    } elsif ($algorithmnow && Net::DNS->VERSION < 1.36 && lc($algorithmnow) ne "hmac-md5") {
+                    } elsif ($algorithmnow && !net_dns_uses_keyfile() && lc($algorithmnow) ne "hmac-md5") {
                         $ctx->{tsig_algorithm} = "hmac-md5";
                         push @newnamed, ddns_key_contents($ctx);
                         $ctx->{restartneeded} = 1;
