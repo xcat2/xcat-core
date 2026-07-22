@@ -2993,8 +2993,9 @@ sub deal_with_response {
         if ($response->status_line eq $::RESPONSE_SERVICE_UNAVAILABLE) {
             $node_info{$node}{_503_retries} = ($node_info{$node}{_503_retries} || 0) + 1;
             if ($node_info{$node}{_503_retries} <= 3) {
-                $node_info{$node}{cur_status} =~ s/_RESPONSE$/_REQUEST/;
-                $node_wait{$node} = time() + 3;
+                my $request_status = $node_info{$node}{cur_status};
+                $request_status =~ s/_RESPONSE$/_REQUEST/;
+                retry_after($node, $request_status, 3);
                 return;
             }
             $error = $::RESPONSE_SERVICE_UNAVAILABLE;
