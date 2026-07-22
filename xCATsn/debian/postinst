@@ -56,6 +56,14 @@ case "$1" in
 
       update-rc.d $apachedaemon enable
 
+      # xcat.conf sets security response headers via mod_headers, which is not
+      # enabled by default on Debian/Ubuntu.  Enable it so the headers take
+      # effect (directives are wrapped in <IfModule mod_headers.c> so a missing
+      # module never breaks the apache reload below).
+      if command -v a2enmod >/dev/null 2>&1; then
+          a2enmod -q headers >/dev/null 2>&1 || :
+      fi
+
       if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
 	 if [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1; then
 	    systemctl start xcatd.service

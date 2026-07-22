@@ -4,16 +4,30 @@
 # http://localhost/xcat-doc/
 # Updates to xCAT/xcat.conf should also be made to xCATsn/xcat.conf
 #
+ServerTokens Prod
+
 AliasMatch ^/install/(.*)$ "/install/$1"
 AliasMatch ^/tftpboot/(.*)$ "/tftpboot/$1"
 
 <Directory "/tftpboot">
-    Options FollowSymLinks Includes MultiViews
+    Options FollowSymLinks
+    <IfModule mod_headers.c>
+        Header always set X-Frame-Options SAMEORIGIN
+        Header always set X-Content-Type-Options nosniff
+        Header always set Content-Security-Policy "script-src 'self' 'unsafe-eval'"
+        Header always set X-Permitted-Cross-Domain-Policies none
+    </IfModule>
     AllowOverride None
     Require all granted
 </Directory>
 <Directory "/install">
-    Options FollowSymLinks Includes MultiViews
+    Options FollowSymLinks
+    <IfModule mod_headers.c>
+        Header always set X-Frame-Options SAMEORIGIN
+        Header always set X-Content-Type-Options nosniff
+        Header always set Content-Security-Policy "script-src 'self' 'unsafe-eval'"
+        Header always set X-Permitted-Cross-Domain-Policies none
+    </IfModule>
     AllowOverride None
     Require all granted
 </Directory>

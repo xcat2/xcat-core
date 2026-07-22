@@ -45,6 +45,14 @@ case "$1" in
 
         ln -s -f /etc/apache2/conf-available/xcat.conf.apach24 /etc/apache2/conf-enabled/xcat.conf
 
+        # xcat.conf sets security response headers via mod_headers, which is
+        # not enabled by default on Debian/Ubuntu.  Enable it so the headers
+        # take effect (the directives are wrapped in <IfModule mod_headers.c>
+        # so a missing module never breaks the apache restart below).
+        if command -v a2enmod >/dev/null 2>&1; then
+            a2enmod -q headers >/dev/null 2>&1 || :
+        fi
+
         /etc/init.d/apache2 restart
 
         # Let rsyslogd perform close of any open files
