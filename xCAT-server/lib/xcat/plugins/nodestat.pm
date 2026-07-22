@@ -796,7 +796,18 @@ sub process_request_port {
     if (@nodes > 0) {
         my $node;
         my $fping;
-        open($fping, "fping " . join(' ', @nodes) . " 2> /dev/null|") or die("Can't start fping: $!");
+        my $fpingcmd;
+        for my $fp (qw(/usr/sbin/fping /usr/bin/fping /sbin/fping /bin/fping /usr/local/sbin/fping /usr/local/bin/fping)) {
+            if (-x $fp) { $fpingcmd = $fp; last; }
+        }
+        unless ($fpingcmd) {
+            my $rsp = {};
+            $rsp->{error}->[0] =
+              "Unable to find fping on system, must install fping package to use nodestat -f";
+            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+            return $status;
+        }
+        open($fping, "$fpingcmd " . join(' ', @nodes) . " 2> /dev/null|") or die("Can't start fping: $!");
         while (<$fping>) {
             my %rsp;
             my $node = $_;
