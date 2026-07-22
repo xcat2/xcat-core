@@ -55,6 +55,13 @@ if ( -f $source_dhcp_plugin ) {
 } else {
     require xCAT_plugin::dhcp;
 }
+require xCAT::DHCP::Backend::Kea;
+
+{
+    package DHCPKeaIntentBackend;
+    our @ISA = ('xCAT::DHCP::Backend::Kea');
+    sub host_cmds_hook_path { return '/test/libdhcp_host_cmds.so'; }
+}
 
 {
     package DHCPKeaIntentNetTable;
@@ -170,6 +177,42 @@ ok(!xCAT_plugin::dhcp::dhcpd_sysconfig_uses_interface_key('opensuse-tumbleweed')
     is_deeply( $intent->{interfaces}, ['eth0'], 'empty dhcpinterfaces infers the local provisioning interface' );
     is( scalar @{ $intent->{subnets} }, 1, 'empty dhcpinterfaces still renders local routed subnet' );
     is( $intent->{subnets}[0]{subnet}, '10.0.0.0/24', 'rendered subnet comes from local route' );
+}
+
+{
+    no warnings 'redefine';
+    local *xCAT_plugin::dhcp::kea_ipv4_routes = sub {
+        return ([ '10.0.0.0', 'eth0', '255.255.255.0', '' ]);
+    };
+    local *xCAT_plugin::dhcp::kea_boot_client_classes = sub { return []; };
+    local *xCAT_plugin::dhcp::kea_option_defs = sub { return []; };
+    local *xCAT_plugin::dhcp::kea_global_option_data = sub { return []; };
+    local *xCAT_plugin::dhcp::kea_dhcp_lease_time = sub { return 43200; };
+    local *xCAT_plugin::dhcp::kea_control_agent_enabled = sub { return 1; };
+
+    my $backend = DHCPKeaIntentBackend->new(kea_socket_dir => '/run/kea-xcat-test');
+
+    local $xCAT::Table::networks = DHCPKeaIntentNetTable->new( \%network_entry );
+    my $dhcp4_intent = xCAT_plugin::dhcp::kea_build_dhcp4_intent( $backend, { eth0 => 1 } );
+    is(
+        $dhcp4_intent->{'control-socket'}{'socket-name'},
+        '/run/kea-xcat-test/kea4-ctrl-socket',
+        'DHCPv4 intent uses the backend-selected Control Agent socket path'
+    );
+
+    local $xCAT::Table::networks = DHCPKeaIntentNetTable->new(
+        {
+            %network_entry,
+            net          => 'fd00::/64',
+            dynamicrange => undef,
+        }
+    );
+    my $dhcp6_intent = xCAT_plugin::dhcp::kea_build_dhcp6_intent( $backend, { eth0 => 1 } );
+    is(
+        $dhcp6_intent->{'control-socket'}{'socket-name'},
+        '/run/kea-xcat-test/kea6-ctrl-socket',
+        'DHCPv6 intent uses the backend-selected Control Agent socket path'
+    );
 }
 
 {

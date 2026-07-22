@@ -414,7 +414,8 @@ is( $ddns_config->{DhcpDdns}{port}, 53001, 'DDNS port is numeric' );
 is( $ddns_config->{DhcpDdns}{'dns-server-timeout'}, 500, 'DDNS timeout is numeric' );
 is( $ddns_config->{DhcpDdns}{'forward-ddns'}{'ddns-domains'}[0]{name}, 'cluster.example.com.', 'DDNS forward domain is rendered' );
 
-my $ctrl_agent_config = decode_json($backend->render_ctrl_agent_config({ 'http-port' => '8000' }));
+my $ctrl_agent_backend = xCAT::DHCP::Backend::Kea->new( kea_socket_dirs => [] );
+my $ctrl_agent_config = decode_json($ctrl_agent_backend->render_ctrl_agent_config({ 'http-port' => '8000' }));
 is( $ctrl_agent_config->{'Control-agent'}{'http-port'}, 8000, 'Control Agent HTTP port is numeric' );
 
 my $runtime_socket_dir = "$unit_dir/run/kea";
@@ -428,6 +429,88 @@ is( $runtime_socket_config->{'Control-agent'}{'control-sockets'}{dhcp4}{'socket-
 my $legacy_socket_backend = xCAT::DHCP::Backend::Kea->new( kea_socket_dirs => [] );
 my $legacy_socket_config = decode_json($legacy_socket_backend->render_ctrl_agent_config({}));
 is( $legacy_socket_config->{'Control-agent'}{'control-sockets'}{dhcp4}{'socket-name'}, '/var/run/kea/kea4-ctrl-socket', 'Control Agent socket falls back to the legacy runtime path when no runtime directory exists' );
+
+my $meson_socket_backend = xCAT::DHCP::Backend::Kea->new(
+    kea_build_report => 'Build Options: -Dprefix=/usr -Dlocalstatedir=/var -Drunstatedir=/xcat-test-meson-run',
+);
+is( $meson_socket_backend->control_socket_path('kea4-ctrl-socket'), '/xcat-test-meson-run/kea/kea4-ctrl-socket', 'Meson runstatedir selects the socket path before the runtime directory exists' );
+
+my $autoconf_socket_backend = xCAT::DHCP::Backend::Kea->new(
+    kea_build_report => q{Configure arguments: '--prefix=/usr' '--localstatedir=/var' '--runstatedir=/xcat-test-autoconf-run'},
+);
+is( $autoconf_socket_backend->control_socket_path('kea4-ctrl-socket'), '/xcat-test-autoconf-run/kea/kea4-ctrl-socket', 'Autoconf runstatedir selects the socket path before the runtime directory exists' );
+
+my $local_state_socket_backend = xCAT::DHCP::Backend::Kea->new(
+    kea_build_report => q{Configure arguments: '--prefix=/usr' '--localstatedir=/xcat-test-local-state'},
+);
+is( $local_state_socket_backend->control_socket_path('kea4-ctrl-socket'), '/xcat-test-local-state/run/kea/kea4-ctrl-socket', 'localstatedir supplies the runtime path when runstatedir is not configured' );
+
+my $variable_socket_backend = xCAT::DHCP::Backend::Kea->new(
+    kea_build_report => q{Configure arguments:
+  '--prefix=/usr/local' '--localstatedir=${prefix}/var' '--runstatedir=${localstatedir}/run'},
+);
+is( $variable_socket_backend->control_socket_path('kea4-ctrl-socket'), '/usr/local/var/run/kea/kea4-ctrl-socket', 'Autoconf build variables resolve through the configured prefix' );
+
+my $undefined_candidates_socket_backend = xCAT::DHCP::Backend::Kea->new(
+    kea_socket_dirs => undef,
+    kea_build_report => 'Build Options: -Dprefix=/usr -Drunstatedir=/xcat-test-undefined-candidates',
+);
+is( $undefined_candidates_socket_backend->control_socket_path('kea4-ctrl-socket'), '/xcat-test-undefined-candidates/kea/kea4-ctrl-socket', 'undefined socket candidates preserve build-report detection' );
+
+my $source_default_socket_backend = xCAT::DHCP::Backend::Kea->new(
+    kea_build_report => 'Prefix: /usr/local',
+);
+is( $source_default_socket_backend->control_socket_path('kea4-ctrl-socket'), '/usr/local/var/run/kea/kea4-ctrl-socket', 'source build defaults resolve through the configured prefix' );
+
+my $meson_default_socket_backend = xCAT::DHCP::Backend::Kea->new(
+    kea_build_report => "Meson Version: 1.10.1\nBuild Options: -Dprefix=/usr",
+);
+is( $meson_default_socket_backend->control_socket_path('kea4-ctrl-socket'), '/var/run/kea/kea4-ctrl-socket', 'Meson system prefix defaults local state to /var' );
+
+my $meson_local_default_socket_backend = xCAT::DHCP::Backend::Kea->new(
+    kea_build_report => "Prefix: /usr/local\nMeson Version: 1.10.1\nBuild Options:\n\nC++ Compiler:\n",
+);
+is( $meson_local_default_socket_backend->control_socket_path('kea4-ctrl-socket'), '/usr/local/var/run/kea/kea4-ctrl-socket', 'Kea keeps local state prefix-relative for a Meson local prefix' );
+
+my $meson_local_override_socket_backend = xCAT::DHCP::Backend::Kea->new(
+    kea_build_report => "Prefix: /usr/local\nMeson Version: 1.10.1\nBuild Options: -Dprefix=/usr/local -Dlocalstatedir=/srv/kea -Drunstatedir=/run/kea-custom\n",
+);
+is( $meson_local_override_socket_backend->control_socket_path('kea4-ctrl-socket'), '/usr/local/var/run/kea/kea4-ctrl-socket', 'Kea overrides Meson state-directory options for a /usr/local prefix' );
+
+my $split_option_socket_backend = xCAT::DHCP::Backend::Kea->new(
+    kea_build_report => q{Configure arguments: '--prefix=/usr' '--localstatedir=/xcat-test-first' '--localstatedir' '/xcat-test-split-last'},
+);
+is( $split_option_socket_backend->control_socket_path('kea4-ctrl-socket'), '/xcat-test-split-last/run/kea/kea4-ctrl-socket', 'a space-separated Autoconf option can override an earlier value' );
+
+my $last_option_socket_backend = xCAT::DHCP::Backend::Kea->new(
+    kea_build_report => <<'BUILD_REPORT',
+Configure arguments: '--prefix=/usr' '--runstatedir=/xcat-test-first' '--runstatedir=/xcat-test-last' 'CXXFLAGS=-O2 -Drunstatedir=/xcat-test-embedded-compiler'
+
+C++ Compiler:
+  CXX_ARGS: -Drunstatedir=/xcat-test-compiler-only
+BUILD_REPORT
+);
+is( $last_option_socket_backend->control_socket_path('kea4-ctrl-socket'), '/xcat-test-last/kea/kea4-ctrl-socket', 'last build option wins without reading embedded or compiler-only flags' );
+
+my $root_socket_backend = xCAT::DHCP::Backend::Kea->new(
+    kea_build_report => 'Build Options: -Dprefix=/ -Dlocalstatedir=/ -Drunstatedir=/',
+);
+is( $root_socket_backend->control_socket_path('kea4-ctrl-socket'), '/kea/kea4-ctrl-socket', 'root runstatedir joins the socket path without a duplicate separator' );
+
+my $fake_kea_dhcp4 = "$unit_dir/kea-dhcp4-build-report";
+open( my $fake_kea_fh, '>', $fake_kea_dhcp4 ) or die "Unable to write fake Kea command: $!";
+print {$fake_kea_fh} "#!$^X\n";
+print {$fake_kea_fh} <<'FAKE_KEA';
+use strict;
+use warnings;
+exit 2 unless @ARGV == 1 && $ARGV[0] eq '-W';
+print "Build Options: -Dprefix=/usr -Drunstatedir=/xcat-test-command-run\n";
+FAKE_KEA
+close($fake_kea_fh) or die "Unable to close fake Kea command: $!";
+chmod 0755, $fake_kea_dhcp4 or die "Unable to make fake Kea command executable: $!";
+
+my $command_socket_backend = xCAT::DHCP::Backend::Kea->new(kea_dhcp4_command => $fake_kea_dhcp4);
+is( $command_socket_backend->control_socket_path('kea4-ctrl-socket'), '/xcat-test-command-run/kea/kea4-ctrl-socket', 'socket path comes from the Kea build-report command' );
 
 my $socket_backend = xCAT::DHCP::Backend::Kea->new( kea_socket_dir => '/run/kea' );
 my $ctrl_agent_socket_config = decode_json($socket_backend->render_ctrl_agent_config({ dhcp6 => 1, ddns => 1 }));
