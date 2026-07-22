@@ -46,11 +46,11 @@ while :; do screen -ln < /dev/tty2 &> /dev/tty2 ; done &
 
 # The section below is just for System P LE hardware discovery
 
-# Need to wait for NIC initialization
-sleep 20
 ARCH="$(uname -m)"
 
 if [[ ${ARCH} =~ ppc64 ]]; then
+    # Need to wait for NIC initialization (System P LE discovery only)
+    sleep 20
     # load all network driver modules listed in /lib/modules/<kernel>/modules.dep file
     KERVER=`uname -r`
     for line in `cat /lib/modules/$KERVER/modules.dep | awk -F: '{print \$1}' | sed -e "s/\(.*\)\.ko.*/\1/"`; do
