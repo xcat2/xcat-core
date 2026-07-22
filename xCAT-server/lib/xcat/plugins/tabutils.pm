@@ -1765,11 +1765,14 @@ sub nodech
                                     if ($cent) { $curval = $cent->{$key}; }
                                 }
                                 if ($curval) {
-                                    my @vals = split(/,/, $curval);
-                                    if (grep /^$val$/, @vals) { #only bother if there
-                                        @vals = grep(!/^$val$/, @vals);
-                                        my $newval = join(',', @vals);
-                                        $uhsh{$key} = $newval;
+                                    foreach my $subval (split /,/, $val) {
+                                        my @vals = split(/,/, $curval);
+                                        if (grep /^$subval$/, @vals) { #only bother if there
+                                            @vals = grep(!/^$subval$/, @vals);
+                                            my $newval = join(',', @vals);
+                                            $uhsh{$key} = $newval;
+                                            $curval = $newval;
+                                        }
                                     }
                                 }  #else, what they asked for is the case alredy
                             }
