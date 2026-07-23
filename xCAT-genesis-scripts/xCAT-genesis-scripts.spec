@@ -106,7 +106,9 @@ touch /etc/xcat/genesis-scripts-updated
 %{rpminstallroot}/usr/bin/restart
 %{rpminstallroot}/etc/init.d/functions
 %{rpminstallroot}/etc/udev/rules.d/99-imm.rules
+%{rpminstallroot}/etc/udev/rules.d/99-tsm.rules
 %{rpminstallroot}/etc/udev/rules.d/98-mlx.rules
 %{rpminstallroot}/usr/sbin/setupimmnic
+%{rpminstallroot}/usr/sbin/setuptsmnic
 %{rpminstallroot}/usr/sbin/loadmlxeth
 %exclude %{rpminstallroot}/debian/*
