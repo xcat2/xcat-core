@@ -27,7 +27,7 @@ if [ "$NODESTATUS" != "0" ]; then
 fi
 
 if [ ! -z "$imgurl" ]; then
-	if [ xhttp = x${imgurl%%:*} ]; then
+	if [ xhttp = x${imgurl%%:*} ] || [ xhttps = x${imgurl%%:*} ]; then
 		NFS=0
 		FILENAME=${imgurl##*/}
 		while [ ! -r "$FILENAME" ]; do
