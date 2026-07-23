@@ -174,6 +174,13 @@ if [ -n "$version" ]; then
     fi
 fi
 
+# On SUSE apache2, mod_headers is not loaded by default; enable it so the
+# security response headers in xcat.conf take effect (a no-op where a2enmod
+# is absent, e.g. httpd on EL where mod_headers is already loaded).
+if [ -e /etc/apache2/conf.d/xcat.conf ] && command -v a2enmod >/dev/null 2>&1; then
+    a2enmod headers >/dev/null 2>&1 || :
+fi
+
 
 # Let rsyslogd perform close of any open files
 if [ -e /var/run/rsyslogd.pid ]; then
