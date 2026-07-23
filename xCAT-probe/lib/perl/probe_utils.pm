@@ -160,16 +160,15 @@ sub get_os {
 
 sub _netplan_get {
     my $key = shift;
-    my $pid = open(my $fh, '-|');
-    return unless defined $pid;
-    if ($pid == 0) {
-        open(STDERR, '>', '/dev/null');
-        exec 'netplan', 'get', $key;
-        exit 1;
-    }
-    my $val = <$fh>;
-    close $fh;
-    return if $?;
+    my ($val, $error) = _capture_command(
+        sub {
+            my $fh = shift;
+            return scalar <$fh>;
+        },
+        1,
+        'netplan', 'get', $key
+    );
+    return if defined $error;
     chomp $val if defined $val;
     return $val;
 }
@@ -183,8 +182,8 @@ sub _command_available {
     return 0;
 }
 
-sub _capture_command_output {
-    my @command = @_;
+sub _capture_command {
+    my ($read_output, $exec_failure_status, @command) = @_;
     my $pid = open(my $fh, '-|');
     unless (defined $pid) {
         my $error = "unable to start '$command[0]': $!";
@@ -193,11 +192,10 @@ sub _capture_command_output {
     if ($pid == 0) {
         open(STDERR, '>', '/dev/null');
         exec @command;
-        exit 127;
+        exit $exec_failure_status;
     }
 
-    local $/;
-    my $output = <$fh>;
+    my $output = $read_output->($fh);
     close $fh;
     my $status = $?;
     if ($status) {
@@ -212,6 +210,22 @@ sub _capture_command_output {
         $error = "'$command[0]' $error";
         return wantarray ? (undef, $error) : undef;
     }
+
+    return wantarray ? ($output, undef) : $output;
+}
+
+sub _capture_command_output {
+    my @command = @_;
+    my ($output, $error) = _capture_command(
+        sub {
+            my $fh = shift;
+            local $/;
+            return scalar <$fh>;
+        },
+        127,
+        @command
+    );
+    return wantarray ? (undef, $error) : undef if defined $error;
 
     $output = '' unless defined $output;
     return wantarray ? ($output, undef) : $output;
