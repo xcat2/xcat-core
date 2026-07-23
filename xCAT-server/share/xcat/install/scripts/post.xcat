@@ -360,11 +360,22 @@ fi
 #create the xcatinstallpost
 mkdir -p /opt/xcat
 cat >/opt/xcat/xcatinstallpost << 'EOF'
-#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatinstallpost#
-
+#!/bin/bash
+# Disable the xcatpostinit1 service *before* running the postscripts (the
+# INCLUDE at the end).  If a postscript reboots the node, the service is
+# already disabled, so the whole postscript set is not run again on reboot.
+# The disable decision needs OSVER, RUNBOOTSCRIPTS and NODESTATUS, which the
+# included script would otherwise set; read them up front (it re-reads them),
+# and source xcatlib.sh so msgutil_r is available for the debug messages.
+[ -f /xcatpost/xcatlib.sh ] && . /xcatpost/xcatlib.sh
 if [ -f /xcatpost/mypostscript.post ]; then
+    OSVER=`grep '^OSVER=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
     RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript.post |cut -d= -f2 | tr -d \'\" | tr A-Z a-z`
+    XCATDEBUGMODE=`grep 'XCATDEBUGMODE=' /xcatpost/mypostscript.post |cut -d= -f2 | tr -d \'\" | tr A-Z a-z`
+    MASTER_IP=`grep '^MASTER_IP=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
 fi
+[ -f /xcatpost/mypostscript ] && NODESTATUS=`grep 'NODESTATUS=' /xcatpost/mypostscript |awk -F = '{print $2}'|tr -d \'\" | tr A-Z a-z `
+[ -z "$NODESTATUS" ] && NODESTATUS="1"
 
 if [[ $OSVER == ubuntu* ]]; then
     if [[ ! "$RUNBOOTSCRIPTS" =~ ^(1|yes|y)$ ]]; then
@@ -382,6 +393,8 @@ else
     fi
 
 fi
+
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatinstallpost#
 
 EOF
 chmod 755 /opt/xcat/xcatinstallpost
