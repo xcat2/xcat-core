@@ -71,9 +71,15 @@ if ($hmtab) {
 }
 my $file = "/var/log/consoles/$node";
 
-#use confluent if it is there
-if ((-x "/opt/confluent/bin/confetty") || (-x "/usr/bin/confetty")) {
-    $file = "/var/log/confluent/consoles/$node";
+#use confluent only when it is the configured console service, not merely
+#installed -- otherwise a host with confluent present but conserver active
+#would look in the wrong (empty) log directory
+my $stab = xCAT::Table->new('site');
+if ($stab) {
+    (my $ref) = $stab->getAttribs({ key => 'consoleservice' }, 'value');
+    if ($ref->{value} && $ref->{value} eq 'confluent') {
+        $file = "/var/log/confluent/consoles/$node";
+    }
 }
 
 #print "file=$file\n";
