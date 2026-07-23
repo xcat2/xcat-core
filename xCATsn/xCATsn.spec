@@ -69,11 +69,6 @@ Requires: perl-IO-Stty
 Requires: goconserver >= 0.3.3
 %endif
 
-#support mixed cluster
-%ifnarch s390x
-Requires: elilo-xcat
-%endif
-
 %ifarch i386 i586 i686 x86 x86_64
 Requires: xnba-undi
 Requires: syslinux-xcat

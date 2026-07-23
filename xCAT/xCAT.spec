@@ -86,11 +86,6 @@ Requires: perl-IO-Stty >= 0.04-5
 Requires: goconserver >= 0.3.3-snap202011021058
 %endif
 
-#support mixed cluster
-%if %nots390x
-Requires: elilo-xcat >= 3.14-6
-%endif
-
 %ifarch i386 i586 i686 x86 x86_64
 Requires: xnba-undi >= 1.21.1-1
 Requires: syslinux-xcat >= 6.03-1
