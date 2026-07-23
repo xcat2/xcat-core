@@ -39,6 +39,14 @@ my $GITHUB_API = "https://api.github.com";
 my $srcdir = getcwd();
 my $unitsrc = ($ENV{'RUNNER_TEMP'} ? $ENV{'RUNNER_TEMP'} : "/tmp") . "/xcat-core-unitsrc";
 
+# Cases whose output is printed even when they pass. A passing case is normally
+# silent, which is the right default for 250 of them but makes it impossible to
+# tell from the log whether a case did real work or skipped everything -- a
+# distinction that matters for cases wrapping prove, since prove exits 0 either
+# way. Name a case here to see its output; empty the list for the quiet
+# behaviour.
+my @verbose_cases = qw(integration_tests);
+
 #--------------------------------------------------------
 # Fuction name: runcmd
 # Description:  run a command after 'cmd' label in one case
@@ -560,12 +568,16 @@ sub run_fast_regression_test{
         $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -t $case'";
         print "[run_fast_regression_test] run $x: $cmd\n";
         @output = runcmd("$cmd");
-        #print Dumper \@output;
+        my $verbose = grep { $_ eq $case } @verbose_cases;
+        if($verbose){
+            print "[run_fast_regression_test] output of $case (listed in \@verbose_cases):\n";
+            print Dumper \@output;
+        }
         for(my $i = $#output; $i>-1; --$i){
             if($output[$i] =~ /------END::(.+)::Failed/){
                 push @failcase, $1;
                 ++$failnum;
-                print Dumper \@output;
+                print Dumper \@output unless($verbose);
                 last;
              }elsif ($output[$i] =~ /------END::(.+)::Passed/){
                 ++$passnum;
