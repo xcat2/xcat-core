@@ -27,10 +27,17 @@ my $check_result_str="``CI CHECK RESULT`` : ";
 my $last_func_start = timelocal(localtime());
 my $GITHUB_API = "https://api.github.com";
 
-# The workflow starts us in the checked out source tree, but install_xcat()
-# chdir's away from it. Remember the checkout up front: the unit tests under
-# xCAT-test/unit resolve xCAT modules and fixture files relative to it.
+# The workflow starts us in the checked out source tree. The unit tests under
+# xCAT-test/unit resolve xCAT modules and fixture files relative to that tree
+# through FindBin, so they can only be run from a source tree -- but the tree
+# does not survive the build. build-ubunturepo sets
+#     local_core_repo_path="$curdir/../../xcat-core"
+# which, under the work/<repo>/<repo> layout GitHub checks out into, resolves
+# to the checkout's own parent, and it then rm -rf's that path to make room for
+# the apt repository. So take a copy of the tree before building and run the
+# unit tests out of the copy.
 my $srcdir = getcwd();
+my $unitsrc = ($ENV{'RUNNER_TEMP'} ? $ENV{'RUNNER_TEMP'} : "/tmp") . "/xcat-core-unitsrc";
 
 #--------------------------------------------------------
 # Fuction name: runcmd
@@ -276,6 +283,29 @@ sub send_back_comment{
 }
 
 #--------------------------------------------------------
+# Fuction name: preserve_source_tree
+# Description:  Copy the checkout aside before the build destroys it, so the
+#               unit tests still have a source tree to run against afterwards.
+#               Must be called before build_xcat_core().
+# Attributes:
+# Return code:  0 Success  1 Failed
+#--------------------------------------------------------
+sub preserve_source_tree{
+    my $cmd = "rm -rf $unitsrc && cp -a $srcdir $unitsrc";
+    print "[preserve_source_tree] running $cmd\n";
+    my @output = runcmd("$cmd");
+    if($::RUNCMD_RC){
+        print RED "[preserve_source_tree] $cmd ....[Failed]\n";
+        print Dumper \@output;
+        return 1;
+    }
+
+    @output = runcmd("ls $unitsrc/xCAT-test/unit/*.t | wc -l");
+    print "[preserve_source_tree] preserved $srcdir in $unitsrc ($output[0] unit tests)\n";
+    return 0;
+}
+
+#--------------------------------------------------------
 # Fuction name: build_xcat_core
 # Description:
 # Attributes:
@@ -392,15 +422,15 @@ sub install_xcat{
 #--------------------------------------------------------
 # Fuction name: run_unit_tests
 # Description:  Run every Perl unit test under xCAT-test/unit with prove.
-#               The tests are source tree tests: they pull xCAT modules and
-#               fixture files out of the checkout through FindBin, so they
-#               have to be proved from the checkout root rather than from the
-#               copy installed under /opt/xcat/share/xcat/tools/autotest.
+#               Runs against the pre-build copy of the source tree taken by
+#               preserve_source_tree(): the tests reach for xCAT modules and
+#               fixture files through FindBin, so the installed copy under
+#               /opt/xcat/share/xcat/tools/autotest is not enough for them.
 # Attributes:
 # Return code:  0 all tests passed, 1 otherwise
 #--------------------------------------------------------
 sub run_unit_tests{
-    my $cmd = "cd $srcdir && prove xCAT-test/unit/*.t";
+    my $cmd = "cd $unitsrc && prove -r xCAT-test/unit";
     print "[run_unit_tests] running $cmd\n";
     my @output = runcmd("$cmd");
     print Dumper \@output;
@@ -598,6 +628,15 @@ print "Networking information:\n";
 print Dumper \@ipinfo;
 
 #Start to build xcat core
+
+#Save the source tree before the build deletes it, the unit tests need it later
+print GREEN "\n------ Preserving the source tree for the unit tests ------\n";
+$rst = preserve_source_tree();
+if($rst){
+    print RED "Preserving the source tree failed\n";
+    exit $rst;
+}
+mark_time("preserve_source_tree");
 
 print GREEN "\n------ Building xCAT core package ------\n";
 $rst = build_xcat_core();
