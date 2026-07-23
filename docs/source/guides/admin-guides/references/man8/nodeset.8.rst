@@ -38,7 +38,9 @@ nodes or groups.  It tells xCAT what you want to happen the next time the
 nodes are booted up.  See  noderange(3)|noderange.3.   \ **nodeset**\   accomplishes  this  by
 changing  the network boot files.  Each xCAT node always boots from the
 network and downloads a boot file with instructions on what  action  to
-take next.
+take next.  Should the nodetype.os indicates an OS that does not support UEFI
+boot, then the dhcp definition will not include UEFI boot directives, even
+if doing \ **nodeset shell**\ .
 
 \ **nodeset**\  will manipulate the boot configuration files of xnba, grub2, petitboot, yaboot and pxelinux.0.
 
