@@ -3361,7 +3361,7 @@ sub got_bmc_fw_info {
         my @returnd = (@{ $rsp->{data} });
         my @a       = ($fw_rev2);
         my $prefix  = pack("C*", @returnd[ 0 .. 3 ]);
-        if ($prefix =~ /yuoo/i or $prefix =~ /1aoo/i or $prefix =~ /tcoo/i) { #we have an imm
+        if ($prefix =~ /yuoo/i or $prefix =~ /1aoo/i or $prefix =~ /tcoo/i or $prefix =~ /tei/i or $prefix =~ /cdi/i or $prefix =~ /psi/i) { #we have an imm
             $isanimm = 1;
         }
         $mprom = sprintf("%d.%s (%s)", $fw_rev1, decodebcd(\@a), getascii(@returnd));
@@ -6186,7 +6186,7 @@ sub execute_iem_commands {
 sub executed_iem_command {
     my $rsp      = $_[0];
     my $sessdata = $_[1];
-    if ($rsp->{code} == 0xcb) {
+    if ($rsp->{code} == 0xcb or $rsp->{code} == 0xc1) {
         $sessdata->{abortediem}       = 1;
         $sessdata->{abortediemreason} = "Not Present";
         $sessdata->{iemcallback}->($sessdata);
