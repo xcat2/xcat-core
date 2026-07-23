@@ -30,23 +30,96 @@ sub stage_root {
     my $scripts = File::Spec->catdir(
         $root, 'opt', 'xcat', 'share', 'xcat', 'scripts'
     );
-    make_path($scripts);
+    my $fake_bin = File::Spec->catdir( $root, 'test-bin' );
+    make_path( $scripts, $fake_bin );
     copy( $template, File::Spec->catfile( $scripts, 'xcatd' ) )
       or die "Unable to stage legacy init template: $!";
+    my $systemctl = File::Spec->catfile( $fake_bin, 'systemctl' );
+    open( my $systemctl_fh, '>', $systemctl )
+      or die "Unable to stage fake systemctl: $!";
+    print {$systemctl_fh} <<'SH';
+#!/bin/sh
+set -eu
+root=${XCAT_COMPAT_ROOT:?}
+case "${1:-}" in
+    --root=*) shift ;;
+esac
+[ "${1:-}" = is-enabled ] || exit 1
+if [ -r "$root/systemctl-state" ]; then
+    sed -n '1p' "$root/systemctl-state"
+else
+    echo unknown
+fi
+SH
+    close($systemctl_fh);
+    chmod 0755, $systemctl;
     return $root;
+}
+
+sub stage_systemd_binary {
+    my ($root) = @_;
+    my $binary = File::Spec->catfile(
+        $root, 'usr', 'lib', 'systemd', 'systemd'
+    );
+    make_path( File::Spec->catdir( $root, 'usr', 'lib', 'systemd' ) );
+    open( my $fh, '>', $binary )
+      or die "Unable to stage systemd binary: $!";
+    close($fh);
+    chmod 0755, $binary;
+    return $binary;
+}
+
+sub set_systemd_state {
+    my ( $root, $state ) = @_;
+    my $path = File::Spec->catfile( $root, 'systemctl-state' );
+    open( my $fh, '>', $path )
+      or die "Unable to stage systemd state: $!";
+    print {$fh} "$state\n";
+    close($fh);
 }
 
 sub run_helper {
     my ( $root, @arguments ) = @_;
     local $ENV{XCAT_COMPAT_ROOT} = $root;
     local $ENV{XCATROOT}         = '/opt/xcat';
+    local $ENV{PATH} = File::Spec->catdir( $root, 'test-bin' ) . ':/usr/bin:/bin';
     system( '/bin/sh', $helper, @arguments );
     return $? >> 8;
+}
+
+sub helper_output {
+    my ( $root, @arguments ) = @_;
+    local $ENV{XCAT_COMPAT_ROOT} = $root;
+    local $ENV{XCATROOT}         = '/opt/xcat';
+    local $ENV{PATH} = File::Spec->catdir( $root, 'test-bin' ) . ':/usr/bin:/bin';
+    open( my $pipe, '-|', '/bin/sh', $helper, @arguments )
+      or die "Unable to run compatibility helper: $!";
+    my $output = do { local $/; <$pipe> };
+    close($pipe) or die "Compatibility helper failed: $?";
+    $output =~ s/\s+\z//;
+    return $output;
+}
+
+sub stage_symlink {
+    my ( $root, $target, @path ) = @_;
+    my $name = pop @path;
+    my $dir = File::Spec->catdir( $root, @path );
+    make_path($dir);
+    my $link = File::Spec->catfile( $dir, $name );
+    symlink( $target, $link ) or die "Unable to stage $link: $!";
+    return $link;
 }
 
 sub legacy_init {
     my ($root) = @_;
     return File::Spec->catfile( $root, 'etc', 'init.d', 'xcatd' );
+}
+
+sub managed_marker {
+    my ($root) = @_;
+    return File::Spec->catfile(
+        $root, 'var', 'lib', 'xcat', 'xcatd-init-compat-managed'
+    );
 }
 
 my $active_systemd_root = stage_root();
@@ -63,6 +136,15 @@ is( run_helper( $active_systemd_root, 'configure' ), 0,
 ok( !-e legacy_init($active_systemd_root),
     'systemd configuration removes an upgraded legacy init script' );
 
+my $active_hybrid_root = stage_root();
+make_path( File::Spec->catdir( $active_hybrid_root, 'run', 'systemd', 'system' ) );
+make_path( File::Spec->catdir( $active_hybrid_root, 'sbin' ) );
+symlink( 'upstart', File::Spec->catfile( $active_hybrid_root, 'sbin', 'init' ) )
+  or die "Unable to stage stale upstart init symlink: $!";
+stage_systemd_binary($active_hybrid_root);
+is( run_helper( $active_hybrid_root, 'uses-systemd' ), 0,
+    'an active systemd manager overrides stale legacy target evidence' );
+
 my $systemd_image_root = stage_root();
 make_path( File::Spec->catdir( $systemd_image_root, 'sbin' ) );
 symlink( '../lib/systemd/systemd', File::Spec->catfile( $systemd_image_root, 'sbin', 'init' ) )
@@ -75,14 +157,7 @@ ok( !-e legacy_init($systemd_image_root),
     'systemd images do not receive the legacy init script' );
 
 my $minimal_systemd_root = stage_root();
-my $systemd_binary = File::Spec->catfile(
-    $minimal_systemd_root, 'usr', 'lib', 'systemd', 'systemd'
-);
-make_path( File::Spec->catdir( $minimal_systemd_root, 'usr', 'lib', 'systemd' ) );
-open( my $minimal_systemd, '>', $systemd_binary )
-  or die "Unable to stage minimal systemd binary: $!";
-close($minimal_systemd);
-chmod 0755, $systemd_binary;
+stage_systemd_binary($minimal_systemd_root);
 is( run_helper( $minimal_systemd_root, 'uses-systemd' ), 0,
     'an installed systemd binary identifies a stopped or minimal systemd target' );
 is( run_helper( $minimal_systemd_root, 'configure' ), 0,
@@ -98,6 +173,8 @@ print {$modern_os_release} qq{ID="rocky"\nVERSION_ID="9.6"\n};
 close($modern_os_release);
 is( run_helper( $modern_os_root, 'uses-systemd' ), 0,
     'a modern supported distro is systemd even in a stripped-down environment' );
+is( run_helper( $modern_os_root, 'uses-systemd', '--explicit-target' ), 0,
+    'explicit target detection accepts a modern distro without an init path' );
 is( run_helper( $modern_os_root, 'configure' ), 0,
     'stripped-down modern distro configuration succeeds' );
 ok( !-e legacy_init($modern_os_root),
@@ -109,8 +186,24 @@ open( my $legacy_os_release, '>', File::Spec->catfile( $legacy_os_root, 'etc', '
   or die "Unable to stage legacy os-release: $!";
 print {$legacy_os_release} qq{ID="sles"\nVERSION_ID="11.4"\n};
 close($legacy_os_release);
-isnt( run_helper( $legacy_os_root, 'uses-systemd' ), 0,
-    'SLES 11 remains classified as a legacy init target' );
+stage_systemd_binary($legacy_os_root);
+is( run_helper( $legacy_os_root, 'uses-systemd' ), 0,
+    'the compatibility classifier preserves installed systemd precedence on SLES 11' );
+isnt( run_helper( $legacy_os_root, 'uses-systemd', '--explicit-target' ), 0,
+    'SLES 11 overrides an installed but inactive systemd binary' );
+
+my $legacy_ubuntu_root = stage_root();
+make_path( File::Spec->catdir( $legacy_ubuntu_root, 'etc' ) );
+open( my $legacy_ubuntu_release, '>',
+    File::Spec->catfile( $legacy_ubuntu_root, 'etc', 'os-release' ) )
+  or die "Unable to stage legacy Ubuntu os-release: $!";
+print {$legacy_ubuntu_release} qq{ID=ubuntu\nVERSION_ID=14.04\n};
+close($legacy_ubuntu_release);
+stage_systemd_binary($legacy_ubuntu_root);
+is( run_helper( $legacy_ubuntu_root, 'uses-systemd' ), 0,
+    'the compatibility classifier preserves installed systemd precedence on Ubuntu 14.04' );
+isnt( run_helper( $legacy_ubuntu_root, 'uses-systemd', '--explicit-target' ), 0,
+    'Ubuntu 14.04 overrides an installed but inactive systemd binary' );
 
 my $debian_sid_root = stage_root();
 make_path( File::Spec->catdir( $debian_sid_root, 'etc' ) );
@@ -125,14 +218,296 @@ my $legacy_root = stage_root();
 make_path( File::Spec->catdir( $legacy_root, 'sbin' ) );
 symlink( 'upstart', File::Spec->catfile( $legacy_root, 'sbin', 'init' ) )
   or die "Unable to stage upstart init symlink: $!";
-isnt( run_helper( $legacy_root, 'uses-systemd' ), 0,
-    'an upstart target is not classified as systemd' );
+stage_systemd_binary($legacy_root);
+is( run_helper( $legacy_root, 'uses-systemd' ), 0,
+    'the compatibility classifier preserves installed systemd precedence for upstart' );
+isnt( run_helper( $legacy_root, 'uses-systemd', '--explicit-target' ), 0,
+    'an explicit upstart target overrides an installed systemd binary' );
 is( run_helper( $legacy_root, 'configure' ), 0,
-    'legacy configuration succeeds' );
+    'compatibility-mode configuration succeeds for a hybrid target' );
+ok( !-e legacy_init($legacy_root),
+    'compatibility-mode configuration preserves systemd precedence' );
+is( run_helper( $legacy_root, 'configure', '--explicit-target' ), 0,
+    'explicit-target legacy configuration succeeds' );
 ok( -x legacy_init($legacy_root),
-    'legacy configuration materializes an executable init script' );
+    'explicit-target configuration materializes an executable init script' );
 is( read_file( legacy_init($legacy_root) ), read_file($template),
-    'the materialized legacy init script matches the packaged template' );
+    'the explicit-target init script matches the packaged template' );
+
+my $real_sysvinit_root = stage_root();
+make_path(
+    File::Spec->catdir( $real_sysvinit_root, 'sbin' ),
+    File::Spec->catdir( $real_sysvinit_root, 'etc' )
+);
+open( my $real_sysvinit, '>',
+    File::Spec->catfile( $real_sysvinit_root, 'sbin', 'init' ) )
+  or die "Unable to stage real SysV init: $!";
+print {$real_sysvinit} "#!/bin/sh\n";
+close($real_sysvinit);
+chmod 0755, File::Spec->catfile( $real_sysvinit_root, 'sbin', 'init' );
+open( my $real_sysv_os_release, '>',
+    File::Spec->catfile( $real_sysvinit_root, 'etc', 'os-release' ) )
+  or die "Unable to stage modern Debian metadata: $!";
+print {$real_sysv_os_release} "ID=debian\nVERSION_ID=12\n";
+close($real_sysv_os_release);
+stage_systemd_binary($real_sysvinit_root);
+is( run_helper( $real_sysvinit_root, 'uses-systemd' ), 0,
+    'the compatibility classifier preserves installed systemd precedence for real SysV init' );
+isnt( run_helper( $real_sysvinit_root, 'uses-systemd', '--explicit-target' ), 0,
+    'a real SysV init binary overrides modern release and systemd fallback evidence' );
+is( run_helper( $real_sysvinit_root, 'configure' ), 0,
+    'compatibility-mode configuration succeeds for a real SysV target' );
+ok( !-e legacy_init($real_sysvinit_root),
+    'compatibility-mode configuration preserves installed systemd precedence' );
+is( run_helper( $real_sysvinit_root, 'configure', '--explicit-target' ), 0,
+    'real SysV explicit-target configuration succeeds' );
+ok( -x legacy_init($real_sysvinit_root),
+    'real SysV explicit-target configuration installs the legacy init script' );
+
+my $legacy_state_root = stage_root();
+is( helper_output( $legacy_state_root, 'legacy-state' ), 'unregistered',
+    'legacy state reports no registration when rc links are absent' );
+is( helper_output( $legacy_state_root, 'legacy-transition-state' ), 'disabled',
+    'a disabled systemd service without legacy provenance becomes registered-off SysV' );
+stage_symlink(
+    $legacy_state_root, '/etc/init.d/xcatd',
+    qw(etc rc.d rc3.d K60xcatd)
+);
+is( helper_output( $legacy_state_root, 'legacy-state' ), 'disabled',
+    'legacy state recognizes registered-off rc links' );
+is( helper_output( $legacy_state_root, 'legacy-transition-state' ), 'disabled',
+    'registered-off SysV state takes precedence during a legacy transition' );
+stage_symlink(
+    $legacy_state_root, '/etc/init.d/xcatd',
+    qw(etc rc.d rc3.d S85xcatd)
+);
+is( helper_output( $legacy_state_root, 'legacy-state' ), 'enabled',
+    'legacy enabled state takes precedence when start and kill links coexist' );
+is( helper_output( $legacy_state_root, 'legacy-transition-state' ), 'enabled',
+    'enabled SysV state takes precedence during a legacy transition' );
+
+my $rpm_layout_root = stage_root();
+stage_symlink(
+    $rpm_layout_root, '/etc/init.d/xcatd',
+    qw(etc rc.d rc3.d S85xcatd)
+);
+is( helper_output( $rpm_layout_root, 'legacy-state' ), 'enabled',
+    'default legacy state continues to recognize RPM runlevel layouts' );
+is( helper_output( $rpm_layout_root, 'debian-legacy-state' ),
+    'unregistered', 'Debian legacy state ignores RPM-only runlevel links' );
+is( helper_output( $rpm_layout_root, 'legacy-state', '--debian-layout' ),
+    'enabled', 'legacy state preserves ignored historical extra arguments' );
+is( run_helper( $rpm_layout_root, 'debian-legacy-state', 'extra' ), 2,
+    'Debian legacy state rejects extra arguments' );
+
+my $debian_layout_root = stage_root();
+stage_symlink(
+    $debian_layout_root, '/etc/init.d/xcatd',
+    qw(etc rc3.d K60xcatd)
+);
+is( helper_output( $debian_layout_root, 'debian-legacy-state' ),
+    'disabled', 'Debian legacy state recognizes native kill links' );
+stage_symlink(
+    $debian_layout_root, '/etc/init.d/xcatd',
+    qw(etc rc3.d S85xcatd)
+);
+is( helper_output( $debian_layout_root, 'debian-legacy-state' ),
+    'enabled', 'Debian legacy state gives native start links precedence' );
+
+my $unregistered_legacy_root = stage_root();
+make_path( File::Spec->catdir( $unregistered_legacy_root, 'etc', 'init.d' ) );
+copy( $template, legacy_init($unregistered_legacy_root) )
+  or die "Unable to stage unregistered legacy init script: $!";
+is( helper_output( $unregistered_legacy_root, 'legacy-transition-state' ),
+    'unregistered',
+    'a present but administrator-unregistered SysV service stays unregistered' );
+
+my $deleted_managed_root = stage_root();
+make_path( File::Spec->catdir( $deleted_managed_root, 'var', 'lib', 'xcat' ) );
+open( my $deleted_managed_marker, '>', managed_marker($deleted_managed_root) )
+  or die "Unable to stage managed-file provenance: $!";
+close($deleted_managed_marker);
+is( helper_output( $deleted_managed_root, 'legacy-transition-state' ),
+    'unregistered',
+    'managed provenance preserves unregistered state after the init script is deleted' );
+
+my $systemd_state_root = stage_root();
+is( helper_output( $systemd_state_root, 'systemd-state' ), 'disabled',
+    'systemd state reports disabled when enablement links are absent' );
+is( helper_output( $systemd_state_root, 'systemd-state', '--allow-unknown' ),
+    'unknown', 'precise systemd state preserves indeterminate evidence' );
+set_systemd_state( $systemd_state_root, 'disabled' );
+is( helper_output( $systemd_state_root, 'systemd-state', '--allow-unknown' ),
+    'disabled', 'precise systemd state recognizes an explicit disablement' );
+stage_symlink(
+    $systemd_state_root, '/usr/lib/systemd/system/xcatd.service',
+    qw(etc systemd system multi-user.target.wants xcatd.service)
+);
+is( helper_output( $systemd_state_root, 'systemd-state' ), 'enabled',
+    'systemd state recognizes persistent wants links' );
+is( helper_output( $systemd_state_root, 'legacy-transition-state' ), 'enabled',
+    'enabled systemd state transfers to an enabled SysV service' );
+is( helper_output( $systemd_state_root, 'systemd-state', '--allow-unknown' ),
+    'enabled', 'enablement links override stale disabled manager output' );
+
+my $manager_masked_link_root = stage_root();
+set_systemd_state( $manager_masked_link_root, 'masked' );
+stage_symlink(
+    $manager_masked_link_root, '/usr/lib/systemd/system/xcatd.service',
+    qw(etc systemd system multi-user.target.wants xcatd.service)
+);
+is( helper_output( $manager_masked_link_root, 'systemd-state' ), 'enabled',
+    'compatibility state keeps historical link precedence for target roots' );
+is( helper_output(
+        $manager_masked_link_root, 'systemd-state', '--allow-unknown'
+    ),
+    'masked', 'precise systemd state gives a manager mask precedence over links' );
+
+for my $manager_state_case (
+    [ 'enabled',           'enabled' ],
+    [ 'enabled-runtime',   'enabled' ],
+    [ 'masked',            'masked' ],
+    [ 'masked-runtime',    'masked' ],
+    [ 'disabled',          'disabled' ],
+    [ 'linked',            'disabled' ],
+    [ 'linked-runtime',    'disabled' ],
+    [ 'alias',             'disabled' ],
+    [ 'static',            'disabled' ],
+    [ 'indirect',          'disabled' ],
+    [ 'generated',         'disabled' ],
+    [ 'transient',         'disabled' ],
+    [ 'enabled-garbage',   'unknown' ],
+    [ 'masked-garbage',    'unknown' ],
+) {
+    my ( $manager_state, $expected_state ) = @{$manager_state_case};
+    my $manager_state_root = stage_root();
+    set_systemd_state( $manager_state_root, $manager_state );
+    is( helper_output(
+            $manager_state_root, 'systemd-state', '--allow-unknown'
+        ),
+        $expected_state, "precise systemd state parses $manager_state exactly" );
+}
+
+for my $precise_link_case (
+    [ qw(etc wants) ],
+    [ qw(etc requires) ],
+    [ qw(run wants) ],
+    [ qw(run requires) ],
+) {
+    my ( $scope, $relation ) = @{$precise_link_case};
+    my $precise_link_root = stage_root();
+    stage_symlink(
+        $precise_link_root, '/usr/lib/systemd/system/xcatd.service',
+        $scope, 'systemd', 'system', "multi-user.target.$relation",
+        'xcatd.service'
+    );
+    is( helper_output( $precise_link_root, 'systemd-state', '--allow-unknown' ),
+        'enabled', "precise systemd state recognizes $scope $relation links" );
+}
+
+my $systemd_requires_root = stage_root();
+stage_symlink(
+    $systemd_requires_root, '/usr/lib/systemd/system/xcatd.service',
+    qw(run systemd system multi-user.target.requires xcatd.service)
+);
+is( helper_output( $systemd_requires_root, 'systemd-state' ), 'enabled',
+    'systemd state recognizes runtime requires links' );
+
+my $systemd_linked_root = stage_root();
+stage_symlink(
+    $systemd_linked_root, '/usr/lib/systemd/system/xcatd.service',
+    qw(etc systemd system xcatd.service)
+);
+is( helper_output( $systemd_linked_root, 'systemd-state' ), 'disabled',
+    'a linked unit without target enablement remains disabled' );
+is( helper_output( $systemd_linked_root, 'legacy-transition-state' ), 'disabled',
+    'a linked-but-disabled systemd unit becomes registered-off SysV' );
+
+my $systemd_masked_root = stage_root();
+stage_symlink(
+    $systemd_masked_root, '/dev/null',
+    qw(etc systemd system xcatd.service)
+);
+is( helper_output( $systemd_masked_root, 'systemd-state' ), 'masked',
+    'systemd state preserves an administrator mask' );
+is( helper_output( $systemd_masked_root, 'legacy-transition-state' ), 'masked',
+    'a systemd mask prevents SysV registration during a legacy transition' );
+is( helper_output( $systemd_masked_root, 'systemd-state', '--allow-unknown' ),
+    'masked', 'precise systemd state recognizes persistent masks' );
+
+my $systemd_runtime_masked_root = stage_root();
+stage_symlink(
+    $systemd_runtime_masked_root, '/dev/null',
+    qw(run systemd system xcatd.service)
+);
+is( helper_output( $systemd_runtime_masked_root,
+        'systemd-state', '--allow-unknown' ),
+    'masked', 'precise systemd state recognizes runtime masks' );
+my $systemd_argv_root = stage_root();
+is( helper_output( $systemd_argv_root, 'systemd-state', '--invalid' ),
+    'disabled', 'systemd state preserves ignored historical extra arguments' );
+is( helper_output(
+        $systemd_argv_root, 'systemd-state', '--allow-unknown', 'extra'
+    ),
+    'disabled', 'only the exact precision option activates precise state' );
+
+my $cleanup_root = stage_root();
+my @cleanup_links = (
+    stage_symlink(
+        $cleanup_root, '/etc/init.d/xcatd',
+        qw(etc rc.d rc3.d S85xcatd)
+    ),
+    stage_symlink(
+        $cleanup_root, '/etc/init.d/xcatd',
+        qw(etc rc.d rc0.d K60xcatd)
+    ),
+    stage_symlink(
+        $cleanup_root, '/usr/lib/systemd/system/xcatd.service',
+        qw(etc systemd system multi-user.target.wants xcatd.service)
+    ),
+    stage_symlink(
+        $cleanup_root, '/usr/lib/systemd/system/xcatd.service',
+        qw(run systemd system multi-user.target.requires xcatd.service)
+    ),
+);
+my $cleanup_mask = stage_symlink(
+    $cleanup_root, '/dev/null',
+    qw(etc systemd system xcatd.service)
+);
+is( run_helper( $cleanup_root, 'unregister-all' ), 0,
+    'cross-manager registration cleanup succeeds in a target root' );
+ok( !( grep { -e $_ || -l $_ } @cleanup_links ),
+    'cross-manager cleanup removes SysV and systemd enablement links' );
+ok( -l $cleanup_mask,
+    'cross-manager cleanup preserves an administrator systemd mask' );
+is( run_helper( $cleanup_root, 'register-legacy', 'enabled' ), 2,
+    'legacy registration refuses to execute host tools for a target root' );
+is( run_helper( $cleanup_root, 'register-legacy', 'invalid' ), 2,
+    'legacy registration rejects an invalid desired state' );
+
+my $links_only_root = stage_root();
+my @preserved_legacy_links = (
+    stage_symlink(
+        $links_only_root, '/etc/init.d/xcatd',
+        qw(etc rc.d rc2.d K42xcatd)
+    ),
+    stage_symlink(
+        $links_only_root, '/etc/init.d/xcatd',
+        qw(etc rc.d rc3.d S17xcatd)
+    ),
+);
+my $removed_systemd_link = stage_symlink(
+    $links_only_root, '/usr/lib/systemd/system/xcatd.service',
+    qw(etc systemd system multi-user.target.wants xcatd.service)
+);
+is( run_helper( $links_only_root, 'disable-systemd', '--links-only' ), 0,
+    'links-only systemd cleanup succeeds' );
+ok( !-e $removed_systemd_link && !-l $removed_systemd_link,
+    'links-only cleanup removes native systemd enablement' );
+ok( !( grep { !-e $_ && !-l $_ } @preserved_legacy_links ),
+    'links-only cleanup preserves exact custom SysV registration links' );
+is( run_helper( $links_only_root, 'disable-systemd', '--invalid' ), 2,
+    'systemd cleanup rejects an invalid mode' );
 
 my $dangling_legacy_root = stage_root();
 make_path( File::Spec->catdir( $dangling_legacy_root, 'etc', 'init.d' ) );
@@ -145,40 +520,245 @@ ok( !-l legacy_init($dangling_legacy_root),
 is( read_file( legacy_init($dangling_legacy_root) ), read_file($template),
     'the dangling init symlink replacement matches the packaged template' );
 
-open( my $custom_init, '>', legacy_init($legacy_root) )
+my $custom_legacy_root = stage_root();
+make_path( File::Spec->catdir( $custom_legacy_root, 'sbin' ) );
+symlink( 'upstart', File::Spec->catfile( $custom_legacy_root, 'sbin', 'init' ) )
+  or die "Unable to stage customization target: $!";
+is( run_helper( $custom_legacy_root, 'configure' ), 0,
+    'customizable legacy target configuration succeeds' );
+open( my $custom_init, '>', legacy_init($custom_legacy_root) )
   or die "Unable to customize staged init script: $!";
 print {$custom_init} "administrator customization\n";
 close($custom_init);
-is( run_helper( $legacy_root, 'configure' ), 0,
+is( run_helper( $custom_legacy_root, 'configure' ), 0,
     'reconfiguring a legacy target succeeds' );
-is( read_file( legacy_init($legacy_root) ), "administrator customization\n",
+is( read_file( legacy_init($custom_legacy_root) ), "administrator customization\n",
     'legacy reconfiguration preserves an existing init script' );
-is( run_helper( $legacy_root, 'configure', '--replace' ), 0,
+is( run_helper( $custom_legacy_root, 'configure', '--replace' ), 0,
     'RPM-style legacy upgrade configuration succeeds' );
-is( read_file( legacy_init($legacy_root) ), read_file($template),
+is( read_file( legacy_init($custom_legacy_root) ), read_file($template),
     'RPM-style legacy upgrades refresh the init script from the packaged template' );
-is( run_helper( $legacy_root, 'remove' ), 0,
+is( run_helper( $custom_legacy_root, 'remove' ), 0,
     'legacy cleanup succeeds' );
-ok( !-e legacy_init($legacy_root),
+ok( !-e legacy_init($custom_legacy_root),
     'legacy cleanup removes the generated init script' );
+
+my $tracked_legacy_root = stage_root();
+is( run_helper( $tracked_legacy_root, 'configure', '--track-managed' ), 0,
+    'RPM-style configuration can track a generated legacy script' );
+ok( -x legacy_init($tracked_legacy_root),
+    'tracked configuration materializes an executable legacy script' );
+ok( -f managed_marker($tracked_legacy_root),
+    'tracked configuration records generated-file provenance' );
+is( ( stat( managed_marker($tracked_legacy_root) ) )[2] & 07777, 0600,
+    'managed-file provenance is private' );
+my $tracked_state_dir = File::Spec->catdir(
+    $tracked_legacy_root, 'var', 'lib', 'xcat'
+);
+is( ( stat($tracked_state_dir) )[2] & 07777, 0755,
+    'managed-file tracking keeps the shared xCAT state directory traversable' );
+is( run_helper( $tracked_legacy_root, 'remove-managed' ), 0,
+    'managed legacy cleanup succeeds' );
+ok( !-e legacy_init($tracked_legacy_root)
+      && !-e managed_marker($tracked_legacy_root),
+    'managed cleanup removes an unchanged generated script and its marker' );
+
+my $admin_legacy_root = stage_root();
+make_path( File::Spec->catdir( $admin_legacy_root, 'etc', 'init.d' ) );
+open( my $admin_init, '>', legacy_init($admin_legacy_root) )
+  or die "Unable to stage administrator init script: $!";
+print {$admin_init} "administrator-owned init script\n";
+close($admin_init);
+chmod 0755, legacy_init($admin_legacy_root);
+is( run_helper( $admin_legacy_root, 'configure', '--track-managed' ), 0,
+    'tracked configuration accepts a pre-existing administrator script' );
+ok( !-e managed_marker($admin_legacy_root),
+    'a pre-existing administrator script is not marked as generated' );
+is( run_helper( $admin_legacy_root, 'remove-managed' ), 0,
+    'managed cleanup accepts an unowned administrator script' );
+is( read_file( legacy_init($admin_legacy_root) ),
+    "administrator-owned init script\n",
+    'managed cleanup preserves an unowned administrator script' );
+
+my $identical_admin_root = stage_root();
+make_path( File::Spec->catdir( $identical_admin_root, 'etc', 'init.d' ) );
+copy( $template, legacy_init($identical_admin_root) )
+  or die "Unable to stage byte-identical administrator script: $!";
+chmod 0755, legacy_init($identical_admin_root);
+is( run_helper( $identical_admin_root, 'remove-managed' ), 0,
+    'managed cleanup accepts an unmarked byte-identical script' );
+ok( -f legacy_init($identical_admin_root),
+    'content equality alone does not grant ownership for cleanup' );
+is( read_file( legacy_init($identical_admin_root) ), read_file($template),
+    'managed cleanup preserves an unmarked byte-identical script' );
+
+my $admin_symlink_root = stage_root();
+my $admin_init_dir = File::Spec->catdir( $admin_symlink_root, 'etc', 'init.d' );
+make_path($admin_init_dir);
+my $admin_symlink_target = File::Spec->catfile( $admin_init_dir, 'xcatd.admin' );
+open( my $admin_target, '>', $admin_symlink_target )
+  or die "Unable to stage administrator symlink target: $!";
+print {$admin_target} "administrator symlink target\n";
+close($admin_target);
+symlink( 'xcatd.admin', legacy_init($admin_symlink_root) )
+  or die "Unable to stage administrator init symlink: $!";
+is( run_helper( $admin_symlink_root, 'configure', '--track-managed' ), 0,
+    'tracked configuration preserves a valid administrator symlink' );
+is( run_helper( $admin_symlink_root, 'remove-managed' ), 0,
+    'managed cleanup accepts an unowned administrator symlink' );
+ok( -l legacy_init($admin_symlink_root),
+    'managed cleanup preserves an unowned administrator symlink' );
+
+my $modified_managed_root = stage_root();
+is( run_helper( $modified_managed_root, 'configure', '--track-managed' ), 0,
+    'modified-file scenario starts with a tracked generated script' );
+open( my $modified_init, '>', legacy_init($modified_managed_root) )
+  or die "Unable to modify tracked init script: $!";
+print {$modified_init} "administrator modification\n";
+close($modified_init);
+is( run_helper( $modified_managed_root, 'configure' ), 0,
+    'legacy reconfiguration accepts an administrator-modified managed script' );
+ok( !-e managed_marker($modified_managed_root),
+    'legacy reconfiguration clears stale managed-file provenance' );
+is( run_helper( $modified_managed_root, 'remove-managed' ), 0,
+    'managed cleanup accepts an administrator-modified generated script' );
+is( read_file( legacy_init($modified_managed_root) ),
+    "administrator modification\n",
+    'managed cleanup preserves administrator changes' );
+ok( !-e managed_marker($modified_managed_root),
+    'managed cleanup clears provenance after preserving a modified script' );
+
+my $replace_managed_root = stage_root();
+make_path( File::Spec->catdir( $replace_managed_root, 'etc', 'init.d' ) );
+open( my $replace_init, '>', legacy_init($replace_managed_root) )
+  or die "Unable to stage replaceable init script: $!";
+print {$replace_init} "old package payload\n";
+close($replace_init);
+is( run_helper( $replace_managed_root, 'configure', '--replace', '--track-managed' ), 0,
+    'RPM upgrade replacement records generated-file provenance' );
+is( read_file( legacy_init($replace_managed_root) ), read_file($template),
+    'tracked replacement installs the current legacy template' );
+ok( -f managed_marker($replace_managed_root),
+    'tracked replacement creates a managed marker' );
+
+my $systemd_tracked_root = stage_root();
+is( run_helper( $systemd_tracked_root, 'configure', '--track-managed' ), 0,
+    'systemd-transition scenario starts with a tracked legacy script' );
+make_path( File::Spec->catdir( $systemd_tracked_root, 'run', 'systemd', 'system' ) );
+is( run_helper( $systemd_tracked_root, 'configure' ), 0,
+    'systemd configuration removes tracked legacy state' );
+ok( !-e legacy_init($systemd_tracked_root)
+      && !-e managed_marker($systemd_tracked_root),
+    'systemd configuration clears the generated script and its provenance' );
+
+my $legacy_remove_root = stage_root();
+is( run_helper( $legacy_remove_root, 'configure', '--track-managed' ), 0,
+    'legacy remove scenario starts with tracked state' );
+is( run_helper( $legacy_remove_root, 'remove' ), 0,
+    'legacy remove remains compatible with tracked state' );
+ok( !-e legacy_init($legacy_remove_root)
+      && !-e managed_marker($legacy_remove_root),
+    'legacy remove clears both the script and stale provenance' );
+
+my $systemctl_ready_status = system(
+    '/bin/sh', '-c',
+    '[ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1'
+) >> 8;
+is( run_helper( stage_root(), 'can-use-systemctl' ), $systemctl_ready_status,
+    'shared helper preserves the host systemctl readiness predicate' );
+is( run_helper( stage_root(), 'can-use-systemctl', '--invalid' ), 2,
+    'systemctl readiness rejects unexpected arguments' );
 
 my $rpm_spec = read_file(
     File::Spec->catfile( $repo_root, 'xCAT-server', 'xCAT-server.spec' )
 );
+my $helper_source = read_file($helper);
+like( $helper_source, qr{/sbin/chkconfig --level 345 xcatd on},
+    'legacy registration enables only the init template runlevels' );
+like( $helper_source,
+    qr{case "\$desired_state" in\s+default\) : ;;\s+enabled\) /sbin/chkconfig --level 345 xcatd on ;;\s+disabled\) /sbin/chkconfig xcatd off ;;\s+esac}s,
+    'legacy registration can preserve script defaults without weakening explicit state restoration' );
+like( $helper_source,
+    qr{if \[ -z "\$compat_root" \] &&\s+\{ \[ -e "\$legacy_init" \] \|\| \[ -L "\$legacy_init" \]; \}; then\s+if \[ -x /sbin/chkconfig \]; then\s+/sbin/chkconfig --del xcatd}s,
+    'legacy cleanup invokes host registration tools only for an existing init script' );
+my ($rpm_post) = $rpm_spec =~ /^%post\n(.*?)^%posttrans\n/ms;
+my ($rpm_posttrans) = $rpm_spec =~ /^%posttrans\n(.*?)^%preun\n/ms;
+my ($rpm_preun) = $rpm_spec =~ /^%preun\n(.*)\z/ms;
+my ($rpm_fresh) = $rpm_post =~
+  /if \[ "\$1" = "1" \]; then(.*?)\nfi\n\nif \[ "\$1" -gt "1" \]; then/ms;
+my ( $rpm_upgrade_systemd, $rpm_upgrade_legacy ) = $rpm_post =~
+  /if \[ "\$1" -gt "1" \]; then.*?if "\$xcatd_init_compat" uses-systemd --explicit-target; then(.*?)\n  else\n(.*?)\n  fi/ms;
+ok( defined($rpm_post) && defined($rpm_posttrans) && defined($rpm_preun)
+      && defined($rpm_fresh) && defined($rpm_upgrade_systemd)
+      && defined($rpm_upgrade_legacy),
+    'RPM service lifecycle scriptlets can be inspected independently' );
 like( $rpm_spec,
     qr{cp etc/init\.d/xcatd \$RPM_BUILD_ROOT/%\{prefix\}/share/xcat/scripts/xcatd},
     'RPM stages the legacy script as a compatibility template' );
-like( $rpm_spec,
-    qr{%if 0%\{\?rhel\} && 0%\{\?rhel\} < 7\n%ghost %attr\(0755,root,root\) /etc/init\.d/xcatd},
-    'RPM tracks the runtime-created init path only on legacy RHEL' );
-like( $rpm_spec,
-    qr{%if 0%\{\?suse_version\} && 0%\{\?suse_version\} < 1200\n%ghost %attr\(0755,root,root\) /etc/init\.d/xcatd},
-    'RPM tracks the runtime-created init path only on legacy SUSE' );
+unlike( $rpm_spec,
+    qr{touch \$RPM_BUILD_ROOT/etc/init\.d/xcatd|%ghost[^\n]*/etc/init\.d/xcatd},
+    'RPM leaves the runtime init script unowned so helper provenance controls erase' );
 like( $rpm_spec, qr{xcatd-init-compat.*uses-systemd}s,
     'RPM scriptlets select the init implementation at install time' );
+unlike( $rpm_spec,
+    qr{"\$xcatd_init_compat" uses-systemd(?! --explicit-target)},
+    'every RPM lifecycle classifier opts into explicit target detection' );
+unlike( $rpm_spec,
+    qr{"\$xcatd_init_compat" configure(?![^\n]*--explicit-target)},
+    'every RPM lifecycle configuration uses the matching explicit target mode' );
+unlike( $rpm_spec, qr{xcat_can_use_systemctl},
+    'RPM scriptlets do not duplicate the shared systemctl readiness guard' );
+my @systemctl_readiness_calls =
+  ( $rpm_spec =~ /"\$xcatd_init_compat" can-use-systemctl/g );
+is( scalar @systemctl_readiness_calls, 3,
+    'RPM delegates every active-systemd operation guard to the shared helper' );
 like( $rpm_spec,
     qr{xcatd_init_compat=.*?"\$xcatd_init_compat" configure --replace}s,
     'RPM upgrades refresh an existing SysV init script' );
+like( $rpm_fresh,
+    qr{"\$xcatd_init_compat" legacy-state.*?"\$xcatd_init_compat" systemd-state}s,
+    'RPM fresh installs query service state through the shared helper' );
+like( $rpm_upgrade_systemd,
+    qr{legacy_xcatd_state=\$\("\$xcatd_init_compat" legacy-state\).*?"\$xcatd_init_compat" unregister-legacy.*?"\$xcatd_init_compat" configure.*?if \[ "\$legacy_xcatd_state" = enabled \].*?systemctl enable xcatd\.service}s,
+    'RPM systemd transitions preserve enabled SysV state after unregistering it' );
+like( $rpm_upgrade_legacy,
+    qr{legacy_xcatd_registration=\$\("\$xcatd_init_compat" legacy-state\).*?legacy_xcatd_state=\$\("\$xcatd_init_compat" legacy-transition-state\).*?"\$xcatd_init_compat" disable-systemd --links-only.*?masked\|unregistered\).*?"\$xcatd_init_compat" unregister-legacy.*?configure --replace.*?enabled\|disabled\).*?if \[ "\$legacy_xcatd_registration" = unregistered \]; then.*?register-legacy "\$legacy_xcatd_state".*?masked\|unregistered\)}s,
+    'RPM legacy transitions preserve prior state and clear systemd enablement' );
+like( $rpm_fresh,
+    qr{legacy_xcatd_state=\$\("\$xcatd_init_compat" legacy-state\).*?enabled\|disabled\)\s+# Preserve any pre-existing administrator runlevel layout\.\s+:\s+;;}s,
+    'RPM fresh installs preserve pre-existing custom SysV runlevel links' );
+like( $helper_source,
+    qr{if \[ "\$disable_mode" != links-only \].*?systemctl disable xcatd\.service}s,
+    'links-only cleanup avoids host tools that can rewrite SysV registration' );
+like( $rpm_fresh,
+    qr{if \[ "\$\("\$xcatd_init_compat" systemd-state\)" != masked \]; then\s+"\$xcatd_init_compat" register-legacy default}s,
+    'RPM fresh legacy installs do not override a persistent systemd mask' );
+like( $rpm_fresh,
+    qr{uses-systemd --explicit-target; then\s+"\$xcatd_init_compat" configure --explicit-target \|\| exit 1.*?else\s+"\$xcatd_init_compat" configure --explicit-target --track-managed \|\| exit 1}s,
+    'RPM tracks only fresh legacy scripts as generated files' );
+unlike( $rpm_post,
+    qr{/sbin/chkconfig --(?:add|del) xcatd|/usr/lib/lsb/(?:install|remove)_initd},
+    'RPM post delegates registration mechanics to the shared helper' );
+like( $rpm_posttrans,
+    qr{%ifos linux.*?uses-systemd --explicit-target.*?\[ ! -e /etc/init\.d/xcatd \].*?\[ ! -L /etc/init\.d/xcatd \].*?"\$xcatd_init_compat" configure --explicit-target(?: --track-managed)? \|\| exit 1}s,
+    'RPM post-transaction recovery restores only a missing legacy script' );
+unlike( $rpm_posttrans, qr{\$1|--replace},
+    'RPM post-transaction recovery is idempotent and not argument-gated' );
+like( $rpm_upgrade_legacy,
+    qr{configure --replace --explicit-target --track-managed \|\| exit 1},
+    'RPM legacy upgrades track the replacement script as generated' );
+like( $rpm_posttrans,
+    qr{configure --explicit-target --track-managed \|\| exit 1},
+    'RPM post-transaction recovery restores managed-file provenance' );
+like( $rpm_preun,
+    qr{"\$xcatd_init_compat" unregister-all.*?"\$xcatd_init_compat" remove}s,
+    'RPM erase cleans both managers before removing the generated script' );
+like( $rpm_preun,
+    qr{"\$xcatd_init_compat" unregister-all \|\| true.*?"\$xcatd_init_compat" remove-managed \|\| true}s,
+    'RPM erase preserves its recoverable cleanup policy with managed files' );
+unlike( $rpm_preun,
+    qr{/sbin/chkconfig --del xcatd|/usr/lib/lsb/remove_initd},
+    'RPM erase delegates cross-manager cleanup to the shared helper' );
 my @xcatroot_exports =
   ( $rpm_spec =~ /^export XCATROOT="\$RPM_INSTALL_PREFIX0"$/mg );
 is( scalar @xcatroot_exports, 2,
@@ -190,8 +770,8 @@ is( scalar @empty_init_cleanup, 1,
 like( $rpm_spec,
     qr{%if 0%\{\?suse_version\}\s+%else\s+# Remove only an empty directory.*?rmdir /etc/init\.d 2>/dev/null \|\| true\s+%endif}s,
     'RPM upgrades preserve the SUSE-owned init directory' );
-like( $rpm_spec,
-    qr{if \[ -e "\$legacy_xcatd_link" \] \|\| \[ -L "\$legacy_xcatd_link" \]},
-    'RPM upgrade recognizes enabled state through dangling legacy links' );
+like( join( "\n", $rpm_spec, $helper_source ),
+    qr{if \[ -e "\$legacy(?:_xcatd)?_link" \] \|\| \[ -L "\$legacy(?:_xcatd)?_link" \]},
+    'xcatd init management recognizes enabled state through dangling legacy links' );
 
 done_testing();

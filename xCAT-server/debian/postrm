@@ -5,13 +5,76 @@
 
 set -e
 
-xcat_target_uses_systemd()
+xcatd_state_dir=/var/lib/xcat/xcatd-init-state
+xcatd_context_file=$xcatd_state_dir/context
+
+clear_xcatd_pending_state()
 {
-    if [ -d /run/systemd/system ]; then
+    rm -f "$xcatd_state_dir/pending-xcatd" \
+        "$xcatd_state_dir/pending-deleted" \
+        "$xcatd_state_dir/pending-enabled" \
+        "$xcatd_state_dir/pending-xcatd.tmp."*
+}
+
+if [ -L "$xcatd_state_dir" ] || \
+   { [ -e "$xcatd_state_dir" ] && [ ! -d "$xcatd_state_dir" ]; }; then
+    echo "Invalid xcatd init state directory: $xcatd_state_dir" >&2
+    exit 1
+fi
+
+xcat_systemd_os_release_status()
+{
+    [ -r /etc/os-release ] || return 2
+
+    os_id=
+    os_version=
+    while IFS='=' read -r key value; do
+        value=${value#\"}
+        value=${value%\"}
+        value=${value#\'}
+        value=${value%\'}
+        case "$key" in
+            ID) os_id=$value ;;
+            VERSION_ID) os_version=$value ;;
+        esac
+    done < /etc/os-release
+
+    if [ "$os_id" = "debian" ] && [ -z "$os_version" ]; then
         return 0
     fi
 
-    if [ -x /usr/lib/systemd/systemd ] || [ -x /lib/systemd/systemd ]; then
+    os_major=${os_version%%.*}
+    case "$os_major" in
+        ''|*[!0-9]*) return 2 ;;
+    esac
+
+    case "$os_id" in
+        rhel|centos|rocky|almalinux|ol|scientific)
+            [ "$os_major" -ge 7 ] && return 0
+            return 1
+            ;;
+        fedora|ubuntu)
+            [ "$os_major" -ge 15 ] && return 0
+            return 1
+            ;;
+        debian)
+            [ "$os_major" -ge 8 ] && return 0
+            return 1
+            ;;
+        sles|sled|opensuse|opensuse-leap|opensuse-tumbleweed)
+            [ "$os_major" -ge 12 ] && return 0
+            return 1
+            ;;
+        *)
+            return 2
+            ;;
+    esac
+
+}
+
+xcat_target_uses_systemd()
+{
+    if [ -d /run/systemd/system ]; then
         return 0
     fi
 
@@ -19,35 +82,25 @@ xcat_target_uses_systemd()
         init_target=$(readlink /sbin/init 2>/dev/null || true)
         case "$init_target" in
             *systemd*) return 0 ;;
+            *) return 1 ;;
         esac
     fi
 
-    if [ -r /etc/os-release ]; then
-        os_id=
-        os_version=
-        while IFS='=' read -r key value; do
-            value=${value#\"}
-            value=${value%\"}
-            value=${value#\'}
-            value=${value%\'}
-            case "$key" in
-                ID) os_id=$value ;;
-                VERSION_ID) os_version=$value ;;
-            esac
-        done < /etc/os-release
+    if [ -e /sbin/init ]; then
+        return 1
+    fi
 
-        if [ "$os_id" = "debian" ] && [ -z "$os_version" ]; then
-            return 0
+    if xcat_systemd_os_release_status; then
+        return 0
+    else
+        os_release_status=$?
+        if [ "$os_release_status" -eq 1 ]; then
+            return 1
         fi
+    fi
 
-        os_major=${os_version%%.*}
-        case "$os_major" in
-            ''|*[!0-9]*) return 1 ;;
-        esac
-        case "$os_id" in
-            ubuntu) [ "$os_major" -ge 15 ] && return 0 ;;
-            debian) [ "$os_major" -ge 8 ] && return 0 ;;
-        esac
+    if [ -x /usr/lib/systemd/systemd ] || [ -x /lib/systemd/systemd ]; then
+        return 0
     fi
 
     return 1
@@ -75,16 +128,47 @@ fi
 
 case "$1" in
     purge)
-       rm -f /etc/init.d/xcatd
+        rm -f /etc/init.d/xcatd \
+            /etc/init.d/xcatd.ucf-old \
+            /etc/init.d/xcatd.ucf-new \
+            /etc/init.d/xcatd.ucf-dist \
+            /etc/init.d/xcatd.dpkg-bak \
+            /etc/init.d/xcatd.dpkg-backup \
+            /etc/init.d/xcatd.dpkg-remove \
+            /var/lib/xcat/xcatd-systemd-mode
+        rm -f "$xcatd_state_dir/state" \
+            "$xcatd_state_dir/xcatd" \
+            "$xcatd_state_dir/state.tmp."* \
+            "$xcatd_state_dir/xcatd.tmp."*
+        clear_xcatd_pending_state
+        rm -f "$xcatd_context_file" "$xcatd_context_file.tmp."*
+        rmdir "$xcatd_state_dir" 2>/dev/null || true
+        if command -v ucf >/dev/null 2>&1; then
+            ucf --purge /etc/init.d/xcatd
+        fi
+        if command -v ucfr >/dev/null 2>&1; then
+            ucfr --purge xcat-server /etc/init.d/xcatd
+        fi
     ;;
 
-    upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+    abort-install)
+        clear_xcatd_pending_state
+        rm -f "$xcatd_context_file" "$xcatd_context_file.tmp."*
+        rmdir "$xcatd_state_dir" 2>/dev/null || true
+    ;;
+
+    abort-upgrade|disappear)
+        rm -f "$xcatd_context_file" "$xcatd_context_file.tmp."*
+    ;;
+
+    upgrade|failed-upgrade)
     ;;
 
     remove)
-       rm -f /usr/sbin/xcatd  #remove the symbolic
+        rm -f "$xcatd_context_file" "$xcatd_context_file.tmp."*
+        rm -f /usr/sbin/xcatd  #remove the symbolic
 
-       rm -f /etc/apache2/conf-enabled/xcat-ws.conf
+        rm -f /etc/apache2/conf-enabled/xcat-ws.conf
     ;;
 
     *)

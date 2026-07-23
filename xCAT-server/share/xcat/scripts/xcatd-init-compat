@@ -17,11 +17,12 @@ esac
 
 legacy_init="$compat_root/etc/init.d/xcatd"
 legacy_template="$compat_root$xcat_root/share/xcat/scripts/xcatd"
+managed_marker="$compat_root/var/lib/xcat/xcatd-init-compat-managed"
 
-uses_systemd_os_release()
+systemd_os_release_status()
 {
     os_release="$compat_root/etc/os-release"
-    [ -r "$os_release" ] || return 1
+    [ -r "$os_release" ] || return 2
 
     os_id=
     os_version=
@@ -43,42 +44,72 @@ uses_systemd_os_release()
 
     os_major=${os_version%%.*}
     case "$os_major" in
-        ''|*[!0-9]*) return 1 ;;
+        ''|*[!0-9]*) return 2 ;;
     esac
 
     case "$os_id" in
         rhel|centos|rocky|almalinux|ol|scientific)
-            [ "$os_major" -ge 7 ]
-            ;;
-        fedora|ubuntu)
-            [ "$os_major" -ge 15 ]
-            ;;
-        debian)
-            [ "$os_major" -ge 8 ]
-            ;;
-        sles|sled|opensuse|opensuse-leap|opensuse-tumbleweed)
-            [ "$os_major" -ge 12 ]
-            ;;
-        *)
+            [ "$os_major" -ge 7 ] && return 0
             return 1
             ;;
+        fedora|ubuntu)
+            [ "$os_major" -ge 15 ] && return 0
+            return 1
+            ;;
+        debian)
+            [ "$os_major" -ge 8 ] && return 0
+            return 1
+            ;;
+        sles|sled|opensuse|opensuse-leap|opensuse-tumbleweed)
+            [ "$os_major" -ge 12 ] && return 0
+            return 1
+            ;;
+        *)
+            return 2
+            ;;
     esac
+
 }
 
 uses_systemd()
 {
+    detection_mode=${1:-compat}
+
     if [ -d "$compat_root/run/systemd/system" ]; then
         return 0
     fi
 
-    # Chroots and minimal images may have systemd installed without a running
-    # manager or an /sbin/init link.
+    if [ "$detection_mode" = explicit ]; then
+        if [ -L "$compat_root/sbin/init" ]; then
+            init_target=$(readlink "$compat_root/sbin/init" 2>/dev/null || true)
+            case "$init_target" in
+                *systemd*) return 0 ;;
+                *) return 1 ;;
+            esac
+        fi
+
+        if [ -e "$compat_root/sbin/init" ]; then
+            return 1
+        fi
+
+        if systemd_os_release_status; then
+            return 0
+        else
+            os_release_status=$?
+            if [ "$os_release_status" -eq 1 ]; then
+                return 1
+            fi
+        fi
+    fi
+
+    # Preserve the historical fallback order unless every package lifecycle
+    # phase has explicitly opted in to authoritative /sbin/init detection.
     if [ -x "$compat_root/usr/lib/systemd/systemd" ] ||
         [ -x "$compat_root/lib/systemd/systemd" ]; then
         return 0
     fi
 
-    if uses_systemd_os_release; then
+    if systemd_os_release_status; then
         return 0
     fi
 
@@ -92,26 +123,332 @@ uses_systemd()
     return 1
 }
 
+can_use_systemctl()
+{
+    [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1
+}
+
+legacy_state()
+{
+    detection_mode=${1:-compat}
+
+    if [ "$detection_mode" = debian-layout ]; then
+        set -- "$compat_root"/etc/rc?.d/S??xcatd
+    else
+        set -- \
+            "$compat_root"/etc/rc.d/rc?.d/S??xcatd \
+            "$compat_root"/etc/rc?.d/S??xcatd \
+            "$compat_root"/etc/init.d/rc?.d/S??xcatd
+    fi
+    for legacy_link in "$@"; do
+        if [ -e "$legacy_link" ] || [ -L "$legacy_link" ]; then
+            echo enabled
+            return
+        fi
+    done
+
+    if [ "$detection_mode" = debian-layout ]; then
+        set -- "$compat_root"/etc/rc?.d/K??xcatd
+    else
+        set -- \
+            "$compat_root"/etc/rc.d/rc?.d/K??xcatd \
+            "$compat_root"/etc/rc?.d/K??xcatd \
+            "$compat_root"/etc/init.d/rc?.d/K??xcatd
+    fi
+    for legacy_link in "$@"; do
+        if [ -e "$legacy_link" ] || [ -L "$legacy_link" ]; then
+            echo disabled
+            return
+        fi
+    done
+
+    echo unregistered
+}
+
+has_legacy_provenance()
+{
+    [ -e "$legacy_init" ] || [ -L "$legacy_init" ] ||
+        [ -f "$managed_marker" ]
+}
+
+legacy_transition_state()
+{
+    transition_state=$(legacy_state)
+    if [ "$transition_state" != unregistered ]; then
+        echo "$transition_state"
+        return
+    fi
+
+    transition_state=$(systemd_state)
+    case "$transition_state" in
+        enabled|masked)
+            echo "$transition_state"
+            ;;
+        disabled)
+            if has_legacy_provenance; then
+                echo unregistered
+            else
+                echo disabled
+            fi
+            ;;
+    esac
+}
+
+systemd_is_masked()
+{
+    for systemd_mask in \
+        "$compat_root/etc/systemd/system/xcatd.service" \
+        "$compat_root/run/systemd/system/xcatd.service"
+    do
+        if [ -L "$systemd_mask" ]; then
+            systemd_mask_target=$(readlink "$systemd_mask" 2>/dev/null || true)
+            case "$systemd_mask_target" in
+                /dev/null|*/dev/null)
+                    return 0
+                    ;;
+            esac
+        fi
+    done
+
+    return 1
+}
+
+systemd_links_enabled()
+{
+    for systemd_link in \
+        "$compat_root"/etc/systemd/system/*.wants/xcatd.service \
+        "$compat_root"/etc/systemd/system/*.requires/xcatd.service \
+        "$compat_root"/run/systemd/system/*.wants/xcatd.service \
+        "$compat_root"/run/systemd/system/*.requires/xcatd.service
+    do
+        if [ -e "$systemd_link" ] || [ -L "$systemd_link" ]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+systemctl_enable_state()
+{
+    detection_mode=${1:-compat}
+
+    command -v systemctl >/dev/null 2>&1 || return 1
+
+    if [ -n "$compat_root" ]; then
+        detected_systemd_state=$(systemctl --root="$compat_root" is-enabled xcatd.service 2>/dev/null || true)
+    else
+        detected_systemd_state=$(systemctl is-enabled xcatd.service 2>/dev/null || true)
+    fi
+    if [ "$detection_mode" = precise ]; then
+        case "$detected_systemd_state" in
+            enabled|enabled-runtime) echo enabled ;;
+            masked|masked-runtime) echo masked ;;
+            disabled|linked|linked-runtime|alias|static|indirect|generated|transient)
+                echo disabled
+                ;;
+            *) return 1 ;;
+        esac
+    else
+        case "$detected_systemd_state" in
+            enabled*) echo enabled ;;
+            masked*) echo masked ;;
+            disabled|linked|linked-runtime|alias|static|indirect|generated|transient)
+                echo disabled
+                ;;
+            *) return 1 ;;
+        esac
+    fi
+}
+
+systemd_state()
+{
+    detection_mode=${1:-compat}
+    detected_systemd_state=
+
+    if systemd_is_masked; then
+        echo masked
+        return
+    fi
+
+    if [ "$detection_mode" = allow-unknown ]; then
+        detected_systemd_state=$(systemctl_enable_state precise || true)
+        if [ "$detected_systemd_state" = masked ]; then
+            echo masked
+            return
+        fi
+    fi
+
+    # Preserve the historical host-first order for existing callers.
+    if [ "$detection_mode" = compat ] && [ -z "$compat_root" ]; then
+        detected_systemd_state=$(systemctl_enable_state || true)
+        case "$detected_systemd_state" in
+            enabled|masked)
+                echo "$detected_systemd_state"
+                return
+                ;;
+        esac
+    fi
+
+    if systemd_links_enabled; then
+        echo enabled
+        return
+    fi
+
+    if [ "$detection_mode" = allow-unknown ]; then
+        case "$detected_systemd_state" in
+            enabled|disabled)
+                echo "$detected_systemd_state"
+                return
+                ;;
+        esac
+        echo unknown
+        return
+    fi
+
+    echo disabled
+}
+
+register_legacy_init()
+{
+    desired_state=$1
+
+    if [ -n "$compat_root" ]; then
+        echo "Registering legacy xcatd is not supported with XCAT_COMPAT_ROOT" >&2
+        return 2
+    fi
+
+    if [ -x /sbin/chkconfig ]; then
+        /sbin/chkconfig --add xcatd || return
+        case "$desired_state" in
+            default) : ;;
+            enabled) /sbin/chkconfig --level 345 xcatd on ;;
+            disabled) /sbin/chkconfig xcatd off ;;
+        esac
+    elif { [ "$desired_state" = default ] || [ "$desired_state" = enabled ]; } &&
+         [ -x /usr/lib/lsb/install_initd ]; then
+        /usr/lib/lsb/install_initd /etc/init.d/xcatd
+    elif [ "$desired_state" = disabled ] && [ -x /usr/lib/lsb/remove_initd ]; then
+        # The LSB fallback has no portable register-but-disabled operation.
+        /usr/lib/lsb/remove_initd /etc/init.d/xcatd
+    else
+        echo "Unable to register init scripts on this system"
+    fi
+}
+
+unregister_legacy_init()
+{
+    if [ -z "$compat_root" ] &&
+       { [ -e "$legacy_init" ] || [ -L "$legacy_init" ]; }; then
+        if [ -x /sbin/chkconfig ]; then
+            /sbin/chkconfig --del xcatd || true
+        elif [ -x /usr/lib/lsb/remove_initd ]; then
+            /usr/lib/lsb/remove_initd /etc/init.d/xcatd || true
+        fi
+    fi
+
+    rm -f \
+        "$compat_root"/etc/rc.d/rc?.d/[SK]??xcatd \
+        "$compat_root"/etc/rc?.d/[SK]??xcatd \
+        "$compat_root"/etc/init.d/rc?.d/[SK]??xcatd
+}
+
+disable_systemd_init()
+{
+    disable_mode=${1:-host-tools}
+
+    if [ "$disable_mode" != links-only ] &&
+       [ -z "$compat_root" ] && command -v systemctl >/dev/null 2>&1; then
+        systemctl disable xcatd.service >/dev/null 2>&1 || true
+    fi
+
+    # Preserve administrator masks while removing only boot enablement links.
+    rm -f \
+        "$compat_root"/etc/systemd/system/*.wants/xcatd.service \
+        "$compat_root"/etc/systemd/system/*.requires/xcatd.service \
+        "$compat_root"/run/systemd/system/*.wants/xcatd.service \
+        "$compat_root"/run/systemd/system/*.requires/xcatd.service
+}
+
+unregister_all_init()
+{
+    unregister_status=0
+    disable_systemd_init || unregister_status=$?
+    unregister_legacy_init || unregister_status=$?
+    return "$unregister_status"
+}
+
+legacy_init_is_managed()
+{
+    [ -f "$managed_marker" ] &&
+        [ -f "$legacy_init" ] && [ ! -L "$legacy_init" ] &&
+        [ -r "$legacy_template" ] && cmp -s "$legacy_template" "$legacy_init"
+}
+
+mark_legacy_init_managed()
+{
+    marker_dir=${managed_marker%/*}
+    marker_tmp="$managed_marker.tmp.$$"
+    mkdir -p -m 0755 "$marker_dir" || return 1
+    umask 077
+    : > "$marker_tmp" || return 1
+    if ! mv -f "$marker_tmp" "$managed_marker"; then
+        rm -f "$marker_tmp"
+        return 1
+    fi
+}
+
+remove_legacy_init()
+{
+    rm -f "$legacy_init" || return 1
+    rm -f "$managed_marker"
+}
+
+remove_managed_legacy_init()
+{
+    if legacy_init_is_managed; then
+        rm -f "$legacy_init" || return 1
+    fi
+    rm -f "$managed_marker"
+}
+
 configure_legacy_init()
 {
-    replace_existing=${1:-}
+    replace_existing=0
+    detection_mode=compat
+    track_managed=0
+    for configure_option in "$@"; do
+        case "$configure_option" in
+            --replace) replace_existing=1 ;;
+            --explicit-target) detection_mode=explicit ;;
+            --track-managed) track_managed=1 ;;
+            *)
+                echo "Usage: $0 configure [--replace] [--explicit-target] [--track-managed]" >&2
+                exit 2
+                ;;
+        esac
+    done
 
-    if uses_systemd; then
-        rm -f "$legacy_init"
+    if uses_systemd "$detection_mode"; then
+        rm -f "$legacy_init" || return 1
+        rm -f "$managed_marker" || return 1
         return
     fi
 
     # A broken link cannot provide a usable init script.  Replace it while
     # preserving links whose administrator-managed target still exists.
     if [ -L "$legacy_init" ] && [ ! -e "$legacy_init" ]; then
-        rm -f "$legacy_init"
+        rm -f "$legacy_init" || return 1
     fi
 
     if [ -e "$legacy_init" ] || [ -L "$legacy_init" ]; then
-        if [ "$replace_existing" != "--replace" ]; then
+        if [ "$replace_existing" -ne 1 ]; then
+            if [ -f "$managed_marker" ] && ! legacy_init_is_managed; then
+                rm -f "$managed_marker" || return 1
+            fi
             return
         fi
-        rm -f "$legacy_init"
+        rm -f "$legacy_init" || return 1
     fi
 
     if [ ! -r "$legacy_template" ]; then
@@ -119,30 +456,96 @@ configure_legacy_init()
         exit 1
     fi
 
-    mkdir -p "$compat_root/etc/init.d"
-    cp "$legacy_template" "$legacy_init"
-    chmod 755 "$legacy_init"
+    mkdir -p "$compat_root/etc/init.d" || return 1
+    cp "$legacy_template" "$legacy_init" || return 1
+    chmod 755 "$legacy_init" || return 1
+    if [ "$track_managed" -eq 1 ]; then
+        mark_legacy_init_managed || return 1
+    else
+        rm -f "$managed_marker" || return 1
+    fi
 }
 
 case "${1:-}" in
     uses-systemd)
-        uses_systemd
-        ;;
-    configure)
+        detection_mode=compat
         case "${2:-}" in
-            ''|--replace) ;;
+            '') ;;
+            --explicit-target) detection_mode=explicit ;;
             *)
-                echo "Usage: $0 {uses-systemd|configure [--replace]|remove}" >&2
+                echo "Usage: $0 uses-systemd [--explicit-target]" >&2
                 exit 2
                 ;;
         esac
-        configure_legacy_init "${2:-}"
+        uses_systemd "$detection_mode"
+        ;;
+    can-use-systemctl)
+        case "${2:-}" in
+            '') can_use_systemctl ;;
+            *)
+                echo "Usage: $0 can-use-systemctl" >&2
+                exit 2
+                ;;
+        esac
+        ;;
+    legacy-state)
+        legacy_state
+        ;;
+    debian-legacy-state)
+        if [ "$#" -ne 1 ]; then
+            echo "Usage: $0 debian-legacy-state" >&2
+            exit 2
+        fi
+        legacy_state debian-layout
+        ;;
+    legacy-transition-state)
+        legacy_transition_state
+        ;;
+    systemd-state)
+        if [ "$#" -eq 2 ] && [ "${2:-}" = --allow-unknown ]; then
+            systemd_state allow-unknown
+        else
+            systemd_state
+        fi
+        ;;
+    register-legacy)
+        case "${2:-}" in
+            default|enabled|disabled) ;;
+            *)
+                echo "Usage: $0 register-legacy {default|enabled|disabled}" >&2
+                exit 2
+                ;;
+        esac
+        register_legacy_init "$2"
+        ;;
+    unregister-legacy)
+        unregister_legacy_init
+        ;;
+    disable-systemd)
+        case "${2:-}" in
+            '') disable_systemd_init ;;
+            --links-only) disable_systemd_init links-only ;;
+            *)
+                echo "Usage: $0 disable-systemd [--links-only]" >&2
+                exit 2
+                ;;
+        esac
+        ;;
+    unregister-all)
+        unregister_all_init
+        ;;
+    configure)
+        shift
+        configure_legacy_init "$@"
         ;;
     remove)
-        rm -f "$legacy_init"
+        remove_legacy_init
+        ;;
+    remove-managed)
+        remove_managed_legacy_init
         ;;
     *)
-        echo "Usage: $0 {uses-systemd|configure [--replace]|remove}" >&2
+        echo "Usage: $0 {uses-systemd [--explicit-target]|can-use-systemctl|legacy-state|debian-legacy-state|legacy-transition-state|systemd-state [--allow-unknown]|register-legacy {default|enabled|disabled}|unregister-legacy|disable-systemd [--links-only]|unregister-all|configure [--replace] [--explicit-target] [--track-managed]|remove|remove-managed}" >&2
         exit 2
         ;;
 esac
