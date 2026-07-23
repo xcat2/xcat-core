@@ -129,6 +129,176 @@ my @captured_zero_rakp2 = unpack(
 
 is(scalar(@captured_zero_rakp2), 72, 'captured XCC RAKP2 payload is 72 bytes');
 
+subtest 'RMCP response identity validation' => sub {
+    my @wrong_sid = @console_sid;
+    $wrong_sid[-1] ^= 0xff;
+    my $expected_tag = new_session()->{rmcptag};
+    my @cases = (
+        {
+            description => 'matching nonzero tag is accepted even when SID differs',
+            tag         => $expected_tag,
+            sid         => \@wrong_sid,
+            return      => 0,
+            advances    => 1,
+        },
+        {
+            description => 'wrong nonzero tag is rejected even when SID matches',
+            tag         => $expected_tag + 1,
+            sid         => \@console_sid,
+            return      => 9,
+            advances    => 0,
+        },
+        {
+            description => 'zero tag is accepted when SID matches',
+            tag         => 0,
+            sid         => \@console_sid,
+            return      => 0,
+            advances    => 1,
+        },
+        {
+            description => 'zero tag is rejected when SID differs',
+            tag         => 0,
+            sid         => \@wrong_sid,
+            return      => 9,
+            advances    => 0,
+        },
+    );
+
+    foreach my $case (@cases) {
+        my $session = new_session(
+            sessionestablishmentcontext => xCAT::IPMI::STATE_OPENSESSION(),
+        );
+        my $rakp1_sent = 0;
+        local *xCAT::IPMI::send_rakp1 = sub { $rakp1_sent++; };
+        my @response = (
+            $case->{tag}, 0, 4, 0, @{$case->{sid}}, @managed_sid,
+        );
+
+        is(
+            $session->got_rmcp_response(@response),
+            $case->{return},
+            "$case->{description}: return code"
+        );
+        is(
+            $rakp1_sent,
+            $case->{advances},
+            "$case->{description}: negotiation advance"
+        );
+    }
+
+    my $rakp4_session = new_session(
+        sessionestablishmentcontext => xCAT::IPMI::STATE_EXPECTINGRAKP4(),
+        remoteguid                  => [0x30 .. 0x3f],
+        sik                         => 'session-integrity-key',
+    );
+    my $admin_level_set = 0;
+    local *xCAT::IPMI::set_admin_level = sub { $admin_level_set++; };
+    my @rakp4_response = valid_rakp4_payload($rakp4_session);
+    $rakp4_response[0] = 0;
+
+    is(
+        $rakp4_session->got_rakp4(@rakp4_response),
+        0,
+        'tag-zero RAKP4 with matching SID is accepted'
+    );
+    is(
+        $rakp4_session->{sessionestablishmentcontext},
+        xCAT::IPMI::STATE_ESTABLISHED(),
+        'tag-zero RAKP4 establishes the session'
+    );
+    is(
+        $admin_level_set,
+        1,
+        'tag-zero RAKP4 advances to privilege setup'
+    );
+};
+
+subtest 'malformed RMCP response identity behavior is preserved' => sub {
+    my @callers = (
+        ['Open Session', 'got_rmcp_response', xCAT::IPMI::STATE_OPENSESSION(),    [6, 4, 1]],
+        ['RAKP2',         'got_rakp2',         xCAT::IPMI::STATE_EXPECTINGRAKP2(), [2, 0, 1]],
+        ['RAKP4',         'got_rakp4',         xCAT::IPMI::STATE_EXPECTINGRAKP4(), [6, 4, 1]],
+    );
+    my @payloads = (
+        ['missing tag', []],
+        ['tag zero without session ID', [0]],
+        ['nonnumeric tag with wrong session ID', ['not-a-number', 0, 0, 0, 0, 0, 0, 0]],
+    );
+
+    foreach my $caller (@callers) {
+        my ($caller_name, $method, $state, $warning_counts) = @{$caller};
+        for (my $index = 0; $index < @payloads; $index++) {
+            my $payload = $payloads[$index];
+            my ($payload_name, $data) = @{$payload};
+            my $session = new_session(sessionestablishmentcontext => $state);
+            my @warnings;
+            my $return;
+            {
+                local $SIG{__WARN__} = sub { push @warnings, @_ };
+                $return = $session->$method(@{$data});
+            }
+
+            is($return, 9, "$caller_name rejects $payload_name");
+            is(
+                scalar(@warnings),
+                $warning_counts->[$index],
+                "$caller_name preserves warnings for $payload_name"
+            );
+        }
+    }
+
+    my $legacy_session = new_session(
+        sessionestablishmentcontext => xCAT::IPMI::STATE_OPENSESSION(),
+        sidm                        => [0, 0, 0, 0],
+    );
+    my $rakp1_sent = 0;
+    local *xCAT::IPMI::send_rakp1 = sub { $rakp1_sent++; };
+    my @legacy_warnings;
+    my $return;
+    {
+        local $SIG{__WARN__} = sub { push @legacy_warnings, @_ };
+        $return = $legacy_session->got_rmcp_response(0, 0, 4, 0);
+    }
+
+    is($return, 0, 'short tag-zero response retains legacy SID behavior');
+    is($rakp1_sent, 1, 'legacy short response advances to RAKP1');
+    is(scalar(@legacy_warnings), 4, 'legacy short response preserves warnings');
+
+    my $wrong_tag_session = new_session();
+    my @wrong_tag_warnings;
+    {
+        local $SIG{__WARN__} = sub { push @wrong_tag_warnings, @_ };
+        $return = $wrong_tag_session->got_rakp2(
+            $wrong_tag_session->{rmcptag} + 1,
+            0, 0, 0, undef, undef, undef, undef
+        );
+    }
+    is($return, 9, 'wrong RAKP2 tag with undefined SID bytes is rejected');
+    is(
+        scalar(@wrong_tag_warnings),
+        4,
+        'wrong RAKP2 tag preserves SID evaluation warnings'
+    );
+
+    my $zero_tag_session = new_session(rmcptag => 0);
+    my @zero_tag_warnings;
+    {
+        local $SIG{__WARN__} = sub { push @zero_tag_warnings, @_ };
+        $return = $zero_tag_session->got_rakp2();
+    }
+    is($return, 9, 'missing RAKP2 tag retains expected-zero tag behavior');
+    is(
+        $zero_tag_session->{sessionestablishmentcontext},
+        xCAT::IPMI::STATE_FAILED(),
+        'missing expected-zero tag retains the password-failure path'
+    );
+    is(
+        scalar(@zero_tag_warnings),
+        35,
+        'missing expected-zero tag preserves warning count'
+    );
+};
+
 subtest 'captured all-zero SHA256 RAKP2 retries once with suite 3' => sub {
     my @errors;
     my @sent;

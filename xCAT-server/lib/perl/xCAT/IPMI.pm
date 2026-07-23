@@ -785,6 +785,39 @@ sub cbc_pad {
     }
 }
 
+sub _rmcp_response_session_id_matches {
+    my ($self, $data) = @_;
+    return pack("C4", @{$data}[3 .. 6]) eq pack("C4", @{ $self->{sidm} });
+}
+
+sub _rmcp_response_identity_matches {
+    my ($self, $tag, $data, %options) = @_;
+    my $tag_matches = $tag == $self->{rmcptag};
+    my $session_id_matches;
+    my $session_id_evaluated = $options{evaluate_session_id};
+
+    if ($session_id_evaluated) {
+        $session_id_matches = scalar(@{$data}) >= 7 &&
+            _rmcp_response_session_id_matches($self, $data);
+    }
+
+    my $identity_matches = $tag_matches;
+    unless ($identity_matches) {
+        if ($tag == 0) {
+            unless ($session_id_evaluated) {
+                $session_id_matches =
+                    _rmcp_response_session_id_matches($self, $data);
+            }
+            $identity_matches = $session_id_matches;
+        }
+    }
+
+    if (wantarray) {
+        return ($identity_matches, $tag_matches, $session_id_matches);
+    }
+    return $identity_matches;
+}
+
 sub got_rmcp_response {
     my $self = shift;
     my @data = @_;
@@ -794,13 +827,7 @@ sub got_rmcp_response {
         #we would ignore an RMCP+ open session response if we are not in an IPMI2 negotiation, so we have to have *some* state that isn't established for this to be kosher
         return 9;    #now's not the time for this response, ignore it
     }
-    unless ($byte == $self->{rmcptag}) {
-        return 9 unless $byte == 0;
-        my @sid_check = @data[3..6];
-        unless (pack("C4", @sid_check) eq pack("C4", @{ $self->{sidm} })) {
-            return 9;
-        }
-    }
+    return 9 unless _rmcp_response_identity_matches($self, $byte, \@data);
     $byte = shift @data;
     unless ($byte == 0x00) {
         if ($self->{attempthash} == 256) {
@@ -914,13 +941,7 @@ sub got_rakp4 {
     unless ($self->{sessionestablishmentcontext} == STATE_EXPECTINGRAKP4) { #ignore rakp4 unless we are explicitly expecting RAKP4
         return 9;    #now's not the time for this response, ignore it
     }
-    unless ($byte == $self->{rmcptag}) {
-        return 9 unless $byte == 0;
-        my @sid_check = @data[3..6];
-        unless (pack("C4", @sid_check) eq pack("C4", @{ $self->{sidm} })) {
-            return 9;
-        }
-    }
+    return 9 unless _rmcp_response_identity_matches($self, $byte, \@data);
     $byte = shift @data;
     unless ($byte == 0x00) {
         if (($byte == 0x02) and $self->{logontries}) {
@@ -978,13 +999,14 @@ sub got_rakp2 {
         #the reason being that if an old rakp1 retry actually made it and we were just too aggressive, then a previous rakp2 is invalidated and invalid session id or the integrity check value is bad
         return 9;    #now's not the time for this response, ignore it
     }
-    my $tag_matches = $byte == $self->{rmcptag};
-    my $sid_matches = scalar(@data) >= 7 &&
-        pack("C4", @data[3..6]) eq pack("C4", @{ $self->{sidm} });
-    unless ($tag_matches) {
-        return 9 unless $byte == 0;
-        return 9 unless $sid_matches;
-    }
+    my ($identity_matches, $tag_matches, $sid_matches) =
+        _rmcp_response_identity_matches(
+            $self,
+            $byte,
+            \@data,
+            evaluate_session_id => 1,
+        );
+    return 9 unless $identity_matches;
     $byte = shift @data;
     unless ($byte == 0x00) {
         if (($byte == 0x9 or $byte == 0xd) and $self->{attempthash} == 256) {
