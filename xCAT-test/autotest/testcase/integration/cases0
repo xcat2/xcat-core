@@ -4,4 +4,5 @@ os:Linux
 label:mn_only,ci_test,integration
 cmd:prove -I/opt/xcat/lib/perl -I/opt/xcat/lib/perl/xCAT -r /opt/xcat/share/xcat/tools/autotest/integration
 check:rc==0
+check:output=~Files=3
 end
