@@ -5010,6 +5010,11 @@ sub mkcommonboot {
             xCAT::SvrUtils::sendmsg([ 1, "Please run copycds first for $osver or create custom image in $custprofpath/" ], $output_handler);
         }
 
+        # If the ESXi UEFI boot loader was not staged, copy it from the install media
+        if (not -r "$tftpdir/xcat/esxboot-x64.efi" and -r "$installroot/$osver/$arch/efi/boot/bootx64.efi") {
+            copy("$installroot/$osver/$arch/efi/boot/bootx64.efi", "$tftpdir/xcat/esxboot-x64.efi");
+        }
+
         my @reqmods = qw/vmkboot.gz vmk.gz sys.vgz cim.vgz/; #Required modules for an image to be considered complete
         if (-r "$custprofpath/b.z") { #if someone hand extracts from imagedd, a different name scheme is used
             @reqmods = qw/b.z k.z s.z c.z/;
