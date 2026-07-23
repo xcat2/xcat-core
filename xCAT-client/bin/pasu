@@ -219,7 +219,13 @@ sub processoutput {      #This way, one arbiter handles output, no interrupting
                     $line !~ /Connected to BMC by IP address/i &&
                     $line !~ /Succeeded running the command /i &&
                     $line !~ /Based on module version /i &&
-                    $line !~ /Succeed running command /i)) {
+                    $line !~ /Succeed running command /i &&
+                    $line !~ /Connected to BMC at IP address/i &&
+                    $line !~ /Succeed in running the command:/i &&
+                    $line !~ /start to convert cmd./i &&
+                    $line !~ /Start to connect /i &&
+                    $line !~ /Connected to the node/i &&
+                    $line !~ /^Succeed\.\s*$/i)) {
                 print $nodehdl{$readyh} . ": " . $line . "\n";
             }
         }
