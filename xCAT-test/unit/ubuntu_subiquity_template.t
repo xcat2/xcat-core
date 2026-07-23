@@ -15,7 +15,7 @@ like($tmpl, qr/^#cloud-config/, 'template starts with #cloud-config');
 like($tmpl, qr/autoinstall:/, 'template has autoinstall: key');
 like($tmpl, qr/version:\s*1/, 'template has version: 1');
 
-unlike($tmpl, qr/^\s*identity:/m, 'template must not have identity section (use user-data instead)');
+like($tmpl, qr/^\s*identity:/m, 'template has an identity section so subiquity does not prompt');
 like($tmpl, qr/kernel:/, 'template has kernel section');
 like($tmpl, qr/package:\s*linux-generic/, 'template specifies linux-generic kernel');
 like($tmpl, qr/#UBUNTU_SUBIQUITY_APT_CONFIG#/, 'template renders apt section from osimage context');
@@ -38,7 +38,8 @@ like($tmpl, qr/printf ''%s\\n'' ''GRUB_CMDLINE_LINUX="#TABLEBLANKOKAY:bootparams
 like($tmpl, qr/\/target\/etc\/netplan\/00-xcat-install\.yaml/, 'template writes an xCAT-owned target netplan file');
 like($tmpl, qr/installnic="#TABLE:noderes:\$NODE:installnic#"/, 'target netplan uses node installnic');
 like($tmpl, qr/installmac="#TABLE:mac:\$NODE:mac#"/, 'target netplan uses node MAC');
-like($tmpl, qr/installmac="\$\(printf ''%s'' "\$\{installmac\}" \| tr ''A-F'' ''a-f''\)"/, 'target netplan normalizes MAC case');
+like($tmpl, qr/installmac="\$\(printf ''%s'' "\$\{installmac\}".*\| tr ''A-F'' ''a-f''\)"/, 'target netplan normalizes MAC case');
+like($tmpl, qr/installmac="\$\(printf ''%s'' "\$\{installmac\}" \| cut -d''\|'' -f1 \| cut -d''!'' -f1/, 'target netplan strips mac table suffixes before matching');
 like($tmpl, qr/printf ''%s\\n'' "network:" "  version: 2" "  ethernets:" "    xcat-install:" "      match:" "        macaddress: \\"\$\{installmac\}\\"" "      set-name: \$\{installnic\}" "      dhcp4: true" >\/target\/etc\/netplan\/00-xcat-install\.yaml;/, 'target netplan printf stays on one shell line');
 like($tmpl, qr/"        macaddress: \\"\$\{installmac\}\\""/, 'target netplan matches by MAC address');
 like($tmpl, qr/"      set-name: \$\{installnic\}"/, 'target netplan sets the expected installnic name');

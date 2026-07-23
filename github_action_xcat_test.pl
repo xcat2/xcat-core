@@ -27,6 +27,11 @@ my $check_result_str="``CI CHECK RESULT`` : ";
 my $last_func_start = timelocal(localtime());
 my $GITHUB_API = "https://api.github.com";
 
+# The workflow starts us in the checked out source tree, but install_xcat()
+# chdir's away from it. Remember the checkout up front: the unit tests under
+# xCAT-test/unit resolve xCAT modules and fixture files relative to it.
+my $srcdir = getcwd();
+
 #--------------------------------------------------------
 # Fuction name: runcmd
 # Description:  run a command after 'cmd' label in one case
@@ -385,6 +390,34 @@ sub install_xcat{
 
 
 #--------------------------------------------------------
+# Fuction name: run_unit_tests
+# Description:  Run every Perl unit test under xCAT-test/unit with prove.
+#               The tests are source tree tests: they pull xCAT modules and
+#               fixture files out of the checkout through FindBin, so they
+#               have to be proved from the checkout root rather than from the
+#               copy installed under /opt/xcat/share/xcat/tools/autotest.
+# Attributes:
+# Return code:  0 all tests passed, 1 otherwise
+#--------------------------------------------------------
+sub run_unit_tests{
+    my $cmd = "cd $srcdir && prove xCAT-test/unit/*.t";
+    print "[run_unit_tests] running $cmd\n";
+    my @output = runcmd("$cmd");
+    print Dumper \@output;
+    if($::RUNCMD_RC){
+        print RED "[run_unit_tests] $cmd ....[Failed]\n";
+        $check_result_str .= "> **UNIT TESTS Failed** : Please click ``Details`` label in ``Merge pull request`` box for detailed information\n";
+        print $check_result_str;
+        return 1;
+    }
+
+    print "[run_unit_tests] $cmd ....[Pass]\n";
+    $check_result_str .= "> **UNIT TESTS Successful**\n";
+    print $check_result_str;
+    return 0;
+}
+
+#--------------------------------------------------------
 # Fuction name: check_syntax
 # Description:
 # Attributes:
@@ -582,6 +615,16 @@ if($rst){
     exit $rst;
 }
 mark_time("install_xcat");
+
+#Run the xCAT-test unit tests. They need the perl dependencies xCAT pulls in
+#(Net::DNS, XML::Simple) and a usable xCAT database, so they run after install.
+print GREEN "\n------Running xCAT-test unit tests ------\n";
+$rst = run_unit_tests();
+if($rst){
+    print RED "Run of xCAT-test unit tests failed\n";
+    exit $rst;
+}
+mark_time("run_unit_tests");
 
 #Check the syntax of changing code
 print GREEN "\n------ Checking the syntax of changed code------\n";

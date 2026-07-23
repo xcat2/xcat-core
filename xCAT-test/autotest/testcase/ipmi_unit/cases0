@@ -1,8 +1,0 @@
-start:ipmi_rakp2_unit_tests
-description:Run the IPMI RAKP2 Perl unit tests through xcattest
-os:Linux
-label:mn_only,ci_test,ipmi,unit,ipmi_unit
-cmd:prove -I/opt/xcat/lib/perl -I/opt/xcat/lib/perl/xCAT /opt/xcat/share/xcat/tools/autotest/unit/ipmi_*.t
-check:rc==0
-check:output=~All tests successful
-end
