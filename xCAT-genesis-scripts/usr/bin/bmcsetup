@@ -356,24 +356,28 @@ if [ $IPCFGMETHOD="static" ]; then
         let idev=idev-1
         TRIES=0
         # Set the channel to use STATIC IP address
-        while ! ipmitool -d $idev lan set $LANCHAN ipsrc static; do
+        CURRMETH=$(ipmitool -d $idev lan print $LANCHAN | grep '^IP Address Source'|awk -F': ' '{print $2}')
+        while [ "$CURRMETH" != "Static Address" ] && ! ipmitool -d $idev lan set $LANCHAN ipsrc static; do
             snooze
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then
                 break;
             fi
+            CURRMETH=$(ipmitool -d $idev lan print $LANCHAN | grep '^IP Address Source'|awk -F': ' '{print $2}')
         done
     done
     let idev=0
     for b in $BMCIP; do
         TRIES=0
         # Set the IP for the current channel
-        while ! ipmitool -d $idev lan set $LANCHAN ipaddr $b; do
+        CURRIP=$(ipmitool -d $idev lan print $LANCHAN | grep '^IP Address'|grep -v Source|awk -F': ' '{print $2}')
+        while [ "$CURRIP" != $b ] && ! ipmitool -d $idev lan set $LANCHAN ipaddr $b; do
             snooze
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then
                 break;
             fi
+            CURRIP=$(ipmitool -d $idev lan print $LANCHAN | grep '^IP Address'|grep -v Source|awk -F': ' '{print $2}')
         done
         let idev=idev+1
     done
@@ -381,12 +385,14 @@ if [ $IPCFGMETHOD="static" ]; then
     for m in $BMCNM; do
         TRIES=0
         # Set the NETMASK for the current channel
-        while ! ipmitool -d $idev lan set $LANCHAN netmask $m; do
+        CURRMASK=$(ipmitool -d $idev lan print $LANCHAN | grep '^Subnet Mask'|grep -v Source|awk -F': ' '{print $2}')
+        while [ "$CURRMASK" != $m ] && ! ipmitool -d $idev lan set $LANCHAN netmask $m; do
             snooze
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then
                 break;
             fi
+            CURRMASK=$(ipmitool -d $idev lan print $LANCHAN | grep '^Subnet Mask'|grep -v Source|awk -F': ' '{print $2}')
         done
         let idev=idev+1
     done
@@ -396,12 +402,14 @@ if [ $IPCFGMETHOD="static" ]; then
         for g in $BMCGW; do
             TRIES=0
             # Set the GATEWAY for the current channel
-            while ! ipmitool -d $idev lan set $LANCHAN defgw ipaddr $g; do
+            CURRGW=$(ipmitool -d $idev lan print $LANCHAN | grep '^Default Gateway IP'|grep -v Source|awk -F': ' '{print $2}')
+            while [ "$CURRGW" != $g ] && ! ipmitool -d $idev lan set $LANCHAN defgw ipaddr $g; do
                 snooze
                 let TRIES=TRIES+1
                 if [ $TRIES -gt $TIMEOUT ]; then
                     break;
                 fi
+                CURRGW=$(ipmitool -d $idev lan print $LANCHAN | grep '^Default Gateway IP'|grep -v Source|awk -F': ' '{print $2}')
             done
             let idev=idev+1
         done
@@ -440,12 +448,18 @@ else
     for b in $BMCVLAN; do
         TRIES=0
         # Set VLAN for the current channel
-        while ! ipmitool -d $idev lan set $LANCHAN vlan id $b; do
+        CURRVID=$(ipmitool -d $idev lan print $LANCHAN | grep '802.1q VLAN ID'|awk -F': ' '{print $2}')
+        EXPECTEDVID=$b
+        if [ "$EXPECTEDVID" = "off" ]; then
+            EXPECTEDVID="Disabled"
+        fi
+        while [ "$CURRVID" != "$EXPECTEDVID" ] && ! ipmitool -d $idev lan set $LANCHAN vlan id $b; do
             snooze
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then
                 break;
             fi
+            CURRVID=$(ipmitool -d $idev lan print $LANCHAN | grep '802.1q VLAN ID'|awk -F': ' '{print $2}')
         done
         let idev=idev+1
     done
