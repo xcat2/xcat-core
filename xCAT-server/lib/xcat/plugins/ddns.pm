@@ -1576,6 +1576,34 @@ sub update_namedconf {
     }
 }
 
+# Send a signed dynamic DNS update, retrying transient rejections. Right after a zone (re)load named
+# can reply NOTAUTH, or SERVFAIL before the zone is ready to accept dynamic updates; both are
+# recoverable, so retry a few times (pausing on SERVFAIL). Returns 0 only when the update was
+# accepted (NOERROR) and 1 on a real or persistent failure -- so callers must NOT report success when
+# this returns non-zero. (The previous inline loop fell through to success after exhausting its
+# retries on NOTAUTH/SERVFAIL, so makedns claimed success even when the update was never accepted.)
+sub send_ddns_update {
+    my ($ctx, $resolver, $update, $zone, $entry) = @_;
+
+    for my $attempt (1 .. 3) {
+        ddns_sign_update($ctx, $update);
+        my $reply = $resolver->send($update);
+        if (!$reply) {
+            xCAT::SvrUtils::sendmsg([ 1, "No reply received when sending DNS update to zone $zone" ], $callback);
+            return 1;
+        }
+        my $rcode = $reply->header->rcode;
+        return 0 if $rcode eq 'NOERROR';
+        if (($rcode eq 'NOTAUTH' || $rcode eq 'SERVFAIL') && $attempt < 3) {
+            sleep 2 if $rcode eq 'SERVFAIL';
+            next;
+        }
+        xCAT::SvrUtils::sendmsg([ 1, "Failure encountered updating $zone with entry '$entry', error was $rcode. See more details in system log." ], $callback);
+        return 1;
+    }
+    return 1;
+}
+
 sub add_or_delete_records {
     my $ctx = shift;
 
@@ -1681,46 +1709,13 @@ sub add_or_delete_records {
                 }
                 $numreqs -= 1;
                 if ($numreqs == 0) {
-
-                    # sometimes even the key is correct, but named still replies NOTAUTH, so retry
-                    for (1 .. 3) {
-                        ddns_sign_update($ctx, $update);
-                        $numreqs = 300;
-                        my $reply = $resolver->send($update);
-                        if ($reply) {
-                            if ($reply->header->rcode eq 'NOTAUTH') {
-                                next;
-                            }
-                            if ($reply->header->rcode ne 'NOERROR') {
-                                xCAT::SvrUtils::sendmsg([ 1, "Failure encountered updating $zone with entry '$entry', error was " . $reply->header->rcode . ". See more details in system log." ], $callback);
-                            }
-                        }
-                        else {
-                            xCAT::SvrUtils::sendmsg([ 1, "No reply received when sending DNS update to zone $zone" ], $callback);
-                        }
-                        last;
-                    }
+                    $numreqs = 300;
+                    return 1 if send_ddns_update($ctx, $resolver, $update, $zone, $entry);
                     $update = Net::DNS::Update->new($zone);   #new empty request
                 }
             }
             if ($numreqs != 300) { #either no entries at all to begin with or a perfect multiple of 300
-                 # sometimes even the key is correct, but named still replies NOTAUTH, so retry
-                for (1 .. 3) {
-                    ddns_sign_update($ctx, $update);
-                    my $reply = $resolver->send($update);
-                    if ($reply) {
-                        if ($reply->header->rcode eq 'NOTAUTH') {
-                            next;
-                        }
-                        if ($reply->header->rcode ne 'NOERROR') {
-                            xCAT::SvrUtils::sendmsg([ 1, "Failure encountered updating $zone with entry '$entry', error was " . $reply->header->rcode . ". See more details in system log." ], $callback);
-                        }
-                    }
-                    else {
-                        xCAT::SvrUtils::sendmsg([ 1, "No reply received when sending DNS update to zone $zone" ], $callback);
-                    }
-                    last;
-                }
+                return 1 if send_ddns_update($ctx, $resolver, $update, $zone, $entry);
 
                 # sometimes resolver does not work if the update zone request sent so quick
                 sleep 1;
