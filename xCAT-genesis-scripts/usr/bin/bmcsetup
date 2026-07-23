@@ -227,6 +227,25 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
     fi
 elif [ "$IPMIMFG" == 19046 -a "$XPROD" == 13616 ] ; then
    LOCKEDUSERS=1
+elif [ "$IPMIMFG" = "19046" -a "$XPROD" = "1287" ]; then
+    # Lenovo SR635/SR655: bring up the TSM LAN-over-USB and select the BMC LAN channel
+    BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    echo -n "Initializing TSM network...."
+    if [ "$BMCPORT" = 0 ]; then
+        ipmitool raw 0x32 0x71 0 1 0
+        sleep 15
+        ipmitool raw 0x32 0x71 0 0 3
+        LANCHAN=$(ipmitool raw 0x32 0x72 4 0 0|sed -e 's/^ 0//')
+    else
+        ipmitool raw 0x32 0x71 0 0 0
+        sleep 15
+        ipmitool raw 0x32 0x71 0 1 3
+        LANCHAN=$(ipmitool raw 0x32 0x72 4 1 0|sed -e 's/^ 0//')
+    fi
+    echo -n "Ready"
+    ipmitool raw 0x3c 0x70 0 1 2> /dev/null
+    ipmitool raw 0x3c 0x70 1 1 2> /dev/null
+    USBSTATE=$(ipmitool raw 0x32 0xab)
 elif [ "$IPMIMFG" == 20301 -o "$IPMIMFG" == 19046 ] ; then
     IBMVPDV=`ipmitool raw 0x3a 0xb 2 0 16 1`
     logger -s -t $log_label -p local4.info "XPROD is $XPROD, IBMVPDV is $IBMVPDV"
@@ -505,8 +524,8 @@ for user in $BMCUS; do
     if [ -z "$USERSLOT" ]; then
         USERSLOT=$((`ipmitool raw 6 0x44 1 1|awk '{print $3}'` + 1))
     fi
-    if [ "$USERSLOT" == 0 ]; then
-        # automatically find first unlocked user slot
+    if [ "$USERSLOT" == 0 ] && ! [ "$IPMIMFG" = 19046 -a "$XPROD" = 1287 ]; then
+        # automatically find first unlocked user slot (skipped on SR635/SR655)
         for slot in {1..16}; do
             USERLOCKED=`ipmitool channel getaccess $LANCHAN $slot | grep Fixed | awk '{print $4}'`
             if [ "$USERLOCKED" == "No" ]; then
@@ -765,6 +784,26 @@ while [ $idev -gt 0 ]; do
         done &
     fi
 done
+
+if [ ! -z "$USBSTATE" ]; then  # Continuation of SR635/SR655 specific code
+    echo -n "Restarting TSM networking...."
+    if [ "$BMCPORT" = 0 ]; then
+        sleep 45
+        ipmitool raw 0x32 0x71 0 0 0
+        sleep 45
+        ipmitool raw 0x32 0x71 0 0 3
+        sleep 45
+        ipmitool raw 0x32 0x71 0 0 3
+    else
+        sleep 45
+        ipmitool raw 0x32 0x71 0 1 0
+        sleep 45
+        ipmitool raw 0x32 0x71 0 1 3
+        sleep 45
+        ipmitool raw 0x32 0x71 0 1 3
+    fi
+    echo "Done"
+fi
 
 # remove the bmc configuration information before exit
 rm -f /tmp/ipmicfg.xml
