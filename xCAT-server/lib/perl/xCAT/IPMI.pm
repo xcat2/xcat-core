@@ -1203,7 +1203,7 @@ sub sendpayload {
             #push integrity data
         }
     }
-    unless ($args{nowait} or $self->{nowait}) { #if nowait indicated, the packet will be sent regardless of maxpending
+    unless ($args{nowait} or $self->{nowait} or $self->{neverwait}) { #if nowait indicated, the packet will be sent regardless of maxpending
          #primary use case would be retries that should represent no delta to pending sessions in aggregate and therefore couldn't exceed maxpending anywy
          #if we did do this on timedout, waitforrsp may recurse, which is a complicated issue.  Theoretically, if waitforrsp protected itself, it
          #would act the same, but best be explicit about nowait if practice does not match theory
