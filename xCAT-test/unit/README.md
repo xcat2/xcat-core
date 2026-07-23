@@ -40,7 +40,11 @@ skip. The CI takes a copy of the checkout before the build for this reason; see
 
 Anything that needs an installed xCAT, a populated `/install`, a real service binary
 or a live daemon. Those go in [`../integration`](../integration/README.md) and run on
-a management node through `xcattest`.
+a management node through `xcattest`. Both suites run on every pull request -- the
+workflow installs xCAT on the runner and then runs the `ci_test` cases against it --
+so putting a test in `integration/` does not cost it CI coverage. What differs is what
+each suite is allowed to depend on, and that unit tests also run standalone from a
+bare checkout with no xCAT at all.
 
 The distinction matters because a test that needs an absent environment does not fail
 -- it calls `plan skip_all` and reports as skipped. A handful of those in a suite of

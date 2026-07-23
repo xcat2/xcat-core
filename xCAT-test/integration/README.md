@@ -4,8 +4,7 @@ Integration tests. These run against an **installed management node** -- they ne
 real xCAT installation, and depending on the test a populated `/install`, a service
 binary they can execute, or a live daemon.
 
-They are *not* run by the GitHub Actions pull request workflow, which has no
-management node. They are driven by `xcattest` through the testcase in
+They are driven by `xcattest` through the testcase in
 `../autotest/testcase/integration/`, which proves the copy installed by the
 `xcat-test` package:
 
@@ -14,14 +13,25 @@ prove -I/opt/xcat/lib/perl -I/opt/xcat/lib/perl/xCAT \
       -r /opt/xcat/share/xcat/tools/autotest/integration
 ```
 
-Run the case on an MN with:
+Run the case by hand on an MN with:
 
 ```
 xcattest -f <cluster.conf> -t integration_tests
 ```
 
+The case carries the `ci_test` label, so it also runs on every pull request: the
+`xcat_test` GitHub Actions workflow installs and configures xCAT on the runner, which
+makes that runner a (single node) management node, and then runs every `ci_test` case
+against it.
+
 Note the `-I` flags: unlike the unit tests these run from the installed location, so
 they pick up xCAT modules from `/opt/xcat/lib/perl` rather than from a source tree.
+
+Note also that `github_action_xcat_test.pl` invokes each case through `sudo`, so in CI
+these tests run as **root** while the unit tests run unprivileged. That is the right
+way round -- integration tests legitimately need to write to places like `/etc/kea`,
+whereas running the unit tests as root would let permission-related assertions pass
+for the wrong reason.
 
 ## What belongs here
 
@@ -39,6 +49,11 @@ Tests here still guard with `plan skip_all` so the case does not fail on a node 
 legitimately lacks the dependency -- an MN with no Kea installed should skip the Kea
 tests, not go red. A skip in this directory is therefore expected and normal, which is
 precisely why these tests do not belong alongside the unit tests.
+
+Which tests actually run consequently varies by node. On a GitHub runner, for example,
+`/install` is empty so `copycds_packages_integrity.t` skips, while
+`dhcp_kea_config_validation.t` does run because the case executes as root and can
+therefore validate from `/etc/kea`.
 
 `dhcp_kea_control_agent_smoke.t` is opt-in on top of that:
 

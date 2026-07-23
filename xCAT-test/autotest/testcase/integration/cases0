@@ -1,7 +1,7 @@
 start:integration_tests
 description:Run the xCAT-test integration tests (xCAT-test/integration) against the installed management node
 os:Linux
-label:mn_only,integration
+label:mn_only,ci_test,integration
 cmd:prove -I/opt/xcat/lib/perl -I/opt/xcat/lib/perl/xCAT -r /opt/xcat/share/xcat/tools/autotest/integration
 check:rc==0
 end
