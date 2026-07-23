@@ -333,6 +333,16 @@ if [ ! -z "$ISOPENBMC" ]; then
     LAN_MED_TYPE="802.3|Other LAN"
 fi
 # Loop through channels and pick the one to communicate on
+# Intel Walker Pass (S9200WK) in dedicated LAN mode uses channel 3
+if [ "$IPMIMFG" = "343" -a "$XPROD" = "149" ] ; then
+    BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    logger -s -t $log_label -p local4.info "BMCPORT is $BMCPORT"
+    if [ "$BMCPORT" == "1" ]; then
+        LANCHAN=3
+        logger -s -t $log_label -p local4.info "Detected Intel Walker Pass system and dedicated LAN mode, setting LAN channel=$LANCHAN"
+    fi
+fi
+
 while [ -z "$LANCHAN" ]; do
     logger -s -t $log_label -p local4.info "Auto detecting LAN channel..."
     for TLANCHAN in {1..16}; do
@@ -581,7 +591,7 @@ for user in $BMCUS; do
 
     TRIES=0
     # Enable the channel link for the specified user
-    if [ "$IPMIMFG" == 343 -a "$XPROD" == 124 ]; then # For Intel S2600BP system boards
+    if [ "$IPMIMFG" == 343 -a \( "$XPROD" == 124 -o "$XPROD" == 149 \) ]; then # For Intel S2600BP and S9200WK system boards
         cmd="ipmitool -d $idev channel setaccess $LANCHAN $USERSLOT link=on ipmi=on"
     else
         cmd="ipmitool -d $idev channel setaccess $LANCHAN $USERSLOT link=on"
