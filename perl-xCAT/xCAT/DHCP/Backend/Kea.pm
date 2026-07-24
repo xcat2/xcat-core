@@ -11,12 +11,6 @@ use Text::ParseWords qw/shellwords/;
 use xCAT::DHCP::Range;
 use xCAT::NetworkUtils;
 
-my %KEA_SERVICE_CANDIDATES = (
-    'kea-dhcp4'      => [ 'kea-dhcp4',      'kea-dhcp4-server' ],
-    'kea-dhcp6'      => [ 'kea-dhcp6',      'kea-dhcp6-server' ],
-    'kea-dhcp-ddns'  => [ 'kea-dhcp-ddns',  'kea-dhcp-ddns-server' ],
-    'kea-ctrl-agent' => [ 'kea-ctrl-agent' ],
-);
 my @KEA_ACCOUNT_CANDIDATES = ( 'kea', '_kea' );
 
 sub new {
@@ -1024,36 +1018,35 @@ sub _kea_group {
 sub _kea_service {
     my ( $self, $service ) = @_;
 
-    # Kea service names are package-specific, not strictly distribution-specific.
-    # Prefer the unit that is actually installed so derivatives, backports, and
-    # locally rebuilt packages do not need a distro/version decision tree here.
-    foreach my $candidate ( @{ $KEA_SERVICE_CANDIDATES{$service} || [$service] } ) {
-        return $candidate if $self->_service_available($candidate);
-    }
+    return $service
+      unless $service =~ /\Akea-(?:dhcp4|dhcp6|dhcp-ddns|ctrl-agent)\z/;
 
-    return $service;
-}
+    require xCAT::Utils;
 
-sub _service_available {
-    my ( $self, $service ) = @_;
-
-    my $unit = "$service.service";
-    foreach my $dir ( @{ $self->{service_unit_dirs} || _systemd_unit_dirs() } ) {
-        return 1 if -e "$dir/$unit";
-    }
-
-    return 1 if -x "/etc/init.d/$service";
-
-    return 0;
-}
-
-sub _systemd_unit_dirs {
-    return [
-        '/etc/systemd/system',
-        '/run/systemd/system',
-        '/usr/lib/systemd/system',
-        '/lib/systemd/system',
-    ];
+    # Preserve the backend's established candidate subset while taking the
+    # candidate order and filesystem resolution from the shared service map.
+    my $candidate_limit = $service eq 'kea-ctrl-agent' ? 1 : 2;
+    return xCAT::Utils->servicemap(
+        $service,
+        {
+            candidate_limit => $candidate_limit,
+            searches        => [
+                {
+                    paths  => $self->{service_unit_dirs} || [
+                        '/etc/systemd/system',
+                        '/run/systemd/system',
+                        '/usr/lib/systemd/system',
+                        '/lib/systemd/system',
+                    ],
+                    suffix => '.service',
+                },
+                {
+                    paths      => $self->{service_init_dirs} || ['/etc/init.d'],
+                    executable => 1,
+                },
+            ],
+        },
+      ) || $service;
 }
 
 sub _kea_socket_dir {
