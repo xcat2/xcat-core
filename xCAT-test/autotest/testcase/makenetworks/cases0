@@ -22,6 +22,15 @@ check:rc==0
 check:output=~Version
 end
 
+start:makenetworks_ipv6_route_filter_unit
+description:Run the makenetworks IPv6 route-filter unit test through xcattest.
+os:Linux
+label:mn_only,ci_test,network,unit,makenetworks_unit
+cmd:prove -I/opt/xcat/lib/perl /opt/xcat/share/xcat/tools/autotest/unit/networks_ipv6_route_filter.t
+check:rc==0
+check:output=~All tests successful
+end
+
 start:makenetworks_d
 os:Linux
 description:makenetworks_d
