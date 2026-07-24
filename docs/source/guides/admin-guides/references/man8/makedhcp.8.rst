@@ -40,7 +40,8 @@ DESCRIPTION
 
 
 The \ **makedhcp**\  command creates and updates the DHCP configuration on the management node and service nodes.
-The \ **makedhcp**\  command is supported for both Linux and AIX clusters.
+The \ **makedhcp**\  command is supported for both Linux and AIX clusters.  Note that it will intentionally not
+generate UEFI configuration if the OS indicated in nodetype.os is not UEFI supported, even if the OS being booted is shell.
 On Linux, the DHCP implementation is selected by the ``site.dhcpbackend`` attribute.
 The ``auto`` setting keeps ISC DHCP on platforms where it is still available and uses Kea DHCP on platforms such as EL10 and Ubuntu 24.04.
 For legacy ISC DHCP deployments that need a non-default OMAPI/TSIG key, use
