@@ -3,7 +3,14 @@
 #(C)IBM Corp
 #
 
-(sleep 75;/sbin/reboot) &
+# On SUSE the backgrounded "sleep then reboot" can fire while the installer is
+# still finishing and reboot the node mid-install. Schedule the reboot with a
+# systemd timer there instead, which the installer teardown does not race.
+if grep NAME /etc/os-release | egrep '(SLE|SUSE)' > /dev/null && [ -x /usr/bin/systemd-run ]; then
+    systemd-run --on-active=90 --timer-property=AccuracySec=10s /sbin/reboot
+else
+    (sleep 75;/sbin/reboot) &
+fi
 
 exit 0
 
