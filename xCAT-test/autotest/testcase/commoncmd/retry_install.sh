@@ -6,7 +6,7 @@ declare -i tryreinstall=1
 node=$1
 osimage=$2
 vmhost=`lsdef $node -i vmhost -c | cut -d '=' -f 2`
-times=3
+times=2
 wait_for_provision=30 #Min to wait for node to provision
 check_status=10 #Sec to keep checking status
 iterations=$wait_for_provision*60/$check_status #Iterations to check for "booted" status
