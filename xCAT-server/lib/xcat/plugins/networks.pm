@@ -132,6 +132,19 @@ sub process_request
 =cut
 
 #-----------------------------------------------------------------------------
+sub _ignore_ipv6_route
+{
+    my $route = shift;
+    my @ent = split ' ', $route;
+
+    return 1 unless @ent;
+    return 1 if $ent[0] =~ m/^fe80::/;
+    return 1 if $ent[0] eq 'unreachable' or $ent[0] eq 'nexthop' or $ent[0] eq 'default';
+    return 1 if defined($ent[1]) and $ent[1] eq 'via';
+    return 1 if defined($ent[2]) and $ent[2] eq 'lo';
+    return 0;
+}
+
 sub donets
 {
     my $callback = shift;
@@ -387,15 +400,8 @@ sub donets
         #get ipv6 routes and in fact *cannot* dictate router via DHCPv6 at this specific moment.
         foreach (@ip6table)
         {
+            next if _ignore_ipv6_route($_);
             my @ent = split /\s+/, $_;
-            if ($ent[0] eq 'fe80::/64' or $ent[0] eq 'unreachable' or
-                $ent[1] eq 'via' or $ent[2] eq 'lo') {
-
-                #Do not contemplate link-local, unreachable, gatewayed networks,
-                #  or networks connected to loopback interface
-                #DHCPv6 relay will be manually entered into networks as was the case for IPv4
-                next;
-            }
             my $net = shift @ent;
             my $dev = shift @ent;
             if ($dev eq 'dev') {
