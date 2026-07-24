@@ -1090,17 +1090,12 @@ sub setobjdefs
                         next;
                     }
 
-                    my $grp_matches_check_value = 0;
-                    foreach my $tmpgrp (@tmplgrplist) {
-                        if ($DBgroupsattr{$tmpgrp}{$check_attr} && $DBgroupsattr{$tmpgrp}{$check_attr} =~ /\b$check_value\b/) {
-                            $grp_matches_check_value = 1;
-                            last;
-                        }
-                    }
-
-                    my $obj_val = $objhash{$objname}{$check_attr} || '';
-                    my $db_val  = $DBattrvals{$objname}{$check_attr} || '';
-                    if (!($obj_val =~ /\b$check_value\b/) && !($db_val =~ /\b$check_value\b/) && !$grp_matches_check_value) {
+                    if (!_only_if_value_matches(
+                            $objhash{$objname},
+                            $DBattrvals{$objname},
+                            \%DBgroupsattr,
+                            $check_attr,
+                            $check_value)) {
                         if ($invalidattr->{$attr_name}->{valid} != 1) {
                             $invalidattr->{$attr_name}->{valid} = 0;
                             $invalidattr->{$attr_name}->{condition}=$check_attr;
