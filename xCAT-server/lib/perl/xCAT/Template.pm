@@ -1617,6 +1617,8 @@ sub envvar
         $envvar =~ s/^\$//;
     }
 
+    return $::XCATROOT if $envvar eq 'XCATROOT' && !exists $ENV{XCATROOT};
+
     return ($ENV{$envvar});
 }
 
