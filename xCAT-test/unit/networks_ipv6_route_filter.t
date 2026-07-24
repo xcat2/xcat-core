@@ -24,7 +24,7 @@ BEGIN {
 }
 
 my $plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/networks.pm";
-$plugin = "$ENV{XCATROOT}/lib/perl/xcat/plugins/networks.pm" unless -f $plugin;
+$plugin = "$ENV{XCATROOT}/lib/perl/xCAT_plugin/networks.pm" unless -f $plugin;
 require $plugin;
 
 ok(
