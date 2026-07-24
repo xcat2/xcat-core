@@ -248,14 +248,19 @@ sub process_request {
     my $lzma_exit_value = 1;
     if ($invisibletouch) {
         my $done = 0;
+        # Build each image under a unique suffix and atomically rename it into
+        # place, so concurrent mknb runs sharing $tftpdir cannot read or clobber
+        # a half-written genesis.fs.
+        my $suffix = xCAT::Utils::genpassword(24);
         if (-x "/usr/bin/lzma") {    #let's reclaim some of that size...
             $callback->({ data => ["Creating genesis.fs.$arch.lzma in $tftpdir/xcat"] });
-            system("cd $tempdir; find . | cpio -o -H newc | lzma -C crc32 -9 > $tftpdir/xcat/genesis.fs.$arch.lzma");
+            system("cd $tempdir; find . | cpio -o -H newc | lzma -C crc32 -9 > $tftpdir/xcat/genesis.fs.$arch.lzma.$suffix");
             $lzma_exit_value = $? >> 8;
             if ($lzma_exit_value) {
                 $callback->({ data => ["Creating genesis.fs.$arch.lzma in $tftpdir/xcat failed, falling back to gzip"] });
-                unlink("$tftpdir/xcat/genesis.fs.$arch.lzma");
+                unlink("$tftpdir/xcat/genesis.fs.$arch.lzma.$suffix");
             } else {
+                move("$tftpdir/xcat/genesis.fs.$arch.lzma.$suffix", "$tftpdir/xcat/genesis.fs.$arch.lzma");
                 $done        = 1;
                 $initrd_file = "$tftpdir/xcat/genesis.fs.$arch.lzma";
             }
@@ -263,7 +268,8 @@ sub process_request {
 
         if (not $done) {
             $callback->({ data => ["Creating genesis.fs.$arch.gz in $tftpdir/xcat"] });
-            system("cd $tempdir; find . | cpio -o -H newc | gzip -9 > $tftpdir/xcat/genesis.fs.$arch.gz");
+            system("cd $tempdir; find . | cpio -o -H newc | gzip -9 > $tftpdir/xcat/genesis.fs.$arch.gz.$suffix");
+            move("$tftpdir/xcat/genesis.fs.$arch.gz.$suffix", "$tftpdir/xcat/genesis.fs.$arch.gz");
             $initrd_file = "$tftpdir/xcat/genesis.fs.$arch.gz";
         }
     } else {
