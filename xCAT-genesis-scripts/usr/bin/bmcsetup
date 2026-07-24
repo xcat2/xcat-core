@@ -196,6 +196,7 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
                     # Get the LAN Configuration Parameters (OEM)
                     CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
                 done
+                sleep 15
                 let idev=idev+1
             done
             unset IFS
@@ -219,6 +220,7 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
                         sleep 1
                         CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
                     done
+                    sleep 15
                     let idev=idev+1
                 done
                 unset IFS
@@ -619,8 +621,12 @@ for bmcp in $BMCPW; do
     if [ "$bmcp" = "" ]; then continue; fi
 
     TRIES=0
-    # Set the password for the specified user
-    while ! ipmitool -d $idev user set password $USERSLOT "$bmcp"; do
+    # Set the password for the specified user. A password longer than 16 chars
+    # needs the 20-byte IPMI 2.0 form; shorter ones use the default so a
+    # 16-byte-only BMC is not asked for a length it cannot store.
+    PWSIZE=""
+    if [ ${#bmcp} -gt 16 ]; then PWSIZE=20; fi
+    while ! ipmitool -d $idev user set password $USERSLOT "$bmcp" $PWSIZE; do
         sleep 1
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
