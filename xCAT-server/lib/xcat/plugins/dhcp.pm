@@ -3620,7 +3620,13 @@ sub getzonesfornet {
             $rev .= $_ . ".";
             $nibbs--;
         }
-        while ($nibbs) {
+        if ($nibbs < 0) {
+            # a sub-nibble (not 4-bit-aligned) IPv6 mask leaves $nibbs negative;
+            # bail rather than spin forever in the loop below. $nibbs == 0 is the
+            # normal nibble-aligned case (e.g. a /64) and must still emit a zone.
+            return ();
+        }
+        while ($nibbs > 0) {
             $rev .= "0.";
             $nibbs--;
         }
