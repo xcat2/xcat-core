@@ -3140,15 +3140,12 @@ sub kea_node_reservations
         my ( $mac, $hname ) = split(/!/, $mace);
         $hname ||= $node;
         next unless $mac;
-        if ($mac !~ /^[0-9a-fA-F]{2}(-[0-9a-fA-F]{2}){5,8}$|^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5,8}$/) {
+        my $normalized_mac = kea_normalize_mac($mac);
+        unless ($normalized_mac) {
             $callback->({ error => ["Invalid mac address $mac for $node"], errorcode => [1] });
             next;
         }
-        if (!grep /:/, $mac) {
-            $mac = lc($mac);
-            $mac =~ s/(\w{2})/$1:/g;
-            $mac =~ s/:$//;
-        }
+        $mac = $normalized_mac;
 
         my $ip = getipaddr($hname, OnlyV4 => 1);
         next unless $ip;
@@ -3166,7 +3163,7 @@ sub kea_node_reservations
 
         my %reservation = (
             'subnet-id'  => $subnet_id,
-            'hw-address' => lc($mac),
+            'hw-address' => $mac,
             hostname     => $hname,
             'ip-address' => $ip,
         );
@@ -3271,12 +3268,8 @@ sub kea_normalize_mac
     my ($mac) = @_;
 
     return unless $mac;
-    return unless $mac =~ /^[0-9a-fA-F]{2}(-[0-9a-fA-F]{2}){5,8}$|^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5,8}$/;
-    if (index($mac, ':') == -1) {
-        $mac = lc($mac);
-        $mac =~ s/(\w{2})/$1:/g;
-        $mac =~ s/:$//;
-    }
+    return unless $mac =~ /\A(?:[0-9a-fA-F]{2}(?:-[0-9a-fA-F]{2}){5,8}|[0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){5,8})\z/;
+    $mac =~ tr/-/:/;
     return lc($mac);
 }
 
@@ -3297,11 +3290,12 @@ sub kea_node_reservations6
         my ( $mac, $hname ) = split(/!/, $mace);
         $hname ||= $node;
         next unless $mac;
-        if (!grep /:/, $mac) {
-            $mac = lc($mac);
-            $mac =~ s/(\w{2})/$1:/g;
-            $mac =~ s/:$//;
+        my $normalized_mac = kea_normalize_mac($mac);
+        unless ($normalized_mac) {
+            $callback->({ error => ["Invalid mac address $mac for $node"], errorcode => [1] });
+            next;
         }
+        $mac = $normalized_mac;
 
         my $ip = getipaddr($hname, OnlyV6 => 1);
         next unless $ip;
@@ -3325,7 +3319,7 @@ sub kea_node_reservations6
         if ($duid) {
             $reservation{duid} = $duid;
         } else {
-            $reservation{'hw-address'} = lc($mac);
+            $reservation{'hw-address'} = $mac;
         }
 
         push @reservations, \%reservation;
@@ -3377,12 +3371,9 @@ sub kea_reservation_matches_for_nodes
                 push @matches, { 'ip-address' => $host_ip6 } if $host_ip6;
             }
             next unless $mac;
-            if (!grep /:/, $mac) {
-                $mac = lc($mac);
-                $mac =~ s/(\w{2})/$1:/g;
-                $mac =~ s/:$//;
-            }
-            push @matches, { 'hw-address' => lc($mac) };
+            $mac = kea_normalize_mac($mac);
+            next unless $mac;
+            push @matches, { 'hw-address' => $mac };
         }
     }
 
