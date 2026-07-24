@@ -14,26 +14,27 @@ end
 
 
 start:nodech_noderange_table_comma
-description:nodech testnode groups,=rhels5.5.Check nodech command with ,=.
+description:Append multiple comma-delimited groups without duplicating an existing group.
 label:mn_only,ci_test,db
-cmd:chdef -t node -o testnode groups=all
+cmd:chdef -t node -o testnode groups=all,rhels5.5
 check:rc==0
-cmd:nodech testnode groups,=rhels5.5
+cmd:nodech testnode groups,=rhels5.5,rhels5.6
 check:rc==0
 cmd:lsdef -t node -i groups testnode
-check:output=~groups=rhels5.5,all
+check:output=~groups=rhels5.6,all,rhels5.5
 cmd:rmdef -t node testnode
 end
 
 
 start:nodech_noderange_table_arrow
+description:Remove multiple comma-delimited groups while ignoring a group that is absent.
 label:mn_only,ci_test,db
-cmd:chdef -t node -o testnode groups=all,rhels5.5
+cmd:chdef -t node -o testnode groups=all,rhels5.5,rhels5.6
 check:rc==0
-cmd:nodech testnode groups^=rhels5.5
+cmd:nodech testnode groups^=rhels5.4,rhels5.5
 check:rc==0
 cmd:lsdef -t node -i groups testnode
-check:output!=rhels5.5
+check:output=~groups=all,rhels5.6
 cmd:rmdef -t node testnode
 end
 
