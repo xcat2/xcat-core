@@ -1,0 +1,8 @@
+start:template_envvar_unit_tests
+description:Run the template environment-variable unit test through xcattest.
+os:Linux
+label:mn_only,ci_test,unit,template_unit
+cmd:prove -I/opt/xcat/lib/perl /opt/xcat/share/xcat/tools/autotest/unit/template_envvar.t
+check:rc==0
+check:output=~All tests successful
+end
