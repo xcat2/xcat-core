@@ -449,11 +449,13 @@ sub got_channel_auth_cap {
 
 }
 
-sub retry_rmcpplus_after_zero_rakp2 {
+sub retry_rmcpplus_with_sha1 {
     my $self = shift;
-    return 0 if ($self->{attempthash} != 256 or $self->{zero_rakp2_fallback});
+    my %args = @_;
+    return 0 if ($self->{attempthash} != 256);
+    return 0 if ($args{persist_for_login} and $self->{zero_rakp2_fallback});
 
-    $self->{zero_rakp2_fallback} = 1;
+    $self->{zero_rakp2_fallback} = 1 if $args{persist_for_login};
     $self->{attempthash} = 1;
     $self->{sessionestablishmentcontext} = 0;
     $self->open_rmcpplus_request();
@@ -803,9 +805,7 @@ sub got_rmcp_response {
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
-        if ($self->{attempthash} == 256) {
-            $self->{attempthash} = 1;
-            $self->open_rmcpplus_request();
+        if ($self->retry_rmcpplus_with_sha1()) {
             return 9;
         }
         if ($rmcp_codes{$byte}) {
@@ -987,10 +987,8 @@ sub got_rakp2 {
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
-        if (($byte == 0x9 or $byte == 0xd) and $self->{attempthash} == 256) {
-            $self->{attempthash} = 1;
-            $self->{sessionestablishmentcontext} = 0;
-            $self->open_rmcpplus_request();
+        if (($byte == 0x9 or $byte == 0xd) and
+            $self->retry_rmcpplus_with_sha1()) {
             return;
         }
         if (($byte == 0x9 or $byte == 0xd) and $self->{privlevel} == 4) {
@@ -1039,7 +1037,7 @@ sub got_rakp2 {
             # SHA256 RAKP2 code.  Never accept it; retry suite 3 once.
             if ($zero_authcode and
                 $self->{sessionestablishmentcontext} == STATE_EXPECTINGRAKP2 and
-                $self->retry_rmcpplus_after_zero_rakp2()) {
+                $self->retry_rmcpplus_with_sha1(persist_for_login => 1)) {
                 return 9;
             }
             $self->{sessionestablishmentcontext} = STATE_FAILED;

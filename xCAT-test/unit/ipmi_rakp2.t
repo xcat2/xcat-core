@@ -129,10 +129,116 @@ my @captured_zero_rakp2 = unpack(
 
 is(scalar(@captured_zero_rakp2), 72, 'captured XCC RAKP2 payload is 72 bytes');
 
+subtest 'Open Session errors retry once with suite 3 without persisting' => sub {
+    my @cases = (
+        [0x09, 'Invalid role'],
+        [0x11, 'No cipher suite match with proposed security algorithms'],
+    );
+
+    foreach my $case (@cases) {
+        my ($code, $error) = @{$case};
+        my @errors;
+        my @sent;
+        my $session = new_session(
+            errors => \@errors,
+            sessionestablishmentcontext => xCAT::IPMI::STATE_OPENSESSION(),
+        );
+        my $original_localsid = $session->{localsid};
+        my $original_tag = $session->{rmcptag};
+        local *xCAT::IPMI::sendpayload = sub {
+            my ($self, %args) = @_;
+            push @sent, \%args;
+        };
+
+        is(
+            $session->got_rmcp_response($original_tag, $code),
+            9,
+            sprintf('Open Session code 0x%02x is rejected', $code),
+        );
+        is(scalar(@sent), 1, 'one replacement Open Session request is sent');
+        is($session->{attempthash}, 1, 'replacement request selects SHA1');
+        ok(!exists($session->{zero_rakp2_fallback}), 'ordinary fallback is not persisted');
+        is($session->{localsid}, $original_localsid + 1, 'replacement request uses a new console session ID');
+        is($session->{rmcptag}, $original_tag + 1, 'replacement request uses a new message tag');
+        is(
+            $session->{sessionestablishmentcontext},
+            xCAT::IPMI::STATE_OPENSESSION(),
+            'session waits for the replacement Open Session response',
+        );
+        is_deeply(
+            [@{ $sent[0]->{payload} }[12, 20, 28]],
+            [1, 1, 1],
+            'replacement request proposes suite 3 algorithms',
+        );
+        is_deeply(\@errors, [], 'fallback does not invoke the login callback');
+
+        is(
+            $session->got_rmcp_response($session->{rmcptag}, $code),
+            9,
+            'the replacement rejection keeps the existing error return',
+        );
+        is(scalar(@sent), 1, 'SHA1 is not downgraded a second time');
+        is_deeply(\@errors, ["ERROR: $error"], 'the replacement rejection reports the existing error');
+    }
+};
+
+subtest 'RAKP2 role errors retry once with suite 3 without persisting' => sub {
+    my @cases = (
+        [0x09, 'Invalid role'],
+        [0x0d, 'Unauthorized name'],
+    );
+
+    foreach my $case (@cases) {
+        my ($code, $error) = @{$case};
+        my @errors;
+        my @sent;
+        my $session = new_session(errors => \@errors, privlevel => 3);
+        my $original_localsid = $session->{localsid};
+        my $original_tag = $session->{rmcptag};
+        local *xCAT::IPMI::sendpayload = sub {
+            my ($self, %args) = @_;
+            push @sent, \%args;
+        };
+
+        is(
+            $session->got_rakp2($original_tag, $code),
+            undef,
+            sprintf('RAKP2 code 0x%02x keeps the retry return', $code),
+        );
+        is(scalar(@sent), 1, 'one replacement Open Session request is sent');
+        is($session->{attempthash}, 1, 'replacement request selects SHA1');
+        ok(!exists($session->{zero_rakp2_fallback}), 'ordinary fallback is not persisted');
+        is($session->{localsid}, $original_localsid + 1, 'replacement request uses a new console session ID');
+        is($session->{rmcptag}, $original_tag + 1, 'replacement request uses a new message tag');
+        is_deeply(
+            [@{ $sent[0]->{payload} }[12, 20, 28]],
+            [1, 1, 1],
+            'replacement request proposes suite 3 algorithms',
+        );
+        is_deeply(\@errors, [], 'fallback does not invoke the login callback');
+
+        $session->{sessionestablishmentcontext} = xCAT::IPMI::STATE_EXPECTINGRAKP2();
+        is(
+            $session->got_rakp2($session->{rmcptag}, $code),
+            9,
+            'the replacement rejection keeps the existing error return',
+        );
+        is(scalar(@sent), 1, 'SHA1 is not downgraded a second time');
+        is_deeply(\@errors, ["ERROR: $error"], 'the replacement rejection reports the existing error');
+        is(
+            $session->{sessionestablishmentcontext},
+            xCAT::IPMI::STATE_FAILED(),
+            'the replacement rejection fails the exchange',
+        );
+    }
+};
+
 subtest 'captured all-zero SHA256 RAKP2 retries once with suite 3' => sub {
     my @errors;
     my @sent;
     my $session = new_session(errors => \@errors);
+    my $original_localsid = $session->{localsid};
+    my $original_tag = $session->{rmcptag};
     local *xCAT::IPMI::sendpayload = sub {
         my ($self, %args) = @_;
         push @sent, \%args;
@@ -142,6 +248,8 @@ subtest 'captured all-zero SHA256 RAKP2 retries once with suite 3' => sub {
     is(scalar(@sent), 1, 'one replacement Open Session request is sent');
     is($session->{attempthash}, 1, 'retry selects SHA1');
     ok($session->{zero_rakp2_fallback}, 'fallback is recorded for this login');
+    is($session->{localsid}, $original_localsid + 1, 'replacement request uses a new console session ID');
+    is($session->{rmcptag}, $original_tag + 1, 'replacement request uses a new message tag');
     is(
         $session->{sessionestablishmentcontext},
         xCAT::IPMI::STATE_OPENSESSION(),
