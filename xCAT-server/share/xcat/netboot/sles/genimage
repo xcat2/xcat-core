@@ -1007,6 +1007,10 @@ if ($dracutmode) {
     mkinitrd("stateless");
 }
 
+# systemd tooling run inside the image chroot has no bus to talk to, so it
+# complains even though the image builds correctly
+print "It is safe to ignore the message 'Failed to connect to bus: No such file or directory' that may have appeared above one or more times.\n";
+
 sub getlibs {
     my $file    = shift;
     my $liblist = `chroot $rootimg_dir ldd $file`;
