@@ -1,8 +1,0 @@
-start:xcatprobe_tcp_listener_unit_tests
-description:Run the xCAT probe TCP listener Perl unit tests through xcattest
-os:Linux
-label:mn_only,ci_test,xcatprobe,unit,xcatprobe_unit
-cmd:prove -I/opt/xcat/probe/lib/perl /opt/xcat/share/xcat/tools/autotest/unit/probe_utils_tcp_listener.t
-check:rc==0
-check:output=~All tests successful
-end

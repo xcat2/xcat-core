@@ -1,8 +1,0 @@
-start:dhcp_backend_unit_tests
-description:Run the DHCP backend Perl unit tests through xcattest
-os:Linux
-label:mn_only,ci_test,dhcp,unit,dhcp_unit
-cmd:prove -I/opt/xcat/lib/perl -I/opt/xcat/lib/perl/xCAT /opt/xcat/share/xcat/tools/autotest/unit/dhcp_*.t
-check:rc==0
-check:output=~All tests successful
-end

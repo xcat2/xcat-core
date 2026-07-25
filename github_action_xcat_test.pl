@@ -27,6 +27,26 @@ my $check_result_str="``CI CHECK RESULT`` : ";
 my $last_func_start = timelocal(localtime());
 my $GITHUB_API = "https://api.github.com";
 
+# The workflow starts us in the checked out source tree. The unit tests under
+# xCAT-test/unit resolve xCAT modules and fixture files relative to that tree
+# through FindBin, so they can only be run from a source tree -- but the tree
+# does not survive the build. build-ubunturepo sets
+#     local_core_repo_path="$curdir/../../xcat-core"
+# which, under the work/<repo>/<repo> layout GitHub checks out into, resolves
+# to the checkout's own parent, and it then rm -rf's that path to make room for
+# the apt repository. So take a copy of the tree before building and run the
+# unit tests out of the copy.
+my $srcdir = getcwd();
+my $unitsrc = ($ENV{'RUNNER_TEMP'} ? $ENV{'RUNNER_TEMP'} : "/tmp") . "/xcat-core-unitsrc";
+
+# Cases whose output is printed even when they pass. A passing case is normally
+# silent, which is the right default for 250 of them but makes it impossible to
+# tell from the log whether a case did real work or skipped everything -- a
+# distinction that matters for cases wrapping prove, since prove exits 0 either
+# way. Name a case here to see its output; empty the list for the quiet
+# behaviour.
+my @verbose_cases = qw(integration_tests);
+
 #--------------------------------------------------------
 # Fuction name: runcmd
 # Description:  run a command after 'cmd' label in one case
@@ -271,6 +291,29 @@ sub send_back_comment{
 }
 
 #--------------------------------------------------------
+# Fuction name: preserve_source_tree
+# Description:  Copy the checkout aside before the build destroys it, so the
+#               unit tests still have a source tree to run against afterwards.
+#               Must be called before build_xcat_core().
+# Attributes:
+# Return code:  0 Success  1 Failed
+#--------------------------------------------------------
+sub preserve_source_tree{
+    my $cmd = "rm -rf $unitsrc && cp -a $srcdir $unitsrc";
+    print "[preserve_source_tree] running $cmd\n";
+    my @output = runcmd("$cmd");
+    if($::RUNCMD_RC){
+        print RED "[preserve_source_tree] $cmd ....[Failed]\n";
+        print Dumper \@output;
+        return 1;
+    }
+
+    @output = runcmd("ls $unitsrc/xCAT-test/unit/*.t | wc -l");
+    print "[preserve_source_tree] preserved $srcdir in $unitsrc ($output[0] unit tests)\n";
+    return 0;
+}
+
+#--------------------------------------------------------
 # Fuction name: build_xcat_core
 # Description:
 # Attributes:
@@ -385,6 +428,34 @@ sub install_xcat{
 
 
 #--------------------------------------------------------
+# Fuction name: run_unit_tests
+# Description:  Run every Perl unit test under xCAT-test/unit with prove.
+#               Runs against the pre-build copy of the source tree taken by
+#               preserve_source_tree(): the tests reach for xCAT modules and
+#               fixture files through FindBin, so the installed copy under
+#               /opt/xcat/share/xcat/tools/autotest is not enough for them.
+# Attributes:
+# Return code:  0 all tests passed, 1 otherwise
+#--------------------------------------------------------
+sub run_unit_tests{
+    my $cmd = "cd $unitsrc && prove -r xCAT-test/unit";
+    print "[run_unit_tests] running $cmd\n";
+    my @output = runcmd("$cmd");
+    print Dumper \@output;
+    if($::RUNCMD_RC){
+        print RED "[run_unit_tests] $cmd ....[Failed]\n";
+        $check_result_str .= "> **UNIT TESTS Failed** : Please click ``Details`` label in ``Merge pull request`` box for detailed information\n";
+        print $check_result_str;
+        return 1;
+    }
+
+    print "[run_unit_tests] $cmd ....[Pass]\n";
+    $check_result_str .= "> **UNIT TESTS Successful**\n";
+    print $check_result_str;
+    return 0;
+}
+
+#--------------------------------------------------------
 # Fuction name: check_syntax
 # Description:
 # Attributes:
@@ -497,12 +568,16 @@ sub run_fast_regression_test{
         $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -t $case'";
         print "[run_fast_regression_test] run $x: $cmd\n";
         @output = runcmd("$cmd");
-        #print Dumper \@output;
+        my $verbose = grep { $_ eq $case } @verbose_cases;
+        if($verbose){
+            print "[run_fast_regression_test] output of $case (listed in \@verbose_cases):\n";
+            print Dumper \@output;
+        }
         for(my $i = $#output; $i>-1; --$i){
             if($output[$i] =~ /------END::(.+)::Failed/){
                 push @failcase, $1;
                 ++$failnum;
-                print Dumper \@output;
+                print Dumper \@output unless($verbose);
                 last;
              }elsif ($output[$i] =~ /------END::(.+)::Passed/){
                 ++$passnum;
@@ -566,6 +641,15 @@ print Dumper \@ipinfo;
 
 #Start to build xcat core
 
+#Save the source tree before the build deletes it, the unit tests need it later
+print GREEN "\n------ Preserving the source tree for the unit tests ------\n";
+$rst = preserve_source_tree();
+if($rst){
+    print RED "Preserving the source tree failed\n";
+    exit $rst;
+}
+mark_time("preserve_source_tree");
+
 print GREEN "\n------ Building xCAT core package ------\n";
 $rst = build_xcat_core();
 if($rst){
@@ -582,6 +666,16 @@ if($rst){
     exit $rst;
 }
 mark_time("install_xcat");
+
+#Run the xCAT-test unit tests. They need the perl dependencies xCAT pulls in
+#(Net::DNS, XML::Simple) and a usable xCAT database, so they run after install.
+print GREEN "\n------Running xCAT-test unit tests ------\n";
+$rst = run_unit_tests();
+if($rst){
+    print RED "Run of xCAT-test unit tests failed\n";
+    exit $rst;
+}
+mark_time("run_unit_tests");
 
 #Check the syntax of changing code
 print GREEN "\n------ Checking the syntax of changed code------\n";

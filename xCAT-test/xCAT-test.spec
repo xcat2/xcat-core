@@ -63,6 +63,7 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/man1/*
 
 cp -r autotest $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
 cp -r unit $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/autotest
+cp -r integration $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/autotest
 
 
 %clean
