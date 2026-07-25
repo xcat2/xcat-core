@@ -169,6 +169,10 @@ if [ $? -ne 0 ]; then
       # if not DB2
       grep "DB2" /etc/xcat/cfgloc  2>&1 1> /dev/null
       if [ $? -ne 0 ]; then
+        # keep the server-provided copy: rewriting host= to $MASTER discards the
+        # database location the credentials came with, which is the only record
+        # of it when the database does not live on the management node
+        cp -p /etc/xcat/cfgloc /etc/xcat/cfgloc.orig
         sed s/host=[^\|]*/host=$MASTER/ /etc/xcat/cfgloc > /etc/xcat/cfgloc.new
         mv /etc/xcat/cfgloc.new /etc/xcat/cfgloc
       else # DB2 cfgloc has different format
