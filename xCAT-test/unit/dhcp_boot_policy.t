@@ -46,12 +46,33 @@ ok( $xnba_bios, 'xNBA BIOS second-stage class is named by node and MAC' );
 like( $xnba_bios->{test}, qr/option\[77\]\.text == 'xNBA'/, 'xNBA second-stage class matches text user-class' );
 like( $xnba_bios->{test}, qr/substring\(option\[77\]\.hex,1,4\) == 'xNBA'/, 'xNBA second-stage class matches tuple-encoded user-class' );
 like( $xnba_bios->{test}, qr/pkt4\.mac == 0x52544b100011/, 'xNBA second-stage class matches the node MAC' );
-is( $xnba_bios->{'boot-file-name'}, 'http://10.241.10.1:80/tftpboot/xcat/xnba/nodes/cn01', 'xNBA BIOS class returns the node script URL' );
+is( $xnba_bios->{'boot-file-name'}, 'http://10.241.10.1/tftpboot/xcat/xnba/nodes/cn01', 'xNBA BIOS class returns the node script URL without the default HTTP port' );
 is( $xnba_bios->{'user-context'}{'xcat-purpose'}, 'xnba-second-stage', 'xNBA class carries removable user-context' );
-is( $xnba_by_name{'xcat-xnba-cn01-52544b100011-uefi'}{'boot-file-name'}, 'http://10.241.10.1:80/tftpboot/xcat/xnba/nodes/cn01.uefi', 'xNBA UEFI class returns the UEFI node script URL' );
+is( $xnba_by_name{'xcat-xnba-cn01-52544b100011-uefi'}{'boot-file-name'}, 'http://10.241.10.1/tftpboot/xcat/xnba/nodes/cn01.uefi', 'xNBA UEFI class returns the UEFI node script URL without the default HTTP port' );
 like( $xnba_by_name{'xcat-xnba-cn01-52544b100011-uefi'}{test}, qr/0x0007/, 'xNBA UEFI class matches standard UEFI PXE architecture 7' );
 like( $xnba_by_name{'xcat-xnba-cn01-52544b100011-uefi'}{test}, qr/0x0009/, 'xNBA UEFI class matches alternate UEFI PXE architecture 9' );
 like( $xnba_by_name{'xcat-xnba-cn01-52544b100011-uefi'}{test}, qr/0x0010/, 'xNBA UEFI class matches UEFI HTTP boot architecture 16' );
+
+my $altport_classes = xCAT::DHCP::BootPolicy->kea_xnba_node_classes(
+    xnba_efi => 1,
+    nodes    => [
+        {
+            node        => 'cn02',
+            mac         => '52:54:4b:10:00:12',
+            next_server => '10.241.10.1',
+            httpport    => '8080',
+        },
+        {
+            node        => 'cn03',
+            mac         => '52:54:4b:10:00:13',
+            next_server => '10.241.10.1',
+        },
+    ],
+);
+my %altport_by_name = map { $_->{name} => $_ } @$altport_classes;
+is( $altport_by_name{'xcat-xnba-cn02-52544b100012-bios'}{'boot-file-name'}, 'http://10.241.10.1:8080/tftpboot/xcat/xnba/nodes/cn02', 'a non-default HTTP port is kept in the node script URL' );
+is( $altport_by_name{'xcat-xnba-cn02-52544b100012-uefi'}{'boot-file-name'}, 'http://10.241.10.1:8080/tftpboot/xcat/xnba/nodes/cn02.uefi', 'a non-default HTTP port is kept in the UEFI node script URL' );
+is( $altport_by_name{'xcat-xnba-cn03-52544b100013-bios'}{'boot-file-name'}, 'http://10.241.10.1/tftpboot/xcat/xnba/nodes/cn03', 'an unset HTTP port falls back to the default and is omitted' );
 
 my $combined_classes = xCAT::DHCP::BootPolicy->kea_client_classes(
     xnba_kpxe         => 1,

@@ -152,6 +152,7 @@ sub setstate {
      if ($hports[0]){
          $httpport=$hports[0];
      }
+    my $portsuffix = ( $httpport eq "80" ) ? "" : ":$httpport";
 
     # get kernel and initrd from boottarget table
     my $bttab;
@@ -290,8 +291,8 @@ sub setstate {
             my $kernel;
             ($kernel, $hypervisor) = split /!/, $kern->{kernel};
             print $pcfg " set 209:string xcat/xnba/nodes/$node.pxelinux\n";
-            print $pcfg " set 210:string http://" . '${next-server}'. ':' . $httpport . "/tftpboot/\n";
-            print $pcfg " imgfetch -n pxelinux.0 http://" . '${next-server}' . ':' . $httpport . "/tftpboot/xcat/pxelinux.0\n";
+            print $pcfg " set 210:string http://" . '${next-server}' . $portsuffix . "/tftpboot/\n";
+            print $pcfg " imgfetch -n pxelinux.0 http://" . '${next-server}' . $portsuffix . "/tftpboot/xcat/pxelinux.0\n";
             print $pcfg " imgload pxelinux.0\n";
             print $pcfg " imgexec pxelinux.0\n";
             close($pcfg);
@@ -301,8 +302,8 @@ sub setstate {
         } else {
             if ($kern->{kernel} =~ /\.c32\z/ or $kern->{kernel} =~ /memdisk\z/) { #gPXE comboot support seems insufficient, chain pxelinux instead
                 print $pcfg " set 209:string xcat/xnba/nodes/$node.pxelinux\n";
-                print $pcfg " set 210:string http://" . '${next-server}' . ':' . $httpport . "/tftpboot/\n";
-                print $pcfg " imgfetch -n pxelinux.0 http://" . '${next-server}' . ':' . $httpport . "/tftpboot/xcat/pxelinux.0\n";
+                print $pcfg " set 210:string http://" . '${next-server}' . $portsuffix . "/tftpboot/\n";
+                print $pcfg " imgfetch -n pxelinux.0 http://" . '${next-server}' . $portsuffix . "/tftpboot/xcat/pxelinux.0\n";
                 print $pcfg " imgload pxelinux.0\n";
                 print $pcfg " imgexec pxelinux.0\n";
                 close($pcfg);
@@ -330,11 +331,11 @@ sub setstate {
                         $kern->{kcmdline} =~ s/xcat\/netboot/\/tftpboot\/xcat\/netboot/;
                     }
                     print $ucfg "#!gpxe\n";
-                    print $ucfg 'chain http://${next-server}:'.$httpport.'/tftpboot/xcat/esxboot-x64.efi ' . $kern->{kcmdline} . "\n";
+                    print $ucfg 'chain http://${next-server}'.$portsuffix.'/tftpboot/xcat/esxboot-x64.efi ' . $kern->{kcmdline} . "\n";
                     close($ucfg);
                 }
             } else { #other than comboot/multiboot, we won't have need of pxelinux
-                print $pcfg "imgfetch -n kernel http://" . '${next-server}:' . $httpport.'/tftpboot/' . $kern->{kernel} . "\n";
+                print $pcfg "imgfetch -n kernel http://" . '${next-server}' . $portsuffix.'/tftpboot/' . $kern->{kernel} . "\n";
                 print $pcfg "imgload kernel\n";
                 if ($kern->{kcmdline}) {
                     print $pcfg "imgargs kernel " . $kern->{kcmdline} . ' BOOTIF=01-${netX/machyp}' . "\n";
@@ -342,7 +343,7 @@ sub setstate {
                     print $pcfg "imgargs kernel BOOTIF=" . '${netX/mac}' . "\n";
                 }
                 if ($kern->{initrd}) {
-                    print $pcfg "imgfetch -n initrd http://" . '${next-server}:' . "$httpport/tftpboot/" . $kern->{initrd} . "\n";
+                    print $pcfg "imgfetch -n initrd http://" . '${next-server}' . "$portsuffix/tftpboot/" . $kern->{initrd} . "\n";
                 }
                 print $pcfg "imgexec kernel\n";
                 if ($kern->{kcmdline} and $kern->{initrd}) { #only a linux kernel/initrd pair should land here, write elilo config and uefi variant of xnba config file
@@ -350,19 +351,19 @@ sub setstate {
                     open($ucfg, '>', $tftpdir . "/xcat/xnba/nodes/" . $node . ".uefi");
                     if (_use_efistub_for_uefi($kern)) {
                         print $ucfg "#!gpxe\n";
-                        print $ucfg "imgfetch -n kernel http://" . '${next-server}:' . $httpport.'/tftpboot/' . $kern->{kernel} . "\n";
+                        print $ucfg "imgfetch -n kernel http://" . '${next-server}' . $portsuffix.'/tftpboot/' . $kern->{kernel} . "\n";
                         print $ucfg "imgload kernel\n";
                         if ($kern->{kcmdline}) {
                              print $ucfg "imgargs kernel " . $kern->{kcmdline} . ' BOOTIF=01-${netX/mac:hexhyp} initrd=initrd' . "\n";
                         } else {
                              print $ucfg "imgargs kernel BOOTIF=" . '${netX/mac} initrd=initrd' . "\n";
                         }
-                        print $ucfg "imgfetch -n initrd http://" . '${next-server}:' . "$httpport/tftpboot/" . $kern->{initrd} . "\n";
+                        print $ucfg "imgfetch -n initrd http://" . '${next-server}' . "$portsuffix/tftpboot/" . $kern->{initrd} . "\n";
                         print $ucfg "imgexec kernel\n";
                         close($ucfg);
                    } else {
                        print $ucfg "#!gpxe\n";
-                       print $ucfg 'chain http://${next-server}:'.$httpport.'/tftpboot/xcat/elilo-x64.efi -C /tftpboot/xcat/xnba/nodes/' . $node . ".elilo\n";
+                       print $ucfg 'chain http://${next-server}'.$portsuffix.'/tftpboot/xcat/elilo-x64.efi -C /tftpboot/xcat/xnba/nodes/' . $node . ".elilo\n";
                        close($ucfg);
                        open($ucfg, '>', $tftpdir . "/xcat/xnba/nodes/" . $node . ".elilo");
                        print $ucfg 'default="xCAT"' . "\n";
