@@ -224,7 +224,7 @@ sub setstate {
             $grub2protocol = $1;
         }
 
-        unless ($grub2protocol =~ /^http|tftp$/) {
+        unless ($grub2protocol =~ /^(http|tftp)$/) {
             close($pcfg);
             return (1, "Invalid netboot method, please check noderes.netboot for $node");
         }
