@@ -762,16 +762,15 @@ sub process_request {
 
     #back to normal business
     if (!-r "$globaltftpdir/xcat/pxelinux.0") {
-        unless (-r $::XCATROOT . "/share/xcat/netboot/syslinux/pxelinux.0") {
-            $::XNBA_callback->({ error => [ "Unable to find pxelinux.0 at " . $::XCATROOT . "/share/xcat/netboot/syslinux/pxelinux.0" ], errorcode => [1] });
-            return;
+        if (-r $::XCATROOT . "/share/xcat/netboot/syslinux/pxelinux.0") {
+            copy($::XCATROOT . "/share/xcat/netboot/syslinux/pxelinux.0", "$globaltftpdir/xcat/pxelinux.0");
+            chmod(0644, "$globaltftpdir/xcat/pxelinux.0");
         }
-        copy($::XCATROOT . "/share/xcat/netboot/syslinux/pxelinux.0", "$globaltftpdir/xcat/pxelinux.0");
-        chmod(0644, "$globaltftpdir/xcat/pxelinux.0");
     }
     unless (-r "$globaltftpdir/xcat/pxelinux.0") {
-        $::XNBA_callback->({ error => ["Unable to find pxelinux.0 from syslinux"], errorcode => [1] });
-        return;
+        # only legacy BIOS clients chain pxelinux, and not every distribution
+        # still ships syslinux, so warn instead of failing the whole request
+        $::XNBA_callback->({ warning => ["Unable to find pxelinux.0 from syslinux, legacy BIOS nodes that chain pxelinux will not boot until it is available"] });
     }
 
 
