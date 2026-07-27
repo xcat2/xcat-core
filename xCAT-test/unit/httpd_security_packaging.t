@@ -33,6 +33,9 @@ my $xcatsn_spec = read_file('xCATsn/xCATsn.spec');
 like( $xcatsn_spec, qr{a2enmod headers},
     'service-node RPM enables mod_headers where Apache requires it' );
 like( $xcatsn_spec,
+    qr{apacheserviceunit='httpd\.service'.*?apacheserviceunit='apache2\.service'}s,
+    'service-node RPM covers both EL and SUSE Apache service units' );
+like( $xcatsn_spec,
     qr{# for install or upgrade restart the daemon.*?/etc/init\.d/\$apachedaemon reload.*?systemctl reload \$apacheserviceunit}s,
     'service-node RPM reloads Apache after installs and upgrades' );
 
