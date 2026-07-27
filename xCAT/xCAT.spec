@@ -257,7 +257,7 @@ fi
 
 mkdir -p /var/log/xcat
 date >> /var/log/xcat/upgrade.log
-$RPM_INSTALL_PREFIX0/sbin/xcatconfig -u -V >> /var/log/xcat/upgrade.log
+$RPM_INSTALL_PREFIX0/sbin/xcatconfig -u -V >> /var/log/xcat/upgrade.log 2>&1
 fi
 exit 0
 
