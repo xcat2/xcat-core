@@ -901,6 +901,17 @@ sub classful_networks_for_net_and_mask
     return @results;
 }
 
+# Record an address while preserving the caller's undefined map until needed.
+sub _record_network_address
+{
+    my ($mapref, $key, $address, $returnall) = @_;
+
+    if ($returnall) {
+        push @{ ${$mapref}->{$key} }, $address;
+    } else {
+        ${$mapref}->{$key} = $address;
+    }
+}
 
 #-------------------------------------------------------------------------------
 
@@ -948,11 +959,7 @@ sub my_hexnets
         {
             my $nowhex = sprintf("%08x", $nown);
             my $hexnet = substr($nowhex, 0, $numchars);
-            if ($returnall) {
-                push @{ $rethash->{$hexnet} }, $curnet;
-            } else {
-                $rethash->{$hexnet} = $curnet;
-            }
+            _record_network_address(\$rethash, $hexnet, $curnet, $returnall);
             $nown += 1 << (32 - $maskbits - $bitstoeven);
         }
     }
@@ -1131,19 +1138,11 @@ sub my_nets
             $nown = $nown & $curmask;
             my $textnet = inet_ntoa(pack("N", $nown));
             $textnet .= "/$maskbits";
-            if ($returnall) {
-                push @{ $rethash->{$textnet} }, $curnet;
-            } else {
-                $rethash->{$textnet} = $curnet;
-            }
+            _record_network_address(\$rethash, $textnet, $curnet, $returnall);
         }
         else
         {
-            if ($returnall) {
-                push @{ $rethash->{$v6net} }, $v6ip;
-            } else {
-                $rethash->{$v6net} = $v6ip;
-            }
+            _record_network_address(\$rethash, $v6net, $v6ip, $returnall);
         }
     }
 
@@ -1171,11 +1170,7 @@ sub my_nets
             $n .= "/$nm";
 
             #$rethash->{$n} = $if;
-            if ($returnall) {
-                push @{ $rethash->{$n} }, $master;
-            } else {
-                $rethash->{$n} = $master;
-            }
+            _record_network_address(\$rethash, $n, $master, $returnall);
         }
     }
     return $rethash;
