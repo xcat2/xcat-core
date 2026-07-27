@@ -733,29 +733,11 @@ sub refresh_switch {
             }
         }else{
             foreach (@res){
-                if($_ =~ m/^([0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}) dev swp([0-9]+) vlan ([0-9]+) .*/){
+                if($_ =~ m/^([0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}) dev (swp[^ ]+) vlan ([0-9]+) .*/){
                     $mymac=$1;
                     $myport=$2;
-                    $myport=sprintf("%d",$myport);
                     my $macport=$2;
                     my $macvlan=$3;
-
-                    #try all the possible port number formats
-                    #e.g, "5","swp5","05","swp05"
-                    unless(exists $self->{switches}->{$switch}->{$myport}){
-                        if(exists $self->{switches}->{$switch}->{"swp".$myport}){
-                            $myport="swp".$myport;
-                        }else{
-                            $myport=sprintf("%02d",$myport);
-                            unless(exists $self->{switches}->{$switch}->{$myport}){
-                                if(exists $self->{switches}->{$switch}->{"swp".$myport}){
-                                    $myport="swp".$myport;
-                                }else{
-                                    $myport="";
-                                }
-                            }
-                        }
-                    }
 
                     if($myport){
                         if($output){
