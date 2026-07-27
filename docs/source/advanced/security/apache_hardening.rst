@@ -23,13 +23,27 @@ provisioning scripts crawl recursively.
 **Apache 2.4** (RHEL 7+, SLES 12+, Ubuntu 16.04+)::
 
     # /etc/httpd/conf.d/xcat.conf
+    ServerTokens Prod
+
     <Directory "/tftpboot">
-        Options FollowSymLinks Includes MultiViews
+        Options FollowSymLinks
+        <IfModule mod_headers.c>
+            Header always set X-Frame-Options SAMEORIGIN
+            Header always set X-Content-Type-Options nosniff
+            Header always set Content-Security-Policy "script-src 'self' 'unsafe-eval'"
+            Header always set X-Permitted-Cross-Domain-Policies none
+        </IfModule>
         AllowOverride None
         Require all granted
     </Directory>
     <Directory "/install">
-        Options FollowSymLinks Includes MultiViews
+        Options FollowSymLinks
+        <IfModule mod_headers.c>
+            Header always set X-Frame-Options SAMEORIGIN
+            Header always set X-Content-Type-Options nosniff
+            Header always set Content-Security-Policy "script-src 'self' 'unsafe-eval'"
+            Header always set X-Permitted-Cross-Domain-Policies none
+        </IfModule>
         AllowOverride None
         Require all granted
     </Directory>
@@ -47,14 +61,28 @@ provisioning scripts crawl recursively.
 **Apache 2.2** (RHEL 6, SLES 11)::
 
     # /etc/httpd/conf.d/xcat.conf
+    ServerTokens Prod
+
     <Directory "/tftpboot">
-        Options FollowSymLinks Includes MultiViews
+        Options FollowSymLinks
+        <IfModule mod_headers.c>
+            Header always set X-Frame-Options SAMEORIGIN
+            Header always set X-Content-Type-Options nosniff
+            Header always set Content-Security-Policy "script-src 'self' 'unsafe-eval'"
+            Header always set X-Permitted-Cross-Domain-Policies none
+        </IfModule>
         AllowOverride None
         Order allow,deny
         Allow from all
     </Directory>
     <Directory "/install">
-        Options FollowSymLinks Includes MultiViews
+        Options FollowSymLinks
+        <IfModule mod_headers.c>
+            Header always set X-Frame-Options SAMEORIGIN
+            Header always set X-Content-Type-Options nosniff
+            Header always set Content-Security-Policy "script-src 'self' 'unsafe-eval'"
+            Header always set X-Permitted-Cross-Domain-Policies none
+        </IfModule>
         AllowOverride None
         Order allow,deny
         Allow from all
@@ -78,6 +106,23 @@ provisioning scripts crawl recursively.
    ``/install/post``. xCAT provisioning scripts use recursive ``wget`` to
    download all files from these directories and depend on Apache directory
    listings to discover file paths.
+
+Security Response Headers and Server Banner
+-------------------------------------------
+
+xCAT configures ``ServerTokens Prod`` to omit the Apache version and operating
+system from the HTTP ``Server`` header. It also applies the following response
+headers to ``/install`` and ``/tftpboot``:
+
+* ``X-Frame-Options: SAMEORIGIN``
+* ``X-Content-Type-Options: nosniff``
+* ``Content-Security-Policy: script-src 'self' 'unsafe-eval'``
+* ``X-Permitted-Cross-Domain-Policies: none``
+
+These directives require ``mod_headers``. The xCAT packages enable that module
+on distributions where it is not loaded by default and activate the updated
+configuration during installation or upgrade. Keep the ``Header always set``
+directives when adding local access-control rules to either directory.
 
 Sensitive Directories
 ---------------------
@@ -141,7 +186,13 @@ For additional protection, restrict access to the provisioning subnet::
 
     # Apache 2.4+
     <Directory "/install">
-        Options FollowSymLinks Includes MultiViews
+        Options FollowSymLinks
+        <IfModule mod_headers.c>
+            Header always set X-Frame-Options SAMEORIGIN
+            Header always set X-Content-Type-Options nosniff
+            Header always set Content-Security-Policy "script-src 'self' 'unsafe-eval'"
+            Header always set X-Permitted-Cross-Domain-Policies none
+        </IfModule>
         AllowOverride None
         Require ip 10.0.0.0/16
     </Directory>
