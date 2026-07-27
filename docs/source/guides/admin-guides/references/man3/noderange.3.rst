@@ -11,7 +11,7 @@ Name
 ****
 
 
-\ **noderange**\  - syntax for compactly expressing a list of node names
+\ **noderange**\  - syntax for compactly expressing a list of node names in \ **xCAT**\ 
 
 
 ****************

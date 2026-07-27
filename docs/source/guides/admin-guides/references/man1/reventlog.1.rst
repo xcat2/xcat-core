@@ -38,7 +38,10 @@ OpenPOWER OpenBMC specific :
 
 \ **reventlog**\   can  display any number of remote hardware event log entries
 or clear them for a range of nodes.  Hardware  event
-logs are stored on each servers service processor.
+logs are stored on each servers service processor.  Note that some sensor types
+are not currently implemented, resulting in 'No Mappings Found' messages.  If these
+are observed, it is suggested to look at confluent's equivalent 'nodeeventlog' facility,
+which supports a broader set of sensor types.
 
 
 ***************
