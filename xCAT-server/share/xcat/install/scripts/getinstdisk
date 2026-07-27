@@ -234,6 +234,14 @@ if [ -z "$install_disk" ]; then
 fi
 rm -rf $tmpdir;
 
+# Auto-sense an Intel RSTe/VROC software RAID and use it if no other install
+# disk was found, before falling back to the hard-coded default below.
+if [ -z "$install_disk" ] && [ -b /dev/md/Volume0_0 ]; then
+    install_disk="/dev/md/Volume0_0"
+elif [ -z "$install_disk" ] && [ -b /dev/md/Volume0 ]; then
+    install_disk="/dev/md/Volume0"
+fi
+
 # Cannot find proper disk for OS install, select the default one "/dev/sda"
 if [ -z "$install_disk" ]; then
     install_disk="/dev/sda"
