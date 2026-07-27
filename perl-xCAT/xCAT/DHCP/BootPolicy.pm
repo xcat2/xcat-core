@@ -63,7 +63,9 @@ sub kea_xnba_node_classes {
         next unless $node->{node} && $node->{mac} && $node->{next_server};
         my $class_base = _xnba_class_base( $node->{node}, $node->{mac} );
         my $mac_test = _mac_test( $node->{mac} );
-        my $base_url = 'http://' . $node->{next_server} . ':' . ( $node->{httpport} || '80' ) . '/tftpboot/xcat/xnba/nodes/' . $node->{node};
+        my $httpport = $node->{httpport} || '80';
+        my $portsuffix = ( $httpport eq '80' ) ? '' : ":$httpport";
+        my $base_url = 'http://' . $node->{next_server} . $portsuffix . '/tftpboot/xcat/xnba/nodes/' . $node->{node};
 
         push @classes, {
             name             => "$class_base-bios",

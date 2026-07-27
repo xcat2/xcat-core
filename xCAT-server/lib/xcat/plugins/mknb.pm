@@ -73,6 +73,7 @@ sub process_request {
     if ($hports[0]){
         $httpport=$hports[0];
     }
+    my $portsuffix = ( $httpport eq "80" ) ? "" : ":$httpport";
 
     @entries = xCAT::TableUtils->get_site_attribute("dhcpinterfaces");
     $t_entry = $entries[0];
@@ -384,11 +385,11 @@ sub process_request {
             open($cfg, ">", "$tftpdir/xcat/xnba/nets/$net");
             print $cfg "#!gpxe\n";
             if ($invisibletouch) {
-                print $cfg 'imgfetch -n kernel http://${next-server}:'.$httpport.'/tftpboot/xcat/genesis.kernel.' . "$arch xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/machyp}' . "\n";
-                print $cfg 'imgfetch -n nbfs http://${next-server}:'.$httpport . "$initrd_file\n";
+                print $cfg 'imgfetch -n kernel http://${next-server}'.$portsuffix.'/tftpboot/xcat/genesis.kernel.' . "$arch xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/machyp}' . "\n";
+                print $cfg 'imgfetch -n nbfs http://${next-server}'.$portsuffix . "$initrd_file\n";
             } else {
-                print $cfg 'imgfetch -n kernel http://${next-server}:'.$httpport.'/tftpboot/xcat/nbk.' . "$arch xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline\n";
-                print $cfg 'imgfetch -n nbfs http://${next-server}:'.$httpport . "$initrd_file\n";
+                print $cfg 'imgfetch -n kernel http://${next-server}'.$portsuffix.'/tftpboot/xcat/nbk.' . "$arch xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline\n";
+                print $cfg 'imgfetch -n nbfs http://${next-server}'.$portsuffix . "$initrd_file\n";
             }
             print $cfg "imgload kernel\n";
             print $cfg "imgexec kernel\n";
@@ -404,9 +405,9 @@ sub process_request {
                 close($cfg);
                 open($cfg, ">", "$tftpdir/xcat/xnba/nets/$net.uefi");
                 print $cfg "#!gpxe\n";
-                print $cfg 'imgfetch -n kernel http://${next-server}:'.$httpport.'/tftpboot/xcat/genesis.kernel.' . "$arch\nimgload kernel\n";
+                print $cfg 'imgfetch -n kernel http://${next-server}'.$portsuffix.'/tftpboot/xcat/genesis.kernel.' . "$arch\nimgload kernel\n";
                 print $cfg "imgargs kernel xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/mac:hexhyp}' . " destiny=discover initrd=initrd\n";
-                print $cfg 'imgfetch -n initrd http://${next-server}:'.$httpport . "$initrd_file\nimgexec kernel\n";
+                print $cfg 'imgfetch -n initrd http://${next-server}'.$portsuffix . "$initrd_file\nimgexec kernel\n";
                 close($cfg);
             }
         } elsif ($arch =~ /ppc/) {
@@ -414,8 +415,8 @@ sub process_request {
             print $cfgfile "default \"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
             print $cfgfile "   delay=10\n";
             print $cfgfile "   label \"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
-            print $cfgfile "   kernel http://" . $xcatd_address . ":$httpport/$tftpdir/xcat/genesis.kernel.$arch\n";
-            print $cfgfile "   initrd http://" . $xcatd_address . ":$httpport/$initrd_file\n";
+            print $cfgfile "   kernel http://" . $xcatd_address . "$portsuffix/$tftpdir/xcat/genesis.kernel.$arch\n";
+            print $cfgfile "   initrd http://" . $xcatd_address . "$portsuffix/$initrd_file\n";
             print $cfgfile '   append "xcatd=' . $xcatd_address . ":$xcatdport $consolecmdline\"\n";
             close($cfgfile);
         }
@@ -454,8 +455,8 @@ sub process_request {
             print $cfgfile "default \"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
             print $cfgfile "   delay=10\n";
             print $cfgfile "   label \"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
-            print $cfgfile "   kernel http://" . $xcatd_address . ":$httpport/$tftpdir/xcat/genesis.kernel.$arch\n";
-            print $cfgfile "   initrd http://" . $xcatd_address . ":$httpport/$initrd_file\n";
+            print $cfgfile "   kernel http://" . $xcatd_address . "$portsuffix/$tftpdir/xcat/genesis.kernel.$arch\n";
+            print $cfgfile "   initrd http://" . $xcatd_address . "$portsuffix/$initrd_file\n";
             print $cfgfile '   append "xcatd=' . $xcatd_address . ":$xcatdport $consolecmdline\"\n";
             close($cfgfile);
         }

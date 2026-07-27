@@ -13,11 +13,12 @@ BEGIN {
     $INC{'xCAT/Utils.pm'} = __FILE__;
 
     package xCAT::TableUtils;
-    our ($tftpdir, $site_master);
+    our ($tftpdir, $site_master, $site_httpport);
     sub getTftpDir { return $tftpdir; }
     sub get_site_attribute {
         my $attribute = $_[-1];
         return ($site_master) if $attribute eq 'master';
+        return ($site_httpport) if $attribute eq 'httpport' and defined $site_httpport;
         return;
     }
     $INC{'xCAT/TableUtils.pm'} = __FILE__;
@@ -214,12 +215,12 @@ foreach my $relative_path (
     my $content = read_config("$xCAT::TableUtils::tftpdir/$relative_path");
     like(
         $content,
-        qr/kernel http:\/\/192\.168\.148\.10:80\//,
+        qr/kernel http:\/\/192\.168\.148\.10\//,
         "$relative_path uses the first address for the kernel URL",
     );
     like(
         $content,
-        qr/initrd http:\/\/192\.168\.148\.10:80\//,
+        qr/initrd http:\/\/192\.168\.148\.10\//,
         "$relative_path uses the first address for the initrd URL",
     );
     like(
@@ -229,10 +230,31 @@ foreach my $relative_path (
     );
     unlike(
         $content,
-        qr/(?:kernel|initrd) http:\/\/192\.168\.149\.100:80\/|xcatd=192\.168\.149\.100:3001/,
+        qr/(?:kernel|initrd) http:\/\/192\.168\.149\.100\/|xcatd=192\.168\.149\.100:3001/,
         "$relative_path has no functional endpoint using the later floating address",
     );
 }
+
+# the default HTTP port is left out of the generated URLs, but a port that is
+# not the default still has to be carried through
+$xCAT::TableUtils::site_httpport = '8080';
+use_reporter_address_maps();
+prepare_tftpdir($tmpdir, 'tftpboot-power-altport', 'ppc64');
+$responses = run_mknb('ppc64');
+generation_succeeded($responses, 'POWER configuration generation succeeds with a non-default HTTP port');
+
+my $altport_content = read_config("$xCAT::TableUtils::tftpdir/pxelinux.cfg/p/192.168.144.0_20");
+like(
+    $altport_content,
+    qr/kernel http:\/\/192\.168\.148\.10:8080\//,
+    'a non-default HTTP port is kept in the kernel URL',
+);
+like(
+    $altport_content,
+    qr/initrd http:\/\/192\.168\.148\.10:8080\//,
+    'a non-default HTTP port is kept in the initrd URL',
+);
+$xCAT::TableUtils::site_httpport = undef;
 
 $xCAT::NetworkUtils::normnet_addresses = {
     '192.168.144.0/20' => ['192.168.148.10'],
