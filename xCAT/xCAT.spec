@@ -265,6 +265,26 @@ fi
 mkdir -p /var/log/xcat
 date >> /var/log/xcat/upgrade.log
 $RPM_INSTALL_PREFIX0/sbin/xcatconfig -u -V >> /var/log/xcat/upgrade.log 2>&1
+
+# The package replaces xcat.conf before this upgrade path runs.  Reload an
+# active web server so the new security headers and ServerTokens setting take
+# effect immediately, but do not try to manage services while building an
+# image in a chroot.
+if [ -f "/proc/cmdline" ] && [ "x$(stat -c '%i %d' /)" == "x$(stat -c '%i %d' /proc/1/root/. 2>/dev/null)" ]; then
+    if [ -e "/etc/redhat-release" ]; then
+        apachedaemon='httpd'
+    else
+        apachedaemon='apache2'
+    fi
+
+    if command -v systemctl >/dev/null 2>&1; then
+        if systemctl is-active --quiet "$apachedaemon"; then
+            systemctl reload "$apachedaemon" >/dev/null 2>&1 || :
+        fi
+    elif [ -x "/etc/init.d/$apachedaemon" ]; then
+        /etc/init.d/$apachedaemon reload >/dev/null 2>&1 || :
+    fi
+fi
 fi
 exit 0
 
