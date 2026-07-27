@@ -654,9 +654,13 @@ sub write_release_alias {
     my ($repodir) = @_;
     my $alias = "$repodir/xCAT-release-latest.noarch.rpm";
 
-    my @release_rpms = glob("$repodir/xCAT-release-$VERSION-$RELEASE.noarch.rpm");
+    # glob() returns a wildcard-free pattern verbatim even when the file does not exist, so
+    # guard on the rpm actually being present. Without this, a partial build that does not
+    # produce xCAT-release (e.g. buildrpms.pl --package xCAT-genesis-base) would try to cp a
+    # nonexistent rpm here and die.
+    my @release_rpms = grep { -f } glob("$repodir/xCAT-release-$VERSION-$RELEASE.noarch.rpm");
     if (@release_rpms == 1) {
-        cp $release_rpms[0], $alias;
+        cp $release_rpms[0], $alias or die "cp $release_rpms[0] -> $alias: $!";
         chmod 0644, $alias;
     }
 }
