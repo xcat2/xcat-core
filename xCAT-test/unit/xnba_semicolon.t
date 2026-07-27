@@ -34,4 +34,18 @@ like($src, qr/sub _use_efistub_for_uefi\b/, 'UEFI EFI-stub selection helper exis
 like($src, qr/sles\?11/, 'SLES 11 UEFI compatibility rule matches sle11 and sles11 images');
 like($src, qr/if \(_use_efistub_for_uefi\(\$kern\)\)/, 'UEFI boot path uses compatibility helper before direct EFI-stub boot');
 
+# pxelinux is only needed for multiboot, COMBOOT, and memdisk configurations.
+# Missing syslinux must not warn for ordinary direct-kernel nodeset requests.
+like($src, qr/sub _requires_pxelinux\b/, 'pxelinux requirement helper exists');
+like(
+    $src,
+    qr/\$::XNBA_pxelinux_required = 1 if \(_requires_pxelinux\(\$kern\)\)/,
+    'generated boot configuration records when pxelinux is required'
+);
+like(
+    $src,
+    qr/if \(\$::XNBA_pxelinux_required\) \{.*?Unable to find pxelinux\.0/s,
+    'missing pxelinux warning is limited to requests that generate a pxelinux chain'
+);
+
 done_testing();
