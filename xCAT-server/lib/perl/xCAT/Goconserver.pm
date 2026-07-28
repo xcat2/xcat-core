@@ -667,7 +667,9 @@ sub build_conf {
 
 #-------------------------------------------------------------------------------
 sub start_service {
-    if (xCAT::Utils->startservice("goconserver") != 0) {
+    my $cmd = "service goconserver start";
+    xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0) {
         xCAT::MsgUtils->message("S", "Could not start goconserver service.");
         return 1;
     }
@@ -692,7 +694,9 @@ sub start_service {
 
 #-------------------------------------------------------------------------------
 sub stop_service {
-    if (xCAT::Utils->stopservice("goconserver") != 0) {
+    my $cmd = "service goconserver stop";
+    xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0) {
         xCAT::MsgUtils->message("S", "Could not stop goconserver service.");
         return 1;
     }
@@ -717,7 +721,9 @@ sub stop_service {
 
 #-------------------------------------------------------------------------------
 sub stop_conserver_service {
-    if (xCAT::Utils->stopservice("conserver") != 0) {
+    my $cmd = "service conserver stop";
+    xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0) {
         xCAT::MsgUtils->message("S", "Could not stop conserver service.");
         return 1;
     }
@@ -741,7 +747,9 @@ sub stop_conserver_service {
 
 #-------------------------------------------------------------------------------
 sub restart_service {
-    if (xCAT::Utils->restartservice("goconserver") != 0) {
+    my $cmd = "service goconserver restart";
+    xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0) {
         xCAT::MsgUtils->message("S", "Could not restart goconserver service.");
         return 1;
     }
