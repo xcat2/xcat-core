@@ -91,6 +91,14 @@ sub getstate {
     }
 }
 
+sub _requires_pxelinux {
+    my $kern = shift;
+    return 0 unless ($kern and ref($kern) eq 'HASH');
+
+    my $kernel = $kern->{kernel} || '';
+    return ($kernel =~ /!/ or $kernel =~ /\.c32\z/ or $kernel =~ /memdisk\z/) ? 1 : 0;
+}
+
 my %efistubcache;
 sub has_efistub {
     my $kern = shift;
@@ -286,6 +294,7 @@ sub setstate {
         close($pcfg);
         _write_uefi_exit_script($bootloader_root, $node, $cref->{currstate});
     } elsif ($kern and $kern->{kernel}) {
+        $::XNBA_pxelinux_required = 1 if (_requires_pxelinux($kern));
         if ($kern->{kernel} =~ /!/) { #TODO: deprecate this, do stateless Xen like stateless ESXi
             my $hypervisor;
             my $kernel;
@@ -611,6 +620,7 @@ sub process_request {
     $::XNBA_callback = shift;
     my $sub_req = shift;
     undef $::XNBA_addkcmdlinehandled;    # clear out any previous value
+    undef $::XNBA_pxelinux_required;
     my @args;
     my @rnodes;
     undef %failurenodes;
@@ -761,22 +771,6 @@ sub process_request {
         }
     }
 
-    #back to normal business
-    if (!-r "$globaltftpdir/xcat/pxelinux.0") {
-        unless (-r $::XCATROOT . "/share/xcat/netboot/syslinux/pxelinux.0") {
-            $::XNBA_callback->({ error => [ "Unable to find pxelinux.0 at " . $::XCATROOT . "/share/xcat/netboot/syslinux/pxelinux.0" ], errorcode => [1] });
-            return;
-        }
-        copy($::XCATROOT . "/share/xcat/netboot/syslinux/pxelinux.0", "$globaltftpdir/xcat/pxelinux.0");
-        chmod(0644, "$globaltftpdir/xcat/pxelinux.0");
-    }
-    unless (-r "$globaltftpdir/xcat/pxelinux.0") {
-        $::XNBA_callback->({ error => ["Unable to find pxelinux.0 from syslinux"], errorcode => [1] });
-        return;
-    }
-
-
-
     my $inittime = 0;
     if (exists($::XNBA_request->{inittime})) { $inittime = $::XNBA_request->{inittime}->[0]; }
     if (!$inittime) { $inittime = 0; }
@@ -845,6 +839,19 @@ sub process_request {
             }
         }
     }
+
+    if ($::XNBA_pxelinux_required) {
+        if (!-r "$globaltftpdir/xcat/pxelinux.0") {
+            if (-r $::XCATROOT . "/share/xcat/netboot/syslinux/pxelinux.0") {
+                copy($::XCATROOT . "/share/xcat/netboot/syslinux/pxelinux.0", "$globaltftpdir/xcat/pxelinux.0");
+                chmod(0644, "$globaltftpdir/xcat/pxelinux.0");
+            }
+        }
+        unless (-r "$globaltftpdir/xcat/pxelinux.0") {
+            $::XNBA_callback->({ warning => ["Unable to find pxelinux.0 from syslinux; nodes whose xNBA configuration chains pxelinux will not boot until it is available"] });
+        }
+    }
+
     xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: Finish to handle configurations");
 
     #dhcp stuff -- inittime is set when xcatd on sn is started
