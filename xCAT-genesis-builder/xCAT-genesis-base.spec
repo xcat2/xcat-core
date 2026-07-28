@@ -51,6 +51,8 @@ BuildRequires: ipmitool
 BuildRequires: iproute
 BuildRequires: kexec-tools
 BuildRequires: kernel-core
+BuildRequires: kernel-modules
+BuildRequires: kernel-modules-extra
 BuildRequires: lldpad
 BuildRequires: lvm2
 BuildRequires: mdadm
