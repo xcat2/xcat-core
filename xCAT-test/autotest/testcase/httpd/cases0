@@ -1,0 +1,30 @@
+start:httpd_security_headers_install
+description:verify xcat.conf sets the security response headers on /install
+label:mn_only,ci_test,httpd
+cmd:curl -sSI --max-time 15 http://localhost/install/ 2>&1
+check:rc==0
+check:output=~X-Frame-Options:\s*SAMEORIGIN
+check:output=~X-Content-Type-Options:\s*nosniff
+check:output=~Content-Security-Policy:\s*script-src
+check:output=~X-Permitted-Cross-Domain-Policies:\s*none
+end
+
+start:httpd_security_headers_tftpboot
+description:verify xcat.conf sets the security response headers on /tftpboot
+label:mn_only,ci_test,httpd
+cmd:curl -sSI --max-time 15 http://localhost/tftpboot/ 2>&1
+check:rc==0
+check:output=~X-Frame-Options:\s*SAMEORIGIN
+check:output=~X-Content-Type-Options:\s*nosniff
+check:output=~Content-Security-Policy:\s*script-src
+check:output=~X-Permitted-Cross-Domain-Policies:\s*none
+end
+
+start:httpd_server_banner_masked
+description:verify ServerTokens Prod masks the Apache version in the Server header
+label:mn_only,ci_test,httpd
+cmd:curl -sSI --max-time 15 http://localhost/install/ 2>&1
+check:rc==0
+check:output=~Server:\s*Apache
+check:output!~Apache/[0-9]
+end

@@ -48,6 +48,9 @@ gettab_H
 gettab_err
 gettab_h
 gettab_key_table
+httpd_security_headers_install
+httpd_security_headers_tftpboot
+httpd_server_banner_masked
 lsdef_a
 lsdef_null
 lsdef_t

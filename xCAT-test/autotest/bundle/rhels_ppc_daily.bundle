@@ -100,6 +100,9 @@ gettab_key_table
 getmacs_d
 getmacs_f_D
 getmacs_noderange
+httpd_security_headers_install
+httpd_security_headers_tftpboot
+httpd_server_banner_masked
 tabdump_servicenode
 lsdef_a
 lsdef_null
