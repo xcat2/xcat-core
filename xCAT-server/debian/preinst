@@ -5,13 +5,59 @@
 
 set -e
 
-xcat_target_uses_systemd()
+xcat_systemd_os_release_status()
 {
-    if [ -d /run/systemd/system ]; then
+    [ -r /etc/os-release ] || return 2
+
+    os_id=
+    os_version=
+    while IFS='=' read -r key value; do
+        value=${value#\"}
+        value=${value%\"}
+        value=${value#\'}
+        value=${value%\'}
+        case "$key" in
+            ID) os_id=$value ;;
+            VERSION_ID) os_version=$value ;;
+        esac
+    done < /etc/os-release
+
+    if [ "$os_id" = "debian" ] && [ -z "$os_version" ]; then
         return 0
     fi
 
-    if [ -x /usr/lib/systemd/systemd ] || [ -x /lib/systemd/systemd ]; then
+    os_major=${os_version%%.*}
+    case "$os_major" in
+        ''|*[!0-9]*) return 2 ;;
+    esac
+
+    case "$os_id" in
+        rhel|centos|rocky|almalinux|ol|scientific)
+            [ "$os_major" -ge 7 ] && return 0
+            return 1
+            ;;
+        fedora|ubuntu)
+            [ "$os_major" -ge 15 ] && return 0
+            return 1
+            ;;
+        debian)
+            [ "$os_major" -ge 8 ] && return 0
+            return 1
+            ;;
+        sles|sled|opensuse|opensuse-leap|opensuse-tumbleweed)
+            [ "$os_major" -ge 12 ] && return 0
+            return 1
+            ;;
+        *)
+            return 2
+            ;;
+    esac
+
+}
+
+xcat_target_uses_systemd()
+{
+    if [ -d /run/systemd/system ]; then
         return 0
     fi
 
@@ -19,41 +65,193 @@ xcat_target_uses_systemd()
         init_target=$(readlink /sbin/init 2>/dev/null || true)
         case "$init_target" in
             *systemd*) return 0 ;;
+            *) return 1 ;;
         esac
     fi
 
-    if [ -r /etc/os-release ]; then
-        os_id=
-        os_version=
-        while IFS='=' read -r key value; do
-            value=${value#\"}
-            value=${value%\"}
-            value=${value#\'}
-            value=${value%\'}
-            case "$key" in
-                ID) os_id=$value ;;
-                VERSION_ID) os_version=$value ;;
-            esac
-        done < /etc/os-release
+    if [ -e /sbin/init ]; then
+        return 1
+    fi
 
-        if [ "$os_id" = "debian" ] && [ -z "$os_version" ]; then
-            return 0
+    if xcat_systemd_os_release_status; then
+        return 0
+    else
+        os_release_status=$?
+        if [ "$os_release_status" -eq 1 ]; then
+            return 1
         fi
+    fi
 
-        os_major=${os_version%%.*}
-        case "$os_major" in
-            ''|*[!0-9]*) return 1 ;;
-        esac
-        case "$os_id" in
-            ubuntu) [ "$os_major" -ge 15 ] && return 0 ;;
-            debian) [ "$os_major" -ge 8 ] && return 0 ;;
-        esac
+    if [ -x /usr/lib/systemd/systemd ] || [ -x /lib/systemd/systemd ]; then
+        return 0
     fi
 
     return 1
 }
 
-if xcat_target_uses_systemd && \
+xcatd_init_state=/opt/xcat/share/xcat/scripts/xcatd-init-state
+xcatd_init_compat=/opt/xcat/share/xcat/scripts/xcatd-init-compat
+xcatd_legacy_init=/etc/init.d/xcatd
+xcatd_state_dir=/var/lib/xcat/xcatd-init-state
+xcatd_old_systemd_marker=/var/lib/xcat/xcatd-systemd-mode
+xcatd_context_file=$xcatd_state_dir/context
+
+write_xcatd_context()
+(
+    context_value=$1
+    context_tmp="$xcatd_context_file.tmp.$$"
+    umask 077
+    if ! printf '%s\n' "$context_value" > "$context_tmp" ||
+       ! mv -f "$context_tmp" "$xcatd_context_file"; then
+        rm -f "$context_tmp"
+        return 1
+    fi
+)
+
+clear_xcatd_pending_state()
+{
+    rm -f "$xcatd_state_dir/pending-xcatd" \
+        "$xcatd_state_dir/pending-deleted" \
+        "$xcatd_state_dir/pending-enabled" \
+        "$xcatd_state_dir/pending-xcatd.tmp."*
+}
+
+xcatd_legacy_enable_state()
+{
+    if [ -x "$xcatd_init_compat" ]; then
+        if detected_legacy_state=$(
+            "$xcatd_init_compat" debian-legacy-state 2>/dev/null
+        ); then
+            case "$detected_legacy_state" in
+                enabled) printf '%s\n' yes ;;
+                disabled) printf '%s\n' no ;;
+                unregistered) printf '%s\n' unregistered ;;
+                *)
+                    echo "Invalid xcatd legacy state: $detected_legacy_state" >&2
+                    return 1
+                    ;;
+            esac
+            return
+        else
+            detector_status=$?
+            if [ "$detector_status" -ne 2 ]; then
+                echo "Unable to query xcatd Debian legacy state with $xcatd_init_compat" >&2
+                return "$detector_status"
+            fi
+        fi
+    fi
+
+    # Direct upgrades from a package without the Debian-specific command
+    # still need to capture registration before dpkg removes the conffile.
+    for rc_link in /etc/rc?.d/S??xcatd; do
+        if [ -e "$rc_link" ] || [ -L "$rc_link" ]; then
+            printf '%s\n' yes
+            return
+        fi
+    done
+    for rc_link in /etc/rc?.d/K??xcatd; do
+        if [ -e "$rc_link" ] || [ -L "$rc_link" ]; then
+            printf '%s\n' no
+            return
+        fi
+    done
+    printf '%s\n' unregistered
+}
+
+if xcat_target_uses_systemd; then
+    xcatd_uses_systemd=yes
+else
+    xcatd_uses_systemd=no
+fi
+
+xcatd_transition_context=
+case "$1" in
+    upgrade) xcatd_transition_context=upgrade ;;
+    install) xcatd_transition_context=fresh ;;
+esac
+
+if [ -n "$xcatd_transition_context" ] || [ "$1" = abort-upgrade ]; then
+    if [ -L "$xcatd_state_dir" ] || \
+       { [ -e "$xcatd_state_dir" ] && [ ! -d "$xcatd_state_dir" ]; }; then
+        echo "Invalid xcatd init state directory: $xcatd_state_dir" >&2
+        exit 1
+    fi
+    mkdir -p "$xcatd_state_dir"
+    chmod 700 "$xcatd_state_dir"
+fi
+
+if [ -n "$xcatd_transition_context" ] && \
+   [ "$xcatd_uses_systemd" = yes ] && [ -x "$xcatd_init_state" ]; then
+    "$xcatd_init_state" prepare-systemd "$xcatd_transition_context"
+elif [ -n "$xcatd_transition_context" ] && [ ! -x "$xcatd_init_state" ]; then
+    # Before the first package carrying the state helper is unpacked, save
+    # only the evidence that dpkg-maintscript-helper could remove.
+    recovery_candidate=
+    for candidate in \
+        "$xcatd_legacy_init" \
+        "$xcatd_legacy_init.dpkg-bak" \
+        "$xcatd_legacy_init.dpkg-backup" \
+        "$xcatd_legacy_init.dpkg-remove"; do
+        if [ -e "$candidate" ] || [ -L "$candidate" ]; then
+            recovery_candidate=$candidate
+            break
+        fi
+    done
+
+    known_legacy=no
+    if [ -e "$xcatd_state_dir/state" ] || \
+       [ -L "$xcatd_state_dir/state" ]; then
+        # Durable state from an earlier package is stronger than the
+        # legacy dpkg metadata left behind after removal.
+        clear_xcatd_pending_state
+    elif [ -n "$recovery_candidate" ]; then
+        clear_xcatd_pending_state
+        pending_tmp="$xcatd_state_dir/pending-xcatd.tmp.$$"
+        if ! cp -a "$recovery_candidate" "$pending_tmp" ||
+           ! mv -f "$pending_tmp" "$xcatd_state_dir/pending-xcatd"; then
+            rm -f "$pending_tmp"
+            exit 1
+        fi
+        rm -f "$xcatd_old_systemd_marker"
+        known_legacy=yes
+    else
+        conffile_record=
+        if command -v dpkg-query >/dev/null 2>&1; then
+            conffile_record=$(
+                dpkg-query -W -f='${Conffiles}\n' xcat-server 2>/dev/null |
+                    sed -n '\|^ /etc/init.d/xcatd |p'
+            )
+        fi
+        if [ -n "$conffile_record" ]; then
+            case "$conffile_record" in
+                *" obsolete"*)
+                    # The installed package already removed the conffile.
+                    # Record package omission rather than an admin deletion.
+                    clear_xcatd_pending_state
+                    touch "$xcatd_old_systemd_marker"
+                    ;;
+                *)
+                    # A still-owned conffile that is absent was deleted by
+                    # the administrator and must stay absent.
+                    clear_xcatd_pending_state
+                    rm -f "$xcatd_old_systemd_marker"
+                    touch "$xcatd_state_dir/pending-deleted"
+                    known_legacy=yes
+                    ;;
+            esac
+        else
+            # A retry without an installed conffile record must not reuse
+            # evidence captured by an earlier, interrupted installation.
+            clear_xcatd_pending_state
+        fi
+    fi
+
+    if [ "$known_legacy" = yes ]; then
+        xcatd_legacy_enable_state > "$xcatd_state_dir/pending-enabled"
+    fi
+fi
+
+if [ "$xcatd_uses_systemd" = yes ] && \
    command -v dpkg-maintscript-helper >/dev/null 2>&1 && \
    dpkg-maintscript-helper supports rm_conffile; then
     dpkg-maintscript-helper rm_conffile /etc/init.d/xcatd -- "$@"
@@ -70,12 +268,14 @@ fi
 
 case "$1" in
     upgrade)
-	touch /tmp/xCAT-server_upgrade.tmp
+	write_xcatd_context upgrade
     ;;
     install)
+        write_xcatd_context fresh
     ;;
 
     abort-upgrade)
+        rm -f "$xcatd_context_file" "$xcatd_context_file.tmp."*
     ;;
 
     *)

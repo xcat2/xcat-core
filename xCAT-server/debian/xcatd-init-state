@@ -1,0 +1,701 @@
+#!/bin/sh
+
+# Preserve the Debian xcatd SysV configuration while the target uses systemd.
+# The state file is parsed as data; it is never sourced.
+
+set -e
+
+compat_root=${XCAT_COMPAT_ROOT:-}
+compat_root=${compat_root%/}
+xcat_root=${XCATROOT:-/opt/xcat}
+
+case "$xcat_root" in
+    /*) ;;
+    *)
+        echo "XCATROOT must be an absolute path" >&2
+        exit 2
+        ;;
+esac
+
+legacy_init="$compat_root/etc/init.d/xcatd"
+legacy_template="$compat_root$xcat_root/share/xcat/scripts/xcatd"
+init_compat="$compat_root$xcat_root/share/xcat/scripts/xcatd-init-compat"
+state_dir="$compat_root/var/lib/xcat/xcatd-init-state"
+state_file="$state_dir/state"
+state_stash="$state_dir/xcatd"
+pending_stash="$state_dir/pending-xcatd"
+pending_deleted="$state_dir/pending-deleted"
+pending_enabled="$state_dir/pending-enabled"
+old_systemd_marker="$compat_root/var/lib/xcat/xcatd-systemd-mode"
+
+state_mode=unknown
+state_content=unknown
+state_enabled=unknown
+state_origin=unknown
+state_format=
+
+read_state()
+{
+    [ -r "$state_file" ] || return 1
+
+    state_mode=unknown
+    state_content=unknown
+    state_enabled=unknown
+    state_origin=unknown
+    state_format=
+    seen_format=0
+    seen_mode=0
+    seen_content=0
+    seen_enabled=0
+    seen_origin=0
+    while IFS='=' read -r state_key state_value; do
+        case "$state_key" in
+            format)
+                [ "$seen_format" -eq 0 ] || return 1
+                state_format=$state_value
+                seen_format=1
+                ;;
+            mode)
+                [ "$seen_mode" -eq 0 ] || return 1
+                state_mode=$state_value
+                seen_mode=1
+                ;;
+            content)
+                [ "$seen_content" -eq 0 ] || return 1
+                state_content=$state_value
+                seen_content=1
+                ;;
+            enabled)
+                [ "$seen_enabled" -eq 0 ] || return 1
+                state_enabled=$state_value
+                seen_enabled=1
+                ;;
+            origin)
+                [ "$seen_origin" -eq 0 ] || return 1
+                state_origin=$state_value
+                seen_origin=1
+                ;;
+            '') ;;
+            *)
+                echo "Invalid xcatd init state key: $state_key" >&2
+                return 1
+                ;;
+        esac
+    done < "$state_file"
+
+    if [ "$seen_format" -ne 1 ] || [ "$seen_mode" -ne 1 ] ||
+       [ "$seen_content" -ne 1 ] || [ "$seen_enabled" -ne 1 ] ||
+       [ "$seen_origin" -ne 1 ]; then
+        echo "Invalid xcatd init state format: ${state_format:-missing}" >&2
+        return 1
+    fi
+    case "$state_format" in
+        1|2) ;;
+        *)
+            echo "Invalid xcatd init state format: ${state_format:-missing}" >&2
+            return 1
+            ;;
+    esac
+    case "$state_mode" in
+        legacy|systemd|transition-systemd|transition-legacy|unknown) ;;
+        *)
+            echo "Invalid xcatd init mode state: $state_mode" >&2
+            return 1
+            ;;
+    esac
+    case "$state_content" in
+        active|stashed|deleted|package-default|unknown) ;;
+        *)
+            echo "Invalid xcatd init content state: $state_content" >&2
+            return 1
+            ;;
+    esac
+    case "$state_enabled" in
+        yes|no|unknown) ;;
+        unregistered)
+            if [ "$state_format" = 2 ]; then
+                :
+            else
+                echo "Invalid xcatd init enablement state: $state_enabled" >&2
+                return 1
+            fi
+            ;;
+        *)
+            echo "Invalid xcatd init enablement state: $state_enabled" >&2
+            return 1
+            ;;
+    esac
+    case "$state_origin" in
+        fresh|legacy|systemd|unknown) ;;
+        *)
+            echo "Invalid xcatd init transition origin: $state_origin" >&2
+            return 1
+            ;;
+    esac
+
+    # Format 1 collapsed registered-disabled and unregistered into "no",
+    # then restored that value by removing every SysV link.  Preserve that
+    # behavior when recovering an interrupted pre-format-2 transaction.
+    if [ "$state_format" = 1 ] && [ "$state_enabled" = no ]; then
+        state_enabled=unregistered
+    fi
+}
+
+ensure_state_dir()
+{
+    if [ -L "$state_dir" ] || { [ -e "$state_dir" ] && [ ! -d "$state_dir" ]; }; then
+        echo "Invalid xcatd init state directory: $state_dir" >&2
+        exit 1
+    fi
+    mkdir -p "$state_dir"
+    chmod 700 "$state_dir"
+}
+
+write_state()
+{
+    new_mode=$1
+    new_content=$2
+    new_enabled=$3
+    new_origin=$4
+
+    ensure_state_dir
+    state_tmp="$state_file.tmp.$$"
+    if ! (
+        umask 077
+        printf 'format=2\nmode=%s\ncontent=%s\nenabled=%s\norigin=%s\n' \
+            "$new_mode" "$new_content" "$new_enabled" "$new_origin" > "$state_tmp" &&
+            mv -f "$state_tmp" "$state_file"
+    ); then
+        rm -f "$state_tmp"
+        return 1
+    fi
+    state_mode=$new_mode
+    state_content=$new_content
+    state_enabled=$new_enabled
+    state_origin=$new_origin
+}
+
+legacy_init_exists()
+{
+    [ -e "$legacy_init" ] || [ -L "$legacy_init" ]
+}
+
+find_recovery_candidate()
+{
+    recovery_candidate=
+    for candidate in \
+        "$legacy_init" \
+        "$legacy_init.dpkg-bak" \
+        "$legacy_init.dpkg-backup" \
+        "$legacy_init.dpkg-remove"; do
+        if [ -e "$candidate" ] || [ -L "$candidate" ]; then
+            recovery_candidate=$candidate
+            return 0
+        fi
+    done
+    return 1
+}
+
+stash_candidate()
+{
+    stash_source=$1
+    ensure_state_dir
+    stash_tmp="$state_stash.tmp.$$"
+    rm -f "$stash_tmp"
+    if ! cp -a "$stash_source" "$stash_tmp" ||
+       ! mv -f "$stash_tmp" "$state_stash"; then
+        rm -f "$stash_tmp"
+        return 1
+    fi
+}
+
+shared_init_state()
+{
+    if [ ! -x "$init_compat" ]; then
+        echo "Missing xcatd init compatibility helper: $init_compat" >&2
+        return 1
+    fi
+    "$init_compat" "$@"
+}
+
+legacy_enable_state()
+{
+    if ! detected_legacy_state=$(shared_init_state debian-legacy-state); then
+        return 1
+    fi
+    case "$detected_legacy_state" in
+        enabled) printf '%s\n' yes ;;
+        disabled) printf '%s\n' no ;;
+        unregistered) printf '%s\n' unregistered ;;
+        *)
+            echo "Invalid legacy state from $init_compat: $detected_legacy_state" >&2
+            return 1
+            ;;
+    esac
+}
+
+systemd_enable_state()
+{
+    if ! detected_systemd_state=$(shared_init_state systemd-state --allow-unknown); then
+        return 1
+    fi
+    case "$detected_systemd_state" in
+        enabled) printf '%s\n' yes ;;
+        disabled) printf '%s\n' no ;;
+        masked) printf '%s\n' unregistered ;;
+        unknown) printf '%s\n' unknown ;;
+        *)
+            echo "Invalid systemd state from $init_compat: $detected_systemd_state" >&2
+            return 1
+            ;;
+    esac
+}
+
+validate_context()
+{
+    case "$1" in
+        fresh|upgrade) ;;
+        *)
+            echo "Invalid xcatd init transition context: $1" >&2
+            exit 2
+            ;;
+    esac
+}
+
+prepare_systemd()
+{
+    transition_context=$1
+    validate_context "$transition_context"
+
+    if [ -e "$state_file" ]; then
+        read_state
+        had_state=yes
+    else
+        had_state=no
+        state_mode=unknown
+        state_content=unknown
+        state_enabled=unknown
+        state_origin=unknown
+        if [ -f "$old_systemd_marker" ]; then
+            state_mode=systemd
+            state_content=package-default
+        fi
+    fi
+
+    previous_mode=$state_mode
+    previous_origin=$state_origin
+    known_legacy=no
+    case "$previous_mode" in
+        systemd|transition-systemd|transition-legacy) from_systemd=yes ;;
+        *) from_systemd=no ;;
+    esac
+    case "$previous_mode" in
+        transition-systemd|transition-legacy) transition_origin=$previous_origin ;;
+        systemd) transition_origin=systemd ;;
+        legacy) transition_origin=legacy ;;
+        *)
+            if [ "$transition_context" = fresh ]; then
+                transition_origin=fresh
+            else
+                transition_origin=systemd
+            fi
+            ;;
+    esac
+    detected_systemd_enabled=$(systemd_enable_state)
+
+    if [ "$had_state" = no ] && \
+       { [ -e "$pending_stash" ] || [ -L "$pending_stash" ]; }; then
+        stash_candidate "$pending_stash"
+        state_content=stashed
+        known_legacy=yes
+        transition_origin=legacy
+    elif [ "$had_state" = no ] && [ -f "$pending_deleted" ]; then
+        rm -f "$state_stash"
+        state_content=deleted
+        known_legacy=yes
+        transition_origin=legacy
+    elif [ "$previous_mode" = transition-legacy ]; then
+        case "$state_content" in
+            stashed)
+                if [ ! -e "$state_stash" ] && [ ! -L "$state_stash" ]; then
+                    echo "Stashed xcatd init script is missing: $state_stash" >&2
+                    exit 1
+                fi
+                ;;
+            active)
+                if legacy_init_exists; then
+                    stash_candidate "$legacy_init"
+                    state_content=stashed
+                else
+                    echo "Active xcatd init transition has no recoverable script" >&2
+                    exit 1
+                fi
+                ;;
+        esac
+    elif legacy_init_exists; then
+        stash_candidate "$legacy_init"
+        state_content=stashed
+        if [ "$from_systemd" = no ]; then
+            known_legacy=yes
+            transition_origin=legacy
+        fi
+    elif [ "$from_systemd" = no ] && find_recovery_candidate; then
+        stash_candidate "$recovery_candidate"
+        state_content=stashed
+        known_legacy=yes
+        transition_origin=legacy
+    elif [ "$previous_mode" = legacy ]; then
+        rm -f "$state_stash"
+        state_content=deleted
+        known_legacy=yes
+        transition_origin=legacy
+    elif [ "$from_systemd" = no ] && [ "$transition_context" = fresh ]; then
+        rm -f "$state_stash"
+        state_content=package-default
+        transition_origin=fresh
+    elif [ "$from_systemd" = no ]; then
+        rm -f "$state_stash"
+        if [ "$detected_systemd_enabled" = yes ]; then
+            state_content=package-default
+        else
+            state_content=unknown
+        fi
+    fi
+
+    if [ "$detected_systemd_enabled" = unregistered ]; then
+        state_enabled=unregistered
+        transition_origin=systemd
+    elif [ "$transition_context" = fresh ]; then
+        state_enabled=yes
+        transition_origin=fresh
+    elif [ "$known_legacy" = yes ]; then
+        if [ -r "$pending_enabled" ]; then
+            pending_enabled_value=$(sed -n '1p' "$pending_enabled")
+        else
+            pending_enabled_value=unknown
+        fi
+        case "$pending_enabled_value" in
+            yes|no|unregistered) legacy_enabled=$pending_enabled_value ;;
+            *) legacy_enabled=$(legacy_enable_state) ;;
+        esac
+
+        if [ "$legacy_enabled" = yes ]; then
+            state_enabled=yes
+        elif [ "$had_state" = no ]; then
+            if [ "$detected_systemd_enabled" = yes ]; then
+                state_enabled=yes
+            else
+                state_enabled=$legacy_enabled
+            fi
+        else
+            state_enabled=$legacy_enabled
+        fi
+    elif { [ "$previous_mode" = transition-systemd ] ||
+           [ "$previous_mode" = transition-legacy ]; } && \
+         [ "$state_enabled" != unknown ]; then
+        :
+    else
+        case "$detected_systemd_enabled" in
+            yes) state_enabled=yes ;;
+            no)
+                if [ "$state_enabled" != unregistered ]; then
+                    state_enabled=no
+                fi
+                ;;
+            unregistered) state_enabled=unregistered ;;
+        esac
+    fi
+
+    write_state transition-systemd "$state_content" "$state_enabled" "$transition_origin"
+    rm -f "$pending_stash" "$pending_deleted" "$pending_enabled"
+}
+
+commit_systemd()
+{
+    read_state
+    write_state systemd "$state_content" "$state_enabled" unknown
+    rm -f "$old_systemd_marker"
+}
+
+apply_legacy_registration()
+{
+    command -v update-rc.d >/dev/null 2>&1 || return 0
+
+    case "$state_content" in
+        deleted|unknown)
+            update-rc.d -f xcatd remove
+            return
+            ;;
+    esac
+    if [ -x "$legacy_init" ]; then
+        case "$state_enabled" in
+            yes)
+                update-rc.d xcatd defaults
+                ;;
+            no)
+                update-rc.d xcatd defaults
+                if ! update-rc.d xcatd disable; then
+                    # defaults preserves any existing registration, including
+                    # links outside xcatd's declared start runlevels that the
+                    # native disable operation cannot toggle.  Canonicalize
+                    # only after that unusable layout is rejected.
+                    update-rc.d -f xcatd remove
+                    update-rc.d xcatd defaults
+                    update-rc.d xcatd disable
+                fi
+                ;;
+            unregistered|unknown)
+                update-rc.d -f xcatd remove
+                ;;
+        esac
+    else
+        update-rc.d -f xcatd remove
+    fi
+}
+
+configure_legacy()
+{
+    transition_context=$1
+    validate_context "$transition_context"
+
+    returning_from_systemd=no
+    refresh_systemd_enabled=no
+    resuming_legacy_transition=no
+    resuming_stashed_transition=no
+    stable_legacy_upgrade=no
+    detected_systemd_enabled=unknown
+    transition_origin=legacy
+    if [ -e "$state_file" ]; then
+        read_state
+        had_state=yes
+        if [ "$state_mode" = legacy ] && \
+           [ "$transition_context" = upgrade ]; then
+            stable_legacy_upgrade=yes
+        else
+            detected_systemd_enabled=$(systemd_enable_state)
+        fi
+        if [ "$state_mode" = transition-legacy ]; then
+            resuming_legacy_transition=yes
+            if [ "$state_content" = stashed ] &&
+               { [ -e "$state_stash" ] || [ -L "$state_stash" ]; }; then
+                resuming_stashed_transition=yes
+            fi
+        fi
+        case "$state_mode" in
+            systemd)
+                returning_from_systemd=yes
+                refresh_systemd_enabled=yes
+                transition_origin=systemd
+                ;;
+            transition-systemd)
+                returning_from_systemd=yes
+                transition_origin=$state_origin
+                ;;
+            transition-legacy)
+                transition_origin=$state_origin
+                returning_from_systemd=yes
+                ;;
+            legacy)
+                transition_origin=legacy
+                if legacy_init_exists; then
+                    state_content=active
+                else
+                    state_content=deleted
+                fi
+                if [ "$transition_context" = upgrade ]; then
+                    state_enabled=$(legacy_enable_state)
+                fi
+                ;;
+        esac
+    else
+        had_state=no
+        detected_systemd_enabled=$(systemd_enable_state)
+        state_mode=unknown
+        state_content=unknown
+        state_enabled=unknown
+        state_origin=unknown
+        if [ -e "$pending_stash" ] || [ -L "$pending_stash" ]; then
+            stash_candidate "$pending_stash"
+            state_content=stashed
+            transition_origin=legacy
+        elif [ -f "$pending_deleted" ]; then
+            rm -f "$state_stash"
+            state_content=deleted
+            transition_origin=legacy
+        elif [ -f "$old_systemd_marker" ]; then
+            returning_from_systemd=yes
+            refresh_systemd_enabled=yes
+            transition_origin=systemd
+            state_content=package-default
+        elif find_recovery_candidate; then
+            if [ "$recovery_candidate" = "$legacy_init" ]; then
+                state_content=active
+                transition_origin=legacy
+            else
+                stash_candidate "$recovery_candidate"
+                state_content=stashed
+                returning_from_systemd=yes
+                refresh_systemd_enabled=yes
+                transition_origin=systemd
+            fi
+        elif [ "$transition_context" = fresh ]; then
+            state_content=package-default
+            state_enabled=yes
+            transition_origin=fresh
+        else
+            returning_from_systemd=yes
+            refresh_systemd_enabled=yes
+            transition_origin=systemd
+            state_enabled=$detected_systemd_enabled
+            if [ "$detected_systemd_enabled" = yes ]; then
+                state_content=package-default
+            fi
+        fi
+    fi
+
+    if legacy_init_exists && [ "$resuming_legacy_transition" = no ]; then
+        case "$returning_from_systemd:$state_content" in
+            yes:*|*:active)
+                stash_candidate "$legacy_init"
+                state_content=stashed
+                ;;
+        esac
+    fi
+
+    if [ "$stable_legacy_upgrade" = yes ]; then
+        :
+    elif [ "$detected_systemd_enabled" = unregistered ]; then
+        state_enabled=unregistered
+        transition_origin=systemd
+    elif [ "$transition_context" = fresh ]; then
+        state_enabled=yes
+        transition_origin=fresh
+    elif [ "$had_state" = no ]; then
+        if [ -r "$pending_enabled" ]; then
+            pending_enabled_value=$(sed -n '1p' "$pending_enabled")
+        else
+            pending_enabled_value=unknown
+        fi
+        case "$pending_enabled_value" in
+            yes|no|unregistered) legacy_enabled=$pending_enabled_value ;;
+            *) legacy_enabled=$(legacy_enable_state) ;;
+        esac
+        if [ "$legacy_enabled" = yes ] || \
+           [ "$detected_systemd_enabled" = yes ]; then
+            state_enabled=yes
+        elif [ "$transition_origin" = legacy ] && \
+             { [ "$legacy_enabled" = no ] || \
+               [ "$legacy_enabled" = unregistered ]; }; then
+            state_enabled=$legacy_enabled
+        elif [ "$detected_systemd_enabled" = no ]; then
+            state_enabled=no
+        elif [ "$detected_systemd_enabled" = unregistered ]; then
+            state_enabled=unregistered
+        else
+            state_enabled=$legacy_enabled
+        fi
+    elif [ "$refresh_systemd_enabled" = yes ]; then
+        case "$detected_systemd_enabled" in
+            yes) state_enabled=yes ;;
+            no)
+                if [ "$state_enabled" != unregistered ]; then
+                    state_enabled=no
+                fi
+                ;;
+            unregistered) state_enabled=unregistered ;;
+        esac
+    fi
+
+    write_state transition-legacy "$state_content" "$state_enabled" "$transition_origin"
+
+    case "$state_content" in
+        stashed)
+            if [ ! -e "$state_stash" ] && [ ! -L "$state_stash" ]; then
+                echo "Stashed xcatd init script is missing: $state_stash" >&2
+                exit 1
+            fi
+            if [ "$resuming_stashed_transition" = yes ]; then
+                rm -f "$legacy_init"
+                mkdir -p "$compat_root/etc/init.d"
+                cp -a "$state_stash" "$legacy_init"
+            elif ! legacy_init_exists; then
+                mkdir -p "$compat_root/etc/init.d"
+                cp -a "$state_stash" "$legacy_init"
+            fi
+            ucf "$legacy_template" "$legacy_init"
+            ;;
+        active)
+            if legacy_init_exists; then
+                ucf "$legacy_template" "$legacy_init"
+            fi
+            ;;
+        package-default)
+            mkdir -p "$compat_root/etc/init.d"
+            if [ "$resuming_legacy_transition" = yes ]; then
+                rm -f "$legacy_init"
+            fi
+            UCF_FORCE_CONFFMISS=1 ucf "$legacy_template" "$legacy_init"
+            ;;
+        deleted)
+            rm -f "$legacy_init"
+            ;;
+        unknown)
+            echo "xcat-server: prior xcatd init state is ambiguous; preserving its absence" >&2
+            ;;
+    esac
+
+    ucfr xcat-server "$legacy_init"
+
+    if [ "$transition_context" = fresh ] || \
+       [ "$returning_from_systemd" = yes ] || [ "$had_state" = no ]; then
+        apply_legacy_registration
+    fi
+
+    if legacy_init_exists; then
+        final_content=active
+    else
+        final_content=deleted
+    fi
+    final_enabled=$(legacy_enable_state)
+    write_state legacy "$final_content" "$final_enabled" unknown
+    rm -f "$state_stash" "$old_systemd_marker" \
+        "$pending_stash" "$pending_deleted" "$pending_enabled" \
+        "$legacy_init.dpkg-bak" "$legacy_init.dpkg-backup" \
+        "$legacy_init.dpkg-remove"
+}
+
+get_state()
+{
+    requested_field=$1
+    read_state
+    case "$requested_field" in
+        mode) printf '%s\n' "$state_mode" ;;
+        content) printf '%s\n' "$state_content" ;;
+        enabled) printf '%s\n' "$state_enabled" ;;
+        origin) printf '%s\n' "$state_origin" ;;
+        *)
+            echo "Usage: $0 get {mode|content|enabled|origin}" >&2
+            exit 2
+            ;;
+    esac
+}
+
+case "${1:-}" in
+    prepare-systemd)
+        prepare_systemd "${2:-}"
+        ;;
+    commit-systemd)
+        [ "$#" -eq 1 ] || exit 2
+        commit_systemd
+        ;;
+    configure-legacy)
+        configure_legacy "${2:-}"
+        ;;
+    get)
+        get_state "${2:-}"
+        ;;
+    *)
+        echo "Usage: $0 {prepare-systemd {fresh|upgrade}|commit-systemd|configure-legacy {fresh|upgrade}|get {mode|content|enabled|origin}}" >&2
+        exit 2
+        ;;
+esac

@@ -29,6 +29,8 @@ lib/xcat/Confluent/* opt/xcat/lib/perl/Confluent/
 
 lib/xcat/shfunctions opt/xcat/lib
 etc/init.d/xcatd opt/xcat/share/xcat/scripts
+debian/xcatd.md5sum opt/xcat/share/xcat/scripts
+debian/xcatd-init-state opt/xcat/share/xcat/scripts
 etc/init.d/xcatd.service lib/systemd/system/
 xCAT-wsapi/* opt/xcat/ws/
 
