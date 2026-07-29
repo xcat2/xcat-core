@@ -64,6 +64,24 @@ sub normalize_algorithm {
     return;
 }
 
+sub new_install_default_algorithm {
+    my ( $class, %args ) = @_;
+
+    my $platform = $args{platform};
+    my $os       = $args{os};
+
+    return unless $args{is_new_install};
+    return 'hmac-sha256'
+      if defined($platform) && $platform =~ /^el(\d+)\b/i && $1 >= 9;
+    if ( defined($os) && $os =~ /^ubuntu,(\d+\.\d+(?:\.\d+)*)\b/i ) {
+        my $ubuntu_version = $1;
+        require xCAT::Utils;
+        return 'hmac-sha256'
+          if xCAT::Utils->version_cmp( $ubuntu_version, '20.04' ) >= 0;
+    }
+    return;
+}
+
 sub normalize_key_name {
     my ( $class, $key_name ) = @_;
 
