@@ -482,6 +482,16 @@ sub buildspkgs {
 
     say "Building $diskcache";
 
+    # Clean-before-start: re-init the buildroot from mock's root cache so a corrupt or
+    # half-built chroot left behind by a PREVIOUS aborted/failed run cannot poison this
+    # build (this is what caused "cannot open Packages database ... /usr/lib/sysimage/rpm"
+    # -> missing rpm -> incomplete core). Cheap: --init restores from the cached root
+    # tarball rather than a full dnf bootstrap, and the -N below then reuses THIS freshly
+    # initialised root for both the srpm and the binary rebuild within this run. We reach
+    # here only when actually building (past the diskcache skip), so flat-disk reuse across
+    # runs is preserved -- we just guarantee a known-good starting point each time.
+    sh_retry(qq(mock -r $chroot @{[ join "  ", @opts ]} --init));
+
     sh_retry(<<"EOF");
 mock -r $chroot \\
     -N \\
