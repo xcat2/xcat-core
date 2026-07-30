@@ -973,11 +973,13 @@ sub main {
     local $SIG{TERM} = \&abort_builds;
     $pm->run_on_start(sub { my ($pid, $chroot) = @_; $MOCK_INFLIGHT{$pid} = $chroot if defined $chroot; });
     $pm->run_on_finish(sub {
-        my ($pid, $exit_code, $ident) = @_;
+        my ($pid, $exit_code, $ident, $exit_signal, $core_dump) = @_;
         delete $MOCK_INFLIGHT{$pid};
-        # A build/update child that die()s (e.g. a failed sh_retry) exits non-zero; record it so
-        # we never index or sign a partial repository (would ship a core missing packages).
-        push @CHILD_FAILURES, ($ident // "pid=$pid") if $exit_code;
+        # A child that die()s exits non-zero; one killed by a SIGNAL (SIGKILL / OOM-killer) is reaped
+        # with $exit_code==0 but $exit_signal!=0 (and maybe $core_dump). Checking $exit_code alone
+        # would let an OOM-killed worker through and the parent would index+sign a partial repository
+        # (a core missing packages). Treat a non-zero exit, a killing signal, OR a core dump as failure.
+        push @CHILD_FAILURES, ($ident // "pid=$pid") if $exit_code || $exit_signal || $core_dump;
     });
 
     for my $pair (@rpms) {
