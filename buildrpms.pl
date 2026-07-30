@@ -491,9 +491,10 @@ sub buildspkgs {
     # initialised root for both the srpm and the binary rebuild within this run. We reach
     # here only when actually building (past the diskcache skip), so flat-disk reuse across
     # runs is preserved -- we just guarantee a known-good starting point each time.
-    sh_retry(qq(mock -r $chroot @{[ join "  ", @opts ]} --init));
+    sh_retry(qq(mock -r $chroot @{[ join "  ", @opts ]} --init)) == 0
+        or die "FATAL: mock --init failed for $chroot ($pkg/$target)\n";
 
-    sh_retry(<<"EOF");
+    sh_retry(<<"EOF") == 0 or die "FATAL: srpm build failed for $pkg ($target)\n";
 mock -r $chroot \\
     -N \\
     @{[ join "  ", @opts ]} \\
@@ -544,7 +545,7 @@ sub buildpkgs {
 
     say "Building $pkg $diskcache";
 
-    sh_retry(<<"EOF");
+    sh_retry(<<"EOF") == 0 or die "FATAL: rpm rebuild failed for $pkg ($target)\n";
 mock -r $chroot \\
     -N \\
     @{[ join "  ", @opts ]} \\
@@ -886,6 +887,10 @@ sub merge_core_repos {
 # file and the cached chroot dirs left behind are normal mock state, not leaks.)
 my %MOCK_INFLIGHT;      # ForkManager child pid => mock chroot (-r) name it is building
 my $ABORTING = 0;
+my $BUILD_LOCK_FH;      # per-target build flock; MUST stay file-scoped so the fd (and thus the
+                        # lock) lives for the whole process. A lexical inside main()'s block would
+                        # be DESTROYED at block exit -> lock released before any worker forks.
+my @CHILD_FAILURES;     # idents (chroot names) of ForkManager children that exited non-zero
 
 # PIDs of running mock processes whose `-r <chroot>` matches one of @chroots.
 sub mock_pids {
@@ -904,9 +909,18 @@ sub mock_pids {
 }
 
 sub sweep_mock_mounts {
-    # Fallback only (after SIGKILL): lazy-unmount every bind still under /var/lib/mock.
+    # Fallback only (after SIGKILL): lazy-unmount binds left under THIS build's own chroots --
+    # each chroot's dir plus its "-bootstrap" sibling. Scoped to @chroots so an unrelated,
+    # concurrent build's mounts under other /var/lib/mock chroots are never torn out.
+    my (@chroots) = @_;
+    return unless @chroots;
+    my %want = map { $_ => 1 } @chroots;
     open my $f, '<', '/proc/mounts' or return;
-    my @mp = grep { m{^/var/lib/mock/} } map { (split ' ')[1] } <$f>;
+    my @mp = grep {
+        my ($comp) = m{^/var/lib/mock/([^/]+)/};
+        if (defined $comp) { (my $base = $comp) =~ s/-bootstrap$//; $want{$comp} || $want{$base} }
+        else { 0 }
+    } map { (split ' ')[1] } <$f>;
     close $f;
     system('umount', '-l', $_) for sort { length($b) <=> length($a) } @mp;
 }
@@ -929,7 +943,7 @@ sub abort_builds {
         warn "[buildrpms] mock still running after 30s; SIGKILL + unmount sweep\n";
         kill 'KILL', @mock, keys %MOCK_INFLIGHT;
         select undef, undef, undef, 2;
-        sweep_mock_mounts();
+        sweep_mock_mounts(@chroots);
     }
     warn "[buildrpms] abort cleanup done\n";
     $SIG{$sig} = 'DEFAULT';
@@ -953,17 +967,17 @@ sub main {
     # Every per-package mock chroot/config for this run shares the "<pkg>-<target><ext>" namespace:
     # /etc/mock/<cfg>.cfg, /var/lib/mock/<cfg>/ and its buildroot.lock. Two builds of the SAME
     # target(+uniqueext) therefore CLOBBER each other's mock config (SOURCE_DATE_EPOCH -> wrong NVR)
-    # and race the shared chroot -- and abort_builds' fallback lazy-unmounts EVERY /var/lib/mock bind,
-    # which would rip out a peer build's live chroot too. So refuse to run a second build of the same
-    # target(+ext) concurrently. Distinct targets / --mock-uniqueext are independent and never conflict.
-    # (Held for the process lifetime via a never-closed, intentionally leaked filehandle.)
+    # and race the shared chroot -- and abort_builds' fallback lazy-unmounts this build's own chroot
+    # binds, which for the SAME target(+ext) are the very dirs a peer uses. So refuse to run a second
+    # build of the same target(+ext) concurrently. Distinct targets / --mock-uniqueext are independent
+    # and never conflict. (Held for the process lifetime via $BUILD_LOCK_FH, a file-scoped handle.)
     {
         my $key = join('-', $opts{targets}->@*)
                 . ($opts{mock_uniqueext} ? "-$opts{mock_uniqueext}" : "");
         $key =~ s/[^A-Za-z0-9._-]/-/g;
         my $lock = "/var/lock/buildrpms.$key.lock";
-        if (open(my $blk, '>', $lock)) {
-            unless (flock($blk, LOCK_EX | LOCK_NB)) {
+        if (open($BUILD_LOCK_FH, '>', $lock)) {
+            unless (flock($BUILD_LOCK_FH, LOCK_EX | LOCK_NB)) {
                 die "FATAL: another buildrpms.pl is already building target '@{$opts{targets}}'"
                   . ($opts{mock_uniqueext} ? " (uniqueext=$opts{mock_uniqueext})" : "") . ".\n"
                   . "       ($lock is held). Concurrent builds of the same target collide on the shared\n"
@@ -971,7 +985,9 @@ sub main {
                   . "       cleanup unmounts this build's chroot). Serialize them, or pass a distinct\n"
                   . "       --mock-uniqueext per build.\n";
             }
-            # intentionally leaked: the lock is released only when this process exits.
+            # $BUILD_LOCK_FH is file-scoped, so the fd stays open (lock held) until this process
+            # exits. Child forks inherit the fd but their exits never release it (the parent's
+            # still-open fd keeps the lock), which is exactly what we want.
         }
     }
 
@@ -982,7 +998,13 @@ sub main {
     local $SIG{INT}  = \&abort_builds;
     local $SIG{TERM} = \&abort_builds;
     $pm->run_on_start(sub { my ($pid, $chroot) = @_; $MOCK_INFLIGHT{$pid} = $chroot if defined $chroot; });
-    $pm->run_on_finish(sub { my ($pid) = @_; delete $MOCK_INFLIGHT{$pid}; });
+    $pm->run_on_finish(sub {
+        my ($pid, $exit_code, $ident) = @_;
+        delete $MOCK_INFLIGHT{$pid};
+        # A build/update child that die()s (e.g. a failed sh_retry) exits non-zero; record it so
+        # we never index or sign a partial repository (would ship a core missing packages).
+        push @CHILD_FAILURES, ($ident // "pid=$pid") if $exit_code;
+    });
 
     for my $pair (@rpms) {
         my ($pkg, $target) = $pair->@*;
@@ -998,6 +1020,12 @@ sub main {
 
     $pm->wait_all_children;
 
+    # Gate: if any package build failed, stop here -- do NOT update_repo/sign a partial core.
+    if (@CHILD_FAILURES) {
+        die "FATAL: build failed for: @CHILD_FAILURES\n"
+          . "       refusing to index/sign a partial repository.\n";
+    }
+
     for my $target ($opts{targets}->@*) {
         $pm->start and next;                          # no chroot ident: update_repo runs no mock
         $SIG{INT} = $SIG{TERM} = 'DEFAULT';
@@ -1007,6 +1035,12 @@ sub main {
         $pm->finish;
     }
     $pm->wait_all_children;
+
+    # Gate: a failed repo index (update_repo die) must not be signed as if complete.
+    if (@CHILD_FAILURES) {
+        die "FATAL: repo update failed for: @CHILD_FAILURES\n"
+          . "       refusing to sign an incomplete repository.\n";
+    }
 
     if ($opts{gpg_sign}) {
         $ENV{GNUPGHOME} = $opts{gpg_home} if $opts{gpg_home};
