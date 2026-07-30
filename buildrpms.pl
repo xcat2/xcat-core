@@ -190,6 +190,7 @@ GetOptions(
     "xcat_dep_path=s" => \$opts{xcat_dep_path},
     "setup_local_repos" => \$opts{setup_local_repos},
     "merge-core-repos" => \$opts{merge_core_repos},
+    "finalize-core=s" => \$opts{finalize_core},
     "output-dir=s" => \$opts{output_dir},
     "input-core-repos=s{1,}" => \@cli_input_core_repos,
     "repo-baseurl=s" => \$opts{repo_baseurl},
@@ -859,13 +860,29 @@ sub merge_core_repos {
             and die "Failed to rsync '$in' into '$out'\n";
     }
 
-    index_repo($out);
+    # index + sign + final metadata + stable alias -- shared with the single-dir
+    # --finalize-core path (finalize_core), so the xCAT-release-latest alias is always
+    # written AFTER the final metadata pass and excluded from the repo index.
+    return finalize_core($out);
+}
+
+# finalize_core($dir): index, sign (when --gpg-sign), write the final repository metadata,
+# then create the xCAT-release-latest stable bootstrap alias. The alias MUST be written
+# after the final metadata pass so write_release_alias can unlink it before createrepo and
+# keep it out of the repository index. Called with an explicit dir by merge_core_repos (the
+# assembled multi-arch core) and with no arg by the --finalize-core CLI (an already-populated
+# single dir, e.g. a per-arch dist/<target>/rpms).
+sub finalize_core {
+    my ($dir) = @_;
+    $dir //= $opts{finalize_core};
+    die "FATAL: --finalize-core dir '$dir' does not exist\n" unless defined $dir && -d $dir;
+    index_repo($dir);
     if ($opts{gpg_sign}) {
         $ENV{GNUPGHOME} = $opts{gpg_home} if $opts{gpg_home};
-        sign_repo_dir($out, $opts{gpg_key_name});
+        sign_repo_dir($dir, $opts{gpg_key_name});
     }
-    write_repo_metadata_dir($out);
-    write_release_alias($out);
+    write_repo_metadata_dir($dir);
+    write_release_alias($dir);
     return 0;
 }
 
@@ -941,6 +958,7 @@ sub main {
     return exit(configure_nginx()) if $opts{configure_nginx};
     return exit(setup_local_repos()) if $opts{setup_local_repos};
     return exit(merge_core_repos()) if $opts{merge_core_repos};
+    return exit(finalize_core()) if $opts{finalize_core};
 
     prepare_xcat_probe_source_tar()
         if grep { $_ eq "xCAT-probe" } $opts{packages}->@*;
