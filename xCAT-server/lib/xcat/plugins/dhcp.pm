@@ -3165,6 +3165,11 @@ sub kea_node_reservations
         my ( $mac, $hname ) = split(/!/, $mace);
         $hname ||= $node;
         next unless $mac;
+        # A NIC whose hostname is the *NOIP* sentinel intentionally has no IP
+        # (e.g. secondary interfaces in the mac table). Skip it: there is no
+        # address to reserve, and trying to resolve "*NOIP*" would otherwise be
+        # treated as an unresolved reservation. This mirrors the ISC path.
+        next if $hname eq '*NOIP*';
         my $normalized_mac = kea_normalize_mac($mac);
         unless ($normalized_mac) {
             $callback->({ error => ["Invalid mac address $mac for $node"], errorcode => [1] });
@@ -3315,6 +3320,11 @@ sub kea_node_reservations6
         my ( $mac, $hname ) = split(/!/, $mace);
         $hname ||= $node;
         next unless $mac;
+        # A NIC whose hostname is the *NOIP* sentinel intentionally has no IP
+        # (e.g. secondary interfaces in the mac table). Skip it: there is no
+        # address to reserve, and trying to resolve "*NOIP*" would otherwise be
+        # treated as an unresolved reservation. This mirrors the ISC path.
+        next if $hname eq '*NOIP*';
         my $normalized_mac = kea_normalize_mac($mac);
         unless ($normalized_mac) {
             $callback->({ error => ["Invalid mac address $mac for $node"], errorcode => [1] });
