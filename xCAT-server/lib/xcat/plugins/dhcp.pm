@@ -2477,6 +2477,11 @@ sub kea_process_request
         $client_classes_changed = kea_remove_xnba_client_classes($loaded4, $nodes);
     } else {
         $reservations4 = kea_build_node_reservations($backend, $loaded4, $nodes);
+        if (ref($reservations4) eq 'HASH' && $reservations4->{error}) {
+            $callback->({ error => [ $reservations4->{error} ], errorcode => [1] });
+            flock($dhcplockfd, LOCK_UN);
+            return;
+        }
         $backend->upsert_reservations($loaded4, $reservations4);
         $client_classes_changed = kea_sync_xnba_client_classes($loaded4, $nodes);
         if ($loaded6) {
@@ -3096,7 +3101,9 @@ sub kea_build_node_reservations
 
     my @reservations;
     foreach my $node (@$nodes) {
-        push @reservations, @{ kea_node_reservations($backend, $config, $node) };
+        my $node_reservations = kea_node_reservations($backend, $config, $node);
+        return $node_reservations if ref($node_reservations) eq 'HASH' && $node_reservations->{error};
+        push @reservations, @$node_reservations;
     }
 
     return \@reservations;
@@ -3152,7 +3159,7 @@ sub kea_node_reservations
         $mac = $normalized_mac;
 
         my $ip = getipaddr($hname, OnlyV4 => 1);
-        next unless $ip;
+        return { error => "Unable to resolve $hname for the Kea DHCP reservation for $node." } unless $ip;
 
         if (ipIsDynamic($ip)) {
             $callback->({ error => ["Node $node has IP $ip which is inside the DHCP dynamic range. Move the node IP outside the dynamic range or adjust the range in the networks table."], errorcode => [1] });
