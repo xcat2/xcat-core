@@ -72,7 +72,7 @@ ok(
 );
 like(
     $builder,
-    qr/sub finalize_core \{.*?write_repo_metadata_dir\(\$dir\);.*?write_release_alias\(\$dir\);/s,
+    qr/sub merge_core_repos \{.*?write_repo_metadata_dir\(\$out\);.*?write_release_alias\(\$out\);/s,
     'assembled core repository creates the stable alias after final metadata'
 );
 
