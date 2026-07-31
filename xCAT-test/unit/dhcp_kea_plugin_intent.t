@@ -517,4 +517,65 @@ foreach my $case (@invalid_mac_cases) {
     );
 }
 
+{
+    # Regression: a node whose mac table entry uses the *NOIP* sentinel for a
+    # secondary NIC (e.g. "mac1|mac2!*NOIP*") must still get exactly one Kea
+    # reservation -- for the real NIC only.  The *NOIP* NIC intentionally has no
+    # IP, so it must be skipped the same way the ISC path skips it.  Resolving
+    # the literal "*NOIP*" as a host would otherwise emit a bogus second
+    # reservation (or, on branches that treat an unresolved reservation as
+    # fatal, abort makedhcp and leave the node with no reservation at all).
+    my %noip_tables = (
+        noderes  => DHCPKeaResTable->new( { cn01 => { netboot => 'xnba', tftpserver => '<xcatmaster>' } } ),
+        chain    => DHCPKeaResTable->new( { cn01 => {} } ),
+        nodetype => DHCPKeaResTable->new( { cn01 => { arch => 'x86_64', provmethod => 'install', os => 'rhels9' } } ),
+        iscsi    => DHCPKeaResTable->new( {} ),
+        vpd      => DHCPKeaResTable->new( {} ),
+        mac      => DHCPKeaResTable->new(
+            { cn01 => { mac => 'aa:bb:cc:dd:ee:01|aa:bb:cc:dd:ee:02!*NOIP*' } }
+        ),
+    );
+
+    no warnings 'redefine';
+    local *xCAT::Table::new = sub {
+        my ( $class, $name ) = @_;
+        return $noip_tables{$name};
+    };
+
+    # Resolve *every* hostname (including the literal *NOIP*) so the only thing
+    # that can keep this to a single reservation is the explicit *NOIP* skip --
+    # this makes the guard independent of how unresolved names are handled.
+    my $noip_getipaddr = sub {
+        my ( $host, %opt ) = @_;
+        return '2001:db8::30' if $opt{OnlyV6};
+        return '192.0.2.30';
+    };
+    local *xCAT::NetworkUtils::getipaddr = $noip_getipaddr;
+    local *xCAT_plugin::dhcp::getipaddr  = $noip_getipaddr;
+    local *xCAT_plugin::dhcp::ipIsDynamic = sub { return 0; };
+    local *xCAT_plugin::dhcp::kea_next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
+    local *xCAT_plugin::dhcp::kea_boot_for_node = sub { return {}; };
+
+    my @errors;
+    local $xCAT_plugin::dhcp::callback = sub {
+        my $resp = shift;
+        push @errors, @{ $resp->{error} } if $resp->{error};
+    };
+
+    my $backend = bless {}, 'DHCPKeaResBackend';    # subnet_id_for_ip defined above
+
+    my $res4 = xCAT_plugin::dhcp::kea_build_node_reservations( $backend, {}, ['cn01'] );
+    is( scalar(@errors), 0, 'NOIP secondary NIC does not raise an error (v4)' );
+    is( scalar( @{ $res4 || [] } ), 1, 'NOIP NIC skipped: exactly one IPv4 reservation' );
+    is( ( $res4->[0] || {} )->{'hw-address'}, 'aa:bb:cc:dd:ee:01', 'IPv4 reservation is for the real NIC, not the *NOIP* NIC' );
+    ok( !grep( { ( $_->{hostname} || '' ) eq '*NOIP*' } @{ $res4 || [] } ), 'no IPv4 reservation carries the *NOIP* sentinel as a hostname' );
+
+    @errors = ();
+    my $res6 = xCAT_plugin::dhcp::kea_build_node_reservations6( $backend, {}, ['cn01'] );
+    is( scalar(@errors), 0, 'NOIP secondary NIC does not raise an error (v6)' );
+    is( scalar( @{ $res6 || [] } ), 1, 'NOIP NIC skipped: exactly one IPv6 reservation' );
+    is( ( $res6->[0] || {} )->{'hw-address'}, 'aa:bb:cc:dd:ee:01', 'IPv6 reservation is for the real NIC, not the *NOIP* NIC' );
+    ok( !grep( { ( $_->{hostname} || '' ) eq '*NOIP*' } @{ $res6 || [] } ), 'no IPv6 reservation carries the *NOIP* sentinel as a hostname' );
+}
+
 done_testing();
