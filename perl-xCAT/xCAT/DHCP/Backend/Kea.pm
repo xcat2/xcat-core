@@ -630,6 +630,42 @@ sub query_reservations {
     return \@found;
 }
 
+sub preserve_reservations {
+    my ( $self, $config, $intent ) = @_;
+
+    my $target_subnets = $intent->{subnets} || [];
+    return $intent unless @$target_subnets;
+
+    my $target_config = $config->{Dhcp6}
+      ? { Dhcp6 => { subnet6 => $target_subnets } }
+      : { Dhcp4 => { subnet4 => $target_subnets } };
+
+    foreach my $source_subnet ( _subnets_for_config($config) ) {
+        foreach my $reservation ( @{ $source_subnet->{reservations} || [] } ) {
+            my $ip = $reservation->{'ip-address'};
+            $ip = $reservation->{'ip-addresses'}[0]
+              if !$ip && ref( $reservation->{'ip-addresses'} ) eq 'ARRAY';
+
+            my $target_subnet;
+            if ($ip) {
+                my $subnet_id = $self->subnet_id_for_ip( $target_config, $ip );
+                $target_subnet = _find_subnet_by_id( $target_config, $subnet_id ) if defined($subnet_id);
+            }
+            if ( !$target_subnet && $source_subnet->{subnet} ) {
+                ($target_subnet) = grep {
+                    ( $_->{subnet} || '' ) eq $source_subnet->{subnet}
+                } @$target_subnets;
+            }
+            next unless $target_subnet;
+
+            $target_subnet->{reservations} ||= [];
+            push @{ $target_subnet->{reservations} }, { %$reservation };
+        }
+    }
+
+    return $intent;
+}
+
 sub subnet_id_for_ip {
     my ( $self, $config, $ip ) = @_;
 
