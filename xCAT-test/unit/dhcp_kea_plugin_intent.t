@@ -495,6 +495,88 @@ foreach my $case (@invalid_mac_cases) {
 }
 
 {
+    my %unresolved_tables = (
+        noderes  => DHCPKeaResTable->new( { unresolved01 => {} } ),
+        chain    => DHCPKeaResTable->new( { unresolved01 => {} } ),
+        nodetype => DHCPKeaResTable->new( { unresolved01 => {} } ),
+        iscsi    => DHCPKeaResTable->new( {} ),
+        mac      => DHCPKeaResTable->new( { unresolved01 => { mac => '00:11:22:33:44:55' } } ),
+    );
+
+    no warnings 'redefine';
+    local *xCAT::Table::new = sub {
+        my ( $class, $name ) = @_;
+        return $unresolved_tables{$name};
+    };
+    local *xCAT_plugin::dhcp::getipaddr = sub { return; };
+    local *xCAT_plugin::dhcp::kea_next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
+
+    my $backend = bless {}, 'DHCPKeaResBackend';
+    my $result = xCAT_plugin::dhcp::kea_build_node_reservations( $backend, {}, ['unresolved01'] );
+
+    is( ref($result), 'HASH', 'unresolved Kea reservation returns an error result' );
+    is(
+        $result->{error},
+        'Unable to resolve unresolved01 for the Kea DHCP reservation for unresolved01.',
+        'unresolved Kea reservation identifies the requested node'
+    );
+}
+
+{
+    package DHCPKeaWriteGuardBackend;
+    sub load_dhcp4_config {
+        return { Dhcp4 => { subnet4 => [ { id => 1, subnet => '192.0.2.0/24' } ] } };
+    }
+    sub upsert_reservations { $_[0]->{writes}++; return; }
+    sub write_dhcp4_json     { $_[0]->{writes}++; return {}; }
+
+    package main;
+
+    no warnings 'redefine';
+    local *xCAT_plugin::dhcp::kea_build_dhcp4_intent = sub { return { subnets => [] }; };
+    local *xCAT_plugin::dhcp::kea_build_dhcp6_intent = sub { return { subnets => [] }; };
+    local *xCAT_plugin::dhcp::kea_build_ddns_intent = sub { return; };
+    local *xCAT_plugin::dhcp::kea_expand_request_nodes = sub { return ['unresolved01']; };
+    local *xCAT_plugin::dhcp::kea_build_node_reservations = sub {
+        return { error => 'Unable to resolve unresolved01 for the Kea DHCP reservation for unresolved01.' };
+    };
+    local *xCAT::MsgUtils::message = sub { return; };
+    local *xCAT::MsgUtils::trace = sub { return; };
+
+    my @errors;
+    my $capture_error = sub {
+        my $response = shift;
+        push @errors, @{ $response->{error} || [] };
+    };
+    my $saved_umask = umask;
+    my $saved_ignorecase = $Getopt::Long::ignorecase;
+    {
+        local @ARGV;
+        xCAT_plugin::dhcp::process_request(
+            {
+                _xcatpreprocessed => [0],
+                arg               => [ '-q', '-a' ],
+            },
+            $capture_error
+        );
+    }
+    umask $saved_umask;
+    $Getopt::Long::ignorecase = $saved_ignorecase;
+    Getopt::Long::Configure('pass_through');
+    @errors = ();
+
+    my $backend = bless { writes => 0 }, 'DHCPKeaWriteGuardBackend';
+    xCAT_plugin::dhcp::kea_process_request( $backend, { node => ['unresolved01'] }, {}, {}, 0 );
+
+    is_deeply(
+        \@errors,
+        ['Unable to resolve unresolved01 for the Kea DHCP reservation for unresolved01.'],
+        'unresolved Kea reservation is reported to the caller'
+    );
+    is( $backend->{writes}, 0, 'unresolved Kea reservation leaves the configuration unchanged' );
+}
+
+{
     my %xnba_tables = (
         noderes => DHCPKeaResTable->new( { xnba01 => { netboot => 'xnba' } } ),
         mac     => DHCPKeaResTable->new( { xnba01 => { mac => 'AA-BB-CC-DD-EE-FF' } } ),
