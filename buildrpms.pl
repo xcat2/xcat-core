@@ -42,6 +42,7 @@ use File::Path qw(make_path remove_tree);
 use File::Slurper qw(read_text write_text);
 use File::Temp qw(tempdir tempfile);
 use FindBin qw($Bin);
+use Fcntl qw(:flock);           # per-target build lock (concurrency guard; see main())
 use Getopt::Long qw(GetOptions);
 use POSIX qw(strftime);
 use Parallel::ForkManager;
@@ -136,6 +137,12 @@ my @PACKAGES = qw(
     xCAT-vlan
 );
 
+# The arch-native packages: their rpms carry the target arch. Everything else in @PACKAGES
+# is noarch and byte-identical on every arch, so `--native-only` builds just these -- a
+# secondary-arch build (e.g. ppc64le) then produces only what the x86_64 build cannot already
+# provide, and the multi-arch merge has no duplicate noarch to reconcile.
+my @NATIVE_PACKAGES = qw(xCAT xCATsn xCAT-genesis-scripts);
+
 my @TARGETS = (
     "$DISTRO+epel-8-$ARCH",
     "$DISTRO+epel-9-$ARCH",
@@ -156,12 +163,13 @@ my %opts = (
     packages => \@PACKAGES,
     release => "",
     repo_mode => "file",
+    repo_baseurl => "https://xcat.org/files/xcat/repos/yum/devel/xcat-core",
     targets => \@TARGETS,
     verbose => 0,
     xcat_dep_path => "$PWD/../xcat-dep/",
 );
 
-my @cli_packages;
+my (@cli_packages, @cli_targets, @cli_input_core_repos);
 GetOptions(
     "configure_nginx" => \$opts{configure_nginx},
     "force" => \$opts{force},
@@ -173,13 +181,17 @@ GetOptions(
     "nginx_port" => \$opts{nginx_port},
     "nproc=i" => \$opts{nproc},
     "package=s@" => \@cli_packages,
+    "native-only" => \$opts{native_only},
     "release=s" => \$opts{release},
     "repo-mode=s" => \$opts{repo_mode},
-    "target=s@" => \$opts{targets},
+    "target=s@" => \@cli_targets,
     "verbose" => \$opts{verbose},
     "xcat_dep_path=s" => \$opts{xcat_dep_path},
     "setup_local_repos" => \$opts{setup_local_repos},
-    "finalize-core=s" => \$opts{finalize_core},
+    "merge-core-repos" => \$opts{merge_core_repos},
+    "output-dir=s" => \$opts{output_dir},
+    "input-core-repos=s{1,}" => \@cli_input_core_repos,
+    "repo-baseurl=s" => \$opts{repo_baseurl},
 ) or usage();
 
 # --package REPLACES the default set (build exactly what was asked), so
@@ -187,6 +199,30 @@ GetOptions(
 # The full default set is built on every arch (x86_64 and ppc64le alike), so each
 # arch produces a complete, self-contained xcat-core repo.
 $opts{packages} = \@cli_packages if @cli_packages;
+
+# --native-only: build just the arch-native packages (@NATIVE_PACKAGES). Used on a
+# secondary-arch builder (ppc64le) so the noarch packages get built only once, on x86_64.
+$opts{packages} = [@NATIVE_PACKAGES] if $opts{native_only} && !@cli_packages;
+
+# --input-core-repos accepts one or more dirs (repeatable, or several after one flag); each is
+# a per-arch build's dist/<target>/rpms tree that --merge-core-repos assembles into --output-dir.
+$opts{input_core_repos} = [@cli_input_core_repos] if @cli_input_core_repos;
+
+# --target REPLACES the default (like --package), and exactly ONE target is built per
+# invocation. The flat xcat-core is EL-agnostic, so a single <distro>+epel-10-<arch>
+# build per arch is canonical; the multi-arch flat core is assembled separately via
+# --merge-core-repos. Building several targets in one run is unsupported: Getopt used to
+# bind --target directly to the pre-seeded 3-EL default and thus SILENTLY APPEND (so
+# `--target X` built 4 targets). Collect into @cli_targets and reject >1 explicitly.
+if (@cli_targets) {
+    usage(verbose => 0,
+          message => "only one --target may be given (got: @cli_targets); "
+                   . "run buildrpms.pl once per target")
+        if @cli_targets > 1;
+    $opts{targets} = [@cli_targets];
+} else {
+    $opts{targets} = ["$DISTRO+epel-10-$ARCH"];
+}
 
 # Release is derived from SOURCE_DATE_EPOCH (the git commit time), NOT wall-clock,
 # so identical sources -> identical Version-Release -> bit-reproducible packages
@@ -213,6 +249,23 @@ sub sh {
         if $opts{verbose};
     system($cmd);
     $? >> 8;
+}
+
+# sh_retry: run $cmd, retrying up to $tries times on non-zero exit. Absorbs transient mock/nspawn
+# flakes (e.g. the systemd-nspawn ENOMEDIUM cgroup race, dnf mirror hiccups) so one bad attempt does
+# not silently drop a package from the core. Returns the last exit code (0 on eventual success).
+sub sh_retry {
+    my ($cmd, $tries) = @_;
+    $tries ||= 3;
+    my $rc = 1;
+    for my $t (1 .. $tries) {
+        $rc = sh($cmd);
+        return 0 if $rc == 0;
+        warn "[buildrpms] build command failed (rc=$rc), attempt $t/$tries"
+           . ($t < $tries ? " -- retrying after backoff...\n" : " -- giving up.\n");
+        sleep(5 * $t) if $t < $tries;   # linear backoff
+    }
+    return $rc;
 }
 
 # sed { s/foo/bar/ } $filepath applies s/foo/bar/ to the file at $filepath
@@ -288,12 +341,19 @@ sub createmockconfig {
     cp "/etc/mock/$target.cfg", $cfgfile;
     my $contents = read_text($cfgfile);
     $contents =~ s/config_opts\['root'\]\s+=.*/config_opts['root'] = \"$chroot\"/;
-    if ($pkg eq "perl-xCAT") {
-        # perl-generators is required for having perl(xCAT::...) symbols
-        # exported by the RPM
+    if ($pkg eq "perl-xCAT" && $target !~ /suse|sles|leap/i) {
+        # perl-generators exports perl(xCAT::...) provides on RHEL/Fedora; it does not
+        # exist on openSUSE/SLES (rpm there generates perl provides itself), so injecting
+        # it into a SUSE chroot aborts chroot setup. Suppress it for SUSE targets.
         $contents .= "config_opts['chroot_additional_packages'] = 'perl-generators'\n";
     }
     $contents .= "config_opts['environment']['SOURCE_DATE_EPOCH'] = '$SOURCE_DATE_EPOCH'\n";
+    # Avoid systemd-nspawn: it INTERMITTENTLY fails chroot setup with
+    #   "Failed to determine whether the unified cgroups hierarchy is used: No medium found"
+    # (ENOMEDIUM), which drops that package from the (still-signed) core -> an incomplete build that
+    # only surfaces later as a confusing MN install failure. 'simple' isolation is a plain chroot --
+    # reliable for these RPM builds -- and sidesteps the nspawn cgroup race entirely.
+    $contents .= "config_opts['isolation'] = 'simple'\n";
     write_text($cfgfile, $contents);
 }
 
@@ -422,7 +482,18 @@ sub buildspkgs {
 
     say "Building $diskcache";
 
-    sh(<<"EOF");
+    # Clean-before-start: re-init the buildroot from mock's root cache so a corrupt or
+    # half-built chroot left behind by a PREVIOUS aborted/failed run cannot poison this
+    # build (this is what caused "cannot open Packages database ... /usr/lib/sysimage/rpm"
+    # -> missing rpm -> incomplete core). Cheap: --init restores from the cached root
+    # tarball rather than a full dnf bootstrap, and the -N below then reuses THIS freshly
+    # initialised root for both the srpm and the binary rebuild within this run. We reach
+    # here only when actually building (past the diskcache skip), so flat-disk reuse across
+    # runs is preserved -- we just guarantee a known-good starting point each time.
+    sh_retry(qq(mock -r $chroot @{[ join "  ", @opts ]} --init)) == 0
+        or die "FATAL: mock --init failed for $chroot ($pkg/$target)\n";
+
+    sh_retry(<<"EOF") == 0 or die "FATAL: srpm build failed for $pkg ($target)\n";
 mock -r $chroot \\
     -N \\
     @{[ join "  ", @opts ]} \\
@@ -445,17 +516,11 @@ sub buildpkgs {
     my $ext = $opts{mock_uniqueext} ? "-$opts{mock_uniqueext}" : "";
     my $chroot = "$pkg-$target$ext";
 
-    my @native_pkgs = qw(
-        xCAT
-        xCATsn
-        xCAT-genesis-scripts
-    );
-
     # get x86_64 from alma+epel-9-x86_64
     my $targetarch = targetarch_from_target($target);
 
     # xCAT genesis packages include the translated target arch in their file names.
-    my $arch = is_in($pkg, @native_pkgs) ? $targetarch : "noarch";
+    my $arch = is_in($pkg, @NATIVE_PACKAGES) ? $targetarch : "noarch";
 
     my $genesis_tarch = genesis_tarch_from_targetarch($targetarch);
     my $diskcache = (
@@ -479,7 +544,7 @@ sub buildpkgs {
 
     say "Building $pkg $diskcache";
 
-    sh(<<"EOF");
+    sh_retry(<<"EOF") == 0 or die "FATAL: rpm rebuild failed for $pkg ($target)\n";
 mock -r $chroot \\
     -N \\
     @{[ join "  ", @opts ]} \\
@@ -697,9 +762,9 @@ sub write_repo_metadata_dir {
     my ($repodir) = @_;
     return unless -d $repodir;
 
-    # Shipped baseurl points at xcat.org; mklocalrepo.sh rewrites baseurl/gpgkey to
-    # file:// at deploy time for local use.
-    my $baseurl = "https://xcat.org/files/xcat/repos/yum/devel/xcat-core";
+    # Shipped baseurl points at xcat.org (--repo-baseurl overrides it per family, e.g. the
+    # sles/apt layout); mklocalrepo.sh rewrites baseurl/gpgkey to file:// at deploy time.
+    my $baseurl = $opts{repo_baseurl};
     my $gpgcheck = $opts{gpg_sign} ? 1 : 0;
     my $gpgkey_line = $opts{gpg_sign}
         ? "gpgkey=$baseurl/repodata/repomd.xml.key"
@@ -750,21 +815,113 @@ COMMIT_ID_LONG=$GITINFO
 EOF
 }
 
-# Turn an already-populated core dir into a signed repo in the upstream xcat.org
-# layout, reusing the same index/sign/metadata code as a per-target build. Used to
-# assemble the flat MULTI-ARCH core: the caller rsyncs each arch's dist/<t>/rpms/
-# (excluding repodata/) into <dir> first, then this does the single final
-# createrepo_c + repomd signing so no packages are moved by hand.
-sub finalize_core {
-    my $dir = $opts{finalize_core};
-    die "FATAL: --finalize-core dir '$dir' does not exist\n" unless -d $dir;
-    index_repo($dir);
+# Assemble the flat MULTI-ARCH core from per-arch build outputs and sign it, in the upstream
+# xcat.org layout, reusing the same index/sign/metadata code as a per-target build. Given
+# --output-dir OUT and one or more --input-core-repos IN (each a per-arch dist/<target>/rpms
+# tree), this wipes OUT, rsyncs every IN into it (excluding each arch's own repodata/; noarch
+# packages dedup), then does the single final createrepo_c + repomd signing -- no packages are
+# moved by hand. This absorbs the wipe+rsync assembly that used to live in the CI caller.
+#
+# Start CLEAN (wipe OUT first): snap-versioned rpms carry a per-build timestamp in their NVR, so
+# merging into a dirty OUT would PILE UP stale versions from prior builds and make the flat core
+# unresolvable (e.g. an old noarch against a fresh ppc build).
+sub merge_core_repos {
+    my $out = $opts{output_dir}
+        or die "FATAL: --merge-core-repos requires --output-dir\n";
+    my @ins = @{ $opts{input_core_repos} || [] };
+    die "FATAL: --merge-core-repos requires at least one --input-core-repos dir\n" unless @ins;
+    -d $_ or die "FATAL: --input-core-repos dir '$_' does not exist\n" for @ins;
+
+    sh(qq(rm -rf "$out")) and die "Failed to clean output dir '$out'\n";
+    make_path($out);
+    for my $in (@ins) {
+        sh(qq(rsync -a --exclude 'repodata/' "$in/" "$out/"))
+            and die "Failed to rsync '$in' into '$out'\n";
+    }
+
+    index_repo($out);
     if ($opts{gpg_sign}) {
         $ENV{GNUPGHOME} = $opts{gpg_home} if $opts{gpg_home};
-        sign_repo_dir($dir, $opts{gpg_key_name});
+        sign_repo_dir($out, $opts{gpg_key_name});
     }
-    write_repo_metadata_dir($dir);
+    write_repo_metadata_dir($out);
     return 0;
+}
+
+# --- graceful mock cancellation --------------------------------------------------
+# A mock build killed mid-flight would leave its chroot bind-mounts (proc/sys/dev and the
+# -bootstrap chroot's dnf/yum cache mounts) and orphaned rpmbuild/dnf processes behind,
+# breaking the next run. Verified out-of-band: when the *mock* process itself receives
+# SIGTERM it runs orphansKill, unmounts every chroot it created, releases its buildroot
+# flock, and exits within a couple of seconds -- mock cleans up after itself. Builds run
+# as Parallel::ForkManager children (main -> child -> mock -> rpmbuild), and the trap here
+# sees SIGINT/SIGTERM before those mock grandchildren, so it just forwards the signal to
+# the in-flight mock processes and WAITS for mock to finish that cleanup. Only if a mock
+# is wedged do we escalate to SIGKILL and lazy-unmount by hand. (The 0-byte buildroot.lock
+# file and the cached chroot dirs left behind are normal mock state, not leaks.)
+my %MOCK_INFLIGHT;      # ForkManager child pid => mock chroot (-r) name it is building
+my $ABORTING = 0;
+my $BUILD_LOCK_FH;      # per-target build flock; MUST stay file-scoped so the fd (and thus the
+                        # lock) lives for the whole process. A lexical inside main()'s block would
+                        # be DESTROYED at block exit -> lock released before any worker forks.
+my @CHILD_FAILURES;     # idents (chroot names) of ForkManager children that exited non-zero
+
+# PIDs of running mock processes whose `-r <chroot>` matches one of @chroots.
+sub mock_pids {
+    my %want = map { (" -r $_ " => 1) } @_;
+    my @pids;
+    for my $proc (glob '/proc/[0-9]*') {
+        my ($pid) = $proc =~ m{/(\d+)\z} or next;
+        open my $fh, '<', "$proc/cmdline" or next;
+        local $/; my $cmd = <$fh>; close $fh;
+        next unless defined $cmd;
+        $cmd =~ tr/\0/ /;                            # NUL-separated argv -> spaces
+        next unless $cmd =~ m{(?:^|/)mock } && index($cmd, ' -r ') >= 0;
+        push @pids, $pid if grep { index($cmd, $_) >= 0 } keys %want;
+    }
+    return @pids;
+}
+
+sub sweep_mock_mounts {
+    # Fallback only (after SIGKILL): lazy-unmount binds left under THIS build's own chroots --
+    # each chroot's dir plus its "-bootstrap" sibling. Scoped to @chroots so an unrelated,
+    # concurrent build's mounts under other /var/lib/mock chroots are never torn out.
+    my (@chroots) = @_;
+    return unless @chroots;
+    my %want = map { $_ => 1 } @chroots;
+    open my $f, '<', '/proc/mounts' or return;
+    my @mp = grep {
+        my ($comp) = m{^/var/lib/mock/([^/]+)/};
+        if (defined $comp) { (my $base = $comp) =~ s/-bootstrap$//; $want{$comp} || $want{$base} }
+        else { 0 }
+    } map { (split ' ')[1] } <$f>;
+    close $f;
+    system('umount', '-l', $_) for sort { length($b) <=> length($a) } @mp;
+}
+
+sub abort_builds {
+    my ($sig) = @_;
+    return if $ABORTING;
+    $ABORTING = 1;
+    warn "\n[buildrpms] caught SIG$sig: aborting -- signalling mock to self-clean...\n";
+    my @chroots = values %MOCK_INFLIGHT;
+    kill 'TERM', mock_pids(@chroots);               # mock unmounts + orphanKills itself
+    kill 'TERM', keys %MOCK_INFLIGHT;               # unwind the ForkManager builders too
+    my @mock;
+    for (1 .. 30) {                                 # wait for mock to finish its own cleanup
+        @mock = mock_pids(@chroots);
+        last unless @mock;
+        select undef, undef, undef, 1;
+    }
+    if (@mock) {                                    # wedged mock -> force it, then clean by hand
+        warn "[buildrpms] mock still running after 30s; SIGKILL + unmount sweep\n";
+        kill 'KILL', @mock, keys %MOCK_INFLIGHT;
+        select undef, undef, undef, 2;
+        sweep_mock_mounts(@chroots);
+    }
+    warn "[buildrpms] abort cleanup done\n";
+    $SIG{$sig} = 'DEFAULT';
+    kill $sig, $$;                                  # re-raise for the correct exit status
 }
 
 sub main {
@@ -775,17 +932,62 @@ sub main {
 
     return exit(configure_nginx()) if $opts{configure_nginx};
     return exit(setup_local_repos()) if $opts{setup_local_repos};
-    return exit(finalize_core()) if $opts{finalize_core};
+    return exit(merge_core_repos()) if $opts{merge_core_repos};
 
     prepare_xcat_probe_source_tar()
         if grep { $_ eq "xCAT-probe" } $opts{packages}->@*;
 
+    # ---- concurrency guard (mirrors cluster-test.pl's per-cluster lock) --------------------------
+    # Every per-package mock chroot/config for this run shares the "<pkg>-<target><ext>" namespace:
+    # /etc/mock/<cfg>.cfg, /var/lib/mock/<cfg>/ and its buildroot.lock. Two builds of the SAME
+    # target(+uniqueext) therefore CLOBBER each other's mock config (SOURCE_DATE_EPOCH -> wrong NVR)
+    # and race the shared chroot -- and abort_builds' fallback lazy-unmounts this build's own chroot
+    # binds, which for the SAME target(+ext) are the very dirs a peer uses. So refuse to run a second
+    # build of the same target(+ext) concurrently. Distinct targets / --mock-uniqueext are independent
+    # and never conflict. (Held for the process lifetime via $BUILD_LOCK_FH, a file-scoped handle.)
+    {
+        my $key = join('-', $opts{targets}->@*)
+                . ($opts{mock_uniqueext} ? "-$opts{mock_uniqueext}" : "");
+        $key =~ s/[^A-Za-z0-9._-]/-/g;
+        my $lock = "/var/lock/buildrpms.$key.lock";
+        if (open($BUILD_LOCK_FH, '>', $lock)) {
+            unless (flock($BUILD_LOCK_FH, LOCK_EX | LOCK_NB)) {
+                die "FATAL: another buildrpms.pl is already building target '@{$opts{targets}}'"
+                  . ($opts{mock_uniqueext} ? " (uniqueext=$opts{mock_uniqueext})" : "") . ".\n"
+                  . "       ($lock is held). Concurrent builds of the same target collide on the shared\n"
+                  . "       /etc/mock + /var/lib/mock chroot namespace (wrong NVR + a killed peer's\n"
+                  . "       cleanup unmounts this build's chroot). Serialize them, or pass a distinct\n"
+                  . "       --mock-uniqueext per build.\n";
+            }
+            # $BUILD_LOCK_FH is file-scoped, so the fd stays open (lock held) until this process
+            # exits. Child forks inherit the fd but their exits never release it (the parent's
+            # still-open fd keeps the lock), which is exactly what we want.
+        }
+    }
+
     my @rpms = product($opts{packages}, $opts{targets});
     my $pm = Parallel::ForkManager->new($opts{nproc});
 
+    # Track which mock chroot each live child is building so abort_builds can scrub it.
+    local $SIG{INT}  = \&abort_builds;
+    local $SIG{TERM} = \&abort_builds;
+    $pm->run_on_start(sub { my ($pid, $chroot) = @_; $MOCK_INFLIGHT{$pid} = $chroot if defined $chroot; });
+    $pm->run_on_finish(sub {
+        my ($pid, $exit_code, $ident, $exit_signal, $core_dump) = @_;
+        delete $MOCK_INFLIGHT{$pid};
+        # A child that die()s exits non-zero; one killed by a SIGNAL (SIGKILL / OOM-killer) is reaped
+        # with $exit_code==0 but $exit_signal!=0 (and maybe $core_dump). Checking $exit_code alone
+        # would let an OOM-killed worker through and the parent would index+sign a partial repository
+        # (a core missing packages). Treat a non-zero exit, a killing signal, OR a core dump as failure.
+        push @CHILD_FAILURES, ($ident // "pid=$pid") if $exit_code || $exit_signal || $core_dump;
+    });
+
     for my $pair (@rpms) {
         my ($pkg, $target) = $pair->@*;
-        $pm->start and next;
+        my $ext = $opts{mock_uniqueext} ? "-$opts{mock_uniqueext}" : "";
+        my $chroot = "$pkg-$target$ext";              # matches buildspkgs/buildpkgs `-r`
+        $pm->start($chroot) and next;
+        $SIG{INT} = $SIG{TERM} = 'DEFAULT';           # child: die on signal; the parent cleans up
 
         buildall($pkg, $target);
 
@@ -794,14 +996,27 @@ sub main {
 
     $pm->wait_all_children;
 
+    # Gate: if any package build failed, stop here -- do NOT update_repo/sign a partial core.
+    if (@CHILD_FAILURES) {
+        die "FATAL: build failed for: @CHILD_FAILURES\n"
+          . "       refusing to index/sign a partial repository.\n";
+    }
+
     for my $target ($opts{targets}->@*) {
-        $pm->start and next;
+        $pm->start and next;                          # no chroot ident: update_repo runs no mock
+        $SIG{INT} = $SIG{TERM} = 'DEFAULT';
 
         update_repo($target);
 
         $pm->finish;
     }
     $pm->wait_all_children;
+
+    # Gate: a failed repo index (update_repo die) must not be signed as if complete.
+    if (@CHILD_FAILURES) {
+        die "FATAL: repo update failed for: @CHILD_FAILURES\n"
+          . "       refusing to sign an incomplete repository.\n";
+    }
 
     if ($opts{gpg_sign}) {
         $ENV{GNUPGHOME} = $opts{gpg_home} if $opts{gpg_home};
@@ -853,12 +1068,23 @@ This option is handled before normal option parsing.
 
 =item B<--target>=I<TARGET>
 
-Build for the specified target. Repeatable. Example:
-C<rocky+epel-10-ppc64le>.
+Build for the specified mock target, e.g. C<alma+epel-10-ppc64le>. Exactly ONE target
+is built per invocation: passing more than one C<--target> is an error (run the script
+once per target). When omitted, the default is a single C<< <distro>+epel-10-<arch> >>
+derived from the host. The multi-arch flat core is assembled from per-arch builds via
+C<--merge-core-repos>.
 
 =item B<--package>=I<PACKAGE>
 
 Build only selected package(s). Repeatable.
+
+=item B<--native-only>
+
+Build only the arch-native packages (C<xCAT>, C<xCATsn>, C<xCAT-genesis-scripts>) -- the
+ones whose rpms carry the target arch. Everything else in the default set is C<noarch> and
+identical on every arch, so a secondary-arch builder (e.g. ppc64le) uses this to avoid
+rebuilding the noarch packages that the x86_64 builder already produces. Ignored if
+C<--package> is given.
 
 =item B<--nproc>=I<N>
 
@@ -932,6 +1158,29 @@ If not specified, uses the default GPG keyring.
 
 Name of the GPG key to use for signing.
 Default: C<xCAT Automatic Signing Key>.
+
+=item B<--merge-core-repos>
+
+Assemble the flat multi-arch C<xcat-core> from per-arch build outputs and sign it, then exit.
+Requires C<--output-dir> and one or more C<--input-core-repos>. Wipes the output dir, rsyncs
+every input into it (excluding each arch's own C<repodata/>; C<noarch> packages dedup), then
+runs a single C<createrepo_c> plus (with C<--gpg-sign>) C<repomd.xml> signing.
+
+=item B<--output-dir>=I<DIR>
+
+Destination for C<--merge-core-repos>: the assembled, signed flat multi-arch core.
+Wiped and recreated on each run.
+
+=item B<--input-core-repos>=I<DIR>...
+
+Input dirs for C<--merge-core-repos>: one or more per-arch C<dist/<target>/rpms> trees to merge
+into C<--output-dir>. Repeatable, and also accepts several dirs after a single flag.
+
+=item B<--repo-baseurl>=I<URL>
+
+Base URL written into the generated C<xcat-core.repo> (and its C<gpgkey> line). Defaults to the
+yum/devel path; override per family, e.g. C<https://xcat.org/files/xcat/repos/sles/latest/xcat-core>
+for SUSE. Applies to both per-target builds and C<--merge-core-repos>.
 
 =back
 
