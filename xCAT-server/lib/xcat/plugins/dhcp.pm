@@ -2381,6 +2381,24 @@ sub kea_process_request
     }
 
     if ($opt->{n}) {
+        my $loaded4 = $backend->load_dhcp4_config();
+        if ($loaded4->{error}) {
+            $callback->({ error => [ $loaded4->{error} ], errorcode => [1] });
+            flock($dhcplockfd, LOCK_UN);
+            return;
+        }
+        $backend->preserve_reservations($loaded4, $intent4);
+
+        if ($using_dhcp6) {
+            my $loaded6 = $backend->load_dhcp6_config();
+            if ($loaded6->{error}) {
+                $callback->({ error => [ $loaded6->{error} ], errorcode => [1] });
+                flock($dhcplockfd, LOCK_UN);
+                return;
+            }
+            $backend->preserve_reservations($loaded6, $intent6);
+        }
+
         my $result = $backend->write_dhcp4_config($intent4, backup_existing => 1);
         if ($result->{error}) {
             $callback->({ error => [ $result->{error} ], errorcode => [1] });
