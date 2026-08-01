@@ -216,6 +216,77 @@ ok(!xCAT_plugin::dhcp::dhcpd_sysconfig_uses_interface_key('opensuse-tumbleweed')
 }
 
 {
+    package DHCPKeaRegenerateBackend;
+    sub load_dhcp4_config {
+        $_[0]->{loads}++;
+        return { error => 'existing Kea configuration must not be loaded by makedhcp -n' };
+    }
+    sub write_dhcp4_config {
+        my ( $self, $intent, %opts ) = @_;
+        $self->{written_intent} = $intent;
+        $self->{write_options}  = \%opts;
+        return {};
+    }
+    sub restart_services {
+        my ( $self, %opts ) = @_;
+        $self->{restart_options} = \%opts;
+        return {};
+    }
+
+    package main;
+
+    my $network_intent = {
+        interfaces       => ['eth0'],
+        'client-classes' => [ { name => 'xcat-generic' } ],
+        subnets           => [ { id => 1, subnet => '192.0.2.0/24' } ],
+    };
+
+    no warnings 'redefine';
+    local *xCAT_plugin::dhcp::kea_build_dhcp4_intent = sub { return $network_intent; };
+    local *xCAT_plugin::dhcp::kea_build_dhcp6_intent = sub { return { subnets => [] }; };
+    local *xCAT_plugin::dhcp::kea_build_ddns_intent = sub { return; };
+    local *xCAT_plugin::dhcp::kea_control_agent_enabled = sub { return 0; };
+    local *xCAT::MsgUtils::message = sub { return; };
+    local *xCAT::MsgUtils::trace = sub { return; };
+    local $::XCATSITEVALS{externaldhcpservers};
+
+    my @errors;
+    my $capture_response = sub {
+        my $response = shift;
+        push @errors, @{ $response->{error} || [] };
+    };
+    my $saved_umask = umask;
+    my $saved_ignorecase = $Getopt::Long::ignorecase;
+    {
+        local @ARGV;
+        xCAT_plugin::dhcp::process_request(
+            {
+                _xcatpreprocessed => [0],
+                arg               => [ '-q', '-a' ],
+            },
+            $capture_response
+        );
+    }
+    umask $saved_umask;
+    $Getopt::Long::ignorecase = $saved_ignorecase;
+    Getopt::Long::Configure('pass_through');
+    @errors = ();
+
+    my $backend = bless { loads => 0 }, 'DHCPKeaRegenerateBackend';
+    xCAT_plugin::dhcp::kea_process_request( $backend, {}, { n => 1 }, { eth0 => 1 }, 0 );
+
+    is( $backend->{loads}, 0, 'makedhcp -n does not parse the previous Kea configuration' );
+    is_deeply(
+        $backend->{written_intent},
+        $network_intent,
+        'makedhcp -n writes only the newly generated network intent'
+    );
+    ok( $backend->{write_options}{backup_existing}, 'makedhcp -n backs up the replaced Kea configuration' );
+    ok( $backend->{restart_options}{enable}, 'makedhcp -n enables and restarts Kea after replacement' );
+    is_deeply( \@errors, [], 'makedhcp -n replacement completes without errors' );
+}
+
+{
     no warnings 'redefine';
     local *xCAT::NetworkUtils::thishostisnot = sub { return 1; };
 
@@ -495,58 +566,44 @@ foreach my $case (@invalid_mac_cases) {
 }
 
 {
-    my %unresolved_tables = (
-        noderes  => DHCPKeaResTable->new( { unresolved01 => {} } ),
-        chain    => DHCPKeaResTable->new( { unresolved01 => {} } ),
-        nodetype => DHCPKeaResTable->new( { unresolved01 => {} } ),
+    my %lookup_tables = (
+        noderes => DHCPKeaResTable->new(
+            {
+                unresolved01 => {},
+                valid01      => {},
+            }
+        ),
+        chain    => DHCPKeaResTable->new( {} ),
+        nodetype => DHCPKeaResTable->new( {} ),
         iscsi    => DHCPKeaResTable->new( {} ),
-        mac      => DHCPKeaResTable->new( { unresolved01 => { mac => '00:11:22:33:44:55' } } ),
+        mac      => DHCPKeaResTable->new(
+            {
+                unresolved01 => { mac => '00:11:22:33:44:55' },
+                valid01      => { mac => '00:11:22:33:44:66' },
+            }
+        ),
     );
 
     no warnings 'redefine';
     local *xCAT::Table::new = sub {
         my ( $class, $name ) = @_;
-        return $unresolved_tables{$name};
+        return $lookup_tables{$name};
     };
-    local *xCAT_plugin::dhcp::getipaddr = sub { return; };
+    local *xCAT_plugin::dhcp::getipaddr = sub {
+        my ($host) = @_;
+        return $host eq 'valid01' ? '192.0.2.30' : undef;
+    };
+    local *xCAT_plugin::dhcp::ipIsDynamic = sub { return 0; };
     local *xCAT_plugin::dhcp::kea_next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
-
-    my $backend = bless {}, 'DHCPKeaResBackend';
-    my $result = xCAT_plugin::dhcp::kea_build_node_reservations( $backend, {}, ['unresolved01'] );
-
-    is( ref($result), 'HASH', 'unresolved Kea reservation returns an error result' );
-    is(
-        $result->{error},
-        'Unable to resolve unresolved01 for the Kea DHCP reservation for unresolved01.',
-        'unresolved Kea reservation identifies the requested node'
-    );
-}
-
-{
-    package DHCPKeaWriteGuardBackend;
-    sub load_dhcp4_config {
-        return { Dhcp4 => { subnet4 => [ { id => 1, subnet => '192.0.2.0/24' } ] } };
-    }
-    sub upsert_reservations { $_[0]->{writes}++; return; }
-    sub write_dhcp4_json     { $_[0]->{writes}++; return {}; }
-
-    package main;
-
-    no warnings 'redefine';
-    local *xCAT_plugin::dhcp::kea_build_dhcp4_intent = sub { return { subnets => [] }; };
-    local *xCAT_plugin::dhcp::kea_build_dhcp6_intent = sub { return { subnets => [] }; };
-    local *xCAT_plugin::dhcp::kea_build_ddns_intent = sub { return; };
-    local *xCAT_plugin::dhcp::kea_expand_request_nodes = sub { return ['unresolved01']; };
-    local *xCAT_plugin::dhcp::kea_build_node_reservations = sub {
-        return { error => 'Unable to resolve unresolved01 for the Kea DHCP reservation for unresolved01.' };
-    };
+    local *xCAT_plugin::dhcp::kea_boot_for_node = sub { return {}; };
     local *xCAT::MsgUtils::message = sub { return; };
     local *xCAT::MsgUtils::trace = sub { return; };
 
-    my @errors;
-    my $capture_error = sub {
+    my ( @warnings, @errors );
+    my $capture_response = sub {
         my $response = shift;
-        push @errors, @{ $response->{error} || [] };
+        push @warnings, @{ $response->{warning} || [] };
+        push @errors,   @{ $response->{error}   || [] };
     };
     my $saved_umask = umask;
     my $saved_ignorecase = $Getopt::Long::ignorecase;
@@ -557,23 +614,42 @@ foreach my $case (@invalid_mac_cases) {
                 _xcatpreprocessed => [0],
                 arg               => [ '-q', '-a' ],
             },
-            $capture_error
+            $capture_response
         );
     }
     umask $saved_umask;
     $Getopt::Long::ignorecase = $saved_ignorecase;
     Getopt::Long::Configure('pass_through');
-    @errors = ();
+    @warnings = ();
+    @errors   = ();
 
-    my $backend = bless { writes => 0 }, 'DHCPKeaWriteGuardBackend';
-    xCAT_plugin::dhcp::kea_process_request( $backend, { node => ['unresolved01'] }, {}, {}, 0 );
+    {
+        package DHCPKeaLookupBackend;
+        sub subnet_id_for_ip { return 1; }
+    }
+    my $backend = bless {}, 'DHCPKeaLookupBackend';
+    my $reservations = xCAT_plugin::dhcp::kea_build_node_reservations(
+        $backend,
+        {},
+        [ 'unresolved01', 'valid01' ]
+    );
+
+    if ( ref($reservations) eq 'HASH' && $reservations->{error} ) {
+        push @errors, $reservations->{error};
+        $reservations = [];
+    }
 
     is_deeply(
-        \@errors,
-        ['Unable to resolve unresolved01 for the Kea DHCP reservation for unresolved01.'],
-        'unresolved Kea reservation is reported to the caller'
+        [ map { $_->{hostname} } @$reservations ],
+        ['valid01'],
+        'an unresolved hostname does not block later valid Kea reservations'
     );
-    is( $backend->{writes}, 0, 'unresolved Kea reservation leaves the configuration unchanged' );
+    is_deeply(
+        \@warnings,
+        ['The hostname unresolved01 of node unresolved01 could not be resolved.'],
+        'an unresolved Kea hostname reports the ISC-compatible warning'
+    );
+    is_deeply( \@errors, [], 'an unresolved Kea hostname does not abort the request' );
 }
 
 {

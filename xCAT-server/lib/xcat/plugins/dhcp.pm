@@ -2380,24 +2380,6 @@ sub kea_process_request
     }
 
     if ($opt->{n}) {
-        my $loaded4 = $backend->load_dhcp4_config();
-        if ($loaded4->{error}) {
-            $callback->({ error => [ $loaded4->{error} ], errorcode => [1] });
-            flock($dhcplockfd, LOCK_UN);
-            return;
-        }
-        $backend->preserve_reservations($loaded4, $intent4);
-
-        if ($using_dhcp6) {
-            my $loaded6 = $backend->load_dhcp6_config();
-            if ($loaded6->{error}) {
-                $callback->({ error => [ $loaded6->{error} ], errorcode => [1] });
-                flock($dhcplockfd, LOCK_UN);
-                return;
-            }
-            $backend->preserve_reservations($loaded6, $intent6);
-        }
-
         my $result = $backend->write_dhcp4_config($intent4, backup_existing => 1);
         if ($result->{error}) {
             $callback->({ error => [ $result->{error} ], errorcode => [1] });
@@ -2494,11 +2476,6 @@ sub kea_process_request
         $client_classes_changed = kea_remove_xnba_client_classes($loaded4, $nodes);
     } else {
         $reservations4 = kea_build_node_reservations($backend, $loaded4, $nodes);
-        if (ref($reservations4) eq 'HASH' && $reservations4->{error}) {
-            $callback->({ error => [ $reservations4->{error} ], errorcode => [1] });
-            flock($dhcplockfd, LOCK_UN);
-            return;
-        }
         $backend->upsert_reservations($loaded4, $reservations4);
         $client_classes_changed = kea_sync_xnba_client_classes($loaded4, $nodes);
         if ($loaded6) {
@@ -3116,7 +3093,6 @@ sub kea_build_node_reservations
     my @reservations;
     foreach my $node (@$nodes) {
         my $node_reservations = kea_node_reservations($backend, $config, $node);
-        return $node_reservations if ref($node_reservations) eq 'HASH' && $node_reservations->{error};
         push @reservations, @$node_reservations;
     }
 
@@ -3178,7 +3154,10 @@ sub kea_node_reservations
         $mac = $normalized_mac;
 
         my $ip = getipaddr($hname, OnlyV4 => 1);
-        return { error => "Unable to resolve $hname for the Kea DHCP reservation for $node." } unless $ip;
+        unless ($ip) {
+            $callback->({ warning => ["The hostname $hname of node $node could not be resolved."] });
+            next;
+        }
 
         if (ipIsDynamic($ip)) {
             $callback->({ error => ["Node $node has IP $ip which is inside the DHCP dynamic range. Move the node IP outside the dynamic range or adjust the range in the networks table."], errorcode => [1] });
