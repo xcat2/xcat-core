@@ -877,12 +877,14 @@ EOF`
         op_index=$((op_index+1))
         continue
     fi
-    #now update all the existing rpms
+    #now update the existing rpms that the otherpkgs repositories provide.
+    #Restrict the upgrade to the xcat-otherpkgs* repositories written above, so
+    #that running otherpkgs does not also apply unrelated distribution updates.
     if [ $hasyum -eq 1 ]; then
         if [ $VERBOSE  ]; then
-          echo "$envlist $yumcmd -y upgrade"
+          echo "$envlist $yumcmd -y --disablerepo=* --enablerepo=xcat-otherpkgs* upgrade"
         fi
-        result=`eval $envlist $yumcmd -y upgrade 2>&1`
+        result=`eval $envlist $yumcmd -y --disablerepo=* --enablerepo=xcat-otherpkgs* upgrade 2>&1`
         R=$?
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
