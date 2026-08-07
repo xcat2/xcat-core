@@ -155,11 +155,27 @@ old_pwd=`pwd`
 cd `dirname $0`
 curdir=`pwd`
 
-# Use flock to only one person build at the same time
-# Get a lock, so can not do 2 builds at once
-exec 8>/var/lock/xcatbld.lock
+# Optional per-build workspace root. When BUILDDIR is set (typically a distinct
+# value per CI lane, passed as a BUILDDIR=<path> attr just like DEST/GPG_HOME), the
+# host-writable build state below -- the build lock, the git-pull log and the default
+# DEST output tree -- is rooted under it, so two builds with distinct BUILDDIRs share
+# no host state and run in parallel. Unset keeps the historic behavior (host-global
+# lock, scratch in the source tree's parent).
+if [ -n "$BUILDDIR" ]; then
+    mkdir -p "$BUILDDIR"
+    LOCKFILE="$BUILDDIR/xcatbld.lock"
+    # Default the output tree under BUILDDIR unless the caller pinned DEST.
+    [ -z "$DEST" ] && DEST="$BUILDDIR/dest"
+else
+    LOCKFILE="/var/lock/xcatbld.lock"
+fi
+
+# Use flock so two builds that share one workspace can't run at once. The lock lives
+# in BUILDDIR (when set), so builds with distinct BUILDDIRs never collide and run in
+# parallel; only two builds aimed at the SAME workspace fail-fast here.
+exec 8>"$LOCKFILE"
 if ! flock -n 8; then
-    echo "ERROR: Can't get lock /var/lock/xcatbld.lock.  Someone else must be doing a build right now.  Exiting...."
+    echo "ERROR: Can't get lock $LOCKFILE.  Another build is already using this workspace.  Exiting...."
     exit 1
 fi
 
@@ -240,7 +256,11 @@ then
         update_log=''
 
         if [ -z "$GITUP" ];then
-            update_log=../coregitup
+            if [ -n "$BUILDDIR" ]; then
+                update_log="$BUILDDIR/coregitup"
+            else
+                update_log=../coregitup
+            fi
             echo "git pull > $update_log"
             git pull > $update_log
         else
