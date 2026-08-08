@@ -861,7 +861,14 @@ sub nextdestiny {
             $ref->{currchain} = $ref->{chain};
         } elsif ($ref->{currchain} !~ /[,;]/){
             if ($ref->{currstate} and ($ref->{currchain} =~ /$ref->{currstate}/)) {
-                $ref->{currchain} = 'standby';
+                # 'boot' is the steady state a completed provision leaves behind,
+                # set by setdestiny once the install or netboot destiny is applied.
+                # Some installers advance the destiny more than once, so it has to
+                # survive being advanced again: replacing it with 'standby' would
+                # leave the node with no destiny that boots the installed system.
+                unless ($ref->{currchain} eq 'boot') {
+                    $ref->{currchain} = 'standby';
+                }
                 $callnodeset = 0;
             }
         }
