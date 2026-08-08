@@ -287,40 +287,6 @@ sub setdestiny {
         if ($state ne 'osimage') {
             $callback->({ error => "The options \"install\", \"netboot\", and \"statelite\" have been deprecated, use \"osimage=<osimage_name>\" instead.", errorcode => [1], errorabort => [1] });
             return;
-
-            my $updateattribs;
-            if ($target) {
-                my $archentries = $nodetypetable->getNodesAttribs($req->{node}, ['supportedarchs']);
-                if ($target =~ /^([^-]*)-([^-]*)-(.*)/) {
-                    $updateattribs->{os}      = $1;
-                    $updateattribs->{arch}    = $2;
-                    $updateattribs->{profile} = $3;
-                    my $nodearch = $2;
-                    foreach (@{ $req->{node} }) {
-                        if ($archentries->{$_}->[0]->{supportedarchs} and $archentries->{$_}->[0]->{supportedarchs} !~ /(^|,)$nodearch(\z|,)/) {
-                            xCAT::MsgUtils->report_node_error($callback, $_,
-                                "Requested architecture " . $nodearch . " is not one of the architectures supported by $_  (per nodetype.supportedarchs, it supports " . $archentries->{$_}->[0]->{supportedarchs} . ")"
-                                );
-                            $failurenodes{$_} = 1;
-                            next;
-                        }
-                    }    #end foreach
-                } else {
-                    $updateattribs->{profile} = $target;
-                }
-            }    #end if($target)
-
-            $updateattribs->{provmethod} = $state;
-            my @tmpnodelist = ();
-            foreach (@{ $req->{node} }) {
-                if ($failurenodes{$_}) {
-                    delete $state_hash{$_};
-                    next;
-                }
-                push @tmpnodelist, $_;
-            }
-            $nodetypetable->setNodesAttribs(\@tmpnodelist, $updateattribs);
-
         } else {    #state is osimage
             if ($target) {
                 if (@{ $req->{node} } == 0) { return; }
