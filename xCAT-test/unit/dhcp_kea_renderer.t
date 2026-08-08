@@ -194,6 +194,37 @@ ok( !exists $modern_subnet->{'require-client-classes'}, 'Kea 3.x output omits de
 is( $modern_class->{'only-in-additional-list'}, JSON::true, 'Kea 3.x renders modern class additional-evaluation flag' );
 ok( !exists $modern_class->{'only-if-required'}, 'Kea 3.x output omits deprecated class additional-evaluation flag' );
 
+my $numeric_additional_json = $backend->render_dhcp4_config(
+    {
+        subnets => [
+            {
+                id                        => 4,
+                subnet                    => '192.0.2.0/24',
+                pools                     => [],
+                additional_client_classes => ['xcat-xnba-net-192.0.2.0_24-bios'],
+            },
+        ],
+        'client-classes' => [
+            {
+                name            => 'xcat-xnba-net-192.0.2.0_24-bios',
+                test            => "option[77].text == 'xNBA'",
+                additional_only => 1,
+            },
+        ],
+    }
+);
+my $numeric_additional_config = decode_json($numeric_additional_json);
+is_deeply(
+    $numeric_additional_config->{Dhcp4}{subnet4}[0]{'require-client-classes'},
+    ['xcat-xnba-net-192.0.2.0_24-bios'],
+    'legacy Kea limits the xNBA fallback class to its owning subnet'
+);
+is(
+    $numeric_additional_config->{Dhcp4}{'client-classes'}[0]{'only-if-required'},
+    JSON::true,
+    'numeric additional-only intent is rendered as a JSON boolean'
+);
+
 my $empty_boot_json = $backend->render_dhcp4_config(
     {
         subnets => [
