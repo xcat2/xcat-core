@@ -132,10 +132,6 @@ sub process_request {
 
     if (@ARGV > 0) {
         $imagename = $ARGV[0];
-        if ($arch or $osver or $profile) {
-            $callback->({ error => ["-o, -p and -a options are not allowed when a image name is specified."], errorcode => [1] });
-            return 1;
-        }
 
         # load the module in memory
         eval { require("$::XCATROOT/lib/perl/xCAT/Table.pm") };
@@ -186,21 +182,8 @@ sub process_request {
         $exlistloc = $ref1->{'exlist'};
         $destdir   = $ref1->{'rootimgdir'};
     } else {
-        $provmethod = "netboot";
-        unless ($osver) {
-            $callback->({ error => ["Please specify a os version with the -o flag"], errorcode => [1] });
-            return 1;
-        }
-        unless ($arch) {
-            $arch = `uname -m`;
-            chomp($arch);
-            $arch = "x86" if ($arch =~ /i.86$/);
-        }
-
-        unless ($profile) {
-            $callback->({ error => ["Please specify a profile name with -p flag"], errorcode => [1] });
-            return 1;
-        }
+        $callback->({ error => ["An image name is required, use 'packimage <osimage name>'."], errorcode => [1] });
+        return 1;
     }
 
     unless ($destdir) {
@@ -233,17 +216,6 @@ sub process_request {
         return 1;
     }
     my $oldpath = cwd();
-    unless ($imagename) {
-        $exlistloc = xCAT::SvrUtils->get_exlist_file_name("$installroot/custom/netboot/$distname", $profile, $osver, $arch);
-        unless ($exlistloc) { $exlistloc = xCAT::SvrUtils->get_exlist_file_name("$::XCATROOT/share/xcat/netboot/$distname", $profile, $osver, $arch); }
-
-        #save the settings into DB, it will not update if the image already exist
-        my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($osver, $arch, $profile, "netboot");
-        unless ($ret[0] eq 0) {
-            $callback->({ error => [ "Error when updating the osimage tables: " . $ret[1] ], errorcode => [1] });
-            return 1;
-        }
-    }
 
     #before generating rootimg.$suffix, copy $installroot/postscripts into the image at /xcatpost
     if (-e "$rootimg_dir/xcatpost") {
