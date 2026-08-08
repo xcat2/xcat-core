@@ -2580,7 +2580,7 @@ sub kea_build_dhcp4_intent
     }
 
     my @subnets;
-    my @opal_classes;
+    my @subnet_classes;
     my $id = 1;
     foreach my $route (@routes) {
         my ( $net, $netif, $mask, $flags ) = @$route;
@@ -2599,7 +2599,7 @@ sub kea_build_dhcp4_intent
 
         my $subnet = kea_subnet4_intent($nettab, $net, $mask, $interface, $remote, $id, $httpport);
         return $subnet if $subnet->{error};
-        push @opal_classes, @{ delete $subnet->{client_classes} || [] };
+        push @subnet_classes, @{ delete $subnet->{client_classes} || [] };
         push @subnets, $subnet;
         $id++;
     }
@@ -2610,7 +2610,7 @@ sub kea_build_dhcp4_intent
         valid_lifetime => kea_dhcp_lease_time(),
         'option-def'   => kea_option_defs(),
         'option-data'  => kea_global_option_data(),
-        'client-classes' => [ @{ kea_boot_client_classes() }, @opal_classes ],
+        'client-classes' => [ @{ kea_boot_client_classes() }, @subnet_classes ],
         subnets        => \@subnets,
     };
 
@@ -2999,6 +2999,17 @@ sub kea_subnet4_intent
     }
 
     my $opal_class = kea_opal_client_class($net, $prefix, $tftp, $httpport);
+    my $xnba_classes = [];
+    if ($dynamicrange) {
+        $xnba_classes = xCAT::DHCP::BootPolicy->kea_xnba_network_classes(
+            net         => $net,
+            prefix      => $prefix,
+            next_server => $tftp,
+            httpport    => $httpport,
+            xnba_kpxe   => -f "$tftpdir/xcat/xnba.kpxe" ? 1 : 0,
+            xnba_efi    => -f "$tftpdir/xcat/xnba.efi"  ? 1 : 0,
+        );
+    }
     my %subnet = (
         id            => $id,
         subnet        => "$net/$prefix",
@@ -3007,9 +3018,11 @@ sub kea_subnet4_intent
         next_server   => $tftp,
     );
     $subnet{interface} = $interface unless $remote;
-    if ($opal_class) {
-        $subnet{additional_client_classes} = [ $opal_class->{name} ];
-        $subnet{client_classes} = [$opal_class];
+    my @client_classes = @$xnba_classes;
+    push @client_classes, $opal_class if $opal_class;
+    if (@client_classes) {
+        $subnet{additional_client_classes} = [ map { $_->{name} } @client_classes ];
+        $subnet{client_classes} = \@client_classes;
     }
 
     return \%subnet;
