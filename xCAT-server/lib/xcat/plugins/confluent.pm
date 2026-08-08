@@ -114,6 +114,10 @@ sub preprocess_request {
         my $hmcache = $hmtab->getNodesAttribs($noderange, [ 'node', 'serialport', 'cons', 'conserver' ]);
         foreach my $node (@$noderange) {
             my $ent = $hmcache->{$node}->[0]; #$hmtab->getNodeAttribs($node,['node', 'serialport','cons', 'conserver']);
+            #A node named on the command line may have no nodehm row at all. Carry
+            #its name through anyway, otherwise the entry below is an undefined
+            #reference and the node reaches confluent with an empty name.
+            unless ($ent) { $ent = { node => $node }; }
             push @items, $ent;
         }
     } else {
@@ -123,7 +127,11 @@ sub preprocess_request {
 
     my @nodes = ();
     foreach (@items) {
-        if (((!defined($_->{cons})) || ($_->{cons} eq "")) and !defined($_->{serialport})) { next; } #skip if 'cons' is not defined for this node, unless serialport suggests otherwise
+        #skip if 'cons' is not defined for this node, unless serialport suggests otherwise.
+        #This only applies while scanning every node in the table. A node named
+        #explicitly on the command line was asked for by the administrator, so it is
+        #configured whether or not it has a console method.
+        if ($allnodes and ((!defined($_->{cons})) || ($_->{cons} eq "")) and !defined($_->{serialport})) { next; }
         if (defined($_->{conserver})) { push @{ $cons_hash{ $_->{conserver} }{nodes} }, $_->{node}; }
         else { push @{ $cons_hash{$master}{nodes} }, $_->{node}; }
         push @nodes, $_->{node};
@@ -243,7 +251,13 @@ sub makeconfluentcfg {
         {
             foreach my $nodeent (keys %$ent)
             {
-                push @tmpcfgents1, $ent->{$nodeent}->[0];
+                #A named node may have no nodehm row, which leaves an undefined
+                #entry that reaches confluent as an empty node name. The key here
+                #is the node, so carry the name through instead.
+                my $row = $ent->{$nodeent}->[0];
+                $row = {} unless ($row);
+                $row->{node} = $nodeent unless (defined($row->{node}));
+                push @tmpcfgents1, $row;
             }
         }
         @cfgents1    = @tmpcfgents1;
