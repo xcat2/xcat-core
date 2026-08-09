@@ -256,7 +256,10 @@ if [ -f "/proc/cmdline" ] && [ "x$(stat -c '%i %d' /)" == "x$(stat -c '%i %d' /p
     if [ "$SHAREDTFTP" != "1" ]; then
       . /etc/profile.d/xcat.sh
       echo Running '"'mknb `uname -m`'"', triggered by the installation/update of xCAT-genesis-scripts-x86_64 ...
-      mknb `uname -m`
+      if ! mknb `uname -m`; then
+        echo "WARNING: mknb did not complete, so the Genesis netboot image may be missing or out of date."
+        echo "         Rerun 'mknb `uname -m`' once the cause is resolved."
+      fi
     fi
   fi
 fi
