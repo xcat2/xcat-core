@@ -369,7 +369,7 @@ sub install_xcat{
         }
     }
 
-    my $cmd = "sudo apt-get install xcat --allow-remove-essential --allow-unauthenticated";
+    my $cmd = "sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y xcat --allow-remove-essential --allow-unauthenticated";
     @output = runcmd("$cmd");
     if($::RUNCMD_RC){
         my $lastline = $output[-1];
@@ -404,7 +404,7 @@ sub install_xcat{
                print "[install_xcat] $cmd....[Pass]\n";
             }
         }
-        $cmd = "sudo apt-get install xcat-probe --allow-remove-essential --allow-unauthenticated";
+        $cmd = "sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y xcat-probe --allow-remove-essential --allow-unauthenticated";
         @output = runcmd("$cmd");
         if($::RUNCMD_RC){
             print RED "[install_xcat] $cmd ....[Failed]\n";
@@ -509,7 +509,7 @@ sub check_syntax{
 # Return code:
 #--------------------------------------------------------
 sub run_fast_regression_test{
-    my $cmd = "sudo apt-get install xcat-test --allow-remove-essential --allow-unauthenticated";
+    my $cmd = "sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y xcat-test --allow-remove-essential --allow-unauthenticated";
     my @output = runcmd("$cmd");
     if($::RUNCMD_RC){
          print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
