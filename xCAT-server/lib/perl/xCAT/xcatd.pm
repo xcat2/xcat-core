@@ -271,8 +271,14 @@ sub validate {
                         $saveArglist = "$first$restcommand";
                    }
                 }
-                # Replace passwords with 'x'
-                if ($arglist)  { $logst .= redact_password($request->{command}->[0], $saveArglist); }
+                # Replace passwords with 'x'. The same redacted text is used for
+                # syslog and for the auditlog table, which recorded the raw
+                # arguments and so kept secrets that syslog did not.
+                my $redacted_arglist = $arglist;
+                if ($arglist) {
+                    $redacted_arglist = redact_password($request->{command}->[0], $saveArglist);
+                    $logst .= $redacted_arglist;
+                }
                 if ($peername) { $logst .= " for " . $request->{username}->[0] }
                 if ($peerhost) { $logst .= " from " . $peerhost }
 
@@ -336,7 +342,7 @@ sub validate {
                     if ($request->{noderange} && defined($request->{noderange}->[0])) {
                         $rsp->{noderange}->[0] = $request->{noderange}->[0];
                     }
-                    $rsp->{args}->[0]   = $arglist;
+                    $rsp->{args}->[0]   = $redacted_arglist;
                     $rsp->{status}->[0] = $status;
                     if ($skipsyslog == 0) {    # write to syslog and auditlog
                         @$deferredmsgargs = ("SA", $rsp);
