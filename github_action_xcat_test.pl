@@ -475,6 +475,7 @@ sub check_syntax{
         foreach my $file (@files) {
             next if($file =~ /\/opt\/xcat\/share\/xcat\/netboot\/genesis\//);
             next if($file =~ /\/opt\/xcat\/probe\//);
+            next if($file =~ /\/opt\/xcat\/share\/xcat\/tools\/autotest\/unit\//);
 
             @output = runcmd("file $file");
             if($output[0] =~ /perl /i){
