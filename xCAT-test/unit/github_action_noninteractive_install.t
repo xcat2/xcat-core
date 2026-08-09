@@ -38,4 +38,10 @@ like(
     'workflow dependency installation is noninteractive'
 );
 
+like(
+    $contents,
+    qr{next if\(\$file =~ /\\/opt\\/xcat\\/share\\/xcat\\/tools\\/autotest\\/unit\\//\);},
+    'installed source-layout tests are excluded from syntax checks'
+);
+
 done_testing();
