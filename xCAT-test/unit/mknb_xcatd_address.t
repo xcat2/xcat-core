@@ -116,16 +116,22 @@ is_deeply(
 );
 
 sub prepare_tftpdir {
-    my ($root, $name, $arch) = @_;
+    my ($root, $name, $arch, $image_type) = @_;
+    $image_type //= 'genesis';
     $xCAT::TableUtils::tftpdir = "$root/$name";
     make_path(
         "$xCAT::TableUtils::tftpdir/xcat",
         "$xCAT::TableUtils::tftpdir/etc",
     );
-    foreach my $file (
-        "$xCAT::TableUtils::tftpdir/xcat/genesis.kernel.$arch",
-        "$xCAT::TableUtils::tftpdir/xcat/genesis.fs.$arch.gz",
-    ) {
+    my @files = ("$xCAT::TableUtils::tftpdir/xcat/genesis.kernel.$arch");
+    if ($image_type eq 'legacy') {
+        push @files,
+          "$xCAT::TableUtils::tftpdir/xcat/nbk.$arch",
+          "$xCAT::TableUtils::tftpdir/xcat/nbfs.$arch.gz";
+    } else {
+        push @files, "$xCAT::TableUtils::tftpdir/xcat/genesis.fs.$arch.gz";
+    }
+    foreach my $file (@files) {
         open(my $fh, '>', $file) or die "Unable to create $file: $!";
         close($fh);
     }
@@ -186,6 +192,25 @@ prepare_tftpdir($tmpdir, 'tftpboot-x86', 'x86_64');
 my $responses = run_mknb('x86_64');
 generation_succeeded($responses, 'x86 configuration generation succeeds');
 
+my $genesis_pxe = read_config(
+    "$xCAT::TableUtils::tftpdir/pxelinux.cfg/C0A89"
+);
+like(
+    $genesis_pxe,
+    qr/^  KERNEL xcat\/genesis\.kernel\.x86_64$/m,
+    'PXELINUX selects the Genesis kernel',
+);
+like(
+    $genesis_pxe,
+    qr/^  APPEND initrd=xcat\/genesis\.fs\.x86_64\.gz /m,
+    'PXELINUX makes the Genesis initramfs relative to the configured TFTP root',
+);
+unlike(
+    $genesis_pxe,
+    qr/\Q$xCAT::TableUtils::tftpdir\E/,
+    'PXELINUX does not expose the configured TFTP root',
+);
+
 foreach my $relative_path (
     'xcat/xnba/nets/192.168.144.0_20',
     'pxelinux.cfg/C0A89',
@@ -202,6 +227,25 @@ foreach my $relative_path (
         "$relative_path does not use the later floating address as the xcatd endpoint",
     );
 }
+
+use_reporter_address_maps();
+prepare_tftpdir($tmpdir, 'tftpboot-x86-legacy', 'x86_64', 'legacy');
+$responses = run_mknb('x86_64');
+generation_succeeded($responses, 'legacy x86 configuration generation succeeds');
+
+my $legacy_pxe = read_config(
+    "$xCAT::TableUtils::tftpdir/pxelinux.cfg/C0A89"
+);
+like(
+    $legacy_pxe,
+    qr/^  KERNEL xcat\/nbk\.x86_64$/m,
+    'PXELINUX keeps the legacy kernel',
+);
+like(
+    $legacy_pxe,
+    qr/^  APPEND initrd=xcat\/nbfs\.x86_64\.gz /m,
+    'PXELINUX keeps the legacy initramfs path',
+);
 
 use_reporter_address_maps();
 prepare_tftpdir($tmpdir, 'tftpboot-power', 'ppc64');
