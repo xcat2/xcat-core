@@ -42,8 +42,9 @@ sub process_request {
     my $serialspeed;
     my $serialflow;
     my %nobootnicips = ();
-    my $initrd_file = undef;
-    my $xcatdport   = 3001;
+    my $initrd_file    = undef;
+    my $invisibletouch = 0;
+    my $xcatdport      = 3001;
     my @entries     = xCAT::TableUtils->get_site_attribute("defserialport");
     my $t_entry     = $entries[0];
     if (defined($t_entry)) {
@@ -202,7 +203,6 @@ sub process_request {
         mkpath("$tftpdir/xcat");
     }
     my $rc;
-    my $invisibletouch = 0;
     if (-e "$::XCATROOT/share/xcat/netboot/genesis/$arch") {
         $rc = system("shopt -s dotglob; GLOBIGNORE=\".:..\" cp -a $::XCATROOT/share/xcat/netboot/genesis/$arch/fs/* $tempdir");
         $rc = system("cp -a $::XCATROOT/share/xcat/netboot/genesis/$arch/kernel $tftpdir/xcat/genesis.kernel.$arch");
@@ -292,8 +292,10 @@ sub process_request {
         }
         if (-e "$tftpdir/xcat/genesis.fs.$arch.lzma") {
             $initrd_file = "$tftpdir/xcat/genesis.fs.$arch.lzma";
+            $invisibletouch = 1;
         } elsif (-e "$tftpdir/xcat/genesis.fs.$arch.gz") {
             $initrd_file = "$tftpdir/xcat/genesis.fs.$arch.gz";
+            $invisibletouch = 1;
         } elsif (-e "$tftpdir/xcat/nbfs.$arch.gz") {
             $initrd_file = "$tftpdir/xcat/nbfs.$arch.gz";
         } else {
@@ -443,11 +445,13 @@ sub process_request {
             }
         }
         if ($dopxe) {
-            my ($ignored, $tftp_initrd) = split /\/tftpboot\//, $initrd_file, 2;
+            my $tftp_initrd = $initrd_file;
+            $tftp_initrd =~ s{^\Q$tftpdir\E/?}{};
+            my $kernel_file = $invisibletouch ? "genesis.kernel.$arch" : "nbk.$arch";
             open($cfgfile, ">", "$tftpdir/pxelinux.cfg/" . uc($_));
             print $cfgfile "DEFAULT xCAT\n";
             print $cfgfile "  LABEL xCAT\n";
-            print $cfgfile "  KERNEL xcat/nbk.$arch\n";
+            print $cfgfile "  KERNEL xcat/$kernel_file\n";
             print $cfgfile "  APPEND initrd=$tftp_initrd xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline\n";
             close($cfgfile);
         } elsif ($arch =~ /ppc/) {
