@@ -22,10 +22,12 @@ sub read_file {
 my $rpm_spec = read_file(
     File::Spec->catfile( $repo_root, 'xCAT-server', 'xCAT-server.spec' )
 );
-like(
-    $rpm_spec,
-    qr/^Requires:.*\bperl\(Digest::SHA\)(?:\s|$)/m,
-    'the RPM package requires Digest::SHA',
+my @rpm_sha_requirements =
+  $rpm_spec =~ /^Requires:.*\bperl\(Digest::SHA\)(?:\s|$)/mg;
+is(
+    scalar(@rpm_sha_requirements),
+    2,
+    'both RPM architecture branches require Digest::SHA',
 );
 
 my $debian_control = read_file(
