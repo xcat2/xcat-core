@@ -109,7 +109,7 @@ prepare_export($export, 'new kernel', 'new initramfs');
 
 ok(
     xCAT_plugin::mknb::_prebuilt_genesis_requested($export),
-    'an exported initramfs selects the prebuilt path',
+    'an export manifest selects the prebuilt path',
 );
 
 my ($installed_initrd, $install_error) =
@@ -138,6 +138,18 @@ is(read_file($published_kernel), 'current kernel', 'a bad export keeps the curre
 is(read_file($published_initramfs), 'current initramfs', 'a bad export keeps the current initramfs');
 is_deeply([temporary_files("$tftpdir/xcat")], [], 'a failed install removes staging files');
 
+my $unmarked_export = "$tmpdir/unmarked";
+prepare_export($unmarked_export, 'kernel', 'initramfs');
+unlink("$unmarked_export/xcat-genesis.manifest");
+ok(
+    !xCAT_plugin::mknb::_prebuilt_genesis_requested($unmarked_export),
+    'boot artifacts without an export manifest do not select the prebuilt path',
+);
+(undef, $install_error) = xCAT_plugin::mknb::_install_prebuilt_genesis(
+    $unmarked_export, $tftpdir, 'x86_64'
+);
+like($install_error, qr/Missing Genesis export manifest/, 'the installer requires the export manifest');
+
 my $partial_export = "$tmpdir/partial";
 make_path($partial_export);
 write_file("$partial_export/initramfs.cpio.gz", 'partial initramfs');
@@ -153,6 +165,62 @@ ok(
     $partial_export, $tftpdir, 'x86_64'
 );
 like($install_error, qr/Missing Genesis checksum file/, 'a partial export fails closed');
+
+my $missing_manifest_checksum = "$tmpdir/missing-manifest-checksum";
+prepare_export($missing_manifest_checksum, 'kernel', 'initramfs');
+write_file(
+    "$missing_manifest_checksum/SHA256SUMS",
+    sha256_hex('kernel') . "  kernel\n"
+      . sha256_hex('initramfs') . "  initramfs.cpio.gz\n",
+);
+(undef, $install_error) = xCAT_plugin::mknb::_install_prebuilt_genesis(
+    $missing_manifest_checksum, $tftpdir, 'x86_64'
+);
+like($install_error, qr/Missing Genesis checksum entry: xcat-genesis\.manifest/, 'the export manifest needs a checksum');
+
+my $bad_manifest_checksum = "$tmpdir/bad-manifest-checksum";
+prepare_export($bad_manifest_checksum, 'kernel', 'initramfs');
+write_file(
+    "$bad_manifest_checksum/xcat-genesis.manifest",
+    "architecture=x86_64\nversion=1\nformat=xcat-genesis\n",
+);
+(undef, $install_error) = xCAT_plugin::mknb::_install_prebuilt_genesis(
+    $bad_manifest_checksum, $tftpdir, 'x86_64'
+);
+like($install_error, qr/Genesis checksum mismatch: .*xcat-genesis\.manifest/, 'the export manifest checksum is verified');
+
+my @invalid_manifests = (
+    [ malformed => "not a manifest\n", qr/Invalid Genesis export manifest entry/ ],
+    [ unknown => export_manifest('x86_64') . "label=test\n", qr/Unknown Genesis export manifest entry: label/ ],
+    [ duplicate => export_manifest('x86_64') . "version=1\n", qr/Duplicate Genesis export manifest entry: version/ ],
+    [ missing => "format=xcat-genesis\nversion=1\n", qr/Missing Genesis export manifest entry: architecture/ ],
+    [ version => "format=xcat-genesis\nversion=2\narchitecture=x86_64\n", qr/Unsupported Genesis export version: 2/ ],
+    [ architecture => export_manifest('ppc64le'), qr/Unsupported Genesis export architecture: ppc64le/ ],
+);
+foreach my $case (@invalid_manifests) {
+    my ($name, $content, $error_pattern) = @{$case};
+    my $invalid_export = "$tmpdir/manifest-$name";
+    prepare_export($invalid_export, 'kernel', 'initramfs');
+    write_file("$invalid_export/xcat-genesis.manifest", $content);
+    (undef, $install_error) = xCAT_plugin::mknb::_install_prebuilt_genesis(
+        $invalid_export, $tftpdir, 'x86_64'
+    );
+    like($install_error, $error_pattern, "$name export manifests are rejected");
+}
+
+my $symlink_manifest = "$tmpdir/symlink-manifest";
+prepare_export($symlink_manifest, 'kernel', 'initramfs');
+unlink("$symlink_manifest/xcat-genesis.manifest");
+symlink("$symlink_manifest/kernel", "$symlink_manifest/xcat-genesis.manifest")
+  or die "Unable to create manifest symlink: $!";
+ok(
+    xCAT_plugin::mknb::_prebuilt_genesis_requested($symlink_manifest),
+    'a manifest symlink still selects the prebuilt path',
+);
+(undef, $install_error) = xCAT_plugin::mknb::_install_prebuilt_genesis(
+    $symlink_manifest, $tftpdir, 'x86_64'
+);
+like($install_error, qr/Missing Genesis export manifest/, 'export manifest symlinks fail closed');
 
 my $missing_entry = "$tmpdir/missing-entry";
 prepare_export($missing_entry, 'kernel', 'initramfs');
