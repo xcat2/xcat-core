@@ -813,7 +813,8 @@ sub _render_client_class {
     delete @rendered{qw/additional_only only_in_additional_list only_if_required/};
     delete $rendered{'only-in-additional-list'};
     delete $rendered{'only-if-required'};
-    $rendered{ $self->_additional_class_flag_field() } = $additional_only if defined $additional_only;
+    $rendered{ $self->_additional_class_flag_field() } = _json_bool($additional_only)
+      if defined $additional_only;
 
     return \%rendered;
 }

@@ -87,6 +87,43 @@ sub kea_xnba_node_classes {
     return \@classes;
 }
 
+sub kea_xnba_network_classes {
+    my ( $class, %opts ) = @_;
+
+    return [] unless $opts{net} && defined $opts{prefix} && $opts{next_server};
+
+    my $xnba_user_class = xnba_user_class_test();
+    my $uefi_x64_arch_match = uefi_x64_client_architecture_match_expr();
+    my $httpport = $opts{httpport} || '80';
+    my $portsuffix = ( $httpport eq '80' ) ? '' : ":$httpport";
+    my $network_id = $opts{net} . '_' . $opts{prefix};
+    my $safe_network = $network_id;
+    $safe_network =~ s/[^A-Za-z0-9_.-]/_/g;
+    my $base_url = 'http://' . $opts{next_server} . $portsuffix
+      . '/tftpboot/xcat/xnba/nets/' . $network_id;
+    my @classes;
+
+    if ( $opts{xnba_kpxe} ) {
+        push @classes, {
+            name             => "xcat-xnba-net-$safe_network-bios",
+            test             => "$xnba_user_class and option[93].hex == 0x0000",
+            'boot-file-name' => $base_url,
+            additional_only  => 1,
+        };
+    }
+
+    if ( $opts{xnba_efi} ) {
+        push @classes, {
+            name             => "xcat-xnba-net-$safe_network-uefi",
+            test             => "$xnba_user_class and ($uefi_x64_arch_match)",
+            'boot-file-name' => "$base_url.uefi",
+            additional_only  => 1,
+        };
+    }
+
+    return \@classes;
+}
+
 sub xnba_user_class_test {
     return "(option[77].exists and (option[77].text == 'xNBA' or option[77].hex == 0x784e4241 or substring(option[77].hex,1,4) == 'xNBA'))";
 }

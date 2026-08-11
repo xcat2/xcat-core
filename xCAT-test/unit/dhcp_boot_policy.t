@@ -81,4 +81,64 @@ my $combined_classes = xCAT::DHCP::BootPolicy->kea_client_classes(
 );
 is( $combined_classes->[0]{name}, 'xcat-xnba-cn01-52544b100011-bios', 'node-specific xNBA classes have priority over generic boot classes' );
 
+my $network_classes = xCAT::DHCP::BootPolicy->kea_xnba_network_classes(
+    net         => '192.0.2.0',
+    prefix      => 24,
+    next_server => '192.0.2.10',
+    httpport    => '8080',
+    xnba_kpxe   => 1,
+    xnba_efi    => 1,
+);
+is( scalar @$network_classes, 2, 'xNBA network policy renders BIOS and UEFI fallback classes' );
+my %network_by_name = map { $_->{name} => $_ } @$network_classes;
+my $network_bios = $network_by_name{'xcat-xnba-net-192.0.2.0_24-bios'};
+ok( $network_bios, 'xNBA network BIOS class is named by subnet' );
+is(
+    $network_bios->{'boot-file-name'},
+    'http://192.0.2.10:8080/tftpboot/xcat/xnba/nets/192.0.2.0_24',
+    'xNBA network BIOS class returns the subnet script URL'
+);
+like( $network_bios->{test}, qr/option\[77\]\.text == 'xNBA'/, 'xNBA network class matches the xNBA user class' );
+like( $network_bios->{test}, qr/option\[93\]\.hex == 0x0000/, 'xNBA network BIOS class matches BIOS clients' );
+unlike( $network_bios->{test}, qr/pkt4\.mac/, 'xNBA network fallback does not require a known MAC' );
+ok( $network_bios->{additional_only}, 'xNBA network fallback is limited to its owning subnet' );
+is(
+    $network_by_name{'xcat-xnba-net-192.0.2.0_24-uefi'}{'boot-file-name'},
+    'http://192.0.2.10:8080/tftpboot/xcat/xnba/nets/192.0.2.0_24.uefi',
+    'xNBA network UEFI class returns the subnet UEFI script URL'
+);
+like(
+    $network_by_name{'xcat-xnba-net-192.0.2.0_24-uefi'}{test},
+    qr/0x0010/,
+    'xNBA network UEFI class matches HTTP boot clients'
+);
+
+is_deeply(
+    xCAT::DHCP::BootPolicy->kea_xnba_network_classes(
+        net         => '192.0.2.0',
+        prefix      => 24,
+        next_server => '192.0.2.10',
+        xnba_kpxe   => 1,
+    ),
+    [
+        {
+            name             => 'xcat-xnba-net-192.0.2.0_24-bios',
+            test             => xCAT::DHCP::BootPolicy::xnba_user_class_test()
+              . ' and option[93].hex == 0x0000',
+            'boot-file-name' => 'http://192.0.2.10/tftpboot/xcat/xnba/nets/192.0.2.0_24',
+            additional_only  => 1,
+        },
+    ],
+    'xNBA network policy omits unavailable loaders and the default HTTP port'
+);
+is_deeply(
+    xCAT::DHCP::BootPolicy->kea_xnba_network_classes(
+        net       => '192.0.2.0',
+        prefix    => 24,
+        xnba_kpxe => 1,
+    ),
+    [],
+    'xNBA network policy requires a next server'
+);
+
 done_testing();
