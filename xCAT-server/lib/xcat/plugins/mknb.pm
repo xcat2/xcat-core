@@ -8,6 +8,8 @@ use xCAT::NodeRange;
 use File::Path;
 use File::Copy;
 
+my $GENESIS_EXPORT_MANIFEST = 'xcat-genesis.manifest';
+
 sub handled_commands {
     return {
         mknb => 'mknb',
@@ -38,10 +40,52 @@ sub _select_network_addresses {
 
 sub _prebuilt_genesis_requested {
     my ($directory) = @_;
-    return -e "$directory/initramfs.cpio.gz"
-      || -l "$directory/initramfs.cpio.gz"
-      || -e "$directory/SHA256SUMS"
-      || -l "$directory/SHA256SUMS";
+    my $manifest = "$directory/$GENESIS_EXPORT_MANIFEST";
+    return -e $manifest || -l $manifest;
+}
+
+sub _validate_prebuilt_genesis_manifest {
+    my ($directory, $arch) = @_;
+    my $manifest = "$directory/$GENESIS_EXPORT_MANIFEST";
+    return "Missing Genesis export manifest: $manifest"
+      unless -f $manifest && !-l $manifest;
+
+    open(my $manifest_fh, '<:raw', $manifest)
+      or return "Unable to read Genesis export manifest: $manifest";
+
+    my %expected = (
+        format       => 'xcat-genesis',
+        version      => '1',
+        architecture => $arch,
+    );
+    my %values;
+    while (my $line = <$manifest_fh>) {
+        chomp($line);
+        unless ($line =~ /^([a-z][a-z0-9_-]*)=([A-Za-z0-9][A-Za-z0-9._+-]*)$/) {
+            close($manifest_fh);
+            return "Invalid Genesis export manifest entry: $line";
+        }
+        my ($name, $value) = ($1, $2);
+        unless (exists($expected{$name})) {
+            close($manifest_fh);
+            return "Unknown Genesis export manifest entry: $name";
+        }
+        if (exists($values{$name})) {
+            close($manifest_fh);
+            return "Duplicate Genesis export manifest entry: $name";
+        }
+        $values{$name} = $value;
+    }
+    close($manifest_fh);
+
+    foreach my $name (qw(format version architecture)) {
+        return "Missing Genesis export manifest entry: $name"
+          unless exists($values{$name});
+        return "Unsupported Genesis export $name: $values{$name}"
+          unless $values{$name} eq $expected{$name};
+    }
+
+    return;
 }
 
 sub _read_prebuilt_genesis_checksums {
@@ -86,9 +130,25 @@ sub _install_prebuilt_genesis {
     return (undef, "Invalid Genesis export directory: $source")
       unless -d $source && !-l $source;
 
+    my $manifest_error =
+      _validate_prebuilt_genesis_manifest($source, $arch);
+    return (undef, $manifest_error) if $manifest_error;
+
     my ($expected, $checksum_error) =
       _read_prebuilt_genesis_checksums($source);
     return (undef, $checksum_error) if $checksum_error;
+
+    unless (exists($expected->{$GENESIS_EXPORT_MANIFEST})) {
+        return (undef,
+            "Missing Genesis checksum entry: $GENESIS_EXPORT_MANIFEST");
+    }
+    my ($manifest_digest, $manifest_digest_error) =
+      _sha256_file("$source/$GENESIS_EXPORT_MANIFEST");
+    return (undef, $manifest_digest_error) if $manifest_digest_error;
+    unless ($manifest_digest eq $expected->{$GENESIS_EXPORT_MANIFEST}) {
+        return (undef,
+            "Genesis checksum mismatch: $source/$GENESIS_EXPORT_MANIFEST");
+    }
 
     my $destination_dir = "$tftpdir/xcat";
     eval { mkpath($destination_dir) unless -d $destination_dir; };
