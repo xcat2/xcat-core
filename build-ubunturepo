@@ -35,6 +35,15 @@
 #
 #               DEST=<directory> - provide a directory to contains the build result
 #
+# Running builds in parallel on one host:  the build lock is scoped to the source checkout (see
+#                                 the "build-lock" block below), so two builds from DIFFERENT
+#                                 checkouts -- e.g. the devel and stable Ubuntu CD lanes -- run
+#                                 concurrently, while two builds of the SAME checkout still fail-fast
+#                                 (they build in-place and would corrupt each other).  For parallel
+#                                 builds give each a separate checkout and a separate output tree
+#                                 (a distinct DEST).  GPG_HOME may be SHARED between parallel builds
+#                                 -- it is used read-only for signing.
+#
 # For the dependency packages 1. All the xcat dependency deb packages should be uploaded to
 #                                "pokgsa/projects/x/xcat/build/ubuntu/xcat-dep/debs/" on GSA
 #                             2. run ./build-ubunturepo -d
@@ -155,13 +164,33 @@ old_pwd=`pwd`
 cd `dirname $0`
 curdir=`pwd`
 
-# Use flock to only one person build at the same time
-# Get a lock, so can not do 2 builds at once
-exec 8>/var/lock/xcatbld.lock
+# Scope the build lock to THIS checkout. build-ubunturepo builds the packages in-place
+# in its own source tree (it rewrites debian/changelog and debian/control, drops
+# *.orig.tar.gz at the checkout root and runs dpkg-buildpackage inside the package
+# dirs), so the resource two builds actually contend for is the checkout -- not the
+# host. The historic single /var/lock/xcatbld.lock was host-global and fail-fast, so
+# two builds from *different* checkouts (e.g. the devel and stable Ubuntu CD lanes on
+# one build host) collided and the loser failed the pipeline even though they share
+# nothing. Key the lock on the checkout path instead: builds of the SAME checkout
+# still fail-fast (they would corrupt each other in-place), while builds of DISTINCT
+# checkouts get distinct locks and run in parallel. The lock file stays on the local
+# /var/lock (reliable flock; the checkout may live on NFS/virtiofs where flock is not)
+# and the source tree is left byte-pristine.
+#
+# NOTE: the two marked regions below are extracted verbatim and exercised by the unit
+# test xCAT-test/unit/build_ubunturepo_lock.t (which runs them with a chosen $curdir)
+# -- keep the markers, and keep each region self-contained.
+# BEGIN build-lock-id
+lock_id_for() { printf '%s' "$1" | md5sum | cut -c1-12; }
+LOCKFILE="/var/lock/xcatbld-$(lock_id_for "$curdir").lock"
+# END build-lock-id
+# BEGIN build-lock-acquire
+exec 8>"$LOCKFILE"
 if ! flock -n 8; then
-    echo "ERROR: Can't get lock /var/lock/xcatbld.lock.  Someone else must be doing a build right now.  Exiting...."
+    echo "ERROR: Can't get lock $LOCKFILE for checkout $curdir.  Another build is already using this checkout.  Exiting...."
     exit 1
 fi
+# END build-lock-acquire
 
 # for the git case, query the current branch and set REL (changing master to devel if necessary)
 function setbranch {
