@@ -63,15 +63,26 @@ sub read_file {
     return $content;
 }
 
+sub export_manifest {
+    my ($architecture) = @_;
+    return "format=xcat-genesis\n"
+      . "version=1\n"
+      . "architecture=$architecture\n";
+}
+
 sub prepare_export {
-    my ($directory, $kernel, $initramfs) = @_;
+    my ($directory, $kernel, $initramfs, $architecture) = @_;
+    $architecture //= 'x86_64';
     make_path($directory);
     write_file("$directory/kernel", $kernel);
     write_file("$directory/initramfs.cpio.gz", $initramfs);
+    my $manifest = export_manifest($architecture);
+    write_file("$directory/xcat-genesis.manifest", $manifest);
     write_file(
         "$directory/SHA256SUMS",
         sha256_hex($initramfs) . "  initramfs.cpio.gz\n"
-          . sha256_hex($kernel) . "  kernel\n",
+          . sha256_hex($kernel) . "  kernel\n"
+          . sha256_hex($manifest) . "  xcat-genesis.manifest\n",
     );
 }
 
@@ -130,6 +141,10 @@ is_deeply([temporary_files("$tftpdir/xcat")], [], 'a failed install removes stag
 my $partial_export = "$tmpdir/partial";
 make_path($partial_export);
 write_file("$partial_export/initramfs.cpio.gz", 'partial initramfs');
+write_file(
+    "$partial_export/xcat-genesis.manifest",
+    export_manifest('x86_64'),
+);
 ok(
     xCAT_plugin::mknb::_prebuilt_genesis_requested($partial_export),
     'a partial export still selects the prebuilt path',
@@ -143,7 +158,9 @@ my $missing_entry = "$tmpdir/missing-entry";
 prepare_export($missing_entry, 'kernel', 'initramfs');
 write_file(
     "$missing_entry/SHA256SUMS",
-    sha256_hex('kernel') . "  kernel\n",
+    sha256_hex('kernel') . "  kernel\n"
+      . sha256_hex(export_manifest('x86_64'))
+      . "  xcat-genesis.manifest\n",
 );
 (undef, $install_error) = xCAT_plugin::mknb::_install_prebuilt_genesis(
     $missing_entry, $tftpdir, 'x86_64'
@@ -191,7 +208,7 @@ ok(
 $::XCATROOT = "$tmpdir/xcatroot";
 my $process_export =
   "$::XCATROOT/share/xcat/netboot/genesis/ppc64";
-prepare_export($process_export, 'process kernel', 'process initramfs');
+prepare_export($process_export, 'process kernel', 'process initramfs', 'ppc64');
 $xCAT::TableUtils::tftpdir = "$tmpdir/custom-tftpboot";
 $xCAT::NetworkUtils::normnet_addresses = {
     '192.0.2.0/24' => ['192.0.2.1'],
