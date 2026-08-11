@@ -1,5 +1,6 @@
 package xCAT_plugin::mknb;
 use strict;
+use Digest::SHA ();
 use File::Temp qw(tempdir);
 use xCAT::Utils;
 use xCAT::TableUtils;
@@ -73,9 +74,6 @@ sub _read_prebuilt_genesis_checksums {
 
 sub _sha256_file {
     my ($path) = @_;
-    return (undef, "Digest::SHA is required to verify Genesis artifacts")
-      unless eval { require Digest::SHA; 1 };
-
     open(my $artifact_fh, '<:raw', $path)
       or return (undef, "Unable to read Genesis artifact: $path");
     my $digest = Digest::SHA->new(256)->addfile($artifact_fh)->hexdigest;

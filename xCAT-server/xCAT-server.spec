@@ -46,7 +46,7 @@ BuildRequires: perl-generators
 %if 0%{?fedora}
 BuildRequires: perl-generators
 %endif
-Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser perl-Digest-SHA1 perl(LWP::Protocol::https) perl-XML-LibXML
+Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser perl-Digest-SHA1 perl(Digest::SHA) perl(LWP::Protocol::https) perl-XML-LibXML
 # AutoReqProv is off (above). Modules used only by xCAT-server code are
 # therefore not auto-required, and (unlike SNMP, Expect, JSON, Net::Ping,
 # Time::HiRes and Text::Balanced) are not pulled in transitively by perl-xCAT
