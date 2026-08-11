@@ -158,8 +158,12 @@ write_file(
     export_manifest('x86_64'),
 );
 ok(
-    xCAT_plugin::mknb::_prebuilt_genesis_requested($partial_export),
-    'a partial export still selects the prebuilt path',
+    !xCAT_plugin::mknb::_prebuilt_genesis_requested($partial_export),
+    'a partial export does not satisfy the prebuilt layout',
+);
+ok(
+    xCAT_plugin::mknb::_genesis_export_manifest_present($partial_export),
+    'a partial export still declares the new format',
 );
 (undef, $install_error) = xCAT_plugin::mknb::_install_prebuilt_genesis(
     $partial_export, $tftpdir, 'x86_64'
@@ -301,6 +305,31 @@ is(read_file($process_initramfs), 'process initramfs', 'mknb publishes the expor
 ok(
     -f "$xCAT::TableUtils::tftpdir/pxelinux.cfg/p/192.0.2.0_24",
     'mknb writes boot configuration after publishing the export',
+);
+
+unlink("$process_export/SHA256SUMS");
+@responses = ();
+xCAT_plugin::mknb::process_request(
+    { arg => ['ppc64'] },
+    sub { push(@responses, @_); },
+);
+ok(
+    grep(
+        { ref($_) eq 'HASH' && $_->{error}
+              && $_->{error}->[0] =~ /Incomplete Genesis export/ }
+          @responses
+    ),
+    'mknb rejects an incomplete marked export',
+);
+is(
+    read_file($process_kernel),
+    'process kernel',
+    'an incomplete marked export keeps the published kernel',
+);
+is(
+    read_file($process_initramfs),
+    'process initramfs',
+    'an incomplete marked export keeps the published initramfs',
 );
 
 done_testing();

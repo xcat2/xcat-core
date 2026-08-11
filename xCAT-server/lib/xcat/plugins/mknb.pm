@@ -38,10 +38,25 @@ sub _select_network_addresses {
     return (\%legacy, \%selected);
 }
 
-sub _prebuilt_genesis_requested {
+sub _genesis_export_manifest_present {
     my ($directory) = @_;
     my $manifest = "$directory/$GENESIS_EXPORT_MANIFEST";
     return -e $manifest || -l $manifest;
+}
+
+sub _prebuilt_genesis_requested {
+    my ($directory) = @_;
+    foreach my $name (
+        $GENESIS_EXPORT_MANIFEST,
+        'kernel',
+        'initramfs.cpio.gz',
+        'SHA256SUMS'
+      )
+    {
+        my $path = "$directory/$name";
+        return 0 unless -e $path || -l $path;
+    }
+    return 1;
 }
 
 sub _validate_prebuilt_genesis_manifest {
@@ -352,6 +367,13 @@ sub process_request {
         $initrd_file    = $installed_initrd;
         $invisibletouch = 1;
         goto CREAT_CONF_FILE;
+    }
+    if (_genesis_export_manifest_present($genesis_dir)) {
+        $callback->({
+            error => ["Incomplete Genesis export: $genesis_dir"],
+            errorcode => [1],
+        });
+        return;
     }
     # Grab all the standard ssh public keys we can
     my @ssh_pub_keys = ();
