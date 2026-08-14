@@ -1,4 +1,4 @@
-#!/usr/bin/awk -f
+#!/usr/bin/gawk -f
 BEGIN {
   if (!system("test -f /usr/bin/nice")) {
        randombytes = "-rand /usr/bin/nice"
