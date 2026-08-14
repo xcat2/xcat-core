@@ -986,7 +986,16 @@ sub mkinstall {
             my $kcmdline = "nofb utf8 auto xcatd=" . $instserver;
 
             if (using_subiquity($os,$tmplfile)) {
-                $kcmdline .= " autoinstall ip=dhcp netboot=nfs nfsroot=${instserver}:${pkgdir}";
+                # boot=casper is required: without it casper never processes netboot=nfs, it
+                # scans the local disks, finds no live media and panics "Unable to find a
+                # medium containing a live file system" (initramfs emergency shell -> PXE loop).
+                # nfsroot MUST be a literal IP: casper mounts the live filesystem with klibc's
+                # nfsmount, which cannot resolve hostnames ("nfsmount: can't parse IP address
+                # '<host>'"), so resolve instserver to its IP. The ds= URL is fetched later by
+                # cloud-init in the booted live system where normal DNS works, so it may stay a
+                # hostname.
+                my $nfsip = xCAT::NetworkUtils->getipaddr($instserver) || $instserver;
+                $kcmdline .= " autoinstall ip=dhcp boot=casper netboot=nfs nfsroot=${nfsip}:${pkgdir}";
                 $kcmdline .= " ds=nocloud-net;s=http://${instserver}:${httpport}/install/autoinst/${node}/";
                 $kcmdline .= " ---";
             } else {
