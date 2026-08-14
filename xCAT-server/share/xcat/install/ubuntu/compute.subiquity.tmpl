@@ -66,8 +66,18 @@ autoinstall:
       sed -i '/^\.\.\.$/d' /autoinstall.yaml
       cat /tmp/partitionfile >> /autoinstall.yaml
       echo "=== DNS setup ==="
+      # A nameserver line in /etc/resolv.conf MUST be an IP address -- glibc's resolver does
+      # NOT resolve a hostname written on a nameserver line, it discards the entry. Writing the
+      # xcatmaster *name* here leaves the installer (and the in-target apt-get update, which
+      # inherits this resolv.conf) with no usable DNS, so the install hangs resolving
+      # archive.ubuntu.com. DNS still works at this point via the live installer's DHCP
+      # resolv.conf (the wget calls above relied on it), so resolve the xcatmaster to an IPv4
+      # address first and write that IP.
+      xcatmaster_host="#TABLE:noderes:$NODE:xcatmaster#"
+      xcatmaster_ip="$(getent ahostsv4 "$xcatmaster_host" | awk '{print $1; exit}')"
+      [ -n "$xcatmaster_ip" ] || xcatmaster_ip="$xcatmaster_host"
       rm -f /etc/resolv.conf
-      echo "nameserver #TABLE:noderes:$NODE:xcatmaster#" >/etc/resolv.conf
+      echo "nameserver $xcatmaster_ip" >/etc/resolv.conf
       echo "domain #TABLE:site:key=domain:value#" >>/etc/resolv.conf
       echo "=== early-commands complete ==="
   late-commands:
