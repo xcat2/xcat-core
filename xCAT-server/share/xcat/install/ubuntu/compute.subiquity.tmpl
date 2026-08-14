@@ -101,5 +101,16 @@ autoinstall:
     cp ./#HOSTNAME#.post /target/root/post.script;
     curtin in-target --target /target /root/post.script;
     } >>/target/var/log/xcat/xcat.log 2>&1'
+    # Switch the node to boot from the local disk after the install, so it does not
+    # PXE-loop straight back into the installer once Subiquity reboots.  xCAT flips the
+    # netboot state (install -> local boot) when the node reports "next" to xcatd on
+    # port 3002; this makes xcatd run "nodeset <node> next", rewriting the node's xNBA
+    # boot script to fall through to the local disk.  The in-target post-script tries
+    # this via updateflag.awk, but that relies on gawk's |& / /inet coprocess and on
+    # /usr/bin/awk being gawk -- on Ubuntu /usr/bin/awk is often mawk (no |&), so the
+    # flip silently fails and the node reinstalls forever.  Send "next" here from the
+    # live installer instead (the connection originates from the node's own IP, which
+    # xcatd trusts) using bash's built-in /dev/tcp, with no gawk/PATH dependency.
+    - ["bash", "-c", "xm=#XCATVAR:XCATMASTER#; for i in 1 2 3 4 5; do exec 3<>/dev/tcp/$xm/3002 && { read -r r <&3; printf 'next\\n' >&3; read -r r <&3; exec 3>&- 3<&-; break; }; sleep 5; done; true"]
   error-commands:
     - tar -c --ignore-failed-read --transform='s/^/#HOSTNAME#-logs\//' /var/crash /var/log/installer /tmp/pre-install.log /autoinstall.yaml 2>/dev/null |nc -l 8080
