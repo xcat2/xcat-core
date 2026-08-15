@@ -36,10 +36,12 @@ like($deb, qr/getipaddr\(\$instserver\)/,
 unlike($deb, qr/nfsroot=\$\{instserver\}:/,
     'nfsroot does NOT use the bare instserver hostname (would break klibc nfsmount)');
 
-# The casper NFS root must be mounted SOFT so a process wedged in D-state I/O on it during
-# systemd-shutdown fails with EIO instead of blocking forever -- otherwise the post-install reboot
-# hangs and the node never power-cycles into the installed disk.
-like($deb, qr/nfsroot=\$\{nfsip\}:\$\{pkgdir\},soft/,
-    'casper nfsroot is mounted soft (else the post-install reboot wedges in systemd-shutdown)');
+# The subiquity netboot cmdline must include 'toram' so casper copies the squashfs into RAM and
+# unmounts the NFS source -- otherwise the end-of-install reboot wedges in systemd-shutdown on a
+# D-state process doing I/O to the still-mounted NFS root, and the node never boots the installed disk.
+like($deb, qr/\btoram\b/,
+    'subiquity netboot cmdline includes toram (run from RAM, no NFS root at shutdown -> no reboot hang)');
+unlike($deb, qr/nfsroot=[^ ]*,soft/,
+    'nfsroot does NOT append ,soft (casper takes the whole nfsroot value as the path, which breaks the mount)');
 
 done_testing();

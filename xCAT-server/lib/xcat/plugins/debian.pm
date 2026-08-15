@@ -994,15 +994,19 @@ sub mkinstall {
                 # '<host>'"), so resolve instserver to its IP. The ds= URL is fetched later by
                 # cloud-init in the booted live system where normal DNS works, so it may stay a
                 # hostname.
-                # Mount the casper NFS root SOFT (soft,timeo,retrans). The live installer runs from this
-                # NFS-served squashfs; at end-of-install subiquity reboots, and with a HARD mount (the
-                # default) any process still doing I/O to the NFS root during systemd-shutdown (lvm,
-                # netplan, udev workers) blocks in uninterruptible D state -- it cannot be SIGKILLed, so
-                # systemd-shutdown waits forever ("Waiting for process: <pid> (lvm)") and the node never
-                # power-cycles into the freshly installed disk. A soft mount makes that I/O fail with EIO
-                # after timeo*retrans instead of blocking, so the process dies and the reboot completes.
+                # 'toram' makes casper copy the live squashfs into RAM and UNMOUNT the NFS source
+                # (casper scripts/casper: copy_to_ram then `umount ${copyfrom}`), so the installer runs
+                # from RAM with NO network root. This fixes the end-of-install reboot hang: with the NFS
+                # root still mounted, a process doing I/O to it during systemd-shutdown (lvm, netplan,
+                # udev) blocks in uninterruptible D state -- it cannot be SIGKILLed, so systemd-shutdown
+                # waits forever ("Waiting for process: <pid> (lvm)") and the node never power-cycles into
+                # the installed disk. With the root in RAM there is nothing to wait on and the reboot
+                # completes on its own. (casper has no cmdline knob for NFS mount options -- it parses
+                # only nfsroot=, taking the whole value as the path, so appending ,soft breaks the mount;
+                # toram is casper's supported way to avoid the network root. The 24.04 layers total
+                # ~1.5G, well within the CN's RAM.)
                 my $nfsip = xCAT::NetworkUtils->getipaddr($instserver) || $instserver;
-                $kcmdline .= " autoinstall ip=dhcp boot=casper netboot=nfs nfsroot=${nfsip}:${pkgdir},soft,timeo=100,retrans=3";
+                $kcmdline .= " autoinstall ip=dhcp boot=casper netboot=nfs nfsroot=${nfsip}:${pkgdir} toram";
                 $kcmdline .= " ds=nocloud-net;s=http://${instserver}:${httpport}/install/autoinst/${node}/";
                 $kcmdline .= " ---";
             } else {
