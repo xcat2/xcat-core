@@ -994,8 +994,15 @@ sub mkinstall {
                 # '<host>'"), so resolve instserver to its IP. The ds= URL is fetched later by
                 # cloud-init in the booted live system where normal DNS works, so it may stay a
                 # hostname.
+                # Mount the casper NFS root SOFT (soft,timeo,retrans). The live installer runs from this
+                # NFS-served squashfs; at end-of-install subiquity reboots, and with a HARD mount (the
+                # default) any process still doing I/O to the NFS root during systemd-shutdown (lvm,
+                # netplan, udev workers) blocks in uninterruptible D state -- it cannot be SIGKILLed, so
+                # systemd-shutdown waits forever ("Waiting for process: <pid> (lvm)") and the node never
+                # power-cycles into the freshly installed disk. A soft mount makes that I/O fail with EIO
+                # after timeo*retrans instead of blocking, so the process dies and the reboot completes.
                 my $nfsip = xCAT::NetworkUtils->getipaddr($instserver) || $instserver;
-                $kcmdline .= " autoinstall ip=dhcp boot=casper netboot=nfs nfsroot=${nfsip}:${pkgdir}";
+                $kcmdline .= " autoinstall ip=dhcp boot=casper netboot=nfs nfsroot=${nfsip}:${pkgdir},soft,timeo=100,retrans=3";
                 $kcmdline .= " ds=nocloud-net;s=http://${instserver}:${httpport}/install/autoinst/${node}/";
                 $kcmdline .= " ---";
             } else {

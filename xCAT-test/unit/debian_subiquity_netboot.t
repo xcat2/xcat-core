@@ -36,4 +36,10 @@ like($deb, qr/getipaddr\(\$instserver\)/,
 unlike($deb, qr/nfsroot=\$\{instserver\}:/,
     'nfsroot does NOT use the bare instserver hostname (would break klibc nfsmount)');
 
+# The casper NFS root must be mounted SOFT so a process wedged in D-state I/O on it during
+# systemd-shutdown fails with EIO instead of blocking forever -- otherwise the post-install reboot
+# hangs and the node never power-cycles into the installed disk.
+like($deb, qr/nfsroot=\$\{nfsip\}:\$\{pkgdir\},soft/,
+    'casper nfsroot is mounted soft (else the post-install reboot wedges in systemd-shutdown)');
+
 done_testing();
