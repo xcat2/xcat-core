@@ -122,5 +122,18 @@ autoinstall:
     # live installer instead (the connection originates from the node's own IP, which
     # xcatd trusts) using bash's built-in /dev/tcp, with no gawk/PATH dependency.
     - ["bash", "-c", "xm=#XCATVAR:XCATMASTER#; for i in 1 2 3 4 5; do exec 3<>/dev/tcp/$xm/3002 && { read -r r <&3; printf 'next\\n' >&3; read -r r <&3; exec 3>&- 3<&-; break; }; sleep 5; done; true"]
+    # Subiquity's graceful reboot at end-of-install HANGS in systemd-shutdown waiting on an
+    # lvm/pvscan process stuck in D-state on the NFS-mounted live-installer root (casper
+    # netboot=nfs): systemd-shutdown cannot SIGKILL a process wedged in uninterruptible I/O on the
+    # NFS mount being torn down, so it never issues the reboot and the node never power-cycles into
+    # the freshly-installed disk -- the provision then times out. VERIFIED on devel-ubuntu-cd #33:
+    # the console sat at "systemd-shutdown: Waiting for process: <pid> (lvm)" and a hard reset booted
+    # the installed OS (Ubuntu 24.04.4, multi-user, sshd, xcatpostinit) cleanly. As a safety net,
+    # schedule a FORCED sysrq reboot ~90s after the flip -- long enough that xcatd has already
+    # rewritten this node's xNBA to local-disk boot (else it would PXE straight back into the
+    # installer). If the graceful reboot happens to succeed first, this backgrounded process dies
+    # with it. sysrq 'b' bypasses the hung shutdown; curtin has already synced and unmounted the
+    # target, so the on-disk install is intact.
+    - ["bash", "-c", "(sleep 90; echo 1 >/proc/sys/kernel/sysrq; echo b >/proc/sysrq-trigger) </dev/null >/dev/null 2>&1 &"]
   error-commands:
     - tar -c --ignore-failed-read --transform='s/^/#HOSTNAME#-logs\//' /var/crash /var/log/installer /tmp/pre-install.log /autoinstall.yaml 2>/dev/null |nc -l 8080
