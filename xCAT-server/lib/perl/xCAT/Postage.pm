@@ -546,6 +546,25 @@ sub makescript {
         my $postbootscripts;
         $postbootscripts = getPostbootScripts($node, $osimgname, $script_hash);
 
+        # On Ubuntu/Debian the node's *postscripts* run inside the subiquity/curtin
+        # in-target chroot during install -- i.e. before the node has booted as itself.
+        # The `syncfiles` postscript works by asking the management node to scp files
+        # *into* the running node, which cannot happen in that phase: the not-yet-booted
+        # node has no sshd for the MN to reach, so the push times out, syncfiles exits 1,
+        # and the node reports status=failed even though the OS installed perfectly.
+        # Move `syncfiles` to the *postbootscripts* set so it runs on the booted node,
+        # where ssh.socket is already listening and the MN's push succeeds.  EL is
+        # unaffected -- there the postscripts already run on the booted node.
+        # See VersatusHPC/xcat-core issue #47 (Ubuntu diskful provisioning).
+        if (defined($os) && $os =~ /^(ubuntu|debian)/i) {
+            if (defined($postscripts) && $postscripts =~ s/^[ \t]*syncfiles[ \t]*\n//m) {
+                $postbootscripts = "" unless defined $postbootscripts;
+                $postbootscripts .= "# ubuntu-deferred-postbootscripts-start-here\n";
+                $postbootscripts .= "syncfiles\n";
+                $postbootscripts .= "# ubuntu-deferred-postbootscripts-end-here\n";
+            }
+        }
+
         # if using zones then must go to the zone.sshbetweennodes
         # else go to site.sshbetweennodes
         my $enablesshbetweennodes;
