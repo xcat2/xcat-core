@@ -132,7 +132,11 @@ Check your Operating System specific documentation for the path where the kernel
 * **[RHELS6]** ::
 
     <kdump_path>/var/crash/<node_ip>-<time>/
-	
+
+* **[RHELS7, RHELS8]** ::
+
+    <kdump_path>/<node hostname>/var/crash/<node_ip>-<time>/
+
 * **[SLES11]** ::
 
     <kdump_path>/<node hostname>/<date>
