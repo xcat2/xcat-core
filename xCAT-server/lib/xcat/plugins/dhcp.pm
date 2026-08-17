@@ -218,11 +218,13 @@ sub _delete_isc_static_host
     my @updated;
     my $skip = 0;
     foreach my $line (@dhcpconf) {
-        if ($line =~ /^#xCAT host declaration for \Q$node\E\b.* start$/) {
+        if ($line =~ /^#xCAT host declaration for \Q$node\E\b.* start\s*$/) {
             $skip = 1;
             next;
         }
-        if ($skip && $line =~ /^#xCAT host declaration for \Q$node\E\b.* end$/) {
+        # The end marker rides the closing-brace line
+        # ("} #xCAT host declaration for ... end"); it is NOT anchored at ^.
+        if ($skip && $line =~ /#xCAT host declaration for \Q$node\E\b.* end\s*$/) {
             $skip = 0;
             next;
         }
@@ -259,6 +261,43 @@ sub _add_isc_static_host
     push @dhcpconf, "} #xCAT host declaration for $node aka host $hostname end\n";
 
     $restartdhcp = 1;
+}
+
+sub _query_isc_static_host
+{
+    # Answer `makedhcp -q <node>` from the static host block that
+    # _add_isc_static_host wrote into dhcpd.conf, WITHOUT spawning omshell.
+    # Ubuntu's ISC DHCP 4.4 omshell can wedge (100% CPU, unreapable) on a host
+    # query, so on the ISC-limited releases the query path must never call it.
+    # Returns ($nname, $ipaddr, $hwaddr) in the same shape as
+    # _parse_omshell_host_output so listnode() can print it unchanged.
+    # @lines defaults to the loaded dhcpd.conf (@dhcpconf) but is overridable
+    # so the parse can be unit tested without file-scoped state.
+    my $node  = shift;
+    my @lines = @_ ? @_ : @dhcpconf;
+
+    my ($nname, $ipaddr, $hwaddr);
+    my $skip = 0;
+    foreach my $line (@lines) {
+        if ($line =~ /^#xCAT host declaration for \Q$node\E\b.* start\s*$/) {
+            $skip  = 1;
+            $nname = $node;
+            next;
+        }
+        # The end marker is emitted on the closing-brace line
+        # ("} #xCAT host declaration for ... end"), so it is NOT anchored at ^.
+        if ($skip && $line =~ /#xCAT host declaration for \Q$node\E\b.* end\s*$/) {
+            last;
+        }
+        next unless $skip;
+        if ($line =~ /^\s*hardware\s+ethernet\s+(.+?)\s*;/) {
+            $hwaddr = "hardware-address = $1";
+        } elsif ($line =~ /^\s*fixed-address\s+(.+?)\s*;/) {
+            $ipaddr = "ip-address = $1";
+        }
+    }
+
+    return ($nname, $ipaddr, $hwaddr);
 }
 
 sub _open_omshell_writer
@@ -420,6 +459,19 @@ sub listnode
     my $node     = shift;
     my $callback = shift;
     my $rsp;
+
+    # On Ubuntu's ISC-limited releases (<22.04) the omshell host query can wedge
+    # at 100% CPU (unreapable), so answer the query from the static host block
+    # that _add_isc_static_host wrote into dhcpd.conf and never spawn omshell.
+    # This runs before the omapi key lookup below, which is irrelevant here.
+    if (_isc_static_host_fallback()) {
+        my ($sname, $sip, $shw) = _query_isc_static_host($node);
+        if ($sip) {
+            push @{ $rsp->{data} }, "$sname: $sip, $shw";
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+        }
+        return;
+    }
 
     my $settings = _omapi_settings($callback);
     return unless $settings;
