@@ -678,8 +678,9 @@ sub noderange {
         if ($atom eq '') { next; }
 
         if ($atom =~ /^\^(.*)$/) {    # get a list of nodes from a file
-            open(NRF, $1);
-            while (<NRF>) {
+            my $nrfile = $1;
+            open(my $nrf, '<', $nrfile) or next;
+            while (<$nrf>) {
                 my $line = $_;
                 unless ($line =~ m/^[\^#]/) {
                     $line =~ m/^([^:	 ]*)/;
@@ -692,7 +693,7 @@ sub noderange {
                     }
                 }
             }
-            close(NRF);
+            close($nrf);
             next;
         }
 
