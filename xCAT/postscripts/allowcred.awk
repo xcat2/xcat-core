@@ -1,4 +1,4 @@
-#!/usr/bin/gawk -f
+#!/usr/bin/awk -f
 BEGIN {
         listener = "/inet/tcp/300/0/0"
         quit = "no"

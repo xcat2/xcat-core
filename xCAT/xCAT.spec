@@ -64,11 +64,6 @@ Requires: httpd nfs-utils nmap bind perl(CGI)
 # on RHEL7, need to specify it explicitly
 Requires: net-tools
 Requires: /usr/bin/killall
-# gawk: the awk node postscripts (updateflag.awk, getcredentials.awk, allowcred.awk, ...) use
-# gawk-only constructs (the /inet/tcp network coprocess and the |& two-way pipe) and carry an explicit
-# gawk shebang. EL/SLES default /usr/bin/awk to gawk, but require it explicitly so the dependency is
-# honest and does not regress if the default awk provider ever changes.
-Requires: gawk
 # makentp/setupntp configure the MN as an NTP server for its compute nodes and support chronyd/ntpd
 # only. chrony is the default on EL7+/SLES15+ (and the only option on EL8+); ntp covers the rest.
 Requires: (chrony or ntp)

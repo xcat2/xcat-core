@@ -1,4 +1,4 @@
-#!/usr/bin/gawk -f
+#!/usr/bin/awk -f
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 BEGIN {

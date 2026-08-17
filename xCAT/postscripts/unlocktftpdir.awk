@@ -1,4 +1,4 @@
-#!/usr/bin/gawk -f
+#!/usr/bin/awk -f
 BEGIN {
 	xcatdhost = ARGV[1]
 	xcatdport = ARGV[2]
