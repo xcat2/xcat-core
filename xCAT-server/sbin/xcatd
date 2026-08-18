@@ -224,6 +224,8 @@ if ($tmp) {
 }
 my $cmdlog_alllog = "====================================================\n";
 my $cmdlog_starttime=undef;
+my $cmdlog_response_buffer = "";
+my $cmdlog_response_sensitive = 0;
 
 # ----used for command log end---------
 my $enable_perf = $sitetab->getAttribs({'key'=>'enableperf'},'value');
@@ -2848,6 +2850,7 @@ sub service_connection {
             }
 
             # ----used for command log start----------
+            cmdlog_finalize_response();
             $cmdlog_starttime = time();
             my ($sec, $min, $hour, $mday, $mon, $year) = localtime($cmdlog_starttime);
             $year += 1900;
@@ -2878,8 +2881,11 @@ sub service_connection {
                 }
             }
             # Replace passwords with 'x'
+            my $cmdlog_before_redact = $cmdlog_alllog;
             $cmdlog_alllog = xCAT::xcatd->redact_password($cmdlog_alllog);
+            my $cmdlog_req_redacted = ($cmdlog_alllog ne $cmdlog_before_redact) ? 1 : 0;
             $cmdlog_alllog .= "\n[Response]\n";
+            $cmdlog_response_sensitive = cmdlog_response_is_sensitive($req, $cmdlog_req_redacted);
 
             # ----used for command log end----------
 
@@ -3064,6 +3070,7 @@ sub service_connection {
     }
 
     # ----used for command log start-------
+    cmdlog_finalize_response();
     $cmdlog_alllog .= "[NumberNodes] $numofnodes \n";
     my $reqhandletime = sprintf("%.3f", time()-$cmdlog_starttime);
     $cmdlog_alllog .= "[ElapsedTime] $reqhandletime s\n";
@@ -3136,6 +3143,7 @@ sub relay_fds { # Relays file descriptors from pipes to children to the SSL sock
             xCAT::MsgUtils->message("S", "Client abort requested");
 
             # ----used for command log start-------
+            cmdlog_finalize_response();
             $cmdlog_alllog .= "Client abort requested\n";
             my $reqhandletime = sprintf("%.3f", time()-$cmdlog_starttime);
             $cmdlog_alllog .= "[ElapsedTime] $reqhandletime s\n";
@@ -3606,8 +3614,25 @@ sub cmdlog_collectlog() {
             }
         }
     }
-    $cmdlog_alllog .= $rsp_log;
+    $cmdlog_response_buffer .= $rsp_log;
     return 0;
+}
+
+sub cmdlog_response_is_sensitive {
+    my ($req, $req_redacted) = @_;
+    return 1 if defined $req->{command}->[0] and $req->{command}->[0] eq 'getcredentials';
+    return 1 if join(' ', @{ $req->{arg} || [] }) =~ /passw/i;
+    return 1 if $req_redacted;
+    return 0;
+}
+
+sub cmdlog_finalize_response {
+    if ($cmdlog_response_sensitive or $cmdlog_response_buffer =~ /passw/i) {
+        $cmdlog_response_buffer = "*REDACTED*\n";
+    }
+    $cmdlog_alllog .= $cmdlog_response_buffer;
+    $cmdlog_response_buffer = "";
+    $cmdlog_response_sensitive = 0;
 }
 
 # --------------------------------------------------------------------------------
