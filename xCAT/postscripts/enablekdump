@@ -263,7 +263,11 @@ EOF
                    # names a valid filesystem, checked by dracut-cmdline at crash
                    # time, so give this node's subdir a dummy /proc for it.
                    [ -e $MOUNTPATH/$NODE/proc ] || echo "xCAT: dummy /proc so RHEL7 dracut-cmdline accepts root=" > $MOUNTPATH/$NODE/proc
-                   sed -i "s#^[\t ]*KDUMP_COMMANDLINE_APPEND=\"#KDUMP_COMMANDLINE_APPEND=\"root=nfs:$KDIP:$KDPATH/$NODE #" /etc/sysconfig/kdump
+                   # Drop any root= a previous run left behind before adding this
+                   # node's own: dracut takes the last root= on the command line,
+                   # so a stale shared-root value would win over the new one.
+                   sed -i -e '/^[\t ]*KDUMP_COMMANDLINE_APPEND="/s/\broot=[^ \t"]*[ \t]*//g' \
+                          -e "s#^[\t ]*KDUMP_COMMANDLINE_APPEND=\"#KDUMP_COMMANDLINE_APPEND=\"root=nfs:$KDIP:$KDPATH/$NODE #" /etc/sysconfig/kdump
                fi
                [ -f /etc/dracut.conf ] && mv /etc/dracut.conf  /tmp/dracut.conf
                restartservice kdump
