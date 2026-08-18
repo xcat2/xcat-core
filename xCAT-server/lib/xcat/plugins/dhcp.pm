@@ -276,6 +276,17 @@ sub _query_isc_static_host
     my $node  = shift;
     my @lines = @_ ? @_ : @dhcpconf;
 
+    # The query operation (makedhcp -q) does NOT populate @dhcpconf -- only the
+    # reconfigure paths read the file into it -- so on a bare query @lines is
+    # empty. Read dhcpd.conf directly from disk in that case; it is the source of
+    # truth for the static host blocks _add_isc_static_host wrote.
+    if (!@lines && $dhcpconffile && -r $dhcpconffile) {
+        if (open(my $dhfh, '<', $dhcpconffile)) {
+            @lines = <$dhfh>;
+            close($dhfh);
+        }
+    }
+
     my ($nname, $ipaddr, $hwaddr);
     my $skip = 0;
     foreach my $line (@lines) {
