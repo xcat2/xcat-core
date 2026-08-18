@@ -265,8 +265,10 @@ EOF
                    [ -e $MOUNTPATH/$NODE/proc ] || echo "xCAT: dummy /proc so RHEL7 dracut-cmdline accepts root=" > $MOUNTPATH/$NODE/proc
                    # Drop any root= a previous run left behind before adding this
                    # node's own: dracut takes the last root= on the command line,
-                   # so a stale shared-root value would win over the new one.
-                   sed -i -e '/^[\t ]*KDUMP_COMMANDLINE_APPEND="/s/\broot=[^ \t"]*[ \t]*//g' \
+                   # so a stale shared-root value would win over the new one. A
+                   # root= token starts after the opening quote or whitespace,
+                   # so suffixes of other options (foo-root=, rd.foo.root=) stay.
+                   sed -i -e '/^[\t ]*KDUMP_COMMANDLINE_APPEND="/{:a;s/\([" \t]\)root=[^ \t"]*[ \t]*/\1/;ta}' \
                           -e "s#^[\t ]*KDUMP_COMMANDLINE_APPEND=\"#KDUMP_COMMANDLINE_APPEND=\"root=nfs:$KDIP:$KDPATH/$NODE #" /etc/sysconfig/kdump
                fi
                [ -f /etc/dracut.conf ] && mv /etc/dracut.conf  /tmp/dracut.conf
