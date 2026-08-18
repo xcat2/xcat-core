@@ -271,8 +271,14 @@ sub validate {
                         $saveArglist = "$first$restcommand";
                    }
                 }
-                # Replace passwords with 'x'
-                if ($arglist)  { $logst .= redact_password($request->{command}->[0], $saveArglist); }
+                # Replace passwords with 'x'. The same redacted text is used for
+                # syslog and for the auditlog table, which recorded the raw
+                # arguments and so kept secrets that syslog did not.
+                my $redacted_arglist = $arglist;
+                if ($arglist) {
+                    $redacted_arglist = redact_password($request->{command}->[0], $saveArglist);
+                    $logst .= $redacted_arglist;
+                }
                 if ($peername) { $logst .= " for " . $request->{username}->[0] }
                 if ($peerhost) { $logst .= " from " . $peerhost }
 
@@ -336,7 +342,7 @@ sub validate {
                     if ($request->{noderange} && defined($request->{noderange}->[0])) {
                         $rsp->{noderange}->[0] = $request->{noderange}->[0];
                     }
-                    $rsp->{args}->[0]   = $arglist;
+                    $rsp->{args}->[0]   = $redacted_arglist;
                     $rsp->{status}->[0] = $status;
                     if ($skipsyslog == 0) {    # write to syslog and auditlog
                         @$deferredmsgargs = ("SA", $rsp);
@@ -562,6 +568,50 @@ sub redact_password {
             }
         }
     }
+    # Object definition attributes carry their value as attr=value, on whichever
+    # command happens to set them, so they are matched by name rather than by
+    # command. These are the attributes that map to a secret column in
+    # Schema.pm; attributes such as 'key' and 'sshkeydir' are not secrets and
+    # are deliberately absent.
+    my @password_attributes = qw(
+      authkey
+      bmcpassword
+      domainadminpassword
+      iscsipassword
+      passwd.HMC
+      passwd.admin
+      passwd.celogin
+      passwd.general
+      passwd.hscroot
+      password
+      privkey
+      snmppassword
+
+      domain.adminpassword
+      ipmi.password
+      iscsi.passwd
+      mpa.password
+      openbmc.password
+      passwd.password
+      pdu.authkey
+      pdu.password
+      pdu.privkey
+      ppcdirect.password
+      ppchcp.password
+      switches.password
+      switches.sshpassword
+      vm.vidpassword
+      websrv.password
+    );
+    foreach my $attribute (@password_attributes) {
+        # An assignment may be written with spaces around the equals sign and
+        # the value may itself contain spaces, in which case the argument
+        # arrives quoted. Redact to the closing quote there, and to the end of
+        # the argument otherwise, so the rest of the command stays readable.
+        $parameters =~ s/(^|\s)'(\Q$attribute\E\s*=\s*)[^']*'/$1'$2$redact_string'/g;
+        $parameters =~ s/(^|\s)(\Q$attribute\E\s*=\s*)[^'\s]*/$1$2$redact_string/g;
+    }
+
     # Return original request with password replaced by 'x' in $parameters string
     if ($request =~ '\[Request\]') {
         return $header . "[Request]    " . $command . " " . $parameters;
