@@ -109,7 +109,7 @@ sub write_file {
 # line, so leaving the legacy value behind would defeat the migration.
 {
     my $legacy = qq{KDUMP_COMMANDLINE=""\n}
-               . qq{KDUMP_COMMANDLINE_APPEND="root=nfs:10.0.0.1:/dumparea rd.neednet=1 rootflags=nofail"\n};
+               . qq{KDUMP_COMMANDLINE_APPEND="root=nfs:10.0.0.1:/dumparea rd.neednet=1 rootflags=nofail foo-root=bar rd.foo.root=bar"\n};
     my $r = run_enablekdump(osver => 'rhels7.9', node => 'n07',
         sysconfig => $legacy);
 
@@ -122,6 +122,10 @@ sub write_file {
         'unrelated options on the legacy line are preserved');
     like($append, qr{(?:^|\s)rootflags=nofail(?:\s|$)},
         'rootflags= is not mistaken for a root= token');
+    like($append, qr{(?:^|\s)foo-root=bar(?:\s|$)},
+        'a root= suffix after a dash is not stripped');
+    like($append, qr{(?:^|\s)rd\.foo\.root=bar(?:\s|$)},
+        'a root= suffix after a dot is not stripped');
 
     # Re-running against its own output must not stack another root=.
     my $r2 = run_enablekdump(osver => 'rhels7.9', node => 'n07',
