@@ -21,13 +21,14 @@ sub run_enablekdump {
     my (%opt) = @_;
     my $osver = $opt{osver};
     my $node  = $opt{node} || 'n01';
+    my $sysconfig = defined $opt{sysconfig} ? $opt{sysconfig}
+        : "KDUMP_COMMANDLINE=\"\"\nKDUMP_COMMANDLINE_APPEND=\"\"\n";
 
     my $root = tempdir(CLEANUP => 1);
     make_path("$root/etc/sysconfig", "$root/target", "$root/bin");
 
     # /etc/sysconfig/kdump must exist for the in-place seds to land.
-    write_file("$root/etc/sysconfig/kdump",
-        "KDUMP_COMMANDLINE=\"\"\nKDUMP_COMMANDLINE_APPEND=\"\"\n");
+    write_file("$root/etc/sysconfig/kdump", $sysconfig);
     # xcatlib.sh is sourced; only restartservice is needed and is a no-op here.
     write_file("$root/xcatlib.sh", "restartservice(){ :; }\n");
     write_file("$root/bin/logger", "#!/bin/sh\nexit 0\n");
@@ -100,6 +101,33 @@ sub write_file {
         'the RHEL 7 root= workaround points at the node subdirectory');
     ok(-e "$r->{target}/n07/proc", 'the RHEL 7 dummy proc is written under the node subdirectory');
     ok(!-e "$r->{target}/proc", 'the RHEL 7 dummy proc is not written at the shared root');
+}
+
+# --- RHEL 7 migration: a legacy shared root= is replaced, not kept ----------
+# A node configured by the previous script carries root=nfs:<server>:<export>
+# in KDUMP_COMMANDLINE_APPEND. dracut takes the last root= on the command
+# line, so leaving the legacy value behind would defeat the migration.
+{
+    my $legacy = qq{KDUMP_COMMANDLINE=""\n}
+               . qq{KDUMP_COMMANDLINE_APPEND="root=nfs:10.0.0.1:/dumparea rd.neednet=1 rootflags=nofail"\n};
+    my $r = run_enablekdump(osver => 'rhels7.9', node => 'n07',
+        sysconfig => $legacy);
+
+    my ($append) = $r->{sysconfig} =~ m{^KDUMP_COMMANDLINE_APPEND="([^"]*)"}m;
+    my @roots = grep { /^root=/ } split ' ', defined $append ? $append : '';
+    is(scalar @roots, 1, 'exactly one root= remains after migrating a legacy config');
+    is($roots[0], 'root=nfs:10.0.0.1:/dumparea/n07',
+        'the remaining root= points at the node subdirectory');
+    like($append, qr{(?:^|\s)rd\.neednet=1(?:\s|$)},
+        'unrelated options on the legacy line are preserved');
+    like($append, qr{(?:^|\s)rootflags=nofail(?:\s|$)},
+        'rootflags= is not mistaken for a root= token');
+
+    # Re-running against its own output must not stack another root=.
+    my $r2 = run_enablekdump(osver => 'rhels7.9', node => 'n07',
+        sysconfig => $r->{sysconfig});
+    my ($append2) = $r2->{sysconfig} =~ m{^KDUMP_COMMANDLINE_APPEND="([^"]*)"}m;
+    is($append2, $append, 'a second run leaves KDUMP_COMMANDLINE_APPEND unchanged');
 }
 
 done_testing();
