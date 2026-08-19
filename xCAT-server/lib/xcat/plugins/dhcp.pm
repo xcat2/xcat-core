@@ -1458,10 +1458,22 @@ sub preprocess_request
                 push @requests, $reqcopy;
             }
 
+            # A request naming nodes only concerns the service nodes that serve
+            # them. Regenerating the networks still reaches every dhcp server,
+            # since a dynamic range is not tied to a node. If none of the named
+            # nodes can be mapped to a service node, keep sending to all of them
+            # rather than risk leaving one out.
+            my %servingsn = ();
+            unless ($opt{n}) {
+                my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@nodes, "xcat", "MN");
+                foreach my $sn (keys %$sn_hash) { $servingsn{$sn} = 1; }
+            }
+
             foreach my $s (@snlist)
             {
                 if (scalar @nodes == 1 and $nodes[0] eq $s) { next; }
                 next if ($issn && exists($iphash{$s}));
+                next if (keys(%servingsn) && !exists($servingsn{$s}));
 
                 my $reqcopy = {%$req};
                 $reqcopy->{'_xcatdest'} = $s;
