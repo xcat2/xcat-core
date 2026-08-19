@@ -352,7 +352,7 @@ sub install_xcat{
                "sudo chmod 777 /etc/apt/sources.list",
                "sudo echo \"deb [arch=amd64 allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/latest/xcat-dep noble main\" >> /etc/apt/sources.list",
                "sudo echo \"deb [arch=ppc64el allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/latest/xcat-dep noble main\" >> /etc/apt/sources.list",
-               "sudo apt-get -qq --allow-insecure-repositories update");
+               "sudo timeout 600 apt-get -qq -o Acquire::Retries=3 -o Acquire::http::Timeout=30 --allow-insecure-repositories update");
     chdir $ENV{RUNNER_WORKSPACE};;
 
     my @output;
@@ -369,7 +369,7 @@ sub install_xcat{
         }
     }
 
-    my $cmd = "sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y xcat --allow-remove-essential --allow-unauthenticated";
+    my $cmd = "sudo timeout 1200 env DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y xcat --allow-remove-essential --allow-unauthenticated";
     @output = runcmd("$cmd");
     if($::RUNCMD_RC){
         my $lastline = $output[-1];
@@ -404,7 +404,7 @@ sub install_xcat{
                print "[install_xcat] $cmd....[Pass]\n";
             }
         }
-        $cmd = "sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y xcat-probe --allow-remove-essential --allow-unauthenticated";
+        $cmd = "sudo timeout 1200 env DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y xcat-probe --allow-remove-essential --allow-unauthenticated";
         @output = runcmd("$cmd");
         if($::RUNCMD_RC){
             print RED "[install_xcat] $cmd ....[Failed]\n";
@@ -510,7 +510,7 @@ sub check_syntax{
 # Return code:
 #--------------------------------------------------------
 sub run_fast_regression_test{
-    my $cmd = "sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y xcat-test --allow-remove-essential --allow-unauthenticated";
+    my $cmd = "sudo timeout 1200 env DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y xcat-test --allow-remove-essential --allow-unauthenticated";
     my @output = runcmd("$cmd");
     if($::RUNCMD_RC){
          print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
