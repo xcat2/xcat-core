@@ -1682,10 +1682,26 @@ sub ubuntu_subiquity_apt_config
             '  apt:',
             '    preserve_sources_list: false',
             '    geoip: false',
-            '    mirror-selection:',
-            '      primary:',
-            "      - uri: $online_mirror",
         );
+        if ($use_deb822) {
+            # 24.04+ (Deb822 .sources): mirror-selection renders a valid ubuntu.sources.
+            push @lines, '    mirror-selection:';
+            push @lines, '      primary:';
+            push @lines, "      - uri: $online_mirror";
+        } else {
+            # 20.04/22.04 (classic sources.list): mirror-selection can leave the target's
+            # /etc/apt/sources.list EMPTY on these releases (observed on 20.04). curtin's
+            # in-target apt then can only install packages already in the base ISO image, so
+            # any compute-pkglist package that is not on the media (e.g. chrony) fails the
+            # install with "E: Unable to locate package". Write the sources.list explicitly so
+            # the online repos are always present regardless of mirror validation. $RELEASE is
+            # substituted by Subiquity/curtin with the release codename.
+            push @lines, '    sources_list: |';
+            push @lines, "      deb $online_mirror \$RELEASE main restricted universe multiverse";
+            push @lines, "      deb $online_mirror \$RELEASE-updates main restricted universe multiverse";
+            push @lines, "      deb $online_mirror \$RELEASE-backports main restricted universe multiverse";
+            push @lines, "      deb $online_mirror \$RELEASE-security main restricted universe multiverse";
+        }
         if (@otherpkg_sources) {
             push @lines, '    sources:';
             my $index = 0;
