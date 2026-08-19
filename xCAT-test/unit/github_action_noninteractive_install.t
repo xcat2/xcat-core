@@ -24,8 +24,8 @@ close($workflow_fh);
 for my $package (qw(xcat xcat-probe xcat-test)) {
     like(
         $contents,
-        qr{sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \Q$package\E\b},
-        "$package installation is noninteractive"
+        qr{sudo timeout \d+ env DEBIAN_FRONTEND=noninteractive apt-get (?:-o \S+ )*install -y \Q$package\E },
+        "$package installation is noninteractive and bounded"
     );
 }
 
