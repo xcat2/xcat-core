@@ -264,7 +264,18 @@ fi
 
 mkdir -p /var/log/xcat
 date >> /var/log/xcat/upgrade.log
-$RPM_INSTALL_PREFIX0/sbin/xcatconfig -u -V >> /var/log/xcat/upgrade.log 2>&1
+xcatupgradeout=$(mktemp /tmp/xcat-upgrade.XXXXXX)
+$RPM_INSTALL_PREFIX0/sbin/xcatconfig -u -V > "$xcatupgradeout" 2>&1
+cat "$xcatupgradeout" >> /var/log/xcat/upgrade.log
+
+# xcatconfig reports a failed mknb into the log, where an upgrade scrolls past
+# it and the node is left without a genesis image for no apparent reason. Repeat
+# it on the terminal. Only this run is examined, since the log is appended to.
+if grep -q "command returned error code" "$xcatupgradeout"; then
+    echo "WARNING: mknb did not complete, so the Genesis netboot image may be missing or out of date."
+    echo "         See /var/log/xcat/upgrade.log, then rerun 'mknb <arch>' once the cause is resolved."
+fi
+rm -f "$xcatupgradeout"
 
 # The package replaces xcat.conf before this upgrade path runs.  Reload an
 # active web server so the new security headers and ServerTokens setting take
