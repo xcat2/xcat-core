@@ -2283,7 +2283,8 @@ sub dispatch_request {
     }
 
     if (exists($req->{arg})) {
-        foreach my $arg (@{ $req->{arg} }) {
+        my ($trace_args) = xCAT::xcatd->redact_password_args($req->{command}->[0], $req->{arg});
+        foreach my $arg (@$trace_args) {
             $str_cmd .= $arg . " ";
         }
         $str_cmd =~ s/(.+) $/$1/g;
@@ -2869,8 +2870,11 @@ sub service_connection {
                 $cmdlog_alllog .= "$tmpstr ";
             }
 
+            my $cmdlog_req_redacted = 0;
             if (exists($req->{arg})) {
-                foreach my $arg (@{ $req->{arg} }) {
+                my $redacted_args;
+                ($redacted_args, $cmdlog_req_redacted) = xCAT::xcatd->redact_password_args($req->{command}->[0], $req->{arg});
+                foreach my $arg (@$redacted_args) {
                     if ($arg =~ /[^A-Za-z0-9.-]/) {
                         my $tmparg = $arg;
                         $tmparg =~ s/'/'\\''/g;
@@ -2883,7 +2887,7 @@ sub service_connection {
             # Replace passwords with 'x'
             my $cmdlog_before_redact = $cmdlog_alllog;
             $cmdlog_alllog = xCAT::xcatd->redact_password($cmdlog_alllog);
-            my $cmdlog_req_redacted = ($cmdlog_alllog ne $cmdlog_before_redact) ? 1 : 0;
+            $cmdlog_req_redacted = 1 if $cmdlog_alllog ne $cmdlog_before_redact;
             $cmdlog_alllog .= "\n[Response]\n";
             $cmdlog_response_sensitive = cmdlog_response_is_sensitive($req, $cmdlog_req_redacted);
 

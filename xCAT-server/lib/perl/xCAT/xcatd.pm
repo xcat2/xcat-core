@@ -244,7 +244,8 @@ sub validate {
                 # add each argument
                 my $args = $request->{arg};
                 my $arglist;
-                foreach my $argument (@$args) {
+                my ($redacted_args) = xCAT::xcatd->redact_password_args($request->{command}->[0], $args);
+                foreach my $argument (@$redacted_args) {
                     $arglist .= " " . $argument;
                 }
                 my $saveArglist = $arglist;
@@ -485,6 +486,174 @@ sub verifytoken {
     }
 }
 # --------------------------------------------------------------------------------
+my @secret_attributes = qw(
+  authkey bmcpassword domainadminpassword iscsipassword
+  passwd.HMC passwd.admin passwd.celogin passwd.general passwd.hscroot
+  password privkey snmppassword snmpc community productkey tokenid
+  domain.adminpassword ipmi.password iscsi.passwd mpa.password
+  openbmc.password passwd.password pdu.authkey pdu.community pdu.password
+  pdu.privkey ppcdirect.password ppchcp.password prodkey.key
+  switches.password switches.sshpassword token.tokenid vm.vidpassword
+  websrv.password
+);
+my %secret_attribute = map { $_ => 1 } @secret_attributes;
+
+my %secret_command_options = (
+    bmcdiscover    => [qw(p bmcpasswd n newbmcpw)],
+    switchdiscover => [qw(c)],
+    mkhwconn       => [qw(P)],
+    mkvm           => [qw(w password)],
+    createvcluster => [qw(password)],
+    lsvcluster     => [qw(password)],
+    rmvcluster     => [qw(password)],
+);
+my %secret_command_valueopts = (
+    bmcdiscover    => 'smiu',
+    switchdiscover => 's',
+    mkhwconn       => 'psT',
+    mkvm           => 'dijlmpqrvz',
+);
+my %secret_command_intopts = (
+    mkvm => 'c',
+);
+my %secret_command_operands = (
+    chvm => {
+        '--setpassword'  => [1],
+        '--add3390'      => [ 5, 6, 7 ],
+        '--add9336'      => [ 5, 6, 7 ],
+        '--addpagespool' => [8],
+        '--formatdisk'   => [2],
+    },
+);
+my %secret_command_patterns = (
+    mkvm      => qr/^(pw=)/,
+    rspconfig => qr/^(\*_passwd=|admin_passwd=|HMC_passwd=|general_passwd=|USERID=)/,
+);
+my %secret_command_nocase = map { $_ => 1 } qw(mkvm);
+my %secret_site_keys = map { $_ => 1 } qw(snmpc);
+
+sub redact_password_arg {
+    my ($class, $arg) = @_;
+    return $arg unless defined $arg;
+    if ($arg =~ /^\s*([\w.]+)\s*([-+,^!]?=~?|!~)/ and $secret_attribute{$1}) {
+        return $1 . $2 . "xxxxxxxx";
+    }
+    while ($arg =~ /(?<![\w.])([\w.]+)\s*(?:[-+,^!]?=~?|!~)/g) {
+        if ($secret_attribute{$1}) {
+            return substr($arg, 0, pos($arg)) . "xxxxxxxx";
+        }
+    }
+    return $arg;
+}
+
+sub redact_password_args {
+    my ($class, $command, $args) = @_;
+    my @redacted;
+    my $changed = 0;
+    my $pending = 0;
+    my @option = (defined $command and $secret_command_options{$command})
+      ? @{ $secret_command_options{$command} } : ();
+    my $nocase    = (defined $command and $secret_command_nocase{$command}) ? 1 : 0;
+    my $letters   = join('', grep { length($_) == 1 } @option);
+    my @longnames = grep { length($_) > 1 } @option;
+    my $valueopts = (defined $command and $secret_command_valueopts{$command})
+      ? $secret_command_valueopts{$command} : '';
+    my $intopts = (defined $command and $secret_command_intopts{$command})
+      ? $secret_command_intopts{$command} : '';
+    if ($nocase) { $letters = lc $letters; }
+    my $pattern = defined $command ? $secret_command_patterns{$command} : undef;
+    my %operand;
+    if (defined $command and $secret_command_operands{$command}
+        and defined $args->[0]
+        and $secret_command_operands{$command}{ $args->[0] }) {
+        %operand = map { $_ => 1 } @{ $secret_command_operands{$command}{ $args->[0] } };
+    }
+    my $sitevalue = 0;
+    if (defined $command and ($command eq 'tabch' or $command eq 'chtab')) {
+      SELECTOR: foreach my $selectorarg (@$args) {
+            next unless defined $selectorarg;
+            foreach my $selector (split /,/, $selectorarg) {
+                if ($selector =~ /^(?:site\.)?key=([\w.]+)$/ and $secret_site_keys{$1}) {
+                    $sitevalue = 1;
+                    last SELECTOR;
+                }
+            }
+        }
+    }
+    for my $index (0 .. $#{$args}) {
+        my $arg = $args->[$index];
+        if (not defined $arg) { push @redacted, $arg; next; }
+        if ($pending) {
+            $pending = 0;
+            $changed = 1;
+            push @redacted, "xxxxxxxx";
+            next;
+        }
+        if ($operand{$index}) {
+            $changed = 1;
+            push @redacted, "xxxxxxxx";
+            next;
+        }
+        my $masked;
+        foreach my $name (@longnames) {
+            if ($arg =~ /^(-{1,2}|\+)([A-Za-z]+)(=?)(.*)$/s and index($name, lc($2)) == 0) {
+                my $short = $nocase ? lc($2) : $2;
+                next if length($2) == 1 and index($valueopts, $short) >= 0;
+                if ($3) { $masked = $1 . $2 . $3 . "xxxxxxxx"; last; }
+                if ($4 eq '') { $pending = 1; last; }
+            }
+        }
+        if (not $pending and not defined $masked and $letters) {
+            if ($arg =~ /^--([A-Za-z])(.*)$/s) {
+                my ($c, $rest) = ($1, $2);
+                my $cc = $nocase ? lc $c : $c;
+                if (index($letters, $cc) >= 0) {
+                    if ($rest eq '') { $pending = 1; }
+                    else             { $masked = "--" . $c . "xxxxxxxx"; }
+                }
+            } elsif ($arg =~ /^([-+])([A-Za-z?].*)$/s) {
+                my ($intro, $body) = ($1, $2);
+                my $offset = 0;
+                my $length = length $body;
+                while ($offset < $length) {
+                    my $c = substr($body, $offset, 1);
+                    last if $c !~ /[A-Za-z?]/;
+                    my $cc = $nocase ? lc $c : $c;
+                    if (index($letters, $cc) >= 0) {
+                        if ($offset == $length - 1) { $pending = 1; }
+                        else { $masked = $intro . substr($body, 0, $offset + 1) . "xxxxxxxx"; }
+                        last;
+                    }
+                    last if index($valueopts, $c) >= 0;
+                    if ($intopts ne '' and index($intopts, $c) >= 0) {
+                        $offset++;
+                        $offset++ if $offset < $length and substr($body, $offset, 1) =~ /[-+]/;
+                        $offset++ while $offset < $length and substr($body, $offset, 1) =~ /[0-9_]/;
+                        next;
+                    }
+                    $offset++;
+                }
+            }
+        }
+        if (not defined $masked and $pattern and $arg =~ /$pattern/s) {
+            $masked = $1 . "xxxxxxxx";
+        }
+        if (not defined $masked and $sitevalue and $arg =~ /^(site\.value\s*(?:[-+,^!]?=~?|!~)\s*)/s) {
+            $masked = $1 . "xxxxxxxx";
+        }
+        if (defined $masked) {
+            $changed = 1;
+            push @redacted, $masked;
+            next;
+        }
+        my $attrarg = $class->redact_password_arg($arg);
+        $changed = 1 if $attrarg ne $arg;
+        push @redacted, $attrarg;
+    }
+    return (\@redacted, $changed);
+}
+
+# --------------------------------------------------------------------------------
 
 =head3 redact_password
 
@@ -516,7 +685,6 @@ sub verifytoken {
                       'HMC_passwd=xxx' '*_passwd=xxxxxxx'
 =cut
 
-# --------------------------------------------------------------------------------
 sub redact_password {
     my $class = shift;
     my $request = shift;
@@ -568,50 +736,10 @@ sub redact_password {
             }
         }
     }
-    # Object definition attributes carry their value as attr=value, on whichever
-    # command happens to set them, so they are matched by name rather than by
-    # command. These are the attributes that map to a secret column in
-    # Schema.pm; attributes such as 'key' and 'sshkeydir' are not secrets and
-    # are deliberately absent.
-    my @password_attributes = qw(
-      authkey
-      bmcpassword
-      domainadminpassword
-      iscsipassword
-      passwd.HMC
-      passwd.admin
-      passwd.celogin
-      passwd.general
-      passwd.hscroot
-      password
-      privkey
-      snmppassword
-
-      domain.adminpassword
-      ipmi.password
-      iscsi.passwd
-      mpa.password
-      openbmc.password
-      passwd.password
-      pdu.authkey
-      pdu.password
-      pdu.privkey
-      ppcdirect.password
-      ppchcp.password
-      switches.password
-      switches.sshpassword
-      vm.vidpassword
-      websrv.password
-    );
-    foreach my $attribute (@password_attributes) {
-        # An assignment may be written with spaces around the equals sign and
-        # the value may itself contain spaces, in which case the argument
-        # arrives quoted. Redact to the closing quote there, and to the end of
-        # the argument otherwise, so the rest of the command stays readable.
-        $parameters =~ s/(^|\s)'(\Q$attribute\E\s*=\s*)[^']*'/$1'$2$redact_string'/g;
-        $parameters =~ s/(^|\s)(\Q$attribute\E\s*=\s*)[^'\s]*/$1$2$redact_string/g;
+    foreach my $attribute (@secret_attributes) {
+        $parameters =~ s/(^|\s)'(\Q$attribute\E\s*(?:[-+,^!]?=~?|!~)\s*)[^']*'/$1'$2$redact_string'/g;
+        $parameters =~ s/(^|[^\w.])(\Q$attribute\E\s*(?:[-+,^!]?=~?|!~)\s*)(?!\Q$redact_string\E).*$/$1$2$redact_string/;
     }
-
     # Return original request with password replaced by 'x' in $parameters string
     if ($request =~ '\[Request\]') {
         return $header . "[Request]    " . $command . " " . $parameters;
