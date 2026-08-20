@@ -1,0 +1,189 @@
+#!/bin/bash
+set -euo pipefail
+
+key_dir=${XCAT_GENESIS_EXTENSION_KEY_DIR:-/usr/share/xcat/genesis/extension-keys}
+run_dir=${XCAT_GENESIS_EXTENSION_RUN_DIR:-/run/extensions}
+os_release=${XCAT_GENESIS_OS_RELEASE:-/etc/os-release}
+status_command=${XCAT_GENESIS_STATUS_COMMAND:-/usr/libexec/xcat/genesis-status}
+failure_code=EXTENSION_VERIFICATION_FAILED
+failure_detail='Genesis extension verification failed'
+failure_recovery='Check extension images, manifests, signatures, and trusted keys'
+runtime_status=false
+
+publish_status() {
+    "$status_command" extensions "$@" \
+        || logger -t genesis-sysext -- 'unable to publish extension status'
+}
+
+finish_status() {
+    local result=$?
+
+    trap - EXIT
+    if [[ $runtime_status == true && $result -ne 0 ]]; then
+        publish_status FAILED "$failure_detail" \
+            "CODE=$failure_code" "RECOVERY=$failure_recovery"
+    fi
+    exit "$result"
+}
+
+fail() {
+    failure_detail=$*
+    printf 'genesis-sysext: %s\n' "$*" >&2
+    exit 1
+}
+
+usage() {
+    printf '%s\n' \
+        'Usage: genesis-sysext verify MANIFEST IMAGE SIGNATURE' \
+        '       genesis-sysext install MANIFEST IMAGE SIGNATURE' \
+        '       genesis-sysext load-all DIRECTORY' >&2
+    exit 2
+}
+
+canonical_architecture() {
+    local machine=${XCAT_GENESIS_UNAME_M:-$(uname -m)}
+
+    case "$machine" in
+        i?86) printf '%s\n' x86 ;;
+        armv7*) printf '%s\n' armv7hf ;;
+        x86_64|ppc64|ppc64le|aarch64|riscv64) printf '%s\n' "$machine" ;;
+        *) fail "unsupported runtime architecture: $machine" ;;
+    esac
+}
+
+read_release() {
+    local release
+
+    [[ -f $os_release ]] || fail "missing OS release file: $os_release"
+    release=$(sed -n 's/^VERSION_ID=//p' "$os_release" | head -n 1)
+    release=${release#\"}
+    release=${release%\"}
+    [[ $release =~ ^[A-Za-z0-9._-]+$ ]] || fail 'invalid Genesis release identity'
+    printf '%s\n' "$release"
+}
+
+validate_manifest() {
+    local manifest=$1
+
+    jq -e '
+        type == "object" and
+        (keys | sort) == ([
+            "architecture", "capabilities", "genesis_release", "kernel_modules",
+            "kernel_release", "key_id", "license_class", "name", "pci_ids",
+            "schema", "sha256", "version"
+        ] | sort) and
+        .schema == 1 and
+        (.name | type == "string" and test("^[a-z0-9][a-z0-9._-]{0,63}$")) and
+        (.version | type == "string" and test("^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$")) and
+        (.architecture | IN("x86", "x86_64", "ppc64", "ppc64le", "armv7hf", "aarch64", "riscv64")) and
+        (.genesis_release | type == "string" and test("^[A-Za-z0-9._-]+$")) and
+        (.key_id | type == "string" and test("^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")) and
+        (.license_class | IN("open", "redistributable", "restricted")) and
+        (.capabilities | type == "array" and all(.[]; type == "string" and test("^[a-z][a-z0-9.-]*$"))) and
+        (.pci_ids | type == "array" and all(.[]; type == "string" and test("^[0-9a-f]{4}:[0-9a-f]{4}$"))) and
+        (.sha256 | type == "string" and test("^[0-9a-f]{64}$")) and
+        (.kernel_modules | type == "boolean") and
+        ((.kernel_modules == false and .kernel_release == null) or
+         (.kernel_modules == true and (.kernel_release | type == "string" and test("^[A-Za-z0-9._+-]+$"))))
+    ' "$manifest" >/dev/null || fail 'invalid extension manifest'
+}
+
+verify_extension() {
+    local manifest=$1 image=$2 signature=$3
+    local actual_hash actual_arch actual_release kernel_modules kernel_release
+    local key key_id manifest_arch manifest_release name version
+
+    for path in "$manifest" "$image" "$signature"; do
+        [[ -f $path && ! -L $path ]] || fail "invalid extension input: $path"
+    done
+
+    validate_manifest "$manifest"
+
+    name=$(jq -r '.name' "$manifest")
+    version=$(jq -r '.version' "$manifest")
+    key_id=$(jq -r '.key_id' "$manifest")
+    manifest_arch=$(jq -r '.architecture' "$manifest")
+    manifest_release=$(jq -r '.genesis_release' "$manifest")
+    kernel_modules=$(jq -r '.kernel_modules' "$manifest")
+    kernel_release=$(jq -r '.kernel_release // empty' "$manifest")
+
+    actual_arch=$(canonical_architecture)
+    [[ $manifest_arch == "$actual_arch" ]] || fail "extension architecture $manifest_arch does not match $actual_arch"
+
+    actual_release=$(read_release)
+    [[ $manifest_release == "$actual_release" ]] || fail "extension release $manifest_release does not match $actual_release"
+
+    if [[ $kernel_modules == true ]]; then
+        [[ $kernel_release == "${XCAT_GENESIS_UNAME_R:-$(uname -r)}" ]] || fail 'extension kernel release does not match'
+    fi
+
+    actual_hash=$(sha256sum -- "$image" | awk '{print $1}')
+    [[ $actual_hash == "$(jq -r '.sha256' "$manifest")" ]] || fail 'extension digest does not match'
+
+    key=$key_dir/$key_id.pem
+    [[ -f $key && ! -L $key ]] || fail "untrusted extension key: $key_id"
+    [[ $(wc -c <"$signature") -eq 64 ]] || fail 'invalid Ed25519 signature size'
+    openssl pkey -pubin -in "$key" -text -noout 2>/dev/null \
+        | grep -q '^ED25519 Public-Key:' || fail "extension key is not Ed25519: $key_id"
+    openssl pkeyutl -verify -pubin -inkey "$key" -rawin \
+        -in "$manifest" -sigfile "$signature" >/dev/null 2>&1 \
+        || fail 'extension signature verification failed'
+
+    EXTENSION_NAME=$name
+    EXTENSION_VERSION=$version
+}
+
+install_extension() {
+    local manifest=$1 image=$2 signature=$3
+    local destination temporary
+
+    verify_extension "$manifest" "$image" "$signature"
+    install -d -m 0755 "$run_dir"
+    temporary=$(mktemp "$run_dir/.${EXTENSION_NAME}.XXXXXX")
+    trap 'rm -f -- "$temporary"' RETURN
+    install -m 0644 "$image" "$temporary"
+    destination=$run_dir/$EXTENSION_NAME.raw
+    mv -f -- "$temporary" "$destination"
+    trap - RETURN
+
+    if ! systemd-sysext refresh; then
+        rm -f -- "$destination"
+        systemd-sysext refresh >/dev/null 2>&1 || true
+        fail "unable to merge extension: $EXTENSION_NAME"
+    fi
+
+    printf 'Installed Genesis extension %s %s\n' "$EXTENSION_NAME" "$EXTENSION_VERSION"
+}
+
+load_all() {
+    local directory=$1 manifest stem
+    local -a manifests
+
+    runtime_status=true
+    publish_status RUNNING 'Verifying Genesis extensions'
+    [[ -d $directory && ! -L $directory ]] || fail "invalid extension directory: $directory"
+    shopt -s nullglob
+    manifests=("$directory"/*.manifest.json)
+    ((${#manifests[@]} > 0)) || fail "no extension manifests found in: $directory"
+    for manifest in "${manifests[@]}"; do
+        stem=${manifest%.manifest.json}
+        install_extension "$manifest" "$stem.raw" "$stem.sig"
+    done
+    publish_status READY 'Genesis extensions loaded'
+}
+
+trap finish_status EXIT
+
+[[ $# -ge 1 ]] || usage
+action=$1
+shift
+
+case "$action:$#" in
+    verify:3)
+        verify_extension "$1" "$2" "$3"
+        printf 'Verified Genesis extension %s %s\n' "$EXTENSION_NAME" "$EXTENSION_VERSION"
+        ;;
+    install:3) install_extension "$1" "$2" "$3" ;;
+    load-all:1) load_all "$1" ;;
+    *) usage ;;
+esac
