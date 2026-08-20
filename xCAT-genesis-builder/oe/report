@@ -1,0 +1,136 @@
+#!/bin/sh
+
+set -eu
+
+fail() {
+    printf 'Genesis report: %s\n' "$*" >&2
+    exit 1
+}
+
+file_size() {
+    wc -c <"$1" | tr -d '[:space:]'
+}
+
+read_value() {
+    value_file=$1
+    value_name=$2
+
+    while IFS='=' read -r name value; do
+        if [ "$name" = "$value_name" ]; then
+            printf '%s\n' "$value"
+            return 0
+        fi
+    done <"$value_file"
+    return 1
+}
+
+require_uint() {
+    value_name=$1
+    value=$2
+
+    case "$value" in
+        ''|*[!0-9]*) fail "invalid $value_name value: $value" ;;
+    esac
+}
+
+runtime_file=
+baseline_file=
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --runtime)
+            [ "$#" -ge 2 ] || fail 'missing --runtime value'
+            runtime_file=$2
+            shift 2
+            ;;
+        --baseline)
+            [ "$#" -ge 2 ] || fail 'missing --baseline value'
+            baseline_file=$2
+            shift 2
+            ;;
+        --) shift; break ;;
+        -*) fail "unknown option: $1" ;;
+        *) break ;;
+    esac
+done
+
+[ "$#" -eq 2 ] \
+    || fail 'usage: report [--runtime FILE] [--baseline FILE] ARCHITECTURE IMAGE_DIRECTORY'
+
+architecture=$1
+image_dir=${2%/}
+case "$architecture" in
+    aarch64|armv7hf|riscv64|x86|x86_64|ppc64|ppc64le) ;;
+    *) fail "unsupported architecture: $architecture" ;;
+esac
+
+[ -d "$image_dir" ] && [ ! -L "$image_dir" ] \
+    || fail "invalid image directory: $image_dir"
+kernel=$image_dir/kernel
+initramfs=$image_dir/initramfs.cpio.gz
+[ -f "$kernel" ] && [ ! -L "$kernel" ] \
+    || fail "missing artifact: $kernel"
+[ -f "$initramfs" ] && [ ! -L "$initramfs" ] \
+    || fail "missing artifact: $initramfs"
+
+gzip -t -- "$initramfs" || fail "invalid initramfs: $initramfs"
+kernel_bytes=$(file_size "$kernel")
+compressed_bytes=$(file_size "$initramfs")
+unpacked_bytes=$(gzip -dc -- "$initramfs" | wc -c | tr -d '[:space:]')
+
+printf 'SCHEMA=1\n'
+printf 'ARCHITECTURE=%s\n' "$architecture"
+printf 'KERNEL_BYTES=%s\n' "$kernel_bytes"
+printf 'COMPRESSED_INITRAMFS_BYTES=%s\n' "$compressed_bytes"
+printf 'UNPACKED_INITRAMFS_BYTES=%s\n' "$unpacked_bytes"
+
+if [ -n "$runtime_file" ]; then
+    [ -f "$runtime_file" ] && [ ! -L "$runtime_file" ] \
+        || fail "invalid runtime report: $runtime_file"
+    boot_ready_seconds=$(read_value "$runtime_file" BOOT_READY_SECONDS) \
+        || fail 'runtime report lacks BOOT_READY_SECONDS'
+    capture_uptime_seconds=$(read_value "$runtime_file" CAPTURE_UPTIME_SECONDS) \
+        || fail 'runtime report lacks CAPTURE_UPTIME_SECONDS'
+    memory_total_kib=$(read_value "$runtime_file" MEMORY_TOTAL_KIB) \
+        || fail 'runtime report lacks MEMORY_TOTAL_KIB'
+    memory_available_kib=$(read_value "$runtime_file" MEMORY_AVAILABLE_KIB) \
+        || fail 'runtime report lacks MEMORY_AVAILABLE_KIB'
+    memory_used_kib=$(read_value "$runtime_file" MEMORY_USED_KIB) \
+        || fail 'runtime report lacks MEMORY_USED_KIB'
+
+    require_uint BOOT_READY_SECONDS "$boot_ready_seconds"
+    require_uint CAPTURE_UPTIME_SECONDS "$capture_uptime_seconds"
+    require_uint MEMORY_TOTAL_KIB "$memory_total_kib"
+    require_uint MEMORY_AVAILABLE_KIB "$memory_available_kib"
+    require_uint MEMORY_USED_KIB "$memory_used_kib"
+
+    printf 'BOOT_READY_SECONDS=%s\n' "$boot_ready_seconds"
+    printf 'CAPTURE_UPTIME_SECONDS=%s\n' "$capture_uptime_seconds"
+    printf 'MEMORY_TOTAL_KIB=%s\n' "$memory_total_kib"
+    printf 'MEMORY_AVAILABLE_KIB=%s\n' "$memory_available_kib"
+    printf 'MEMORY_USED_KIB=%s\n' "$memory_used_kib"
+fi
+
+[ -n "$baseline_file" ] || exit 0
+[ -f "$baseline_file" ] && [ ! -L "$baseline_file" ] \
+    || fail "invalid baseline report: $baseline_file"
+baseline_architecture=$(read_value "$baseline_file" ARCHITECTURE) \
+    || fail 'baseline report lacks ARCHITECTURE'
+[ "$baseline_architecture" = "$architecture" ] \
+    || fail "baseline architecture is $baseline_architecture, expected $architecture"
+
+compare_metric() {
+    metric_name=$1
+    current_value=$2
+    baseline_value=$(read_value "$baseline_file" "$metric_name") \
+        || fail "baseline report lacks $metric_name"
+    require_uint "$metric_name" "$baseline_value"
+    printf '%s_DELTA=%s\n' "$metric_name" "$((current_value - baseline_value))"
+}
+
+compare_metric KERNEL_BYTES "$kernel_bytes"
+compare_metric COMPRESSED_INITRAMFS_BYTES "$compressed_bytes"
+compare_metric UNPACKED_INITRAMFS_BYTES "$unpacked_bytes"
+if [ -n "$runtime_file" ]; then
+    compare_metric BOOT_READY_SECONDS "$boot_ready_seconds"
+    compare_metric MEMORY_USED_KIB "$memory_used_kib"
+fi

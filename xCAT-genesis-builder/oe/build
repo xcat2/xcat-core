@@ -1,0 +1,27 @@
+#!/bin/sh
+
+set -eu
+
+oe_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+: "${XCAT_GENESIS_WORK_DIR:=$oe_dir/.work}"
+: "${KAS:=kas}"
+
+mkdir -p "$XCAT_GENESIS_WORK_DIR"
+
+export KAS_WORK_DIR="$XCAT_GENESIS_WORK_DIR"
+export KAS_BUILD_DIR="$XCAT_GENESIS_WORK_DIR/build"
+
+if [ "$#" -eq 0 ]; then
+    set -- x86_64
+fi
+
+for architecture do
+    case "$architecture" in
+        aarch64|armv7hf|riscv64|x86|x86_64|ppc64|ppc64le) ;;
+        *)
+            printf 'Unsupported Genesis architecture: %s\n' "$architecture" >&2
+            exit 2
+            ;;
+    esac
+    "$KAS" build "$oe_dir/kas/$architecture.yml"
+done
