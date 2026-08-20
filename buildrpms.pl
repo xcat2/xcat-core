@@ -297,10 +297,15 @@ sub genesis_tarch_from_targetarch {
 sub targetarch_from_target {
     my ($target) = @_;
     return $ARCH unless defined $target && length $target;
-    my @parts = split /-/, $target;
-    my $arch = $parts[-1];
-    $arch =~ s/^\s+|\s+$//g;
-    return lc $arch;
+    # mock configs are named <distro>-<release>-<arch>, but a site config may carry a
+    # suffix (e.g. rocky-10-riscv64-xcat, the forcearch config for riscv64 builds on an
+    # x86_64 host), so take the last part that names an architecture and only fall back
+    # to the last part when none does.
+    my @parts = map { my $p = lc $_; $p =~ s/^\s+|\s+$//g; $p } split /-/, $target;
+    for my $part (reverse @parts) {
+        return $part if $part =~ /^(?:x86_64|i[3-6]86|ppc64le|ppc64|aarch64|riscv64|s390x|armv7hl)$/;
+    }
+    return $parts[-1];
 }
 
 # product(\@A, \@B) returns the catersian product of \@A and \@B
