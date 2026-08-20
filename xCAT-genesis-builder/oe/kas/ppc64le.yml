@@ -1,0 +1,6 @@
+header:
+  version: 19
+  includes:
+    - common.yml
+
+machine: xcat-genesis-ppc64le

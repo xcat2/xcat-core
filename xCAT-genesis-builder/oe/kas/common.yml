@@ -1,0 +1,48 @@
+header:
+  version: 19
+
+signers:
+  yocto-release:
+    fingerprint: 2AFB13F28FBBB0D1B9DAF63087EB3D32FB631AD9
+    repo: xcat-core
+    path: ../keys/yocto-release.asc
+
+distro: xcat-genesis
+target: xcat-genesis-image
+
+repos:
+  bitbake:
+    url: https://git.openembedded.org/bitbake
+    tag: yocto-6.0.2
+    commit: acfe02fa38b5da9e6a36c6cedcf91d4fcbefbfbd
+    signed: true
+    allowed_signers:
+      - yocto-release
+    layers: {}
+
+  openembedded-core:
+    url: https://git.openembedded.org/openembedded-core
+    tag: yocto-6.0.2
+    commit: 5d1aa5c806c061a2994f4decb59016610f093213
+    signed: true
+    allowed_signers:
+      - yocto-release
+    layers:
+      meta:
+
+  meta-openembedded:
+    url: https://git.openembedded.org/meta-openembedded
+    commit: af8b6d6b2f0b11595b0a0d5b82efa3129d52a628
+    layers:
+      meta-oe:
+      meta-python:
+      meta-networking:
+
+  xcat-core:
+    layers:
+      ../meta-xcat-genesis:
+
+local_conf_header:
+  xcat-genesis: |
+    CONF_VERSION = "2"
+    BB_DISKMON_DIRS = "STOPTASKS,${TMPDIR},5G,500K STOPTASKS,${DL_DIR},5G,500K STOPTASKS,${SSTATE_DIR},5G,500K"

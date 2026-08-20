@@ -1,0 +1,2 @@
+kas==5.4
+python-gnupg==0.5.6
