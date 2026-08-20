@@ -1041,10 +1041,10 @@ sub changeVM {
 
         # Add to directory entry
         my $error = 0;
-        xCAT::zvmUtils->printSyslog( "ssh $::SUDOER\@$hcp \"$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $userId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R $readPw -W $writePw -M $multiPw\"" );
+        xCAT::zvmUtils->printSyslog( "ssh $::SUDOER\@$hcp \"$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $userId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R xxxxxxxx -W xxxxxxxx -M xxxxxxxx\"" );
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $userId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R $readPw -W $writePw -M $multiPw"`;
         ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?,
-            "ssh $::SUDOER\@$hcp \"$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $userId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R $readPw -W $writePw -M $multiPw\"",
+            "ssh $::SUDOER\@$hcp \"$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $userId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R xxxxxxxx -W xxxxxxxx -M xxxxxxxx\"",
             $hcp, "changeVM", $out, $node );
         if ( $rc != 0 ) {
             xCAT::zvmUtils->printLn( $callback, $outmsg );
@@ -1330,7 +1330,7 @@ sub changeVM {
         my $error = 0;
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $userId -v $addr -t 9336 -a AUTOG -r $pool -u 2 -z $blks -m $mode -f 1 -R $readPw -W $writePw -M $multiPw 2>&1"`;
         ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?,
-            "ssh $::SUDOER\@$hcp \"$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $userId -v $addr -t 9336 -a AUTOG -r $pool -u 2 -z $blks -m $mode -f 1 -R $readPw -W $writePw -M $multiPw 2>&1\"",
+            "ssh $::SUDOER\@$hcp \"$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $userId -v $addr -t 9336 -a AUTOG -r $pool -u 2 -z $blks -m $mode -f 1 -R xxxxxxxx -W xxxxxxxx -M xxxxxxxx 2>&1\"",
             $hcp, "changeVM", $out, $node );
         if ( $rc != 0 ) {
             xCAT::zvmUtils->printLn( $callback, "$node: $out" );
@@ -1617,15 +1617,17 @@ EOF"`;
         my $i;
         my @options = ("", "vol_addr=", "volume_label=", "volume_use=", "system_config_name=", "system_config_type=", "parm_disk_owner=", "parm_disk_number=", "parm_disk_password=");
         my $argStr = "";
+        my $logStr = "";
         foreach $i ( 1 .. $argsSize ) {
             if ( $args->[$i] ) {
                 $argStr .= " -k \"$options[$i]$args->[$i]\"";
+                $logStr .= ( $i == 8 ) ? " -k \"$options[$i]xxxxxxxx\"" : " -k \"$options[$i]$args->[$i]\"";
             }
         }
 
         # Add a full volume page or spool disk to the system
         $out .= `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Page_or_Spool_Volume_Add -T $hcpUserId $argStr"`;
-        xCAT::zvmUtils->printSyslog("smcli Page_or_Spool_Volume_Add -T $hcpUserId $argStr");
+        xCAT::zvmUtils->printSyslog("smcli Page_or_Spool_Volume_Add -T $hcpUserId $logStr");
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
 
@@ -3034,7 +3036,7 @@ EOF"`;
         my $pw = $args->[1];
 
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Password_Set_DM -T $userId -p $pw"`;
-        xCAT::zvmUtils->printSyslog("smcli Image_Password_Set_DM -T $userId -p $pw");
+        xCAT::zvmUtils->printSyslog("smcli Image_Password_Set_DM -T $userId -p xxxxxxxx");
         $out = xCAT::zvmUtils->appendHostname( $node, $out );
     }
 
@@ -4434,7 +4436,7 @@ sub listVM {
                     # Not return $out to upper layer as it might contain password
                     xCAT::zvmUtils->printLn( $callback, "$node: (Error) not able to find $dev in user direct");
 
-                    xCAT::zvmUtils->printSyslog("$node: (Error) not able to find $dev in user direct: $out");
+                    xCAT::zvmUtils->printSyslog("$node: (Error) not able to find $dev in user direct: " . xCAT::zvmUtils->redact_directory_entry($out));
                     return;
                 }
             } else {
@@ -5106,7 +5108,7 @@ sub cloneVM {
     my %srcDiskType;
     my @srcDisks = xCAT::zvmUtils->getMdisks( $callback, $::SUDOER, $sourceNode );
     if (xCAT::zvmUtils->checkOutput( $srcDisks[0] ) == -1) {
-        xCAT::zvmUtils->printLn( $callback, "$srcDisks[0]" );
+        xCAT::zvmUtils->printLn( $callback, xCAT::zvmUtils->redact_directory_entry($srcDisks[0]) );
         return;
     }
 
@@ -5115,8 +5117,8 @@ sub cloneVM {
     #   MDISK=VDEV=0100 DEVTYPE=3390 START=0001 COUNT=10016 VOLID=EMC2C4 MODE=MR
     $out = `ssh $::SUDOER\@$srcHcp "$::SUDO $::DIR/smcli Image_Definition_Query_DM -T $sourceId -k MDISK"`;
     xCAT::zvmUtils->printSyslog("smcli Image_Definition_Query_DM -T $sourceId -k MDISK");
-    xCAT::zvmUtils->printSyslog("$out");
-    xCAT::zvmUtils->printSyslog("srcDisks:@srcDisks");
+    xCAT::zvmUtils->printSyslog(xCAT::zvmUtils->redact_directory_entry($out));
+    xCAT::zvmUtils->printSyslog("srcDisks:" . xCAT::zvmUtils->redact_directory_entry("@srcDisks"));
     my $srcDiskDet = xCAT::zvmUtils->trimStr($out);
     foreach (@srcDisks) {
 
@@ -5220,7 +5222,7 @@ sub cloneVM {
     xCAT::zvmCPUtils->loadVmcp($::SUDOER, $sourceNode);
     $out = `ssh $::SUDOER\@$srcHcp "$::SUDO $::DIR/smcli Image_Definition_Query_DM -T $sourceId -k NICDEF"`;
     xCAT::zvmUtils->printSyslog("smcli Image_Definition_Query_DM -T $sourceId -k NICDEF");
-    xCAT::zvmUtils->printSyslog("$out");
+    xCAT::zvmUtils->printSyslog(xCAT::zvmUtils->redact_directory_entry($out));
     # Output is similar to:
     #   NICDEF_PROFILE=VDEV=0800 TYPE=QDIO LAN=SYSTEM SWITCHNAME=VSW2
     #   NICDEF=VDEV=0900 TYPE=QDIO DEVICES=3 LAN=SYSTEM SWITCHNAME=GLAN1
@@ -5640,7 +5642,7 @@ sub clone {
         # Check if user entry is created
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Query_DM -T $tgtUserId" | sed '\$d'`;
         xCAT::zvmUtils->printSyslog("smcli Image_Query_DM -T $tgtUserId | sed '\$d'");
-        xCAT::zvmUtils->printSyslog("$out");
+        xCAT::zvmUtils->printSyslog(xCAT::zvmUtils->redact_directory_entry($out));
         $rc  = xCAT::zvmUtils->checkOutput( $out );
 
         if ( $rc == -1 ) {
@@ -5732,7 +5734,7 @@ sub clone {
                     xCAT::zvmUtils->printLn( $callback, "$tgtNode: Trying again ($try) to add minidisk ($addr)" );
                 }
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R $tgtPw -W $tgtPw -M $tgtPw"`;
-                xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R $tgtPw -W $tgtPw -M $tgtPw");
+                xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R xxxxxxxx -W xxxxxxxx -M xxxxxxxx");
                 xCAT::zvmUtils->printSyslog("$out");
                 xCAT::zvmUtils->printLn( $callback, "$out" );
 
@@ -5776,7 +5778,7 @@ sub clone {
                     xCAT::zvmUtils->printLn( $callback, "$tgtNode: Trying again ($try) to add minidisk ($addr)" );
                 }
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 9336 -a AUTOG -r $pool -u 1 -z $blks -m $mode -f 1 -R $tgtPw -W $tgtPw -M $tgtPw"`;
-                xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 9336 -a AUTOG -r $pool -u 1 -z $blks -m $mode -f 1 -R $tgtPw -W $tgtPw -M $tgtPw");
+                xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 9336 -a AUTOG -r $pool -u 1 -z $blks -m $mode -f 1 -R xxxxxxxx -W xxxxxxxx -M xxxxxxxx");
                 xCAT::zvmUtils->printSyslog("$out");
                 xCAT::zvmUtils->printLn( $callback, "$out" );
 
@@ -5814,13 +5816,14 @@ sub clone {
         # Get disks within user entry
         xCAT::zvmUtils->printSyslog("smcli Image_Query_DM -T $tgtUserId");
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Query_DM -T $tgtUserId"`;
+        $out = xCAT::zvmUtils->redact_directory_entry($out);
         ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO $::DIR/smcli Image_Query_DM -T $tgtUserId\"", $hcp, "clone", $out, $tgtNode );
         if ($rc != 0) {
             xCAT::zvmUtils->printLn( $callback, "$outmsg" );
             return;
         }
         $out = `echo "$out" | sed '\$d' | grep -a -i "MDISK"`;
-        xCAT::zvmUtils->printSyslog("$out");
+        xCAT::zvmUtils->printSyslog(xCAT::zvmUtils->redact_directory_entry($out));
         @disks = split( '\n', $out );
 
         if ( @disks != @tgtDisks ) {
@@ -6988,7 +6991,7 @@ sub nodeSet {
             $out = `sed -i -e "s,replace_master,$master,g" $customTmpl`;
             $out = `sed -i -e "s,replace_install_dir,$installDir,g" $customTmpl`;
 
-            xCAT::zvmUtils->printSyslog("***Provision settings for SLES:replace_host_address,$hostIP replace_long_name,$hostname replace_short_name,$node replace_domain,$domain replace_hostname,$node replace_nameserver,$nameserver replace_broadcast,$broadcast replace_device,$device replace_ipaddr,$hostIP replace_lladdr,$mac replace_netmask,$mask replace_network,$network replace_ccw_chan_ids,$chanIds replace_ccw_chan_mode,FOOBAR replace_gateway,$gateway replace_root_password,$passwd replace_nic_addr,$readChannel replace_master,$master replace_install_dir,$installDir $customTmpl");
+            xCAT::zvmUtils->printSyslog("***Provision settings for SLES:replace_host_address,$hostIP replace_long_name,$hostname replace_short_name,$node replace_domain,$domain replace_hostname,$node replace_nameserver,$nameserver replace_broadcast,$broadcast replace_device,$device replace_ipaddr,$hostIP replace_lladdr,$mac replace_netmask,$mask replace_network,$network replace_ccw_chan_ids,$chanIds replace_ccw_chan_mode,FOOBAR replace_gateway,$gateway replace_root_password,xxxxxxxx replace_nic_addr,$readChannel replace_master,$master replace_install_dir,$installDir $customTmpl");
 
             # Attach SCSI FCP devices (if any)
             # Go through each pool
@@ -7278,7 +7281,7 @@ END
             $out = `sed -i -e "s,replace_master,$master,g" $customTmpl`;
             $out = `sed -i -e "s,replace_install_dir,$installDir,g" $customTmpl`;
 
-            xCAT::zvmUtils->printSyslog("***Provision settings for RedHat:replace_url,$repo replace_ip,$hostIP replace_netmask,$mask replace_gateway,$gateway replace_nameserver,$nameserver replace_hostname,$hostname replace_rootpw,$passwd replace_master,$master replace_install_dir,$installDir  for file==>$customTmpl");
+            xCAT::zvmUtils->printSyslog("***Provision settings for RedHat:replace_url,$repo replace_ip,$hostIP replace_netmask,$mask replace_gateway,$gateway replace_nameserver,$nameserver replace_hostname,$hostname replace_rootpw,xxxxxxxx replace_master,$master replace_install_dir,$installDir  for file==>$customTmpl");
 
             # Attach SCSI FCP devices (if any)
             # Go through each pool
@@ -7374,7 +7377,7 @@ END
             # Get mdisk virtual address
             my @mdisks = xCAT::zvmUtils->getMdisks( $callback, $::SUDOER, $node );
             if (xCAT::zvmUtils->checkOutput( $mdisks[0] ) == -1) {
-                xCAT::zvmUtils->printLn( $callback, "$mdisks[0]" );
+                xCAT::zvmUtils->printLn( $callback, xCAT::zvmUtils->redact_directory_entry($mdisks[0]) );
                 return;
             }
             @mdisks = sort(@mdisks);
@@ -7729,7 +7732,7 @@ END
             # Get the list of mdisks
             my @srcDisks = xCAT::zvmUtils->getMdisks( $callback, $::SUDOER, $node );
             if (xCAT::zvmUtils->checkOutput( $srcDisks[0] ) == -1) {
-                xCAT::zvmUtils->printLn( $callback, "$srcDisks[0]" );
+                xCAT::zvmUtils->printLn( $callback, xCAT::zvmUtils->redact_directory_entry($srcDisks[0]) );
                 return;
             }
 
@@ -11145,7 +11148,7 @@ sub imageCapture {
         # Get the list of mdisks
         my @srcDisks = xCAT::zvmUtils->getMdisks( $callback, $sudoer, $node );
         if (xCAT::zvmUtils->checkOutput( $srcDisks[0] ) == -1) {
-            xCAT::zvmUtils->printLn( $callback, "$srcDisks[0]" );
+            xCAT::zvmUtils->printLn( $callback, xCAT::zvmUtils->redact_directory_entry($srcDisks[0]) );
             return;
         }
         foreach (@srcDisks) {
@@ -11570,7 +11573,7 @@ sub specialcloneVM {
     xCAT::zvmUtils->printSyslog("Executing: ssh $::SUDOER\@$tgtZhcp $::SUDO $dir/smcli Image_Query_DM -T $sourceId | sed '\$d'\n");
     $out = `ssh $::SUDOER\@$tgtZhcp "$::SUDO $dir/smcli Image_Query_DM -T $sourceId" | sed '\$d'`;
     if (xCAT::zvmUtils->checkOutput( $out ) == -1) {
-        xCAT::zvmUtils->printLn( $callback, "(Error) Did not get the $sourceId directory. Return output was: $out." );
+        xCAT::zvmUtils->printLn( $callback, "(Error) Did not get the $sourceId directory. Return output was: " . xCAT::zvmUtils->redact_directory_entry($out) . "." );
         return;
     }
 
@@ -11589,7 +11592,7 @@ sub specialcloneVM {
     #   MDISK=VDEV=0100 DEVTYPE=3390 START=0001 COUNT=10016 VOLID=EMC2C4 MODE=MR
     $out = `ssh $::SUDOER\@$tgtZhcp "$::SUDO $::DIR/smcli Image_Definition_Query_DM -T $sourceId -k MDISK"`;
     if (xCAT::zvmUtils->checkOutput( $out ) == -1) {
-        xCAT::zvmUtils->printLn( $callback, "(Error) Did not get the $sourceId mini disks. Return output was: $out." );
+        xCAT::zvmUtils->printLn( $callback, "(Error) Did not get the $sourceId mini disks. Return output was: " . xCAT::zvmUtils->redact_directory_entry($out) . "." );
         return;
     }
 
@@ -12037,7 +12040,7 @@ sub specialClone {
                     xCAT::zvmUtils->printLn( $callback, "$tgtNode: Trying again ($try) to add minidisk ($addr)" );
                 }
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 3390 -a AUTOG -r $ECKD_Pool -u 1 -z $disksize -m $mode -f 1 -R $tgtPw -W $tgtPw -M $tgtPw"`;
-                xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 3390 -a AUTOG -r $ECKD_Pool -u 1 -z $disksize -m $mode -f 1 -R $tgtPw -W $tgtPw -M $tgtPw");
+                xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 3390 -a AUTOG -r $ECKD_Pool -u 1 -z $disksize -m $mode -f 1 -R xxxxxxxx -W xxxxxxxx -M xxxxxxxx");
                 xCAT::zvmUtils->printSyslog("$out");
                 xCAT::zvmUtils->printLn( $callback, "$out" );
 
@@ -12080,7 +12083,7 @@ sub specialClone {
                     xCAT::zvmUtils->printLn( $callback, "$tgtNode: Trying again ($try) to add minidisk ($addr)" );
                 }
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 9336 -a AUTOG -r $FBA_Pool -u 1 -z $disksize -m $mode -f 1 -R $tgtPw -W $tgtPw -M $tgtPw"`;
-                xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 9336 -a AUTOG -r $FBA_Pool -u 1 -z $disksize -m $mode -f 1 -R $tgtPw -W $tgtPw -M $tgtPw");
+                xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create_DM -T $tgtUserId -v $addr -t 9336 -a AUTOG -r $FBA_Pool -u 1 -z $disksize -m $mode -f 1 -R xxxxxxxx -W xxxxxxxx -M xxxxxxxx");
                 xCAT::zvmUtils->printSyslog("$out");
                 xCAT::zvmUtils->printLn( $callback, "$out" );
 
@@ -12118,13 +12121,14 @@ sub specialClone {
         # Get disks within user entry
         xCAT::zvmUtils->printSyslog("smcli Image_Query_DM -T $tgtUserId");
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Query_DM -T $tgtUserId"`;
+        $out = xCAT::zvmUtils->redact_directory_entry($out);
         ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO $::DIR/smcli Image_Query_DM -T $tgtUserId\"", $hcp, "specialClone", $out, $tgtNode );
         if ($rc != 0) {
             xCAT::zvmUtils->printLn( $callback, "$outmsg" );
             return;
         }
         $out = `echo "$out" | sed '\$d' | grep -a -i "MDISK"`;
-        xCAT::zvmUtils->printSyslog("$out");
+        xCAT::zvmUtils->printSyslog(xCAT::zvmUtils->redact_directory_entry($out));
         @disks = split( '\n', $out );
 
         if ( @disks != @tgtDisks ) {
