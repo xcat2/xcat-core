@@ -392,7 +392,7 @@ for rpmname in xCAT xCATsn; do
             ./makerpm $rpmname "$EMBED"
             if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname"; fi
         else
-            for arch in $(xcat_rpm_build_arches x86_64 ppc64 ppc64le s390x aarch64); do
+            for arch in $(xcat_rpm_build_arches x86_64 ppc64 ppc64le s390x aarch64 riscv64); do
                 if [ "$rpmname" = "xCAT-OpenStack" -a "$arch" != "x86_64" ] || [ "$rpmname" = "xCAT-OpenStack-baremetal" -a "$arch" != "x86_64" ] ; then continue; fi         # only bld openstack for x86_64 for now
                 ./makerpm $rpmname $arch "$EMBED"
                 if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname-$arch"; fi

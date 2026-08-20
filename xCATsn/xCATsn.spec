@@ -83,6 +83,11 @@ Requires: ipmitool-xcat >= 1.8.17-1
 Requires: ipmitool-xcat >= 1.8.17-1
 %endif
 %endif
+%ifos linux
+%ifarch riscv64
+Requires: ipmitool-xcat >= 1.8.17-1
+%endif
+%endif
 
 %description
 xCAT supports management of very large sized cluster by creating a Hierarchical

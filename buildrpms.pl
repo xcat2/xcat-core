@@ -1106,6 +1106,12 @@ once per target). When omitted, the default is a single C<< <distro>+epel-10-<ar
 derived from the host. The multi-arch flat core is assembled from per-arch builds via
 C<--merge-core-repos>.
 
+A riscv64 build on an x86_64 builder needs a mock configuration that sets
+C<config_opts['forcearch'] = 'riscv64'> (with the riscv64 qemu-user-static
+emulator registered through binfmt); the stock C<rocky-10-riscv64.cfg> only allows
+riscv64 build hosts. Copy it under a new name in C</etc/mock>, add the forcearch
+option, and pass that name as C<--target>, e.g. C<--target=rocky-10-riscv64-xcat>.
+
 =item B<--package>=I<PACKAGE>
 
 Build only selected package(s). Repeatable.
@@ -1114,7 +1120,7 @@ Build only selected package(s). Repeatable.
 
 Build only the arch-native packages (C<xCAT>, C<xCATsn>, C<xCAT-genesis-scripts>) -- the
 ones whose rpms carry the target arch. Everything else in the default set is C<noarch> and
-identical on every arch, so a secondary-arch builder (e.g. ppc64le) uses this to avoid
+identical on every arch, so a secondary-arch builder (e.g. ppc64le or riscv64) uses this to avoid
 rebuilding the noarch packages that the x86_64 builder already produces. Ignored if
 C<--package> is given.
 
