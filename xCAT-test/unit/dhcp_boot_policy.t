@@ -9,13 +9,13 @@ use Test::More;
 use xCAT::DHCP::BootPolicy;
 
 my $fallback_classes = xCAT::DHCP::BootPolicy->kea_client_classes();
-is( scalar @$fallback_classes, 4, 'Kea boot policy omits xNBA classes when xNBA loaders are unavailable' );
+is( scalar @$fallback_classes, 5, 'Kea boot policy omits xNBA classes when xNBA loaders are unavailable' );
 my %fallback_by_name = map { $_->{name} => $_ } @$fallback_classes;
 is( $fallback_by_name{'xcat-bios'}{'boot-file-name'}, 'pxelinux.0', 'BIOS clients fall back to pxelinux.0 without xNBA loaders' );
 ok( !exists $fallback_by_name{'xcat-xnba-bios'}, 'xNBA user-class is not advertised without xNBA kpxe' );
 
 my $classes = xCAT::DHCP::BootPolicy->kea_client_classes(xnba_kpxe => 1, xnba_efi => 1);
-is( scalar @$classes, 5, 'Kea boot policy renders expected xNBA client classes' );
+is( scalar @$classes, 6, 'Kea boot policy renders expected xNBA client classes' );
 
 my %by_name = map { $_->{name} => $_ } @$classes;
 is( $by_name{'xcat-bios'}{'boot-file-name'}, 'xcat/xnba.kpxe', 'BIOS clients receive xNBA kpxe' );
@@ -27,6 +27,10 @@ like( $by_name{'xcat-uefi-x64'}{test}, qr/not \(\(option\[77\]\.exists/, 'generi
 is( $by_name{'xcat-aarch64'}{'boot-file-name'}, 'boot/grub2/grub2.aarch64', 'AArch64 clients receive grub2 boot file' );
 is( $by_name{'xcat-ppc64'}{'boot-file-name'}, '/boot/grub2/grub2.ppc', 'POWER clients receive grub2 Open Firmware boot file' );
 is( $by_name{'xcat-ppc64'}{test}, 'option[93].hex == 0x000c', 'POWER class keeps existing POWER architecture id' );
+is( $by_name{'xcat-riscv64'}{'boot-file-name'}, 'boot/grub2/grub2.riscv64', 'RISC-V 64-bit UEFI clients receive the riscv64 grub2 boot file' );
+is( $by_name{'xcat-riscv64'}{test}, 'option[93].hex == 0x001b', 'RISC-V 64-bit UEFI class matches IANA client architecture 27 only' );
+is( $fallback_by_name{'xcat-riscv64'}{'boot-file-name'}, 'boot/grub2/grub2.riscv64', 'riscv64 clients get grub2 even without xNBA loaders' );
+unlike( join( ' ', map { $_->{test} } @$classes ), qr/0x001[9ade]/, 'no class claims the RISC-V 32-bit or 128-bit architecture ids' );
 
 my $xnba_classes = xCAT::DHCP::BootPolicy->kea_xnba_node_classes(
     xnba_efi => 1,
