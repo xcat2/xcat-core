@@ -1,30 +1,111 @@
 #!/bin/bash
-if [ -z "$XCATDEST" ]; then
-	XCATDEST=$1
-fi
-echo "<xcatrequest>
-<command>getdestiny</command>
-<callback_port>300</callback_port>
-</xcatrequest>" > /tmp/destreq.xml
-if [ -f /tmp/destiny.xml ]; then rm /tmp/destiny.xml; fi
-while [ ! -f /tmp/destiny.xml ] || grep error /tmp/destiny.xml; do
-	if [ -f /tmp/destiny.xml ]; then
-		timer=60
-		while [ $timer -gt 0 ]; do
-			echo -en  "Retrying in $timer seconds  \r" >&2
-			sleep 1
-			timer=$(($timer-1));
-		done
-	fi
-	echo "                                                         " >&2
-	if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then #use client cert if available
-		openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect "$XCATDEST" -quiet 2> /dev/null < /tmp/destreq.xml > /tmp/destiny.xml
-	else
-		openssl s_client -connect "$XCATDEST" -quiet 2> /dev/null < /tmp/destreq.xml > /tmp/destiny.xml
-	fi
-done
-rm /tmp/destreq.xml
-DESTINY="$(grep '<destiny>' /tmp/destiny.xml | awk -F'>' '{print $2}'|awk -F'<' '{print $1}')"
-rm /tmp/destiny.xml
-echo "$DESTINY"
+set -u
 
+metadata_file=
+metadata_temporary=
+once=0
+destination=${XCATDEST:-}
+
+usage() {
+	printf '%s\n' 'Usage: getdestiny [ENDPOINT] [--metadata FILE] [--once]' >&2
+	exit 2
+}
+
+while (($# > 0)); do
+	case "$1" in
+		--metadata)
+			(($# >= 2)) || usage
+			metadata_file=$2
+			shift 2
+			;;
+		--once)
+			once=1
+			shift
+			;;
+		--)
+			shift
+			(($# <= 1)) || usage
+			if (($# == 1)); then
+				destination=$1
+			fi
+			break
+			;;
+		-*) usage ;;
+		*)
+			if [[ -z $destination ]]; then
+				destination=$1
+			fi
+			shift
+			;;
+	esac
+done
+
+[[ -n $destination ]] || usage
+
+temporary_dir=$(mktemp -d "${TMPDIR:-/tmp}/getdestiny.XXXXXX") || exit 1
+request_file=$temporary_dir/request.xml
+response_file=$temporary_dir/response.xml
+trap 'rm -rf -- "$temporary_dir"; [[ -z $metadata_temporary ]] || rm -f -- "$metadata_temporary"' EXIT HUP INT TERM
+
+printf '%s\n' \
+	'<xcatrequest>' \
+	'<command>getdestiny</command>' \
+	'<callback_port>300</callback_port>' \
+	'</xcatrequest>' >"$request_file"
+
+request_destiny() {
+	if [[ -f /etc/xcat/cert.pem && -f /etc/xcat/certkey.pem ]]; then
+		openssl s_client -key /etc/xcat/certkey.pem \
+			-cert /etc/xcat/cert.pem -connect "$destination" -quiet \
+			2>/dev/null <"$request_file" >"$response_file"
+	else
+		openssl s_client -connect "$destination" -quiet \
+			2>/dev/null <"$request_file" >"$response_file"
+	fi
+	[[ -s $response_file ]] && ! grep -q '<error>' "$response_file" \
+		&& grep -q '<destiny>' "$response_file"
+}
+
+while ! request_destiny; do
+	if ((once)); then
+		exit 1
+	fi
+	for ((timer = 60; timer > 0; timer--)); do
+		printf 'Retrying in %s seconds  \r' "$timer" >&2
+		sleep 1
+	done
+	printf '%*s\r' 48 '' >&2
+done
+
+extract_element() {
+	local element=$1
+
+	sed -n "s:.*<$element>\([^<]*\)</$element>.*:\1:p" "$response_file" \
+		| head -n 1 | tr -cd '\40-\176'
+}
+
+destiny=$(extract_element destiny)
+[[ -n $destiny ]] || exit 1
+
+if [[ -n $metadata_file ]]; then
+	metadata_dir=${metadata_file%/*}
+	if [[ $metadata_dir == "$metadata_file" ]]; then
+		metadata_dir=.
+	elif [[ -z $metadata_dir ]]; then
+		metadata_dir=/
+	fi
+	[[ -d $metadata_dir ]] || exit 1
+	metadata_temporary=$(mktemp "$metadata_dir/.getdestiny.XXXXXX") || exit 1
+	{
+		printf 'XCAT_NODE_NAME=%s\n' "$(extract_element name)"
+		printf 'XCAT_DESTINY=%s\n' "$destiny"
+		printf 'XCAT_IMAGE_SERVER=%s\n' "$(extract_element imgserver)"
+		printf 'XCAT_KERNEL=%s\n' "$(extract_element kernel)"
+		printf 'XCAT_INITRD=%s\n' "$(extract_element initrd)"
+		printf 'XCAT_KERNEL_COMMAND_LINE=%s\n' "$(extract_element kcmdline)"
+	} >"$metadata_temporary"
+	chmod 0600 "$metadata_temporary"
+	mv -f -- "$metadata_temporary" "$metadata_file"
+fi
+
+printf '%s\n' "$destiny"

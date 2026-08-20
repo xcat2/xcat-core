@@ -1,0 +1,327 @@
+#!/bin/bash
+set -eu
+
+functions_file=${XCAT_GENESIS_FUNCTIONS:-/usr/libexec/xcat/genesis-functions}
+# shellcheck source=genesis-functions
+source "$functions_file"
+
+log() {
+    logger -t xcat-genesis-network-state -- "$*"
+}
+
+status_command=${XCAT_STATUS_COMMAND:-/usr/libexec/xcat/genesis-status}
+failure_code=NETWORK_CONFIGURATION_FAILED
+failure_detail='Network configuration failed'
+failure_recovery='Check the management network and boot parameters'
+
+publish_status() {
+    genesis_publish_status "$status_command" network \
+        xcat-genesis-network-state "$@"
+}
+
+finish_status() {
+    local result=$?
+
+    trap - EXIT
+    if [ "$result" -ne 0 ]; then
+        publish_status FAILED "$failure_detail" \
+            "CODE=$failure_code" "RECOVERY=$failure_recovery"
+    fi
+    exit "$result"
+}
+
+fail_network() {
+    failure_code=$1
+    failure_detail=$2
+    failure_recovery=$3
+    log "$failure_detail"
+    exit 1
+}
+
+trap finish_status EXIT
+publish_status CONFIGURING_NETWORK 'Selecting the management network'
+
+tcp_probe() {
+    local probe_pid probe_wait
+
+    ( exec 3<>"/dev/tcp/$master/$port" ) 2>/dev/null &
+    probe_pid=$!
+    for ((probe_wait = 0; probe_wait < 10; probe_wait++)); do
+        if ! kill -0 "$probe_pid" 2>/dev/null; then
+            wait "$probe_pid"
+            return $?
+        fi
+        sleep 0.1
+    done
+    kill "$probe_pid" 2>/dev/null || true
+    wait "$probe_pid" 2>/dev/null || true
+    return 1
+}
+
+netmask_to_prefix() {
+    local mask=$1 octet prefix=0 partial=0
+    local -a octets
+
+    IFS=. read -r -a octets <<<"$mask"
+    [ "${#octets[@]}" -eq 4 ] || return 1
+
+    for octet in "${octets[@]}"; do
+        [ "$partial" -eq 0 ] || [ "$octet" = 0 ] || return 1
+        case "$octet" in
+            255) prefix=$((prefix + 8)) ;;
+            254) prefix=$((prefix + 7)); partial=1 ;;
+            252) prefix=$((prefix + 6)); partial=1 ;;
+            248) prefix=$((prefix + 5)); partial=1 ;;
+            240) prefix=$((prefix + 4)); partial=1 ;;
+            224) prefix=$((prefix + 3)); partial=1 ;;
+            192) prefix=$((prefix + 2)); partial=1 ;;
+            128) prefix=$((prefix + 1)); partial=1 ;;
+            0) partial=1 ;;
+            *) return 1 ;;
+        esac
+    done
+
+    printf '%s\n' "$prefix"
+}
+
+destination=
+boot_mac=
+host_ip=
+netmask=
+gateway=
+cmdline_file=${XCAT_CMDLINE_FILE:-/proc/cmdline}
+sys_class_net=${XCAT_SYS_CLASS_NET:-/sys/class/net}
+state_dir=${XCAT_STATE_DIR:-/run/xcat}
+uptime_file=${XCAT_UPTIME_FILE:-/proc/uptime}
+declare -a cmdline_arguments
+
+read -r -a cmdline_arguments <"$cmdline_file"
+for argument in "${cmdline_arguments[@]}"; do
+    case "$argument" in
+        xcatd=*) destination=${argument#xcatd=} ;;
+        BOOTIF=*) boot_mac=${argument#BOOTIF=} ;;
+        hostip=*|ipaddr=*) host_ip=${argument#*=} ;;
+        netmask=*) netmask=${argument#netmask=} ;;
+        gateway=*) gateway=${argument#gateway=} ;;
+    esac
+done
+
+[ -n "$destination" ] || fail_network INVALID_BOOT_PARAMETERS \
+    'xcatd is missing from the kernel command line' \
+    'Add xcatd=<address>:<port> to the kernel command line'
+
+if [[ "$destination" =~ ^\[([^]]+)\]:([0-9]+)$ ]]; then
+    master=${BASH_REMATCH[1]}
+    port=${BASH_REMATCH[2]}
+elif [[ "$destination" =~ ^([^:]+):([0-9]+)$ ]]; then
+    master=${BASH_REMATCH[1]}
+    port=${BASH_REMATCH[2]}
+elif [[ "$destination" = *:* ]]; then
+    master=$destination
+    port=3001
+    destination="[$master]:$port"
+else
+    master=$destination
+    port=3001
+    destination="$master:$port"
+fi
+
+[[ "$port" =~ ^[0-9]+$ ]] && [ "$port" -ge 1 ] && [ "$port" -le 65535 ] || {
+    fail_network INVALID_XCAT_ENDPOINT "Invalid xcatd port: $port" \
+        'Correct the xcatd endpoint in the boot parameters'
+}
+
+preferred_interface=
+if [ -n "$boot_mac" ]; then
+    boot_mac=${boot_mac#01-}
+    boot_mac=$(printf '%s' "$boot_mac" | tr 'A-Z-' 'a-z:')
+    for address_file in "$sys_class_net"/*/address; do
+        [ -r "$address_file" ] || continue
+        if [ "$(<"$address_file")" = "$boot_mac" ]; then
+            preferred_interface=${address_file%/address}
+            preferred_interface=${preferred_interface##*/}
+            break
+        fi
+    done
+    [ -n "$preferred_interface" ] || fail_network BOOT_INTERFACE_NOT_FOUND \
+        "BOOTIF device not found: $boot_mac" \
+        'Check the PXE interface and BOOTIF value'
+fi
+
+network_method=auto
+if [ -n "$host_ip" ] || [ -n "$netmask" ] || [ -n "$gateway" ]; then
+    network_method=static
+    [ -n "$host_ip" ] && [ -n "$netmask" ] && [ -n "$gateway" ] \
+        || fail_network INVALID_STATIC_NETWORK \
+            'Static networking requires hostip, netmask, and gateway' \
+            'Supply all static network boot parameters or remove them'
+    [ -n "$preferred_interface" ] || fail_network INVALID_STATIC_NETWORK \
+        'Static networking requires BOOTIF' \
+        'Add BOOTIF for the management interface'
+
+    if [[ "$host_ip" = */* ]]; then
+        address=$host_ip
+    elif [[ "$netmask" =~ ^[0-9]+$ ]]; then
+        address="$host_ip/$netmask"
+    elif [[ "$host_ip" = *:* ]]; then
+        fail_network INVALID_STATIC_NETWORK \
+            "Invalid IPv6 prefix length: $netmask" \
+            'Use an IPv6 prefix length from 0 to 128'
+    else
+        prefix=$(netmask_to_prefix "$netmask") \
+            || fail_network INVALID_STATIC_NETWORK \
+                "Invalid IPv4 netmask: $netmask" \
+                'Use a valid dotted netmask or prefix length'
+        address="$host_ip/$prefix"
+    fi
+
+    nmcli connection delete xcat-genesis-static >/dev/null 2>&1 || true
+    if [[ "$host_ip" = *:* ]]; then
+        network_arguments=(
+            ipv4.method disabled
+            ipv6.method manual
+            ipv6.addresses "$address"
+            ipv6.gateway "$gateway"
+        )
+    else
+        network_arguments=(
+            ipv4.method manual
+            ipv4.addresses "$address"
+            ipv4.gateway "$gateway"
+            ipv6.method auto
+        )
+    fi
+    if ! nmcli connection add type ethernet ifname "$preferred_interface" \
+        con-name xcat-genesis-static "${network_arguments[@]}" \
+        connection.autoconnect yes >/dev/null; then
+        fail_network STATIC_NETWORK_REJECTED \
+            "NetworkManager rejected the static configuration on $preferred_interface" \
+            'Check the address, gateway, and interface'
+    fi
+    if ! nmcli --wait 20 connection up xcat-genesis-static >/dev/null; then
+        fail_network STATIC_NETWORK_FAILED \
+            "Static network activation failed on $preferred_interface" \
+            'Check link state and the static network boot parameters'
+    fi
+fi
+
+selected_interface=
+source_address=
+publish_status WAITING_FOR_LINK "Waiting for a route to $destination" \
+    'ATTEMPT=1' 'ATTEMPT_LIMIT=60'
+for ((attempt = 0; attempt < 60; attempt++)); do
+    if [[ "$master" = *:* ]]; then
+        route=$(ip -6 -o route get "$master" 2>/dev/null || true)
+    elif [[ "$master" =~ ^[0-9]+(\.[0-9]+){3}$ ]]; then
+        route=$(ip -4 -o route get "$master" 2>/dev/null || true)
+    else
+        route=$(ip -4 -o route get "$master" 2>/dev/null \
+            || ip -6 -o route get "$master" 2>/dev/null || true)
+    fi
+    route_interface=$(awk '{for (i=1; i<=NF; i++) if ($i == "dev") print $(i+1)}' <<<"$route")
+    route_source=$(awk '{for (i=1; i<=NF; i++) if ($i == "src") print $(i+1)}' <<<"$route")
+
+    if [ -n "$route_interface" ]; then
+        state=$(nmcli -g GENERAL.STATE device show "$route_interface" 2>/dev/null || true)
+        if [[ "$state" = 100* ]]; then
+            if [ -z "$preferred_interface" ] || \
+                [ "$route_interface" = "$preferred_interface" ] || \
+                [ "$attempt" -ge 20 ]; then
+                selected_interface=$route_interface
+                source_address=$route_source
+                break
+            fi
+        fi
+    fi
+    publish_status WAITING_FOR_LINK "Waiting for a route to $destination" \
+        "ATTEMPT=$((attempt + 1))" 'ATTEMPT_LIMIT=60' \
+        'NEXT_RETRY_SECONDS=1'
+    sleep 1
+done
+
+[ -n "$selected_interface" ] || fail_network MANAGEMENT_ROUTE_UNAVAILABLE \
+    "No interface can route to $master" \
+    'Check link, DHCP or static settings, VLANs, and routing'
+
+master_reachable=0
+publish_status CONTACTING_XCAT "Contacting xCAT at $destination" \
+    'ATTEMPT=1' 'ATTEMPT_LIMIT=10'
+for ((attempt = 0; attempt < 10; attempt++)); do
+    if tcp_probe; then
+        master_reachable=1
+        break
+    fi
+    publish_status CONTACTING_XCAT "Contacting xCAT at $destination" \
+        "ATTEMPT=$((attempt + 1))" 'ATTEMPT_LIMIT=10' \
+        'NEXT_RETRY_SECONDS=1'
+    sleep 1
+done
+
+[ "$master_reachable" -eq 1 ] || fail_network XCAT_ENDPOINT_UNREACHABLE \
+    "Cannot connect to $destination" \
+    'Check xcatd, firewalls, routing, and the configured port'
+
+route_gateway=$(awk '{for (i=1; i<=NF; i++) if ($i == "via") print $(i+1)}' <<<"$route")
+source_prefixed_address=
+if [[ "$source_address" = *:* ]]; then
+    address_family=-6
+else
+    address_family=-4
+fi
+while read -r candidate; do
+    if [ "${candidate%%/*}" = "$source_address" ]; then
+        source_prefixed_address=$candidate
+        break
+    fi
+done < <(ip "$address_family" -o address show dev "$selected_interface" \
+    scope global 2>/dev/null | awk '{print $4}')
+[ -n "$source_prefixed_address" ] || source_prefixed_address=$source_address
+
+actual_gateway=${route_gateway:-$gateway}
+dns_servers=
+while IFS= read -r dns_line; do
+    IFS='|' read -r -a dns_candidates <<<"$dns_line"
+    for dns_server in "${dns_candidates[@]}"; do
+        dns_server=${dns_server//[[:space:]]/}
+        [ -n "$dns_server" ] || continue
+        if [ -n "$dns_servers" ]; then
+            dns_servers="$dns_servers,$dns_server"
+        else
+            dns_servers=$dns_server
+        fi
+    done
+done < <(nmcli --terse --escape no -g IP4.DNS,IP6.DNS \
+    device show "$selected_interface" \
+    2>/dev/null || true)
+link_state=unknown
+[ ! -r "$sys_class_net/$selected_interface/operstate" ] \
+    || read -r link_state <"$sys_class_net/$selected_interface/operstate"
+mac_address=
+[ ! -r "$sys_class_net/$selected_interface/address" ] \
+    || read -r mac_address <"$sys_class_net/$selected_interface/address"
+verified_seconds=$(genesis_uptime_seconds "$uptime_file")
+
+mkdir -p "$state_dir"
+chmod 0755 "$state_dir"
+umask 077
+state_file=$state_dir/genesis.env
+temporary_file=${state_file}.new
+{
+    printf 'XCATDEST=%s\n' "$destination"
+    printf 'XCATMASTER=%s\n' "$master"
+    printf 'XCATPORT=%s\n' "$port"
+    printf 'XCAT_INTERFACE=%s\n' "$selected_interface"
+    printf 'XCAT_SOURCE_ADDRESS=%s\n' "$source_address"
+    printf 'XCAT_SOURCE_PREFIXED_ADDRESS=%s\n' "$source_prefixed_address"
+    printf 'XCAT_GATEWAY=%s\n' "$actual_gateway"
+    printf 'XCAT_DNS_SERVERS=%s\n' "$dns_servers"
+    printf 'XCAT_NETWORK_METHOD=%s\n' "$network_method"
+    printf 'XCAT_LINK_STATE=%s\n' "$link_state"
+    printf 'XCAT_MAC_ADDRESS=%s\n' "$mac_address"
+    printf 'XCAT_VERIFIED_SECONDS=%s\n' "$verified_seconds"
+} >"$temporary_file"
+mv "$temporary_file" "$state_file"
+
+publish_status READY "Management network ready on $selected_interface" \
+    "VERIFIED_SECONDS=$verified_seconds"
+log "using $selected_interface to reach $destination"

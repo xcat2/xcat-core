@@ -1,0 +1,12 @@
+[Unit]
+Description=Select the xCAT Genesis management network
+ConditionKernelCommandLine=xcatd
+Wants=NetworkManager.service
+After=NetworkManager.service
+Before=xcat-genesis-network-ready.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/xcat/genesis-network-state
+RemainAfterExit=yes
+TimeoutStartSec=120

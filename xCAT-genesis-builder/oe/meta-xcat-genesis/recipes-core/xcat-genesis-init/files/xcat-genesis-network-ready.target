@@ -1,0 +1,8 @@
+[Unit]
+Description=xCAT Genesis management network is ready
+ConditionKernelCommandLine=xcatd
+Requires=xcat-genesis-network-state.service
+After=xcat-genesis-network-state.service
+
+[Install]
+WantedBy=multi-user.target

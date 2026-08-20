@@ -1,0 +1,39 @@
+#!/bin/bash
+set -u
+
+functions_file=${XCAT_GENESIS_FUNCTIONS:-/usr/libexec/xcat/genesis-functions}
+# shellcheck source=genesis-functions
+source "$functions_file"
+
+status_dir=${XCAT_STATUS_DIR:-/run/xcat/status}
+
+status=STARTING
+for component in network extensions registration; do
+    component_state=$(genesis_component_state "$status_dir" "$component") \
+        || continue
+    if [[ ${component_state} == FAILED ]]; then
+        status=${component_state}
+        break
+    fi
+done
+if [[ ${status} != FAILED ]]; then
+    for component in action registration network; do
+        component_state=$(genesis_component_state "$status_dir" "$component") \
+            || continue
+        status=${component_state}
+        break
+    done
+fi
+
+node=unknown
+[[ -r /proc/sys/kernel/hostname ]] && read -r node </proc/sys/kernel/hostname
+
+printf '\n'
+printf 'xCAT Genesis maintenance shell\n'
+printf 'Node: %s\n' "${node}"
+printf 'Overall state: %s\n' "${status}"
+printf 'Exit returns to the status console.\n\n'
+
+export HISTFILE=/dev/null
+export PS1='genesis# '
+exec /bin/bash --noprofile --norc -i

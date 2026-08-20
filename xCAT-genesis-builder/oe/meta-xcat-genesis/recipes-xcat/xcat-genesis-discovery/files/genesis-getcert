@@ -1,0 +1,145 @@
+#!/bin/bash
+set -euo pipefail
+
+state_dir=${XCAT_STATE_DIR:-/run/xcat}
+status_command=${XCAT_STATUS_COMMAND:-/usr/libexec/xcat/genesis-status}
+network_file=${XCAT_NETWORK_FILE:-$state_dir/genesis.env}
+metadata_file=${XCAT_METADATA_FILE:-$state_dir/xcat-response.env}
+key_dir=${XCAT_KEY_DIR:-/etc/xcat}
+request_timeout=${XCAT_CREDENTIAL_REQUEST_TIMEOUT:-20}
+failure_code=CERTIFICATE_REQUEST_FAILED
+failure_detail='Unable to obtain an xCAT client certificate'
+failure_recovery='Check node identity, callback port 300, and xCAT credentials policy'
+temporary_dir=
+
+[[ "$request_timeout" =~ ^[1-9][0-9]*$ ]] || request_timeout=20
+
+publish_status() {
+    "$status_command" credentials "$@" \
+        || logger -t xcat-genesis-getcert -- 'unable to publish credential status'
+}
+
+# shellcheck disable=SC2329
+finish_status() {
+    local result=$?
+
+    trap - EXIT
+    [[ -z $temporary_dir ]] || rm -rf -- "$temporary_dir"
+    if ((result != 0)); then
+        publish_status FAILED "$failure_detail" \
+            "CODE=$failure_code" "RECOVERY=$failure_recovery"
+    fi
+    exit "$result"
+}
+
+fail_certificate() {
+    failure_code=$1
+    failure_detail=$2
+    failure_recovery=$3
+    logger -t xcat-genesis-getcert -- "$failure_detail"
+    exit 1
+}
+
+trap finish_status EXIT HUP INT TERM
+
+[[ -r $network_file ]] || fail_certificate CERTIFICATE_NETWORK_STATE_MISSING \
+    'Management network state is unavailable' \
+    'Wait for Genesis networking or review its failure'
+# shellcheck disable=SC1090
+source "$network_file"
+: "${XCATDEST:?xCAT endpoint is missing from network state}"
+
+node_name=
+if [[ -r $metadata_file ]]; then
+    while IFS='=' read -r name value; do
+        case "$name" in
+            XCAT_NODE_NAME) node_name=$value ;;
+        esac
+    done <"$metadata_file"
+fi
+[[ $node_name =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$ ]] \
+    || fail_certificate CERTIFICATE_NODE_IDENTITY_MISSING \
+        'xCAT has not confirmed the node name' \
+        'Complete discovery and refresh the node assignment'
+
+install -d -m 0700 "$key_dir"
+if [[ ! -s $key_dir/privkey.pem ]]; then
+    umask 077
+    openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 \
+        -out "$key_dir/privkey.pem" >/dev/null 2>&1 \
+        || fail_certificate CERTIFICATE_IDENTITY_KEY_FAILED \
+            'Unable to create the Genesis identity key' \
+            'Review entropy and OpenSSL diagnostics'
+fi
+if [[ ! -s $key_dir/certkey.pem ]]; then
+    umask 077
+    openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 \
+        -out "$key_dir/certkey.pem" >/dev/null 2>&1 \
+        || fail_certificate CERTIFICATE_KEY_FAILED \
+            'Unable to create the client certificate key' \
+            'Review entropy and OpenSSL diagnostics'
+fi
+openssl pkey -in "$key_dir/privkey.pem" -noout >/dev/null 2>&1 \
+    || fail_certificate CERTIFICATE_IDENTITY_KEY_INVALID \
+        'The Genesis identity key is invalid' \
+        'Replace the damaged Genesis runtime state and retry'
+openssl pkey -in "$key_dir/certkey.pem" -noout >/dev/null 2>&1 \
+    || fail_certificate CERTIFICATE_KEY_INVALID \
+        'The client certificate key is invalid' \
+        'Replace the damaged Genesis runtime state and retry'
+
+temporary_dir=$(mktemp -d "${TMPDIR:-/tmp}/genesis-certificate.XXXXXX")
+csr_file=$temporary_dir/client.csr
+unsigned_request=$temporary_dir/request.xml
+signed_request=$temporary_dir/request-signed.xml
+signature_file=$temporary_dir/signature
+response_file=$temporary_dir/response.xml
+certificate_file=$temporary_dir/client.pem
+
+openssl req -new -key "$key_dir/certkey.pem" -out "$csr_file" \
+    -subj "/CN=$node_name" >/dev/null 2>&1 \
+    || fail_certificate CERTIFICATE_CSR_FAILED \
+        'Unable to create the client certificate request' \
+        'Review the client key and confirmed node name'
+
+{
+    printf '%s\n' '<xcatrequest>' '<command>getcredentials</command>' \
+        '<arg>x509cert</arg>' '<callback_port>300</callback_port>' '<csr>'
+    cat "$csr_file"
+    printf '%s\n' '</csr>' '<sha512sig>' '</sha512sig>' '</xcatrequest>'
+} >"$unsigned_request"
+openssl dgst -sha512 -sign "$key_dir/privkey.pem" \
+    -out "$signature_file" "$unsigned_request" \
+    || fail_certificate CERTIFICATE_SIGNATURE_FAILED \
+        'Unable to sign the client certificate request' \
+        'Review the Genesis identity key'
+signature=$(openssl base64 -A -in "$signature_file")
+awk -v signature="$signature" \
+    '/<\/sha512sig>/ {print signature} {print}' \
+    "$unsigned_request" >"$signed_request"
+
+publish_status RUNNING 'Requesting an xCAT client certificate' \
+    "NODE_NAME=$node_name"
+if ! timeout "$request_timeout" openssl s_client -connect "$XCATDEST" \
+    -quiet 2>/dev/null <"$signed_request" >"$response_file"; then
+    fail_certificate CERTIFICATE_RESPONSE_UNAVAILABLE \
+        'xCAT did not answer the client certificate request' \
+        'Check xcatd and callback connectivity to port 300'
+fi
+awk '/-----BEGIN CERTIFICATE-----/,/-----END CERTIFICATE-----/' \
+    "$response_file" >"$certificate_file"
+[[ -s $certificate_file ]] \
+    || fail_certificate CERTIFICATE_RESPONSE_INVALID \
+        'xCAT returned no client certificate' \
+        'Check node identity and xCAT credentials policy'
+openssl x509 -in "$certificate_file" -noout >/dev/null 2>&1 \
+    || fail_certificate CERTIFICATE_RESPONSE_INVALID \
+        'xCAT returned an invalid client certificate' \
+        'Review xcatd certificate service diagnostics'
+
+chmod 0600 "$certificate_file"
+mv -f -- "$certificate_file" "$key_dir/cert.pem"
+publish_status READY 'xCAT client certificate installed' \
+    "NODE_NAME=$node_name" 'PROGRESS_PERCENT=100'
+logger -t xcat-genesis-getcert -- \
+    "installed an xCAT client certificate for $node_name"

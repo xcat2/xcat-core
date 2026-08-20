@@ -1,0 +1,24 @@
+#!/bin/bash
+set -eu
+
+state_dir=${XCAT_STATE_DIR:-/run/xcat}
+response_file=${XCAT_DISCOVERY_RESPONSE_FILE:-$state_dir/discovery-response}
+
+response=
+IFS= read -r response || true
+case "$response" in
+    restart|restart\ \(*\)|processing|processed) ;;
+    *)
+        logger -t xcat-genesis-discovery-callback -- \
+            'ignored an invalid discovery callback'
+        exit 1
+        ;;
+esac
+
+mkdir -p "$state_dir"
+chmod 0755 "$state_dir"
+umask 077
+temporary_file=${response_file}.new
+printf '%s\n' "$response" >"$temporary_file"
+mv "$temporary_file" "$response_file"
+printf '%s\n' 'callback received'

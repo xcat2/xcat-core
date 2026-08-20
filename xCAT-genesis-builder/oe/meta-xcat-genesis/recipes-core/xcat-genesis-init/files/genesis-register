@@ -1,0 +1,120 @@
+#!/bin/bash
+set -eu
+
+functions_file=${XCAT_GENESIS_FUNCTIONS:-/usr/libexec/xcat/genesis-functions}
+# shellcheck source=genesis-functions
+source "$functions_file"
+
+state_dir=${XCAT_STATE_DIR:-/run/xcat}
+cmdline_file=${XCAT_CMDLINE_FILE:-/proc/cmdline}
+status_command=${XCAT_STATUS_COMMAND:-/usr/libexec/xcat/genesis-status}
+metadata_file=$state_dir/xcat-response.env
+kernel_destiny=
+failure_code=XCAT_REGISTRATION_FAILED
+failure_detail='xCAT registration failed'
+failure_recovery='Check xcatd, certificates, and the management network'
+maximum_attempts=${XCAT_REGISTRATION_ATTEMPTS:-6}
+retry_seconds=${XCAT_REGISTRATION_RETRY_SECONDS:-5}
+request_timeout=${XCAT_REGISTRATION_REQUEST_TIMEOUT:-10}
+declare -a cmdline_arguments
+
+[[ "$maximum_attempts" =~ ^[1-9][0-9]*$ ]] \
+    || maximum_attempts=6
+[[ "$retry_seconds" =~ ^[0-9]+$ ]] \
+    || retry_seconds=5
+[[ "$request_timeout" =~ ^[1-9][0-9]*$ ]] \
+    || request_timeout=10
+
+publish_status() {
+    genesis_publish_status "$status_command" registration \
+        xcat-genesis-register "$@"
+}
+
+finish_status() {
+    local result=$?
+
+    trap - EXIT
+    if [ "$result" -ne 0 ]; then
+        publish_status FAILED "$failure_detail" \
+            "CODE=$failure_code" "RECOVERY=$failure_recovery"
+    fi
+    exit "$result"
+}
+
+trap finish_status EXIT
+
+read -r -a cmdline_arguments <"$cmdline_file"
+for argument in "${cmdline_arguments[@]}"; do
+    case "$argument" in
+        destiny=*) kernel_destiny=${argument#destiny=} ;;
+    esac
+done
+
+selected_destiny=
+for ((attempt = 1; attempt <= maximum_attempts; attempt++)); do
+    publish_status CONTACTING_XCAT 'Requesting an action from xCAT' \
+        "ATTEMPT=$attempt" "ATTEMPT_LIMIT=$maximum_attempts"
+    if [ -n "$kernel_destiny" ]; then
+        if timeout "$request_timeout" getdestiny "$XCATDEST" \
+            --metadata "$metadata_file" --once >/dev/null; then
+            selected_destiny=$kernel_destiny
+            break
+        fi
+    elif selected_destiny=$(timeout "$request_timeout" getdestiny "$XCATDEST" \
+        --metadata "$metadata_file" --once); then
+        break
+    fi
+    selected_destiny=
+    if [ "$attempt" -lt "$maximum_attempts" ]; then
+        publish_status CONTACTING_XCAT 'xCAT has not answered yet' \
+            "ATTEMPT=$attempt" "ATTEMPT_LIMIT=$maximum_attempts" \
+            "NEXT_RETRY_SECONDS=$retry_seconds"
+        sleep "$retry_seconds"
+    fi
+done
+
+[ -n "$selected_destiny" ] || {
+    failure_code=XCAT_RESPONSE_UNAVAILABLE
+    failure_detail="No valid response from xCAT after $maximum_attempts attempts"
+    failure_recovery='Check xcatd, certificates, and the assigned node action'
+    logger -t xcat-genesis-register -- "$failure_detail"
+    exit 1
+}
+
+genesis_parse_destiny "$selected_destiny" || {
+    failure_code=INVALID_XCAT_ACTION
+    failure_detail='xCAT returned an invalid action'
+    failure_recovery='Correct the node destiny on the xCAT management node'
+    logger -t xcat-genesis-register -- "$failure_detail"
+    exit 1
+}
+selected_action=$XCAT_GENESIS_ACTION
+selected_target=$XCAT_GENESIS_TARGET
+
+confirmed_node=
+if [ -r "$metadata_file" ]; then
+    while IFS='=' read -r name value; do
+        case "$name" in
+            XCAT_NODE_NAME) confirmed_node=$value ;;
+        esac
+    done <"$metadata_file"
+fi
+
+verified_seconds=$(genesis_uptime_seconds)
+
+umask 077
+temporary_file=$state_dir/destiny.new
+printf '%s\n' "$selected_destiny" >"$temporary_file"
+mv "$temporary_file" "$state_dir/destiny"
+
+declare -a status_fields
+status_fields=(
+    "VERIFIED_SECONDS=$verified_seconds"
+    "ACTION=$selected_action"
+    "TARGET=$selected_target"
+)
+[ -z "$confirmed_node" ] || status_fields+=("NODE_NAME=$confirmed_node")
+publish_status ACTION_RECEIVED "Action $selected_action received" \
+    "${status_fields[@]}"
+logger -t xcat-genesis-register -- \
+    "received action from $XCATDEST: $selected_action"

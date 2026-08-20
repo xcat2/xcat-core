@@ -1,0 +1,16 @@
+[Unit]
+Description=Execute the assigned xCAT Genesis action
+Requires=xcat-genesis-register.service
+After=xcat-genesis-register.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+EnvironmentFile=/run/xcat/genesis.env
+ExecStart=/usr/libexec/xcat/genesis-action
+Restart=on-failure
+RestartSec=10
+TimeoutStartSec=infinity
+
+[Install]
+WantedBy=multi-user.target
