@@ -189,7 +189,9 @@ sub geninitrd {
     unless (-d $tftppath) {
         mkpath $tftppath;
     }
-    if ($arch =~ /x86/) {
+    # riscv64 installation media exist for the EL family only; leave any other
+    # distribution to the "unknow arch" error below instead of reading it as x86
+    if ($arch =~ /x86/ or ($arch =~ /riscv64/ and $osvers !~ /sles|suse/)) {
         if ($osvers =~ /(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)/) {
             $kernelpath = "$tftppath/vmlinuz";
             copy("$pkgdir/images/pxeboot/vmlinuz", $kernelpath);

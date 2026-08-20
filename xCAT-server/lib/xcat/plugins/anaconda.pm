@@ -1342,7 +1342,7 @@ sub mkinstall
 
         if (
             (
-                ( $arch =~ /x86/ or $arch =~ /aarch64/ ) and
+                ( $arch =~ /x86/ or $arch =~ /aarch64/ or $arch =~ /riscv64/ ) and
                 (
                     -r "$pkgdir/images/pxeboot/vmlinuz"
                     and $kernpath = "$pkgdir/images/pxeboot/vmlinuz"
@@ -2798,7 +2798,7 @@ sub insert_dd {
                 # and copy it to the /tftpboot
                 my @new_kernels = <$dd_dir/rpm/boot/vmlinuz*>;
                 foreach my $new_kernel (@new_kernels) {
-                    if (-r $new_kernel && $new_kernel =~ /\/vmlinuz-(.*(x86_64|ppc64|el\d+|ppc64le|aarch64))$/) {
+                    if (-r $new_kernel && $new_kernel =~ /\/vmlinuz-(.*(x86_64|ppc64|el\d+|ppc64le|aarch64|riscv64))$/) {
                         $new_kernel_ver = $1;
                         $cmd            = "/bin/mv -f $new_kernel $kernelpath";
                         xCAT::Utils->runcmd($cmd, -1);

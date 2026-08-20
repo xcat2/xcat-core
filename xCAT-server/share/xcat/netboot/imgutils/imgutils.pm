@@ -256,6 +256,7 @@ sub default_net_drivers {
             x86    => [qw(tg3 bnx2 bnx2x e1000 e1000e igb mlx_en mlx5_core virtio_net be2net)],
             x86_64 => [qw(tg3 bnx2 bnx2x e1000 e1000e igb mlx_en mlx5_core virtio_net be2net)],
             aarch64 => [qw(tg3 bnx2 bnx2x e1000e igb mlx_en mlx5_core virtio_net)],
+            riscv64 => [qw(e1000 e1000e igb ixgbe r8169 tg3 bnx2x mlx5_core virtio_net)],
             ppc64   => [qw(e1000 e1000e igb ibmveth ehea)],
             s390x   => [qw(qdio ccwgroup)],
         },

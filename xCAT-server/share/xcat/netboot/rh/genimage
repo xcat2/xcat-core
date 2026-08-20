@@ -1924,7 +1924,7 @@ EOMS
         }
     }
 
-    if ($arch =~ /x86_64/ or $arch =~ /aarch64/) {
+    if ($arch =~ /x86_64/ or $arch =~ /aarch64/ or $arch =~ /riscv64/) {
         push @filestoadd, "lib64/libnss_dns.so.2";
         push @filestoadd, "lib64/libresolv.so.2";
     } else {
