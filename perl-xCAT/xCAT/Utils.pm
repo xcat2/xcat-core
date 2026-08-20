@@ -4916,6 +4916,8 @@ sub lookupNetboot {
             $ret = "petitboot,grub2,grub2-tftp,grub2-http";
         } elsif ($osarch =~ /^aarch64$/i) {
             $ret = "grub2";
+        } elsif ($osarch =~ /^riscv64$/i) {
+            $ret = "grub2,grub2-tftp,grub2-http";
         }
     }
     return $ret;

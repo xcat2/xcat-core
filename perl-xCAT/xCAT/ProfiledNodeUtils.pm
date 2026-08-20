@@ -1429,6 +1429,27 @@ sub get_all_vmhosts
 =cut
 
 #-------------------------------------------------------------------------------
+our %NETBOOT_RULES = (
+    'x86_64' => 'xnba',
+    'riscv64' => 'grub2',
+    'ppc64' => {
+        'rhels' => {
+            '7' => 'grub2',
+            '*' => 'yaboot',
+        },
+        'pkvm' => 'petitboot',
+        '*'    => 'yaboot',
+    },
+    'ppc64le' => {
+        '*' => {
+            '*' => {
+                '*'    => 'grub2',
+                'ipmi' => 'petitboot',
+            },
+        },
+    },
+);
+
 sub get_netboot_attr {
     my $class           = shift;
     my $imageprofile    = shift;
@@ -1502,27 +1523,10 @@ sub get_netboot_attr {
     # 3        |             | *       | *                | *                 | yaboot           |
     # 4        |  ppc64le/el | *       | *                | *                 | grub2
     # 4        |  ppc64le/el | *       | *                | ipmi              | petitboot
+    # 5        |  riscv64    | *       | *                | *                 | grub2            |
     #          arch          osname       version  hardware           netboot
-    my %netboot_dict = ('x86_64' => 'xnba',
-        'ppc64' => {
-            'rhels' => {
-                '7' => 'grub2',
-                '*' => 'yaboot',
-            },
-            'pkvm' => 'petitboot',
-            '*'    => 'yaboot',
-        },
-        'ppc64le' => {
-            '*' => {
-                '*' => {
-                    '*'    => 'grub2',
-                    'ipmi' => 'petitboot',
-                },
-            },
-        },
-    );
     my $condition_array_ref = [ $os_arch, $os_name, $os_major_version, $mgt ];
-    $netboot = cal_netboot(\%netboot_dict, $condition_array_ref);
+    $netboot = cal_netboot(\%NETBOOT_RULES, $condition_array_ref);
     if ($netboot eq '0')
     {
         return 0, "Can not get the netboot attribute";
