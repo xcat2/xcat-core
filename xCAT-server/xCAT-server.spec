@@ -51,7 +51,19 @@ Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser perl-Digest-SHA1 pe
 # therefore not auto-required, and (unlike SNMP, Expect, JSON, Net::Ping,
 # Time::HiRes and Text::Balanced) are not pulled in transitively by perl-xCAT
 # either. List them here or the affected subcommands die at load time.
-Requires: perl-Net-Telnet perl-Net-DNS perl-Crypt-CBC perl-Crypt-Rijndael perl-DB_File
+Requires: perl-Net-Telnet perl-Net-DNS perl-Crypt-CBC perl-Crypt-Rijndael
+# DB_File is only used by the Confluent client (lib/xcat/Confluent/Client.pm). EL10
+# dropped libdb: EPEL still carries perl-DB_File for x86_64 and ppc64le, but riscv64 has
+# no EPEL at all, so on EL10 ask for the module weakly -- it is installed where it exists
+# and skipped where it cannot. The dependency generator still turns that "use DB_File"
+# into a hard perl(DB_File) requirement; drop it there too, appending to any filter the
+# build root already set. Every other platform keeps the hard requirement it has today.
+%if 0%{?rhel} >= 10
+Recommends: perl-DB_File
+%global __requires_exclude %{?__requires_exclude:%{__requires_exclude}|}^perl\\(DB_File\\)$
+%else
+Requires: perl-DB_File
+%endif
 %endif
 Obsoletes: atftp-xcat
 %endif
