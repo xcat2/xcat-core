@@ -72,7 +72,7 @@ OPTIONS
 
 \ **-a**\  \ *arch*\ 
  
- The hardware architecture of this node: ppc64le, x86_64, ppc64, x86, ia64, aarch64 etc.  If omitted, the current hardware architecture will be used.
+ The hardware architecture of this node: ppc64le, x86_64, ppc64, x86, ia64, aarch64, riscv64 etc.  If omitted, the current hardware architecture will be used.
  
 
 

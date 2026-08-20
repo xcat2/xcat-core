@@ -226,6 +226,22 @@ paths.
      - package installation on ``ppc64el``; DHCP offer; boot file handoff;
        POWER boot-path correctness; Genesis shell when live validation is in
        scope
+   * - EL10
+     - ``riscv64``
+     - ``Kea``
+     - ``UEFI grub2 handoff``
+     - DHCP offer carries ``boot/grub2/grub2.riscv64`` for client
+       architecture 27 (``0x001b``); ``grub2.riscv64`` fetches
+       ``boot/grub2/grub.cfg-<hex network prefix>`` for discovery and the
+       per-node ``grub.cfg-<hex ip>`` after ``nodeset``; Genesis shell when
+       Genesis payload validation is in scope
+   * - EL10
+     - ``riscv64``
+     - ``ISC``
+     - ``UEFI grub2 handoff``
+     - same as the Kea row through the ISC subnet branch for client
+       architecture ``00:1b``; the riscv64 branch must answer before the
+       ``/yaboot`` fallback
 
 Current Lab Baseline
 --------------------

@@ -46,6 +46,8 @@ OpenEmbedded images use the exact architecture names \ ``x86``\ , \ ``x86_64``\ 
 
 Canonical \ ``ppc64``\  images are big-endian. xCAT marks them so \ ``ppc64le``\  nodes do not use them as a legacy little-endian fallback. \ **mknb**\  also refuses to replace a marked \ ``ppc64``\  image with that fallback.
 
+riscv64 nodes boot through UEFI firmware and grub2. For riscv64, \ **mknb**\  publishes the Genesis kernel and initramfs and writes one grub2 configuration per network under ``/tftpboot/boot/grub2``, named ``grub.cfg-`` followed by the network hex prefix, so that ``grub2.riscv64`` loaded by the firmware can start node discovery. The per-node files written by \ **nodeset**\  take priority over these network files. Networks served by a ``:noboot`` interface in ``site.dhcpinterfaces`` get no discovery configuration.
+
 
 *******
 OPTIONS
