@@ -2864,13 +2864,13 @@ sub service_connection {
             my $strhour = ($hour > 9 ? $hour : "0" . $hour);
             my $strmin  = ($min > 9  ? $min  : "0" . $min);
             my $strsec  = ($sec > 9  ? $sec  : "0" . $sec);
-            $cmdlog_alllog .= "[Date]       $year-$strmon-$strmday $strhour:$strmin:$strsec\n";
+            my $cmdlog_request = "[Date]       $year-$strmon-$strmday $strhour:$strmin:$strsec\n";
 
-            $cmdlog_alllog .= "[ClientType] " . $req->{clienttype}->[0] . " \n";
-            $cmdlog_alllog .= "[Request]    " . $req->{command}->[0] . " ";
+            $cmdlog_request .= "[ClientType] " . $req->{clienttype}->[0] . " \n";
+            $cmdlog_request .= "[Request]    " . $req->{command}->[0] . " ";
             if (exists($req->{noderange}) && defined($req->{noderange}->[0])) {
                 my $tmpstr = join(",", @{$req->{noderange}});
-                $cmdlog_alllog .= "$tmpstr ";
+                $cmdlog_request .= "$tmpstr ";
             }
 
             my $cmdlog_req_redacted = 0;
@@ -2881,17 +2881,17 @@ sub service_connection {
                     if ($arg =~ /[^A-Za-z0-9.-]/) {
                         my $tmparg = $arg;
                         $tmparg =~ s/'/'\\''/g;
-                        $cmdlog_alllog .= "'" . $tmparg . "' ";
+                        $cmdlog_request .= "'" . $tmparg . "' ";
                     } else {
-                        $cmdlog_alllog .= $arg . " ";
+                        $cmdlog_request .= $arg . " ";
                     }
                 }
             }
             # Replace passwords with 'x'
-            my $cmdlog_before_redact = $cmdlog_alllog;
-            $cmdlog_alllog = xCAT::xcatd->redact_password($cmdlog_alllog);
-            $cmdlog_req_redacted = 1 if $cmdlog_alllog ne $cmdlog_before_redact;
-            $cmdlog_alllog .= "\n[Response]\n";
+            my $cmdlog_before_redact = $cmdlog_request;
+            $cmdlog_request = xCAT::xcatd->redact_password($cmdlog_request);
+            $cmdlog_req_redacted = 1 if $cmdlog_request ne $cmdlog_before_redact;
+            $cmdlog_alllog .= $cmdlog_request . "\n[Response]\n";
             $cmdlog_response_sensitive = cmdlog_response_is_sensitive($req, $cmdlog_req_redacted);
 
             # ----used for command log end----------
@@ -3630,14 +3630,15 @@ sub cmdlog_collectlog() {
 
 sub cmdlog_response_is_sensitive {
     my ($req, $req_redacted) = @_;
-    return 1 if defined $req->{command}->[0] and $req->{command}->[0] eq 'getcredentials';
+    return 1 if defined $req->{command}->[0] and ($req->{command}->[0] eq 'getcredentials' or $req->{command}->[0] eq 'lsvm');
     return 1 if join(' ', @{ $req->{arg} || [] }) =~ /passw/i;
+    return 1 if xCAT::xcatd->secret_in_request($req->{command}->[0], $req->{arg});
     return 1 if $req_redacted;
     return 0;
 }
 
 sub cmdlog_finalize_response {
-    if ($cmdlog_response_sensitive or $cmdlog_response_buffer =~ /passw/i) {
+    if ($cmdlog_response_sensitive or xCAT::xcatd->secret_in_response($cmdlog_response_buffer)) {
         $cmdlog_response_buffer = "*REDACTED*\n";
     }
     $cmdlog_alllog .= $cmdlog_response_buffer;
