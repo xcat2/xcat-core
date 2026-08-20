@@ -137,6 +137,31 @@ sub handled_commands {
     };
 }
 
+# Pick the noderes.netboot method a freshly discovered node should use when
+# the admin has not already chosen one that fits its architecture. Returns the
+# method to set, or undef to leave noderes.netboot alone.
+sub _default_netboot {
+    my ($arch, $platform, $currboot) = @_;
+    $arch     = '' unless defined $arch;
+    $platform = '' unless defined $platform;
+    $currboot = '' unless defined $currboot;
+
+    if ($arch =~ /x86/ and $currboot !~ /pxe/ and $currboot !~ /xnba/) {
+        return 'xnba';
+    } elsif ($arch =~ /ppc/ and $platform =~ /PowerNV/) {
+        return 'petitboot';
+    } elsif ($arch =~ /ppc/ and $currboot !~ /yaboot/) {
+        return 'yaboot';
+    } elsif ($arch =~ /armv7l/ and $currboot !~ /onie/) {
+        #for onie switch, the netboot should be "onie"
+        return 'onie';
+    } elsif ($arch =~ /^riscv64$/ and $currboot !~ /grub2/) {
+        #riscv64 nodes boot through UEFI and grub2 only
+        return 'grub2';
+    }
+    return;
+}
+
 sub process_request {
     my $request  = shift;
     my $callback = shift;
@@ -230,15 +255,12 @@ sub process_request {
             $currboot = $rent->{'netboot'};
         }
 
-        if ($request->{arch}->[0] =~ /x86/ and $currboot !~ /pxe/ and $currboot !~ /xnba/) {
-            $nrtab->setNodeAttribs($node, { netboot => 'xnba' });
-        } elsif ($request->{arch}->[0] =~ /ppc/ and $request->{platform}->[0] =~ /PowerNV/) {
-            $nrtab->setNodeAttribs($node, { netboot => 'petitboot' });
-        } elsif ($request->{arch}->[0] =~ /ppc/ and $currboot !~ /yaboot/) {
-            $nrtab->setNodeAttribs($node, { netboot => 'yaboot' });
-        } elsif($request->{arch}->[0] =~ /armv7l/ and $currboot !~ /onie/) {
-            #for onie switch, the netboot should be "onie"
-            $nrtab->setNodeAttribs($node, { netboot => 'onie' });
+        # do not dereference platform unless the request carries it: the key would be
+        # autovivified into the request hash and later stored as discovery data
+        my $platform = exists $request->{platform} ? $request->{platform}->[0] : undef;
+        my $netboot = _default_netboot($request->{arch}->[0], $platform, $currboot);
+        if (defined $netboot) {
+            $nrtab->setNodeAttribs($node, { netboot => $netboot });
         }
     }
 
