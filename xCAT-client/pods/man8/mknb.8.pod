@@ -16,6 +16,8 @@ B<mknb> command yourself.
 
 If you make custom changes to the network boot root image, you will need to run B<mknb> again to regenerate the diskless image to include your changes.  If you have an xCAT Hierarchical Cluster with Service Nodes having local /tftpboot directories (site.sharedtftp=0), you will need to copy the generated root image to each Service Node.
 
+An exported Genesis image is identified by C<xcat-genesis.manifest>, which records its format version and architecture. The directory also contains C<kernel>, C<initramfs.cpio.gz>, and C<SHA256SUMS> in C</opt/xcat/share/xcat/netboot/genesis/ARCH>. B<mknb> verifies the manifest and both boot files before publishing them under the configured TFTP root. An incomplete or invalid export leaves the current boot files unchanged. The legacy C<fs/> layout remains supported and is packed locally.
+
 When multiple IPv4 addresses are configured for the same network, B<mknb> uses a locally assigned C<site.master> for the xcatd endpoint, or the first address reported by the operating system when C<site.master> is not local. POWER discovery configurations also use this address for their kernel and initrd URLs.
 
 Presently, the architectures x86_64 and ppc64 are supported. For ppc64le, use the ppc64 architecture.
@@ -46,4 +48,3 @@ An error has occurred.
 =head1 SEE ALSO
 
 L<makedhcp(8)|makedhcp.8>
-

@@ -1,11 +1,14 @@
 package xCAT_plugin::mknb;
 use strict;
+use Digest::SHA ();
 use File::Temp qw(tempdir);
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::NodeRange;
 use File::Path;
 use File::Copy;
+
+my $GENESIS_EXPORT_MANIFEST = 'xcat-genesis.manifest';
 
 sub handled_commands {
     return {
@@ -33,6 +36,214 @@ sub _select_network_addresses {
     }
 
     return (\%legacy, \%selected);
+}
+
+sub _genesis_export_manifest_present {
+    my ($directory) = @_;
+    my $manifest = "$directory/$GENESIS_EXPORT_MANIFEST";
+    return -e $manifest || -l $manifest;
+}
+
+sub _prebuilt_genesis_requested {
+    my ($directory) = @_;
+    foreach my $name (
+        $GENESIS_EXPORT_MANIFEST,
+        'kernel',
+        'initramfs.cpio.gz',
+        'SHA256SUMS'
+      )
+    {
+        my $path = "$directory/$name";
+        return 0 unless -e $path || -l $path;
+    }
+    return 1;
+}
+
+sub _validate_prebuilt_genesis_manifest {
+    my ($directory, $arch) = @_;
+    my $manifest = "$directory/$GENESIS_EXPORT_MANIFEST";
+    return "Missing Genesis export manifest: $manifest"
+      unless -f $manifest && !-l $manifest;
+
+    open(my $manifest_fh, '<:raw', $manifest)
+      or return "Unable to read Genesis export manifest: $manifest";
+
+    my %expected = (
+        format       => 'xcat-genesis',
+        version      => '1',
+        architecture => $arch,
+    );
+    my %values;
+    while (my $line = <$manifest_fh>) {
+        chomp($line);
+        unless ($line =~ /^([a-z][a-z0-9_-]*)=([A-Za-z0-9][A-Za-z0-9._+-]*)$/) {
+            close($manifest_fh);
+            return "Invalid Genesis export manifest entry: $line";
+        }
+        my ($name, $value) = ($1, $2);
+        unless (exists($expected{$name})) {
+            close($manifest_fh);
+            return "Unknown Genesis export manifest entry: $name";
+        }
+        if (exists($values{$name})) {
+            close($manifest_fh);
+            return "Duplicate Genesis export manifest entry: $name";
+        }
+        $values{$name} = $value;
+    }
+    close($manifest_fh);
+
+    foreach my $name (qw(format version architecture)) {
+        return "Missing Genesis export manifest entry: $name"
+          unless exists($values{$name});
+        return "Unsupported Genesis export $name: $values{$name}"
+          unless $values{$name} eq $expected{$name};
+    }
+
+    return;
+}
+
+sub _read_prebuilt_genesis_checksums {
+    my ($directory) = @_;
+    my $checksum_file = "$directory/SHA256SUMS";
+    return (undef, "Missing Genesis checksum file: $checksum_file")
+      unless -f $checksum_file && !-l $checksum_file;
+
+    open(my $checksum_fh, '<:raw', $checksum_file)
+      or return (undef, "Unable to read Genesis checksum file: $checksum_file");
+
+    my %expected;
+    while (my $line = <$checksum_fh>) {
+        chomp($line);
+        unless ($line =~ /^([0-9a-f]{64})  ([A-Za-z0-9][A-Za-z0-9._-]*)$/) {
+            close($checksum_fh);
+            return (undef, "Invalid Genesis checksum entry: $line");
+        }
+        my ($digest, $name) = ($1, $2);
+        if (exists($expected{$name})) {
+            close($checksum_fh);
+            return (undef, "Duplicate Genesis checksum entry: $name");
+        }
+        $expected{$name} = $digest;
+    }
+    close($checksum_fh);
+
+    return (\%expected, undef);
+}
+
+sub _sha256_file {
+    my ($path) = @_;
+    open(my $artifact_fh, '<:raw', $path)
+      or return (undef, "Unable to read Genesis artifact: $path");
+    my $digest = Digest::SHA->new(256)->addfile($artifact_fh)->hexdigest;
+    close($artifact_fh);
+    return ($digest, undef);
+}
+
+sub _install_prebuilt_genesis {
+    my ($source, $tftpdir, $arch) = @_;
+    return (undef, "Invalid Genesis export directory: $source")
+      unless -d $source && !-l $source;
+
+    my $manifest_error =
+      _validate_prebuilt_genesis_manifest($source, $arch);
+    return (undef, $manifest_error) if $manifest_error;
+
+    my ($expected, $checksum_error) =
+      _read_prebuilt_genesis_checksums($source);
+    return (undef, $checksum_error) if $checksum_error;
+
+    unless (exists($expected->{$GENESIS_EXPORT_MANIFEST})) {
+        return (undef,
+            "Missing Genesis checksum entry: $GENESIS_EXPORT_MANIFEST");
+    }
+    my ($manifest_digest, $manifest_digest_error) =
+      _sha256_file("$source/$GENESIS_EXPORT_MANIFEST");
+    return (undef, $manifest_digest_error) if $manifest_digest_error;
+    unless ($manifest_digest eq $expected->{$GENESIS_EXPORT_MANIFEST}) {
+        return (undef,
+            "Genesis checksum mismatch: $source/$GENESIS_EXPORT_MANIFEST");
+    }
+
+    my $destination_dir = "$tftpdir/xcat";
+    eval { mkpath($destination_dir) unless -d $destination_dir; };
+    return (undef, "Unable to create Genesis destination: $destination_dir")
+      unless -d $destination_dir;
+
+    my $suffix = xCAT::Utils::genpassword(24);
+    my @artifacts = (
+        [ 'kernel',             "$destination_dir/genesis.kernel.$arch" ],
+        [ 'initramfs.cpio.gz', "$destination_dir/genesis.fs.$arch.gz" ],
+    );
+    my @staged;
+
+    foreach my $artifact (@artifacts) {
+        my ($name, $destination) = @{$artifact};
+        my $source_path = "$source/$name";
+        unless (-f $source_path && !-l $source_path) {
+            unlink(@staged);
+            return (undef, "Missing Genesis artifact: $source_path");
+        }
+        unless (exists($expected->{$name})) {
+            unlink(@staged);
+            return (undef, "Missing Genesis checksum entry: $name");
+        }
+
+        my $temporary = "$destination.$suffix.new";
+        unless (copy($source_path, $temporary) && chmod(0644, $temporary)) {
+            unlink(@staged, $temporary);
+            return (undef, "Unable to stage Genesis artifact: $source_path");
+        }
+        push(@staged, $temporary);
+
+        my ($digest, $digest_error) = _sha256_file($temporary);
+        if ($digest_error || $digest ne $expected->{$name}) {
+            unlink(@staged);
+            return (undef, $digest_error || "Genesis checksum mismatch: $source_path");
+        }
+    }
+
+    my %backups;
+    foreach my $artifact (@artifacts) {
+        my $destination = $artifact->[1];
+        next unless -e $destination || -l $destination;
+        unless (-f $destination && !-l $destination) {
+            unlink(@staged, values(%backups));
+            return (undef, "Invalid Genesis destination: $destination");
+        }
+
+        my $backup = "$destination.$suffix.old";
+        unless (copy($destination, $backup)) {
+            unlink(@staged, values(%backups));
+            return (undef, "Unable to preserve Genesis artifact: $destination");
+        }
+        $backups{$destination} = $backup;
+    }
+
+    my @installed;
+    foreach my $index (0 .. $#artifacts) {
+        my $destination = $artifacts[$index]->[1];
+        unless (rename($staged[$index], $destination)) {
+            my @rollback_errors;
+            foreach my $installed (reverse(@installed)) {
+                if ($backups{$installed}) {
+                    push(@rollback_errors, $installed)
+                      unless rename($backups{$installed}, $installed);
+                } else {
+                    push(@rollback_errors, $installed) unless unlink($installed);
+                }
+            }
+            unlink(@staged[$index .. $#staged], values(%backups));
+            my $error = "Unable to install Genesis artifact: $destination";
+            $error .= "; unable to restore: " . join(', ', @rollback_errors)
+              if @rollback_errors;
+            return (undef, $error);
+        }
+        push(@installed, $destination);
+    }
+
+    unlink(values(%backups));
+    return ("$destination_dir/genesis.fs.$arch.gz", undef);
 }
 
 sub process_request {
@@ -133,7 +344,8 @@ sub process_request {
         $request->{arg}->[0] = $arch;
     }
 
-    unless (-d "$::XCATROOT/share/xcat/netboot/$arch" or -d "$::XCATROOT/share/xcat/netboot/genesis/$arch") {
+    my $genesis_dir = "$::XCATROOT/share/xcat/netboot/genesis/$arch";
+    unless (-d "$::XCATROOT/share/xcat/netboot/$arch" or -d $genesis_dir) {
         $callback->({ error => "Unable to find directory $::XCATROOT/share/xcat/netboot/$arch or $::XCATROOT/share/xcat/netboot/genesis/$arch", errorcode => [1] });
         return;
     }
@@ -143,6 +355,25 @@ sub process_request {
         return;
     } elsif ($configfileonly) {
         goto CREAT_CONF_FILE;
+    }
+    if (_prebuilt_genesis_requested($genesis_dir)) {
+        $callback->({ data => ["Installing exported Genesis image for $arch"] });
+        my ($installed_initrd, $install_error) =
+          _install_prebuilt_genesis($genesis_dir, $tftpdir, $arch);
+        if ($install_error) {
+            $callback->({ error => [$install_error], errorcode => [1] });
+            return;
+        }
+        $initrd_file    = $installed_initrd;
+        $invisibletouch = 1;
+        goto CREAT_CONF_FILE;
+    }
+    if (_genesis_export_manifest_present($genesis_dir)) {
+        $callback->({
+            error => ["Incomplete Genesis export: $genesis_dir"],
+            errorcode => [1],
+        });
+        return;
     }
     # Grab all the standard ssh public keys we can
     my @ssh_pub_keys = ();
