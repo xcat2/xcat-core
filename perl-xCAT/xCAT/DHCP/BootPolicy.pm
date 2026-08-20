@@ -37,6 +37,11 @@ sub kea_client_classes {
             'boot-file-name' => 'boot/grub2/grub2.aarch64',
         },
         {
+            name             => 'xcat-riscv64',
+            test             => 'option[93].hex == 0x001b',
+            'boot-file-name' => 'boot/grub2/grub2.riscv64',
+        },
+        {
             name             => 'xcat-ppc64',
             test             => 'option[93].hex == 0x000c',
             'boot-file-name' => '/boot/grub2/grub2.ppc',

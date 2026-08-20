@@ -4468,6 +4468,9 @@ sub addnet
           "    } else if option client-architecture = 00:0b { #aaarch64\n ";
         push @netent, "      filename \"boot/grub2/grub2.aarch64\";\n";
         push @netent,
+          "    } else if option client-architecture = 00:1b { #riscv64 uefi\n ";
+        push @netent, "      filename \"boot/grub2/grub2.riscv64\";\n";
+        push @netent,
           "    } else if option client-architecture = 00:0e { #OPAL-v3\n ";
         push @netent, "        option conf-file = \"http://$tftp$portsuffix/tftpboot/pxelinux.cfg/p/" . $net . "_" . $maskbits . "\";\n";
         push @netent,
