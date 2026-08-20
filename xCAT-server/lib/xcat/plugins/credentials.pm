@@ -96,6 +96,13 @@ sub process_request
             $callback->({ error => ["Unable to sign certificate for $node"], errorcode => [1] });
             return;
         }
+        my $peer = $request->{'_xcat_clientip'}
+          ? $request->{'_xcat_clientip'}->[0]
+          : $request->{'_xcat_clienthost'}
+          ? $request->{'_xcat_clienthost'}->[0]
+          : $request->{'_xcat_clientfqdn'}->[0];
+        xCAT::MsgUtils->trace(0, 'I',
+            "credentials: signed certificate for $node requested by $peer");
         $callback->({ data => [{ content => [$certificate], desc => ['x509cert'] }] });
         return;
     }

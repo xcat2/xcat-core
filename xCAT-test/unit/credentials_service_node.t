@@ -342,6 +342,7 @@ is( $error, 'The management node is not configured',
     'missing site.master has a specific error' );
 
 $xCAT::Table::servicenode = 'service-a';
+@xCAT::MsgUtils::messages = ();
 my @callback;
 {
     no warnings 'redefine';
@@ -373,6 +374,16 @@ is_deeply(
         }
     ],
     'authorized delegated request returns only the signed certificate'
+);
+is_deeply(
+    $xCAT::MsgUtils::messages[-1],
+    [
+        'xCAT::MsgUtils',
+        0,
+        'I',
+        'credentials: signed certificate for compute-01 requested by 192.0.2.21',
+    ],
+    'successful delegated signing records the node and service node address'
 );
 
 @callback = ();
