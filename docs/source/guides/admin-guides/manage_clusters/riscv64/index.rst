@@ -4,7 +4,7 @@ RISC-V 64-bit (riscv64)
 xCAT manages RISC-V 64-bit (``riscv64``) compute nodes running EL10. Rocky
 Linux 10 is the reference distribution; the RHEL 10 RISC-V developer preview
 uses the same media layout. The general cluster management documentation under
-:doc:`/guides/admin-guides/manage_clusters/common/index` applies; this page
+:doc:`/guides/admin-guides/manage_clusters/index` applies; this page
 only covers what is specific to the architecture.
 
 What riscv64 nodes need
@@ -19,24 +19,27 @@ What riscv64 nodes need
   ``grub2-http`` is recommended for installers, whose initrd is large.
 * ``nodetype.arch`` and ``osimage.osarch`` are ``riscv64``. No alias is
   needed: ``uname -m``, rpm and dpkg all use the same token.
-* ``/tftpboot/boot/grub2/grub2.riscv64``: the EL grub2 UEFI image for riscv64.
-  It is provided by the ``grub2-xcat`` package where available; otherwise copy
-  ``EFI/BOOT/grubriscv64.efi`` from the EL10 riscv64 BaseOS media as described
-  in :doc:`/guides/install-guides/yum/grub2`.
-* The riscv64 Genesis image (``xCAT-genesis-base-riscv64`` and
-  ``xCAT-genesis-scripts-riscv64``) for discovery, BMC setup and flashing. Its
-  kernel must be loadable by grub2, that is, built with the EFI stub.
+* ``/tftpboot/boot/grub2/grub2.riscv64``: the EL grub2 UEFI image for riscv64
+  (the ``EFI/BOOT/grubriscv64.efi`` of the EL10 riscv64 BaseOS tree). It is
+  provided by the ``grub2-xcat`` package where available; otherwise copy it as
+  described in :doc:`/guides/install-guides/yum/grub2`.
+* The riscv64 Genesis image (``xCAT-genesis-openembedded-riscv64``) for
+  discovery, BMC setup and flashing. Its kernel is loaded by grub2 through the
+  EFI stub. ``go-xcat`` installs the package; on a management node built another
+  way, install it explicitly (``dnf install xCAT-genesis-openembedded-riscv64``),
+  the same way the images of other architectures are installed for a mixed
+  cluster. ``xcatconfig`` runs ``mknb riscv64`` for every installed image.
 
-The management node itself can be x86_64 or ppc64le; riscv64 is managed like
-any other mixed-architecture cluster (see
-:doc:`/advanced/mixed_cluster/support_matrix`).
+The management node itself is x86_64 (the validated combination, see
+:doc:`/advanced/mixed_cluster/support_matrix`) or riscv64 (see below); riscv64
+nodes are managed like any other mixed-architecture cluster.
 
 Node discovery
 --------------
 
 ``mknb riscv64`` publishes the Genesis kernel and initramfs as
 ``/tftpboot/xcat/genesis.kernel.riscv64`` and
-``/tftpboot/xcat/genesis.fs.riscv64.gz`` and writes one grub2 configuration per
+``/tftpboot/xcat/genesis.fs.riscv64.lzma`` (or ``.gz``) and writes one grub2 configuration per
 network, ``/tftpboot/boot/grub2/grub.cfg-<hex network prefix>``. A net booted
 ``grub2.riscv64`` looks for ``grub.cfg-01-<mac>``, then ``grub.cfg-<8 hex digit
 ip>``, then shorter prefixes of that ip; the per-node files written by
@@ -55,14 +58,22 @@ Stateful (diskful) installation
 
 Import the Rocky Linux 10 riscv64 DVD with ``copycds``; it creates the
 ``rocky10.x-riscv64-install-compute`` osimage. The installer kernel and initrd
-come from ``images/pxeboot`` on the media, like x86_64 and aarch64. The default
-kickstart templates and package lists are shared with the other architectures;
+come from ``images/pxeboot`` on the media, like x86_64 and aarch64.
 ``service.rocky10.riscv64.otherpkgs.pkglist`` pulls the service node packages
 from the ``rh10/riscv64`` xcat-dep repository.
 
-The installer creates the UEFI boot entry for the installed system; after
-``nodeset <node> boot`` the firmware falls through to it because the per-node
-``grub2-<node>`` loader link is removed.
+The EL10 installer (anaconda) has no RISC-V EFI platform: on riscv64 it asks
+for the x86 UEFI boot loader packages (``grub2-efi-x64``, ``shim-x64``), which
+do not exist, and registers the UEFI boot entry as ``\EFI\<distro>\shimx64.efi``.
+xCAT therefore ships riscv64 variants of the EL10 templates and package lists
+(``compute.rocky10.riscv64.tmpl``, ``compute.rhels10.riscv64.tmpl`` and the
+service profiles): ``%packages --ignoremissing`` tolerates the request, the
+package lists add ``grub2-efi-riscv64`` and ``efibootmgr``, and the
+``post.rhels10.riscv64`` script run from ``%post`` points the UEFI boot entry at
+``\EFI\<distro>\grubriscv64.efi`` and places the removable-media fallback loader
+``\EFI\BOOT\BOOTRISCV64.EFI``. Custom templates for riscv64 should start from
+these files. After ``nodeset <node> boot`` the firmware boots the installed
+system because the per-node ``grub2-<node>`` loader link is removed.
 
 Stateless (diskless) images
 ---------------------------
@@ -75,7 +86,10 @@ registered for riscv64 through ``systemd-binfmt``; see
 ``qemu-user-static`` package of its own, so take the static riscv64 emulator
 from a distribution that ships one. The default network driver list for
 riscv64 images covers virtio, Intel, Realtek, Broadcom and Mellanox adapters;
-add others through ``linuximage.netdrivers``.
+add others through ``linuximage.netdrivers``. Cross-building on an x86_64
+management node needs the riscv64 user-mode emulator registered with
+systemd-binfmt, as described in
+:doc:`/advanced/mixed_cluster/building_stateless_images`.
 
 Management node on riscv64
 --------------------------
@@ -87,14 +101,20 @@ come from the riscv64 xcat-dep repository together with the usual xcat-dep
 packages:
 
 * from EPEL on x86_64: ``perl-Digest-SHA1``, ``perl-Net-DNS``,
-  ``perl-Crypt-CBC``, ``perl-Crypt-Rijndael``, ``perl-DB_File``; optional
-  features also use ``perl-Expect``, ``perl-HTML-Form``, ``perl-Sys-Virt``,
-  ``perl-Mail-Sender``, ``perl-SOAP-Lite``, ``perl-Crypt-Blowfish``,
-  ``perl-Net-IP`` and ``conserver``;
+  ``perl-Crypt-CBC`` and ``perl-Crypt-Rijndael``; optional features also use
+  ``perl-Expect``, ``perl-HTML-Form``, ``perl-Sys-Virt``, ``perl-Mail-Sender``,
+  ``perl-SOAP-Lite``, ``perl-Crypt-Blowfish``, ``perl-Net-IP`` and
+  ``conserver``;
 * always from xcat-dep: ``perl-Net-Telnet``, ``perl-IO-Stty``,
   ``perl-Net-HTTPS-NB``, ``perl-HTTP-Async``, ``perl-Crypt-SSLeay``,
   ``goconserver``, ``ipmitool-xcat``, ``conserver-xcat`` and ``grub2-xcat``.
 
+``perl-DB_File`` is deliberately not in that list: it cannot be built for
+riscv64 (EL10 has no libdb). It is only used by the optional Confluent client,
+so ``xCAT-server`` recommends it instead of requiring it. On the architectures
+that do have it, the weak dependency installs it as before; a management node
+that disables weak dependencies (``install_weak_deps=False``) has to install
+``perl-DB_File`` explicitly to keep the Confluent client working.
 xCAT does not install anything from CPAN; every dependency is an rpm.
 
 Limitations
