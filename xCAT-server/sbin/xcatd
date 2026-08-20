@@ -1587,6 +1587,7 @@ until ($quit) {
         $clientselect->add($connection);
         my $peerhost = undef;
         my $peerfqdn = undef;
+        my $peerip   = $connection->peerhost();
         my $peer     = $connection->peer_certificate("owner");
         if ($peer) {
             $peer =~ m/CN=([^\/]*)/;
@@ -1629,11 +1630,12 @@ until ($quit) {
 
         #printf('info'.": xcatd: connection from ".($peername ? $peername . "@" . $peerhost : $peerhost)."\n");
 
-        my $debugmsg = "xcatd: connection from " . ($peername ? $peername . "@" . $peerhost : $peerhost) . "\n";
+        my $peerdisplay = $peerhost || $peerip;
+        my $debugmsg = "xcatd: connection from " . ($peername ? $peername . "@" . $peerdisplay : $peerdisplay) . "\n";
         xCAT::MsgUtils->trace(0, "D", "$debugmsg");
 
-        $$progname = "xcatd SSL: Instance for " . ($peername ? $peername . "@" . $peerhost : $peerhost) if $peerhost;
-        service_connection($connection, $peername, $peerhost, $peerfqdn, $peerhostorg);
+        $$progname = "xcatd SSL: Instance for " . ($peername ? $peername . "@" . $peerdisplay : $peerdisplay) if $peerdisplay;
+        service_connection($connection, $peername, $peerhost, $peerfqdn, $peerhostorg, $peerip);
         xexit(0);
     }
     if ($sslfudgefactor) { $sslfudgefactor -= 1; }
@@ -2808,6 +2810,7 @@ sub service_connection {
     my $peerhost    = shift;
     my $peerfqdn    = shift;
     my $peerhostorg = shift;
+    my $peerip      = shift;
     my $peerport    = $sock->peerport;
 
     # some paranoid measures could reduce a third party abusing stage3 image to attempting to get USER/PASS for BMCs:
@@ -2969,6 +2972,9 @@ sub service_connection {
                     $req->{'_xcat_authname'}   = [$peername];
                     $req->{'_xcat_clienthost'} = [$peerhost];
                     $req->{'_xcat_clientfqdn'} = [$peerfqdn];
+                    if ($req->{command}->[0] eq 'signx509cert') {
+                        $req->{'_xcat_clientip'} = [$peerip];
+                    }
                     $req->{'_xcat_clientport'} = [$peerport];
                     $$progname = "xcatd SSL: " . $req->{command}->[0];
                     if ($req->{noderange} && defined($req->{noderange}->[0])) {

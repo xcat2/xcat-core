@@ -19,6 +19,7 @@
 
    Supported command:
       getcredentials
+      signx509cert (service-node delegation only)
 
 =cut
 
@@ -29,14 +30,19 @@ use xCAT::Table;
 use Data::Dumper;
 use xCAT::NodeRange;
 use xCAT::Zone;
+use File::Temp qw(tempfile);
 use IO::Socket::INET;
 use Time::HiRes qw(sleep);
 
 use xCAT::Utils;
+use xCAT::NetworkUtils;
 use xCAT::PasswordUtils;
+use xCAT::TableUtils;
 
 use xCAT::MsgUtils;
 use Getopt::Long;
+
+use constant DELEGATED_SIGNING_TIMEOUT => 30;
 
 #-------------------------------------------------------
 
@@ -50,7 +56,10 @@ Return list of commands handled by this plugin
 
 sub handled_commands
 {
-    return { getcredentials => "credentials" };
+    return {
+        getcredentials => "credentials",
+        signx509cert   => "credentials",
+    };
 }
 
 #-------------------------------------------------------
@@ -73,6 +82,30 @@ sub process_request
     my $args    = $request->{arg};
     my $envs    = $request->{env};
     my $client;
+
+    if ($command eq 'signx509cert') {
+        my $node = $request->{arg} ? $request->{arg}->[0] : undef;
+        my $csr  = $request->{csr} ? $request->{csr}->[0] : undef;
+        unless ($node and $csr and _delegated_signer_allowed($request, $node)) {
+            xCAT::MsgUtils->trace(0, 'E', 'Rejected delegated certificate request');
+            $callback->({ error => ['Delegated certificate request denied'], errorcode => [1] });
+            return;
+        }
+        my $certificate = _sign_x509_certificate($node, $csr);
+        unless ($certificate) {
+            $callback->({ error => ["Unable to sign certificate for $node"], errorcode => [1] });
+            return;
+        }
+        my $peer = $request->{'_xcat_clientip'}
+          ? $request->{'_xcat_clientip'}->[0]
+          : $request->{'_xcat_clienthost'}
+          ? $request->{'_xcat_clienthost'}->[0]
+          : $request->{'_xcat_clientfqdn'}->[0];
+        xCAT::MsgUtils->trace(0, 'I',
+            "credentials: signed certificate for $node requested by $peer");
+        $callback->({ data => [{ content => [$certificate], desc => ['x509cert'] }] });
+        return;
+    }
 
     #Because clients may be stuck with stunnel, we cannot presume they
     #can explicitly bind to a low port number as a client
@@ -281,60 +314,18 @@ sub process_request
         } elsif ($parm =~ /x509cert/) {
             xCAT::MsgUtils->trace(0, 'I', "credentials: sending $parm to $client");
             my $csr = $request->{'csr'}->[0];
-            my $csrfile;
-            my $oldumask = umask 0077;
-            if (-e "/tmp/xcat/client.csr.$$") { unlink "/tmp/xcat/client.csr.$$"; }
-            open($csrfile, ">", "/tmp/xcat/client.csr.$$");
-            unless ($csrfile) { next; }
-            my @statdat = stat $csrfile;
-
-            while ($statdat[4] != 0 or $statdat[2] & 020 or $statdat[2] & 002) { #try to be paranoid, root better own the file, and it better not be writable by anyone but owner
-                 #this means to assure the filehandle is not write-accessible to others who may insert their malicious CSR
-                close($csrfile);
-                unlink("/tmp/xcat/client.csr.$$");
-                open($csrfile, ">", "/tmp/xcat/client.csr.$$");
-                @statdat = stat $csrfile;
+            my ($certificate, $error);
+            if (xCAT::Utils->isServiceNode()) {
+                ($certificate, $error) = _request_x509_from_master($client, $csr);
+            } else {
+                $certificate = _sign_x509_certificate($client, $csr);
             }
-            print $csrfile $csr;
-            close($csrfile);
-
-            #ok, at this point, we can verify that the subject is one we wouldn't mind signing...
-            my $subject = `openssl req -in /tmp/xcat/client.csr.$$ -subject -noout`;
-            chomp($subject);
-            unless ($subject =~ /CN=$client\z/) { unlink("/tmp/xcat/client.csr.$$"); next; }
-            unlink "/tmp/xcat/client.cert.$$";
-            open($csrfile, ">", "/tmp/xcat/client.cert.$$");
-            @statdat = stat $csrfile;
-            while ($statdat[4] != 0 or $statdat[2] & 020 or $statdat[2] & 002) { #try to be paranoid, root better own the file, and it better not be writable by anyone but owner
-                 #this prevents an attacker from predicting pid and pre-setting up a file that they can corrupt for DoS
-                close($csrfile);
-                unlink("/tmp/xcat/client.csr.$$");
-                open($csrfile, ">", "/tmp/xcat/client.csr.$$");
-                @statdat = stat $csrfile;
+            if ($certificate) {
+                push @{ $rsp->{'data'} }, { content => [$certificate], desc => [$parm] };
+            } elsif ($error) {
+                push @{ $rsp->{'error'} }, $error;
             }
-            close($csrfile);
-            open($csrfile, "<", "/etc/xcat/ca/index");
-            my @caindex = <$csrfile>;
-            close($csrfile);
-            foreach (@caindex) {
-                chomp;
-                my ($type, $expiry, $revoke, $serial, $fname, $subject) = split /\t/;
-                if ($type eq 'V' and $subject =~ /CN=$client\z/) { #we already have a valid certificate, new request replaces it, revoke old
-                    #print "The time of replacing is at hand for $client\n";
-                    xCAT::MsgUtils->trace(0, 'I', "credentials: The time of replacing is at hand for $client");
-                    system("openssl ca -config /etc/xcat/ca/openssl.cnf -revoke /etc/xcat/ca/certs/$serial.pem");
-                }
-            }
-            my $rc = system("openssl ca -config /etc/xcat/ca/openssl.cnf -in /tmp/xcat/client.csr.$$ -out /tmp/xcat/client.cert.$$ -batch");
-            unlink("/tmp/xcat/client.csr.$$");
-            umask($oldumask);
-            if ($rc) { next; }
-            open($csrfile, "<", "/tmp/xcat/client.cert.$$");
-            my @certdata = <$csrfile>;
-            close($csrfile);
-            unlink "/tmp/xcat/client.cert.$$";
-            my $certcontents = join('', @certdata);
-            push @{ $rsp->{'data'} }, { content => [$certcontents], desc => [$parm] };
+            next;
         } elsif ($parm =~ /xcat_secure_pw:/) {
             xCAT::MsgUtils->trace(0, 'I', "credentials: sending $parm to $client");
             my @users=split(/:/,$parm);
@@ -374,6 +365,189 @@ sub process_request
         xCAT::MsgUtils->message("E", $rsp, $callback, 0);
     }
     return;
+}
+
+sub _delegated_signer_allowed {
+    my ($request, $node) = @_;
+    return 0 unless $request->{'_xcat_authname'}
+      and $request->{'_xcat_authname'}->[0] eq 'root';
+    return 0 unless $node;
+
+    my %requester;
+    my @identity_attributes = $request->{'_xcat_clientip'}
+      ? qw(_xcat_clientip)
+      : qw(_xcat_clienthost _xcat_clientfqdn);
+    foreach my $attribute (@identity_attributes) {
+        next unless $request->{$attribute};
+        my $value = ref($request->{$attribute}) eq 'ARRAY'
+          ? $request->{$attribute}->[0] : $request->{$attribute};
+        $requester{$_} = 1 for _endpoint_identities($value);
+    }
+    return 0 unless %requester;
+
+    my $noderes = xCAT::Table->new('noderes');
+    return 0 unless $noderes;
+    my $attributes = $noderes->getNodeAttribs($node, ['servicenode']);
+    return 0 unless $attributes and $attributes->{servicenode};
+
+    foreach my $service_node (split /,/, $attributes->{servicenode}) {
+        return 1 if grep { $requester{$_} } _endpoint_identities($service_node);
+    }
+    return 0;
+}
+
+sub _endpoint_identities {
+    my $endpoint = shift;
+    return unless defined($endpoint);
+    $endpoint =~ s/^\s+|\s+$//g;
+    return unless length($endpoint);
+
+    my %identities;
+    my $name = _normalize_endpoint_identity($endpoint);
+    $identities{$name} = 1;
+
+    my @addresses = xCAT::NetworkUtils->getipaddr($endpoint, GetAllAddresses => 1);
+    foreach my $address (@addresses) {
+        next unless defined($address) && length($address);
+        $identities{_normalize_endpoint_identity($address)} = 1;
+    }
+    return keys %identities;
+}
+
+sub _normalize_endpoint_identity {
+    my $identity = lc(shift);
+    $identity =~ s/\.$//;
+    $identity =~ s/^::ffff:(?=\d+(?:\.\d+){3}\z)//;
+    return $identity;
+}
+
+sub _request_x509_from_master {
+    my ($node, $csr) = @_;
+    my @masters = xCAT::TableUtils->get_site_attribute('master');
+    unless ($masters[0]) {
+        my $error = 'The management node is not configured';
+        xCAT::MsgUtils->trace(0, 'E', $error);
+        return wantarray ? (undef, $error) : undef;
+    }
+
+    require xCAT::Client;
+    local $ENV{XCATHOST} = $masters[0] =~ /:/
+      ? "[$masters[0]]:3001"
+      : "$masters[0]:3001";
+    my $certificate;
+    my @errors;
+    my $request = {
+        command => ['signx509cert'],
+        arg     => [$node],
+        csr     => [$csr],
+    };
+    my $failure;
+    {
+        local $SIG{ALRM} = sub {
+            die 'management node request timed out after '
+              . DELEGATED_SIGNING_TIMEOUT . " seconds\n";
+        };
+        my $request_ok = eval {
+            alarm(DELEGATED_SIGNING_TIMEOUT);
+            xCAT::Client::submit_request($request, sub {
+                my $response = shift;
+                my $response_errors = $response->{error};
+                if (defined($response_errors)) {
+                    my @response_errors = ref($response_errors) eq 'ARRAY'
+                      ? @{$response_errors} : ($response_errors);
+                    push @errors,
+                      grep { defined($_) && !ref($_) && length($_) } @response_errors;
+                }
+                foreach my $data (@{ $response->{data} || [] }) {
+                    next unless ref($data) eq 'HASH';
+                    my $description = ref($data->{desc}) eq 'ARRAY'
+                      ? $data->{desc}->[0] : $data->{desc};
+                    next unless $description and $description eq 'x509cert';
+                    $certificate = ref($data->{content}) eq 'ARRAY'
+                      ? $data->{content}->[0] : $data->{content};
+                }
+            });
+            1;
+        };
+        $failure = $@ unless $request_ok;
+        alarm(0);
+    }
+    unless ($certificate) {
+        my $reason = $failure || join('; ', @errors) || 'management node returned no certificate';
+        $reason =~ s/[\r\n]+/ /g;
+        $reason =~ s/\s+$//;
+        my $error = "Unable to obtain a delegated certificate for $node: $reason";
+        xCAT::MsgUtils->trace(0, 'E', $error);
+        return wantarray ? (undef, $error) : undef;
+    }
+    return wantarray ? ($certificate, undef) : $certificate;
+}
+
+sub _csr_subject_matches_node {
+    my ($csrpath, $client) = @_;
+    open(my $subject_file, '-|', 'openssl', 'req', '-in', $csrpath,
+        '-subject', '-noout', '-nameopt', 'RFC2253')
+      or die "cannot inspect CSR";
+    my $subject = <$subject_file>;
+    close($subject_file) or die "invalid CSR";
+    $subject =~ s/[\r\n]+$// if defined($subject);
+    return 0 unless defined($subject);
+    return $subject =~ /^subject=\s*CN=\Q$client\E\z/ ? 1 : 0;
+}
+
+sub _sign_x509_certificate {
+    my ($client, $csr) = @_;
+    my $oldumask = umask 0077;
+    my ($csrfile, $csrpath);
+    my ($certfile, $certpath);
+    my $certificate;
+    my $failure;
+
+    my $signing_ok = eval {
+        ($csrfile, $csrpath) = tempfile('xcat-client-csr-XXXXXX', TMPDIR => 1, UNLINK => 0);
+        print {$csrfile} $csr or die "cannot write CSR";
+        close($csrfile) or die "cannot close CSR";
+
+        die "certificate subject does not match node"
+          unless _csr_subject_matches_node($csrpath, $client);
+
+        ($certfile, $certpath) = tempfile('xcat-client-cert-XXXXXX', TMPDIR => 1, UNLINK => 0);
+        close($certfile) or die "cannot close certificate file";
+
+        open(my $index, '<', '/etc/xcat/ca/index') or die "cannot read CA index";
+        my @caindex = <$index>;
+        close($index) or die "cannot close CA index";
+        foreach (@caindex) {
+            chomp;
+            my ($type, $expiry, $revoke, $serial, $fname, $certificate_subject) = split /\t/;
+            if ($type eq 'V' and $certificate_subject =~ /^\/CN=\Q$client\E\z/) {
+                xCAT::MsgUtils->trace(0, 'I', "credentials: replacing the certificate for $client");
+                system('openssl', 'ca', '-config', '/etc/xcat/ca/openssl.cnf',
+                    '-revoke', "/etc/xcat/ca/certs/$serial.pem") == 0
+                  or die "cannot revoke previous certificate";
+            }
+        }
+        system('openssl', 'ca', '-config', '/etc/xcat/ca/openssl.cnf',
+            '-in', $csrpath, '-out', $certpath, '-batch') == 0
+          or die "certificate signing failed";
+
+        open(my $signed, '<', $certpath) or die "cannot read signed certificate";
+        local $/;
+        $certificate = <$signed>;
+        close($signed) or die "cannot close signed certificate";
+        1;
+    };
+    $failure = $@ unless $signing_ok;
+
+    unlink($csrpath) if $csrpath and -e $csrpath;
+    unlink($certpath) if $certpath and -e $certpath;
+    umask($oldumask);
+    if ($failure) {
+        chomp($failure);
+        xCAT::MsgUtils->trace(0, 'E', "Unable to sign certificate for $client: $failure");
+        return;
+    }
+    return $certificate;
 }
 
 sub ok_with_node {

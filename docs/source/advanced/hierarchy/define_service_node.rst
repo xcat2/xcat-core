@@ -146,6 +146,11 @@ group **compute2** are serviced by sn2:
   chdef -t group compute1 servicenode=sn1 xcatmaster=sn1-c
   chdef -t group compute2 servicenode=sn2 xcatmaster=sn2-c
 
+For delegated certificate requests, the service node's source address when
+connecting to ``site.master`` must match one of the compute node's
+``servicenode`` entries. Hostname entries are resolved on the management node
+before comparison.
+
 .. note:: In this example, sn1 and sn2 are the node names of the service nodes
  (and therefore the hostnames associated with the NICs that the MN talks to).
  The hostnames sn1-c and sn2-c are associated with the SN NICs that communicate
