@@ -41,6 +41,25 @@ SKIP: {
 my $xcatsn = read_file('xCATsn/xCATsn.spec');
 like( $xcatsn, qr/^%ifarch riscv64\nRequires: ipmitool-xcat >= 1\.8\.17-1\n%endif$/m, 'xCATsn.spec requires ipmitool-xcat on riscv64' );
 
+my $server = read_file('xCAT-server/xCAT-server.spec');
+like( $server, qr/^Recommends: perl-DB_File$/m, 'xCAT-server.spec recommends perl-DB_File on EL10 (riscv64 has no EPEL to provide it)' );
+like(
+    $server,
+    qr/^%if 0%\{\?rhel\} >= 10\nRecommends: perl-DB_File\n/m,
+    'the weak perl-DB_File dependency is limited to EL10, where riscv64 has no EPEL',
+);
+like(
+    $server,
+    qr/^%else\nRequires: perl-DB_File\n%endif$/m,
+    'build hosts without weak dependencies keep the hard perl-DB_File requirement',
+);
+like(
+    $server,
+    qr/^%global __requires_exclude %\{\?__requires_exclude:%\{__requires_exclude\}\|\}\^perl\\\\\(DB_File\\\\\)\$$/m,
+    'xCAT-server.spec appends the generated perl(DB_File) requirement to the build root filter',
+);
+like( $server, qr/^Requires: perl-Net-Telnet perl-Net-DNS perl-Crypt-CBC perl-Crypt-Rijndael$/m, 'xCAT-server.spec keeps the other EL perl requires' );
+
 
 my $buildcore = read_file('buildcore.sh');
 like( $buildcore, qr/^\s*for arch in x86_64 ppc64 ppc64le s390x aarch64 riscv64; do$/m, 'buildcore.sh builds xCAT and xCATsn for riscv64' );
