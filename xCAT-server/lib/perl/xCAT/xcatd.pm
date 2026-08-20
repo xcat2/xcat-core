@@ -532,6 +532,35 @@ my %secret_command_patterns = (
 my %secret_command_nocase = map { $_ => 1 } qw(mkvm);
 my %secret_site_keys = map { $_ => 1 } qw(snmpc);
 
+my %secret_table = map { (split /\./)[0] => 1 } grep { /\./ } @secret_attributes;
+$secret_table{site} = 1;
+
+my $secret_response_pattern = do {
+    my $names = join '|', map { quotemeta } @secret_attributes;
+    qr/(?:^|[^\w.])(?:$names)\s*[=:]/;
+};
+
+sub secret_in_response {
+    my ($class, $text) = @_;
+    return 0 unless defined $text;
+    return 1 if $text =~ /passw/i;
+    return 1 if $text =~ $secret_response_pattern;
+    return 0;
+}
+
+sub secret_in_request {
+    my ($class, $command, $args) = @_;
+    foreach my $arg (@{ $args || [] }) {
+        next unless defined $arg;
+        return 1 if defined $command and ($command eq 'tabdump' or $command eq 'nodels') and $secret_table{$arg};
+        return 1 if $arg =~ /^([\w.]+)/ and $secret_attribute{$1};
+        foreach my $selector (split /,/, $arg) {
+            return 1 if $selector =~ /^(?:site\.)?key=([\w.]+)$/ and $secret_site_keys{$1};
+        }
+    }
+    return 0;
+}
+
 sub redact_password_arg {
     my ($class, $arg) = @_;
     return $arg unless defined $arg;
