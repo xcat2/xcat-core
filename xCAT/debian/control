@@ -12,12 +12,18 @@ Architecture: amd64 ppc64el
 # chrony | ntp: makentp/setupntp configure the MN as an NTP server for its compute nodes. Ubuntu's
 # default systemd-timesyncd is an SNTP client and cannot serve time, so a server-capable daemon is
 # required; prefer chrony (installed first), fall back to ntp where chrony is unavailable.
-Depends: ${perl:Depends}, goconserver(>= 0.3.3-snap000000000000), xcat-server (>= 2.13-snap000000000000), xcat-client (>= 2.13-snap000000000000), libdbd-sqlite3-perl, isc-dhcp-server | kea, apache2, nfs-kernel-server, libxml-parser-perl, rsync, tftpd-hpa, libnet-telnet-perl, chrony | ntp, xcat-genesis-scripts-amd64 (>= 2.13-snap000000000000)
+# bind9: xCAT manages the cluster DNS via `makedns` (named), so the MN requires a DNS server -- as
+# essential as the DHCP backend above. It was historically a Recommends and got pulled in because
+# apt's classic solver installs recommends by default. Ubuntu 26.04 ships apt 3.x with the new
+# solver ("APT::Solver 3.0"), which drops the bind9 recommend during `apt install xcat` -> the MN
+# has no /usr/sbin/named -> `makedns` fails ("failed to start named") and provisioning breaks. Make
+# it a hard Depends so the DNS backend is guaranteed on every apt version (mirrors chrony | ntp).
+Depends: ${perl:Depends}, goconserver(>= 0.3.3-snap000000000000), xcat-server (>= 2.13-snap000000000000), xcat-client (>= 2.13-snap000000000000), libdbd-sqlite3-perl, isc-dhcp-server | kea, bind9, apache2, nfs-kernel-server, libxml-parser-perl, rsync, tftpd-hpa, libnet-telnet-perl, chrony | ntp, xcat-genesis-scripts-amd64 (>= 2.13-snap000000000000)
 # util-linux-extra provides hwclock, required by the setupntp postscript to persist the clock to the
 # RTC. Ubuntu 24.04+ split hwclock out of the Essential util-linux into util-linux-extra; a Recommends
 # pulls it on those releases and is harmlessly skipped on 20.04/22.04 (where hwclock ships in
 # util-linux) and on EL/SUSE (where the package does not exist).
-Recommends: bind9, net-tools, nmap, kea, tftp-hpa, ipmitool-xcat (>= 1.8.17-1), syslinux[any-amd64], libsys-virt-perl, syslinux-xcat, xnba-undi, elilo-xcat, util-linux-extra, xcat-buildkit (>= 2.13-snap000000000000), xcat-probe (>= 2.13-snap000000000000)
+Recommends: net-tools, nmap, kea, tftp-hpa, ipmitool-xcat (>= 1.8.17-1), syslinux[any-amd64], libsys-virt-perl, syslinux-xcat, xnba-undi, elilo-xcat, util-linux-extra, xcat-buildkit (>= 2.13-snap000000000000), xcat-probe (>= 2.13-snap000000000000)
 Suggests: yaboot-xcat
 Description: Metapackage for a common, default xCAT setup
  xCAT is Extreme Cluster/Cloud Administration Toolkit. xCAT offers complete
