@@ -1,0 +1,11 @@
+{
+  "capabilities": [
+    {"destructive": false, "name": "storage.firmware.inventory"},
+    {"destructive": false, "name": "storage.health"},
+    {"destructive": false, "name": "storage.inventory"}
+  ],
+  "kind": "storage",
+  "name": "iprutils",
+  "schema": 1,
+  "version": "1.0"
+}

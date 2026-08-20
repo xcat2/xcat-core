@@ -1,0 +1,53 @@
+From 7da676d05cefb7717684942f54cd492cb2c20ab7 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Vin=C3=ADcius=20Ferr=C3=A3o?= <vinicius@ferrao.net.br>
+Date: Wed, 5 Aug 2026 13:39:00 -0300
+Subject: [PATCH] helper tools: use libtool objects in out-of-tree builds
+
+Libtool writes position-independent objects under .libs. The current wildcards
+only work when another build step happens to leave objects in the build root.
+
+Upstream-Status: Pending
+Signed-off-by: Vinícius Ferrão <vinicius@ferrao.net.br>
+---
+ cmdif/Makefile.am                                  | 2 +-
+ dev_mgt/Makefile.am                                | 2 +-
+ mvpd/Makefile.am                                   | 2 +-
+ reg_access/Makefile.am                             | 2 +-
+ resourcetools/resourcedump_lib/src/sdk/Makefile.am | 2 +-
+ 5 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/cmdif/Makefile.am b/cmdif/Makefile.am
+index 2cd53813..0bb866b1 100644
+--- a/cmdif/Makefile.am
++++ b/cmdif/Makefile.am
+@@ -56 +56 @@ ${CCMDIF_SO}: libcmdif.la
+-	$(CC) -g -Wall -pthread -shared ${CFLAGS} ${LDFLAGS} *.o -o ${CCMDIF_SO} \
++	$(CC) -g -Wall -pthread -shared ${CFLAGS} ${LDFLAGS} .libs/*.o -o ${CCMDIF_SO} \
+diff --git a/dev_mgt/Makefile.am b/dev_mgt/Makefile.am
+index 9d6c2131..c50b8ee8 100644
+--- a/dev_mgt/Makefile.am
++++ b/dev_mgt/Makefile.am
+@@ -55 +55 @@ c_dev_mgt.so: libdev_mgt.la
+-	$(CC) -g -Wall -pthread -shared ${CFLAGS} ${LDFLAGS} tools_dev_types.o -o c_dev_mgt.so \
++	$(CC) -g -Wall -pthread -shared ${CFLAGS} ${LDFLAGS} .libs/tools_dev_types.o -o c_dev_mgt.so \
+diff --git a/mvpd/Makefile.am b/mvpd/Makefile.am
+index 9c5257d0..4ec19f2c 100644
+--- a/mvpd/Makefile.am
++++ b/mvpd/Makefile.am
+@@ -49 +49 @@ ${RMVPD_SO}: libmvpd.la
+-	$(CC) -g -Wall -pthread -shared ${CFLAGS} *.o -o ${RMVPD_SO} \
++	$(CC) -g -Wall -pthread -shared ${CFLAGS} .libs/*.o -o ${RMVPD_SO} \
+diff --git a/reg_access/Makefile.am b/reg_access/Makefile.am
+index 4e7cd246..990e2b12 100644
+--- a/reg_access/Makefile.am
++++ b/reg_access/Makefile.am
+@@ -63 +63 @@ ${RREG_ACCESS_SO}: libreg_access.la
+-	$(CC) -g -Wall -pthread -shared ${CFLAGS} ${LDFLAGS} *.o -o ${RREG_ACCESS_SO} \
++	$(CC) -g -Wall -pthread -shared ${CFLAGS} ${LDFLAGS} .libs/*.o -o ${RREG_ACCESS_SO} \
+diff --git a/resourcetools/resourcedump_lib/src/sdk/Makefile.am b/resourcetools/resourcedump_lib/src/sdk/Makefile.am
+index 8f34534e..4afe39ad 100644
+--- a/resourcetools/resourcedump_lib/src/sdk/Makefile.am
++++ b/resourcetools/resourcedump_lib/src/sdk/Makefile.am
+@@ -89 +89 @@ libresource_dump_sdk.so: libresource_dump_sdk.la
+-	$(CC) -Wall -pthread -shared ${CFLAGS} ${LDFLAGS} $(COMPILER_FPIC) libresource_dump_sdk_la-resource_dump_sdk.o \
++	$(CC) -Wall -pthread -shared ${CFLAGS} ${LDFLAGS} $(COMPILER_FPIC) .libs/libresource_dump_sdk_la-resource_dump_sdk.o \
