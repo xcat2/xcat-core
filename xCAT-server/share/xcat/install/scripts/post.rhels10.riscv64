@@ -1,0 +1,51 @@
+# riscv64 UEFI boot entry fix-up for EL10 kickstart installs.
+#
+# The EL10 anaconda has no RISC-V EFI platform: it asks for the x86 boot
+# loader packages (grub2-efi-x64, shim-x64; tolerated with --ignoremissing)
+# and registers the UEFI boot entry as \EFI\<distro>\shimx64.efi, which does
+# not exist on riscv64, so the firmware cannot boot the installed system.
+# grub2-efi-riscv64 (from the riscv64 package list) provides
+# \EFI\<distro>\grubriscv64.efi and anaconda still writes the ESP grub.cfg
+# stub next to it, so point the boot entry at that image and also place the
+# removable-media fallback loader \EFI\BOOT\BOOTRISCV64.EFI for firmware
+# without usable NVRAM entries. Runs in the installed system chroot.
+if [ "$(uname -m)" = "riscv64" ] && [ -d /boot/efi/EFI ]; then
+    grubefi=""
+    for candidate in /boot/efi/EFI/*/grubriscv64.efi; do
+        [ -f "$candidate" ] || continue
+        grubefi="$candidate"
+        break
+    done
+    if [ -n "$grubefi" ]; then
+        vendordir="$(basename "$(dirname "$grubefi")")"
+        mkdir -p /boot/efi/EFI/BOOT
+        cp -f "$grubefi" /boot/efi/EFI/BOOT/BOOTRISCV64.EFI
+        echo "riscv64: installed \\EFI\\BOOT\\BOOTRISCV64.EFI from \\EFI\\$vendordir\\grubriscv64.efi"
+        if command -v efibootmgr >/dev/null 2>&1 && efibootmgr >/dev/null 2>&1; then
+            espdev="$(findmnt -no SOURCE /boot/efi 2>/dev/null)"
+            # lsblk pads its output, and efibootmgr wants bare values
+            disk="$(lsblk -no PKNAME "$espdev" 2>/dev/null | head -1 | tr -d '[:space:]')"
+            part="$(lsblk -no PARTN "$espdev" 2>/dev/null | head -1 | tr -d '[:space:]')"
+            if [ -n "$disk" ] && [ -n "$part" ]; then
+                # drop the x86 entries anaconda created for this install, and any
+                # riscv64 entry a previous provisioning of this node left behind, so
+                # reinstalling does not fill the firmware variable store with copies
+                for bootnum in $(efibootmgr -v 2>/dev/null | awk '/\\EFI\\[^\\]+\\(shimx64|grubx64|grubriscv64)\.efi/ { sub(/^Boot/, "", $1); sub(/\*$/, "", $1); print $1 }'); do
+                    efibootmgr -q -b "$bootnum" -B || true
+                done
+                label="$(. /etc/os-release 2>/dev/null; echo "${NAME:-Linux}")"
+                if efibootmgr -q -c -d "/dev/$disk" -p "$part" -L "$label" -l "\\EFI\\$vendordir\\grubriscv64.efi"; then
+                    echo "riscv64: UEFI boot entry \"$label\" -> \\EFI\\$vendordir\\grubriscv64.efi on /dev/$disk part $part"
+                else
+                    echo "riscv64: efibootmgr could not create the boot entry; the firmware will use \\EFI\\BOOT\\BOOTRISCV64.EFI"
+                fi
+            else
+                echo "riscv64: could not determine the ESP disk/partition; the firmware will use \\EFI\\BOOT\\BOOTRISCV64.EFI"
+            fi
+        else
+            echo "riscv64: efibootmgr unavailable; the firmware will use \\EFI\\BOOT\\BOOTRISCV64.EFI"
+        fi
+    else
+        echo "riscv64: no \\EFI\\*\\grubriscv64.efi on the ESP; is grub2-efi-riscv64 in the package list?"
+    fi
+fi
