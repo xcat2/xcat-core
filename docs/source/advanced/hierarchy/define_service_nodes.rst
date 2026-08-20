@@ -76,6 +76,11 @@ The following table illustrates the cluster being used in this example:
    * ``servicenode`` - defines which Service Node the **Management Node** should send commands to (e.g ``xdsh``) and should be set to the hostname or IP address of the service node that the management node can contact it by.
    * ``xcatmaster`` - defines which Service Node the **Compute Node** should boot from and should be set to the hostname or IP address of the service node that the compute node can contact it by.
 
+   For delegated certificate requests, the service node's source address when
+   connecting to ``site.master`` must match one of the compute node's
+   ``servicenode`` entries. Hostname entries are resolved on the management
+   node before comparison.
+
    You must set both ``servicenode`` and ``xcatmaster`` regardless of whether or not you are using service node pools. For most scenarios, the value will be identical. ::
 
         chdef -t group -o rack1 servicenode=r1n01 xcatmaster=r1n01
