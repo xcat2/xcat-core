@@ -104,6 +104,7 @@ int xcat_set_signal_handler(int signal_number, void (*handler)(int));
 const char *xcat_path_from_env(const char *name, const char *fallback);
 void xcat_copy_printable(char *destination, size_t size, const char *source);
 void xcat_set_text(char *destination, size_t size, const char *format, ...);
+char *xcat_read_allocated_line(const char *path);
 bool xcat_read_line(const char *path, char *value, size_t size);
 bool xcat_read_key(const char *path, const char *key, char *value, size_t size);
 bool xcat_safe_name(const char *value);

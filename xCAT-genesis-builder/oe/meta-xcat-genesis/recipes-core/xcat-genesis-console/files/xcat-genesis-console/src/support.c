@@ -50,26 +50,37 @@ void xcat_set_text(char *destination, size_t size, const char *format, ...) {
     xcat_copy_printable(destination, size, buffer);
 }
 
-bool xcat_read_line(const char *path, char *value, size_t size) {
+char *xcat_read_allocated_line(const char *path) {
     FILE *stream;
-    char line[LINE_SIZE];
+    char *line = NULL;
+    size_t capacity = 0;
     char *line_end;
     struct stat file_status;
 
     if (stat(path, &file_status) != 0 || !S_ISREG(file_status.st_mode))
-        return false;
+        return NULL;
     stream = fopen(path, "r");
     if (stream == NULL)
-        return false;
-    if (fgets(line, sizeof(line), stream) == NULL) {
+        return NULL;
+    if (getline(&line, &capacity, stream) < 0) {
         fclose(stream);
-        return false;
+        free(line);
+        return NULL;
     }
     fclose(stream);
     line_end = strpbrk(line, "\r\n");
     if (line_end != NULL)
         *line_end = '\0';
+    return line;
+}
+
+bool xcat_read_line(const char *path, char *value, size_t size) {
+    char *line = xcat_read_allocated_line(path);
+
+    if (line == NULL)
+        return false;
     xcat_copy_printable(value, size, line);
+    free(line);
     return true;
 }
 
@@ -126,19 +137,24 @@ bool xcat_safe_name(const char *value) {
 }
 
 bool xcat_cmdline_value(const char *cmdline, const char *key, char *value, size_t size) {
-    char copy[2048];
+    char *copy;
     char *save = NULL;
     char *token;
     size_t key_length = strlen(key);
+    bool found = false;
 
-    xcat_copy_printable(copy, sizeof(copy), cmdline);
+    copy = strdup(cmdline);
+    if (copy == NULL)
+        return false;
     for (token = strtok_r(copy, " ", &save); token != NULL; token = strtok_r(NULL, " ", &save)) {
         if (strncmp(token, key, key_length) == 0 && token[key_length] == '=') {
             xcat_copy_printable(value, size, token + key_length + 1);
-            return true;
+            found = true;
+            break;
         }
     }
-    return false;
+    free(copy);
+    return found;
 }
 
 unsigned long long xcat_read_uptime(void) {

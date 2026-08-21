@@ -4,6 +4,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/utsname.h>
 #include <unistd.h>
@@ -284,7 +285,8 @@ void xcat_load_console_state(struct console_state *state) {
     struct component_status action = read_component_status("action");
     struct utsname system_name;
     unsigned long long uptime = xcat_read_uptime();
-    char cmdline[2048] = "";
+    char *cmdline = xcat_read_allocated_line(cmdline_path);
+    const char *cmdline_text = cmdline != NULL ? cmdline : "";
     char value[VALUE_SIZE] = "";
     char path[VALUE_SIZE * 2];
     char release_name[64] = "xCAT Genesis";
@@ -293,9 +295,8 @@ void xcat_load_console_state(struct console_state *state) {
     bool interface_selected;
 
     memset(state, 0, sizeof(*state));
-    xcat_read_line(cmdline_path, cmdline, sizeof(cmdline));
-    xcat_configured =
-        xcat_cmdline_value(cmdline, "xcatd", state->xcat_endpoint, sizeof(state->xcat_endpoint));
+    xcat_configured = xcat_cmdline_value(cmdline_text, "xcatd", state->xcat_endpoint,
+                                         sizeof(state->xcat_endpoint));
     set_component_details(&network, state->network_state, sizeof(state->network_state),
                           state->network_detail, sizeof(state->network_detail));
     set_component_details(&extensions, state->extension_state, sizeof(state->extension_state),
@@ -349,7 +350,7 @@ void xcat_load_console_state(struct console_state *state) {
         xcat_set_text(state->firmware, sizeof(state->firmware), "%s",
                       access(path, F_OK) == 0 ? "UEFI" : "BIOS");
     }
-    set_boot_loader(cmdline, state->boot_method, sizeof(state->boot_method));
+    set_boot_loader(cmdline_text, state->boot_method, sizeof(state->boot_method));
 
     snprintf(path, sizeof(path), "%s/class/dmi/id/product_serial", sys_root);
     xcat_read_line(path, state->serial, sizeof(state->serial));
@@ -392,8 +393,8 @@ void xcat_load_console_state(struct console_state *state) {
         xcat_set_text(state->dns, sizeof(state->dns), "not reported");
     if (state->network_method[0] == '\0')
         xcat_set_text(state->network_method, sizeof(state->network_method), "%s",
-                      xcat_cmdline_value(cmdline, "hostip", value, sizeof(value)) ||
-                              xcat_cmdline_value(cmdline, "ipaddr", value, sizeof(value))
+                      xcat_cmdline_value(cmdline_text, "hostip", value, sizeof(value)) ||
+                              xcat_cmdline_value(cmdline_text, "ipaddr", value, sizeof(value))
                           ? "static"
                           : "automatic");
     normalize_network_method(state->network_method, sizeof(state->network_method), state->address);
@@ -418,7 +419,7 @@ void xcat_load_console_state(struct console_state *state) {
         xcat_set_text(state->action_code, sizeof(state->action_code), "%s", registration.action);
         xcat_set_text(state->target, sizeof(state->target), "%s", registration.target);
     } else if (xcat_read_line(destiny_file, value, sizeof(value)) ||
-               xcat_cmdline_value(cmdline, "destiny", value, sizeof(value))) {
+               xcat_cmdline_value(cmdline_text, "destiny", value, sizeof(value))) {
         split_action(value, state->action_code, sizeof(state->action_code), state->target,
                      sizeof(state->target));
     }
@@ -449,6 +450,7 @@ void xcat_load_console_state(struct console_state *state) {
         xcat_set_text(state->extension_names, sizeof(state->extension_names), "none");
     if (state->provider_names[0] == '\0')
         xcat_set_text(state->provider_names, sizeof(state->provider_names), "none");
+    free(cmdline);
     select_overall_status(state, &network, &extensions, &registration, &action, xcat_configured,
                           uptime);
 }
