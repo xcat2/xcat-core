@@ -156,10 +156,8 @@ if [ -z "$install_disk" ]; then
         rm $file;
     done
 
-    has_wwn=0
-    has_path=0
-    file_pre=""
     disk_data=""
+    disk_rank=""
 
     # Check disks which had installed OS, or check all disks in /proc/partitions
     for disk in $disks; do
@@ -177,59 +175,51 @@ if [ -z "$install_disk" ]; then
         echo "[get_install_disk]    disk_path=$disk_path"
         echo "[get_install_disk]    disk_driver=$disk_driver"
 
-        # Check whether there is WWN, PATH information
+        # Rank the identifier. A disk that reports a WWN sorts ahead of one
+        # that reports only a path, and that one ahead of a disk with neither,
+        # but the rank decides only among disks of the same driver group.
         if [ "$disk_wwn" ]; then
-            has_wwn=1
-            file_pre="wwn"
+            disk_rank="0"
             disk_data=$disk_wwn
-        elif [ $has_wwn -eq 1 ]; then
-            echo "[get_install_disk]    The disk $disk has no wwn info."
-            echo "[get_install_disk]    There is another disk with wwn info, so don't record this disk."
-            continue;
         elif [ "$disk_path" ]; then
-            has_path=1
-            file_pre="path"
+            disk_rank="1"
             disk_data=$disk_path
-        elif [ $has_path -eq 1 ]; then
-            echo "[get_install_disk]    The disk $disk has no wwn or path info."
-            echo "[get_install_disk]    There is another disk with path info, so don't record this disk."
-            continue;
         else
-           file_pre="other"
-           disk_data=""
+            disk_rank="2"
+            disk_data=""
         fi
 
         # Sort disks by DRIVER type
         case "$disk_driver" in
         "ata_piix"*|"ahci")
-            echo "$disk $disk_data" >> "$tmpfile""$file_pre""firstchoicedisks"
-            echo "[get_install_disk]    Add disk: $disk $disk_data into $file_pre firstchoicedisks"
+            echo "$disk $disk_rank$disk_data" >> "$tmpfile""firstchoicedisks"
+            echo "[get_install_disk]    Add disk: $disk $disk_data into firstchoicedisks"
             ;;
         "PMC MaxRAID"|"megaraid_sas")
-            echo "$disk $disk_data" >> "$tmpfile""$file_pre""secondchoicedisks"
-            echo "[get_install_disk]    Add disk: $disk $disk_data into $file_pre secondchoicedisks"
+            echo "$disk $disk_rank$disk_data" >> "$tmpfile""secondchoicedisks"
+            echo "[get_install_disk]    Add disk: $disk $disk_data into secondchoicedisks"
             ;;
         "mptsas"|"mpt2sas"|"mpt3sas")
-            echo "$disk $disk_data" >> "$tmpfile""$file_pre""thirdchoicedisks"
-            echo "[get_install_disk]    Add disk: $disk $disk_data into $file_pre thirdchoicedisks"
+            echo "$disk $disk_rank$disk_data" >> "$tmpfile""thirdchoicedisks"
+            echo "[get_install_disk]    Add disk: $disk $disk_data into thirdchoicedisks"
             ;;
         *)
-            echo "$disk $disk_data" >> "$tmpfile""$file_pre""fourthchoicedisks"
-            echo "[get_install_disk]    Add disk: $disk $disk_data into $file_pre fourthchoicedisks"
+            echo "$disk $disk_rank$disk_data" >> "$tmpfile""fourthchoicedisks"
+            echo "[get_install_disk]    Add disk: $disk $disk_data into fourthchoicedisks"
             ;;
         esac
     done
 
     for seq in first second third fourth; do
-        if [ -s $tmpfile$file_pre${seq}choicedisks ]; then
-            install_file="$tmpfile$file_pre${seq}choicedisks"
+        if [ -s $tmpfile${seq}choicedisks ]; then
+            install_file="$tmpfile${seq}choicedisks"
             break
         fi
     done
 
     if [ "$install_file" ] && [ -s $install_file ]; then
         install_disk=/dev/$(cat $install_file | grep -v "^$" | sort -k 2 -b | cut -d " " -f1 | head -n 1)
-        echo "[get_install_disk]The install_disk is $install_disk by sorting $file_pre and DRIVER."
+        echo "[get_install_disk]The install_disk is $install_disk by DRIVER, then by identifier."
     fi
 
     for file in $tmpfile*; do
