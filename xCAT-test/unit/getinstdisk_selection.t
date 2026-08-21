@@ -10,9 +10,8 @@ use Test::More;
 my $repo_root  = File::Spec->catdir( $FindBin::Bin, '..', '..' );
 my $script_dir = File::Spec->catdir( $repo_root, 'xCAT-server', 'share', 'xcat', 'install', 'scripts' );
 
-# The RHEL 10 installer includes its own copy of the script, so both carry the
-# same selection order and both are exercised here.
-my @scripts = map { File::Spec->catfile( $script_dir, $_ ) } qw(getinstdisk getinstdisk.rhels10);
+# One script serves every installer, so one file is exercised here.
+my @scripts = map { File::Spec->catfile( $script_dir, $_ ) } qw(getinstdisk);
 plan skip_all => 'getinstdisk not found' if grep { !-r $_ } @scripts;
 our $script;
 
