@@ -157,9 +157,18 @@ case "$*" in
     '-t -f DEVICE,TYPE device status')
         printf '%s\n' 'eth0:ethernet' 'eth1:ethernet' 'lo:loopback'
         ;;
+    '-g GENERAL.CON-UUID device show eth0')
+        printf '%s\n' 'connection-eth0'
+        ;;
+    '-g GENERAL.CON-UUID device show eth1')
+        printf '%s\n' 'connection-eth1'
+        ;;
     '-g GENERAL.STATE device show '*) printf '%s\n' '100 (connected)' ;;
     '--terse --escape no -g IP4.DNS,IP6.DNS device show eth0')
         printf '%s\n' '192.0.2.53 | 2001:db8::53'
+        ;;
+    '--wait 30 device connect eth0')
+        [ -z "${XCAT_TEST_CONNECT_FAIL-}" ] || exit 1
         ;;
 esac
 SH
@@ -408,6 +417,33 @@ like( $refresh_log, qr/^nmcli --wait 30 device connect eth0$/m,
     'the discovery interface requests its assigned lease' );
 like( $refresh_log, qr/^network-state-refresh$/m,
     'network state is rebuilt after DHCP renewal' );
+
+write_file( $command_log, '' );
+my %failed_refresh_environment = (
+    %environment,
+    XCAT_TEST_CONNECT_FAIL => 1,
+);
+isnt(
+    run_script(
+        $network_refresh_script, \%failed_refresh_environment,
+        'restart (eth0)'
+    ),
+    0,
+    'a failed DHCP renewal returns an error'
+);
+$refresh_log = read_file($command_log);
+like(
+    $refresh_log,
+    qr/^nmcli --wait 30 connection up uuid connection-eth0 ifname eth0$/m,
+    'a failed renewal restores the management connection'
+);
+like(
+    $refresh_log,
+    qr/^nmcli --wait 30 connection up uuid connection-eth1 ifname eth1$/m,
+    'a failed renewal restores other disconnected connections'
+);
+unlike( $refresh_log, qr/^network-state-refresh$/m,
+    'failed renewal does not publish incomplete network state' );
 delete $environment{XCAT_NETWORK_STATE_COMMAND};
 
 write_file(
