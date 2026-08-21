@@ -130,6 +130,15 @@ selects( '/dev/nvme0n1', 'an NVMe device is selected from the last group',
 # No usable disk falls back to the documented default.
 selects( '/dev/sda', 'no disks fall back to the default' );
 
+# A Xen guest presents xvd names. The scan has to see them, because the
+# fallback below it would take the first one without looking.
+selects( '/dev/xvda', 'a Xen disk is scanned rather than assumed',
+    xvda => { driver => 'vbd' } );
+
+selects( '/dev/xvdb', 'the better driver group wins among Xen disks',
+    xvda => { driver => 'vbd' },
+    xvdb => { driver => 'ahci' } );
+
 # Every installer includes the one script, which carries the fallbacks and the
 # logging that the separate RHEL 10 copy used to hold on its own.
 my $common = slurp( $scripts[0] );
