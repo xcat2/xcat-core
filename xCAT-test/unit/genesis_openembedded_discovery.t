@@ -145,7 +145,10 @@ write_file( File::Spec->catfile( $bin, 'ipmitool' ), <<'SH', 0755 );
 #!/bin/sh
 case "$*" in
     'mc info') exit 0 ;;
-    'sol info') printf '%s\n' 'Payload Channel : 1' ;;
+    'sol info')
+        [ -z "${XCAT_TEST_NO_SOL-}" ] || exit 1
+        printf '%s\n' 'Payload Channel : 1'
+        ;;
     'lan print 1'|'lan print')
         printf '%s\n' 'IP Address Source : Static Address' \
             'IP Address : 192.0.2.101' \
@@ -317,6 +320,13 @@ like(
     qr/^STATE=READY$/m,
     'discovery publishes completion'
 );
+
+$environment{XCAT_TEST_NO_SOL} = 1;
+is( run_script( $discover_script, \%environment ), 0,
+    'discovery accepts a BMC without SOL support' );
+like( read_file($packet_file), qr{<bmcmac>52:54:00:aa:bb:cc</bmcmac>},
+    'discovery falls back to the default BMC LAN channel' );
+delete $environment{XCAT_TEST_NO_SOL};
 
 write_file( $network_file, <<'ENV' );
 XCATDEST=[2001:db8::10]:3001
