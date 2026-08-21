@@ -146,7 +146,10 @@ unset MASTER
 unset NTPSERVERS
 
 check_exec_or_exit cp cat logger grep
-check_exec_or_exit systemctl timedatectl hwclock
+# hwclock is NOT required: it only persists the (already chronyd-stepped) system clock to the RTC
+# below, and it is optional -- on Ubuntu 24.04+ it moved to util-linux-extra, which is absent on
+# minimal cloud images. Requiring it here aborted the whole NTP setup (and the clock step) on noble.
+check_exec_or_exit systemctl timedatectl
 
 systemctl stop ntp.service 2>/dev/null
 systemctl disable ntp.service 2>/dev/null
@@ -155,6 +158,13 @@ systemctl disable ntpd.service 2>/dev/null
 
 systemctl disable ntp-wait.service 2>/dev/null
 systemctl disable ntpdate.service 2>/dev/null
+
+# systemd-timesyncd is an SNTP client that also disciplines the system clock. It is part of systemd
+# (not a "time-daemon" package), so it coexists with chrony/ntpd at the package level but must be
+# stopped or it fights the NTP daemon we are configuring. This is the default time-sync stack on
+# Ubuntu, where it must yield to chrony (timesyncd cannot serve time to compute nodes).
+systemctl stop systemd-timesyncd.service 2>/dev/null
+systemctl disable systemd-timesyncd.service 2>/dev/null
 
 # On Ubuntu 18.04
 systemctl stop chrony.service 2>/dev/null
@@ -177,10 +187,14 @@ chronyd -f /dev/null -q "$(
 	fi
 )"
 
-rm -f /etc/adjtime
-# Set the hardware clock from the system clock
-hwclock --systohc --utc
-warn_if_bad "$?" "Failed to set the hardware clock"
+# Set the hardware clock from the system clock, when hwclock is available (optional; see above).
+if command -v hwclock >/dev/null 2>&1; then
+    rm -f /etc/adjtime
+    hwclock --systohc --utc
+    warn_if_bad "$?" "Failed to set the hardware clock"
+else
+    logger -t $log_label -p local4.info "setupntp: hwclock not present; skipping RTC persist (system clock already set via chronyd)"
+fi
 
 ## On RHEL 8
 #CHRONY_USER="chrony"

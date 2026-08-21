@@ -40,6 +40,65 @@ fi
 str_conf_file=""
 str_conf_file_xcatbak=""
 tmp_con_name=""
+
+# netplan_active=1 when this Debian/Ubuntu node renders its network with netplan
+# (Ubuntu 18.04+). There, /etc/network/interfaces.d/* is ignored (ifupdown is not
+# installed), so configeth must write /etc/netplan/*.yaml and `netplan apply`
+# instead. See issue #7454.
+netplan_active=0
+if command -v netplan >/dev/null 2>&1 && [ -d /etc/netplan ]; then
+    netplan_active=1
+fi
+
+# netplan_file: the per-NIC netplan drop-in configeth owns for a given interface.
+# NETPLAN_DIR overrides the directory (defaults to /etc/netplan) so the writers
+# can be unit tested without touching the real config.
+netplan_file(){
+    echo "${NETPLAN_DIR:-/etc/netplan}/90-xcat-${1}.yaml"
+}
+
+# write_netplan_addr <nic> <addr/prefix> [mtu]
+# Add a static address (IPv4 or IPv6) to the NIC's netplan drop-in, creating the
+# file with the ethernet stanza on first use and appending further addresses to
+# the existing list. Idempotent per address. Callers run `netplan apply` after.
+write_netplan_addr(){
+    local nic="$1" cidr="$2" mtu="$3" f
+    f="$(netplan_file "$nic")"
+    if [ ! -f "$f" ] || ! grep -qE "^    ${nic}:[[:space:]]*\$" "$f" 2>/dev/null; then
+        {
+            echo "network:"
+            echo "  version: 2"
+            echo "  ethernets:"
+            echo "    ${nic}:"
+            echo "      addresses:"
+        } > "$f"
+    fi
+    # append the address to the list unless already present
+    if ! grep -qE "^        - ${cidr}[[:space:]]*\$" "$f" 2>/dev/null; then
+        sed -i "/^      addresses:[[:space:]]*\$/a\\        - ${cidr}" "$f"
+    fi
+    if [ -n "$mtu" ] && [ "$mtu" != "$str_default_token" ]; then
+        if grep -qE "^      mtu:" "$f" 2>/dev/null; then
+            sed -i "s/^      mtu:.*/      mtu: ${mtu}/" "$f"
+        else
+            echo "      mtu: ${mtu}" >> "$f"
+        fi
+    fi
+    chmod 600 "$f" 2>/dev/null
+}
+
+# write_netplan_route <nic> <to> <via>
+# Append a route (e.g. to=default) to the NIC's netplan drop-in. Idempotent.
+write_netplan_route(){
+    local nic="$1" to="$2" via="$3" f
+    f="$(netplan_file "$nic")"
+    [ -f "$f" ] || return 0
+    grep -qE "^      routes:" "$f" 2>/dev/null || echo "      routes:" >> "$f"
+    if ! grep -qF "        - to: ${to}" "$f" 2>/dev/null || ! grep -qF "          via: ${via}" "$f" 2>/dev/null; then
+        printf '        - to: %s\n          via: %s\n' "$to" "$via" >> "$f"
+    fi
+    chmod 600 "$f" 2>/dev/null
+}
 function configipv4(){
     str_if_name=$1
     str_v4ip=$2
@@ -111,7 +170,11 @@ function configipv4(){
         if [[ ${str_if_name} == [a-zA-Z0-9]*.[0-9]* ]]; then
             echo "VLAN=yes" >> $str_conf_file
         fi
-    #debian ubuntu
+    #ubuntu/debian with netplan (18.04+): write /etc/netplan/*.yaml, not interfaces.d (issue #7454)
+    elif [ "$str_os_type" = "debian" ] && [ "$netplan_active" = "1" ];then
+        str_prefix=$(v4mask2prefix $str_v4mask)
+        write_netplan_addr "${str_if_name}" "${str_v4ip}/${str_prefix}" "${str_nic_mtu}"
+    #debian ubuntu (legacy ifupdown)
     elif [ "$str_os_type" = "debian" ];then
         str_conf_file="/etc/network/interfaces.d/${str_if_name}"
         if [ $num_v4num -eq 0 ];then
@@ -290,6 +353,13 @@ configipv6(){
             fi
 	    i=$((i+1))
 	done		
+    #ubuntu/debian with netplan (18.04+): write /etc/netplan/*.yaml, not interfaces.d (issue #7454)
+    elif [ "$str_os_type" = "debian" ] && [ "$netplan_active" = "1" ];then
+        write_netplan_addr "${str_if_name}" "${str_v6ip}/${str_v6prefix}" "${str_nic_mtu}"
+        if [ "$str_v6gateway" != "$str_default_token" ] && [ -n "$str_v6gateway" ] \
+           && echo "$str_v6gateway" | grep -qv 'xcatmaster'; then
+            write_netplan_route "${str_if_name}" "default" "${str_v6gateway}"
+        fi
     elif [ "$str_os_type" = "debian" ];then
         #debian or ubuntu
         str_conf_file="/etc/network/interfaces.d/${str_if_name}"
@@ -393,7 +463,9 @@ function delete_nic_config_files(){
     str_temp_name=$1
     #delete the configuration files
     #delete the configuration history
-    if [ "$str_os_type" = "debian" ];then
+    if [ "$str_os_type" = "debian" ] && [ "$netplan_active" = "1" ];then
+        rm -f "$(netplan_file "$str_temp_name")" 2>/dev/null
+    elif [ "$str_os_type" = "debian" ];then
         rm -f /etc/network/interfaces.d/$str_temp_name 2>/dev/null
         sed -i "/${str_temp_name}/d" /etc/network/xcat_history_important
     elif [ "$str_os_type" = "sles" ];then
@@ -869,7 +941,9 @@ elif [ "$1" = "-s" ];then
 
     if [ "$UPDATENODE" = "1" ] || [ "$NODESETSTATE" = "netboot" ] || [ "$NODESETSTATE" = "statelite" ] || grep "REBOOT=TRUE" /opt/xcat/xcatinfo >/dev/null 2>&1; then
         if_state=0
-        if [ "$str_os_type" = "debian" ];then
+        if [ "$str_os_type" = "debian" ] && [ "$netplan_active" = "1" ];then
+            : # netplan apply below reconfigures the interface; no ifdown needed
+        elif [ "$str_os_type" = "debian" ];then
             ifdown --force $str_inst_nic
         else
             ip link set dev $str_inst_nic down
@@ -878,6 +952,8 @@ elif [ "$1" = "-s" ];then
             nmcli con modify $con_name ipv4.dns "${NAMESERVERS}"
             nmcli con reload
             nmcli con up $con_name
+        elif [ "$str_os_type" = "debian" ] && [ "$netplan_active" = "1" ]; then
+            netplan apply
 	    else
             ifup $str_inst_nic
         fi
@@ -1285,7 +1361,13 @@ else
 
     #restart the nic
     if [ $bool_restart_flag -eq 1 ];then
-        if [ "$str_os_type" = "debian" ];then
+        if [ "$str_os_type" = "debian" ] && [ "$netplan_active" = "1" ];then
+            netplan apply
+            if [ $? -ne 0 ]; then
+                log_error "netplan apply failed."
+                error_code=1
+            fi
+        elif [ "$str_os_type" = "debian" ];then
             ifup -a -i /etc/network/interfaces.d/$str_nic_name
             if [ $? -ne 0 ]; then
                 log_error "ifup -a -i /etc/network/interfaces.d/$str_nic_name failed."

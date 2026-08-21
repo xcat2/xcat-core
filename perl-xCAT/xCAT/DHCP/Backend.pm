@@ -31,6 +31,25 @@ sub choose {
     my $selected = $normalized eq 'auto' ? $class->default_backend(%args) : $normalized;
 
     if ( $args{check_available} && !$class->available( $selected, %args ) ) {
+        # An AUTO selection must not leave makedhcp broken when the other backend
+        # is installed. On Ubuntu the `xcat` metapackage's `isc-dhcp-server | kea`
+        # Depends guarantees isc-dhcp-server, while auto-selection prefers kea on
+        # 22.04+ (kea only arrives via Recommends) -- a --no-install-recommends
+        # install then has only isc, and auto picks an unavailable kea. Fall back
+        # to whatever IS available instead of failing hard. A backend the admin
+        # explicitly forced (site.dhcpbackend=isc|kea) that is missing stays a
+        # hard error, per the Kea backend plan. See issue #7710.
+        if ( $normalized eq 'auto' ) {
+            for my $alt (qw(kea isc)) {
+                next if $alt eq $selected;
+                next unless $class->available( $alt, %args );
+                return {
+                    requested     => $normalized,
+                    name          => $alt,
+                    fallback_from => $selected,
+                };
+            }
+        }
         return {
             requested => $normalized,
             name      => $selected,

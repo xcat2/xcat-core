@@ -1463,6 +1463,28 @@ my $udpalive       = 1;
 
 until ($quit) {
     $SIG{CHLD} = \&ssl_reaper; # set here to ensure that signal handler is not corrupted during loop
+    # Respawn the install monitor if it has died. It is forked exactly once at startup; the SIGCHLD
+    # reaper only clears $pid_MON when it exits and nothing re-forked it, so a single death of that
+    # child (a stray signal, or a lost socket-takeover during an xcatd restart) left the install monitor
+    # port (xcatiport) permanently dead while the main daemon kept running -- installing nodes could no
+    # longer report status or request the boot flip until the WHOLE daemon was restarted. Re-fork it
+    # here so it self-heals without a full restart.
+    if (!$pid_MON && !$quit && $sport) {
+        $pid_MON = xCAT::Utils->xfork;
+        if (!defined $pid_MON) {
+            xCAT::MsgUtils->message("S", "xcatd: unable to re-fork install monitor");
+            $pid_MON = 0;
+        } elsif (!$pid_MON) {    # child: serve only the install monitor
+            $$progname = "xcatd: install monitor";
+            $pid_UDP = 0;
+            close($listener);
+            close($udpctl); $udpctl = 0;
+            do_installm_service;
+            xexit(0);
+        } else {
+            xCAT::MsgUtils->trace(0, "I", "xcatd: re-forked install monitor (pid $pid_MON) after it exited");
+        }
+    }
     while ($udpalive and $udpwatcher->can_read(0)) { # take an intermission to broker some state requests from udp traffic control
         eval {
             my $msg = fd_retrieve($udpctl);

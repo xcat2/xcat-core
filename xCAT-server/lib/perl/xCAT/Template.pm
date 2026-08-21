@@ -1685,9 +1685,20 @@ sub ubuntu_subiquity_apt_config
             '    mirror-selection:',
             '      primary:',
             "      - uri: $online_mirror",
+            # On classic-sources releases (20.04/22.04) Subiquity renders the target's
+            # /etc/apt/sources.list from the install media alone (deb file:///cdrom), which
+            # lacks packages such as chrony -- curtin's in-target apt then fails with
+            # "E: Unable to locate package chrony". `sources_list:` is a curtin key that
+            # Subiquity's autoinstall schema ignores, so add the online archive through
+            # `sources:` (which Subiquity honors, writing /etc/apt/sources.list.d/*.list).
+            # $RELEASE is substituted with the release codename by curtin.
+            '    sources:',
+            '      xcat-ubuntu-archive.list:',
+            qq(        source: "deb $online_mirror \$RELEASE main restricted universe multiverse"),
+            '      xcat-ubuntu-updates.list:',
+            qq(        source: "deb $online_mirror \$RELEASE-updates main restricted universe multiverse"),
         );
         if (@otherpkg_sources) {
-            push @lines, '    sources:';
             my $index = 0;
             foreach my $source (@otherpkg_sources) {
                 push @lines, "      xcat-otherpkgs-$index.list:";

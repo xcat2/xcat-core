@@ -66,19 +66,29 @@ autoinstall:
       sed -i '/^\.\.\.$/d' /autoinstall.yaml
       cat /tmp/partitionfile >> /autoinstall.yaml
       echo "=== DNS setup ==="
+      # A nameserver line in /etc/resolv.conf MUST be an IP address -- glibc's resolver does
+      # NOT resolve a hostname written on a nameserver line, it discards the entry. Writing the
+      # xcatmaster *name* here leaves the installer (and the in-target apt-get update, which
+      # inherits this resolv.conf) with no usable DNS, so the install hangs resolving
+      # archive.ubuntu.com. DNS still works at this point via the live installer's DHCP
+      # resolv.conf (the wget calls above relied on it), so resolve the xcatmaster to an IPv4
+      # address first and write that IP.
+      xcatmaster_host="#TABLE:noderes:$NODE:xcatmaster#"
+      xcatmaster_ip="$(getent ahostsv4 "$xcatmaster_host" | awk '{print $1; exit}')"
+      [ -n "$xcatmaster_ip" ] || xcatmaster_ip="$xcatmaster_host"
       rm -f /etc/resolv.conf
-      echo "nameserver #TABLE:noderes:$NODE:xcatmaster#" >/etc/resolv.conf
+      echo "nameserver $xcatmaster_ip" >/etc/resolv.conf
       echo "domain #TABLE:site:key=domain:value#" >>/etc/resolv.conf
       echo "=== early-commands complete ==="
   late-commands:
     - mkdir -p /target/var/log/xcat/
     - '{
     cat /tmp/pre-install.log >> /target/var/log/xcat/xcat.log;
-    installnic="#TABLE:noderes:$NODE:installnic#";
+    installnic="#TABLEBLANKOKAY:noderes:$NODE:installnic#";
     installmac="#TABLE:mac:$NODE:mac#";
     installmac="$(printf ''%s'' "${installmac}" | cut -d''|'' -f1 | cut -d''!'' -f1 | tr ''A-F'' ''a-f'')";
     mkdir -p /target/etc/netplan;
-    if [ "${installnic}" = "mac" ]; then
+    if [ "${installnic}" = "mac" ] || [ -z "${installnic}" ]; then
         printf ''%s\n'' "network:" "  version: 2" "  ethernets:" "    xcat-install:" "      match:" "        macaddress: \"${installmac}\"" "      dhcp4: true" >/target/etc/netplan/00-xcat-install.yaml;
     else
         printf ''%s\n'' "network:" "  version: 2" "  ethernets:" "    xcat-install:" "      match:" "        macaddress: \"${installmac}\"" "      set-name: ${installnic}" "      dhcp4: true" >/target/etc/netplan/00-xcat-install.yaml;
@@ -101,5 +111,29 @@ autoinstall:
     cp ./#HOSTNAME#.post /target/root/post.script;
     curtin in-target --target /target /root/post.script;
     } >>/target/var/log/xcat/xcat.log 2>&1'
+    # Switch the node to boot from the local disk after the install, so it does not
+    # PXE-loop straight back into the installer once Subiquity reboots.  xCAT flips the
+    # netboot state (install -> local boot) when the node reports "next" to xcatd on
+    # port 3002; this makes xcatd run "nodeset <node> next", rewriting the node's xNBA
+    # boot script to fall through to the local disk.  The in-target post-script tries
+    # this via updateflag.awk, but that relies on gawk's |& / /inet coprocess and on
+    # /usr/bin/awk being gawk -- on Ubuntu /usr/bin/awk is often mawk (no |&), so the
+    # flip silently fails and the node reinstalls forever.  Send "next" here from the
+    # live installer instead (the connection originates from the node's own IP, which
+    # xcatd trusts) using bash's built-in /dev/tcp, with no gawk/PATH dependency.
+    - ["bash", "-c", "xm=#XCATVAR:XCATMASTER#; for i in 1 2 3 4 5; do exec 3<>/dev/tcp/$xm/3002 && { read -r r <&3; printf 'next\\n' >&3; read -r r <&3; exec 3>&- 3<&-; break; }; sleep 5; done; true"]
+    # Subiquity's graceful reboot at end-of-install HANGS in systemd-shutdown waiting on an
+    # lvm/pvscan process stuck in D-state on the NFS-mounted live-installer root (casper
+    # netboot=nfs): systemd-shutdown cannot SIGKILL a process wedged in uninterruptible I/O on the
+    # NFS mount being torn down, so it never issues the reboot and the node never power-cycles into
+    # the freshly-installed disk -- the provision then times out. VERIFIED on devel-ubuntu-cd #33:
+    # the console sat at "systemd-shutdown: Waiting for process: <pid> (lvm)" and a hard reset booted
+    # the installed OS (Ubuntu 24.04.4, multi-user, sshd, xcatpostinit) cleanly. As a safety net,
+    # schedule a FORCED sysrq reboot ~90s after the flip -- long enough that xcatd has already
+    # rewritten this node's xNBA to local-disk boot (else it would PXE straight back into the
+    # installer). If the graceful reboot happens to succeed first, this backgrounded process dies
+    # with it. sysrq 'b' bypasses the hung shutdown; curtin has already synced and unmounted the
+    # target, so the on-disk install is intact.
+    - ["bash", "-c", "(sleep 90; echo 1 >/proc/sys/kernel/sysrq; echo b >/proc/sysrq-trigger) </dev/null >/dev/null 2>&1 &"]
   error-commands:
     - tar -c --ignore-failed-read --transform='s/^/#HOSTNAME#-logs\//' /var/crash /var/log/installer /tmp/pre-install.log /autoinstall.yaml 2>/dev/null |nc -l 8080

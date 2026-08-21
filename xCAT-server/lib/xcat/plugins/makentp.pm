@@ -252,9 +252,19 @@ sub process_request {
         $ntp_servers = $retdata->{'master'};
     }
 
+    # Pick the NTP daemon (chrony vs ntpd) via the shared, unit-tested selector -- the same spirit
+    # as xCAT::DHCP::Backend (ISC vs Kea). It honors site.ntpbackend, defaults per distro, and
+    # downgrades chrony->ntpd (or vice versa) to whichever is actually installed.
+    require xCAT::NTP::Backend;
+    my $ntp_backend = xCAT::NTP::Backend->choose(check_available => 1);
+    if ($ntp_backend->{error}) {
+        send_msg(\%request, 1, $ntp_backend->{error});
+        return 1;
+    }
+    my $have_systemctl = (-x "/usr/bin/systemctl" || -x "/bin/systemctl");
+
     # Handle chronyd here,
-    if (-x "/usr/sbin/chronyd" &&
-		(-x "/usr/bin/systemctl" || -x "/bin/systemctl")) {
+    if ($ntp_backend->{name} eq 'chrony' && $have_systemctl) {
         send_msg(\%request, 0, "Will configure chronyd instead.");
 
         my $cmd = "/install/postscripts/setupntp " .
