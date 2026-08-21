@@ -1,0 +1,47 @@
+#!/bin/bash
+set -euo pipefail
+
+sys_scsi_hosts=${XCAT_GENESIS_SYS_SCSI_HOSTS:-/sys/class/scsi_host}
+
+fail() {
+    printf 'iprutils provider: %s\n' "$*" >&2
+    exit 1
+}
+
+probe() {
+    local path driver
+    local -a hosts=()
+
+    shopt -s nullglob
+    for path in "$sys_scsi_hosts"/host*; do
+        [[ -f $path/proc_name ]] || continue
+        read -r driver <"$path/proc_name"
+        [[ $driver == ipr ]] || continue
+        hosts+=("${path##*/}")
+    done
+    jq -cn --args \
+        '{detected: ($ARGS.positional | length > 0), devices: $ARGS.positional}' \
+        -- "${hosts[@]}"
+}
+
+run_capability() {
+    local capability=$1 output
+
+    command -v iprconfig >/dev/null || fail 'iprconfig command is unavailable'
+    case "$capability" in
+        storage.inventory) output=$(iprconfig -c show-config) ;;
+        storage.health) output=$(iprconfig -c show-arrays) ;;
+        storage.firmware.inventory) output=$(iprconfig -c show-ucode-levels) ;;
+        *) fail "unsupported capability: $capability" ;;
+    esac
+    jq -cn --arg output "$output" '{raw: $output}'
+}
+
+case "${1:-}" in
+    probe) probe ;;
+    run)
+        (($# == 4)) || fail 'invalid provider request'
+        run_capability "$2"
+        ;;
+    *) fail 'invalid provider verb' ;;
+esac

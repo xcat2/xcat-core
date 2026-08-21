@@ -1,0 +1,51 @@
+genesis_publish_status() {
+    local status_command=$1 component=$2 log_tag=$3
+    shift 3
+
+    "$status_command" "$component" "$@" \
+        || logger -t "$log_tag" -- "unable to publish $component status"
+}
+
+genesis_uptime_seconds() {
+    local uptime_file=${1:-${XCAT_UPTIME_FILE:-/proc/uptime}}
+    local seconds=0
+
+    if [[ -r $uptime_file ]]; then
+        read -r seconds _ <"$uptime_file" || seconds=0
+        seconds=${seconds%%.*}
+        [[ $seconds =~ ^[0-9]+$ ]] || seconds=0
+    fi
+    printf '%s\n' "$seconds"
+}
+
+genesis_parse_destiny() {
+    local raw=$1 prefix
+
+    XCAT_GENESIS_ACTION=
+    XCAT_GENESIS_TARGET=
+    [[ -n $raw && ${#raw} -le 4096 ]] || return 1
+
+    prefix=${raw%%=*}
+    XCAT_GENESIS_ACTION=${prefix%%[[:space:]]*}
+    if [[ $raw = *=* ]]; then
+        XCAT_GENESIS_TARGET=${raw#*=}
+    elif [[ $raw = *[[:space:]]* ]]; then
+        XCAT_GENESIS_TARGET=${raw#"$XCAT_GENESIS_ACTION"}
+        XCAT_GENESIS_TARGET=${XCAT_GENESIS_TARGET#"${XCAT_GENESIS_TARGET%%[![:space:]]*}"}
+    fi
+
+    [[ $XCAT_GENESIS_ACTION =~ ^[a-z][a-z0-9_-]*$ ]]
+}
+
+genesis_component_state() {
+    local status_dir=$1 component=$2 key value
+
+    [[ -r $status_dir/$component.env ]] || return 1
+    while IFS='=' read -r key value; do
+        if [[ $key == STATE ]]; then
+            printf '%s\n' "$value"
+            return 0
+        fi
+    done <"$status_dir/$component.env"
+    return 1
+}

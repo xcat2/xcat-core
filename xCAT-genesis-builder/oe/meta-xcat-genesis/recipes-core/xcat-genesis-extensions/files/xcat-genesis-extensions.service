@@ -1,0 +1,15 @@
+[Unit]
+Description=Load verified Genesis system extensions
+ConditionDirectoryNotEmpty=/var/lib/xcat/genesis/extensions
+Requires=xcat-genesis-network-ready.target
+After=xcat-genesis-network-ready.target
+Before=xcat-genesis-register.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/xcat/genesis-sysext load-all /var/lib/xcat/genesis/extensions
+RemainAfterExit=yes
+TimeoutStartSec=90
+
+[Install]
+WantedBy=multi-user.target

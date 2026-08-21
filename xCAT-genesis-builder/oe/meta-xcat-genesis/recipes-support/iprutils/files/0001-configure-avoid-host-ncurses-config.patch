@@ -1,0 +1,32 @@
+From 3dd3b6d85ae1ed1cd7e947dd6587fb8d40832875 Mon Sep 17 00:00:00 2001
+From: xCAT Genesis Builder <xcat@users.noreply.github.com>
+Date: Wed, 5 Aug 2026 18:46:00 -0300
+Subject: [PATCH] configure: avoid host ncurses-config
+
+The library and header checks already use the configured compiler and sysroot.
+Calling ncurses-config can add flags from the build host to a cross build.
+
+Upstream-Status: Inappropriate [cross-compile specific]
+Signed-off-by: xCAT Genesis Builder <xcat@users.noreply.github.com>
+---
+ configure.ac | 13 -------------
+ 1 file changed, 13 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 56ee054..2095638 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -137,13 +136,0 @@
+-ncurses_config=$(which ncurses5-config 2> /dev/null)
+-if ! test -n ${ncurses_config}; then
+-  ncurses_config=$(which ncurses6-config 2> /dev/null)
+-fi
+-
+-if test -n ${ncurses_config}; then
+-  ncurses_include="$(${ncurses_config} --cflags)"
+-
+-  if test -n "${ncurses_include}"; then
+-    CFLAGS="${CFLAGS} ${ncurses_include}"
+-  fi
+-fi
+-

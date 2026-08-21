@@ -1,0 +1,9 @@
+[Unit]
+Description=Receive xCAT discovery callbacks
+
+[Socket]
+ListenStream=3001
+Accept=yes
+
+[Install]
+WantedBy=sockets.target

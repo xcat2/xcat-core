@@ -1,0 +1,57 @@
+#!/bin/bash
+set -euo pipefail
+
+sys_pci_devices=${XCAT_GENESIS_SYS_PCI_DEVICES:-/sys/bus/pci/devices}
+
+fail() {
+    printf 'mstflint provider: %s\n' "$*" >&2
+    exit 1
+}
+
+probe() {
+    local path vendor
+    local -a devices=()
+
+    shopt -s nullglob
+    for path in "$sys_pci_devices"/*; do
+        [[ -f $path/vendor ]] || continue
+        read -r vendor <"$path/vendor"
+        [[ $vendor == 0x15b3 || $vendor == 0X15B3 ]] || continue
+        devices+=("${path##*/}")
+    done
+    jq -cn --args \
+        '{detected: ($ARGS.positional | length > 0), devices: $ARGS.positional}' \
+        -- "${devices[@]}"
+}
+
+validate_device() {
+    local vendor
+
+    [[ $1 =~ ^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-7]$ ]] \
+        || fail 'invalid PCI device identity'
+    [[ -f $sys_pci_devices/$1/vendor ]] || fail "PCI device not found: $1"
+    read -r vendor <"$sys_pci_devices/$1/vendor"
+    [[ $vendor == 0x15b3 || $vendor == 0X15B3 ]] \
+        || fail "device is not NVIDIA or Mellanox: $1"
+}
+
+run_capability() {
+    local capability=$1 device=${2:-} output
+
+    [[ $capability == network.firmware.inventory ]] \
+        || fail "unsupported capability: $capability"
+    validate_device "$device"
+    command -v mstflint >/dev/null || fail 'mstflint command is unavailable'
+    output=$(mstflint -d "$device" query)
+    jq -cn --arg device "$device" --arg output "$output" \
+        '{device_id: $device, raw: $output}'
+}
+
+case "${1:-}" in
+    probe) probe ;;
+    run)
+        (($# == 4)) || fail 'invalid provider request'
+        run_capability "$2" "$3"
+        ;;
+    *) fail 'invalid provider verb' ;;
+esac

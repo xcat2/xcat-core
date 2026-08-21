@@ -1,0 +1,304 @@
+#!/bin/bash
+set -euo pipefail
+
+provider_dir=${XCAT_GENESIS_PROVIDER_DIR:-/usr/share/xcat/genesis/providers}
+provider_exec_dir=${XCAT_GENESIS_PROVIDER_EXEC_DIR:-/usr/libexec/xcat/genesis/providers}
+audit_file=${XCAT_GENESIS_HARDWARE_AUDIT:-/run/xcat/hardware-audit.jsonl}
+provider_timeout=${XCAT_GENESIS_PROVIDER_TIMEOUT:-60}
+
+[[ $provider_timeout =~ ^[1-9][0-9]{0,3}$ ]] \
+    || { printf 'genesis-hardware: invalid provider timeout\n' >&2; exit 1; }
+
+fail() {
+    printf 'genesis-hardware: %s\n' "$*" >&2
+    exit 1
+}
+
+usage() {
+    printf '%s\n' \
+        'Usage: genesis-hardware providers' \
+        '       genesis-hardware capabilities PROVIDER' \
+        '       genesis-hardware probe [PROVIDER]' \
+        '       genesis-hardware run PROVIDER CAPABILITY [--device-id ID] [--task-id ID] [--request FILE]' >&2
+    exit 2
+}
+
+validate_provider_name() {
+    [[ $1 =~ ^[a-z][a-z0-9.-]{0,63}$ ]] || fail "invalid provider name: $1"
+}
+
+manifest_path() {
+    local provider=$1 path
+
+    validate_provider_name "$provider"
+    path=$provider_dir/$provider.json
+    [[ -f $path && ! -L $path ]] || fail "provider manifest not found: $provider"
+    printf '%s\n' "$path"
+}
+
+validate_manifest() {
+    local provider=$1 manifest=$2
+
+    jq -e --arg provider "$provider" '
+        type == "object" and
+        (keys | sort) == (["capabilities", "kind", "name", "schema", "version"] | sort) and
+        .schema == 1 and
+        .name == $provider and
+        (.version | type == "string" and test("^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$")) and
+        (.kind | IN("storage", "network", "accelerator", "platform")) and
+        (.capabilities | type == "array" and length > 0) and
+        all(.capabilities[];
+            type == "object" and
+            (keys | sort) == (["destructive", "name"] | sort) and
+            (.name | type == "string" and test("^[a-z][a-z0-9.-]*$")) and
+            (.destructive | type == "boolean")) and
+        (([.capabilities[].name] | length) ==
+         ([.capabilities[].name] | unique | length))
+    ' "$manifest" >/dev/null || fail "invalid provider manifest: $provider"
+}
+
+provider_executable() {
+    local provider=$1 executable
+
+    executable=$provider_exec_dir/$provider
+    [[ -f $executable && ! -L $executable && -x $executable ]] \
+        || fail "provider executable not found: $provider"
+    printf '%s\n' "$executable"
+}
+
+provider_manifest() {
+    local provider=$1 manifest
+
+    manifest=$(manifest_path "$provider")
+    validate_manifest "$provider" "$manifest"
+    printf '%s\n' "$manifest"
+}
+
+invoke_provider() {
+    local provider=$1 verb=$2
+    shift 2
+    local executable output error status size message
+
+    executable=$(provider_executable "$provider")
+    output=$(mktemp)
+    error=$(mktemp)
+
+    if timeout --signal=TERM --kill-after=5 "$provider_timeout" \
+        "$executable" "$verb" "$@" >"$output" 2>"$error"; then
+        status=0
+    else
+        status=$?
+    fi
+
+    if ((status != 0)); then
+        message=$(head -c 4096 "$error")
+        rm -f -- "$output" "$error"
+        printf 'genesis-hardware: provider %s failed: %s\n' "$provider" "$message" >&2
+        return "$status"
+    fi
+
+    size=$(wc -c <"$output")
+    if ((size > 4194304)); then
+        rm -f -- "$output" "$error"
+        printf 'genesis-hardware: provider %s returned too much data\n' "$provider" >&2
+        return 65
+    fi
+    if ! jq -e 'type == "object"' "$output" >/dev/null; then
+        rm -f -- "$output" "$error"
+        printf 'genesis-hardware: provider %s returned invalid JSON\n' "$provider" >&2
+        return 65
+    fi
+
+    cat "$output"
+    rm -f -- "$output" "$error"
+}
+
+write_audit() {
+    local phase=$1 task_id=$2 provider=$3 capability=$4 device_id=$5 request_hash=$6
+    local record timestamp audit_dir
+
+    timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    record=$(jq -cn \
+        --arg timestamp "$timestamp" \
+        --arg phase "$phase" \
+        --arg task_id "$task_id" \
+        --arg provider "$provider" \
+        --arg capability "$capability" \
+        --arg device_id "$device_id" \
+        --arg request_sha256 "$request_hash" \
+        '{schema: 1, timestamp: $timestamp, phase: $phase, task_id: $task_id,
+          provider: $provider, capability: $capability, device_id: $device_id,
+          request_sha256: $request_sha256}')
+
+    audit_dir=$(dirname "$audit_file")
+    install -d -m 0755 "$audit_dir"
+    [[ ! -e $audit_file || (-f $audit_file && ! -L $audit_file) ]] \
+        || fail 'invalid hardware audit file'
+    [[ ! -e $audit_file.lock || (-f $audit_file.lock && ! -L $audit_file.lock) ]] \
+        || fail 'invalid hardware audit lock'
+    (
+        flock -x 9
+        printf '%s\n' "$record" >>"$audit_file"
+    ) 9>"$audit_file.lock"
+}
+
+list_providers() {
+    local manifest provider output
+    local -a manifests
+
+    shopt -s nullglob
+    manifests=("$provider_dir"/*.json)
+    ((${#manifests[@]} > 0)) || fail 'no hardware providers found'
+    output=$(mktemp)
+    for manifest in "${manifests[@]}"; do
+        provider=${manifest##*/}
+        provider=${provider%.json}
+        [[ -f $manifest && ! -L $manifest ]] \
+            || fail "invalid provider manifest: $provider"
+        validate_manifest "$provider" "$manifest"
+        jq -c . "$manifest" >>"$output"
+    done
+    jq -s '{schema: 1, providers: .}' "$output"
+    rm -f -- "$output"
+}
+
+show_capabilities() {
+    local manifest
+
+    manifest=$(provider_manifest "$1")
+    jq '{schema: 1, provider: .name, kind: .kind, version: .version,
+         capabilities: .capabilities}' "$manifest"
+}
+
+probe_providers() {
+    local requested=${1:-} manifest provider result output
+    local -a manifests
+
+    output=$(mktemp)
+    if [[ -n $requested ]]; then
+        manifests=("$(provider_manifest "$requested")")
+    else
+        shopt -s nullglob
+        manifests=("$provider_dir"/*.json)
+        ((${#manifests[@]} > 0)) || fail 'no hardware providers found'
+    fi
+
+    for manifest in "${manifests[@]}"; do
+        provider=${manifest##*/}
+        provider=${provider%.json}
+        [[ -f $manifest && ! -L $manifest ]] \
+            || fail "invalid provider manifest: $provider"
+        validate_manifest "$provider" "$manifest"
+        result=$(invoke_provider "$provider" probe)
+        jq -cn --arg provider "$provider" --argjson result "$result" \
+            '{provider: $provider, result: $result}' >>"$output"
+    done
+    jq -s '{schema: 1, probes: .}' "$output"
+    rm -f -- "$output"
+}
+
+validate_request() {
+    local request=$1 size
+
+    [[ -f $request && ! -L $request ]] || fail "invalid request file: $request"
+    size=$(wc -c <"$request")
+    ((size <= 1048576)) || fail 'hardware request is too large'
+    jq -e 'type == "object"' "$request" >/dev/null \
+        || fail 'hardware request must be a JSON object'
+}
+
+run_capability() {
+    local provider=$1 capability=$2
+    shift 2
+    local manifest destructive device_id='' task_id='' request_file=''
+    local request_hash='' result status
+
+    manifest=$(provider_manifest "$provider")
+    [[ $capability =~ ^[a-z][a-z0-9.-]*$ ]] || fail "invalid capability: $capability"
+    destructive=$(jq -r --arg capability "$capability" \
+        '.capabilities[] | select(.name == $capability) | .destructive | tostring' \
+        "$manifest")
+    [[ $destructive == true || $destructive == false ]] \
+        || fail "provider $provider does not support $capability"
+
+    while (($# > 0)); do
+        case "$1" in
+            --device-id)
+                (($# >= 2)) || usage
+                device_id=$2
+                shift 2
+                ;;
+            --task-id)
+                (($# >= 2)) || usage
+                task_id=$2
+                shift 2
+                ;;
+            --request)
+                (($# >= 2)) || usage
+                request_file=$2
+                shift 2
+                ;;
+            *) usage ;;
+        esac
+    done
+
+    [[ -z $device_id || $device_id =~ ^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$ ]] \
+        || fail 'invalid device identity'
+    [[ -z $task_id || $task_id =~ ^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$ ]] \
+        || fail 'invalid task identity'
+    if [[ -n $request_file ]]; then
+        validate_request "$request_file"
+        request_hash=$(sha256sum -- "$request_file" | awk '{print $1}')
+    fi
+
+    if [[ $destructive == true ]]; then
+        [[ -n $task_id ]] || fail 'destructive capability requires a task identity'
+        [[ -n $device_id && $device_id != all ]] \
+            || fail 'destructive capability requires an exact device identity'
+        [[ -n $request_file ]] || fail 'destructive capability requires a request file'
+        write_audit started "$task_id" "$provider" "$capability" "$device_id" "$request_hash"
+    fi
+
+    if result=$(invoke_provider "$provider" run "$capability" "$device_id" "${request_file:--}"); then
+        status=0
+    else
+        status=$?
+    fi
+
+    if ((status != 0)); then
+        if [[ $destructive == true ]]; then
+            write_audit failed "$task_id" "$provider" "$capability" "$device_id" "$request_hash"
+        fi
+        fail "provider $provider failed capability $capability"
+    fi
+    if [[ $destructive == true ]]; then
+        write_audit completed "$task_id" "$provider" "$capability" "$device_id" "$request_hash"
+    fi
+
+    jq -cn \
+        --arg provider "$provider" \
+        --arg capability "$capability" \
+        --arg device_id "$device_id" \
+        --arg task_id "$task_id" \
+        --argjson result "$result" \
+        '{schema: 1, provider: $provider, capability: $capability,
+          device_id: (if $device_id == "" then null else $device_id end),
+          task_id: (if $task_id == "" then null else $task_id end),
+          result: $result}'
+}
+
+[[ $# -ge 1 ]] || usage
+command=$1
+shift
+
+case "$command:$#" in
+    providers:0) list_providers ;;
+    capabilities:1) show_capabilities "$1" ;;
+    probe:0) probe_providers ;;
+    probe:1) probe_providers "$1" ;;
+    run:*)
+        (($# >= 2)) || usage
+        run_capability "$@"
+        ;;
+    *) usage ;;
+esac

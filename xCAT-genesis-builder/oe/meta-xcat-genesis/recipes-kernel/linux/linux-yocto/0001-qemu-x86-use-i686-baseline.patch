@@ -1,0 +1,26 @@
+From: xCAT Genesis Builder <xcat@users.noreply.github.com>
+Date: Wed, 5 Aug 2026 20:02:00 -0300
+Subject: [PATCH] qemu-x86: use the i686 CPU baseline
+
+The qemux86 metadata selects Pentium M. Genesis uses generic i686 so one
+kernel can cover the supported 32-bit x86 processors.
+
+Upstream-Status: Inappropriate [xCAT Genesis hardware baseline]
+Signed-off-by: xCAT Genesis Builder <xcat@users.noreply.github.com>
+---
+ bsp/common-pc/common-pc-cpu.cfg | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/bsp/common-pc/common-pc-cpu.cfg b/bsp/common-pc/common-pc-cpu.cfg
+index 1e8237e..2af9421 100644
+--- a/bsp/common-pc/common-pc-cpu.cfg
++++ b/bsp/common-pc/common-pc-cpu.cfg
+@@ -11,7 +11,7 @@
+ # consult the product documentation.
+ #
+ #.........................................................................
+-CONFIG_MPENTIUMM=y
++CONFIG_M686=y
+ CONFIG_X86_GENERIC=y
+ CONFIG_X86_TSC=y
+ CONFIG_X86_MCE=y

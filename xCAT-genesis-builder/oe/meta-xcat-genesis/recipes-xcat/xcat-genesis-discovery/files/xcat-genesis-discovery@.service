@@ -1,0 +1,9 @@
+[Unit]
+Description=Handle an xCAT discovery callback
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/xcat/genesis-discovery-callback
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal

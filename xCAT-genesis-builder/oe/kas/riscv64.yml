@@ -1,0 +1,6 @@
+header:
+  version: 19
+  includes:
+    - xCAT-genesis-builder/oe/kas/common.yml
+
+machine: xcat-genesis-riscv64

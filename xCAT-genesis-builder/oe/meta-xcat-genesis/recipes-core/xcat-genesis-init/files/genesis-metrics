@@ -1,0 +1,87 @@
+#!/bin/sh
+set -eu
+
+registration_file=${XCAT_REGISTRATION_STATUS_FILE:-/run/xcat/status/registration.env}
+meminfo_file=${XCAT_MEMINFO_FILE:-/proc/meminfo}
+uptime_file=${XCAT_UPTIME_FILE:-/proc/uptime}
+
+fail() {
+    printf 'genesis-metrics: %s\n' "$*" >&2
+    exit 1
+}
+
+case "$#" in
+    0) output_file= ;;
+    2)
+        [ "$1" = '--output' ] || fail 'usage: genesis-metrics [--output FILE]'
+        output_file=$2
+        ;;
+    *) fail 'usage: genesis-metrics [--output FILE]' ;;
+esac
+
+schema=
+registration_state=
+boot_ready_seconds=
+while IFS='=' read -r name value; do
+    case "$name" in
+        SCHEMA) schema=$value ;;
+        STATE) registration_state=$value ;;
+        UPDATED_SECONDS) boot_ready_seconds=$value ;;
+    esac
+done <"$registration_file"
+
+[ "$schema" = 1 ] && [ "$registration_state" = ACTION_RECEIVED ] \
+    || fail 'Genesis has not received an xCAT action'
+case "$boot_ready_seconds" in
+    ''|*[!0-9]*) fail 'registration time is invalid' ;;
+esac
+
+read -r capture_uptime_seconds _ <"$uptime_file"
+capture_uptime_seconds=${capture_uptime_seconds%%.*}
+case "$capture_uptime_seconds" in
+    ''|*[!0-9]*) fail 'uptime is invalid' ;;
+esac
+
+memory_total_kib=
+memory_available_kib=
+while read -r name value _; do
+    case "$name" in
+        MemTotal:) memory_total_kib=$value ;;
+        MemAvailable:) memory_available_kib=$value ;;
+    esac
+done <"$meminfo_file"
+case "$memory_total_kib" in
+    ''|*[!0-9]*) fail 'total memory is invalid' ;;
+esac
+case "$memory_available_kib" in
+    ''|*[!0-9]*) fail 'available memory is invalid' ;;
+esac
+[ "$memory_available_kib" -le "$memory_total_kib" ] \
+    || fail 'available memory exceeds total memory'
+memory_used_kib=$((memory_total_kib - memory_available_kib))
+
+write_metrics() {
+    printf 'SCHEMA=1\n'
+    printf 'BOOT_READY_SECONDS=%s\n' "$boot_ready_seconds"
+    printf 'CAPTURE_UPTIME_SECONDS=%s\n' "$capture_uptime_seconds"
+    printf 'MEMORY_TOTAL_KIB=%s\n' "$memory_total_kib"
+    printf 'MEMORY_AVAILABLE_KIB=%s\n' "$memory_available_kib"
+    printf 'MEMORY_USED_KIB=%s\n' "$memory_used_kib"
+}
+
+if [ -z "$output_file" ]; then
+    write_metrics
+    exit 0
+fi
+
+case "$output_file" in
+    */*) output_dir=${output_file%/*}; [ -n "$output_dir" ] || output_dir=/ ;;
+    *) output_dir=. ;;
+esac
+install -d -m 0755 "$output_dir"
+temporary_file=$(mktemp "$output_dir/.metrics.XXXXXX")
+trap 'rm -f -- "$temporary_file"' EXIT HUP INT TERM
+write_metrics >"$temporary_file"
+chmod 0644 "$temporary_file"
+mv -f -- "$temporary_file" "$output_file"
+trap - EXIT HUP INT TERM

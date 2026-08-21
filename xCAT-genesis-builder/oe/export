@@ -1,0 +1,85 @@
+#!/bin/bash
+set -euo pipefail
+
+fail() {
+    printf 'Genesis export: %s\n' "$*" >&2
+    exit 1
+}
+
+if (($# != 3)); then
+    printf '%s\n' 'Usage: export ARCHITECTURE DEPLOY_DIRECTORY OUTPUT_DIRECTORY' >&2
+    exit 2
+fi
+
+architecture=$1
+deploy_dir=${2%/}
+output_dir=${3%/}
+
+case "$architecture" in
+    x86) kernel_name=bzImage ;;
+    x86_64) kernel_name=bzImage ;;
+    ppc64) kernel_name=vmlinux ;;
+    ppc64le) kernel_name=vmlinux ;;
+    armv7hf) kernel_name=zImage ;;
+    aarch64) kernel_name=Image ;;
+    riscv64) kernel_name=Image ;;
+    *) fail "unsupported architecture: $architecture" ;;
+esac
+
+[[ -d $deploy_dir && ! -L $deploy_dir ]] \
+    || fail "invalid deploy directory: $deploy_dir"
+[[ ! -e $output_dir && ! -L $output_dir ]] \
+    || fail "output already exists: $output_dir"
+
+machine=xcat-genesis-${architecture//_/-}
+machine_dir=$deploy_dir/images/$machine
+image_name=xcat-genesis-image-$machine.rootfs
+license_machine=${machine//-/_}
+
+resolve_artifact() {
+    local path=$1 resolved
+
+    resolved=$(readlink -f -- "$path")
+    [[ -f $resolved && ! -L $resolved ]] || fail "missing artifact: $path"
+    printf '%s\n' "$resolved"
+}
+
+kernel=$(resolve_artifact "$machine_dir/$kernel_name")
+initramfs=$(resolve_artifact "$machine_dir/$image_name.cpio.gz")
+package_manifest=$(resolve_artifact "$machine_dir/$image_name.manifest")
+spdx=$(resolve_artifact "$machine_dir/$image_name.spdx.json")
+vex=$(resolve_artifact "$machine_dir/$image_name.vex.json")
+license_dir=$(basename "${package_manifest%.manifest}")
+license_manifest=$(resolve_artifact \
+    "$deploy_dir/licenses/$license_machine/$license_dir/license.manifest")
+
+parent=$(dirname -- "$output_dir")
+name=$(basename -- "$output_dir")
+install -d -m 0755 "$parent"
+staging=$(mktemp -d "$parent/.${name}.XXXXXX")
+trap 'rm -rf -- "$staging"' EXIT
+
+install -m 0644 "$kernel" "$staging/kernel"
+install -m 0644 "$initramfs" "$staging/initramfs.cpio.gz"
+install -m 0644 "$package_manifest" "$staging/image.manifest"
+install -m 0644 "$spdx" "$staging/image.spdx.json"
+install -m 0644 "$vex" "$staging/image.vex.json"
+install -m 0644 "$license_manifest" "$staging/license.manifest"
+printf 'format=xcat-genesis\nversion=1\narchitecture=%s\n' "$architecture" \
+    >"$staging/xcat-genesis.manifest"
+chmod 0644 "$staging/xcat-genesis.manifest"
+
+if [[ $architecture == riscv64 ]]; then
+    firmware=$(resolve_artifact "$machine_dir/fw_jump.elf")
+    install -m 0644 "$firmware" "$staging/fw_jump.elf"
+fi
+
+(
+    cd "$staging"
+    sha256sum -- * >SHA256SUMS
+    sha256sum -c SHA256SUMS >/dev/null
+)
+
+mv -- "$staging" "$output_dir"
+trap - EXIT
+printf 'Exported Genesis %s to %s\n' "$architecture" "$output_dir"

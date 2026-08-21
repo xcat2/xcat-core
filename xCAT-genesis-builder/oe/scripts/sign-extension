@@ -1,0 +1,38 @@
+#!/bin/bash
+set -euo pipefail
+
+if [[ $# -lt 2 || $# -gt 3 ]]; then
+    printf '%s\n' 'Usage: sign-extension MANIFEST PRIVATE_KEY [SIGNATURE]' >&2
+    exit 2
+fi
+
+manifest=$1
+private_key=$2
+signature=${3:-${manifest%.manifest.json}.sig}
+
+[[ -f $manifest && ! -L $manifest ]] || {
+    printf 'Invalid extension manifest: %s\n' "$manifest" >&2
+    exit 1
+}
+[[ -f $private_key && ! -L $private_key ]] || {
+    printf 'Invalid private key: %s\n' "$private_key" >&2
+    exit 1
+}
+openssl pkey -in "$private_key" -text -noout 2>/dev/null \
+    | grep -q '^ED25519 Private-Key:' || {
+        printf '%s\n' 'The extension key must be Ed25519' >&2
+        exit 1
+    }
+
+umask 077
+temporary=$(mktemp "${signature}.XXXXXX")
+trap 'rm -f -- "$temporary"' EXIT
+openssl pkeyutl -sign -inkey "$private_key" -rawin \
+    -in "$manifest" -out "$temporary"
+[[ $(wc -c <"$temporary") -eq 64 ]] || {
+    printf '%s\n' 'OpenSSL returned an invalid Ed25519 signature' >&2
+    exit 1
+}
+mv -f -- "$temporary" "$signature"
+trap - EXIT
+printf 'Wrote %s\n' "$signature"

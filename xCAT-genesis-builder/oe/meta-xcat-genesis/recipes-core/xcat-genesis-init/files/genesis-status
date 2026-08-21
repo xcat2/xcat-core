@@ -1,0 +1,110 @@
+#!/bin/sh
+set -eu
+
+LC_ALL=C
+export LC_ALL
+
+status_dir=${XCAT_STATUS_DIR:-/run/xcat/status}
+uptime_file=${XCAT_UPTIME_FILE:-/proc/uptime}
+
+fail() {
+    printf 'genesis-status: %s\n' "$*" >&2
+    exit 1
+}
+
+[ "$#" -ge 2 ] \
+    || fail 'usage: genesis-status COMPONENT STATE [DETAIL] [NAME=VALUE ...]'
+
+component=$1
+state=$2
+shift 2
+detail=${1:-}
+[ "$#" -eq 0 ] || shift
+
+case "$component" in
+    ''|*[!a-z0-9-]*) fail 'invalid component' ;;
+esac
+[ "${#component}" -le 32 ] || fail 'invalid component'
+
+case "$state" in
+    STARTING|IDLE|WAITING_FOR_LINK|CONFIGURING_NETWORK|CONTACTING_XCAT|ACTION_RECEIVED|RUNNING|READY|DEGRADED|FAILED) ;;
+    *) fail 'invalid state' ;;
+esac
+
+detail=$(printf '%s' "$detail" \
+    | tr '\r\n\t' '   ' \
+    | tr -cd '\040-\176' \
+    | cut -c 1-160)
+
+uptime=0
+if [ -r "$uptime_file" ]; then
+    read -r uptime _ <"$uptime_file" || uptime=0
+    uptime=${uptime%%.*}
+    case "$uptime" in
+        ''|*[!0-9]*) uptime=0 ;;
+    esac
+fi
+
+started_seconds=$uptime
+status_file=$status_dir/$component.env
+if [ -r "$status_file" ]; then
+    previous_schema=
+    previous_state=
+    previous_started=
+    while IFS='=' read -r name value; do
+        case "$name" in
+            SCHEMA) previous_schema=$value ;;
+            STATE) previous_state=$value ;;
+            STARTED_SECONDS) previous_started=$value ;;
+        esac
+    done <"$status_file"
+    case "$previous_started" in
+        ''|*[!0-9]*) ;;
+        *)
+            if [ "$previous_schema" = 1 ] && [ "$previous_state" = "$state" ]; then
+                started_seconds=$previous_started
+            fi
+            ;;
+    esac
+fi
+
+install -d -m 0755 "$status_dir"
+temporary_file=$(mktemp "$status_dir/.${component}.XXXXXX")
+trap 'rm -f -- "$temporary_file"' EXIT HUP INT TERM
+{
+    printf 'SCHEMA=1\n'
+    printf 'STATE=%s\n' "$state"
+    printf 'DETAIL=%s\n' "$detail"
+    printf 'STARTED_SECONDS=%s\n' "$started_seconds"
+    printf 'UPDATED_SECONDS=%s\n' "$uptime"
+    seen_fields=' '
+    for field in "$@"; do
+        case "$field" in
+            *=*) name=${field%%=*}; value=${field#*=} ;;
+            *) fail 'invalid field' ;;
+        esac
+        case "$name" in
+            CODE|RECOVERY|ATTEMPT|ATTEMPT_LIMIT|NEXT_RETRY_SECONDS|VERIFIED_SECONDS|NODE_NAME|ACTION|TARGET|PROGRESS_PERCENT) ;;
+            *) fail 'invalid field name' ;;
+        esac
+        case "$seen_fields" in
+            *" $name "*) fail 'duplicate field name' ;;
+        esac
+        seen_fields="$seen_fields$name "
+        value=$(printf '%s' "$value" \
+            | tr '\r\n\t' '   ' \
+            | tr -cd '\040-\176' \
+            | cut -c 1-240)
+        case "$name" in
+            ATTEMPT|ATTEMPT_LIMIT|NEXT_RETRY_SECONDS|VERIFIED_SECONDS|PROGRESS_PERCENT)
+                case "$value" in
+                    ''|*[!0-9]*) fail 'invalid numeric field' ;;
+                esac
+                ;;
+        esac
+        printf '%s=%s\n' "$name" "$value"
+    done
+} >"$temporary_file"
+chmod 0644 "$temporary_file"
+mv -f -- "$temporary_file" "$status_dir/$component.env"
+trap - EXIT HUP INT TERM

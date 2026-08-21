@@ -1,0 +1,24 @@
+[Unit]
+Description=xCAT Genesis status console on %I
+After=systemd-user-sessions.service
+Before=serial-getty@%i.service
+Conflicts=serial-getty@%i.service
+
+[Service]
+Type=simple
+Environment=LANG=C
+Environment=TERM=xterm
+Environment=COLUMNS=80
+Environment=LINES=24
+ExecStart=/usr/sbin/xcat-genesis-console
+StandardInput=tty-force
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/%I
+TTYReset=yes
+TTYVHangup=yes
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target

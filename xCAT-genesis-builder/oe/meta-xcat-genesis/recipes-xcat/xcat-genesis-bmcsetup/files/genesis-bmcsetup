@@ -1,0 +1,9 @@
+#!/bin/bash
+set -euo pipefail
+
+support_dir=${XCAT_BMC_SUPPORT_DIR:-/usr/libexec/xcat/genesis/bmc-support}
+implementation=${XCAT_BMC_SETUP_IMPLEMENTATION:-/usr/libexec/xcat/genesis/bmcsetup}
+
+[[ -d $support_dir && -r $implementation ]] || exit 1
+export PATH="$support_dir:$PATH"
+exec /bin/bash "$implementation" "$@"

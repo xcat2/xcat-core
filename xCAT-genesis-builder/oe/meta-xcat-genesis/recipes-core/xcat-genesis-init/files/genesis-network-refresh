@@ -1,0 +1,97 @@
+#!/bin/bash
+set -euo pipefail
+
+state_dir=${XCAT_STATE_DIR:-/run/xcat}
+network_file=${XCAT_NETWORK_FILE:-$state_dir/genesis.env}
+network_state_command=${XCAT_NETWORK_STATE_COMMAND:-/usr/libexec/xcat/genesis-network-state}
+sys_class_net=${XCAT_SYS_CLASS_NET:-/sys/class/net}
+callback=${1:-restart}
+declare -a rollback_interfaces=()
+declare -a rollback_connections=()
+rollback_required=0
+
+remember_connection() {
+    local interface=$1 connection
+
+    connection=$(nmcli -g GENERAL.CON-UUID device show "$interface" 2>/dev/null \
+        || true)
+    rollback_interfaces+=("$interface")
+    rollback_connections+=("$connection")
+}
+
+restore_connections() {
+    local result=$? index interface connection
+
+    trap - EXIT
+    if ((result != 0 && rollback_required == 1)); then
+        logger -t xcat-genesis-network-refresh -- \
+            'network refresh failed; restoring previous connections'
+        for ((index = 0; index < ${#rollback_interfaces[@]}; index++)); do
+            interface=${rollback_interfaces[index]}
+            connection=${rollback_connections[index]}
+            if [[ -n $connection ]]; then
+                nmcli --wait 30 connection up uuid "$connection" \
+                    ifname "$interface" >/dev/null 2>&1 || true
+            else
+                nmcli --wait 30 device connect "$interface" >/dev/null 2>&1 \
+                    || true
+            fi
+        done
+    fi
+    exit "$result"
+}
+
+[[ -r $network_file ]] || exit 1
+# shellcheck disable=SC1090
+source "$network_file"
+
+[[ ${XCAT_NETWORK_METHOD:-auto} = auto ]] || exit 0
+: "${XCAT_INTERFACE:?management interface is missing from network state}"
+
+declare -a requested_interfaces=()
+if [[ $callback = 'restart ('*')' ]]; then
+    requested=${callback#restart (}
+    requested=${requested%)}
+    IFS='|' read -r -a requested_interfaces <<<"$requested"
+fi
+if ((${#requested_interfaces[@]} == 0)); then
+    requested_interfaces=("$XCAT_INTERFACE")
+fi
+
+for interface in "${requested_interfaces[@]}"; do
+    [[ $interface =~ ^[A-Za-z0-9_.-]+$ && -e $sys_class_net/$interface ]] \
+        || exit 1
+    remember_connection "$interface"
+done
+
+rollback_required=1
+trap restore_connections EXIT
+
+if [[ $callback = 'restart ('*')' ]]; then
+    while IFS=: read -r interface device_type; do
+        [[ $device_type = ethernet ]] || continue
+        keep=0
+        for requested_interface in "${requested_interfaces[@]}"; do
+            if [[ $interface = "$requested_interface" ]]; then
+                keep=1
+                break
+            fi
+        done
+        if ((keep == 0)); then
+            remember_connection "$interface"
+            nmcli --wait 10 device disconnect "$interface" >/dev/null 2>&1 \
+                || true
+        fi
+    done < <(nmcli -t -f DEVICE,TYPE device status 2>/dev/null || true)
+fi
+
+for interface in "${requested_interfaces[@]}"; do
+    nmcli --wait 10 device disconnect "$interface" >/dev/null 2>&1 || true
+done
+for interface in "${requested_interfaces[@]}"; do
+    nmcli --wait 30 device connect "$interface" >/dev/null
+done
+
+"$network_state_command"
+rollback_required=0
+trap - EXIT

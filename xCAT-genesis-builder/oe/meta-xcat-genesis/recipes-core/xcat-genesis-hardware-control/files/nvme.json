@@ -1,0 +1,12 @@
+{
+  "capabilities": [
+    {"destructive": false, "name": "storage.firmware.inventory"},
+    {"destructive": false, "name": "storage.health"},
+    {"destructive": false, "name": "storage.inventory"},
+    {"destructive": false, "name": "storage.logs"}
+  ],
+  "kind": "storage",
+  "name": "nvme",
+  "schema": 1,
+  "version": "1.0"
+}

@@ -1,0 +1,323 @@
+#!/bin/bash
+set -euo pipefail
+
+state_dir=${XCAT_STATE_DIR:-/run/xcat}
+status_command=${XCAT_STATUS_COMMAND:-/usr/libexec/xcat/genesis-status}
+network_file=${XCAT_NETWORK_FILE:-$state_dir/genesis.env}
+response_file=${XCAT_DISCOVERY_RESPONSE_FILE:-$state_dir/discovery-response}
+network_refresh_command=${XCAT_NETWORK_REFRESH_COMMAND:-/usr/libexec/xcat/genesis-network-refresh}
+sys_root=${XCAT_SYS_ROOT:-}
+proc_root=${XCAT_PROC_ROOT:-/proc}
+key_dir=${XCAT_KEY_DIR:-/etc/xcat}
+maximum_attempts=${XCAT_DISCOVERY_ATTEMPTS:-36}
+retry_seconds=${XCAT_DISCOVERY_RETRY_SECONDS:-5}
+ipmitool_command=${XCAT_IPMITOOL_COMMAND:-ipmitool}
+lldp_command=${XCAT_LLDP_COMMAND:-lldpcli}
+failure_code=DISCOVERY_FAILED
+failure_detail='Node discovery failed'
+failure_recovery='Check xCAT discovery policy and the management network'
+temporary_dir=
+
+[[ "$maximum_attempts" =~ ^[1-9][0-9]*$ ]] || maximum_attempts=36
+[[ "$retry_seconds" =~ ^[0-9]+$ ]] || retry_seconds=5
+
+publish_status() {
+    "$status_command" discovery "$@" \
+        || logger -t xcat-genesis-discover -- 'unable to publish discovery status'
+}
+
+# shellcheck disable=SC2329
+finish_status() {
+    local result=$?
+
+    trap - EXIT
+    [[ -z $temporary_dir ]] || rm -rf -- "$temporary_dir"
+    if ((result != 0)); then
+        publish_status FAILED "$failure_detail" \
+            "CODE=$failure_code" "RECOVERY=$failure_recovery"
+    fi
+    exit "$result"
+}
+
+fail_discovery() {
+    failure_code=$1
+    failure_detail=$2
+    failure_recovery=$3
+    logger -t xcat-genesis-discover -- "$failure_detail"
+    exit 1
+}
+
+xml_escape() {
+    local value=$1
+
+    value=${value//&/\&amp;}
+    value=${value//</\&lt;}
+    value=${value//>/\&gt;}
+    value=${value//\"/\&quot;}
+    value=${value//\'/\&apos;}
+    printf '%s' "$value"
+}
+
+append_element() {
+    local name=$1 value=${2:-}
+
+    [[ -n $value ]] || return 0
+    printf '<%s>%s</%s>\n' "$name" "$(xml_escape "$value")" "$name" \
+        >>"$unsigned_packet"
+}
+
+read_value() {
+    local value_file=$1
+
+    [[ -r $value_file ]] || return 1
+    tr -d '\000\r\n' <"$value_file" | head -c 512
+}
+
+send_packet() {
+    if [[ -n ${XCAT_DISCOVERY_SEND_COMMAND:-} ]]; then
+        "$XCAT_DISCOVERY_SEND_COMMAND" "$compressed_packet" "$XCATMASTER" "$XCATPORT"
+        return
+    fi
+
+    /usr/libexec/xcat/genesis-udp-send \
+        "$compressed_packet" "$XCATMASTER" "$XCATPORT"
+}
+
+trap finish_status EXIT HUP INT TERM
+
+[[ -r $network_file ]] || fail_discovery DISCOVERY_NETWORK_STATE_MISSING \
+    'Management network state is unavailable' \
+    'Wait for Genesis networking or review its failure'
+# shellcheck disable=SC1090
+source "$network_file"
+: "${XCATMASTER:?xCAT master is missing from network state}"
+: "${XCATPORT:?xCAT port is missing from network state}"
+: "${XCAT_INTERFACE:?management interface is missing from network state}"
+
+install -d -m 0700 "$key_dir"
+if [[ ! -s $key_dir/privkey.pem ]]; then
+    umask 077
+    openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 \
+        -out "$key_dir/privkey.pem" >/dev/null 2>&1 \
+        || fail_discovery DISCOVERY_KEY_FAILED \
+            'Unable to create the discovery identity' \
+            'Review entropy and OpenSSL diagnostics'
+fi
+openssl pkey -in "$key_dir/privkey.pem" -noout >/dev/null 2>&1 \
+    || fail_discovery DISCOVERY_KEY_INVALID \
+        'The discovery identity is invalid' \
+        'Replace the damaged Genesis runtime state and retry'
+
+temporary_dir=$(mktemp -d "${TMPDIR:-/tmp}/genesis-discovery.XXXXXX")
+unsigned_packet=$temporary_dir/request.xml
+signed_packet=$temporary_dir/request-signed.xml
+signature_file=$temporary_dir/signature
+compressed_packet=$temporary_dir/request.xml.gz
+
+architecture=$(uname -m)
+case "$architecture" in
+    i?86) architecture=x86 ;;
+    armv7l) architecture=armv7hf ;;
+esac
+
+product_name=$(read_value "$sys_root/sys/devices/virtual/dmi/id/product_name" || true)
+system_vendor=$(read_value "$sys_root/sys/devices/virtual/dmi/id/sys_vendor" || true)
+serial=$(read_value "$sys_root/sys/devices/virtual/dmi/id/product_serial" || true)
+uuid=$(read_value "$sys_root/sys/devices/virtual/dmi/id/product_uuid" || true)
+machine_type=
+[[ -z $system_vendor && -z $product_name ]] \
+    || machine_type=${system_vendor:+$system_vendor:}$product_name
+platform=$(awk -F ':' \
+    '/^platform[[:space:]]*:/ {sub(/^[[:space:]]+/, "", $2); print $2; exit}' \
+    "$proc_root/cpuinfo" 2>/dev/null || true)
+if [[ -z $product_name ]]; then
+    product_name=$(read_value "$proc_root/device-tree/model" || true)
+    [[ -n $product_name ]] \
+        || product_name=$(read_value \
+            "$sys_root/sys/firmware/devicetree/base/model" || true)
+    machine_type=${product_name##*,}
+    serial=$(read_value "$proc_root/device-tree/system-id" || true)
+    [[ -n $serial ]] \
+        || serial=$(read_value \
+            "$sys_root/sys/firmware/devicetree/base/serial-number" || true)
+    serial=${serial##*,}
+fi
+machine_type=${machine_type//./}
+serial=${serial//./}
+node_type=
+case "$system_vendor $product_name" in
+    *KVM*|*QEMU*|*VMware*|*VirtualBox*|*Bochs*|*Hyper-V*) node_type=virtual ;;
+esac
+
+cpu_count=$(awk '/^(processor|cpu)[[:space:]]*:/ {count++} END {print count + 0}' \
+    "$proc_root/cpuinfo" 2>/dev/null || printf '0')
+cpu_type=$(awk -F ':' \
+    '/^(model name|cpu)[[:space:]]*:/ {sub(/^[[:space:]]+/, "", $2); print $2; exit}' \
+    "$proc_root/cpuinfo" 2>/dev/null || true)
+memory=$(awk '/^MemTotal:/ {printf "%.0fMB", $2 / 1024; exit}' \
+    "$proc_root/meminfo" 2>/dev/null || true)
+disk_size=$(lsblk -b -dn -o NAME,SIZE,TYPE 2>/dev/null \
+    | awk '$3 == "disk" {printf "%s%s:%.0fGB", separator, $1, $2 / 1073741824; separator=","}' \
+    || true)
+
+printf '%s\n' '<xcatrequest>' '<command>findme</command>' \
+    '<sequential>1</sequential>' >"$unsigned_packet"
+append_element arch "$architecture"
+append_element nodetype "$node_type"
+append_element cpucount "$cpu_count"
+append_element cputype "$cpu_type"
+append_element memory "$memory"
+append_element disksize "$disk_size"
+append_element mtm "$machine_type"
+append_element serial "$serial"
+append_element platform "$platform"
+
+if [[ -e $sys_root/dev/ipmi0 || -e $sys_root/dev/ipmi/0 || -e $sys_root/dev/ipmidev/0 ]]; then
+    append_element bmcinband 1
+fi
+if command -v "$ipmitool_command" >/dev/null 2>&1 \
+    && "$ipmitool_command" mc info >/dev/null 2>&1; then
+    lan_channel=$("$ipmitool_command" sol info 2>/dev/null \
+        | awk -F ':' '/Payload Channel/ {gsub(/[[:space:]]/, "", $2); print $2; exit}' \
+        || true)
+    if [[ -n $lan_channel ]]; then
+        bmc_data=$("$ipmitool_command" lan print "$lan_channel" 2>/dev/null \
+            || "$ipmitool_command" lan print 2>/dev/null || true)
+    else
+        bmc_data=$("$ipmitool_command" lan print 2>/dev/null || true)
+    fi
+    bmc_source=$(awk -F ':' \
+        '/IP Address Source/ {sub(/^[[:space:]]+/, "", $2); print $2; exit}' \
+        <<<"$bmc_data")
+    bmc_address=$(awk -F ':' \
+        '/^IP Address[[:space:]]*:/ {sub(/^[[:space:]]+/, "", $2); print $2; exit}' \
+        <<<"$bmc_data")
+    bmc_mac=$(awk -F ':' \
+        '/MAC Address/ {sub(/^[[:space:]]+/, "", $2); print $2 ":" $3 ":" $4 ":" $5 ":" $6 ":" $7; exit}' \
+        <<<"$bmc_data")
+    [[ $bmc_source != *Static* ]] || append_element bmc "$bmc_address"
+    append_element bmcmac "$bmc_mac"
+fi
+
+shopt -s nullglob
+first_mac=
+for interface_dir in "$sys_root/sys/class/net"/*; do
+    interface=${interface_dir##*/}
+    [[ $interface != lo && -r $interface_dir/address ]] || continue
+    mac_address=$(read_value "$interface_dir/address" || true)
+    [[ -n $mac_address ]] || continue
+    driver=unknown
+    if [[ -L $interface_dir/device/driver ]]; then
+        driver=$(basename "$(readlink -f "$interface_dir/device/driver")")
+    fi
+    normalized_mac=$(printf '%s' "$mac_address" | tr 'a-f' 'A-F')
+    [[ -n $first_mac ]] || first_mac=${normalized_mac//:/}
+    ipv4_address=$(ip -4 -o address show dev "$interface" scope global 2>/dev/null \
+        | awk 'NR == 1 {print $4}' || true)
+    ipv6_address=$(ip -6 -o address show dev "$interface" scope global 2>/dev/null \
+        | awk 'NR == 1 {print $4}' || true)
+    address=${ipv4_address:-$ipv6_address}
+    pci_slot=$(awk -F= '$1 == "PCI_SLOT_NAME" {print $2; exit}' \
+        "$interface_dir/device/uevent" 2>/dev/null || true)
+    mac_record="$driver|$interface|$normalized_mac|$address"
+    append_element mac "$mac_record"
+    printf '%s\n' '<nic>' >>"$unsigned_packet"
+    append_element devname "$interface"
+    append_element driver "$driver"
+    append_element ip4address "$ipv4_address"
+    append_element ip6address "$ipv6_address"
+    append_element hwaddr "$normalized_mac"
+    append_element pcidev "$pci_slot"
+    location=$(read_value "$interface_dir/device/physical_slot" || true)
+    [[ -n $location ]] \
+        || location=$(read_value "$interface_dir/device/label" || true)
+    append_element location "$location"
+    if command -v "$lldp_command" >/dev/null 2>&1; then
+        lldp_data=$("$lldp_command" show neighbors ports "$interface" \
+            details -f keyvalue 2>/dev/null || true)
+        switch_name=$(awk -F= \
+            '/\.chassis\.name=/ {print substr($0, index($0, "=") + 1); exit}' \
+            <<<"$lldp_data")
+        switch_address=$(awk -F= \
+            '/\.chassis\.mgmt-ip=/ {print substr($0, index($0, "=") + 1); exit}' \
+            <<<"$lldp_data")
+        switch_description=$(awk -F= \
+            '/\.chassis\.descr=/ {print substr($0, index($0, "=") + 1); exit}' \
+            <<<"$lldp_data")
+        switch_port=$(awk -F= \
+            '/\.port\.descr=/ {print substr($0, index($0, "=") + 1); exit}' \
+            <<<"$lldp_data")
+        append_element switchname "$switch_name"
+        append_element switchaddr "$switch_address"
+        append_element switchdesc "$switch_description"
+        append_element switchport "$switch_port"
+    fi
+    printf '%s\n' '</nic>' >>"$unsigned_packet"
+done
+
+if [[ -z $uuid ]]; then
+    uuid=${machine_type:-$architecture}-${serial:-unknown}-${first_mac:-unknown}
+    uuid=$(printf '%s' "$uuid" | tr '[:upper:]' '[:lower:]')
+fi
+append_element uuid "$uuid"
+
+public_key=$(openssl pkey -in "$key_dir/privkey.pem" -pubout 2>/dev/null \
+    | awk '!/PUBLIC KEY/ {printf "%s", $0}')
+append_element xcatpubkey "$public_key"
+printf '%s\n' '<sha512sig>' '</sha512sig>' '</xcatrequest>' \
+    >>"$unsigned_packet"
+
+openssl dgst -sha512 -sign "$key_dir/privkey.pem" \
+    -out "$signature_file" "$unsigned_packet" \
+    || fail_discovery DISCOVERY_SIGNATURE_FAILED \
+        'Unable to sign the discovery inventory' \
+        'Review the Genesis discovery identity'
+signature=$(openssl base64 -A -in "$signature_file")
+awk -v signature="$signature" \
+    '/<\/sha512sig>/ {print signature} {print}' \
+    "$unsigned_packet" >"$signed_packet"
+gzip -9 -c "$signed_packet" >"$compressed_packet"
+packet_size=$(wc -c <"$compressed_packet")
+((packet_size <= 60000)) || fail_discovery DISCOVERY_PACKET_TOO_LARGE \
+    "Discovery inventory is too large: $packet_size bytes" \
+    'Review the attached device inventory'
+
+rm -f -- "$response_file"
+for ((attempt = 1; attempt <= maximum_attempts; attempt++)); do
+    publish_status RUNNING 'Sending hardware inventory to xCAT' \
+        "ATTEMPT=$attempt" "ATTEMPT_LIMIT=$maximum_attempts"
+    if ! send_packet; then
+        logger -t xcat-genesis-discover -- 'unable to send discovery inventory'
+    fi
+    for ((waited = 0; waited < retry_seconds; waited++)); do
+        if [[ -s $response_file ]]; then
+            response=$(head -n 1 "$response_file")
+            case "$response" in
+                restart|restart\ \(*\))
+                    publish_status CONFIGURING_NETWORK \
+                        'Applying the discovered network identity'
+                    "$network_refresh_command" "$response" \
+                        || fail_discovery DISCOVERY_NETWORK_REFRESH_FAILED \
+                            'The discovered network identity could not be applied' \
+                            'Check the new DHCP reservation and management interface'
+                    publish_status READY 'xCAT accepted the discovered node' \
+                        'PROGRESS_PERCENT=100'
+                    logger -t xcat-genesis-discover -- \
+                        'xCAT accepted the discovery inventory' || true
+                    exit 0
+                    ;;
+                processed)
+                    fail_discovery DISCOVERY_NOT_MATCHED \
+                        'xCAT received the node but did not match it' \
+                        'Review active discovery methods and node definitions'
+                    ;;
+                processing) rm -f -- "$response_file" ;;
+            esac
+        fi
+        sleep 1
+    done
+done
+
+fail_discovery DISCOVERY_TIMEOUT \
+    "xCAT did not accept the node after $maximum_attempts attempts" \
+    'Check discovery status, node matching, and callback connectivity'

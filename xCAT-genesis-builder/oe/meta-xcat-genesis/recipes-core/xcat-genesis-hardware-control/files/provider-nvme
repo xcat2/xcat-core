@@ -1,0 +1,63 @@
+#!/bin/bash
+set -euo pipefail
+
+sys_class_nvme=${XCAT_GENESIS_SYS_CLASS_NVME:-/sys/class/nvme}
+dev_dir=${XCAT_GENESIS_DEV_DIR:-/dev}
+
+fail() {
+    printf 'nvme provider: %s\n' "$*" >&2
+    exit 1
+}
+
+probe() {
+    local path
+    local -a devices=()
+
+    shopt -s nullglob
+    for path in "$sys_class_nvme"/nvme*; do
+        [[ -d $path ]] || continue
+        devices+=("${path##*/}")
+    done
+    jq -cn --args \
+        '{detected: ($ARGS.positional | length > 0), devices: $ARGS.positional}' \
+        -- "${devices[@]}"
+}
+
+validate_device() {
+    [[ $1 =~ ^nvme[0-9]+$ ]] || fail 'invalid NVMe controller identity'
+    [[ -d $sys_class_nvme/$1 ]] || fail "NVMe controller not found: $1"
+    [[ -e $dev_dir/$1 && ! -L $dev_dir/$1 ]] || fail "NVMe device not found: $1"
+}
+
+run_capability() {
+    local capability=$1 device=${2:-}
+
+    command -v nvme >/dev/null || fail 'nvme command is unavailable'
+    case "$capability" in
+        storage.inventory)
+            nvme list -o json
+            ;;
+        storage.health)
+            validate_device "$device"
+            nvme smart-log "$dev_dir/$device" -o json
+            ;;
+        storage.logs)
+            validate_device "$device"
+            nvme error-log "$dev_dir/$device" -o json
+            ;;
+        storage.firmware.inventory)
+            validate_device "$device"
+            nvme id-ctrl "$dev_dir/$device" -o json
+            ;;
+        *) fail "unsupported capability: $capability" ;;
+    esac
+}
+
+case "${1:-}" in
+    probe) probe ;;
+    run)
+        (($# == 4)) || fail 'invalid provider request'
+        run_capability "$2" "$3"
+        ;;
+    *) fail 'invalid provider verb' ;;
+esac

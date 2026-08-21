@@ -1,0 +1,13 @@
+[Unit]
+Description=Record xCAT Genesis boot metrics
+ConditionKernelCommandLine=xcatd
+Requires=xcat-genesis-register.service
+After=xcat-genesis-register.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/xcat/genesis-metrics --output /run/xcat/metrics.env
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,280 @@
+#!/bin/bash
+set -euo pipefail
+
+functions_file=${XCAT_GENESIS_FUNCTIONS:-/usr/libexec/xcat/genesis-functions}
+# shellcheck source=genesis-functions
+source "$functions_file"
+
+state_dir=${XCAT_STATE_DIR:-/run/xcat}
+status_command=${XCAT_STATUS_COMMAND:-/usr/libexec/xcat/genesis-status}
+destiny_file=${XCAT_DESTINY_FILE:-$state_dir/destiny}
+metadata_file=${XCAT_METADATA_FILE:-$state_dir/xcat-response.env}
+network_file=${XCAT_NETWORK_FILE:-$state_dir/genesis.env}
+discover_command=${XCAT_DISCOVER_COMMAND:-/usr/libexec/xcat/genesis-discover}
+certificate_command=${XCAT_CERTIFICATE_COMMAND:-/usr/libexec/xcat/genesis-getcert}
+certificate_file=${XCAT_CERTIFICATE_FILE:-/etc/xcat/cert.pem}
+getdestiny_command=${XCAT_GETDESTINY_COMMAND:-getdestiny}
+nextdestiny_command=${XCAT_NEXTDESTINY_COMMAND:-nextdestiny}
+approved_command_dir=${XCAT_ACTION_COMMAND_DIR:-/usr/libexec/xcat/genesis/actions}
+reboot_command=${XCAT_REBOOT_COMMAND:-systemctl}
+poweroff_command=${XCAT_POWEROFF_COMMAND:-systemctl}
+poll_seconds=${XCAT_ACTION_POLL_SECONDS:-15}
+request_timeout=${XCAT_ACTION_REQUEST_TIMEOUT:-20}
+operation_timeout=${XCAT_ACTION_OPERATION_TIMEOUT:-300}
+maximum_steps=${XCAT_ACTION_MAX_STEPS:-0}
+failure_code=ACTION_FAILED
+failure_detail='Genesis action failed'
+failure_recovery='Review Genesis logs and the assigned xCAT action'
+current_action=
+current_target=
+last_verified_seconds=
+
+[[ "$poll_seconds" =~ ^[0-9]+$ ]] || poll_seconds=15
+[[ "$request_timeout" =~ ^[1-9][0-9]*$ ]] || request_timeout=20
+[[ "$operation_timeout" =~ ^[1-9][0-9]*$ ]] || operation_timeout=300
+[[ "$maximum_steps" =~ ^[0-9]+$ ]] || maximum_steps=0
+
+publish_status() {
+    local state=$1 detail=$2
+    local -a fields
+    shift 2
+
+    fields=("ACTION=$current_action" "TARGET=$current_target")
+    [[ -z $last_verified_seconds ]] \
+        || fields+=("VERIFIED_SECONDS=$last_verified_seconds")
+    genesis_publish_status "$status_command" action xcat-genesis-action \
+        "$state" "$detail" "${fields[@]}" "$@"
+}
+
+# shellcheck disable=SC2329
+finish_status() {
+    local result=$?
+
+    trap - EXIT
+    if ((result != 0)); then
+        publish_status FAILED "$failure_detail" \
+            "CODE=$failure_code" "RECOVERY=$failure_recovery"
+    fi
+    exit "$result"
+}
+
+fail_action() {
+    failure_code=$1
+    failure_detail=$2
+    failure_recovery=$3
+    logger -t xcat-genesis-action -- "$failure_detail"
+    exit 1
+}
+
+parse_destiny() {
+    local raw=$1
+
+    if ! genesis_parse_destiny "$raw"; then
+        fail_action INVALID_XCAT_ACTION \
+            'xCAT returned an invalid action' \
+            'Correct the assigned node destiny'
+    fi
+    current_action=$XCAT_GENESIS_ACTION
+    current_target=$XCAT_GENESIS_TARGET
+}
+
+read_destiny() {
+    local raw
+
+    [[ -r $destiny_file ]] || fail_action XCAT_ACTION_MISSING \
+        'No xCAT action is available' \
+        'Retry registration or assign a node destiny'
+    IFS= read -r raw <"$destiny_file" || true
+    [[ -n $raw && ${#raw} -le 4096 ]] || fail_action XCAT_ACTION_INVALID \
+        'The assigned xCAT action is empty or too large' \
+        'Correct the assigned node destiny'
+    parse_destiny "$raw"
+}
+
+store_destiny() {
+    local raw=$1 temporary_file
+
+    [[ -n $raw && ${#raw} -le 4096 ]] || return 1
+    umask 077
+    temporary_file=${destiny_file}.new
+    printf '%s\n' "$raw" >"$temporary_file"
+    mv "$temporary_file" "$destiny_file"
+    parse_destiny "$raw"
+}
+
+request_current_action() {
+    local action
+
+    if ! action=$(timeout "$request_timeout" "$getdestiny_command" \
+        "$XCATDEST" --metadata "$metadata_file" --once); then
+        return 1
+    fi
+    store_destiny "$action" || return 1
+    last_verified_seconds=$(genesis_uptime_seconds)
+}
+
+request_next_action() {
+    local action
+
+    if ! action=$(timeout "$request_timeout" "$nextdestiny_command" \
+        "$XCATDEST" --metadata "$metadata_file" --once); then
+        return 1
+    fi
+    store_destiny "$action" || return 1
+    last_verified_seconds=$(genesis_uptime_seconds)
+}
+
+run_approved_command() {
+    local command_name argument_text executor
+    local -a arguments=()
+
+    command_name=${current_target%%[[:space:]]*}
+    [[ $command_name =~ ^[a-z][a-z0-9._-]{0,63}$ ]] \
+        || fail_action ACTION_COMMAND_INVALID \
+            'xCAT assigned an invalid command name' \
+            'Use an action packaged in the Genesis image'
+    executor=$approved_command_dir/$command_name
+    [[ -f $executor && ! -L $executor && -x $executor ]] \
+        || fail_action ACTION_COMMAND_NOT_APPROVED \
+            "The command is not approved by this Genesis image: $command_name" \
+            'Use a packaged Genesis action or signed system extension'
+    argument_text=${current_target#"$command_name"}
+    argument_text=${argument_text#"${argument_text%%[![:space:]]*}"}
+    if [[ -n $argument_text ]]; then
+        read -r -a arguments <<<"$argument_text"
+    fi
+    publish_status RUNNING "Running approved action $command_name"
+    if ((${#arguments[@]} > 0)); then
+        timeout "$operation_timeout" "$executor" "${arguments[@]}" \
+            || fail_action ACTION_COMMAND_FAILED \
+                "The approved action failed: $command_name" \
+                'Review Genesis logs and the action parameters'
+    else
+        timeout "$operation_timeout" "$executor" \
+            || fail_action ACTION_COMMAND_FAILED \
+                "The approved action failed: $command_name" \
+                'Review Genesis logs and the action parameters'
+    fi
+}
+
+prepare_network_boot() {
+    if ipmitool mc info >/dev/null 2>&1; then
+        ipmitool chassis bootdev pxe >/dev/null 2>&1 \
+            || logger -t xcat-genesis-action -- \
+                'unable to set the in-band PXE boot override'
+    fi
+}
+
+trap finish_status EXIT HUP INT TERM
+
+[[ -r $network_file ]] || fail_action ACTION_NETWORK_STATE_MISSING \
+    'Management network state is unavailable' \
+    'Wait for Genesis networking or review its failure'
+# shellcheck disable=SC1090
+source "$network_file"
+: "${XCATDEST:?xCAT endpoint is missing from network state}"
+read_destiny
+if [[ $current_action != discover && ! -s $certificate_file ]]; then
+    publish_status RUNNING 'Requesting the node certificate'
+    timeout "$operation_timeout" "$certificate_command" \
+        || fail_action CERTIFICATE_ACTION_FAILED \
+            'The node could not obtain an xCAT certificate' \
+            'Check callback port 300 and xCAT credentials policy'
+fi
+
+for ((step = 1; ; step++)); do
+    if ((maximum_steps > 0 && step > maximum_steps)); then
+        exit 0
+    fi
+
+    case "$current_action" in
+        discover)
+            publish_status RUNNING 'Discovering node hardware'
+            timeout "$operation_timeout" "$discover_command" \
+                || fail_action DISCOVERY_ACTION_FAILED \
+                    'xCAT did not accept the node discovery' \
+                    'Review active discovery methods and node matching'
+            publish_status RUNNING 'Loading the discovered node assignment'
+            request_current_action \
+                || fail_action DISCOVERY_ASSIGNMENT_FAILED \
+                    'The discovered node has no xCAT assignment' \
+                    'Review the discovered node definition and chain'
+            timeout "$operation_timeout" "$certificate_command" \
+                || fail_action DISCOVERY_CERTIFICATE_FAILED \
+                    'The discovered node could not obtain a certificate' \
+                    'Check callback port 300 and xCAT credentials policy'
+            ;;
+        standby|shell|offline)
+            publish_status IDLE 'Waiting for an action from xCAT' \
+                "NEXT_RETRY_SECONDS=$poll_seconds"
+            sleep "$poll_seconds"
+            if ! request_current_action; then
+                publish_status DEGRADED 'xCAT did not answer the action poll' \
+                    'CODE=XCAT_ACTION_POLL_FAILED' \
+                    'RECOVERY=Check xcatd and the management network' \
+                    "NEXT_RETRY_SECONDS=$poll_seconds"
+            fi
+            ;;
+        osimage|ondiscover)
+            publish_status RUNNING 'Advancing the xCAT action chain'
+            request_next_action \
+                || fail_action XCAT_CHAIN_ADVANCE_FAILED \
+                    'xCAT did not advance the node action chain' \
+                    'Review the node chain and xcatd logs'
+            ;;
+        runcmd)
+            run_approved_command
+            request_next_action \
+                || fail_action XCAT_CHAIN_ADVANCE_FAILED \
+                    'xCAT did not advance after the approved action' \
+                    'Review the node chain and xcatd logs'
+            ;;
+        runimage)
+            fail_action UNSAFE_LEGACY_ACTION \
+                'Unsigned runimage actions are not supported' \
+                'Package the operation as a signed Genesis system extension'
+            ;;
+        configraid)
+            fail_action LEGACY_STORAGE_ACTION \
+                'Legacy configraid actions are not supported' \
+                'Assign a validated Genesis hardware-provider task'
+            ;;
+        sysclone)
+            fail_action LEGACY_SYSCLONE_ACTION \
+                'Legacy sysclone actions are not supported' \
+                'Use an xCAT image workflow supported by this Genesis release'
+            ;;
+        boot|reboot)
+            publish_status RUNNING 'Advancing the chain before reboot'
+            request_next_action \
+                || fail_action XCAT_CHAIN_ADVANCE_FAILED \
+                    'xCAT did not advance the node action chain' \
+                    'Review the node chain and xcatd logs'
+            prepare_network_boot
+            publish_status RUNNING 'Rebooting into the assigned action'
+            "$reboot_command" reboot
+            exit 0
+            ;;
+        install|netboot|statelite)
+            prepare_network_boot
+            publish_status RUNNING 'Rebooting into the assigned image'
+            "$reboot_command" reboot
+            exit 0
+            ;;
+        shutdown)
+            publish_status RUNNING 'Powering off at xCAT request'
+            "$poweroff_command" poweroff
+            exit 0
+            ;;
+        error)
+            fail_action XCAT_ACTION_ERROR \
+                "xCAT rejected the action: ${current_target:-no detail}" \
+                'Correct the node destiny or action chain'
+            ;;
+        *)
+            fail_action XCAT_ACTION_UNSUPPORTED \
+                "Unsupported xCAT action: $current_action" \
+                'Assign an action supported by this Genesis release'
+            ;;
+    esac
+done

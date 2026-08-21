@@ -1,0 +1,9 @@
+{
+  "capabilities": [
+    {"destructive": false, "name": "network.firmware.inventory"}
+  ],
+  "kind": "network",
+  "name": "mstflint",
+  "schema": 1,
+  "version": "1.0"
+}

@@ -1,0 +1,15 @@
+[Unit]
+Description=Register Genesis with xCAT
+ConditionKernelCommandLine=xcatd
+Requires=xcat-genesis-network-ready.target xcat-genesis-extensions.service
+After=xcat-genesis-network-ready.target xcat-genesis-extensions.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/run/xcat/genesis.env
+ExecStart=/usr/libexec/xcat/genesis-register
+RemainAfterExit=yes
+TimeoutStartSec=90
+
+[Install]
+WantedBy=multi-user.target
