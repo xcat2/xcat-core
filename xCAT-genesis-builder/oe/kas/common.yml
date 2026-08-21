@@ -46,3 +46,7 @@ local_conf_header:
   xcat-genesis: |
     CONF_VERSION = "2"
     BB_DISKMON_DIRS = "STOPTASKS,${TMPDIR},5G,500K STOPTASKS,${DL_DIR},5G,500K STOPTASKS,${SSTATE_DIR},5G,500K"
+    INHERIT += "archiver create-spdx vex"
+    ARCHIVER_MODE[src] = "original"
+    ARCHIVER_MODE[diff] = "1"
+    ARCHIVER_MODE[recipe] = "1"

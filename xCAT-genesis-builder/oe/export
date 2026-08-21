@@ -34,6 +34,7 @@ esac
 machine=xcat-genesis-${architecture//_/-}
 machine_dir=$deploy_dir/images/$machine
 image_name=xcat-genesis-image-$machine.rootfs
+metadata_name=xcat-genesis-image-$machine
 license_machine=${machine//-/_}
 
 resolve_artifact() {
@@ -47,7 +48,8 @@ resolve_artifact() {
 kernel=$(resolve_artifact "$machine_dir/$kernel_name")
 initramfs=$(resolve_artifact "$machine_dir/$image_name.cpio.gz")
 package_manifest=$(resolve_artifact "$machine_dir/$image_name.manifest")
-spdx=$(resolve_artifact "$machine_dir/$image_name.spdx.json")
+spdx=$(resolve_artifact "$machine_dir/$metadata_name.spdx.json")
+vex=$(resolve_artifact "$machine_dir/$metadata_name.vex.json")
 license_dir=$(basename "${package_manifest%.manifest}")
 license_manifest=$(resolve_artifact \
     "$deploy_dir/licenses/$license_machine/$license_dir/license.manifest")
@@ -62,6 +64,7 @@ install -m 0644 "$kernel" "$staging/kernel"
 install -m 0644 "$initramfs" "$staging/initramfs.cpio.gz"
 install -m 0644 "$package_manifest" "$staging/image.manifest"
 install -m 0644 "$spdx" "$staging/image.spdx.json"
+install -m 0644 "$vex" "$staging/image.vex.json"
 install -m 0644 "$license_manifest" "$staging/license.manifest"
 printf 'format=xcat-genesis\nversion=1\narchitecture=%s\n' "$architecture" \
     >"$staging/xcat-genesis.manifest"
