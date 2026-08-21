@@ -193,6 +193,21 @@ unlike( $output, qr/extensions:|providers:|Linux /,
     'inventory details stay off the main page' );
 unlike( $output, qr/\e/, 'plain output has no terminal escapes' );
 
+my $cmdline_without_xcat = $ipv4_network_state;
+$cmdline_without_xcat =~ s/^XCATDEST=.*\n//m;
+write_file( $genesis_env, $cmdline_without_xcat );
+write_file(
+    $cmdline,
+    ( 'quiet ' x 100 )
+      . "xcatd=198.51.100.10:3001 BOOTIF=01-52-54-00-00-00-01\n"
+);
+( $status, $output ) = run_console();
+like( $output, qr/^xCAT server: 198\.51\.100\.10:3001$/m,
+    'console reads xCAT parameters after byte 512' );
+write_file( $genesis_env, $ipv4_network_state );
+write_file( $cmdline,
+    "xcatd=192.0.2.10:3001 BOOTIF=01-52-54-00-00-00-01 gateway=192.0.2.1\n" );
+
 write_file(
     File::Spec->catfile( $state_dir, 'extensions.env' ),
     "SCHEMA=1\nSTATE=FAILED\nDETAIL=extension signature verification failed\n"
