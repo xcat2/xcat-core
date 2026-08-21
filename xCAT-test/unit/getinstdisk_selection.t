@@ -130,4 +130,17 @@ selects( '/dev/nvme0n1', 'an NVMe device is selected from the last group',
 # No usable disk falls back to the documented default.
 selects( '/dev/sda', 'no disks fall back to the default' );
 
+# Every installer includes the one script, which carries the fallbacks and the
+# logging that the separate RHEL 10 copy used to hold on its own.
+my $common = slurp( $scripts[0] );
+ok( !-e File::Spec->catfile( $script_dir, 'getinstdisk.rhels10' ),
+    'the RHEL 10 copy of the script is gone' );
+like( slurp( File::Spec->catfile( $script_dir, 'pre.rhels10' ) ),
+    qr{/share/xcat/install/scripts/getinstdisk#},
+    'the RHEL 10 installer includes the common script' );
+like( $common, qr{-b /dev/md/Volume0_0}, 'the common script keeps the VROC fallback' );
+like( $common, qr{-b "/dev/xvda"},       'the common script carries the Xen fallback' );
+like( $common, qr{command -v msgutil_r [^\n]*\n\s*msgutil_r },
+    'the failure log is guarded, because one installer does not define it' );
+
 done_testing();
