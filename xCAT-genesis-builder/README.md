@@ -45,6 +45,35 @@ mknb x86_64
 `mknb` verifies the kernel and initramfs checksums before replacing the files
 under the configured TFTP root.
 
+### Signed extensions
+
+Build an extension recipe with the same machine configuration as the Genesis
+image. Then export it with the site's Ed25519 release key:
+
+```sh
+xCAT-genesis-builder/oe/export-extension x86_64 my-extension \
+    xCAT-genesis-builder/oe/.work/build/tmp/deploy \
+    /secure/genesis-extension.key /secure/genesis-extension.pub \
+    /tmp/my-extension-bundle
+```
+
+The private key stays outside the source tree. The exported bundle contains
+the extension image, manifest, signature, public key, and checksums.
+
+A site layer can include that directory in its Genesis image with a small
+append file:
+
+```bitbake
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
+SRC_URI += "file://my-extension-bundle"
+XCAT_GENESIS_EXTENSION_BUNDLE = "my-extension-bundle"
+```
+
+Place the exported directory below the append file's `files` directory.
+Genesis verifies every bundled extension before registration and stops the
+boot workflow if the image, manifest, signature, key, release, or architecture
+does not match.
+
 Genesis records registration time and memory use in `/run/xcat/metrics.env`.
 After copying that file from a test VM, create a report with image sizes and
 runtime measurements:

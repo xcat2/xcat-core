@@ -207,6 +207,12 @@ Genesis verifies Ed25519 signatures before loading extensions with
 site may build a restricted extension from an authorized private source
 mirror when the vendor license forbids public redistribution.
 
+The extension exporter binds the image, manifest, signature, public key, and
+checksums into one directory.  A site layer adds that directory to the
+``xcat-genesis-extensions`` recipe and sets
+``XCAT_GENESIS_EXTENSION_BUNDLE`` to its name.  The signing key remains
+outside both the bundle and the source repository.
+
 Licensing and release records
 -----------------------------
 
@@ -216,9 +222,9 @@ licenses and blocks recipes protected by ``LICENSE_FLAGS`` until the builder
 accepts them explicitly.
 
 Each release records source revisions, patches, configuration, artifact
-checksums, licenses, and an SPDX software bill of materials.  The build uses
-the Yocto release key stored in this repository and verifies its fingerprint;
-it does not contact a public keyserver.
+checksums, licenses, an SPDX software bill of materials, and a VEX report.
+The build uses the Yocto release key stored in this repository and verifies
+its fingerprint; it does not contact a public keyserver.
 
 xCAT server boundary
 --------------------
