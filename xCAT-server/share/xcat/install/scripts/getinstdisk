@@ -246,10 +246,21 @@ elif [ -z "$install_disk" ] && [ -b /dev/md/Volume0 ]; then
     install_disk="/dev/md/Volume0"
 fi
 
+# Enable boot in Xen VM
+if [ -z "$install_disk" ] && [ -b "/dev/xvda" ]; then
+    install_disk="/dev/xvda"
+    echo "[get_install_disk]Choosing default install_disk $install_disk."
+fi
+
 # Cannot find proper disk for OS install, select the default one "/dev/sda"
 if [ -z "$install_disk" ]; then
     install_disk="/dev/sda"
     echo "[get_install_disk]Choosing default install_disk $install_disk."
+    # The installer scripts that include this one define msgutil_r, except
+    # the subiquity path
+    if command -v msgutil_r >/dev/null 2>&1; then
+        msgutil_r "$MASTER_IP" "warn" "Disk detection failed, defaulting to $install_disk" "/var/log/xcat/xcat.log" "$log_label"
+    fi
 fi
 
 # Output the result to $install_disk_file
