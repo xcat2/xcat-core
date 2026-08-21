@@ -56,6 +56,52 @@ sub kea_client_classes {
     return \@classes;
 }
 
+# Architectures whose UEFI firmware can also boot over HTTP, by DHCP client
+# architecture id (RFC 4578 and the IANA registry). An HTTP boot client wants the
+# boot file as a URL and only accepts the offer when the reply is tagged
+# HTTPClient; the image it downloads is the same grub2 the TFTP path hands out.
+my %HTTP_BOOT_ARCHES = (
+    riscv64 => { arch_id => '0x001c', loader => 'boot/grub2/grub2.riscv64' },
+);
+
+# The HTTP boot classes of one network. They carry the address of the management
+# node on that network, so they belong to the subnet rather than to the global
+# list, like the other network classes here.
+sub kea_httpboot_network_classes {
+    my ( $class, %opts ) = @_;
+
+    return [] unless $opts{net} && defined( $opts{prefix} ) && $opts{next_server};
+
+    my $httpport   = $opts{httpport} || '80';
+    my $portsuffix = ( $httpport eq '80' ) ? '' : ":$httpport";
+    my $tftpdir    = $opts{tftpdir} || '/tftpboot';
+    $tftpdir =~ s{/+$}{};
+    my $present = $opts{loader_present};
+    my @classes;
+
+    foreach my $arch ( sort keys %HTTP_BOOT_ARCHES ) {
+        my $spec = $HTTP_BOOT_ARCHES{$arch};
+        next if $present && !$present->("$tftpdir/$spec->{loader}");
+        my $name = "xcat-$arch-http-$opts{net}_$opts{prefix}";
+        $name =~ s/[^A-Za-z0-9_.-]/_/g;
+        push @classes, {
+            name             => $name,
+            test             => "option[93].hex == $spec->{arch_id}",
+            additional_only  => 1,
+            'boot-file-name' => "http://$opts{next_server}$portsuffix$tftpdir/$spec->{loader}",
+            'option-data'    => [
+                {
+                    name          => 'vendor-class-identifier',
+                    data          => 'HTTPClient',
+                    'always-send' => 1,
+                },
+            ],
+        };
+    }
+
+    return \@classes;
+}
+
 sub kea_xnba_node_classes {
     my ( $class, %opts ) = @_;
 

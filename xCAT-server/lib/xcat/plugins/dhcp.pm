@@ -3289,6 +3289,16 @@ sub kea_subnet4_intent
     $subnet{interface} = $interface unless $remote;
     my @client_classes = @$xnba_classes;
     push @client_classes, $opal_class if $opal_class;
+    push @client_classes, @{
+        xCAT::DHCP::BootPolicy->kea_httpboot_network_classes(
+            net            => $net,
+            prefix         => $prefix,
+            next_server    => $tftp,
+            httpport       => $httpport,
+            tftpdir        => $tftpdir,
+            loader_present => sub { -e $_[0] },
+        )
+      };
     if (@client_classes) {
         $subnet{additional_client_classes} = [ map { $_->{name} } @client_classes ];
         $subnet{client_classes} = \@client_classes;
@@ -4470,6 +4480,10 @@ sub addnet
         push @netent,
           "    } else if option client-architecture = 00:1b { #riscv64 uefi\n ";
         push @netent, "      filename \"boot/grub2/grub2.riscv64\";\n";
+        push @netent,
+          "    } else if option client-architecture = 00:1c { #riscv64 uefi http boot\n ";
+        push @netent, "      option vendor-class-identifier \"HTTPClient\";\n";
+        push @netent, "      filename \"http://$tftp$portsuffix$tftpdir/boot/grub2/grub2.riscv64\";\n";
         push @netent,
           "    } else if option client-architecture = 00:0e { #OPAL-v3\n ";
         push @netent, "        option conf-file = \"http://$tftp$portsuffix/tftpboot/pxelinux.cfg/p/" . $net . "_" . $maskbits . "\";\n";
