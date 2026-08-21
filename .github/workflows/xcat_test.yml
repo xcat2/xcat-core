@@ -30,6 +30,8 @@ jobs:
           lz4 openssl socat texinfo unzip wget xz-utils zstd
       - name: Install KAS
         run: python -m pip install -r xCAT-genesis-builder/oe/requirements.txt
+      - name: Enable BitBake user namespaces
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Validate every architecture configuration
         shell: bash
         env:
