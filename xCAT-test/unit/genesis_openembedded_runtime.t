@@ -216,6 +216,8 @@ write_file(
 printf 'openssl %s\n' "$*" >>"$XCAT_TEST_LOG"
 [ -z "${XCAT_TEST_OPENSSL_DELAY-}" ] \
     || exec sleep "$XCAT_TEST_OPENSSL_DELAY"
+[ -z "${XCAT_TEST_OPENSSL_STATUS-}" ] \
+    || exit "$XCAT_TEST_OPENSSL_STATUS"
 cat "$XCAT_TEST_RESPONSE_FILE"
 SH
 );
@@ -290,6 +292,47 @@ XCAT_KERNEL_COMMAND_LINE=console=ttyS0 quiet
 ENV
     'a failed request preserves prior metadata'
 );
+
+is(
+    terminate_command(
+        \%environment,
+        '/bin/bash', $getdestiny_script, '192.0.2.10:3001'
+    ),
+    143,
+    'legacy getdestiny retries an explicit error response'
+);
+
+{
+    my %failure_environment = (
+        %environment,
+        XCAT_TEST_OPENSSL_STATUS => 1,
+    );
+    is(
+        terminate_command(
+            \%failure_environment,
+            '/bin/bash', $getdestiny_script, '192.0.2.10:3001'
+        ),
+        143,
+        'legacy getdestiny retries a connection failure'
+    );
+}
+
+write_file( $destiny_response, "<xcatresponse/>\n" );
+( $destiny_status, $destiny_output ) = capture_command(
+    \%environment,
+    '/bin/bash', $getdestiny_script, '192.0.2.10:3001'
+);
+is( $destiny_status, 0,
+    'legacy getdestiny accepts a response without a destiny' );
+is( $destiny_output, "\n",
+    'legacy getdestiny returns an empty destiny' );
+
+( $destiny_status, $destiny_output ) = capture_command(
+    \%environment,
+    '/bin/bash', $getdestiny_script, '192.0.2.10:3001', '--once'
+);
+isnt( $destiny_status, 0,
+    'one-shot getdestiny rejects a response without a destiny' );
 
 write_file(
     $destiny_response,
