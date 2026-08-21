@@ -5,6 +5,7 @@ metadata_file=
 metadata_temporary=
 once=0
 destination=${XCATDEST:-}
+request_pid=
 
 usage() {
 	printf '%s\n' 'Usage: getdestiny [ENDPOINT] [--metadata FILE] [--once]' >&2
@@ -51,10 +52,21 @@ cleanup() {
 	[[ -z $metadata_temporary ]] || rm -f -- "$metadata_temporary"
 }
 
+terminate() {
+	local status=$1
+
+	trap - HUP INT TERM
+	if [[ -n $request_pid ]]; then
+		kill -TERM "$request_pid" 2>/dev/null || true
+		wait "$request_pid" 2>/dev/null || true
+	fi
+	exit "$status"
+}
+
 trap cleanup EXIT
-trap 'exit 129' HUP
-trap 'exit 130' INT
-trap 'exit 143' TERM
+trap 'terminate 129' HUP
+trap 'terminate 130' INT
+trap 'terminate 143' TERM
 
 printf '%s\n' \
 	'<xcatrequest>' \
@@ -66,11 +78,14 @@ request_destiny() {
 	if [[ -f /etc/xcat/cert.pem && -f /etc/xcat/certkey.pem ]]; then
 		openssl s_client -key /etc/xcat/certkey.pem \
 			-cert /etc/xcat/cert.pem -connect "$destination" -quiet \
-			2>/dev/null <"$request_file" >"$response_file"
+			2>/dev/null <"$request_file" >"$response_file" &
 	else
 		openssl s_client -connect "$destination" -quiet \
-			2>/dev/null <"$request_file" >"$response_file"
+			2>/dev/null <"$request_file" >"$response_file" &
 	fi
+	request_pid=$!
+	wait "$request_pid" || true
+	request_pid=
 	[[ -s $response_file ]] && ! grep -q '<error>' "$response_file" \
 		&& grep -q '<destiny>' "$response_file"
 }
