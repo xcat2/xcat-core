@@ -15,21 +15,24 @@ What riscv64 nodes need
   sends DHCP option 93 (client system architecture) value 27 (``0x001b``) and
   xCAT answers with the boot file ``boot/grub2/grub2.riscv64``, from both the
   Kea and the ISC DHCP backends.
+  Firmware configured for UEFI HTTP boot (client architecture 28, ``0x001c``)
+  is served the same image over HTTP.
 * ``noderes.netboot`` is one of ``grub2``, ``grub2-tftp`` or ``grub2-http``.
   ``grub2-http`` is recommended for installers, whose initrd is large.
 * ``nodetype.arch`` and ``osimage.osarch`` are ``riscv64``. No alias is
   needed: ``uname -m``, rpm and dpkg all use the same token.
 * ``/tftpboot/boot/grub2/grub2.riscv64``: the EL grub2 UEFI image for riscv64
-  (the ``EFI/BOOT/grubriscv64.efi`` of the EL10 riscv64 BaseOS tree). It is
-  provided by the ``grub2-xcat`` package where available; otherwise copy it as
-  described in :doc:`/guides/install-guides/yum/grub2`.
+  (the ``EFI/BOOT/grubriscv64.efi`` of the EL10 riscv64 BaseOS tree).
+  ``copycds`` publishes it from the installation media when the management node
+  does not have it yet, the ``grub2-xcat`` package installs the same image, and
+  :doc:`/guides/install-guides/yum/grub2` describes copying it by hand. An image
+  that is already there is never replaced.
 * The riscv64 Genesis image (``xCAT-genesis-openembedded-riscv64``) for
   discovery, BMC setup and flashing. Its kernel is loaded by grub2 through the
   EFI stub. ``go-xcat`` installs the package; on a management node built another
   way, install it explicitly (``dnf install xCAT-genesis-openembedded-riscv64``),
   the same way the images of other architectures are installed for a mixed
   cluster. ``xcatconfig`` runs ``mknb riscv64`` for every installed image.
-
 The management node itself is x86_64 (the validated combination, see
 :doc:`/advanced/mixed_cluster/support_matrix`) or riscv64 (see below); riscv64
 nodes are managed like any other mixed-architecture cluster.
@@ -45,9 +48,15 @@ network, ``/tftpboot/boot/grub2/grub.cfg-<hex network prefix>``. A net booted
 ip>``, then shorter prefixes of that ip; the per-node files written by
 ``nodeset`` therefore take priority and the network file is only used by nodes
 that have no configuration yet, which is exactly the discovery case.
+Each configuration holds two entries. The default one fetches the Genesis kernel
+and initramfs over HTTP, because a TFTP server hands the image to one client at a
+time and the initramfs is tens of megabytes; the second entry loads the same
+files over TFTP and is there for a management node that does not serve the TFTP
+root over HTTP. ``site.httpport`` is honoured.
 ``mknb`` runs automatically when the riscv64 Genesis packages are installed or
 updated; run ``mknb riscv64`` yourself after changing ``site.master``,
-``site.dhcpinterfaces`` or the serial console settings.
+``site.dhcpinterfaces`` or the serial console settings. It also warns when
+``grub2.riscv64`` is missing, since nothing would reach these configurations.
 
 Discovered riscv64 nodes get ``nodetype.arch=riscv64`` and, when no compatible
 method is set, ``noderes.netboot=grub2``. Use the discovery procedures documented
@@ -136,8 +145,12 @@ xCAT does not install anything from CPAN; every dependency is an rpm.
 Limitations
 -----------
 
-* UEFI HTTP boot (client architecture 28, ``0x001c``) is not configured yet;
-  use PXE (TFTP) to load ``grub2.riscv64`` and ``grub2-http`` for the payload.
+* UEFI HTTP boot (client architecture 28, ``0x001c``): a client without a
+  reservation is offered the boot loader as a URL with the ``HTTPClient`` vendor
+  class, which is what such firmware requires. It has not been exercised against
+  HTTP boot firmware yet, and a node that ``nodeset`` has configured is offered
+  its per-node boot loader over TFTP, as on the other architectures, so keep PXE
+  boot enabled in the firmware.
 * Ubuntu riscv64 is not supported yet.
 * The serial console defaults to ``ttyS<site.defserialport>``; boards whose
   firmware exposes the console on another device need

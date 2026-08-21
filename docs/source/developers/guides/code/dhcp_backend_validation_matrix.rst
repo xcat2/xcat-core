@@ -242,6 +242,15 @@ paths.
      - same as the Kea row through the ISC subnet branch for client
        architecture ``00:1b``; the riscv64 branch must answer before the
        ``/yaboot`` fallback
+   * - EL10
+     - ``riscv64``
+     - ``Kea``, ``ISC``
+     - ``UEFI HTTP boot``
+     - firmware configured for HTTP boot sends client architecture 28
+       (``0x001c``) and only accepts an offer whose boot file is a URL and
+       whose reply carries the ``HTTPClient`` vendor class; the class is per
+       subnet, so the URL must name the management node address of that
+       network and honour ``site.httpport``
 
 Current Lab Baseline
 --------------------
