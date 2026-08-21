@@ -918,6 +918,11 @@ sub mknetboot
                 if ($arch =~ /86/) {
                     $kcmdline .= " crashkernel=128M dump=$dump ";
                 }
+                if ($arch eq "riscv64") {
+                    # EL has no default reservation for riscv64, so without an explicit
+                    # linuximage.crashkernelsize the kernel would reserve nothing at all
+                    $kcmdline .= " crashkernel=256M dump=$dump ";
+                }
             }
         }
 
