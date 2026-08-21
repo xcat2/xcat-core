@@ -31,6 +31,15 @@ firewall --disable
 selinux --disable
 reboot
 
+# riscv64: EL10 has no default crash kernel reservation for this architecture
+# (kdumpctl get-default-crashkernel is empty), so the installer's kdump add-on
+# would write the literal "crashkernel=auto", which the kernel ignores: nothing
+# is reserved and kdump.service fails on every node. Leave kdump off here; a
+# node that should take crash dumps gets a real reservation through
+# linuximage.addkcmdline or bootparams.addkcmdline (crashkernel=<size>).
+%addon com_redhat_kdump --disable
+%end
+
 # riscv64: the EL10 anaconda has no RISC-V EFI platform and always asks for the
 # x86 UEFI boot loader packages (grub2-efi-x64, shim-x64), which do not exist
 # for riscv64; tolerate that. The riscv64 package list pulls grub2-efi-riscv64
