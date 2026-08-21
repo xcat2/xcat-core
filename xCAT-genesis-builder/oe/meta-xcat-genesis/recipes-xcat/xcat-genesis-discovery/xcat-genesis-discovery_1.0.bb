@@ -22,7 +22,7 @@ do_compile() {
         -o genesis-udp-send
 }
 
-RDEPENDS:${PN} = "bash coreutils gzip iproute2 openssl-bin util-linux-lsblk"
+RDEPENDS:${PN} = "bash coreutils gzip iproute2 openssl-bin util-linux-logger util-linux-lsblk"
 
 SYSTEMD_SERVICE:${PN} = "xcat-genesis-discovery.socket \
                          xcat-genesis-credential.socket \

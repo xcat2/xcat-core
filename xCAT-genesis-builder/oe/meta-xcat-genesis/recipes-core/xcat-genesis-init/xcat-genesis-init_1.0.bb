@@ -21,7 +21,7 @@ S = "${UNPACKDIR}"
 
 inherit systemd
 
-RDEPENDS:${PN} = "bash coreutils ipmitool iproute2 networkmanager-nmcli xcat-genesis-discovery xcat-genesis-protocol"
+RDEPENDS:${PN} = "bash coreutils ipmitool iproute2 networkmanager-nmcli util-linux-logger xcat-genesis-discovery xcat-genesis-protocol"
 
 SYSTEMD_SERVICE:${PN} = "xcat-genesis-action.service \
                          xcat-genesis-metrics.service \

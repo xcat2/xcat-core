@@ -302,7 +302,7 @@ for ((attempt = 1; attempt <= maximum_attempts; attempt++)); do
                     publish_status READY 'xCAT accepted the discovered node' \
                         'PROGRESS_PERCENT=100'
                     logger -t xcat-genesis-discover -- \
-                        'xCAT accepted the discovery inventory'
+                        'xCAT accepted the discovery inventory' || true
                     exit 0
                     ;;
                 processed)

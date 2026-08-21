@@ -6,7 +6,7 @@ functions_file=${XCAT_GENESIS_FUNCTIONS:-/usr/libexec/xcat/genesis-functions}
 source "$functions_file"
 
 log() {
-    logger -t xcat-genesis-network-state -- "$*"
+    logger -t xcat-genesis-network-state -- "$*" || true
 }
 
 status_command=${XCAT_STATUS_COMMAND:-/usr/libexec/xcat/genesis-status}

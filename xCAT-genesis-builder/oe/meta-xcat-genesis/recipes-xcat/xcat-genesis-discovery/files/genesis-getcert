@@ -142,4 +142,4 @@ mv -f -- "$certificate_file" "$key_dir/cert.pem"
 publish_status READY 'xCAT client certificate installed' \
     "NODE_NAME=$node_name" 'PROGRESS_PERCENT=100'
 logger -t xcat-genesis-getcert -- \
-    "installed an xCAT client certificate for $node_name"
+    "installed an xCAT client certificate for $node_name" || true

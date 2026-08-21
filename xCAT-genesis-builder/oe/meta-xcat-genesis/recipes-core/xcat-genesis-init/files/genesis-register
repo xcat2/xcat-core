@@ -117,4 +117,4 @@ status_fields=(
 publish_status ACTION_RECEIVED "Action $selected_action received" \
     "${status_fields[@]}"
 logger -t xcat-genesis-register -- \
-    "received action from $XCATDEST: $selected_action"
+    "received action from $XCATDEST: $selected_action" || true
