@@ -87,12 +87,39 @@ my $json = $backend->render_dhcp4_config(
                     { name => 'conf-file', data => 'http://10.0.0.1/tftpboot/pxelinux.cfg/p/10.0.0.0_24' },
                 ],
             },
+            {
+                name             => 'xcat-riscv64-http-10.0.0.0_24',
+                test             => 'option[93].hex == 0x001c',
+                additional_only  => 1,
+                'boot-file-name' => 'http://10.0.0.1/tftpboot/boot/grub2/grub2.riscv64',
+                'option-data'    => [
+                    {
+                        name          => 'vendor-class-identifier',
+                        data          => 'HTTPClient',
+                        'always-send' => 1,
+                    },
+                ],
+            },
         ],
     }
 );
 
 my $config = decode_json($json);
 ok( $config->{Dhcp4}, 'renderer creates a Dhcp4 document' );
+
+# Kea reads the option flags as booleans, so a caller that sets them the plain
+# Perl way still produces a configuration the server parses.
+my ($httpboot_class) =
+  grep { $_->{name} eq 'xcat-riscv64-http-10.0.0.0_24' } @{ $config->{Dhcp4}{'client-classes'} || [] };
+ok( $httpboot_class, 'a client class carrying option data is rendered' );
+is(
+    ref( $httpboot_class->{'option-data'}[0]{'always-send'} ),
+    'JSON::PP::Boolean',
+    'the always-send option flag is rendered as a boolean, not as a number',
+);
+ok( $httpboot_class->{'option-data'}[0]{'always-send'}, 'and it is true' );
+is( $httpboot_class->{'option-data'}[0]{data}, 'HTTPClient', 'the option value is left alone' );
+is( $httpboot_class->{'boot-file-name'}, 'http://10.0.0.1/tftpboot/boot/grub2/grub2.riscv64', 'the boot file URL is left alone' );
 is_deeply( $config->{Dhcp4}{'interfaces-config'}{interfaces}, ['eth0'], 'interfaces are rendered' );
 is( $config->{Dhcp4}{'valid-lifetime'}, 600, 'valid lifetime is rendered' );
 is( $config->{Dhcp4}{'lease-database'}{type}, 'memfile', 'memfile lease backend is the default' );
@@ -156,6 +183,19 @@ is_deeply(
             'only-if-required' => JSON::true,
             'option-data'      => [
                 { name => 'conf-file', data => 'http://10.0.0.1/tftpboot/pxelinux.cfg/p/10.0.0.0_24' },
+            ],
+        },
+        {
+            name               => 'xcat-riscv64-http-10.0.0.0_24',
+            test               => 'option[93].hex == 0x001c',
+            'only-if-required' => JSON::true,
+            'boot-file-name'   => 'http://10.0.0.1/tftpboot/boot/grub2/grub2.riscv64',
+            'option-data'      => [
+                {
+                    name          => 'vendor-class-identifier',
+                    data          => 'HTTPClient',
+                    'always-send' => JSON::true,
+                },
             ],
         },
     ],

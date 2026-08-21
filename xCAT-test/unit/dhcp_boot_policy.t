@@ -145,4 +145,76 @@ is_deeply(
     'xNBA network policy requires a next server'
 );
 
+# UEFI HTTP boot: firmware that boots over HTTP sends architecture id 28 and only
+# accepts an offer whose boot file is a URL and whose reply is tagged HTTPClient.
+my $httpboot = xCAT::DHCP::BootPolicy->kea_httpboot_network_classes(
+    net         => '10.0.0.0',
+    prefix      => 24,
+    next_server => '10.0.0.1',
+    tftpdir     => '/tftpboot',
+);
+is_deeply(
+    $httpboot,
+    [
+        {
+            name             => 'xcat-riscv64-http-10.0.0.0_24',
+            test             => 'option[93].hex == 0x001c',
+            additional_only  => 1,
+            'boot-file-name' => 'http://10.0.0.1/tftpboot/boot/grub2/grub2.riscv64',
+            'option-data'    => [
+                {
+                    name          => 'vendor-class-identifier',
+                    data          => 'HTTPClient',
+                    'always-send' => 1,
+                },
+            ],
+        },
+    ],
+    'RISC-V HTTP boot clients are offered the boot loader as a URL, tagged HTTPClient'
+);
+
+my $httpboot_port = xCAT::DHCP::BootPolicy->kea_httpboot_network_classes(
+    net         => '10.0.0.0',
+    prefix      => 24,
+    next_server => '10.0.0.1',
+    httpport    => '8080',
+    tftpdir     => '/srv/tftpboot',
+);
+is(
+    $httpboot_port->[0]{'boot-file-name'},
+    'http://10.0.0.1:8080/srv/tftpboot/boot/grub2/grub2.riscv64',
+    'the HTTP boot URL follows the configured HTTP port and TFTP root'
+);
+
+is_deeply(
+    xCAT::DHCP::BootPolicy->kea_httpboot_network_classes(
+        net            => '10.0.0.0',
+        prefix         => 24,
+        next_server    => '10.0.0.1',
+        loader_present => sub { 0 },
+    ),
+    [],
+    'no HTTP boot class is offered while the boot loader is missing'
+);
+is_deeply(
+    xCAT::DHCP::BootPolicy->kea_httpboot_network_classes( net => '10.0.0.0', prefix => 24 ),
+    [],
+    'HTTP boot classes need a next server'
+);
+is(
+    scalar @{ xCAT::DHCP::BootPolicy->kea_httpboot_network_classes(
+            net            => '10.0.0.0',
+            prefix         => 24,
+            next_server    => '10.0.0.1',
+            loader_present => sub { $_[0] eq '/tftpboot/boot/grub2/grub2.riscv64' },
+        ) },
+    1,
+    'the boot loader of the architecture is what is looked for'
+);
+unlike(
+    join( ' ', map { $_->{test} } @$classes ),
+    qr/0x001c/,
+    'the global class list keeps HTTP boot out: it needs the address of the management node',
+);
+
 done_testing();

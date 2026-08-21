@@ -42,7 +42,24 @@ SKIP: {
     cmp_ok( $pos{riscv64}, '<', $pos{yaboot},  'riscv64 is rendered before the /yaboot fallback, so it is reachable' );
 }
 
+# HTTP boot firmware (architecture id 28) needs the boot file as a URL and only
+# accepts an offer that is tagged HTTPClient
+ok(
+    $source =~ /client-architecture = 00:1c \{[^\n]*\n\s*push \@netent, "\s*option vendor-class-identifier \\"HTTPClient\\";[^\n]*\n\s*push \@netent, "\s*filename \\"http:\/\/\$tftp\$portsuffix\$tftpdir\/boot\/grub2\/grub2\.riscv64\\";/,
+    'the ISC subnet block hands RISC-V HTTP boot clients the boot loader as a URL',
+);
+my $httpboot_pos = $-[0];
+SKIP: {
+    skip 'the riscv64 branches were not both found', 2 unless defined $pos{riscv64} && defined $httpboot_pos;
+    cmp_ok( $pos{riscv64}, '<', $httpboot_pos, 'the PXE branch keeps its place before the HTTP boot branch' );
+    cmp_ok( $httpboot_pos, '<', $pos{yaboot},  'the HTTP boot branch is rendered before the /yaboot fallback' );
+}
+
 my @riscv_ids = $source =~ /client-architecture = (00:1[9a-e])/g;
-is_deeply( \@riscv_ids, ['00:1b'], 'only the RISC-V 64-bit UEFI architecture id (27) is mapped' );
+is_deeply(
+    [ sort @riscv_ids ],
+    [ '00:1b', '00:1c' ],
+    'only the RISC-V 64-bit UEFI architecture ids (27 and 28) are mapped',
+);
 
 done_testing();
