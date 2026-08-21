@@ -40,6 +40,8 @@ BMC specific:
 
 \ **rspconfig**\  \ *noderange*\  {\ **ip | netmask | gateway | backupgateway | garp | vlan**\ }
 
+\ **rspconfig**\  \ *noderange*\  {\ **ip | netmask | gateway**\ }=\ *value*\ [,\ *value*\ ...]
+
 \ **rspconfig**\  \ *noderange*\  \ **garp**\ =\ *time*\ 
 
 
@@ -312,6 +314,8 @@ DESCRIPTION
 \ **rspconfig**\  configures various settings in the nodes' service processors.
 
 For options \ **autopower | iocap | decfg | memdecfg | procdecfg | time | date | spdump | sysdump | network**\ , user need to use \ *chdef -t site enableASMI=yes*\  to enable ASMI first.
+
+A node whose \ **ipmi.bmc**\  attribute names more than one BMC is configured one BMC at a time, in the order the attribute lists them. Give one value per BMC, separated by commas, when a setting differs between them, for example \ *ip=10.1.1.1,10.1.1.2*\ . A single value is sent to every BMC of the node.
 
 
 *******
