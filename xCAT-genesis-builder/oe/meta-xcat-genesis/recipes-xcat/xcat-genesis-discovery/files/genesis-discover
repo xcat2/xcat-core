@@ -179,8 +179,12 @@ if command -v "$ipmitool_command" >/dev/null 2>&1 \
     lan_channel=$("$ipmitool_command" sol info 2>/dev/null \
         | awk -F ':' '/Payload Channel/ {gsub(/[[:space:]]/, "", $2); print $2; exit}' \
         || true)
-    bmc_data=$("$ipmitool_command" lan print "$lan_channel" 2>/dev/null \
-        || "$ipmitool_command" lan print 2>/dev/null || true)
+    if [[ -n $lan_channel ]]; then
+        bmc_data=$("$ipmitool_command" lan print "$lan_channel" 2>/dev/null \
+            || "$ipmitool_command" lan print 2>/dev/null || true)
+    else
+        bmc_data=$("$ipmitool_command" lan print 2>/dev/null || true)
+    fi
     bmc_source=$(awk -F ':' \
         '/IP Address Source/ {sub(/^[[:space:]]+/, "", $2); print $2; exit}' \
         <<<"$bmc_data")
