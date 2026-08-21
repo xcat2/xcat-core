@@ -120,7 +120,7 @@ my $listener_port = $listener->sockport();
 my $listener_pid = fork();
 die "Unable to fork test listener: $!" unless defined($listener_pid);
 if ( $listener_pid == 0 ) {
-    for ( 1 .. 3 ) {
+    for ( 1 .. 4 ) {
         my $client = $listener->accept() or exit 1;
         close($client);
     }
@@ -165,7 +165,7 @@ case "$*" in
         ;;
     '-g GENERAL.STATE device show '*) printf '%s\n' '100 (connected)' ;;
     '--terse --escape no -g IP4.DNS,IP6.DNS device show eth0')
-        printf '%s\n' '192.0.2.53 | 2001:db8::53'
+        printf '%s\n' "${XCAT_TEST_DNS-192.0.2.53 | 2001:db8::53}"
         ;;
     '--wait 30 device connect eth0')
         [ -z "${XCAT_TEST_CONNECT_FAIL-}" ] || exit 1
@@ -401,6 +401,28 @@ UPDATED_SECONDS=123
 VERIFIED_SECONDS=123
 ENV
     'network readiness publishes status'
+);
+
+my $safe_network_state = read_file(
+    File::Spec->catfile( $state_dir, 'genesis.env' )
+);
+my $injection_marker = File::Spec->catfile( $root, 'injected' );
+my %unsafe_network_environment = (
+    %environment,
+    XCAT_TEST_DNS => "192.0.2.53;touch$injection_marker",
+);
+isnt( run_script( $network_script, \%unsafe_network_environment ), 0,
+    'unsafe generated network state is rejected' );
+is(
+    read_file( File::Spec->catfile( $state_dir, 'genesis.env' ) ),
+    $safe_network_state,
+    'unsafe data does not replace prior network state'
+);
+ok( !-e $injection_marker, 'generated network data is never evaluated' );
+like(
+    read_file( File::Spec->catfile( $state_dir, 'status', 'network.env' ) ),
+    qr/^CODE=UNSAFE_NETWORK_STATE$/m,
+    'unsafe generated state has a specific failure code'
 );
 
 write_file( $command_log, '' );
