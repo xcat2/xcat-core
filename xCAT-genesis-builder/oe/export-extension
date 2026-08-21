@@ -38,6 +38,7 @@ esac
 machine=xcat-genesis-${architecture//_/-}
 machine_dir=$deploy_dir/images/$machine
 stem=$extension-$machine
+artifact_stem=$stem.sysext
 
 resolve_artifact() {
     local path=$1 resolved
@@ -47,8 +48,8 @@ resolve_artifact() {
     printf '%s\n' "$resolved"
 }
 
-image=$(resolve_artifact "$machine_dir/$stem.squashfs-zst")
-manifest=$(resolve_artifact "$machine_dir/$stem.manifest.json")
+image=$(resolve_artifact "$machine_dir/$artifact_stem.squashfs-zst")
+manifest=$(resolve_artifact "$machine_dir/$artifact_stem.manifest.json")
 key_id=$(python3 - "$manifest" <<'PY'
 import json
 import re
