@@ -284,6 +284,8 @@ like( $record, qr/^STATE=DEGRADED$/m,
     'a failed action poll remains visible' );
 
 my $service = read_file($action_service);
+like( $service, qr/^ConditionKernelCommandLine=xcatd$/m,
+    'action execution requires an xCAT boot' );
 like( $service, qr/^Requires=xcat-genesis-register\.service$/m,
     'action execution requires registration' );
 unlike( $service, qr/^Restart=/m,
