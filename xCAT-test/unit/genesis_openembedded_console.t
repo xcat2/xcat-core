@@ -17,6 +17,8 @@ my @plain_sources = map { File::Spec->catfile( $source_dir, $_ ) }
   qw(main.c plain_ui.c shell.c state.c support.c);
 my $root = tempdir( CLEANUP => 1 );
 my $binary = File::Spec->catfile( $root, 'xcat-genesis-console' );
+my $header_test_source = File::Spec->catfile( $root, 'header-test.c' );
+my $header_test_binary = File::Spec->catfile( $root, 'header-test' );
 my $compiler = $ENV{CC} || 'cc';
 
 is(
@@ -43,6 +45,35 @@ sub read_file {
     close($stream);
     return $contents;
 }
+
+write_file(
+    $header_test_source,
+    <<'C'
+#include "console.h"
+
+#include <assert.h>
+
+int main(void) {
+    assert(xcat_header_context_columns(0) == 0);
+    assert(xcat_header_context_columns(19) == 0);
+    assert(xcat_header_context_columns(20) == 0);
+    assert(xcat_header_context_columns(21) == 1);
+    assert(xcat_header_context_columns(80) == 60);
+    return 0;
+}
+C
+);
+is(
+    system(
+        $compiler, '-D_POSIX_C_SOURCE=200809L', '-std=c17', '-Wall', '-Wextra',
+        '-Wpedantic', '-Werror', '-I', $source_dir, $header_test_source,
+        File::Spec->catfile( $source_dir, 'support.c' ), '-o', $header_test_binary
+      ) >> 8,
+    0,
+    'header bounds test builds with strict warnings'
+);
+is( system($header_test_binary) >> 8, 0,
+    'narrow terminals leave no writable header context' );
 
 my $cmdline = File::Spec->catfile( $root, 'cmdline' );
 my $uptime = File::Spec->catfile( $root, 'uptime' );
@@ -365,6 +396,8 @@ like( $console_source, qr/state->serial/,
     'header shows the firmware serial when available' );
 unlike( $header_source, qr/state->architecture/,
     'header leaves architecture in diagnostics' );
+like( $header_source, qr/xcat_header_context_columns\(columns\)/,
+    'header clamps its context to the available terminal width' );
 
 my ($logs_source) = $newt_source =~
   /(static void show_logs.*?)(?=\nstatic void show_maintenance_shell)/s;
