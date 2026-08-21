@@ -215,3 +215,9 @@ unsigned int xcat_list_files(const char *directory, const char *suffix, char *na
     closedir(stream);
     return count;
 }
+
+int xcat_header_context_columns(int screen_columns) {
+    if (screen_columns <= HEADER_RESERVED_COLUMNS)
+        return 0;
+    return screen_columns - HEADER_RESERVED_COLUMNS;
+}

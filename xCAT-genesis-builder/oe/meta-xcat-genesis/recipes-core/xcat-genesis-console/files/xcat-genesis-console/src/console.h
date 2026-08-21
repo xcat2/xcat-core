@@ -17,6 +17,7 @@ enum xcat_console_limit {
     LOG_LINE_SIZE = 384,
     LOG_VIEW_HEIGHT = 17,
     LOG_VIEW_WIDTH = 68,
+    HEADER_RESERVED_COLUMNS = 20,
 };
 
 struct console_state {
@@ -112,6 +113,7 @@ void xcat_format_duration(unsigned long long seconds, char *value, size_t size);
 bool xcat_read_unsigned_key(const char *path, const char *key, unsigned long long *number);
 unsigned int xcat_list_files(const char *directory, const char *suffix, char *names,
                              size_t names_size);
+int xcat_header_context_columns(int screen_columns);
 
 void xcat_load_console_state(struct console_state *state);
 void xcat_build_status_view(const struct console_state *state, struct status_view *view);

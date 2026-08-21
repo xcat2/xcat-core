@@ -112,12 +112,11 @@ static void draw_header(const struct status_view *view) {
     int columns;
 
     newtGetScreenSize(&columns, NULL);
-    available = columns - 20;
+    available = xcat_header_context_columns(columns);
     xcat_set_text(context, sizeof(context), "%.*s", available, view->identity);
-    if ((int)strlen(context) > available)
-        context[available] = '\0';
     newtDrawRootText(1, 0, "xCAT Genesis");
-    newtDrawRootText(-((int)strlen(context) + 1), 0, context);
+    if (context[0] != '\0')
+        newtDrawRootText(-((int)strlen(context) + 1), 0, context);
 }
 
 static void update_form(struct console_form *screen, const struct status_view *view,
