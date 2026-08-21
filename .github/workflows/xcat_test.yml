@@ -15,8 +15,6 @@ jobs:
     name: OpenEmbedded metadata
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    env:
-      KAS_WORK_DIR: ${{ runner.temp }}/kas-work
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -34,6 +32,8 @@ jobs:
         run: python -m pip install -r xCAT-genesis-builder/oe/requirements.txt
       - name: Validate every architecture configuration
         shell: bash
+        env:
+          KAS_WORK_DIR: ${{ runner.temp }}/kas-work
         run: |
           set -euo pipefail
           for architecture in x86 x86_64 ppc64 ppc64le armv7hf aarch64 riscv64; do
@@ -44,6 +44,7 @@ jobs:
           done
       - name: Validate the image task graph
         env:
+          KAS_WORK_DIR: ${{ runner.temp }}/kas-work
           KAS_BUILD_DIR: ${{ runner.temp }}/kas-build-x86_64
         run: >-
           kas shell xCAT-genesis-builder/oe/kas/x86_64.yml -c
