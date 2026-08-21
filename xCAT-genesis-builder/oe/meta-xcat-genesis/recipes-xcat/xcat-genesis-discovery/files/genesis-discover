@@ -177,7 +177,8 @@ fi
 if command -v "$ipmitool_command" >/dev/null 2>&1 \
     && "$ipmitool_command" mc info >/dev/null 2>&1; then
     lan_channel=$("$ipmitool_command" sol info 2>/dev/null \
-        | awk -F ':' '/Payload Channel/ {gsub(/[[:space:]]/, "", $2); print $2; exit}')
+        | awk -F ':' '/Payload Channel/ {gsub(/[[:space:]]/, "", $2); print $2; exit}' \
+        || true)
     bmc_data=$("$ipmitool_command" lan print "$lan_channel" 2>/dev/null \
         || "$ipmitool_command" lan print 2>/dev/null || true)
     bmc_source=$(awk -F ':' \
