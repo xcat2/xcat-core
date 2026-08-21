@@ -56,11 +56,11 @@ check:output=~0x500a0751036d9e61
 check:output=~0x500a0751036d9e83
 check:output=~0x500a0751036d9e7a
 check:output=~0x500a0751036d9c24
-cmd:cat /tmp/__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__fr_$$NO | grep "into wwn thirdchoicedisks"
+cmd:cat /tmp/__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__fr_$$NO | grep "into thirdchoicedisks"
 check:output=~sda 0x500a0751036d9e61
 check:output=~sdb 0x500a0751036d9c24
 check:output=~sdc 0x500a0751036d9e7a
 check:output=~sdd 0x500a0751036d9e83
-cmd:cat /tmp/__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__fr_$$NO | grep "by sorting wwn and DRIVER"
+cmd:cat /tmp/__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__fr_$$NO | grep "by DRIVER, then by identifier"
 check:output=~sdb
 end

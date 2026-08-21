@@ -35,7 +35,7 @@ check:rc==0
 check:output=~booted
 
 cmd:xdsh $$CN "scp /var/log/xcat/xcat.log root@$$MN:/tmp/__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__fr_before_re_$$NO"
-cmd:cat /tmp/__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__fr_$$NO | grep "by sorting wwn and DRIVER"
+cmd:cat /tmp/__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__fr_$$NO | grep "by DRIVER, then by identifier"
 check:output=~sdb
 
 cmd:chdef $$CN status=
@@ -72,9 +72,9 @@ cmd:cat /tmp/__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__fr_$$NO | grep "
 check:output=~The disk sdb information
 cmd:cat /tmp/__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__fr_$$NO | grep "disk_wwn="
 check:output=~0x500a0751036d9c24
-cmd:cat /tmp/__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__fr_$$NO | grep "into wwn"
-check:output=~sdb 0x500a0751036d9c24 into wwn
-cmd:cat /tmp/__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__fr_$$NO | grep "by sorting wwn and DRIVER"
+cmd:cat /tmp/__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__fr_$$NO | grep "0x500a0751036d9c24 into"
+check:output=~sdb 0x500a0751036d9c24 into
+cmd:cat /tmp/__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__fr_$$NO | grep "by DRIVER, then by identifier"
 check:output=~sdb
 
 end
