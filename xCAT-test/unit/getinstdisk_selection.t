@@ -55,6 +55,7 @@ sub run_scenario {
         my %attr = %{ $disk{$name} };
         open( my $props, '>', "$fixdir/$name.props" ) or die $!;
         print $props "ID_WWN=$attr{wwn}\n" if $attr{wwn};
+        print $props "DEVPATH=$attr{path}\n" if $attr{path};
         print $props "DEVTYPE=disk\n";
         close($props);
         open( my $attrs, '>', "$fixdir/$name.attrs" ) or die $!;
@@ -129,6 +130,40 @@ selects( '/dev/nvme0n1', 'an NVMe device is selected from the last group',
 
 # No usable disk falls back to the documented default.
 selects( '/dev/sda', 'no disks fall back to the default' );
+
+# The driver group decides before the identifier. A disk that reports no WWN
+# used to be dropped when another disk reported one, or to be ignored because
+# the readback only opened the files of the last identifier class seen.
+selects( '/dev/sdb', 'the direct attached disk wins when only the RAID volume reports a WWN',
+    sda => { driver => 'megaraid_sas', wwn => '0x5000cca0aaaa0001' },
+    sdb => { driver => 'ahci' } );
+
+selects( '/dev/sda', 'the direct attached disk wins when it is scanned first without a WWN',
+    sda => { driver => 'ahci' },
+    sdb => { driver => 'megaraid_sas', wwn => '0x5000cca0aaaa0002' } );
+
+# Within one driver group the identifier decides, and a disk that reports one
+# is preferred, because that name is stable across reboots.
+selects( '/dev/sdb', 'the disk with a WWN wins inside the group',
+    sda => { driver => 'ahci' },
+    sdb => { driver => 'ahci', wwn => '0x5000cca0bbbb0001' } );
+
+selects( '/dev/sdb', 'the lower WWN wins inside the group',
+    sda => { driver => 'ahci', wwn => '0x5000cca0bbbb0002' },
+    sdb => { driver => 'ahci', wwn => '0x5000cca0bbbb0001' } );
+
+selects( '/dev/sda', 'a path is preferred over no identifier at all',
+    sda => { driver => 'ahci', path => '/devices/pci0000:00/0000:00:1f.2/ata1/host0/target0:0:0/0:0:0:0/block/sda' },
+    sdb => { driver => 'ahci' } );
+
+# A Xen guest presents xvd names. The scan has to see them, because the
+# fallback below it would take the first one without looking.
+selects( '/dev/xvda', 'a Xen disk is scanned rather than assumed',
+    xvda => { driver => 'vbd' } );
+
+selects( '/dev/xvdb', 'the better driver group wins among Xen disks',
+    xvda => { driver => 'vbd' },
+    xvdb => { driver => 'ahci' } );
 
 # Every installer includes the one script, which carries the fallbacks and the
 # logging that the separate RHEL 10 copy used to hold on its own.
