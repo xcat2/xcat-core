@@ -45,7 +45,16 @@ done
 temporary_dir=$(mktemp -d "${TMPDIR:-/tmp}/getdestiny.XXXXXX") || exit 1
 request_file=$temporary_dir/request.xml
 response_file=$temporary_dir/response.xml
-trap 'rm -rf -- "$temporary_dir"; [[ -z $metadata_temporary ]] || rm -f -- "$metadata_temporary"' EXIT HUP INT TERM
+
+cleanup() {
+	rm -rf -- "$temporary_dir"
+	[[ -z $metadata_temporary ]] || rm -f -- "$metadata_temporary"
+}
+
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 printf '%s\n' \
 	'<xcatrequest>' \
