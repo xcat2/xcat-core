@@ -1,0 +1,105 @@
+#!/bin/bash
+set -euo pipefail
+
+fail() {
+    printf 'Genesis extension export: %s\n' "$*" >&2
+    exit 1
+}
+
+if (($# != 6)); then
+    printf '%s\n' \
+        'Usage: export-extension ARCHITECTURE EXTENSION DEPLOY_DIRECTORY PRIVATE_KEY PUBLIC_KEY OUTPUT_DIRECTORY' >&2
+    exit 2
+fi
+
+architecture=$1
+extension=$2
+deploy_dir=${3%/}
+private_key=$4
+public_key=$5
+output_dir=${6%/}
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+case "$architecture" in
+    x86|x86_64|ppc64|ppc64le|armv7hf|aarch64|riscv64) ;;
+    *) fail "unsupported architecture: $architecture" ;;
+esac
+[[ $extension =~ ^[a-z0-9][a-z0-9._-]{0,63}$ ]] \
+    || fail "invalid extension name: $extension"
+[[ -d $deploy_dir && ! -L $deploy_dir ]] \
+    || fail "invalid deploy directory: $deploy_dir"
+[[ -f $private_key && ! -L $private_key ]] \
+    || fail "invalid private key: $private_key"
+[[ -f $public_key && ! -L $public_key ]] \
+    || fail "invalid public key: $public_key"
+[[ ! -e $output_dir && ! -L $output_dir ]] \
+    || fail "output already exists: $output_dir"
+
+machine=xcat-genesis-${architecture//_/-}
+machine_dir=$deploy_dir/images/$machine
+stem=$extension-$machine
+
+resolve_artifact() {
+    local path=$1 resolved
+
+    resolved=$(readlink -f -- "$path")
+    [[ -f $resolved && ! -L $resolved ]] || fail "missing artifact: $path"
+    printf '%s\n' "$resolved"
+}
+
+image=$(resolve_artifact "$machine_dir/$stem.squashfs-zst")
+manifest=$(resolve_artifact "$machine_dir/$stem.manifest.json")
+key_id=$(python3 - "$manifest" <<'PY'
+import json
+import re
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as source:
+    value = json.load(source).get("key_id")
+if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", value):
+    raise SystemExit(1)
+print(value)
+PY
+) || fail 'extension manifest has an invalid key ID'
+
+parent=$(dirname -- "$output_dir")
+name=$(basename -- "$output_dir")
+install -d -m 0755 "$parent"
+staging=$(mktemp -d "$parent/.${name}.XXXXXX")
+private_public=$(mktemp "$parent/.${name}.private-public.XXXXXX")
+provided_public=$(mktemp "$parent/.${name}.provided-public.XXXXXX")
+trap 'rm -rf -- "$staging"; rm -f -- "$private_public" "$provided_public"' EXIT
+
+openssl pkey -in "$private_key" -pubout -outform DER \
+    -out "$private_public" 2>/dev/null \
+    || fail 'private key is not a valid signing key'
+openssl pkey -pubin -in "$public_key" -outform DER \
+    -out "$provided_public" 2>/dev/null \
+    || fail 'public key is not valid'
+cmp -s -- "$private_public" "$provided_public" \
+    || fail 'public key does not match the private key'
+
+install -d -m 0755 "$staging/extensions" "$staging/extension-keys"
+install -m 0644 "$image" "$staging/extensions/$stem.squashfs-zst"
+install -m 0644 "$manifest" "$staging/extensions/$stem.manifest.json"
+"$script_dir/scripts/sign-extension" \
+    "$staging/extensions/$stem.manifest.json" "$private_key" \
+    "$staging/extensions/$stem.sig" >/dev/null
+install -m 0644 "$public_key" "$staging/extension-keys/$key_id.pem"
+
+openssl pkeyutl -verify -pubin -inkey "$public_key" -rawin \
+    -in "$staging/extensions/$stem.manifest.json" \
+    -sigfile "$staging/extensions/$stem.sig" >/dev/null 2>&1 \
+    || fail 'generated extension signature did not verify'
+(
+    cd "$staging"
+    find extension-keys extensions -type f -print \
+        | LC_ALL=C sort \
+        | xargs sha256sum -- >SHA256SUMS
+    sha256sum -c SHA256SUMS >/dev/null
+)
+
+mv -- "$staging" "$output_dir"
+rm -f -- "$private_public" "$provided_public"
+trap - EXIT
+printf 'Exported Genesis extension %s to %s\n' "$extension" "$output_dir"

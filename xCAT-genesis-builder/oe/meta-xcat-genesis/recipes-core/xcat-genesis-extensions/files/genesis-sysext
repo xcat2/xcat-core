@@ -167,7 +167,7 @@ load_all() {
     ((${#manifests[@]} > 0)) || fail "no extension manifests found in: $directory"
     for manifest in "${manifests[@]}"; do
         stem=${manifest%.manifest.json}
-        install_extension "$manifest" "$stem.raw" "$stem.sig"
+        install_extension "$manifest" "$stem.squashfs-zst" "$stem.sig"
     done
     publish_status READY 'Genesis extensions loaded'
 }
