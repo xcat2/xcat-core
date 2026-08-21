@@ -277,10 +277,10 @@ like( $record, qr/^STATE=DEGRADED$/m,
 my $service = read_file($action_service);
 like( $service, qr/^Requires=xcat-genesis-register\.service$/m,
     'action execution requires registration' );
-like( $service, qr/^Restart=on-failure$/m,
-    'failed actions retry after operator correction' );
-like( $service, qr/^StartLimitIntervalSec=0$/m,
-    'action recovery is not disabled by a start limit' );
+unlike( $service, qr/^Restart=/m,
+    'a fatal action remains failed for diagnosis' );
+unlike( $service, qr/^StartLimitIntervalSec=/m,
+    'the action service has no unlimited restart policy' );
 
 my $recipe = read_file($init_recipe);
 like( $recipe, qr/\bxcat-genesis-discovery\b/,
