@@ -57,9 +57,10 @@ my $pduhash;
 # pduId is the PDU's link ID and is 1 when linking is not used; BCM2/PMC use 0
 # for the main controller. Linked and BCM2/PMC deployments are out of scope for
 # genpdu, because pduoutlet.pdu is parsed as PDU:outlet and has no field for a
-# link ID. Read pduCount (.1.3.6.1.4.1.13742.6.3.1.0) to confirm a unit is
-# unlinked; it returns 1 when it is.
+# link ID. pduCount reports how many units are behind one agent and is 1 on a
+# standalone PDU.
 #-------------------------------------------------------
+my $PDU2_PDUCOUNT    = ".1.3.6.1.4.1.13742.6.3.1.0";      #pduCount,             ro, scalar
 my $PDU2_SWITCHOP    = ".1.3.6.1.4.1.13742.6.4.1.2.1.2";  #switchingOperation,  rw, off(0) on(1) cycle(2)
 my $PDU2_OUTLETSTATE = ".1.3.6.1.4.1.13742.6.4.1.2.1.3";  #outletSwitchingState, ro, on(7) off(8)
 my $PDU2_OUTLETCOUNT = ".1.3.6.1.4.1.13742.6.3.2.2.1.4";  #outletCount,          ro, INDEX { pduId }
@@ -68,14 +69,40 @@ my $PDU2_PDUID       = 1;
 #rinv / rvitals sources. The nameplate and unitConfiguration entries are
 #INDEX { pduId }; the measurement and sensor-configuration entries are
 #INDEX { pduId, <inlet|outlet>Id, sensorType }.
-my $PDU2_NAMEPLATE   = ".1.3.6.1.4.1.13742.6.3.2.1.1";    #nameplateEntry
-my $PDU2_UNITCONF    = ".1.3.6.1.4.1.13742.6.3.2.2.1";    #unitConfigurationEntry
-my $PDU2_INLETVAL    = ".1.3.6.1.4.1.13742.6.5.2.3.1.4";  #measurementsInletSensorValue
-my $PDU2_INLETUNITS  = ".1.3.6.1.4.1.13742.6.3.3.4.1.6";  #inletSensorUnits
-my $PDU2_INLETDEC    = ".1.3.6.1.4.1.13742.6.3.3.4.1.7";  #inletSensorDecimalDigits
-my $PDU2_OUTLETVAL   = ".1.3.6.1.4.1.13742.6.5.4.3.1.4";  #measurementsOutletSensorValue
-my $PDU2_OUTLETUNITS = ".1.3.6.1.4.1.13742.6.3.5.4.1.6";  #outletSensorUnits
-my $PDU2_OUTLETDEC   = ".1.3.6.1.4.1.13742.6.3.5.4.1.7";  #outletSensorDecimalDigits
+#A sensor whose SensorSignedMinimum is below zero can read negative and must be
+#taken from the signed value column, per the SensorSignedMinimum DESCRIPTION.
+#The two columns are not interchangeable in either direction: the unsigned
+#column is undefined for such a sensor (a PX4 answers 0 for inlet reactive
+#power), and the signed column is undefined for sensors whose range exceeds
+#Integer32 (the same PX4 answers 0 for active and apparent energy).
+my $PDU2_NAMEPLATE       = ".1.3.6.1.4.1.13742.6.3.2.1.1";    #nameplateEntry
+my $PDU2_UNITCONF        = ".1.3.6.1.4.1.13742.6.3.2.2.1";    #unitConfigurationEntry
+my $PDU2_INLETVAL        = ".1.3.6.1.4.1.13742.6.5.2.3.1.4";  #measurementsInletSensorValue
+my $PDU2_INLETSIGNEDVAL  = ".1.3.6.1.4.1.13742.6.5.2.3.1.6";  #measurementsInletSensorSignedValue
+my $PDU2_INLETSIGNEDMIN  = ".1.3.6.1.4.1.13742.6.3.3.4.1.27"; #inletSensorSignedMinimum
+my $PDU2_INLETUNITS      = ".1.3.6.1.4.1.13742.6.3.3.4.1.6";  #inletSensorUnits
+my $PDU2_INLETDEC        = ".1.3.6.1.4.1.13742.6.3.3.4.1.7";  #inletSensorDecimalDigits
+my $PDU2_OUTLETVAL       = ".1.3.6.1.4.1.13742.6.5.4.3.1.4";  #measurementsOutletSensorValue
+my $PDU2_OUTLETSIGNEDVAL = ".1.3.6.1.4.1.13742.6.5.4.3.1.6";  #measurementsOutletSensorSignedValue
+my $PDU2_OUTLETSIGNEDMIN = ".1.3.6.1.4.1.13742.6.3.5.4.1.27"; #outletSensorSignedMinimum
+my $PDU2_OUTLETUNITS     = ".1.3.6.1.4.1.13742.6.3.5.4.1.6";  #outletSensorUnits
+my $PDU2_OUTLETDEC       = ".1.3.6.1.4.1.13742.6.3.5.4.1.7";  #outletSensorDecimalDigits
+
+#The five columns pdu2_sensor_fmt reads, grouped per entity type.
+my $PDU2_INLET_SENSOR = {
+    val    => $PDU2_INLETVAL,
+    signed => $PDU2_INLETSIGNEDVAL,
+    min    => $PDU2_INLETSIGNEDMIN,
+    units  => $PDU2_INLETUNITS,
+    dec    => $PDU2_INLETDEC,
+};
+my $PDU2_OUTLET_SENSOR = {
+    val    => $PDU2_OUTLETVAL,
+    signed => $PDU2_OUTLETSIGNEDVAL,
+    min    => $PDU2_OUTLETSIGNEDMIN,
+    units  => $PDU2_OUTLETUNITS,
+    dec    => $PDU2_OUTLETDEC,
+};
 
 #PDU2-MIB has no pollable PDU-level firmware version (boardFirmwareVersion is
 #per-controller under unit 3, imageVersion is trap payload only), so the
@@ -749,49 +776,110 @@ sub connectTopdu_gen {
     my $pdu = shift;
     my $callback = shift;
 
-    my $ent = $pduhash->{$pdu}->[0];
+    my $session = new SNMP::Session(pdu2_session_args($pdu, $pduhash->{$pdu}->[0]));
+    unless ($session) {
+        return;
+    }
+    $session->{genpdu} = 1;
+
+    unless (pdu2_session_probe($session, $pdu, $callback)) {
+        return;
+    }
+
+    return $session;
+}
+
+#-------------------------------------------------------
+
+=head3  pdu2_session_args
+
+   Map a 'pdu' table row onto the SNMP::Session arguments for that PDU.
+
+=cut
+
+#-------------------------------------------------------
+sub pdu2_session_args {
+    my ($pdu, $ent) = @_;
+
     my $snmpver = $ent->{snmpversion};
     if    (!defined $snmpver) { $snmpver = "1"; }
     elsif ($snmpver =~ /3/)   { $snmpver = "3"; }
     elsif ($snmpver =~ /2/)   { $snmpver = "2"; }
     else                      { $snmpver = "1"; }
 
-    my $session;
     if ($snmpver ne "3") {
-        my $community = $ent->{community} || "public";
-        $session = new SNMP::Session(
+        return (
             DestHost       => $pdu,
             Version        => $snmpver,
-            Community      => $community,
+            Community      => $ent->{community} || "public",
             UseSprintValue => 1,
         );
-    } else {
-        my $authpass = $ent->{authkey};
-        my $privpass = (defined $ent->{privkey}) ? $ent->{privkey} : $authpass;
-        my $seclevel = $ent->{seclevel};
-        unless ($seclevel) {
-            $seclevel = ($ent->{privtype}) ? "authPriv" : "authNoPriv";
-        }
-        my %args = (
-            DestHost       => $pdu,
-            Version        => 3,
-            SecName        => $ent->{snmpuser},
-            SecLevel       => $seclevel,
-            AuthProto      => uc($ent->{authtype} || "SHA"),
-            AuthPass       => $authpass,
-            UseSprintValue => 1,
-        );
-        if ($seclevel eq "authPriv") {
-            $args{PrivProto} = uc($ent->{privtype} || "DES");
-            $args{PrivPass}  = $privpass;
-        }
-        $session = new SNMP::Session(%args);
     }
 
-    unless ($session) {
-        return;
+    my $authpass = $ent->{authkey};
+    my $privpass = (defined $ent->{privkey}) ? $ent->{privkey} : $authpass;
+    my $seclevel = $ent->{seclevel};
+    unless ($seclevel) {
+        $seclevel = ($ent->{privtype}) ? "authPriv" : "authNoPriv";
     }
-    $session->{genpdu} = 1;
+    my %args = (
+        DestHost       => $pdu,
+        Version        => 3,
+        SecName        => $ent->{snmpuser},
+        SecLevel       => $seclevel,
+        AuthProto      => uc($ent->{authtype} || "SHA"),
+        AuthPass       => $authpass,
+        UseSprintValue => 1,
+    );
+    if ($seclevel eq "authPriv") {
+        $args{PrivProto} = uc($ent->{privtype} || "DES");
+        $args{PrivPass}  = $privpass;
+    }
+
+    return %args;
+}
+
+#-------------------------------------------------------
+
+=head3  pdu2_session_probe
+
+   First exchange with a generic SNMP PDU. Returns false when the PDU does not
+   answer at all, so callers report a connection failure, and records whether
+   its outlets can be switched.
+
+=cut
+
+#-------------------------------------------------------
+sub pdu2_session_probe {
+    my ($session, $pdu, $callback) = @_;
+
+    #SNMP::Session->new does not contact the device, so this GET is where an
+    #unreachable PDU or a wrong credential first shows up. pduCount is a
+    #mandatory PDU2-MIB scalar, which makes it a reliable liveness check: the
+    #switching probe below cannot serve that purpose, because a PDU that never
+    #answers looks exactly like a PDU that has no switched outlets.
+    my $pducount = $session->get("$PDU2_PDUCOUNT");
+    unless (defined $pducount and $pducount =~ /^\d+$/) {
+        #Every PDU2 device tested answers pduCount, but genpdu is meant for any
+        #implementation of the MIB, so fall back to sysDescr before calling the
+        #PDU unreachable: it is mandatory in SNMPv2-MIB, and rinv reads it
+        #already. The unit count is then unknown rather than assumed to differ,
+        #so no linking warning is issued.
+        my $descr = $session->get("$SYSDESCR");
+        unless (defined $descr and $descr ne '' and $descr !~ /No Such/i) {
+            return 0;
+        }
+        $pducount = 1;
+    }
+
+    #pduCount is the number of link units including the primary, or for BCM2 and
+    #PMC the number of power meters plus the main controller. genpdu only drives
+    #pduId 1, which is the primary on a linked unit but a power meter on
+    #BCM2/PMC. Warn rather than refuse: driving the primary alone stays correct,
+    #and pduoutlet.pdu has no field for a link id in any case.
+    if ($pducount != 1) {
+        xCAT::SvrUtils::sendmsg("pduCount is $pducount, only the primary unit (pduId $PDU2_PDUID) is managed", $callback, $pdu);
+    }
 
     #Metered-only PDU2 models (for example PX2-1901U) answer the nameplate and
     #measurement tables normally but have no outletSwitchControlTable instances.
@@ -802,7 +890,7 @@ sub connectTopdu_gen {
     $session->{genpdu_switchable} =
         ((defined $probe) and ($probe =~ /^\d+$/ or $probe =~ /^(on|off)$/i)) ? 1 : 0;
 
-    return $session;
+    return 1;
 }
 
 #-------------------------------------------------------
@@ -812,30 +900,43 @@ sub connectTopdu_gen {
    Read one PDU2-MIB sensor and return it formatted with its unit, or undef if
    the sensor is not present on this device.
 
-   $idx is the full instance suffix (pduId.entityId.sensorType). The scaling
-   factor and unit come from the matching sensor-configuration table, so no
-   unit or precision is hardcoded. They are formally per-entity but are uniform
+   $oids is one of the PDU2_*_SENSOR column sets and $idx is the full instance
+   suffix (pduId.entityId.sensorType). The value column, scaling factor and unit
+   all come from the matching sensor-configuration table, so no unit, precision
+   or column choice is hardcoded. They are formally per-entity but are uniform
    across entities on PDU2 devices, so they are cached per sensorType to keep
-   this to one GET per entity per sensor rather than three.
+   this to one GET per entity per sensor rather than four. The cache is filled
+   only once a sensor is known to exist, so an entity that lacks a sensor cannot
+   seed it with fallbacks for the entities behind it.
 
 =cut
 
 #-------------------------------------------------------
 sub pdu2_sensor_fmt {
-    my ($session, $valoid, $unitoid, $decoid, $idx, $cache) = @_;
+    my ($session, $oids, $idx, $cache) = @_;
 
+    my $st = (split /\./, $idx)[-1];
+    my $meta = $cache->{$st};
+
+    #SensorSignedMinimum below zero means the sensor can read negative and the
+    #signed value column has to be used. Treat an unreadable minimum as zero:
+    #firmware that does not implement the column keeps the unsigned reading it
+    #has always returned.
+    my $min = (defined $meta) ? $meta->[2] : $session->get("$oids->{min}.$idx");
+    $min = 0 unless (defined $min and $min =~ /^-?\d+$/);
+
+    my $valoid = ($min < 0) ? $oids->{signed} : $oids->{val};
     my $raw = $session->get("$valoid.$idx");
     return undef unless (defined $raw and $raw =~ /^-?\d+$/);
 
-    my $st = (split /\./, $idx)[-1];
-    unless (exists $cache->{$st}) {
-        my $u = $session->get("$unitoid.$idx");
-        my $d = $session->get("$decoid.$idx");
+    unless (defined $meta) {
+        my $u = $session->get("$oids->{units}.$idx");
+        my $d = $session->get("$oids->{dec}.$idx");
         $u = -1 unless (defined $u and $u =~ /^-?\d+$/);
         $d = 0  unless (defined $d and $d =~ /^\d+$/);
-        $cache->{$st} = [ $u, $d ];
+        $meta = $cache->{$st} = [ $u, $d, $min ];
     }
-    my ($units, $digits) = @{ $cache->{$st} };
+    my ($units, $digits) = @$meta;
 
     my $val = sprintf("%.*f", $digits, $raw / (10 ** $digits));
     my $sfx = (defined $PDU2_SENSOR_UNIT{$units}) ? $PDU2_SENSOR_UNIT{$units} : "";
@@ -910,8 +1011,8 @@ sub rvitals_for_genpdu {
     my %inlet_cache;
     for (my $inlet = 1; $inlet <= $inlets; $inlet++) {
         foreach my $st (@PDU2_INLET_SENSORS) {
-            my $fmt = pdu2_sensor_fmt($session, $PDU2_INLETVAL, $PDU2_INLETUNITS,
-                        $PDU2_INLETDEC, "$PDU2_PDUID.$inlet.$st", \%inlet_cache);
+            my $fmt = pdu2_sensor_fmt($session, $PDU2_INLET_SENSOR,
+                        "$PDU2_PDUID.$inlet.$st", \%inlet_cache);
             next unless (defined $fmt);
             my $name = $PDU2_SENSOR_NAME{$st} || "sensor $st";
             xCAT::SvrUtils::sendmsg("inlet $inlet $name: $fmt", $callback, $pdu);
@@ -922,15 +1023,17 @@ sub rvitals_for_genpdu {
 
     #Metered-only models (PX2-1901U, PX3-1901U) populate the inlet tables but
     #have no per-outlet sensors. Probe one before looping: a 48-outlet unit
-    #otherwise costs 144 GETs that all return No Such Instance and print
-    #nothing, which matters when rvitals is run against a group.
+    #otherwise costs 192 GETs that all return No Such Instance and print
+    #nothing, which matters when rvitals is run against a group. The unsigned
+    #column is the right one to probe because the first outlet sensor is
+    #rmsCurrent, which cannot read negative.
     my $probe = $session->get("$PDU2_OUTLETVAL.$PDU2_PDUID.1.$PDU2_OUTLET_SENSORS[0]");
     return unless (defined $probe and $probe =~ /^-?\d+$/);
 
     for (my $outlet = 1; $outlet <= $count; $outlet++) {
         foreach my $st (@PDU2_OUTLET_SENSORS) {
-            my $fmt = pdu2_sensor_fmt($session, $PDU2_OUTLETVAL, $PDU2_OUTLETUNITS,
-                        $PDU2_OUTLETDEC, "$PDU2_PDUID.$outlet.$st", \%outlet_cache);
+            my $fmt = pdu2_sensor_fmt($session, $PDU2_OUTLET_SENSOR,
+                        "$PDU2_PDUID.$outlet.$st", \%outlet_cache);
             next unless (defined $fmt);
             my $name = $PDU2_SENSOR_NAME{$st} || "sensor $st";
             xCAT::SvrUtils::sendmsg("outlet $outlet $name: $fmt", $callback, $pdu);

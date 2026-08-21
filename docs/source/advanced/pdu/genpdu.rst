@@ -120,7 +120,7 @@ The following commands are supported against a PDU:
          mypdu: inlet 1 Power Factor: 0.99
          mypdu: inlet 1 Frequency: 60.0 Hz
          mypdu: inlet 1 Unbalanced Current: 11 %
-         mypdu: inlet 1 Reactive Power: 0 var
+         mypdu: inlet 1 Reactive Power: -1360 var
          mypdu: inlet 1 Active Energy: 145702407 Wh
          mypdu: inlet 1 Apparent Energy: 147093631 VAh
          mypdu: outlet 1 RMS Current: 0.000 A
@@ -137,6 +137,12 @@ The following commands are supported against a PDU:
      appears as ``13.959 A`` on a PX4 and ``18.1 A`` on a PX2, because the two
      devices declare a different number of decimal digits for it.
 
+     Sensors that can read negative, such as reactive power, are taken from the
+     signed value column of the MIB, which the device selects through the
+     sensor's signed minimum. The unsigned column is used for every other
+     sensor, including wide-range ones such as active energy, where the signed
+     column does not apply.
+
      Sensors that the device does not report are omitted, so the exact set of
      lines varies by model. Per-outlet sensors are skipped entirely on models
      that do not meter individual outlets. The reported sensor types are a
@@ -151,7 +157,7 @@ The following commands are supported against a PDU:
 Limitations
 -----------
 
-   * PDU linking (cascading multiple PDUs behind one management interface) is not supported. The MIB indexes outlets by link ID, and xCAT assumes the value used by unlinked units. BCM2 and PMC power meters are also out of scope for the same reason.
+   * PDU linking (cascading multiple PDUs behind one management interface) is not supported. The MIB indexes outlets by link ID, and xCAT assumes the value used by unlinked units, so only the primary unit is managed. BCM2 and PMC power meters are out of scope for the same reason. A PDU reporting more than one unit is not refused, but every command against it warns that only the primary unit is being driven.
 
    * ``authtype``, ``privtype`` and the other SNMP attributes are per-PDU attributes in the ``pdu`` table, so PDUs using different SNMP protocols need their values set individually.
 
