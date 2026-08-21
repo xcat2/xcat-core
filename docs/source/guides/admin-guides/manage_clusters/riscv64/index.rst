@@ -75,6 +75,22 @@ package lists add ``grub2-efi-riscv64`` and ``efibootmgr``, and the
 these files. After ``nodeset <node> boot`` the firmware boots the installed
 system because the per-node ``grub2-<node>`` loader link is removed.
 
+Crash dumps
+~~~~~~~~~~~
+
+EL10 defines no default crash kernel reservation for riscv64
+(``kdumpctl get-default-crashkernel`` is empty there), so the installer's kdump
+add-on writes the literal ``crashkernel=auto``, which the kernel ignores: no
+memory is reserved and ``kdump.service`` fails on every installed node. The
+riscv64 templates therefore turn that add-on off. To take crash dumps on a
+riscv64 node, reserve the memory yourself with a real value, for example::
+
+    chdef -t osimage rocky10.2-riscv64-install-compute addkcmdline="crashkernel=256M"
+
+Diskless images use ``linuximage.dump`` and ``linuximage.crashkernelsize`` as on
+the other architectures; a riscv64 image with ``dump`` set and no explicit size
+reserves 256M.
+
 Stateless (diskless) images
 ---------------------------
 
