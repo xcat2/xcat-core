@@ -36,6 +36,7 @@ for my $family ( [ 'rocky', 'rocky10' ], [ 'rh', 'rhels10' ] ) {
         like( $t, qr/^%packages --ignoremissing$/m, "$dir/$profile.$osbase riscv64 template tolerates anaconda's x86 boot loader package request" );
         like( $t, qr/^#INCLUDE_DEFAULT_PKGLIST#$/m, "$dir/$profile.$osbase riscv64 template still includes the default package list" );
         like( $t, qr{^#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post\.rhels10\.riscv64#$}m, "$dir/$profile.$osbase riscv64 template runs the riscv64 UEFI boot entry fix-up" );
+        like( $t, qr/^%addon com_redhat_kdump --disable\n%end$/m, "$dir/$profile.$osbase riscv64 template keeps the installer from writing a crash kernel reservation EL10 riscv64 cannot honour" );
         like( $t, qr/^%post --erroronfail --interpreter=\/bin\/bash$/m, "$dir/$profile.$osbase riscv64 template fails the install when no boot loader reached the ESP" );
         like( $t, qr{/boot/efi/EFI/BOOT/BOOTRISCV64\.EFI}, "$dir/$profile.$osbase riscv64 template checks the removable-media loader" );
         like( $t, qr{/boot/efi/EFI/\*/grubriscv64\.efi}, "$dir/$profile.$osbase riscv64 template also accepts a vendor directory loader" );
@@ -43,7 +44,8 @@ for my $family ( [ 'rocky', 'rocky10' ], [ 'rh', 'rhels10' ] ) {
 
         # the riscv64 template is the shared one plus the riscv64 changes
         my $b = slurp($base);
-        ( my $t_norm = $t ) =~ s/^# riscv64:.*\n(?:#.*\n)*//m;
+        ( my $t_norm = $t ) =~ s/^# riscv64:.*\n(?:#.*\n)*%addon com_redhat_kdump --disable\n%end\n\n//m;
+        $t_norm =~ s/^# riscv64:.*\n(?:#.*\n)*//m;
         $t_norm =~ s/^%packages --ignoremissing$/%packages/m;
         $t_norm =~ s{^#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post\.rhels10\.riscv64#\n}{}m;
         $t_norm =~ s/\n# --ignoremissing above.*?\n%post --erroronfail.*?\n%end\n//s;
