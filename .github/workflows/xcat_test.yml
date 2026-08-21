@@ -10,3 +10,41 @@ jobs:
         run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests build-essential fakeroot reprepro devscripts debhelper libcapture-tiny-perl libjson-perl libsoap-lite-perl libdbi-perl libcgi-pm-perl quilt openssh-server dpkg looptools genometools software-properties-common
       - name: Run tests
         run: perl github_action_xcat_test.pl
+
+  genesis_openembedded:
+    name: OpenEmbedded metadata
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      KAS_WORK_DIR: ${{ runner.temp }}/kas-work
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: xCAT-genesis-builder/oe/requirements.txt
+      - name: Install OpenEmbedded host dependencies
+        run: >-
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y
+          --no-install-recommends --no-install-suggests
+          build-essential chrpath cpio diffstat file gawk git locales
+          lz4 openssl socat texinfo unzip wget xz-utils zstd
+      - name: Install KAS
+        run: python -m pip install -r xCAT-genesis-builder/oe/requirements.txt
+      - name: Validate every architecture configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for architecture in x86 x86_64 ppc64 ppc64le armv7hf aarch64 riscv64; do
+              export KAS_BUILD_DIR="${RUNNER_TEMP}/kas-build-${architecture}"
+              configuration="xCAT-genesis-builder/oe/kas/${architecture}.yml"
+              kas dump "${configuration}" >/dev/null
+              kas shell "${configuration}" -c 'bitbake -p'
+          done
+      - name: Validate the image task graph
+        env:
+          KAS_BUILD_DIR: ${{ runner.temp }}/kas-build-x86_64
+        run: >-
+          kas shell xCAT-genesis-builder/oe/kas/x86_64.yml -c
+          'bitbake -n xcat-genesis-image xcat-genesis-extension-smoke'
