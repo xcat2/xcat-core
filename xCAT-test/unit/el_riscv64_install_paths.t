@@ -85,4 +85,21 @@ is_deeply( resolver_libs('riscv64'), [ 'lib64/libnss_dns.so.2', 'lib64/libresolv
 is_deeply( resolver_libs('x86_64'),  [ 'lib64/libnss_dns.so.2', 'lib64/libresolv.so.2' ], 'x86_64 images still use lib64' );
 is_deeply( resolver_libs('ppc64'),   [ 'lib/libnss_dns.so.2',   'lib/libresolv.so.2' ],   'ppc64 images still use lib' );
 
+# anaconda.pm: crash kernel reservation for diskless images with kdump enabled
+like(
+    $anaconda,
+    qr/if \(\$arch eq "riscv64"\) \{\n(?:\s*#[^\n]*\n)*\s*\$kcmdline \.= " crashkernel=256M dump=\$dump ";/,
+    'a riscv64 diskless image with kdump enabled reserves a crash kernel by default',
+);
+like(
+    $anaconda,
+    qr/if \(\$arch =~ \/86\/\) \{\n\s*\$kcmdline \.= " crashkernel=128M dump=\$dump ";/,
+    'the x86 default reservation is unchanged',
+);
+like(
+    $anaconda,
+    qr/\$kcmdline \.= " crashkernel=\$crashkernelsize dump=\$dump ";/,
+    'an explicit linuximage.crashkernelsize still wins on every architecture',
+);
+
 done_testing();
