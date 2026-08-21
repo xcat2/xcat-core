@@ -707,7 +707,7 @@ passed as argument rather than by table value',
         descriptions => {
             node => 'The hostname/address of the pdu to which the settings apply',
             nodetype => 'The node type should be pdu ',
-            pdutype => 'The type of pdu ',
+            pdutype => 'The type of pdu: irpdu (infrastructure PDU, SNMP), crpdu (collaborative PDU, ssh) or genpdu (generic SNMP PDU, PDU2-MIB)',
             outlet => 'The pdu outlet count',
             username => 'The remote login user name',
             password => 'The remote login password',
