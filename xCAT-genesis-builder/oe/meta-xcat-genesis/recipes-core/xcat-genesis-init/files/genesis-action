@@ -144,10 +144,17 @@ run_approved_command() {
         read -r -a arguments <<<"$argument_text"
     fi
     publish_status RUNNING "Running approved action $command_name"
-    timeout "$operation_timeout" "$executor" "${arguments[@]}" \
-        || fail_action ACTION_COMMAND_FAILED \
-            "The approved action failed: $command_name" \
-            'Review Genesis logs and the action parameters'
+    if ((${#arguments[@]} > 0)); then
+        timeout "$operation_timeout" "$executor" "${arguments[@]}" \
+            || fail_action ACTION_COMMAND_FAILED \
+                "The approved action failed: $command_name" \
+                'Review Genesis logs and the action parameters'
+    else
+        timeout "$operation_timeout" "$executor" \
+            || fail_action ACTION_COMMAND_FAILED \
+                "The approved action failed: $command_name" \
+                'Review Genesis logs and the action parameters'
+    fi
 }
 
 prepare_network_boot() {
