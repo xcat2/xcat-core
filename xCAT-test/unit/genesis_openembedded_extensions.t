@@ -18,6 +18,13 @@ my $loader = File::Spec->catfile(
 my $signer = File::Spec->catfile(
     $repo_root, qw(xCAT-genesis-builder oe scripts sign-extension)
 );
+my $exporter = File::Spec->catfile(
+    $repo_root, qw(xCAT-genesis-builder oe export-extension)
+);
+my $extension_recipe = File::Spec->catfile(
+    $repo_root,
+    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-extensions xcat-genesis-extensions_1.0.bb)
+);
 
 sub write_file {
     my ( $path, $contents, $mode ) = @_;
@@ -64,7 +71,7 @@ my $root = tempdir( CLEANUP => 1 );
 my $bin = File::Spec->catdir( $root, 'bin' );
 my $keys = File::Spec->catdir( $root, 'keys' );
 my $run_dir = File::Spec->catdir( $root, 'run' );
-my $image = File::Spec->catfile( $root, 'xcat-smoke.raw' );
+my $image = File::Spec->catfile( $root, 'xcat-smoke.squashfs-zst' );
 my $manifest = File::Spec->catfile( $root, 'xcat-smoke.manifest.json' );
 my $signature = File::Spec->catfile( $root, 'xcat-smoke.sig' );
 my $private_key = File::Spec->catfile( $root, 'private.pem' );
@@ -102,6 +109,38 @@ write_manifest( $manifest, $hash, {} );
 my ( $sign_status, $sign_output ) =
   run_command( $signer, $manifest, $private_key, $signature );
 is( $sign_status, 0, 'extension manifest is signed' ) or diag($sign_output);
+
+my $deploy = File::Spec->catdir( $root, 'deploy' );
+my $machine = 'xcat-genesis-x86-64';
+my $extension = 'xcat-genesis-extension-smoke';
+my $stem = "$extension-$machine";
+my $machine_dir = File::Spec->catdir( $deploy, 'images', $machine );
+my $bundle = File::Spec->catdir( $root, 'bundle' );
+make_path($machine_dir);
+copy( $image, File::Spec->catfile( $machine_dir, "$stem.squashfs-zst" ) )
+  or die "Unable to stage extension image: $!";
+copy( $manifest, File::Spec->catfile( $machine_dir, "$stem.manifest.json" ) )
+  or die "Unable to stage extension manifest: $!";
+my ( $export_status, $export_output ) = run_command(
+    $exporter, 'x86_64', $extension, $deploy,
+    $private_key, $public_key, $bundle
+);
+is( $export_status, 0, 'built extension exports as a signed bundle' )
+  or diag($export_output);
+for my $artifact (
+    [ extensions => "$stem.squashfs-zst" ],
+    [ extensions => "$stem.manifest.json" ],
+    [ extensions => "$stem.sig" ],
+    [ 'extension-keys' => 'xcat-release.pem' ],
+) {
+    ok( -f File::Spec->catfile( $bundle, @{$artifact} ),
+        "extension bundle includes $artifact->[1]" );
+}
+my ( $bundle_checksum_status, undef ) = run_command(
+    'sh', '-c', 'cd "$1" && sha256sum -c SHA256SUMS >/dev/null',
+    'sh', $bundle
+);
+is( $bundle_checksum_status, 0, 'extension bundle checksums verify' );
 
 local %ENV = (
     %ENV,
@@ -230,5 +269,16 @@ like( $status_events,
 like( $status_events,
     qr/CODE=EXTENSION_VERIFICATION_FAILED .*RECOVERY=Check extension images, manifests, signatures, and trusted keys/m,
     'extension failures include structured recovery data' );
+
+my $recipe_text = do {
+    open( my $fh, '<', $extension_recipe )
+      or die "Unable to read $extension_recipe: $!";
+    local $/;
+    <$fh>;
+};
+like( $recipe_text, qr/\$\{localstatedir\}\/lib\/xcat\/genesis\/extensions/,
+    'the image creates the extension staging directory' );
+like( $recipe_text, qr/^XCAT_GENESIS_EXTENSION_BUNDLE \?\?= ""$/m,
+    'site layers can stage an exported extension bundle' );
 
 done_testing();
