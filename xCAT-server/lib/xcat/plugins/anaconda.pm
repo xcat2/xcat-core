@@ -2091,6 +2091,36 @@ erver, if so, stop it first and try again" ],
     }
 }
 
+# EL media that carry the grub2 UEFI image of an architecture xCAT cannot build a
+# boot loader for. copycd publishes it so those nodes can net boot without any
+# further step; grub2-xcat installs the same image where it is available.
+my %MEDIA_GRUB2_LOADERS = (riscv64 => 'grubriscv64.efi');
+
+# Publish the grub2 UEFI image of the media under $tftpdir/boot/grub2, unless the
+# management node already has one. Returns the path written, or undef.
+sub _install_media_grub2_loader {
+    my ($path, $arch, $callback) = @_;
+
+    my $image = $MEDIA_GRUB2_LOADERS{$arch};
+    return unless $image;
+    my $source = "$path/EFI/BOOT/$image";
+    return unless -r $source;
+
+    my $tftpdir = xCAT::TableUtils->getTftpDir();
+    return unless $tftpdir;
+    my $target = "$tftpdir/boot/grub2/grub2.$arch";
+    return if -e $target;
+
+    mkpath("$tftpdir/boot/grub2");
+    unless (copy($source, $target)) {
+        $callback->({ data => "Could not install $target from the media: $!" }) if $callback;
+        return;
+    }
+    chmod 0644, $target;
+    $callback->({ data => "Installed $target from the media" }) if $callback;
+    return $target;
+}
+
 sub copycd
 {
     my $request     = shift;
@@ -2488,6 +2518,7 @@ sub copycd
     else
     {
         $callback->({ data => "Media copy operation successful" });
+        _install_media_grub2_loader($path, $arch, $callback);
         my @ret = xCAT::SvrUtils->update_osdistro_table($distname, $arch, $path, $osdistroname);
         if ($ret[0] != 0) {
             $callback->({ data => "Error when updating the osdistro tables: " . $ret[1] });
