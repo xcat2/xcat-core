@@ -29,7 +29,6 @@ my $tmpdir = tempdir(CLEANUP => 1);
 my $deploy = File::Spec->catdir($tmpdir, 'deploy');
 my $machine = 'xcat-genesis-x86-64';
 my $image = "xcat-genesis-image-$machine.rootfs";
-my $metadata = "xcat-genesis-image-$machine";
 my $machine_dir = File::Spec->catdir($deploy, 'images', $machine);
 my $license_dir = File::Spec->catdir(
     $deploy, 'licenses', 'xcat_genesis_x86_64', $image,
@@ -40,8 +39,8 @@ make_path($machine_dir, $license_dir);
 write_file(File::Spec->catfile($machine_dir, 'bzImage'), 'kernel');
 write_file(File::Spec->catfile($machine_dir, "$image.cpio.gz"), 'initramfs');
 write_file(File::Spec->catfile($machine_dir, "$image.manifest"), 'packages');
-write_file(File::Spec->catfile($machine_dir, "$metadata.spdx.json"), '{}');
-write_file(File::Spec->catfile($machine_dir, "$metadata.vex.json"), '{}');
+write_file(File::Spec->catfile($machine_dir, "$image.spdx.json"), '{}');
+write_file(File::Spec->catfile($machine_dir, "$image.vex.json"), '{}');
 write_file(File::Spec->catfile($license_dir, 'license.manifest'), 'licenses');
 
 is(system($export, 'x86_64', $deploy, $output), 0, 'the image exports');
