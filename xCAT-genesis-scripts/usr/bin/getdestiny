@@ -75,6 +75,8 @@ printf '%s\n' \
 	'</xcatrequest>' >"$request_file"
 
 request_destiny() {
+	local request_status=0
+
 	if [[ -f /etc/xcat/cert.pem && -f /etc/xcat/certkey.pem ]]; then
 		openssl s_client -key /etc/xcat/certkey.pem \
 			-cert /etc/xcat/cert.pem -connect "$destination" -quiet \
@@ -84,10 +86,12 @@ request_destiny() {
 			2>/dev/null <"$request_file" >"$response_file" &
 	fi
 	request_pid=$!
-	wait "$request_pid" || true
+	wait "$request_pid" || request_status=$?
 	request_pid=
-	[[ -s $response_file ]] && ! grep -q '<error>' "$response_file" \
-		&& grep -q '<destiny>' "$response_file"
+	if ((request_status != 0)) && [[ ! -s $response_file ]]; then
+		return 1
+	fi
+	! grep -q '<error>' "$response_file"
 }
 
 while ! request_destiny; do
@@ -109,7 +113,11 @@ extract_element() {
 }
 
 destiny=$(extract_element destiny)
-[[ -n $destiny ]] || exit 1
+if [[ -z $destiny ]]; then
+	((once)) && exit 1
+	printf '\n'
+	exit 0
+fi
 
 if [[ -n $metadata_file ]]; then
 	metadata_dir=${metadata_file%/*}
