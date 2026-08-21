@@ -130,6 +130,10 @@ printf 'inventory' >>"$XCAT_TEST_LOG"
 printf ' <%s>' "$@" >>"$XCAT_TEST_LOG"
 printf '\n' >>"$XCAT_TEST_LOG"
 SH
+write_file( File::Spec->catfile( $approved_dir, 'bmcsetup' ), <<'SH', 0755 );
+#!/bin/sh
+printf '%s\n' bmcsetup >>"$XCAT_TEST_LOG"
+SH
 
 my %base_environment = (
     PATH                         => "$bin:$ENV{PATH}",
@@ -219,6 +223,11 @@ is( $status, 0, 'approved command completes' );
 like( $log, qr/^inventory <storage> <safe;reboot>$/m,
     'approved command arguments are not evaluated by a shell' );
 like( $log, qr/^nextdestiny /m, 'approved command advances the chain' );
+
+( $status, $log, $record ) = run_action('runcmd=bmcsetup');
+is( $status, 0, 'BMC setup action completes' );
+like( $log, qr/^bmcsetup$/m, 'sequential discovery can run BMC setup' );
+like( $log, qr/^nextdestiny /m, 'BMC setup advances the action chain' );
 
 ( $status, $log, $record ) = run_action('runcmd=unpackaged');
 isnt( $status, 0, 'unpackaged command is rejected' );
