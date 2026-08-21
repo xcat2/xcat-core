@@ -7,6 +7,7 @@ use File::Spec;
 use File::Temp qw(tempdir);
 use FindBin;
 use IO::Socket::INET;
+use POSIX qw(WNOHANG);
 use Test::More;
 
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
@@ -72,6 +73,30 @@ sub capture_command {
     my $output = do { local $/; <$fh> };
     close($fh);
     return ( $? >> 8, $output );
+}
+
+sub terminate_command {
+    my ( $environment, @command ) = @_;
+    my $pid = fork();
+    die "Unable to fork signal test: $!" unless defined($pid);
+    if ( $pid == 0 ) {
+        local %ENV = ( %ENV, %{$environment} );
+        open( STDOUT, '>', File::Spec->devnull() ) or exit 125;
+        open( STDERR, '>', File::Spec->devnull() ) or exit 125;
+        exec @command;
+        exit 125;
+    }
+
+    select( undef, undef, undef, 0.2 );
+    kill 'TERM', $pid;
+    for ( 1 .. 30 ) {
+        my $result = waitpid( $pid, WNOHANG );
+        return $? >> 8 if $result == $pid;
+        select( undef, undef, undef, 0.1 );
+    }
+    kill 'KILL', $pid;
+    waitpid( $pid, 0 );
+    return undef;
 }
 
 my $root = tempdir( CLEANUP => 1 );
@@ -176,6 +201,8 @@ write_file(
     <<'SH', 0755
 #!/bin/sh
 printf 'openssl %s\n' "$*" >>"$XCAT_TEST_LOG"
+[ -z "${XCAT_TEST_OPENSSL_DELAY-}" ] \
+    || exec sleep "$XCAT_TEST_OPENSSL_DELAY"
 cat "$XCAT_TEST_RESPONSE_FILE"
 SH
 );
@@ -296,6 +323,37 @@ write_file( $destiny_response, "<xcatresponse/>\n" );
     '192.0.2.10:3001', '--once'
 );
 isnt( $destiny_status, 0, 'nextdestiny rejects an incomplete response' );
+
+( $destiny_status, $destiny_output ) = capture_command(
+    \%environment,
+    '/bin/bash', $nextdestiny_script, '192.0.2.10:3001'
+);
+is( $destiny_status, 0, 'legacy nextdestiny returns an incomplete response' );
+is( $destiny_output, "error=No destiny command received\n",
+    'legacy nextdestiny leaves retry pacing to doxcat' );
+
+{
+    my %signal_environment = (
+        %environment,
+        XCAT_TEST_OPENSSL_DELAY => 30,
+    );
+    is(
+        terminate_command(
+            \%signal_environment,
+            '/bin/bash', $getdestiny_script, '192.0.2.10:3001'
+        ),
+        143,
+        'SIGTERM stops getdestiny during a request'
+    );
+    is(
+        terminate_command(
+            \%signal_environment,
+            '/bin/bash', $nextdestiny_script, '192.0.2.10:3001'
+        ),
+        143,
+        'SIGTERM stops nextdestiny during a request'
+    );
+}
 
 write_file(
     $cmdline,
