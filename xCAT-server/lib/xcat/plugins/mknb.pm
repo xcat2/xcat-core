@@ -828,10 +828,8 @@ sub process_request {
             print $cfgfile '   append "xcatd=' . $xcatd_address . ":$xcatdport $consolecmdline\"\n";
             close($cfgfile);
         } elsif (exists $GRUB2_DISCOVERY_ARCHES{$arch}) {
-            # Unlike the PXELINUX files, which only look at the legacy address of the network,
-            # the discovery configuration is also dropped when the xcatd address chosen for the
-            # network sits on a :noboot interface: it would send Genesis to an interface that
-            # must not serve booting.
+            # Also drop it when the xcatd address chosen for the network sits on a
+            # :noboot interface; the PXELINUX files only check the legacy address.
             if (defined($nobootnicips{ $hexnets->{$_} }) or defined($nobootnicips{$xcatd_address})) {
                 unlink("$tftpdir/boot/grub2/grub.cfg-" . uc($_));
                 next;
@@ -847,8 +845,8 @@ sub process_request {
         }
     }
     if (exists $GRUB2_DISCOVERY_ARCHES{$arch} && !-e "$tftpdir/boot/grub2/grub2.$arch") {
-        # The discovery configurations are only reached through this boot loader, which
-        # xCAT does not build: say so instead of letting the nodes time out in firmware.
+        # These configurations are only reachable through grub2.<arch>, which xCAT
+        # does not build.
         $callback->({ data => ["Note: $tftpdir/boot/grub2/grub2.$arch is missing; $arch nodes need it to reach these configurations (it is installed by grub2-xcat, or copied from the EL $arch installation media)"] });
     }
     if ($configfileonly) {
@@ -880,8 +878,7 @@ sub _grub2_discovery_arches {
 # then grub.cfg-<8 hex digit ip>, then ever shorter prefixes of that ip, and
 # finally grub.cfg. nodeset writes the per-node files (full ip and mac), so a
 # per-network prefix is only reached by clients without a node configuration:
-# discovery. The payload is fetched over HTTP, with a TFTP entry behind it.
-# The file is rebuilt from the Genesis artifacts present under
+# discovery. The file is rebuilt from the Genesis artifacts present under
 # $tftpdir/xcat and removed when none are left. Returns the path written.
 sub _write_grub2_discovery_config {
     my (%args) = @_;
@@ -897,9 +894,8 @@ sub _write_grub2_discovery_config {
     if (defined($args{consolecmdline}) and $args{consolecmdline} ne '') {
         $cmdline .= " $args{consolecmdline}";
     }
-    # The Genesis initramfs is large and a TFTP server hands it to one client at a
-    # time, so the default entry fetches it over HTTP, the same way nodeset does for
-    # netboot=grub2-http. The TFTP entry stays as the second choice for a management
+    # TFTP hands the large Genesis image to one client at a time, so the default entry
+    # loads it over HTTP like netboot=grub2-http; the TFTP entry is for a management
     # node that does not serve the TFTP root over HTTP.
     my $httpport = $args{httpport} || '80';
     my $httproot = 'http,' . $args{xcatd_address} . ($httpport eq '80' ? '' : ":$httpport");
