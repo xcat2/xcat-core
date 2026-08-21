@@ -50,7 +50,7 @@ pdu Attributes:
 
 \ **pdutype**\ 
  
- The type of pdu
+ The type of pdu: irpdu (infrastructure PDU, SNMP), crpdu (collaborative PDU, ssh) or genpdu (generic SNMP PDU, PDU2-MIB)
  
 
 
