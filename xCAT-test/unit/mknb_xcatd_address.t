@@ -356,6 +356,7 @@ like(
 );
 like($grub_cfg, qr/^set default=0$/m, 'the grub2 discovery configuration selects the first entry');
 like($grub_cfg, qr/^set timeout=5$/m, 'the grub2 discovery configuration boots after a short timeout');
+like($grub_cfg, qr/^set fallback=1$/m, 'a payload that cannot be fetched over HTTP falls back to the TFTP entry');
 like(
     $grub_cfg,
     qr/^if \[ "\$grub_cpu" = "riscv64" \]; then$/m,
@@ -364,16 +365,28 @@ like(
 like($grub_cfg, qr/^menuentry "xCAT Genesis riscv64" \{$/m, 'the menu entry names the architecture');
 like(
     $grub_cfg,
-    qr/^    linux \/xcat\/genesis\.kernel\.riscv64 xcatd=192\.168\.148\.10:3001 BOOTIF=\$net_default_mac$/m,
+    qr/^    linux \Q$xCAT::TableUtils::tftpdir\E\/xcat\/genesis\.kernel\.riscv64 xcatd=192\.168\.148\.10:3001 BOOTIF=\$net_default_mac$/m,
     'the kernel line loads the Genesis kernel with the xcatd endpoint and the booting MAC',
 );
-like($grub_cfg, qr/^    initrd \/xcat\/genesis\.fs\.riscv64\.gz$/m, 'the initrd line loads the Genesis initramfs');
-like($grub_cfg, qr/^\}\nfi\n\z/m, 'the configuration closes the menu entry and the cpu guard');
-unlike(
+like(
     $grub_cfg,
-    qr/\Q$xCAT::TableUtils::tftpdir\E/,
-    'the grub2 configuration does not expose the configured TFTP root',
+    qr/^    initrd \Q$xCAT::TableUtils::tftpdir\E\/xcat\/genesis\.fs\.riscv64\.gz$/m,
+    'the initrd line loads the Genesis initramfs',
 );
+
+# the Genesis payload is large and TFTP serves one client at a time, so the default
+# entry fetches it over HTTP and the TFTP entry stays behind it
+like($grub_cfg, qr/^    set root=http,192\.168\.148\.10$/m, 'the default entry fetches the payload over HTTP');
+like($grub_cfg, qr/^    insmod http$/m, 'the HTTP entry loads the grub2 http module');
+my ($first_entry) = $grub_cfg =~ /^(menuentry .*?^\})/ms;
+like($first_entry || '', qr/set root=http,/, 'the first, default entry is the HTTP one');
+like($grub_cfg, qr/^menuentry "xCAT Genesis riscv64 \(TFTP\)" \{$/m, 'a TFTP entry follows it');
+like(
+    $grub_cfg,
+    qr/^menuentry "xCAT Genesis riscv64 \(TFTP\)" \{\n    insmod tftp\n    set root=tftp,192\.168\.148\.10\n    linux \/xcat\/genesis\.kernel\.riscv64 xcatd=192\.168\.148\.10:3001 BOOTIF=\$net_default_mac\n    initrd \/xcat\/genesis\.fs\.riscv64\.gz\n\}$/m,
+    'the TFTP entry keeps the paths relative to the TFTP root',
+);
+like($grub_cfg, qr/^\}\nfi\n\z/m, 'the configuration closes the menu entries and the cpu guard');
 unlike(
     $grub_cfg,
     qr/xcatd=192\.168\.149\.100:3001/,
@@ -400,8 +413,24 @@ $responses = run_mknb('riscv64');
 generation_succeeded($responses, 'riscv64 configuration generation succeeds with a serial console');
 like(
     read_config($grub_cfg_path),
-    qr/^    linux \/xcat\/genesis\.kernel\.riscv64 xcatd=192\.168\.148\.10:3002 console=tty0 console=ttyS0,115200n8r BOOTIF=\$net_default_mac$/m,
+    qr/^    linux \Q$xCAT::TableUtils::tftpdir\E\/xcat\/genesis\.kernel\.riscv64 xcatd=192\.168\.148\.10:3002 console=tty0 console=ttyS0,115200n8r BOOTIF=\$net_default_mac$/m,
     'the serial console and a non-default xcatd port are carried into the kernel line',
+);
+%xCAT::TableUtils::site_extra = ();
+
+# a non-default site.httpport reaches the HTTP entry
+%xCAT::TableUtils::site_extra = ( httpport => '8080' );
+$responses = run_mknb('riscv64');
+generation_succeeded($responses, 'riscv64 configuration generation succeeds with a non-default HTTP port');
+like(
+    read_config($grub_cfg_path),
+    qr/^    set root=http,192\.168\.148\.10:8080$/m,
+    'the HTTP entry uses the configured HTTP port',
+);
+like(
+    read_config($grub_cfg_path),
+    qr/^    set root=tftp,192\.168\.148\.10$/m,
+    'the TFTP entry is unaffected by the HTTP port',
 );
 %xCAT::TableUtils::site_extra = ();
 
@@ -412,7 +441,7 @@ $responses = run_mknb('riscv64');
 generation_succeeded($responses, 'riscv64 configuration generation succeeds with an lzma initramfs');
 like(
     read_config($grub_cfg_path),
-    qr/^    initrd \/xcat\/genesis\.fs\.riscv64\.lzma$/m,
+    qr/^    initrd \Q$xCAT::TableUtils::tftpdir\E\/xcat\/genesis\.fs\.riscv64\.lzma$/m,
     'the lzma Genesis initramfs is preferred over the gzip one',
 );
 unlink("$xCAT::TableUtils::tftpdir/xcat/genesis.fs.riscv64.lzma");
