@@ -84,6 +84,15 @@ netmask_to_prefix() {
     printf '%s\n' "$prefix"
 }
 
+validate_state_value() {
+    local name=$1 value=$2
+
+    [[ $value =~ ^[][A-Za-z0-9._,:/%+-]*$ ]] \
+        || fail_network UNSAFE_NETWORK_STATE \
+            "Unsafe value returned for $name" \
+            'Check DHCP, routing, and resolver data from the management network'
+}
+
 destination=
 boot_mac=
 host_ip=
@@ -300,6 +309,19 @@ mac_address=
 [ ! -r "$sys_class_net/$selected_interface/address" ] \
     || read -r mac_address <"$sys_class_net/$selected_interface/address"
 verified_seconds=$(genesis_uptime_seconds "$uptime_file")
+
+validate_state_value XCATDEST "$destination"
+validate_state_value XCATMASTER "$master"
+validate_state_value XCATPORT "$port"
+validate_state_value XCAT_INTERFACE "$selected_interface"
+validate_state_value XCAT_SOURCE_ADDRESS "$source_address"
+validate_state_value XCAT_SOURCE_PREFIXED_ADDRESS "$source_prefixed_address"
+validate_state_value XCAT_GATEWAY "$actual_gateway"
+validate_state_value XCAT_DNS_SERVERS "$dns_servers"
+validate_state_value XCAT_NETWORK_METHOD "$network_method"
+validate_state_value XCAT_LINK_STATE "$link_state"
+validate_state_value XCAT_MAC_ADDRESS "$mac_address"
+validate_state_value XCAT_VERIFIED_SECONDS "$verified_seconds"
 
 mkdir -p "$state_dir"
 chmod 0755 "$state_dir"
