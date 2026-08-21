@@ -168,10 +168,12 @@ printf '%s\n' 'lldp.eth0.chassis.name=switch01' \
 SH
 write_file( File::Spec->catfile( $bin, 'lsblk' ), <<'SH', 0755 );
 #!/bin/sh
+[ -z "${XCAT_TEST_LSBLK_FAIL-}" ] || exit 1
 printf '%s\n' 'vda 21474836480 disk' 'vda1 1073741824 part'
 SH
 write_file( File::Spec->catfile( $bin, 'ip' ), <<'SH', 0755 );
 #!/bin/sh
+[ -z "${XCAT_TEST_IP_FAIL-}" ] || exit 1
 case "$*" in
     '-4 -o address show dev eth0 scope global')
         [ -z "$XCAT_TEST_IPV4" ] \
@@ -327,6 +329,18 @@ $environment{XCAT_TEST_LOGGER_FAIL} = 1;
 is( run_script( $discover_script, \%environment ), 0,
     'successful discovery does not depend on logging' );
 delete $environment{XCAT_TEST_LOGGER_FAIL};
+
+$environment{XCAT_TEST_LSBLK_FAIL} = 1;
+$environment{XCAT_TEST_IP_FAIL} = 1;
+is( run_script( $discover_script, \%environment ), 0,
+    'discovery tolerates devices disappearing during inventory' );
+$packet = read_file($packet_file);
+unlike( $packet, qr{<disksize>},
+    'missing disks leave the optional inventory field empty' );
+like( $packet, qr{<mac>virtio_net\|eth0\|52:54:00:00:00:02\|</mac>},
+    'a disappearing interface retains its stable hardware identity' );
+delete $environment{XCAT_TEST_LSBLK_FAIL};
+delete $environment{XCAT_TEST_IP_FAIL};
 
 $environment{XCAT_TEST_NO_SOL} = 1;
 is( run_script( $discover_script, \%environment ), 0,
