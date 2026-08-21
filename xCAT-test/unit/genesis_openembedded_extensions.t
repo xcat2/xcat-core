@@ -114,12 +114,13 @@ my $deploy = File::Spec->catdir( $root, 'deploy' );
 my $machine = 'xcat-genesis-x86-64';
 my $extension = 'xcat-genesis-extension-smoke';
 my $stem = "$extension-$machine";
+my $artifact_stem = "$stem.sysext";
 my $machine_dir = File::Spec->catdir( $deploy, 'images', $machine );
 my $bundle = File::Spec->catdir( $root, 'bundle' );
 make_path($machine_dir);
-copy( $image, File::Spec->catfile( $machine_dir, "$stem.squashfs-zst" ) )
+copy( $image, File::Spec->catfile( $machine_dir, "$artifact_stem.squashfs-zst" ) )
   or die "Unable to stage extension image: $!";
-copy( $manifest, File::Spec->catfile( $machine_dir, "$stem.manifest.json" ) )
+copy( $manifest, File::Spec->catfile( $machine_dir, "$artifact_stem.manifest.json" ) )
   or die "Unable to stage extension manifest: $!";
 my ( $export_status, $export_output ) = run_command(
     $exporter, 'x86_64', $extension, $deploy,
