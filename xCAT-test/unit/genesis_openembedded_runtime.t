@@ -134,7 +134,11 @@ write_file( File::Spec->catfile( $eth0, 'operstate' ), "up\n" );
 write_file( $uptime, "123.45 456.78\n" );
 write_file(
     File::Spec->catfile( $bin, 'logger' ),
-    "#!/bin/sh\nexit 0\n", 0755
+    <<'SH', 0755
+#!/bin/sh
+printf 'logger %s\n' "$*" >>"$XCAT_TEST_LOG"
+[ -z "${XCAT_TEST_LOGGER_FAIL-}" ]
+SH
 );
 write_file(
     File::Spec->catfile( $bin, 'ip' ),
@@ -402,6 +406,14 @@ VERIFIED_SECONDS=123
 ENV
     'network readiness publishes status'
 );
+{
+    my %failed_logger_environment = (
+        %environment,
+        XCAT_TEST_LOGGER_FAIL => 1,
+    );
+    is( run_script( $network_script, \%failed_logger_environment ), 0,
+        'network readiness does not depend on logging' );
+}
 
 my $safe_network_state = read_file(
     File::Spec->catfile( $state_dir, 'genesis.env' )
@@ -538,6 +550,14 @@ like(
     qr/^ACTION=shell\nTARGET=\nNODE_NAME=node042$/m,
     'registration publishes confirmed identity and the selected action'
 );
+{
+    my %failed_logger_environment = (
+        %environment,
+        XCAT_TEST_LOGGER_FAIL => 1,
+    );
+    is( run_script( $register_script, \%failed_logger_environment ), 0,
+        'successful registration does not depend on logging' );
+}
 
 write_file( $command_log, '' );
 write_file( $cmdline, "xcatd=192.0.2.213:3001\n" );

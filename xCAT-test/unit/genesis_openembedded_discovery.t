@@ -136,7 +136,10 @@ XCAT_SOURCE_ADDRESS=192.0.2.98
 ENV
 
 write_file( File::Spec->catfile( $bin, 'logger' ),
-    "#!/bin/sh\nexit 0\n", 0755 );
+    <<'SH', 0755 );
+#!/bin/sh
+[ -z "${XCAT_TEST_LOGGER_FAIL-}" ]
+SH
 write_file( File::Spec->catfile( $bin, 'uname' ), <<'SH', 0755 );
 #!/bin/sh
 [ "$1" = "-m" ] && printf '%s\n' "${XCAT_TEST_ARCH-x86_64}"
@@ -320,6 +323,10 @@ like(
     qr/^STATE=READY$/m,
     'discovery publishes completion'
 );
+$environment{XCAT_TEST_LOGGER_FAIL} = 1;
+is( run_script( $discover_script, \%environment ), 0,
+    'successful discovery does not depend on logging' );
+delete $environment{XCAT_TEST_LOGGER_FAIL};
 
 $environment{XCAT_TEST_NO_SOL} = 1;
 is( run_script( $discover_script, \%environment ), 0,
@@ -446,6 +453,10 @@ like(
     qr/^STATE=READY$/m,
     'certificate client publishes completion'
 );
+$environment{XCAT_TEST_LOGGER_FAIL} = 1;
+is( run_script( $getcert_script, \%environment ), 0,
+    'certificate enrollment does not depend on logging' );
+delete $environment{XCAT_TEST_LOGGER_FAIL};
 
 write_file( $metadata_file, "XCAT_NODE_NAME=invalid/name\n" );
 isnt( run_script( $getcert_script, \%environment ), 0,
@@ -474,7 +485,7 @@ isnt( run_script( $credential_callback_script, \%environment, "unknown" ), 0,
 my $recipe = read_file(
     File::Spec->catfile( $discovery_dir, 'xcat-genesis-discovery_1.0.bb' )
 );
-like( $recipe, qr/^RDEPENDS:\$\{PN\} = "bash coreutils gzip iproute2 openssl-bin util-linux-lsblk"$/m,
+like( $recipe, qr/^RDEPENDS:\$\{PN\} = "bash coreutils gzip iproute2 openssl-bin util-linux-logger util-linux-lsblk"$/m,
     'discovery dependencies are explicit' );
 like( $recipe, qr/xcat-genesis-discovery\.socket/,
     'discovery callback socket is packaged' );

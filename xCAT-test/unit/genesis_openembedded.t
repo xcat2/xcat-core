@@ -612,6 +612,8 @@ my $init_recipe = read_file(
 );
 like( $init_recipe, qr/\bcoreutils\b/,
     'runtime status dependencies are explicit' );
+like( $init_recipe, qr/\butil-linux-logger\b/,
+    'runtime logging dependency is explicit' );
 like( $init_recipe, qr/file:\/\/genesis-status/,
     'runtime status helper is packaged' );
 like( $init_recipe, qr/file:\/\/genesis-maintenance-shell/,
