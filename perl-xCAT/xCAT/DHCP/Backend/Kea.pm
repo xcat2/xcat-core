@@ -809,8 +809,33 @@ sub _render_client_class {
     delete $rendered{'only-if-required'};
     $rendered{ $self->_additional_class_flag_field() } = _json_bool($additional_only)
       if defined $additional_only;
+    $rendered{'option-data'} = _render_option_data( $rendered{'option-data'} )
+      if $rendered{'option-data'};
 
     return \%rendered;
+}
+
+# Kea reads the option flags as booleans, so the callers can set them the plain
+# Perl way and still produce a configuration the server parses.
+sub _render_option_data {
+    my ($option_data) = @_;
+
+    return $option_data unless ref($option_data) eq 'ARRAY';
+
+    my @rendered;
+    foreach my $option (@$option_data) {
+        if ( ref($option) ne 'HASH' ) {
+            push @rendered, $option;
+            next;
+        }
+        my %copy = %$option;
+        foreach my $flag (qw/always-send csv-format never-send/) {
+            $copy{$flag} = _json_bool( $copy{$flag} ) if defined $copy{$flag};
+        }
+        push @rendered, \%copy;
+    }
+
+    return \@rendered;
 }
 
 sub _render_subnet6 {
