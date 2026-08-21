@@ -157,7 +157,8 @@ cpu_type=$(awk -F ':' \
 memory=$(awk '/^MemTotal:/ {printf "%.0fMB", $2 / 1024; exit}' \
     "$proc_root/meminfo" 2>/dev/null || true)
 disk_size=$(lsblk -b -dn -o NAME,SIZE,TYPE 2>/dev/null \
-    | awk '$3 == "disk" {printf "%s%s:%.0fGB", separator, $1, $2 / 1073741824; separator=","}')
+    | awk '$3 == "disk" {printf "%s%s:%.0fGB", separator, $1, $2 / 1073741824; separator=","}' \
+    || true)
 
 printf '%s\n' '<xcatrequest>' '<command>findme</command>' \
     '<sequential>1</sequential>' >"$unsigned_packet"
@@ -212,9 +213,9 @@ for interface_dir in "$sys_root/sys/class/net"/*; do
     normalized_mac=$(printf '%s' "$mac_address" | tr 'a-f' 'A-F')
     [[ -n $first_mac ]] || first_mac=${normalized_mac//:/}
     ipv4_address=$(ip -4 -o address show dev "$interface" scope global 2>/dev/null \
-        | awk 'NR == 1 {print $4}')
+        | awk 'NR == 1 {print $4}' || true)
     ipv6_address=$(ip -6 -o address show dev "$interface" scope global 2>/dev/null \
-        | awk 'NR == 1 {print $4}')
+        | awk 'NR == 1 {print $4}' || true)
     address=${ipv4_address:-$ipv6_address}
     pci_slot=$(awk -F= '$1 == "PCI_SLOT_NAME" {print $2; exit}' \
         "$interface_dir/device/uevent" 2>/dev/null || true)
