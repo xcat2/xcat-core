@@ -1,5 +1,6 @@
 [Unit]
 Description=Execute the assigned xCAT Genesis action
+ConditionKernelCommandLine=xcatd
 Requires=xcat-genesis-register.service
 After=xcat-genesis-register.service
 
