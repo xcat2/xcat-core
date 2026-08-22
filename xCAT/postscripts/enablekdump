@@ -92,16 +92,13 @@ if [ ! -z "$DUMP" ]; then
         KDIP=${XCAT%:*}
     fi
 
-    # workaround for RHEL6
+    # xCAT sets NODE in the postscript environment; fall back to the short
+    # hostname so a per-node dump path is still used if run by hand.
+    [ -z "$NODE" ] && NODE=$(hostname -s)
+
     # the $KDIP:$KDPATH directory will be used to generate the initrd for kdump service
-    MOUNTPATH=""
-    if (pmatch $OSVER "*6\.*"); then
-	MOUNTPATH="/tmp"
-    elif (pmatch $OSVER "*[78]\.*"); then
-        MOUNTPATH="/mnt"
-    else
-	MOUNTPATH="/var/tmp"
-    fi
+    MOUNTPATH="/mnt/kdumpsetup"
+    mkdir -p $MOUNTPATH
 
     if [ "$KDPROTO" = "nfs" ]; then
 	if (pmatch $OSVER "sle*") || (pmatch $OSVER "suse*") || [ -f /etc/SuSE-release ] || [ -f /etc/SUSE-brand ]; then
@@ -238,16 +235,14 @@ EOF
                else
                    /bin/echo "nfs server is not available"
                fi
-               [ -d $MOUNTPATH/var/crash ] || mkdir -p $MOUNTPATH/var/crash
-
-               #The initramfs used in kdump does not need "root", however, the initramfs refused to continue
-               #if no valid "root" provided in redhat7.1 kdump; As a workaround,we provide a fake "root=nfs:$KDIP:$KDPATH"
-               #with a dummy "proc" inside, which will fake "root=nfs:$KDIP:$KDPATH" as a valid root directory
-               [ -e $MOUNTPATH/proc ] || echo "Dummy file: fake the /proc to pass the checking of 'root=' inside dracut-cmdline " > $MOUNTPATH/proc
+               # Create only this node's own subdirectory on the dump target.
+               # kdump checks the dump path exists when it builds the initrd, so
+               # it must exist now, at deploy time.
+               mkdir -p $MOUNTPATH/$NODE/var/crash
 
                echo "nfs $KDIP:$KDPATH" > /etc/kdump.conf
                echo "default shell" >> /etc/kdump.conf
-               echo "path /var/crash" >> /etc/kdump.conf
+               echo "path /$NODE/var/crash" >> /etc/kdump.conf
                echo "core_collector makedumpfile -c --message-level 1 -d 31" >> /etc/kdump.conf
                #strip "xcat" out of the initramfs for kdump
                echo "dracut_args --omit \"xcat\"" >> /etc/kdump.conf
@@ -264,7 +259,17 @@ EOF
                done
                sed -i "s#^[\t ]*KDUMP_COMMANDLINE=\"#KDUMP_COMMANDLINE=\"$kdumpcmdline#" /etc/sysconfig/kdump
                if (pmatch $OSVER "rhel7*") || (pmatch $OSVER "rhels7*"); then
-                   sed -i "s#^[\t ]*KDUMP_COMMANDLINE_APPEND=\"#KDUMP_COMMANDLINE_APPEND=\"root=nfs:$KDIP:$KDPATH #" /etc/sysconfig/kdump
+                   # The RHEL7 kdump initramfs refuses to continue unless root=
+                   # names a valid filesystem, checked by dracut-cmdline at crash
+                   # time, so give this node's subdir a dummy /proc for it.
+                   [ -e $MOUNTPATH/$NODE/proc ] || echo "xCAT: dummy /proc so RHEL7 dracut-cmdline accepts root=" > $MOUNTPATH/$NODE/proc
+                   # Drop any root= a previous run left behind before adding this
+                   # node's own: dracut takes the last root= on the command line,
+                   # so a stale shared-root value would win over the new one. A
+                   # root= token starts after the opening quote or whitespace,
+                   # so suffixes of other options (foo-root=, rd.foo.root=) stay.
+                   sed -i -e '/^[\t ]*KDUMP_COMMANDLINE_APPEND="/{:a;s/\([" \t]\)root=[^ \t"]*[ \t]*/\1/;ta}' \
+                          -e "s#^[\t ]*KDUMP_COMMANDLINE_APPEND=\"#KDUMP_COMMANDLINE_APPEND=\"root=nfs:$KDIP:$KDPATH/$NODE #" /etc/sysconfig/kdump
                fi
                [ -f /etc/dracut.conf ] && mv /etc/dracut.conf  /tmp/dracut.conf
                restartservice kdump
