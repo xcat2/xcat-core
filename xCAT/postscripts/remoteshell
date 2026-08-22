@@ -54,22 +54,110 @@ if [ "$USEFLOWCONTROL" = "YES" ] || [ "$USEFLOWCONTROL" = "yes" ] || [ "$USEFLOW
   useflowcontrol=1
 fi
 
+# Write a drop-in fragment atomically: scratch file then rename, the leading dot
+# keeping the scratch out of sshd's *.conf glob.  Returns nonzero without
+# touching anything if the write fails or the file is not ours, so the caller
+# can fall back.
+XCATSSHDDROPINMARKER="# Written by the xCAT remoteshell postscript."
+xcat_write_dropin() {
+    xcat_dir=$1
+    xcat_file=$2
+    shift 2
+    xcat_dest="$xcat_dir/$xcat_file"
+    # Never overwrite a file without our marker on the first line.
+    if [ -e "$xcat_dest" ] && \
+        ! head -n 1 "$xcat_dest" 2>/dev/null | grep -qF "$XCATSSHDDROPINMARKER"; then
+        return 1
+    fi
+    xcat_tmp="$xcat_dir/.$xcat_file.xcatnew.$$"
+    mkdir -p "$xcat_dir" 2>/dev/null || return 1
+    : >"$xcat_tmp" 2>/dev/null || return 1
+    chmod 600 "$xcat_tmp" 2>/dev/null
+    {
+        echo "$XCATSSHDDROPINMARKER  Do not edit."
+        for xcat_line in "$@"; do
+            echo "$xcat_line"
+        done
+    } >>"$xcat_tmp" 2>/dev/null || { rm -f "$xcat_tmp"; return 1; }
+    mv -f "$xcat_tmp" "$xcat_dest" 2>/dev/null || { rm -f "$xcat_tmp"; return 1; }
+    return 0
+}
+
+# sshd keeps the first value it finds for a keyword, so a setting ahead of the
+# Include line or in an earlier fragment still wins over ours; log it.
+xcat_warn_if_overridden() {
+    xcat_kw=$1
+    xcat_own="$XCATSSHDDROPINDIR/$2"
+    if sed -n '/^[[:space:]]*[Ii][Nn][Cc][Ll][Uu][Dd][Ee][[:space:]]/q; p' /etc/ssh/sshd_config 2>/dev/null | \
+        grep -i "^[[:space:]]*${xcat_kw}[[:space:]]" >/dev/null 2>&1; then
+        logger -t $log_label -p local4.warning "remoteshell: $xcat_kw is set before the Include line in /etc/ssh/sshd_config and overrides $xcat_own"
+    fi
+    for xcat_frag in "$XCATSSHDDROPINDIR"/*.conf; do
+        [ "$xcat_frag" = "$xcat_own" ] && break
+        [ -r "$xcat_frag" ] || continue
+        if grep -i "^[[:space:]]*${xcat_kw}[[:space:]]" "$xcat_frag" >/dev/null 2>&1; then
+            logger -t $log_label -p local4.warning "remoteshell: $xcat_frag sets $xcat_kw and is read before $xcat_own"
+        fi
+    done
+}
+
 if [ -r /etc/ssh/sshd_config ]
 then
 	logger -t $log_label -p local4.info "remoteshell:  setup /etc/ssh/sshd_config and ssh_config"
-	cp /etc/ssh/sshd_config /etc/ssh/sshd_config.ORIG
+
+    # Where sshd supports Include (OpenSSH 8.2+), write to a drop-in and leave
+    # sshd_config alone; older sshd is edited in place.  Take the directory only
+    # from an Include ahead of the first Match block, since one inside Match does
+    # not apply to every connection.
+    XCATSSHDDIR=`sed -n '/^[[:space:]]*[Mm][Aa][Tt][Cc][Hh][[:space:]]/q; s|^[[:space:]]*[Ii][Nn][Cc][Ll][Uu][Dd][Ee][[:space:]]\{1,\}\([^[:space:]]\{1,\}\)/\*\.conf[[:space:]]*$|\1|p' /etc/ssh/sshd_config | head -n 1`
+    # sshd resolves a relative Include under /etc/ssh, not the working directory.
+    case "$XCATSSHDDIR" in
+        ""|/*) ;;
+        *)     XCATSSHDDIR="/etc/ssh/$XCATSSHDDIR" ;;
+    esac
+    # A parent that is itself a glob (sshd_config.[12].d) is a pattern, not a
+    # directory, so leave it to the in-place edit.
+    case "$XCATSSHDDIR" in
+        *[][*?]*) XCATSSHDDIR="" ;;
+    esac
+    XCATSSHDDROPINDIR=""
+    if [ -n "$XCATSSHDDIR" ]; then
+        if xcat_write_dropin "$XCATSSHDDIR" "01-xcat.conf" "X11Forwarding yes"; then
+            XCATSSHDDROPINDIR="$XCATSSHDDIR"
+            xcat_warn_if_overridden "X11Forwarding" "01-xcat.conf"
+        else
+            logger -t $log_label -p local4.err "remoteshell: could not write $XCATSSHDDIR/01-xcat.conf, editing /etc/ssh/sshd_config instead"
+        fi
+    fi
+    if [ -z "$XCATSSHDDROPINDIR" ]; then
+        cp /etc/ssh/sshd_config /etc/ssh/sshd_config.ORIG
         #delete all occurance of the attribute and then add xCAT settings
         sed -i '/X11Forwarding /'d /etc/ssh/sshd_config
         echo "X11Forwarding yes" >>/etc/ssh/sshd_config
-        # delete all MaxStartups settings and use default value
-        sed -i '/MaxStartups /'d /etc/ssh/sshd_config
+    fi
 
+    # PCM settings go in their own fragment: they are only set with -p, and
+    # updatenode reruns remoteshell without it, so a shared file would drop them
+    # on the next run.  If the fragment cannot be written, edit sshd_config in
+    # place rather than leaving PCM unset.
     if [ "$SETUPFORPCM" = "1" ]; then
         if [[ $OSVER == sle* ]];then
-            sed -i '/PasswordAuthentication /'d /etc/ssh/sshd_config
-            echo "PasswordAuthentication yes" >>/etc/ssh/sshd_config
+            if [ -n "$XCATSSHDDROPINDIR" ] && \
+                xcat_write_dropin "$XCATSSHDDROPINDIR" "02-xcat-pcm.conf" "PasswordAuthentication yes"; then
+                xcat_warn_if_overridden "PasswordAuthentication" "02-xcat-pcm.conf"
+            else
+                [ -e /etc/ssh/sshd_config.ORIG ] || cp /etc/ssh/sshd_config /etc/ssh/sshd_config.ORIG
+                sed -i '/PasswordAuthentication /'d /etc/ssh/sshd_config
+                echo "PasswordAuthentication yes" >>/etc/ssh/sshd_config
+            fi
         elif [[ $OSVER == ubuntu* ]];then
-            sed -i 's/^PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+            if [ -n "$XCATSSHDDROPINDIR" ] && \
+                xcat_write_dropin "$XCATSSHDDROPINDIR" "02-xcat-pcm.conf" "PermitRootLogin yes"; then
+                xcat_warn_if_overridden "PermitRootLogin" "02-xcat-pcm.conf"
+            else
+                [ -e /etc/ssh/sshd_config.ORIG ] || cp /etc/ssh/sshd_config /etc/ssh/sshd_config.ORIG
+                sed -i 's/^PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+            fi
         fi
     fi
 fi
