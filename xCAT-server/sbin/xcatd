@@ -2849,7 +2849,7 @@ sub service_connection {
             }
 
              if (exists($req->{noderange}) && defined($req->{noderange}->[0])) {
-                my @nnodes = xCAT::NodeRange::noderange($req->{noderange}->[0]);
+                my @nnodes = xCAT::NodeRange::noderange($req->{noderange}->[0], 1, 1, (defined($peername) ? () : (nofile => 1)));
                 $numofnodes = (scalar(@nnodes));
             }
 
