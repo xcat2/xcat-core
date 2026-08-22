@@ -329,6 +329,37 @@ sub printLn {
 
 #-------------------------------------------------------
 
+=head3   redact_directory_entry
+
+    Description : Mask the passwords of a z/VM directory entry, so the
+                  text is safe to log. The USER and IDENTITY statements
+                  carry the logon password in their third field. The
+                  MDISK statement carries the read, write and multi
+                  passwords after the access mode. The COMMAND statement
+                  can start any CP command with an inline password, so
+                  the whole statement masks. The keyword form carries
+                  the passwords as PW assignments.
+    Arguments   : Directory entry text
+    Returns     : The text with each password masked
+    Example     : my $safe = xCAT::zvmUtils->redact_directory_entry($entry);
+
+=cut
+
+#-------------------------------------------------------
+sub redact_directory_entry {
+    my ( $class, $entry ) = @_;
+    return $entry unless defined $entry;
+    $entry =~ s/^([ \t]*(?:\*[ \t]*)*(?:USER|IDENTITY|IDENT)[ \t]+\S+[ \t]+)\S+/$1xxxxxxxx/img;
+    $entry =~ s/^([ \t]*(?:\*[ \t]*)*MDISK[ \t]+\S+[ \t]+\S+[ \t]+(?:DEVNO|V-DISK|T-DISK)[ \t]+\S+[ \t]+\S+)[ \t]+\S.*$/$1 xxxxxxxx/img;
+    $entry =~ s/^([ \t]*(?:\*[ \t]*)*MDISK[ \t]+(?:\S+[ \t]+){5}\S+)[ \t]+\S.*$/$1 xxxxxxxx/img;
+    $entry =~ s/^([ \t]*(?:\*[ \t]*)*APPCPASS\b).*$/$1 xxxxxxxx/img;
+    $entry =~ s/^([ \t]*(?:\*[ \t]*)*COMMAND\b).*$/$1 xxxxxxxx/img;
+    $entry =~ s/\b((?:READ|WRITE|MULTI)?(?:PASSWORD|PW)|APPCPASS)=\S+/$1=xxxxxxxx/ig;
+    return $entry;
+}
+
+#-------------------------------------------------------
+
 =head3   printSyslog
 
     Description : Print a string to syslog
@@ -803,7 +834,7 @@ sub getMdisks {
     my $outmsg;
     my $rc;
     my $out = `ssh $user\@$hcp "$sudo $dir/getuserentry $userId"`;
-    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $user\@$hcp \"$sudo $dir/getuserentry $userId\"", $hcp, "getMdisks", $out, $node );
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $user\@$hcp \"$sudo $dir/getuserentry $userId\"", $hcp, "getMdisks", xCAT::zvmUtils->redact_directory_entry($out), $node );
     if ($rc != 0) {
        return $outmsg;
     }
@@ -863,7 +894,7 @@ sub getDedicates {
     my $outmsg;
     my $rc;
     my $out = `ssh $user\@$hcp "$sudo $dir/smcli Image_Query_DM -T $userId"`;
-    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "commandString", $hcp, "getMdisks", $out, $node );
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "commandString", $hcp, "getMdisks", xCAT::zvmUtils->redact_directory_entry($out), $node );
     if ($rc != 0) {
         return $outmsg;
     }
@@ -919,7 +950,7 @@ sub getCommands {
     my $outmsg;
     my $rc;
     my $out = `ssh $user\@$hcp "$sudo $dir/smcli Image_Query_DM -T $userId"`;
-    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $user\@$hcp \"$sudo $dir/smcli Image_Query_DM -T $userId\"", $hcp, "getCommands", $out, $node );
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $user\@$hcp \"$sudo $dir/smcli Image_Query_DM -T $userId\"", $hcp, "getCommands", xCAT::zvmUtils->redact_directory_entry($out), $node );
     if ($rc != 0) {
         return $outmsg;
     }
@@ -987,7 +1018,7 @@ sub getUserEntryWODisk {
     my $outmsg;
     my $rc;
     my $out = `ssh $user\@$hcp "$sudo $dir/smcli Image_Query_DM -T $userId"`;
-    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $user\@$hcp \"$sudo $dir/smcli Image_Query_DM -T $userId\"", $hcp, "getUserEntryWODisk", $out, $node );
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $user\@$hcp \"$sudo $dir/smcli Image_Query_DM -T $userId\"", $hcp, "getUserEntryWODisk", xCAT::zvmUtils->redact_directory_entry($out), $node );
     if ($rc != 0) {
         return $outmsg;
     }
@@ -4277,7 +4308,7 @@ sub findUsablezHcpNetwork {
     # Search directory entry for network name
     my $userEntry = `ssh $user\@$hcp "$sudo $::DIR/smcli Image_Query_DM -T $userId" | sed '\$d'`;
     xCAT::zvmUtils->printSyslog("findUsablezHcpNetwork() smcli Image_Query_DM -T $userId");
-    xCAT::zvmUtils->printSyslog("findUsablezHcpNetwork() $userEntry");
+    xCAT::zvmUtils->printSyslog("findUsablezHcpNetwork() " . xCAT::zvmUtils->redact_directory_entry($userEntry));
 
     my $out = `echo "$userEntry" | grep "NICDEF"`;
     my @lines = split('\n', $out);
@@ -4324,7 +4355,7 @@ sub findUsablezHcpNetwork {
 
             # Get user profile
             my $userProfile = xCAT::zvmUtils->getUserProfile($user, $hcp, $words[1]);
-            xCAT::zvmUtils->printSyslog("findUsablezHcpNetwork() $userProfile");
+            xCAT::zvmUtils->printSyslog("findUsablezHcpNetwork() " . xCAT::zvmUtils->redact_directory_entry($userProfile));
 
             # Get the NICDEF statement
             $out = `echo "$userProfile" | grep "NICDEF"`;

@@ -441,7 +441,9 @@ sub send_http_request
     }
 
     if (defined($http_params->{verbose}) && defined($http_params->{callback})) {
-        $http_params->{callback}({ data => [ "\n========CIM Request Start========", $http_request->as_string(), "=======CIM Request End=======" ] });
+        my $request_text = $http_request->as_string();
+        $request_text =~ s/^(Authorization:).*$/$1 xxxxxxxx/mi;
+        $http_params->{callback}({ data => [ "\n========CIM Request Start========", $request_text, "=======CIM Request End=======" ] });
     }
 
     # send request and receive the response

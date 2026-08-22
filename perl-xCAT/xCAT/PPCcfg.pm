@@ -1184,7 +1184,7 @@ sub get_rsp_dev
         #############################################
         foreach (keys %$hmc) {
             ($hmc->{$_}->{username}, $hmc->{$_}->{password}) = xCAT::PPCdb::credentials($hmc->{$_}->{name}, lc($hmc->{$_}->{'type'}), "hscroot");
-            xCAT::MsgUtils->verbose_message($request, "user/passwd for $_ is $hmc->{$_}->{username} $hmc->{$_}->{password}");
+            xCAT::MsgUtils->verbose_message($request, "user/passwd for $_ is $hmc->{$_}->{username} xxxxxxxx");
         }
     }
 
@@ -1195,7 +1195,7 @@ sub get_rsp_dev
         #############################################
         foreach (keys %$fsp) {
             ($fsp->{$_}->{username}, $fsp->{$_}->{password}) = xCAT::PPCdb::credentials($fsp->{$_}->{name}, lc($fsp->{$_}->{'type'}), "admin");
-            xCAT::MsgUtils->verbose_message($request, "user/passwd for $_ is $fsp->{$_}->{username} $fsp->{$_}->{password}");
+            xCAT::MsgUtils->verbose_message($request, "user/passwd for $_ is $fsp->{$_}->{username} xxxxxxxx");
         }
     }
 
@@ -1206,7 +1206,7 @@ sub get_rsp_dev
         #############################################
         foreach (keys %$bpa) {
             ($bpa->{$_}->{username}, $bpa->{$_}->{password}) = xCAT::PPCdb::credentials($bpa->{$_}->{name}, lc($bpa->{$_}->{'type'}), "admin");
-            xCAT::MsgUtils->verbose_message($request, "user/passwd for $_ is $bpa->{$_}->{username} $bpa->{$_}->{password}");
+            xCAT::MsgUtils->verbose_message($request, "user/passwd for $_ is $bpa->{$_}->{username} xxxxxxxx");
         }
     }
 
