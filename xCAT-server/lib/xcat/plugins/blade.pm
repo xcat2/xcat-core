@@ -4365,6 +4365,22 @@ sub verbose_message {
     xCAT::MsgUtils->message("I", \%rsp, $CALLBACK);
 }
 
+#-------------------------------------------------------
+# A management module names itself as its own mpa. The nodetype attribute is
+# optional, so a row that gives none is kept.
+#-------------------------------------------------------
+sub blade_nodes_from_mp {
+    my @entries = @_;
+    my @blades;
+    foreach my $entry (@entries) {
+        next unless defined $entry->{node};
+        next if defined $entry->{nodetype} and $entry->{nodetype} =~ /^\s*(mm|cmm)\s*$/i;
+        next if defined $entry->{mpa} and $entry->{node} eq $entry->{mpa};
+        push @blades, $entry->{node};
+    }
+    return @blades;
+}
+
 sub process_request {
     $SIG{INT} = $SIG{TERM} = sub {
         foreach (keys %mm_comm_pids) {
@@ -4479,11 +4495,8 @@ sub process_request {
 
         my $mptab = xCAT::Table->new("mp");
         unless ($mptab) { return 2; }
-        my @bladents = $mptab->getAllNodeAttribs([qw(node)]);
-        my @blades;
-        foreach (@bladents) {
-            push @blades, $_->{node};
-        }
+        my @bladents = $mptab->getAllNodeAttribs([qw(node nodetype mpa)]);
+        my @blades   = blade_nodes_from_mp(@bladents);
         my %invreq;
         $invreq{node}    = \@blades;
         $invreq{arg}     = ['mac,uuid'];
