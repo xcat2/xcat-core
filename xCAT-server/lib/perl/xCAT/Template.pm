@@ -47,6 +47,12 @@ my %tab_replacement = (
     "noderes:tftpserver" => "noderes:xcatmaster",
 );
 
+sub httpport_suffix {
+    my $httpport = shift;
+    $httpport = "80" unless defined $httpport and length $httpport;
+    return "" if $httpport eq "80";
+    return ":$httpport";
+}
 
 sub subvars {
     my $self = shift;
@@ -150,7 +156,7 @@ sub subvars {
     }
     $ENV{HTTPPORT} = $httpport;
 
-    $httpportsuffix=":$httpport";
+    $httpportsuffix = httpport_suffix($httpport);
     #replace the env with the right value so that correct include files can be found
     $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
     my $res;
@@ -545,7 +551,7 @@ sub subvars {
             }
         }
         elsif ("ubuntu" eq $platform) {
-            my $default_script = "    wget http://`cat /tmp/xcatserver`".':'.$ENV{HTTPPORT} . $ENV{INSTALLDIR} . "/autoinst/getinstdisk; chmod u+x getinstdisk; ./getinstdisk;";
+            my $default_script = "    wget http://`cat /tmp/xcatserver`" . httpport_suffix($ENV{HTTPPORT}) . $ENV{INSTALLDIR} . "/autoinst/getinstdisk; chmod u+x getinstdisk; ./getinstdisk;";
             $inc =~ s/#INCLUDE_GET_INSTALL_DISK_SCRIPT#/$default_script/;
         }
         else {
@@ -1132,7 +1138,7 @@ sub mirrorspec {
                 $pkgdir = $_;
             } else {
                 my $httpport = $ENV{HTTPPORT} || $ENV{httpport} || '80';
-                my $osuurl = "http://" . $masternode . ':' . $httpport . $_ . " ./";
+                my $osuurl = "http://" . $masternode . httpport_suffix($httpport) . $_ . " ./";
                 push @mirrors, $osuurl;
             }
         }
@@ -1141,7 +1147,7 @@ sub mirrorspec {
     if ($pkgdir) {
         my $httpport = $ENV{HTTPPORT} || $ENV{httpport} || '80';
         my $security_host = $masternode;
-        $security_host .= ':' . $httpport if $httpport ne '80';
+        $security_host .= httpport_suffix($httpport);
         $line .= "
 d-i mirror/country string manual\n
 d-i mirror/protocol string http\n
