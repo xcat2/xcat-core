@@ -246,6 +246,13 @@ sub _install_prebuilt_genesis {
     return ("$destination_dir/genesis.fs.$arch.gz", undef);
 }
 
+sub genesis_lzma_command {
+    my ($have_lzma, $have_xz) = @_;
+    return 'lzma -C crc32 -9'             if $have_lzma;
+    return 'xz --format=lzma -C crc32 -9' if $have_xz;
+    return;
+}
+
 sub process_request {
     my $request  = shift;
     my $callback = shift;
@@ -484,9 +491,10 @@ sub process_request {
         # place, so concurrent mknb runs sharing $tftpdir cannot read or clobber
         # a half-written genesis.fs.
         my $suffix = xCAT::Utils::genpassword(24);
-        if (-x "/usr/bin/lzma") {    #let's reclaim some of that size...
+        my $lzma_command = genesis_lzma_command(-x "/usr/bin/lzma", -x "/usr/bin/xz");
+        if ($lzma_command) {    #let's reclaim some of that size...
             $callback->({ data => ["Creating genesis.fs.$arch.lzma in $tftpdir/xcat"] });
-            system("cd $tempdir; find . | cpio -o -H newc | lzma -C crc32 -9 > $tftpdir/xcat/genesis.fs.$arch.lzma.$suffix");
+            system("cd $tempdir; find . | cpio -o -H newc | $lzma_command > $tftpdir/xcat/genesis.fs.$arch.lzma.$suffix");
             $lzma_exit_value = $? >> 8;
             if ($lzma_exit_value) {
                 $callback->({ data => ["Creating genesis.fs.$arch.lzma in $tftpdir/xcat failed, falling back to gzip"] });
