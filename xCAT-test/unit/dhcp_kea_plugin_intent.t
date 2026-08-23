@@ -7,6 +7,7 @@ use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT";
 
 use File::Temp qw(tempdir);
+use Socket ();
 use Test::More;
 
 BEGIN {
@@ -39,6 +40,34 @@ BEGIN {
     sub thishostisnot { return 0; }
     sub ip_forwarding_enabled { return 0; }
     sub nodeonmynet { return 1; }
+    sub formatNetmask {
+        my ( $mask, $orig_type, $new_type ) = @_;
+        my $mask_number;
+
+        if ( $orig_type == 0 ) {
+            $mask_number = unpack( 'N', Socket::inet_aton($mask) );
+        } elsif ( $orig_type == 1 ) {
+            $mask_number = ( 2**$mask - 1 ) << ( 32 - $mask );
+        } else {
+            return;
+        }
+
+        return Socket::inet_ntoa( pack( 'N', $mask_number ) ) if $new_type == 0;
+        if ( $new_type == 1 ) {
+            my $binary_mask = unpack( 'B32', pack( 'N', $mask_number ) );
+            return $binary_mask =~ tr/1/1/;
+        }
+        return;
+    }
+    sub isInSameSubnet {
+        my ( $ip1, $ip2, $mask, $mask_type ) = @_;
+        return unless $mask_type == 0;
+
+        my $mask_number = unpack( 'N', Socket::inet_aton($mask) );
+        my $ip1_number  = unpack( 'N', Socket::inet_aton($ip1) );
+        my $ip2_number  = unpack( 'N', Socket::inet_aton($ip2) );
+        return ( $ip1_number & $mask_number ) == ( $ip2_number & $mask_number );
+    }
     $INC{'xCAT/NetworkUtils.pm'} = __FILE__;
 
     package xCAT::ServiceNodeUtils;
