@@ -116,6 +116,13 @@ sub getstat {
 =cut
 
 #-------------------------------------------------------
+sub option_spec {
+    return (
+        'm|usemon|use|us', 'q|quiet', 'u|updatedb', 'p|powerstat',
+        'f|usefping|useping', 'h|help', 'v|version',
+    );
+}
+
 sub preprocess_request
 {
     my $req = shift;
@@ -135,26 +142,23 @@ sub preprocess_request
         }
 
         # parse the options
-        $::UPDATE = 0;
-        $::QUIET  = 0;
-        $::MON    = 0;
-        $::POWER  = 0;
-
         #Getopt::Long::Configure("posix_default");
         #Getopt::Long::Configure("no_gnu_compat");
         Getopt::Long::Configure("bundling");
         $Getopt::Long::ignorecase = 0;
-        if (!GetOptions(
-                'm|usemon' => \$::MON,
-                'q|quiet' => \$::QUIET, #this is a internal flag used by monitoring
-                'u|updatedb'  => \$::UPDATE,
-                'p|powerstat' => \$::POWER,
-                'h|help'      => \$::HELP,
-                'v|version'   => \$::VERSION))
+        my %opt;
+        if (!GetOptions(\%opt, option_spec()))
         {
             &usage($cb,1);
             return (1);
         }
+        $::MON      = $opt{m} ? 1 : 0;
+        $::QUIET    = $opt{q} ? 1 : 0;    #this is a internal flag used by monitoring
+        $::UPDATE   = $opt{u} ? 1 : 0;
+        $::POWER    = $opt{p} ? 1 : 0;
+        $::USEFPING = $opt{f} ? 1 : 0;
+        $::HELP     = $opt{h};
+        $::VERSION  = $opt{v};
         if ($::HELP) {
             &usage($cb);
             return (0);
@@ -922,9 +926,9 @@ sub process_request {
     my $usefping;
     if (ref $request->{arg}) {
         @ARGV = @{ $request->{arg} };
-        GetOptions(
-            'f|useping' => \$usefping
-        );
+        my %opt;
+        GetOptions(\%opt, option_spec());
+        $usefping = $opt{f};
     }
 
 
