@@ -186,6 +186,40 @@ ok(!xCAT_plugin::dhcp::dhcpd_sysconfig_uses_interface_key('opensuse-tumbleweed')
 }
 
 {
+    my $tmpdir = tempdir(CLEANUP => 1);
+    my $fake_ip = "$tmpdir/ip";
+    open(my $ip_fh, '>', $fake_ip) or die "Cannot write fake ip command: $!";
+    print {$ip_fh} "#!/bin/sh\n";
+    print {$ip_fh} "cat <<'EOF'\n";
+    print {$ip_fh} "0.0.0.0/0 dev eth0 proto kernel scope link\n";
+    print {$ip_fh} "128.0.0.0/1 dev eth1 proto kernel scope link\n";
+    print {$ip_fh} "192.0.2.0/24 dev eth24 proto kernel scope link\n";
+    print {$ip_fh} "198.51.100.7/32 dev eth32 proto kernel scope link\n";
+    print {$ip_fh} "203.0.113.0/not-a-prefix dev invalid proto kernel scope link\n";
+    print {$ip_fh} "EOF\n";
+    close($ip_fh);
+    chmod 0755, $fake_ip;
+
+    no warnings 'redefine';
+    local *xCAT_plugin::dhcp::kea_command_path = sub {
+        my ($command) = @_;
+        return $fake_ip if $command eq 'ip';
+        return;
+    };
+
+    is_deeply(
+        [ xCAT_plugin::dhcp::local_ipv4_routes() ],
+        [
+            [ '0.0.0.0',      'eth0',  '0.0.0.0',         '' ],
+            [ '128.0.0.0',    'eth1',  '128.0.0.0',       '' ],
+            [ '192.0.2.0',    'eth24', '255.255.255.0',   '' ],
+            [ '198.51.100.7', 'eth32', '255.255.255.255', '' ],
+        ],
+        'local IPv4 route detection converts boundary prefixes and ignores malformed prefixes'
+    );
+}
+
+{
     no warnings 'redefine';
     local *xCAT_plugin::dhcp::kea_ipv4_routes = sub {
         return (
@@ -206,6 +240,64 @@ ok(!xCAT_plugin::dhcp::dhcpd_sysconfig_uses_interface_key('opensuse-tumbleweed')
     is_deeply( $intent->{interfaces}, ['eth0'], 'empty dhcpinterfaces infers the local provisioning interface' );
     is( scalar @{ $intent->{subnets} }, 1, 'empty dhcpinterfaces still renders local routed subnet' );
     is( $intent->{subnets}[0]{subnet}, '10.0.0.0/24', 'rendered subnet comes from local route' );
+}
+
+{
+    no warnings 'redefine';
+    local *xCAT::NetworkUtils::thishostisnot = sub { return 0; };
+
+    my @prefix_cases = (
+        [ '0.0.0.0',         '0.0.0.0',         0 ],
+        [ '128.0.0.0',       '128.0.0.0',       1 ],
+        [ '192.0.2.0',       '255.255.255.0',  24 ],
+        [ '198.51.100.7',    '255.255.255.255', 32 ],
+    );
+
+    foreach my $case (@prefix_cases) {
+        my ( $net, $mask, $prefix ) = @$case;
+        my $nettab = DHCPKeaIntentNetTable->new(
+            {
+                %network_entry,
+                net          => $net,
+                mask         => $mask,
+                dynamicrange => undef,
+                gateway      => undef,
+            }
+        );
+        my $subnet = xCAT_plugin::dhcp::kea_subnet4_intent( $nettab, $net, $mask, 'eth0', 0, 1, 80 );
+        is( $subnet->{subnet}, "$net/$prefix", "$mask renders as prefix $prefix" );
+    }
+}
+
+{
+    no warnings 'redefine';
+    local *xCAT::NetworkUtils::thishostisnot = sub { return 0; };
+
+    my $same_subnet_table = DHCPKeaIntentNetTable->new(
+        {
+            %network_entry,
+            gateway => '10.0.0.254',
+        }
+    );
+    my $same_subnet = xCAT_plugin::dhcp::kea_subnet4_intent(
+        $same_subnet_table, '10.0.0.0', '255.255.255.0', 'eth0', 0, 1, 80
+    );
+    ok( !$same_subnet->{error}, 'gateway in the subnet remains valid' );
+
+    my $different_subnet_table = DHCPKeaIntentNetTable->new(
+        {
+            %network_entry,
+            gateway => '192.0.2.1',
+        }
+    );
+    my $different_subnet = xCAT_plugin::dhcp::kea_subnet4_intent(
+        $different_subnet_table, '10.0.0.0', '255.255.255.0', 'eth0', 0, 1, 80
+    );
+    is(
+        $different_subnet->{error},
+        'Specified gateway 192.0.2.1 is not valid for 10.0.0.0/255.255.255.0, must be on same network',
+        'gateway outside the subnet keeps the existing error'
+    );
 }
 
 {
