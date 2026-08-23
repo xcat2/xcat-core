@@ -4365,6 +4365,35 @@ sub verbose_message {
     xCAT::MsgUtils->message("I", \%rsp, $CALLBACK);
 }
 
+sub blade_nodes_from_mp {
+    my @entries = @_;
+    my %hwtype;
+    my %ownmpa;
+    foreach my $entry (@entries) {
+        next unless defined $entry->{node};
+        $hwtype{ $entry->{node} } = defined $entry->{nodetype} ? lc($entry->{nodetype}) : q{};
+        $hwtype{ $entry->{node} } =~ s/^\s+|\s+$//gx;
+        $ownmpa{ $entry->{node} } = $entry->{mpa} if defined $entry->{mpa};
+    }
+    my @blades;
+    foreach my $entry (@entries) {
+        my $node = $entry->{node};
+        next unless defined $node;
+        if ($hwtype{$node} eq 'blade') {
+            push @blades, $node;
+            next;
+        }
+        next if $hwtype{$node} ne q{};
+        my $chassis = $ownmpa{$node};
+        next if not defined $chassis or $chassis eq $node;
+        next if $hwtype{$chassis} ne 'mm'
+          and $hwtype{$chassis} ne 'cmm'
+          and not(defined $ownmpa{$chassis} and $ownmpa{$chassis} eq $chassis);
+        push @blades, $node;
+    }
+    return @blades;
+}
+
 sub process_request {
     $SIG{INT} = $SIG{TERM} = sub {
         foreach (keys %mm_comm_pids) {
@@ -4479,11 +4508,10 @@ sub process_request {
 
         my $mptab = xCAT::Table->new("mp");
         unless ($mptab) { return 2; }
-        my @bladents = $mptab->getAllNodeAttribs([qw(node)]);
-        my @blades;
-        foreach (@bladents) {
-            push @blades, $_->{node};
-        }
+        my @bladents = $mptab->getAllNodeAttribs([qw(node nodetype mpa)]);
+        my @blades   = blade_nodes_from_mp(@bladents);
+
+        unless (@blades) { return; }
         my %invreq;
         $invreq{node}    = \@blades;
         $invreq{arg}     = ['mac,uuid'];
