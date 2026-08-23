@@ -1242,29 +1242,17 @@ sub setobjdefs
             $objhash{$objname}{updated} = 1;
         }
 
+        # Group inheritance is already handled by validate_only_if_attrs and
+        # _only_if_value_matches; only report attributes still unresolved here.
         my $rsp;
         my $object_failed_validation = 0;
         foreach my $att (keys %$invalidattr) {
-            my $pickvalidattr=0;
             if ($invalidattr->{$att}->{valid} != 1) {
-                my $tt = $invalidattr->{$att}->{valid};
-                #if attribute is set invalid, check if its pre-check attribute exists in group objects, pick the attribute into valid.
-                # ex. like if I want to set hdwctrlpoint I will have
-                # to match the right value for mgtmethod
-                # if mgtmethod exists in group objects and its value match the one of only_if value, set hdwctrlpoint valid
                 my $conditionkey=$invalidattr->{$att}->{condition};
-                foreach my $tmpgrp (@tmplgrplist) {
-                    if (($DBgroupsattr{$tmpgrp}{$conditionkey}) && ($conditionlist->{$conditionkey} =~ $DBgroupsattr{$tmpgrp}{$conditionkey})) {
-                        $pickvalidattr=1;
-                        last;
-                    }
-                }
-                if ($pickvalidattr != 1) {
-                    $conditionlist->{$conditionkey}=~s/,/ or /g;
-                    push @{ $rsp->{data} }, "Cannot set the attr=\'$att\' attribute unless $invalidattr->{$att}->{condition} value is $conditionlist->{$conditionkey}.";
-                    xCAT::MsgUtils->message("E", $rsp, $::callback);
-                    $object_failed_validation = 1;
-                }
+                $conditionlist->{$conditionkey}=~s/,/ or /g;
+                push @{ $rsp->{data} }, "Cannot set the attr=\'$att\' attribute unless $invalidattr->{$att}->{condition} value is $conditionlist->{$conditionkey}.";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                $object_failed_validation = 1;
             }
         }
         if ($object_failed_validation) {
