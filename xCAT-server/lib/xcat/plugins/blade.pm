@@ -4149,6 +4149,8 @@ sub preprocess_request {
     #display usage statement if -h is present or no noderage is specified
     my $noderange = $request->{node};           #Should be arrayref
     my $command   = $request->{command}->[0];
+
+    if ($command eq 'findme') { return [$request]; }
     my $extrargs  = $request->{arg};
     my @exargs    = ($request->{arg});
     if (ref($extrargs)) {
@@ -4258,9 +4260,6 @@ sub preprocess_request {
     foreach my $node (@$noderange) {
         my $ent = $mptabhash->{$node}->[0]; #$mptab->getNodeAttribs($node,['mpa', 'id']);
         my $mpaent;
-        if ($request->{command}->[0] eq 'findme' and $ent->{nodetype} ne 'blade') {
-            next;
-        }
         if (defined($ent->{mpa})) {
             push @{ $mpa_hash{ $ent->{mpa} }{nodes} }, $node;
             unless ($mpatype{ $ent->{mpa} }) {
