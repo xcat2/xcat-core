@@ -5045,3 +5045,16 @@ sub strim{
     $str =~ s/^\s+|\s+$//g;
     return $str;
 }
+
+# Return true when a value is an exact element of a comma-delimited list.
+sub comma_list_contains {
+    my $class = shift;
+    my $list = shift;
+    my $value = shift;
+
+    return 0 unless defined($list) && defined($value);
+    foreach my $item (split /,/, $list) {
+        return 1 if $class->strim($item) eq $value;
+    }
+    return 0;
+}

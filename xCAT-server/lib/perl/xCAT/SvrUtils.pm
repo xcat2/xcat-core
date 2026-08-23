@@ -1798,13 +1798,13 @@ sub ensure_nfs_export_option {
             for my $tok (@tokens) {
                 if ($tok =~ /^-(.+)/) {
                     my $opts = $1;
-                    unless (_option_list_has($opts, $option)) {
+                    unless (xCAT::Utils->comma_list_contains($opts, $option)) {
                         $tok = "-$opts,$option";
                         $line_changed = 1;
                     }
                 } elsif ($tok =~ /^([^(]+)\(([^)]*)\)$/) {
                     my ($client, $opts) = ($1, $2);
-                    unless (_option_list_has($opts, $option)) {
+                    unless (xCAT::Utils->comma_list_contains($opts, $option)) {
                         $tok = "$client($opts,$option)";
                         $line_changed = 1;
                     }
@@ -1842,15 +1842,6 @@ sub _nfs_export_files {
     my @files = ('/etc/exports');
     push @files, glob('/etc/exports.d/*.exports') if -d '/etc/exports.d';
     return @files;
-}
-
-sub _option_list_has {
-    my ($list, $option) = @_;
-    foreach my $item (split /,/, $list) {
-        $item =~ s/^\s+|\s+$//g;
-        return 1 if $item eq $option;
-    }
-    return 0;
 }
 
 #-------------------------------------------------------------------------------------------
