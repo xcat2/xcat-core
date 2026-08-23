@@ -22,6 +22,16 @@ my @failures = xCAT::DBobjUtils->validate_only_if_attrs('node01', 'node', \%miss
 is(scalar @failures, 1, 'bmc without mgt fails only_if validation');
 like($failures[0]->{message}, qr/mgt value is .*openbmc/, 'failure explains accepted mgt values');
 
+my %substring_openbmc = (
+    objtype => 'node',
+    groups  => 'test',
+    mgt     => 'openbmc-redfish',
+    bmc     => '10.0.0.1',
+);
+@failures = xCAT::DBobjUtils->validate_only_if_attrs('node01', 'node', \%substring_openbmc, {});
+is(scalar @failures, 1, 'substring-only mgt value fails bmc only_if validation');
+like($failures[0]->{message}, qr/mgt value is .*openbmc/, 'substring rejection explains accepted mgt values');
+
 my %explicit_openbmc = (
     objtype => 'node',
     groups  => 'test',
@@ -49,6 +59,138 @@ my %groupattrs = (openbmcgrp => { mgt => 'openbmc' });
 @failures = xCAT::DBobjUtils->validate_only_if_attrs('node01', 'node', \%group_openbmc, {}, \%groupattrs);
 is(scalar @failures, 0, 'group mgt=openbmc satisfies bmc only_if validation');
 
+sub check_exact_only_if_value {
+    my ($source, $actual, $required, $matches, $description) = @_;
+    my (%attrs, %dbattrs, %groupattrs);
+
+    $attrs{selector} = $actual if $source eq 'explicit';
+    $dbattrs{selector} = $actual if $source eq 'database';
+    $groupattrs{exactgroup}{selector} = $actual if $source eq 'group';
+
+    is(
+        xCAT::DBobjUtils::_only_if_value_matches(
+            \%attrs,
+            \%dbattrs,
+            \%groupattrs,
+            'selector',
+            $required,
+        ),
+        $matches,
+        "$source source $description",
+    );
+}
+
+my @exact_match_cases = (
+    ['pdu',                 'pdu', 1, 'matches a single value'],
+    ['openbmc,pdu',         'pdu', 1, 'matches an exact list element'],
+    [' openbmc , pdu ',     'pdu', 1, 'matches a whitespace-padded list element'],
+    [0,                     '0',   1, 'matches a defined zero'],
+    ['not-pdu',             'pdu', 0, 'rejects a hyphenated prefix'],
+    ['pdu-extra',           'pdu', 0, 'rejects a hyphenated suffix'],
+    ['pdu.extra',           'pdu', 0, 'rejects a dotted suffix'],
+    ['.pdu',                'pdu', 0, 'rejects a punctuated prefix'],
+    ['pdu.',                'pdu', 0, 'rejects a punctuated suffix'],
+    ['.pdu',                '.pdu', 1, 'matches a leading-punctuation value exactly'],
+    ['pdu.',                'pdu.', 1, 'matches a trailing-punctuation value exactly'],
+    ['',                    'pdu', 0, 'rejects an empty value'],
+    [undef,                 'pdu', 0, 'rejects an undefined value'],
+);
+
+foreach my $source (qw(explicit database group)) {
+    check_exact_only_if_value($source, @$_) for @exact_match_cases;
+}
+
+is(
+    xCAT::DBobjUtils::_only_if_value_matches(
+        { selector => 'not-pdu' },
+        { selector => 'pdu.extra' },
+        { exactgroup => { selector => ' openbmc , pdu ' } },
+        'selector',
+        'pdu',
+    ),
+    1,
+    'later exact source match preserves source OR semantics',
+);
+
+sub check_literal_only_if_read {
+    my ($selector, $expected_payload, $description) = @_;
+
+    local $xCAT::Schema::defspec{node} = {
+        objkey => 'name',
+        attrs  => [
+            {
+                attr_name       => 'selector',
+                tabentry        => 'route_source.selector',
+                access_tabentry => 'route_source.node=attr:name',
+            },
+            {
+                attr_name       => 'payload',
+                only_if         => 'selector=axb',
+                tabentry        => 'route_expected.payload',
+                access_tabentry => 'route_expected.node=attr:name',
+            },
+            {
+                attr_name       => 'payload',
+                only_if         => 'selector=a.b',
+                tabentry        => 'route_wrong.payload',
+                access_tabentry => 'route_wrong.node=attr:name',
+            },
+            {
+                attr_name       => 'payload',
+                only_if         => 'selector=not-pdu',
+                tabentry        => 'route_not_pdu.payload',
+                access_tabentry => 'route_not_pdu.node=attr:name',
+            },
+            {
+                attr_name       => 'payload',
+                only_if         => 'selector=pdu.extra',
+                tabentry        => 'route_pdu_extra.payload',
+                access_tabentry => 'route_pdu_extra.node=attr:name',
+            },
+            {
+                attr_name       => 'payload',
+                only_if         => 'selector=pdu',
+                tabentry        => 'route_pdu.payload',
+                access_tabentry => 'route_pdu.node=attr:name',
+            },
+        ],
+    };
+
+    my @tables = qw(
+      route_source route_expected route_wrong route_not_pdu
+      route_pdu_extra route_pdu
+    );
+    local @xCAT::Schema::tabspec{@tables};
+    @xCAT::Schema::tabspec{@tables} = map { { nodecol => 'node' } } @tables;
+
+    no warnings 'redefine';
+    local *xCAT::DBobjUtils::getobjattrs = sub {
+        return (
+            route_source => { node01 => { selector => $selector } },
+            route_expected => { node01 => { payload => 'literal axb' } },
+            route_wrong => { node01 => { payload => 'literal a.b' } },
+            route_not_pdu => { node01 => { payload => 'literal not-pdu' } },
+            route_pdu_extra => { node01 => { payload => 'literal pdu.extra' } },
+            route_pdu => { node01 => { payload => 'literal pdu' } },
+        );
+    };
+
+    local $::ATTRLIST = '';
+    my %objects = (node01 => 'node');
+    my %defs = xCAT::DBobjUtils->getobjdefs(
+        \%objects,
+        0,
+        ['selector', 'payload'],
+    );
+
+    is($defs{node01}{payload}, $expected_payload, $description);
+}
+
+check_literal_only_if_read('axb',       'literal axb',       'read routing treats regex punctuation literally');
+check_literal_only_if_read('not-pdu',   'literal not-pdu',   'read routing rejects a hyphenated substring match');
+check_literal_only_if_read('pdu.extra', 'literal pdu.extra', 'read routing rejects a dotted substring match');
+check_literal_only_if_read('other,pdu', 'literal pdu',       'read routing accepts an exact comma-list element');
+
 {
     package DBobjUtilsOnlyIf::TableRecorder;
 
@@ -66,7 +208,7 @@ is(scalar @failures, 0, 'group mgt=openbmc satisfies bmc only_if validation');
 }
 
 sub check_literal_only_if_routing {
-    my ($source) = @_;
+    my ($source, $selector, $expected_table, $description) = @_;
     my @writes;
 
     local $xCAT::Schema::defspec{routing_fixture} = {
@@ -95,6 +237,24 @@ sub check_literal_only_if_routing {
                 tabentry        => 'route_expected.payload',
                 access_tabentry => 'route_expected.node=attr:name',
             },
+            {
+                attr_name       => 'payload',
+                only_if         => 'selector=pdu',
+                tabentry        => 'route_pdu.payload',
+                access_tabentry => 'route_pdu.node=attr:name',
+            },
+            {
+                attr_name       => 'payload',
+                only_if         => 'selector=not-pdu',
+                tabentry        => 'route_not_pdu.payload',
+                access_tabentry => 'route_not_pdu.node=attr:name',
+            },
+            {
+                attr_name       => 'payload',
+                only_if         => 'selector=pdu.extra',
+                tabentry        => 'route_pdu_extra.payload',
+                access_tabentry => 'route_pdu_extra.node=attr:name',
+            },
         ],
     };
 
@@ -102,9 +262,9 @@ sub check_literal_only_if_routing {
     local *xCAT::DBobjUtils::getobjdefs = sub {
         my ($class, $objects) = @_;
 
-        return (node01 => { selector => 'axb' })
+        return (node01 => { selector => $selector })
           if $source eq 'database' && exists $objects->{node01};
-        return (literalgroup => { selector => 'axb' })
+        return (literalgroup => { selector => $selector })
           if $source eq 'group' && exists $objects->{literalgroup};
         return ();
     };
@@ -123,22 +283,27 @@ sub check_literal_only_if_routing {
         objtype => 'routing_fixture',
         payload => 'stored',
     );
-    $attrs{selector} = 'axb'          if $source eq 'explicit';
+    $attrs{selector} = $selector      if $source eq 'explicit';
     $attrs{groups}   = 'literalgroup' if $source eq 'group';
 
     my %objects = (node01 => \%attrs);
     my $rc = xCAT::DBobjUtils->setobjdefs(\%objects);
 
-    is($rc, 0, "$source source passes only_if validation");
+    is($rc, 0, "$source source $description passes only_if validation");
     my @payload_tables = sort map { $_->{table} }
       grep { exists $_->{updates}{payload} } @writes;
     is_deeply(
         \@payload_tables,
-        ['route_expected'],
-        "$source source routes through only the literal-matching only_if entry",
+        [$expected_table],
+        "$source source $description routes through only the exact only_if entry",
     );
 }
 
-check_literal_only_if_routing($_) for qw(explicit database group);
+foreach my $source (qw(explicit database group)) {
+    check_literal_only_if_routing($source, 'axb',       'route_expected',  'literal value');
+    check_literal_only_if_routing($source, 'not-pdu',   'route_not_pdu',   'hyphenated value');
+    check_literal_only_if_routing($source, 'pdu.extra', 'route_pdu_extra', 'dotted value');
+    check_literal_only_if_routing($source, 'other,pdu', 'route_pdu',       'comma-list value');
+}
 
 done_testing();
