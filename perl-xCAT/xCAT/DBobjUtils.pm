@@ -506,7 +506,9 @@ sub getobjdefs
                     if (defined($check_attr) && defined($check_value)) {
                         # if the object value is not the value we need
                         #   to match then try the next only_if value
-                        next if (!($objhash{$objname}{$check_attr} =~ /\b$check_value\b/));
+                        next unless xCAT::Utils->comma_list_contains(
+                            $objhash{$objname}{$check_attr},
+                            $check_value);
                     }
 
                     $objhash{$objname}{'objtype'} = $objtype;
@@ -2875,12 +2877,12 @@ sub _only_if_value_matches
     foreach my $source ($attrs_ref, $dbattrs_ref) {
         next unless $source;
         my $value = $source->{$check_attr};
-        return 1 if defined($value) && $value =~ /\b\Q$check_value\E\b/;
+        return 1 if xCAT::Utils->comma_list_contains($value, $check_value);
     }
 
     foreach my $group (keys %{ $groupattrs_ref || {} }) {
         my $value = $groupattrs_ref->{$group}{$check_attr};
-        return 1 if defined($value) && $value =~ /\b\Q$check_value\E\b/;
+        return 1 if xCAT::Utils->comma_list_contains($value, $check_value);
     }
 
     return 0;
