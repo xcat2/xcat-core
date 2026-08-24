@@ -143,6 +143,12 @@ Unless you are downloading ``xcat-dep`` to match a specific version of xCAT, it'
         cd <os>/<arch>
         ./mklocalrepo.sh
 
+#. Configure the common repository from the same mirror.  This repository is
+   independent of the management-node operating system and architecture: ::
+
+        cd ~/xcat/xcat-dep/common
+        ./mklocalrepo.sh
+
 .. END_configure_xcat_local_repo_xcat-dep_RPM
 
 .. BEGIN_configure_xcat_local_repo_xcat-dep_DEBIAN
@@ -225,4 +231,3 @@ xCAT is started automatically after the installation, but the following commands
 
 
 .. END_verifying_xcat
-
