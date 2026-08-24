@@ -33,6 +33,20 @@ sub choose {
     my $selected = $normalized eq 'auto' ? $class->default_backend(%args) : $normalized;
 
     if ( $args{check_available} && !$class->available( $selected, %args ) ) {
+        # Ubuntu's metapackage guarantees isc-dhcp-server but only Recommends kea, so a
+        # --no-install-recommends install has auto preferring a kea that is not there. Fall
+        # back to whatever is installed; an explicitly forced backend still fails hard. #7710
+        if ( $normalized eq 'auto' ) {
+            for my $alt (qw(kea isc)) {
+                next if $alt eq $selected;
+                next unless $class->available( $alt, %args );
+                return {
+                    requested     => $normalized,
+                    name          => $alt,
+                    fallback_from => $selected,
+                };
+            }
+        }
         return {
             requested => $normalized,
             name      => $selected,

@@ -230,17 +230,34 @@ sub _isc_static_host_fallback
     return _ubuntu_isc_omapi_limited() && !$::XCATSITEVALS{externaldhcpservers};
 }
 
+# Match the whole marker _add_isc_static_host writes: a looser /\Q$node\E\b/ ends at a
+# hyphen, so node "compute" would match "compute-01" and act on the wrong block. An older
+# xCAT wrote the end marker on the closing-brace line, so that brace stays optional.
+sub _isc_host_start_re
+{
+    my ($node, $hostname) = @_;
+
+    return defined($hostname)
+      ? qr/^#xCAT host declaration for \Q$node\E aka host \Q$hostname\E start$/
+      : qr/^#xCAT host declaration for \Q$node\E aka host .* start$/;
+}
+
+sub _isc_host_end_re
+{
+    my ($node, $hostname) = @_;
+
+    return defined($hostname)
+      ? qr/^(?:\}\s*)?#xCAT host declaration for \Q$node\E aka host \Q$hostname\E end$/
+      : qr/^(?:\}\s*)?#xCAT host declaration for \Q$node\E aka host .* end$/;
+}
+
 sub _delete_isc_static_host
 {
     my ($node, $config, $hostname) = @_;
     $config ||= \@dhcpconf;
 
-    my $start_marker = defined($hostname)
-      ? qr/^#xCAT host declaration for \Q$node\E aka host \Q$hostname\E start$/
-      : qr/^#xCAT host declaration for \Q$node\E aka host .* start$/;
-    my $end_marker = defined($hostname)
-      ? qr/^(?:\}\s*)?#xCAT host declaration for \Q$node\E aka host \Q$hostname\E end$/
-      : qr/^(?:\}\s*)?#xCAT host declaration for \Q$node\E aka host .* end$/;
+    my $start_marker = _isc_host_start_re($node, $hostname);
+    my $end_marker   = _isc_host_end_re($node, $hostname);
 
     my @updated;
     my $skip = 0;
@@ -327,6 +344,45 @@ sub _add_isc_static_host
     push @{$config}, "#xCAT host declaration for $node aka host $hostname end\n";
 
     $restartdhcp = 1;
+}
+
+# Answer `makedhcp -q <node>` from dhcpd.conf rather than omshell, which on Ubuntu's ISC
+# 4.4 can wedge at 100% CPU and never be reaped -- the same reason the write paths avoid it.
+# Returns the shape _parse_omshell_host_output does, so listnode prints it unchanged.
+sub _query_isc_static_host
+{
+    my $node  = shift;
+    my @lines = @_ ? @_ : @dhcpconf;
+
+    # Only the reconfigure paths populate @dhcpconf, so a bare query reads the file itself.
+    if (!@lines && $dhcpconffile && -r $dhcpconffile) {
+        if (open(my $dhfh, '<', $dhcpconffile)) {
+            @lines = <$dhfh>;
+            close($dhfh);
+        }
+    }
+
+    my $start_re = _isc_host_start_re($node);
+    my $end_re   = _isc_host_end_re($node);
+
+    my ($nname, $ipaddr, $hwaddr);
+    my $skip = 0;
+    foreach my $line (@lines) {
+        if ($line =~ $start_re) {
+            $skip  = 1;
+            $nname = $node;
+            next;
+        }
+        last if $skip && $line =~ $end_re;
+        next unless $skip;
+        if ($line =~ /^\s*hardware\s+ethernet\s+(.+?)\s*;/) {
+            $hwaddr = "hardware-address = $1";
+        } elsif ($line =~ /^\s*fixed-address\s+(.+?)\s*;/) {
+            $ipaddr = "ip-address = $1";
+        }
+    }
+
+    return ($nname, $ipaddr, $hwaddr);
 }
 
 sub _open_omshell_writer
@@ -488,6 +544,21 @@ sub listnode
     my $node     = shift;
     my $callback = shift;
     my $rsp;
+
+    # On Ubuntu's ISC-limited releases the omshell host query can wedge at 100% CPU and never
+    # be reaped, so answer from the static host block xCAT already wrote into dhcpd.conf and
+    # never spawn omshell. This runs before the omapi key lookup below, which is moot here.
+    if (_isc_static_host_fallback()) {
+        my ($sname, $sip, $shw) = _query_isc_static_host($node);
+        if ($sip) {
+            push @{ $rsp->{data} }, "$sname: $sip, $shw";
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+        } else {
+            $rsp->{data}->[0] = "$node: no DHCP reservation found in $dhcpconffile";
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+        }
+        return;
+    }
 
     my $settings = _omapi_settings($callback);
     return unless $settings;
@@ -1802,6 +1873,14 @@ sub process_request
         $rsp->{data}->[0] = $backend->{error};
         xCAT::MsgUtils->message("E", $rsp, $callback, 1);
         return;
+    }
+    if ( $backend->can('fallback_from') && ( my $from = $backend->fallback_from ) ) {
+        my $rsp = {};
+        $rsp->{data}->[0] =
+            "DHCP backend '$from' auto-selected for this OS is not installed; "
+          . "falling back to the available '" . $backend->name . "' backend. "
+          . "Install '$from' or set site.dhcpbackend to silence this.";
+        xCAT::MsgUtils->message("W", $rsp, $callback);
     }
     if ( $backend->name eq 'kea' && $statements ) {
         my $rsp = {};
