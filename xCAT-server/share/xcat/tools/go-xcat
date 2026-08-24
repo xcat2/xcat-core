@@ -2322,6 +2322,7 @@ function boo_boo_if_bad()
 
 if [[ ${GO_XCAT_LIBRARY_ONLY:-0} == 1 ]]
 then
+	# shellcheck disable=SC2317
 	return 0 2>/dev/null || exit 0
 fi
 
