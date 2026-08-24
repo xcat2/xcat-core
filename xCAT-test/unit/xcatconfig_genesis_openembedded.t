@@ -15,7 +15,7 @@ close($source_fh) or die "close $source: $!";
 my ($routine) = $content =~ /^(sub _installed_genesis_architectures\s*\{.*?^\})/ms;
 BAIL_OUT('could not extract _installed_genesis_architectures from xcatconfig')
   unless $routine;
-eval $routine;
+eval $routine; ## no critic (BuiltinFunctions::ProhibitStringyEval)
 BAIL_OUT("could not load _installed_genesis_architectures: $@") if $@;
 
 my $tmpdir = tempdir(CLEANUP => 1);
