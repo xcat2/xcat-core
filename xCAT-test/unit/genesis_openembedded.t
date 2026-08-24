@@ -548,6 +548,17 @@ for my $symbol (
         "riscv64 kernel enables $symbol" );
 }
 
+for my $symbol (
+    qw(
+      CONFIG_ACPI CONFIG_ACPI_APEI CONFIG_ACPI_APEI_GHES
+      CONFIG_EFI CONFIG_EFI_STUB
+    )
+  )
+{
+    like( $riscv64_kernel_config, qr/^\Q$symbol\E=[ym]$/m,
+        "riscv64 kernel enables $symbol to boot on ACPI firmware" );
+}
+
 my $powerpc64_kernel_config = read_file(
     'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto/xcat-genesis-powerpc64.cfg'
 );
