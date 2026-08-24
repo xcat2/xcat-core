@@ -122,9 +122,32 @@ my %network_entry = (
     tftpserver   => '<xcatmaster>',
 );
 
-ok(xCAT_plugin::dhcp::dhcpd_sysconfig_uses_interface_key('opensuse-leap15.6'), 'openSUSE Leap head node uses SUSE dhcpd interface key');
-ok(xCAT_plugin::dhcp::dhcpd_sysconfig_uses_interface_key('leap15.6'), 'Leap head node osver uses SUSE dhcpd interface key');
-ok(!xCAT_plugin::dhcp::dhcpd_sysconfig_uses_interface_key('opensuse-tumbleweed'), 'generic openSUSE names do not enable Leap-specific dhcpd handling');
+my @sysconfig_policy_cases = (
+    [ 'sles10',                  0, 'SLES 10' ],
+    [ 'sles11',                  1, 'SLES 11' ],
+    [ 'sles15.10',               1, 'SLES 15.10' ],
+    [ 'sles-sap15.6',            1, 'SLES for SAP 15.6' ],
+    [ 'opensuse-leap15.6',       1, 'openSUSE Leap 15.6' ],
+    [ 'opensuse_leap15.6',       1, 'underscored openSUSE Leap 15.6' ],
+    [ 'leap15.6',                1, 'short Leap 15.6' ],
+    [ 'rhel6',                    0, 'RHEL 6' ],
+    [ 'rhel6.10',                 0, 'RHEL 6.10' ],
+    [ 'rhel7',                    1, 'RHEL 7' ],
+    [ 'rhels7.0',                 1, 'RHEL Server 7.0' ],
+    [ 'rhel10',                   1, 'RHEL 10' ],
+    [ 'RHEL7',                    1, 'uppercase RHEL 7' ],
+    [ 'ubuntu24.04',              0, 'Ubuntu release' ],
+    [ 'debian12',                 0, 'Debian release' ],
+    [ 'opensuse-tumbleweed',      0, 'openSUSE Tumbleweed release' ],
+    [ 'unknown',                  0, 'unknown release' ],
+    [ undef,                      0, 'undefined release' ],
+);
+
+foreach my $case (@sysconfig_policy_cases) {
+    my ( $os, $expected, $description ) = @{$case};
+    my $actual = xCAT_plugin::dhcp::dhcpd_sysconfig_uses_interface_key($os);
+    is( $actual, $expected, "$description keeps the dhcpd sysconfig policy" );
+}
 
 {
     my $tmpdir = tempdir(CLEANUP => 1);
