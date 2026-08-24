@@ -4037,6 +4037,8 @@ sub specialservicemgr {
                    0: SYSVinit
                    1: systemd
                    2: upstart
+                   or a filesystem search specification for candidate-major
+                   service resolution
     Returns:
       the name of service unit or service daemon
       undef on fail
@@ -4087,6 +4089,25 @@ sub servicemap {
         "ntpserver"      => [ "ntpd",         "ntp" ],
         "mysql"          => [ "mysqld",       "mysql", "mariadb" ],
     );
+
+    if (ref($svcmgrtype) eq 'HASH') {
+        my @candidates = $svchash{$svcname} ? @{ $svchash{$svcname} } : ($svcname);
+        my $candidate_limit = $svcmgrtype->{candidate_limit};
+        if ($candidate_limit && @candidates > $candidate_limit) {
+            @candidates = @candidates[ 0 .. $candidate_limit - 1 ];
+        }
+
+        foreach my $candidate (@candidates) {
+            foreach my $search (@{ $svcmgrtype->{searches} || [] }) {
+                foreach my $searchpath (@{ $search->{paths} || [] }) {
+                    my $candidate_path = $searchpath . "/" . $candidate . ( $search->{suffix} || "" );
+                    return $candidate if $search->{executable} ? -x $candidate_path : -e $candidate_path;
+                }
+            }
+        }
+        my $not_found;
+        return $not_found;
+    }
 
     my $path       = undef;
     my $postfix    = "";
