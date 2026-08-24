@@ -9,6 +9,7 @@ BEGIN {
 use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT";
 
+use Scalar::Util qw(refaddr);
 use Test::More;
 
 use xCAT::DBobjUtils;
@@ -140,5 +141,39 @@ sub check_literal_only_if_routing {
 }
 
 check_literal_only_if_routing($_) for qw(explicit database group);
+
+my %external_entries;
+foreach my $type (keys %xCAT::ExtTab::ext_defspec) {
+    foreach my $entry (@{ $xCAT::ExtTab::ext_defspec{$type}{attrs} || [] }) {
+        $external_entries{refaddr($entry)} = 1;
+    }
+}
+
+my @inconsistent_only_if;
+my @falsey_only_if;
+my $checked_only_if = 0;
+foreach my $type (sort keys %xCAT::Schema::defspec) {
+    foreach my $entry (@{ $xCAT::Schema::defspec{$type}{attrs} || [] }) {
+        next if $external_entries{refaddr($entry)};
+        next unless exists($entry->{only_if});
+        my $condition = $entry->{only_if};
+        $checked_only_if++;
+        if ($condition !~ /^([^!=]+)=(.+)$/) {
+            push @inconsistent_only_if, "$type.$entry->{attr_name}:$condition";
+            next;
+        }
+        my ($validator_key, $validator_value) = ($1, $2);
+        my ($router_key, $router_value) = split(/=/, $condition);
+        if ($validator_key ne $router_key || $validator_value ne $router_value) {
+            push @inconsistent_only_if, "$type.$entry->{attr_name}:$condition";
+            next;
+        }
+        push @falsey_only_if, "$type.$entry->{attr_name}:$condition" unless $validator_value;
+    }
+}
+
+cmp_ok($checked_only_if, '>', 0, 'core only_if schema conditions are examined');
+is_deeply(\@inconsistent_only_if, [], 'validator and router parse core only_if conditions consistently');
+is_deeply(\@falsey_only_if, [], 'core only_if schema values are truthy for routing');
 
 done_testing();
