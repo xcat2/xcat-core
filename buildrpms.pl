@@ -65,6 +65,7 @@ system('mkdir', '-p', map { "$ENV{HOME}/rpmbuild/$_" } qw(SOURCES SPECS BUILD BU
 my $VERSION = read_line("Version") // die "Cannot read Version\n";
 my $PWD = Cwd::cwd();
 my @XCAT_PROBE_HELPERS = qw(
+    CommandUtils.pm
     GlobalDef.pm
     NetworkUtils.pm
     ServiceNodeUtils.pm

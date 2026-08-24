@@ -3,6 +3,7 @@ package xCAT::DHCP::Backend;
 use strict;
 use warnings;
 
+use xCAT::CommandUtils;
 use xCAT::StringUtils qw(trim);
 
 my %valid_backend = map { $_ => 1 } qw(auto isc kea);
@@ -142,18 +143,7 @@ sub _osver {
 
 sub _command_exists {
     my ($command) = @_;
-
-    foreach my $dir ( split /:/, $ENV{PATH} || '' ) {
-        next unless $dir;
-        my $path = "$dir/$command";
-        return 1 if -x $path;
-    }
-
-    foreach my $path ( "/usr/sbin/$command", "/usr/bin/$command", "/sbin/$command", "/bin/$command" ) {
-        return 1 if -x $path;
-    }
-
-    return 0;
+    return xCAT::CommandUtils::find_executable($command) ? 1 : 0;
 }
 
 1;
