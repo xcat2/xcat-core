@@ -5,6 +5,7 @@ no warnings 'once';
 
 use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT";
+use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 
 use File::Temp qw(tempdir);
 use Socket ();
@@ -23,11 +24,6 @@ BEGIN {
     sub getTftpDir { return '/tftpboot'; }
     sub get_site_attribute { return; }
     $INC{'xCAT/TableUtils.pm'} = __FILE__;
-
-    package xCAT::Utils;
-    sub osver { return 'rhels9'; }
-    sub runcmd { return; }
-    $INC{'xCAT/Utils.pm'} = __FILE__;
 
     package xCAT::NetworkUtils;
     sub import {
@@ -76,6 +72,13 @@ BEGIN {
 
     package xCAT::NodeRange;
     $INC{'xCAT/NodeRange.pm'} = __FILE__;
+}
+
+require xCAT::Utils;
+{
+    no warnings 'redefine';
+    *xCAT::Utils::osver = sub { return 'rhels9'; };
+    *xCAT::Utils::runcmd = sub { return; };
 }
 
 my $source_dhcp_plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/dhcp.pm";
