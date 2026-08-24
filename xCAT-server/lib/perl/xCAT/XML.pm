@@ -56,6 +56,7 @@ sub build_tree_xml_parser {
                                no_network => 1,
                                expand_entities => 0,
                              ]);
+  $xp->setHandlers(ExternEnt => sub { return $_[2] });
   my($tree);
   if($filename) {
       # $tree = $xp->parsefile($filename);  # Changed due to prob w/mod_perl
