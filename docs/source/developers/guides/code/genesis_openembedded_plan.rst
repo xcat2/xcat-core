@@ -237,7 +237,9 @@ that export when present, while retaining the old Genesis path as a fallback.
 The management-node and service-node packages recommend the ``x86_64`` and
 ``ppc64le`` images.  These are weak dependencies so an older or partial mirror
 does not block an xCAT upgrade.  Other target images can be installed from the
-same common repository before running ``mknb ARCH``.
+same common repository before running ``mknb ARCH``.  RPM builds based on RPM
+4.11 omit the recommendations because that version cannot parse weak dependency
+tags.  Install the required image package explicitly on those systems.
 
 Server integration should be reviewed separately from the image.  Independent
 bugs found while testing Genesis, such as TFTP path handling or Kea policy,
