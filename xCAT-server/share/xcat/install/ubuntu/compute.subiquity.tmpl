@@ -74,11 +74,10 @@ autoinstall:
     - mkdir -p /target/var/log/xcat/
     - '{
     cat /tmp/pre-install.log >> /target/var/log/xcat/xcat.log;
-    installnic="#TABLEBLANKOKAY:noderes:$NODE:installnic#";
-    installmac="#TABLE:mac:$NODE:mac#";
-    installmac="$(printf ''%s'' "${installmac}" | cut -d''|'' -f1 | cut -d''!'' -f1 | tr ''A-F'' ''a-f'')";
+    installnic="#SUBIQUITYINSTALLNIC#";
+    installmac="#SUBIQUITYINSTALLMAC#";
     mkdir -p /target/etc/netplan;
-    if [ "${installnic}" = "mac" ] || [ -z "${installnic}" ]; then
+    if [ -z "${installnic}" ]; then
         printf ''%s\n'' "network:" "  version: 2" "  ethernets:" "    xcat-install:" "      match:" "        macaddress: \"${installmac}\"" "      dhcp4: true" >/target/etc/netplan/00-xcat-install.yaml;
     else
         printf ''%s\n'' "network:" "  version: 2" "  ethernets:" "    xcat-install:" "      match:" "        macaddress: \"${installmac}\"" "      set-name: ${installnic}" "      dhcp4: true" >/target/etc/netplan/00-xcat-install.yaml;
