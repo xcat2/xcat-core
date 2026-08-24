@@ -55,6 +55,8 @@ Requires: xCAT-server = 4:%{version}-%{release}
 %if %nots390x
 Requires: xCAT-probe  = 4:%{version}-%{release}
 Requires: xCAT-genesis-scripts-%{genesistarch} = 1:%{version}-%{release}
+Recommends: xCAT-genesis-openembedded-x86_64
+Recommends: xCAT-genesis-openembedded-ppc64le
 %endif
 
 Requires: rsync

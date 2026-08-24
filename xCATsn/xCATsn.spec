@@ -21,6 +21,8 @@ Requires: perl-DBD-SQLite
 Requires: xCAT-client = 4:%{version}-%{release}
 Requires: xCAT-server = 4:%{version}-%{release}
 Requires: xCAT-probe  = 4:%{version}-%{release}
+Recommends: xCAT-genesis-openembedded-x86_64
+Recommends: xCAT-genesis-openembedded-ppc64le
 
 # Match xCAT-genesis-scripts package naming by build architecture.
 %ifarch i386 i586 i686 x86

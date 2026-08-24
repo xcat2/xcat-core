@@ -23,11 +23,13 @@ mkdir -p %{buildroot}%{_sysconfdir}/yum.repos.d
 mkdir -p %{buildroot}%{_sysconfdir}/pki/rpm-gpg
 install -m 0644 xcat-core.repo %{buildroot}%{_sysconfdir}/yum.repos.d/xcat-core.repo
 install -m 0644 xcat-dep.repo %{buildroot}%{_sysconfdir}/yum.repos.d/xcat-dep.repo
+install -m 0644 xcat-dep-common.repo %{buildroot}%{_sysconfdir}/yum.repos.d/xcat-dep-common.repo
 install -m 0644 RPM-GPG-KEY-xCAT %{buildroot}%{_sysconfdir}/pki/rpm-gpg/RPM-GPG-KEY-xCAT
 
 %files
 %config(noreplace) %{_sysconfdir}/yum.repos.d/xcat-core.repo
 %config(noreplace) %{_sysconfdir}/yum.repos.d/xcat-dep.repo
+%config(noreplace) %{_sysconfdir}/yum.repos.d/xcat-dep-common.repo
 %{_sysconfdir}/pki/rpm-gpg/RPM-GPG-KEY-xCAT
 
 %changelog
