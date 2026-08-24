@@ -57,8 +57,8 @@ my $pduhash;
 # pduId is the PDU's link ID and is 1 when linking is not used; BCM2/PMC use 0
 # for the main controller. Linked and BCM2/PMC deployments are out of scope for
 # genpdu, because pduoutlet.pdu is parsed as PDU:outlet and has no field for a
-# link ID. pduCount reports how many units are behind one agent and is 1 on a
-# standalone PDU.
+# link ID. pduCount reports how many units sit behind one agent, 1 when
+# standalone.
 #-------------------------------------------------------
 my $PDU2_PDUCOUNT    = ".1.3.6.1.4.1.13742.6.3.1.0";      #pduCount,             ro, scalar
 my $PDU2_SWITCHOP    = ".1.3.6.1.4.1.13742.6.4.1.2.1.2";  #switchingOperation,  rw, off(0) on(1) cycle(2)
@@ -66,15 +66,15 @@ my $PDU2_OUTLETSTATE = ".1.3.6.1.4.1.13742.6.4.1.2.1.3";  #outletSwitchingState,
 my $PDU2_OUTLETCOUNT = ".1.3.6.1.4.1.13742.6.3.2.2.1.4";  #outletCount,          ro, INDEX { pduId }
 my $PDU2_PDUID       = 1;
 
+#PDUs whose linked-unit warning has already been printed.
+my %genpdu_linked;
+
 #rinv / rvitals sources. The nameplate and unitConfiguration entries are
 #INDEX { pduId }; the measurement and sensor-configuration entries are
 #INDEX { pduId, <inlet|outlet>Id, sensorType }.
-#A sensor whose SensorSignedMinimum is below zero can read negative and must be
-#taken from the signed value column, per the SensorSignedMinimum DESCRIPTION.
-#The two columns are not interchangeable in either direction: the unsigned
-#column is undefined for such a sensor (a PX4 answers 0 for inlet reactive
-#power), and the signed column is undefined for sensors whose range exceeds
-#Integer32 (the same PX4 answers 0 for active and apparent energy).
+#SensorSignedMinimum selects the value column. On a PX4 the unsigned column
+#returns 0 for reactive power, and the signed column returns 0 for active
+#energy, whose range exceeds Integer32.
 my $PDU2_NAMEPLATE       = ".1.3.6.1.4.1.13742.6.3.2.1.1";    #nameplateEntry
 my $PDU2_UNITCONF        = ".1.3.6.1.4.1.13742.6.3.2.2.1";    #unitConfigurationEntry
 my $PDU2_INLETVAL        = ".1.3.6.1.4.1.13742.6.5.2.3.1.4";  #measurementsInletSensorValue
@@ -841,11 +841,34 @@ sub pdu2_session_args {
 
 #-------------------------------------------------------
 
+=head3  pdu2_get
+
+   Read one object. Returns its value and one of 'ok', 'absent' or 'failed'.
+   A missing object is exception text under v2c/v3 and an error under v1, so
+   both count as absent rather than as a failure.
+
+=cut
+
+#-------------------------------------------------------
+sub pdu2_get {
+    my ($session, $oid) = @_;
+
+    #Cleared first so the error below belongs to this GET.
+    $session->{ErrorStr} = '';
+    my $val = $session->get($oid);
+    my $err = $session->{ErrorStr} || '';
+
+    return ($val, 'ok') if (defined $val and $val ne '' and $val !~ /^No Such/i);
+    return (undef, 'failed') if ($err ne '' and $err !~ /no such/i);
+    return (undef, 'absent');
+}
+
+#-------------------------------------------------------
+
 =head3  pdu2_session_probe
 
-   First exchange with a generic SNMP PDU. Returns false when the PDU does not
-   answer at all, so callers report a connection failure, and records whether
-   its outlets can be switched.
+   Returns false when the PDU does not answer, so callers report a connection
+   failure, and records whether its outlets can be switched.
 
 =cut
 
@@ -853,40 +876,32 @@ sub pdu2_session_args {
 sub pdu2_session_probe {
     my ($session, $pdu, $callback) = @_;
 
-    #SNMP::Session->new does not contact the device, so this GET is where an
-    #unreachable PDU or a wrong credential first shows up. pduCount is a
-    #mandatory PDU2-MIB scalar, which makes it a reliable liveness check: the
-    #switching probe below cannot serve that purpose, because a PDU that never
-    #answers looks exactly like a PDU that has no switched outlets.
-    my $pducount = $session->get("$PDU2_PDUCOUNT");
-    unless (defined $pducount and $pducount =~ /^\d+$/) {
-        #Every PDU2 device tested answers pduCount, but genpdu is meant for any
-        #implementation of the MIB, so fall back to sysDescr before calling the
-        #PDU unreachable: it is mandatory in SNMPv2-MIB, and rinv reads it
-        #already. The unit count is then unknown rather than assumed to differ,
-        #so no linking warning is issued.
-        my $descr = $session->get("$SYSDESCR");
-        unless (defined $descr and $descr ne '' and $descr !~ /No Such/i) {
-            return 0;
-        }
+    #SNMP::Session->new does not contact the device, so pduCount is the first
+    #exchange and the liveness check: a silent PDU otherwise looks like one
+    #with no switched outlets.
+    my ($pducount, $state) = pdu2_get($session, "$PDU2_PDUCOUNT");
+    return 0 if ($state eq 'failed');
+
+    unless (defined $pducount and $pducount =~ /^\d+$/ and $pducount >= 1) {
+        #Some MIB implementations may not provide pduCount. Fall back to a
+        #nameplate object, so credentials without PDU2 access are rejected.
+        my ($model) = pdu2_get($session, "$PDU2_NAMEPLATE.3.$PDU2_PDUID");
+        return 0 unless (defined $model);
         $pducount = 1;
     }
 
-    #pduCount is the number of link units including the primary, or for BCM2 and
-    #PMC the number of power meters plus the main controller. genpdu only drives
-    #pduId 1, which is the primary on a linked unit but a power meter on
-    #BCM2/PMC. Warn rather than refuse: driving the primary alone stays correct,
-    #and pduoutlet.pdu has no field for a link id in any case.
-    if ($pducount != 1) {
+    #pduCount includes the primary and its link units (for BCM2 and PMC, the
+    #meters and the controller). genpdu drives pduId 1, still the primary when
+    #linked, so warn rather than refuse. Once per PDU: node ranges connect per
+    #node.
+    if ($pducount != 1 and !$genpdu_linked{$pdu}) {
+        $genpdu_linked{$pdu} = 1;
         xCAT::SvrUtils::sendmsg("pduCount is $pducount, only the primary unit (pduId $PDU2_PDUID) is managed", $callback, $pdu);
     }
 
-    #Metered-only PDU2 models (for example PX2-1901U) answer the nameplate and
-    #measurement tables normally but have no outletSwitchControlTable instances.
-    #Probe once here, the same way the irpdu path above probes a version OID,
-    #so callers can refuse switching with one clear message instead of leaking
-    #the agent's "No Such Instance" text from every outlet read.
-    my $probe = $session->get("$PDU2_OUTLETSTATE.$PDU2_PDUID.1");
+    #Metered-only models such as PX2-1901U answer the measurement tables but
+    #have no outletSwitchControlTable instances.
+    my ($probe) = pdu2_get($session, "$PDU2_OUTLETSTATE.$PDU2_PDUID.1");
     $session->{genpdu_switchable} =
         ((defined $probe) and ($probe =~ /^\d+$/ or $probe =~ /^(on|off)$/i)) ? 1 : 0;
 
@@ -903,11 +918,12 @@ sub pdu2_session_probe {
    $oids is one of the PDU2_*_SENSOR column sets and $idx is the full instance
    suffix (pduId.entityId.sensorType). The value column, scaling factor and unit
    all come from the matching sensor-configuration table, so no unit, precision
-   or column choice is hardcoded. They are formally per-entity but are uniform
-   across entities on PDU2 devices, so they are cached per sensorType to keep
-   this to one GET per entity per sensor rather than four. The cache is filled
-   only once a sensor is known to exist, so an entity that lacks a sensor cannot
-   seed it with fallbacks for the entities behind it.
+   or column choice is hardcoded.
+
+   Unit and decimal digits are cached per sensorType, and only once a sensor is
+   known to exist, so an entity that lacks one cannot seed the cache for those
+   behind it. The signed minimum is read per entity instead: it decides which
+   column is read, and a stale one reports a wrong number, not no number.
 
 =cut
 
@@ -915,28 +931,29 @@ sub pdu2_session_probe {
 sub pdu2_sensor_fmt {
     my ($session, $oids, $idx, $cache) = @_;
 
-    my $st = (split /\./, $idx)[-1];
-    my $meta = $cache->{$st};
-
-    #SensorSignedMinimum below zero means the sensor can read negative and the
-    #signed value column has to be used. Treat an unreadable minimum as zero:
-    #firmware that does not implement the column keeps the unsigned reading it
-    #has always returned.
-    my $min = (defined $meta) ? $meta->[2] : $session->get("$oids->{min}.$idx");
+    #Use the signed column when the minimum is below zero. An absent minimum
+    #means firmware without the column, so keep the unsigned reading; a failed
+    #GET means neither column can be trusted.
+    my ($min, $state) = pdu2_get($session, "$oids->{min}.$idx");
+    return undef if ($state eq 'failed');
     $min = 0 unless (defined $min and $min =~ /^-?\d+$/);
 
     my $valoid = ($min < 0) ? $oids->{signed} : $oids->{val};
-    my $raw = $session->get("$valoid.$idx");
+    my ($raw) = pdu2_get($session, "$valoid.$idx");
     return undef unless (defined $raw and $raw =~ /^-?\d+$/);
 
-    unless (defined $meta) {
-        my $u = $session->get("$oids->{units}.$idx");
-        my $d = $session->get("$oids->{dec}.$idx");
+    my $st = (split /\./, $idx)[-1];
+    unless (exists $cache->{$st}) {
+        #A failed read here would cache the wrong scaling for every entity
+        #behind this one.
+        my ($u, $ustate) = pdu2_get($session, "$oids->{units}.$idx");
+        my ($d, $dstate) = pdu2_get($session, "$oids->{dec}.$idx");
+        return undef if ($ustate eq 'failed' or $dstate eq 'failed');
         $u = -1 unless (defined $u and $u =~ /^-?\d+$/);
         $d = 0  unless (defined $d and $d =~ /^\d+$/);
-        $meta = $cache->{$st} = [ $u, $d, $min ];
+        $cache->{$st} = [ $u, $d ];
     }
-    my ($units, $digits) = @$meta;
+    my ($units, $digits) = @{ $cache->{$st} };
 
     my $val = sprintf("%.*f", $digits, $raw / (10 ** $digits));
     my $sfx = (defined $PDU2_SENSOR_UNIT{$units}) ? $PDU2_SENSOR_UNIT{$units} : "";
@@ -974,16 +991,17 @@ sub rinv_for_genpdu {
     );
 
     foreach my $f (@fields) {
-        my $output = $session->get("$f->[0].$f->[1].$PDU2_PDUID");
-        next unless (defined $output and $output ne '');
+        #Not every model populates every nameplate field.
+        my ($output) = pdu2_get($session, "$f->[0].$f->[1].$PDU2_PDUID");
+        next unless (defined $output);
         #UseSprintValue returns DisplayStrings quoted; strip for readability.
         $output =~ s/^"(.*)"$/$1/;
         next if ($output eq '');
         xCAT::SvrUtils::sendmsg("$f->[2]: $output", $callback, $pdu);
     }
 
-    my $output = $session->get("$SYSDESCR");
-    if (defined $output and $output ne '') {
+    my ($output) = pdu2_get($session, "$SYSDESCR");
+    if (defined $output) {
         $output =~ s/^"(.*)"$/$1/;
         xCAT::SvrUtils::sendmsg("PDU Description: $output", $callback, $pdu);
     }
@@ -1021,13 +1039,10 @@ sub rvitals_for_genpdu {
 
     my %outlet_cache;
 
-    #Metered-only models (PX2-1901U, PX3-1901U) populate the inlet tables but
-    #have no per-outlet sensors. Probe one before looping: a 48-outlet unit
-    #otherwise costs 192 GETs that all return No Such Instance and print
-    #nothing, which matters when rvitals is run against a group. The unsigned
-    #column is the right one to probe because the first outlet sensor is
-    #rmsCurrent, which cannot read negative.
-    my $probe = $session->get("$PDU2_OUTLETVAL.$PDU2_PDUID.1.$PDU2_OUTLET_SENSORS[0]");
+    #PX2-1901U and PX3-1901U have no per-outlet sensors: probing avoids 192
+    #failed GETs on a 48-outlet unit. rmsCurrent, the first outlet sensor, is
+    #unsigned.
+    my ($probe) = pdu2_get($session, "$PDU2_OUTLETVAL.$PDU2_PDUID.1.$PDU2_OUTLET_SENSORS[0]");
     return unless (defined $probe and $probe =~ /^-?\d+$/);
 
     for (my $outlet = 1; $outlet <= $count; $outlet++) {

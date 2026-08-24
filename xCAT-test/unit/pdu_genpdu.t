@@ -59,10 +59,24 @@ do $plugin or die $@ || "Unable to load $plugin: $!";
         my ($class, $resp) = @_;
         return bless { resp => $resp || {}, gets => [] }, $class;
     }
+    #An OID the fixture does not mention models a device that does not answer:
+    #undef with ErrorStr set, which is what SNMP.pm does on a timeout. A fixture
+    #value of "No Such ..." models an answer that carries an exception, and a
+    #hashref models any other transport or protocol failure.
     sub get {
         my ($self, $oid) = @_;
         push @{ $self->{gets} }, $oid;
-        return $self->{resp}->{$oid};
+        my $val = $self->{resp}->{$oid};
+        if (ref $val eq 'HASH') {
+            $self->{ErrorStr} = $val->{err};
+            return undef;
+        }
+        unless (exists $self->{resp}->{$oid}) {
+            $self->{ErrorStr} = 'Timeout';
+            return undef;
+        }
+        $self->{ErrorStr} = '';
+        return $val;
     }
 }
 
@@ -207,6 +221,58 @@ ok(
     'an absent sensor on one inlet does not seed the metadata cache for the next'
 );
 
+#-- rvitals: the value column is decided per entity ---------------------------
+
+my %two_readings = ("$UNITCONF.2.1" => 2);
+inlet_sensor(\%two_readings, 1, [ 29, -63000, 0,   -1360, 23, 0 ]);
+inlet_sensor(\%two_readings, 2, [ 29, 0,      250, 999,   23, 0 ]);
+
+($msgs, $session) = vitals_messages(\%two_readings, 0);
+ok(
+    (grep { $_ eq 'pdu1|inlet 1 Reactive Power: -1360 var' } @$msgs),
+    'the entity with a negative signed minimum reads the signed column'
+);
+ok(
+    (grep { $_ eq 'pdu1|inlet 2 Reactive Power: 250 var' } @$msgs),
+    'an entity with signed minimum 0 is not forced onto the signed column by another entity'
+);
+
+#-- rvitals: a failed metadata read is not a missing column -------------------
+
+my %min_fails = ("$UNITCONF.2.1" => 1);
+inlet_sensor(\%min_fails, 1, $PX4_INLET[0]);
+$min_fails{"$INLET_MIN.1.1.1"} = { err => 'Timeout' };
+
+($msgs, $session) = vitals_messages(\%min_fails, 0);
+is(
+    scalar(grep { /RMS Current/ } @$msgs), 0,
+    'a sensor whose signed minimum read fails is skipped rather than guessed'
+);
+
+#-- rvitals: SNMPv1 reports an absent object as an error ----------------------
+
+my %v1_absent = ("$UNITCONF.2.1" => 1);
+inlet_sensor(\%v1_absent, 1, $PX4_INLET[0]);
+$v1_absent{"$INLET_MIN.1.1.1"} = { err => 'There is no such variable name in this MIB.' };
+
+($msgs, $session) = vitals_messages(\%v1_absent, 0);
+ok(
+    (grep { $_ eq 'pdu1|inlet 1 RMS Current: 9.503 A' } @$msgs),
+    'an absent signed minimum reported as a v1 error still falls back to the unsigned column'
+);
+
+#-- rvitals: a failed unit read is not a unitless sensor ----------------------
+
+my %units_fail = ("$UNITCONF.2.1" => 1);
+inlet_sensor(\%units_fail, 1, $PX4_INLET[0]);
+$units_fail{"$INLET_DEC.1.1.1"} = { err => 'Timeout' };
+
+($msgs, $session) = vitals_messages(\%units_fail, 0);
+is(
+    scalar(grep { /RMS Current/ } @$msgs), 0,
+    'a sensor whose precision read fails is skipped rather than reported unscaled'
+);
+
 #-- rvitals: firmware without the signedMinimum column -----------------------
 
 my %no_min = ("$UNITCONF.2.1" => 1);
@@ -222,22 +288,39 @@ ok(
 #-- session probe -------------------------------------------------------------
 
 sub probe {
-    my ($resp) = @_;
+    my ($resp, $name) = @_;
     local @xCAT::SvrUtils::messages = ();
     my $session = FakeSession->new($resp);
-    my $ok = xCAT_plugin::pdu::pdu2_session_probe($session, 'pdu1', undef);
+    my $ok = xCAT_plugin::pdu::pdu2_session_probe($session, $name || 'pdu1', undef);
     return ($ok, $session, [ @xCAT::SvrUtils::messages ]);
 }
 
 my ($ok, $probed, $probe_msgs) = probe({});
 ok(!$ok, 'a PDU that answers nothing at all is reported as unreachable');
+is(scalar(@{ $probed->{gets} }), 1, 'an unanswered PDU is not probed a second time');
 
 ($ok, $probed, $probe_msgs) = probe({
-    $SYSDESCR          => '"Raritan PDU, MD:PX4-5851-E7V2"',
+    $PDUCOUNT          => $NOSUCH,
+    "$NAMEPLATE.3.1"   => '"PX4-5851-E7V2"',
     "$OUTLETSTATE.1.1" => 7,
 });
-ok($ok, 'a PDU that answers sysDescr but not pduCount is still usable');
+ok($ok, 'a PDU that answers the nameplate but not pduCount is still usable');
 is(scalar(@$probe_msgs), 0, 'a PDU with no pduCount is not warned about');
+
+($ok, $probed, $probe_msgs) = probe({
+    $PDUCOUNT        => $NOSUCH,
+    "$NAMEPLATE.3.1" => $NOSUCH,
+    $SYSDESCR        => '"Raritan PDU, MD:PX4-5851-E7V2"',
+});
+ok(!$ok, 'a credential that cannot read the PDU2 tables is not a usable session');
+
+($ok, $probed, $probe_msgs) = probe({
+    $PDUCOUNT          => 0,
+    "$NAMEPLATE.3.1"   => '"PX4-5851-E7V2"',
+    "$OUTLETSTATE.1.1" => 7,
+});
+ok($ok, 'a pduCount of 0 falls back to the nameplate rather than being trusted');
+is(scalar(@$probe_msgs), 0, 'a pduCount of 0 does not warn about linked units');
 
 ($ok, $probed, $probe_msgs) = probe({
     $PDUCOUNT             => 1,
@@ -253,14 +336,21 @@ is($probed->{genpdu_switchable}, 1, 'an answered outlet state marks the PDU swit
 ok($ok, 'a metered-only PDU is still usable for rinv and rvitals');
 is($probed->{genpdu_switchable}, 0, 'a missing outlet state marks the PDU not switchable');
 
-($ok, $probed, $probe_msgs) = probe({
-    $PDUCOUNT             => 3,
-    "$OUTLETSTATE.1.1"    => 7,
-});
+my %linked = (
+    $PDUCOUNT          => 3,
+    "$OUTLETSTATE.1.1" => 7,
+);
+($ok, $probed, $probe_msgs) = probe(\%linked, 'linked1');
 ok($ok, 'a linked PDU is not refused');
 ok(
     (grep { /pduCount is 3/ } @$probe_msgs),
     'a pduCount other than 1 warns that only the primary unit is managed'
+);
+
+($ok, $probed, $probe_msgs) = probe(\%linked, 'linked1');
+is(
+    scalar(@$probe_msgs), 0,
+    'the linked unit warning is not repeated for the same PDU'
 );
 
 #-- session arguments from the pdu table -------------------------------------
@@ -332,6 +422,25 @@ is(outlet_state(undef),    'unknown state', 'an unanswered outlet state is unkno
         'the outlet count is reported from unitConfiguration');
     ok((grep { /^pdu1\|PDU Description: Raritan PDU, MD:PX4/ } @m),
         'the firmware string is reported from sysDescr');
+}
+
+{
+    local @xCAT::SvrUtils::messages = ();
+    my $session = FakeSession->new({
+        "$NAMEPLATE.2.1" => '"Raritan"',
+        "$NAMEPLATE.7.1" => $NOSUCH,
+    });
+    $session->{genpdu} = 1;
+    xCAT_plugin::pdu::rinv_for_genpdu('pdu1', $session, undef);
+
+    is(
+        scalar(grep { /Rated Frequency/ } @xCAT::SvrUtils::messages), 0,
+        'a nameplate field the device does not have is left out of rinv'
+    );
+    is(
+        scalar(grep { /No Such/ } @xCAT::SvrUtils::messages), 0,
+        'rinv never reports an SNMP exception string as inventory'
+    );
 }
 
 done_testing();
