@@ -27,7 +27,7 @@ sub slurp {
 my $x = slurp('xCAT-server/sbin/xcatd');
 plan skip_all => 'sbin/xcatd not found' unless defined $x;
 
-like($x, qr/if\s*\(\s*!\$pid_MON\s*&&\s*!\$quit\s*&&\s*\$sport\s*\)/,
+like($x, qr/if\s*\(\s*!\$pid_MON\s*&&\s*!\$quit\s*&&\s*\$sport\b/,
     'main loop re-forks the install monitor when it has died (!$pid_MON && !$quit && $sport)');
 
 # The respawn must actually (re)enter the install-monitor service in the forked child.

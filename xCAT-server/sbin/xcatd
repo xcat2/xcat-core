@@ -29,6 +29,11 @@ my $sslctl;
 my $udpctl;
 my $pid_UDP;
 my $pid_MON;
+# Respawn accounting for the install monitor (see the main service loop below).
+my $mon_respawn_last     = 0;
+my $mon_respawn_attempts = 0;
+my $mon_respawn_interval = defined($ENV{XCATD_MON_RESPAWN_INTERVAL}) ? $ENV{XCATD_MON_RESPAWN_INTERVAL} : 5;
+my $mon_respawn_max      = defined($ENV{XCATD_MON_RESPAWN_MAX})      ? $ENV{XCATD_MON_RESPAWN_MAX}      : 10;
 
 my $numofnodes=0;
 
@@ -1064,6 +1069,8 @@ sub ssl_reaper {
         }
         if ($CHILDPID == $pid_MON) {
             $pid_MON = 0;
+            # a monitor that ran for a while was healthy; give the next death a full budget
+            $mon_respawn_attempts = 0 if time() - $mon_respawn_last > $mon_respawn_interval * $mon_respawn_max;
         }
     }
     $SIG{CHLD} = \&ssl_reaper;
@@ -1463,6 +1470,43 @@ my $udpalive       = 1;
 
 until ($quit) {
     $SIG{CHLD} = \&ssl_reaper; # set here to ensure that signal handler is not corrupted during loop
+    # Respawn the install monitor if it has died. It is forked exactly once at startup, and the
+    # SIGCHLD reaper only clears $pid_MON when it exits -- nothing re-forks it. A single death
+    # of that child (a stray signal, or a lost socket takeover during an xcatd restart) used to
+    # leave xcatiport permanently dead while this daemon kept running, so installing nodes could
+    # no longer report status or request the boot flip until the WHOLE daemon was restarted.
+    #
+    # Rate limit it. do_installm_service dies if it cannot bind the port after its own retries,
+    # so an unguarded re-fork here would spin as fast as fork allows while the port stays held,
+    # and would keep re-entering that function's USR2 socket-takeover handshake. Space the
+    # attempts, cap them, and say so when the cap is reached rather than retrying forever.
+    if (!$pid_MON && !$quit && $sport && $mon_respawn_attempts < $mon_respawn_max) {
+        if (time() - $mon_respawn_last >= $mon_respawn_interval) {
+            $mon_respawn_last = time();
+            $mon_respawn_attempts++;
+            $pid_MON = xCAT::Utils->xfork;
+            if (!defined $pid_MON) {
+                xCAT::MsgUtils->message("S", "xcatd: unable to re-fork install monitor");
+                $pid_MON = 0;
+            } elsif (!$pid_MON) {    # child: serve only the install monitor
+                $$progname = "xcatd: install monitor";
+                $pid_UDP = 0;
+                close($listener);
+                close($udpctl); $udpctl = 0;
+                do_installm_service;
+                xexit(0);
+            } else {
+                xCAT::MsgUtils->trace(0, "I",
+                    "xcatd: re-forked install monitor (pid $pid_MON) after it exited"
+                      . " (attempt $mon_respawn_attempts of $mon_respawn_max)");
+            }
+        }
+    } elsif (!$pid_MON && !$quit && $sport && $mon_respawn_attempts == $mon_respawn_max) {
+        $mon_respawn_attempts++;    # report once, then stop trying
+        xCAT::MsgUtils->message("S",
+            "xcatd: install monitor failed to stay up after $mon_respawn_max attempts;"
+              . " giving up on xcatiport $sport. Restart xcatd once the port is free.");
+    }
     while ($udpalive and $udpwatcher->can_read(0)) { # take an intermission to broker some state requests from udp traffic control
         eval {
             my $msg = fd_retrieve($udpctl);
