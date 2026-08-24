@@ -20,6 +20,11 @@ sub read_file {
 my $rpm_spec = read_file('xCAT/xCAT.spec');
 like(
     $rpm_spec,
+    qr/^%if 0%\{\?fedora\} \|\| 0%\{\?rhel\} >= 8 \|\| 0%\{\?suse_version\} >= 1500$/m,
+    'RPM weak dependencies are limited to package managers that support them',
+);
+like(
+    $rpm_spec,
     qr/^Recommends:\s+xCAT-genesis-openembedded-x86_64$/m,
     'RPM installations recommend the first-class x86_64 image',
 );
@@ -52,6 +57,11 @@ unlike(
 );
 
 my $sn_rpm_spec = read_file('xCATsn/xCATsn.spec');
+like(
+    $sn_rpm_spec,
+    qr/^%if 0%\{\?fedora\} \|\| 0%\{\?rhel\} >= 8 \|\| 0%\{\?suse_version\} >= 1500$/m,
+    'service-node weak dependencies use the same compatibility guard',
+);
 like(
     $sn_rpm_spec,
     qr/^Recommends:\s+xCAT-genesis-openembedded-x86_64$/m,
