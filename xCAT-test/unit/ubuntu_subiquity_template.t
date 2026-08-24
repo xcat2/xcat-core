@@ -36,7 +36,20 @@ unlike($tmpl, qr/echo.*GRUB_CMDLINE.*\\"/, 'no escaped double quotes in echo GRU
 unlike($tmpl, qr/\\\\x22/, 'template does not rely on non-portable printf hex escapes');
 like($tmpl, qr/printf ''%s\\n'' ''GRUB_CMDLINE_LINUX="#TABLEBLANKOKAY:bootparams:\$NODE:kcmdline#"''/, 'GRUB line uses portable printf quoting');
 like($tmpl, qr/\/target\/etc\/netplan\/00-xcat-install\.yaml/, 'template writes an xCAT-owned target netplan file');
-like($tmpl, qr/installnic="#TABLE:noderes:\$NODE:installnic#"/, 'target netplan uses node installnic');
+# Regression: an UNSET noderes.installnic must not fatally break Subiquity xnba
+# generation. The EL/SLES statefull templates never reference installnic, so they default
+# gracefully; this template resolved #TABLE:noderes:$NODE:installnic#, and Template.pm's tabdb
+# raises "Unable to find requested field <installnic> from table <noderes>" -> "Failed to
+# generate xnba configurations" when the node carries no installnic value, so the Ubuntu
+# diskful install never starts. The template must use the non-fatal #TABLEBLANKOKAY# token
+# (renders blank when unset) and treat an empty installnic the same as "mac" -- match by MAC
+# with no NIC rename, which is the EL-equivalent default.
+unlike($tmpl, qr/installnic="#TABLE:noderes:\$NODE:installnic#"/,
+    'installnic does NOT use the fatal #TABLE# token (it errors when installnic is unset)');
+like($tmpl, qr/installnic="#TABLEBLANKOKAY:noderes:\$NODE:installnic#"/,
+    'installnic uses the non-fatal #TABLEBLANKOKAY# token so an unset installnic renders blank');
+like($tmpl, qr/if \[ "\$\{installnic\}" = "mac" \] \|\| \[ -z "\$\{installnic\}" \]; then/,
+    'an empty installnic is handled like "mac" (match by MAC, no set-name rename)');
 like($tmpl, qr/installmac="#TABLE:mac:\$NODE:mac#"/, 'target netplan uses node MAC');
 like($tmpl, qr/installmac="\$\(printf ''%s'' "\$\{installmac\}".*\| tr ''A-F'' ''a-f''\)"/, 'target netplan normalizes MAC case');
 like($tmpl, qr/installmac="\$\(printf ''%s'' "\$\{installmac\}" \| cut -d''\|'' -f1 \| cut -d''!'' -f1/, 'target netplan strips mac table suffixes before matching');
