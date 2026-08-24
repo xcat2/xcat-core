@@ -9,6 +9,8 @@ use File::Path;
 use File::Copy;
 
 my $GENESIS_EXPORT_MANIFEST = 'xcat-genesis.manifest';
+my %GENESIS_ARCHITECTURES = map { $_ => 1 }
+  qw(x86 x86_64 ppc64 ppc64le armv7hf aarch64 riscv64);
 
 sub handled_commands {
     return {
@@ -36,6 +38,28 @@ sub _select_network_addresses {
     }
 
     return (\%legacy, \%selected);
+}
+
+sub _select_genesis_source {
+    my ($xcatroot, $requested_arch) = @_;
+    return unless defined($requested_arch);
+
+    my $arch = $requested_arch eq 'ppc64el' ? 'ppc64le' : $requested_arch;
+    return unless $GENESIS_ARCHITECTURES{$arch};
+
+    my $netboot = "$xcatroot/share/xcat/netboot";
+    my $openembedded = "$netboot/genesis-openembedded/$arch";
+    return ($openembedded, $arch, 'openembedded')
+      if -e $openembedded || -l $openembedded;
+
+    my $legacy_arch = $arch eq 'ppc64le' ? 'ppc64' : $arch;
+    my $legacy = "$netboot/genesis/$legacy_arch";
+    return ($legacy, $legacy_arch, 'legacy') if -e $legacy || -l $legacy;
+
+    my $classic = "$netboot/$legacy_arch";
+    return ($classic, $legacy_arch, 'classic') if -e $classic || -l $classic;
+
+    return;
 }
 
 sub _genesis_export_manifest_present {
@@ -341,21 +365,25 @@ sub process_request {
     }
 
     my $tftpdir = xCAT::TableUtils->getTftpDir();
-    my $arch    = $request->{arg}->[0];
-    if (!$arch) {
-        $callback->({ error => "Need to specify architecture (x86, x86_64 or ppc64)" }, { errorcode => [1] });
+    my $requested_arch = $request->{arg}->[0];
+    if (!$requested_arch) {
+        $callback->({ error => "Need to specify architecture (x86, x86_64, ppc64, ppc64le, armv7hf, aarch64 or riscv64)" }, { errorcode => [1] });
         return;
-    } elsif ($arch eq "ppc64le" or $arch eq "ppc64el") {
-        $callback->({ data => "The arch:$arch is not supported, using \"ppc64\" instead" });
-        $arch = 'ppc64';
-        $request->{arg}->[0] = $arch;
     }
 
-    my $genesis_dir = "$::XCATROOT/share/xcat/netboot/genesis/$arch";
-    unless (-d "$::XCATROOT/share/xcat/netboot/$arch" or -d $genesis_dir) {
-        $callback->({ error => "Unable to find directory $::XCATROOT/share/xcat/netboot/$arch or $::XCATROOT/share/xcat/netboot/genesis/$arch", errorcode => [1] });
+    my ($genesis_dir, $arch, $genesis_type) =
+      _select_genesis_source($::XCATROOT, $requested_arch);
+    unless (defined($genesis_dir) && -d $genesis_dir && !-l $genesis_dir) {
+        $callback->({ error => "Unable to find a Genesis image for architecture $requested_arch", errorcode => [1] });
         return;
     }
+    if ($requested_arch eq 'ppc64el') {
+        $callback->({ data => 'Using the canonical architecture name ppc64le' });
+    } elsif ($requested_arch eq 'ppc64le' && $arch eq 'ppc64') {
+        $callback->({ data => 'OpenEmbedded ppc64le is not installed, using the legacy ppc64 image' });
+    }
+    $request->{arg}->[0] = $arch;
+
     my $configfileonly = $request->{arg}->[1];
     if ($configfileonly and $configfileonly ne "-c" and $configfileonly ne "--configfileonly") {
         $callback->({ error => "The option $configfileonly is not supported", errorcode => [1] });
@@ -364,7 +392,10 @@ sub process_request {
         goto CREAT_CONF_FILE;
     }
     if (_prebuilt_genesis_requested($genesis_dir)) {
-        $callback->({ data => ["Installing exported Genesis image for $arch"] });
+        my $image_name = $genesis_type eq 'openembedded'
+          ? 'OpenEmbedded Genesis'
+          : 'exported Genesis';
+        $callback->({ data => ["Installing $image_name image for $arch"] });
         my ($installed_initrd, $install_error) =
           _install_prebuilt_genesis($genesis_dir, $tftpdir, $arch);
         if ($install_error) {
@@ -375,7 +406,8 @@ sub process_request {
         $invisibletouch = 1;
         goto CREAT_CONF_FILE;
     }
-    if (_genesis_export_manifest_present($genesis_dir)) {
+    if ($genesis_type eq 'openembedded'
+        || _genesis_export_manifest_present($genesis_dir)) {
         $callback->({
             error => ["Incomplete Genesis export: $genesis_dir"],
             errorcode => [1],
@@ -441,19 +473,19 @@ sub process_request {
         mkpath("$tftpdir/xcat");
     }
     my $rc;
-    if (-e "$::XCATROOT/share/xcat/netboot/genesis/$arch") {
-        $rc = system("shopt -s dotglob; GLOBIGNORE=\".:..\" cp -a $::XCATROOT/share/xcat/netboot/genesis/$arch/fs/* $tempdir");
-        $rc = system("cp -a $::XCATROOT/share/xcat/netboot/genesis/$arch/kernel $tftpdir/xcat/genesis.kernel.$arch");
+    if ($genesis_type eq 'legacy') {
+        $rc = system("shopt -s dotglob; GLOBIGNORE=\".:..\" cp -a $genesis_dir/fs/* $tempdir");
+        $rc = system("cp -a $genesis_dir/kernel $tftpdir/xcat/genesis.kernel.$arch");
         $invisibletouch = 1;
     } else {
-        $rc = system("cp -a $::XCATROOT/share/xcat/netboot/$arch/nbroot/* $tempdir");
+        $rc = system("cp -a $genesis_dir/nbroot/* $tempdir");
     }
     if ($rc) {
         system("rm -rf $tempdir");
         if ($invisibletouch) {
-            $callback->({ error => ["Failed to copy  $::XCATROOT/share/xcat/netboot/genesis/$arch/fs contents"], errorcode => [1] });
+            $callback->({ error => ["Failed to copy $genesis_dir/fs contents"], errorcode => [1] });
         } else {
-            $callback->({ error => ["Failed to copy  $::XCATROOT/share/xcat/netboot/$arch/nbroot/ contents"], errorcode => [1] });
+            $callback->({ error => ["Failed to copy $genesis_dir/nbroot contents"], errorcode => [1] });
         }
         return;
     }
