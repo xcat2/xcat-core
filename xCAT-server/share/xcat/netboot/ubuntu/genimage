@@ -270,7 +270,10 @@ unless ($onlyinitrd) {
         my $mirror = (defined $aptmirror[0] && length $aptmirror[0])
                    ? $aptmirror[0] : 'http://archive.ubuntu.com/ubuntu';
         (my $codename = $osver) =~ s/^ubuntu//;
-        $codename =~ s/\.\d+$//;                  # 24.04.4 -> 24.04
+        # Strip ONLY a trailing third component. A bare s/\.\d+$// also strips the minor from a
+        # two-part osvers (ubuntu26.04 -> "26"), which misses the %cn map below and reaches
+        # debootstrap as a bogus suite ("E: No such script: .../debootstrap/scripts/26").
+        $codename =~ s/^(\d+\.\d+)\.\d+$/$1/;   # 24.04.4 -> 24.04; 26.04 stays 26.04
         my %cn = ('24.04' => 'noble', '22.04' => 'jammy', '20.04' => 'focal',
                   '18.04' => 'bionic', '26.04' => 'resolute');
         $codename = $cn{$codename} if exists $cn{$codename};
