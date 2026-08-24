@@ -332,6 +332,47 @@ is(
     'an incomplete marked export keeps the published initramfs',
 );
 
+$::XCATROOT = "$tmpdir/openembedded-xcatroot";
+my $openembedded_process_export =
+  "$::XCATROOT/share/xcat/netboot/genesis-openembedded/ppc64le";
+my $legacy_process_export =
+  "$::XCATROOT/share/xcat/netboot/genesis/ppc64";
+prepare_export(
+    $openembedded_process_export,
+    'openembedded ppc64le kernel',
+    'openembedded ppc64le initramfs',
+    'ppc64le',
+);
+prepare_export(
+    $legacy_process_export,
+    'legacy ppc64 kernel',
+    'legacy ppc64 initramfs',
+    'ppc64',
+);
+$xCAT::TableUtils::tftpdir = "$tmpdir/openembedded-tftpboot";
+@responses = ();
+xCAT_plugin::mknb::process_request(
+    { arg => ['ppc64le'] },
+    sub { push(@responses, @_); },
+);
+ok(
+    !grep({ ref($_) eq 'HASH' && $_->{error} } @responses),
+    'mknb installs an exact ppc64le OpenEmbedded export',
+);
+my ($openembedded_kernel, $openembedded_initramfs) =
+  published_files($xCAT::TableUtils::tftpdir, 'ppc64le');
+is(read_file($openembedded_kernel), 'openembedded ppc64le kernel',
+    'mknb prefers the OpenEmbedded kernel when legacy Genesis is also installed');
+is(read_file($openembedded_initramfs), 'openembedded ppc64le initramfs',
+    'mknb prefers the OpenEmbedded initramfs when legacy Genesis is also installed');
+my $ppc64le_config = read_file(
+    "$xCAT::TableUtils::tftpdir/pxelinux.cfg/p/192.0.2.0_24"
+);
+like($ppc64le_config, qr/genesis\.kernel\.ppc64le/,
+    'POWER boot configuration keeps the exact ppc64le artifact name');
+like($ppc64le_config, qr/genesis\.fs\.ppc64le\.gz/,
+    'POWER boot configuration uses the exact ppc64le initramfs name');
+
 my $selection_root = "$tmpdir/selection-root";
 my $legacy_x86 = "$selection_root/share/xcat/netboot/genesis/x86_64";
 my $openembedded_x86 =
