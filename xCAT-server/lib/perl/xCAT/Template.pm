@@ -1686,8 +1686,27 @@ sub ubuntu_subiquity_apt_config
             '      primary:',
             "      - uri: $online_mirror",
         );
-        if (@otherpkg_sources) {
+        # On a classic-sources release (20.04/22.04) Subiquity renders the target's
+        # /etc/apt/sources.list from the install media alone (deb file:///cdrom), which lacks
+        # packages xCAT needs such as chrony -- curtin's in-target apt then fails with
+        # "E: Unable to locate package chrony". `sources_list:` is a curtin key that
+        # Subiquity's autoinstall schema ignores, so add the online archive through `sources:`,
+        # which Subiquity honours by writing /etc/apt/sources.list.d/*.list. $RELEASE is
+        # substituted with the release codename by curtin.
+        #
+        # Deb822 releases (24.04+) are deliberately excluded: there the primary mirror above
+        # already lands in /etc/apt/sources.list.d/ubuntu.sources, so adding these legacy .list
+        # files would configure the same suites twice.
+        my $need_sources_block = !$use_deb822;
+        if ($need_sources_block) {
             push @lines, '    sources:';
+            push @lines, '      xcat-ubuntu-archive.list:';
+            push @lines, qq(        source: "deb $online_mirror \$RELEASE main restricted universe multiverse");
+            push @lines, '      xcat-ubuntu-updates.list:';
+            push @lines, qq(        source: "deb $online_mirror \$RELEASE-updates main restricted universe multiverse");
+        }
+        if (@otherpkg_sources) {
+            push @lines, '    sources:' unless $need_sources_block;
             my $index = 0;
             foreach my $source (@otherpkg_sources) {
                 push @lines, "      xcat-otherpkgs-$index.list:";

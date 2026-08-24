@@ -546,6 +546,39 @@ sub makescript {
         my $postbootscripts;
         $postbootscripts = getPostbootScripts($node, $osimgname, $script_hash);
 
+        # On Ubuntu/Debian the DISKFUL install runs a node's postscripts inside the installer's
+        # in-target chroot -- before the node has booted as itself. The syncfiles postscript
+        # works by asking the management node to scp files INTO the running node, which cannot
+        # happen in that phase: the not-yet-booted node has no sshd for the MN to reach, so the
+        # push times out, syncfiles exits 1, and the node reports status=failed even though the
+        # OS installed perfectly. Defer it to the postbootscripts, which run on the booted node
+        # where ssh is already listening and the MN's push succeeds.
+        #
+        # Scope this to the diskful install path only: netboot and statelite already run their
+        # postscripts on the booted node, so moving syncfiles there would change behaviour that
+        # works. EL/SLES are unaffected either way -- their postscripts run on the booted node.
+        # syncfiles is PREPENDED so it still runs before any postbootscript that consumes the
+        # files it synchronises.
+        if (defined($os) && $os =~ /^(?:ubuntu|debian)/i) {
+            my $effective_provmethod = $provmethod;
+            if ($osimgname && defined($image_hash{$osimgname}{'provmethod'})) {
+                $effective_provmethod = $image_hash{$osimgname}{'provmethod'};
+            }
+            my $diskful_install =
+                 ($nodesetstate && $nodesetstate eq 'install')
+              || (!$nodesetstate
+                  && defined($effective_provmethod)
+                  && $effective_provmethod eq 'install');
+            if ($diskful_install
+                && defined($postscripts)
+                && $postscripts =~ s/^[ \t]*syncfiles[ \t]*\n//m) {
+                $postbootscripts = "" unless defined $postbootscripts;
+                $postbootscripts =
+                    "# ubuntu-deferred-postbootscripts-start-here\nsyncfiles\n# ubuntu-deferred-postbootscripts-end-here\n"
+                  . $postbootscripts;
+            }
+        }
+
         # if using zones then must go to the zone.sshbetweennodes
         # else go to site.sshbetweennodes
         my $enablesshbetweennodes;
