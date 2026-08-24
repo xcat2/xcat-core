@@ -372,6 +372,8 @@ sub subvars {
         $inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
         $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
         $inc =~ s/#UBUNTU_SUBIQUITY_APT_CONFIG#/ubuntu_subiquity_apt_config($media_dir)/eg;
+        $inc =~ s/#SUBIQUITYINSTALLNIC#/subiquity_install_nic()/eg;
+        $inc =~ s/#SUBIQUITYINSTALLMAC#/subiquity_install_mac()/eg;
         $inc =~ s/#MACHINEPASSWORD#/machinepassword()/eg;
         $inc =~ s/#CRYPT:([^:]+):([^:]+):([^#]+)#/crydb($1,$2,$3)/eg;
         $inc =~ s/#CRYPTORLOCKED:([^:]+):([^:]+):([^#]+)#/crydb_or_locked($1,$2,$3)/eg;
@@ -1652,6 +1654,71 @@ sub crydb_or_locked
     my $crypted = crydb( $table, $key, $field );
     return $crypted if defined($crypted) && length($crypted);
     return '*';
+}
+
+#--------------------------------------------------------------------------------
+
+=head3 subiquity_install_netcfg
+
+    Resolve the interface the INSTALLED system must bring up, in xCAT's own order:
+    noderes.installnic, else noderes.primarynic, else match on mac.mac. Either attribute may name
+    an interface OR carry a MAC address. xCAT::NetworkUtils::gen_net_boot_params already owns that
+    order for the netboot kernel parameters, so it is reused here rather than re-derived -- and in
+    particular the install template never re-derives any part of it in shell.
+
+    Arguments:
+        $installnic - noderes.installnic (may be undef or empty)
+        $primarynic - noderes.primarynic (may be undef or empty)
+        $macentry   - the raw mac.mac entry (may hold |-separated, !hostname-suffixed entries)
+        $nodename   - the node the entry is resolved for
+    Returns:
+        ($setname, $macaddress)
+        $setname    - the name netplan must rename the matched device to, empty when the device is
+                      matched by MAC alone (installnic unset/"mac", or a MAC address given)
+        $macaddress - the address netplan matches on, lower-cased
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub subiquity_install_netcfg {
+    my ($installnic, $primarynic, $macentry, $nodename) = @_;
+
+    my $macmac = xCAT::Utils->parseMacTabEntry(defined($macentry) ? $macentry : '', $nodename);
+    my $params = xCAT::NetworkUtils->gen_net_boot_params($installnic, $primarynic, $macmac);
+
+    my $setname    = defined($params->{nicname}) ? $params->{nicname} : '';
+    my $macaddress = defined($params->{mac})     ? lc($params->{mac}) : '';
+    return ($setname, $macaddress);
+}
+
+#--------------------------------------------------------------------------------
+
+=head3 subiquity_install_nic / subiquity_install_mac
+
+    Render #SUBIQUITYINSTALLNIC# / #SUBIQUITYINSTALLMAC# for the node being templated. installnic
+    and primarynic are read blank-okay (a node that sets neither is normal, and is what
+    "match on mac.mac" means); mac.mac stays a required lookup, as it was when the template read it
+    directly -- a node with no MAC cannot be matched by netplan at all.
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub subiquity_install_netcfg_for_node {
+    return subiquity_install_netcfg(
+        tabdb('noderes', '$NODE', 'installnic', 1),
+        tabdb('noderes', '$NODE', 'primarynic', 1),
+        tabdb('mac',     '$NODE', 'mac'),
+        $node);
+}
+
+sub subiquity_install_nic {
+    my ($setname) = subiquity_install_netcfg_for_node();
+    return $setname;
+}
+
+sub subiquity_install_mac {
+    my (undef, $macaddress) = subiquity_install_netcfg_for_node();
+    return $macaddress;
 }
 
 sub ubuntu_subiquity_apt_mirror

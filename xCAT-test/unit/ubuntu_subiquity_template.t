@@ -36,10 +36,26 @@ unlike($tmpl, qr/echo.*GRUB_CMDLINE.*\\"/, 'no escaped double quotes in echo GRU
 unlike($tmpl, qr/\\\\x22/, 'template does not rely on non-portable printf hex escapes');
 like($tmpl, qr/printf ''%s\\n'' ''GRUB_CMDLINE_LINUX="#TABLEBLANKOKAY:bootparams:\$NODE:kcmdline#"''/, 'GRUB line uses portable printf quoting');
 like($tmpl, qr/\/target\/etc\/netplan\/00-xcat-install\.yaml/, 'template writes an xCAT-owned target netplan file');
-like($tmpl, qr/installnic="#TABLE:noderes:\$NODE:installnic#"/, 'target netplan uses node installnic');
-like($tmpl, qr/installmac="#TABLE:mac:\$NODE:mac#"/, 'target netplan uses node MAC');
-like($tmpl, qr/installmac="\$\(printf ''%s'' "\$\{installmac\}".*\| tr ''A-F'' ''a-f''\)"/, 'target netplan normalizes MAC case');
-like($tmpl, qr/installmac="\$\(printf ''%s'' "\$\{installmac\}" \| cut -d''\|'' -f1 \| cut -d''!'' -f1/, 'target netplan strips mac table suffixes before matching');
+# Regression: an UNSET noderes.installnic must not fatally break Subiquity xnba generation, and
+# the interface must still be resolved in xCAT's order (installnic -> primarynic -> mac.mac). The
+# template read #TABLE:noderes:$NODE:installnic#, and Template.pm's tabdb raises "Unable to find
+# requested field <installnic> from table <noderes>" -> "Failed to generate xnba configurations"
+# when the node carries no installnic, so the Ubuntu diskful install never started. The resolution
+# now happens in Perl (xCAT::Template, via xCAT::NetworkUtils::gen_net_boot_params) and reaches the
+# template already resolved, so no part of that order is re-derived in shell. The resolution itself
+# and the netplan it produces are covered by ubuntu_subiquity_installnic.t.
+unlike($tmpl, qr/noderes:\$NODE:(?:installnic|primarynic)/,
+    'the template does not read installnic/primarynic itself (fatal when unset, and it would have to redo the fallback)');
+like($tmpl, qr/installnic="#SUBIQUITYINSTALLNIC#"/,
+    'the target netplan uses the interface name xCAT resolved for this node');
+like($tmpl, qr/installmac="#SUBIQUITYINSTALLMAC#"/,
+    'the target netplan uses the MAC address xCAT resolved for this node');
+like($tmpl, qr/if \[ -z "\$\{installnic\}" \]; then/,
+    'no resolved interface name means match by MAC alone, with no set-name rename');
+unlike($tmpl, qr/tr ''A-F'' ''a-f''/,
+    'the shell no longer normalizes the MAC (Template.pm resolves mac.mac entries)');
+unlike($tmpl, qr/cut -d''\|'' -f1/,
+    'the shell no longer splits mac.mac entries (Template.pm resolves them for this node)');
 like($tmpl, qr/printf ''%s\\n'' "network:" "  version: 2" "  ethernets:" "    xcat-install:" "      match:" "        macaddress: \\"\$\{installmac\}\\"" "      set-name: \$\{installnic\}" "      dhcp4: true" >\/target\/etc\/netplan\/00-xcat-install\.yaml;/, 'target netplan printf stays on one shell line');
 like($tmpl, qr/"        macaddress: \\"\$\{installmac\}\\""/, 'target netplan matches by MAC address');
 like($tmpl, qr/"      set-name: \$\{installnic\}"/, 'target netplan sets the expected installnic name');
