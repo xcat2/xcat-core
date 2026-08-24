@@ -4,7 +4,7 @@ use warnings;
 ## no critic (Modules::RequireFilenameMatchesPackage, TestingAndDebugging::ProhibitNoStrict, TestingAndDebugging::ProhibitNoWarnings)
 
 use Digest::SHA qw(sha256_hex);
-use File::Path qw(make_path);
+use File::Path qw(make_path remove_tree);
 use File::Temp qw(tempdir);
 use FindBin;
 use Test::More;
@@ -331,5 +331,55 @@ is(
     'process initramfs',
     'an incomplete marked export keeps the published initramfs',
 );
+
+my $selection_root = "$tmpdir/selection-root";
+my $legacy_x86 = "$selection_root/share/xcat/netboot/genesis/x86_64";
+my $openembedded_x86 =
+  "$selection_root/share/xcat/netboot/genesis-openembedded/x86_64";
+make_path("$legacy_x86/fs", $openembedded_x86);
+
+my ($selected_dir, $selected_arch, $selected_type) =
+  xCAT_plugin::mknb::_select_genesis_source($selection_root, 'x86_64');
+is($selected_dir, $openembedded_x86,
+    'an installed OpenEmbedded export takes precedence over legacy Genesis');
+is($selected_arch, 'x86_64', 'the OpenEmbedded x86_64 name is unchanged');
+is($selected_type, 'openembedded', 'the selected source is identified');
+
+remove_tree($openembedded_x86);
+($selected_dir, $selected_arch, $selected_type) =
+  xCAT_plugin::mknb::_select_genesis_source($selection_root, 'x86_64');
+is($selected_dir, $legacy_x86, 'legacy Genesis remains the fallback');
+is($selected_arch, 'x86_64', 'the legacy x86_64 name is unchanged');
+is($selected_type, 'legacy', 'the fallback source is identified');
+
+my $openembedded_ppc64le =
+  "$selection_root/share/xcat/netboot/genesis-openembedded/ppc64le";
+my $legacy_ppc64 = "$selection_root/share/xcat/netboot/genesis/ppc64";
+make_path($openembedded_ppc64le, "$legacy_ppc64/fs");
+($selected_dir, $selected_arch, $selected_type) =
+  xCAT_plugin::mknb::_select_genesis_source($selection_root, 'ppc64le');
+is($selected_dir, $openembedded_ppc64le,
+    'ppc64le selects its exact OpenEmbedded export');
+is($selected_arch, 'ppc64le', 'ppc64le is not rewritten to ppc64');
+is($selected_type, 'openembedded', 'ppc64le uses the OpenEmbedded source');
+
+($selected_dir, $selected_arch, $selected_type) =
+  xCAT_plugin::mknb::_select_genesis_source($selection_root, 'ppc64el');
+is($selected_dir, $openembedded_ppc64le,
+    'the Debian spelling resolves to the canonical ppc64le export');
+is($selected_arch, 'ppc64le', 'the canonical architecture name is returned');
+
+remove_tree($openembedded_ppc64le);
+($selected_dir, $selected_arch, $selected_type) =
+  xCAT_plugin::mknb::_select_genesis_source($selection_root, 'ppc64le');
+is($selected_dir, $legacy_ppc64,
+    'ppc64le falls back to the old combined POWER image when needed');
+is($selected_arch, 'ppc64', 'only the legacy fallback uses the old ppc64 name');
+is($selected_type, 'legacy', 'the POWER fallback is identified as legacy');
+
+my $unsafe = xCAT_plugin::mknb::_select_genesis_source(
+    $selection_root, '../../outside'
+);
+is($unsafe, undef, 'unsupported architecture names cannot escape the image root');
 
 done_testing();

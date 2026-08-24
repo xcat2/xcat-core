@@ -16,6 +16,7 @@ like($spec, qr/^BuildArch:\s+noarch$/m, 'package is architecture independent');
 like($spec, qr/^Requires:\s+dnf$/m, 'package is limited to DNF-based systems');
 like($spec, qr/^%config\(noreplace\) .*xcat-core\.repo$/m, 'core repo preserves local changes');
 like($spec, qr/^%config\(noreplace\) .*xcat-dep\.repo$/m, 'dependency repo preserves local changes');
+like($spec, qr/^%config\(noreplace\) .*xcat-dep-common\.repo$/m, 'common dependency repo preserves local changes');
 like($spec, qr{RPM-GPG-KEY-xCAT}, 'package installs the signing key');
 
 my $core = read_file('xCAT-release/xcat-core.repo');
@@ -32,6 +33,14 @@ like(
     $dep,
     qr{^baseurl=https://xcat\.org/files/xcat/repos/yum/latest/xcat-dep/rh\$releasever/\$basearch$}m,
     'dependency repo follows the DNF release and architecture variables'
+);
+
+my $common_dep = read_file('xCAT-release/xcat-dep-common.repo');
+assert_repo_security($common_dep, 'common dependency');
+like(
+    $common_dep,
+    qr{^baseurl=https://xcat\.org/files/xcat/repos/yum/latest/xcat-dep/common$}m,
+    'common dependency repo is independent of the management-node distribution'
 );
 
 my $key = read_file('xCAT-release/RPM-GPG-KEY-xCAT');
