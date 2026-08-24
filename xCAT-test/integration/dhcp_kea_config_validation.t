@@ -8,9 +8,10 @@ use File::Temp qw/tempfile/;
 use JSON ();
 use Test::More;
 
+use xCAT::CommandUtils;
 use xCAT::DHCP::Backend::Kea;
 
-my $kea_dhcp4 = command_path('kea-dhcp4');
+my $kea_dhcp4 = xCAT::CommandUtils::find_executable('kea-dhcp4');
 plan skip_all => 'kea-dhcp4 is not installed' unless $kea_dhcp4;
 
 my $validation_dir = validation_temp_dir($kea_dhcp4);
@@ -106,7 +107,7 @@ ok( !$result->{error}, 'generated Kea DHCPv4 config validates with kea-dhcp4 -t'
 
 unlink $path;
 SKIP: {
-    skip 'kea-dhcp6 is not installed', 1 unless command_path('kea-dhcp6');
+    skip 'kea-dhcp6 is not installed', 1 unless xCAT::CommandUtils::find_executable('kea-dhcp6');
     my $dhcp6_json = $backend->render_dhcp6_config(
         {
             interfaces => ['*'],
@@ -150,7 +151,7 @@ SKIP: {
 }
 
 SKIP: {
-    skip 'kea-dhcp-ddns is not installed', 1 unless command_path('kea-dhcp-ddns');
+    skip 'kea-dhcp-ddns is not installed', 1 unless xCAT::CommandUtils::find_executable('kea-dhcp-ddns');
     my $ddns_json = $backend->render_ddns_config(
         {
             'tsig-keys' => [
@@ -180,7 +181,7 @@ SKIP: {
 }
 
 SKIP: {
-    skip 'kea-ctrl-agent is not installed', 1 unless command_path('kea-ctrl-agent');
+    skip 'kea-ctrl-agent is not installed', 1 unless xCAT::CommandUtils::find_executable('kea-ctrl-agent');
     my $ctrl_agent_json = $backend->render_ctrl_agent_config(
         {
             dhcp6 => 1,
@@ -194,21 +195,6 @@ SKIP: {
     unlink $ctrl_path;
 }
 done_testing();
-
-sub command_path {
-    my ($command) = @_;
-
-    foreach my $dir ( split /:/, $ENV{PATH} || '' ) {
-        next unless $dir;
-        return "$dir/$command" if -x "$dir/$command";
-    }
-
-    foreach my $path ( "/usr/sbin/$command", "/usr/bin/$command", "/sbin/$command", "/bin/$command" ) {
-        return $path if -x $path;
-    }
-
-    return;
-}
 
 sub validation_temp_dir {
     my ($kea_dhcp4) = @_;

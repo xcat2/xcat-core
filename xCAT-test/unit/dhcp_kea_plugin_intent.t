@@ -162,6 +162,15 @@ foreach my $case (@sysconfig_policy_cases) {
     close($ip_fh);
     chmod 0755, $fake_ip;
 
+    {
+        local $ENV{PATH} = $tmpdir;
+        is(
+            xCAT_plugin::dhcp::kea_command_path('ip'),
+            $fake_ip,
+            'DHCP route command lookup retains the first executable PATH match'
+        );
+    }
+
     no warnings 'redefine';
     local *xCAT_plugin::dhcp::kea_command_path = sub {
         my ($command) = @_;

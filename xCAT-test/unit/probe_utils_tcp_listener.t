@@ -3,6 +3,7 @@ use strict;
 use warnings;
 
 use FindBin;
+use lib "$FindBin::Bin/../../perl-xCAT";
 use lib "$FindBin::Bin/../../xCAT-probe/lib/perl";
 
 use Test::More;
@@ -48,6 +49,14 @@ ok(probe_utils::_tcp_listener_output_has_port($netstat_output, 3002), 'netstat I
 ok(probe_utils::_tcp_listener_output_has_port($netstat_output, 80, qr/httpd|apache/), 'netstat listener process can be matched');
 ok(!probe_utils::_tcp_listener_output_has_port($netstat_output, 0), 'invalid port is rejected');
 ok(!probe_utils::_tcp_listener_output_has_port($netstat_output, 'http'), 'non-numeric port is rejected');
+
+{
+    local $ENV{PATH} = '';
+    ok(
+        !probe_utils::_command_available('sh'),
+        'probe command discovery retains PATH-only lookup without system fallbacks'
+    );
+}
 
 {
     no warnings 'redefine';

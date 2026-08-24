@@ -11,14 +11,15 @@ use POSIX qw/WNOHANG _exit setgid setuid/;
 use Test::More;
 use Time::HiRes qw/sleep time/;
 
+use xCAT::CommandUtils;
 use xCAT::DHCP::Backend::Kea;
 
 plan skip_all => 'set XCAT_KEA_LIVE_SMOKE=1 to run live Kea daemon smoke test'
   unless $ENV{XCAT_KEA_LIVE_SMOKE};
 plan skip_all => 'live Kea daemon smoke test must run as root' unless $> == 0;
 
-my $kea_dhcp4 = command_path('kea-dhcp4');
-my $kea_ctrl  = command_path('kea-ctrl-agent');
+my $kea_dhcp4 = xCAT::CommandUtils::find_executable('kea-dhcp4');
+my $kea_ctrl  = xCAT::CommandUtils::find_executable('kea-ctrl-agent');
 plan skip_all => 'kea-dhcp4 and kea-ctrl-agent are required'
   unless $kea_dhcp4 && $kea_ctrl;
 
@@ -191,21 +192,6 @@ SKIP: {
 
 stop_daemons(\%children);
 done_testing();
-
-sub command_path {
-    my ($command) = @_;
-
-    foreach my $dir ( split /:/, $ENV{PATH} || '' ) {
-        next unless $dir;
-        return "$dir/$command" if -x "$dir/$command";
-    }
-
-    foreach my $path ( "/usr/sbin/$command", "/usr/bin/$command", "/sbin/$command", "/bin/$command" ) {
-        return $path if -x $path;
-    }
-
-    return;
-}
 
 sub start_daemon {
     my ( $account, $command, $log, @args ) = @_;
