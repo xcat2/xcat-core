@@ -2902,7 +2902,7 @@ sub local_ipv4_routes
                 next;
             }
             next unless $line =~ /^(\d+(?:\.\d+){3})\/(\d+)\b.*\bdev\s+(\S+)/;
-            push @routes, [ $1, $3, kea_prefix_to_mask($2), '' ];
+            push @routes, [ $1, $3, xCAT::NetworkUtils::formatNetmask( $2, 1, 0 ), '' ];
         }
     } else {
         my $netstat = kea_command_path('netstat');
@@ -2981,13 +2981,8 @@ sub kea_subnet4_intent
     if ($gateway && $gateway eq '<xcatmaster>') {
         $gateway = xCAT::NetworkUtils->ip_forwarding_enabled() ? $myip : '';
     }
-    if ($gateway) {
-        my $maskn = unpack("N", inet_aton($mask));
-        my $netn  = unpack("N", inet_aton($net));
-        my $gaten = unpack("N", inet_aton($gateway));
-        if (($gaten & $maskn) != ($maskn & $netn)) {
-            return { error => "Specified gateway $gateway is not valid for $net/$mask, must be on same network" };
-        }
+    if ( $gateway && !xCAT::NetworkUtils::isInSameSubnet( $gateway, $net, $mask, 0 ) ) {
+        return { error => "Specified gateway $gateway is not valid for $net/$mask, must be on same network" };
     }
 
     my @option_data;
@@ -3004,7 +2999,7 @@ sub kea_subnet4_intent
     my $domainstring = join(', ', map { $_ eq $domain ? $_ : $_ } grep { $_ } @alldomains);
     push @option_data, { name => 'domain-search', data => $domainstring } if $domainstring;
 
-    my $prefix = kea_mask_to_prefix($mask);
+    my $prefix = xCAT::NetworkUtils::formatNetmask( $mask, 0, 1 );
     my $dynamicrange = $ent ? $ent->{dynamicrange} : undef;
     if ( $dynamicrange && $ent->{dhcpserver} && xCAT::NetworkUtils->thishostisnot( $ent->{dhcpserver} ) ) {
         $dynamicrange = undef;
@@ -3586,28 +3581,6 @@ sub kea_control_agent_live_enabled
 
     return 0 unless kea_control_agent_enabled();
     return $backend->host_cmds_hook_path() ? 1 : 0;
-}
-
-sub kea_mask_to_prefix
-{
-    my ($mask) = @_;
-
-    my $maskn = unpack("N", inet_aton($mask));
-    my $bits = 0;
-    for my $idx (0 .. 31) {
-        $bits++ if $maskn & (1 << (31 - $idx));
-    }
-
-    return $bits;
-}
-
-sub kea_prefix_to_mask
-{
-    my ($prefix) = @_;
-
-    return '0.0.0.0' unless defined($prefix) && $prefix =~ /^\d+$/ && $prefix > 0 && $prefix <= 32;
-    my $maskn = (0xffffffff << (32 - $prefix)) & 0xffffffff;
-    return inet_ntoa(pack("N", $maskn));
 }
 
 sub kea_skip_ipv4_network

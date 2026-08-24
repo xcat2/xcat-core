@@ -866,7 +866,7 @@ sub dhcp_dynamic_range_check {
         }
         foreach my $subnet4 (@{ $config_json->{Dhcp4}{subnet4} || [] }) {
             next unless $subnet4->{subnet} && $subnet4->{subnet} =~ m{^([^/]+)/(\d+)$};
-            my $mask = prefix_to_netmask($2);
+            my $mask = xCAT::NetworkUtils::formatNetmask($2, 1, 0);
             my @ranges;
             foreach my $pool (@{ $subnet4->{pools} || [] }) {
                 next unless $pool->{pool};
@@ -1034,17 +1034,6 @@ sub compare_ip_value {
     }
 
     return 0;
-}
-
-sub prefix_to_netmask {
-    my $prefix = shift;
-
-    my $mask_num = 0;
-    for my $idx (0 .. $prefix - 1) {
-        $mask_num |= (1 << (31 - $idx));
-    }
-
-    return join('.', map { ($mask_num >> (8 * (3 - $_))) & 0xff } 0 .. 3);
 }
 
 #------------------------------------------
