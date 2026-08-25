@@ -487,7 +487,7 @@ function debug_trace()
 	return "${rc}"
 }
 
-[[ ${GO_XCAT_LIBRARY_ONLY:-0} == 1 ]] || internal_setup
+internal_setup
 
 # Check operating system
 function check_os()
@@ -2319,12 +2319,6 @@ function boo_boo_if_bad()
 #              |       _|            _|
 #
 # Main program goes here.
-
-if [[ ${GO_XCAT_LIBRARY_ONLY:-0} == 1 ]]
-then
-	# shellcheck disable=SC2317
-	return 0 2>/dev/null || exit 0
-fi
 
 declare -a GO_XCAT_YES=()
 GO_XCAT_ACTION=""

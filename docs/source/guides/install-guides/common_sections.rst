@@ -143,11 +143,22 @@ Unless you are downloading ``xcat-dep`` to match a specific version of xCAT, it'
         cd <os>/<arch>
         ./mklocalrepo.sh
 
-#. Configure the common repository from the same mirror.  This repository is
-   independent of the management-node operating system and architecture: ::
+#. Configure the common repository if ``common`` is present in the archive.
+   This repository is independent of the management node operating system and
+   architecture: ::
 
         cd ~/xcat/xcat-dep/common
         ./mklocalrepo.sh
+
+   If ``common`` is not in the archive, mirror it before disconnecting the
+   installation network: ::
+
+        mkdir -p ~/xcat/xcat-dep/common
+        dnf reposync --repoid=xcat-dep-common --download-metadata \
+          --download-path ~/xcat/xcat-dep/common --norepopath
+
+   Run ``mklocalrepo.sh`` from the mirrored directory after copying the mirror
+   to the management node.
 
 .. END_configure_xcat_local_repo_xcat-dep_RPM
 

@@ -379,7 +379,9 @@ sub process_request {
     }
     if ($requested_arch eq 'ppc64el') {
         $callback->({ data => 'Using the canonical architecture name ppc64le' });
-    } elsif ($requested_arch eq 'ppc64le' && $arch eq 'ppc64') {
+    }
+    if (($requested_arch eq 'ppc64le' || $requested_arch eq 'ppc64el')
+        && $arch eq 'ppc64') {
         $callback->({ data => 'OpenEmbedded ppc64le is not installed, using the legacy ppc64 image' });
     }
     $request->{arg}->[0] = $arch;
