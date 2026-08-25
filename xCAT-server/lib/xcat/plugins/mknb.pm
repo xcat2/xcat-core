@@ -9,6 +9,14 @@ use File::Path;
 use File::Copy;
 
 my $GENESIS_EXPORT_MANIFEST = 'xcat-genesis.manifest';
+my %GENESIS_ARCHITECTURES = map { $_ => 1 }
+  qw(x86 x86_64 ppc64 ppc64le armv7hf aarch64 riscv64);
+
+sub _canonical_genesis_arch {
+    my ($arch) = @_;
+    return unless defined($arch);
+    return $arch eq 'ppc64el' ? 'ppc64le' : $arch;
+}
 
 sub handled_commands {
     return {
@@ -36,6 +44,27 @@ sub _select_network_addresses {
     }
 
     return (\%legacy, \%selected);
+}
+
+sub _select_genesis_source {
+    my ($xcatroot, $requested_arch) = @_;
+    my $arch = _canonical_genesis_arch($requested_arch);
+    return unless defined($arch);
+    return unless $GENESIS_ARCHITECTURES{$arch};
+
+    my $netboot = "$xcatroot/share/xcat/netboot";
+    my $openembedded = "$netboot/genesis-openembedded/$arch";
+    return ($openembedded, $arch, 'openembedded')
+      if -d $openembedded;
+
+    my $legacy_arch = $arch eq 'ppc64le' ? 'ppc64' : $arch;
+    my $legacy = "$netboot/genesis/$legacy_arch";
+    return ($legacy, $legacy_arch, 'legacy') if -d $legacy;
+
+    my $classic = "$netboot/$legacy_arch";
+    return ($classic, $legacy_arch, 'classic') if -d $classic;
+
+    return;
 }
 
 sub _genesis_export_manifest_present {
@@ -174,6 +203,8 @@ sub _install_prebuilt_genesis {
     my @artifacts = (
         [ 'kernel',             "$destination_dir/genesis.kernel.$arch" ],
         [ 'initramfs.cpio.gz', "$destination_dir/genesis.fs.$arch.gz" ],
+        [ $GENESIS_EXPORT_MANIFEST,
+          "$destination_dir/genesis.exact-arch.$arch" ],
     );
     my @staged;
 
@@ -243,7 +274,42 @@ sub _install_prebuilt_genesis {
     }
 
     unlink(values(%backups));
+    unlink("$destination_dir/genesis.fs.$arch.lzma");
     return ("$destination_dir/genesis.fs.$arch.gz", undef);
+}
+
+sub _remove_openembedded_genesis {
+    my ($tftpdir, $requested_arch) = @_;
+    my $arch = _canonical_genesis_arch($requested_arch);
+    return (0, 'Missing Genesis architecture') unless defined($arch);
+    return (0, "Unsupported Genesis architecture: $requested_arch")
+      unless $GENESIS_ARCHITECTURES{$arch};
+
+    my $directory = "$tftpdir/xcat";
+    my @artifacts = (
+        "$directory/genesis.kernel.$arch",
+        "$directory/genesis.fs.$arch.gz",
+        "$directory/genesis.fs.$arch.lzma",
+        "$directory/genesis.exact-arch.$arch",
+    );
+    my $removed = 0;
+    my @failed;
+    foreach my $artifact (@artifacts) {
+        next unless -e $artifact || -l $artifact;
+        unless (unlink($artifact)) {
+            push(@failed, $artifact);
+            next;
+        }
+        $removed++;
+    }
+    if (@failed == 1) {
+        return ($removed, "Unable to remove Genesis artifact: $failed[0]");
+    }
+    if (@failed) {
+        return ($removed,
+            'Unable to remove Genesis artifacts: ' . join(', ', @failed));
+    }
+    return ($removed, undef);
 }
 
 sub genesis_lzma_command {
@@ -341,21 +407,58 @@ sub process_request {
     }
 
     my $tftpdir = xCAT::TableUtils->getTftpDir();
-    my $arch    = $request->{arg}->[0];
-    if (!$arch) {
-        $callback->({ error => "Need to specify architecture (x86, x86_64 or ppc64)" }, { errorcode => [1] });
+    my $requested_arch = $request->{arg}->[0];
+    if (!$requested_arch) {
+        $callback->({ error => "Need to specify architecture (x86, x86_64, ppc64, ppc64le, armv7hf, aarch64 or riscv64)" }, { errorcode => [1] });
         return;
-    } elsif ($arch eq "ppc64le" or $arch eq "ppc64el") {
-        $callback->({ data => "The arch:$arch is not supported, using \"ppc64\" instead" });
-        $arch = 'ppc64';
-        $request->{arg}->[0] = $arch;
     }
 
-    my $genesis_dir = "$::XCATROOT/share/xcat/netboot/genesis/$arch";
-    unless (-d "$::XCATROOT/share/xcat/netboot/$arch" or -d $genesis_dir) {
-        $callback->({ error => "Unable to find directory $::XCATROOT/share/xcat/netboot/$arch or $::XCATROOT/share/xcat/netboot/genesis/$arch", errorcode => [1] });
+    my $canonical_arch = _canonical_genesis_arch($requested_arch);
+    if (($request->{arg}->[1] // '') eq '--remove-openembedded') {
+        unless ($GENESIS_ARCHITECTURES{$canonical_arch}) {
+            $callback->({ error => "Unsupported Genesis architecture: $requested_arch", errorcode => [1] });
+            return;
+        }
+        my $source = "$::XCATROOT/share/xcat/netboot/genesis-openembedded/$canonical_arch";
+        if (-d $source || -l $source) {
+            $callback->({ error => "Cannot remove boot artifacts while OpenEmbedded Genesis $canonical_arch is installed", errorcode => [1] });
+            return;
+        }
+        my ($removed, $remove_error) =
+          _remove_openembedded_genesis($tftpdir, $canonical_arch);
+        if ($remove_error) {
+            $callback->({ error => $remove_error, errorcode => [1] });
+            return;
+        }
+        $callback->({ data => "Removed $removed OpenEmbedded Genesis artifacts for $canonical_arch" });
         return;
     }
+
+    my ($genesis_dir, $arch, $genesis_type) =
+      _select_genesis_source($::XCATROOT, $requested_arch);
+    unless (defined($genesis_dir) && -d $genesis_dir) {
+        $callback->({ error => "Unable to find a Genesis image for architecture $requested_arch", errorcode => [1] });
+        return;
+    }
+    if ($canonical_arch eq 'ppc64le' && $arch eq 'ppc64') {
+        my $marker = "$tftpdir/xcat/genesis.exact-arch.ppc64";
+        if (-e $marker || -l $marker) {
+            $callback->({
+                error => 'Cannot use the legacy ppc64le fallback while a canonical ppc64 image is published',
+                errorcode => [1],
+            });
+            return;
+        }
+    }
+    if ($requested_arch eq 'ppc64el') {
+        $callback->({ data => 'Using the canonical architecture name ppc64le' });
+    }
+    if (($requested_arch eq 'ppc64le' || $requested_arch eq 'ppc64el')
+        && $arch eq 'ppc64') {
+        $callback->({ data => 'OpenEmbedded ppc64le is not installed, using the legacy ppc64 image' });
+    }
+    $request->{arg}->[0] = $arch;
+
     my $configfileonly = $request->{arg}->[1];
     if ($configfileonly and $configfileonly ne "-c" and $configfileonly ne "--configfileonly") {
         $callback->({ error => "The option $configfileonly is not supported", errorcode => [1] });
@@ -364,7 +467,10 @@ sub process_request {
         goto CREAT_CONF_FILE;
     }
     if (_prebuilt_genesis_requested($genesis_dir)) {
-        $callback->({ data => ["Installing exported Genesis image for $arch"] });
+        my $image_name = $genesis_type eq 'openembedded'
+          ? 'OpenEmbedded Genesis'
+          : 'exported Genesis';
+        $callback->({ data => ["Installing $image_name image for $arch"] });
         my ($installed_initrd, $install_error) =
           _install_prebuilt_genesis($genesis_dir, $tftpdir, $arch);
         if ($install_error) {
@@ -375,7 +481,8 @@ sub process_request {
         $invisibletouch = 1;
         goto CREAT_CONF_FILE;
     }
-    if (_genesis_export_manifest_present($genesis_dir)) {
+    if ($genesis_type eq 'openembedded'
+        || _genesis_export_manifest_present($genesis_dir)) {
         $callback->({
             error => ["Incomplete Genesis export: $genesis_dir"],
             errorcode => [1],
@@ -441,19 +548,19 @@ sub process_request {
         mkpath("$tftpdir/xcat");
     }
     my $rc;
-    if (-e "$::XCATROOT/share/xcat/netboot/genesis/$arch") {
-        $rc = system("shopt -s dotglob; GLOBIGNORE=\".:..\" cp -a $::XCATROOT/share/xcat/netboot/genesis/$arch/fs/* $tempdir");
-        $rc = system("cp -a $::XCATROOT/share/xcat/netboot/genesis/$arch/kernel $tftpdir/xcat/genesis.kernel.$arch");
+    if ($genesis_type eq 'legacy') {
+        $rc = system("shopt -s dotglob; GLOBIGNORE=\".:..\" cp -a $genesis_dir/fs/* $tempdir");
+        $rc = system("cp -a $genesis_dir/kernel $tftpdir/xcat/genesis.kernel.$arch");
         $invisibletouch = 1;
     } else {
-        $rc = system("cp -a $::XCATROOT/share/xcat/netboot/$arch/nbroot/* $tempdir");
+        $rc = system("cp -a $genesis_dir/nbroot/* $tempdir");
     }
     if ($rc) {
         system("rm -rf $tempdir");
         if ($invisibletouch) {
-            $callback->({ error => ["Failed to copy  $::XCATROOT/share/xcat/netboot/genesis/$arch/fs contents"], errorcode => [1] });
+            $callback->({ error => ["Failed to copy $genesis_dir/fs contents"], errorcode => [1] });
         } else {
-            $callback->({ error => ["Failed to copy  $::XCATROOT/share/xcat/netboot/$arch/nbroot/ contents"], errorcode => [1] });
+            $callback->({ error => ["Failed to copy $genesis_dir/nbroot contents"], errorcode => [1] });
         }
         return;
     }
@@ -520,6 +627,13 @@ sub process_request {
     system("rm -rf $tempdir");
     unless ($initrd_file) {
         $callback->({ data => ["Creating filesystem file in $tftpdir/xcat failed"] });
+        return;
+    }
+    my $exact_arch_marker = "$tftpdir/xcat/genesis.exact-arch.$arch";
+    if (($genesis_type eq 'legacy' || $genesis_type eq 'classic')
+        && (-e $exact_arch_marker || -l $exact_arch_marker)
+        && !unlink($exact_arch_marker)) {
+        $callback->({ error => ["Unable to remove Genesis architecture marker: $exact_arch_marker"], errorcode => [1] });
         return;
     }
 

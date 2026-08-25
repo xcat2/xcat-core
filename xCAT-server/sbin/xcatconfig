@@ -1991,10 +1991,48 @@ sub setupLinuxexports
 =head3    mknb
 	
    Creates a network boot root image on Linux
-   Run mknb for each installed xCAT-genesis-scripts/xCAT-genesis-base architecture and place the result in /tftpboot
+   Run mknb for each installed Genesis architecture and place the result in /tftpboot
 =cut
 
 #-----------------------------------------------------------------------------
+sub _installed_genesis_architectures
+{
+    my ($xcatroot) = @_;
+    my @supported = qw(aarch64 armv7hf ppc64 ppc64le riscv64 x86 x86_64);
+    my %supported = map { $_ => 1 } @supported;
+    my %installed;
+
+    my $openembedded = "$xcatroot/share/xcat/netboot/genesis-openembedded";
+    if (opendir(my $dh, $openembedded)) {
+        while (my $entry = readdir($dh)) {
+            next unless $supported{$entry};
+            my $path = "$openembedded/$entry";
+            $installed{$entry} = 1 if -d $path && !-l $path;
+        }
+        closedir($dh);
+    }
+
+    my $legacy = "$xcatroot/share/xcat/netboot/genesis";
+    foreach my $arch (@supported) {
+        my $path = "$legacy/$arch";
+        $installed{$arch} = 1 if -d $path;
+    }
+
+    return grep { $installed{$_} } @supported;
+}
+
+sub _genesis_architectures_to_build
+{
+    my ($xcatroot, $include_legacy) = @_;
+    my @installed = _installed_genesis_architectures($xcatroot);
+    return @installed if $include_legacy;
+
+    return grep {
+        -d "$xcatroot/share/xcat/netboot/genesis-openembedded/$_"
+          && !-l "$xcatroot/share/xcat/netboot/genesis-openembedded/$_"
+    } @installed;
+}
+
 sub mknb
 {
     # The xCAT-genesis-scripts.spec file touches /etc/xcat/genesis-scripts-updated or
@@ -2014,20 +2052,20 @@ sub mknb
             xCAT::MsgUtils->message('I', "Running '$cmd', triggered by the installation/update of xCAT-genesis-base ...");
         }
     }
-    if ($run_mknb) {
-        foreach (qw(ppc64 x86_64)) {
-            my $genesis_base_pkg = "xCAT-genesis-base-$_";
-            if (system("rpm -q $genesis_base_pkg >/dev/null 2>&1") != 0) {
-                xCAT::MsgUtils->message('I', "Skipping '$cmd $_' because $genesis_base_pkg is not installed.");
-                next;
-            }
-            system("$cmd $_");
+    my @architectures =
+      _genesis_architectures_to_build($::XCATROOT, $run_mknb);
+    if (@architectures) {
+        unless ($run_mknb) {
+            xCAT::MsgUtils->message('I', "Running '$cmd' for installed OpenEmbedded Genesis images ...");
+        }
+        foreach my $arch (@architectures) {
+            system("$cmd $arch");
             if ($? != 0) {
                 my $rc = $? >> 8;
-                xCAT::MsgUtils->message('E', "The 'mknb $_' command returned error code: $rc.");
+                xCAT::MsgUtils->message('E', "The 'mknb $arch' command returned error code: $rc.");
             }
             else {
-                xCAT::MsgUtils->message('I', "The 'mknb $_' command completed successfully.");
+                xCAT::MsgUtils->message('I', "The 'mknb $arch' command completed successfully.");
             }
         }
     }

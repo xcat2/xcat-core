@@ -28,3 +28,11 @@ Local Repository
 .. include:: ../common_sections.rst
    :start-after: BEGIN_configure_xcat_local_repo_xcat-dep_RPM
    :end-before: END_configure_xcat_local_repo_xcat-dep_RPM
+
+.. include:: ../common_sections.rst
+   :start-after: BEGIN_configure_xcat_local_repo_xcat-dep_COMMON_MIRROR
+   :end-before: END_configure_xcat_local_repo_xcat-dep_COMMON_MIRROR
+
+.. include:: ../common_sections.rst
+   :start-after: BEGIN_configure_xcat_local_repo_xcat-dep_ZYPPER
+   :end-before: END_configure_xcat_local_repo_xcat-dep_ZYPPER

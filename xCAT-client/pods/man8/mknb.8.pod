@@ -6,6 +6,8 @@ B<mknb> - creates a network boot root image for node discovery and flashing
 
 B<mknb> I<arch>
 
+B<mknb> I<arch> B<--remove-openembedded>
+
 
 =head1 DESCRIPTION
 
@@ -14,13 +16,17 @@ It creates a network boot root image (used for node discovery, BMC programming, 
 for the same architecture that the management node is.  So you normally do not need to run the
 B<mknb> command yourself.
 
-If you make custom changes to the network boot root image, you will need to run B<mknb> again to regenerate the diskless image to include your changes.  If you have an xCAT Hierarchical Cluster with Service Nodes having local /tftpboot directories (site.sharedtftp=0), you will need to copy the generated root image to each Service Node.
+If you make custom changes to the network boot root image, run B<mknb> again to regenerate it. In an xCAT hierarchical cluster where service nodes have local C</tftpboot> directories (C<site.sharedtftp=0>), install and refresh an OpenEmbedded image on the service nodes before the management node starts using its exact architecture name. Legacy images must still be copied to each service node.
 
-An exported Genesis image is identified by C<xcat-genesis.manifest>, which records its format version and architecture. The directory also contains C<kernel>, C<initramfs.cpio.gz>, and C<SHA256SUMS> in C</opt/xcat/share/xcat/netboot/genesis/ARCH>. B<mknb> verifies the manifest and both boot files before publishing them under the configured TFTP root. An incomplete or invalid export leaves the current boot files unchanged. The legacy C<fs/> layout remains supported and is packed locally.
+An OpenEmbedded Genesis package installs an exported image under C</opt/xcat/share/xcat/netboot/genesis-openembedded/ARCH>. B<mknb> prefers that image when it is installed. Otherwise it uses the old image under C</opt/xcat/share/xcat/netboot/genesis/ARCH>.
+
+An export is identified by C<xcat-genesis.manifest>, which records its format version and architecture. The directory also contains C<kernel>, C<initramfs.cpio.gz>, and C<SHA256SUMS>. B<mknb> verifies the manifest and both boot files before publishing them under the configured TFTP root. An incomplete or invalid export leaves the current boot files unchanged. The legacy C<fs/> layout remains supported and is packed locally.
 
 When multiple IPv4 addresses are configured for the same network, B<mknb> uses a locally assigned C<site.master> for the xcatd endpoint, or the first address reported by the operating system when C<site.master> is not local. POWER discovery configurations also use this address for their kernel and initrd URLs.
 
-Presently, the architectures x86_64 and ppc64 are supported. For ppc64le, use the ppc64 architecture.
+OpenEmbedded images use the exact architecture names C<x86>, C<x86_64>, C<ppc64>, C<ppc64le>, C<armv7hf>, C<aarch64>, and C<riscv64>. If an OpenEmbedded C<ppc64le> image is not installed, B<mknb> keeps the old behavior and uses the legacy C<ppc64> image.
+
+Canonical C<ppc64> images are big-endian. xCAT marks them so C<ppc64le> nodes do not use them as a legacy little-endian fallback. B<mknb> also refuses to replace a marked C<ppc64> image with that fallback.
 
 =head1 OPTIONS
 
@@ -29,6 +35,10 @@ Presently, the architectures x86_64 and ppc64 are supported. For ppc64le, use th
 =item I<arch>
 
 The hardware architecture for which to build the boot image.
+
+=item B<--remove-openembedded>
+
+Remove the published boot files for the selected OpenEmbedded architecture. Image packages use this option when they are removed.
 
 =back
 

@@ -68,6 +68,31 @@ sub handled_commands
     };
 }
 
+sub _find_genesis_boot_files
+{
+    my ($tftpdir, $arch) = @_;
+    return unless defined($arch) && $arch =~ /\A[A-Za-z0-9_]+\z/;
+
+    my $directory = "$tftpdir/xcat";
+    my $kernel = "genesis.kernel.$arch";
+    return unless -r "$directory/$kernel";
+
+    my $lzma = "genesis.fs.$arch.lzma";
+    my $gzip = "genesis.fs.$arch.gz";
+    my $initrd;
+    if (-r "$directory/$lzma" && -r "$directory/$gzip") {
+        $initrd = -C "$directory/$lzma" > -C "$directory/$gzip"
+          ? $gzip
+          : $lzma;
+    } elsif (-r "$directory/$lzma") {
+        $initrd = $lzma;
+    } elsif (-r "$directory/$gzip") {
+        $initrd = $gzip;
+    }
+    return unless defined($initrd);
+    return ($kernel, $initrd);
+}
+
 sub preprocess_request
 {
     my $req      = shift;
@@ -1854,12 +1879,9 @@ sub mksysclone
 =cut
 
         my $ramdisk_size = 200000;
-        my $kernpath = `ls -l $tftpdir/xcat/|grep "genesis.kernel.$arch"|awk '{print \$9}'`;
-        chomp($kernpath);
-        my $initrdpath = `ls -l $tftpdir/xcat/|grep "genesis.fs.$arch"| awk '{print \$9}'`;
-        chomp($initrdpath);
+        my ($kernpath, $initrdpath) = _find_genesis_boot_files($tftpdir, $arch);
 
-        if ($kernpath ne '' and $initrdpath ne '')
+        if (defined($kernpath) && defined($initrdpath))
         {
             #We have a shot...
             my $ent    = $rents{$node}->[0];

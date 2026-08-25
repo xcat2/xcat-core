@@ -44,6 +44,31 @@ sub handled_commands
     };
 }
 
+sub _find_genesis_boot_files
+{
+    my ($tftpdir, $arch) = @_;
+    return unless defined($arch) && $arch =~ /\A[A-Za-z0-9_]+\z/;
+
+    my $directory = "$tftpdir/xcat";
+    my $kernel = "genesis.kernel.$arch";
+    return unless -r "$directory/$kernel";
+
+    my $lzma = "genesis.fs.$arch.lzma";
+    my $gzip = "genesis.fs.$arch.gz";
+    my $initrd;
+    if (-r "$directory/$lzma" && -r "$directory/$gzip") {
+        $initrd = -C "$directory/$lzma" > -C "$directory/$gzip"
+          ? $gzip
+          : $lzma;
+    } elsif (-r "$directory/$lzma") {
+        $initrd = $lzma;
+    } elsif (-r "$directory/$gzip") {
+        $initrd = $gzip;
+    }
+    return unless defined($initrd);
+    return ($kernel, $initrd);
+}
+
 sub precreate_sles11_mypostscript
 {
     my ($node, $osver, $callback) = @_;
@@ -1450,10 +1475,10 @@ sub mksysclone
 
         # copy kernel and initrd from image dir to /tftpboot
         my $ramdisk_size = 200000;
+        my ($genesis_kernel, $genesis_initrd) =
+          _find_genesis_boot_files($tftpdir, $arch);
 
-        if (-r "$tftpdir/xcat/genesis.kernel.$arch"
-            and (-r "$tftpdir/xcat/genesis.fs.$arch.gz"
-                or -r "$tftpdir/xcat/genesis.fs.$arch.lzma"))
+        if (defined($genesis_kernel) && defined($genesis_initrd))
         {
             #We have a shot...
             my $ent  = $rents{$node}->[0];
@@ -1505,12 +1530,8 @@ sub mksysclone
             }
             $kcmdline .= " XCAT=$xcatmaster:$xcatdport xcatd=$xcatmaster:$xcatdport SCRIPTNAME=$imagename";
 
-            my $i = "xcat/genesis.fs.$arch.gz";
-            if (-r "$tftpdir/xcat/genesis.fs.$arch.lzma") {
-                $i = "xcat/genesis.fs.$arch.lzma";
-            }
-            $bootparams->{$node}->[0]->{kernel} = "xcat/genesis.kernel.$arch";
-            $bootparams->{$node}->[0]->{initrd} = $i;
+            $bootparams->{$node}->[0]->{kernel} = "xcat/$genesis_kernel";
+            $bootparams->{$node}->[0]->{initrd} = "xcat/$genesis_initrd";
             $bootparams->{$node}->[0]->{kcmdline} = $kcmdline;
         }
         else

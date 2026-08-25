@@ -189,6 +189,7 @@ GO_XCAT_DEFAULT_INSTALL_PATH="/install/xcat"
 # The package list of xcat-core
 GO_XCAT_CORE_PACKAGE_LIST=()
 GO_XCAT_DEP_PACKAGE_LIST=()
+GO_XCAT_DEP_REPOSITORY_IDS=(xcat-dep)
 
 # The package list of all the packages should be installed
 GO_XCAT_INSTALL_LIST=(perl-xCAT xCAT-client xCAT xCAT-buildkit
@@ -204,12 +205,20 @@ GO_XCAT_INSTALL_LIST=(perl-xcat xcat-client xcat xcat-buildkit
 # The package list of all the packages should be uninstalled
 GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
 	goconserver xCAT-SoftLayer xCAT-confluent xCAT-csm xCAT-genesis-builder
+	xCAT-genesis-openembedded-x86 xCAT-genesis-openembedded-x86_64
+	xCAT-genesis-openembedded-ppc64 xCAT-genesis-openembedded-ppc64le
+	xCAT-genesis-openembedded-armv7hf xCAT-genesis-openembedded-aarch64
+	xCAT-genesis-openembedded-riscv64
 	xCAT-openbmc-py xCAT-probe xCAT-test xCAT-vlan xCATsn xCAT-UI-deps
     xCAT-buildkit conserver-xcat yaboot-xcat)
 # For Debian/Ubuntu, it will need a slightly different package list
 type dpkg >/dev/null 2>&1 &&
 GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
 	goconserver xcat-confluent xcat-probe xcat-test xcat-vlan xcatsn
+	xcat-genesis-openembedded-x86 xcat-genesis-openembedded-x86-64
+	xcat-genesis-openembedded-ppc64 xcat-genesis-openembedded-ppc64le
+	xcat-genesis-openembedded-armv7hf xcat-genesis-openembedded-aarch64
+	xcat-genesis-openembedded-riscv64
     xcat-buildkit conserver-xcat)
 
 PATH="/usr/sbin:/usr/bin:/sbin:/bin"
@@ -1336,6 +1345,7 @@ function add_repo_by_url_yum_or_zypper()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	local url="$1"
 	local repo_id="$2"
+	local policy="${3:-}"
 	local tmp=""
 	local install_path="${GO_XCAT_DEFAULT_INSTALL_PATH}"
 	case "${url%%://*}" in
@@ -1352,7 +1362,8 @@ function add_repo_by_url_yum_or_zypper()
 			;;
 		*) # assume it is the base url of the repo
 			tmp="${TMP_DIR}/tmp_repo.repo"
-			while read -r ; do echo "${REPLY}" ; done >"${tmp}" <<-EOF
+			{
+			while read -r ; do echo "${REPLY}" ; done <<-EOF
 			[${repo_id}]
 			name=${repo_id}
 			baseurl=${url%/}
@@ -1360,6 +1371,11 @@ function add_repo_by_url_yum_or_zypper()
 			gpgcheck=1
 			gpgkey=${url%/}/repodata/repomd.xml.key
 			EOF
+			if [[ "${policy}" = "optional" ]]; then
+				echo "repo_gpgcheck=1"
+				echo "skip_if_unavailable=1"
+			fi
+			} >"${tmp}"
 			add_repo_by_file "${tmp}" "${repo_id}"
 			return "$?"
 			;;
@@ -1388,15 +1404,22 @@ function add_repo_by_url_yum_or_zypper()
 		[[ "${url:0:1}" = "/" ]] || url="${PWD}/${url}"
 		# directory
 		tmp="${TMP_DIR}/tmp_repo.repo"
-		while read -r ; do echo "${REPLY}" ; done >"${tmp}" <<-EOF
+		{
+		while read -r ; do echo "${REPLY}" ; done <<-EOF
 		[${repo_id}]
 		name=${repo_id}
 		baseurl=file://${url%/}
 		enabled=1
 		EOF
+		if [[ "${policy}" = "optional" ]]; then
+			echo "skip_if_unavailable=1"
+		fi
+		} >"${tmp}"
 		if [ -f "${url%/}/repodata/repomd.xml.asc" ]
 		then
 			echo "gpgcheck=1" >>"${tmp}"
+			[[ "${policy}" != "optional" ]] \
+				|| echo "repo_gpgcheck=1" >>"${tmp}"
 		else
 			echo "gpgcheck=0" >>"${tmp}"
 		fi
@@ -1491,6 +1514,9 @@ function remove_repo_yum()
 	"xcat-dep")
 		mv /etc/yum.repos.d/xCAT-dep.repo{,.nouse} 2>/dev/null
 		;;
+	"xcat-dep-common")
+		mv /etc/yum.repos.d/xCAT-dep-common.repo{,.nouse} 2>/dev/null
+		;;
 	esac
 	yum clean metadata
 	:
@@ -1508,6 +1534,9 @@ function remove_repo_zypper()
 		;;
 	"xcat-dep")
 		mv /etc/zypp/repos.d/xCAT-dep.repo{,.nouse} 2>/dev/null
+		;;
+	"xcat-dep-common")
+		mv /etc/zypp/repos.d/xCAT-dep-common.repo{,.nouse} 2>/dev/null
 		;;
 	esac
 	:
@@ -1592,6 +1621,61 @@ function add_xcat_core_repo()
 	function_dispatch "${FUNCNAME[0]}" "$@"
 }
 
+function add_xcat_dep_common_repo_yum_or_zypper()
+{
+	type yum >/dev/null 2>&1 || type zypper >/dev/null 2>&1 || return 255
+	local url="$1"
+	local ver="$2"
+	local common_url=""
+	local metadata=""
+	[[ -z "${ver}" ]] && ver="latest"
+
+	[[ -z "${url}" ]] &&
+		url="${GO_XCAT_DEFAULT_BASE_URL}/yum/${ver}/xcat-dep"
+	case "${url##*/}" in
+	*".repo"|*".tar"|*".tar.Z"|*".tar.bz"|*".tar.bz2"|*".tar.gz"|*".tar.xz"|*".tbz"|*".tbz2"|*".tgz"|*".tz"|*".txz")
+		return 0
+		;;
+	esac
+
+	case "${url%%://*}" in
+	"ftp"|"http"|"https")
+		common_url="${url%/}/common"
+		metadata="${TMP_DIR}/xcat-dep-common-repomd.xml"
+		download_file "${common_url}/repodata/repomd.xml" "${metadata}" \
+			>/dev/null 2>&1 || return 0
+		;;
+	"file")
+		url="${url#file://}"
+		[[ "${url:0:1}" = "/" ]] || url="${PWD}/${url}"
+		common_url="${url%/}/common"
+		[[ -f "${common_url}/repodata/repomd.xml" ]] || return 0
+		;;
+	*)
+		[[ "${url:0:1}" = "/" ]] || url="${PWD}/${url}"
+		common_url="${url%/}/common"
+		[[ -f "${common_url}/repodata/repomd.xml" ]] || return 0
+		;;
+	esac
+
+	add_repo_by_url_yum_or_zypper \
+		"${common_url}" "xcat-dep-common" optional || return 0
+}
+
+function xcat_dep_common_repo_configured()
+{
+	[[ -f /etc/yum.repos.d/xcat-dep-common.repo \
+		|| -f /etc/zypp/repos.d/xcat-dep-common.repo ]]
+}
+
+function refresh_xcat_dep_repository_ids()
+{
+	GO_XCAT_DEP_REPOSITORY_IDS=(xcat-dep)
+	xcat_dep_common_repo_configured \
+		&& GO_XCAT_DEP_REPOSITORY_IDS+=(xcat-dep-common)
+	:
+}
+
 function add_xcat_dep_repo_yum_or_zypper()
 {
 	type yum >/dev/null 2>&1 || type zypper >/dev/null 2>&1 || return 255
@@ -1636,8 +1720,10 @@ function add_xcat_dep_repo_yum_or_zypper()
 			url="${tmp}"
 			;;
 		*)
-			url="${url}/${distro}/${GO_XCAT_ARCH}"
-			add_repo_by_url_yum_or_zypper "${url}" "xcat-dep"
+			local repository_root="${url}"
+			url="${repository_root}/${distro}/${GO_XCAT_ARCH}"
+			add_repo_by_url_yum_or_zypper "${url}" "xcat-dep" || return "$?"
+			add_xcat_dep_common_repo_yum_or_zypper "${repository_root}" "${ver}"
 			return "$?"
 			;;
 		esac
@@ -1657,8 +1743,10 @@ function add_xcat_dep_repo_yum_or_zypper()
 	then
 		# make sure it is an absolute pathname.
 		[[ "${url:0:1}" = "/" ]] || url="${PWD}/${url}"
-		url="${url}/${distro}/${GO_XCAT_ARCH}"
-		add_repo_by_url_yum_or_zypper "${url}" "xcat-dep"
+		local repository_root="${url}"
+		url="${repository_root}/${distro}/${GO_XCAT_ARCH}"
+		add_repo_by_url_yum_or_zypper "${url}" "xcat-dep" || return "$?"
+		add_xcat_dep_common_repo_yum_or_zypper "${repository_root}" "${ver}"
 		return "$?"
 	fi
 	warn_if_bad "1" "invalid xcat-dep URL"
@@ -1969,10 +2057,10 @@ function trash_xcat()
 	rm -rf /etc/xcat
 	rm -rf /etc/xcatdockerca
 	rm -f  /etc/apt/sources.list.d/xcat-{core,dep}.list
-	rm -f  /etc/yum.repos.d/xCAT-{core,dep}.repo{,.nouse}
-	rm -f  /etc/yum.repos.d/xcat-{core,dep}.repo
-	rm -f  /etc/zypp/repos.d/xCAT-{core,dep}.repo{,.nouse}
-	rm -f  /etc/zypp/repos.d/xcat-{core,dep}.repo
+	rm -f  /etc/yum.repos.d/xCAT-{core,dep,dep-common}.repo{,.nouse}
+	rm -f  /etc/yum.repos.d/xcat-{core,dep,dep-common}.repo
+	rm -f  /etc/zypp/repos.d/xCAT-{core,dep,dep-common}.repo{,.nouse}
+	rm -f  /etc/zypp/repos.d/xcat-{core,dep,dep-common}.repo
 	rm -rf /install/postscripts
 	rm -rf /opt/xcat
 	rm -rf /root/.xcat
@@ -2002,7 +2090,12 @@ function uninstall_xcat_completely()
 function list_xcat_packages()
 {
 	GO_XCAT_CORE_PACKAGE_LIST=($(get_package_list xcat-core))
-	GO_XCAT_DEP_PACKAGE_LIST=($(get_package_list xcat-dep))
+	GO_XCAT_DEP_PACKAGE_LIST=($(
+		for repo_id in "${GO_XCAT_DEP_REPOSITORY_IDS[@]}"
+		do
+			get_package_list "${repo_id}"
+		done | tr ' ' '\n' | sort -u
+	))
 
 	[ "${#GO_XCAT_CORE_PACKAGE_LIST[@]}" -gt "0" ]
 	warn_if_bad "$?" "Failed to get package list from repository \`xcat-core'." || return 1
@@ -2435,6 +2528,7 @@ ERR_MSG="$(
 			"${GO_XCAT_DEP_URL}" "${GO_XCAT_VERSION}"
 		then
 			debug_trace update_repo && exit 0
+			debug_trace remove_repo "xcat-dep-common"
 			debug_trace remove_repo "xcat-dep"
 		fi
 		debug_trace remove_repo "xcat-core"
@@ -2450,6 +2544,7 @@ then
 	boo_boo_if_bad "${RET}"
 fi
 echo "done"
+refresh_xcat_dep_repository_ids
 
 case "${GO_XCAT_ACTION}" in
 "check")

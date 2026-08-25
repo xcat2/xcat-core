@@ -19,7 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **mknb**\  \ *arch*\ 
+\ **mknb**\  \ *arch*\
+
+\ **mknb**\  \ *arch*\  \ **-**\ **-remove-openembedded**\
 
 
 ***********
@@ -32,13 +34,17 @@ It creates a network boot root image (used for node discovery, BMC programming, 
 for the same architecture that the management node is.  So you normally do not need to run the
 \ **mknb**\  command yourself.
 
-If you make custom changes to the network boot root image, you will need to run \ **mknb**\  again to regenerate the diskless image to include your changes.  If you have an xCAT Hierarchical Cluster with Service Nodes having local /tftpboot directories (site.sharedtftp=0), you will need to copy the generated root image to each Service Node.
+If you make custom changes to the network boot root image, run \ **mknb**\  again to regenerate it. In an xCAT hierarchical cluster where service nodes have local \ ``/tftpboot``\  directories (\ ``site.sharedtftp=0``\ ), install and refresh an OpenEmbedded image on the service nodes before the management node starts using its exact architecture name. Legacy images must still be copied to each service node.
 
-An exported Genesis image is identified by ``xcat-genesis.manifest``, which records its format version and architecture. The directory also contains ``kernel``, ``initramfs.cpio.gz``, and ``SHA256SUMS`` in ``/opt/xcat/share/xcat/netboot/genesis/ARCH``. \ **mknb**\  verifies the manifest and both boot files before publishing them under the configured TFTP root. An incomplete or invalid export leaves the current boot files unchanged. The legacy ``fs/`` layout remains supported and is packed locally.
+An OpenEmbedded Genesis package installs an exported image under \ ``/opt/xcat/share/xcat/netboot/genesis-openembedded/ARCH``\ . \ **mknb**\  prefers that image when it is installed. Otherwise it uses the old image under \ ``/opt/xcat/share/xcat/netboot/genesis/ARCH``\ .
 
-When multiple IPv4 addresses are configured for the same network, \ **mknb**\  uses a locally assigned ``site.master`` for the xcatd endpoint, or the first address reported by the operating system when ``site.master`` is not local. POWER discovery configurations also use this address for their kernel and initrd URLs.
+An export is identified by \ ``xcat-genesis.manifest``\ , which records its format version and architecture. The directory also contains \ ``kernel``\ , \ ``initramfs.cpio.gz``\ , and \ ``SHA256SUMS``\ . \ **mknb**\  verifies the manifest and both boot files before publishing them under the configured TFTP root. An incomplete or invalid export leaves the current boot files unchanged. The legacy \ ``fs/``\  layout remains supported and is packed locally.
 
-Presently, the architectures x86_64 and ppc64 are supported. For ppc64le, use the ppc64 architecture.
+When multiple IPv4 addresses are configured for the same network, \ **mknb**\  uses a locally assigned \ ``site.master``\  for the xcatd endpoint, or the first address reported by the operating system when \ ``site.master``\  is not local. POWER discovery configurations also use this address for their kernel and initrd URLs.
+
+OpenEmbedded images use the exact architecture names \ ``x86``\ , \ ``x86_64``\ , \ ``ppc64``\ , \ ``ppc64le``\ , \ ``armv7hf``\ , \ ``aarch64``\ , and \ ``riscv64``\ . If an OpenEmbedded \ ``ppc64le``\  image is not installed, \ **mknb**\  keeps the old behavior and uses the legacy \ ``ppc64``\  image.
+
+Canonical \ ``ppc64``\  images are big-endian. xCAT marks them so \ ``ppc64le``\  nodes do not use them as a legacy little-endian fallback. \ **mknb**\  also refuses to replace a marked \ ``ppc64``\  image with that fallback.
 
 
 *******
@@ -47,10 +53,16 @@ OPTIONS
 
 
 
-\ *arch*\ 
- 
+\ *arch*\
+
  The hardware architecture for which to build the boot image.
- 
+
+
+
+\ **-**\ **-remove-openembedded**\
+
+ Remove the published boot files for the selected OpenEmbedded architecture. Image packages use this option when they are removed.
+
 
 
 

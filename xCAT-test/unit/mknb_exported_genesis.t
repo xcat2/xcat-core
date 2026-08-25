@@ -4,7 +4,7 @@ use warnings;
 ## no critic (Modules::RequireFilenameMatchesPackage, TestingAndDebugging::ProhibitNoStrict, TestingAndDebugging::ProhibitNoWarnings)
 
 use Digest::SHA qw(sha256_hex);
-use File::Path qw(make_path);
+use File::Path qw(make_path remove_tree);
 use File::Temp qw(tempdir);
 use FindBin;
 use Test::More;
@@ -106,6 +106,8 @@ my $tmpdir = tempdir(CLEANUP => 1);
 my $export = "$tmpdir/export";
 my $tftpdir = "$tmpdir/tftpboot";
 prepare_export($export, 'new kernel', 'new initramfs');
+make_path("$tftpdir/xcat");
+write_file("$tftpdir/xcat/genesis.fs.x86_64.lzma", 'old initramfs');
 
 ok(
     xCAT_plugin::mknb::_prebuilt_genesis_requested($export),
@@ -124,9 +126,60 @@ my ($published_kernel, $published_initramfs) =
   published_files($tftpdir, 'x86_64');
 is(read_file($published_kernel), 'new kernel', 'the kernel is published');
 is(read_file($published_initramfs), 'new initramfs', 'the initramfs is published');
+ok(!-e "$tftpdir/xcat/genesis.fs.x86_64.lzma",
+    'installing an export removes the obsolete legacy initramfs');
+is(
+    read_file("$tftpdir/xcat/genesis.exact-arch.x86_64"),
+    export_manifest('x86_64'),
+    'the canonical architecture marker is published with the image',
+);
 is(sprintf('%04o', (stat($published_kernel))[2] & oct('7777')), '0644', 'the kernel is readable by TFTP');
 is(sprintf('%04o', (stat($published_initramfs))[2] & oct('7777')), '0644', 'the initramfs is readable by TFTP');
 is_deeply([temporary_files("$tftpdir/xcat")], [], 'staging files are removed');
+
+write_file("$tftpdir/xcat/genesis.kernel.ppc64le", 'stale kernel');
+write_file("$tftpdir/xcat/genesis.fs.ppc64le.gz", 'stale initramfs');
+write_file("$tftpdir/xcat/genesis.fs.ppc64le.lzma", 'stale legacy initramfs');
+write_file("$tftpdir/xcat/genesis.exact-arch.ppc64le", export_manifest('ppc64le'));
+write_file("$tftpdir/xcat/genesis.kernel.ppc64", 'legacy kernel');
+my ($removed, $remove_error) =
+  xCAT_plugin::mknb::_remove_openembedded_genesis($tftpdir, 'ppc64le');
+is($remove_error, undef, 'OpenEmbedded boot artifacts can be retired cleanly');
+is($removed, 4, 'all exact-architecture boot artifacts are retired');
+ok(!-e "$tftpdir/xcat/genesis.kernel.ppc64le",
+    'the exact OpenEmbedded kernel is removed');
+ok(!-e "$tftpdir/xcat/genesis.fs.ppc64le.gz"
+      && !-e "$tftpdir/xcat/genesis.fs.ppc64le.lzma",
+    'the exact OpenEmbedded initramfs files are removed');
+ok(!-e "$tftpdir/xcat/genesis.exact-arch.ppc64le",
+    'the canonical architecture marker is removed');
+ok(-f "$tftpdir/xcat/genesis.kernel.ppc64",
+    'retiring ppc64le does not remove the legacy ppc64 fallback');
+
+my $failed_kernel = "$tftpdir/xcat/genesis.kernel.aarch64";
+make_path($failed_kernel);
+for my $artifact (qw(
+  genesis.fs.aarch64.gz
+  genesis.fs.aarch64.lzma
+  genesis.exact-arch.aarch64
+)) {
+    write_file("$tftpdir/xcat/$artifact", 'stale artifact');
+}
+($removed, $remove_error) =
+  xCAT_plugin::mknb::_remove_openembedded_genesis($tftpdir, 'aarch64');
+is($removed, 3, 'artifact cleanup continues after an unlink failure');
+like(
+    $remove_error,
+    qr/Unable to remove Genesis artifact: \Q$failed_kernel\E/,
+    'artifact cleanup reports the failed path',
+);
+ok(-d $failed_kernel, 'the failed artifact remains in place');
+ok(
+    !-e "$tftpdir/xcat/genesis.fs.aarch64.gz"
+      && !-e "$tftpdir/xcat/genesis.fs.aarch64.lzma"
+      && !-e "$tftpdir/xcat/genesis.exact-arch.aarch64",
+    'artifact cleanup removes every remaining path',
+);
 
 write_file($published_kernel, 'current kernel');
 write_file($published_initramfs, 'current initramfs');
@@ -331,5 +384,134 @@ is(
     'process initramfs',
     'an incomplete marked export keeps the published initramfs',
 );
+
+$::XCATROOT = "$tmpdir/openembedded-xcatroot";
+my $openembedded_process_export =
+  "$::XCATROOT/share/xcat/netboot/genesis-openembedded/ppc64le";
+my $legacy_process_export =
+  "$::XCATROOT/share/xcat/netboot/genesis/ppc64";
+prepare_export(
+    $openembedded_process_export,
+    'openembedded ppc64le kernel',
+    'openembedded ppc64le initramfs',
+    'ppc64le',
+);
+prepare_export(
+    $legacy_process_export,
+    'legacy ppc64 kernel',
+    'legacy ppc64 initramfs',
+    'ppc64',
+);
+$xCAT::TableUtils::tftpdir = "$tmpdir/openembedded-tftpboot";
+@responses = ();
+xCAT_plugin::mknb::process_request(
+    { arg => ['ppc64le'] },
+    sub { push(@responses, @_); },
+);
+ok(
+    !grep({ ref($_) eq 'HASH' && $_->{error} } @responses),
+    'mknb installs an exact ppc64le OpenEmbedded export',
+);
+my ($openembedded_kernel, $openembedded_initramfs) =
+  published_files($xCAT::TableUtils::tftpdir, 'ppc64le');
+is(read_file($openembedded_kernel), 'openembedded ppc64le kernel',
+    'mknb prefers the OpenEmbedded kernel when legacy Genesis is also installed');
+is(read_file($openembedded_initramfs), 'openembedded ppc64le initramfs',
+    'mknb prefers the OpenEmbedded initramfs when legacy Genesis is also installed');
+my $ppc64le_config = read_file(
+    "$xCAT::TableUtils::tftpdir/pxelinux.cfg/p/192.0.2.0_24"
+);
+like($ppc64le_config, qr/genesis\.kernel\.ppc64le/,
+    'POWER boot configuration keeps the exact ppc64le artifact name');
+like($ppc64le_config, qr/genesis\.fs\.ppc64le\.gz/,
+    'POWER boot configuration uses the exact ppc64le initramfs name');
+
+remove_tree($openembedded_process_export);
+write_file(
+    "$xCAT::TableUtils::tftpdir/xcat/genesis.kernel.ppc64",
+    'canonical big-endian ppc64 kernel',
+);
+write_file(
+    "$xCAT::TableUtils::tftpdir/xcat/genesis.exact-arch.ppc64",
+    export_manifest('ppc64'),
+);
+@responses = ();
+xCAT_plugin::mknb::process_request(
+    { arg => ['ppc64le'] },
+    sub { push(@responses, @_); },
+);
+ok(
+    grep(
+        { ref($_) eq 'HASH' && $_->{error}
+              && $_->{error} =~ /canonical ppc64 image/ }
+          @responses
+    ),
+    'the legacy ppc64le fallback cannot replace a canonical ppc64 image',
+);
+is(
+    read_file("$xCAT::TableUtils::tftpdir/xcat/genesis.kernel.ppc64"),
+    'canonical big-endian ppc64 kernel',
+    'a refused ppc64le fallback leaves the canonical ppc64 kernel intact',
+);
+
+my $selection_root = "$tmpdir/selection-root";
+my $legacy_x86 = "$selection_root/share/xcat/netboot/genesis/x86_64";
+my $openembedded_x86 =
+  "$selection_root/share/xcat/netboot/genesis-openembedded/x86_64";
+make_path("$legacy_x86/fs", $openembedded_x86);
+
+my ($selected_dir, $selected_arch, $selected_type) =
+  xCAT_plugin::mknb::_select_genesis_source($selection_root, 'x86_64');
+is($selected_dir, $openembedded_x86,
+    'an installed OpenEmbedded export takes precedence over legacy Genesis');
+is($selected_arch, 'x86_64', 'the OpenEmbedded x86_64 name is unchanged');
+is($selected_type, 'openembedded', 'the selected source is identified');
+
+remove_tree($openembedded_x86);
+($selected_dir, $selected_arch, $selected_type) =
+  xCAT_plugin::mknb::_select_genesis_source($selection_root, 'x86_64');
+is($selected_dir, $legacy_x86, 'legacy Genesis remains the fallback');
+is($selected_arch, 'x86_64', 'the legacy x86_64 name is unchanged');
+is($selected_type, 'legacy', 'the fallback source is identified');
+
+my $linked_legacy = "$tmpdir/linked-legacy-x86_64";
+make_path("$linked_legacy/fs");
+remove_tree($legacy_x86);
+symlink($linked_legacy, $legacy_x86)
+  or die "Unable to create legacy Genesis directory symlink: $!";
+($selected_dir, $selected_arch, $selected_type) =
+  xCAT_plugin::mknb::_select_genesis_source($selection_root, 'x86_64');
+is($selected_dir, $legacy_x86, 'legacy Genesis directory symlinks remain usable');
+is($selected_type, 'legacy', 'a linked legacy source keeps its source type');
+
+my $openembedded_ppc64le =
+  "$selection_root/share/xcat/netboot/genesis-openembedded/ppc64le";
+my $legacy_ppc64 = "$selection_root/share/xcat/netboot/genesis/ppc64";
+make_path($openembedded_ppc64le, "$legacy_ppc64/fs");
+($selected_dir, $selected_arch, $selected_type) =
+  xCAT_plugin::mknb::_select_genesis_source($selection_root, 'ppc64le');
+is($selected_dir, $openembedded_ppc64le,
+    'ppc64le selects its exact OpenEmbedded export');
+is($selected_arch, 'ppc64le', 'ppc64le is not rewritten to ppc64');
+is($selected_type, 'openembedded', 'ppc64le uses the OpenEmbedded source');
+
+($selected_dir, $selected_arch, $selected_type) =
+  xCAT_plugin::mknb::_select_genesis_source($selection_root, 'ppc64el');
+is($selected_dir, $openembedded_ppc64le,
+    'the Debian spelling resolves to the canonical ppc64le export');
+is($selected_arch, 'ppc64le', 'the canonical architecture name is returned');
+
+remove_tree($openembedded_ppc64le);
+($selected_dir, $selected_arch, $selected_type) =
+  xCAT_plugin::mknb::_select_genesis_source($selection_root, 'ppc64le');
+is($selected_dir, $legacy_ppc64,
+    'ppc64le falls back to the old combined POWER image when needed');
+is($selected_arch, 'ppc64', 'only the legacy fallback uses the old ppc64 name');
+is($selected_type, 'legacy', 'the POWER fallback is identified as legacy');
+
+my $unsafe = xCAT_plugin::mknb::_select_genesis_source(
+    $selection_root, '../../outside'
+);
+is($unsafe, undef, 'unsupported architecture names cannot escape the image root');
 
 done_testing();
