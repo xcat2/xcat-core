@@ -11,25 +11,34 @@ my $plugin = File::Spec->catfile( $root, 'xCAT-server', 'lib', 'xcat',
     'plugins', 'blade.pm' );
 plan skip_all => 'blade.pm not found' unless -r $plugin;
 
-open( my $fh, '<', $plugin ) or die "Unable to read $plugin: $!";
-my $source = do { local $/; <$fh> };
-close($fh);
+my $lib = File::Spec->catdir( $root, 'xCAT-server', 'lib', 'perl' );
+my $module = File::Spec->catfile( $lib, 'xCAT', 'BladeUtils.pm' );
+my $direct_module = -r $module;
+my $source;
 
-# blade.pm needs a management node to load in full, so drive the entry decision
-# on its own. The preprocessor answers a request before it reads any table, and
-# that answer is what decides whether the findme handler ever runs.
-my ($entry) = $source =~
-  /(sub preprocess_request \{.*?\n    if \(\$command eq 'findme'\) \{ return \[\$request\]; \})/s;
-BAIL_OUT('blade.pm does not hand a findme request on before the noderange check')
-  unless $entry;
+if ($direct_module) {
+    unshift @INC, $lib;
+    require xCAT::BladeUtils;
+} else {
+    open( my $fh, '<', $plugin ) or die "Unable to read $plugin: $!";
+    $source = do { local $/; <$fh> };
+    close($fh);
 
-$entry .= "\n    return 'REACHED-NODERANGE-CHECK';\n}\n";
-eval "package BladeEntry; $entry 1;" or BAIL_OUT("could not evaluate the entry: $@");
+    my ($entry) = $source =~
+      /(sub preprocess_request \{.*?\n    if \(\$command eq 'findme'\) \{ return \[\$request\]; \})/s;
+    BAIL_OUT('blade.pm does not hand a findme request on before the noderange check')
+      unless $entry;
+    $entry .= "\n    return 'REACHED-NODERANGE-CHECK';\n}\n";
+    eval "package BladeEntry; $entry 1;"
+      or BAIL_OUT("could not evaluate the entry: $@");
+}
 
 sub entry_for {
     my ($req) = @_;
     my @said;
-    my $r = BladeEntry::preprocess_request( $req, sub { push @said, $_[0] } );
+    my $r = $direct_module
+      ? xCAT::BladeUtils::findme_request_for_handler($req)
+      : BladeEntry::preprocess_request( $req, sub { push @said, $_[0] } );
     return ( $r, \@said );
 }
 
@@ -64,7 +73,9 @@ foreach my $command (qw(rpower rinv rvitals rbeacon)) {
 # The preprocessor used to drop a node from a findme request by its hardware
 # type. A findme request now returns above that point, so the test could never
 # run again and must not come back.
-unlike( $source, qr/eq 'findme' and \$ent->\{nodetype\}/,
-    'the preprocessor holds no findme test that cannot run' );
+unless ($direct_module) {
+    unlike( $source, qr/eq 'findme' and \$ent->\{nodetype\}/,
+        'the preprocessor holds no findme test that cannot run' );
+}
 
 done_testing();

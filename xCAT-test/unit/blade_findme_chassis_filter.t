@@ -6,21 +6,36 @@ use FindBin;
 use File::Spec;
 use Test::More;
 
-my $plugin = File::Spec->catfile( $FindBin::Bin, '..', '..',
+my $root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
+my $plugin = File::Spec->catfile( $root,
     'xCAT-server', 'lib', 'xcat', 'plugins', 'blade.pm' );
 plan skip_all => 'blade.pm not found' unless -r $plugin;
 
-open( my $fh, '<', $plugin ) or die "Unable to read $plugin: $!";
-my $source = do { local $/; <$fh> };
-close($fh);
+my $lib = File::Spec->catdir( $root, 'xCAT-server', 'lib', 'perl' );
+my $module = File::Spec->catfile( $lib, 'xCAT', 'BladeUtils.pm' );
+my $direct_module = -r $module;
+my $source;
 
-# blade.pm needs a management node to load, so lift the routine out and drive
-# the real code on its own.
-my ($routine) = $source =~ /(sub blade_nodes_from_mp \{.*?\n\}\n)/s;
-BAIL_OUT('could not extract blade_nodes_from_mp from blade.pm') unless $routine;
-eval "package BladeFilter; $routine 1;" or BAIL_OUT("could not evaluate the routine: $@");
+if ($direct_module) {
+    unshift @INC, $lib;
+    require xCAT::BladeUtils;
+} else {
+    open( my $fh, '<', $plugin ) or die "Unable to read $plugin: $!";
+    $source = do { local $/; <$fh> };
+    close($fh);
 
-sub blades { return [ sort( BladeFilter::blade_nodes_from_mp(@_) ) ]; }
+    my ($routine) = $source =~ /(sub blade_nodes_from_mp \{.*?\n\}\n)/s;
+    BAIL_OUT('could not extract blade_nodes_from_mp from blade.pm') unless $routine;
+    eval "package BladeFilter; $routine 1;"
+      or BAIL_OUT("could not evaluate the routine: $@");
+}
+
+sub blades {
+    my @nodes = $direct_module
+      ? xCAT::BladeUtils::blade_nodes_from_mp(@_)
+      : BladeFilter::blade_nodes_from_mp(@_);
+    return [ sort @nodes ];
+}
 
 # xCAT::PPCdb::add_systemX writes a management module with its own name as the
 # mpa and no hardware type. The mp template in xCAT/templates/e1350 writes the
@@ -92,10 +107,12 @@ is_deeply( blades( {}, { node => 'x220b', nodetype => 'blade' } ), ['x220b'],
 
 # The caller has to read the two attributes the routine needs, and has to stop
 # before the work that reads the arp table when nothing is left to ask.
-like( $source, qr/getAllNodeAttribs\(\[qw\(node nodetype mpa\)\]\)/,
-    'the findme request reads the hardware type and the chassis' );
-like( $source,
-    qr/my \@blades\s*=\s*blade_nodes_from_mp\(\@bladents\);.*?unless \(\@blades\) \{ return; \}/s,
-    'the handler returns when the table holds no blades' );
+unless ($direct_module) {
+    like( $source, qr/getAllNodeAttribs\(\[qw\(node nodetype mpa\)\]\)/,
+        'the findme request reads the hardware type and the chassis' );
+    like( $source,
+        qr/my \@blades\s*=\s*blade_nodes_from_mp\(\@bladents\);.*?unless \(\@blades\) \{ return; \}/s,
+        'the handler returns when the table holds no blades' );
+}
 
 done_testing();
