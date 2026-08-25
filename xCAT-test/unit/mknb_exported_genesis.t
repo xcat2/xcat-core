@@ -397,6 +397,34 @@ like($ppc64le_config, qr/genesis\.kernel\.ppc64le/,
 like($ppc64le_config, qr/genesis\.fs\.ppc64le\.gz/,
     'POWER boot configuration uses the exact ppc64le initramfs name');
 
+remove_tree($openembedded_process_export);
+write_file(
+    "$xCAT::TableUtils::tftpdir/xcat/genesis.kernel.ppc64",
+    'canonical big-endian ppc64 kernel',
+);
+write_file(
+    "$xCAT::TableUtils::tftpdir/xcat/genesis.exact-arch.ppc64",
+    export_manifest('ppc64'),
+);
+@responses = ();
+xCAT_plugin::mknb::process_request(
+    { arg => ['ppc64le'] },
+    sub { push(@responses, @_); },
+);
+ok(
+    grep(
+        { ref($_) eq 'HASH' && $_->{error}
+              && $_->{error} =~ /canonical ppc64 image/ }
+          @responses
+    ),
+    'the legacy ppc64le fallback cannot replace a canonical ppc64 image',
+);
+is(
+    read_file("$xCAT::TableUtils::tftpdir/xcat/genesis.kernel.ppc64"),
+    'canonical big-endian ppc64 kernel',
+    'a refused ppc64le fallback leaves the canonical ppc64 kernel intact',
+);
+
 my $selection_root = "$tmpdir/selection-root";
 my $legacy_x86 = "$selection_root/share/xcat/netboot/genesis/x86_64";
 my $openembedded_x86 =

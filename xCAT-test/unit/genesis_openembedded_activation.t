@@ -130,8 +130,18 @@ like(
 );
 like(
     $offline_guide,
+    qr{repodata/repomd\.xml\.asc}s,
+    'the offline mirror includes the repository metadata signature',
+);
+like(
+    $offline_guide,
+    qr{repodata/repomd\.xml\.key}s,
+    'the offline mirror includes its signing key',
+);
+like(
+    $offline_guide,
     qr{baseurl=file://.*xcat-dep/common}s,
-    'the offline guide points the packaged repository file at the mirror',
+    'the offline guide points a repository file at the mirror',
 );
 like(
     $offline_guide,
@@ -140,8 +150,36 @@ like(
 );
 unlike(
     $offline_guide,
+    qr/install .*xCAT-release.*local xcat-core/is,
+    'the offline guide does not assume xCAT-release is in the core tarball',
+);
+unlike(
+    $offline_guide,
     qr/Run .*mklocalrepo\.sh.*mirrored directory/is,
     'the offline guide does not depend on files reposync cannot download',
+);
+
+my $yum_guide = read_file(
+    'docs/source/guides/install-guides/yum/configure_xcat.rst'
+);
+like(
+    $yum_guide,
+    qr/start-after: BEGIN_configure_xcat_local_repo_xcat-dep_DNF/,
+    'the DNF guide includes the DNF common repository steps',
+);
+
+my $zypper_guide = read_file(
+    'docs/source/guides/install-guides/zypper/configure_xcat.rst'
+);
+like(
+    $zypper_guide,
+    qr/start-after: BEGIN_configure_xcat_local_repo_xcat-dep_ZYPPER/,
+    'the zypper guide includes its own common repository steps',
+);
+unlike(
+    $zypper_guide,
+    qr/start-after: BEGIN_configure_xcat_local_repo_xcat-dep_DNF/,
+    'the zypper guide does not include DNF-only setup',
 );
 
 done_testing();
