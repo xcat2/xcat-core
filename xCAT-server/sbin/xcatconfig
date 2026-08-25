@@ -2007,7 +2007,7 @@ sub _installed_genesis_architectures
         while (my $entry = readdir($dh)) {
             next unless $supported{$entry};
             my $path = "$openembedded/$entry";
-            $installed{$entry} = 1 if -d $path;
+            $installed{$entry} = 1 if -d $path && !-l $path;
         }
         closedir($dh);
     }
@@ -2029,6 +2029,7 @@ sub _genesis_architectures_to_build
 
     return grep {
         -d "$xcatroot/share/xcat/netboot/genesis-openembedded/$_"
+          && !-l "$xcatroot/share/xcat/netboot/genesis-openembedded/$_"
     } @installed;
 }
 

@@ -1345,6 +1345,7 @@ function add_repo_by_url_yum_or_zypper()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	local url="$1"
 	local repo_id="$2"
+	local policy="${3:-}"
 	local tmp=""
 	local install_path="${GO_XCAT_DEFAULT_INSTALL_PATH}"
 	case "${url%%://*}" in
@@ -1361,7 +1362,8 @@ function add_repo_by_url_yum_or_zypper()
 			;;
 		*) # assume it is the base url of the repo
 			tmp="${TMP_DIR}/tmp_repo.repo"
-			while read -r ; do echo "${REPLY}" ; done >"${tmp}" <<-EOF
+			{
+			while read -r ; do echo "${REPLY}" ; done <<-EOF
 			[${repo_id}]
 			name=${repo_id}
 			baseurl=${url%/}
@@ -1369,6 +1371,11 @@ function add_repo_by_url_yum_or_zypper()
 			gpgcheck=1
 			gpgkey=${url%/}/repodata/repomd.xml.key
 			EOF
+			if [[ "${policy}" = "optional" ]]; then
+				echo "repo_gpgcheck=1"
+				echo "skip_if_unavailable=1"
+			fi
+			} >"${tmp}"
 			add_repo_by_file "${tmp}" "${repo_id}"
 			return "$?"
 			;;
@@ -1397,15 +1404,22 @@ function add_repo_by_url_yum_or_zypper()
 		[[ "${url:0:1}" = "/" ]] || url="${PWD}/${url}"
 		# directory
 		tmp="${TMP_DIR}/tmp_repo.repo"
-		while read -r ; do echo "${REPLY}" ; done >"${tmp}" <<-EOF
+		{
+		while read -r ; do echo "${REPLY}" ; done <<-EOF
 		[${repo_id}]
 		name=${repo_id}
 		baseurl=file://${url%/}
 		enabled=1
 		EOF
+		if [[ "${policy}" = "optional" ]]; then
+			echo "skip_if_unavailable=1"
+		fi
+		} >"${tmp}"
 		if [ -f "${url%/}/repodata/repomd.xml.asc" ]
 		then
 			echo "gpgcheck=1" >>"${tmp}"
+			[[ "${policy}" != "optional" ]] \
+				|| echo "repo_gpgcheck=1" >>"${tmp}"
 		else
 			echo "gpgcheck=0" >>"${tmp}"
 		fi
@@ -1614,7 +1628,6 @@ function add_xcat_dep_common_repo_yum_or_zypper()
 	local ver="$2"
 	local common_url=""
 	local metadata=""
-	local repo_id=""
 	[[ -z "${ver}" ]] && ver="latest"
 
 	[[ -z "${url}" ]] &&
@@ -1645,12 +1658,22 @@ function add_xcat_dep_common_repo_yum_or_zypper()
 		;;
 	esac
 
-	add_repo_by_url_yum_or_zypper "${common_url}" "xcat-dep-common" || return 0
-	for repo_id in "${GO_XCAT_DEP_REPOSITORY_IDS[@]}"
-	do
-		[[ "${repo_id}" == "xcat-dep-common" ]] && return 0
-	done
-	GO_XCAT_DEP_REPOSITORY_IDS+=(xcat-dep-common)
+	add_repo_by_url_yum_or_zypper \
+		"${common_url}" "xcat-dep-common" optional || return 0
+}
+
+function xcat_dep_common_repo_configured()
+{
+	[[ -f /etc/yum.repos.d/xcat-dep-common.repo \
+		|| -f /etc/zypp/repos.d/xcat-dep-common.repo ]]
+}
+
+function refresh_xcat_dep_repository_ids()
+{
+	GO_XCAT_DEP_REPOSITORY_IDS=(xcat-dep)
+	xcat_dep_common_repo_configured \
+		&& GO_XCAT_DEP_REPOSITORY_IDS+=(xcat-dep-common)
+	:
 }
 
 function add_xcat_dep_repo_yum_or_zypper()
@@ -2521,6 +2544,7 @@ then
 	boo_boo_if_bad "${RET}"
 fi
 echo "done"
+refresh_xcat_dep_repository_ids
 
 case "${GO_XCAT_ACTION}" in
 "check")

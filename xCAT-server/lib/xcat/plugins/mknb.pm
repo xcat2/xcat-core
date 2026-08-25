@@ -270,6 +270,29 @@ sub _install_prebuilt_genesis {
     return ("$destination_dir/genesis.fs.$arch.gz", undef);
 }
 
+sub _remove_openembedded_genesis {
+    my ($tftpdir, $requested_arch) = @_;
+    return (0, 'Missing Genesis architecture') unless defined($requested_arch);
+    my $arch = $requested_arch eq 'ppc64el' ? 'ppc64le' : $requested_arch;
+    return (0, "Unsupported Genesis architecture: $requested_arch")
+      unless $GENESIS_ARCHITECTURES{$arch};
+
+    my $directory = "$tftpdir/xcat";
+    my @artifacts = (
+        "$directory/genesis.kernel.$arch",
+        "$directory/genesis.fs.$arch.gz",
+        "$directory/genesis.fs.$arch.lzma",
+    );
+    my $removed = 0;
+    foreach my $artifact (@artifacts) {
+        next unless -e $artifact || -l $artifact;
+        return ($removed, "Unable to remove Genesis artifact: $artifact")
+          unless unlink($artifact);
+        $removed++;
+    }
+    return ($removed, undef);
+}
+
 sub genesis_lzma_command {
     my ($have_lzma, $have_xz) = @_;
     return 'lzma -C crc32 -9'             if $have_lzma;
@@ -368,6 +391,29 @@ sub process_request {
     my $requested_arch = $request->{arg}->[0];
     if (!$requested_arch) {
         $callback->({ error => "Need to specify architecture (x86, x86_64, ppc64, ppc64le, armv7hf, aarch64 or riscv64)" }, { errorcode => [1] });
+        return;
+    }
+
+    my $canonical_arch = $requested_arch eq 'ppc64el'
+      ? 'ppc64le'
+      : $requested_arch;
+    if (($request->{arg}->[1] // '') eq '--remove-openembedded') {
+        unless ($GENESIS_ARCHITECTURES{$canonical_arch}) {
+            $callback->({ error => "Unsupported Genesis architecture: $requested_arch", errorcode => [1] });
+            return;
+        }
+        my $source = "$::XCATROOT/share/xcat/netboot/genesis-openembedded/$canonical_arch";
+        if (-d $source || -l $source) {
+            $callback->({ error => "Cannot remove boot artifacts while OpenEmbedded Genesis $canonical_arch is installed", errorcode => [1] });
+            return;
+        }
+        my ($removed, $remove_error) =
+          _remove_openembedded_genesis($tftpdir, $canonical_arch);
+        if ($remove_error) {
+            $callback->({ error => $remove_error, errorcode => [1] });
+            return;
+        }
+        $callback->({ data => "Removed $removed OpenEmbedded Genesis artifacts for $canonical_arch" });
         return;
     }
 
