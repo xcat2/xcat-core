@@ -86,6 +86,11 @@ like(
 );
 
 my $go_xcat = read_file('xCAT-server/share/xcat/tools/go-xcat');
+unlike(
+    $go_xcat,
+    qr/GO_XCAT_LIBRARY_ONLY/,
+    'go-xcat cannot be disabled by an inherited test environment variable',
+);
 for my $architecture (qw(x86 x86_64 ppc64 ppc64le armv7hf aarch64 riscv64)) {
     like(
         $go_xcat,
@@ -99,5 +104,34 @@ for my $architecture (qw(x86 x86_64 ppc64 ppc64le armv7hf aarch64 riscv64)) {
         "go-xcat removes the $architecture DEB image",
     );
 }
+
+my $mknb_pod = read_file('xCAT-client/pods/man8/mknb.8.pod');
+like(
+    $mknb_pod,
+    qr{/opt/xcat/share/xcat/netboot/genesis-openembedded/ARCH},
+    'the mknb man page documents the OpenEmbedded install namespace',
+);
+like(
+    $mknb_pod,
+    qr/x86.*x86_64.*ppc64.*ppc64le.*armv7hf.*aarch64.*riscv64/s,
+    'the mknb man page lists every exact OpenEmbedded architecture',
+);
+unlike(
+    $mknb_pod,
+    qr/For ppc64le, use the ppc64 architecture/,
+    'the mknb man page no longer presents ppc64 as the ppc64le name',
+);
+
+my $offline_guide = read_file('docs/source/guides/install-guides/common_sections.rst');
+like(
+    $offline_guide,
+    qr/reposync.*--repoid=xcat-dep-common.*--download-metadata/s,
+    'the offline guide explains how to mirror the common repository',
+);
+like(
+    $offline_guide,
+    qr/if .*common.*is not.*archive/is,
+    'the offline guide does not assume that every archive contains common',
+);
 
 done_testing();

@@ -16,8 +16,14 @@ print {$driver_fh} <<'DRIVER';
 #!/bin/bash
 set -euo pipefail
 
-export GO_XCAT_LIBRARY_ONLY=1
-source "$GO_XCAT_SOURCE"
+function_body=$(
+    awk '
+        /^function add_xcat_dep_common_repo_yum_or_zypper\(\)/ { copy = 1 }
+        copy { print }
+        copy && /^}$/ { exit }
+    ' "$GO_XCAT_SOURCE"
+)
+eval "$function_body"
 
 TMP_DIR=$TEST_TMP
 GO_XCAT_DEFAULT_BASE_URL=https://repo.example.invalid
