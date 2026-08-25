@@ -393,6 +393,16 @@ is($selected_dir, $legacy_x86, 'legacy Genesis remains the fallback');
 is($selected_arch, 'x86_64', 'the legacy x86_64 name is unchanged');
 is($selected_type, 'legacy', 'the fallback source is identified');
 
+my $linked_legacy = "$tmpdir/linked-legacy-x86_64";
+make_path("$linked_legacy/fs");
+remove_tree($legacy_x86);
+symlink($linked_legacy, $legacy_x86)
+  or die "Unable to create legacy Genesis directory symlink: $!";
+($selected_dir, $selected_arch, $selected_type) =
+  xCAT_plugin::mknb::_select_genesis_source($selection_root, 'x86_64');
+is($selected_dir, $legacy_x86, 'legacy Genesis directory symlinks remain usable');
+is($selected_type, 'legacy', 'a linked legacy source keeps its source type');
+
 my $openembedded_ppc64le =
   "$selection_root/share/xcat/netboot/genesis-openembedded/ppc64le";
 my $legacy_ppc64 = "$selection_root/share/xcat/netboot/genesis/ppc64";

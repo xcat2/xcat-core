@@ -39,6 +39,11 @@ my $common_dep = read_file('xCAT-release/xcat-dep-common.repo');
 assert_repo_security($common_dep, 'common dependency');
 like(
     $common_dep,
+    qr/^skip_if_unavailable=1$/m,
+    'an unavailable common repository does not block package operations',
+);
+like(
+    $common_dep,
     qr{^baseurl=https://xcat\.org/files/xcat/repos/yum/latest/xcat-dep/common$}m,
     'common dependency repo is independent of the management-node distribution'
 );
