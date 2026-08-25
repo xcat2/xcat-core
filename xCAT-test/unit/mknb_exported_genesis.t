@@ -106,6 +106,8 @@ my $tmpdir = tempdir(CLEANUP => 1);
 my $export = "$tmpdir/export";
 my $tftpdir = "$tmpdir/tftpboot";
 prepare_export($export, 'new kernel', 'new initramfs');
+make_path("$tftpdir/xcat");
+write_file("$tftpdir/xcat/genesis.fs.x86_64.lzma", 'old initramfs');
 
 ok(
     xCAT_plugin::mknb::_prebuilt_genesis_requested($export),
@@ -124,6 +126,8 @@ my ($published_kernel, $published_initramfs) =
   published_files($tftpdir, 'x86_64');
 is(read_file($published_kernel), 'new kernel', 'the kernel is published');
 is(read_file($published_initramfs), 'new initramfs', 'the initramfs is published');
+ok(!-e "$tftpdir/xcat/genesis.fs.x86_64.lzma",
+    'installing an export removes the obsolete legacy initramfs');
 is(
     read_file("$tftpdir/xcat/genesis.exact-arch.x86_64"),
     export_manifest('x86_64'),
