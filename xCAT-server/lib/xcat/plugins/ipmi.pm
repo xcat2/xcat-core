@@ -19,6 +19,7 @@ use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use xCAT::SPD qw/decode_spd/;
 use xCAT::IPMI;
+use xCAT::BMCUtils;
 use xCAT::PasswordUtils;
 use File::Basename;
 my %needbladeinv;
@@ -868,25 +869,6 @@ sub next_setnetinfo {
     &setnetinfo($sessdata);
 }
 
-# The settings that take one value per BMC. Every other subcommand keeps its
-# argument whole, because a comma can belong to the value itself.
-my %per_bmc_subcommand = map { $_ => 1 } qw(ip netmask gateway);
-
-#-------------------------------------------------------
-# A node can carry more than one BMC, and each session then runs with its own
-# bmcnum. A comma separated value gives one setting per BMC, in that order.
-# Returns the value for this BMC, or undef when the list holds none there.
-#-------------------------------------------------------
-sub per_bmc_argument {
-    my ($argument, $bmcnum) = @_;
-    return $argument unless defined $argument and $argument =~ /,/;
-    $bmcnum = 1 unless defined $bmcnum and $bmcnum =~ /^\d+$/ and $bmcnum > 0;
-    my @arglist = split /,/, $argument, -1;
-    my $value = $arglist[ $bmcnum - 1 ];
-    return undef unless defined $value and $value ne '';
-    return $value;
-}
-
 sub setnetinfo {
     my $sessdata   = shift;
     my $subcommand = $sessdata->{subcommand};
@@ -915,17 +897,18 @@ sub setnetinfo {
         return idpxthermprofile($argument);
     }
 
-    if ($per_bmc_subcommand{$subcommand} and $argument =~ /,/) {
-        my $bmcvalue = per_bmc_argument($argument, $sessdata->{bmcnum});
-        unless (defined $bmcvalue) {
-            $callback->({ errorcode => [1], error => ["The value $argument does not carry a setting for BMC " . $sessdata->{bmcnum} . ", give one value per BMC"] });
-            return;
-        }
-        $argument = $bmcvalue;
+    my $bmcsetting = xCAT::BMCUtils::rspconfig_bmc_setting(
+        $subcommand, $argument, $sessdata->{bmcnum} );
+    if ($bmcsetting->{error}) {
+        $callback->(
+            { errorcode => [1], error => [ $bmcsetting->{error} ] } );
+        return;
+    }
+    if ($bmcsetting->{session_subcommand}) {
+        $argument = $bmcsetting->{argument};
 
-        # The follow-up callbacks read the subcommand again, so leave this
-        # session holding the value of its own BMC
-        $sessdata->{subcommand} = "$subcommand=$argument";
+        # Follow-up callbacks read the subcommand from the session.
+        $sessdata->{subcommand} = $bmcsetting->{session_subcommand};
     }
     if ($subcommand eq "alert" and ($argument =~ /^(on|en|enable|enabled)$/i)) {
         $netfun = 0x4;
