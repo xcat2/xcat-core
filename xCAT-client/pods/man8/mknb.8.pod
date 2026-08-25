@@ -6,6 +6,8 @@ B<mknb> - creates a network boot root image for node discovery and flashing
 
 B<mknb> I<arch>
 
+B<mknb> I<arch> B<--remove-openembedded>
+
 
 =head1 DESCRIPTION
 
@@ -14,7 +16,7 @@ It creates a network boot root image (used for node discovery, BMC programming, 
 for the same architecture that the management node is.  So you normally do not need to run the
 B<mknb> command yourself.
 
-If you make custom changes to the network boot root image, run B<mknb> again to regenerate it. In an xCAT hierarchical cluster where service nodes have local C</tftpboot> directories (C<site.sharedtftp=0>), copy the generated image to each service node.
+If you make custom changes to the network boot root image, run B<mknb> again to regenerate it. In an xCAT hierarchical cluster where service nodes have local C</tftpboot> directories (C<site.sharedtftp=0>), install and refresh an OpenEmbedded image on the service nodes before the management node starts using its exact architecture name. Legacy images must still be copied to each service node.
 
 An OpenEmbedded Genesis package installs an exported image under C</opt/xcat/share/xcat/netboot/genesis-openembedded/ARCH>. B<mknb> prefers that image when it is installed. Otherwise it uses the old image under C</opt/xcat/share/xcat/netboot/genesis/ARCH>.
 
@@ -31,6 +33,10 @@ OpenEmbedded images use the exact architecture names C<x86>, C<x86_64>, C<ppc64>
 =item I<arch>
 
 The hardware architecture for which to build the boot image.
+
+=item B<--remove-openembedded>
+
+Remove the published boot files for the selected OpenEmbedded architecture. Image packages use this option when they are removed.
 
 =back
 
