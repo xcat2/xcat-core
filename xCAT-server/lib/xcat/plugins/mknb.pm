@@ -426,6 +426,16 @@ sub process_request {
         $callback->({ error => "Unable to find a Genesis image for architecture $requested_arch", errorcode => [1] });
         return;
     }
+    if ($canonical_arch eq 'ppc64le' && $arch eq 'ppc64') {
+        my $marker = "$tftpdir/xcat/genesis.exact-arch.ppc64";
+        if (-e $marker || -l $marker) {
+            $callback->({
+                error => 'Cannot use the legacy ppc64le fallback while a canonical ppc64 image is published',
+                errorcode => [1],
+            });
+            return;
+        }
+    }
     if ($requested_arch eq 'ppc64el') {
         $callback->({ data => 'Using the canonical architecture name ppc64le' });
     }
