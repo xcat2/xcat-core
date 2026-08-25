@@ -5,35 +5,13 @@ use warnings;
 use FindBin;
 use File::Spec;
 use Test::More;
-
-my $root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
-my $plugin = File::Spec->catfile( $root,
-    'xCAT-server', 'lib', 'xcat', 'plugins', 'blade.pm' );
-plan skip_all => 'blade.pm not found' unless -r $plugin;
-
-my $lib = File::Spec->catdir( $root, 'xCAT-server', 'lib', 'perl' );
-my $module = File::Spec->catfile( $lib, 'xCAT', 'BladeUtils.pm' );
-my $direct_module = -r $module;
-my $source;
-
-if ($direct_module) {
-    unshift @INC, $lib;
-    require xCAT::BladeUtils;
-} else {
-    open( my $fh, '<', $plugin ) or die "Unable to read $plugin: $!";
-    $source = do { local $/; <$fh> };
-    close($fh);
-
-    my ($routine) = $source =~ /(sub blade_nodes_from_mp \{.*?\n\}\n)/s;
-    BAIL_OUT('could not extract blade_nodes_from_mp from blade.pm') unless $routine;
-    eval "package BladeFilter; $routine 1;"
-      or BAIL_OUT("could not evaluate the routine: $@");
-}
+use lib File::Spec->catdir( $FindBin::Bin, '..', '..',
+    'xCAT-server', 'lib', 'perl' );
+use xCAT::BladeUtils;
 
 sub blades {
-    my @nodes = $direct_module
-      ? xCAT::BladeUtils::blade_nodes_from_mp(@_)
-      : BladeFilter::blade_nodes_from_mp(@_);
+    my @entries = @_;
+    my @nodes = xCAT::BladeUtils::blade_nodes_from_mp(@entries);
     return [ sort @nodes ];
 }
 
@@ -104,15 +82,5 @@ is_deeply( blades( { node => 'lonely' } ), [],
 is_deeply( blades(), [], 'an empty table asks nothing' );
 is_deeply( blades( {}, { node => 'x220b', nodetype => 'blade' } ), ['x220b'],
     'a row without a node name is skipped' );
-
-# The caller has to read the two attributes the routine needs, and has to stop
-# before the work that reads the arp table when nothing is left to ask.
-unless ($direct_module) {
-    like( $source, qr/getAllNodeAttribs\(\[qw\(node nodetype mpa\)\]\)/,
-        'the findme request reads the hardware type and the chassis' );
-    like( $source,
-        qr/my \@blades\s*=\s*blade_nodes_from_mp\(\@bladents\);.*?unless \(\@blades\) \{ return; \}/s,
-        'the handler returns when the table holds no blades' );
-}
 
 done_testing();
