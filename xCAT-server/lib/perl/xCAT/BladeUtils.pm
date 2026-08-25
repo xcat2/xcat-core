@@ -3,16 +3,6 @@ package xCAT::BladeUtils;
 use strict;
 use warnings;
 
-sub findme_request_for_handler {
-    my ($request) = @_;
-
-    return unless ref $request eq 'HASH';
-    return unless ref $request->{command} eq 'ARRAY';
-    return unless defined $request->{command}->[0];
-    return unless $request->{command}->[0] eq 'findme';
-    return [$request];
-}
-
 sub blade_nodes_from_mp {
     my @entries = @_;
     my %hwtype;

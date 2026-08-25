@@ -21,6 +21,7 @@ use Thread qw(yield);
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::BladeUtils;
+use xCAT::DiscoveryUtils;
 use xCAT::NetworkUtils;
 use xCAT::ServiceNodeUtils;
 use xCAT::PasswordUtils;
@@ -4144,7 +4145,7 @@ sub preprocess_request {
     #if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
 
     my $findme_request =
-      xCAT::BladeUtils::findme_request_for_handler($request);
+      xCAT::DiscoveryUtils::findme_request_for_handler($request);
     if ($findme_request) { return $findme_request; }
     if ($request->{_xcatpreprocessed}->[0] == 1) { return [$request]; }
     my $callback = shift;
@@ -4472,8 +4473,8 @@ sub process_request {
             }
         }
     }
-    if ($request->{command}->[0] eq "findme") {
-        if (defined($request->{discoverymethod}) and defined($request->{discoverymethod}->[0]) and ($request->{discoverymethod}->[0] ne 'undef')) {
+    if (xCAT::DiscoveryUtils::is_findme_request($request)) {
+        if (xCAT::DiscoveryUtils::findme_request_is_claimed($request)) {
 
             # The findme request had been processed by other module, just return
             return;
@@ -6241,9 +6242,6 @@ sub genhwtree
 
 
 1;
-
-
-
 
 
 
