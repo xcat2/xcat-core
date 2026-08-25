@@ -3,6 +3,8 @@ package xCAT::DHCP::OmapiPolicy;
 use strict;
 use warnings;
 
+use xCAT::StringUtils qw(trim);
+
 my %ALGORITHMS = (
     'hmac-md5'    => 157,
     'hmac-sha1'   => 161,
@@ -57,7 +59,7 @@ sub normalize_algorithm {
     my ( $class, $algorithm ) = @_;
 
     $algorithm = 'hmac-md5' unless defined($algorithm) && $algorithm ne '';
-    $algorithm =~ s/^\s+|\s+$//g;
+    $algorithm = trim($algorithm);
     $algorithm = lc($algorithm);
 
     return $algorithm if $ALGORITHMS{$algorithm};
@@ -86,7 +88,7 @@ sub normalize_key_name {
     my ( $class, $key_name ) = @_;
 
     $key_name = 'xcat_key' unless defined($key_name) && $key_name ne '';
-    $key_name =~ s/^\s+|\s+$//g;
+    $key_name = trim($key_name);
 
     return $key_name if $key_name =~ /\A[A-Za-z0-9_][A-Za-z0-9_.-]*\z/;
     return;
@@ -96,7 +98,7 @@ sub normalize_omshell_path {
     my ( $class, $path ) = @_;
 
     $path = '/usr/bin/omshell' unless defined($path) && $path ne '';
-    $path =~ s/^\s+|\s+$//g;
+    $path = trim($path);
 
     return $path if $path =~ m{\A/[A-Za-z0-9_.:/%+=@-]+\z};
     return;

@@ -3,13 +3,15 @@ package xCAT::DHCP::Backend;
 use strict;
 use warnings;
 
+use xCAT::StringUtils qw(trim);
+
 my %valid_backend = map { $_ => 1 } qw(auto isc kea);
 
 sub normalize {
     my ( $class, $backend ) = @_;
 
     $backend = 'auto' unless defined($backend) && $backend ne '';
-    $backend =~ s/^\s+|\s+$//g;
+    $backend = trim($backend);
     $backend = lc($backend);
 
     return $backend if $valid_backend{$backend};
