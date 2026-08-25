@@ -20,6 +20,8 @@ use xCAT::Table;
 use Thread qw(yield);
 use xCAT::Utils;
 use xCAT::TableUtils;
+use xCAT::BladeUtils;
+use xCAT::DiscoveryUtils;
 use xCAT::NetworkUtils;
 use xCAT::ServiceNodeUtils;
 use xCAT::PasswordUtils;
@@ -4142,6 +4144,9 @@ sub preprocess_request {
 
     #if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
 
+    my $findme_request =
+      xCAT::DiscoveryUtils::findme_request_for_handler($request);
+    if ($findme_request) { return $findme_request; }
     if ($request->{_xcatpreprocessed}->[0] == 1) { return [$request]; }
     my $callback = shift;
     my @requests;
@@ -4149,6 +4154,7 @@ sub preprocess_request {
     #display usage statement if -h is present or no noderage is specified
     my $noderange = $request->{node};           #Should be arrayref
     my $command   = $request->{command}->[0];
+
     my $extrargs  = $request->{arg};
     my @exargs    = ($request->{arg});
     if (ref($extrargs)) {
@@ -4258,9 +4264,6 @@ sub preprocess_request {
     foreach my $node (@$noderange) {
         my $ent = $mptabhash->{$node}->[0]; #$mptab->getNodeAttribs($node,['mpa', 'id']);
         my $mpaent;
-        if ($request->{command}->[0] eq 'findme' and $ent->{nodetype} ne 'blade') {
-            next;
-        }
         if (defined($ent->{mpa})) {
             push @{ $mpa_hash{ $ent->{mpa} }{nodes} }, $node;
             unless ($mpatype{ $ent->{mpa} }) {
@@ -4470,8 +4473,8 @@ sub process_request {
             }
         }
     }
-    if ($request->{command}->[0] eq "findme") {
-        if (defined($request->{discoverymethod}) and defined($request->{discoverymethod}->[0]) and ($request->{discoverymethod}->[0] ne 'undef')) {
+    if (xCAT::DiscoveryUtils::is_findme_request($request)) {
+        if (xCAT::DiscoveryUtils::findme_request_is_claimed($request)) {
 
             # The findme request had been processed by other module, just return
             return;
@@ -4479,11 +4482,10 @@ sub process_request {
 
         my $mptab = xCAT::Table->new("mp");
         unless ($mptab) { return 2; }
-        my @bladents = $mptab->getAllNodeAttribs([qw(node)]);
-        my @blades;
-        foreach (@bladents) {
-            push @blades, $_->{node};
-        }
+        my @bladents = $mptab->getAllNodeAttribs([qw(node nodetype mpa)]);
+        my @blades = xCAT::BladeUtils::blade_nodes_from_mp(@bladents);
+
+        unless (@blades) { return; }
         my %invreq;
         $invreq{node}    = \@blades;
         $invreq{arg}     = ['mac,uuid'];
@@ -6240,10 +6242,6 @@ sub genhwtree
 
 
 1;
-
-
-
-
 
 
 

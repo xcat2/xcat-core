@@ -19,6 +19,8 @@ use strict;
 use xCAT::Table;
 use xCAT::Utils;
 use xCAT::TableUtils;
+use xCAT::BladeUtils;
+use xCAT::DiscoveryUtils;
 use xCAT::ServiceNodeUtils;
 use xCAT::Usage;
 use IO::Socket;
@@ -308,6 +310,9 @@ sub preprocess_request {
     my $request = shift;
 
     #if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
+    my $findme_request =
+      xCAT::DiscoveryUtils::findme_request_for_handler($request);
+    if ($findme_request) { return $findme_request; }
     if ((defined($request->{_xcatpreprocessed}))
         && ($request->{_xcatpreprocessed}->[0] == 1))
     {
@@ -704,19 +709,18 @@ sub process_request {
             $bladepass = $tmp->{password};
         }
     }
-    if ($request->{command}->[0] eq "findme") {
-        if (defined($request->{discoverymethod}) and defined($request->{discoverymethod}->[0]) and ($request->{discoverymethod}->[0] ne 'undef')) {
+    if (xCAT::DiscoveryUtils::is_findme_request($request)) {
+        if (xCAT::DiscoveryUtils::findme_request_is_claimed($request)) {
 
             # The findme request had been processed by other module, just return
             return;
         }
         my $mptab = xCAT::Table->new("mp");
         unless ($mptab) { return 2; }
-        my @bladents = $mptab->getAllNodeAttribs([qw(node)]);
-        my @blades;
-        foreach (@bladents) {
-            push @blades, $_->{node};
-        }
+        my @bladents = $mptab->getAllNodeAttribs([qw(node nodetype mpa)]);
+        my @blades = xCAT::BladeUtils::blade_nodes_from_mp(@bladents);
+
+        unless (@blades) { return; }
         my %invreq;
         $invreq{node}    = \@blades;
         $invreq{arg}     = ['mac'];

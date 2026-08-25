@@ -9,6 +9,31 @@ $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
 
 use xCAT::MsgUtils;
 
+sub is_findme_request {
+    my ($request) = @_;
+
+    return 0 unless ref $request eq 'HASH';
+    return 0 unless ref $request->{command} eq 'ARRAY';
+    return 0 unless defined $request->{command}->[0];
+    return $request->{command}->[0] eq 'findme';
+}
+
+sub findme_request_for_handler {
+    my ($request) = @_;
+
+    return unless is_findme_request($request);
+    return [$request];
+}
+
+sub findme_request_is_claimed {
+    my ($request) = @_;
+
+    return 0 unless is_findme_request($request);
+    return 0 unless ref $request->{discoverymethod} eq 'ARRAY';
+    return 0 unless defined $request->{discoverymethod}->[0];
+    return $request->{discoverymethod}->[0] ne 'undef';
+}
+
 =head3 update_discovery_data
  Update the discovery data from the xcat request to discoverydata table to indicate the discovery events
  arg1 - the request
