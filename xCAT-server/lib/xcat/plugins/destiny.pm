@@ -62,7 +62,8 @@ sub _genesis_boot_arch {
     my $arch = $requested_arch eq 'ppc64el' ? 'ppc64le' : $requested_arch;
 
     if ($arch eq 'ppc64le'
-        && !-r "$directory/xcat/genesis.kernel.ppc64le") {
+        && !-r "$directory/xcat/genesis.kernel.ppc64le"
+        && !-r "$directory/xcat/genesis.exact-arch.ppc64") {
         return 'ppc64';
     }
     return $arch;

@@ -198,6 +198,8 @@ sub _install_prebuilt_genesis {
     my @artifacts = (
         [ 'kernel',             "$destination_dir/genesis.kernel.$arch" ],
         [ 'initramfs.cpio.gz', "$destination_dir/genesis.fs.$arch.gz" ],
+        [ $GENESIS_EXPORT_MANIFEST,
+          "$destination_dir/genesis.exact-arch.$arch" ],
     );
     my @staged;
 
@@ -282,6 +284,7 @@ sub _remove_openembedded_genesis {
         "$directory/genesis.kernel.$arch",
         "$directory/genesis.fs.$arch.gz",
         "$directory/genesis.fs.$arch.lzma",
+        "$directory/genesis.exact-arch.$arch",
     );
     my $removed = 0;
     foreach my $artifact (@artifacts) {
@@ -600,6 +603,13 @@ sub process_request {
     system("rm -rf $tempdir");
     unless ($initrd_file) {
         $callback->({ data => ["Creating filesystem file in $tftpdir/xcat failed"] });
+        return;
+    }
+    my $exact_arch_marker = "$tftpdir/xcat/genesis.exact-arch.$arch";
+    if (($genesis_type eq 'legacy' || $genesis_type eq 'classic')
+        && (-e $exact_arch_marker || -l $exact_arch_marker)
+        && !unlink($exact_arch_marker)) {
+        $callback->({ error => ["Unable to remove Genesis architecture marker: $exact_arch_marker"], errorcode => [1] });
         return;
     }
 
