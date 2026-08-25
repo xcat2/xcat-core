@@ -3,23 +3,12 @@ use strict;
 use warnings;
 
 use FindBin;
-use File::Spec;
+use lib "$FindBin::Bin/../lib";
 use Test::More;
 
-my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
+use XCAT::Test::File qw(slurp_repo_file);
 
-sub read_file {
-    my ($file) = @_;
-    my $path = File::Spec->catfile( $repo_root, $file );
-
-    open( my $fh, '<', $path ) or die "Unable to read $path: $!";
-    my $contents = do { local $/; <$fh> };
-    close($fh);
-
-    return $contents;
-}
-
-my $genimage = read_file('xCAT-server/share/xcat/netboot/rh/genimage');
+my $genimage = slurp_repo_file('xCAT-server/share/xcat/netboot/rh/genimage');
 
 like( $genimage, qr/sub el_major_version/, 'RH genimage has an EL major-version helper' );
 like( $genimage, qr/sub rpm_installroot_command/, 'RH genimage builds RPM installroot commands through one helper' );
