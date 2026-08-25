@@ -156,6 +156,31 @@ ok(!-e "$tftpdir/xcat/genesis.exact-arch.ppc64le",
 ok(-f "$tftpdir/xcat/genesis.kernel.ppc64",
     'retiring ppc64le does not remove the legacy ppc64 fallback');
 
+my $failed_kernel = "$tftpdir/xcat/genesis.kernel.aarch64";
+make_path($failed_kernel);
+for my $artifact (qw(
+  genesis.fs.aarch64.gz
+  genesis.fs.aarch64.lzma
+  genesis.exact-arch.aarch64
+)) {
+    write_file("$tftpdir/xcat/$artifact", 'stale artifact');
+}
+($removed, $remove_error) =
+  xCAT_plugin::mknb::_remove_openembedded_genesis($tftpdir, 'aarch64');
+is($removed, 3, 'artifact cleanup continues after an unlink failure');
+like(
+    $remove_error,
+    qr/Unable to remove Genesis artifact: \Q$failed_kernel\E/,
+    'artifact cleanup reports the failed path',
+);
+ok(-d $failed_kernel, 'the failed artifact remains in place');
+ok(
+    !-e "$tftpdir/xcat/genesis.fs.aarch64.gz"
+      && !-e "$tftpdir/xcat/genesis.fs.aarch64.lzma"
+      && !-e "$tftpdir/xcat/genesis.exact-arch.aarch64",
+    'artifact cleanup removes every remaining path',
+);
+
 write_file($published_kernel, 'current kernel');
 write_file($published_initramfs, 'current initramfs');
 write_file("$export/kernel", 'corrupt kernel');

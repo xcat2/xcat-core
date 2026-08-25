@@ -2,36 +2,25 @@
 use strict;
 use warnings;
 
-use File::Spec;
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 use Test::More;
 
-my $root = File::Spec->rel2abs(File::Spec->catdir($FindBin::Bin, '..', '..'));
+use XCAT::Test::File qw(slurp_repo_file);
 
-sub read_file {
-    my ($relative) = @_;
-    my $path = File::Spec->catfile($root, split m{/}, $relative);
-    open(my $fh, '<', $path) or die "open $path: $!";
-    my $content = do { local $/; <$fh> };
-    close($fh) or die "close $path: $!";
-    return $content;
-}
+my $rpm_weak_dependencies = join(
+    "\n",
+    '%if 0%{?fedora} || 0%{?rhel} >= 8 || 0%{?suse_version} >= 1500',
+    'Recommends: xCAT-genesis-openembedded-x86_64',
+    'Recommends: xCAT-genesis-openembedded-ppc64le',
+    '%endif',
+);
 
-my $rpm_spec = read_file('xCAT/xCAT.spec');
+my $rpm_spec = slurp_repo_file('xCAT/xCAT.spec');
 like(
     $rpm_spec,
-    qr/^%if 0%\{\?fedora\} \|\| 0%\{\?rhel\} >= 8 \|\| 0%\{\?suse_version\} >= 1500$/m,
-    'RPM weak dependencies are limited to package managers that support them',
-);
-like(
-    $rpm_spec,
-    qr/^Recommends:\s+xCAT-genesis-openembedded-x86_64$/m,
-    'RPM installations recommend the first-class x86_64 image',
-);
-like(
-    $rpm_spec,
-    qr/^Recommends:\s+xCAT-genesis-openembedded-ppc64le$/m,
-    'RPM installations recommend the first-class ppc64le image',
+    qr/^\Q$rpm_weak_dependencies\E$/m,
+    'RPM weak dependencies stay inside their compatibility guard',
 );
 unlike(
     $rpm_spec,
@@ -39,7 +28,7 @@ unlike(
     'missing OpenEmbedded images do not block an RPM upgrade',
 );
 
-my $deb_control = read_file('xCAT/debian/control');
+my $deb_control = slurp_repo_file('xCAT/debian/control');
 like(
     $deb_control,
     qr/^Recommends:.*\bxcat-genesis-openembedded-x86-64\b/m,
@@ -56,24 +45,14 @@ unlike(
     'missing OpenEmbedded images do not block a DEB upgrade',
 );
 
-my $sn_rpm_spec = read_file('xCATsn/xCATsn.spec');
+my $sn_rpm_spec = slurp_repo_file('xCATsn/xCATsn.spec');
 like(
     $sn_rpm_spec,
-    qr/^%if 0%\{\?fedora\} \|\| 0%\{\?rhel\} >= 8 \|\| 0%\{\?suse_version\} >= 1500$/m,
-    'service-node weak dependencies use the same compatibility guard',
-);
-like(
-    $sn_rpm_spec,
-    qr/^Recommends:\s+xCAT-genesis-openembedded-x86_64$/m,
-    'RPM service nodes recommend the first-class x86_64 image',
-);
-like(
-    $sn_rpm_spec,
-    qr/^Recommends:\s+xCAT-genesis-openembedded-ppc64le$/m,
-    'RPM service nodes recommend the first-class ppc64le image',
+    qr/^\Q$rpm_weak_dependencies\E$/m,
+    'service-node weak dependencies stay inside their compatibility guard',
 );
 
-my $sn_deb_control = read_file('xCATsn/debian/control');
+my $sn_deb_control = slurp_repo_file('xCATsn/debian/control');
 like(
     $sn_deb_control,
     qr/^Recommends:.*\bxcat-genesis-openembedded-x86-64\b/m,
@@ -85,7 +64,7 @@ like(
     'DEB service nodes recommend the first-class ppc64le image',
 );
 
-my $go_xcat = read_file('xCAT-server/share/xcat/tools/go-xcat');
+my $go_xcat = slurp_repo_file('xCAT-server/share/xcat/tools/go-xcat');
 unlike(
     $go_xcat,
     qr/GO_XCAT_LIBRARY_ONLY/,
@@ -105,7 +84,7 @@ for my $architecture (qw(x86 x86_64 ppc64 ppc64le armv7hf aarch64 riscv64)) {
     );
 }
 
-my $mknb_pod = read_file('xCAT-client/pods/man8/mknb.8.pod');
+my $mknb_pod = slurp_repo_file('xCAT-client/pods/man8/mknb.8.pod');
 like(
     $mknb_pod,
     qr{/opt/xcat/share/xcat/netboot/genesis-openembedded/ARCH},
@@ -122,7 +101,8 @@ unlike(
     'the mknb man page no longer presents ppc64 as the ppc64le name',
 );
 
-my $offline_guide = read_file('docs/source/guides/install-guides/common_sections.rst');
+my $offline_guide =
+  slurp_repo_file('docs/source/guides/install-guides/common_sections.rst');
 like(
     $offline_guide,
     qr/reposync.*--repofrompath=xcat-dep-common,https:\/\/xcat\.org\/.*\/xcat-dep\/common.*--repoid=xcat-dep-common.*--download-metadata/s,
@@ -159,18 +139,16 @@ unlike(
     'the offline guide does not depend on files reposync cannot download',
 );
 
-my $yum_guide = read_file(
-    'docs/source/guides/install-guides/yum/configure_xcat.rst'
-);
+my $yum_guide =
+  slurp_repo_file('docs/source/guides/install-guides/yum/configure_xcat.rst');
 like(
     $yum_guide,
     qr/start-after: BEGIN_configure_xcat_local_repo_xcat-dep_DNF/,
     'the DNF guide includes the DNF common repository steps',
 );
 
-my $zypper_guide = read_file(
-    'docs/source/guides/install-guides/zypper/configure_xcat.rst'
-);
+my $zypper_guide =
+  slurp_repo_file('docs/source/guides/install-guides/zypper/configure_xcat.rst');
 like(
     $zypper_guide,
     qr/start-after: BEGIN_configure_xcat_local_repo_xcat-dep_ZYPPER/,

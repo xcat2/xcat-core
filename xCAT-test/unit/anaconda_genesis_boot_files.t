@@ -3,6 +3,7 @@ use strict;
 use warnings;
 
 use File::Path qw(make_path);
+use File::Slurper qw(write_text);
 use File::Temp qw(tempdir);
 use FindBin;
 use Test::More;
@@ -17,13 +18,6 @@ use lib "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins";
 
 require anaconda;
 
-sub write_file {
-    my ($path) = @_;
-    open(my $fh, '>', $path) or die "open $path: $!";
-    print {$fh} "test\n";
-    close($fh) or die "close $path: $!";
-}
-
 my $tftp = tempdir(CLEANUP => 1);
 make_path("$tftp/xcat");
 for my $path (qw(
@@ -32,7 +26,7 @@ for my $path (qw(
   genesis.fs.ppc64.lzma
   genesis.fs.ppc64le.gz
 )) {
-    write_file("$tftp/xcat/$path");
+    write_text("$tftp/xcat/$path", "test\n");
 }
 
 my ($kernel, $initrd) =
