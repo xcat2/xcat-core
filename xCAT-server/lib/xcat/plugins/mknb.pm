@@ -269,6 +269,7 @@ sub _install_prebuilt_genesis {
     }
 
     unlink(values(%backups));
+    unlink("$destination_dir/genesis.fs.$arch.lzma");
     return ("$destination_dir/genesis.fs.$arch.gz", undef);
 }
 
