@@ -19,6 +19,7 @@ use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use xCAT::SPD qw/decode_spd/;
 use xCAT::IPMI;
+use xCAT::BMCUtils;
 use xCAT::PasswordUtils;
 use File::Basename;
 my %needbladeinv;
@@ -894,6 +895,20 @@ sub setnetinfo {
     }
     if ($subcommand eq "thermprofile") {
         return idpxthermprofile($argument);
+    }
+
+    my $bmcsetting = xCAT::BMCUtils::rspconfig_bmc_setting(
+        $subcommand, $argument, $sessdata->{bmcnum} );
+    if ($bmcsetting->{error}) {
+        $callback->(
+            { errorcode => [1], error => [ $bmcsetting->{error} ] } );
+        return;
+    }
+    if ($bmcsetting->{session_subcommand}) {
+        $argument = $bmcsetting->{argument};
+
+        # Follow-up callbacks read the subcommand from the session.
+        $sessdata->{subcommand} = $bmcsetting->{session_subcommand};
     }
     if ($subcommand eq "alert" and ($argument =~ /^(on|en|enable|enabled)$/i)) {
         $netfun = 0x4;
