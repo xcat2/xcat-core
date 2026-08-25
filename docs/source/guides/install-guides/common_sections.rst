@@ -147,7 +147,9 @@ Unless you are downloading ``xcat-dep`` to match a specific version of xCAT, it'
    The xcat-dep archives do not contain this repository: ::
 
         mkdir -p ~/xcat/xcat-dep/common
-        dnf reposync --repoid=xcat-dep-common --download-metadata \
+        dnf reposync \
+          --repofrompath=xcat-dep-common,https://xcat.org/files/xcat/repos/yum/latest/xcat-dep/common \
+          --repoid=xcat-dep-common --download-metadata \
           --download-path ~/xcat/xcat-dep/common --norepopath
 
    Copy the mirror to the management node and install ``xCAT-release`` from the
