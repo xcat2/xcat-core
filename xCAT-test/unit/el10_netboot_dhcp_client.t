@@ -3,27 +3,16 @@ use strict;
 use warnings;
 
 use FindBin;
-use File::Spec;
+use lib "$FindBin::Bin/../lib";
 use Test::More;
 
-my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
+use XCAT::Test::File qw(repo_path slurp_repo_file);
 
-sub read_file {
-    my ($file) = @_;
-    my $path = File::Spec->catfile( $repo_root, $file );
-
-    open( my $fh, '<', $path ) or die "Unable to read $path: $!";
-    my $contents = do { local $/; <$fh> };
-    close($fh);
-
-    return $contents;
-}
-
-my $spec = read_file('xCAT-server/xCAT-server.spec');
+my $spec = slurp_repo_file('xCAT-server/xCAT-server.spec');
 unlike( $spec, qr/\bdnf\s+download\b/, 'xCAT-server RPM scripts do not download packages' );
 unlike( $spec, qr{/install/dhcp_pkgs}, 'xCAT-server RPM scripts do not write hidden DHCP package directories' );
 
-my $anaconda = read_file('xCAT-server/lib/xcat/plugins/anaconda.pm');
+my $anaconda = slurp_repo_file('xCAT-server/lib/xcat/plugins/anaconda.pm');
 unlike( $anaconda, qr{/install/dhcp_pkgs}, 'copycds does not inject hidden DHCP package directories into pkgdir' );
 
 my @pkglist_files = qw(
@@ -37,12 +26,12 @@ my %el10_pkglist_aliases = (
 );
 
 foreach my $file ( sort keys %el10_pkglist_aliases ) {
-    my $path = File::Spec->catfile( $repo_root, $file );
+    my $path = repo_path($file);
     is( readlink($path), $el10_pkglist_aliases{$file}, "$file uses the EL10 package list" );
 }
 
 foreach my $file (@pkglist_files) {
-    my $path = File::Spec->catfile( $repo_root, $file );
+    my $path = repo_path($file);
     open( my $fh, '<', $path ) or die "Unable to read $path: $!";
 
     my @packages;
