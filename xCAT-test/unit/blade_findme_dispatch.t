@@ -6,19 +6,14 @@ use FindBin;
 use File::Spec;
 use Test::More;
 use lib File::Spec->catdir( $FindBin::Bin, '..', '..',
+    'perl-xCAT' ),
+  File::Spec->catdir( $FindBin::Bin, '..', '..',
     'xCAT-server', 'lib', 'perl' );
-use xCAT::BladeUtils;
-
-my $shared_discovery_helper = eval {
-    require xCAT::DiscoveryUtils;
-    xCAT::DiscoveryUtils->can('findme_request_for_handler');
-};
+use xCAT::DiscoveryUtils;
 
 sub entry_for {
     my ($req) = @_;
-    return $shared_discovery_helper
-      ? xCAT::DiscoveryUtils::findme_request_for_handler($req)
-      : xCAT::BladeUtils::findme_request_for_handler($req);
+    return xCAT::DiscoveryUtils::findme_request_for_handler($req);
 }
 
 # This is the request a booting node sends: a command and its own details, and
@@ -47,5 +42,26 @@ foreach my $command (qw(rpower rinv rvitals rbeacon)) {
 
 is( entry_for({}), undef, 'a request without a command is left alone' );
 is( entry_for(undef), undef, 'an undefined request is left alone' );
+
+ok( !xCAT::DiscoveryUtils::findme_request_is_claimed($request),
+    'a fresh findme request is available to a discovery handler' );
+ok(
+    !xCAT::DiscoveryUtils::findme_request_is_claimed(
+        { command => ['findme'], discoverymethod => ['undef'] }
+    ),
+    'the discovery sentinel leaves a findme request available'
+);
+ok(
+    xCAT::DiscoveryUtils::findme_request_is_claimed(
+        { command => ['findme'], discoverymethod => ['blade'] }
+    ),
+    'a named discovery method claims the findme request'
+);
+ok(
+    !xCAT::DiscoveryUtils::findme_request_is_claimed(
+        { command => ['rinv'], discoverymethod => ['blade'] }
+    ),
+    'a discovery method does not turn another command into findme'
+);
 
 done_testing();
