@@ -13,8 +13,9 @@ BEGIN {
 
 use lib "$FindBin::Bin/../../perl-xCAT";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
+use lib "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins";
 
-require "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/anaconda.pm";
+require anaconda;
 
 sub write_file {
     my ($path) = @_;
