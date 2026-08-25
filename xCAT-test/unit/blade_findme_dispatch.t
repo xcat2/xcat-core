@@ -9,9 +9,16 @@ use lib File::Spec->catdir( $FindBin::Bin, '..', '..',
     'xCAT-server', 'lib', 'perl' );
 use xCAT::BladeUtils;
 
+my $shared_discovery_helper = eval {
+    require xCAT::DiscoveryUtils;
+    xCAT::DiscoveryUtils->can('findme_request_for_handler');
+};
+
 sub entry_for {
     my ($req) = @_;
-    return xCAT::BladeUtils::findme_request_for_handler($req);
+    return $shared_discovery_helper
+      ? xCAT::DiscoveryUtils::findme_request_for_handler($req)
+      : xCAT::BladeUtils::findme_request_for_handler($req);
 }
 
 # This is the request a booting node sends: a command and its own details, and
