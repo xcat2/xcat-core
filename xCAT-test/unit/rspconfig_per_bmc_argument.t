@@ -5,48 +5,14 @@ use warnings;
 use FindBin;
 use File::Spec;
 use Test::More;
-
-my $root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
-my $plugin = File::Spec->catfile( $root,
-    'xCAT-server', 'lib', 'xcat', 'plugins', 'ipmi.pm' );
-plan skip_all => 'ipmi.pm not found' unless -r $plugin;
-
-my $lib = File::Spec->catdir( $root, 'xCAT-server', 'lib', 'perl' );
-my $module = File::Spec->catfile( $lib, 'xCAT', 'BMCUtils.pm' );
-my $direct_module = -r $module;
-my ( $source, $per_bmc );
-
-if ($direct_module) {
-    unshift @INC, $lib;
-    require xCAT::BMCUtils;
-} else {
-    open( my $fh, '<', $plugin ) or die "Unable to read $plugin: $!";
-    $source = do { local $/; <$fh> };
-    close($fh);
-
-    my ($routine) = $source =~ /(sub per_bmc_argument \{.*?\n\}\n)/s;
-    my ($gate)    = $source =~ /(my %per_bmc_subcommand = map.*?;)/s;
-    BAIL_OUT('could not extract per_bmc_argument from ipmi.pm') unless $routine;
-    BAIL_OUT('could not extract the per BMC subcommand set from ipmi.pm') unless $gate;
-    eval "package BmcArg; $gate $routine sub gate { return \\%per_bmc_subcommand } 1;"
-      or BAIL_OUT("could not evaluate per_bmc_argument: $@");
-    $per_bmc = BmcArg::gate();
-}
+use lib File::Spec->catdir( $FindBin::Bin, '..', '..',
+    'xCAT-server', 'lib', 'perl' );
+use xCAT::BMCUtils;
 
 sub setting {
     my ( $subcommand, $argument, $bmcnum ) = @_;
-    if ($direct_module) {
-        return xCAT::BMCUtils::rspconfig_bmc_setting(
-            $subcommand, $argument, $bmcnum );
-    }
-    return { argument => $argument }
-      unless $per_bmc->{$subcommand} and defined $argument and $argument =~ /,/;
-    my $value = BmcArg::per_bmc_argument( $argument, $bmcnum );
-    return { error => 1 } unless defined $value;
-    return {
-        argument           => $value,
-        session_subcommand => "$subcommand=$value",
-    };
+    return xCAT::BMCUtils::rspconfig_bmc_setting(
+        $subcommand, $argument, $bmcnum );
 }
 
 sub pick {
@@ -54,12 +20,10 @@ sub pick {
     return setting( 'ip', $argument, $bmcnum )->{argument};
 }
 
-if ($direct_module) {
-    $per_bmc = {};
-    foreach my $subcommand (qw(ip netmask gateway community snmpdest alert garp thermprofile)) {
-        my $selection = setting( $subcommand, 'first,second', 1 );
-        $per_bmc->{$subcommand} = exists $selection->{session_subcommand};
-    }
+my $per_bmc = {};
+foreach my $subcommand (qw(ip netmask gateway community snmpdest alert garp thermprofile)) {
+    my $selection = setting( $subcommand, 'first,second', 1 );
+    $per_bmc->{$subcommand} = exists $selection->{session_subcommand};
 }
 
 # A single value reaches every BMC, which is what a node with one BMC needs
@@ -95,20 +59,19 @@ is( pick( '255.255.255.0,255.255.254.0', 2 ), '255.255.254.0', 'a netmask list f
 ok( $per_bmc->{$_},  "$_ takes one value per BMC" )      for qw(ip netmask gateway);
 ok( !$per_bmc->{$_}, "$_ keeps its argument whole" )     for qw(community snmpdest alert garp thermprofile);
 
-unless ($direct_module) {
-    like( $source, qr/if \(\$per_bmc_subcommand\{\$subcommand\} and \$argument =~ \/,\/\)/,
-        'the caller splits only the settings that take a list' );
+my $selected = setting( 'ip', '10.0.0.5,10.0.0.6', 2 );
+is( $selected->{session_subcommand}, 'ip=10.0.0.6',
+    'the follow-up subcommand holds the value of its own BMC' );
+ok( !exists $selected->{error}, 'a complete list reports no mismatch' );
 
-    # The follow-up callbacks read the subcommand again, so the session has to
-    # hold the value of its own BMC by then.
-    like( $source, qr/\$sessdata->\{subcommand\} = "\$subcommand=\$argument";/,
-        'the session keeps the value of its own BMC for the follow-up' );
+my $short = setting( 'gateway', '10.0.0.1,10.0.0.2', 3 );
+like( $short->{error}, qr/does not carry a setting for BMC 3/,
+    'a short list reports which BMC has no setting' );
 
-    like( $source,
-        qr/unless \(defined \$bmcvalue\) \{\s*\n\s*\$callback->\(\{ errorcode => \[1\], error => \["The value \$argument does not carry a setting for BMC/,
-        'the caller reports a short list instead of sending it' );
-    like( $source, qr/if \(\$subcommand eq "thermprofile"\) \{\n\s*return idpxthermprofile\(\$argument\);/,
-        'the thermal profile is answered before the per BMC split' );
-}
+my $thermal = setting( 'thermprofile', 'balanced,maximum', 2 );
+is( $thermal->{argument}, 'balanced,maximum',
+    'the thermal profile keeps its argument whole' );
+ok( !exists $thermal->{session_subcommand},
+    'the thermal profile does not rewrite the session' );
 
 done_testing();
