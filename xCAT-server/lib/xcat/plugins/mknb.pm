@@ -50,14 +50,14 @@ sub _select_genesis_source {
     my $netboot = "$xcatroot/share/xcat/netboot";
     my $openembedded = "$netboot/genesis-openembedded/$arch";
     return ($openembedded, $arch, 'openembedded')
-      if -e $openembedded || -l $openembedded;
+      if -d $openembedded;
 
     my $legacy_arch = $arch eq 'ppc64le' ? 'ppc64' : $arch;
     my $legacy = "$netboot/genesis/$legacy_arch";
-    return ($legacy, $legacy_arch, 'legacy') if -e $legacy || -l $legacy;
+    return ($legacy, $legacy_arch, 'legacy') if -d $legacy;
 
     my $classic = "$netboot/$legacy_arch";
-    return ($classic, $legacy_arch, 'classic') if -e $classic || -l $classic;
+    return ($classic, $legacy_arch, 'classic') if -d $classic;
 
     return;
 }
@@ -373,7 +373,7 @@ sub process_request {
 
     my ($genesis_dir, $arch, $genesis_type) =
       _select_genesis_source($::XCATROOT, $requested_arch);
-    unless (defined($genesis_dir) && -d $genesis_dir && !-l $genesis_dir) {
+    unless (defined($genesis_dir) && -d $genesis_dir) {
         $callback->({ error => "Unable to find a Genesis image for architecture $requested_arch", errorcode => [1] });
         return;
     }

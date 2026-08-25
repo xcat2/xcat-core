@@ -2007,7 +2007,7 @@ sub _installed_genesis_architectures
         while (my $entry = readdir($dh)) {
             next unless $supported{$entry};
             my $path = "$openembedded/$entry";
-            $installed{$entry} = 1 if -d $path && !-l $path;
+            $installed{$entry} = 1 if -d $path;
         }
         closedir($dh);
     }
@@ -2015,10 +2015,21 @@ sub _installed_genesis_architectures
     my $legacy = "$xcatroot/share/xcat/netboot/genesis";
     foreach my $arch (@supported) {
         my $path = "$legacy/$arch";
-        $installed{$arch} = 1 if -d $path && !-l $path;
+        $installed{$arch} = 1 if -d $path;
     }
 
     return grep { $installed{$_} } @supported;
+}
+
+sub _genesis_architectures_to_build
+{
+    my ($xcatroot, $include_legacy) = @_;
+    my @installed = _installed_genesis_architectures($xcatroot);
+    return @installed if $include_legacy;
+
+    return grep {
+        -d "$xcatroot/share/xcat/netboot/genesis-openembedded/$_"
+    } @installed;
 }
 
 sub mknb
@@ -2040,17 +2051,12 @@ sub mknb
             xCAT::MsgUtils->message('I', "Running '$cmd', triggered by the installation/update of xCAT-genesis-base ...");
         }
     }
-    my @architectures = _installed_genesis_architectures($::XCATROOT);
-    my @openembedded = grep {
-        -d "$::XCATROOT/share/xcat/netboot/genesis-openembedded/$_"
-    } @architectures;
-    if (@openembedded) {
+    my @architectures =
+      _genesis_architectures_to_build($::XCATROOT, $run_mknb);
+    if (@architectures) {
         unless ($run_mknb) {
             xCAT::MsgUtils->message('I', "Running '$cmd' for installed OpenEmbedded Genesis images ...");
         }
-        $run_mknb = 1;
-    }
-    if ($run_mknb) {
         foreach my $arch (@architectures) {
             system("$cmd $arch");
             if ($? != 0) {

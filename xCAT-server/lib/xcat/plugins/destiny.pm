@@ -57,6 +57,22 @@ sub handled_commands {
       }
 }
 
+sub _genesis_boot_arch {
+    my ($directory, $requested_arch) = @_;
+    my $arch = $requested_arch eq 'ppc64el' ? 'ppc64le' : $requested_arch;
+
+    if ($arch eq 'ppc64le'
+        && !-r "$directory/xcat/genesis.kernel.ppc64le") {
+        return 'ppc64';
+    }
+    return $arch;
+}
+
+sub _genesis_uses_power_console {
+    my ($arch) = @_;
+    return $arch eq 'ppc64' || $arch eq 'ppc64le';
+}
+
 sub process_request {
     $request  = shift;
     $callback = shift;
@@ -602,10 +618,7 @@ sub setdestiny {
                 xCAT::MsgUtils->report_node_error($callback, $_, "No archictecture defined in nodetype table for the node.");
                 next;
             }
-            my $arch = $ent->{arch};
-            if ($arch eq "ppc64le" or $arch eq "ppc64el") {
-                $arch = "ppc64";
-            }
+            my $arch = _genesis_boot_arch($tftpdir, $ent->{arch});
             my $ent = $resents->{$_}->[0]; #$restab->getNodeAttribs($_,[qw(xcatmaster)]);
             my $master;
             my $kcmdline = "quiet ";
@@ -637,7 +650,7 @@ sub setdestiny {
 
             $ent = $hments->{$_}->[0]; #$nodehm->getNodeAttribs($_,['serialport','serialspeed','serialflow']);
             if ($ent and defined($ent->{serialport})) {
-                if ($arch eq "ppc64") {
+                if (_genesis_uses_power_console($arch)) {
                     $kcmdline .= "console=tty0 console=hvc" . $ent->{serialport};
                 } else {
                     $kcmdline .= "console=tty0 console=ttyS" . $ent->{serialport};
