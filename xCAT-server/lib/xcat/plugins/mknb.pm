@@ -12,6 +12,12 @@ my $GENESIS_EXPORT_MANIFEST = 'xcat-genesis.manifest';
 my %GENESIS_ARCHITECTURES = map { $_ => 1 }
   qw(x86 x86_64 ppc64 ppc64le armv7hf aarch64 riscv64);
 
+sub _canonical_genesis_arch {
+    my ($arch) = @_;
+    return unless defined($arch);
+    return $arch eq 'ppc64el' ? 'ppc64le' : $arch;
+}
+
 sub handled_commands {
     return {
         mknb => 'mknb',
@@ -42,9 +48,8 @@ sub _select_network_addresses {
 
 sub _select_genesis_source {
     my ($xcatroot, $requested_arch) = @_;
-    return unless defined($requested_arch);
-
-    my $arch = $requested_arch eq 'ppc64el' ? 'ppc64le' : $requested_arch;
+    my $arch = _canonical_genesis_arch($requested_arch);
+    return unless defined($arch);
     return unless $GENESIS_ARCHITECTURES{$arch};
 
     my $netboot = "$xcatroot/share/xcat/netboot";
@@ -275,8 +280,8 @@ sub _install_prebuilt_genesis {
 
 sub _remove_openembedded_genesis {
     my ($tftpdir, $requested_arch) = @_;
-    return (0, 'Missing Genesis architecture') unless defined($requested_arch);
-    my $arch = $requested_arch eq 'ppc64el' ? 'ppc64le' : $requested_arch;
+    my $arch = _canonical_genesis_arch($requested_arch);
+    return (0, 'Missing Genesis architecture') unless defined($arch);
     return (0, "Unsupported Genesis architecture: $requested_arch")
       unless $GENESIS_ARCHITECTURES{$arch};
 
@@ -288,11 +293,21 @@ sub _remove_openembedded_genesis {
         "$directory/genesis.exact-arch.$arch",
     );
     my $removed = 0;
+    my @failed;
     foreach my $artifact (@artifacts) {
         next unless -e $artifact || -l $artifact;
-        return ($removed, "Unable to remove Genesis artifact: $artifact")
-          unless unlink($artifact);
+        unless (unlink($artifact)) {
+            push(@failed, $artifact);
+            next;
+        }
         $removed++;
+    }
+    if (@failed == 1) {
+        return ($removed, "Unable to remove Genesis artifact: $failed[0]");
+    }
+    if (@failed) {
+        return ($removed,
+            'Unable to remove Genesis artifacts: ' . join(', ', @failed));
     }
     return ($removed, undef);
 }
@@ -398,9 +413,7 @@ sub process_request {
         return;
     }
 
-    my $canonical_arch = $requested_arch eq 'ppc64el'
-      ? 'ppc64le'
-      : $requested_arch;
+    my $canonical_arch = _canonical_genesis_arch($requested_arch);
     if (($request->{arg}->[1] // '') eq '--remove-openembedded') {
         unless ($GENESIS_ARCHITECTURES{$canonical_arch}) {
             $callback->({ error => "Unsupported Genesis architecture: $requested_arch", errorcode => [1] });
