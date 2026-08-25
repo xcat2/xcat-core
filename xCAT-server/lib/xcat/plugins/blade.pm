@@ -20,6 +20,7 @@ use xCAT::Table;
 use Thread qw(yield);
 use xCAT::Utils;
 use xCAT::TableUtils;
+use xCAT::BladeUtils;
 use xCAT::NetworkUtils;
 use xCAT::ServiceNodeUtils;
 use xCAT::PasswordUtils;
@@ -4142,6 +4143,9 @@ sub preprocess_request {
 
     #if ($request->{_xcatdest}) { return [$request]; }    #exit if preprocessed
 
+    my $findme_request =
+      xCAT::BladeUtils::findme_request_for_handler($request);
+    if ($findme_request) { return $findme_request; }
     if ($request->{_xcatpreprocessed}->[0] == 1) { return [$request]; }
     my $callback = shift;
     my @requests;
@@ -4150,7 +4154,6 @@ sub preprocess_request {
     my $noderange = $request->{node};           #Should be arrayref
     my $command   = $request->{command}->[0];
 
-    if ($command eq 'findme') { return [$request]; }
     my $extrargs  = $request->{arg};
     my @exargs    = ($request->{arg});
     if (ref($extrargs)) {
@@ -4364,35 +4367,6 @@ sub verbose_message {
     xCAT::MsgUtils->message("I", \%rsp, $CALLBACK);
 }
 
-sub blade_nodes_from_mp {
-    my @entries = @_;
-    my %hwtype;
-    my %ownmpa;
-    foreach my $entry (@entries) {
-        next unless defined $entry->{node};
-        $hwtype{ $entry->{node} } = defined $entry->{nodetype} ? lc($entry->{nodetype}) : q{};
-        $hwtype{ $entry->{node} } =~ s/^\s+|\s+$//gx;
-        $ownmpa{ $entry->{node} } = $entry->{mpa} if defined $entry->{mpa};
-    }
-    my @blades;
-    foreach my $entry (@entries) {
-        my $node = $entry->{node};
-        next unless defined $node;
-        if ($hwtype{$node} eq 'blade') {
-            push @blades, $node;
-            next;
-        }
-        next if $hwtype{$node} ne q{};
-        my $chassis = $ownmpa{$node};
-        next if not defined $chassis or $chassis eq $node;
-        next if $hwtype{$chassis} ne 'mm'
-          and $hwtype{$chassis} ne 'cmm'
-          and not(defined $ownmpa{$chassis} and $ownmpa{$chassis} eq $chassis);
-        push @blades, $node;
-    }
-    return @blades;
-}
-
 sub process_request {
     $SIG{INT} = $SIG{TERM} = sub {
         foreach (keys %mm_comm_pids) {
@@ -4508,7 +4482,7 @@ sub process_request {
         my $mptab = xCAT::Table->new("mp");
         unless ($mptab) { return 2; }
         my @bladents = $mptab->getAllNodeAttribs([qw(node nodetype mpa)]);
-        my @blades   = blade_nodes_from_mp(@bladents);
+        my @blades = xCAT::BladeUtils::blade_nodes_from_mp(@bladents);
 
         unless (@blades) { return; }
         my %invreq;
@@ -6267,7 +6241,6 @@ sub genhwtree
 
 
 1;
-
 
 
 
