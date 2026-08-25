@@ -130,8 +130,18 @@ like(
 );
 like(
     $offline_guide,
-    qr/if .*common.*is not.*archive/is,
-    'the offline guide does not assume that every archive contains common',
+    qr{baseurl=file://.*xcat-dep/common}s,
+    'the offline guide points the packaged repository file at the mirror',
+);
+like(
+    $offline_guide,
+    qr/dnf makecache.*--enablerepo=xcat-dep-common/s,
+    'the offline guide verifies the mirrored common repository',
+);
+unlike(
+    $offline_guide,
+    qr/Run .*mklocalrepo\.sh.*mirrored directory/is,
+    'the offline guide does not depend on files reposync cannot download',
 );
 
 done_testing();

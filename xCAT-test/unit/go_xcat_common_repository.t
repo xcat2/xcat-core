@@ -17,11 +17,17 @@ print {$driver_fh} <<'DRIVER';
 set -euo pipefail
 
 function_body=$(
-    awk '
-        /^function add_xcat_dep_common_repo_yum_or_zypper\(\)/ { copy = 1 }
-        copy { print }
-        copy && /^}$/ { exit }
-    ' "$GO_XCAT_SOURCE"
+    for function_name in \
+        add_xcat_dep_common_repo_yum_or_zypper \
+        xcat_dep_common_repo_configured \
+        refresh_xcat_dep_repository_ids
+    do
+        awk -v name="$function_name" '
+            $0 == "function " name "()" { copy = 1 }
+            copy { print }
+            copy && /^}$/ { exit }
+        ' "$GO_XCAT_SOURCE"
+    done
 )
 eval "$function_body"
 
@@ -41,7 +47,9 @@ add_repo_by_url_yum_or_zypper() {
     printf '%s %s\n' "$1" "$2" >>"$ADD_LOG"
 }
 
-add_xcat_dep_common_repo_yum_or_zypper "$@"
+xcat_dep_common_repo_configured() { [[ -s "$ADD_LOG" ]]; }
+( add_xcat_dep_common_repo_yum_or_zypper "$@" )
+refresh_xcat_dep_repository_ids
 printf '%s\n' "${GO_XCAT_DEP_REPOSITORY_IDS[*]}" >"$ID_LOG"
 DRIVER
 close($driver_fh) or die "close $driver: $!";
@@ -114,5 +122,44 @@ is(
     "$local_root/common xcat-dep-common\n",
     'the local common repository is enabled beside the distribution repository',
 );
+
+my $template_driver = "$tmpdir/template-driver.sh";
+open(my $template_fh, '>', $template_driver) or die "open $template_driver: $!";
+print {$template_fh} <<'DRIVER';
+#!/bin/bash
+set -euo pipefail
+
+function_body=$(
+    awk '
+        /^function add_repo_by_url_yum_or_zypper\(\)/ { copy = 1 }
+        copy { print }
+        copy && /^}$/ { exit }
+    ' "$GO_XCAT_SOURCE"
+)
+eval "$function_body"
+
+TMP_DIR=$TEST_TMP
+GO_XCAT_DEFAULT_INSTALL_PATH=/install/xcat
+yum() { :; }
+add_repo_by_file() { cp "$1" "$REPO_LOG"; }
+add_repo_by_url_yum_or_zypper \
+    https://repo.example.invalid/xcat-dep/common xcat-dep-common optional
+DRIVER
+close($template_fh) or die "close $template_driver: $!";
+chmod(0755, $template_driver) or die "chmod $template_driver: $!";
+
+my $template_log = "$tmpdir/generated-common.repo";
+local %ENV = (
+    %ENV,
+    GO_XCAT_SOURCE => $go_xcat,
+    REPO_LOG       => $template_log,
+    TEST_TMP       => $tmpdir,
+);
+$status = system('bash', $template_driver);
+is($status >> 8, 0, 'go-xcat can generate the optional common repository');
+like(read_file($template_log), qr/^skip_if_unavailable=1$/m,
+    'the generated common repository stays optional during outages');
+like(read_file($template_log), qr/^repo_gpgcheck=1$/m,
+    'the generated common repository verifies signed metadata');
 
 done_testing();
