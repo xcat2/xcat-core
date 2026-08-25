@@ -44,7 +44,7 @@ When multiple IPv4 addresses are configured for the same network, \ **mknb**\  u
 
 OpenEmbedded images use the exact architecture names \ ``x86``\ , \ ``x86_64``\ , \ ``ppc64``\ , \ ``ppc64le``\ , \ ``armv7hf``\ , \ ``aarch64``\ , and \ ``riscv64``\ . If an OpenEmbedded \ ``ppc64le``\  image is not installed, \ **mknb**\  keeps the old behavior and uses the legacy \ ``ppc64``\  image.
 
-Canonical \ ``ppc64``\  images are big-endian. xCAT marks them so \ ``ppc64le``\  nodes do not use them as a legacy little-endian fallback.
+Canonical \ ``ppc64``\  images are big-endian. xCAT marks them so \ ``ppc64le``\  nodes do not use them as a legacy little-endian fallback. \ **mknb**\  also refuses to replace a marked \ ``ppc64``\  image with that fallback.
 
 
 *******

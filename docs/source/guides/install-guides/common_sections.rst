@@ -143,26 +143,65 @@ Unless you are downloading ``xcat-dep`` to match a specific version of xCAT, it'
         cd <os>/<arch>
         ./mklocalrepo.sh
 
-#. Mirror the common repository before disconnecting the installation network.
-   The xcat-dep archives do not contain this repository: ::
+.. END_configure_xcat_local_repo_xcat-dep_RPM
+
+.. BEGIN_configure_xcat_local_repo_xcat-dep_COMMON_MIRROR
+
+**[xcat-dep common]**
+
+The xcat-dep archives do not contain the common repository. Mirror it on a
+connected host with ``dnf-plugins-core`` before disconnecting the installation
+network: ::
 
         mkdir -p ~/xcat/xcat-dep/common
         dnf reposync \
           --repofrompath=xcat-dep-common,https://xcat.org/files/xcat/repos/yum/latest/xcat-dep/common \
           --repoid=xcat-dep-common --download-metadata \
           --download-path ~/xcat/xcat-dep/common --norepopath
+        curl -fL -o ~/xcat/xcat-dep/common/repodata/repomd.xml.asc \
+          https://xcat.org/files/xcat/repos/yum/latest/xcat-dep/common/repodata/repomd.xml.asc
+        curl -fL -o ~/xcat/xcat-dep/common/repodata/repomd.xml.key \
+          https://xcat.org/files/xcat/repos/yum/latest/xcat-dep/common/repodata/repomd.xml.key
 
-   Copy the mirror to the management node and install ``xCAT-release`` from the
-   local xcat-core repository. Then point its common repository definition at
-   the mirror: ::
+Copy the complete mirror to the management node.
 
-        sed -i \
-          's|^baseurl=.*|baseurl=file:///root/xcat/xcat-dep/common|' \
-          /etc/yum.repos.d/xcat-dep-common.repo
+.. END_configure_xcat_local_repo_xcat-dep_COMMON_MIRROR
+
+.. BEGIN_configure_xcat_local_repo_xcat-dep_DNF
+
+Create the local DNF repository definition: ::
+
+        cat >/etc/yum.repos.d/xcat-dep-common.repo <<'EOF'
+        [xcat-dep-common]
+        name=xCAT common dependencies
+        baseurl=file:///root/xcat/xcat-dep/common
+        enabled=1
+        skip_if_unavailable=0
+        gpgcheck=1
+        repo_gpgcheck=1
+        gpgkey=file:///root/xcat/xcat-dep/common/repodata/repomd.xml.key
+        EOF
         dnf clean metadata
         dnf makecache --disablerepo='*' --enablerepo=xcat-dep-common
 
-.. END_configure_xcat_local_repo_xcat-dep_RPM
+.. END_configure_xcat_local_repo_xcat-dep_DNF
+
+.. BEGIN_configure_xcat_local_repo_xcat-dep_ZYPPER
+
+Create the local zypper repository definition: ::
+
+        cat >/etc/zypp/repos.d/xcat-dep-common.repo <<'EOF'
+        [xcat-dep-common]
+        name=xCAT common dependencies
+        baseurl=file:///root/xcat/xcat-dep/common
+        enabled=1
+        autorefresh=0
+        gpgcheck=1
+        gpgkey=file:///root/xcat/xcat-dep/common/repodata/repomd.xml.key
+        EOF
+        zypper --gpg-auto-import-keys refresh xcat-dep-common
+
+.. END_configure_xcat_local_repo_xcat-dep_ZYPPER
 
 .. BEGIN_configure_xcat_local_repo_xcat-dep_DEBIAN
 

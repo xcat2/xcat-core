@@ -26,7 +26,7 @@ When multiple IPv4 addresses are configured for the same network, B<mknb> uses a
 
 OpenEmbedded images use the exact architecture names C<x86>, C<x86_64>, C<ppc64>, C<ppc64le>, C<armv7hf>, C<aarch64>, and C<riscv64>. If an OpenEmbedded C<ppc64le> image is not installed, B<mknb> keeps the old behavior and uses the legacy C<ppc64> image.
 
-Canonical C<ppc64> images are big-endian. xCAT marks them so C<ppc64le> nodes do not use them as a legacy little-endian fallback.
+Canonical C<ppc64> images are big-endian. xCAT marks them so C<ppc64le> nodes do not use them as a legacy little-endian fallback. B<mknb> also refuses to replace a marked C<ppc64> image with that fallback.
 
 =head1 OPTIONS
 
