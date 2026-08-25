@@ -30,6 +30,18 @@ is(
     'ppc64le keeps the legacy POWER fallback when no exact image exists',
 );
 
+open(my $marker_fh, '>', "$tftp/xcat/genesis.exact-arch.ppc64")
+  or die "create exact POWER marker: $!";
+close($marker_fh) or die "close exact POWER marker: $!";
+
+is(
+    _genesis_boot_arch($tftp, 'ppc64le'),
+    'ppc64le',
+    'ppc64le does not fall back to a canonical big-endian ppc64 image',
+);
+unlink("$tftp/xcat/genesis.exact-arch.ppc64")
+  or die "remove exact POWER marker: $!";
+
 open(my $kernel_fh, '>', "$tftp/xcat/genesis.kernel.ppc64le")
   or die "create exact POWER kernel: $!";
 close($kernel_fh) or die "close exact POWER kernel: $!";

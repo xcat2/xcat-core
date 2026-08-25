@@ -125,8 +125,8 @@ unlike(
 my $offline_guide = read_file('docs/source/guides/install-guides/common_sections.rst');
 like(
     $offline_guide,
-    qr/reposync.*--repoid=xcat-dep-common.*--download-metadata/s,
-    'the offline guide explains how to mirror the common repository',
+    qr/reposync.*--repofrompath=xcat-dep-common,https:\/\/xcat\.org\/.*\/xcat-dep\/common.*--repoid=xcat-dep-common.*--download-metadata/s,
+    'the offline mirror command defines the common repository itself',
 );
 like(
     $offline_guide,

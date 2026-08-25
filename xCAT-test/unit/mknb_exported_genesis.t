@@ -124,6 +124,11 @@ my ($published_kernel, $published_initramfs) =
   published_files($tftpdir, 'x86_64');
 is(read_file($published_kernel), 'new kernel', 'the kernel is published');
 is(read_file($published_initramfs), 'new initramfs', 'the initramfs is published');
+is(
+    read_file("$tftpdir/xcat/genesis.exact-arch.x86_64"),
+    export_manifest('x86_64'),
+    'the canonical architecture marker is published with the image',
+);
 is(sprintf('%04o', (stat($published_kernel))[2] & oct('7777')), '0644', 'the kernel is readable by TFTP');
 is(sprintf('%04o', (stat($published_initramfs))[2] & oct('7777')), '0644', 'the initramfs is readable by TFTP');
 is_deeply([temporary_files("$tftpdir/xcat")], [], 'staging files are removed');
@@ -131,16 +136,19 @@ is_deeply([temporary_files("$tftpdir/xcat")], [], 'staging files are removed');
 write_file("$tftpdir/xcat/genesis.kernel.ppc64le", 'stale kernel');
 write_file("$tftpdir/xcat/genesis.fs.ppc64le.gz", 'stale initramfs');
 write_file("$tftpdir/xcat/genesis.fs.ppc64le.lzma", 'stale legacy initramfs');
+write_file("$tftpdir/xcat/genesis.exact-arch.ppc64le", export_manifest('ppc64le'));
 write_file("$tftpdir/xcat/genesis.kernel.ppc64", 'legacy kernel');
 my ($removed, $remove_error) =
   xCAT_plugin::mknb::_remove_openembedded_genesis($tftpdir, 'ppc64le');
 is($remove_error, undef, 'OpenEmbedded boot artifacts can be retired cleanly');
-is($removed, 3, 'all exact-architecture boot artifacts are retired');
+is($removed, 4, 'all exact-architecture boot artifacts are retired');
 ok(!-e "$tftpdir/xcat/genesis.kernel.ppc64le",
     'the exact OpenEmbedded kernel is removed');
 ok(!-e "$tftpdir/xcat/genesis.fs.ppc64le.gz"
       && !-e "$tftpdir/xcat/genesis.fs.ppc64le.lzma",
     'the exact OpenEmbedded initramfs files are removed');
+ok(!-e "$tftpdir/xcat/genesis.exact-arch.ppc64le",
+    'the canonical architecture marker is removed');
 ok(-f "$tftpdir/xcat/genesis.kernel.ppc64",
     'retiring ppc64le does not remove the legacy ppc64 fallback');
 
