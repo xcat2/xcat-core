@@ -261,24 +261,6 @@ array_ospkgdirs=($OSPKGDIR)
 
 array_empty os_path
 
-is_el_modular_pkgdir()
-{
-    pmatch "$OSVER" "rhel[89]*" ||
-    pmatch "$OSVER" "rhel1[0-9]*" ||
-    pmatch "$OSVER" "rhels[89]*" ||
-    pmatch "$OSVER" "rhels1[0-9]*" ||
-    pmatch "$OSVER" "centos[89]*" ||
-    pmatch "$OSVER" "centos1[0-9]*" ||
-    pmatch "$OSVER" "rocky[89]*" ||
-    pmatch "$OSVER" "rocky1[0-9]*" ||
-    pmatch "$OSVER" "alma[89]*" ||
-    pmatch "$OSVER" "alma1[0-9]*" ||
-    pmatch "$OSVER" "almalinux[89]*" ||
-    pmatch "$OSVER" "almalinux1[0-9]*" ||
-    pmatch "$OSVER" "ol[89]*" ||
-    pmatch "$OSVER" "ol1[0-9]*"
-}
-
 index=0
 for dir in  ${array_ospkgdirs[@]}
 do
@@ -308,7 +290,7 @@ do
             ospkgdir="$ospkgdir/SL"
         fi
     fi
-    if ! is_el_modular_pkgdir || \
+    if ! xcat_is_el_modular_pkgdir "$OSVER" || \
        { [ "$dir" != "$default_pkgdir" ] && [ "$dir" != "$default_pkgdir/" ]; }; then
         # For EL8+ modular distros, only the base OS pkgdir expands to subrepos.
         array_set_element os_path $index $ospkgdir
@@ -376,7 +358,7 @@ do
                          array_set_element os_path $index $ospkgdir_ok
                      done
                  fi   # x86_64
-            elif is_el_modular_pkgdir; then
+            elif xcat_is_el_modular_pkgdir "$OSVER"; then
                  # for EL8+ modular distros the repodata is in ./BaseOS and ./AppStream, not in ./
                  for arg in "BaseOS" "AppStream"
                  do
