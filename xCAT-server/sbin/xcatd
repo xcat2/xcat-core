@@ -154,7 +154,7 @@ Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 
 use Storable qw(dclone);
-use POSIX qw(WNOHANG setsid :errno_h);
+use POSIX qw(WNOHANG setsid :errno_h :signal_h);
 my $pidfile;
 my $reload;
 my $foreground;
@@ -1202,9 +1202,18 @@ if (!(socketpair($rescanreadpipe, $rescanwritepipe, AF_UNIX, SOCK_STREAM, PF_UNS
 }
 $rescanrselect = new IO::Select;
 $rescanrselect->add($rescanreadpipe);
+# SIGCHLD must not be delivered between xfork() returning and the assignment to $pid_MON.
+# ssl_reaper matches $CHILDPID against $pid_MON, so a child reaped in that window is compared
+# against a stale value, missed, and $pid_MON is then left naming a pid that no longer exists.
+# The main service loop reads !$pid_MON to decide whether the monitor needs respawning, so it
+# would never respawn it again -- the same dead xcatiport this respawn exists to prevent.
+my $mon_chldmask = POSIX::SigSet->new(SIGCHLD);
+
 # record this monitor too, so its uptime counts when it eventually dies
 $mon_respawn = xCAT::RespawnUtils::forked($mon_respawn, time());
+sigprocmask(SIG_BLOCK, $mon_chldmask);
 $pid_MON = xCAT::Utils->xfork;
+sigprocmask(SIG_UNBLOCK, $mon_chldmask);    # $pid_MON is assigned; the reaper can match it now
 if (!defined $pid_MON) {
     xCAT::MsgUtils->message("S", "Unable to fork installmonitor");
     die;
@@ -1494,7 +1503,9 @@ until ($quit) {
             $mon_respawn = xCAT::RespawnUtils::reported($mon_respawn);
         }
         $mon_respawn = xCAT::RespawnUtils::forked($mon_respawn, time());
+        sigprocmask(SIG_BLOCK, $mon_chldmask);
         $pid_MON = xCAT::Utils->xfork;
+        sigprocmask(SIG_UNBLOCK, $mon_chldmask);    # both sides: the child needs it unblocked too
         if (!defined $pid_MON) {
             xCAT::MsgUtils->message("S", "xcatd: unable to re-fork install monitor");
             $pid_MON = 0;
@@ -1536,7 +1547,10 @@ until ($quit) {
     } else {
 
         # if select returned with no ready fds, there might be udpctl broken.
-        if (not $bothwatcher->can_read(30)) {
+        # While the install monitor is down, wait in shorter hops: the respawn at the top of
+        # this loop only gets a turn when this select returns, so on an otherwise idle daemon
+        # a full 30s wait is added to the respawn delay before xcatiport comes back.
+        if (not $bothwatcher->can_read((!$pid_MON && $sport) ? 5 : 30)) {
 
             # if the errno is 'bad fd', check the health of the udpctl
             if ($! == EBADF) {

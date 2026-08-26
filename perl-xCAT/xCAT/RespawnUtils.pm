@@ -4,12 +4,18 @@ package xCAT::RespawnUtils;
 use strict;
 use warnings;
 
+sub _tunable {
+    my ($value, $default) = @_;
+    return $default unless defined($value) && $value =~ /^\s*\d+\s*$/;
+    return $value + 0;
+}
+
 sub policy {
     my (%opt) = @_;
 
-    my $min     = defined($opt{min_interval}) ? $opt{min_interval} : 5;
-    my $max     = defined($opt{max_interval}) ? $opt{max_interval} : 300;
-    my $healthy = defined($opt{healthy})      ? $opt{healthy}      : 60;
+    my $min     = _tunable($opt{min_interval}, 5);
+    my $max     = _tunable($opt{max_interval}, 300);
+    my $healthy = _tunable($opt{healthy},      60);
 
     $min = 1    if $min < 1;
     $max = $min if $max < $min;
