@@ -38,6 +38,9 @@
 SCRIPT=$(readlink -f $0)
 SCRIPTPATH=`dirname $SCRIPT`
 
+. "$SCRIPTPATH/build-utils/source-only.sh"
+. "$SCRIPTPATH/build-utils/buildcore-source-only.sh"
+
 UPLOADUSER=litingt
 USER=xcat
 SERVER=xcat.org
@@ -322,10 +325,7 @@ function maker {
     if [ $? -ne 0 ]; then
         FAILEDRPMS="$FAILEDRPMS $rpmname"
     else
-        rm -f $DESTDIR/$rpmname*rpm
-        rm -f $SRCDIR/$rpmname*rpm
-        mv $source/RPMS/$NOARCH/$rpmname-$VER*rpm $DESTDIR
-        mv $source/SRPMS/$rpmname-$VER*rpm $SRCDIR
+        xcat_deliver_noarch_package "$rpmname"
     fi
 }
 
@@ -375,10 +375,7 @@ if [ "$OSNAME" != "AIX" ]; then
             #./makerpm xCAT-genesis-scripts aarch64 "$EMBED"
             #if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-genesis-scripts-aarch64"; fi
             if [ "$FAILEDRPMS" = "$ORIGFAILEDRPMS" ]; then    # all succeeded
-                rm -f $DESTDIR/xCAT-genesis-scripts*rpm
-                rm -f $SRCDIR/xCAT-genesis-scripts*rpm
-                mv $source/RPMS/noarch/xCAT-genesis-scripts-*rpm $DESTDIR
-                mv $source/SRPMS/xCAT-genesis-scripts-*rpm $SRCDIR
+                xcat_deliver_genesis_packages
             fi
         fi
     fi
@@ -402,10 +399,7 @@ for rpmname in xCAT xCATsn; do
             done
         fi
         if [ "$FAILEDRPMS" = "$ORIGFAILEDRPMS" ]; then    # all succeeded
-            rm -f $DESTDIR/$rpmname-$SHORTSHORTVER*rpm
-            rm -f $SRCDIR/$rpmname-$SHORTSHORTVER*rpm
-            mv $source/RPMS/*/$rpmname-$VER*rpm $DESTDIR
-            mv $source/SRPMS/$rpmname-$VER*rpm $SRCDIR
+            xcat_deliver_arch_package "$rpmname"
         fi
     fi
 done
@@ -415,24 +409,7 @@ if [ "$OSNAME" = "AIX" ]; then
 fi
 
 # Make sym links in the embed subdirs for the rpms we do not have to build special
-if [ -n "$EMBED" -a -n "$EMBEDLINK" ]; then
-    cd $DESTDIR
-    maindir="../../$XCATCORE"
-    for rpmname in $EMBEDLINK; do
-        if [ "$rpmname" = "xCAT" -o "$rpmname" = "xCATsn" ]; then
-            if [ "$EMBED" = "zvm" ]; then
-                echo "Creating link for $rpmname-$SHORTSHORTVER"'*.s390x.rpm'
-                rm -f $rpmname-$SHORTSHORTVER*rpm
-                ln -s $maindir/$rpmname-$SHORTSHORTVER*.s390x.rpm .
-            fi
-        else
-            echo "Creating link for $rpmname-$SHORTSHORTVER"'*rpm'
-            rm -f $rpmname-$SHORTSHORTVER*rpm
-            ln -s $maindir/$rpmname-$SHORTSHORTVER*rpm .
-        fi
-    done
-    cd - >/dev/null
-fi
+xcat_deliver_embed_links
 
 
 # Decide if anything was built or not
@@ -580,26 +557,8 @@ echo "BUILD_MACHINE=$BUILD_MACHINE" >> $BUILDINFO
 echo "COMMIT_ID=$COMMIT_ID" >> $BUILDINFO
 echo "COMMIT_ID_LONG=$COMMIT_ID_LONG" >> $BUILDINFO
 
-echo "Creating $(dirname $DESTDIR)/$TARNAME ..."
-if [[ -e $TARNAME ]]; then
-    mkdir -p previous
-    mv -f $TARNAME previous
-fi
-if [ "$OSNAME" = "AIX" ]; then
-    tar $verboseflag -hcf ${TARNAME%.gz} $XCATCORE
-    gzip ${TARNAME%.gz}
-else
-    tar $verboseflag -hjcf $TARNAME $XCATCORE
-fi
-chgrp $SYSGRP $TARNAME
-chmod g+w $TARNAME
-
-if [ -n "$DEST" ]; then
-    ln -sf $(basename `pwd`)/$TARNAME ../$TARNAME
-    if [ $? != 0 ]; then
-        echo "ERROR: Failed to make symbol link $DEST/$TARNAME"
-    fi
-fi
+xcat_create_binary_tarball
+xcat_publish_tarball_link
 
 # Decide whether to upload or not
 if [ -n "$UP" ] && [ "$UP" == 0 ]; then
@@ -616,7 +575,9 @@ fi
 if [ ! -e core-snap ]; then
     ln -s xcat-core core-snap
 fi
-if [ "$REL" = "devel" -o "$PREGA" != 1 ]; then
+if xcat_source_only; then
+    echo "Not uploading the binary rpms: a source-only build makes none."
+elif [ "$REL" = "devel" -o "$PREGA" != 1 ]; then
     i=0
     echo "Uploading RPMs from $CORE to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
     while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $CORE $USER@$SERVER:$YUMDIR/$YUM/$REL$EMBEDDIR/
@@ -630,7 +591,9 @@ while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $SRCD $USER@$SERVER:$YUMDIR/
 do : ; done
 
 # Upload the tarball to xcat.org
-if [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
+if xcat_source_only; then
+    echo "Not uploading $TARNAME: a source-only build makes no binary rpms."
+elif [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
     # upload tarball to FRS area
     i=0
     echo "Uploading $TARNAME to $FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/ ..."
