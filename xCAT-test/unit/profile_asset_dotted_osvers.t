@@ -2,6 +2,7 @@ use strict;
 use warnings;
 
 use Cwd qw(realpath);
+use File::Slurper qw(write_text);
 use File::Spec;
 use File::Temp qw(tempdir);
 use FindBin;
@@ -120,8 +121,8 @@ ok(
 );
 
 my $svrutils_dir = tempdir(CLEANUP => 1);
-_write_file(File::Spec->catfile($svrutils_dir, 'compute.pkglist'), "default\n");
-_write_file(File::Spec->catfile($svrutils_dir, 'compute.ubuntu24.x86_64.pkglist'), "wrong\n");
+write_text(File::Spec->catfile($svrutils_dir, 'compute.pkglist'), "default\n");
+write_text(File::Spec->catfile($svrutils_dir, 'compute.ubuntu24.x86_64.pkglist'), "wrong\n");
 
 is(
     xCAT::SvrUtils::get_pkglist_file_name($svrutils_dir, 'compute', 'ubuntu24.04', 'x86_64', 'subiquity'),
@@ -129,7 +130,7 @@ is(
     'SvrUtils lookup does not fall back from ubuntu24.04 to ubuntu24'
 );
 
-_write_file(File::Spec->catfile($svrutils_dir, 'compute.ubuntu24.04.x86_64.pkglist'), "exact\n");
+write_text(File::Spec->catfile($svrutils_dir, 'compute.ubuntu24.04.x86_64.pkglist'), "exact\n");
 is(
     xCAT::SvrUtils::get_pkglist_file_name($svrutils_dir, 'compute', 'ubuntu24.04', 'x86_64', 'subiquity'),
     File::Spec->catfile($svrutils_dir, 'compute.ubuntu24.04.x86_64.pkglist'),
@@ -137,7 +138,7 @@ is(
 );
 
 unlink File::Spec->catfile($svrutils_dir, 'compute.ubuntu24.04.x86_64.pkglist');
-_write_file(File::Spec->catfile($svrutils_dir, 'compute.ubuntu24.04.pkglist'), "release\n");
+write_text(File::Spec->catfile($svrutils_dir, 'compute.ubuntu24.04.pkglist'), "release\n");
 is(
     xCAT::SvrUtils::get_pkglist_file_name($svrutils_dir, 'compute', 'ubuntu24.04.1', 'x86_64', 'subiquity'),
     File::Spec->catfile($svrutils_dir, 'compute.ubuntu24.04.pkglist'),
@@ -145,8 +146,8 @@ is(
 );
 
 my $svrutils_rpm_dir = tempdir(CLEANUP => 1);
-_write_file(File::Spec->catfile($svrutils_rpm_dir, 'compute.pkglist'), "default\n");
-_write_file(File::Spec->catfile($svrutils_rpm_dir, 'compute.rocky9.x86_64.pkglist'), "major\n");
+write_text(File::Spec->catfile($svrutils_rpm_dir, 'compute.pkglist'), "default\n");
+write_text(File::Spec->catfile($svrutils_rpm_dir, 'compute.rocky9.x86_64.pkglist'), "major\n");
 
 is(
     xCAT::SvrUtils::get_pkglist_file_name($svrutils_rpm_dir, 'compute', 'rocky9.6', 'x86_64', 'rocky9'),
@@ -154,7 +155,7 @@ is(
     'SvrUtils lookup keeps major-version fallback for non-leading-zero minor releases'
 );
 
-_write_file(File::Spec->catfile($svrutils_rpm_dir, 'compute.ol8.4.x86_64.pkglist'), "minor\n");
+write_text(File::Spec->catfile($svrutils_rpm_dir, 'compute.ol8.4.x86_64.pkglist'), "minor\n");
 is(
     xCAT::SvrUtils::get_pkglist_file_name($svrutils_rpm_dir, 'compute', 'ol8.4.0', 'x86_64', 'ol8'),
     File::Spec->catfile($svrutils_rpm_dir, 'compute.ol8.4.x86_64.pkglist'),
@@ -163,8 +164,8 @@ is(
 
 my $imgutils_dir = tempdir(CLEANUP => 1);
 my $real_imgutils_dir = realpath($imgutils_dir) || $imgutils_dir;
-_write_file(File::Spec->catfile($imgutils_dir, 'compute.pkglist'), "default\n");
-_write_file(File::Spec->catfile($imgutils_dir, 'compute.ubuntu24.x86_64.pkglist'), "wrong\n");
+write_text(File::Spec->catfile($imgutils_dir, 'compute.pkglist'), "default\n");
+write_text(File::Spec->catfile($imgutils_dir, 'compute.ubuntu24.x86_64.pkglist'), "wrong\n");
 
 is(
     imgutils::get_profile_def_filename('ubuntu24.04', 'compute', 'x86_64', $imgutils_dir, 'pkglist'),
@@ -172,7 +173,7 @@ is(
     'imgutils lookup does not fall back from ubuntu24.04 to ubuntu24'
 );
 
-_write_file(File::Spec->catfile($imgutils_dir, 'compute.ubuntu24.04.x86_64.pkglist'), "exact\n");
+write_text(File::Spec->catfile($imgutils_dir, 'compute.ubuntu24.04.x86_64.pkglist'), "exact\n");
 is(
     imgutils::get_profile_def_filename('ubuntu24.04', 'compute', 'x86_64', $imgutils_dir, 'pkglist'),
     File::Spec->catfile($real_imgutils_dir, 'compute.ubuntu24.04.x86_64.pkglist'),
@@ -187,8 +188,8 @@ is(
 
 my $imgutils_rpm_dir = tempdir(CLEANUP => 1);
 my $real_imgutils_rpm_dir = realpath($imgutils_rpm_dir) || $imgutils_rpm_dir;
-_write_file(File::Spec->catfile($imgutils_rpm_dir, 'compute.pkglist'), "default\n");
-_write_file(File::Spec->catfile($imgutils_rpm_dir, 'compute.rocky9.x86_64.pkglist'), "major\n");
+write_text(File::Spec->catfile($imgutils_rpm_dir, 'compute.pkglist'), "default\n");
+write_text(File::Spec->catfile($imgutils_rpm_dir, 'compute.rocky9.x86_64.pkglist'), "major\n");
 
 is(
     imgutils::get_profile_def_filename('rocky9.6', 'compute', 'x86_64', $imgutils_rpm_dir, 'pkglist'),
@@ -196,7 +197,7 @@ is(
     'imgutils lookup keeps major-version fallback for non-leading-zero minor releases'
 );
 
-_write_file(File::Spec->catfile($imgutils_rpm_dir, 'compute.ol8.4.x86_64.pkglist'), "minor\n");
+write_text(File::Spec->catfile($imgutils_rpm_dir, 'compute.ol8.4.x86_64.pkglist'), "minor\n");
 is(
     imgutils::get_profile_def_filename('ol8.4.0', 'compute', 'x86_64', $imgutils_rpm_dir, 'pkglist'),
     File::Spec->catfile($real_imgutils_rpm_dir, 'compute.ol8.4.x86_64.pkglist'),
@@ -204,13 +205,3 @@ is(
 );
 
 done_testing();
-
-sub _write_file {
-    my ($path, $content) = @_;
-
-    open(my $fh, '>', $path) or die "Cannot write $path: $!";
-    print {$fh} $content;
-    close($fh);
-
-    return;
-}
