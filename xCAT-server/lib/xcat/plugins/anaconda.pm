@@ -157,6 +157,44 @@ sub _find_genesis_boot_files
     return ($kernel, $initrd);
 }
 
+sub _install_media_pxeboot_paths
+{
+    my ($pkgdir, $arch) = @_;
+
+    return unless defined($pkgdir) && defined($arch);
+    return unless $arch =~ /x86|aarch64|riscv64/;
+
+    my $kernel = "$pkgdir/images/pxeboot/vmlinuz";
+    my $initrd = "$pkgdir/images/pxeboot/initrd.img";
+    return unless -r $kernel;
+
+    return ($kernel, -r $initrd ? $initrd : undef);
+}
+
+sub _driver_disk_kernel_version
+{
+    my $path = shift;
+
+    return unless defined($path);
+    return $1 if $path =~ m{/vmlinuz-(.*(?:x86_64|ppc64|el\d+|ppc64le|aarch64|riscv64))$};
+    return;
+}
+
+sub _default_crashkernel_args
+{
+    my ($arch, $dump, $fadump_flag, $fadump, $kdump) = @_;
+
+    return '' unless defined($arch);
+    if ($arch eq 'ppc64') {
+        return $fadump_flag
+          ? " fadump=on fadump_reserve_mem=512M fadump_target=$fadump fadump_default=noreboot dump=$kdump "
+          : " crashkernel=256M\@64M dump=$dump ";
+    }
+    return " crashkernel=128M dump=$dump " if $arch =~ /86/;
+    return " crashkernel=256M dump=$dump " if $arch eq 'riscv64';
+    return '';
+}
+
 sub preprocess_request
 {
     my $req      = shift;
@@ -907,22 +945,9 @@ sub mknetboot
                 }
             }
             else {
-                if ($arch eq "ppc64") {
-                    if ($fadumpFlag) {
-                        $kcmdline .= " fadump=on fadump_reserve_mem=512M fadump_target=$fadump fadump_default=noreboot dump=$kdump ";
-                    }
-                    else {
-                        $kcmdline .= " crashkernel=256M\@64M dump=$dump ";
-                    }
-                }
-                if ($arch =~ /86/) {
-                    $kcmdline .= " crashkernel=128M dump=$dump ";
-                }
-                if ($arch eq "riscv64") {
-                    # EL has no default reservation for riscv64, so without an explicit
-                    # linuximage.crashkernelsize the kernel would reserve nothing at all
-                    $kcmdline .= " crashkernel=256M dump=$dump ";
-                }
+                $kcmdline .= _default_crashkernel_args(
+                    $arch, $dump, $fadumpFlag, $fadump, $kdump
+                );
             }
         }
 
@@ -1345,15 +1370,14 @@ sub mkinstall
             $pkvm = 1;
         }
 
+        my ($pxe_kernpath, $pxe_initrdpath) =
+          _install_media_pxeboot_paths($pkgdir, $arch);
+        $kernpath = $pxe_kernpath if defined($pxe_kernpath);
+        $initrdpath = $pxe_initrdpath if defined($pxe_initrdpath);
+
         if (
             (
-                ( $arch =~ /x86/ or $arch =~ /aarch64/ or $arch =~ /riscv64/ ) and
-                (
-                    -r "$pkgdir/images/pxeboot/vmlinuz"
-                    and $kernpath = "$pkgdir/images/pxeboot/vmlinuz"
-                    and -r "$pkgdir/images/pxeboot/initrd.img"
-                    and $initrdpath = "$pkgdir/images/pxeboot/initrd.img"
-                ) or (    #Handle the case seen in VMWare 4.0 ESX media
+                ( defined($pxe_kernpath) and defined($pxe_initrdpath) ) or (    #Handle the case seen in VMWare 4.0 ESX media
                        #In VMWare 4.0 they dropped the pxe-optimized initrd
                        #leaving us no recourse but the rather large optical disk
                        #initrd, but perhaps we can mitigate with gPXE
@@ -2834,8 +2858,9 @@ sub insert_dd {
                 # and copy it to the /tftpboot
                 my @new_kernels = <$dd_dir/rpm/boot/vmlinuz*>;
                 foreach my $new_kernel (@new_kernels) {
-                    if (-r $new_kernel && $new_kernel =~ /\/vmlinuz-(.*(x86_64|ppc64|el\d+|ppc64le|aarch64|riscv64))$/) {
-                        $new_kernel_ver = $1;
+                    my $candidate_version = _driver_disk_kernel_version($new_kernel);
+                    if (-r $new_kernel && defined($candidate_version)) {
+                        $new_kernel_ver = $candidate_version;
                         $cmd            = "/bin/mv -f $new_kernel $kernelpath";
                         xCAT::Utils->runcmd($cmd, -1);
                         if ($::RUNCMD_RC != 0) {

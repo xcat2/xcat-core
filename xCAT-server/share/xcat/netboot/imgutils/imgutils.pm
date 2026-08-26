@@ -79,6 +79,13 @@ sub _profile_lookup_osbase_list {
     return grep { $_ ne $osver } xCAT::SvrUtils::get_os_search_list($osver);
 }
 
+sub resolver_library_paths {
+    my $arch = shift;
+    my $libdir = $arch =~ /x86_64|aarch64|riscv64/ ? 'lib64' : 'lib';
+
+    return ( "$libdir/libnss_dns.so.2", "$libdir/libresolv.so.2" );
+}
+
 sub get_profile_def_filename {
     my $osver   = shift;
     my $profile = shift;
