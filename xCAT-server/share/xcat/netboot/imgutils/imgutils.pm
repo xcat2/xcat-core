@@ -11,6 +11,42 @@ use File::Path;
 use Cwd qw(realpath);
 use xCAT::SvrUtils;
 
+sub el_major_version {
+    my $version = shift;
+
+    return if !defined($version);
+
+    my ($os_family, $os_major) = xCAT::SvrUtils::parseosver($version);
+    return
+      if !defined($os_family)
+      || $os_family !~ /^(?:rhels?|rhelc|rhelhpc|centos(?:-stream)?|rocky|alma(?:linux)?|ol)$/;
+
+    return $os_major if length($os_major);
+    return;
+}
+
+sub rpm_installroot_command {
+    my ( $osver, $rootimg_dir, $non_interactive, $dnf_available ) = @_;
+    $non_interactive ||= "";
+    $dnf_available = -x "/usr/bin/dnf" unless defined($dnf_available);
+    my $majorrel = el_major_version($osver);
+    my $pkgmgr = "yum";
+
+    # EL8 and newer are dnf-native. Keep yum as the fallback for legacy
+    # systems and minimal environments that still provide only yum.
+    if (defined($majorrel) && $majorrel > 7 && $dnf_available) {
+        $pkgmgr = "dnf";
+    }
+
+    my $cmd = "$pkgmgr $non_interactive -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir/ --disablerepo=* ";
+    if (defined($majorrel) && $majorrel > 7) {
+        $cmd .= "--releasever=" . $majorrel . " ";
+        $cmd .= "--setopt=module_platform_id=platform:el" . $majorrel . " ";
+    }
+
+    return $cmd;
+}
+
 sub varsubinline{
     my $line=shift;
     my $refvardict=shift;
