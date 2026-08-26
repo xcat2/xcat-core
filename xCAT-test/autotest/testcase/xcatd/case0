@@ -212,4 +212,9 @@ cmd:pgrep -f "^xcatd: SSL listener$" | diff -q - /tmp/xcatd_monitor_respawn/list
 check:rc==0
 cmd:rm -rf /tmp/xcatd_monitor_respawn
 check:rc==0
+#if the respawn did not happen, this MN is left with a dead xcatiport, and every later case
+#in the bundle that provisions a node would fail for that reason instead of its own. a failed
+#check does not stop the remaining cmds of a case, so restore the daemon unconditionally here
+cmd:pgrep -f "^xcatd: install monitor$" >/dev/null || { if [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1; then XCATBYPASS=YES systemctl restart xcatd; else XCATBYPASS=YES service xcatd restart; fi; sleep 5; }
+check:rc==0
 end
