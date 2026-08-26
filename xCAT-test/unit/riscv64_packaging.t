@@ -23,6 +23,7 @@ unlike( $xcat_rv || '', qr/xnba-undi|syslinux-xcat|elilo-xcat/, 'xCAT.spec does 
 # riscv64 has no legacy Genesis package: the requirement must disappear rather than
 # resolve to an unsatisfiable name, and the OpenEmbedded image is recommended instead.
 like( $xcat, qr/^%\{\?genesistarch:Requires: xCAT-genesis-scripts-%\{genesistarch\} = 1:%\{version\}-%\{release\}\}$/m, 'xCAT.spec asks for the legacy Genesis package only where the architecture has one' );
+like( $xcat, qr/^Recommends: xCAT-genesis-openembedded-riscv64$/m, 'xCAT.spec recommends the RISC-V OpenEmbedded Genesis image' );
 
 SKIP: {
     my $rpmspec = qx(command -v rpmspec 2>/dev/null);
@@ -43,6 +44,7 @@ SKIP: {
 
 my $xcatsn = slurp_repo_file('xCATsn/xCATsn.spec');
 like( $xcatsn, qr/^%ifarch riscv64\nRequires: ipmitool-xcat >= 1\.8\.17-1\n%endif$/m, 'xCATsn.spec requires ipmitool-xcat on riscv64' );
+like( $xcatsn, qr/^Recommends: xCAT-genesis-openembedded-riscv64$/m, 'xCATsn.spec recommends the RISC-V OpenEmbedded Genesis image' );
 
 my $server = slurp_repo_file('xCAT-server/xCAT-server.spec');
 like( $server, qr/^Recommends: perl-DB_File$/m, 'xCAT-server.spec recommends perl-DB_File on EL10 (riscv64 has no EPEL to provide it)' );
