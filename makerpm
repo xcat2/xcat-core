@@ -6,8 +6,11 @@
 #   ./makerpm xCAT-server
 #   ./makerpm xCAT x86_64
 # If you want verbose output:  export VERBOSE=1
+# If you want source rpms only:  export SRCONLY=1
 
 # set -x
+
+. "$(dirname "$0")/build-utils/source-only.sh"
 
 function xcat_probe_copy {
     # xCAT-probe uses some functions shipped with xCAT,  copying for the following reasons:
@@ -42,7 +45,7 @@ function makenoarch {
 		rpm $QUIET -ba $RPMNAME/$RPMNAME.spec
 		RC=$?
 	else	# linux
-		echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$VER-snap*.noarch.rpm $EMBEDTXT..."
+		xcat_announce_build "$RPMNAME-$VER" "$RPMROOT/RPMS/noarch/$RPMNAME-$VER-snap*.noarch.rpm"
 		# TODO: should fix this up, this is a hack for the new build machine
 		if [ $RPMNAME = "xCAT-UI" ]; then
 			# Only if the old compiler.jar file does not exist.....
@@ -66,7 +69,7 @@ function makenoarch {
 
 		tar --exclude .svn -czf $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz $RPMNAME
 		rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
-		rpmbuild $QUIET -ta $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz --define "version $VER" $REL "$EASE"
+		xcat_rpmbuild_tar $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz --define "version $VER" $REL "$EASE"
 		RC=$?
 
 		if [ $RPMNAME = "xCAT-UI" ]; then
@@ -159,8 +162,8 @@ function makexcat {
 		fi
 
 		rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/$ARCH/$RPMNAME-$VER*rpm
-		echo "Building $RPMROOT/RPMS/$ARCH/$RPMNAME-$VER-snap*.$ARCH.rpm $EMBEDTXT..."
-		rpmbuild $QUIET -ba $RPMNAME/$RPMNAME.spec $TARGET --define "version $VER" $REL "$EASE"
+		xcat_announce_build "$RPMNAME-$VER" "$RPMROOT/RPMS/$ARCH/$RPMNAME-$VER-snap*.$ARCH.rpm"
+		xcat_rpmbuild_spec $RPMNAME/$RPMNAME.spec $TARGET --define "version $VER" $REL "$EASE"
 		RC=$?
 		if [ "$RPMNAME" = "xCAT" ]; then
 			files=("bmcsetup" "getipmi")
@@ -202,8 +205,8 @@ function makegenesis {
 	cp $RPMNAME.spec $RPMROOT/SOURCES
 	cd - >/dev/null
 	rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
-	echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$VER-snap*.noarch.rpm $EMBEDTXT..."
-	rpmbuild $QUIET -ba $DIR/$RPMNAME.spec --define "version $VER" $REL "$EASE"
+	xcat_announce_build "$RPMNAME-$VER" "$RPMROOT/RPMS/noarch/$RPMNAME-$VER-snap*.noarch.rpm"
+	xcat_rpmbuild_spec $DIR/$RPMNAME.spec --define "version $VER" $REL "$EASE"
 }
 
 function makegenesisscripts {
@@ -222,8 +225,8 @@ function makegenesisscripts {
 	cp $DIR/$RPMNAME.spec $RPMROOT/SOURCES
 	cd - >/dev/null
 	rm -f $RPMROOT/SRPMS/$RPMNAME-$ARCH-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$ARCH-$VER*rpm
-	echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$ARCH-$VER-snap*.noarch.rpm $EMBEDTXT..."
-	rpmbuild $QUIET -ba $DIR/$RPMNAME.spec $TARGET --define "version $VER" $REL "$EASE"
+	xcat_announce_build "$RPMNAME-$ARCH-$VER" "$RPMROOT/RPMS/noarch/$RPMNAME-$ARCH-$VER-snap*.noarch.rpm"
+	xcat_rpmbuild_spec $DIR/$RPMNAME.spec $TARGET --define "version $VER" $REL "$EASE"
 }
 
 
@@ -260,6 +263,9 @@ if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ];then
 else
 	QUIET="--quiet"
 fi
+if ! xcat_configure_rpm_build_mode "$OSNAME"; then
+	exit 1
+fi
 
 if [ "$OSNAME" = "AIX" ]; then
 	RPMROOT=/opt/freeware/src/packages
@@ -286,6 +292,9 @@ elif [ "$1" = "xCAT-genesis-scripts" ]; then
 	exportEmbed $3
 	makegenesisscripts $1 $2
 elif [ "$1" = "xCAT-OpenStack-ironic" ]; then
+	if ! xcat_require_binary_build "$1"; then
+		exit 1
+	fi
 	makeironic $1 $2
 else	# must be one of the noarch rpms
 	exportEmbed $2
