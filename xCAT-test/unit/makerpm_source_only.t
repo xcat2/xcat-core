@@ -32,6 +32,7 @@ my @modes = (
     [ 'SRCONLY=no',  'SRCONLY=no',    '-ba -ta' ],
     [ 'SRCONLY=1',   'SRCONLY=1',     '-bs -ts' ],
     [ 'SRCONLY=yes', 'SRCONLY=yes',   '-bs -ts' ],
+    [ 'SRCONLY=true', 'SRCONLY=true', '-bs -ts' ],
 );
 foreach my $case (@modes) {
     my ( $name, $assignment, $expected ) = @{$case};
