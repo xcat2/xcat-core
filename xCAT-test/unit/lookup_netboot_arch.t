@@ -3,8 +3,10 @@ use strict;
 use warnings;
 
 use FindBin;
-use File::Spec;
+use lib "$FindBin::Bin/../lib";
 use Test::More;
+
+use XCAT::Test::File qw(repo_path slurp_repo_file);
 
 # riscv64 nodes boot through UEFI and grub2 only. This test pins the three
 # places that declare which noderes.netboot values an architecture accepts:
@@ -16,25 +18,16 @@ use Test::More;
 # time, so the shipped subroutines are extracted from the source and evaluated
 # directly instead of loading the whole modules.
 
-my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
-my $utils_pm  = File::Spec->catfile( $repo_root, 'perl-xCAT', 'xCAT', 'Utils.pm' );
-my $pnu_pm    = File::Spec->catfile( $repo_root, 'perl-xCAT', 'xCAT', 'ProfiledNodeUtils.pm' );
+my $utils_pm = repo_path('perl-xCAT/xCAT/Utils.pm');
+my $pnu_pm = repo_path('perl-xCAT/xCAT/ProfiledNodeUtils.pm');
 
 plan skip_all => "$utils_pm not found" unless -r $utils_pm;
 plan skip_all => "$pnu_pm not found"   unless -r $pnu_pm;
 
-sub slurp {
-    my ($path) = @_;
-    open( my $fh, '<', $path ) or die "Unable to read $path: $!";
-    my $source = do { local $/; <$fh> };
-    close($fh);
-    return $source;
-}
-
 # ---------------------------------------------------------------------------
 # xCAT::Utils::lookupNetboot
 # ---------------------------------------------------------------------------
-my $utils_source = slurp($utils_pm);
+my $utils_source = slurp_repo_file('perl-xCAT/xCAT/Utils.pm');
 my ($lookup_sub) = $utils_source =~ m{^(sub lookupNetboot \{.*?^\})}ms;
 ok( $lookup_sub, 'lookupNetboot was located in xCAT::Utils' )
   or BAIL_OUT('Utils.pm no longer matches the expected lookupNetboot shape');
@@ -69,7 +62,7 @@ is( Test::LookupNetboot::lookupNetboot( 'xCAT::Utils', 'rocky10.2', 'riscv64', '
 # ---------------------------------------------------------------------------
 # xCAT::ProfiledNodeUtils netboot rule table + cal_netboot
 # ---------------------------------------------------------------------------
-my $pnu_source = slurp($pnu_pm);
+my $pnu_source = slurp_repo_file('perl-xCAT/xCAT/ProfiledNodeUtils.pm');
 my ($netboot_dict) = $pnu_source =~ m{^(\s*my %netboot_dict = \(.*?^\s*\);)}ms;
 ok( $netboot_dict, 'the profiled-node netboot rule table was located' )
   or BAIL_OUT('ProfiledNodeUtils.pm no longer matches the expected %netboot_dict shape');
@@ -102,7 +95,7 @@ is( Test::ProfiledNetboot::cal_netboot( $rule_table, [ 'aarch64', 'rhels', '9', 
 # ---------------------------------------------------------------------------
 SKIP: {
     skip 'xCAT::Schema is not loadable here', 3
-      unless eval { require lib; lib->import( File::Spec->catdir( $repo_root, 'perl-xCAT' ) ); require xCAT::Schema; 1 };
+      unless eval { require lib; lib->import( repo_path('perl-xCAT') ); require xCAT::Schema; 1 };
 
     like( $xCAT::Schema::tabspec{nodetype}{descriptions}{arch}, qr/\briscv64\b/,
         'nodetype.arch documents riscv64 as a valid value' );

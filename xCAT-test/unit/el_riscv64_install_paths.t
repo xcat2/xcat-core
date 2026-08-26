@@ -3,12 +3,14 @@ use strict;
 use warnings;
 
 use FindBin;
-use File::Spec;
+use lib "$FindBin::Bin/../lib";
 use Test::More;
 use lib "$FindBin::Bin/../../perl-xCAT";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use lib "$FindBin::Bin/../../xCAT-server/share/xcat/netboot/imgutils";
 use imgutils;
+
+use XCAT::Test::File qw(repo_path slurp_repo_file);
 
 # EL riscv64 media and diskless images: the installer kernel/initrd live under
 # images/pxeboot like x86 and aarch64 media, and riscv64 diskless images need
@@ -17,21 +19,19 @@ use imgutils;
 # conditions are asserted in the shipped source and the resolver block is
 # extracted and evaluated directly.
 
-my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
-
-sub slurp {
-    my ($relative) = @_;
-    my $path = File::Spec->catfile( $repo_root, split( m{/}, $relative ) );
+my @source_files = (
+    'xCAT-server/lib/xcat/plugins/anaconda.pm',
+    'xCAT-server/lib/xcat/plugins/geninitrd.pm',
+    'xCAT-server/share/xcat/netboot/rh/genimage',
+);
+foreach my $relative (@source_files) {
+    my $path = repo_path($relative);
     plan skip_all => "$path not found" unless -r $path;
-    open( my $fh, '<', $path ) or die "Unable to read $path: $!";
-    my $content = do { local $/; <$fh> };
-    close($fh);
-    return $content;
 }
 
-my $anaconda  = slurp('xCAT-server/lib/xcat/plugins/anaconda.pm');
-my $geninitrd = slurp('xCAT-server/lib/xcat/plugins/geninitrd.pm');
-my $genimage  = slurp('xCAT-server/share/xcat/netboot/rh/genimage');
+my $anaconda  = slurp_repo_file($source_files[0]);
+my $geninitrd = slurp_repo_file($source_files[1]);
+my $genimage  = slurp_repo_file($source_files[2]);
 
 # anaconda.pm: stateful install kernel/initrd discovery
 like(

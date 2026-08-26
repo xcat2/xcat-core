@@ -4,8 +4,10 @@ use warnings;
 ## no critic (Modules::RequireFilenameMatchesPackage)
 
 use FindBin;
-use File::Spec;
+use lib "$FindBin::Bin/../lib";
 use Test::More;
+
+use XCAT::Test::File qw(repo_path slurp_repo_file);
 
 # nodediscover sets noderes.netboot for a freshly discovered node when the
 # admin did not pick a method that fits the reported architecture. The ladder
@@ -31,8 +33,7 @@ BEGIN {
     $INC{'xCAT/DiscoveryUtils.pm'} = __FILE__;
 }
 
-my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
-my $plugin = File::Spec->catfile( $repo_root, 'xCAT-server', 'lib', 'xcat', 'plugins', 'nodediscover.pm' );
+my $plugin = repo_path('xCAT-server/lib/xcat/plugins/nodediscover.pm');
 plan skip_all => "$plugin not found" unless -r $plugin;
 
 require $plugin;
@@ -71,7 +72,7 @@ is( $warnings, 0, 'no warnings were emitted for undefined inputs' );
 
 # The discovery request is stored as discovery data key by key, so reading the platform
 # of a node that never reported one must not add the key to the request.
-my $source = do { open( my $fh, '<', $plugin ) or die "Unable to read $plugin: $!"; local $/; <$fh> };
+my $source = slurp_repo_file('xCAT-server/lib/xcat/plugins/nodediscover.pm');
 like(
     $source,
     qr/my \$platform = exists \$request->\{platform\} \? \$request->\{platform\}->\[0\] : undef;/,

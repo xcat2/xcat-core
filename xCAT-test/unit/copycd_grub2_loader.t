@@ -2,27 +2,24 @@
 use strict;
 use warnings;
 
-use Cwd qw(realpath);
 use File::Path qw(make_path);
 use File::Spec;
 use File::Temp qw(tempdir);
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 use Test::More;
+
+use XCAT::Test::File qw(repo_path slurp_repo_file);
 
 # copycd publishes the grub2 UEFI image of the installation media so that nodes
 # of an architecture xCAT builds no boot loader for -- riscv64 -- can net boot
 # without a further step. An image the management node already has is never
 # replaced, and the media of every other architecture is left alone.
 
-my $repo_root = realpath( File::Spec->catdir( $FindBin::Bin, '..', '..' ) );
-my $plugin    = File::Spec->catfile( $repo_root, 'xCAT-server', 'lib', 'xcat', 'plugins', 'anaconda.pm' );
+my $plugin = repo_path('xCAT-server/lib/xcat/plugins/anaconda.pm');
 plan skip_all => "$plugin not found" unless -r $plugin;
 
-my $source = do {
-    open( my $fh, '<', $plugin ) or die "Unable to read $plugin: $!";
-    local $/;
-    <$fh>;
-};
+my $source = slurp_repo_file('xCAT-server/lib/xcat/plugins/anaconda.pm');
 
 # anaconda.pm needs a database to load, so take just the loader publication out
 # of it, the way the other unit tests here isolate a shipped sub.

@@ -3,8 +3,10 @@ use strict;
 use warnings;
 
 use FindBin;
-use File::Spec;
+use lib "$FindBin::Bin/../lib";
 use Test::More;
+
+use XCAT::Test::File qw(repo_path slurp_repo_file);
 
 # The ISC dhcpd subnet block in dhcp.pm maps DHCP option 93 (client system
 # architecture) to a boot file. The block is rendered inside a large
@@ -12,14 +14,11 @@ use Test::More;
 # architecture branch must appear before the catch-all that hands unknown
 # clients /yaboot, otherwise the branch is unreachable.
 
-my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
-my $plugin = File::Spec->catfile( $repo_root, 'xCAT-server', 'lib', 'xcat', 'plugins', 'dhcp.pm' );
+my $plugin = repo_path('xCAT-server/lib/xcat/plugins/dhcp.pm');
 
 plan skip_all => "$plugin not found" unless -r $plugin;
 
-open( my $fh, '<', $plugin ) or die "Unable to read $plugin: $!";
-my $source = do { local $/; <$fh> };
-close($fh);
+my $source = slurp_repo_file('xCAT-server/lib/xcat/plugins/dhcp.pm');
 
 my %branch = (
     aarch64 => qr/client-architecture = 00:0b \{[^\n]*\n\s*push \@netent, "\s*filename \\"boot\/grub2\/grub2\.aarch64\\";/,

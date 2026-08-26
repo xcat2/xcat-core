@@ -4,9 +4,11 @@ use warnings;
 ## no critic (Modules::RequireFilenameMatchesPackage, TestingAndDebugging::ProhibitNoStrict, TestingAndDebugging::ProhibitNoWarnings)
 
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
 use Test::More;
+use XCAT::Test::File qw(repo_path);
 
 BEGIN {
     package xCAT::Utils;
@@ -50,12 +52,8 @@ BEGIN {
     $INC{'xCAT/NodeRange.pm'} = __FILE__;
 }
 
-my $source_mknb_plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/mknb.pm";
-if (-f $source_mknb_plugin) {
-    require $source_mknb_plugin;
-} else {
-    require xCAT_plugin::mknb;
-}
+my $source_mknb_plugin = repo_path('xCAT-server/lib/xcat/plugins/mknb.pm');
+require $source_mknb_plugin;
 
 my ($legacy, $selected) = xCAT_plugin::mknb::_select_network_addresses(
     {
