@@ -9,6 +9,17 @@ Clone the xCAT project from `GitHub <https://github.com/xcat2/xcat-core>`_::
     cd xcat-core
     ./buildcore.sh
 
+To build the source rpms and no binary rpms, set ``SRCONLY``::
+
+    cd xcat-core
+    ./buildcore.sh SRCONLY=1
+
+A source rpm is the input that a build service such as mock, koji, COPR or OBS
+takes, and it lets one machine make the source rpms while another makes the
+binary rpms for each architecture. ``rpmbuild`` does not need the packages named
+in ``BuildRequires`` to make a source rpm, so this also builds on a machine that
+cannot complete a full build. ``SRCONLY`` is not supported on AIX.
+
 xcat-deps
 ---------
 
