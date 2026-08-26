@@ -31,6 +31,7 @@ my $candoipv6 = eval {
 use Sys::Syslog;
 use IPC::Open2;
 use xCAT::Utils;
+use xCAT::SvrUtils;
 use xCAT::DHCP::BootPolicy;
 use xCAT::DHCP::Backend;
 use xCAT::DHCP::OmapiPolicy;
@@ -2835,11 +2836,24 @@ sub kea_apply_ddns_behavior
 sub dhcpd_sysconfig_uses_interface_key
 {
     my $os = shift || "";
-    my $os_ver = $os;
-    $os_ver =~ s/[^0-9.^0-9]//g;
+    my ( $os_family, $os_major, $os_minor ) = xCAT::SvrUtils::parseosver($os);
+    if (!$os_family || !defined $os_major || !length $os_major) {
+        return 0;
+    }
 
-    return 1 if $os =~ /(sles|opensuse[-_]?leap|leap)/i && $os_ver >= 11;
-    return 1 if $os =~ /rhels?/i && $os_ver >= 7;
+    my $os_version = $os_major;
+    if (defined $os_minor && length $os_minor) {
+        $os_version .= ".$os_minor";
+    }
+
+    if (   $os_family =~ /(sles|opensuse[-_]?leap|leap)/i
+        && xCAT::Utils->version_cmp( $os_version, '11' ) >= 0) {
+        return 1;
+    }
+    if (   $os_family =~ /rhels?/i
+        && xCAT::Utils->version_cmp( $os_version, '7' ) >= 0) {
+        return 1;
+    }
     return 0;
 }
 
