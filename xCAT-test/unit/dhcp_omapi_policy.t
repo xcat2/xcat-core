@@ -9,6 +9,9 @@ use Test::More;
 
 use xCAT::DHCP::OmapiPolicy;
 
+ok( !exists $INC{'xCAT/Utils.pm'},
+    'loading the OMAPI policy avoids the full utility dependency stack' );
+
 sub omapi_settings {
     my (%overrides) = @_;
     return xCAT::DHCP::OmapiPolicy->settings(
@@ -33,6 +36,8 @@ local %XCATSITEVALS = (
 my $site_settings = xCAT::DHCP::OmapiPolicy->settings(fips_mode => 0);
 is( $site_settings->{algorithm}, 'hmac-sha256',
     'runtime settings read the configured site algorithm' );
+ok( !exists $INC{'xCAT/Utils.pm'},
+    'an explicit FIPS state keeps the utility dependency lazy' );
 
 my $defaults = omapi_settings();
 is( $defaults->{algorithm},

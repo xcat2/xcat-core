@@ -14,7 +14,7 @@ use Test::More;
 use XCAT::Test::File qw(repo_path slurp_repo_file);
 
 $ENV{XCATCFG}  ||= 'SQLite:/tmp';
-$ENV{XCATROOT} ||= "$FindBin::Bin/../../xCAT-server";
+$ENV{XCATROOT} ||= repo_path('xCAT-server');
 
 my $ddns_plugin_path = repo_path('xCAT-server/lib/xcat/plugins/ddns.pm');
 require $ddns_plugin_path;
