@@ -243,21 +243,37 @@ sub _static_host_statements
     return $statements;
 }
 
+sub _node_host_statements
+{
+    my ($node, $statements) = @_;
+
+    return 'ddns-hostname \"' . $node . '\"; send host-name \"'
+      . $node . '\";' . ($statements || '');
+}
+
 sub _add_isc_static_host
 {
-    my ($node, $hostname, $mac, $ip, $statements) = @_;
+    my ($node, $hostname, $mac, $hardwaretype, $mgtifname, $ip, $statements,
+        $has_infiniband_identity) = @_;
 
     return unless $ip && $ip ne 'DENIED';
 
+    $mac = normalize_mac($mac) || $mac;
     _delete_isc_static_host($node);
 
     my $host_statements = _static_host_statements($statements);
+    my $hardware_kind = $hardwaretype == 32 ? 'infiniband' : 'ethernet';
     push @dhcpconf, "#xCAT host declaration for $node aka host $hostname start\n";
     push @dhcpconf, "host $hostname {\n";
-    push @dhcpconf, "    hardware ethernet $mac;\n";
+    push @dhcpconf, "    hardware $hardware_kind $mac;\n";
     push @dhcpconf, "    fixed-address $ip;\n";
     push @dhcpconf, "    $host_statements\n" if $host_statements;
-    push @dhcpconf, "} #xCAT host declaration for $node aka host $hostname end\n";
+    push @dhcpconf, "}\n";
+    push @dhcpconf, _infiniband_twin_static_lines(
+        $hostname, $mac, $hardwaretype, $mgtifname, $ip,
+        $host_statements, $has_infiniband_identity
+    );
+    push @dhcpconf, "#xCAT host declaration for $node aka host $hostname end\n";
 
     $restartdhcp = 1;
 }
@@ -473,6 +489,7 @@ sub delnode
     if ($ent and $ent->{mac})
     {
         my @macs = split(/\|/, $ent->{mac});
+        my $has_infiniband_identity = _infiniband_identity_present(@macs);
         my $mace;
         my $count = 0;
         foreach $mace (@macs)
@@ -487,12 +504,16 @@ sub delnode
             }    #Default to hostname equal to nodename
             unless ($mac) { next; }    #Skip corrupt format
 
-            if (!grep /:/, $mac) {
+            my $normalized_mac = normalize_mac($mac);
+            if ($normalized_mac) {
+                $mac = $normalized_mac;
+            } elsif (!grep /:/, $mac) {
                 $mac = lc($mac);
                 $mac =~ s/(\w{2})/$1:/g;
                 $mac =~ s/:$//;
             }
             my $hostname       = $hname;
+            my $hardwaretype   = length($mac) == 23 || length($mac) == 26 ? 32 : 1;
             my %client_nethash = xCAT::DBobjUtils->getNetwkInfo([$node]);
             if ($client_nethash{$node}{mgtifname} =~ /hf/)
             {
@@ -514,14 +535,21 @@ sub delnode
             print $omshell "remove\n";
             print $omshell "close\n";
 
-            if ($mac)
+            my ($ibnamecommands, $ibaddresscommands) =
+              _infiniband_twin_delete_commands(
+                $hostname, $mac, $hardwaretype,
+                $client_nethash{$node}{mgtifname},
+                _omapi_pre_create_cleanup_supported(),
+                $has_infiniband_identity
+              );
+            print $omshell $ibnamecommands if ($ibnamecommands);
+
+            my $hardwarecommands =
+              _hardware_address_delete_commands($mac, $hardwaretype);
+            if ($hardwarecommands)
             {
-                print $omshell "new host\n";
-                print $omshell "set hardware-address = " . $mac
-                  . "\n";                      #find and destroy mac conflict
-                print $omshell "open\n";
-                print $omshell "remove\n";
-                print $omshell "close\n";
+                print $omshell $hardwarecommands;
+                print $omshell $ibaddresscommands if ($ibaddresscommands);
             }
             if ($inetn and _omapi_ip_lookup_supported())
             {
@@ -631,6 +659,166 @@ sub addnode6 {
     print $omshell6 "close\n";
 
 }
+
+sub _infiniband_twin_mac
+{
+    my $mac = shift;
+
+    $mac = normalize_mac($mac);
+    return unless defined($mac) and length($mac) == 17;
+    return substr($mac, 0, 8) . ":03:00" . substr($mac, 8);
+}
+
+sub _infiniband_identity_present
+{
+    foreach my $entry (@_) {
+        my ($address) = split(/!/, $entry);
+        next unless defined($address);
+        $address =~ s/[:-]//g;
+        return 1 if $address =~ /\A(?:[[:xdigit:]]{16}|[[:xdigit:]]{18})\z/;
+    }
+    return 0;
+}
+
+sub _infiniband_twin_identity
+{
+    my ($hostname, $mac, $hardwaretype, $mgtifname,
+        $has_infiniband_identity) = @_;
+    my $ibmac = _infiniband_twin_mac($mac);
+
+    return if $hardwaretype != 1
+      || !$ibmac
+      || !defined($mgtifname)
+      || $mgtifname !~ /^ib/
+      || $has_infiniband_identity;
+    return ("$hostname-xcat-ib", $ibmac);
+}
+
+sub _infiniband_twin_create_commands
+{
+    my ($hostname, $mac, $hardwaretype, $mgtifname, $ip, $hoststatements,
+        $cleanup_supported, $has_infiniband_identity) = @_;
+    my ($ibhostname, $ibmac) = _infiniband_twin_identity(
+        $hostname, $mac, $hardwaretype, $mgtifname,
+        $has_infiniband_identity
+    );
+
+    return unless $ibmac;
+
+    my $commands = '';
+    if ($cleanup_supported) {
+        $commands .= "new host\n"
+          . "set name = \"$ibhostname\"\n"
+          . "open\n"
+          . "remove\n"
+          . "close\n";
+    }
+    $commands .= "new host\n"
+      . "set name = \"$ibhostname\"\n"
+      . "set hardware-address = $ibmac\n"
+      . "set dhcp-client-identifier = $ibmac\n"
+      . "set hardware-type = 32\n";
+
+    if ($ip eq "DENIED") {
+        $commands .= "set statements = \"deny booting;\"\n";
+    } else {
+        $commands .= "set ip-address = $ip\n" if ($ip);
+        $commands .= "set statements = \"$hoststatements\"\n" if ($hoststatements);
+    }
+
+    return $commands . "create\nclose\n";
+}
+
+sub _infiniband_twin_static_lines
+{
+    my ($hostname, $mac, $hardwaretype, $mgtifname, $ip, $hoststatements,
+        $has_infiniband_identity) = @_;
+    my ($ibhostname, $ibmac) = _infiniband_twin_identity(
+        $hostname, $mac, $hardwaretype, $mgtifname,
+        $has_infiniband_identity
+    );
+
+    return unless $ibmac && $ip && $ip ne 'DENIED';
+
+    my @lines = (
+        "host $ibhostname {\n",
+        "    hardware infiniband $ibmac;\n",
+        "    fixed-address $ip;\n",
+    );
+    push @lines, "    $hoststatements\n" if $hoststatements;
+    push @lines, "}\n";
+    return @lines;
+}
+
+sub _infiniband_twin_delete_commands
+{
+    my ($hostname, $mac, $hardwaretype, $mgtifname, $cleanup_supported,
+        $has_infiniband_identity) = @_;
+    my $ibmac = _infiniband_twin_mac($mac);
+    return unless $ibmac;
+    if (!$cleanup_supported) {
+        my (undef, $current_ibmac) = _infiniband_twin_identity(
+            $hostname, $mac, $hardwaretype, $mgtifname,
+            $has_infiniband_identity
+        );
+        return unless $current_ibmac;
+    }
+    my $ibhostname = "$hostname-xcat-ib";
+
+    my $namecommands = "new host\n"
+      . "set name = \"$ibhostname\"\n"
+      . "open\n"
+      . "remove\n"
+      . "close\n";
+    my $addresscommands;
+
+    if ($cleanup_supported) {
+        $addresscommands = "new host\n"
+          . "set hardware-address = $ibmac\n"
+          . "set hardware-type = 32\n"
+          . "open\n"
+          . "remove\n"
+          . "close\n";
+    }
+
+    return ($namecommands, $addresscommands);
+}
+
+sub _hardware_address_delete_commands
+{
+    my ($mac, $hardwaretype) = @_;
+    return unless $mac;
+
+    my $commands = "new host\n"
+      . "set hardware-address = $mac\n";
+    $commands .= "set hardware-type = $hardwaretype\n"
+      if $hardwaretype != 1;
+
+    return $commands . "open\nremove\nclose\n";
+}
+
+sub _infiniband_twin_update_commands
+{
+    my ($hostname, $mac, $hardwaretype, $mgtifname, $ip, $hoststatements,
+        $cleanup_supported, $has_infiniband_identity) = @_;
+    my ($namecommands, $addresscommands);
+
+    if ($cleanup_supported) {
+        ($namecommands, $addresscommands) =
+          _infiniband_twin_delete_commands(
+            $hostname, $mac, $hardwaretype, $mgtifname,
+            $cleanup_supported, $has_infiniband_identity
+          );
+        undef $addresscommands if $has_infiniband_identity;
+    }
+    my $createcommands = _infiniband_twin_create_commands(
+        $hostname, $mac, $hardwaretype, $mgtifname, $ip,
+        $hoststatements, 0, $has_infiniband_identity
+    );
+
+    return ($namecommands, $addresscommands, $createcommands);
+}
+
 
 sub addnode
 {
@@ -755,6 +943,7 @@ sub addnode
     }
 
     my @macs = split(/\|/, $ent->{mac});
+    my $has_infiniband_identity = _infiniband_identity_present(@macs);
     my $mace;
     my $deflstaments = $lstatements;
     my $count        = 0;
@@ -780,6 +969,7 @@ sub addnode
             );
             next;
         }
+        $mac = normalize_mac($mac);
         my $ip = getipaddr($hname, OnlyV4 => 1);
         if ($hname eq '*NOIP*') {
             $hname = $node . "-noip" . $mac;
@@ -919,11 +1109,6 @@ sub addnode
         }
         else
         {
-            if (!grep /:/, $mac) {
-                $mac = lc($mac);
-                $mac =~ s/(\w{2})/$1:/g;
-                $mac =~ s/:$//;
-            }
             my $hostname       = $hname;
             my $hardwaretype   = 1;
             my %client_nethash = xCAT::DBobjUtils->getNetwkInfo([$node]);
@@ -945,18 +1130,29 @@ sub addnode
 
             if (_isc_static_host_fallback()) {
                 if ($ip ne "DENIED") {
-                    if ($lstatements) {
-                        $lstatements = 'ddns-hostname \"' . $node . '\"; send host-name \"' . $node . '\";' . $lstatements;
-                    } else {
-                        $lstatements = 'ddns-hostname \"' . $node . '\"; send host-name \"' . $node . '\";';
-                    }
+                    $lstatements = _node_host_statements($node, $lstatements);
                 } else {
                     $lstatements = "deny booting;";
                 }
-                _add_isc_static_host($node, $hostname, $mac, $ip, $lstatements);
+                _add_isc_static_host(
+                    $node, $hostname, $mac, $hardwaretype,
+                    $client_nethash{$node}{mgtifname}, $ip, $lstatements,
+                    $has_infiniband_identity
+                );
                 $count = $count + 2;
                 next;
             }
+
+            if ($ip ne "DENIED") {
+                $lstatements = _node_host_statements($node, $lstatements);
+            }
+            my ($ibnamecommands, $ibaddresscommands, $ibcreatecommands) =
+              _infiniband_twin_update_commands(
+                $hostname, $mac, $hardwaretype,
+                $client_nethash{$node}{mgtifname}, $ip, $lstatements,
+                _omapi_pre_create_cleanup_supported(),
+                $has_infiniband_identity
+              );
 
             #syslog("local4|err", "Setting $node ($hname|$ip) to " . $mac);
             if (_omapi_pre_create_cleanup_supported()) {
@@ -966,6 +1162,7 @@ sub addnode
                 print $omshell "open\n";
                 print $omshell "remove\n";
                 print $omshell "close\n";
+                print $omshell $ibnamecommands if ($ibnamecommands);
             }
             if ($ip and $ip ne 'DENIED' and _omapi_ip_lookup_supported()) {
                 print $omshell "new host\n";
@@ -975,12 +1172,9 @@ sub addnode
                 print $omshell "close\n";
             }
             if (_omapi_pre_create_cleanup_supported()) {
-                print $omshell "new host\n";
-                print $omshell "set hardware-address = " . $mac
-                  . "\n";    #find and destroy mac conflict
-                print $omshell "open\n";
-                print $omshell "remove\n";
-                print $omshell "close\n";
+                print $omshell
+                  _hardware_address_delete_commands($mac, $hardwaretype);
+                print $omshell $ibaddresscommands if ($ibaddresscommands);
             }
             print $omshell "new host\n";
             print $omshell "set name = \"$hostname\"\n";
@@ -997,18 +1191,12 @@ sub addnode
                 if ($ip) {
                     print $omshell "set ip-address = $ip\n";
                 }
-                if ($lstatements)
-                {
-                    $lstatements = 'ddns-hostname \"' . $node . '\"; send host-name \"' . $node . '\";' . $lstatements;
-
-                } else {
-                    $lstatements = 'ddns-hostname \"' . $node . '\"; send host-name \"' . $node . '\";';
-                }
                 print $omshell "set statements = \"$lstatements\"\n";
             }
 
             print $omshell "create\n";
             print $omshell "close\n";
+            print $omshell $ibcreatecommands if ($ibcreatecommands);
             unless ($::XCATSITEVALS{externaldhcpservers}) {
                 unless (grep /#definition for host $node aka host $hostname/, @dhcpconf)
                 {
@@ -3311,7 +3499,7 @@ sub kea_xnba_client_classes_for_nodes
     );
 }
 
-sub kea_normalize_mac
+sub normalize_mac
 {
     my ($mac) = @_;
 
@@ -3319,6 +3507,11 @@ sub kea_normalize_mac
     return unless $mac =~ /\A(?:[0-9a-fA-F]{2}(?:-[0-9a-fA-F]{2}){5,8}|[0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){5,8})\z/;
     $mac =~ tr/-/:/;
     return lc($mac);
+}
+
+sub kea_normalize_mac
+{
+    return normalize_mac(shift);
 }
 
 sub kea_node_reservations6
