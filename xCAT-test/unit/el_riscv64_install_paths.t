@@ -2,79 +2,127 @@
 use strict;
 use warnings;
 
+use File::Path qw(make_path);
+use File::Slurper qw(write_text);
+use File::Spec;
+use File::Temp qw(tempdir);
 use FindBin;
-use lib "$FindBin::Bin/../lib";
 use Test::More;
-use lib "$FindBin::Bin/../../perl-xCAT";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
-use lib "$FindBin::Bin/../../xCAT-server/share/xcat/netboot/imgutils";
-use imgutils;
-
-use XCAT::Test::File qw(repo_path slurp_repo_file);
-
-# EL riscv64 media and diskless images: the installer kernel/initrd live under
-# images/pxeboot like x86 and aarch64 media, and riscv64 diskless images need
-# their own default network drivers and lib64 resolver libraries. The
-# behavior is pinned without running the database-backed plugins: the arch
-# conditions are asserted in the shipped source and the resolver block is
-# extracted and evaluated directly.
-
-my @source_files = (
-    'xCAT-server/lib/xcat/plugins/anaconda.pm',
-    'xCAT-server/lib/xcat/plugins/geninitrd.pm',
-    'xCAT-server/share/xcat/netboot/rh/genimage',
-);
-foreach my $relative (@source_files) {
-    my $path = repo_path($relative);
-    plan skip_all => "$path not found" unless -r $path;
+BEGIN {
+    $ENV{XCATROOT} = "$FindBin::Bin/../../xCAT-server";
 }
 
-my $anaconda  = slurp_repo_file($source_files[0]);
-my $geninitrd = slurp_repo_file($source_files[1]);
-my $genimage  = slurp_repo_file($source_files[2]);
+use lib "$FindBin::Bin/../../perl-xCAT";
+use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
+use lib "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins";
+use lib "$FindBin::Bin/../../xCAT-server/share/xcat/netboot/imgutils";
 
-# anaconda.pm: stateful install kernel/initrd discovery
-like(
-    $anaconda,
-    qr/\( \$arch =~ \/x86\/ or \$arch =~ \/aarch64\/ or \$arch =~ \/riscv64\/ \) and\n\s*\(\n\s*-r "\$pkgdir\/images\/pxeboot\/vmlinuz"/,
-    'anaconda looks for riscv64 installer kernels under images/pxeboot like x86 and aarch64',
+require anaconda;
+require geninitrd;
+use imgutils;
+
+my $media = tempdir(CLEANUP => 1);
+my $pxeboot = File::Spec->catdir($media, 'images', 'pxeboot');
+make_path($pxeboot);
+write_text(File::Spec->catfile($pxeboot, 'vmlinuz'), "kernel\n");
+write_text(File::Spec->catfile($pxeboot, 'initrd.img'), "initrd\n");
+
+my @paths = xCAT_plugin::anaconda::_install_media_pxeboot_paths($media, 'riscv64');
+is_deeply(
+    \@paths,
+    [ File::Spec->catfile($pxeboot, 'vmlinuz'), File::Spec->catfile($pxeboot, 'initrd.img') ],
+    'riscv64 installer media use the images/pxeboot kernel and initrd',
 );
-like(
-    $anaconda,
-    qr/\/\\\/vmlinuz-\(\.\*\(x86_64\|ppc64\|el\\d\+\|ppc64le\|aarch64\|riscv64\)\)\$\//,
+is_deeply(
+    [ xCAT_plugin::anaconda::_install_media_pxeboot_paths($media, 'x86_64') ],
+    \@paths,
+    'x86_64 keeps the existing images/pxeboot layout',
+);
+is_deeply(
+    [ xCAT_plugin::anaconda::_install_media_pxeboot_paths($media, 'aarch64') ],
+    \@paths,
+    'aarch64 keeps the existing images/pxeboot layout',
+);
+is_deeply(
+    [ xCAT_plugin::anaconda::_install_media_pxeboot_paths($media, 'ppc64') ],
+    [],
+    'POWER media continue through their separate layout',
+);
+unlink(File::Spec->catfile($pxeboot, 'initrd.img'));
+is_deeply(
+    [ xCAT_plugin::anaconda::_install_media_pxeboot_paths($media, 'riscv64') ],
+    [ File::Spec->catfile($pxeboot, 'vmlinuz'), undef ],
+    'an incomplete pxeboot media pair preserves the existing partial lookup result',
+);
+
+is(
+    xCAT_plugin::anaconda::_driver_disk_kernel_version('/tmp/rpm/boot/vmlinuz-6.12.0-55.riscv64'),
+    '6.12.0-55.riscv64',
     'driver-disk kernel updates recognise riscv64 kernels',
 );
+is(
+    xCAT_plugin::anaconda::_driver_disk_kernel_version('/tmp/rpm/boot/vmlinuz-6.12.0-55.x86_64'),
+    '6.12.0-55.x86_64',
+    'driver-disk kernel updates still recognise x86_64 kernels',
+);
+is(
+    xCAT_plugin::anaconda::_driver_disk_kernel_version('/tmp/rpm/boot/not-a-kernel-riscv64'),
+    undef,
+    'driver-disk kernel parsing rejects unrelated files',
+);
 
-# geninitrd.pm: diskless installer initrd source
-like(
-    $geninitrd,
-    qr/if \(\$arch =~ \/x86\/ or \(\$arch =~ \/riscv64\/ and \$osvers !~ \/sles\|suse\/\)\) \{/,
-    'geninitrd routes riscv64 EL media through the installer pxeboot path',
+ok(
+    xCAT_plugin::geninitrd::_uses_x86_install_media_layout('riscv64', 'rocky10'),
+    'EL riscv64 media use the installer pxeboot layout',
+);
+ok(
+    !xCAT_plugin::geninitrd::_uses_x86_install_media_layout('riscv64', 'sles15'),
+    'SLES riscv64 media do not enter the EL layout',
+);
+ok(
+    xCAT_plugin::geninitrd::_uses_x86_install_media_layout('x86_64', 'sles15'),
+    'x86_64 SLES media retain their existing outer architecture route',
+);
+ok(
+    !xCAT_plugin::geninitrd::_uses_x86_install_media_layout('ppc64le', 'rocky10'),
+    'POWER media retain their separate architecture route',
 );
 
 is_deeply(
     [ imgutils::default_net_drivers( 'rh', 'riscv64' ) ],
-    [qw/e1000 e1000e igb ixgbe r8169 tg3 bnx2x mlx5_core virtio_net/],
-    'riscv64 diskless images default to virtio, Intel, Realtek, Broadcom and Mellanox drivers',
+    [qw(e1000 e1000e igb ixgbe r8169 tg3 bnx2x mlx5_core virtio_net)],
+    'riscv64 diskless images receive the intended default network drivers',
 );
-# rh/genimage: resolver libraries for the boot image
-my ($lib_block) = $genimage =~ m{^(\s*if \(\$arch =~ /x86_64/ or \$arch =~ /aarch64/ or \$arch =~ /riscv64/\) \{\n\s*push \@filestoadd, "lib64/libnss_dns\.so\.2";\n.*?^\s*\}\n)}ms;
-ok( $lib_block, 'the resolver library block was located in rh/genimage' )
-  or BAIL_OUT('rh/genimage no longer matches the expected resolver library block');
-
-sub resolver_libs {
-    my ($arch) = @_;
-    my $code = "sub { my \$arch = shift; my \@filestoadd;\n$lib_block\n return \@filestoadd; }";
-    my $sub = eval $code;    ## no critic (BuiltinFunctions::ProhibitStringyEval)
-    die "Unable to evaluate the resolver library block: $@" if $@;
-    return [ $sub->($arch) ];
-}
-
-is_deeply( resolver_libs('riscv64'), [ 'lib64/libnss_dns.so.2', 'lib64/libresolv.so.2' ], 'riscv64 images take the resolver libraries from lib64' );
-# anaconda.pm: crash kernel reservation for diskless images with kdump enabled
-like(
-    $anaconda,
-    qr/if \(\$arch eq "riscv64"\) \{\n(?:\s*#[^\n]*\n)*\s*\$kcmdline \.= " crashkernel=256M dump=\$dump ";/,
-    'a riscv64 diskless image with kdump enabled reserves a crash kernel by default',
+is_deeply(
+    [ imgutils::resolver_library_paths('riscv64') ],
+    [ 'lib64/libnss_dns.so.2', 'lib64/libresolv.so.2' ],
+    'riscv64 images take resolver libraries from lib64',
 );
+is_deeply(
+    [ imgutils::resolver_library_paths('ppc64') ],
+    [ 'lib/libnss_dns.so.2', 'lib/libresolv.so.2' ],
+    'POWER images retain the lib resolver paths',
+);
+
+is(
+    xCAT_plugin::anaconda::_default_crashkernel_args('riscv64', '/dev/vda2', 0, '', ''),
+    ' crashkernel=256M dump=/dev/vda2 ',
+    'riscv64 images reserve the existing default crash kernel size',
+);
+is(
+    xCAT_plugin::anaconda::_default_crashkernel_args('x86_64', '/dev/sda2', 0, '', ''),
+    ' crashkernel=128M dump=/dev/sda2 ',
+    'x86_64 keeps its existing default crash kernel arguments',
+);
+is(
+    xCAT_plugin::anaconda::_default_crashkernel_args('ppc64', '/dev/sda2', 0, '', ''),
+    ' crashkernel=256M@64M dump=/dev/sda2 ',
+    'POWER keeps its existing default crash kernel arguments',
+);
+is(
+    xCAT_plugin::anaconda::_default_crashkernel_args('ppc64', 'nfs', 1, 'net,host:/dump', 'nfs://host/dump'),
+    ' fadump=on fadump_reserve_mem=512M fadump_target=net,host:/dump fadump_default=noreboot dump=nfs://host/dump ',
+    'POWER fadump keeps its existing default arguments',
+);
+
 done_testing();
