@@ -84,6 +84,42 @@ sub _centos_linux_distname
 }
 
 
+sub _driver_disk_marker_path
+{
+    my $initrd = shift;
+
+    return unless defined($initrd) && length($initrd);
+    return "$initrd.xcat-driver-disk";
+}
+
+
+sub _set_driver_disk_marker
+{
+    my ($initrd, $present) = @_;
+    my $marker = _driver_disk_marker_path($initrd);
+
+    return $present ? 0 : 1 unless defined($marker);
+    unless ($present) {
+        return 1 unless -e $marker;
+        return unlink($marker) ? 1 : 0;
+    }
+
+    open(my $marker_fh, '>', $marker) or return 0;
+    return close($marker_fh) ? 1 : 0;
+}
+
+
+sub _driver_disk_kernel_arg
+{
+    my ($kversion, $initrd) = @_;
+    my $marker = _driver_disk_marker_path($initrd);
+
+    return '' unless defined($marker) && -f $initrd && -f $marker;
+    return '' if xCAT::Utils->version_cmp($kversion, "7.0") < 0;
+    return " inst.dd=/dd.img";
+}
+
+
 sub handled_commands
 {
     return {
@@ -1375,7 +1411,7 @@ sub mkinstall
                     unless ($noupdateinitrd) {
                         copy($kernpath,   "$tftppath");
                         copy($initrdpath, "$tftppath/initrd.img");
-                        &insert_dd($callback, $os, $arch, "$tftppath/initrd.img", "$tftppath/vmlinuz", $driverupdatesrc, $netdrivers, $osupdir, $ignorekernelchk);
+                        insert_dd($callback, $os, $arch, "$tftppath/initrd.img", "$tftppath/vmlinuz", $driverupdatesrc, $netdrivers, $osupdir, $ignorekernelchk);
                     }
                 }
                 xCAT::MsgUtils->trace($verbose_on_off, "d", "anaconda->mkinstall: copy initrd.img and vmlinuz to $tftppath");
@@ -1536,7 +1572,9 @@ sub mkinstall
             }
 
 
-            #TODO: dd=<url> for driver disks
+            $kcmdline .= _driver_disk_kernel_arg(
+                $kversion, "$tftppath/initrd.img"
+            );
             if (defined($sent->{serialport})) {
                 unless ($sent->{serialspeed}) {
                     xCAT::MsgUtils->report_node_error($callback, $node, "serialport defined, but no serialspeed for this node in nodehm table");
@@ -2579,6 +2617,13 @@ sub insert_dd {
     my $osupdirlist     = shift;
     my $ignorekernelchk = shift;
 
+    unless (_set_driver_disk_marker($img, 0)) {
+        my $rsp;
+        push @{ $rsp->{data} }, "Handle the driver update disk failed. Could not clear the initrd driver disk marker.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return ();
+    }
+
     my $install_dir = xCAT::TableUtils->getInstallDir();
 
     my $cmd;
@@ -3363,12 +3408,19 @@ EOMS
     if ( (&using_dracut($os)) && @dd_list) { #new style, skip the fanagling, copy over the dds and append them...
         mkpath("$dd_dir/dd");
         if (scalar(@dd_list) == 1) {    #only one, just append it..
-            copy($dd_list[0], "$dd_dir/dd/dd.img");
+            unless (copy($dd_list[0], "$dd_dir/dd/dd.img") && -s "$dd_dir/dd/dd.img") {
+                my $rsp;
+                push @{ $rsp->{data} }, "Handle the driver update disk failed. Could not copy the driver disk.";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                rmtree $dd_dir;
+                return ();
+            }
         } elsif (scalar(@dd_list) > 1) {
             unless (-x "/usr/bin/createrepo" and -x "/usr/bin/mkisofs") {
                 my $rsp;
                 push @{ $rsp->{data} }, "Merging multiple driver disks requires createrepo and mkisofs utilities";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
+                rmtree $dd_dir;
                 return ();
             }
             mkpath("$dd_dir/newddimg");
@@ -3382,27 +3434,77 @@ EOMS
                 $repodir =~ s/\/repodata\z//;
                 xCAT::Utils->runcmd("createrepo $repodir", -1);
             }
-            chdir("$dd_dir/newddimg");
+            unless (chdir("$dd_dir/newddimg")) {
+                my $rsp;
+                push @{ $rsp->{data} }, "Handle the driver update disk failed. Could not enter the merged driver disk directory.";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                rmtree $dd_dir;
+                return ();
+            }
             xCAT::Utils->runcmd("mkisofs -J -R -o $dd_dir/dd/dd.img .", -1);
+            if ($::RUNCMD_RC != 0 || !-s "$dd_dir/dd/dd.img") {
+                my $rsp;
+                push @{ $rsp->{data} }, "Handle the driver update disk failed. Could not merge the driver disks.";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                chdir("/");
+                rmtree $dd_dir;
+                return ();
+            }
         } else {    #there should be no else...
             die "This should never occur";
         }
 
-        chdir($dd_dir . "/dd");
+        unless (chdir($dd_dir . "/dd")) {
+            my $rsp;
+            push @{ $rsp->{data} }, "Handle the driver update disk failed. Could not enter the driver disk directory.";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            chdir("/");
+            rmtree $dd_dir;
+            return ();
+        }
         $cmd = "find .|cpio -H newc -o|gzip -9 -c - > ../dd.gz";
         xCAT::Utils->runcmd($cmd, -1);
-        unless (-f "../dd.gz") {
-            die "Error attempting to archive driver disk";
+        if ($::RUNCMD_RC != 0 || !-s "../dd.gz") {
+            my $rsp;
+            push @{ $rsp->{data} }, "Handle the driver update disk failed. Could not archive the driver disk.";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            chdir("/");
+            rmtree $dd_dir;
+            return ();
         }
         my $ddhdl;
         my $inithdl;
-        open($inithdl, ">>", $img);
-        open($ddhdl,   "<",  "../dd.gz");
+        unless (open($ddhdl, "<", "../dd.gz")) {
+            my $rsp;
+            push @{ $rsp->{data} }, "Handle the driver update disk failed. Could not append the driver disk to the initrd.";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            chdir("/");
+            rmtree $dd_dir;
+            return ();
+        }
+        unless (open($inithdl, ">>", $img)) {
+            close($ddhdl);
+            my $rsp;
+            push @{ $rsp->{data} }, "Handle the driver update disk failed. Could not append the driver disk to the initrd.";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            chdir("/");
+            rmtree $dd_dir;
+            return ();
+        }
         binmode($ddhdl);
         binmode($inithdl);
         {
             local $/ = \32768;
             while (my $block = <$ddhdl>) { print $inithdl $block; }
+        }
+        close($ddhdl);
+        unless (close($inithdl) && _set_driver_disk_marker($img, 1)) {
+            my $rsp;
+            push @{ $rsp->{data} }, "Handle the driver update disk failed. Could not record the driver disk in the initrd.";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            chdir("/");
+            rmtree $dd_dir;
+            return ();
         }
         chdir("/");
         push @inserted_dd, @dd_list;
