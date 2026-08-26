@@ -1,47 +1,74 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+
+use FindBin;
 use Test::More;
 
-# Regression: the Ubuntu (subiquity) diskful install netboots the live installer over NFS.
-# The kernel command line built in debian.pm must satisfy TWO casper requirements or the
-# installer never boots and the node PXE-loops forever (surfacing to the test as
-# "ssh: connect ... port 22: Connection refused"):
+# The Ubuntu live installer (Subiquity) is booted over NFS. Three things on the kernel command
+# line decide whether it boots at all and whether the node can reboot into the disk afterwards:
 #
-#   1. boot=casper -- without it casper does not process netboot=nfs at all; it scans the
-#      local disks, finds nothing, and panics "Unable to find a medium containing a live
-#      file system", dropping to the initramfs emergency shell.
+#   boot=casper  without it casper never processes netboot=nfs -- it scans local disks, finds no
+#                live media and panics into the initramfs shell, which PXE-loops.
+#   nfsroot=IP   casper mounts the live filesystem with klibc's nfsmount, which has no resolver,
+#                so a hostname there fails with "can't parse IP address".
+#   toram        casper copies the squashfs to RAM and unmounts the NFS source. Without it the
+#                NFS root stays mounted, systemd-shutdown blocks forever on I/O to it and the
+#                node never power-cycles into the disk it just installed.
 #
-#   2. nfsroot must be a literal IP, NOT a hostname. casper mounts the live filesystem with
-#      klibc's nfsmount, which does NOT resolve hostnames -- it fails with
-#      "nfsmount: can't parse IP address '<mn-hostname>'". (busybox/util-linux `mount -t nfs`
-#      resolves names, which is why manual mounts work while casper's does not.) The instserver
-#      must therefore be passed through xCAT::NetworkUtils->getipaddr() before it is put in
-#      nfsroot=. The ds=...http URL is fetched later by cloud-init in the booted live system,
-#      where normal DNS works, so only nfsroot needs the IP.
+# Build the command line for real and inspect it, rather than reading the source that builds it.
 
-sub slurp { my ($p) = @_; local $/; open my $fh, '<', $p or return undef; <$fh> }
+use lib "$FindBin::Bin/../../perl-xCAT";
+use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
+my $plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/debian.pm";
+plan skip_all => 'debian.pm not found' unless -r $plugin;
+eval { require $plugin; 1 } or plan skip_all => "could not load debian.pm: $@";
 
-my $deb = slurp('xCAT-server/lib/xcat/plugins/debian.pm');
-plan skip_all => 'debian.pm not found' unless defined $deb;
+my $cmdline = xCAT_plugin::debian::subiquity_kcmdline(
+    'nofb utf8 auto xcatd=xcatmn',    # what mkinstall has built so far
+    '10.0.0.1',                       # instserver resolved to a literal IP
+    '/install/ubuntu24.04/x86_64',    # pkgdir exported over NFS
+    'xcatmn',                         # instserver by name
+    '80',                             # httpport
+    'node01',                         # node
+);
 
-# The exact netboot fragment is unique to the subiquity install cmdline, so match it directly
-# instead of trying to slice one of the several using_subiquity() blocks.
-like($deb, qr/\bboot=casper\b/,
-    'subiquity netboot kcmdline includes boot=casper (else casper scans local disks and panics)');
-like($deb, qr/autoinstall ip=dhcp boot=casper netboot=nfs nfsroot=\$\{nfsip\}:/,
-    'subiquity kcmdline is: autoinstall ip=dhcp boot=casper netboot=nfs nfsroot=<ip>');
-like($deb, qr/getipaddr\(\$instserver\)/,
-    'instserver is resolved to an IP via getipaddr for nfsroot (klibc nfsmount cannot resolve hostnames)');
-unlike($deb, qr/nfsroot=\$\{instserver\}:/,
-    'nfsroot does NOT use the bare instserver hostname (would break klibc nfsmount)');
+# --- the three settings the installer cannot boot without ------------------
+like($cmdline, qr/(?:^| )boot=casper(?: |$)/,
+    'casper is told to boot, so it processes netboot=nfs instead of scanning disks');
+like($cmdline, qr{(?:^| )nfsroot=10\.0\.0\.1:/install/ubuntu24\.04/x86_64(?: |$)},
+    'nfsroot names the install server by IP, which klibc nfsmount can parse');
+like($cmdline, qr/(?:^| )toram(?: |$)/,
+    'toram copies the live filesystem to RAM so the NFS root is unmounted before shutdown');
 
-# The subiquity netboot cmdline must include 'toram' so casper copies the squashfs into RAM and
-# unmounts the NFS source -- otherwise the end-of-install reboot wedges in systemd-shutdown on a
-# D-state process doing I/O to the still-mounted NFS root, and the node never boots the installed disk.
-like($deb, qr/\btoram\b/,
-    'subiquity netboot cmdline includes toram (run from RAM, no NFS root at shutdown -> no reboot hang)');
-unlike($deb, qr/nfsroot=[^ ]*,soft/,
-    'nfsroot does NOT append ,soft (casper takes the whole nfsroot value as the path, which breaks the mount)');
+unlike($cmdline, qr/nfsroot=xcatmn:/,
+    'nfsroot never carries a hostname, which klibc nfsmount cannot resolve');
+unlike($cmdline, qr/nfsroot=[^ ]*,/,
+    'no mount options are appended to nfsroot -- casper takes the whole value as the path');
+
+# --- the rest of the line ---------------------------------------------------
+like($cmdline, qr/(?:^| )autoinstall(?: |$)/, 'the installer runs unattended');
+like($cmdline, qr/(?:^| )ip=dhcp(?: |$)/,     'the live system configures its NIC by DHCP');
+like($cmdline, qr/(?:^| )netboot=nfs(?: |$)/, 'the live filesystem is fetched over NFS');
+
+# cloud-init fetches the seed later, in the booted live system, where DNS works -- so this one
+# keeps the install server's name rather than its address.
+like($cmdline, qr{(?:^| )ds=nocloud-net;s=http://xcatmn:80/install/autoinst/node01/(?: |$)},
+    'the cloud-init seed URL addresses the install server by name');
+
+is((split / /, $cmdline)[-1], '---',
+    'the line ends with the separator that divides installer arguments from kernel arguments');
+
+# What mkinstall had already built is preserved, not replaced.
+like($cmdline, qr/^nofb utf8 auto xcatd=xcatmn /,
+    'the command line built so far is kept ahead of the installer arguments');
+
+# A non-default HTTP port reaches the seed URL.
+{
+    my $alt = xCAT_plugin::debian::subiquity_kcmdline(
+        'base', '10.0.0.1', '/pkgdir', 'xcatmn', '8080', 'node02');
+    like($alt, qr{ds=nocloud-net;s=http://xcatmn:8080/install/autoinst/node02/},
+        'the seed URL carries the configured HTTP port and node');
+}
 
 done_testing();

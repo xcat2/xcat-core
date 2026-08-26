@@ -2,58 +2,94 @@
 use strict;
 use warnings;
 
-use File::Spec;
 use FindBin;
 use Test::More;
 
-# Regression: on Ubuntu/Debian the DISKFUL install runs a node's postscripts inside the
-# installer's in-target chroot -- before the node has booted as itself. The syncfiles
-# postscript works by asking the management node to scp files INTO the running node, which
-# cannot happen in that phase: the not-yet-booted node has no sshd for the MN to reach, so the
-# push times out, syncfiles exits 1, and the node reports status=failed even though the OS
-# installed perfectly.
-#
-# syncfiles must therefore move to the postbootscripts set, which runs on the booted node
-# where ssh is already listening. Two things bound that move:
-#
-#   * It applies to the DISKFUL install path only. netboot and statelite already run their
-#     postscripts on the booted node, so moving syncfiles there changes working behaviour for
-#     no reason. EL/SLES are unaffected either way -- their postscripts already run on the
-#     booted node.
-#   * syncfiles must run BEFORE the existing postbootscripts, since a postbootscript may
-#     consume the files it synchronises. Appending it would invert that.
+# On the Ubuntu/Debian DISKFUL install path a node's postscripts run inside the installer's
+# in-target chroot, before the node has booted as itself. syncfiles asks the management node to
+# scp files INTO the running node, which cannot work there -- no sshd yet -- so it times out and
+# the node reports status=failed even though the OS installed fine. Postage defers it to the
+# postbootscripts, which run on the booted node. Drive that decision directly.
 
-my $repo_root = File::Spec->rel2abs(
-    File::Spec->catdir( $FindBin::Bin, '..', '..' )
+my $repo = "$FindBin::Bin/../..";
+plan skip_all => 'Postage.pm not found' unless -r "$repo/xCAT-server/lib/perl/xCAT/Postage.pm";
+
+use lib "$FindBin::Bin/../../perl-xCAT";
+use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
+eval { require xCAT::Postage; 1 } or plan skip_all => "could not load xCAT::Postage: $@";
+
+my $DEFERRED = "# ubuntu-deferred-postbootscripts-start-here\nsyncfiles\n"
+             . "# ubuntu-deferred-postbootscripts-end-here\n";
+
+sub defer { return xCAT::Postage::defer_syncfiles_to_postboot(@_) }
+
+# --- the case the fix exists for -------------------------------------------
+{
+    my ($post, $postboot) =
+      defer('ubuntu24.04', 'install', 'install', "syncfiles\notherpkgs\n", "setupntp\n");
+
+    is($post, "otherpkgs\n", 'syncfiles is removed from the postscripts');
+    is($postboot, $DEFERRED . "setupntp\n",
+        'syncfiles is prepended to the postbootscripts, ahead of what consumes its files');
+}
+
+# The nodeset state is not always known; the osimage provmethod decides then.
+{
+    my ($post, $postboot) =
+      defer('ubuntu24.04', 'install', undef, "syncfiles\n", "setupntp\n");
+    is($post, '', 'provmethod=install defers when no nodeset state is given');
+    is($postboot, $DEFERRED . "setupntp\n", 'and the postbootscripts receive it');
+}
+
+# --- paths that must NOT change --------------------------------------------
+my @untouched = (
+    [ 'netboot keeps its postscripts on the booted node already',
+      'ubuntu24.04', 'netboot', 'netboot' ],
+    [ 'statelite is unaffected',
+      'ubuntu22.04', 'statelite', 'statelite' ],
+    [ 'EL runs postscripts on the booted node, so nothing moves',
+      'rhels9.4', 'install', 'install' ],
+    [ 'SLES is unaffected',
+      'sles15.6', 'install', 'install' ],
+    [ 'an undefined os is left alone',
+      undef, 'install', 'install' ],
 );
-my $path = File::Spec->catfile( $repo_root, 'xCAT-server', 'lib', 'perl', 'xCAT', 'Postage.pm' );
-plan skip_all => "Postage.pm not found" unless -f $path;
+foreach my $case (@untouched) {
+    my ($name, $os, $provmethod, $state) = @$case;
+    my ($post, $postboot) = defer($os, $provmethod, $state, "syncfiles\notherpkgs\n", "setupntp\n");
+    is($post, "syncfiles\notherpkgs\n", "$name: the postscripts are unchanged");
+    is($postboot, "setupntp\n",         "$name: the postbootscripts are unchanged");
+}
 
-my $src = do { local $/; open my $fh, '<', $path or die $!; <$fh> };
+# A node that does not run syncfiles must not gain an empty deferral block.
+{
+    my ($post, $postboot) = defer('ubuntu24.04', 'install', 'install', "otherpkgs\n", "setupntp\n");
+    is($post, "otherpkgs\n",  'a node without syncfiles keeps its postscripts');
+    is($postboot, "setupntp\n", 'and gains no deferral block');
+}
 
-# Isolate the deferral block so the assertions below cannot accidentally match code elsewhere.
-my ($block) = $src =~ /(\n[^\n]*ubuntu\|debian[^\n]*\n(?:.*?\n)*?[^\n]*syncfiles(?:.*?\n)*?\s*\}\n\s*\}\n)/;
-ok( defined $block, 'found the syncfiles deferral block in makescript' )
-  or do { done_testing(); exit };
+# The name is matched whole: a postscript whose name merely contains "syncfiles" stays put.
+{
+    my ($post, $postboot) =
+      defer('ubuntu24.04', 'install', 'install', "syncfiles2\nmysyncfiles\n", "setupntp\n");
+    is($post, "syncfiles2\nmysyncfiles\n", 'a lookalike postscript name is not deferred');
+    is($postboot, "setupntp\n", 'and nothing is added to the postbootscripts');
+}
 
-like( $block, qr/\$os\s*=~\s*.\^\(\?:ubuntu\|debian\)/,
-    'the move is guarded to ubuntu/debian nodes only' );
+# Indented entries are still the syncfiles postscript.
+{
+    my ($post, $postboot) = defer('ubuntu24.04', 'install', 'install', "  syncfiles \nfoo\n", undef);
+    is($post, "foo\n", 'an indented syncfiles entry is deferred');
+    is($postboot, $DEFERRED, 'an undefined postbootscripts list becomes the deferral block');
+}
 
-like( $block, qr/\$diskful_install|\bnodesetstate\b|\bprovmethod\b/,
-    'the move is guarded to the diskful install path (not netboot/statelite)' );
-
-like( $block, qr/\$postscripts\s*=~\s*s\/\^\[[^\]]*\]\*syncfiles/,
-    'syncfiles is stripped from the in-target postscripts list' );
-
-like( $block, qr/\$postbootscripts\s*=\s*"[^"]*syncfiles[^"]*"\s*\.\s*\$postbootscripts/,
-    'syncfiles is PREPENDED to postbootscripts, so it runs before scripts that consume its files' );
-
-unlike( $block, qr/\$postbootscripts\s*\.=\s*"syncfiles/,
-    'syncfiles is not appended after the existing postbootscripts' );
-
-# The strip and the re-add must be paired, so a node with no syncfiles postscript never
-# acquires a spurious one.
-like( $block, qr/if\s*\(.*?\$postscripts.*?syncfiles.*?\)\s*\{\s*.*?\$postbootscripts/s,
-    'syncfiles is only added to postbootscripts when it was present in postscripts' );
+# Rendering the same node twice must not stack a second copy.
+{
+    my ($post, $postboot) =
+      defer('ubuntu24.04', 'install', 'install', "syncfiles\nfoo\n", "setupntp\n");
+    my ($post2, $postboot2) = defer('ubuntu24.04', 'install', 'install', $post, $postboot);
+    is($post2, $post,         'a second pass leaves the postscripts alone');
+    is($postboot2, $postboot, 'a second pass does not duplicate syncfiles');
+}
 
 done_testing();

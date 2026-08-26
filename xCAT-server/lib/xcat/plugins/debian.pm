@@ -507,6 +507,56 @@ sub copycd
     }
 }
 
+#-------------------------------------------------------------------------------
+
+=head3 subiquity_kcmdline
+
+    Build the kernel command line for a Subiquity (Ubuntu live installer) diskful install.
+
+    boot=casper is required: without it casper never processes netboot=nfs, it scans the local
+    disks, finds no live media and panics "Unable to find a medium containing a live file
+    system" (initramfs emergency shell -> PXE loop).
+
+    nfsroot MUST be a literal IP: casper mounts the live filesystem with klibc's nfsmount, which
+    cannot resolve hostnames ("nfsmount: can't parse IP address '<host>'"). The ds= URL is
+    fetched later by cloud-init in the booted live system where normal DNS works, so it keeps
+    the install server's name.
+
+    'toram' makes casper copy the live squashfs into RAM and UNMOUNT the NFS source (casper
+    scripts/casper: copy_to_ram then umount of the copy source), so the installer runs from RAM
+    with NO network root. This is what lets the node reboot at all: with the NFS root still
+    mounted, a process doing I/O to it during systemd-shutdown (lvm, netplan, udev) blocks in
+    uninterruptible D state -- it cannot be SIGKILLed, so systemd-shutdown waits forever
+    ("Waiting for process: <pid> (lvm)") and the node never power-cycles into the disk it just
+    installed. casper has no cmdline knob for NFS mount options -- it parses only nfsroot=,
+    taking the whole value as the path, so appending ,soft breaks the mount; toram is casper's
+    supported way to avoid the network root. The 24.04 layers total ~1.5G, well within the CN's
+    RAM.
+
+    Arguments:
+        $base       the command line built so far
+        $nfsip      the install server as a literal IP, for casper's klibc nfsmount
+        $pkgdir     the install media path exported over NFS
+        $instserver the install server name, for the cloud-init seed URL
+        $httpport   the xCAT HTTP port
+        $node       the node being installed
+    Returns:
+        the completed command line
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub subiquity_kcmdline {
+    my ($base, $nfsip, $pkgdir, $instserver, $httpport, $node) = @_;
+
+    my $kcmdline = $base;
+    $kcmdline .= " autoinstall ip=dhcp boot=casper netboot=nfs nfsroot=${nfsip}:${pkgdir} toram";
+    $kcmdline .= " ds=nocloud-net;s=http://${instserver}:${httpport}/install/autoinst/${node}/";
+    $kcmdline .= " ---";
+
+    return $kcmdline;
+}
+
 sub mkinstall {
     xCAT::MsgUtils->message("S", "Doing debian mkinstall");
     my $request  = shift;
@@ -986,29 +1036,8 @@ sub mkinstall {
             my $kcmdline = "nofb utf8 auto xcatd=" . $instserver;
 
             if (using_subiquity($os,$tmplfile)) {
-                # boot=casper is required: without it casper never processes netboot=nfs, it
-                # scans the local disks, finds no live media and panics "Unable to find a
-                # medium containing a live file system" (initramfs emergency shell -> PXE loop).
-                # nfsroot MUST be a literal IP: casper mounts the live filesystem with klibc's
-                # nfsmount, which cannot resolve hostnames ("nfsmount: can't parse IP address
-                # '<host>'"), so resolve instserver to its IP. The ds= URL is fetched later by
-                # cloud-init in the booted live system where normal DNS works, so it may stay a
-                # hostname.
-                # 'toram' makes casper copy the live squashfs into RAM and UNMOUNT the NFS source
-                # (casper scripts/casper: copy_to_ram then `umount ${copyfrom}`), so the installer runs
-                # from RAM with NO network root. This fixes the end-of-install reboot hang: with the NFS
-                # root still mounted, a process doing I/O to it during systemd-shutdown (lvm, netplan,
-                # udev) blocks in uninterruptible D state -- it cannot be SIGKILLed, so systemd-shutdown
-                # waits forever ("Waiting for process: <pid> (lvm)") and the node never power-cycles into
-                # the installed disk. With the root in RAM there is nothing to wait on and the reboot
-                # completes on its own. (casper has no cmdline knob for NFS mount options -- it parses
-                # only nfsroot=, taking the whole value as the path, so appending ,soft breaks the mount;
-                # toram is casper's supported way to avoid the network root. The 24.04 layers total
-                # ~1.5G, well within the CN's RAM.)
                 my $nfsip = xCAT::NetworkUtils->getipaddr($instserver) || $instserver;
-                $kcmdline .= " autoinstall ip=dhcp boot=casper netboot=nfs nfsroot=${nfsip}:${pkgdir} toram";
-                $kcmdline .= " ds=nocloud-net;s=http://${instserver}:${httpport}/install/autoinst/${node}/";
-                $kcmdline .= " ---";
+                $kcmdline = subiquity_kcmdline($kcmdline, $nfsip, $pkgdir, $instserver, $httpport, $node);
             } else {
                 $kcmdline .= " url=http://${instserver}:$httpport/install/autoinst/$node";
                 $kcmdline .= " mirror/http/hostname=${instserver}:$httpport";
