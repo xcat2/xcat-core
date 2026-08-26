@@ -39,7 +39,7 @@ like(
 my $mknb = slurp_repo_file('xCAT-server/lib/xcat/plugins/mknb.pm');
 like(
     $mknb,
-    qr/if \(!xCAT::Utils->isFIPS\(\).*?ssh-keygen -t dsa/s,
+    qr/if \(!xCAT::Utils->isFIPS\(\) && \(\$platform !~ \/el\(\\d\+\)\/ \|\| \$1 < 10\)\) \{\n\s*system\("ssh-keygen -t dsa/,
     'mknb wires the FIPS predicate into DSA host-key generation'
 );
 like(
