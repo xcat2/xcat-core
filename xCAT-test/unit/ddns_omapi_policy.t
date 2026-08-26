@@ -7,6 +7,7 @@ use lib "$FindBin::Bin/../../xCAT-server/lib";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use lib "$FindBin::Bin/../../perl-xCAT";
 
+use File::Slurper qw(read_text);
 use File::Temp qw(tempfile);
 use Test::More;
 
@@ -325,13 +326,7 @@ sub reconcile_named_key {
         sub { xCAT_plugin::ddns::update_namedconf( $ctx, 0 ); }
     );
 
-    open( my $result_fh, '<', $named_path )
-      or die "Unable to read $named_path: $!";
-    local $/;
-    my $contents = <$result_fh>;
-    close($result_fh) or die "Unable to close $named_path: $!";
-
-    return ( $contents, $ctx->{restartneeded} );
+    return ( read_text($named_path), $ctx->{restartneeded} );
 }
 
 {

@@ -3,18 +3,21 @@ use strict;
 use warnings;
 
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 use File::Spec;
+use File::Slurper qw(read_text write_text);
 use File::Temp qw(tempdir);
 use Test::More;
 
-my $repo_root = File::Spec->rel2abs(File::Spec->catdir($FindBin::Bin, '..', '..'));
+use XCAT::Test::File qw(slurp_repo_file);
+
 my @key_generators = (
     'xCAT-genesis-scripts/usr/bin/doxcat',
     'xCAT/postscripts/documulusdiscovery',
 );
 
 foreach my $file (@key_generators) {
-    my $source = read_file($file);
+    my $source = slurp_repo_file($file);
     like(
         $source,
         qr{
@@ -32,7 +35,7 @@ foreach my $file (
     @key_generators,
     'xCAT-genesis-scripts/usr/bin/dodiscovery',
 ) {
-    my $source = read_file($file);
+    my $source = slurp_repo_file($file);
     like(
         $source,
         qr{
@@ -71,7 +74,7 @@ SKIP: {
 
     is(system($openssl, 'ec', '-in', $key, '-pubout', '-out', $public), 0,
         'OpenSSL derives the discovery public key');
-    my $public_pem = read_absolute_file($public);
+    my $public_pem = read_text($public);
     my $public_body = $public_pem;
     $public_body =~ s/-----[^-]+-----//g;
     $public_body =~ s/\s+//g;
@@ -79,7 +82,7 @@ SKIP: {
     cmp_ok(length($public_body), '<=', 255,
         'compact public key fits the lldpad system-description buffer');
 
-    write_file($packet, "<xcatrequest><command>findme</command></xcatrequest>\n");
+    write_text($packet, "<xcatrequest><command>findme</command></xcatrequest>\n");
     is(system($openssl, 'dgst', '-sha512', '-sign', $key, '-out', $signature, $packet), 0,
         'OpenSSL signs a discovery request with SHA-512');
     is(system($openssl, 'dgst', '-sha512', '-verify', $public, '-signature', $signature, $packet), 0,
@@ -94,25 +97,4 @@ sub command_output {
     my $output = do { local $/; <$fh> };
     close($fh) or die "close @command: $!";
     return $output;
-}
-
-sub read_file {
-    my ($file) = @_;
-    my $path = File::Spec->catfile($repo_root, split m{/}, $file);
-    return read_absolute_file($path);
-}
-
-sub read_absolute_file {
-    my ($path) = @_;
-    open(my $fh, '<', $path) or die "open $path: $!";
-    my $contents = do { local $/; <$fh> };
-    close($fh) or die "close $path: $!";
-    return $contents;
-}
-
-sub write_file {
-    my ($path, $contents) = @_;
-    open(my $fh, '>', $path) or die "open $path: $!";
-    print {$fh} $contents;
-    close($fh) or die "close $path: $!";
 }
