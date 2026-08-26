@@ -86,3 +86,46 @@ function xcat_publish_tarball_link {
         fi
     fi
 }
+
+function xcat_finalize_repository {
+    local artifact_kind="$1"
+    local repository="$2"
+
+    if [ "$artifact_kind" = "binary" ] && xcat_source_only; then
+        return
+    fi
+
+    if [ "$RPMSIGN" = "1" ]; then
+        if [ "$artifact_kind" = "binary" ]; then
+            build-utils/rpmsign.exp `find "$repository" -type f -name '*.rpm'` | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
+        else
+            build-utils/rpmsign.exp "$repository"/*rpm | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
+        fi
+    fi
+
+    createrepo "$repository"
+
+    if [ "$RPMSIGN" = "1" ]; then
+        rm -f "$repository/repodata/repomd.xml.asc"
+        gpg -a --detach-sign --default-key "xCAT Automatic Signing Key" "$repository/repodata/repomd.xml"
+        if [ ! -f "$repository/repodata/repomd.xml.key" ]; then
+            gpg -a --export "xCAT Automatic Signing Key" > "$repository/repodata/repomd.xml.key"
+        fi
+    fi
+}
+
+function xcat_write_binary_buildinfo {
+    local buildinfo="$1"
+
+    if xcat_source_only; then
+        echo "Not updating $buildinfo: a source-only build makes no binary bundle."
+        return
+    fi
+
+    echo "VERSION=$VER" > "$buildinfo"
+    echo "RELEASE=$XCAT_RELEASE" >> "$buildinfo"
+    echo "BUILD_TIME=$BUILD_TIME" >> "$buildinfo"
+    echo "BUILD_MACHINE=$BUILD_MACHINE" >> "$buildinfo"
+    echo "COMMIT_ID=$COMMIT_ID" >> "$buildinfo"
+    echo "COMMIT_ID_LONG=$COMMIT_ID_LONG" >> "$buildinfo"
+}

@@ -450,35 +450,19 @@ if [ "$OSNAME" != "AIX" ]; then
             echo '%_gpg_name xCAT Automatic Signing Key' >> $MACROS
         fi
         echo "Signing RPMs..."
-        build-utils/rpmsign.exp `find $DESTDIR -type f -name '*.rpm'` | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
-        build-utils/rpmsign.exp $SRCDIR/*rpm | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
-        # RHEL5 is archaic. Use the default hash algorithm to do the checksum.
-        # Which is SHA-256 on RHEL6.
-        createrepo $DESTDIR
-        createrepo $SRCDIR
-        rm -f $SRCDIR/repodata/repomd.xml.asc
-        rm -f $DESTDIR/repodata/repomd.xml.asc
-        # Use the xCAT Automatic Signing Key to do the signing
-        gpg -a --detach-sign --default-key "xCAT Automatic Signing Key" $DESTDIR/repodata/repomd.xml
-        gpg -a --detach-sign --default-key "xCAT Automatic Signing Key" $SRCDIR/repodata/repomd.xml
-        if [ ! -f $DESTDIR/repodata/repomd.xml.key ]; then
-            gpg -a --export "xCAT Automatic Signing Key" > $DESTDIR/repodata/repomd.xml.key
-        fi
-        if [ ! -f $SRCDIR/repodata/repomd.xml.key ]; then
-            gpg -a --export "xCAT Automatic Signing Key" > $SRCDIR/repodata/repomd.xml.key
-        fi
-    else
-        createrepo $DESTDIR
-        createrepo $SRCDIR
     fi
+    xcat_finalize_repository binary "$DESTDIR"
+    xcat_finalize_repository source "$SRCDIR"
 fi
 
 # set group and permissions correctly on the built rpms
 if [ "$OSNAME" = "AIX" ]; then
     chmod +x $DESTDIR/instxcat
 fi
-chgrp -R $SYSGRP $DESTDIR
-chmod -R g+w $DESTDIR
+if ! xcat_source_only; then
+    chgrp -R $SYSGRP $DESTDIR
+    chmod -R g+w $DESTDIR
+fi
 chgrp -R $SYSGRP $SRCDIR
 chmod -R g+w $SRCDIR
 
@@ -496,7 +480,7 @@ fi
 
 cd $DESTDIR
 
-if [ "$OSNAME" != "AIX" ]; then
+if [ "$OSNAME" != "AIX" ] && ! xcat_source_only; then
 
     # Modify the repo file to point to either xcat-core or core-snap
     # Always recreate it, in case the whole dir was copied from devel to 2.x
@@ -550,12 +534,7 @@ fi
 # Add a buildinfo file into the tar.bz2 file to track information about the build
 #
 BUILDINFO=$XCATCORE/buildinfo
-echo "VERSION=$VER" > $BUILDINFO
-echo "RELEASE=$XCAT_RELEASE" >> $BUILDINFO
-echo "BUILD_TIME=$BUILD_TIME" >> $BUILDINFO
-echo "BUILD_MACHINE=$BUILD_MACHINE" >> $BUILDINFO
-echo "COMMIT_ID=$COMMIT_ID" >> $BUILDINFO
-echo "COMMIT_ID_LONG=$COMMIT_ID_LONG" >> $BUILDINFO
+xcat_write_binary_buildinfo "$BUILDINFO"
 
 xcat_create_binary_tarball
 xcat_publish_tarball_link
@@ -572,7 +551,7 @@ if [ "$OSNAME" = "AIX" ]; then
 else
     YUM=yum
 fi
-if [ ! -e core-snap ]; then
+if ! xcat_source_only && [ ! -e core-snap ]; then
     ln -s xcat-core core-snap
 fi
 if xcat_source_only; then
