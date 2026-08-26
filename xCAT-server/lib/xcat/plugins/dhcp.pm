@@ -214,22 +214,41 @@ sub _isc_static_host_fallback
 
 sub _delete_isc_static_host
 {
-    my $node = shift;
+    my ($node, $config, $hostname) = @_;
+    $config ||= \@dhcpconf;
+
+    my $start_marker = defined($hostname)
+      ? qr/^#xCAT host declaration for \Q$node\E aka host \Q$hostname\E start$/
+      : qr/^#xCAT host declaration for \Q$node\E aka host .* start$/;
+    my $end_marker = defined($hostname)
+      ? qr/^(?:\}\s*)?#xCAT host declaration for \Q$node\E aka host \Q$hostname\E end$/
+      : qr/^(?:\}\s*)?#xCAT host declaration for \Q$node\E aka host .* end$/;
 
     my @updated;
     my $skip = 0;
-    foreach my $line (@dhcpconf) {
-        if ($line =~ /^#xCAT host declaration for \Q$node\E\b.* start$/) {
+    foreach my $line (@{$config}) {
+        if ($line =~ $start_marker) {
             $skip = 1;
             next;
         }
-        if ($skip && $line =~ /^#xCAT host declaration for \Q$node\E\b.* end$/) {
+        if ($skip && $line =~ $end_marker) {
             $skip = 0;
             next;
         }
         push @updated, $line unless $skip;
     }
-    @dhcpconf = @updated;
+    @{$config} = @updated;
+}
+
+sub _begin_isc_static_host_update
+{
+    my ($node, $enabled, $config) = @_;
+
+    return 0 unless $enabled;
+    $config ||= \@dhcpconf;
+    my $line_count = scalar(@{$config});
+    _delete_isc_static_host($node, $config);
+    return scalar(@{$config}) != $line_count;
 }
 
 sub _static_host_statements
@@ -254,26 +273,27 @@ sub _node_host_statements
 sub _add_isc_static_host
 {
     my ($node, $hostname, $mac, $hardwaretype, $mgtifname, $ip, $statements,
-        $has_infiniband_identity) = @_;
+        $has_infiniband_identity, $config) = @_;
+    $config ||= \@dhcpconf;
 
     return unless $ip && $ip ne 'DENIED';
 
     $mac = normalize_mac($mac) || $mac;
-    _delete_isc_static_host($node);
+    _delete_isc_static_host($node, $config, $hostname);
 
     my $host_statements = _static_host_statements($statements);
     my $hardware_kind = $hardwaretype == 32 ? 'infiniband' : 'ethernet';
-    push @dhcpconf, "#xCAT host declaration for $node aka host $hostname start\n";
-    push @dhcpconf, "host $hostname {\n";
-    push @dhcpconf, "    hardware $hardware_kind $mac;\n";
-    push @dhcpconf, "    fixed-address $ip;\n";
-    push @dhcpconf, "    $host_statements\n" if $host_statements;
-    push @dhcpconf, "}\n";
-    push @dhcpconf, _infiniband_twin_static_lines(
+    push @{$config}, "#xCAT host declaration for $node aka host $hostname start\n";
+    push @{$config}, "host $hostname {\n";
+    push @{$config}, "    hardware $hardware_kind $mac;\n";
+    push @{$config}, "    fixed-address $ip;\n";
+    push @{$config}, "    $host_statements\n" if $host_statements;
+    push @{$config}, "}\n";
+    push @{$config}, _infiniband_twin_static_lines(
         $hostname, $mac, $hardwaretype, $mgtifname, $ip,
         $host_statements, $has_infiniband_identity
     );
-    push @dhcpconf, "#xCAT host declaration for $node aka host $hostname end\n";
+    push @{$config}, "#xCAT host declaration for $node aka host $hostname end\n";
 
     $restartdhcp = 1;
 }
@@ -944,6 +964,9 @@ sub addnode
 
     my @macs = split(/\|/, $ent->{mac});
     my $has_infiniband_identity = _infiniband_identity_present(@macs);
+    my $static_host_fallback = _isc_static_host_fallback();
+    $restartdhcp = 1
+      if _begin_isc_static_host_update($node, $static_host_fallback);
     my $mace;
     my $deflstaments = $lstatements;
     my $count        = 0;
@@ -1128,7 +1151,7 @@ sub addnode
                 $hardwaretype = 32;
             }
 
-            if (_isc_static_host_fallback()) {
+            if ($static_host_fallback) {
                 if ($ip ne "DENIED") {
                     $lstatements = _node_host_statements($node, $lstatements);
                 } else {
