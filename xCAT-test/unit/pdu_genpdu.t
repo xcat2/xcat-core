@@ -187,6 +187,36 @@ ok(
     'outlet sensors are read for every outlet in the count'
 );
 
+#-- rvitals: units as MIB labels ----------------------------------------------
+
+#With PDU2-MIB loaded, Net-SNMP returns SensorUnitsEnumeration as its label:
+#a PX4 answers "amp" rather than "2", and "amp(2)" when quick printing is off.
+sub units_as {
+    my ($units) = @_;
+    my %resp = ("$UNITCONF.2.1" => 1);
+    inlet_sensor(\%resp, 1, $PX4_INLET[0]);
+    $resp{"$INLET_UNITS.1.1.1"} = $units;
+    my ($m) = vitals_messages(\%resp, 0);
+    return $m;
+}
+
+ok(
+    (grep { $_ eq 'pdu1|inlet 1 RMS Current: 9.503 A' } @{ units_as('amp') }),
+    'a unit returned as its MIB label still gets its suffix'
+);
+ok(
+    (grep { $_ eq 'pdu1|inlet 1 RMS Current: 9.503 A' } @{ units_as('amp(2)') }),
+    'a unit returned as label(value) still gets its suffix'
+);
+ok(
+    (grep { $_ eq 'pdu1|inlet 1 RMS Current: 9.503 Wh' } @{ units_as('wattHour') }),
+    'a mixed case MIB label is recognised'
+);
+ok(
+    (grep { $_ eq 'pdu1|inlet 1 RMS Current: 9.503' } @{ units_as('lux') }),
+    'a unit with no suffix defined is reported without one'
+);
+
 #-- rvitals: metered-only PDUs ------------------------------------------------
 
 my %metered = ("$UNITCONF.2.1" => 1);
@@ -330,6 +360,12 @@ ok($ok, 'a PDU that answers pduCount is usable');
 is($probed->{genpdu_switchable}, 1, 'an answered outlet state marks the PDU switchable');
 
 ($ok, $probed, $probe_msgs) = probe({
+    $PDUCOUNT          => 1,
+    "$OUTLETSTATE.1.1" => 'standby',
+});
+is($probed->{genpdu_switchable}, 1, 'an outlet in a state other than on or off is still switchable');
+
+($ok, $probed, $probe_msgs) = probe({
     $PDUCOUNT             => 1,
     "$OUTLETSTATE.1.1"    => $NOSUCH,
 });
@@ -399,6 +435,8 @@ sub outlet_state {
 
 is(outlet_state(7),        'on',            'outletSwitchingState on(7) reads as on');
 is(outlet_state(8),        'off',           'outletSwitchingState off(8) reads as off');
+is(outlet_state('on'),     'on',            'an outlet state returned as a MIB label reads as on');
+is(outlet_state('off(8)'), 'off',           'an outlet state returned as label(value) reads as off');
 is(outlet_state(undef),    'unknown state', 'an unanswered outlet state is unknown');
 
 #-- rinv ----------------------------------------------------------------------

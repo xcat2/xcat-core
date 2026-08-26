@@ -126,6 +126,16 @@ my %PDU2_SENSOR_UNIT = (
      4 => "VA", 5 => "Wh",  6 => "VAh", 7 => "C",  8 => "Hz",
      9 => "%", 20 => "deg", 23 => "var",
 );
+
+#Net-SNMP returns an enumerated INTEGER as its MIB label once the MIB is loaded
+#(a PX4 answers "amp" rather than "2"), so both forms have to be accepted. Keys
+#are lower cased, since the MIB labels are not.
+my %PDU2_UNIT_CODE = (
+    none    => -1, other       => 0, volt    => 1,  amp     => 2, watt => 3,
+    voltamp => 4,  watthour    => 5, voltamphour => 6, degreec => 7,
+    hertz   => 8,  percent     => 9, degrees => 20, var     => 23,
+);
+my %PDU2_STATE_CODE = (on => 7, off => 8);
 #Ordered for readability rather than by enum value.
 my @PDU2_INLET_SENSORS  = (4, 1, 5, 6, 7, 23, 3, 29, 8, 9, 10);
 my @PDU2_OUTLET_SENSORS = (1, 5, 8);
@@ -660,16 +670,15 @@ sub outletstat {
     my $session = shift;
     my $outlet = shift;
 
-    #genpdu: PDU2-MIB outletSwitchingState uses SensorStateEnumeration, of which
-    #on(7) and off(8) are the switching states. The value may come back as the
-    #integer or as the MIB label depending on which MIBs the Net-SNMP perl
-    #module has loaded, so both forms are accepted.
+    #genpdu: outletSwitchingState uses SensorStateEnumeration, of which on(7)
+    #and off(8) are the switching states.
     if ($session->{genpdu}) {
         my $val = $session->get("$PDU2_OUTLETSTATE.$PDU2_PDUID.$outlet");
         return "unknown state" unless (defined $val);
-        if    ($val eq "7" or $val eq "on")  { return "on"; }
-        elsif ($val eq "8" or $val eq "off") { return "off"; }
-        else                                 { return "$val(unknown state)"; }
+        my $state = pdu2_enum($val, \%PDU2_STATE_CODE);
+        return "on"  if (defined $state and $state == 7);
+        return "off" if (defined $state and $state == 8);
+        return "$val(unknown state)";
     }
 
     my $oid = ".1.3.6.1.4.1.2.6.223.8.2.2.1.11";
@@ -841,6 +850,31 @@ sub pdu2_session_args {
 
 #-------------------------------------------------------
 
+=head3  pdu2_enum
+
+   Numeric value of an enumerated INTEGER. Net-SNMP returns those as the MIB
+   label once the MIB is loaded, as label(value) when quick printing is off, and
+   as the number when it is not. Returns undef for anything else.
+
+=cut
+
+#-------------------------------------------------------
+sub pdu2_enum {
+    my ($val, $codes) = @_;
+
+    return undef unless (defined $val);
+    $val =~ s/^\s+|\s+$//g;
+    return $val if ($val =~ /^-?\d+$/);
+
+    #Trust the label over the number in label(value), so a mislabelled agent
+    #cannot turn volts into amperes.
+    my ($label, $num) = ($val =~ /^(\w+)\((-?\d+)\)$/) ? ($1, $2) : ($val, undef);
+    return $codes->{ lc $label } if (defined $codes->{ lc $label });
+    return $num;
+}
+
+#-------------------------------------------------------
+
 =head3  pdu2_get
 
    Read one object. Returns its value and one of 'ok', 'absent' or 'failed'.
@@ -900,10 +934,11 @@ sub pdu2_session_probe {
     }
 
     #Metered-only models such as PX2-1901U answer the measurement tables but
-    #have no outletSwitchControlTable instances.
+    #have no outletSwitchControlTable instances. Any state proves the instance
+    #exists, and an outlet is not always on or off, so this only asks whether
+    #the read produced one: pdu2_get has already ruled out absent and failed.
     my ($probe) = pdu2_get($session, "$PDU2_OUTLETSTATE.$PDU2_PDUID.1");
-    $session->{genpdu_switchable} =
-        ((defined $probe) and ($probe =~ /^\d+$/ or $probe =~ /^(on|off)$/i)) ? 1 : 0;
+    $session->{genpdu_switchable} = (defined $probe) ? 1 : 0;
 
     return 1;
 }
@@ -949,7 +984,8 @@ sub pdu2_sensor_fmt {
         my ($u, $ustate) = pdu2_get($session, "$oids->{units}.$idx");
         my ($d, $dstate) = pdu2_get($session, "$oids->{dec}.$idx");
         return undef if ($ustate eq 'failed' or $dstate eq 'failed');
-        $u = -1 unless (defined $u and $u =~ /^-?\d+$/);
+        $u = pdu2_enum($u, \%PDU2_UNIT_CODE);
+        $u = -1 unless (defined $u);
         $d = 0  unless (defined $d and $d =~ /^\d+$/);
         $cache->{$st} = [ $u, $d ];
     }
