@@ -30,85 +30,16 @@ my $udpctl;
 my $pid_UDP;
 my $pid_MON;
 
-# BEGIN mon-respawn-policy
-# When the install monitor dies, the main service loop below re-forks it. This decides
-# WHEN. It is deliberately free of forking and of daemon state so that
-# xCAT-test/unit/xcatd_monitor_respawn.t can extract this region verbatim and drive it.
-#
-# Respawning has to be paced. do_installm_service dies when it cannot bind xcatiport, so
-# while something else holds that port every respawn is a fast, futile fork that also
-# re-enters that function's USR2 socket-takeover handshake against whatever holds it.
-#
-# But pacing must never become giving up. A retry budget that runs out cannot be refilled:
-# with no monitor alive, nothing is left to reset it. The port would stay dead until xcatd
-# is restarted -- which is exactly the failure this respawn exists to remove, just reached
-# more slowly -- and a port that frees up a minute later would never be picked back up.
-#
-# So the delay doubles from $mon_respawn_min to $mon_respawn_max and then stays there.
-# A monitor that cannot start costs one fork per $mon_respawn_max seconds for as long as
-# that lasts, and comes back within that bound once the port is free again.
-#
-# A monitor that survived $mon_respawn_healthy seconds plainly got the socket and served,
-# so its eventual death resets the delay: an isolated death is retried at once, and the
-# backoff only builds up during a real streak of failures to start.
-my $mon_respawn_min = defined($ENV{XCATD_MON_RESPAWN_MIN_INTERVAL}) ? $ENV{XCATD_MON_RESPAWN_MIN_INTERVAL} : 5;
-my $mon_respawn_max = defined($ENV{XCATD_MON_RESPAWN_MAX_INTERVAL}) ? $ENV{XCATD_MON_RESPAWN_MAX_INTERVAL} : 300;
-my $mon_respawn_healthy = defined($ENV{XCATD_MON_RESPAWN_HEALTHY}) ? $ENV{XCATD_MON_RESPAWN_HEALTHY} : 60;
-$mon_respawn_min = 1                if $mon_respawn_min < 1;    # 0 would be a fork storm
-$mon_respawn_max = $mon_respawn_min if $mon_respawn_max < $mon_respawn_min;
-
-my $mon_respawn_delay  = $mon_respawn_min;    # delay to apply after the NEXT failure
-my $mon_respawn_next   = 0;                   # earliest time() at which to try again
-my $mon_respawn_started;                      # time() the running monitor was forked
-my $mon_respawn_streak = 0;                   # consecutive monitors that died young
-my $mon_respawn_capped = 0;                   # has this streak already reported the ceiling?
-
-# Is a respawn allowed yet? This only ever answers "not yet" -- never "no more".
-sub mon_respawn_due {
-    my ($now) = @_;
-    return $now >= $mon_respawn_next;
-}
-
-# Note that a monitor is being forked. Called BEFORE the fork: the child can die, and be
-# reaped, before xfork even returns to the parent.
-sub mon_respawn_forked {
-    my ($now) = @_;
-    $mon_respawn_started = $now;
-    return;
-}
-
-# Note that the monitor exited, and schedule the next attempt. Returns the number of
-# consecutive monitors that have died young (0 once one of them managed to serve).
-# Safe to call from the SIGCHLD handler: arithmetic only, no I/O.
-sub mon_respawn_exited {
-    my ($now) = @_;
-    if (defined($mon_respawn_started) and ($now - $mon_respawn_started) >= $mon_respawn_healthy) {
-        $mon_respawn_delay  = $mon_respawn_min;    # it served; this is a fresh start
-        $mon_respawn_next   = $now;
-        $mon_respawn_streak = 0;
-        $mon_respawn_capped = 0;
-    } else {
-        $mon_respawn_streak++;
-        $mon_respawn_next  = $now + $mon_respawn_delay;
-        $mon_respawn_delay = ($mon_respawn_delay * 2 > $mon_respawn_max)
-          ? $mon_respawn_max
-          : $mon_respawn_delay * 2;
-    }
-    $mon_respawn_started = undef;
-    return $mon_respawn_streak;
-}
-
-# True once per failure streak, when the backoff first reaches its ceiling. So a monitor
-# that cannot start is reported once rather than on every attempt, and is reported afresh
-# if it starts failing again after having served.
-sub mon_respawn_hit_ceiling {
-    return 0 if $mon_respawn_capped;
-    return 0 if $mon_respawn_streak < 1;
-    return 0 if $mon_respawn_delay < $mon_respawn_max;
-    $mon_respawn_capped = 1;
-    return 1;
-}
-# END mon-respawn-policy
+# Pacing for re-forking the install monitor; see the main service loop below. The pacing
+# itself is pure arithmetic in xCAT::RespawnUtils -- a backoff with a ceiling but no end,
+# so a held xcatiport costs one fork per ceiling interval instead of a fork storm, and the
+# monitor is back within that bound once the port is free. Each function returns a NEW
+# state, which is why the reaper can safely install one from inside the signal handler.
+my $mon_respawn = xCAT::RespawnUtils::policy(
+    min_interval => $ENV{XCATD_MON_RESPAWN_MIN_INTERVAL},
+    max_interval => $ENV{XCATD_MON_RESPAWN_MAX_INTERVAL},
+    healthy      => $ENV{XCATD_MON_RESPAWN_HEALTHY},
+);
 
 my $numofnodes=0;
 
@@ -130,6 +61,7 @@ use xCAT::TLSPolicy qw(resolve_xcatd_tls_settings);
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
+use xCAT::RespawnUtils;
 use xCAT::xcatd;
 use xCAT::CmdLog;
 use xCAT::State;
@@ -1144,7 +1076,7 @@ sub ssl_reaper {
         }
         if ($CHILDPID == $pid_MON) {
             $pid_MON = 0;
-            mon_respawn_exited(time());    # paces the re-fork the main service loop will do
+            $mon_respawn = xCAT::RespawnUtils::exited($mon_respawn, time());
         }
     }
     $SIG{CHLD} = \&ssl_reaper;
@@ -1270,7 +1202,8 @@ if (!(socketpair($rescanreadpipe, $rescanwritepipe, AF_UNIX, SOCK_STREAM, PF_UNS
 }
 $rescanrselect = new IO::Select;
 $rescanrselect->add($rescanreadpipe);
-mon_respawn_forked(time());    # so this monitor's uptime counts towards the respawn policy too
+# record this monitor too, so its uptime counts when it eventually dies
+$mon_respawn = xCAT::RespawnUtils::forked($mon_respawn, time());
 $pid_MON = xCAT::Utils->xfork;
 if (!defined $pid_MON) {
     xCAT::MsgUtils->message("S", "Unable to fork installmonitor");
@@ -1551,21 +1484,22 @@ until ($quit) {
     # leave xcatiport permanently dead while this daemon kept running, so installing nodes could
     # no longer report status or request the boot flip until the WHOLE daemon was restarted.
     #
-    # The mon-respawn-policy region near the top of this file paces the attempts, so a port that
-    # stays held costs one fork per ceiling interval instead of a fork storm. It never stops
-    # saying yes, so the monitor also comes back on its own once whatever held the port lets go.
-    if (!$pid_MON && !$quit && $sport && mon_respawn_due(time())) {
-        if (mon_respawn_hit_ceiling()) {
+    # xCAT::RespawnUtils paces the attempts, and never stops allowing them, so the monitor also
+    # comes back on its own once whatever held the port lets go of it.
+    if (!$pid_MON && !$quit && $sport && xCAT::RespawnUtils::due($mon_respawn, time())) {
+        if (xCAT::RespawnUtils::should_report($mon_respawn)) {
             xCAT::MsgUtils->message("S",
-                "xcatd: install monitor is not staying up (${mon_respawn_streak} attempts);"
-                  . " still retrying xcatiport $sport every $mon_respawn_max seconds");
+                "xcatd: install monitor is not staying up ($mon_respawn->{streak} attempts);"
+                  . " still retrying xcatiport $sport every $mon_respawn->{max_interval} seconds");
+            $mon_respawn = xCAT::RespawnUtils::reported($mon_respawn);
         }
-        mon_respawn_forked(time());
+        $mon_respawn = xCAT::RespawnUtils::forked($mon_respawn, time());
         $pid_MON = xCAT::Utils->xfork;
         if (!defined $pid_MON) {
             xCAT::MsgUtils->message("S", "xcatd: unable to re-fork install monitor");
             $pid_MON = 0;
-            mon_respawn_exited(time());    # count the failed fork and back off before retrying
+            # count the failed fork and back off before retrying
+            $mon_respawn = xCAT::RespawnUtils::exited($mon_respawn, time());
         } elsif (!$pid_MON) {    # child: serve only the install monitor
             $$progname = "xcatd: install monitor";
             $pid_UDP = 0;
