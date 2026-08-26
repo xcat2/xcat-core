@@ -3,7 +3,7 @@
 # Shared source-only build decisions used by makerpm and buildcore.sh.
 
 function xcat_source_only {
-    [ "$SRCONLY" = "1" -o "$SRCONLY" = "yes" ]
+    [ "$SRCONLY" = "1" -o "$SRCONLY" = "yes" -o "$SRCONLY" = "true" ]
 }
 
 function xcat_configure_rpm_build_mode {
