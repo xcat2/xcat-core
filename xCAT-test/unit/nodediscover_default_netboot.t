@@ -7,7 +7,7 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use Test::More;
 
-use XCAT::Test::File qw(repo_path slurp_repo_file);
+use XCAT::Test::File qw(repo_path);
 
 # nodediscover sets noderes.netboot for a freshly discovered node when the
 # admin did not pick a method that fits the reported architecture. The ladder
@@ -16,7 +16,22 @@ use XCAT::Test::File qw(repo_path slurp_repo_file);
 
 BEGIN {
     package xCAT::Table;
+    sub new {
+        my ( $class, $name ) = @_;
+        return bless { name => $name }, 'Local::DiscoveryTable';
+    }
     $INC{'xCAT/Table.pm'} = __FILE__;
+
+    package Local::DiscoveryTable;
+    our @writes;
+    sub getNodeAttribs { return {}; }
+    sub setNodeAttribs {
+        my ( $self, $node, $attrs ) = @_;
+        push @writes, [ $self->{name}, $node, { %{$attrs} } ];
+        return;
+    }
+    sub close  { return; }
+    sub commit { return; }
 
     package xCAT::Utils;
     $INC{'xCAT/Utils.pm'} = __FILE__;
@@ -70,18 +85,28 @@ is( default_netboot( undef, undef, undef ),   undef,  'a missing arch sets nothi
 
 is( $warnings, 0, 'no warnings were emitted for undefined inputs' );
 
-# The discovery request is stored as discovery data key by key, so reading the platform
-# of a node that never reported one must not add the key to the request.
-my $source = slurp_repo_file('xCAT-server/lib/xcat/plugins/nodediscover.pm');
-like(
-    $source,
-    qr/my \$platform = exists \$request->\{platform\} \? \$request->\{platform\}->\[0\] : undef;/,
-    'the netboot ladder only reads the platform of a request that carries one',
+# Discovery data are later stored key by key. Exercise the real request path to
+# prove that an absent platform is not added while selecting the netboot method.
+@Local::DiscoveryTable::writes = ();
+my $request = {
+    node => ['node1'],
+    arch => ['riscv64'],
+};
+my @callbacks;
+xCAT_plugin::nodediscover::process_request(
+    $request,
+    sub { push @callbacks, @_ },
+    sub { },
 );
-unlike(
-    $source,
-    qr/_default_netboot\(\s*\$request->\{arch\}->\[0\],\s*\$request->\{platform\}->\[0\]/,
-    'the netboot ladder does not autovivify the platform key of the discovery request',
+ok( !exists $request->{platform}, 'discovery does not add a missing platform to the request' );
+ok(
+    scalar( grep {
+        $_->[0] eq 'noderes'
+          && $_->[1] eq 'node1'
+          && $_->[2]->{netboot} eq 'grub2'
+    } @Local::DiscoveryTable::writes ),
+    'the request path applies the riscv64 grub2 default',
 );
+is( scalar @callbacks, 1, 'the isolated request stops at the missing client address boundary' );
 
 done_testing();

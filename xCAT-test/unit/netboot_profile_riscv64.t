@@ -5,37 +5,18 @@ use warnings;
 
 use FindBin;
 use lib "$FindBin::Bin/../lib";
+use lib "$FindBin::Bin/../../perl-xCAT";
+use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use File::Spec;
 use Test::More;
 
 use XCAT::Test::File qw(repo_path slurp_repo_file);
+use xCAT::SvrUtils;
 
 # EL10 riscv64 diskless and service profiles are plain data files resolved by
 # imgutils::get_profile_def_filename (osver.arch first, then osbase.arch, then
 # the arch-less fallbacks). Pin that the riscv64 files exist, win the lookup
 # for rocky10/rhels10 point releases, and carry the right content.
-
-BEGIN {
-    # imgutils pulls in xCAT::SvrUtils only for the OS search list; emulate
-    # the point-release walk (rocky10.2 -> rocky10.2, rocky10.1, ..., rocky10,
-    # rocky) without the database-backed module.
-    package xCAT::SvrUtils;
-    sub get_os_search_list {
-        my ($os) = @_;
-        my @word = split( /\./, $os );
-        my @list;
-        while ( @word && $word[-1] =~ /^[0-9]+$/ ) {
-            my $last = pop @word;
-            while ( $last >= 0 ) {
-                push @list, join( '.', @word, $last );
-                $last--;
-            }
-        }
-        push @list, join( '.', @word );
-        return @list;
-    }
-    $INC{'xCAT/SvrUtils.pm'} = __FILE__;
-}
 
 my $share_relative = File::Spec->catdir( 'xCAT-server', 'share', 'xcat' );
 my $share = repo_path($share_relative);
