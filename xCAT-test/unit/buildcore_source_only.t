@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use File::Path qw(make_path);
-use File::Slurper qw(write_text);
+use File::Slurper qw(read_text write_text);
 use File::Temp qw(tempdir);
 use FindBin;
 use lib "$FindBin::Bin/../lib";
@@ -257,5 +257,76 @@ is( $source_xcat_arches_status, 0,
     'source architecture selection exits cleanly' );
 is( $source_xcat_arches, "x86_64\n",
     'a source-only xCAT or xCATsn build creates its target-independent SRPM once' );
+
+sub finalized_repositories {
+    my ($source_only) = @_;
+    my $root = tempdir( CLEANUP => 1 );
+    make_path( "$root/binary", "$root/source" );
+    my ( $output, $status ) = run_helper( $root, 'repositories', <<"SH" );
+function createrepo {
+    printf 'indexed %s\n' "\$1"
+}
+SRCONLY=$source_only
+RPMSIGN=0
+xcat_finalize_repository binary "$root/binary"
+xcat_finalize_repository source "$root/source"
+SH
+    return ( $output, $status, $root );
+}
+
+my ( $binary_repositories, $binary_repositories_status, $binary_root ) =
+  finalized_repositories('0');
+is( $binary_repositories_status, 0, 'normal repository finalization exits cleanly' );
+is(
+    $binary_repositories,
+    "indexed $binary_root/binary\nindexed $binary_root/source\n",
+    'a normal build refreshes both binary and source repositories',
+);
+
+my ( $source_repositories, $source_repositories_status, $source_root ) =
+  finalized_repositories('1');
+is( $source_repositories_status, 0, 'source repository finalization exits cleanly' );
+is(
+    $source_repositories,
+    "indexed $source_root/source\n",
+    'a source-only build refreshes only the source repository',
+);
+
+sub write_buildinfo {
+    my ($source_only) = @_;
+    my $root = tempdir( CLEANUP => 1 );
+    my $buildinfo = "$root/buildinfo";
+    write_text( $buildinfo, "previous binary build\n" );
+    my ( $output, $status ) = run_helper( $root, 'buildinfo', <<"SH" );
+SRCONLY=$source_only
+VER=2.19.0
+XCAT_RELEASE=snap1
+BUILD_TIME=2026-08-26T12:00:00Z
+BUILD_MACHINE=builder.example.test
+COMMIT_ID=abc123
+COMMIT_ID_LONG=abc123def456
+xcat_write_binary_buildinfo "$buildinfo"
+SH
+    return ( $output, $status, read_text($buildinfo) );
+}
+
+my ( $binary_buildinfo_output, $binary_buildinfo_status, $binary_buildinfo ) =
+  write_buildinfo('0');
+is( $binary_buildinfo_status, 0, 'normal buildinfo generation exits cleanly' );
+is( $binary_buildinfo_output, '', 'normal buildinfo generation is quiet' );
+is(
+    $binary_buildinfo,
+    "VERSION=2.19.0\nRELEASE=snap1\nBUILD_TIME=2026-08-26T12:00:00Z\n"
+      . "BUILD_MACHINE=builder.example.test\nCOMMIT_ID=abc123\nCOMMIT_ID_LONG=abc123def456\n",
+    'a normal build describes the newly built binary bundle',
+);
+
+my ( $source_buildinfo_output, $source_buildinfo_status, $source_buildinfo ) =
+  write_buildinfo('yes');
+is( $source_buildinfo_status, 0, 'source-only buildinfo handling exits cleanly' );
+like( $source_buildinfo_output, qr/source-only build makes no binary bundle/,
+    'source-only buildinfo handling explains the omission' );
+is( $source_buildinfo, "previous binary build\n",
+    'a source-only build leaves the previous binary buildinfo untouched' );
 
 done_testing();
