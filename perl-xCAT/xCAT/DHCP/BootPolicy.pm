@@ -76,6 +76,7 @@ sub kea_httpboot_network_classes {
     my $portsuffix = ( $httpport eq '80' ) ? '' : ":$httpport";
     my $tftpdir    = $opts{tftpdir} || '/tftpboot';
     $tftpdir =~ s{/+$}{};
+    my $http_tftp_root = '/tftpboot';
     my $present = $opts{loader_present};
     my @classes;
 
@@ -88,7 +89,7 @@ sub kea_httpboot_network_classes {
             name             => $name,
             test             => "option[93].hex == $spec->{arch_id}",
             additional_only  => 1,
-            'boot-file-name' => "http://$opts{next_server}$portsuffix$tftpdir/$spec->{loader}",
+            'boot-file-name' => "http://$opts{next_server}$portsuffix$http_tftp_root/$spec->{loader}",
             'option-data'    => [
                 {
                     name          => 'vendor-class-identifier',
@@ -107,7 +108,6 @@ sub isc_client_architecture_lines {
 
     my $tftp       = $opts{next_server} // '';
     my $portsuffix = $opts{portsuffix}  // '';
-    my $tftpdir    = $opts{tftpdir}     // '/tftpboot';
     my $net        = $opts{net}         // '';
     my $maskbits   = $opts{prefix}      // '';
 
@@ -135,7 +135,7 @@ sub isc_client_architecture_lines {
         "      filename \"boot/grub2/grub2.riscv64\";\n",
         "    } else if option client-architecture = 00:1c { #riscv64 uefi http boot\n ",
         "      option vendor-class-identifier \"HTTPClient\";\n",
-        "      filename \"http://$tftp$portsuffix$tftpdir/boot/grub2/grub2.riscv64\";\n",
+        "      filename \"http://$tftp$portsuffix/tftpboot/boot/grub2/grub2.riscv64\";\n",
         "    } else if option client-architecture = 00:0e { #OPAL-v3\n ",
         "        option conf-file = \"http://$tftp$portsuffix/tftpboot/pxelinux.cfg/p/${net}_${maskbits}\";\n",
         "    } else if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { #for onie on cumulus switch\n",
