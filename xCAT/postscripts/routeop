@@ -141,7 +141,7 @@ route_exists()
     os_type=$(uname -s)
 
     # ipv6
-    if echo $route_net | grep : 2>&1 1>/dev/null
+    if is_ipv6_route "$route_net"
     then
         result=`ip -6 route show $route_net/$route_mask`
         if [ $? -ne 0 ] || [ -z "$result" ]
@@ -152,14 +152,10 @@ route_exists()
         fi
     else
         if [ "$os_type" = "Linux" ] && command -v ip >/dev/null 2>&1; then
-            local route_prefix=$route_mask
+            local route_prefix
             local line
 
-            if ! echo "$route_prefix" | grep -E "^[0123456789]+$" >/dev/null 2>&1; then
-                if type v4mask2prefix >/dev/null 2>&1; then
-                    route_prefix=$(v4mask2prefix "$route_mask")
-                fi
-            fi
+            route_prefix=$(ipv4_route_prefix "$route_mask")
 
             if [ "$route_net" = "default" ]; then
                 result=$(ip route show default 2>/dev/null)
@@ -484,7 +480,7 @@ replace_persistent_route()
     case $OS_name in
         sles)
             filename="/etc/sysconfig/network/routes";
-            if echo $net | grep : 2>&1 1>/dev/null
+            if is_ipv6_route "$net"
             then
                 # for ipv6
                 if [ "$gw" = "" -o "$gw" = "::" ] ; then
@@ -541,7 +537,7 @@ replace_persistent_route()
                 return $?
             fi
 
-            if echo $net | grep : 2>&1 1>/dev/null
+            if is_ipv6_route "$net"
             then
                 # ipv6
                 filename="/etc/sysconfig/network-scripts/route6-$ifname"
@@ -690,7 +686,7 @@ add_persistent_route()
         #echo "sles"
         # ipv6 net
         filename="/etc/sysconfig/network/routes";
-        if echo $net | grep : 2>&1 1>/dev/null
+        if is_ipv6_route "$net"
         then
             if [ "$gw" = "" -o "$gw" = "::" ] ; then
                 route="$net/$mask :: - $ifname"
@@ -766,9 +762,8 @@ add_persistent_route()
                 echo "auto $ifname" > $filename
                 echo "iface $ifname inet dhcp" >> $filename
             fi
-            echo $net | grep : 2>&1 1>/dev/null
             #ipv6
-            if [ $? -eq 0 ];then
+            if is_ipv6_route "$net";then
         if [ "$gw" = "" -o "$gw" = "::" ] ; then
                     matchstr="$net/$mask dev $ifname"
         else
@@ -851,7 +846,7 @@ add_persistent_route()
             return $?
         fi
         # ipv6 net
-        if echo $net | grep : 2>&1 1>/dev/null
+        if is_ipv6_route "$net"
         then
             if [ "$gw" = "" ] ; then
             $gw = "::";
@@ -926,7 +921,7 @@ rm_persistent_route()
         #echo "sles"
         filename="/etc/sysconfig/network/routes";
         # ipv6 net
-        if echo $net | grep : 2>&1 1>/dev/null
+        if is_ipv6_route "$net"
         then
         if [ $gw = "" -o $gw = "::" ] ; then
                 route="$net/$mask :: - $ifname";
@@ -969,9 +964,8 @@ rm_persistent_route()
             fi
             filename="/etc/network/interfaces.d/$ifname"
 
-            echo $net | grep : 2>&1 1>/dev/null
             #ipv6
-            if [ $? -eq 0 ];then
+            if is_ipv6_route "$net";then
             if [ $gw = "" -o $gw = "::" ] ; then
                     matchstr="$net/$mask dev $ifname"
         else
@@ -1001,7 +995,7 @@ rm_persistent_route()
             return $?
         fi
         #ipv6
-        if echo $net | grep : 2>&1 1>/dev/null
+        if is_ipv6_route "$net"
         then
             filename="/etc/sysconfig/static-routes-ipv6";
             # $net/$mask does not work with sed
@@ -1054,7 +1048,7 @@ if [ "$op" = "add" ]; then
     result=$(route_exists $net $mask $gw)
     if [ "$result" = "0" ]; then
         #ipv6
-        if echo $net | grep : 2>&1 1>/dev/null
+        if is_ipv6_route "$net"
         then
             if [ "$(uname -s)" = "Linux" ]; then
             if [ "$gw" = "" -o "$gw" = "::" ] ; then
@@ -1096,7 +1090,7 @@ if [ "$op" = "add" ]; then
         fi
     else
         #ipv6
-        if echo $net | grep : 2>&1 1>/dev/null
+        if is_ipv6_route "$net"
         then
             echo "The temporary route ($net/$mask $gw) already exists."
         else
@@ -1110,7 +1104,7 @@ elif [ "$op" = "delete" ]; then
     result=$(route_exists $net $mask $gw)
     if [ "$result" = "1" ]; then
         # ipv6
-        if echo $net | grep : 2>&1 1>/dev/null
+        if is_ipv6_route "$net"
         then
             if [ "$(uname -s)" = "Linux" ]; then
             if [ "$gw" = "" -o "$gw" = "::" ] ; then
@@ -1159,7 +1153,7 @@ elif [ "$op" = "replace" ]; then
         mask=$(v4mask2prefix $mask)
     fi
 
-    if echo $net | grep : 2>&1 1>/dev/null
+    if is_ipv6_route "$net"
     then # ipv6
         if [ "$(uname -s)" = "Linux" ]; then
             if [ "$gw" = "" -o "$gw" = "::" ] ; then
