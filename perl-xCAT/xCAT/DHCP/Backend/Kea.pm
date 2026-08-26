@@ -89,7 +89,8 @@ sub render_dhcp4_config {
     $dhcp4{'hooks-libraries'} = $intent->{'hooks-libraries'} if $intent->{'hooks-libraries'};
     $dhcp4{'option-def'} = $intent->{'option-def'} if $intent->{'option-def'};
     $dhcp4{'client-classes'} = [ map { $self->_render_client_class($_) } @{ $intent->{'client-classes'} } ] if $intent->{'client-classes'};
-    $dhcp4{'option-data'}    = $intent->{'option-data'} if $intent->{'option-data'};
+    $dhcp4{'option-data'} = _render_option_data( $intent->{'option-data'} )
+      if $intent->{'option-data'};
     $dhcp4{'dhcp-ddns'}      = $intent->{'dhcp-ddns'}   if $intent->{'dhcp-ddns'};
     foreach my $field (qw/ddns-send-updates ddns-override-no-update ddns-override-client-update ddns-qualifying-suffix ddns-update-on-renew/) {
         $dhcp4{$field} = $intent->{$field} if exists $intent->{$field};
@@ -119,7 +120,8 @@ sub render_dhcp6_config {
 
     $dhcp6{'control-socket'}  = $intent->{'control-socket'}  if $intent->{'control-socket'};
     $dhcp6{'hooks-libraries'} = $intent->{'hooks-libraries'} if $intent->{'hooks-libraries'};
-    $dhcp6{'option-data'}     = $intent->{'option-data'}     if $intent->{'option-data'};
+    $dhcp6{'option-data'} = _render_option_data( $intent->{'option-data'} )
+      if $intent->{'option-data'};
     $dhcp6{'dhcp-ddns'}       = $intent->{'dhcp-ddns'}       if $intent->{'dhcp-ddns'};
     foreach my $field (qw/ddns-send-updates ddns-override-no-update ddns-override-client-update ddns-qualifying-suffix ddns-update-on-renew/) {
         $dhcp6{$field} = $intent->{$field} if exists $intent->{$field};
@@ -696,11 +698,11 @@ sub live_upsert_reservations {
         my $delete = $self->_live_delete_reservation($reservation, service => $service, ignore_not_found => 1);
         return $delete if $delete->{error};
 
-        my %stored = %$reservation;
+        my ($stored) = @{ _render_entry_option_data( [$reservation] ) };
         my $result = $self->control_agent_command(
             'reservation-add',
             {
-                reservation        => \%stored,
+                reservation        => $stored,
                 'operation-target' => 'memory',
             },
             service => $service,
@@ -767,7 +769,9 @@ sub _render_subnet4 {
     $rendered{interface}        = $subnet->{interface} if defined $subnet->{interface};
     $rendered{'next-server'}    = _first_defined( $subnet->{'next-server'},    $subnet->{next_server} );
     $rendered{'boot-file-name'} = _first_defined( $subnet->{'boot-file-name'}, $subnet->{boot_file_name} );
-    $rendered{'option-data'} = _first_defined( $subnet->{'option-data'}, $subnet->{option_data} );
+    $rendered{'option-data'} = _render_option_data(
+        _first_defined( $subnet->{'option-data'}, $subnet->{option_data} )
+    );
     my $additional_classes = _first_defined(
         $subnet->{additional_client_classes},
         $subnet->{'evaluate-additional-classes'},
@@ -776,13 +780,14 @@ sub _render_subnet4 {
         $subnet->{require_client_classes},
     );
     $rendered{ $self->_additional_class_list_field() } = $additional_classes if defined $additional_classes;
-    $rendered{reservations} = $subnet->{reservations} if $subnet->{reservations};
+    $rendered{reservations} = _render_entry_option_data( $subnet->{reservations} )
+      if $subnet->{reservations};
     delete $rendered{'next-server'}    unless defined $rendered{'next-server'};
     delete $rendered{'boot-file-name'} unless defined $rendered{'boot-file-name'};
     delete $rendered{'option-data'}    unless defined $rendered{'option-data'};
 
     if ( $subnet->{pools} ) {
-        $rendered{pools} = $subnet->{pools};
+        $rendered{pools} = _render_entry_option_data( $subnet->{pools} );
     } elsif ( $subnet->{dynamicrange} ) {
         $rendered{pools} = [ xCAT::DHCP::Range->kea_pools( $subnet->{dynamicrange} ) ];
     } else {
@@ -838,6 +843,26 @@ sub _render_option_data {
     return \@rendered;
 }
 
+sub _render_entry_option_data {
+    my ($entries) = @_;
+
+    return $entries unless ref($entries) eq 'ARRAY';
+
+    my @rendered;
+    foreach my $entry (@$entries) {
+        if ( ref($entry) ne 'HASH' ) {
+            push @rendered, $entry;
+            next;
+        }
+        my %copy = %$entry;
+        $copy{'option-data'} = _render_option_data( $copy{'option-data'} )
+          if $copy{'option-data'};
+        push @rendered, \%copy;
+    }
+
+    return \@rendered;
+}
+
 sub _render_subnet6 {
     my ( $self, $subnet ) = @_;
 
@@ -847,12 +872,15 @@ sub _render_subnet6 {
     );
 
     $rendered{interface}     = $subnet->{interface} if defined $subnet->{interface};
-    $rendered{'option-data'} = _first_defined( $subnet->{'option-data'}, $subnet->{option_data} );
-    $rendered{reservations}  = $subnet->{reservations} if $subnet->{reservations};
+    $rendered{'option-data'} = _render_option_data(
+        _first_defined( $subnet->{'option-data'}, $subnet->{option_data} )
+    );
+    $rendered{reservations} = _render_entry_option_data( $subnet->{reservations} )
+      if $subnet->{reservations};
     delete $rendered{'option-data'} unless defined $rendered{'option-data'};
 
     if ( $subnet->{pools} ) {
-        $rendered{pools} = $subnet->{pools};
+        $rendered{pools} = _render_entry_option_data( $subnet->{pools} );
     } elsif ( $subnet->{dynamicrange} ) {
         $rendered{pools} = [ xCAT::DHCP::Range->kea_pools( $subnet->{dynamicrange} ) ];
     } else {
