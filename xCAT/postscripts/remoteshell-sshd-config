@@ -1,0 +1,139 @@
+#!/bin/sh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+setup_for_pcm=${1:-0}
+osver=${2:-}
+log_label=${3:-xcat}
+ssh_etc=${XCAT_SSH_ETC:-/etc/ssh}
+logger_command=${XCAT_LOGGER:-logger}
+sshd_config="$ssh_etc/sshd_config"
+ssh_config="$ssh_etc/ssh_config"
+
+xcat_log() {
+    priority=$1
+    shift
+    "$logger_command" -t "$log_label" -p "$priority" "$@"
+}
+
+# Write a drop-in fragment atomically: scratch file then rename, the leading dot
+# keeping the scratch out of sshd's *.conf glob.  Returns nonzero without
+# touching anything if the write fails or the file is not ours.
+XCATSSHDDROPINMARKER="# Written by the xCAT remoteshell postscript."
+xcat_write_dropin() {
+    xcat_dir=$1
+    xcat_file=$2
+    shift 2
+    xcat_dest="$xcat_dir/$xcat_file"
+    if [ -e "$xcat_dest" ] && \
+        ! head -n 1 "$xcat_dest" 2>/dev/null | grep -qF "$XCATSSHDDROPINMARKER"; then
+        return 1
+    fi
+    xcat_tmp="$xcat_dir/.$xcat_file.xcatnew.$$"
+    mkdir -p "$xcat_dir" 2>/dev/null || return 1
+    ( : >"$xcat_tmp" ) 2>/dev/null || return 1
+    chmod 600 "$xcat_tmp" 2>/dev/null
+    (
+        echo "$XCATSSHDDROPINMARKER  Do not edit."
+        for xcat_line in "$@"; do
+            echo "$xcat_line"
+        done
+    ) 2>/dev/null >>"$xcat_tmp" || { rm -f "$xcat_tmp"; return 1; }
+    mv -f "$xcat_tmp" "$xcat_dest" 2>/dev/null || { rm -f "$xcat_tmp"; return 1; }
+    return 0
+}
+
+# sshd keeps the first value it finds for a keyword, so a setting ahead of the
+# Include line or in an earlier fragment still wins over ours; log it.
+xcat_warn_if_overridden() {
+    xcat_kw=$1
+    xcat_own="$XCATSSHDDROPINDIR/$2"
+    if sed -n '/^[[:space:]]*[Mm][Aa][Tt][Cc][Hh][[:space:]]/q; /^[[:space:]]*[Ii][Nn][Cc][Ll][Uu][Dd][Ee][[:space:]]\{1,\}[^[:space:]]\{1,\}\/\*\.conf[[:space:]]*$/q; p' "$sshd_config" 2>/dev/null | \
+        grep -i "^[[:space:]]*${xcat_kw}[[:space:]]" >/dev/null 2>&1; then
+        xcat_log local4.warning "remoteshell: $xcat_kw is set before the Include line in $sshd_config and overrides $xcat_own"
+    fi
+    for xcat_frag in "$XCATSSHDDROPINDIR"/*.conf; do
+        [ "$xcat_frag" = "$xcat_own" ] && break
+        [ -r "$xcat_frag" ] || continue
+        if grep -i "^[[:space:]]*${xcat_kw}[[:space:]]" "$xcat_frag" >/dev/null 2>&1; then
+            xcat_log local4.warning "remoteshell: $xcat_frag sets $xcat_kw and is read before $xcat_own"
+        fi
+    done
+}
+
+xcat_warn_if_fragment_overrides_fallback() {
+    xcat_kw=$1
+    [ -n "$XCATSSHDDIR" ] || return 0
+    for xcat_frag in "$XCATSSHDDIR"/*.conf; do
+        [ -r "$xcat_frag" ] || continue
+        if grep -i "^[[:space:]]*${xcat_kw}[[:space:]]" "$xcat_frag" >/dev/null 2>&1; then
+            xcat_log local4.warning "remoteshell: $xcat_frag sets $xcat_kw before the fallback value appended to $sshd_config"
+            return 0
+        fi
+    done
+}
+
+if [ -r "$sshd_config" ]; then
+    xcat_log local4.info "remoteshell:  setup $sshd_config and ssh_config"
+
+    # Take a single *.conf Include ahead of the first Match block.  An Include
+    # inside Match does not apply to every connection.
+    XCATSSHDDIR=`sed -n '/^[[:space:]]*[Mm][Aa][Tt][Cc][Hh][[:space:]]/q; s|^[[:space:]]*[Ii][Nn][Cc][Ll][Uu][Dd][Ee][[:space:]]\{1,\}\([^[:space:]]\{1,\}\)/\*\.conf[[:space:]]*$|\1|p' "$sshd_config" | head -n 1`
+    case "$XCATSSHDDIR" in
+        ""|/*) ;;
+        *)     XCATSSHDDIR="$ssh_etc/$XCATSSHDDIR" ;;
+    esac
+    case "$XCATSSHDDIR" in
+        *[][*?]*) XCATSSHDDIR="" ;;
+    esac
+
+    XCATSSHDDROPINDIR=""
+    if [ -n "$XCATSSHDDIR" ]; then
+        if xcat_write_dropin "$XCATSSHDDIR" "01-xcat.conf" "X11Forwarding yes"; then
+            XCATSSHDDROPINDIR="$XCATSSHDDIR"
+            xcat_warn_if_overridden "X11Forwarding" "01-xcat.conf"
+        else
+            xcat_log local4.err "remoteshell: could not write $XCATSSHDDIR/01-xcat.conf, editing $sshd_config instead"
+        fi
+    fi
+    if [ -z "$XCATSSHDDROPINDIR" ]; then
+        cp "$sshd_config" "$sshd_config.ORIG"
+        sed -i '/X11Forwarding /'d "$sshd_config"
+        echo "X11Forwarding yes" >>"$sshd_config"
+        xcat_warn_if_fragment_overrides_fallback "X11Forwarding"
+    fi
+
+    if [ "$setup_for_pcm" = "1" ]; then
+        case "$osver" in
+            sle*)
+                if [ -n "$XCATSSHDDROPINDIR" ] && \
+                    xcat_write_dropin "$XCATSSHDDROPINDIR" "02-xcat-pcm.conf" "PasswordAuthentication yes"; then
+                    xcat_warn_if_overridden "PasswordAuthentication" "02-xcat-pcm.conf"
+                else
+                    [ -e "$sshd_config.ORIG" ] || cp "$sshd_config" "$sshd_config.ORIG"
+                    sed -i '/PasswordAuthentication /'d "$sshd_config"
+                    echo "PasswordAuthentication yes" >>"$sshd_config"
+                    xcat_warn_if_fragment_overrides_fallback "PasswordAuthentication"
+                fi
+                ;;
+            ubuntu*)
+                if grep -q '^PermitRootLogin' "$sshd_config"; then
+                    if [ -n "$XCATSSHDDROPINDIR" ] && \
+                        xcat_write_dropin "$XCATSSHDDROPINDIR" "02-xcat-pcm.conf" "PermitRootLogin yes"; then
+                        xcat_warn_if_overridden "PermitRootLogin" "02-xcat-pcm.conf"
+                    else
+                        [ -e "$sshd_config.ORIG" ] || cp "$sshd_config" "$sshd_config.ORIG"
+                        sed -i 's/^PermitRootLogin.*/PermitRootLogin yes/' "$sshd_config"
+                        xcat_warn_if_fragment_overrides_fallback "PermitRootLogin"
+                    fi
+                fi
+                ;;
+        esac
+    fi
+fi
+
+if [ -r "$ssh_config" ]; then
+    sed -i '/StrictHostKeyChecking /'d "$ssh_config"
+    echo "StrictHostKeyChecking no" >>"$ssh_config"
+fi
+
+exit 0
