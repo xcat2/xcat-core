@@ -2,23 +2,20 @@ use strict;
 use warnings;
 
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../../perl-xCAT";
 
 use Cwd qw/getcwd/;
 use File::Path qw/make_path/;
+use File::Slurper qw/write_text/;
 use File::Temp qw/tempdir/;
 use Test::More;
 
 use xCAT::CommandUtils;
 
-my $command_utils_source = "$FindBin::Bin/../../perl-xCAT/xCAT/CommandUtils.pm";
-open( my $source_fh, '<', $command_utils_source )
-  or die "Unable to read $command_utils_source: $!";
-my $source = do { local $/; <$source_fh> };
-close($source_fh) or die "Unable to close $command_utils_source: $!";
-like(
-    $source,
-    qr/my \@SYSTEM_FALLBACK_DIRS = qw\(\s*\/usr\/sbin\s*\/usr\/bin\s*\/sbin\s*\/bin\s*\);/s,
+is_deeply(
+    \@xCAT::CommandUtils::SYSTEM_FALLBACK_DIRS,
+    [qw(/usr/sbin /usr/bin /sbin /bin)],
     'the built-in system fallback order matches the replaced callers'
 );
 
@@ -30,9 +27,7 @@ make_path( $first_dir, $second_dir, $fallback_dir, "$root/relative" );
 
 sub write_executable {
     my ($path) = @_;
-    open( my $fh, '>', $path ) or die "Unable to write $path: $!";
-    print {$fh} "#!/bin/sh\nexit 0\n";
-    close($fh) or die "Unable to close $path: $!";
+    write_text( $path, "#!/bin/sh\nexit 0\n" );
     chmod 0755, $path or die "Unable to make $path executable: $!";
     return $path;
 }

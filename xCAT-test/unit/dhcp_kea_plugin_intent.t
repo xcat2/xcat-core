@@ -4,12 +4,14 @@ use warnings;
 no warnings 'once';
 
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../../perl-xCAT";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 
 use File::Temp qw(tempdir);
 use Socket ();
 use Test::More;
+use XCAT::Test::File qw(repo_path);
 
 BEGIN {
     package xCAT::Table;
@@ -81,12 +83,8 @@ require xCAT::Utils;
     *xCAT::Utils::runcmd = sub { return; };
 }
 
-my $source_dhcp_plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/dhcp.pm";
-if ( -f $source_dhcp_plugin ) {
-    require $source_dhcp_plugin;
-} else {
-    require xCAT_plugin::dhcp;
-}
+my $source_dhcp_plugin = repo_path('xCAT-server/lib/xcat/plugins/dhcp.pm');
+require $source_dhcp_plugin;
 require xCAT::DHCP::Backend::Kea;
 
 {
