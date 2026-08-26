@@ -51,6 +51,8 @@ use Pod::Usage qw(pod2usage);
 use autodie;
 use autodie qw(cp);
 
+require "$Bin/build-utils/lib/XCAT/BuildUtils.pm";
+
 my $SOURCES = "$ENV{HOME}/rpmbuild/SOURCES";
 # Ensure the rpmbuild tree exists. buildrpms stages source tarballs into $SOURCES, but it only
 # runs rpmdev-setuptree in the one-time env-setup path -- so on a host where that never ran (or
@@ -294,20 +296,6 @@ sub genesis_tarch_from_targetarch {
     return $targetarch;
 }
 
-sub targetarch_from_target {
-    my ($target) = @_;
-    return $ARCH unless defined $target && length $target;
-    # mock configs are named <distro>-<release>-<arch>, but a site config may carry a
-    # suffix (e.g. rocky-10-riscv64-xcat, the forcearch config for riscv64 builds on an
-    # x86_64 host), so take the last part that names an architecture and only fall back
-    # to the last part when none does.
-    my @parts = map { my $p = lc $_; $p =~ s/^\s+|\s+$//g; $p } split /-/, $target;
-    for my $part (reverse @parts) {
-        return $part if $part =~ /^(?:x86_64|i[3-6]86|ppc64le|ppc64|aarch64|riscv64|s390x|armv7hl)$/;
-    }
-    return $parts[-1];
-}
-
 # product(\@A, \@B) returns the catersian product of \@A and \@B
 sub product {
     my ($a, $b) = @_;
@@ -467,7 +455,8 @@ sub buildspkgs {
 
     my $ext = $opts{mock_uniqueext} ? "-$opts{mock_uniqueext}" : "";
     my $chroot = "$pkg-$target$ext";
-    my $targetarch = targetarch_from_target($target);
+    my $targetarch =
+      XCAT::BuildUtils::targetarch_from_target( $target, $ARCH );
     my $genesis_tarch = genesis_tarch_from_targetarch($targetarch);
 
     my $diskcache = (
@@ -523,7 +512,8 @@ sub buildpkgs {
     my $chroot = "$pkg-$target$ext";
 
     # get x86_64 from alma+epel-9-x86_64
-    my $targetarch = targetarch_from_target($target);
+    my $targetarch =
+      XCAT::BuildUtils::targetarch_from_target( $target, $ARCH );
 
     # xCAT genesis packages include the translated target arch in their file names.
     my $arch = is_in($pkg, @NATIVE_PACKAGES) ? $targetarch : "noarch";
