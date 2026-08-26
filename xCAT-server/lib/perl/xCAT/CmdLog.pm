@@ -7,6 +7,34 @@ use warnings;
 
 use xCAT::xcatd;
 
+sub new {
+    my ($class) = @_;
+    return bless {
+        buffer    => '',
+        sensitive => 0,
+    }, $class;
+}
+
+sub start_response {
+    my ($self, $req, $req_redacted) = @_;
+    $self->{sensitive} = response_is_sensitive($req, $req_redacted);
+    return;
+}
+
+sub collect {
+    my ($self, $response, $local_server) = @_;
+    $self->{buffer} .= format_response($response, $local_server);
+    return 0;
+}
+
+sub finalize {
+    my ($self) = @_;
+    my $response = finalize_response($self->{buffer}, $self->{sensitive});
+    $self->{buffer} = '';
+    $self->{sensitive} = 0;
+    return $response;
+}
+
 sub response_is_sensitive {
     my ($req, $req_redacted) = @_;
     return 1 if defined $req->{command}->[0]

@@ -225,8 +225,7 @@ if ($tmp) {
 }
 my $cmdlog_alllog = "====================================================\n";
 my $cmdlog_starttime=undef;
-my $cmdlog_response_buffer = "";
-my $cmdlog_response_sensitive = 0;
+my $cmdlog_response = xCAT::CmdLog->new();
 
 # ----used for command log end---------
 my $enable_perf = $sitetab->getAttribs({'key'=>'enableperf'},'value');
@@ -2893,7 +2892,7 @@ sub service_connection {
             $cmdlog_request = xCAT::xcatd->redact_password($cmdlog_request);
             $cmdlog_req_redacted = 1 if $cmdlog_request ne $cmdlog_before_redact;
             $cmdlog_alllog .= $cmdlog_request . "\n[Response]\n";
-            $cmdlog_response_sensitive = cmdlog_response_is_sensitive($req, $cmdlog_req_redacted);
+            $cmdlog_response->start_response($req, $cmdlog_req_redacted);
 
             # ----used for command log end----------
 
@@ -3401,34 +3400,21 @@ sub disable_callingtrace {
 
 =head3 cmdlog_collectlog
 
-    Used by recording command output feature.
-    collecting each output for one specific command
-    The most part of this subroutine logic comes from handle_response subroutine in Client.pm
+    Collect one response fragment for the current command.
+    Response formatting and buffering are handled by xCAT::CmdLog.
 
     Returns:
         0 -> successful
-        1 -> failed
 =cut
 
 # --------------------------------------------------------------------------------
 sub cmdlog_collectlog() {
     my $response = shift;
-    $cmdlog_response_buffer .= xCAT::CmdLog::format_response($response, $MYXCATSERVER);
-    return 0;
-}
-
-sub cmdlog_response_is_sensitive {
-    my ($req, $req_redacted) = @_;
-    return xCAT::CmdLog::response_is_sensitive($req, $req_redacted);
+    return $cmdlog_response->collect($response, $MYXCATSERVER);
 }
 
 sub cmdlog_finalize_response {
-    $cmdlog_alllog .= xCAT::CmdLog::finalize_response(
-        $cmdlog_response_buffer,
-        $cmdlog_response_sensitive,
-    );
-    $cmdlog_response_buffer = "";
-    $cmdlog_response_sensitive = 0;
+    $cmdlog_alllog .= $cmdlog_response->finalize();
 }
 
 # --------------------------------------------------------------------------------
