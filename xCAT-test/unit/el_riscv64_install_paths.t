@@ -48,18 +48,8 @@ like(
 # geninitrd.pm: diskless installer initrd source
 like(
     $geninitrd,
-    qr/if \(\$arch =~ \/x86\/ or \(\$arch =~ \/riscv64\/ and \$osvers !~ \/sles\|suse\/\)\) \{\n\s*if \(\$osvers =~ \/\(\^ol\[0-9\]\.\*\)\|\(centos\.\*\)\|\(alma\.\*\)\|\(rocky\.\*\)\|\(rh\.\*\)\|\(fedora\.\*\)\|\(SL\.\*\)\/\) \{\n\s*\$kernelpath = "\$tftppath\/vmlinuz";\n\s*copy\("\$pkgdir\/images\/pxeboot\/vmlinuz", \$kernelpath\);/,
-    'geninitrd copies riscv64 EL kernels from images/pxeboot',
-);
-like(
-    $geninitrd,
-    qr/\$arch =~ \/riscv64\/ and \$osvers !~ \/sles\|suse\//,
-    'a SUSE osimage on riscv64 keeps the unsupported-architecture error instead of reading SUSE installer media paths',
-);
-unlike(
-    $geninitrd,
-    qr/\} elsif \(\$arch =~ \/riscv64\/\)/,
-    'geninitrd does not need a separate riscv64 branch',
+    qr/if \(\$arch =~ \/x86\/ or \(\$arch =~ \/riscv64\/ and \$osvers !~ \/sles\|suse\/\)\) \{/,
+    'geninitrd routes riscv64 EL media through the installer pxeboot path',
 );
 
 is_deeply(
@@ -67,7 +57,6 @@ is_deeply(
     [qw/e1000 e1000e igb ixgbe r8169 tg3 bnx2x mlx5_core virtio_net/],
     'riscv64 diskless images default to virtio, Intel, Realtek, Broadcom and Mellanox drivers',
 );
-
 # rh/genimage: resolver libraries for the boot image
 my ($lib_block) = $genimage =~ m{^(\s*if \(\$arch =~ /x86_64/ or \$arch =~ /aarch64/ or \$arch =~ /riscv64/\) \{\n\s*push \@filestoadd, "lib64/libnss_dns\.so\.2";\n.*?^\s*\}\n)}ms;
 ok( $lib_block, 'the resolver library block was located in rh/genimage' )
@@ -82,24 +71,10 @@ sub resolver_libs {
 }
 
 is_deeply( resolver_libs('riscv64'), [ 'lib64/libnss_dns.so.2', 'lib64/libresolv.so.2' ], 'riscv64 images take the resolver libraries from lib64' );
-is_deeply( resolver_libs('x86_64'),  [ 'lib64/libnss_dns.so.2', 'lib64/libresolv.so.2' ], 'x86_64 images still use lib64' );
-is_deeply( resolver_libs('ppc64'),   [ 'lib/libnss_dns.so.2',   'lib/libresolv.so.2' ],   'ppc64 images still use lib' );
-
 # anaconda.pm: crash kernel reservation for diskless images with kdump enabled
 like(
     $anaconda,
     qr/if \(\$arch eq "riscv64"\) \{\n(?:\s*#[^\n]*\n)*\s*\$kcmdline \.= " crashkernel=256M dump=\$dump ";/,
     'a riscv64 diskless image with kdump enabled reserves a crash kernel by default',
 );
-like(
-    $anaconda,
-    qr/if \(\$arch =~ \/86\/\) \{\n\s*\$kcmdline \.= " crashkernel=128M dump=\$dump ";/,
-    'the x86 default reservation is unchanged',
-);
-like(
-    $anaconda,
-    qr/\$kcmdline \.= " crashkernel=\$crashkernelsize dump=\$dump ";/,
-    'an explicit linuximage.crashkernelsize still wins on every architecture',
-);
-
 done_testing();

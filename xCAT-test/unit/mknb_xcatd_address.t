@@ -5,6 +5,7 @@ use warnings;
 
 use FindBin;
 use lib "$FindBin::Bin/../lib";
+use File::Slurper qw(write_text);
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
 use Test::More;
@@ -433,8 +434,9 @@ like(
 %xCAT::TableUtils::site_extra = ();
 
 # an lzma initramfs is preferred when mknb produced one
-open(my $lzma_fh, '>', "$xCAT::TableUtils::tftpdir/xcat/genesis.fs.riscv64.lzma") or die "Unable to create lzma: $!";
-close($lzma_fh);
+write_text(
+    "$xCAT::TableUtils::tftpdir/xcat/genesis.fs.riscv64.lzma", ''
+);
 $responses = run_mknb('riscv64');
 generation_succeeded($responses, 'riscv64 configuration generation succeeds with an lzma initramfs');
 like(
@@ -455,8 +457,7 @@ unlink("$xCAT::TableUtils::tftpdir/xcat/genesis.fs.riscv64.lzma");
         'a missing grub2.riscv64 boot loader is reported',
     );
     make_path("$xCAT::TableUtils::tftpdir/boot/grub2");
-    open(my $loader_fh, '>', $loader) or die "Unable to create $loader: $!";
-    close($loader_fh);
+    write_text( $loader, '' );
     my $present = run_mknb('riscv64');
     ok(
         !grep({ ref($_) eq 'HASH' && $_->{data} && "@{$_->{data}}" =~ /is missing/ } @{$present}),
@@ -495,8 +496,9 @@ $xCAT::NetworkUtils::nic_ips = { eth0 => '10.0.0.1', eth1 => '192.168.148.10' };
 use_reporter_address_maps();
 prepare_tftpdir($tmpdir, 'tftpboot-riscv64-noboot', 'riscv64');
 make_path("$xCAT::TableUtils::tftpdir/boot/grub2");
-open(my $stale_fh, '>', "$xCAT::TableUtils::tftpdir/boot/grub2/grub.cfg-C0A89") or die "Unable to create stale config: $!";
-close($stale_fh);
+write_text(
+    "$xCAT::TableUtils::tftpdir/boot/grub2/grub.cfg-C0A89", ''
+);
 $responses = run_mknb('riscv64');
 generation_succeeded($responses, 'riscv64 configuration generation succeeds with a :noboot interface');
 ok(

@@ -4,9 +4,11 @@ use warnings;
 
 use FindBin;
 use lib "$FindBin::Bin/../lib";
+use lib "$FindBin::Bin/../../build-utils/lib";
 use Test::More;
 
 use XCAT::Test::File qw(repo_path slurp_repo_file);
+use XCAT::BuildUtils qw(targetarch_from_target);
 
 # riscv64 packaging: the arch-named packages (xCAT, xCATsn) must resolve their
 # architecture token and dependencies for riscv64, and the build scripts must
@@ -71,24 +73,25 @@ like( $buildlocal, qr{^\s*cp /root/rpmbuild/RPMS/riscv64/\* \$CURDIR/build/$}m, 
 
 my $buildrpms = slurp_repo_file('buildrpms.pl');
 like( $buildrpms, qr/forcearch/, 'buildrpms.pl documents the forcearch mock configuration for riscv64 builds' );
+unlike(
+    $buildrpms,
+    qr/^use XCAT::BuildUtils\b/m,
+    'the dependency bootstrap does not treat the repository build utility as an RPM dependency'
+);
+like(
+    $buildrpms,
+    qr{require "\$Bin/build-utils/lib/XCAT/BuildUtils\.pm";},
+    'buildrpms loads the repository build utility by path at runtime'
+);
 
-# buildrpms.pl derives the rpm architecture from the mock target name; a suffixed
-# site config (the riscv64 forcearch one) must still resolve to riscv64.
-my ($targetarch_sub) = $buildrpms =~ m{^(sub targetarch_from_target \{.*?^\})}ms;
-ok( $targetarch_sub, 'targetarch_from_target was located in buildrpms.pl' )
-  or BAIL_OUT('buildrpms.pl no longer matches the expected targetarch_from_target shape');
-{
-    package Test::BuildTarget;
-    our $ARCH = 'x86_64';
-    eval $targetarch_sub;    ## no critic (BuiltinFunctions::ProhibitStringyEval)
-    die "Unable to evaluate targetarch_from_target: $@" if $@;
-}
-is( Test::BuildTarget::targetarch_from_target('rocky-10-riscv64-xcat'), 'riscv64', 'a suffixed riscv64 forcearch target resolves to riscv64' );
-is( Test::BuildTarget::targetarch_from_target('rocky-10-riscv64'),      'riscv64', 'the stock riscv64 target resolves to riscv64' );
-is( Test::BuildTarget::targetarch_from_target('alma+epel-10-ppc64le'),  'ppc64le', 'the ppc64le target still resolves to ppc64le' );
-is( Test::BuildTarget::targetarch_from_target('alma+epel-10-x86_64'),   'x86_64',  'the x86_64 target still resolves to x86_64' );
-is( Test::BuildTarget::targetarch_from_target('opensuse-leap-15.6-x86_64'), 'x86_64', 'a dashed distro name still resolves its arch' );
-is( Test::BuildTarget::targetarch_from_target('custom-target-foo'), 'foo', 'a target without an architecture token keeps the last part' );
-is( Test::BuildTarget::targetarch_from_target(undef), 'x86_64', 'no target means the host architecture' );
+# buildrpms.pl derives the rpm architecture from the mock target name through
+# the loadable build utility, so exercise the implementation directly.
+is( targetarch_from_target('rocky-10-riscv64-xcat', 'x86_64'), 'riscv64', 'a suffixed riscv64 forcearch target resolves to riscv64' );
+is( targetarch_from_target('rocky-10-riscv64',      'x86_64'), 'riscv64', 'the stock riscv64 target resolves to riscv64' );
+is( targetarch_from_target('alma+epel-10-ppc64le',  'x86_64'), 'ppc64le', 'the ppc64le target still resolves to ppc64le' );
+is( targetarch_from_target('alma+epel-10-x86_64',   'x86_64'), 'x86_64',  'the x86_64 target still resolves to x86_64' );
+is( targetarch_from_target('opensuse-leap-15.6-x86_64', 'x86_64'), 'x86_64', 'a dashed distro name still resolves its arch' );
+is( targetarch_from_target('custom-target-foo', 'x86_64'), 'foo', 'a target without an architecture token keeps the last part' );
+is( targetarch_from_target(undef, 'x86_64'), 'x86_64', 'no target means the host architecture' );
 
 done_testing();
