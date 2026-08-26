@@ -6,7 +6,6 @@ use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use Test::More;
-use xCAT::xcatd;
 use xCAT::CmdLog;
 
 ok(xCAT::CmdLog::response_is_sensitive(
@@ -71,12 +70,16 @@ ok(!xCAT::CmdLog::response_is_sensitive(
 
 sub run {
     my ($sensitive, @responses) = @_;
-    my $buffer = '';
-    $buffer .= xCAT::CmdLog::format_response(
+    my $cmdlog = xCAT::CmdLog->new();
+    $cmdlog->start_response(
+        { command => ['rpower'], arg => ['node01', 'stat'] },
+        $sensitive,
+    );
+    $cmdlog->collect(
         { xcatresponse => [ { data => [$_] } ] },
         '',
     ) for @responses;
-    return xCAT::CmdLog::finalize_response($buffer, $sensitive);
+    return $cmdlog->finalize();
 }
 
 my $bare = run(1, 'S3cr3tPW');
@@ -102,11 +105,55 @@ unlike($colon, qr/AAAAA/, 'a colon separated secret column is redacted');
 my $plain = run(0, 'Object name: node01', '    groups=compute', '    mgt=ipmi');
 unlike($plain, qr/\*REDACTED\*/, 'a benign object listing is not redacted');
 
-my $first = run(1, 'SECRET_N');
-my $second = run(0, 'benign_np1');
+my $connection = xCAT::CmdLog->new();
+$connection->start_response(
+    { command => ['getcredentials'], arg => [] },
+    0,
+);
+is(
+    $connection->collect(
+        { xcatresponse => [ { data => ['SECRET_N'] } ] },
+        '',
+    ),
+    0,
+    'collecting a command response succeeds',
+);
+my $first = $connection->finalize();
+is($connection->{sensitive}, 0, 'finalization resets response sensitivity');
+$connection->start_response(
+    { command => ['rpower'], arg => ['node01', 'stat'] },
+    0,
+);
+$connection->collect(
+    { xcatresponse => [ { data => ['benign_np1'] } ] },
+    '',
+);
+my $second = $connection->finalize();
 like($first, qr/\*REDACTED\*/, 'a sensitive response is preserved as redacted');
 unlike($first, qr/SECRET_N/, 'the sensitive response does not leak');
-like($second, qr/benign_np1/, 'the next benign response is not over-redacted');
+like($second, qr/benign_np1/, 'a benign response after a sensitive request is preserved');
+unlike($second, qr/\*REDACTED\*/, 'the benign response is not over-redacted');
+unlike($second, qr/SECRET_N/, 'the finalized secret is not replayed in the next response');
+
+my $local_connection = xCAT::CmdLog->new();
+$local_connection->start_response(
+    { command => ['rpower'], arg => ['node01', 'stat'] },
+    0,
+);
+$local_connection->collect(
+    {
+        xcatresponse => [ {
+            xcatdsource => ['management'],
+            info        => ['working'],
+        } ],
+    },
+    'management',
+);
+is(
+    $local_connection->finalize(),
+    "working\n",
+    'collect forwards the local server identity to response formatting',
+);
 
 is(
     xCAT::CmdLog::format_response(
