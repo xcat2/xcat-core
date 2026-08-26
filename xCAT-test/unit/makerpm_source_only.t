@@ -2,7 +2,10 @@
 use strict;
 use warnings;
 
+use Cwd qw(getcwd);
+use File::Path qw(make_path);
 use File::Slurper qw(write_text);
+use File::Spec;
 use File::Temp qw(tempdir);
 use FindBin;
 use lib "$FindBin::Bin/../lib";
@@ -11,6 +14,7 @@ use Test::More;
 use XCAT::Test::File qw(repo_path);
 
 my $helper = repo_path('build-utils/source-only.sh');
+my $makerpm = repo_path('makerpm');
 plan skip_all => 'source-only build helper not found' unless -r $helper;
 plan skip_all => 'bash not found' unless -x '/bin/bash';
 
@@ -113,5 +117,52 @@ SRCONLY=0
 xcat_require_binary_build xCAT-OpenStack-ironic
 SH
 is( $ironic_normal_rc, 0, 'the ironic package still accepts a normal build' );
+
+my $makerpm_root = tempdir( CLEANUP => 1 );
+my $makerpm_bin = File::Spec->catdir( $makerpm_root, 'bin' );
+my $rpm_root = File::Spec->catdir( $makerpm_root, 'rpmbuild' );
+my $rpmbuild_log = File::Spec->catfile( $makerpm_root, 'rpmbuild.log' );
+make_path( $makerpm_bin, map { File::Spec->catdir( $rpm_root, $_ ) }
+    qw(SOURCES SRPMS RPMS BUILD) );
+my $fake_rpmbuild = File::Spec->catfile( $makerpm_bin, 'rpmbuild' );
+write_text( $fake_rpmbuild, <<'SH' );
+#!/bin/sh
+case "$1" in
+    --version) exit 0 ;;
+    --eval) printf '%s\n' "$XCAT_TEST_RPMROOT"; exit 0 ;;
+esac
+printf '%s\n' "$*" >>"$XCAT_TEST_RPMBUILD_LOG"
+exit 0
+SH
+chmod 0755, $fake_rpmbuild
+  or die "Unable to make $fake_rpmbuild executable: $!";
+
+my $original_directory = getcwd();
+my $repository_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
+chdir($repository_root) or die "Unable to enter $repository_root: $!";
+my $makerpm_status;
+{
+    local %ENV = (
+        %ENV,
+        PATH                    => "$makerpm_bin:$ENV{PATH}",
+        SRCONLY                 => 1,
+        XCATVER                 => '2.19.0',
+        XCAT_TEST_RPMROOT       => $rpm_root,
+        XCAT_TEST_RPMBUILD_LOG  => $rpmbuild_log,
+    );
+    $makerpm_status = system( $makerpm, 'perl-xCAT' ) >> 8;
+}
+chdir($original_directory)
+  or die "Unable to return to $original_directory: $!";
+is( $makerpm_status, 0,
+    'the real makerpm caller completes a source-only tar build' );
+open( my $rpmbuild_fh, '<', $rpmbuild_log )
+  or die "Unable to read $rpmbuild_log: $!";
+my $rpmbuild_arguments = do { local $/; <$rpmbuild_fh> };
+close($rpmbuild_fh);
+like( $rpmbuild_arguments, qr/(?:^|\s)-ts(?:\s|$)/m,
+    'the real makerpm caller passes the source-only tar mode to rpmbuild' );
+unlike( $rpmbuild_arguments, qr/(?:^|\s)-ta(?:\s|$)/m,
+    'the real makerpm caller does not request a binary tar build' );
 
 done_testing();
