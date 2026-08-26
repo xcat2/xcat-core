@@ -69,6 +69,21 @@ my $fips_defaults = xCAT::DHCP::OmapiPolicy->settings(
     },
     fips_mode => 1,
 );
+{
+    no warnings qw(redefine once);
+    local *xCAT::Utils::isFIPS = sub { return 1; };
+    my $detected_fips = xCAT::DHCP::OmapiPolicy->settings(
+        site_values => {
+            dhcpomapialgorithm => undef,
+            dhcpomapikeyname   => undef,
+            dhcpomshellpath    => undef,
+        },
+    );
+    is( $detected_fips->{algorithm}, 'hmac-sha256',
+        'runtime FIPS detection selects the SHA-256 default' );
+    ok( $detected_fips->{algorithm_enforced},
+        'runtime FIPS detection enforces the selected algorithm' );
+}
 is(
     xCAT_plugin::ddns::ddns_tsig_algorithm(
         { omapi_settings => $fips_defaults },
@@ -305,6 +320,16 @@ subtest 'Net::DNS threshold controls named key reconciliation' => sub {
             "Net::DNS $version records the expected named restart state"
         );
     }
+
+    my ( $harvested_key, $harvested_restart ) =
+      reconcile_named_key( '1.35', privkey => undef );
+    like(
+        $harvested_key,
+        qr/^\s*algorithm\s+hmac-md5\s*;/m,
+        'an existing key secret is reconciled for old Net::DNS'
+    );
+    ok( $harvested_restart,
+        'reconciling a harvested key secret records the named restart' );
 };
 
 done_testing();
@@ -317,7 +342,7 @@ sub with_net_dns_version {
 }
 
 sub reconcile_named_key {
-    my ($version) = @_;
+    my ( $version, %args ) = @_;
 
     my ( $named_fh, $named_path ) = tempfile(UNLINK => 1);
     print {$named_fh}
@@ -330,7 +355,7 @@ sub reconcile_named_key {
 
     my $ctx = {
         omapi_settings => omapi_settings(),
-        privkey        => 'legacy-secret',
+        privkey        => exists $args{privkey} ? $args{privkey} : 'legacy-secret',
         zonesdir       => '/tmp',
         dbdir          => '/tmp',
         zonestotouch   => {},
