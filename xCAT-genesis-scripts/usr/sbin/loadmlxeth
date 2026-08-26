@@ -1,2 +1,12 @@
 #!/bin/sh
-/sbin/modprobe mlx4_en
+
+load_mellanox_ethernet()
+{
+    xcat_modprobe=$1
+    xcat_mlx_status=1
+    "$xcat_modprobe" mlx4_en && xcat_mlx_status=0
+    "$xcat_modprobe" mlx5_core && xcat_mlx_status=0
+    return "$xcat_mlx_status"
+}
+
+load_mellanox_ethernet "${1:-/sbin/modprobe}"

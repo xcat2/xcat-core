@@ -193,20 +193,13 @@ unless ($osver and $profile) {
 }
 
 my @ndrivers;
+my @default_ndrivers;
 if ($netdriver) {
     if (($updates{'netdrivers'} ne $netdriver) and ($tempfile)) {
         $updates{'netdrivers'} = $netdriver;
     }
 } else {
-    if ($arch eq 'x86' or $arch eq 'x86_64') {
-        @ndrivers = qw/tg3 bnx2 bnx2x e1000 e1000e igb mlx_en virtio_net overlay/;
-    } elsif ($arch eq 'ppc64el') {
-        @ndrivers = qw/tg3 bnx2 bnx2x e1000 e1000e igb ibmveth ehea mlx_en mlx4_en virtio_net overlay/;
-    } elsif ($arch eq 'ppc64') {
-        @ndrivers = qw/e1000 e1000e igb ibmveth ehea/;
-    } elsif ($arch eq 's390x') {
-        @ndrivers = qw/qdio ccwgroup/;
-    }
+    @default_ndrivers = imgutils::default_net_drivers('ubuntu', $arch);
 }
 foreach (split /,/, $netdriver) {
     unless (/\.ko$/) {
@@ -216,7 +209,7 @@ foreach (split /,/, $netdriver) {
     push @ndrivers, $_;
 }
 
-foreach (@ndrivers) {
+foreach (@ndrivers, @default_ndrivers) {
     unless (/\.ko$/) {
         s/$/.ko/;
     }
@@ -751,6 +744,12 @@ if (-e "$rootimg_dir/boot/vmlinux-$kernelver") {
 }
 
 # Load driver update disk, and copy them to the root image
+@ndrivers = imgutils::resolve_mellanox_default_net_drivers(
+    $rootimg_dir,
+    $kernelver,
+    \@ndrivers,
+    @default_ndrivers,
+);
 my @dd_drivers = &load_dd();
 
 # Push the drivers into the @ndrivers base on the order
