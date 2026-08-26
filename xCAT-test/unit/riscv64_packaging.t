@@ -64,24 +64,33 @@ like(
 like( $server, qr/^Requires: perl-Net-Telnet perl-Net-DNS perl-Crypt-CBC perl-Crypt-Rijndael$/m, 'xCAT-server.spec keeps the other EL perl requires' );
 
 
-my $buildcore = slurp_repo_file('buildcore.sh');
-like( $buildcore, qr/^\s*for arch in x86_64 ppc64 ppc64le s390x aarch64 riscv64; do$/m, 'buildcore.sh builds xCAT and xCATsn for riscv64' );
+my $architectures = repo_path('build-utils/rpm-architectures.sh');
+is(system('sh', '-n', $architectures), 0, 'the shared build architecture data parses as POSIX shell');
+open(
+    my $arch_fh,
+    '-|',
+    'sh', '-c',
+    '. "$1"; printf "%s\n%s\n%s\n" "$XCAT_CORE_RPM_ARCHES" "$XCAT_LOCAL_RPM_ARCHES" "$XCAT_LOCAL_COLLECT_ARCHES"',
+    'sh', $architectures,
+) or BAIL_OUT("unable to load $architectures: $!");
+my @architecture_sets = <$arch_fh>;
+close($arch_fh) or BAIL_OUT("unable to read architecture data from $architectures");
+chomp @architecture_sets;
 
-my $buildlocal = slurp_repo_file('buildlocal.sh');
-like( $buildlocal, qr/^\s*for arch in x86_64 ppc64 s390x aarch64 riscv64; do$/m, 'buildlocal.sh builds xCAT and xCATsn for riscv64' );
-like( $buildlocal, qr{^\s*cp /root/rpmbuild/RPMS/riscv64/\* \$CURDIR/build/$}m, 'buildlocal.sh collects riscv64 rpms' );
-
-my $buildrpms = slurp_repo_file('buildrpms.pl');
-like( $buildrpms, qr/forcearch/, 'buildrpms.pl documents the forcearch mock configuration for riscv64 builds' );
-unlike(
-    $buildrpms,
-    qr/^use XCAT::BuildUtils\b/m,
-    'the dependency bootstrap does not treat the repository build utility as an RPM dependency'
+is(
+    $architecture_sets[0],
+    'x86_64 ppc64 ppc64le s390x aarch64 riscv64',
+    'the release build includes riscv64 without changing its existing architecture set',
 );
-like(
-    $buildrpms,
-    qr{require "\$Bin/build-utils/lib/XCAT/BuildUtils\.pm";},
-    'buildrpms loads the repository build utility by path at runtime'
+is(
+    $architecture_sets[1],
+    'x86_64 ppc64 s390x aarch64 riscv64',
+    'the local build includes riscv64 without changing its existing architecture set',
+);
+is(
+    $architecture_sets[2],
+    'noarch x86_64 ppc64 riscv64',
+    'the local build collects the riscv64 packages it produces',
 );
 
 # buildrpms.pl derives the rpm architecture from the mock target name through
