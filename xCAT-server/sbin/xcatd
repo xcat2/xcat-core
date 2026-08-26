@@ -51,6 +51,7 @@ use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
 use xCAT::xcatd;
+use xCAT::CmdLog;
 use xCAT::State;
 my $os   = xCAT::Utils->osver();
 my $arch = `uname -p`;
@@ -3411,241 +3412,21 @@ sub disable_callingtrace {
 
 # --------------------------------------------------------------------------------
 sub cmdlog_collectlog() {
-    my $rsponse = shift;
-    my $rsp_log = "";
-
-    if ((exists($rsponse->{xcatresponse}->[0]->{serverdone})) && (!exists($rsponse->{xcatresponse}->[0]->{error}))) { return 0; }
-    my $rsp;
-    if (exists($rsponse->{xcatresponse})) {
-        $rsp = $rsponse->{xcatresponse};
-    } else {
-        push @{$rsp}, $rsponse;
-    }
-    if (ref($rsp) ne 'ARRAY') { return 0; }
-    if (scalar(@$rsp) == 0)   { return 0; }
-
-    foreach my $tmprsp (@{$rsp}) {
-        $rsp = $tmprsp;
-
-        # handle response
-        my $msgsource = "";
-        $msgsource = $rsp->{xcatdsource}->[0] if ($rsp->{xcatdsource});
-        #Only show response source when it is from different service node
-        $msgsource = "" if ($MYXCATSERVER eq $msgsource);
-
-        # Handle errors
-        if ($rsp->{error}) {
-            if (ref($rsp->{error}) eq 'ARRAY') {
-                foreach my $text (@{ $rsp->{error} }) {
-                    my $desc = "$text";
-                    $desc = "[$msgsource]: $desc" if ($desc && $msgsource);
-                    $desc = "Error: $desc" unless ($rsp->{NoErrorPrefix});
-                    $rsp_log .= "$desc\n";
-                }
-            }
-            else {
-                if (defined($rsp->{error})) {
-                    my $desc = $rsp->{error};
-                    $desc = "[$msgsource]: $desc" if ($desc && $msgsource);
-                    $desc = "Error: $desc" unless ($rsp->{NoErrorPrefix});
-                    $rsp_log .= "$desc\n";
-                }
-            }
-        }
-
-        if ($rsp->{warning}) {
-            if (ref($rsp->{warning}) eq 'ARRAY') {
-                foreach my $text (@{ $rsp->{warning} }) {
-                    my $desc = "$text";
-                    $desc = "[$msgsource]: $desc" if ($desc && $msgsource);
-                    $desc = "Warning: $desc" unless ($rsp->{NoWarnPrefix});
-                    $rsp_log .= "$desc\n";
-                }
-            }
-            else {
-                if (defined($rsp->{warning})) {
-                    my $desc = $rsp->{warning};
-                    $desc = "[$msgsource]: $desc" if ($desc && $msgsource);
-                    $desc = "Warning: $desc" unless ($rsp->{NoWarnPrefix});
-                    $rsp_log .= "$desc\n";
-                }
-            }
-        }
-
-        if ($rsp->{info}) {
-            if (ref($rsp->{info}) eq 'ARRAY') {
-                foreach my $text (@{ $rsp->{info} }) {
-                    my $desc = "$text";
-                    $desc = "[$msgsource]: $desc" if ($desc && $msgsource);
-                    $rsp_log .= "$desc\n";
-                }
-            } else {
-                my $desc = $rsp->{info};
-                $desc = "[$msgsource]: $desc" if ($desc && $msgsource);
-                $rsp_log .= "$desc\n";
-            }
-        }
-
-        if ($rsp->{sinfo}) {
-            if (ref($rsp->{sinfo}) eq 'ARRAY') {
-                foreach my $text (@{ $rsp->{sinfo} }) {
-                    if (defined($text)) {
-                        $rsp_log .= "$text ";
-                    }
-                }
-            } else {
-                if (defined($rsp->{sinfo})) {
-                    $rsp_log .= $rsp->{sinfo} . " ";
-                }
-            }
-        }
-
-        # Handle {node} structure
-        my $errflg = 0;
-        my $nodes  = ($rsp->{node});
-        unless (ref $nodes eq 'ARRAY') {
-            $nodes = [$nodes];
-        }
-        if (scalar @{$nodes}) {
-            my $node;
-            foreach $node (@$nodes) {
-                my $desc;
-                if (ref($node->{name}) eq 'ARRAY') {
-                    $desc = $node->{name}->[0];
-                } else {
-                    $desc = $node->{name};
-                }
-                if (($node->{error}) && defined($node->{error}->[0])) {
-                    if ($desc) {
-                        $desc = "$desc: [$msgsource]" if ($msgsource);
-                    } else {
-                        $desc = "[$msgsource]" if ($msgsource);
-                    }
-                    $desc .= ": Error: " . $node->{error}->[0];
-                    $errflg = 1;
-                }
-                if (($node->{warning}) && defined($node->{warning}->[0])){
-                    if ($desc) {
-                        $desc = "$desc: [$msgsource]" if ($msgsource);
-                    } else {
-                        $desc = "[$msgsource]" if ($msgsource);
-                    }
-                    $desc .= ": Warning: " . $node->{warning}->[0];
-                    $errflg = 1;
-                }
-                if ($node->{data}) {
-                    if ($desc) {
-                        $desc = "$desc: [$msgsource]" if ($msgsource);
-                    } else {
-                        $desc = "[$msgsource]" if ($msgsource);
-                    }
-                    if (ref(\($node->{data})) eq 'SCALAR') {
-                        if (defined($node->{data})) {
-                            $desc = $desc . ": " . $node->{data};
-                        }
-                    } elsif (ref($node->{data}) eq 'HASH') {
-                        if ($node->{data}->{desc}) {
-                            if (ref($node->{data}->{desc}) eq 'ARRAY') {
-                                if (defined($node->{data}->{desc}->[0])) {
-                                    $desc = $desc . ": " . $node->{data}->{desc}->[0];
-                                }
-                            } else {
-                                if (defined($node->{data}->{desc})) {
-                                    $desc = $desc . ": " . $node->{data}->{desc};
-                                }
-                            }
-                        }
-                        if ($node->{data}->{contents}) {
-                            if (ref($node->{data}->{contents}) eq 'ARRAY') {
-                                if (defined($node->{data}->{contents}->[0])) {
-                                    $desc = "$desc: " . $node->{data}->{contents}->[0];
-                                }
-                            } else {
-                                if (defined($node->{data}->{contents})) {
-                                    $desc = "$desc: " . $node->{data}->{contents};
-                                }
-                            }
-                        }
-                    } elsif (ref(\($node->{data}->[0])) eq 'SCALAR') {
-                        if (defined($node->{data}->[0])) {
-                            $desc = $desc . ": " . $node->{data}->[0];
-                        }
-                    } else {
-                        if ($node->{data}->[0]->{desc}) {
-                            if (defined($node->{data}->[0]->{desc}->[0])) {
-                                $desc = $desc . ": " . $node->{data}->[0]->{desc}->[0];
-                            }
-                        }
-                        if ($node->{data}->[0]->{contents}) {
-                            if (defined($node->{data}->[0]->{contents}->[0])) {
-                                $desc = "$desc: " . $node->{data}->[0]->{contents}->[0];
-                            }
-                        }
-                    }
-                }
-                if ($desc) {
-                    if ($errflg == 1) {
-                        $rsp_log .= "$desc\n";
-                    } else {
-                        $rsp_log .= "$desc\n";
-                    }
-                }
-            }
-        }
-
-        # Handle {data} structure with no nodes
-        foreach my $mykey (keys %{$rsp}) {
-            if ($mykey ne "data") { next; }
-            if ($rsp->{data}) {
-                if (ref($rsp->{data}) eq 'ARRAY') {
-                    my $data = ($rsp->{data});
-                    my $data_entry;
-                    foreach $data_entry (@$data) {
-                        my $desc;
-                        if (ref(\($data_entry)) eq 'SCALAR') {
-                            $desc = $data_entry;
-                        } else {
-                            if ($data_entry->{desc}) {
-                                $desc = $data_entry->{desc}->[0];
-                            }
-                            if ($data_entry->{contents}) {
-                                if ($desc) {
-                                    if (defined($data_entry->{contents}->[0])) {
-                                        $desc = "$desc: " . $data_entry->{contents}->[0];
-                                    }
-                                } else {
-                                    $desc = $data_entry->{contents}->[0];
-                                }
-                            }
-                        }
-                        if ($desc) {
-                            $rsp_log .= "$desc\n";
-                        }
-                    }
-                } else {
-                    $rsp_log .= $rsp->{data} . "\n";
-                }
-            }
-        }
-    }
-    $cmdlog_response_buffer .= $rsp_log;
+    my $response = shift;
+    $cmdlog_response_buffer .= xCAT::CmdLog::format_response($response, $MYXCATSERVER);
     return 0;
 }
 
 sub cmdlog_response_is_sensitive {
     my ($req, $req_redacted) = @_;
-    return 1 if defined $req->{command}->[0] and ($req->{command}->[0] eq 'getcredentials' or $req->{command}->[0] eq 'lsvm');
-    return 1 if join(' ', @{ $req->{arg} || [] }) =~ /passw/i;
-    return 1 if xCAT::xcatd->secret_in_request($req->{command}->[0], $req->{arg});
-    return 1 if $req_redacted;
-    return 0;
+    return xCAT::CmdLog::response_is_sensitive($req, $req_redacted);
 }
 
 sub cmdlog_finalize_response {
-    if ($cmdlog_response_sensitive or xCAT::xcatd->secret_in_response($cmdlog_response_buffer)) {
-        $cmdlog_response_buffer = "*REDACTED*\n";
-    }
-    $cmdlog_alllog .= $cmdlog_response_buffer;
+    $cmdlog_alllog .= xCAT::CmdLog::finalize_response(
+        $cmdlog_response_buffer,
+        $cmdlog_response_sensitive,
+    );
     $cmdlog_response_buffer = "";
     $cmdlog_response_sensitive = 0;
 }
