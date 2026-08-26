@@ -2,7 +2,6 @@ package xCAT::DHCP::OmapiPolicy;
 
 use strict;
 use warnings;
-use xCAT::Utils;
 
 use xCAT::StringUtils qw(trim);
 
@@ -18,9 +17,13 @@ my %ALGORITHMS = (
 sub settings {
     my ( $class, %args ) = @_;
 
-    my $fips_mode = exists $args{fips_mode}
-      ? ( $args{fips_mode} ? 1 : 0 )
-      : xCAT::Utils->isFIPS();
+    my $fips_mode;
+    if (exists $args{fips_mode}) {
+        $fips_mode = $args{fips_mode} ? 1 : 0;
+    } else {
+        require xCAT::Utils;
+        $fips_mode = xCAT::Utils->isFIPS();
+    }
     my $raw_algorithm      = _site_value( 'dhcpomapialgorithm', %args );
     my $algorithm_explicit = defined($raw_algorithm) && $raw_algorithm ne '';
     my $default_algorithm  = $fips_mode ? 'hmac-sha256' : 'hmac-md5';
