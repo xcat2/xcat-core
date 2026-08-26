@@ -115,6 +115,20 @@ subtest 'a policy cannot be built with a delay that fails to back off' => sub {
     is( $default->{min_interval}, 5,   'unset options fall back to the default floor' );
     is( $default->{max_interval}, 300, '...and the default ceiling' );
     is( $default->{healthy},      60,  '...and the default healthy uptime' );
+
+    # These arrive straight from %ENV, so they can be empty or misspelt. xcatd runs under
+    # use warnings: comparing a non-numeric one would put "Argument isn't numeric" in the
+    # daemon log on every start. Anything that is not a plain non-negative integer is
+    # treated as unset.
+    my @warnings;
+    local $SIG{__WARN__} = sub { push @warnings, @_ };
+    for my $junk ( '', 'abc', '-5', '3.5' ) {
+        is( xCAT::RespawnUtils::policy( min_interval => $junk )->{min_interval}, 5,
+            "a min_interval of '$junk' falls back to the default" );
+    }
+    is( xCAT::RespawnUtils::policy( min_interval => ' 7 ' )->{min_interval}, 7,
+        'a padded value is still read as a number' );
+    is_deeply( \@warnings, [], 'no tunable produces a Perl warning' );
 };
 
 subtest 'hitting the ceiling is reported once per failure streak' => sub {
@@ -203,6 +217,7 @@ subtest 'the monitor comes back on its own once the port is released' => sub {
     my $pump = sub {
         if ($mon_pid) {
             if ( waitpid( $mon_pid, WNOHANG ) == $mon_pid ) {
+                @spawned = grep { $_ != $mon_pid } @spawned;    # reaped: not ours to signal
                 push @deaths, [ $mon_pid, $mon_forked_at, time() ];
                 $pace    = exited( $pace, time() );
                 $mon_pid = 0;
@@ -234,10 +249,19 @@ subtest 'the monitor comes back on its own once the port is released' => sub {
         select( undef, undef, undef, 0.05 );
     };
 
+    # This subtest is the one place in the file that depends on real elapsed time. It
+    # normally finishes in well under ten seconds; the deadline is a runaway guard, not a
+    # timing assertion. Say so when it fires, so a loaded runner reports a timeout rather
+    # than an assertion that looks like a logic failure.
     my $deadline = time() + 60;
+    my $timed_out = sub { time() >= $deadline };
 
     # (1) the port is held: monitors must fail repeatedly, without a fork storm
-    $pump->() while ( @deaths < 3 && time() < $deadline );
+    $pump->() while ( @deaths < 3 && !$timed_out->() );
+    if ( $timed_out->() && @deaths < 3 ) {
+        diag( "timed out waiting for three failed monitors (got "
+              . scalar(@deaths) . "); the runner is too loaded for this subtest" );
+    }
     cmp_ok( scalar(@deaths), '>=', 3,
         'the monitor is retried several times while the port is held' )
       or return;
@@ -254,7 +278,9 @@ subtest 'the monitor comes back on its own once the port is released' => sub {
     # (3) it must recover by itself
     $pump->()
       while ( !( $mon_pid && time() - $mon_forked_at >= $healthy + 1 )
-        && time() < $deadline );
+        && !$timed_out->() );
+    diag("timed out waiting for the monitor to reclaim the freed port")
+      if $timed_out->() && !$mon_pid;
 
     ok( $mon_pid && time() - $mon_forked_at >= $healthy + 1,
         'a respawned monitor binds the freed port and stays up -- no xcatd restart' )
@@ -265,15 +291,18 @@ subtest 'the monitor comes back on its own once the port is released' => sub {
     # (4) and after that healthy run the pacing is back to prompt
     my $forks_before = scalar(@forks);
     kill 'TERM', $mon_pid;
-    $pump->() while ( @forks == $forks_before && time() < $deadline );
+    $pump->() while ( @forks == $forks_before && !$timed_out->() );
 
     cmp_ok( scalar(@forks), '>', $forks_before,
         'killing the healthy monitor gets it replaced again' );
     cmp_ok( $forks[-1] - $deaths[-1][2], '<=', 2,
         'that replacement is prompt: the healthy run reset the backoff' );
 
-    kill 'TERM', $mon_pid if $mon_pid;
-    waitpid( $mon_pid, 0 ) if $mon_pid;
+    if ($mon_pid) {
+        kill 'TERM', $mon_pid;
+        waitpid( $mon_pid, 0 );
+        @spawned = grep { $_ != $mon_pid } @spawned;
+    }
 };
 
 done_testing();
