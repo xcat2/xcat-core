@@ -1853,18 +1853,23 @@ sub ubuntu_subiquity_otherpkg_sources
 sub ubuntu_subiquity_uses_deb822_sources
 {
     my ($media_dir) = @_;
-    my $release = ubuntu_subiquity_release($media_dir);
-
-    return 1 if $release =~ m{ubuntu([2-9][4-9]|[3-9][0-9])\.\d+};
-    return 0;
+    return ubuntu_subiquity_release_at_least( $media_dir, '24.0' );
 }
 
 sub ubuntu_subiquity_uses_generated_cdrom_source
 {
     my ($media_dir) = @_;
+    return ubuntu_subiquity_release_at_least( $media_dir, '26.0' );
+}
+
+sub ubuntu_subiquity_release_at_least
+{
+    my ( $media_dir, $minimum ) = @_;
     my $release = ubuntu_subiquity_release($media_dir);
 
-    return 1 if $release =~ m{ubuntu([2-9][6-9]|[3-9][0-9])\.\d+};
+    foreach my $version ( $release =~ m{ubuntu(\d{2}\.\d+)}g ) {
+        return 1 if xCAT::Utils->version_cmp( $version, $minimum ) >= 0;
+    }
     return 0;
 }
 
