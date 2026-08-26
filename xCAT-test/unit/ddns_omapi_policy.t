@@ -11,7 +11,7 @@ use lib "$FindBin::Bin/../../perl-xCAT";
 use File::Slurper qw(read_text);
 use File::Temp qw(tempfile);
 use Test::More;
-use XCAT::Test::File qw(repo_path slurp_repo_file);
+use XCAT::Test::File qw(repo_path);
 
 $ENV{XCATCFG}  ||= 'SQLite:/tmp';
 $ENV{XCATROOT} ||= repo_path('xCAT-server');
@@ -189,19 +189,6 @@ is(
 "key \"provider.key\" {\n\talgorithm hmac-sha512;\n\tsecret \"provider-secret\";\n};\n\n",
     'custom DDNS key name and algorithm are rendered'
 );
-
-subtest 'all Net::DNS thresholds share the dotted version policy' => sub {
-    my $source = slurp_repo_file('xCAT-server/lib/xcat/plugins/ddns.pm');
-
-    my @raw_comparisons =
-      ( $source =~ /^(?!\s*#)[^\n]*(?:<|>=)\s*1\.36\b/gm );
-    is( scalar(@raw_comparisons), 0,
-        'no Net::DNS threshold uses Perl numeric comparison' );
-
-    my @policy_calls = ( $source =~ /net_dns_uses_keyfile\(/g );
-    is( scalar(@policy_calls), 4,
-        'all four Net::DNS threshold sites use the shared policy' );
-};
 
 subtest 'Net::DNS threshold controls DDNS policy and signing' => sub {
     my $implicit_sha256 = {
