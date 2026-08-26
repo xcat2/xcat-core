@@ -182,8 +182,8 @@ my $httpboot_port = xCAT::DHCP::BootPolicy->kea_httpboot_network_classes(
 );
 is(
     $httpboot_port->[0]{'boot-file-name'},
-    'http://10.0.0.1:8080/srv/tftpboot/boot/grub2/grub2.riscv64',
-    'the HTTP boot URL follows the configured HTTP port and TFTP root'
+    'http://10.0.0.1:8080/tftpboot/boot/grub2/grub2.riscv64',
+    'the HTTP boot URL follows the configured HTTP port and web alias'
 );
 
 is_deeply(

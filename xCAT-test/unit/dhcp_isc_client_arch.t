@@ -28,7 +28,7 @@ like(
 );
 like(
     $rendered,
-    qr/client-architecture = 00:1c \{ #riscv64 uefi http boot\n\s+option vendor-class-identifier "HTTPClient";\n\s+filename "http:\/\/192\.0\.2\.10:8080\/srv\/tftp\/boot\/grub2\/grub2\.riscv64";/,
+    qr/client-architecture = 00:1c \{ #riscv64 uefi http boot\n\s+option vendor-class-identifier "HTTPClient";\n\s+filename "http:\/\/192\.0\.2\.10:8080\/tftpboot\/boot\/grub2\/grub2\.riscv64";/,
     'the ISC policy renders the riscv64 HTTP boot branch with the subnet URL',
 );
 like(

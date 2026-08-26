@@ -364,12 +364,12 @@ like(
 like($grub_cfg, qr/^menuentry "xCAT Genesis riscv64" \{$/m, 'the menu entry names the architecture');
 like(
     $grub_cfg,
-    qr/^    linux \Q$xCAT::TableUtils::tftpdir\E\/xcat\/genesis\.kernel\.riscv64 xcatd=192\.168\.148\.10:3001 BOOTIF=\$net_default_mac$/m,
+    qr{^    linux /tftpboot/xcat/genesis\.kernel\.riscv64 xcatd=192\.168\.148\.10:3001 BOOTIF=\$net_default_mac$}m,
     'the kernel line loads the Genesis kernel with the xcatd endpoint and the booting MAC',
 );
 like(
     $grub_cfg,
-    qr/^    initrd \Q$xCAT::TableUtils::tftpdir\E\/xcat\/genesis\.fs\.riscv64\.gz$/m,
+    qr{^    initrd /tftpboot/xcat/genesis\.fs\.riscv64\.gz$}m,
     'the initrd line loads the Genesis initramfs',
 );
 
@@ -412,7 +412,7 @@ $responses = run_mknb('riscv64');
 generation_succeeded($responses, 'riscv64 configuration generation succeeds with a serial console');
 like(
     read_config($grub_cfg_path),
-    qr/^    linux \Q$xCAT::TableUtils::tftpdir\E\/xcat\/genesis\.kernel\.riscv64 xcatd=192\.168\.148\.10:3002 console=tty0 console=ttyS0,115200n8r BOOTIF=\$net_default_mac$/m,
+    qr{^    linux /tftpboot/xcat/genesis\.kernel\.riscv64 xcatd=192\.168\.148\.10:3002 console=tty0 console=ttyS0,115200n8r BOOTIF=\$net_default_mac$}m,
     'the serial console and a non-default xcatd port are carried into the kernel line',
 );
 %xCAT::TableUtils::site_extra = ();
@@ -441,7 +441,7 @@ $responses = run_mknb('riscv64');
 generation_succeeded($responses, 'riscv64 configuration generation succeeds with an lzma initramfs');
 like(
     read_config($grub_cfg_path),
-    qr/^    initrd \Q$xCAT::TableUtils::tftpdir\E\/xcat\/genesis\.fs\.riscv64\.lzma$/m,
+    qr{^    initrd /tftpboot/xcat/genesis\.fs\.riscv64\.lzma$}m,
     'the lzma Genesis initramfs is preferred over the gzip one',
 );
 unlink("$xCAT::TableUtils::tftpdir/xcat/genesis.fs.riscv64.lzma");
