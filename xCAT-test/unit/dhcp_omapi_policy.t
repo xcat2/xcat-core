@@ -30,7 +30,7 @@ local %XCATSITEVALS = (
     dhcpomshellpath    => '/opt/site/bin/omshell',
 );
 
-my $site_settings = xCAT::DHCP::OmapiPolicy->settings();
+my $site_settings = xCAT::DHCP::OmapiPolicy->settings(fips_mode => 0);
 is( $site_settings->{algorithm}, 'hmac-sha256',
     'runtime settings read the configured site algorithm' );
 

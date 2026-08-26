@@ -3,6 +3,7 @@ use strict;
 use warnings;
 
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../../xCAT-server/lib";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use lib "$FindBin::Bin/../../perl-xCAT";
@@ -10,19 +11,13 @@ use lib "$FindBin::Bin/../../perl-xCAT";
 use File::Slurper qw(read_text);
 use File::Temp qw(tempfile);
 use Test::More;
+use XCAT::Test::File qw(repo_path slurp_repo_file);
 
 $ENV{XCATCFG}  ||= 'SQLite:/tmp';
 $ENV{XCATROOT} ||= "$FindBin::Bin/../../xCAT-server";
 
-my $ddns_plugin_path =
-  "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/ddns.pm";
-if ( -f $ddns_plugin_path ) {
-    require $ddns_plugin_path;
-}
-else {
-    require xCAT_plugin::ddns;
-    $ddns_plugin_path = $INC{'xCAT_plugin/ddns.pm'};
-}
+my $ddns_plugin_path = repo_path('xCAT-server/lib/xcat/plugins/ddns.pm');
+require $ddns_plugin_path;
 
 sub omapi_settings {
     my (%overrides) = @_;
@@ -181,12 +176,7 @@ is(
 );
 
 subtest 'all Net::DNS thresholds share the dotted version policy' => sub {
-    open( my $source_fh, '<', $ddns_plugin_path )
-      or die "Unable to read $ddns_plugin_path: $!";
-    local $/;
-    my $source = <$source_fh>;
-    close($source_fh)
-      or die "Unable to close $ddns_plugin_path: $!";
+    my $source = slurp_repo_file('xCAT-server/lib/xcat/plugins/ddns.pm');
 
     my @raw_comparisons =
       ( $source =~ /^(?!\s*#)[^\n]*(?:<|>=)\s*1\.36\b/gm );
@@ -255,6 +245,46 @@ subtest 'Net::DNS threshold controls DDNS policy and signing' => sub {
             "Net::DNS $version applies the expected keyfile write gate"
         );
     }
+};
+
+subtest 'DDNS updates retain retry and failure propagation' => sub {
+    my $ctx = {
+        omapi_settings => $defaults,
+        privkey        => 'legacy-secret',
+    };
+    my $update = Local::DDNS::Update->new();
+    my $resolver = Local::DDNS::Resolver->new(qw(NOTAUTH NOERROR));
+
+    is(
+        xCAT_plugin::ddns::send_ddns_update(
+            $ctx, $resolver, $update, 'example.com', 'node1'
+        ),
+        0,
+        'a transient NOTAUTH response is retried successfully'
+    );
+    is( $resolver->{send_count}, 2, 'the update is sent again after NOTAUTH' );
+    is( scalar @{ $update->{sign_tsig_calls} },
+        2, 'the update is signed again before each send' );
+
+    $update   = Local::DDNS::Update->new();
+    $resolver = Local::DDNS::Resolver->new(qw(NOTAUTH NOTAUTH NOTAUTH));
+    my @messages;
+    no warnings qw(redefine once);
+    local *xCAT::SvrUtils::sendmsg = sub { push @messages, $_[0]; };
+
+    is(
+        xCAT_plugin::ddns::send_ddns_update(
+            $ctx, $resolver, $update, 'example.com', 'node1'
+        ),
+        1,
+        'a persistent rejection is returned as a failure'
+    );
+    is( $resolver->{send_count}, 3, 'persistent NOTAUTH is attempted three times' );
+    like(
+        $messages[-1]->[1],
+        qr/error was NOTAUTH/,
+        'the persistent rejection is reported to the caller'
+    );
 };
 
 subtest 'Net::DNS threshold controls named key reconciliation' => sub {
@@ -348,6 +378,38 @@ sub reconcile_named_key {
 
     sub setAttribs {
         return 1;
+    }
+}
+
+{
+    package Local::DDNS::Resolver;
+
+    sub new {
+        my ( $class, @rcodes ) = @_;
+        return bless { rcodes => \@rcodes, send_count => 0 }, $class;
+    }
+
+    sub send {
+        my ($self) = @_;
+        $self->{send_count}++;
+        my $rcode = shift @{ $self->{rcodes} };
+        return bless { rcode => $rcode }, 'Local::DDNS::Reply';
+    }
+}
+
+{
+    package Local::DDNS::Reply;
+
+    sub header {
+        return bless { rcode => $_[0]->{rcode} }, 'Local::DDNS::Header';
+    }
+}
+
+{
+    package Local::DDNS::Header;
+
+    sub rcode {
+        return $_[0]->{rcode};
     }
 }
 
