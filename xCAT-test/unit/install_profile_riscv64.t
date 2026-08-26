@@ -2,7 +2,10 @@
 use strict;
 use warnings;
 
+use File::Path qw(make_path);
+use File::Slurper qw(read_text write_text);
 use File::Spec;
+use File::Temp qw(tempdir);
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 use Test::More;
@@ -58,43 +61,118 @@ for my $family ( [ 'rocky', 'rocky10' ], [ 'rh', 'rhels10' ] ) {
     }
 }
 
-# The kickstart %post is a single shell script: xCAT splices every #INCLUDE: inline, so a
-# top-level "exit" in an earlier included script ends the whole section. The riscv64 boot
-# entry fix-up must run, so it has to come before any script that exits.
-for my $family ( [ 'rocky', 'rocky10' ], [ 'rh', 'rhels10' ] ) {
-    my ( $dir, $osbase ) = @$family;
-    for my $profile (qw(compute service)) {
-        my $t = slurp_repo_file(
-            File::Spec->catfile( $install, $dir, "$profile.$osbase.riscv64.tmpl" )
-        );
-        my ($section) = $t =~ /^(%post\b.*?)^%end/ms;
-        ok( $section, "$dir/$profile.$osbase riscv64 template has a %post section" )
-          or next;
-        my @scripts = $section =~ m{^#INCLUDE:\#ENV:XCATROOT\#/share/xcat/install/scripts/(\S+?)\#$}mg;
-        my ($index) = grep { $scripts[$_] eq 'post.rhels10.riscv64' } 0 .. $#scripts;
-        ok( defined $index, "$dir/$profile.$osbase riscv64 template includes the fix-up in the %post section" )
-          or next;
-        for my $earlier ( @scripts[ 0 .. $index - 1 ] ) {
-            my $body = slurp_repo_file(
-                File::Spec->catfile( $install, 'scripts', $earlier )
-            );
-            unlike( $body, qr/^\s*exit\b/m,
-                "$dir/$profile.$osbase runs $earlier before the riscv64 fix-up, and $earlier does not end the %post" );
-        }
-    }
-}
-
 my $post = File::Spec->catfile( $install, 'scripts', 'post.rhels10.riscv64' );
 my $post_path = repo_path($post);
 ok( -r $post_path, 'post.rhels10.riscv64 exists' );
-my $bash = `bash -n $post_path 2>&1`;
-is( $bash, '', 'post.rhels10.riscv64 parses as bash' );
-my $s = slurp_repo_file($post);
-like( $s, qr/\[ "\$\(uname -m\)" = "riscv64" \]/, 'the fix-up only acts on riscv64' );
-like( $s, qr{/boot/efi/EFI/\*/grubriscv64\.efi}, 'the fix-up locates the distro grub2 UEFI image on the ESP' );
-like( $s, qr{cp -f "\$grubefi" /boot/efi/EFI/BOOT/BOOTRISCV64\.EFI}, 'the fix-up installs the removable-media fallback loader' );
-like( $s, qr/shimx64\|grubx64\|grubriscv64/, 'the fix-up removes the x86 boot entries anaconda registered and the riscv64 entry of an earlier install' );
-like( $s, qr/efibootmgr -q -c -d "\/dev\/\$disk" -p "\$part" -L "\$label" -l "\\\\EFI\\\\\$vendordir\\\\grubriscv64\.efi"/, 'the fix-up registers grubriscv64.efi as the boot entry' );
-unlike( $s, qr/set -e/, 'the fix-up never aborts the kickstart %post' );
+
+is(system('sh', '-n', $post_path), 0, 'post.rhels10.riscv64 parses as POSIX shell');
+
+my $tools = tempdir(CLEANUP => 1);
+my $efi_log = File::Spec->catfile($tools, 'efibootmgr.log');
+
+sub fake_command {
+    my ($name, $body) = @_;
+    my $path = File::Spec->catfile($tools, $name);
+    write_text($path, "#!/bin/sh\n$body");
+    chmod 0755, $path or die "Unable to make $path executable: $!";
+    return $path;
+}
+
+my $uname = fake_command('uname', <<'SH');
+printf '%s\n' "${XCAT_TEST_ARCH:-riscv64}"
+SH
+my $findmnt = fake_command('findmnt', <<'SH');
+printf '/dev/vda1\n'
+SH
+my $lsblk = fake_command('lsblk', <<'SH');
+case "$*" in
+    *PKNAME*) printf "vda\n" ;;
+    *PARTN*) printf "1\n" ;;
+esac
+SH
+my $efibootmgr = fake_command('efibootmgr', <<'SH');
+printf '%s\n' "$*" >> "$XCAT_EFI_LOG"
+case "$*" in
+    '') exit 0 ;;
+    '-v')
+        printf 'Boot0001* Rocky HD(1,GPT,...)/File(\\EFI\\rocky\\shimx64.efi)\n'
+        printf 'Boot0002* OldRiscv HD(1,GPT,...)/File(\\EFI\\rocky\\grubriscv64.efi)\n'
+        printf 'Boot0003* Network PXE\n'
+        exit 0
+        ;;
+    *'-c'*) exit "${XCAT_EFI_CREATE_RC:-0}" ;;
+esac
+exit 0
+SH
+
+sub installed_root {
+    my ($with_loader) = @_;
+    my $root = tempdir(CLEANUP => 1);
+    make_path(File::Spec->catdir($root, 'boot', 'efi', 'EFI', 'rocky'));
+    make_path(File::Spec->catdir($root, 'etc'));
+    write_text(File::Spec->catfile($root, 'etc', 'os-release'), "NAME=\"Rocky Linux\"\n");
+    if ($with_loader) {
+        write_text(
+            File::Spec->catfile($root, 'boot', 'efi', 'EFI', 'rocky', 'grubriscv64.efi'),
+            "riscv loader\n",
+        );
+    }
+    return $root;
+}
+
+sub run_post {
+    my ($root, %extra) = @_;
+    local %ENV = (
+        %ENV,
+        XCAT_INSTALL_ROOT => $root,
+        XCAT_UNAME         => $uname,
+        XCAT_EFIBOOTMGR    => $efibootmgr,
+        XCAT_FINDMNT       => $findmnt,
+        XCAT_LSBLK         => $lsblk,
+        XCAT_EFI_LOG       => $efi_log,
+        XCAT_TEST_ARCH     => 'riscv64',
+        %extra,
+    );
+    open(my $fh, '-|', 'sh', $post_path) or die "Unable to run $post_path: $!";
+    my $output = do { local $/; <$fh> };
+    close($fh);
+    return ($? >> 8, $output);
+}
+
+my $root = installed_root(1);
+my ($status, $output) = run_post($root);
+is($status, 0, 'the RISC-V fix-up completes successfully');
+is(
+    read_text(File::Spec->catfile($root, 'boot', 'efi', 'EFI', 'BOOT', 'BOOTRISCV64.EFI')),
+    "riscv loader\n",
+    'the distro loader is copied to the removable-media fallback path',
+);
+like($output, qr/UEFI boot entry "Rocky Linux"/, 'the created UEFI entry is reported');
+my $efi_calls = read_text($efi_log);
+like($efi_calls, qr/^-q -b 0001 -B$/m, 'the invalid x86 boot entry is removed');
+like($efi_calls, qr/^-q -b 0002 -B$/m, 'the prior RISC-V boot entry is removed');
+unlike($efi_calls, qr/0003/, 'unrelated firmware entries are retained');
+like(
+    $efi_calls,
+    qr/^-q -c -d \/dev\/vda -p 1 -L Rocky Linux -l \\EFI\\rocky\\grubriscv64\.efi$/m,
+    'the new entry points at the distro RISC-V loader on the ESP disk',
+);
+
+unlink($efi_log);
+my $x86_root = installed_root(1);
+($status, $output) = run_post($x86_root, XCAT_TEST_ARCH => 'x86_64');
+is($status, 0, 'the post-install script is a no-op on x86_64');
+is($output, '', 'the x86_64 no-op reports nothing');
+ok(!-e $efi_log, 'the x86_64 no-op never invokes efibootmgr');
+
+my $bare_root = installed_root(0);
+($status, $output) = run_post($bare_root);
+is($status, 0, 'a missing distro loader remains nonfatal');
+like($output, qr/no \\EFI\\\*\\grubriscv64\.efi/, 'a missing distro loader is diagnosed');
+
+unlink($efi_log);
+($status, $output) = run_post($root, XCAT_EFI_CREATE_RC => 1);
+is($status, 0, 'an efibootmgr create failure remains nonfatal');
+like($output, qr/firmware will use \\EFI\\BOOT\\BOOTRISCV64\.EFI/, 'the fallback path is reported after an efibootmgr failure');
 
 done_testing();
