@@ -6,6 +6,14 @@ function xcat_source_only {
     [ "$SRCONLY" = "1" -o "$SRCONLY" = "yes" -o "$SRCONLY" = "true" ]
 }
 
+function xcat_rpm_build_arches {
+    if xcat_source_only; then
+        printf '%s\n' "$1"
+    else
+        printf '%s\n' "$@"
+    fi
+}
+
 function xcat_configure_rpm_build_mode {
     local osname="$1"
 

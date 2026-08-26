@@ -367,10 +367,10 @@ if [ "$OSNAME" != "AIX" ]; then
         if [ "$BUILDALL" == 1 ] || $GREP xCAT-genesis-scripts $GITUP; then
             UPLOAD=1
             ORIGFAILEDRPMS="$FAILEDRPMS"
-            ./makerpm xCAT-genesis-scripts x86_64 "$EMBED"
-            if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-genesis-scripts-x86_64"; fi
-            ./makerpm xCAT-genesis-scripts ppc64 "$EMBED"
-            if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-genesis-scripts-ppc64"; fi
+            for arch in x86_64 ppc64; do
+                ./makerpm xCAT-genesis-scripts $arch "$EMBED"
+                if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-genesis-scripts-$arch"; fi
+            done
             # Do not build xCAT-genesis-scripts-aarch64 yet
             #./makerpm xCAT-genesis-scripts aarch64 "$EMBED"
             #if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-genesis-scripts-aarch64"; fi
@@ -392,7 +392,7 @@ for rpmname in xCAT xCATsn; do
             ./makerpm $rpmname "$EMBED"
             if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname"; fi
         else
-            for arch in x86_64 ppc64 ppc64le s390x aarch64; do
+            for arch in $(xcat_rpm_build_arches x86_64 ppc64 ppc64le s390x aarch64); do
                 if [ "$rpmname" = "xCAT-OpenStack" -a "$arch" != "x86_64" ] || [ "$rpmname" = "xCAT-OpenStack-baremetal" -a "$arch" != "x86_64" ] ; then continue; fi         # only bld openstack for x86_64 for now
                 ./makerpm $rpmname $arch "$EMBED"
                 if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname-$arch"; fi
