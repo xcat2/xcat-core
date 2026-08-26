@@ -86,6 +86,32 @@ SH
     };
 }
 
+sub deliver_genesis {
+    my ($source_only) = @_;
+    my $root = tempdir( CLEANUP => 1 );
+    make_path( "$root/rpmbuild/RPMS/noarch", "$root/rpmbuild/SRPMS",
+        "$root/dest", "$root/src" );
+    for my $arch (qw(x86_64 ppc64)) {
+        _touch("$root/rpmbuild/RPMS/noarch/xCAT-genesis-scripts-$arch-2.19.0-snap1.noarch.rpm");
+        _touch("$root/rpmbuild/SRPMS/xCAT-genesis-scripts-$arch-2.19.0-snap1.src.rpm");
+        _touch("$root/src/xCAT-genesis-scripts-$arch-2.19.0-snap0.src.rpm");
+    }
+
+    my ( $said, $status ) = run_helper( $root, 'deliver-genesis', <<"SH" );
+SRCONLY=$source_only
+source=$root/rpmbuild
+DESTDIR=$root/dest
+SRCDIR=$root/src
+xcat_deliver_genesis_packages
+SH
+    return {
+        said      => $said,
+        status    => $status,
+        delivered => [ sort map { s{.*/}{}r } glob("$root/dest/*") ],
+        sources   => [ sort map { s{.*/}{}r } glob("$root/src/*") ],
+    };
+}
+
 sub deliver_tarball {
     my ($source_only) = @_;
     my $root = tempdir( CLEANUP => 1 );
@@ -172,6 +198,20 @@ is_deeply( $source_arch->{delivered}, ['xCAT-2-snap0.riscv64.rpm'],
 is_deeply( $source_arch->{sources}, ['xCAT-2.19.0-snap1.src.rpm'],
     'a source-only architecture build delivers the new source package' );
 
+my $source_genesis = deliver_genesis('1');
+is( $source_genesis->{status}, 0,
+    'source-only Genesis delivery exits cleanly' );
+is_deeply( $source_genesis->{delivered}, [],
+    'source-only Genesis delivery publishes no binary packages' );
+is_deeply(
+    $source_genesis->{sources},
+    [
+        'xCAT-genesis-scripts-ppc64-2.19.0-snap1.src.rpm',
+        'xCAT-genesis-scripts-x86_64-2.19.0-snap1.src.rpm',
+    ],
+    'source-only delivery preserves both architecture-specific Genesis SRPMs',
+);
+
 my $normal_tarball = deliver_tarball('0');
 is( $normal_tarball->{status}, 0, 'normal tarball delivery exits cleanly' );
 ok( $normal_tarball->{tarball}, 'a normal build creates the binary tarball' );
@@ -195,5 +235,27 @@ is( $normal_embed->{link_target}, '../../core/xCAT-server-2.19.0-snap1.noarch.rp
 my $source_embed = deliver_embed_link('1');
 is( $source_embed->{status}, 0, 'source-only embedded-link delivery exits cleanly' );
 ok( !$source_embed->{link}, 'a source-only build creates no embedded-package link' );
+
+my ( $binary_arches, $binary_arches_status ) = run_helper(
+    tempdir( CLEANUP => 1 ),
+    'binary-arches',
+    "SRCONLY=0\nxcat_rpm_build_arches x86_64 ppc64 ppc64le s390x aarch64\n",
+);
+is( $binary_arches_status, 0, 'normal architecture selection exits cleanly' );
+is(
+    $binary_arches,
+    "x86_64\nppc64\nppc64le\ns390x\naarch64\n",
+    'a binary build keeps every target architecture',
+);
+
+my ( $source_xcat_arches, $source_xcat_arches_status ) = run_helper(
+    tempdir( CLEANUP => 1 ),
+    'source-arches',
+    "SRCONLY=true\nxcat_rpm_build_arches x86_64 ppc64 ppc64le s390x aarch64\n",
+);
+is( $source_xcat_arches_status, 0,
+    'source architecture selection exits cleanly' );
+is( $source_xcat_arches, "x86_64\n",
+    'a source-only xCAT or xCATsn build creates its target-independent SRPM once' );
 
 done_testing();
