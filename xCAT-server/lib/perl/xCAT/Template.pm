@@ -1052,13 +1052,23 @@ sub kickstartnetwork {
     unless ($mactab) { $tmplerr = "mac table should always exist prior to template processing when doing autoula"; return; }
     my $ent = $mactab->getNodeAttribs($node, ['mac'], prefetchcache => 1);
     unless ($ent and $ent->{mac}) { $tmplerr = "missing mac data for $node"; return; }
-    my $suffix = xCAT::Utils->parseMacTabEntry($ent->{mac}, $node);
-    $suffix = lc($suffix);
+    my ($installnic, $primarynic);
+    my $nrtab = xCAT::Table->new('noderes', -create => 0);
+    if ($nrtab) {
+        my $nrent = $nrtab->getNodeAttribs($node, [ 'installnic', 'primarynic' ], prefetchcache => 1);
+        if ($nrent) {
+            $installnic = $nrent->{installnic};
+            $primarynic = $nrent->{primarynic};
+        }
+    }
+    my $params = install_device_params($installnic, $primarynic, $ent->{mac}, $node);
+    my $macaddr = defined($params->{mac}) ? lc($params->{mac}) : '';
+    my $suffix = defined($params->{nicname}) ? $params->{nicname} : $macaddr;
 
     if ($::XCATSITEVALS{managedaddressmode} eq "autoula") {
         unless ($hoststab) { $hoststab = xCAT::Table->new('hosts', -create => 1); }
         $line .= "static --device=$suffix --noipv4 --ipv6=";
-        my $ulaaddr = autoulaaddress($suffix);
+        my $ulaaddr = autoulaaddress($macaddr);
         $hoststab->setNodeAttribs($node, { ip => $ulaaddr });
         $line .= $ulaaddr;
     } elsif ($::XCATSITEVALS{managedaddressmode} =~ /static/) {
