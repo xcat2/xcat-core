@@ -235,15 +235,18 @@ sub makeconfluentcfg {
     my $hmtab      = xCAT::Table->new('nodehm');
     my $nodepostab = xCAT::Table->new('nodepos');
     my $mptab = xCAT::Table->new('mp');
+    my $switchtab = xCAT::Table->new('switch');
     my @cfgents1; # = $hmtab->getAllNodeAttribs(['cons','serialport','mgt','conserver','termserver','termport']);
     my @cfgents2;
     my @cfgents3;
+    my @cfgents4;
     my $explicitnodes = 0;
     if (($nodes and @$nodes > 0) or $req->{noderange}->[0]) {
         $explicitnodes = 1;
         @cfgents1 = $hmtab->getNodesAttribs($nodes, [ 'node', 'cons', 'mgt', 'conserver', 'termserver', 'termport', 'consoleondemand' ]);
         @cfgents2 = $nodepostab->getNodesAttribs($nodes, [ 'node', 'rack', 'u', 'chassis', 'slot', 'room' ]);
         @cfgents3 = $mptab->getNodesAttribs($nodes, [ 'node', 'mpa', 'id' ]);
+        @cfgents4 = $switchtab->getNodesAttribs($nodes, [ 'node', 'switch', 'port', 'interface' ]);
 
         # Adjust the data structure to make the result consistent with the getAllNodeAttribs() call we make if a noderange was not specified
         my @tmpcfgents1;
@@ -279,16 +282,32 @@ sub makeconfluentcfg {
             }
         }
         @cfgents3 = @tmpcfgents1;
+        @tmpcfgents1 = ();
+        foreach my $ent (@cfgents4)
+        {
+            foreach my $nodeent (keys %$ent)
+            {
+                foreach my $row (@{ $ent->{$nodeent} })
+                {
+                    next unless ($row);
+                    $row->{node} = $nodeent unless (defined($row->{node}));
+                    push @tmpcfgents1, $row;
+                }
+            }
+        }
+        @cfgents4 = @tmpcfgents1;
     } else {
         @cfgents1 = $hmtab->getAllNodeAttribs([ 'cons', 'serialport', 'mgt', 'conserver', 'termserver', 'termport', 'consoleondemand' ]);
         @cfgents2 = $nodepostab->getAllNodeAttribs([ 'rack', 'u', 'chassis', 'slot', 'room' ]);
         @cfgents3 = $nodepostab->getAllNodeAttribs([ 'mpa', 'id' ]);
+        @cfgents4 = $switchtab->getAllNodeAttribs([ 'node', 'switch', 'port', 'interface' ]);
     }
 
 
     #cfgents1 should now have all the nodes, so we can fill in the cfgents array and cfgenthash one at a time.
     # skip the nodes that do not have 'cons' defined, unless a serialport setting suggests otherwise
     my %cfgenthash;
+    my %cfgnichash;
     foreach (@cfgents1) {
         if ($_->{cons} or defined($_->{'serialport'})) {
             unless ($_->{cons}) { $_->{cons} = $_->{mgt}; } #populate with fallback
@@ -305,6 +324,19 @@ sub makeconfluentcfg {
     foreach my $nent (@cfgents3) {
         foreach (keys %$nent) {
             $cfgenthash{ $nent->{node} }->{$_} = $nent->{$_};
+        }
+    }
+    foreach my $nent (@cfgents4) {
+        next unless (defined $nent->{node});
+        if (defined $nent->{interface} and length $nent->{interface}) {
+            foreach (keys %$nent) {
+                $cfgnichash{ $nent->{node} }->{ $nent->{interface} }->{$_} = $nent->{$_};
+            }
+            $cfgenthash{ $nent->{node} }->{node} = $nent->{node};
+        } else {
+            foreach (keys %$nent) {
+                $cfgenthash{ $nent->{node} }->{$_} = $nent->{$_};
+            }
         }
     }
     my @cfgents = ();
@@ -325,7 +357,7 @@ sub makeconfluentcfg {
         #if (($req->{_allnodes}) && ($req->{_allnodes}->[0]==1)) {} #TODO: identify nodes that will be removed
         # call donodeent to add all node entries into the file.  It will return the 1st node in error.
         my $node;
-        if ($node = donodeent(\%cfgenthash, $confluent, $delmode, $cb)) {
+        if ($node = donodeent(\%cfgenthash, $confluent, $delmode, $cb, \%cfgnichash)) {
 
             #$cb->({node=>[{name=>$node,error=>"Bad configuration, check attributes under the nodehm category",errorcode=>1}]});
             xCAT::SvrUtils::sendmsg([ 1, "Bad configuration, check attributes under the nodehm category" ], $cb, $node);
@@ -366,7 +398,7 @@ sub makeconfluentcfg {
 
         # Now add into the file all the node entries that we kept
         my $node;
-        if ($node = donodeent(\%cfgenthash, $confluent, undef, $cb)) {
+        if ($node = donodeent(\%cfgenthash, $confluent, undef, $cb, \%cfgnichash)) {
 
             # donodeent will return the 1st node in error
             #$cb->({node=>[{name=>$node,error=>"Bad configuration, check attributes under the nodehm category",errorcode=>1}]});
@@ -384,6 +416,7 @@ sub donodeent {
     my $confluent  = shift;
     my $delmode    = shift;
     my $cb         = shift;
+    my $cfgnichash = shift || {};
     my $idx        = 0;
     my $toidx      = -1;
     my $skip       = 0;
@@ -509,6 +542,21 @@ sub donodeent {
             $parameters{'enclosure.bay'} = $cfgent->{slot};
         } elsif (defined $cfgent->{id}) {
             $parameters{'enclosure.bay'} = $cfgent->{id};
+        }
+        if (defined $cfgent->{switch}) {
+            $parameters{'net.switch'} = $cfgent->{switch};
+        }
+        if (defined $cfgent->{port}) {
+            $parameters{'net.switchport'} = $cfgent->{port};
+        }
+        foreach my $nic (keys %{ $cfgnichash->{$node} || {} }) {
+            my $nicent = $cfgnichash->{$node}->{$nic};
+            if (defined $nicent->{switch}) {
+                $parameters{"net.$nic.switch"} = $nicent->{switch};
+            }
+            if (defined $nicent->{port}) {
+                $parameters{"net.$nic.switchport"} = $nicent->{port};
+            }
         }
         $parameters{'groups'} = [ grep { defined && length } split /,/, $groupdata->{$node}->[0]->{'groups'} ];
         if (exists $currnodes{$node}) {
