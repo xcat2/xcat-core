@@ -281,10 +281,15 @@ sub _noip_hostname
 sub _add_isc_static_host
 {
     my ($node, $hostname, $mac, $hardwaretype, $mgtifname, $ip, $statements,
-        $has_infiniband_identity, $config) = @_;
+        $has_infiniband_identity, $config, $update_started) = @_;
     $config ||= \@dhcpconf;
 
     return unless $ip && $ip ne 'DENIED';
+
+    if ($update_started && !${$update_started}) {
+        $restartdhcp = 1 if _begin_isc_static_host_update($node, 1, $config);
+        ${$update_started} = 1;
+    }
 
     $mac = normalize_mac($mac) || $mac;
     _delete_isc_static_host($node, $config, $hostname);
@@ -991,8 +996,7 @@ sub addnode
     my @macs = split(/\|/, $ent->{mac});
     my $has_infiniband_identity = _infiniband_identity_present(@macs);
     my $static_host_fallback = _isc_static_host_fallback();
-    $restartdhcp = 1
-      if _begin_isc_static_host_update($node, $static_host_fallback);
+    my $static_host_update_started = 0;
     my $mace;
     my $deflstaments = $lstatements;
     my $count        = 0;
@@ -1183,7 +1187,8 @@ sub addnode
                 _add_isc_static_host(
                     $node, $hostname, $mac, $hardwaretype,
                     $client_nethash{$node}{mgtifname}, $ip, $lstatements,
-                    $has_infiniband_identity
+                    $has_infiniband_identity, undef,
+                    \$static_host_update_started
                 );
                 $count = $count + 2;
                 next;
