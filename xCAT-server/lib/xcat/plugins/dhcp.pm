@@ -729,7 +729,7 @@ sub _hardware_type_for
 sub _is_infiniband_interface
 {
     my $mgtifname = shift;
-    return defined($mgtifname) && $mgtifname =~ /(?:^|!)ib[^!]*$/;
+    return defined($mgtifname) && $mgtifname =~ /(?:^|!)ib[^!]*(?:!|$)/;
 }
 
 sub _infiniband_twin_identity
