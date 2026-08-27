@@ -46,16 +46,39 @@ ok(
     'an explicit InfiniBand identity is detected in a node mac list',
 );
 ok(
-    xCAT_plugin::dhcp::_infiniband_identity_present(
+    !xCAT_plugin::dhcp::_infiniband_identity_present(
         'b83fd203004a68aa!node01-ib',
     ),
-    'a colonless InfiniBand identity is detected in a node mac list',
+    'a colonless address rejected by addnode is not treated as an identity',
+);
+ok(
+    xCAT_plugin::dhcp::_infiniband_identity_present(
+        'b8-3f-d2-03-00-4a-68-aa!node01-ib',
+    ),
+    'a valid dashed InfiniBand identity is detected in a node mac list',
 );
 ok(
     !xCAT_plugin::dhcp::_infiniband_identity_present(
         'b8:3f:d2:4a:68:aa!node01',
     ),
     'an Ethernet-only mac list needs the derived identity',
+);
+is(
+    xCAT_plugin::dhcp::_hardware_type_for('b8:3f:d2:4a:68:aa', 'eth0'),
+    1,
+    'an Ethernet interface uses the Ethernet hardware type',
+);
+is(
+    xCAT_plugin::dhcp::_hardware_type_for(
+        'b8:3f:d2:03:00:4a:68:aa', 'ib0'
+    ),
+    32,
+    'an eight-byte fabric address uses the InfiniBand hardware type',
+);
+is(
+    xCAT_plugin::dhcp::_hardware_type_for('b8:3f:d2:4a:68:aa', 'hf0'),
+    37,
+    'an HFI interface uses the HFI hardware type',
 );
 
 is(
@@ -69,6 +92,16 @@ is(
     ),
     'ddns-hostname \"node01\"; send host-name \"node01\";filename = \"bootfile\";',
     'node identity is prepended to existing host statements',
+);
+is(
+    xCAT_plugin::dhcp::_noip_hostname('node01', 'B8:3F:D2:4A:68:AA'),
+    'node01-noipB83FD24A68AA',
+    'the denied-host name preserves the legacy MAC case',
+);
+is(
+    xCAT_plugin::dhcp::_noip_hostname('node01', 'B8-3F-D2-4A-68-AA'),
+    'node01-noipB8-3F-D2-4A-68-AA',
+    'the denied-host name preserves legacy dash separators',
 );
 
 my $create_commands = <<'OMAPI';
@@ -95,6 +128,15 @@ is(
     ),
     $create_commands,
     'an Ethernet identity on an IPoIB network creates the InfiniBand twin',
+);
+
+is(
+    xCAT_plugin::dhcp::_infiniband_twin_create_commands(
+        'node01', 'b8:3f:d2:4a:68:aa', 1, '!service!ib0', '192.0.2.10',
+        'ddns-hostname \"node01\"; send host-name \"node01\";', 1, 0
+    ),
+    $create_commands,
+    'a relayed IPoIB interface creates the InfiniBand twin',
 );
 
 is(
@@ -218,8 +260,8 @@ my @moved_network_delete_commands =
   );
 is_deeply(
     \@moved_network_delete_commands,
-    [ $delete_name_commands, $delete_address_commands ],
-    'removing a node cleans up its old twin after network metadata changes',
+    [ $delete_name_commands, undef ],
+    'removing a moved node cleans up its old twin by name only',
 );
 my @limited_delete_commands =
   xCAT_plugin::dhcp::_infiniband_twin_delete_commands(
@@ -247,8 +289,8 @@ my @moved_network_update_commands =
   );
 is_deeply(
     \@moved_network_update_commands,
-    [ $delete_name_commands, $delete_address_commands, undef ],
-    're-registering a node on Ethernet removes its former InfiniBand twin',
+    [ $delete_name_commands, undef, undef ],
+    're-registering a node on Ethernet removes its former twin by name only',
 );
 
 my @infiniband_update_commands =
