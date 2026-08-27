@@ -33,6 +33,11 @@ package xCAT::RespawnUtils;
 use strict;
 use warnings;
 
+# Everything up to the "Forking" section below is pure arithmetic: it reads only the state it
+# is handed, returns a new one, and touches no clock, no globals and no processes. Keep it
+# that way -- that is what lets the pacing be tested on a made-up clock instead of in real
+# seconds, and what makes exited() safe to call from a signal handler.
+
 # Read one tunable, falling back to the default unless it really looks like a whole number.
 sub _tunable {
     my ($value, $default) = @_;
@@ -114,6 +119,53 @@ sub should_report {
 sub reported {
     my ($state) = @_;
     return { %$state, reported => 1 };
+}
+
+# --- Forking -----------------------------------------------------------------------------
+# The one impure sub. Everything above only does arithmetic; this actually forks.
+
+# Fork a child and keep the pacing straight while doing it. Takes the child's body as a
+# block, then `state`, `pid` and `now`, and hands back the state and the new pid:
+#
+#   ($state, $pid) = xCAT::RespawnUtils::supervise { ...child... }
+#                       state => $state, pid => $pid, now => time();
+#
+# The (&@) prototype is what allows the leading block. It needs this module loaded with
+# `use`, not `require`: under `require` the sub is unknown when the call is compiled, the
+# block is then read as a bare block, and its value arrives as the first argument.
+#
+# Two orderings in here are easy to get wrong and are the reason this is not left to callers.
+# The attempt is recorded before the fork, because the child can die and be reaped before
+# fork() returns to us. And SIGCHLD is blocked across the fork and the assignment, because a
+# reaper that matches on the pid would otherwise compare against a stale one, miss the death,
+# and leave the caller believing a dead child is still alive.
+#
+# The block is only ever entered in the child and is not expected to return; if it does, the
+# child exits quietly rather than falling back into the parent's code. Passing a live `pid`
+# is a no-op, so a caller that forgets to check is not punished with a second child.
+sub supervise (&@) {
+    my ($child, %arg) = @_;
+    my ($state, $pid, $now) = @arg{qw(state pid now)};
+
+    return ($state, $pid) if $pid;    # already running; nothing to do
+
+    require POSIX;
+    require xCAT::Utils;
+
+    $state = forked($state, $now);
+
+    my $mask = POSIX::SigSet->new(POSIX::SIGCHLD());
+    POSIX::sigprocmask(POSIX::SIG_BLOCK(), $mask);
+    $pid = xCAT::Utils->xfork;
+    POSIX::sigprocmask(POSIX::SIG_UNBLOCK(), $mask);
+
+    return (exited($state, $now), 0) unless defined $pid;    # could not fork: back off
+
+    unless ($pid) {
+        $child->();
+        POSIX::_exit(0);
+    }
+    return ($state, $pid);
 }
 
 1;

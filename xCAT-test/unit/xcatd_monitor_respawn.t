@@ -34,7 +34,7 @@ use Test::More;
 use POSIX qw(WNOHANG);
 use IO::Socket::INET;
 
-require xCAT::RespawnUtils;
+use xCAT::RespawnUtils;    # `use`, not `require`: the (&@) prototype must be known at compile time
 
 # Every monitor stand-in forked below is registered here, so a failed assertion that
 # returns early out of the fork test cannot leave one sleeping on the port. The children
@@ -225,10 +225,10 @@ subtest 'the monitor comes back on its own once the port is released' => sub {
         }
         if ( !$mon_pid && due( $pace, time() ) ) {
             my $now = time();
-            $pace = forked( $pace, $now );
-            my $pid = fork();
-            die "fork failed: $!" unless defined $pid;
-            if ( !$pid ) {
+
+            # Driven through supervise() -- the same call xcatd makes -- so this exercises the
+            # real fork-and-account sequence rather than a copy of it here.
+            ( $pace, $mon_pid ) = xCAT::RespawnUtils::supervise {
                 close($holder) if $holder;    # never hold the port from inside a child
                 my $sock = IO::Socket::INET->new(
                     LocalAddr => '127.0.0.1',
@@ -239,12 +239,13 @@ subtest 'the monitor comes back on its own once the port is released' => sub {
                 );
                 POSIX::_exit(1) unless $sock;    # could not bind: died, as the real one does
                 sleep 3600;                      # bound the port and serve
-                POSIX::_exit(0);
             }
-            $mon_pid       = $pid;
+            state => $pace, pid => $mon_pid, now => $now;
+
+            die "supervise did not fork" unless $mon_pid;
             $mon_forked_at = $now;
             push @forks,   $now;
-            push @spawned, $pid;
+            push @spawned, $mon_pid;
         }
         select( undef, undef, undef, 0.05 );
     };
