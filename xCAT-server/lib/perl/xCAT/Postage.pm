@@ -177,19 +177,15 @@ my $mn;
 
 =head3 defer_syncfiles_to_postboot
 
-    On Ubuntu/Debian the DISKFUL install runs a node's postscripts inside the installer's
-    in-target chroot -- before the node has booted as itself. The syncfiles postscript works
-    by asking the management node to scp files INTO the running node, which cannot happen in
-    that phase: the not-yet-booted node has no sshd for the MN to reach, so the push times
-    out, syncfiles exits 1, and the node reports status=failed even though the OS installed
-    perfectly. Defer it to the postbootscripts, which run on the booted node where ssh is
-    already listening and the MN's push succeeds.
+    On the Ubuntu/Debian diskful install path a node's postscripts run inside the installer's
+    in-target chroot, before the node has booted as itself. syncfiles asks the management node
+    to scp files INTO the running node, which cannot work there -- there is no sshd yet -- so it
+    times out and the node reports status=failed although the OS installed. Defer it to the
+    postbootscripts, which run on the booted node.
 
-    Scoped to the diskful install path only: netboot and statelite already run their
-    postscripts on the booted node, so moving syncfiles there would change behaviour that
-    works. EL/SLES are unaffected either way -- their postscripts run on the booted node.
-    syncfiles is PREPENDED so it still runs before any postbootscript that consumes the
-    files it synchronises.
+    Scoped to the diskful install path: netboot and statelite already run their postscripts on
+    the booted node, and EL/SLES are unaffected either way. syncfiles is prepended so it still
+    runs before any postbootscript that consumes the files it synchronises.
 
     Arguments:
         $os              nodetype.os for the node

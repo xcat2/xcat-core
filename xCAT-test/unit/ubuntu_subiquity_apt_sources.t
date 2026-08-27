@@ -8,18 +8,9 @@ use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 
 use Test::More;
 
-# Regression: on an ONLINE Subiquity install of a classic-sources release (20.04 / 22.04),
-# Subiquity renders the target's /etc/apt/sources.list from the install media alone
-# ("deb file:///cdrom"). A live-server ISO does not carry everything xCAT's postscripts need --
-# chrony, for one -- so curtin's in-target apt fails with "E: Unable to locate package chrony"
-# and the install crashes. `sources_list:` is a curtin key that Subiquity's autoinstall schema
-# ignores, so the online archive has to be added through `sources:`, which Subiquity honours by
-# writing /etc/apt/sources.list.d/*.list.
-#
-# That fix belongs to the classic-sources releases ONLY. On a Deb822 release (24.04 / 26.04)
-# the primary mirror already lands in /etc/apt/sources.list.d/ubuntu.sources, so adding legacy
-# .list files on top produces duplicate apt entries for the same suites -- exactly the source
-# conflict the Deb822 branch elsewhere in this function goes out of its way to avoid.
+# An online Subiquity install of a classic-sources release needs the online archive added, or
+# in-target apt cannot find chrony and the install crashes. A Deb822 release must NOT get it,
+# or the same suites are configured twice. See the comment in Template.pm.
 
 require xCAT::Template;
 
