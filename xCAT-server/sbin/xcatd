@@ -30,17 +30,6 @@ my $udpctl;
 my $pid_UDP;
 my $pid_MON;
 
-# Pacing for re-forking the install monitor; see the main service loop below. The pacing
-# itself is pure arithmetic in xCAT::RespawnUtils -- a backoff with a ceiling but no end,
-# so a held xcatiport costs one fork per ceiling interval instead of a fork storm, and the
-# monitor is back within that bound once the port is free. Each function returns a NEW
-# state, which is why the reaper can safely install one from inside the signal handler.
-my $mon_respawn = xCAT::RespawnUtils::policy(
-    min_interval => $ENV{XCATD_MON_RESPAWN_MIN_INTERVAL},
-    max_interval => $ENV{XCATD_MON_RESPAWN_MAX_INTERVAL},
-    healthy      => $ENV{XCATD_MON_RESPAWN_HEALTHY},
-);
-
 my $numofnodes=0;
 
 # ----used for command log start---------
@@ -65,6 +54,18 @@ use xCAT::RespawnUtils;
 use xCAT::xcatd;
 use xCAT::CmdLog;
 use xCAT::State;
+
+# Pacing for re-forking the install monitor; see the main service loop below. The pacing
+# itself is pure arithmetic in xCAT::RespawnUtils -- a backoff with a ceiling but no end,
+# so a held xcatiport costs one fork per ceiling interval instead of a fork storm, and the
+# monitor is back within that bound once the port is free. Each function returns a NEW
+# state, which is why the reaper can safely install one from inside the signal handler.
+my $mon_respawn = xCAT::RespawnUtils::policy(
+    min_interval => $ENV{XCATD_MON_RESPAWN_MIN_INTERVAL},
+    max_interval => $ENV{XCATD_MON_RESPAWN_MAX_INTERVAL},
+    healthy      => $ENV{XCATD_MON_RESPAWN_HEALTHY},
+);
+
 my $os   = xCAT::Utils->osver();
 my $arch = `uname -p`;
 
