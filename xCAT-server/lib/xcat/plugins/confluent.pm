@@ -299,7 +299,7 @@ sub makeconfluentcfg {
     } else {
         @cfgents1 = $hmtab->getAllNodeAttribs([ 'cons', 'serialport', 'mgt', 'conserver', 'termserver', 'termport', 'consoleondemand' ]);
         @cfgents2 = $nodepostab->getAllNodeAttribs([ 'rack', 'u', 'chassis', 'slot', 'room' ]);
-        @cfgents3 = $nodepostab->getAllNodeAttribs([ 'mpa', 'id' ]);
+        @cfgents3 = $mptab->getAllNodeAttribs([ 'mpa', 'id' ]);
         @cfgents4 = $switchtab->getAllNodeAttribs([ 'node', 'switch', 'port', 'interface' ]);
     }
 
