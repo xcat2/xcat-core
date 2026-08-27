@@ -1516,6 +1516,12 @@ until ($quit) {
             $pid_UDP = 0;
             close($listener);
             close($udpctl); $udpctl = 0;
+            # This fork happens further down the program than the one at startup, so it also
+            # inherits what the parent has opened since: the rescanplugins channel. The monitor
+            # has no use for either end, and holding them is the only way a respawned monitor
+            # would differ from the one forked at startup.
+            close($chreadpipe);
+            close($chwritepipe);
             do_installm_service;
             xexit(0);
         } else {
