@@ -1664,19 +1664,47 @@ sub crydb_or_locked
 
 #--------------------------------------------------------------------------------
 
-=head3 subiquity_install_netcfg
+=head3 install_device_params
 
     Resolve the interface the INSTALLED system must bring up, in xCAT's own order:
     noderes.installnic, else noderes.primarynic, else match on mac.mac. Either attribute may name
     an interface OR carry a MAC address. xCAT::NetworkUtils::gen_net_boot_params already owns that
     order for the netboot kernel parameters, so it is reused here rather than re-derived -- and in
-    particular the install template never re-derives any part of it in shell.
+    particular an install template never re-derives any part of it in shell.
+
+    Every install template that has to name the install device shares this resolution, so the
+    device an installer configures cannot disagree with the device the netboot kernel parameters
+    name. The resolution carries no boot loader dependency of any kind.
 
     Arguments:
         $installnic - noderes.installnic (may be undef or empty)
         $primarynic - noderes.primarynic (may be undef or empty)
         $macentry   - the raw mac.mac entry (may hold |-separated, !hostname-suffixed entries)
         $nodename   - the node the entry is resolved for
+    Returns:
+        the hash reference from gen_net_boot_params. Of interest to install templates:
+        nicname     - the interface name, set only when installnic/primarynic names an interface
+        mac         - the address, set whenever one is known
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub install_device_params {
+    my ($installnic, $primarynic, $macentry, $nodename) = @_;
+
+    my $macmac = xCAT::Utils->parseMacTabEntry(defined($macentry) ? $macentry : '', $nodename);
+    return xCAT::NetworkUtils->gen_net_boot_params($installnic, $primarynic, $macmac);
+}
+
+#--------------------------------------------------------------------------------
+
+=head3 subiquity_install_netcfg
+
+    Shape install_device_params for netplan, which matches a device by MAC and optionally renames
+    it.
+
+    Arguments:
+        as install_device_params
     Returns:
         ($setname, $macaddress)
         $setname    - the name netplan must rename the matched device to, empty when the device is
@@ -1689,8 +1717,7 @@ sub crydb_or_locked
 sub subiquity_install_netcfg {
     my ($installnic, $primarynic, $macentry, $nodename) = @_;
 
-    my $macmac = xCAT::Utils->parseMacTabEntry(defined($macentry) ? $macentry : '', $nodename);
-    my $params = xCAT::NetworkUtils->gen_net_boot_params($installnic, $primarynic, $macmac);
+    my $params = install_device_params($installnic, $primarynic, $macentry, $nodename);
 
     my $setname    = defined($params->{nicname}) ? $params->{nicname} : '';
     my $macaddress = defined($params->{mac})     ? lc($params->{mac}) : '';
