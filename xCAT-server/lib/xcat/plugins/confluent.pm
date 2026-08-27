@@ -560,6 +560,11 @@ sub donodeent {
         }
         $parameters{'groups'} = [ grep { defined && length } split /,/, $groupdata->{$node}->[0]->{'groups'} ];
         if (exists $currnodes{$node}) {
+            foreach my $topo ('net.switch', 'net.switchport') {
+                $parameters{$topo} = undef unless (exists $parameters{$topo});
+            }
+            $parameters{'net.*.switch'}     = undef;
+            $parameters{'net.*.switchport'} = undef;
             $confluent->update('/nodes/' . $node . '/attributes/current', parameters => \%parameters);
             my $rsp = $confluent->next_result();
             while ($rsp) {
