@@ -25,9 +25,13 @@ my $source = join '', @lines;
 # or run unprivileged. Drive its own helper functions with shell functions instead: bash resolves
 # those ahead of PATH, and both `type` and `command -v` report them as present.
 my ($helpers) = $source =~ /\A(.*?)^\[ "\$\{UID\}" -eq "0" \]/ms;
+my ($args)    = $source =~ /^(# Handle command line arguments\n.*?)^if \[ "\$\{#NTP_SERVERS\[@\]\}"/ms;
+my ($select)  = $source =~ /^(# The requested backend is a preference.*?)^if \[ -n "\$\{USE_NTPD\}"/ms;
 my ($body)    = $source =~ /^(check_exec_or_exit cp cat logger grep\n.*?)^CHRONY_CONF=/ms;
 BAIL_OUT('could not take the helper functions from setupntp')          unless $helpers;
 BAIL_OUT('could not take the daemon setup section from setupntp')      unless $body;
+BAIL_OUT('could not take the argument parsing from setupntp')          unless $args;
+BAIL_OUT('could not take the backend selection from setupntp')         unless $select;
 
 sub run_setupntp {
     my (%opt) = @_;
@@ -121,6 +125,29 @@ SKIP: {
     skip 'xCAT.spec not found', 1 unless defined $spec;
     like($spec, qr/^Requires:\s*\(chrony or ntp\)/m,
         'the xCAT rpm requires a server-capable NTP daemon');
+}
+
+# --- the backend the management node chose must reach the node ------------
+# makentp selects the daemon from site.ntpbackend through xCAT::NTP::Backend and passes it here,
+# so a cluster told to use ntpd does not get chrony on every node that happens to have it.
+foreach my $case (
+    # argv                          chronyd present?   expected daemon
+    [ '--backend ntpd  pool.ntp.org', 'nothing', 'ntpd',   'ntpd is honoured even where chronyd is installed' ],
+    [ '--backend chrony pool.ntp.org','nothing', 'chrony', 'chrony is honoured' ],
+    [ 'pool.ntp.org',                 'nothing', 'chrony', 'with no backend given the probe still picks chrony' ],
+    [ 'pool.ntp.org',                 'chronyd', 'ntpd',   'with no backend given and no chronyd it falls back' ],
+    [ '--backend chrony pool.ntp.org','chronyd', 'ntpd',   'chrony requested but absent falls back rather than failing' ],
+    [ '--use-ntpd pool.ntp.org',      'nothing', 'ntpd',   'the legacy --use-ntpd flag still forces ntpd' ],
+) {
+    my ($argv, $missing, $want, $name) = @$case;
+    my $root = File::Temp::tempdir(CLEANUP => 1);
+    my $prelude = "logger() { printf '%s\\n' \"\$*\" >>\"$root/log\"; return 0; }\n"
+        . "check_executes() { for c in \"\$@\"; do [ \"\$c\" = \"$missing\" ] && return 1; done; return 0; }\n"
+        . "log_label=xcat\nset -- $argv\n";
+    my $out = `bash -c 'exec 2>/dev/null; $prelude$args$select
+printf "USE_NTPD=%s\\n" "\${USE_NTPD:-}"' 2>/dev/null`;
+    my $got = ($out =~ /USE_NTPD=yes/) ? 'ntpd' : 'chrony';
+    is($got, $want, $name);
 }
 
 done_testing();

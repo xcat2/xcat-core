@@ -103,7 +103,17 @@ do
         case "$1" in
 	"--use-ntpd")
 		# Use traditional ntpd
-		USE_NTPD="yes"
+		NTP_BACKEND="ntpd"
+		;;
+	"--backend")
+		# The daemon xCAT::NTP::Backend picked for this cluster, passed by makentp so
+		# site.ntpbackend reaches the nodes and not just the management node.
+		shift
+		case "$1" in
+		"chrony"|"chronyd") NTP_BACKEND="chrony" ;;
+		"ntp"|"ntpd")       NTP_BACKEND="ntpd" ;;
+		*) logger -t $log_label -p local4.warning "setupntp: ignoring unknown --backend '$1'" ;;
+		esac
 		;;
 	*)
 		NTP_SERVERS+=($1)
@@ -129,8 +139,20 @@ then
 	esac
 fi
 
-check_executes chronyd >/dev/null 2>&1 || USE_NTPD="yes"
-check_executes systemctl >/dev/null 2>&1 || USE_NTPD="yes"
+# The requested backend is a preference, not a guarantee: a node that does not have chronyd
+# still has to be configured, so fall back to ntpd and say so rather than failing.
+if [ "${NTP_BACKEND}" = "ntpd" ]
+then
+	USE_NTPD="yes"
+else
+	check_executes chronyd >/dev/null 2>&1 || USE_NTPD="yes"
+	check_executes systemctl >/dev/null 2>&1 || USE_NTPD="yes"
+	if [ -n "${USE_NTPD}" ] && [ "${NTP_BACKEND}" = "chrony" ]
+	then
+		logger -t $log_label -p local4.warning \
+			"setupntp: chrony requested but chronyd/systemctl are absent; using ntpd"
+	fi
+fi
 
 if [ -n "${USE_NTPD}" ]
 then
