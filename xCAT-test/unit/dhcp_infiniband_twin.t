@@ -326,4 +326,18 @@ is_deeply(
     'updating an explicit InfiniBand identity does not remove it by address',
 );
 
+# The mgtifname of a network can name more than one interface, separated by !.
+# The InfiniBand interface is not always the last one, so a test that only
+# matches the last name leaves a node on ib0!eth0 without its second entry.
+foreach my $ifname (qw(ib0 ib0.8001 eth0!ib0 ib0!eth0 ib0!ib1 bond0!ib2)) {
+    ok( xCAT_plugin::dhcp::_is_infiniband_interface($ifname),
+        "'$ifname' is served by an InfiniBand interface" );
+}
+foreach my $ifname (qw(eth0 eth0!eth1 bond0 hf0)) {
+    ok( !xCAT_plugin::dhcp::_is_infiniband_interface($ifname),
+        "'$ifname' is not served by an InfiniBand interface" );
+}
+ok( !xCAT_plugin::dhcp::_is_infiniband_interface(undef),
+    'a network with no interface name is not served by InfiniBand' );
+
 done_testing();
