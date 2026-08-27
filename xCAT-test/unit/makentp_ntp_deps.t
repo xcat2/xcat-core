@@ -6,14 +6,10 @@ use FindBin;
 use File::Temp qw(tempdir);
 use Test::More;
 
-# setupntp configures a server-capable NTP daemon on the management node. On a stock Ubuntu MN
-# three things went wrong: hwclock had moved to util-linux-extra and was absent, so the fatal
-# executable check aborted the ENTIRE NTP setup including the clock step that does not use it;
-# systemd-timesyncd was left running and kept disciplining the clock against the daemon being
-# configured; and the xcat package did not pull in a daemon that can serve time at all.
-#
-# The first three are behaviours of the script, so run it. The last is a property of the
-# packaging manifests, so read those.
+# A stock Ubuntu MN broke three ways: a missing hwclock aborted the whole NTP setup,
+# systemd-timesyncd kept fighting the daemon being configured, and the xcat package pulled in no
+# daemon that can serve time. The first two are behaviours of the script, so run it; the third is
+# a property of the packaging manifests, so read those.
 
 my $repo = "$FindBin::Bin/../..";
 my $setupntp_path = "$repo/xCAT/postscripts/setupntp";
@@ -25,10 +21,9 @@ my @lines = <$fh>;
 close $fh;
 my $source = join '', @lines;
 
-# setupntp forces its own PATH and refuses to run unless UID is 0, so its commands cannot be
-# stubbed from outside and it cannot run as an ordinary user. Take the script's own helper
-# functions and the section that configures the daemon, and drive them with shell functions --
-# which bash resolves ahead of PATH, and which `type` and `command -v` both report as present.
+# setupntp forces its own PATH and exits unless UID is 0, so it cannot be stubbed from outside
+# or run unprivileged. Drive its own helper functions with shell functions instead: bash resolves
+# those ahead of PATH, and both `type` and `command -v` report them as present.
 my ($helpers) = $source =~ /\A(.*?)^\[ "\$\{UID\}" -eq "0" \]/ms;
 my ($body)    = $source =~ /^(check_exec_or_exit cp cat logger grep\n.*?)^CHRONY_CONF=/ms;
 BAIL_OUT('could not take the helper functions from setupntp')          unless $helpers;

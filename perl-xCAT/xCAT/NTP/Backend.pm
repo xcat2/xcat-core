@@ -1,9 +1,8 @@
 package xCAT::NTP::Backend;
 
-# Selector for the NTP daemon xCAT configures on a node (chrony vs. ntpd), in the same spirit as
-# xCAT::DHCP::Backend (ISC vs. Kea). makentp/setupntp support chronyd and ntpd only -- there is no
-# systemd-timesyncd path (timesyncd is an SNTP client and cannot serve time to compute nodes), so an
-# xCAT MN always needs chrony or ntpd. This module centralizes and unit-tests the choice.
+# Selector for the NTP daemon xCAT configures (chrony vs. ntpd), in the same spirit as
+# xCAT::DHCP::Backend. There is no timesyncd path: it is an SNTP client and cannot serve time to
+# compute nodes, so an MN always needs chrony or ntpd.
 
 use strict;
 use warnings;
@@ -33,8 +32,8 @@ sub normalize {
 #   requested       -- override (default: site.ntpbackend, else 'auto')
 #   os_name/version -- OS identity (default: detected)
 #   available       -- optional { chrony => 0/1, ntpd => 0/1 } to bypass command detection (tests)
-#   check_available -- when true, downgrade chrony->ntpd (or ntpd->chrony) if the chosen one is
-#                      absent but the other is present, and flag install=1 when neither is present.
+#   check_available -- when true, downgrade to whichever daemon is installed, and flag install=1
+#                      when neither is.
 sub choose {
     my ( $class, %args ) = @_;
 

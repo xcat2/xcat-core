@@ -146,9 +146,9 @@ unset MASTER
 unset NTPSERVERS
 
 check_exec_or_exit cp cat logger grep
-# hwclock is NOT required: it only persists the (already chronyd-stepped) system clock to the RTC
-# below, and it is optional -- on Ubuntu 24.04+ it moved to util-linux-extra, which is absent on
-# minimal cloud images. Requiring it here aborted the whole NTP setup (and the clock step) on noble.
+# hwclock is NOT required: it only persists the already-stepped clock to the RTC below, and on
+# Ubuntu 24.04+ it moved to util-linux-extra, absent on minimal images. Requiring it here aborted
+# the whole NTP setup, including the clock step that does not use it.
 check_exec_or_exit systemctl timedatectl
 
 systemctl stop ntp.service 2>/dev/null
@@ -159,10 +159,8 @@ systemctl disable ntpd.service 2>/dev/null
 systemctl disable ntp-wait.service 2>/dev/null
 systemctl disable ntpdate.service 2>/dev/null
 
-# systemd-timesyncd is an SNTP client that also disciplines the system clock. It is part of systemd
-# (not a "time-daemon" package), so it coexists with chrony/ntpd at the package level but must be
-# stopped or it fights the NTP daemon we are configuring. This is the default time-sync stack on
-# Ubuntu, where it must yield to chrony (timesyncd cannot serve time to compute nodes).
+# systemd-timesyncd ships as part of systemd rather than a time-daemon package, so nothing
+# displaces it and it keeps disciplining the clock against the daemon being configured.
 systemctl stop systemd-timesyncd.service 2>/dev/null
 systemctl disable systemd-timesyncd.service 2>/dev/null
 
