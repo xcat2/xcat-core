@@ -1,15 +1,46 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::RespawnUtils;
 
+# Pacing for a parent that has to keep a child alive; xcatd's install monitor is the caller.
+#
+# The child is re-forked whenever it dies, but not as fast as fork() returns -- it may be
+# dying because a resource it needs is held by someone else, and retrying flat out burns CPU
+# and interferes with whatever handshake it performs to claim that resource. So attempts back
+# off, doubling from min_interval to max_interval and then holding there.
+#
+# It never stops retrying. A retry budget that runs out cannot be refilled, because with no
+# child alive nothing is left to reset it, so the resource would stay unserved until the whole
+# daemon is restarted -- the failure the respawn exists to prevent. A child that stayed up
+# `healthy` seconds evidently did claim its resource and serve, so its death resets the delay
+# and only a real streak of failures to start builds the backoff up.
+#
+# Every function returns a NEW state and never mutates the one it is handed. That is what
+# makes them safe to call from a SIGCHLD handler: the result is complete before the caller's
+# assignment installs it, so a signal cannot catch the pacing half-written.
+#
+# The state is a plain hash. Callers may read these; use the functions below to get the next
+# state rather than writing to them.
+#
+#   min_interval  shortest wait between attempts, and what a healthy run resets the delay to
+#   max_interval  longest wait -- the delay doubles up to this and then stays here
+#   healthy       how long a child must survive before we count it as having served
+#   delay         how long to wait after the NEXT failure
+#   next_at       earliest time() at which another attempt is allowed
+#   started_at    when the running child was forked, or undef when none is running
+#   streak        how many children in a row have died young
+#   reported      whether we have already logged that this streak reached the ceiling
+
 use strict;
 use warnings;
 
+# Read one tunable, falling back to the default unless it really looks like a whole number.
 sub _tunable {
     my ($value, $default) = @_;
     return $default unless defined($value) && $value =~ /^\s*\d+\s*$/;
     return $value + 0;
 }
 
+# Start pacing a child from scratch. Anything the caller leaves out gets a sensible default.
 sub policy {
     my (%opt) = @_;
 
@@ -32,16 +63,21 @@ sub policy {
     };
 }
 
+# Is it time to try again yet? This can say "not yet", but it never says "no more".
 sub due {
     my ($state, $now) = @_;
     return $now >= $state->{next_at} ? 1 : 0;
 }
 
+# Note that we are about to fork, so we can tell later how long the child lasted. Call this
+# before forking: the child can die and be reaped before fork() even returns to us.
 sub forked {
     my ($state, $now) = @_;
     return { %$state, started_at => $now };
 }
 
+# Note that the child died, and decide when to try again -- straight away if it had been up
+# long enough to have served, later and later if it keeps failing to start.
 sub exited {
     my ($state, $now) = @_;
 
@@ -65,6 +101,8 @@ sub exited {
     return \%next;
 }
 
+# Has this run of failures just hit the ceiling, and not been mentioned yet? Keeps the log to
+# one line per streak instead of one per attempt.
 sub should_report {
     my ($state) = @_;
     return 0 if $state->{reported};
@@ -72,6 +110,7 @@ sub should_report {
     return $state->{delay} >= $state->{max_interval} ? 1 : 0;
 }
 
+# Remember that we have already logged the ceiling for this streak.
 sub reported {
     my ($state) = @_;
     return { %$state, reported => 1 };
