@@ -154,4 +154,31 @@ ok(
     'a disabled static update leaves the configuration unchanged',
 );
 
+my @lazy_config;
+xCAT_plugin::dhcp::_add_isc_static_host(
+    'node06', 'node06-old', '00:11:22:33:44:11', 1,
+    'eth0', '192.0.2.7', '', 0, \@lazy_config,
+);
+my $before_failed_update = join( '', @lazy_config );
+my $update_started = 0;
+xCAT_plugin::dhcp::_add_isc_static_host(
+    'node06', 'node06-current', '00:11:22:33:44:22', 1,
+    'eth0', undef, '', 0, \@lazy_config, \$update_started,
+);
+is(join( '', @lazy_config ), $before_failed_update,
+    'an unresolved replacement preserves the existing static host');
+is($update_started, 0,
+    'an unresolved replacement does not begin the static update');
+xCAT_plugin::dhcp::_add_isc_static_host(
+    'node06', 'node06-current', '00:11:22:33:44:22', 1,
+    'eth0', '192.0.2.8', '', 0, \@lazy_config, \$update_started,
+);
+my $lazy_replacement = join( '', @lazy_config );
+unlike($lazy_replacement, qr/^host node06-old \{$/m,
+    'the first valid replacement removes stale node identities');
+like($lazy_replacement, qr/^host node06-current \{$/m,
+    'the first valid replacement writes the current identity');
+is($update_started, 1,
+    'the successful replacement records that cleanup has started');
+
 done_testing();
