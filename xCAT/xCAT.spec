@@ -125,6 +125,44 @@ tar -xf postscripts.tar
 
 %build
 
+%ifos linux
+# rpm fixes each config file's fate before %pre runs, so a migration there can
+# delete an active file rpm has already decided to leave as xcat.conf.rpmnew.
+# %pretrans runs before that decision.  It is Lua because a pre-transaction
+# scriptlet cannot rely on any dependency being unpacked yet.
+%pretrans -p <lua>
+-- Older packages shipped xcat.conf as ordinary payload and then rewrote it
+-- from conf.orig in %post, so rpm's recorded digest cannot tell a stock file
+-- from a customised one.  Compare against the outgoing package's templates,
+-- still on disk at this point, and drop only a file that still matches one.
+if arg[2] and tonumber(arg[2]) == 1 then return end
+
+local function contents(path)
+    local handle = io.open(path, "rb")
+    if not handle then return nil end
+    local data = handle:read("*a")
+    handle:close()
+    return data
+end
+
+local templates = { contents("/etc/%httpconfigdir/conf.orig/xcat.conf.apach24"),
+                    contents("/etc/%httpconfigdir/conf.orig/xcat.conf.apach22") }
+
+for _, active in ipairs({ "/etc/httpd/conf.d/xcat.conf",
+                          "/etc/apache2/conf.d/xcat.conf" }) do
+    -- A symlink or any other non-regular path is treated as locally managed.
+    if posix.stat(active, "type") == "regular" then
+        local current = contents(active)
+        for _, template in ipairs(templates) do
+            if current and current == template then
+                os.remove(active)
+                break
+            end
+        end
+    end
+end
+%endif
+
 %pre
 # this is now handled by requiring /usr/sbin/dhcpd
 #if [ -e "/etc/SuSE-release" ]; then
@@ -199,8 +237,15 @@ chmod 755 $RPM_BUILD_ROOT/install/postscripts/*
 rm LICENSE.html
 mkdir -p postscripts/hostkeys
 cd -
+# Pick the Apache generation at build time.  Selecting it in the post scriptlet
+# instead rewrites a file rpm has already checksummed, defeating noreplace.
+%if 0%{?fedora} || 0%{?rhel} >= 7 || 0%{?suse_version} >= 1200
+cp %{SOURCE7} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf
+cp %{SOURCE7} $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat.conf
+%else
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat.conf
+%endif
 cp %{SOURCE7} $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat.conf.apach24
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat.conf.apach22
 cp %{SOURCE5} $RPM_BUILD_ROOT/etc/xCATMN
@@ -211,25 +256,6 @@ cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 
 %post
 %ifos linux
-#Apply the correct httpd/apache configuration file according to the httpd/apache version
-if [ -n "$(httpd -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
-then
-   rm -rf /etc/httpd/conf.d/xcat.conf
-   cp /etc/%httpconfigdir/conf.orig/xcat.conf.apach24 /etc/httpd/conf.d/xcat.conf
-fi
-
-if [ -n "$(apachectl -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
-then
-   rm -rf /etc/apache2/conf.d/xcat.conf
-   cp /etc/%httpconfigdir/conf.orig/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf
-fi
-
-if [ -n "$(apache2ctl -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
-then
-   rm -rf /etc/apache2/conf.d/xcat.conf
-   cp /etc/%httpconfigdir/conf.orig/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf
-fi
-
 # On SUSE apache2, mod_headers is not loaded by default; enable it so the
 # security response headers in xcat.conf take effect (a no-op where a2enmod
 # is absent, e.g. httpd on EL where mod_headers is already loaded).
@@ -282,10 +308,9 @@ if grep -q "command returned error code" "$xcatupgradeout"; then
 fi
 rm -f "$xcatupgradeout"
 
-# The package replaces xcat.conf before this upgrade path runs.  Reload an
-# active web server so the new security headers and ServerTokens setting take
-# effect immediately, but do not try to manage services while building an
-# image in a chroot.
+# rpm has either updated a stock xcat.conf or preserved a modified one and left
+# the new file as xcat.conf.rpmnew.  Reload an active web server so an updated
+# stock configuration takes effect, but do not manage services in a chroot.
 if [ -f "/proc/cmdline" ] && [ "x$(stat -c '%i %d' /)" == "x$(stat -c '%i %d' /proc/1/root/. 2>/dev/null)" ]; then
     if [ -e "/etc/redhat-release" ]; then
         apachedaemon='httpd'
@@ -311,8 +336,8 @@ exit 0
 # one for sles, one for rhel. yes, it's ugly...
 /etc/%httpconfigdir/conf.orig/xcat.conf.apach24
 /etc/%httpconfigdir/conf.orig/xcat.conf.apach22
-/etc/httpd/conf.d/xcat.conf
-/etc/apache2/conf.d/xcat.conf
+%config(noreplace) /etc/httpd/conf.d/xcat.conf
+%config(noreplace) /etc/apache2/conf.d/xcat.conf
 /etc/xCATMN
 /install/postscripts
 /install/prescripts
