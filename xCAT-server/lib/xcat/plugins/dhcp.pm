@@ -270,6 +270,14 @@ sub _node_host_statements
       . $node . '\";' . ($statements || '');
 }
 
+sub _noip_hostname
+{
+    my ($node, $mac) = @_;
+    my $hostname = $node . '-noip' . $mac;
+    $hostname =~ s/://g;
+    return $hostname;
+}
+
 sub _add_isc_static_host
 {
     my ($node, $hostname, $mac, $hardwaretype, $mgtifname, $ip, $statements,
@@ -533,8 +541,10 @@ sub delnode
                 $mac =~ s/:$//;
             }
             my $hostname       = $hname;
-            my $hardwaretype   = length($mac) == 23 || length($mac) == 26 ? 32 : 1;
             my %client_nethash = xCAT::DBobjUtils->getNetwkInfo([$node]);
+            my $hardwaretype = _hardware_type_for(
+                $mac, $client_nethash{$node}{mgtifname}
+            );
             if ($client_nethash{$node}{mgtifname} =~ /hf/)
             {
                 if (scalar(@macs) > 1) {
@@ -693,11 +703,28 @@ sub _infiniband_identity_present
 {
     foreach my $entry (@_) {
         my ($address) = split(/!/, $entry);
-        next unless defined($address);
-        $address =~ s/[:-]//g;
-        return 1 if $address =~ /\A(?:[[:xdigit:]]{16}|[[:xdigit:]]{18})\z/;
+        $address = normalize_mac($address);
+        return 1
+          if defined($address)
+          && (length($address) == 23 || length($address) == 26);
     }
     return 0;
+}
+
+sub _hardware_type_for
+{
+    my ($mac, $mgtifname) = @_;
+
+    return 37 if defined($mgtifname) && $mgtifname =~ /hf/;
+    $mac = normalize_mac($mac) || $mac || '';
+    return 32 if length($mac) == 23 || length($mac) == 26;
+    return 1;
+}
+
+sub _is_infiniband_interface
+{
+    my $mgtifname = shift;
+    return defined($mgtifname) && $mgtifname =~ /(?:^|!)ib[^!]*$/;
 }
 
 sub _infiniband_twin_identity
@@ -708,8 +735,7 @@ sub _infiniband_twin_identity
 
     return if $hardwaretype != 1
       || !$ibmac
-      || !defined($mgtifname)
-      || $mgtifname !~ /^ib/
+      || !_is_infiniband_interface($mgtifname)
       || $has_infiniband_identity;
     return ("$hostname-xcat-ib", $ibmac);
 }
@@ -726,7 +752,7 @@ sub _infiniband_twin_create_commands
     return unless $ibmac;
 
     my $commands = '';
-    if ($cleanup_supported) {
+    if ($cleanup_supported && _is_infiniband_interface($mgtifname)) {
         $commands .= "new host\n"
           . "set name = \"$ibhostname\"\n"
           . "open\n"
@@ -792,7 +818,7 @@ sub _infiniband_twin_delete_commands
       . "close\n";
     my $addresscommands;
 
-    if ($cleanup_supported) {
+    if ($cleanup_supported && _is_infiniband_interface($mgtifname)) {
         $addresscommands = "new host\n"
           . "set hardware-address = $ibmac\n"
           . "set hardware-type = 32\n"
@@ -992,11 +1018,11 @@ sub addnode
             );
             next;
         }
+        my $noip_mac = $mac;
         $mac = normalize_mac($mac);
         my $ip = getipaddr($hname, OnlyV4 => 1);
         if ($hname eq '*NOIP*') {
-            $hname = $node . "-noip" . $mac;
-            $hname =~ s/://g;
+            $hname = _noip_hostname($node, $noip_mac);
             $ip = 'DENIED';
 
             #        } #if 'guess_next_server', inherit from the network provided value... see how this pans out
@@ -1133,11 +1159,12 @@ sub addnode
         else
         {
             my $hostname       = $hname;
-            my $hardwaretype   = 1;
             my %client_nethash = xCAT::DBobjUtils->getNetwkInfo([$node]);
-            if ($client_nethash{$node}{mgtifname} =~ /hf/)
+            my $hardwaretype = _hardware_type_for(
+                $mac, $client_nethash{$node}{mgtifname}
+            );
+            if ($hardwaretype == 37)
             {
-                $hardwaretype = 37;
                 if (scalar(@macs) > 1) {
                     if ($hname !~ /^(.*)-hf(.*)$/) {
                         $hostname = $hname . "-hf" . $count;
@@ -1145,10 +1172,6 @@ sub addnode
                         $hostname = $1 . "-hf" . $count;
                     }
                 }
-            } elsif (length($mac) == 23 || length($mac) == 26) { # 8 or 9 bytes of mac address
-		# Currently the only thing that has 8 or 9 bytes is an infiniband
-		# or infiniband like device, which is type 32 (0x20).
-                $hardwaretype = 32;
             }
 
             if ($static_host_fallback) {
