@@ -98,7 +98,10 @@ sub validate {
 
     my %req_noderange_info;
     if (defined $request->{noderange}->[0]) {
-        my @tmpn = xCAT::NodeRange::noderange($request->{noderange}->[0]);
+        my @tmpn = xCAT::NodeRange::noderange($request->{noderange}->[0], 1, 1, (defined($peername) ? () : (nofile => 1)));
+        if (!defined($peername) && xCAT::NodeRange::file_operator_rejected()) {
+            return 0;
+        }
         $req_noderange_info{leftnodenum} = @tmpn;
         if($req_noderange_info{leftnodenum}){
             $req_noderange_info{leftnodes} =  \@tmpn;

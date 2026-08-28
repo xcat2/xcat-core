@@ -11,6 +11,7 @@ our @EXPORT    = qw(noderange nodesmissed);
 our @EXPORT_OK = qw(extnoderange abbreviate_noderange);
 
 my $missingnodes = [];
+my $filerejected = 0;
 my $nodelist;    #=xCAT::Table->new('nodelist',-create =>1);
 my $grptab;
 
@@ -70,6 +71,10 @@ sub subnodes (\@@) {
 
 sub nodesmissed {
     return @$missingnodes;
+}
+
+sub file_operator_rejected {
+    return $filerejected;
 }
 
 sub reset_db {
@@ -521,7 +526,7 @@ sub extnoderange { #An extended noderange function.  Needed by the GUI as the mo
     }
     my $return;
     $retaincache = 1;
-    $return->{node} = [ noderange($range, $verify) ];
+    $return->{node} = [ noderange($range, $verify, 1, nofile => $namedopts->{nofile}) ];
     if ($namedopts->{intersectinggroups}) {
         my %grouphash = ();
         my $nlent;
@@ -626,6 +631,7 @@ sub noderange {
     my %options = @_;                               # additional options
     unless ($options{keepmissing}) {
         $missingnodes = [];
+        $filerejected = 0;
     }
 
     unless ($nodelist) {
@@ -679,6 +685,7 @@ sub noderange {
 
         if ($atom =~ /^\^(.*)$/) {    # get a list of nodes from a file
             my $nrfile = $1;
+            if ($options{nofile}) { $filerejected = 1; next; }
             open(my $nrf, '<', $nrfile) or next;
             while (<$nrf>) {
                 my $line = $_;
@@ -724,7 +731,11 @@ sub noderange {
         my $badnoderange = 0;
         my @badnodes     = ();
         if ($::XCATSITEVALS{excludenodes}) {
-            @badnodes = noderange($::XCATSITEVALS{excludenodes}, 1, 0, %options);
+            my $request_filerejected = $filerejected;
+            my %exclude_options = %options;
+            delete $exclude_options{nofile};
+            @badnodes = noderange($::XCATSITEVALS{excludenodes}, 1, 0, %exclude_options);
+            $filerejected = $request_filerejected;
             foreach my $bnode (@badnodes) {
                 if (!$delnodes{$bnode}) {
                     $delnodes{$bnode} = 1;
