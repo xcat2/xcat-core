@@ -187,6 +187,7 @@ unless ($osver and $profile) {
     exit 1;
 }
 my @ndrivers;
+my @default_ndrivers = imgutils::default_net_drivers('sles', $arch);
 
 if ($netdriver) {
     foreach (split /,/, $netdriver) {
@@ -210,16 +211,7 @@ if ($netdriver) {
     }
 }
 
-# Add the default driver list
-if ($arch eq 'x86' or $arch eq 'x86_64') {
-    push @ndrivers, qw/tg3 bnx2 bnx2x e1000 e1000e virtio_net virtio_balloon igb mlx4_en be2net/;
-} elsif ($arch eq 'ppc64') {
-    push @ndrivers, qw/tg3 e1000 e1000e igb ibmveth ehea be2net/;
-} elsif ($arch eq "s390x") {
-    push @ndrivers, qw/qdio ccwgroup qeth qeth_l2 qeth_l3/;
-}
-
-foreach (@ndrivers) {
+foreach (@ndrivers, @default_ndrivers) {
     unless (/\.ko$/) {
         s/$/.ko/;
     }
@@ -922,6 +914,12 @@ umount();
 
 # Load driver update disk, and copy them to the root image
 my @dd_drivers = &load_dd();
+@ndrivers = imgutils::resolve_mellanox_default_net_drivers(
+    $rootimg_dir,
+    $kernelver,
+    \@ndrivers,
+    @default_ndrivers,
+);
 
 # Push the drivers into the @ndrivers base on the order
 my @new_order = ();
@@ -948,12 +946,6 @@ if ($osver_host >= 12) {
     }
 } else {    # for sles11 or lower
     push @ndrivers, ("ibmvscsic.ko", "ata_piix.ko", "pcieport.ko");
-}
-
-if (-f "$rootimg_dir/lib/modules/$kernelver/kernel/drivers/net/ethernet/mellanox/mlx4/mlx4_en.ko") {
-    for (@ndrivers) {
-        s/mlx_en/mlx4_en/;
-    }
 }
 
 open($moddeps, "<", "$rootimg_dir/lib/modules/$kernelver/modules.dep");

@@ -7,6 +7,7 @@ use strict;
 use warnings "all";
 
 use File::Basename;
+use File::Find;
 use File::Path;
 use Cwd qw(realpath);
 use xCAT::SvrUtils;
@@ -209,6 +210,147 @@ sub get_package_names {
         }
     }
     return %pkgnames;
+}
+
+sub default_net_drivers {
+    my ( $family, $arch ) = @_;
+
+    my %drivers = (
+        rh => {
+            x86    => [qw(tg3 bnx2 bnx2x e1000 e1000e igb mlx_en mlx5_core virtio_net be2net)],
+            x86_64 => [qw(tg3 bnx2 bnx2x e1000 e1000e igb mlx_en mlx5_core virtio_net be2net)],
+            aarch64 => [qw(tg3 bnx2 bnx2x e1000e igb mlx_en mlx5_core virtio_net)],
+            ppc64   => [qw(e1000 e1000e igb ibmveth ehea)],
+            s390x   => [qw(qdio ccwgroup)],
+        },
+        sles => {
+            x86    => [qw(tg3 bnx2 bnx2x e1000 e1000e virtio_net virtio_balloon igb mlx4_en mlx5_core be2net)],
+            x86_64 => [qw(tg3 bnx2 bnx2x e1000 e1000e virtio_net virtio_balloon igb mlx4_en mlx5_core be2net)],
+            ppc64   => [qw(tg3 e1000 e1000e igb ibmveth ehea be2net)],
+            s390x   => [qw(qdio ccwgroup qeth qeth_l2 qeth_l3)],
+        },
+        ubuntu => {
+            x86    => [qw(tg3 bnx2 bnx2x e1000 e1000e igb mlx_en mlx5_core virtio_net overlay)],
+            x86_64 => [qw(tg3 bnx2 bnx2x e1000 e1000e igb mlx_en mlx5_core virtio_net overlay)],
+            ppc64el => [qw(tg3 bnx2 bnx2x e1000 e1000e igb ibmveth ehea mlx_en mlx4_en mlx5_core virtio_net overlay)],
+            ppc64   => [qw(e1000 e1000e igb ibmveth ehea)],
+            s390x   => [qw(qdio ccwgroup)],
+        },
+    );
+
+    return () if !exists($drivers{$family}) || !exists($drivers{$family}{$arch});
+    return @{ $drivers{$family}{$arch} };
+}
+
+sub _kernel_module_name {
+    my $path = shift;
+    my $name = basename($path);
+
+    $name =~ s/\.ko(?:\.(?:gz|xz|zst))?$//x;
+    $name =~ tr/-/_/;
+    return $name;
+}
+
+sub target_kernel_module_availability {
+    my ( $rootimg_dir, $kernelver, @modules ) = @_;
+    my %requested = map { _kernel_module_name($_) => 1 } @modules;
+    my %available = map { $_ => 0 } keys %requested;
+    my $module_root = "$rootimg_dir/lib/modules/$kernelver";
+
+    my $modules_dep = "$module_root/modules.dep";
+    if (open(my $dep_fh, '<', $modules_dep)) {
+        while (my $line = <$dep_fh>) {
+            my ($path) = split /:/x, $line, 2;
+            my $name = _kernel_module_name($path);
+            if ($requested{$name} && -f "$module_root/$path") {
+                $available{$name} = 1;
+            }
+        }
+        close($dep_fh);
+    }
+
+    my $modules_builtin = "$module_root/modules.builtin";
+    if (open(my $builtin_fh, '<', $modules_builtin)) {
+        while (my $path = <$builtin_fh>) {
+            chomp($path);
+            my $name = _kernel_module_name($path);
+            $available{$name} = 1 if $requested{$name};
+        }
+        close($builtin_fh);
+    }
+
+    if (-d $module_root && grep { !$available{$_} } keys %requested) {
+        find(
+            {
+                no_chdir => 1,
+                wanted   => sub {
+                    return if !-f $File::Find::name;
+                    return if $File::Find::name !~ /\.ko(?:\.(?:gz|xz|zst))?$/x;
+                    my $name = _kernel_module_name($File::Find::name);
+                    $available{$name} = 1 if $requested{$name};
+                },
+            },
+            $module_root,
+        );
+    }
+
+    return %available;
+}
+
+sub resolve_mellanox_default_net_drivers {
+    my ( $rootimg_dir, $kernelver, $requested_drivers, @default_drivers ) = @_;
+    my @drivers;
+    my %seen;
+    my $has_mellanox_defaults = grep {
+        _kernel_module_name($_) =~ /^mlx(?:_en|4_en|5_core)$/x
+    } @default_drivers;
+    my $has_mellanox_drivers = $has_mellanox_defaults || grep {
+        _kernel_module_name($_) =~ /^mlx(?:_en|4_en|5_core)$/x
+    } @{$requested_drivers};
+    if (!$has_mellanox_drivers) {
+        return grep { !$seen{$_}++ } (@{$requested_drivers}, @default_drivers);
+    }
+
+    my %available = target_kernel_module_availability(
+        $rootimg_dir,
+        $kernelver,
+        qw(mlx_en mlx4_en mlx5_core mlx4_ib mlx5_ib ib_ipoib),
+    );
+
+    # Keep unavailable explicit requests, except for the historical mlx4 alias.
+    foreach my $driver (@{$requested_drivers}) {
+        my $name = _kernel_module_name($driver);
+        if ($name eq 'mlx_en'
+            && !$available{'mlx_en'}
+            && $available{'mlx4_en'})
+        {
+            $driver =~ s/mlx_en/mlx4_en/;
+        }
+        push @drivers, $driver;
+    }
+
+    foreach my $driver (@default_drivers) {
+        my $name = _kernel_module_name($driver);
+        if ($name eq 'mlx_en') {
+            if (!$available{'mlx_en'}) {
+                next if !$available{'mlx4_en'};
+                $driver =~ s/mlx_en/mlx4_en/;
+            }
+        } elsif ($name eq 'mlx4_en' || $name eq 'mlx5_core') {
+            next if !$available{$name};
+        }
+        push @drivers, $driver;
+    }
+
+    if ($has_mellanox_defaults) {
+        my @mellanox_ib_drivers = grep { $available{$_} } qw(mlx4_ib mlx5_ib);
+        push @drivers, map { "$_.ko" } @mellanox_ib_drivers;
+        if (@mellanox_ib_drivers && $available{'ib_ipoib'}) {
+            push @drivers, 'ib_ipoib.ko';
+        }
+    }
+
+    return grep { !$seen{$_}++ } @drivers;
 }
 
 1;

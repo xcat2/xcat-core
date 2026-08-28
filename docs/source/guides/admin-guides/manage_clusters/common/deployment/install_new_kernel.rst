@@ -77,12 +77,20 @@ Generally, the genimage command has a default driver list which will be added to
 
 The default driver list: ::
 
-         rh-x86:   tg3 bnx2 bnx2x e1000 e1000e igb mlx_en virtio_net be2net
+         rh-x86:   tg3 bnx2 bnx2x e1000 e1000e igb mlx_en mlx5_core virtio_net be2net
          rh-ppc:   e1000 e1000e igb ibmveth ehea
          rh-ppcle: ext3 ext4
-         sles-x86: tg3 bnx2 bnx2x e1000 e1000e igb mlx_en be2net
+         sles-x86: tg3 bnx2 bnx2x e1000 e1000e virtio_net virtio_balloon igb mlx4_en mlx5_core be2net
          sels-ppc: tg3 e1000 e1000e igb ibmveth ehea be2net
          sles-ppcle: scsi_mod libata scsi_tgt jbd2 mbcache crc16 virtio virtio_ring libahci crc-t10dif scsi_transport_srp af_packet ext3 ext4 virtio_pci virtio_blk scsi_dh ahci megaraid_sas sd_mod ibmvscsi
+
+The automatically added Mellanox entries are conditional. ``genimage`` retains
+a real ``mlx_en`` module from the target kernel, otherwise uses ``mlx4_en`` when
+available, and adds ``mlx5_core`` when available. Available ``mlx4_ib`` and
+``mlx5_ib`` modules are also added. If either InfiniBand driver and ``ib_ipoib``
+are available, ``ib_ipoib`` is added for IP over InfiniBand. Missing optional
+Mellanox modules are omitted. Explicit ``netdrivers`` entries do not enable
+other optional Mellanox defaults.
 
 Note: With this approach, xCAT will search for the drivers in the rootimage. You need to make sure the drivers have been included in the rootimage before generating the initrd. You can install the drivers manually in an existing rootimage (using chroot) and run genimage again, or you can use a postinstall script to install drivers to the rootimage during your initial genimage run.
 
