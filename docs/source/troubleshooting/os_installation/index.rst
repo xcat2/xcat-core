@@ -41,4 +41,5 @@ Next chapter introduces the procedures on how to troubleshoot operating system i
    log_to_mn_cn.rst
    debug_port.rst
    ssh_enable.rst
+   ubuntu_subiquity_memory.rst
 

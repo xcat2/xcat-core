@@ -524,7 +524,10 @@ sub copycd
     network root at shutdown. Without it a process doing I/O to it blocks uninterruptibly,
     systemd-shutdown waits forever and the node never reboots into the disk it just installed.
     casper parses only nfsroot= and takes the whole value as the path, so mount options cannot
-    be appended; toram is its supported alternative.
+    be appended; toram is its supported alternative. It does mean the node needs memory for the
+    live filesystem on top of the installer -- roughly 1.5G on 24.04 -- or it dies part-way
+    through and reboots into the installer again, which looks like a boot-flip failure. See
+    docs/source/troubleshooting/os_installation/ubuntu_subiquity_memory.rst.
 
     Arguments:
         $base       the command line built so far
