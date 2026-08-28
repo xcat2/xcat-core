@@ -15,6 +15,9 @@ is( $pair->{end}, '10.0.0.20', 'range end is parsed' );
 is( xCAT::DHCP::Range->isc_range($pair), '10.0.0.10 10.0.0.20', 'ISC range uses space separator' );
 is( xCAT::DHCP::Range->kea_pool($pair), '10.0.0.10 - 10.0.0.20', 'Kea pool uses JSON pool syntax' );
 
+my $padded_pair = xCAT::DHCP::Range->parse(" \t10.0.0.10-10.0.0.20\r\n");
+is( $padded_pair->{source}, '10.0.0.10-10.0.0.20', 'surrounding range whitespace is removed' );
+
 is_deeply(
     [ xCAT::DHCP::Range->isc_ranges('10.0.0.10,10.0.0.20;10.0.1.10 10.0.1.20') ],
     [ '10.0.0.10 10.0.0.20', '10.0.1.10 10.0.1.20' ],

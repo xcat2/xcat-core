@@ -6,6 +6,7 @@ use warnings;
 use Math::BigInt;
 use Socket;
 use xCAT::NetworkUtils qw/getipaddr/;
+use xCAT::StringUtils qw(trim);
 
 sub parse_dynamic_ranges {
     my ( $class, $ranges ) = @_;
@@ -25,7 +26,7 @@ sub parse {
     my ( $class, $range ) = @_;
 
     return unless defined($range);
-    $range =~ s/^\s+|\s+$//g;
+    $range = trim($range);
     return unless $range ne '';
 
     if ( $range =~ m{/} ) {

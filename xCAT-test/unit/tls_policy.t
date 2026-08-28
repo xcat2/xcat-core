@@ -60,6 +60,12 @@ is(scalar @modern_override, 0, 'modern explicit override does not warn');
 my @modern_override_tlsv11 = tls_setting_warnings({ xcatsslversion => 'SSLv23:!SSLv2:!SSLv3:!TLSv1:!TLSv11' });
 is(scalar @modern_override_tlsv11, 0, 'modern explicit override accepts TLSv11 spelling');
 
+my @spaced_disabled_protocol = tls_setting_warnings({ xcatsslversion => 'SSLv23: !SSLv2:!SSLv3:!TLSv1:!TLSv1_1' });
+is(scalar @spaced_disabled_protocol, 0, 'disabled protocol selectors tolerate surrounding whitespace');
+
+my @spaced_enabled_protocol = tls_setting_warnings({ xcatsslversion => 'TLSv12: TLSv1' });
+like($spaced_enabled_protocol[0], qr/deprecated protocols/, 'enabled protocol selectors tolerate surrounding whitespace');
+
 my @old_cipher = tls_setting_warnings({ xcatsslciphers => '3DES' });
 like($old_cipher[0], qr/legacy cipher/, 'legacy cipher selector produces a warning');
 
@@ -71,5 +77,8 @@ like($openssl_3des_cipher[0], qr/legacy cipher/, 'OpenSSL 3DES cipher name produ
 
 my @disabled_old_cipher = tls_setting_warnings({ xcatsslciphers => 'HIGH:!RC4:!3DES:!LOW:!EXP:!EXPORT' });
 is(scalar @disabled_old_cipher, 0, 'disabled legacy cipher selectors do not warn');
+
+my @spaced_old_cipher = tls_setting_warnings({ xcatsslciphers => 'HIGH: 3DES' });
+like($spaced_old_cipher[0], qr/legacy cipher/, 'cipher selectors tolerate surrounding whitespace');
 
 done_testing();

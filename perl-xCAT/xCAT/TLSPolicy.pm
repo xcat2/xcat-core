@@ -5,6 +5,7 @@ use strict;
 use warnings;
 
 use Exporter qw(import);
+use xCAT::StringUtils qw(trim);
 
 our @EXPORT_OK = qw(
   MODERN_TLS_VERSION
@@ -23,14 +24,12 @@ sub _site_value {
 
     return '' unless $site && defined $site->{$key};
 
-    my $value = $site->{$key};
-    $value =~ s/^\s+|\s+$//g;
-    return $value;
+    return trim($site->{$key});
 }
 
 sub _normalize_policy {
     my $policy = shift || '';
-    $policy =~ s/^\s+|\s+$//g;
+    $policy = trim($policy);
     return lc($policy);
 }
 
@@ -71,7 +70,7 @@ sub _enabled_protocols {
     my %enabled;
 
     foreach my $token (split /:/, $ssl_version) {
-        $token =~ s/^\s+|\s+$//g;
+        $token = trim($token);
         next if $token eq '';
         next if $token =~ /^!/;
         $enabled{lc($token)} = 1;
@@ -84,7 +83,7 @@ sub _explicitly_disables {
     my ($ssl_version, $protocol) = @_;
 
     foreach my $token (split /:/, ($ssl_version || '')) {
-        $token =~ s/^\s+|\s+$//g;
+        $token = trim($token);
         return 1 if lc($token) eq '!' . lc($protocol);
     }
 
@@ -111,7 +110,7 @@ sub _deprecated_cipher_enabled {
     my $ciphers = shift || '';
 
     foreach my $token (split /:/, $ciphers) {
-        $token =~ s/^\s+|\s+$//g;
+        $token = trim($token);
         next if $token eq '' || $token =~ /^!/;
         return 1 if $token =~ /(?:^|[+_-])(?:3DES|DES-CBC3|RC4)(?:$|[+_-])/i;
         return 1 if $token =~ /^(?:LOW|EXP|EXPORT)$/i;

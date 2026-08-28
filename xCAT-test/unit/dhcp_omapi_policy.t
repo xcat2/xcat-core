@@ -187,8 +187,8 @@ ok( !$explicit_md5->{needs_omshell_key_algorithm},
 
 my $sha512 = omapi_settings(
     dhcpomapialgorithm => ' HMAC-SHA512 ',
-    dhcpomapikeyname   => 'external.key-name',
-    dhcpomshellpath    => '/opt/dhcp/bin/omshell',
+    dhcpomapikeyname   => ' external.key-name ',
+    dhcpomshellpath    => ' /opt/dhcp/bin/omshell ',
 );
 is( $sha512->{algorithm},   'hmac-sha512',    'algorithm is canonicalized' );
 is( $sha512->{key_rr_type}, 165,              'SHA512 KEY RR type is mapped' );
