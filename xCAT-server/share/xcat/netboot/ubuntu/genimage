@@ -744,13 +744,13 @@ if (-e "$rootimg_dir/boot/vmlinux-$kernelver") {
 }
 
 # Load driver update disk, and copy them to the root image
+my @dd_drivers = &load_dd();
 @ndrivers = imgutils::resolve_mellanox_default_net_drivers(
     $rootimg_dir,
     $kernelver,
     \@ndrivers,
     @default_ndrivers,
 );
-my @dd_drivers = &load_dd();
 
 # Push the drivers into the @ndrivers base on the order
 my @new_order = ();

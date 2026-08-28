@@ -301,9 +301,12 @@ sub resolve_mellanox_default_net_drivers {
     my ( $rootimg_dir, $kernelver, $requested_drivers, @default_drivers ) = @_;
     my @drivers;
     my %seen;
-    my $has_mellanox_drivers = grep {
+    my $has_mellanox_defaults = grep {
         _kernel_module_name($_) =~ /^mlx(?:_en|4_en|5_core)$/x
-    } (@{$requested_drivers}, @default_drivers);
+    } @default_drivers;
+    my $has_mellanox_drivers = $has_mellanox_defaults || grep {
+        _kernel_module_name($_) =~ /^mlx(?:_en|4_en|5_core)$/x
+    } @{$requested_drivers};
     if (!$has_mellanox_drivers) {
         return grep { !$seen{$_}++ } (@{$requested_drivers}, @default_drivers);
     }
@@ -311,7 +314,7 @@ sub resolve_mellanox_default_net_drivers {
     my %available = target_kernel_module_availability(
         $rootimg_dir,
         $kernelver,
-        qw(mlx_en mlx4_en mlx5_core),
+        qw(mlx_en mlx4_en mlx5_core mlx4_ib mlx5_ib ib_ipoib),
     );
 
     # Keep unavailable explicit requests, except for the historical mlx4 alias.
@@ -337,6 +340,14 @@ sub resolve_mellanox_default_net_drivers {
             next if !$available{$name};
         }
         push @drivers, $driver;
+    }
+
+    if ($has_mellanox_defaults) {
+        my @mellanox_ib_drivers = grep { $available{$_} } qw(mlx4_ib mlx5_ib);
+        push @drivers, map { "$_.ko" } @mellanox_ib_drivers;
+        if (@mellanox_ib_drivers && $available{'ib_ipoib'}) {
+            push @drivers, 'ib_ipoib.ko';
+        }
     }
 
     return grep { !$seen{$_}++ } @drivers;
