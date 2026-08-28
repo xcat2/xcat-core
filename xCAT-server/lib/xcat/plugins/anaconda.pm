@@ -56,6 +56,34 @@ sub _oracle_linux_distname
 }
 
 
+sub _centos_linux_distname
+{
+    my ($desc, $mntpath) = @_;
+
+    return unless defined($desc) and $desc =~ /CentOS Linux (.*)/;
+
+    my $version = $1;
+    my ($major) = $version =~ /^(\d+)/;
+
+    if (defined($major)
+        and defined($mntpath)
+        and opendir(my $pkgdir, "$mntpath/BaseOS/Packages"))
+    {
+        my %candidate;
+        foreach my $rpm (readdir($pkgdir)) {
+            $candidate{$1} = 1
+              if $rpm =~ /^centos(?:-linux)?-release-(\Q$major\E\.\d+)-.+\.rpm$/;
+        }
+        closedir($pkgdir);
+
+        my @minor = keys %candidate;
+        $version = $minor[0] if scalar(@minor) == 1;
+    }
+
+    return "centos$version";
+}
+
+
 sub handled_commands
 {
     return {
@@ -2115,8 +2143,8 @@ sub copycd
         {
             $distname = $xCAT::data::discinfo::distnames{$did};
         }
-    } elsif ($desc and $desc =~ /CentOS Linux (.*)/) {
-          $distname = "centos" . $1;
+    } elsif (my $centos_distname = _centos_linux_distname($desc, $mntpath)) {
+          $distname = $centos_distname;
     } elsif ($desc and $desc =~ /CentOS Stream (.*)/) {
           $distname = "centos-stream" . $1;
     } elsif ($desc and $desc =~ /Rocky Linux (.*)/) {
