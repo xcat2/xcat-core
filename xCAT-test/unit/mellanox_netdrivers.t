@@ -34,6 +34,21 @@ my @cases = (
     [ 'ubuntu', 's390x', [qw(qdio ccwgroup)] ],
 );
 
+foreach my $family (qw(rh sles ubuntu)) {
+    my $source = read_text(repo_path(
+        "xCAT-server/share/xcat/netboot/$family/genimage",
+    ));
+    my $load_dd = index($source, 'my @dd_drivers = &load_dd();');
+    my $resolve = index(
+        $source,
+        '@ndrivers = imgutils::resolve_mellanox_default_net_drivers(',
+    );
+    ok(
+        $load_dd >= 0 && $resolve > $load_dd,
+        "$family resolves Mellanox defaults after installing driver updates",
+    );
+}
+
 foreach my $case (@cases) {
     my ( $family, $arch, $expected ) = @{$case};
     is_deeply(
@@ -87,6 +102,124 @@ sub create_target_kernel {
         ) ],
         [qw(e1000.ko tg3.ko mlx5_core.ko)],
         'an EL10-like target uses mlx5_core without stale mlx_en or mlx4_en',
+    );
+}
+
+{
+    my @doca_modules = (
+        'updates/dkms/mlx5_core.ko.zst',
+        'updates/dkms/mlx5_ib.ko.zst',
+        'updates/dkms/ib_ipoib.ko.zst',
+    );
+    my ( $root, $kernelver ) = create_target_kernel(
+        files        => \@doca_modules,
+        dependencies => \@doca_modules,
+    );
+    is_deeply(
+        [ imgutils::resolve_mellanox_default_net_drivers(
+            $root,
+            $kernelver,
+            [],
+            qw(mlx_en.ko mlx5_core.ko),
+        ) ],
+        [qw(mlx5_core.ko mlx5_ib.ko ib_ipoib.ko)],
+        'a DOCA-OFED target includes the available mlx5 InfiniBand and IPoIB modules',
+    );
+}
+
+{
+    my @mlx4_modules = (
+        'kernel/drivers/net/ethernet/mellanox/mlx4/mlx4_en.ko.xz',
+        'kernel/drivers/infiniband/hw/mlx4/mlx4_ib.ko.xz',
+        'kernel/drivers/infiniband/ulp/ipoib/ib_ipoib.ko.xz',
+    );
+    my ( $root, $kernelver ) = create_target_kernel(
+        files        => \@mlx4_modules,
+        dependencies => \@mlx4_modules,
+    );
+    is_deeply(
+        [ imgutils::resolve_mellanox_default_net_drivers(
+            $root, $kernelver, [], qw(mlx_en.ko),
+        ) ],
+        [qw(mlx4_en.ko mlx4_ib.ko ib_ipoib.ko)],
+        'an older mlx4 target includes its available InfiniBand and IPoIB modules',
+    );
+}
+
+{
+    my @modules = (
+        'kernel/drivers/net/ethernet/mellanox/mlx5/core/mlx5_core.ko.xz',
+        'kernel/drivers/infiniband/ulp/ipoib/ib_ipoib.ko.xz',
+    );
+    my ( $root, $kernelver ) = create_target_kernel(
+        files        => \@modules,
+        dependencies => \@modules,
+    );
+    is_deeply(
+        [ imgutils::resolve_mellanox_default_net_drivers(
+            $root, $kernelver, [], qw(mlx5_core.ko),
+        ) ],
+        [qw(mlx5_core.ko)],
+        'IPoIB is not added without an available Mellanox InfiniBand driver',
+    );
+}
+
+{
+    my @modules = (
+        'updates/dkms/mlx5_core.ko.zst',
+        'updates/dkms/mlx5_ib.ko.zst',
+        'updates/dkms/ib_ipoib.ko.zst',
+    );
+    my ( $root, $kernelver ) = create_target_kernel(
+        files        => \@modules,
+        dependencies => \@modules,
+    );
+    is_deeply(
+        [ imgutils::resolve_mellanox_default_net_drivers(
+            $root,
+            $kernelver,
+            [qw(mlx5_ib.ko ib_ipoib.ko)],
+            qw(mlx5_core.ko),
+        ) ],
+        [qw(mlx5_ib.ko ib_ipoib.ko mlx5_core.ko)],
+        'explicit and optional InfiniBand drivers are deduplicated',
+    );
+}
+
+{
+    my @modules = (
+        'updates/dkms/mlx5_core.ko.zst',
+        'updates/dkms/mlx5_ib.ko.zst',
+        'updates/dkms/ib_ipoib.ko.zst',
+    );
+    my ( $root, $kernelver ) = create_target_kernel(
+        files        => \@modules,
+        dependencies => \@modules,
+    );
+    is_deeply(
+        [ imgutils::resolve_mellanox_default_net_drivers(
+            $root, $kernelver, [qw(mlx5_core.ko)],
+        ) ],
+        [qw(mlx5_core.ko)],
+        'an explicit Mellanox request does not enable optional InfiniBand defaults',
+    );
+}
+
+{
+    my @modules = (
+        'updates/mlnx-ofed/mlx4_ib.ko.zst',
+        'updates/mlnx-ofed/ib_ipoib.ko.zst',
+    );
+    my ( $root, $kernelver ) = create_target_kernel(
+        files        => \@modules,
+        dependencies => \@modules,
+    );
+    is_deeply(
+        [ imgutils::resolve_mellanox_default_net_drivers(
+            $root, $kernelver, [], qw(mlx_en.ko),
+        ) ],
+        [qw(mlx4_ib.ko ib_ipoib.ko)],
+        'an InfiniBand-only OFED stack does not require an Ethernet frontend',
     );
 }
 
