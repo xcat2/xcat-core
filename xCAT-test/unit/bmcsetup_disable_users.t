@@ -3,11 +3,15 @@ use strict;
 use warnings;
 
 use File::Path qw(make_path);
+use File::Slurper qw(read_lines write_text);
 use File::Temp qw(tempdir);
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 use Test::More;
 
-my $bmcsetup = "$FindBin::Bin/../../xCAT-genesis-scripts/usr/bin/bmcsetup";
+use XCAT::Test::File qw(repo_path);
+
+my $bmcsetup = repo_path('xCAT-genesis-scripts/usr/bin/bmcsetup');
 plan skip_all => 'bmcsetup script not found' unless -x $bmcsetup;
 
 my $ipmicfg = '/tmp/ipmicfg.xml';
@@ -105,7 +109,7 @@ EOF
 );
 
 my $user_list = "$tmpdir/user-list.txt";
-write_file(
+write_text(
     $user_list,
     <<'EOF'
 ID  Name             Callin  Link Auth  IPMI Msg   Channel Priv Limit
@@ -130,10 +134,10 @@ my $rc = $? >> 8;
 is($rc, 0, 'bmcsetup exits successfully with stubbed IPMI commands')
   or diag($output);
 
-my @disabled = read_lines($disable_log);
+my @disabled = -e $disable_log ? read_lines($disable_log) : ();
 is_deeply(\@disabled, ['4'], 'bmcsetup disables only enabled non-target user slots');
 
-my @calls = read_lines($call_log);
+my @calls = -e $call_log ? read_lines($call_log) : ();
 ok(
     !grep({ /user disable (1|3|5)\b/ } @calls),
     'bmcsetup does not retry user disable for slots that are already disabled'
@@ -143,23 +147,6 @@ done_testing();
 
 sub write_executable {
     my ($path, $content) = @_;
-    write_file($path, $content);
+    write_text($path, $content);
     chmod 0755, $path or die "chmod $path: $!";
-}
-
-sub write_file {
-    my ($path, $content) = @_;
-    open(my $fh, '>', $path) or die "open $path: $!";
-    print {$fh} $content;
-    close($fh) or die "close $path: $!";
-}
-
-sub read_lines {
-    my ($path) = @_;
-    return () unless -e $path;
-    open(my $fh, '<', $path) or die "open $path: $!";
-    my @lines = <$fh>;
-    close($fh) or die "close $path: $!";
-    chomp @lines;
-    return @lines;
 }

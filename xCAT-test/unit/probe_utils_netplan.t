@@ -5,6 +5,7 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../../xCAT-probe/lib/perl";
 
+use File::Slurper qw(write_text);
 use File::Temp qw(tempdir);
 use Test::More;
 
@@ -36,18 +37,10 @@ my %netplan = (
     ok(probe_utils::_netplan_has_static_ip('bond0.123', '10.0.123.5'), 'dotted VLAN interface is escaped for netplan get');
 }
 
-sub write_file {
-    my ($file, $contents) = @_;
-
-    open(my $fh, '>', $file) or die "Unable to write $file: $!";
-    print $fh $contents;
-    close $fh;
-}
-
 my $networkd_dir = tempdir(CLEANUP => 1);
 my $fake_bin = tempdir(CLEANUP => 1);
 
-write_file("$networkd_dir/10-netplan-eth2.network", <<'EOF');
+write_text("$networkd_dir/10-netplan-eth2.network", <<'EOF');
 [Match]
 Name=eth2
 
@@ -55,7 +48,7 @@ Name=eth2
 Address=10.0.2.5/24
 EOF
 
-write_file("$networkd_dir/10-netplan-eth3.network", <<'EOF');
+write_text("$networkd_dir/10-netplan-eth3.network", <<'EOF');
 [Match]
 Name=eth3
 
@@ -64,7 +57,7 @@ Address=10.0.3.5/24
 DHCP=ipv4
 EOF
 
-write_file("$networkd_dir/10-netplan-eth20.network", <<'EOF');
+write_text("$networkd_dir/10-netplan-eth20.network", <<'EOF');
 [Match]
 Name=eth20
 
@@ -73,7 +66,7 @@ Address=10.0.20.5/24
 EOF
 
 my $fake_netplan = "$fake_bin/netplan";
-write_file($fake_netplan, <<'EOF');
+write_text($fake_netplan, <<'EOF');
 #!/bin/sh
 echo "netplan get is not supported" >&2
 exit 1

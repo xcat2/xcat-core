@@ -4,12 +4,15 @@ use warnings;
 
 use File::Copy qw(copy);
 use File::Path qw(make_path);
+use File::Slurper qw(write_text);
 use File::Spec;
 use File::Temp qw(tempdir);
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 use Test::More;
 
-my $repo_root = File::Spec->rel2abs(File::Spec->catdir($FindBin::Bin, '..', '..'));
+use XCAT::Test::File qw(repo_path slurp_repo_file);
+
 my @helpers = qw(
     GlobalDef.pm
     NetworkUtils.pm
@@ -22,9 +25,9 @@ my @affected_subcommands = qw(
     xcatmn
 );
 
-my $builder = read_file('buildrpms.pl');
-my $rpm_spec = read_file('xCAT-probe/xCAT-probe.spec');
-my $debian_control = read_file('xCAT-probe/debian/control');
+my $builder = slurp_repo_file('buildrpms.pl');
+my $rpm_spec = slurp_repo_file('xCAT-probe/xCAT-probe.spec');
+my $debian_control = slurp_repo_file('xCAT-probe/debian/control');
 like($builder, qr/sub prepare_xcat_probe_source_tar\b/, 'RPM builder has dedicated xCAT-probe source preparation');
 like(
     $builder,
@@ -59,7 +62,7 @@ like(
 );
 
 for my $helper (@helpers) {
-    my $source = File::Spec->catfile($repo_root, 'perl-xCAT', 'xCAT', $helper);
+    my $source = repo_path(File::Spec->catfile('perl-xCAT', 'xCAT', $helper));
     ok(-f $source, "$helper source exists");
     like($builder, qr/^\s*\Q$helper\E\s*$/m, "RPM builder stages $helper");
 }
@@ -72,24 +75,24 @@ my $subcmd_dir = File::Spec->catdir($probe_root, 'subcmds');
 my $helper_dir = File::Spec->catdir($probe_root, 'lib', 'perl', 'xCAT');
 
 make_path($probe_root, $bin_dir);
-copy_tree(File::Spec->catdir($repo_root, 'xCAT-probe', 'lib'), File::Spec->catdir($probe_root, 'lib'));
-copy_tree(File::Spec->catdir($repo_root, 'xCAT-probe', 'subcmds'), $subcmd_dir);
+copy_tree(repo_path(File::Spec->catdir('xCAT-probe', 'lib')), File::Spec->catdir($probe_root, 'lib'));
+copy_tree(repo_path(File::Spec->catdir('xCAT-probe', 'subcmds')), $subcmd_dir);
 
-my $xcatprobe_source = File::Spec->catfile($repo_root, 'xCAT-probe', 'xcatprobe');
+my $xcatprobe_source = repo_path(File::Spec->catfile('xCAT-probe', 'xcatprobe'));
 my $xcatprobe = File::Spec->catfile($bin_dir, 'xcatprobe');
 copy($xcatprobe_source, $xcatprobe) or die "copy $xcatprobe_source: $!";
 chmod 0755, $xcatprobe or die "chmod $xcatprobe: $!";
 
 make_path($helper_dir, File::Spec->catdir($subcmd_dir, 'bin'));
 for my $helper (@helpers) {
-    my $source = File::Spec->catfile($repo_root, 'perl-xCAT', 'xCAT', $helper);
+    my $source = repo_path(File::Spec->catfile('perl-xCAT', 'xCAT', $helper));
     my $destination = File::Spec->catfile($helper_dir, $helper);
     copy($source, $destination) or die "copy $source: $!";
     chmod 0644, $destination or die "chmod $destination: $!";
 }
 
 my $xcatclient = File::Spec->catfile($bin_dir, 'xcatclient');
-write_file($xcatclient, "#!/bin/sh\nprintf '[ok]:dummy xcatclient\\n'\n");
+write_text($xcatclient, "#!/bin/sh\nprintf '[ok]:dummy xcatclient\\n'\n");
 chmod 0755, $xcatclient or die "chmod $xcatclient: $!";
 
 local $ENV{XCATROOT} = $xcatroot;
@@ -117,16 +120,6 @@ for my $subcommand (@affected_subcommands) {
 
 done_testing();
 
-sub read_file {
-    my ($file) = @_;
-    my $path = File::Spec->catfile($repo_root, $file);
-
-    open(my $fh, '<', $path) or die "open $path: $!";
-    my $contents = do { local $/; <$fh> };
-    close($fh) or die "close $path: $!";
-    return $contents;
-}
-
 sub copy_tree {
     my ($source, $destination) = @_;
     my $rc = system('cp', '-R', $source, $destination);
@@ -140,11 +133,4 @@ sub run_command {
     my $output = do { local $/; <$fh> };
     close($fh);
     return ($? >> 8, $output // '');
-}
-
-sub write_file {
-    my ($path, $contents) = @_;
-    open(my $fh, '>', $path) or die "open $path: $!";
-    print {$fh} $contents;
-    close($fh) or die "close $path: $!";
 }
