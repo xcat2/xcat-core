@@ -83,6 +83,16 @@ foreach my $case (@untouched) {
     is($postboot, $DEFERRED, 'an undefined postbootscripts list becomes the deferral block');
 }
 
+# A node that already lists syncfiles as its own postbootscript keeps that entry, and does not
+# gain a second one -- the install-time copy is still removed, since that is the one that cannot work.
+{
+    my ($post, $postboot) =
+      defer('ubuntu24.04', 'install', 'install', "syncfiles\nfoo\n", "syncfiles\nsetupntp\n");
+    is($post, "foo\n", 'the postscripts entry is still removed');
+    is($postboot, "syncfiles\nsetupntp\n",
+        "an admin's own syncfiles postbootscript is left as it was, not duplicated");
+}
+
 # Rendering the same node twice must not stack a second copy.
 {
     my ($post, $postboot) =

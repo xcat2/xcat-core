@@ -214,6 +214,11 @@ sub defer_syncfiles_to_postboot {
       unless defined($postscripts) && $postscripts =~ s/^[ \t]*syncfiles[ \t]*\n//m;
 
     $postbootscripts = "" unless defined $postbootscripts;
+
+    # A node may already list syncfiles as a postbootscript of its own; do not add a second copy.
+    return ($postscripts, $postbootscripts)
+      if $postbootscripts =~ /^[ \t]*syncfiles[ \t]*$/m;
+
     $postbootscripts =
         "# ubuntu-deferred-postbootscripts-start-here\nsyncfiles\n# ubuntu-deferred-postbootscripts-end-here\n"
       . $postbootscripts;
