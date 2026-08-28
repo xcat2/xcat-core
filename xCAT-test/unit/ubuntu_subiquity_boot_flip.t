@@ -61,6 +61,7 @@ sub run_flip {
             for (1 .. $opt{listen}) {
                 my $c = $srv->accept() or last;
                 $c->autoflush(1);
+                if ($opt{mute}) { sleep 600; close $c; next }  # accept and hold, never answer
                 print {$c} "ready\n";
                 my $line = <$c>;
                 print {$seen} $line if defined $line;
@@ -75,7 +76,8 @@ sub run_flip {
 
     # The installer would hang here if the exchange ever blocked, so bound it.
     # the no-listener case prints "Connection refused" by design
-    my $rc = system("timeout 25 bash -c \Q$script\E 2>/dev/null");
+    my $cap = $opt{cap} || 25;
+    my $rc = system("timeout $cap bash -c \Q$script\E 2>/dev/null");
     my $timed_out = (($rc >> 8) == 124);
     if ($pid) { kill 'TERM', $pid; waitpid($pid, 0) }
 
@@ -112,6 +114,18 @@ sub run_flip {
     my $r = run_flip(listen => 1, no_ack => 1);
     like($r->{log}, qr/FAILED to flip/,
         'a connection without an acknowledgement counts as a failure, not a success');
+}
+
+# --- a monitor that accepts and never answers must not hang the install ----
+# The late-command runs inside Subiquity: a bare read on a socket that is open but silent blocks
+# forever and the install never finishes. #7759 fixes the monitor dying; this bounds the wait.
+{
+    # Five attempts, each bounded by two 10s reads plus the retry pause: ~2 minutes worst case.
+    my $r = run_flip(listen => 1, mute => 1, cap => 200);
+    ok(!$r->{timed_out},
+        'a monitor that accepts but never replies does not hang the late-command');
+    like($r->{log}, qr/FAILED to flip/,
+        'it is recorded as a failed flip rather than waiting indefinitely');
 }
 
 # --- the command retries rather than giving up on the first refusal --------

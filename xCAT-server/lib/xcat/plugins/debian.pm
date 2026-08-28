@@ -1032,7 +1032,15 @@ sub mkinstall {
             my $kcmdline = "nofb utf8 auto xcatd=" . $instserver;
 
             if (using_subiquity($os,$tmplfile)) {
-                my $nfsip = xCAT::NetworkUtils->getipaddr($instserver) || $instserver;
+                # Fail here rather than handing casper a name: klibc's nfsmount cannot resolve
+                # one, so the node would panic "can't parse IP address" at boot, on the node,
+                # with nothing said on the management node.
+                my $nfsip = xCAT::NetworkUtils->getipaddr($instserver);
+                unless ($nfsip) {
+                    xCAT::MsgUtils->report_node_error($callback, $node,
+                        "Could not resolve the install server '$instserver' to an address. The Ubuntu live installer mounts its root with klibc nfsmount, which cannot resolve names, so nfsroot must be an address.");
+                    next;
+                }
                 $kcmdline = subiquity_kcmdline($kcmdline, $nfsip, $pkgdir, $instserver, $httpport, $node);
             } else {
                 $kcmdline .= " url=http://${instserver}:$httpport/install/autoinst/$node";
