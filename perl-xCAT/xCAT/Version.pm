@@ -54,4 +54,34 @@ sub Version
 
 }
 
+#-------------------------------------------------------------------------------
+
+=head3   Release
+    Arguments:
+        Optional version string; defaults to Version();
+    Returns:
+        the release part of the version, without the build-specific
+        decoration the build stamps on, such as " (git commit <hash>)",
+        so two nodes at the same release built from different snapshots
+        compare equal.
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         $release=xCAT::Version->Release($someversion);
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub Release
+{
+    my $class = shift;
+    my $version = shift;
+    $version = $class->Version() unless defined $version;
+    $version =~ s/\s*\(.*//s;
+    return $version;
+}
+
 1;
