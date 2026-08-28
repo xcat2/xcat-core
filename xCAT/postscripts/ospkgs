@@ -25,6 +25,22 @@
 
 #set -x
 
+XCATPKGUTILS_LOADER="$(dirname "$0")/xcatpkgutils-loader.sh"
+if [ ! -r "$XCATPKGUTILS_LOADER" ]; then
+    printf 'Error: package utility loader is not readable: %s\n' "$XCATPKGUTILS_LOADER" >&2
+    unset XCATPKGUTILS_LOADER
+    exit 1
+fi
+# shellcheck source-path=SCRIPTDIR
+# shellcheck source=xcatpkgutils-loader.sh
+# shellcheck disable=SC1091
+if ! . "$XCATPKGUTILS_LOADER"; then
+    printf 'Error: package utilities could not be loaded through: %s\n' "$XCATPKGUTILS_LOADER" >&2
+    unset XCATPKGUTILS_LOADER
+    exit 1
+fi
+unset XCATPKGUTILS_LOADER
+
 if [ -n "$LOGLABEL" ]; then
     log_label=$LOGLABEL
 else
