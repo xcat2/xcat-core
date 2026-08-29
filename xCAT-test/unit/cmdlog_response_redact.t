@@ -14,6 +14,9 @@ use xCAT::xcatd;
 my $xcatd = repo_path('xCAT-server/sbin/xcatd');
 plan skip_all => 'xcatd not found' unless -r $xcatd;
 
+my $cmdlog_module = repo_path('xCAT-server/lib/perl/xCAT/CmdLog.pm');
+require xCAT::CmdLog if -r $cmdlog_module;
+
 my $src = slurp_repo_file('xCAT-server/sbin/xcatd');
 
 # Extract the three command-log response subs and load them. xcatd is present,
