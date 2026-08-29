@@ -107,6 +107,30 @@ provisioning scripts crawl recursively.
    download all files from these directories and depend on Apache directory
    listings to discover file paths.
 
+Local Customizations
+--------------------
+
+``xcat.conf`` belongs to the xCAT package. Keep site-specific rules in a
+separate file that Apache reads after it:
+
+* EL: ``/etc/httpd/conf.d/zz-xcat-local.conf``
+* SUSE: ``/etc/apache2/conf.d/zz-xcat-local.conf``
+
+Apache reads ``conf.d`` in alphabetical order, so the ``zz-`` prefix puts the
+file after ``xcat.conf`` and its directives take precedence. Use the relative
+form of ``Options`` (``+`` or ``-``): it adjusts the options inherited from the
+xCAT block, where the absolute form replaces all of them. For example, to allow
+browsing of one site directory::
+
+    # /etc/httpd/conf.d/zz-xcat-local.conf
+    <Directory "/install/custom/mypkgs">
+        Options +Indexes
+    </Directory>
+
+Editing ``xcat.conf`` in place still works: an upgrade keeps the modified file.
+If the packaged configuration changed too, the new version is written alongside
+it as ``xcat.conf.rpmnew`` and has to be merged by hand.
+
 Security Response Headers and Server Banner
 -------------------------------------------
 

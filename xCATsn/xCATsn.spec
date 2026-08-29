@@ -50,7 +50,6 @@ Conflicts: xCAT
 # on RHEL7, need to specify it explicitly
 Requires: net-tools
 Requires: /usr/bin/killall
-Requires: /usr/bin/bc
 # yaboot-xcat is pulled in so any SN can manage ppc nodes
 Requires: httpd nfs-utils nmap bind
 # DHCP backend resolved at INSTALL time (not build time) via an RPM rich
@@ -112,8 +111,15 @@ mkdir -p $RPM_BUILD_ROOT/etc/apache2/conf.d
 mkdir -p $RPM_BUILD_ROOT/etc/httpd/conf.d/
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/
 # cd -
+# Pick the Apache generation at build time.  Selecting it in the post scriptlet
+# instead rewrites a file rpm has already checksummed, defeating noreplace.
+%if 0%{?fedora} || 0%{?rhel} >= 7 || 0%{?suse_version} >= 1200
+cp %{SOURCE6} $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat.conf
+cp %{SOURCE6} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf
+%else
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat.conf
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf
+%endif
 cp %{SOURCE3} $RPM_BUILD_ROOT/etc/xCATSN
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat.conf.apach22
 cp %{SOURCE6} $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat.conf.apach24
@@ -141,6 +147,44 @@ rm templates.tar
 
 %endif
 
+%ifos linux
+# rpm fixes each config file's fate before %pre runs, so a migration there can
+# delete an active file rpm has already decided to leave as xcat.conf.rpmnew.
+# %pretrans runs before that decision.  It is Lua because a pre-transaction
+# scriptlet cannot rely on any dependency being unpacked yet.
+%pretrans -p <lua>
+-- Older packages shipped xcat.conf as ordinary payload and then rewrote it
+-- from conf.orig in %post, so rpm's recorded digest cannot tell a stock file
+-- from a customised one.  Compare against the outgoing package's templates,
+-- still on disk at this point, and drop only a file that still matches one.
+if arg[2] and tonumber(arg[2]) == 1 then return end
+
+local function contents(path)
+    local handle = io.open(path, "rb")
+    if not handle then return nil end
+    local data = handle:read("*a")
+    handle:close()
+    return data
+end
+
+local templates = { contents("/etc/xcat/conf.orig/xcat.conf.apach24"),
+                    contents("/etc/xcat/conf.orig/xcat.conf.apach22") }
+
+for _, active in ipairs({ "/etc/httpd/conf.d/xcat.conf",
+                          "/etc/apache2/conf.d/xcat.conf" }) do
+    -- A symlink or any other non-regular path is treated as locally managed.
+    if posix.stat(active, "type") == "regular" then
+        local current = contents(active)
+        for _, template in ipairs(templates) do
+            if current and current == template then
+                os.remove(active)
+                break
+            end
+        end
+    end
+end
+%endif
+
 %pre
 # only need to check on AIX
 %ifnos linux
@@ -155,25 +199,6 @@ fi
 
 %post
 %ifos linux
-#Apply the correct httpd/apache configuration file according to the httpd/apache version
-
-compare_version="2.4"
-version=`rpm -qi httpd 2>&1 | grep 'Version' | awk '$NF { print $3 }' | cut -d. -f1,2`
-if [ -n "$version" ]; then
-    if (( `bc <<< "$version >= $compare_version"` )); then
-        rm -rf /etc/httpd/conf.d/xcat.conf
-        cp /etc/xcat/conf.orig/xcat.conf.apach24 /etc/httpd/conf.d/xcat.conf
-    fi
-fi
-
-version=`rpm -qi apache2 2>&1 | grep '^Version' | awk '$NF { print $3 }' | cut -d. -f1,2`
-if [ -n "$version" ]; then
-    if (( `bc <<< "$version >= $compare_version"` )); then
-        rm -rf /etc/apache2/conf.d/xcat.conf
-        cp /etc/xcat/conf.orig/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf
-    fi
-fi
-
 # On SUSE apache2, mod_headers is not loaded by default; enable it so the
 # security response headers in xcat.conf take effect (a no-op where a2enmod
 # is absent, e.g. httpd on EL where mod_headers is already loaded).
@@ -293,8 +318,8 @@ fi
 %ifos linux
 /etc/xcat/conf.orig/xcat.conf.apach24
 /etc/xcat/conf.orig/xcat.conf.apach22
-/etc/httpd/conf.d/xcat.conf
-/etc/apache2/conf.d/xcat.conf
+%config(noreplace) /etc/httpd/conf.d/xcat.conf
+%config(noreplace) /etc/apache2/conf.d/xcat.conf
 /etc/xcat/logrotate.conf/
 /etc/xcat/rsyslog.conf/
 %endif
