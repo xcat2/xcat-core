@@ -167,6 +167,44 @@ mask2prefix() {
     echo "$nbits"
 }
 
+# Keep the legacy path for DOWN interfaces; ownership checks apply only to UP.
+secondary_nic_needs_dhcp() {
+    local nic="$1"
+    local tsmnic="$2"
+    local sys_class_net="$3"
+    local link_output
+    local address_output
+    local usb_vendor
+    local usb_product
+
+    link_output=$(ip -o link show dev "$nic") || return 1
+    case "$link_output" in
+        *'<UP,'*|*'<UP>'*|*',UP,'*|*',UP>'*) ;;
+        *) return 0 ;;
+    esac
+
+    [ "$nic" = "$tsmnic" ] && return 1
+    [ -e "$sys_class_net/$nic/device" ] || return 1
+
+    # Exclude the management USB devices configured by the bundled udev rules.
+    if [ -r "$sys_class_net/$nic/device/../idVendor" ] &&
+       [ -r "$sys_class_net/$nic/device/../idProduct" ]; then
+        read -r usb_vendor < "$sys_class_net/$nic/device/../idVendor"
+        read -r usb_product < "$sys_class_net/$nic/device/../idProduct"
+        case "$usb_vendor:$usb_product" in
+            046b:ffb0|04b3:4010) return 1 ;;
+        esac
+    fi
+
+    [ ! -e "$sys_class_net/$nic/master" ] || return 1
+
+    address_output=$(ip -o addr show dev "$nic") || return 1
+    if printf '%s\n' "$address_output" | grep -v 'scope link' | grep -q ' inet'; then
+        return 1
+    fi
+    return 0
+}
+
 # see if they specified static ip info, otherwise use dhcp
 XCATPORT=3001
 for parm in `cat /proc/cmdline`; do
@@ -257,7 +295,14 @@ else
 	    #chances that we'll perform a partial discovery
 	    #in other scenarios where downed non-bootnics cause issues, will rely on retries to fix things up
 	    dhclient -6 -pf /var/run/dhclient6.$bootnic.pid $bootnic -lf /var/lib/dhclient/dhclient6.leases &
-	    NICSTOBRINGUP=`ip link|grep mtu|grep -v LOOPBACK|grep -v $bootnic|grep -v usb|grep -v ,UP|awk -F: '{print $2}'`
+	    NICCANDIDATES=`ip link|grep mtu|grep -v LOOPBACK|grep -v $bootnic|grep -v usb|awk -F: '{print $2}'`
+	    TSMNIC=$(cat /tmp/tsmhostnic 2>/dev/null)
+	    NICSTOBRINGUP=
+	    for nic in $NICCANDIDATES; do
+		[ "$nic" = "$bootnic" ] && continue
+		secondary_nic_needs_dhcp "$nic" "$TSMNIC" /sys/class/net || continue
+		NICSTOBRINGUP="${NICSTOBRINGUP:+$NICSTOBRINGUP }$nic"
+	    done
 	    export NICSTOBRINGUP
 	    for nic in $NICSTOBRINGUP; do
 		(while ! ethtool $nic | grep Link\ detected|grep yes > /dev/null && [ ! -f /tmp/netinitted ]; do sleep 5; done; dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$nic.pid $nic ) &
