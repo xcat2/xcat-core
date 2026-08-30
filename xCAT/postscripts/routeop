@@ -267,7 +267,11 @@ redhat_uses_nmcli_routes()
     [ "$OS_name" = "redhat" ] || return 1
     command -v nmcli >/dev/null 2>&1 || return 1
 
-    if [[ "$OSVER" =~ ^(rhel|rhels|alma|almalinux|rocky|centos|ol)(9|1[0-9]) ]]; then
+    if command -v xcat_is_el9_or_later >/dev/null 2>&1; then
+        if xcat_is_el9_or_later "$OSVER"; then
+            return 0
+        fi
+    elif [[ "$OSVER" =~ ^(rhel|rhels|alma|almalinux|rocky|centos|ol)(9|1[0-9]) ]]; then
         return 0
     fi
 

@@ -17,6 +17,12 @@ function hashget(){
     eval echo "\$${str_hashname}"
 }
 
+# Match the OSVER forms currently used by EL9+ postscript paths.
+xcat_is_el9_or_later()
+{
+    [[ "$1" =~ ^(rhel|rhels|alma|almalinux|rocky|centos|ol)(9|1[0-9]) ]]
+}
+
 function debianpreconf(){
     #create the config sub dir
     if [ ! -d "/etc/network/interfaces.d" ];then
