@@ -910,11 +910,7 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
 	fi
 else
     #check if yum or dnf is installed
-    if [ -x /usr/bin/dnf ]; then
-	yumcmd="dnf"
-    elif [ -x /usr/bin/yum ]; then
-	yumcmd="yum"
-    else
+    if ! yumcmd=$(xcat_find_rpm_package_manager); then
 	echo "Please install yum or dnf on $NODE."
 	exit 1;
     fi
