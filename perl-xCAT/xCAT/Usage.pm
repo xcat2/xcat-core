@@ -415,6 +415,8 @@ my %usage = (
 	rflash <noderange> -p <rpm_directory> [--activate {disruptive|deferred}] [-d <data_directory>]
 	rflash <noderange> [--commit | --recover]
         rflash <noderange> [--bpa_acdl]
+    NeXtScale FPC specific:
+        rflash <noderange> http://<server>/path/to/update.rom
     OpenPOWER BMC specific (using IPMI):
         rflash <noderange> [<hpm_file_path>|-d <data_directory>] [-c|--check] [--retry=<count>]
         rflash <noderange> --recover <bmc_file_path>
