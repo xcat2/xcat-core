@@ -1277,9 +1277,13 @@ sub check_policy {
 
     my $policies = $policytable->getAllEntries;
     $policytable->close;
+    my %principal_matches;
     foreach my $rule (@$policies) {
-        if ($rule->{name} &&
-            (($rule->{name} eq "*") || ($rule->{name} eq $userid))) {
+        if ($rule->{name}) {
+            $principal_matches{ $rule->{name} } =
+              xCAT::Utils->user_matches_policy_name($userid, $rule->{name})
+              unless exists($principal_matches{ $rule->{name} });
+            next unless ($rule->{name} eq "*" || $principal_matches{ $rule->{name} });
             if ($rule->{commands}) {
                 if (($rule->{commands} eq "") || ($rule->{commands} eq "*") || ($rule->{commands} =~ /$xcatcmd/)) {
                     return 0;    # match found

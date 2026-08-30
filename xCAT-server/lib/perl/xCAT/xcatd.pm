@@ -90,7 +90,7 @@ sub validate {
     # check to see if peerhost is trusted
     foreach $rule (@sortedpolicies) {
 
-        if (($rule->{name} and $rule->{name} eq $peername) && ($rule->{rule} =~ /trusted/i)) {
+        if (($rule->{name} and $rule->{name} !~ /\A%/x and $rule->{name} eq $peername) && ($rule->{rule} =~ /trusted/i)) {
             $peerstatus = "Trusted";
             last;
         }
@@ -108,11 +108,16 @@ sub validate {
         }
     }
 
+    my %principal_matches;
+
   RULE: foreach $rule (@sortedpolicies) {
         if ($rule->{name} and $rule->{name} ne '*') {
 
             #TODO: more complex matching (lists, wildcards)
-            next unless ($peername and $peername eq $rule->{name});
+            $principal_matches{ $rule->{name} } =
+              xCAT::Utils->user_matches_policy_name($peername, $rule->{name})
+              unless exists($principal_matches{ $rule->{name} });
+            next unless $principal_matches{ $rule->{name} };
         }
         if ($rule->{name} and $rule->{name} eq '*') { #a name is required, but can be any name whatsoever....
             next unless ($peername);
