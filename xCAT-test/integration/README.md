@@ -27,10 +27,10 @@ against it.
 Note the `-I` flags: unlike the unit tests these run from the installed location, so
 they pick up xCAT modules from `/opt/xcat/lib/perl` rather than from a source tree.
 
-The case checks `rc==0` and `output=~Files=3`. The second assertion is there because
+The case checks `rc==0` and `output=~Files=4`. The second assertion is there because
 `prove` exits 0 both when tests pass and when they all skip, so `rc==0` alone would let
-the case report green having run nothing. Matching `Files=3` proves `prove` actually
-found all three files, which catches a packaging regression or a file being renamed
+the case report green having run nothing. Matching `Files=4` proves `prove` actually
+found all four files, which catches a packaging regression or a file being renamed
 without the count being updated here. **Add to that number when you add a test.** A
 missing directory is already caught by `rc==0` -- `prove -r` on a path that does not
 exist exits 2.
