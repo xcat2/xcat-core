@@ -680,7 +680,7 @@ sub mknetboot
         }
 
         my $imgsrvip;
-        unless($imgsrv eq '!myipfn!' or xCAT::NetworkUtils->validate_ip($imgsrv)==0){
+        unless ($imgsrv eq '!myipfn!' or xCAT::NetworkUtils->isValidIp($imgsrv)) {
             # if imgsrv is hostname, convert it to ip address
             # the host name might not be resolved inside initrd
             $imgsrvip = xCAT::NetworkUtils->getipaddr($imgsrv);
@@ -690,7 +690,7 @@ sub mknetboot
         }
 
         my $xcatmasterip;
-        if (xCAT::NetworkUtils->validate_ip($xcatmaster)) {
+        unless (xCAT::NetworkUtils->isValidIp($xcatmaster)) {
             # if xcatmaster is hostname, convert it to ip address
             # the host name might not be resolved inside initrd
             $xcatmasterip = xCAT::NetworkUtils->getipaddr($xcatmaster);
