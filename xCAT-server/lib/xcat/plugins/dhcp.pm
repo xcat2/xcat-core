@@ -154,6 +154,24 @@ sub ipIsDynamic {
     return 0;          #it isn't in any of the dynamic ranges we are aware of
 }
 
+sub _reject_dynamic_node_ip
+{
+    my ( $node, $ip, $family, $cb ) = @_;
+
+    return 0 unless ipIsDynamic($ip);
+
+    my $address = $family eq 'IPv6' ? 'IPv6 address' : 'IP';
+    $cb->(
+        {
+            error => [
+                "Node $node has $address $ip which is inside the DHCP dynamic range. Move the node IP outside the dynamic range or adjust the range in the networks table."
+              ],
+            errorcode => [1]
+        }
+    );
+    return 1;
+}
+
 sub handled_commands
 {
     return { makedhcp => "dhcp", };
@@ -588,8 +606,7 @@ sub addnode6 {
     $uuid =~ s/:\z//;
     $uuid =~ s/^/00:04:/;
     my $ip = getipaddr($node);
-    if ($ip and $ip =~ /:/ and ipIsDynamic($ip)) {
-        $callback->({ error => ["Node $node has IPv6 address $ip which is inside the DHCP dynamic range. Move the node IP outside the dynamic range or adjust the range in the networks table."], errorcode => [1] });
+    if ( $ip and $ip =~ /:/ and _reject_dynamic_node_ip( $node, $ip, 'IPv6', $callback ) ) {
         return;
     }
     if ($ip and $ip =~ /:/) {
@@ -811,16 +828,8 @@ sub addnode
             );
         }
 
-        if ($ip and $ip ne 'DENIED' and ipIsDynamic($ip))
+        if ( $ip and $ip ne 'DENIED' and _reject_dynamic_node_ip( $node, $ip, 'IPv4', $callback ) )
         {
-            $callback->(
-                {
-                    error => [
-                        "Node $node has IP $ip which is inside the DHCP dynamic range. Move the node IP outside the dynamic range or adjust the range in the networks table."
-                      ],
-                    errorcode => [1]
-                }
-            );
             next;
         }
         my $doiscsi = 0;
@@ -3197,8 +3206,7 @@ sub kea_node_reservations
             next;
         }
 
-        if (ipIsDynamic($ip)) {
-            $callback->({ error => ["Node $node has IP $ip which is inside the DHCP dynamic range. Move the node IP outside the dynamic range or adjust the range in the networks table."], errorcode => [1] });
+        if ( _reject_dynamic_node_ip( $node, $ip, 'IPv4', $callback ) ) {
             next;
         }
 
@@ -3353,8 +3361,7 @@ sub kea_node_reservations6
         my $ip = getipaddr($hname, OnlyV6 => 1);
         next unless $ip;
 
-        if (ipIsDynamic($ip)) {
-            $callback->({ error => ["Node $node has IPv6 address $ip which is inside the DHCP dynamic range. Move the node IP outside the dynamic range or adjust the range in the networks table."], errorcode => [1] });
+        if ( _reject_dynamic_node_ip( $node, $ip, 'IPv6', $callback ) ) {
             next;
         }
 

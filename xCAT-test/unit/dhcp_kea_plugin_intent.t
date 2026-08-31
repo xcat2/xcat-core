@@ -883,4 +883,164 @@ foreach my $case (@invalid_mac_cases) {
     ok( !grep( { ( $_->{hostname} || '' ) eq '*NOIP*' } @{ $res6 || [] } ), 'no IPv6 reservation carries the *NOIP* sentinel as a hostname' );
 }
 
+{
+    my %range_tables = (
+        noderes  => DHCPKeaResTable->new( { range01 => {} } ),
+        chain    => DHCPKeaResTable->new( { range01 => {} } ),
+        nodetype => DHCPKeaResTable->new( { range01 => {} } ),
+        iscsi    => DHCPKeaResTable->new( {} ),
+        vpd      => DHCPKeaResTable->new( {} ),
+        mac      => DHCPKeaResTable->new(
+            {
+                range01 => {
+                    mac => '00:11:22:33:44:55!dynamic-host|00:11:22:33:44:66!static-host',
+                },
+            }
+        ),
+    );
+
+    no warnings 'redefine';
+    local *xCAT::Table::new = sub {
+        my ( $class, $name ) = @_;
+        return $range_tables{$name};
+    };
+    my $use_ipv4_v6_fallback = 0;
+    local *xCAT_plugin::dhcp::getipaddr = sub {
+        my ( $host, %opt ) = @_;
+        if ( $opt{OnlyV6} ) {
+            return '192.0.2.150' if $use_ipv4_v6_fallback && $host eq 'dynamic-host';
+            return $host eq 'dynamic-host' ? '2001:db8::150' : '2001:db8::25';
+        }
+        return $host eq 'dynamic-host' ? '192.0.2.150' : '192.0.2.25';
+    };
+    local *xCAT_plugin::dhcp::ipIsDynamic = sub {
+        my ($ip) = @_;
+        return $ip eq '192.0.2.150' || $ip eq '2001:db8::150';
+    };
+    local *xCAT_plugin::dhcp::kea_next_server_for_node = sub { return; };
+    local *xCAT_plugin::dhcp::kea_boot_for_node = sub { return {}; };
+    local *xCAT::MsgUtils::message = sub { return; };
+    local *xCAT::MsgUtils::trace = sub { return; };
+
+    my @errors;
+    my $capture_response = sub {
+        my $response = shift;
+        push @errors, @{ $response->{error} || [] };
+    };
+    my $saved_umask = umask;
+    my $saved_ignorecase = $Getopt::Long::ignorecase;
+    {
+        local @ARGV;
+        xCAT_plugin::dhcp::process_request(
+            {
+                _xcatpreprocessed => [0],
+                arg               => [ '-q', '-a' ],
+            },
+            $capture_response
+        );
+    }
+    umask $saved_umask;
+    $Getopt::Long::ignorecase = $saved_ignorecase;
+    Getopt::Long::Configure('pass_through');
+    @errors = ();
+
+    my $backend = bless {}, 'DHCPKeaResBackend';
+    my $reservations4 = xCAT_plugin::dhcp::kea_build_node_reservations( $backend, {}, ['range01'] );
+    is_deeply(
+        [ map { $_->{'ip-address'} } @$reservations4 ],
+        ['192.0.2.25'],
+        'Kea IPv4 omits a reservation whose address is in a dynamic range'
+    );
+    is_deeply(
+        \@errors,
+        [
+            'Node range01 has IP 192.0.2.150 which is inside the DHCP dynamic range. '
+              . 'Move the node IP outside the dynamic range or adjust the range in the networks table.'
+        ],
+        'Kea IPv4 reports the dynamic-range conflict and continues with later interfaces'
+    );
+
+    @errors = ();
+    my $reservations6 = xCAT_plugin::dhcp::kea_build_node_reservations6( $backend, {}, ['range01'] );
+    is_deeply(
+        [ map { $_->{'ip-addresses'}->[0] } @$reservations6 ],
+        ['2001:db8::25'],
+        'Kea IPv6 omits a reservation whose address is in a dynamic range'
+    );
+    is_deeply(
+        \@errors,
+        [
+            'Node range01 has IPv6 address 2001:db8::150 which is inside the DHCP dynamic range. '
+              . 'Move the node IP outside the dynamic range or adjust the range in the networks table.'
+        ],
+        'Kea IPv6 reports the dynamic-range conflict and continues with later interfaces'
+    );
+
+    $use_ipv4_v6_fallback = 1;
+    @errors = ();
+    $reservations6 = xCAT_plugin::dhcp::kea_build_node_reservations6( $backend, {}, ['range01'] );
+    is_deeply(
+        [ map { $_->{'ip-addresses'}->[0] } @$reservations6 ],
+        ['2001:db8::25'],
+        'Kea IPv6 still omits a dynamic IPv4 fallback result'
+    );
+    is_deeply(
+        \@errors,
+        [
+            'Node range01 has IPv6 address 192.0.2.150 which is inside the DHCP dynamic range. '
+              . 'Move the node IP outside the dynamic range or adjust the range in the networks table.'
+        ],
+        'Kea IPv6 preserves dynamic-range checking when OnlyV6 falls back to IPv4'
+    );
+}
+
+{
+    no warnings 'redefine';
+    my ( @checked, @responses );
+    local *xCAT_plugin::dhcp::ipIsDynamic = sub {
+        my ($ip) = @_;
+        push @checked, $ip;
+        return $ip eq '192.0.2.150' || $ip eq '2001:db8::150';
+    };
+    my $capture_response = sub { push @responses, shift; };
+
+    ok(
+        !xCAT_plugin::dhcp::_reject_dynamic_node_ip( 'range01', '192.0.2.25', 'IPv4', $capture_response ),
+        'an IPv4 address outside the dynamic range is accepted'
+    );
+    ok(
+        xCAT_plugin::dhcp::_reject_dynamic_node_ip( 'range01', '192.0.2.150', 'IPv4', $capture_response ),
+        'an IPv4 address inside the dynamic range is rejected'
+    );
+    ok(
+        xCAT_plugin::dhcp::_reject_dynamic_node_ip( 'range01', '2001:db8::150', 'IPv6', $capture_response ),
+        'an IPv6 address inside the dynamic range is rejected'
+    );
+    is_deeply(
+        \@checked,
+        [ '192.0.2.25', '192.0.2.150', '2001:db8::150' ],
+        'the shared helper checks each caller-approved address'
+    );
+    is_deeply(
+        \@responses,
+        [
+            {
+                error => [
+                    'Node range01 has IP 192.0.2.150 which is inside the DHCP dynamic range. '
+                      . 'Move the node IP outside the dynamic range or adjust the range in the networks table.'
+                ],
+                errorcode => [1],
+            },
+            {
+                error => [
+                    'Node range01 has IPv6 address 2001:db8::150 which is inside the DHCP dynamic range. '
+                      . 'Move the node IP outside the dynamic range or adjust the range in the networks table.'
+                ],
+                errorcode => [1],
+            },
+        ],
+        'dynamic IPv4 and IPv6 addresses keep the existing callback payloads'
+    );
+}
+
 done_testing();
