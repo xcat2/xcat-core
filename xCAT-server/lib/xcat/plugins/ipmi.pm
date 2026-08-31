@@ -869,6 +869,30 @@ sub next_setnetinfo {
     &setnetinfo($sessdata);
 }
 
+sub _ipv4_literal_octets {
+    my $value = shift;
+    return unless defined($value) and length($value);
+
+    my @components = split(/\./, $value, -1);
+    return unless scalar(@components) == 4;
+    foreach my $octet (@components) {
+        return unless $octet =~ m/^(?:0|[1-9][0-9]{0,2})$/ and $octet <= 255;
+    }
+    return map { $_ + 0 } @components;
+}
+
+sub _netmask_octets {
+    my $value = shift;
+
+    # A netmask is a literal, never a hostname, and its set bits must be
+    # contiguous or the BMC would apply a mask the operator did not intend.
+    my @octets = _ipv4_literal_octets($value);
+    return unless @octets;
+    my $host_bits = ~unpack('N', pack('C4', @octets)) & 0xffffffff;
+    return unless ($host_bits & ($host_bits + 1)) == 0;
+    return @octets;
+}
+
 sub _resolve_ipv4_octets {
     my $value = shift;
     return unless defined($value) and length($value);
@@ -879,11 +903,9 @@ sub _resolve_ipv4_octets {
     # dotted-decimal quad so every platform encodes the same address.
     my @components = split(/\./, $value, -1);
     unless (grep { $_ !~ m/^(?:0[xX][0-9a-fA-F]+|[0-9]+)$/ } @components) {
-        return unless scalar(@components) == 4;
-        foreach my $octet (@components) {
-            return unless $octet =~ m/^(?:0|[1-9][0-9]{0,2})$/ and $octet <= 255;
-        }
-        return ($value, map { $_ + 0 } @components);
+        my @octets = _ipv4_literal_octets($value);
+        return unless @octets;
+        return ($value, @octets);
     }
 
     my $packed_address = inet_aton($value);
@@ -997,14 +1019,16 @@ sub setnetinfo {
         }
         @cmd = (0x01, $channel_number, 0x13, $destination, 0x00, 0x00, @dip, 0, 0, 0, 0, 0, 0);
     } elsif ($subcommand =~ m/netmask/) {
-        if ($argument =~ /\./) {
-            my @mask = split /\./, $argument;
-            foreach (0 .. 3) {
-                $mask[$_] = $mask[$_] + 0;
-            }
-            $sessdata->{setnetinfo_value} = join(".", @mask);
-            @cmd = (0x01, $channel_number, 0x6, @mask);
+        my @mask = _netmask_octets($argument);
+        unless (@mask) {
+            $argument = '' unless defined($argument);
+            xCAT::SvrUtils::sendmsg(
+                [ 1, "'$argument' is not a valid netmask" ],
+                $callback, $sessdata->{node}, %allerrornodes);
+            return;
         }
+        $sessdata->{setnetinfo_value} = join(".", @mask);
+        @cmd = (0x01, $channel_number, 0x6, @mask);
     } elsif ($subcommand eq "gateway" and $argument) {
         my ($gw, @octets) = _session_ipv4_octets($sessdata, $argument);
         unless (defined($gw)) {
