@@ -188,6 +188,63 @@ subtest 'the pacing functions are pure' => sub {
     is( due( $pace, 0 ), due( $pace, 0 ), 'due() is free of side effects' );
 };
 
+# --- the window the reaper looks through ------------------------------------
+# The reaper matches the dead child against xcatd's $pid_MON and folds the death into the
+# pacing state. Both therefore have to be in place before SIGCHLD is let back in: a child that
+# died while the fork was in flight would otherwise be compared against a pid still holding 0,
+# missed, and the caller would then write a dead pid back over the reaper's work -- believing a
+# dead monitor alive, and never respawning it. That is the whole failure this file is about,
+# reached through the respawn instead of through startup.
+#
+# Racing a real death into that window is not something a test can arrange reliably, so this
+# arranges a certainty instead: a SIGCHLD is made pending BEFORE supervise() is called (a decoy
+# child that exits while the signal is blocked). The handler is then guaranteed to run the
+# moment supervise() unblocks -- inside supervise(), before it has returned to us -- and what it
+# sees there is exactly what the real reaper would see.
+subtest 'the pid and the pacing are in place before SIGCHLD is let back in' => sub {
+    my $pace = xCAT::RespawnUtils::policy( min_interval => 1, max_interval => 2, healthy => 60 );
+    my $mon_pid = 0;
+
+    my ( $ran, $pid_seen, $started_at_seen );
+    local $SIG{CHLD} = sub {
+        $ran++;
+        $pid_seen        = $mon_pid;
+        $started_at_seen = $pace->{started_at};
+    };
+
+    my $mask = POSIX::SigSet->new( POSIX::SIGCHLD );
+    POSIX::sigprocmask( POSIX::SIG_BLOCK, $mask );
+
+    my $decoy = fork();
+    POSIX::_exit(0) if defined($decoy) && !$decoy;
+    unless ($decoy) {
+        POSIX::sigprocmask( POSIX::SIG_UNBLOCK, $mask );
+        plan skip_all => "cannot fork here: $!";
+    }
+    select( undef, undef, undef, 0.2 );    # it is gone, and its SIGCHLD is pending, not delivered
+
+    ( $pace, $mon_pid ) = xCAT::RespawnUtils::supervise {
+        sleep 3600;                        # a monitor that stays up; this one is about the parent
+    }
+    state => $pace, pid => $mon_pid, now => time();
+    push @spawned, $mon_pid if $mon_pid;
+
+    ok( $ran, 'the pending SIGCHLD was delivered while supervise() was still running' );
+    ok( $mon_pid, 'supervise() forked' );
+    is( $pid_seen, $mon_pid,
+        'a reaper running at the unblock sees the live pid, not the stale 0 it would miss' );
+    ok( defined $started_at_seen,
+        '...and a pacing state that already knows a child was forked' );
+
+    if ($mon_pid) {
+        kill 'TERM', $mon_pid;
+        waitpid( $mon_pid, 0 );
+        @spawned = grep { $_ != $mon_pid } @spawned;
+    }
+    waitpid( $decoy, 0 );
+    POSIX::sigprocmask( POSIX::SIG_UNBLOCK, $mask );
+};
+
 # --- the real thing: fail several times, release the port, recover ----------
 subtest 'the monitor comes back on its own once the port is released' => sub {
     my $holder = IO::Socket::INET->new(
@@ -201,9 +258,15 @@ subtest 'the monitor comes back on its own once the port is released' => sub {
 
     my $port    = $holder->sockport;
     my $healthy = 2;
+
+    # The ceiling is well above the promptness the last assertion asks for, on purpose: with a
+    # ceiling of 2 that assertion could not fail, since a backoff pinned at the ceiling would
+    # still land inside it, and dropping the healthy-run reset from exited() would leave the
+    # subtest green. At 8 the reset is the only thing that can produce a prompt respawn.
+    my $ceiling = 8;
     my $pace    = xCAT::RespawnUtils::policy(
         min_interval => 1,
-        max_interval => 2,
+        max_interval => $ceiling,
         healthy      => $healthy,
     );
 
@@ -286,7 +349,7 @@ subtest 'the monitor comes back on its own once the port is released' => sub {
     ok( $mon_pid && time() - $mon_forked_at >= $healthy + 1,
         'a respawned monitor binds the freed port and stays up -- no xcatd restart' )
       or return;
-    cmp_ok( $mon_forked_at - $released, '<=', 5,
+    cmp_ok( $mon_forked_at - $released, '<=', $ceiling + 1,
         'recovery lands within the backoff ceiling of the port becoming free' );
 
     # (4) and after that healthy run the pacing is back to prompt
@@ -296,8 +359,10 @@ subtest 'the monitor comes back on its own once the port is released' => sub {
 
     cmp_ok( scalar(@forks), '>', $forks_before,
         'killing the healthy monitor gets it replaced again' );
+    cmp_ok( $deaths[-1][2] - $deaths[-1][1], '>=', $healthy,
+        'the monitor that was killed had been up long enough to count as having served' );
     cmp_ok( $forks[-1] - $deaths[-1][2], '<=', 2,
-        'that replacement is prompt: the healthy run reset the backoff' );
+        'that replacement is prompt: the healthy run reset the backoff off its ceiling' );
 
     if ($mon_pid) {
         kill 'TERM', $mon_pid;
