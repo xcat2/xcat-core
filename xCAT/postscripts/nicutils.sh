@@ -1654,6 +1654,34 @@ function is_nmcli_connection_exist {
 
 ###############################################################################
 #
+# get NetworkManager connection UUID for device
+# Resolve by device because connection names may contain spaces or be duplicated.
+# input: network device
+# output: active connection UUID
+# return: nmcli exit status
+#
+###############################################################################
+function nmcli_connection_uuid_for_device {
+    local device=$1
+    nmcli -g GENERAL.CON-UUID device show $device
+}
+
+###############################################################################
+#
+# get NetworkManager connection name for device
+# Keep the existing output parsing used by bridge and bond setup.
+# input: network device
+# output: active connection name
+# return: output pipeline exit status
+#
+###############################################################################
+function nmcli_connection_name_for_device {
+    local device=$1
+    nmcli dev show $device|grep GENERAL.CONNECTION|awk -F: '{print $2}'|sed 's/^[ \t]*//g'
+}
+
+###############################################################################
+#
 # get first addr from nicips if it is valid ipv4 addr
 # input: nics.nicips for one nic
 # return 0, output: ipv4 addr
@@ -1911,7 +1939,7 @@ function wait_nic_connect_intime {
     fi
     i=0
     while [ $i -lt "$time_out" ]; do
-	con_name=$(nmcli dev show $nic_name|grep GENERAL.CONNECTION|awk -F: '{print $2}'|sed 's/^[ \t]*//g')
+	con_name=$(nmcli_connection_name_for_device "$nic_name")
         if [ ! -z "$con_name" -a "$con_name" != "--" ]; then
             break
         fi
@@ -2040,8 +2068,7 @@ function create_bridge_interface_nmcli {
         xcat_slave_con_orig=$xcat_slave_con
         con_use_same_dev=$(wait_nic_connect_intime $_port)
         if [ "$con_use_same_dev" != "--" -a -n "$con_use_same_dev" ]; then
-            # Resolve to UUID via device — avoids spaces in names and duplicate name ambiguity
-            con_uuid=$(nmcli -g GENERAL.CON-UUID device show $_port)
+            con_uuid=$(nmcli_connection_uuid_for_device "$_port")
             log_info "reusing existing connection '$con_use_same_dev' ($con_uuid) on $_port as bridge slave"
             cmd="$nmcli con mod $con_uuid master $ifname $_mtu connection.autoconnect-priority 9 autoconnect yes connection.autoconnect-slaves 1 connection.autoconnect-retries 0"
             xcat_slave_con=$con_uuid
@@ -2264,10 +2291,9 @@ function create_bond_interface_nmcli {
             fi
             
         fi
-        con_use_same_dev=$(nmcli dev show $ifslave|grep GENERAL.CONNECTION|awk -F: '{print $2}'|sed 's/^[ \t]*//g')
+        con_use_same_dev=$(nmcli_connection_name_for_device "$ifslave")
         if [ "$con_use_same_dev" != "--" -a "$con_use_same_dev" != "$xcat_slave_con" ]; then
-            # Resolve to UUID via device — avoids spaces in names and duplicate name ambiguity
-            con_uuid=$(nmcli -g GENERAL.CON-UUID device show $ifslave)
+            con_uuid=$(nmcli_connection_uuid_for_device "$ifslave")
             log_info "deactivating existing connection '$con_use_same_dev' ($con_uuid) on $ifslave"
             $nmcli con down $con_uuid
             $nmcli con mod $con_uuid autoconnect no
