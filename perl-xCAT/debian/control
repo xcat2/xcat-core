@@ -8,7 +8,7 @@ Homepage: https://xcat.org/
 
 Package: perl-xcat
 Architecture: all
-Depends: ${perl:Depends}
+Depends: ${perl:Depends}, libhtml-form-perl
 Description: xCAT perl libraries
  Provides perl xCAT libraries for core functionality.  Required for all xCAT installations.
  Includes xCAT::Table, xCAT::NodeRange, among others.
