@@ -43,3 +43,23 @@ declare -F msgutil &>/dev/null  || function msgutil {
     msgutil_r "" "$@"
 }
 
+declare -F xcat_enable_active_nm_autoconnect &>/dev/null || function xcat_enable_active_nm_autoconnect {
+    local log_changes="${1:-}"
+
+    command -v nmcli >/dev/null 2>&1 || return 0
+
+    nmcli -g NAME,STATE con show | \
+        awk -F: '$1 != "lo" && $2 == "activated" {print $1}' | \
+        while IFS= read -r con_name
+        do
+            [ -n "$con_name" ] || continue
+            if [ -n "$log_changes" ]; then
+                case "$XCATDEBUGMODE" in
+                "1"|"2")
+                    msgutil_r "$MASTER_IP" "info" "set connection $con_name to be activated on system boot" "/var/log/xcat/xcat.log"
+                    ;;
+                esac
+            fi
+            nmcli con mod "$con_name" connection.autoconnect yes
+        done
+}

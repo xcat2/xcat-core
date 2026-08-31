@@ -6,22 +6,6 @@
 [ "$MASTER_IP" ] || export MASTER_IP="#ENV:MASTER_IP#"
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
 
-activate_nm_connections()
-{
-    nmcli -g NAME,STATE con show | \
-        awk -F: '$1 != "lo" && $2 == "activated" {print $1}' | \
-        while IFS= read -r con_name
-        do
-            [ -n "$con_name" ] || continue
-            case "$XCATDEBUGMODE" in
-            "1"|"2")
-                msgutil_r "$MASTER_IP" "info" "set connection $con_name to be activated on system boot" "/var/log/xcat/xcat.log"
-                ;;
-            esac
-            nmcli con mod "$con_name" connection.autoconnect yes
-        done
-}
-
 activated_ifcfg=0
 if compgen -G "/etc/sysconfig/network-scripts/ifcfg-*" >/dev/null 2>&1; then
     for i in /etc/sysconfig/network-scripts/ifcfg-*
@@ -40,11 +24,11 @@ if compgen -G "/etc/sysconfig/network-scripts/ifcfg-*" >/dev/null 2>&1; then
         fi
     done
 
-    if [ "$activated_ifcfg" -eq 0 ] && command -v nmcli >/dev/null 2>&1; then
-        activate_nm_connections
+    if [ "$activated_ifcfg" -eq 0 ]; then
+        xcat_enable_active_nm_autoconnect 1
     fi
-elif command -v nmcli >/dev/null 2>&1; then
-    activate_nm_connections
+else
+    xcat_enable_active_nm_autoconnect 1
 fi
 
 # List of internal repos to be disabled
