@@ -1606,6 +1606,50 @@ sub getHomeDir
 }
 
 
+#--------------------------------------------------------------------------------
+
+=head3    user_matches_policy_name
+
+        Match an authenticated username against a policy name. Bare names
+        match usernames exactly; names prefixed with '%' match Unix groups.
+
+        Arguments:
+                username, policy name
+        Returns:
+                1 - match
+                0 - no match
+
+=cut
+
+#--------------------------------------------------------------------------------
+
+sub user_matches_policy_name
+{
+    my ($class, $username, $policy_name) = @_;
+
+    return 0 unless defined($username) && length($username);
+    return 0 unless defined($policy_name) && length($policy_name);
+    return $username eq $policy_name unless $policy_name =~ /\A%(.*)\z/x;
+
+    my $group_name = $1;
+    return 0 unless length($group_name);
+
+    my @user = getpwnam($username);
+    return 0 unless @user;
+
+    my @group = getgrnam($group_name);
+    return 0 unless @group;
+
+    return 1 if defined($user[3]) && defined($group[2]) && $user[3] == $group[2];
+    return 0 unless defined($group[3]) && length($group[3]);
+
+    foreach my $member (split(/\s+/x, $group[3])) {
+        return 1 if $member eq $username;
+    }
+    return 0;
+}
+
+
 
 #-------------------------------------------------------------------------------
 
