@@ -4677,6 +4677,42 @@ sub writeout
     }
 }
 
+sub _append_omapi_key_config
+{
+    my ( $config, $settings, $port, $cb, $existing_passwd_table ) = @_;
+    my $passwd_table_supplied = @_ > 4;
+
+    push @{$config}, "omapi-port $port;\n";
+    push @{$config}, "key $settings->{key_name} {\n";
+    push @{$config}, "  algorithm $settings->{algorithm};\n";
+
+    my $passtab = $passwd_table_supplied
+      ? $existing_passwd_table
+      : xCAT::Table->new( 'passwd', -create => 1 );
+    ( my $passent ) =
+      $passtab->getAttribs( { key => 'omapi', username => $settings->{key_name} }, 'password' );
+    my $secret = encode_base64( genpassword(32) );    #Random from set of  62^32
+    chomp $secret;
+    if ( $passent && $passent->{password} ) {
+        $secret = $passent->{password};
+    } else {
+        $cb->(
+            {
+                data =>
+                  ["The dhcp server must be restarted for OMAPI function to work"]
+            }
+        );
+        $passtab->setAttribs(
+            { key => 'omapi', username => $settings->{key_name} },
+            { username => $settings->{key_name}, password => $secret }
+        );
+    }
+
+    push @{$config}, "  secret \"$secret\";\n";
+    push @{$config}, "};\n";
+    push @{$config}, "omapi-key $settings->{key_name};\n";
+}
+
 sub newconfig6 {
     if ($::XCATSITEVALS{externaldhcpservers}) { return; }
 
@@ -4691,30 +4727,7 @@ sub newconfig6 {
     push @dhcp6conf, "ignore client-updates;\n";
 
     #    push @dhcp6conf, "update-static-leases on;\n";
-    push @dhcp6conf, "omapi-port 7912;\n";        #Enable omapi...
-    push @dhcp6conf, "key $settings->{key_name} {\n";
-    push @dhcp6conf, "  algorithm $settings->{algorithm};\n";
-    my $passtab = xCAT::Table->new('passwd', -create => 1);
-    (my $passent) =
-      $passtab->getAttribs({ key => 'omapi', username => $settings->{key_name} }, 'password');
-    my $secret = encode_base64(genpassword(32));    #Random from set of  62^32
-    chomp $secret;
-    if ($passent && $passent->{password}) { $secret = $passent->{password}; }
-    else
-    {
-        $callback->(
-            {
-                data =>
-                  ["The dhcp server must be restarted for OMAPI function to work"]
-            }
-        );
-        $passtab->setAttribs({ key => 'omapi', username => $settings->{key_name} },
-            { username => $settings->{key_name}, password => $secret });
-    }
-
-    push @dhcp6conf, "  secret \"" . $secret . "\";\n";
-    push @dhcp6conf, "};\n";
-    push @dhcp6conf, "omapi-key $settings->{key_name};\n";
+    _append_omapi_key_config( \@dhcp6conf, $settings, 7912, $callback );
 
     #that is all for pristine ipv6 config
 }
@@ -4757,29 +4770,7 @@ sub newconfig
     push @dhcpconf, "option www-server code 114 = string;\n";
     push @dhcpconf, "option cumulus-provision-url code 239 = text;\n";
     push @dhcpconf, "\n";
-    push @dhcpconf, "omapi-port 7911;\n";            #Enable omapi...
-    push @dhcpconf, "key $settings->{key_name} {\n";
-    push @dhcpconf, "  algorithm $settings->{algorithm};\n";
-    (my $passent) =
-      $passtab->getAttribs({ key => 'omapi', username => $settings->{key_name} }, 'password');
-    my $secret = encode_base64(genpassword(32));     #Random from set of  62^32
-    chomp $secret;
-    if ($passent && $passent->{password}) { $secret = $passent->{password}; }
-    else
-    {
-        $callback->(
-            {
-                data =>
-                  ["The dhcp server must be restarted for OMAPI function to work"]
-            }
-        );
-        $passtab->setAttribs({ key => 'omapi', username => $settings->{key_name} },
-            { username => $settings->{key_name}, password => $secret });
-    }
-
-    push @dhcpconf, "  secret \"" . $secret . "\";\n";
-    push @dhcpconf, "};\n";
-    push @dhcpconf, "omapi-key $settings->{key_name};\n";
+    _append_omapi_key_config( \@dhcpconf, $settings, 7911, $callback, $passtab );
     push @dhcpconf, ('class "pxe" {' . "\n", "   match if substring (option vendor-class-identifier, 0, 9) = \"PXEClient\";\n", "   ddns-updates off;\n", "    max-lease-time 600;\n", "}\n");
 }
 
