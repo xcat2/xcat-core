@@ -1203,15 +1203,17 @@ if (!(socketpair($rescanreadpipe, $rescanwritepipe, AF_UNIX, SOCK_STREAM, PF_UNS
 }
 $rescanrselect = new IO::Select;
 $rescanrselect->add($rescanreadpipe);
-# supervise() records the attempt and blocks SIGCHLD across the fork; this monitor's uptime
-# counts towards the pacing too, so an unrelated death much later is retried promptly.
-($mon_respawn, $pid_MON) = xCAT::RespawnUtils::supervise {
+# supervise() records the attempt, blocks SIGCHLD across the fork, and installs $pid_MON and
+# $mon_respawn itself while it is still blocked -- which is why they are passed by reference;
+# see the sub. This monitor's uptime counts towards the pacing too, so an unrelated death much
+# later is retried promptly.
+xCAT::RespawnUtils::supervise {
     $$progname = "xcatd: install monitor";
     $pid_UDP = 0;
     close($udpctl); $udpctl = 0;
     do_installm_service;
     xexit(0);
-} state => $mon_respawn, pid => $pid_MON, now => time();
+} state => \$mon_respawn, pid => \$pid_MON, now => time();
 
 unless ($pid_MON) {
     xCAT::MsgUtils->message("S", "Unable to fork installmonitor");
@@ -1494,7 +1496,7 @@ until ($quit) {
                   . " still retrying xcatiport $sport every $mon_respawn->{max_interval} seconds");
             $mon_respawn = xCAT::RespawnUtils::reported($mon_respawn);
         }
-        ($mon_respawn, $pid_MON) = xCAT::RespawnUtils::supervise {
+        xCAT::RespawnUtils::supervise {
             $$progname = "xcatd: install monitor";
             $pid_UDP = 0;
             close($listener);
@@ -1507,7 +1509,7 @@ until ($quit) {
             close($chwritepipe);
             do_installm_service;
             xexit(0);
-        } state => $mon_respawn, pid => $pid_MON, now => time();
+        } state => \$mon_respawn, pid => \$pid_MON, now => time();
 
         if ($pid_MON) {
             xCAT::MsgUtils->trace(0, "I",

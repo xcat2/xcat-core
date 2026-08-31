@@ -125,10 +125,10 @@ sub reported {
 # The one impure sub. Everything above only does arithmetic; this actually forks.
 
 # Fork a child and keep the pacing straight while doing it. Takes the child's body as a
-# block, then `state`, `pid` and `now`, and hands back the state and the new pid:
+# block, then `state` and `pid` -- REFERENCES to the caller's own variables -- and `now`:
 #
-#   ($state, $pid) = xCAT::RespawnUtils::supervise { ...child... }
-#                       state => $state, pid => $pid, now => time();
+#   xCAT::RespawnUtils::supervise { ...child... }
+#       state => \$state, pid => \$pid, now => time();
 #
 # The (&@) prototype is what allows the leading block. It needs this module loaded with
 # `use`, not `require`: under `require` the sub is unknown when the call is compiled, the
@@ -136,36 +136,49 @@ sub reported {
 #
 # Two orderings in here are easy to get wrong and are the reason this is not left to callers.
 # The attempt is recorded before the fork, because the child can die and be reaped before
-# fork() returns to us. And SIGCHLD is blocked across the fork and the assignment, because a
-# reaper that matches on the pid would otherwise compare against a stale one, miss the death,
-# and leave the caller believing a dead child is still alive.
+# fork() returns to us. And the pid and the state are installed in the caller's variables
+# while SIGCHLD is still blocked -- which is why they are passed by reference rather than
+# handed back as a return value. The reaper matches the dead child against that pid and folds
+# the death into that state; had the caller assigned them from a return value, the assignment
+# would land after the signal was let back in, so a child dying in the gap would be compared
+# against a pid still holding 0, missed, and the caller would then write a dead pid back over
+# the reaper's work -- believing a dead child alive, and never respawning it.
 #
 # The block is only ever entered in the child and is not expected to return; if it does, the
 # child exits quietly rather than falling back into the parent's code. Passing a live `pid`
-# is a no-op, so a caller that forgets to check is not punished with a second child.
+# is a no-op, so a caller that forgets to check is not punished with a second child. The new
+# pid is also returned, for a caller that wants it inline.
 sub supervise (&@) {
     my ($child, %arg) = @_;
-    my ($state, $pid, $now) = @arg{qw(state pid now)};
+    my ($stateref, $pidref, $now) = @arg{qw(state pid now)};
 
-    return ($state, $pid) if $pid;    # already running; nothing to do
+    return $$pidref if $$pidref;    # already running; nothing to do
 
     require POSIX;
     require xCAT::Utils;
 
-    $state = forked($state, $now);
-
     my $mask = POSIX::SigSet->new(POSIX::SIGCHLD());
     POSIX::sigprocmask(POSIX::SIG_BLOCK(), $mask);
-    $pid = xCAT::Utils->xfork;
-    POSIX::sigprocmask(POSIX::SIG_UNBLOCK(), $mask);
 
-    return (exited($state, $now), 0) unless defined $pid;    # could not fork: back off
+    $$stateref = forked($$stateref, $now);
+    my $pid = xCAT::Utils->xfork;
 
-    unless ($pid) {
+    unless (defined $pid) {    # could not fork: count it and back off
+        $$stateref = exited($$stateref, $now);
+        $$pidref   = 0;
+        POSIX::sigprocmask(POSIX::SIG_UNBLOCK(), $mask);
+        return 0;
+    }
+
+    unless ($pid) {    # child: it must not go on to serve with SIGCHLD blocked
+        POSIX::sigprocmask(POSIX::SIG_UNBLOCK(), $mask);
         $child->();
         POSIX::_exit(0);
     }
-    return ($state, $pid);
+
+    $$pidref = $pid;    # in place before the reaper can run, or it matches a stale pid
+    POSIX::sigprocmask(POSIX::SIG_UNBLOCK(), $mask);
+    return $pid;
 }
 
 1;

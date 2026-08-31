@@ -223,10 +223,10 @@ subtest 'the pid and the pacing are in place before SIGCHLD is let back in' => s
     }
     select( undef, undef, undef, 0.2 );    # it is gone, and its SIGCHLD is pending, not delivered
 
-    ( $pace, $mon_pid ) = xCAT::RespawnUtils::supervise {
+    xCAT::RespawnUtils::supervise {
         sleep 3600;                        # a monitor that stays up; this one is about the parent
     }
-    state => $pace, pid => $mon_pid, now => time();
+    state => \$pace, pid => \$mon_pid, now => time();
     push @spawned, $mon_pid if $mon_pid;
 
     ok( $ran, 'the pending SIGCHLD was delivered while supervise() was still running' );
@@ -291,7 +291,7 @@ subtest 'the monitor comes back on its own once the port is released' => sub {
 
             # Driven through supervise() -- the same call xcatd makes -- so this exercises the
             # real fork-and-account sequence rather than a copy of it here.
-            ( $pace, $mon_pid ) = xCAT::RespawnUtils::supervise {
+            xCAT::RespawnUtils::supervise {
                 close($holder) if $holder;    # never hold the port from inside a child
                 my $sock = IO::Socket::INET->new(
                     LocalAddr => '127.0.0.1',
@@ -303,7 +303,7 @@ subtest 'the monitor comes back on its own once the port is released' => sub {
                 POSIX::_exit(1) unless $sock;    # could not bind: died, as the real one does
                 sleep 3600;                      # bound the port and serve
             }
-            state => $pace, pid => $mon_pid, now => $now;
+            state => \$pace, pid => \$mon_pid, now => $now;
 
             die "supervise did not fork" unless $mon_pid;
             $mon_forked_at = $now;
