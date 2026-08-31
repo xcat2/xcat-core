@@ -152,7 +152,9 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, number of CPUs, amou
 
 \ **firm**\ 
  
- Retrieves firmware versions.
+ Retrieves firmware versions. For IBM and Lenovo System x systems managed through
+ IMM, ``UEFI Version`` reports the active firmware. If the IMM reports a pending
+ UEFI build ID, \ **rinv**\  reports it separately as ``Pending UEFI Build ID``.
  
 
 
