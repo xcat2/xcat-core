@@ -491,12 +491,8 @@ else
     result=`rpm --version 2>/dev/null`
     if [ $? -eq 0 ]; then
          hasrpm=1
-         if [ -x /usr/bin/dnf ]; then
+         if yumcmd=$(xcat_find_rpm_package_manager); then
               hasyum=1
-              yumcmd="dnf"
-         elif [ -x /usr/bin/yum ]; then
-              hasyum=1
-              yumcmd="yum"
          else
               result=`rpm -q zypper`
               if [ "$?" = "0" ]; then
