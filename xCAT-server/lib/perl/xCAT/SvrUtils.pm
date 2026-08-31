@@ -724,6 +724,19 @@ sub get_imgcapture_exlist_file_name {
     return xCAT::SvrUtils::get_file_name($searchpath, "imgcapture.exlist", @_);
 }
 
+sub _apply_new_linuximage_defaults {
+    my $linuximagetab = shift;
+    my $imagename     = shift;
+    my $attributes    = shift;
+
+    my ($existing) = $linuximagetab->getAttribs(
+        { imagename => $imagename }, 'pkgdir');
+    unless ($existing) {
+        $attributes->{addkcmdline} = "quiet";
+    }
+    return;
+}
+
 
 #-------------------------------------------------------------------------------
 
@@ -938,10 +951,8 @@ sub update_tables_with_templates
                             pkglist      => $pkglistfile,
                             otherpkglist => $otherpkgsfile,
                             otherpkgdir => "$installroot/post/otherpkgs/$osver/$arch");
-                        my ($existing) = $linuximagetab->getAttribs({ imagename => $imagename }, 'pkgdir');
-                        unless ($existing) {
-                            $tb_cols{addkcmdline} = "quiet";
-                        }
+                        _apply_new_linuximage_defaults(
+                            $linuximagetab, $imagename, \%tb_cols);
 
                         $linuximagetab->setAttribs(\%key_col, \%tb_cols);
 
@@ -1130,10 +1141,8 @@ sub update_tables_with_mgt_image
                             pkglist      => $pkglistfile,
                             otherpkglist => $otherpkgsfile,
                             otherpkgdir => "$installroot/post/otherpkgs/$osver/$arch");
-                        my ($existing) = $linuximagetab->getAttribs({ imagename => $imagename }, 'pkgdir');
-                        unless ($existing) {
-                            $tb_cols{addkcmdline} = "quiet";
-                        }
+                        _apply_new_linuximage_defaults(
+                            $linuximagetab, $imagename, \%tb_cols);
                         $linuximagetab->setAttribs(\%key_col, \%tb_cols);
 
                     } else {
@@ -1363,10 +1372,8 @@ sub update_tables_with_diskless_image
                             exlist      => $exlistfile,
                             postinstall => $postfile,
                             rootimgdir => "$installroot/netboot/$osver/$arch/$profile");
-                        my ($existing) = $linuximagetab->getAttribs({ imagename => $imagename }, 'pkgdir');
-                        unless ($existing) {
-                            $tb_cols{addkcmdline} = "quiet";
-                        }
+                        _apply_new_linuximage_defaults(
+                            $linuximagetab, $imagename, \%tb_cols);
                         $linuximagetab->setAttribs(\%key_col, \%tb_cols);
 
                     } else {
