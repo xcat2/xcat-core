@@ -2252,6 +2252,40 @@ sub isIpv6addr
     return defined($packed_address) ? 1 : 0;
 }
 
+#-------------------------------------------------------------------------------
+
+=head3    isValidIp
+
+    returns 1 if the value is a valid IPv4 or IPv6 address.
+
+    Arguments:
+        IP address string
+    Returns:
+        1 - valid IP address
+        0 - not a valid IP address
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         if (xCAT::NetworkUtils->isValidIp($ip)) { blah; }
+    Comments:
+        IPv4 values follow the isIpv4addr rules.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub isValidIp
+{
+    my $value = shift;
+    if (($value) && ($value =~ /xCAT::NetworkUtils/))
+    {
+        $value = shift;
+    }
+
+    return (isIpv4addr($value) or isIpv6addr($value)) ? 1 : 0;
+}
+
 
 
 
