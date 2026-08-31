@@ -2197,6 +2197,61 @@ sub isIpaddr
     return isIpv4addr(@_);
 }
 
+#-------------------------------------------------------------------------------
+
+=head3    isIpv6addr
+
+    returns 1 if the value is a valid IPv6 address.
+
+    Arguments:
+        IPv6 address string
+    Returns:
+        1 - valid IPv6 address
+        0 - not a valid IPv6 address
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         if (xCAT::NetworkUtils->isIpv6addr($ip)) { blah; }
+    Comments:
+        Zone identifiers such as fe80::1%eth0 are not accepted.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub isIpv6addr
+{
+    my $value = shift;
+    if (($value) && ($value =~ /xCAT::NetworkUtils/))
+    {
+        $value = shift;
+    }
+
+    unless (defined($value) and length($value))
+    {
+        return 0;
+    }
+
+    # inet_pton handling of zone identifiers is platform-dependent
+    if ($value =~ /%/)
+    {
+        return 0;
+    }
+
+    my $packed_address;
+    if (defined &Socket::inet_pton)
+    {
+        $packed_address = eval { Socket::inet_pton(Socket::AF_INET6(), $value) };
+    }
+    elsif (defined &Socket6::inet_pton)
+    {
+        # Perl 5.8 core Socket has no inet_pton; Socket6 provides it
+        $packed_address = eval { Socket6::inet_pton(Socket6::AF_INET6(), $value) };
+    }
+    return defined($packed_address) ? 1 : 0;
+}
+
 
 
 
