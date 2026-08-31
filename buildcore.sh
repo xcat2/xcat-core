@@ -38,6 +38,9 @@
 SCRIPT=$(readlink -f $0)
 SCRIPTPATH=`dirname $SCRIPT`
 
+. "$SCRIPTPATH/build-utils/source-only.sh"
+. "$SCRIPTPATH/build-utils/buildcore-source-only.sh"
+
 UPLOADUSER=litingt
 USER=xcat
 SERVER=xcat.org
@@ -322,10 +325,7 @@ function maker {
     if [ $? -ne 0 ]; then
         FAILEDRPMS="$FAILEDRPMS $rpmname"
     else
-        rm -f $DESTDIR/$rpmname*rpm
-        rm -f $SRCDIR/$rpmname*rpm
-        mv $source/RPMS/$NOARCH/$rpmname-$VER*rpm $DESTDIR
-        mv $source/SRPMS/$rpmname-$VER*rpm $SRCDIR
+        xcat_deliver_noarch_package "$rpmname"
     fi
 }
 
@@ -367,18 +367,15 @@ if [ "$OSNAME" != "AIX" ]; then
         if [ "$BUILDALL" == 1 ] || $GREP xCAT-genesis-scripts $GITUP; then
             UPLOAD=1
             ORIGFAILEDRPMS="$FAILEDRPMS"
-            ./makerpm xCAT-genesis-scripts x86_64 "$EMBED"
-            if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-genesis-scripts-x86_64"; fi
-            ./makerpm xCAT-genesis-scripts ppc64 "$EMBED"
-            if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-genesis-scripts-ppc64"; fi
+            for arch in x86_64 ppc64; do
+                ./makerpm xCAT-genesis-scripts $arch "$EMBED"
+                if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-genesis-scripts-$arch"; fi
+            done
             # Do not build xCAT-genesis-scripts-aarch64 yet
             #./makerpm xCAT-genesis-scripts aarch64 "$EMBED"
             #if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-genesis-scripts-aarch64"; fi
             if [ "$FAILEDRPMS" = "$ORIGFAILEDRPMS" ]; then    # all succeeded
-                rm -f $DESTDIR/xCAT-genesis-scripts*rpm
-                rm -f $SRCDIR/xCAT-genesis-scripts*rpm
-                mv $source/RPMS/noarch/xCAT-genesis-scripts-*rpm $DESTDIR
-                mv $source/SRPMS/xCAT-genesis-scripts-*rpm $SRCDIR
+                xcat_deliver_genesis_packages
             fi
         fi
     fi
@@ -395,17 +392,14 @@ for rpmname in xCAT xCATsn; do
             ./makerpm $rpmname "$EMBED"
             if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname"; fi
         else
-            for arch in x86_64 ppc64 ppc64le s390x aarch64; do
+            for arch in $(xcat_rpm_build_arches x86_64 ppc64 ppc64le s390x aarch64); do
                 if [ "$rpmname" = "xCAT-OpenStack" -a "$arch" != "x86_64" ] || [ "$rpmname" = "xCAT-OpenStack-baremetal" -a "$arch" != "x86_64" ] ; then continue; fi         # only bld openstack for x86_64 for now
                 ./makerpm $rpmname $arch "$EMBED"
                 if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname-$arch"; fi
             done
         fi
         if [ "$FAILEDRPMS" = "$ORIGFAILEDRPMS" ]; then    # all succeeded
-            rm -f $DESTDIR/$rpmname-$SHORTSHORTVER*rpm
-            rm -f $SRCDIR/$rpmname-$SHORTSHORTVER*rpm
-            mv $source/RPMS/*/$rpmname-$VER*rpm $DESTDIR
-            mv $source/SRPMS/$rpmname-$VER*rpm $SRCDIR
+            xcat_deliver_arch_package "$rpmname"
         fi
     fi
 done
@@ -415,24 +409,7 @@ if [ "$OSNAME" = "AIX" ]; then
 fi
 
 # Make sym links in the embed subdirs for the rpms we do not have to build special
-if [ -n "$EMBED" -a -n "$EMBEDLINK" ]; then
-    cd $DESTDIR
-    maindir="../../$XCATCORE"
-    for rpmname in $EMBEDLINK; do
-        if [ "$rpmname" = "xCAT" -o "$rpmname" = "xCATsn" ]; then
-            if [ "$EMBED" = "zvm" ]; then
-                echo "Creating link for $rpmname-$SHORTSHORTVER"'*.s390x.rpm'
-                rm -f $rpmname-$SHORTSHORTVER*rpm
-                ln -s $maindir/$rpmname-$SHORTSHORTVER*.s390x.rpm .
-            fi
-        else
-            echo "Creating link for $rpmname-$SHORTSHORTVER"'*rpm'
-            rm -f $rpmname-$SHORTSHORTVER*rpm
-            ln -s $maindir/$rpmname-$SHORTSHORTVER*rpm .
-        fi
-    done
-    cd - >/dev/null
-fi
+xcat_deliver_embed_links
 
 
 # Decide if anything was built or not
@@ -473,35 +450,19 @@ if [ "$OSNAME" != "AIX" ]; then
             echo '%_gpg_name xCAT Automatic Signing Key' >> $MACROS
         fi
         echo "Signing RPMs..."
-        build-utils/rpmsign.exp `find $DESTDIR -type f -name '*.rpm'` | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
-        build-utils/rpmsign.exp $SRCDIR/*rpm | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
-        # RHEL5 is archaic. Use the default hash algorithm to do the checksum.
-        # Which is SHA-256 on RHEL6.
-        createrepo $DESTDIR
-        createrepo $SRCDIR
-        rm -f $SRCDIR/repodata/repomd.xml.asc
-        rm -f $DESTDIR/repodata/repomd.xml.asc
-        # Use the xCAT Automatic Signing Key to do the signing
-        gpg -a --detach-sign --default-key "xCAT Automatic Signing Key" $DESTDIR/repodata/repomd.xml
-        gpg -a --detach-sign --default-key "xCAT Automatic Signing Key" $SRCDIR/repodata/repomd.xml
-        if [ ! -f $DESTDIR/repodata/repomd.xml.key ]; then
-            gpg -a --export "xCAT Automatic Signing Key" > $DESTDIR/repodata/repomd.xml.key
-        fi
-        if [ ! -f $SRCDIR/repodata/repomd.xml.key ]; then
-            gpg -a --export "xCAT Automatic Signing Key" > $SRCDIR/repodata/repomd.xml.key
-        fi
-    else
-        createrepo $DESTDIR
-        createrepo $SRCDIR
     fi
+    xcat_finalize_repository binary "$DESTDIR"
+    xcat_finalize_repository source "$SRCDIR"
 fi
 
 # set group and permissions correctly on the built rpms
 if [ "$OSNAME" = "AIX" ]; then
     chmod +x $DESTDIR/instxcat
 fi
-chgrp -R $SYSGRP $DESTDIR
-chmod -R g+w $DESTDIR
+if ! xcat_source_only; then
+    chgrp -R $SYSGRP $DESTDIR
+    chmod -R g+w $DESTDIR
+fi
 chgrp -R $SYSGRP $SRCDIR
 chmod -R g+w $SRCDIR
 
@@ -519,7 +480,7 @@ fi
 
 cd $DESTDIR
 
-if [ "$OSNAME" != "AIX" ]; then
+if [ "$OSNAME" != "AIX" ] && ! xcat_source_only; then
 
     # Modify the repo file to point to either xcat-core or core-snap
     # Always recreate it, in case the whole dir was copied from devel to 2.x
@@ -573,33 +534,10 @@ fi
 # Add a buildinfo file into the tar.bz2 file to track information about the build
 #
 BUILDINFO=$XCATCORE/buildinfo
-echo "VERSION=$VER" > $BUILDINFO
-echo "RELEASE=$XCAT_RELEASE" >> $BUILDINFO
-echo "BUILD_TIME=$BUILD_TIME" >> $BUILDINFO
-echo "BUILD_MACHINE=$BUILD_MACHINE" >> $BUILDINFO
-echo "COMMIT_ID=$COMMIT_ID" >> $BUILDINFO
-echo "COMMIT_ID_LONG=$COMMIT_ID_LONG" >> $BUILDINFO
+xcat_write_binary_buildinfo "$BUILDINFO"
 
-echo "Creating $(dirname $DESTDIR)/$TARNAME ..."
-if [[ -e $TARNAME ]]; then
-    mkdir -p previous
-    mv -f $TARNAME previous
-fi
-if [ "$OSNAME" = "AIX" ]; then
-    tar $verboseflag -hcf ${TARNAME%.gz} $XCATCORE
-    gzip ${TARNAME%.gz}
-else
-    tar $verboseflag -hjcf $TARNAME $XCATCORE
-fi
-chgrp $SYSGRP $TARNAME
-chmod g+w $TARNAME
-
-if [ -n "$DEST" ]; then
-    ln -sf $(basename `pwd`)/$TARNAME ../$TARNAME
-    if [ $? != 0 ]; then
-        echo "ERROR: Failed to make symbol link $DEST/$TARNAME"
-    fi
-fi
+xcat_create_binary_tarball
+xcat_publish_tarball_link
 
 # Decide whether to upload or not
 if [ -n "$UP" ] && [ "$UP" == 0 ]; then
@@ -613,10 +551,12 @@ if [ "$OSNAME" = "AIX" ]; then
 else
     YUM=yum
 fi
-if [ ! -e core-snap ]; then
+if ! xcat_source_only && [ ! -e core-snap ]; then
     ln -s xcat-core core-snap
 fi
-if [ "$REL" = "devel" -o "$PREGA" != 1 ]; then
+if xcat_source_only; then
+    echo "Not uploading the binary rpms: a source-only build makes none."
+elif [ "$REL" = "devel" -o "$PREGA" != 1 ]; then
     i=0
     echo "Uploading RPMs from $CORE to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
     while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $CORE $USER@$SERVER:$YUMDIR/$YUM/$REL$EMBEDDIR/
@@ -630,7 +570,9 @@ while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $SRCD $USER@$SERVER:$YUMDIR/
 do : ; done
 
 # Upload the tarball to xcat.org
-if [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
+if xcat_source_only; then
+    echo "Not uploading $TARNAME: a source-only build makes no binary rpms."
+elif [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
     # upload tarball to FRS area
     i=0
     echo "Uploading $TARNAME to $FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/ ..."
