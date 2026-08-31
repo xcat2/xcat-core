@@ -95,7 +95,9 @@ Retrieves serial number.
 
 =item B<firm>
 
-Retrieves firmware versions.
+Retrieves firmware versions. For IBM and Lenovo System x systems managed through
+IMM, C<UEFI Version> reports the active firmware. If the IMM reports a pending
+UEFI build ID, B<rinv> reports it separately as C<Pending UEFI Build ID>.
 
 =item B<deconfig>
 
