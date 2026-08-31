@@ -114,6 +114,11 @@ subtest 'IPv4 settings preserve their wire command bytes' => sub {
             value   => '192.168.1.10',
         },
         {
+            setting => 'ip=0.0.0.0',
+            data    => [ 2, 0x03, 0, 0, 0, 0 ],
+            value   => '0.0.0.0',
+        },
+        {
             setting => 'gateway=10.20.30.1',
             data    => [ 2, 0x0c, 10, 20, 30, 1 ],
             value   => '10.20.30.1',
@@ -190,6 +195,70 @@ subtest 'IPv4 resolver contract' => sub {
     my @invalid =
       xCAT_plugin::ipmi::_resolve_ipv4_octets('999.999.999.999');
     is_deeply( \@invalid, [], 'an invalid address produces no result' );
+};
+
+subtest 'ambiguous IPv4 literals are rejected' => sub {
+    plan skip_all => 'the shared IPv4 resolver is not present on the base revision'
+      unless xCAT_plugin::ipmi->can('_resolve_ipv4_octets');
+
+    my @ambiguous = (
+        [ '192.168.001.010', 'leading-zero octets are octal to some resolvers' ],
+        [ '192.168.257',     'out-of-range octets overflow into neighbours' ],
+        [ '3232235786',      'single-number form' ],
+        [ '192.168.1',       'partial three-part form' ],
+        [ '192.168.1.10.5',  'five-part form' ],
+        [ '256.1.1.1',       'octet above 255' ],
+        [ '192.168..1',      'empty octet' ],
+        [ '0xc0a8010a',      'single hexadecimal form' ],
+        [ '0xc0.0xa8.0x01.0x0a', 'dotted hexadecimal form' ],
+        [ '0X0A141E02',      'uppercase hexadecimal form' ],
+        [ '127.0x0.0.1',     'mixed decimal and hexadecimal form' ],
+    );
+    foreach my $case (@ambiguous) {
+        my ( $value, $reason ) = @{$case};
+        is_deeply( [ xCAT_plugin::ipmi::_resolve_ipv4_octets($value) ],
+            [], "'$value' is rejected: $reason" );
+    }
+
+    is_deeply(
+        [ xCAT_plugin::ipmi::_resolve_ipv4_octets('0.0.0.0') ],
+        [ '0.0.0.0', 0, 0, 0, 0 ],
+        'the all-zero address used to clear settings stays accepted'
+    );
+    is_deeply(
+        [ xCAT_plugin::ipmi::_resolve_ipv4_octets('255.255.255.255') ],
+        [ '255.255.255.255', 255, 255, 255, 255 ],
+        'the top of the address range stays accepted'
+    );
+
+    {
+        local *xCAT_plugin::ipmi::inet_aton = sub {
+            return pack( 'C4', 203, 0, 113, 8 ) if $_[0] eq 'beef.face';
+            return $system_inet_aton->(@_);
+        };
+        is_deeply(
+            [ xCAT_plugin::ipmi::_resolve_ipv4_octets('beef.face') ],
+            [ '203.0.113.8', 203, 0, 113, 8 ],
+            'a hostname made of hexadecimal characters still resolves'
+        );
+    }
+
+    foreach my $setting (
+        'ip=192.168.001.010',       'gateway=192.168.257',
+        'ip=0xc0a8010a',            'gateway=0xc0.0xa8.0x01.0x0a',
+        'backupgateway=0X0A141E02', 'snmpdest1=0xcb007107',
+      ) {
+        my ( undef, $value ) = split /=/, $setting;
+        my $result = run_setting($setting);
+        ok( $result->{succeeded}, "$setting does not raise a Perl exception" )
+          or diag $result->{error};
+        is_deeply( $result->{calls}, [], "$setting sends no IPMI command" );
+        is_deeply(
+            $result->{messages}->[0]->[0],
+            [ 1, "Unable to resolve '$value' to an IPv4 address" ],
+            "$setting reports the rejection"
+        );
+    }
 };
 
 subtest 'invalid IPv4 settings report an xCAT error' => sub {
