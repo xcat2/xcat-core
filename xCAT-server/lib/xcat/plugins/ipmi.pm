@@ -873,6 +873,19 @@ sub _resolve_ipv4_octets {
     my $value = shift;
     return unless defined($value) and length($value);
 
+    # inet_aton also accepts octal, hexadecimal, partial, and single-number
+    # forms, and platforms parse them differently.  A value whose components
+    # are all numeric is a literal, and a literal must be a plain
+    # dotted-decimal quad so every platform encodes the same address.
+    my @components = split(/\./, $value, -1);
+    unless (grep { $_ !~ m/^(?:0[xX][0-9a-fA-F]+|[0-9]+)$/ } @components) {
+        return unless scalar(@components) == 4;
+        foreach my $octet (@components) {
+            return unless $octet =~ m/^(?:0|[1-9][0-9]{0,2})$/ and $octet <= 255;
+        }
+        return ($value, map { $_ + 0 } @components);
+    }
+
     my $packed_address = inet_aton($value);
     return unless defined($packed_address) and length($packed_address) == 4;
 
