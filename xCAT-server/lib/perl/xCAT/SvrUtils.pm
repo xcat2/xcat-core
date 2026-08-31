@@ -1674,33 +1674,7 @@ sub setupNFSTree {
         my $nfsdirectory = $2;
 
         if ($nfsserver eq $sip) {    # on the service node
-
-            unless (-d $nfsdirectory) {
-                if (-e $nfsdirectory) {
-                    unlink $nfsdirectory;
-                }
-                mkpath $nfsdirectory;
-            }
-
-            $cmd = "showmount -e $nfsserver";
-            my @entries = xCAT::Utils->runcmd($cmd, 0);
-            shift @entries;
-            if (grep /\Q$nfsdirectory\E/, @entries) {
-                $callback->({ data => ["$nfsdirectory has been exported already!"] });
-            } else {
-                $cmd = "/usr/sbin/exportfs :$nfsdirectory -o rw,no_root_squash,sync,no_subtree_check,insecure";
-                xCAT::Utils->runcmd($cmd, 0);
-                $callback->({ data => ["now $nfsdirectory is exported!"] });
-            }
-
-            if (ensure_nfs_export_option($nfsdirectory, 'insecure')) {
-                xCAT::Utils->runcmd("/usr/sbin/exportfs -r", 0);
-                $callback->({ data => ["added insecure to existing $nfsdirectory export"] });
-            } elsif (!nfs_export_exists($nfsdirectory)) {
-                $cmd = qq{echo "$nfsdirectory *(rw,no_root_squash,sync,no_subtree_check,insecure)" >> /etc/exports};
-                xCAT::Utils->runcmd($cmd, 0);
-                $callback->({ data => ["$nfsdirectory is added to /etc/exports with default option"] });
-            }
+            _ensure_nfs_exported($nfsserver, $nfsdirectory, $callback);
         }
     }
 }
@@ -1719,6 +1693,44 @@ sub nfs_export_exists {
     return 0;
 }
 
+sub _ensure_nfs_exported {
+    my ($nfsserver, $nfsdirectory, $callback, %opts) = @_;
+    my $export_options = 'rw,no_root_squash,sync,no_subtree_check,insecure';
+
+    unless (-d $nfsdirectory) {
+        if (-e $nfsdirectory) {
+            unlink $nfsdirectory;
+        }
+        mkpath $nfsdirectory;
+    }
+
+    my $cmd = "showmount -e $nfsserver";
+    my @entries = xCAT::Utils->runcmd($cmd, 0);
+    shift @entries;
+    if (grep /\Q$nfsdirectory\E/, @entries) {
+        $callback->({ data => ["$nfsdirectory has been exported already!"] });
+    } else {
+        $cmd = "/usr/sbin/exportfs :$nfsdirectory -o $export_options";
+        xCAT::Utils->runcmd($cmd, 0);
+        $callback->({ data => ["now $nfsdirectory is exported!"] });
+    }
+
+    if (ensure_nfs_export_option($nfsdirectory, 'insecure')) {
+        xCAT::Utils->runcmd("/usr/sbin/exportfs -r", 0);
+        $callback->({ data => ["added insecure to existing $nfsdirectory export"] });
+    } elsif (!nfs_export_exists($nfsdirectory)) {
+        my $append_separator = exists($opts{append_separator})
+          ? $opts{append_separator}
+          : ' ';
+        $cmd = qq{echo "$nfsdirectory *($export_options)" >>$append_separator/etc/exports};
+        xCAT::Utils->runcmd($cmd, 0);
+        my $message = exists($opts{added_message})
+          ? $opts{added_message}
+          : "$nfsdirectory is added to /etc/exports with default option";
+        $callback->({ data => [$message] });
+    }
+}
+
 sub setupStatemnt {
     my $sip = shift;
     if (($sip) && ($sip =~ /xCAT::SvrUtils/))
@@ -1733,31 +1745,11 @@ sub setupStatemnt {
     my $nfsserver    = $1;
     my $nfsdirectory = $2;
     if ($sip eq xCAT::NetworkUtils->getipaddr($nfsserver)) {
-        unless (-d $nfsdirectory) {
-            if (-e $nfsdirectory) {
-                unlink $nfsdirectory;
-            }
-            mkpath $nfsdirectory;
-        }
-
-        my $cmd = "showmount -e $nfsserver";
-        my @entries = xCAT::Utils->runcmd($cmd, 0);
-        shift @entries;
-        if (grep /\Q$nfsdirectory\E/, @entries) {
-            $callback->({ data => ["$nfsdirectory has been exported already!"] });
-        } else {
-            $cmd = "/usr/sbin/exportfs :$nfsdirectory -o rw,no_root_squash,sync,no_subtree_check,insecure";
-            xCAT::Utils->runcmd($cmd, 0);
-            $callback->({ data => ["now $nfsdirectory is exported!"] });
-        }
-
-        if (ensure_nfs_export_option($nfsdirectory, 'insecure')) {
-            xCAT::Utils->runcmd("/usr/sbin/exportfs -r", 0);
-            $callback->({ data => ["added insecure to existing $nfsdirectory export"] });
-        } elsif (!nfs_export_exists($nfsdirectory)) {
-            xCAT::Utils->runcmd(qq{echo "$nfsdirectory *(rw,no_root_squash,sync,no_subtree_check,insecure)" >>/etc/exports}, 0);
-            $callback->({ data => ["$nfsdirectory is added into /etc/exports with default options"] });
-        }
+        _ensure_nfs_exported(
+            $nfsserver, $nfsdirectory, $callback,
+            append_separator => '',
+            added_message    => "$nfsdirectory is added into /etc/exports with default options",
+        );
     }
 
 }
