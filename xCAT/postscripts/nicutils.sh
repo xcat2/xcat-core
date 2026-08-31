@@ -1813,7 +1813,7 @@ function add_extra_params_nmcli {
     con_name=$2
     rc=0
 
-    if ! [[ "$OSVER" =~ ^(rhel|rhels|alma|almalinux|rocky|centos|ol)(9|1[0-9]) ]]; then
+    if ! xcat_is_el9_or_later "$OSVER"; then
         str_conf_file="/etc/sysconfig/network-scripts/ifcfg-${con_name}"
         str_conf_file_1="/etc/sysconfig/network-scripts/ifcfg-${con_name}-1"
         if [ -f $str_conf_file_1 ]; then
@@ -1834,7 +1834,7 @@ function add_extra_params_nmcli {
 
         if [ -n "$name" -a -n "$value" ]; then
             # For RHEL 9, use nmcli directly, otherwise use ifcfg scheme.
-            if [[ "$OSVER" =~ ^(rhel|rhels|alma|almalinux|rocky|centos|ol)(9|1[0-9]) ]]; then
+            if xcat_is_el9_or_later "$OSVER"; then
                 nmcli con modify "$con_name" "$name" "$value"
                 rc+=$?
             else
@@ -1853,7 +1853,7 @@ function add_extra_params_nmcli {
         i=$((i+1))
     done
 
-    if [[ ! "$OSVER" =~ ^(rhel|rhels|alma|almalinux|rocky|centos|ol)(9|1[0-9]) ]]; then
+    if ! xcat_is_el9_or_later "$OSVER"; then
         $nmcli con reload $str_conf_file
     fi
     return $rc

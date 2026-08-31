@@ -215,7 +215,7 @@ function configipv4(){
         do
             name="${array_extra_param_names[$i]}"
             value="${array_extra_param_values[$i]}"
-            if [[ "$OSVER" =~ ^(rhel|rhels|alma|almalinux|rocky|centos|ol)(9|1[0-9]) ]]; then
+            if xcat_is_el9_or_later "$OSVER"; then
                 # Best-effort: apply as a native NetworkManager property if one exists.
                 # Arbitrary ifcfg-style keys (e.g. CONNECTED_MODE) have no NM setting and
                 # are (re)persisted into the keyfile [user] section after ALL IPs are
@@ -840,7 +840,7 @@ elif [ "$1" = "-s" ];then
         do
             name="${array_extra_param_names[$i]}"
             value="${array_extra_param_values[$i]}"
-            if [[ "$OSVER" =~ ^(rhel|rhels|alma|almalinux|rocky|centos|ol)(9|1[0-9]) ]]; then
+            if xcat_is_el9_or_later "$OSVER"; then
                 nmcli con modify $con_name $name $value
             else
                 echo "$i: name=$name value=$value"
@@ -1326,7 +1326,7 @@ fi
 # in-memory model and drops anything NM does not model, so an earlier write would be lost.
 # On EL10 (keyfile-only) there is no ifcfg file to hold these. We do NOT reload after, so
 # the file keeps the section; NM tolerates an unknown [user] section in keyfile mode.
-if [ "$str_os_type" = "redhat" ] && [ "$networkmanager_active" = "1" ] && [[ "$OSVER" =~ ^(rhel|rhels|alma|almalinux|rocky|centos|ol)(9|1[0-9]) ]]; then
+if [ "$str_os_type" = "redhat" ] && [ "$networkmanager_active" = "1" ] && xcat_is_el9_or_later "$OSVER"; then
     # Resolve the connection's keyfile by UUID -- NM may name it "<id>-<uuid>.nmconnection"
     # (not the plain "<id>.nmconnection") when a same-named file already exists.
     ep_con="xcat-${str_nic_name}"
