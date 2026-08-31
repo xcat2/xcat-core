@@ -443,10 +443,10 @@ EOF
           tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf "$SOURCES/$pkg-$VERSION.tar.gz" $pkg
           tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf "$SOURCES/license.tar.gz" -C $pkg LICENSE.html
           tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf "$SOURCES/etc.tar.gz" -C xCAT etc
-          cp $pkg/xcat.conf $SOURCES
-          cp $pkg/xcat.conf.apach24 $SOURCES
-          cp $pkg/xCATSN $SOURCES
 EOF
+      system('build-utils/sync-xcat-apache-configs', '--stage', $SOURCES) == 0
+          or die "FATAL: unable to stage canonical Apache configurations\n";
+      cp "$pkg/xCATSN", $SOURCES;
       # xCATsn.spec consumes templates from xCAT shared templates payload.
       sh qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf "$SOURCES/templates.tar.gz" xCAT/templates) unless -f "$SOURCES/templates.tar.gz";
     } elsif ($pkg eq "xCAT-probe") {

@@ -1,0 +1,113 @@
+#!/bin/sh
+
+set -eu
+
+usage()
+{
+    printf 'Usage: %s --check|--write|--stage DIRECTORY\n' "${0##*/}" >&2
+}
+
+case ${1-}:$# in
+    --check:1|--write:1)
+        mode=$1
+        ;;
+    --stage:2)
+        mode=$1
+        stage_directory=$2
+        ;;
+    *)
+        usage
+        exit 2
+        ;;
+esac
+
+script_dir=$(CDPATH='' cd "$(dirname "$0")" && pwd -P)
+repo_root=$(CDPATH='' cd "$script_dir/.." && pwd -P)
+status=0
+temp_file=
+
+trap 'if [ -n "$temp_file" ]; then rm -f "$temp_file"; fi' 0
+trap 'exit 1' 1 2 3 15
+
+has_expected_mode()
+{
+    mode_path=$1
+    mode_match=$(find "$mode_path" -prune -type f -perm 0644 -print 2>/dev/null)
+    [ "$mode_match" = "$mode_path" ]
+}
+
+replace_target()
+{
+    replace_source=$1
+    replace_target=$2
+
+    if [ -d "$replace_target" ]; then
+        printf '%s cannot replace a directory\n' "$replace_target" >&2
+        return 1
+    fi
+    temp_file=$(mktemp "$replace_target.tmp.XXXXXX")
+    cp "$replace_source" "$temp_file"
+    chmod 0644 "$temp_file"
+    mv -f "$temp_file" "$replace_target"
+    temp_file=
+}
+
+validate_source()
+{
+    source_relative=$1
+    source_path=$repo_root/$source_relative
+    if [ ! -f "$source_path" ] || [ -L "$source_path" ]; then
+        printf '%s must be a regular file\n' "$source_relative" >&2
+        status=1
+    fi
+}
+
+sync_pair()
+{
+    source_relative=$1
+    target_relative=$2
+    source_path=$repo_root/$source_relative
+    target_path=$repo_root/$target_relative
+
+    content_matches=0
+    if [ -f "$target_path" ] && [ ! -L "$target_path" ] && \
+        cmp "$source_path" "$target_path" >/dev/null 2>&1; then
+        content_matches=1
+        if has_expected_mode "$target_path"; then
+            return
+        fi
+    fi
+
+    if [ "$mode" = "--check" ]; then
+        printf '%s is out of date; run %s --write\n' \
+            "$target_relative" "${0##*/}" >&2
+        status=1
+        return
+    fi
+
+    replace_target "$source_path" "$target_path"
+    if [ "$content_matches" -eq 0 ]; then
+        printf 'updated %s\n' "$target_relative"
+    fi
+}
+
+validate_source xCAT/xcat.conf
+validate_source xCAT/xcat.conf.apach24
+if [ "$status" -ne 0 ]; then
+    exit "$status"
+fi
+
+if [ "$mode" = "--stage" ]; then
+    if [ ! -d "$stage_directory" ]; then
+        printf '%s is not a directory\n' "$stage_directory" >&2
+        exit 1
+    fi
+    replace_target "$repo_root/xCAT/xcat.conf" "$stage_directory/xcat.conf"
+    replace_target "$repo_root/xCAT/xcat.conf.apach24" \
+        "$stage_directory/xcat.conf.apach24"
+else
+    sync_pair xCAT/xcat.conf xCATsn/xcat.conf
+    sync_pair xCAT/xcat.conf.apach24 xCATsn/xcat.conf.apach24
+fi
+
+exit "$status"

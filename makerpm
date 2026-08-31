@@ -141,8 +141,11 @@ function makexcat {
 		elif [ "$RPMNAME" = "xCATsn" ]; then
 			cd `dirname $0`/$RPMNAME
 			tar --exclude .svn -czf $RPMROOT/SOURCES/license.tar.gz LICENSE.html
-			cp xcat.conf $RPMROOT/SOURCES
-			cp xcat.conf.apach24 $RPMROOT/SOURCES
+			../build-utils/sync-xcat-apache-configs --stage "$RPMROOT/SOURCES" || {
+				RC=$?
+				cd - >/dev/null
+				return $RC
+			}
 			cp xCATSN $RPMROOT/SOURCES
                         cp -a ../xCAT/etc/rsyslog.d $RPMROOT/
                         cp -a ../xCAT/etc/logrotate.d $RPMROOT/
