@@ -826,3 +826,19 @@ function msgutil_r {
 function msgutil {
    msgutil_r "" "$@"
 }
+
+function fetch_mypostscript {
+    local postroot
+    postroot=$1
+    shift
+
+    /$postroot/getpostscript.awk "$@" |
+        egrep '<data>' |
+        sed -e 's/<[^>]*>//g' |
+        egrep -v '^ *$' |
+        sed -e 's/^ *//' |
+        sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' \
+            -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /$postroot/mypostscript
+
+    grep MASTER /$postroot/mypostscript
+}
