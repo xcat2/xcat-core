@@ -1354,7 +1354,7 @@ Usage:
     if (exists $allips{ $args_dict{'ip'} }) {
         setrsp_errormsg("The specified IP address $args_dict{'ip'} already exists in the IP address database. You must use a different IP address.");
         return;
-    } elsif ((xCAT::NetworkUtils->validate_ip($args_dict{'ip'}))[0]->[0]) {
+    } elsif (!xCAT::NetworkUtils->isValidIp($args_dict{'ip'})) {
         setrsp_errormsg("The specified IP address $args_dict{'ip'} is invalid. You must use a valid IP address.");
         return;
     }
@@ -2597,7 +2597,7 @@ sub validate_node_entry {
         } elsif ($_ eq "ip") {
             if (exists $allips{ $node_entry{$_} }) {
                 $errmsg .= "IP address $node_entry{$_} already exists in the database or in the node information file.\n";
-            } elsif ((xCAT::NetworkUtils->validate_ip($node_entry{$_}))[0]->[0]) {
+            } elsif (!xCAT::NetworkUtils->isValidIp($node_entry{$_})) {
                 $errmsg .= "IP address $node_entry{$_} is invalid. You must use a valid IP address.\n";
             } else {
 
@@ -2747,7 +2747,7 @@ sub validate_node_entry {
                     $nic_ip = $nic_and_ips[1];
                     if (exists $allips{$nic_ip}) {
                         $errmsg .= "IP address $nic_ip already exists in the database or in the node information file.\n";
-                    } elsif ((xCAT::NetworkUtils->validate_ip($nic_ip))[0]->[0]) {
+                    } elsif (!xCAT::NetworkUtils->isValidIp($nic_ip)) {
                         $errmsg .= "IP address $nic_ip is invalid. You must use a valid IP address.\n";
                     } else {
 
