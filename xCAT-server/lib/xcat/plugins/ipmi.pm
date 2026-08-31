@@ -892,6 +892,22 @@ sub _resolve_ipv4_octets {
     return (inet_ntoa($packed_address), unpack("C4", $packed_address));
 }
 
+sub _session_ipv4_octets {
+    my $sessdata = shift;
+    my $value    = shift;
+    return unless defined($value) and length($value);
+
+    # setnetinfo re-enters itself between the transaction steps.  Keep the
+    # first resolution for the whole session so a repeated lookup cannot
+    # fail after Set In Progress opened the transaction.
+    my $cached = $sessdata->{resolved_ipv4}{$value};
+    unless ($cached) {
+        $cached = [ _resolve_ipv4_octets($value) ];
+        $sessdata->{resolved_ipv4}{$value} = $cached;
+    }
+    return @{$cached};
+}
+
 sub _report_unresolvable_ipv4 {
     my $value    = shift;
     my $sessdata = shift;
@@ -974,7 +990,7 @@ sub setnetinfo {
     }
     elsif ($subcommand =~ m/snmpdest(\d+)/) {
         my $destination = $1;
-        my ($dstip, @dip) = _resolve_ipv4_octets($argument);
+        my ($dstip, @dip) = _session_ipv4_octets($sessdata, $argument);
         unless (defined($dstip)) {
             _report_unresolvable_ipv4($argument, $sessdata);
             return;
@@ -990,7 +1006,7 @@ sub setnetinfo {
             @cmd = (0x01, $channel_number, 0x6, @mask);
         }
     } elsif ($subcommand eq "gateway" and $argument) {
-        my ($gw, @octets) = _resolve_ipv4_octets($argument);
+        my ($gw, @octets) = _session_ipv4_octets($sessdata, $argument);
         unless (defined($gw)) {
             _report_unresolvable_ipv4($argument, $sessdata);
             return;
@@ -998,7 +1014,7 @@ sub setnetinfo {
         $sessdata->{setnetinfo_value} = $gw;
         @cmd = (0x01, $channel_number, 0x0C, @octets);
     } elsif ($subcommand eq "backupgateway" and $argument) {
-        my ($gw, @octets) = _resolve_ipv4_octets($argument);
+        my ($gw, @octets) = _session_ipv4_octets($sessdata, $argument);
         unless (defined($gw)) {
             _report_unresolvable_ipv4($argument, $sessdata);
             return;
@@ -1034,7 +1050,7 @@ sub setnetinfo {
                 return;
             }
         }
-        my ($mip, @octets) = _resolve_ipv4_octets($argument);
+        my ($mip, @octets) = _session_ipv4_octets($sessdata, $argument);
         unless (defined($mip)) {
             _report_unresolvable_ipv4($argument, $sessdata);
             return;
