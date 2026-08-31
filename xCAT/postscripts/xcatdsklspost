@@ -182,7 +182,6 @@ download_mypostscript()
 }
 
 
-
 # pmatch determines if 1st argument string is matched by 2nd argument pattern
 
 pmatch ()
@@ -680,6 +679,7 @@ fi
 # We need to call getpostscript.awk .
 
 if [ ! -x /$xcatpost/mypostscript ]; then
+  . /$xcatpost/xcatlib.sh
   echolog "debug" "no pre-generated mypostscript.<nodename>, trying to get it with getpostscript.awk..."
   GETPOSTSCRIPT_ARGS=""
   if [ -n "$node_short" ]; then
@@ -699,10 +699,7 @@ if [ ! -x /$xcatpost/mypostscript ]; then
       useflowcontrol=0
     fi
   fi
-  /$xcatpost/getpostscript.awk $GETPOSTSCRIPT_ARGS | egrep  '<data>' | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" >  /$xcatpost/mypostscript;
-
-
- MYCONT=`grep MASTER /$xcatpost/mypostscript`
+ MYCONT=`fetch_mypostscript "$xcatpost" $GETPOSTSCRIPT_ARGS`
  MAX_RETRIES=10
  RETRY=0
  while [ -z "$MYCONT" ]; do
@@ -733,8 +730,7 @@ if [ ! -x /$xcatpost/mypostscript ]; then
         useflowcontrol=0
       fi
     fi
-    /$xcatpost/getpostscript.awk $GETPOSTSCRIPT_ARGS | egrep  '<data>' | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" >  /$xcatpost/mypostscript;
-    MYCONT=`grep MASTER /$xcatpost/mypostscript`
+    MYCONT=`fetch_mypostscript "$xcatpost" $GETPOSTSCRIPT_ARGS`
     if [ ! -z "$MYCONT" ]; then
         break;
     fi
