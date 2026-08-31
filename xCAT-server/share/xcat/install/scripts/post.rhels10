@@ -6,15 +6,7 @@
 [ "$MASTER_IP" ] || export MASTER_IP="#ENV:MASTER_IP#"
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
 
-if command -v nmcli >/dev/null 2>&1; then
-    nmcli -g NAME,STATE con show | \
-        awk -F: '$1 != "lo" && $2 == "activated" {print $1}' | \
-        while IFS= read -r con_name
-        do
-            [ -n "$con_name" ] || continue
-            nmcli con mod "$con_name" connection.autoconnect yes
-        done
-fi
+xcat_enable_active_nm_autoconnect
 
 internet_repo_file_list="oracle-linux-ol10.repo uek-ol10.repo Rocky-AppStream.repo Rocky-BaseOS.repo Rocky-Extras.repo rocky.repo rocky-extras.repo CentOS-Base.repo centos.repo centos-addons.repo almalinux-ha.repo almalinux-nfv.repo almalinux-powertools.repo almalinux.repo almalinux-resilientstorage.repo almalinux-rt.repo"
 
