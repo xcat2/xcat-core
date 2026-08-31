@@ -487,7 +487,7 @@ sub obtain_log_content {
         if ($split_line[0] =~ /(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)(.+)-(.+)/) {
             $log_content{time_record} = "$4:$5:$6";
             $log_content{time} = $self->convert_to_epoch_seconds($split_line[0]);
-            if (!xCAT::NetworkUtils->isIpaddr($split_line[1])) {
+            if (!xCAT::NetworkUtils->isIpv4addr($split_line[1])) {
                 my @sender_tmp = split(/\./, $split_line[1]);
                 $log_content{sender} = $sender_tmp[0];
             } else {
@@ -515,7 +515,7 @@ sub obtain_log_content {
             my $timestamp = join(" ", @split_line[ 0 .. 2 ]);
             $log_content{time_record} = $split_line[2];
             $log_content{time} = $self->convert_to_epoch_seconds($timestamp);
-            if (!xCAT::NetworkUtils->isIpaddr($split_line[3])) {
+            if (!xCAT::NetworkUtils->isIpv4addr($split_line[3])) {
                 my @sender_tmp = split(/\./, $split_line[3]);
                 $log_content{sender} = $sender_tmp[0];
             } else {
@@ -546,7 +546,7 @@ sub obtain_log_content {
             $log_content{time_record} = "$4:$5:$6";
         }
         $log_content{time}   = $self->convert_to_epoch_seconds($split_line[3]);
-        if (!xCAT::NetworkUtils->isIpaddr($split_line[0])) {
+        if (!xCAT::NetworkUtils->isIpv4addr($split_line[0])) {
             my @sender_tmp = split(/\./, $split_line[0]);
             $log_content{sender} = $sender_tmp[0];
         } else {

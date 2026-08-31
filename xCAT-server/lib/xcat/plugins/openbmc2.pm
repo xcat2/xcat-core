@@ -324,12 +324,12 @@ sub parse_args {
                         return([1, "Invalid parameter for option $key: $value"]);
                     }
                 } elsif ($key eq "netmask") {
-                    if (!xCAT::NetworkUtils->isIpaddr($value)) {
+                    if (!xCAT::NetworkUtils->isIpv4addr($value)) {
                         return ([ 1, "Invalid parameter for option $key: $value" ]);
                     }
                     $set_net_info{"netmask"} = 1;
                 } elsif ($key eq "gateway") {
-                    if ($value ne "0.0.0.0" and !xCAT::NetworkUtils->isIpaddr($value)) {
+                    if ($value ne "0.0.0.0" and !xCAT::NetworkUtils->isIpv4addr($value)) {
                         return ([ 1, "Invalid parameter for option $key: $value" ]);
                     }
                     $set_net_info{"gateway"} = 1;
@@ -339,7 +339,7 @@ sub parse_args {
                     if ($value ne "dhcp") {
                         if (@$noderange > 1) {
                             return ([ 1, "Can not configure more than 1 nodes' ip at the same time" ]);
-                        } elsif (!xCAT::NetworkUtils->isIpaddr($value)) {
+                        } elsif (!xCAT::NetworkUtils->isIpv4addr($value)) {
                             return ([ 1, "Invalid parameter for option $key: $value" ]);
                         }
                         $set_net_info{"ip"} = 1;

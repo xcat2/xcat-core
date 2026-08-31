@@ -297,7 +297,7 @@ sub addotherinterfaces
         } else {
             ($itf, $ip) = split(/:/, $_);
         }
-        if ($ip && xCAT::NetworkUtils->isIpaddr($ip))
+        if ($ip && xCAT::NetworkUtils->isIpv4addr($ip))
         {
             if ($itf =~ /^-/)
             {
@@ -330,7 +330,7 @@ sub delotherinterfaces
         } else {
             ($itf, $ip) = split(/:/, $_);
         }
-        if ($ip && xCAT::NetworkUtils->isIpaddr($ip))
+        if ($ip && xCAT::NetworkUtils->isIpv4addr($ip))
         {
             if ($itf =~ /^-/)
             {
@@ -393,7 +393,7 @@ sub add_hosts_content {
         }
         else
         {
-            if (xCAT::NetworkUtils->isIpaddr($ip))
+            if (xCAT::NetworkUtils->isIpv4addr($ip))
             {
                 addnode $callback, $nodename, $ip, $ref->{hostnames}, $domain;
             }
@@ -632,7 +632,7 @@ sub process_request
                 $domain = $::XCATSITEVALS{domain};
             }
 
-            if (xCAT::NetworkUtils->isIpaddr($_->{ip}))
+            if (xCAT::NetworkUtils->isIpv4addr($_->{ip}))
             {
                 addnode $callback, $_->{node}, $_->{ip}, $_->{hostnames}, $domain;
             }

@@ -1359,7 +1359,7 @@ sub rspconfig_parse_address_port {
         return (undef, undef, "Invalid parameter: $value");
     }
 
-    return (undef, undef, "Invalid parameter: $address") if (!xCAT::NetworkUtils->isIpaddr($address));
+    return (undef, undef, "Invalid parameter: $address") if (!xCAT::NetworkUtils->isIpv4addr($address));
     return (undef, undef, "Invalid parameter: $port") if (!rspconfig_valid_port($port) or $port == 0);
     return ($address, $port, undef);
 }
@@ -1678,12 +1678,12 @@ sub parse_args {
 
                 my $nodes_num = @$noderange;
                 return ([ 1, "Invalid parameter for option $key" ]) if (!$value and $key ne ("ntpservers"));
-                return ([ 1, "Invalid parameter for option $key: $value" ]) if (($key eq "netmask") and !xCAT::NetworkUtils->isIpaddr($value));
-                return ([ 1, "Invalid parameter for option $key: $value" ]) if (($key eq "gateway") and ($value !~ "0.0.0.0" and !xCAT::NetworkUtils->isIpaddr($value)));
+                return ([ 1, "Invalid parameter for option $key: $value" ]) if (($key eq "netmask") and !xCAT::NetworkUtils->isIpv4addr($value));
+                return ([ 1, "Invalid parameter for option $key: $value" ]) if (($key eq "gateway") and ($value !~ "0.0.0.0" and !xCAT::NetworkUtils->isIpv4addr($value)));
                 if ($key eq "ip") {
                     return ([ 1, "Can not configure more than 1 nodes' ip at the same time" ]) if ($nodes_num >= 2 and $value ne "dhcp");
                     if ($value ne "dhcp" ) {
-                        if (!xCAT::NetworkUtils->isIpaddr($value)) {
+                        if (!xCAT::NetworkUtils->isIpv4addr($value)) {
                             return ([ 1, "Invalid parameter for option $key: $value" ]);
                         } else {
                             $all_subcommand .= $key . ",";

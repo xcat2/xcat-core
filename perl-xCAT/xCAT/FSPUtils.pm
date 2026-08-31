@@ -139,7 +139,7 @@ sub getIPaddress
     my $type        = shift;
     my $nodetocheck = shift;
     my $port        = shift;
-    if (xCAT::NetworkUtils::isIpaddr($nodetocheck)) {
+    if (xCAT::NetworkUtils::isIpv4addr($nodetocheck)) {
         return $nodetocheck;
     }
     my $side = "[A|B]";
@@ -201,7 +201,7 @@ sub getIPaddress
             if ($tmp_s and $tmp_s =~ /^$side-$port$/i) {
                 $tmp_s =~ s/a/A/;
                 $tmp_s =~ s/b/B/;
-                if (xCAT::NetworkUtils::isIpaddr($tmp_n)) {
+                if (xCAT::NetworkUtils::isIpv4addr($tmp_n)) {
                     $node_side_pairs{$tmp_s} = $tmp_n;
                     $children_num++;
                 } else {

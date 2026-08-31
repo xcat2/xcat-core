@@ -4932,7 +4932,7 @@ sub isobjnamevalid{
     $objtype="node" unless(defined $objtype and ($objtype ne ""));
     if($objtype eq "node"){
         #the ip address as a valid node object name is a hack for p7IH support
-        if(($objname !~ /^[a-zA-Z0-9-_]+$/) and !xCAT::NetworkUtils->isIpaddr($objname)){
+        if(($objname !~ /^[a-zA-Z0-9-_]+$/) and !xCAT::NetworkUtils->isIpv4addr($objname)){
             return 0;
         }
     } elsif ($objtype eq "group"){

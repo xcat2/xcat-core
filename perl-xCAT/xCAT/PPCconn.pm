@@ -520,7 +520,7 @@ sub mkhwconn
             for my $nn (@newnodes)
             {
                 my $node_ip;
-                unless (xCAT::NetworkUtils->isIpaddr($nn)) {
+                unless (xCAT::NetworkUtils->isIpv4addr($nn)) {
                     $node_ip = xCAT::NetworkUtils::getNodeIPaddress($nn);
                 } else {
                     $node_ip = $nn;

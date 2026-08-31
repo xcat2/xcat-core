@@ -1687,7 +1687,7 @@ sub getNodeIPaddress
     }
 
     # Quick return if pass in an IP
-    return $nodetocheck if (xCAT::NetworkUtils->isIpaddr($nodetocheck));
+    return $nodetocheck if (xCAT::NetworkUtils->isIpv4addr($nodetocheck));
 
     my $nodeip = xCAT::NetworkUtils->getipaddr($nodetocheck);
     if (!$nodeip)
@@ -2132,7 +2132,7 @@ sub validate_ip
 
 #-------------------------------------------------------------------------------
 
-=head3    isIpaddr
+=head3    isIpv4addr
 
     returns 1 if parameter is has a valid IP address form.
 
@@ -2154,7 +2154,7 @@ sub validate_ip
 =cut
 
 #-------------------------------------------------------------------------------
-sub isIpaddr
+sub isIpv4addr
 {
     my $addr = shift;
     if (($addr) && ($addr =~ /xCAT::NetworkUtils/))
@@ -2181,6 +2181,20 @@ sub isIpaddr
     {
         return 1;
     }
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    isIpaddr
+
+    Deprecated alias for isIpv4addr, kept for external callers.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub isIpaddr
+{
+    return isIpv4addr(@_);
 }
 
 

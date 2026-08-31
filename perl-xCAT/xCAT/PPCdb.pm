@@ -1106,7 +1106,7 @@ sub get_host {
             }
 
             if ($tmpmtm eq $mtm and $tmpsn eq $sn) {
-                my $ifip = xCAT::NetworkUtils->isIpaddr($oldnode);
+                my $ifip = xCAT::NetworkUtils->isIpv4addr($oldnode);
                 if ($ifip) { # which means that the node is defined by the new lsslp
                     if ($tmpside eq $side) { # match! which means that node is the same as the new one
                         if ($ip eq $tmpip) { #which means that the ip is not changed
@@ -1230,7 +1230,7 @@ sub get_host {
     }
 
     # not matched, use the new name
-    my $ifip = xCAT::NetworkUtils->isIpaddr($nodename);
+    my $ifip = xCAT::NetworkUtils->isIpv4addr($nodename);
     unless ($ifip) {
         return $nodename;
     } else {
@@ -1338,7 +1338,7 @@ sub read_from_table {
                 @{ $::OLD_DATA_CACHE{ $entry->{node} } }[1] = @{ $vpdhash{ $entry->{node} } }[1]; #sn
                 @{ $::OLD_DATA_CACHE{ $entry->{node} } }[2] = @{ $vpdhash{ $entry->{node} } }[2]; #side
                   # find node ip address, check node name first, then check hosts table
-                my $ifip = xCAT::NetworkUtils->isIpaddr($entry->{node});
+                my $ifip = xCAT::NetworkUtils->isIpv4addr($entry->{node});
                 if ($ifip)
                 {
                     @{ $::OLD_DATA_CACHE{ $entry->{node} } }[3] = $entry->{node}; #ip

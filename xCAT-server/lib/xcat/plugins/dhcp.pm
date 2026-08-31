@@ -2424,7 +2424,7 @@ sub process_request
         foreach my $node (@{ $req->{node} }) {
 
             #need to change the way of finding IP for nodes
-            my $ifip = xCAT::NetworkUtils->isIpaddr($node);
+            my $ifip = xCAT::NetworkUtils->isIpv4addr($node);
             if ($ifip)
             {
                 $ip_hash->{$node} = $node;
