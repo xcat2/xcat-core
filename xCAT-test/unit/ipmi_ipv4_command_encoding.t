@@ -59,6 +59,25 @@ sub subcmd {
     return;
 }
 
+package Local::IPMIFlowSession;
+
+sub new {
+    my ( $class, $channel ) = @_;
+    return bless { currentchannel => $channel, calls => [] }, $class;
+}
+
+sub subcmd {
+    my ( $self, %args ) = @_;
+    push @{ $self->{calls} }, \%args;
+
+    # Answer LAN configuration writes so the transaction chain advances;
+    # leave the final read-back request unanswered to end the exchange.
+    if ( $args{command} == 0x01 ) {
+        $args{callback}->( {}, $args{callback_args} );
+    }
+    return;
+}
+
 package main;
 
 no warnings qw(once redefine);
@@ -258,6 +277,68 @@ subtest 'ambiguous IPv4 literals are rejected' => sub {
             [ 1, "Unable to resolve '$value' to an IPv4 address" ],
             "$setting reports the rejection"
         );
+    }
+};
+
+subtest 'IPv4 settings resolve once per transaction' => sub {
+    plan skip_all => 'the shared IPv4 resolver is not present on the base revision'
+      unless xCAT_plugin::ipmi->can('_resolve_ipv4_octets');
+
+    my @cases = (
+        {
+            setting  => 'gateway=bmc.flaky.test',
+            sequence => [
+                [ 2, 0x00, 0x01 ],
+                [ 2, 0x0c, 10, 20, 30, 40 ],
+                [ 2, 0x00, 0x00 ],
+            ],
+        },
+        {
+            setting  => 'ip=bmc.flaky.test',
+            sequence => [
+                [ 2, 0x00, 0x01 ],
+                [ 2, 0x04, 0x01 ],
+                [ 2, 0x03, 10, 20, 30, 40 ],
+                [ 2, 0x00, 0x00 ],
+            ],
+        },
+    );
+
+    foreach my $case (@cases) {
+        my $lookups = 0;
+        my $session;
+        my $session_data;
+        {
+            # The lookup succeeds once and then fails, like transient DNS.
+            local *xCAT_plugin::ipmi::inet_aton = sub {
+                return pack( 'C4', 10, 20, 30, 40 ) if ++$lookups == 1;
+                return;
+            };
+            $session      = Local::IPMIFlowSession->new( 2 );
+            $session_data = {
+                bmcnum      => 1,
+                ipmisession => $session,
+                node        => 'node01',
+                subcommand  => $case->{setting},
+            };
+            @messages = ();
+            my $ok = eval { xCAT_plugin::ipmi::setnetinfo($session_data); 1 };
+            ok( $ok, "$case->{setting} completes the transaction" ) or diag $@;
+        }
+        is( $lookups, 1, "$case->{setting} resolves exactly once" );
+        my @writes = grep { $_->{command} == 0x01 } @{ $session->{calls} };
+        is_deeply(
+            [ map { $_->{data} } @writes ],
+            $case->{sequence},
+            "$case->{setting} opens, writes, and closes the transaction"
+        );
+        # netinfo_set issues the read-back twice (it schedules Set Complete
+        # and falls through); require only that the chain reaches it.
+        cmp_ok( scalar( grep { $_->{command} == 0x02 } @{ $session->{calls} } ),
+            '>=', 1, "$case->{setting} reaches the read-back request" );
+        is_deeply( [@messages], [], "$case->{setting} reports no error" );
+        is( $session_data->{setnetinfo_value}, '10.20.30.40',
+            "$case->{setting} keeps the resolved readback value" );
     }
 };
 
