@@ -138,6 +138,11 @@ subtest 'IPv4 settings preserve their wire command bytes' => sub {
             value   => '0.0.0.0',
         },
         {
+            setting => 'netmask=255.255.255.0',
+            data    => [ 2, 0x06, 255, 255, 255, 0 ],
+            value   => '255.255.255.0',
+        },
+        {
             setting => 'gateway=10.20.30.1',
             data    => [ 2, 0x0c, 10, 20, 30, 1 ],
             value   => '10.20.30.1',
@@ -339,6 +344,47 @@ subtest 'IPv4 settings resolve once per transaction' => sub {
         is_deeply( [@messages], [], "$case->{setting} reports no error" );
         is( $session_data->{setnetinfo_value}, '10.20.30.40',
             "$case->{setting} keeps the resolved readback value" );
+    }
+};
+
+subtest 'netmask values must be contiguous dotted-decimal masks' => sub {
+    plan skip_all => 'netmask validation is not present on the base revision'
+      unless xCAT_plugin::ipmi->can('_resolve_ipv4_octets');
+
+    my @accepted = (
+        [ '255.255.255.255', [ 2, 0x06, 255, 255, 255, 255 ] ],
+        [ '128.0.0.0',       [ 2, 0x06, 128, 0,   0,   0 ] ],
+        [ '0.0.0.0',         [ 2, 0x06, 0,   0,   0,   0 ] ],
+    );
+    foreach my $case (@accepted) {
+        my ( $value, $data ) = @{$case};
+        my $result = run_setting("netmask=$value");
+        is( scalar( @{ $result->{calls} } ), 1, "netmask=$value sends one command" );
+        is_deeply( $result->{calls}->[0]->{data}, $data,
+            "netmask=$value keeps its wire bytes" );
+        is_deeply( $result->{messages}, [], "netmask=$value reports no error" );
+    }
+
+    my @rejected = (
+        [ '999.999.999.999',     'octets above 255' ],
+        [ '255.255.255',         'three-part form' ],
+        [ '255.255.255.255.255', 'five-part form' ],
+        [ '255.0.255.0',         'noncontiguous mask bits' ],
+        [ '255.255.255.256',     'octet above 255' ],
+        [ '255.255.255.010',     'leading-zero octet' ],
+        [ '24',                  'prefix length form' ],
+    );
+    foreach my $case (@rejected) {
+        my ( $value, $reason ) = @{$case};
+        my $result = run_setting("netmask=$value");
+        ok( $result->{succeeded}, "netmask=$value does not raise a Perl exception" )
+          or diag $result->{error};
+        is_deeply( $result->{calls}, [], "netmask=$value sends no IPMI command: $reason" );
+        is_deeply(
+            $result->{messages}->[0]->[0],
+            [ 1, "'$value' is not a valid netmask" ],
+            "netmask=$value reports the rejection"
+        );
     }
 };
 
