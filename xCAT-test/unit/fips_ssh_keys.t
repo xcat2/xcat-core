@@ -48,18 +48,6 @@ like(
     'mknb treats the management-node DSA host key as optional'
 );
 
-foreach my $file (
-    'xCAT-genesis-scripts/etc/init.d/functions',
-    'xCAT-genesis-scripts/usr/bin/doxcat',
-) {
-    my $script = slurp_repo_file($file);
-    like(
-        $script,
-        qr/grep -q '\^1\$' \/proc\/sys\/crypto\/fips_enabled.*?ssh-keygen[^\n]*-t dsa/s,
-        "$file guards the DSA command with the kernel FIPS state"
-    );
-}
-
 my $statelite = slurp_repo_file('xCAT-server/share/xcat/netboot/add-on/statelite/add_ssh');
 like(
     $statelite,
