@@ -32,6 +32,15 @@ sub write_resolv_conf {
     $script =~ s/\#TABLE:noderes:\$NODE:xcatmaster\#/$opt{xcatmaster}/;
     $script =~ s{/etc/resolv\.conf}{$root/resolv.conf}g;
 
+    # The fragment contains `rm -f /etc/resolv.conf` and this suite runs as root in CI, so a
+    # rewrite that stops matching would delete the runner's resolver configuration rather than
+    # fail a test. Sandboxing by rewriting paths is fragile by nature -- respelling the path in
+    # the template as, say, `etcdir=/etc; rm -f "$etcdir/resolv.conf"` slips straight past the
+    # substitution above. Refuse to execute anything that still points outside the scratch tree.
+    if ($script =~ m{(?<!\Q$root\E)/etc/}) {
+        BAIL_OUT('the /etc rewrite no longer covers the fragment; refusing to run it as root');
+    }
+
     # getent is the resolver the fragment uses; make it answer as the test wants.
     my $getent = $opt{resolves}
       ? "getent() { printf '%s\\n' '$opt{resolves} $opt{xcatmaster}'; }\n"
