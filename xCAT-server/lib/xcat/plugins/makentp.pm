@@ -209,6 +209,70 @@ sub preprocess_request {
 =cut
 
 #--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+
+=head3 ntp_backend_action
+
+    Decide what makentp should do with the answer xCAT::NTP::Backend->choose gave it.
+
+    Kept separate from process_request so the decision can be driven directly: the caller
+    keeps the side effects (send_msg, runcmd) and this returns only what to do.
+
+    Arguments:
+        $backend  the hashref from xCAT::NTP::Backend->choose
+        $nodename the host makentp is configuring, for the error text
+    Returns:
+        a hashref: action => 'abort'|'configure', error => the message to report when
+        aborting, name => the daemon to configure, notes => messages to report either way
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub ntp_backend_action {
+    my ($backend, $nodename) = @_;
+
+    $backend ||= {};
+    return { action => 'abort', error => $backend->{error}, notes => [] }
+      if $backend->{error};
+
+    my @notes;
+    push @notes,
+      "NTP backend $backend->{downgraded} is not installed; using $backend->{name} instead."
+      if $backend->{downgraded};
+
+    return {
+        action => 'abort',
+        error  => "Neither chrony nor ntp is installed on $nodename. "
+          . "Install $backend->{name}, or set site.ntpbackend to the daemon you have.",
+        notes => \@notes,
+    } if $backend->{install};
+
+    return { action => 'configure', name => $backend->{name}, notes => \@notes };
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 setupntp_command
+
+    Build the setupntp invocation. The server list arrives comma separated from the site
+    table and setupntp takes them as separate arguments.
+
+    Arguments:
+        $backend_name the daemon setupntp should configure
+        $ntp_servers  the comma separated server list
+    Returns:
+        the command line
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub setupntp_command {
+    my ($backend_name, $ntp_servers) = @_;
+
+    return "/install/postscripts/setupntp --backend $backend_name "
+      . join(' ', split(',', $ntp_servers));
+}
+
 sub process_request {
     my $req      = shift;
     my $callback = shift;
@@ -257,27 +321,19 @@ sub process_request {
     # downgrades chrony->ntpd (or vice versa) to whichever is actually installed.
     require xCAT::NTP::Backend;
     my $ntp_backend = xCAT::NTP::Backend->choose(check_available => 1);
-    if ($ntp_backend->{error}) {
-        send_msg(\%request, 1, $ntp_backend->{error});
-        return 1;
-    }
-    if ($ntp_backend->{downgraded}) {
-        send_msg(\%request, 0,
-            "NTP backend $ntp_backend->{downgraded} is not installed; using $ntp_backend->{name} instead.");
-    }
-    if ($ntp_backend->{install}) {
-        send_msg(\%request, 1,
-            "Neither chrony nor ntp is installed on $nodename. Install $ntp_backend->{name}, or set site.ntpbackend to the daemon you have.");
+    my $ntp_action  = ntp_backend_action($ntp_backend, $nodename);
+    send_msg(\%request, 0, $_) for @{ $ntp_action->{notes} };
+    if ($ntp_action->{action} eq 'abort') {
+        send_msg(\%request, 1, $ntp_action->{error});
         return 1;
     }
     my $have_systemctl = (-x "/usr/bin/systemctl" || -x "/bin/systemctl");
 
     # Handle chronyd here,
-    if ($ntp_backend->{name} eq 'chrony' && $have_systemctl) {
+    if ($ntp_action->{name} eq 'chrony' && $have_systemctl) {
         send_msg(\%request, 0, "Will configure chronyd instead.");
 
-        my $cmd = "/install/postscripts/setupntp --backend $ntp_backend->{name} " .
-            join(' ', split(',', $ntp_servers));
+        my $cmd = setupntp_command($ntp_action->{name}, $ntp_servers);
         send_msg(\%request, 0, "Calling ... " . $cmd);
 
         my $result = xCAT::Utils->runcmd($cmd, 0);
