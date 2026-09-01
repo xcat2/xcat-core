@@ -19,12 +19,15 @@ use Test::More;
 my $tmpl = "$FindBin::Bin/../../xCAT-server/share/xcat/install/ubuntu/compute.subiquity.tmpl";
 plan skip_all => 'compute.subiquity.tmpl not found' unless -r $tmpl;
 
-my $XCATD_PORT = 3002;    # the install-monitor port the template addresses
-
+# The template addresses the install-monitor on 3002, and on any management node xcatd is
+# already listening there -- so binding it here made the whole file skip_all exactly where the
+# suite runs. Take an ephemeral port from the kernel instead and rewrite the extracted command
+# to use it: what is under test is the retry-and-log behaviour, not the port number.
 my $probe = IO::Socket::INET->new(
-    LocalAddr => '127.0.0.1', LocalPort => $XCATD_PORT, Proto => 'tcp',
-    Listen => 5, ReuseAddr => 1);
-plan skip_all => "port $XCATD_PORT is not available on the loopback interface" unless $probe;
+    LocalAddr => '127.0.0.1', LocalPort => 0, Proto => 'tcp',
+    Listen => 5, ReuseAddr => 1)
+  or BAIL_OUT("could not take an ephemeral port on the loopback interface: $!");
+my $XCATD_PORT = $probe->sockport;
 close $probe;    # each case below opens its own listener, or none at all
 
 open(my $fh, '<', $tmpl) or die "open $tmpl: $!";
@@ -34,6 +37,13 @@ close $fh;
 # The boot flip is the late-command that talks to the install-monitor port.
 my ($command) = $source =~ m{- \['bash', '-c', '(.*?/dev/tcp/.*?)'\]};
 BAIL_OUT('no late-command in the template performs the boot flip over /dev/tcp') unless $command;
+
+# Read the port out of the template rather than hard-coding it, so a template that moves the
+# install-monitor still gets covered instead of silently testing the wrong port.
+my ($TEMPLATE_PORT) = $command =~ m{/dev/tcp/\$xm/(\d+)};
+BAIL_OUT('could not read the install-monitor port from the boot-flip command')
+  unless $TEMPLATE_PORT;
+is($TEMPLATE_PORT, 3002, 'the template addresses the install-monitor port xcatd listens on');
 
 # Run the command with the install server pointed at our stand-in, and its log inside a scratch
 # tree. Everything else is the template's own text.
@@ -45,6 +55,9 @@ sub run_flip {
 
     my $script = $command;
     $script =~ s/\#XCATVAR:XCATMASTER\#/127.0.0.1/;
+    # point the flip at the ephemeral listener, in both the /dev/tcp target and the log message
+    $script =~ s{/dev/tcp/\$xm/\Q$TEMPLATE_PORT\E\b}{/dev/tcp/\$xm/$XCATD_PORT};
+    $script =~ s{\$xm:\Q$TEMPLATE_PORT\E\b}{\$xm:$XCATD_PORT}g;
     $script =~ s{/target/var/log/xcat/xcat\.log}{$root/target/var/log/xcat/xcat.log};
     $script =~ s/sleep 5/sleep 1/;    # shorten the retry pause, keep the retry
 
@@ -105,7 +118,7 @@ sub run_flip {
     is($r->{rc}, 0, 'a failed flip still exits 0 rather than aborting the install');
     like($r->{log}, qr/FAILED to flip/,
         'a failed flip is recorded in the install log instead of PXE-looping silently');
-    like($r->{log}, qr/127\.0\.0\.1:3002/,
+    like($r->{log}, qr/127\.0\.0\.1:\Q$XCATD_PORT\E\b/,
         'the log names the install server and port that could not be reached');
 }
 
