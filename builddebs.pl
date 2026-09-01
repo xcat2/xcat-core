@@ -32,7 +32,7 @@ use BuildUtils qw(
     stage_probe_helpers XCAT_PROBE_HELPERS
     deb_package_arches dist_arches default_dists
     orig_tarball_name upstream_version resolve_dest clean_debian_residue
-    backup_file restore_file
+    backup_file restore_file git_revision
     pin_control_version rewrite_changelog_header
     reprepro_distributions reprepro_options
     lock_id_for take_build_lock sh_quote
@@ -117,6 +117,28 @@ my $FILE_RELEASE = do {
 my $RELEASE = $opts{release} || $FILE_RELEASE || snap_release($EPOCH);
 my $PKGVER  = deb_version($VERSION, $RELEASE);
 $ENV{SOURCE_DATE_EPOCH} = $EPOCH;
+
+# Gitinfo is what perl-xCAT/debian/rules hands modifyUtils as the commit. Without it
+# modifyUtils does nothing at all and the built xCAT reports no version -- `lsxcatd -v`
+# prints a bare "Version" -- so it is written here rather than left to debian/rules'
+# `git log` fallback, which produces nothing when the tree has no .git (a source
+# export, or a checkout that was copied rather than cloned).
+my $GITINFO = git_revision();
+if ($GITINFO eq 'unknown') {
+    # Say so. The usual cause is not a missing .git but git refusing to read one it
+    # considers dubiously owned -- the tree belongs to another user, and the
+    # safe.directory exception lives in a config that the build's own HOME hides.
+    # Silence here is how packages end up stamped with a provenance nobody notices.
+    warn "WARNING: no git revision for $ROOT; packages will be stamped "
+       . "'(git commit unknown)'.\n"
+       . "         If $ROOT is a git checkout, check `git -C $ROOT rev-parse HEAD` "
+       . "as the build user (HOME=$ENV{HOME}).\n";
+}
+{
+    open my $g, '>', "$ROOT/Gitinfo" or die "Cannot write Gitinfo: $!\n";
+    print {$g} "$GITINFO\n";
+    close $g;
+}
 
 # dpkg reads these for the changelog trailer. Fixed, so the packages do not carry
 # whoever happened to run the build.

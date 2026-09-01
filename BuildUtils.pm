@@ -27,7 +27,7 @@ our @EXPORT_OK = qw(
     pin_control_version rewrite_changelog_header
     reprepro_distributions reprepro_options
     lock_id_for take_build_lock
-    sh_quote clean_debian_residue
+    sh_quote clean_debian_residue git_revision
     backup_file restore_file
 );
 
@@ -77,6 +77,36 @@ sub default_dists { return @DEFAULT_DISTS; }
 # an executable with its exec bit stripped -- the content compares equal and only
 # `git diff` notices the mode change. xCAT/postscripts/{bmcsetup,getipmi} are shipped
 # executable and are rewritten during the xCAT build, so this is not hypothetical.
+# git_revision: the commit the packages are built from.
+#
+# This is not cosmetic. perl-xCAT/debian/rules and perl-xCAT.spec both pass it to
+# modifyUtils, which substitutes it and the version into xCAT::Version. Hand
+# modifyUtils an empty string and it does nothing, and the built package reports no
+# version at all -- `lsxcatd -v` prints a bare "Version". So a revision is always
+# produced: the git checkout when there is one, an existing Gitinfo when there is
+# not (a source export carries the real revision that way, and clobbering it with
+# a placeholder would throw away the only provenance the tree has), and only then
+# the "unknown" placeholder.
+sub git_revision {
+    my (%args) = @_;
+    my $run       = $args{git}       || sub { `git rev-parse HEAD 2>/dev/null` };
+    my $read_file = $args{read_file} || sub {
+        return unless -f 'Gitinfo';
+        open my $fh, '<', 'Gitinfo' or return;
+        my $line = <$fh>;
+        close $fh;
+        return $line;
+    };
+
+    for my $source ($run, $read_file) {
+        my $rev = $source->();
+        next unless defined $rev;
+        $rev =~ s/\s+\z//;
+        return $rev if length $rev;
+    }
+    return 'unknown';
+}
+
 sub backup_file {
     my ($path) = @_;
     return unless defined $path && -f $path;

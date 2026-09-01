@@ -25,7 +25,7 @@ use BuildUtils qw(
     orig_tarball_name upstream_version resolve_dest
     pin_control_version rewrite_changelog_header
     reprepro_distributions reprepro_options sh_quote clean_debian_residue
-    backup_file restore_file
+    backup_file restore_file git_revision
 );
 
 # ------------------------------------------------------------------- versions --
@@ -285,5 +285,27 @@ is( sh_quote(undef), q{''}, 'undef quotes to the empty string' );
         'a file that is not there is not claimed' );
     is( restore_file(undef), 0, 'and restoring nothing is not an error' );
 }
+
+# ------------------------------------------------------- the commit being built --
+# modifyUtils does nothing when handed an empty commit, and the package then reports
+# no version at all, so a revision must always come out of here.
+is( git_revision( git => sub { "deadbeefcafe\n" }, read_file => sub { 'from-gitinfo' } ),
+    'deadbeefcafe',
+    'the checkout is asked first, and its answer is trimmed' );
+
+is( git_revision( git => sub { '' }, read_file => sub { "from-gitinfo\n" } ),
+    'from-gitinfo',
+    'a tree with no .git falls back to the Gitinfo the export carries' );
+
+is( git_revision( git => sub { undef }, read_file => sub { undef } ),
+    'unknown',
+    'and with neither, a placeholder -- never the empty string modifyUtils ignores' );
+
+is( git_revision( git => sub { "\n" }, read_file => sub { "  \n" } ),
+    'unknown',
+    'whitespace-only answers count as no answer' );
+
+isnt( git_revision( git => sub { '' }, read_file => sub { '' } ), '',
+    'the one thing it must never return is empty' );
 
 done_testing();

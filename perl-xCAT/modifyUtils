@@ -1,10 +1,21 @@
 #!/bin/sh
 # Put the version and git commit into the Version function in Version.pm
 
+# Both arguments are required, and a missing one is fatal. Returning 0 here meant a
+# build with no git information silently produced an xCAT that cannot report its own
+# version -- the substitution below never ran, xCAT::Version kept its placeholders,
+# and `lsxcatd -v` printed a bare "Version". Neither caller checked the status, so
+# the package shipped that way. Fail instead, and say which argument is missing.
+if [ -z "$1" ]
+	then
+	echo "modifyUtils:  Error:  must specify the xCAT version as the first argument" >&2
+	exit 1
+fi
+
 if [ -z "$2" ]
 	then
-	echo "modifyUtils:  Error:  must specify the xCAT version as an argument" >&2
-	exit
+	echo "modifyUtils:  Error:  must specify the git commit as the second argument" >&2
+	exit 1
 fi
 
 VER=$1
