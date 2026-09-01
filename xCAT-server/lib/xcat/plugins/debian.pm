@@ -509,6 +509,37 @@ sub copycd
 
 #-------------------------------------------------------------------------------
 
+=head3 subiquity_nfsroot_server
+
+    Resolve the install server to the address casper's klibc nfsmount needs.
+
+    '!myipfn!' is a placeholder, not a name: pxe.pm and grub2.pm substitute it with
+    my_ip_facing($node) when they write the boot config, so it is already an address by the
+    time klibc sees it. Resolving it here would only ever fail, and failing would drop a node
+    whose noderes.xcatmaster is simply unset -- which noderes.5.rst documents as supported.
+    anaconda.pm and sles.pm guard the same placeholder the same way.
+
+    Arguments:
+        $instserver the install server name, address, or the '!myipfn!' placeholder
+        $resolver   optional coderef, for tests; defaults to NetworkUtils::getipaddr
+    Returns:
+        the value to put in nfsroot, or undef when a real name does not resolve
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub subiquity_nfsroot_server {
+    my ($instserver, $resolver) = @_;
+
+    return undef unless defined($instserver) && length($instserver);
+    return $instserver if $instserver eq '!myipfn!';
+
+    $resolver ||= sub { xCAT::NetworkUtils->getipaddr($_[0]) };
+    return $resolver->($instserver);
+}
+
+#-------------------------------------------------------------------------------
+
 =head3 subiquity_kcmdline
 
     Build the kernel command line for a Subiquity (Ubuntu live installer) diskful install.
@@ -1034,8 +1065,9 @@ sub mkinstall {
             if (using_subiquity($os,$tmplfile)) {
                 # Fail here rather than handing casper a name: klibc's nfsmount cannot resolve
                 # one, so the node would panic "can't parse IP address" at boot, on the node,
-                # with nothing said on the management node.
-                my $nfsip = xCAT::NetworkUtils->getipaddr($instserver);
+                # with nothing said on the management node. '!myipfn!' is exempt -- pxe.pm and
+                # grub2.pm turn it into an address when they write the boot config.
+                my $nfsip = subiquity_nfsroot_server($instserver);
                 unless ($nfsip) {
                     xCAT::MsgUtils->report_node_error($callback, $node,
                         "Could not resolve the install server '$instserver' to an address. The Ubuntu live installer mounts its root with klibc nfsmount, which cannot resolve names, so nfsroot must be an address.");
