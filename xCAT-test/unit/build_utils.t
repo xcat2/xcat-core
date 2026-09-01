@@ -358,6 +358,23 @@ isnt( git_revision( git => sub { '' }, read_file => sub { '' } ), '',
         'reading a missing file names the file it could not read' );
 }
 
+# ------------------------------------------------- the published helper script --
+# Both builders ship a mklocalrepo.sh next to the packages they publish, and each
+# used to write it and chmod it as two separate steps. A copy that is written but
+# left non-executable is published broken, so the mode is asserted here rather
+# than trusted to each caller.
+{
+    my $dir = tempdir(CLEANUP => 1);
+    my $path = File::Spec->catfile($dir, 'mklocalrepo.sh');
+
+    BuildUtils::write_script($path, "#!/bin/sh\necho hello\n");
+    is( BuildUtils::read_file($path), "#!/bin/sh\necho hello\n",
+        'a helper script keeps the exact text it was given' );
+    ok( -x $path, 'and is executable, which is the point of writing it this way' );
+    is( (stat $path)[2] & 07777, 0775,
+        'with the mode both builders published before' );
+}
+
 # ---------------------------------------------------------------- sh() --
 # system() returns the raw wait status, which is the exit code times 256. The
 # two builders disagreed about shifting it, so a caller comparing sh() against

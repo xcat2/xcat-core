@@ -36,7 +36,7 @@ use BuildUtils qw(
     pin_control_version rewrite_changelog_header
     reprepro_distributions reprepro_options
     lock_id_for take_build_lock sh_quote
-    sh usage read_file write_file rewrite_file buildinfo_text
+    sh usage read_file write_file rewrite_file write_script buildinfo_text
 );
 
 # The xcat-core packages that ship as debs. xCAT-openbmc-py, xCAT-rmc and xCAT-release
@@ -323,8 +323,7 @@ sub write_repo_metadata {
     my ($repodir) = @_;
 
     # Point apt at this directory, for a locally built repo.
-    open my $m, '>', "$repodir/mklocalrepo.sh" or die "Cannot write mklocalrepo.sh: $!\n";
-    print {$m} <<'SCRIPT';
+    write_script("$repodir/mklocalrepo.sh", <<'SCRIPT');
 . /etc/lsb-release
 cd `dirname $0`
 host_arch=`uname -m`
@@ -335,8 +334,6 @@ else
 fi
 echo deb [arch=$host_arch] file://"`pwd`" $DISTRIB_CODENAME main > /etc/apt/sources.list.d/xcat-core.list
 SCRIPT
-    close $m;
-    chmod 0775, "$repodir/mklocalrepo.sh";
 
     write_file("$repodir/buildinfo", buildinfo_text(
         version => $VERSION, release => $RELEASE, epoch => $EPOCH,

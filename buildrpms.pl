@@ -43,7 +43,7 @@ use File::Slurper qw(read_text write_text);
 use File::Temp qw(tempdir tempfile);
 use FindBin qw($Bin);
 use lib $Bin;
-use BuildUtils qw(git_revision source_date_epoch sh usage buildinfo_text);
+use BuildUtils qw(git_revision source_date_epoch sh usage buildinfo_text write_script);
 use Fcntl qw(:flock);           # per-target build lock (concurrency guard; see main())
 use Getopt::Long qw(GetOptions);
 use POSIX qw(strftime);
@@ -787,7 +787,7 @@ gpgcheck=$gpgcheck
 $gpgkey_line
 EOF
 
-    write_text("$repodir/mklocalrepo.sh", <<'EOF2');
+    write_script("$repodir/mklocalrepo.sh", <<'EOF2');
 #!/bin/sh
 cd `dirname $0`
 REPOFILE=`basename xcat-*.repo`
@@ -808,7 +808,6 @@ if [ -f "$DIRECTORY/xCAT-core.repo" ]; then
 fi
 cd -
 EOF2
-    chmod 0775, "$repodir/mklocalrepo.sh";
 
     # BUILD_TIME from SOURCE_DATE_EPOCH keeps buildinfo reproducible across rebuilds.
     write_text("$repodir/buildinfo.txt", buildinfo_text(

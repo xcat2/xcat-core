@@ -32,7 +32,7 @@ our @EXPORT_OK = qw(
     sh_quote clean_debian_residue git_revision
     backup_file restore_file
     sh usage
-    read_file write_file rewrite_file
+    read_file write_file rewrite_file write_script
     buildinfo_text
 );
 
@@ -81,6 +81,17 @@ sub write_file {
     open my $fh, '>', $path or die "Cannot write $path: $!\n";
     print {$fh} $text;
     close $fh or die "Cannot write $path: $!\n";
+    return;
+}
+
+# Write a helper script and make it executable.  Both builders ship a
+# mklocalrepo.sh beside the packages they publish; a script written without the
+# executable bit is published broken, so the mode is not left to the caller to
+# remember.
+sub write_script {
+    my ($path, $content) = @_;
+    write_file($path, $content);
+    chmod 0775, $path or die "Cannot chmod $path: $!\n";
     return;
 }
 
