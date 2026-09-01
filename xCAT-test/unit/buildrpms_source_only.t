@@ -140,9 +140,10 @@ ok( !grep( { $_ eq 'buildpkgs' } @{ stages_for(1) } ),
 # buildrpms.pl rewrites the tracked Gitinfo in its working directory and creates
 # $HOME/rpmbuild. Running it in place left the developer's tree dirty and reached
 # into their home for a test that only exercises argument parsing. Version is
-# staged because the same file-scope code reads it and dies without it.
+# staged because the same file-scope code reads it and dies without it, and
+# BuildUtils.pm because buildrpms.pl loads it from its own directory.
 my $sandbox = tempdir(CLEANUP => 1);
-for my $needed (qw(buildrpms.pl Version)) {
+for my $needed (qw(buildrpms.pl Version BuildUtils.pm)) {
     my $from = repo_path($needed);
     BAIL_OUT("$needed is missing from the repository") unless -r $from;
     File::Copy::copy($from, File::Spec->catfile($sandbox, $needed))

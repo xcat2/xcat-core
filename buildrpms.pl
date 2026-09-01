@@ -42,6 +42,8 @@ use File::Path qw(make_path remove_tree);
 use File::Slurper qw(read_text write_text);
 use File::Temp qw(tempdir tempfile);
 use FindBin qw($Bin);
+use lib $Bin;
+use BuildUtils qw(git_revision source_date_epoch);
 use Fcntl qw(:flock);           # per-target build lock (concurrency guard; see main())
 use Getopt::Long qw(GetOptions);
 use POSIX qw(strftime);
@@ -71,21 +73,10 @@ my @XCAT_PROBE_HELPERS = qw(
 chomp($VERSION);
 
 # Gitinfo is regenerated at each run with the current git revision.
-my $GITINFO = `git rev-parse HEAD 2>/dev/null`;
-chomp($GITINFO);
-$GITINFO = "unknown" unless $GITINFO;
+my $GITINFO = git_revision();
 write_text("Gitinfo", "$GITINFO\n");
 
-my $SOURCE_DATE_EPOCH;
-if (-f "Gitepoch") {
-    $SOURCE_DATE_EPOCH = read_text("Gitepoch");
-    chomp($SOURCE_DATE_EPOCH);
-}
-unless ($SOURCE_DATE_EPOCH && $SOURCE_DATE_EPOCH =~ /^\d+$/) {
-    $SOURCE_DATE_EPOCH = `git log -1 --format=%ct HEAD 2>/dev/null`;
-    chomp($SOURCE_DATE_EPOCH);
-}
-$SOURCE_DATE_EPOCH = time() unless $SOURCE_DATE_EPOCH =~ /^\d+$/;
+my $SOURCE_DATE_EPOCH = source_date_epoch();
 $ENV{SOURCE_DATE_EPOCH} = $SOURCE_DATE_EPOCH;
 
 sub os_release {
