@@ -373,6 +373,12 @@ isnt( git_revision( git => sub { '' }, read_file => sub { '' } ), '',
     ok( -x $path, 'and is executable, which is the point of writing it this way' );
     is( (stat $path)[2] & 07777, 0775,
         'with the mode both builders published before' );
+
+    # The genesis postscripts builddebs.pl installs are 0755, not 0775, so the
+    # mode has to stay the caller's to choose.
+    my $ps = File::Spec->catfile($dir, 'bmcsetup');
+    BuildUtils::write_script($ps, "#!/bin/sh\n", 0755);
+    is( (stat $ps)[2] & 07777, 0755, 'a caller may ask for a different mode' );
 }
 
 # ---------------------------------------------------------------- sh() --

@@ -85,13 +85,16 @@ sub write_file {
 }
 
 # Write a helper script and make it executable.  Both builders ship a
-# mklocalrepo.sh beside the packages they publish; a script written without the
-# executable bit is published broken, so the mode is not left to the caller to
-# remember.
+# mklocalrepo.sh beside the packages they publish, and builddebs.pl installs the
+# genesis postscripts the same way; a script written without the executable bit
+# is shipped broken, so the mode is not left to the caller to remember.  It
+# still varies -- the published repo helper is group-writable, the postscripts
+# are not -- so the caller may say, and 0775 is only the default.
 sub write_script {
-    my ($path, $content) = @_;
+    my ($path, $content, $mode) = @_;
+    $mode = 0775 unless defined $mode;
     write_file($path, $content);
-    chmod 0775, $path or die "Cannot chmod $path: $!\n";
+    chmod $mode, $path or die "Cannot chmod $path: $!\n";
     return;
 }
 

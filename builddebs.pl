@@ -199,8 +199,7 @@ sub with_prepared_tree {
             $claim->("postscripts/$f");
             my $text = read_file($src);
             $text =~ s/xcat\.genesis\.\Q$f\E/$f/g;
-            write_file($dst, $text);
-            chmod 0755, $dst;
+            write_script($dst, $text, 0755);
         }
     }
     # xCAT-genesis-scripts keeps a control file per architecture.
