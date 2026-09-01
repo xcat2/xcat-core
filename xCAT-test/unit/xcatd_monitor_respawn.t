@@ -186,6 +186,24 @@ subtest 'the pacing functions are pure' => sub {
     is_deeply( $pace, \%before, 'exited()/forked() leave the state they were given alone' );
     isnt( $after, $pace, 'they return a new state rather than the same reference' );
     is( due( $pace, 0 ), due( $pace, 0 ), 'due() is free of side effects' );
+
+    # Each of the two has to be checked on a state it was handed DIRECTLY. Composing them as
+    # exited(forked($pace,...)) only ever lets exited() mutate forked()'s throwaway
+    # intermediate, so an exited() that wrote in place would leave $pace untouched and the
+    # assertion above green.
+    my $only_forked = xCAT::RespawnUtils::policy( min_interval => 1, max_interval => 8 );
+    my %before_forked = %$only_forked;
+    my $forked_out = forked( $only_forked, 10 );
+    is_deeply( $only_forked, \%before_forked,
+        'forked() alone leaves the state it was given alone' );
+    isnt( $forked_out, $only_forked, 'forked() returns a new state' );
+
+    my $only_exited = xCAT::RespawnUtils::policy( min_interval => 1, max_interval => 8 );
+    my %before_exited = %$only_exited;
+    my $exited_out = exited( $only_exited, 5 );
+    is_deeply( $only_exited, \%before_exited,
+        'exited() alone leaves the state it was given alone' );
+    isnt( $exited_out, $only_exited, 'exited() returns a new state' );
 };
 
 # --- the window the reaper looks through ------------------------------------
