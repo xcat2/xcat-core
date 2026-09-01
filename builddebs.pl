@@ -36,7 +36,7 @@ use BuildUtils qw(
     pin_control_version rewrite_changelog_header
     reprepro_distributions reprepro_options
     lock_id_for take_build_lock sh_quote
-    sh usage
+    sh usage read_file write_file rewrite_file
 );
 
 # The xcat-core packages that ship as debs. xCAT-openbmc-py, xCAT-rmc and xCAT-release
@@ -174,20 +174,11 @@ sub with_prepared_tree {
     # Pin the intra-xCAT dependencies to this exact build, so a partial upgrade cannot
     # mix versions.
     my $control = "$dir/debian/control";
-    if (-f $control) {
-        my $text = do { open my $fh, '<', $control or die; local $/; <$fh> };
-        open my $out, '>', $control or die "Cannot write $control: $!\n";
-        print {$out} pin_control_version($text, $PKGVER);
-        close $out;
-    }
+    rewrite_file($control, sub { pin_control_version($_[0], $PKGVER) });
 
     my $changelog = "$dir/debian/changelog";
-    if (-f $changelog) {
-        my $text = do { open my $fh, '<', $changelog or die; local $/; <$fh> };
-        open my $out, '>', $changelog or die "Cannot write $changelog: $!\n";
-        print {$out} rewrite_changelog_header($text, $PKGVER, $DEB_DATE, $MAINTAINER);
-        close $out;
-    }
+    rewrite_file($changelog,
+        sub { rewrite_changelog_header($_[0], $PKGVER, $DEB_DATE, $MAINTAINER) });
     unlink glob("$dir/debian/*.dch");
 
     my @added;
@@ -206,11 +197,9 @@ sub with_prepared_tree {
             # them back; treating them as created would delete them from the
             # checkout, which is what happened before.
             $claim->("postscripts/$f");
-            my $text = do { open my $fh, '<', $src or die; local $/; <$fh> };
+            my $text = read_file($src);
             $text =~ s/xcat\.genesis\.\Q$f\E/$f/g;
-            open my $out, '>', $dst or die "Cannot write $dst: $!\n";
-            print {$out} $text;
-            close $out;
+            write_file($dst, $text);
             chmod 0755, $dst;
         }
     }
@@ -218,10 +207,7 @@ sub with_prepared_tree {
     if ($pkg eq 'xCAT-genesis-scripts' && $arch ne 'all') {
         my $per_arch = "$dir/debian/control-$arch";
         die "FATAL: $per_arch is missing\n" unless -f $per_arch;
-        my $text = do { open my $fh, '<', $per_arch or die; local $/; <$fh> };
-        open my $out, '>', $control or die "Cannot write $control: $!\n";
-        print {$out} pin_control_version($text, $PKGVER);
-        close $out;
+        write_file($control, pin_control_version(read_file($per_arch), $PKGVER));
     }
 
     my $rc = eval { $body->($dir); 1 } ? 0 : 1;
@@ -243,7 +229,7 @@ sub build_package {
         # A 3.0 (quilt) source package needs its .orig tarball beside the tree.
         my $format = "$dir/debian/source/format";
         if (-f $format) {
-            my $text = do { open my $fh, '<', $format or die; local $/; <$fh> };
+            my $text = read_file($format);
             if ($text =~ /3\.0 \(quilt\)/) {
                 my $tar = "$ROOT/" . orig_tarball_name($pkg, $PKGVER);
                 unless (-f $tar) {

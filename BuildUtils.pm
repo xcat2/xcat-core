@@ -32,6 +32,7 @@ our @EXPORT_OK = qw(
     sh_quote clean_debian_residue git_revision
     backup_file restore_file
     sh usage
+    read_file write_file rewrite_file
 );
 
 # Both builders echo the commands they run under --verbose.  Set once, after
@@ -41,6 +42,35 @@ our $VERBOSE = 0;
 # The xCAT-probe helpers. xcat-probe reuses functions shipped by xCAT; they are COPIED
 # rather than symlinked because a symlink does not survive packaging, and rather than
 # maintained twice because they would drift. Both builders stage them the same way.
+# Whole-file read and write.  Deliberately plain open/close rather than
+# File::Slurper, so that loading this module does not oblige a deb build to
+# install a module it otherwise does not need.
+sub read_file {
+    my ($path) = @_;
+    open my $fh, '<', $path or die "Cannot read $path: $!\n";
+    local $/;
+    my $text = <$fh>;
+    close $fh;
+    return $text;
+}
+
+sub write_file {
+    my ($path, $text) = @_;
+    open my $fh, '>', $path or die "Cannot write $path: $!\n";
+    print {$fh} $text;
+    close $fh or die "Cannot write $path: $!\n";
+    return;
+}
+
+# Read a file, pass its contents through $transform, write the result back.
+# A file that is not there is left alone, which is what every caller wanted.
+sub rewrite_file {
+    my ($path, $transform) = @_;
+    return 0 unless -f $path;
+    write_file($path, $transform->(read_file($path)));
+    return 1;
+}
+
 # Run a shell command, returning its EXIT STATUS.  system() yields the raw wait
 # status, which is the exit code times 256, so it is shifted here: a caller
 # comparing the result against a specific code gets the code it expects, not a

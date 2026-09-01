@@ -308,6 +308,31 @@ is( git_revision( git => sub { "\n" }, read_file => sub { "  \n" } ),
 isnt( git_revision( git => sub { '' }, read_file => sub { '' } ), '',
     'the one thing it must never return is empty' );
 
+# -------------------------------------------------- whole-file helpers --
+{
+    my $dir = tempdir(CLEANUP => 1);
+    my $path = File::Spec->catfile($dir, 'thing.txt');
+
+    BuildUtils::write_file($path, "one\ntwo\n");
+    is( BuildUtils::read_file($path), "one\ntwo\n",
+        'a file reads back exactly as it was written' );
+
+    # The two builders each rewrote debian/control and debian/changelog with the
+    # same read, transform, write-back sequence spelled out by hand.
+    my $changed = BuildUtils::rewrite_file($path, sub { uc $_[0] });
+    is( $changed, 1, 'rewriting a file that exists reports that it did' );
+    is( BuildUtils::read_file($path), "ONE\nTWO\n", 'and applies the transform' );
+
+    my $absent = File::Spec->catfile($dir, 'not-there.txt');
+    is( BuildUtils::rewrite_file($absent, sub { die 'must not run' }), 0,
+        'a file that is not there is left alone, not created' );
+    ok( !-e $absent, 'and really is not created' );
+
+    my $err = eval { BuildUtils::read_file($absent); 1 } ? '' : $@;
+    like( $err, qr/Cannot read .*not-there/,
+        'reading a missing file names the file it could not read' );
+}
+
 # ---------------------------------------------------------------- sh() --
 # system() returns the raw wait status, which is the exit code times 256. The
 # two builders disagreed about shifting it, so a caller comparing sh() against
