@@ -531,10 +531,17 @@ function check_arch()
 	esac
 }
 
+function os_release_value()
+{
+	local key="$1"
+	local file="${2:-/etc/os-release}"
+	awk -F= -v key="${key}" '$1 == key {gsub(/"/, "", $2); print $2}' "${file}" 2>/dev/null
+}
+
 function check_linux_distro()
 {
 	local distro
-	distro="$(awk -F= '/^ID=/{gsub(/"/, "", $2); print $2}' /etc/os-release 2>/dev/null)"
+	distro="$(os_release_value ID)"
 	[[ -z "${distro}" && -f /etc/redhat-release ]] && distro="rhel"
 	[[ -z "${distro}" && -f /etc/SuSE-release ]] && distro="sles"
 	[[ -z "${distro}" && -f /etc/SUSE-brand ]] && distro="sles"
@@ -544,7 +551,7 @@ function check_linux_distro()
 function check_linux_version()
 {
 	local ver
-	ver="$(awk -F= '/^VERSION_ID=/{gsub(/"/, "", $2); print $2}' /etc/os-release 2>/dev/null)"
+	ver="$(os_release_value VERSION_ID)"
 	[[ -z "${ver}" && -f /etc/redhat-release ]] &&
 		# Need gawk to do this trick
 		ver="$(awk '{ match($0, /([.0-9]+)/, a); print substr($0, a[1, "start"], a[1, "length"]); }' \
