@@ -1598,7 +1598,12 @@ else
         if [ $bool_restart_flag -eq 1 ];then
             if [ "$str_nic_status" = "up" ];then
                 if [ "$str_os_type" = "debian" ] && [ "$netplan_active" = "1" ];then
-                    ip link set dev $str_nic_name down > /dev/null 2>/dev/null
+                    #the netplan_apply that brings the link back is gated on reboot_nic_bool,
+                    #so taking it down here ungated leaves the NIC down until the next reboot
+                    #in the provision postscripts stage -- over the NIC we are talking on.
+                    if [ $reboot_nic_bool -eq 1 ]; then
+                        ip link set dev $str_nic_name down > /dev/null 2>/dev/null
+                    fi
                 elif [ "$str_os_type" = "debian" ];then
                     ifdown --force $str_nic_name > /dev/null
                 else
