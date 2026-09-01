@@ -10,6 +10,7 @@ use strict;
 use warnings;
 
 use Cwd qw(getcwd);
+use File::Copy ();
 use File::Slurper qw(read_text);
 use File::Spec;
 use File::Temp qw(tempdir);
@@ -103,13 +104,32 @@ ok( !grep({ $_ eq 'BINARY' } @{ run_index(source_only => 1) }),
 # ------------------------------------------------------------------- the CLI --
 # Run the real program. --source-only and --merge-core-repos are different modes:
 # one builds, the other assembles trees that are already built.
+#
+# Run it from a copy, never from the checkout: before it looks at @ARGV,
+# buildrpms.pl rewrites the tracked Gitinfo in its working directory and creates
+# $HOME/rpmbuild. Running it in place left the developer's tree dirty and reached
+# into their home for a test that only exercises argument parsing. Version is
+# staged because the same file-scope code reads it and dies without it.
+my $sandbox = tempdir(CLEANUP => 1);
+for my $needed (qw(buildrpms.pl Version)) {
+    my $from = repo_path($needed);
+    BAIL_OUT("$needed is missing from the repository") unless -r $from;
+    File::Copy::copy($from, File::Spec->catfile($sandbox, $needed))
+        or BAIL_OUT("could not stage $needed: $!");
+}
+
 my $cwd = getcwd();
-chdir repo_path('.') or BAIL_OUT("cannot chdir to the repository root: $!");
+chdir $sandbox or BAIL_OUT("cannot chdir to the sandbox: $!");
+local $ENV{HOME} = $sandbox;
 my $out = qx($^X buildrpms.pl --source-only --merge-core-repos 2>&1);
 my $rc  = $? >> 8;
 chdir $cwd;
 
-isnt( $rc, 0, 'combining --source-only with --merge-core-repos is refused' );
+# 2 is usage()'s exit code, but perl also exits 2 when compilation aborts, so the
+# status alone does not say the option check ran -- it passed in CI while
+# buildrpms.pl could not even load Parallel::ForkManager. The message below is
+# what distinguishes the two; this only pins the code usage() is meant to use.
+is( $rc, 2, 'combining --source-only with --merge-core-repos is refused' );
 like( $out, qr/--source-only and --merge-core-repos/,
     'and the refusal names both options' );
 

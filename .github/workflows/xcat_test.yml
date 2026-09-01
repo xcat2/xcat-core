@@ -7,7 +7,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Install dependencies
-        run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests build-essential fakeroot reprepro devscripts debhelper libcapture-tiny-perl libfile-slurper-perl libjson-perl libsoap-lite-perl libdbi-perl libcgi-pm-perl quilt openssh-server dpkg looptools genometools software-properties-common
+        run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests build-essential fakeroot reprepro devscripts debhelper libcapture-tiny-perl libfile-slurper-perl libjson-perl libparallel-forkmanager-perl libsoap-lite-perl libdbi-perl libcgi-pm-perl quilt openssh-server dpkg looptools genometools software-properties-common
       - name: Run tests
         run: perl github_action_xcat_test.pl
 
