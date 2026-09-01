@@ -22,7 +22,8 @@ our @EXPORT_OK = qw(
     source_date_epoch snap_release deb_version
     stage_probe_helpers XCAT_PROBE_HELPERS
     deb_package_arches dist_arches default_dists
-    orig_tarball_name pin_control_version rewrite_changelog_header
+    orig_tarball_name upstream_version resolve_dest
+    pin_control_version rewrite_changelog_header
     reprepro_distributions reprepro_options
     lock_id_for take_build_lock
     sh_quote
@@ -132,10 +133,37 @@ sub dist_arches {
 }
 
 # orig_tarball_name: the .orig.tar.gz dpkg-source expects for a 3.0 (quilt) package.
-# The name is lower-cased because dpkg requires a lower-case source package name.
+#
+# The name carries the UPSTREAM version only -- dpkg looks for
+# <source>_<upstream>.orig.tar.gz, with no Debian revision, because one upstream
+# tarball is shared by every revision built from it. The revision is stripped here
+# rather than at the call site so passing the full Version-Release cannot produce a
+# tarball dpkg will not find. Lower-cased because dpkg requires a lower-case source
+# package name.
+sub upstream_version {
+    my ($version) = @_;
+    return '' unless defined $version;
+    $version =~ s/-[^-]*\z//;    # drop the Debian revision, if any
+    return $version;
+}
+
 sub orig_tarball_name {
     my ($package, $version) = @_;
-    return lc($package) . "_$version.orig.tar.gz";
+    return lc($package) . '_' . upstream_version($version) . '.orig.tar.gz';
+}
+
+# resolve_dest: turn a --dest argument into an absolute path.
+#
+# NOT Cwd::abs_path: that returns undef when a PARENT component is missing, and the
+# caller then interpolates undef, so `--dest /no/such/parent/out` silently becomes
+# `/debs` and `/xcat-core` at the filesystem root. rel2abs is purely lexical and
+# works for a path that does not exist yet, which is the normal case for an output
+# directory.
+sub resolve_dest {
+    my ($dest, $default) = @_;
+    return $default unless defined $dest && length $dest;
+    require File::Spec;
+    return File::Spec->rel2abs($dest);
 }
 
 # pin_control_version: pin xCAT's inter-package dependencies to this exact build.

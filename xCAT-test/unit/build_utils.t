@@ -22,7 +22,8 @@ use BuildUtils qw(
     source_date_epoch snap_release deb_version
     stage_probe_helpers XCAT_PROBE_HELPERS
     deb_package_arches dist_arches
-    orig_tarball_name pin_control_version rewrite_changelog_header
+    orig_tarball_name upstream_version resolve_dest
+    pin_control_version rewrite_changelog_header
     reprepro_distributions reprepro_options sh_quote
 );
 
@@ -70,9 +71,29 @@ is_deeply( [dist_arches('noble')], ['amd64', 'ppc64el'],
 is_deeply( [dist_arches('saucy')], ['amd64'],
     'saucy predates ppc64el and serves only amd64' );
 
-is( orig_tarball_name('xCAT-server', '2.19.0-snap1'),
-    'xcat-server_2.19.0-snap1.orig.tar.gz',
-    'the orig tarball name is lower-cased, as dpkg requires' );
+# dpkg looks for <source>_<upstream>.orig.tar.gz -- no Debian revision, because one
+# upstream tarball is shared by every revision built from it.
+is( orig_tarball_name('xCAT-server', '2.19.0-snap202608240826'),
+    'xcat-server_2.19.0.orig.tar.gz',
+    'the orig tarball carries the upstream version, not the Debian revision' );
+is( orig_tarball_name('xCAT-server', '2.19.0'),
+    'xcat-server_2.19.0.orig.tar.gz',
+    'and is the same name when handed the upstream version directly' );
+is( upstream_version('2.19.0-snap1'), '2.19.0', 'the Debian revision is stripped' );
+is( upstream_version('2.19.0'), '2.19.0', 'a bare upstream version is unchanged' );
+is( upstream_version('1.2.3-4-5'), '1.2.3-4', 'only the LAST hyphen separates the revision' );
+is( upstream_version(undef), '', 'an undefined version does not blow up' );
+
+# resolve_dest must not use Cwd::abs_path: that returns undef when a PARENT component
+# is missing, and the caller then builds "/debs" and "/xcat-core" at the root.
+is( resolve_dest(undef, '/default/out'), '/default/out',
+    'no --dest falls back to the default' );
+is( resolve_dest('', '/default/out'), '/default/out',
+    'an empty --dest falls back too' );
+is( resolve_dest('/no-such-parent-xyz/out', '/default'), '/no-such-parent-xyz/out',
+    'a --dest whose parent does not exist resolves to itself, never undef' );
+like( resolve_dest('relative/out', '/default'), qr{^/.*relative/out$},
+    'a relative --dest becomes absolute' );
 
 # ------------------------------------------------------------------- control --
 

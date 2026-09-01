@@ -31,7 +31,8 @@ use BuildUtils qw(
     source_date_epoch snap_release deb_version
     stage_probe_helpers XCAT_PROBE_HELPERS
     deb_package_arches dist_arches default_dists
-    orig_tarball_name pin_control_version rewrite_changelog_header
+    orig_tarball_name upstream_version resolve_dest
+    pin_control_version rewrite_changelog_header
     reprepro_distributions reprepro_options
     lock_id_for take_build_lock sh_quote
 );
@@ -135,17 +136,29 @@ sub with_prepared_tree {
     my $dir = "$ROOT/$pkg";
     my @restore;
 
-    my $save = sub {
+    my @remove;
+
+    # Back up a file the build is about to edit, or -- when it does not exist yet --
+    # note that the build is CREATING it so it can be taken away again.
+    # xCAT-genesis-scripts has no debian/control of its own; it is generated from
+    # control-<arch>. Restoring only pre-existing files left that generated file in
+    # the checkout, so the tree ended dirty and a later single-arch build would start
+    # from the other architecture's control.
+    my $claim = sub {
         my ($rel) = @_;
         my $path = "$dir/$rel";
-        return unless -f $path;
-        my $backup = "$path.build.save";
-        copy($path, $backup) or die "Cannot back up $path: $!\n";
-        push @restore, [$backup, $path];
+        if (-f $path) {
+            my $backup = "$path.build.save";
+            copy($path, $backup) or die "Cannot back up $path: $!\n";
+            push @restore, [$backup, $path];
+        }
+        else {
+            push @remove, $path;
+        }
     };
 
-    $save->('debian/control');
-    $save->('debian/changelog');
+    $claim->('debian/control');
+    $claim->('debian/changelog');
 
     # Pin the intra-xCAT dependencies to this exact build, so a partial upgrade cannot
     # mix versions.
@@ -200,7 +213,7 @@ sub with_prepared_tree {
     my $rc = eval { $body->($dir); 1 } ? 0 : 1;
     my $err = $@;
 
-    unlink @added;
+    unlink @added, @remove;
     for my $pair (reverse @restore) {
         my ($backup, $path) = @$pair;
         move($backup, $path) or warn "Could not restore $path: $!\n";
@@ -340,7 +353,7 @@ SCRIPT
 # ----------------------------------------------------------------- main ------
 my $lock = take_build_lock($ROOT);
 
-my $dest   = $opts{dest} ? abs_path($opts{dest}) : "$ROOT/dist/debs";
+my $dest   = resolve_dest($opts{dest}, "$ROOT/dist/debs");
 my $pkgdir = "$dest/debs";
 my $repo   = "$dest/xcat-core";
 make_path($pkgdir);

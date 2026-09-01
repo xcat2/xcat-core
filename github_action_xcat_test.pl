@@ -351,7 +351,15 @@ sub build_xcat_core{
 #--------------------------------------------------------
 sub install_xcat{
 
-    my @cmds = ("sudo ./mklocalrepo.sh",
+    my $repo = "$srcdir/dist/debs/xcat-core";
+    unless (-x "$repo/mklocalrepo.sh") {
+        print RED "[install_xcat] $repo/mklocalrepo.sh missing -- did the build run?\n";
+        $check_result_str .= "> **INSTALL XCAT ERROR** : the build produced no apt repository ";
+        print $check_result_str;
+        return 1;
+    }
+
+    my @cmds = ("sudo $repo/mklocalrepo.sh",
                "sudo chmod 777 /etc/apt/sources.list",
                "sudo echo \"deb [arch=amd64 allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/latest/xcat-dep noble main\" >> /etc/apt/sources.list",
                "sudo echo \"deb [arch=ppc64el allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/latest/xcat-dep noble main\" >> /etc/apt/sources.list",
