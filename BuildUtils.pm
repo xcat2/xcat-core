@@ -32,7 +32,7 @@ our @EXPORT_OK = qw(
     lock_id_for take_build_lock
     sh_quote clean_debian_residue git_revision
     backup_file restore_file
-    sh usage
+    sh sh_or_die usage
     rewrite_file write_script read_line
     buildinfo_text
 );
@@ -115,6 +115,20 @@ sub sh {
 
 # pod2usage reads the POD of the running program, so each builder keeps its own
 # help text while sharing the way it is printed and the status it exits with.
+# Run a command and stop the build when it fails.  The same operation was
+# spelled in opposite polarities -- `sh(...) == 0 or die` in builddebs.pl,
+# `sh(...) and die` in buildrpms.pl, which also used both -- and the `and die`
+# form reads as though the die is what happens next rather than what happens on
+# failure.  One name, one direction, and the exit code lands in the message.
+sub sh_or_die {
+    my ($cmd, $message) = @_;
+    my $rc = sh($cmd);
+    return 0 if $rc == 0;
+    $message = "FATAL: command failed: $cmd" unless defined $message;
+    $message =~ s/\n\z//;
+    die "$message (exit $rc)\n";
+}
+
 sub usage {
     my (%args) = @_;
     pod2usage(

@@ -427,4 +427,24 @@ isnt( git_revision( git => sub { '' }, read_file => sub { '' } ), '',
     like( $out, qr/\ARunning: true/, 'a verbose run echoes the command' );
 }
 
+# ---------------------------------------------------------- sh_or_die() --
+# The same run-or-fail step was written `sh(...) == 0 or die` in one builder
+# and `sh(...) and die` in the other -- which also used both spellings itself.
+# Reversed polarities for one operation are easy to misread, so there is now a
+# single name with a single direction.
+{
+    is( BuildUtils::sh_or_die('true'), 0,
+        'a command that succeeds returns 0 and does not die' );
+
+    my $err = eval { BuildUtils::sh_or_die('sh -c "exit 4"', 'FATAL: it failed'); 1 }
+        ? '' : $@;
+    like( $err, qr/FATAL: it failed/, 'a failure dies with the caller\'s message' );
+    like( $err, qr/exit 4/,
+        'and names the exit code, which the old spellings threw away' );
+
+    my $bare = eval { BuildUtils::sh_or_die('sh -c "exit 5"'); 1 } ? '' : $@;
+    like( $bare, qr/\Qsh -c "exit 5"\E/,
+        'a caller with no message still gets the command that failed' );
+}
+
 done_testing();

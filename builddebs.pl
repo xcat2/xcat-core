@@ -37,7 +37,7 @@ use BuildUtils qw(
     pin_control_version rewrite_changelog_header
     reprepro_distributions reprepro_options
     lock_id_for take_build_lock sh_quote
-    sh usage rewrite_file write_script read_line buildinfo_text
+    sh sh_or_die usage rewrite_file write_script read_line buildinfo_text
 );
 
 # The xcat-core packages that ship as debs. xCAT-openbmc-py, xCAT-rmc and xCAT-release
@@ -223,17 +223,17 @@ sub build_package {
             if ($text =~ /3\.0 \(quilt\)/) {
                 my $tar = "$ROOT/" . orig_tarball_name($pkg, $PKGVER);
                 unless (-f $tar) {
-                    sh(sprintf('tar czf %s --exclude debian -C %s .',
-                               sh_quote($tar), sh_quote($dir))) == 0
-                        or die "FATAL: could not create $tar\n";
+                    sh_or_die(sprintf('tar czf %s --exclude debian -C %s .',
+                               sh_quote($tar), sh_quote($dir)),
+            "FATAL: could not create $tar\n");
                 }
             }
         }
 
         my $arch_flag = $arch eq 'all' ? '' : " -a$arch";
         my $quiet = $opts{verbose} ? '' : ' >/dev/null';
-        sh("cd " . sh_quote($dir) . " && dpkg-buildpackage -rfakeroot -uc -us$arch_flag$quiet") == 0
-            or die "FATAL: dpkg-buildpackage failed for $pkg ($arch)\n";
+        sh_or_die("cd " . sh_quote($dir) . " && dpkg-buildpackage -rfakeroot -uc -us$arch_flag$quiet",
+            "FATAL: dpkg-buildpackage failed for $pkg ($arch)\n");
     });
 
     return;
@@ -301,9 +301,9 @@ sub assemble_repo {
         for my $deb (@debs) {
             # A release that predates an architecture must not be handed its packages.
             next if basename($deb) =~ /_(\w+)\.deb\z/ && $1 ne 'all' && !$ok{$1};
-            sh("cd " . sh_quote($repodir) . " && reprepro -b ./ includedeb "
-               . sh_quote($dist) . ' ' . sh_quote($deb)) == 0
-                or die "FATAL: reprepro could not add $deb to $dist\n";
+            sh_or_die("cd " . sh_quote($repodir) . " && reprepro -b ./ includedeb "
+               . sh_quote($dist) . ' ' . sh_quote($deb),
+            "FATAL: reprepro could not add $deb to $dist\n");
         }
     }
     return scalar @debs;

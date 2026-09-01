@@ -43,8 +43,8 @@ use File::Slurper qw(read_text write_text);
 use File::Temp qw(tempdir tempfile);
 use FindBin qw($Bin);
 use lib $Bin;
-use BuildUtils qw(git_revision source_date_epoch sh usage buildinfo_text write_script
-                  read_line);
+use BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildinfo_text
+                  write_script read_line);
 use Fcntl qw(:flock);           # per-target build lock (concurrency guard; see main())
 use Getopt::Long qw(GetOptions);
 use POSIX qw(strftime);
@@ -342,14 +342,14 @@ sub buildsources_genesis_base($) {
     remove_tree($staging_parent) if -e $staging_parent;
     make_path("$staging_root/dracut_105");
 
-    sh(qq(cp -a "xCAT-genesis-builder/dracut_105" "$staging_root/"))
-        and die "Error copying dracut_105 sources";
+    sh_or_die(qq(cp -a "xCAT-genesis-builder/dracut_105" "$staging_root/"),
+        "Error copying dracut_105 sources");
     cp "xCAT-genesis-builder/80-net-name-slot.rules",
        "$staging_root/80-net-name-slot.rules";
 
     unlink $support_tarball if -f $support_tarball;
-    sh(qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -cjf "$support_tarball" -C "$staging_parent" xCAT-genesis-base-build-support))
-        and die "Error creating $support_tarball";
+    sh_or_die(qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -cjf "$support_tarball" -C "$staging_parent" xCAT-genesis-base-build-support),
+        "Error creating $support_tarball");
 
     remove_tree($staging_parent);
 }
@@ -360,8 +360,8 @@ sub prepare_xcat_probe_source_tar {
     my $helper_dir = "$staging_root/lib/perl/xCAT";
     my $source_tarball = "$SOURCES/xCAT-probe-$VERSION.tar.gz";
 
-    sh(qq(cp -a "xCAT-probe" "$staging_root"))
-        and die "Error staging xCAT-probe sources";
+    sh_or_die(qq(cp -a "xCAT-probe" "$staging_root"),
+        "Error staging xCAT-probe sources");
 
     remove_tree($helper_dir) if -e $helper_dir;
     make_path($helper_dir);
@@ -379,8 +379,8 @@ sub prepare_xcat_probe_source_tar {
     );
     close $archive_fh;
 
-    sh(qq(tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="\@$SOURCE_DATE_EPOCH" --use-compress-program="gzip -n" -cf "$archive_path" -C "$staging_parent" xCAT-probe))
-        and die "Error creating $source_tarball";
+    sh_or_die(qq(tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="\@$SOURCE_DATE_EPOCH" --use-compress-program="gzip -n" -cf "$archive_path" -C "$staging_parent" xCAT-probe),
+        "Error creating $source_tarball");
 
     chmod 0644, $archive_path;
     rename $archive_path, $source_tarball;
@@ -661,9 +661,9 @@ sub setup_local_repos {
 sub createrepo_dir {
     my ($dir, $extra) = @_;
     $extra //= '';
-    sh(qq(createrepo_c --update --database )
-       . qq(--revision "$SOURCE_DATE_EPOCH" --set-timestamp-to-revision $extra "$dir"))
-        and die "Failed to createrepo_c $dir\n";
+    sh_or_die(qq(createrepo_c --update --database )
+       . qq(--revision "$SOURCE_DATE_EPOCH" --set-timestamp-to-revision $extra "$dir"),
+        "Failed to createrepo_c $dir\n");
 }
 
 # A core repo dir holds binaries flat plus a SRPMS/ subdir carrying its own
@@ -727,15 +727,15 @@ sub sign_repo_dir {
     say "Signing RPMs in $repodir";
     my @bin = glob("$repodir/*.rpm");
     if (@bin) {
-        sh(qq(rpmsign --define "%_gpg_name $key_name" --addsign )
-           . join(" ", map { qq("$_") } @bin))
-            and die "Failed to sign RPMs in $repodir";
+        sh_or_die(qq(rpmsign --define "%_gpg_name $key_name" --addsign )
+           . join(" ", map { qq("$_") } @bin),
+        "Failed to sign RPMs in $repodir");
     }
     my @src = glob("$repodir/SRPMS/*.src.rpm");
     if (@src) {
-        sh(qq(rpmsign --define "%_gpg_name $key_name" --addsign )
-           . join(" ", map { qq("$_") } @src))
-            and die "Failed to sign SRPMs in $repodir/SRPMS";
+        sh_or_die(qq(rpmsign --define "%_gpg_name $key_name" --addsign )
+           . join(" ", map { qq("$_") } @src),
+        "Failed to sign SRPMs in $repodir/SRPMS");
     }
 
     # Regenerate both indexes (binary + SRPMS) after signing, before signing repomd.
@@ -747,10 +747,10 @@ sub sign_repo_dir {
         next unless -f $repomd;
         say "Signing $repomd";
         unlink "$repomd.asc" if -f "$repomd.asc";
-        sh(qq(gpg -a --detach-sign --default-key "$key_name" "$repomd"))
-            and die "Failed to sign $repomd";
-        sh(qq(gpg -a --export "$key_name" > "$rd/repomd.xml.key"))
-            and die "Failed to export public key to $rd";
+        sh_or_die(qq(gpg -a --detach-sign --default-key "$key_name" "$repomd"),
+        "Failed to sign $repomd");
+        sh_or_die(qq(gpg -a --export "$key_name" > "$rd/repomd.xml.key"),
+        "Failed to export public key to $rd");
     }
 }
 
@@ -832,11 +832,12 @@ sub merge_core_repos {
     die "FATAL: --merge-core-repos requires at least one --input-core-repos dir\n" unless @ins;
     -d $_ or die "FATAL: --input-core-repos dir '$_' does not exist\n" for @ins;
 
-    sh(qq(rm -rf "$out")) and die "Failed to clean output dir '$out'\n";
+    sh_or_die(qq(rm -rf "$out"),
+        "Failed to clean output dir '$out'\n");
     make_path($out);
     for my $in (@ins) {
-        sh(qq(rsync -a --exclude 'repodata/' "$in/" "$out/"))
-            and die "Failed to rsync '$in' into '$out'\n";
+        sh_or_die(qq(rsync -a --exclude 'repodata/' "$in/" "$out/"),
+        "Failed to rsync '$in' into '$out'\n");
     }
 
     # Index, sign (when --gpg-sign), write the final repository metadata, then create the
