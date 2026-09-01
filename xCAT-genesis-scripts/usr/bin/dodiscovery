@@ -1,4 +1,6 @@
 #!/bin/bash
+. /usr/lib/xcat/fips.sh
+
 log_label="xcat.genesis.dodiscovery"
 
 #the time when the latest findme request is sent to master
@@ -9,11 +11,8 @@ reqtime=0
 maxresptime=180
 
 minixcatd.awk &
-if grep -q '^1$' /proc/sys/crypto/fips_enabled 2>/dev/null; then
-	PUBKEY="$(openssl ec -in /etc/xcat/privkey.pem -pubout 2> /dev/null|awk '!/ PUBLIC KEY/{printf $0}')"
-else
-	PUBKEY="$(openssl rsa -in /etc/xcat/privkey.pem -pubout 2> /dev/null|awk '!/ PUBLIC KEY/{printf $0}')"
-fi
+XCAT_FIPS_ENABLED=$(xcat_fips_state)
+PUBKEY="$(xcat_discovery_public_key "$XCAT_FIPS_ENABLED" /etc/xcat/privkey.pem 2> /dev/null|awk '!/ PUBLIC KEY/{printf $0}')"
 export PUBKEY
 
 logger -s -t $log_label -p local4.info "Beginning node discovery process..."
