@@ -29,13 +29,16 @@ my $GITHUB_API = "https://api.github.com";
 
 # The workflow starts us in the checked out source tree. The unit tests under
 # xCAT-test/unit resolve xCAT modules and fixture files relative to that tree
-# through FindBin, so they can only be run from a source tree -- but the tree
-# does not survive the build. build-ubunturepo sets
+# through FindBin, so they can only be run from a source tree. Take a copy
+# before building and run the unit tests out of the copy.
+#
+# This used to be mandatory rather than tidy: build-ubunturepo set
 #     local_core_repo_path="$curdir/../../xcat-core"
-# which, under the work/<repo>/<repo> layout GitHub checks out into, resolves
-# to the checkout's own parent, and it then rm -rf's that path to make room for
-# the apt repository. So take a copy of the tree before building and run the
-# unit tests out of the copy.
+# which, under the work/<repo>/<repo> layout GitHub checks out into, resolved to
+# the checkout's own parent, and it rm -rf'd that path to make room for the apt
+# repository -- destroying the tree the tests need. builddebs.pl writes under
+# dist/debs INSIDE the checkout and restores every file it edits, so the copy is
+# now only isolating the tests from build residue.
 my $srcdir = getcwd();
 my $unitsrc = ($ENV{'RUNNER_TEMP'} ? $ENV{'RUNNER_TEMP'} : "/tmp") . "/xcat-core-unitsrc";
 
@@ -322,7 +325,7 @@ sub preserve_source_tree{
 sub build_xcat_core{
     my @output;
 
-    my $cmd = "sudo ./build-ubunturepo -c UP=0 BUILDALL=1 GPGSIGN=0";
+    my $cmd = "sudo ./builddebs.pl --force";
     @output = runcmd("$cmd");
     if($::RUNCMD_RC){
         my $lastline = $output[-1];

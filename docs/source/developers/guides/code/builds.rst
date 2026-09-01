@@ -32,10 +32,33 @@ emitted, because a source-only run has no binary packages to advertise.
 
 .. note::
 
-   ``buildcore.sh``, ``makerpm`` and ``buildlocal.sh`` were removed in 2.19.
-   ``buildrpms.pl`` replaces all three, and its ``--source-only`` replaces the
-   old ``SRCONLY=1``. Debian and Ubuntu packages are still built by
-   ``./build-ubunturepo``.
+   ``buildcore.sh``, ``makerpm``, ``buildlocal.sh`` and ``build-ubunturepo``
+   were removed in 2.19. ``buildrpms.pl`` replaces the first three, and its
+   ``--source-only`` replaces the old ``SRCONLY=1``; ``builddebs.pl`` replaces
+   ``build-ubunturepo``.
+
+Debian and Ubuntu packages
+--------------------------
+
+Build the ``.deb`` packages and an apt repository with ``builddebs.pl``::
+
+    cd xcat-core
+    ./builddebs.pl
+
+The packages land in ``dist/debs/debs/`` and the repository in
+``dist/debs/xcat-core/``. Pass ``--dest`` to write them elsewhere, ``--dist`` to
+limit which Ubuntu releases the repository serves, and ``--gpg-sign`` (with
+``--gpg-home``) to sign it. ``./builddebs.pl --help`` lists the rest.
+
+xcat-core packages are Perl, so one build serves every Ubuntu release: the
+packages are built **once** and the same files are published into every codename
+the repository declares. Only ``xCAT``, ``xCATsn`` and ``xCAT-genesis-scripts``
+carry an architecture, and there the difference is packaging metadata rather than
+compiled output. That is why this build needs no ``sbuild`` and no per-codename
+chroot -- unlike xcat-deps, whose packages are compiled and genuinely differ per
+release.
+
+Helpers shared by both builders live in ``BuildUtils.pm``.
 
 ``buildcore.sh`` builds the architecture specific packages (``xCAT``, ``xCATsn``,
 ``xCAT-genesis-scripts``) for every supported architecture, riscv64 included, with

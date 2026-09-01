@@ -5,6 +5,9 @@ use FindBin;
 use File::Spec;
 use Test::More;
 
+use lib "$FindBin::Bin/../..";
+use BuildUtils ();
+
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
 
 my @pkglist_files = qw(
@@ -81,11 +84,14 @@ close($pre_fh);
 like( $pre, qr/id: efi-part\s+type: partition\s+device: disk-detected\s+size: 512M\s+flag: boot\s+number: 1\s+preserve: false\s+grub_device: true/s, 'subiquity UEFI storage marks the EFI partition as grub device' );
 like( $pre, qr/id: efi-part-fs\s+type: format\s+fstype: fat32\s+volume: efi-part/s, 'subiquity UEFI storage formats ESP as fat32' );
 
-my $repo_builder = File::Spec->catfile( $repo_root, 'build-ubunturepo' );
-open( my $builder_fh, '<', $repo_builder ) or die "Unable to read $repo_builder: $!";
-my $builder = do { local $/; <$builder_fh> };
-close($builder_fh);
-
-like( $builder, qr/dists="\$\{DISTS:-[^"]*\bresolute\b[^"]*\}"/, 'Ubuntu repo builder includes resolute by default' );
+# The releases the deb builder serves by default. Read from BuildUtils, which is where
+# the builder itself reads them, rather than matched against the source that sets them:
+# the old assertion passed on any file containing that shell fragment, and broke on a
+# reflow that changed nothing.
+ok( scalar( grep { $_ eq 'resolute' } BuildUtils::default_dists() ),
+    'the Ubuntu repository serves resolute by default' );
+like( BuildUtils::reprepro_distributions( [ BuildUtils::default_dists() ], undef ),
+    qr/^Codename: resolute$/m,
+    'and a resolute stanza reaches conf/distributions' );
 
 done_testing();

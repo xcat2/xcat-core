@@ -1,0 +1,238 @@
+package BuildUtils;
+# Reusable, unit-testable helpers shared by the xcat-core build tooling: buildrpms.pl
+# (rpm/mock) and builddebs.pl (deb/reprepro). Both derive the same Version-Release from
+# the same git state, stage the same xCAT-probe helpers, and shell out the same way, so
+# that logic lives here once instead of twice.
+#
+# Everything here is a pure function of its arguments, or a thin wrapper whose side
+# effect is the argument. Nothing reaches for an orchestrator global, so
+# xCAT-test/unit/build_utils.t drives every function directly rather than grepping the
+# builders for evidence that they call it.
+#
+# It mirrors xcat-dep's BuildUtils.pm in shape and intent; the two repos ship separate
+# copies because neither installs the other's tooling.
+use strict;
+use warnings;
+use Exporter 'import';
+use File::Copy qw(copy);
+use File::Path qw(make_path);
+use POSIX qw(strftime);
+
+our @EXPORT_OK = qw(
+    source_date_epoch snap_release deb_version
+    stage_probe_helpers XCAT_PROBE_HELPERS
+    deb_package_arches dist_arches default_dists
+    orig_tarball_name pin_control_version rewrite_changelog_header
+    reprepro_distributions reprepro_options
+    lock_id_for take_build_lock
+    sh_quote
+);
+
+# The xCAT-probe helpers. xcat-probe reuses functions shipped by xCAT; they are COPIED
+# rather than symlinked because a symlink does not survive packaging, and rather than
+# maintained twice because they would drift. Both builders stage them the same way.
+use constant XCAT_PROBE_HELPERS => qw(
+    GlobalDef.pm
+    NetworkUtils.pm
+    ServiceNodeUtils.pm
+);
+
+# Packages whose .deb carries a real architecture. Everything else in xcat-core is
+# Perl and ships as Architecture: all -- one binary serving every Ubuntu release and
+# every arch, which is why this build never needs a per-codename chroot.
+my %ARCH_PACKAGES = map { $_ => 1 } qw(xCAT xCATsn xCAT-genesis-scripts);
+
+# Ubuntu releases predating ppc64el. Kept as data rather than an `if` in the caller so
+# the repo-assembly and the package-selection paths cannot disagree about it.
+my %NO_PPC64EL = map { $_ => 1 } qw(saucy);
+
+my @DEB_ARCHES = qw(amd64 ppc64el);
+
+# The Ubuntu releases the apt repository serves by default. Single source of truth:
+# the builder, the repo assembly and the tests all read it here, so they cannot drift.
+my @DEFAULT_DISTS = qw(focal jammy noble resolute);
+
+sub default_dists { return @DEFAULT_DISTS; }
+
+# sh_quote: single-quote a string for safe use in a shell command.
+sub sh_quote {
+    my ($s) = @_;
+    $s = '' if !defined $s;
+    $s =~ s/'/'"'"'/g;
+    return "'$s'";
+}
+
+# source_date_epoch: the commit time the build is reproducible against.
+#
+# Gitepoch wins when present -- CI writes it so every arch of one release stamps an
+# identical epoch even when the arches build minutes apart. Falling back to the local
+# clock is last-resort: it makes the build non-reproducible, so the caller is told.
+sub source_date_epoch {
+    my (%args) = @_;
+    my $read = $args{read_file} || sub {
+        my ($p) = @_;
+        return unless -f $p;
+        open my $fh, '<', $p or return;
+        my $v = <$fh>;
+        close $fh;
+        return $v;
+    };
+    my $git = $args{git_epoch} || sub { return scalar `git log -1 --format=%ct HEAD 2>/dev/null`; };
+
+    for my $candidate ($read->('Gitepoch'), $git->()) {
+        next unless defined $candidate;
+        chomp $candidate;
+        return $candidate if $candidate =~ /\A\d+\z/;
+    }
+    return $args{now} || time();
+}
+
+# snap_release: the Release string, derived from the commit time so identical sources
+# give identical NVRs. UTC, because a build host's timezone must not change the name.
+sub snap_release {
+    my ($epoch) = @_;
+    return strftime("snap%Y%m%d%H%M", gmtime($epoch));
+}
+
+# deb_version: the Debian version. Same Version-Release pair the rpms carry, so an
+# apt repo and a yum repo built from one commit report the same thing.
+sub deb_version {
+    my ($version, $release) = @_;
+    return "$version-$release";
+}
+
+# stage_probe_helpers: copy the shared helpers into xCAT-probe's tree.
+# Returns the list of destination paths, so a caller can remove exactly what it added.
+sub stage_probe_helpers {
+    my ($source_dir, $dest_dir) = @_;
+    make_path($dest_dir) unless -d $dest_dir;
+    my @staged;
+    for my $helper (XCAT_PROBE_HELPERS) {
+        my $from = "$source_dir/$helper";
+        my $to   = "$dest_dir/$helper";
+        copy($from, $to) or die "Unable to stage $from into $dest_dir: $!\n";
+        push @staged, $to;
+    }
+    return @staged;
+}
+
+# deb_package_arches: the architectures to build a package for.
+# 'all' is a single arch-independent build; the three arch packages get one per arch.
+sub deb_package_arches {
+    my ($package) = @_;
+    return @DEB_ARCHES if $ARCH_PACKAGES{$package // ''};
+    return ('all');
+}
+
+# dist_arches: the architectures a release's apt repo declares.
+sub dist_arches {
+    my ($dist) = @_;
+    return ('amd64') if $NO_PPC64EL{$dist // ''};
+    return @DEB_ARCHES;
+}
+
+# orig_tarball_name: the .orig.tar.gz dpkg-source expects for a 3.0 (quilt) package.
+# The name is lower-cased because dpkg requires a lower-case source package name.
+sub orig_tarball_name {
+    my ($package, $version) = @_;
+    return lc($package) . "_$version.orig.tar.gz";
+}
+
+# pin_control_version: pin xCAT's inter-package dependencies to this exact build.
+#
+# debian/control carries the sentinel ">= 2.13-snap000000000000" on every intra-xCAT
+# dependency. Left alone, apt would satisfy them with any older xCAT already installed,
+# so a partial upgrade could mix versions. Replacing it with "= <version>" makes the set
+# install or fail as a unit.
+sub pin_control_version {
+    my ($control, $version) = @_;
+    return $control unless defined $control;
+    $control =~ s/>= \Q2.13-snap000000000000\E/= $version/g;
+    return $control;
+}
+
+# rewrite_changelog_header: set the version and the trailer date of the top stanza.
+#
+# The date comes from SOURCE_DATE_EPOCH rather than "now" so two builds of one commit
+# produce byte-identical packages. Only the first stanza is touched -- the history below
+# it is not ours to rewrite.
+sub rewrite_changelog_header {
+    my ($changelog, $version, $date, $maintainer) = @_;
+    return $changelog unless defined $changelog;
+    $changelog =~ s/\A(\S+) \([^)]*\)/$1 ($version)/;
+    $changelog =~ s/^ -- .*$/ -- $maintainer  $date/m;
+    return $changelog;
+}
+
+# reprepro_distributions: the conf/distributions body for the whole repo.
+#
+# One stanza per release, all listing the same packages: xcat-core debs are Perl and are
+# byte-identical across releases, so the build produces them once and every codename
+# serves the same files. keyid is undef for an unsigned repo.
+sub reprepro_distributions {
+    my ($dists, $keyid) = @_;
+    my $out = '';
+    for my $dist (@$dists) {
+        my $arches = join ' ', dist_arches($dist);
+        $out .= <<"STANZA";
+Origin: xCAT internal repository
+Label: xcat-core bazaar repository
+Codename: $dist
+Architectures: $arches
+Components: main
+Description: Repository automatically genereted conf
+STANZA
+        $out .= "SignWith: $keyid\n" if defined $keyid && length $keyid;
+        $out .= "\n";
+    }
+    return $out;
+}
+
+# reprepro_options: the conf/options body.
+#
+# ask-passphrase is omitted when a GNUPGHOME is supplied, because that key is
+# passphrase-less and an unattended build must never stop to prompt.
+sub reprepro_options {
+    my ($gpg_home) = @_;
+    my $out = "verbose\n";
+    $out .= "ask-passphrase\n" unless defined $gpg_home && length $gpg_home;
+    $out .= "basedir .\n";
+    return $out;
+}
+
+
+# lock_id_for: a short, stable id for a checkout path.
+#
+# The build rewrites debian/changelog and debian/control and runs dpkg-buildpackage
+# inside the package directories, so what two builds contend for is the CHECKOUT, not
+# the host. A host-global lock made the devel and stable CD lanes collide even though
+# they share nothing. Keying on the path lets distinct checkouts build in parallel while
+# two builds of one checkout still fail fast.
+sub lock_id_for {
+    my ($path) = @_;
+    require Digest::MD5;
+    return substr(Digest::MD5::md5_hex(defined $path ? $path : ''), 0, 12);
+}
+
+# lock_path_for: where that checkout's lock lives.
+# Local /var/lock deliberately: the checkout itself may be on NFS, where flock is not
+# reliable.
+sub lock_path_for {
+    my ($path, $dir) = @_;
+    $dir = '/var/lock' unless defined $dir;
+    return "$dir/xcatbld-" . lock_id_for($path) . ".lock";
+}
+
+# take_build_lock: take the checkout's lock, or die.
+# Returns the open handle -- the lock is held for as long as the caller keeps it.
+sub take_build_lock {
+    my ($path, $dir) = @_;
+    require Fcntl;
+    my $lockfile = lock_path_for($path, $dir);
+    open my $fh, '>', $lockfile or die "FATAL: cannot open $lockfile: $!\n";
+    flock($fh, Fcntl::LOCK_EX() | Fcntl::LOCK_NB())
+        or die "FATAL: another build of $path already holds $lockfile\n";
+    return $fh;
+}
+
+1;
