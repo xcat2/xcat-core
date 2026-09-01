@@ -320,6 +320,9 @@ sub stage_makerpm_fixture {
     chmod 0755,
       File::Spec->catfile( $root, 'build-utils', 'sync-xcat-apache-configs' )
       or die "Unable to make the Apache configuration helper executable: $!";
+    copy( repo_path('build-utils/source-only.sh'),
+        File::Spec->catfile( $root, 'build-utils', 'source-only.sh' ) )
+      or die "Unable to stage the source-only build helper: $!";
     write_text( File::Spec->catfile( $root, 'xCAT', 'xcat.conf' ),
         "canonical apache22\n" );
     write_text( File::Spec->catfile( $root, 'xCAT', 'xcat.conf.apach24' ),
