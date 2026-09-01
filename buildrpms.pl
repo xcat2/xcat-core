@@ -43,7 +43,7 @@ use File::Slurper qw(read_text write_text);
 use File::Temp qw(tempdir tempfile);
 use FindBin qw($Bin);
 use lib $Bin;
-use BuildUtils qw(git_revision source_date_epoch sh usage);
+use BuildUtils qw(git_revision source_date_epoch sh usage buildinfo_text);
 use Fcntl qw(:flock);           # per-target build lock (concurrency guard; see main())
 use Getopt::Long qw(GetOptions);
 use POSIX qw(strftime);
@@ -811,17 +811,9 @@ EOF2
     chmod 0775, "$repodir/mklocalrepo.sh";
 
     # BUILD_TIME from SOURCE_DATE_EPOCH keeps buildinfo reproducible across rebuilds.
-    my $build_time = strftime("%a %b %e %H:%M:%S %Z %Y", gmtime($SOURCE_DATE_EPOCH));
-    my $build_machine = `hostname`; chomp $build_machine;
-    my $commit_short = substr($GITINFO, 0, 7);
-    write_text("$repodir/buildinfo.txt", <<"EOF");
-VERSION=$VERSION
-RELEASE=$RELEASE
-BUILD_TIME=$build_time
-BUILD_MACHINE=$build_machine
-COMMIT_ID=$commit_short
-COMMIT_ID_LONG=$GITINFO
-EOF
+    write_text("$repodir/buildinfo.txt", buildinfo_text(
+        version => $VERSION, release => $RELEASE, epoch => $SOURCE_DATE_EPOCH,
+        commit => $GITINFO, time_format => "%a %b %e %H:%M:%S %Z %Y"));
 }
 
 # Assemble the flat MULTI-ARCH core from per-arch build outputs and sign it, in the upstream

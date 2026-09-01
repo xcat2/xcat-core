@@ -33,6 +33,7 @@ our @EXPORT_OK = qw(
     backup_file restore_file
     sh usage
     read_file write_file rewrite_file
+    buildinfo_text
 );
 
 # Both builders echo the commands they run under --verbose.  Set once, after
@@ -42,6 +43,27 @@ our $VERBOSE = 0;
 # The xCAT-probe helpers. xcat-probe reuses functions shipped by xCAT; they are COPIED
 # rather than symlinked because a symlink does not survive packaging, and rather than
 # maintained twice because they would drift. Both builders stage them the same way.
+# The stamp both builders write beside a published repository. deploy.sh copies
+# the file verbatim and cluster-test.pl parses it, so the field names and their
+# order are a contract; each builder passes its own time format and writes to
+# its own filename, which are part of that contract too.
+sub buildinfo_text {
+    my (%args) = @_;
+    my $commit = $args{commit} // 'unknown';
+    my $host   = $args{host};
+    unless (defined $host) {
+        $host = `hostname 2>/dev/null` || 'unknown';
+        chomp $host;
+    }
+    return join('', map { "$_\n" }
+        "VERSION=$args{version}",
+        "RELEASE=$args{release}",
+        "BUILD_TIME=" . strftime($args{time_format}, gmtime($args{epoch})),
+        "BUILD_MACHINE=$host",
+        "COMMIT_ID=" . substr($commit, 0, 7),
+        "COMMIT_ID_LONG=$commit");
+}
+
 # Whole-file read and write.  Deliberately plain open/close rather than
 # File::Slurper, so that loading this module does not oblige a deb build to
 # install a module it otherwise does not need.

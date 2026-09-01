@@ -308,6 +308,31 @@ is( git_revision( git => sub { "\n" }, read_file => sub { "  \n" } ),
 isnt( git_revision( git => sub { '' }, read_file => sub { '' } ), '',
     'the one thing it must never return is empty' );
 
+# ------------------------------------------------------- buildinfo_text --
+# deploy.sh copies this file verbatim and cluster-test.pl parses it, so the
+# field names and their order are a contract, not a presentation choice.
+{
+    my $text = BuildUtils::buildinfo_text(
+        version => '2.18.1', release => 'snap1', epoch => 0,
+        commit => 'abcdef1234567890', host => 'builder',
+        time_format => '%Y-%m-%d',
+    );
+    is_deeply( [ map { (split /=/, $_, 2)[0] } split /\n/, $text ],
+        [qw(VERSION RELEASE BUILD_TIME BUILD_MACHINE COMMIT_ID COMMIT_ID_LONG)],
+        'the fields appear in the order the consumers expect' );
+    like( $text, qr/^COMMIT_ID=abcdef1\n/m, 'the short commit is seven characters' );
+    like( $text, qr/^COMMIT_ID_LONG=abcdef1234567890\n/m, 'and the long one is whole' );
+    like( $text, qr/^BUILD_TIME=1970-01-01\n/m,
+        "the caller's own time format is used" );
+
+    # The two builders stamp different formats, and both are consumed.
+    my %common = (version => '1', release => '2', epoch => 0,
+                  commit => 'c', host => 'h');
+    isnt( BuildUtils::buildinfo_text(%common, time_format => '%a %b %d %H:%M:%S %Y'),
+          BuildUtils::buildinfo_text(%common, time_format => '%a %b %e %H:%M:%S %Z %Y'),
+          'each builder keeps the format its own consumers parse' );
+}
+
 # -------------------------------------------------- whole-file helpers --
 {
     my $dir = tempdir(CLEANUP => 1);

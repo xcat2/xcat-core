@@ -36,7 +36,7 @@ use BuildUtils qw(
     pin_control_version rewrite_changelog_header
     reprepro_distributions reprepro_options
     lock_id_for take_build_lock sh_quote
-    sh usage read_file write_file rewrite_file
+    sh usage read_file write_file rewrite_file buildinfo_text
 );
 
 # The xcat-core packages that ship as debs. xCAT-openbmc-py, xCAT-rmc and xCAT-release
@@ -338,17 +338,9 @@ SCRIPT
     close $m;
     chmod 0775, "$repodir/mklocalrepo.sh";
 
-    my $commit = `git -C @{[ sh_quote($ROOT) ]} rev-parse HEAD 2>/dev/null` || 'unknown';
-    chomp $commit;
-    my $host = `hostname 2>/dev/null` || 'unknown'; chomp $host;
-    open my $b, '>', "$repodir/buildinfo" or die "Cannot write buildinfo: $!\n";
-    print {$b} "VERSION=$VERSION\n",
-               "RELEASE=$RELEASE\n",
-               "BUILD_TIME=@{[ strftime('%a %b %d %H:%M:%S %Y', gmtime($EPOCH)) ]}\n",
-               "BUILD_MACHINE=$host\n",
-               "COMMIT_ID=@{[ substr($commit, 0, 7) ]}\n",
-               "COMMIT_ID_LONG=$commit\n";
-    close $b;
+    write_file("$repodir/buildinfo", buildinfo_text(
+        version => $VERSION, release => $RELEASE, epoch => $EPOCH,
+        commit => $GITINFO, time_format => '%a %b %d %H:%M:%S %Y'));
     return;
 }
 
