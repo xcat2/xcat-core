@@ -14,8 +14,9 @@ package BuildUtils;
 use strict;
 use warnings;
 use Exporter 'import';
-use File::Copy qw(copy);
-use File::Path qw(make_path);
+use File::Copy qw(copy move);
+use File::Basename qw(basename);
+use File::Path qw(make_path remove_tree);
 use POSIX qw(strftime);
 
 our @EXPORT_OK = qw(
@@ -26,7 +27,8 @@ our @EXPORT_OK = qw(
     pin_control_version rewrite_changelog_header
     reprepro_distributions reprepro_options
     lock_id_for take_build_lock
-    sh_quote
+    sh_quote clean_debian_residue
+    backup_file restore_file
 );
 
 # The xCAT-probe helpers. xcat-probe reuses functions shipped by xCAT; they are COPIED
@@ -56,6 +58,75 @@ my @DEFAULT_DISTS = qw(focal jammy noble resolute);
 sub default_dists { return @DEFAULT_DISTS; }
 
 # sh_quote: single-quote a string for safe use in a shell command.
+# clean_debian_residue: remove what dpkg-buildpackage leaves inside a package's
+# debian/ directory.
+#
+# debian/files accumulates one line per artifact and is never truncated by
+# `dh_clean -d`, which only removes directories. dpkg-genchanges then reads the
+# stale entries on the next build and fstats artifacts that are no longer there:
+#   dpkg-genchanges: error: cannot fstat file ../perl-xcat_<old release>_amd64.buildinfo
+# so a second build in the same checkout dies as soon as the release string moves.
+# The staging directories go for the same reason the old shell builder removed
+# them -- they are the previous build's payload, not source.
+#
+# Call this only after a package's LAST architecture: debian/files carries the
+# amd64 artifacts that the ppc64el run's dpkg-genchanges still needs.
+# backup_file / restore_file: put a file back exactly as it was.
+#
+# File::Copy::copy does NOT carry permissions, so a naive backup-and-restore returns
+# an executable with its exec bit stripped -- the content compares equal and only
+# `git diff` notices the mode change. xCAT/postscripts/{bmcsetup,getipmi} are shipped
+# executable and are rewritten during the xCAT build, so this is not hypothetical.
+sub backup_file {
+    my ($path) = @_;
+    return unless defined $path && -f $path;
+    my $backup = "$path.build.save";
+    my $mode   = ( stat $path )[2] & 07777;
+    copy( $path, $backup ) or die "Cannot back up $path: $!\n";
+    return [ $backup, $path, $mode ];
+}
+
+sub restore_file {
+    my ($entry) = @_;
+    return 0 unless $entry;
+    my ( $backup, $path, $mode ) = @{$entry};
+    move( $backup, $path ) or do { warn "Could not restore $path: $!\n"; return 0; };
+    chmod $mode, $path if defined $mode;
+    return 1;
+}
+
+sub clean_debian_residue {
+    my ($package_root) = @_;
+    return () unless defined $package_root && -d "$package_root/debian";
+
+    my @removed;
+    my $files = "$package_root/debian/files";
+    if (-e $files) {
+        unlink $files or die "Cannot remove $files: $!\n";
+        push @removed, $files;
+    }
+
+    my $stem = lc(basename($package_root));
+    foreach my $dir (glob("$package_root/debian/$stem*")) {
+        next unless -d $dir;
+        remove_tree($dir);
+        push @removed, $dir;
+    }
+
+    # debhelper's own bookkeeping. Never tracked, and it accumulates per build.
+    # glob returns a wildcard-free pattern verbatim whether or not it exists, so
+    # the -e guard is what makes a second call a no-op rather than a fatal unlink.
+    foreach my $residue (glob("$package_root/debian/*.debhelper.log"),
+                         "$package_root/debian/.debhelper") {
+        next unless -e $residue;
+        if (-d $residue) { remove_tree($residue); }
+        else { unlink $residue or die "Cannot remove $residue: $!\n"; }
+        push @removed, $residue;
+    }
+
+    return @removed;
+}
+
 sub sh_quote {
     my ($s) = @_;
     $s = '' if !defined $s;

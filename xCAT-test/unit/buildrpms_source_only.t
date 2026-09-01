@@ -30,7 +30,7 @@ my $source = read_text($builder);
 # rather than skip: if the extraction stops matching, this file would silently
 # cover nothing.
 my %routine;
-for my $name (qw(index_repo write_repo_metadata_dir)) {
+for my $name (qw(index_repo write_repo_metadata_dir buildall)) {
     my ($body) = $source =~ /\n(sub \Q$name\E \{.*?\n\})\n/s;
     BAIL_OUT("could not extract $name from buildrpms.pl") unless $body;
     $routine{$name} = $body;
@@ -38,12 +38,18 @@ for my $name (qw(index_repo write_repo_metadata_dir)) {
 
 our @CREATEREPO;
 our @METADATA_WRITTEN;
+our @STAGES;
 
 {
     package Scratch;
     no warnings 'redefine';
     # Collaborators the lifted code calls. Each records instead of acting.
     sub createrepo_dir { push @main::CREATEREPO, $_[0]; }
+    # The four stages buildall drives. Each records that it was reached.
+    sub createmockconfig { push @main::STAGES, 'createmockconfig'; }
+    sub buildsources     { push @main::STAGES, 'buildsources'; }
+    sub buildspkgs       { push @main::STAGES, 'buildspkgs'; }
+    sub buildpkgs        { push @main::STAGES, 'buildpkgs'; }
 }
 
 # %opts lives in the scratch package and is set directly. Aliasing it to a hash in
@@ -57,6 +63,7 @@ my $harness = join "\n",
     # write_repo_metadata_dir does real work past the guard; stop it there so the
     # test observes the guard and nothing else.
     $routine{index_repo},
+    $routine{buildall},
     ($routine{write_repo_metadata_dir} =~ s/(return if \$opts\{source_only\};).*\n\}\z/$1\n    push \@main::METADATA_WRITTEN, \$repodir;\n    return 1;\n}/sr),
     '1;';
 
@@ -100,6 +107,30 @@ ok( !grep({ $_ eq 'BINARY' } @{ run_index(source_only => 1) }),
     is_deeply( \@METADATA_WRITTEN, [$dir],
         'a normal run still emits the repository metadata' );
 }
+
+
+# ------------------------------------------------------------------ the build --
+# The point of the option: the source rpm is built and the binary rebuild is not.
+# Without this, removing the guard from buildall leaves every other assertion in
+# this file green -- the repository ones only observe what index_repo does.
+sub stages_for {
+    my ($source_only) = @_;
+    %Scratch::opts = (source_only => $source_only);
+    local @STAGES = ();
+    Scratch::buildall('xCAT-vlan', 'alma+epel-9-x86_64');
+    return [@STAGES];
+}
+
+is_deeply( stages_for(0),
+    [qw(createmockconfig buildsources buildspkgs buildpkgs)],
+    'a normal run builds the source rpm and then rebuilds it into binaries' );
+
+is_deeply( stages_for(1),
+    [qw(createmockconfig buildsources buildspkgs)],
+    'a source-only run stops once the source rpm exists' );
+
+ok( !grep( { $_ eq 'buildpkgs' } @{ stages_for(1) } ),
+    'and never enters the binary rebuild, which is the expensive half' );
 
 # ------------------------------------------------------------------- the CLI --
 # Run the real program. --source-only and --merge-core-repos are different modes:

@@ -24,7 +24,8 @@ use BuildUtils qw(
     deb_package_arches dist_arches
     orig_tarball_name upstream_version resolve_dest
     pin_control_version rewrite_changelog_header
-    reprepro_distributions reprepro_options sh_quote
+    reprepro_distributions reprepro_options sh_quote clean_debian_residue
+    backup_file restore_file
 );
 
 # ------------------------------------------------------------------- versions --
@@ -137,6 +138,14 @@ like( $rewritten, qr/^ -- xCAT Build <build\@xcat\.invalid>  Sat, 24 Aug 2026 08
     'and the deterministic date, so two builds of one commit match' );
 like( $rewritten, qr/^xcat \(2\.17\.0\) unstable/m,
     'the older stanza is left alone -- the history is not ours to rewrite' );
+# Its trailer too. This is the defect the old shell builder shipped: its sed had no
+# line address, so every trailer in the file was restamped and 2023 entries went out
+# authored by today's builder. Only the top stanza may move.
+like( $rewritten,
+    qr/^ -- Somebody Else <nobody\@example\.invalid>  Mon, 01 Jan 2023 00:00:00 \+0000$/m,
+    'including its author and date, which this build did not write' );
+is( scalar( () = $rewritten =~ /^ -- xCAT Build /mg ), 1,
+    'exactly one trailer is restamped, however many stanzas the file has' );
 
 # ------------------------------------------------------------------ reprepro --
 
@@ -199,5 +208,82 @@ like( reprepro_options('/some/gnupghome'), qr/^basedir \.$/m,
 
 is( sh_quote(q{it's}), q{'it'"'"'s'}, 'a single quote survives shell quoting' );
 is( sh_quote(undef), q{''}, 'undef quotes to the empty string' );
+
+# ------------------------------------------------ dpkg residue inside a package --
+# debian/files accumulates one line per artifact and survives `dh_clean -d`, so the
+# next build's dpkg-genchanges fstats artifacts that are no longer on disk and the
+# whole build dies. Only the residue goes; the packaging itself must stay.
+{
+    my $pkgroot = tempdir( CLEANUP => 1 ) . '/perl-xCAT';
+    make_path("$pkgroot/debian/perl-xcat/usr/share");
+    make_path("$pkgroot/debian/source");
+    for my $f (qw(debian/files debian/control debian/rules debian/changelog debian/source/format)) {
+        open my $fh, '>', "$pkgroot/$f" or die $!;
+        print {$fh} "stale\n";
+        close $fh;
+    }
+
+    # debhelper bookkeeping, never tracked, accumulates per build.
+    make_path("$pkgroot/debian/.debhelper/generated");
+    open my $dh, '>', "$pkgroot/debian/perl-xcat.debhelper.log" or die $!;
+    close $dh;
+
+    my @removed = clean_debian_residue($pkgroot);
+
+    ok( !-e "$pkgroot/debian/files",
+        'debian/files does not survive into the next build' );
+    ok( !-d "$pkgroot/debian/perl-xcat",
+        'nor does the staging tree of the build that just finished' );
+    ok( !-e "$pkgroot/debian/perl-xcat.debhelper.log",
+        'nor debhelper\'s per-build log' );
+    ok( !-d "$pkgroot/debian/.debhelper",
+        'nor its generated-state directory' );
+    is( scalar @removed, 4, 'and every one is reported as removed' );
+
+    ok( -f "$pkgroot/debian/control",  'debian/control is left alone' );
+    ok( -f "$pkgroot/debian/rules",    'debian/rules is left alone' );
+    ok( -f "$pkgroot/debian/changelog", 'debian/changelog is left alone' );
+    ok( -f "$pkgroot/debian/source/format", 'and so is the rest of debian/' );
+
+    is_deeply( [ clean_debian_residue($pkgroot) ], [],
+        'a second call has nothing left to remove' );
+    is_deeply( [ clean_debian_residue("$pkgroot/nonexistent") ], [],
+        'and a package that was never built is not an error' );
+}
+
+# ------------------------------------------------- putting a file back as it was --
+# The build rewrites tracked files and restores them afterwards. A restore that
+# loses the mode is invisible in a content diff and strips the exec bit off shipped
+# scripts -- xCAT/postscripts/{bmcsetup,getipmi} are executable and are rewritten
+# during the xCAT build.
+{
+    my $dir = tempdir( CLEANUP => 1 );
+    my $script = "$dir/postscript";
+    open my $fh, '>', $script or die $!;
+    print {$fh} "#!/bin/sh\noriginal\n";
+    close $fh;
+    chmod 0755, $script or die $!;
+
+    my $entry = backup_file($script);
+    ok( -f "$script.build.save", 'the original is set aside before the build edits it' );
+
+    open my $out, '>', $script or die $!;
+    print {$out} "rewritten by the build\n";
+    close $out;
+    chmod 0644, $script;
+
+    ok( restore_file($entry), 'and is put back afterwards' );
+    open my $in, '<', $script or die $!;
+    my $restored = do { local $/; <$in> };
+    close $in;
+    is( $restored, "#!/bin/sh\noriginal\n", 'with its original content' );
+    is( ( stat $script )[2] & 07777, 0755,
+        'and its original mode -- an executable must not come back unexecutable' );
+    ok( !-e "$script.build.save", 'leaving no backup behind' );
+
+    is( backup_file("$dir/never-existed"), undef,
+        'a file that is not there is not claimed' );
+    is( restore_file(undef), 0, 'and restoring nothing is not an error' );
+}
 
 done_testing();

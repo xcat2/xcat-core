@@ -31,7 +31,8 @@ use BuildUtils qw(
     source_date_epoch snap_release deb_version
     stage_probe_helpers XCAT_PROBE_HELPERS
     deb_package_arches dist_arches default_dists
-    orig_tarball_name upstream_version resolve_dest
+    orig_tarball_name upstream_version resolve_dest clean_debian_residue
+    backup_file restore_file
     pin_control_version rewrite_changelog_header
     reprepro_distributions reprepro_options
     lock_id_for take_build_lock sh_quote
@@ -148,9 +149,7 @@ sub with_prepared_tree {
         my ($rel) = @_;
         my $path = "$dir/$rel";
         if (-f $path) {
-            my $backup = "$path.build.save";
-            copy($path, $backup) or die "Cannot back up $path: $!\n";
-            push @restore, [$backup, $path];
+            push @restore, backup_file($path);
         }
         else {
             push @remove, $path;
@@ -159,6 +158,8 @@ sub with_prepared_tree {
 
     $claim->('debian/control');
     $claim->('debian/changelog');
+    # dpkg rewrites debian/<pkg>.substvars in place, and several of them are tracked.
+    $claim->("debian/" . basename($_)) for glob("$dir/debian/*.substvars");
 
     # Pin the intra-xCAT dependencies to this exact build, so a partial upgrade cannot
     # mix versions.
@@ -191,13 +192,16 @@ sub with_prepared_tree {
             my $src = "$ROOT/xCAT-genesis-scripts/usr/bin/$f";
             next unless -f $src;
             my $dst = "$dir/postscripts/$f";
+            # Both are TRACKED files. Claiming them backs the originals up and puts
+            # them back; treating them as created would delete them from the
+            # checkout, which is what happened before.
+            $claim->("postscripts/$f");
             my $text = do { open my $fh, '<', $src or die; local $/; <$fh> };
             $text =~ s/xcat\.genesis\.\Q$f\E/$f/g;
             open my $out, '>', $dst or die "Cannot write $dst: $!\n";
             print {$out} $text;
             close $out;
             chmod 0755, $dst;
-            push @added, $dst;
         }
     }
     # xCAT-genesis-scripts keeps a control file per architecture.
@@ -214,10 +218,7 @@ sub with_prepared_tree {
     my $err = $@;
 
     unlink @added, @remove;
-    for my $pair (reverse @restore) {
-        my ($backup, $path) = @$pair;
-        move($backup, $path) or warn "Could not restore $path: $!\n";
-    }
+    restore_file($_) for reverse @restore;
     die $err if $rc;
     return;
 }
@@ -270,6 +271,11 @@ sub collect_debs {
     # The rest of the dpkg output is build residue, not an artifact.
     unlink glob("$ROOT/*.buildinfo"), glob("$ROOT/*.changes"), glob("$ROOT/*.dsc"),
            glob("$ROOT/*.tar.xz"), glob("$ROOT/*.tar.gz");
+    # And the residue dpkg leaves inside the package -- debian/files survives
+    # `dh_clean -d` and would make the next build with a different release fstat
+    # artifacts this run already moved away. Safe here: this runs after the last
+    # architecture, so no dpkg-genchanges still needs it.
+    clean_debian_residue("$ROOT/$pkg");
     return $moved;
 }
 
