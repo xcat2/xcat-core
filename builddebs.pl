@@ -101,14 +101,25 @@ my $ROOT    = abs_path($FindBin::Bin);
 my $VERSION = do { open my $fh, '<', "$ROOT/Version" or die "Cannot read Version: $!\n";
                    my $v = <$fh>; chomp $v; $v };
 my $EPOCH   = source_date_epoch();
-my $RELEASE = $opts{release} || snap_release($EPOCH);
+# A Release file, when present, is authoritative: buildrpms.pl writes one, and a
+# pipeline that builds both must stamp the rpms and the debs with the same release.
+my $FILE_RELEASE = do {
+    my $r;
+    if (-f "$ROOT/Release") {
+        open my $fh, '<', "$ROOT/Release" or die "Cannot read Release: $!\n";
+        $r = <$fh>;
+        chomp $r if defined $r;
+    }
+    ($r && $r =~ /\S/) ? $r : undef;
+};
+my $RELEASE = $opts{release} || $FILE_RELEASE || snap_release($EPOCH);
 my $PKGVER  = deb_version($VERSION, $RELEASE);
 $ENV{SOURCE_DATE_EPOCH} = $EPOCH;
 
 # dpkg reads these for the changelog trailer. Fixed, so the packages do not carry
 # whoever happened to run the build.
-$ENV{DEBFULLNAME} ||= 'xCAT Build';
-$ENV{DEBEMAIL}    ||= 'xcat@xcat.org';
+$ENV{DEBFULLNAME} = 'xCAT Build';
+$ENV{DEBEMAIL}    = 'xcat-build@xcat.org';
 my $MAINTAINER = "$ENV{DEBFULLNAME} <$ENV{DEBEMAIL}>";
 my $DEB_DATE   = strftime('%a, %d %b %Y %H:%M:%S +0000', gmtime($EPOCH));
 
@@ -225,14 +236,24 @@ sub build_package {
             or die "FATAL: dpkg-buildpackage failed for $pkg ($arch)\n";
     });
 
-    # dpkg-buildpackage writes its output beside the package directory.
+    return;
+}
+
+# collect_debs: move a finished package's .deb files out of the checkout root.
+#
+# This happens once the package's LAST architecture is built, never between them:
+# dpkg-genbuildinfo reads the sibling .deb files that the same source package
+# produced, so moving amd64 away before ppc64el runs makes the second build die with
+#   dpkg-genbuildinfo: error: cannot fstat file ../xcat_..._amd64.deb
+sub collect_debs {
+    my ($pkg, $pkgdir) = @_;
     my $moved = 0;
     for my $deb (glob("$ROOT/*.deb")) {
         move($deb, "$pkgdir/" . basename($deb))
             or die "Cannot move $deb into $pkgdir: $!\n";
         $moved++;
     }
-    die "FATAL: $pkg ($arch) produced no .deb\n" unless $moved;
+    die "FATAL: $pkg produced no .deb\n" unless $moved;
     # The rest of the dpkg output is build residue, not an artifact.
     unlink glob("$ROOT/*.buildinfo"), glob("$ROOT/*.changes"), glob("$ROOT/*.dsc"),
            glob("$ROOT/*.tar.xz"), glob("$ROOT/*.tar.gz");
@@ -326,6 +347,14 @@ make_path($pkgdir);
 remove_tree($repo) if -d $repo && $opts{force};
 make_path($repo);
 
+# Clear dpkg output left in the checkout by an earlier run. dpkg-genbuildinfo reads
+# the sibling artifacts of the source package it is building, so a stale .changes or
+# .buildinfo from an aborted run makes the next build die with
+#   dpkg-genbuildinfo: error: cannot fstat file ../<pkg>_<arch>.deb
+# naming an architecture this run has not reached yet.
+unlink glob("$ROOT/*.deb"), glob("$ROOT/*.buildinfo"), glob("$ROOT/*.changes"),
+       glob("$ROOT/*.dsc"), glob("$ROOT/*.tar.xz"), glob("$ROOT/*.orig.tar.gz");
+
 say "xcat-core $PKGVER -> $dest";
 say "releases: @{[ join ' ', $opts{dists}->@* ]}";
 
@@ -333,6 +362,7 @@ for my $pkg ($opts{packages}->@*) {
     for my $arch (deb_package_arches($pkg)) {
         build_package($pkg, $arch, $pkgdir);
     }
+    collect_debs($pkg, $pkgdir);
 }
 
 my $count = assemble_repo($pkgdir, $repo);
