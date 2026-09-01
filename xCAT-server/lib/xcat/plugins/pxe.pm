@@ -9,6 +9,7 @@ use File::Copy;
 use File::Path;
 use Getopt::Long;
 require xCAT::Utils;
+require xCAT::BootUtils;
 require xCAT::TableUtils;
 use xCAT::ServiceNodeUtils;
 my $dhcpconf      = "/etc/dhcpd.conf";
@@ -114,16 +115,7 @@ sub setstate {
 
         my $kcmdlinehack = ($imgaddkcmdline) ? $kern->{addkcmdline} . " " . $imgaddkcmdline : $kern->{addkcmdline};
 
-        my $cmdhashref;
-        if ($kcmdlinehack) {
-            $cmdhashref = xCAT::Utils->splitkcmdline($kcmdlinehack);
-        }
-
-        if ($cmdhashref) {
-            # Use only volatile options for netboot; persistent (R::) options
-            # are handled separately for the installed OS via PERSKCMDLINE
-            $kcmdlinehack = $cmdhashref->{volatile} // "";
-        }
+        $kcmdlinehack = xCAT::BootUtils::volatile_addkcmdline($kcmdlinehack);
 
 
         while ($kcmdlinehack =~ /#NODEATTRIB:([^:#]+):([^:#]+)#/) {
