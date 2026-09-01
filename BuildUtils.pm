@@ -17,6 +17,7 @@ use Exporter 'import';
 use File::Copy qw(copy move);
 use File::Basename qw(basename);
 use File::Path qw(make_path remove_tree);
+use File::Slurper qw(read_text write_text);
 use POSIX qw(strftime);
 use Pod::Usage qw(pod2usage);
 use feature 'say';
@@ -32,7 +33,7 @@ our @EXPORT_OK = qw(
     sh_quote clean_debian_residue git_revision
     backup_file restore_file
     sh usage
-    read_file write_file rewrite_file write_script
+    rewrite_file write_script read_line
     buildinfo_text
 );
 
@@ -64,26 +65,6 @@ sub buildinfo_text {
         "COMMIT_ID_LONG=$commit");
 }
 
-# Whole-file read and write.  Deliberately plain open/close rather than
-# File::Slurper, so that loading this module does not oblige a deb build to
-# install a module it otherwise does not need.
-sub read_file {
-    my ($path) = @_;
-    open my $fh, '<', $path or die "Cannot read $path: $!\n";
-    local $/;
-    my $text = <$fh>;
-    close $fh;
-    return $text;
-}
-
-sub write_file {
-    my ($path, $text) = @_;
-    open my $fh, '>', $path or die "Cannot write $path: $!\n";
-    print {$fh} $text;
-    close $fh or die "Cannot write $path: $!\n";
-    return;
-}
-
 # Write a helper script and make it executable.  Both builders ship a
 # mklocalrepo.sh beside the packages they publish, and builddebs.pl installs the
 # genesis postscripts the same way; a script written without the executable bit
@@ -93,9 +74,23 @@ sub write_file {
 sub write_script {
     my ($path, $content, $mode) = @_;
     $mode = 0775 unless defined $mode;
-    write_file($path, $content);
+    write_text($path, $content);
     chmod $mode, $path or die "Cannot chmod $path: $!\n";
     return;
+}
+
+# The first line of a file, without its newline.  Version and Release are
+# one-line stamps that both builders read, and each spelled the open, the read
+# and the chomp differently -- buildrpms.pl chomped ten lines away from its
+# read, which is how a stamp keeps a trailing newline nobody notices until it
+# lands in a package name.  Returns undef when the file is absent, which is
+# what a caller with a fallback wants.
+sub read_line {
+    my ($path) = @_;
+    return undef unless -f $path;
+    my ($line) = split /\n/, read_text($path), 2;
+    return undef unless defined $line && length $line;
+    return $line;
 }
 
 # Read a file, pass its contents through $transform, write the result back.
@@ -103,7 +98,7 @@ sub write_script {
 sub rewrite_file {
     my ($path, $transform) = @_;
     return 0 unless -f $path;
-    write_file($path, $transform->(read_file($path)));
+    write_text($path, $transform->(read_text($path)));
     return 1;
 }
 
@@ -188,10 +183,7 @@ sub git_revision {
     my $run       = $args{git}       || sub { `git rev-parse HEAD 2>/dev/null` };
     my $read_file = $args{read_file} || sub {
         return unless -f 'Gitinfo';
-        open my $fh, '<', 'Gitinfo' or return;
-        my $line = <$fh>;
-        close $fh;
-        return $line;
+        return scalar read_text('Gitinfo');
     };
 
     for my $source ($run, $read_file) {
@@ -270,10 +262,7 @@ sub source_date_epoch {
     my $read = $args{read_file} || sub {
         my ($p) = @_;
         return unless -f $p;
-        open my $fh, '<', $p or return;
-        my $v = <$fh>;
-        close $fh;
-        return $v;
+        return scalar read_text($p);
     };
     my $git = $args{git_epoch} || sub { return scalar `git log -1 --format=%ct HEAD 2>/dev/null`; };
 

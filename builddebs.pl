@@ -20,6 +20,7 @@ use File::Basename qw(basename);
 use File::Copy qw(copy move);
 use File::Path qw(make_path remove_tree);
 use File::Spec;
+use File::Slurper qw(read_text write_text);
 use File::Temp qw(tempdir);
 use Getopt::Long qw(GetOptions);
 use POSIX qw(strftime);
@@ -36,7 +37,7 @@ use BuildUtils qw(
     pin_control_version rewrite_changelog_header
     reprepro_distributions reprepro_options
     lock_id_for take_build_lock sh_quote
-    sh usage read_file write_file rewrite_file write_script buildinfo_text
+    sh usage rewrite_file write_script read_line buildinfo_text
 );
 
 # The xcat-core packages that ship as debs. xCAT-openbmc-py, xCAT-rmc and xCAT-release
@@ -88,18 +89,12 @@ for my $pkg ($opts{packages}->@*) {
 }
 
 my $ROOT    = abs_path($FindBin::Bin);
-my $VERSION = do { open my $fh, '<', "$ROOT/Version" or die "Cannot read Version: $!\n";
-                   my $v = <$fh>; chomp $v; $v };
+my $VERSION = read_line("$ROOT/Version") // die "Cannot read $ROOT/Version\n";
 my $EPOCH   = source_date_epoch();
 # A Release file, when present, is authoritative: buildrpms.pl writes one, and a
 # pipeline that builds both must stamp the rpms and the debs with the same release.
 my $FILE_RELEASE = do {
-    my $r;
-    if (-f "$ROOT/Release") {
-        open my $fh, '<', "$ROOT/Release" or die "Cannot read Release: $!\n";
-        $r = <$fh>;
-        chomp $r if defined $r;
-    }
+    my $r = read_line("$ROOT/Release");
     ($r && $r =~ /\S/) ? $r : undef;
 };
 my $RELEASE = $opts{release} || $FILE_RELEASE || snap_release($EPOCH);
@@ -122,11 +117,7 @@ if ($GITINFO eq 'unknown') {
        . "         If $ROOT is a git checkout, check `git -C $ROOT rev-parse HEAD` "
        . "as the build user (HOME=$ENV{HOME}).\n";
 }
-{
-    open my $g, '>', "$ROOT/Gitinfo" or die "Cannot write Gitinfo: $!\n";
-    print {$g} "$GITINFO\n";
-    close $g;
-}
+write_text("$ROOT/Gitinfo", "$GITINFO\n");
 
 # dpkg reads these for the changelog trailer. Fixed, so the packages do not carry
 # whoever happened to run the build.
@@ -197,7 +188,7 @@ sub with_prepared_tree {
             # them back; treating them as created would delete them from the
             # checkout, which is what happened before.
             $claim->("postscripts/$f");
-            my $text = read_file($src);
+            my $text = read_text($src);
             $text =~ s/xcat\.genesis\.\Q$f\E/$f/g;
             write_script($dst, $text, 0755);
         }
@@ -206,7 +197,7 @@ sub with_prepared_tree {
     if ($pkg eq 'xCAT-genesis-scripts' && $arch ne 'all') {
         my $per_arch = "$dir/debian/control-$arch";
         die "FATAL: $per_arch is missing\n" unless -f $per_arch;
-        write_file($control, pin_control_version(read_file($per_arch), $PKGVER));
+        write_text($control, pin_control_version(read_text($per_arch), $PKGVER));
     }
 
     my $rc = eval { $body->($dir); 1 } ? 0 : 1;
@@ -228,7 +219,7 @@ sub build_package {
         # A 3.0 (quilt) source package needs its .orig tarball beside the tree.
         my $format = "$dir/debian/source/format";
         if (-f $format) {
-            my $text = read_file($format);
+            my $text = read_text($format);
             if ($text =~ /3\.0 \(quilt\)/) {
                 my $tar = "$ROOT/" . orig_tarball_name($pkg, $PKGVER);
                 unless (-f $tar) {
@@ -334,7 +325,7 @@ fi
 echo deb [arch=$host_arch] file://"`pwd`" $DISTRIB_CODENAME main > /etc/apt/sources.list.d/xcat-core.list
 SCRIPT
 
-    write_file("$repodir/buildinfo", buildinfo_text(
+    write_text("$repodir/buildinfo", buildinfo_text(
         version => $VERSION, release => $RELEASE, epoch => $EPOCH,
         commit => $GITINFO, time_format => '%a %b %d %H:%M:%S %Y'));
     return;

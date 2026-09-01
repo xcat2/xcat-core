@@ -333,29 +333,51 @@ isnt( git_revision( git => sub { '' }, read_file => sub { '' } ), '',
           'each builder keeps the format its own consumers parse' );
 }
 
-# -------------------------------------------------- whole-file helpers --
+# ---------------------------------------------------------- rewrite_file --
+# The two builders each rewrote debian/control and debian/changelog with the
+# same read, transform, write-back sequence spelled out by hand.
 {
     my $dir = tempdir(CLEANUP => 1);
     my $path = File::Spec->catfile($dir, 'thing.txt');
+    write_text($path, "one\ntwo\n");
 
-    BuildUtils::write_file($path, "one\ntwo\n");
-    is( BuildUtils::read_file($path), "one\ntwo\n",
-        'a file reads back exactly as it was written' );
-
-    # The two builders each rewrote debian/control and debian/changelog with the
-    # same read, transform, write-back sequence spelled out by hand.
     my $changed = BuildUtils::rewrite_file($path, sub { uc $_[0] });
     is( $changed, 1, 'rewriting a file that exists reports that it did' );
-    is( BuildUtils::read_file($path), "ONE\nTWO\n", 'and applies the transform' );
+    is( read_text($path), "ONE\nTWO\n", 'and applies the transform' );
 
     my $absent = File::Spec->catfile($dir, 'not-there.txt');
     is( BuildUtils::rewrite_file($absent, sub { die 'must not run' }), 0,
         'a file that is not there is left alone, not created' );
     ok( !-e $absent, 'and really is not created' );
+}
 
-    my $err = eval { BuildUtils::read_file($absent); 1 } ? '' : $@;
-    like( $err, qr/Cannot read .*not-there/,
-        'reading a missing file names the file it could not read' );
+# ------------------------------------------------------- one-line stamps --
+# Version and Release are one-line files both builders read. The newline must
+# come off at the point of reading: buildrpms.pl used to chomp ten lines later,
+# and a Release that keeps its newline goes straight into a package name.
+{
+    my $dir = tempdir(CLEANUP => 1);
+    my $path = File::Spec->catfile($dir, 'Version');
+
+    write_text($path, "2.18.1\n");
+    is( BuildUtils::read_line($path), '2.18.1',
+        'a one-line stamp comes back without its newline' );
+
+    write_text($path, "2.18.1\nignored\n");
+    is( BuildUtils::read_line($path), '2.18.1',
+        'and only the first line is taken' );
+
+    write_text($path, "2.18.1");
+    is( BuildUtils::read_line($path), '2.18.1',
+        'a file with no trailing newline reads the same' );
+
+    # builddebs.pl falls back to snap_release() when there is no Release file,
+    # so absence has to be reported rather than raised.
+    is( BuildUtils::read_line(File::Spec->catfile($dir, 'nope')), undef,
+        'a file that is not there reads as undef, not an error' );
+
+    write_text($path, "");
+    is( BuildUtils::read_line($path), undef, 'and so does an empty file' );
 }
 
 # ------------------------------------------------- the published helper script --
@@ -368,7 +390,7 @@ isnt( git_revision( git => sub { '' }, read_file => sub { '' } ), '',
     my $path = File::Spec->catfile($dir, 'mklocalrepo.sh');
 
     BuildUtils::write_script($path, "#!/bin/sh\necho hello\n");
-    is( BuildUtils::read_file($path), "#!/bin/sh\necho hello\n",
+    is( read_text($path), "#!/bin/sh\necho hello\n",
         'a helper script keeps the exact text it was given' );
     ok( -x $path, 'and is executable, which is the point of writing it this way' );
     is( (stat $path)[2] & 07777, 0775,

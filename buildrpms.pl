@@ -43,7 +43,8 @@ use File::Slurper qw(read_text write_text);
 use File::Temp qw(tempdir tempfile);
 use FindBin qw($Bin);
 use lib $Bin;
-use BuildUtils qw(git_revision source_date_epoch sh usage buildinfo_text write_script);
+use BuildUtils qw(git_revision source_date_epoch sh usage buildinfo_text write_script
+                  read_line);
 use Fcntl qw(:flock);           # per-target build lock (concurrency guard; see main())
 use Getopt::Long qw(GetOptions);
 use POSIX qw(strftime);
@@ -62,7 +63,7 @@ my $SOURCES = "$ENV{HOME}/rpmbuild/SOURCES";
 # no srpms/rpms are produced, and the run still exits 0. Create the tree up front so a build never
 # depends on prior manual setup.
 system('mkdir', '-p', map { "$ENV{HOME}/rpmbuild/$_" } qw(SOURCES SPECS BUILD BUILDROOT RPMS SRPMS));
-my $VERSION = read_text("Version");
+my $VERSION = read_line("Version") // die "Cannot read Version\n";
 my $PWD = Cwd::cwd();
 my @XCAT_PROBE_HELPERS = qw(
     GlobalDef.pm
@@ -70,7 +71,6 @@ my @XCAT_PROBE_HELPERS = qw(
     ServiceNodeUtils.pm
 );
 
-chomp($VERSION);
 
 # Gitinfo is regenerated at each run with the current git revision.
 my $GITINFO = git_revision();
