@@ -15,6 +15,14 @@ use xCAT::TableUtils;
 use xCAT::Table;
 use xCAT::Scope;
 
+sub _uses_x86_install_media_layout
+{
+    my ($arch, $osvers) = @_;
+
+    return unless defined($arch) && defined($osvers);
+    return $arch =~ /x86/ || ($arch =~ /riscv64/ && $osvers !~ /sles|suse/);
+}
+
 sub handled_commands
 {
     return {
@@ -189,7 +197,9 @@ sub geninitrd {
     unless (-d $tftppath) {
         mkpath $tftppath;
     }
-    if ($arch =~ /x86/) {
+    # riscv64 installation media exist for the EL family only; leave any other
+    # distribution to the "unknow arch" error below instead of reading it as x86
+    if (_uses_x86_install_media_layout($arch, $osvers)) {
         if ($osvers =~ /(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)/) {
             $kernelpath = "$tftppath/vmlinuz";
             copy("$pkgdir/images/pxeboot/vmlinuz", $kernelpath);

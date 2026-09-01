@@ -9,13 +9,13 @@ use Test::More;
 use xCAT::DHCP::BootPolicy;
 
 my $fallback_classes = xCAT::DHCP::BootPolicy->kea_client_classes();
-is( scalar @$fallback_classes, 4, 'Kea boot policy omits xNBA classes when xNBA loaders are unavailable' );
+is( scalar @$fallback_classes, 5, 'Kea boot policy omits xNBA classes when xNBA loaders are unavailable' );
 my %fallback_by_name = map { $_->{name} => $_ } @$fallback_classes;
 is( $fallback_by_name{'xcat-bios'}{'boot-file-name'}, 'pxelinux.0', 'BIOS clients fall back to pxelinux.0 without xNBA loaders' );
 ok( !exists $fallback_by_name{'xcat-xnba-bios'}, 'xNBA user-class is not advertised without xNBA kpxe' );
 
 my $classes = xCAT::DHCP::BootPolicy->kea_client_classes(xnba_kpxe => 1, xnba_efi => 1);
-is( scalar @$classes, 5, 'Kea boot policy renders expected xNBA client classes' );
+is( scalar @$classes, 6, 'Kea boot policy renders expected xNBA client classes' );
 
 my %by_name = map { $_->{name} => $_ } @$classes;
 is( $by_name{'xcat-bios'}{'boot-file-name'}, 'xcat/xnba.kpxe', 'BIOS clients receive xNBA kpxe' );
@@ -27,6 +27,10 @@ like( $by_name{'xcat-uefi-x64'}{test}, qr/not \(\(option\[77\]\.exists/, 'generi
 is( $by_name{'xcat-aarch64'}{'boot-file-name'}, 'boot/grub2/grub2.aarch64', 'AArch64 clients receive grub2 boot file' );
 is( $by_name{'xcat-ppc64'}{'boot-file-name'}, '/boot/grub2/grub2.ppc', 'POWER clients receive grub2 Open Firmware boot file' );
 is( $by_name{'xcat-ppc64'}{test}, 'option[93].hex == 0x000c', 'POWER class keeps existing POWER architecture id' );
+is( $by_name{'xcat-riscv64'}{'boot-file-name'}, 'boot/grub2/grub2.riscv64', 'RISC-V 64-bit UEFI clients receive the riscv64 grub2 boot file' );
+is( $by_name{'xcat-riscv64'}{test}, 'option[93].hex == 0x001b', 'RISC-V 64-bit UEFI class matches IANA client architecture 27 only' );
+is( $fallback_by_name{'xcat-riscv64'}{'boot-file-name'}, 'boot/grub2/grub2.riscv64', 'riscv64 clients get grub2 even without xNBA loaders' );
+unlike( join( ' ', map { $_->{test} } @$classes ), qr/0x001[9ade]/, 'no class claims the RISC-V 32-bit or 128-bit architecture ids' );
 
 my $xnba_classes = xCAT::DHCP::BootPolicy->kea_xnba_node_classes(
     xnba_efi => 1,
@@ -139,6 +143,78 @@ is_deeply(
     ),
     [],
     'xNBA network policy requires a next server'
+);
+
+# UEFI HTTP boot: firmware that boots over HTTP sends architecture id 28 and only
+# accepts an offer whose boot file is a URL and whose reply is tagged HTTPClient.
+my $httpboot = xCAT::DHCP::BootPolicy->kea_httpboot_network_classes(
+    net         => '10.0.0.0',
+    prefix      => 24,
+    next_server => '10.0.0.1',
+    tftpdir     => '/tftpboot',
+);
+is_deeply(
+    $httpboot,
+    [
+        {
+            name             => 'xcat-riscv64-http-10.0.0.0_24',
+            test             => 'option[93].hex == 0x001c',
+            additional_only  => 1,
+            'boot-file-name' => 'http://10.0.0.1/tftpboot/boot/grub2/grub2.riscv64',
+            'option-data'    => [
+                {
+                    name          => 'vendor-class-identifier',
+                    data          => 'HTTPClient',
+                    'always-send' => 1,
+                },
+            ],
+        },
+    ],
+    'RISC-V HTTP boot clients are offered the boot loader as a URL, tagged HTTPClient'
+);
+
+my $httpboot_port = xCAT::DHCP::BootPolicy->kea_httpboot_network_classes(
+    net         => '10.0.0.0',
+    prefix      => 24,
+    next_server => '10.0.0.1',
+    httpport    => '8080',
+    tftpdir     => '/srv/tftpboot',
+);
+is(
+    $httpboot_port->[0]{'boot-file-name'},
+    'http://10.0.0.1:8080/tftpboot/boot/grub2/grub2.riscv64',
+    'the HTTP boot URL follows the configured HTTP port and web alias'
+);
+
+is_deeply(
+    xCAT::DHCP::BootPolicy->kea_httpboot_network_classes(
+        net            => '10.0.0.0',
+        prefix         => 24,
+        next_server    => '10.0.0.1',
+        loader_present => sub { 0 },
+    ),
+    [],
+    'no HTTP boot class is offered while the boot loader is missing'
+);
+is_deeply(
+    xCAT::DHCP::BootPolicy->kea_httpboot_network_classes( net => '10.0.0.0', prefix => 24 ),
+    [],
+    'HTTP boot classes need a next server'
+);
+is(
+    scalar @{ xCAT::DHCP::BootPolicy->kea_httpboot_network_classes(
+            net            => '10.0.0.0',
+            prefix         => 24,
+            next_server    => '10.0.0.1',
+            loader_present => sub { $_[0] eq '/tftpboot/boot/grub2/grub2.riscv64' },
+        ) },
+    1,
+    'the boot loader of the architecture is what is looked for'
+);
+unlike(
+    join( ' ', map { $_->{test} } @$classes ),
+    qr/0x001c/,
+    'the global class list keeps HTTP boot out: it needs the address of the management node',
 );
 
 done_testing();

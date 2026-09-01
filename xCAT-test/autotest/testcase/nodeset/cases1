@@ -26,6 +26,13 @@ cmd:/opt/xcat/share/xcat/tools/autotest/testcase/nodeset/nodeset_osimage_grub2
 check:rc==0
 end
 
+start:nodeset_osimage_grub2_riscv64
+label:others
+description: Verify if `nodeset osimage` perform well for riscv64 nodes booted by grub2 over UEFI when part of nodes in a node range have problem
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/nodeset/nodeset_osimage_grub2_riscv64
+check:rc==0
+end
+
 start:nodeset_osimage_petitboot
 label:others
 description: Verify if `nodeset osimage` perform well when part of nodes in a node range have problem. Use petitboot OS loader

@@ -118,6 +118,21 @@ function make_bogus_petitboot_nodes()
 	done
 }
 
+function make_bogus_riscv64_grub2_nodes()
+{
+	local i
+	# riscv64 boots through UEFI and grub2
+	for i in {001..005}
+	do
+		mkdef -t node -o tz${i} \
+			arch=riscv64 cons=ipmi groups=riscv64 mgt=ipmi \
+			netboot=grub2 \
+			ip=10.99.1.$((10#${i})) \
+			mac=e6:d4:d2:3a:ad:0$((10#${i})) \
+			profile=compute os=rhels10.99
+	done
+}
+
 function make_bogus_xnba_nodes()
 {
 	local i
@@ -181,6 +196,16 @@ function make_bogus_x64_osimage()
 	echo blah >/install/rhels6.99/x86_64/images/pxeboot/initrd.img
 }
 
+function make_bogus_riscv64_osimage()
+{
+	mkdef "rhels10.99-riscv64-install-compute" \
+		-u profile=compute provmethod=install \
+		osvers=rhels10.99 osarch=riscv64
+	mkdir -p /install/rhels10.99/riscv64/images/pxeboot
+	echo blah >/install/rhels10.99/riscv64/images/pxeboot/vmlinuz
+	echo blah >/install/rhels10.99/riscv64/images/pxeboot/initrd.img
+}
+
 function destory_bogus_osimages()
 {
 	local o
@@ -188,7 +213,8 @@ function destory_bogus_osimages()
 		rhels7.99-ppc64le-install-compute \
 		rhels7.99-ppc64-install-compute \
 		rhels6.99-ppc64-install-compute \
-		rhels6.99-x86_64-install-compute
+		rhels6.99-x86_64-install-compute \
+		rhels10.99-riscv64-install-compute
 	do
 		rmdef -t osimage ${o}
 	done

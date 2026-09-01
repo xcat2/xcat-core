@@ -20,6 +20,8 @@ if [ -z "$CURDIR" ]; then
    CURDIR=$(pwd)
 fi
 
+. "$CURDIR/build-utils/rpm-architectures.sh"
+
 echo "CURDIR is $CURDIR"
 echo "OSNAME is $OSNAME!"
 echo "NAMEALL is $NAMEALL"
@@ -87,13 +89,13 @@ else
 echo "This is an $OSNAME system"
 
      if [ "$OS" = "SUSE" ]; then
-         rm -rf /usr/src/packages/RPMS/noarch/*
-         rm -rf /usr/src/packages/RPMS/x86_64/*
-         rm -rf /usr/src/packages/RPMS/ppc64/*
+         for arch in $XCAT_LOCAL_COLLECT_ARCHES; do
+             rm -rf /usr/src/packages/RPMS/$arch/*
+         done
      else
-         rm -rf /root/rpmbuild/RPMS/noarch/*
-         rm -rf /root/rpmbuild/RPMS/x86_64/*
-         rm -rf /root/rpmbuild/RPMS/ppc64/*
+         for arch in $XCAT_LOCAL_COLLECT_ARCHES; do
+             rm -rf /root/rpmbuild/RPMS/$arch/*
+         done
      fi
 
      mkdir -p $CURDIR/build/
@@ -123,7 +125,7 @@ echo "This is an $OSNAME system"
                         $CURDIR/makerpm $rpmname
                         if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname"; fi
                 else
-                        for arch in x86_64 ppc64 s390x aarch64; do
+                        for arch in $XCAT_LOCAL_RPM_ARCHES; do
                                 $CURDIR/makerpm $rpmname $arch
                                 if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname-$arch"; fi
                         done
@@ -131,13 +133,13 @@ echo "This is an $OSNAME system"
   done
 
   if [ "$OS" = "SUSE" ]; then
-      cp /usr/src/packages/RPMS/noarch/* $CURDIR/build/
-      cp /usr/src/packages/RPMS/x86_64/* $CURDIR/build/
-      cp /usr/src/packages/RPMS/ppc64/* $CURDIR/build/
+      for arch in $XCAT_LOCAL_COLLECT_ARCHES; do
+          cp /usr/src/packages/RPMS/$arch/* $CURDIR/build/
+      done
   else
-      cp /root/rpmbuild/RPMS/noarch/* $CURDIR/build/
-      cp /root/rpmbuild/RPMS/x86_64/* $CURDIR/build/
-      cp /root/rpmbuild/RPMS/ppc64/* $CURDIR/build/
+      for arch in $XCAT_LOCAL_COLLECT_ARCHES; do
+          cp /root/rpmbuild/RPMS/$arch/* $CURDIR/build/
+      done
   fi
 
   #begin to create repo for redhat platform
@@ -160,5 +162,4 @@ EOF
   fi
 
 fi
-
 

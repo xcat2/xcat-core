@@ -1,0 +1,73 @@
+#!/bin/bash
+
+BASE_DIR="${0%/*}"
+
+! source "${BASE_DIR}/functions.sh" >/dev/null 2>&1 &&
+        echo "File \"${BASE_DIR}/functions.sh\" not found" >&2 && exit 1
+
+make_bogus_riscv64_osimage
+make_bogus_riscv64_grub2_nodes
+
+# riscv64 nodes are booted by the grub2.riscv64 UEFI image; provide a bogus
+# one when the management node does not ship it so nodeset can link to it
+GRUB2_RISCV64="/tftpboot/boot/grub2/grub2.riscv64"
+BOGUS_GRUB2_RISCV64=""
+if [ ! -e "${GRUB2_RISCV64}" ]
+then
+	mkdir -p "${GRUB2_RISCV64%/*}"
+	echo blah >"${GRUB2_RISCV64}"
+	BOGUS_GRUB2_RISCV64="${GRUB2_RISCV64}"
+fi
+
+function custom_cleanup()
+{
+	destory_bogus_nodes
+	destory_bogus_osimages
+	[ -n "${BOGUS_GRUB2_RISCV64}" ] && rm -f "${BOGUS_GRUB2_RISCV64}"
+}
+
+chdef tz002 mac=
+chdef tz003 arch=
+
+NODESET_STDOUT="${TMP_DIR}/nodeset.out"
+NODESET_STDERR="${TMP_DIR}/nodeset.err"
+
+nodeset tz001+4 osimage=rhels10.99-riscv64-install-compute \
+	> >(tee "${NODESET_STDOUT}") 2> >(tee "${NODESET_STDERR}")
+# Check $? != 0
+[ "$?" -ne "0" ]
+exit_if_bad "$?" "nodeset command should exit with non-zero"
+
+grep 'tz002: .*o MAC address' "${NODESET_STDERR}"
+exit_if_bad "$?" "nodeset command error message checking failed"
+
+# Make sure all other nodes are good
+for node in tz001 tz004 tz005
+do
+	[ -f "/tftpboot/boot/grub2/${node}" ]
+	exit_if_bad "$?" "file not found /tftpboot/boot/grub2/${node}"
+
+	# the per-node loader link points at the riscv64 grub2 image
+	[ "$(readlink "/tftpboot/boot/grub2/grub2-${node}")" = "grub2.riscv64" ]
+	exit_if_bad "$?" "grub2-${node} does not link to grub2.riscv64"
+
+	# the installer kernel and initrd come from images/pxeboot
+	grep 'vmlinuz' "/tftpboot/boot/grub2/${node}"
+	exit_if_bad "$?" "installer kernel not found in /tftpboot/boot/grub2/${node}"
+	grep 'initrd.img' "/tftpboot/boot/grub2/${node}"
+	exit_if_bad "$?" "installer initrd not found in /tftpboot/boot/grub2/${node}"
+
+	# the riscv64 grub2 image has no linuxefi command
+	! grep 'linuxefi' "/tftpboot/boot/grub2/${node}"
+	exit_if_bad "$?" "linuxefi must not be used for riscv64 in /tftpboot/boot/grub2/${node}"
+done
+
+# the hex ip and mac links nodeset writes shadow the discovery network files
+[ -f "/tftpboot/boot/grub2/grub.cfg-0A630101" ]
+exit_if_bad "$?" "file not found /tftpboot/boot/grub2/grub.cfg-0A630101"
+[ -f "/tftpboot/boot/grub2/grub.cfg-01-e6-d4-d2-3a-ad-01" ]
+exit_if_bad "$?" "file not found /tftpboot/boot/grub2/grub.cfg-01-e6-d4-d2-3a-ad-01"
+
+nodeset tz001+4 offline
+
+exit 0

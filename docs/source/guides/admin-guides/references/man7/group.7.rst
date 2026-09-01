@@ -47,7 +47,7 @@ group Attributes:
 
 \ **arch**\  (nodetype.arch)
  
- The hardware architecture of this node.  Valid values: x86_64, ppc64, x86, ia64, aarch64.
+ The hardware architecture of this node.  Valid values: x86_64, ppc64, x86, ia64, aarch64, riscv64.
  
 
 
@@ -547,6 +547,7 @@ group Attributes:
                          ppc64le NonVirtualize   ALL                          petitboot
                          ppc64le PowerKVM Guest  ALL                          grub2,grub2-http,grub2-tftp
                          aarch64                 >=el8                        grub2
+                         riscv64                 >=el10                       grub2,grub2-http,grub2-tftp
  
  
 

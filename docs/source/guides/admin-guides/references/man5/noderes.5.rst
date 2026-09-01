@@ -62,6 +62,7 @@ noderes Attributes:
                          ppc64le NonVirtualize   ALL                          petitboot
                          ppc64le PowerKVM Guest  ALL                          grub2,grub2-http,grub2-tftp
                          aarch64                 >=el8                        grub2
+                         riscv64                 >=el10                       grub2,grub2-http,grub2-tftp
  
  
 

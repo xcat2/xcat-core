@@ -51,6 +51,8 @@ use Pod::Usage qw(pod2usage);
 use autodie;
 use autodie qw(cp);
 
+require "$Bin/build-utils/lib/XCAT/BuildUtils.pm";
+
 my $SOURCES = "$ENV{HOME}/rpmbuild/SOURCES";
 # Ensure the rpmbuild tree exists. buildrpms stages source tarballs into $SOURCES, but it only
 # runs rpmdev-setuptree in the one-time env-setup path -- so on a host where that never ran (or
@@ -294,15 +296,6 @@ sub genesis_tarch_from_targetarch {
     return $targetarch;
 }
 
-sub targetarch_from_target {
-    my ($target) = @_;
-    return $ARCH unless defined $target && length $target;
-    my @parts = split /-/, $target;
-    my $arch = $parts[-1];
-    $arch =~ s/^\s+|\s+$//g;
-    return lc $arch;
-}
-
 # product(\@A, \@B) returns the catersian product of \@A and \@B
 sub product {
     my ($a, $b) = @_;
@@ -462,7 +455,8 @@ sub buildspkgs {
 
     my $ext = $opts{mock_uniqueext} ? "-$opts{mock_uniqueext}" : "";
     my $chroot = "$pkg-$target$ext";
-    my $targetarch = targetarch_from_target($target);
+    my $targetarch =
+      XCAT::BuildUtils::targetarch_from_target( $target, $ARCH );
     my $genesis_tarch = genesis_tarch_from_targetarch($targetarch);
 
     my $diskcache = (
@@ -518,7 +512,8 @@ sub buildpkgs {
     my $chroot = "$pkg-$target$ext";
 
     # get x86_64 from alma+epel-9-x86_64
-    my $targetarch = targetarch_from_target($target);
+    my $targetarch =
+      XCAT::BuildUtils::targetarch_from_target( $target, $ARCH );
 
     # xCAT genesis packages include the translated target arch in their file names.
     my $arch = is_in($pkg, @NATIVE_PACKAGES) ? $targetarch : "noarch";
@@ -1106,6 +1101,12 @@ once per target). When omitted, the default is a single C<< <distro>+epel-10-<ar
 derived from the host. The multi-arch flat core is assembled from per-arch builds via
 C<--merge-core-repos>.
 
+A riscv64 build on an x86_64 builder needs a mock configuration that sets
+C<config_opts['forcearch'] = 'riscv64'> (with the riscv64 qemu-user-static
+emulator registered through binfmt); the stock C<rocky-10-riscv64.cfg> only allows
+riscv64 build hosts. Copy it under a new name in C</etc/mock>, add the forcearch
+option, and pass that name as C<--target>, e.g. C<--target=rocky-10-riscv64-xcat>.
+
 =item B<--package>=I<PACKAGE>
 
 Build only selected package(s). Repeatable.
@@ -1114,7 +1115,7 @@ Build only selected package(s). Repeatable.
 
 Build only the arch-native packages (C<xCAT>, C<xCATsn>, C<xCAT-genesis-scripts>) -- the
 ones whose rpms carry the target arch. Everything else in the default set is C<noarch> and
-identical on every arch, so a secondary-arch builder (e.g. ppc64le) uses this to avoid
+identical on every arch, so a secondary-arch builder (e.g. ppc64le or riscv64) uses this to avoid
 rebuilding the noarch packages that the x86_64 builder already produces. Ignored if
 C<--package> is given.
 

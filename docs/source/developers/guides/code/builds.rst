@@ -20,6 +20,12 @@ binary rpms for each architecture. ``rpmbuild`` does not need the packages named
 in ``BuildRequires`` to make a source rpm, so this also builds on a machine that
 cannot complete a full build. ``SRCONLY`` is not supported on AIX.
 
+``buildcore.sh`` builds the architecture specific packages (``xCAT``, ``xCATsn``,
+``xCAT-genesis-scripts``) for every supported architecture, riscv64 included, with
+``rpmbuild --target``. The build host therefore needs an rpm that knows the riscv64
+architecture and the ``Recommends:`` tag (EL8 or later); an older host fails the riscv64
+builds and, as the script only publishes when every architecture built, produces no rpms.
+
 xcat-deps
 ---------
 

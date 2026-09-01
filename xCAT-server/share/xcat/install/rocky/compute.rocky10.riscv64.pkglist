@@ -1,0 +1,16 @@
+@Minimal Install
+kernel
+chrony
+net-tools
+nfs-utils
+openssh-server
+openssl
+rsync
+util-linux
+wget
+python3
+tar
+bzip2
+perl-interpreter
+grub2-efi-riscv64
+efibootmgr

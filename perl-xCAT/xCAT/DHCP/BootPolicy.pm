@@ -37,6 +37,11 @@ sub kea_client_classes {
             'boot-file-name' => 'boot/grub2/grub2.aarch64',
         },
         {
+            name             => 'xcat-riscv64',
+            test             => 'option[93].hex == 0x001b',
+            'boot-file-name' => 'boot/grub2/grub2.riscv64',
+        },
+        {
             name             => 'xcat-ppc64',
             test             => 'option[93].hex == 0x000c',
             'boot-file-name' => '/boot/grub2/grub2.ppc',
@@ -49,6 +54,96 @@ sub kea_client_classes {
     );
 
     return \@classes;
+}
+
+# Architectures whose UEFI firmware can also boot over HTTP, by DHCP client
+# architecture id (RFC 4578 and the IANA registry). An HTTP boot client wants the
+# boot file as a URL and only accepts the offer when the reply is tagged
+# HTTPClient; the image it downloads is the same grub2 the TFTP path hands out.
+my %HTTP_BOOT_ARCHES = (
+    riscv64 => { arch_id => '0x001c', loader => 'boot/grub2/grub2.riscv64' },
+);
+
+# The HTTP boot classes of one network. They carry the address of the management
+# node on that network, so they belong to the subnet rather than to the global
+# list, like the other network classes here.
+sub kea_httpboot_network_classes {
+    my ( $class, %opts ) = @_;
+
+    return [] unless $opts{net} && defined( $opts{prefix} ) && $opts{next_server};
+
+    my $httpport   = $opts{httpport} || '80';
+    my $portsuffix = ( $httpport eq '80' ) ? '' : ":$httpport";
+    my $tftpdir    = $opts{tftpdir} || '/tftpboot';
+    $tftpdir =~ s{/+$}{};
+    my $http_tftp_root = '/tftpboot';
+    my $present = $opts{loader_present};
+    my @classes;
+
+    foreach my $arch ( sort keys %HTTP_BOOT_ARCHES ) {
+        my $spec = $HTTP_BOOT_ARCHES{$arch};
+        next if $present && !$present->("$tftpdir/$spec->{loader}");
+        my $name = "xcat-$arch-http-$opts{net}_$opts{prefix}";
+        $name =~ s/[^A-Za-z0-9_.-]/_/g;
+        push @classes, {
+            name             => $name,
+            test             => "option[93].hex == $spec->{arch_id}",
+            additional_only  => 1,
+            'boot-file-name' => "http://$opts{next_server}$portsuffix$http_tftp_root/$spec->{loader}",
+            'option-data'    => [
+                {
+                    name          => 'vendor-class-identifier',
+                    data          => 'HTTPClient',
+                    'always-send' => 1,
+                },
+            ],
+        };
+    }
+
+    return \@classes;
+}
+
+sub isc_client_architecture_lines {
+    my ( $class, %opts ) = @_;
+
+    my $tftp       = $opts{next_server} // '';
+    my $portsuffix = $opts{portsuffix}  // '';
+    my $net        = $opts{net}         // '';
+    my $maskbits   = $opts{prefix}      // '';
+
+    return [
+        "    if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { #x86, xCAT Network Boot Agent\n",
+        "        always-broadcast on;\n",
+        "        filename = \"http://$tftp$portsuffix/tftpboot/xcat/xnba/nets/${net}_${maskbits}\";\n",
+        "    } else if option user-class-identifier = \"xNBA\" and option client-architecture = 00:09 { #x86, xCAT Network Boot Agent\n",
+        "        filename = \"http://$tftp$portsuffix/tftpboot/xcat/xnba/nets/${net}_${maskbits}.uefi\";\n",
+        "    } else if option user-class-identifier = \"xNBA\" and option client-architecture = 00:07 { #x86-64 UEFI, xCAT Network Boot Agent\n",
+        "        filename = \"http://$tftp$portsuffix/tftpboot/xcat/xnba/nets/${net}_${maskbits}.uefi\";\n",
+        "    } else if option client-architecture = 00:00  { #x86\n",
+        "        filename \"xcat/xnba.kpxe\";\n",
+        "    } else if option vendor-class-identifier = \"Etherboot-5.4\"  { #x86\n",
+        "        filename \"xcat/xnba.kpxe\";\n",
+        "    } else if option client-architecture = 00:07 { #x86_64 uefi\n ",
+        "        filename \"xcat/xnba.efi\";\n",
+        "    } else if option client-architecture = 00:09 { #x86_64 uefi alternative id\n ",
+        "        filename \"xcat/xnba.efi\";\n",
+        "    } else if option client-architecture = 00:02 { #ia64\n ",
+        "        filename \"elilo.efi\";\n",
+        "    } else if option client-architecture = 00:0b { #aaarch64\n ",
+        "      filename \"boot/grub2/grub2.aarch64\";\n",
+        "    } else if option client-architecture = 00:1b { #riscv64 uefi\n ",
+        "      filename \"boot/grub2/grub2.riscv64\";\n",
+        "    } else if option client-architecture = 00:1c { #riscv64 uefi http boot\n ",
+        "      option vendor-class-identifier \"HTTPClient\";\n",
+        "      filename \"http://$tftp$portsuffix/tftpboot/boot/grub2/grub2.riscv64\";\n",
+        "    } else if option client-architecture = 00:0e { #OPAL-v3\n ",
+        "        option conf-file = \"http://$tftp$portsuffix/tftpboot/pxelinux.cfg/p/${net}_${maskbits}\";\n",
+        "    } else if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { #for onie on cumulus switch\n",
+        "        option www-server = \"http://$tftp$portsuffix/install/onie/onie-installer\";\n",
+        "    } else if substring(filename,0,1) = null { #otherwise, provide yaboot if the client isn't specific\n ",
+        "        filename \"/yaboot\";\n",
+        "    }\n",
+    ];
 }
 
 sub kea_xnba_node_classes {

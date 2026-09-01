@@ -79,6 +79,13 @@ sub _profile_lookup_osbase_list {
     return grep { $_ ne $osver } xCAT::SvrUtils::get_os_search_list($osver);
 }
 
+sub resolver_library_paths {
+    my $arch = shift;
+    my $libdir = $arch =~ /x86_64|aarch64|riscv64/ ? 'lib64' : 'lib';
+
+    return ( "$libdir/libnss_dns.so.2", "$libdir/libresolv.so.2" );
+}
+
 sub get_profile_def_filename {
     my $osver   = shift;
     my $profile = shift;
@@ -256,6 +263,7 @@ sub default_net_drivers {
             x86    => [qw(tg3 bnx2 bnx2x e1000 e1000e igb mlx_en mlx5_core virtio_net be2net)],
             x86_64 => [qw(tg3 bnx2 bnx2x e1000 e1000e igb mlx_en mlx5_core virtio_net be2net)],
             aarch64 => [qw(tg3 bnx2 bnx2x e1000e igb mlx_en mlx5_core virtio_net)],
+            riscv64 => [qw(e1000 e1000e igb ixgbe r8169 tg3 bnx2x mlx5_core virtio_net)],
             ppc64   => [qw(e1000 e1000e igb ibmveth ehea)],
             s390x   => [qw(qdio ccwgroup)],
         },

@@ -1,0 +1,58 @@
+#!/bin/sh
+# riscv64 UEFI boot entry fix-up for EL10 kickstart installs.
+#
+# The EL10 anaconda has no RISC-V EFI platform: it asks for the x86 boot
+# loader packages (grub2-efi-x64, shim-x64; tolerated with --ignoremissing)
+# and registers the UEFI boot entry as \EFI\<distro>\shimx64.efi, which does
+# not exist on riscv64, so the firmware cannot boot the installed system.
+# grub2-efi-riscv64 (from the riscv64 package list) provides
+# \EFI\<distro>\grubriscv64.efi and anaconda still writes the ESP grub.cfg
+# stub next to it, so point the boot entry at that image and also place the
+# removable-media fallback loader \EFI\BOOT\BOOTRISCV64.EFI for firmware
+# without usable NVRAM entries. Runs in the installed system chroot.
+xcat_riscv_install_root=${XCAT_INSTALL_ROOT:-}
+xcat_riscv_uname=${XCAT_UNAME:-uname}
+xcat_riscv_efibootmgr=${XCAT_EFIBOOTMGR:-efibootmgr}
+xcat_riscv_findmnt=${XCAT_FINDMNT:-findmnt}
+xcat_riscv_lsblk=${XCAT_LSBLK:-lsblk}
+
+if [ "$("$xcat_riscv_uname" -m)" = "riscv64" ] && [ -d "$xcat_riscv_install_root/boot/efi/EFI" ]; then
+    grubefi=""
+    for candidate in "$xcat_riscv_install_root"/boot/efi/EFI/*/grubriscv64.efi; do
+        [ -f "$candidate" ] || continue
+        grubefi="$candidate"
+        break
+    done
+    if [ -n "$grubefi" ]; then
+        vendordir="$(basename "$(dirname "$grubefi")")"
+        mkdir -p "$xcat_riscv_install_root/boot/efi/EFI/BOOT"
+        cp -f "$grubefi" "$xcat_riscv_install_root/boot/efi/EFI/BOOT/BOOTRISCV64.EFI"
+        printf '%s\n' "riscv64: installed \\EFI\\BOOT\\BOOTRISCV64.EFI from \\EFI\\$vendordir\\grubriscv64.efi"
+        if command -v "$xcat_riscv_efibootmgr" >/dev/null 2>&1 && "$xcat_riscv_efibootmgr" >/dev/null 2>&1; then
+            espdev="$("$xcat_riscv_findmnt" -no SOURCE "$xcat_riscv_install_root/boot/efi" 2>/dev/null)"
+            # lsblk pads its output, and efibootmgr wants bare values
+            disk="$("$xcat_riscv_lsblk" -no PKNAME "$espdev" 2>/dev/null | head -1 | tr -d '[:space:]')"
+            part="$("$xcat_riscv_lsblk" -no PARTN "$espdev" 2>/dev/null | head -1 | tr -d '[:space:]')"
+            if [ -n "$disk" ] && [ -n "$part" ]; then
+                # drop the x86 entries anaconda created for this install, and any
+                # riscv64 entry a previous provisioning of this node left behind, so
+                # reinstalling does not fill the firmware variable store with copies
+                for bootnum in $("$xcat_riscv_efibootmgr" -v 2>/dev/null | awk '/\\EFI\\[^\\]+\\(shimx64|grubx64|grubriscv64)\.efi/ { sub(/^Boot/, "", $1); sub(/\*$/, "", $1); print $1 }'); do
+                    "$xcat_riscv_efibootmgr" -q -b "$bootnum" -B || true
+                done
+                label="$(. "$xcat_riscv_install_root/etc/os-release" 2>/dev/null; echo "${NAME:-Linux}")"
+                if "$xcat_riscv_efibootmgr" -q -c -d "/dev/$disk" -p "$part" -L "$label" -l "\\EFI\\$vendordir\\grubriscv64.efi"; then
+                    printf '%s\n' "riscv64: UEFI boot entry \"$label\" -> \\EFI\\$vendordir\\grubriscv64.efi on /dev/$disk part $part"
+                else
+                    printf '%s\n' "riscv64: efibootmgr could not create the boot entry; the firmware will use \\EFI\\BOOT\\BOOTRISCV64.EFI"
+                fi
+            else
+                printf '%s\n' "riscv64: could not determine the ESP disk/partition; the firmware will use \\EFI\\BOOT\\BOOTRISCV64.EFI"
+            fi
+        else
+            printf '%s\n' "riscv64: efibootmgr unavailable; the firmware will use \\EFI\\BOOT\\BOOTRISCV64.EFI"
+        fi
+    else
+        printf '%s\n' "riscv64: no \\EFI\\*\\grubriscv64.efi on the ESP; is grub2-efi-riscv64 in the package list?"
+    fi
+fi

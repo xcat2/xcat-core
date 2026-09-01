@@ -28,6 +28,8 @@ OpenEmbedded images use the exact architecture names C<x86>, C<x86_64>, C<ppc64>
 
 Canonical C<ppc64> images are big-endian. xCAT marks them so C<ppc64le> nodes do not use them as a legacy little-endian fallback. B<mknb> also refuses to replace a marked C<ppc64> image with that fallback.
 
+riscv64 nodes boot through UEFI firmware and grub2. For riscv64, B<mknb> publishes the Genesis kernel and initramfs and writes one grub2 configuration per network under C</tftpboot/boot/grub2>, named C<grub.cfg-> followed by the network hex prefix, so that C<grub2.riscv64> loaded by the firmware can start node discovery. The per-node files written by B<nodeset> take priority over these network files. Networks served by a C<:noboot> interface in C<site.dhcpinterfaces> get no discovery configuration.
+
 =head1 OPTIONS
 
 =over 12

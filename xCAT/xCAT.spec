@@ -54,11 +54,15 @@ Requires: xCAT-server = 4:%{version}-%{release}
 
 %if %nots390x
 Requires: xCAT-probe  = 4:%{version}-%{release}
-Requires: xCAT-genesis-scripts-%{genesistarch} = 1:%{version}-%{release}
+# Only where a legacy Genesis package exists for the build architecture. riscv64 has
+# none: its image ships as xCAT-genesis-openembedded-riscv64, which mknb consumes
+# directly, and an unset genesistarch would otherwise emit an unsatisfiable name.
+%{?genesistarch:Requires: xCAT-genesis-scripts-%{genesistarch} = 1:%{version}-%{release}}
 # RPM 4.11 does not recognize weak dependency tags.
 %if 0%{?fedora} || 0%{?rhel} >= 8 || 0%{?suse_version} >= 1500
 Recommends: xCAT-genesis-openembedded-x86_64
 Recommends: xCAT-genesis-openembedded-ppc64le
+Recommends: xCAT-genesis-openembedded-riscv64
 %endif
 %endif
 
@@ -102,6 +106,14 @@ Requires: ipmitool-xcat >= 1.8.18-4
 # Mixed-arch management nodes also need the x86 PXE stack kept current.
 Requires: xnba-undi >= 1.21.1-1
 Requires: syslinux-xcat >= 6.03-1
+Requires: ipmitool-xcat >= 1.8.18-4
+%endif
+%endif
+
+%ifos linux
+%ifarch riscv64
+# riscv64 management nodes manage BMC based nodes; the x86 PXE loaders are
+# x86-only packages and riscv64 nodes boot through UEFI and grub2.
 Requires: ipmitool-xcat >= 1.8.18-4
 %endif
 %endif

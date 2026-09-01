@@ -1,0 +1,79 @@
+# Use text install
+text
+# Use network installation
+%include /tmp/repos
+# Keyboard layouts
+keyboard --vckeymap=us --xlayouts='us'
+# System language
+lang en_US.UTF-8
+
+# Network information
+#KICKSTARTNET#
+# Root password
+rootpw --iscrypted #CRYPT:passwd:key=system,username=root:password#
+# Not run the Setup Agent on first boot
+firstboot --disable
+# Do not configure the X Window System
+skipx
+# System services
+#services --enabled="chronyd"
+# System timezone
+timezone #TABLE:site:key=timezone:value# --utc
+# Partition clearing information
+zerombr
+clearpart --all --initlabel
+#XCAT_PARTITION_START#
+%include /tmp/partitionfile
+#XCAT_PARTITION_END#
+
+# Do not configure any iptables rules
+firewall --disable
+selinux --disable
+reboot
+
+# riscv64: EL10 has no default crash kernel reservation for this architecture
+# (kdumpctl get-default-crashkernel is empty), so the installer's kdump add-on
+# would write the literal "crashkernel=auto", which the kernel ignores: nothing
+# is reserved and kdump.service fails on every node. Leave kdump off here; a
+# node that should take crash dumps gets a real reservation through
+# linuximage.addkcmdline or bootparams.addkcmdline (crashkernel=<size>).
+%addon com_redhat_kdump --disable
+%end
+
+# riscv64: the EL10 anaconda has no RISC-V EFI platform and always asks for the
+# x86 UEFI boot loader packages (grub2-efi-x64, shim-x64), which do not exist
+# for riscv64; tolerate that. The riscv64 package list pulls grub2-efi-riscv64
+# and efibootmgr in explicitly.
+%packages --ignoremissing
+#INCLUDE_DEFAULT_PKGLIST#
+
+%end
+
+%pre
+{
+echo "Running Kickstart Pre-installation script..."
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.rhels10#
+} &>>/tmp/pre-install.log
+%end
+%post --interpreter=/bin/bash
+mkdir -p /var/log/xcat/
+cat /tmp/pre-install.log >>/var/log/xcat/xcat.log
+{
+echo "Running Kickstart Post-installation script..."
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.xcat.rhels10#
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.rhels10.riscv64#
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.rhels10#
+} &>>/var/log/xcat/xcat.log
+%end
+
+# --ignoremissing above also hides a missing grub2-efi-riscv64, which would leave the
+# node with no boot loader at all. Fail the installation instead of rebooting into
+# firmware that has nothing to load.
+%post --erroronfail --interpreter=/bin/bash
+if [ ! -f /boot/efi/EFI/BOOT/BOOTRISCV64.EFI ] &&
+   ! ls /boot/efi/EFI/*/grubriscv64.efi >/dev/null 2>&1; then
+    echo "riscv64: no grub2 UEFI boot loader on the ESP; grub2-efi-riscv64 is missing" \
+        >>/var/log/xcat/xcat.log
+    exit 1
+fi
+%end

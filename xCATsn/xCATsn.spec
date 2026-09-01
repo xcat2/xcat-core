@@ -25,6 +25,7 @@ Requires: xCAT-probe  = 4:%{version}-%{release}
 %if 0%{?fedora} || 0%{?rhel} >= 8 || 0%{?suse_version} >= 1500
 Recommends: xCAT-genesis-openembedded-x86_64
 Recommends: xCAT-genesis-openembedded-ppc64le
+Recommends: xCAT-genesis-openembedded-riscv64
 %endif
 
 # Match xCAT-genesis-scripts package naming by build architecture.
@@ -80,6 +81,11 @@ Requires: ipmitool-xcat >= 1.8.17-1
 %endif
 %ifos linux
 %ifarch ppc ppc64 ppc64le
+Requires: ipmitool-xcat >= 1.8.17-1
+%endif
+%endif
+%ifos linux
+%ifarch riscv64
 Requires: ipmitool-xcat >= 1.8.17-1
 %endif
 %endif

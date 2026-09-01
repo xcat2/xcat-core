@@ -13,6 +13,7 @@ my $rpm_weak_dependencies = join(
     '%if 0%{?fedora} || 0%{?rhel} >= 8 || 0%{?suse_version} >= 1500',
     'Recommends: xCAT-genesis-openembedded-x86_64',
     'Recommends: xCAT-genesis-openembedded-ppc64le',
+    'Recommends: xCAT-genesis-openembedded-riscv64',
     '%endif',
 );
 
@@ -39,6 +40,11 @@ like(
     qr/^Recommends:.*\bxcat-genesis-openembedded-ppc64le\b/m,
     'DEB installations recommend the first-class ppc64le image',
 );
+like(
+    $deb_control,
+    qr/^Recommends:.*\bxcat-genesis-openembedded-riscv64\b/m,
+    'DEB installations recommend the first-class riscv64 image',
+);
 unlike(
     $deb_control,
     qr/^Depends:.*\bxcat-genesis-openembedded-/m,
@@ -62,6 +68,11 @@ like(
     $sn_deb_control,
     qr/^Recommends:.*\bxcat-genesis-openembedded-ppc64le\b/m,
     'DEB service nodes recommend the first-class ppc64le image',
+);
+like(
+    $sn_deb_control,
+    qr/^Recommends:.*\bxcat-genesis-openembedded-riscv64\b/m,
+    'DEB service nodes recommend the first-class riscv64 image',
 );
 
 my $go_xcat = slurp_repo_file('xCAT-server/share/xcat/tools/go-xcat');
