@@ -43,7 +43,7 @@ use File::Slurper qw(read_text write_text);
 use File::Temp qw(tempdir tempfile);
 use FindBin qw($Bin);
 use lib $Bin;
-use BuildUtils qw(git_revision source_date_epoch);
+use BuildUtils qw(git_revision source_date_epoch sh usage);
 use Fcntl qw(:flock);           # per-target build lock (concurrency guard; see main())
 use Getopt::Long qw(GetOptions);
 use POSIX qw(strftime);
@@ -189,6 +189,8 @@ GetOptions(
     "source-only" => \$opts{source_only},
 ) or usage();
 
+$BuildUtils::VERBOSE = $opts{verbose};
+
 # --package REPLACES the default set (build exactly what was asked), so
 # `--package xCAT-genesis-base` builds only genesis-base for the dep pipeline.
 # The full default set is built on every arch (x86_64 and ppc64le alike), so each
@@ -230,26 +232,6 @@ if (@cli_targets) {
 # --release to rebuild a single package matching an existing repo's release.
 my $RELEASE = $opts{release} || strftime("snap%Y%m%d%H%M", gmtime($SOURCE_DATE_EPOCH));
 write_text("Release", "$RELEASE\n");
-
-sub usage {
-    my (%args) = @_;
-    my $verbose = $args{verbose} // 1;
-    my $exitval = $args{exitval} // 2;
-    my $message = $args{message};
-    pod2usage(
-        -verbose => $verbose,
-        -exitval => $exitval,
-        (defined($message) && length($message) ? (-message => "$message\n") : ()),
-    );
-}
-
-sub sh {
-    my ($cmd) = @_;
-    say "Running: $cmd"
-        if $opts{verbose};
-    system($cmd);
-    $? >> 8;
-}
 
 # sh_retry: run $cmd, retrying up to $tries times on non-zero exit. Absorbs transient mock/nspawn
 # flakes (e.g. the systemd-nspawn ENOMEDIUM cgroup race, dnf mirror hiccups) so one bad attempt does

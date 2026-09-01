@@ -308,4 +308,28 @@ is( git_revision( git => sub { "\n" }, read_file => sub { "  \n" } ),
 isnt( git_revision( git => sub { '' }, read_file => sub { '' } ), '',
     'the one thing it must never return is empty' );
 
+# ---------------------------------------------------------------- sh() --
+# system() returns the raw wait status, which is the exit code times 256. The
+# two builders disagreed about shifting it, so a caller comparing sh() against
+# a specific code got the code from one and a multiple of it from the other.
+{
+    is( BuildUtils::sh('true'), 0, 'a command that succeeds reports 0' );
+    is( BuildUtils::sh('sh -c "exit 3"'), 3,
+        'the exit code is returned, not the wait status it is packed into' );
+    isnt( BuildUtils::sh('sh -c "exit 3"'), 768,
+        'and specifically not the exit code times 256' );
+}
+
+{
+    # --verbose echoes the command; the default does not.
+    local $BuildUtils::VERBOSE = 1;
+    my $out = '';
+    open my $fh, '>', \$out or die;
+    my $old = select $fh;
+    BuildUtils::sh('true');
+    select $old;
+    close $fh;
+    like( $out, qr/\ARunning: true/, 'a verbose run echoes the command' );
+}
+
 done_testing();

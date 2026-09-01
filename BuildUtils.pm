@@ -18,6 +18,8 @@ use File::Copy qw(copy move);
 use File::Basename qw(basename);
 use File::Path qw(make_path remove_tree);
 use POSIX qw(strftime);
+use Pod::Usage qw(pod2usage);
+use feature 'say';
 
 our @EXPORT_OK = qw(
     source_date_epoch snap_release deb_version
@@ -29,11 +31,39 @@ our @EXPORT_OK = qw(
     lock_id_for take_build_lock
     sh_quote clean_debian_residue git_revision
     backup_file restore_file
+    sh usage
 );
+
+# Both builders echo the commands they run under --verbose.  Set once, after
+# option parsing, rather than threaded through every sh() call site.
+our $VERBOSE = 0;
 
 # The xCAT-probe helpers. xcat-probe reuses functions shipped by xCAT; they are COPIED
 # rather than symlinked because a symlink does not survive packaging, and rather than
 # maintained twice because they would drift. Both builders stage them the same way.
+# Run a shell command, returning its EXIT STATUS.  system() yields the raw wait
+# status, which is the exit code times 256, so it is shifted here: a caller
+# comparing the result against a specific code gets the code it expects, not a
+# multiple of it.
+sub sh {
+    my ($cmd) = @_;
+    say "Running: $cmd" if $VERBOSE;
+    system($cmd);
+    return $? >> 8;
+}
+
+# pod2usage reads the POD of the running program, so each builder keeps its own
+# help text while sharing the way it is printed and the status it exits with.
+sub usage {
+    my (%args) = @_;
+    pod2usage(
+        -verbose => $args{verbose} // 1,
+        -exitval => $args{exitval} // 2,
+        (defined($args{message}) && length($args{message})
+            ? (-message => "$args{message}\n") : ()),
+    );
+}
+
 use constant XCAT_PROBE_HELPERS => qw(
     GlobalDef.pm
     NetworkUtils.pm

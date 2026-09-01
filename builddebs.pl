@@ -36,6 +36,7 @@ use BuildUtils qw(
     pin_control_version rewrite_changelog_header
     reprepro_distributions reprepro_options
     lock_id_for take_build_lock sh_quote
+    sh usage
 );
 
 # The xcat-core packages that ship as debs. xCAT-openbmc-py, xCAT-rmc and xCAT-release
@@ -75,6 +76,8 @@ GetOptions(
 ) or usage();
 usage(exitval => 0, verbose => 2) if $opts{help};
 
+$BuildUtils::VERBOSE = $opts{verbose};
+
 $opts{packages} = @cli_packages ? \@cli_packages : \@PACKAGES;
 $opts{dists}    = @cli_dists    ? \@cli_dists    : \@DISTS;
 $opts{gpg_key_name} //= 'xCAT Signing Key';
@@ -82,21 +85,6 @@ $opts{gpg_key_name} //= 'xCAT Signing Key';
 for my $pkg ($opts{packages}->@*) {
     die "FATAL: unknown package '$pkg'. Known: @PACKAGES\n"
         unless grep { $_ eq $pkg } @PACKAGES;
-}
-
-sub usage {
-    my (%args) = @_;
-    pod2usage(
-        -verbose => $args{verbose} // 1,
-        -exitval => $args{exitval} // 2,
-        (defined $args{message} ? (-message => "$args{message}\n") : ()),
-    );
-}
-
-sub sh {
-    my ($cmd) = @_;
-    say "+ $cmd" if $opts{verbose};
-    return system($cmd);
 }
 
 my $ROOT    = abs_path($FindBin::Bin);
