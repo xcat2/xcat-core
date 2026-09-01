@@ -195,12 +195,18 @@ GetOptions(
     "output-dir=s" => \$opts{output_dir},
     "input-core-repos=s{1,}" => \@cli_input_core_repos,
     "repo-baseurl=s" => \$opts{repo_baseurl},
+    "source-only" => \$opts{source_only},
 ) or usage();
 
 # --package REPLACES the default set (build exactly what was asked), so
 # `--package xCAT-genesis-base` builds only genesis-base for the dep pipeline.
 # The full default set is built on every arch (x86_64 and ppc64le alike), so each
 # arch produces a complete, self-contained xcat-core repo.
+# --source-only produces source rpms and nothing else. It is a build mode, so it has
+# nothing to assemble and must not be confused with the deploy-time merge.
+usage(message => "--source-only and --merge-core-repos are different modes; pass one")
+    if $opts{source_only} && $opts{merge_core_repos};
+
 $opts{packages} = \@cli_packages if @cli_packages;
 
 # --native-only: build just the arch-native packages (@NATIVE_PACKAGES). Used on a
@@ -560,6 +566,11 @@ sub buildall {
     createmockconfig($pkg, $target);
     buildsources($pkg, $target);
     buildspkgs($pkg, $target);
+    # --source-only stops here: buildspkgs has produced the src.rpm, and the binary
+    # rebuild is the only thing buildpkgs does. Everything upstream of this point --
+    # the spec, the staged sources, the mock root -- is identical either way, which
+    # is why source-only belongs here rather than in a parallel script.
+    return if $opts{source_only};
     buildpkgs($pkg, $target);
 }
 
@@ -700,7 +711,12 @@ sub index_repo {
     # ships neither). The canonical src.rpm lives in SRPMS/.
     unlink($_) for glob("$repodir/*.src.rpm"), glob("$repodir/*.log"),
                    glob("$repodir/SRPMS/*.log");
-    createrepo_dir($repodir, "--excludes 'SRPMS/*' --excludes '*.src.rpm'");
+    # In source-only mode no binaries were built, so re-indexing the binary dir would
+    # replace good metadata with metadata for an empty repo -- publishing a repo that
+    # resolves nothing. Leave it exactly as the last binary build left it and index
+    # only the srpms.
+    createrepo_dir($repodir, "--excludes 'SRPMS/*' --excludes '*.src.rpm'")
+        unless $opts{source_only};
     createrepo_dir("$repodir/SRPMS") if -d "$repodir/SRPMS";
 }
 
@@ -777,6 +793,10 @@ sub write_repo_metadata {
 sub write_repo_metadata_dir {
     my ($repodir) = @_;
     return unless -d $repodir;
+    # The .repo file and buildinfo describe an installable binary repository. A
+    # source-only run produced none, so emitting them would advertise packages that
+    # are not there.
+    return if $opts{source_only};
 
     # Shipped baseurl points at xcat.org (--repo-baseurl overrides it per family, e.g. the
     # sles/apt layout); mklocalrepo.sh rewrites baseurl/gpgkey to file:// at deploy time.
@@ -1127,6 +1147,24 @@ Default: all host CPUs.
 =item B<--force>
 
 Rebuild artifacts even if output files already exist.
+
+=item B<--source-only>
+
+Build source RPMs and stop. Every step up to and including C<mock --buildsrpm> runs
+normally, so the srpms are the same ones a full build would produce; only the binary
+C<--rebuild> is skipped.
+
+  ./buildrpms.pl --target alma+epel-9-x86_64 --source-only
+
+The srpms land in C<dist/E<lt>targetE<gt>/rpms/SRPMS/> and that index is regenerated.
+The binary metadata under C<dist/E<lt>targetE<gt>/rpms/> is deliberately left as the
+last binary build wrote it: re-indexing a directory with no binaries in it would
+replace working metadata with metadata for an empty repository. For the same reason
+no C<.repo> file or buildinfo is emitted, since both describe an installable binary
+repo that this mode does not produce. With C<--gpg-sign> the srpms are signed.
+
+Cannot be combined with C<--merge-core-repos>, which assembles already-built
+per-arch binary trees.
 
 =item B<--release>=I<STRING>
 
