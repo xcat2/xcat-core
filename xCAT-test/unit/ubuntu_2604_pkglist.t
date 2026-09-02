@@ -3,7 +3,14 @@ use warnings;
 
 use FindBin;
 use File::Spec;
+use File::Temp ();
 use Test::More;
+
+use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
+use lib "$FindBin::Bin/../../perl-xCAT";
+
+use lib "$FindBin::Bin/../../build-utils/lib";
+use XCAT::BuildUtils ();
 
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
 
@@ -53,39 +60,109 @@ like( $template, qr/#UBUNTU_SUBIQUITY_APT_CONFIG#/, 'subiquity apt configuration
 like( $template, qr/package_update: false/, 'subiquity install does not require online package update' );
 like( $template, qr/package_upgrade: false/, 'subiquity install does not require online package upgrade' );
 
-my $template_module = File::Spec->catfile( $repo_root, 'xCAT-server/lib/perl/xCAT/Template.pm' );
-open( my $module_fh, '<', $template_module ) or die "Unable to read $template_module: $!";
-my $module = do { local $/; <$module_fh> };
-close($module_fh);
+# ---------------------------------------------------- the rendered apt config --
+# What Subiquity is handed, not how Template.pm is written. These assertions used
+# to grep the `push @lines, '...'` literals out of Template.pm, which passed on any
+# reordering and would have kept passing had the renderer moved somewhere it never
+# runs. Only two collaborators are stubbed -- the two that read the xCAT database.
+# The release branch is driven for real, by the media directory the renderer parses.
+require xCAT::Template;
 
-like( $module, qr/URIs: http:\/\/xcat\.invalid\/disabled.*Enabled: no/s, 'subiquity renderer disables duplicate archive sources when Subiquity provides cdrom.sources' );
-like( $module, qr/sources_list: \|/, 'subiquity renderer owns Deb822 install media sources when Subiquity does not provide cdrom.sources' );
-like( $module, qr/URIs: file:\/\/\/cdrom/, 'subiquity renderer can use the mounted install media as the primary mirror' );
-like( $module, qr/Check-Date: no/, 'subiquity renderer avoids cdrom Check-Date conflicts' );
-like( $module, qr/fallback: offline-install/, 'subiquity renderer can complete without external apt mirrors' );
-like( $module, qr/geoip: false/, 'subiquity renderer does not require external geoip lookup' );
-like( $module, qr/- updates.*- backports.*- security/s, 'subiquity renderer disables online update suites' );
-like( $module, qr/mirror-selection:/, 'subiquity renderer keeps classic mirror-selection fallback for older Ubuntu releases' );
-like( $module, qr/Types: deb.*URIs: \$source.*Suites: \.\/.*Components:.*Trusted: yes/s, 'subiquity renderer includes trusted local xCAT otherpkgdir repositories in Deb822 sources_list' );
-like( $module, qr/deb \[trusted=yes\] \$source \.\/"/, 'subiquity renderer keeps classic source-list fallback for older Ubuntu releases' );
-like( $module, qr/-f "\$path\/Release"/, 'subiquity renderer requires indexed otherpkgdir repositories' );
+our @otherpkg_sources;
+{
+    no warnings qw(redefine once);
+    *xCAT::Template::ubuntu_subiquity_apt_mirror       = sub { return $main::apt_mirror };
+    *xCAT::Template::ubuntu_subiquity_otherpkg_sources = sub { return @main::otherpkg_sources };
+}
 
-my $subiquity_pre = File::Spec->catfile(
-    $repo_root,
-    'xCAT-server/share/xcat/install/scripts/pre.ubuntu.subiquity'
-);
-open( my $pre_fh, '<', $subiquity_pre ) or die "Unable to read $subiquity_pre: $!";
-my $pre = do { local $/; <$pre_fh> };
-close($pre_fh);
+our $apt_mirror = '';
 
-like( $pre, qr/id: efi-part\s+type: partition\s+device: disk-detected\s+size: 512M\s+flag: boot\s+number: 1\s+preserve: false\s+grub_device: true/s, 'subiquity UEFI storage marks the EFI partition as grub device' );
-like( $pre, qr/id: efi-part-fs\s+type: format\s+fstype: fat32\s+volume: efi-part/s, 'subiquity UEFI storage formats ESP as fat32' );
+sub apt_config_for {
+    my ( $media_dir, %args ) = @_;
+    local $apt_mirror   = $args{mirror} // '';
+    local @otherpkg_sources = @{ $args{sources} || [] };
+    return xCAT::Template::ubuntu_subiquity_apt_config($media_dir);
+}
 
-my $repo_builder = File::Spec->catfile( $repo_root, 'build-ubunturepo' );
-open( my $builder_fh, '<', $repo_builder ) or die "Unable to read $repo_builder: $!";
-my $builder = do { local $/; <$builder_fh> };
-close($builder_fh);
+# 26.04's Subiquity writes its own cdrom.sources. A second file:///cdrom source
+# collides with it, so the rendered one is present but inactive.
+my $noble_plus = apt_config_for('ubuntu26.04');
+like( $noble_plus, qr{^\s+URIs: http://xcat\.invalid/disabled$}m,
+    'on 26.04 the install-media source is rendered inert' );
+like( $noble_plus, qr/^\s+Enabled: no$/m,
+    'and is explicitly disabled so Subiquity does not fetch from it' );
+unlike( $noble_plus, qr{file:///cdrom},
+    'so it cannot collide with the cdrom.sources Subiquity generates' );
 
-like( $builder, qr/dists="\$\{DISTS:-[^"]*\bresolute\b[^"]*\}"/, 'Ubuntu repo builder includes resolute by default' );
+# 24.04 has Deb822 but no generated cdrom.sources, so xCAT owns the media source.
+my $noble = apt_config_for('ubuntu24.04');
+like( $noble, qr/^\s+sources_list: \|$/m,
+    'on 24.04 xCAT owns the Deb822 sources_list' );
+like( $noble, qr{^\s+URIs: file:///cdrom$}m,
+    'and points it at the mounted install media' );
+like( $noble, qr/^\s+Check-Date: no$/m,
+    'and waives Check-Date, which the media index would otherwise fail' );
+
+# Before Deb822 the same intent is expressed with mirror-selection.
+my $focal = apt_config_for('ubuntu20.04');
+like( $focal, qr/^\s+mirror-selection:$/m,
+    'older releases keep the classic mirror-selection form' );
+like( $focal, qr{^\s+- uri: file:/cdrom$}m,
+    'still served from the install media' );
+unlike( $focal, qr/sources_list: \|/,
+    'and are not given a Deb822 block they cannot parse' );
+
+# Common to every offline render: no external mirror is required to finish.
+foreach my $case ( [ '26.04', $noble_plus ], [ '24.04', $noble ], [ '20.04', $focal ] ) {
+    my ( $name, $rendered ) = @{$case};
+    like( $rendered, qr/^\s+fallback: offline-install$/m,
+        "$name completes without an external apt mirror" );
+    like( $rendered, qr/^\s+geoip: false$/m,
+        "$name does not wait on a geoip lookup" );
+    like( $rendered, qr/^\s+disable_suites:\n\s+- updates\n\s+- backports\n\s+- security$/m,
+        "$name has the online update suites disabled" );
+}
+
+# otherpkgdir repositories reach the installer in whichever form the release reads.
+my $with_otherpkgs = apt_config_for( 'ubuntu24.04', sources => ['http://mn/otherpkg'] );
+like( $with_otherpkgs,
+    qr/^\s+Types: deb\n\s+URIs: http:\/\/mn\/otherpkg\n\s+Suites: \.\/\n\s+Components:\n\s+Trusted: yes$/m,
+    'Deb822 releases get the xCAT repository as a trusted Deb822 stanza' );
+
+my $classic_otherpkgs = apt_config_for( 'ubuntu20.04', sources => ['http://mn/otherpkg'] );
+like( $classic_otherpkgs, qr{source: "deb \[trusted=yes\] http://mn/otherpkg \./"},
+    'and older releases get the same repository as a one-line source' );
+
+# An online mirror turns the offline handling off entirely.
+my $online = apt_config_for( 'ubuntu24.04', mirror => 'http://archive.example/ubuntu' );
+like( $online, qr{^\s+- uri: http://archive\.example/ubuntu$}m,
+    'a configured mirror becomes the primary' );
+unlike( $online, qr/fallback: offline-install/,
+    'and the offline fallback is not rendered alongside it' );
+unlike( $online, qr/disable_suites/,
+    'nor are updates and security disabled on an online install' );
+
+# The reason a bare directory is not offered as a repository: apt needs an index.
+my $repo_dir = File::Temp::tempdir( CLEANUP => 1 );
+ok( !xCAT::Template::ubuntu_subiquity_local_apt_repo($repo_dir),
+    'an empty directory is not treated as an apt repository' );
+open( my $pkgs_fh, '>', File::Spec->catfile( $repo_dir, 'Packages' ) ) or die $!;
+close($pkgs_fh);
+ok( !xCAT::Template::ubuntu_subiquity_local_apt_repo($repo_dir),
+    'nor is one with packages but no Release index' );
+open( my $rel_fh, '>', File::Spec->catfile( $repo_dir, 'Release' ) ) or die $!;
+close($rel_fh);
+ok( xCAT::Template::ubuntu_subiquity_local_apt_repo($repo_dir),
+    'an indexed directory is' );
+
+# The releases the deb builder serves by default. Read from XCAT::BuildUtils, which is where
+# the builder itself reads them, rather than matched against the source that sets them:
+# the old assertion passed on any file containing that shell fragment, and broke on a
+# reflow that changed nothing.
+ok( scalar( grep { $_ eq 'resolute' } XCAT::BuildUtils::default_dists() ),
+    'the Ubuntu repository serves resolute by default' );
+like( XCAT::BuildUtils::reprepro_distributions( [ XCAT::BuildUtils::default_dists() ], undef ),
+    qr/^Codename: resolute$/m,
+    'and a resolute stanza reaches conf/distributions' );
 
 done_testing();

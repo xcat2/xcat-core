@@ -42,6 +42,9 @@ use File::Path qw(make_path remove_tree);
 use File::Slurper qw(read_text write_text);
 use File::Temp qw(tempdir tempfile);
 use FindBin qw($Bin);
+use lib "$Bin/build-utils/lib";
+use XCAT::BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildinfo_text
+                        write_script read_line targetarch_from_target);
 use Fcntl qw(:flock);           # per-target build lock (concurrency guard; see main())
 use Getopt::Long qw(GetOptions);
 use POSIX qw(strftime);
@@ -51,7 +54,6 @@ use Pod::Usage qw(pod2usage);
 use autodie;
 use autodie qw(cp);
 
-require "$Bin/build-utils/lib/XCAT/BuildUtils.pm";
 
 my $SOURCES = "$ENV{HOME}/rpmbuild/SOURCES";
 # Ensure the rpmbuild tree exists. buildrpms stages source tarballs into $SOURCES, but it only
@@ -60,7 +62,7 @@ my $SOURCES = "$ENV{HOME}/rpmbuild/SOURCES";
 # no srpms/rpms are produced, and the run still exits 0. Create the tree up front so a build never
 # depends on prior manual setup.
 system('mkdir', '-p', map { "$ENV{HOME}/rpmbuild/$_" } qw(SOURCES SPECS BUILD BUILDROOT RPMS SRPMS));
-my $VERSION = read_text("Version");
+my $VERSION = read_line("Version") // die "Cannot read Version\n";
 my $PWD = Cwd::cwd();
 my @XCAT_PROBE_HELPERS = qw(
     GlobalDef.pm
@@ -68,24 +70,12 @@ my @XCAT_PROBE_HELPERS = qw(
     ServiceNodeUtils.pm
 );
 
-chomp($VERSION);
 
 # Gitinfo is regenerated at each run with the current git revision.
-my $GITINFO = `git rev-parse HEAD 2>/dev/null`;
-chomp($GITINFO);
-$GITINFO = "unknown" unless $GITINFO;
+my $GITINFO = git_revision();
 write_text("Gitinfo", "$GITINFO\n");
 
-my $SOURCE_DATE_EPOCH;
-if (-f "Gitepoch") {
-    $SOURCE_DATE_EPOCH = read_text("Gitepoch");
-    chomp($SOURCE_DATE_EPOCH);
-}
-unless ($SOURCE_DATE_EPOCH && $SOURCE_DATE_EPOCH =~ /^\d+$/) {
-    $SOURCE_DATE_EPOCH = `git log -1 --format=%ct HEAD 2>/dev/null`;
-    chomp($SOURCE_DATE_EPOCH);
-}
-$SOURCE_DATE_EPOCH = time() unless $SOURCE_DATE_EPOCH =~ /^\d+$/;
+my $SOURCE_DATE_EPOCH = source_date_epoch();
 $ENV{SOURCE_DATE_EPOCH} = $SOURCE_DATE_EPOCH;
 
 sub os_release {
@@ -195,12 +185,20 @@ GetOptions(
     "output-dir=s" => \$opts{output_dir},
     "input-core-repos=s{1,}" => \@cli_input_core_repos,
     "repo-baseurl=s" => \$opts{repo_baseurl},
+    "source-only" => \$opts{source_only},
 ) or usage();
+
+$XCAT::BuildUtils::VERBOSE = $opts{verbose};
 
 # --package REPLACES the default set (build exactly what was asked), so
 # `--package xCAT-genesis-base` builds only genesis-base for the dep pipeline.
 # The full default set is built on every arch (x86_64 and ppc64le alike), so each
 # arch produces a complete, self-contained xcat-core repo.
+# --source-only produces source rpms and nothing else. It is a build mode, so it has
+# nothing to assemble and must not be confused with the deploy-time merge.
+usage(message => "--source-only and --merge-core-repos are different modes; pass one")
+    if $opts{source_only} && $opts{merge_core_repos};
+
 $opts{packages} = \@cli_packages if @cli_packages;
 
 # --native-only: build just the arch-native packages (@NATIVE_PACKAGES). Used on a
@@ -233,26 +231,6 @@ if (@cli_targets) {
 # --release to rebuild a single package matching an existing repo's release.
 my $RELEASE = $opts{release} || strftime("snap%Y%m%d%H%M", gmtime($SOURCE_DATE_EPOCH));
 write_text("Release", "$RELEASE\n");
-
-sub usage {
-    my (%args) = @_;
-    my $verbose = $args{verbose} // 1;
-    my $exitval = $args{exitval} // 2;
-    my $message = $args{message};
-    pod2usage(
-        -verbose => $verbose,
-        -exitval => $exitval,
-        (defined($message) && length($message) ? (-message => "$message\n") : ()),
-    );
-}
-
-sub sh {
-    my ($cmd) = @_;
-    say "Running: $cmd"
-        if $opts{verbose};
-    system($cmd);
-    $? >> 8;
-}
 
 # sh_retry: run $cmd, retrying up to $tries times on non-zero exit. Absorbs transient mock/nspawn
 # flakes (e.g. the systemd-nspawn ENOMEDIUM cgroup race, dnf mirror hiccups) so one bad attempt does
@@ -363,14 +341,14 @@ sub buildsources_genesis_base($) {
     remove_tree($staging_parent) if -e $staging_parent;
     make_path("$staging_root/dracut_105");
 
-    sh(qq(cp -a "xCAT-genesis-builder/dracut_105" "$staging_root/"))
-        and die "Error copying dracut_105 sources";
+    sh_or_die(qq(cp -a "xCAT-genesis-builder/dracut_105" "$staging_root/"),
+        "Error copying dracut_105 sources");
     cp "xCAT-genesis-builder/80-net-name-slot.rules",
        "$staging_root/80-net-name-slot.rules";
 
     unlink $support_tarball if -f $support_tarball;
-    sh(qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -cjf "$support_tarball" -C "$staging_parent" xCAT-genesis-base-build-support))
-        and die "Error creating $support_tarball";
+    sh_or_die(qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -cjf "$support_tarball" -C "$staging_parent" xCAT-genesis-base-build-support),
+        "Error creating $support_tarball");
 
     remove_tree($staging_parent);
 }
@@ -381,8 +359,8 @@ sub prepare_xcat_probe_source_tar {
     my $helper_dir = "$staging_root/lib/perl/xCAT";
     my $source_tarball = "$SOURCES/xCAT-probe-$VERSION.tar.gz";
 
-    sh(qq(cp -a "xCAT-probe" "$staging_root"))
-        and die "Error staging xCAT-probe sources";
+    sh_or_die(qq(cp -a "xCAT-probe" "$staging_root"),
+        "Error staging xCAT-probe sources");
 
     remove_tree($helper_dir) if -e $helper_dir;
     make_path($helper_dir);
@@ -400,8 +378,8 @@ sub prepare_xcat_probe_source_tar {
     );
     close $archive_fh;
 
-    sh(qq(tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="\@$SOURCE_DATE_EPOCH" --use-compress-program="gzip -n" -cf "$archive_path" -C "$staging_parent" xCAT-probe))
-        and die "Error creating $source_tarball";
+    sh_or_die(qq(tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="\@$SOURCE_DATE_EPOCH" --use-compress-program="gzip -n" -cf "$archive_path" -C "$staging_parent" xCAT-probe),
+        "Error creating $source_tarball");
 
     chmod 0644, $archive_path;
     rename $archive_path, $source_tarball;
@@ -456,7 +434,7 @@ sub buildspkgs {
     my $ext = $opts{mock_uniqueext} ? "-$opts{mock_uniqueext}" : "";
     my $chroot = "$pkg-$target$ext";
     my $targetarch =
-      XCAT::BuildUtils::targetarch_from_target( $target, $ARCH );
+      targetarch_from_target( $target, $ARCH );
     my $genesis_tarch = genesis_tarch_from_targetarch($targetarch);
 
     my $diskcache = (
@@ -513,7 +491,7 @@ sub buildpkgs {
 
     # get x86_64 from alma+epel-9-x86_64
     my $targetarch =
-      XCAT::BuildUtils::targetarch_from_target( $target, $ARCH );
+      targetarch_from_target( $target, $ARCH );
 
     # xCAT genesis packages include the translated target arch in their file names.
     my $arch = is_in($pkg, @NATIVE_PACKAGES) ? $targetarch : "noarch";
@@ -560,6 +538,11 @@ sub buildall {
     createmockconfig($pkg, $target);
     buildsources($pkg, $target);
     buildspkgs($pkg, $target);
+    # --source-only stops here: buildspkgs has produced the src.rpm, and the binary
+    # rebuild is the only thing buildpkgs does. Everything upstream of this point --
+    # the spec, the staged sources, the mock root -- is identical either way, which
+    # is why source-only belongs here rather than in a parallel script.
+    return if $opts{source_only};
     buildpkgs($pkg, $target);
 }
 
@@ -677,9 +660,9 @@ sub setup_local_repos {
 sub createrepo_dir {
     my ($dir, $extra) = @_;
     $extra //= '';
-    sh(qq(createrepo_c --update --database )
-       . qq(--revision "$SOURCE_DATE_EPOCH" --set-timestamp-to-revision $extra "$dir"))
-        and die "Failed to createrepo_c $dir\n";
+    sh_or_die(qq(createrepo_c --update --database )
+       . qq(--revision "$SOURCE_DATE_EPOCH" --set-timestamp-to-revision $extra "$dir"),
+        "Failed to createrepo_c $dir\n");
 }
 
 # A core repo dir holds binaries flat plus a SRPMS/ subdir carrying its own
@@ -700,7 +683,12 @@ sub index_repo {
     # ships neither). The canonical src.rpm lives in SRPMS/.
     unlink($_) for glob("$repodir/*.src.rpm"), glob("$repodir/*.log"),
                    glob("$repodir/SRPMS/*.log");
-    createrepo_dir($repodir, "--excludes 'SRPMS/*' --excludes '*.src.rpm'");
+    # In source-only mode no binaries were built, so re-indexing the binary dir would
+    # replace good metadata with metadata for an empty repo -- publishing a repo that
+    # resolves nothing. Leave it exactly as the last binary build left it and index
+    # only the srpms.
+    createrepo_dir($repodir, "--excludes 'SRPMS/*' --excludes '*.src.rpm'")
+        unless $opts{source_only};
     createrepo_dir("$repodir/SRPMS") if -d "$repodir/SRPMS";
 }
 
@@ -738,15 +726,15 @@ sub sign_repo_dir {
     say "Signing RPMs in $repodir";
     my @bin = glob("$repodir/*.rpm");
     if (@bin) {
-        sh(qq(rpmsign --define "%_gpg_name $key_name" --addsign )
-           . join(" ", map { qq("$_") } @bin))
-            and die "Failed to sign RPMs in $repodir";
+        sh_or_die(qq(rpmsign --define "%_gpg_name $key_name" --addsign )
+           . join(" ", map { qq("$_") } @bin),
+        "Failed to sign RPMs in $repodir");
     }
     my @src = glob("$repodir/SRPMS/*.src.rpm");
     if (@src) {
-        sh(qq(rpmsign --define "%_gpg_name $key_name" --addsign )
-           . join(" ", map { qq("$_") } @src))
-            and die "Failed to sign SRPMs in $repodir/SRPMS";
+        sh_or_die(qq(rpmsign --define "%_gpg_name $key_name" --addsign )
+           . join(" ", map { qq("$_") } @src),
+        "Failed to sign SRPMs in $repodir/SRPMS");
     }
 
     # Regenerate both indexes (binary + SRPMS) after signing, before signing repomd.
@@ -758,10 +746,10 @@ sub sign_repo_dir {
         next unless -f $repomd;
         say "Signing $repomd";
         unlink "$repomd.asc" if -f "$repomd.asc";
-        sh(qq(gpg -a --detach-sign --default-key "$key_name" "$repomd"))
-            and die "Failed to sign $repomd";
-        sh(qq(gpg -a --export "$key_name" > "$rd/repomd.xml.key"))
-            and die "Failed to export public key to $rd";
+        sh_or_die(qq(gpg -a --detach-sign --default-key "$key_name" "$repomd"),
+        "Failed to sign $repomd");
+        sh_or_die(qq(gpg -a --export "$key_name" > "$rd/repomd.xml.key"),
+        "Failed to export public key to $rd");
     }
 }
 
@@ -777,6 +765,10 @@ sub write_repo_metadata {
 sub write_repo_metadata_dir {
     my ($repodir) = @_;
     return unless -d $repodir;
+    # The .repo file and buildinfo describe an installable binary repository. A
+    # source-only run produced none, so emitting them would advertise packages that
+    # are not there.
+    return if $opts{source_only};
 
     # Shipped baseurl points at xcat.org (--repo-baseurl overrides it per family, e.g. the
     # sles/apt layout); mklocalrepo.sh rewrites baseurl/gpgkey to file:// at deploy time.
@@ -794,7 +786,7 @@ gpgcheck=$gpgcheck
 $gpgkey_line
 EOF
 
-    write_text("$repodir/mklocalrepo.sh", <<'EOF2');
+    write_script("$repodir/mklocalrepo.sh", <<'EOF2');
 #!/bin/sh
 cd `dirname $0`
 REPOFILE=`basename xcat-*.repo`
@@ -815,20 +807,11 @@ if [ -f "$DIRECTORY/xCAT-core.repo" ]; then
 fi
 cd -
 EOF2
-    chmod 0775, "$repodir/mklocalrepo.sh";
 
     # BUILD_TIME from SOURCE_DATE_EPOCH keeps buildinfo reproducible across rebuilds.
-    my $build_time = strftime("%a %b %e %H:%M:%S %Z %Y", gmtime($SOURCE_DATE_EPOCH));
-    my $build_machine = `hostname`; chomp $build_machine;
-    my $commit_short = substr($GITINFO, 0, 7);
-    write_text("$repodir/buildinfo.txt", <<"EOF");
-VERSION=$VERSION
-RELEASE=$RELEASE
-BUILD_TIME=$build_time
-BUILD_MACHINE=$build_machine
-COMMIT_ID=$commit_short
-COMMIT_ID_LONG=$GITINFO
-EOF
+    write_text("$repodir/buildinfo.txt", buildinfo_text(
+        version => $VERSION, release => $RELEASE, epoch => $SOURCE_DATE_EPOCH,
+        commit => $GITINFO, time_format => "%a %b %e %H:%M:%S %Z %Y"));
 }
 
 # Assemble the flat MULTI-ARCH core from per-arch build outputs and sign it, in the upstream
@@ -848,11 +831,12 @@ sub merge_core_repos {
     die "FATAL: --merge-core-repos requires at least one --input-core-repos dir\n" unless @ins;
     -d $_ or die "FATAL: --input-core-repos dir '$_' does not exist\n" for @ins;
 
-    sh(qq(rm -rf "$out")) and die "Failed to clean output dir '$out'\n";
+    sh_or_die(qq(rm -rf "$out"),
+        "Failed to clean output dir '$out'\n");
     make_path($out);
     for my $in (@ins) {
-        sh(qq(rsync -a --exclude 'repodata/' "$in/" "$out/"))
-            and die "Failed to rsync '$in' into '$out'\n";
+        sh_or_die(qq(rsync -a --exclude 'repodata/' "$in/" "$out/"),
+        "Failed to rsync '$in' into '$out'\n");
     }
 
     # Index, sign (when --gpg-sign), write the final repository metadata, then create the
@@ -1127,6 +1111,24 @@ Default: all host CPUs.
 =item B<--force>
 
 Rebuild artifacts even if output files already exist.
+
+=item B<--source-only>
+
+Build source RPMs and stop. Every step up to and including C<mock --buildsrpm> runs
+normally, so the srpms are the same ones a full build would produce; only the binary
+C<--rebuild> is skipped.
+
+  ./buildrpms.pl --target alma+epel-9-x86_64 --source-only
+
+The srpms land in C<dist/E<lt>targetE<gt>/rpms/SRPMS/> and that index is regenerated.
+The binary metadata under C<dist/E<lt>targetE<gt>/rpms/> is deliberately left as the
+last binary build wrote it: re-indexing a directory with no binaries in it would
+replace working metadata with metadata for an empty repository. For the same reason
+no C<.repo> file or buildinfo is emitted, since both describe an installable binary
+repo that this mode does not produce. With C<--gpg-sign> the srpms are signed.
+
+Cannot be combined with C<--merge-core-repos>, which assembles already-built
+per-arch binary trees.
 
 =item B<--release>=I<STRING>
 

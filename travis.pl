@@ -289,7 +289,7 @@ sub build_xcat_core{
     #    }
     #}
 
-    my $cmd = "sudo ./build-ubunturepo -c UP=0 BUILDALL=1 GPGSIGN=0";
+    my $cmd = "sudo ./builddebs.pl --force";
     @output = runcmd("$cmd");
     print ">>>>>Dumper the output of '$cmd'\n";
     print Dumper \@output;

@@ -190,83 +190,9 @@ is( $status, 1, '--stage rejects a missing destination directory' );
 like( $output, qr{ is not a directory$}m,
     '--stage identifies the invalid destination directory' );
 
-my $rpm_fixture = tempdir( CLEANUP => 1 );
-my $rpm_root = stage_makerpm_fixture($rpm_fixture);
-my $fake_bin = File::Spec->catdir( $rpm_fixture, 'fake-bin' );
-make_path($fake_bin);
-write_executable(
-    File::Spec->catfile( $fake_bin, 'uname' ),
-    "#!/bin/sh\nprintf '%s\\n' Linux\n"
-);
-write_executable(
-    File::Spec->catfile( $fake_bin, 'rpmbuild' ),
-    <<'EOF'
-#!/bin/sh
-case ${1:-} in
-    --version)
-        exit 0
-        ;;
-    --eval)
-        printf '%s\n' "$FAKE_RPMROOT"
-        exit 0
-        ;;
-esac
-printf 'build\n' >>"$FAKE_RPMBUILD_LOG"
-exit 0
-EOF
-);
-
-my $rpm_build_log = File::Spec->catfile( $rpm_fixture, 'rpmbuild.log' );
-write_text( $rpm_build_log, '' );
-my %rpm_environment = (
-    FAKE_RPMBUILD_LOG => $rpm_build_log,
-    FAKE_RPMROOT      => $rpm_root,
-    PATH              => "$fake_bin:$ENV{PATH}",
-);
-( $status, $output ) = run_command(
-    \%rpm_environment,
-    File::Spec->catfile( $rpm_fixture, 'makerpm' ),
-    'xCATsn', 'x86_64'
-);
-is( $status, 0, 'the legacy RPM builder stages service-node sources' )
-  or diag($output);
-is( read_text($rpm_build_log), "build\n",
-    'the legacy RPM builder reaches rpmbuild after successful staging' );
-for my $name ( 'xcat.conf', 'xcat.conf.apach24' ) {
-    is(
-        read_text( File::Spec->catfile( $rpm_root, 'SOURCES', $name ) ),
-        read_text( File::Spec->catfile( $rpm_fixture, 'xCAT', $name ) ),
-        "the legacy RPM builder stages canonical $name content"
-    );
-}
-
-write_text( $rpm_build_log, '' );
-my $rpm_canonical = File::Spec->catfile( $rpm_fixture, 'xCAT', 'xcat.conf' );
-my $rpm_canonical_target =
-  File::Spec->catfile( $rpm_fixture, 'invalid-canonical-target' );
-write_text( $rpm_canonical_target, read_text($rpm_canonical) );
-unlink($rpm_canonical) or die "Unable to remove $rpm_canonical: $!";
-symlink( $rpm_canonical_target, $rpm_canonical )
-  or die "Unable to create $rpm_canonical symlink: $!";
-for my $name ( 'xcat.conf', 'xcat.conf.apach24' ) {
-    write_text( File::Spec->catfile( $rpm_root, 'SOURCES', $name ),
-        "stale $name\n" );
-}
-( $status, $output ) = run_command(
-    \%rpm_environment,
-    File::Spec->catfile( $rpm_fixture, 'makerpm' ),
-    'xCATsn', 'x86_64'
-);
-is( $status, 1, 'the legacy RPM builder propagates staging failure' );
-like( $output, qr{^xCAT/xcat\.conf must be a regular file$}m,
-    'the legacy RPM builder reports the rejected canonical source' );
-is( read_text($rpm_build_log), '',
-    'the legacy RPM builder does not reach rpmbuild after staging failure' );
-for my $name ( 'xcat.conf', 'xcat.conf.apach24' ) {
-    is( read_text( File::Spec->catfile( $rpm_root, 'SOURCES', $name ) ),
-        "stale $name\n",
-        "failed legacy staging does not disguise the stale $name source" );
-}
+# The legacy `makerpm` half of this file went with makerpm itself; buildrpms.pl
+# invokes build-utils/sync-xcat-apache-configs directly, and the helper's own
+# behaviour is covered above.
 
 my $management_debian = slurp_repo_file('xCAT/debian/install');
 my $service_debian = slurp_repo_file('xCATsn/debian/install');
@@ -299,57 +225,7 @@ sub stage_sync_fixture {
     return $destination;
 }
 
-sub stage_makerpm_fixture {
-    my ($root) = @_;
-    copy( repo_path('makerpm'), File::Spec->catfile( $root, 'makerpm' ) )
-      or die "Unable to stage makerpm: $!";
-    chmod 0755, File::Spec->catfile( $root, 'makerpm' )
-      or die "Unable to make staged makerpm executable: $!";
-    write_text( File::Spec->catfile( $root, 'Version' ), "2.19.0\n" );
 
-    make_path(
-        File::Spec->catdir( $root, 'build-utils' ),
-        File::Spec->catdir( $root, 'xCAT' ),
-        File::Spec->catdir( $root, 'xCAT', 'etc', 'rsyslog.d' ),
-        File::Spec->catdir( $root, 'xCAT', 'etc', 'logrotate.d' ),
-        File::Spec->catdir( $root, 'xCATsn' ),
-    );
-    copy( $sync_helper,
-        File::Spec->catfile( $root, 'build-utils', 'sync-xcat-apache-configs' ) )
-      or die "Unable to stage the Apache configuration helper: $!";
-    chmod 0755,
-      File::Spec->catfile( $root, 'build-utils', 'sync-xcat-apache-configs' )
-      or die "Unable to make the Apache configuration helper executable: $!";
-    copy( repo_path('build-utils/source-only.sh'),
-        File::Spec->catfile( $root, 'build-utils', 'source-only.sh' ) )
-      or die "Unable to stage the source-only build helper: $!";
-    write_text( File::Spec->catfile( $root, 'xCAT', 'xcat.conf' ),
-        "canonical apache22\n" );
-    write_text( File::Spec->catfile( $root, 'xCAT', 'xcat.conf.apach24' ),
-        "canonical apache24\n" );
-    write_text( File::Spec->catfile( $root, 'xCATsn', 'xcat.conf' ),
-        "stale service-node apache22\n" );
-    write_text( File::Spec->catfile( $root, 'xCATsn', 'xcat.conf.apach24' ),
-        "stale service-node apache24\n\n" );
-    write_text( File::Spec->catfile( $root, 'xCATsn', 'LICENSE.html' ),
-        "fixture license\n" );
-    write_text( File::Spec->catfile( $root, 'xCATsn', 'xCATSN' ),
-        "fixture service-node configuration\n" );
-
-    my $rpm_root = File::Spec->catdir( $root, 'rpmbuild' );
-    make_path(
-        File::Spec->catdir( $rpm_root, 'SOURCES' ),
-        File::Spec->catdir( $rpm_root, 'SRPMS' ),
-        File::Spec->catdir( $rpm_root, 'RPMS', 'x86_64' ),
-    );
-    return $rpm_root;
-}
-
-sub write_executable {
-    my ( $path, $contents ) = @_;
-    write_text( $path, $contents );
-    chmod 0755, $path or die "Unable to make $path executable: $!";
-}
 
 sub run_command {
     my ( $environment, @command ) = @_;

@@ -4,21 +4,65 @@ Building Source Code
 xcat-core
 ---------
 
-Clone the xCAT project from `GitHub <https://github.com/xcat2/xcat-core>`_::
+Clone the xCAT project from `GitHub <https://github.com/xcat2/xcat-core>`_ and
+build the rpms with ``buildrpms.pl``::
 
     cd xcat-core
-    ./buildcore.sh
+    ./buildrpms.pl --target alma+epel-9-x86_64
 
-To build the source rpms and no binary rpms, set ``SRCONLY``::
+Each package is built in its own ``mock`` chroot, so the build does not depend on
+what happens to be installed on the build host. Pass ``--target`` once per target
+to build several; the default is every supported EL target. ``./buildrpms.pl
+--help`` lists the rest.
+
+To build the source rpms and no binary rpms, pass ``--source-only``::
 
     cd xcat-core
-    ./buildcore.sh SRCONLY=1
+    ./buildrpms.pl --target alma+epel-9-x86_64 --source-only
 
 A source rpm is the input that a build service such as mock, koji, COPR or OBS
 takes, and it lets one machine make the source rpms while another makes the
 binary rpms for each architecture. ``rpmbuild`` does not need the packages named
 in ``BuildRequires`` to make a source rpm, so this also builds on a machine that
-cannot complete a full build. ``SRCONLY`` is not supported on AIX.
+cannot complete a full build.
+
+The source rpms land in ``dist/<target>/rpms/SRPMS/``. The binary repository
+metadata is left as the last full build wrote it, and no ``.repo`` file is
+emitted, because a source-only run has no binary packages to advertise.
+
+.. note::
+
+   ``buildcore.sh``, ``makerpm`` and ``buildlocal.sh`` were removed in 2.19;
+   ``buildrpms.pl`` replaces all three, and its ``--source-only`` replaces the
+   old ``SRCONLY=1``.
+
+   ``build-ubunturepo`` is superseded by ``builddebs.pl`` but is **still in the
+   tree for now**, as a differential oracle: it is the reference the new builder
+   is checked against, and it is removed once the CD pipelines have been moved
+   over. Do not add features to it.
+
+Debian and Ubuntu packages
+--------------------------
+
+Build the ``.deb`` packages and an apt repository with ``builddebs.pl``::
+
+    cd xcat-core
+    ./builddebs.pl
+
+The packages land in ``dist/debs/debs/`` and the repository in
+``dist/debs/xcat-core/``. Pass ``--dest`` to write them elsewhere, ``--dist`` to
+limit which Ubuntu releases the repository serves, and ``--gpg-sign`` (with
+``--gpg-home``) to sign it. ``./builddebs.pl --help`` lists the rest.
+
+xcat-core packages are Perl, so one build serves every Ubuntu release: the
+packages are built **once** and the same files are published into every codename
+the repository declares. Only ``xCAT``, ``xCATsn`` and ``xCAT-genesis-scripts``
+carry an architecture, and there the difference is packaging metadata rather than
+compiled output. That is why this build needs no ``sbuild`` and no per-codename
+chroot -- unlike xcat-deps, whose packages are compiled and genuinely differ per
+release.
+
+Helpers shared by both builders live in ``build-utils/lib/XCAT/BuildUtils.pm``.
 
 ``buildcore.sh`` builds the architecture specific packages (``xCAT``, ``xCATsn``,
 ``xCAT-genesis-scripts``) for every supported architecture, riscv64 included, with
