@@ -16,10 +16,10 @@ use warnings;
 use File::Temp qw(tempdir);
 use FindBin;
 use lib "$FindBin::Bin/../lib";
-use lib "$FindBin::Bin/../..";
+use lib "$FindBin::Bin/../../build-utils/lib";
 use Test::More;
 
-use BuildUtils qw(lock_id_for take_build_lock);
+use XCAT::BuildUtils qw(lock_id_for take_build_lock);
 
 my $lockdir = tempdir(CLEANUP => 1);
 

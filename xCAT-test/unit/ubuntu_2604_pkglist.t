@@ -9,8 +9,8 @@ use Test::More;
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use lib "$FindBin::Bin/../../perl-xCAT";
 
-use lib "$FindBin::Bin/../..";
-use BuildUtils ();
+use lib "$FindBin::Bin/../../build-utils/lib";
+use XCAT::BuildUtils ();
 
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
 
@@ -155,13 +155,13 @@ close($rel_fh);
 ok( xCAT::Template::ubuntu_subiquity_local_apt_repo($repo_dir),
     'an indexed directory is' );
 
-# The releases the deb builder serves by default. Read from BuildUtils, which is where
+# The releases the deb builder serves by default. Read from XCAT::BuildUtils, which is where
 # the builder itself reads them, rather than matched against the source that sets them:
 # the old assertion passed on any file containing that shell fragment, and broke on a
 # reflow that changed nothing.
-ok( scalar( grep { $_ eq 'resolute' } BuildUtils::default_dists() ),
+ok( scalar( grep { $_ eq 'resolute' } XCAT::BuildUtils::default_dists() ),
     'the Ubuntu repository serves resolute by default' );
-like( BuildUtils::reprepro_distributions( [ BuildUtils::default_dists() ], undef ),
+like( XCAT::BuildUtils::reprepro_distributions( [ XCAT::BuildUtils::default_dists() ], undef ),
     qr/^Codename: resolute$/m,
     'and a resolute stanza reaches conf/distributions' );
 

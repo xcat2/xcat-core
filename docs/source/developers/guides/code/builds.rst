@@ -62,7 +62,7 @@ compiled output. That is why this build needs no ``sbuild`` and no per-codename
 chroot -- unlike xcat-deps, whose packages are compiled and genuinely differ per
 release.
 
-Helpers shared by both builders live in ``BuildUtils.pm``.
+Helpers shared by both builders live in ``build-utils/lib/XCAT/BuildUtils.pm``.
 
 ``buildcore.sh`` builds the architecture specific packages (``xCAT``, ``xCATsn``,
 ``xCAT-genesis-scripts``) for every supported architecture, riscv64 included, with

@@ -3,7 +3,7 @@
 #
 # Replaces build-ubunturepo. The shape mirrors buildrpms.pl -- Getopt::Long options,
 # one package list, build then index then sign -- so the two builders read the same way
-# and share BuildUtils.pm.
+# and share XCAT::BuildUtils.
 #
 # The central fact this design rests on: xcat-core debs are Perl. They are byte-identical
 # for every Ubuntu release, so they are built ONCE and the same files are published into
@@ -27,8 +27,8 @@ use POSIX qw(strftime);
 use Pod::Usage qw(pod2usage);
 
 use FindBin;
-use lib $FindBin::Bin;
-use BuildUtils qw(
+use lib "$FindBin::Bin/build-utils/lib";
+use XCAT::BuildUtils qw(
     source_date_epoch snap_release deb_version
     stage_probe_helpers XCAT_PROBE_HELPERS
     deb_package_arches dist_arches default_dists
@@ -57,7 +57,7 @@ my @PACKAGES = qw(
 );
 
 # Releases the repo serves. The same debs are published into each; the list itself
-# lives in BuildUtils so the builder and the tests cannot disagree about it.
+# lives in XCAT::BuildUtils so the builder and the tests cannot disagree about it.
 my @DISTS = default_dists();
 
 my %opts;
@@ -77,7 +77,7 @@ GetOptions(
 ) or usage();
 usage(exitval => 0, verbose => 2) if $opts{help};
 
-$BuildUtils::VERBOSE = $opts{verbose};
+$XCAT::BuildUtils::VERBOSE = $opts{verbose};
 
 $opts{packages} = @cli_packages ? \@cli_packages : \@PACKAGES;
 $opts{dists}    = @cli_dists    ? \@cli_dists    : \@DISTS;
@@ -126,7 +126,7 @@ $ENV{DEBEMAIL}    = 'xcat-build@xcat.org';
 my $MAINTAINER = "$ENV{DEBFULLNAME} <$ENV{DEBEMAIL}>";
 my $DEB_DATE   = strftime('%a, %d %b %Y %H:%M:%S +0000', gmtime($EPOCH));
 
-# The build lock is scoped to this checkout, not the host -- see BuildUtils::lock_id_for.
+# The build lock is scoped to this checkout, not the host -- see XCAT::BuildUtils::lock_id_for.
 
 # ------------------------------------------------------------------ staging --
 #

@@ -42,9 +42,9 @@ use File::Path qw(make_path remove_tree);
 use File::Slurper qw(read_text write_text);
 use File::Temp qw(tempdir tempfile);
 use FindBin qw($Bin);
-use lib $Bin;
-use BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildinfo_text
-                  write_script read_line);
+use lib "$Bin/build-utils/lib";
+use XCAT::BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildinfo_text
+                        write_script read_line targetarch_from_target);
 use Fcntl qw(:flock);           # per-target build lock (concurrency guard; see main())
 use Getopt::Long qw(GetOptions);
 use POSIX qw(strftime);
@@ -54,7 +54,6 @@ use Pod::Usage qw(pod2usage);
 use autodie;
 use autodie qw(cp);
 
-require "$Bin/build-utils/lib/XCAT/BuildUtils.pm";
 
 my $SOURCES = "$ENV{HOME}/rpmbuild/SOURCES";
 # Ensure the rpmbuild tree exists. buildrpms stages source tarballs into $SOURCES, but it only
@@ -189,7 +188,7 @@ GetOptions(
     "source-only" => \$opts{source_only},
 ) or usage();
 
-$BuildUtils::VERBOSE = $opts{verbose};
+$XCAT::BuildUtils::VERBOSE = $opts{verbose};
 
 # --package REPLACES the default set (build exactly what was asked), so
 # `--package xCAT-genesis-base` builds only genesis-base for the dep pipeline.
@@ -435,7 +434,7 @@ sub buildspkgs {
     my $ext = $opts{mock_uniqueext} ? "-$opts{mock_uniqueext}" : "";
     my $chroot = "$pkg-$target$ext";
     my $targetarch =
-      XCAT::BuildUtils::targetarch_from_target( $target, $ARCH );
+      targetarch_from_target( $target, $ARCH );
     my $genesis_tarch = genesis_tarch_from_targetarch($targetarch);
 
     my $diskcache = (
@@ -492,7 +491,7 @@ sub buildpkgs {
 
     # get x86_64 from alma+epel-9-x86_64
     my $targetarch =
-      XCAT::BuildUtils::targetarch_from_target( $target, $ARCH );
+      targetarch_from_target( $target, $ARCH );
 
     # xCAT genesis packages include the translated target arch in their file names.
     my $arch = is_in($pkg, @NATIVE_PACKAGES) ? $targetarch : "noarch";

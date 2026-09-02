@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# BuildUtils.pm: the helpers buildrpms.pl and builddebs.pl share.
+# XCAT::BuildUtils: the helpers buildrpms.pl and builddebs.pl share.
 #
 # Every function here is pure, so every assertion below RUNS it. Nothing in this file
 # reads the builders' source to check that they call it -- that would pass with the
@@ -13,12 +13,12 @@ use File::Spec;
 use File::Temp qw(tempdir);
 use FindBin;
 use lib "$FindBin::Bin/../lib";
-use lib "$FindBin::Bin/../..";
+use lib "$FindBin::Bin/../../build-utils/lib";
 use Test::More;
 
-BEGIN { use_ok('BuildUtils') or BAIL_OUT('BuildUtils.pm does not load'); }
+BEGIN { use_ok('XCAT::BuildUtils') or BAIL_OUT('XCAT::BuildUtils does not load'); }
 
-use BuildUtils qw(
+use XCAT::BuildUtils qw(
     source_date_epoch snap_release deb_version
     stage_probe_helpers XCAT_PROBE_HELPERS
     deb_package_arches dist_arches
@@ -312,7 +312,7 @@ isnt( git_revision( git => sub { '' }, read_file => sub { '' } ), '',
 # deploy.sh copies this file verbatim and cluster-test.pl parses it, so the
 # field names and their order are a contract, not a presentation choice.
 {
-    my $text = BuildUtils::buildinfo_text(
+    my $text = XCAT::BuildUtils::buildinfo_text(
         version => '2.18.1', release => 'snap1', epoch => 0,
         commit => 'abcdef1234567890', host => 'builder',
         time_format => '%Y-%m-%d',
@@ -328,8 +328,8 @@ isnt( git_revision( git => sub { '' }, read_file => sub { '' } ), '',
     # The two builders stamp different formats, and both are consumed.
     my %common = (version => '1', release => '2', epoch => 0,
                   commit => 'c', host => 'h');
-    isnt( BuildUtils::buildinfo_text(%common, time_format => '%a %b %d %H:%M:%S %Y'),
-          BuildUtils::buildinfo_text(%common, time_format => '%a %b %e %H:%M:%S %Z %Y'),
+    isnt( XCAT::BuildUtils::buildinfo_text(%common, time_format => '%a %b %d %H:%M:%S %Y'),
+          XCAT::BuildUtils::buildinfo_text(%common, time_format => '%a %b %e %H:%M:%S %Z %Y'),
           'each builder keeps the format its own consumers parse' );
 }
 
@@ -341,12 +341,12 @@ isnt( git_revision( git => sub { '' }, read_file => sub { '' } ), '',
     my $path = File::Spec->catfile($dir, 'thing.txt');
     write_text($path, "one\ntwo\n");
 
-    my $changed = BuildUtils::rewrite_file($path, sub { uc $_[0] });
+    my $changed = XCAT::BuildUtils::rewrite_file($path, sub { uc $_[0] });
     is( $changed, 1, 'rewriting a file that exists reports that it did' );
     is( read_text($path), "ONE\nTWO\n", 'and applies the transform' );
 
     my $absent = File::Spec->catfile($dir, 'not-there.txt');
-    is( BuildUtils::rewrite_file($absent, sub { die 'must not run' }), 0,
+    is( XCAT::BuildUtils::rewrite_file($absent, sub { die 'must not run' }), 0,
         'a file that is not there is left alone, not created' );
     ok( !-e $absent, 'and really is not created' );
 }
@@ -360,24 +360,24 @@ isnt( git_revision( git => sub { '' }, read_file => sub { '' } ), '',
     my $path = File::Spec->catfile($dir, 'Version');
 
     write_text($path, "2.18.1\n");
-    is( BuildUtils::read_line($path), '2.18.1',
+    is( XCAT::BuildUtils::read_line($path), '2.18.1',
         'a one-line stamp comes back without its newline' );
 
     write_text($path, "2.18.1\nignored\n");
-    is( BuildUtils::read_line($path), '2.18.1',
+    is( XCAT::BuildUtils::read_line($path), '2.18.1',
         'and only the first line is taken' );
 
     write_text($path, "2.18.1");
-    is( BuildUtils::read_line($path), '2.18.1',
+    is( XCAT::BuildUtils::read_line($path), '2.18.1',
         'a file with no trailing newline reads the same' );
 
     # builddebs.pl falls back to snap_release() when there is no Release file,
     # so absence has to be reported rather than raised.
-    is( BuildUtils::read_line(File::Spec->catfile($dir, 'nope')), undef,
+    is( XCAT::BuildUtils::read_line(File::Spec->catfile($dir, 'nope')), undef,
         'a file that is not there reads as undef, not an error' );
 
     write_text($path, "");
-    is( BuildUtils::read_line($path), undef, 'and so does an empty file' );
+    is( XCAT::BuildUtils::read_line($path), undef, 'and so does an empty file' );
 }
 
 # ------------------------------------------------- the published helper script --
@@ -389,7 +389,7 @@ isnt( git_revision( git => sub { '' }, read_file => sub { '' } ), '',
     my $dir = tempdir(CLEANUP => 1);
     my $path = File::Spec->catfile($dir, 'mklocalrepo.sh');
 
-    BuildUtils::write_script($path, "#!/bin/sh\necho hello\n");
+    XCAT::BuildUtils::write_script($path, "#!/bin/sh\necho hello\n");
     is( read_text($path), "#!/bin/sh\necho hello\n",
         'a helper script keeps the exact text it was given' );
     ok( -x $path, 'and is executable, which is the point of writing it this way' );
@@ -399,7 +399,7 @@ isnt( git_revision( git => sub { '' }, read_file => sub { '' } ), '',
     # The genesis postscripts builddebs.pl installs are 0755, not 0775, so the
     # mode has to stay the caller's to choose.
     my $ps = File::Spec->catfile($dir, 'bmcsetup');
-    BuildUtils::write_script($ps, "#!/bin/sh\n", 0755);
+    XCAT::BuildUtils::write_script($ps, "#!/bin/sh\n", 0755);
     is( (stat $ps)[2] & 07777, 0755, 'a caller may ask for a different mode' );
 }
 
@@ -408,20 +408,20 @@ isnt( git_revision( git => sub { '' }, read_file => sub { '' } ), '',
 # two builders disagreed about shifting it, so a caller comparing sh() against
 # a specific code got the code from one and a multiple of it from the other.
 {
-    is( BuildUtils::sh('true'), 0, 'a command that succeeds reports 0' );
-    is( BuildUtils::sh('sh -c "exit 3"'), 3,
+    is( XCAT::BuildUtils::sh('true'), 0, 'a command that succeeds reports 0' );
+    is( XCAT::BuildUtils::sh('sh -c "exit 3"'), 3,
         'the exit code is returned, not the wait status it is packed into' );
-    isnt( BuildUtils::sh('sh -c "exit 3"'), 768,
+    isnt( XCAT::BuildUtils::sh('sh -c "exit 3"'), 768,
         'and specifically not the exit code times 256' );
 }
 
 {
     # --verbose echoes the command; the default does not.
-    local $BuildUtils::VERBOSE = 1;
+    local $XCAT::BuildUtils::VERBOSE = 1;
     my $out = '';
     open my $fh, '>', \$out or die;
     my $old = select $fh;
-    BuildUtils::sh('true');
+    XCAT::BuildUtils::sh('true');
     select $old;
     close $fh;
     like( $out, qr/\ARunning: true/, 'a verbose run echoes the command' );
@@ -433,16 +433,16 @@ isnt( git_revision( git => sub { '' }, read_file => sub { '' } ), '',
 # Reversed polarities for one operation are easy to misread, so there is now a
 # single name with a single direction.
 {
-    is( BuildUtils::sh_or_die('true'), 0,
+    is( XCAT::BuildUtils::sh_or_die('true'), 0,
         'a command that succeeds returns 0 and does not die' );
 
-    my $err = eval { BuildUtils::sh_or_die('sh -c "exit 4"', 'FATAL: it failed'); 1 }
+    my $err = eval { XCAT::BuildUtils::sh_or_die('sh -c "exit 4"', 'FATAL: it failed'); 1 }
         ? '' : $@;
     like( $err, qr/FATAL: it failed/, 'a failure dies with the caller\'s message' );
     like( $err, qr/exit 4/,
         'and names the exit code, which the old spellings threw away' );
 
-    my $bare = eval { BuildUtils::sh_or_die('sh -c "exit 5"'); 1 } ? '' : $@;
+    my $bare = eval { XCAT::BuildUtils::sh_or_die('sh -c "exit 5"'); 1 } ? '' : $@;
     like( $bare, qr/\Qsh -c "exit 5"\E/,
         'a caller with no message still gets the command that failed' );
 }

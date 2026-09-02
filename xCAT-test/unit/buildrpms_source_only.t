@@ -142,12 +142,11 @@ ok( !grep( { $_ eq 'buildpkgs' } @{ stages_for(1) } ),
 # buildrpms.pl rewrites the tracked Gitinfo in its working directory and creates
 # $HOME/rpmbuild. Running it in place left the developer's tree dirty and reached
 # into their home for a test that only exercises argument parsing. Version is
-# staged because the same file-scope code reads it and dies without it. Both
-# modules named BuildUtils.pm are staged at their own relative paths, because
-# buildrpms.pl loads each from a different directory: BuildUtils.pm from its own,
-# and XCAT::BuildUtils from build-utils/lib/XCAT.
+# staged because the same file-scope code reads it and dies without it, and
+# XCAT::BuildUtils at its own relative path because buildrpms.pl puts
+# build-utils/lib on @INC relative to its own directory.
 my $sandbox = tempdir(CLEANUP => 1);
-for my $needed (qw(buildrpms.pl Version BuildUtils.pm
+for my $needed (qw(buildrpms.pl Version
                    build-utils/lib/XCAT/BuildUtils.pm)) {
     my $from = repo_path($needed);
     BAIL_OUT("$needed is missing from the repository") unless -r $from;
