@@ -584,6 +584,42 @@ sub subiquity_kcmdline {
     return $kcmdline;
 }
 
+#-------------------------------------------------------------------------------
+
+=head3 subiquity_boot_params
+
+    Resolve the install server and build the Subiquity command line, or say why not.
+
+    The two steps are composed here rather than in mkinstall so the composition can be driven:
+    mkinstall needs a management node, and the decision that matters -- which install server
+    ends up in nfsroot -- is exactly what a regression would change. The caller keeps the side
+    effects: reporting the error and skipping the node.
+
+    Arguments:
+        $base       the command line built so far
+        $instserver the install server name, address, or the '!myipfn!' placeholder
+        $pkgdir     the install media path exported over NFS
+        $httpport   the xCAT HTTP port
+        $node       the node being installed
+        $resolver   optional coderef, for tests; passed through to subiquity_nfsroot_server
+    Returns:
+        ($kcmdline, undef) on success, or (undef, $message) when the server does not resolve
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub subiquity_boot_params {
+    my ($base, $instserver, $pkgdir, $httpport, $node, $resolver) = @_;
+
+    my $nfsip = subiquity_nfsroot_server($instserver, $resolver);
+    return (undef, "Could not resolve the install server '$instserver' to an address. "
+          . "The Ubuntu live installer mounts its root with klibc nfsmount, which cannot "
+          . "resolve names, so nfsroot must be an address.")
+      unless $nfsip;
+
+    return (subiquity_kcmdline($base, $nfsip, $pkgdir, $instserver, $httpport, $node), undef);
+}
+
 sub mkinstall {
     xCAT::MsgUtils->message("S", "Doing debian mkinstall");
     my $request  = shift;
@@ -1063,17 +1099,16 @@ sub mkinstall {
             my $kcmdline = "nofb utf8 auto xcatd=" . $instserver;
 
             if (using_subiquity($os,$tmplfile)) {
-                # Fail here rather than handing casper a name: klibc's nfsmount cannot resolve
-                # one, so the node would panic "can't parse IP address" at boot, on the node,
-                # with nothing said on the management node. '!myipfn!' is exempt -- pxe.pm and
-                # grub2.pm turn it into an address when they write the boot config.
-                my $nfsip = subiquity_nfsroot_server($instserver);
-                unless ($nfsip) {
-                    xCAT::MsgUtils->report_node_error($callback, $node,
-                        "Could not resolve the install server '$instserver' to an address. The Ubuntu live installer mounts its root with klibc nfsmount, which cannot resolve names, so nfsroot must be an address.");
+                # Fail rather than hand casper a name: klibc's nfsmount cannot resolve one, so
+                # the node would panic "can't parse IP address" at boot, on the node, with
+                # nothing said on the management node.
+                my ($subiquity_cmdline, $subiquity_error) =
+                  subiquity_boot_params($kcmdline, $instserver, $pkgdir, $httpport, $node);
+                if ($subiquity_error) {
+                    xCAT::MsgUtils->report_node_error($callback, $node, $subiquity_error);
                     next;
                 }
-                $kcmdline = subiquity_kcmdline($kcmdline, $nfsip, $pkgdir, $instserver, $httpport, $node);
+                $kcmdline = $subiquity_cmdline;
             } else {
                 $kcmdline .= " url=http://${instserver}:$httpport/install/autoinst/$node";
                 $kcmdline .= " mirror/http/hostname=${instserver}:$httpport";

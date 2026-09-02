@@ -35,6 +35,15 @@ for my $name (qw(subiquity_nfsroot_server subiquity_kcmdline subiquity_boot_para
     $body .= "$sub\n";
 }
 
+# Stand in for the module the routine falls back to when no resolver is injected. Without this
+# a call site that bypassed the injected resolver would die on a missing module -- a red, but
+# for the wrong reason. With it, bypassing the resolver produces the WRONG ANSWER instead of an
+# exception, which is what the assertions below are meant to catch.
+{
+    package xCAT::NetworkUtils;
+    sub getipaddr { return undef }
+}
+
 {
     package T;
     eval "$body; 1" or main::BAIL_OUT("could not eval the subiquity helpers: $@");

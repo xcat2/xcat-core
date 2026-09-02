@@ -37,7 +37,9 @@ sub write_resolv_conf {
     # fail a test. Sandboxing by rewriting paths is fragile by nature -- respelling the path in
     # the template as, say, `etcdir=/etc; rm -f "$etcdir/resolv.conf"` slips straight past the
     # substitution above. Refuse to execute anything that still points outside the scratch tree.
-    if ($script =~ m{(?<!\Q$root\E)/etc/}) {
+    # \b not "/etc/": the respelling this guard exists to catch -- `etcdir=/etc; rm -f
+    # "$etcdir/resolv.conf"` -- has no slash after /etc, so requiring one let it straight past.
+    if ($script =~ m{(?<!\Q$root\E)/etc\b}) {
         BAIL_OUT('the /etc rewrite no longer covers the fragment; refusing to run it as root');
     }
 
