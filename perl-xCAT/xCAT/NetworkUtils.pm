@@ -1687,7 +1687,7 @@ sub getNodeIPaddress
     }
 
     # Quick return if pass in an IP
-    return $nodetocheck if (xCAT::NetworkUtils->isIpaddr($nodetocheck));
+    return $nodetocheck if (xCAT::NetworkUtils->isIpv4addr($nodetocheck));
 
     my $nodeip = xCAT::NetworkUtils->getipaddr($nodetocheck);
     if (!$nodeip)
@@ -2085,54 +2085,7 @@ sub toIP
 
 #-------------------------------------------------------------------------------
 
-=head3    validate_ip
-    Validate list of IPs
-    Arguments:
-        List of IPs
-    Returns:
-        1 - Invalid IP address in the list
-        0 - IP addresses are all valid
-    Globals:
-        none
-    Error:
-        none
-    Example:
-        if (xCAT::NetworkUtils->validate_ip($IP)) {}
-    Comments:
-        none
-=cut
-
-#-------------------------------------------------------------------------------
-sub validate_ip
-{
-    my ($class, @IPs) = @_;
-    foreach (@IPs) {
-        my $ip = $_;
-
-        #TODO need more check for IPv6 address
-        if ($ip =~ /:/)
-        {
-            return ([0]);
-        }
-        ###################################
-        # Length is 4 for IPv4 addresses
-        ###################################
-        my (@octets) = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
-        if (scalar(@octets) != 4) {
-            return ([ 1, "Invalid IP address1: $ip" ]);
-        }
-        foreach my $octet (@octets) {
-            if (($octet < 0) or ($octet > 255)) {
-                return ([ 1, "Invalid IP address2: $ip" ]);
-            }
-        }
-    }
-    return ([0]);
-}
-
-#-------------------------------------------------------------------------------
-
-=head3    isIpaddr
+=head3    isIpv4addr
 
     returns 1 if parameter is has a valid IP address form.
 
@@ -2154,7 +2107,7 @@ sub validate_ip
 =cut
 
 #-------------------------------------------------------------------------------
-sub isIpaddr
+sub isIpv4addr
 {
     my $addr = shift;
     if (($addr) && ($addr =~ /xCAT::NetworkUtils/))
@@ -2181,6 +2134,109 @@ sub isIpaddr
     {
         return 1;
     }
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    isIpaddr
+
+    Deprecated alias for isIpv4addr, kept for external callers.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub isIpaddr
+{
+    return isIpv4addr(@_);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    isIpv6addr
+
+    returns 1 if the value is a valid IPv6 address.
+
+    Arguments:
+        IPv6 address string
+    Returns:
+        1 - valid IPv6 address
+        0 - not a valid IPv6 address
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         if (xCAT::NetworkUtils->isIpv6addr($ip)) { blah; }
+    Comments:
+        Zone identifiers such as fe80::1%eth0 are not accepted.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub isIpv6addr
+{
+    my $value = shift;
+    if (($value) && ($value =~ /xCAT::NetworkUtils/))
+    {
+        $value = shift;
+    }
+
+    unless (defined($value) and length($value))
+    {
+        return 0;
+    }
+
+    # inet_pton handling of zone identifiers is platform-dependent
+    if ($value =~ /%/)
+    {
+        return 0;
+    }
+
+    my $packed_address;
+    if (defined &Socket::inet_pton)
+    {
+        $packed_address = eval { Socket::inet_pton(Socket::AF_INET6(), $value) };
+    }
+    elsif (defined &Socket6::inet_pton)
+    {
+        # Perl 5.8 core Socket has no inet_pton; Socket6 provides it
+        $packed_address = eval { Socket6::inet_pton(Socket6::AF_INET6(), $value) };
+    }
+    return defined($packed_address) ? 1 : 0;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    isValidIp
+
+    returns 1 if the value is a valid IPv4 or IPv6 address.
+
+    Arguments:
+        IP address string
+    Returns:
+        1 - valid IP address
+        0 - not a valid IP address
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         if (xCAT::NetworkUtils->isValidIp($ip)) { blah; }
+    Comments:
+        IPv4 values follow the isIpv4addr rules.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub isValidIp
+{
+    my $value = shift;
+    if (($value) && ($value =~ /xCAT::NetworkUtils/))
+    {
+        $value = shift;
+    }
+
+    return (isIpv4addr($value) or isIpv6addr($value)) ? 1 : 0;
 }
 
 

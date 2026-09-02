@@ -771,9 +771,9 @@ sub get_server_nodes
         else{
             next;
         }
-        chomp $serv;
+        chomp $serv if $serv;
 
-        if (xCAT::NetworkUtils->validate_ip($serv)) {
+        if (xCAT::NetworkUtils->isValidIp($serv)) {
             push(@{ $servernodes{$serv} }, $node);
         }
     }

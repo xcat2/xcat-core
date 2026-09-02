@@ -478,7 +478,7 @@ sub do_pre_check {
             exit 1;
         }
 
-        if (!xCAT::NetworkUtils->isIpaddr("$masteripinsite")) {
+        if (!xCAT::NetworkUtils->isIpv4addr("$masteripinsite")) {
             probe_utils->send_msg("stdout", "f", $msg);
             probe_utils->send_msg("stdout", "d", "The value of 'master' in 'site' table isn't an IP address");
             exit 1;
