@@ -154,6 +154,17 @@ else
 	fi
 fi
 
+# Both backends discipline the clock, and so does systemd-timesyncd, so it has to go either
+# way. Installing chrony or ntpsec usually displaces it already -- both Conflicts: time-daemon --
+# but that only helps when an install actually happens; on a re-run, or where the daemon was
+# already present, timesyncd is still enabled. This must stay ABOVE the ntpd hand-off below:
+# that path execs setupntp.traditional, which never returns and never touches timesyncd.
+if check_executes systemctl >/dev/null 2>&1
+then
+	systemctl stop systemd-timesyncd.service 2>/dev/null
+	systemctl disable systemd-timesyncd.service 2>/dev/null
+fi
+
 if [ -n "${USE_NTPD}" ]
 then
 	# Call setupntp.traditional, and pass the parsed ntp servers
@@ -180,11 +191,6 @@ systemctl disable ntpd.service 2>/dev/null
 
 systemctl disable ntp-wait.service 2>/dev/null
 systemctl disable ntpdate.service 2>/dev/null
-
-# systemd-timesyncd ships as part of systemd rather than a time-daemon package, so nothing
-# displaces it and it keeps disciplining the clock against the daemon being configured.
-systemctl stop systemd-timesyncd.service 2>/dev/null
-systemctl disable systemd-timesyncd.service 2>/dev/null
 
 # On Ubuntu 18.04
 systemctl stop chrony.service 2>/dev/null

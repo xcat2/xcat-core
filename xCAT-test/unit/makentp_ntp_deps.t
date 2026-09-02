@@ -84,16 +84,10 @@ BASH
     like($r->{calls}, qr/^chronyd .*-q/m, 'the clock is stepped in this case too');
 }
 
-# --- systemd-timesyncd must yield to the NTP daemon ------------------------
-foreach my $case ([ 'with hwclock', 1 ], [ 'without hwclock', 0 ]) {
-    my ($name, $hwclock) = @$case;
-    my $r = run_setupntp(hwclock => $hwclock);
-
-    like($r->{calls}, qr/^systemctl stop systemd-timesyncd\.service$/m,
-        "$name: systemd-timesyncd is stopped so it stops disciplining the clock");
-    like($r->{calls}, qr/^systemctl disable systemd-timesyncd\.service$/m,
-        "$name: systemd-timesyncd is disabled so it does not come back on the next boot");
-}
+# systemd-timesyncd used to be checked here, over $body -- the section from
+# `check_exec_or_exit cp cat logger grep` onwards, which only the chrony path reaches. The
+# stop/disable has moved above the ntpd hand-off so it runs on both paths, which puts it outside
+# this window; setupntp_timesyncd_both_backends.t drives both paths and asserts it there.
 
 # --- the configured NTP server reaches the clock step ----------------------
 {
