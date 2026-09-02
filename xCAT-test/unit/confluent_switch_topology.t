@@ -2,98 +2,326 @@
 use strict;
 use warnings;
 
-use File::Spec;
 use FindBin;
+use lib "$FindBin::Bin/../lib";
+use lib "$FindBin::Bin/../../perl-xCAT";
+use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
+use lib "$FindBin::Bin/../../xCAT-server/lib/xcat";
 use Test::More;
 
-my $plugin = File::Spec->catfile( $FindBin::Bin, '..', '..',
-    'xCAT-server', 'lib', 'xcat', 'plugins', 'confluent.pm' );
+use XCAT::Test::File qw(repo_path);
+
+my $plugin = repo_path('xCAT-server/lib/xcat/plugins/confluent.pm');
 plan skip_all => 'confluent.pm not found' unless -r $plugin;
 
-open( my $fh, '<', $plugin ) or die "Unable to read $plugin: $!";
-my $source = do { local $/; <$fh> };
-close($fh);
+# Every collaborator this plugin reaches for is stood in below: the tables, the
+# transport, and the few helpers it calls. Stand the modules in as well, so the
+# file needs neither DBI, which xCAT::Table loads, nor DB_File, which the
+# transport loads and which the packaging makes optional because riscv64 on
+# EL10 has no libdb. Nothing here touches a database or a socket.
+BEGIN {
+    $INC{$_} = 1 for qw(
+        Confluent/Client.pm
+        xCAT/Table.pm
+        xCAT/Utils.pm
+        xCAT/TableUtils.pm
+        xCAT/PasswordUtils.pm
+        xCAT/SvrUtils.pm
+        xCAT/MsgUtils.pm
+        xCAT/NetworkUtils.pm
+    );
+}
+{ package Confluent::Client;   our $INSTANCE; sub new { return $INSTANCE } }
+{ package xCAT::Table;         sub new { return } }
+{ package xCAT::Utils;         sub Version { return 'unit-test' }
+                               sub isServiceNode { return 0 } }
+{ package xCAT::TableUtils;    sub get_site_Master { return 'mn' } }
+{ package xCAT::PasswordUtils; sub getIPMIAuth { return {} } }
+{ package xCAT::SvrUtils;      sub sendmsg { return } }
+{ package xCAT::MsgUtils;      sub message { return } }
+{ package xCAT::NetworkUtils;  sub determinehostname { return ('mn') } }
 
-# confluent.pm needs a management node to load, so drive the shaping of the
-# switch rows on its own. This mirrors the merge the command performs.
-sub shape {
-    my @rows = @_;
-    my ( %cfgenthash, %cfgnichash );
-    foreach my $nent (@rows) {
-        next unless ( defined $nent->{node} );
-        if ( defined $nent->{interface} and length $nent->{interface} ) {
-            foreach ( keys %$nent ) {
-                $cfgnichash{ $nent->{node} }->{ $nent->{interface} }->{$_} = $nent->{$_};
-            }
-            $cfgenthash{ $nent->{node} }->{node} = $nent->{node};
-        } else {
-            foreach ( keys %$nent ) {
-                $cfgenthash{ $nent->{node} }->{$_} = $nent->{$_};
+# With every collaborator stood in, a plugin that still will not load is a
+# broken command rather than an unsupported environment, so fail loudly.
+eval { require $plugin; 1 } or BAIL_OUT("confluent.pm did not load: $@");
+
+# A table that answers the two calls the command makes of it. Rows are given
+# per node exactly as xCAT::Table returns them, a list of hashes per node.
+{
+    package TestTable;
+    sub new { my ($class, %rows) = @_; return bless { rows => {%rows} }, $class }
+    # A table that answers any node with the same row, for the columns the
+    # command reads but this file is not exercising.
+    sub new_uniform { my ($class, $row) = @_; return bless { rows => {}, any => $row }, $class }
+    # xCAT::Table returns only the attributes the caller asked for. Project the
+    # fixture the same way, so a command that stops asking for a column loses
+    # it here too instead of being handed it anyway.
+    sub _project {
+        my ($row, $attrs, %extra) = @_;
+        my %out = %extra;
+        foreach my $a (@{ $attrs || [] }) {
+            $out{$a} = $row->{$a} if exists $row->{$a};
+        }
+        return \%out;
+    }
+    sub getNodesAttribs {
+        my ($self, $nodes, $attrs) = @_;
+        my %out;
+        foreach my $n (@{ $nodes || [] }) {
+            my $rows = exists $self->{rows}{$n} ? $self->{rows}{$n}
+                     : $self->{any}             ? [ $self->{any} ]
+                     :                            undef;
+            next unless $rows;
+            $out{$n} = [ map { _project($_, $attrs) } @$rows ];
+        }
+        return \%out;
+    }
+    sub getAllNodeAttribs {
+        my ($self, $attrs) = @_;
+        my @flat;
+        foreach my $n (sort keys %{ $self->{rows} }) {
+            foreach my $r (@{ $self->{rows}{$n} }) {
+                push @flat, _project($r, $attrs, node => $n);
             }
         }
+        return @flat;
     }
-    return ( \%cfgenthash, \%cfgnichash );
+    sub close { return }
 }
 
-# A node has one row for each interface. Keeping only one of them loses the
-# port of every other interface, which is what this export exists to carry.
-my ( $flat, $pernic ) = shape(
-    { node => 'n1', switch => 'sw1', port => '1', interface => 'eth0' },
-    { node => 'n1', switch => 'sw2', port => '9', interface => 'ib0' },
-);
-is( scalar keys %{ $pernic->{n1} }, 2, 'a node with two interfaces keeps both' );
-is( $pernic->{n1}{eth0}{switch}, 'sw1', 'the first interface keeps its switch' );
-is( $pernic->{n1}{eth0}{port},   '1',   'the first interface keeps its port' );
-is( $pernic->{n1}{ib0}{switch},  'sw2', 'the second interface keeps its switch' );
-is( $pernic->{n1}{ib0}{port},    '9',   'the second interface keeps its port' );
-is( $flat->{n1}{switch}, undef, 'a row naming an interface gives no plain switch' );
-is( $flat->{n1}{port},   undef, 'a row naming an interface gives no plain port' );
+# A confluent client that records what the command sends it.
+{
+    package TestConfluent;
+    sub new { my ($class, @existing) = @_;
+        return bless { existing => [@existing], queue => [], sent => [] }, $class }
+    sub read {
+        my ($self, $path) = @_;
+        $self->{queue} = [];
+        if ($path eq '/nodes/') {
+            push @{ $self->{queue} }, { item => { href => "$_/" } } for @{ $self->{existing} };
+        }
+        return;
+    }
+    sub next_result { my ($self) = @_; return shift @{ $self->{queue} } }
+    sub create { my ($self, $path, %a) = @_;
+        push @{ $self->{sent} }, { op => 'create', path => $path, parameters => $a{parameters} };
+        return }
+    sub update { my ($self, $path, %a) = @_;
+        push @{ $self->{sent} }, { op => 'update', path => $path, parameters => $a{parameters} };
+        return }
+    sub delete { my ($self, $path) = @_;
+        push @{ $self->{sent} }, { op => 'delete', path => $path }; return }
+    sub sent_for {
+        my ($self, $node) = @_;
+        foreach my $s (@{ $self->{sent} }) {
+            next unless defined $s->{parameters};
+            my $name = $s->{parameters}{name};
+            return $s if defined($name) && $name eq $node;
+            return $s if defined($s->{path}) && $s->{path} =~ m{/nodes/\Q$node\E/};
+        }
+        return;
+    }
+}
 
-# The node has to reach the configuration for its interfaces to be written. A
-# node whose rows all name an interface is only in the per interface data, so
-# the node itself must still be recorded.
-is( $flat->{n1}{node}, 'n1', 'a node known only by its interfaces is still exported' );
+# Drive the real command. %tables maps a table name to its rows; @existing are
+# the nodes confluent already holds, which selects create versus update.
+sub run_command {
+    my (%opt) = @_;
+    my $client = TestConfluent->new(@{ $opt{existing} || [] });
+    my %tables = %{ $opt{tables} || {} };
 
-# A row that names no interface keeps the plain names.
-( $flat, $pernic ) = shape( { node => 'n2', switch => 'sw3', port => '4' } );
-is( $flat->{n2}{switch}, 'sw3', 'a row with no interface gives the plain switch' );
-is( $flat->{n2}{port},   '4',   'a row with no interface gives the plain port' );
-is( $pernic->{n2}, undef, 'a row with no interface adds no interface entry' );
+    no warnings qw(redefine once);
+    local $Confluent::Client::INSTANCE  = $client;
+    local *xCAT::Utils::isServiceNode   = sub { return 0 };
+    local *xCAT::PasswordUtils::getIPMIAuth = sub { return {} };
+    local *xCAT::SvrUtils::sendmsg      = sub { return };
+    local *xCAT::MsgUtils::message      = sub { return };
+    local *xCAT::NetworkUtils::determinehostname = sub { return ('mn') };
+    my $empty    = TestTable->new();
+    my $nodelist = TestTable->new_uniform({ groups => 'all' });
+    local *xCAT::Table::new = sub {
+        my ($class, $name, @rest) = @_;
+        return $tables{$name} if exists $tables{$name};
+        return $nodelist if $name eq 'nodelist';
+        return $empty;
+    };
+
+    my $req = { command => ['makeconfluentcfg'], arg => [] };
+    $req->{node} = $opt{nodes} if $opt{nodes};
+    xCAT_plugin::confluent::makeconfluentcfg($req, sub { return });
+    return $client;
+}
+
+sub params_for {
+    my ($client, $node) = @_;
+    my $s = $client->sent_for($node);
+    return (undef, undef) unless $s;
+    return ($s->{parameters}, $s->{op});
+}
+
+# A node cabled on two interfaces. Both must survive: keeping only one loses
+# the port of the other, which is what this export exists to carry.
+{
+    my $client = run_command(
+        nodes  => ['n1'],
+        tables => {
+            nodehm => TestTable->new(n1 => [ { node => 'n1', cons => 'ipmi' } ]),
+            switch => TestTable->new(n1 => [
+                { switch => 'sw1', port => '1', interface => 'eth0' },
+                { switch => 'sw2', port => '9', interface => 'ib0' },
+            ]),
+        },
+    );
+    my ($p) = params_for($client, 'n1');
+    ok(defined($p), 'a node with switch rows is sent to confluent');
+    is($p->{'net.eth0.switch'},     'sw1', 'the first interface carries its switch');
+    is($p->{'net.eth0.switchport'}, '1',   'the first interface carries its port');
+    is($p->{'net.ib0.switch'},      'sw2', 'the second interface carries its switch');
+    is($p->{'net.ib0.switchport'},  '9',   'the second interface carries its port');
+}
+
+# A row that names no interface carries the plain names.
+{
+    my $client = run_command(
+        nodes  => ['n2'],
+        tables => {
+            nodehm => TestTable->new(n2 => [ { node => 'n2', cons => 'ipmi' } ]),
+            switch => TestTable->new(n2 => [ { switch => 'sw3', port => '4' } ]),
+        },
+    );
+    my ($p) = params_for($client, 'n2');
+    is($p->{'net.switch'},     'sw3', 'a row with no interface carries the plain switch');
+    is($p->{'net.switchport'}, '4',   'a row with no interface carries the plain port');
+}
+
+# A node known only through the switch table still reaches confluent.
+{
+    my $client = run_command(
+        nodes  => ['n3'],
+        tables => {
+            switch => TestTable->new(n3 => [ { switch => 'sw4', port => '7', interface => 'eth1' } ]),
+        },
+    );
+    my ($p) = params_for($client, 'n3');
+    ok(defined($p), 'a node known only by its interfaces is still exported');
+    is($p->{'net.eth1.switch'}, 'sw4', 'its interface topology is carried');
+}
 
 # An empty switch table must leave the configuration untouched.
-( $flat, $pernic ) = shape();
-is_deeply( $flat,   {}, 'an empty switch table adds no node entry' );
-is_deeply( $pernic, {}, 'an empty switch table adds no interface entry' );
+{
+    my $client = run_command(
+        nodes  => ['n4'],
+        tables => {
+            nodehm => TestTable->new(n4 => [ { node => 'n4', cons => 'ipmi' } ]),
+            switch => TestTable->new(),
+        },
+    );
+    my ($p) = params_for($client, 'n4');
+    ok(defined($p), 'a node with no switch row is still configured');
+    is($p->{'net.switch'},     undef, 'no plain switch is carried');
+    is($p->{'net.eth0.switch'}, undef, 'no interface switch is carried');
+}
 
-# A row without a node name cannot be placed.
-( $flat, $pernic ) = shape( { switch => 'sw4', port => '2' } );
-is_deeply( $flat,   {}, 'a row with no node is skipped' );
-is_deeply( $pernic, {}, 'a row with no node adds no interface entry' );
+# Retraction. For a node confluent already holds, the request must name the
+# topology that xCAT no longer holds so that confluent removes it.
+{
+    my $client = run_command(
+        nodes    => ['n5'],
+        existing => ['n5'],
+        tables   => {
+            nodehm => TestTable->new(n5 => [ { node => 'n5', cons => 'ipmi' } ]),
+            switch => TestTable->new(),
+        },
+    );
+    my ($p, $op) = params_for($client, 'n5');
+    is($op, 'update', 'a node confluent holds is updated');
+    ok(exists $p->{'net.switch'},       'the plain switch is named');
+    is($p->{'net.switch'},     undef,   'the plain switch carries no value');
+    ok(exists $p->{'net.switchport'},   'the plain port is named');
+    is($p->{'net.switchport'}, undef,   'the plain port carries no value');
+    ok(exists $p->{'net.*.switch'},     'every interface switch is named');
+    is($p->{'net.*.switch'},     undef, 'every interface switch carries no value');
+    ok(exists $p->{'net.*.switchport'}, 'every interface port is named');
+    is($p->{'net.*.switchport'}, undef, 'every interface port carries no value');
 
-# The command has to read the switch table, and read it in both branches. The
-# branch that takes no node range must not read these columns from nodepos,
-# which does not have them.
-like( $source, qr/my \$switchtab = xCAT::Table->new\('switch'\)/,
-    'the command opens the switch table' );
-like( $source,
-    qr/\@cfgents4 = \$switchtab->getNodesAttribs\(\$nodes, \[ 'node', 'switch', 'port', 'interface' \]\)/,
-    'a node range reads the switch table for those nodes' );
-like( $source,
-    qr/\@cfgents4 = \$switchtab->getAllNodeAttribs\(\[ 'node', 'switch', 'port', 'interface' \]\)/,
-    'no node range reads the whole switch table' );
-unlike( $source, qr/\$nodepostab->getAllNodeAttribs\(\[ 'node', 'switch'/,
-    'the switch columns are never read from nodepos' );
+    # Those clears are undefined values in a Perl hash. Only a JSON null asks
+    # confluent to remove an attribute, so put the payload the command actually
+    # produced through the real transport and read the bytes.
+    # Those clears are undefined values in a Perl hash. Only a JSON null asks
+    # confluent to remove an attribute, so put the payload the command actually
+    # produced through the real transport and read the bytes. Confluent::TLV is
+    # in the checkout and JSON is a hard dependency of the server package, so a
+    # failure to load either is a broken transport, not an absent environment.
+    my $tlvpm = repo_path('xCAT-server/lib/xcat/Confluent/TLV.pm');
+    require $tlvpm;
+    require JSON;
 
-# The exported names are what confluent reads.
-like( $source, qr/\$parameters\{'net\.switch'\} = \$cfgent->\{switch\}/,
-    'the plain switch is exported' );
-like( $source, qr/\$parameters\{'net\.switchport'\} = \$cfgent->\{port\}/,
-    'the plain port is exported' );
-like( $source, qr/\$parameters\{"net\.\$nic\.switch"\}/,
-    'the switch of each interface is exported' );
-like( $source, qr/\$parameters\{"net\.\$nic\.switchport"\}/,
-    'the port of each interface is exported' );
-like( $source, qr/\$cfgenthash\{ \$nent->\{node\} \}->\{node\} = \$nent->\{node\}/,
-    'a node known only by its interfaces is recorded for the export' );
+    my $wire = '';
+    open(my $sink, '>', \$wire) or die "in-memory handle: $!";
+    Confluent::TLV->new($sink)->send({ operation => 'update', parameters => $p });
+    close($sink);
+
+    ok(length($wire) > 4, 'the transport wrote a framed payload');
+    my $json = substr($wire, 4);
+    like($json, qr/"net\.switch"\s*:\s*null/,
+        'the plain switch reaches the wire as a null, which is what removes it');
+    like($json, qr/"net\.\*\.switch"\s*:\s*null/,
+        'the interface wildcard reaches the wire as a null');
+}
+
+# A held value is never replaced by a clear.
+{
+    my $client = run_command(
+        nodes    => ['n6'],
+        existing => ['n6'],
+        tables   => {
+            nodehm => TestTable->new(n6 => [ { node => 'n6', cons => 'ipmi' } ]),
+            switch => TestTable->new(n6 => [
+                { switch => 'sw5', port => '2' },
+                { switch => 'sw6', port => '8', interface => 'ib1' },
+            ]),
+        },
+    );
+    my ($p) = params_for($client, 'n6');
+    is($p->{'net.switch'},      'sw5', 'a held plain switch keeps its value');
+    is($p->{'net.switchport'},  '2',   'a held plain port keeps its value');
+    is($p->{'net.ib1.switch'},  'sw6', 'a held interface switch keeps its value');
+    ok(exists $p->{'net.*.switch'}, 'the interface wildcard is still named');
+    is($p->{'net.*.switch'}, undef, 'the interface wildcard still clears');
+}
+
+# The request that creates a node has nothing to remove.
+{
+    my $client = run_command(
+        nodes  => ['n7'],
+        tables => {
+            nodehm => TestTable->new(n7 => [ { node => 'n7', cons => 'ipmi' } ]),
+            switch => TestTable->new(n7 => [ { switch => 'sw7', port => '3' } ]),
+        },
+    );
+    my ($p, $op) = params_for($client, 'n7');
+    is($op, 'create', 'a node confluent does not hold is created');
+    ok(!exists $p->{'net.*.switch'}, 'the request that creates a node sends no clear');
+    is($p->{'net.switch'}, 'sw7', 'it still carries the topology xCAT holds');
+}
+
+# With no node range the command reads every table in full. The enclosure of a
+# node comes from the mp table; nodepos does not have those columns.
+{
+    my $client = run_command(
+        tables => {
+            nodehm  => TestTable->new(n8 => [ { cons => 'ipmi' } ]),
+            nodepos => TestTable->new(n8 => [ { rack => 'r1', u => '12' } ]),
+            mp      => TestTable->new(n8 => [ { mpa => 'chassis1', id => '5' } ]),
+            switch  => TestTable->new(n8 => [ { switch => 'sw8', port => '6', interface => 'eth2' } ]),
+        },
+    );
+    my ($p) = params_for($client, 'n8');
+    ok(defined($p), 'a full scan sends the node');
+    is($p->{'enclosure.manager'}, 'chassis1', 'the enclosure manager comes from the mp table');
+    is($p->{'enclosure.bay'},     '5',        'the enclosure bay comes from the mp table');
+    is($p->{'location.rack'},     'r1',       'the rack still comes from nodepos');
+    is($p->{'net.eth2.switch'},   'sw8',      'a full scan carries the switch topology');
+}
 
 done_testing();
