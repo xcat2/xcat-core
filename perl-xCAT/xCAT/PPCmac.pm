@@ -114,8 +114,7 @@ sub parse_args {
         } else {
             $server = xCAT::ServiceNodeUtils->getSNformattedhash($node, "xcat", "node", "primary");
             foreach my $key (keys %$server) {
-                my $valid_ip = xCAT::NetworkUtils->validate_ip($key);
-                if ($valid_ip) {
+                unless (xCAT::NetworkUtils->isValidIp($key)) {
                     ###################################################
                     # Service node is returned as hostname, Convert
                     # hostname to IP
@@ -224,9 +223,13 @@ sub parse_args {
             if (scalar(@network) != 3) {
                 return (usage());
             }
-            my $result = xCAT::NetworkUtils->validate_ip($opt{C}, $opt{G}, $opt{S});
-            if (@$result[0]) {
-                return (usage(@$result[1]));
+            foreach my $key (qw(C G S)) {
+                my $ip = $opt{$key};
+
+                # lpar_netboot accepts an all-zero gateway when no router is needed
+                next if $key eq 'G' and $ip eq '0.0.0.0';
+                next if xCAT::NetworkUtils->isValidIp($ip);
+                return (usage("Invalid IP address: $ip"));
             }
         }
     } elsif ((exists($opt{S}) || exists($opt{G}) || exists($opt{C})) && !exists($opt{D})) {
