@@ -10,7 +10,9 @@ use strict;
 use warnings;
 
 use Cwd qw(getcwd);
+use File::Basename qw(dirname);
 use File::Copy ();
+use File::Path qw(make_path);
 use File::Slurper qw(read_text);
 use File::Spec;
 use File::Temp qw(tempdir);
@@ -140,13 +142,18 @@ ok( !grep( { $_ eq 'buildpkgs' } @{ stages_for(1) } ),
 # buildrpms.pl rewrites the tracked Gitinfo in its working directory and creates
 # $HOME/rpmbuild. Running it in place left the developer's tree dirty and reached
 # into their home for a test that only exercises argument parsing. Version is
-# staged because the same file-scope code reads it and dies without it, and
-# BuildUtils.pm because buildrpms.pl loads it from its own directory.
+# staged because the same file-scope code reads it and dies without it. Both
+# modules named BuildUtils.pm are staged at their own relative paths, because
+# buildrpms.pl loads each from a different directory: BuildUtils.pm from its own,
+# and XCAT::BuildUtils from build-utils/lib/XCAT.
 my $sandbox = tempdir(CLEANUP => 1);
-for my $needed (qw(buildrpms.pl Version BuildUtils.pm)) {
+for my $needed (qw(buildrpms.pl Version BuildUtils.pm
+                   build-utils/lib/XCAT/BuildUtils.pm)) {
     my $from = repo_path($needed);
     BAIL_OUT("$needed is missing from the repository") unless -r $from;
-    File::Copy::copy($from, File::Spec->catfile($sandbox, $needed))
+    my $to = File::Spec->catfile($sandbox, split(m{/}, $needed));
+    make_path(dirname($to));
+    File::Copy::copy($from, $to)
         or BAIL_OUT("could not stage $needed: $!");
 }
 
