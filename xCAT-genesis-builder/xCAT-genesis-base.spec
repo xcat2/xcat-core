@@ -12,6 +12,14 @@ Release: %{?release:%{release}}%{!?release:%(cat Release)}
 %ifarch aarch64
 %define tarch aarch64
 %endif
+%ifarch riscv64
+%define tarch riscv64
+%endif
+# An arch missing from the ladder above leaves %{tarch} unexpanded, and rpm then builds a package
+# with a macro in its NAME instead of failing. Stop the build here instead.
+%if ! %{defined tarch}
+%{error:no genesis tarch for %{_target_cpu} -- add an %%ifarch branch above}
+%endif
 BuildArch: noarch
 %define name	xCAT-genesis-base-%{tarch}
 %define __spec_install_post :
