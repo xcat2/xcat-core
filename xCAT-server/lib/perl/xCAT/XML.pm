@@ -50,13 +50,7 @@ sub build_tree_xml_parser {
     carp "'nsexpand' option requires XML::SAX";
   }
  
-  my $xp = XML::Parser->new(Style => 'Tree',
-                             [ load_ext_dtd => 0,
-                               ext_ent_handler => undef,
-                               no_network => 1,
-                               expand_entities => 0,
-                             ]);
-  $xp->setHandlers(ExternEnt => sub { return $_[2] });
+  my $xp = _hardened_parser();
   my($tree);
   if($filename) {
       # $tree = $xp->parsefile($filename);  # Changed due to prob w/mod_perl
@@ -72,13 +66,13 @@ sub build_tree_xml_parser {
 
 sub new_xml_parser {
   my($self) = @_;
-  my $xp = XML::Parser->new(Style => 'Tree', 
-                             [ load_ext_dtd => 0,
-                               ext_ent_handler => undef,
-                               no_network => 1,
-                               expand_entities => 0,
-                             ]);
-  $xp->setHandlers(ExternEnt => sub {return $_[2]});
+  return _hardened_parser();
+}
+
+sub _hardened_parser {
+  my $xp = XML::Parser->new(Style => 'Tree');
+  $xp->setHandlers(ExternEnt => sub { return $_[2] },
+                   Doctype   => sub { croak 'XML document type declaration is not accepted' });
   return $xp;
 }
 1;
