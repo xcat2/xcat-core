@@ -194,6 +194,17 @@ sub process_request {
     }
 }
 
+sub _first_node_attribute_rows {
+    my $entries = shift;
+    my @rows;
+    foreach my $entry (@{$entries}) {
+        foreach my $node (keys %{$entry}) {
+            push @rows, $entry->{$node}->[0];
+        }
+    }
+    return @rows;
+}
+
 # Read the file, get db info, update the file contents, and then write the file
 sub makeconfluentcfg {
     my $req = shift;
@@ -264,24 +275,8 @@ sub makeconfluentcfg {
             }
         }
         @cfgents1    = @tmpcfgents1;
-        @tmpcfgents1 = ();
-        foreach my $ent (@cfgents2)
-        {
-            foreach my $nodeent (keys %$ent)
-            {
-                push @tmpcfgents1, $ent->{$nodeent}->[0];
-            }
-        }
-        @cfgents2    = @tmpcfgents1;
-        @tmpcfgents1 = ();
-        foreach my $ent (@cfgents3)
-        {
-            foreach my $nodeent (keys %$ent)
-            {
-                push @tmpcfgents1, $ent->{$nodeent}->[0];
-            }
-        }
-        @cfgents3 = @tmpcfgents1;
+        @cfgents2    = _first_node_attribute_rows(\@cfgents2);
+        @cfgents3    = _first_node_attribute_rows(\@cfgents3);
         @tmpcfgents1 = ();
         foreach my $ent (@cfgents4)
         {
