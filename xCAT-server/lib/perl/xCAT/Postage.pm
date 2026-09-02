@@ -601,12 +601,15 @@ sub makescript {
 
         # See defer_syncfiles_to_postboot(): on the Ubuntu/Debian diskful install path syncfiles
         # has to run on the booted node, not in the installer's in-target chroot.
-        my $effective_provmethod = $provmethod;
-        if ($osimgname && defined($image_hash{$osimgname}{'provmethod'})) {
-            $effective_provmethod = $image_hash{$osimgname}{'provmethod'};
-        }
+        #
+        # $provmethod is passed as-is. An earlier version tried to resolve it through
+        # $image_hash{$osimgname}{provmethod} when the node names an osimage, but makescript
+        # fills %image_hash from getImage(), which stores pkglist/pkgdir/otherpkg*/environvar and
+        # no provmethod -- getScripts() has a separate hash that does. So that lookup was always
+        # undef and the override never fired. $nodesetstate is what carries the install signal on
+        # this path anyway: nodeset sets it, and defer_syncfiles_to_postboot checks it first.
         ($postscripts, $postbootscripts) = defer_syncfiles_to_postboot(
-            $os, $effective_provmethod, $nodesetstate, $postscripts, $postbootscripts);
+            $os, $provmethod, $nodesetstate, $postscripts, $postbootscripts);
 
         # if using zones then must go to the zone.sshbetweennodes
         # else go to site.sshbetweennodes

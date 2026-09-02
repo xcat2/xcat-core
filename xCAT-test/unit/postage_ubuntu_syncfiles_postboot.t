@@ -102,4 +102,26 @@ foreach my $case (@untouched) {
     is($postboot2, $postboot, 'a second pass does not duplicate syncfiles');
 }
 
+# The node's provmethod is frequently an osimage NAME rather than the literal 'install' -- that
+# is what makescript passes, and resolving it to a real provmethod is not possible there
+# (getImage does not store one). nodesetstate is what carries the install signal on that path,
+# so the deferral must key off it and not require provmethod to say 'install'.
+{
+    my ($post, $postboot) = defer(
+        'ubuntu24.04', 'ubuntu24.04-x86_64-install-compute', 'install',
+        "otherpkgs\nsyncfiles\nremoteshell\n", "" );
+    unlike( $post, qr/^syncfiles$/m,
+        'an osimage-named provmethod still defers when nodesetstate says install' );
+    like( $postboot, qr/^syncfiles$/m,
+        'and syncfiles lands in the postboot scripts' );
+}
+
+{
+    my ($post, $postboot) = defer(
+        'ubuntu24.04', 'ubuntu24.04-x86_64-install-compute', undef,
+        "otherpkgs\nsyncfiles\nremoteshell\n", "" );
+    like( $post, qr/^syncfiles$/m,
+        'with no nodesetstate an osimage name is not mistaken for a diskful install' );
+}
+
 done_testing();
