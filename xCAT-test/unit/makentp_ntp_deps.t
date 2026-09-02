@@ -135,7 +135,15 @@ foreach my $case (
 ) {
     my ($argv, $missing, $want, $name) = @$case;
     my $root = File::Temp::tempdir(CLEANUP => 1);
+    # Every command the extracted region can reach has to be shadowed, not just the ones it
+    # reached when this was written: the region moves. systemctl is here because the
+    # systemd-timesyncd stop/disable was hoisted above the ntpd hand-off and landed inside this
+    # window -- unstubbed, and the suite runs as root in CI, it really disabled timesyncd on the
+    # host running the tests. Bash resolves functions ahead of $PATH, so these win.
     my $prelude = "logger() { printf '%s\\n' \"\$*\" >>\"$root/log\"; return 0; }\n"
+        . "systemctl() { echo \"systemctl \$*\" >>\"$root/calls\"; return 0; }\n"
+        . "timedatectl() { echo \"timedatectl \$*\" >>\"$root/calls\"; return 0; }\n"
+        . "hwclock() { echo \"hwclock \$*\" >>\"$root/calls\"; return 0; }\n"
         . "check_executes() { for c in \"\$@\"; do [ \"\$c\" = \"$missing\" ] && return 1; done; return 0; }\n"
         . "log_label=xcat\nset -- $argv\n";
     my $out = `bash -c 'exec 2>/dev/null; $prelude$args$select
