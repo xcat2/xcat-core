@@ -50,12 +50,7 @@ sub build_tree_xml_parser {
     carp "'nsexpand' option requires XML::SAX";
   }
  
-  my $xp = XML::Parser->new(Style => 'Tree',
-                             [ load_ext_dtd => 0,
-                               ext_ent_handler => undef,
-                               no_network => 1,
-                               expand_entities => 0,
-                             ]);
+  my $xp = XML::Parser->new(Style => 'Tree');
   $xp->setHandlers(ExternEnt => sub { return $_[2] });
   my($tree);
   if($filename) {
@@ -72,12 +67,7 @@ sub build_tree_xml_parser {
 
 sub new_xml_parser {
   my($self) = @_;
-  my $xp = XML::Parser->new(Style => 'Tree', 
-                             [ load_ext_dtd => 0,
-                               ext_ent_handler => undef,
-                               no_network => 1,
-                               expand_entities => 0,
-                             ]);
+  my $xp = XML::Parser->new(Style => 'Tree');
   $xp->setHandlers(ExternEnt => sub {return $_[2]});
   return $xp;
 }
