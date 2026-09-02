@@ -104,7 +104,6 @@ our @EXPORT_OK = qw(genpassword runcmd3 natural_sort_cmp);
 # xCAT::Utils::get_subnet_aix ====> xCAT::NetworkUtils::get_subnet_aix
 # xCAT::Utils->determinehostname ====> xCAT::NetworkUtils->determinehostname
 # xCAT::Utils::toIP ====> xCAT::NetworkUtils::toIP
-# xCAT::Utils->validate_ip ====> xCAT::NetworkUtils->validate_ip
 # xCAT::Utils->getFacingIP ====> xCAT::NetworkUtils->getFacingIP
 # xCAT::Utils->isIpaddr ====> xCAT::NetworkUtils->isIpaddr
 # xCAT::Utils::getNodeNetworkCfg ====> xCAT::NetworkUtils::getNodeNetworkCfg

@@ -2085,53 +2085,6 @@ sub toIP
 
 #-------------------------------------------------------------------------------
 
-=head3    validate_ip
-    Validate list of IPs
-    Arguments:
-        List of IPs
-    Returns:
-        1 - Invalid IP address in the list
-        0 - IP addresses are all valid
-    Globals:
-        none
-    Error:
-        none
-    Example:
-        if (xCAT::NetworkUtils->validate_ip($IP)) {}
-    Comments:
-        none
-=cut
-
-#-------------------------------------------------------------------------------
-sub validate_ip
-{
-    my ($class, @IPs) = @_;
-    foreach (@IPs) {
-        my $ip = $_;
-
-        #TODO need more check for IPv6 address
-        if ($ip =~ /:/)
-        {
-            return ([0]);
-        }
-        ###################################
-        # Length is 4 for IPv4 addresses
-        ###################################
-        my (@octets) = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
-        if (scalar(@octets) != 4) {
-            return ([ 1, "Invalid IP address1: $ip" ]);
-        }
-        foreach my $octet (@octets) {
-            if (($octet < 0) or ($octet > 255)) {
-                return ([ 1, "Invalid IP address2: $ip" ]);
-            }
-        }
-    }
-    return ([0]);
-}
-
-#-------------------------------------------------------------------------------
-
 =head3    isIpv4addr
 
     returns 1 if parameter is has a valid IP address form.
