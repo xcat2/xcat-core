@@ -40,6 +40,318 @@ fi
 str_conf_file=""
 str_conf_file_xcatbak=""
 tmp_con_name=""
+
+# ---------------------------------------------------------------------------
+# netplan support (Ubuntu 18.04+, issue #7454)
+#
+# On a netplan-rendered Debian/Ubuntu node ifupdown is not installed and
+# /etc/network/interfaces.d/* is ignored entirely, so writing there configures nothing.
+# Write /etc/netplan/*.yaml and `netplan apply` instead.
+#
+# The drop-in this owns is regenerated in full on every change rather than edited in place,
+# because inserting into the middle of a YAML list with sed reverses multi-address order and
+# cannot tell one route's fields from another's. The inputs are kept in "# xcat-state:" comment
+# lines at the top of the same file: netplan ignores comments, the file stays the single source
+# of truth, and re-rendering is idempotent.
+#
+# netplan parses every file under /etc/netplan as one document, so a single rejected key takes
+# the whole node's network with it -- not just the interface being configured. That is why the
+# writers below validate rather than pass values through.
+# ---------------------------------------------------------------------------
+
+netplan_active=0
+if command -v netplan >/dev/null 2>&1 && [ -d /etc/netplan ]; then
+    netplan_active=1
+    # netplan.io is Priority:important and a dependency of cloud-init, so its presence says
+    # nothing about what actually renders this node. Only ifupdown both installed AND running
+    # means /etc/network/interfaces is still the live configuration, in which case writing YAML
+    # would orphan it. (checkservicestatus is no help here: servicemap has no entry for
+    # "networking", so it returns 127 whatever the service is doing.)
+    if command -v ifup >/dev/null 2>&1 && systemctl is-active networking >/dev/null 2>&1; then
+        netplan_active=0
+    fi
+fi
+
+# netplan_file <nic> -- the per-NIC drop-in this script owns. NETPLAN_DIR overrides the
+# directory so the writers can be unit tested without touching the real configuration.
+netplan_file(){
+    echo "${NETPLAN_DIR:-/etc/netplan}/90-xcat-${1}.yaml"
+}
+
+_netplan_touch(){    # <file> -- create the drop-in already unreadable to other users
+    [ -f "$1" ] || ( umask 077; : > "$1" )
+}
+
+_netplan_state(){    # <nic> <kind> -- emit the recorded values of one kind, in insertion order
+    local f
+    f="$(netplan_file "$1")"
+    [ -f "$f" ] || return 0
+    sed -n "s/^# xcat-state: $2 //p" "$f"
+}
+
+_netplan_record(){   # <nic> <kind> <value> -- record once, preserving order
+    local nic="$1" kind="$2" value="$3" f
+    f="$(netplan_file "$nic")"
+    if [ -f "$f" ] && grep -qxF "# xcat-state: $kind $value" "$f"; then
+        return 0
+    fi
+    printf '# xcat-state: %s %s\n' "$kind" "$value" >> "$f"
+}
+
+# _netplan_forget <file> <prefix> -- drop the recorded lines whose value starts with <prefix>.
+# awk index() is a literal string match: a nicextraparams key is admin-supplied and a '/' or a
+# regex metacharacter in a sed address would either error out or delete unrelated state.
+_netplan_forget(){
+    local f="$1" pfx="$2" tmp
+    [ -f "$f" ] || return 0
+    tmp="${f}.forget.$$"
+    if awk -v p="# xcat-state: $pfx" 'index($0, p) != 1' "$f" > "$tmp"; then
+        mv -f "$tmp" "$f"
+    else
+        rm -f "$tmp"
+    fi
+}
+
+# _netplan_param_key <name> -- the netplan key a nicextraparams name maps to, or non-zero if it
+# has none. nicextraparams are ifcfg/ifupdown names -- the documented examples are
+# "MTU=1456 ONBOOT=no" -- and netplan rejects the entire configuration for one unknown key, so
+# anything without a netplan meaning has to be dropped rather than passed through.
+_netplan_param_key(){
+    local k
+    k=$(echo "$1" | tr 'A-Z' 'a-z')
+    case "$k" in
+        mtu|optional|critical|wakeonlan|dhcp4|dhcp6|accept-ra|ipv6-privacy) echo "$k"; return 0 ;;
+        dhcp-identifier|activation-mode|ipv6-mtu|macaddress)                echo "$k"; return 0 ;;
+    esac
+    return 1
+}
+
+# _netplan_yaml_scalar <value> -- a value safe to paste into the generated YAML. Integers and
+# booleans keep their type (netplan wants mtu as an int, optional as a bool); anything else is
+# quoted so that a ':' or '#' in a value cannot invent a key or comment out the rest of a line.
+_netplan_yaml_scalar(){
+    case "$1" in
+        true|false) echo "$1"; return 0 ;;
+    esac
+    case "$1" in
+        ''|*[!0-9]*) ;;
+        *) echo "$1"; return 0 ;;
+    esac
+    printf '"%s"\n' "$(echo "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"
+}
+
+# _netplan_route_dest <via> -- the explicit default-route destination for the gateway's family.
+# "to: default" is only understood from netplan 0.103 onwards; Ubuntu 18.04 never ships past
+# 0.99 and a stock 20.04 ships 0.99 too, where it fails the whole file. The CIDR works on all.
+_netplan_route_dest(){
+    case "$1" in
+        *:*) echo "::/0" ;;
+        *)   echo "0.0.0.0/0" ;;
+    esac
+}
+
+# _netplan_render <nic> -- rebuild the whole drop-in from its recorded state.
+# A NIC named <parent>.<vid> is a VLAN and MUST be declared under vlans: with id and link, or
+# netplan will not recreate it after a reboot; anything else is a plain ethernet.
+_netplan_render(){
+    local nic="$1" f tmp section parent vid addr route to via mtu param name value key
+    local has_dhcp4=0 has_dhcp6=0
+    f="$(netplan_file "$nic")"
+    tmp="${f}.tmp.$$"
+
+    section="ethernets"
+    parent=""
+    vid=""
+    case "$nic" in
+        *.*)
+            parent="${nic%.*}"
+            vid="${nic##*.}"
+            case "$vid" in
+                ''|*[!0-9]*) parent=""; vid="" ;;   # not <parent>.<numeric vid>
+                *) section="vlans" ;;
+            esac
+            ;;
+    esac
+
+    # a nicextraparams key may set dhcp4/dhcp6 itself; do not then emit the default as well,
+    # which would be a duplicate mapping key in the same stanza
+    while read -r param; do
+        key=$(_netplan_param_key "${param%% *}") || continue
+        [ "$key" = "dhcp4" ] && has_dhcp4=1
+        [ "$key" = "dhcp6" ] && has_dhcp6=1
+    done <<EOF
+$(_netplan_state "$nic" param)
+EOF
+
+    ( umask 077
+    {
+        # keep the recorded state at the top so the next call can read it back
+        [ -f "$f" ] && grep '^# xcat-state: ' "$f"
+        echo "network:"
+        echo "  version: 2"
+        if [ "$section" = "vlans" ]; then
+            # netplan resolves link: at parse time and does not look ahead to files that sort
+            # later, and 90-xcat-<parent>.<vid>.yaml always sorts before 90-xcat-<parent>.yaml
+            # ('1' < 'y'). The parent may also carry no address of its own, in which case xCAT
+            # never writes a file for it at all. Declaring it here as an empty netdef resolves
+            # the reference without overriding any key the parent's own netdef sets.
+            echo "  ethernets:"
+            echo "    ${parent}: {}"
+        fi
+        echo "  ${section}:"
+        echo "    ${nic}:"
+        if [ "$section" = "vlans" ]; then
+            echo "      id: ${vid}"
+            echo "      link: ${parent}"
+        fi
+        # netplan merges netdefs of the same name across files key by key rather than replacing
+        # them, so without these an earlier-sorting dhcp4:true -- cloud-init's
+        # 50-cloud-init.yaml, or xCAT's own netboot drop-in -- survives and the node runs a DHCP
+        # lease alongside the static address xCAT just assigned.
+        [ $has_dhcp4 -eq 0 ] && echo "      dhcp4: false"
+        [ $has_dhcp6 -eq 0 ] && echo "      dhcp6: false"
+
+        if [ -n "$(_netplan_state "$nic" addr)" ]; then
+            echo "      addresses:"
+            _netplan_state "$nic" addr | while read -r addr; do
+                [ -n "$addr" ] && echo "        - ${addr}"
+            done
+        fi
+
+        mtu="$(_netplan_state "$nic" mtu | tail -1)"
+        [ -n "$mtu" ] && echo "      mtu: ${mtu}"
+
+        if [ -n "$(_netplan_state "$nic" route)" ]; then
+            echo "      routes:"
+            _netplan_state "$nic" route | while read -r route; do
+                to="${route%% *}"
+                via="${route#* }"
+                [ -n "$to" ] || continue
+                [ "$to" = "default" ] && to="$(_netplan_route_dest "$via")"
+                printf '        - to: %s\n          via: %s\n' "$to" "$via"
+            done
+        fi
+
+        # nicextraparams, already normalised and filtered to keys netplan understands by
+        # write_netplan_param below
+        _netplan_state "$nic" param | while read -r param; do
+            name="${param%% *}"
+            value="${param#* }"
+            [ -n "$name" ] && echo "      ${name}: $(_netplan_yaml_scalar "$value")"
+        done
+    } > "$tmp" )
+
+    mv -f "$tmp" "$f"
+    chmod 600 "$f" 2>/dev/null
+}
+
+# netplan_reset_nic <nic> -- forget everything recorded for this NIC. Called for the first
+# address of a NIC, mirroring the truncating '>' of the ifupdown branch: without it an address
+# that was removed from the nics table is never dropped and the node keeps it forever.
+netplan_reset_nic(){
+    rm -f "$(netplan_file "$1")" 2>/dev/null
+    return 0
+}
+
+# _netplan_can_reconfigure -- can one device be re-applied without disturbing the others?
+# Only when systemd-networkd is the renderer and networkctl carries the verbs (systemd 244+;
+# Ubuntu 18.04 ships 237 and does not). Probed rather than version-gated, so this follows the
+# node's actual backend -- under the NetworkManager renderer it is correctly false.
+_netplan_can_reconfigure(){
+    command -v networkctl >/dev/null 2>&1 || return 1
+    networkctl --help 2>&1 | grep -qw reconfigure || return 1
+    systemctl is-active systemd-networkd >/dev/null 2>&1 || return 1
+    return 0
+}
+
+# netplan_apply [nic] -- make the drop-in live, and verify the link actually came up.
+#
+# `netplan apply` takes no interface argument: it re-applies every netdef on the node, so
+# configuring one secondary NIC would also bounce the install NIC the postscripts are still
+# running over. Where the backend can scope it, generate the backend configuration and
+# reconfigure only <nic>. Anything that cannot be scoped -- a device netplan has yet to create,
+# the NetworkManager renderer, a systemd without the verbs -- falls back to the node-wide apply.
+#
+# `netplan apply` returns 0 even when it changed nothing, so its exit status alone cannot stand
+# in for the interface state the ifup path used to check.
+netplan_apply(){
+    local nic="$1"
+    if [ -n "$nic" ] && _netplan_can_reconfigure; then
+        netplan generate
+        if [ $? -ne 0 ]; then
+            log_error "netplan generate failed."
+            return 1
+        fi
+        networkctl reload >/dev/null 2>&1
+        networkctl reconfigure "$nic" >/dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            wait_for_ifstate "$nic" UP 20 5 >/dev/null
+            if [ $? -ne 0 ]; then
+                log_error "bring $nic up failed."
+                return 1
+            fi
+            return 0
+        fi
+        log_info "configeth on $NODE: networkctl could not reconfigure $nic alone, applying all."
+    fi
+    netplan apply
+    if [ $? -ne 0 ]; then
+        log_error "netplan apply failed."
+        return 1
+    fi
+    [ -n "$nic" ] || return 0
+    wait_for_ifstate "$nic" UP 20 5 >/dev/null
+    if [ $? -ne 0 ]; then
+        log_error "bring $nic up failed."
+        return 1
+    fi
+    return 0
+}
+
+# write_netplan_addr <nic> <addr/prefix> [mtu] -- add an address (IPv4 or IPv6). Idempotent per
+# address, and preserves the order in which addresses were added.
+write_netplan_addr(){
+    local nic="$1" cidr="$2" mtu="$3" f
+    f="$(netplan_file "$nic")"
+    _netplan_touch "$f"
+    _netplan_record "$nic" addr "$cidr"
+    if [ -n "$mtu" ] && [ "$mtu" != "$str_default_token" ]; then
+        # last mtu wins; drop any previously recorded one so the state stays single-valued
+        _netplan_forget "$f" "mtu "
+        _netplan_record "$nic" mtu "$mtu"
+    fi
+    _netplan_render "$nic"
+}
+
+# write_netplan_route <nic> <to> <via> -- add a route. Idempotent on the (to, via) pair.
+write_netplan_route(){
+    local nic="$1" to="$2" via="$3" f
+    f="$(netplan_file "$nic")"
+    [ -f "$f" ] || return 0
+    _netplan_record "$nic" route "$to $via"
+    _netplan_render "$nic"
+}
+
+# write_netplan_param <nic> <name> <value> -- record a nicextraparams key for this interface.
+write_netplan_param(){
+    local nic="$1" name="$2" value="$3" f key
+    key=$(_netplan_param_key "$name")
+    if [ $? -ne 0 ]; then
+        log_warn "configeth on $NODE: nicextraparams key '$name' has no netplan equivalent, ignored for $nic."
+        return 0
+    fi
+    f="$(netplan_file "$nic")"
+    _netplan_touch "$f"
+    if [ "$key" = "mtu" ]; then
+        # the same knob write_netplan_addr records; keeping one source avoids a duplicate key
+        _netplan_forget "$f" "mtu "
+        _netplan_record "$nic" mtu "$value"
+    else
+        _netplan_forget "$f" "param $key "
+        _netplan_record "$nic" param "$key $value"
+    fi
+    _netplan_render "$nic"
+}
 function configipv4(){
     str_if_name=$1
     str_v4ip=$2
@@ -111,7 +423,23 @@ function configipv4(){
         if [[ ${str_if_name} == [a-zA-Z0-9]*.[0-9]* ]]; then
             echo "VLAN=yes" >> $str_conf_file
         fi
-    #debian ubuntu
+    #ubuntu/debian rendered by netplan (18.04+): ifupdown is absent and interfaces.d is
+    #ignored, so write /etc/netplan/*.yaml instead (issue #7454)
+    elif [ "$str_os_type" = "debian" ] && [ "$netplan_active" = "1" ];then
+        #the first address of a NIC starts a fresh drop-in, the way the ifupdown branch below
+        #truncates with '>' -- otherwise an address dropped from the nics table is never removed
+        if [ $num_v4num -eq 0 ];then
+            netplan_reset_nic "${str_if_name}"
+        fi
+        str_prefix=$(v4mask2prefix $str_v4mask)
+        write_netplan_addr "${str_if_name}" "${str_v4ip}/${str_prefix}" "${str_nic_mtu}"
+        i=0
+        while [ $i -lt ${#array_extra_param_names[@]} ]
+        do
+            write_netplan_param "${str_if_name}" "${array_extra_param_names[$i]}" "${array_extra_param_values[$i]}"
+            i=$((i+1))
+        done
+    #debian ubuntu (legacy ifupdown)
     elif [ "$str_os_type" = "debian" ];then
         str_conf_file="/etc/network/interfaces.d/${str_if_name}"
         if [ $num_v4num -eq 0 ];then
@@ -290,6 +618,26 @@ configipv6(){
             fi
 	    i=$((i+1))
 	done		
+    #ubuntu/debian rendered by netplan (18.04+) -- see configipv4 (issue #7454)
+    elif [ "$str_os_type" = "debian" ] && [ "$netplan_active" = "1" ];then
+        if [ $num_v4num -eq 0 -a $num_v6num -eq 0 ];then
+            netplan_reset_nic "${str_if_name}"
+        fi
+        #configipv6 takes no mtu argument: $str_nic_mtu here would be whatever configipv4 last
+        #assigned for this NIC, and the ifupdown v6 branch below writes no mtu at all
+        write_netplan_addr "${str_if_name}" "${str_v6ip}/${str_v6prefix}" ""
+        if [ "$str_v6gateway" != "$str_default_token" ] && [ -n "$str_v6gateway" ] \
+           && echo "$str_v6gateway" | grep -qv 'xcatmaster'; then
+            write_netplan_route "${str_if_name}" "default" "${str_v6gateway}"
+        fi
+        #the ifupdown v6 branch below writes these into the stanza; dropping them here would
+        #silently discard configuration on a v6-only NIC
+        i=0
+        while [ $i -lt ${#array_extra_param_names[@]} ]
+        do
+            write_netplan_param "${str_if_name}" "${array_extra_param_names[$i]}" "${array_extra_param_values[$i]}"
+            i=$((i+1))
+        done
     elif [ "$str_os_type" = "debian" ];then
         #debian or ubuntu
         str_conf_file="/etc/network/interfaces.d/${str_if_name}"
@@ -393,7 +741,10 @@ function delete_nic_config_files(){
     str_temp_name=$1
     #delete the configuration files
     #delete the configuration history
-    if [ "$str_os_type" = "debian" ];then
+    if [ "$str_os_type" = "debian" ] && [ "$netplan_active" = "1" ];then
+        rm -f "$(netplan_file "$str_temp_name")" 2>/dev/null
+        sed -i "/${str_temp_name}/d" "${str_cfg_dir}xcat_history_important" 2>/dev/null
+    elif [ "$str_os_type" = "debian" ];then
         rm -f /etc/network/interfaces.d/$str_temp_name 2>/dev/null
         sed -i "/${str_temp_name}/d" /etc/network/xcat_history_important
     elif [ "$str_os_type" = "sles" ];then
@@ -542,7 +893,10 @@ if [ "$1" = "-r" ];then
         #shut down the nic if it is on
         ip link show $str_nic_name | grep -i ',up'
         if [ $? -eq 0 ];then
-            if [ "$str_os_type" = "debian" ];then
+            if [ "$str_os_type" = "debian" ] && [ "$netplan_active" = "1" ];then
+                #ifdown belongs to ifupdown and does not exist on a netplan-rendered node
+                ip link set dev $str_nic_name down
+            elif [ "$str_os_type" = "debian" ];then
                 ifdown --force $str_nic_name
             else
                 ip link set dev $str_nic_name  down
@@ -551,6 +905,14 @@ if [ "$1" = "-r" ];then
 
         #delete the configuration files
         delete_nic_config_files $str_nic_name
+        #the drop-in just removed WAS the live configuration; without applying, the address
+        #stays on the link until the next reboot
+        if [ "$str_os_type" = "debian" ] && [ "$netplan_active" = "1" ];then
+            netplan_apply
+            if [ $? -ne 0 ]; then
+                error_code=1
+            fi
+        fi
     fi
     exit $error_code
 elif [ "$1" = "-s" ];then
@@ -679,7 +1041,25 @@ elif [ "$1" = "-s" ];then
 
     # cofniguring the interface
 
-    if [ -f "/etc/debian_version" ];then
+    #ubuntu/debian rendered by netplan (18.04+): interfaces.d is ignored, so the install NIC
+    #has to be written as a netplan drop-in too -- this is the path confignetwork takes for
+    #every provisioned node, and leaving it on interfaces.d configured nothing (issue #7454)
+    if [ -f "/etc/debian_version" ] && [ "$netplan_active" = "1" ];then
+        netplan_reset_nic "${str_inst_nic}"
+        str_inst_prefix=$(v4mask2prefix ${str_inst_mask})
+        write_netplan_addr "${str_inst_nic}" "${str_inst_ip}/${str_inst_prefix}" "${str_inst_mtu}"
+        if [ -n "$str_inst_gateway" ];then
+            write_netplan_route "${str_inst_nic}" "default" "${str_inst_gateway}"
+        fi
+        i=0
+        while [ $i -lt ${#array_extra_param_names[@]} ]
+        do
+            write_netplan_param "${str_inst_nic}" "${array_extra_param_names[$i]}" "${array_extra_param_values[$i]}"
+            i=$((i+1))
+        done
+        hostname $NODE
+        echo $NODE > /etc/hostname
+    elif [ -f "/etc/debian_version" ];then
         str_conf_file="/etc/network/interfaces.d/${str_inst_nic}"
         echo "auto ${str_inst_nic}" > $str_conf_file
         echo "iface ${str_inst_nic} inet static" >> $str_conf_file
@@ -869,12 +1249,19 @@ elif [ "$1" = "-s" ];then
 
     if [ "$UPDATENODE" = "1" ] || [ "$NODESETSTATE" = "netboot" ] || [ "$NODESETSTATE" = "statelite" ] || grep "REBOOT=TRUE" /opt/xcat/xcatinfo >/dev/null 2>&1; then
         if_state=0
-        if [ "$str_os_type" = "debian" ];then
+        if [ "$str_os_type" = "debian" ] && [ "$netplan_active" = "1" ];then
+            : # netplan apply below reconfigures the interface; no ifdown needed
+        elif [ "$str_os_type" = "debian" ];then
             ifdown --force $str_inst_nic
         else
             ip link set dev $str_inst_nic down
         fi
-        if [ $networkmanager_active -eq 1 ]; then
+        #tested before NetworkManager: on an NM-rendered netplan node this is the correct arm,
+        #and as an elif after it, it was dead code that fell through to an nmcli call with an
+        #unset connection name
+        if [ "$str_os_type" = "debian" ] && [ "$netplan_active" = "1" ]; then
+            netplan_apply "$str_inst_nic" || error_code=1
+        elif [ $networkmanager_active -eq 1 ]; then
             nmcli con modify $con_name ipv4.dns "${NAMESERVERS}"
             nmcli con reload
             nmcli con up $con_name
@@ -1210,7 +1597,14 @@ else
     if [ $bool_modify_flag -eq 1 ];then
         if [ $bool_restart_flag -eq 1 ];then
             if [ "$str_nic_status" = "up" ];then
-                if [ "$str_os_type" = "debian" ];then
+                if [ "$str_os_type" = "debian" ] && [ "$netplan_active" = "1" ];then
+                    #the netplan_apply that brings the link back is gated on reboot_nic_bool,
+                    #so taking it down here ungated leaves the NIC down until the next reboot
+                    #in the provision postscripts stage -- over the NIC we are talking on.
+                    if [ $reboot_nic_bool -eq 1 ]; then
+                        ip link set dev $str_nic_name down > /dev/null 2>/dev/null
+                    fi
+                elif [ "$str_os_type" = "debian" ];then
                     ifdown --force $str_nic_name > /dev/null
                 else
                     if [ $reboot_nic_bool -eq 1 ]; then
@@ -1285,7 +1679,19 @@ else
 
     #restart the nic
     if [ $bool_restart_flag -eq 1 ];then
-        if [ "$str_os_type" = "debian" ];then
+        if [ "$str_os_type" = "debian" ] && [ "$netplan_active" = "1" ];then
+            #`netplan apply` has no per-interface form: it re-applies every netdef on the node.
+            #In the diskful provision postscripts stage that would bounce the install NIC the
+            #postscripts are still talking over, which is what reboot_nic_bool guards against
+            #for the redhat arm below. The drop-in is written either way and takes effect at
+            #boot, so skipping the apply here costs nothing.
+            if [ $reboot_nic_bool -eq 1 ]; then
+                netplan_apply "$str_nic_name"
+                if [ $? -ne 0 ]; then
+                    error_code=1
+                fi
+            fi
+        elif [ "$str_os_type" = "debian" ];then
             ifup -a -i /etc/network/interfaces.d/$str_nic_name
             if [ $? -ne 0 ]; then
                 log_error "ifup -a -i /etc/network/interfaces.d/$str_nic_name failed."
