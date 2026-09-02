@@ -120,6 +120,49 @@ subtest 'z/VM directory entries are redacted as data' => sub {
         'COMMAND record is masked' );
     unlike( directory_entry('* COMMAND XAUTOLOG VSEVM PW SENTCAUTO'), qr/SENTCAUTO/,
         'commented COMMAND record is masked' );
+    is( directory_entry("COMMAND XAUTOLOG VSEVM PW ,\nSENTCONT"),
+        "COMMAND xxxxxxxx\nxxxxxxxx",
+        'a continued COMMAND record is masked through its last record' );
+    unlike( directory_entry("COMMAND DEFINE MDISK 0100 3390 1 100 EMC2C4 MR ,\nSENTCRPW SENTCWPW"),
+        qr/SENTCRPW|SENTCWPW/, 'continued COMMAND operands are masked' );
+    unlike( directory_entry("* COMMAND XAUTOLOG VSEVM PW ,\n* SENTCCONT"), qr/SENTCCONT/,
+        'a commented continuation record is masked' );
+    like( directory_entry("* COMMAND XAUTOLOG VSEVM PW ,\nNICDEF 0600 TYPE QDIO LAN SYSTEM VSW1"),
+        qr/NICDEF 0600 TYPE QDIO LAN SYSTEM VSW1/,
+        'a commented COMMAND record does not consume the record below it' );
+    unlike( directory_entry("COMMAND XAUTOLOG VSEVM PW ,\n* a note\nSENTAFTERNOTE"),
+        qr/SENTAFTERNOTE/, 'a comment record does not end the continuation' );
+    unlike( directory_entry("COMMAND XAUTOLOG VSEVM PW ,\n* one\n* two\n\nSENTDEEP"),
+        qr/SENTDEEP/, 'comment and blank records do not end the continuation' );
+    unlike( directory_entry("COMMAND XAUTOLOG VSEVM PW ,\n* COMMAND note\nSENTCOMNOTE"),
+        qr/SENTCOMNOTE/, 'a commented COMMAND record does not end the continuation' );
+    my $sequenced = 'COMMAND XAUTOLOG VSEVM PW' . ( ' ' x 45 ) . ',' . '00000010';
+    unlike( directory_entry("$sequenced\nSENTSEQPASS"), qr/SENTSEQPASS/,
+        'a sequence numbered record continues the statement' );
+    unlike( directory_entry('CMD XAUTOLOG VSEVM PW SENTCMD'), qr/SENTCMD/,
+        'CMD record is masked' );
+    unlike( directory_entry("CMD XAUTOLOG VSEVM PW ,\nSENTCMDCONT"), qr/SENTCMDCONT/,
+        'a continued CMD record is masked through its last record' );
+    unlike( directory_entry("COMMAND DEFINE ,\nMDISK 0100 3390 1 100 EMC2C4 MR ,\nSENTMIDMDISK"),
+        qr/SENTMIDMDISK/,
+        'a continuation record that reads as MDISK does not end the statement' );
+    unlike( directory_entry("COMMAND DEFINE ,\nAPPCPASS LUA LUB USERX PW ,\nSENTMIDAPPC"),
+        qr/SENTMIDAPPC/,
+        'a continuation record that reads as APPCPASS does not end the statement' );
+    unlike( directory_entry("COMMAND DEFINE ,\nUSER LNX1 SENTMIDLOGON 512M 1G G ,\nSENTMIDUSER"),
+        qr/SENTMIDLOGON|SENTMIDUSER/,
+        'a continuation record that reads as USER does not end the statement' );
+    my $spaced = ( ' ' x 71 ) . '00000020';
+    unlike( directory_entry("COMMAND XAUTOLOG VSEVM PW ,\n$spaced\nSENTSEQBLANK"),
+        qr/SENTSEQBLANK/,
+        'a sequence numbered blank record does not end the continuation' );
+    my $trailing = 'COMMAND SET RUN ON' . ( ' ' x 53 ) . '0000001,';
+    like( directory_entry("$trailing\nMDISK 0100 3390 0001 10016 EMC2C4 MR"),
+        qr/^MDISK 0100 3390 0001 10016 EMC2C4 MR$/m,
+        'a comma in the sequence number does not continue the statement' );
+    like( directory_entry("COMMAND XAUTOLOG VSEVM PW ,\nSENTCONT\nNICDEF 0600 TYPE QDIO LAN SYSTEM VSW1"),
+        qr/NICDEF 0600 TYPE QDIO LAN SYSTEM VSW1/,
+        'the record after a continuation is preserved' );
     like( directory_entry("USER LNX1 SENTUSERPW 512M 1G G\nNICDEF 0600 TYPE QDIO LAN SYSTEM VSW1"),
         qr/NICDEF 0600 TYPE QDIO LAN SYSTEM VSW1/,
         'records beside credentials are preserved' );
