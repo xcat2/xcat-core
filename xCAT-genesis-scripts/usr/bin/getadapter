@@ -6,6 +6,18 @@ export XCATPORT
 ADAPTERFILE="/tmp/adapterinfo"
 SCANNICLOG="/tmp/adapterscan.log"
 
+transmit_adapter_info() {
+    local target=$1
+
+    if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then #use client cert if available
+        echo "using /etc/xcat/certkey.pem and /etc/xcat/cert.pem to transmit scan result to $target" >> "$SCANNICLOG"
+        openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $target:$XCATPORT  <"$ADAPTERFILE" >>"$SCANNICLOG" 2>&1
+    else
+        echo "transmit scan result without customer certificate to $target" >> "$SCANNICLOG"
+        openssl s_client -connect $target:$XCATPORT  <"$ADAPTERFILE"  >>"$SCANNICLOG" 2>&1
+    fi
+}
+
 rm -f "$SCANNICLOG" >/dev/null 2>&1
 
 if [ -f "$ADAPTERFILE" ]; then
@@ -89,22 +101,10 @@ echo "</xcatrequest>" >> "$ADAPTERFILE"
 #cat "$ADAPTERFILE"
 
 if [ -n  "$XCATMASTER" ]; then
-    if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then #use client cert if available
-        echo "using /etc/xcat/certkey.pem and /etc/xcat/cert.pem to transmit scan result to $XCATMASTER" >> "$SCANNICLOG"
-        openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $XCATMASTER:$XCATPORT  <"$ADAPTERFILE" >>"$SCANNICLOG" 2>&1
-    else
-        echo "transmit scan result without customer certificate to $XCATMASTER" >> "$SCANNICLOG"
-        openssl s_client -connect $XCATMASTER:$XCATPORT  <"$ADAPTERFILE"  >>"$SCANNICLOG" 2>&1
-    fi
+    transmit_adapter_info "$XCATMASTER"
 else
     dhcps="$(awk -F ' |;' '/dhcp-server/ { print $(NF-1) }' /var/lib/dhclient/dhclient.leases | tail -n 1)"
     if [ -n "$dhcps" ]; then
-        if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then #use client cert if available
-             echo "using /etc/xcat/certkey.pem and /etc/xcat/cert.pem to transmit scan result to $dhcps" >> "$SCANNICLOG"
-             openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $dhcps:$XCATPORT  <"$ADAPTERFILE" >>"$SCANNICLOG" 2>&1
-        else
-             echo "transmit scan result without customer certificate to $dhcps" >> "$SCANNICLOG"
-             openssl s_client -connect $dhcps:$XCATPORT  <"$ADAPTERFILE"  >>"$SCANNICLOG" 2>&1
-        fi
+        transmit_adapter_info "$dhcps"
     fi
 fi
