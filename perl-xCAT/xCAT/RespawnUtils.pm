@@ -1,51 +1,38 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::RespawnUtils;
 
-# Pacing for a parent that has to keep a child alive; xcatd's install monitor is the caller.
+# Backoff for a parent that re-forks a child when it dies; xcatd's install monitor is the
+# caller. The delay doubles from min_interval to max_interval and holds there.
 #
-# The child is re-forked whenever it dies, but not as fast as fork() returns -- it may be
-# dying because a resource it needs is held by someone else, and retrying flat out burns CPU
-# and interferes with whatever handshake it performs to claim that resource. So attempts back
-# off, doubling from min_interval to max_interval and then holding there.
+# There is no attempt limit. A spent budget cannot be refilled: with no child alive nothing
+# resets it, and the resource stays dead until xcatd restarts. A child that ran `healthy`
+# seconds served, so its death resets the delay.
 #
-# It never stops retrying. A retry budget that runs out cannot be refilled, because with no
-# child alive nothing is left to reset it, so the resource would stay unserved until the whole
-# daemon is restarted -- the failure the respawn exists to prevent. A child that stayed up
-# `healthy` seconds evidently did claim its resource and serve, so its death resets the delay
-# and only a real streak of failures to start builds the backoff up.
+# Every sub returns a new state and leaves its argument alone, so exited() can run in a
+# SIGCHLD handler.
 #
-# Every function returns a NEW state and never mutates the one it is handed. That is what
-# makes them safe to call from a SIGCHLD handler: the result is complete before the caller's
-# assignment installs it, so a signal cannot catch the pacing half-written.
+# The state is a plain hash; call the subs below for the next state.
 #
-# The state is a plain hash. Callers may read these; use the functions below to get the next
-# state rather than writing to them.
-#
-#   min_interval  shortest wait between attempts, and what a healthy run resets the delay to
-#   max_interval  longest wait -- the delay doubles up to this and then stays here
-#   healthy       how long a child must survive before we count it as having served
-#   delay         how long to wait after the NEXT failure
+#   min_interval  shortest wait, and what a healthy run resets the delay to
+#   max_interval  longest wait; the delay doubles up to this
+#   healthy       seconds a child must survive to count as having served
+#   delay         the wait after the next failure
 #   next_at       earliest time() at which another attempt is allowed
-#   started_at    when the running child was forked, or undef when none is running
-#   streak        how many children in a row have died young
-#   reported      whether we have already logged that this streak reached the ceiling
+#   started_at    when the running child was forked, undef when none is running
+#   streak        children in a row that died young
+#   reported      whether the ceiling was already logged for this streak
 
 use strict;
 use warnings;
 
-# Everything up to the "Forking" section below is pure arithmetic: it reads only the state it
-# is handed, returns a new one, and touches no clock, no globals and no processes. Keep it
-# that way -- that is what lets the pacing be tested on a made-up clock instead of in real
-# seconds, and what makes exited() safe to call from a signal handler.
-
-# Read one tunable, falling back to the default unless it really looks like a whole number.
+# The tunables reach policy() straight from %ENV, so they can be empty or misspelt. Anything
+# that is not a whole number is treated as unset.
 sub _tunable {
     my ($value, $default) = @_;
     return $default unless defined($value) && $value =~ /^\s*\d+\s*$/;
     return $value + 0;
 }
 
-# Start pacing a child from scratch. Anything the caller leaves out gets a sensible default.
 sub policy {
     my (%opt) = @_;
 
@@ -53,7 +40,7 @@ sub policy {
     my $max     = _tunable($opt{max_interval}, 300);
     my $healthy = _tunable($opt{healthy},      60);
 
-    $min = 1    if $min < 1;
+    $min = 1    if $min < 1;     # 0 doubles to 0, which is a fork storm
     $max = $min if $max < $min;
 
     return {
@@ -68,21 +55,17 @@ sub policy {
     };
 }
 
-# Is it time to try again yet? This can say "not yet", but it never says "no more".
 sub due {
     my ($state, $now) = @_;
     return $now >= $state->{next_at} ? 1 : 0;
 }
 
-# Note that we are about to fork, so we can tell later how long the child lasted. Call this
-# before forking: the child can die and be reaped before fork() even returns to us.
+# Call before forking: the child can die and be reaped before fork() returns to the parent.
 sub forked {
     my ($state, $now) = @_;
     return { %$state, started_at => $now };
 }
 
-# Note that the child died, and decide when to try again -- straight away if it had been up
-# long enough to have served, later and later if it keeps failing to start.
 sub exited {
     my ($state, $now) = @_;
 
@@ -106,8 +89,7 @@ sub exited {
     return \%next;
 }
 
-# Has this run of failures just hit the ceiling, and not been mentioned yet? Keeps the log to
-# one line per streak instead of one per attempt.
+# Keeps the log to one line per streak rather than one per attempt.
 sub should_report {
     my ($state) = @_;
     return 0 if $state->{reported};
@@ -115,44 +97,35 @@ sub should_report {
     return $state->{delay} >= $state->{max_interval} ? 1 : 0;
 }
 
-# Remember that we have already logged the ceiling for this streak.
 sub reported {
     my ($state) = @_;
     return { %$state, reported => 1 };
 }
 
 # --- Forking -----------------------------------------------------------------------------
-# The one impure sub. Everything above only does arithmetic; this actually forks.
+# The one impure sub. Everything above is arithmetic.
 
-# Fork a child and keep the pacing straight while doing it. Takes the child's body as a
-# block, then `state` and `pid` -- REFERENCES to the caller's own variables -- and `now`:
+# Fork a child, taking its body as a block:
 #
 #   xCAT::RespawnUtils::supervise { ...child... }
 #       state => \$state, pid => \$pid, now => time();
 #
-# The (&@) prototype is what allows the leading block. It needs this module loaded with
-# `use`, not `require`: under `require` the sub is unknown when the call is compiled, the
-# block is then read as a bare block, and its value arrives as the first argument.
+# `state` and `pid` are references to the caller's own variables. The reaper matches the dead
+# child against that pid and folds the death into that state, so both have to be in place
+# while SIGCHLD is still blocked; values assigned from a return would land after it is let
+# back in, and a child dying in the gap would be compared against a pid still holding 0.
 #
-# Two orderings in here are easy to get wrong and are the reason this is not left to callers.
-# The attempt is recorded before the fork, because the child can die and be reaped before
-# fork() returns to us. And the pid and the state are installed in the caller's variables
-# while SIGCHLD is still blocked -- which is why they are passed by reference rather than
-# handed back as a return value. The reaper matches the dead child against that pid and folds
-# the death into that state; had the caller assigned them from a return value, the assignment
-# would land after the signal was let back in, so a child dying in the gap would be compared
-# against a pid still holding 0, missed, and the caller would then write a dead pid back over
-# the reaper's work -- believing a dead child alive, and never respawning it.
+# The (&@) prototype needs this module loaded with `use`. Under `require` the sub is unknown
+# when the call is compiled, the block is read as a bare block, and its value arrives as the
+# first argument.
 #
-# The block is only ever entered in the child and is not expected to return; if it does, the
-# child exits quietly rather than falling back into the parent's code. Passing a live `pid`
-# is a no-op, so a caller that forgets to check is not punished with a second child. The new
-# pid is also returned, for a caller that wants it inline.
+# The block runs only in the child and is not expected to return. Passing a live `pid` is a
+# no-op. Returns the new pid.
 sub supervise (&@) {
     my ($child, %arg) = @_;
     my ($stateref, $pidref, $now) = @arg{qw(state pid now)};
 
-    return $$pidref if $$pidref;    # already running; nothing to do
+    return $$pidref if $$pidref;
 
     require POSIX;
     require xCAT::Utils;
@@ -170,13 +143,13 @@ sub supervise (&@) {
         return 0;
     }
 
-    unless ($pid) {    # child: it must not go on to serve with SIGCHLD blocked
+    unless ($pid) {    # the child must not serve with SIGCHLD blocked
         POSIX::sigprocmask(POSIX::SIG_UNBLOCK(), $mask);
         $child->();
         POSIX::_exit(0);
     }
 
-    $$pidref = $pid;    # in place before the reaper can run, or it matches a stale pid
+    $$pidref = $pid;    # in place before the reaper runs, or it matches a stale pid
     POSIX::sigprocmask(POSIX::SIG_UNBLOCK(), $mask);
     return $pid;
 }

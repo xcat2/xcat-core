@@ -55,11 +55,7 @@ use xCAT::xcatd;
 use xCAT::CmdLog;
 use xCAT::State;
 
-# Pacing for re-forking the install monitor; see the main service loop below. The pacing
-# itself is pure arithmetic in xCAT::RespawnUtils -- a backoff with a ceiling but no end,
-# so a held xcatiport costs one fork per ceiling interval instead of a fork storm, and the
-# monitor is back within that bound once the port is free. Each function returns a NEW
-# state, which is why the reaper can safely install one from inside the signal handler.
+# Pacing for re-forking the install monitor; see the main service loop below.
 my $mon_respawn = xCAT::RespawnUtils::policy(
     min_interval => $ENV{XCATD_MON_RESPAWN_MIN_INTERVAL},
     max_interval => $ENV{XCATD_MON_RESPAWN_MAX_INTERVAL},
@@ -1035,10 +1031,9 @@ wait_db_process();
 my $CHILDPID = 0;    # Global for reapers
 my %immediatechildren;
 
-# Fold the death of the install monitor into the respawn pacing. Every reaper that can be
-# the handler when it dies has to call this: generic_reaper covers startup and the throttled
-# path, ssl_reaper the rest of the service loop. A death reaped without this leaves $pid_MON
-# holding a dead pid, and the service loop only re-forks when $pid_MON is clear.
+# Both reapers call this. generic_reaper is the handler at startup and while connections are
+# throttled, ssl_reaper for the rest of the service loop. A death reaped without this leaves
+# $pid_MON holding a dead pid, and the service loop re-forks only when $pid_MON is clear.
 sub reap_install_monitor {
     my ($pid) = @_;
 
@@ -1214,10 +1209,6 @@ if (!(socketpair($rescanreadpipe, $rescanwritepipe, AF_UNIX, SOCK_STREAM, PF_UNS
 }
 $rescanrselect = new IO::Select;
 $rescanrselect->add($rescanreadpipe);
-# supervise() records the attempt, blocks SIGCHLD across the fork, and installs $pid_MON and
-# $mon_respawn itself while it is still blocked -- which is why they are passed by reference;
-# see the sub. This monitor's uptime counts towards the pacing too, so an unrelated death much
-# later is retried promptly.
 xCAT::RespawnUtils::supervise {
     $$progname = "xcatd: install monitor";
     $pid_UDP = 0;
@@ -1492,14 +1483,9 @@ my $udpalive       = 1;
 
 until ($quit) {
     $SIG{CHLD} = \&ssl_reaper; # set here to ensure that signal handler is not corrupted during loop
-    # Respawn the install monitor if it has died. It is forked exactly once at startup, and the
-    # SIGCHLD reaper only clears $pid_MON when it exits -- nothing re-forks it. A single death
-    # of that child (a stray signal, or a lost socket takeover during an xcatd restart) used to
-    # leave xcatiport permanently dead while this daemon kept running, so installing nodes could
-    # no longer report status or request the boot flip until the WHOLE daemon was restarted.
-    #
-    # xCAT::RespawnUtils paces the attempts, and never stops allowing them, so the monitor also
-    # comes back on its own once whatever held the port lets go of it.
+    # Nothing else re-forks the monitor; the reaper only clears $pid_MON. The pacing never
+    # stops allowing an attempt, so the monitor also comes back once whatever holds
+    # xcatiport lets go of it.
     if (!$pid_MON && !$quit && $sport && xCAT::RespawnUtils::due($mon_respawn, time())) {
         if (xCAT::RespawnUtils::should_report($mon_respawn)) {
             xCAT::MsgUtils->message("S",
@@ -1512,16 +1498,12 @@ until ($quit) {
             $pid_UDP = 0;
             close($listener);
             close($udpctl); $udpctl = 0;
-            # This fork happens further down the program than the one at startup, so it also
-            # inherits what the parent has opened since: the rescanplugins channel. The monitor
-            # has no use for either end, and holding them is the only way a respawned monitor
-            # would differ from the one forked at startup.
+            # This fork is further down the program than the one at startup, so it also
+            # inherits what the parent opened since: the rescanplugins channel.
             close($chreadpipe);
             close($chwritepipe);
-            # A pending connection is a client socket the parent has accepted and not yet
-            # handed to a worker. The monitor never serves one, and it outlives the worker
-            # that does, so a copy left open here holds that client's socket for the life of
-            # the daemon.
+            # Client sockets the parent accepted and has not dispatched yet. The monitor
+            # outlives the worker that serves one.
             close($_) for @pendingconnections;
             do_installm_service;
             xexit(0);
@@ -1558,9 +1540,8 @@ until ($quit) {
     } else {
 
         # if select returned with no ready fds, there might be udpctl broken.
-        # While the install monitor is down, wait in shorter hops: the respawn at the top of
-        # this loop only gets a turn when this select returns, so on an otherwise idle daemon
-        # a full 30s wait is added to the respawn delay before xcatiport comes back.
+        # The respawn at the top of this loop only gets a turn when this select returns, so
+        # wait in shorter hops while the monitor is down.
         if (not $bothwatcher->can_read((!$pid_MON && $sport) ? 5 : 30)) {
 
             # if the errno is 'bad fd', check the health of the udpctl
