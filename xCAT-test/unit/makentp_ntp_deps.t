@@ -124,14 +124,20 @@ SKIP: {
 # --- the backend the management node chose must reach the node ------------
 # makentp selects the daemon from site.ntpbackend through xCAT::NTP::Backend and passes it here,
 # so a cluster told to use ntpd does not get chrony on every node that happens to have it.
+# The backend is a preference on both sides: a node that does not have the requested daemon is
+# configured with the other one, rather than handed a daemon that is not there.
 foreach my $case (
-    # argv                          chronyd present?   expected daemon
+    # argv                           absent commands   expected daemon
     [ '--backend ntpd  pool.ntp.org', 'nothing', 'ntpd',   'ntpd is honoured even where chronyd is installed' ],
     [ '--backend chrony pool.ntp.org','nothing', 'chrony', 'chrony is honoured' ],
     [ 'pool.ntp.org',                 'nothing', 'chrony', 'with no backend given the probe still picks chrony' ],
     [ 'pool.ntp.org',                 'chronyd', 'ntpd',   'with no backend given and no chronyd it falls back' ],
     [ '--backend chrony pool.ntp.org','chronyd', 'ntpd',   'chrony requested but absent falls back rather than failing' ],
     [ '--use-ntpd pool.ntp.org',      'nothing', 'ntpd',   'the legacy --use-ntpd flag still forces ntpd' ],
+    [ '--backend ntpd pool.ntp.org',  'ntpd',    'chrony', 'ntpd requested but absent falls back to chrony' ],
+    [ '--use-ntpd pool.ntp.org',      'ntpd',    'chrony', 'the legacy flag falls back the same way' ],
+    [ '--backend ntpd pool.ntp.org',  'ntpd chronyd', 'ntpd', 'with neither daemon present the request is kept' ],
+    [ '--backend ntpd pool.ntp.org',  'ntpd systemctl', 'ntpd', 'chrony without systemctl is no fallback' ],
 ) {
     my ($argv, $missing, $want, $name) = @$case;
     my $root = File::Temp::tempdir(CLEANUP => 1);
@@ -144,7 +150,7 @@ foreach my $case (
         . "systemctl() { echo \"systemctl \$*\" >>\"$root/calls\"; return 0; }\n"
         . "timedatectl() { echo \"timedatectl \$*\" >>\"$root/calls\"; return 0; }\n"
         . "hwclock() { echo \"hwclock \$*\" >>\"$root/calls\"; return 0; }\n"
-        . "check_executes() { for c in \"\$@\"; do [ \"\$c\" = \"$missing\" ] && return 1; done; return 0; }\n"
+        . "check_executes() { for c in \"\$@\"; do case \" $missing \" in *\" \$c \"*) return 1;; esac; done; return 0; }\n"
         . "log_label=xcat\nset -- $argv\n";
     my $out = `bash -c 'exec 2>/dev/null; $prelude$args$select
 printf "USE_NTPD=%s\\n" "\${USE_NTPD:-}"' 2>/dev/null`;
