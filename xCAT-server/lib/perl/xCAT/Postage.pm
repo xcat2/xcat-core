@@ -173,6 +173,59 @@ my $mn;
 %::GLOBAL_SN_HASH;
 %::GLOBAL_TABDUMP_HASH;
 
+#-------------------------------------------------------------------------------
+
+=head3 defer_syncfiles_to_postboot
+
+    On the Ubuntu/Debian diskful install path a node's postscripts run inside the installer's
+    in-target chroot, before the node has booted as itself. syncfiles asks the management node
+    to scp files INTO the running node, which cannot work there -- there is no sshd yet -- so it
+    times out and the node reports status=failed although the OS installed. Defer it to the
+    postbootscripts, which run on the booted node.
+
+    Scoped to the diskful install path: netboot and statelite already run their postscripts on
+    the booted node, and EL/SLES are unaffected either way. syncfiles is prepended so it still
+    runs before any postbootscript that consumes the files it synchronises.
+
+    Arguments:
+        $os              nodetype.os for the node
+        $provmethod      the effective provmethod (the osimage's, when the node names one)
+        $nodesetstate    the nodeset state, when the caller knows it
+        $postscripts     the rendered postscripts list
+        $postbootscripts the rendered postbootscripts list
+    Returns:
+        ($postscripts, $postbootscripts), unchanged unless the deferral applies
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub defer_syncfiles_to_postboot {
+    my ($os, $provmethod, $nodesetstate, $postscripts, $postbootscripts) = @_;
+
+    return ($postscripts, $postbootscripts)
+      unless defined($os) && $os =~ /^(?:ubuntu|debian)/i;
+
+    my $diskful_install =
+         ($nodesetstate && $nodesetstate eq 'install')
+      || (!$nodesetstate && defined($provmethod) && $provmethod eq 'install');
+    return ($postscripts, $postbootscripts) unless $diskful_install;
+
+    return ($postscripts, $postbootscripts)
+      unless defined($postscripts) && $postscripts =~ s/^[ \t]*syncfiles[ \t]*\n//m;
+
+    $postbootscripts = "" unless defined $postbootscripts;
+
+    # A node may already list syncfiles as a postbootscript of its own; do not add a second copy.
+    return ($postscripts, $postbootscripts)
+      if $postbootscripts =~ /^[ \t]*syncfiles[ \t]*$/m;
+
+    $postbootscripts =
+        "# ubuntu-deferred-postbootscripts-start-here\nsyncfiles\n# ubuntu-deferred-postbootscripts-end-here\n"
+      . $postbootscripts;
+
+    return ($postscripts, $postbootscripts);
+}
+
 sub makescript {
     my $nodes        = shift;
     my $nodesetstate = shift;
@@ -545,6 +598,19 @@ sub makescript {
         # for #INCLUDE_POSTBOOTSCRIPTS_LIST#
         my $postbootscripts;
         $postbootscripts = getPostbootScripts($node, $osimgname, $script_hash);
+
+        # See defer_syncfiles_to_postboot(): on the Ubuntu/Debian diskful install path syncfiles
+        # has to run on the booted node, not in the installer's in-target chroot.
+        #
+        # nodetype.provmethod is often an osimage NAME rather than 'install'. getScripts() above
+        # was handed this same %image_hash and filled it from the osimage table, provmethod
+        # included, so resolve through it -- getDisklessNet() reads the same key the same way.
+        my $effective_provmethod = $provmethod;
+        if ($osimgname && defined($image_hash{$osimgname}{'provmethod'})) {
+            $effective_provmethod = $image_hash{$osimgname}{'provmethod'};
+        }
+        ($postscripts, $postbootscripts) = defer_syncfiles_to_postboot(
+            $os, $effective_provmethod, $nodesetstate, $postscripts, $postbootscripts);
 
         # if using zones then must go to the zone.sshbetweennodes
         # else go to site.sshbetweennodes

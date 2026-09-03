@@ -66,8 +66,19 @@ autoinstall:
       sed -i '/^\.\.\.$/d' /autoinstall.yaml
       cat /tmp/partitionfile >> /autoinstall.yaml
       echo "=== DNS setup ==="
-      rm -f /etc/resolv.conf
-      echo "nameserver #TABLE:noderes:$NODE:xcatmaster#" >/etc/resolv.conf
+      # glibc's resolver discards a nameserver line naming a host, so writing the xcatmaster
+      # *name* leaves the installer -- and the in-target apt that inherits this file -- with no
+      # DNS. Resolve it here, while the live installer's DHCP resolv.conf still works, and keep
+      # that file when the name does not resolve. A name written back is the case this step
+      # exists to prevent.
+      xcatmaster_host="#TABLE:noderes:$NODE:xcatmaster#"
+      xcatmaster_ip="$(getent ahostsv4 "$xcatmaster_host" | awk '{print $1; exit}')"
+      if [ -n "$xcatmaster_ip" ]; then
+        rm -f /etc/resolv.conf
+        echo "nameserver $xcatmaster_ip" >/etc/resolv.conf
+      else
+        echo "xcat: $xcatmaster_host has no IPv4 address; keeping the resolver DHCP supplied"
+      fi
       echo "domain #TABLE:site:key=domain:value#" >>/etc/resolv.conf
       echo "=== early-commands complete ==="
   late-commands:
@@ -100,5 +111,14 @@ autoinstall:
     cp ./#HOSTNAME#.post /target/root/post.script;
     curtin in-target --target /target /root/post.script;
     } >>/target/var/log/xcat/xcat.log 2>&1'
+    # Flip the node to local-disk boot, or it PXE-loops back into the installer on reboot.
+    # xcatd's install monitor greets with "ready", then answers "next" with "done" and runs
+    # "nodeset <node> next". Require both tokens: another service on that port is not a flipped
+    # node. The monitor listens on site.xcatiport; TABLEBLANKOKAY because an absent key fails a
+    # plain TABLE lookup, and with it the whole template.
+    # Retry, and log a failure rather than reinstall silently. Both reads are bounded: a monitor
+    # that accepts and never answers would block a bare read and hang the install here. A
+    # monitor that died and never came back is #7759.
+    - ['bash', '-c', 'xm=#XCATVAR:XCATMASTER#; port="#TABLEBLANKOKAY:site:key=xcatiport:value#"; [ -n "$port" ] || port=3002; ok=0; for i in 1 2 3 4 5; do if exec 3<>/dev/tcp/$xm/$port; then if read -r -t 10 hello <&3 && [ "$hello" = "ready" ]; then printf "next\n" >&3; if read -r -t 10 ack <&3 && [ "$ack" = "done" ]; then ok=1; fi; fi; exec 3>&- 3<&-; [ "$ok" = 1 ] && break; fi; sleep 5; done; if [ "$ok" != 1 ]; then echo "xcat: FAILED to flip $(hostname) to local-disk boot via $xm:$port; the node will PXE back into the installer" >>/target/var/log/xcat/xcat.log; fi; exit 0']
   error-commands:
     - tar -c --ignore-failed-read --transform='s/^/#HOSTNAME#-logs\//' /var/crash /var/log/installer /tmp/pre-install.log /autoinstall.yaml 2>/dev/null |nc -l 8080

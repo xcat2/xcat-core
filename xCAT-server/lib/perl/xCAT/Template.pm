@@ -1796,8 +1796,21 @@ sub ubuntu_subiquity_apt_config
             '      primary:',
             "      - uri: $online_mirror",
         );
-        if (@otherpkg_sources) {
+        # On 20.04/22.04 Subiquity renders the target's sources.list from the install media
+        # alone, so in-target apt cannot find packages the ISO does not carry (chrony). Add the
+        # online archive through `sources:` -- `sources_list:` is a curtin key Subiquity's
+        # schema ignores. Excluded on Deb822 releases, where the primary mirror already lands
+        # in ubuntu.sources and these legacy .list files would duplicate the same suites.
+        my $need_sources_block = !$use_deb822;
+        if ($need_sources_block) {
             push @lines, '    sources:';
+            push @lines, '      xcat-ubuntu-archive.list:';
+            push @lines, qq(        source: "deb $online_mirror \$RELEASE main restricted universe multiverse");
+            push @lines, '      xcat-ubuntu-updates.list:';
+            push @lines, qq(        source: "deb $online_mirror \$RELEASE-updates main restricted universe multiverse");
+        }
+        if (@otherpkg_sources) {
+            push @lines, '    sources:' unless $need_sources_block;
             my $index = 0;
             foreach my $source (@otherpkg_sources) {
                 push @lines, "      xcat-otherpkgs-$index.list:";

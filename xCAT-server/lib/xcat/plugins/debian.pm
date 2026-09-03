@@ -507,6 +507,121 @@ sub copycd
     }
 }
 
+#-------------------------------------------------------------------------------
+
+=head3 subiquity_nfsroot_server
+
+    Resolve the install server to the address casper's klibc nfsmount needs.
+
+    '!myipfn!' is a placeholder, not a name: pxe.pm and grub2.pm substitute it with
+    my_ip_facing($node) when they write the boot config, so it is already an address by the
+    time klibc sees it. Resolving it here would only ever fail, and failing would drop a node
+    whose noderes.xcatmaster is simply unset -- which noderes.5.rst documents as supported.
+    anaconda.pm and sles.pm guard the same placeholder the same way.
+
+    Arguments:
+        $instserver the install server name, address, or the '!myipfn!' placeholder
+        $resolver   optional coderef, for tests; defaults to NetworkUtils::getipaddr, IPv4 only
+    Returns:
+        the value to put in nfsroot, or undef when a real name does not resolve
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub subiquity_nfsroot_server {
+    my ($instserver, $resolver) = @_;
+
+    return undef unless defined($instserver) && length($instserver);
+    return $instserver if $instserver eq '!myipfn!';
+
+    # A dual-stack management node also has an AAAA record. casper takes everything after the
+    # first colon in nfsroot= as the path, so an IPv6 address there cannot be parsed.
+    $resolver ||= sub { xCAT::NetworkUtils->getipaddr($_[0], OnlyV4 => 1) };
+    return $resolver->($instserver);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 subiquity_kcmdline
+
+    Build the kernel command line for a Subiquity (Ubuntu live installer) diskful install.
+
+    boot=casper: without it casper never processes netboot=nfs -- it scans the local disks,
+    finds no live media and panics into the initramfs shell, which PXE-loops.
+
+    nfsroot must be a literal IP: casper mounts the live filesystem with klibc's nfsmount,
+    which has no resolver. The ds= URL is fetched later by cloud-init, where DNS works, so it
+    keeps the install server's name.
+
+    toram: casper copies the squashfs to RAM and unmounts the NFS source, so nothing holds the
+    network root at shutdown. Without it a process doing I/O to it blocks uninterruptibly,
+    systemd-shutdown waits forever and the node never reboots into the disk it just installed.
+    casper parses only nfsroot= and takes the whole value as the path, so mount options cannot
+    be appended; toram is its supported alternative. It does mean the node needs memory for the
+    live filesystem on top of the installer -- roughly 1.5G on 24.04 -- or it dies part-way
+    through and reboots into the installer again, which looks like a boot-flip failure. See
+    docs/source/troubleshooting/os_installation/ubuntu_subiquity_memory.rst.
+
+    Arguments:
+        $base       the command line built so far
+        $nfsip      the install server as a literal IP, for casper's klibc nfsmount
+        $pkgdir     the install media path exported over NFS
+        $instserver the install server name, for the cloud-init seed URL
+        $httpport   the xCAT HTTP port
+        $node       the node being installed
+    Returns:
+        the completed command line
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub subiquity_kcmdline {
+    my ($base, $nfsip, $pkgdir, $instserver, $httpport, $node) = @_;
+
+    my $kcmdline = $base;
+    $kcmdline .= " autoinstall ip=dhcp boot=casper netboot=nfs nfsroot=${nfsip}:${pkgdir} toram";
+    $kcmdline .= " ds=nocloud-net;s=http://${instserver}:${httpport}/install/autoinst/${node}/";
+    $kcmdline .= " ---";
+
+    return $kcmdline;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 subiquity_boot_params
+
+    Resolve the install server and build the Subiquity command line, or say why not.
+
+    The two steps are composed here rather than in mkinstall so the composition can be driven:
+    mkinstall needs a management node, and the decision that matters -- which install server
+    ends up in nfsroot -- is exactly what a regression would change. The caller keeps the side
+    effects: reporting the error and skipping the node.
+
+    Arguments:
+        $base       the command line built so far
+        $instserver the install server name, address, or the '!myipfn!' placeholder
+        $pkgdir     the install media path exported over NFS
+        $httpport   the xCAT HTTP port
+        $node       the node being installed
+        $resolver   optional coderef, for tests; passed through to subiquity_nfsroot_server
+    Returns:
+        ($kcmdline, undef) on success, or (undef, $message) when the server does not resolve
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub subiquity_boot_params {
+    my ($base, $instserver, $pkgdir, $httpport, $node, $resolver) = @_;
+
+    my $nfsip = subiquity_nfsroot_server($instserver, $resolver);
+    return (undef, "Could not resolve the install server '$instserver' to an address. "
+          . "The Ubuntu live installer mounts its root with klibc nfsmount, which cannot "
+          . "resolve names, so nfsroot must be an address.")
+      unless $nfsip;
+
+    return (subiquity_kcmdline($base, $nfsip, $pkgdir, $instserver, $httpport, $node), undef);
+}
+
 sub mkinstall {
     xCAT::MsgUtils->message("S", "Doing debian mkinstall");
     my $request  = shift;
@@ -986,9 +1101,16 @@ sub mkinstall {
             my $kcmdline = "nofb utf8 auto xcatd=" . $instserver;
 
             if (using_subiquity($os,$tmplfile)) {
-                $kcmdline .= " autoinstall ip=dhcp netboot=nfs nfsroot=${instserver}:${pkgdir}";
-                $kcmdline .= " ds=nocloud-net;s=http://${instserver}:${httpport}/install/autoinst/${node}/";
-                $kcmdline .= " ---";
+                # Fail rather than hand casper a name: klibc's nfsmount cannot resolve one, so
+                # the node would panic "can't parse IP address" at boot, on the node, with
+                # nothing said on the management node.
+                my ($subiquity_cmdline, $subiquity_error) =
+                  subiquity_boot_params($kcmdline, $instserver, $pkgdir, $httpport, $node);
+                if ($subiquity_error) {
+                    xCAT::MsgUtils->report_node_error($callback, $node, $subiquity_error);
+                    next;
+                }
+                $kcmdline = $subiquity_cmdline;
             } else {
                 $kcmdline .= " url=http://${instserver}:$httpport/install/autoinst/$node";
                 $kcmdline .= " mirror/http/hostname=${instserver}:$httpport";

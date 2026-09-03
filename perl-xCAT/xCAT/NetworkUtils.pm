@@ -288,8 +288,20 @@ sub getipaddr
 #print "============================\n";
 
     #cache, do not lookup DNS each time
+    #
+    # An unrestricted lookup asks for AF_UNSPEC and caches whatever came back, which
+    # on a dual-stack host is the AAAA record. Serving that to an OnlyV4 caller gives
+    # it an IPv6 address it cannot use: debian.pm renders nfsroot=<address>:<path>,
+    # and nfsroot=2001:db8::1:/install does not parse.
+    my $cached_v6 =
+      defined($::hostiphash{$iporhost})
+      && $::hostiphash{$iporhost}
+      && $::hostiphash{$iporhost}{hostip}
+      && $::hostiphash{$iporhost}{hostip} =~ /:/;
     if (
-        ((not $extraarguments{OnlyV6}) and (not $extraarguments{GetAllAddresses}))  and defined($::hostiphash{$iporhost}) and $::hostiphash{$iporhost})
+        ((not $extraarguments{OnlyV6}) and (not $extraarguments{GetAllAddresses}))
+        and (not($extraarguments{OnlyV4} and $cached_v6))
+        and defined($::hostiphash{$iporhost}) and $::hostiphash{$iporhost})
     {
 
         if($extraarguments{GetNumber} ) {
