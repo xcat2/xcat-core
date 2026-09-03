@@ -4863,6 +4863,55 @@ sub splitkcmdline {
 
 
 ###################################################################################
+#subroutine debian_arch
+#Usage: give the Debian architecture name for an xCAT architecture. The media, the
+#       package lists and debootstrap all use the Debian name.
+#Input Params:
+#       $arch: the xCAT architecture, for example x86_64 or ppc64le
+#Return value:
+#       the Debian architecture name, or the input when Debian names it the same
+###################################################################################
+# ppc64le is deliberately absent: the Ubuntu driver table, the NSS libraries and the
+# image paths all key on ppc64el, so translating it here alone would build an image
+# without network drivers instead of stopping at debootstrap.
+my %DEBIAN_ARCH = (
+    'x86_64' => 'amd64',
+);
+
+sub debian_arch {
+    my $arch = shift;
+    $arch = shift if ($arch =~ /xCAT::Utils/);
+    return unless defined $arch;
+    return $DEBIAN_ARCH{ lc $arch } // $arch;
+}
+
+###################################################################################
+#subroutine xcat_arch_from_debian
+#Usage: give the xCAT architecture for the architecture the Ubuntu media reports.
+#Input Params:
+#       $darch: the architecture from the media, for example amd64 or ppc64el
+#Return value:
+#       the xCAT architecture, or undef when the media names one xCAT does not know
+###################################################################################
+my @XCAT_ARCH_FROM_DEBIAN = (
+    [ qr/^i.86$/    => 'x86' ],
+    [ qr/^ppc64el$/ => 'ppc64el' ],
+    [ qr/ppc|powerpc/ => 'ppc64' ],
+    [ qr/^amd64$/   => 'x86_64' ],
+);
+
+sub xcat_arch_from_debian {
+    my $darch = shift;
+    $darch = shift if ($darch =~ /xCAT::Utils/);
+    return unless defined $darch and $darch ne '';
+    foreach my $rule (@XCAT_ARCH_FROM_DEBIAN) {
+        my ($pattern, $arch) = @{$rule};
+        return $arch if $darch =~ $pattern;
+    }
+    return;
+}
+
+###################################################################################
 #subroutine lookupNetboot
 #Usage: determine the possible noderes.netboot values of the osimage
 #       according to the "osvers" and "osarch" attributes.
