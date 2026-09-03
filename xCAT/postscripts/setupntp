@@ -139,11 +139,19 @@ then
 	esac
 fi
 
-# The requested backend is a preference, not a guarantee: a node that does not have chronyd
-# still has to be configured, so fall back to ntpd and say so rather than failing.
+# The requested backend is a preference, not a guarantee: a node that does not have the
+# requested daemon still has to be configured, so use the other one and say so.
 if [ "${NTP_BACKEND}" = "ntpd" ]
 then
 	USE_NTPD="yes"
+	if ! check_executes ntpd >/dev/null 2>&1 &&
+		check_executes chronyd >/dev/null 2>&1 &&
+		check_executes systemctl >/dev/null 2>&1
+	then
+		USE_NTPD=""
+		logger -t $log_label -p local4.warning \
+			"setupntp: ntpd requested but ntpd is absent; using chrony"
+	fi
 else
 	check_executes chronyd >/dev/null 2>&1 || USE_NTPD="yes"
 	check_executes systemctl >/dev/null 2>&1 || USE_NTPD="yes"
