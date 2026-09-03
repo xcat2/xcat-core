@@ -869,6 +869,25 @@ sub next_setnetinfo {
     &setnetinfo($sessdata);
 }
 
+sub _resolve_ipv4_octets {
+    my $value = shift;
+    return unless defined($value) and length($value);
+
+    my $packed_address = inet_aton($value);
+    return unless defined($packed_address) and length($packed_address) == 4;
+
+    return (inet_ntoa($packed_address), unpack("C4", $packed_address));
+}
+
+sub _report_unresolvable_ipv4 {
+    my $value    = shift;
+    my $sessdata = shift;
+    xCAT::SvrUtils::sendmsg(
+        [ 1, "Unable to resolve '$value' to an IPv4 address" ],
+        $callback, $sessdata->{node}, %allerrornodes);
+    return;
+}
+
 sub setnetinfo {
     my $sessdata   = shift;
     my $subcommand = $sessdata->{subcommand};
@@ -941,10 +960,13 @@ sub setnetinfo {
         @cmd = (1, $channel_number, 0x10, @clist);
     }
     elsif ($subcommand =~ m/snmpdest(\d+)/) {
-        my $dstip = $argument;    #pop(@input);
-        $dstip = inet_ntoa(inet_aton($dstip));
-        my @dip = split /\./, $dstip;
-        @cmd = (0x01, $channel_number, 0x13, $1, 0x00, 0x00, $dip[0], $dip[1], $dip[2], $dip[3], 0, 0, 0, 0, 0, 0);
+        my $destination = $1;
+        my ($dstip, @dip) = _resolve_ipv4_octets($argument);
+        unless (defined($dstip)) {
+            _report_unresolvable_ipv4($argument, $sessdata);
+            return;
+        }
+        @cmd = (0x01, $channel_number, 0x13, $destination, 0x00, 0x00, @dip, 0, 0, 0, 0, 0, 0);
     } elsif ($subcommand =~ m/netmask/) {
         if ($argument =~ /\./) {
             my @mask = split /\./, $argument;
@@ -955,21 +977,21 @@ sub setnetinfo {
             @cmd = (0x01, $channel_number, 0x6, @mask);
         }
     } elsif ($subcommand eq "gateway" and $argument) {
-        my $gw = inet_ntoa(inet_aton($argument));
-        my @mask = split /\./, $gw;
-        foreach (0 .. 3) {
-            $mask[$_] = $mask[$_] + 0;
+        my ($gw, @octets) = _resolve_ipv4_octets($argument);
+        unless (defined($gw)) {
+            _report_unresolvable_ipv4($argument, $sessdata);
+            return;
         }
         $sessdata->{setnetinfo_value} = $gw;
-        @cmd = (0x01, $channel_number, 0x0C, @mask);
+        @cmd = (0x01, $channel_number, 0x0C, @octets);
     } elsif ($subcommand eq "backupgateway" and $argument) {
-        my $gw = inet_ntoa(inet_aton($argument));
-        my @mask = split /\./, $gw;
-        foreach (0 .. 3) {
-            $mask[$_] = $mask[$_] + 0;
+        my ($gw, @octets) = _resolve_ipv4_octets($argument);
+        unless (defined($gw)) {
+            _report_unresolvable_ipv4($argument, $sessdata);
+            return;
         }
         $sessdata->{setnetinfo_value} = $gw;
-        @cmd = (0x01, $channel_number, 0x0E, @mask);
+        @cmd = (0x01, $channel_number, 0x0E, @octets);
     } elsif ($subcommand =~ m/vlan/) {
         if ($argument =~ /^(off|disable|disabled)$/i) {
             @cmd = (0x01, $channel_number, 0x14, 0x00, 0x00);
@@ -999,13 +1021,13 @@ sub setnetinfo {
                 return;
             }
         }
-        my $mip = inet_ntoa(inet_aton($argument));
-        my @mask = split /\./, $mip;
-        foreach (0 .. 3) {
-            $mask[$_] = $mask[$_] + 0;
+        my ($mip, @octets) = _resolve_ipv4_octets($argument);
+        unless (defined($mip)) {
+            _report_unresolvable_ipv4($argument, $sessdata);
+            return;
         }
         $sessdata->{setnetinfo_value} = $mip;
-        @cmd = (0x01, $channel_number, 0x3, @mask);
+        @cmd = (0x01, $channel_number, 0x3, @octets);
     }
 
     #elsif($subcommand eq "alert" ) {
