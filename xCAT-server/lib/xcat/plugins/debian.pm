@@ -521,7 +521,7 @@ sub copycd
 
     Arguments:
         $instserver the install server name, address, or the '!myipfn!' placeholder
-        $resolver   optional coderef, for tests; defaults to NetworkUtils::getipaddr
+        $resolver   optional coderef, for tests; defaults to NetworkUtils::getipaddr, IPv4 only
     Returns:
         the value to put in nfsroot, or undef when a real name does not resolve
 
@@ -534,7 +534,9 @@ sub subiquity_nfsroot_server {
     return undef unless defined($instserver) && length($instserver);
     return $instserver if $instserver eq '!myipfn!';
 
-    $resolver ||= sub { xCAT::NetworkUtils->getipaddr($_[0]) };
+    # A dual-stack management node also has an AAAA record. casper takes everything after the
+    # first colon in nfsroot= as the path, so an IPv6 address there cannot be parsed.
+    $resolver ||= sub { xCAT::NetworkUtils->getipaddr($_[0], OnlyV4 => 1) };
     return $resolver->($instserver);
 }
 
