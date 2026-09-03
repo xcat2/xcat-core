@@ -69,4 +69,28 @@ $r = xCAT::NTP::Backend->choose(
 is( $r->{name}, 'chrony', 'neither present keeps the preferred chrony' );
 is( $r->{install}, 1, 'neither present flags install of the preferred daemon' );
 
+# --- available: chrony needs systemd, not just chronyd -----------------------------------------
+# makentp configures chrony only where systemctl is present, and setupntp hands over to ntpd
+# without it. The selector has to call chrony usable on the same terms, or makentp silently takes
+# the ntpd path for a backend the selector reported as available.
+is( xCAT::NTP::Backend->available( 'chrony', commands => { chronyd => 1, systemctl => 1 } ), 1,
+    'chrony is available where chronyd and systemctl are both present' );
+is( xCAT::NTP::Backend->available( 'chrony', commands => { chronyd => 1, systemctl => 0 } ), 0,
+    'chronyd without systemctl is not a usable chrony backend' );
+is( xCAT::NTP::Backend->available( 'chrony', commands => { chronyd => 0, systemctl => 1 } ), 0,
+    'systemctl without chronyd is not a usable chrony backend either' );
+is( xCAT::NTP::Backend->available( 'ntpd', commands => { ntpd => 1 } ), 1,
+    'ntpd needs only ntpd' );
+
+$r = xCAT::NTP::Backend->choose(
+    requested => 'chrony', check_available => 1,
+    commands => { chronyd => 1, systemctl => 0, ntpd => 1 } );
+is( $r->{name}, 'ntpd', 'chronyd without systemctl downgrades to the daemon that can be used' );
+is( $r->{downgraded}, 'chrony', 'and the downgrade is reported rather than silent' );
+
+$r = xCAT::NTP::Backend->choose(
+    requested => 'chrony', check_available => 1,
+    commands => { chronyd => 1, systemctl => 0, ntpd => 0 } );
+is( $r->{install}, 1, 'chronyd without systemctl and no ntpd asks for an install' );
+
 done_testing();
