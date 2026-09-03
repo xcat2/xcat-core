@@ -869,14 +869,65 @@ sub next_setnetinfo {
     &setnetinfo($sessdata);
 }
 
+sub _ipv4_literal_octets {
+    my $value = shift;
+    return unless defined($value) and length($value);
+
+    my @components = split(/\./, $value, -1);
+    return unless scalar(@components) == 4;
+    foreach my $octet (@components) {
+        return unless $octet =~ m/^(?:0|[1-9][0-9]{0,2})$/ and $octet <= 255;
+    }
+    return map { $_ + 0 } @components;
+}
+
+sub _netmask_octets {
+    my $value = shift;
+
+    # A netmask is a literal, never a hostname, and its set bits must be
+    # contiguous or the BMC would apply a mask the operator did not intend.
+    my @octets = _ipv4_literal_octets($value);
+    return unless @octets;
+    my $host_bits = ~unpack('N', pack('C4', @octets)) & 0xffffffff;
+    return unless ($host_bits & ($host_bits + 1)) == 0;
+    return @octets;
+}
+
 sub _resolve_ipv4_octets {
     my $value = shift;
     return unless defined($value) and length($value);
+
+    # inet_aton also accepts octal, hexadecimal, partial, and single-number
+    # forms, and platforms parse them differently.  A value whose components
+    # are all numeric is a literal, and a literal must be a plain
+    # dotted-decimal quad so every platform encodes the same address.
+    my @components = split(/\./, $value, -1);
+    unless (grep { $_ !~ m/^(?:0[xX][0-9a-fA-F]+|[0-9]+)$/ } @components) {
+        my @octets = _ipv4_literal_octets($value);
+        return unless @octets;
+        return ($value, @octets);
+    }
 
     my $packed_address = inet_aton($value);
     return unless defined($packed_address) and length($packed_address) == 4;
 
     return (inet_ntoa($packed_address), unpack("C4", $packed_address));
+}
+
+sub _session_ipv4_octets {
+    my $sessdata = shift;
+    my $value    = shift;
+    return unless defined($value) and length($value);
+
+    # setnetinfo re-enters itself between the transaction steps.  Keep the
+    # first resolution for the whole session so a repeated lookup cannot
+    # fail after Set In Progress opened the transaction.
+    my $cached = $sessdata->{resolved_ipv4}{$value};
+    unless ($cached) {
+        $cached = [ _resolve_ipv4_octets($value) ];
+        $sessdata->{resolved_ipv4}{$value} = $cached;
+    }
+    return @{$cached};
 }
 
 sub _report_unresolvable_ipv4 {
@@ -961,23 +1012,25 @@ sub setnetinfo {
     }
     elsif ($subcommand =~ m/snmpdest(\d+)/) {
         my $destination = $1;
-        my ($dstip, @dip) = _resolve_ipv4_octets($argument);
+        my ($dstip, @dip) = _session_ipv4_octets($sessdata, $argument);
         unless (defined($dstip)) {
             _report_unresolvable_ipv4($argument, $sessdata);
             return;
         }
         @cmd = (0x01, $channel_number, 0x13, $destination, 0x00, 0x00, @dip, 0, 0, 0, 0, 0, 0);
     } elsif ($subcommand =~ m/netmask/) {
-        if ($argument =~ /\./) {
-            my @mask = split /\./, $argument;
-            foreach (0 .. 3) {
-                $mask[$_] = $mask[$_] + 0;
-            }
-            $sessdata->{setnetinfo_value} = join(".", @mask);
-            @cmd = (0x01, $channel_number, 0x6, @mask);
+        my @mask = _netmask_octets($argument);
+        unless (@mask) {
+            $argument = '' unless defined($argument);
+            xCAT::SvrUtils::sendmsg(
+                [ 1, "'$argument' is not a valid netmask" ],
+                $callback, $sessdata->{node}, %allerrornodes);
+            return;
         }
+        $sessdata->{setnetinfo_value} = join(".", @mask);
+        @cmd = (0x01, $channel_number, 0x6, @mask);
     } elsif ($subcommand eq "gateway" and $argument) {
-        my ($gw, @octets) = _resolve_ipv4_octets($argument);
+        my ($gw, @octets) = _session_ipv4_octets($sessdata, $argument);
         unless (defined($gw)) {
             _report_unresolvable_ipv4($argument, $sessdata);
             return;
@@ -985,7 +1038,7 @@ sub setnetinfo {
         $sessdata->{setnetinfo_value} = $gw;
         @cmd = (0x01, $channel_number, 0x0C, @octets);
     } elsif ($subcommand eq "backupgateway" and $argument) {
-        my ($gw, @octets) = _resolve_ipv4_octets($argument);
+        my ($gw, @octets) = _session_ipv4_octets($sessdata, $argument);
         unless (defined($gw)) {
             _report_unresolvable_ipv4($argument, $sessdata);
             return;
@@ -1021,7 +1074,7 @@ sub setnetinfo {
                 return;
             }
         }
-        my ($mip, @octets) = _resolve_ipv4_octets($argument);
+        my ($mip, @octets) = _session_ipv4_octets($sessdata, $argument);
         unless (defined($mip)) {
             _report_unresolvable_ipv4($argument, $sessdata);
             return;
