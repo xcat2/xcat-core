@@ -327,10 +327,9 @@ sub process_request {
         send_msg(\%request, 1, $ntp_action->{error});
         return 1;
     }
-    my $have_systemctl = (-x "/usr/bin/systemctl" || -x "/bin/systemctl");
 
     # Handle chronyd here,
-    if ($ntp_action->{name} eq 'chrony' && $have_systemctl) {
+    if ($ntp_action->{name} eq 'chrony') {
         send_msg(\%request, 0, "Will configure chronyd instead.");
 
         my $cmd = setupntp_command($ntp_action->{name}, $ntp_servers);

@@ -32,6 +32,7 @@ sub normalize {
 #   requested       -- override (default: site.ntpbackend, else 'auto')
 #   os_name/version -- OS identity (default: detected)
 #   available       -- optional { chrony => 0/1, ntpd => 0/1 } to bypass command detection (tests)
+#   commands        -- optional { <command> => 0/1 } to bypass the PATH probe for one command
 #   check_available -- when true, downgrade to whichever daemon is installed, and flag install=1
 #                      when neither is.
 sub choose {
@@ -96,9 +97,23 @@ sub available {
         return $args{available}{$backend} ? 1 : 0;
     }
 
-    return _command_exists('chronyd') if $backend eq 'chrony';
-    return _command_exists('ntpd')    if $backend eq 'ntpd';
+    # xCAT drives chrony through systemd: makentp configures it only where systemctl is present,
+    # and setupntp hands over to ntpd without it. chronyd alone is not a usable chrony backend.
+    if ( $backend eq 'chrony' ) {
+        return ( _has_command( 'chronyd', %args ) && _has_command( 'systemctl', %args ) ) ? 1 : 0;
+    }
+    return _has_command( 'ntpd', %args ) if $backend eq 'ntpd';
     return 0;
+}
+
+sub _has_command {
+    my ( $command, %args ) = @_;
+
+    if ( ref( $args{commands} ) eq 'HASH' && exists $args{commands}{$command} ) {
+        return $args{commands}{$command} ? 1 : 0;
+    }
+
+    return _command_exists($command);
 }
 
 sub _site_backend {
