@@ -7,6 +7,7 @@ use lib "$FindBin::Bin/../../xCAT-server/lib";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use lib "$FindBin::Bin/../../perl-xCAT";
 
+use File::Temp qw(tempdir);
 use Test::More;
 
 $ENV{XCATCFG} ||= 'SQLite:/tmp';
@@ -110,5 +111,97 @@ is($cip, 'ip-address = 192.168.201.11',
 my ($c1name, $c1ip) = xCAT_plugin::dhcp::_query_isc_static_host('compute-01', @similar);
 is($c1ip, 'ip-address = 192.168.201.12',
     'querying "compute-01" returns its own block');
+
+# An InfiniBand node declares "hardware infiniband". Build the block with the writer, so
+# the query reads what makedhcp writes rather than a hand-made copy of it.
+my @ib_config;
+xCAT_plugin::dhcp::_add_isc_static_host(
+    'ibnode', 'ibnode',
+    'ff:00:00:00:00:00:02:00:00:02:c9:00:00:02:c9:03:00:0a:6f:ba',
+    32, 'ib0', '192.0.2.20', '', 1, \@ib_config,
+);
+my ($ibname, $ibip, $ibhw) =
+  xCAT_plugin::dhcp::_query_isc_static_host('ibnode', @ib_config);
+is($ibip, 'ip-address = 192.0.2.20',
+    'an InfiniBand node reports the address of its reservation');
+is($ibhw,
+    'hardware-address = ff:00:00:00:00:00:02:00:00:02:c9:00:00:02:c9:03:00:0a:6f:ba',
+    'an InfiniBand node reports the hardware address of its reservation');
+
+# An Ethernet node on an InfiniBand interface gets a twin declaration inside the same
+# markers. The query must answer with the primary declaration.
+my @twin_config;
+xCAT_plugin::dhcp::_add_isc_static_host(
+    'twinnode', 'twinnode', 'b8:3f:d2:4a:68:aa', 1,
+    'ib0', '192.0.2.21', '', 0, \@twin_config,
+);
+like(join('', @twin_config), qr/^host twinnode-xcat-ib \{$/m,
+    'the writer produced the InfiniBand twin declaration the query must step over');
+my ($tname, $tip, $thw) =
+  xCAT_plugin::dhcp::_query_isc_static_host('twinnode', @twin_config);
+is($thw, 'hardware-address = b8:3f:d2:4a:68:aa',
+    'the twin declaration does not replace the primary hardware address');
+is($tip, 'ip-address = 192.0.2.21',
+    'the twin declaration does not replace the primary address');
+
+# `makedhcp -q` runs with no configuration in memory, so the query reads dhcpd.conf. A
+# file it cannot read must not look like a node without a reservation.
+my $tmpdir   = tempdir(CLEANUP => 1);
+my $conffile = "$tmpdir/dhcpd.conf";
+open(my $wfh, '>', $conffile) or BAIL_OUT("cannot write $conffile: $!");
+print $wfh @dhcpconf;
+close($wfh);
+open(my $efh, '>', "$tmpdir/empty.conf") or BAIL_OUT("cannot write empty.conf: $!");
+close($efh);
+
+{
+    no warnings 'once';
+    $xCAT_plugin::dhcp::dhcpconffile = $conffile;
+}
+my ($fname, $fip, $fhw, $ferr) =
+  xCAT_plugin::dhcp::_query_isc_static_host('xcat30-cn');
+is($ferr, undef, 'a readable dhcpd.conf reports no error');
+is($fip, 'ip-address = 192.168.201.30',
+    'the query reads the reservation from dhcpd.conf');
+
+{
+    no warnings 'once';
+    $xCAT_plugin::dhcp::dhcpconffile = "$tmpdir/absent.conf";
+}
+my ($aname, $aip, $ahw, $aerr) =
+  xCAT_plugin::dhcp::_query_isc_static_host('xcat30-cn');
+like($aerr, qr/\Qabsent.conf\E/,
+    'a dhcpd.conf the query cannot read is reported as an error');
+is($aip, undef, 'a dhcpd.conf the query cannot read reports no address');
+
+{
+    no warnings 'once';
+    $xCAT_plugin::dhcp::dhcpconffile = "$tmpdir/empty.conf";
+}
+my ($ename, $eip, $ehw, $eerr) =
+  xCAT_plugin::dhcp::_query_isc_static_host('xcat30-cn');
+is($eerr, undef, 'an empty dhcpd.conf is not an error');
+is($eip, undef, 'an empty dhcpd.conf reports no reservation');
+
+# listnode is what `makedhcp -q` calls. On an ISC-limited release it must pass the read
+# failure to the caller instead of answering "no reservation found".
+{
+    no warnings 'once';
+    $xCAT_plugin::dhcp::distro        = 'ubuntu22.04';
+    $xCAT_plugin::dhcp::dhcpconffile  = "$tmpdir/absent.conf";
+}
+my @responses;
+eval {
+    local $SIG{ALRM} = sub { die "listnode did not return\n" };
+    alarm 20;
+    xCAT_plugin::dhcp::listnode('xcat30-cn', sub { push @responses, $_[0] });
+    alarm 0;
+    1;
+};
+alarm 0;
+is(scalar(@responses), 1, 'a query answers once when dhcpd.conf cannot be read');
+like($responses[0]->{error}->[0], qr/\Qabsent.conf\E/,
+    'the query reports the unreadable dhcpd.conf to the caller');
+is($responses[0]->{errorcode}->[0], 1, 'the query fails when dhcpd.conf cannot be read');
 
 done_testing();

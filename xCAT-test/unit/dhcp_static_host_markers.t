@@ -181,4 +181,22 @@ like($lazy_replacement, qr/^host node06-current \{$/m,
 is($update_started, 1,
     'the successful replacement records that cleanup has started');
 
+# A node can hold several declarations. A deletion that names one hostname must remove
+# that declaration only.
+my @hostname_config;
+xCAT_plugin::dhcp::_add_isc_static_host(
+    'node07', 'node07', '00:11:22:33:44:33', 1,
+    'eth0', '192.0.2.9', '', 0, \@hostname_config,
+);
+xCAT_plugin::dhcp::_add_isc_static_host(
+    'node07', 'node07-ib', '00:11:22:33:44:44', 32,
+    'ib0', '192.0.2.9', '', 1, \@hostname_config,
+);
+xCAT_plugin::dhcp::_delete_isc_static_host('node07', \@hostname_config, 'node07-ib');
+my $hostname_remaining = join( '', @hostname_config );
+unlike($hostname_remaining, qr/^host node07-ib \{$/m,
+    'a deletion that names a hostname removes that declaration');
+like($hostname_remaining, qr/^host node07 \{$/m,
+    'a deletion that names a hostname keeps the other declarations of the node');
+
 done_testing();
