@@ -77,6 +77,29 @@ my $resolver = sub { $_[0] eq 'mn.cluster' ? '10.0.0.1' : undef };
         'while the cloud-init seed URL keeps the name, where DNS works' );
 }
 
+# A dual-stack management node has both an A and an AAAA record, and getipaddr answers with
+# whichever the resolver returns first. casper mounts the live filesystem with klibc's nfsmount,
+# which takes an IPv4 address, and it takes everything after the first colon in nfsroot= as the
+# path -- so an IPv6 address there is not a slower path, it is an unparseable one. This install
+# asks for ip=dhcp, so the address must be IPv4.
+{
+    no warnings 'redefine';
+    local *xCAT::NetworkUtils::getipaddr = sub {
+        my ($class, $host, %opt) = @_;
+        return $opt{OnlyV4} ? '10.0.0.1' : '2001:db8::1';
+    };
+
+    my ($kcmdline, $err) = T::subiquity_boot_params(
+        'nofb utf8 auto xcatd=mn.cluster', 'mn.cluster',
+        '/install/ubuntu24.04/x86_64', '80', 'cn1' );
+    ok( !defined $err, 'a dual-stack install server produces a boot config' )
+      or diag("error was: $err");
+    like( $kcmdline, qr{nfsroot=10\.0\.0\.1:/install/ubuntu24\.04/x86_64},
+        'and nfsroot carries the IPv4 address of the install server' );
+    unlike( $kcmdline, qr/nfsroot=[^ ]*::/,
+        'never the IPv6 address, which klibc nfsmount cannot use' );
+}
+
 # The guard the original commit added must survive: a name that does not resolve is an error,
 # not a command line with a name in nfsroot.
 {

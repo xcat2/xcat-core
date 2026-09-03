@@ -19,10 +19,9 @@ use Test::More;
 my $tmpl = "$FindBin::Bin/../../xCAT-server/share/xcat/install/ubuntu/compute.subiquity.tmpl";
 plan skip_all => 'compute.subiquity.tmpl not found' unless -r $tmpl;
 
-# The template addresses the install-monitor on 3002, and on any management node xcatd is
-# already listening there -- so binding it here made the whole file skip_all exactly where the
-# suite runs. Take an ephemeral port from the kernel instead and rewrite the extracted command
-# to use it: what is under test is the retry-and-log behaviour, not the port number.
+# The install monitor listens on site.xcatiport, and on any management node xcatd is already
+# there -- so binding it here made the whole file skip_all exactly where the suite runs. Take an
+# ephemeral port from the kernel instead and hand it to the template as the site value.
 my $probe = IO::Socket::INET->new(
     LocalAddr => '127.0.0.1', LocalPort => 0, Proto => 'tcp',
     Listen => 5, ReuseAddr => 1)
@@ -38,26 +37,20 @@ close $fh;
 my ($command) = $source =~ m{- \['bash', '-c', '(.*?/dev/tcp/.*?)'\]};
 BAIL_OUT('no late-command in the template performs the boot flip over /dev/tcp') unless $command;
 
-# Read the port out of the template rather than hard-coding it, so a template that moves the
-# install-monitor still gets covered instead of silently testing the wrong port.
-my ($TEMPLATE_PORT) = $command =~ m{/dev/tcp/\$xm/(\d+)};
-BAIL_OUT('could not read the install-monitor port from the boot-flip command')
-  unless $TEMPLATE_PORT;
-is($TEMPLATE_PORT, 3002, 'the template addresses the install-monitor port xcatd listens on');
-
 # Run the command with the install server pointed at our stand-in, and its log inside a scratch
-# tree. Everything else is the template's own text.
+# tree. site.xcatiport is substituted the way the template renderer substitutes it. Everything
+# else is the template's own text.
 sub run_flip {
     my (%opt) = @_;
     my $root = tempdir(CLEANUP => 1);
     mkdir "$root/target"; mkdir "$root/target/var"; mkdir "$root/target/var/log";
     mkdir "$root/target/var/log/xcat";
 
+    my $site_port = exists $opt{site_port} ? $opt{site_port} : $XCATD_PORT;
+
     my $script = $command;
     $script =~ s/\#XCATVAR:XCATMASTER\#/127.0.0.1/;
-    # point the flip at the ephemeral listener, in both the /dev/tcp target and the log message
-    $script =~ s{/dev/tcp/\$xm/\Q$TEMPLATE_PORT\E\b}{/dev/tcp/\$xm/$XCATD_PORT};
-    $script =~ s{\$xm:\Q$TEMPLATE_PORT\E\b}{\$xm:$XCATD_PORT}g;
+    $script =~ s/\#TABLEBLANKOKAY:site:key=xcatiport:value\#/$site_port/;
     $script =~ s{/target/var/log/xcat/xcat\.log}{$root/target/var/log/xcat/xcat.log};
     $script =~ s/sleep 5/sleep 1/;    # shorten the retry pause, keep the retry
 
@@ -75,10 +68,11 @@ sub run_flip {
                 my $c = $srv->accept() or last;
                 $c->autoflush(1);
                 if ($opt{mute}) { sleep 600; close $c; next }  # accept and hold, never answer
-                print {$c} "ready\n";
+                # xcatd greets with "ready", then answers every request with "done".
+                print {$c} ($opt{greeting} || "ready\n");
                 my $line = <$c>;
                 print {$seen} $line if defined $line;
-                print {$c} "ok\n" unless $opt{no_ack};
+                print {$c} ($opt{ack} || "done\n") unless $opt{no_ack};
                 close $c;
             }
             close $seen;
@@ -95,10 +89,10 @@ sub run_flip {
     if ($pid) { kill 'TERM', $pid; waitpid($pid, 0) }
 
     my $received = '';
-    if (open my $rh, '<', "$root/received") { local $/; $received = <$rh>; close $rh }
+    if (open my $rh, '<', "$root/received") { local $/; $received = <$rh> || ''; close $rh }
 
     my $log = '';
-    if (open my $lh, '<', "$root/target/var/log/xcat/xcat.log") { local $/; $log = <$lh>; close $lh }
+    if (open my $lh, '<', "$root/target/var/log/xcat/xcat.log") { local $/; $log = <$lh> || ''; close $lh }
     return { rc => $rc, timed_out => $timed_out, log => $log, received => $received };
 }
 
@@ -112,6 +106,16 @@ sub run_flip {
     ok(!$r->{timed_out}, 'the exchange completes rather than hanging the late-command');
 }
 
+# --- the port comes from site.xcatiport ------------------------------------
+# The case above already proves it: the stand-in listens on an ephemeral port, not on 3002, and
+# the exchange only completes because the template asks site for the port. What is left is the
+# default, for a site table that does not carry the key.
+{
+    my $r = run_flip(site_port => '', listen => 0, cap => 90);
+    like($r->{log}, qr/:3002\b/,
+        'an unset site.xcatiport falls back to the port xcatd listens on by default');
+}
+
 # --- xcatd never answers: the failure is recorded, not swallowed -----------
 {
     my $r = run_flip(listen => 0);
@@ -122,9 +126,27 @@ sub run_flip {
         'the log names the install server and port that could not be reached');
 }
 
+# --- something else is listening on the port -------------------------------
+# Only xcatd's install monitor answers "nodeset <node> next". A service that accepts the
+# connection and talks its own protocol must not be counted as a flipped node.
+{
+    my $r = run_flip(listen => 5, greeting => "220 smtp\n");
+    like($r->{log}, qr/FAILED to flip/,
+        'a peer that does not greet with "ready" is not treated as the install monitor');
+    is($r->{received}, '',
+        'and the flip token is never sent to it');
+}
+
+# --- the peer greets but does not acknowledge the request ------------------
+{
+    my $r = run_flip(listen => 5, ack => "?\n");
+    like($r->{log}, qr/FAILED to flip/,
+        'a reply other than "done" is not counted as an accepted request');
+}
+
 # --- xcatd accepts but never acknowledges ----------------------------------
 {
-    my $r = run_flip(listen => 1, no_ack => 1);
+    my $r = run_flip(listen => 5, no_ack => 1);
     like($r->{log}, qr/FAILED to flip/,
         'a connection without an acknowledgement counts as a failure, not a success');
 }
