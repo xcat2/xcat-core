@@ -209,6 +209,70 @@ sub preprocess_request {
 =cut
 
 #--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+
+=head3 ntp_backend_action
+
+    Decide what makentp should do with the answer xCAT::NTP::Backend->choose gave it.
+
+    Kept separate from process_request so the decision can be driven directly: the caller
+    keeps the side effects (send_msg, runcmd) and this returns only what to do.
+
+    Arguments:
+        $backend  the hashref from xCAT::NTP::Backend->choose
+        $nodename the host makentp is configuring, for the error text
+    Returns:
+        a hashref: action => 'abort'|'configure', error => the message to report when
+        aborting, name => the daemon to configure, notes => messages to report either way
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub ntp_backend_action {
+    my ($backend, $nodename) = @_;
+
+    $backend ||= {};
+    return { action => 'abort', error => $backend->{error}, notes => [] }
+      if $backend->{error};
+
+    my @notes;
+    push @notes,
+      "NTP backend $backend->{downgraded} is not installed; using $backend->{name} instead."
+      if $backend->{downgraded};
+
+    return {
+        action => 'abort',
+        error  => "Neither chrony nor ntp is installed on $nodename. "
+          . "Install $backend->{name}, or set site.ntpbackend to the daemon you have.",
+        notes => \@notes,
+    } if $backend->{install};
+
+    return { action => 'configure', name => $backend->{name}, notes => \@notes };
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 setupntp_command
+
+    Build the setupntp invocation. The server list arrives comma separated from the site
+    table and setupntp takes them as separate arguments.
+
+    Arguments:
+        $backend_name the daemon setupntp should configure
+        $ntp_servers  the comma separated server list
+    Returns:
+        the command line
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub setupntp_command {
+    my ($backend_name, $ntp_servers) = @_;
+
+    return "/install/postscripts/setupntp --backend $backend_name "
+      . join(' ', split(',', $ntp_servers));
+}
+
 sub process_request {
     my $req      = shift;
     my $callback = shift;
@@ -252,13 +316,23 @@ sub process_request {
         $ntp_servers = $retdata->{'master'};
     }
 
+    # Pick the NTP daemon (chrony vs ntpd) via the shared, unit-tested selector -- the same spirit
+    # as xCAT::DHCP::Backend (ISC vs Kea). It honors site.ntpbackend, defaults per distro, and
+    # downgrades chrony->ntpd (or vice versa) to whichever is actually installed.
+    require xCAT::NTP::Backend;
+    my $ntp_backend = xCAT::NTP::Backend->choose(check_available => 1);
+    my $ntp_action  = ntp_backend_action($ntp_backend, $nodename);
+    send_msg(\%request, 0, $_) for @{ $ntp_action->{notes} };
+    if ($ntp_action->{action} eq 'abort') {
+        send_msg(\%request, 1, $ntp_action->{error});
+        return 1;
+    }
+
     # Handle chronyd here,
-    if (-x "/usr/sbin/chronyd" &&
-		(-x "/usr/bin/systemctl" || -x "/bin/systemctl")) {
+    if ($ntp_action->{name} eq 'chrony') {
         send_msg(\%request, 0, "Will configure chronyd instead.");
 
-        my $cmd = "/install/postscripts/setupntp " .
-            join(' ', split(',', $ntp_servers));
+        my $cmd = setupntp_command($ntp_action->{name}, $ntp_servers);
         send_msg(\%request, 0, "Calling ... " . $cmd);
 
         my $result = xCAT::Utils->runcmd($cmd, 0);
@@ -487,12 +561,21 @@ HANDLE_MAKENTP_A:
         my @servicenodes = xCAT::ServiceNodeUtils->getSNList('ntpserver');
         if (@servicenodes > 0) {
             send_msg(\%request, 0, "configuring service nodes: @servicenodes");
+
+            # Pass the cluster's intent, not this host's availability: a service node may have a
+            # different daemon installed, and setupntp falls back locally when it does.
+            require xCAT::NTP::Backend;
+            my $sn_backend = xCAT::NTP::Backend->choose();
+            my $sn_script  = $sn_backend->{name}
+              ? "setupntp --backend $sn_backend->{name}"
+              : "setupntp";
+
             my $ret =
               xCAT::Utils->runxcmd(
                 {
                     command => ['updatenode'],
                     node    => \@servicenodes,
-                    arg     => [ "-P", "setupntp" ],
+                    arg     => [ "-P", $sn_script ],
                 },
                 $sub_req, -1, 1
               );

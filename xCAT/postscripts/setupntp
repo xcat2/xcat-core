@@ -103,7 +103,17 @@ do
         case "$1" in
 	"--use-ntpd")
 		# Use traditional ntpd
-		USE_NTPD="yes"
+		NTP_BACKEND="ntpd"
+		;;
+	"--backend")
+		# The daemon xCAT::NTP::Backend picked for this cluster, passed by makentp so
+		# site.ntpbackend reaches the nodes and not just the management node.
+		shift
+		case "$1" in
+		"chrony"|"chronyd") NTP_BACKEND="chrony" ;;
+		"ntp"|"ntpd")       NTP_BACKEND="ntpd" ;;
+		*) logger -t $log_label -p local4.warning "setupntp: ignoring unknown --backend '$1'" ;;
+		esac
 		;;
 	*)
 		NTP_SERVERS+=($1)
@@ -129,8 +139,39 @@ then
 	esac
 fi
 
-check_executes chronyd >/dev/null 2>&1 || USE_NTPD="yes"
-check_executes systemctl >/dev/null 2>&1 || USE_NTPD="yes"
+# The requested backend is a preference, not a guarantee: a node that does not have the
+# requested daemon still has to be configured, so use the other one and say so.
+if [ "${NTP_BACKEND}" = "ntpd" ]
+then
+	USE_NTPD="yes"
+	if ! check_executes ntpd >/dev/null 2>&1 &&
+		check_executes chronyd >/dev/null 2>&1 &&
+		check_executes systemctl >/dev/null 2>&1
+	then
+		USE_NTPD=""
+		logger -t $log_label -p local4.warning \
+			"setupntp: ntpd requested but ntpd is absent; using chrony"
+	fi
+else
+	check_executes chronyd >/dev/null 2>&1 || USE_NTPD="yes"
+	check_executes systemctl >/dev/null 2>&1 || USE_NTPD="yes"
+	if [ -n "${USE_NTPD}" ] && [ "${NTP_BACKEND}" = "chrony" ]
+	then
+		logger -t $log_label -p local4.warning \
+			"setupntp: chrony requested but chronyd/systemctl are absent; using ntpd"
+	fi
+fi
+
+# Both backends discipline the clock, and so does systemd-timesyncd, so it has to go either
+# way. Installing chrony or ntpsec usually displaces it already -- both Conflicts: time-daemon --
+# but that only helps when an install actually happens; on a re-run, or where the daemon was
+# already present, timesyncd is still enabled. This must stay ABOVE the ntpd hand-off below:
+# that path execs setupntp.traditional, which never returns and never touches timesyncd.
+if check_executes systemctl >/dev/null 2>&1
+then
+	systemctl stop systemd-timesyncd.service 2>/dev/null
+	systemctl disable systemd-timesyncd.service 2>/dev/null
+fi
 
 if [ -n "${USE_NTPD}" ]
 then
@@ -146,7 +187,10 @@ unset MASTER
 unset NTPSERVERS
 
 check_exec_or_exit cp cat logger grep
-check_exec_or_exit systemctl timedatectl hwclock
+# hwclock is NOT required: it only persists the already-stepped clock to the RTC below, and on
+# Ubuntu 24.04+ it moved to util-linux-extra, absent on minimal images. Requiring it here aborted
+# the whole NTP setup, including the clock step that does not use it.
+check_exec_or_exit systemctl timedatectl
 
 systemctl stop ntp.service 2>/dev/null
 systemctl disable ntp.service 2>/dev/null
@@ -177,10 +221,14 @@ chronyd -f /dev/null -q "$(
 	fi
 )"
 
-rm -f /etc/adjtime
-# Set the hardware clock from the system clock
-hwclock --systohc --utc
-warn_if_bad "$?" "Failed to set the hardware clock"
+# Set the hardware clock from the system clock, when hwclock is available (optional; see above).
+if command -v hwclock >/dev/null 2>&1; then
+    rm -f /etc/adjtime
+    hwclock --systohc --utc
+    warn_if_bad "$?" "Failed to set the hardware clock"
+else
+    logger -t $log_label -p local4.info "setupntp: hwclock not present; skipping RTC persist (system clock already set via chronyd)"
+fi
 
 ## On RHEL 8
 #CHRONY_USER="chrony"

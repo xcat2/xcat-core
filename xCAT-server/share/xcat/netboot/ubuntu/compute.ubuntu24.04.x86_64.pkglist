@@ -16,6 +16,7 @@ gzip
 xz-utils
 cpio
 chrony
+util-linux-extra
 iproute2
 dracut
 dracut-network

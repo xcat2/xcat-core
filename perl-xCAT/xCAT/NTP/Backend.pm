@@ -1,0 +1,152 @@
+package xCAT::NTP::Backend;
+
+# Selector for the NTP daemon xCAT configures (chrony vs. ntpd), in the same spirit as
+# xCAT::DHCP::Backend. There is no timesyncd path: it is an SNTP client and cannot serve time to
+# compute nodes, so an MN always needs chrony or ntpd.
+
+use strict;
+use warnings;
+
+my %valid_backend = map { $_ => 1 } qw(auto chrony ntpd);
+
+# Accept common aliases so site.ntpbackend / callers can say chronyd or ntp.
+my %alias = (
+    chronyd => 'chrony',
+    ntp     => 'ntpd',
+    ntpsec  => 'ntpd',
+);
+
+sub normalize {
+    my ( $class, $backend ) = @_;
+
+    $backend = 'auto' unless defined($backend) && $backend ne '';
+    $backend =~ s/^\s+|\s+$//g;
+    $backend = lc($backend);
+    $backend = $alias{$backend} if exists $alias{$backend};
+
+    return $backend if $valid_backend{$backend};
+    return;
+}
+
+# choose: resolve the effective backend for this node.
+#   requested       -- override (default: site.ntpbackend, else 'auto')
+#   os_name/version -- OS identity (default: detected)
+#   available       -- optional { chrony => 0/1, ntpd => 0/1 } to bypass command detection (tests)
+#   commands        -- optional { <command> => 0/1 } to bypass the PATH probe for one command
+#   check_available -- when true, downgrade to whichever daemon is installed, and flag install=1
+#                      when neither is.
+sub choose {
+    my ( $class, %args ) = @_;
+
+    my $requested = exists $args{requested} ? $args{requested} : $class->_site_backend();
+    my $normalized = $class->normalize($requested);
+    unless ($normalized) {
+        return { error => "Invalid site.ntpbackend value '$requested'. Valid values are auto, chrony, and ntpd." };
+    }
+
+    my $selected = $normalized eq 'auto' ? $class->default_backend(%args) : $normalized;
+    my $result = { requested => $normalized, name => $selected, install => 0 };
+
+    return $result unless $args{check_available};
+
+    my $other = $selected eq 'chrony' ? 'ntpd' : 'chrony';
+    if ( $class->available( $selected, %args ) ) {
+        return $result;
+    } elsif ( $class->available( $other, %args ) ) {
+        # respect what is actually installed rather than installing a second daemon
+        $result->{name}       = $other;
+        $result->{downgraded} = $selected;
+        return $result;
+    }
+
+    # neither present: keep the preferred choice and tell the caller to install it
+    $result->{install} = 1;
+    return $result;
+}
+
+# default_backend: table-driven per distro family.
+#   EL/RHEL & clones: >= 7 -> chrony, 6 -> ntpd
+#   SLES/SUSE:        >= 15 -> chrony, 12 -> ntpd
+#   Ubuntu/Debian:    chrony (timesyncd is the OOB client but cannot serve; chrony from 18.04+)
+sub default_backend {
+    my ( $class, %args ) = @_;
+
+    my $os_name = exists $args{os_name} ? $args{os_name} : $class->_osver('os');
+    my $version = exists $args{version} ? $args{version} : ( split /,/, $class->_osver('all'), 2 )[1];
+    my ($major) = ( defined($version) ? $version : '' ) =~ /^(\d+)/;
+
+    if ( defined($os_name) && $os_name =~ /^(?:rhel|rhels|rocky|alma|centos|ol|fedora)$/i ) {
+        return 'ntpd' if defined($major) && $major <= 6;
+        return 'chrony';
+    }
+    if ( defined($os_name) && $os_name =~ /^(?:sles|sled|suse|opensuse|leap)$/i ) {
+        return 'ntpd' if defined($major) && $major <= 12;
+        return 'chrony';
+    }
+    if ( defined($os_name) && $os_name =~ /^(?:ubuntu|debian)$/i ) {
+        return 'chrony';
+    }
+
+    return 'chrony';
+}
+
+sub available {
+    my ( $class, $backend, %args ) = @_;
+
+    if ( exists $args{available} && ref( $args{available} ) eq 'HASH' && exists $args{available}{$backend} ) {
+        return $args{available}{$backend} ? 1 : 0;
+    }
+
+    # xCAT drives chrony through systemd: makentp configures it only where systemctl is present,
+    # and setupntp hands over to ntpd without it. chronyd alone is not a usable chrony backend.
+    if ( $backend eq 'chrony' ) {
+        return ( _has_command( 'chronyd', %args ) && _has_command( 'systemctl', %args ) ) ? 1 : 0;
+    }
+    return _has_command( 'ntpd', %args ) if $backend eq 'ntpd';
+    return 0;
+}
+
+sub _has_command {
+    my ( $command, %args ) = @_;
+
+    if ( ref( $args{commands} ) eq 'HASH' && exists $args{commands}{$command} ) {
+        return $args{commands}{$command} ? 1 : 0;
+    }
+
+    return _command_exists($command);
+}
+
+sub _site_backend {
+    my $backend = eval {
+        require xCAT::TableUtils;
+        return xCAT::TableUtils->get_site_attribute( 'ntpbackend', 'auto' );
+    };
+
+    return $backend || 'auto';
+}
+
+sub _osver {
+    my ( $class, $type ) = @_;
+
+    my $osver = eval {
+        require xCAT::Utils;
+        return defined($type) ? xCAT::Utils->osver($type) : xCAT::Utils->osver();
+    };
+
+    return $osver || 'unknown';
+}
+
+sub _command_exists {
+    my ($command) = @_;
+
+    foreach my $dir ( split /:/, $ENV{PATH} || '' ) {
+        next unless $dir;
+        return 1 if -x "$dir/$command";
+    }
+    foreach my $path ( "/usr/sbin/$command", "/usr/bin/$command", "/sbin/$command", "/bin/$command" ) {
+        return 1 if -x $path;
+    }
+    return 0;
+}
+
+1;

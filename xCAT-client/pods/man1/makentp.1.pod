@@ -26,6 +26,8 @@ I<site.extntpservers> -- the NTP servers for the management node to sync with. I
 
 I<site.ntpservers> -- the NTP servers for the service node and compute node to sync with. The keyword <xcatmaster> means that the node's NTP server is the node that is managing it (either its service node or the management node).
 
+I<site.ntpbackend> -- the NTP daemon to configure. Valid values are auto, chrony, and ntpd. The default is auto, which selects chrony on distributions that ship it and ntpd on older ones such as EL6 and SLES 12. If the selected daemon is not installed, B<makentp> uses the other one and reports the change. The same value reaches the service nodes and the compute nodes, which the I<setupntp> postscript also accepts as B<--backend chrony|ntpd>.
+
 =back
 
 To setup NTP on the compute node, add I<setupntp> postscript to the I<postscripts> table and run B<updatenode node -P setupntp> command.
