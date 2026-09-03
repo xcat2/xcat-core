@@ -54,31 +54,15 @@ if [ "$USEFLOWCONTROL" = "YES" ] || [ "$USEFLOWCONTROL" = "yes" ] || [ "$USEFLOW
   useflowcontrol=1
 fi
 
-if [ -r /etc/ssh/sshd_config ]
-then
-	logger -t $log_label -p local4.info "remoteshell:  setup /etc/ssh/sshd_config and ssh_config"
-	cp /etc/ssh/sshd_config /etc/ssh/sshd_config.ORIG
-        #delete all occurance of the attribute and then add xCAT settings
-        sed -i '/X11Forwarding /'d /etc/ssh/sshd_config
-        echo "X11Forwarding yes" >>/etc/ssh/sshd_config
-        # delete all MaxStartups settings and use default value
-        sed -i '/MaxStartups /'d /etc/ssh/sshd_config
-
-    if [ "$SETUPFORPCM" = "1" ]; then
-        if [[ $OSVER == sle* ]];then
-            sed -i '/PasswordAuthentication /'d /etc/ssh/sshd_config
-            echo "PasswordAuthentication yes" >>/etc/ssh/sshd_config
-        elif [[ $OSVER == ubuntu* ]];then
-            sed -i 's/^PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
-        fi
+sshd_config_helper="$(dirname "$0")/remoteshell-sshd-config"
+if [ -x "$sshd_config_helper" ]; then
+    if ! "$sshd_config_helper" "${SETUPFORPCM:-0}" "${OSVER:-}" "$log_label"; then
+        logger -t $log_label -p local4.err "remoteshell: failed to configure sshd with $sshd_config_helper"
+        exit 1
     fi
-fi
-
-if [ -r /etc/ssh/ssh_config ]
-then
-   sed -i '/StrictHostKeyChecking /'d /etc/ssh/ssh_config
-   echo "StrictHostKeyChecking no" >> /etc/ssh/ssh_config
-
+else
+    logger -t $log_label -p local4.err "remoteshell: required sshd configuration helper not found: $sshd_config_helper"
+    exit 1
 fi
 xcatpost="xcatpost"
 if [ -d /xcatpost/_ssh ]
