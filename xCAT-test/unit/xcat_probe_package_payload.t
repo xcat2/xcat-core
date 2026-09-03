@@ -9,11 +9,14 @@ use File::Spec;
 use File::Temp qw(tempdir);
 use FindBin;
 use lib "$FindBin::Bin/../lib";
+use lib "$FindBin::Bin/../../build-utils/lib";
 use Test::More;
 
+use XCAT::BuildUtils qw(XCAT_PROBE_HELPERS);
 use XCAT::Test::File qw(repo_path slurp_repo_file);
 
 my @helpers = qw(
+    CommandUtils.pm
     GlobalDef.pm
     NetworkUtils.pm
     ServiceNodeUtils.pm
@@ -26,6 +29,9 @@ my @affected_subcommands = qw(
 );
 
 my $builder = slurp_repo_file('buildrpms.pl');
+my $debian_builder = slurp_repo_file('build-ubunturepo');
+my $installed_probe_test =
+  slurp_repo_file('xCAT-test/autotest/testcase/probe/xcatproble_list');
 my $rpm_spec = slurp_repo_file('xCAT-probe/xCAT-probe.spec');
 my $debian_control = slurp_repo_file('xCAT-probe/debian/control');
 like($builder, qr/sub prepare_xcat_probe_source_tar\b/, 'RPM builder has dedicated xCAT-probe source preparation');
@@ -65,6 +71,20 @@ for my $helper (@helpers) {
     my $source = repo_path(File::Spec->catfile('perl-xCAT', 'xCAT', $helper));
     ok(-f $source, "$helper source exists");
     like($builder, qr/^\s*\Q$helper\E\s*$/m, "RPM builder stages $helper");
+    ok(
+        scalar(grep { $_ eq $helper } XCAT_PROBE_HELPERS),
+        "the shared builder helper list carries $helper"
+    );
+    like(
+        $debian_builder,
+        qr{cp -f [^\n]*/perl-xCAT/xCAT/\Q$helper\E\s+[^\n]*/lib/perl/xCAT/},
+        "Debian builder stages $helper"
+    );
+    like(
+        $installed_probe_test,
+        qr/cmd:for module in [^;]*\b\Q$helper\E\b[^;]*; do test -r/,
+        "installed probe payload checks $helper"
+    );
 }
 
 my $tmpdir = tempdir(CLEANUP => 1);

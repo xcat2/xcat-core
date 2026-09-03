@@ -8,6 +8,7 @@ use File::Basename;
 use File::Path qw/make_path/;
 use Math::BigInt;
 use Text::ParseWords qw/shellwords/;
+use xCAT::CommandUtils;
 use xCAT::DHCP::Range;
 use xCAT::NetworkUtils;
 
@@ -1206,18 +1207,7 @@ sub _expand_kea_build_path {
 
 sub _command_path {
     my ($command) = @_;
-
-    foreach my $dir ( split /:/, $ENV{PATH} || '' ) {
-        next unless $dir;
-        my $path = "$dir/$command";
-        return $path if -x $path;
-    }
-
-    foreach my $path ( "/usr/sbin/$command", "/usr/bin/$command", "/sbin/$command", "/bin/$command" ) {
-        return $path if -x $path;
-    }
-
-    return;
+    return xCAT::CommandUtils::find_executable($command);
 }
 
 sub _shell_quote {

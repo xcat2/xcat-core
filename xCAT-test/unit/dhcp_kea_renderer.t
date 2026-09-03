@@ -580,6 +580,15 @@ FAKE_KEA
 close($fake_kea_fh) or die "Unable to close fake Kea command: $!";
 chmod 0755, $fake_kea_dhcp4 or die "Unable to make fake Kea command executable: $!";
 
+{
+    local $ENV{PATH} = $unit_dir;
+    is(
+        xCAT::DHCP::Backend::Kea::_command_path('kea-dhcp4-build-report'),
+        $fake_kea_dhcp4,
+        'Kea command lookup retains the first executable PATH match'
+    );
+}
+
 my $command_socket_backend = xCAT::DHCP::Backend::Kea->new(kea_dhcp4_command => $fake_kea_dhcp4);
 is( $command_socket_backend->control_socket_path('kea4-ctrl-socket'), '/xcat-test-command-run/kea/kea4-ctrl-socket', 'socket path comes from the Kea build-report command' );
 

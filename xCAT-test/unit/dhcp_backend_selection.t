@@ -307,4 +307,12 @@ is(
     'forced Kea succeeds when available'
 );
 
+{
+    local $ENV{PATH} = '';
+    ok(
+        xCAT::DHCP::Backend::_command_exists('sh'),
+        'backend availability retains the standard system-directory fallback'
+    );
+}
+
 done_testing();

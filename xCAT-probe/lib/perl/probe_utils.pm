@@ -8,6 +8,7 @@ use File::Copy;
 use Time::Local;
 use Socket;
 use List::Util qw/sum/;
+use xCAT::CommandUtils;
 
 #-----------------------------------------
 
@@ -175,11 +176,7 @@ sub _netplan_get {
 
 sub _command_available {
     my $cmd = shift;
-    for my $dir (split /:/, $ENV{PATH} || '') {
-        next unless $dir;
-        return 1 if -x "$dir/$cmd";
-    }
-    return 0;
+    return xCAT::CommandUtils::find_executable( $cmd, fallback_dirs => [] ) ? 1 : 0;
 }
 
 sub _capture_command {

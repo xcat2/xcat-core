@@ -24,6 +24,7 @@ use Getopt::Long;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 use Socket;
+use xCAT::CommandUtils;
 my $candoipv6 = eval {
     require Socket6;
     1;
@@ -3185,18 +3186,7 @@ sub local_ipv4_routes
 sub kea_command_path
 {
     my ($command) = @_;
-
-    foreach my $dir (split /:/, $ENV{PATH} || '') {
-        next unless $dir;
-        my $path = "$dir/$command";
-        return $path if -x $path;
-    }
-
-    foreach my $path ( "/usr/sbin/$command", "/usr/bin/$command", "/sbin/$command", "/bin/$command" ) {
-        return $path if -x $path;
-    }
-
-    return;
+    return xCAT::CommandUtils::find_executable($command);
 }
 
 sub kea_subnet4_intent
