@@ -87,6 +87,24 @@ use xCAT::DHCP::OmapiRunner;
     }
 }
 
+{
+    package XCAT::Test::InheritedDatabaseHandle;
+
+    sub new {
+        my ( $class, $marker ) = @_;
+        return bless { marker => $marker }, $class;
+    }
+
+    sub DESTROY {
+        my ($self) = @_;
+        return if $self->{InactiveDestroy};
+
+        open( my $fh, '>', $self->{marker} ) or die "Unable to create $self->{marker}: $!";
+        print {$fh} "destroyed\n" or die "Unable to write $self->{marker}: $!";
+        close($fh) or die "Unable to close $self->{marker}: $!";
+    }
+}
+
 sub write_executable {
     my ( $path, $contents ) = @_;
 
@@ -187,14 +205,22 @@ is( -s $parent_stderr, 0, 'child stderr is redirected away from the caller' );
 ok( -e $command_file, 'the runner leaves cleanup timing to its caller' );
 cleanup_command_file($command_file);
 
+my $child_database_cleanup = File::Spec->catfile( $workspace, 'child-database-cleanup' );
 $command_file = write_command_file( $command_directory, "connect\n" );
-is(
-    XCAT::Test::FastOmapiRunner->run_command_file(
-        $command_file, File::Spec->catfile( $workspace, 'missing-omshell' )
-    ),
-    'completed',
-    'legacy exec failure remains a completed child process'
-);
+{
+    local $::XCAT_DBHS = {
+        inherited => XCAT::Test::InheritedDatabaseHandle->new($child_database_cleanup),
+    };
+    is(
+        XCAT::Test::FastOmapiRunner->run_command_file(
+            $command_file, File::Spec->catfile( $workspace, 'missing-omshell' )
+        ),
+        'completed',
+        'legacy exec failure remains a completed child process'
+    );
+    ok( !-e $child_database_cleanup, 'exec failure does not destroy an inherited database handle' );
+    $::XCAT_DBHS->{inherited}->{InactiveDestroy} = 1;
+}
 cleanup_command_file($command_file);
 
 $command_file = write_command_file( $command_directory, "connect\n" );
