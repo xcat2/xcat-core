@@ -93,4 +93,29 @@ $r = xCAT::NTP::Backend->choose(
     commands => { chronyd => 1, systemctl => 0, ntpd => 0 } );
 is( $r->{install}, 1, 'chronyd without systemctl and no ntpd asks for an install' );
 
+# --- site.ntpbackend is user facing, so the site table help has to carry it --------------------
+# The help text is what lsdef -t site -h and tabdump -d print. site.dhcpbackend is documented
+# there; ntpbackend selects the NTP daemon the same way and was not.
+require xCAT::Schema;
+no warnings 'once';
+my $site_help = $xCAT::Schema::tabspec{site}{descriptions}{key};
+like( $site_help, qr/^\s*ntpbackend:/m,
+    'the site table help documents ntpbackend' );
+like( $site_help, qr/ntpbackend:.{0,400}auto/s,
+    'and names auto' );
+like( $site_help, qr/ntpbackend:.{0,400}chrony/s,
+    'and chrony' );
+like( $site_help, qr/ntpbackend:.{0,400}ntpd/s,
+    'and ntpd, the values the selector accepts' );
+
+# The makentp man page lists the site attributes the command honors.
+my $pod = do {
+    local $/;
+    open my $fh, '<', "$FindBin::Bin/../../xCAT-client/pods/man1/makentp.1.pod"
+      or die "open makentp.1.pod: $!";
+    <$fh>;
+};
+like( $pod, qr/site\.ntpbackend/,
+    'the makentp man page lists site.ntpbackend beside ntpservers and extntpservers' );
+
 done_testing();
