@@ -1518,6 +1518,11 @@ until ($quit) {
             # would differ from the one forked at startup.
             close($chreadpipe);
             close($chwritepipe);
+            # A pending connection is a client socket the parent has accepted and not yet
+            # handed to a worker. The monitor never serves one, and it outlives the worker
+            # that does, so a copy left open here holds that client's socket for the life of
+            # the daemon.
+            close($_) for @pendingconnections;
             do_installm_service;
             xexit(0);
         } state => \$mon_respawn, pid => \$pid_MON, now => time();
