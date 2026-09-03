@@ -91,12 +91,16 @@ foreach my $status (qw(completed terminated killed fork_error)) {
         my $command = xCAT::DHCP::OmapiRunner->open_command_file($plugin_command_directory);
         my @logs;
         my @run_arguments;
+        my $run_contents;
+
+        print { $command->{handle} } "connect\n" or die "Unable to write $command->{path}: $!";
 
         {
             no warnings qw(once redefine);
             local *xCAT::DHCP::OmapiRunner::run_command_file = sub {
                 my ( $class, @arguments ) = @_;
                 @run_arguments = @arguments;
+                $run_contents = read_file( $arguments[0] );
                 return $status;
             };
             local *xCAT_plugin::dhcp::syslog = sub { push @logs, [@_]; };
@@ -111,6 +115,7 @@ foreach my $status (qw(completed terminated killed fork_error)) {
             [ $command->{path}, '/usr/bin/omshell' ],
             'makedhcp passes the command path and executable in order'
         );
+        is( $run_contents, "connect\n", 'makedhcp flushes the command file before the runner reads it' );
         ok( !-e $command->{path}, 'makedhcp removes the command file after the runner returns' );
         if ( $status eq 'completed' ) {
             is_deeply( \@logs, [], 'makedhcp does not log a completed command' );
