@@ -1035,11 +1035,25 @@ wait_db_process();
 my $CHILDPID = 0;    # Global for reapers
 my %immediatechildren;
 
+# Fold the death of the install monitor into the respawn pacing. Every reaper that can be
+# the handler when it dies has to call this: generic_reaper covers startup and the throttled
+# path, ssl_reaper the rest of the service loop. A death reaped without this leaves $pid_MON
+# holding a dead pid, and the service loop only re-forks when $pid_MON is clear.
+sub reap_install_monitor {
+    my ($pid) = @_;
+
+    return unless $pid_MON and $pid == $pid_MON;
+    $pid_MON     = 0;
+    $mon_respawn = xCAT::RespawnUtils::exited($mon_respawn, time());
+    return;
+}
+
 sub generic_reaper {
     local ($!);
     #print "generic_reaper in $$...";
     while (($CHILDPID = waitpid(-1, WNOHANG)) > 0) {
         #print "reaper for $CHILDPID...\n";
+        reap_install_monitor($CHILDPID);
         if ($CHILDPID == $pid_UDP) {
             if ($udpctl) {
                 # got here because UDP child is gone
@@ -1075,10 +1089,7 @@ sub ssl_reaper {
         if ($CHILDPID == $cmdlog_svrpid) {
             $cmdlog_svrpid = 0;
         }
-        if ($CHILDPID == $pid_MON) {
-            $pid_MON = 0;
-            $mon_respawn = xCAT::RespawnUtils::exited($mon_respawn, time());
-        }
+        reap_install_monitor($CHILDPID);
     }
     $SIG{CHLD} = \&ssl_reaper;
 }
