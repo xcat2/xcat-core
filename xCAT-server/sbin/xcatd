@@ -50,9 +50,18 @@ use xCAT::TLSPolicy qw(resolve_xcatd_tls_settings);
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
+use xCAT::RespawnUtils;
 use xCAT::xcatd;
 use xCAT::CmdLog;
 use xCAT::State;
+
+# Pacing for re-forking the install monitor; see the main service loop below.
+my $mon_respawn = xCAT::RespawnUtils::policy(
+    min_interval => $ENV{XCATD_MON_RESPAWN_MIN_INTERVAL},
+    max_interval => $ENV{XCATD_MON_RESPAWN_MAX_INTERVAL},
+    healthy      => $ENV{XCATD_MON_RESPAWN_HEALTHY},
+);
+
 my $os   = xCAT::Utils->osver();
 my $arch = `uname -p`;
 
@@ -1022,11 +1031,24 @@ wait_db_process();
 my $CHILDPID = 0;    # Global for reapers
 my %immediatechildren;
 
+# Both reapers call this. generic_reaper is the handler at startup and while connections are
+# throttled, ssl_reaper for the rest of the service loop. A death reaped without this leaves
+# $pid_MON holding a dead pid, and the service loop re-forks only when $pid_MON is clear.
+sub reap_install_monitor {
+    my ($pid) = @_;
+
+    return unless $pid_MON and $pid == $pid_MON;
+    $pid_MON     = 0;
+    $mon_respawn = xCAT::RespawnUtils::exited($mon_respawn, time());
+    return;
+}
+
 sub generic_reaper {
     local ($!);
     #print "generic_reaper in $$...";
     while (($CHILDPID = waitpid(-1, WNOHANG)) > 0) {
         #print "reaper for $CHILDPID...\n";
+        reap_install_monitor($CHILDPID);
         if ($CHILDPID == $pid_UDP) {
             if ($udpctl) {
                 # got here because UDP child is gone
@@ -1062,9 +1084,7 @@ sub ssl_reaper {
         if ($CHILDPID == $cmdlog_svrpid) {
             $cmdlog_svrpid = 0;
         }
-        if ($CHILDPID == $pid_MON) {
-            $pid_MON = 0;
-        }
+        reap_install_monitor($CHILDPID);
     }
     $SIG{CHLD} = \&ssl_reaper;
 }
@@ -1189,17 +1209,17 @@ if (!(socketpair($rescanreadpipe, $rescanwritepipe, AF_UNIX, SOCK_STREAM, PF_UNS
 }
 $rescanrselect = new IO::Select;
 $rescanrselect->add($rescanreadpipe);
-$pid_MON = xCAT::Utils->xfork;
-if (!defined $pid_MON) {
-    xCAT::MsgUtils->message("S", "Unable to fork installmonitor");
-    die;
-}
-unless ($pid_MON) {
+xCAT::RespawnUtils::supervise {
     $$progname = "xcatd: install monitor";
     $pid_UDP = 0;
     close($udpctl); $udpctl = 0;
     do_installm_service;
     xexit(0);
+} state => \$mon_respawn, pid => \$pid_MON, now => time();
+
+unless ($pid_MON) {
+    xCAT::MsgUtils->message("S", "Unable to fork installmonitor");
+    die;
 }
 
 # ----used for command log start---------
@@ -1463,6 +1483,39 @@ my $udpalive       = 1;
 
 until ($quit) {
     $SIG{CHLD} = \&ssl_reaper; # set here to ensure that signal handler is not corrupted during loop
+    # Nothing else re-forks the monitor; the reaper only clears $pid_MON. The pacing never
+    # stops allowing an attempt, so the monitor also comes back once whatever holds
+    # xcatiport lets go of it.
+    if (!$pid_MON && !$quit && $sport && xCAT::RespawnUtils::due($mon_respawn, time())) {
+        if (xCAT::RespawnUtils::should_report($mon_respawn)) {
+            xCAT::MsgUtils->message("S",
+                "xcatd: install monitor is not staying up ($mon_respawn->{streak} attempts);"
+                  . " still retrying xcatiport $sport every $mon_respawn->{max_interval} seconds");
+            $mon_respawn = xCAT::RespawnUtils::reported($mon_respawn);
+        }
+        xCAT::RespawnUtils::supervise {
+            $$progname = "xcatd: install monitor";
+            $pid_UDP = 0;
+            close($listener);
+            close($udpctl); $udpctl = 0;
+            # This fork is further down the program than the one at startup, so it also
+            # inherits what the parent opened since: the rescanplugins channel.
+            close($chreadpipe);
+            close($chwritepipe);
+            # Client sockets the parent accepted and has not dispatched yet. The monitor
+            # outlives the worker that serves one.
+            close($_) for @pendingconnections;
+            do_installm_service;
+            xexit(0);
+        } state => \$mon_respawn, pid => \$pid_MON, now => time();
+
+        if ($pid_MON) {
+            xCAT::MsgUtils->trace(0, "I",
+                "xcatd: re-forked install monitor (pid $pid_MON) after it exited");
+        } else {
+            xCAT::MsgUtils->message("S", "xcatd: unable to re-fork install monitor");
+        }
+    }
     while ($udpalive and $udpwatcher->can_read(0)) { # take an intermission to broker some state requests from udp traffic control
         eval {
             my $msg = fd_retrieve($udpctl);
@@ -1487,7 +1540,9 @@ until ($quit) {
     } else {
 
         # if select returned with no ready fds, there might be udpctl broken.
-        if (not $bothwatcher->can_read(30)) {
+        # The respawn at the top of this loop only gets a turn when this select returns, so
+        # wait in shorter hops while the monitor is down.
+        if (not $bothwatcher->can_read((!$pid_MON && $sport) ? 5 : 30)) {
 
             # if the errno is 'bad fd', check the health of the udpctl
             if ($! == EBADF) {

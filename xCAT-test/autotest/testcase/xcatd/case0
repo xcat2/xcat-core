@@ -187,3 +187,34 @@ cmd:if [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1; then 
 check:rc==0
 check:output!~Error|ERROR 
 end
+
+start:xcatd_install_monitor_respawns
+description:a killed install monitor comes back and reclaims xcatiport, without restarting xcatd
+label:mn_only,ci_test,xcatd
+#the process titles are matched anchored: an unanchored "pgrep -f" also matches this
+#test's own command line, and the kill below would then take out the test itself
+cmd:mkdir -p /tmp/xcatd_monitor_respawn; pgrep -f "^xcatd: install monitor$" > /tmp/xcatd_monitor_respawn/before.pid; test -s /tmp/xcatd_monitor_respawn/before.pid
+check:rc==0
+cmd:pgrep -f "^xcatd: SSL listener$" > /tmp/xcatd_monitor_respawn/listener.pid; test -s /tmp/xcatd_monitor_respawn/listener.pid
+check:rc==0
+cmd:kill -9 $(cat /tmp/xcatd_monitor_respawn/before.pid)
+check:rc==0
+#it must return on its own. the respawn floor is 5s by default, so poll well past that
+cmd:for i in $(seq 1 30); do sleep 2; pgrep -f "^xcatd: install monitor$" > /tmp/xcatd_monitor_respawn/after.pid; test -s /tmp/xcatd_monitor_respawn/after.pid && break; done; test -s /tmp/xcatd_monitor_respawn/after.pid
+check:rc==0
+cmd:test "$(cat /tmp/xcatd_monitor_respawn/before.pid)" != "$(cat /tmp/xcatd_monitor_respawn/after.pid)"
+check:rc==0
+#and it must have reclaimed the port, not merely be running again
+cmd:XCATIPORT=$(lsdef -t site -i xcatiport 2>/dev/null | grep xcatiport | cut -d= -f2); XCATIPORT=${XCATIPORT:-3002}; ss -lntp | grep ":$XCATIPORT " | grep -q "pid=$(cat /tmp/xcatd_monitor_respawn/after.pid)"
+check:rc==0
+#xcatd itself must not have been restarted -- surviving without a restart is the point
+cmd:pgrep -f "^xcatd: SSL listener$" | diff -q - /tmp/xcatd_monitor_respawn/listener.pid
+check:rc==0
+cmd:rm -rf /tmp/xcatd_monitor_respawn
+check:rc==0
+#if the respawn did not happen, this MN is left with a dead xcatiport, and every later case
+#in the bundle that provisions a node would fail for that reason instead of its own. a failed
+#check does not stop the remaining cmds of a case, so restore the daemon unconditionally here
+cmd:pgrep -f "^xcatd: install monitor$" >/dev/null || { if [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1; then XCATBYPASS=YES systemctl restart xcatd; else XCATBYPASS=YES service xcatd restart; fi; sleep 5; }
+check:rc==0
+end
