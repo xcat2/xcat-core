@@ -5,29 +5,32 @@
 # Setup a sudoer named xcat and copy the xCAT public SSH key in its
 # authorized_keys file. Only applies to Linux.
 #
+# The sudoer gets the password stored in the passwd table under
+# key=system,username=<sudoer>. Without that row the account has no
+# password and accepts only the SSH key.
+#
 #------------------------------------------------------------------------------
 
 function usage() {
   echo ""
-  echo "Usage: $0 -u username -p password"
-  echo -e "\t-u sudoer user name"
-  echo -e "\t-p sudoer password"
+  echo "Usage: $0 [-u username]"
+  echo -e "\t-u sudoer user name, xcat by default"
   exit 1
 }
 
-while getopts "u:p:" opt;
+SUDOER="xcat"
+while getopts "u:" opt;
 do
   case $opt in
     u) SUDOER="$OPTARG";;
-    p) SUDOERPW="$OPTARG";;
+    *) usage;;
   esac
 done
 
-if [ -z "$SUDOER" ] || [ -z $SUDOERPW ]
+if [[ ! "$SUDOER" =~ ^[A-Za-z_][A-Za-z0-9_.-]{0,31}$ ]]
 then
   usage;
 fi
-
 
 if [ -n "$LOGLABEL" ]; then
     log_label=$LOGLABEL
@@ -40,46 +43,182 @@ if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
    . $str_dir_name/xcatlib.sh
 fi
 
-# Configuration for the sudoer
-PRIV="$SUDOER ALL=(ALL) NOPASSWD: ALL"
-SEED=`date "+%s"`
-ENCRYPT=`perl -e "print crypt($SUDOERPW, $SEED)"`
+master=$MASTER
+useflowcontrol=0
+if [ "$USEFLOWCONTROL" = "YES" ] || [ "$USEFLOWCONTROL" = "yes" ] || [ "$USEFLOWCONTROL" = "1" ]; then
+  useflowcontrol=1
+fi
+
+MANAGED=/etc/sudoers.d/xcat-sudoer
+HOSTKEYS="/xcatpost/hostkeys/ssh_host_rsa_key.pub /xcatpost/hostkeys/ssh_host_dsa_key.pub"
+LEGACY_RULE="xcat ALL=(ALL) NOPASSWD: ALL"
+LEGACY_TTY="Defaults:xcat !requiretty"
+
+function log() {
+  logger -t $log_label -p "local4.$1" "sudoer: $2"
+}
+
+# A failed run keeps no sudo rule from an earlier run
+function fail() {
+  log err "$1"
+  rm -f "$MANAGED"
+  exit 1
+}
+
+# ssh-keygen leaves a trailing space after an empty comment and the previous
+# version of this postscript wrote the key without it
+function cluster_key() {
+  sed -e 's/[[:space:]]*$//' "$1"
+}
+
+function valid_sudoers() {
+  command -v visudo >/dev/null 2>&1 || return 0
+  visudo -cf "$1" >/dev/null 2>&1
+}
+
+# Take the lines the previous version of this postscript appended out of
+# /etc/sudoers. The rule now lives in the managed file.
+function migrate_legacy_sudoers() {
+  grep -qxF "$LEGACY_RULE" /etc/sudoers || return 0
+  local tmp
+  tmp=$(mktemp /etc/sudoers.xcat.XXXXXX) || return 1
+  grep -vxF -e "$LEGACY_RULE" -e "$LEGACY_TTY" /etc/sudoers > "$tmp"
+  if ! valid_sudoers "$tmp" || ! chmod 0440 "$tmp" || ! mv -f "$tmp" /etc/sudoers; then
+    rm -f "$tmp"
+    return 1
+  fi
+  legacy_xcat=1
+}
+
+# The account of an earlier run keeps its login, without sudo, password,
+# or the cluster key
+function revoke_account() {
+  local name=$1 home keyfile pubkey tmp
+  [ "$name" = "$SUDOER" ] && return 0
+  getent passwd "$name" >/dev/null || return 0
+  /usr/sbin/usermod -p '!' "$name" || return 1
+  home=$(getent passwd "$name" | cut -f6 -d :)
+  keyfile="$home/.ssh/authorized_keys"
+  if [[ "$home" == /* ]] && [ -f "$keyfile" ]; then
+    for pubkey in $HOSTKEYS; do
+      [ -r "$pubkey" ] || continue
+      tmp=$(mktemp "$keyfile.XXXXXX") || return 1
+      grep -vxF "$(cluster_key "$pubkey")" "$keyfile" > "$tmp"
+      cat "$tmp" > "$keyfile" || { rm -f "$tmp"; return 1; }
+      rm -f "$tmp"
+    done
+  fi
+  log info "revoked the previous sudoer $name"
+}
+
+function grant_sudo() {
+  local tmp
+  tmp=$(mktemp /etc/sudoers.d/xcat-sudoer.XXXXXX) || return 1
+  {
+    echo "# xCAT sudoer: $SUDOER"
+    echo "$SUDOER ALL=(ALL) NOPASSWD: ALL"
+    if [ -e "/etc/redhat-release" ]; then
+      echo "Defaults:$SUDOER !requiretty"
+    fi
+  } > "$tmp" || { rm -f "$tmp"; return 1; }
+  if ! valid_sudoers "$tmp" || ! chmod 0440 "$tmp" || ! mv -f "$tmp" "$MANAGED"; then
+    rm -f "$tmp"
+    return 1
+  fi
+}
+
+function append_sudo() {
+  local rule="$SUDOER ALL=(ALL) NOPASSWD: ALL"
+  grep -qxF "$rule" /etc/sudoers || echo "$rule" >> /etc/sudoers || return 1
+  if [ -e "/etc/redhat-release" ]; then
+    grep -qxF "Defaults:$SUDOER !requiretty" /etc/sudoers || echo "Defaults:$SUDOER !requiretty" >> /etc/sudoers || return 1
+  fi
+}
+
+# Add the cluster host keys and keep the keys that are already there
+function grant_keys() {
+  local keyfile="$sudoer_home/.ssh/authorized_keys" pubkey key
+  mkdir -p "$sudoer_home/.ssh" && touch "$keyfile" || return 1
+  for pubkey in $HOSTKEYS; do
+    [ -r "$pubkey" ] || continue
+    key=$(cluster_key "$pubkey")
+    grep -qxF "$key" "$keyfile" || echo "$key" >> "$keyfile" || return 1
+  done
+  chmod 0644 "$keyfile" && chown "$SUDOER" "$keyfile"
+}
+
+# Never manage root, a service account, or an account without a login shell
+uid_min=$(awk '$1 == "UID_MIN" { print $2 }' /etc/login.defs 2>/dev/null)
+uid_max=$(awk '$1 == "UID_MAX" { print $2 }' /etc/login.defs 2>/dev/null)
+account=$(getent passwd "$SUDOER")
+if [ -n "$account" ]; then
+  uid=$(echo "$account" | cut -f3 -d :)
+  shell=$(echo "$account" | cut -f7 -d :)
+  if [ "$uid" -lt "${uid_min:-1000}" ] || [ "$uid" -gt "${uid_max:-60000}" ]; then
+    fail "$SUDOER is a system account (uid $uid), leaving it alone"
+  fi
+  case "$shell" in
+    */nologin|*/false|"") fail "$SUDOER has no login shell, leaving it alone";;
+  esac
+fi
 
 # Create sudoer
-/usr/sbin/userdel $SUDOER &> /dev/null 
-/usr/sbin/useradd -p $ENCRYPT -m $SUDOER
-echo "$PRIV" >> /etc/sudoers
-if [ -e "/etc/redhat-release" ]; then
-    echo "Defaults:$SUDOER !requiretty" >> /etc/sudoers
+if [ -z "$account" ]; then
+  /usr/sbin/useradd -m "$SUDOER" || fail "unable to create $SUDOER"
+fi
+
+# The password field comes from the passwd table on the management node,
+# the same way remoteshell gets the root hash when secureroot is enabled.
+# The reply is the hash, or "!" when the table has no password for the
+# account. sudo and the SSH key are granted only once the field is applied.
+allowcred.awk &
+CREDPID=$!
+sleep 1
+response=""
+for attempt in 1 2 3; do
+  if [ $useflowcontrol = "1" ]; then
+    log info "sending xcatflowrequest $master 3001"
+    /xcatpost/xcatflowrequest $master 3001
+  fi
+  response=$(getcredentials.awk xcat_secure_pw:$SUDOER | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>' | sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/")
+  [ -n "$response" ] && break
+  [ $attempt -lt 3 ] && sleep $((attempt * 5))
+done
+{ kill -9 $CREDPID && wait $CREDPID; } 2>/dev/null
+SUDOERPWFIELD=$(echo "$response" | sed -n 's%.*<content>\(.*\)</content>.*%\1%p')
+if [ -z "$SUDOERPWFIELD" ]; then
+  ERR_MSG=$(echo "$response" | sed -n 's%.*<error>\(.*\)</error>.*%\1%p')
+  fail "no password for $SUDOER, leaving the account unprivileged: ${ERR_MSG:-no reply from $master}"
+fi
+/usr/sbin/usermod -p "$SUDOERPWFIELD" "$SUDOER" || fail "unable to set the password of $SUDOER, leaving the account unprivileged"
+if [ "$SUDOERPWFIELD" = "!" ]; then
+  log info "$SUDOER has no password in the passwd table, the account is locked"
+else
+  log info "set the password of $SUDOER from the passwd table"
 fi
 
 # Find sudoer home
-HOME=`egrep "^$SUDOER:" /etc/passwd | cut -f6 -d :`
+sudoer_home=$(getent passwd "$SUDOER" | cut -f6 -d :)
+if [[ "$sudoer_home" != /* ]]; then
+  fail "no home directory for $SUDOER, leaving the account unprivileged"
+fi
 
-# Create the SSH directory in sudoer's home
-mkdir -p $HOME/.ssh/
-sleep 1
-
-rm -rf $HOME/.ssh/authorized_keys
-
-#-----------------
-# Retrieve RSA key
-#-----------------
-KEY=`cat /xcatpost/hostkeys/ssh_host_rsa_key.pub`
-
-# Put key in authorized_keys file
-echo -e $KEY >> $HOME/.ssh/authorized_keys
-
-
-#-----------------
-# Retrieve DSA key
-#-----------------
-KEY=`cat /xcatpost/hostkeys/ssh_host_dsa_key.pub`
-
-# Put key in authorized_keys file
-echo -e $KEY >> $HOME/.ssh/authorized_keys
-chmod 0644 $HOME/.ssh/authorized_keys
-chown $SUDOER:users $HOME/.ssh/authorized_keys
+# Configuration for the sudoer
+if [ -d /etc/sudoers.d ] && grep -qE '^[#@]includedir[[:space:]]+/etc/sudoers.d' /etc/sudoers; then
+  previous=$(sed -n '1s/^# xCAT sudoer: //p' "$MANAGED" 2>/dev/null)
+  legacy_xcat=""
+  migrate_legacy_sudoers || fail "unable to take the legacy rule out of /etc/sudoers"
+  if [ -n "$legacy_xcat" ]; then
+    revoke_account xcat || fail "unable to revoke the legacy sudoer xcat"
+  fi
+  if [ -n "$previous" ]; then
+    revoke_account "$previous" || fail "unable to revoke the previous sudoer $previous"
+  fi
+  grant_sudo || fail "unable to write $MANAGED"
+else
+  append_sudo || fail "unable to add the rule of $SUDOER to /etc/sudoers"
+fi
+grant_keys || fail "unable to install the cluster key for $SUDOER"
 
 
 # Restart the SSHD for syncfiles postscript to do the sync work
