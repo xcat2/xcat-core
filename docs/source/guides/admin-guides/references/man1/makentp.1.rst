@@ -32,6 +32,8 @@ By default, it sets up the NTP server for xCAT management node. If \ **-a**\  fl
 
 \ *site.ntpservers*\  -- the NTP servers for the service node and compute node to sync with. The keyword <xcatmaster> means that the node's NTP server is the node that is managing it (either its service node or the management node).
 
+\ *site.ntpbackend*\  -- the NTP daemon to configure. Valid values are auto, chrony, and ntpd. The default is auto, which selects chrony on distributions that ship it and ntpd on older ones such as EL6 and SLES 12. If the selected daemon is not installed, \ **makentp**\  uses the other one and reports the change. The same value reaches the service nodes and the compute nodes, which the \ *setupntp*\  postscript also accepts as \ **-**\ **-backend chrony|ntpd**\ .
+
 To setup NTP on the compute node, add \ *setupntp*\  postscript to the \ *postscripts*\  table and run \ **updatenode node -P setupntp**\  command.
 
 

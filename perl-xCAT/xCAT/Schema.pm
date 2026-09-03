@@ -1283,6 +1283,11 @@ passed as argument rather than by table value',
 "              give stable output. You can increase the timeout value by specifying \n" .
 "              '--min-rtt-timeout 1s'. xCAT will append the options defined here to \n" .
 "              the nmap command.\n\n" .
+" ntpbackend:  The NTP daemon used by makentp and the setupntp postscript. Valid\n" .
+"              values are auto, chrony, and ntpd. The default is auto. In auto\n" .
+"              mode, xCAT uses chrony on distributions that ship it and ntpd on\n" .
+"              older ones such as EL6 and SLES 12. If the selected daemon is not\n" .
+"              installed, xCAT uses the other one and reports the change.\n\n" .
 " ntpservers:  A comma delimited list of NTP servers for the service node and\n" .
 "              the compute node to sync with. The keyword <xcatmaster> means that\n" .
 "              the node's NTP server is the node that is managing it\n" .
