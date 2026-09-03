@@ -11,7 +11,6 @@ use strict;
 use IPC::Open2;
 use IPC::Open3;
 use IO::Select;
-use File::Temp qw(tempfile);
 use Symbol qw/gensym/;
 use POSIX qw/WNOHANG/;
 use Time::HiRes qw(sleep);
@@ -36,6 +35,7 @@ use xCAT::SvrUtils;
 use xCAT::DHCP::BootPolicy;
 use xCAT::DHCP::Backend;
 use xCAT::DHCP::OmapiPolicy;
+use xCAT::DHCP::OmapiRunner;
 use xCAT::DHCP::Range;
 use xCAT::TableUtils;
 use xCAT::NetworkUtils qw/getipaddr/;
@@ -412,45 +412,10 @@ sub _open_omshell_writer
 {
     my $settings = shift;
 
-    mkdir "/tmp/xcat" unless -d "/tmp/xcat";
-    my ($omshell_stdin, $command_file) = tempfile('omshell.XXXXXX', DIR => '/tmp/xcat', UNLINK => 0);
-    return unless $omshell_stdin;
+    my $command = xCAT::DHCP::OmapiRunner->open_command_file();
+    return unless ref($command) eq 'HASH' && $command->{handle};
 
-    return ($omshell_stdin, { command_file => $command_file, omshell_path => $settings->{omshell_path} });
-}
-
-sub _run_omshell_command_file
-{
-    my ($command_file, $omshell_path) = @_;
-
-    my $pid = fork();
-    return unless defined $pid;
-
-    if ($pid == 0) {
-        open(STDIN, '<', $command_file) or exit 127;          ## no critic (InputOutput::RequireCheckedOpen)
-        open(STDOUT, '>', '/dev/null') or exit 127;           ## no critic (InputOutput::RequireCheckedOpen)
-        open(STDERR, '>', '/dev/null') or exit 127;           ## no critic (InputOutput::RequireCheckedOpen)
-        exec { $omshell_path } $omshell_path;
-        exit 127;
-    }
-
-    for (1 .. 100) {
-        if (waitpid($pid, WNOHANG) == $pid) {
-            sleep 1.0;
-            return 1;
-        }
-        sleep 0.1;
-    }
-
-    kill 'TERM', $pid;
-    for (1 .. 20) {
-        return if waitpid($pid, WNOHANG) == $pid;
-        sleep 0.1;
-    }
-
-    kill 'KILL', $pid;
-    waitpid($pid, 0);
-    return;
+    return ($command->{handle}, { command_file => $command->{path}, omshell_path => $settings->{omshell_path} });
 }
 
 sub _close_omshell_writer
@@ -461,9 +426,12 @@ sub _close_omshell_writer
 
     return unless ref($writer) eq 'HASH';
 
-    my $ok = _run_omshell_command_file($writer->{command_file}, $writer->{omshell_path});
+    my $status = xCAT::DHCP::OmapiRunner->run_command_file(
+        $writer->{command_file}, $writer->{omshell_path}
+    );
     unlink $writer->{command_file};
-    syslog("local4|err", "omshell did not complete while updating DHCP reservations") unless $ok;
+    syslog("local4|err", "omshell did not complete while updating DHCP reservations")
+      unless $status eq 'completed';
 }
 
 ######################################################

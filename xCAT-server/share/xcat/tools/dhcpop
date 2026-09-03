@@ -10,13 +10,9 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 
 use Getopt::Long;
-use File::Temp qw(tempfile);
 use Fcntl ':flock';
-use IPC::Open3;
-use POSIX qw/WNOHANG/;
-use Symbol qw/gensym/;
-use Time::HiRes qw(sleep);
 use xCAT::DHCP::OmapiPolicy;
+use xCAT::DHCP::OmapiRunner;
 use xCAT::Table;
 
 sub usage{
@@ -146,41 +142,17 @@ if($help){
        $omshell_commands .= "close\n";
     }
 
-    mkdir "/tmp/xcat" unless -d "/tmp/xcat";
-    my ($omshell, $command_file) = tempfile('omshell.XXXXXX', DIR => '/tmp/xcat', UNLINK => 0);
+    my $command = xCAT::DHCP::OmapiRunner->open_command_file();
+    my $omshell = ref($command) eq 'HASH' ? $command->{handle} : undef;
     die "Unable to start omshell: $!" unless $omshell;
     print $omshell $omshell_commands;
     close($omshell);
 
-    my $pid = fork();
-    die "Unable to start omshell: $!" unless defined $pid;
-    if ($pid == 0) {
-        open(STDIN, '<', $command_file) or exit 127;          ## no critic (InputOutput::RequireCheckedOpen)
-        open(STDOUT, '>', '/dev/null') or exit 127;           ## no critic (InputOutput::RequireCheckedOpen)
-        open(STDERR, '>', '/dev/null') or exit 127;           ## no critic (InputOutput::RequireCheckedOpen)
-        exec { $settings->{omshell_path} } $settings->{omshell_path};
-        exit 127;
-    }
-
-    for (1 .. 100) {
-        if (waitpid($pid, WNOHANG) == $pid) {
-            sleep 1.0;
-            unlink $command_file;
-            exit 0;
-        }
-        sleep 0.1;
-    }
-    kill 'TERM', $pid;
-    for (1 .. 20) {
-        if (waitpid($pid, WNOHANG) == $pid) {
-            unlink $command_file;
-            exit 0;
-        }
-        sleep 0.1;
-    }
-    kill 'KILL', $pid;
-    waitpid($pid, 0);
-    unlink $command_file;
+    my $status = xCAT::DHCP::OmapiRunner->run_command_file(
+        $command->{path}, $settings->{omshell_path}
+    );
+    die "Unable to start omshell: $!" if $status eq 'fork_error';
+    unlink $command->{path};
 }else{
     &usage;
     exit 1;
