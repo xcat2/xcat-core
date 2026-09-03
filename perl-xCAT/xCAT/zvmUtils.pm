@@ -337,8 +337,9 @@ sub printLn {
                   MDISK statement carries the read, write and multi
                   passwords after the access mode. The COMMAND statement
                   can start any CP command with an inline password, so
-                  the whole statement masks. The keyword form carries
-                  the passwords as PW assignments.
+                  the whole statement masks, in either spelling and
+                  through the last record of a continued statement. The
+                  keyword form carries the passwords as PW assignments.
     Arguments   : Directory entry text
     Returns     : The text with each password masked
     Example     : my $safe = xCAT::zvmUtils->redact_directory_entry($entry);
@@ -349,11 +350,50 @@ sub printLn {
 sub redact_directory_entry {
     my ( $class, $entry ) = @_;
     return $entry unless defined $entry;
+
+    # z/VM reads the statement in columns 1 to 71, so a sequence number
+    # after them cannot change the continuation. A comment record is
+    # ignored, so it neither ends an open statement nor starts one that
+    # reaches the records below. This pass runs before the rules below,
+    # which replace the end of a record and would drop a continuation
+    # comma.
+    my @records = split(/\n/, $entry, -1);
+    my $active    = 0;
+    my $commented = 0;
+    foreach my $record (@records) {
+        my $statement  = substr($record, 0, 71);
+        my $is_comment = ($statement =~ /^[ \t]*\*/)   ? 1 : 0;
+        my $is_blank   = ($statement =~ /^[ \t\r]*$/)   ? 1 : 0;
+        my $continues  = ($statement =~ /,[ \t\r]*$/)   ? 1 : 0;
+
+        next if $is_blank;
+        if ($is_comment) {
+            if ($active or $commented) {
+                $record = 'xxxxxxxx';
+                next;
+            }
+            if ($record =~ /^[ \t]*(?:\*[ \t]*)*(?:COMMAND|CMD)\b/i) {
+                $record =~ s/^([ \t]*(?:\*[ \t]*)*(?:COMMAND|CMD)\b).*$/$1 xxxxxxxx/i;
+                $commented = $continues;
+            }
+            next;
+        }
+        $commented = 0;
+        if ($record =~ /^[ \t]*(?:COMMAND|CMD)\b/i) {
+            $record =~ s/^([ \t]*(?:COMMAND|CMD)\b).*$/$1 xxxxxxxx/i;
+            $active = $continues;
+            next;
+        }
+        next unless $active;
+        $active = $continues;
+        $record = 'xxxxxxxx';
+    }
+    $entry = join("\n", @records);
+
     $entry =~ s/^([ \t]*(?:\*[ \t]*)*(?:USER|IDENTITY|IDENT)[ \t]+\S+[ \t]+)\S+/$1xxxxxxxx/img;
     $entry =~ s/^([ \t]*(?:\*[ \t]*)*MDISK[ \t]+\S+[ \t]+\S+[ \t]+(?:DEVNO|V-DISK|T-DISK)[ \t]+\S+[ \t]+\S+)[ \t]+\S.*$/$1 xxxxxxxx/img;
     $entry =~ s/^([ \t]*(?:\*[ \t]*)*MDISK[ \t]+(?:\S+[ \t]+){5}\S+)[ \t]+\S.*$/$1 xxxxxxxx/img;
     $entry =~ s/^([ \t]*(?:\*[ \t]*)*APPCPASS\b).*$/$1 xxxxxxxx/img;
-    $entry =~ s/^([ \t]*(?:\*[ \t]*)*COMMAND\b).*$/$1 xxxxxxxx/img;
     $entry =~ s/\b((?:READ|WRITE|MULTI)?(?:PASSWORD|PW)|APPCPASS)=\S+/$1=xxxxxxxx/ig;
     return $entry;
 }
