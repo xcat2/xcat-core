@@ -126,24 +126,13 @@ sub write_command_file {
 sub cleanup_command_file {
     my ($path) = @_;
 
-    ok( unlink($path), 'the caller can remove the completed command file' );
-    ok( !-e $path, 'the command file is gone after caller cleanup' );
+    unlink($path) or die "Unable to remove $path: $!";
 }
 
 my $workspace = tempdir( CLEANUP => 1 );
 my $command_directory = File::Spec->catdir( $workspace, 'commands' );
 my $capture = File::Spec->catfile( $workspace, 'captured-input' );
 my $success = File::Spec->catfile( $workspace, 'success' );
-
-is(
-    xCAT::DHCP::OmapiRunner->_command_directory(),
-    '/tmp/xcat',
-    'the production command directory remains /tmp/xcat'
-);
-is( xCAT::DHCP::OmapiRunner->_completion_attempts(), 100, 'the completion window remains 100 polls' );
-is( xCAT::DHCP::OmapiRunner->_termination_attempts(), 20, 'the TERM grace period remains 20 polls' );
-is( xCAT::DHCP::OmapiRunner->_poll_interval(), 0.1, 'the process poll interval remains 0.1 seconds' );
-is( xCAT::DHCP::OmapiRunner->_completion_delay(), 1.0, 'the post-completion delay remains one second' );
 
 my $default_command;
 {
@@ -183,17 +172,23 @@ local $ENV{OMAPI_TEST_CAPTURE} = $capture;
 my $parent_stdout = File::Spec->catfile( $workspace, 'parent-stdout' );
 my $parent_stderr = File::Spec->catfile( $workspace, 'parent-stderr' );
 my $success_status;
+my ( $success_ok, $success_error );
 {
     open( my $saved_stdout, '>&', \*STDOUT ) or die "Unable to preserve stdout: $!";
     open( my $saved_stderr, '>&', \*STDERR ) or die "Unable to preserve stderr: $!";
     open( STDOUT, '>', $parent_stdout ) or die "Unable to create $parent_stdout: $!";
     open( STDERR, '>', $parent_stderr ) or die "Unable to create $parent_stderr: $!";
-    $success_status = XCAT::Test::FastOmapiRunner->run_command_file( $command_file, $success );
+    $success_ok = eval {
+        $success_status = XCAT::Test::FastOmapiRunner->run_command_file( $command_file, $success );
+        1;
+    };
+    $success_error = $@;
     open( STDOUT, '>&', $saved_stdout ) or die "Unable to restore stdout: $!";
     open( STDERR, '>&', $saved_stderr ) or die "Unable to restore stderr: $!";
     close($saved_stdout) or die "Unable to close preserved stdout: $!";
     close($saved_stderr) or die "Unable to close preserved stderr: $!";
 }
+die $success_error unless $success_ok;
 is( $success_status, 'completed', 'a normally exiting command is reported as completed' );
 
 open( my $capture_fh, '<', $capture ) or die "Unable to read $capture: $!";

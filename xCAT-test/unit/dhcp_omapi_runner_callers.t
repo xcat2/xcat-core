@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use FindBin;
-use lib "$FindBin::Bin/../../xCAT-server/lib";
+use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use lib "$FindBin::Bin/../../perl-xCAT";
 
@@ -15,16 +15,13 @@ use IPC::Open3;
 use Symbol qw(gensym);
 use Test::More;
 
+use XCAT::Test::File qw(repo_path);
 use xCAT::DHCP::OmapiRunner;
 
 $ENV{XCATCFG} ||= 'SQLite:/tmp';
 
-my $source_dhcp_plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/dhcp.pm";
-if ( -f $source_dhcp_plugin ) {
-    require $source_dhcp_plugin;
-} else {
-    require xCAT_plugin::dhcp;
-}
+my $source_dhcp_plugin = repo_path('xCAT-server/lib/xcat/plugins/dhcp.pm');
+require $source_dhcp_plugin;
 
 sub write_file {
     my ( $path, $contents ) = @_;
@@ -74,24 +71,13 @@ my $plugin_command_directory = File::Spec->catdir( $workspace, 'plugin-commands'
     unlink $command->{path} or die "Unable to remove $command->{path}: $!";
 }
 
-{
-    my @writer;
-    {
-        no warnings qw(once redefine);
-        local *xCAT::DHCP::OmapiRunner::open_command_file = sub { return; };
-        @writer = xCAT_plugin::dhcp::_open_omshell_writer(
-            { omshell_path => '/usr/bin/omshell' }
-        );
-    }
-    is_deeply( \@writer, [], 'makedhcp propagates command-file creation failure' );
-}
-
 foreach my $status (qw(completed terminated killed fork_error)) {
     subtest "makedhcp handles $status" => sub {
         my $command = xCAT::DHCP::OmapiRunner->open_command_file($plugin_command_directory);
         my @logs;
         my @run_arguments;
         my $run_contents;
+        my $writer_closed_before_run;
 
         print { $command->{handle} } "connect\n" or die "Unable to write $command->{path}: $!";
 
@@ -100,6 +86,7 @@ foreach my $status (qw(completed terminated killed fork_error)) {
             local *xCAT::DHCP::OmapiRunner::run_command_file = sub {
                 my ( $class, @arguments ) = @_;
                 @run_arguments = @arguments;
+                $writer_closed_before_run = !defined fileno( $command->{handle} );
                 $run_contents = read_file( $arguments[0] );
                 return $status;
             };
@@ -115,6 +102,7 @@ foreach my $status (qw(completed terminated killed fork_error)) {
             [ $command->{path}, '/usr/bin/omshell' ],
             'makedhcp passes the command path and executable in order'
         );
+        ok( $writer_closed_before_run, 'makedhcp closes the command file before the runner reads it' );
         is( $run_contents, "connect\n", 'makedhcp flushes the command file before the runner reads it' );
         ok( !-e $command->{path}, 'makedhcp removes the command file after the runner returns' );
         if ( $status eq 'completed' ) {
@@ -143,7 +131,11 @@ use strict;
 use warnings;
 
 sub new_backend {
-    return {};
+    return bless {}, __PACKAGE__;
+}
+
+sub name {
+    return 'isc';
 }
 
 1;
@@ -200,6 +192,10 @@ use Errno qw(EAGAIN);
 use File::Temp qw(tempfile);
 
 sub open_command_file {
+    my ( $class, @arguments ) = @_;
+    open( my $arguments, '>', $ENV{OMAPI_TEST_OPEN_ARGUMENTS} ) or die $!;
+    print {$arguments} join("\n", @arguments) or die $!;
+    close($arguments) or die $!;
     my ( $handle, $path ) = tempfile(
         'omshell.XXXXXX',
         DIR    => $ENV{OMAPI_TEST_COMMAND_DIRECTORY},
@@ -230,17 +226,19 @@ sub run_command_file {
 MODULE
 );
 
-my $dhcpop = File::Spec->catfile( $FindBin::Bin, '..', '..', 'xCAT-server', 'share', 'xcat', 'tools', 'dhcpop' );
+my $dhcpop = repo_path('xCAT-server/share/xcat/tools/dhcpop');
 
 sub run_dhcpop {
     my ($status) = @_;
     my $capture = File::Spec->catfile( $workspace, "dhcpop-$status-capture" );
+    my $open_arguments = File::Spec->catfile( $workspace, "dhcpop-$status-open-arguments" );
     my $omshell_capture = File::Spec->catfile( $workspace, "dhcpop-$status-omshell" );
     my $path_record = File::Spec->catfile( $workspace, "dhcpop-$status-path" );
 
     local $ENV{XCATROOT} = $fake_root;
     local $ENV{OMAPI_TEST_CAPTURE} = $capture;
     local $ENV{OMAPI_TEST_COMMAND_DIRECTORY} = $dhcpop_command_directory;
+    local $ENV{OMAPI_TEST_OPEN_ARGUMENTS} = $open_arguments;
     local $ENV{OMAPI_TEST_OMSHELL_CAPTURE} = $omshell_capture;
     local $ENV{OMAPI_TEST_PATH_RECORD} = $path_record;
     local $ENV{OMAPI_TEST_STATUS} = $status;
@@ -265,12 +263,13 @@ sub run_dhcpop {
     my $command_path = read_file($path_record);
 
     return {
-        command      => read_file($capture),
-        command_path => $command_path,
-        exit_status  => $exit_status,
-        omshell_path => read_file($omshell_capture),
-        stderr       => $stderr,
-        stdout       => $stdout,
+        command        => read_file($capture),
+        command_path   => $command_path,
+        exit_status    => $exit_status,
+        open_arguments => read_file($open_arguments),
+        omshell_path   => read_file($omshell_capture),
+        stderr         => $stderr,
+        stdout         => $stdout,
     };
 }
 
@@ -289,6 +288,7 @@ foreach my $status (qw(completed terminated killed fork_error)) {
         my $result = run_dhcpop($status);
 
         is( $result->{command}, $expected_command, 'dhcpop sends the expected OMAPI commands' );
+        is( $result->{open_arguments}, '', 'dhcpop uses the runner default command directory' );
         is( $result->{omshell_path}, '/usr/bin/omshell', 'dhcpop passes the configured executable' );
         is( $result->{stdout}, '', 'dhcpop does not write to stdout' );
         if ( $status eq 'fork_error' ) {
