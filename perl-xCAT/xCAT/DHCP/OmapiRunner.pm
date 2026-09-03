@@ -6,6 +6,7 @@ use warnings;
 use File::Temp qw(tempfile);
 use POSIX qw(WNOHANG);
 use Time::HiRes qw(sleep);
+use xCAT::Utils;
 
 sub open_command_file {
     my ($class, $directory) = @_;
@@ -51,7 +52,7 @@ sub run_command_file {
 }
 
 sub _fork {
-    return fork();
+    return xCAT::Utils->xfork();
 }
 
 sub _completion_attempts {
