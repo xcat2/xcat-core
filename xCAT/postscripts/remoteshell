@@ -648,7 +648,19 @@ fi
 #try to kill the process and start
 if [ "$?" != "0" ];then
    PIDLIST=`ps aux | grep -v grep | grep "/usr/sbin/sshd"|awk -F" " '{print $2}'|xargs`
-   [ -n "$PIDLIST" ] && kill 9 $PIDLIST
+   if [ -n "$PIDLIST" ]; then
+      kill -9 $PIDLIST
+      waited=0
+      while [ $waited -lt 10 ]; do
+         alive=0
+         for pid in $PIDLIST; do
+            if kill -0 $pid 2>/dev/null; then alive=1; fi
+         done
+         if [ $alive -eq 0 ]; then break; fi
+         sleep 1
+         waited=`expr $waited + 1`
+      done
+   fi
    /usr/sbin/sshd
 fi
 kill -9 $CREDPID
