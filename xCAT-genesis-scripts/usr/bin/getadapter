@@ -18,6 +18,24 @@ transmit_adapter_info() {
     fi
 }
 
+append_missing_pci_adapters() {
+    local adapter_pattern=$1
+    local adapter_file=$2
+    local model_separator=$3
+    local pci
+    local tmp
+
+    for pci in $(lspci | awk -v adapter_pattern="$adapter_pattern" '$0 ~ adapter_pattern {print $1}'); do
+        if ! grep -q "$pci" "$adapter_file" 2>/dev/null; then
+            tmp="$(lspci | grep "$pci")"
+            echo "<nic>
+<pcilocation>$pci</pcilocation>
+<model>${tmp##*"$model_separator"}</model>
+</nic>" >> "$adapter_file"
+        fi
+    done
+}
+
 rm -f "$SCANNICLOG" >/dev/null 2>&1
 
 if [ -f "$ADAPTERFILE" ]; then
@@ -66,35 +84,10 @@ for n in /sys/class/net/*; do
     fi
 done
 
-for pci in $(lspci |awk '/Ethernet/ {print $1}'); do
-    if ! grep -q "$pci" "$ADAPTERFILE" 2>/dev/null; then
-        tmp="$(lspci |grep "$pci")"
-        echo "<nic>
-<pcilocation>$pci</pcilocation>
-<model>${tmp##*:}</model>
-</nic>" >> "$ADAPTERFILE"
-    fi
-done
-
-for pci in $(lspci |awk '/Network/ {print $1}'); do
-    if ! grep -q "$pci" "$ADAPTERFILE" 2>/dev/null; then
-        tmp="$(lspci |grep "$pci")"
-        echo "<nic>
-<pcilocation>$pci</pcilocation>
-<model>${tmp##*: }</model>
-</nic>" >> "$ADAPTERFILE"
-    fi
-done
-
-for pci in $(lspci |awk '/Mellanox/ {print $1}'); do
-    if ! grep -q "$pci" "$ADAPTERFILE" 2>/dev/null; then
-        tmp="$(lspci |grep "$pci")"
-        echo "<nic>
-<pcilocation>$pci</pcilocation>
-<model>${tmp##*: }</model>
-</nic>" >> "$ADAPTERFILE"
-    fi
-done
+# Keep the legacy Ethernet model spacing while sharing the scan.
+append_missing_pci_adapters "Ethernet" "$ADAPTERFILE" ":"
+append_missing_pci_adapters "Network" "$ADAPTERFILE" ": "
+append_missing_pci_adapters "Mellanox" "$ADAPTERFILE" ": "
 
 echo "</xcatrequest>" >> "$ADAPTERFILE"
 
