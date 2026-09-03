@@ -178,6 +178,43 @@ sub using_subiquity
     return 0;
 }
 
+# The first readable pair wins, so netboot trees precede live images and a
+# hardware-enablement kernel precedes the release one.
+my %INSTALL_BOOT_FILES = (
+    'x86' => [
+        [ 'install/hwe-netboot/ubuntu-installer/{darch}/linux', 'install/hwe-netboot/ubuntu-installer/{darch}/initrd.gz' ],
+        [ 'install/netboot/ubuntu-installer/{darch}/linux',     'install/netboot/ubuntu-installer/{darch}/initrd.gz' ],
+        [ 'install/netboot/vmlinuz',                            'install/netboot/initrd.gz' ],
+        [ 'casper/hwe-vmlinuz',                                 'casper/hwe-initrd' ],
+        [ 'casper/vmlinuz',                                     'casper/initrd' ],
+    ],
+    'ppc64' => [
+        [ 'install/netboot/ubuntu-installer/{darch}/vmlinux', 'install/netboot/ubuntu-installer/{darch}/initrd.gz' ],
+        [ 'install/vmlinux',                                  'install/netboot/initrd.gz' ],
+    ],
+);
+
+sub install_boot_files
+{
+    my ($arch, $darch, $pkgdir) = @_;
+    return unless defined($arch) && defined($pkgdir);
+    $darch = '' unless defined $darch;
+
+    my $family =
+        $arch =~ /x86/i   ? 'x86'
+      : $arch =~ /ppc64/i ? 'ppc64'
+      :                     undef;
+    return unless $family;
+
+    foreach my $candidate (@{ $INSTALL_BOOT_FILES{$family} }) {
+        my ($kernel, $initrd) = @{$candidate};
+        s/\{darch\}/$darch/g for ($kernel, $initrd);
+        ($kernel, $initrd) = ("$pkgdir/$kernel", "$pkgdir/$initrd");
+        return ($kernel, $initrd) if -r $kernel and -r $initrd;
+    }
+    return;
+}
+
 sub is_ubuntu_live_media
 {
     my $media_path = shift;
@@ -997,52 +1034,8 @@ sub mkinstall {
         my $initrdpath;
         my $maxmem;
 
-        if (
-            (
-                ($arch =~ /x86/ and
-                    (
-                        (-r "$pkgdir/install/hwe-netboot/ubuntu-installer/$darch/linux"
-                            and $kernpath = "$pkgdir/install/hwe-netboot/ubuntu-installer/$darch/linux"
-                            and -r "$pkgdir/install/hwe-netboot/ubuntu-installer/$darch/initrd.gz"
-                            and $initrdpath = "$pkgdir/install/hwe-netboot/ubuntu-installer/$darch/initrd.gz"
-                        ) or
-                        (-r "$pkgdir/install/netboot/ubuntu-installer/$darch/linux"
-                            and $kernpath = "$pkgdir/install/netboot/ubuntu-installer/$darch/linux"
-                            and -r "$pkgdir/install/netboot/ubuntu-installer/$darch/initrd.gz"
-                            and $initrdpath = "$pkgdir/install/netboot/ubuntu-installer/$darch/initrd.gz"
-                        ) or
-                        (-r "$pkgdir/install/netboot/vmlinuz"
-                            and $kernpath = "$pkgdir/install/netboot/vmlinuz"
-                            and -r "$pkgdir/install/netboot/initrd.gz"
-                            and $initrdpath = "$pkgdir/install/netboot/initrd.gz"
-                        ) or
-                        (-r "$pkgdir/casper/hwe-vmlinuz"
-                            and $kernpath = "$pkgdir/casper/hwe-vmlinuz"
-                            and -r "$pkgdir/casper/hwe-initrd"
-                            and $initrdpath = "$pkgdir/casper/hwe-initrd"
-                        ) or
-                        (-r "$pkgdir/casper/vmlinuz"
-                            and $kernpath = "$pkgdir/casper/vmlinuz"
-                            and -r "$pkgdir/casper/initrd"
-                            and $initrdpath = "$pkgdir/casper/initrd"
-                        )
-                    )
-                ) or (
-                    $arch =~ /ppc64/i and (
-                        (-r "$pkgdir/install/netboot/ubuntu-installer/$darch/vmlinux"
-                            and $kernpath = "$pkgdir/install/netboot/ubuntu-installer/$darch/vmlinux"
-                            and -r "$pkgdir/install/netboot/ubuntu-installer/$darch/initrd.gz"
-                            and $initrdpath = "$pkgdir/install/netboot/ubuntu-installer/$darch/initrd.gz"
-                        ) or
-                        (-r "$pkgdir/install/vmlinux"
-                            and $kernpath = "$pkgdir/install/vmlinux"
-                            and -r "$pkgdir/install/netboot/initrd.gz"
-                            and $initrdpath = "$pkgdir/install/netboot/initrd.gz"
-                        )
-                    )
-                )
-            )
-          ) {
+        ($kernpath, $initrdpath) = install_boot_files($arch, $darch, $pkgdir);
+        if ($kernpath) {
             #TODO: driver slipstream, targetted for network.
 
             # Copy the install resource to /tftpboot and check to only copy once
