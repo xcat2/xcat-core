@@ -7,6 +7,28 @@
 #
 #------------------------------------------------------------------------------
 
+function usage() {
+  echo ""
+  echo "Usage: $0 -u username -p password"
+  echo -e "\t-u sudoer user name"
+  echo -e "\t-p sudoer password"
+  exit 1
+}
+
+while getopts "u:p:" opt;
+do
+  case $opt in
+    u) SUDOER="$OPTARG";;
+    p) SUDOERPW="$OPTARG";;
+  esac
+done
+
+if [ -z "$SUDOER" ] || [ -z $SUDOERPW ]
+then
+  usage;
+fi
+
+
 if [ -n "$LOGLABEL" ]; then
     log_label=$LOGLABEL
 else
@@ -19,14 +41,12 @@ if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
 fi
 
 # Configuration for the sudoer
-SUDOER="xcat"
-SUDOERPW="rootpw"
 PRIV="$SUDOER ALL=(ALL) NOPASSWD: ALL"
 SEED=`date "+%s"`
 ENCRYPT=`perl -e "print crypt($SUDOERPW, $SEED)"`
 
 # Create sudoer
-/usr/sbin/userdel $SUDOER
+/usr/sbin/userdel $SUDOER &> /dev/null 
 /usr/sbin/useradd -p $ENCRYPT -m $SUDOER
 echo "$PRIV" >> /etc/sudoers
 if [ -e "/etc/redhat-release" ]; then
