@@ -68,10 +68,10 @@ my $iscsients;
 my $nodetypeents;
 my $chainents;
 my $tftpdir = xCAT::TableUtils->getTftpDir();
-my $dhcpconffile = $^O eq 'aix' ? '/etc/dhcpsd.cnf' : '/etc/dhcpd.conf';
+our $dhcpconffile = $^O eq 'aix' ? '/etc/dhcpsd.cnf' : '/etc/dhcpd.conf';
 my %dynamicranges; #track dynamic ranges defined to see if a host that resolves is actually a dynamic address
 my %netcfgs;
-my $distro = xCAT::Utils->osver();
+our $distro = xCAT::Utils->osver();
 my $checkdomain=0;
 
 # dhcp 4.x will use /etc/dhcp/dhcpd.conf as the config file
@@ -346,20 +346,38 @@ sub _add_isc_static_host
     $restartdhcp = 1;
 }
 
+# Read the ISC configuration file for a query. Returns the lines and an error message.
+# A file the query cannot read is not the same answer as a node without a reservation.
+sub _read_isc_conf_lines
+{
+    my $file = shift;
+
+    return ([], 'the path of the DHCP configuration file is not set') unless $file;
+
+    my $dhfh;
+    unless (open($dhfh, '<', $file)) {
+        return ([], "unable to read $file: $!");
+    }
+    my @lines = <$dhfh>;
+    close($dhfh);
+
+    return (\@lines, undef);
+}
+
 # Answer `makedhcp -q <node>` from dhcpd.conf rather than omshell, which on Ubuntu's ISC
 # 4.4 can wedge at 100% CPU and never be reaped -- the same reason the write paths avoid it.
-# Returns the shape _parse_omshell_host_output does, so listnode prints it unchanged.
+# Returns the shape _parse_omshell_host_output does, plus an error, so listnode prints it
+# unchanged.
 sub _query_isc_static_host
 {
     my $node  = shift;
     my @lines = @_ ? @_ : @dhcpconf;
 
     # Only the reconfigure paths populate @dhcpconf, so a bare query reads the file itself.
-    if (!@lines && $dhcpconffile && -r $dhcpconffile) {
-        if (open(my $dhfh, '<', $dhcpconffile)) {
-            @lines = <$dhfh>;
-            close($dhfh);
-        }
+    unless (@lines) {
+        my ($read, $error) = _read_isc_conf_lines($dhcpconffile);
+        return (undef, undef, undef, $error) if $error;
+        @lines = @{$read};
     }
 
     my $start_re = _isc_host_start_re($node);
@@ -375,14 +393,18 @@ sub _query_isc_static_host
         }
         last if $skip && $line =~ $end_re;
         next unless $skip;
-        if ($line =~ /^\s*hardware\s+ethernet\s+(.+?)\s*;/) {
-            $hwaddr = "hardware-address = $1";
+
+        # An InfiniBand node declares "hardware infiniband", and the InfiniBand twin of an
+        # Ethernet node adds a second declaration between the same markers. The first
+        # declaration is the one the node is named after, so keep it.
+        if ($line =~ /^\s*hardware\s+\S+\s+(.+?)\s*;/) {
+            $hwaddr = "hardware-address = $1" unless defined $hwaddr;
         } elsif ($line =~ /^\s*fixed-address\s+(.+?)\s*;/) {
-            $ipaddr = "ip-address = $1";
+            $ipaddr = "ip-address = $1" unless defined $ipaddr;
         }
     }
 
-    return ($nname, $ipaddr, $hwaddr);
+    return ($nname, $ipaddr, $hwaddr, undef);
 }
 
 sub _open_omshell_writer
@@ -549,7 +571,11 @@ sub listnode
     # be reaped, so answer from the static host block xCAT already wrote into dhcpd.conf and
     # never spawn omshell. This runs before the omapi key lookup below, which is moot here.
     if (_isc_static_host_fallback()) {
-        my ($sname, $sip, $shw) = _query_isc_static_host($node);
+        my ($sname, $sip, $shw, $serr) = _query_isc_static_host($node);
+        if ($serr) {
+            $callback->({ error => ["$node: $serr"], errorcode => [1] });
+            return;
+        }
         if ($sip) {
             push @{ $rsp->{data} }, "$sname: $sip, $shw";
             xCAT::MsgUtils->message("I", $rsp, $callback);
