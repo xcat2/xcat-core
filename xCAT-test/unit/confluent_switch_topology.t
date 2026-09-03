@@ -70,9 +70,8 @@ eval { require $plugin; 1 } or BAIL_OUT("confluent.pm did not load: $@");
         foreach my $n (@{ $nodes || [] }) {
             my $rows = exists $self->{rows}{$n} ? $self->{rows}{$n}
                      : $self->{any}             ? [ $self->{any} ]
-                     :                            undef;
-            next unless $rows;
-            $out{$n} = [ map { _project($_, $attrs) } @$rows ];
+                     :                            [ undef ];
+            $out{$n} = [ map { defined($_) ? _project($_, $attrs) : undef } @$rows ];
         }
         return \%out;
     }
@@ -123,6 +122,21 @@ eval { require $plugin; 1 } or BAIL_OUT("confluent.pm did not load: $@");
     }
 }
 
+# Run plugin code with table, host, and message collaborators at the boundary.
+sub with_tables {
+    my ($tables, $code) = @_;
+    no warnings qw(redefine once);
+    my $empty    = TestTable->new();
+    my $nodelist = TestTable->new_uniform({ groups => 'all' });
+    local *xCAT::Table::new = sub {
+        my ($class, $name, @rest) = @_;
+        return $tables->{$name} if exists $tables->{$name};
+        return $nodelist if $name eq 'nodelist';
+        return $empty;
+    };
+    return $code->();
+}
+
 # Drive the real command. %tables maps a table name to its rows; @existing are
 # the nodes confluent already holds, which selects create versus update.
 sub run_command {
@@ -130,26 +144,37 @@ sub run_command {
     my $client = TestConfluent->new(@{ $opt{existing} || [] });
     my %tables = %{ $opt{tables} || {} };
 
-    no warnings qw(redefine once);
-    local $Confluent::Client::INSTANCE  = $client;
-    local *xCAT::Utils::isServiceNode   = sub { return 0 };
-    local *xCAT::PasswordUtils::getIPMIAuth = sub { return {} };
-    local *xCAT::SvrUtils::sendmsg      = sub { return };
-    local *xCAT::MsgUtils::message      = sub { return };
-    local *xCAT::NetworkUtils::determinehostname = sub { return ('mn') };
-    my $empty    = TestTable->new();
-    my $nodelist = TestTable->new_uniform({ groups => 'all' });
-    local *xCAT::Table::new = sub {
-        my ($class, $name, @rest) = @_;
-        return $tables{$name} if exists $tables{$name};
-        return $nodelist if $name eq 'nodelist';
-        return $empty;
-    };
-
-    my $req = { command => ['makeconfluentcfg'], arg => [] };
-    $req->{node} = $opt{nodes} if $opt{nodes};
-    xCAT_plugin::confluent::makeconfluentcfg($req, sub { return });
+    no warnings qw(once);
+    local $Confluent::Client::INSTANCE = $client;
+    with_tables(\%tables, sub {
+        my $req = { command => ['makeconfluentcfg'], arg => [] };
+        $req->{node} = $opt{nodes} if $opt{nodes};
+        xCAT_plugin::confluent::makeconfluentcfg($req, sub { return });
+    });
     return $client;
+}
+
+sub run_preprocess {
+    my (%opt) = @_;
+    my %tables = %{ $opt{tables} || {} };
+
+    no warnings qw(once);
+    local $::CONSERVER;
+    local $::LOCAL;
+    local $::HELP;
+    local $::VERSION;
+    local $::VERBOSE;
+    local $::DEBUG;
+    return with_tables(\%tables, sub {
+        my $args = $opt{confluent_only} ? ['-c'] : [];
+        my $req = {
+            command           => ['makeconfluentcfg'],
+            arg               => $args,
+            _xcatpreprocessed => [0],
+        };
+        $req->{node} = $opt{nodes} if exists $opt{nodes};
+        return xCAT_plugin::confluent::preprocess_request($req, sub { return });
+    });
 }
 
 sub params_for {
@@ -157,6 +182,63 @@ sub params_for {
     my $s = $client->sent_for($node);
     return (undef, undef) unless $s;
     return ($s->{parameters}, $s->{op});
+}
+
+# Explicit nodes remain in the request even without console attributes or a
+# nodehm row, and conserver routing still uses the configured destination.
+{
+    my $nodehm = TestTable->new(
+        withcons   => [ { node => 'withcons', cons => 'ipmi' } ],
+        nocons     => [ { node => 'nocons' } ],
+        withserver => [ { node => 'withserver', cons => 'ipmi', conserver => 'sn1' } ],
+    );
+    my $requests = run_preprocess(
+        nodes  => [ 'withcons', 'nocons', 'neverdefined', 'withserver' ],
+        tables => { nodehm => $nodehm },
+    );
+    my ($management) = grep { $_->{_xcatdest} eq 'mn' } @{$requests};
+    my ($conserver)  = grep { $_->{_xcatdest} eq 'sn1' } @{$requests};
+    is_deeply(
+        [ sort @{ $management->{node} } ],
+        [qw(neverdefined nocons withcons withserver)],
+        'an explicit noderange keeps console and console-less nodes',
+    );
+    is_deeply($conserver->{node}, ['withserver'],
+        'a node keeps its explicit conserver');
+}
+
+# A full-scan preprocess request keeps the legacy dispatch filter: only nodes
+# with a console method or a serial port are assigned to a destination.
+{
+    my $nodehm = TestTable->new(
+        withcons   => [ { cons => 'ipmi' } ],
+        withserial => [ { serialport => 0 } ],
+        nocons     => [ {} ],
+        withserver => [ { cons => 'ipmi', conserver => 'sn1' } ],
+    );
+    my $requests = run_preprocess(
+        confluent_only => 1,
+        tables         => { nodehm => $nodehm },
+    );
+    my %nodes_by_destination = map {
+        $_->{_xcatdest} => [ sort @{ $_->{node} } ]
+    } @{$requests};
+    is_deeply($nodes_by_destination{mn}, [qw(withcons withserial)],
+        'full-scan dispatch excludes a console-less node');
+    is_deeply($nodes_by_destination{sn1}, ['withserver'],
+        'full-scan dispatch keeps explicit conserver routing');
+}
+
+# The second nodehm lookup must carry the requested name even when no row is
+# defined, so the create request never receives an empty node name.
+{
+    my $client = run_command(
+        nodes  => ['neverdefined'],
+        tables => { nodehm => TestTable->new() },
+    );
+    my ($p) = params_for($client, 'neverdefined');
+    ok(defined($p), 'a named node with no nodehm row reaches confluent');
+    is($p->{name}, 'neverdefined', 'the create request carries the requested node name');
 }
 
 # A node cabled on two interfaces. Both must survive: keeping only one loses
@@ -322,6 +404,30 @@ sub params_for {
     is($p->{'enclosure.bay'},     '5',        'the enclosure bay comes from the mp table');
     is($p->{'location.rack'},     'r1',       'the rack still comes from nodepos');
     is($p->{'net.eth2.switch'},   'sw8',      'a full scan carries the switch topology');
+}
+
+# The noderange path reshapes nodepos and mp lookups before preparing the
+# confluent request. Exercise both tables through that path.
+{
+    my $client = run_command(
+        nodes  => ['n9'],
+        tables => {
+            nodehm  => TestTable->new(n9 => [ { node => 'n9', cons => 'ipmi' } ]),
+            nodepos => TestTable->new(n9 => [
+                { node => 'n9', rack => 'r2', u => '21', room => 'west' },
+            ]),
+            mp => TestTable->new(n9 => [
+                { node => 'n9', mpa => 'chassis2', id => '6' },
+            ]),
+        },
+    );
+    my ($p) = params_for($client, 'n9');
+    ok(defined($p), 'an explicit node with location rows is sent to confluent');
+    is($p->{'location.rack'},     'r2',       'the nodepos row supplies the rack');
+    is($p->{'location.u'},        '21',       'the nodepos row supplies the rack unit');
+    is($p->{'location.room'},     'west',     'the nodepos row supplies the room');
+    is($p->{'enclosure.manager'}, 'chassis2', 'the mp row supplies the enclosure manager');
+    is($p->{'enclosure.bay'},     '6',        'the mp row supplies the enclosure bay');
 }
 
 done_testing();
