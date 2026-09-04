@@ -122,7 +122,7 @@ sub kea_s390x_network_classes {
             'option-data'   => [
                 {
                     name          => 'conf-file',
-                    data          => "pxelinux.cfg/s390x/$network_id",
+                    data          => "s390x/$network_id",
                     'always-send' => 1,
                 },
             ],
@@ -164,7 +164,7 @@ sub isc_client_architecture_lines {
         "      option vendor-class-identifier \"HTTPClient\";\n",
         "      filename \"http://$tftp$portsuffix/tftpboot/boot/grub2/grub2.riscv64\";\n",
         "    } else if option client-architecture = 00:1f { #QEMU s390x\n ",
-        "      option conf-file = \"pxelinux.cfg/s390x/${net}_${maskbits}\";\n",
+        "      option conf-file = \"s390x/${net}_${maskbits}\";\n",
         "    } else if option client-architecture = 00:0e { #OPAL-v3\n ",
         "        option conf-file = \"http://$tftp$portsuffix/tftpboot/pxelinux.cfg/p/${net}_${maskbits}\";\n",
         "    } else if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { #for onie on cumulus switch\n",
