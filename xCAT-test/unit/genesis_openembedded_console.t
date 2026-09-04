@@ -26,7 +26,6 @@ my $compiler = $ENV{CC} || 'cc';
 is(
     system(
         $compiler, '-D_POSIX_C_SOURCE=200809L', '-DXCAT_CONSOLE_PLAIN_ONLY',
-        '-DXCAT_CONSOLE_TEST',
         '-std=c17', '-Wall', '-Wextra', '-Wpedantic', '-Werror',
         @plain_sources, '-o', $binary
       ) >> 8,
@@ -97,7 +96,7 @@ C
 );
 is(
     system(
-        $compiler, '-D_POSIX_C_SOURCE=200809L', '-DXCAT_CONSOLE_TEST',
+        $compiler, '-D_POSIX_C_SOURCE=200809L',
         '-std=c17', '-Wall', '-Wextra', '-Wpedantic', '-Werror',
         '-I', $source_dir, $identity_test_source,
         File::Spec->catfile( $source_dir, 'state.c' ),
@@ -245,7 +244,6 @@ Sequence Code:        0000000012345
 LPAR UUID:            93724168-fda3-429b-8b28-a5d245dcb3ff
 VM00 UUID:            82038f2a-1344-aaf7-1a85-2a7250be2076
 SYSINFO
-$environment{XCAT_TEST_ARCH} = 's390x';
 write_file( $cmdline, "xcatd=192.0.2.10:3001\n" );
 ( $status, $output ) = run_console();
 is( $status, 0, 'plain console accepts IBM Z identity' );
@@ -275,7 +273,6 @@ SYSINFO
 like( $probe_output,
     qr/^uuid=93724168-fda3-429b-8b28-a5d245dcb3ff$/m,
     'console uses the LPAR UUID when no guest UUID is available' );
-delete $environment{XCAT_TEST_ARCH};
 write_file( File::Spec->catfile( $dmi_root, 'product_serial' ),
     "TEST-SERIAL-001\n" );
 write_file( File::Spec->catfile( $dmi_root, 'product_uuid' ),

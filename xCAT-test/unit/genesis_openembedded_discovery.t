@@ -415,8 +415,8 @@ like( $packet, qr{<serial>02AB123</serial>},
     'Power discovery reports the system serial' );
 like( $packet, qr{<platform>PowerNV</platform>},
     'Power discovery reports the firmware platform' );
-like( $packet, qr{<cpucount>2</cpucount>},
-    'Power discovery counts processor records' );
+like( $packet, qr{<cpucount>4</cpucount>},
+    'Power discovery keeps the existing processor count' );
 like( $packet,
     qr{<uuid>9009-42a-02ab123-525400000002</uuid>},
     'Power discovery creates a stable fallback UUID' );
@@ -460,6 +460,20 @@ like( $packet, qr{<cputype>IBM/S390</cputype>},
 like( $packet,
     qr{<uuid>82038f2a-1344-aaf7-1a85-2a7250be2076</uuid>},
     's390x discovery uses the closest guest UUID' );
+
+write_file( File::Spec->catfile( $proc_root, 'sysinfo' ), <<'SYSINFO' );
+Manufacturer:         IBM
+Type:                 3931
+Model:                701 A01
+VM00 Control Program: KVM/Linux
+SYSINFO
+is( run_script( $discover_script, \%environment ), 0,
+    's390x discovery accepts a guest without a reported UUID' );
+$packet = read_file($packet_file);
+unlike( $packet, qr{<serial>},
+    'a UUID-less s390x guest still omits the shared machine serial' );
+like( $packet, qr{<uuid>3931-a01-unknown-525400000002</uuid>},
+    'a UUID-less s390x guest retains the MAC-based fallback identity' );
 
 unlink($response_file);
 is( run_script( $callback_script, \%environment, "restart (eth0)" ), 0,
