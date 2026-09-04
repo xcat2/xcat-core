@@ -305,9 +305,13 @@ sub _remove_openembedded_genesis {
         my $config_directory = "$tftpdir/pxelinux.cfg/s390x";
         if (opendir(my $config_stream, $config_directory)) {
             foreach my $name (readdir $config_stream) {
-                next if $name eq '.' || $name eq '..';
+                if ($name =~ m{\A[.][.]?\z}xms) {
+                    next;
+                }
                 my $path = "$config_directory/$name";
-                push @artifacts, $path if _is_generated_s390x_config($path);
+                if (_is_generated_s390x_config($path)) {
+                    push @artifacts, $path;
+                }
             }
             closedir $config_stream;
         }
@@ -741,7 +745,8 @@ sub process_request {
     } elsif (exists $GRUB2_DISCOVERY_ARCHES{$arch}) {
         mkpath("$tftpdir/boot/grub2");
         chmod(0755, "$tftpdir/boot/grub2");
-    } elsif ($arch eq 's390x') {
+    }
+    if ($arch eq 's390x') {
         mkpath "$tftpdir/pxelinux.cfg/s390x";
         chmod 0755, "$tftpdir/pxelinux.cfg";
         chmod 0755, "$tftpdir/pxelinux.cfg/s390x";
@@ -761,7 +766,9 @@ sub process_request {
                     "$tftpdir/pxelinux.cfg/s390x/$net",
                     "$tftpdir/pxelinux.cfg/s390x/$net.dpm",
                   ) {
-                    unlink $path if _is_generated_s390x_config($path);
+                    if (_is_generated_s390x_config($path)) {
+                        unlink $path;
+                    }
                 }
             }
             next;
