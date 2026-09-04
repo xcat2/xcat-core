@@ -84,6 +84,12 @@ like( $riscv64_kas, qr{includes:\s*\n\s*- xCAT-genesis-builder/oe/kas/common\.ym
 like( $riscv64_kas, qr/^machine: xcat-genesis-riscv64$/m,
     'riscv64 build selects its machine' );
 
+my $s390x_kas = read_file('xCAT-genesis-builder/oe/kas/s390x.yml');
+like( $s390x_kas, qr{includes:\s*\n\s*- xCAT-genesis-builder/oe/kas/common\.yml},
+    's390x build includes the common configuration' );
+like( $s390x_kas, qr/^machine: xcat-genesis-s390x$/m,
+    's390x build selects its machine' );
+
 my $ppc64le_kas = read_file('xCAT-genesis-builder/oe/kas/ppc64le.yml');
 like( $ppc64le_kas, qr{includes:\s*\n\s*- xCAT-genesis-builder/oe/kas/common\.yml},
     'ppc64le build includes the common configuration' );
@@ -97,7 +103,8 @@ like( $ppc64_kas, qr/^machine: xcat-genesis-ppc64$/m,
     'ppc64 build selects its machine' );
 
 my $build = read_file('xCAT-genesis-builder/oe/build');
-like( $build, qr/aarch64\|armv7hf\|riscv64\|x86\|x86_64\|ppc64\|ppc64le/,
+like( $build,
+    qr/aarch64\|armv7hf\|riscv64\|s390x\|x86\|x86_64\|ppc64\|ppc64le/,
     'build accepts each supported architecture' );
 like( $build, qr{kas/\$architecture\.yml},
     'build selects the architecture configuration directly' );
@@ -255,6 +262,41 @@ like( $riscv64_machine, qr/^QB_CPU = "-cpu rv64"$/m,
 like( $riscv64_machine, qr/^XCAT_GENESIS_CONSOLE_TTY = "ttyS0"$/m,
     'riscv64 status console uses its 8250 terminal' );
 
+my $s390x_machine = read_file(
+    'xCAT-genesis-builder/oe/meta-xcat-genesis/conf/machine/xcat-genesis-s390x.conf'
+);
+like( $s390x_machine, qr/^DEFAULTTUNE = "s390x"$/m,
+    's390x uses the z10 baseline tune' );
+like( $s390x_machine, qr/^ARCH:s390x = "s390"$/m,
+    's390x maps to the Linux s390 source architecture' );
+like( $s390x_machine, qr/^XCAT_GENESIS_ARCHITECTURE = "s390x"$/m,
+    's390x exports its canonical extension identity' );
+like( $s390x_machine, qr/^QEMU_TARGETS:append = " s390x"$/m,
+    's390x cross builds have a user-mode emulator' );
+like( $s390x_machine, qr/^QB_MACHINE = "-machine s390-ccw-virtio"$/m,
+    's390x QEMU target uses the CCW virtual machine' );
+like( $s390x_machine, qr/^QB_CPU = "-cpu z10EC-base,/m,
+    's390x QEMU target enforces its oldest CPU generation' );
+like( $s390x_machine, qr/^QB_MEM = "-m 4096"$/m,
+    's390x QEMU target has room for the initramfs' );
+like( $s390x_machine, qr/^XCAT_GENESIS_CONSOLE_TTY = "ttysclp0"$/m,
+    's390x status console uses the SCLP terminal' );
+like( $s390x_machine, qr/^QB_KERNEL_CMDLINE_APPEND = "console=ttysclp0"$/m,
+    's390x QEMU target selects the same SCLP terminal' );
+
+my $s390x_tune = read_file(
+    'xCAT-genesis-builder/oe/meta-xcat-genesis/conf/machine/include/s390x/tune-s390x.inc'
+);
+like( $s390x_tune, qr/^TUNE_ARCH = "s390x"$/m,
+    's390x tune selects the 64-bit architecture' );
+like( $s390x_tune,
+    qr/^TUNE_FEATURES:tune-s390x = "m64 bigendian z10"$/m,
+    's390x tune uses the z10 CPU floor' );
+like( $s390x_tune, qr/^BASE_LIB:tune-s390x = "lib64"$/m,
+    's390x tune uses the 64-bit library directory' );
+like( $s390x_tune, qr/^BASELIB:libc-glibc:s390x = "lib64"$/m,
+    's390x glibc uses its 64-bit library directory' );
+
 for my $machine_console (
     [ x86_64  => $machine ],
     [ x86     => $x86_machine ],
@@ -263,6 +305,7 @@ for my $machine_console (
     [ armv7hf => $armv7hf_machine ],
     [ aarch64 => $aarch64_machine ],
     [ riscv64 => $riscv64_machine ],
+    [ s390x   => $s390x_machine ],
   )
 {
     unlike( $machine_console->[1],
@@ -429,6 +472,19 @@ like( $kernel_append, qr/file:\/\/xcat-genesis-riscv64\.cfg/,
 like( $kernel_append,
     qr/^SRCREV_machine:xcat-genesis-riscv64 = "b1ba5428513b52c2bd6acfd3ad0a910f699bc395"$/m,
     'riscv64 kernel revision is pinned' );
+like( $kernel_append, qr/file:\/\/xcat-genesis-s390x\.cfg/,
+    's390x kernel uses the Genesis hardware fragment' );
+like( $kernel_append, qr/file:\/\/0001-s390-use-stable-generator-name\.patch/,
+    's390x kernel source export omits the build directory' );
+like( $kernel_append,
+    qr/^SRCREV_machine:xcat-genesis-s390x = "b1ba5428513b52c2bd6acfd3ad0a910f699bc395"$/m,
+    's390x kernel revision is pinned' );
+like( $kernel_append,
+    qr/^KCONFIG_MODE:xcat-genesis-s390x = "--alldefconfig"$/m,
+    's390x kernel retains architecture defaults' );
+like( $kernel_append,
+    qr/^KERNEL_FEATURES:remove:xcat-genesis-s390x = "features\/drm-bochs\/drm-bochs\.scc"$/m,
+    's390x kernel excludes the QEMU PC graphics fragment' );
 like( $kernel_append, qr/file:\/\/xcat-genesis-powerpc64\.cfg/,
     '64-bit Power kernels share the Genesis hardware fragment' );
 like( $kernel_append,
@@ -468,6 +524,50 @@ for my $symbol (
     like( $kernel_config, qr/^\Q$symbol\E=[ym]$/m,
         "x86_64 kernel enables $symbol" );
 }
+
+my $s390x_kernel_config = read_file(
+    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto/xcat-genesis-s390x.cfg'
+);
+for my $symbol (
+    qw(
+      CONFIG_MARCH_Z10 CONFIG_TUNE_Z10 CONFIG_IPV6 CONFIG_VIRTIO
+      CONFIG_VIRTIO_BLK CONFIG_VIRTIO_NET CONFIG_HW_RANDOM_VIRTIO
+      CONFIG_CCWGROUP CONFIG_QDIO CONFIG_QETH CONFIG_QETH_L2 CONFIG_QETH_L3
+      CONFIG_DASD CONFIG_DASD_ECKD CONFIG_DASD_FBA CONFIG_ZFCP
+      CONFIG_SCLP_CONSOLE CONFIG_SCLP_VT220_CONSOLE CONFIG_TN3270_CONSOLE
+    )
+  )
+{
+    like( $s390x_kernel_config, qr/^\Q$symbol\E=[ym]$/m,
+        "s390x kernel enables $symbol" );
+}
+
+my $kexec_append = read_file(
+    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-kernel/kexec/kexec-tools_%.bbappend'
+);
+like( $kexec_append, qr/^COMPATIBLE_HOST:s390x = "s390x\.\*-linux"$/m,
+    'kexec-tools accepts the s390x target' );
+
+my $zlib_append = read_file(
+    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-core/zlib/zlib_%.bbappend'
+);
+like( $zlib_append, qr/^do_configure:s390x\(\).*--disable-crcvx/ms,
+    'zlib keeps the s390x image compatible with z10' );
+
+my $openssl_append = read_file(
+    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-connectivity/openssl/openssl_%.bbappend'
+);
+like( $openssl_append,
+    qr/file:\/\/50-xcat-s390x\.conf/,
+    'OpenSSL receives the OpenEmbedded s390x target alias' );
+like( $openssl_append,
+    qr/install -m 0644 \$\{UNPACKDIR\}\/50-xcat-s390x\.conf \$\{S\}\/Configurations\//,
+    'OpenSSL installs the target definition before configuration' );
+my $openssl_config = read_file(
+    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-connectivity/openssl/files/50-xcat-s390x.conf'
+);
+like( $openssl_config, qr/^    "linux-s390x" => \{$/m,
+    'OpenSSL maps the s390x target to its 64-bit configuration' );
 
 my $x86_kernel_config = read_file(
     'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto/xcat-genesis-x86.cfg'
