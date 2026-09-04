@@ -551,13 +551,16 @@ sub build_diskstruct {
                     $tdiskhash->{driver}->{type}  = $disks{$_}->{format};
                     $tdiskhash->{driver}->{cache} = $cachemethod;
                     $tdiskhash->{source}->{file}  = $_;
-                    $tdiskhash->{target}->{dev}   = $disks{$_}->{device};
+                    my $device = $disks{$_}->{device};
+                    $tdiskhash->{target}->{dev}   = $device;
 
-                    if ($disks{$_} =~ /^vd/) {
+                    # libvirt reads the bus out of the device name when the disk states
+                    # none: hd* is ide, sd* is scsi, vd* is virtio. State the same bus.
+                    if ($device =~ /^vd/) {
                         $tdiskhash->{target}->{bus} = 'virtio';
-                    } elsif ($disks{$_} =~ /^hd/) {
+                    } elsif ($device =~ /^hd/) {
                         $tdiskhash->{target}->{bus} = 'ide';
-                    } elsif ($disks{$_} =~ /^sd/) {
+                    } elsif ($device =~ /^sd/) {
                         $tdiskhash->{target}->{bus} = 'scsi';
                     }
                     push @returns, $tdiskhash;
