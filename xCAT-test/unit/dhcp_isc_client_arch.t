@@ -14,6 +14,8 @@ my $rendered = join '', @{ xCAT::DHCP::BootPolicy->isc_client_architecture_lines
         tftpdir     => '/srv/tftp',
         net         => '192.0.2.0',
         prefix      => 24,
+        s390x_qemu_config_present => 1,
+        s390x_dpm_config_present  => 1,
     ) };
 
 like(
@@ -38,8 +40,8 @@ like(
 );
 like(
     $rendered,
-    qr/client-architecture = 00:1f \{ #QEMU s390x\n\s+option path-prefix = "pxelinux\.cfg\/s390x\/";\n\s+option conf-file = "192\.0\.2\.0_24";/,
-    'QEMU s390x receives its subnet configuration and fallback path',
+    qr/client-architecture = 00:1f \{ #QEMU s390x\n\s+option path-prefix = "pxelinux\.cfg\/s390x\/";\n\s+option conf-file = "192\.0\.2\.0_24";\n\s+\} else if option client-architecture = 00:20 \{ #IBM Z DPM\n\s+filename "pxelinux\.cfg\/s390x\/192\.0\.2\.0_24\.dpm";/,
+    's390x firmware receives its supported network configuration method',
 );
 
 my @riscv_ids = $rendered =~ /client-architecture = (00:1[9a-e])/g;
@@ -52,15 +54,18 @@ is_deeply(
 my $aarch64_pos  = index($rendered, 'client-architecture = 00:0b');
 my $tftp_pos     = index($rendered, 'client-architecture = 00:1b');
 my $http_pos     = index($rendered, 'client-architecture = 00:1c');
-my $s390_qemu_pos = index($rendered, 'client-architecture = 00:1f');
 my $opal_pos     = index($rendered, 'client-architecture = 00:0e');
 my $fallback_pos = index($rendered, 'substring(filename,0,1) = null');
 
 cmp_ok($aarch64_pos, '<', $tftp_pos,     'riscv64 follows the aarch64 branch');
 cmp_ok($tftp_pos,    '<', $http_pos,     'the TFTP branch precedes the HTTP branch');
-cmp_ok($http_pos,    '<', $s390_qemu_pos, 's390x follows the RISC-V HTTP branch');
-cmp_ok($s390_qemu_pos, '<', $opal_pos,      's390x precedes the OPAL branch');
 cmp_ok($http_pos,    '<', $fallback_pos, 'the HTTP branch is reachable before the fallback');
 like($rendered, qr/filename "\/yaboot";\n\s*\}\n\z/, 'the policy ends with the existing yaboot fallback');
+
+my $without_s390x = join '', @{ xCAT::DHCP::BootPolicy->isc_client_architecture_lines(
+        next_server => '192.0.2.10', net => '192.0.2.0', prefix => 24,
+    ) };
+unlike($without_s390x, qr/client-architecture = 00:(?:1f|20)/,
+    'ISC does not advertise s390x without a generated network configuration');
 
 done_testing();

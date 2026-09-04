@@ -52,6 +52,12 @@ my $json = $backend->render_dhcp4_config(
                 ],
             },
             {
+                name             => 'xcat-s390x-dpm-192.168.122.0_24',
+                test             => 'option[93].hex == 0x0020',
+                additional_only  => JSON::true,
+                'boot-file-name' => 'pxelinux.cfg/s390x/192.168.122.0_24.dpm',
+            },
+            {
                 name             => 'xcat-uefi-x64',
                 test             => "(option[93].hex == 0x0007 or option[93].hex == 0x0009 or option[93].hex == 0x0010) and not ((option[77].exists and (option[77].text == 'xNBA' or option[77].hex == 0x784e4241 or substring(option[77].hex,1,4) == 'xNBA')))",
                 'boot-file-name' => 'xcat/xnba.efi',
@@ -78,6 +84,7 @@ my $json = $backend->render_dhcp4_config(
                 additional_client_classes => [
                     'xcat-opal-v3-192.168.122.0-24',
                     'xcat-s390x-qemu-192.168.122.0_24',
+                    'xcat-s390x-dpm-192.168.122.0_24',
                 ],
                 option_data  => [
                     { name => 'routers',             data => '192.168.122.1' },

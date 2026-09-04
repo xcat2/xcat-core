@@ -218,8 +218,10 @@ unlike(
 );
 
 my $s390x = xCAT::DHCP::BootPolicy->kea_s390x_network_classes(
-    net    => '10.0.0.0',
-    prefix => 24,
+    net                 => '10.0.0.0',
+    prefix              => 24,
+    qemu_config_present => 1,
+    dpm_config_present  => 1,
 );
 is_deeply(
     $s390x,
@@ -241,13 +243,37 @@ is_deeply(
                 },
             ],
         },
+        {
+            name             => 'xcat-s390x-dpm-10.0.0.0_24',
+            test             => 'option[93].hex == 0x0020',
+            additional_only  => 1,
+            'boot-file-name' => 'pxelinux.cfg/s390x/10.0.0.0_24.dpm',
+        },
     ],
-    'QEMU s390x stays within its architecture-specific configuration path',
+    's390x firmware receives its supported network configuration method',
 );
 is_deeply(
-    xCAT::DHCP::BootPolicy->kea_s390x_network_classes(prefix => 24),
+    xCAT::DHCP::BootPolicy->kea_s390x_network_classes(
+        net => '10.0.0.0', prefix => 24
+    ),
     [],
-    's390x classes require a network',
+    's390x classes require a generated network configuration',
+);
+is_deeply(
+    xCAT::DHCP::BootPolicy->kea_s390x_network_classes(
+        net                 => '10.0.0.0',
+        prefix              => 24,
+        dpm_config_present  => 1,
+    ),
+    [
+        {
+            name             => 'xcat-s390x-dpm-10.0.0.0_24',
+            test             => 'option[93].hex == 0x0020',
+            additional_only  => 1,
+            'boot-file-name' => 'pxelinux.cfg/s390x/10.0.0.0_24.dpm',
+        },
+    ],
+    's390x policies follow the configurations available on the network',
 );
 
 my @legacy_isc_config = (

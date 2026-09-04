@@ -8,6 +8,7 @@ use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../../perl-xCAT";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 
+use File::Path qw(make_path);
 use File::Temp qw(tempdir);
 use Socket ();
 use Test::More;
@@ -23,7 +24,8 @@ BEGIN {
     $INC{'xCAT/Table.pm'} = __FILE__;
 
     package xCAT::TableUtils;
-    sub getTftpDir { return '/tftpboot'; }
+    our $tftpdir;
+    sub getTftpDir { return $tftpdir; }
     sub get_site_attribute { return; }
     $INC{'xCAT/TableUtils.pm'} = __FILE__;
 
@@ -83,6 +85,7 @@ require xCAT::Utils;
     *xCAT::Utils::runcmd = sub { return; };
 }
 
+$xCAT::TableUtils::tftpdir = tempdir(CLEANUP => 1);
 my $source_dhcp_plugin = repo_path('xCAT-server/lib/xcat/plugins/dhcp.pm');
 require $source_dhcp_plugin;
 require xCAT::DHCP::Backend::Kea;
@@ -128,27 +131,37 @@ my %network_entry = (
         $nettab, '10.0.0.0', '255.255.255.0', 'eth0', 0, 1, 80
     );
     my %classes = map { $_->{name} => $_ } @{ $subnet->{client_classes} };
+    ok(!grep(/^xcat-s390x-/, keys %classes),
+        'Kea omits s390x policy without a generated network configuration');
+}
+
+my $s390x_config_dir =
+  "$xCAT::TableUtils::tftpdir/pxelinux.cfg/s390x";
+make_path($s390x_config_dir);
+open(my $s390x_config, '>', "$s390x_config_dir/10.0.0.0_24")
+  or die "Unable to create s390x test configuration: $!";
+close($s390x_config);
+open($s390x_config, '>', "$s390x_config_dir/10.0.0.0_24.dpm")
+  or die "Unable to create s390x DPM test configuration: $!";
+close($s390x_config);
+
+{
+    no warnings 'redefine';
+    local *xCAT::NetworkUtils::thishostisnot = sub { return 0; };
+    my $nettab = DHCPKeaIntentNetTable->new(\%network_entry);
+    my $subnet = xCAT_plugin::dhcp::kea_subnet4_intent(
+        $nettab, '10.0.0.0', '255.255.255.0', 'eth0', 0, 1, 80
+    );
+    my %classes = map { $_->{name} => $_ } @{ $subnet->{client_classes} };
     ok($classes{'xcat-s390x-qemu-10.0.0.0_24'}, 'the Kea subnet includes QEMU s390x boot policy');
+    ok($classes{'xcat-s390x-dpm-10.0.0.0_24'}, 'the Kea subnet includes IBM Z DPM boot policy');
     is_deeply(
         [ grep { /^xcat-s390x-/ } @{ $subnet->{additional_client_classes} } ],
-        ['xcat-s390x-qemu-10.0.0.0_24'],
-        'the s390x policy is evaluated only for its subnet',
-    );
-    is_deeply(
-        $classes{'xcat-s390x-qemu-10.0.0.0_24'}{'option-data'},
         [
-            {
-                name          => 'conf-file',
-                data          => '10.0.0.0_24',
-                'always-send' => 1,
-            },
-            {
-                name          => 'path-prefix',
-                data          => 'pxelinux.cfg/s390x/',
-                'always-send' => 1,
-            },
+            'xcat-s390x-qemu-10.0.0.0_24',
+            'xcat-s390x-dpm-10.0.0.0_24',
         ],
-        'the rendered subnet keeps s390x fallback lookups in their own path',
+        'the s390x policy is evaluated only for its subnet',
     );
 }
 

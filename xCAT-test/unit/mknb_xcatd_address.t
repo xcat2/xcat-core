@@ -511,8 +511,12 @@ $xCAT::NetworkUtils::nic_ips = undef;
 make_path("$::XCATROOT/share/xcat/netboot/genesis-openembedded/s390x");
 use_reporter_address_maps();
 prepare_tftpdir($tmpdir, 'tftpboot-s390x', 's390x');
+make_path("$xCAT::TableUtils::tftpdir/pxelinux.cfg");
+chmod(0700, "$xCAT::TableUtils::tftpdir/pxelinux.cfg");
 $responses = run_mknb('s390x');
 generation_succeeded($responses, 's390x configuration generation succeeds');
+is((stat "$xCAT::TableUtils::tftpdir/pxelinux.cfg")[2] & 07777, 0755,
+    's390x configuration generation repairs the parent directory mode');
 
 my $s390x_qemu_path =
   "$xCAT::TableUtils::tftpdir/pxelinux.cfg/s390x/192.168.144.0_20";
@@ -531,6 +535,17 @@ unlike(
     read_config($s390x_qemu_path),
     qr/192\.168\.149\.100/,
     's390x configurations do not use the later floating address',
+);
+my $s390x_dpm_path = "$s390x_qemu_path.dpm";
+is(
+    read_config($s390x_dpm_path),
+    "# pxelinux.cfg xCAT Genesis s390x\n"
+      . "DEFAULT xCAT\n"
+      . "label xCAT\n"
+      . "  kernel=xcat/genesis.kernel.s390x\n"
+      . "  initrd=xcat/genesis.fs.s390x.gz\n"
+      . "  append=xcatd=192.168.148.10:3001 xcat.bootloader=s390-ccw console=ttysclp0\n",
+    'the DPM configuration uses the IBM Z network-boot syntax',
 );
 
 write_text($s390x_qemu_path, "admin network configuration\n");
@@ -584,6 +599,7 @@ $xCAT::NetworkUtils::nic_ips = { eth0 => '10.0.0.1', eth1 => '192.168.148.10' };
 $responses = run_mknb('s390x');
 generation_succeeded($responses, 's390x configuration generation honors :noboot');
 ok(!-e $s390x_qemu_path, 'a :noboot network gets no QEMU s390x configuration');
+ok(!-e $s390x_dpm_path, 'a :noboot network gets no IBM Z DPM configuration');
 %xCAT::TableUtils::site_extra = ();
 $xCAT::NetworkUtils::nic_ips = undef;
 
