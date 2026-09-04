@@ -2,6 +2,20 @@
 root=1
 rootok=1
 netroot=xcat
+
+# The image ships the C.UTF-8 locale only. tmux refuses to start under the C locale.
+export LC_ALL=C.UTF-8
+
+# screen exits when the image carries no usable terminal. doxcat is the whole of Genesis, so
+# it must run whether or not the multiplexer starts. Prints screen or direct.
+xcat_console_mode() {
+    if screen -ln -d -m -S xcatprobe true >/dev/null 2>&1; then
+        screen -S xcatprobe -X quit >/dev/null 2>&1
+        echo screen
+    else
+        echo direct
+    fi
+}
 clear
 echo PS1="'"'[xCAT Genesis running on \H \w]\$ '"'" > /.bashrc
 echo PS1="'"'[xCAT Genesis running on \H \w]\$ '"'" > /.bash_profile
@@ -39,10 +53,13 @@ mkdir -p /var/lib/dhclient/
 mkdir -p /var/log
 ip link set lo up
 echo '127.0.0.1 localhost' >> /etc/hosts
-if grep -q console=ttyS /proc/cmdline; then
+XCAT_CONSOLE_MODE="$(xcat_console_mode)"
+if [ "$XCAT_CONSOLE_MODE" = "screen" ]; then
+    if grep -q console=ttyS /proc/cmdline; then
         while :; do sleep 1; screen -S console -ln screen -x doxcat </dev/tty1 &>/dev/tty1; clear &>/dev/tty1 ; done &
+    fi
+    while :; do screen -ln < /dev/tty2 &> /dev/tty2 ; done &
 fi
-while :; do screen -ln < /dev/tty2 &> /dev/tty2 ; done &
 
 # The section below is just for System P LE hardware discovery
 
@@ -87,4 +104,8 @@ elif [[ ${ARCH} =~ x86_64 ]]; then
     done
 fi
 
-while :; do screen -dr doxcat || screen -S doxcat -L -ln doxcat; done
+if [ "$XCAT_CONSOLE_MODE" = "screen" ]; then
+    while :; do screen -dr doxcat || screen -S doxcat -L -ln doxcat; done
+else
+    while :; do doxcat; sleep 5; done
+fi

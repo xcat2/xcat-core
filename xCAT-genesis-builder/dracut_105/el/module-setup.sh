@@ -48,6 +48,22 @@ install() {
     #dracut_install libvirtd /usr/share/libvirt/cpu_map.xml /usr/bin/qemu-img /usr/libexec/qemu-kvm
     dracut_install mkswap df ifenslave ssh-keygen scp clear
     dracut_install dhclient lldpad
+
+    # OpenSSH 9.8 moved the per-connection work into sshd-session, which sshd execs by
+    # absolute path. Without it every connection to Genesis is refused.
+    for _sshd_helper in \
+        /usr/libexec/openssh/sshd-session \
+        /usr/libexec/openssh/sshd-auth \
+        /usr/lib/openssh/sshd-session \
+        /usr/lib/openssh/sshd-auth
+    do
+        _dracut_install_opt "$_sshd_helper"
+    done
+
+    # tmux exits under the C locale, and the image carries no locale data of its own.
+    for _lc_file in /usr/lib/locale/C.utf8/LC_*; do
+        _dracut_install_opt "$_lc_file"
+    done
     dracut_install /lib64/libnss_dns.so.2
     dracut_install poweroff hwclock date /usr/share/terminfo/x/xterm /usr/share/terminfo/s/screen /etc/nsswitch.conf /etc/services
     dracut_install /sbin/rsyslogd /etc/protocols umount /bin/rpm /usr/lib/rpm/rpmrc

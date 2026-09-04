@@ -1,0 +1,63 @@
+#!/bin/bash
+#
+# verify-genesis-payload <payload-root> [required-path ...]
+#
+# dracut_install() reports a missing binary and returns, so the module install function keeps
+# going and the image ships without it. Three such holes reached a release: no dhclient, no
+# sshd-session and no UTF-8 locale. Check the extracted payload before it becomes an rpm.
+#
+# Paths are relative to <payload-root>. The caller adds what only it knows (dhclient is not
+# packaged on every release); the rules below come from the payload itself.
+
+set -u
+
+payload=${1:-}
+if [ -z "$payload" ] || [ ! -d "$payload" ]; then
+    echo "verify-genesis-payload: not a payload directory: ${payload:-<empty>}" >&2
+    exit 2
+fi
+shift
+
+missing=""
+
+# have PATH: true when the payload carries PATH as a file, following the usr-merge symlinks
+# the image ships (/sbin -> usr/sbin).
+have() {
+    [ -e "$payload/$1" ]
+}
+
+require() {
+    local path=$1 why=$2
+    have "$path" || missing="$missing
+  $path ($why)"
+}
+
+for path in "$@"; do
+    require "$path" "required by the build"
+done
+
+require usr/sbin/sshd "Genesis is reached over ssh"
+
+# OpenSSH 9.8 split the per-connection work into sshd-session, which sshd execs by absolute
+# path. EL9 carries OpenSSH 9.9, so an image with sshd alone refuses every connection.
+if have usr/sbin/sshd && grep -qa 'sshd-session' "$payload/usr/sbin/sshd" 2>/dev/null; then
+    if ! have usr/libexec/openssh/sshd-session && ! have usr/lib/openssh/sshd-session; then
+        missing="$missing
+  usr/libexec/openssh/sshd-session (this sshd execs it for every connection)"
+    fi
+fi
+
+# tmux exits under the C locale. The hook falls back to running doxcat directly, so this is
+# not fatal to booting, but a Genesis shell without tmux loses the console attach.
+if have usr/bin/tmux && ! have usr/lib/locale/C.utf8/LC_CTYPE; then
+    missing="$missing
+  usr/lib/locale/C.utf8/LC_CTYPE (tmux refuses to start without a UTF-8 locale)"
+fi
+
+if [ -n "$missing" ]; then
+    echo "verify-genesis-payload: $payload is incomplete:$missing" >&2
+    exit 1
+fi
+
+echo "verify-genesis-payload: $payload is complete"
+exit 0

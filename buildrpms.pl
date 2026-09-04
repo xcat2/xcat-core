@@ -346,6 +346,9 @@ sub buildsources_genesis_base($) {
         "Error copying dracut_105 sources");
     cp "xCAT-genesis-builder/80-net-name-slot.rules",
        "$staging_root/80-net-name-slot.rules";
+    # %install runs this against the extracted payload before it becomes an rpm.
+    cp "xCAT-genesis-builder/verify-genesis-payload",
+       "$staging_root/verify-genesis-payload";
 
     unlink $support_tarball if -f $support_tarball;
     sh_or_die(qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -cjf "$support_tarball" -C "$staging_parent" xCAT-genesis-base-build-support),

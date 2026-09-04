@@ -16,6 +16,12 @@ function runcmd(){
 # We should be using private networks
 TESTNODE=testnode
 TESTNODE_IP="192.168.3.1"
+# nodeset resolves the genesis kernel by the node arch. A hardcoded ppc64le node fails on
+# every other management node with "Could not find genesis.kernel.ppc64".
+TESTNODE_ARCH="$(uname -m)"
+# The boot-loader configuration lives under the tftp root. Overridable so the check can run
+# against a scratch tree.
+TFTPDIR="${TFTPDIR:-/tftpboot}"
 
 MASTER_PRIVATE_IP="192.168.1.1"
 MASTER_PRIVATE_NETMASK="255.255.0.0"
@@ -23,7 +29,7 @@ MASTER_PRIVATE_NETWORK="192_168_0_0-255_255_0_0"
 
 
 function check_destiny() {
-    cmd="chdef ${TESTNODE} arch=ppc64le cons=ipmi groups=all ip=${TESTNODE_IP} mac=4e:ee:ee:ee:ee:0e netboot=$NETBOOT tftpserver=$MASTER_PRIVATE_IP xcatmaster=$MASTER_PRIVATE_IP";
+    cmd="chdef ${TESTNODE} arch=${TESTNODE_ARCH} cons=ipmi groups=all ip=${TESTNODE_IP} mac=4e:ee:ee:ee:ee:0e netboot=$NETBOOT tftpserver=$MASTER_PRIVATE_IP xcatmaster=$MASTER_PRIVATE_IP";
     runcmd $cmd;
     lsdef ${TESTNODE}
 
@@ -86,11 +92,11 @@ while [ "$#" -ge "0" ]; do
         "--check" )
         NETBOOT=$2;
         if [[ $NETBOOT =~ petitboot ]];then
-            SHELLFOLDER="/tftpboot/petitboot";
+            SHELLFOLDER="$TFTPDIR/petitboot";
         elif [[ $NETBOOT =~  xnba ]];then
-            SHELLFOLDER="/tftpboot/xcat/xnba/nodes"
+            SHELLFOLDER="$TFTPDIR/xcat/xnba/nodes"
         else
-            SHELLFOLDER="/tftpboot/boot/grub2";
+            SHELLFOLDER="$TFTPDIR/boot/grub2";
         fi
         check_destiny ;
         if [[ $? -eq 1 ]];then

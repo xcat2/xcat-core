@@ -53,6 +53,11 @@ BuildRequires: efibootmgr
 BuildRequires: dosfstools
 BuildRequires: dracut
 BuildRequires: dracut-network
+# doxcat drives the ISC client with -cf/-pf/-lf. RHEL 10 dropped dhcp-client, so el10
+# genesis has no DHCP client yet.
+%if 0%{?rhel} && 0%{?rhel} < 10
+BuildRequires: dhcp-client
+%endif
 BuildRequires: ethtool
 BuildRequires: gawk
 BuildRequires: ipmitool
@@ -223,6 +228,15 @@ fi
 test -n "$KERNEL_IMAGE"
 test -e "$KERNEL_IMAGE"
 cp "$KERNEL_IMAGE" "$GENESIS_ROOT/kernel"
+
+# dracut_install reports a missing binary and returns, so a hole in the image reaches the
+# rpm silently. Three of them did.
+GENESIS_REQUIRED=""
+%if 0%{?rhel} && 0%{?rhel} < 10
+GENESIS_REQUIRED="usr/sbin/dhclient"
+%endif
+bash "%{_builddir}/xCAT-genesis-base-build-support/verify-genesis-payload" \
+    "$GENESIS_FS" $GENESIS_REQUIRED
 
 find "$GENESIS_TMPDIR" -type c -delete
 cp -a "$GENESIS_TMPDIR/%{prefix}/." "$RPM_BUILD_ROOT/%{prefix}/"
