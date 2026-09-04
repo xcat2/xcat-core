@@ -757,13 +757,17 @@ sub process_request {
         my $nicip = $normnets->{$net};
         my $xcatd_address = defined($xcatdnormnets->{$net}) ? $xcatdnormnets->{$net} : $nicip;
         $net =~ s/\//_/;
-        if (defined($nobootnicips{$nicip})) {
+        if (defined($nobootnicips{$nicip})
+            || ($arch eq 's390x' && defined($nobootnicips{$xcatd_address}))) {
             if ($arch =~ /ppc/ and -r "$tftpdir/pxelinux.cfg/p/$net") {
                 unlink("$tftpdir/pxelinux.cfg/p/$net");
             } elsif ($arch eq 's390x') {
                 my $path = "$tftpdir/pxelinux.cfg/s390x/$net";
                 if (_is_generated_s390x_config($path)) {
-                    unlink $path;
+                    if (!unlink($path)) {
+                        $callback->({ error => ["Unable to remove s390x Genesis configuration: $path: $OS_ERROR"], errorcode => [1] });
+                        return;
+                    }
                 }
             }
             next;
@@ -936,7 +940,7 @@ sub _write_s390x_discovery_config {
 
 sub _write_s390x_config {
     my ($path, $contents) = @_;
-    if (-f $path && !_is_generated_s390x_config($path)) {
+    if ((-e $path || -l $path) && !_is_generated_s390x_config($path)) {
         return "Refusing to replace unmanaged s390x configuration: $path";
     }
     my $config;
