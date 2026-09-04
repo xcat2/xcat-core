@@ -24,6 +24,7 @@ my $json = $backend->render_dhcp4_config(
         interfaces => ['*'],
         'option-def' => [
             { name => 'conf-file', code => 209, type => 'string', space => 'dhcp4' },
+            { name => 'path-prefix', code => 210, type => 'string', space => 'dhcp4' },
             { name => 'iscsi-initiator-iqn', code => 203, type => 'string', space => 'dhcp4' },
             { name => 'cumulus-provision-url', code => 239, type => 'string', space => 'dhcp4' },
         ],
@@ -39,6 +40,15 @@ my $json = $backend->render_dhcp4_config(
                 additional_only => JSON::true,
                 'option-data'   => [
                     { name => 'conf-file', data => 'http://192.168.122.1:80/tftpboot/pxelinux.cfg/p/192.168.122.0_24' },
+                ],
+            },
+            {
+                name            => 'xcat-s390x-qemu-192.168.122.0_24',
+                test            => 'option[93].hex == 0x001f',
+                additional_only => JSON::true,
+                'option-data'   => [
+                    { name => 'conf-file', data => '192.168.122.0_24' },
+                    { name => 'path-prefix', data => 'pxelinux.cfg/s390x/' },
                 ],
             },
             {
@@ -65,7 +75,10 @@ my $json = $backend->render_dhcp4_config(
                 subnet       => '192.168.122.0/24',
                 dynamicrange => '192.168.122.100-192.168.122.120',
                 next_server  => '192.168.122.1',
-                additional_client_classes => ['xcat-opal-v3-192.168.122.0-24'],
+                additional_client_classes => [
+                    'xcat-opal-v3-192.168.122.0-24',
+                    'xcat-s390x-qemu-192.168.122.0_24',
+                ],
                 option_data  => [
                     { name => 'routers',             data => '192.168.122.1' },
                     { name => 'domain-name',         data => 'cluster.test' },

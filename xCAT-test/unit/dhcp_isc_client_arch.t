@@ -36,6 +36,11 @@ like(
     qr/option conf-file = "http:\/\/192\.0\.2\.10:8080\/tftpboot\/pxelinux\.cfg\/p\/192\.0\.2\.0_24";/,
     'the existing OPAL branch keeps its subnet URL',
 );
+like(
+    $rendered,
+    qr/client-architecture = 00:1f \{ #QEMU s390x\n\s+option path-prefix = "pxelinux\.cfg\/s390x\/";\n\s+option conf-file = "192\.0\.2\.0_24";/,
+    'QEMU s390x receives its subnet configuration and fallback path',
+);
 
 my @riscv_ids = $rendered =~ /client-architecture = (00:1[9a-e])/g;
 is_deeply(
@@ -47,12 +52,14 @@ is_deeply(
 my $aarch64_pos  = index($rendered, 'client-architecture = 00:0b');
 my $tftp_pos     = index($rendered, 'client-architecture = 00:1b');
 my $http_pos     = index($rendered, 'client-architecture = 00:1c');
+my $s390_qemu_pos = index($rendered, 'client-architecture = 00:1f');
 my $opal_pos     = index($rendered, 'client-architecture = 00:0e');
 my $fallback_pos = index($rendered, 'substring(filename,0,1) = null');
 
 cmp_ok($aarch64_pos, '<', $tftp_pos,     'riscv64 follows the aarch64 branch');
 cmp_ok($tftp_pos,    '<', $http_pos,     'the TFTP branch precedes the HTTP branch');
-cmp_ok($http_pos,    '<', $opal_pos,     'the HTTP branch precedes the OPAL branch');
+cmp_ok($http_pos,    '<', $s390_qemu_pos, 's390x follows the RISC-V HTTP branch');
+cmp_ok($s390_qemu_pos, '<', $opal_pos,      's390x precedes the OPAL branch');
 cmp_ok($http_pos,    '<', $fallback_pos, 'the HTTP branch is reachable before the fallback');
 like($rendered, qr/filename "\/yaboot";\n\s*\}\n\z/, 'the policy ends with the existing yaboot fallback');
 

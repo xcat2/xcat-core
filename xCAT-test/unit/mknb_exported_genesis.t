@@ -156,6 +156,29 @@ ok(!-e "$tftpdir/xcat/genesis.exact-arch.ppc64le",
 ok(-f "$tftpdir/xcat/genesis.kernel.ppc64",
     'retiring ppc64le does not remove the legacy ppc64 fallback');
 
+for my $artifact (qw(
+  genesis.kernel.s390x
+  genesis.fs.s390x.gz
+  genesis.fs.s390x.lzma
+  genesis.exact-arch.s390x
+)) {
+    write_file("$tftpdir/xcat/$artifact", 'stale artifact');
+}
+make_path("$tftpdir/pxelinux.cfg/s390x");
+write_file(
+    "$tftpdir/pxelinux.cfg/s390x/192.0.2.0_24",
+    "# pxelinux.cfg xCAT Genesis s390x\nstale config\n",
+);
+write_file("$tftpdir/pxelinux.cfg/s390x/default", "admin fallback\n");
+($removed, $remove_error) =
+  xCAT_plugin::mknb::_remove_openembedded_genesis($tftpdir, 's390x');
+is($remove_error, undef, 's390x boot artifacts can be retired cleanly');
+is($removed, 5, 's390x image and generated discovery configuration are retired');
+ok(!-e "$tftpdir/pxelinux.cfg/s390x/192.0.2.0_24",
+    'retiring s390x removes the generated discovery configuration');
+is(read_file("$tftpdir/pxelinux.cfg/s390x/default"), "admin fallback\n",
+    'retiring s390x preserves administrator-owned configurations');
+
 my $failed_kernel = "$tftpdir/xcat/genesis.kernel.aarch64";
 make_path($failed_kernel);
 for my $artifact (qw(

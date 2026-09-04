@@ -508,4 +508,83 @@ ok(
 %xCAT::TableUtils::site_extra = ();
 $xCAT::NetworkUtils::nic_ips = undef;
 
+make_path("$::XCATROOT/share/xcat/netboot/genesis-openembedded/s390x");
+use_reporter_address_maps();
+prepare_tftpdir($tmpdir, 'tftpboot-s390x', 's390x');
+$responses = run_mknb('s390x');
+generation_succeeded($responses, 's390x configuration generation succeeds');
+
+my $s390x_qemu_path =
+  "$xCAT::TableUtils::tftpdir/pxelinux.cfg/s390x/192.168.144.0_20";
+ok(-f $s390x_qemu_path, 's390x writes a QEMU network IPL configuration');
+is(
+    read_config($s390x_qemu_path),
+    "# pxelinux.cfg xCAT Genesis s390x\n"
+      . "DEFAULT xCAT\n"
+      . "LABEL xCAT\n"
+      . "  KERNEL xcat/genesis.kernel.s390x\n"
+      . "  INITRD xcat/genesis.fs.s390x.gz\n"
+      . "  APPEND xcatd=192.168.148.10:3001 xcat.bootloader=s390-ccw console=ttysclp0\n",
+    'the QEMU configuration selects Genesis and the SCLP console',
+);
+unlike(
+    read_config($s390x_qemu_path),
+    qr/192\.168\.149\.100/,
+    's390x configurations do not use the later floating address',
+);
+
+write_text($s390x_qemu_path, "admin network configuration\n");
+%xCAT::TableUtils::site_extra = ( dhcpinterfaces => 'eth0,eth1:noboot' );
+$xCAT::NetworkUtils::nic_ips = { eth0 => '10.0.0.1', eth1 => '192.168.148.10' };
+$responses = run_mknb('s390x');
+generation_succeeded($responses, 's390x configuration generation accepts a :noboot interface');
+is(
+    read_config($s390x_qemu_path),
+    "admin network configuration\n",
+    'a :noboot interface preserves an administrator-owned s390x configuration',
+);
+%xCAT::TableUtils::site_extra = ();
+$xCAT::NetworkUtils::nic_ips = undef;
+$responses = run_mknb('s390x');
+generation_succeeded($responses, 's390x configuration is restored after removing :noboot');
+
+my $s390x_failure_root = "$tmpdir/tftpboot-s390x-failure";
+make_path("$s390x_failure_root/pxelinux.cfg/s390x/192.168.144.0_20");
+my (undef, $s390x_write_error) =
+  xCAT_plugin::mknb::_write_s390x_discovery_config(
+    tftpdir        => $s390x_failure_root,
+    network        => '192.168.144.0_20',
+    xcatd_address  => '192.168.148.10',
+    xcatdport      => 3001,
+    consolecmdline => 'console=ttysclp0',
+    initrd         => "$s390x_failure_root/xcat/genesis.fs.s390x.gz",
+  );
+like(
+    $s390x_write_error,
+    qr/^Unable to write s390x Genesis configuration:/,
+    's390x configuration write failures are reported',
+);
+
+%xCAT::TableUtils::site_extra = (
+    defserialport  => '2',
+    defserialspeed => '9600',
+    defserialflow  => 'hard',
+    xcatdport      => '3002',
+);
+$responses = run_mknb('s390x');
+generation_succeeded($responses, 's390x ignores PC serial settings');
+like(
+    read_config($s390x_qemu_path),
+    qr/^  APPEND xcatd=192\.168\.148\.10:3002 xcat\.bootloader=s390-ccw console=ttysclp0$/m,
+    's390x keeps its SCLP console and the configured xcatd port',
+);
+
+%xCAT::TableUtils::site_extra = ( dhcpinterfaces => 'eth0,eth1:noboot' );
+$xCAT::NetworkUtils::nic_ips = { eth0 => '10.0.0.1', eth1 => '192.168.148.10' };
+$responses = run_mknb('s390x');
+generation_succeeded($responses, 's390x configuration generation honors :noboot');
+ok(!-e $s390x_qemu_path, 'a :noboot network gets no QEMU s390x configuration');
+%xCAT::TableUtils::site_extra = ();
+$xCAT::NetworkUtils::nic_ips = undef;
+
 done_testing();

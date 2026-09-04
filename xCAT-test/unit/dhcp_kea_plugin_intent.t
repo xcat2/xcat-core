@@ -120,6 +120,38 @@ my %network_entry = (
     tftpserver   => '<xcatmaster>',
 );
 
+{
+    no warnings 'redefine';
+    local *xCAT::NetworkUtils::thishostisnot = sub { return 0; };
+    my $nettab = DHCPKeaIntentNetTable->new(\%network_entry);
+    my $subnet = xCAT_plugin::dhcp::kea_subnet4_intent(
+        $nettab, '10.0.0.0', '255.255.255.0', 'eth0', 0, 1, 80
+    );
+    my %classes = map { $_->{name} => $_ } @{ $subnet->{client_classes} };
+    ok($classes{'xcat-s390x-qemu-10.0.0.0_24'}, 'the Kea subnet includes QEMU s390x boot policy');
+    is_deeply(
+        [ grep { /^xcat-s390x-/ } @{ $subnet->{additional_client_classes} } ],
+        ['xcat-s390x-qemu-10.0.0.0_24'],
+        'the s390x policy is evaluated only for its subnet',
+    );
+    is_deeply(
+        $classes{'xcat-s390x-qemu-10.0.0.0_24'}{'option-data'},
+        [
+            {
+                name          => 'conf-file',
+                data          => '10.0.0.0_24',
+                'always-send' => 1,
+            },
+            {
+                name          => 'path-prefix',
+                data          => 'pxelinux.cfg/s390x/',
+                'always-send' => 1,
+            },
+        ],
+        'the rendered subnet keeps s390x fallback lookups in their own path',
+    );
+}
+
 my @sysconfig_policy_cases = (
     [ 'sles10',                  0, 'SLES 10' ],
     [ 'sles11',                  1, 'SLES 11' ],

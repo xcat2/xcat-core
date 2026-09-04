@@ -14,6 +14,7 @@ my $rpm_weak_dependencies = join(
     'Recommends: xCAT-genesis-openembedded-x86_64',
     'Recommends: xCAT-genesis-openembedded-ppc64le',
     'Recommends: xCAT-genesis-openembedded-riscv64',
+    'Recommends: xCAT-genesis-openembedded-s390x',
     '%endif',
 );
 
@@ -45,6 +46,11 @@ like(
     qr/^Recommends:.*\bxcat-genesis-openembedded-riscv64\b/m,
     'DEB installations recommend the first-class riscv64 image',
 );
+like(
+    $deb_control,
+    qr/^Recommends:.*\bxcat-genesis-openembedded-s390x\b/m,
+    'DEB installations recommend the s390x image',
+);
 unlike(
     $deb_control,
     qr/^Depends:.*\bxcat-genesis-openembedded-/m,
@@ -74,6 +80,11 @@ like(
     qr/^Recommends:.*\bxcat-genesis-openembedded-riscv64\b/m,
     'DEB service nodes recommend the first-class riscv64 image',
 );
+like(
+    $sn_deb_control,
+    qr/^Recommends:.*\bxcat-genesis-openembedded-s390x\b/m,
+    'DEB service nodes recommend the s390x image',
+);
 
 my $go_xcat = slurp_repo_file('xCAT-server/share/xcat/tools/go-xcat');
 unlike(
@@ -81,7 +92,7 @@ unlike(
     qr/GO_XCAT_LIBRARY_ONLY/,
     'go-xcat cannot be disabled by an inherited test environment variable',
 );
-for my $architecture (qw(x86 x86_64 ppc64 ppc64le armv7hf aarch64 riscv64)) {
+for my $architecture (qw(x86 x86_64 ppc64 ppc64le armv7hf aarch64 riscv64 s390x)) {
     like(
         $go_xcat,
         qr/\bxCAT-genesis-openembedded-\Q$architecture\E\b/,
