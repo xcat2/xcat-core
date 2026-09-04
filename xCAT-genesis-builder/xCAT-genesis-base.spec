@@ -53,10 +53,14 @@ BuildRequires: efibootmgr
 BuildRequires: dosfstools
 BuildRequires: dracut
 BuildRequires: dracut-network
-# doxcat drives the ISC client with -cf/-pf/-lf. RHEL 10 dropped dhcp-client, so el10
-# genesis has no DHCP client yet.
+# doxcat chooses its DHCP client at run time. RHEL 10 packages no ISC dhcp-client; its
+# baseos packages dhcpcd, which carries its own resolv.conf, hostname and ntp hooks and so
+# needs no dhclient-script.
 %if 0%{?rhel} && 0%{?rhel} < 10
 BuildRequires: dhcp-client
+%endif
+%if 0%{?rhel} >= 10
+BuildRequires: dhcpcd
 %endif
 BuildRequires: ethtool
 BuildRequires: gawk
@@ -234,6 +238,9 @@ cp "$KERNEL_IMAGE" "$GENESIS_ROOT/kernel"
 GENESIS_REQUIRED=""
 %if 0%{?rhel} && 0%{?rhel} < 10
 GENESIS_REQUIRED="usr/sbin/dhclient"
+%endif
+%if 0%{?rhel} >= 10
+GENESIS_REQUIRED="usr/sbin/dhcpcd"
 %endif
 bash "%{_builddir}/xCAT-genesis-base-build-support/verify-genesis-payload" \
     "$GENESIS_FS" $GENESIS_REQUIRED
