@@ -7,6 +7,7 @@ use xCAT::TableUtils;
 use xCAT::NodeRange;
 use File::Path;
 use File::Copy;
+use English qw(-no_match_vars);
 
 my $GENESIS_EXPORT_MANIFEST = 'xcat-genesis.manifest';
 my %GENESIS_ARCHITECTURES = map { $_ => 1 }
@@ -301,8 +302,10 @@ sub _remove_openembedded_genesis {
         "$directory/genesis.exact-arch.$arch",
     );
     if ($arch eq 's390x') {
-        foreach my $path (glob("$tftpdir/pxelinux.cfg/s390x/*")) {
-            push(@artifacts, $path) if _is_generated_s390x_config($path);
+        foreach my $path (glob "$tftpdir/pxelinux.cfg/s390x/*") {
+            if (_is_generated_s390x_config($path)) {
+                push @artifacts, $path;
+            }
         }
     }
     my $removed = 0;
@@ -327,10 +330,14 @@ sub _remove_openembedded_genesis {
 
 sub _is_generated_s390x_config {
     my ($path) = @_;
-    return 0 if -l $path || !-f $path;
-    open(my $config, '<', $path) or return 0;
+    if (-l $path || !-f $path) {
+        return 0;
+    }
+    open my $config, '<', $path or return 0;
     my $header = <$config>;
-    close($config);
+    if (!close $config) {
+        return 0;
+    }
     return defined($header) && $header eq "# pxelinux.cfg xCAT Genesis s390x\n";
 }
 
@@ -731,8 +738,8 @@ sub process_request {
         mkpath("$tftpdir/boot/grub2");
         chmod(0755, "$tftpdir/boot/grub2");
     } elsif ($arch eq 's390x') {
-        mkpath("$tftpdir/pxelinux.cfg/s390x");
-        chmod(0755, "$tftpdir/pxelinux.cfg/s390x");
+        mkpath "$tftpdir/pxelinux.cfg/s390x";
+        chmod 0755, "$tftpdir/pxelinux.cfg/s390x";
     }
     my $dopxe = 0;
     foreach (keys %{$normnets}) {
@@ -740,13 +747,15 @@ sub process_request {
         my $nicip = $normnets->{$net};
         my $xcatd_address = defined($xcatdnormnets->{$net}) ? $xcatdnormnets->{$net} : $nicip;
         $net =~ s/\//_/;
-        if (defined($nobootnicips{$nicip})
-            || ($arch eq 's390x' && defined($nobootnicips{$xcatd_address}))) {
+        if (defined $nobootnicips{$nicip}
+            || ($arch eq 's390x' && defined $nobootnicips{$xcatd_address})) {
             if ($arch =~ /ppc/ and -r "$tftpdir/pxelinux.cfg/p/$net") {
                 unlink("$tftpdir/pxelinux.cfg/p/$net");
             } elsif ($arch eq 's390x') {
                 my $path = "$tftpdir/pxelinux.cfg/s390x/$net";
-                unlink($path) if _is_generated_s390x_config($path);
+                if (_is_generated_s390x_config($path)) {
+                    unlink $path;
+                }
             }
             next;
         }
@@ -894,9 +903,9 @@ sub _write_s390x_discovery_config {
     my (%args) = @_;
     my $tftpdir = $args{tftpdir};
     my $initrd = $args{initrd};
-    $initrd =~ s{^\Q$tftpdir\E/?}{};
+    $initrd =~ s{^\Q$tftpdir\E/?}{}xms;
     my $cmdline = "xcatd=$args{xcatd_address}:$args{xcatdport} xcat.bootloader=s390-ccw";
-    if (defined($args{consolecmdline}) and $args{consolecmdline} ne '') {
+    if (defined $args{consolecmdline} and length $args{consolecmdline}) {
         $cmdline .= " $args{consolecmdline}";
     }
 
@@ -915,18 +924,23 @@ sub _write_s390x_discovery_config {
 
 sub _write_s390x_config {
     my ($path, $contents) = @_;
-    open(my $config, '>', $path)
-      or return "Unable to write s390x Genesis configuration: $path: $!";
-    unless (print {$config} $contents) {
-        my $error = $!;
-        close($config);
-        unlink($path);
-        return "Unable to write s390x Genesis configuration: $path: $error";
+    my $config;
+    if (!open $config, '>', $path) {
+        my $open_error = $OS_ERROR;
+        return "Unable to write s390x Genesis configuration: $path: $open_error";
     }
-    unless (close($config)) {
-        my $error = $!;
-        unlink($path);
-        return "Unable to write s390x Genesis configuration: $path: $error";
+
+    my $write_ok = print {$config} $contents;
+    my $write_error = $OS_ERROR;
+    my $close_ok = close $config;
+    my $close_error = $OS_ERROR;
+    if (!$write_ok) {
+        unlink $path;
+        return "Unable to write s390x Genesis configuration: $path: $write_error";
+    }
+    if (!$close_ok) {
+        unlink $path;
+        return "Unable to write s390x Genesis configuration: $path: $close_error";
     }
     return;
 }

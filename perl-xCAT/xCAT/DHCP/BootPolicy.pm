@@ -106,11 +106,13 @@ sub kea_httpboot_network_classes {
 sub kea_s390x_network_classes {
     my ( $class, %opts ) = @_;
 
-    return [] unless $opts{net} && defined( $opts{prefix} );
+    if ( !$opts{net} || !defined $opts{prefix} ) {
+        return [];
+    }
 
     my $network_id = "$opts{net}_$opts{prefix}";
     my $safe_network = $network_id;
-    $safe_network =~ s/[^A-Za-z0-9_.-]/_/g;
+    $safe_network =~ s{[^[:alnum:]_.-]}{_}gxms;
 
     return [
         {
@@ -136,9 +138,13 @@ sub kea_s390x_network_classes {
 sub ensure_isc_path_prefix_definition {
     my ($class, $config) = @_;
 
-    return 0 if grep { /^\s*option\s+path-prefix\s+code\s+210\b/ } @{$config};
+    foreach my $line ( @{$config} ) {
+        if ( $line =~ m{^\s* option \s+ path-prefix \s+ code \s+ 210\b}xms ) {
+            return 0;
+        }
+    }
 
-    my $index = @{$config} && $config->[0] =~ /^#xCAT/ ? 1 : 0;
+    my $index = @{$config} && $config->[0] =~ m{^\#xCAT}xms ? 1 : 0;
     splice @{$config}, $index, 0, "option path-prefix code 210 = text;\n";
     return 1;
 }

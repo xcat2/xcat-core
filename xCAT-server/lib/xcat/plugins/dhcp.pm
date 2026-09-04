@@ -2354,7 +2354,7 @@ sub process_request
         $restartdhcp = 1;
         newconfig();
     }
-    if ($^O ne 'aix' &&
+    if (!xCAT::Utils->isAIX() &&
         xCAT::DHCP::BootPolicy->ensure_isc_path_prefix_definition(\@dhcpconf)) {
         $restartdhcp = 1;
     }
