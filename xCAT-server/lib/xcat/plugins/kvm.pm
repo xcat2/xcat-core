@@ -513,8 +513,12 @@ sub build_diskstruct {
 
             #Setting default values of a virtual disk backed by a file at hd*.
             my $diskhash;
-            $disk =~ s/=(.*)//;
-            my $model = $1;
+            # A failed substitution leaves $1 as the last successful capture, which can come
+            # from a match made by a caller. Read $1 only when this substitution matches.
+            my $model;
+            if ($disk =~ s/=(.*)//) {
+                $model = $1;
+            }
             unless ($model) {
 
                 #if not defined, model will stay undefined like above
@@ -708,6 +712,15 @@ sub getUnits {
     } elsif ($defunit =~ /g/i) {
         return $amount * 1073741824 / $divisor;
     }
+}
+
+# default_storagemodel: the storage model of a node whose vmstoragemodel is empty.
+#
+# The model names the volume of the node, createstorage builds that name, and libvirt reads
+# the bus of the disk out of it. scsi keeps every architecture on sd*, which is the only disk
+# controller the riscv64 virt machine has.
+sub default_storagemodel {
+    return 'scsi';
 }
 
 # guest_arch_profile: the libvirt domain type and <os> settings for one guest.
@@ -1582,8 +1595,12 @@ sub createstorage {
     if ($mastername and $size) {
         return 1, "Can not specify both a master to clone and size(s)";
     }
-    $filename =~ s/=(.*)//;
-    my $model = $1;
+    # A failed substitution leaves $1 as the last successful capture, which can come from a
+    # match made by a caller. Read $1 only when this substitution matches.
+    my $model;
+    if ($filename =~ s/=(.*)//) {
+        $model = $1;
+    }
     unless ($model) {
 
         #if not defined, model will stay undefined like above
@@ -4302,8 +4319,7 @@ sub dohyp {
 
     foreach $node (sort (keys %{ $hyphash{$hyp}->{nodes} })) {
         unless ($confdata->{vm}->{$node}->[0]->{storagemodel}) {
-            # Storage model is not set, default to  scsi for all architectures
-            $confdata->{vm}->{$node}->[0]->{storagemodel} = "scsi";
+            $confdata->{vm}->{$node}->[0]->{storagemodel} = default_storagemodel();
         }
         if ($confdata->{$hyp}->{cpu_thread}) {
             $confdata->{vm}->{$node}->[0]->{cpu_thread} = $confdata->{$hyp}->{cpu_thread};
