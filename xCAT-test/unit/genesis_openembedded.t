@@ -108,6 +108,14 @@ my $build = read_file('xCAT-genesis-builder/oe/build');
 my $build_path = File::Spec->catfile(
     $repo_root, qw(xCAT-genesis-builder oe build)
 );
+my @listed_architectures = `$build_path --list-architectures`;
+is($? >> 8, 0, 'build reports its supported architectures');
+chomp @listed_architectures;
+is_deeply(
+    \@listed_architectures,
+    [qw(aarch64 armv7hf riscv64 s390x x86 x86_64 ppc64 ppc64le)],
+    'build reports each supported architecture once',
+);
 my $build_test_dir = tempdir(CLEANUP => 1);
 my $kas_stub = File::Spec->catfile($build_test_dir, 'kas');
 my $kas_log = File::Spec->catfile($build_test_dir, 'kas.log');
