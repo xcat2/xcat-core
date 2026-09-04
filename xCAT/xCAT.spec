@@ -63,6 +63,7 @@ Requires: xCAT-probe  = 4:%{version}-%{release}
 Recommends: xCAT-genesis-openembedded-x86_64
 Recommends: xCAT-genesis-openembedded-ppc64le
 Recommends: xCAT-genesis-openembedded-riscv64
+Recommends: xCAT-genesis-openembedded-s390x
 %endif
 %endif
 

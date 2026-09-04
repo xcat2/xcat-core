@@ -2354,6 +2354,10 @@ sub process_request
         $restartdhcp = 1;
         newconfig();
     }
+    if ($^O ne 'aix' &&
+        xCAT::DHCP::BootPolicy->ensure_isc_path_prefix_definition(\@dhcpconf)) {
+        $restartdhcp = 1;
+    }
     if ($usingipv6 and not $dhcp6conf[0]) {
         $restartdhcp6 = 1;
         newconfig6();
@@ -3362,6 +3366,12 @@ sub kea_subnet4_intent
             loader_present => sub { -e $_[0] },
         )
       };
+    push @client_classes, @{
+        xCAT::DHCP::BootPolicy->kea_s390x_network_classes(
+            net    => $net,
+            prefix => $prefix,
+        )
+      };
     if (@client_classes) {
         $subnet{additional_client_classes} = [ map { $_->{name} } @client_classes ];
         $subnet{client_classes} = \@client_classes;
@@ -3885,6 +3895,7 @@ sub kea_option_defs
 {
     return [
         { name => 'conf-file', code => 209, type => 'string', space => 'dhcp4' },
+        { name => 'path-prefix', code => 210, type => 'string', space => 'dhcp4' },
         { name => 'iscsi-initiator-iqn', code => 203, type => 'string', space => 'dhcp4' },
         { name => 'cumulus-provision-url', code => 239, type => 'string', space => 'dhcp4' },
     ];
@@ -4792,6 +4803,7 @@ sub newconfig
     push @dhcpconf, "#xCAT generated dhcp configuration\n";
     push @dhcpconf, "\n";
     push @dhcpconf, "option conf-file code 209 = text;\n";
+    push @dhcpconf, "option path-prefix code 210 = text;\n";
     push @dhcpconf, "option space isan;\n";
     push @dhcpconf, "option isan-encap-opts code 43 = encapsulate isan;\n";
     push @dhcpconf, "option isan.iqn code 203 = string;\n";
