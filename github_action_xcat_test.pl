@@ -32,13 +32,10 @@ my $GITHUB_API = "https://api.github.com";
 # through FindBin, so they can only be run from a source tree. Take a copy
 # before building and run the unit tests out of the copy.
 #
-# This used to be mandatory rather than tidy: build-ubunturepo set
-#     local_core_repo_path="$curdir/../../xcat-core"
-# which, under the work/<repo>/<repo> layout GitHub checks out into, resolved to
-# the checkout's own parent, and it rm -rf'd that path to make room for the apt
-# repository -- destroying the tree the tests need. builddebs.pl writes under
-# dist/debs INSIDE the checkout and restores every file it edits, so the copy is
-# now only isolating the tests from build residue.
+# The copy is tidiness, not a requirement: builddebs.pl writes under dist/debs
+# inside the checkout and restores every file it edits, so it isolates the tests
+# from build residue and nothing more. Its predecessor deleted the checkout's
+# parent directory, which is why the copy was added.
 my $srcdir = getcwd();
 my $unitsrc = ($ENV{'RUNNER_TEMP'} ? $ENV{'RUNNER_TEMP'} : "/tmp") . "/xcat-core-unitsrc";
 

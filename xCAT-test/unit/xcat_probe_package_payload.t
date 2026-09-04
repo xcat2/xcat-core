@@ -12,7 +12,7 @@ use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../../build-utils/lib";
 use Test::More;
 
-use XCAT::BuildUtils qw(XCAT_PROBE_HELPERS);
+use XCAT::BuildUtils qw(XCAT_PROBE_HELPERS stage_probe_helpers);
 use XCAT::Test::File qw(repo_path slurp_repo_file);
 
 my @helpers = qw(
@@ -29,7 +29,6 @@ my @affected_subcommands = qw(
 );
 
 my $builder = slurp_repo_file('buildrpms.pl');
-my $debian_builder = slurp_repo_file('build-ubunturepo');
 my $installed_probe_test =
   slurp_repo_file('xCAT-test/autotest/testcase/probe/xcatproble_list');
 my $rpm_spec = slurp_repo_file('xCAT-probe/xCAT-probe.spec');
@@ -67,6 +66,12 @@ like(
     'Debian package requires ss or the legacy netstat provider'
 );
 
+# The Debian builder stages the helpers by calling stage_probe_helpers, so run it and
+# look at what it produced. The predecessor matched a `cp -f` line in build-ubunturepo,
+# which passed whenever that text was reformatted and failed whenever it moved.
+my $staged_probe_dir = File::Spec->catdir(tempdir(CLEANUP => 1), 'lib', 'perl', 'xCAT');
+stage_probe_helpers(repo_path(File::Spec->catdir('perl-xCAT', 'xCAT')), $staged_probe_dir);
+
 for my $helper (@helpers) {
     my $source = repo_path(File::Spec->catfile('perl-xCAT', 'xCAT', $helper));
     ok(-f $source, "$helper source exists");
@@ -75,9 +80,8 @@ for my $helper (@helpers) {
         scalar(grep { $_ eq $helper } XCAT_PROBE_HELPERS),
         "the shared builder helper list carries $helper"
     );
-    like(
-        $debian_builder,
-        qr{cp -f [^\n]*/perl-xCAT/xCAT/\Q$helper\E\s+[^\n]*/lib/perl/xCAT/},
+    ok(
+        -f File::Spec->catfile($staged_probe_dir, $helper),
         "Debian builder stages $helper"
     );
     like(
