@@ -1052,13 +1052,14 @@ passed as argument rather than by table value',
 "                      Ubuntu 18.04, SLES 12, SLES 15, and openSUSE Leap 15\n" .
 "                      leave this attribute unset because their bundled\n" .
 "                      omshell does not support the key-algorithm command.\n" .
-"                      When this attribute is not set, including on an\n" .
-"                      existing installation, xCAT uses hmac-md5 for\n" .
-"                      compatibility. HMAC-MD5 is not approved for FIPS\n" .
-"                      mode; a FIPS-mode site that needs OMAPI must provide\n" .
-"                      an omshell supporting key-algorithm and explicitly\n" .
-"                      select a SHA-2 algorithm. Kea does not use OMAPI, but\n" .
-"                      Kea DDNS uses this TSIG algorithm.\n\n" .
+"                      Outside FIPS mode, an unset value, including on an\n" .
+"                      existing installation, uses hmac-md5 for compatibility.\n" .
+"                      In FIPS mode, an unset value uses hmac-sha256 and an\n" .
+"                      explicit hmac-md5 value is rejected. A FIPS-mode site\n" .
+"                      on a platform whose bundled omshell lacks the\n" .
+"                      key-algorithm command must provide a compatible\n" .
+"                      omshell. Kea does not use OMAPI, but Kea DDNS uses\n" .
+"                      this TSIG algorithm.\n\n" .
 " dhcpomapikeyname:  The TSIG/OMAPI key name used by legacy ISC DHCP and\n" .
 "                   BIND DDNS integration. The default is xcat_key. The\n" .
 "                   value maps to the passwd table entry where key=omapi\n" .

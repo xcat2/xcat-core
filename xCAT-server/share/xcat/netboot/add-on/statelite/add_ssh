@@ -64,8 +64,10 @@ then
 fi
 
 # now we put node specific things in here...
-cp /etc/xcat/hostkeys/ssh_host_dsa_key $ROOTDIR/etc/ssh/
-chmod 600 $ROOTDIR/etc/ssh/ssh_host_dsa_key
+if [ -r /etc/xcat/hostkeys/ssh_host_dsa_key ]; then
+	cp /etc/xcat/hostkeys/ssh_host_dsa_key $ROOTDIR/etc/ssh/
+	chmod 600 $ROOTDIR/etc/ssh/ssh_host_dsa_key
+fi
 cp /etc/xcat/hostkeys/ssh_host_rsa_key $ROOTDIR/etc/ssh/
 chmod 600 $ROOTDIR/etc/ssh/ssh_host_rsa_key
 
@@ -78,5 +80,4 @@ cp /root/.ssh/config $ROOTDIR/root/.ssh/config
 chmod 600 $ROOTDIR/root/.ssh/config
 
 #chroot $ROOTDIR ssh-keygen -y -f /root/.ssh/id_rsa >/root/.ssh/id_rsa.pub
-
 

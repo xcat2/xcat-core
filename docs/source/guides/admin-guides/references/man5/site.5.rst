@@ -100,13 +100,14 @@ site Attributes:
                         Ubuntu 18.04, SLES 12, SLES 15, and openSUSE Leap 15
                         leave this attribute unset because their bundled
                         omshell does not support the key-algorithm command.
-                        When this attribute is not set, including on an
-                        existing installation, xCAT uses hmac-md5 for
-                        compatibility. HMAC-MD5 is not approved for FIPS
-                        mode; a FIPS-mode site that needs OMAPI must provide
-                        an omshell supporting key-algorithm and explicitly
-                        select a SHA-2 algorithm. Kea does not use OMAPI, but
-                        Kea DDNS uses this TSIG algorithm.
+                        Outside FIPS mode, an unset value, including on an
+                        existing installation, uses hmac-md5 for compatibility.
+                        In FIPS mode, an unset value uses hmac-sha256 and an
+                        explicit hmac-md5 value is rejected. A FIPS-mode site
+                        on a platform whose bundled omshell lacks the
+                        key-algorithm command must provide a compatible
+                        omshell. Kea does not use OMAPI, but Kea DDNS uses
+                        this TSIG algorithm.
 
    dhcpomapikeyname:  The TSIG/OMAPI key name used by legacy ISC DHCP and
                      BIND DDNS integration. The default is xcat_key. The
