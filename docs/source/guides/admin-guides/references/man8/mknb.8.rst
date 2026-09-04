@@ -48,9 +48,9 @@ Canonical \ ``ppc64``\  images are big-endian. xCAT marks them so \ ``ppc64le``\
 
 riscv64 nodes boot through UEFI firmware and grub2. For riscv64, \ **mknb**\  publishes the Genesis kernel and initramfs and writes one grub2 configuration per network under ``/tftpboot/boot/grub2``, named ``grub.cfg-`` followed by the network hex prefix, so that ``grub2.riscv64`` loaded by the firmware can start node discovery. The per-node files written by \ **nodeset**\  take priority over these network files. Networks served by a ``:noboot`` interface in ``site.dhcpinterfaces`` get no discovery configuration.
 
-QEMU s390-ccw guests receive a network-specific  ``pxelinux.cfg`` -style configuration through DHCP options 209 and 210. s390x Genesis does not use the shared IBM Z machine serial as a node identifier. This target supports Genesis discovery under QEMU. Existing s390x operating-system provisioning remains unchanged. Physical LPAR and z/VM Genesis networking remain unvalidated because QEMU does not emulate qeth and Genesis does not yet configure qeth channel groups.
+QEMU s390-ccw guests receive a network-specific  ``pxelinux.cfg`` -style configuration through DHCP option 209. The firmware resolves this name below  ``pxelinux.cfg`` . s390x Genesis does not use the shared IBM Z machine serial as a node identifier. This target supports Genesis discovery under QEMU. Legacy xCAT z/VM operating-system provisioning remains unchanged. Physical LPAR and z/VM Genesis networking remain unvalidated because QEMU does not emulate qeth and Genesis does not yet configure qeth channel groups.
 
-Run \ **makedhcp -n**\  after installing the s390x image and before booting s390x nodes. This adds the required DHCP options to existing configurations.
+Run \ **makedhcp -n**\  after installing the s390x image and before booting s390x nodes. This adds the required DHCP option to existing configurations.
 
 
 *******
