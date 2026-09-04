@@ -38,6 +38,10 @@ is(xCAT::Utils->xcat_arch_from_debian('ppc64el'), 'ppc64el',
     'POWER LE media keeps the Debian name xCAT uses for Ubuntu');
 is(xCAT::Utils->xcat_arch_from_debian('powerpc'), 'ppc64',
     'POWER BE media installs ppc64 nodes');
+is(xCAT::Utils->xcat_arch_from_debian('riscv64'), 'riscv64',
+    'riscv64 media installs riscv64 nodes');
+is(xCAT::Utils->debian_arch('riscv64'), 'riscv64',
+    'Debian and xCAT agree on the riscv64 name');
 is(xCAT::Utils->xcat_arch_from_debian('nonesuch'), undef,
     'media xCAT has no name for resolves to nothing');
 is(xCAT::Utils->xcat_arch_from_debian(''), undef,
