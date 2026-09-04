@@ -112,9 +112,12 @@ like(
     qr{/opt/xcat/share/xcat/netboot/genesis-openembedded/ARCH},
     'the mknb man page documents the OpenEmbedded install namespace',
 );
+my ($architecture_names) = $mknb_pod =~
+  /OpenEmbedded images use the exact architecture names ([^.]+)\./;
+ok(defined($architecture_names), 'the mknb man page has an architecture list');
 for my $architecture (qw(x86 x86_64 ppc64 ppc64le armv7hf aarch64 riscv64 s390x)) {
     like(
-        $mknb_pod,
+        $architecture_names,
         qr/\b\Q$architecture\E\b/,
         "the mknb man page lists $architecture",
     );

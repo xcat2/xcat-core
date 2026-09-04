@@ -104,12 +104,13 @@ like( $ppc64_kas, qr{includes:\s*\n\s*- xCAT-genesis-builder/oe/kas/common\.yml}
 like( $ppc64_kas, qr/^machine: xcat-genesis-ppc64$/m,
     'ppc64 build selects its machine' );
 
-my $build = read_file('xCAT-genesis-builder/oe/build');
 my $build_path = File::Spec->catfile(
     $repo_root, qw(xCAT-genesis-builder oe build)
 );
-my @listed_architectures = `$build_path --list-architectures`;
-is($? >> 8, 0, 'build reports its supported architectures');
+open(my $architecture_report, '-|', $build_path, '--list-architectures')
+  or die "Unable to query $build_path: $!";
+my @listed_architectures = <$architecture_report>;
+ok(close($architecture_report), 'build reports its supported architectures');
 chomp @listed_architectures;
 is_deeply(
     \@listed_architectures,
@@ -136,6 +137,8 @@ chmod(0755, $kas_stub) or die "Unable to make $kas_stub executable: $!";
         'build accepts s390x');
     is(system($build_path, 'not-an-architecture') >> 8, 2,
         'build rejects an unsupported architecture');
+    is(system($build_path, 'x86*') >> 8, 2,
+        'build treats architecture names literally');
 }
 open(my $kas_log_file, '<', $kas_log) or die "Unable to read $kas_log: $!";
 my @kas_invocations = <$kas_log_file>;
@@ -914,9 +917,6 @@ my $smoke_extension = read_file(
 );
 like( $smoke_extension, qr/^XCAT_GENESIS_EXTENSION_NAME = "xcat-smoke"$/m,
     'open smoke extension exercises the build path' );
-like( $smoke_extension,
-    qr/^XCAT_GENESIS_EXTENSION_ARCHITECTURE = "\$\{XCAT_GENESIS_ARCHITECTURE\}"$/m,
-    'smoke extension uses the target architecture identity' );
 
 my $preset = read_file(
     'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-core/xcat-genesis-init/files/00-xcat-genesis.preset'

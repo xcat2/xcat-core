@@ -10,6 +10,7 @@ use File::Path qw(make_path);
 use File::Temp qw(tempdir);
 use Test::More;
 use XCAT::Test::File qw(repo_path);
+use xCAT::DHCP::BootPolicy;
 
 BEGIN {
     package xCAT::Utils;
@@ -521,6 +522,17 @@ is((stat "$xCAT::TableUtils::tftpdir/pxelinux.cfg")[2] & 07777, 0755,
 my $s390x_qemu_path =
   "$xCAT::TableUtils::tftpdir/pxelinux.cfg/s390x/192.168.144.0_20";
 ok(-f $s390x_qemu_path, 's390x writes a QEMU network IPL configuration');
+my $s390x_classes = xCAT::DHCP::BootPolicy->kea_s390x_network_classes(
+    net => '192.168.144.0', prefix => 20,
+);
+my ($s390x_conf_file) = map { $_->{data} }
+  grep { $_->{name} eq 'conf-file' }
+  @{ $s390x_classes->[0]{'option-data'} };
+is(
+    "$xCAT::TableUtils::tftpdir/pxelinux.cfg/$s390x_conf_file",
+    $s390x_qemu_path,
+    'the DHCP configuration name resolves to the file written by mknb',
+);
 is(
     read_config($s390x_qemu_path),
     "# pxelinux.cfg xCAT Genesis s390x\n"
@@ -536,6 +548,17 @@ unlike(
     qr/192\.168\.149\.100/,
     's390x configurations do not use the later floating address',
 );
+%xCAT::TableUtils::site_extra = ( dhcpinterfaces => 'eth0,eth1:noboot' );
+$xCAT::NetworkUtils::nic_ips = { eth0 => '10.0.0.1', eth1 => '192.168.148.10' };
+$responses = run_mknb('s390x');
+generation_succeeded($responses, 's390x honors :noboot on the selected xcatd address');
+ok(!-e $s390x_qemu_path,
+    'a selected xcatd address on :noboot gets no s390x configuration');
+%xCAT::TableUtils::site_extra = ();
+$xCAT::NetworkUtils::nic_ips = undef;
+$responses = run_mknb('s390x');
+generation_succeeded($responses, 's390x configuration is restored after :noboot');
+
 write_text($s390x_qemu_path, "admin network configuration\n");
 $responses = run_mknb('s390x');
 ok(
@@ -547,6 +570,21 @@ is(read_config($s390x_qemu_path), "admin network configuration\n",
 unlink($s390x_qemu_path);
 $responses = run_mknb('s390x');
 generation_succeeded($responses, 's390x configuration is restored after removing the unmanaged file');
+
+unlink($s390x_qemu_path);
+my $s390x_symlink_target = "$tmpdir/s390x-symlink-target";
+symlink($s390x_symlink_target, $s390x_qemu_path)
+  or die "Unable to create s390x test symlink: $!";
+$responses = run_mknb('s390x');
+ok(
+    scalar(grep { ref($_) eq 'HASH' && $_->{error} && "@{$_->{error}}" =~ /Refusing to replace unmanaged/ } @{$responses}),
+    's390x refuses to follow an unmanaged configuration symlink',
+);
+ok(!-e $s390x_symlink_target,
+    'an unmanaged configuration symlink target is unchanged');
+unlink($s390x_qemu_path);
+$responses = run_mknb('s390x');
+generation_succeeded($responses, 's390x configuration is restored after removing the symlink');
 
 my $s390x_legacy_root = "$tmpdir/tftpboot-s390x-legacy";
 make_path("$s390x_legacy_root/pxelinux.cfg/s390x");
@@ -568,7 +606,7 @@ like(
 );
 
 my $s390x_failure_root = "$tmpdir/tftpboot-s390x-failure";
-make_path("$s390x_failure_root/pxelinux.cfg/s390x/192.168.144.0_20");
+make_path("$s390x_failure_root/pxelinux.cfg");
 my (undef, $s390x_write_error) =
   xCAT_plugin::mknb::_write_s390x_discovery_config(
     tftpdir        => $s390x_failure_root,
