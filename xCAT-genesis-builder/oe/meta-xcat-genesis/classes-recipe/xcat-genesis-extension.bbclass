@@ -34,7 +34,7 @@ python __anonymous() {
 
     architecture = d.getVar("XCAT_GENESIS_EXTENSION_ARCHITECTURE")
     architectures = {
-        "x86", "x86_64", "ppc64", "ppc64le", "armv7hf", "aarch64", "riscv64"
+        "x86", "x86_64", "ppc64", "ppc64le", "armv7hf", "aarch64", "riscv64", "s390x"
     }
     if architecture not in architectures:
         bb.fatal("Invalid Genesis extension architecture: %s" % architecture)

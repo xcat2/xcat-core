@@ -21,7 +21,7 @@ output_dir=${6%/}
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 case "$architecture" in
-    x86|x86_64|ppc64|ppc64le|armv7hf|aarch64|riscv64) ;;
+    x86|x86_64|ppc64|ppc64le|armv7hf|aarch64|riscv64|s390x) ;;
     *) fail "unsupported architecture: $architecture" ;;
 esac
 [[ $extension =~ ^[a-z0-9][a-z0-9._-]{0,63}$ ]] \

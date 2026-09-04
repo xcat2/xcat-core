@@ -17,7 +17,7 @@ fi
 
 for architecture do
     case "$architecture" in
-        aarch64|armv7hf|riscv64|x86|x86_64|ppc64|ppc64le) ;;
+        aarch64|armv7hf|riscv64|s390x|x86|x86_64|ppc64|ppc64le) ;;
         *)
             printf 'Unsupported Genesis architecture: %s\n' "$architecture" >&2
             exit 2
