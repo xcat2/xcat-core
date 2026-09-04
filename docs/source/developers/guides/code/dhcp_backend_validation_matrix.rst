@@ -133,7 +133,7 @@ The following matrix is the default live validation gate for DHCP backend work.
      - ``s390x``
      - ``ISC``
      - ``s390-ccw BIOS network IPL``
-     - ``makedhcp -n``; backend parser; architecture ``0x001f``; DHCP options
+     - ``makedhcp -n``; backend parser; architecture ``0x001f``; DHCP option
        209; TFTP fetch of the generated ``pxelinux.cfg``-style configuration,
        Genesis kernel, and initramfs
 
