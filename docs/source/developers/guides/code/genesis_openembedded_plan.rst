@@ -98,8 +98,8 @@ qeth, and Genesis does not yet configure qeth channel groups.  Physical LPAR
 and z/VM Genesis networking therefore remain unvalidated.
 Genesis does not use the shared CEC serial as an s390x node identifier.
 QEMU validation covers network IPL, DHCP options 209 and 210, TFTP, and the
-network-specific PXELINUX configuration written by ``mknb``.  Existing xCAT
-s390x operating-system provisioning remains unchanged.
+network-specific ``pxelinux.cfg``-style configuration written by ``mknb``.
+Existing xCAT s390x operating-system provisioning remains unchanged.
 
 xCAT protocol
 -------------
