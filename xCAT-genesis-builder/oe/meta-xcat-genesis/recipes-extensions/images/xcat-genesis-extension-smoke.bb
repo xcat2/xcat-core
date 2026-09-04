@@ -7,5 +7,4 @@ inherit xcat-genesis-extension
 IMAGE_INSTALL = "xcat-genesis-extension-smoke-payload"
 
 XCAT_GENESIS_EXTENSION_NAME = "xcat-smoke"
-XCAT_GENESIS_EXTENSION_ARCHITECTURE = "${XCAT_GENESIS_ARCHITECTURE}"
 XCAT_GENESIS_EXTENSION_CAPABILITIES = '["diagnostic.smoke"]'
