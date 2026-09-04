@@ -1,7 +1,7 @@
 package xCAT_plugin::mknb;
 use strict;
 use Digest::SHA ();
-use File::Temp qw(tempdir);
+use File::Temp qw(tempdir tempfile);
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::NodeRange;
@@ -752,6 +752,7 @@ sub process_request {
         chmod 0755, "$tftpdir/pxelinux.cfg/s390x";
     }
     my $dopxe = 0;
+    my $s390x_config_error = 0;
     foreach (keys %{$normnets}) {
         my $net = $_;
         my $nicip = $normnets->{$net};
@@ -766,7 +767,7 @@ sub process_request {
                 if (_is_generated_s390x_config($path)) {
                     if (!unlink($path)) {
                         $callback->({ error => ["Unable to remove s390x Genesis configuration: $path: $OS_ERROR"], errorcode => [1] });
-                        return;
+                        $s390x_config_error = 1;
                     }
                 }
             }
@@ -844,7 +845,7 @@ sub process_request {
             );
             if ($config_error) {
                 $callback->({ error => [$config_error], errorcode => [1] });
-                return;
+                $s390x_config_error = 1;
             }
         }
     }
@@ -910,7 +911,7 @@ sub process_request {
         # does not build.
         $callback->({ data => ["Note: $tftpdir/boot/grub2/grub2.$arch is missing; $arch nodes need it to reach these configurations (it is installed by grub2-xcat, or copied from the EL $arch installation media)"] });
     }
-    if ($configfileonly) {
+    if ($configfileonly && !$s390x_config_error) {
         $callback->({ data => ["Write netboot config file done"] });
     }
 }
@@ -943,10 +944,20 @@ sub _write_s390x_config {
     if ((-e $path || -l $path) && !_is_generated_s390x_config($path)) {
         return "Refusing to replace unmanaged s390x configuration: $path";
     }
-    my $config;
-    if (!open $config, '>', $path) {
-        my $open_error = $OS_ERROR;
-        return "Unable to write s390x Genesis configuration: $path: $open_error";
+
+    my $directory = $path;
+    $directory =~ s{/[^/]+\z}{}xms;
+    my ($config, $temporary);
+    my $created = eval {
+        ($config, $temporary) = tempfile(
+            '.mknb-s390x-XXXXXX', DIR => $directory, UNLINK => 0
+        );
+        1;
+    };
+    if (!$created) {
+        my $create_error = $EVAL_ERROR || $OS_ERROR;
+        chomp $create_error;
+        return "Unable to write s390x Genesis configuration: $path: $create_error";
     }
 
     my $write_ok = print {$config} $contents;
@@ -954,12 +965,26 @@ sub _write_s390x_config {
     my $close_ok = close $config;
     my $close_error = $OS_ERROR;
     if (!$write_ok) {
-        unlink $path;
+        unlink $temporary;
         return "Unable to write s390x Genesis configuration: $path: $write_error";
     }
     if (!$close_ok) {
-        unlink $path;
+        unlink $temporary;
         return "Unable to write s390x Genesis configuration: $path: $close_error";
+    }
+    if (!chmod 0644, $temporary) {
+        my $chmod_error = $OS_ERROR;
+        unlink $temporary;
+        return "Unable to set s390x Genesis configuration permissions: $path: $chmod_error";
+    }
+    if ((-e $path || -l $path) && !_is_generated_s390x_config($path)) {
+        unlink $temporary;
+        return "Refusing to replace unmanaged s390x configuration: $path";
+    }
+    if (!rename $temporary, $path) {
+        my $rename_error = $OS_ERROR;
+        unlink $temporary;
+        return "Unable to install s390x Genesis configuration: $path: $rename_error";
     }
     return;
 }
