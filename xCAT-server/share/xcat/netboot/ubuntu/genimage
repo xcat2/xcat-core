@@ -1786,6 +1786,11 @@ EOMS
             push @filestoadd, $_ if (-e "$rootimg_dir/$_");
         }
 
+    } elsif ($arch =~ /riscv64/) {
+        foreach ("lib/riscv64-linux-gnu/libnss_files.so.2", "lib/riscv64-linux-gnu/libnss_dns.so.2") {
+            push @filestoadd, $_ if (-e "$rootimg_dir/$_");
+        }
+
     } else {
         push @filestoadd, "lib/libnss_dns.so.2" if (-e "$rootimg_dir/lib/libnss_dns.so.2");
     }
