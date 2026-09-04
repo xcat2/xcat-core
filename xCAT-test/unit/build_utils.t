@@ -60,15 +60,19 @@ is_deeply( [deb_package_arches('perl-xCAT')], ['all'],
     'a Perl package is built once, arch-independent' );
 is_deeply( [deb_package_arches('xCAT-probe')], ['all'],
     'xCAT-probe is arch-independent too' );
-for my $pkg (qw(xCAT xCATsn xCAT-genesis-scripts)) {
-    is_deeply( [deb_package_arches($pkg)], ['amd64', 'ppc64el'],
+for my $pkg (qw(xCAT xCATsn)) {
+    is_deeply( [deb_package_arches($pkg)], ['amd64', 'ppc64el', 'riscv64'],
         "$pkg is built per architecture" );
 }
+# xcat-genesis-scripts-<arch> Depends on xcat-genesis-base-<arch> and there is no riscv64
+# genesis-base deb, so a riscv64 build of it would be uninstallable.
+is_deeply( [deb_package_arches('xCAT-genesis-scripts')], ['amd64', 'ppc64el'],
+    'xcat-genesis-scripts is built per architecture, but never for riscv64' );
 is_deeply( [deb_package_arches(undef)], ['all'],
     'an undefined package name does not blow up the arch lookup' );
 
-is_deeply( [dist_arches('noble')], ['amd64', 'ppc64el'],
-    'a current release serves both architectures' );
+is_deeply( [dist_arches('noble')], ['amd64', 'ppc64el', 'riscv64'],
+    'a current release serves every architecture xCAT builds' );
 is_deeply( [dist_arches('saucy')], ['amd64'],
     'saucy predates ppc64el and serves only amd64' );
 
@@ -151,8 +155,8 @@ is( scalar( () = $rewritten =~ /^ -- xCAT Build /mg ), 1,
 
 my $dists = reprepro_distributions([qw(focal noble)], 'DEADBEEF');
 is( scalar(() = $dists =~ /^Codename:/mg), 2, 'one stanza per release' );
-like( $dists, qr/^Codename: focal\nArchitectures: amd64 ppc64el$/m,
-    'a release declares both architectures, on the line after its codename' );
+like( $dists, qr/^Codename: focal\nArchitectures: amd64 ppc64el riscv64$/m,
+    'a release declares every architecture, on the line after its codename' );
 is( scalar(() = $dists =~ /^SignWith: DEADBEEF$/mg), 2,
     'every stanza is signed when a key is given' );
 
