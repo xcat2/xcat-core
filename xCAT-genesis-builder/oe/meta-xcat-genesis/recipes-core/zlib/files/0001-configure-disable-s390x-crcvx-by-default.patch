@@ -1,10 +1,10 @@
-From: xCAT Project <xcat-user@lists.sourceforge.net>
+From: xCAT Genesis Builder <xcat@users.noreply.github.com>
 Subject: [PATCH] configure: disable s390x CRC vector code by default
 
 The Genesis s390x baseline is z10, which lacks the vector facility.
 
 Upstream-Status: Inappropriate [xCAT Genesis targets z10]
-Signed-off-by: xCAT Project <xcat-user@lists.sourceforge.net>
+Signed-off-by: xCAT Genesis Builder <xcat@users.noreply.github.com>
 ---
  configure | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
