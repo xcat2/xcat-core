@@ -97,10 +97,10 @@ The ``s390x`` image uses virtio networking under QEMU.  QEMU does not emulate
 qeth, and Genesis does not yet configure qeth channel groups.  Physical LPAR
 and z/VM Genesis networking therefore remain unvalidated.
 Genesis does not use the shared CEC serial as an s390x node identifier.
-QEMU validation covers network IPL, DHCP options 209 and 210, TFTP, and the
+QEMU validation covers network IPL, DHCP option 209, TFTP, and the
 network-specific ``pxelinux.cfg``-style configuration written by ``mknb``.
 This release does not advertise a DPM boot configuration.
-Existing xCAT s390x operating-system provisioning remains unchanged.
+Legacy xCAT z/VM operating-system provisioning remains unchanged.
 
 xCAT protocol
 -------------
