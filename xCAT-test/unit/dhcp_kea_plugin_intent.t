@@ -133,8 +133,8 @@ my %network_entry = (
     ok($classes{'xcat-s390x-qemu-10.0.0.0_24'}, 'the Kea subnet includes QEMU s390x boot policy');
     is(
         $classes{'xcat-s390x-qemu-10.0.0.0_24'}{'option-data'}[0]{data},
-        'pxelinux.cfg/s390x/10.0.0.0_24',
-        'the Kea subnet sends the complete s390x configuration path',
+        's390x/10.0.0.0_24',
+        'the Kea subnet sends the s390x configuration name',
     );
     is_deeply(
         [ grep { /^xcat-s390x-/ } @{ $subnet->{additional_client_classes} } ],

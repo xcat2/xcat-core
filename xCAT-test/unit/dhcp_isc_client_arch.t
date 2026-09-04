@@ -38,7 +38,7 @@ like(
 );
 like(
     $rendered,
-    qr/client-architecture = 00:1f \{ #QEMU s390x\n\s+option conf-file = "pxelinux\.cfg\/s390x\/192\.0\.2\.0_24";/,
+    qr/client-architecture = 00:1f \{ #QEMU s390x\n\s+option conf-file = "s390x\/192\.0\.2\.0_24";/,
     'QEMU s390x receives its network configuration',
 );
 

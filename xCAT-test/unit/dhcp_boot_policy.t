@@ -231,7 +231,7 @@ is_deeply(
             'option-data'   => [
                 {
                     name          => 'conf-file',
-                    data          => 'pxelinux.cfg/s390x/10.0.0.0_24',
+                    data          => 's390x/10.0.0.0_24',
                     'always-send' => 1,
                 },
             ],

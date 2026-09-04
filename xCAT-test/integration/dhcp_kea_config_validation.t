@@ -46,7 +46,7 @@ my $json = $backend->render_dhcp4_config(
                 test            => 'option[93].hex == 0x001f',
                 additional_only => JSON::true,
                 'option-data'   => [
-                    { name => 'conf-file', data => 'pxelinux.cfg/s390x/192.168.122.0_24' },
+                    { name => 'conf-file', data => 's390x/192.168.122.0_24' },
                 ],
             },
             {
