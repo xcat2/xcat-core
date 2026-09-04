@@ -2,7 +2,7 @@ start:lsxcatd_null
 description:lsxcatd without any flag
 label:mn_only,ci_test,xcatd
 cmd:lsxcatd
-check:output=~lsxcatd
+check:output=~\[-v\|--version\]
 end
 
 start:lsxcatd_h
