@@ -762,13 +762,9 @@ sub process_request {
             if ($arch =~ /ppc/ and -r "$tftpdir/pxelinux.cfg/p/$net") {
                 unlink("$tftpdir/pxelinux.cfg/p/$net");
             } elsif ($arch eq 's390x') {
-                foreach my $path (
-                    "$tftpdir/pxelinux.cfg/s390x/$net",
-                    "$tftpdir/pxelinux.cfg/s390x/$net.dpm",
-                  ) {
-                    if (_is_generated_s390x_config($path)) {
-                        unlink $path;
-                    }
+                my $path = "$tftpdir/pxelinux.cfg/s390x/$net";
+                if (_is_generated_s390x_config($path)) {
+                    unlink $path;
                 }
             }
             next;
@@ -933,24 +929,14 @@ sub _write_s390x_discovery_config {
     my $error = _write_s390x_config($qemu_path, $qemu_config);
     return (undef, $error) if $error;
 
-    my $dpm_path = "$qemu_path.dpm";
-    my $dpm_config = "# pxelinux.cfg xCAT Genesis s390x\n"
-      . "DEFAULT xCAT\n"
-      . "label xCAT\n"
-      . "  kernel=xcat/genesis.kernel.s390x\n"
-      . "  initrd=$initrd\n"
-      . "  append=$cmdline\n";
-    $error = _write_s390x_config($dpm_path, $dpm_config);
-    if ($error) {
-        unlink $qemu_path;
-        return (undef, $error);
-    }
-
     return ($qemu_path, undef);
 }
 
 sub _write_s390x_config {
     my ($path, $contents) = @_;
+    if (-f $path && !_is_generated_s390x_config($path)) {
+        return "Refusing to replace unmanaged s390x configuration: $path";
+    }
     my $config;
     if (!open $config, '>', $path) {
         my $open_error = $OS_ERROR;

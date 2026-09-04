@@ -134,14 +134,6 @@ sub kea_s390x_network_classes {
             ],
         };
     }
-    if ( $opts{dpm_config_present} ) {
-        push @classes, {
-            name             => "xcat-s390x-dpm-$safe_network",
-            test             => 'option[93].hex == 0x0020',
-            additional_only  => 1,
-            'boot-file-name' => "pxelinux.cfg/s390x/$network_id.dpm",
-        };
-    }
     return \@classes;
 }
 
@@ -196,10 +188,6 @@ sub isc_client_architecture_lines {
             "    } else if option client-architecture = 00:1f { #QEMU s390x\n ",
             "      option path-prefix = \"pxelinux.cfg/s390x/\";\n",
             "      option conf-file = \"${net}_${maskbits}\";\n",
-        ) : ()),
-        ($opts{s390x_dpm_config_present} ? (
-            "    } else if option client-architecture = 00:20 { #IBM Z DPM\n ",
-            "      filename \"pxelinux.cfg/s390x/${net}_${maskbits}.dpm\";\n",
         ) : ()),
         "    } else if option client-architecture = 00:0e { #OPAL-v3\n ",
         "        option conf-file = \"http://$tftp$portsuffix/tftpboot/pxelinux.cfg/p/${net}_${maskbits}\";\n",
