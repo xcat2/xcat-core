@@ -55,4 +55,4 @@ jobs:
               'bitbake -n xcat-genesis-image xcat-genesis-extension-smoke'
           export KAS_BUILD_DIR="${RUNNER_TEMP}/kas-build-s390x"
           kas shell xCAT-genesis-builder/oe/kas/s390x.yml -c \
-              'bitbake -n xcat-genesis-image'
+              'bitbake -n xcat-genesis-image xcat-genesis-extension-smoke'
