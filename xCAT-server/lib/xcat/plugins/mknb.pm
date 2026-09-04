@@ -303,7 +303,7 @@ sub _remove_openembedded_genesis {
     );
     if ($arch eq 's390x') {
         my $config_directory = "$tftpdir/pxelinux.cfg/s390x";
-        if (opendir(my $config_stream, $config_directory)) {
+        if (opendir my $config_stream, $config_directory) {
             foreach my $name (readdir $config_stream) {
                 if ($name =~ m{\A[.][.]?\z}xms) {
                     next;
@@ -765,7 +765,7 @@ sub process_request {
             } elsif ($arch eq 's390x') {
                 my $path = "$tftpdir/pxelinux.cfg/s390x/$net";
                 if (_is_generated_s390x_config($path)) {
-                    if (!unlink($path)) {
+                    if (!unlink $path) {
                         $callback->({ error => ["Unable to remove s390x Genesis configuration: $path: $OS_ERROR"], errorcode => [1] });
                         $s390x_config_error = 1;
                     }
