@@ -354,9 +354,13 @@ sub stage_genesis_payload {
     my $run  = $a{run} || sub { return system($_[0]); };
     my $rc;
     if (($a{genesis_type} // '') eq 'legacy') {
+        # Two copies, each able to fail on its own. Return on the first, so neither the exit
+        # status nor the name of the unreadable file is lost to the one that follows it.
         $rc = $run->("shopt -s dotglob; GLOBIGNORE=\".:..\" cp -a $a{genesis_dir}/fs/* $a{tempdir}");
+        return ($rc, "$a{genesis_dir}/fs") if $rc;
         $rc = $run->("cp -a $a{genesis_dir}/kernel $a{tftpdir}/xcat/genesis.kernel.$a{arch}");
-        return ($rc, "$a{genesis_dir}/fs");
+        return ($rc, "$a{genesis_dir}/kernel") if $rc;
+        return (0, undef);
     }
     $rc = $run->("cp -a $a{genesis_dir}/nbroot/* $a{tempdir}");
     return ($rc, "$a{genesis_dir}/nbroot");
