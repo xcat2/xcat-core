@@ -57,6 +57,9 @@ Supported architectures
    * - ``riscv64``
      - RV64GC with OpenSBI
      - QEMU ``virt``
+   * - ``s390x``
+     - 64-bit z/Architecture, z10 or later
+     - QEMU ``s390-ccw-virtio``
 
 ``x86_64`` is the first release target and ``ppc64le`` is the second because
 both have physical test systems.  The other targets have the same software
@@ -66,7 +69,7 @@ trees, or controllers.
 Architecture names are exact.  In particular, ``ppc64`` and ``ppc64le`` are
 different artifacts.  The build does not preserve the old xCAT alias between
 them.  ``riscv32``, pre-ARMv7 processors, and i586-only x86 processors are not
-supported.
+supported.  The ``s390x`` target does not support the 31-bit ``s390`` ABI.
 
 Networking
 ----------
@@ -89,6 +92,14 @@ The Genesis clients and discovery sender accept IPv4 and IPv6 endpoints.  An
 IPv6-only deployment also needs matching support in xCAT server code, DHCP,
 boot firmware, and boot configuration.  Those changes are outside this layer
 and must not be hidden inside the Genesis image.
+
+The ``s390x`` image uses virtio networking under QEMU.  QEMU does not emulate
+qeth, and Genesis does not yet configure qeth channel groups.  Physical LPAR
+and z/VM Genesis networking therefore remain unvalidated.
+Genesis does not use the shared CEC serial as an s390x node identifier.
+QEMU validation covers network IPL, DHCP options 209 and 210, TFTP, and the
+network-specific PXELINUX configuration written by ``mknb``.  Existing xCAT
+s390x operating-system provisioning remains unchanged.
 
 xCAT protocol
 -------------
@@ -234,12 +245,13 @@ checksums, reports, and optional signed extensions.  Packages install each
 export under ``genesis-openembedded/ARCH``.  ``mknb`` verifies and publishes
 that export when present, while retaining the old Genesis path as a fallback.
 
-The management-node and service-node packages recommend the ``x86_64`` and
-``ppc64le`` images.  These are weak dependencies so an older or partial mirror
-does not block an xCAT upgrade.  Other target images can be installed from the
-same common repository before running ``mknb ARCH``.  RPM builds based on RPM
-4.11 omit the recommendations because that version cannot parse weak dependency
-tags.  Install the required image package explicitly on those systems.
+The management-node and service-node packages recommend the ``x86_64``,
+``ppc64le``, ``riscv64``, and ``s390x`` images.  These are weak dependencies so
+an older or partial mirror does not block an xCAT upgrade.  Other target images
+can be installed from the same common repository before running ``mknb ARCH``.
+RPM builds based on RPM 4.11 omit the recommendations because that version
+cannot parse weak dependency tags.  Install the required image package
+explicitly on those systems.
 
 Server integration should be reviewed separately from the image.  Independent
 bugs found while testing Genesis, such as TFTP path handling or Kea policy,
@@ -259,7 +271,8 @@ actions.
 ``x86_64`` and ``ppc64le`` require physical tests before release.  VM tests
 cannot certify platform firmware, BMC behavior, storage-controller tools,
 RDMA firmware operations, GPUs, Secure Boot on vendor firmware, or
-board-specific device trees.
+board-specific device trees.  Physical ``s390x`` support also requires a qeth
+activation path and IBM Z LPAR or z/VM validation.
 
 References
 ----------
