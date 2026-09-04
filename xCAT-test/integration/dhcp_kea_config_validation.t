@@ -24,7 +24,6 @@ my $json = $backend->render_dhcp4_config(
         interfaces => ['*'],
         'option-def' => [
             { name => 'conf-file', code => 209, type => 'string', space => 'dhcp4' },
-            { name => 'path-prefix', code => 210, type => 'string', space => 'dhcp4' },
             { name => 'iscsi-initiator-iqn', code => 203, type => 'string', space => 'dhcp4' },
             { name => 'cumulus-provision-url', code => 239, type => 'string', space => 'dhcp4' },
         ],
@@ -47,8 +46,7 @@ my $json = $backend->render_dhcp4_config(
                 test            => 'option[93].hex == 0x001f',
                 additional_only => JSON::true,
                 'option-data'   => [
-                    { name => 'conf-file', data => '192.168.122.0_24' },
-                    { name => 'path-prefix', data => 'pxelinux.cfg/s390x/' },
+                    { name => 'conf-file', data => 'pxelinux.cfg/s390x/192.168.122.0_24' },
                 ],
             },
             {

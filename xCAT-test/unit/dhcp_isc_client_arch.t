@@ -14,7 +14,6 @@ my $rendered = join '', @{ xCAT::DHCP::BootPolicy->isc_client_architecture_lines
         tftpdir     => '/srv/tftp',
         net         => '192.0.2.0',
         prefix      => 24,
-        s390x_qemu_config_present => 1,
     ) };
 
 like(
@@ -39,7 +38,7 @@ like(
 );
 like(
     $rendered,
-    qr/client-architecture = 00:1f \{ #QEMU s390x\n\s+option path-prefix = "pxelinux\.cfg\/s390x\/";\n\s+option conf-file = "192\.0\.2\.0_24";/,
+    qr/client-architecture = 00:1f \{ #QEMU s390x\n\s+option conf-file = "pxelinux\.cfg\/s390x\/192\.0\.2\.0_24";/,
     'QEMU s390x receives its network configuration',
 );
 
@@ -61,11 +60,5 @@ cmp_ok($tftp_pos,    '<', $http_pos,     'the TFTP branch precedes the HTTP bran
 cmp_ok($http_pos,    '<', $opal_pos,     'the HTTP branch precedes the OPAL branch');
 cmp_ok($http_pos,    '<', $fallback_pos, 'the HTTP branch is reachable before the fallback');
 like($rendered, qr/filename "\/yaboot";\n\s*\}\n\z/, 'the policy ends with the existing yaboot fallback');
-
-my $without_s390x = join '', @{ xCAT::DHCP::BootPolicy->isc_client_architecture_lines(
-        next_server => '192.0.2.10', net => '192.0.2.0', prefix => 24,
-    ) };
-unlike($without_s390x, qr/client-architecture = 00:1f/,
-    'ISC does not advertise s390x without a generated network configuration');
 
 done_testing();

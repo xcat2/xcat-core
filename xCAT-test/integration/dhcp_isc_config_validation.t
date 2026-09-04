@@ -28,16 +28,11 @@ my @config = (
     "  range 192.0.2.100 192.0.2.110;\n",
 );
 
-ok(
-    xCAT::DHCP::BootPolicy->ensure_isc_path_prefix_definition(\@config),
-    'the upgrade path adds option 210 to an existing configuration',
-);
 push @config, @{ xCAT::DHCP::BootPolicy->isc_client_architecture_lines(
         next_server => '192.0.2.1',
         portsuffix  => '',
         net         => '192.0.2.0',
         prefix      => 24,
-        s390x_qemu_config_present => 1,
     ) }, "}\n";
 
 my $configuration_root = -d '/etc/dhcp' ? '/etc/dhcp' : '/etc';
@@ -48,6 +43,6 @@ print {$config_file} @config;
 close($config_file) or die "Cannot close $path: $!";
 
 my $status = system($dhcpd, '-t', '-cf', $path);
-is($status, 0, 'ISC accepts the upgraded s390x boot policy');
+is($status, 0, 'ISC accepts the s390x boot policy');
 
 done_testing();

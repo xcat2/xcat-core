@@ -2,12 +2,14 @@
 use strict;
 use warnings;
 
+use Cwd qw(abs_path);
 use Digest::SHA qw(sha256_hex);
 use File::Spec;
+use File::Temp qw(tempdir);
 use FindBin;
 use Test::More;
 
-my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
+my $repo_root = abs_path(File::Spec->catdir( $FindBin::Bin, '..', '..' ));
 
 sub read_file {
     my ($relative_path) = @_;
@@ -103,11 +105,38 @@ like( $ppc64_kas, qr/^machine: xcat-genesis-ppc64$/m,
     'ppc64 build selects its machine' );
 
 my $build = read_file('xCAT-genesis-builder/oe/build');
-like( $build,
-    qr/aarch64\|armv7hf\|riscv64\|s390x\|x86\|x86_64\|ppc64\|ppc64le/,
-    'build accepts each supported architecture' );
-like( $build, qr{kas/\$architecture\.yml},
-    'build selects the architecture configuration directly' );
+my $build_path = File::Spec->catfile(
+    $repo_root, qw(xCAT-genesis-builder oe build)
+);
+my $build_test_dir = tempdir(CLEANUP => 1);
+my $kas_stub = File::Spec->catfile($build_test_dir, 'kas');
+my $kas_log = File::Spec->catfile($build_test_dir, 'kas.log');
+open(my $kas_stub_file, '>', $kas_stub)
+  or die "Unable to create $kas_stub: $!";
+print {$kas_stub_file} <<'KAS_STUB';
+#!/bin/sh
+printf '%s\n' "$*" >> "$XCAT_TEST_KAS_LOG"
+KAS_STUB
+close($kas_stub_file) or die "Unable to close $kas_stub: $!";
+chmod(0755, $kas_stub) or die "Unable to make $kas_stub executable: $!";
+{
+    local $ENV{KAS} = $kas_stub;
+    local $ENV{XCAT_TEST_KAS_LOG} = $kas_log;
+    local $ENV{XCAT_GENESIS_WORK_DIR} =
+      File::Spec->catdir($build_test_dir, 'work');
+    is(system($build_path, 's390x') >> 8, 0,
+        'build accepts s390x');
+    is(system($build_path, 'not-an-architecture') >> 8, 2,
+        'build rejects an unsupported architecture');
+}
+open(my $kas_log_file, '<', $kas_log) or die "Unable to read $kas_log: $!";
+my @kas_invocations = <$kas_log_file>;
+close($kas_log_file) or die "Unable to close $kas_log: $!";
+is_deeply(
+    \@kas_invocations,
+    ["build $repo_root/xCAT-genesis-builder/oe/kas/s390x.yml\n"],
+    'build invokes the s390x kas configuration once',
+);
 
 my $distro = read_file(
     'xCAT-genesis-builder/oe/meta-xcat-genesis/conf/distro/xcat-genesis.conf'
@@ -877,6 +906,9 @@ my $smoke_extension = read_file(
 );
 like( $smoke_extension, qr/^XCAT_GENESIS_EXTENSION_NAME = "xcat-smoke"$/m,
     'open smoke extension exercises the build path' );
+like( $smoke_extension,
+    qr/^XCAT_GENESIS_EXTENSION_ARCHITECTURE = "\$\{XCAT_GENESIS_ARCHITECTURE\}"$/m,
+    'smoke extension uses the target architecture identity' );
 
 my $preset = read_file(
     'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-core/xcat-genesis-init/files/00-xcat-genesis.preset'

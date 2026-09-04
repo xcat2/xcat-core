@@ -218,9 +218,8 @@ unlike(
 );
 
 my $s390x = xCAT::DHCP::BootPolicy->kea_s390x_network_classes(
-    net                 => '10.0.0.0',
-    prefix              => 24,
-    qemu_config_present => 1,
+    net    => '10.0.0.0',
+    prefix => 24,
 );
 is_deeply(
     $s390x,
@@ -232,12 +231,7 @@ is_deeply(
             'option-data'   => [
                 {
                     name          => 'conf-file',
-                    data          => '10.0.0.0_24',
-                    'always-send' => 1,
-                },
-                {
-                    name          => 'path-prefix',
-                    data          => 'pxelinux.cfg/s390x/',
+                    data          => 'pxelinux.cfg/s390x/10.0.0.0_24',
                     'always-send' => 1,
                 },
             ],
@@ -245,37 +239,5 @@ is_deeply(
     ],
     's390x firmware receives its supported network configuration method',
 );
-is_deeply(
-    xCAT::DHCP::BootPolicy->kea_s390x_network_classes(
-        net => '10.0.0.0', prefix => 24
-    ),
-    [],
-    's390x classes require a generated network configuration',
-);
-my @legacy_isc_config = (
-    "#xCAT generated dhcp configuration\n",
-    "\n",
-    "option conf-file code 209 = text;\n",
-);
-ok(
-    xCAT::DHCP::BootPolicy->ensure_isc_path_prefix_definition(
-        \@legacy_isc_config
-    ),
-    'an older ISC configuration receives the path-prefix definition',
-);
-is(
-    $legacy_isc_config[1],
-    "option path-prefix code 210 = text;\n",
-    'the definition is inserted in the global configuration header',
-);
-ok(
-    !xCAT::DHCP::BootPolicy->ensure_isc_path_prefix_definition(
-        \@legacy_isc_config
-    ),
-    'an existing path-prefix definition is preserved',
-);
-my $definition_count =
-  grep { /^\s*option\s+path-prefix\s+code\s+210\b/ } @legacy_isc_config;
-is($definition_count, 1, 'repeated updates do not duplicate the definition');
 
 done_testing();

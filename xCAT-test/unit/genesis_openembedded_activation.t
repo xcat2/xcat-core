@@ -112,11 +112,13 @@ like(
     qr{/opt/xcat/share/xcat/netboot/genesis-openembedded/ARCH},
     'the mknb man page documents the OpenEmbedded install namespace',
 );
-like(
-    $mknb_pod,
-    qr/x86.*x86_64.*ppc64.*ppc64le.*armv7hf.*aarch64.*riscv64.*s390x/s,
-    'the mknb man page lists every exact OpenEmbedded architecture',
-);
+for my $architecture (qw(x86 x86_64 ppc64 ppc64le armv7hf aarch64 riscv64 s390x)) {
+    like(
+        $mknb_pod,
+        qr/\b\Q$architecture\E\b/,
+        "the mknb man page lists $architecture",
+    );
+}
 unlike(
     $mknb_pod,
     qr/For ppc64le, use the ppc64 architecture/,
