@@ -131,7 +131,7 @@ The following matrix is the default live validation gate for DHCP backend work.
        through kernel, initrd, and root image when image validation is in scope
    * - QEMU ``s390-ccw``
      - ``s390x``
-     - ``ISC`` and ``Kea``
+     - ``ISC``
      - ``s390-ccw BIOS network IPL``
      - ``makedhcp -n``; backend parser; architecture ``0x001f``; DHCP options
        209; TFTP fetch of the generated ``pxelinux.cfg``-style configuration,
