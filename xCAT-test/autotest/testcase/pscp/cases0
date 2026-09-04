@@ -19,7 +19,7 @@ cmd:echo "test" > /tmp/pscp.tmp
 check:rc==0
 cmd:pscp /tmp/pscp.tmp $$CN:/tmp/
 check:rc==0
-check:$$CN: done
+check:output=~$$CN: done
 cmd:xdsh $$CN "ls -l /tmp |grep pscp.tmp"
 check:rc==0
 check:output=~pscp.tmp
@@ -41,7 +41,7 @@ cmd:echo "test" > /tmp/pscp/pscp.tmp
 check:rc==0
 cmd:pscp -r /tmp/pscp $$CN:/tmp/
 check:rc==0
-check:$$CN: done
+check:output=~$$CN: done
 cmd:xdsh $$CN "ls -l /tmp |grep pscp"
 check:rc==0
 check:output=~pscp
