@@ -757,8 +757,7 @@ sub process_request {
         my $nicip = $normnets->{$net};
         my $xcatd_address = defined($xcatdnormnets->{$net}) ? $xcatdnormnets->{$net} : $nicip;
         $net =~ s/\//_/;
-        if (defined $nobootnicips{$nicip}
-            || ($arch eq 's390x' && defined $nobootnicips{$xcatd_address})) {
+        if (defined($nobootnicips{$nicip})) {
             if ($arch =~ /ppc/ and -r "$tftpdir/pxelinux.cfg/p/$net") {
                 unlink("$tftpdir/pxelinux.cfg/p/$net");
             } elsif ($arch eq 's390x') {
@@ -834,6 +833,9 @@ sub process_request {
                 xcatd_address  => $xcatd_address,
                 xcatdport      => $xcatdport,
                 consolecmdline => $consolecmdline,
+                kernel         => $invisibletouch
+                  ? "xcat/genesis.kernel.$arch"
+                  : "xcat/nbk.$arch",
                 initrd         => $initrd_file,
             );
             if ($config_error) {
@@ -923,7 +925,7 @@ sub _write_s390x_discovery_config {
     my $qemu_config = "# pxelinux.cfg xCAT Genesis s390x\n"
       . "DEFAULT xCAT\n"
       . "LABEL xCAT\n"
-      . "  KERNEL xcat/genesis.kernel.s390x\n"
+      . "  KERNEL $args{kernel}\n"
       . "  INITRD $initrd\n"
       . "  APPEND $cmdline\n";
     my $error = _write_s390x_config($qemu_path, $qemu_config);
