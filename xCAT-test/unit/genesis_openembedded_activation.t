@@ -114,8 +114,8 @@ like(
 );
 like(
     $mknb_pod,
-    qr/\bs390x\b/,
-    'the mknb man page lists the s390x target',
+    qr/x86.*x86_64.*ppc64.*ppc64le.*armv7hf.*aarch64.*riscv64.*s390x/s,
+    'the mknb man page lists every exact OpenEmbedded architecture',
 );
 unlike(
     $mknb_pod,

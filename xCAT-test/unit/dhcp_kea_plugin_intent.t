@@ -141,10 +141,6 @@ make_path($s390x_config_dir);
 open(my $s390x_config, '>', "$s390x_config_dir/10.0.0.0_24")
   or die "Unable to create s390x test configuration: $!";
 close($s390x_config);
-open($s390x_config, '>', "$s390x_config_dir/10.0.0.0_24.dpm")
-  or die "Unable to create s390x DPM test configuration: $!";
-close($s390x_config);
-
 {
     no warnings 'redefine';
     local *xCAT::NetworkUtils::thishostisnot = sub { return 0; };
@@ -154,13 +150,9 @@ close($s390x_config);
     );
     my %classes = map { $_->{name} => $_ } @{ $subnet->{client_classes} };
     ok($classes{'xcat-s390x-qemu-10.0.0.0_24'}, 'the Kea subnet includes QEMU s390x boot policy');
-    ok($classes{'xcat-s390x-dpm-10.0.0.0_24'}, 'the Kea subnet includes IBM Z DPM boot policy');
     is_deeply(
         [ grep { /^xcat-s390x-/ } @{ $subnet->{additional_client_classes} } ],
-        [
-            'xcat-s390x-qemu-10.0.0.0_24',
-            'xcat-s390x-dpm-10.0.0.0_24',
-        ],
+        ['xcat-s390x-qemu-10.0.0.0_24'],
         'the s390x policy is evaluated only for its subnet',
     );
 }

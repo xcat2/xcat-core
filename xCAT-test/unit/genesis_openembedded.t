@@ -872,6 +872,12 @@ like( $extension_class, qr/Restricted Genesis extensions must set LICENSE_FLAGS/
 like( $extension_class, qr/"sha256":/,
     'extension manifests record the image digest' );
 
+my $smoke_extension = read_file(
+    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-extensions/images/xcat-genesis-extension-smoke.bb'
+);
+like( $smoke_extension, qr/^XCAT_GENESIS_EXTENSION_NAME = "xcat-smoke"$/m,
+    'open smoke extension exercises the build path' );
+
 my $preset = read_file(
     'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-core/xcat-genesis-init/files/00-xcat-genesis.preset'
 );

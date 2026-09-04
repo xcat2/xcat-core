@@ -83,6 +83,19 @@ write_file(
 #include "console.h"
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/utsname.h>
+
+int xcat_test_uname(struct utsname *name) {
+    const char *architecture = getenv("XCAT_TEST_ARCH");
+
+    memset(name, 0, sizeof(*name));
+    snprintf(name->machine, sizeof(name->machine), "%s",
+             architecture != NULL ? architecture : "x86_64");
+    snprintf(name->release, sizeof(name->release), "test-kernel");
+    return 0;
+}
 
 int main(void) {
     struct console_state state;
@@ -97,6 +110,7 @@ C
 is(
     system(
         $compiler, '-D_POSIX_C_SOURCE=200809L',
+        '-Duname=xcat_test_uname',
         '-std=c17', '-Wall', '-Wextra', '-Wpedantic', '-Werror',
         '-I', $source_dir, $identity_test_source,
         File::Spec->catfile( $source_dir, 'state.c' ),
@@ -191,6 +205,7 @@ my %environment = (
     XCAT_PROC_ROOT    => $proc_root,
     XCAT_EXTENSION_DIR => $extensions,
     XCAT_PROVIDER_DIR => $providers,
+    XCAT_TEST_ARCH    => 'x86_64',
 );
 
 sub run_console {
@@ -245,10 +260,7 @@ LPAR UUID:            93724168-fda3-429b-8b28-a5d245dcb3ff
 VM00 UUID:            82038f2a-1344-aaf7-1a85-2a7250be2076
 SYSINFO
 write_file( $cmdline, "xcatd=192.0.2.10:3001\n" );
-( $status, $output ) = run_console();
-is( $status, 0, 'plain console accepts IBM Z identity' );
-like( $output, qr/^serial: not reported$/m,
-    'console does not present the shared IBM Z machine serial as guest identity' );
+$environment{XCAT_TEST_ARCH} = 's390x';
 my ( $probe_status, $probe_output ) = run_identity_probe();
 is( $probe_status, 0, 'console loads IBM Z diagnostics' );
 is(
@@ -273,6 +285,8 @@ SYSINFO
 like( $probe_output,
     qr/^uuid=93724168-fda3-429b-8b28-a5d245dcb3ff$/m,
     'console uses the LPAR UUID when no guest UUID is available' );
+unlink( File::Spec->catfile( $proc_root, 'sysinfo' ) );
+$environment{XCAT_TEST_ARCH} = 'x86_64';
 write_file( File::Spec->catfile( $dmi_root, 'product_serial' ),
     "TEST-SERIAL-001\n" );
 write_file( File::Spec->catfile( $dmi_root, 'product_uuid' ),

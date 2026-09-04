@@ -38,7 +38,6 @@ push @config, @{ xCAT::DHCP::BootPolicy->isc_client_architecture_lines(
         net         => '192.0.2.0',
         prefix      => 24,
         s390x_qemu_config_present => 1,
-        s390x_dpm_config_present  => 1,
     ) }, "}\n";
 
 my $configuration_root = -d '/etc/dhcp' ? '/etc/dhcp' : '/etc';

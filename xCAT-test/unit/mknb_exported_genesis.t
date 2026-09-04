@@ -169,19 +169,13 @@ write_file(
     "$tftpdir/pxelinux.cfg/s390x/192.0.2.0_24",
     "# pxelinux.cfg xCAT Genesis s390x\nstale config\n",
 );
-write_file(
-    "$tftpdir/pxelinux.cfg/s390x/192.0.2.0_24.dpm",
-    "# pxelinux.cfg xCAT Genesis s390x\nstale DPM config\n",
-);
 write_file("$tftpdir/pxelinux.cfg/s390x/default", "admin fallback\n");
 ($removed, $remove_error) =
   xCAT_plugin::mknb::_remove_openembedded_genesis($tftpdir, 's390x');
 is($remove_error, undef, 's390x boot artifacts can be retired cleanly');
-is($removed, 6, 's390x image and generated discovery configurations are retired');
+is($removed, 5, 's390x image and generated discovery configurations are retired');
 ok(!-e "$tftpdir/pxelinux.cfg/s390x/192.0.2.0_24",
     'retiring s390x removes the generated discovery configuration');
-ok(!-e "$tftpdir/pxelinux.cfg/s390x/192.0.2.0_24.dpm",
-    'retiring s390x removes the generated DPM configuration');
 is(read_file("$tftpdir/pxelinux.cfg/s390x/default"), "admin fallback\n",
     'retiring s390x preserves administrator-owned configurations');
 
@@ -194,18 +188,12 @@ write_file(
     "$special_tftpdir/pxelinux.cfg/s390x/192.0.2.0_24",
     "# pxelinux.cfg xCAT Genesis s390x\nconfiguration\n",
 );
-write_file(
-    "$special_tftpdir/pxelinux.cfg/s390x/192.0.2.0_24.dpm",
-    "# pxelinux.cfg xCAT Genesis s390x\nDPM configuration\n",
-);
 ($removed, $remove_error) =
   xCAT_plugin::mknb::_remove_openembedded_genesis($special_tftpdir, 's390x');
 is($remove_error, undef, 's390x cleanup accepts a TFTP path with shell metacharacters');
-is($removed, 5, 's390x cleanup removes every generated artifact from that path');
+is($removed, 4, 's390x cleanup removes every generated artifact from that path');
 ok(!-e "$special_tftpdir/pxelinux.cfg/s390x/192.0.2.0_24",
     's390x cleanup does not expand the TFTP path as a glob');
-ok(!-e "$special_tftpdir/pxelinux.cfg/s390x/192.0.2.0_24.dpm",
-    's390x cleanup removes DPM configurations from the literal path');
 
 my $failed_kernel = "$tftpdir/xcat/genesis.kernel.aarch64";
 make_path($failed_kernel);

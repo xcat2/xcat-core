@@ -401,7 +401,7 @@ write_file( File::Spec->catfile( $device_tree, 'model' ),
 write_file( File::Spec->catfile( $device_tree, 'system-id' ),
     "IBM,02AB123\0" );
 write_file( File::Spec->catfile( $proc_root, 'cpuinfo' ),
-    "processor : 0\ncpu : POWER9\nprocessor : 1\ncpu : POWER9\nplatform : PowerNV\n" );
+    "cpu : POWER9\ncpu : POWER9\nplatform : PowerNV\n" );
 $environment{XCAT_TEST_ARCH} = 'ppc64le';
 $environment{XCAT_TEST_RESPONSE} = 'restart';
 is( run_script( $discover_script, \%environment ), 0,
@@ -415,8 +415,8 @@ like( $packet, qr{<serial>02AB123</serial>},
     'Power discovery reports the system serial' );
 like( $packet, qr{<platform>PowerNV</platform>},
     'Power discovery reports the firmware platform' );
-like( $packet, qr{<cpucount>4</cpucount>},
-    'Power discovery keeps the existing processor count' );
+like( $packet, qr{<cpucount>2</cpucount>},
+    'Power discovery counts processor records' );
 like( $packet,
     qr{<uuid>9009-42a-02ab123-525400000002</uuid>},
     'Power discovery creates a stable fallback UUID' );
