@@ -30,17 +30,28 @@ alien -d -g -c -k "${RPM_PACKAGE}" || exit 1
 PACKAGE_ARCH="${EXTRACT_DIR%-*}"
 PACKAGE_ARCH="${PACKAGE_ARCH##*-}"
 
-if [[ ${EXTRACT_DIR} =~ -x86_64- ]]
-then
-	rm -rf "${EXTRACT_DIR//x86_64/amd64}"
-	mv "${EXTRACT_DIR}" "${EXTRACT_DIR//x86_64/amd64}"
-	EXTRACT_DIR="${EXTRACT_DIR//x86_64/amd64}"
+# The rpm carries the Genesis target architecture, the deb must carry the Debian architecture.
+# alien copies the rpm name into the deb and writes "_" as "-", so x86_64 arrives as x86-64.
+case "${PACKAGE_ARCH}" in
+x86_64)
+	ALIEN_ARCH="x86-64" ; DEB_ARCH="amd64" ;;
+ppc64|ppc64le)
+	ALIEN_ARCH="${PACKAGE_ARCH}" ; DEB_ARCH="ppc64el" ;;
+*)
+	ALIEN_ARCH="${PACKAGE_ARCH}" ; DEB_ARCH="${PACKAGE_ARCH}" ;;
+esac
 
-	sed -i -e 's/x86-64/amd64/g' "${EXTRACT_DIR}/debian/control"
-	sed -i -e 's/x86-64/amd64/g' "${EXTRACT_DIR}/debian/changelog"
+if [[ "${DEB_ARCH}" != "${PACKAGE_ARCH}" ]]
+then
+	rm -rf "${EXTRACT_DIR//${PACKAGE_ARCH}/${DEB_ARCH}}"
+	mv "${EXTRACT_DIR}" "${EXTRACT_DIR//${PACKAGE_ARCH}/${DEB_ARCH}}"
+	EXTRACT_DIR="${EXTRACT_DIR//${PACKAGE_ARCH}/${DEB_ARCH}}"
+
+	sed -i -e "s/${ALIEN_ARCH}/${DEB_ARCH}/g" "${EXTRACT_DIR}/debian/control"
+	sed -i -e "s/${ALIEN_ARCH}/${DEB_ARCH}/g" "${EXTRACT_DIR}/debian/changelog"
 fi
 
-sed -i -e "/^Description:/i Breaks: xcat-genesis-scripts-${PACKAGE_ARCH//x86_64/amd64} (<< 2.13.10)" "${EXTRACT_DIR}/debian/control"
+sed -i -e "/^Description:/i Breaks: xcat-genesis-scripts-${DEB_ARCH} (<< 2.13.10)" "${EXTRACT_DIR}/debian/control"
 
 cat >"${EXTRACT_DIR}/debian/preinst" <<EOF
 #!/bin/bash
