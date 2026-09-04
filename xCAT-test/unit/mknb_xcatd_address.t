@@ -514,7 +514,9 @@ use_reporter_address_maps();
 prepare_tftpdir($tmpdir, 'tftpboot-s390x', 's390x');
 make_path("$xCAT::TableUtils::tftpdir/pxelinux.cfg");
 chmod(0700, "$xCAT::TableUtils::tftpdir/pxelinux.cfg");
+my $original_umask = umask 0077;
 $responses = run_mknb('s390x');
+umask $original_umask;
 generation_succeeded($responses, 's390x configuration generation succeeds');
 is((stat "$xCAT::TableUtils::tftpdir/pxelinux.cfg")[2] & 07777, 0755,
     's390x configuration generation repairs the parent directory mode');
@@ -522,6 +524,8 @@ is((stat "$xCAT::TableUtils::tftpdir/pxelinux.cfg")[2] & 07777, 0755,
 my $s390x_qemu_path =
   "$xCAT::TableUtils::tftpdir/pxelinux.cfg/s390x/192.168.144.0_20";
 ok(-f $s390x_qemu_path, 's390x writes a QEMU network IPL configuration');
+is((stat $s390x_qemu_path)[2] & 07777, 0644,
+    's390x writes a TFTP-readable configuration under a restrictive umask');
 my $s390x_classes = xCAT::DHCP::BootPolicy->kea_s390x_network_classes(
     net => '192.168.144.0', prefix => 20,
 );
@@ -560,6 +564,7 @@ $responses = run_mknb('s390x');
 generation_succeeded($responses, 's390x configuration is restored after :noboot');
 
 write_text($s390x_qemu_path, "admin network configuration\n");
+$xCAT::NetworkUtils::normnet_addresses->{'203.0.113.0/24'} = ['203.0.113.10'];
 $responses = run_mknb('s390x');
 ok(
     scalar(grep { ref($_) eq 'HASH' && $_->{error} && "@{$_->{error}}" =~ /Refusing to replace unmanaged/ } @{$responses}),
@@ -567,6 +572,11 @@ ok(
 );
 is(read_config($s390x_qemu_path), "admin network configuration\n",
     'the administrator-owned configuration is unchanged');
+ok(
+    -f "$xCAT::TableUtils::tftpdir/pxelinux.cfg/s390x/203.0.113.0_24",
+    'an unmanaged configuration does not block other networks',
+);
+use_reporter_address_maps();
 unlink($s390x_qemu_path);
 $responses = run_mknb('s390x');
 generation_succeeded($responses, 's390x configuration is restored after removing the unmanaged file');
@@ -604,6 +614,26 @@ like(
     qr/^  KERNEL xcat\/nbk\.s390x$/m,
     'legacy s390x configuration selects its published kernel',
 );
+
+my $s390x_preserved = read_config($s390x_legacy_path);
+{
+    no warnings qw(once redefine);
+    local *xCAT_plugin::mknb::tempfile = sub { die "injected temporary-file failure\n" };
+    my (undef, $s390x_atomic_error) =
+      xCAT_plugin::mknb::_write_s390x_discovery_config(
+        tftpdir        => $s390x_legacy_root,
+        network        => '192.168.144.0_20',
+        xcatd_address  => '192.0.2.20',
+        xcatdport      => 3001,
+        consolecmdline => 'console=ttysclp0',
+        kernel         => 'xcat/nbk.s390x',
+        initrd         => "$s390x_legacy_root/xcat/nbfs.s390x.gz",
+      );
+    like($s390x_atomic_error, qr/injected temporary-file failure/,
+        'temporary-file creation failures are reported');
+}
+is(read_config($s390x_legacy_path), $s390x_preserved,
+    'a failed replacement preserves the installed configuration');
 
 my $s390x_failure_root = "$tmpdir/tftpboot-s390x-failure";
 make_path("$s390x_failure_root/pxelinux.cfg");
