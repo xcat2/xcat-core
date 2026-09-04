@@ -302,11 +302,9 @@ void xcat_load_console_state(struct console_state *state) {
     char path[VALUE_SIZE * 2];
     char release_name[64] = "xCAT Genesis";
     char release_version[32] = "";
-#ifdef XCAT_CONSOLE_TEST
-    const char *test_architecture = getenv("XCAT_TEST_ARCH");
-#endif
     bool xcat_configured;
     bool interface_selected;
+    bool s390_system;
     bool s390_ccw_boot;
 
     memset(state, 0, sizeof(*state));
@@ -347,13 +345,13 @@ void xcat_load_console_state(struct console_state *state) {
         xcat_set_text(state->architecture, sizeof(state->architecture), "unknown");
         xcat_set_text(state->kernel, sizeof(state->kernel), "unknown");
     }
-#ifdef XCAT_CONSOLE_TEST
-    if (test_architecture != NULL)
-        xcat_set_text(state->architecture, sizeof(state->architecture), "%s",
-                      test_architecture);
-#endif
+    snprintf(path, sizeof(path), "%s/sysinfo", proc_root);
+    s390_system = strcmp(state->architecture, "s390x") == 0 ||
+                  access(path, F_OK) == 0;
+    if (s390_system)
+        xcat_set_text(state->architecture, sizeof(state->architecture), "s390x");
 
-    s390_ccw_boot = strcmp(state->architecture, "s390x") == 0 &&
+    s390_ccw_boot = s390_system &&
                      xcat_cmdline_value(cmdline_text, "xcat.bootloader", value,
                                         sizeof(value)) &&
                      strcmp(value, "s390-ccw") == 0;
@@ -370,7 +368,7 @@ void xcat_load_console_state(struct console_state *state) {
                       access(path, F_OK) == 0 ? "UEFI" : "Device Tree");
     } else if (strncmp(state->architecture, "riscv", 5) == 0) {
         xcat_set_text(state->firmware, sizeof(state->firmware), "OpenSBI");
-    } else if (strcmp(state->architecture, "s390x") == 0) {
+    } else if (s390_system) {
         xcat_set_text(state->firmware, sizeof(state->firmware), "%s",
                       s390_ccw_boot ? "s390-ccw BIOS" : "not reported");
     } else {
@@ -394,7 +392,7 @@ void xcat_load_console_state(struct console_state *state) {
         xcat_set_text(state->serial, sizeof(state->serial), "not reported");
     snprintf(path, sizeof(path), "%s/class/dmi/id/product_uuid", sys_root);
     xcat_read_line(path, state->uuid, sizeof(state->uuid));
-    if (strcmp(state->architecture, "s390x") == 0) {
+    if (s390_system) {
         xcat_set_text(state->serial, sizeof(state->serial), "not reported");
         set_s390_identity(proc_root, state);
     }

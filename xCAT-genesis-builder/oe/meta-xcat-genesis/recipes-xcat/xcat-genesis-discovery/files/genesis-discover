@@ -175,26 +175,19 @@ case "$system_vendor $product_name" in
 esac
 [[ -z $s390_virtual ]] || node_type=virtual
 
-cpu_count=$(awk '
-    /^processor([[:space:]]+[0-9]+)?[[:space:]]*:/ {processors++}
-    /^cpu[[:space:]]*:/ {cpus++}
-    END {print (processors > 0 ? processors : cpus + 0)}' \
-    "$proc_root/cpuinfo" 2>/dev/null || printf '0')
-cpu_type=$(awk -F ':' '
-    /^model name[[:space:]]*:/ && model == "" {
-        sub(/^[[:space:]]+/, "", $2); model = $2
-    }
-    /^cpu[[:space:]]*:/ && cpu == "" {
-        sub(/^[[:space:]]+/, "", $2); cpu = $2
-    }
-    /^vendor_id[[:space:]]*:/ && vendor == "" {
-        sub(/^[[:space:]]+/, "", $2); vendor = $2
-    }
-    END {
-        if (model != "") print model
-        else if (cpu != "") print cpu
-        else if (vendor != "") print vendor
-    }' "$proc_root/cpuinfo" 2>/dev/null || true)
+if [[ $architecture == s390x ]]; then
+    cpu_count=$(awk '/^processor[[:space:]]+[0-9]+[[:space:]]*:/ {count++} END {print count + 0}' \
+        "$proc_root/cpuinfo" 2>/dev/null || printf '0')
+    cpu_type=$(awk -F ':' \
+        '/^vendor_id[[:space:]]*:/ {sub(/^[[:space:]]+/, "", $2); print $2; exit}' \
+        "$proc_root/cpuinfo" 2>/dev/null || true)
+else
+    cpu_count=$(awk '/^(processor|cpu)[[:space:]]*:/ {count++} END {print count + 0}' \
+        "$proc_root/cpuinfo" 2>/dev/null || printf '0')
+    cpu_type=$(awk -F ':' \
+        '/^(model name|cpu)[[:space:]]*:/ {sub(/^[[:space:]]+/, "", $2); print $2; exit}' \
+        "$proc_root/cpuinfo" 2>/dev/null || true)
+fi
 memory=$(awk '/^MemTotal:/ {printf "%.0fMB", $2 / 1024; exit}' \
     "$proc_root/meminfo" 2>/dev/null || true)
 disk_size=$(lsblk -b -dn -o NAME,SIZE,TYPE 2>/dev/null \
