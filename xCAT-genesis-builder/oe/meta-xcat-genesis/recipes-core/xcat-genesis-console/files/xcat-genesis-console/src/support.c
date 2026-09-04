@@ -123,6 +123,42 @@ bool xcat_read_key(const char *path, const char *key, char *value, size_t size) 
     return found;
 }
 
+bool xcat_read_colon_key(const char *path, const char *key, char *value, size_t size) {
+    FILE *stream;
+    char *line = NULL;
+    size_t capacity = 0;
+    size_t key_length = strlen(key);
+    bool found = false;
+
+    if (key_length == 0 || size == 0)
+        return false;
+    stream = fopen(path, "r");
+    if (stream == NULL)
+        return false;
+    while (getline(&line, &capacity, stream) >= 0) {
+        char *start;
+        char *end;
+        size_t line_length = strlen(line);
+
+        if (line_length <= key_length || strncmp(line, key, key_length) != 0 ||
+            line[key_length] != ':')
+            continue;
+        start = line + key_length + 1;
+        while (isspace((unsigned char)*start))
+            start++;
+        end = start + strlen(start);
+        while (end > start && isspace((unsigned char)end[-1]))
+            end--;
+        *end = '\0';
+        xcat_copy_printable(value, size, start);
+        found = true;
+        break;
+    }
+    free(line);
+    fclose(stream);
+    return found;
+}
+
 bool xcat_safe_name(const char *value) {
     const unsigned char *cursor = (const unsigned char *)value;
 

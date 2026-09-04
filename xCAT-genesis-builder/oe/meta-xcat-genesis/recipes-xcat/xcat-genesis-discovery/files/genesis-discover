@@ -73,6 +73,14 @@ read_value() {
     tr -d '\000\r\n' <"$value_file" | head -c 512
 }
 
+read_sysinfo_value() {
+    local name=$1
+
+    awk -F ':' -v name="$name" \
+        '$1 == name {sub(/^[[:space:]]+/, "", $2); sub(/[[:space:]]+$/, "", $2); print $2; exit}' \
+        "$proc_root/sysinfo" 2>/dev/null || true
+}
+
 send_packet() {
     if [[ -n ${XCAT_DISCOVERY_SEND_COMMAND:-} ]]; then
         "$XCAT_DISCOVERY_SEND_COMMAND" "$compressed_packet" "$XCATMASTER" "$XCATPORT"
@@ -125,12 +133,29 @@ system_vendor=$(read_value "$sys_root/sys/devices/virtual/dmi/id/sys_vendor" || 
 serial=$(read_value "$sys_root/sys/devices/virtual/dmi/id/product_serial" || true)
 uuid=$(read_value "$sys_root/sys/devices/virtual/dmi/id/product_uuid" || true)
 machine_type=
+s390_virtual=
 [[ -z $system_vendor && -z $product_name ]] \
     || machine_type=${system_vendor:+$system_vendor:}$product_name
 platform=$(awk -F ':' \
     '/^platform[[:space:]]*:/ {sub(/^[[:space:]]+/, "", $2); print $2; exit}' \
     "$proc_root/cpuinfo" 2>/dev/null || true)
-if [[ -z $product_name ]]; then
+if [[ $architecture == s390x ]]; then
+    system_vendor=$(read_sysinfo_value Manufacturer)
+    product_type=$(read_sysinfo_value Type)
+    product_model=$(read_sysinfo_value Model)
+    product_model=${product_model##* }
+    product_name=${product_type}${product_model:+-$product_model}
+    machine_type=$product_name
+    serial=
+    uuid=$(read_sysinfo_value 'VM00 UUID')
+    [[ -n $uuid ]] || uuid=$(read_sysinfo_value 'LPAR UUID')
+    platform=$(read_sysinfo_value 'VM00 Control Program')
+    if [[ -n $platform ]]; then
+        s390_virtual=1
+    else
+        platform=LPAR
+    fi
+elif [[ -z $product_name ]]; then
     product_name=$(read_value "$proc_root/device-tree/model" || true)
     [[ -n $product_name ]] \
         || product_name=$(read_value \
@@ -148,12 +173,28 @@ node_type=
 case "$system_vendor $product_name" in
     *KVM*|*QEMU*|*VMware*|*VirtualBox*|*Bochs*|*Hyper-V*) node_type=virtual ;;
 esac
+[[ -z $s390_virtual ]] || node_type=virtual
 
-cpu_count=$(awk '/^(processor|cpu)[[:space:]]*:/ {count++} END {print count + 0}' \
+cpu_count=$(awk '
+    /^processor([[:space:]]+[0-9]+)?[[:space:]]*:/ {processors++}
+    /^cpu[[:space:]]*:/ {cpus++}
+    END {print (processors > 0 ? processors : cpus + 0)}' \
     "$proc_root/cpuinfo" 2>/dev/null || printf '0')
-cpu_type=$(awk -F ':' \
-    '/^(model name|cpu)[[:space:]]*:/ {sub(/^[[:space:]]+/, "", $2); print $2; exit}' \
-    "$proc_root/cpuinfo" 2>/dev/null || true)
+cpu_type=$(awk -F ':' '
+    /^model name[[:space:]]*:/ && model == "" {
+        sub(/^[[:space:]]+/, "", $2); model = $2
+    }
+    /^cpu[[:space:]]*:/ && cpu == "" {
+        sub(/^[[:space:]]+/, "", $2); cpu = $2
+    }
+    /^vendor_id[[:space:]]*:/ && vendor == "" {
+        sub(/^[[:space:]]+/, "", $2); vendor = $2
+    }
+    END {
+        if (model != "") print model
+        else if (cpu != "") print cpu
+        else if (vendor != "") print vendor
+    }' "$proc_root/cpuinfo" 2>/dev/null || true)
 memory=$(awk '/^MemTotal:/ {printf "%.0fMB", $2 / 1024; exit}' \
     "$proc_root/meminfo" 2>/dev/null || true)
 disk_size=$(lsblk -b -dn -o NAME,SIZE,TYPE 2>/dev/null \

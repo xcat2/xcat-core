@@ -201,6 +201,8 @@ static void set_boot_loader(const char *cmdline, char *loader, size_t size) {
             xcat_set_text(loader, size, "PXELINUX");
         else if (strcmp(value, "elilo") == 0)
             xcat_set_text(loader, size, "ELILO");
+        else if (strcmp(value, "s390-ccw") == 0)
+            xcat_set_text(loader, size, "QEMU TFTP loader");
         else
             xcat_set_text(loader, size, "unrecognized");
     } else if (xcat_cmdline_value(cmdline, "BOOTIF", value, sizeof(value))) {
@@ -214,6 +216,15 @@ static bool useful_identity(const char *value) {
     return value[0] != '\0' && strcmp(value, "None") != 0 && strcmp(value, "Not Specified") != 0 &&
            strcmp(value, "To be filled by O.E.M.") != 0 && strcmp(value, "not reported") != 0 &&
            strcmp(value, "unknown") != 0;
+}
+
+static void set_s390_identity(const char *proc_root, struct console_state *state) {
+    char path[VALUE_SIZE * 2];
+
+    snprintf(path, sizeof(path), "%s/sysinfo", proc_root);
+    if (!useful_identity(state->uuid) &&
+        !xcat_read_colon_key(path, "VM00 UUID", state->uuid, sizeof(state->uuid)))
+        xcat_read_colon_key(path, "LPAR UUID", state->uuid, sizeof(state->uuid));
 }
 
 static void split_action(const char *destiny, char *action, size_t action_size, char *target,
@@ -291,8 +302,12 @@ void xcat_load_console_state(struct console_state *state) {
     char path[VALUE_SIZE * 2];
     char release_name[64] = "xCAT Genesis";
     char release_version[32] = "";
+#ifdef XCAT_CONSOLE_TEST
+    const char *test_architecture = getenv("XCAT_TEST_ARCH");
+#endif
     bool xcat_configured;
     bool interface_selected;
+    bool s390_ccw_boot;
 
     memset(state, 0, sizeof(*state));
     xcat_configured = xcat_cmdline_value(cmdline_text, "xcatd", state->xcat_endpoint,
@@ -332,6 +347,16 @@ void xcat_load_console_state(struct console_state *state) {
         xcat_set_text(state->architecture, sizeof(state->architecture), "unknown");
         xcat_set_text(state->kernel, sizeof(state->kernel), "unknown");
     }
+#ifdef XCAT_CONSOLE_TEST
+    if (test_architecture != NULL)
+        xcat_set_text(state->architecture, sizeof(state->architecture), "%s",
+                      test_architecture);
+#endif
+
+    s390_ccw_boot = strcmp(state->architecture, "s390x") == 0 &&
+                     xcat_cmdline_value(cmdline_text, "xcat.bootloader", value,
+                                        sizeof(value)) &&
+                     strcmp(value, "s390-ccw") == 0;
 
     snprintf(path, sizeof(path), "%s/firmware/efi", sys_root);
     if (strncmp(state->architecture, "ppc64", 5) == 0) {
@@ -345,6 +370,9 @@ void xcat_load_console_state(struct console_state *state) {
                       access(path, F_OK) == 0 ? "UEFI" : "Device Tree");
     } else if (strncmp(state->architecture, "riscv", 5) == 0) {
         xcat_set_text(state->firmware, sizeof(state->firmware), "OpenSBI");
+    } else if (strcmp(state->architecture, "s390x") == 0) {
+        xcat_set_text(state->firmware, sizeof(state->firmware), "%s",
+                      s390_ccw_boot ? "s390-ccw BIOS" : "not reported");
     } else {
         snprintf(path, sizeof(path), "%s/firmware/efi", sys_root);
         xcat_set_text(state->firmware, sizeof(state->firmware), "%s",
@@ -365,7 +393,12 @@ void xcat_load_console_state(struct console_state *state) {
     if (!useful_identity(state->serial))
         xcat_set_text(state->serial, sizeof(state->serial), "not reported");
     snprintf(path, sizeof(path), "%s/class/dmi/id/product_uuid", sys_root);
-    if (!xcat_read_line(path, state->uuid, sizeof(state->uuid)) || !useful_identity(state->uuid))
+    xcat_read_line(path, state->uuid, sizeof(state->uuid));
+    if (strcmp(state->architecture, "s390x") == 0) {
+        xcat_set_text(state->serial, sizeof(state->serial), "not reported");
+        set_s390_identity(proc_root, state);
+    }
+    if (!useful_identity(state->uuid))
         xcat_set_text(state->uuid, sizeof(state->uuid), "not reported");
 
     interface_selected =
