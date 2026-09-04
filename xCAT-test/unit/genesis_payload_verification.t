@@ -15,38 +15,45 @@ use XCAT::Test::File qw(repo_path);
 
 my $verifier = repo_path('xCAT-genesis-builder/verify-genesis-payload');
 plan skip_all => 'verify-genesis-payload not found' unless -f $verifier;
-plan tests => 9;
+plan tests => 11;
 
 my $tmpdir = tempdir(CLEANUP => 1);
 
 # A complete payload: OpenSSH 9.9 sshd plus its session helper, tmux plus a UTF-8 locale.
-my $good = build_payload(sshd_execs_session => 1, session_helper => 1, tmux => 1, locale => 1, dhclient => 1);
+my $good = build_payload(sshd_execs_session => 1, session_helper => 1, tmux => 1, locale => 1, dhclient => 1, mktemp => 1);
 my ($rc, $err) = run($good, 'usr/sbin/dhclient');
 is($rc, 0, 'a complete payload passes') or diag($err);
 
 # doxcat calls dhclient with ISC flags. The released el9 image carried dhclient.conf and
 # dhclient-script but no dhclient, so Genesis never acquired an address.
-my $nodhcp = build_payload(sshd_execs_session => 1, session_helper => 1, tmux => 1, locale => 1, dhclient => 0);
+my $nodhcp = build_payload(sshd_execs_session => 1, session_helper => 1, tmux => 1, locale => 1, dhclient => 0, mktemp => 1);
 ($rc, $err) = run($nodhcp, 'usr/sbin/dhclient');
 isnt($rc, 0, 'a payload without dhclient fails');
 like($err, qr{usr/sbin/dhclient}, 'the missing dhclient is named');
 
 # sshd 9.9 execs /usr/libexec/openssh/sshd-session for every connection.
-my $nohelper = build_payload(sshd_execs_session => 1, session_helper => 0, tmux => 1, locale => 1, dhclient => 1);
+my $nohelper = build_payload(sshd_execs_session => 1, session_helper => 0, tmux => 1, locale => 1, dhclient => 1, mktemp => 1);
 ($rc, $err) = run($nohelper, 'usr/sbin/dhclient');
 isnt($rc, 0, 'a payload whose sshd execs sshd-session but does not ship it fails');
 like($err, qr{sshd-session}, 'the missing sshd-session is named');
 
 # OpenSSH 8 does not use the helper, so el8 must still pass without it.
-my $openssh8 = build_payload(sshd_execs_session => 0, session_helper => 0, tmux => 1, locale => 1, dhclient => 1);
+my $openssh8 = build_payload(sshd_execs_session => 0, session_helper => 0, tmux => 1, locale => 1, dhclient => 1, mktemp => 1);
 ($rc, $err) = run($openssh8, 'usr/sbin/dhclient');
 is($rc, 0, 'an OpenSSH 8 payload passes without sshd-session') or diag($err);
 
 # tmux without a UTF-8 locale is what stopped doxcat from ever running.
-my $nolocale = build_payload(sshd_execs_session => 1, session_helper => 1, tmux => 1, locale => 0, dhclient => 1);
+my $nolocale = build_payload(sshd_execs_session => 1, session_helper => 1, tmux => 1, locale => 0, dhclient => 1, mktemp => 1);
 ($rc, $err) = run($nolocale, 'usr/sbin/dhclient');
 isnt($rc, 0, 'a payload with tmux and no UTF-8 locale fails');
 like($err, qr{C\.utf8}, 'the missing locale is named');
+
+# getdestiny makes its request file with mktemp. Without it the node never reports its destiny,
+# so xcatd never sets nodelist.status and the node stays at powering-on.
+my $nomktemp = build_payload(sshd_execs_session => 1, session_helper => 1, tmux => 1, locale => 1, dhclient => 1, mktemp => 0);
+($rc, $err) = run($nomktemp, 'usr/sbin/dhclient');
+isnt($rc, 0, 'a payload without mktemp fails');
+like($err, qr{usr/bin/mktemp}, 'the missing mktemp is named');
 
 ($rc, $err) = run("$tmpdir/does-not-exist");
 is($rc >> 0, 2, 'a missing payload directory is a usage error');
@@ -69,6 +76,7 @@ sub build_payload {
         write_text("$root/usr/lib/locale/C.utf8/LC_CTYPE", "ctype\n");
     }
     write_text("$root/usr/sbin/dhclient", "dhclient\n") if $opt{dhclient};
+    write_text("$root/usr/bin/mktemp", "mktemp\n") if $opt{mktemp};
     return $root;
 }
 
