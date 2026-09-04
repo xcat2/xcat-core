@@ -37,10 +37,10 @@ sub ddns_tsig_algorithm {
 
     my $settings = $ctx->{omapi_settings} || xCAT::DHCP::OmapiPolicy->settings();
 
-    # Keep old Net::DNS on MD5 unless the administrator explicitly selects a
-    # different OMAPI algorithm. Old Net::DNS can sign non-MD5 updates only
-    # through a KEY RR, which ddns_sign_update builds below.
-    return "hmac-md5" if (!net_dns_uses_keyfile() && !$settings->{algorithm_explicit});
+    # $ctx->{tsig_algorithm} is the algorithm the named.conf key stanza already declares.
+    # The Net::DNS version does not select the algorithm: old Net::DNS signs every algorithm
+    # except MD5 through a KEY RR, which ddns_sign_update builds.
+    return $settings->{algorithm} if $settings->{algorithm_explicit};
     return $ctx->{tsig_algorithm} || $settings->{algorithm};
 }
 
@@ -65,13 +65,17 @@ sub ddns_sign_update {
         return;
     }
 
-    if ($settings->{algorithm} eq 'hmac-md5') {
+    # named matches the key by name and by algorithm. Sign with the algorithm the key stanza
+    # declares, not with the OMAPI default.
+    my $algorithm = ddns_tsig_algorithm($ctx);
+    if ($algorithm eq 'hmac-md5') {
         $update->sign_tsig($settings->{key_name}, $ctx->{privkey});
         return;
     }
 
-    my $owner = xCAT::DHCP::OmapiPolicy->key_owner($settings);
-    my $keyrr = Net::DNS::RR->new("$owner IN KEY 512 3 $settings->{key_rr_type} $ctx->{privkey}");
+    my $owner   = xCAT::DHCP::OmapiPolicy->key_owner($settings);
+    my $rr_type = xCAT::DHCP::OmapiPolicy->algorithm_rr_type($algorithm);
+    my $keyrr   = Net::DNS::RR->new("$owner IN KEY 512 3 $rr_type $ctx->{privkey}");
     $update->sign_tsig($keyrr);
 }
 
@@ -1343,10 +1347,6 @@ sub update_namedconf {
                         && (!$algorithmnow || lc($algorithmnow) ne $omapi_settings->{algorithm}) )
                     {
                         $ctx->{tsig_algorithm} = $omapi_settings->{algorithm};
-                        push @newnamed, ddns_key_contents($ctx);
-                        $ctx->{restartneeded} = 1;
-                    } elsif ($algorithmnow && !net_dns_uses_keyfile() && lc($algorithmnow) ne "hmac-md5") {
-                        $ctx->{tsig_algorithm} = "hmac-md5";
                         push @newnamed, ddns_key_contents($ctx);
                         $ctx->{restartneeded} = 1;
                     } else {
