@@ -22,12 +22,16 @@ if [ "$#" -eq 0 ]; then
 fi
 
 for architecture do
-    case " $supported_architectures " in
-        *" $architecture "*) ;;
-        *)
-            printf 'Unsupported Genesis architecture: %s\n' "$architecture" >&2
-            exit 2
-            ;;
-    esac
+    architecture_supported=0
+    for candidate in $supported_architectures; do
+        if [ "$architecture" = "$candidate" ]; then
+            architecture_supported=1
+            break
+        fi
+    done
+    if [ "$architecture_supported" -ne 1 ]; then
+        printf 'Unsupported Genesis architecture: %s\n' "$architecture" >&2
+        exit 2
+    fi
     "$KAS" build "$oe_dir/kas/$architecture.yml"
 done
