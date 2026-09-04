@@ -136,13 +136,6 @@ The following matrix is the default live validation gate for DHCP backend work.
      - ``makedhcp -n``; backend parser; architecture ``0x001f``; DHCP options
        209 and 210; TFTP fetch of the generated ``pxelinux.cfg``-style configuration,
        Genesis kernel, and initramfs
-   * - IBM Z DPM
-     - ``s390x``
-     - ``ISC`` and ``Kea``
-     - configuration handoff only
-     - backend parser; architecture ``0x0020``; generated network configuration
-       offered as the DHCP boot filename; physical boot remains unvalidated
-
 Kea Boot and Reservation Regression Matrix
 ------------------------------------------
 

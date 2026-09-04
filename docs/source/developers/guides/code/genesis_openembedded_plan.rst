@@ -99,8 +99,7 @@ and z/VM Genesis networking therefore remain unvalidated.
 Genesis does not use the shared CEC serial as an s390x node identifier.
 QEMU validation covers network IPL, DHCP options 209 and 210, TFTP, and the
 network-specific ``pxelinux.cfg``-style configuration written by ``mknb``.
-For DPM clients, DHCP architecture 32 receives a DPM-formatted configuration
-as its boot filename.  This path has parser coverage but no physical validation.
+This release does not advertise a DPM boot configuration.
 Existing xCAT s390x operating-system provisioning remains unchanged.
 
 xCAT protocol
@@ -285,8 +284,8 @@ References
   <https://kas.readthedocs.io/en/latest/userguide/project-configuration.html>`_
 * `NetworkManager dispatcher interface
   <https://networkmanager.dev/docs/api/latest/NetworkManager-dispatcher.html>`_
-* `IBM Z DPM network boot server configuration
-  <https://www.ibm.com/docs/en/systems-hardware/zsystems/2964-N63?topic=administrators-customizing-network-boot-server-environment>`_
+* `QEMU s390x network boot
+  <https://www.qemu.org/docs/master/system/s390x/bootdevices.html>`_
 * `NetworkManager initrd generator
   <https://networkmanager.dev/docs/api/latest/nm-initrd-generator.html>`_
 * `systemd system extensions
