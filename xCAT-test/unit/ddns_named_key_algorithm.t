@@ -3,6 +3,10 @@
 # makedns must sign every update with the algorithm the named.conf key stanza declares.
 # named matches a TSIG key by name AND algorithm, so a stanza that does not agree with the
 # signature makes named reject every update and makedns exit 1.
+#
+# Run this test with XCATROOT set to the tree under test. xCAT::Table does
+# "use lib $::XCATROOT/lib/perl", so an installed /opt/xcat shadows the modules under test:
+#   XCATROOT=$PWD/xCAT-server prove xCAT-test/unit/ddns_named_key_algorithm.t
 
 use strict;
 use warnings;
