@@ -215,8 +215,7 @@ foreach (@ndrivers, @default_ndrivers) {
     }
 }
 
-my $uarch = $arch;
-$uarch = "amd64" if ($arch eq x86_64);
+my $uarch = xCAT::Utils->debian_arch($arch);
 
 
 unless ($onlyinitrd) {

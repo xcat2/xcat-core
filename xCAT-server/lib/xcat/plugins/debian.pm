@@ -368,22 +368,8 @@ sub copycd
     # So that I can use amd64 below
     my $debarch = $darch;
 
-    if ($darch and $darch =~ /i.86/)
-    {
-        $darch = "x86";
-    }
-    elsif ($darch and $darch =~ /ppc64el/)
-    {
-        $darch = "ppc64el";
-    }
-    elsif ($darch and ($darch =~ /ppc/ or $darch =~ /powerpc/))
-    {
-        $darch = "ppc64";
-    }
-    elsif ($darch and $darch =~ /amd64/)
-    {
-        $darch = "x86_64";
-    }
+    my $mapped = xCAT::Utils->xcat_arch_from_debian($darch);
+    $darch = $mapped if $mapped;
 
     if ($darch)
     {
