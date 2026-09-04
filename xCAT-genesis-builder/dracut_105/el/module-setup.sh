@@ -47,6 +47,9 @@ install() {
     dracut_install mount.nfs sshd vi reboot lspci parted tmux mkfs mkfs.ext4 mkfs.xfs xfs_db
     #dracut_install libvirtd /usr/share/libvirt/cpu_map.xml /usr/bin/qemu-img /usr/libexec/qemu-kvm
     dracut_install mkswap df ifenslave ssh-keygen scp clear
+    # getdestiny makes its request file with mktemp. Without it the node reports no
+    # destiny, so xcatd never moves nodelist.status past powering-on.
+    dracut_install mktemp
     dracut_install lldpad
 
     # RHEL 10 packages no ISC dhcp-client. Install whichever client the build root carries;

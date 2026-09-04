@@ -83,29 +83,7 @@ if (!(-e $nodestanza)) {
 ####nodesetshell test for genesis
 ####################################
 if ($genesis_nodesetshell_test) {
-    send_msg(2, "[$$]:Running nodeset NODE shell test...............");
-    `nodeset $noderange shell`;
-    if ($?) {
-        send_msg(0, "[$$]:nodeset $noderange shell failed...............");
-        exit 1;
-    }
-    `rpower $noderange boot`;
-    if ($?) {
-        send_msg(0, "[$$]:rpower $noderange failed...............");
-        exit 1;
-    }
-    else {
-        send_msg(2, "Installing with \"nodeset $noderange shell\" for shell test");
-        sleep 120; # wait 2 min for install to finish
-        wait_for_boot();
-    }
-    #run nodeshell test
-    send_msg(2, "prepare for nodeshell script.");
-    if ( &testxdsh(3)) {
-        send_msg(0, "[$$]:Could not verify test results using xdsh...............");
-        exit 1;
-    }
-    send_msg(2, "[$$]:Running nodesetshell test success...............");
+    exit 1 if &run_nodeset_shell_test();
 }
 ####################################
 ####runcmd test for genesis
@@ -140,6 +118,36 @@ if ($clear_env) {
         exit 1;
     }
     send_msg(2, "[$$]:Clear genesis test enviroment success...............");
+}
+##################################
+#run_nodeset_shell_test
+#################################
+sub run_nodeset_shell_test {
+    send_msg(2, "[$$]:Running nodeset NODE shell test...............");
+    `nodeset $noderange shell`;
+    if ($?) {
+        send_msg(0, "[$$]:nodeset $noderange shell failed...............");
+        return 1;
+    }
+    `rpower $noderange boot`;
+    if ($?) {
+        send_msg(0, "[$$]:rpower $noderange failed...............");
+        return 1;
+    }
+    send_msg(2, "Installing with \"nodeset $noderange shell\" for shell test");
+    sleep 120; # wait 2 min for install to finish
+    if (&wait_for_node_status("shell")) {
+        send_msg(0, "[$$]:$noderange did not report the shell destiny...............");
+        return 1;
+    }
+    #run nodeshell test
+    send_msg(2, "prepare for nodeshell script.");
+    if (&testxdsh(3)) {
+        send_msg(0, "[$$]:Could not verify test results using xdsh...............");
+        return 1;
+    }
+    send_msg(2, "[$$]:Running nodesetshell test success...............");
+    return 0;
 }
 ##################################
 #report_genesis_files
@@ -223,7 +231,7 @@ sub rungenesiscmd {
     else {
         send_msg(2, "Installing with \"$rinstall_cmd\" for runcmd test");
         sleep 120; # wait 2 min for install to finish
-        wait_for_boot();
+        $value = -1 if &wait_for_node_status("configuring");
     }
     return $value;
 }
@@ -266,7 +274,7 @@ sub rungenesisimg {
     } else {
         send_msg(2, "Installing with \"$rinstall_cmd\" for runimage test\n");
         sleep 120; # wait 2 min for install to finish
-        wait_for_boot();
+        $value = -1 if &wait_for_node_status("booting");
     }
     return $value;
 }
@@ -375,8 +383,9 @@ sub clearenv {
     `cat $nodestanza | chdef -z`;
     unlink("$nodestanza");
     }
+    # "rinstall <node> boot" boots the node from its disk, which carries no operating system,
+    # so the node reports no destiny and nodelist.status stays at powering-on. Only wait.
     sleep 120; # wait 2 min for reboot to finish
-    wait_for_boot();
     return 0;
 }
 ####################################
@@ -448,9 +457,10 @@ sub send_msg {
 
 }
 #########################################
-### Wait for node to be in "booted" state
+### Wait for the node to report the status its destiny implies
 ##########################################
-sub wait_for_boot {
+sub wait_for_node_status {
+    my ($expected) = @_;
     my $iterations = 30; # Max wait 30x10 = 5 min
     my $sleep_interval = 10;
     my $boot_status;
@@ -458,11 +468,11 @@ sub wait_for_boot {
     foreach my $i (1..$iterations) {
         $boot_status = `lsdef $noderange -i status -c | cut -d'=' -f2`;
         chop($boot_status);
-        if ($boot_status eq "booted") {
+        if ($boot_status eq $expected) {
             return 0;
         }
         sleep $sleep_interval;
     }
-    print "After $iterations iterations node status: $boot_status \n";
+    print "After $iterations iterations node status: $boot_status, expected $expected \n";
     return 1;
 }

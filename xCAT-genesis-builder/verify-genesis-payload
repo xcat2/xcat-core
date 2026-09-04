@@ -37,6 +37,7 @@ for path in "$@"; do
 done
 
 require usr/sbin/sshd "Genesis is reached over ssh"
+require usr/bin/mktemp "getdestiny makes its request file with it"
 
 # OpenSSH 9.8 split the per-connection work into sshd-session, which sshd execs by absolute
 # path. EL9 carries OpenSSH 9.9, so an image with sshd alone refuses every connection.

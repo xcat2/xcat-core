@@ -52,6 +52,9 @@ install() {
     dracut_install mount.nfs sshd vi reboot lspci parted screen mkfs mkfs.ext4 mkfs.btrfs
     #dracut_install libvirtd /usr/share/libvirt/cpu_map.xml /usr/bin/qemu-img /usr/libexec/qemu-kvm
     dracut_install mkswap df ifenslave ssh-keygen scp clear
+    # getdestiny makes its request file with mktemp. Without it the node reports no
+    # destiny, so xcatd never moves nodelist.status past powering-on.
+    dracut_install mktemp
     dracut_install dhclient lldpad
 
     # OpenSSH 9.8 moved the per-connection work into sshd-session, which sshd execs by
