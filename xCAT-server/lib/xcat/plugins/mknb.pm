@@ -302,10 +302,14 @@ sub _remove_openembedded_genesis {
         "$directory/genesis.exact-arch.$arch",
     );
     if ($arch eq 's390x') {
-        foreach my $path (glob "$tftpdir/pxelinux.cfg/s390x/*") {
-            if (_is_generated_s390x_config($path)) {
-                push @artifacts, $path;
+        my $config_directory = "$tftpdir/pxelinux.cfg/s390x";
+        if (opendir(my $config_stream, $config_directory)) {
+            foreach my $name (readdir $config_stream) {
+                next if $name eq '.' || $name eq '..';
+                my $path = "$config_directory/$name";
+                push @artifacts, $path if _is_generated_s390x_config($path);
             }
+            closedir $config_stream;
         }
     }
     my $removed = 0;
@@ -739,6 +743,7 @@ sub process_request {
         chmod(0755, "$tftpdir/boot/grub2");
     } elsif ($arch eq 's390x') {
         mkpath "$tftpdir/pxelinux.cfg/s390x";
+        chmod 0755, "$tftpdir/pxelinux.cfg";
         chmod 0755, "$tftpdir/pxelinux.cfg/s390x";
     }
     my $dopxe = 0;
@@ -752,9 +757,11 @@ sub process_request {
             if ($arch =~ /ppc/ and -r "$tftpdir/pxelinux.cfg/p/$net") {
                 unlink("$tftpdir/pxelinux.cfg/p/$net");
             } elsif ($arch eq 's390x') {
-                my $path = "$tftpdir/pxelinux.cfg/s390x/$net";
-                if (_is_generated_s390x_config($path)) {
-                    unlink $path;
+                foreach my $path (
+                    "$tftpdir/pxelinux.cfg/s390x/$net",
+                    "$tftpdir/pxelinux.cfg/s390x/$net.dpm",
+                  ) {
+                    unlink $path if _is_generated_s390x_config($path);
                 }
             }
             next;
@@ -918,6 +925,19 @@ sub _write_s390x_discovery_config {
       . "  APPEND $cmdline\n";
     my $error = _write_s390x_config($qemu_path, $qemu_config);
     return (undef, $error) if $error;
+
+    my $dpm_path = "$qemu_path.dpm";
+    my $dpm_config = "# pxelinux.cfg xCAT Genesis s390x\n"
+      . "DEFAULT xCAT\n"
+      . "label xCAT\n"
+      . "  kernel=xcat/genesis.kernel.s390x\n"
+      . "  initrd=$initrd\n"
+      . "  append=$cmdline\n";
+    $error = _write_s390x_config($dpm_path, $dpm_config);
+    if ($error) {
+        unlink $qemu_path;
+        return (undef, $error);
+    }
 
     return ($qemu_path, undef);
 }

@@ -114,8 +114,9 @@ sub kea_s390x_network_classes {
     my $safe_network = $network_id;
     $safe_network =~ s{[^[:alnum:]_.-]}{_}gxms;
 
-    return [
-        {
+    my @classes;
+    if ( $opts{qemu_config_present} ) {
+        push @classes, {
             name            => "xcat-s390x-qemu-$safe_network",
             test            => 'option[93].hex == 0x001f',
             additional_only => 1,
@@ -131,8 +132,17 @@ sub kea_s390x_network_classes {
                     'always-send' => 1,
                 },
             ],
-        },
-    ];
+        };
+    }
+    if ( $opts{dpm_config_present} ) {
+        push @classes, {
+            name             => "xcat-s390x-dpm-$safe_network",
+            test             => 'option[93].hex == 0x0020',
+            additional_only  => 1,
+            'boot-file-name' => "pxelinux.cfg/s390x/$network_id.dpm",
+        };
+    }
+    return \@classes;
 }
 
 sub ensure_isc_path_prefix_definition {
@@ -182,9 +192,15 @@ sub isc_client_architecture_lines {
         "    } else if option client-architecture = 00:1c { #riscv64 uefi http boot\n ",
         "      option vendor-class-identifier \"HTTPClient\";\n",
         "      filename \"http://$tftp$portsuffix/tftpboot/boot/grub2/grub2.riscv64\";\n",
-        "    } else if option client-architecture = 00:1f { #QEMU s390x\n ",
-        "      option path-prefix = \"pxelinux.cfg/s390x/\";\n",
-        "      option conf-file = \"${net}_${maskbits}\";\n",
+        ($opts{s390x_qemu_config_present} ? (
+            "    } else if option client-architecture = 00:1f { #QEMU s390x\n ",
+            "      option path-prefix = \"pxelinux.cfg/s390x/\";\n",
+            "      option conf-file = \"${net}_${maskbits}\";\n",
+        ) : ()),
+        ($opts{s390x_dpm_config_present} ? (
+            "    } else if option client-architecture = 00:20 { #IBM Z DPM\n ",
+            "      filename \"pxelinux.cfg/s390x/${net}_${maskbits}.dpm\";\n",
+        ) : ()),
         "    } else if option client-architecture = 00:0e { #OPAL-v3\n ",
         "        option conf-file = \"http://$tftp$portsuffix/tftpboot/pxelinux.cfg/p/${net}_${maskbits}\";\n",
         "    } else if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { #for onie on cumulus switch\n",

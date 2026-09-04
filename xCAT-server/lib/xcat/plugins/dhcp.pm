@@ -3368,8 +3368,10 @@ sub kea_subnet4_intent
       };
     push @client_classes, @{
         xCAT::DHCP::BootPolicy->kea_s390x_network_classes(
-            net    => $net,
-            prefix => $prefix,
+            net                 => $net,
+            prefix              => $prefix,
+            qemu_config_present => -f "$tftpdir/pxelinux.cfg/s390x/${net}_${prefix}",
+            dpm_config_present  => -f "$tftpdir/pxelinux.cfg/s390x/${net}_${prefix}.dpm",
         )
       };
     if (@client_classes) {
@@ -4534,6 +4536,10 @@ sub addnet
                 tftpdir     => $tftpdir,
                 net         => $net,
                 prefix      => $maskbits,
+                s390x_qemu_config_present =>
+                  -f "$tftpdir/pxelinux.cfg/s390x/${net}_${maskbits}",
+                s390x_dpm_config_present =>
+                  -f "$tftpdir/pxelinux.cfg/s390x/${net}_${maskbits}.dpm",
             ) };
 
         if ($range) {
