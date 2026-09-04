@@ -327,6 +327,41 @@ sub genesis_lzma_command {
     return;
 }
 
+#-------------------------------------------------------------------------------
+
+=head3 stage_genesis_payload
+
+Descriptions:
+    Copy the Genesis payload into place for mknb: for a legacy image the unpacked
+    root tree and then the kernel, for an exported image the nbroot tree.
+
+    Extracted so the outcome can be driven directly. The copies are the only
+    place mknb learns that an installed Genesis image is unusable, and a caller
+    cannot tell WHICH copy failed from a single exit status.
+
+Arguments:
+    genesis_type, genesis_dir, tftpdir, arch, tempdir, and an optional run
+    coderef used in place of system() by the tests.
+Returns:
+    (rc, source) -- rc is the exit status of the copy that failed, and source
+    names it, so the caller reports the file it could not read.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub stage_genesis_payload {
+    my (%a)  = @_;
+    my $run  = $a{run} || sub { return system($_[0]); };
+    my $rc;
+    if (($a{genesis_type} // '') eq 'legacy') {
+        $rc = $run->("shopt -s dotglob; GLOBIGNORE=\".:..\" cp -a $a{genesis_dir}/fs/* $a{tempdir}");
+        $rc = $run->("cp -a $a{genesis_dir}/kernel $a{tftpdir}/xcat/genesis.kernel.$a{arch}");
+        return ($rc, "$a{genesis_dir}/fs");
+    }
+    $rc = $run->("cp -a $a{genesis_dir}/nbroot/* $a{tempdir}");
+    return ($rc, "$a{genesis_dir}/nbroot");
+}
+
 sub process_request {
     my $request  = shift;
     my $callback = shift;
@@ -555,21 +590,13 @@ sub process_request {
     unless (-e "$tftpdir/xcat") {
         mkpath("$tftpdir/xcat");
     }
-    my $rc;
-    if ($genesis_type eq 'legacy') {
-        $rc = system("shopt -s dotglob; GLOBIGNORE=\".:..\" cp -a $genesis_dir/fs/* $tempdir");
-        $rc = system("cp -a $genesis_dir/kernel $tftpdir/xcat/genesis.kernel.$arch");
-        $invisibletouch = 1;
-    } else {
-        $rc = system("cp -a $genesis_dir/nbroot/* $tempdir");
-    }
+    $invisibletouch = 1 if $genesis_type eq 'legacy';
+    my ($rc, $failed_src) = stage_genesis_payload(
+        genesis_type => $genesis_type, genesis_dir => $genesis_dir,
+        tftpdir => $tftpdir, arch => $arch, tempdir => $tempdir);
     if ($rc) {
         system("rm -rf $tempdir");
-        if ($invisibletouch) {
-            $callback->({ error => ["Failed to copy $genesis_dir/fs contents"], errorcode => [1] });
-        } else {
-            $callback->({ error => ["Failed to copy $genesis_dir/nbroot contents"], errorcode => [1] });
-        }
+        $callback->({ error => ["Failed to copy $failed_src contents"], errorcode => [1] });
         return;
     }
     my $sshdir;
