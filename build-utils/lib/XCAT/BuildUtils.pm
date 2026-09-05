@@ -147,16 +147,22 @@ use constant XCAT_PROBE_HELPERS => qw(
     ServiceNodeUtils.pm
 );
 
-# Packages whose .deb carries a real architecture. Everything else in xcat-core is
-# Perl and ships as Architecture: all -- one binary serving every Ubuntu release and
-# every arch, which is why this build never needs a per-codename chroot.
-my %ARCH_PACKAGES = map { $_ => 1 } qw(xCAT xCATsn xCAT-genesis-scripts);
+# Packages whose .deb carries a real architecture, and the architectures each is built
+# for. Everything else in xcat-core is Perl and ships as Architecture: all -- one binary
+# serving every Ubuntu release and every arch, which is why this build never needs a
+# per-codename chroot. xCAT-genesis-scripts has no riscv64 control file: riscv64 Genesis
+# ships as an OpenEmbedded package.
+my %ARCH_PACKAGES = (
+    'xCAT'                 => [qw(amd64 ppc64el riscv64)],
+    'xCATsn'               => [qw(amd64 ppc64el riscv64)],
+    'xCAT-genesis-scripts' => [qw(amd64 ppc64el)],
+);
 
 # Ubuntu releases predating ppc64el. Kept as data rather than an `if` in the caller so
 # the repo-assembly and the package-selection paths cannot disagree about it.
 my %NO_PPC64EL = map { $_ => 1 } qw(saucy);
 
-my @DEB_ARCHES = qw(amd64 ppc64el);
+my @DEB_ARCHES = qw(amd64 ppc64el riscv64);
 
 # The Ubuntu releases the apt repository serves by default. Single source of truth:
 # the builder, the repo assembly and the tests all read it here, so they cannot drift.
@@ -323,8 +329,8 @@ sub stage_probe_helpers {
 # 'all' is a single arch-independent build; the three arch packages get one per arch.
 sub deb_package_arches {
     my ($package) = @_;
-    return @DEB_ARCHES if $ARCH_PACKAGES{$package // ''};
-    return ('all');
+    my $arches = $ARCH_PACKAGES{ $package // '' };
+    return $arches ? @{$arches} : ('all');
 }
 
 # dist_arches: the architectures a release's apt repo declares.
