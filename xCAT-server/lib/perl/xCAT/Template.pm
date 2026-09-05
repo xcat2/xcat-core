@@ -364,7 +364,7 @@ sub subvars {
             $inc =~ s/#INSTALL_SOURCES_IN_PRE#/$source_in_pre/g;
             if (("ubuntu" eq $platform) || ("debian" eq $platform)) {
                 $inc =~ s/#INCLUDE_OSIMAGE_PKGDIR#/$pkgdirs[-1]/;
-                $inc =~ s/#UBUNTU_SUBIQUITY_APT_CONFIG#/ubuntu_subiquity_apt_config($media_dir)/eg;
+                $inc =~ s/#UBUNTU_SUBIQUITY_APT_CONFIG#/ubuntu_subiquity_apt_config($media_dir, $namedargs{osarch})/eg;
             }
             $inc =~ s/#WRITEREPO#/$writerepo/g;
         }
@@ -377,7 +377,7 @@ sub subvars {
         $inc =~ s/#INCLUDE_NOP:([^#^\n]+)#/includefile($1,1,0)/eg;
         $inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
         $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
-        $inc =~ s/#UBUNTU_SUBIQUITY_APT_CONFIG#/ubuntu_subiquity_apt_config($media_dir)/eg;
+        $inc =~ s/#UBUNTU_SUBIQUITY_APT_CONFIG#/ubuntu_subiquity_apt_config($media_dir, $namedargs{osarch})/eg;
         $inc =~ s/#SUBIQUITYINSTALLNIC#/subiquity_install_nic()/eg;
         $inc =~ s/#SUBIQUITYINSTALLMAC#/subiquity_install_mac()/eg;
         $inc =~ s/#MACHINEPASSWORD#/machinepassword()/eg;
@@ -1766,11 +1766,20 @@ sub subiquity_install_mac {
 
 sub ubuntu_subiquity_apt_mirror
 {
+    my ($osarch) = @_;
+
     # Apt mirror for Subiquity installs. site.ubuntu_apt_mirror overrides; otherwise default to the
     # public archive. The minimal live-server install media is not a complete package source, so a
     # real mirror is always required -- set site.ubuntu_apt_mirror to a local full mirror for
     # airgapped clusters (or to a geo/ports mirror as needed).
-    my $default = 'http://archive.ubuntu.com/ubuntu';
+    #
+    # archive.ubuntu.com publishes amd64 and i386 only. Every other architecture, ppc64el and
+    # riscv64 included, is on the ports archive. The osimage's architecture decides it, because
+    # pkgdir is whatever path the administrator configured.
+    my $default = (!$osarch || $osarch =~ /^(?:amd64|i386|x86|x86_64)$/)
+                ? 'http://archive.ubuntu.com/ubuntu'
+                : 'http://ports.ubuntu.com/ubuntu-ports';
+
     my $site_tab = xCAT::Table->new('site');
     return $default unless $site_tab;
     my $ent = $site_tab->getAttribs({ key => 'ubuntu_apt_mirror' }, 'value');
@@ -1779,11 +1788,11 @@ sub ubuntu_subiquity_apt_mirror
 
 sub ubuntu_subiquity_apt_config
 {
-    my ($media_dir) = @_;
+    my ($media_dir, $osarch) = @_;
     my $use_deb822 = ubuntu_subiquity_uses_deb822_sources($media_dir);
     my @otherpkg_sources = ubuntu_subiquity_otherpkg_sources();
 
-    my $online_mirror = ubuntu_subiquity_apt_mirror();
+    my $online_mirror = ubuntu_subiquity_apt_mirror($osarch);
     if ($online_mirror) {
         # Online install: use the configured archive as the primary apt mirror so
         # Subiquity/curtin can fetch whatever the minimal media lacks. No
