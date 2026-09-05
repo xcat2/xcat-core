@@ -8,7 +8,9 @@ echo PS1="'"'[xCAT Genesis running on \H \w]\$ '"'" > /.bash_profile
 mkdir -p /etc/ssh
 mkdir -p /var/tmp/
 mkdir -p /var/empty/sshd
-sed -i '/^root:x/d' /etc/passwd
+# dracut writes this entry itself, with an empty password field unless the image is
+# built --hostonly. Match the user name only.
+sed -i '/^root:/d' /etc/passwd
 cat >>/etc/passwd <<"__ENDL"
 root:x:0:0::/:/bin/bash
 sshd:x:30:30:SSH User:/var/empty/sshd:/sbin/nologin
