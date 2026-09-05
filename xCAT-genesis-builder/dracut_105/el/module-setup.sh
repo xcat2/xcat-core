@@ -87,7 +87,11 @@ install() {
     dracut_install /sbin/rsyslogd /etc/protocols umount /bin/rpm /usr/lib/rpm/rpmrc
     #dracut_install chmod /sbin/route /sbin/ifconfig /usr/bin/whoami /usr/bin/head /usr/bin/tail basename /etc/redhat-release ping tr lsusb /usr/share/hwdata/usb.ids #ibm fw wrapper requirements
     dracut_install chmod ip /usr/bin/whoami /usr/bin/head /usr/bin/tail basename /etc/redhat-release ping tr lsusb /usr/share/hwdata/usb.ids #ibm fw wrapper requirements
-    dracut_install efibootmgr dmidecode #uxspi prereqs, but will use dmidecode to improve decision on loading ipmi_si
+    # uxspi prereqs. dmidecode also improves the decision on loading ipmi_si. Neither is
+    # packaged for ppc64le, so install whichever the build root carries.
+    for _fw_tool in efibootmgr dmidecode; do
+        command -v "$_fw_tool" >/dev/null 2>&1 && dracut_install "$_fw_tool"
+    done
     dracut_install lldptool
     dracut_install /usr/share/zoneinfo/posix/Zulu
     dracut_install /usr/share/zoneinfo/posix/GMT-0
