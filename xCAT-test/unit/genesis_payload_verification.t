@@ -15,9 +15,10 @@ use XCAT::Test::File qw(repo_path);
 
 my $verifier = repo_path('xCAT-genesis-builder/verify-genesis-payload');
 plan skip_all => 'verify-genesis-payload not found' unless -f $verifier;
-plan tests => 11;
+plan tests => 18;
 
 my $tmpdir = tempdir(CLEANUP => 1);
+my $module_seq = 0;
 
 # A complete payload: OpenSSH 9.9 sshd plus its session helper, tmux plus a UTF-8 locale.
 my $good = build_payload(sshd_execs_session => 1, session_helper => 1, tmux => 1, locale => 1, dhclient => 1, mktemp => 1);
@@ -55,6 +56,39 @@ my $nomktemp = build_payload(sshd_execs_session => 1, session_helper => 1, tmux 
 isnt($rc, 0, 'a payload without mktemp fails');
 like($err, qr{usr/bin/mktemp}, 'the missing mktemp is named');
 
+# dracut_install reports a missing binary and returns, so every name the dracut module
+# installs has to be checked against the payload. The el10 image shipped with no openssl and
+# getcert waited on it for the life of the node.
+my $module = write_module_setup([qw(openssl wget tar)]);
+my $full = build_payload(sshd_execs_session => 1, session_helper => 1, tmux => 1, locale => 1,
+    dhclient => 1, mktemp => 1, commands => [qw(openssl wget tar)]);
+($rc, $err) = run_with_commands($module, $full);
+is($rc, 0, 'a payload carrying every command the module names passes') or diag($err);
+
+my $noopenssl = build_payload(sshd_execs_session => 1, session_helper => 1, tmux => 1, locale => 1,
+    dhclient => 1, mktemp => 1, commands => [qw(wget tar)]);
+($rc, $err) = run_with_commands($module, $noopenssl);
+isnt($rc, 0, 'a payload without openssl fails');
+like($err, qr/openssl/, 'the missing openssl is named');
+
+# The DHCP client is release-dependent, so the module installs it inside a conditional. Those
+# names are not the contract; the spec passes the one it wants as a required path.
+my $conditional = write_module_setup(['wget'], ['dhclient']);
+my $nodhclient = build_payload(sshd_execs_session => 1, session_helper => 1, tmux => 1, locale => 1,
+    dhclient => 0, mktemp => 1, commands => ['wget']);
+($rc, $err) = run_with_commands($conditional, $nodhclient);
+is($rc, 0, 'a name installed under a condition is not required') or diag($err);
+
+# A module the verifier cannot read names for covers nothing, so say so instead of passing.
+my $unparsable = "$tmpdir/module-setup-unparsable.sh";
+write_text($unparsable, "#!/bin/bash\nsetup() {\n    dracut_install wget\n}\n");
+($rc, $err) = run_with_commands($unparsable, $full);
+is($rc, 2, 'a module the verifier finds no command names in is a usage error');
+like($err, qr/command name/, 'the empty command list is named');
+
+($rc, $err) = run_with_commands("$tmpdir/no-such-module", $full);
+is($rc, 2, 'a module file that cannot be read is a usage error');
+
 ($rc, $err) = run("$tmpdir/does-not-exist");
 is($rc >> 0, 2, 'a missing payload directory is a usage error');
 
@@ -77,6 +111,7 @@ sub build_payload {
     }
     write_text("$root/usr/sbin/dhclient", "dhclient\n") if $opt{dhclient};
     write_text("$root/usr/bin/mktemp", "mktemp\n") if $opt{mktemp};
+    write_text("$root/usr/bin/$_", "$_\n") for @{ $opt{commands} || [] };
     return $root;
 }
 
@@ -87,6 +122,40 @@ sub run {
     my ($root, @required) = @_;
     my $errfile = "$tmpdir/err.$$";
     my $cmd = join ' ', map { "'$_'" } ($verifier, $root, @required);
+    system("/bin/bash $cmd >/dev/null 2>$errfile");
+    my $status = $? >> 8;
+    my $err = -f $errfile ? read_text($errfile) : '';
+    unlink $errfile;
+    return ($status, $err);
+}
+
+#---
+# write_module_setup: a dracut module whose install() names commands at the top level, and
+# optionally more inside a conditional.
+#---
+sub write_module_setup {
+    my ($top, $conditional) = @_;
+    my $path = "$tmpdir/module-setup." . ++$module_seq . ".sh";
+    my $text = "#!/bin/bash\n\ninstall() {\n";
+    $text .= "    dracut_install " . join(' ', @$top) . " # a trailing comment\n";
+    $text .= "    dracut_install /usr/bin/awk /etc/services\n";
+    if ($conditional) {
+        $text .= "    if command -v " . $conditional->[0] . " >/dev/null 2>&1; then\n";
+        $text .= "        dracut_install " . join(' ', @$conditional) . "\n";
+        $text .= "    fi\n";
+    }
+    $text .= "}\n";
+    write_text($path, $text);
+    return $path;
+}
+
+#---
+# run_with_commands: run the verifier with the command list read back from a dracut module.
+#---
+sub run_with_commands {
+    my ($module, $root) = @_;
+    my $errfile = "$tmpdir/err.commands.$$";
+    my $cmd = join ' ', map { "'$_'" } ($verifier, '--commands-from', $module, $root);
     system("/bin/bash $cmd >/dev/null 2>$errfile");
     my $status = $? >> 8;
     my $err = -f $errfile ? read_text($errfile) : '';
