@@ -12,6 +12,14 @@ Release: %{?release:%{release}}%{!?release:%(cat Release)}
 %ifarch aarch64
 %define tarch aarch64
 %endif
+%ifarch riscv64
+%define tarch riscv64
+%endif
+# An arch missing from the ladder above leaves %{tarch} unexpanded, and rpm then builds a package
+# with a macro in its NAME instead of failing. Stop the build here instead.
+%if ! %{defined tarch}
+%{error:no genesis tarch for %{_target_cpu} -- add an %%ifarch branch above}
+%endif
 BuildArch: noarch
 %define name	xCAT-genesis-base-%{tarch}
 %define __spec_install_post :
@@ -38,13 +46,22 @@ BuildRequires: chrony
 BuildRequires: cpio
 BuildRequires: e2fsprogs
 BuildRequires: hostname
-%if "%{_target_cpu}" == "x86_64"
+%if "%{tarch}" == "x86_64"
 BuildRequires: dmidecode
 BuildRequires: efibootmgr
 %endif
 BuildRequires: dosfstools
 BuildRequires: dracut
 BuildRequires: dracut-network
+# doxcat chooses its DHCP client at run time. RHEL 10 packages no ISC dhcp-client; its
+# baseos packages dhcpcd, which carries its own resolv.conf, hostname and ntp hooks and so
+# needs no dhclient-script.
+%if 0%{?rhel} && 0%{?rhel} < 10
+BuildRequires: dhcp-client
+%endif
+%if 0%{?rhel} >= 10
+BuildRequires: dhcpcd
+%endif
 BuildRequires: ethtool
 BuildRequires: gawk
 BuildRequires: ipmitool
@@ -62,6 +79,9 @@ BuildRequires: nfs-utils
 BuildRequires: nmap-ncat
 BuildRequires: openssh-clients
 BuildRequires: openssh-server
+# getcert, getdestiny, getipmi and getadapter run the openssl command. el8 and el9 hold it in
+# the build root as a dependency of another package; el10 does not.
+BuildRequires: openssl
 BuildRequires: parted
 BuildRequires: pciutils
 BuildRequires: perl
@@ -117,9 +137,6 @@ rm -rf "$DRACUTMODDIR"
 mkdir -p "$DRACUTMODDIR"
 cp -a "%{_builddir}/xCAT-genesis-base-build-support/dracut_105/el/." "$DRACUTMODDIR/"
 chmod 0755 "$DRACUTMODDIR/module-setup.sh" "$DRACUTMODDIR/xcatroot" "$DRACUTMODDIR/dhclient-script"
-if [ "%{_target_cpu}" != "x86_64" ]; then
-    sed -i '/efibootmgr dmidecode/d' "$DRACUTMODDIR/module-setup.sh"
-fi
 
 KERNELVERSION=$(ls -1 /lib/modules | sort -V | tail -n 1)
 test -n "$KERNELVERSION"
@@ -215,6 +232,19 @@ fi
 test -n "$KERNEL_IMAGE"
 test -e "$KERNEL_IMAGE"
 cp "$KERNEL_IMAGE" "$GENESIS_ROOT/kernel"
+
+# dracut_install reports a missing binary and returns, so a hole in the image reaches the
+# rpm silently. Three of them did.
+GENESIS_REQUIRED=""
+%if 0%{?rhel} && 0%{?rhel} < 10
+GENESIS_REQUIRED="usr/sbin/dhclient"
+%endif
+%if 0%{?rhel} >= 10
+GENESIS_REQUIRED="usr/sbin/dhcpcd"
+%endif
+bash "%{_builddir}/xCAT-genesis-base-build-support/verify-genesis-payload" \
+    --commands-from "$DRACUTMODDIR/module-setup.sh" \
+    "$GENESIS_FS" $GENESIS_REQUIRED
 
 find "$GENESIS_TMPDIR" -type c -delete
 cp -a "$GENESIS_TMPDIR/%{prefix}/." "$RPM_BUILD_ROOT/%{prefix}/"

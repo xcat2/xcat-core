@@ -156,7 +156,14 @@ my %ARCH_PACKAGES = map { $_ => 1 } qw(xCAT xCATsn xCAT-genesis-scripts);
 # the repo-assembly and the package-selection paths cannot disagree about it.
 my %NO_PPC64EL = map { $_ => 1 } qw(saucy);
 
-my @DEB_ARCHES = qw(amd64 ppc64el);
+my @DEB_ARCHES = qw(amd64 ppc64el riscv64);
+
+# Packages that are NOT built for riscv64. xcat-genesis-scripts-<arch> Depends on
+# xcat-genesis-base-<arch>, and no riscv64 genesis-base deb exists: riscv64 takes the
+# OpenEmbedded Genesis image from the shared xcat-dep pool instead. Building it here would
+# publish a package nothing can install, which is what happens when the arch list is one
+# global constant.
+my %NO_RISCV64 = map { $_ => 1 } qw(xCAT-genesis-scripts);
 
 # The Ubuntu releases the apt repository serves by default. Single source of truth:
 # the builder, the repo assembly and the tests all read it here, so they cannot drift.
@@ -323,8 +330,9 @@ sub stage_probe_helpers {
 # 'all' is a single arch-independent build; the three arch packages get one per arch.
 sub deb_package_arches {
     my ($package) = @_;
-    return @DEB_ARCHES if $ARCH_PACKAGES{$package // ''};
-    return ('all');
+    return ('all') unless $ARCH_PACKAGES{$package // ''};
+    return grep { $_ ne 'riscv64' } @DEB_ARCHES if $NO_RISCV64{$package};
+    return @DEB_ARCHES;
 }
 
 # dist_arches: the architectures a release's apt repo declares.

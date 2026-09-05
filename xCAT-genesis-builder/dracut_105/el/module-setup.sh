@@ -47,13 +47,51 @@ install() {
     dracut_install mount.nfs sshd vi reboot lspci parted tmux mkfs mkfs.ext4 mkfs.xfs xfs_db
     #dracut_install libvirtd /usr/share/libvirt/cpu_map.xml /usr/bin/qemu-img /usr/libexec/qemu-kvm
     dracut_install mkswap df ifenslave ssh-keygen scp clear
-    dracut_install dhclient lldpad
+    # getdestiny makes its request file with mktemp. Without it the node reports no
+    # destiny, so xcatd never moves nodelist.status past powering-on.
+    dracut_install mktemp
+    dracut_install lldpad
+
+    # RHEL 10 packages no ISC dhcp-client. Install whichever client the build root carries;
+    # doxcat chooses between them at run time.
+    if command -v dhclient >/dev/null 2>&1; then
+        dracut_install dhclient
+    elif command -v dhcpcd >/dev/null 2>&1; then
+        dracut_install dhcpcd
+        # dhcpcd runs these on every lease. They write resolv.conf, the hostname and
+        # ntp.conf, which is the work dhclient-script does for the ISC client.
+        dracut_install /usr/libexec/dhcpcd-run-hooks
+        for _dhcpcd_hook in /usr/libexec/dhcpcd-hooks/*; do
+            _dracut_install_opt "$_dhcpcd_hook"
+        done
+        _dracut_install_opt /etc/dhcpcd.conf
+    fi
+
+    # OpenSSH 9.8 moved the per-connection work into sshd-session, which sshd execs by
+    # absolute path. Without it every connection to Genesis is refused.
+    for _sshd_helper in \
+        /usr/libexec/openssh/sshd-session \
+        /usr/libexec/openssh/sshd-auth \
+        /usr/lib/openssh/sshd-session \
+        /usr/lib/openssh/sshd-auth
+    do
+        _dracut_install_opt "$_sshd_helper"
+    done
+
+    # tmux exits under the C locale, and the image carries no locale data of its own.
+    for _lc_file in /usr/lib/locale/C.utf8/LC_*; do
+        _dracut_install_opt "$_lc_file"
+    done
     dracut_install /lib64/libnss_dns.so.2
     dracut_install poweroff hwclock date /usr/share/terminfo/x/xterm /usr/share/terminfo/s/screen /etc/nsswitch.conf /etc/services
     dracut_install /sbin/rsyslogd /etc/protocols umount /bin/rpm /usr/lib/rpm/rpmrc
     #dracut_install chmod /sbin/route /sbin/ifconfig /usr/bin/whoami /usr/bin/head /usr/bin/tail basename /etc/redhat-release ping tr lsusb /usr/share/hwdata/usb.ids #ibm fw wrapper requirements
     dracut_install chmod ip /usr/bin/whoami /usr/bin/head /usr/bin/tail basename /etc/redhat-release ping tr lsusb /usr/share/hwdata/usb.ids #ibm fw wrapper requirements
-    dracut_install efibootmgr dmidecode #uxspi prereqs, but will use dmidecode to improve decision on loading ipmi_si
+    # uxspi prereqs. dmidecode also improves the decision on loading ipmi_si. Neither is
+    # packaged for ppc64le, so install whichever the build root carries.
+    for _fw_tool in efibootmgr dmidecode; do
+        command -v "$_fw_tool" >/dev/null 2>&1 && dracut_install "$_fw_tool"
+    done
     dracut_install lldptool
     dracut_install /usr/share/zoneinfo/posix/Zulu
     dracut_install /usr/share/zoneinfo/posix/GMT-0

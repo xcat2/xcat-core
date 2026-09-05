@@ -16,14 +16,50 @@ function runcmd(){
 # We should be using private networks
 TESTNODE=testnode
 TESTNODE_IP="192.168.3.1"
+# nodeset resolves the genesis kernel by the node arch. A hardcoded ppc64le node fails on
+# every other management node with "Could not find genesis.kernel.ppc64".
+TESTNODE_ARCH="$(uname -m)"
+# The boot-loader configuration lives under the tftp root. Overridable so the check can run
+# against a scratch tree.
+TFTPDIR="${TFTPDIR:-/tftpboot}"
+
+# grub2.pm names the boot loader grub2.<arch>, with every ppc64 flavour written as "ppc".
+TESTNODE_LOADER_ARCH="$TESTNODE_ARCH"
+[[ $TESTNODE_LOADER_ARCH =~ ^ppc64 ]] && TESTNODE_LOADER_ARCH="ppc"
+STAGED_BOOT_LOADER=""
 
 MASTER_PRIVATE_IP="192.168.1.1"
 MASTER_PRIVATE_NETMASK="255.255.0.0"
 MASTER_PRIVATE_NETWORK="192_168_0_0-255_255_0_0"
 
 
+# xCAT builds no grub2 network boot loader for x86_64 or aarch64. The administrator installs
+# grub2.<arch> by hand -- docs/source/guides/install-guides/yum/grub2.rst. grub2.pm stops the
+# configuration when the file is absent, and this case reads the configuration only.
+function stage_boot_loader() {
+    local loader="$TFTPDIR/boot/grub2/grub2.$TESTNODE_LOADER_ARCH";
+    if [[ -e $loader ]];then
+        return 0;
+    fi
+    mkdir -p "$TFTPDIR/boot/grub2" || return 1;
+    : > "$loader" || return 1;
+    STAGED_BOOT_LOADER="$loader";
+    echo "Staged an empty boot loader at $loader for the check";
+    return 0;
+}
+
+function unstage_boot_loader() {
+    if [[ -z $STAGED_BOOT_LOADER ]];then
+        return 0;
+    fi
+    # grub2.pm links grub2-<node> to the loader. Remove the link with the file it points at.
+    rm -f "$STAGED_BOOT_LOADER" "$TFTPDIR/boot/grub2/grub2-${TESTNODE}";
+    STAGED_BOOT_LOADER="";
+    return 0;
+}
+
 function check_destiny() {
-    cmd="chdef ${TESTNODE} arch=ppc64le cons=ipmi groups=all ip=${TESTNODE_IP} mac=4e:ee:ee:ee:ee:0e netboot=$NETBOOT tftpserver=$MASTER_PRIVATE_IP xcatmaster=$MASTER_PRIVATE_IP";
+    cmd="chdef ${TESTNODE} arch=${TESTNODE_ARCH} cons=ipmi groups=all ip=${TESTNODE_IP} mac=4e:ee:ee:ee:ee:0e netboot=$NETBOOT tftpserver=$MASTER_PRIVATE_IP xcatmaster=$MASTER_PRIVATE_IP";
     runcmd $cmd;
     lsdef ${TESTNODE}
 
@@ -52,8 +88,15 @@ function check_destiny() {
         grep ${TESTNODE} /etc/hosts 
         cmd="nodeset ${TESTNODE}  shell";
         runcmd $cmd;
+        # grub2.pm writes the boot configuration and only then stops on a missing boot loader,
+        # so the file the check reads below exists even when nodeset failed.
+        nodeset_rc=$?;
         cmd="ip addr del $MASTER_PRIVATE_IP/$MASTER_PRIVATE_NETMASK dev $NET2";
         runcmd $cmd;
+        if [[ $nodeset_rc -ne 0 ]];then
+            echo "'nodeset ${TESTNODE} shell' FAILED";
+            return 1;
+        fi
         echo "Check if 'nodeset ${TESTNODE} shell' is added to ${SHELLFOLDER}/${TESTNODE}"
         echo "==============================================="
         cat "${SHELLFOLDER}/${TESTNODE}"
@@ -86,14 +129,17 @@ while [ "$#" -ge "0" ]; do
         "--check" )
         NETBOOT=$2;
         if [[ $NETBOOT =~ petitboot ]];then
-            SHELLFOLDER="/tftpboot/petitboot";
+            SHELLFOLDER="$TFTPDIR/petitboot";
         elif [[ $NETBOOT =~  xnba ]];then
-            SHELLFOLDER="/tftpboot/xcat/xnba/nodes"
+            SHELLFOLDER="$TFTPDIR/xcat/xnba/nodes"
         else
-            SHELLFOLDER="/tftpboot/boot/grub2";
+            SHELLFOLDER="$TFTPDIR/boot/grub2";
+            stage_boot_loader || exit 1;
         fi
         check_destiny ;
-        if [[ $? -eq 1 ]];then
+        rc=$?;
+        unstage_boot_loader;
+        if [[ $rc -eq 1 ]];then
             exit 1
         else
             exit 0

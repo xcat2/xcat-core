@@ -1417,8 +1417,12 @@ sub run_case {
             log_this($running_log_fd, ("ElapsedTime:$diffduration sec", "RETURN rc = $rc", "OUTPUT:", @output));
             push(@caselog, ("ElapsedTime:$diffduration sec", "RETURN rc = $rc", "OUTPUT:", @output));
 
+            # $checkfail is the result of this check, $failflag the result of the case. They
+            # were one variable, so a failed check made every later check read as failed, and
+            # the guard that hid that also hid the checks (issue #76).
+            my $checkfail = 0;
             foreach my $check (@{ $cases_ref->[ $case_name_index_map_ref->{$case} ]->{check}->[$j] }) {
-                last if ($failflag);
+                $checkfail = 0;
 
                 if ($check =~ /rc\s*([=!]+)\s*(\d+)/) {
                     my $lvalue = $rc;
@@ -1426,12 +1430,11 @@ sub run_case {
                     my $rvalue = $2;
                     if ((($op eq '!=') && ($lvalue == $rvalue))
                         || (($op eq '==') && ($lvalue != $rvalue))) {
-                        $failflag = 1;
+                        $checkfail = 1;
                     }
-                    if ($failflag) {
+                    if ($checkfail) {
                         log_this($running_log_fd, "CHECK:rc $op $rvalue\t[Failed]");
                         push(@caselog, "CHECK:rc $op $rvalue\t[Failed]");
-                        last;
                     } else {
                         log_this($running_log_fd, "CHECK:rc $op $rvalue\t[Pass]");
                         push(@caselog, "CHECK:rc $op $rvalue\t[Pass]");
@@ -1446,17 +1449,16 @@ sub run_case {
                         || (($op eq '!~') && ($lvalue =~ /$rvalue/))
                         || (($op eq '==') && ($lvalue ne $rvalue))
                         || (($op eq '!=') && ($lvalue eq $rvalue))) {
-                        $failflag = 1;
+                        $checkfail = 1;
                     } elsif (($op ne '=~') && ($op ne '!~') && ($op ne '==') && ($op ne '!=')) {
-                        $failflag = 1;
+                        $checkfail = 1;
                         log_this($running_log_fd, "CHECK:output unrecognized operator: $op\t[Failed]");
                         push(@caselog, "CHECK:output unrecognized operator: $op\t[Failed]");
-                        last;
+                        next;
                     }
-                    if ($failflag) {
+                    if ($checkfail) {
                         log_this($running_log_fd, "CHECK:output $op $rvalue\t[Failed]");
                         push(@caselog, "CHECK:output $op $rvalue\t[Failed]");
-                        last;
                     } else {
                         log_this($running_log_fd, "CHECK:output $op $rvalue\t[Pass]");
                         push(@caselog, "CHECK:output $op $rvalue\t[Pass]");
@@ -1464,7 +1466,7 @@ sub run_case {
                 } elsif ($check =~ /output\s*~~\s*(\S.*)/) {
                     my $op = "~~";
 
-                    #my $failflag = 1;
+                    # This operator only sets $checkfail to 0, so the check always reports Pass.
                     my $rvalue = $1;
 
                     $rvalue = getfunc($rvalue);
@@ -1481,7 +1483,7 @@ sub run_case {
                                 my $min = $num * 0.9;
                                 $line =~ /.*:.*: (\d+) /;
                                 if ($1 < $max && $1 > $min) {
-                                    $failflag = 0;
+                                    $checkfail = 0;
                                     last;
                                 }
                             } else {
@@ -1489,19 +1491,20 @@ sub run_case {
                             }
                         }
                     }
-                    if ($failflag) {
+                    if ($checkfail) {
                         log_this($running_log_fd, "CHECK:output $op $rvalue\t[Failed]");
                         push(@caselog, "CHECK:output $op $rvalue\t[Failed]");
-                        last;
                     } else {
                         log_this($running_log_fd, "CHECK:output $op $rvalue\t[Pass]");
                         push(@caselog, "CHECK:output $op $rvalue\t[Pass]");
                     } 
                 } else {
-                    $failflag = 1;
+                    $checkfail = 1;
                     log_this($running_log_fd, "Unrecognized testcase syntax: CHECK:$check\t[Failed]");
                     push(@caselog, "Unrecognized testcase syntax: CHECK:$check\t[Failed]");
                 } 
+            } continue {
+                $failflag = 1 if ($checkfail);
             }
             foreach my $cmdcheck (@{ $cases_ref->[ $case_name_index_map_ref->{$case} ]->{cmdcheck}->[$j] }) {
                 if ($cmdcheck) {
