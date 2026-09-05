@@ -60,15 +60,19 @@ is_deeply( [deb_package_arches('perl-xCAT')], ['all'],
     'a Perl package is built once, arch-independent' );
 is_deeply( [deb_package_arches('xCAT-probe')], ['all'],
     'xCAT-probe is arch-independent too' );
-for my $pkg (qw(xCAT xCATsn xCAT-genesis-scripts)) {
-    is_deeply( [deb_package_arches($pkg)], ['amd64', 'ppc64el'],
-        "$pkg is built per architecture" );
+for my $pkg (qw(xCAT xCATsn)) {
+    is_deeply( [deb_package_arches($pkg)], ['amd64', 'ppc64el', 'riscv64'],
+        "$pkg is built for every architecture a management node runs on" );
 }
+# xCAT-genesis-scripts has one control file per architecture and there is no riscv64 one,
+# so asking for that build would stop the whole run.
+is_deeply( [deb_package_arches('xCAT-genesis-scripts')], ['amd64', 'ppc64el'],
+    'xCAT-genesis-scripts is built only for the architectures it has a control file for' );
 is_deeply( [deb_package_arches(undef)], ['all'],
     'an undefined package name does not blow up the arch lookup' );
 
-is_deeply( [dist_arches('noble')], ['amd64', 'ppc64el'],
-    'a current release serves both architectures' );
+is_deeply( [dist_arches('noble')], ['amd64', 'ppc64el', 'riscv64'],
+    'a current release serves every architecture' );
 is_deeply( [dist_arches('saucy')], ['amd64'],
     'saucy predates ppc64el and serves only amd64' );
 
@@ -151,8 +155,8 @@ is( scalar( () = $rewritten =~ /^ -- xCAT Build /mg ), 1,
 
 my $dists = reprepro_distributions([qw(focal noble)], 'DEADBEEF');
 is( scalar(() = $dists =~ /^Codename:/mg), 2, 'one stanza per release' );
-like( $dists, qr/^Codename: focal\nArchitectures: amd64 ppc64el$/m,
-    'a release declares both architectures, on the line after its codename' );
+like( $dists, qr/^Codename: focal\nArchitectures: amd64 ppc64el riscv64$/m,
+    'a release declares every architecture, on the line after its codename' );
 is( scalar(() = $dists =~ /^SignWith: DEADBEEF$/mg), 2,
     'every stanza is signed when a key is given' );
 
