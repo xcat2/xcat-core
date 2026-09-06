@@ -26,7 +26,7 @@ publish_status() {
         || logger -t xcat-genesis-discover -- 'unable to publish discovery status'
 }
 
-# shellcheck disable=SC2329
+# shellcheck disable=SC2317,SC2329
 finish_status() {
     local result=$?
 
