@@ -11,7 +11,7 @@ Operating System & Hardware Support Matrix
 |SLES   | yes   | yes   | yes | yes   | yes    | yes    | yes    | no       | no       |
 |       |       |       |     |       |        |        |        |          |          |
 +-------+-------+-------+-----+-------+--------+--------+--------+----------+----------+
-|Ubuntu | no    | yes   | no  | yes   | yes    | yes    | yes    | no       | no       |
+|Ubuntu | no    | yes   | no  | yes   | yes    | yes    | yes    | no       | yes      |
 |       |       |       |     |       |        |        |        |          |          |
 +-------+-------+-------+-----+-------+--------+--------+--------+----------+----------+
 |CentOS | no    | no    | no  | no    | yes    | yes    | yes    | no       | no       |
@@ -21,4 +21,4 @@ Operating System & Hardware Support Matrix
 |       |       |       |     |       |        |        |        |          |          |
 +-------+-------+-------+-----+-------+--------+--------+--------+----------+----------+
 
-riscv64 support covers EL10 compute nodes (Rocky Linux 10 and the RHEL 10 RISC-V developer preview) that boot through UEFI firmware and grub2. See :doc:`/guides/admin-guides/manage_clusters/riscv64/index` for details.
+riscv64 support covers EL10 (Rocky Linux 10 and the RHEL 10 RISC-V developer preview) and Ubuntu 24.04 and 26.04, on nodes that boot through UEFI firmware and grub2. Both stateful and stateless nodes are supported, and the management node itself can run on riscv64. See :doc:`/guides/admin-guides/manage_clusters/riscv64/index` for details.
