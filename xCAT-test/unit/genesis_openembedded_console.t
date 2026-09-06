@@ -287,7 +287,6 @@ like( $probe_output,
     'console uses the LPAR UUID when no guest UUID is available' );
 write_file( File::Spec->catfile( $proc_root, 'sysinfo' ), <<'SYSINFO' );
 VM00 Control Program: z/VM 7.3.0
-VM00 UUID:
 LPAR UUID:            93724168-fda3-429b-8b28-a5d245dcb3ff
 SYSINFO
 ( $probe_status, $probe_output ) = run_identity_probe();
