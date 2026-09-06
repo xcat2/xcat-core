@@ -1,0 +1,14 @@
+[Unit]
+Description=Activate IBM Z qeth network devices
+ConditionArchitecture=s390x
+ConditionKernelCommandLine=xcatd
+After=systemd-udev-trigger.service
+Before=NetworkManager.service xcat-genesis-network-state.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/xcat/genesis-qeth
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

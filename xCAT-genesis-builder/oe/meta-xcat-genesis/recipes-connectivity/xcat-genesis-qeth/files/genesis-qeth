@@ -1,0 +1,148 @@
+#!/bin/bash
+set -u
+
+LC_ALL=C
+export LC_ALL
+
+cmdline_file=${XCAT_CMDLINE_FILE:-/proc/cmdline}
+status_command=${XCAT_STATUS_COMMAND:-/usr/libexec/xcat/genesis-status}
+znetconf_command=${XCAT_ZNETCONF_COMMAND:-/sbin/znetconf}
+
+log() {
+    logger -t xcat-genesis-qeth -- "$*" || true
+}
+
+publish_status() {
+    [ -x "$status_command" ] || return 0
+    "$status_command" network "$@" || true
+}
+
+normalize_channel() {
+    local channel
+
+    channel=$(printf '%s' "$1" | tr 'A-F' 'a-f')
+
+    if [[ $channel =~ ^[[:xdigit:]]{4}$ ]]; then
+        printf '0.0.%s\n' "$channel"
+    elif [[ $channel =~ ^[[:xdigit:]]\.[[:xdigit:]]\.[[:xdigit:]]{4}$ ]]; then
+        printf '%s\n' "$channel"
+    else
+        return 1
+    fi
+}
+
+configured_channels() {
+    local channels=$1 configured normalized rest
+
+    while read -r configured rest; do
+        normalized=$(printf '%s' "$configured" | tr 'A-F' 'a-f')
+        [ "$normalized" = "$channels" ] && return 0
+    done <<<"$configured_output"
+    return 1
+}
+
+activate_channels() {
+    local channels=$1
+    shift
+    local -a command=("$znetconf_command" -a "$channels" -d qeth)
+    local option output result
+    local have_layer2=false
+
+    for option in "$@"; do
+        if [[ ! $option =~ ^[A-Za-z_][A-Za-z0-9_./-]*=[A-Za-z0-9_./:+-]+$ ]]; then
+            log "Invalid qeth option for $channels: $option"
+            failed_channels+=("$channels")
+            return 1
+        fi
+        [[ $option = layer2=* ]] && have_layer2=true
+        command+=(-o "$option")
+    done
+    $have_layer2 || command+=(-o layer2=1)
+
+    if configured_channels "$channels"; then
+        log "qeth channels already configured: $channels"
+        ready_channels+=("$channels")
+        return 0
+    fi
+
+    publish_status CONFIGURING_NETWORK "Activating qeth channels $channels"
+    output=$("${command[@]}" 2>&1)
+    result=$?
+    if [ "$result" -ne 0 ]; then
+        log "qeth activation failed for $channels: $output"
+        failed_channels+=("$channels")
+        return 1
+    fi
+
+    log "qeth channels ready: $channels"
+    ready_channels+=("$channels")
+    return 0
+}
+
+configured_output=$("$znetconf_command" -c 2>/dev/null || true)
+declare -a cmdline_arguments explicit_specs ready_channels failed_channels
+rd_znet_present=false
+read -r -a cmdline_arguments <"$cmdline_file"
+for argument in "${cmdline_arguments[@]}"; do
+    case "$argument" in
+        rd.znet=*)
+            rd_znet_present=true
+            [[ $argument = rd.znet=qeth,* ]] && explicit_specs+=("${argument#rd.znet=}")
+            ;;
+    esac
+done
+
+if [ "${#explicit_specs[@]}" -gt 0 ]; then
+    for specification in "${explicit_specs[@]}"; do
+        IFS=, read -r -a fields <<<"$specification"
+        if [ "${#fields[@]}" -lt 4 ]; then
+            log "Invalid rd.znet value: $specification"
+            failed_channels+=("$specification")
+            continue
+        fi
+
+        first=$(normalize_channel "${fields[1]}") || first=
+        second=$(normalize_channel "${fields[2]}") || second=
+        third=$(normalize_channel "${fields[3]}") || third=
+        if [ -z "$first" ] || [ -z "$second" ] || [ -z "$third" ]; then
+            log "Invalid qeth channel in rd.znet: $specification"
+            failed_channels+=("$specification")
+            continue
+        fi
+
+        channels="$first,$second,$third"
+        activate_channels "$channels" "${fields[@]:4}" || true
+    done
+elif $rd_znet_present; then
+    exit 0
+else
+    unconfigured_output=$("$znetconf_command" -u 2>/dev/null)
+    unconfigured_result=$?
+    if [ "$unconfigured_result" -eq 31 ]; then
+        exit 0
+    elif [ "$unconfigured_result" -ne 0 ]; then
+        log "Unable to inspect qeth devices"
+        publish_status DEGRADED 'Unable to inspect qeth devices' \
+            'CODE=QETH_DISCOVERY_FAILED' \
+            'RECOVERY=Check the IBM Z channel devices and qeth driver'
+        exit "$unconfigured_result"
+    fi
+
+    while IFS= read -r line; do
+        if [[ $line =~ ^([[:xdigit:].,]+)[[:space:]].*[[:space:]]qeth[[:space:]]*$ ]]; then
+            channels=$(printf '%s' "${BASH_REMATCH[1]}" | tr 'A-F' 'a-f')
+            activate_channels "$channels" || true
+        fi
+    done <<<"$unconfigured_output"
+fi
+
+if [ "${#failed_channels[@]}" -gt 0 ]; then
+    publish_status DEGRADED 'One or more qeth devices could not be activated' \
+        'CODE=QETH_ACTIVATION_FAILED' \
+        'RECOVERY=Check rd.znet and the IBM Z channel configuration'
+    exit 1
+fi
+
+if [ "${#ready_channels[@]}" -gt 0 ]; then
+    publish_status CONFIGURING_NETWORK 'qeth devices are ready'
+fi
