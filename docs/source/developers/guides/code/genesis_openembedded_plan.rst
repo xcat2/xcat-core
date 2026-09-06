@@ -96,8 +96,10 @@ and must not be hidden inside the Genesis image.
 On ``s390x``, Genesis activates qeth devices before NetworkManager starts.  It
 accepts the standard ``rd.znet=qeth,read,write,data[,option=value]`` parameter.
 Without ``rd.znet``, it activates unconfigured qeth devices in layer 2 mode so
-NetworkManager can request DHCP leases.  Devices already configured by DPM or
-another firmware path are left unchanged.
+NetworkManager can request DHCP leases.  Devices reported as configured by
+``znetconf`` are not regrouped.  Genesis does not import DPM auto-configuration
+data.  Layer 3 and IP-mode VSWITCH configurations require ``layer2=0`` in
+``rd.znet``.
 
 The ``s390x`` image uses virtio networking under QEMU.  QEMU does not emulate
 qeth, so the activation service exits without changing the virtio interface.
