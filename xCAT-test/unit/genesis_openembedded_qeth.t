@@ -42,6 +42,7 @@ my $root = tempdir( CLEANUP => 1 );
 my $bin = File::Spec->catdir( $root, 'bin' );
 my $cmdline = File::Spec->catfile( $root, 'cmdline' );
 my $configured = File::Spec->catfile( $root, 'configured' );
+my $cio_settle = File::Spec->catfile( $root, 'cio_settle' );
 my $unconfigured = File::Spec->catfile( $root, 'unconfigured' );
 my $command_log = File::Spec->catfile( $root, 'commands.log' );
 my $znetconf = File::Spec->catfile( $bin, 'znetconf' );
@@ -85,6 +86,7 @@ SH
 
 my %base_environment = (
     PATH                        => "$bin:$ENV{PATH}",
+    XCAT_CIO_SETTLE_FILE        => $cio_settle,
     XCAT_CMDLINE_FILE           => $cmdline,
     XCAT_STATUS_COMMAND         => $status,
     XCAT_TEST_CONFIGURED        => $configured,
@@ -97,6 +99,7 @@ sub run_qeth {
     my ( $command_line, $environment ) = @_;
     write_file( $cmdline, "$command_line\n" );
     write_file( $command_log, '' );
+    write_file( $cio_settle, '' );
     write_file( $configured, $environment->{XCAT_TEST_CONFIGURED_OUTPUT} // '' );
     write_file( $unconfigured, $environment->{XCAT_TEST_UNCONFIGURED_OUTPUT} // '' );
     local %ENV = ( %ENV, %base_environment, %{$environment} );
@@ -114,6 +117,7 @@ is(
     'a system without ccwgroup devices needs no qeth setup'
 );
 unlike( command_log(), qr/^znetconf -a /m, 'the no-device path activates nothing' );
+is( read_file($cio_settle), "1\n", 'channel discovery waits for pending CIO work' );
 
 is(
     run_qeth(
@@ -124,9 +128,9 @@ is(
         }
     ),
     0,
-    'firmware-configured qeth devices need no activation'
+    'configured qeth devices need no activation'
 );
-unlike( command_log(), qr/^znetconf -a /m, 'firmware-configured devices are unchanged' );
+unlike( command_log(), qr/^znetconf -a /m, 'configured devices are unchanged' );
 
 is(
     run_qeth(
@@ -142,6 +146,19 @@ like(
 );
 like( command_log(), qr/^status network CONFIGURING_NETWORK qeth devices are ready$/m,
     'successful activation is published' );
+
+is(
+    run_qeth(
+        'rd.znet=qeth,0.0.0600,0.0.0601,0.0.0602 '
+          . 'rd.znet=qeth,0.0.0600,0.0.0601,0.0.0602 xcatd=192.0.2.1',
+        {}
+    ),
+    0,
+    'a duplicate qeth triplet is accepted once'
+);
+my @duplicate_activations =
+  command_log() =~ /^znetconf -a 0\.0\.0600,0\.0\.0601,0\.0\.0602 /mg;
+is( scalar @duplicate_activations, 1, 'duplicate qeth channels are not regrouped' );
 
 is(
     run_qeth(
@@ -249,6 +266,8 @@ like( $service_contents, qr/^Before=.*\bNetworkManager\.service\b/m,
     'qeth activation precedes NetworkManager' );
 like( $service_contents, qr/^Before=.*\bxcat-genesis-network-state\.service\b/m,
     'qeth activation precedes management network selection' );
+like( $service_contents, qr/^TimeoutStartSec=120$/m,
+    'a stalled qeth command cannot block network startup indefinitely' );
 
 ok( -f $qeth_recipe, 'the qeth service has an OpenEmbedded recipe' );
 ok( -f $s390_tools_recipe, 'the minimal znetconf package has an OpenEmbedded recipe' );
