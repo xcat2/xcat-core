@@ -93,9 +93,15 @@ IPv6-only deployment also needs matching support in xCAT server code, DHCP,
 boot firmware, and boot configuration.  Those changes are outside this layer
 and must not be hidden inside the Genesis image.
 
+On ``s390x``, Genesis activates qeth devices before NetworkManager starts.  It
+accepts the standard ``rd.znet=qeth,read,write,data[,option=value]`` parameter.
+Without ``rd.znet``, it activates unconfigured qeth devices in layer 2 mode so
+NetworkManager can request DHCP leases.  Devices already configured by DPM or
+another firmware path are left unchanged.
+
 The ``s390x`` image uses virtio networking under QEMU.  QEMU does not emulate
-qeth, and Genesis does not yet configure qeth channel groups.  Physical LPAR
-and z/VM Genesis networking therefore remain unvalidated.
+qeth, so the activation service exits without changing the virtio interface.
+Physical LPAR and z/VM Genesis networking remain unvalidated.
 Genesis does not use the shared CEC serial as an s390x node identifier.
 QEMU validation covers network IPL, DHCP option 209, TFTP, and the
 network-specific ``pxelinux.cfg``-style configuration written by ``mknb``.
@@ -111,6 +117,7 @@ the xcatd wire protocol.
 
 The boot sequence is split into ordered systemd services:
 
+#. On ``s390x``, Genesis activates qeth channel groups.
 #. NetworkManager configures candidate interfaces.
 #. The network state service selects a management path.
 #. Registration asks xcatd for the node destiny.
@@ -273,7 +280,7 @@ actions.
 cannot certify platform firmware, BMC behavior, storage-controller tools,
 RDMA firmware operations, GPUs, Secure Boot on vendor firmware, or
 board-specific device trees.  Physical ``s390x`` support also requires a qeth
-activation path and IBM Z LPAR or z/VM validation.
+channel test on an IBM Z LPAR or z/VM guest.
 
 References
 ----------
@@ -286,6 +293,8 @@ References
   <https://networkmanager.dev/docs/api/latest/NetworkManager-dispatcher.html>`_
 * `QEMU s390x network boot
   <https://www.qemu.org/docs/master/system/s390x/bootdevices.html>`_
+* `IBM znetconf
+  <https://www.ibm.com/docs/en/linux-on-systems?topic=linuxonz-znetconf>`_
 * `NetworkManager initrd generator
   <https://networkmanager.dev/docs/api/latest/nm-initrd-generator.html>`_
 * `systemd system extensions
