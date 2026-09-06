@@ -1,0 +1,72 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+use File::Spec;
+use FindBin;
+use Test::More;
+
+# A riscv64 management node has no legacy Genesis: the image ships as the OpenEmbedded package
+# xcat-genesis-openembedded-riscv64, which mknb consumes. xCAT.spec already says so for the rpm
+# side and gives riscv64 its own dependency block.
+#
+# The deb side named xcat-genesis-scripts-amd64 in a plain Depends, and that package is
+# Architecture: all, so apt installed the x86 Genesis scripts (and, through them, the x86 Genesis
+# base) on a riscv64 management node. Restrict the dependency to the architectures that have a
+# legacy Genesis, and leave amd64 and ppc64el untouched.
+
+my $repo_root = File::Spec->rel2abs(
+    File::Spec->catdir( $FindBin::Bin, '..', '..' )
+);
+
+sub read_file {
+    my ($filename) = @_;
+    open( my $fh, '<', $filename ) or die "Unable to read $filename: $!";
+    my $content = do { local $/; <$fh> };
+    close($fh);
+    return $content;
+}
+
+my $have_dpkg_deps = eval { require Dpkg::Deps; 1 } ? 1 : 0;
+
+foreach my $pkg ( [ 'xCAT', 'xcat' ], [ 'xCATsn', 'xcatsn' ] ) {
+    my ( $dir, $name ) = @$pkg;
+    my $control = read_file( File::Spec->catfile( $repo_root, $dir, 'debian', 'control' ) );
+    my ($depends) = $control =~ /^Depends:\s*(.*)$/m;
+    ok( defined $depends, "$name debian/control has a Depends line" );
+
+    my ($entry) = grep { /xcat-genesis-scripts/ } split( /\s*,\s*/, $depends );
+    ok( defined $entry, "$name depends on a legacy Genesis scripts package" );
+    like( $entry, qr/\[!riscv64\]/,
+        "$name excludes riscv64 from the legacy Genesis scripts dependency" );
+
+  SKIP: {
+        skip( "Dpkg::Deps is not available", 4 ) unless $have_dpkg_deps;
+
+        # Dpkg::Deps cannot parse a substvar, which dpkg-gencontrol expands before it gets here.
+        ( my $parsable = $depends ) =~ s/\$\{[^}]*\}\s*,?\s*//g;
+        my %reduced = map {
+            my $d = Dpkg::Deps::deps_parse( $parsable, reduce_arch => 1, host_arch => $_ );
+            $_ => ( defined $d ? $d->output() : '' )
+        } qw(riscv64 amd64 ppc64el);
+
+        unlike( $reduced{riscv64}, qr/xcat-genesis-scripts/,
+            "$name on riscv64 does not pull the legacy Genesis scripts" );
+        like( $reduced{amd64}, qr/xcat-genesis-scripts-amd64/,
+            "$name on amd64 still pulls them" );
+        like( $reduced{ppc64el}, qr/xcat-genesis-scripts-amd64/,
+            "$name on ppc64el still pulls them" );
+
+        # The restriction must not take anything else with it: every other dependency of the
+        # amd64 package must survive on riscv64.
+        my @lost = grep { $reduced{riscv64} !~ /\Q$_\E/ }
+                   grep { !/xcat-genesis-scripts/ }
+                   map  { my $d = $_; $d =~ s/\s*\(.*//; $d =~ s/\s*\[.*//; $d }
+                   split( /\s*,\s*/, $reduced{amd64} );
+        is_deeply( \@lost, [],
+            "$name on riscv64 keeps every other dependency" )
+            or diag( "dropped: @lost" );
+    }
+}
+
+done_testing();
