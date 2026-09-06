@@ -59,7 +59,7 @@ done
 architecture=$1
 image_dir=${2%/}
 case "$architecture" in
-    aarch64|armv7hf|riscv64|x86|x86_64|ppc64|ppc64le) ;;
+    aarch64|armv7hf|riscv64|s390x|x86|x86_64|ppc64|ppc64le) ;;
     *) fail "unsupported architecture: $architecture" ;;
 esac
 

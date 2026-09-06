@@ -16,7 +16,9 @@ xCAT-genesis-builder/oe/build x86_64
 ```
 
 The build command accepts `x86`, `x86_64`, `ppc64`, `ppc64le`, `armv7hf`,
-`aarch64`, and `riscv64`. Multiple architectures are built in the order given.
+`aarch64`, `riscv64`, and `s390x`. Multiple architectures are built in the
+order given.
+Run `xCAT-genesis-builder/oe/build --list-architectures` to print this list.
 Artifacts are written below `xCAT-genesis-builder/oe/.work/build/tmp/deploy/images`.
 The `x86` artifact uses an i686 CPU baseline. The build carries the reviewed
 Yocto release key in `oe/keys` and verifies its fingerprint locally.

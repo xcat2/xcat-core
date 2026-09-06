@@ -23,7 +23,8 @@ BEGIN {
     $INC{'xCAT/Table.pm'} = __FILE__;
 
     package xCAT::TableUtils;
-    sub getTftpDir { return '/tftpboot'; }
+    our $tftpdir;
+    sub getTftpDir { return $tftpdir; }
     sub get_site_attribute { return; }
     $INC{'xCAT/TableUtils.pm'} = __FILE__;
 
@@ -83,6 +84,7 @@ require xCAT::Utils;
     *xCAT::Utils::runcmd = sub { return; };
 }
 
+$xCAT::TableUtils::tftpdir = '/srv/tftp';
 my $source_dhcp_plugin = repo_path('xCAT-server/lib/xcat/plugins/dhcp.pm');
 require $source_dhcp_plugin;
 require xCAT::DHCP::Backend::Kea;
@@ -119,6 +121,27 @@ my %network_entry = (
     domain       => 'cluster.test',
     tftpserver   => '<xcatmaster>',
 );
+
+{
+    no warnings 'redefine';
+    local *xCAT::NetworkUtils::thishostisnot = sub { return 0; };
+    my $nettab = DHCPKeaIntentNetTable->new(\%network_entry);
+    my $subnet = xCAT_plugin::dhcp::kea_subnet4_intent(
+        $nettab, '10.0.0.0', '255.255.255.0', 'eth0', 0, 1, 80
+    );
+    my %classes = map { $_->{name} => $_ } @{ $subnet->{client_classes} };
+    ok($classes{'xcat-s390x-qemu-10.0.0.0_24'}, 'the Kea subnet includes QEMU s390x boot policy');
+    is(
+        $classes{'xcat-s390x-qemu-10.0.0.0_24'}{'option-data'}[0]{data},
+        's390x/10.0.0.0_24',
+        'the Kea subnet sends the s390x configuration name',
+    );
+    is_deeply(
+        [ grep { /^xcat-s390x-/ } @{ $subnet->{additional_client_classes} } ],
+        ['xcat-s390x-qemu-10.0.0.0_24'],
+        'the s390x policy is evaluated only for its subnet',
+    );
+}
 
 my @sysconfig_policy_cases = (
     [ 'sles10',                  0, 'SLES 10' ],

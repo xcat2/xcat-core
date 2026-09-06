@@ -208,7 +208,7 @@ GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
 	xCAT-genesis-openembedded-x86 xCAT-genesis-openembedded-x86_64
 	xCAT-genesis-openembedded-ppc64 xCAT-genesis-openembedded-ppc64le
 	xCAT-genesis-openembedded-armv7hf xCAT-genesis-openembedded-aarch64
-	xCAT-genesis-openembedded-riscv64
+	xCAT-genesis-openembedded-riscv64 xCAT-genesis-openembedded-s390x
 	xCAT-openbmc-py xCAT-probe xCAT-test xCAT-vlan xCATsn xCAT-UI-deps
     xCAT-buildkit conserver-xcat yaboot-xcat)
 # For Debian/Ubuntu, it will need a slightly different package list
@@ -218,7 +218,7 @@ GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
 	xcat-genesis-openembedded-x86 xcat-genesis-openembedded-x86-64
 	xcat-genesis-openembedded-ppc64 xcat-genesis-openembedded-ppc64le
 	xcat-genesis-openembedded-armv7hf xcat-genesis-openembedded-aarch64
-	xcat-genesis-openembedded-riscv64
+	xcat-genesis-openembedded-riscv64 xcat-genesis-openembedded-s390x
     xcat-buildkit conserver-xcat)
 
 PATH="/usr/sbin:/usr/bin:/sbin:/bin"

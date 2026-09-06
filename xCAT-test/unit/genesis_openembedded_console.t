@@ -19,6 +19,8 @@ my $root = tempdir( CLEANUP => 1 );
 my $binary = File::Spec->catfile( $root, 'xcat-genesis-console' );
 my $header_test_source = File::Spec->catfile( $root, 'header-test.c' );
 my $header_test_binary = File::Spec->catfile( $root, 'header-test' );
+my $identity_test_source = File::Spec->catfile( $root, 'identity-test.c' );
+my $identity_test_binary = File::Spec->catfile( $root, 'identity-test' );
 my $compiler = $ENV{CC} || 'cc';
 
 is(
@@ -74,6 +76,50 @@ is(
 );
 is( system($header_test_binary) >> 8, 0,
     'narrow terminals leave no writable header context' );
+
+write_file(
+    $identity_test_source,
+    <<'C'
+#include "console.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/utsname.h>
+
+int xcat_test_uname(struct utsname *name) {
+    const char *architecture = getenv("XCAT_TEST_ARCH");
+
+    memset(name, 0, sizeof(*name));
+    snprintf(name->machine, sizeof(name->machine), "%s",
+             architecture != NULL ? architecture : "x86_64");
+    snprintf(name->release, sizeof(name->release), "test-kernel");
+    return 0;
+}
+
+int main(void) {
+    struct console_state state;
+
+    xcat_load_console_state(&state);
+    printf("uuid=%s\nfirmware=%s\nboot=%s\n", state.uuid, state.firmware,
+           state.boot_method);
+    return 0;
+}
+C
+);
+is(
+    system(
+        $compiler, '-D_POSIX_C_SOURCE=200809L',
+        '-Duname=xcat_test_uname',
+        '-std=c17', '-Wall', '-Wextra', '-Wpedantic', '-Werror',
+        '-I', $source_dir, $identity_test_source,
+        File::Spec->catfile( $source_dir, 'state.c' ),
+        File::Spec->catfile( $source_dir, 'support.c' ),
+        '-o', $identity_test_binary
+      ) >> 8,
+    0,
+    'identity probe builds with strict warnings'
+);
 
 my $cmdline = File::Spec->catfile( $root, 'cmdline' );
 my $uptime = File::Spec->catfile( $root, 'uptime' );
@@ -159,12 +205,22 @@ my %environment = (
     XCAT_PROC_ROOT    => $proc_root,
     XCAT_EXTENSION_DIR => $extensions,
     XCAT_PROVIDER_DIR => $providers,
+    XCAT_TEST_ARCH    => 'x86_64',
 );
 
 sub run_console {
     local %ENV = ( %ENV, %environment );
     open( my $stream, '-|', $binary, '--once' )
       or die "Unable to run $binary: $!";
+    my $output = do { local $/; <$stream> };
+    close($stream);
+    return ( $? >> 8, $output );
+}
+
+sub run_identity_probe {
+    local %ENV = ( %ENV, %environment );
+    open( my $stream, '-|', $identity_test_binary )
+      or die "Unable to run $identity_test_binary: $!";
     my $output = do { local $/; <$stream> };
     close($stream);
     return ( $? >> 8, $output );
@@ -192,6 +248,56 @@ unlike( $output, qr/last contact/i,
 unlike( $output, qr/extensions:|providers:|Linux /,
     'inventory details stay off the main page' );
 unlike( $output, qr/\e/, 'plain output has no terminal escapes' );
+
+unlink(
+    File::Spec->catfile( $dmi_root, 'product_serial' ),
+    File::Spec->catfile( $dmi_root, 'product_uuid' ),
+);
+write_file( File::Spec->catfile( $proc_root, 'sysinfo' ), <<'SYSINFO' );
+Plant:                02
+Sequence Code:        0000000012345
+LPAR UUID:            93724168-fda3-429b-8b28-a5d245dcb3ff
+VM00 UUID:            82038f2a-1344-aaf7-1a85-2a7250be2076
+SYSINFO
+write_file( $cmdline, "xcatd=192.0.2.10:3001\n" );
+$environment{XCAT_TEST_ARCH} = 's390x';
+my ( $probe_status, $probe_output ) = run_identity_probe();
+is( $probe_status, 0, 'console loads IBM Z diagnostics' );
+is(
+    $probe_output,
+    "uuid=82038f2a-1344-aaf7-1a85-2a7250be2076\n"
+      . "firmware=not reported\nboot=not reported\n",
+    'console does not infer the boot path from the architecture',
+);
+write_file( $cmdline,
+    "xcatd=192.0.2.10:3001 xcat.bootloader=s390-ccw\n" );
+( $probe_status, $probe_output ) = run_identity_probe();
+is(
+    $probe_output,
+    "uuid=82038f2a-1344-aaf7-1a85-2a7250be2076\n"
+      . "firmware=s390-ccw BIOS\nboot=QEMU TFTP loader\n",
+    'console reports the marked QEMU network boot path',
+);
+write_file( File::Spec->catfile( $proc_root, 'sysinfo' ), <<'SYSINFO' );
+LPAR UUID:            93724168-fda3-429b-8b28-a5d245dcb3ff
+SYSINFO
+( $probe_status, $probe_output ) = run_identity_probe();
+like( $probe_output,
+    qr/^uuid=93724168-fda3-429b-8b28-a5d245dcb3ff$/m,
+    'console uses the LPAR UUID when no guest UUID is available' );
+write_file( File::Spec->catfile( $proc_root, 'sysinfo' ), <<'SYSINFO' );
+VM00 Control Program: z/VM 7.3.0
+LPAR UUID:            93724168-fda3-429b-8b28-a5d245dcb3ff
+SYSINFO
+( $probe_status, $probe_output ) = run_identity_probe();
+like( $probe_output, qr/^uuid=not reported$/m,
+    'console does not reuse the LPAR UUID for a guest' );
+unlink( File::Spec->catfile( $proc_root, 'sysinfo' ) );
+$environment{XCAT_TEST_ARCH} = 'x86_64';
+write_file( File::Spec->catfile( $dmi_root, 'product_serial' ),
+    "TEST-SERIAL-001\n" );
+write_file( File::Spec->catfile( $dmi_root, 'product_uuid' ),
+    "11111111-2222-3333-4444-555555555555\n" );
 
 my $cmdline_without_xcat = $ipv4_network_state;
 $cmdline_without_xcat =~ s/^XCATDEST=.*\n//m;

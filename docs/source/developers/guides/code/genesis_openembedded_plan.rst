@@ -57,6 +57,9 @@ Supported architectures
    * - ``riscv64``
      - RV64GC with OpenSBI
      - QEMU ``virt``
+   * - ``s390x``
+     - 64-bit z/Architecture, z10 or later
+     - QEMU ``s390-ccw-virtio``
 
 ``x86_64`` is the first release target and ``ppc64le`` is the second because
 both have physical test systems.  The other targets have the same software
@@ -66,7 +69,7 @@ trees, or controllers.
 Architecture names are exact.  In particular, ``ppc64`` and ``ppc64le`` are
 different artifacts.  The build does not preserve the old xCAT alias between
 them.  ``riscv32``, pre-ARMv7 processors, and i586-only x86 processors are not
-supported.
+supported.  The ``s390x`` target does not support the 31-bit ``s390`` ABI.
 
 Networking
 ----------
@@ -90,6 +93,26 @@ IPv6-only deployment also needs matching support in xCAT server code, DHCP,
 boot firmware, and boot configuration.  Those changes are outside this layer
 and must not be hidden inside the Genesis image.
 
+On ``s390x``, Genesis activates qeth devices before NetworkManager starts.  It
+accepts the standard ``rd.znet=qeth,read,write,data[,option=value]`` parameter.
+Without ``rd.znet``, it activates unconfigured qeth devices in layer 2 mode so
+NetworkManager can request DHCP leases.  Devices reported as configured by
+``znetconf`` are not regrouped.  Genesis does not import DPM auto-configuration
+data.  Layer 3 and IP-mode VSWITCH configurations require ``layer2=0`` in
+``rd.znet``.
+
+The ``s390x`` image uses virtio networking under QEMU.  QEMU does not emulate
+qeth, so the activation service exits without changing the virtio interface.
+Physical LPAR and z/VM Genesis networking remain unvalidated.
+Genesis does not use the shared CEC serial as an s390x node identifier.
+s390x hypervisor guests report themselves as virtual nodes, so sequential and
+switch discovery ignore them.  Use profile discovery or assign a pending
+discovery record with ``nodediscoverdef``.
+QEMU validation covers network IPL, DHCP option 209, TFTP, and the
+network-specific ``pxelinux.cfg``-style configuration written by ``mknb``.
+This release does not advertise a DPM boot configuration.
+Legacy xCAT z/VM operating-system provisioning remains unchanged.
+
 xCAT protocol
 -------------
 
@@ -99,6 +122,7 @@ the xcatd wire protocol.
 
 The boot sequence is split into ordered systemd services:
 
+#. On ``s390x``, Genesis activates qeth channel groups.
 #. NetworkManager configures candidate interfaces.
 #. The network state service selects a management path.
 #. Registration asks xcatd for the node destiny.
@@ -234,12 +258,13 @@ checksums, reports, and optional signed extensions.  Packages install each
 export under ``genesis-openembedded/ARCH``.  ``mknb`` verifies and publishes
 that export when present, while retaining the old Genesis path as a fallback.
 
-The management-node and service-node packages recommend the ``x86_64`` and
-``ppc64le`` images.  These are weak dependencies so an older or partial mirror
-does not block an xCAT upgrade.  Other target images can be installed from the
-same common repository before running ``mknb ARCH``.  RPM builds based on RPM
-4.11 omit the recommendations because that version cannot parse weak dependency
-tags.  Install the required image package explicitly on those systems.
+The management-node and service-node packages recommend the ``x86_64``,
+``ppc64le``, ``riscv64``, and ``s390x`` images.  These are weak dependencies so
+an older or partial mirror does not block an xCAT upgrade.  Other target images
+can be installed from the same common repository before running ``mknb ARCH``.
+RPM builds based on RPM 4.11 omit the recommendations because that version
+cannot parse weak dependency tags.  Install the required image package
+explicitly on those systems.
 
 Server integration should be reviewed separately from the image.  Independent
 bugs found while testing Genesis, such as TFTP path handling or Kea policy,
@@ -259,7 +284,8 @@ actions.
 ``x86_64`` and ``ppc64le`` require physical tests before release.  VM tests
 cannot certify platform firmware, BMC behavior, storage-controller tools,
 RDMA firmware operations, GPUs, Secure Boot on vendor firmware, or
-board-specific device trees.
+board-specific device trees.  Physical ``s390x`` support also requires a qeth
+channel test on an IBM Z LPAR or z/VM guest.
 
 References
 ----------
@@ -270,6 +296,10 @@ References
   <https://kas.readthedocs.io/en/latest/userguide/project-configuration.html>`_
 * `NetworkManager dispatcher interface
   <https://networkmanager.dev/docs/api/latest/NetworkManager-dispatcher.html>`_
+* `QEMU s390x network boot
+  <https://www.qemu.org/docs/master/system/s390x/bootdevices.html>`_
+* `IBM znetconf
+  <https://www.ibm.com/docs/en/linux-on-systems?topic=linuxonz-znetconf>`_
 * `NetworkManager initrd generator
   <https://networkmanager.dev/docs/api/latest/nm-initrd-generator.html>`_
 * `systemd system extensions

@@ -23,6 +23,7 @@ case "$architecture" in
     armv7hf) kernel_name=zImage ;;
     aarch64) kernel_name=Image ;;
     riscv64) kernel_name=Image ;;
+    s390x) kernel_name=bzImage ;;
     *) fail "unsupported architecture: $architecture" ;;
 esac
 

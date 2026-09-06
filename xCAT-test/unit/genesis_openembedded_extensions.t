@@ -192,6 +192,22 @@ is( $verify_status, 0, 'valid extension is accepted' ) or diag($verify_output);
       or diag($arm_output);
 }
 
+{
+    local $ENV{XCAT_GENESIS_UNAME_M} = 's390x';
+    my $s390x_manifest = File::Spec->catfile( $root, 'xcat-smoke-s390x.json' );
+    my $s390x_signature = File::Spec->catfile( $root, 'xcat-smoke-s390x.sig' );
+    write_manifest( $s390x_manifest, $hash, { architecture => 's390x' } );
+    my ( $s390x_sign_status, $s390x_sign_output ) =
+      run_command( $signer, $s390x_manifest, $private_key, $s390x_signature );
+    is( $s390x_sign_status, 0, 's390x extension manifest is signed' )
+      or diag($s390x_sign_output);
+    my ( $s390x_status, $s390x_output ) = run_command(
+        '/bin/bash', $loader, 'verify', $s390x_manifest, $image, $s390x_signature
+    );
+    is( $s390x_status, 0, 's390x runtime uses its canonical extension identity' )
+      or diag($s390x_output);
+}
+
 my ( $install_status, $install_output ) =
   run_command( '/bin/bash', $loader, 'install', $manifest, $image, $signature );
 is( $install_status, 0, 'valid extension is installed' ) or diag($install_output);

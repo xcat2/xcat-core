@@ -57,13 +57,17 @@ is( xCAT::ProfiledNodeUtils::cal_netboot( $rule_table, [ 'aarch64', 'rhels', '9'
 # Schema descriptions
 # ---------------------------------------------------------------------------
 SKIP: {
-    skip 'xCAT::Schema is not loadable here', 3
+    skip 'xCAT::Schema is not loadable here', 5
       unless eval { require lib; lib->import( repo_path('perl-xCAT') ); require xCAT::Schema; 1 };
 
     like( $xCAT::Schema::tabspec{nodetype}{descriptions}{arch}, qr/\briscv64\b/,
         'nodetype.arch documents riscv64 as a valid value' );
+    like( $xCAT::Schema::tabspec{nodetype}{descriptions}{arch}, qr/\bs390x\b/,
+        'nodetype.arch documents s390x as a valid value' );
     like( $xCAT::Schema::tabspec{osimage}{descriptions}{osarch}, qr/\briscv64\b/,
         'osimage.osarch documents riscv64 as a valid value' );
+    like( $xCAT::Schema::tabspec{osimage}{descriptions}{osarch}, qr/\bs390x\b/,
+        'osimage.osarch documents s390x as a valid value' );
     like( $xCAT::Schema::tabspec{noderes}{descriptions}{netboot}, qr/riscv64\s+>=el10\s+grub2,grub2-http,grub2-tftp/,
         'noderes.netboot documents the riscv64 grub2 methods' );
 }

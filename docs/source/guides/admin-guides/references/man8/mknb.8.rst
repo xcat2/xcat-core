@@ -42,11 +42,17 @@ An export is identified by \ ``xcat-genesis.manifest``\ , which records its form
 
 When multiple IPv4 addresses are configured for the same network, \ **mknb**\  uses a locally assigned \ ``site.master``\  for the xcatd endpoint, or the first address reported by the operating system when \ ``site.master``\  is not local. POWER discovery configurations also use this address for their kernel and initrd URLs.
 
-OpenEmbedded images use the exact architecture names \ ``x86``\ , \ ``x86_64``\ , \ ``ppc64``\ , \ ``ppc64le``\ , \ ``armv7hf``\ , \ ``aarch64``\ , and \ ``riscv64``\ . If an OpenEmbedded \ ``ppc64le``\  image is not installed, \ **mknb**\  keeps the old behavior and uses the legacy \ ``ppc64``\  image.
+OpenEmbedded images use the exact architecture names \ ``x86``\ , \ ``x86_64``\ , \ ``ppc64``\ , \ ``ppc64le``\ , \ ``armv7hf``\ , \ ``aarch64``\ , \ ``riscv64``\ , and \ ``s390x``\ . If an OpenEmbedded \ ``ppc64le``\  image is not installed, \ **mknb**\  keeps the old behavior and uses the legacy \ ``ppc64``\  image.
 
 Canonical \ ``ppc64``\  images are big-endian. xCAT marks them so \ ``ppc64le``\  nodes do not use them as a legacy little-endian fallback. \ **mknb**\  also refuses to replace a marked \ ``ppc64``\  image with that fallback.
 
-riscv64 nodes boot through UEFI firmware and grub2. For riscv64, \ **mknb**\  publishes the Genesis kernel and initramfs and writes one grub2 configuration per network under ``/tftpboot/boot/grub2``, named ``grub.cfg-`` followed by the network hex prefix, so that ``grub2.riscv64`` loaded by the firmware can start node discovery. The per-node files written by \ **nodeset**\  take priority over these network files. Networks served by a ``:noboot`` interface in ``site.dhcpinterfaces`` get no discovery configuration.
+riscv64 nodes boot through UEFI firmware and grub2. For riscv64, \ **mknb**\  publishes the Genesis kernel and initramfs and writes one grub2 configuration per network under \ ``/tftpboot/boot/grub2``\ , named \ ``grub.cfg-``\  followed by the network hex prefix, so that \ ``grub2.riscv64``\  loaded by the firmware can start node discovery. The per-node files written by \ **nodeset**\  take priority over these network files. Networks served by a \ ``:noboot``\  interface in \ ``site.dhcpinterfaces``\  get no discovery configuration.
+
+QEMU s390-ccw guests receive a network-specific \ ``pxelinux.cfg``\ -style configuration through DHCP option 209. The firmware resolves this name below \ ``pxelinux.cfg``\ . Leave \ ``noderes.netboot``\  unset while a QEMU s390x node uses Genesis discovery. s390x Genesis does not use the shared IBM Z machine serial as a node identifier. On physical IBM Z, Genesis accepts \ ``rd.znet=qeth,read,write,data[,option=value]``\  and activates qeth before NetworkManager starts. Without \ ``rd.znet``\ , it activates unconfigured qeth devices in layer 2 mode. Devices reported as configured by \ ``znetconf``\  are not regrouped. Genesis does not import DPM auto-configuration data. Layer 3 and IP-mode VSWITCH configurations require \ ``layer2=0``\ . QEMU validation covers network IPL through Genesis startup; the discovery exchange with xcatd remains unvalidated for s390x. Legacy xCAT z/VM operating-system provisioning remains unchanged. Physical LPAR and z/VM Genesis networking remain unvalidated because QEMU does not emulate qeth.
+
+s390x hypervisor guests report themselves as virtual nodes, so sequential and switch discovery ignore them. Use profile discovery or assign a pending discovery record with \ **nodediscoverdef**\ .
+
+Run \ **makedhcp -n**\  after installing the s390x image and before booting s390x nodes. This regenerates the DHCP configuration with the required option.
 
 
 *******

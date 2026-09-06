@@ -1998,7 +1998,7 @@ sub setupLinuxexports
 sub _installed_genesis_architectures
 {
     my ($xcatroot) = @_;
-    my @supported = qw(aarch64 armv7hf ppc64 ppc64le riscv64 x86 x86_64);
+    my @supported = qw(aarch64 armv7hf ppc64 ppc64le riscv64 s390x x86 x86_64);
     my %supported = map { $_ => 1 } @supported;
     my %installed;
 
