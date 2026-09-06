@@ -25,10 +25,10 @@ like( $kas, qr/tag: yocto-6\.0\.2/, 'build uses Yocto 6.0.2' );
 like( $kas, qr/fingerprint: 2AFB13F28FBBB0D1B9DAF63087EB3D32FB631AD9/,
     'build trusts the Yocto release key' );
 like( $kas,
-    qr{yocto-release:.*?repo: xcat-core.*?path: \.\./keys/yocto-release\.asc}s,
+    qr{yocto-release:.*?repo: xcat-core.*?path: xCAT-genesis-builder/oe/keys/yocto-release\.asc}s,
     'build loads the Yocto release key from the source tree' );
 like( $kas,
-    qr{xcat-core:.*?layers:.*?\.\./meta-xcat-genesis:}s,
+    qr{xcat-core:.*?layers:.*?xCAT-genesis-builder/oe/meta-xcat-genesis:}s,
     'build loads the Genesis layer from the source tree' );
 unlike( $kas, qr/gpg_keyserver:/,
     'build does not depend on a public keyserver' );
@@ -57,49 +57,49 @@ like( $kas,
     'meta-openembedded revision is pinned' );
 
 my $x86_kas = read_file('xCAT-genesis-builder/oe/kas/x86_64.yml');
-like( $x86_kas, qr{includes:\s*\n\s*- common\.yml},
+like( $x86_kas, qr{includes:\s*\n\s*- xCAT-genesis-builder/oe/kas/common\.yml},
     'x86_64 build includes the common configuration' );
 like( $x86_kas, qr/^machine: xcat-genesis-x86-64$/m,
     'x86_64 build selects its machine' );
 
 my $x86_32_kas = read_file('xCAT-genesis-builder/oe/kas/x86.yml');
-like( $x86_32_kas, qr{includes:\s*\n\s*- common\.yml},
+like( $x86_32_kas, qr{includes:\s*\n\s*- xCAT-genesis-builder/oe/kas/common\.yml},
     'x86 build includes the common configuration' );
 like( $x86_32_kas, qr/^machine: xcat-genesis-x86$/m,
     'x86 build selects its machine' );
 
 my $armv7hf_kas = read_file('xCAT-genesis-builder/oe/kas/armv7hf.yml');
-like( $armv7hf_kas, qr{includes:\s*\n\s*- common\.yml},
+like( $armv7hf_kas, qr{includes:\s*\n\s*- xCAT-genesis-builder/oe/kas/common\.yml},
     'armv7hf build includes the common configuration' );
 like( $armv7hf_kas, qr/^machine: xcat-genesis-armv7hf$/m,
     'armv7hf build selects its machine' );
 
 my $aarch64_kas = read_file('xCAT-genesis-builder/oe/kas/aarch64.yml');
-like( $aarch64_kas, qr{includes:\s*\n\s*- common\.yml},
+like( $aarch64_kas, qr{includes:\s*\n\s*- xCAT-genesis-builder/oe/kas/common\.yml},
     'aarch64 build includes the common configuration' );
 like( $aarch64_kas, qr/^machine: xcat-genesis-aarch64$/m,
     'aarch64 build selects its machine' );
 
 my $riscv64_kas = read_file('xCAT-genesis-builder/oe/kas/riscv64.yml');
-like( $riscv64_kas, qr{includes:\s*\n\s*- common\.yml},
+like( $riscv64_kas, qr{includes:\s*\n\s*- xCAT-genesis-builder/oe/kas/common\.yml},
     'riscv64 build includes the common configuration' );
 like( $riscv64_kas, qr/^machine: xcat-genesis-riscv64$/m,
     'riscv64 build selects its machine' );
 
 my $s390x_kas = read_file('xCAT-genesis-builder/oe/kas/s390x.yml');
-like( $s390x_kas, qr{includes:\s*\n\s*- common\.yml},
+like( $s390x_kas, qr{includes:\s*\n\s*- xCAT-genesis-builder/oe/kas/common\.yml},
     's390x build includes the common configuration' );
 like( $s390x_kas, qr/^machine: xcat-genesis-s390x$/m,
     's390x build selects its machine' );
 
 my $ppc64le_kas = read_file('xCAT-genesis-builder/oe/kas/ppc64le.yml');
-like( $ppc64le_kas, qr{includes:\s*\n\s*- common\.yml},
+like( $ppc64le_kas, qr{includes:\s*\n\s*- xCAT-genesis-builder/oe/kas/common\.yml},
     'ppc64le build includes the common configuration' );
 like( $ppc64le_kas, qr/^machine: xcat-genesis-ppc64le$/m,
     'ppc64le build selects its machine' );
 
 my $ppc64_kas = read_file('xCAT-genesis-builder/oe/kas/ppc64.yml');
-like( $ppc64_kas, qr{includes:\s*\n\s*- common\.yml},
+like( $ppc64_kas, qr{includes:\s*\n\s*- xCAT-genesis-builder/oe/kas/common\.yml},
     'ppc64 build includes the common configuration' );
 like( $ppc64_kas, qr/^machine: xcat-genesis-ppc64$/m,
     'ppc64 build selects its machine' );
