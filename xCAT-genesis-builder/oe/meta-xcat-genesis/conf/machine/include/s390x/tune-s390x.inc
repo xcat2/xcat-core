@@ -12,7 +12,6 @@ TUNE_CCARGS .= "${@bb.utils.contains('TUNE_FEATURES', 'z10', ' -march=z10 -mtune
 AVAILTUNES += "s390x"
 TUNE_FEATURES:tune-s390x = "m64 bigendian z10"
 BASE_LIB:tune-s390x = "lib64"
-BASELIB:libc-glibc:s390x = "lib64"
 TUNE_PKGARCH:tune-s390x = "s390x"
 PACKAGE_EXTRA_ARCHS:tune-s390x = "s390x"
 
