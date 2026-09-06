@@ -4876,6 +4876,7 @@ sub splitkcmdline {
 # without network drivers instead of stopping at debootstrap.
 my %DEBIAN_ARCH = (
     'x86_64' => 'amd64',
+    'x86'    => 'i386',
 );
 
 sub debian_arch {
