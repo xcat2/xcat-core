@@ -8,6 +8,7 @@ Before=NetworkManager.service xcat-genesis-network-state.service
 [Service]
 Type=oneshot
 ExecStart=/usr/libexec/xcat/genesis-qeth
+TimeoutStartSec=120
 RemainAfterExit=yes
 
 [Install]

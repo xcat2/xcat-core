@@ -5,6 +5,7 @@ LC_ALL=C
 export LC_ALL
 
 cmdline_file=${XCAT_CMDLINE_FILE:-/proc/cmdline}
+cio_settle_file=${XCAT_CIO_SETTLE_FILE:-/proc/cio_settle}
 status_command=${XCAT_STATUS_COMMAND:-/usr/libexec/xcat/genesis-status}
 znetconf_command=${XCAT_ZNETCONF_COMMAND:-/sbin/znetconf}
 
@@ -41,12 +42,26 @@ configured_channels() {
     return 1
 }
 
+processed_channels() {
+    local channels=$1 processed
+
+    for processed in "${ready_channels[@]}" "${failed_channels[@]}"; do
+        [ "$processed" = "$channels" ] && return 0
+    done
+    return 1
+}
+
 activate_channels() {
     local channels=$1
     shift
     local -a command=("$znetconf_command" -a "$channels" -d qeth)
     local option output result
     local have_layer2=false
+
+    if processed_channels "$channels"; then
+        log "qeth channels already processed: $channels"
+        return 0
+    fi
 
     for option in "$@"; do
         if [[ ! $option =~ ^[A-Za-z_][A-Za-z0-9_./-]*=[A-Za-z0-9_./:+-]+$ ]]; then
@@ -78,6 +93,10 @@ activate_channels() {
     ready_channels+=("$channels")
     return 0
 }
+
+if [ -w "$cio_settle_file" ]; then
+    printf '1\n' >"$cio_settle_file" || log 'Unable to wait for IBM Z channel devices'
+fi
 
 configured_output=$("$znetconf_command" -c 2>/dev/null || true)
 declare -a cmdline_arguments=() explicit_specs=() ready_channels=() failed_channels=()
