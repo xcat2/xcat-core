@@ -34,6 +34,8 @@ foreach my $pkg ( [ 'xCAT', 'xcat' ], [ 'xCATsn', 'xcatsn' ] ) {
     my $control = read_file( File::Spec->catfile( $repo_root, $dir, 'debian', 'control' ) );
     my ($depends) = $control =~ /^Depends:\s*(.*)$/m;
     ok( defined $depends, "$name debian/control has a Depends line" );
+    my ($recommends) = $control =~ /^Recommends:\s*(.*)$/m;
+    ok( defined $recommends, "$name debian/control has a Recommends line" );
 
     my ($entry) = grep { /xcat-genesis-scripts/ } split( /\s*,\s*/, $depends );
     ok( defined $entry, "$name depends on a legacy Genesis scripts package" );
@@ -41,7 +43,7 @@ foreach my $pkg ( [ 'xCAT', 'xcat' ], [ 'xCATsn', 'xcatsn' ] ) {
         "$name excludes riscv64 from the legacy Genesis scripts dependency" );
 
   SKIP: {
-        skip( "Dpkg::Deps is not available", 4 ) unless $have_dpkg_deps;
+        skip( "Dpkg::Deps is not available", 7 ) unless $have_dpkg_deps;
 
         # Dpkg::Deps cannot parse a substvar, which dpkg-gencontrol expands before it gets here.
         ( my $parsable = $depends ) =~ s/\$\{[^}]*\}\s*,?\s*//g;
@@ -66,6 +68,22 @@ foreach my $pkg ( [ 'xCAT', 'xcat' ], [ 'xCATsn', 'xcatsn' ] ) {
         is_deeply( \@lost, [],
             "$name on riscv64 keeps every other dependency" )
             or diag( "dropped: @lost" );
+
+        # A management node of any architecture can provision nodes of another, so what it SERVES
+        # to those nodes -- the x86 boot payload and the Genesis images of the other architectures
+        # -- stays recommended everywhere. Only the legacy Genesis of this node is architecture
+        # specific, and that one is a dependency, not a recommendation.
+        my %reduced_recommends = map {
+            my $d = Dpkg::Deps::deps_parse( $recommends, reduce_arch => 1, host_arch => $_ );
+            $_ => ( defined $d ? $d->output() : '' )
+        } qw(riscv64 amd64);
+
+        like( $reduced_recommends{riscv64}, qr/\bsyslinux-xcat\b/,
+            "$name on riscv64 still recommends the x86 boot payload it serves" );
+        like( $reduced_recommends{riscv64}, qr/xcat-genesis-openembedded-x86-64/,
+            "$name on riscv64 still recommends the Genesis image of the other architectures" );
+        like( $reduced_recommends{amd64}, qr/\bsyslinux-xcat\b/,
+            "$name on amd64 is unchanged" );
     }
 }
 
