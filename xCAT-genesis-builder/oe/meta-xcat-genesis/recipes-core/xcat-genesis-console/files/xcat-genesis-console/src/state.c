@@ -220,11 +220,15 @@ static bool useful_identity(const char *value) {
 
 static void set_s390_identity(const char *proc_root, struct console_state *state) {
     char path[VALUE_SIZE * 2];
+    char control_program[VALUE_SIZE] = "";
+    bool guest;
 
     snprintf(path, sizeof(path), "%s/sysinfo", proc_root);
     if (!useful_identity(state->uuid)) {
+        guest = xcat_read_colon_key(path, "VM00 Control Program", control_program,
+                                    sizeof(control_program));
         xcat_read_colon_key(path, "VM00 UUID", state->uuid, sizeof(state->uuid));
-        if (!useful_identity(state->uuid))
+        if (!useful_identity(state->uuid) && !guest)
             xcat_read_colon_key(path, "LPAR UUID", state->uuid, sizeof(state->uuid));
     }
 }

@@ -81,6 +81,14 @@ read_sysinfo_value() {
         "$proc_root/sysinfo" 2>/dev/null || true
 }
 
+sysinfo_has_key() {
+    local name=$1
+
+    awk -F ':' -v name="$name" \
+        '$1 == name {found = 1; exit} END {exit !found}' \
+        "$proc_root/sysinfo" 2>/dev/null
+}
+
 send_packet() {
     if [[ -n ${XCAT_DISCOVERY_SEND_COMMAND:-} ]]; then
         "$XCAT_DISCOVERY_SEND_COMMAND" "$compressed_packet" "$XCATMASTER" "$XCATPORT"
@@ -147,12 +155,14 @@ if [[ $architecture == s390x ]]; then
     product_name=${product_type}${product_model:+-$product_model}
     machine_type=$product_name
     serial=
-    uuid=$(read_sysinfo_value 'VM00 UUID')
-    [[ -n $uuid ]] || uuid=$(read_sysinfo_value 'LPAR UUID')
-    platform=$(read_sysinfo_value 'VM00 Control Program')
-    if [[ -n $platform ]]; then
+    if sysinfo_has_key 'VM00 Control Program'; then
         s390_virtual=1
-    else
+    fi
+    uuid=$(read_sysinfo_value 'VM00 UUID')
+    [[ -n $uuid || -n $s390_virtual ]] \
+        || uuid=$(read_sysinfo_value 'LPAR UUID')
+    platform=$(read_sysinfo_value 'VM00 Control Program')
+    if [[ -z $s390_virtual ]]; then
         platform=LPAR
     fi
 elif [[ -z $product_name ]]; then
