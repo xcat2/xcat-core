@@ -80,7 +80,7 @@ activate_channels() {
 }
 
 configured_output=$("$znetconf_command" -c 2>/dev/null || true)
-declare -a cmdline_arguments explicit_specs ready_channels failed_channels
+declare -a cmdline_arguments=() explicit_specs=() ready_channels=() failed_channels=()
 rd_znet_present=false
 read -r -a cmdline_arguments <"$cmdline_file"
 for argument in "${cmdline_arguments[@]}"; do
