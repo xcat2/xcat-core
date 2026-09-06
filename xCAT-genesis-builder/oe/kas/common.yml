@@ -5,7 +5,7 @@ signers:
   yocto-release:
     fingerprint: 2AFB13F28FBBB0D1B9DAF63087EB3D32FB631AD9
     repo: xcat-core
-    path: ../keys/yocto-release.asc
+    path: xCAT-genesis-builder/oe/keys/yocto-release.asc
 
 distro: xcat-genesis
 target: xcat-genesis-image
@@ -40,7 +40,7 @@ repos:
 
   xcat-core:
     layers:
-      ../meta-xcat-genesis:
+      xCAT-genesis-builder/oe/meta-xcat-genesis:
 
 local_conf_header:
   xcat-genesis: |

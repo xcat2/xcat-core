@@ -1,6 +1,6 @@
 header:
   version: 19
   includes:
-    - common.yml
+    - xCAT-genesis-builder/oe/kas/common.yml
 
 machine: xcat-genesis-aarch64
