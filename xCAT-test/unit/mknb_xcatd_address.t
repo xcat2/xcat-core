@@ -5,6 +5,7 @@ use warnings;
 
 use FindBin;
 use lib "$FindBin::Bin/../lib";
+use lib "$FindBin::Bin/../../perl-xCAT";
 use File::Slurper qw(write_text);
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
