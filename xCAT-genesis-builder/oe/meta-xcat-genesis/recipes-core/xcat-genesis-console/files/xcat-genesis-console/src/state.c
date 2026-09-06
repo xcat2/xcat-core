@@ -222,9 +222,11 @@ static void set_s390_identity(const char *proc_root, struct console_state *state
     char path[VALUE_SIZE * 2];
 
     snprintf(path, sizeof(path), "%s/sysinfo", proc_root);
-    if (!useful_identity(state->uuid) &&
-        !xcat_read_colon_key(path, "VM00 UUID", state->uuid, sizeof(state->uuid)))
-        xcat_read_colon_key(path, "LPAR UUID", state->uuid, sizeof(state->uuid));
+    if (!useful_identity(state->uuid)) {
+        xcat_read_colon_key(path, "VM00 UUID", state->uuid, sizeof(state->uuid));
+        if (!useful_identity(state->uuid))
+            xcat_read_colon_key(path, "LPAR UUID", state->uuid, sizeof(state->uuid));
+    }
 }
 
 static void split_action(const char *destiny, char *action, size_t action_size, char *target,
