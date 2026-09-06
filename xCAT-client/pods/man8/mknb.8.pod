@@ -32,6 +32,8 @@ riscv64 nodes boot through UEFI firmware and grub2. For riscv64, B<mknb> publish
 
 QEMU s390-ccw guests receive a network-specific C<pxelinux.cfg>-style configuration through DHCP option 209. The firmware resolves this name below C<pxelinux.cfg>. Leave C<noderes.netboot> unset while a QEMU s390x node uses Genesis discovery. s390x Genesis does not use the shared IBM Z machine serial as a node identifier. On physical IBM Z, Genesis accepts C<rd.znet=qeth,read,write,data[,option=value]> and activates qeth before NetworkManager starts. Without C<rd.znet>, it activates unconfigured qeth devices in layer 2 mode. Devices reported as configured by C<znetconf> are not regrouped. Genesis does not import DPM auto-configuration data. Layer 3 and IP-mode VSWITCH configurations require C<layer2=0>. QEMU validation covers network IPL through Genesis startup; the discovery exchange with xcatd remains unvalidated for s390x. Legacy xCAT z/VM operating-system provisioning remains unchanged. Physical LPAR and z/VM Genesis networking remain unvalidated because QEMU does not emulate qeth.
 
+s390x hypervisor guests report themselves as virtual nodes, so sequential and switch discovery ignore them. Use profile discovery or assign a pending discovery record with B<nodediscoverdef>.
+
 Run B<makedhcp -n> after installing the s390x image and before booting s390x nodes. This regenerates the DHCP configuration with the required option.
 
 =head1 OPTIONS

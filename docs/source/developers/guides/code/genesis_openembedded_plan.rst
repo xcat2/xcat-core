@@ -105,9 +105,9 @@ The ``s390x`` image uses virtio networking under QEMU.  QEMU does not emulate
 qeth, so the activation service exits without changing the virtio interface.
 Physical LPAR and z/VM Genesis networking remain unvalidated.
 Genesis does not use the shared CEC serial as an s390x node identifier.
-QEMU guests report themselves as virtual nodes, so sequential and switch
-discovery ignore them.  Use profile discovery or assign a pending discovery
-record with ``nodediscoverdef``.
+s390x hypervisor guests report themselves as virtual nodes, so sequential and
+switch discovery ignore them.  Use profile discovery or assign a pending
+discovery record with ``nodediscoverdef``.
 QEMU validation covers network IPL, DHCP option 209, TFTP, and the
 network-specific ``pxelinux.cfg``-style configuration written by ``mknb``.
 This release does not advertise a DPM boot configuration.
