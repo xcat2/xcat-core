@@ -286,13 +286,13 @@ like( $probe_output,
     qr/^uuid=93724168-fda3-429b-8b28-a5d245dcb3ff$/m,
     'console uses the LPAR UUID when no guest UUID is available' );
 write_file( File::Spec->catfile( $proc_root, 'sysinfo' ), <<'SYSINFO' );
+VM00 Control Program: z/VM 7.3.0
 VM00 UUID:
 LPAR UUID:            93724168-fda3-429b-8b28-a5d245dcb3ff
 SYSINFO
 ( $probe_status, $probe_output ) = run_identity_probe();
-like( $probe_output,
-    qr/^uuid=93724168-fda3-429b-8b28-a5d245dcb3ff$/m,
-    'console ignores an empty guest UUID and uses the LPAR UUID' );
+like( $probe_output, qr/^uuid=not reported$/m,
+    'console does not reuse the LPAR UUID for a guest' );
 unlink( File::Spec->catfile( $proc_root, 'sysinfo' ) );
 $environment{XCAT_TEST_ARCH} = 'x86_64';
 write_file( File::Spec->catfile( $dmi_root, 'product_serial' ),

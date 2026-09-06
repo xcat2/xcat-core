@@ -465,6 +465,7 @@ write_file( File::Spec->catfile( $proc_root, 'sysinfo' ), <<'SYSINFO' );
 Manufacturer:         IBM
 Type:                 3931
 Model:                701 A01
+LPAR UUID:            93724168-fda3-429b-8b28-a5d245dcb3ff
 VM00 Control Program: KVM/Linux
 SYSINFO
 is( run_script( $discover_script, \%environment ), 0,
