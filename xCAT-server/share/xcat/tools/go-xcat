@@ -43,7 +43,7 @@
 # 2022-11-01 Mark Gurevich <gurevich@us.ibm.com>
 #     - Make sure initscripts installed on RH family of OSes
 # 2022-12-06 Mark Gurevich <gurevich@us.ibm.com>
-#     - Check for EPEL and CRB repository on EL9 family of OSes
+#     - Check for EPEL and CRB repositories on EL9 and EL10 family of OSes
 # 2023-01-19 Mark Gurevich <gurevich@us.ibm.com>
 #     - Add support for Alma Linux
 # 2026-07-20 Daniel Hilst <392820+dhilst@users.noreply.github.com>
@@ -223,8 +223,8 @@ GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
 
 PATH="/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
-EL9_EPEL_TEST_RPM="perl-Crypt-CBC"
-EL9_CRB_TEST_RPM="perl-IO-Tty"
+EL_EPEL_TEST_RPM="perl-Crypt-CBC"
+EL_CRB_TEST_RPM="perl-IO-Tty"
 
 #
 # warn_if_bad		Put out warning message(s) if $1 has bad RC.
@@ -1815,7 +1815,7 @@ function update_repo()
 function install_packages_dnf()
 {
 	type dnf >/dev/null 2>&1 || return 255
-	el9_epel_and_crb_check dnf
+	el_epel_and_crb_check dnf
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	dnf --nogpgcheck "${yes[@]}" install initscripts
@@ -1825,7 +1825,7 @@ function install_packages_dnf()
 function install_packages_yum()
 {
 	type yum >/dev/null 2>&1 || return 255
-	el9_epel_and_crb_check yum
+	el_epel_and_crb_check yum
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	yum --nogpgcheck "${yes[@]}" install initscripts
@@ -1850,10 +1850,31 @@ function github_issue_6525_workaround()
 	return 0
 }
 
-# Check for EPEL and CRB repositories when installing on RH family of OSes
-function el9_epel_and_crb_check()
+# Whether an enabled repository carries the package for this architecture. An
+# installed copy and a source repository do not count, so a binary repository
+# that was disabled is still reported. A failed query stops the run with the
+# package manager's own error.
+function repo_carries()
+{
+	local rpm="$1"
+	local found errors
+	errors="$(mktemp)"
+	found="$(${action} repoquery -q --arch "${GO_XCAT_ARCH},noarch" --qf '%{name}' "${rpm}" 2>"${errors}")" || {
+		cat "${errors}"
+		rm -f "${errors}"
+		echo "Could not query the package repositories with '${action} repoquery'"
+		exit 1
+	}
+	rm -f "${errors}"
+	grep -Fxq -- "${rpm}" <<<"${found}"
+}
+
+# Check for EPEL and CRB repositories when installing on RH family of OSes.
+# CentOS Stream reports the major version alone, the others report major.minor.
+function el_epel_and_crb_check()
 {
 	action="$*" # Passed parameter will only be 'yum' or 'dnf'
+	local major
 	if [[ "${GO_XCAT_LINUX_DISTRO}" = "fedora" ]]
 	then
 		# For Fedora, version 35 is equivalent to EL9
@@ -1862,40 +1883,24 @@ function el9_epel_and_crb_check()
 		# found
 		return 0
 	else
-		[[ "${GO_XCAT_LINUX_VERSION}" =~ ^9(\.[0-9]) ]] || return 0
+		[[ "${GO_XCAT_LINUX_VERSION}" =~ ^(9|10)(\.[0-9]+)?$ ]] || return 0
 	fi
-	${action} list -q "${EL9_EPEL_TEST_RPM}"
-	ret="$?"
-	case "${ret}" in
-	"1")
-		# Can not find EL9_EPEL_TEST_RPM
+	major="${GO_XCAT_LINUX_VERSION%%.*}"
+	if ! repo_carries "${EL_EPEL_TEST_RPM}"
+	then
 		echo "
 Installation on ${GO_XCAT_LINUX_DISTRO} ${GO_XCAT_LINUX_VERSION} requires EPEL repository to be enabled"
-		echo "Running '${action} install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm' will enable EPEL repository"
+		echo "Running '${action} install https://dl.fedoraproject.org/pub/epel/epel-release-latest-${major}.noarch.rpm' will enable EPEL repository"
 		exit 1
-		;;
-	esac
-	${action} list -q "${EL9_CRB_TEST_RPM}"
-	ret="$?"
-	case "${ret}" in
-	"1")
-		# Can not find EL9_CRB_TEST_RPM
+	fi
+	if ! repo_carries "${EL_CRB_TEST_RPM}"
+	then
 		echo "
 Installation on ${GO_XCAT_LINUX_DISTRO} ${GO_XCAT_LINUX_VERSION} requires CRB repository to be enabled"
-		echo "Try adding the following entries to new or existing '.repo' file:"
-		echo "
-[crb]
-name=CentOS Stream \$releasever - CRB
-metalink=https://mirrors.centos.org/metalink?repo=centos-crb-\$stream&arch=\$basearch&protocol=https,http
-gpgcheck=0
-repo_gpgcheck=0
-metadata_expire=6h
-countme=1
-enabled=1
-		"
+		echo "Running '${action} update epel-release' and then 'crb enable' will enable it on Red Hat Enterprise Linux, Rocky Linux, AlmaLinux and CentOS Stream"
+		echo "On Oracle Linux, running 'dnf config-manager --enable ol${major}_codeready_builder' will enable it"
 		exit 1
-		;;
-	esac
+	fi
 	return 0
 }
 
