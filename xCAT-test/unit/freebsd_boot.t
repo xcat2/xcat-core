@@ -124,6 +124,79 @@ xCAT::FreeBSDBoot::publish('node01', %$options, generation => $next);
 is(readlink("$prefix/node01"), ".nodes/node01/$next", 'a new generation replaces only the stable link');
 ok(-d $generation, 'older generations remain available');
 
+{
+    my ($base, $arguments) = fixture();
+    my $addfile = \&Digest::SHA::addfile;
+    for my $case (['node01', 'new generation'], ['node01', 'reused generation'], ['node02', 'another node']) {
+        my %reads;
+        {
+            no warnings 'redefine';
+            local *Digest::SHA::addfile = sub {
+                my @stat = stat($_[1]);
+                $reads{"$stat[0]:$stat[1]"}++;
+                return $addfile->(@_);
+            };
+            xCAT::FreeBSDBoot::publish($case->[0], %$arguments);
+        }
+        my $boot = "$base/tftp/xcat/freebsd";
+        my $image = "$boot/.images/$arguments->{media}{digest}";
+        my @paths = map { "$image/$_" } @boot_files;
+        push @paths, "$boot/.nodes/$case->[0]/$arguments->{generation}/boot/loader.conf";
+        my %expected = map { my @stat = stat($_); ("$stat[0]:$stat[1]" => 1) } @paths;
+        is_deeply(\%reads, \%expected, "$case->[1] hashes shared payload once and its private loader separately");
+    }
+}
+
+{
+    my ($base, $arguments) = fixture();
+    xCAT::FreeBSDBoot::publish('node01', %$arguments);
+    my $boot = "$base/tftp/xcat/freebsd";
+    my $payload = "$boot/.images/$arguments->{media}{digest}/mfsroot.gz";
+    my @before = stat($payload);
+    my $content = read_file($payload);
+    substr($content, 0, 1) = chr(ord(substr($content, 0, 1)) ^ 1);
+    write_file($payload, $content);
+    chmod(0444, $payload) or die $!;
+    utime($before[8], $before[9], $payload) or die $!;
+    my @after = stat($payload);
+    is_deeply([@after[0, 1, 7, 9]], [@before[0, 1, 7, 9]], 'in-place corruption preserves identity, size and modification time');
+    eval { xCAT::FreeBSDBoot::publish('node01', %$arguments); 1 };
+    like($@, qr/checksum mismatch/, 'a new publication rehashes shared bytes even when identity and modification time match');
+    is(readlink("$boot/node01"), ".nodes/node01/$arguments->{generation}", 'shared corruption does not change the stable generation');
+}
+
+{
+    my ($base, $arguments) = fixture();
+    xCAT::FreeBSDBoot::publish('node01', %$arguments);
+    my $boot = "$base/tftp/xcat/freebsd";
+    my $payload = "$boot/.images/$arguments->{media}{digest}/mfsroot.gz";
+    my @verified = stat($payload);
+    my $content = read_file($payload);
+    my $tempdir = \&File::Temp::tempdir;
+    my $replaced = 0;
+    {
+        no warnings 'redefine';
+        local *xCAT::FreeBSDBoot::tempdir = sub {
+            my ($template, %settings) = @_;
+            my $directory = $tempdir->(@_);
+            if ($template =~ /^\.publish-stage/ && $settings{DIR} eq "$boot/.nodes/node02") {
+                rename($payload, "$base/verified-original") or die $!;
+                write_file($payload, $content);
+                chmod(0444, $payload) or die $!;
+                $replaced++;
+            }
+            return $directory;
+        };
+        eval { xCAT::FreeBSDBoot::publish('node02', %$arguments); 1 };
+    }
+    like($@, qr/not linked/, 'node publication rejects a different inode substituted after shared verification');
+    is($replaced, 1, 'the substitution runs between shared verification and node staging');
+    isnt((stat($payload))[1], $verified[1], 'the replacement has a distinct inode');
+    is(read_file($payload), $content, 'the replacement has the same verified bytes');
+    is((stat("$boot/node01/mfsroot.gz"))[1], $verified[1], 'the previous node keeps the verified inode');
+    ok(!-e "$boot/node02", 'an unverified replacement publishes no stable node');
+}
+
 for my $change (
     [generation => '../escape'], [config_sha256 => 'bad'], [mac => '52:54:00:12:34:FF'],
     [config_url => 'http://192.0.2.1/../escape'], [config_url => "http://192.0.2.1/config\nBAD=1"],
@@ -366,6 +439,31 @@ for my $kind (qw(root-link parent-link file-link directory fifo writable-file wr
     eval { xCAT::FreeBSDBoot::publish_config('node01', %$arguments); 1 };
     like($@, qr/(?:plain directory|Unsafe|Cannot open configuration)/, "configuration $kind is rejected");
     is(read_file("$outside/sentinel"), 'unchanged', 'configuration failure preserves unrelated files');
+}
+
+{
+    my ($base, $arguments) = config_fixture();
+    my $tempfile = \&File::Temp::tempfile;
+    my $stage_path;
+    {
+        no warnings 'redefine';
+        local *xCAT::FreeBSDBoot::tempfile = sub {
+            my @result = $tempfile->(@_);
+            $stage_path = $result[1];
+            return @result;
+        };
+        local *IO::Handle::sync = sub {
+            rename($stage_path, "$stage_path.retained") or die $!;
+            mkdir($stage_path) or die $!;
+            $! = EIO;
+            return 0;
+        };
+        eval { xCAT::FreeBSDBoot::publish_config('node01', %$arguments); 1 };
+    }
+    like($@, qr/Cannot sync configuration:.*\nCannot remove temporary configuration /s,
+        'publication preserves the original error when temporary-file cleanup also fails');
+    ok(!-e "$base/autoinst/freebsd/node01/$arguments->{generation}.conf",
+        'failed publication and cleanup cannot publish a configuration');
 }
 
 for my $method (qw(flush sync)) {
