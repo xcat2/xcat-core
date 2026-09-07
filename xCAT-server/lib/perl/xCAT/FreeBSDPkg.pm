@@ -71,7 +71,7 @@ sub _pipe {
 sub _child {
     my ($argv, $settings, $pipes, $mask) = @_;
     my $ok = eval {
-        POSIX::setpgid(0, 0) == 0 or die "Cannot create command process group: $!\n";
+        defined(POSIX::setpgid(0, 0)) or die "Cannot create command process group: $!\n";
         local @SIG{qw(CHLD TERM INT HUP QUIT PIPE ALRM)} = ('DEFAULT') x 7;
         POSIX::sigprocmask(SIG_SETMASK, $mask)
           or die "Cannot restore command signal mask: $!\n";
@@ -180,7 +180,7 @@ sub _run {
         _fail("Cannot fork command: $!") unless defined($pid);
         _child($argv, $settings, \@pipes, $mask) if $pid == 0;
         $state{pid} = $pid;
-        if (POSIX::setpgid($pid, $pid) == 0 || $! == EACCES) {
+        if (defined(POSIX::setpgid($pid, $pid)) || $! == EACCES) {
             $state{group} = 1;
         } else {
             _fail("Cannot establish command process group: $!");
