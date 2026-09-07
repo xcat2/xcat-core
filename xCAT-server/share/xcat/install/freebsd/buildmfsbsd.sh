@@ -54,6 +54,7 @@ trap build_cleanup EXIT
 trap 'exit 1' HUP INT TERM
 mkdir -p "$build_work/source" "$build_work/conf" "$build_work/custom/usr/local/sbin" \
     "$build_work/custom/usr/local/libexec" "$build_work/custom/usr/local/share/xcat" \
+    "$build_work/custom/usr/libexec/bsdinstall" \
     "$build_work/scripts" "$build_work/native" \
     "$build_work/bundle/usr/freebsd-dist" "$build_work/bundle/xcat"
 git -C "$source_dir" archive -o "$build_work/source.tar" "$source_commit"
@@ -62,6 +63,10 @@ cp -R "$build_work/source/conf/." "$build_work/conf/"
 install -m 0555 "$script_dir/xcat-install" "$build_work/custom/usr/local/sbin/xcat-install"
 install -m 0444 "$script_dir/xcat-install-lib.sh" "$build_work/custom/usr/local/libexec/xcat-install-lib.sh"
 install -m 0444 "$script_dir/installerconfig.tmpl" "$build_work/custom/usr/local/share/xcat/installerconfig.tmpl"
+tar -xf "$dist_dir/base.txz" -C "$build_work/native" usr/libexec/bsdinstall/umount
+sh "$script_dir/patch-bsdinstall-umount.sh" "$build_work/native/usr/libexec/bsdinstall/umount" \
+    > "$build_work/custom/usr/libexec/bsdinstall/umount"
+chmod 0555 "$build_work/custom/usr/libexec/bsdinstall/umount"
 cat > "$build_work/conf/rc.conf" <<'XCAT_RC'
 hostname="xcat-installer"
 sshd_enable="NO"
