@@ -73,6 +73,8 @@ sub fixture {
         sha256 => 'openssl dgst -sha256 -r "$2" | awk "{print \\$1}"',
         nc => 'read -r protocol generation attempt phase; printf "phase %s\\n" "$phase" >> "$FIXTURE_DIR/events";' .
             'if [ -f "$FIXTURE_DIR/reject-$phase" ]; then printf "ready\\nerror\\n"; else printf "ready\\nfreebsd-install-v1 %s %s ok\\n" "$generation" "$phase"; fi',
+        date => 'if test -f "$FIXTURE_DIR/clock"; then cat "$FIXTURE_DIR/clock"; else printf "0\\n"; fi',
+        sleep => 'now=0; test ! -f "$FIXTURE_DIR/clock" || now=$(cat "$FIXTURE_DIR/clock"); printf "%s\\n" "$((now+$1))" > "$FIXTURE_DIR/clock"',
         timeout => 'shift; exec "$@"',
         ifconfig => 'case "$*" in -l) printf "em0 em1 lo0\\n" ;; em0) printf "ether 52:54:00:12:34:56\\n" ;; em1) printf "ether 52:54:00:12:34:57\\n" ;; lo0) printf "inet 127.0.0.1\\n" ;; esac',
     );
