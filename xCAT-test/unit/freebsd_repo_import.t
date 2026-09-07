@@ -165,6 +165,7 @@ symlink('All', "$signed/alias") or croak $!;
 my $source_tree = xCAT::FreeBSDRepo::snapshot_tree($signed);
 my $installroot = new_directory();
 my $published;
+my @readback;
 
 sub publication_cases {
     $published = import_repository($signed, $installroot);
@@ -222,17 +223,21 @@ sub publication_cases {
     my $prefixed = new_directory();
     command('/usr/bin/cp', '-a', $signed, "$prefixed/FreeBSD:15:amd64");
     symlink('FreeBSD:15:amd64', "$prefixed/freebsd:15:x86:64") or croak $!;
-    my $with_prefix = import_repository($prefixed, new_directory(), catalogue_prefix => 'FreeBSD:15:amd64');
+    my $prefix_root = new_directory();
+    my $with_prefix = import_repository($prefixed, $prefix_root, catalogue_prefix => 'FreeBSD:15:amd64');
     is($with_prefix->{repositories}{repository}{catalogue_prefix}, 'FreeBSD:15:amd64', 'generic publication retains its explicit native catalogue prefix');
     is_deeply(xCAT::FreeBSDRepo::snapshot_tree("$with_prefix->{path}/repository"),
         xCAT::FreeBSDRepo::snapshot_tree($prefixed), 'prefixed publication preserves complete ABI directory and alias');
     protected_tree($with_prefix->{path}, 'prefixed repository publication is protected');
+    push @readback, ['signed repository', $published, $installroot, $signed],
+      ['prefixed repository', $with_prefix, $prefix_root, $prefixed];
     return;
 }
 
 sub release_cases {
     my $disc = $fixture->release_tree(0);
-    my $base = import_release($disc, new_directory());
+    my $base_root = new_directory();
+    my $base = import_release($disc, $base_root);
     is_deeply([sort keys %{$base->{repositories}}], ['base'], 'native base-only media publishes without applications');
     is($base->{kind}, 'release', 'release provenance remains distinct from a generic repository');
     is($base->{source}{release}, '15.1-RELEASE', 'release identity is retained');
@@ -240,7 +245,8 @@ sub release_cases {
     protected_tree($base->{path}, 'base-only publication is protected');
     my $dvd = $fixture->release_tree(1);
     my $before = xCAT::FreeBSDRepo::inspect_release_tree($dvd);
-    my $result = import_release($dvd, new_directory());
+    my $dvd_root = new_directory();
+    my $result = import_release($dvd, $dvd_root);
     is_deeply([sort keys %{$result->{repositories}}], [qw(applications base)], 'native DVD media publishes both independent repositories');
     is_deeply($result->{source}{media}, $before, 'manifest retains the original release media identity');
     my $application = $result->{repositories}{applications};
@@ -262,11 +268,13 @@ sub release_cases {
     is(readlink("$dvd/packages/FreeBSD:15:amd64/Latest/pkg.pkg"), '../All/pkg-2.6.2_1.pkg', 'original DVD link is not changed');
     is_deeply(xCAT::FreeBSDRepo::inspect_release_tree($dvd), $before, 'release publication preserves all original media entries');
     protected_tree($result->{path}, 'DVD publication is protected');
+    push @readback, ['base-only release', $base, $base_root, $disc],
+      ['DVD release', $result, $dvd_root, $dvd];
     return;
 }
 
-sub destination_cases {
-    my @cases = (
+sub destination_mutations {
+    return (
         ['changed catalogue', sub { write_file("$_[0]/repository/data.pkg", 'changed') }],
         ['changed archive bytes', sub { my $path = "$_[0]/repository/All/test-app-1.pkg";
             my $bytes = read_file($path); substr($bytes, -1, 1, chr(ord(substr($bytes, -1, 1)) ^ 1));
@@ -285,7 +293,10 @@ sub destination_cases {
         ['hard-linked file', sub { link("$_[0]/repository/data.pkg", new_directory() . '/linked') or croak $! }],
         ['different file owner', sub { chown(65534, 65534, "$_[0]/repository/data.pkg") == 1 or croak $! }],
     );
-    for my $case (@cases) {
+}
+
+sub destination_cases {
+    for my $case (destination_mutations()) {
         my $root = clone_tree($installroot);
         my $destination = publication_parent($root) . "/$published->{digest}";
         $case->[1]->($destination);
@@ -450,11 +461,237 @@ sub filesystem_cases {
 }
 ## use critic
 
+my $readback_commands = 0;
+
+sub readback_import {
+    my @arguments = @_;
+    local *xCAT::FreeBSDPkg::run_command = gensym();
+    *xCAT::FreeBSDPkg::run_command = sub { ++$readback_commands; croak 'readback invoked an external command' };
+    local $ENV{XCAT_FREEBSD_NATIVE_PKG} = "$tmp/unavailable-pkg";
+    local $ENV{XCAT_FREEBSD_NATIVE_LIBDIR} = "$tmp/unavailable-libraries";
+    return xCAT::FreeBSDRepoImport::inspect_import(@arguments);
+}
+
+sub tree_state {
+    my $root = shift;
+    my $tree = xCAT::FreeBSDRepo::snapshot_tree($root);
+    my %state;
+    for my $relative ('', sort keys %{$tree->{entries}}) {
+        my @state = lstat(length($relative) ? "$root/$relative" : $root);
+        $state{$relative} = [@state[0 .. 7, 9, 10]];
+    }
+    return [$tree, \%state];
+}
+
+sub readback_cases {
+    for my $case (@readback) {
+        my ($name, $result, $root, $source) = @$case;
+        my $stored = $json->decode(read_file("$result->{path}/manifest.json"));
+        my $before = tree_state($root);
+        rename($source, "$source.unavailable") or croak $!;
+        my $actual = readback_import($result->{path}, $root);
+        rename("$source.unavailable", $source) or croak $!;
+        is_deeply($actual, { %$stored, path => $result->{path} }, "$name readback returns its stored manifest and runtime path only");
+        is_deeply(tree_state($root), $before, "$name readback changes no entries or operational metadata");
+        my $relocated = clone_tree($root);
+        my $destination = publication_parent($relocated) . "/$result->{digest}";
+        unlink(publication_parent($relocated) . '/.repository-import.lock') or croak $!;
+        my $relocated_before = tree_state($relocated);
+        is_deeply(readback_import($destination, $relocated), { %$stored, path => $destination },
+            "$name readback accepts a relocated install root without the import lock");
+        is_deeply(tree_state($relocated), $relocated_before, "$name readback creates no lock or cache and changes no metadata");
+    }
+    return;
+}
+
+sub readback_destination_cases {
+    for my $case (destination_mutations()) {
+        my $root = clone_tree($installroot);
+        my $destination = publication_parent($root) . "/$published->{digest}";
+        $case->[1]->($destination);
+        rejects(sub { readback_import($destination, $root) }, qr/(?:manifest|published|publication|repository|descriptor)/ix,
+            "readback rejects $case->[0]");
+    }
+    return;
+}
+
+sub readback_path_mutations {
+    return (
+        ['symlinked publication root', sub { my ($path) = @_;
+            rename($path, "$path.actual") or croak $!; symlink("$path.actual", $path) or croak $! }],
+        ['symlinked publication parent', sub { my $parent = dirname($_[0]);
+            rename($parent, "$parent.actual") or croak $!; symlink("$parent.actual", $parent) or croak $! }],
+        ['writable install root', sub { chmod(oct('0777'), $_[1]) or croak $! }],
+        ['foreign install root owner', sub { chown(65534, 65534, $_[1]) == 1 or croak $! }],
+        ['foreign publication root owner', sub { chown(65534, 65534, $_[0]) == 1 or croak $! }],
+        ['writable publication parent', sub { chmod(oct('0777'), dirname($_[0])) or croak $! }],
+        ['missing manifest', sub { unlink("$_[0]/manifest.json") or croak $! }],
+        ['symlinked manifest', sub { my $path = "$_[0]/manifest.json";
+            rename($path, "$path.actual") or croak $!; symlink('manifest.json.actual', $path) or croak $! }],
+        ['hard-linked manifest', sub { link("$_[0]/manifest.json", new_directory() . '/manifest') or croak $! }],
+        ['FIFO manifest', sub { my $path = "$_[0]/manifest.json";
+            unlink($path) or croak $!; mkfifo($path, oct('0444')) == 0 or croak $! }],
+        ['directory manifest', sub { my $path = "$_[0]/manifest.json";
+            unlink($path) or croak $!; mkdir($path, oct('0555')) or croak $! }],
+        ['writable manifest', sub { chmod(oct('0644'), "$_[0]/manifest.json") or croak $! }],
+        ['foreign manifest owner', sub { chown(65534, 65534, "$_[0]/manifest.json") == 1 or croak $! }],
+        ['zero manifest timestamp', sub { utime(0, 0, "$_[0]/manifest.json") == 1 or croak $! }],
+    );
+}
+
+sub readback_path_cases {
+    for my $case (
+        ['relative publication root', 'relative', $installroot],
+        ['missing publication root', undef, $installroot],
+        ['reference publication root', [], $installroot],
+        ['dot publication component', "$published->{path}/.", $installroot],
+        ['dotdot publication component', "$published->{path}/../$published->{digest}", $installroot],
+        ['relative install root', $published->{path}, 'relative'],
+        ['missing install root', $published->{path}, undef],
+        ['wrong install root', $published->{path}, new_directory()],
+    ) {
+        rejects(sub { readback_import(@$case[1, 2]) }, qr/(?:import|publication|absolute|path|directory)/ix,
+            "readback rejects $case->[0]");
+    }
+    for my $case (readback_path_mutations()) {
+        my $root = clone_tree($installroot);
+        my $destination = publication_parent($root) . "/$published->{digest}";
+        $case->[1]->($destination, $root);
+        rejects(sub { readback_import($destination, $root) }, qr/(?:manifest|publication|published|directory)/ix,
+            "readback rejects $case->[0]");
+    }
+    my $empty = new_directory();
+    rejects(sub { readback_import(publication_parent($empty) . '/'. ('0' x 64), $empty) },
+        qr/(?:publication|directory|missing)/ix, 'readback rejects missing publication ancestors');
+    is_deeply(xCAT::FreeBSDRepo::snapshot_tree($empty)->{entries}, {}, 'readback does not create missing publication directories');
+    my $root = clone_tree($installroot);
+    my $wrong = publication_parent($root) . '/' . ('0' x 64);
+    rename(publication_parent($root) . "/$published->{digest}", $wrong) or croak $!;
+    rejects(sub { readback_import($wrong, $root) }, qr/(?:path|digest|identity)/ix,
+        'readback requires the manifest digest in its publication pathname');
+    return;
+}
+
+sub redigest {
+    my $object = shift;
+    delete($object->{digest});
+    $object->{digest} = sha256_hex($json->encode($object));
+    return;
+}
+
+sub altered_manifest {
+    my ($case, $mutate) = @_;
+    my $root = clone_tree($case->[2]);
+    my $destination = publication_parent($root) . "/$case->[1]{digest}";
+    my $manifest = $json->decode(read_file("$destination/manifest.json"));
+    $mutate->($manifest);
+    redigest($manifest);
+    write_file("$destination/manifest.json", $json->encode($manifest) . "\n");
+    my $changed = publication_parent($root) . "/$manifest->{digest}";
+    rename($destination, $changed) or croak $!;
+    return ($changed, $root);
+}
+
+sub readback_manifest_cases {
+    for my $case (
+        ['invalid JSON', '{'],
+        ['non-object JSON', "[]\n"],
+        ['missing final newline', $json->encode($json->decode(read_file("$published->{path}/manifest.json")))],
+        ['noncanonical whitespace', read_file("$published->{path}/manifest.json") . "\n"],
+        ['duplicate JSON field', '{"kind":"repository",' . substr(read_file("$published->{path}/manifest.json"), 1)],
+    ) {
+        my $root = clone_tree($installroot);
+        my $destination = publication_parent($root) . "/$published->{digest}";
+        write_file("$destination/manifest.json", $case->[1]);
+        rejects(sub { readback_import($destination, $root) }, qr/manifest/i, "readback rejects $case->[0]");
+    }
+    my $root = clone_tree($installroot);
+    my $destination = publication_parent($root) . "/$published->{digest}";
+    truncate("$destination/manifest.json", 536870913) or croak $!;
+    rejects(sub { readback_import($destination, $root) }, qr/(?:manifest|large|size)/ix,
+        'readback rejects an oversized sparse manifest before allocating its contents');
+    $root = clone_tree($installroot);
+    $destination = publication_parent($root) . "/$published->{digest}";
+    my $bad_digest = $json->decode(read_file("$destination/manifest.json"));
+    $bad_digest->{digest} = '0' x 64;
+    write_file("$destination/manifest.json", $json->encode($bad_digest) . "\n");
+    my $bad_path = publication_parent($root) . "/$bad_digest->{digest}";
+    rename($destination, $bad_path) or croak $!;
+    rejects(sub { readback_import($bad_path, $root) }, qr/digest/i,
+        'readback rejects a false outer digest even when its pathname agrees');
+    for my $case (
+        ['unknown format', sub { $_[0]{format} = 'xcat-freebsd-repo-import-2' }],
+        ['unknown kind', sub { $_[0]{kind} = 'boot-image' }],
+        ['unvalidated native source', sub { $_[0]{native_validated} = 0 }],
+        ['claimed package selection', sub { $_[0]{selection_validated} = 1 }],
+        ['unexpected runtime field', sub { $_[0]{reused} = 1 }],
+        ['absolute repository path', sub { $_[0]{repositories}{repository}{path} = '/repository' }],
+        ['traversing catalogue prefix', sub { $_[0]{repositories}{repository}{catalogue_prefix} = '../repository' }],
+        ['nested source digest mismatch', sub { $_[0]{source}{digest} = '0' x 64 }],
+        ['nested tree digest mismatch', sub { $_[0]{source}{tree}{digest} = '0' x 64; redigest($_[0]{source}) }],
+        ['nested source format', sub { $_[0]{source}{format} = 'xcat-freebsd-repository-2'; redigest($_[0]{source}) }],
+        ['nested incompatible ABI', sub { $_[0]{source}{abi} = 'FreeBSD:16:amd64'; redigest($_[0]{source}) }],
+        ['nested incompatible OSVERSION', sub { $_[0]{source}{osversion} = 1600000; redigest($_[0]{source}) }],
+        ['nested native validation claim', sub { $_[0]{source}{native_validated} = 0; redigest($_[0]{source}) }],
+        ['nested selection claim', sub { $_[0]{source}{selection_validated} = 1; redigest($_[0]{source}) }],
+        ['nested trust policy', sub { $_[0]{source}{trust}{type} = 'unsigned'; redigest($_[0]{source}) }],
+        ['nested package inventory', sub { $_[0]{source}{packages} = {}; redigest($_[0]{source}) }],
+        ['nested archive inventory', sub { $_[0]{source}{archives} = {}; redigest($_[0]{source}) }],
+        ['missing package record', sub { my $source = $_[0]{source}; my ($key) = sort keys %{$source->{packages}};
+            delete($source->{packages}{$key}); redigest($source) }],
+        ['missing archive record', sub { my $source = $_[0]{source}; my ($path) = sort keys %{$source->{archives}};
+            delete($source->{archives}{$path}); redigest($source) }],
+        ['archive byte identity mismatch', sub { my $source = $_[0]{source}; my ($path) = sort keys %{$source->{archives}};
+            $source->{archives}{$path}{sha256} = '0' x 64; redigest($source) }],
+        ['archive catalogue checksum disagreement', sub { my $source = $_[0]{source}; my ($path) = sort keys %{$source->{archives}};
+            $source->{archives}{$path}{native_sum} = '0' x 64; redigest($source) }],
+        ['derived source disagreement', sub { my $tree = $_[0]{repositories}{repository}{tree};
+            my $removed = delete($tree->{entries}{'data.pkg'}); $tree->{bytes} -= $removed->{size}; redigest($tree) }],
+    ) {
+        my @paths = altered_manifest($readback[0], $case->[1]);
+        my $evidence = qr/(?:manifest|source|provenance|repository|import)/ix;
+        rejects(sub { readback_import(@paths) }, qr/(?:$evidence|descriptor|digest|tree)/ix,
+            "readback rejects $case->[0] with a valid outer digest and pathname");
+    }
+    return;
+}
+
+sub readback_repair_cases {
+    for my $case (
+        ['release provenance digest', sub { $_[0]{source}{media}{digest} = '0' x 64; redigest($_[0]{source}) }],
+        ['release repository digest', sub { $_[0]{source}{repositories}{applications}{repository}{digest} = '0' x 64;
+            redigest($_[0]{source}) }],
+        ['missing applied repair', sub { $_[0]{repositories}{applications}{link_repairs} = [] }],
+        ['extra applied repair', sub { push @{$_[0]{repositories}{applications}{link_repairs}},
+            { %{$_[0]{repositories}{applications}{link_repairs}[0]} } }],
+        ['changed repair origin', sub { $_[0]{repositories}{applications}{link_repairs}[0]{from} = '../All/other.pkg' }],
+        ['changed repair target', sub { $_[0]{repositories}{applications}{link_repairs}[0]{to} = '../All/other.pkg' }],
+        ['changed repair archive', sub { $_[0]{repositories}{applications}{link_repairs}[0]{archive} = 'FreeBSD:15:amd64/All/other.pkg' }],
+        ['changed repair checksum', sub { $_[0]{repositories}{applications}{link_repairs}[0]{sha256} = '0' x 64 }],
+        ['source repair inconsistency', sub { $_[0]{source}{repositories}{applications}{link_repairs} = [];
+            redigest($_[0]{source}) }],
+        ['source bootstrap inconsistency', sub { $_[0]{source}{repositories}{applications}{bootstrap}{sha256} = '0' x 64;
+            redigest($_[0]{source}) }],
+    ) {
+        my @paths = altered_manifest($readback[3], $case->[1]);
+        my $evidence = qr/(?:manifest|source|provenance|repository)/ix;
+        rejects(sub { readback_import(@paths) }, qr/(?:$evidence|descriptor|digest|repair|bootstrap)/ix,
+            "readback rejects $case->[0] with a valid outer digest and pathname");
+    }
+    return;
+}
+
 subtest 'signed repository publication and reuse' => \&publication_cases;
 subtest 'base-only and DVD release publication' => \&release_cases;
 subtest 'existing destination tampering is rejected' => \&destination_cases;
 subtest 'publication paths and lock objects are protected' => \&lock_cases;
 subtest 'preflight errors expose no imported tree' => \&preflight_cases;
 subtest 'filesystem failures and mutation clean only the private stage' => \&filesystem_cases;
+subtest 'readback verifies imports without source media or native commands' => \&readback_cases;
+subtest 'readback rejects byte and operational tampering' => \&readback_destination_cases;
+subtest 'readback protects its publication and manifest paths' => \&readback_path_cases;
+subtest 'readback validates manifest encoding and nested provenance' => \&readback_manifest_cases;
+subtest 'readback requires the exact source-derived repair' => \&readback_repair_cases;
+is($readback_commands, 0, 'readback never invokes an external command');
 ok(!-e "$tmp/package-script-executed", 'publication never executes a package lifecycle script');
 done_testing();
