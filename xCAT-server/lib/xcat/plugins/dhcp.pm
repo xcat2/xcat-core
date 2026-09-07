@@ -1057,12 +1057,12 @@ sub addnode
     {
         $guess_next_server = 1;
     }
+    my $native_statement = '';
     if (xCAT::DHCP::BootPolicy->freebsd_native_node($nrent, $ntent)) {
         my $root_path = freebsd_native_root_path($node, $nxtsrv, $ient);
         return unless defined($root_path);
-        my $native_statement = xCAT::DHCP::BootPolicy->isc_freebsd_native_statement($root_path);
+        $native_statement = xCAT::DHCP::BootPolicy->isc_freebsd_native_statement($root_path);
         $native_statement =~ s/"/\\"/g;
-        $lstatements .= $native_statement;
     }
     unless ($machash)
     {
@@ -1237,6 +1237,7 @@ sub addnode
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'nimol') {
             $lstatements = 'supersede server.filename=\"/vios/nodes/' . $node . '\";' . $lstatements;
         }
+        $lstatements .= $native_statement;
 
 
         if ($^O eq 'aix')
@@ -3565,8 +3566,10 @@ sub kea_sync_xnba_client_classes
 {
     my ( $config, $nodes ) = @_;
 
-    my $changed = kea_remove_xnba_client_classes($config, $nodes);
-    my $classes = kea_xnba_client_classes_for_nodes($nodes);
+    my %rejected;
+    my $classes = kea_xnba_client_classes_for_nodes($nodes, \%rejected);
+    my @accepted = grep { !$rejected{$_} } @$nodes;
+    my $changed = kea_remove_xnba_client_classes($config, \@accepted);
     return $changed unless @$classes;
 
     $config->{Dhcp4} ||= {};
@@ -3601,7 +3604,7 @@ sub kea_remove_xnba_client_classes
 
 sub kea_xnba_client_classes_for_nodes
 {
-    my ($nodes) = @_;
+    my ($nodes, $rejected) = @_;
 
     my $nrtab = xCAT::Table->new('noderes');
     my $mactab = xCAT::Table->new('mac');
@@ -3628,14 +3631,21 @@ sub kea_xnba_client_classes_for_nodes
         my $macent = $macents && $macents->{$node} ? $macents->{$node}->[0] : undef;
         next unless $macent && $macent->{mac};
 
-        my ( $nxtsrv ) = kea_next_server_for_node($node, $nrent);
-        next unless $nxtsrv;
         my $ntent = $ntents && $ntents->{$node} ? $ntents->{$node}->[0] : undef;
+        my $native = xCAT::DHCP::BootPolicy->freebsd_native_node($nrent, $ntent);
+        my ( $nxtsrv ) = kea_next_server_for_node($node, $nrent);
+        unless ($nxtsrv) {
+            $rejected->{$node} = 1 if $rejected && $native;
+            next;
+        }
         my $ient = $iscsi && $iscsi->{$node} ? $iscsi->{$node}->[0] : undef;
         my $root_path;
-        if (xCAT::DHCP::BootPolicy->freebsd_native_node($nrent, $ntent)) {
+        if ($native) {
             $root_path = freebsd_native_root_path($node, $nxtsrv, $ient);
-            next unless defined($root_path);
+            unless (defined($root_path)) {
+                $rejected->{$node} = 1 if $rejected;
+                next;
+            }
         }
 
         foreach my $mace (split(/\|/, $macent->{mac})) {

@@ -2,6 +2,7 @@ package xCAT::DHCP::BootPolicy;
 
 use strict;
 use warnings;
+use JSON ();
 
 sub freebsd_native_node {
     my ($class, $noderes, $nodetype) = @_;
@@ -236,7 +237,7 @@ sub kea_xnba_node_classes {
             push @classes, {
                 name => "$class_base-freebsd",
                 test => "option[77].exists and option[77].hex == 0x0746726565425344 and $mac_test",
-                'option-data' => [ { name => 'root-path', data => $node->{freebsd_root_path}, 'always-send' => 1 } ],
+                'option-data' => [ { name => 'root-path', data => $node->{freebsd_root_path}, 'always-send' => JSON::true } ],
                 'user-context' => {
                     'xcat-purpose' => 'freebsd-native-loader',
                     'xcat-node' => $node->{node},
