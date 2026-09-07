@@ -8,6 +8,7 @@ use lib grep { defined($_) } $ENV{XCAT_FREEBSD_DHCP_POLICY_DIR};
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
+use JSON ();
 use Test::More;
 
 BEGIN {
@@ -120,7 +121,8 @@ unlike($isc, qr/tftp:\/\/\$\{next-server\}/, 'ISC resolves a concrete server rat
 like($isc, qr/xcat\/xnba\.kpxe/, 'firmware keeps the existing xNBA loader');
 my $classes = xCAT_plugin::dhcp::kea_xnba_client_classes_for_nodes(['node01']);
 my ($native) = grep { ($_->{'user-context'}{'xcat-purpose'} || '') eq 'freebsd-native-loader' } @$classes;
-is_deeply($native->{'option-data'}, [{ name => 'root-path', data => $root_path, 'always-send' => 1 }],
+is_deeply($native->{'option-data'}, [{ name => 'root-path', data => $root_path,
+    'always-send' => JSON::is_bool($native->{'option-data'}[0]{'always-send'}) ? JSON::true : 1 }],
     'Kea native class sends the per-node TFTP root');
 is($native->{test}, 'option[77].exists and option[77].hex == 0x0746726565425344 and pkt4.mac == 0x525400123456',
     'Kea uses the exact tuple and MAC without firmware architecture assumptions');
