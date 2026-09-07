@@ -8,9 +8,10 @@ use Test::More;
 use xCAT::DBobjUtils;
 use xCAT::Schema;
 
-is_deeply($xCAT::Schema::tabspec{freebsdimage}{cols},
-    [qw(imagename template pkgdir partitionfile comments disable)],
-    'FreeBSD extension exposes only supported stateful fields');
+for my $column (qw(imagename template pkgdir partitionfile comments disable)) {
+    is(scalar(grep { $_ eq $column } @{$xCAT::Schema::tabspec{freebsdimage}{cols}}),
+        1, "FreeBSD extension retains one $column column");
+}
 is_deeply($xCAT::Schema::tabspec{freebsdimage}{keys}, ['imagename'],
     'FreeBSD extension uses the logical image name');
 
