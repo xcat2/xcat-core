@@ -35,6 +35,7 @@ AutoReqProv: no
 # also need to fix Requires for AIX
 %ifos linux
 BuildArch: noarch
+Requires: /usr/bin/ssh-keygen
 # Note: ifarch/ifnarch does not work for noarch package, use environment variable instead
 
 %if %s390x
