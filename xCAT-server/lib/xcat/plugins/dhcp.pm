@@ -1015,7 +1015,8 @@ sub addnode
         {
             $guess_next_server = 1;
         }
-        if ($nrent->{netboot} and ($nrent->{netboot} eq 'petitboot' or $nrent->{netboot} eq 'onie' )) {
+        if ($nrent->{netboot} and ($nrent->{netboot} eq 'petitboot' or $nrent->{netboot} eq 'onie' or
+            xCAT::DHCP::BootPolicy->freebsd_native_node($nrent, $ntent))) {
             if ($guess_next_server) {
                 my $node_server = undef;
                 if ($nrent->{xcatmaster}) {
@@ -1055,6 +1056,13 @@ sub addnode
     else
     {
         $guess_next_server = 1;
+    }
+    if (xCAT::DHCP::BootPolicy->freebsd_native_node($nrent, $ntent)) {
+        my $root_path = freebsd_native_root_path($node, $nxtsrv, $ient);
+        return unless defined($root_path);
+        my $native_statement = xCAT::DHCP::BootPolicy->isc_freebsd_native_statement($root_path);
+        $native_statement =~ s/"/\\"/g;
+        $lstatements .= $native_statement;
     }
     unless ($machash)
     {
@@ -2569,7 +2577,7 @@ sub process_request
         my $nodetypetab;
         $nodetypetab = xCAT::Table->new('nodetype', -create => 0);
         if ($nodetypetab) {
-            $nodetypeents = $nodetypetab->getNodesAttribs($req->{node}, [qw(os provmethod)]);
+            $nodetypeents = $nodetypetab->getNodesAttribs($req->{node}, [qw(os provmethod arch)]);
         }
         my $iscsitab = xCAT::Table->new('iscsi', -create => 0);
         if ($iscsitab) {
@@ -3543,6 +3551,7 @@ sub kea_node_reservations
         $reservation{'next-server'} = $nxtsrv if $nxtsrv && $nxtsrv !~ /\$\{/;
 
         my $boot = kea_boot_for_node($node, $nrent, $chainent, $ntent, $ient, $nxtsrv);
+        next unless $boot;
         $reservation{'boot-file-name'} = $boot->{'boot-file-name'} if defined $boot->{'boot-file-name'};
         $reservation{'option-data'} = $boot->{'option-data'} if @{ $boot->{'option-data'} || [] };
 
@@ -3579,7 +3588,7 @@ sub kea_remove_xnba_client_classes
 
     foreach my $class (@$classes) {
         my $context = $class->{'user-context'} || {};
-        if ( ( $context->{'xcat-purpose'} || '' ) eq 'xnba-second-stage' && $nodes{ $context->{'xcat-node'} || '' } ) {
+        if ( ( $context->{'xcat-purpose'} || '' ) =~ /\A(?:xnba-second-stage|freebsd-native-loader)\z/ && $nodes{ $context->{'xcat-node'} || '' } ) {
             $changed = 1;
             next;
         }
@@ -3600,6 +3609,10 @@ sub kea_xnba_client_classes_for_nodes
 
     my $nrents = $nrtab->getNodesAttribs($nodes, [ 'tftpserver', 'netboot', 'proxydhcp', 'xcatmaster', 'servicenode' ]);
     my $macents = $mactab->getNodesAttribs($nodes, ['mac']);
+    my $nodetypetab = xCAT::Table->new('nodetype', -create => 0);
+    my $iscsitab = xCAT::Table->new('iscsi', -create => 0);
+    my $ntents = $nodetypetab ? $nodetypetab->getNodesAttribs($nodes, [qw(os arch)]) : undef;
+    my $iscsi = $iscsitab ? $iscsitab->getNodesAttribs($nodes, [qw(server target)]) : undef;
     my $httpport = "80";
     my @hports = xCAT::TableUtils->get_site_attribute("httpport");
     if ($hports[0]) {
@@ -3617,9 +3630,17 @@ sub kea_xnba_client_classes_for_nodes
 
         my ( $nxtsrv ) = kea_next_server_for_node($node, $nrent);
         next unless $nxtsrv;
+        my $ntent = $ntents && $ntents->{$node} ? $ntents->{$node}->[0] : undef;
+        my $ient = $iscsi && $iscsi->{$node} ? $iscsi->{$node}->[0] : undef;
+        my $root_path;
+        if (xCAT::DHCP::BootPolicy->freebsd_native_node($nrent, $ntent)) {
+            $root_path = freebsd_native_root_path($node, $nxtsrv, $ient);
+            next unless defined($root_path);
+        }
 
         foreach my $mace (split(/\|/, $macent->{mac})) {
-            my ($mac) = split(/!/, $mace);
+            my ($mac, $hname) = split(/!/, $mace);
+            next if defined($root_path) && defined($hname) && $hname eq '*NOIP*';
             $mac = kea_normalize_mac($mac);
             next unless $mac;
             push @records, {
@@ -3627,6 +3648,7 @@ sub kea_xnba_client_classes_for_nodes
                 mac         => $mac,
                 next_server => $nxtsrv,
                 httpport    => $httpport,
+                freebsd_root_path => $root_path,
             };
         }
     }
@@ -3816,6 +3838,17 @@ sub kea_next_server_for_node
     return ('${next-server}', undef);
 }
 
+sub freebsd_native_root_path
+{
+    my ($node, $server, $iscsi) = @_;
+    my $root_path = eval { xCAT::DHCP::BootPolicy->freebsd_native_root_path($node, $server, $iscsi) };
+    if ($@) {
+        $callback->({ error => ["$node: $@"], errorcode => [1] });
+        return;
+    }
+    return $root_path;
+}
+
 sub kea_boot_for_node
 {
     my ( $node, $nrent, $chainent, $ntent, $ient, $nxtsrv ) = @_;
@@ -3829,6 +3862,9 @@ sub kea_boot_for_node
 
     my %boot = ( 'option-data' => [] );
     my $netboot = $nrent ? $nrent->{netboot} : undef;
+    if (xCAT::DHCP::BootPolicy->freebsd_native_node($nrent, $ntent)) {
+        return unless defined(freebsd_native_root_path($node, $nxtsrv, $ient));
+    }
 
     if ($ient and $ient->{server} and $ient->{target}) {
         $ient->{lun} = 0 unless defined($ient->{lun});
