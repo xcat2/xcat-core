@@ -24,7 +24,7 @@ my %attrs = (
 );
 my @errors = xCAT::DBobjUtils->validate_only_if_attrs('test-image', 'osimage', \%attrs, {});
 is_deeply(\@errors, [], 'object validation accepts the FreeBSD configuration fields');
-for my $attr (qw(boottarget addkcmdline pkglist rootimgdir kernelver driverupdatesrc)) {
+for my $attr (qw(boottarget addkcmdline rootimgdir kernelver driverupdatesrc)) {
     my %invalid = (objtype => 'osimage', imagetype => 'freebsd', $attr => 'unsupported');
     my @failures = xCAT::DBobjUtils->validate_only_if_attrs('test-image', 'osimage', \%invalid, {});
     is(scalar(@failures), 1, "FreeBSD rejects unsupported $attr");
@@ -58,6 +58,10 @@ for my $family (qw(linux windows)) {
     local *xCAT::Table::new = sub {
         return bless {name => $_[1], writes => \@writes, deletes => \@deletes}, 'FreeBSDImageSchema::Table';
     };
+    my %legacy_with_pkglist = (%attrs, pkglist => '/tmp/base.pkglist');
+    is(xCAT::DBobjUtils->setobjdefs({'legacy-invalid' => \%legacy_with_pkglist}), 1,
+        'legacy FreeBSD rejects pkglist through the public object writer');
+    is_deeply(\@writes, [], 'legacy pkglist rejection performs no table writes');
     is(xCAT::DBobjUtils->setobjdefs({'test-image' => \%attrs}), 0, 'generic object writer accepts FreeBSD image');
     my @extensions = grep { $_->{table} =~ /image$/ && $_->{table} ne 'osimage' } @writes;
     is_deeply([map { $_->{table} } @extensions], ['freebsdimage'], 'configuration goes only to FreeBSD extension');
