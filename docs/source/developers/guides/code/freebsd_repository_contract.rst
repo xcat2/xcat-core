@@ -1,10 +1,12 @@
-FreeBSD repository inspection
-=============================
+FreeBSD repository preparation
+==============================
 
 ``xCAT::FreeBSDRepo`` provides read-only inspection helpers for FreeBSD
 15.1-RELEASE amd64 repositories. These helpers do not import an image, publish
 a repository, select an installation package list, or install packages.
-The existing mfsBSD bundle importer does not yet use this interface.
+``xCAT::FreeBSDRepoImport`` adds immutable repository publication after native
+inspection. Neither interface is connected to ``copycds`` or image registration
+yet. The existing mfsBSD bundle importer remains separate.
 
 Trust and execution boundary
 ----------------------------
@@ -28,6 +30,10 @@ triggers and service-script handling are disabled. Each command has a
 60-second deadline and bounded output. Inspection does not run package
 installation scripts or use the host package database. This process isolation
 is not an operating-system sandbox.
+
+The qualified native pkg tool requires root-owned private databases. Run the
+native integration checks as root inside an isolated preparation environment.
+Do not mount a management node's package database into that environment.
 
 Generic repository interface
 -----------------------------
@@ -121,6 +127,71 @@ application descriptors, bootstrap identities, and proposed link repairs.
 ``selection_validated`` remains zero. A later native dependency-selection step
 must verify the requested package closure before any target disk write.
 
+Immutable publication
+---------------------
+
+Call ``xCAT::FreeBSDRepoImport::import_repository($source, $installroot,
+%options)`` or ``import_release($source, $installroot, %options)``. Both accept
+the inspection options above and an optional ``nonoverwrite`` boolean.
+Release imports do not accept ``catalogue_prefix``. Unknown or duplicate
+options are errors. The importer performs native inspection itself; it does
+not accept a caller-supplied validation flag or descriptor.
+
+The source and install root must be absolute, existing directories. The source
+root cannot be a symlink. The install root and publication parents must be
+caller-owned and not group- or other-writable. Ancestors must be real directories
+owned by root or the caller. Sticky shared temporary ancestors are permitted.
+Keep source contents and publication parents under caller control throughout
+the operation. These checks do not isolate the importer from a hostile root
+process or provide an atomic filesystem snapshot.
+
+Publication uses this layout::
+
+    <installroot>/freebsd15.1/x86_64/repositories/<import-digest>/
+        manifest.json
+        base/                 # release pkgbase repository
+        applications/         # optional complete DVD repository
+
+A generic import contains ``repository/`` instead of the release roles. Public-
+key imports also contain the validated key as ``repository.pub``. Importing
+the complete application repository does not select or install its packages.
+
+The manifest format is ``xcat-freebsd-repo-import-1``. It records the complete
+native source descriptor, each derived repository snapshot, applied link
+repairs, and copied trust-file identities. It retains ``native_validated=1``
+and ``selection_validated=0``. The manifest digest excludes its own digest
+field and identifies the canonical JSON content. Source, destination and tool
+paths are not part of that identity. Different trust or preparation-tool
+provenance produces a separate import even when package bytes match.
+
+The importer copies snapshotted entries into a private staging directory.
+It verifies the complete result against the expected entries before rename.
+The known DVD bootstrap repair changes only its validated relative link.
+The original source descriptor and repaired tree identity remain distinct.
+Other links, catalogues and archive bytes are preserved. Source media are not
+modified.
+
+Published files are caller-owned, have independent inodes, and use mode 0444.
+Published directories use mode 0555. Source regular-file timestamps must be
+positive and are preserved on initial publication. Reuse requires positive
+timestamps, but does not replace them with timestamps from a relocated source.
+The aggregate publication is limited to 100,000 entries and 1 TiB, including
+wrappers and the manifest. The manifest has a 512 MiB limit.
+
+A stable, empty mode-0600 lock serializes publication. The lock must be a
+caller-owned regular file with one link. A busy lock causes an immediate error;
+the caller may retry after the active import finishes. An existing destination
+is fully checked for content, links, permissions, ownership and file metadata.
+An identical import is reused without rewriting it. ``nonoverwrite=1`` instead
+rejects any existing destination. A changed destination is never replaced.
+
+On failure, the importer removes only its private staging directory. Existing
+publications remain in place. Cleanup failures are included in the error.
+Rename provides atomic visibility, not a power-loss durability guarantee.
+Successful results add ``path`` and ``reused`` fields; these runtime fields are
+not stored in the manifest. Repeat import still requires the original source
+contents and the explicit trust/tool policy.
+
 Behavioral validation
 ----------------------
 
@@ -131,11 +202,15 @@ Zstandard support, and the preparation tool. Run it explicitly::
     XCAT_FREEBSD_NATIVE_PKG=/absolute/path/to/pkg \
     XCAT_FREEBSD_NATIVE_LIBDIR=/absolute/path/to/private/lib \
     PERL5LIB=perl-xCAT:xCAT-server/lib/perl \
-        prove -v xCAT-test/unit/freebsd_repo_native.t
+        prove -v xCAT-test/unit/freebsd_repo_native.t \
+            xCAT-test/unit/freebsd_repo_import.t
 
 Omit ``XCAT_FREEBSD_NATIVE_LIBDIR`` when the executable needs no private library
 directory. Without ``XCAT_FREEBSD_NATIVE_PKG``, the integration test skips;
-that skip is not native repository validation. Release-media validation must
-also check every archive in actual disc1 and DVD trees. Neither test establishes
+that skip is not native repository validation. The import test also requires
+Linux and root for its native database and ownership fixtures. It exercises
+real native inspection and injects failures only at filesystem boundaries.
+Release-media validation must also check publication and every archive in
+actual disc1 and DVD trees. Neither test establishes
 ``copycds`` publication, target package installation, or physical-hardware
 acceptance.
