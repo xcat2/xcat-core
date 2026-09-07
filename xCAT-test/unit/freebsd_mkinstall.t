@@ -163,6 +163,16 @@ sub rejection {
     ok(!-e "$root/tftp/xcat/freebsd/node1", "$label publishes no node boot path");
 }
 
+sub definition_rejection {
+    my ($change, $pattern, $label) = @_;
+    rejection($change, $pattern, $label);
+    is($inspect_count, 0, "$label is rejected before media inspection");
+    ok(!-e "$root/install-files/autoinst/freebsd/node1", "$label publishes no installer configuration");
+    ok(!-e $state_directory, "$label creates no lifecycle state");
+    is_deeply(\@xCAT::Table::writes, [], "$label performs no database write");
+    return;
+}
+
 fixture();
 is(xCAT_plugin::freebsd::handled_commands()->{mkinstall}, 'nodetype:os=(freebsd.*)', 'plugin owns FreeBSD mkinstall dispatch');
 my ($params, $responses) = install();
@@ -191,6 +201,53 @@ xCAT::FreeBSDInstall::transition('node1', "freebsd-install-v1 $state->{generatio
 ($params, $responses) = install();
 like($responses->[0]{node}[0]{error}[0], qr/active|already|installation/i, 'active installation cannot be rearmed');
 is(read_file($config_path), $config, 'active installation retains its original configuration');
+
+sub definition_versions {
+    for my $version (undef, '', '1') {
+        fixture();
+        $xCAT::Table::rows{freebsdimage}{$image}{imageversion} = $version if defined($version);
+        my $label = !defined($version) ? 'absent' : length($version) ? 'explicit one' : 'empty';
+        my ($boot, $errors) = install();
+        is_deeply($errors, [], "$label version retains legacy installation");
+        is($boot->{node1}[0]{kernel}, 'xcat/freebsd/node1/boot/pxeboot', "$label version publishes the native loader");
+        my $prepared = xCAT::FreeBSDInstall::state('node1', directory => $state_directory);
+        is($prepared->{phase}, 'prepared', "$label version prepares the real lifecycle");
+        my $published = read_file("$root/install-files/autoinst/freebsd/node1/$prepared->{generation}.conf");
+        like($published, qr{^dist_url=http://[^\n]+/usr/freebsd-dist$}mx,
+            "$label version preserves the distribution-set runtime contract");
+    }
+    fixture();
+    $xCAT::Table::rows{freebsdimage}{$image}{$_} = '' for qw(imageversion bootdir pkglist otherpkgdir otherpkglist);
+    my ($boot, $errors) = install();
+    is_deeply($errors, [], 'empty v2-only metadata retains legacy installation');
+    ok(exists($boot->{node1}), 'empty v2-only metadata does not suppress legacy boot publication');
+
+    for my $version ('0', '3', '01', '2 ', "1\n", '-1', 'pkgbase') {
+        my $label = $version;
+        $label =~ s/\n/\\n/gx;
+        definition_rejection(sub { $xCAT::Table::rows{freebsdimage}{$image}{imageversion} = $version },
+            qr/imageversion[ ]must[ ]be[ ]1[ ]or[ ]2/x, "invalid imageversion $label");
+    }
+    for my $field (qw(bootdir pkglist otherpkgdir otherpkglist)) {
+        definition_rejection(sub { $xCAT::Table::rows{freebsdimage}{$image}{$field} = "$root/policy" },
+            qr/\Q$field\E[ ]requires[ ]imageversion=2/x, "legacy image with $field");
+    }
+    definition_rejection(sub {
+        $xCAT::Table::rows{freebsdimage}{$image}{imageversion} = '2';
+        $xCAT::Table::rows{freebsdimage}{$image}{bootdir} = $media->{pkgdir};
+        $xCAT::Table::rows{freebsdimage}{$image}{pkglist} = "$root/base.pkglist";
+        $xCAT::Table::rows{freebsdimage}{$image}{otherpkgdir} = "$root/applications";
+        $xCAT::Table::rows{freebsdimage}{$image}{otherpkglist} = "$root/applications.pkglist";
+    }, qr/imageversion=2.*pkgbase[ ]runtime/x,
+        'version two pointing at valid legacy media');
+    definition_rejection(sub {
+        $xCAT::Table::rows{freebsdimage}{$image}{imageversion} = '2';
+        $xCAT::Table::rows{freebsdimage}{$image}{bootdir} = 'relative/path';
+    }, qr/bootdir/x, 'version two with an invalid boot directory');
+    return;
+}
+
+subtest 'image definition versions preserve legacy installation and gate pkgbase' => \&definition_versions;
 
 rejection(sub {$xCAT::Table::rows{iscsi}{node1} = {server => 'san', target => 'iqn.test'}}, qr/iSCSI/, 'SAN conflict');
 rejection(sub {$extra_cmdline = 'console=ttyS0'}, qr/bootparams.addkcmdline/, 'unsupported extra kernel arguments');
