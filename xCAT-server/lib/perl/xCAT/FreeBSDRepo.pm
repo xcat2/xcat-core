@@ -4,13 +4,17 @@ use strict;
 use warnings;
 use Cwd qw(abs_path);
 use Digest::SHA qw(sha256_hex);
-use Fcntl qw(O_RDONLY O_NOFOLLOW O_NONBLOCK S_ISREG);
+use Encode qw(encode_utf8);
+use Fcntl qw(O_RDONLY O_NOFOLLOW O_NONBLOCK O_WRONLY O_CREAT O_EXCL S_ISREG);
+use File::Temp;
 use JSON;
+use xCAT::FreeBSDPkg;
 
 my %LIMITS = (max_entries => 100000, max_bytes => 1099511627776,
     max_file_bytes => 17179869184);
 my $BASE = 'usr/freebsd-packages/offline';
 my $ABI = 'FreeBSD:15:amd64';
+my $CATALOGUE_LIMIT = 67108864;
 
 sub _fail { die "$_[0]\n"; }
 
@@ -252,6 +256,413 @@ sub inspect_release_tree {
         identity_files => { 'bin/freebsd-version' => $version_file, 'bin/sh' => $shell_file },
         repositories => \%repositories };
     return { %$media, digest => sha256_hex(JSON->new->canonical->encode($media)) };
+}
+
+sub _digest {
+    my $value = shift;
+    return defined($value) && !ref($value) && $value =~ /\A[0-9a-f]{64}\z/x;
+}
+
+sub _json {
+    return JSON->new->utf8->canonical->allow_nonref->encode(shift);
+}
+
+sub _decode {
+    my ($bytes, $description) = @_;
+    my $decoded;
+    my $ok = eval { $decoded = JSON->new->utf8->max_depth(32)->decode($bytes); 1; };
+    _fail("Invalid JSON in $description") unless $ok;
+    return $decoded;
+}
+
+sub _write_private {
+    my ($path, $bytes) = @_;
+    sysopen(my $fh, $path, O_WRONLY | O_CREAT | O_EXCL, oct('0600'))
+      or _fail("Cannot create repository inspection file: $!");
+    binmode($fh) or _fail("Cannot write repository inspection bytes: $!");
+    print {$fh} $bytes or _fail("Cannot write repository inspection file: $!");
+    close($fh) or _fail("Cannot close repository inspection file: $!");
+    return;
+}
+
+sub _mkdir_private {
+    my $path = shift;
+    mkdir($path, oct('0700')) or _fail("Cannot create repository inspection directory: $!");
+    return $path;
+}
+
+sub _file_url {
+    my $path = shift;
+    $path = encode_utf8($path) if utf8::is_utf8($path);
+    $path =~ s{([^A-Za-z0-9_./~-])}{sprintf('%%%02X', ord($1))}egx;
+    return "file://$path";
+}
+
+sub _metadata {
+    my ($bytes, $description) = @_;
+    my %values;
+    pos($bytes) = 0;
+    while ($bytes =~ /\G\s*([a-z_]+)\s*=\s*(?:"([^"\x00-\x1f]*)"|([0-9]+))\s*;/gcx) {
+        _fail("Duplicate repository metadata key in $description: $1") if exists($values{$1});
+        $values{$1} = defined($2) ? $2 : $3;
+    }
+    my $remaining = substr($bytes, pos($bytes) || 0);
+    _fail("Unsupported repository metadata syntax in $description") if $remaining =~ /\S/x;
+    my %fixed = (version => '2', packing_format => 'tzst', manifests => 'packagesite.yaml',
+        data => 'data', manifests_archive => 'packagesite');
+    for my $key (keys %fixed) {
+        _fail("Unsupported repository metadata value in $description: $key")
+          if !defined($values{$key}) || $values{$key} ne $fixed{$key};
+    }
+    _fail("Unsupported repository metadata key in $description")
+      if grep { !exists($fixed{$_}) && $_ ne 'filesite' && $_ ne 'filesite_archive' } keys %values;
+    for my $key (qw(filesite filesite_archive)) {
+        _fail("Unsupported repository metadata value in $description: $key")
+          unless defined($values{$key}) && $values{$key} =~ /\Afiles(?:ite(?:[.]yaml)?)?\z/x;
+    }
+    return \%values;
+}
+
+sub _native_context {
+    my ($tool, $scratch) = @_;
+    _fail('A pinned native pkg tool is required') if ref($tool) ne 'HASH'
+      || !_digest($tool->{sha256}) || !defined($tool->{path}) || ref($tool->{path})
+      || $tool->{path} !~ m{\A/[^\x00\r\n]+\z}x;
+    _fail('Unknown native pkg tool option')
+      if grep { $_ !~ /\A(?:path|sha256|library_directory|library_digest)\z/x } keys %$tool;
+    my ($binary) = _file($tool->{path}, 536870912, 0);
+    _fail('Native pkg executable checksum mismatch') if $binary->{sha256} ne $tool->{sha256};
+    _fail('Native pkg tool is not executable') unless -x $tool->{path};
+    my %environment = (PATH => '/usr/bin:/bin', LC_ALL => 'C');
+    my $identity = { version => '2.8.2', sha256 => $binary->{sha256} };
+    if (exists($tool->{library_directory}) || exists($tool->{library_digest})) {
+        _fail('A pinned native pkg library directory is required') unless _digest($tool->{library_digest});
+        my $directory = _root($tool->{library_directory});
+        _fail('Native pkg library directory cannot contain a colon') if $directory =~ /:/x;
+        my $libraries = snapshot_tree($directory);
+        _fail('Native pkg library checksum mismatch') if $libraries->{digest} ne $tool->{library_digest};
+        $environment{LD_LIBRARY_PATH} = $directory;
+        $identity->{library_digest} = $libraries->{digest};
+    }
+    return { executable => $tool->{path}, environment => \%environment,
+        scratch => $scratch, identity => $identity };
+}
+
+sub _native_config {
+    my ($context, $name, $repository) = @_;
+    my $root = _mkdir_private("$context->{scratch}/$name");
+    my $repos = _mkdir_private("$root/repos");
+    _write_private("$repos/native.conf", _json({ xcat_freebsd => $repository })) if $repository;
+    my $config = { ABI => $ABI, OSVERSION => 1501000, PKG_DBDIR => "$root/db",
+        PKG_CACHEDIR => "$root/cache", REPOS_DIR => [$repos], REPO_AUTOUPDATE => JSON::false,
+        PKG_ENABLE_PLUGINS => JSON::false, PKG_TRIGGERS_ENABLE => JSON::false,
+        HANDLE_RC_SCRIPTS => JSON::false, SYSLOG => JSON::false, IGNORE_OSVERSION => JSON::false,
+        ASSUME_ALWAYS_YES => JSON::false, FETCH_RETRY => 1, FETCH_TIMEOUT => 3 };
+    _write_private("$root/pkg.conf", _json($config));
+    return "$root/pkg.conf";
+}
+
+sub _native_run {
+    my ($context, $config, @arguments) = @_;
+    return xCAT::FreeBSDPkg::run_command([$context->{executable}, '-C', $config, @arguments],
+        cwd => "$context->{scratch}", environment => $context->{environment}, timeout => 60,
+        stdout_limit => $CATALOGUE_LIMIT, stderr_limit => 1048576);
+}
+
+sub _native_output {
+    my ($context, $config, $description, @arguments) = @_;
+    my $result = _native_run($context, $config, @arguments);
+    _fail("Native pkg $description failed: " . substr($result->{stderr}, 0, 1024))
+      if $result->{exitcode} || $result->{signal};
+    return $result->{stdout};
+}
+
+sub _repository_trust {
+    my ($trust, $tree, $scratch) = @_;
+    _fail('An explicit repository trust policy is required') if ref($trust) ne 'HASH'
+      || !defined($trust->{type}) || ref($trust->{type});
+    if ($trust->{type} eq 'operator-trusted-tree') {
+        _fail('Unknown trusted-tree option') if grep { $_ ne 'type' && $_ ne 'digest' } keys %$trust;
+        _fail('Trusted repository tree checksum mismatch')
+          if !_digest($trust->{digest}) || $trust->{digest} ne $tree->{digest};
+        return ({ signature_type => 'none' }, { type => $trust->{type}, digest => $tree->{digest} });
+    }
+    _fail('Unsupported repository trust policy') if $trust->{type} ne 'pubkey';
+    _fail('Unknown repository public-key option') if grep { $_ !~ /\A(?:type|path|sha256)\z/x } keys %$trust;
+    _fail('A pinned repository public key is required') if !_digest($trust->{sha256})
+      || !defined($trust->{path}) || ref($trust->{path}) || $trust->{path} !~ m{\A/[^\x00\r\n]+\z}x;
+    my ($identity, $bytes) = _file($trust->{path}, 1048576, 1);
+    _fail('Repository public-key checksum mismatch') if $identity->{sha256} ne $trust->{sha256};
+    _write_private("$scratch/repository.pub", $bytes);
+    return ({ signature_type => 'pubkey', pubkey => "$scratch/repository.pub" },
+        { type => 'pubkey', sha256 => $identity->{sha256} });
+}
+
+sub _catalogue_member {
+    my ($context, $archive, $member) = @_;
+    my $result = xCAT::FreeBSDPkg::run_command(['/usr/bin/tar', '-xOf', $archive, $member],
+        cwd => "$context->{scratch}", environment => { PATH => '/usr/bin:/bin', LC_ALL => 'C' },
+        timeout => 60, stdout_limit => $CATALOGUE_LIMIT);
+    _fail("Cannot read repository catalogue member: $member") if $result->{exitcode} || $result->{signal};
+    return $result->{stdout};
+}
+
+sub _records {
+    my ($records, $description) = @_;
+    _fail("Invalid package array in $description") if ref($records) ne 'ARRAY'
+      || !@$records || @$records > 100000;
+    my %indexed;
+    for my $package (@$records) {
+        _fail("Invalid package record in $description") unless ref($package) eq 'HASH';
+        for my $field (qw(name version origin abi)) {
+            my $value = $package->{$field};
+            _fail("Invalid package $field in $description") if !defined($value) || ref($value)
+              || !length($value) || length($value) > 1024 || $value =~ /[\x00-\x1f\x7f]/x;
+        }
+        my $key = join("\0", @$package{qw(name version origin abi)});
+        _fail("Duplicate package identity in $description") if exists($indexed{$key});
+        $indexed{$key} = $package;
+    }
+    return \%indexed;
+}
+
+sub _original_catalogues {
+    my ($context, $view) = @_;
+    my $data = _decode(_catalogue_member($context, "$view/data.pkg", 'data'), 'data catalogue');
+    _fail('Invalid data catalogue object') unless ref($data) eq 'HASH';
+    _fail('Unsupported data catalogue field')
+      if grep { $_ !~ /\A(?:packages|groups|expired_packages)\z/x } keys %$data;
+    for my $field (qw(groups expired_packages)) {
+        _fail("Unsupported nonempty data catalogue $field")
+          if ref($data->{$field}) ne 'ARRAY' || @{$data->{$field}};
+    }
+    my $bytes = _catalogue_member($context, "$view/packagesite.pkg", 'packagesite.yaml');
+    my @manifests = map { _decode($_, 'packagesite catalogue') } grep { length($_) } split(/\n/x, $bytes);
+    my $primary = _records($data->{packages}, 'data catalogue');
+    my $fallback = _records(\@manifests, 'packagesite catalogue');
+    _fail('Repository catalogue records disagree') if _json($primary) ne _json($fallback);
+    return $primary;
+}
+
+sub _native_catalogue {
+    my ($context, $view, $name, $signature) = @_;
+    my $directory = _mkdir_private("$context->{scratch}/source-$name");
+    for my $file ('meta.conf', "$name.pkg") {
+        my (undef, $bytes) = _file("$view/$file", $CATALOGUE_LIMIT, 1);
+        _write_private("$directory/$file", $bytes);
+    }
+    my $config = _native_config($context, "query-$name", { %$signature,
+        url => _file_url($directory), enabled => JSON::true });
+    _native_output($context, $config, 'catalogue update', 'update', '-f');
+    my $bytes = _native_output($context, $config, 'catalogue query', 'search', '-U', '-r',
+        'xcat_freebsd', '--raw', '--raw-format', 'json-compact', '-g', '*');
+    return _records(_decode($bytes, 'native catalogue query'), "native $name query");
+}
+
+sub _archive_path {
+    my ($package, $tree, $prefix) = @_;
+    my $path = $package->{repopath};
+    _fail('Invalid package archive path') if !defined($path) || ref($path)
+      || length($path) > 4096 || $path !~ /[.]pkg\z/x
+      || grep { !_component($_) } split(m{/}x, $path, -1);
+    _fail('Conflicting package archive paths') if exists($package->{path})
+      && (!defined($package->{path}) || ref($package->{path}) || $package->{path} ne $path);
+    $path = length($prefix) ? "$prefix/$path" : $path;
+    my $resolved = _resolve_link($path, $tree->{entries});
+    my $entry = defined($resolved) ? $tree->{entries}{$resolved} : undef;
+    _fail('Missing package archive') unless $entry && $entry->{type} eq 'file';
+    my $size = $package->{pkgsize};
+    _fail('Package archive size mismatch') if !defined($size) || ref($size)
+      || $size !~ /\A[0-9]+\z/x || $size != $entry->{size};
+    return ($resolved, $entry);
+}
+
+sub _package_compatibility {
+    my $package = shift;
+    my $abi = lc($package->{abi});
+    _fail("Unsupported package ABI: $package->{name}") unless
+      $abi =~ /\Afreebsd(?::(?:[*]|15(?::(?:[*]|amd64))?))?\z/x;
+    my $annotations = $package->{annotations};
+    return unless defined($annotations);
+    _fail('Invalid package annotations') unless ref($annotations) eq 'HASH';
+    return unless exists($annotations->{FreeBSD_version});
+    my $version = $annotations->{FreeBSD_version};
+    _fail("Incompatible package OSVERSION: $package->{name}") if !defined($version) || ref($version)
+      || $version !~ /\A[0-9]+\z/x || $version < 1 || $version > 1501000;
+    return;
+}
+
+sub _archive_metadata {
+    my ($context, $config, $source, $packages) = @_;
+    my %archives;
+    for my $key (sort keys %$packages) {
+        my $package = $packages->{$key};
+        _package_compatibility($package);
+        my ($path, $entry) = _archive_path($package, $source->{tree}, $source->{prefix});
+        _fail('An archive is assigned to multiple package identities') if exists($archives{$path});
+        my $sum = $package->{sum};
+        _fail('Invalid package archive checksum') if !defined($sum) || ref($sum)
+          || !length($sum) || length($sum) > 256 || $sum =~ /[^A-Za-z0-9\$]/x;
+        _native_output($context, $config, 'archive checksum', 'checksum', '-q', '-c', $sum, '--', "$source->{root}/$path");
+        my $inside = _decode(_native_output($context, $config, 'archive manifest', 'info', '-F',
+            "$source->{root}/$path", '--raw', '--raw-format', 'json-compact'), 'archive manifest');
+        _fail('Invalid embedded package manifest') unless ref($inside) eq 'HASH';
+        for my $field (keys %$package) {
+            next if $field =~ /\A(?:path|repopath|pkgsize|sum)\z/x;
+            _fail("Package archive metadata mismatch: $package->{name} $field")
+              if !exists($inside->{$field}) || _json($inside->{$field}) ne _json($package->{$field});
+        }
+        $archives{$path} = { %$entry, package_identity => $key, native_sum => $sum };
+    }
+    return \%archives;
+}
+
+sub _archive_inventory {
+    my ($tree, $prefix, $archives) = @_;
+    my %catalogues = map { (length($prefix) ? "$prefix/$_" : $_) => 1 } qw(data.pkg packagesite.pkg);
+    for my $path (sort keys %{$tree->{entries}}) {
+        next if $path !~ /[.]pkg\z/x || $tree->{entries}{$path}{type} eq 'directory';
+        next if exists($tree->{unresolved_links}{$path});
+        my $resolved = _resolve_link($path, $tree->{entries});
+        _fail("Uncatalogued package archive: $path")
+          if !defined($resolved) || (!exists($archives->{$resolved}) && !exists($catalogues{$resolved}));
+    }
+    return;
+}
+
+sub _inspect_repository {
+    my ($root, $options, $tree) = @_;
+    my $prefix = $options->{catalogue_prefix};
+    my $source = length($prefix) ? "$root/$prefix" : $root;
+    my $scratch = File::Temp->newdir('xcat-freebsd-repository-XXXXXXXX', TMPDIR => 1);
+    my ($signature, $trust) = _repository_trust($options->{trust}, $tree, "$scratch");
+    my $context = _native_context($options->{tool}, $scratch);
+    my $empty_config = _native_config($context, 'inspection', undef);
+    _fail('Native pkg version 2.8.2 is required') if
+      _native_output($context, $empty_config, 'version check', '-v') ne "2.8.2\n";
+    my $view = _mkdir_private("$scratch/catalogues");
+    my (undef, $meta) = _file("$source/meta.conf", 65536, 1);
+    my $metadata = _metadata($meta, 'meta.conf');
+    if (-e "$source/meta" || -l "$source/meta") {
+        my (undef, $other) = _file("$source/meta", 65536, 1);
+        _fail('Repository metadata files disagree') if _json(_metadata($other, 'meta')) ne _json($metadata);
+    }
+    _write_private("$view/meta.conf", $meta);
+    for my $name (qw(data packagesite)) {
+        my (undef, $bytes) = _file("$source/$name.pkg", $CATALOGUE_LIMIT, 1);
+        _write_private("$view/$name.pkg", $bytes);
+    }
+    my $records = _original_catalogues($context, $view);
+    my $data = _native_catalogue($context, $view, 'data', $signature);
+    my $manifests = _native_catalogue($context, $view, 'packagesite', $signature);
+    _fail('Native repository catalogue views disagree') if _json($data) ne _json($manifests);
+    _fail('Native repository package identities disagree') if
+      _json([sort keys %$records]) ne _json([sort keys %$data]);
+    my $archives = _archive_metadata($context, $empty_config,
+        { root => $root, tree => $tree, prefix => $prefix }, $records);
+    _archive_inventory($tree, $prefix, $archives);
+    _fail('Repository changed during native inspection')
+      if _snapshot($root, \%LIMITS, $tree->{unresolved_links})->{digest} ne $tree->{digest};
+    _native_context($options->{tool}, $scratch);
+    my $result = { format => 'xcat-freebsd-repository-1', abi => $ABI, osversion => 1501000,
+        catalogue_prefix => $prefix, tree => $tree, trust => $trust, tool => $context->{identity},
+        packages => $records, archives => $archives, metadata => $metadata,
+        native_validated => 1, selection_validated => 0 };
+    return { %$result, digest => sha256_hex(_json($result)) };
+}
+
+sub inspect_repository {
+    my ($root, @arguments) = @_;
+    _fail('Native repository options must be pairs') if @arguments % 2;
+    my %options = @arguments;
+    _fail('Unknown native repository option') if grep { $_ !~ /\A(?:tool|trust|catalogue_prefix)\z/x } keys %options;
+    $root = _root($root);
+    my $prefix = defined($options{catalogue_prefix}) ? $options{catalogue_prefix} : '';
+    _fail('Invalid repository catalogue prefix') if ref($prefix) || length($prefix) > 4096
+      || (length($prefix) && grep { !_component($_) } split(m{/}x, $prefix, -1));
+    $options{catalogue_prefix} = $prefix;
+    return _inspect_repository($root, \%options, snapshot_tree($root));
+}
+
+sub _bootstrap {
+    my $repository = shift;
+    my @keys = grep { $repository->{packages}{$_}{name} eq 'pkg' } keys %{$repository->{packages}};
+    _fail('Release repository requires exactly one pkg bootstrap package') if @keys != 1;
+    my $key = $keys[0];
+    my $package = $repository->{packages}{$key};
+    _fail('Incompatible release pkg bootstrap identity') if $package->{origin} ne 'ports-mgmt/pkg'
+      || $package->{abi} ne $ABI;
+    my ($path) = grep { $repository->{archives}{$_}{package_identity} eq $key } keys %{$repository->{archives}};
+    return { path => $path, version => $package->{version}, %{$repository->{archives}{$path}} };
+}
+
+sub _base_release {
+    my $repository = shift;
+    my %required = map { $_ => 1 } qw(FreeBSD-runtime FreeBSD-kernel-generic FreeBSD-set-minimal FreeBSD-set-base);
+    for my $package (values %{$repository->{packages}}) {
+        next if $package->{name} eq 'pkg';
+        my $name = $package->{name};
+        _fail("Incompatible release base package: $name") if $name !~ /\AFreeBSD-/x
+          || $package->{version} ne '15.1' || $package->{origin} ne "base/$name" || $package->{abi} ne $ABI
+          || !defined($package->{annotations}{FreeBSD_version}) || $package->{annotations}{FreeBSD_version} ne '1501000';
+        delete($required{$name});
+    }
+    _fail('Missing release base packages: ' . join(', ', sort keys %required)) if %required;
+    return;
+}
+
+sub _bootstrap_repairs {
+    my ($repository, $bootstrap) = @_;
+    my @repairs;
+    my $prefix = $repository->{catalogue_prefix};
+    my $alias = length($prefix) ? "$prefix/Latest/pkg.pkg" : 'Latest/pkg.pkg';
+    if (exists($repository->{tree}{entries}{$alias}) && !exists($repository->{tree}{unresolved_links}{$alias})) {
+        my $resolved = _resolve_link($alias, $repository->{tree}{entries});
+        _fail('Release bootstrap alias names a different archive')
+          if !defined($resolved) || $resolved ne $bootstrap->{path};
+    }
+    for my $path (sort keys %{$repository->{tree}{unresolved_links}}) {
+        _fail('Unsupported release bootstrap link repair') if $path ne "$ABI/Latest/pkg.pkg"
+          || $repository->{tree}{unresolved_links}{$path} ne '../All/pkg-2.6.2_1.pkg'
+          || $bootstrap->{version} ne '2.6.2_1' || $bootstrap->{path} !~ m{\A\Q$ABI\E/All/}x;
+        my $target = '../' . substr($bootstrap->{path}, length($ABI) + 1);
+        push @repairs, { path => $path, from => $repository->{tree}{unresolved_links}{$path},
+            to => $target, archive => $bootstrap->{path}, sha256 => $bootstrap->{sha256} };
+    }
+    return \@repairs;
+}
+
+sub inspect_release {
+    my ($root, @arguments) = @_;
+    _fail('Native release options must be pairs') if @arguments % 2;
+    my %options = @arguments;
+    _fail('Unknown native release option') if grep { $_ ne 'tool' && $_ ne 'trust' } keys %options;
+    $root = _root($root);
+    my $media = inspect_release_tree($root);
+    return unless $media;
+    my $trust = $options{trust};
+    _fail('A pinned operator-trusted release is required') if ref($trust) ne 'HASH'
+      || !defined($trust->{type}) || $trust->{type} ne 'operator-trusted-release'
+      || grep { $_ ne 'type' && $_ ne 'digest' } keys %$trust;
+    _fail('Trusted release checksum mismatch') if !_digest($trust->{digest}) || $trust->{digest} ne $media->{digest};
+    my %repositories;
+    for my $kind (sort keys %{$media->{repositories}}) {
+        my $source = $media->{repositories}{$kind};
+        my $repository = _inspect_repository("$root/$source->{path}",
+            { tool => $options{tool}, catalogue_prefix => $source->{catalogue_prefix},
+                trust => { type => 'operator-trusted-tree', digest => $source->{tree}{digest} } }, $source->{tree});
+        _base_release($repository) if $kind eq 'base';
+        my $bootstrap = _bootstrap($repository);
+        $repositories{$kind} = { path => $source->{path}, repository => $repository,
+            bootstrap => $bootstrap, link_repairs => _bootstrap_repairs($repository, $bootstrap) };
+    }
+    my $after = inspect_release_tree($root);
+    _fail('Release changed during native inspection') if !$after || $after->{digest} ne $media->{digest};
+    my $result = { format => 'xcat-freebsd-release-1', release => $media->{release}, arch => $media->{arch},
+        media_arch => $media->{media_arch}, abi => $ABI, osversion => 1501000, distname => $media->{distname},
+        media => $media, trust => { %$trust }, repositories => \%repositories,
+        native_validated => 1, selection_validated => 0 };
+    return { %$result, digest => sha256_hex(_json($result)) };
 }
 
 1;
