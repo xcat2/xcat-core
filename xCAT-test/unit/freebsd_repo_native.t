@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use lib "$FindBin::Bin/../../perl-xCAT";
 use lib grep { defined($_) } $ENV{XCAT_FREEBSD_REPO_MODULE_DIR};
@@ -15,13 +16,13 @@ use File::Temp qw(tempdir);
 use JSON;
 use Symbol qw(gensym);
 use Test::More;
+use XCAT::Test::FreeBSDRepoFixture;
 use xCAT::FreeBSDPkg;
 use xCAT::FreeBSDRepo;
 
 plan(skip_all => 'Set XCAT_FREEBSD_NATIVE_PKG to the Linux pkg 2.8.2 executable')
   unless defined($ENV{XCAT_FREEBSD_NATIVE_PKG});
 my $tmp = abs_path(tempdir(CLEANUP => 1));
-my $sequence = 0;
 my $json = JSON->new->utf8->canonical;
 my $tool = { path => abs_path($ENV{XCAT_FREEBSD_NATIVE_PKG}) };
 my %environment = (PATH => '/usr/bin:/bin', LC_ALL => 'C');
@@ -30,6 +31,8 @@ if (defined($ENV{XCAT_FREEBSD_NATIVE_LIBDIR})) {
     $tool->{library_digest} = xCAT::FreeBSDRepo::snapshot_tree($tool->{library_directory})->{digest};
     $environment{LD_LIBRARY_PATH} = $tool->{library_directory};
 }
+my $fixture = XCAT::Test::FreeBSDRepoFixture->new(root => $tmp,
+    run_pkg => \&run_pkg, command => \&command, write_file => \&write_file);
 
 sub read_file {
     my $path = shift;
@@ -74,34 +77,17 @@ sub rejects {
 }
 
 sub new_directory {
-    my $path = "$tmp/tree-" . ++$sequence;
-    make_path($path);
-    return $path;
+    return $fixture->new_directory();
 }
 
 sub create_package {
     my ($directory, $name, %options) = @_;
-    my $manifest = { name => $name, version => '1', origin => "misc/$name",
-        comment => 'Repository inspection fixture', desc => 'Repository inspection fixture',
-        maintainer => 'root@example.invalid', www => 'https://example.invalid', prefix => '/usr/local',
-        abi => 'FreeBSD:15:amd64', arch => 'freebsd:15:x86:64', flatsize => 0,
-        licenselogic => 'single', licenses => ['BSD2CLAUSE'], annotations => { FreeBSD_version => '1500068' },
-        scripts => { 'post-install' => "touch '$tmp/package-script-executed'" }, %options };
-    my $input = "$tmp/manifest-" . ++$sequence;
-    write_file($input, $json->encode($manifest));
-    make_path($directory);
-    run_pkg('create', '-M', $input, '-r', "$tmp/empty", '-o', $directory);
-    return "$directory/$name-$manifest->{version}.pkg";
+    return $fixture->create_package($directory, $name, %options);
 }
 
 sub repository {
     my ($signed, $definitions) = @_;
-    my $root = new_directory();
-    for my $definition (@$definitions) {
-        create_package("$root/All", @$definition);
-    }
-    run_pkg('repo', $root, $signed ? ("rsa:$tmp/repo.key") : ());
-    return $root;
+    return $fixture->repository($signed, $definitions);
 }
 
 sub clone_tree {
@@ -293,27 +279,7 @@ sub archive_cases {
 
 sub release_tree {
     my $dvd = shift;
-    my @base = map { [$_, version => '15.1', origin => "base/$_",
-        annotations => { FreeBSD_version => '1501000' }] }
-      qw(FreeBSD-runtime FreeBSD-kernel-generic FreeBSD-set-minimal FreeBSD-set-base);
-    push @base, ['pkg', version => '2.6.2_1', origin => 'ports-mgmt/pkg'];
-    my $repo = repository(0, \@base);
-    my $root = new_directory();
-    write_file("$root/bin/freebsd-version", "USERLAND_VERSION=\"15.1-RELEASE\"\nexit 99\n");
-    write_file("$root/bin/sh", "\x7fELF\x02\x01\x01\x09" . ("\0" x 10) . pack('v', 62));
-    make_path("$root/usr/freebsd-packages");
-    command('/usr/bin/cp', '-a', $repo, "$root/usr/freebsd-packages/offline");
-    if ($dvd) {
-        my $apps = "$root/packages/FreeBSD:15:amd64";
-        create_package("$apps/All/Hashed", 'pkg', version => '2.6.2_1', origin => 'ports-mgmt/pkg', comment => 'Application bootstrap');
-        rename("$apps/All/Hashed/pkg-2.6.2_1.pkg", "$apps/All/Hashed/pkg-2.6.2_1~fixture.pkg") or croak $!;
-        create_package("$apps/All/Hashed", 'application');
-        run_pkg('repo', $apps);
-        make_path("$apps/Latest");
-        symlink('../All/pkg-2.6.2_1.pkg', "$apps/Latest/pkg.pkg") or croak $!;
-        symlink('FreeBSD:15:amd64', "$root/packages/freebsd:15:x86:64") or croak $!;
-    }
-    return $root;
+    return $fixture->release_tree($dvd);
 }
 
 sub inspect_release {
