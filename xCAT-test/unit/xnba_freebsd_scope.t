@@ -6,6 +6,9 @@ use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT", "$FindBin::Bin/../../xCAT-server/lib/perl";
 use Storable qw(dclone);
 use Test::More;
+use Cwd qw(abs_path);
+use File::Path qw(make_path);
+use File::Temp qw(tempdir);
 
 BEGIN {
     for my $module (qw(Scope MsgUtils BootUtils TableUtils ServiceNodeUtils Usage Table NetworkUtils)) {
@@ -20,36 +23,44 @@ use xCAT::Utils;
     our %rows;
     sub new { return bless { table => $_[1] }, $_[0]; }
     sub getAttribs {
-        my ($self, $key, $attributes) = @_;
+        my ($self, $key, @attributes) = @_;
+        @attributes = @{ $attributes[0] } if ref($attributes[0]);
         my ($name) = values %$key;
         my $row = $rows{$self->{table}}{$name};
         return undef unless $row;
-        return {map { $_ => $row->{$_} } grep { exists($row->{$_}) } @$attributes};
+        return {map { $_ => $row->{$_} } grep { exists($row->{$_}) } @attributes};
     }
     sub getNodesAttribs {
         my ($self, $nodes, $attributes) = @_;
         return {map { $_ => [$self->getAttribs({node => $_}, $attributes) || {}] } @$nodes};
     }
     package xCAT::TableUtils;
-    our %site;
-    sub getTftpDir { return '/tftpboot'; }
+    our (%site, $tftpdir);
+    sub getTftpDir { return $tftpdir; }
     sub get_site_attribute { return $site{$_[1]}; }
     package xCAT::MsgUtils;
     sub trace { return; }
+    sub message { return; }
+    package xCAT::BootUtils;
+    sub volatile_addkcmdline { return $_[0]; }
     package xCAT::Usage;
     sub validateArgs { return [0]; }
     package xCAT::ServiceNodeUtils;
     sub getSNList { return ('sn1', 'sn2'); }
     sub getSNandCPnodes { push @{ $_[3] }, @{ $_[1] }; return; }
+    sub getSNformattedhash { return {manager => $_[1]}; }
     package xCAT::NetworkUtils;
-    our ($local, %addresses, @lookups);
+    our ($local, %addresses, @lookups, @facing, %off_subnet);
     sub getipaddr {
         my ($class, $name, %options) = @_;
         push @lookups, [$name, $options{OnlyV4}];
         return $addresses{$name};
     }
     sub thishostisnot { return $_[1] ne $local; }
-    sub my_ip_facing { return (0, $local); }
+    sub my_ip_facing { return (0, @facing); }
+    sub determinehostname { return 'manager'; }
+    sub checkNodeIPaddress { return {ip => $_[1] eq 'node1' ? '198.51.100.10' : '192.0.2.10'}; }
+    sub nodeonmynet { return !$off_subnet{$_[1]}; }
     package xCAT::Scope;
     our @calls;
     sub get_parallel_scope {
@@ -64,6 +75,9 @@ use xCAT::Utils;
 }
 
 my $is_mn = 1;
+my $temporary = abs_path(tempdir(CLEANUP => 1));
+$xCAT::TableUtils::tftpdir = "$temporary/tftp";
+my $sequence = 0;
 {
     no warnings 'redefine';
     *xCAT::Utils::isMN = sub { return $is_mn; };
@@ -87,6 +101,8 @@ sub fixture {
         '192.0.2.1' => '192.0.2.1', '192.0.2.2' => '192.0.2.2', '192.0.2.3' => '192.0.2.3',
     );
     $xCAT::NetworkUtils::local = '192.0.2.1';
+    @xCAT::NetworkUtils::facing = ('192.0.2.1');
+    %xCAT::NetworkUtils::off_subnet = ();
     $is_mn = 1;
     @xCAT::NetworkUtils::lookups = ();
     @xCAT::Scope::calls = ();
@@ -219,6 +235,132 @@ subtest 'incompatible FreeBSD backend is rejected before owner dispatch' => sub 
     my ($requests, $errors) = scope('osimage=freebsd', 'node1');
     is_deeply($requests, [], 'incompatible backend is not dispatched');
     like(join('', @$errors), qr/netboot=xnba/, 'backend error is explicit');
+};
+
+for my $facing ([], ['192.0.2.1', '192.0.2.2']) {
+    subtest 'MN default owner requires one node-facing address' => sub {
+        fixture();
+        delete $xCAT::Table::rows{noderes}{node1}{$_} for qw(xcatmaster servicenode);
+        delete $xCAT::TableUtils::site{master};
+        @xCAT::NetworkUtils::facing = @$facing;
+        my ($requests, $errors) = scope('osimage=freebsd', 'node1');
+        is_deeply($requests, [], 'ambiguous or missing facing address dispatches no request');
+        like(join('', @$errors), qr/management-node address/, 'owner selection failure is explicit');
+        is_deeply(\@xCAT::Scope::calls, [], 'no owner is selected from partial address results');
+    };
+}
+
+sub process_scoped {
+    my ($request) = @_;
+    my $tftp = "$temporary/request-" . ++$sequence;
+    for my $node (@{ $request->{node} }) {
+        $xCAT::Table::rows{noderes}{$node}{tftpdir} = $tftp;
+        make_path("$tftp/xcat/freebsd/$node/boot", "$tftp/xcat/xnba/nodes");
+        for my $loader ('pxeboot', 'loader.efi') {
+            open(my $file, '>', "$tftp/xcat/freebsd/$node/boot/$loader") or die $!;
+            print {$file} 'native loader fixture';
+            close($file) or die $!;
+        }
+    }
+    my (@responses, @commands);
+    xCAT_plugin::xnba::process_request($request, sub { push @responses, dclone($_[0]); }, sub {
+        my ($req) = @_;
+        push @commands, dclone($req);
+        if ($req->{command}[0] eq 'setdestiny') {
+            for my $node (@{ $req->{node} }) {
+                my $image = $xCAT::Table::rows{osimage}{ $xCAT::Table::rows{nodetype}{$node}{provmethod} };
+                $xCAT::Table::rows{nodetype}{$node}{os} = $image->{osvers};
+                $xCAT::Table::rows{nodetype}{$node}{arch} = $image->{osarch};
+                $xCAT::Table::rows{chain}{$node}{currstate} = 'install freebsd15.1-x86_64-compute';
+                $req->{bootparams}{$node} = [{kernel => "xcat/freebsd/$node/boot/pxeboot", initrd => '', kcmdline => '', addkcmdline => ''}];
+            }
+        }
+    });
+    return (\@responses, \@commands, $tftp);
+}
+
+sub read_file {
+    my ($path) = @_;
+    return unless -f $path;
+    open(my $file, '<', $path) or die $!;
+    my $text = do { local $/; <$file> };
+    close($file) or die $!;
+    return $text;
+}
+
+subtest 'selected FreeBSD owner generates routed-node configuration through both request handlers' => sub {
+    fixture();
+    $xCAT::NetworkUtils::off_subnet{'198.51.100.10'} = 1;
+    my ($requests, $errors) = scope('osimage=freebsd', 'node1');
+    is_deeply($errors, [], 'native request selects its explicit owner');
+    $xCAT::NetworkUtils::local = '192.0.2.2';
+    my ($responses, $commands, $tftp) = process_scoped($requests->[0]);
+    is_deeply($responses, [], 'routed native node is not dropped by the legacy subnet filter');
+    like(read_file("$tftp/xcat/xnba/nodes/node1"), qr{chain tftp://\$\{next-server\}/xcat/freebsd/node1/boot/pxeboot}, 'owner publishes the BIOS native loader script');
+    like(read_file("$tftp/xcat/xnba/nodes/node1.uefi"), qr{chain tftp://\$\{next-server\}/xcat/freebsd/node1/boot/loader.efi}, 'owner publishes the UEFI native loader script');
+    is_deeply([map { $_->{command}[0] } @$commands], [qw(runbeginpre setdestiny makedhcp runendpre)], 'routed native request completes all existing stages');
+    is_deeply([map { $_->{node} } @$commands], [map { ['node1'] } 1 .. 4], 'all stages retain the selected node');
+    is_deeply([map { $_->{arg} } grep { $_->{command}[0] ne 'setdestiny' } @$commands],
+        [['osimage=freebsd', '-l'], ['-l'], ['osimage=freebsd', '-l']], 'prescripts and DHCP remain local to the selected owner');
+};
+
+subtest 'wrong host rejects a forwarded native request before processing nodes' => sub {
+    fixture();
+    my ($requests) = scope('osimage=freebsd', 'node1');
+    my ($responses, $commands, $tftp) = process_scoped($requests->[0]);
+    like(join('', map { @{ $_->{error} || [] } } @$responses), qr/FreeBSD.*owner/, 'misdirected native request reports an ownership error');
+    is_deeply($commands, [], 'wrong owner invokes no prescripts, installer or DHCP update');
+    ok(!-e "$tftp/xcat/xnba/nodes/node1", 'wrong owner publishes no script');
+};
+
+subtest 'routed native nodes remain in a batch with directly connected nodes' => sub {
+    fixture();
+    $xCAT::NetworkUtils::off_subnet{'198.51.100.10'} = 1;
+    my ($requests) = scope('osimage', 'node1', 'node2');
+    $xCAT::NetworkUtils::local = '192.0.2.2';
+    my ($responses, $commands, $tftp) = process_scoped($requests->[0]);
+    is_deeply($responses, [], 'native batch reports no error');
+    for my $node ('node1', 'node2') {
+        like(read_file("$tftp/xcat/xnba/nodes/$node"), qr{chain tftp://\$\{next-server\}/xcat/freebsd/$node/boot/pxeboot}, "$node receives its own boot script");
+    }
+    is_deeply([map { [sort @{ $_->{node} }] } @$commands], [map { ['node1', 'node2'] } 1 .. 4],
+        'routed and directly connected native nodes remain in every stage');
+};
+
+for my $invalid ('192.0.2.2', [], [undef], ['sn1'], ['192.0.2.2', '192.0.2.1']) {
+    subtest 'malformed native-owner routing metadata cannot enable processing' => sub {
+        fixture();
+        my ($requests) = scope('osimage=freebsd', 'node1');
+        $requests->[0]{_freebsd_owner} = $invalid;
+        $xCAT::NetworkUtils::local = '192.0.2.2';
+        my ($responses, $commands, $tftp) = process_scoped($requests->[0]);
+        like(join('', map { @{ $_->{error} || [] } } @$responses), qr/FreeBSD.*owner/, 'malformed owner metadata is rejected');
+        is_deeply($commands, [], 'malformed owner invokes no request stages');
+        ok(!-e "$tftp/xcat/xnba/nodes/node1", 'malformed owner publishes no script');
+    };
+}
+
+subtest 'off-subnet Linux nodes retain legacy filtering' => sub {
+    fixture();
+    $xCAT::Table::rows{nodetype}{node1}{provmethod} = 'linux';
+    $xCAT::NetworkUtils::off_subnet{'198.51.100.10'} = 1;
+    my ($requests, $errors) = scope('osimage', 'node1');
+    is_deeply($errors, [], 'legacy request still preprocesses');
+    my ($responses, $commands, $tftp) = process_scoped($requests->[0]);
+    is_deeply($commands, [], 'legacy off-subnet node does not reach its installer');
+    ok(!-e "$tftp/xcat/xnba/nodes/node1", 'legacy filtering creates no node script');
+};
+
+subtest 'mixed OS preprocessing never grants native routing to legacy nodes' => sub {
+    fixture();
+    $xCAT::Table::rows{nodetype}{node1}{provmethod} = 'linux';
+    $xCAT::NetworkUtils::off_subnet{'198.51.100.10'} = 1;
+    my ($requests, $errors) = scope('osimage', 'node1', 'node2');
+    is_deeply($errors, [], 'mixed batch preprocesses');
+    my ($legacy) = grep { $_->{node}[0] eq 'node1' && !$_->{_xcatdest} } @$requests;
+    my ($responses, $commands, $tftp) = process_scoped($legacy);
+    is_deeply($commands, [], 'legacy off-subnet node still does not run any stage');
+    ok(!-e "$tftp/xcat/xnba/nodes/node1", 'mixed batch does not publish a legacy off-subnet script');
 };
 
 done_testing();

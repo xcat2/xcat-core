@@ -23,7 +23,12 @@ require $utils;
 {
     package xCAT::Table;
     our (%rows, @writes);
-    sub new { return bless { table => $_[1] }, $_[0]; }
+    sub new {
+        my ($class, $table, %options) = @_;
+        return if exists($options{'-create'}) && !$options{'-create'} && !exists($rows{$table});
+        $rows{$table} ||= {};
+        return bless { table => $table }, $class;
+    }
     sub getAttribs {
         my ($self, $key, @attributes) = @_;
         @attributes = @{ $attributes[0] } if ref($attributes[0]);
@@ -192,6 +197,54 @@ subtest 'Linux explicit incompatible backend retains its warning behavior' => su
     is(errors($responses), '', 'Linux compatibility warning is not promoted to an error');
     ok(grep($_->{warning}, @$responses), 'existing Linux warning is emitted');
     is_deeply($commands, ['mkinstall'], 'Linux still dispatches its existing installer');
+};
+
+for my $missing ('nodetype', 'noderes') {
+    subtest "explicit Linux image tolerates absent $missing table" => sub {
+        fixture();
+        $xCAT::Table::rows{osimage}{image1} = {%$image, imagetype => 'linux', osname => 'Linux', osvers => 'rhels9'};
+        delete $xCAT::Table::rows{$missing};
+        my ($responses, $commands) = request('osimage=image1', 'node1');
+        is(errors($responses), '', 'optional routing table does not add a FreeBSD error');
+        is_deeply($commands, ['mkinstall'], 'Linux retains its existing installer dispatch');
+        is($xCAT::Table::rows{nodetype}{node1}{os}, 'rhels9', 'Linux nodetype is updated normally');
+        like($xCAT::Table::rows{chain}{node1}{currstate}, qr/^install rhels9-x86_64-compute$/, 'Linux chain is armed normally');
+    };
+}
+
+subtest 'implicit Linux image tolerates absent optional resources' => sub {
+    fixture();
+    $xCAT::Table::rows{osimage}{image1} = {%$image, imagetype => 'linux', osname => 'Linux', osvers => 'rhels9'};
+    delete $xCAT::Table::rows{noderes};
+    my ($responses, $commands) = request('osimage', 'node1');
+    is(errors($responses), '', 'implicit Linux routing retains the default resource behavior');
+    ok(exists($xCAT::Table::rows{noderes}), 'legacy routing creates its optional resource table');
+    ok(!grep($_->{errorabort}, @$responses), 'native preflight does not abort legacy routing');
+};
+
+subtest 'identified FreeBSD image requires resources before updating a mixed range' => sub {
+    fixture();
+    $xCAT::Table::rows{osimage}{linux} = {%$image, imagetype => 'linux', osname => 'Linux', osvers => 'rhels9'};
+    $xCAT::Table::rows{nodetype}{node1}{provmethod} = 'linux';
+    delete $xCAT::Table::rows{noderes};
+    my $before = dclone(\%xCAT::Table::rows);
+    my ($responses, $commands, $boots) = request('osimage', 'node1', 'node2');
+    like(errors($responses), qr/(?:routing tables|FreeBSD.*noderes)/, 'missing FreeBSD resources is an explicit error');
+    is_deeply(\%xCAT::Table::rows, $before, 'neither image group is updated before native validation');
+    is_deeply($commands, [], 'mixed request dispatches no installer');
+    is_deeply($boots, {}, 'mixed rejection copies no bootparams');
+};
+
+subtest 'invalid FreeBSD image rejects a mixed range before Linux state changes' => sub {
+    fixture();
+    $xCAT::Table::rows{osimage}{linux} = {%$image, imagetype => 'linux', osname => 'Linux', osvers => 'rhels9'};
+    $xCAT::Table::rows{nodetype}{node1}{provmethod} = 'linux';
+    $xCAT::Table::rows{osimage}{image1}{osarch} = 'aarch64';
+    my $before = dclone(\%xCAT::Table::rows);
+    my ($responses, $commands) = request('osimage', 'node1', 'node2');
+    like(errors($responses), qr/node2: FreeBSD/, 'native image error names its node');
+    is_deeply(\%xCAT::Table::rows, $before, 'mixed range remains unchanged');
+    is_deeply($commands, [], 'no earlier Linux image group is dispatched');
 };
 
 done_testing();
