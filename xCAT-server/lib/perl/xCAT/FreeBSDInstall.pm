@@ -170,4 +170,59 @@ sub transition {
     });
 }
 
+sub _command {
+    my ($node, $command, $argument, $dispatch) = @_;
+    my $response = $dispatch->({ command => [$command], node => [$node], arg => [$argument] });
+    _fail("No response from $command") unless ref($response) eq 'HASH';
+    my @pending = ($response);
+    while (@pending) {
+        my $part = shift @pending;
+        _fail("Invalid response from $command") unless ref($part) eq 'HASH';
+        for my $field (qw(error errorcode)) {
+            next unless exists($part->{$field});
+            my @values = ref($part->{$field}) eq 'ARRAY' ? @{$part->{$field}} : ($part->{$field});
+            _fail("$command failed") if grep { defined($_) && (ref($_) || ($_ ne '' && $_ ne '0')) } @values;
+        }
+        for my $field (qw(node xcatresponse)) {
+            next unless exists($part->{$field});
+            _fail("Invalid response from $command") unless ref($part->{$field}) eq 'ARRAY';
+            push @pending, @{$part->{$field}};
+        }
+    }
+    return;
+}
+
+sub _attribute {
+    my ($node, $name, $attribute, $expected) = @_;
+    require xCAT::Table;
+    my $table = xCAT::Table->new($name);
+    _fail("Cannot read $name") unless $table;
+    my $entry = $table->getNodeAttribs($node, [$attribute]);
+    $table->close();
+    _fail("$name.$attribute was not updated") unless $entry &&
+        defined($entry->{$attribute}) && $entry->{$attribute} eq $expected;
+    return;
+}
+
+sub handle_status {
+    my ($node, $peer, $message, $dispatch, %options) = @_;
+    _fail('Missing command dispatcher') unless ref($dispatch) eq 'CODE';
+    require xCAT::NetworkUtils;
+    xCAT::NetworkUtils->clearcache();
+    my $address = xCAT::NetworkUtils->getipaddr($node);
+    $peer =~ s/\A::ffff:// if defined($peer) && !ref($peer);
+    _fail('Unexpected installation client') unless defined($peer) && !ref($peer) &&
+        defined($address) && $address ne '0' && $peer eq $address;
+    return transition($node, $message, sub {
+        my ($phase) = @_;
+        if ($phase eq 'complete') {
+            _command($node, 'nodeset', 'boot', $dispatch);
+            _attribute($node, 'chain', 'currstate', 'boot');
+        }
+        my $status = { begin => 'installing', complete => 'installed', failed => 'failed', booted => 'booted' }->{$phase};
+        _command($node, 'updatenodestat', $status, $dispatch);
+        _attribute($node, 'nodelist', 'status', $status);
+    }, %options);
+}
+
 1;

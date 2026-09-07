@@ -492,6 +492,15 @@ sub do_installm_service {
             print $conn "ready\n";
             while (my $text = <$conn>) {
                 alarm(0);
+                if ($text =~ /^freebsd-install-/) {
+                    require xCAT::FreeBSDInstall;
+                    alarm(60);
+                    my $reply = xCAT::FreeBSDInstall::handle_status($node, $conn_peer_addr, $text,
+                        sub { return plugin_command($_[0], undef, \&build_response); });
+                    print $conn $reply or die "Cannot acknowledge FreeBSD installation: $!";
+                    close($conn);
+                    last;
+                }
                 print $conn "done\n";
                 $text =~ s/\r//g;
                 # Clear IP-Name cache, Workaround (#4913) for IP changed cases.
