@@ -145,14 +145,16 @@ sub _freebsd_preflight {
     return unless $state =~ /\Aosimage(?:[=:]|\z)/;
     my (undef, $target) = split('=', $state, 2);
     ($target) = split(':', $target, 2) if defined($target);
-    my $types = xCAT::Table->new('nodetype', -create => 0);
-    my $resources = xCAT::Table->new('noderes', -create => 0);
+    my $assigned = {};
+    unless ($target) {
+        my $types = xCAT::Table->new('nodetype', -create => 0);
+        return unless $types;
+        $assigned = $types->getNodesAttribs($nodes, ['provmethod']);
+        return 'Cannot read OS image routing attributes' unless ref($assigned) eq 'HASH';
+    }
     my $images = xCAT::Table->new('osimage', -create => 0);
-    return 'Cannot read OS image routing tables' unless $types && $resources && $images;
-    my $assigned = $target ? {} : $types->getNodesAttribs($nodes, ['provmethod']);
-    my $netboots = $resources->getNodesAttribs($nodes, ['netboot']);
-    return 'Cannot read OS image routing attributes' unless ref($assigned) eq 'HASH' && ref($netboots) eq 'HASH';
-    my %cache;
+    return unless $images;
+    my (%cache, %native);
     for my $node (@$nodes) {
         my $name = $target || $assigned->{$node}->[0]->{provmethod};
         next unless $name;
@@ -160,7 +162,19 @@ sub _freebsd_preflight {
             $cache{$name} = $images->getAttribs({imagename => $name},
                 [qw(provmethod osvers osname profile osarch imagetype)]);
         }
-        my $error = xCAT::Utils->freebsd_image_error($cache{$name}, $netboots->{$node}->[0]->{netboot});
+        my $error = xCAT::Utils->freebsd_image_error($cache{$name});
+        next unless defined($error);
+        return "$node: $error" if length($error);
+        $native{$node} = $cache{$name};
+    }
+    return unless %native;
+    my $resources = xCAT::Table->new('noderes', -create => 0);
+    return 'Cannot read FreeBSD noderes routing table' unless $resources;
+    my @native_nodes = grep { exists($native{$_}) } @$nodes;
+    my $netboots = $resources->getNodesAttribs(\@native_nodes, ['netboot']);
+    return 'Cannot read FreeBSD noderes routing attributes' unless ref($netboots) eq 'HASH';
+    for my $node (@native_nodes) {
+        my $error = xCAT::Utils->freebsd_image_error($native{$node}, $netboots->{$node}->[0]->{netboot});
         return "$node: $error" if defined($error) && length($error);
     }
     return;

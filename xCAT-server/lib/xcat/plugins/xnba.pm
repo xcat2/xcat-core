@@ -542,9 +542,9 @@ sub _freebsd_owner_scope {
             ($owner) = xCAT::TableUtils->get_site_attribute('master');
             unless ($owner) {
                 die "$native_node: Cannot determine the FreeBSD management-node owner\n" unless xCAT::Utils->isMN();
-                my ($rc, $address) = xCAT::NetworkUtils->my_ip_facing($native_node);
-                die "$native_node: Cannot determine the FreeBSD management-node address\n" if $rc;
-                $owner = $address;
+                my ($rc, @addresses) = xCAT::NetworkUtils->my_ip_facing($native_node);
+                die "$native_node: Cannot determine one FreeBSD management-node address\n" if $rc || @addresses != 1;
+                $owner = $addresses[0];
             }
         }
         die "$native_node: FreeBSD xcatmaster must name one hostname or IPv4 address\n"
@@ -557,7 +557,7 @@ sub _freebsd_owner_scope {
     my @requests;
     for my $address (sort keys %owners) {
         my $scoped = {%$req, node => $owners{$address}, _xcatpreprocessed => [1],
-            _disparatetftp => [1], _disjointmode => [1]};
+            _disparatetftp => [1], _disjointmode => [1], _freebsd_owner => [$address]};
         delete $scoped->{_xcatdest};
         $scoped->{_xcatdest} = $address if xCAT::NetworkUtils->thishostisnot($address);
         push @requests, @{ xCAT::Scope->get_parallel_scope($scoped) };
@@ -807,6 +807,17 @@ sub process_request {
         return;
     }
 
+    my $native_owner = $::XNBA_request->{_freebsd_owner};
+    if ($native_owner) {
+        unless (ref($native_owner) eq 'ARRAY' && @$native_owner == 1 &&
+            defined($native_owner->[0]) && !ref($native_owner->[0]) &&
+            $native_owner->[0] =~ /\A(?:[0-9]{1,3}\.){3}[0-9]{1,3}\z/ &&
+            !xCAT::NetworkUtils->thishostisnot($native_owner->[0])) {
+            $::XNBA_callback->({error => ['FreeBSD request must run on its selected owner'], errorcode => [1]});
+            return;
+        }
+    }
+
     my @nodes = ();
     # Filter those nodes which have bad DNS: not resolvable or inconsistent IP
     my %preparednodes = ();
@@ -826,7 +837,7 @@ sub process_request {
     }
 
     #if not shared tftpdir, then filter, otherwise, set up everything
-    if ($::XNBA_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+    if ($::XNBA_request->{'_disparatetftp'}->[0] && !$native_owner) { #reading hint from preprocess_command
         # Filter those nodes not in the same subnet, and print error message in log file.
         foreach (keys %preparednodes) {
             # Only handle its boot configuration files if the node in same subnet
