@@ -61,10 +61,11 @@ sub _file_hash {
     my $path = shift;
     sysopen(my $file, $path, O_RDONLY | O_NOFOLLOW) or _fail("Cannot open $path: $!");
     _fail("Not a regular file: $path") unless -f $file;
+    my @stat = stat($file);
     binmode($file);
     my $hash = Digest::SHA->new(256)->addfile($file)->hexdigest;
     close($file) or _fail("Cannot close $path: $!");
-    return $hash;
+    return ($hash, [@stat[0, 1]]);
 }
 
 sub _verify_tree {
@@ -92,29 +93,32 @@ sub _verify_tree {
         _fail("Unexpected boot file: $path") unless exists($expected->{$relative});
         my @stat = lstat($path);
         _fail("Unsafe boot file permissions: $path") unless ($stat[4] == 0 || $stat[4] == $>) && !($stat[2] & 0022);
-        _fail("Boot checksum mismatch: $path") unless _file_hash($path) eq $expected->{$relative};
         if ($shared && $relative ne 'boot/loader.conf') {
-            my @file = lstat($path);
-            my @source = lstat("$shared/$relative");
+            my $source = $shared->{$relative};
             _fail("Boot payload is not linked to its shared image: $path")
-              unless @source && $file[0] == $source[0] && $file[1] == $source[1];
+              unless $source && $stat[0] == $source->[0] && $stat[1] == $source->[1];
+            $found{$relative} = [@stat[0, 1]];
+        } else {
+            my ($hash, $identity) = _file_hash($path);
+            _fail("Boot checksum mismatch: $path") unless $hash eq $expected->{$relative};
+            $found{$relative} = $identity;
         }
-        $found{$relative} = 1;
     } }, $root);
     _fail("Missing boot file: $_") for grep { !$found{$_} } keys %$expected;
+    return \%found;
 }
 
 sub _stage {
     my ($parent, $destination, $writer, $verifier) = @_;
     if (-e $destination || -l $destination) {
-        $verifier->($destination);
-        return;
+        return $verifier->($destination);
     }
     my $stage = tempdir('.publish-stage.XXXXXXXX', DIR => $parent, CLEANUP => 0);
+    my $verified;
     my $ok = eval {
         chmod(0755, $stage) or _fail("Cannot set directory permissions: $!");
         $writer->($stage);
-        $verifier->($stage);
+        $verified = $verifier->($stage);
         rename($stage, $destination) or _fail("Cannot publish $destination: $!");
         1;
     };
@@ -125,6 +129,7 @@ sub _stage {
         $error .= "Cannot remove failed publication stage $stage\n" if $errors && @$errors;
         die $error;
     }
+    return $verified;
 }
 
 sub _stable_target {
@@ -169,7 +174,7 @@ sub publish_config {
         return $relative;
     }
     my ($file, $temporary) = tempfile('.config-stage.XXXXXXXX', DIR => dirname($destination), UNLINK => 0);
-    my $ok = eval {
+    eval {
         binmode($file);
         print {$file} $content or _fail("Cannot write configuration: $!");
         $file->flush or _fail("Cannot flush configuration: $!");
@@ -185,8 +190,8 @@ sub publish_config {
     };
     my $error = $@;
     close($file) if defined(fileno($file));
-    unlink($temporary) or _fail("Cannot remove temporary configuration $temporary: $!");
-    die $error unless $ok;
+    $error .= "Cannot remove temporary configuration $temporary: $!\n" unless unlink($temporary);
+    die $error if length($error);
     return $relative;
 }
 
@@ -236,7 +241,7 @@ sub publish {
     _directory("$root/.nodes/$node", 1);
     my $old_target = _stable_target($root, $node);
     my $shared = "$root/.images/$media->{digest}";
-    _stage("$root/.images", $shared, sub {
+    my $verified = _stage("$root/.images", $shared, sub {
         my $stage = shift;
         for my $relative (sort keys %payload) {
             my $parent = dirname($relative);
@@ -270,7 +275,7 @@ sub publish {
                 link("$shared/$relative", "$stage/$relative") or _fail("Cannot link $relative: $!");
             }
         }
-    }, sub { _verify_tree($_[0], \%node_payload, $shared); });
+    }, sub { _verify_tree($_[0], \%node_payload, $verified); });
     my $target = ".nodes/$node/$generation";
     if (!defined($old_target) || $old_target ne $target) {
         my $stage = tempdir('.link-stage.XXXXXXXX', DIR => $root, CLEANUP => 0);
