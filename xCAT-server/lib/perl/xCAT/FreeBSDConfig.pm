@@ -8,6 +8,81 @@ use Digest::SHA qw(sha256_hex);
 
 sub _fail { die "FreeBSD configuration: $_[0]\n"; }
 
+sub _boot_option {
+    my ($key, $value) = @_;
+    _fail('Invalid boot option name') if !defined($key) || ref($key);
+    _fail('Invalid boot option name') unless $key =~ /\A[A-Za-z][A-Za-z0-9_.-]{0,127}\z/x;
+    _fail("Invalid boot option value for $key") if !defined($value) || ref($value);
+    _fail("Invalid boot option value for $key") if length($value) > 128 ||
+        $value !~ m{\A[A-Za-z0-9_.,:+/@%=\-]*\z}x;
+    my %reserved = map { $_ => 1 } qw(
+        exec loader_conf_files loader_conf_dirs local_loader_conf_files product_vars
+        nextboot_conf nextboot_enable kernel kernels kernels_autodetect kernel_options
+        kernel_path kernelname xen_kernel bootfile module_path module_blacklist lua_path loader_path efi-version
+        currdev loaddev root rootdev rootpath root_path rootflags rootfstype root_disk_unit num_ide_disks
+        init initrd rdinit console boot_serial boot_multicons boot_multiple boot_mute
+        boot_mutemsgs boot_askname boot_cdrom boot_dfltroot autoboot_delay beastie_disable
+        hostname hostid hostuuid ip bootif netmask gateway nameserver nameservers
+        kern.hostname kern.hostid kern.hostuuid kern.domainname kern.bootfile kern.maxphys
+    );
+    my $name = lc($key);
+    _fail("Reserved boot option $key") if $reserved{$name} ||
+        $name =~ /\A(?:xcat[_.]|mdroot[_.]|kernel_)/x ||
+        $name =~ /\Amfs(?:bsd|root)?(?:[_.]|\z)/x ||
+        $name =~ /\A(?:boot\.|dhcp\.|init_|hostuuid_|bootenv|zfs_be_)/x ||
+        $name =~ /\A(?:vfs\.root[._]|vfs\.zfs\.(?:boot|root))/x ||
+        $name =~ /\A(?:comconsole_|hw\.uart\.console(?:\.|\z))/x ||
+        $name =~ /\Ahint\.(?:uart|sio)\./x ||
+        $name =~ /_(?:before|after|error|name|type)\z/x;
+    if ($key =~ /_load\z/x || $key =~ /\Aboot_(?:ddb|gdb|pause|single|verbose|safe)\z/x) {
+        _fail("Expected YES or NO for $key") unless $value =~ /\A(?:YES|NO)\z/ix;
+        return uc($value);
+    }
+    return $value;
+}
+
+sub parse_boot_options {
+    my $text = shift;
+    $text = '' unless defined($text);
+    _fail('Invalid boot options') if ref($text) || length($text) > 16384 || $text =~ /[^\x20-\x7e]/x;
+    my %options = (volatile => {}, persistent => {});
+    return \%options unless $text =~ /[^ ]/x;
+    _fail('Expected a native boot option key=value') if grep {
+        length($_) && $_ !~ /\A(?:R::)?[^= ]+=/x;
+    } split(/[ ]+/x, $text);
+    require xCAT::Utils;
+    my $phases = xCAT::Utils->splitkcmdline($text);
+    for my $phase (qw(volatile persistent)) {
+        my $count = 0;
+        my $size = 0;
+        for my $token (split(/[ ]+/x, $phases->{$phase} || '')) {
+            next unless length($token);
+            _fail('Too many boot options') if ++$count > 128;
+            my ($key, $value) = $token =~ /\A([^=]+)=(.*)\z/x;
+            _fail('Expected a native boot option key=value') unless defined($key);
+            _fail("Duplicate $phase boot option $key") if exists($options{$phase}{$key});
+            $value = _boot_option($key, $value);
+            $size += length($key) + length($value) + 4;
+            _fail('Rendered boot options are too large') if $size > 16384;
+            $options{$phase}{$key} = $value;
+        }
+    }
+    return \%options;
+}
+
+sub render_boot_options {
+    my $options = shift;
+    _fail('Invalid boot options map') unless ref($options) eq 'HASH';
+    _fail('Too many boot options') if keys(%$options) > 128;
+    my $text = '';
+    for my $key (sort keys %$options) {
+        my $value = _boot_option($key, $options->{$key});
+        $text .= "$key=\"$value\"\n";
+        _fail('Rendered boot options are too large') if length($text) > 16384;
+    }
+    return $text;
+}
+
 sub _node {
     my $node = shift;
     _fail('Invalid node name') unless defined($node) && !ref($node) &&
