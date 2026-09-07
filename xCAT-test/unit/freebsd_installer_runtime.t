@@ -72,7 +72,8 @@ sub fixture {
         fetch => 'cp "$FIXTURE_DIR/${5##*/}" "$4"',
         sha256 => 'openssl dgst -sha256 -r "$2" | awk "{print \\$1}"',
         nc => 'read -r protocol generation attempt phase; printf "phase %s\\n" "$phase" >> "$FIXTURE_DIR/events";' .
-            'if [ -f "$FIXTURE_DIR/reject-$phase" ]; then printf "ready\\nerror\\n"; else printf "ready\\nfreebsd-install-v1 %s %s ok\\n" "$generation" "$phase"; fi',
+            'count=0; test ! -f "$FIXTURE_DIR/nc-count" || count=$(cat "$FIXTURE_DIR/nc-count"); count=$((count+1)); printf "%s\\n" "$count" > "$FIXTURE_DIR/nc-count";' .
+            'if [ -f "$FIXTURE_DIR/reject-$phase" ] || { test -f "$FIXTURE_DIR/nc-busy" && test "$count" -le "$(cat "$FIXTURE_DIR/nc-busy")"; }; then printf "ready\\n"; else printf "ready\\nfreebsd-install-v1 %s %s ok\\n" "$generation" "$phase"; fi',
         date => 'if test -f "$FIXTURE_DIR/clock"; then cat "$FIXTURE_DIR/clock"; else printf "0\\n"; fi',
         sleep => 'now=0; test ! -f "$FIXTURE_DIR/clock" || now=$(cat "$FIXTURE_DIR/clock"); printf "%s\\n" "$((now+$1))" > "$FIXTURE_DIR/clock"',
         timeout => 'shift; exec "$@"',
@@ -151,6 +152,20 @@ for my $bad (
     is($status, 0, 'MAC lookup succeeds');
     is($output, "em0\n", 'MAC lookup selects only the provisioning NIC');
     isnt((run_runtime($root, 'xcat_find_interface 52:54:00:12:34:99'))[0], 0, 'unmatched MAC fails');
+    isnt((run_runtime($root, 'xcat_find_interface ""'))[0], 0, 'an absent boot MAC cannot select loopback');
+}
+
+{
+    my $root = fixture();
+    write_file("$root/nc-busy", '4');
+    is((run_runtime($root, 'xcat_read_config "$1" && xcat_status complete'))[0], 0,
+        'completion survives more than three busy controller responses');
+    is(read_file("$root/nc-count"), "5\n", 'completion retries until the matching acknowledgment');
+    like(read_file("$root/events"), qr/nc -w 65 /, 'the client allows the full controller command deadline');
+    write_file("$root/reject-booted", '');
+    isnt((run_runtime($root, 'xcat_read_config "$1" && xcat_status booted'))[0], 0,
+        'an unavailable controller eventually fails without an acknowledgment');
+    is(read_file("$root/clock"), "920\n", 'status retries stop after fifteen minutes');
 }
 
 my $single_disk_labels = "pool_guid: 12345\nname: 'zroot'\nvdev_children: 1\nvdev_tree:\n    type: 'disk'\n";
