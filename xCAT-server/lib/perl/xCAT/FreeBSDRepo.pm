@@ -492,18 +492,24 @@ sub _package_compatibility {
     return;
 }
 
+sub _package_archive {
+    my ($key, $package, $tree, $prefix) = @_;
+    _package_compatibility($package);
+    my ($path, $entry) = _archive_path($package, $tree, $prefix);
+    my $sum = $package->{sum};
+    _fail('Invalid package archive checksum') if !defined($sum) || ref($sum)
+      || !length($sum) || length($sum) > 256 || $sum =~ /[^A-Za-z0-9\$]/x;
+    return ($path, { %$entry, package_identity => $key, native_sum => $sum });
+}
+
 sub _archive_metadata {
     my ($context, $config, $source, $packages) = @_;
     my %archives;
     for my $key (sort keys %$packages) {
         my $package = $packages->{$key};
-        _package_compatibility($package);
-        my ($path, $entry) = _archive_path($package, $source->{tree}, $source->{prefix});
+        my ($path, $archive) = _package_archive($key, $package, $source->{tree}, $source->{prefix});
         _fail('An archive is assigned to multiple package identities') if exists($archives{$path});
-        my $sum = $package->{sum};
-        _fail('Invalid package archive checksum') if !defined($sum) || ref($sum)
-          || !length($sum) || length($sum) > 256 || $sum =~ /[^A-Za-z0-9\$]/x;
-        _native_output($context, $config, 'archive checksum', 'checksum', '-q', '-c', $sum, '--', "$source->{root}/$path");
+        _native_output($context, $config, 'archive checksum', 'checksum', '-q', '-c', $archive->{native_sum}, '--', "$source->{root}/$path");
         my $inside = _decode(_native_output($context, $config, 'archive manifest', 'info', '-F',
             "$source->{root}/$path", '--raw', '--raw-format', 'json-compact'), 'archive manifest');
         _fail('Invalid embedded package manifest') unless ref($inside) eq 'HASH';
@@ -512,7 +518,7 @@ sub _archive_metadata {
             _fail("Package archive metadata mismatch: $package->{name} $field")
               if !exists($inside->{$field}) || _json($inside->{$field}) ne _json($package->{$field});
         }
-        $archives{$path} = { %$entry, package_identity => $key, native_sum => $sum };
+        $archives{$path} = $archive;
     }
     return \%archives;
 }
@@ -527,6 +533,32 @@ sub _archive_inventory {
         _fail("Uncatalogued package archive: $path")
           if !defined($resolved) || (!exists($archives->{$resolved}) && !exists($catalogues{$resolved}));
     }
+    return;
+}
+
+sub _catalogue_prefix {
+    my $prefix = shift;
+    _fail('Invalid repository catalogue prefix') if !defined($prefix) || ref($prefix)
+      || length($prefix) > 4096
+      || (length($prefix) && grep { !_component($_) } split(m{/}x, $prefix, -1));
+    return $prefix;
+}
+
+sub validate_repository_inventory {
+    my $repository = shift;
+    _fail('Invalid stored repository inventory') if ref($repository->{packages}) ne 'HASH'
+      || ref($repository->{archives}) ne 'HASH';
+    my $prefix = _catalogue_prefix($repository->{catalogue_prefix});
+    my $packages = _records([values %{$repository->{packages}}], 'stored repository inventory');
+    _fail('Stored package identities disagree') if _json($packages) ne _json($repository->{packages});
+    my %archives;
+    for my $key (sort keys %$packages) {
+        my ($path, $archive) = _package_archive($key, $packages->{$key}, $repository->{tree}, $prefix);
+        _fail('An archive is assigned to multiple package identities') if exists($archives{$path});
+        $archives{$path} = $archive;
+    }
+    _fail('Stored repository archive inventory disagrees') if _json(\%archives) ne _json($repository->{archives});
+    _archive_inventory($repository->{tree}, $prefix, \%archives);
     return;
 }
 
@@ -577,10 +609,8 @@ sub inspect_repository {
     my %options = @arguments;
     _fail('Unknown native repository option') if grep { $_ !~ /\A(?:tool|trust|catalogue_prefix)\z/x } keys %options;
     $root = _root($root);
-    my $prefix = defined($options{catalogue_prefix}) ? $options{catalogue_prefix} : '';
-    _fail('Invalid repository catalogue prefix') if ref($prefix) || length($prefix) > 4096
-      || (length($prefix) && grep { !_component($_) } split(m{/}x, $prefix, -1));
-    $options{catalogue_prefix} = $prefix;
+    $options{catalogue_prefix} = _catalogue_prefix(
+        defined($options{catalogue_prefix}) ? $options{catalogue_prefix} : '');
     return _inspect_repository($root, \%options, snapshot_tree($root));
 }
 
@@ -632,6 +662,16 @@ sub _bootstrap_repairs {
     return \@repairs;
 }
 
+sub describe_release_repository {
+    my ($repository, $kind) = @_;
+    _fail('Unknown release repository role') unless defined($kind)
+      && ($kind eq 'base' || $kind eq 'applications');
+    _base_release($repository) if $kind eq 'base';
+    my $bootstrap = _bootstrap($repository);
+    return { bootstrap => $bootstrap,
+        link_repairs => _bootstrap_repairs($repository, $bootstrap) };
+}
+
 sub inspect_release {
     my ($root, @arguments) = @_;
     _fail('Native release options must be pairs') if @arguments % 2;
@@ -651,10 +691,8 @@ sub inspect_release {
         my $repository = _inspect_repository("$root/$source->{path}",
             { tool => $options{tool}, catalogue_prefix => $source->{catalogue_prefix},
                 trust => { type => 'operator-trusted-tree', digest => $source->{tree}{digest} } }, $source->{tree});
-        _base_release($repository) if $kind eq 'base';
-        my $bootstrap = _bootstrap($repository);
         $repositories{$kind} = { path => $source->{path}, repository => $repository,
-            bootstrap => $bootstrap, link_repairs => _bootstrap_repairs($repository, $bootstrap) };
+            %{describe_release_repository($repository, $kind)} };
     }
     my $after = inspect_release_tree($root);
     _fail('Release changed during native inspection') if !$after || $after->{digest} ne $media->{digest};

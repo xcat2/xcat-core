@@ -234,14 +234,51 @@ sub _rename {
     return;
 }
 
-sub _publication {
-    my ($source, $inspection, $kind, $trust) = @_;
-    my (%repositories, %sources, %extras);
+sub _repositories {
+    my ($inspection, $kind) = @_;
+    my %repositories;
     if ($kind eq 'repository') {
-        $sources{repository} = $source;
         $repositories{repository} = { path => 'repository',
             catalogue_prefix => $inspection->{catalogue_prefix},
             tree => _derived($inspection, []), link_repairs => [] };
+    } else {
+        for my $name (sort keys %{$inspection->{repositories}}) {
+            my $descriptor = $inspection->{repositories}{$name};
+            $repositories{$name} = { path => $name,
+                catalogue_prefix => $descriptor->{repository}{catalogue_prefix},
+                tree => _derived($descriptor->{repository}, $descriptor->{link_repairs}),
+                link_repairs => $descriptor->{link_repairs} };
+        }
+    }
+    return \%repositories;
+}
+
+sub _manifest {
+    my ($inspection, $kind, $extras) = @_;
+    my $repositories = _repositories($inspection, $kind);
+    my $manifest = { format => 'xcat-freebsd-repo-import-1', kind => $kind,
+        source => $inspection, repositories => $repositories, trust_files => $extras,
+        native_validated => 1, selection_validated => 0 };
+    $manifest->{digest} = sha256_hex(_json($manifest));
+    my $bytes = _json($manifest) . "\n";
+    _fail('Repository import manifest is too large') if length($bytes) > 536870912;
+    my %entries = (%$extras, 'manifest.json' => { type => 'file', size => length($bytes), sha256 => sha256_hex($bytes) });
+    for my $name (sort keys %$repositories) {
+        $entries{$name} = { type => 'directory' };
+        my $tree = $repositories->{$name}{tree};
+        $entries{"$name/$_"} = $tree->{entries}{$_} for keys %{$tree->{entries}};
+    }
+    my $expected = _tree(\%entries);
+    _fail('Repository import exceeds publication limits')
+      if keys(%entries) > 100000 || $expected->{bytes} > 1099511627776;
+    return ($manifest, $bytes, $expected);
+}
+
+sub _publication {
+    my ($source, $inspection, $kind, $trust) = @_;
+    my (%sources, %extras);
+    if ($kind eq 'repository') {
+        $sources{repository} = $source;
         if ($trust->{type} eq 'pubkey') {
             my @state = lstat($trust->{path});
             _fail('Repository trust file is unavailable or oversized')
@@ -249,31 +286,10 @@ sub _publication {
             $extras{'repository.pub'} = { size => $state[7], sha256 => $inspection->{trust}{sha256}, type => 'file' };
         }
     } else {
-        for my $name (sort keys %{$inspection->{repositories}}) {
-            my $descriptor = $inspection->{repositories}{$name};
-            $sources{$name} = "$source/$descriptor->{path}";
-            $repositories{$name} = { path => $name,
-                catalogue_prefix => $descriptor->{repository}{catalogue_prefix},
-                tree => _derived($descriptor->{repository}, $descriptor->{link_repairs}),
-                link_repairs => $descriptor->{link_repairs} };
-        }
+        $sources{$_} = "$source/$inspection->{repositories}{$_}{path}"
+          for keys %{$inspection->{repositories}};
     }
-    my $manifest = { format => 'xcat-freebsd-repo-import-1', kind => $kind,
-        source => $inspection, repositories => \%repositories, trust_files => \%extras,
-        native_validated => 1, selection_validated => 0 };
-    $manifest->{digest} = sha256_hex(_json($manifest));
-    my $bytes = _json($manifest) . "\n";
-    _fail('Repository import manifest is too large') if length($bytes) > 536870912;
-    my %entries = (%extras, 'manifest.json' => { type => 'file', size => length($bytes), sha256 => sha256_hex($bytes) });
-    for my $name (sort keys %repositories) {
-        $entries{$name} = { type => 'directory' };
-        my $tree = $repositories{$name}{tree};
-        $entries{"$name/$_"} = $tree->{entries}{$_} for keys %{$tree->{entries}};
-    }
-    my $expected = _tree(\%entries);
-    _fail('Repository import exceeds publication limits')
-      if keys(%entries) > 100000 || $expected->{bytes} > 1099511627776;
-    return ($manifest, $bytes, $expected, \%sources, \%extras);
+    return (_manifest($inspection, $kind, \%extras), \%sources, \%extras);
 }
 
 sub _publish {
@@ -358,6 +374,173 @@ sub import_release {
     my $inspection = xCAT::FreeBSDRepo::inspect_release($source, %native);
     _fail('The source is not supported FreeBSD release media') unless $inspection;
     return _publish($source, $installroot, $inspection, 'release', $options);
+}
+
+sub _checked_digest {
+    my ($value, $format) = @_;
+    _fail("Invalid stored $format descriptor") if ref($value) ne 'HASH'
+      || !defined($value->{format}) || $value->{format} ne $format
+      || !defined($value->{digest}) || ref($value->{digest})
+      || $value->{digest} !~ /\A[0-9a-f]{64}\z/x;
+    my %content = %$value;
+    delete($content{digest});
+    _fail("Stored $format digest mismatch") unless sha256_hex(_json(\%content)) eq $value->{digest};
+    return;
+}
+
+sub _checked_tool {
+    my $tool = shift;
+    _fail('Invalid stored native tool identity') if ref($tool) ne 'HASH'
+      || ($tool->{version} || '') ne '2.8.2' || ($tool->{sha256} || '') !~ /\A[0-9a-f]{64}\z/x
+      || grep { $_ ne 'version' && $_ ne 'sha256' && $_ ne 'library_digest' } keys %$tool;
+    _fail('Invalid stored native library identity') if exists($tool->{library_digest})
+      && ($tool->{library_digest} || '') !~ /\A[0-9a-f]{64}\z/x;
+    return;
+}
+
+sub _checked_trust {
+    my $repository = shift;
+    my $trust = $repository->{trust};
+    _fail('Invalid stored repository trust') if ref($trust) ne 'HASH';
+    my $type = $trust->{type} || '';
+    if ($type eq 'pubkey') {
+        _fail('Invalid stored repository public key') if ($trust->{sha256} || '') !~ /\A[0-9a-f]{64}\z/x
+          || _json($trust) ne _json({ type => $type, sha256 => $trust->{sha256} });
+    } else {
+        _fail('Invalid stored repository tree trust') if $type ne 'operator-trusted-tree'
+          || _json($trust) ne _json({ type => $type, digest => $repository->{tree}{digest} });
+    }
+    return;
+}
+
+sub _checked_native {
+    my $repository = shift;
+    _checked_digest($repository, 'xcat-freebsd-repository-1');
+    _fail('Invalid stored native repository identity') unless ($repository->{abi} || '') eq 'FreeBSD:15:amd64'
+      && ($repository->{osversion} || '') eq '1501000'
+      && ($repository->{native_validated} || '') eq '1'
+      && defined($repository->{selection_validated}) && $repository->{selection_validated} eq '0';
+    _checked_digest($repository->{tree}, 'xcat-freebsd-repo-tree-1');
+    _fail('Invalid stored repository tree evidence') unless defined($repository->{tree}{native_validated})
+      && $repository->{tree}{native_validated} eq '0';
+    _checked_tool($repository->{tool});
+    _checked_trust($repository);
+    xCAT::FreeBSDRepo::validate_repository_inventory($repository);
+    return;
+}
+
+sub _checked_release_header {
+    my $value = shift;
+    my %identity = (release => '15.1-RELEASE', arch => 'x86_64', media_arch => 'amd64',
+        abi => 'FreeBSD:15:amd64', osversion => '1501000', distname => 'freebsd15.1');
+    for my $key (keys %identity) {
+        _fail('Invalid stored release identity') if !defined($value->{$key})
+          || ref($value->{$key}) || $value->{$key} ne $identity{$key};
+    }
+    my $repositories = $value->{repositories};
+    _fail('Invalid stored release repositories') if ref($repositories) ne 'HASH'
+      || !exists($repositories->{base})
+      || grep { $_ ne 'base' && $_ ne 'applications' } keys %$repositories;
+    return;
+}
+
+sub _checked_release_role {
+    my ($name, $descriptor, $original) = @_;
+    _fail('Invalid stored release repository') if ref($descriptor) ne 'HASH' || ref($original) ne 'HASH';
+    my $repository = $descriptor->{repository};
+    _checked_native($repository);
+    _checked_digest($original->{tree}, 'xcat-freebsd-repo-tree-1');
+    my $path = $name eq 'base' ? 'usr/freebsd-packages/offline' : 'packages';
+    my $prefix = $name eq 'base' ? '' : 'FreeBSD:15:amd64';
+    _fail('Stored release repository provenance differs')
+      unless ($descriptor->{path} || '') eq $path && ($original->{path} || '') eq $path
+      && defined($original->{catalogue_prefix}) && $original->{catalogue_prefix} eq $prefix
+      && defined($repository->{catalogue_prefix}) && $repository->{catalogue_prefix} eq $prefix
+      && _json($repository->{tree}) eq _json($original->{tree})
+      && _json($repository->{trust}) eq _json({ type => 'operator-trusted-tree', digest => $original->{tree}{digest} });
+    my $summary = xCAT::FreeBSDRepo::describe_release_repository($repository, $name);
+    _fail('Stored release bootstrap or repair differs')
+      unless _json($summary->{bootstrap}) eq _json($descriptor->{bootstrap})
+      && _json($summary->{link_repairs}) eq _json($descriptor->{link_repairs});
+    return;
+}
+
+sub _checked_source {
+    my ($source, $kind) = @_;
+    if ($kind eq 'repository') {
+        _checked_native($source);
+        return;
+    }
+    _fail('Invalid stored import kind') unless $kind eq 'release';
+    _checked_digest($source, 'xcat-freebsd-release-1');
+    my $media = $source->{media};
+    _checked_digest($media, 'xcat-freebsd-release-tree-1');
+    _checked_release_header($source);
+    _checked_release_header($media);
+    _fail('Invalid stored release trust or validation evidence')
+      unless ($source->{native_validated} || '') eq '1'
+      && defined($source->{selection_validated}) && $source->{selection_validated} eq '0'
+      && defined($media->{native_validated}) && $media->{native_validated} eq '0'
+      && ref($source->{trust}) eq 'HASH' && ($source->{trust}{type} || '') eq 'operator-trusted-release'
+      && ($source->{trust}{digest} || '') eq $media->{digest}
+      && _json([sort keys %{$source->{repositories}}]) eq _json([sort keys %{$media->{repositories}}]);
+    for my $name (sort keys %{$source->{repositories}}) {
+        _checked_release_role($name, $source->{repositories}{$name}, $media->{repositories}{$name});
+    }
+    return;
+}
+
+sub _read_manifest {
+    my $path = shift;
+    my @state = lstat($path);
+    _fail('Missing or oversized repository import manifest') if !@state
+      || !S_ISREG($state[2]) || $state[7] > 536870912;
+    my ($fh, $before) = _open_source($path, { size => $state[7] });
+    my $bytes = '';
+    while (length($bytes) <= $before->[7]) {
+        my $remaining = $before->[7] - length($bytes) + 1;
+        my $length = $remaining < 1048576 ? $remaining : 1048576;
+        my $read = read($fh, my $buffer, $length);
+        _fail("Cannot read import manifest: $!") unless defined($read);
+        last unless $read;
+        $bytes .= $buffer;
+    }
+    my @after = stat($fh);
+    close($fh) or _fail("Cannot close import manifest: $!");
+    _fail('Repository import manifest changed during reading') if length($bytes) != $before->[7]
+      || !@after || grep { $after[$_] != $before->[$_] } (0, 1, 7, 9, 10);
+    my $manifest = eval { JSON->new->utf8->max_depth(64)->decode($bytes) };
+    _fail('Invalid repository import manifest JSON') if $@ || ref($manifest) ne 'HASH';
+    _checked_digest($manifest, 'xcat-freebsd-repo-import-1');
+    _fail('Repository import manifest is not canonical') unless _json($manifest) . "\n" eq $bytes;
+    return ($manifest, $bytes);
+}
+
+sub inspect_import {
+    my ($root, $installroot) = @_;
+    _fail('Import inspection requires a publication and install root') if @_ != 2;
+    $root = _absolute($root);
+    $installroot = _installroot($installroot);
+    my $prefix = "$installroot/freebsd15.1/x86_64/repositories/";
+    my ($digest) = $root =~ /\A\Q$prefix\E([0-9a-f]{64})\z/x;
+    _fail('Invalid published repository path') unless defined($digest);
+    _installroot($root);
+    my ($manifest, $bytes) = _read_manifest("$root/manifest.json");
+    _fail('Repository import path and digest differ') unless $digest eq $manifest->{digest};
+    _fail('Invalid stored import kind') if !defined($manifest->{kind}) || ref($manifest->{kind});
+    _checked_source($manifest->{source}, $manifest->{kind});
+    my %extras;
+    if ($manifest->{kind} eq 'repository' && ($manifest->{source}{trust}{type} || '') eq 'pubkey') {
+        my @key = lstat("$root/repository.pub");
+        _fail('Stored repository trust file is unavailable or oversized')
+          if !@key || !S_ISREG($key[2]) || $key[7] > 1048576;
+        $extras{'repository.pub'} = { size => $key[7], type => 'file', sha256 => $manifest->{source}{trust}{sha256} };
+    }
+    my ($expected_manifest, $expected_bytes, $expected_tree) =
+      _manifest($manifest->{source}, $manifest->{kind}, \%extras);
+    _fail('Stored publication differs from its source provenance') unless $bytes eq $expected_bytes;
+    _verify($root, $expected_tree, oct('0555'));
+    return { %$expected_manifest, path => $root };
 }
 
 1;
