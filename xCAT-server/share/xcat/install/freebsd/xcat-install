@@ -32,6 +32,6 @@ xcat_read_config "$XCAT_WORK/config" || xcat_error 'Invalid installation configu
 [ "$XCAT_BOOT_MAC" = "$XCAT_MAC" ] || xcat_error 'Configuration belongs to another provisioning interface'
 XCAT_CAN_REPORT=1
 xcat_validate_key "$XCAT_WORK/authorized_keys"
-xcat_install_system /usr/local/share/xcat/installerconfig.tmpl
+xcat_install_system /usr/local/share/xcat/installerconfig.tmpl /usr/local/libexec/xcat-install-lib.sh
 trap - EXIT HUP INT TERM
 shutdown -r now

@@ -33,22 +33,31 @@ cat > /usr/local/etc/rc.d/xcatfirstboot <<'XCAT_FIRSTBOOT'
 # REQUIRE: NETWORKING sshd
 
 . /etc/rc.subr
+. /usr/local/libexec/xcat-install-lib.sh
 name=xcatfirstboot
 rcvar=xcatfirstboot_enable
+pidfile=/var/run/xcatfirstboot.pid
+extra_commands=report
 start_cmd=xcatfirstboot_start
+report_cmd=xcatfirstboot_report
 stop_cmd=:
 
 xcatfirstboot_start()
 {
     [ -r /var/db/xcat/firstboot ] || return 0
+    /usr/sbin/daemon -f -S -p "$pidfile" /usr/local/etc/rc.d/xcatfirstboot report
+}
+
+xcatfirstboot_report()
+{
+    [ -r /var/db/xcat/firstboot ] || return 0
     {
-        read -r master
-        read -r port
-        read -r generation
-        read -r attempt
+        read -r XCAT_MASTER
+        read -r XCAT_PORT
+        read -r XCAT_GENERATION
+        read -r XCAT_ATTEMPT
     } < /var/db/xcat/firstboot
-    response=$(printf 'freebsd-install-v1 %s %s booted\n' "$generation" "$attempt" | nc -w 30 "$master" "$port") || return 1
-    [ "$response" = "$(printf 'ready\nfreebsd-install-v1 %s booted ok' "$generation")" ] || return 1
+    xcat_status booted || return 1
     mv /var/db/xcat/firstboot /var/db/xcat/firstboot.done || return 1
     sysrc xcatfirstboot_enable=NO >/dev/null
 }

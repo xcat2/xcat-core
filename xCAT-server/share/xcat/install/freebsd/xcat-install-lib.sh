@@ -94,6 +94,7 @@ xcat_read_config()
 xcat_find_interface()
 {
     xcat_mac=$1
+    [ -n "$xcat_mac" ] || { xcat_error 'Provisioning MAC is missing'; return 1; }
     xcat_match=
     for xcat_interface in $(ifconfig -l); do
         case "$xcat_interface" in [!A-Za-z]*|*[!A-Za-z0-9]*) continue ;; esac
@@ -111,10 +112,18 @@ xcat_status()
     xcat_phase=$1
     case "$xcat_phase" in begin|complete|failed|booted) ;; *) return 1 ;; esac
     xcat_hex "$XCAT_GENERATION" 32 && xcat_hex "$XCAT_ATTEMPT" 32 || return 1
-    for xcat_retry in 1 2 3; do
+    xcat_started=$(date +%s) || return 1
+    xcat_retry=0
+    while [ "$xcat_retry" -lt 180 ]; do
+        xcat_now=$(date +%s) || return 1
+        [ "$xcat_now" -ge "$xcat_started" ] && [ "$((xcat_now - xcat_started))" -lt 900 ] || break
+        xcat_wait=$((900 - xcat_now + xcat_started))
+        [ "$xcat_wait" -le 65 ] || xcat_wait=65
         xcat_response=$(printf 'freebsd-install-v1 %s %s %s\n' "$XCAT_GENERATION" "$XCAT_ATTEMPT" "$xcat_phase" |
-            nc -w 15 "$XCAT_MASTER" "$XCAT_PORT") || continue
-        [ "$xcat_response" = "$(printf 'ready\nfreebsd-install-v1 %s %s ok' "$XCAT_GENERATION" "$xcat_phase")" ] && return 0
+            nc -w "$xcat_wait" "$XCAT_MASTER" "$XCAT_PORT") &&
+            [ "$xcat_response" = "$(printf 'ready\nfreebsd-install-v1 %s %s ok' "$XCAT_GENERATION" "$xcat_phase")" ] && return 0
+        xcat_retry=$((xcat_retry + 1))
+        sleep 5
     done
     xcat_error "Controller did not acknowledge $xcat_phase"
 }
@@ -231,14 +240,17 @@ xcat_write_installer()
     else
         printf 'PARTITIONS="%s GPT { %s freebsd-swap, auto freebsd-ufs / }"\n' "$XCAT_TARGET_DISK" "$XCAT_SWAP_SIZE"
     fi
-    cat "$1"
+    cat "$1" || return 1
+    printf '\ninstall -d -m 0755 /usr/local/libexec\ncat > /usr/local/libexec/xcat-install-lib.sh <<\047XCAT_INSTALL_LIB\047\n'
+    cat "${2:-${1%/*}/xcat-install-lib.sh}" || return 1
+    printf '\nXCAT_INSTALL_LIB\nchmod 0444 /usr/local/libexec/xcat-install-lib.sh\n'
 }
 
 xcat_install_system()
 {
     kldload -n zfs && kldload -n geom_eli || return 1
     xcat_check_disk && xcat_scan_labels && xcat_fetch_distributions || return 1
-    xcat_write_installer "$1" > "$XCAT_WORK/installerconfig" || return 1
+    xcat_write_installer "$1" "${2:-${1%/*}/xcat-install-lib.sh}" > "$XCAT_WORK/installerconfig" || return 1
     xcat_status begin && xcat_check_disk || return 1
     for xcat_provider in $XCAT_CLEAR_LABELS; do zpool labelclear -f "$xcat_provider" || return 1; done
     timeout 3600 env -i PATH="$PATH" LC_ALL=C TERM="${TERM:-vt100}" \
