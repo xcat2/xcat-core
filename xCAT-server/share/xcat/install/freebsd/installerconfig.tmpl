@@ -1,0 +1,60 @@
+#!/bin/sh
+set -eu
+
+pw usermod root -h -
+install -d -m 0700 /root/.ssh
+printf '%s' "$XCAT_AUTHORIZED_KEY_BASE64" | base64 -d > /root/.ssh/authorized_keys
+chmod 0600 /root/.ssh/authorized_keys
+sysrc hostname="$XCAT_HOSTNAME" sshd_enable=YES xcatfirstboot_enable=YES
+sysrc "ifconfig_$XCAT_PROVISIONING_IF=inet $XCAT_IPV4 netmask $XCAT_NETMASK"
+[ -z "$XCAT_GATEWAY" ] || sysrc defaultrouter="$XCAT_GATEWAY"
+if [ -n "$XCAT_NAMESERVERS" ]; then
+    : > /etc/resolv.conf
+    oldifs=$IFS
+    IFS=,
+    for address in $XCAT_NAMESERVERS; do printf 'nameserver %s\n' "$address" >> /etc/resolv.conf; done
+    IFS=$oldifs
+fi
+sshd_config=$(mktemp /etc/ssh/sshd_config.xcat.XXXXXX)
+{
+    printf '%s\n' 'PermitRootLogin prohibit-password' 'PubkeyAuthentication yes' \
+        'PasswordAuthentication no' 'KbdInteractiveAuthentication no' 'AuthenticationMethods publickey'
+    cat /etc/ssh/sshd_config
+} > "$sshd_config"
+chmod 0644 "$sshd_config"
+mv "$sshd_config" /etc/ssh/sshd_config
+install -d -m 0700 /var/db/xcat
+printf '%s\n%s\n%s\n%s\n' "$XCAT_MASTER" "$XCAT_PORT" "$XCAT_GENERATION" "$XCAT_ATTEMPT" > /var/db/xcat/firstboot
+chmod 0600 /var/db/xcat/firstboot
+install -d -m 0755 /usr/local/etc/rc.d
+cat > /usr/local/etc/rc.d/xcatfirstboot <<'XCAT_FIRSTBOOT'
+#!/bin/sh
+# PROVIDE: xcatfirstboot
+# REQUIRE: NETWORKING sshd
+
+. /etc/rc.subr
+name=xcatfirstboot
+rcvar=xcatfirstboot_enable
+start_cmd=xcatfirstboot_start
+stop_cmd=:
+
+xcatfirstboot_start()
+{
+    [ -r /var/db/xcat/firstboot ] || return 0
+    {
+        read -r master
+        read -r port
+        read -r generation
+        read -r attempt
+    } < /var/db/xcat/firstboot
+    response=$(printf 'freebsd-install-v1 %s %s booted\n' "$generation" "$attempt" | nc -w 30 "$master" "$port") || return 1
+    [ "$response" = "$(printf 'ready\nfreebsd-install-v1 %s booted ok' "$generation")" ] || return 1
+    mv /var/db/xcat/firstboot /var/db/xcat/firstboot.done || return 1
+    sysrc xcatfirstboot_enable=NO >/dev/null
+}
+
+load_rc_config "$name"
+: "${xcatfirstboot_enable:=NO}"
+run_rc_command "$1"
+XCAT_FIRSTBOOT
+chmod 0555 /usr/local/etc/rc.d/xcatfirstboot

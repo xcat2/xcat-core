@@ -1,0 +1,37 @@
+#!/bin/sh
+
+set -eu
+PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
+LC_ALL=C
+export PATH LC_ALL
+. /usr/local/libexec/xcat-install-lib.sh
+
+XCAT_ATTEMPT=$(openssl rand -hex 16)
+XCAT_WORK=$(mktemp -d /tmp/xcat-install.XXXXXX)
+XCAT_CAN_REPORT=
+xcat_install_failed()
+{
+    trap - EXIT HUP INT TERM
+    [ -z "$XCAT_CAN_REPORT" ] || xcat_status failed || :
+    printf 'xCAT FreeBSD installation stopped. Logs: %s\n' "$XCAT_WORK" >&2
+    exit 1
+}
+trap xcat_install_failed EXIT HUP INT TERM
+
+[ "$(uname -m)" = amd64 ] || xcat_error 'The installer requires amd64'
+case "$(freebsd-version -u)" in 15.1-RELEASE|15.1-RELEASE-p[0-9]*) ;; *) xcat_error 'The installer requires FreeBSD 15.1-RELEASE' ;; esac
+XCAT_BOOT_MAC=$(kenv -q boot.netif.hwaddr | tr 'A-F' 'a-f')
+XCAT_PROVISIONING_IF=$(xcat_find_interface "$XCAT_BOOT_MAC")
+dhclient "$XCAT_PROVISIONING_IF"
+xcat_config_url=$(kenv -q xcat_config_url)
+xcat_config_sha256=$(kenv -q xcat_config_sha256)
+xcat_url "$xcat_config_url" && xcat_hex "$xcat_config_sha256" 64 || xcat_error 'Invalid configuration location'
+fetch -T 60 -o "$XCAT_WORK/config" "$xcat_config_url"
+[ "$(sha256 -q "$XCAT_WORK/config")" = "$xcat_config_sha256" ] || xcat_error 'Configuration checksum does not match'
+xcat_read_config "$XCAT_WORK/config" || xcat_error 'Invalid installation configuration'
+[ "$XCAT_BOOT_MAC" = "$XCAT_MAC" ] || xcat_error 'Configuration belongs to another provisioning interface'
+XCAT_CAN_REPORT=1
+xcat_validate_key "$XCAT_WORK/authorized_keys"
+xcat_install_system /usr/local/share/xcat/installerconfig.tmpl
+trap - EXIT HUP INT TERM
+shutdown -r now
