@@ -2,14 +2,17 @@ package xCAT::FreeBSDInstall;
 
 use strict;
 use warnings;
+use Errno qw(ECHILD);
 use Fcntl qw(:DEFAULT :flock);
 use File::Path qw(make_path);
 use File::Temp qw(tempfile);
 use IO::Handle;
 use JSON;
+use POSIX qw(WNOHANG);
 
 my $json = JSON->new->canonical;
 my %phases = map { $_ => 1 } qw(prepared installing completing installed booted failed cancelled);
+my %status_workers;
 
 sub _fail { die "FreeBSD installation: $_[0]\n"; }
 
@@ -226,6 +229,51 @@ sub handle_status {
         _command($node, 'updatenodestat', $status, $dispatch);
         _attribute($node, 'nodelist', 'status', $status);
     }, %options);
+}
+
+sub start_status_worker {
+    my ($node, $peer, $message, $connection, $dispatch, %options) = @_;
+    my $limit = $options{limit} || 64;
+    _fail('Invalid status worker limit') unless $limit =~ /\A[1-9][0-9]*\z/ && $limit <= 64;
+    _fail('Missing status worker cleanup') unless ref($options{cleanup}) eq 'CODE';
+    _fail('Missing status worker logger') unless ref($options{log}) eq 'CODE';
+    for my $pid (keys %status_workers) {
+        my $reaped = waitpid($pid, WNOHANG);
+        delete $status_workers{$pid} if $reaped == $pid || ($reaped == -1 && $! == ECHILD);
+    }
+    if (keys(%status_workers) >= $limit || grep { $_ eq $node } values %status_workers) {
+        close($connection);
+        return 0;
+    }
+    require xCAT::Utils;
+    my $pid = xCAT::Utils->xfork();
+    unless (defined($pid)) {
+        $options{log}->("Cannot start status worker: $!\n");
+        close($connection);
+        return 0;
+    }
+    if ($pid) {
+        $status_workers{$pid} = $node;
+        close($connection);
+        return $pid;
+    }
+    $SIG{TERM} = $SIG{INT} = $SIG{USR2} = 'DEFAULT';
+    $SIG{PIPE} = 'IGNORE';
+    $SIG{ALRM} = sub { die "FreeBSD status command timed out\n"; };
+    my $ok = eval {
+        alarm(60);
+        $options{cleanup}->();
+        my %state_options = exists($options{directory}) ? (directory => $options{directory}) : ();
+        my $reply = handle_status($node, $peer, $message, $dispatch, %state_options);
+        print {$connection} $reply or _fail("Cannot acknowledge installation: $!");
+        close($connection) or _fail("Cannot close installation connection: $!");
+        alarm(0);
+        1;
+    };
+    my $error = $@;
+    alarm(0);
+    $options{log}->($error) unless $ok;
+    POSIX::_exit($ok ? 0 : 1);
 }
 
 1;
