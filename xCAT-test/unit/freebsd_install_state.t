@@ -3,8 +3,12 @@ use strict;
 use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
+use lib grep { defined($_) } $ENV{XCAT_FREEBSD_STATE_MODULE_DIR};
+use Fcntl qw(:DEFAULT :flock);
 use File::Temp qw(tempdir);
+use IO::Select;
 use JSON;
+use POSIX ();
 use Test::More;
 use xCAT::FreeBSDInstall;
 
@@ -206,5 +210,137 @@ my @outcomes;
 is_deeply([sort @outcomes], [qw(accepted rejected)], 'concurrent boots cannot both own the generation');
 is(xCAT::FreeBSDInstall::state('node1', directory => $race_dir)->{phase}, 'installing',
     'concurrent transition leaves valid persisted state');
+
+{
+    my $root = "$temporary/publish-new";
+    my @published;
+    my $publish = sub {
+        my $token = shift;
+        push @published, $token;
+        is(disk_state($root)->{generation}, $token, 'publication sees its durable generation');
+        is(disk_state($root)->{phase}, 'prepared', 'publication follows durable preparation');
+    };
+    my $token = xCAT::FreeBSDInstall::prepare('node1', $fingerprint, directory => $root, publish => $publish);
+    is_deeply(\@published, [$token], 'initial preparation invokes publication once');
+    is(xCAT::FreeBSDInstall::prepare('node1', $fingerprint, directory => $root, publish => $publish), $token,
+        'identical preparation invokes publication with the same generation');
+    is_deeply(\@published, [$token, $token], 'identical preparation republishes for retry');
+    status($root, $token, 'begin');
+    rejects(sub { xCAT::FreeBSDInstall::prepare('node1', $fingerprint, directory => $root,
+        publish => sub { push @published, 'unexpected'; }); }, qr/Stop the node/, 'active publication rearm');
+    is_deeply(\@published, [$token, $token], 'active installation does not invoke publication');
+}
+
+for my $callback (undef, 'invalid', {}, []) {
+    my $root = "$temporary/publish-invalid-" . ++$sequence;
+    rejects(sub { xCAT::FreeBSDInstall::prepare('node1', $fingerprint, directory => $root, publish => $callback); },
+        qr/Invalid publication callback/, 'non-code publication');
+    ok(!-e $root, 'invalid publication callback creates no state directory');
+}
+
+{
+    my $root = "$temporary/publish-failure";
+    my $failed_token;
+    rejects(sub { xCAT::FreeBSDInstall::prepare('node1', $fingerprint, directory => $root, publish => sub {
+        $failed_token = shift;
+        die "publication failed\n";
+    }); }, qr/publication failed/, 'publication error');
+    is(disk_state($root)->{phase}, 'prepared', 'publication failure retains retryable preparation');
+    is(disk_state($root)->{generation}, $failed_token, 'publication failure preserves its chosen generation');
+    my @retried;
+    is(xCAT::FreeBSDInstall::prepare('node1', $fingerprint, directory => $root,
+        publish => sub { push @retried, shift; }), $failed_token, 'publication retry reuses the prepared generation');
+    is_deeply(\@retried, [$failed_token], 'publication retry invokes the callback again');
+}
+
+for my $operation (qw(prepare cancel begin)) {
+    my $root = "$temporary/publish-race-$operation";
+    pipe(my $ready_reader, my $ready_writer) or die $!;
+    pipe(my $release_reader, my $release_writer) or die $!;
+    my $publisher = fork();
+    die $! unless defined($publisher);
+    if (!$publisher) {
+        close($ready_reader);
+        close($release_writer);
+        my $ok = eval {
+            xCAT::FreeBSDInstall::prepare('node1', $fingerprint, directory => $root, publish => sub {
+                my $token = shift;
+                print {$ready_writer} "$token\n" or die $!;
+                $ready_writer->flush or die $!;
+                my $released = <$release_reader>;
+                die 'publication was not released' unless defined($released);
+                open(my $marker, '>', "$root/published") or die $!;
+                print {$marker} $token or die $!;
+                close($marker) or die $!;
+            });
+            1;
+        };
+        warn $@ unless $ok;
+        POSIX::_exit($ok ? 0 : 1);
+    }
+    close($ready_writer);
+    close($release_reader);
+    local $SIG{ALRM} = sub { kill('KILL', $publisher); die "Publication concurrency test timed out\n"; };
+    alarm(15);
+    my $token = <$ready_reader>;
+    die 'publisher did not enter its callback' unless defined($token);
+    chomp($token);
+    close($ready_reader);
+    is(disk_state($root)->{generation}, $token, "$operation contender sees the callback generation persisted");
+    sysopen(my $probe, "$root/node1.lock", O_RDWR) or die $!;
+    ok(!flock($probe, LOCK_EX | LOCK_NB), "$operation publication callback holds the actual node lock");
+    close($probe);
+    pipe(my $started_reader, my $started_writer) or die $!;
+    pipe(my $result_reader, my $result_writer) or die $!;
+    my $contender = fork();
+    die $! unless defined($contender);
+    if (!$contender) {
+        close($started_reader);
+        close($result_reader);
+        close($release_writer);
+        print {$started_writer} "starting\n" or die $!;
+        close($started_writer);
+        my $ok = eval {
+            if ($operation eq 'prepare') {
+                xCAT::FreeBSDInstall::prepare('node1', 'f' x 64, directory => $root);
+            } elsif ($operation eq 'cancel') {
+                xCAT::FreeBSDInstall::cancel('node1', directory => $root);
+            } else {
+                status($root, $token, 'begin');
+            }
+            1;
+        };
+        print {$result_writer} encode_json({ ok => $ok ? 1 : 0, error => $@,
+            published => -e "$root/published" ? 1 : 0 }), "\n";
+        close($result_writer);
+        POSIX::_exit(0);
+    }
+    close($started_writer);
+    close($result_writer);
+    local $SIG{ALRM} = sub { kill('KILL', $publisher, $contender); die "Publication contender timed out\n"; };
+    <$started_reader>;
+    close($started_reader);
+    ok(!IO::Select->new($result_reader)->can_read(0.1), "$operation waits while publication is incomplete");
+    is(disk_state($root)->{phase}, 'prepared', "$operation cannot change state during publication");
+    is(disk_state($root)->{generation}, $token, "$operation cannot replace the generation during publication");
+    print {$release_writer} "continue\n" or die $!;
+    close($release_writer);
+    my $result = decode_json(scalar(<$result_reader>));
+    close($result_reader);
+    waitpid($publisher, 0);
+    is($?, 0, "$operation publication completes successfully");
+    waitpid($contender, 0);
+    is($?, 0, "$operation contender exits successfully");
+    alarm(0);
+    is_deeply($result, { ok => 1, error => '', published => 1 }, "$operation executes only after publication completes");
+    my $state = disk_state($root);
+    is($state->{phase}, { prepare => 'prepared', cancel => 'cancelled', begin => 'installing' }->{$operation},
+        "$operation leaves the expected final phase");
+    if ($operation eq 'prepare') {
+        isnt($state->{generation}, $token, 'later different preparation supersedes only after publication');
+    } else {
+        is($state->{generation}, $token, "$operation retains the published generation");
+    }
+}
 
 done_testing();
