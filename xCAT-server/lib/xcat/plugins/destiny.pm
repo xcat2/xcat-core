@@ -140,6 +140,32 @@ sub relay_response {
     }
 }
 
+sub _freebsd_preflight {
+    my ($state, $nodes) = @_;
+    return unless $state =~ /\Aosimage(?:[=:]|\z)/;
+    my (undef, $target) = split('=', $state, 2);
+    ($target) = split(':', $target, 2) if defined($target);
+    my $types = xCAT::Table->new('nodetype', -create => 0);
+    my $resources = xCAT::Table->new('noderes', -create => 0);
+    my $images = xCAT::Table->new('osimage', -create => 0);
+    return 'Cannot read OS image routing tables' unless $types && $resources && $images;
+    my $assigned = $target ? {} : $types->getNodesAttribs($nodes, ['provmethod']);
+    my $netboots = $resources->getNodesAttribs($nodes, ['netboot']);
+    return 'Cannot read OS image routing attributes' unless ref($assigned) eq 'HASH' && ref($netboots) eq 'HASH';
+    my %cache;
+    for my $node (@$nodes) {
+        my $name = $target || $assigned->{$node}->[0]->{provmethod};
+        next unless $name;
+        unless (exists($cache{$name})) {
+            $cache{$name} = $images->getAttribs({imagename => $name},
+                [qw(provmethod osvers osname profile osarch imagetype)]);
+        }
+        my $error = xCAT::Utils->freebsd_image_error($cache{$name}, $netboots->{$node}->[0]->{netboot});
+        return "$node: $error" if defined($error) && length($error);
+    }
+    return;
+}
+
 sub setdestiny {
     my $req      = shift;
     my $flag     = shift;
@@ -168,6 +194,16 @@ sub setdestiny {
         return;
     }
     my @nodes = @{ $req->{node} };
+    my $state = $ARGV[0];
+    my $reststates;
+    my %nstates;
+    ($state, $reststates) = split(/,/, $state, 2);
+    chomp($state);
+    my $routing_error = _freebsd_preflight($state, \@nodes);
+    if ($routing_error) {
+        $callback->({error => [$routing_error], errorcode => [1], errorabort => [1]});
+        return;
+    }
     my $bptab = xCAT::Table->new('bootparams', -create => 1);
     my %tempbh = %{ $bptab->getNodesAttribs(\@nodes, [qw(addkcmdline)]) };
     while(my ($key, $value) = each(%tempbh)) {
@@ -178,13 +214,6 @@ sub setdestiny {
         }
     }
     $bptab->close();
-
-    my $state = $ARGV[0];
-    my $reststates;
-    my %nstates;
-    # to support the case that the state could be runimage=xxx,runimage=yyy,osimage=xxx
-    ($state, $reststates) = split(/,/, $state, 2);
-    chomp($state);
 
     if ($state eq "enact") {
         my $nodetypetab = xCAT::Table->new('nodetype', -create => 1);

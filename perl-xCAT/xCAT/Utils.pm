@@ -4949,6 +4949,8 @@ sub lookupNetboot {
 
     if ($imgtype =~ /^NIM$/i) {
         $ret = "nimol";
+    } elsif ($imgtype =~ /^freebsd$/i) {
+        $ret = 'xnba' if $osvers eq 'freebsd15.1' && $osarch eq 'x86_64';
     } elsif ($imgtype =~ /^Linux$/i) {
         if ($osarch =~ /^x86_64$/i) {
             $ret = "xnba,pxe,grub2";
@@ -4969,6 +4971,23 @@ sub lookupNetboot {
         }
     }
     return $ret;
+}
+
+sub freebsd_image_error {
+    my ($class, $image, $netboot) = @_;
+    return undef unless ref($image) eq 'HASH' &&
+      (($image->{imagetype} || '') =~ /\Afreebsd\z/i ||
+       ($image->{osvers} || '') =~ /\Afreebsd/i || ($image->{osname} || '') =~ /\AFreeBSD\z/i);
+    return 'FreeBSD requires imagetype=freebsd, osvers=freebsd15.1, and osarch=x86_64'
+      if grep { !defined($image->{$_}) || ref($image->{$_}) } qw(imagetype osvers osarch);
+    return 'FreeBSD requires imagetype=freebsd, osvers=freebsd15.1, and osarch=x86_64'
+      unless $image->{imagetype} eq 'freebsd' &&
+      $class->lookupNetboot($image->{osvers}, $image->{osarch}, $image->{imagetype}) eq 'xnba';
+    return 'FreeBSD supports only provmethod=install'
+      unless defined($image->{provmethod}) && !ref($image->{provmethod}) && $image->{provmethod} eq 'install';
+    return 'FreeBSD requires noderes.netboot=xnba'
+      if defined($netboot) && (ref($netboot) || (length($netboot) && $netboot ne 'xnba'));
+    return '';
 }
 
 #--------------------------------------------------------------------------------
