@@ -38,6 +38,55 @@ Scope and requirements
   system. Linux postscripts, package lists, diskless images, and service-node
   installation on FreeBSD are not supported by this path.
 
+Image definition versions
+-------------------------
+
+An unset or empty ``imageversion``, or the value ``1``, selects the legacy
+definition. Its ``pkgdir`` is the combined mfsBSD boot and release-set bundle.
+The installation steps below describe this version.
+
+``imageversion=2`` separates the boot artifact and package repositories:
+
+.. list-table:: Version 2 image attributes
+   :header-rows: 1
+
+   * - Attribute
+     - Meaning
+   * - ``bootdir``
+     - One imported mfsBSD boot artifact.
+   * - ``pkgdir``
+     - One imported pkgbase repository role.
+   * - ``pkglist``
+     - Ordered base-component list files.
+   * - ``otherpkgdir``
+     - Ordered DVD application and supplemental repository roles.
+   * - ``otherpkglist``
+     - Ordered application-package list files.
+
+All nonempty values use absolute paths. List attributes use commas between
+paths. Paths cannot contain empty, dot, or dot-dot components or control
+characters. Each path is limited to 4096 characters. Duplicate list entries
+are rejected when setting a definition. Appending and removing entries use
+the existing xCAT list operations, then validate the resulting definition.
+
+The current installer rejects version 2 before media lookup or installation
+preparation. Storing a version 2 definition does not enable pkgbase installation
+or prove repository, bootstrap, or package-dependency compatibility. Importing
+an application repository does not select all its packages.
+
+Version 2 fields may be empty while preparing a definition. Legacy definitions
+must leave ``bootdir``, ``pkglist``, ``otherpkgdir`` and ``otherpkglist`` empty.
+A downgrade to version 1 must clear those fields in the same request. Changing
+the version does not convert the object named by ``pkgdir`` into another type
+of artifact. ``template``, ``partitionfile`` and ``osimage.environvar`` retain
+their existing storage locations.
+
+FreeBSD definitions require the exact value ``imagetype=freebsd``. Do not
+change image families in place with ``chdef`` when either family is FreeBSD.
+Use an explicitly replaced definition instead. ``mkdef -f`` checks the new
+FreeBSD definition before removing the previous one. This check does not make
+the database replacement transactional.
+
 Prepare the mfsBSD image
 ------------------------
 
