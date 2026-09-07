@@ -192,6 +192,34 @@ Successful results add ``path`` and ``reused`` fields; these runtime fields are
 not stored in the manifest. Repeat import still requires the original source
 contents and the explicit trust/tool policy.
 
+Reading an existing publication
+-------------------------------
+
+Call ``xCAT::FreeBSDRepoImport::inspect_import($publication, $installroot)``
+to verify a publication without its original media or preparation tool.
+The publication must use the exact digest-based layout above. Both paths must
+meet the publication ownership and ancestor rules. The install root may have
+moved; source paths are not needed.
+
+The reader checks the bounded, canonical manifest, its nested digests, release
+identity, tool and trust records, package-to-archive inventory, and source-derived
+repository trees. Release bootstrap and link-repair records must agree with the
+shared release rules. Every published entry is then checked for content, links,
+ownership, permissions and required file metadata. Missing, changed or extra
+entries are errors.
+
+The result is the stored manifest with its current ``path``. It has no ``reused``
+field. Reading does not create or acquire the import lock, create a cache,
+execute native commands, or alter the publication. The original media may be
+removed after a successful import.
+
+This check verifies a caller-controlled publication and its recorded evidence.
+It does not authenticate a newly supplied repository, repeat native signature
+verification, or establish dependency closure. A caller who controls the entire
+publication can replace its content and evidence together; the digest is not
+an independent signature. Use the import interfaces for new repository content.
+``selection_validated`` remains zero after readback.
+
 Behavioral validation
 ----------------------
 
