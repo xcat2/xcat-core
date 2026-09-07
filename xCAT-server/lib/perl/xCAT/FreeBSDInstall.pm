@@ -94,16 +94,19 @@ sub _generation {
 sub prepare {
     my ($node, $fingerprint, %options) = @_;
     _fail('Invalid installation fingerprint') unless _identifier($fingerprint, 64);
+    _fail('Invalid publication callback') if exists($options{publish}) && ref($options{publish}) ne 'CODE';
     return _locked($node, \%options, sub {
         my ($state, $save) = @_;
         if ($state) {
             _fail('Stop the node and run nodeset offline before rearming this installation')
                 if $state->{phase} =~ /\A(?:installing|completing|failed)\z/;
-            return $state->{generation} if $state->{phase} eq 'prepared' && $state->{fingerprint} eq $fingerprint;
         }
-        $state = { version => 1, node => $node, fingerprint => $fingerprint,
-            generation => _generation(), phase => 'prepared' };
-        $save->($state);
+        unless ($state && $state->{phase} eq 'prepared' && $state->{fingerprint} eq $fingerprint) {
+            $state = { version => 1, node => $node, fingerprint => $fingerprint,
+                generation => _generation(), phase => 'prepared' };
+            $save->($state);
+        }
+        $options{publish}->($state->{generation}) if $options{publish};
         return $state->{generation};
     });
 }
@@ -209,7 +212,7 @@ sub handle_status {
     _fail('Missing command dispatcher') unless ref($dispatch) eq 'CODE';
     require xCAT::NetworkUtils;
     xCAT::NetworkUtils->clearcache();
-    my $address = xCAT::NetworkUtils->getipaddr($node);
+    my $address = xCAT::NetworkUtils->getipaddr($node, OnlyV4 => 1);
     $peer =~ s/\A::ffff:// if defined($peer) && !ref($peer);
     _fail('Unexpected installation client') unless defined($peer) && !ref($peer) &&
         defined($address) && $address ne '0' && $peer eq $address;
