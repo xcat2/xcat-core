@@ -317,6 +317,12 @@ sub _install_image {
     for my $row ($image, $settings) {
         die "The FreeBSD image is disabled\n" if length($row->{disable} || '') && $row->{disable} !~ /\A(?:0|no)\z/i;
     }
+    my $merged = { %$image, %$settings };
+    $error = xCAT::Utils->freebsd_image_definition_error($merged);
+    die "Not a supported FreeBSD installation image\n" unless defined($error);
+    die "$error\n" if length($error);
+    die "FreeBSD imageversion=2 installation requires a pkgbase runtime that is not yet available\n"
+      if ($merged->{imageversion} || '') eq '2';
     my $pkgdir = defined($settings->{pkgdir}) ? abs_path($settings->{pkgdir}) : undef;
     die "FreeBSD pkgdir must be an imported directory below installdir\n" unless defined($pkgdir) &&
       -d $pkgdir && index($pkgdir, "$installroot/") == 0;

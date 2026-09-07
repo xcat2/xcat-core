@@ -4990,6 +4990,58 @@ sub freebsd_image_error {
     return '';
 }
 
+sub _freebsd_image_paths_error {
+    my ($field, $value, $multiple) = @_;
+    return "FreeBSD $field must be a path string" if ref($value);
+    return '' unless defined($value) && length($value);
+    my @paths = split(/,/x, $value, -1);
+    return "FreeBSD $field requires one absolute path" if !$multiple && @paths != 1;
+    my %seen;
+    for my $path (@paths) {
+        return "FreeBSD $field requires canonical absolute paths"
+          if length($path) > 4096 || $path !~ m{\A/[^\x00-\x1f\x7f]+\z}x
+          || grep { !length($_) || $_ eq '.' || $_ eq '..' } split(m{/}x, substr($path, 1), -1);
+        return "FreeBSD $field contains a duplicate path" if $seen{$path}++;
+    }
+    return '';
+}
+
+sub _freebsd_image_family_error {
+    my ($class, $image, $previous) = @_;
+    return if ref($image) ne 'HASH';
+    return 'Invalid previous FreeBSD image definition' if defined($previous) && ref($previous) ne 'HASH';
+    $previous ||= {};
+    my @types = ($image->{imagetype}, $previous->{imagetype});
+    my $related = grep { defined($_) && !ref($_) && $class->comma_list_contains(lc($_), 'freebsd') } @types;
+    return unless $related;
+    return 'FreeBSD image definitions require imagetype=freebsd'
+      if !defined($image->{imagetype}) || ref($image->{imagetype}) || $image->{imagetype} ne 'freebsd';
+    return 'FreeBSD image family changes require replacing the image definition'
+      if defined($previous->{imagetype}) && length($previous->{imagetype}) && $previous->{imagetype} ne 'freebsd';
+    return '';
+}
+
+sub freebsd_image_definition_error {
+    my ($class, $image, $previous) = @_;
+    my $family_error = _freebsd_image_family_error($class, $image, $previous);
+    return $family_error if !defined($family_error) || length($family_error);
+    return 'FreeBSD imageversion must be 1 or 2' if ref($image->{imageversion});
+    my $version = defined($image->{imageversion}) && length($image->{imageversion}) ? $image->{imageversion} : '1';
+    return 'FreeBSD imageversion must be 1 or 2' unless $version eq '1' || $version eq '2';
+    if ($version eq '1') {
+        for my $field (qw(bootdir pkglist otherpkgdir otherpkglist)) {
+            return "FreeBSD $field requires imageversion=2"
+              if ref($image->{$field}) || (defined($image->{$field}) && length($image->{$field}));
+        }
+        return '';
+    }
+    for my $field (qw(bootdir pkgdir pkglist otherpkgdir otherpkglist)) {
+        my $error = _freebsd_image_paths_error($field, $image->{$field}, $field ne 'bootdir' && $field ne 'pkgdir');
+        return $error if length($error);
+    }
+    return '';
+}
+
 #--------------------------------------------------------------------------------
 
 =head3  is_process_exists
