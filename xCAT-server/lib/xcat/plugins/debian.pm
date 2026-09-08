@@ -810,6 +810,15 @@ sub subiquity_boot_params {
     return (subiquity_kcmdline($base, $nfsip, $pkgdir, $instserver, $httpport, $node), undef);
 }
 
+# The Debian name of an install architecture, and whether xCAT installs Ubuntu
+# on it. ppc64le is kept as is: the media paths key on both spellings.
+my %INSTALL_ARCH = map { $_ => 1 } qw(x86_64 x86 ppc64le ppc64el riscv64);
+
+sub install_darch {
+    my ($arch) = @_;
+    return ( xCAT::Utils::debian_arch($arch), $INSTALL_ARCH{ $arch // '' } ? 1 : 0 );
+}
+
 sub mkinstall {
     xCAT::MsgUtils->message("S", "Doing debian mkinstall");
     my $request  = shift;
@@ -1033,18 +1042,9 @@ sub mkinstall {
             xCAT::MsgUtils->trace($verbose_on_off, "d", "debian->mkinstall: pkgdir=$pkgdir pkglistfile=$pkglistfile tmplfile=$tmplfile");
         }
 
-        if ($arch eq "x86_64") {
-            $darch = "amd64";
-        }
-        elsif ($arch eq "x86") {
-            $darch = "i386";
-        }
-        else {
-            if ($arch ne "ppc64le" and $arch ne "ppc64el") {
-                xCAT::MsgUtils->message("S", "debian.pm: Unknown arch ($arch)");
-            }
-            $darch = $arch;
-        }
+        my $known;
+        ($darch, $known) = install_darch($arch);
+        xCAT::MsgUtils->message("S", "debian.pm: Unknown arch ($arch)") unless $known;
 
         my @missingparms;
         unless ($os) {
