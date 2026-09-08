@@ -28,25 +28,37 @@ capture_install_scriptlib_wget()
 capture_xcatdsklspost_wget()
 {
     local wget_log="$1"
+    local host_init_log="${BATS_TEST_TMPDIR}/host-init.log"
+    local download_log="${BATS_TEST_TMPDIR}/xcatdsklspost-wget-errors.log"
+
+    cat() { printf 'cat %s\n' "$*" >>"$host_init_log"; return 1; }
+    grep()
+    {
+        printf 'grep %s\n' "$*" >>"$host_init_log"
+        command grep "$@"
+    }
+    dirname() { printf 'dirname %s\n' "$*" >>"$host_init_log"; return 1; }
+
+    XCATDSKLSPOST_SOURCE_ONLY=1
+    XCAT_WGET_LOG="$download_log"
+    source "$XCATDSKLSPOST"
+    [ ! -e "$host_init_log" ] || return 1
+    [ "$XCAT_WGET_LOG" = "$download_log" ] || return 1
+    unset -f cat grep dirname
 
     xcatpost="${BATS_TEST_TMPDIR}/xcatpost"
     INSTALLDIR=/install
-
     echolog() { :; }
     sleep() { :; }
-    grep()
-    {
-        [ "${*: -1}" = "/tmp/wget.log" ] && return 1
-        command grep "$@"
-    }
     wget()
     {
         printf '%s\n' "$*" >"$wget_log"
+        printf '%s\n' 'mock wget stderr' >&2
         return 0
     }
 
-    XCATDSKLSPOST_SOURCE_ONLY=1 source "$XCATDSKLSPOST"
     download_postscripts 192.0.2.10:80
+    [ "$(read_file_or_empty "$download_log")" = "mock wget stderr" ]
 }
 
 assert_download_policy()

@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+bats_require_minimum_version 1.5.0
+
 load 'helpers/shell_source'
 
 setup()
@@ -26,9 +28,9 @@ EOF
     run set_sles11_uefi_bootloader "$cmdline" "$profile"
     [ "$status" -eq 0 ]
     grep -Fxq '<loader_type>elilo</loader_type>' "$profile"
-    ! grep -q '<location>mbr</location>' "$profile"
-    ! grep -q '<lba_support ' "$profile"
-    ! grep -q '<linear ' "$profile"
+    run -1 grep -q '<location>mbr</location>' "$profile"
+    run -1 grep -q '<lba_support ' "$profile"
+    run -1 grep -q '<linear ' "$profile"
 }
 
 @test "non-SLES 11 install media keeps the legacy bootloader template value" {

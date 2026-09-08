@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+bats_require_minimum_version 1.5.0
+
 load 'helpers/shell_source'
 
 setup()
@@ -11,6 +13,8 @@ setup()
 
 run_restart_fallback()
 {
+    local poll_count=0
+
     ps()
     {
         cat <<'EOF'
@@ -19,14 +23,23 @@ EOF
     }
     kill()
     {
-        printf '%s\n' "$*" >>"$KILL_LOG"
-        [ "$1" = "-0" ] && return 1
-        return 0
+        if [ "$1" = "-9" ]; then
+            printf 'kill %s\n' "$*" >>"$EVENT_LOG"
+            return 0
+        fi
+
+        poll_count=$((poll_count + 1))
+        if [ "$poll_count" -eq 1 ]; then
+            printf 'poll %s alive\n' "$2" >>"$EVENT_LOG"
+            return 0
+        fi
+        printf 'poll %s gone\n' "$2" >>"$EVENT_LOG"
+        return 1
     }
     sleep() { :; }
     sshd()
     {
-        printf '%s\n' start >>"$SSHD_LOG"
+        printf '%s\n' start >>"$EVENT_LOG"
     }
 
     source "$XCATLIB"
@@ -44,16 +57,14 @@ run_wait_for_processes()
     return 0
 }
 
-@test "remoteshell restart fallback sends an uncatchable signal before starting sshd" {
-    KILL_LOG="${BATS_TEST_TMPDIR}/kill.log"
-    SSHD_LOG="${BATS_TEST_TMPDIR}/sshd.log"
-    export KILL_LOG SSHD_LOG
+@test "remoteshell restart fallback kills, waits, then starts sshd" {
+    EVENT_LOG="${BATS_TEST_TMPDIR}/events.log"
+    export EVENT_LOG
 
     run run_restart_fallback
     [ "$status" -eq 0 ]
-    grep -Fxq -- '-9 4321' "$KILL_LOG"
-    ! grep -Eq '^9( |$)' "$KILL_LOG"
-    [ "$(read_file_or_empty "$SSHD_LOG")" = "start" ]
+    [ "$(read_file_or_empty "$EVENT_LOG")" = $'kill -9 4321\npoll 4321 alive\npoll 4321 gone\nstart' ]
+    run -1 grep -Eq '^kill 9( |$)' "$EVENT_LOG"
 }
 
 @test "remoteshell wait loop reports a still-running process and gives up" {
