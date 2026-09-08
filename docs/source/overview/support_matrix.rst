@@ -27,5 +27,3 @@ Operating System & Hardware Support Matrix
 .. note::
 
    EL: Enterprise Linux, such as: RHEL, Rocky Linux, Alma Linux, CentOS and Oracle Linux.
-
-riscv64 support covers EL10 compute nodes (Rocky Linux 10 and the RHEL 10 RISC-V developer preview) that boot through UEFI firmware and grub2. See :doc:`/guides/admin-guides/manage_clusters/riscv64/index` for details.
