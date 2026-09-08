@@ -9,6 +9,9 @@ use Test::More;
 
 use xCAT::DHCP::OmapiPolicy;
 
+ok( !exists $INC{'xCAT/Utils.pm'},
+    'loading the OMAPI policy avoids the full utility dependency stack' );
+
 sub omapi_settings {
     my (%overrides) = @_;
     return xCAT::DHCP::OmapiPolicy->settings(
@@ -17,7 +20,8 @@ sub omapi_settings {
             dhcpomapikeyname   => undef,
             dhcpomshellpath    => undef,
             %overrides,
-        }
+        },
+        fips_mode => 0,
     );
 }
 
@@ -29,9 +33,11 @@ local %XCATSITEVALS = (
     dhcpomshellpath    => '/opt/site/bin/omshell',
 );
 
-my $site_settings = xCAT::DHCP::OmapiPolicy->settings();
+my $site_settings = xCAT::DHCP::OmapiPolicy->settings(fips_mode => 0);
 is( $site_settings->{algorithm}, 'hmac-sha256',
     'runtime settings read the configured site algorithm' );
+ok( !exists $INC{'xCAT/Utils.pm'},
+    'an explicit FIPS state keeps the utility dependency lazy' );
 
 my $defaults = omapi_settings();
 is( $defaults->{algorithm},
@@ -44,12 +50,51 @@ ok(
     !$defaults->{needs_omshell_key_algorithm},
     'default MD5 does not emit key-algorithm'
 );
+ok( !$defaults->{algorithm_enforced},
+    'default non-FIPS policy keeps the compatibility fallback' );
 is(
     xCAT::DHCP::OmapiPolicy->omshell_preamble(
         $defaults, secret => 'legacy-secret'
     ),
     "key xcat_key \"legacy-secret\"\n",
     'default omshell preamble keeps legacy key command without key-algorithm'
+);
+
+my $fips_defaults = xCAT::DHCP::OmapiPolicy->settings(
+    site_values => {
+        dhcpomapialgorithm => undef,
+        dhcpomapikeyname   => undef,
+        dhcpomshellpath    => undef,
+    },
+    fips_mode => 1,
+);
+is( $fips_defaults->{algorithm}, 'hmac-sha256',
+    'FIPS mode defaults OMAPI to hmac-sha256' );
+ok( !$fips_defaults->{algorithm_explicit},
+    'FIPS default remains distinct from an administrator override' );
+ok( $fips_defaults->{algorithm_enforced},
+    'FIPS default prevents compatibility fallback to MD5' );
+ok( $fips_defaults->{needs_omshell_key_algorithm},
+    'FIPS default emits the omshell key algorithm' );
+is(
+    xCAT::DHCP::OmapiPolicy->omshell_preamble(
+        $fips_defaults, secret => 'fips-secret'
+    ),
+    "key-algorithm hmac-sha256\nkey xcat_key \"fips-secret\"\n",
+    'FIPS omshell preamble selects hmac-sha256'
+);
+
+like(
+    xCAT::DHCP::OmapiPolicy->settings(
+        site_values => {
+            dhcpomapialgorithm => 'hmac-md5',
+            dhcpomapikeyname   => undef,
+            dhcpomshellpath    => undef,
+        },
+        fips_mode => 1,
+    )->{error},
+    qr/hmac-md5 is not allowed while FIPS mode is enabled/,
+    'FIPS mode rejects an explicit hmac-md5 override'
 );
 
 is(
@@ -202,6 +247,8 @@ ok(
     $sha512->{needs_omshell_key_algorithm},
     'non-MD5 emits key-algorithm for omshell'
 );
+ok( $sha512->{algorithm_enforced},
+    'an explicit algorithm disables the compatibility fallback' );
 is(
     xCAT::DHCP::OmapiPolicy->omshell_preamble(
         $sha512,

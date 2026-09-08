@@ -1,4 +1,37 @@
 #!/bin/bash
+# Postscripts and Genesis ship separately; keep shared policy aligned with xCAT-genesis-scripts/usr/lib/xcat/fips.sh.
+xcat_fips_enabled()
+{
+    grep -q '^1$' "${1:-/proc/sys/crypto/fips_enabled}" 2>/dev/null
+}
+
+xcat_fips_state()
+{
+    if xcat_fips_enabled "$1"; then
+        printf '1'
+    else
+        printf '0'
+    fi
+}
+
+xcat_generate_discovery_private_key()
+{
+    case "$1" in
+        1) openssl ecparam -name prime256v1 -genkey -noout -out "$2" ;;
+        0) openssl genrsa -out "$2" 1024 ;;
+        *) return 1 ;;
+    esac
+}
+
+xcat_discovery_public_key()
+{
+    case "$1" in
+        1) openssl ec -in "$2" -pubout ;;
+        0) openssl rsa -in "$2" -pubout ;;
+        *) return 1 ;;
+    esac
+}
+
 function hashencode(){
     local str_map="$1"
     echo `echo $str_map | sed 's/\./xDOTx/g' | sed 's/:/xCOLONx/g' | sed 's/,/:xCOMMAx/g' | sed 's/-/xHYPHENx/g'`

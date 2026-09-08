@@ -54,10 +54,12 @@ echo -e $KEY >> $HOME/.ssh/authorized_keys
 #-----------------
 # Retrieve DSA key
 #-----------------
-KEY=`cat /xcatpost/hostkeys/ssh_host_dsa_key.pub`
+if [ -r /xcatpost/hostkeys/ssh_host_dsa_key.pub ]; then
+    KEY=`cat /xcatpost/hostkeys/ssh_host_dsa_key.pub`
 
-# Put key in authorized_keys file
-echo -e $KEY >> $HOME/.ssh/authorized_keys
+    # Put key in authorized_keys file
+    echo -e $KEY >> $HOME/.ssh/authorized_keys
+fi
 chmod 0644 $HOME/.ssh/authorized_keys
 chown $SUDOER:users $HOME/.ssh/authorized_keys
 
