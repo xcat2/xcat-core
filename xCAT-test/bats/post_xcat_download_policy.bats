@@ -5,10 +5,10 @@ load 'helpers/shell_source'
 setup()
 {
     SCRIPT_LIB="$(repo_path 'xCAT-server/share/xcat/install/scripts/scriptlib')"
-    XCATLIB="$(repo_path 'xCAT/postscripts/xcatlib.sh')"
+    XCATDSKLSPOST="$(repo_path 'xCAT/postscripts/xcatdsklspost')"
     [ -r "$SCRIPT_LIB" ] || skip "$SCRIPT_LIB is required"
-    [ -r "$XCATLIB" ] || skip "$XCATLIB is required"
-    export SCRIPT_LIB XCATLIB
+    [ -r "$XCATDSKLSPOST" ] || skip "$XCATDSKLSPOST is required"
+    export SCRIPT_LIB XCATDSKLSPOST
 }
 
 capture_install_scriptlib_wget()
@@ -25,7 +25,7 @@ capture_install_scriptlib_wget()
     xcat_download_postscripts "192.0.2.10:80" "/install" "/xcatpost" "$wget_log"
 }
 
-capture_xcatlib_wget()
+capture_xcatdsklspost_wget()
 {
     local wget_log="$1"
 
@@ -45,7 +45,7 @@ capture_xcatlib_wget()
         return 0
     }
 
-    source "$XCATLIB"
+    XCATDSKLSPOST_SOURCE_ONLY=1 source "$XCATDSKLSPOST"
     download_postscripts 192.0.2.10:80
 }
 
@@ -67,10 +67,10 @@ assert_download_policy()
     assert_download_policy "$(read_file_or_empty "$wget_log")"
 }
 
-@test "postscript xcatlib recursive download rejects dispatcher scripts" {
+@test "xcatdsklspost recursive download rejects dispatcher scripts" {
     local wget_log="${BATS_TEST_TMPDIR}/xcatdsklspost-wget.log"
 
-    run capture_xcatlib_wget "$wget_log"
+    run capture_xcatdsklspost_wget "$wget_log"
     [ "$status" -eq 0 ]
     assert_download_policy "$(read_file_or_empty "$wget_log")"
 }
