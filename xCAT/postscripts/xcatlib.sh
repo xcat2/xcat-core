@@ -833,6 +833,107 @@ function msgutil {
    msgutil_r "" "$@"
 }
 
+function xcat_download_postscripts {
+    local server="$1"
+    local install_dir="${2:-${INSTALLDIR:-/install}}"
+    local postroot="${3:-/$xcatpost}"
+    local log_file="${4:-/tmp/wget.log}"
+
+    export LANG=C
+    wget -l inf -nH -N -r --waitretry=10 --random-wait -e robots=off -T 60 -nH --cut-dirs=2 --reject "index.html*,post.xcat.ng,post.xcat.rhels10" --no-parent "http://$server$install_dir/postscripts/" -P "$postroot" 2> "$log_file"
+}
+
+function download_postscripts {
+    server=$1
+    if [ -z $server ]; then
+        return 1;
+    fi
+
+    # Do not override the parameter --installdir
+    if [ -z "$INSTALLDIR" ]; then
+        if [ -f /opt/xcat/xcatinfo ]; then
+           INSTALLDIR=`grep 'INSTALLDIR' /opt/xcat/xcatinfo |cut -d= -f2`
+        fi
+        if [ -z "$INSTALLDIR" ]; then
+            INSTALLDIR="/install"
+        fi
+    fi
+    echolog "debug" "trying to download postscripts from http://$server$INSTALLDIR/postscripts/"
+    max_retries=5
+    retry=0
+    rc=1  # this is a fail return
+    while [ 0 -eq 0 ]; do
+        if [ -e "$xcatpost" ]; then
+            rm -rf "$xcatpost"
+        fi
+
+        xcat_download_postscripts "$server" "$INSTALLDIR" "/$xcatpost" "/tmp/wget.log"
+        rc=$?
+        if [ $rc -eq 0 ]; then
+            # return from wget was 0 but some OS do not return errors, so we
+            # have additional checks for
+            # failed: Connection httpd not running
+            # 404: Not Found  - if directory does not exist
+            grep -i -E "... failed: Connection refused.$" /tmp/wget.log
+            rc1=$?
+            grep -i -E "ERROR 404: Not Found.$" /tmp/wget.log
+            rc2=$?
+            # check to see no errors at all, grep returns 1
+            if [ $rc1 -eq 1 ] && [ $rc2 -eq 1 ]; then
+              echolog "debug" "postscripts are downloaded from $server successfully."
+              return 0
+            fi
+        fi
+
+        retry=$(($retry+1))
+        echolog "debug" "download_postscripts retry $retry"
+        if [ $retry -eq $max_retries ]; then
+            echolog "debug" "failed to download postscripts from http://$server$INSTALLDIR/postscripts/ after several retries."
+            break
+        fi
+
+        SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*20)}')
+        sleep $SLI
+    done
+    return $rc
+}
+
+function xcat_wait_for_processes_to_exit {
+    local pidlist="$1"
+    local max_wait="${2:-10}"
+    local waited=0
+    local alive
+    local pid
+
+    while [ $waited -lt $max_wait ]; do
+        alive=0
+        for pid in $pidlist; do
+            if kill -0 $pid 2>/dev/null; then
+                alive=1
+            fi
+        done
+        if [ $alive -eq 0 ]; then
+            return 0
+        fi
+        sleep 1
+        waited=`expr $waited + 1`
+    done
+
+    return 1
+}
+
+function xcat_restart_sshd_after_failed_service_restart {
+    local sshd_cmd="${1:-/usr/sbin/sshd}"
+    local PIDLIST
+
+    PIDLIST=`ps aux | grep -v grep | grep "/usr/sbin/sshd"|awk -F" " '{print $2}'|xargs`
+    if [ -n "$PIDLIST" ]; then
+        kill -9 $PIDLIST
+        xcat_wait_for_processes_to_exit "$PIDLIST"
+    fi
+    $sshd_cmd
+}
+
 function fetch_mypostscript {
     local postroot
     postroot=$1

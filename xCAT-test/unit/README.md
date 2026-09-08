@@ -46,6 +46,11 @@ so putting a test in `integration/` does not cost it CI coverage. What differs i
 each suite is allowed to depend on, and that unit tests also run standalone from a
 bare checkout with no xCAT at all.
 
+Shell-script unit tests belong in [`../autotest/bats`](../autotest/bats/README.md)
+and run with BATS. Do not add Perl `.t` tests that grep shell source when the
+behavior can be exercised by sourcing a shell library or script and shadowing the
+external commands it calls.
+
 The distinction matters because a test that needs an absent environment does not fail
 -- it calls `plan skip_all` and reports as skipped. A handful of those in a suite of
 several hundred assertions is easy to stop reading. Keeping the two kinds in separate
