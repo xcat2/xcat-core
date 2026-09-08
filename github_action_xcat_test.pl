@@ -313,7 +313,7 @@ sub preserve_source_tree{
 
     @output = runcmd("find $unitsrc/xCAT-test/unit -name '*.t' | wc -l");
     my $perl_count = $output[0];
-    @output = runcmd("find $unitsrc/xCAT-test/autotest/bats -name '*.bats' 2>/dev/null | wc -l");
+    @output = runcmd("find $unitsrc/xCAT-test/bats -name '*.bats' 2>/dev/null | wc -l");
     my $bats_count = $output[0];
     print "[preserve_source_tree] preserved $srcdir in $unitsrc ($perl_count Perl unit tests, $bats_count BATS tests)\n";
     return 0;
@@ -471,21 +471,21 @@ sub run_unit_tests{
 
 #--------------------------------------------------------
 # Fuction name: run_bats_tests
-# Description:  Run shell-script unit tests under xCAT-test/autotest/bats.
+# Description:  Run shell-script unit tests under xCAT-test/bats.
 #               Runs against the pre-build copy of the source tree taken by
 #               preserve_source_tree(), like the Perl unit tests.
 # Attributes:
 # Return code:  0 all tests passed, 1 otherwise
 #--------------------------------------------------------
 sub run_bats_tests{
-    my $testdir = "$unitsrc/xCAT-test/autotest/bats";
+    my $testdir = "$unitsrc/xCAT-test/bats";
     my @output = runcmd("find $testdir -name '*.bats' -print -quit 2>/dev/null");
     if (!@output) {
         print "[run_bats_tests] no BATS tests found under $testdir\n";
         return 0;
     }
 
-    my $cmd = "cd $unitsrc && bats -r xCAT-test/autotest/bats";
+    my $cmd = "cd $unitsrc && bats -r xCAT-test/bats";
     print "[run_bats_tests] running $cmd\n";
     @output = runcmd("$cmd");
     print Dumper \@output;

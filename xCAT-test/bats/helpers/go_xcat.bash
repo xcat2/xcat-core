@@ -2,7 +2,7 @@
 
 go_xcat_default_source()
 {
-    printf '%s\n' "${BATS_TEST_DIRNAME}/../../../xCAT-server/share/xcat/tools/go-xcat"
+    printf '%s\n' "${BATS_TEST_DIRNAME}/../../xCAT-server/share/xcat/tools/go-xcat"
 }
 
 go_xcat_require_source()

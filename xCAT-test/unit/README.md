@@ -46,7 +46,7 @@ so putting a test in `integration/` does not cost it CI coverage. What differs i
 each suite is allowed to depend on, and that unit tests also run standalone from a
 bare checkout with no xCAT at all.
 
-Shell-script unit tests belong in [`../autotest/bats`](../autotest/bats/README.md)
+Shell-script unit tests belong in [`../bats`](../bats/README.md)
 and run with BATS. Do not add Perl `.t` tests that grep shell source when the
 behavior can be exercised by sourcing a shell library or script and shadowing the
 external commands it calls.

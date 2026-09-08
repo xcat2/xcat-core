@@ -2,7 +2,7 @@
 
 repo_root()
 {
-    printf '%s\n' "${BATS_TEST_DIRNAME}/../../.."
+    printf '%s\n' "${BATS_TEST_DIRNAME}/../.."
 }
 
 repo_path()

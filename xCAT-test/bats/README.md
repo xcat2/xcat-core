@@ -1,9 +1,9 @@
-# xCAT-test/autotest/bats
+# xCAT-test/bats
 
 Shell-script unit tests live here and run with:
 
 ```bash
-bats -r xCAT-test/autotest/bats
+bats -r xCAT-test/bats
 ```
 
 The GitHub Actions `xcat_test` workflow runs this command after the Perl `.t`
