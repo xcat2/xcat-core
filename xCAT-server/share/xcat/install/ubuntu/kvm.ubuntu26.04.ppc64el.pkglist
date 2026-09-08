@@ -1,9 +1,9 @@
 openssh-server
-ntp
+chrony
 gawk
 nfs-common
 snmpd
-qemu-system
+qemu-system-ppc
 qemu-utils
 libvirt-daemon-system
 libvirt-clients

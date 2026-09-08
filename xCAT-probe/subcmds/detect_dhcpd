@@ -5,6 +5,7 @@ BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/o
 
 use lib "$::XCATROOT/probe/lib/perl";
 use probe_utils;
+use xCAT::CommandUtils;
 use File::Basename;
 use IO::Socket::INET;
 use Time::HiRes qw(gettimeofday sleep);
@@ -63,7 +64,8 @@ if ($::TEST) {
     exit 0;
 }
 
-unless (-x "/usr/sbin/tcpdump") {
+my $tcpdump = xCAT::CommandUtils::find_executable('tcpdump');
+unless ($tcpdump) {
     probe_utils->send_msg("$output", "f", "Tool 'tcpdump' is installed on current server");
     probe_utils->send_msg("$output", "d", "$program_name needs to leverage 'tcpdump', please install 'tcpdump' first");
     exit 1;
@@ -158,7 +160,7 @@ if (!defined $pid) {
 } elsif ($pid == 0) {
 
     # Child process
-    my $cmd = "tcpdump -i $nic port 68 -n -vvvvvv > $dumpfile 2>/dev/null";
+    my $cmd = "$tcpdump -i $nic port 68 -n -vvvvvv > $dumpfile 2>/dev/null";
     `$cmd`;
     exit 0;
 }
@@ -379,7 +381,7 @@ sub packdhcppkg {
 
 sub kill_child {
     kill 15, $pid;
-    my @pidoftcpdump = `ps -ef | grep -E "[0-9]+:[0-9]+:[0-9]+ tcpdump -i $nic" | awk -F' ' '{print \$2}'`;
+    my @pidoftcpdump = `ps -ef | grep -E "[0-9]+:[0-9]+:[0-9]+ $tcpdump -i $nic" | awk -F' ' '{print \$2}'`;
     foreach my $cpid (@pidoftcpdump) {
         kill 15, $cpid;
     }

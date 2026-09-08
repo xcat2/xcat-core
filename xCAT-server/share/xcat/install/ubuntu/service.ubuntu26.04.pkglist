@@ -1,5 +1,5 @@
 openssh-server
-ntp
+chrony
 gawk
 nfs-common
 snmpd

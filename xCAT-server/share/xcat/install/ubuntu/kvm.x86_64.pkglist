@@ -3,7 +3,7 @@ ntp
 gawk
 nfs-common
 snmpd
-qemu-system
+qemu-system-x86
 qemu-utils
 libvirt-daemon-system
 libvirt-clients

@@ -1,4 +1,9 @@
 #!/usr/bin/perl
+BEGIN {
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+use xCAT::CommandUtils;
 use IO::Socket::INET;
 use Time::HiRes qw(gettimeofday sleep);
 use Getopt::Long;
@@ -27,7 +32,8 @@ if (!GetOptions(
 
 if ($::HELP) { print $::USAGE; exit 0; }
 
-unless (-x "/usr/sbin/tcpdump") {
+my $tcpdump = xCAT::CommandUtils::find_executable('tcpdump');
+unless ($tcpdump) {
     print "Error: Please install tcpdump before the detecting.\n";
     exit 1;
 }
@@ -92,7 +98,7 @@ my $dumpfile = "/tmp/dhcpdumpfile.log";
 if ($pid == 0) {
 
     # Child process
-    my $cmd = "tcpdump -i $IF port 68 -n -vvvvvv > $dumpfile 2>/dev/null";
+    my $cmd = "$tcpdump -i $IF port 68 -n -vvvvvv > $dumpfile 2>/dev/null";
     `$cmd`;
     exit 0;
 }
@@ -146,7 +152,7 @@ kill_child();
 
 #kill the child process
 kill 15, $pid;
-my @pidoftcpdump = `ps -ef | grep -E "[0-9]+:[0-9]+:[0-9]+ tcpdump -i $IF" | awk -F' ' '{print \$2}'`;
+my @pidoftcpdump = `ps -ef | grep -E "[0-9]+:[0-9]+:[0-9]+ $tcpdump -i $IF" | awk -F' ' '{print \$2}'`;
 foreach my $cpid (@pidoftcpdump) {
     kill 15, $cpid;
 
@@ -341,7 +347,7 @@ sub packdhcppkg {
 
 sub kill_child {
     kill 15, $pid;
-    my @pidoftcpdump = `ps -ef | grep -E "[0-9]+:[0-9]+:[0-9]+ tcpdump -i $IF" | awk -F' ' '{print \$2}'`;
+    my @pidoftcpdump = `ps -ef | grep -E "[0-9]+:[0-9]+:[0-9]+ $tcpdump -i $IF" | awk -F' ' '{print \$2}'`;
     foreach my $cpid (@pidoftcpdump) {
         kill 15, $cpid;
 
