@@ -829,7 +829,7 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
 
 	# upgrade existing packages
         apt-get -y update
-        command="DEBIAN_FRONTEND=noninteractive apt-get -y --allow-unauthenticated --force-yes -o Dpkg::Options::='--force-confold' -o Dpkg::Options::='--force-confdef' upgrade "
+        command="xcat_apt_get -o Dpkg::Options::='--force-confold' -o Dpkg::Options::='--force-confdef' upgrade"
         echo "=== $command"
 	eval $command
         R=$?
@@ -841,7 +841,7 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
 	# but keeping this here doesn't really hurt. Anything that looks like a group will
 	# be installed as though it were a package.)
 	if [ -n "$groups" ]; then
-		command="$ENVLIST apt-get -q -y --force-yes install --no-install-recommends $groups"
+		command="$ENVLIST xcat_apt_get -q install --no-install-recommends $groups"
 		echo "=== $command"
 		eval $command
                 R=$?
@@ -855,7 +855,7 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
 
 	# install packages
 	if [ -n "$pkgs" ]; then
-		command="$ENVLIST apt-get -q -y --force-yes install --no-install-recommends $pkgs"
+		command="$ENVLIST xcat_apt_get -q install --no-install-recommends $pkgs"
 		echo "=== $command"
 		eval $command
                 R=$?
@@ -865,7 +865,7 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
 	fi
         if [ -n "$cudapkgs" ]; then
 
-                command="$ENVLIST apt-get -q -y --force-yes install --no-install-recommends $cudapkgs"
+                command="$ENVLIST xcat_apt_get -q install --no-install-recommends $cudapkgs"
                 echo "=== $command"
                 # the nvidia-346 postinstall script will trigger the building of nvidia driver, it will use the ARCH environment parameter, unset the ARCH env variable will resolve this issue
                 original_arch=$ARCH

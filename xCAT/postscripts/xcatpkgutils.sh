@@ -14,6 +14,12 @@ xcat_find_rpm_package_manager()
     fi
 }
 
+# The xCAT repositories are unsigned, and an unattended node cannot answer a debconf prompt.
+xcat_apt_get()
+{
+    DEBIAN_FRONTEND=noninteractive apt-get -y --allow-unauthenticated "$@"
+}
+
 # Keep the marker assignment last so callers know the whole library loaded.
 
 xcat_is_el_modular_pkgdir()
