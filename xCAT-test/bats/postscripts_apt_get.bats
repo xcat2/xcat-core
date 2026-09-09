@@ -38,7 +38,7 @@ run_ospkgs_apt_block()
 {
     local block
     block="$(extract_line_range "$OSPKGS" '# upgrade existing packages' '# remove packages')" || return 99
-    local ENVLIST="" groups="" pkgs=" foo bar" cudapkgs="" RETURNVAL=0 ARCH=x86_64
+    local ENVLIST="" groups="" pkgs=" foo bar" cudapkgs="${1:-}" RETURNVAL=0 ARCH=x86_64
     eval "$block"
     printf 'RETURNVAL=%s\n' "$RETURNVAL"
 }
@@ -112,6 +112,48 @@ run_otherpkgs_apt_line()
     [ "$status" -eq 0 ]
     [[ "$output" == *'RETURNVAL=100'* ]]
     [ "$(apt_calls)" -eq 3 ]
+}
+
+@test "ospkgs reports a failed cuda package install" {
+    source "$PKGUTILS"
+    apt-get()
+    {
+        printf '%s|%s\n' "${DEBIAN_FRONTEND:-unset}" "$*" >>"$APT_LOG"
+        case "$*" in
+        *cuda*) return 100 ;;
+        esac
+        return 0
+    }
+
+    run run_ospkgs_apt_block " cuda-toolkit"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'RETURNVAL=100'* ]]
+    [ "$(apt_call 4)" = "noninteractive|-y --allow-unauthenticated -q install --no-install-recommends cuda-toolkit" ]
+    [ "$(apt_calls)" -eq 4 ]
+}
+
+run_ospkgs_rpm_cuda_block()
+{
+    local block tail="${BATS_TEST_TMPDIR}/ospkgs-rpm-tail"
+    sed -n '/#install cuda package if any/,$p' "$OSPKGS" >"$tail"
+    block="$(extract_shell_if_block "$tail" 'if [ -n "$cudapkgs" ]; then')" || return 99
+    local ENVLIST="" yumcmd=fake_dnf cudapkgs=" cuda-toolkit" RETURNVAL=0 ARCH=x86_64 debug=0 log_label=ospkgs
+    logger() { :; }
+    fake_dnf()
+    {
+        printf '%s\n' "$*" >>"$APT_LOG"
+        return 100
+    }
+    eval "$block"
+    printf 'RETURNVAL=%s\n' "$RETURNVAL"
+}
+
+@test "ospkgs reports a failed cuda package install on yum and dnf nodes" {
+    run run_ospkgs_rpm_cuda_block
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'RETURNVAL=100'* ]]
+    [ "$(apt_call 1)" = "-y install cuda-toolkit" ]
+    [ "$(apt_calls)" -eq 1 ]
 }
 
 @test "otherpkgs upgrades through xcat_apt_get without --force-yes" {
