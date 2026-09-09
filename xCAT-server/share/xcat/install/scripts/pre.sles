@@ -191,17 +191,6 @@ if [ -e "/tmp/xcat.install_disk" ]; then
 fi
 
 msgutil_r "$MASTER_IP" "info" "Found $instdisk, generate partition file..." "/var/log/xcat/xcat.log" "$log_label"
-set_sles11_uefi_bootloader()
-{
-	if grep -E 'install=.*sles11' /proc/cmdline >/dev/null 2>&1; then
-		# SLES 11 AutoYaST keeps the template's legacy MBR bootloader
-		# location unless the UEFI path explicitly selects elilo.
-		sed -i -e '/<lba_support /d' \
-			-e '/<linear /d' \
-			-e 's!<location>mbr</location>!<loader_type>elilo</loader_type>!' \
-			/tmp/profile/modified.xml
-	fi
-}
 
 if [ -d /sys/firmware/efi ]; then
 	sed -e 's!<device>XCATPARTITIONHOOK</device>!<device>'$instdisk'</device><partitions config:type="list"><partition><filesystem config:type="symbol">vfat</filesystem><mount>/boot/efi</mount><size>128mb</size></partition><partition><mount>swap</mount><size>auto</size></partition><partition><mount>/</mount><size>auto</size></partition></partitions>!' /tmp/profile/autoinst.xml > /tmp/profile/modified.xml

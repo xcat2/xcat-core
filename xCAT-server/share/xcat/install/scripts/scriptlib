@@ -63,3 +63,27 @@ declare -F xcat_enable_active_nm_autoconnect &>/dev/null || function xcat_enable
             nmcli con mod "$con_name" connection.autoconnect yes
         done
 }
+
+declare -F xcat_download_postscripts &>/dev/null || function xcat_download_postscripts {
+    local server="$1"
+    local install_dir="${2:-/install}"
+    local postroot="${3:-/xcatpost}"
+    local log_file="${4:-/tmp/wget.log}"
+
+    export LANG=C
+    wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -e robots=off -nH --cut-dirs=2 --reject "index.html*,post.xcat.ng,post.xcat.rhels10" --no-parent -t 20 -T 60 "http://${server}${install_dir}/postscripts/" -P "$postroot" 2> "$log_file"
+}
+
+declare -F set_sles11_uefi_bootloader &>/dev/null || function set_sles11_uefi_bootloader {
+    local cmdline="${1:-/proc/cmdline}"
+    local profile="${2:-/tmp/profile/modified.xml}"
+
+    if grep -E 'install=.*sles11' "$cmdline" >/dev/null 2>&1; then
+        # SLES 11 AutoYaST keeps the template's legacy MBR bootloader
+        # location unless the UEFI path explicitly selects elilo.
+        sed -i -e '/<lba_support /d' \
+            -e '/<linear /d' \
+            -e 's!<location>mbr</location>!<loader_type>elilo</loader_type>!' \
+            "$profile"
+    fi
+}

@@ -19,26 +19,34 @@
 #
 #####################################################
 
-[ -f "/xcatpost/xcatlib.sh" ] &&  . /xcatpost/xcatlib.sh
+if [ "$XCATDSKLSPOST_SOURCE_ONLY" != "1" ]; then
+    if [ -f "/xcatpost/xcatlib.sh" ]; then
+        . /xcatpost/xcatlib.sh
+    else
+        str_dir_name=`dirname $0`
+        [ -f "$str_dir_name/xcatlib.sh" ] && . "$str_dir_name/xcatlib.sh"
+    fi
 
-if [ -f /xcatpost/mypostscript.post ]; then
-    XCATDEBUGMODE=`grep 'XCATDEBUGMODE=' /xcatpost/mypostscript.post | cut -d= -f2 | tr -d \'\" | tr A-Z a-z`
-    MASTER_IP=`grep '^MASTER_IP=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
-    NODE=`grep '^NODE=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
-else
-    for param in `cat /proc/cmdline`; do
-            key=`echo $param|awk -F= '{print $1}'`
-            if [ "$key" = "xcatdebugmode" ]; then
-                    XCATDEBUGMODE=`echo $param|awk -F= '{print $2}'| tr -d \'\" | tr A-Z a-z`
-            fi
+    if [ -f /xcatpost/mypostscript.post ]; then
+        XCATDEBUGMODE=`grep 'XCATDEBUGMODE=' /xcatpost/mypostscript.post | cut -d= -f2 | tr -d \'\" | tr A-Z a-z`
+        MASTER_IP=`grep '^MASTER_IP=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
+        NODE=`grep '^NODE=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
+    else
+        for param in `cat /proc/cmdline`; do
+                key=`echo $param|awk -F= '{print $1}'`
+                if [ "$key" = "xcatdebugmode" ]; then
+                        XCATDEBUGMODE=`echo $param|awk -F= '{print $2}'| tr -d \'\" | tr A-Z a-z`
+                fi
 
-            if [ "$key" = "LOGSERVER" ]; then
-                    MASTER_IP=`echo $param|awk -F= '{print $2}'`
-            fi
-    done
+                if [ "$key" = "LOGSERVER" ]; then
+                        MASTER_IP=`echo $param|awk -F= '{print $2}'`
+                fi
+        done
+    fi
 fi
 
 XCATINFOFILE=/opt/xcat/xcatinfo
+XCAT_WGET_LOG=${XCAT_WGET_LOG:-/tmp/wget.log}
 
 #echolog: process message log and echo in xcatdsklspost
 #arguments:
@@ -83,6 +91,45 @@ echolog()
 }
 
 
+download_mypostscript()
+{
+    server=$1
+    node=$2
+    max_retries=$3
+    TFTPDIR=$4
+    if [ -z $server ]; then
+      return 1;
+    fi
+    if [ -z "$TFTPDIR" ]; then
+        TFTPDIR="/tftpboot"
+    fi
+    retry=0
+    rc=1
+
+
+    echolog "debug" "trying to download http://$server$TFTPDIR/mypostscripts/mypostscript.$node..."
+    while [ 0 -eq 0 ]; do
+        wget -N --waitretry=10 --random-wait -T 60 http://$server$TFTPDIR/mypostscripts/mypostscript.$node -P /$xcatpost 2>> "$XCAT_WGET_LOG"
+        rc=$?
+        # if no error and the file  was downloaded
+        if [ $rc -eq 0 ] && [ -f /$xcatpost/mypostscript.$node ]; then
+            mv /$xcatpost/mypostscript.$node /$xcatpost/mypostscript
+            echolog "debug" "mypostscript.$node is downloaded successfully."
+            return 0
+        fi
+
+
+        retry=$(($retry+1))
+        if [ $retry -eq $max_retries ]; then
+            echolog "debug" "http://$server$TFTPDIR/mypostscripts/mypostscript.$node is not available."
+            break
+        fi
+
+    done
+    return $rc
+}
+
+
 download_postscripts()
 {
     server=$1
@@ -111,16 +158,16 @@ download_postscripts()
         # These dispatcher scripts are not needed by the legacy netboot post
         # path. Newer wget parses HTML-looking regex strings inside downloaded
         # scripts and fails the whole recursive download on bogus URLs.
-        export LANG=C; wget -l inf -nH -N -r --waitretry=10 --random-wait -e robots=off -T 60 -nH --cut-dirs=2 --reject "index.html*,post.xcat.ng,post.xcat.rhels10" --no-parent http://$server$INSTALLDIR/postscripts/ -P /$xcatpost 2> /tmp/wget.log
+        export LANG=C; wget -l inf -nH -N -r --waitretry=10 --random-wait -e robots=off -T 60 -nH --cut-dirs=2 --reject "index.html*,post.xcat.ng,post.xcat.rhels10" --no-parent http://$server$INSTALLDIR/postscripts/ -P /$xcatpost 2> "$XCAT_WGET_LOG"
         rc=$?
         if [ $rc -eq 0 ]; then
             # return from wget was 0 but some OS do not return errors, so we
             # have additional checks for
             # failed: Connection httpd not running
             # 404: Not Found  - if directory does not exist
-            grep -i -E "... failed: Connection refused.$" /tmp/wget.log
+            grep -i -E "... failed: Connection refused.$" "$XCAT_WGET_LOG"
             rc1=$?
-            grep -i -E "ERROR 404: Not Found.$" /tmp/wget.log
+            grep -i -E "ERROR 404: Not Found.$" "$XCAT_WGET_LOG"
             rc2=$?
             # check to see no errors at all, grep returns 1
             if [ $rc1 -eq 1 ] && [ $rc2 -eq 1 ]; then
@@ -138,45 +185,6 @@ download_postscripts()
 
         SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*20)}')
         sleep $SLI
-    done
-    return $rc
-}
-
-
-download_mypostscript()
-{
-    server=$1
-    node=$2
-    max_retries=$3
-    TFTPDIR=$4
-    if [ -z $server ]; then
-      return 1;
-    fi
-    if [ -z "$TFTPDIR" ]; then
-        TFTPDIR="/tftpboot"
-    fi
-    retry=0
-    rc=1
-
-
-    echolog "debug" "trying to download http://$server$TFTPDIR/mypostscripts/mypostscript.$node..."
-    while [ 0 -eq 0 ]; do
-        wget -N --waitretry=10 --random-wait -T 60 http://$server$TFTPDIR/mypostscripts/mypostscript.$node -P /$xcatpost 2>> /tmp/wget.log
-        rc=$?
-        # if no error and the file  was downloaded
-        if [ $rc -eq 0 ] && [ -f /$xcatpost/mypostscript.$node ]; then
-            mv /$xcatpost/mypostscript.$node /$xcatpost/mypostscript
-            echolog "debug" "mypostscript.$node is downloaded successfully."
-            return 0
-        fi
-
-
-        retry=$(($retry+1))
-        if [ $retry -eq $max_retries ]; then
-            echolog "debug" "http://$server$TFTPDIR/mypostscripts/mypostscript.$node is not available."
-            break
-        fi
-
     done
     return $rc
 }
@@ -215,6 +223,10 @@ parsehttpserver ()
        echo "$port"
    fi
 }
+
+if [ "$XCATDSKLSPOST_SOURCE_ONLY" = "1" ]; then
+    return 0 2>/dev/null || exit 0
+fi
 
 # Main
 # parse the arguments
