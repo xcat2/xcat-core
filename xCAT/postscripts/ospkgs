@@ -871,10 +871,10 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
                 original_arch=$ARCH
                 unset ARCH
                 eval $command
+                R=$?
                 # re declare the ARCH env after installing cuda command done
                 ARCH=$original_arch
                 export ARCH
-                R=$?
                 if [ $R -ne 0 ]; then
                    RETURNVAL=$R
                 fi
@@ -997,10 +997,10 @@ else
         original_arch=$ARCH
         unset ARCH
         result=`eval $cmd 2>&1`
+        R=$?
         # re declare the ARCH env after installing cuda command done
         ARCH=$original_arch
         export ARCH
-        R=$?
         if [ $R -ne 0 ]; then
             RETURNVAL=$R
             logger -t $log_label -p local4.info "ospkgs: $cmd\n    $result"
