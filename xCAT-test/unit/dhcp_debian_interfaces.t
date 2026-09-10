@@ -156,6 +156,23 @@ foreach my $unknown (undef, '', 'none') {
     }
 }
 
+# ...and it means that on every machine, not just one with no isc-dhcp-server
+# on it. A writer that goes and asks the local dpkg when it is handed no
+# version answers differently on the build host than on the machine being
+# configured, which is exactly the kind of thing a test only catches once it
+# runs somewhere else.
+{
+    no warnings qw(redefine once);
+    local *xCAT_plugin::dhcp::isc_dhcp_installed_version = sub {
+        return '4.4.3-P1-4ubuntu2';
+    };
+    my @keys = xCAT_plugin::dhcp::debian_sysconfig_interface_keys(undef);
+    my $written = xCAT_plugin::dhcp::_sysconfig_interfaces_content(
+        $stock, [@keys], ['eth1']);
+    is( launched_with($written, 'INTERFACES'), 'eth1',
+        'an unknown version is not silently replaced by the local package version' );
+}
+
 # Ordering of the package versions themselves. 20.04 and 22.04 both ship
 # upstream 4.4.1 and are told apart only by the Debian revision, so a
 # comparison that stops at the upstream version puts them on the wrong side.

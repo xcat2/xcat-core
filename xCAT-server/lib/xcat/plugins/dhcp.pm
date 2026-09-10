@@ -3230,8 +3230,11 @@ sub isc_dhcp_installed_version
 # systemd host runs it, so that bridge cannot be relied on.
 sub debian_sysconfig_interface_keys
 {
+    # The caller establishes the version, so what is passed here is the whole
+    # input: an undefined version means "could not be established", never "go
+    # and look at whatever this machine happens to have installed". The result
+    # is then the same on any machine, which is what makes it testable.
     my $version = shift;
-    $version = isc_dhcp_installed_version() unless (defined($version));
 
     # With no version to go on, write both spellings. An unset variable expands
     # to nothing and leaves dhcpd binding every interface on the machine, which
