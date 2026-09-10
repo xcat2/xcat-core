@@ -275,7 +275,15 @@ do_teardown() {
     done
 
     if [ -f "$STATE/backend" ]; then
-        unit=$(service_of "$(cat "$STATE/backend")")
+        local was other
+        was=$(cat "$STATE/backend")
+        # The backend-switch case leaves the other daemon running. Two servers
+        # on one network answer the same DISCOVER, so stop it before restarting
+        # the one that was here to begin with.
+        [ "$was" = isc ] && other=kea || other=isc
+        unit=$(service_of "$other")
+        [ -n "$unit" ] && systemctl stop "$unit" >/dev/null 2>&1
+        unit=$(service_of "$was")
         [ -n "$unit" ] && systemctl restart "$unit" >/dev/null 2>&1
     fi
 
