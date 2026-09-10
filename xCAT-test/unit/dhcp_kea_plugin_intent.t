@@ -93,6 +93,7 @@ require xCAT::DHCP::Backend::Kea;
     package DHCPKeaIntentBackend;
     our @ISA = ('xCAT::DHCP::Backend::Kea');
     sub host_cmds_hook_path { return '/test/libdhcp_host_cmds.so'; }
+    sub bootp_hook_path     { return '/test/libdhcp_bootp.so'; }
 }
 
 {
@@ -1085,6 +1086,66 @@ foreach my $case (@invalid_mac_cases) {
             },
         ],
         'dynamic IPv4 and IPv6 addresses keep the existing callback payloads'
+    );
+}
+
+{
+    # A client that speaks BOOTP and not DHCP. ISC serves it from
+    # "range dynamic-bootp"; Kea answers it only with the bootp hook loaded,
+    # and without the hook such a machine times out for ever with nothing on
+    # the wire to say why.
+    no warnings 'redefine';
+    local *xCAT::NetworkUtils::thishostisnot = sub { return 0; };
+    local *xCAT_plugin::dhcp::kea_boot_client_classes = sub { return []; };
+    local *xCAT_plugin::dhcp::kea_option_defs = sub { return []; };
+    local *xCAT_plugin::dhcp::kea_global_option_data = sub { return []; };
+    local *xCAT_plugin::dhcp::kea_dhcp_lease_time = sub { return 43200; };
+    local *xCAT_plugin::dhcp::kea_control_agent_enabled = sub { return 0; };
+    local $xCAT::Table::networks = DHCPKeaIntentNetTable->new( \%network_entry );
+
+    my @warnings;
+    local $xCAT_plugin::dhcp::callback = sub {
+        my $resp = shift;
+        push @warnings, @{ $resp->{warning} } if $resp->{warning};
+    };
+
+    my $served = xCAT_plugin::dhcp::kea_build_dhcp4_intent(
+        DHCPKeaIntentBackend->new(), { eth0 => 1 } );
+    is_deeply(
+        $served->{'hooks-libraries'},
+        [ { library => '/test/libdhcp_bootp.so' } ],
+        'the bootp hook is loaded so a BOOTP-only client is answered',
+    );
+    is_deeply( \@warnings, [], 'and nothing is reported when it is there' );
+
+    # The Control Agent hook and the BOOTP hook are separate decisions, and
+    # both belong in the list rather than one replacing the other.
+    {
+        local *xCAT_plugin::dhcp::kea_control_agent_enabled = sub { return 1; };
+        my $both = xCAT_plugin::dhcp::kea_build_dhcp4_intent(
+            DHCPKeaIntentBackend->new( kea_socket_dir => '/run/kea-xcat-test' ),
+            { eth0 => 1 } );
+        is_deeply(
+            [ map { $_->{library} } @{ $both->{'hooks-libraries'} } ],
+            [ '/test/libdhcp_host_cmds.so', '/test/libdhcp_bootp.so' ],
+            'loading one hook does not drop the other',
+        );
+    }
+
+    {
+        package DHCPKeaNoBootpBackend;
+        our @ISA = ('DHCPKeaIntentBackend');
+        sub bootp_hook_path { return; }
+    }
+    @warnings = ();
+    my $unserved = xCAT_plugin::dhcp::kea_build_dhcp4_intent(
+        DHCPKeaNoBootpBackend->new(), { eth0 => 1 } );
+    ok( !$unserved->{'hooks-libraries'},
+        'a hook that is not installed is not named in the configuration' );
+    is_deeply(
+        \@warnings,
+        ['libdhcp_bootp.so was not found, so BOOTP-only clients will not be answered. Install the Kea hooks package to serve them.'],
+        'and the operator is told which clients that leaves unanswered',
     );
 }
 

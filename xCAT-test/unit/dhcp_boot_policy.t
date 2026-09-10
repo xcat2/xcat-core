@@ -9,7 +9,7 @@ use Test::More;
 use xCAT::DHCP::BootPolicy;
 
 my $fallback_classes = xCAT::DHCP::BootPolicy->kea_client_classes();
-is( scalar @$fallback_classes, 5, 'Kea boot policy omits xNBA classes when xNBA loaders are unavailable' );
+is( scalar @$fallback_classes, 6, 'Kea boot policy omits xNBA classes when xNBA loaders are unavailable' );
 my %fallback_by_name = map { $_->{name} => $_ } @$fallback_classes;
 # Naming a loader that is not on disk costs the client a timeout it cannot
 # diagnose, and pxelinux.0 in its place boots something nobody asked for. With
@@ -20,7 +20,7 @@ ok( !exists $fallback_by_name{'xcat-etherboot'}, 'and no Etherboot class either,
 ok( !exists $fallback_by_name{'xcat-xnba-bios'}, 'xNBA user-class is not advertised without xNBA kpxe' );
 
 my $classes = xCAT::DHCP::BootPolicy->kea_client_classes(xnba_kpxe => 1, xnba_efi => 1);
-is( scalar @$classes, 8, 'Kea boot policy renders expected xNBA client classes' );
+is( scalar @$classes, 9, 'Kea boot policy renders expected xNBA client classes' );
 
 my %by_name = map { $_->{name} => $_ } @$classes;
 is( $by_name{'xcat-bios'}{'boot-file-name'}, 'xcat/xnba.kpxe', 'BIOS clients receive xNBA kpxe' );
@@ -227,6 +227,18 @@ foreach my $global (@$classes) {
     isnt( $global->{test}, 'option[93].hex == 0x001c',
         "$global->{name} does not answer the HTTP boot architecture globally" );
 }
+
+# A discovery of a few thousand machines takes every pool address through a PXE
+# ROM first, and a cluster-default lease holds each one for half a day after
+# the ROM is done with it.
+is( $by_name{'xcat-pxe-lease'}{'valid-lifetime'}, 600,
+    'firmware is given a short lease so the address comes back quickly' );
+is( $by_name{'xcat-pxe-lease'}{test}, "substring(option[60].hex,0,9) == 'PXEClient'",
+    'recognised by the same nine bytes of the vendor class the ISC class matches on' );
+ok( !exists $by_name{'xcat-pxe-lease'}{'boot-file-name'},
+    'and it says nothing about what to boot, so it competes with no other class' );
+is( $fallback_by_name{'xcat-pxe-lease'}{'valid-lifetime'}, 600,
+    'the short lease does not depend on any loader being installed' );
 
 # Etherboot predates option 93 entirely: it announces itself in option 60 and
 # says nothing about its architecture. ISC has always keyed on that vendor

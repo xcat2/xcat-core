@@ -19,6 +19,10 @@ sub kea_client_classes {
 
     push @classes, @{ $opts{xnba_node_classes} || [] };
 
+    # The short lease names no boot file, so where it sits among the classes
+    # that do name one does not change what anything boots.
+    push @classes, kea_pxe_lease_client_class();
+
     if ($bios_boot ne '') {
         push @classes, (
             {
@@ -99,6 +103,50 @@ sub kea_fallback_client_class {
         test             => join( ' and ', map { "not ($_)" } @recognised ),
         'boot-file-name' => '/yaboot',
     };
+}
+
+#: How long firmware keeps a pool address. A discovery of a few thousand
+#: machines takes every one of those addresses through a PXE ROM first, and a
+#: cluster-default lease holds each of them for half a day after the ROM has
+#: finished with it.
+our $PXE_LEASE_SECONDS = 600;
+
+# The short lease a PXE client is given, on either backend.
+#
+# ISC has always had `class "pxe"` for this, but with `max-lease-time 600`
+# alone: dhcpd applies the subnet's `min-lease-time` after the maximum, so the
+# cluster default won and the class did nothing. Both backends name the number
+# outright instead.
+sub kea_pxe_lease_client_class {
+    return {
+        name             => 'xcat-pxe-lease',
+        test             => pxe_vendor_class_test(),
+        'valid-lifetime' => $PXE_LEASE_SECONDS,
+    };
+}
+
+sub pxe_vendor_class_test {
+    return "substring(option[60].hex,0,9) == 'PXEClient'";
+}
+
+# The same decision as an ISC class.
+#
+# A maximum alone did not shorten anything: dhcpd applies the subnet's
+# min-lease-time after the maximum, so the cluster default won and every pool
+# address a PXE ROM touched was held for half a day. All three bounds are named
+# so the class does what it says.
+sub isc_pxe_lease_class_lines {
+    my ($class) = @_;
+
+    return [
+        "class \"pxe\" {\n",
+        "   match if substring (option vendor-class-identifier, 0, 9) = \"PXEClient\";\n",
+        "   ddns-updates off;\n",
+        "    min-lease-time $PXE_LEASE_SECONDS;\n",
+        "    default-lease-time $PXE_LEASE_SECONDS;\n",
+        "    max-lease-time $PXE_LEASE_SECONDS;\n",
+        "}\n",
+    ];
 }
 
 sub etherboot_vendor_class_test {

@@ -89,6 +89,12 @@ sub render_dhcp4_config {
         'reservations-in-subnet'   => _json_bool( _first_defined( $intent->{'reservations-in-subnet'},   $intent->{reservations_in_subnet},   1 ) ),
         'reservations-out-of-pool' => _json_bool( _first_defined( $intent->{'reservations-out-of-pool'}, $intent->{reservations_out_of_pool}, 1 ) ),
         'match-client-id'          => _json_bool( _first_defined( $intent->{'match-client-id'},          $intent->{match_client_id},          0 ) ),
+        # ISC writes "authoritative;" into every subnet it generates. Kea
+        # defaults to the opposite, and a node that moved rack then asks to
+        # keep an address belonging to a network it has left and is answered
+        # with nothing at all -- so it waits out a lease that will never be
+        # renewed instead of being told to start over.
+        'authoritative'            => _json_bool( _first_defined( $intent->{authoritative},             1 ) ),
         subnet4                    => [ map { $self->_render_subnet4($_) } @{ _first_defined( $intent->{subnet4}, $intent->{subnets}, [] ) } ],
     );
 
@@ -208,16 +214,19 @@ sub render_ctrl_agent_config {
     return JSON->new->canonical->pretty->encode($config);
 }
 
-sub host_cmds_hook_path {
-    my ( $self, @extra_paths ) = @_;
+# Where a distribution puts a Kea hook library. The name of the hook is the
+# only thing that varies, and where the packages put them does not.
+sub hook_path {
+    my ( $self, $hook, @extra_paths ) = @_;
 
-    my @default_paths = exists $self->{host_cmds_hook_paths}
-      ? @{ $self->{host_cmds_hook_paths} || [] }
+    my $override = "${hook}_hook_paths";
+    my @default_paths = exists $self->{$override}
+      ? @{ $self->{$override} || [] }
       : (
-        '/usr/lib64/kea/hooks/libdhcp_host_cmds.so',
-        '/usr/lib/kea/hooks/libdhcp_host_cmds.so',
-        '/usr/local/lib/kea/hooks/libdhcp_host_cmds.so',
-        glob('/usr/lib/*/kea/hooks/libdhcp_host_cmds.so'),
+        "/usr/lib64/kea/hooks/libdhcp_$hook.so",
+        "/usr/lib/kea/hooks/libdhcp_$hook.so",
+        "/usr/local/lib/kea/hooks/libdhcp_$hook.so",
+        glob("/usr/lib/*/kea/hooks/libdhcp_$hook.so"),
       );
 
     foreach my $path (
@@ -229,6 +238,18 @@ sub host_cmds_hook_path {
     }
 
     return;
+}
+
+sub host_cmds_hook_path {
+    my ( $self, @extra_paths ) = @_;
+    return $self->hook_path( 'host_cmds', @extra_paths );
+}
+
+# BOOTP is a hook on Kea and a range keyword on ISC, but it is the same
+# decision either way: a client that speaks BOOTP and not DHCP is answered.
+sub bootp_hook_path {
+    my ( $self, @extra_paths ) = @_;
+    return $self->hook_path( 'bootp', @extra_paths );
 }
 
 sub load_dhcp4_config {

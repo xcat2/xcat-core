@@ -132,4 +132,24 @@ foreach my $arch (qw(00:00 00:09 00:07)) {
 unlike( $rendered, qr/option user-class-identifier = "xNBA" and/,
     'no xNBA branch is left matching the bare encoding alone' );
 
+# The short lease firmware is given, so a pool address taken by a PXE ROM comes
+# back in ten minutes rather than in half a day.
+#
+# A maximum alone did not shorten anything: dhcpd applies the subnet's
+# min-lease-time after the maximum, and the cluster default is larger, so the
+# class matched and then changed nothing. The Kea side is given the same number
+# by kea_pxe_lease_client_class.
+my $pxe_class = join '', @{ xCAT::DHCP::BootPolicy->isc_pxe_lease_class_lines() };
+like( $pxe_class, qr/match if substring \(option vendor-class-identifier, 0, 9\) = "PXEClient";/,
+    'the class matches the vendor class firmware announces' );
+foreach my $bound (qw(min-lease-time default-lease-time max-lease-time)) {
+    like( $pxe_class, qr/\b\Q$bound\E 600;/,
+        "$bound is named, so the subnet default cannot outrank the class" );
+}
+is(
+    xCAT::DHCP::BootPolicy->kea_pxe_lease_client_class()->{'valid-lifetime'},
+    600,
+    'and both backends land on the same number',
+);
+
 done_testing();

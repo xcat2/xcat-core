@@ -56,7 +56,11 @@ my $omshellpid;
 my $omshell6pid;
 my $statements;    #Hold custom statements to be slipped into host declarations
 my $localonly;     # flag for running only on local server - needs to be global
-my $callback;
+# Package-scoped rather than file-lexical so a test can put its own collector in
+# place of the caller's response handler. As a lexical it could only be reached
+# by running a whole request, and whatever that left behind stayed in place for
+# every test after it.
+our $callback;
 my $restartdhcp;
 my $restartdhcp6;
 my $sitenameservers;
@@ -302,7 +306,12 @@ sub _node_host_statements
 {
     my ($node, $statements) = @_;
 
-    return 'ddns-hostname \"' . $node . '\"; send host-name \"'
+    # "option host-name", not "send host-name". `send` is what a dhcpd *client*
+    # config uses to decide what it puts in its own request; on the server it
+    # governs sname and file handling and never reaches option 12. Genesis and
+    # the installers read option 12, and the Kea side has always sent it, so a
+    # node knew its own name on one backend and not on the other.
+    return 'ddns-hostname \"' . $node . '\"; option host-name \"'
       . $node . '\";' . ($statements || '');
 }
 
@@ -2946,6 +2955,7 @@ sub kea_build_dhcp4_intent
         subnets        => \@subnets,
     };
 
+    my @hooks;
     if (kea_control_agent_enabled()) {
         $intent->{'control-socket'} = {
             'socket-type' => 'unix',
@@ -2953,11 +2963,25 @@ sub kea_build_dhcp4_intent
         };
         my $hook = $backend->host_cmds_hook_path();
         if ($hook) {
-            $intent->{'hooks-libraries'} = [ { library => $hook } ];
+            push @hooks, { library => $hook };
         } else {
             $callback->({ warning => ["Kea Control Agent was requested, but libdhcp_host_cmds.so was not found. Host reservations will use JSON render and reload."] });
         }
     }
+
+    # ISC serves a BOOTP-only client from "range dynamic-bootp"; on Kea the
+    # same clients are answered by a hook, and without it they are never
+    # answered at all. The hardware this is for is old enough that it will not
+    # be replaced, so a machine that only speaks BOOTP times out for ever with
+    # nothing on the wire to say why.
+    my $bootp_hook = $backend->bootp_hook_path();
+    if ($bootp_hook) {
+        push @hooks, { library => $bootp_hook };
+    } else {
+        $callback->({ warning => ["libdhcp_bootp.so was not found, so BOOTP-only clients will not be answered. Install the Kea hooks package to serve them."] });
+    }
+
+    $intent->{'hooks-libraries'} = \@hooks if @hooks;
 
     return $intent;
 }
@@ -4963,7 +4987,7 @@ sub newconfig
     push @dhcpconf, "option cumulus-provision-url code 239 = text;\n";
     push @dhcpconf, "\n";
     _append_omapi_key_config( \@dhcpconf, $settings, 7911, $callback, $passtab );
-    push @dhcpconf, ('class "pxe" {' . "\n", "   match if substring (option vendor-class-identifier, 0, 9) = \"PXEClient\";\n", "   ddns-updates off;\n", "    max-lease-time 600;\n", "}\n");
+    push @dhcpconf, @{ xCAT::DHCP::BootPolicy->isc_pxe_lease_class_lines() };
 }
 
 sub newconfig_aix
