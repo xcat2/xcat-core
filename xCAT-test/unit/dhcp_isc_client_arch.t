@@ -71,6 +71,12 @@ like($rendered, qr/filename "\/yaboot";\n\s*\}\n\z/, 'the policy ends with the e
 # and never says why. The Kea side of this plugin has always accepted both
 # (kea_xnba_user_class_test); the ISC side has to agree, or the same machine
 # boots on one backend and loops on the other.
+#
+# suffix() takes the last four bytes, which is "xNBA" either way: the bare
+# string is its own suffix, and "\x04xNBA" ends in the same four bytes. One
+# expression rather than an alternation, because dhcpd has no parenthesised
+# grouping -- `if (a or b) and c {` is rejected outright with "left brace
+# expected" and the daemon does not start.
 foreach my $case (
     [ '"',   'a config file written directly' ],
     [ '\\"', 'a statement passed through omshell' ],
@@ -79,17 +85,13 @@ foreach my $case (
     my ($quote, $context) = @{$case};
     my $test = xCAT::DHCP::BootPolicy->isc_xnba_user_class_test(quote => $quote);
 
-    like( $test, qr/\Qoption user-class-identifier = ${quote}xNBA${quote}\E/,
-        "the bare user class is matched, for $context" );
-    like( $test, qr/\Qsubstring(option user-class-identifier, 1, 4) = ${quote}xNBA${quote}\E/,
-        "the RFC 3004 length-prefixed user class is matched, for $context" );
+    is( $test, "suffix(option user-class-identifier, 4) = ${quote}xNBA${quote}",
+        "both encodings are matched by one suffix test, for $context" );
 
-    # dhcpd's `if` is a single expression: without the parentheses the trailing
-    # `and option client-architecture = ...` binds to the second alternative
-    # only, and every xNBA client is served the first branch whatever its
-    # architecture.
-    like( $test, qr/^\(.*\)$/s,
-        "the alternation is parenthesised so it can be and-ed with a further test, for $context" );
+    unlike( $test, qr/^\(/,
+        "the test is not wrapped in parentheses dhcpd cannot parse, for $context" );
+    unlike( $test, qr/\bor\b/,
+        "the test is a single expression, needing no grouping, for $context" );
 }
 
 is( xCAT::DHCP::BootPolicy->isc_xnba_user_class_test(),
@@ -99,11 +101,11 @@ is( xCAT::DHCP::BootPolicy->isc_xnba_user_class_test(),
 # ...and the per-network policy uses it, rather than its own bare comparison.
 foreach my $arch (qw(00:00 00:09 00:07)) {
     like( $rendered,
-        qr/\Qsubstring(option user-class-identifier, 1, 4) = "xNBA")\E and option client-architecture = \Q$arch\E/,
+        qr/\Qsuffix(option user-class-identifier, 4) = "xNBA"\E and option client-architecture = \Q$arch\E/,
         "the xNBA branch for client architecture $arch accepts both encodings" );
 }
 
-unlike( $rendered, qr/(?<!\()option user-class-identifier = "xNBA" and/,
+unlike( $rendered, qr/option user-class-identifier = "xNBA" and/,
     'no xNBA branch is left matching the bare encoding alone' );
 
 done_testing();

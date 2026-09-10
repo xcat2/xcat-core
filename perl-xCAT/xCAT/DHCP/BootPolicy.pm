@@ -140,6 +140,12 @@ sub kea_s390x_network_classes {
 # forever, which is why the Kea policy has always accepted both
 # (xnba_user_class_test) and why this one has to as well.
 #
+# suffix() takes the last N bytes, so one expression covers both encodings: the
+# bare "xNBA" is its own last four bytes, and the RFC 3004 form "\x04xNBA" ends
+# in the same four. It has to be a single expression, because dhcpd's grammar
+# has no parenthesised grouping -- writing the two forms as `(a or b)` is a
+# parse error ("left brace expected") that stops the daemon from starting.
+#
 # `quote` is the quoting the caller's context needs: a plain " for a config
 # file written directly, and \" for a statement that reaches dhcpd through
 # omshell.
@@ -148,8 +154,7 @@ sub isc_xnba_user_class_test {
 
     my $q = defined( $opts{quote} ) ? $opts{quote} : '"';
 
-    return "(option user-class-identifier = ${q}xNBA${q}"
-      . " or substring(option user-class-identifier, 1, 4) = ${q}xNBA${q})";
+    return "suffix(option user-class-identifier, 4) = ${q}xNBA${q}";
 }
 
 sub isc_client_architecture_lines {

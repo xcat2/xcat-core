@@ -229,9 +229,11 @@ Scenario Outline: The user class is recognised however the client encodes it
     | RFC 3004 length-prefixed, as the RFC says |
   # Kea accepts both: kea_xnba_user_class_test tests option[77].text, the raw
   # hex, and the length-prefixed substring. ISC accepts both through
-  # isc_xnba_user_class_test, which pairs the bare comparison with
-  # `substring(option user-class-identifier, 1, 4)` -- option 77 is declared as
-  # a plain string there (dhcp.pm), so offset 1 skips the RFC 3004 length byte.
+  # isc_xnba_user_class_test, which compares the last four bytes:
+  # `suffix(option user-class-identifier, 4) = "xNBA"` is true of the bare
+  # string and of "\x04xNBA" alike. It has to be one expression rather than an
+  # alternation -- dhcpd's grammar has no parenthesised grouping, so `if (a or
+  # b) and c {` is a parse error and the daemon will not start.
 
 Scenario: A known node's second stage is addressed to that node
   Given a node whose netboot method is xnba
