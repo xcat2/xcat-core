@@ -1123,7 +1123,8 @@ sub mkinstall {
                 $platform,
                 $partitionfile,
                 \%tmpl_hash,
-                osarch => $arch
+                osarch  => $arch,
+                pkgdirs => $pkgdirval
               );
         }
 

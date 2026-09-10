@@ -364,7 +364,7 @@ sub subvars {
             $inc =~ s/#INSTALL_SOURCES_IN_PRE#/$source_in_pre/g;
             if (("ubuntu" eq $platform) || ("debian" eq $platform)) {
                 $inc =~ s/#INCLUDE_OSIMAGE_PKGDIR#/$pkgdirs[-1]/;
-                $inc =~ s/#UBUNTU_SUBIQUITY_APT_CONFIG#/ubuntu_subiquity_apt_config($media_dir, $namedargs{osarch})/eg;
+                $inc =~ s/#UBUNTU_SUBIQUITY_APT_CONFIG#/ubuntu_subiquity_apt_config($media_dir, $namedargs{osarch}, $namedargs{pkgdirs})/eg;
             }
             $inc =~ s/#WRITEREPO#/$writerepo/g;
         }
@@ -377,7 +377,7 @@ sub subvars {
         $inc =~ s/#INCLUDE_NOP:([^#^\n]+)#/includefile($1,1,0)/eg;
         $inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
         $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
-        $inc =~ s/#UBUNTU_SUBIQUITY_APT_CONFIG#/ubuntu_subiquity_apt_config($media_dir, $namedargs{osarch})/eg;
+        $inc =~ s/#UBUNTU_SUBIQUITY_APT_CONFIG#/ubuntu_subiquity_apt_config($media_dir, $namedargs{osarch}, $namedargs{pkgdirs})/eg;
         $inc =~ s/#SUBIQUITYINSTALLNIC#/subiquity_install_nic()/eg;
         $inc =~ s/#SUBIQUITYINSTALLMAC#/subiquity_install_mac()/eg;
         $inc =~ s/#MACHINEPASSWORD#/machinepassword()/eg;
@@ -1786,13 +1786,28 @@ sub ubuntu_subiquity_apt_mirror
     return ($ent && defined($ent->{value}) && length($ent->{value})) ? $ent->{value} : $default;
 }
 
+# The key curtin names in the Deb822 source it writes for the primary apt mirror on 24.04 and later.
+my $UBUNTU_ARCHIVE_KEYRING = '/usr/share/keyrings/ubuntu-archive-keyring.gpg';
+
 sub ubuntu_subiquity_apt_config
 {
-    my ($media_dir, $osarch) = @_;
+    my ($media_dir, $osarch, $pkgdirs) = @_;
     my $use_deb822 = ubuntu_subiquity_uses_deb822_sources($media_dir);
-    my @otherpkg_sources = map { ubuntu_subiquity_otherpkg_source_spec($_) } ubuntu_subiquity_otherpkg_sources();
+    my $online_mirror    = ubuntu_subiquity_apt_mirror($osarch);
+    my $mirror_key       = $use_deb822 ? $UBUNTU_ARCHIVE_KEYRING : '';
+    my @otherpkg_sources = map { ubuntu_subiquity_otherpkg_source_spec( $_, $mirror_key, $online_mirror ) } ubuntu_subiquity_otherpkg_sources();
+    my @pkgdir_sources   = ubuntu_subiquity_pkgdir_source_specs( $pkgdirs, $mirror_key, $online_mirror );
 
-    my $online_mirror = ubuntu_subiquity_apt_mirror($osarch);
+    # apt rejects two sources for one repository whose options differ, so a pkgdir entry that repeats an
+    # otherpkgs repository adds its components to that source instead
+    my %otherpkg_by_key = map { ( my $uri = $_->{uri} ) =~ s{/+$}{}; ( "$uri $_->{suites}" => $_ ) } @otherpkg_sources;
+    @pkgdir_sources = grep {
+        ( my $uri = $_->{uri} ) =~ s{/+$}{};
+        my $other = $otherpkg_by_key{"$uri $_->{suites}"};
+        ubuntu_subiquity_add_components( $other, $_->{components} ) if $other;
+        !$other;
+    } @pkgdir_sources;
+
     if ($online_mirror) {
         # Online install: use the configured archive as the primary apt mirror so
         # Subiquity/curtin can fetch whatever the minimal media lacks. No
@@ -1818,11 +1833,16 @@ sub ubuntu_subiquity_apt_config
             push @lines, '      xcat-ubuntu-updates.list:';
             push @lines, qq(        source: "deb $online_mirror \$RELEASE-updates main restricted universe multiverse");
         }
-        if (@otherpkg_sources) {
+        if (@otherpkg_sources || @pkgdir_sources) {
             push @lines, '    sources:' unless $need_sources_block;
             my $index = 0;
             foreach my $source (@otherpkg_sources) {
                 push @lines, ubuntu_subiquity_source_lines( "xcat-otherpkgs-$index", $source, $use_deb822 );
+                $index++;
+            }
+            $index = 0;
+            foreach my $source (@pkgdir_sources) {
+                push @lines, ubuntu_subiquity_source_lines( "xcat-pkgdir-$index", $source, $use_deb822 );
                 $index++;
             }
         }
@@ -1868,16 +1888,30 @@ sub ubuntu_subiquity_apt_config
             push @lines, '      Components:' . ( length $source->{components} ? " $source->{components}" : '' );
             push @lines, '      Trusted: yes';
         }
+        foreach my $source (@pkgdir_sources) {
+            push @lines, '';
+            push @lines, '      Types: deb';
+            push @lines, "      URIs: $source->{uri}";
+            push @lines, "      Suites: $source->{suites}";
+            push @lines, '      Components:' . ( length $source->{components} ? " $source->{components}" : '' );
+            push @lines, '      Trusted: yes' if $source->{trusted};
+        }
     } else {
         push @lines, '    mirror-selection:';
         push @lines, '      primary:';
         push @lines, '      - uri: file:/cdrom';
 
-        if (@otherpkg_sources) {
+        if (@otherpkg_sources || @pkgdir_sources) {
             push @lines, '    sources:';
             my $index = 0;
             foreach my $source (@otherpkg_sources) {
                 push @lines, "      xcat-otherpkgs-$index.list:";
+                push @lines, qq(        source: "$source->{line}");
+                $index++;
+            }
+            $index = 0;
+            foreach my $source (@pkgdir_sources) {
+                push @lines, "      xcat-pkgdir-$index.list:";
                 push @lines, qq(        source: "$source->{line}");
                 $index++;
             }
@@ -1886,6 +1920,56 @@ sub ubuntu_subiquity_apt_config
 
     return join( "\n", @lines );
 }
+
+# ubuntu_subiquity_pkgdir_source_specs: the apt sources of the entries after the install media in
+# an osimage pkgdir value, which mkinstall hands over as pkgdirs and ospkgs receives as OSPKGDIR.
+# An entry written as "URL suite components" is an apt source line, as ospkgs writes it, and a
+# suite that is an exact path needs no component. A local directory that is a flat repository is
+# served by the management node and trusted, as an otherpkgdir is. Anything else is no apt source
+# for ospkgs either and is left out. An entry that names an Ubuntu archive mirror the installer
+# already has a source for, the configured one or a default one, carries that source's signing
+# key, the archive keyring on the Deb822 releases and none before them: apt rejects a second source
+# for the same suite whose signing key differs.
+sub ubuntu_subiquity_pkgdir_source_specs
+{
+    my ( $pkgdirval, $mirror_key, @mirrors ) = @_;
+    $mirror_key //= '';
+    my %signed_uri = ubuntu_subiquity_signed_mirror_uris(@mirrors);
+    my @specs;
+    foreach my $entry ( split( /,/, $pkgdirval // '' ) ) {
+        $entry =~ s/^\s+|\s+$//g;
+        next if $entry eq '';
+        if ( $entry =~ m{^https?://} ) {
+            my ( $uri, $suite, @components ) = split( /\s+/, $entry );
+            next unless defined $suite && ( @components || $suite =~ m{/$} );
+            ( my $bare = $uri ) =~ s{/+$}{};
+            my %spec = ( uri => $uri, suites => $suite, components => join( ' ', @components ), trusted => 0, signed_by => $signed_uri{$bare} ? $mirror_key : '' );
+            $spec{line} = ubuntu_subiquity_source_line( \%spec );
+            push @specs, \%spec;
+        }
+        elsif ( $entry !~ m{^[a-z]+://} && ubuntu_subiquity_local_apt_repo($entry) ) {
+            my $uri = ubuntu_subiquity_pkgdir_uri($entry);
+            my %spec = ( uri => $uri, suites => './', components => '', trusted => 1, signed_by => '' );
+            $spec{line} = ubuntu_subiquity_source_line( \%spec );
+            push @specs, \%spec;
+        }
+    }
+
+    # a directory and its own URL are one repository: one source, with the trust and components of both
+    my ( %kept, @unique );
+    foreach my $spec (@specs) {
+        ( my $uri = $spec->{uri} ) =~ s{/+$}{};
+        if ( my $first = $kept{"$uri $spec->{suites}"} ) {
+            $first->{trusted}   ||= $spec->{trusted};
+            $first->{signed_by} ||= $spec->{signed_by};
+            ubuntu_subiquity_add_components( $first, $spec->{components} );
+            next;
+        }
+        push @unique, $kept{"$uri $spec->{suites}"} = $spec;
+    }
+    return @unique;
+}
+
 
 sub ubuntu_subiquity_otherpkg_sources
 {
@@ -1914,6 +1998,24 @@ sub ubuntu_subiquity_otherpkg_sources
     return @sources;
 }
 
+# ubuntu_subiquity_add_components: the components of a repeated repository join the source kept for it.
+sub ubuntu_subiquity_add_components
+{
+    my ( $spec, $components ) = @_;
+    my %have = map { $_ => 1 } split( ' ', $spec->{components} );
+    $spec->{components} = join( ' ', split( ' ', $spec->{components} ), grep { !$have{$_}++ } split( ' ', $components // '' ) );
+    $spec->{line} = ubuntu_subiquity_source_line($spec);
+    return;
+}
+
+# ubuntu_subiquity_signed_mirror_uris: the apt mirror the installer already has a source for, the
+# configured one or the architecture default, without a trailing slash.
+sub ubuntu_subiquity_signed_mirror_uris
+{
+    my (@mirrors) = @_;
+    return map { ( my $uri = $_ ) =~ s{/+$}{}; ( $uri => 1 ) } grep { defined && length } @mirrors;
+}
+
 # ubuntu_subiquity_source_line: the one-line form of a source, with the option its Deb822 form carries.
 sub ubuntu_subiquity_source_line
 {
@@ -1923,14 +2025,21 @@ sub ubuntu_subiquity_source_line
 }
 
 # ubuntu_subiquity_otherpkg_source_spec: the apt source of one otherpkgdir entry the installer gets.
-# A bare URL or a local repository is a flat repository, and an entry written as URL, suite and
-# components is that source; otherpkgs trusts both, so the installer does too.
+# A bare URL or a local repository is a flat trusted repository, as otherpkgs treats it. An entry
+# written as URL, suite and components is that source, trusted as well, unless the URL is an Ubuntu
+# archive mirror the installer already has a source for: that one gets the same signing key and no
+# trust, since apt rejects a second source for one suite whose options differ.
 sub ubuntu_subiquity_otherpkg_source_spec
 {
-    my ($entry) = @_;
+    my ( $entry, $mirror_key, @mirrors ) = @_;
     my ( $uri, $suite, @components ) = split( /\s+/, $entry );
     my %spec = ( uri => $uri, suites => './', components => '', trusted => 1, signed_by => '' );
-    @spec{qw(suites components)} = ( $suite, join( ' ', @components ) ) if defined $suite && length $suite;
+    if ( defined $suite && length $suite ) {
+        my %signed = ubuntu_subiquity_signed_mirror_uris(@mirrors);
+        ( my $bare = $uri ) =~ s{/+$}{};
+        @spec{qw(suites components)} = ( $suite, join( ' ', @components ) );
+        @spec{qw(trusted signed_by)} = ( 0, $mirror_key // '' ) if $signed{$bare};
+    }
     $spec{line} = ubuntu_subiquity_source_line( \%spec );
     return \%spec;
 }
@@ -1951,6 +2060,7 @@ sub ubuntu_subiquity_source_lines
         "          Suites: $source->{suites}",
         '          Components:' . ( length $source->{components} ? " $source->{components}" : '' ),
     );
+    push @lines, "          Signed-By: $source->{signed_by}" if $source->{signed_by};
     push @lines, '          Trusted: yes' if $source->{trusted};
     return @lines;
 }
