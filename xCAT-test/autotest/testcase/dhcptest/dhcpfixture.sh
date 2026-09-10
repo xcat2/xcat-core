@@ -26,6 +26,7 @@
 #     dhcpfixture.sh run-multimac            a node reachable on either of its two ports
 #     dhcpfixture.sh run-iscsi               a diskless node is told where its root is
 #     dhcpfixture.sh run-loader-absent       a loader that is not on disk is not named
+#     dhcpfixture.sh run-localboot           an installed node is sent no xNBA script
 #     dhcpfixture.sh run-httpport            URLs carry a non-default web port
 #     dhcpfixture.sh run-rangecidr           a dynamic range written as a CIDR block
 #     dhcpfixture.sh run-removal             makedhcp -d stops the address being served
@@ -111,6 +112,14 @@ ISCSI_INAME=iqn.2024-01.dhcptest.cluster:initiator0
 RM_NODE=dhcptestrm
 RM_IP=10.99.0.71
 RM_MAC=02:00:dc:11:00:71
+
+# A node that has been installed already: chain.currstate says it has an
+# operating system and must be left to start it. netboot is xnba rather than
+# the fixture's usual grub2 because the script that must not be sent is an
+# xNBA second stage, and only netboot=xnba generates one.
+LB_NODE=dhcptestboot
+LB_IP=10.99.0.81
+LB_MAC=02:00:dc:11:00:61
 
 # A machine that speaks BOOTP and not DHCP, and the web port a cluster that is
 # not serving on 80 would use.
@@ -817,6 +826,29 @@ do_run_iscsi() {
     return $rc
 }
 
+# S-31. A node that has already been installed. chain.currstate is what says
+# so, and it is set through chtab because it has no node attribute of its own.
+#
+# The script that must not be sent is the second stage of an xNBA boot, so the
+# node is defined with netboot=xnba and the case asks twice: once as firmware,
+# once announcing the user class the first stage sets. Only the second request
+# can be answered with the script, so only the second request can catch this.
+do_run_localboot() {
+    local rc=0
+    extra_define "$LB_NODE" groups=dhcptest ip="$LB_IP" mac="$LB_MAC" \
+        arch=x86_64 netboot=xnba tftpserver="$SRV_IP" xcatmaster="$SRV_IP"
+    chtab node="$LB_NODE" chain.currstate=boot \
+        || die "cannot set chain.currstate for $LB_NODE"
+    echo done > "$STATE/localboot"
+    makedhcp "$LB_NODE" || die "makedhcp $LB_NODE failed"
+
+    dhcptest_run \
+        --set booted_mac="$LB_MAC" --set booted_ip="$LB_IP" \
+        --set booted_script="http://$SRV_IP/tftpboot/xcat/xnba/nodes/$LB_NODE" \
+        conf/localboot.conf || rc=1
+    return $rc
+}
+
 # S-12. One gating loader is taken away and the configuration regenerated --
 # both backends decide which boot classes to write by looking at what is on
 # disk, so the file has to be gone before makedhcp runs, not after.
@@ -989,6 +1021,7 @@ dispatch() {
     run-multimac)     do_run_multimac ;;
     run-iscsi)        do_run_iscsi ;;
     run-loader-absent) do_run_loader_absent ;;
+    run-localboot)     do_run_localboot ;;
     run-httpport)     do_run_httpport ;;
     run-rangecidr)    do_run_rangecidr ;;
     run-removal)      do_run_removal ;;
@@ -997,7 +1030,7 @@ dispatch() {
     run-hierarchy) do_run_hierarchy ;;
     run-adoption)  do_run_adoption ;;
     teardown)    do_teardown ;;
-    *)           die "usage: $0 {check|setup|generate|backends|backend-setup <isc|kea>|backend-teardown <isc|kea>|run|run-arch|run-netboot|run-lease|run-chainload|run-nextserver|run-multimac|run-iscsi|run-loader-absent|run-httpport|run-rangecidr|run-removal|run-bootp|delegate|run-hierarchy|run-adoption|teardown}" ;;
+    *)           die "usage: $0 {check|setup|generate|backends|backend-setup <isc|kea>|backend-teardown <isc|kea>|run|run-arch|run-netboot|run-lease|run-chainload|run-nextserver|run-multimac|run-iscsi|run-loader-absent|run-localboot|run-httpport|run-rangecidr|run-removal|run-bootp|delegate|run-hierarchy|run-adoption|teardown}" ;;
     esac
 }
 
