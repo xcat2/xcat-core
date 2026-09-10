@@ -290,7 +290,7 @@ is_deeply(
             additional_only => 1,
             'option-data'   => [
                 {
-                    name          => 'www-server',
+                    code          => 114,
                     data          => 'http://10.0.0.1/install/onie/onie-installer',
                     'always-send' => 1,
                 },
@@ -299,6 +299,15 @@ is_deeply(
     ],
     'an ONIE switch is pointed at the installer over HTTP, as the ISC path does',
 );
+
+# The option is named by code and not by name on purpose. "www-server" means
+# option 114 in xCAT's dhcpd.conf, which declares it that way, and option 72 to
+# Kea, which does not -- and option 72 holds IPv4 addresses, so a URL in it
+# stops kea-dhcp4 from starting.
+is( $onie->[0]{'option-data'}[0]{code}, 114,
+    'the installer URL is option 114, the one ONIE reads' );
+ok( !exists $onie->[0]{'option-data'}[0]{name},
+    'and it is not named www-server, which is a different option to Kea' );
 is(
     xCAT::DHCP::BootPolicy->kea_onie_network_classes(
         net => '10.0.0.0', prefix => 24, next_server => '10.0.0.1', httpport => 8080,

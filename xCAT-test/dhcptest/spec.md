@@ -515,10 +515,12 @@ Scenario: The reply carries an MTU where the network defines one
 @S-50
 Scenario: The lease is as long as site.dhcplease says
   Given site.dhcplease is set
-  When a client is acknowledged
+  When a client that is not PXE firmware is acknowledged
   Then option 51 (lease-time) is that value
   And 43200 seconds when site.dhcplease is unset
-  # dhcp.pm:4524
+  # dhcp.pm:4524. "Not PXE firmware" because a client announcing a PXEClient
+  # vendor class is answered by S-51 instead, and the two are the same reply
+  # field.
 
 @S-51
 Scenario: A PXE client gets a short lease

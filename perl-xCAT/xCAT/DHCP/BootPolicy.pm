@@ -254,14 +254,28 @@ sub kea_onie_network_classes {
             test            => onie_vendor_class_test(),
             additional_only => 1,
             'option-data'   => [
-                {
-                    name          => 'www-server',
-                    data          => "http://$opts{next_server}$portsuffix/install/onie/onie-installer",
-                    'always-send' => 1,
-                },
+                kea_onie_url_option( undef, "http://$opts{next_server}$portsuffix/install/onie/onie-installer" ),
             ],
         },
     ];
+}
+
+# The installer URL goes in option 114, which is where ONIE looks for it.
+#
+# xCAT's dhcpd.conf says so by declaring "option www-server code 114 = string"
+# -- a local redefinition, because ISC's own www-server is the standard option
+# 72. Kea has no such redefinition: to it, www-server means option 72, a list
+# of IPv4 addresses, and a URL in one is a configuration error that stops the
+# server from starting at all. Naming the code says the same thing to both,
+# and puts the same bytes on the wire.
+sub kea_onie_url_option {
+    my ( $class, $url ) = @_;
+
+    return {
+        code          => 114,
+        data          => $url,
+        'always-send' => 1,
+    };
 }
 
 # The user class a chainloaded second stage announces itself with, as an ISC

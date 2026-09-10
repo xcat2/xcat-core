@@ -4155,7 +4155,7 @@ sub kea_boot_for_node
         }
     } elsif ($netboot and $netboot eq 'onie') {
         my $onie_url = kea_onie_url_for_node($node, $ntent, $nxtsrv, $httpport);
-        push @{ $boot{'option-data'} }, { name => 'www-server', data => $onie_url } if $onie_url;
+        push @{ $boot{'option-data'} }, xCAT::DHCP::BootPolicy->kea_onie_url_option($onie_url) if $onie_url;
     }
 
     push @{ $boot{'option-data'} }, { name => 'host-name', data => $node };
@@ -5117,6 +5117,17 @@ sub newconfig
 
     push @dhcpconf, "option iscsi-initiator-iqn code 203 = string;\n"; #Only via gPXE, not a standard
     push @dhcpconf, "ddns-update-style interim;\n";
+
+    # A node that was moved to another rack comes up asking for the address it
+    # held there. Answering nothing leaves it retrying an address it can never
+    # have until its own timers give up; a DHCPNAK tells it to start over now.
+    #
+    # Each subnet declaration says "authoritative" as well, but that flag is
+    # read from the subnet the requested address belongs to -- and the whole
+    # point of this case is that it belongs to none of them. Only the global
+    # statement covers an address this server has never heard of, which is
+    # what Kea's global authoritative:true covers.
+    push @dhcpconf, "authoritative;\n";
     push @dhcpconf, "ignore client-updates;\n"; #Windows clients like to do all caps, very un xCAT-like
 
     #    push @dhcpconf, "update-static-leases on;\n"; #makedns rendered optional
