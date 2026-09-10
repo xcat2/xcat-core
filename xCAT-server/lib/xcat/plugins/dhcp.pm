@@ -2297,31 +2297,14 @@ sub process_request
                     }
                     delete($missingfiles{$dhcpver});
 
-                    open DHCPD_FD, "$generatedpath";
                     my $syscfg_dhcpd = "";
-                    my $found        = 0;
-
-                    my $ifarg = "$dhcpd_key=\"";
-                    foreach (keys %activenics) {
-                        if (/!remote!/) { next; }
-                        $ifarg .= " $_";
+                    if (open(DHCPD_FD, "$generatedpath")) {
+                        local $/;
+                        $syscfg_dhcpd = <DHCPD_FD>;
+                        close DHCPD_FD;
                     }
-                    $ifarg =~ s/\=\" /\=\"/;
-                    $ifarg .= "\"\n";
-
-                    while (<DHCPD_FD>) {
-                        if ($_ =~ m/^$dhcpd_key/) {
-                            $found = 1;
-                            $syscfg_dhcpd .= $ifarg;
-                        } else {
-                            $syscfg_dhcpd .= $_;
-                        }
-                    }
-
-                    if ($found eq 0) {
-                        $syscfg_dhcpd .= $ifarg;
-                    }
-                    close DHCPD_FD;
+                    $syscfg_dhcpd = _sysconfig_interfaces_content(
+                        $syscfg_dhcpd, $dhcpd_key, [ keys %activenics ]);
 
                     # write out the new file with the interfaces defined
                     open DBG_FD, '>', "$generatedpath";
@@ -3177,6 +3160,36 @@ sub dhcpd_sysconfig_uses_interface_key
         return 1;
     }
     return 0;
+}
+
+# Rewrite the daemon's sysconfig/default file so it names the interfaces xCAT
+# is serving. Returns the new file contents; the caller writes them out.
+sub _sysconfig_interfaces_content
+{
+    my ($content, $key, $nics) = @_;
+    $content = "" unless defined($content);
+
+    my $iflist = "";
+    foreach my $nic (@{$nics}) {
+        next if ($nic =~ /!remote!/);
+        $iflist .= " $nic";
+    }
+    $iflist =~ s/^ //;
+    my $ifarg = "$key=\"$iflist\"\n";
+
+    my $out   = "";
+    my $found = 0;
+    foreach my $line (split /^/, $content) {
+        if ($line =~ m/^$key/) {
+            $found = 1;
+            $out .= $ifarg;
+        } else {
+            $out .= $line;
+        }
+    }
+    $out .= $ifarg unless ($found);
+
+    return $out;
 }
 
 sub kea_ddns_enabled
