@@ -1449,9 +1449,13 @@ foreach my $case (@invalid_mac_cases) {
     # A node that has an operating system now, and a Windows UEFI install
     # waiting on the proxyDHCP daemon, both have to be handed no boot file.
     # ISC writes filename = "" into the node's host block, which outranks the
-    # subnet chain. On Kea only a reservation outranks a class, so if the
-    # reservation stays silent the subnet's architecture classes answer instead
-    # and an installed node netboots forever.
+    # subnet chain.
+    #
+    # The empty boot-file-name below is necessary and not sufficient on Kea:
+    # Kea reads an empty string as "not specified" and falls through to the
+    # classes, so the reservation alone does not stop the architecture classes
+    # answering. What stops them is the xcat-localboot class, asserted further
+    # down.
     no warnings 'redefine';
     local *xCAT_plugin::dhcp::proxydhcp = sub { return 1; };
 
@@ -1540,6 +1544,100 @@ foreach my $case (@invalid_mac_cases) {
         'and only the architectures ISC tags are tagged' );
     ok( !exists $by_name{'xcat-xnba-win01-aabbccddee04-bios'},
         'the node gets no xNBA class that would pre-empt the deferral' );
+}
+
+{
+    # spec.md S-31. Withholding the node's own classes and writing an empty
+    # boot-file-name into its reservation does not stop an installed node being
+    # netbooted: Kea reads the empty string as "not specified" and the classes
+    # everybody shares match on architecture and hand it a loader anyway. The
+    # machine then comes back as an xNBA second stage and is answered with the
+    # network's script -- so it reinstalls itself on every power cycle, and each
+    # such boot looks like a successful one.
+    #
+    # The MACs therefore go into one class that every boot-naming class is
+    # written to exclude.
+    my %tables = (
+        noderes => DHCPKeaResTable->new(
+            {
+                booted => { netboot => 'xnba' },
+                bootpx => { netboot => 'pxe' },
+                san01  => { netboot => 'xnba' },
+            }
+        ),
+        mac => DHCPKeaResTable->new(
+            {
+                booted => { mac => 'aa:bb:cc:dd:ee:05' },
+                bootpx => { mac => 'aa:bb:cc:dd:ee:06' },
+                san01  => { mac => 'aa:bb:cc:dd:ee:07' },
+            }
+        ),
+        chain => DHCPKeaResTable->new(
+            {
+                booted => { currstate => 'boot' },
+                bootpx => { currstate => 'boot' },
+                san01  => { currstate => 'iscsiboot' },
+            }
+        ),
+        iscsi => DHCPKeaResTable->new(
+            { san01 => { server => '192.0.2.9', target => 'iqn.2024-01.test:san01', lun => 0 } }
+        ),
+    );
+
+    no warnings 'redefine';
+    local *xCAT::Table::new = sub {
+        my ( $class, $name ) = @_;
+        return $tables{$name};
+    };
+    local *xCAT_plugin::dhcp::next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
+
+    # A class of the shape the architecture classes have: it names a boot file
+    # and so must learn to exclude these nodes.
+    my $config = {
+        Dhcp4 => {
+            'client-classes' => [
+                { name => 'xcat-bios', test => 'option[93].hex == 0x0000', 'boot-file-name' => 'xcat/xnba.kpxe' },
+                { name => 'xcat-opal', test => "option[93].hex == 0x000e", 'option-data' => [] },
+            ],
+        },
+    };
+
+    ok( xCAT_plugin::dhcp::kea_sync_node_client_classes( $config, [ 'booted', 'bootpx', 'san01' ] ),
+        'a node that is to boot from its disk changes the configuration' );
+
+    my @names = map { $_->{name} } @{ $config->{Dhcp4}{'client-classes'} };
+    my ($localboot) = grep { $_->{name} eq 'xcat-localboot' } @{ $config->{Dhcp4}{'client-classes'} };
+    ok( $localboot, 'the installed nodes land in a class of their own' );
+    is( $localboot->{test},
+        'pkt4.mac == 0xaabbccddee05 or pkt4.mac == 0xaabbccddee06',
+        'both netboot methods are in it, and the iSCSI node is not: its root disk is on the network and gPXE is what attaches it' );
+    is( $names[0], 'xcat-localboot',
+        'and it is defined first, because Kea rejects a member() test naming a class below it' );
+
+    my %by_name = map { $_->{name} => $_ } @{ $config->{Dhcp4}{'client-classes'} };
+    is( $by_name{'xcat-bios'}{test},
+        "(option[93].hex == 0x0000) and not member('xcat-localboot')",
+        'a class that names a boot file stops matching them' );
+    is( $by_name{'xcat-opal'}{test}, 'option[93].hex == 0x000e',
+        'a class that names none is left alone' );
+
+    # Regenerating must not wrap the test one layer deeper every time.
+    xCAT_plugin::dhcp::kea_sync_node_client_classes( $config, ['booted'] );
+    %by_name = map { $_->{name} => $_ } @{ $config->{Dhcp4}{'client-classes'} };
+    is( $by_name{'xcat-bios'}{test},
+        "(option[93].hex == 0x0000) and not member('xcat-localboot')",
+        'and running makedhcp again writes the same test, not a nested one' );
+    is( $by_name{'xcat-localboot'}{test},
+        'pkt4.mac == 0xaabbccddee05 or pkt4.mac == 0xaabbccddee06',
+        'a makedhcp for one node leaves the rest of the cluster in the class' );
+
+    # With the last of them gone the guard has to come off: a member() test
+    # naming a class that no longer exists is a configuration Kea refuses.
+    xCAT_plugin::dhcp::kea_remove_node_client_classes( $config, [ 'booted', 'bootpx' ] );
+    %by_name = map { $_->{name} => $_ } @{ $config->{Dhcp4}{'client-classes'} };
+    ok( !exists $by_name{'xcat-localboot'}, 'with no installed node left the class goes' );
+    is( $by_name{'xcat-bios'}{test}, 'option[93].hex == 0x0000',
+        'and the guard naming it goes with it' );
 }
 
 done_testing();

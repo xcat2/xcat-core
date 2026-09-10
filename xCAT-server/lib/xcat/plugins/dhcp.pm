@@ -1136,8 +1136,29 @@ sub addnode
 
         if ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'xnba' and $lstatements !~ /filename/) {
             if (-f "$tftpdir/xcat/xnba.kpxe") {
-                if ($doiscsi and $chainent and $chainent->{currstate} and ($chainent->{currstate} eq 'iscsiboot' or $chainent->{currstate} eq 'boot')) {
-                    $lstatements = 'if option client-architecture = 00:00 and not exists gpxe.bus-id { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; } ' . $lstatements;
+                if ($chainent and $chainent->{currstate} and ($chainent->{currstate} eq 'iscsiboot' or $chainent->{currstate} eq 'boot')) {
+
+                    # A node in state boot or iscsiboot has an operating system
+                    # and must be left to start it -- spec.md S-31. iSCSI is
+                    # the one case that still needs a loader, because the root
+                    # disk is on the network and gPXE is what attaches it: BIOS
+                    # firmware is given xnba.kpxe, and the second stage, which
+                    # announces gpxe.bus-id, is given nothing. Without an iSCSI
+                    # target there is nothing to attach and the node is given
+                    # no boot file at all, which is what Kea does for either
+                    # state (kea_node_boot_intent).
+                    #
+                    # This used to be gated on $doiscsi, so an ordinary
+                    # installed node fell through to the netboot branches
+                    # below and its xNBA second stage was handed the node's
+                    # install script -- silently reinstalling the machine on
+                    # every power cycle, since each such boot looks like a
+                    # successful boot.
+                    if ($doiscsi) {
+                        $lstatements = 'if option client-architecture = 00:00 and not exists gpxe.bus-id { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; } ' . $lstatements;
+                    } else {
+                        $lstatements = 'filename = \"\";' . $lstatements;
+                    }
                 } else {
 
                     # If proxydhcp daemon is enabled for windows deployment, do vendor-class-identifier of "PXEClient" to bump it over to proxydhcp.c
@@ -1161,8 +1182,15 @@ sub addnode
             }    #TODO: warn when windows
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'pxe' and $lstatements !~ /filename/) {
             if (-f "$tftpdir/xcat/xnba.kpxe") {
-                if ($doiscsi and $chainent and $chainent->{currstate} and ($chainent->{currstate} eq 'iscsiboot' or $chainent->{currstate} eq 'boot')) {
-                    $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } ' . $lstatements;
+                if ($chainent and $chainent->{currstate} and ($chainent->{currstate} eq 'iscsiboot' or $chainent->{currstate} eq 'boot')) {
+
+                    # S-31 again, and the same $doiscsi gate: without it an
+                    # installed pxe node was handed pxelinux.0 on every boot.
+                    if ($doiscsi) {
+                        $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } ' . $lstatements;
+                    } else {
+                        $lstatements = 'filename = \"\";' . $lstatements;
+                    }
                 } else {
                     $lstatements = 'if option vendor-class-identifier = \"ScaleMP\" { filename = \"vsmp/pxelinux.0\"; } else { filename = \"pxelinux.0\"; }' . $lstatements;
                 }
@@ -3704,14 +3732,98 @@ sub kea_sync_node_client_classes
         $changed = 1;
     }
 
+    # Same bookkeeping for the nodes that are to be handed no boot file: the
+    # remove above took this node range's MACs out of the class, and these are
+    # the ones it is to have from now on.
+    if (@{ $generated->{localboot} }) {
+        kea_set_localboot_client_class(
+            $config,
+            [ @{ kea_localboot_client_class_macs($config) }, @{ $generated->{localboot} } ]
+        );
+        $changed = 1;
+    }
+
     my $classes = $generated->{classes};
-    return $changed unless @$classes;
+    if (@$classes) {
+        $config->{Dhcp4} ||= {};
+        my @existing = @{ $config->{Dhcp4}{'client-classes'} || [] };
+        $config->{Dhcp4}{'client-classes'} = [ @$classes, @existing ];
+        $changed = 1;
+    }
+
+    kea_apply_localboot_guard($config) if $changed;
+
+    return $changed;
+}
+
+# Keep every class that names a boot file from matching a node that is to boot
+# from its disk, and keep the class those nodes are named in ahead of them:
+# Kea rejects a member() test naming a class that is not defined above it.
+#
+# This runs over the whole config rather than over the classes one generator
+# produced, because the leak is not confined to one of them -- the global
+# architecture classes, the per-network xNBA classes and the per-node classes
+# all name a boot file, and any one of them matching is a node reinstalling
+# itself. Applying the guard where the config is assembled means a class added
+# later is covered without anyone remembering to.
+#
+# It is also its own inverse: with no such node left the class is gone and the
+# guard comes back off, because a member() test naming a class that no longer
+# exists is a configuration Kea refuses to load.
+sub kea_apply_localboot_guard
+{
+    my ($config) = @_;
+
+    return unless $config && $config->{Dhcp4};
+    my $classes = $config->{Dhcp4}{'client-classes'} || [];
+    my $name    = xCAT::DHCP::BootPolicy->kea_localboot_class_name();
+    my $guard   = xCAT::DHCP::BootPolicy->kea_localboot_guard();
+
+    my ($localboot) = grep { ( $_->{name} || '' ) eq $name } @$classes;
+    my @rest = grep { ( $_->{name} || '' ) ne $name } @$classes;
+
+    foreach my $class (@rest) {
+        next unless defined $class->{test} and defined $class->{'boot-file-name'};
+
+        # Take off the guard this sub put on last time before putting it back,
+        # brackets and all, so regenerating does not wrap the test one layer
+        # deeper every time.
+        my $test = $class->{test};
+        $test =~ s/^\((.*)\) and \Q$guard\E$/$1/s;
+
+        $class->{test} = $localboot ? "($test) and $guard" : $test;
+    }
+
+    $config->{Dhcp4}{'client-classes'} = $localboot ? [ $localboot, @rest ] : \@rest;
+
+    return;
+}
+
+sub kea_localboot_client_class_macs
+{
+    my ($config) = @_;
+
+    my $name = xCAT::DHCP::BootPolicy->kea_localboot_class_name();
+    foreach my $class ( @{ ( $config->{Dhcp4} || {} )->{'client-classes'} || [] } ) {
+        next unless ( $class->{name} || '' ) eq $name;
+        return ( $class->{'user-context'} || {} )->{'xcat-macs'} || [];
+    }
+    return [];
+}
+
+sub kea_set_localboot_client_class
+{
+    my ( $config, $macs ) = @_;
 
     $config->{Dhcp4} ||= {};
-    my @existing = @{ $config->{Dhcp4}{'client-classes'} || [] };
-    $config->{Dhcp4}{'client-classes'} = [ @$classes, @existing ];
+    my $name = xCAT::DHCP::BootPolicy->kea_localboot_class_name();
+    my @classes = grep { ( $_->{name} || '' ) ne $name }
+      @{ $config->{Dhcp4}{'client-classes'} || [] };
+    my $localboot = xCAT::DHCP::BootPolicy->kea_localboot_client_class( macs => $macs );
+    unshift @classes, $localboot if $localboot;
+    $config->{Dhcp4}{'client-classes'} = \@classes;
 
-    return 1;
+    return;
 }
 
 sub kea_drop_client_class_macs
@@ -3778,6 +3890,19 @@ sub kea_remove_node_client_classes
         $changed = 1;
     }
 
+    # And out of the class of nodes that are to be handed no boot file, which
+    # is shared the same way. A node that has just been reinstalled leaves it
+    # here and is put back by the sync that follows if it is still in state
+    # boot.
+    my $lb_macs = kea_localboot_client_class_macs($config);
+    my @kept_lb = grep { !$nodes{ $_->{node} || '' } } @$lb_macs;
+    if ( scalar(@kept_lb) != scalar(@$lb_macs) ) {
+        kea_set_localboot_client_class( $config, \@kept_lb );
+        $changed = 1;
+    }
+
+    kea_apply_localboot_guard($config) if $changed;
+
     return $changed;
 }
 
@@ -3808,6 +3933,7 @@ sub kea_node_client_classes_for_nodes
     my @iscsi;
     my @noip;
     my @proxydhcp;
+    my @localboot;
     foreach my $node (@$nodes) {
         my $nrent = $nrents && $nrents->{$node} ? $nrents->{$node}->[0] : undef;
         my $netboot = $nrent ? $nrent->{netboot} : undef;
@@ -3848,8 +3974,13 @@ sub kea_node_client_classes_for_nodes
                 push @proxydhcp, {%record};
             } elsif ( $intent eq 'disk' ) {
 
-                # Nothing: the reservation names an empty boot file and that
-                # outranks anything a class could say.
+                # No boot classes of its own, and the reservation names an
+                # empty boot file -- but neither of those stops the classes
+                # everybody shares from naming one, so the MAC goes into the
+                # class those classes are written to exclude. Unless the node
+                # boots from an iSCSI target, which still needs a loader to
+                # attach the disk.
+                push @localboot, {%record} unless $ient and $ient->{server} and $ient->{target};
             } elsif ($netboot and $netboot eq 'xnba' and $nxtsrv) {
                 push @xnba, { %record, next_server => $nxtsrv, httpport => $httpport };
             } elsif ($netboot and $netboot eq 'pxe') {
@@ -3873,7 +4004,8 @@ sub kea_node_client_classes_for_nodes
             @{ xCAT::DHCP::BootPolicy->kea_proxydhcp_node_classes( nodes => \@proxydhcp ) },
             @{ xCAT::DHCP::BootPolicy->kea_iscsi_node_classes( nodes => \@iscsi ) },
         ],
-        noip => \@noip,
+        noip      => \@noip,
+        localboot => \@localboot,
     };
 }
 

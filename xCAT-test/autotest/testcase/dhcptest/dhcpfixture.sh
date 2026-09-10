@@ -121,6 +121,14 @@ LB_NODE=dhcptestboot
 LB_IP=10.99.0.81
 LB_MAC=02:00:dc:11:00:61
 
+# The same state on the other netboot method that has a boot-from-disk rule of
+# its own. An installed node must be left alone whichever way it was
+# provisioned, and the two methods are written as separate branches in the ISC
+# generator, so one of them being right proves nothing about the other.
+LB_PXE_NODE=dhcptestbootpxe
+LB_PXE_IP=10.99.0.82
+LB_PXE_MAC=02:00:dc:11:00:62
+
 # A machine that speaks BOOTP and not DHCP, and the web port a cluster that is
 # not serving on 80 would use.
 BOOTP_MAC=02:00:de:ad:b0:07
@@ -839,12 +847,16 @@ do_run_localboot() {
         arch=x86_64 netboot=xnba tftpserver="$SRV_IP" xcatmaster="$SRV_IP"
     chtab node="$LB_NODE" chain.currstate=boot \
         || die "cannot set chain.currstate for $LB_NODE"
-    echo done > "$STATE/localboot"
-    makedhcp "$LB_NODE" || die "makedhcp $LB_NODE failed"
+    extra_define "$LB_PXE_NODE" groups=dhcptest ip="$LB_PXE_IP" mac="$LB_PXE_MAC" \
+        arch=x86_64 netboot=pxe tftpserver="$SRV_IP" xcatmaster="$SRV_IP"
+    chtab node="$LB_PXE_NODE" chain.currstate=boot \
+        || die "cannot set chain.currstate for $LB_PXE_NODE"
+    makedhcp "$LB_NODE,$LB_PXE_NODE" || die "makedhcp for the installed nodes failed"
 
     dhcptest_run \
         --set booted_mac="$LB_MAC" --set booted_ip="$LB_IP" \
         --set booted_script="http://$SRV_IP/tftpboot/xcat/xnba/nodes/$LB_NODE" \
+        --set booted_pxe_mac="$LB_PXE_MAC" --set booted_pxe_ip="$LB_PXE_IP" \
         conf/localboot.conf || rc=1
     return $rc
 }

@@ -648,6 +648,52 @@ sub kea_drop_client_class {
     };
 }
 
+# The name of the class holding every MAC that is to be handed no boot file.
+sub kea_localboot_class_name { return 'xcat-localboot'; }
+
+# The test fragment that keeps a class from matching one of those MACs.
+sub kea_localboot_guard {
+    return "not member('" . kea_localboot_class_name() . "')";
+}
+
+# The MACs of nodes that have an operating system and must be left to start it.
+#
+# A node whose chain.currstate is boot or iscsiboot is given an empty
+# boot-file-name in its reservation, and that is not enough on its own: Kea
+# reads an empty string as "not specified" and falls through to the classes,
+# which match on architecture and hand the machine a loader anyway. It is the
+# same trap the DROP class above exists to avoid, and it is worse here, because
+# the loader then asks again as an xNBA second stage and is answered with the
+# network's boot script -- so an installed node netboots on every power cycle
+# instead of starting its disk. spec.md S-31.
+#
+# So the MACs are collected into one class and every class that names a boot
+# file is written to exclude members of it -- see kea_apply_localboot_guard.
+# One class shared by the whole cluster, with the user-context recording whose
+# MACs they are, so a later makedhcp for one node can rebuild it without losing
+# the rest: exactly how DROP is kept.
+#
+# A node booting from an iSCSI target is deliberately not in here. Its root
+# disk is on the network and gPXE is what attaches it, so it does still want a
+# loader; ISC draws the same line with $doiscsi.
+sub kea_localboot_client_class {
+    my ( $class, %opts ) = @_;
+
+    my @macs = grep { $_->{node} && $_->{mac} } @{ $opts{macs} || [] };
+    return unless @macs;
+
+    my @sorted = sort { $a->{node} cmp $b->{node} or $a->{mac} cmp $b->{mac} } @macs;
+
+    return {
+        name           => kea_localboot_class_name(),
+        test           => join( ' or ', map { _mac_test( $_->{mac} ) } @sorted ),
+        'user-context' => {
+            'xcat-purpose' => 'localboot-suppress',
+            'xcat-macs'    => [ map { { node => $_->{node}, mac => lc( $_->{mac} ) } } @sorted ],
+        },
+    };
+}
+
 #: The encapsulated space ISC declares as "option space isan" -- option 43
 #: carrying the initiator name in 203 and the root path in 201.
 sub kea_isan_option_defs {

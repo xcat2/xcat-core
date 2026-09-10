@@ -356,10 +356,20 @@ Scenario: A ScaleMP client is given the ScaleMP loader
 @S-31
 Scenario: A node told to boot from disk is not handed a loader
   Given a node whose chain.currstate is "boot" or "iscsiboot"
-  When it discovers
+  And it has no iSCSI target
+  When it discovers, with or without the xNBA user class
   Then it is offered its address
-  And it is not handed an xNBA script
-  # dhcp.pm:1171 -- otherwise a booted node would netboot forever.
+  And it is named no boot file at all, whatever its netboot method
+  # dhcp.pm:1139 -- otherwise a booted node netboots forever. "No boot file at
+  # all" rather than "not its own script": a node handed the stage-1 loader
+  # asks again as an xNBA second stage and is answered with the network's
+  # script, so stopping only the per-node script stops nothing. Both netboot
+  # methods that have a boot-from-disk rule, xnba and pxe, are covered by the
+  # same sentence for the same reason.
+  #
+  # An iSCSI node is the exception and keeps its loader: its root disk is on
+  # the network and gPXE is what attaches it. ISC gates that on $doiscsi; Kea
+  # leaves those MACs out of the xcat-localboot class.
 
 @S-32
 Scenario: A Windows UEFI install defers to the proxyDHCP daemon

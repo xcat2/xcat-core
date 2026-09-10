@@ -28,6 +28,10 @@ DERIVED_TARGETS = frozenset(["bootfile"])
 #: Operators that take no value.
 NULLARY_OPS = frozenset(["present", "absent"])
 
+#: Operators asserting that the reply is *not* something, which a reply that
+#: says nothing on the subject satisfies.
+NEGATIVE_OPS = frozenset(["!=", "not-in"])
+
 OPS = frozenset([
     "==", "!=", "in", "not-in", "present", "absent",
     "matches", "contains", "starts-with", "ends-with",
@@ -142,6 +146,15 @@ def evaluate(assertion, reply, context, extras=None):
                       actual="present" if present else "absent")
 
     if not present:
+        # A negative comparison is satisfied by a target that is not there at
+        # all: a reply naming no boot file has certainly not named the node's
+        # install script. Failing it instead would make "is not X" quietly
+        # stronger than it reads, and would fail the one reply that is most
+        # obviously right. `absent` remains the assertion to write when the
+        # absence itself is the point.
+        if assertion.op in NEGATIVE_OPS:
+            return Result(assertion, True, expected=expected, actual=None,
+                          detail="%s is not present in the reply" % (assertion.target,))
         return Result(assertion, False, expected=expected, actual=None,
                       detail="%s is not present in the reply" % (assertion.target,))
 

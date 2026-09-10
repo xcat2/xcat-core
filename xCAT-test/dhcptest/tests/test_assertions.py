@@ -83,6 +83,18 @@ class Evaluation(unittest.TestCase):
         self.assertFalse(self.check("bootfile matches ^$", nothing).ok)
         self.assertTrue(self.check("bootfile present").ok)
 
+    def test_a_negative_comparison_holds_against_a_target_that_is_absent(self):
+        # "is not the node's install script" is satisfied by a reply that names
+        # no boot file at all -- which is the strongest way a server can
+        # satisfy it. The same reading applies to `not-in`. Everything else
+        # still fails on an absent target, because there is nothing to compare.
+        nothing = offer(file="", options={54: "10.0.0.1"})
+        self.assertTrue(self.check("bootfile != pxelinux.0", nothing).ok)
+        self.assertTrue(self.check("option:67 != pxelinux.0", nothing).ok)
+        self.assertTrue(self.check("option:66 not-in 10.0.0.0/24", nothing).ok)
+        self.assertFalse(self.check("bootfile == pxelinux.0", nothing).ok)
+        self.assertFalse(self.check("bootfile starts-with http://", nothing).ok)
+
     def test_options_by_number_and_name(self):
         self.assertTrue(self.check("option:54 == 10.0.0.1").ok)
         self.assertTrue(self.check("option:server_id == 10.0.0.1").ok)

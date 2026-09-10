@@ -142,15 +142,19 @@ check:rc==0
 end
 
 start:dhcptest_boot_file_conditions
-description:A loader is named only when it is fetchable, and its URL names the right port
+description:A loader is named only when it is fetchable, when it is wanted, and its URL names the right port
 label:mn_only,dhcp,dhcp_wire
 os:Linux
-# Both of these change what the management node looks like before the
+# The first two change what the management node looks like before the
 # configuration is generated -- one takes a loader off disk, the other moves
 # the web server's port -- because both backends decide what to write by
 # reading those. Each puts the machine back and regenerates before returning,
 # so the cases that follow are not run against a cluster half way through an
 # experiment.
+#
+# The third asks the opposite question: a node that has an operating system
+# already must not be named a netboot script, however fetchable that script
+# is, or it reinstalls itself on every power cycle.
 cmd:#!/bin/bash
     set -u
     FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
@@ -160,6 +164,7 @@ cmd:#!/bin/bash
     rc=0
     "$FIX" run-loader-absent || rc=1
     "$FIX" run-httpport || rc=1
+    "$FIX" run-localboot || rc=1
     exit $rc
 check:rc==0
 end
