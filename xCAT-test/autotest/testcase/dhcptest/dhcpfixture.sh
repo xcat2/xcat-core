@@ -19,6 +19,7 @@
 #     dhcpfixture.sh setup                   build the network, the node and the config
 #     dhcpfixture.sh run                     run dhcptest against it
 #     dhcpfixture.sh run-arch                one boot file per client architecture
+#     dhcpfixture.sh run-netboot             one boot file per node netboot method
 #     dhcpfixture.sh run-lease               the lease itself: handshake, renew, rebind, NAK
 #     dhcpfixture.sh run-chainload           first stage versus chainloaded second stage
 #     dhcpfixture.sh backends                name every backend installed here
@@ -99,12 +100,13 @@ lease_time() {
     echo "${value:-43200}"
 }
 
-# What an unknown machine is told to boot, which is backend policy rather than
-# protocol: Kea puts an architecture class on the subnet so every client on it
-# is handed a loader, ISC leaves the boot file to the per-host blocks. An empty
-# answer means "do not assert this here".
+# What an unknown machine is told to boot.
+#
+# A machine being discovered has no reservation by definition, so the answer can
+# only come from the subnet -- and it has to come, or the machine has no way to
+# reach the state where someone could define it. The specification says so for
+# both backends (S-56), so this no longer asks which one is running.
 discovery_loader() {
-    [ "$(current_backend)" = kea ] || return 0
     arch_loader bios
 }
 
@@ -129,8 +131,21 @@ arch_loader() {
         aarch64)     echo "boot/grub2/grub2.aarch64" ;;
         riscv64)     echo "boot/grub2/grub2.riscv64" ;;
         riscv64http) echo "http://$SRV_IP/tftpboot/boot/grub2/grub2.riscv64" ;;
+        ia64)        echo "elilo.efi" ;;
+        ppc64)       echo "/boot/grub2/grub2.ppc" ;;
+        # No option 93 and no vendor class anyone recognises. The reply still
+        # has to name something, or the client cannot tell it was served.
+        fallback)    echo "/yaboot" ;;
     esac
 }
+
+# The three subnet answers that are a URL or a conf-file rather than a loader.
+# All of them are built out of the network the fixture defined, which is why
+# they are here and not in arch_loader.
+NETID="${NET}_${PREFIX}"
+opal_conf()  { echo "http://$SRV_IP/tftpboot/pxelinux.cfg/p/$NETID"; }
+s390x_conf() { echo "s390x/$NETID"; }
+onie_url()   { echo "http://$SRV_IP/install/onie/onie-installer"; }
 
 # The loaders whose presence changes what a backend answers, relative to tftpdir.
 #
@@ -378,14 +393,10 @@ do_run() {
         conf/static-vs-dynamic.conf || rc=1
 
     loader=$(discovery_loader)
-    if [ -n "$loader" ]; then
-        dhcptest_run \
-            --set unknown_mac="$UNKNOWN_MAC" --set pool="$POOL" \
-            --set discovery_loader="$loader" \
-            conf/discovery-bootfile.conf || rc=1
-    else
-        say "not asserting the discovery boot file: this backend leaves it to the per-host blocks"
-    fi
+    dhcptest_run \
+        --set unknown_mac="$UNKNOWN_MAC" --set pool="$POOL" \
+        --set discovery_loader="$loader" \
+        conf/discovery-bootfile.conf || rc=1
     return $rc
 }
 
@@ -395,37 +406,140 @@ do_run() {
 # now, the least wire coverage: a single grub2 assertion for one architecture.
 # Every architecture is asserted under every backend, with the same expected
 # loader for both -- see arch_loader for why nothing is skipped by backend.
+# The whole file runs in one invocation. It used to run one scenario at a time
+# with every other loader variable set to a placeholder, because only one of
+# them had a real value; now that each architecture has an answer the
+# specification states for both backends, there is nothing left to hide.
+#
+# The riscv64 HTTP scenario asserts a prefix and a substring rather than the
+# whole URL, so it reads the same riscv64_loader path the TFTP scenario does.
 do_run_arch() {
-    local rc=0 entry arch scenario variable loader
+    dhcptest_run --set tftp="$SRV_IP" \
+        --set bios_loader="$(arch_loader bios)" \
+        --set uefi_loader="$(arch_loader uefi)" \
+        --set aarch64_loader="$(arch_loader aarch64)" \
+        --set riscv64_loader="$(arch_loader riscv64)" \
+        --set ia64_loader="$(arch_loader ia64)" \
+        --set ppc64_loader="$(arch_loader ppc64)" \
+        --set fallback_loader="$(arch_loader fallback)" \
+        --set opal_conf="$(opal_conf)" \
+        --set s390x_conf="$(s390x_conf)" \
+        --set onie_url="$(onie_url)" \
+        conf/pxe-arch-matrix.conf
+}
 
-    # arch, the scenario that exercises it, and the variable that scenario
-    # reads its expected loader from. Every other loader variable is set to a
-    # value nothing matches, since the .conf declares all of them but only one
-    # scenario is run at a time.
-    for entry in \
-        "bios:pxe-bios-x86:bios_loader" \
-        "uefi:pxe-uefi-x64:uefi_loader" \
-        "aarch64:pxe-aarch64:aarch64_loader" \
-        "riscv64:pxe-riscv64-tftp:riscv64_loader" \
-        "riscv64http:httpboot-riscv64:riscv64_loader"
-    do
-        arch=${entry%%:*}
-        scenario=${entry#*:}; scenario=${scenario%%:*}
-        variable=${entry##*:}
+# One node per netboot method.
+#
+# The method is an attribute of the node, so the loader can only come from what
+# the operator wrote against it. A subnet-wide boot class sees the client
+# architecture and nothing else, so a backend that leans on one answers a nimol
+# node with an x86 loader and the machine does not install.
+#
+# name:method:ip:mac -- the addresses sit above the node the rest of the
+# fixture defines and below the dynamic pool, so nothing here collides.
+NETBOOT_NODES="
+dhcptestnbxnba:xnba:10.99.0.21:02:00:dc:11:00:21
+dhcptestnbpxe:pxe:10.99.0.22:02:00:dc:11:00:22
+dhcptestnbgrub:grub2:10.99.0.23:02:00:dc:11:00:23
+dhcptestnbybt:yaboot:10.99.0.24:02:00:dc:11:00:24
+dhcptestnbnml:nimol:10.99.0.25:02:00:dc:11:00:25
+dhcptestnbptb:petitboot:10.99.0.26:02:00:dc:11:00:26
+"
 
-        loader=$(arch_loader "$arch")
+# The node carrying the second NIC the operator marked *NOIP*: a port that must
+# never boot, on a machine that provisions through another one. It is a mac
+# table entry rather than a node of its own, which is the only way xCAT can
+# express it.
+NOIP_NODE=dhcptestnbnoip
+NOIP_NODE_IP=10.99.0.27
+NOIP_NODE_MAC=02:00:dc:11:00:27
+NOIP_MAC=02:00:dc:11:00:07
 
-        # The HTTP scenario asserts a prefix and a substring rather than the
-        # whole URL, so what it wants is the path inside it.
-        [ "$arch" = riscv64http ] && loader=boot/grub2/grub2.riscv64
+netboot_field() { echo "$1" | cut -d: -f"$2"; }
+netboot_mac()   { echo "$1" | cut -d: -f4-9; }
 
-        dhcptest_run -s "$scenario" --set tftp="$SRV_IP" \
-            --set bios_loader=- --set uefi_loader=- \
-            --set aarch64_loader=- --set riscv64_loader=- \
-            --set "$variable=$loader" \
-            conf/pxe-arch-matrix.conf || rc=1
+# What each method's node has to be handed. Same expectation for both backends:
+# the operator wrote the method, not the backend.
+netboot_loader() {
+    local method=$1 node=$2
+    case "$method" in
+        xnba)      arch_loader bios ;;
+        pxe)       echo "pxelinux.0" ;;
+        grub2)     echo "/boot/grub2/grub2-$node" ;;
+        yaboot)    echo "/yb/node/yaboot-$node" ;;
+        nimol)     echo "/vios/nodes/$node" ;;
+        petitboot) echo "http://$SRV_IP/tftpboot/petitboot/$node" ;;
+    esac
+}
+
+netboot_define() {
+    local entry name method ip mac
+    : > "$STATE/netboot" || die "cannot record the netboot nodes"
+
+    for entry in $NETBOOT_NODES; do
+        name=$(netboot_field "$entry" 1)
+        method=$(netboot_field "$entry" 2)
+        ip=$(netboot_field "$entry" 3)
+        mac=$(netboot_mac "$entry")
+
+        mkdef -f -t node -o "$name" groups=dhcptest ip="$ip" mac="$mac" \
+            arch=x86_64 netboot="$method" tftpserver="$SRV_IP" xcatmaster="$SRV_IP" \
+            || die "cannot define $name"
+        echo "$name" >> "$STATE/netboot"
+        makehosts "$name" || die "cannot add $name to /etc/hosts"
+        makedhcp "$name" || die "makedhcp $name failed"
     done
-    return $rc
+
+    # Two entries on one node: the port that provisions, and the port that must
+    # not. Only the second is asserted, but it cannot exist without the first.
+    mkdef -f -t node -o "$NOIP_NODE" groups=dhcptest ip="$NOIP_NODE_IP" \
+        mac="$NOIP_NODE_MAC!$NOIP_NODE|$NOIP_MAC!*NOIP*" \
+        arch=x86_64 netboot=grub2 tftpserver="$SRV_IP" xcatmaster="$SRV_IP" \
+        || die "cannot define $NOIP_NODE"
+    echo "$NOIP_NODE" >> "$STATE/netboot"
+    makehosts "$NOIP_NODE" || die "cannot add $NOIP_NODE to /etc/hosts"
+    makedhcp "$NOIP_NODE" || die "makedhcp $NOIP_NODE failed"
+}
+
+netboot_undefine() {
+    local name
+    [ -f "$STATE/netboot" ] || return 0
+    while read -r name; do
+        [ -n "$name" ] || continue
+        makedhcp -d "$name" >/dev/null 2>&1
+        makehosts -d "$name" >/dev/null 2>&1
+        rmdef "$name" >/dev/null 2>&1
+    done < "$STATE/netboot"
+}
+
+do_run_netboot() {
+    local entry name method ip mac
+    netboot_define
+
+    for entry in $NETBOOT_NODES; do
+        name=$(netboot_field "$entry" 1)
+        method=$(netboot_field "$entry" 2)
+        ip=$(netboot_field "$entry" 3)
+        mac=$(netboot_mac "$entry")
+        eval "${method}_node=\$name; ${method}_ip=\$ip; ${method}_mac=\$mac"
+    done
+
+    dhcptest_run \
+        --set xnba_mac="$xnba_mac"   --set xnba_ip="$xnba_ip" \
+        --set xnba_node="$xnba_node" --set xnba_loader="$(netboot_loader xnba "$xnba_node")" \
+        --set pxe_mac="$pxe_mac"     --set pxe_ip="$pxe_ip" \
+        --set pxe_loader="$(netboot_loader pxe "$pxe_node")" \
+        --set scalemp_loader="vsmp/pxelinux.0" \
+        --set grub2_mac="$grub2_mac" --set grub2_ip="$grub2_ip" \
+        --set grub2_loader="$(netboot_loader grub2 "$grub2_node")" \
+        --set yaboot_mac="$yaboot_mac" \
+        --set yaboot_loader="$(netboot_loader yaboot "$yaboot_node")" \
+        --set nimol_mac="$nimol_mac" \
+        --set nimol_loader="$(netboot_loader nimol "$nimol_node")" \
+        --set petitboot_mac="$petitboot_mac" \
+        --set petitboot_conf="$(netboot_loader petitboot "$petitboot_node")" \
+        --set noip_mac="$NOIP_MAC" \
+        conf/netboot-methods.conf
 }
 
 # The two halves of a chained network boot.
@@ -533,6 +647,7 @@ do_teardown() {
 
     [ -f "$STATE/node" ] && { makedhcp -d "$NODE" >/dev/null 2>&1; makehosts -d "$NODE" >/dev/null 2>&1; rmdef "$NODE" >/dev/null 2>&1; }
     [ -f "$STATE/adopt" ] && { makedhcp -d "$ADOPT_NODE" >/dev/null 2>&1; makehosts -d "$ADOPT_NODE" >/dev/null 2>&1; rmdef "$ADOPT_NODE" >/dev/null 2>&1; }
+    netboot_undefine
     [ -f "$STATE/network" ] && rmdef -t network -o "$NETOBJ" >/dev/null 2>&1
     [ -f "$STATE/veth" ] && ip link del "$IF_SRV" >/dev/null 2>&1
     withdraw_loaders
@@ -573,13 +688,14 @@ dispatch() {
     backend-teardown) shift; do_backend_teardown "${1:-}" ;;
     run)         do_run ;;
     run-arch)      do_run_arch ;;
+    run-netboot)   do_run_netboot ;;
     run-lease)     do_run_lease ;;
     run-chainload) do_run_chainload ;;
     delegate)      do_delegate ;;
     run-hierarchy) do_run_hierarchy ;;
     run-adoption)  do_run_adoption ;;
     teardown)    do_teardown ;;
-    *)           die "usage: $0 {check|setup|generate|backends|backend-setup <isc|kea>|backend-teardown <isc|kea>|run|run-arch|run-lease|run-chainload|delegate|run-hierarchy|run-adoption|teardown}" ;;
+    *)           die "usage: $0 {check|setup|generate|backends|backend-setup <isc|kea>|backend-teardown <isc|kea>|run|run-arch|run-netboot|run-lease|run-chainload|delegate|run-hierarchy|run-adoption|teardown}" ;;
     esac
 }
 

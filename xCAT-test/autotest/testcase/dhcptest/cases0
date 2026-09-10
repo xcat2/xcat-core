@@ -51,7 +51,7 @@ os:Linux
 # puts all of that back from a trap, but a ci_test case running in between would
 # be sharing a management node that is mid-reconfiguration. So the CI driver
 # runs the whole ci_test set first, and only then runs this set -- see
-# run_dhcp_wire_cases in github_action_xcat_test.pl.
+# run_dhcp_wire_test in github_action_xcat_test.pl.
 #
 # Keeping them out of ci_test is also what stops them being run twice. The set
 # is run once per DHCP backend installed: against ISC, then against Kea, each
@@ -90,6 +90,29 @@ cmd:#!/bin/bash
     trap '"$FIX" teardown' EXIT
     "$FIX" setup || exit 1
     "$FIX" run-arch || exit 1
+check:rc==0
+end
+
+start:dhcptest_netboot_methods
+description:A node is handed the loader its netboot method names, whatever its architecture says
+label:mn_only,dhcp,dhcp_wire
+os:Linux
+# The other direction from the architecture case. There, nobody has defined the
+# machine and the answer has to come from the subnet; here the operator has
+# said how this particular node boots, and the answer has to come from that.
+# A backend that leans on a subnet-wide boot class answers a nimol or a yaboot
+# node with an x86 loader, and the machine does not install.
+#
+# The *NOIP* port is asserted in the same case because it is the same question
+# asked backwards: a marking on one node's NIC has to beat whatever the subnet
+# would otherwise have said.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
+    "$FIX" check || exit 0
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    "$FIX" run-netboot || exit 1
 check:rc==0
 end
 
