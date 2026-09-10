@@ -178,23 +178,22 @@ Step types: `discover`, `request`, `renew`, `rebind`, `release`, `decline`,
 | `discover-offer.conf` | one DISCOVER draws exactly one OFFER | `net`, `server` |
 | `full-lease.conf` | DISCOVER/OFFER/REQUEST/ACK yields the offered address | `net` |
 | `static-vs-dynamic.conf` | a reserved MAC gets its address; an unreserved one gets a pool address | `reserved_mac`, `reserved_ip`, `unreserved_mac`, `pool` |
-| `no-reply.conf` | on a reservations-only subnet, an unreserved MAC is ignored | `unreserved_mac` |
 | `pxe-arch-matrix.conf` | each client architecture (option 93) is offered its own loader | `tftp`, `*_loader` |
 | `ipxe-userclass.conf` | stage 1 and stage 2 differ, in both user-class encodings | `user_class`, `stage1_loader` |
 | `renew-rebind.conf` | a lease survives RENEW and REBIND | `net` |
 | `provision-vs-discovery.conf` | a known machine gets its reservation and its own loader; an unknown one gets a pool address | `node_mac`, `node_ip`, `node_loader`, `pool`, `next_server`, `unknown_mac` |
 | `discovery-bootfile.conf` | an unknown machine is handed a loader too, not just an address | `unknown_mac`, `pool`, `discovery_loader` |
-| `node-specific-second-stage.conf` | the chainloaded second stage names the host it was handed to | `node_mac`, `node_ip`, `node_name`, `node_loader`, `user_class`, `stage2_prefix` |
+| `netboot-methods.conf` | a node is handed the loader its netboot method names, and a `*NOIP*` port is not answered | `*_mac`, `*_ip`, `*_loader`, `xnba_node`, `petitboot_conf`, `noip_mac` |
 | `hierarchy-dhcpserver.conf` | a subnet whose pool belongs to another server ignores unknown MACs but still points known ones at it | `node_mac`, `node_ip`, `delegate`, `unknown_mac` |
+| `discovery-adoption.conf` | a machine discovered out of the pool is served its own address once defined | `adopt_mac`, `adopt_ip`, `pool` |
+| `nak-foreign-address.conf` | a REQUEST for an address off this network is refused | `foreign_ip` |
 
-Several of these files describe **mutually exclusive** server configurations,
-which is why they are separate files rather than scenarios in one. What an
-unknown MAC gets is policy, not protocol: `static-vs-dynamic.conf` and
-`no-reply.conf` disagree about whether it is answered at all, and
-`provision-vs-discovery.conf` and `discovery-bootfile.conf` disagree about
-whether it is told what to boot — ISC dhcpd leaves that to the per-host blocks,
-Kea and dnsmasq put it on the subnet. Neither is wrong. Run whichever matches
-the network under test.
+`provision-vs-discovery.conf` and `discovery-bootfile.conf` are split apart for
+a different reason from the rest: one asserts the boot file a *known* machine
+is handed, the other the boot file an *unknown* one is handed, and a run that
+only has a node defined can use the first without the second. Both hold on any
+xCAT-served network — see `spec.md` S-56, which requires the subnet to answer
+an unknown machine with a loader on either backend.
 
 Splitting on that boundary rather than using `-s` is deliberate: `--set` values
 are resolved when a file is loaded, before `-s` selects anything, so an unused

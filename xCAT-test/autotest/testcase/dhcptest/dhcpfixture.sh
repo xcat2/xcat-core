@@ -130,7 +130,6 @@ arch_loader() {
         uefi)        echo "xcat/xnba.efi" ;;
         aarch64)     echo "boot/grub2/grub2.aarch64" ;;
         riscv64)     echo "boot/grub2/grub2.riscv64" ;;
-        riscv64http) echo "http://$SRV_IP/tftpboot/boot/grub2/grub2.riscv64" ;;
         ia64)        echo "elilo.efi" ;;
         ppc64)       echo "/boot/grub2/grub2.ppc" ;;
         # No option 93 and no vendor class anyone recognises. The reply still
@@ -146,6 +145,13 @@ NETID="${NET}_${PREFIX}"
 opal_conf()  { echo "http://$SRV_IP/tftpboot/pxelinux.cfg/p/$NETID"; }
 s390x_conf() { echo "s390x/$NETID"; }
 onie_url()   { echo "http://$SRV_IP/install/onie/onie-installer"; }
+
+# The second stage of a chained xNBA boot, in its two forms. A client the
+# server holds no reservation for can only be answered per network; one it does
+# know is answered per node, and that is the whole point of the second stage --
+# two machines chainloading at the same instant must not run the same script.
+xnba_net_url()  { echo "http://$SRV_IP/tftpboot/xcat/xnba/nets/$NETID"; }
+xnba_node_url() { echo "http://$SRV_IP/tftpboot/xcat/xnba/nodes/$1"; }
 
 # The loaders whose presence changes what a backend answers, relative to tftpdir.
 #
@@ -527,6 +533,7 @@ do_run_netboot() {
     dhcptest_run \
         --set xnba_mac="$xnba_mac"   --set xnba_ip="$xnba_ip" \
         --set xnba_node="$xnba_node" --set xnba_loader="$(netboot_loader xnba "$xnba_node")" \
+        --set xnba_stage2="$(xnba_node_url "$xnba_node")" \
         --set pxe_mac="$pxe_mac"     --set pxe_ip="$pxe_ip" \
         --set pxe_loader="$(netboot_loader pxe "$pxe_node")" \
         --set scalemp_loader="vsmp/pxelinux.0" \
@@ -556,6 +563,8 @@ do_run_netboot() {
 # no node has to be defined with netboot=xnba for it.
 do_run_chainload() {
     dhcptest_run --set user_class=xNBA --set stage1_loader="$(arch_loader bios)" \
+        --set stage1_uefi_loader="$(arch_loader uefi)" \
+        --set stage2_loader="$(xnba_net_url)" \
         conf/ipxe-userclass.conf
 }
 
@@ -637,6 +646,7 @@ do_delegate() {
 do_run_hierarchy() {
     ( cd "$DHCPTEST" && python3 src/dhcptest run -i "$IF_CLI" \
         --set node_mac="$NODE_MAC" --set node_ip="$NODE_IP" \
+        --set node_loader="$(node_loader)" \
         --set delegate="$DELEGATE_IP" --set unknown_mac="$UNKNOWN_MAC" \
         conf/hierarchy-dhcpserver.conf )
 }
