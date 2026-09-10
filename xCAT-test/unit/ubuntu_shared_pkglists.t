@@ -39,7 +39,8 @@ sub resolved {
 }
 
 # The shared lists keep ntp for the releases that still carry it. aarch64 has no list of its own.
-foreach my $case ( [ $install, 'compute' ], [ $install, 'service' ], [ $install, 'kvm' ], [ $netboot, 'compute' ] ) {
+# The install compute profile gets a 24.04 list of its own next, so it is no longer pinned here.
+foreach my $case ( [ $install, 'service' ], [ $install, 'kvm' ], [ $netboot, 'compute' ] ) {
     my ( $dir, $profile ) = @$case;
     my ( $file, $p ) = resolved( $dir, $profile, 'ubuntu24.04.4', 'aarch64' );
     is( $file, "$profile.pkglist", "$profile on 24.04 without a list of its own resolves to the shared list" );
