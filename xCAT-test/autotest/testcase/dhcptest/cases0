@@ -1,0 +1,46 @@
+# dhcptest drives real DHCP transactions on the wire and asserts on the
+# replies. It is implementation-agnostic: it never reads the xCAT database and
+# never runs an xCAT command, so it tests what a booting node would actually
+# see rather than what the generated config says.
+#
+# The first two cases are offline -- no network, no root, no scapy -- and are
+# safe anywhere.
+#
+# The third sends real packets. Point it at a provisioning NIC this MN serves
+# DHCP on by exporting DHCPTEST_NIC before running xcattest:
+#
+#     DHCPTEST_NIC=eth1 xcattest -f cluster.conf -t dhcptest_discover_offer
+#
+# A plain environment variable rather than an xcattest $$VAR: an undefined
+# $$VAR fails the case outright, and this one has to be able to stand down.
+# Without the variable, without scapy, or without an address on that NIC, it
+# says so and passes, which is what lets it carry ci_test -- the CI MN is
+# single-node with no provisioning network. Read a pass as real coverage only
+# when the log shows the ok lines.
+
+start:dhcptest_unit_tests
+description:dhcptest's own unit tests: no network, no root, no scapy needed
+label:mn_only,ci_test,dhcp
+os:Linux
+cmd:cd /opt/xcat/share/xcat/tools/autotest/dhcptest && python3 -m unittest discover -s tests
+check:rc==0
+end
+
+start:dhcptest_validate_conf
+description:Every shipped dhcptest scenario parses and is a legal DHCP exchange
+label:mn_only,ci_test,dhcp
+os:Linux
+cmd:cd /opt/xcat/share/xcat/tools/autotest/dhcptest && python3 src/dhcptest validate conf/*.conf
+check:rc==0
+check:output=~scenario
+end
+
+start:dhcptest_discover_offer
+description:A DISCOVER on the provisioning NIC draws exactly one OFFER from this MN
+label:mn_only,ci_test,dhcp
+os:Linux
+# The network and the server address come from the NIC itself, so this case
+# needs no xCAT lookup and stays valid whatever the DHCP backend is.
+cmd:NIC=${DHCPTEST_NIC:-}; if [ -z "$NIC" ]; then echo "dhcptest skipped: set DHCPTEST_NIC to a provisioning NIC to run this"; exit 0; fi; if ! python3 -c "import scapy" 2>/dev/null; then echo "dhcptest skipped: python3-scapy is not installed"; exit 0; fi; CIDR=$(ip -4 -o addr show dev $NIC 2>/dev/null | awk '{print $4; exit}'); if [ -z "$CIDR" ]; then echo "dhcptest skipped: $NIC has no address, so there is no network to assert on"; exit 0; fi; MNIP=${CIDR%%/*}; NET=$(python3 -c "import ipaddress,sys; print(ipaddress.ip_interface(sys.argv[1]).network)" $CIDR); cd /opt/xcat/share/xcat/tools/autotest/dhcptest && python3 src/dhcptest run -i $NIC --set net=$NET --set server=$MNIP conf/discover-offer.conf
+check:rc==0
+end

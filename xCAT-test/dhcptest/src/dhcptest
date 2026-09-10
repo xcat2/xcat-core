@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+"""dhcptest -- test a DHCP server from the wire.
+
+Runs straight out of a checkout: this script puts its own directory on
+sys.path, so no installation, no virtualenv and no pip are involved. The only
+runtime dependency beyond the standard library is scapy, and only the
+subcommands that actually send packets need it.
+"""
+
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+
+from dhcptest_lib.cli import main          # noqa: E402  (path set up above)
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -5,3 +5,4 @@ share/doc/man1/* opt/xcat/share/doc/man1
 autotest opt/xcat/share/xcat/tools
 unit opt/xcat/share/xcat/tools/autotest
 integration opt/xcat/share/xcat/tools/autotest
+dhcptest opt/xcat/share/xcat/tools/autotest

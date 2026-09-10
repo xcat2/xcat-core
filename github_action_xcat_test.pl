@@ -503,6 +503,46 @@ sub run_bats_tests{
 }
 
 #--------------------------------------------------------
+# Fuction name: run_dhcptest_unit_tests
+# Description:  Run the dhcptest offline checks: its Python unit tests and
+#               `dhcptest validate` over every shipped .conf. Both are
+#               unprivileged and touch no network -- the wire scenarios need a
+#               provisioning NIC and a DHCP server, so they are not run here.
+#               Skipped when python3 is absent rather than failing the build.
+# Attributes:
+# Return code:  0 all checks passed, 1 otherwise
+#--------------------------------------------------------
+sub run_dhcptest_unit_tests{
+    my $testdir = "$unitsrc/xCAT-test/dhcptest";
+    if (! -d $testdir) {
+        print "[run_dhcptest_unit_tests] no dhcptest found under $testdir\n";
+        return 0;
+    }
+    runcmd("which python3 2>/dev/null");
+    if($::RUNCMD_RC){
+        print "[run_dhcptest_unit_tests] python3 is not installed, skipping\n";
+        return 0;
+    }
+
+    my $cmd = "cd $testdir && python3 -m unittest discover -s tests"
+            . " && python3 src/dhcptest validate conf/*.conf";
+    print "[run_dhcptest_unit_tests] running $cmd\n";
+    my @output = runcmd("$cmd");
+    print Dumper \@output;
+    if($::RUNCMD_RC){
+        print RED "[run_dhcptest_unit_tests] $cmd ....[Failed]\n";
+        $check_result_str .= "> **DHCPTEST TESTS Failed** : Please click ``Details`` label in ``Merge pull request`` box for detailed information\n";
+        print $check_result_str;
+        return 1;
+    }
+
+    print "[run_dhcptest_unit_tests] $cmd ....[Pass]\n";
+    $check_result_str .= "> **DHCPTEST TESTS Successful**\n";
+    print $check_result_str;
+    return 0;
+}
+
+#--------------------------------------------------------
 # Fuction name: check_syntax
 # Description:
 # Attributes:
@@ -751,5 +791,16 @@ if($rst){
     exit $rst;
 }
 mark_time("run_fast_regression_test");
+
+#Run the dhcptest offline checks -- unit tests plus `dhcptest validate` -- last:
+#they exercise the source tree rather than the installed copy, and nothing else
+#in the run depends on them.
+print GREEN "\n------Running xCAT-test dhcptest checks ------\n";
+$rst = run_dhcptest_unit_tests();
+if($rst){
+    print RED "Run of xCAT-test dhcptest checks failed\n";
+    exit $rst;
+}
+mark_time("run_dhcptest_unit_tests");
 
 exit 0;

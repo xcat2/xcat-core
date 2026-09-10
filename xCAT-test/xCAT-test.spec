@@ -21,6 +21,15 @@ BuildRequires: perl-Pod-Html
 BuildArch: noarch
 %endif
 
+# dhcptest needs scapy, which lives in EPEL on EL rather than in the base
+# repositories. A hard Requires: would make this package uninstallable on a
+# management node without EPEL, so it is only recommended: dhcptest exits 3
+# with an actionable message when scapy is absent, and nothing else in
+# xCAT-test needs it. Recommends: is not understood by rpm before EL 8.
+%if 0%{?suse_version} || 0%{?rhel} >= 8
+Recommends: python3-scapy
+%endif
+
 %description
 Provides automated test tool and buckets to help test xCAT commands automatically.
 
@@ -64,6 +73,8 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/man1/*
 cp -r autotest $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
 cp -r unit $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/autotest
 cp -r integration $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/autotest
+cp -r dhcptest $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/autotest
+chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/autotest/dhcptest/src/dhcptest
 
 
 %clean
