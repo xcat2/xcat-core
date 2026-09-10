@@ -613,12 +613,19 @@ foreach my $case (@sysconfig_policy_cases) {
     my $r = $reservations->[0] || {};
     is( $r->{'ip-address'},  '192.168.201.21',    'service node reservation carries the node IP' );
     is( $r->{'hw-address'},  '42:d7:c0:a8:c9:15', 'service node reservation carries the node MAC' );
-    # Fully qualified, trailing dot and all. Kea builds option 12 out of this
-    # field and appends ddns-qualifying-suffix to anything that is not already
-    # qualified, so a bare name reached the node as an FQDN while ISC, which
-    # writes option 12 and the DDNS name separately, sent the node's own name.
-    # S-35 asks for the node's own name on both.
-    is( $r->{hostname},      'svc01.',            'service node reservation carries the hostname' );
+    # The name travels as the reservation's own host-name option and the
+    # "hostname" field is left out entirely. Kea builds option 12 out of that
+    # field and appends ddns-qualifying-suffix to it, so a node asking who it
+    # was got an FQDN while ISC, which writes option 12 and the DDNS name as
+    # separate statements, sent the node's own name. S-35 asks for the node's
+    # own name on both.
+    ok( !exists $r->{hostname},
+        'a reservation carries no hostname field for Kea to qualify' );
+    is_deeply(
+        [ grep { $_->{name} eq 'host-name' } @{ $r->{'option-data'} || [] } ],
+        [ { name => 'host-name', data => 'svc01' } ],
+        'service node reservation carries its name as the host-name option'
+    );
     ok( !exists $r->{'next-server'},
         'a node that names no server of its own leaves next-server to the subnet' );
 }
@@ -906,8 +913,8 @@ foreach my $case (@invalid_mac_cases) {
     }
 
     is_deeply(
-        [ map { $_->{hostname} } @$reservations ],
-        ['valid01.'],
+        [ map { $_->{'ip-address'} } @$reservations ],
+        ['192.0.2.30'],
         'an unresolved hostname does not block later valid Kea reservations'
     );
     is_deeply(

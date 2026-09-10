@@ -1012,9 +1012,8 @@ sub _reservation_matches {
         next unless defined $reservation->{$field};
         my ( $have, $want ) = ( lc( $reservation->{$field} ), lc( $match->{$field} ) );
 
-        # A reservation's hostname is written fully qualified -- with the
-        # trailing dot that stops Kea appending ddns-qualifying-suffix to the
-        # name it puts in option 12. A caller looking a node up by name has no
+        # A hostname written by another tool may be fully qualified, with the
+        # trailing dot that says so. A caller looking a node up by name has no
         # reason to know that, so the dot is not part of the comparison.
         if ( $field eq 'hostname' ) {
             s/\.$// foreach ( $have, $want );

@@ -405,11 +405,10 @@ my $found = $backend->query_reservations( $reservation_config, { hostname => 'no
 is( scalar @$found, 1, 'reservation query finds hostname match' );
 is( $found->[0]{'subnet-id'}, 10, 'reservation query includes subnet id' );
 
-# A reservation is written with its hostname fully qualified, because that is
-# what stops Kea appending ddns-qualifying-suffix to the name it hands the node
-# in option 12. Nothing that looks a node up knows about that dot, so the
-# lookup has to find the node either way -- otherwise `makedhcp -d` stops
-# matching by name and silently leaves the reservation behind.
+# A reservation written by another tool may carry its hostname fully qualified,
+# with the trailing dot that says so. Nothing that looks a node up knows about
+# that dot, so the lookup has to find the node either way -- otherwise
+# `makedhcp -d` stops matching by name and silently leaves it behind.
 $backend->upsert_reservations(
     $reservation_config,
     [

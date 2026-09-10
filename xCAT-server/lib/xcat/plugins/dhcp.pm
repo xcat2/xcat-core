@@ -3655,19 +3655,23 @@ sub kea_node_reservations
             next;
         }
 
-        # The trailing dot is what keeps option 12 the node's own name. Kea
-        # answers a reservation's host-name option out of this one field, and
-        # qualifies it with ddns-qualifying-suffix on the way out -- so with
-        # DDNS configured a node asking who it is was told
-        # "node01.cluster.example.com" while ISC, which builds option 12 and
-        # the DDNS name from separate statements, said "node01". A name that
-        # already ends in a dot is fully qualified and is not qualified again,
-        # which leaves the wire agreeing with ISC and with S-35. The suffix
-        # still applies to the dynamic clients that have no reservation.
+        # Option 12 is written as the reservation's own option-data and the
+        # reservation carries no "hostname" field at all, because Kea builds
+        # option 12 out of that field and runs it through
+        # ddns-qualifying-suffix on the way out: with DDNS configured a node
+        # asking who it was got "node01.cluster.example.com" while ISC, which
+        # writes option host-name and ddns-hostname as separate statements,
+        # said "node01". Kea 3.0 leaves a name already ending in a dot alone,
+        # but 2.4 -- what Ubuntu 24.04 ships -- qualifies it regardless, and a
+        # reservation's option-data cannot override the field either:
+        # processHostnameOption adds option 12 before appendRequestedOptions
+        # runs, and appendRequestedOptions only fills in what is not already
+        # there. Leaving the field out is the one form that answers "node01"
+        # on both. The suffix still qualifies the dynamic clients that have no
+        # reservation.
         my %reservation = (
             'subnet-id'  => $subnet_id,
             'hw-address' => $mac,
-            hostname     => "$hname.",
             'ip-address' => $ip,
         );
         $reservation{'next-server'} = $nxtsrv if $nxtsrv && $nxtsrv !~ /\$\{/;
@@ -4043,10 +4047,20 @@ sub kea_query_node
     foreach my $reservation (@found) {
         my $key = join('|', map { $reservation->{$_} || '' } qw(subnet-id hw-address ip-address hostname));
         next if $seen{$key}++;
+        # The name a reservation carries is its host-name option, not a
+        # "hostname" field -- see kea_reservations_for_nodes -- so report
+        # whichever of the two this reservation was written with.
+        my $hostname = $reservation->{hostname};
+        foreach my $option ( @{ $reservation->{'option-data'} || [] } ) {
+            next unless ( $option->{name} || '' ) eq 'host-name';
+            $hostname = $option->{data};
+            last;
+        }
+
         my $msg = "$node:";
         $msg .= " ip-address = $reservation->{'ip-address'}" if $reservation->{'ip-address'};
         $msg .= " hardware-address = $reservation->{'hw-address'}" if $reservation->{'hw-address'};
-        $msg .= " hostname = $reservation->{hostname}" if $reservation->{hostname};
+        $msg .= " hostname = $hostname" if $hostname;
         $callback->({ data => [$msg] });
     }
 }
