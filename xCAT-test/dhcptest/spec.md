@@ -225,10 +225,11 @@ Scenario Outline: The user class is recognised however the client encodes it
     | encoding                                  |
     | a bare string, as most clients send it    |
     | RFC 3004 length-prefixed, as the RFC says |
-  # Kea accepts both -- BootPolicy.pm:252 tests option[77].text, the raw hex,
-  # and the length-prefixed substring. The ISC chain compares
-  # `option user-class-identifier = "xNBA"` against option 77 declared as a
-  # plain string (dhcp.pm:4920), which is the bare form only.
+  # Kea accepts both: kea_xnba_user_class_test tests option[77].text, the raw
+  # hex, and the length-prefixed substring. ISC accepts both through
+  # isc_xnba_user_class_test, which pairs the bare comparison with
+  # `substring(option user-class-identifier, 1, 4)` -- option 77 is declared as
+  # a plain string there (dhcp.pm), so offset 1 skips the RFC 3004 length byte.
 
 Scenario: A known node's second stage is addressed to that node
   Given a node whose netboot method is xnba
@@ -606,8 +607,18 @@ Scenario: Known asymmetries between the backends
   #                                Kea offers it only per node.
   #   no match at all              ISC falls through to /yaboot; Kea offers
   #                                no boot file.
-  #   user class, RFC 3004 form    Kea matches the length-prefixed encoding;
-  #                                the ISC chain compares the bare string only.
+  #   netboot=xnba, netboot=nimol  ISC has a branch for each;
+  #                                kea_boot_for_node has neither.
+  #   netboot=petitboot            Kea sets boot-file-name as well as
+  #                                conf-file; ISC sets conf-file only.
+  #   option 12 (host-name)        Kea always sends the node name; ISC emits
+  #                                `send host-name` through OMAPI, which is a
+  #                                parameter for the reply's sname/file
+  #                                handling rather than option 12, and rewrites
+  #                                it to `option host-name` only on the static
+  #                                host fallback path (dhcp.pm _static_host_
+  #                                statements). Do not assert option 12 in a
+  #                                shared .conf.
 ```
 
 ---
@@ -658,3 +669,23 @@ Scenario: The v6 daemon serves the same interfaces as the v4 one
   pool address versus being ignored -- they belong in separate `.conf` files,
   chosen by whoever knows how the network under test is configured. Running
   both against one network will always fail one of them.
+
+### What this specification does not cover on the wire
+
+Stated so that a green run is not read as more than it is:
+
+- **DHCPv6.** `dhcptest` speaks IPv4 only: it builds a BOOTP frame on UDP
+  68→67. Everything under *Feature: IPv6* is therefore either asserted from the
+  generated configuration in `xCAT-test/unit/dhcp_*.t` or not asserted at all.
+- **Relay agents.** `giaddr` and option 82 decide which subnet a reply is drawn
+  from, and no scenario here sends a relayed request: doing it honestly needs a
+  relay agent on a second network, not a forged `giaddr` from the same wire.
+  The hierarchy scenarios cover the part that is observable without one -- a
+  pool handed to another server stops being offered.
+- **Service node deployment as a distinct case.** A service node boots exactly
+  as a compute node does; what differs is what it serves afterwards, which is
+  `servicenode.dhcpinterfaces` and the delegated pool. Both are covered, as
+  `[config]` and as the hierarchy scenarios respectively.
+- **The architectures no loader exists for on the machine under test.** The
+  fixture skips those by name rather than asserting a filename that was never
+  configured; read the log for which ones actually ran.

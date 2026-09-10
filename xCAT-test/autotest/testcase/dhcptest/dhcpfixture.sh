@@ -18,10 +18,14 @@
 #     dhcpfixture.sh check                   is this machine able to run the wire cases
 #     dhcpfixture.sh setup                   build the network, the node and the config
 #     dhcpfixture.sh run                     run dhcptest against it
+#     dhcpfixture.sh run-arch                one boot file per client architecture
+#     dhcpfixture.sh run-lease               the lease itself: handshake, renew, rebind, NAK
+#     dhcpfixture.sh run-chainload           first stage versus chainloaded second stage
 #     dhcpfixture.sh backend <isc|kea>       switch backend and regenerate
 #     dhcpfixture.sh alt-backend             name the other backend, if it is installed
 #     dhcpfixture.sh delegate                hand the dynamic pool to another server
 #     dhcpfixture.sh run-hierarchy           run dhcptest against the delegated network
+#     dhcpfixture.sh run-adoption            discover a machine, define it, serve it its own address
 #     dhcpfixture.sh teardown                put everything back
 #
 # `setup` records what it changed under $STATE and `teardown` restores it, so
@@ -37,12 +41,25 @@ MASK=255.255.255.0
 PREFIX=24
 SRV_IP=10.99.0.1
 POOL=10.99.0.200-10.99.0.250
+MTU=1500
+DOMAIN=dhcptest.cluster
 NODE=dhcptestcn
 NODE_IP=10.99.0.11
 NODE_MAC=52:54:00:dc:11:01
 # Locally administered, so it belongs to no vendor and can never collide with
 # a real machine on a real lab network.
 UNKNOWN_MAC=02:00:dc:11:00:99
+
+# The machine that gets discovered and then adopted while the server keeps
+# running. Defined by `run-adoption`, not by `setup`, because the whole point
+# is what changes between the two DISCOVERs.
+ADOPT_NODE=dhcptestcn2
+ADOPT_IP=10.99.0.12
+ADOPT_MAC=02:00:dc:11:00:aa
+
+# An address on a network this server has never heard of, for the DHCPNAK case.
+# 192.0.2.0/24 is TEST-NET-1 and is not routable anywhere.
+FOREIGN_IP=192.0.2.77
 
 STATE=/tmp/dhcptest-fixture
 DHCPTEST=/opt/xcat/share/xcat/tools/autotest/dhcptest
@@ -70,19 +87,61 @@ tftpdir() {
     echo "${dir:-/tftpboot}"
 }
 
+# The lease time both backends write when site.dhcplease is unset.
+lease_time() {
+    local value
+    value=$(site_attr dhcplease)
+    echo "${value:-43200}"
+}
+
 # What an unknown machine is told to boot, which is backend policy rather than
 # protocol: Kea puts an architecture class on the subnet so every client on it
 # is handed a loader, ISC leaves the boot file to the per-host blocks. An empty
 # answer means "do not assert this here".
 discovery_loader() {
-    local backend
+    [ "$(current_backend)" = kea ] || return 0
+    arch_loader bios
+}
+
+# What a machine of a given client architecture, with no reservation, is told
+# to boot. This is the one place in the fixture that has to know each backend's
+# policy, because the two genuinely differ in what they will answer at all:
+#
+#   x86 BIOS      ISC always names xnba.kpxe; Kea names it only if it is there
+#                 and falls back to pxelinux.0, since Kea has no equivalent of
+#                 dhcpd's "hand it out and let TFTP fail".
+#   x86-64 UEFI   ISC always names xnba.efi; Kea emits no UEFI class at all
+#                 unless the loader exists, so there is nothing to assert.
+#   aarch64       both, unconditionally.
+#   riscv64 TFTP  both, unconditionally.
+#   riscv64 HTTP  ISC always; Kea only if the loader exists.
+#
+# An empty answer means "this backend will not answer for this architecture on
+# this machine, so do not assert anything". Skipping is the honest outcome:
+# asserting a loader that was never configured tests the fixture, not xCAT.
+arch_loader() {
+    local arch=$1 backend tftp
     backend=$(current_backend)
-    [ "$backend" = kea ] || return 0
-    if [ -f "$(tftpdir)/xcat/xnba.kpxe" ]; then
-        echo "xcat/xnba.kpxe"
-    else
-        echo "pxelinux.0"
-    fi
+    tftp=$(tftpdir)
+
+    case "$arch" in
+        bios)
+            if [ "$backend" = isc ] || [ -f "$tftp/xcat/xnba.kpxe" ]; then
+                echo "xcat/xnba.kpxe"
+            else
+                echo "pxelinux.0"
+            fi ;;
+        uefi)
+            if [ "$backend" = isc ] || [ -f "$tftp/xcat/xnba.efi" ]; then
+                echo "xcat/xnba.efi"
+            fi ;;
+        aarch64)     echo "boot/grub2/grub2.aarch64" ;;
+        riscv64)     echo "boot/grub2/grub2.riscv64" ;;
+        riscv64http)
+            if [ "$backend" = isc ] || [ -f "$tftp/boot/grub2/grub2.riscv64" ]; then
+                echo "http://$SRV_IP/tftpboot/boot/grub2/grub2.riscv64"
+            fi ;;
+    esac
 }
 
 current_backend() {
@@ -155,9 +214,13 @@ do_setup() {
     ip link set "$IF_CLI" up || die "cannot bring up $IF_CLI"
     echo done > "$STATE/veth"
 
+    # Every attribute set here is one option the reply has to carry. An
+    # installer that gets an address and no gateway, resolver or MTU fails much
+    # later and much less obviously than one that gets no address at all, which
+    # is why they are configured and asserted rather than left at the default.
     mkdef -f -t network -o "$NETOBJ" net="$NET" mask="$MASK" mgtifname="$IF_SRV" \
         gateway="$SRV_IP" tftpserver="$SRV_IP" nameservers="$SRV_IP" \
-        dynamicrange="$POOL" domain=dhcptest.cluster \
+        dynamicrange="$POOL" domain="$DOMAIN" mtu="$MTU" \
         || die "cannot define the network $NETOBJ"
     echo done > "$STATE/network"
 
@@ -218,7 +281,17 @@ do_run() {
         --set node_mac="$NODE_MAC" --set node_ip="$NODE_IP" \
         --set node_loader="$(node_loader)" --set pool="$POOL" \
         --set next_server="$SRV_IP" --set unknown_mac="$UNKNOWN_MAC" \
+        --set gateway="$SRV_IP" --set nameservers="$SRV_IP" \
+        --set domain="$DOMAIN" --set mtu="$MTU" --set lease="$(lease_time)" \
         conf/provision-vs-discovery.conf || rc=1
+
+    # A reservation is a reservation whichever way the node was reached, so the
+    # same node has to answer static-vs-dynamic.conf as well: it asks the same
+    # question from the other end, starting from the pool.
+    dhcptest_run \
+        --set reserved_mac="$NODE_MAC" --set reserved_ip="$NODE_IP" \
+        --set unreserved_mac="$UNKNOWN_MAC" --set pool="$POOL" \
+        conf/static-vs-dynamic.conf || rc=1
 
     loader=$(discovery_loader)
     if [ -n "$loader" ]; then
@@ -229,6 +302,128 @@ do_run() {
     else
         say "not asserting the discovery boot file: this backend leaves it to the per-host blocks"
     fi
+    return $rc
+}
+
+# One DISCOVER per client architecture, asserting the loader each one is handed.
+#
+# This is the part of xCAT's DHCP behaviour with the most branches and, until
+# now, the least wire coverage: a single grub2 assertion for one architecture.
+# The architectures a backend will not answer for on this machine are skipped
+# by name, so the report says which ones ran rather than quietly passing.
+do_run_arch() {
+    local rc=0 entry arch scenario variable loader
+
+    # arch, the scenario that exercises it, and the variable that scenario
+    # reads its expected loader from. Every other loader variable is set to a
+    # value nothing matches, since the .conf declares all of them but only one
+    # scenario is run at a time.
+    for entry in \
+        "bios:pxe-bios-x86:bios_loader" \
+        "uefi:pxe-uefi-x64:uefi_loader" \
+        "aarch64:pxe-aarch64:aarch64_loader" \
+        "riscv64:pxe-riscv64-tftp:riscv64_loader" \
+        "riscv64http:httpboot-riscv64:riscv64_loader"
+    do
+        arch=${entry%%:*}
+        scenario=${entry#*:}; scenario=${scenario%%:*}
+        variable=${entry##*:}
+
+        loader=$(arch_loader "$arch")
+        if [ -z "$loader" ]; then
+            say "skipping the $arch boot file: $(current_backend) does not serve it on this machine"
+            continue
+        fi
+
+        # The HTTP scenario asserts a prefix and a substring rather than the
+        # whole URL, so what it wants is the path inside it.
+        [ "$arch" = riscv64http ] && loader=boot/grub2/grub2.riscv64
+
+        dhcptest_run -s "$scenario" --set tftp="$SRV_IP" \
+            --set bios_loader=- --set uefi_loader=- \
+            --set aarch64_loader=- --set riscv64_loader=- \
+            --set "$variable=$loader" \
+            conf/pxe-arch-matrix.conf || rc=1
+    done
+    return $rc
+}
+
+# The two halves of a chained network boot.
+#
+# Firmware PXE sends no user class and must be handed a loader binary. The
+# loader that firmware just ran announces itself with user class xNBA and must
+# be handed something else -- the per-network script URL -- or it chainloads
+# itself forever, and the machine sits at a boot prompt that never advances.
+#
+# Both encodings of option 77 are sent: the bare string, and the length-prefixed
+# form RFC 3004 specifies. The same firmware sends either depending on how it
+# was built, so a server that recognises only one of them boots half the fleet
+# and loops the other half. Both backends render this branch on the subnet, so
+# no node has to be defined with netboot=xnba for it.
+do_run_chainload() {
+    local stage1
+    stage1=$(arch_loader bios)
+    [ -n "$stage1" ] || { say "skipping the chainload cases: no BIOS loader is served here"; return 0; }
+
+    dhcptest_run --set user_class=xNBA --set stage1_loader="$stage1" \
+        conf/ipxe-userclass.conf
+}
+
+# The lease itself, rather than what is booted with it: the four-way handshake,
+# renewal, rebinding, and the refusal of an address this network cannot give.
+#
+# The DHCPNAK matters as much as the ACK. A node moved between racks comes back
+# asking for the address it still holds; a server that stays silent leaves it
+# retrying forever, which on a provisioning network is indistinguishable from a
+# node that will not boot.
+do_run_lease() {
+    local rc=0
+    dhcptest_run --set net="$NET/$PREFIX" conf/full-lease.conf   || rc=1
+    dhcptest_run --set net="$NET/$PREFIX" conf/renew-rebind.conf || rc=1
+    dhcptest_run --set foreign_ip="$FOREIGN_IP" conf/nak-foreign-address.conf || rc=1
+    return $rc
+}
+
+# Discovery, end to end: a machine nobody has heard of takes a pool address,
+# gets defined as a node, and from the next DISCOVER on is served its own
+# address instead -- with the daemon never restarted in between.
+#
+# That last part is the assertion with teeth. xCAT injects ISC reservations
+# into the leases file over OMAPI precisely so a node being adopted does not
+# interrupt every other node still being discovered; a regression to rewriting
+# dhcpd.conf and bouncing the daemon would still pass every static test in this
+# tree. So the daemon's pid is taken before and after and has to match.
+do_run_adoption() {
+    local rc=0 daemon before after
+    daemon=$(daemon_of "$(current_backend)")
+    [ -n "$daemon" ] || die "no DHCP daemon is installed"
+
+    dhcptest_run -s machine-is-unknown \
+        --set adopt_mac="$ADOPT_MAC" --set adopt_ip="$ADOPT_IP" --set pool="$POOL" \
+        conf/discovery-adoption.conf || rc=1
+
+    before=$(pgrep -x "$daemon" | head -1)
+    [ -n "$before" ] || die "$daemon is not running before the node is adopted"
+
+    mkdef -f -t node -o "$ADOPT_NODE" groups=dhcptest ip="$ADOPT_IP" mac="$ADOPT_MAC" \
+        arch=x86_64 netboot="$NETBOOT" tftpserver="$SRV_IP" xcatmaster="$SRV_IP" \
+        || die "cannot define the node $ADOPT_NODE"
+    echo done > "$STATE/adopt"
+    makehosts "$ADOPT_NODE" || die "cannot add $ADOPT_NODE to /etc/hosts"
+    makedhcp "$ADOPT_NODE" || die "makedhcp $ADOPT_NODE failed"
+
+    after=$(pgrep -x "$daemon" | head -1)
+    if [ "$before" != "$after" ]; then
+        say "FAILED: $daemon was restarted to adopt one node (pid $before -> $after)"
+        rc=1
+    else
+        say "$daemon kept running while $ADOPT_NODE was adopted (pid $before)"
+    fi
+
+    dhcptest_run -s machine-has-been-adopted \
+        --set adopt_mac="$ADOPT_MAC" --set adopt_ip="$ADOPT_IP" --set pool="$POOL" \
+        conf/discovery-adoption.conf || rc=1
+
     return $rc
 }
 
@@ -261,6 +456,7 @@ do_teardown() {
     [ -d "$STATE" ] || return 0
 
     [ -f "$STATE/node" ] && { makedhcp -d "$NODE" >/dev/null 2>&1; makehosts -d "$NODE" >/dev/null 2>&1; rmdef "$NODE" >/dev/null 2>&1; }
+    [ -f "$STATE/adopt" ] && { makedhcp -d "$ADOPT_NODE" >/dev/null 2>&1; makehosts -d "$ADOPT_NODE" >/dev/null 2>&1; rmdef "$ADOPT_NODE" >/dev/null 2>&1; }
     [ -f "$STATE/network" ] && rmdef -t network -o "$NETOBJ" >/dev/null 2>&1
     [ -f "$STATE/veth" ] && ip link del "$IF_SRV" >/dev/null 2>&1
 
@@ -299,8 +495,12 @@ case "${1:-}" in
     alt-backend) if [ "$(current_backend)" = isc ]; then daemon_of kea >/dev/null && echo kea
                  else daemon_of isc >/dev/null && echo isc; fi ;;
     run)         do_run ;;
+    run-arch)      do_run_arch ;;
+    run-lease)     do_run_lease ;;
+    run-chainload) do_run_chainload ;;
     delegate)      do_delegate ;;
     run-hierarchy) do_run_hierarchy ;;
+    run-adoption)  do_run_adoption ;;
     teardown)    do_teardown ;;
-    *)           die "usage: $0 {check|setup|generate|backend <isc|kea>|alt-backend|run|delegate|run-hierarchy|teardown}" ;;
+    *)           die "usage: $0 {check|setup|generate|backend <isc|kea>|alt-backend|run|run-arch|run-lease|run-chainload|delegate|run-hierarchy|run-adoption|teardown}" ;;
 esac

@@ -73,9 +73,77 @@ cmd:#!/bin/bash
 check:rc==0
 end
 
+start:dhcptest_boot_architectures
+description:Each client architecture is handed the loader that belongs to it
+label:mn_only,ci_test,dhcp
+os:Linux
+# Option 93 is where xCAT's DHCP behaviour branches most, and where a mistake
+# is most expensive: a machine handed the wrong loader either hangs at the
+# firmware or boots the wrong thing entirely. Architectures the running backend
+# will not answer for on this machine are skipped by name in the log.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
+    "$FIX" check || exit 0
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    "$FIX" run-arch || exit 1
+check:rc==0
+end
+
+start:dhcptest_chainload_user_class
+description:A chainloaded second stage is recognised in both encodings of option 77
+label:mn_only,ci_test,dhcp
+os:Linux
+# RFC 3004 length-prefixes each string in the user class option; plenty of
+# firmware sends the bare string instead, and the same loader sends either
+# depending on how it was built. A server that matches only one of them hands
+# the loader the first stage again and the machine chainloads itself forever.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
+    "$FIX" check || exit 0
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    "$FIX" run-chainload || exit 1
+check:rc==0
+end
+
+start:dhcptest_lease_lifecycle
+description:A lease can be taken, renewed and rebound, and a foreign address is refused
+label:mn_only,ci_test,dhcp
+os:Linux
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
+    "$FIX" check || exit 0
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    "$FIX" run-lease || exit 1
+check:rc==0
+end
+
+start:dhcptest_discovery_adoption
+description:A discovered machine is served its own address once defined, without restarting the daemon
+label:mn_only,ci_test,dhcp
+os:Linux
+# The daemon staying up is half the assertion. xCAT injects ISC reservations
+# over OMAPI so adopting one node does not drop every other node part-way
+# through discovery; a regression to rewriting dhcpd.conf and restarting would
+# pass every config-level test in this tree.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
+    "$FIX" check || exit 0
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    "$FIX" run-adoption || exit 1
+check:rc==0
+end
+
 start:dhcptest_hierarchy_dhcpserver
 description:A network whose dynamic pool was handed to another server stops answering unknown MACs
-label:mn_only,dhcp
+label:mn_only,ci_test,dhcp
 os:Linux
 cmd:#!/bin/bash
     set -u
