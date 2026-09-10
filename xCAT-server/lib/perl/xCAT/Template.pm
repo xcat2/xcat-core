@@ -1790,7 +1790,7 @@ sub ubuntu_subiquity_apt_config
 {
     my ($media_dir, $osarch) = @_;
     my $use_deb822 = ubuntu_subiquity_uses_deb822_sources($media_dir);
-    my @otherpkg_sources = ubuntu_subiquity_otherpkg_sources();
+    my @otherpkg_sources = map { ubuntu_subiquity_otherpkg_source_spec($_) } ubuntu_subiquity_otherpkg_sources();
 
     my $online_mirror = ubuntu_subiquity_apt_mirror($osarch);
     if ($online_mirror) {
@@ -1822,8 +1822,7 @@ sub ubuntu_subiquity_apt_config
             push @lines, '    sources:' unless $need_sources_block;
             my $index = 0;
             foreach my $source (@otherpkg_sources) {
-                push @lines, "      xcat-otherpkgs-$index.list:";
-                push @lines, qq(        source: "deb [trusted=yes] $source ./");
+                push @lines, ubuntu_subiquity_source_lines( "xcat-otherpkgs-$index", $source, $use_deb822 );
                 $index++;
             }
         }
@@ -1864,9 +1863,9 @@ sub ubuntu_subiquity_apt_config
         foreach my $source (@otherpkg_sources) {
             push @lines, '';
             push @lines, '      Types: deb';
-            push @lines, "      URIs: $source";
-            push @lines, '      Suites: ./';
-            push @lines, '      Components:';
+            push @lines, "      URIs: $source->{uri}";
+            push @lines, "      Suites: $source->{suites}";
+            push @lines, '      Components:' . ( length $source->{components} ? " $source->{components}" : '' );
             push @lines, '      Trusted: yes';
         }
     } else {
@@ -1879,7 +1878,7 @@ sub ubuntu_subiquity_apt_config
             my $index = 0;
             foreach my $source (@otherpkg_sources) {
                 push @lines, "      xcat-otherpkgs-$index.list:";
-                push @lines, qq(        source: "deb [trusted=yes] $source ./");
+                push @lines, qq(        source: "$source->{line}");
                 $index++;
             }
         }
@@ -1913,6 +1912,47 @@ sub ubuntu_subiquity_otherpkg_sources
     }
 
     return @sources;
+}
+
+# ubuntu_subiquity_source_line: the one-line form of a source, with the option its Deb822 form carries.
+sub ubuntu_subiquity_source_line
+{
+    my ($spec) = @_;
+    my @option = $spec->{trusted} ? ('[trusted=yes]') : $spec->{signed_by} ? ("[signed-by=$spec->{signed_by}]") : ();
+    return join( ' ', 'deb', @option, $spec->{uri}, $spec->{suites}, grep { length } $spec->{components} );
+}
+
+# ubuntu_subiquity_otherpkg_source_spec: the apt source of one otherpkgdir entry the installer gets.
+# A bare URL or a local repository is a flat repository, and an entry written as URL, suite and
+# components is that source; otherpkgs trusts both, so the installer does too.
+sub ubuntu_subiquity_otherpkg_source_spec
+{
+    my ($entry) = @_;
+    my ( $uri, $suite, @components ) = split( /\s+/, $entry );
+    my %spec = ( uri => $uri, suites => './', components => '', trusted => 1, signed_by => '' );
+    @spec{qw(suites components)} = ( $suite, join( ' ', @components ) ) if defined $suite && length $suite;
+    $spec{line} = ubuntu_subiquity_source_line( \%spec );
+    return \%spec;
+}
+
+# ubuntu_subiquity_source_lines: one entry of the autoinstall sources mapping, a one-line source
+# before Deb822 and a Deb822 stanza from 24.04 on: curtin converts a one-line source to Deb822
+# there and keeps only its type, URI, suite and components, so a trusted repository would come out
+# unsigned and be rejected.
+sub ubuntu_subiquity_source_lines
+{
+    my ( $name, $source, $use_deb822 ) = @_;
+    return ( "      $name.list:", qq(        source: "$source->{line}") ) unless $use_deb822;
+    my @lines = (
+        "      $name.sources:",
+        '        source: |',
+        '          Types: deb',
+        "          URIs: $source->{uri}",
+        "          Suites: $source->{suites}",
+        '          Components:' . ( length $source->{components} ? " $source->{components}" : '' ),
+    );
+    push @lines, '          Trusted: yes' if $source->{trusted};
+    return @lines;
 }
 
 sub ubuntu_subiquity_uses_deb822_sources
