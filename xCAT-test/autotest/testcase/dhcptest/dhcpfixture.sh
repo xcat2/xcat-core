@@ -108,45 +108,71 @@ discovery_loader() {
     arch_loader bios
 }
 
-# What a machine of a given client architecture, with no reservation, is told
-# to boot. This is the one place in the fixture that has to know each backend's
-# policy, because the two genuinely differ in what they will answer at all:
+# What a machine of a given client architecture, with no reservation, must be
+# told to boot: one answer per architecture, the same one for every backend.
 #
-#   x86 BIOS      ISC always names xnba.kpxe; Kea names it only if it is there
-#                 and falls back to pxelinux.0, since Kea has no equivalent of
-#                 dhcpd's "hand it out and let TFTP fail".
-#   x86-64 UEFI   ISC always names xnba.efi; Kea emits no UEFI class at all
-#                 unless the loader exists, so there is nothing to assert.
-#   aarch64       both, unconditionally.
-#   riscv64 TFTP  both, unconditionally.
-#   riscv64 HTTP  ISC always; Kea only if the loader exists.
+# This used to branch on the backend, which made the drift it exists to catch
+# impossible to see -- whatever each backend did was what the test expected of
+# it, so the two could disagree for ever and the case would still pass. A node
+# does not choose its management node's DHCP backend, so an architecture that
+# boots under one and hangs under the other is a bug in whichever one is wrong,
+# and a wire test has to be able to say so.
 #
-# An empty answer means "this backend will not answer for this architecture on
-# this machine, so do not assert anything". Skipping is the honest outcome:
-# asserting a loader that was never configured tests the fixture, not xCAT.
+# The backends do read one thing off this machine before deciding: whether the
+# loader is already unpacked under tftpdir. setup puts every loader they key on
+# in place (see provide_loaders), so both are configured from the same inputs
+# and any difference left in the reply is a difference in behaviour.
 arch_loader() {
-    local arch=$1 backend tftp
-    backend=$(current_backend)
-    tftp=$(tftpdir)
-
-    case "$arch" in
-        bios)
-            if [ "$backend" = isc ] || [ -f "$tftp/xcat/xnba.kpxe" ]; then
-                echo "xcat/xnba.kpxe"
-            else
-                echo "pxelinux.0"
-            fi ;;
-        uefi)
-            if [ "$backend" = isc ] || [ -f "$tftp/xcat/xnba.efi" ]; then
-                echo "xcat/xnba.efi"
-            fi ;;
+    case "$1" in
+        bios)        echo "xcat/xnba.kpxe" ;;
+        uefi)        echo "xcat/xnba.efi" ;;
         aarch64)     echo "boot/grub2/grub2.aarch64" ;;
         riscv64)     echo "boot/grub2/grub2.riscv64" ;;
-        riscv64http)
-            if [ "$backend" = isc ] || [ -f "$tftp/boot/grub2/grub2.riscv64" ]; then
-                echo "http://$SRV_IP/tftpboot/boot/grub2/grub2.riscv64"
-            fi ;;
+        riscv64http) echo "http://$SRV_IP/tftpboot/boot/grub2/grub2.riscv64" ;;
     esac
+}
+
+# The loaders whose presence changes what a backend answers, relative to tftpdir.
+#
+#   xcat/xnba.kpxe             Kea names it if it is there and falls back to
+#                              pxelinux.0 if it is not; ISC names it either way.
+#   xcat/xnba.efi              Kea emits no UEFI x64 class at all without it;
+#                              ISC names it either way.
+#   boot/grub2/grub2.riscv64   gates Kea's riscv64 HTTP boot class; ISC emits
+#                              the HTTP branch either way.
+#
+# grub2.aarch64 is not listed: neither backend keys on it.
+GATING_LOADERS="xcat/xnba.kpxe xcat/xnba.efi boot/grub2/grub2.riscv64"
+
+# Put an empty file where a gating loader is missing, and record it so teardown
+# takes back exactly what was added and nothing else.
+#
+# An empty file is enough because nothing here fetches one: dhcptest asserts the
+# name in the BOOTP file field and never opens a TFTP session. What matters is
+# that the two backends are asked the same question -- otherwise a parity
+# failure would only mean this machine had not unpacked a loader, which is a
+# fact about the runner and not about xCAT.
+provide_loaders() {
+    local rel path tftp
+    tftp=$(tftpdir)
+    : > "$STATE/loaders" || die "cannot record which loaders were placed"
+
+    for rel in $GATING_LOADERS; do
+        path="$tftp/$rel"
+        [ -f "$path" ] && continue
+        mkdir -p "$(dirname "$path")" || die "cannot create $(dirname "$path")"
+        : > "$path" || die "cannot place a loader at $path"
+        echo "$path" >> "$STATE/loaders"
+        say "placed an empty $rel so both backends are configured from the same inputs"
+    done
+}
+
+withdraw_loaders() {
+    local path
+    [ -f "$STATE/loaders" ] || return 0
+    while read -r path; do
+        [ -n "$path" ] && rm -f "$path"
+    done < "$STATE/loaders"
 }
 
 current_backend() {
@@ -244,6 +270,10 @@ do_setup() {
     # for the answer under test.
     chdef -t site -o clustersite dhcpinterfaces="$IF_SRV" \
         || die "cannot set site.dhcpinterfaces"
+
+    # Before the config is generated: both backends read tftpdir while deciding
+    # which boot classes to write, so the loaders have to be in place first.
+    provide_loaders
 
     do_generate || return 1
     say "fixture is up on $IF_SRV/$IF_CLI, backend $(current_backend)"
@@ -363,8 +393,8 @@ do_run() {
 #
 # This is the part of xCAT's DHCP behaviour with the most branches and, until
 # now, the least wire coverage: a single grub2 assertion for one architecture.
-# The architectures a backend will not answer for on this machine are skipped
-# by name, so the report says which ones ran rather than quietly passing.
+# Every architecture is asserted under every backend, with the same expected
+# loader for both -- see arch_loader for why nothing is skipped by backend.
 do_run_arch() {
     local rc=0 entry arch scenario variable loader
 
@@ -384,10 +414,6 @@ do_run_arch() {
         variable=${entry##*:}
 
         loader=$(arch_loader "$arch")
-        if [ -z "$loader" ]; then
-            say "skipping the $arch boot file: $(current_backend) does not serve it on this machine"
-            continue
-        fi
 
         # The HTTP scenario asserts a prefix and a substring rather than the
         # whole URL, so what it wants is the path inside it.
@@ -415,11 +441,7 @@ do_run_arch() {
 # and loops the other half. Both backends render this branch on the subnet, so
 # no node has to be defined with netboot=xnba for it.
 do_run_chainload() {
-    local stage1
-    stage1=$(arch_loader bios)
-    [ -n "$stage1" ] || { say "skipping the chainload cases: no BIOS loader is served here"; return 0; }
-
-    dhcptest_run --set user_class=xNBA --set stage1_loader="$stage1" \
+    dhcptest_run --set user_class=xNBA --set stage1_loader="$(arch_loader bios)" \
         conf/ipxe-userclass.conf
 }
 
@@ -513,6 +535,7 @@ do_teardown() {
     [ -f "$STATE/adopt" ] && { makedhcp -d "$ADOPT_NODE" >/dev/null 2>&1; makehosts -d "$ADOPT_NODE" >/dev/null 2>&1; rmdef "$ADOPT_NODE" >/dev/null 2>&1; }
     [ -f "$STATE/network" ] && rmdef -t network -o "$NETOBJ" >/dev/null 2>&1
     [ -f "$STATE/veth" ] && ip link del "$IF_SRV" >/dev/null 2>&1
+    withdraw_loaders
 
     # tabrestore replaces the table wholesale, which is what is wanted here:
     # dhcpinterfaces and dhcpbackend go back to exactly what they were, unset
