@@ -131,7 +131,9 @@ Scenario Outline: The loader follows the client architecture in option 93
     | 0x000b | aarch64 UEFI                 | boot/grub2/grub2.aarch64  |
     | 0x001b | riscv64 UEFI, TFTP           | boot/grub2/grub2.riscv64  |
 
-  Examples: architectures only one backend answers -- see backend parity below
+  Examples: architectures only one backend answers
+  # Enumerated in full under "Feature: The two backends behave the same on the
+  # wire", scenario "Known asymmetries between the backends".
     | arch   | client                       | loader                    |
     | 0x0010 | x86-64 UEFI HTTP boot        | xcat/xnba.efi (Kea only)  |
     | 0x000c | ppc64 UEFI                   | /boot/grub2/grub2.ppc (Kea only) |
