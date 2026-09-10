@@ -265,7 +265,7 @@ passing with nothing to talk to.
 
 ```bash
 xcattest -t dhcptest_provision_vs_discovery
-xcattest -s "ci_test+dhcp_wire"            # every wire case, on whatever is configured
+xcattest -s "dhcp_wire"                     # every wire case, on whatever is configured
 ```
 
 A case that cannot run — no root, no scapy, no `makedhcp`, no veth — says so and
@@ -280,7 +280,7 @@ is set to, and the caller runs the whole set once per backend:
 FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
 for backend in $($FIX backends); do
     $FIX backend-setup $backend
-    xcattest -t $(xcattest -s "ci_test+dhcp_wire" -l | paste -sd,)
+    xcattest -t $(xcattest -s "dhcp_wire" -l | paste -sd,)
     $FIX backend-teardown $backend
 done
 ```
@@ -288,7 +288,9 @@ done
 `backend-setup` points `site.dhcpbackend` at one backend and stops the other
 daemon — two servers on one wire both answer the same DISCOVER — and
 `backend-teardown` restores the site table and restarts what was running before.
-The CI driver does exactly this in `run_dhcp_wire_cases`.
+The CI driver does exactly this in `run_dhcp_wire_test`, as the last phase of
+the run: the wire cases carry `dhcp_wire` and deliberately not `ci_test`, so
+they run after the ci_test set rather than inside it, and are not run twice.
 
 Running every case under one backend and then every case under the other, rather
 than switching inside each case, reconfigures the daemon once per pass instead

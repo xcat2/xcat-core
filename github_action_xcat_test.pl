@@ -591,6 +591,42 @@ sub check_syntax{
 }
 
 #--------------------------------------------------------
+# Fuction name: write_regression_conf
+# Description:  write an xcattest configuration file and return its path
+# Attributes:   $name        - the file name, under the working directory
+#               $pin_backend - set site.dhcpbackend in [Table_site]
+#
+#   xcattest applies [Table_site] before every case it runs, so a file that
+#   pins dhcpbackend pins it again on each invocation. That is what the fast
+#   regression set wants -- one known backend for the whole run -- and exactly
+#   what the DHCP wire phase must not have: it selects the backend itself, once
+#   per pass, and a conf file that reset it would undo the kea pass case by
+#   case and leave the run silently testing isc twice.
+# Return code:  the path written
+#--------------------------------------------------------
+sub write_regression_conf{
+    my ($name, $pin_backend) = @_;
+
+    my $hostname = `hostname`;
+    chomp($hostname);
+    print "hostname = $hostname\n";
+
+    my $conf_file = "$ENV{'PWD'}/$name";
+    system "sudo touch $conf_file";
+    system "sudo chmod 777 $conf_file";
+    open(my $fh, '>', $conf_file) or die "Could not open test configuration file $!";
+    print $fh "[System]\nMN=$hostname\n[Table_site]\nkey=domain\nvalue=pok.stglabs.ibm.com\n";
+    print $fh "key=dhcpbackend\nvalue=isc\n" if($pin_backend);
+    close($fh);
+
+    print "Dumper $name:\n";
+    my @output = runcmd("cat $conf_file");
+    print Dumper \@output;
+
+    return $conf_file;
+}
+
+#--------------------------------------------------------
 # Fuction name: list_cases
 # Description:  the names of the cases matching an xcattest label expression
 # Attributes:   $expression - e.g. "ci_test-dhcp_wire"
@@ -619,19 +655,21 @@ sub list_cases{
 #               $suffix    - appended to a failing case name in the summary, so
 #                            a case run more than once says which run failed
 #               $counts    - hashref accumulating pass/fail across every call
+#               $tag       - the phase name to print log lines under
 # Return code:  none; results land in $counts and @{$counts->{failed}}
 #--------------------------------------------------------
 sub run_cases{
-    my ($conf_file, $cases, $suffix, $counts) = @_;
+    my ($conf_file, $cases, $suffix, $counts, $tag) = @_;
+    $tag = "run_fast_regression_test" unless($tag);
     my $x = 0;
     foreach my $case (@{$cases}){
         ++$x;
         my $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -t $case'";
-        print "[run_fast_regression_test] run $x$suffix: $cmd\n";
+        print "[$tag] run $x$suffix: $cmd\n";
         my @output = runcmd("$cmd");
         my $verbose = grep { $_ eq $case } @verbose_cases;
         if($verbose){
-            print "[run_fast_regression_test] output of $case (listed in \@verbose_cases):\n";
+            print "[$tag] output of $case (listed in \@verbose_cases):\n";
             print Dumper \@output;
         }
         for(my $i = $#output; $i>-1; --$i){
@@ -649,8 +687,16 @@ sub run_cases{
 }
 
 #--------------------------------------------------------
-# Fuction name: run_dhcp_wire_cases
-# Description:  run the DHCP wire cases once per backend installed here.
+# Fuction name: run_dhcp_wire_test
+# Description:  run the DHCP wire cases, once per backend installed here.
+#
+#   This is the last phase of the run, after the ci_test set, and the wire
+#   cases are deliberately not labelled ci_test. They do not leave the machine
+#   alone while they run -- a veth pair appears, site.dhcpinterfaces and
+#   site.dhcpbackend change, the DHCP daemon is stopped and started -- and
+#   although each case restores all of it from a trap, a ci_test case running
+#   in between would be sharing a management node that is mid-reconfiguration.
+#   Keeping them out of the set is also what stops them being run twice.
 #
 #   Which DHCP backend a management node runs is an implementation default --
 #   kea on the newer distros, isc on the older ones -- so a node booting on the
@@ -658,64 +704,80 @@ sub run_cases{
 #   backend the runner happened to configure proves half of that and hides
 #   every drift between the two.
 #
-#   The whole set is run against one backend and then again against the other,
-#   rather than each case switching backends internally: the daemon is
-#   reconfigured once per pass instead of once per case, and each failure in the
-#   summary carries the backend it belongs to.
+#   The whole set is therefore run against one backend and then again against
+#   the other, rather than each case switching backends internally: the daemon
+#   is reconfigured once per pass instead of once per case, and each failure in
+#   the summary carries the backend it belongs to.
 #
 #   dhcpfixture.sh brackets each pass -- backend-setup selects the backend and
 #   stops the other daemon, backend-teardown puts the site table back and
 #   restarts what was running before.
-# Attributes:   $conf_file, $cases (the wire case names), $counts (as run_cases)
-# Return code:  none
+# Attributes:
+# Return code:  0 if every case passed under every backend
 #--------------------------------------------------------
-sub run_dhcp_wire_cases{
-    my ($conf_file, $cases, $counts) = @_;
-
-    my @cases = @{$cases};
+sub run_dhcp_wire_test{
+    my @cases = list_cases("dhcp_wire");
     unless(@cases){
-        print "[run_fast_regression_test] no DHCP wire cases to run\n";
-        return;
+        print "[run_dhcp_wire_test] no DHCP wire cases to run\n";
+        $check_result_str .= "> **DHCP WIRE TEST Skipped**: no case carries the dhcp_wire label\n";
+        print $check_result_str;
+        return 0;
     }
 
+    my $conf_file = write_regression_conf("dhcp-wire.conf", 0);
     my $fixture = "/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh";
     unless(-f $fixture){
-        print RED "[run_fast_regression_test] $fixture is missing, so the DHCP wire cases cannot be run per backend\n";
-        push @{$counts->{failed}}, "dhcp_wire_fixture_missing";
-        ++$counts->{fail};
-        return;
+        print RED "[run_dhcp_wire_test] $fixture is missing, so the wire cases cannot be run per backend\n";
+        $check_result_str .= "> **DHCP WIRE TEST Failed**: $fixture is not installed\n";
+        print $check_result_str;
+        return 1;
     }
 
     my @backends = runcmd("sudo bash -c '. /etc/profile.d/xcat.sh && $fixture backends'");
     @backends = split ' ', join ' ', @backends;
     unless(@backends){
-        print RED "[run_fast_regression_test] no DHCP daemon is installed, so the wire cases have nothing to talk to\n";
-        push @{$counts->{failed}}, "dhcp_wire_no_backend";
-        ++$counts->{fail};
-        return;
+        print RED "[run_dhcp_wire_test] no DHCP daemon is installed, so the wire cases have nothing to talk to\n";
+        $check_result_str .= "> **DHCP WIRE TEST Failed**: no DHCP daemon is installed\n";
+        print $check_result_str;
+        return 1;
     }
-    print "[run_fast_regression_test] DHCP backends installed here: @backends\n";
+    print "[run_dhcp_wire_test] DHCP backends installed here: @backends\n";
 
+    my %counts = (pass => 0, fail => 0, failed => []);
     foreach my $backend (@backends){
         my $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh && $fixture backend-setup $backend'";
         my @output = runcmd("$cmd");
         print Dumper \@output;
         if($::RUNCMD_RC){
-            print RED "[run_fast_regression_test] cannot serve with $backend\n";
-            push @{$counts->{failed}}, "dhcp_wire_setup($backend)";
-            ++$counts->{fail};
+            print RED "[run_dhcp_wire_test] cannot serve with $backend\n";
+            push @{$counts{failed}}, "backend-setup($backend)";
+            ++$counts{fail};
             next;
         }
 
-        run_cases($conf_file, \@cases, "($backend)", $counts);
+        run_cases($conf_file, \@cases, "($backend)", \%counts, "run_dhcp_wire_test");
 
         @output = runcmd("sudo bash -c '. /etc/profile.d/xcat.sh && $fixture backend-teardown $backend'");
         print Dumper \@output;
     }
 
+    my $backend_str = join(" and ", @backends);
     if(@backends < 2){
-        print "[run_fast_regression_test] WARNING: only @backends is installed here, so the backends were not compared\n";
+        print "[run_dhcp_wire_test] WARNING: only $backend_str is installed here, so the backends were not compared\n";
     }
+
+    # Case runs rather than cases: each case is run once per backend.
+    my $casenum = $counts{pass} + $counts{fail};
+    if($counts{fail}){
+        my $log_str = join(",", @{$counts{failed}});
+        $check_result_str .= "> **DHCP WIRE TEST Failed** ($backend_str): Totalrun $casenum Passed $counts{pass} Failed $counts{fail} FailedCases: $log_str.  Please click ``Details`` label in ``Merge pull request`` box for detailed information\n";
+        print $check_result_str;
+        return 1;
+    }
+
+    $check_result_str .= "> **DHCP WIRE TEST Successful** ($backend_str): Totalrun $casenum Passed $counts{pass} Failed $counts{fail}\n";
+    print $check_result_str;
+    return 0;
 }
 
 #--------------------------------------------------------
@@ -748,22 +810,8 @@ sub run_fast_regression_test{
          print Dumper \@output;
     }
 
-    my $hostname = `hostname`;
-    chomp($hostname);
-    print "hostname = $hostname\n";
-    my $conf_file = "$ENV{'PWD'}/regression.conf";
-    system "sudo touch $conf_file";
-    system "sudo chmod 777 $conf_file";
-    open(my $fh, '>', $conf_file) or die "Could not open test configuration file $!";
-    print $fh "[System]\nMN=$hostname\n[Table_site]\nkey=domain\nvalue=pok.stglabs.ibm.com\nkey=dhcpbackend\nvalue=isc\n";
-    close($fh);
+    my $conf_file = write_regression_conf("regression.conf", 1);
 
-    print "Dumper regression conf file:\n";
-    @output = runcmd("cat $conf_file");
-    print Dumper \@output;
-
-    # The DHCP wire cases are held back and run separately, once per backend.
-    # Everything else runs once, as before.
     $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh && xcattest -s \"ci_test\" -l'";
     my  @caseslist = runcmd("$cmd");
     if($::RUNCMD_RC){
@@ -776,17 +824,13 @@ sub run_fast_regression_test{
          print Dumper \@caseslist;
     }
 
-    my @wirecases = list_cases("ci_test+dhcp_wire");
-    my %iswire = map { $_ => 1 } @wirecases;
-    my @othercases = grep { !$iswire{$_} } @caseslist;
-
+    # The DHCP wire cases are not in this set: they reconfigure the DHCP server
+    # out from under whatever else is running, so they are labelled dhcp_wire
+    # instead and run as their own phase after this one. See run_dhcp_wire_test.
+    my $casenum = @caseslist;
     my %counts = (pass => 0, fail => 0, failed => []);
-    run_cases($conf_file, \@othercases, "", \%counts);
-    run_dhcp_wire_cases($conf_file, \@wirecases, \%counts);
+    run_cases($conf_file, \@caseslist, "", \%counts);
 
-    # Each wire case is counted once per backend it was run against, so the
-    # total says how many case runs there were rather than how many cases exist.
-    my $casenum = $counts{pass} + $counts{fail};
     my $passnum = $counts{pass};
     my $failnum = $counts{fail};
     my @failcase = @{$counts{failed}};
@@ -919,5 +963,18 @@ if($rst){
     exit $rst;
 }
 mark_time("run_dhcptest_unit_tests");
+
+#The DHCP wire cases go last, once per backend installed. They are the only
+#phase that reconfigures the DHCP server and restarts the daemon, so nothing
+#that follows them could be trusted to be running against the machine it was
+#given -- and the ci_test set above must not be sharing a management node that
+#is mid-reconfiguration, which is why they are not labelled ci_test.
+print GREEN "\n------Running DHCP on-wire test on every backend ------\n";
+$rst = run_dhcp_wire_test();
+if($rst){
+    print RED "Run of DHCP on-wire test failed\n";
+    exit $rst;
+}
+mark_time("run_dhcp_wire_test");
 
 exit 0;

@@ -41,15 +41,24 @@ end
 
 start:dhcptest_provision_vs_discovery
 description:A defined node gets its reservation and an unknown one gets a pool address
-label:mn_only,ci_test,dhcp,dhcp_wire
+label:mn_only,dhcp,dhcp_wire
 os:Linux
-# Every case below carries the dhcp_wire label, and the label is what makes the
-# backends comparable: the CI driver selects the whole set, runs it against ISC,
-# then runs the same set again against Kea, bracketing each pass with
-# `dhcpfixture.sh backend-setup` and `backend-teardown`. Which backend a cluster
-# runs is decided by the management node's distro, not by the operator, so a
-# scenario that holds on one backend and not the other is a node that boots on
-# RHEL 9 and hangs on RHEL 10.
+# Every case below carries dhcp_wire and, deliberately, not ci_test.
+#
+# The wire cases are not part of the ci_test set because they do not leave the
+# machine alone while they run: they add a veth pair, point site.dhcpinterfaces
+# at it, switch site.dhcpbackend, and stop and start the DHCP daemon. Each one
+# puts all of that back from a trap, but a ci_test case running in between would
+# be sharing a management node that is mid-reconfiguration. So the CI driver
+# runs the whole ci_test set first, and only then runs this set -- see
+# run_dhcp_wire_cases in github_action_xcat_test.pl.
+#
+# Keeping them out of ci_test is also what stops them being run twice. The set
+# is run once per DHCP backend installed: against ISC, then against Kea, each
+# pass bracketed by `dhcpfixture.sh backend-setup` and `backend-teardown`. Which
+# backend a cluster runs is decided by the management node's distro, not by the
+# operator, so a scenario that holds on one backend and not the other is a node
+# that boots on RHEL 9 and hangs on RHEL 10.
 #
 # The backend is therefore not chosen in here. Each case serves whatever
 # site.dhcpbackend the surrounding pass selected, and reports under the backend
@@ -66,12 +75,14 @@ end
 
 start:dhcptest_boot_architectures
 description:Each client architecture is handed the loader that belongs to it
-label:mn_only,ci_test,dhcp,dhcp_wire
+label:mn_only,dhcp,dhcp_wire
 os:Linux
 # Option 93 is where xCAT's DHCP behaviour branches most, and where a mistake
 # is most expensive: a machine handed the wrong loader either hangs at the
-# firmware or boots the wrong thing entirely. Architectures the running backend
-# will not answer for on this machine are skipped by name in the log.
+# firmware or boots the wrong thing entirely. Every architecture is asserted
+# under every backend, against the same expected loader for both: the backends
+# have to agree, and the fixture puts the loaders they key on in place first so
+# that they are answering the same question.
 cmd:#!/bin/bash
     set -u
     FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
@@ -84,7 +95,7 @@ end
 
 start:dhcptest_chainload_user_class
 description:A chainloaded second stage is recognised in both encodings of option 77
-label:mn_only,ci_test,dhcp,dhcp_wire
+label:mn_only,dhcp,dhcp_wire
 os:Linux
 # RFC 3004 length-prefixes each string in the user class option; plenty of
 # firmware sends the bare string instead, and the same loader sends either
@@ -102,7 +113,7 @@ end
 
 start:dhcptest_lease_lifecycle
 description:A lease can be taken, renewed and rebound, and a foreign address is refused
-label:mn_only,ci_test,dhcp,dhcp_wire
+label:mn_only,dhcp,dhcp_wire
 os:Linux
 cmd:#!/bin/bash
     set -u
@@ -116,7 +127,7 @@ end
 
 start:dhcptest_discovery_adoption
 description:A discovered machine is served its own address once defined, without restarting the daemon
-label:mn_only,ci_test,dhcp,dhcp_wire
+label:mn_only,dhcp,dhcp_wire
 os:Linux
 # The daemon staying up is half the assertion. xCAT injects ISC reservations
 # over OMAPI so adopting one node does not drop every other node part-way
@@ -134,7 +145,7 @@ end
 
 start:dhcptest_hierarchy_dhcpserver
 description:A network whose dynamic pool was handed to another server stops answering unknown MACs
-label:mn_only,ci_test,dhcp,dhcp_wire
+label:mn_only,dhcp,dhcp_wire
 os:Linux
 cmd:#!/bin/bash
     set -u
