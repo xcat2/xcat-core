@@ -5,6 +5,8 @@ BEGIN {
 use lib "$::XCATROOT/lib/perl";
 use xCAT::CommandUtils;
 use IO::Socket::INET;
+use File::Temp qw(tempfile);
+use POSIX qw(_exit sigprocmask WNOHANG SIG_BLOCK SIG_SETMASK SIGINT SIGTERM);
 use Time::HiRes qw(gettimeofday sleep);
 use Getopt::Long;
 Getopt::Long::Configure("bundling");
@@ -92,16 +94,25 @@ if (-f "/etc/redhat-release") {
 }
 
 # fork a process to capture the packet by tcpdump
+my ($dumpfh, $dumpfile) = tempfile("detect_dhcpd.XXXXXX", TMPDIR => 1, UNLINK => 1);
+close($dumpfh);
+# INT and TERM stay blocked from the fork until the handler that stops the capture is in place.
+my $stop_signals = POSIX::SigSet->new(SIGINT, SIGTERM);
+my $signal_mask  = POSIX::SigSet->new();
+sigprocmask(SIG_BLOCK, $stop_signals, $signal_mask);
 my $pid = fork;
-if (!defined $pid) { print "Fork failed.\n"; exit 1; }
-my $dumpfile = "/tmp/dhcpdumpfile.log";
+if (!defined $pid) { sigprocmask(SIG_SETMASK, $signal_mask); print "Fork failed.\n"; exit 1; }
 if ($pid == 0) {
 
-    # Child process
-    my $cmd = "$tcpdump -i $IF port 68 -n -vvvvvv > $dumpfile 2>/dev/null";
-    `$cmd`;
-    exit 0;
+    # Child process: tcpdump itself, so the parent owns exactly this pid.
+    sigprocmask(SIG_SETMASK, $signal_mask);
+    open(STDOUT, '>', $dumpfile) or _exit(1);
+    open(STDERR, '>', '/dev/null');
+    exec($tcpdump, '-i', $nic, 'port', '68', '-n', '-vvvvvv');
+    _exit(1);
 }
+$SIG{INT} = $SIG{TERM} = sub { kill_child(); exit 1; };
+sigprocmask(SIG_SETMASK, $signal_mask);
 
 # generate the discover package
 my $package = packdhcppkg($MAC);
@@ -141,25 +152,24 @@ if ($::TIMEOUT) {
 my $end = Time::HiRes::gettimeofday();
 $end =~ s/(\d.*)\.(\d.*)/$1/;
 while ($end - $start <= $timeout) {
-    $sock->send($package) or die "Send discover error: $@\n";
+    unless ($sock->send($package)) {
+        print "Send discover error: $!\n";
+        kill_child();
+        exit 1;
+    }
     sleep 2;
     $end = Time::HiRes::gettimeofday();
     $end =~ s/(\d.*)\.(\d.*)/$1/;
 }
 
 
-kill_child();
-
 #kill the child process
-kill 15, $pid;
-my @pidoftcpdump = `ps -ef | grep -E "[0-9]+:[0-9]+:[0-9]+ $tcpdump -i $IF" | awk -F' ' '{print \$2}'`;
-foreach my $cpid (@pidoftcpdump) {
-    kill 15, $cpid;
-
-    #  print "try to kill $cpid\n";
+my $capture_problem = kill_child();
+if ($capture_problem) {
+    print "tcpdump $capture_problem.\n";
+    exit 1;
 }
 
-sleep 2;
 open(FILE, "<$dumpfile") or die "Cannot open $dumpfile\n";
 my %output;
 my @snack      = ();
@@ -239,7 +249,6 @@ if (scalar(@server)) {
     }
 }
 
-#`rm -f $dumpfile`;
 exit 0;
 
 
@@ -345,12 +354,38 @@ sub packdhcppkg {
     return $package;
 }
 
+# Stop the capture and reap it, once: INT and TERM are blocked while the pid is taken and until
+# tcpdump is reaped, so an interrupt in that window cannot orphan it or reach a recycled pid. The
+# handlers stay installed, so a later signal still leaves through exit and the END cleanup.
+# Returns '' when tcpdump ran until this TERM and stopped cleanly, otherwise what went wrong: it
+# ended on its own, ignored TERM and was killed, or left on another signal or with a non-zero
+# status.
 sub kill_child {
-    kill 15, $pid;
-    my @pidoftcpdump = `ps -ef | grep -E "[0-9]+:[0-9]+:[0-9]+ $tcpdump -i $IF" | awk -F' ' '{print \$2}'`;
-    foreach my $cpid (@pidoftcpdump) {
-        kill 15, $cpid;
-
-        #print "try to kill $cpid\n";
+    sigprocmask(SIG_BLOCK, $stop_signals);
+    my $child = $pid;
+    $pid = undef;
+    unless ($child) {
+        sigprocmask(SIG_SETMASK, $signal_mask);
+        return '';
     }
+    my $reaped = waitpid($child, WNOHANG);
+    my $early = ($reaped == $child) ? 1 : 0;
+    if ($reaped == 0) {
+        kill 'TERM', $child;
+        foreach (1 .. 50) {
+            last if ($reaped = waitpid($child, WNOHANG)) != 0;
+            select(undef, undef, undef, 0.1);
+        }
+        if ($reaped == 0) {
+            kill 'KILL', $child;
+            $reaped = waitpid($child, 0);
+        }
+    }
+    sigprocmask(SIG_SETMASK, $signal_mask);
+    return "could not be reaped" if $reaped != $child;
+    my ($signal, $status) = ($? & 127, $? >> 8);
+    my $how = $signal ? "on signal $signal" : "with status $status";
+    return "ended before the capture window did, $how" if $early;
+    return '' if $signal == 15 || (!$signal && !$status);
+    return "left the capture $how";
 }
