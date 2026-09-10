@@ -382,6 +382,109 @@ sub kea_xnba_node_classes {
     return \@classes;
 }
 
+#: A ScaleMP hypervisor is an ordinary BIOS PXE client in every respect except
+#: the binary it has to be handed, and the vendor class is the only thing that
+#: tells it apart from the machines around it.
+sub scalemp_vendor_class_test { return "option[60].text == 'ScaleMP'"; }
+
+#: IBM's iSCSI initiators announce this and then read the initiator name and
+#: the root path out of option 43 rather than out of option 17.
+sub isan_vendor_class_test { return "option[60].text == 'ISAN'"; }
+
+# ISC writes the ScaleMP choice as one if/else on the node's own host block:
+#
+#   if option vendor-class-identifier = "ScaleMP" { filename = "vsmp/pxelinux.0"; }
+#   else { filename = "pxelinux.0"; }
+#
+# Kea has no else, and a reservation's boot-file-name outranks every class, so
+# the same choice has to be written as two classes that exclude one another and
+# the reservation has to name no boot file at all. Without this a ScaleMP
+# machine is handed the reservation's pxelinux.0 and boots the wrong loader.
+sub kea_pxe_node_classes {
+    my ( $class, %opts ) = @_;
+
+    my $nodes   = $opts{nodes} || [];
+    my $scalemp = scalemp_vendor_class_test();
+    my @classes;
+
+    foreach my $node (@$nodes) {
+        next unless $node->{node} && $node->{mac};
+        my $base     = _node_class_base( 'pxe', $node->{node}, $node->{mac} );
+        my $mac_test = _mac_test( $node->{mac} );
+
+        push @classes, {
+            name             => "$base-scalemp",
+            test             => "$mac_test and $scalemp",
+            'boot-file-name' => 'vsmp/pxelinux.0',
+            'user-context'   => _node_user_context( $node, 'pxe-vendor' ),
+          },
+          {
+            name             => $base,
+            test             => "$mac_test and not ($scalemp)",
+            'boot-file-name' => 'pxelinux.0',
+            'user-context'   => _node_user_context( $node, 'pxe-vendor' ),
+          };
+    }
+
+    return \@classes;
+}
+
+# The same shape for iSCSI, and for the same reason: ISC chooses between the
+# ISAN vendor form and the standard one with an if/else, and an ISAN initiator
+# is deliberately not sent option 17 at all. Only a node with an initiator name
+# needs the choice -- without one, ISC emits the standard root-path alone and
+# the reservation can carry it.
+sub kea_iscsi_node_classes {
+    my ( $class, %opts ) = @_;
+
+    my $nodes = $opts{nodes} || [];
+    my $isan  = isan_vendor_class_test();
+    my @classes;
+
+    foreach my $node (@$nodes) {
+        next unless $node->{node} && $node->{mac} && $node->{root_path} && $node->{iname};
+        my $base     = _node_class_base( 'iscsi', $node->{node}, $node->{mac} );
+        my $mac_test = _mac_test( $node->{mac} );
+
+        push @classes, {
+            name          => "$base-isan",
+            test          => "$mac_test and $isan",
+            'option-data' => [
+                { space => 'isan', name => 'iqn',       data => $node->{iname} },
+                { space => 'isan', name => 'root-path', data => $node->{root_path} },
+            ],
+            'user-context' => _node_user_context( $node, 'iscsi-initiator' ),
+          },
+          {
+            name          => $base,
+            test          => "$mac_test and not ($isan)",
+            'option-data' => [
+                { name => 'root-path',           data => $node->{root_path} },
+                { name => 'iscsi-initiator-iqn', data => $node->{iname} },
+            ],
+            'user-context' => _node_user_context( $node, 'iscsi-initiator' ),
+          };
+    }
+
+    return \@classes;
+}
+
+#: The encapsulated space ISC declares as "option space isan" -- option 43
+#: carrying the initiator name in 203 and the root path in 201.
+sub kea_isan_option_defs {
+    return [
+        {
+            name        => 'isan-encap-opts',
+            code        => 43,
+            type        => 'empty',
+            space       => 'dhcp4',
+            encapsulate => 'isan',
+        },
+        { name => 'iqn',       code => 203, type => 'string', space => 'isan' },
+        { name => 'root-path', code => 201, type => 'string', space => 'isan' },
+    ];
+}
+
 sub kea_xnba_network_classes {
     my ( $class, %opts ) = @_;
 
@@ -427,8 +530,8 @@ sub uefi_x64_client_architecture_match_expr {
     return "option[93].hex == 0x0007 or option[93].hex == 0x0009 or option[93].hex == 0x0010";
 }
 
-sub _xnba_class_base {
-    my ( $node, $mac ) = @_;
+sub _node_class_base {
+    my ( $purpose, $node, $mac ) = @_;
 
     my $safe_node = $node;
     $safe_node =~ s/[^A-Za-z0-9_.-]/_/g;
@@ -436,7 +539,13 @@ sub _xnba_class_base {
     my $safe_mac = lc($mac);
     $safe_mac =~ s/[^0-9a-f]//g;
 
-    return "xcat-xnba-$safe_node-$safe_mac";
+    return "xcat-$purpose-$safe_node-$safe_mac";
+}
+
+sub _xnba_class_base {
+    my ( $node, $mac ) = @_;
+
+    return _node_class_base( 'xnba', $node, $mac );
 }
 
 sub _mac_test {
@@ -448,14 +557,20 @@ sub _mac_test {
     return "pkt4.mac == 0x$mac_hex";
 }
 
-sub _xnba_user_context {
-    my ($node) = @_;
+sub _node_user_context {
+    my ( $node, $purpose ) = @_;
 
     return {
-        'xcat-purpose' => 'xnba-second-stage',
+        'xcat-purpose' => $purpose,
         'xcat-node'    => $node->{node},
         'xcat-mac'     => lc( $node->{mac} ),
     };
+}
+
+sub _xnba_user_context {
+    my ($node) = @_;
+
+    return _node_user_context( $node, 'xnba-second-stage' );
 }
 
 1;

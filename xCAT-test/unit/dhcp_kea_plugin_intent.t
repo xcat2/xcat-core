@@ -858,7 +858,7 @@ foreach my $case (@invalid_mac_cases) {
     };
     local *xCAT_plugin::dhcp::kea_next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
 
-    my $classes = xCAT_plugin::dhcp::kea_xnba_client_classes_for_nodes(['xnba01']);
+    my $classes = xCAT_plugin::dhcp::kea_node_client_classes_for_nodes(['xnba01']);
     my ($bios_class) = grep { $_->{name} =~ /-bios\z/ } @$classes;
     ok( $bios_class, 'hyphenated xNBA MAC produces a BIOS client class' );
     is(
@@ -1189,6 +1189,113 @@ foreach my $case (@invalid_mac_cases) {
         [],
         'no conf-file is invented without a next server',
     );
+}
+
+{
+    # A ScaleMP hypervisor and an ISAN iSCSI initiator both need to be answered
+    # differently from the machine next to them, and on ISC both are an
+    # if/else inside the node's own host block. A Kea reservation outranks
+    # every class, so anything the reservation names cannot be overridden --
+    # which is why neither the pxe boot file nor an ISAN node's root path is
+    # reserved. What the reservation does not name, a class can decide.
+    my $pxe = xCAT_plugin::dhcp::kea_boot_for_node(
+        'cn01', { netboot => 'pxe' }, undef, undef, undef, '192.0.2.1'
+    );
+    ok( !exists $pxe->{'boot-file-name'},
+        'a pxe node reserves no boot file, so the ScaleMP class can win' );
+
+    my $iscsi = { server => '192.0.2.9', target => 'iqn.2024-01.test:cn01', lun => 0 };
+    my $plain = xCAT_plugin::dhcp::kea_boot_for_node(
+        'cn02', {}, undef, undef, $iscsi, '192.0.2.1'
+    );
+    my ($root_path) = grep { $_->{name} eq 'root-path' } @{ $plain->{'option-data'} };
+    is(
+        $root_path ? $root_path->{data} : undef,
+        'iscsi:192.0.2.9:6:3260:0:iqn.2024-01.test:cn01',
+        'without an initiator name there is no choice to make, so the root path is reserved',
+    );
+
+    my $named = xCAT_plugin::dhcp::kea_boot_for_node(
+        'cn03', {}, undef, undef, { %$iscsi, iname => 'iqn.2024-01.test:init' },
+        '192.0.2.1'
+    );
+    is_deeply(
+        [ grep { $_->{name} =~ /^(root-path|iscsi-initiator-iqn)$/ } @{ $named->{'option-data'} } ],
+        [],
+        'with one, nothing is reserved: an ISAN initiator must not be sent option 17',
+    );
+}
+
+{
+    # ...and the classes that carry what the reservation gave up.
+    my %tables = (
+        noderes => DHCPKeaResTable->new(
+            { smp01 => { netboot => 'pxe' }, san01 => { netboot => 'pxe' } }
+        ),
+        mac => DHCPKeaResTable->new(
+            {
+                smp01 => { mac => 'aa:bb:cc:dd:ee:01' },
+                san01 => { mac => 'aa:bb:cc:dd:ee:02' },
+            }
+        ),
+        iscsi => DHCPKeaResTable->new(
+            {
+                san01 => {
+                    server => '192.0.2.9',
+                    target => 'iqn.2024-01.test:san01',
+                    lun    => 0,
+                    iname  => 'iqn.2024-01.test:init',
+                },
+            }
+        ),
+    );
+
+    no warnings 'redefine';
+    local *xCAT::Table::new = sub {
+        my ( $class, $name ) = @_;
+        return $tables{$name};
+    };
+    local *xCAT_plugin::dhcp::kea_next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
+
+    my $classes = xCAT_plugin::dhcp::kea_node_client_classes_for_nodes( [ 'smp01', 'san01' ] );
+    my %by_name = map { $_->{name} => $_ } @$classes;
+
+    is( $by_name{'xcat-pxe-smp01-aabbccddee01-scalemp'}{'boot-file-name'},
+        'vsmp/pxelinux.0',
+        'a ScaleMP machine is handed the binary built for it' );
+    is( $by_name{'xcat-pxe-smp01-aabbccddee01'}{'boot-file-name'},
+        'pxelinux.0',
+        'and every other machine on that reservation keeps pxelinux.0' );
+    like( $by_name{'xcat-pxe-smp01-aabbccddee01'}{test}, qr/\Qnot (option[60].text == 'ScaleMP')\E/,
+        'the two are mutually exclusive: Kea has no else to fall into' );
+
+    is_deeply(
+        $by_name{'xcat-iscsi-san01-aabbccddee02-isan'}{'option-data'},
+        [
+            { space => 'isan', name => 'iqn',       data => 'iqn.2024-01.test:init' },
+            { space => 'isan', name => 'root-path', data => 'iscsi:192.0.2.9:6:3260:0:iqn.2024-01.test:san01' },
+        ],
+        'an ISAN initiator reads both values out of the vendor space',
+    );
+    is_deeply(
+        $by_name{'xcat-iscsi-san01-aabbccddee02'}{'option-data'},
+        [
+            { name => 'root-path',           data => 'iscsi:192.0.2.9:6:3260:0:iqn.2024-01.test:san01' },
+            { name => 'iscsi-initiator-iqn', data => 'iqn.2024-01.test:init' },
+        ],
+        'everything else gets the standard form ISC emits',
+    );
+
+    ok( !exists $by_name{'xcat-iscsi-smp01-aabbccddee01'},
+        'a node with no iscsi entry is given no iSCSI classes' );
+
+    # The option 43 space those two names live in has to be declared, or Kea
+    # rejects the configuration outright.
+    my %defs = map { ( $_->{space} . '/' . $_->{name} ) => $_ } @{ xCAT_plugin::dhcp::kea_option_defs() };
+    is( $defs{'dhcp4/isan-encap-opts'}{code}, 43, 'option 43 encapsulates the isan space' );
+    is( $defs{'dhcp4/isan-encap-opts'}{encapsulate}, 'isan', 'and says which space that is' );
+    is( $defs{'isan/iqn'}{code},       203, 'the initiator name is sub-option 203' );
+    is( $defs{'isan/root-path'}{code}, 201, 'the root path is sub-option 201' );
 }
 
 done_testing();

@@ -2815,11 +2815,11 @@ sub kea_process_request
             push @deleted4, @{ $backend->delete_reservations($loaded4, $match) };
             push @deleted6, @{ $backend->delete_reservations($loaded6, $match) } if $loaded6;
         }
-        $client_classes_changed = kea_remove_xnba_client_classes($loaded4, $nodes);
+        $client_classes_changed = kea_remove_node_client_classes($loaded4, $nodes);
     } else {
         $reservations4 = kea_build_node_reservations($backend, $loaded4, $nodes);
         $backend->upsert_reservations($loaded4, $reservations4);
-        $client_classes_changed = kea_sync_xnba_client_classes($loaded4, $nodes);
+        $client_classes_changed = kea_sync_node_client_classes($loaded4, $nodes);
         if ($loaded6) {
             $reservations6 = kea_build_node_reservations6($backend, $loaded6, $nodes);
             $backend->upsert_reservations($loaded6, $reservations6);
@@ -3712,12 +3712,12 @@ sub kea_node_reservations
     return \@reservations;
 }
 
-sub kea_sync_xnba_client_classes
+sub kea_sync_node_client_classes
 {
     my ( $config, $nodes ) = @_;
 
-    my $changed = kea_remove_xnba_client_classes($config, $nodes);
-    my $classes = kea_xnba_client_classes_for_nodes($nodes);
+    my $changed = kea_remove_node_client_classes($config, $nodes);
+    my $classes = kea_node_client_classes_for_nodes($nodes);
     return $changed unless @$classes;
 
     $config->{Dhcp4} ||= {};
@@ -3727,7 +3727,15 @@ sub kea_sync_xnba_client_classes
     return 1;
 }
 
-sub kea_remove_xnba_client_classes
+#: Every per-node class this plugin generates carries one of these, so a node
+#: that changes netboot method loses the classes the old one wrote.
+my %KEA_NODE_CLASS_PURPOSES = map { $_ => 1 } qw(
+  xnba-second-stage
+  pxe-vendor
+  iscsi-initiator
+);
+
+sub kea_remove_node_client_classes
 {
     my ( $config, $nodes ) = @_;
 
@@ -3739,7 +3747,7 @@ sub kea_remove_xnba_client_classes
 
     foreach my $class (@$classes) {
         my $context = $class->{'user-context'} || {};
-        if ( ( $context->{'xcat-purpose'} || '' ) eq 'xnba-second-stage' && $nodes{ $context->{'xcat-node'} || '' } ) {
+        if ( $KEA_NODE_CLASS_PURPOSES{ $context->{'xcat-purpose'} || '' } && $nodes{ $context->{'xcat-node'} || '' } ) {
             $changed = 1;
             next;
         }
@@ -3750,7 +3758,7 @@ sub kea_remove_xnba_client_classes
     return $changed;
 }
 
-sub kea_xnba_client_classes_for_nodes
+sub kea_node_client_classes_for_nodes
 {
     my ($nodes) = @_;
 
@@ -3758,43 +3766,66 @@ sub kea_xnba_client_classes_for_nodes
     my $mactab = xCAT::Table->new('mac');
     return [] unless $nrtab && $mactab;
 
+    my $iscsitab = xCAT::Table->new('iscsi', -create => 0);
     my $nrents = $nrtab->getNodesAttribs($nodes, [ 'tftpserver', 'netboot', 'proxydhcp', 'xcatmaster', 'servicenode' ]);
     my $macents = $mactab->getNodesAttribs($nodes, ['mac']);
+    my $ients = $iscsitab ? $iscsitab->getNodesAttribs($nodes, [qw(server target lun iname)]) : undef;
     my $httpport = "80";
     my @hports = xCAT::TableUtils->get_site_attribute("httpport");
     if ($hports[0]) {
         $httpport = $hports[0];
     }
-    my $portsuffix = ( $httpport eq "80" ) ? "" : ":$httpport";
 
-    my @records;
+    my @xnba;
+    my @pxe;
+    my @iscsi;
     foreach my $node (@$nodes) {
         my $nrent = $nrents && $nrents->{$node} ? $nrents->{$node}->[0] : undef;
-        next unless $nrent && $nrent->{netboot} && $nrent->{netboot} eq 'xnba';
+        my $netboot = $nrent ? $nrent->{netboot} : undef;
 
         my $macent = $macents && $macents->{$node} ? $macents->{$node}->[0] : undef;
         next unless $macent && $macent->{mac};
 
         my ( $nxtsrv ) = kea_next_server_for_node($node, $nrent);
-        next unless $nxtsrv;
+
+        my $ient = $ients && $ients->{$node} ? $ients->{$node}->[0] : undef;
+        my $iname = ( $ient and $ient->{server} and $ient->{target} ) ? $ient->{iname} : undef;
 
         foreach my $mace (split(/\|/, $macent->{mac})) {
             my ($mac) = split(/!/, $mace);
             $mac = kea_normalize_mac($mac);
             next unless $mac;
-            push @records, {
-                node        => $node,
-                mac         => $mac,
-                next_server => $nxtsrv,
-                httpport    => $httpport,
-            };
+            my %record = ( node => $node, mac => $mac );
+
+            if ($netboot and $netboot eq 'xnba' and $nxtsrv) {
+                push @xnba, { %record, next_server => $nxtsrv, httpport => $httpport };
+            } elsif ($netboot and $netboot eq 'pxe') {
+                push @pxe, {%record};
+            }
+
+            if ( defined $iname ) {
+                push @iscsi,
+                  { %record, iname => $iname, root_path => kea_iscsi_root_path($ient) };
+            }
         }
     }
 
-    return xCAT::DHCP::BootPolicy->kea_xnba_node_classes(
-        nodes    => \@records,
-        xnba_efi => -f "$tftpdir/xcat/xnba.efi" ? 1 : 0,
-    );
+    return [
+        @{ xCAT::DHCP::BootPolicy->kea_xnba_node_classes(
+                nodes    => \@xnba,
+                xnba_efi => -f "$tftpdir/xcat/xnba.efi" ? 1 : 0,
+            ) },
+        @{ xCAT::DHCP::BootPolicy->kea_pxe_node_classes( nodes => \@pxe ) },
+        @{ xCAT::DHCP::BootPolicy->kea_iscsi_node_classes( nodes => \@iscsi ) },
+    ];
+}
+
+sub kea_iscsi_root_path
+{
+    my ($ient) = @_;
+
+    my $lun = defined( $ient->{lun} ) ? $ient->{lun} : 0;
+    return 'iscsi:' . $ient->{server} . ':6:3260:' . $lun . ':' . $ient->{target};
 }
 
 sub normalize_mac
@@ -3990,16 +4021,19 @@ sub kea_boot_for_node
     my %boot = ( 'option-data' => [] );
     my $netboot = $nrent ? $nrent->{netboot} : undef;
 
-    if ($ient and $ient->{server} and $ient->{target}) {
+    # A node with an initiator name has to choose between the ISAN vendor form
+    # and the standard one, and a reservation's option-data outranks any class,
+    # so the choice is left to kea_iscsi_node_classes and nothing is reserved.
+    if ($ient and $ient->{server} and $ient->{target} and !defined($ient->{iname})) {
         $ient->{lun} = 0 unless defined($ient->{lun});
-        my $rootpath = 'iscsi:' . $ient->{server} . ':6:3260:' . $ient->{lun} . ':' . $ient->{target};
-        push @{ $boot{'option-data'} }, { name => 'root-path', data => $rootpath };
-        push @{ $boot{'option-data'} }, { name => 'iscsi-initiator-iqn', data => $ient->{iname} } if defined($ient->{iname});
+        push @{ $boot{'option-data'} },
+          { name => 'root-path', data => kea_iscsi_root_path($ient) };
     }
 
-    if ($netboot and $netboot eq 'pxe') {
-        $boot{'boot-file-name'} = 'pxelinux.0';
-    } elsif ($netboot and $netboot eq 'yaboot') {
+    # netboot=pxe is absent from this chain for the same reason: a ScaleMP
+    # machine has to be able to win, and only a class can outrank nothing.
+    # kea_pxe_node_classes writes both halves of that choice.
+    if ($netboot and $netboot eq 'yaboot') {
         $boot{'boot-file-name'} = "/yb/node/yaboot-$node";
     } elsif ($netboot and $netboot =~ /^grub2[-]?.*$/) {
         $boot{'boot-file-name'} = "/boot/grub2/grub2-$node";
@@ -4056,6 +4090,7 @@ sub kea_option_defs
         { name => 'conf-file', code => 209, type => 'string', space => 'dhcp4' },
         { name => 'iscsi-initiator-iqn', code => 203, type => 'string', space => 'dhcp4' },
         { name => 'cumulus-provision-url', code => 239, type => 'string', space => 'dhcp4' },
+        @{ xCAT::DHCP::BootPolicy->kea_isan_option_defs() },
     ];
 }
 
