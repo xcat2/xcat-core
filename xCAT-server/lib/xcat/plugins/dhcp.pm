@@ -1003,66 +1003,17 @@ sub addnode
     if ($nrhash)
     {
         $nrent = $nrhash->{$node}->[0];
-        if ($nrent and $nrent->{tftpserver} and $nrent->{tftpserver} ne '<xcatmaster>')
-        {
-            #check the value of inet_ntoa(inet_aton("")),if the hostname cannot be resolved,
-            #the value of inet_ntoa() will be "undef", which will cause fatal error
-            my $tmp_name = inet_aton($nrent->{tftpserver});
-            unless ($tmp_name) {
-
-                #tell the reason to the user
-                $callback->(
-                    { error => ["Unable to resolve the tftpserver for node"], errorcode => [1] }
-                );
-                return;
-            }
-            $tftpserver = inet_ntoa($tmp_name);
-            $nxtsrv     = $tftpserver;
-            $lstatements = _omapi_next_server_statement($tftpserver) . $statements;
-        }
-        else
-        {
-            $guess_next_server = 1;
-        }
-        if ($nrent->{netboot} and ($nrent->{netboot} eq 'petitboot' or $nrent->{netboot} eq 'onie' )) {
-            if ($guess_next_server) {
-                my $node_server = undef;
-                if ($nrent->{xcatmaster}) {
-                    $node_server = $nrent->{xcatmaster};
-                }
-                unless ($node_server) {
-                    my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($node);
-                    unless ($nxtsrvd[0]) { $nxtsrv = $nxtsrvd[1]; }
-                    elsif ($nxtsrvd[0] == 1) { $callback->({ error => [ $nxtsrvd[1] ] }); }
-                    else {
-                        $callback->({ error => ["Unable to determine the tftpserver for $node, verify \"xcatmaster\" is set correctly"], errorcode => [1] });
-                        return;
-                    }
-                } else {
-                    my $tmp_server = inet_aton($node_server);
-                    unless ($tmp_server) {
-                        $callback->({ error => ["Unable to resolve the tftpserver for $node, verify \"xcatmaster\" is set correctly"], errorcode => [1] });
-                        return;
-                    }
-                    $nxtsrv = inet_ntoa($tmp_server);
-                }
-                unless ($nxtsrv) {
-                    $callback->({ error => ["Unable to determine the tftpserver for $node, verify \"xcatmaster\" is set correctly"], errorcode => [1] });
-                    return;
-                }
-                $guess_next_server = 0;
-            }
-        }
-
-        #else {
-        # $nrent = $nrtab->getNodeAttribs($node,['servicenode']);
-        # if ($nrent and $nrent->{servicenode}) {
-        #  $statements = 'next-server  = \"'.inet_ntoa(inet_aton($nrent->{servicenode})).'\";'.$statements;
-        # }
-        #}
     }
-    else
-    {
+
+    # Which server this node is sent to. Both backends read the same answer
+    # out of next_server_for_node; an undefined tftpserver is the one case
+    # nothing here can name, and the subnet's own value carries it.
+    ( $nxtsrv, $tftpserver ) = next_server_for_node( $node, $nrent );
+    return unless defined $nxtsrv;
+    if ( defined $tftpserver ) {
+        $lstatements = _omapi_next_server_statement($tftpserver) . $statements;
+    }
+    else {
         $guess_next_server = 1;
     }
     unless ($machash)
@@ -3659,7 +3610,7 @@ sub kea_node_reservations
         return [];
     }
 
-    my ( $nxtsrv, $tftpserver ) = kea_next_server_for_node($node, $nrent);
+    my ( $nxtsrv, $tftpserver ) = next_server_for_node($node, $nrent);
     my @reservations;
     my @macs = split(/\|/, $macent->{mac});
     foreach my $mace (@macs) {
@@ -3851,7 +3802,7 @@ sub kea_node_client_classes_for_nodes
         my $macent = $macents && $macents->{$node} ? $macents->{$node}->[0] : undef;
         next unless $macent && $macent->{mac};
 
-        my ( $nxtsrv ) = kea_next_server_for_node($node, $nrent);
+        my ( $nxtsrv ) = next_server_for_node($node, $nrent);
 
         my $ient = $ients && $ients->{$node} ? $ients->{$node}->[0] : undef;
         my $iname = ( $ient and $ient->{server} and $ient->{target} ) ? $ient->{iname} : undef;
@@ -4081,35 +4032,76 @@ sub kea_query_node
     }
 }
 
-sub kea_next_server_for_node
+#: A netboot method that builds a URL needs the server's address in hand, so
+#: for those the search cannot end at "whatever the subnet says" -- there is
+#: nothing to interpolate a subnet value into.
+sub _needs_absolute_next_server
+{
+    my ($nrent) = @_;
+
+    my $netboot = $nrent ? $nrent->{netboot} : undef;
+    return 0 unless $netboot;
+    return ( $netboot eq 'petitboot' or $netboot eq 'onie' ) ? 1 : 0;
+}
+
+#: Which server a node is sent to, in the order noderes states it: the node's
+#: own tftpserver, then its xcatmaster, then -- only for the methods above --
+#: the interface of this machine that faces the node. A node that named none of
+#: them inherits the subnet's value, which is what '${next-server}' stands for
+#: and why the second return value is undefined there: there is no per-node
+#: address to write down.
+#:
+#: Returns ( next-server, tftpserver ) or the empty list, having already told
+#: the caller's callback why.
+#:
+#: Both backends read this. They had a copy each and the copies had drifted:
+#: ISC honoured xcatmaster only for petitboot and onie, so every other node in
+#: a hierarchical cluster was sent to the management node instead of to its
+#: service node; and Kea fell back to my_ip_facing for every node, so a subnet
+#: whose tftpserver named some third machine was overruled on one backend and
+#: obeyed on the other.
+sub next_server_for_node
 {
     my ( $node, $nrent ) = @_;
 
-    if ($nrent and $nrent->{tftpserver} and $nrent->{tftpserver} ne '<xcatmaster>') {
-        my $tmp_name = inet_aton($nrent->{tftpserver});
+    #check the value of inet_ntoa(inet_aton("")),if the hostname cannot be resolved,
+    #the value of inet_ntoa() will be "undef", which will cause fatal error
+    if ( $nrent and $nrent->{tftpserver} and $nrent->{tftpserver} ne '<xcatmaster>' ) {
+        my $tmp_name = inet_aton( $nrent->{tftpserver} );
         unless ($tmp_name) {
+
+            #tell the reason to the user
             $callback->({ error => ["Unable to resolve the tftpserver for node"], errorcode => [1] });
             return;
         }
         my $server = inet_ntoa($tmp_name);
-        return ($server, $server);
+        return ( $server, $server );
     }
 
-    my $node_server = $nrent && $nrent->{xcatmaster} ? $nrent->{xcatmaster} : undef;
-    if ($node_server) {
-        my $tmp_server = inet_aton($node_server);
-        if ($tmp_server) {
-            my $server = inet_ntoa($tmp_server);
-            return ($server, $server);
+    if ( $nrent and $nrent->{xcatmaster} ) {
+        my $tmp_server = inet_aton( $nrent->{xcatmaster} );
+        unless ($tmp_server) {
+            $callback->({ error => ["Unable to resolve the tftpserver for $node, verify \"xcatmaster\" is set correctly"], errorcode => [1] });
+            return;
         }
+        my $server = inet_ntoa($tmp_server);
+        return ( $server, $server );
     }
 
-    my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($node);
-    unless ($nxtsrvd[0]) {
-        return ($nxtsrvd[1], $nxtsrvd[1]);
+    if ( _needs_absolute_next_server($nrent) ) {
+        my @facing = xCAT::NetworkUtils->my_ip_facing($node);
+        unless ( $facing[0] ) {
+            return ( $facing[1], $facing[1] );
+        }
+        my $why =
+          ( $facing[0] == 1 )
+          ? $facing[1]
+          : "Unable to determine the tftpserver for $node, verify \"xcatmaster\" is set correctly";
+        $callback->({ error => [$why], errorcode => [1] });
+        return;
     }
 
-    return ('${next-server}', undef);
+    return ( '${next-server}', undef );
 }
 
 sub kea_boot_for_node

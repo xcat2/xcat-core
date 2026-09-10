@@ -549,8 +549,14 @@ foreach my $case (@sysconfig_policy_cases) {
     # get a Kea host reservation exactly like a regular compute node.  The Kea
     # reservation builder loops over every requested node without filtering on
     # service-node membership, so kea_build_node_reservations must emit an
-    # ip/mac/hostname reservation whose next-server is resolved (via
-    # my_ip_facing) to the management server that serves the node's subnet.
+    # ip/mac/hostname reservation for it.
+    #
+    # This node names no server of its own -- its tftpserver is the
+    # <xcatmaster> placeholder and it has no xcatmaster -- so the address it is
+    # sent to is the subnet's, which a reservation states by saying nothing.
+    # Kea used to fall back to my_ip_facing here, which is a different answer
+    # from the one ISC gives the same node whenever networks.tftpserver names
+    # some third machine.
     package DHCPKeaResTable;
     sub new { my ( $class, $rows ) = @_; return bless { rows => $rows }, $class; }
     sub getNodesAttribs {
@@ -608,7 +614,69 @@ foreach my $case (@sysconfig_policy_cases) {
     is( $r->{'ip-address'},  '192.168.201.21',    'service node reservation carries the node IP' );
     is( $r->{'hw-address'},  '42:d7:c0:a8:c9:15', 'service node reservation carries the node MAC' );
     is( $r->{hostname},      'svc01',             'service node reservation carries the hostname' );
-    is( $r->{'next-server'}, '192.168.201.20',    'service node reservation next-server resolves to the serving management IP' );
+    ok( !exists $r->{'next-server'},
+        'a node that names no server of its own leaves next-server to the subnet' );
+}
+
+{
+    # Where a node is sent, in the order noderes states it. Both backends read
+    # this one answer; they used to have a copy each and the copies disagreed
+    # about every row but the first.
+    no warnings 'redefine';
+    local *xCAT::NetworkUtils::my_ip_facing = sub { return ( 0, '10.0.0.1' ); };
+    my @errors;
+    local $xCAT_plugin::dhcp::callback = sub {
+        my $resp = shift;
+        push @errors, @{ $resp->{error} || [] };
+    };
+
+    my @cases = (
+        [   { tftpserver => '192.0.2.10', xcatmaster => '192.0.2.20' },
+            [ '192.0.2.10', '192.0.2.10' ],
+            'the node\'s own tftpserver outranks its xcatmaster',
+        ],
+        [   { tftpserver => '<xcatmaster>', xcatmaster => '192.0.2.20' },
+            [ '192.0.2.20', '192.0.2.20' ],
+            'the <xcatmaster> placeholder defers to the xcatmaster attribute',
+        ],
+        [   { netboot => 'xnba', xcatmaster => '192.0.2.20' },
+            [ '192.0.2.20', '192.0.2.20' ],
+            'xcatmaster is honoured for every netboot method, not only petitboot and onie',
+        ],
+        [   { netboot => 'xnba' },
+            [ '${next-server}', undef ],
+            'a node naming neither inherits the subnet\'s value',
+        ],
+        [   {},
+            [ '${next-server}', undef ],
+            'and so does a node with no noderes entry to speak of',
+        ],
+        [   { netboot => 'petitboot' },
+            [ '10.0.0.1', '10.0.0.1' ],
+            'petitboot needs an address to build its URL with, so it falls back to the facing interface',
+        ],
+        [   { netboot => 'onie' },
+            [ '10.0.0.1', '10.0.0.1' ],
+            'and so does onie',
+        ],
+    );
+
+    foreach my $case (@cases) {
+        my ( $nrent, $want, $why ) = @{$case};
+        is_deeply( [ xCAT_plugin::dhcp::next_server_for_node( 'n1', $nrent ) ], $want, $why );
+    }
+
+    is_deeply( [ xCAT_plugin::dhcp::next_server_for_node( 'n1', undef ) ],
+        [ '${next-server}', undef ], 'a node with no noderes row at all inherits the subnet too' );
+
+    is( scalar(@errors), 0, 'none of those are an error the operator has to read about' );
+
+    # An xcatmaster nobody can resolve is a misconfiguration, and silently
+    # sending the node somewhere else hides it.
+    @errors = ();
+    my @unresolvable = xCAT_plugin::dhcp::next_server_for_node( 'n1', { xcatmaster => 'no.such.host.invalid' } );
+    is( scalar(@unresolvable), 0, 'an unresolvable xcatmaster yields no address' );
+    like( ( $errors[0] || '' ), qr/xcatmaster/, 'and says which attribute to look at' );
 }
 
 my @normalized_mac_cases = (
@@ -681,7 +749,7 @@ foreach my $case (@invalid_mac_cases) {
         return '192.0.2.25';
     };
     local *xCAT_plugin::dhcp::ipIsDynamic = sub { return 0; };
-    local *xCAT_plugin::dhcp::kea_next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
+    local *xCAT_plugin::dhcp::next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
     local *xCAT_plugin::dhcp::kea_boot_for_node = sub { return {}; };
 
     my $backend = bless {}, 'DHCPKeaMacBackend';
@@ -787,7 +855,7 @@ foreach my $case (@invalid_mac_cases) {
         return $host eq 'valid01' ? '192.0.2.30' : undef;
     };
     local *xCAT_plugin::dhcp::ipIsDynamic = sub { return 0; };
-    local *xCAT_plugin::dhcp::kea_next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
+    local *xCAT_plugin::dhcp::next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
     local *xCAT_plugin::dhcp::kea_boot_for_node = sub { return {}; };
     local *xCAT::MsgUtils::message = sub { return; };
     local *xCAT::MsgUtils::trace = sub { return; };
@@ -856,7 +924,7 @@ foreach my $case (@invalid_mac_cases) {
         my ( $class, $name ) = @_;
         return $xnba_tables{$name};
     };
-    local *xCAT_plugin::dhcp::kea_next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
+    local *xCAT_plugin::dhcp::next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
 
     my $classes = xCAT_plugin::dhcp::kea_node_client_classes_for_nodes(['xnba01'])->{classes};
     my ($bios_class) = grep { $_->{name} =~ /-bios\z/ } @$classes;
@@ -904,7 +972,7 @@ foreach my $case (@invalid_mac_cases) {
     local *xCAT::NetworkUtils::getipaddr = $noip_getipaddr;
     local *xCAT_plugin::dhcp::getipaddr  = $noip_getipaddr;
     local *xCAT_plugin::dhcp::ipIsDynamic = sub { return 0; };
-    local *xCAT_plugin::dhcp::kea_next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
+    local *xCAT_plugin::dhcp::next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
     local *xCAT_plugin::dhcp::kea_boot_for_node = sub { return {}; };
 
     my @errors;
@@ -963,7 +1031,7 @@ foreach my $case (@invalid_mac_cases) {
         my ($ip) = @_;
         return $ip eq '192.0.2.150' || $ip eq '2001:db8::150';
     };
-    local *xCAT_plugin::dhcp::kea_next_server_for_node = sub { return; };
+    local *xCAT_plugin::dhcp::next_server_for_node = sub { return; };
     local *xCAT_plugin::dhcp::kea_boot_for_node = sub { return {}; };
     local *xCAT::MsgUtils::message = sub { return; };
     local *xCAT::MsgUtils::trace = sub { return; };
@@ -1255,7 +1323,7 @@ foreach my $case (@invalid_mac_cases) {
         my ( $class, $name ) = @_;
         return $tables{$name};
     };
-    local *xCAT_plugin::dhcp::kea_next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
+    local *xCAT_plugin::dhcp::next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
 
     my $classes = xCAT_plugin::dhcp::kea_node_client_classes_for_nodes( [ 'smp01', 'san01' ] )->{classes};
     my %by_name = map { $_->{name} => $_ } @$classes;
@@ -1321,7 +1389,7 @@ foreach my $case (@invalid_mac_cases) {
         my ( $class, $name ) = @_;
         return $tables{$name};
     };
-    local *xCAT_plugin::dhcp::kea_next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
+    local *xCAT_plugin::dhcp::next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
 
     my $config = { Dhcp4 => { 'client-classes' => [] } };
     ok( xCAT_plugin::dhcp::kea_sync_node_client_classes( $config, [ 'cn01', 'cn02' ] ),
@@ -1432,7 +1500,7 @@ foreach my $case (@invalid_mac_cases) {
         my ( $class, $name ) = @_;
         return $tables{$name};
     };
-    local *xCAT_plugin::dhcp::kea_next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
+    local *xCAT_plugin::dhcp::next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
     local *xCAT_plugin::dhcp::proxydhcp = sub { return 1; };
 
     my $classes = xCAT_plugin::dhcp::kea_node_client_classes_for_nodes( [ 'booted', 'win01' ] )->{classes};

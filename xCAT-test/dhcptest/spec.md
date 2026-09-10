@@ -401,7 +401,7 @@ Scenario: The node is told its own name
 A service node serves the racks behind it. Which server a node is sent to is
 what makes a hierarchical cluster work, and it is visible in one field.
 
-Source: `dhcp.pm:1000-1045`, `kea_next_server_for_node`, `dhcp.pm:3441`
+Source: `next_server_for_node`, which both backends read, and `dhcp.pm:3441`
 
 ```gherkin
 @S-36
@@ -421,7 +421,9 @@ Scenario: next-server otherwise comes from the subnet
   Given a node with neither tftpserver nor xcatmaster
   When it discovers
   Then siaddr is the tftpserver of the subnet it discovered on
-  # dhcp.pm:1125 -- '${next-server}' defers to the network-level value.
+  # '${next-server}' is what a node that named no server of its own is
+  # given: ISC leaves the subnet statement to answer it, and Kea says
+  # nothing in the reservation, which comes to the same thing.
 
 @S-39
 Scenario: A node's URLs point at the same server as its next-server
@@ -794,7 +796,8 @@ Stated so that a green run is not read as more than it is:
 Every row is a place where ISC dhcpd and Kea answered the same frame
 differently, or where only one of them answered it at all. They were found by
 reading this document against `dhcp.pm` and `BootPolicy.pm` and are enumerated
-in VersatusHPC/xcat-internal#175.
+in VersatusHPC/xcat-internal#175. Rows 26 and 27 are not in that issue: they
+were found by the wire cases, which is what the wire cases are for.
 
 The decision column is now the specification: the scenarios above state it
 unconditionally, and the wire cases assert it against both backends. "Already
@@ -828,6 +831,8 @@ the drift was in the spec text, not in xCAT.
 | 23 | Adoption without a daemon restart: an ISC/OMAPI property | No restart, both | Restarting mid-discovery drops every other machine being discovered | S-58 | already asserted on both by `run-adoption` |
 | 24 | `authoritative`: an ISC directive, nothing cited for Kea | DHCPNAK rather than silence, both | A node that moved rack must be told to start over | S-53 | Kea: `authoritative` on |
 | 25 | The whole common-option block sourced only from the ISC generator | Parity, asserted not assumed | An installer that loses its resolver, route, clock or MTU fails late and obscurely | S-44 to S-52 | neither, so far -- now asserted on the wire on both |
+| 26 | `noderes.xcatmaster`: read for every node (Kea) vs only for `petitboot` and `onie` (ISC) | Read for every node, both | An operator sets it per node and deliberately; a hierarchical cluster's compute nodes were being sent to the management node on ISC | S-37 | ISC: honour it whatever the netboot method, and put it in siaddr as well as in the URLs built from it |
+| 27 | No server named at all: subnet value (ISC) vs `my_ip_facing` (Kea) | The subnet's value, both | The two agree only while the subnet's tftpserver is this machine; `networks.tftpserver` exists precisely to say otherwise | S-38 | Kea: leave `next-server` out of the reservation and let the subnet answer |
 
 ## Appendix B: spec review
 
