@@ -130,6 +130,28 @@ sub kea_s390x_network_classes {
     ];
 }
 
+# The user class a chainloaded second stage announces itself with, as an ISC
+# dhcpd condition.
+#
+# RFC 3004 length-prefixes each string in option 77; plenty of clients send the
+# bare string instead, and both are seen in the field from the same firmware
+# depending on how it was built. Matching only the bare form means a loader
+# that follows the RFC is handed the first stage again and chainloads itself
+# forever, which is why the Kea policy has always accepted both
+# (xnba_user_class_test) and why this one has to as well.
+#
+# `quote` is the quoting the caller's context needs: a plain " for a config
+# file written directly, and \" for a statement that reaches dhcpd through
+# omshell.
+sub isc_xnba_user_class_test {
+    my ( $class, %opts ) = @_;
+
+    my $q = defined( $opts{quote} ) ? $opts{quote} : '"';
+
+    return "(option user-class-identifier = ${q}xNBA${q}"
+      . " or substring(option user-class-identifier, 1, 4) = ${q}xNBA${q})";
+}
+
 sub isc_client_architecture_lines {
     my ( $class, %opts ) = @_;
 
@@ -137,14 +159,15 @@ sub isc_client_architecture_lines {
     my $portsuffix = $opts{portsuffix}  // '';
     my $net        = $opts{net}         // '';
     my $maskbits   = $opts{prefix}      // '';
+    my $xnba       = $class->isc_xnba_user_class_test();
 
     return [
-        "    if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { #x86, xCAT Network Boot Agent\n",
+        "    if $xnba and option client-architecture = 00:00 { #x86, xCAT Network Boot Agent\n",
         "        always-broadcast on;\n",
         "        filename = \"http://$tftp$portsuffix/tftpboot/xcat/xnba/nets/${net}_${maskbits}\";\n",
-        "    } else if option user-class-identifier = \"xNBA\" and option client-architecture = 00:09 { #x86, xCAT Network Boot Agent\n",
+        "    } else if $xnba and option client-architecture = 00:09 { #x86, xCAT Network Boot Agent\n",
         "        filename = \"http://$tftp$portsuffix/tftpboot/xcat/xnba/nets/${net}_${maskbits}.uefi\";\n",
-        "    } else if option user-class-identifier = \"xNBA\" and option client-architecture = 00:07 { #x86-64 UEFI, xCAT Network Boot Agent\n",
+        "    } else if $xnba and option client-architecture = 00:07 { #x86-64 UEFI, xCAT Network Boot Agent\n",
         "        filename = \"http://$tftp$portsuffix/tftpboot/xcat/xnba/nets/${net}_${maskbits}.uefi\";\n",
         "    } else if option client-architecture = 00:00  { #x86\n",
         "        filename \"xcat/xnba.kpxe\";\n",
