@@ -41,6 +41,14 @@ class Table(unittest.TestCase):
         self.assertTrue(machine.transition_for(machine.BOUND, "renew").unicast)
         self.assertFalse(machine.transition_for(machine.BOUND, "rebind").unicast)
 
+    def test_a_bootrequest_is_a_single_exchange_from_init(self):
+        transition = machine.transition_for(machine.INIT, "bootrequest")
+        self.assertEqual(transition.expects, frozenset(["bootreply"]))
+        self.assertEqual(transition.default_expect, "bootreply")
+        # No handshake follows a BOOTREPLY, so the session stays where it was
+        # and a second BOOTREQUEST in the same scenario is still legal.
+        self.assertEqual(transition.next_state, machine.INIT)
+
 
 class Validation(unittest.TestCase):
 
@@ -85,6 +93,18 @@ class Validation(unittest.TestCase):
             step("again", "discover"),
         ))
         self.assertEqual(problems, [])
+
+    def test_a_release_gives_the_lease_up_even_though_nothing_answers_it(self):
+        # RELEASE is never answered, so its expect is "none" -- but unlike a
+        # DISCOVER nobody replied to, the step did its work, and the client is
+        # back in INIT and free to discover again.
+        self.assertEqual(machine.validate_scenario(scenario(
+            step("d", "discover"),
+            step("r", "request", params={"requested_address": "$offer.address",
+                                         "server_id": "$offer.server_id"}),
+            step("bye", "release"),
+            step("again", "discover"),
+        )), [])
 
     def test_a_duplicate_step_name_is_rejected(self):
         problems = machine.validate_scenario(scenario(

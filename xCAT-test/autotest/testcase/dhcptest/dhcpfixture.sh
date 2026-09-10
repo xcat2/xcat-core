@@ -22,6 +22,14 @@
 #     dhcpfixture.sh run-netboot             one boot file per node netboot method
 #     dhcpfixture.sh run-lease               the lease itself: handshake, renew, rebind, NAK
 #     dhcpfixture.sh run-chainload           first stage versus chainloaded second stage
+#     dhcpfixture.sh run-nextserver          the three sources of next-server, told apart
+#     dhcpfixture.sh run-multimac            a node reachable on either of its two ports
+#     dhcpfixture.sh run-iscsi               a diskless node is told where its root is
+#     dhcpfixture.sh run-loader-absent       a loader that is not on disk is not named
+#     dhcpfixture.sh run-httpport            URLs carry a non-default web port
+#     dhcpfixture.sh run-rangecidr           a dynamic range written as a CIDR block
+#     dhcpfixture.sh run-removal             makedhcp -d stops the address being served
+#     dhcpfixture.sh run-bootp               a client that speaks BOOTP and not DHCP
 #     dhcpfixture.sh backends                name every backend installed here
 #     dhcpfixture.sh backend-setup <b>       select a backend for a whole pass of the cases
 #     dhcpfixture.sh backend-teardown <b>    put the backend selection back
@@ -62,6 +70,58 @@ ADOPT_MAC=02:00:dc:11:00:aa
 # An address on a network this server has never heard of, for the DHCPNAK case.
 # 192.0.2.0/24 is TEST-NET-1 and is not routable anywhere.
 FOREIGN_IP=192.0.2.77
+
+# Where a node is told to fetch its boot file from has three possible sources,
+# and in a flat cluster all three are this machine -- which is exactly why the
+# test would prove nothing there. These two addresses stand in for the service
+# nodes a hierarchical cluster would have. Nothing ever connects to them: the
+# assertion is on the address in the reply, so they only have to be distinct
+# from each other and from this server.
+SN_TFTP_IP=10.99.0.61
+SN_XCAT_IP=10.99.0.62
+
+NS_TFTP_NODE=dhcptestnstft
+NS_TFTP_IP=10.99.0.31
+NS_TFTP_MAC=02:00:dc:11:00:31
+NS_XCM_NODE=dhcptestnsxcm
+NS_XCM_IP=10.99.0.32
+NS_XCM_MAC=02:00:dc:11:00:32
+NS_SUB_NODE=dhcptestnssub
+NS_SUB_IP=10.99.0.33
+NS_SUB_MAC=02:00:dc:11:00:33
+
+# One machine, two provisioning ports, one hostname each. The second hostname
+# is a node of its own so that it has an address xCAT can resolve; what makes
+# the pair a single machine is the first node's mac attribute naming both.
+MM_NODE=dhcptestmm
+MM_IP=10.99.0.41
+MM_MAC=02:00:dc:11:00:41
+MM_NODE2=dhcptestmmb
+MM_IP2=10.99.0.42
+MM_MAC2=02:00:dc:11:00:42
+
+# A diskless node whose root filesystem is on an iSCSI target.
+ISCSI_NODE=dhcptestiscsi
+ISCSI_IP=10.99.0.51
+ISCSI_MAC=02:00:dc:11:00:51
+ISCSI_TARGET=iqn.2024-01.dhcptest.cluster:target0
+ISCSI_INAME=iqn.2024-01.dhcptest.cluster:initiator0
+
+# The node that gets withdrawn while the server is up.
+RM_NODE=dhcptestrm
+RM_IP=10.99.0.71
+RM_MAC=02:00:dc:11:00:71
+
+# A machine that speaks BOOTP and not DHCP, and the web port a cluster that is
+# not serving on 80 would use.
+BOOTP_MAC=02:00:de:ad:b0:07
+ALT_HTTPPORT=8080
+
+# The dynamic range in the other notation networks.dynamicrange accepts. The
+# block covers every address $POOL names and no address any node in this
+# fixture holds, so the only thing that can change the answer is which of the
+# two notations the backend understands.
+POOL_CIDR=10.99.0.192/26
 
 STATE=/tmp/dhcptest-fixture
 # What backend-setup saved, so backend-teardown can put it back. Separate from
@@ -145,6 +205,10 @@ NETID="${NET}_${PREFIX}"
 opal_conf()  { echo "http://$SRV_IP/tftpboot/pxelinux.cfg/p/$NETID"; }
 s390x_conf() { echo "s390x/$NETID"; }
 onie_url()   { echo "http://$SRV_IP/install/onie/onie-installer"; }
+
+# Option 239, pushed on every subnet whether or not a Cumulus switch will ever
+# discover on it. It is a subnet-wide answer, so any client sees it.
+cumulus_url() { echo "http://$SRV_IP/install/postscripts/cumulusztp"; }
 
 # The second stage of a chained xNBA boot, in its two forms. A client the
 # server holds no reservation for can only be answered per network; one it does
@@ -387,6 +451,7 @@ do_run() {
         --set node_loader="$(node_loader)" --set pool="$POOL" \
         --set next_server="$SRV_IP" --set unknown_mac="$UNKNOWN_MAC" \
         --set gateway="$SRV_IP" --set nameservers="$SRV_IP" \
+        --set server="$SRV_IP" --set cumulus_url="$(cumulus_url)" \
         --set domain="$DOMAIN" --set mtu="$MTU" --set lease="$(lease_time)" \
         conf/provision-vs-discovery.conf || rc=1
 
@@ -643,6 +708,196 @@ do_delegate() {
     say "the pool on $NET/$PREFIX now belongs to $DELEGATE_IP"
 }
 
+# Nodes each of the following cases defines are recorded by name in
+# $STATE/extra, so teardown withdraws exactly what was added even when the case
+# died half way through its own cleanup.
+extra_define() {
+    local name=$1
+    shift
+    mkdef -f -t node -o "$name" "$@" || die "cannot define the node $name"
+    echo "$name" >> "$STATE/extra"
+    makehosts "$name" || die "cannot add $name to /etc/hosts"
+}
+
+extra_undefine() {
+    local name
+    [ -f "$STATE/extra" ] || return 0
+    while read -r name; do
+        [ -n "$name" ] || continue
+        makedhcp -d "$name" >/dev/null 2>&1
+        makehosts -d "$name" >/dev/null 2>&1
+        rmdef "$name" >/dev/null 2>&1
+    done < "$STATE/extra"
+    rm -f "$STATE/extra"
+}
+
+# S-36, S-37, S-38. Three nodes, three sources for next-server, three different
+# answers -- which is the only arrangement in which a server that ignores the
+# node attributes can be told apart from one that honours them.
+do_run_nextserver() {
+    local rc=0
+    extra_define "$NS_TFTP_NODE" groups=dhcptest ip="$NS_TFTP_IP" mac="$NS_TFTP_MAC" \
+        arch=x86_64 netboot="$NETBOOT" tftpserver="$SN_TFTP_IP" xcatmaster="$SN_XCAT_IP"
+    extra_define "$NS_XCM_NODE" groups=dhcptest ip="$NS_XCM_IP" mac="$NS_XCM_MAC" \
+        arch=x86_64 netboot="$NETBOOT" xcatmaster="$SN_XCAT_IP"
+    extra_define "$NS_SUB_NODE" groups=dhcptest ip="$NS_SUB_IP" mac="$NS_SUB_MAC" \
+        arch=x86_64 netboot="$NETBOOT"
+    makedhcp "$NS_TFTP_NODE,$NS_XCM_NODE,$NS_SUB_NODE" \
+        || die "makedhcp failed for the next-server nodes"
+
+    dhcptest_run \
+        --set tftp_mac="$NS_TFTP_MAC" --set tftp_ip="$NS_TFTP_IP" \
+        --set tftp_server="$SN_TFTP_IP" \
+        --set xcm_mac="$NS_XCM_MAC" --set xcm_ip="$NS_XCM_IP" \
+        --set xcm_server="$SN_XCAT_IP" \
+        --set sub_mac="$NS_SUB_MAC" --set sub_ip="$NS_SUB_IP" \
+        --set sub_server="$SRV_IP" \
+        conf/next-server-source.conf || rc=1
+    return $rc
+}
+
+# S-08. The second hostname is defined as a node so that xCAT can resolve it to
+# an address; what makes the two one machine is the first node's mac attribute,
+# which names both ports and says which hostname each answers to.
+do_run_multimac() {
+    local rc=0
+    extra_define "$MM_NODE2" groups=dhcptest ip="$MM_IP2" arch=x86_64
+    extra_define "$MM_NODE" groups=dhcptest ip="$MM_IP" arch=x86_64 \
+        netboot="$NETBOOT" tftpserver="$SRV_IP" xcatmaster="$SRV_IP" \
+        mac="$MM_MAC!$MM_NODE|$MM_MAC2!$MM_NODE2"
+    makedhcp "$MM_NODE" || die "makedhcp $MM_NODE failed"
+
+    dhcptest_run \
+        --set first_mac="$MM_MAC"  --set first_ip="$MM_IP" \
+        --set second_mac="$MM_MAC2" --set second_ip="$MM_IP2" \
+        conf/multi-mac-node.conf || rc=1
+    return $rc
+}
+
+# S-33, S-34. server, target, lun and iname live in the iscsi table; only the
+# first two have a node attribute, so the other two are set through chtab.
+do_run_iscsi() {
+    local rc=0
+    extra_define "$ISCSI_NODE" groups=dhcptest ip="$ISCSI_IP" mac="$ISCSI_MAC" \
+        arch=x86_64 netboot="$NETBOOT" tftpserver="$SRV_IP" xcatmaster="$SRV_IP"
+    chtab node="$ISCSI_NODE" "iscsi.server=$SRV_IP" "iscsi.target=$ISCSI_TARGET" \
+        iscsi.lun=0 "iscsi.iname=$ISCSI_INAME" \
+        || die "cannot set the iscsi attributes for $ISCSI_NODE"
+    echo done > "$STATE/iscsi"
+    makedhcp "$ISCSI_NODE" || die "makedhcp $ISCSI_NODE failed"
+
+    dhcptest_run \
+        --set iscsi_mac="$ISCSI_MAC" --set iscsi_ip="$ISCSI_IP" \
+        --set root_path="iscsi:$SRV_IP:6:3260:0:$ISCSI_TARGET" \
+        conf/iscsi-root-path.conf || rc=1
+    return $rc
+}
+
+# S-12. One gating loader is taken away and the configuration regenerated --
+# both backends decide which boot classes to write by looking at what is on
+# disk, so the file has to be gone before makedhcp runs, not after.
+do_run_loader_absent() {
+    local rc=0 tftp path
+    tftp=$(tftpdir)
+    path="$tftp/xcat/xnba.kpxe"
+    [ -f "$path" ] || die "$path is not there to remove"
+    mv -f "$path" "$STATE/xnba.kpxe.away" || die "cannot move $path aside"
+    echo "$path" > "$STATE/loader-away"
+
+    if do_generate; then
+        dhcptest_run --set pool="$POOL" --set present_loader="$(arch_loader uefi)" \
+            conf/loader-absent.conf || rc=1
+    else
+        say "FAILED: makedhcp could not regenerate with $path missing"
+        rc=1
+    fi
+
+    restore_absent_loader
+    do_generate || rc=1
+    return $rc
+}
+
+restore_absent_loader() {
+    local path
+    [ -f "$STATE/loader-away" ] || return 0
+    path=$(cat "$STATE/loader-away")
+    mv -f "$STATE/xnba.kpxe.away" "$path" 2>/dev/null
+    rm -f "$STATE/loader-away"
+}
+
+# S-14. site.httpport is restored from $STATE/site.csv by teardown in any case,
+# but it is put back here as well so the cases that follow are not run against
+# a cluster on a port they do not expect.
+do_run_httpport() {
+    local rc=0
+    chdef -t site -o clustersite httpport="$ALT_HTTPPORT" \
+        || die "cannot set site.httpport"
+    echo done > "$STATE/httpport"
+
+    if do_generate; then
+        dhcptest_run --set tftp="$SRV_IP" --set httpport="$ALT_HTTPPORT" \
+            --set riscv64_loader="$(arch_loader riscv64)" \
+            conf/http-port.conf || rc=1
+    else
+        say "FAILED: makedhcp could not regenerate with site.httpport=$ALT_HTTPPORT"
+        rc=1
+    fi
+
+    chdef -t site -o clustersite httpport= >/dev/null 2>&1
+    rm -f "$STATE/httpport"
+    do_generate || rc=1
+    return $rc
+}
+
+# S-05. The same addresses, written the other way networks.dynamicrange accepts.
+do_run_rangecidr() {
+    local rc=0
+    chdef -t network -o "$NETOBJ" dynamicrange="$POOL_CIDR" \
+        || die "cannot rewrite the dynamic range as a block"
+    echo done > "$STATE/rangecidr"
+
+    if do_generate; then
+        dhcptest_run --set unknown_mac="$UNKNOWN_MAC" --set pool="$POOL_CIDR" \
+            conf/dynamic-range-cidr.conf || rc=1
+    else
+        say "FAILED: makedhcp could not regenerate with a CIDR dynamic range"
+        rc=1
+    fi
+
+    chdef -t network -o "$NETOBJ" dynamicrange="$POOL" >/dev/null 2>&1
+    rm -f "$STATE/rangecidr"
+    do_generate || rc=1
+    return $rc
+}
+
+# S-59. The node stays defined in the database throughout: only its reservation
+# is withdrawn, and the configuration is deliberately not regenerated in
+# between, because regenerating would put the reservation straight back.
+do_run_removal() {
+    local rc=0
+    extra_define "$RM_NODE" groups=dhcptest ip="$RM_IP" mac="$RM_MAC" \
+        arch=x86_64 netboot="$NETBOOT" tftpserver="$SRV_IP" xcatmaster="$SRV_IP"
+    makedhcp "$RM_NODE" || die "makedhcp $RM_NODE failed"
+
+    dhcptest_run -s removed-node-keeps-its-reservation-until-it-is-withdrawn \
+        --set removed_mac="$RM_MAC" --set removed_ip="$RM_IP" --set pool="$POOL" \
+        conf/node-removal.conf || rc=1
+
+    makedhcp -d "$RM_NODE" || die "makedhcp -d $RM_NODE failed"
+
+    dhcptest_run -s withdrawn-node-is-no-longer-served-its-address \
+        --set removed_mac="$RM_MAC" --set removed_ip="$RM_IP" --set pool="$POOL" \
+        conf/node-removal.conf || rc=1
+    return $rc
+}
+
+# S-54. Nothing to configure: the dynamic range a discovery cluster needs
+# anyway is what a BOOTP client is served out of.
+do_run_bootp() {
+    dhcptest_run --set bootp_mac="$BOOTP_MAC" --set pool="$POOL" \
+        conf/bootp-client.conf
+}
+
 do_run_hierarchy() {
     ( cd "$DHCPTEST" && python3 src/dhcptest run -i "$IF_CLI" \
         --set node_mac="$NODE_MAC" --set node_ip="$NODE_IP" \
@@ -658,8 +913,13 @@ do_teardown() {
     [ -f "$STATE/node" ] && { makedhcp -d "$NODE" >/dev/null 2>&1; makehosts -d "$NODE" >/dev/null 2>&1; rmdef "$NODE" >/dev/null 2>&1; }
     [ -f "$STATE/adopt" ] && { makedhcp -d "$ADOPT_NODE" >/dev/null 2>&1; makehosts -d "$ADOPT_NODE" >/dev/null 2>&1; rmdef "$ADOPT_NODE" >/dev/null 2>&1; }
     netboot_undefine
+    extra_undefine
+    [ -f "$STATE/iscsi" ] && chtab -d node="$ISCSI_NODE" iscsi >/dev/null 2>&1
     [ -f "$STATE/network" ] && rmdef -t network -o "$NETOBJ" >/dev/null 2>&1
     [ -f "$STATE/veth" ] && ip link del "$IF_SRV" >/dev/null 2>&1
+    # Before withdraw_loaders, so a case that died between moving the loader
+    # aside and putting it back does not leave it in $STATE to be deleted.
+    restore_absent_loader
     withdraw_loaders
 
     # tabrestore replaces the table wholesale, which is what is wanted here:
@@ -701,11 +961,19 @@ dispatch() {
     run-netboot)   do_run_netboot ;;
     run-lease)     do_run_lease ;;
     run-chainload) do_run_chainload ;;
+    run-nextserver)   do_run_nextserver ;;
+    run-multimac)     do_run_multimac ;;
+    run-iscsi)        do_run_iscsi ;;
+    run-loader-absent) do_run_loader_absent ;;
+    run-httpport)     do_run_httpport ;;
+    run-rangecidr)    do_run_rangecidr ;;
+    run-removal)      do_run_removal ;;
+    run-bootp)        do_run_bootp ;;
     delegate)      do_delegate ;;
     run-hierarchy) do_run_hierarchy ;;
     run-adoption)  do_run_adoption ;;
     teardown)    do_teardown ;;
-    *)           die "usage: $0 {check|setup|generate|backends|backend-setup <isc|kea>|backend-teardown <isc|kea>|run|run-arch|run-netboot|run-lease|run-chainload|delegate|run-hierarchy|run-adoption|teardown}" ;;
+    *)           die "usage: $0 {check|setup|generate|backends|backend-setup <isc|kea>|backend-teardown <isc|kea>|run|run-arch|run-netboot|run-lease|run-chainload|run-nextserver|run-multimac|run-iscsi|run-loader-absent|run-httpport|run-rangecidr|run-removal|run-bootp|delegate|run-hierarchy|run-adoption|teardown}" ;;
     esac
 }
 

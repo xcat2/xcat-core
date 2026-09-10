@@ -116,6 +116,78 @@ cmd:#!/bin/bash
 check:rc==0
 end
 
+start:dhcptest_node_identity
+description:Which node an address, a name and a next-server belong to
+label:mn_only,dhcp,dhcp_wire
+os:Linux
+# Three questions that all come down to the server keeping one node's answer
+# apart from another's: a node with two provisioning ports has to be reachable
+# on either of them and come up under the right name on each; a node's
+# next-server has to follow its own attributes rather than the subnet's, which
+# is invisible in a flat cluster and decides whether a machine boots at all in
+# a hierarchical one; and a node whose reservation was withdrawn has to stop
+# being handed the address somebody else now owns.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
+    "$FIX" check || exit 0
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    rc=0
+    "$FIX" run-nextserver || rc=1
+    "$FIX" run-multimac || rc=1
+    "$FIX" run-removal || rc=1
+    exit $rc
+check:rc==0
+end
+
+start:dhcptest_boot_file_conditions
+description:A loader is named only when it is fetchable, and its URL names the right port
+label:mn_only,dhcp,dhcp_wire
+os:Linux
+# Both of these change what the management node looks like before the
+# configuration is generated -- one takes a loader off disk, the other moves
+# the web server's port -- because both backends decide what to write by
+# reading those. Each puts the machine back and regenerates before returning,
+# so the cases that follow are not run against a cluster half way through an
+# experiment.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
+    "$FIX" check || exit 0
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    rc=0
+    "$FIX" run-loader-absent || rc=1
+    "$FIX" run-httpport || rc=1
+    exit $rc
+check:rc==0
+end
+
+start:dhcptest_legacy_and_storage_clients
+description:A BOOTP-only client, a CIDR dynamic range and a diskless node are all served
+label:mn_only,dhcp,dhcp_wire
+os:Linux
+# Three things a cluster has that the mainstream path does not exercise:
+# hardware old enough to speak BOOTP and not DHCP, a dynamic range an operator
+# wrote as a block rather than as a pair, and a node with no local disk that
+# has to be told which iSCSI target its root is on. Each of them is silent when
+# it breaks -- the machine simply never finishes booting -- which is why they
+# are asserted on the wire rather than left to the config tests.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
+    "$FIX" check || exit 0
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    rc=0
+    "$FIX" run-bootp || rc=1
+    "$FIX" run-rangecidr || rc=1
+    "$FIX" run-iscsi || rc=1
+    exit $rc
+check:rc==0
+end
+
 start:dhcptest_chainload_user_class
 description:A chainloaded second stage is recognised in both encodings of option 77
 label:mn_only,dhcp,dhcp_wire

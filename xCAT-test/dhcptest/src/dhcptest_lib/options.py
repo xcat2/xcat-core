@@ -163,6 +163,62 @@ def format_hex(data):
     return ":".join("%02x" % b for b in bytearray(data))
 
 
+#: Options carrying a list of DNS names in RFC 1035 wire form, which RFC 3397
+#: allows to be compressed against earlier names in the same option.
+NAME_LIST_OPTIONS = frozenset([119])
+
+
+def decode_name_list(raw):
+    """Decode RFC 3397 name lists into `["foo.com", "bar.com"]`.
+
+    Returns None if the bytes are not a well-formed name list, so the caller
+    can fall back to hex rather than assert against a misreading.
+    """
+    data = bytearray(raw)
+    names = []
+    pos = 0
+    while pos < len(data):
+        labels = []
+        cursor = pos
+        jumped = False
+        seen = set()
+        while True:
+            if cursor >= len(data):
+                return None
+            length = data[cursor]
+            if length == 0:
+                cursor += 1
+                break
+            if length & 0xC0 == 0xC0:
+                # A pointer back to a name already in this option. Follow it,
+                # but never twice to the same offset: a self-referential
+                # pointer would otherwise loop forever.
+                if cursor + 1 >= len(data):
+                    return None
+                target = ((length & 0x3F) << 8) | data[cursor + 1]
+                if target in seen or target >= len(data):
+                    return None
+                seen.add(target)
+                if not jumped:
+                    pos = cursor + 2
+                    jumped = True
+                cursor = target
+                continue
+            if length & 0xC0:
+                return None
+            start = cursor + 1
+            end = start + length
+            if end > len(data):
+                return None
+            labels.append(data[start:end].decode("utf-8", "replace"))
+            cursor = end
+        if not jumped:
+            pos = cursor
+        if labels:
+            names.append(".".join(labels))
+    return names or None
+
+
 def decode_value(code, raw):
     """Normalise one option value into something an assertion can compare.
 
@@ -190,6 +246,10 @@ def decode_value(code, raw):
             return raw[0]
         if code == 55:
             return list(bytearray(raw))
+        if code in NAME_LIST_OPTIONS:
+            names = decode_name_list(raw)
+            if names is not None:
+                return names
         return format_hex(raw)
     return raw
 
@@ -257,7 +317,10 @@ def decode(packet):
     for code, raw in unpack_options(blob).items():
         options[code] = decode_value(code, raw)
 
-    msgtype = ""
+    # A BOOTREPLY with no option 53 is a plain BOOTP answer -- the whole reply
+    # a client that predates DHCP will ever get. Naming it rather than leaving
+    # the type blank is what lets a step assert on it.
+    msgtype = "BOOTREPLY"
     if 53 in options:
         msgtype = msgtype_name(options[53])
 

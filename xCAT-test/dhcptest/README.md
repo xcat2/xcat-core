@@ -168,8 +168,12 @@ Message: `request_options` (55), `vendor_class` (60), `user_class` (77) with
 `option:<n>` for anything else.
 
 Step types: `discover`, `request`, `renew`, `rebind`, `release`, `decline`,
-`inform`, `noop`, `sleep`. `expect` is `offer`, `ack`, `nak`, `any`, or `none`
-— with `none`, silence is the passing result.
+`inform`, `bootrequest`, `noop`, `sleep`. `expect` is `offer`, `ack`, `nak`,
+`bootreply`, `any`, or `none` — with `none`, silence is the passing result.
+
+`bootrequest` is plain BOOTP: the same header sent with no option 53 at all,
+which is what hardware predating DHCP puts on the wire. Its answer carries no
+option 53 either, so `msgtype` reads `BOOTREPLY`.
 
 ## Shipped scenarios
 
@@ -187,6 +191,14 @@ Step types: `discover`, `request`, `renew`, `rebind`, `release`, `decline`,
 | `hierarchy-dhcpserver.conf` | a subnet whose pool belongs to another server ignores unknown MACs but still points known ones at it | `node_mac`, `node_ip`, `delegate`, `unknown_mac` |
 | `discovery-adoption.conf` | a machine discovered out of the pool is served its own address once defined | `adopt_mac`, `adopt_ip`, `pool` |
 | `nak-foreign-address.conf` | a REQUEST for an address off this network is refused | `foreign_ip` |
+| `next-server-source.conf` | each node's next-server follows its own attributes, not the subnet's | `tftp_mac`, `tftp_ip`, `tftp_server`, and the same three for `xcm_` and `sub_` |
+| `multi-mac-node.conf` | a node with two provisioning ports is served a different address on each | `first_mac`, `first_ip`, `second_mac`, `second_ip` |
+| `iscsi-root-path.conf` | a diskless node is told its iSCSI target, and an ISAN client in the vendor space | `iscsi_mac`, `iscsi_ip`, `root_path` |
+| `loader-absent.conf` | an architecture whose loader is missing is served an address and no boot file | `pool`, `present_loader` |
+| `http-port.conf` | an HTTP boot URL names the port the web server actually listens on | `tftp`, `httpport`, `riscv64_loader` |
+| `dynamic-range-cidr.conf` | a dynamic range written as a CIDR block serves addresses out of it | `unknown_mac`, `pool` |
+| `node-removal.conf` | a withdrawn node stops being offered the address it used to hold | `removed_mac`, `removed_ip`, `pool` |
+| `bootp-client.conf` | a client that speaks BOOTP and not DHCP is still given an address | `bootp_mac`, `pool` |
 
 `provision-vs-discovery.conf` and `discovery-bootfile.conf` are split apart for
 a different reason from the rest: one asserts the boot file a *known* machine

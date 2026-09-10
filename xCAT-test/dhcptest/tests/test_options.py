@@ -61,5 +61,66 @@ class OptionArea(unittest.TestCase):
         self.assertEqual(options.decode_value(175, b"\xab\xcd"), "ab:cd")
 
 
+class NameLists(unittest.TestCase):
+    """Option 119, the domain search list: RFC 1035 labels, RFC 3397 pointers."""
+
+    def test_uncompressed_names(self):
+        raw = (b"\x03foo\x03com\x00" b"\x03bar\x03com\x00")
+        self.assertEqual(options.decode_value(119, raw), ["foo.com", "bar.com"])
+
+    def test_a_compression_pointer_is_followed(self):
+        # "bar.com" written as the label "bar" plus a pointer to the "com" at
+        # offset 4 -- which is what a server that compresses actually sends.
+        raw = b"\x03foo\x03com\x00" + b"\x03bar" + b"\xc0\x04"
+        self.assertEqual(options.decode_value(119, raw), ["foo.com", "bar.com"])
+
+    def test_a_pointer_loop_falls_back_to_hex_instead_of_hanging(self):
+        raw = b"\x03foo" + b"\xc0\x00"
+        self.assertEqual(options.decode_value(119, raw), "03:66:6f:6f:c0:00")
+
+    def test_a_truncated_name_falls_back_to_hex(self):
+        raw = b"\x09foo"
+        self.assertEqual(options.decode_value(119, raw), "09:66:6f:6f")
+
+
+class _FakeBootp(object):
+    """Enough of a BOOTP layer for `decode`, without needing scapy."""
+
+    def __init__(self, option_area):
+        self.payload = option_area
+        self.xid = 0x1234
+        self.yiaddr = "10.0.0.2"
+        self.siaddr = "10.0.0.1"
+        self.ciaddr = "0.0.0.0"
+        self.giaddr = "0.0.0.0"
+        self.chaddr = b"\x02\x00\x11\x22\x33\x44" + b"\x00" * 10
+        self.file = b"pxelinux.0" + b"\x00" * 118
+        self.sname = b"\x00" * 64
+        self.secs = 0
+        self.flags = 0
+
+    def __getitem__(self, _layer):
+        return self
+
+
+class MessageTypeOfAReply(unittest.TestCase):
+
+    def _reply(self, option_area):
+        return options.decode(_FakeBootp(option_area))
+
+    def test_a_dhcp_reply_is_named_by_option_53(self):
+        reply = self._reply(options.pack_options([(53, b"\x02")]))
+        self.assertEqual(reply.msgtype, "OFFER")
+
+    def test_a_reply_with_no_option_53_is_plain_bootp(self):
+        # Hardware predating DHCP sends a BOOTREQUEST with no option 53, and
+        # the answer carries none either. Reporting that as a missing message
+        # type would read as a malformed packet rather than as BOOTP working,
+        # and there would be nothing for a step to assert on.
+        reply = self._reply(options.MAGIC + b"\xff")
+        self.assertEqual(reply.msgtype, "BOOTREPLY")
+        self.assertEqual(reply.bootfile(), "pxelinux.0")
+
+
 if __name__ == "__main__":
     unittest.main()

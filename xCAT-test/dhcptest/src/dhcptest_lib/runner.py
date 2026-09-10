@@ -91,9 +91,15 @@ def build_options(step, session, context, msgtype):
         raw = step.param(key, default)
         return subst.resolve(raw, context) if raw is not None else None
 
-    items = [(53, bytes([opt.msgtype_code(msgtype)]))]
+    # A BOOTREQUEST carries no option 53, and no option 61 either: a client
+    # that predates DHCP has neither to send. Anything the step asks for beyond
+    # that is still encoded, so a BOOTP client can still name a vendor class.
+    if msgtype == "bootrequest":
+        items = []
+    else:
+        items = [(53, bytes([opt.msgtype_code(msgtype)]))]
 
-    client_id = value("client_id", "auto")
+    client_id = value("client_id", "none" if msgtype == "bootrequest" else "auto")
     if client_id and client_id != "none":
         if client_id == "auto":
             items.append((61, b"\x01" + session.mac_bytes))
@@ -403,11 +409,13 @@ def run_step(scenario, step, session, reporter, wire, run_options):
                 sent, attempt, retries, extras, suffix=" [offer %s]" % offer.src_ip)
 
     expect = step.expect or transition.default_expect
-    if expect == "none":
+    # Silence after a step that expected an answer leaves the client where it
+    # was; silence after a RELEASE or a DECLINE, which are never answered, is
+    # the step working as intended. machine.validate_scenario draws the same
+    # line, so what a run does matches what validate accepted.
+    if transition.expects and (expect == "none" or chosen is None):
         return
-    if chosen is None:
-        return
-    if chosen.msgtype == "NAK" and transition.nak_state:
+    if chosen is not None and chosen.msgtype == "NAK" and transition.nak_state:
         session.state = transition.nak_state
     elif transition.next_state:
         session.state = transition.next_state
@@ -444,7 +452,7 @@ def _message_type(step_type):
     return {
         "discover": "discover", "request": "request", "renew": "request",
         "rebind": "request", "release": "release", "decline": "decline",
-        "inform": "inform",
+        "inform": "inform", "bootrequest": "bootrequest",
     }[step_type]
 
 

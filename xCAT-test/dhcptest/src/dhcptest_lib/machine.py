@@ -53,6 +53,14 @@ TRANSITIONS = {
         expects=["offer"], default_expect="offer", next_state=SELECTING,
         binds=("offer",)),
 
+    # A BOOTREQUEST is what a client that predates DHCP sends: the same BOOTP
+    # header with no option 53 at all. There is no handshake to follow it --
+    # the single BOOTREPLY is the whole exchange -- so it leaves the session in
+    # INIT rather than moving on to SELECTING.
+    (INIT, "bootrequest"): Transition(
+        expects=["bootreply"], default_expect="bootreply", next_state=INIT,
+        binds=("reply",)),
+
     (SELECTING, "request"): Transition(
         expects=["ack", "nak"], default_expect="ack", next_state=BOUND,
         nak_state=INIT, binds=("ack", "lease")),
@@ -176,7 +184,12 @@ def validate_scenario(scenario):
             for name in transition.binds:
                 available.add(name)
 
-        if expect == "none":
+        # A step that expected a reply and got none leaves the client where it
+        # was: a DISCOVER nobody answers does not put it in SELECTING. RELEASE
+        # and DECLINE are the other kind of silence -- no reply is ever sent to
+        # them, and giving the lease up is the whole point of the step -- so
+        # they move the client on regardless.
+        if expect == "none" and transition.expects:
             continue
         if transition.next_state:
             state = transition.next_state
