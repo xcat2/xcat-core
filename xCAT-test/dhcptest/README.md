@@ -135,7 +135,7 @@ One per line under a single multi-line `assert` key, as `target op value`.
 | Op | Meaning |
 | --- | --- |
 | `==` `!=` | type-aware: addresses as addresses, numbers as numbers |
-| `in` `not-in` | subnet membership (`10.0.0.0/24`) or a comma list |
+| `in` `not-in` | a subnet (`10.0.0.0/24`), an address range (`10.0.0.200-10.0.0.250`) or a comma list |
 | `present` `absent` | option presence, no value |
 | `matches` `contains` `starts-with` `ends-with` | text |
 | `<` `<=` `>` `>=` | numeric |
@@ -144,6 +144,11 @@ Assert on `bootfile`, not on `file`, unless the header itself is the point.
 Servers genuinely differ — ISC dhcpd fills the BOOTP header, dnsmasq answers in
 option 67 once the client has asked for it — and firmware reads whichever
 arrived. `bootfile` is what a client would actually boot.
+
+A dynamic pool is written as two addresses rather than a CIDR, because it rarely
+lines up on a prefix boundary, so `in` accepts `first-last` as well and reads it
+inclusively: `yiaddr in 10.0.0.200-10.0.0.250` means what it says. A value
+containing a hyphen that is not two addresses is still treated as a list entry.
 
 `offers` counts servers, not packets. A retransmit reuses its xid, as RFC 2131
 requires, so the same server can be heard twice; a second answer from a server
@@ -177,12 +182,24 @@ Step types: `discover`, `request`, `renew`, `rebind`, `release`, `decline`,
 | `pxe-arch-matrix.conf` | each client architecture (option 93) is offered its own loader | `tftp`, `*_loader` |
 | `ipxe-userclass.conf` | stage 1 and stage 2 differ, in both user-class encodings | `user_class`, `stage1_loader` |
 | `renew-rebind.conf` | a lease survives RENEW and REBIND | `net` |
+| `provision-vs-discovery.conf` | a known machine gets its reservation and its own loader; an unknown one gets a pool address | `node_mac`, `node_ip`, `node_loader`, `pool`, `next_server`, `unknown_mac` |
+| `discovery-bootfile.conf` | an unknown machine is handed a loader too, not just an address | `unknown_mac`, `pool`, `discovery_loader` |
+| `node-specific-second-stage.conf` | the chainloaded second stage names the host it was handed to | `node_mac`, `node_ip`, `node_name`, `node_loader`, `user_class`, `stage2_prefix` |
+| `hierarchy-dhcpserver.conf` | a subnet whose pool belongs to another server ignores unknown MACs but still points known ones at it | `node_mac`, `node_ip`, `delegate`, `unknown_mac` |
 
-`static-vs-dynamic.conf` and `no-reply.conf` describe **mutually exclusive**
-server configurations. What an unreserved MAC gets is policy, not protocol: a
-subnet with a dynamic pool answers it, a reservations-only subnet ignores it.
-Run whichever matches the network under test; running both against the same
-network will always fail one.
+Several of these files describe **mutually exclusive** server configurations,
+which is why they are separate files rather than scenarios in one. What an
+unknown MAC gets is policy, not protocol: `static-vs-dynamic.conf` and
+`no-reply.conf` disagree about whether it is answered at all, and
+`provision-vs-discovery.conf` and `discovery-bootfile.conf` disagree about
+whether it is told what to boot — ISC dhcpd leaves that to the per-host blocks,
+Kea and dnsmasq put it on the subnet. Neither is wrong. Run whichever matches
+the network under test.
+
+Splitting on that boundary rather than using `-s` is deliberate: `--set` values
+are resolved when a file is loaded, before `-s` selects anything, so an unused
+scenario's missing variable would abort a run that never intended to use it.
+One file's variables are all required together.
 
 Every expected address and filename comes from `--set`, so no shipped file
 states anything about how a server was configured, or by what.
@@ -228,6 +245,31 @@ not ok 3 - pxe-bios-x86/bios-discover: bootfile == %(bios_loader)s
 
 A reply of the wrong type is reported as that type rather than as a timeout: a
 NAK where an ACK was wanted says so.
+
+## Running under xcattest
+
+`xCAT-test/autotest/testcase/dhcptest/cases0` drives all of this from a
+management node. Two of its cases are the offline ones below; the rest are wire
+cases, and everything they know about xCAT lives in `dhcpfixture.sh` next to
+them, never in here.
+
+The fixture builds a provisioning network out of a veth pair — the server end
+carries the management address and is the only interface named in
+`site.dhcpinterfaces`, the client end has no address at all, which is the state
+a real provisioning NIC is in when a machine boots on it. It then defines a
+network with a dynamic range and one node with a MAC, runs `makedhcp` so the
+configuration comes from xCAT rather than from hand-editing, points dhcptest at
+the client end, and puts everything back from a trap afterwards. That is what
+makes a wire test on a single-node management node mean something instead of
+passing with nothing to talk to.
+
+```bash
+xcattest -t dhcptest_provision_vs_discovery
+xcattest -t dhcptest_backend_switch        # reruns the same file on the other backend
+```
+
+A case that cannot run — no root, no scapy, no `makedhcp`, no veth — says so and
+passes. Read a pass as coverage only when the log shows the `ok` lines.
 
 ## Tests
 

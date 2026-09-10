@@ -91,6 +91,17 @@ class Evaluation(unittest.TestCase):
         self.assertTrue(self.check("siaddr in 10.0.0.1, 10.0.0.2").ok)
         self.assertFalse(self.check("siaddr in 10.0.0.3, 10.0.0.2").ok)
 
+    def test_range_membership(self):
+        # A dynamic pool is written as two addresses, not as a CIDR: it rarely
+        # lines up on a prefix boundary.
+        self.assertTrue(self.check("yiaddr in 10.0.0.100-10.0.0.200").ok)
+        self.assertFalse(self.check("yiaddr in 10.0.0.102-10.0.0.200").ok)
+        self.assertTrue(self.check("yiaddr not-in 10.0.0.1-10.0.0.50").ok)
+        # The bounds are inclusive.
+        self.assertTrue(self.check("yiaddr in 10.0.0.101-10.0.0.101").ok)
+        # A value with a hyphen that is not two addresses is still a list entry.
+        self.assertTrue(self.check("option:60 in PXEClient, some-other").ok)
+
     def test_string_operators(self):
         self.assertTrue(self.check("file starts-with xcat/").ok)
         self.assertTrue(self.check("file ends-with .kpxe").ok)

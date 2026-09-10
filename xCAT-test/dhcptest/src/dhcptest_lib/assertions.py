@@ -238,10 +238,12 @@ def _equal(actual, expected):
 
 
 def _member(actual, expected):
-    """`in` means subnet membership for a CIDR, list membership otherwise."""
+    """`in` means membership: of a CIDR, of a `first-last` range, or of a list."""
     text = subst.format_value(actual)
     if "/" in expected:
         return netutil.ip_in(text, expected)
+    if netutil.parse_range(expected) is not None:
+        return netutil.ip_in_range(text, expected)
     candidates = [item.strip() for item in expected.split(",") if item.strip()]
     for candidate in candidates:
         if _equal(actual, candidate):

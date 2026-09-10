@@ -76,6 +76,32 @@ def ip_in(address, network):
     return addr in net
 
 
+def parse_range(text):
+    """`first-last` as a pair of addresses, or None if it is not one.
+
+    A dynamic pool is usually written as two addresses rather than a CIDR --
+    it rarely lines up on a prefix boundary -- so `yiaddr in 10.0.0.200-10.0.0.250`
+    has to mean what it says.
+    """
+    first, sep, last = str(text).strip().partition("-")
+    if not sep:
+        return None
+    low = parse_ip(first)
+    high = parse_ip(last)
+    if low is None or high is None:
+        return None
+    return (low, high) if low <= high else (high, low)
+
+
+def ip_in_range(address, text):
+    """True when `address` falls within the inclusive range `first-last`."""
+    addr = parse_ip(address)
+    bounds = parse_range(text)
+    if addr is None or bounds is None:
+        return False
+    return bounds[0] <= addr <= bounds[1]
+
+
 def random_xid(rng=None):
     rng = rng or random
     return rng.randint(1, 0xFFFFFFFF)
