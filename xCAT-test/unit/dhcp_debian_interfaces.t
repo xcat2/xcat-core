@@ -76,45 +76,130 @@ sub launched_with {
     return defined($out) ? $out : '';
 }
 
-# makedhcp is serving one provisioning NIC, named in site.dhcpinterfaces.
-my $written = xCAT_plugin::dhcp::_sysconfig_interfaces_content(
-    $stock, 'INTERFACES', ['eth1']);
+# Every release in support, the package it ships, and the variable its
+# isc-dhcp-server unit expands onto dhcpd's command line. This table is the
+# contract: the writer has to satisfy every row.
+my @RELEASES = (
+    [ '16.04', '4.3.3-5ubuntu12',   'INTERFACES'   ],
+    [ '18.04', '4.3.5-3ubuntu7',    'INTERFACES'   ],
+    [ '20.04', '4.4.1-2.1ubuntu5',  'INTERFACES'   ],
+    [ '22.04', '4.4.1-2.3ubuntu2',  'INTERFACESv4' ],
+    [ '24.04', '4.4.3-P1-4ubuntu2', 'INTERFACESv4' ],
+    [ '26.04', '4.4.3-P1-4ubuntu2', 'INTERFACESv4' ],
+);
 
-is( launched_with($written, 'INTERFACESv4'), 'eth1',
-    'dhcpd is launched restricted to the interface xCAT is serving' );
+sub written_for {
+    my ($version, $nics, $content) = @_;
+    my @keys = xCAT_plugin::dhcp::debian_sysconfig_interface_keys($version);
+    return xCAT_plugin::dhcp::_sysconfig_interfaces_content(
+        defined($content) ? $content : $stock, [@keys], $nics);
+}
 
-isnt( launched_with($written, 'INTERFACESv4'), '',
-    'dhcpd is not left to bind every interface on the machine' );
+# makedhcp is serving one provisioning NIC, named in site.dhcpinterfaces. On
+# every release, that NIC has to be what dhcpd is launched with.
+foreach my $release (@RELEASES) {
+    my ($ubuntu, $version, $variable) = @{$release};
 
-# The stock file has no INTERFACES line, so a writer that targets the wrong
-# variable does not merely fail to take effect -- its prefix match claims the
-# INTERFACESv4 and INTERFACESv6 lines and overwrites both, removing the only
-# variables the units read.
-like( $written, qr/^\s*INTERFACESv4\s*=/m,
-    'the INTERFACESv4 line the unit reads is still present' );
-like( $written, qr/^\s*INTERFACESv6\s*=/m,
-    'the INTERFACESv6 line the v6 unit reads is still present' );
+    my $written = written_for($version, ['eth1']);
 
-# Serving several interfaces must reach the daemon as several interfaces.
-my $multi = xCAT_plugin::dhcp::_sysconfig_interfaces_content(
-    $stock, 'INTERFACES', ['eth1', 'eth2']);
-my @served = sort split /\s+/, launched_with($multi, 'INTERFACESv4');
-is_deeply( \@served, ['eth1', 'eth2'],
-    'every served interface reaches dhcpd' );
+    is( launched_with($written, $variable), 'eth1',
+        "$ubuntu ($version): dhcpd is launched restricted to the interface xCAT serves" );
 
-# A remote (service node) interface is not something this daemon can bind.
-my $remote = xCAT_plugin::dhcp::_sysconfig_interfaces_content(
-    $stock, 'INTERFACES', ['eth1', '!remote!eth9']);
-unlike( launched_with($remote, 'INTERFACESv4'), qr/remote/,
-    'a !remote! interface is not passed to the local daemon' );
+    isnt( launched_with($written, $variable), '',
+        "$ubuntu ($version): dhcpd is not left to bind every interface on the machine" );
 
-# An admin or the package's debconf prompt may already have set the variable.
-# xCAT's list must win, or site.dhcpinterfaces is decoration.
-my $preset = $stock;
-$preset =~ s/INTERFACESv4=""/INTERFACESv4="eth0"/;
-my $overridden = xCAT_plugin::dhcp::_sysconfig_interfaces_content(
-    $preset, 'INTERFACES', ['eth1']);
-is( launched_with($overridden, 'INTERFACESv4'), 'eth1',
-    'a value left by debconf is replaced by the interfaces xCAT serves' );
+    # Serving several interfaces must reach the daemon as several interfaces.
+    my $multi = written_for($version, ['eth1', 'eth2']);
+    my @served = sort split /\s+/, launched_with($multi, $variable);
+    is_deeply( \@served, ['eth1', 'eth2'],
+        "$ubuntu ($version): every served interface reaches dhcpd" );
+
+    # A remote (service node) interface is not something this daemon can bind.
+    my $remote = written_for($version, ['eth1', '!remote!eth9']);
+    unlike( launched_with($remote, $variable), qr/remote/,
+        "$ubuntu ($version): a !remote! interface is not passed to the local daemon" );
+
+    # The v6 unit takes $INTERFACES before 22.04 and $INTERFACESv6 after it.
+    # Leaving its variable empty is how dhcpd6, once the admin enables it, ends
+    # up bound to everything.
+    my $v6 = $variable eq 'INTERFACES' ? 'INTERFACES' : 'INTERFACESv6';
+    is( launched_with($written, $v6), 'eth1',
+        "$ubuntu ($version): the v6 unit is restricted to the same interfaces" );
+
+    # A value the package's debconf prompt or an admin left behind has to lose
+    # to site.dhcpinterfaces, or the setting is decoration.
+    my $preset = $stock;
+    $preset =~ s/^\Q$variable\E=.*$/$variable="eth0"/m
+        or $preset .= qq{$variable="eth0"\n};
+    my $overridden = written_for($version, ['eth1'], $preset);
+    is( launched_with($overridden, $variable), 'eth1',
+        "$ubuntu ($version): a value left by debconf is replaced" );
+
+    # Whichever variable is not the one this release reads must still be left
+    # alone, not claimed by a prefix match.
+    foreach my $other (grep { $_ ne $variable } qw(INTERFACESv4 INTERFACESv6)) {
+        next if ($written =~ m/^\s*\Q$other\E\s*=/m);
+        fail("$ubuntu ($version): the $other line the package ships was removed");
+    }
+}
+
+# With no package version to go on -- dpkg-query unavailable, or a machine that
+# is not the one being configured -- err towards writing every spelling. An
+# unset variable is what leaves dhcpd bound to everything.
+foreach my $unknown (undef, '', 'none') {
+    my @keys = xCAT_plugin::dhcp::debian_sysconfig_interface_keys($unknown);
+    my $written = xCAT_plugin::dhcp::_sysconfig_interfaces_content(
+        $stock, [@keys], ['eth1']);
+    foreach my $variable (qw(INTERFACES INTERFACESv4 INTERFACESv6)) {
+        is( launched_with($written, $variable), 'eth1',
+            'an unknown package version still restricts dhcpd, via ' . $variable );
+    }
+}
+
+# Ordering of the package versions themselves. 20.04 and 22.04 both ship
+# upstream 4.4.1 and are told apart only by the Debian revision, so a
+# comparison that stops at the upstream version puts them on the wrong side.
+is( xCAT_plugin::dhcp::_isc_dhcp_version_cmp('4.4.1-2.1ubuntu5', '4.4.1-2.3ubuntu2'), -1,
+    '20.04 sorts below 22.04 despite sharing upstream 4.4.1' );
+is( xCAT_plugin::dhcp::_isc_dhcp_version_cmp('4.4.3-P1-4ubuntu2', '4.4.1-2.3ubuntu2'), 1,
+    '24.04 sorts above 22.04' );
+is( xCAT_plugin::dhcp::_isc_dhcp_version_cmp('4.3.5-3ubuntu7', '4.4.1-2.3'), -1,
+    '18.04 sorts below the split' );
+is( xCAT_plugin::dhcp::_isc_dhcp_version_cmp('4.4.1-2.3ubuntu2', '4.4.1-2.3ubuntu2'), 0,
+    'a version equals itself' );
+
+# Debian's own packages have no systemd unit; the sysvinit script reads
+# INTERFACESv4 and only falls back to INTERFACES when v4 is empty, so the
+# post-split keys are right for them too.
+foreach my $debian ('4.4.1-2.3+deb11u2', '4.4.3-P1-2', '4.4.3-P1-8') {
+    my $written = written_for($debian, ['eth1']);
+    is( launched_with($written, 'INTERFACESv4'), 'eth1',
+        "Debian $debian: dhcpd is launched restricted to the interface xCAT serves" );
+}
+
+# A management node upgraded from an xCAT that wrote the wrong key is left with
+# the damage already on disk: no INTERFACESv4 at all and two INTERFACES lines
+# where the package's two variables used to be. Running makedhcp again has to
+# repair that file, not add to it.
+my $damaged = <<'EOF';
+# Defaults for isc-dhcp-server (sourced by /etc/init.d/isc-dhcp-server)
+INTERFACES="eth1"
+INTERFACES="eth1"
+EOF
+my $repaired = written_for('4.4.3-P1-4ubuntu2', ['eth2'], $damaged);
+
+is( launched_with($repaired, 'INTERFACESv4'), 'eth2',
+    'a file left behind by an older xCAT is repaired' );
+
+foreach my $key (qw(INTERFACESv4 INTERFACESv6)) {
+    my $count = () = ($repaired =~ m/^\s*\Q$key\E\s*=/mg);
+    is( $count, 1, "$key is assigned exactly once" );
+}
+
+# The EL and SLES paths pass a single key and must keep working unchanged.
+my $el = xCAT_plugin::dhcp::_sysconfig_interfaces_content(
+    qq{# Command line options here\nDHCPDARGS=\n}, 'DHCPDARGS', ['eth1', 'eth2']);
+is( launched_with($el, 'DHCPDARGS'), 'eth1 eth2',
+    'the single-key sysconfig path is unchanged' );
 
 done_testing();

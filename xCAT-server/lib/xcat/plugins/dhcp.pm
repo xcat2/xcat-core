@@ -2262,15 +2262,15 @@ sub process_request
             foreach $syspath ("/etc/sysconfig", "/etc/default") {
 
                 my $generatedpath = "$syspath/$dhcpver";
-                my $dhcpd_key     = "DHCPDARGS";
+                my @dhcpd_keys    = ("DHCPDARGS");
 
                 # For SLES11+ and RHEL7+ Operating system releases, the
                 # dhcpd/dhcpd6 configuration is stored in the same file
                 if (dhcpd_sysconfig_uses_interface_key($os)) {
 
-                    $dhcpd_key = "DHCPD_INTERFACE";
+                    @dhcpd_keys = ("DHCPD_INTERFACE");
                     if ($usingipv6 and $dhcpver eq "dhcpd6") {
-                        $dhcpd_key     = "DHCPD6_INTERFACE";
+                        @dhcpd_keys    = ("DHCPD6_INTERFACE");
                         $generatedpath = "$syspath/dhcpd";
                     }
                 }
@@ -2293,7 +2293,8 @@ sub process_request
                         delete($missingfiles{"dhcpd6"});
                         delete($missingfiles{"dhcp3-server"});
 
-                        $dhcpd_key = "INTERFACES";
+                        @dhcpd_keys = debian_sysconfig_interface_keys(
+                            isc_dhcp_installed_version());
                     }
                     delete($missingfiles{$dhcpver});
 
@@ -2304,7 +2305,7 @@ sub process_request
                         close DHCPD_FD;
                     }
                     $syscfg_dhcpd = _sysconfig_interfaces_content(
-                        $syscfg_dhcpd, $dhcpd_key, [ keys %activenics ]);
+                        $syscfg_dhcpd, \@dhcpd_keys, [ keys %activenics ]);
 
                     # write out the new file with the interfaces defined
                     open DBG_FD, '>', "$generatedpath";
@@ -3162,12 +3163,97 @@ sub dhcpd_sysconfig_uses_interface_key
     return 0;
 }
 
+# The isc-dhcp-server revision at which the daemon stopped being launched with
+# $INTERFACES and started being launched with $INTERFACESv4 / $INTERFACESv6.
+#
+# Note this is not an upstream ISC boundary: 20.04 and 22.04 both ship upstream
+# 4.4.1 and differ only in the Debian revision, so the comparison has to be made
+# against the whole package version.
+our $ISC_DHCP_SPLIT_INTERFACES_VERSION = "4.4.1-2.3";
+
+# Compare two isc-dhcp-server package versions. Not a general dpkg comparator:
+# it compares the runs of digits in the upstream version and then in the Debian
+# revision, which is enough to order every version isc-dhcp-server has shipped
+# with, and is deliberately kept free of any dependency on dpkg being callable.
+sub _isc_dhcp_version_cmp
+{
+    my ($left, $right) = @_;
+
+    my @sides;
+    foreach my $version ($left, $right) {
+        $version =~ s/^\d+://;    # epoch plays no part here
+        my ($upstream, $revision) = ($version, "");
+        if ($version =~ /^(.*)-([^-]*)$/) {
+            ($upstream, $revision) = ($1, $2);
+        }
+        push @sides, [ [ $upstream =~ /(\d+)/g ], [ $revision =~ /(\d+)/g ] ];
+    }
+
+    foreach my $part (0, 1) {
+        my @l = @{ $sides[0][$part] };
+        my @r = @{ $sides[1][$part] };
+        while (@l or @r) {
+            my $lv = @l ? shift(@l) : 0;
+            my $rv = @r ? shift(@r) : 0;
+            return $lv <=> $rv if ($lv != $rv);
+        }
+    }
+
+    return 0;
+}
+
+# The version of isc-dhcp-server this machine has installed, or undef when that
+# cannot be established.
+sub isc_dhcp_installed_version
+{
+    my $version = `dpkg-query -W -f='\${Version}' isc-dhcp-server 2>/dev/null`;
+    return unless (defined($version));
+    $version =~ s/\s+//g;
+    return unless (length($version) && $version =~ /\d/);
+    return $version;
+}
+
+# Which variables /etc/default/isc-dhcp-server has to carry so that dhcpd is
+# actually started on the interfaces xCAT is serving. The systemd unit expands
+# exactly one of them onto the command line, and which one changed with the
+# package:
+#
+#   14.04  4.2.4-7ubuntu12      sysvinit only   $INTERFACES
+#   16.04  4.3.3-5ubuntu12      unit            $INTERFACES
+#   18.04  4.3.5-3ubuntu7       unit            $INTERFACES
+#   20.04  4.4.1-2.1ubuntu5     unit            $INTERFACES
+#   22.04  4.4.1-2.3ubuntu2     unit            $INTERFACESv4  (v6 unit: v6)
+#   24.04  4.4.3-P1-4ubuntu2    unit            $INTERFACESv4  (v6 unit: v6)
+#   26.04  4.4.3-P1-4ubuntu2    unit            $INTERFACESv4  (v6 unit: v6)
+#
+# The sysvinit script does copy INTERFACES into INTERFACESv4, but nothing on a
+# systemd host runs it, so that bridge cannot be relied on.
+sub debian_sysconfig_interface_keys
+{
+    my $version = shift;
+    $version = isc_dhcp_installed_version() unless (defined($version));
+
+    # With no version to go on, write both spellings. An unset variable expands
+    # to nothing and leaves dhcpd binding every interface on the machine, which
+    # is a far worse outcome than one variable no daemon reads.
+    unless (defined($version) && length($version) && $version =~ /\d/) {
+        return ("INTERFACESv4", "INTERFACESv6", "INTERFACES");
+    }
+
+    if (_isc_dhcp_version_cmp($version, $ISC_DHCP_SPLIT_INTERFACES_VERSION) >= 0) {
+        return ("INTERFACESv4", "INTERFACESv6");
+    }
+
+    return ("INTERFACES");
+}
+
 # Rewrite the daemon's sysconfig/default file so it names the interfaces xCAT
 # is serving. Returns the new file contents; the caller writes them out.
 sub _sysconfig_interfaces_content
 {
-    my ($content, $key, $nics) = @_;
+    my ($content, $keys, $nics) = @_;
     $content = "" unless defined($content);
+    $keys = [$keys] unless (ref($keys) eq 'ARRAY');
 
     my $iflist = "";
     foreach my $nic (@{$nics}) {
@@ -3175,21 +3261,34 @@ sub _sysconfig_interfaces_content
         $iflist .= " $nic";
     }
     $iflist =~ s/^ //;
-    my $ifarg = "$key=\"$iflist\"\n";
 
-    my $out   = "";
-    my $found = 0;
-    foreach my $line (split /^/, $content) {
-        if ($line =~ m/^$key/) {
-            $found = 1;
-            $out .= $ifarg;
-        } else {
-            $out .= $line;
+    foreach my $key (@{$keys}) {
+        my $ifarg = "$key=\"$iflist\"\n";
+        my $out   = "";
+        my $found = 0;
+
+        foreach my $line (split /^/, $content) {
+
+            # Anchor on the assignment: INTERFACES is a prefix of INTERFACESv4
+            # and INTERFACESv6, and an unanchored match overwrites those lines
+            # instead of the one it was asked for.
+            if ($line =~ m/^\s*\Q$key\E\s*=/) {
+
+                # An earlier xCAT release could leave more than one assignment
+                # behind. Keep the first, drop the rest, so the file ends up
+                # with exactly one line per variable.
+                next if ($found);
+                $found = 1;
+                $out .= $ifarg;
+            } else {
+                $out .= $line;
+            }
         }
+        $out .= $ifarg unless ($found);
+        $content = $out;
     }
-    $out .= $ifarg unless ($found);
 
-    return $out;
+    return $content;
 }
 
 sub kea_ddns_enabled
