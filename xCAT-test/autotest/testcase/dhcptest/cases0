@@ -41,41 +41,32 @@ end
 
 start:dhcptest_provision_vs_discovery
 description:A defined node gets its reservation and an unknown one gets a pool address
-label:mn_only,ci_test,dhcp
+label:mn_only,ci_test,dhcp,dhcp_wire
 os:Linux
+# Every case below carries the dhcp_wire label, and the label is what makes the
+# backends comparable: the CI driver selects the whole set, runs it against ISC,
+# then runs the same set again against Kea, bracketing each pass with
+# `dhcpfixture.sh backend-setup` and `backend-teardown`. Which backend a cluster
+# runs is decided by the management node's distro, not by the operator, so a
+# scenario that holds on one backend and not the other is a node that boots on
+# RHEL 9 and hangs on RHEL 10.
+#
+# The backend is therefore not chosen in here. Each case serves whatever
+# site.dhcpbackend the surrounding pass selected, and reports under the backend
+# name the driver printed, so a failure says which backend it belonged to.
 cmd:#!/bin/bash
     set -u
     FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
     "$FIX" check || exit 0
     trap '"$FIX" teardown' EXIT
     "$FIX" setup || exit 1
-    "$FIX" run || exit 1
-check:rc==0
-end
-
-start:dhcptest_backend_switch
-description:The same wire expectations hold after switching to the other DHCP backend
-label:mn_only,ci_test,dhcp
-os:Linux
-cmd:#!/bin/bash
-    set -u
-    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
-    "$FIX" check || exit 0
-    ALT=$("$FIX" alt-backend)
-    if [ -z "$ALT" ]; then echo "dhcptest skipped: only one DHCP backend is installed"; exit 0; fi
-    trap '"$FIX" teardown' EXIT
-    "$FIX" setup || exit 1
-    echo "== serving with the configured backend =="
-    "$FIX" run || exit 1
-    echo "== switching to $ALT =="
-    "$FIX" backend "$ALT" || exit 1
     "$FIX" run || exit 1
 check:rc==0
 end
 
 start:dhcptest_boot_architectures
 description:Each client architecture is handed the loader that belongs to it
-label:mn_only,ci_test,dhcp
+label:mn_only,ci_test,dhcp,dhcp_wire
 os:Linux
 # Option 93 is where xCAT's DHCP behaviour branches most, and where a mistake
 # is most expensive: a machine handed the wrong loader either hangs at the
@@ -93,7 +84,7 @@ end
 
 start:dhcptest_chainload_user_class
 description:A chainloaded second stage is recognised in both encodings of option 77
-label:mn_only,ci_test,dhcp
+label:mn_only,ci_test,dhcp,dhcp_wire
 os:Linux
 # RFC 3004 length-prefixes each string in the user class option; plenty of
 # firmware sends the bare string instead, and the same loader sends either
@@ -111,7 +102,7 @@ end
 
 start:dhcptest_lease_lifecycle
 description:A lease can be taken, renewed and rebound, and a foreign address is refused
-label:mn_only,ci_test,dhcp
+label:mn_only,ci_test,dhcp,dhcp_wire
 os:Linux
 cmd:#!/bin/bash
     set -u
@@ -125,7 +116,7 @@ end
 
 start:dhcptest_discovery_adoption
 description:A discovered machine is served its own address once defined, without restarting the daemon
-label:mn_only,ci_test,dhcp
+label:mn_only,ci_test,dhcp,dhcp_wire
 os:Linux
 # The daemon staying up is half the assertion. xCAT injects ISC reservations
 # over OMAPI so adopting one node does not drop every other node part-way
@@ -143,7 +134,7 @@ end
 
 start:dhcptest_hierarchy_dhcpserver
 description:A network whose dynamic pool was handed to another server stops answering unknown MACs
-label:mn_only,ci_test,dhcp
+label:mn_only,ci_test,dhcp,dhcp_wire
 os:Linux
 cmd:#!/bin/bash
     set -u

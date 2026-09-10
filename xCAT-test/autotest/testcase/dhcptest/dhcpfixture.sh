@@ -21,8 +21,9 @@
 #     dhcpfixture.sh run-arch                one boot file per client architecture
 #     dhcpfixture.sh run-lease               the lease itself: handshake, renew, rebind, NAK
 #     dhcpfixture.sh run-chainload           first stage versus chainloaded second stage
-#     dhcpfixture.sh backend <isc|kea>       switch backend and regenerate
-#     dhcpfixture.sh alt-backend             name the other backend, if it is installed
+#     dhcpfixture.sh backends                name every backend installed here
+#     dhcpfixture.sh backend-setup <b>       select a backend for a whole pass of the cases
+#     dhcpfixture.sh backend-teardown <b>    put the backend selection back
 #     dhcpfixture.sh delegate                hand the dynamic pool to another server
 #     dhcpfixture.sh run-hierarchy           run dhcptest against the delegated network
 #     dhcpfixture.sh run-adoption            discover a machine, define it, serve it its own address
@@ -62,6 +63,10 @@ ADOPT_MAC=02:00:dc:11:00:aa
 FOREIGN_IP=192.0.2.77
 
 STATE=/tmp/dhcptest-fixture
+# What backend-setup saved, so backend-teardown can put it back. Separate from
+# $STATE because it outlives every case in the pass: $STATE belongs to one case
+# and is removed by that case's teardown.
+BSTATE=/tmp/dhcptest-backend
 DHCPTEST=/opt/xcat/share/xcat/tools/autotest/dhcptest
 [ -d "$DHCPTEST" ] || DHCPTEST="$(cd "$(dirname "$0")/../../dhcptest" 2>/dev/null && pwd)"
 
@@ -188,7 +193,11 @@ do_check() {
     [ "$(id -u)" = 0 ] || skip "the wire cases send raw frames, which needs root"
     command -v ip >/dev/null 2>&1 || skip "iproute2 is not installed"
     command -v makedhcp >/dev/null 2>&1 || skip "makedhcp is not on PATH, so this is not a management node"
-    [ -x "$DHCPTEST/src/dhcptest" ] || skip "dhcptest is not installed under $DHCPTEST"
+    # -f rather than -x: the fixture runs it as `python3 src/dhcptest`, so the
+    # execute bit is only needed by whoever calls it directly. Testing -x here
+    # made every wire case skip -- and pass -- on Debian, where dh_install keeps
+    # the source mode and the RPM's chmod has no counterpart.
+    [ -f "$DHCPTEST/src/dhcptest" ] || skip "dhcptest is not installed under $DHCPTEST"
     python3 -c "import scapy" 2>/dev/null || skip "python3-scapy is not installed"
     ip link add "${IF_SRV}probe" type veth peer name "${IF_CLI}probe" 2>/dev/null \
         || skip "this kernel has no veth support"
@@ -254,21 +263,66 @@ do_generate() {
     say "$backend is serving: $daemon is running"
 }
 
-do_backend() {
-    local want=$1 now unit daemon
-    now=$(current_backend)
-    [ "$want" = isc ] || [ "$want" = kea ] || die "unknown backend $want"
-    daemon=$(daemon_of "$want")
-    [ -n "$daemon" ] || die "the $want daemon is not installed on this machine"
+installed_backends() {
+    local backend out=
+    for backend in isc kea; do
+        daemon_of "$backend" >/dev/null && out="$out $backend"
+    done
+    echo $out
+}
 
-    unit=$(service_of "$now")
-    if [ -n "$unit" ]; then
-        say "stopping $unit"
-        systemctl stop "$unit" >/dev/null 2>&1
-    fi
+# Select a DHCP backend for a whole pass of the wire cases.
+#
+# Which backend a cluster runs is an implementation default -- Backend.pm picks
+# kea on Ubuntu >= 22.04 and EL >= 10 and isc below, and `auto` flips the moment
+# kea-dhcp4 appears -- so a booting machine must see the same answers either
+# way. Testing whichever backend happened to be configured proves half of that
+# and hides every drift between the two.
+#
+# The choice is made once per pass and not once per case: the caller runs every
+# case against isc, then every case again against kea. Switching inside each
+# case would reconfigure and restart the daemon between every one of them, and a
+# failure in the log would not say which backend it belonged to without counting
+# lines.
+#
+# Only site.dhcpbackend is set here. Each case's own setup saves the site table
+# and its teardown restores it, so the selection survives the whole pass, and
+# the config itself is generated per case by makedhcp as before.
+do_backend_setup() {
+    local want=${1:-} unit other
+    [ "$want" = isc ] || [ "$want" = kea ] || die "usage: $0 backend-setup <isc|kea>"
+    daemon_of "$want" >/dev/null || die "the $want daemon is not installed on this machine"
+
+    mkdir -p "$BSTATE" || die "cannot create $BSTATE"
+    tabdump site > "$BSTATE/site.csv" || die "cannot read the site table"
+    current_backend > "$BSTATE/backend"
+
+    # Two daemons on one wire both answer the same DISCOVER, and the case would
+    # be asserting on whichever won the race.
+    [ "$want" = isc ] && other=kea || other=isc
+    unit=$(service_of "$other")
+    [ -n "$unit" ] && { say "stopping $unit"; systemctl stop "$unit" >/dev/null 2>&1; }
 
     chdef -t site -o clustersite dhcpbackend="$want" || die "cannot set site.dhcpbackend"
-    do_generate || return 1
+    say "===== the wire cases now run against $want ====="
+}
+
+# Undo backend-setup: stop what the pass was serving with and put the site table
+# back exactly as it was, unset included, rather than to a guess at the default.
+do_backend_teardown() {
+    local want=${1:-} unit was
+    [ -d "$BSTATE" ] || { say "no backend pass to tear down"; return 0; }
+
+    unit=$(service_of "$want")
+    [ -n "$unit" ] && systemctl stop "$unit" >/dev/null 2>&1
+
+    tabrestore "$BSTATE/site.csv" >/dev/null 2>&1
+    was=$(cat "$BSTATE/backend" 2>/dev/null)
+    unit=$(service_of "$was")
+    [ -n "$unit" ] && systemctl restart "$unit" >/dev/null 2>&1
+
+    rm -rf "$BSTATE"
+    say "===== the $want pass is over; $was is serving again ====="
 }
 
 dhcptest_run() {
@@ -473,9 +527,8 @@ do_teardown() {
     if [ -f "$STATE/backend" ]; then
         local was other
         was=$(cat "$STATE/backend")
-        # The backend-switch case leaves the other daemon running. Two servers
-        # on one network answer the same DISCOVER, so stop it before restarting
-        # the one that was here to begin with.
+        # Two servers on one network answer the same DISCOVER, so stop the other
+        # one before restarting the backend this case was serving with.
         [ "$was" = isc ] && other=kea || other=isc
         unit=$(service_of "$other")
         [ -n "$unit" ] && systemctl stop "$unit" >/dev/null 2>&1
@@ -487,13 +540,14 @@ do_teardown() {
     say "fixture removed"
 }
 
-case "${1:-}" in
+dispatch() {
+    case "${1:-}" in
     check)       do_check ;;
     setup)       do_setup ;;
     generate)    do_generate ;;
-    backend)     shift; do_backend "${1:-}" ;;
-    alt-backend) if [ "$(current_backend)" = isc ]; then daemon_of kea >/dev/null && echo kea
-                 else daemon_of isc >/dev/null && echo isc; fi ;;
+    backends)    installed_backends ;;
+    backend-setup)    shift; do_backend_setup "${1:-}" ;;
+    backend-teardown) shift; do_backend_teardown "${1:-}" ;;
     run)         do_run ;;
     run-arch)      do_run_arch ;;
     run-lease)     do_run_lease ;;
@@ -502,5 +556,8 @@ case "${1:-}" in
     run-hierarchy) do_run_hierarchy ;;
     run-adoption)  do_run_adoption ;;
     teardown)    do_teardown ;;
-    *)           die "usage: $0 {check|setup|generate|backend <isc|kea>|alt-backend|run|run-arch|run-lease|run-chainload|delegate|run-hierarchy|run-adoption|teardown}" ;;
-esac
+    *)           die "usage: $0 {check|setup|generate|backends|backend-setup <isc|kea>|backend-teardown <isc|kea>|run|run-arch|run-lease|run-chainload|delegate|run-hierarchy|run-adoption|teardown}" ;;
+    esac
+}
+
+dispatch "$@"

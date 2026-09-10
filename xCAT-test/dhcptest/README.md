@@ -265,11 +265,37 @@ passing with nothing to talk to.
 
 ```bash
 xcattest -t dhcptest_provision_vs_discovery
-xcattest -t dhcptest_backend_switch        # reruns the same file on the other backend
+xcattest -s "ci_test+dhcp_wire"            # every wire case, on whatever is configured
 ```
 
 A case that cannot run — no root, no scapy, no `makedhcp`, no veth — says so and
 passes. Read a pass as coverage only when the log shows the `ok` lines.
+
+### Both backends
+
+The wire cases do not choose a backend. Each serves whatever `site.dhcpbackend`
+is set to, and the caller runs the whole set once per backend:
+
+```bash
+FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
+for backend in $($FIX backends); do
+    $FIX backend-setup $backend
+    xcattest -t $(xcattest -s "ci_test+dhcp_wire" -l | paste -sd,)
+    $FIX backend-teardown $backend
+done
+```
+
+`backend-setup` points `site.dhcpbackend` at one backend and stops the other
+daemon — two servers on one wire both answer the same DISCOVER — and
+`backend-teardown` restores the site table and restarts what was running before.
+The CI driver does exactly this in `run_dhcp_wire_cases`.
+
+Running every case under one backend and then every case under the other, rather
+than switching inside each case, reconfigures the daemon once per pass instead
+of once per case, and gives each failure a backend name. Which backend a cluster
+runs is an implementation default of the management node's distro, so a
+behaviour that holds on one and not the other is a node that boots on one
+release and hangs on the next.
 
 ## Tests
 
