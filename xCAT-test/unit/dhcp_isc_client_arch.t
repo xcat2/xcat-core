@@ -42,6 +42,23 @@ like(
     'QEMU s390x receives its network configuration',
 );
 
+# Two architectures the chain did not name, so a client announcing either fell
+# through to the /yaboot default: a ppc64 machine, which cannot boot yaboot at
+# all, and an x86-64 UEFI machine set to fetch its loader over HTTP, which is
+# the same firmware and the same loader as 0x0007. The Kea policy has always
+# matched both (xcat-ppc64, uefi_x64_client_architecture_match_expr), so until
+# now the same machine booted on one backend and not on the other.
+like(
+    $rendered,
+    qr/client-architecture = 00:0c \{ #ppc64 grub2\n\s+filename "\/boot\/grub2\/grub2\.ppc";/,
+    'a ppc64 client is given grub2.ppc rather than the yaboot fallback',
+);
+like(
+    $rendered,
+    qr/client-architecture = 00:10 \{ #x86_64 uefi http boot\n\s+filename "xcat\/xnba\.efi";/,
+    'the x86-64 UEFI HTTP boot id is given the same loader as 0x0007',
+);
+
 my @riscv_ids = $rendered =~ /client-architecture = (00:1[9a-e])/g;
 is_deeply(
     \@riscv_ids,
@@ -59,6 +76,13 @@ cmp_ok($aarch64_pos, '<', $tftp_pos,     'riscv64 follows the aarch64 branch');
 cmp_ok($tftp_pos,    '<', $http_pos,     'the TFTP branch precedes the HTTP branch');
 cmp_ok($http_pos,    '<', $opal_pos,     'the HTTP branch precedes the OPAL branch');
 cmp_ok($http_pos,    '<', $fallback_pos, 'the HTTP branch is reachable before the fallback');
+
+my $ppc64_pos    = index($rendered, 'client-architecture = 00:0c');
+my $uefi_http_pos = index($rendered, 'client-architecture = 00:10');
+cmp_ok($ppc64_pos,     '>', -1, 'the ppc64 branch is rendered at all');
+cmp_ok($ppc64_pos,     '<', $fallback_pos, 'a ppc64 client never reaches the fallback');
+cmp_ok($uefi_http_pos, '>', -1, 'the x86-64 UEFI HTTP branch is rendered at all');
+cmp_ok($uefi_http_pos, '<', $fallback_pos, 'an HTTP-booting x86-64 client never reaches the fallback');
 like($rendered, qr/filename "\/yaboot";\n\s*\}\n\z/, 'the policy ends with the existing yaboot fallback');
 
 # The chainload test: a second stage announcing user class xNBA has to be

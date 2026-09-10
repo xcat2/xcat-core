@@ -3496,6 +3496,14 @@ sub kea_subnet4_intent
             prefix => $prefix,
         )
       };
+    push @client_classes, @{
+        xCAT::DHCP::BootPolicy->kea_onie_network_classes(
+            net         => $net,
+            prefix      => $prefix,
+            next_server => $tftp,
+            httpport    => $httpport,
+        )
+      };
     if (@client_classes) {
         $subnet{additional_client_classes} = [ map { $_->{name} } @client_classes ];
         $subnet{client_classes} = \@client_classes;
@@ -3971,11 +3979,14 @@ sub kea_boot_for_node
         $boot{'boot-file-name'} = "/yb/node/yaboot-$node";
     } elsif ($netboot and $netboot =~ /^grub2[-]?.*$/) {
         $boot{'boot-file-name'} = "/boot/grub2/grub2-$node";
+    } elsif ($netboot and $netboot eq 'nimol') {
+        $boot{'boot-file-name'} = "/vios/nodes/$node";
     } elsif ($netboot and $netboot eq 'petitboot') {
         if ($nxtsrv) {
-            my $petitboot_conf = "http://$nxtsrv$portsuffix/tftpboot/petitboot/$node";
-            $boot{'boot-file-name'} = $petitboot_conf;
-            push @{ $boot{'option-data'} }, { name => 'conf-file', data => $petitboot_conf };
+            # The conf-file and nothing else. petitboot acts on a boot file
+            # name if it sees one, so naming one as well sends the machine
+            # after a TFTP fetch that never happens on the other backend.
+            push @{ $boot{'option-data'} }, { name => 'conf-file', data => "http://$nxtsrv$portsuffix/tftpboot/petitboot/$node" };
         }
     } elsif ($netboot and $netboot eq 'onie') {
         my $onie_url = kea_onie_url_for_node($node, $ntent, $nxtsrv, $httpport);

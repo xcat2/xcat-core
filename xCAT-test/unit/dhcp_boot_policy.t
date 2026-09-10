@@ -11,11 +11,16 @@ use xCAT::DHCP::BootPolicy;
 my $fallback_classes = xCAT::DHCP::BootPolicy->kea_client_classes();
 is( scalar @$fallback_classes, 5, 'Kea boot policy omits xNBA classes when xNBA loaders are unavailable' );
 my %fallback_by_name = map { $_->{name} => $_ } @$fallback_classes;
-is( $fallback_by_name{'xcat-bios'}{'boot-file-name'}, 'pxelinux.0', 'BIOS clients fall back to pxelinux.0 without xNBA loaders' );
+# Naming a loader that is not on disk costs the client a timeout it cannot
+# diagnose, and pxelinux.0 in its place boots something nobody asked for. With
+# no BIOS loader present the class is simply not written, and such a client is
+# served an address and told nothing to fetch.
+ok( !exists $fallback_by_name{'xcat-bios'}, 'no BIOS class is written when the BIOS loader is not there' );
+ok( !exists $fallback_by_name{'xcat-etherboot'}, 'and no Etherboot class either, since it names the same file' );
 ok( !exists $fallback_by_name{'xcat-xnba-bios'}, 'xNBA user-class is not advertised without xNBA kpxe' );
 
 my $classes = xCAT::DHCP::BootPolicy->kea_client_classes(xnba_kpxe => 1, xnba_efi => 1);
-is( scalar @$classes, 6, 'Kea boot policy renders expected xNBA client classes' );
+is( scalar @$classes, 8, 'Kea boot policy renders expected xNBA client classes' );
 
 my %by_name = map { $_->{name} => $_ } @$classes;
 is( $by_name{'xcat-bios'}{'boot-file-name'}, 'xcat/xnba.kpxe', 'BIOS clients receive xNBA kpxe' );
@@ -212,9 +217,87 @@ is(
     'the boot loader of the architecture is what is looked for'
 );
 unlike(
-    join( ' ', map { $_->{test} } @$classes ),
-    qr/0x001c/,
+    join( ' ', grep { defined } map { $_->{'boot-file-name'} } @$classes ),
+    qr{http://},
     'the global class list keeps HTTP boot out: it needs the address of the management node',
+);
+# The fallback names 0x001c only to stand out of its way, which is not the same
+# as answering it.
+foreach my $global (@$classes) {
+    isnt( $global->{test}, 'option[93].hex == 0x001c',
+        "$global->{name} does not answer the HTTP boot architecture globally" );
+}
+
+# Etherboot predates option 93 entirely: it announces itself in option 60 and
+# says nothing about its architecture. ISC has always keyed on that vendor
+# class; Kea keyed on option 93 alone, so an Etherboot ROM asking for a BIOS
+# loader was served an address and told nothing to fetch.
+is( $by_name{'xcat-etherboot'}{test}, "option[60].text == 'Etherboot-5.4'",
+    'Etherboot is recognised by the only thing it says about itself' );
+is( $by_name{'xcat-etherboot'}{'boot-file-name'}, 'xcat/xnba.kpxe',
+    'and is given the same BIOS loader as an option 93 BIOS client' );
+
+# ISC ends its if/else chain with a bare `filename "/yaboot";`, so a client
+# announcing an architecture nothing matched still leaves with something to
+# fetch. Kea evaluates every class on its own and has no else, so the same
+# answer has to be written as the negation of everything else that answers.
+my $fallback = $by_name{'xcat-fallback'};
+ok( $fallback, 'the class list ends with the answer for an unrecognised client' );
+is( $fallback->{'boot-file-name'}, '/yaboot',
+    'which is the boot file the ISC chain falls through to' );
+foreach my $arch (qw(0x0000 0x0002 0x0007 0x0009 0x000b 0x000c 0x000e 0x0010 0x001b 0x001c 0x001f)) {
+    like( $fallback->{test}, qr/\Qnot (option[93].hex == $arch)\E/,
+        "the fallback stands out of the way of client architecture $arch" );
+}
+like( $fallback->{test}, qr/\Qnot (option[60].text == 'Etherboot-5.4')\E/,
+    'and out of the way of Etherboot, which names no architecture' );
+like( $fallback->{test}, qr/\Qnot (substring(option[60].text,0,11) == 'onie_vendor')\E/,
+    'and of ONIE, which is answered per network' );
+like( $fallback->{test}, qr/\Qoption[77]\E/,
+    'and of a chainloaded xNBA second stage' );
+my $exclusions = () = $fallback->{test} =~ /\bnot \(/g;
+my $conjunctions = () = $fallback->{test} =~ /\) and not \(/g;
+is( $conjunctions, $exclusions - 1,
+    'every exclusion holds at once: one class matching is enough to disqualify the fallback' );
+is( $classes->[-1]{name}, 'xcat-fallback',
+    'the fallback is written last, after every class it defers to' );
+
+# ONIE carries the address of the management node in a URL, so like the other
+# URL-bearing policy it belongs to the network rather than the global list.
+my $onie = xCAT::DHCP::BootPolicy->kea_onie_network_classes(
+    net         => '10.0.0.0',
+    prefix      => 24,
+    next_server => '10.0.0.1',
+);
+is_deeply(
+    $onie,
+    [
+        {
+            name            => 'xcat-onie-10.0.0.0_24',
+            test            => "substring(option[60].text,0,11) == 'onie_vendor'",
+            additional_only => 1,
+            'option-data'   => [
+                {
+                    name          => 'www-server',
+                    data          => 'http://10.0.0.1/install/onie/onie-installer',
+                    'always-send' => 1,
+                },
+            ],
+        },
+    ],
+    'an ONIE switch is pointed at the installer over HTTP, as the ISC path does',
+);
+is(
+    xCAT::DHCP::BootPolicy->kea_onie_network_classes(
+        net => '10.0.0.0', prefix => 24, next_server => '10.0.0.1', httpport => 8080,
+    )->[0]{'option-data'}[0]{data},
+    'http://10.0.0.1:8080/install/onie/onie-installer',
+    'a non-default HTTP port is carried in the ONIE installer URL',
+);
+is_deeply(
+    xCAT::DHCP::BootPolicy->kea_onie_network_classes( net => '10.0.0.0', prefix => 24 ),
+    [],
+    'no ONIE class without a next server: there would be no address to point at',
 );
 
 my $s390x = xCAT::DHCP::BootPolicy->kea_s390x_network_classes(

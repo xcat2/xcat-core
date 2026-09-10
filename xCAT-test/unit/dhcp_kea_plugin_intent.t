@@ -141,6 +141,21 @@ my %network_entry = (
         ['xcat-s390x-qemu-10.0.0.0_24'],
         'the s390x policy is evaluated only for its subnet',
     );
+
+    # ONIE is answered per network for the same reason as s390x: the answer is
+    # a URL naming the management node on this network. The ISC path sends the
+    # same URL from its onie_vendor branch.
+    ok( $classes{'xcat-onie-10.0.0.0_24'}, 'the Kea subnet answers ONIE switches' );
+    is(
+        $classes{'xcat-onie-10.0.0.0_24'}{'option-data'}[0]{data},
+        'http://10.0.0.1/install/onie/onie-installer',
+        'the ONIE switch is pointed at the installer on this network',
+    );
+    is_deeply(
+        [ grep { /^xcat-onie-/ } @{ $subnet->{additional_client_classes} } ],
+        ['xcat-onie-10.0.0.0_24'],
+        'the ONIE policy is evaluated only for its subnet',
+    );
 }
 
 my @sysconfig_policy_cases = (
@@ -1070,6 +1085,48 @@ foreach my $case (@invalid_mac_cases) {
             },
         ],
         'dynamic IPv4 and IPv6 addresses keep the existing callback payloads'
+    );
+}
+
+{
+    # Two netboot methods the Kea path used to answer differently from the ISC
+    # one, so the same node booted on one backend and not on the other.
+    #
+    # nimol: ISC supersedes server.filename with /vios/nodes/<node>; Kea named
+    # no boot file at all, so a VIOS install got nothing to fetch.
+    #
+    # petitboot: ISC sends the conf-file option and nothing else.  Kea also set
+    # boot-file-name, and petitboot acts on a boot file name when it sees one,
+    # sending the machine after a TFTP fetch of a file that was never put there.
+    my $nimol = xCAT_plugin::dhcp::kea_boot_for_node(
+        'vios01', { netboot => 'nimol' }, undef, undef, undef, '192.0.2.1'
+    );
+    is( $nimol->{'boot-file-name'}, '/vios/nodes/vios01',
+        'a nimol node is given the boot file the ISC path supersedes' );
+
+    my $petitboot = xCAT_plugin::dhcp::kea_boot_for_node(
+        'pb01', { netboot => 'petitboot' }, undef, undef, undef, '192.0.2.1'
+    );
+    ok( !exists $petitboot->{'boot-file-name'},
+        'a petitboot node is named no boot file: the conf-file is the whole answer' );
+    my ($conf_file) = grep { $_->{name} eq 'conf-file' } @{ $petitboot->{'option-data'} };
+    is(
+        $conf_file ? $conf_file->{data} : undef,
+        'http://192.0.2.1/tftpboot/petitboot/pb01',
+        'the petitboot conf-file URL matches the ISC statement',
+    );
+
+    # Without a next server there is no URL to build, and a boot file name is
+    # still not an answer petitboot can use.
+    my $unserved = xCAT_plugin::dhcp::kea_boot_for_node(
+        'pb02', { netboot => 'petitboot' }, undef, undef, undef, undef
+    );
+    ok( !exists $unserved->{'boot-file-name'},
+        'a petitboot node with no next server is left alone rather than sent to TFTP' );
+    is_deeply(
+        [ grep { $_->{name} eq 'conf-file' } @{ $unserved->{'option-data'} } ],
+        [],
+        'no conf-file is invented without a next server',
     );
 }
 

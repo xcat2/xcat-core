@@ -8,19 +8,33 @@ sub kea_client_classes {
 
     my $xnba_user_class = xnba_user_class_test();
     my $uefi_x64_arch_match = uefi_x64_client_architecture_match_expr();
-    my $bios_boot = $opts{xnba_kpxe} ? 'xcat/xnba.kpxe' : 'pxelinux.0';
+    my $etherboot = etherboot_vendor_class_test();
+    # No substitute when the loader is not on disk. Naming a file the TFTP
+    # server does not have costs the client a timeout it cannot diagnose, and
+    # handing it a different loader boots something nobody asked for -- so the
+    # class is simply not written and the client is served an address alone.
+    my $bios_boot = $opts{xnba_kpxe} ? 'xcat/xnba.kpxe' : '';
     my $uefi_boot = $opts{xnba_efi}  ? 'xcat/xnba.efi'  : '';
     my @classes;
 
     push @classes, @{ $opts{xnba_node_classes} || [] };
 
-    push @classes, (
-        {
-            name             => 'xcat-bios',
-            test             => "option[93].hex == 0x0000 and not ($xnba_user_class)",
-            'boot-file-name' => $bios_boot,
-        },
-    );
+    if ($bios_boot ne '') {
+        push @classes, (
+            {
+                name             => 'xcat-bios',
+                test             => "option[93].hex == 0x0000 and not ($xnba_user_class)",
+                'boot-file-name' => $bios_boot,
+            },
+            # Etherboot predates option 93: it says what it is in option 60 and
+            # nothing else, so the vendor class is the only thing to key on.
+            {
+                name             => 'xcat-etherboot',
+                test             => $etherboot,
+                'boot-file-name' => $bios_boot,
+            },
+        );
+    }
 
     if ($uefi_boot ne '') {
         push @classes, {
@@ -53,7 +67,46 @@ sub kea_client_classes {
         },
     );
 
+    push @classes, kea_fallback_client_class();
+
     return \@classes;
+}
+
+#: Every client architecture some class in this file, or in the per-network
+#: classes beside it, already answers. The fallback is what is left over.
+my @RECOGNISED_ARCH_IDS = qw(
+  0x0000 0x0002 0x0007 0x0009 0x000b 0x000c 0x000e 0x0010 0x001b 0x001c 0x001f
+);
+
+# The answer for a client that said nothing any other rule recognised.
+#
+# ISC reaches this by falling off the end of an if/else chain, which Kea has no
+# equivalent of: every class is evaluated on its own. So the condition is
+# written out -- none of the architectures another class answers, and none of
+# the vendor or user classes either -- rather than left to depend on which
+# class Kea happens to consult first for a boot file name.
+#
+# /yaboot is a poor universal default, but it is the one xCAT has always had on
+# ISC. What matters here is that both backends give the same answer: a client
+# left with an address and no boot file cannot tell it was served at all.
+sub kea_fallback_client_class {
+    my @recognised = map { "option[93].hex == $_" } @RECOGNISED_ARCH_IDS;
+    push @recognised, etherboot_vendor_class_test(), onie_vendor_class_test(),
+      xnba_user_class_test();
+
+    return {
+        name             => 'xcat-fallback',
+        test             => join( ' and ', map { "not ($_)" } @recognised ),
+        'boot-file-name' => '/yaboot',
+    };
+}
+
+sub etherboot_vendor_class_test {
+    return "option[60].text == 'Etherboot-5.4'";
+}
+
+sub onie_vendor_class_test {
+    return "substring(option[60].text,0,11) == 'onie_vendor'";
 }
 
 # Architectures whose UEFI firmware can also boot over HTTP, by DHCP client
@@ -130,6 +183,39 @@ sub kea_s390x_network_classes {
     ];
 }
 
+# The installer URL an ONIE switch is offered, per subnet.
+#
+# A switch announces onie_vendor on its very first boot, which is necessarily
+# before anyone has defined it as a node -- so a URL that only a node
+# definition can produce is one the switch can never reach. ISC writes this
+# into every subnet; this is the same answer, per network because the URL
+# carries the address of the management node serving it.
+sub kea_onie_network_classes {
+    my ( $class, %opts ) = @_;
+
+    return [] unless $opts{net} && defined( $opts{prefix} ) && $opts{next_server};
+
+    my $httpport   = $opts{httpport} || '80';
+    my $portsuffix = ( $httpport eq '80' ) ? '' : ":$httpport";
+    my $name = "xcat-onie-$opts{net}_$opts{prefix}";
+    $name =~ s{[^A-Za-z0-9_.-]}{_}gxms;
+
+    return [
+        {
+            name            => $name,
+            test            => onie_vendor_class_test(),
+            additional_only => 1,
+            'option-data'   => [
+                {
+                    name          => 'www-server',
+                    data          => "http://$opts{next_server}$portsuffix/install/onie/onie-installer",
+                    'always-send' => 1,
+                },
+            ],
+        },
+    ];
+}
+
 # The user class a chainloaded second stage announces itself with, as an ISC
 # dhcpd condition.
 #
@@ -182,10 +268,19 @@ sub isc_client_architecture_lines {
         "        filename \"xcat/xnba.efi\";\n",
         "    } else if option client-architecture = 00:09 { #x86_64 uefi alternative id\n ",
         "        filename \"xcat/xnba.efi\";\n",
+        # 0x0010 is the same x86-64 UEFI firmware and the same loader as 0x0007,
+        # announced by a machine set to fetch it over HTTP. Without the branch
+        # a mainstream client falls through to /yaboot.
+        "    } else if option client-architecture = 00:10 { #x86_64 uefi http boot\n ",
+        "        filename \"xcat/xnba.efi\";\n",
         "    } else if option client-architecture = 00:02 { #ia64\n ",
         "        filename \"elilo.efi\";\n",
         "    } else if option client-architecture = 00:0b { #aaarch64\n ",
         "      filename \"boot/grub2/grub2.aarch64\";\n",
+        # yaboot, which is what a ppc64 client fell through to without this
+        # branch, is not a UEFI loader and cannot boot one of these machines.
+        "    } else if option client-architecture = 00:0c { #ppc64 grub2\n ",
+        "      filename \"/boot/grub2/grub2.ppc\";\n",
         "    } else if option client-architecture = 00:1b { #riscv64 uefi\n ",
         "      filename \"boot/grub2/grub2.riscv64\";\n",
         "    } else if option client-architecture = 00:1c { #riscv64 uefi http boot\n ",
