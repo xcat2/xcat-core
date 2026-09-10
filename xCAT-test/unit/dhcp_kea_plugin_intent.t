@@ -613,7 +613,12 @@ foreach my $case (@sysconfig_policy_cases) {
     my $r = $reservations->[0] || {};
     is( $r->{'ip-address'},  '192.168.201.21',    'service node reservation carries the node IP' );
     is( $r->{'hw-address'},  '42:d7:c0:a8:c9:15', 'service node reservation carries the node MAC' );
-    is( $r->{hostname},      'svc01',             'service node reservation carries the hostname' );
+    # Fully qualified, trailing dot and all. Kea builds option 12 out of this
+    # field and appends ddns-qualifying-suffix to anything that is not already
+    # qualified, so a bare name reached the node as an FQDN while ISC, which
+    # writes option 12 and the DDNS name separately, sent the node's own name.
+    # S-35 asks for the node's own name on both.
+    is( $r->{hostname},      'svc01.',            'service node reservation carries the hostname' );
     ok( !exists $r->{'next-server'},
         'a node that names no server of its own leaves next-server to the subnet' );
 }
@@ -902,7 +907,7 @@ foreach my $case (@invalid_mac_cases) {
 
     is_deeply(
         [ map { $_->{hostname} } @$reservations ],
-        ['valid01'],
+        ['valid01.'],
         'an unresolved hostname does not block later valid Kea reservations'
     );
     is_deeply(
@@ -1337,9 +1342,14 @@ foreach my $case (@invalid_mac_cases) {
     like( $by_name{'xcat-pxe-smp01-aabbccddee01'}{test}, qr/\Qnot (option[60].text == 'ScaleMP')\E/,
         'the two are mutually exclusive: Kea has no else to fall into' );
 
+    # The empty container comes first because without it Kea has nowhere to put
+    # the two sub-options and sends neither: an encapsulated space travels only
+    # inside the option that encapsulates it, and option 43 carries no data of
+    # its own. ISC builds the container from the sub-option declarations.
     is_deeply(
         $by_name{'xcat-iscsi-san01-aabbccddee02-isan'}{'option-data'},
         [
+            { name => 'isan-encap-opts' },
             { space => 'isan', name => 'iqn',       data => 'iqn.2024-01.test:init' },
             { space => 'isan', name => 'root-path', data => 'iscsi:192.0.2.9:6:3260:0:iqn.2024-01.test:san01' },
         ],

@@ -364,6 +364,29 @@ do_setup() {
     say "fixture is up on $IF_SRV/$IF_CLI, backend $(current_backend)"
 }
 
+# Being alive is not the same as being able to answer. Kea opens a UDP
+# fallback socket per address and, when something else already holds port 67,
+# logs DHCPSRV_NO_SOCKETS_OPEN and keeps running with no way to hear a client.
+# Every wire case then fails on a timeout and reads as backend drift, which is
+# exactly the wrong diagnosis. So the fixture asks who holds port 67 before it
+# believes a daemon is serving.
+assert_serving() {
+    local daemon=$1 foreign
+    command -v ss >/dev/null 2>&1 || return 0
+
+    foreign=$(ss -uapnH "( sport = :67 )" 2>/dev/null | grep -v "\"$daemon\"" | tr -s ' ')
+    [ -n "$foreign" ] && die "another process holds port 67, so $daemon cannot serve: $foreign"
+
+    # ISC binds a raw LPF socket, which no UDP listing shows, so only Kea can
+    # be asked to prove its socket is open.
+    case "$daemon" in
+        kea-dhcp4)
+            ss -uapnH "( sport = :67 )" 2>/dev/null | grep -q "\"$daemon\"" \
+                || die "$daemon opened no DHCP socket; see journalctl -u kea-dhcp4 for DHCPSRV_OPEN_SOCKET_FAIL" ;;
+    esac
+    return 0
+}
+
 do_generate() {
     local backend daemon
     backend=$(current_backend)
@@ -375,7 +398,8 @@ do_generate() {
     makedhcp -q "$NODE" || say "makedhcp -q reported no entry for $NODE"
 
     wait_for_daemon "$daemon" || die "$daemon is not running after makedhcp"
-    say "$backend is serving: $daemon is running"
+    assert_serving "$daemon"
+    say "$backend is serving: $daemon holds port 67"
 }
 
 installed_backends() {

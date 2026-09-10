@@ -2906,12 +2906,19 @@ sub kea_build_dhcp4_intent
         subnets        => \@subnets,
     };
 
+    # The daemon gets its own control socket whether or not the Control Agent
+    # is asked for: the agent is a REST front end onto this socket, not the
+    # thing that creates it. Without it the only way to reconfigure a running
+    # Kea is SIGHUP, which reports success as soon as the signal is delivered
+    # and so cannot tell makedhcp that Kea rejected the file and kept serving
+    # the configuration it already had.
+    $intent->{'control-socket'} = {
+        'socket-type' => 'unix',
+        'socket-name' => $backend->control_socket_path('kea4-ctrl-socket'),
+    };
+
     my @hooks;
     if (kea_control_agent_enabled()) {
-        $intent->{'control-socket'} = {
-            'socket-type' => 'unix',
-            'socket-name' => $backend->control_socket_path('kea4-ctrl-socket'),
-        };
         my $hook = $backend->host_cmds_hook_path();
         if ($hook) {
             push @hooks, { library => $hook };
@@ -2976,11 +2983,14 @@ sub kea_build_dhcp6_intent
         subnets              => \@subnets,
     };
 
+    # Same reasoning as DHCPv4: the socket is how a reload can be confirmed,
+    # so it is not conditional on the Control Agent.
+    $intent->{'control-socket'} = {
+        'socket-type' => 'unix',
+        'socket-name' => $backend->control_socket_path('kea6-ctrl-socket'),
+    };
+
     if (kea_control_agent_enabled()) {
-        $intent->{'control-socket'} = {
-            'socket-type' => 'unix',
-            'socket-name' => $backend->control_socket_path('kea6-ctrl-socket'),
-        };
         my $hook = $backend->host_cmds_hook_path();
         if ($hook) {
             $intent->{'hooks-libraries'} = [ { library => $hook } ];
@@ -3645,10 +3655,19 @@ sub kea_node_reservations
             next;
         }
 
+        # The trailing dot is what keeps option 12 the node's own name. Kea
+        # answers a reservation's host-name option out of this one field, and
+        # qualifies it with ddns-qualifying-suffix on the way out -- so with
+        # DDNS configured a node asking who it is was told
+        # "node01.cluster.example.com" while ISC, which builds option 12 and
+        # the DDNS name from separate statements, said "node01". A name that
+        # already ends in a dot is fully qualified and is not qualified again,
+        # which leaves the wire agreeing with ISC and with S-35. The suffix
+        # still applies to the dynamic clients that have no reservation.
         my %reservation = (
             'subnet-id'  => $subnet_id,
             'hw-address' => $mac,
-            hostname     => $hname,
+            hostname     => "$hname.",
             'ip-address' => $ip,
         );
         $reservation{'next-server'} = $nxtsrv if $nxtsrv && $nxtsrv !~ /\$\{/;

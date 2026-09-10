@@ -397,13 +397,32 @@ sub isc_client_architecture_lines {
         "      filename \"boot/grub2/grub2.riscv64\";\n",
       ];
 
-    if ( $present->("$tftpdir/boot/grub2/grub2.riscv64") ) {
+    my $riscv_http = $present->("$tftpdir/boot/grub2/grub2.riscv64");
+    if ($riscv_http) {
         push @branches, [
             "option client-architecture = 00:1c { #riscv64 uefi http boot\n ",
             "      option vendor-class-identifier \"HTTPClient\";\n",
             "      filename \"http://$tftp$portsuffix/tftpboot/boot/grub2/grub2.riscv64\";\n",
         ];
     }
+
+    # Leaving a branch out is not the same as answering nothing. ISC evaluates
+    # these as one if/else chain, so a client whose branch was dropped keeps
+    # falling until it reaches the /yaboot catch-all at the end and is handed a
+    # loader nobody chose -- the substitution S-12 forbids. Kea cannot do this:
+    # its fallback class excludes every architecture another class recognises.
+    # So each dropped branch leaves a branch behind that matches the same client
+    # and says nothing, which stops the fall exactly where it should stop.
+    my @suppressed;
+    push @suppressed, "option client-architecture = 00:00",
+      "option vendor-class-identifier = \"Etherboot-5.4\""
+      unless $kpxe;
+    push @suppressed, map { "option client-architecture = $_" } qw(00:07 00:09 00:10)
+      unless $efi;
+    push @suppressed, "option client-architecture = 00:1c"
+      unless $riscv_http;
+    push @branches, ["$_ { #the loader for this client is not on disk\n"]
+      foreach @suppressed;
 
     push @branches, [
         "option client-architecture = 00:1f { #QEMU s390x\n ",
@@ -536,6 +555,14 @@ sub kea_iscsi_node_classes {
             name          => "$base-isan",
             test          => "$mac_test and $isan",
             'option-data' => [
+                # Kea appends an encapsulated space to a reply only when the
+                # option that carries it is itself configured, and option 43
+                # has no data of its own. Naming only the sub-options leaves
+                # them with nothing to travel in, and the initiator is offered
+                # an address with no target -- so the empty container is named
+                # too. ISC needs no equivalent: declaring `option isan.iqn`
+                # builds option 43 for it.
+                { name => 'isan-encap-opts' },
                 { space => 'isan', name => 'iqn',       data => $node->{iname} },
                 { space => 'isan', name => 'root-path', data => $node->{root_path} },
             ],

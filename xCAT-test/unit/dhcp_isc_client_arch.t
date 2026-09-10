@@ -183,6 +183,27 @@ is(
     like( $partial, qr{/xcat/xnba/nets/192\.0\.2\.0_24\.uefi"},
         'the UEFI second stage is advertised, because its first stage exists' );
 
+    # Dropping the branch is only half the rule. ISC evaluates these as one
+    # if/else chain, so a BIOS client whose branch is gone keeps falling until
+    # the /yaboot catch-all hands it a loader nobody chose -- the substitution
+    # S-12 forbids, and the one Kea cannot make because its fallback class
+    # excludes every architecture another class recognises. What is left behind
+    # is a branch that matches the same client and says nothing.
+    like( $partial,
+        qr/option client-architecture = 00:00 \{ #the loader for this client is not on disk\n\s*\}/,
+        'a BIOS client whose loader is missing is matched and told nothing' );
+    like( $partial,
+        qr/option vendor-class-identifier = "Etherboot-5\.4" \{ #the loader for this client is not on disk/,
+        'and so is the Etherboot client that would have been sent to the same file' );
+    unlike( $partial, qr/00:07 \{ #the loader/,
+        'an architecture whose loader is there keeps its real branch' );
+
+    # Position is the whole point: a suppressing branch after the fallback
+    # would never be reached.
+    ok( index( $partial, 'option client-architecture = 00:00 { #the loader' )
+          < index( $partial, 'filename "/yaboot"' ),
+        'the client is stopped before the chain reaches the fallback' );
+
     is( scalar( grep { $_ eq '/srv/tftp/boot/grub2/grub2.riscv64' } @asked ), 1,
         'the riscv64 HTTP branch is probed under the configured tftp directory' );
 

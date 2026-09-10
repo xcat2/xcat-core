@@ -405,6 +405,30 @@ my $found = $backend->query_reservations( $reservation_config, { hostname => 'no
 is( scalar @$found, 1, 'reservation query finds hostname match' );
 is( $found->[0]{'subnet-id'}, 10, 'reservation query includes subnet id' );
 
+# A reservation is written with its hostname fully qualified, because that is
+# what stops Kea appending ddns-qualifying-suffix to the name it hands the node
+# in option 12. Nothing that looks a node up knows about that dot, so the
+# lookup has to find the node either way -- otherwise `makedhcp -d` stops
+# matching by name and silently leaves the reservation behind.
+$backend->upsert_reservations(
+    $reservation_config,
+    [
+        {
+            'subnet-id'  => 10,
+            'hw-address' => '00:11:22:33:44:66',
+            'ip-address' => '10.10.0.14',
+            hostname     => 'node14.',
+        },
+    ]
+);
+is( scalar @{ $backend->query_reservations( $reservation_config, { hostname => 'node14' } ) },
+    1, 'a qualified reservation is found by the bare node name' );
+is( scalar @{ $backend->query_reservations( $reservation_config, { hostname => 'node14.' } ) },
+    1, 'and by the name it was written under' );
+is( scalar @{ $backend->query_reservations( $reservation_config, { hostname => 'node1' } ) },
+    0, 'and a shorter name is still not a match' );
+$backend->delete_reservations( $reservation_config, { 'hw-address' => '00:11:22:33:44:66' } );
+
 my $deleted = $backend->delete_reservations( $reservation_config, { 'hw-address' => '00:11:22:33:44:55' } );
 is( scalar @$deleted, 1, 'reservation delete returns deleted reservation' );
 is( scalar @{ $reservation_config->{Dhcp4}{subnet4}[0]{reservations} }, 0, 'reservation is removed from config' );
