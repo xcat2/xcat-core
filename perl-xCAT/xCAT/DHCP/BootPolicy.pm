@@ -300,50 +300,122 @@ sub isc_client_architecture_lines {
     my $maskbits   = $opts{prefix}      // '';
     my $xnba       = $class->isc_xnba_user_class_test();
 
-    return [
-        "    if $xnba and option client-architecture = 00:00 { #x86, xCAT Network Boot Agent\n",
-        "        always-broadcast on;\n",
-        "        filename = \"http://$tftp$portsuffix/tftpboot/xcat/xnba/nets/${net}_${maskbits}\";\n",
-        "    } else if $xnba and option client-architecture = 00:09 { #x86, xCAT Network Boot Agent\n",
-        "        filename = \"http://$tftp$portsuffix/tftpboot/xcat/xnba/nets/${net}_${maskbits}.uefi\";\n",
-        "    } else if $xnba and option client-architecture = 00:07 { #x86-64 UEFI, xCAT Network Boot Agent\n",
-        "        filename = \"http://$tftp$portsuffix/tftpboot/xcat/xnba/nets/${net}_${maskbits}.uefi\";\n",
-        "    } else if option client-architecture = 00:00  { #x86\n",
-        "        filename \"xcat/xnba.kpxe\";\n",
-        "    } else if option vendor-class-identifier = \"Etherboot-5.4\"  { #x86\n",
-        "        filename \"xcat/xnba.kpxe\";\n",
-        "    } else if option client-architecture = 00:07 { #x86_64 uefi\n ",
-        "        filename \"xcat/xnba.efi\";\n",
-        "    } else if option client-architecture = 00:09 { #x86_64 uefi alternative id\n ",
-        "        filename \"xcat/xnba.efi\";\n",
-        # 0x0010 is the same x86-64 UEFI firmware and the same loader as 0x0007,
-        # announced by a machine set to fetch it over HTTP. Without the branch
-        # a mainstream client falls through to /yaboot.
-        "    } else if option client-architecture = 00:10 { #x86_64 uefi http boot\n ",
-        "        filename \"xcat/xnba.efi\";\n",
-        "    } else if option client-architecture = 00:02 { #ia64\n ",
+    # Which loaders are actually on disk. A branch that names a file the TFTP
+    # server does not have costs the client a full timeout it has no way to
+    # diagnose, so the branch is left out and the client falls through to
+    # whatever the chain answers next. The Kea side has always worked this way
+    # (kea_client_classes takes the same two flags, kea_httpboot_network_classes
+    # the same probe); until now ISC named all of them unconditionally.
+    my $present = $opts{loader_present} || sub { return 1 };
+    my $tftpdir = $opts{tftpdir} || '/tftpboot';
+    $tftpdir =~ s{/+$}{};
+    my $kpxe = $present->("$tftpdir/xcat/xnba.kpxe");
+    my $efi  = $present->("$tftpdir/xcat/xnba.efi");
+
+    # Each entry is the head of one branch and the statements inside it. They
+    # are chained afterwards so that dropping one still leaves a well-formed
+    # if/else if chain -- the first branch present has to be the `if`.
+    my @branches;
+
+    if ($kpxe) {
+        push @branches, [
+            "$xnba and option client-architecture = 00:00 { #x86, xCAT Network Boot Agent\n",
+            "        always-broadcast on;\n",
+            "        filename = \"http://$tftp$portsuffix/tftpboot/xcat/xnba/nets/${net}_${maskbits}\";\n",
+        ];
+    }
+    if ($efi) {
+        push @branches, [
+            "$xnba and option client-architecture = 00:09 { #x86, xCAT Network Boot Agent\n",
+            "        filename = \"http://$tftp$portsuffix/tftpboot/xcat/xnba/nets/${net}_${maskbits}.uefi\";\n",
+          ],
+          [
+            "$xnba and option client-architecture = 00:07 { #x86-64 UEFI, xCAT Network Boot Agent\n",
+            "        filename = \"http://$tftp$portsuffix/tftpboot/xcat/xnba/nets/${net}_${maskbits}.uefi\";\n",
+          ];
+    }
+    if ($kpxe) {
+        push @branches, [
+            "option client-architecture = 00:00  { #x86\n",
+            "        filename \"xcat/xnba.kpxe\";\n",
+          ],
+          [
+            "option vendor-class-identifier = \"Etherboot-5.4\"  { #x86\n",
+            "        filename \"xcat/xnba.kpxe\";\n",
+          ];
+    }
+    if ($efi) {
+        push @branches, [
+            "option client-architecture = 00:07 { #x86_64 uefi\n ",
+            "        filename \"xcat/xnba.efi\";\n",
+          ],
+          [
+            "option client-architecture = 00:09 { #x86_64 uefi alternative id\n ",
+            "        filename \"xcat/xnba.efi\";\n",
+          ],
+
+          # 0x0010 is the same x86-64 UEFI firmware and the same loader as
+          # 0x0007, announced by a machine set to fetch it over HTTP. Without
+          # the branch a mainstream client falls through to /yaboot.
+          [
+            "option client-architecture = 00:10 { #x86_64 uefi http boot\n ",
+            "        filename \"xcat/xnba.efi\";\n",
+          ];
+    }
+
+    push @branches, [
+        "option client-architecture = 00:02 { #ia64\n ",
         "        filename \"elilo.efi\";\n",
-        "    } else if option client-architecture = 00:0b { #aaarch64\n ",
+      ],
+      [
+        "option client-architecture = 00:0b { #aaarch64\n ",
         "      filename \"boot/grub2/grub2.aarch64\";\n",
-        # yaboot, which is what a ppc64 client fell through to without this
-        # branch, is not a UEFI loader and cannot boot one of these machines.
-        "    } else if option client-architecture = 00:0c { #ppc64 grub2\n ",
+      ],
+
+      # yaboot, which is what a ppc64 client fell through to without this
+      # branch, is not a UEFI loader and cannot boot one of these machines.
+      [
+        "option client-architecture = 00:0c { #ppc64 grub2\n ",
         "      filename \"/boot/grub2/grub2.ppc\";\n",
-        "    } else if option client-architecture = 00:1b { #riscv64 uefi\n ",
+      ],
+      [
+        "option client-architecture = 00:1b { #riscv64 uefi\n ",
         "      filename \"boot/grub2/grub2.riscv64\";\n",
-        "    } else if option client-architecture = 00:1c { #riscv64 uefi http boot\n ",
-        "      option vendor-class-identifier \"HTTPClient\";\n",
-        "      filename \"http://$tftp$portsuffix/tftpboot/boot/grub2/grub2.riscv64\";\n",
-        "    } else if option client-architecture = 00:1f { #QEMU s390x\n ",
+      ];
+
+    if ( $present->("$tftpdir/boot/grub2/grub2.riscv64") ) {
+        push @branches, [
+            "option client-architecture = 00:1c { #riscv64 uefi http boot\n ",
+            "      option vendor-class-identifier \"HTTPClient\";\n",
+            "      filename \"http://$tftp$portsuffix/tftpboot/boot/grub2/grub2.riscv64\";\n",
+        ];
+    }
+
+    push @branches, [
+        "option client-architecture = 00:1f { #QEMU s390x\n ",
         "      option conf-file = \"s390x/${net}_${maskbits}\";\n",
-        "    } else if option client-architecture = 00:0e { #OPAL-v3\n ",
+      ],
+      [
+        "option client-architecture = 00:0e { #OPAL-v3\n ",
         "        option conf-file = \"http://$tftp$portsuffix/tftpboot/pxelinux.cfg/p/${net}_${maskbits}\";\n",
-        "    } else if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { #for onie on cumulus switch\n",
+      ],
+      [
+        "substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { #for onie on cumulus switch\n",
         "        option www-server = \"http://$tftp$portsuffix/install/onie/onie-installer\";\n",
-        "    } else if substring(filename,0,1) = null { #otherwise, provide yaboot if the client isn't specific\n ",
+      ],
+      [
+        "substring(filename,0,1) = null { #otherwise, provide yaboot if the client isn't specific\n ",
         "        filename \"/yaboot\";\n",
-        "    }\n",
-    ];
+      ];
+
+    my @lines;
+    foreach my $branch (@branches) {
+        my ( $head, @body ) = @$branch;
+        push @lines, ( @lines ? "    } else if " : "    if " ) . $head, @body;
+    }
+    push @lines, "    }\n";
+
+    return \@lines;
 }
 
 sub kea_xnba_node_classes {
@@ -467,6 +539,72 @@ sub kea_iscsi_node_classes {
     }
 
     return \@classes;
+}
+
+# The tag that hands a client to the proxyDHCP daemon.
+#
+# Windows UEFI firmware that is offered no boot file, but sees option 60 set to
+# PXEClient, goes and asks the daemon listening on port 4011 for one. ISC does
+# this in the node's own host block, for the three architecture ids its
+# firmware announces; anything else on that node is simply given no boot file.
+#
+# The empty boot file is the reservation's job -- it outranks every class -- so
+# what is left for the class is the tag, and the architectures it is meant for.
+sub kea_proxydhcp_node_classes {
+    my ( $class, %opts ) = @_;
+
+    my $nodes = $opts{nodes} || [];
+    my $arches = join ' or ',
+      map { "option[93].hex == $_" } qw(0x0000 0x0007 0x0009);
+    my @classes;
+
+    foreach my $node (@$nodes) {
+        next unless $node->{node} && $node->{mac};
+        push @classes, {
+            name          => _node_class_base( 'proxydhcp', $node->{node}, $node->{mac} ),
+            test          => _mac_test( $node->{mac} ) . " and ($arches)",
+            'option-data' => [
+                {
+                    name          => 'vendor-class-identifier',
+                    data          => 'PXEClient',
+                    'always-send' => 1,
+                },
+            ],
+            'user-context' => _node_user_context( $node, 'proxydhcp-deferral' ),
+        };
+    }
+
+    return \@classes;
+}
+
+# The MACs that are to be answered with nothing at all.
+#
+# ISC writes `deny booting;` into the host block of a NIC marked *NOIP* in the
+# mac table, and dhcpd then says nothing to it. Kea has one way to do that: a
+# packet assigned to a class named exactly DROP is discarded. Nothing else
+# about the name is special, and there can only be one of it, so every such
+# MAC in the cluster shares the class and the user-context records whose they
+# are, so a later makedhcp for one node can rebuild it without losing the rest.
+#
+# Skipping the reservation is not enough on its own: the subnet-wide classes
+# match on architecture and would still hand the interface a boot file, which
+# is the whole thing the marking exists to prevent.
+sub kea_drop_client_class {
+    my ( $class, %opts ) = @_;
+
+    my @macs = grep { $_->{node} && $_->{mac} } @{ $opts{macs} || [] };
+    return unless @macs;
+
+    my @sorted = sort { $a->{node} cmp $b->{node} or $a->{mac} cmp $b->{mac} } @macs;
+
+    return {
+        name           => 'DROP',
+        test           => join( ' or ', map { _mac_test( $_->{mac} ) } @sorted ),
+        'user-context' => {
+            'xcat-purpose' => 'noip-drop',
+            'xcat-macs'    => [ map { { node => $_->{node}, mac => lc( $_->{mac} ) } } @sorted ],
+        },
+    };
 }
 
 #: The encapsulated space ISC declares as "option space isan" -- option 43

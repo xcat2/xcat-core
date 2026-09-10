@@ -152,4 +152,68 @@ is(
     'and both backends land on the same number',
 );
 
+# A loader that is not on disk is not named. Naming one costs the client a
+# full TFTP timeout it cannot diagnose, and the Kea side has always left the
+# class out for exactly that reason -- so the same missing file has to produce
+# the same silence on both backends.
+{
+    my @asked;
+    my %present = map { $_ => 1 } (
+        '/srv/tftp/xcat/xnba.efi',
+        '/srv/tftp/boot/grub2/grub2.riscv64',
+    );
+    my $partial = join '', @{ xCAT::DHCP::BootPolicy->isc_client_architecture_lines(
+            next_server    => '192.0.2.10',
+            portsuffix     => '',
+            tftpdir        => '/srv/tftp',
+            net            => '192.0.2.0',
+            prefix         => 24,
+            loader_present => sub { push @asked, $_[0]; return $present{ $_[0] } },
+        ) };
+
+    unlike( $partial, qr/xnba\.kpxe/,
+        'a BIOS client is not sent after a kpxe loader that was never built' );
+    like( $partial, qr/xnba\.efi/,
+        'and the UEFI loader that is there is still offered' );
+
+    # The second stage is fetched over HTTP, but it is the first stage that
+    # asks for it, so it is gated on the same file.
+    unlike( $partial, qr{/xcat/xnba/nets/192\.0\.2\.0_24"},
+        'no BIOS second stage is advertised without the first stage to reach it' );
+    like( $partial, qr{/xcat/xnba/nets/192\.0\.2\.0_24\.uefi"},
+        'the UEFI second stage is advertised, because its first stage exists' );
+
+    is( scalar( grep { $_ eq '/srv/tftp/boot/grub2/grub2.riscv64' } @asked ), 1,
+        'the riscv64 HTTP branch is probed under the configured tftp directory' );
+
+    # Whatever is dropped, what is left has to still be one chain: dhcpd
+    # rejects a leading "} else if" and refuses to start.
+    like( $partial, qr/\A    if /, 'the first surviving branch opens the chain' );
+    unlike( $partial, qr/\n    \} else if [^\n]*\n\s*\}\n    \} else if /,
+        'no branch is left dangling between two chains' );
+    is( scalar( () = $partial =~ /^    \}\n/mg ), 1,
+        'and the chain is closed exactly once' );
+}
+
+{
+    # Nothing on disk at all: the architecture branches that name a file xCAT
+    # never builds stay, and the client that matches none of them still ends up
+    # at the fallback rather than at a parse error.
+    my $bare = join '', @{ xCAT::DHCP::BootPolicy->isc_client_architecture_lines(
+            next_server    => '192.0.2.10',
+            portsuffix     => '',
+            tftpdir        => '/srv/tftp',
+            net            => '192.0.2.0',
+            prefix         => 24,
+            loader_present => sub { return 0 },
+        ) };
+
+    like( $bare, qr/\A    if option client-architecture = 00:02 /,
+        'the chain opens on the first branch that survives' );
+    like( $bare, qr/filename "\/yaboot";\n\s*\}\n\z/,
+        'and still ends at the fallback' );
+    unlike( $bare, qr/HTTPClient/,
+        'the riscv64 HTTP branch goes with the image it would have served' );
+}
+
 done_testing();

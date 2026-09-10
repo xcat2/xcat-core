@@ -3717,7 +3717,20 @@ sub kea_sync_node_client_classes
     my ( $config, $nodes ) = @_;
 
     my $changed = kea_remove_node_client_classes($config, $nodes);
-    my $classes = kea_node_client_classes_for_nodes($nodes);
+    my $generated = kea_node_client_classes_for_nodes($nodes);
+
+    # The remove above took this node range's MACs out of the DROP class; these
+    # are the ones it is to have from now on, added to whatever the rest of the
+    # cluster already had there.
+    if (@{ $generated->{noip} }) {
+        kea_set_drop_client_class(
+            $config,
+            [ @{ kea_drop_client_class_macs($config) }, @{ $generated->{noip} } ]
+        );
+        $changed = 1;
+    }
+
+    my $classes = $generated->{classes};
     return $changed unless @$classes;
 
     $config->{Dhcp4} ||= {};
@@ -3727,11 +3740,37 @@ sub kea_sync_node_client_classes
     return 1;
 }
 
+sub kea_drop_client_class_macs
+{
+    my ($config) = @_;
+
+    foreach my $class ( @{ ( $config->{Dhcp4} || {} )->{'client-classes'} || [] } ) {
+        next unless ( $class->{name} || '' ) eq 'DROP';
+        return ( $class->{'user-context'} || {} )->{'xcat-macs'} || [];
+    }
+    return [];
+}
+
+sub kea_set_drop_client_class
+{
+    my ( $config, $macs ) = @_;
+
+    $config->{Dhcp4} ||= {};
+    my @classes = grep { ( $_->{name} || '' ) ne 'DROP' }
+      @{ $config->{Dhcp4}{'client-classes'} || [] };
+    my $drop = xCAT::DHCP::BootPolicy->kea_drop_client_class( macs => $macs );
+    push @classes, $drop if $drop;
+    $config->{Dhcp4}{'client-classes'} = \@classes;
+
+    return;
+}
+
 #: Every per-node class this plugin generates carries one of these, so a node
 #: that changes netboot method loses the classes the old one wrote.
 my %KEA_NODE_CLASS_PURPOSES = map { $_ => 1 } qw(
   xnba-second-stage
   pxe-vendor
+  proxydhcp-deferral
   iscsi-initiator
 );
 
@@ -3755,6 +3794,16 @@ sub kea_remove_node_client_classes
     }
 
     $config->{Dhcp4}{'client-classes'} = \@kept if $changed;
+
+    # A node's *NOIP* interfaces share one DROP class with the rest of the
+    # cluster, so removing them means rewriting it rather than dropping it.
+    my $macs = kea_drop_client_class_macs($config);
+    my @kept_macs = grep { !$nodes{ $_->{node} || '' } } @$macs;
+    if ( scalar(@kept_macs) != scalar(@$macs) ) {
+        kea_set_drop_client_class( $config, \@kept_macs );
+        $changed = 1;
+    }
+
     return $changed;
 }
 
@@ -3764,12 +3813,16 @@ sub kea_node_client_classes_for_nodes
 
     my $nrtab = xCAT::Table->new('noderes');
     my $mactab = xCAT::Table->new('mac');
-    return [] unless $nrtab && $mactab;
+    return { classes => [], noip => [] } unless $nrtab && $mactab;
 
     my $iscsitab = xCAT::Table->new('iscsi', -create => 0);
+    my $chaintab = xCAT::Table->new('chain', -create => 0);
+    my $nodetypetab = xCAT::Table->new('nodetype', -create => 0);
     my $nrents = $nrtab->getNodesAttribs($nodes, [ 'tftpserver', 'netboot', 'proxydhcp', 'xcatmaster', 'servicenode' ]);
     my $macents = $mactab->getNodesAttribs($nodes, ['mac']);
     my $ients = $iscsitab ? $iscsitab->getNodesAttribs($nodes, [qw(server target lun iname)]) : undef;
+    my $chainents = $chaintab ? $chaintab->getNodesAttribs($nodes, ['currstate']) : undef;
+    my $ntents = $nodetypetab ? $nodetypetab->getNodesAttribs($nodes, [qw(os provmethod arch)]) : undef;
     my $httpport = "80";
     my @hports = xCAT::TableUtils->get_site_attribute("httpport");
     if ($hports[0]) {
@@ -3779,9 +3832,21 @@ sub kea_node_client_classes_for_nodes
     my @xnba;
     my @pxe;
     my @iscsi;
+    my @noip;
+    my @proxydhcp;
     foreach my $node (@$nodes) {
         my $nrent = $nrents && $nrents->{$node} ? $nrents->{$node}->[0] : undef;
         my $netboot = $nrent ? $nrent->{netboot} : undef;
+
+        # A node that is to boot from disk, or that is waiting on the proxyDHCP
+        # daemon, is given no loader at all -- so it is given no boot classes
+        # either. ISC suppresses the same thing by leaving the second-stage
+        # branches out of the node's host block.
+        my $intent = kea_node_boot_intent(
+            $nrent,
+            $chainents && $chainents->{$node} ? $chainents->{$node}->[0] : undef,
+            $ntents    && $ntents->{$node}    ? $ntents->{$node}->[0]    : undef,
+        );
 
         my $macent = $macents && $macents->{$node} ? $macents->{$node}->[0] : undef;
         next unless $macent && $macent->{mac};
@@ -3792,12 +3857,26 @@ sub kea_node_client_classes_for_nodes
         my $iname = ( $ient and $ient->{server} and $ient->{target} ) ? $ient->{iname} : undef;
 
         foreach my $mace (split(/\|/, $macent->{mac})) {
-            my ($mac) = split(/!/, $mace);
+            my ( $mac, $hname ) = split(/!/, $mace);
             $mac = kea_normalize_mac($mac);
             next unless $mac;
             my %record = ( node => $node, mac => $mac );
 
-            if ($netboot and $netboot eq 'xnba' and $nxtsrv) {
+            # The interface is marked as having no address on purpose. ISC
+            # answers it with "deny booting;"; the Kea equivalent is the DROP
+            # class, which the caller merges with the rest of the cluster's.
+            if ( defined($hname) and $hname eq '*NOIP*' ) {
+                push @noip, {%record};
+                next;
+            }
+
+            if ( $intent eq 'proxydhcp' ) {
+                push @proxydhcp, {%record};
+            } elsif ( $intent eq 'disk' ) {
+
+                # Nothing: the reservation names an empty boot file and that
+                # outranks anything a class could say.
+            } elsif ($netboot and $netboot eq 'xnba' and $nxtsrv) {
                 push @xnba, { %record, next_server => $nxtsrv, httpport => $httpport };
             } elsif ($netboot and $netboot eq 'pxe') {
                 push @pxe, {%record};
@@ -3810,14 +3889,40 @@ sub kea_node_client_classes_for_nodes
         }
     }
 
-    return [
-        @{ xCAT::DHCP::BootPolicy->kea_xnba_node_classes(
-                nodes    => \@xnba,
-                xnba_efi => -f "$tftpdir/xcat/xnba.efi" ? 1 : 0,
-            ) },
-        @{ xCAT::DHCP::BootPolicy->kea_pxe_node_classes( nodes => \@pxe ) },
-        @{ xCAT::DHCP::BootPolicy->kea_iscsi_node_classes( nodes => \@iscsi ) },
-    ];
+    return {
+        classes => [
+            @{ xCAT::DHCP::BootPolicy->kea_xnba_node_classes(
+                    nodes    => \@xnba,
+                    xnba_efi => -f "$tftpdir/xcat/xnba.efi" ? 1 : 0,
+                ) },
+            @{ xCAT::DHCP::BootPolicy->kea_pxe_node_classes( nodes => \@pxe ) },
+            @{ xCAT::DHCP::BootPolicy->kea_proxydhcp_node_classes( nodes => \@proxydhcp ) },
+            @{ xCAT::DHCP::BootPolicy->kea_iscsi_node_classes( nodes => \@iscsi ) },
+        ],
+        noip => \@noip,
+    };
+}
+
+# What the node has been told to do next, as far as this reply is concerned.
+#
+# 'disk'      -- chain.currstate is boot or iscsiboot: it has an operating
+#                system now and must be left to start it.
+# 'proxydhcp' -- a Windows install or winshell on UEFI firmware, with the
+#                proxyDHCP daemon running to answer it on 4011.
+# 'netboot'   -- everything else, which is to be given a loader.
+sub kea_node_boot_intent
+{
+    my ( $nrent, $chainent, $ntent ) = @_;
+
+    my $currstate = ( $chainent && defined $chainent->{currstate} ) ? $chainent->{currstate} : '';
+    return 'disk' if $currstate eq 'boot' or $currstate eq 'iscsiboot';
+
+    my $douefi = ( $ntent and $ntent->{os} ) ? check_uefi_support($ntent) : 1;
+    if ( ( $douefi == 2 and $currstate =~ /^install/ ) or $currstate =~ /^winshell/ ) {
+        return 'proxydhcp' if proxydhcp($nrent);
+    }
+
+    return 'netboot';
 }
 
 sub kea_iscsi_root_path
@@ -4020,6 +4125,7 @@ sub kea_boot_for_node
 
     my %boot = ( 'option-data' => [] );
     my $netboot = $nrent ? $nrent->{netboot} : undef;
+    my $intent = kea_node_boot_intent( $nrent, $chainent, $ntent );
 
     # A node with an initiator name has to choose between the ISAN vendor form
     # and the standard one, and a reservation's option-data outranks any class,
@@ -4033,7 +4139,16 @@ sub kea_boot_for_node
     # netboot=pxe is absent from this chain for the same reason: a ScaleMP
     # machine has to be able to win, and only a class can outrank nothing.
     # kea_pxe_node_classes writes both halves of that choice.
-    if ($netboot and $netboot eq 'yaboot') {
+    if ( $intent ne 'netboot' ) {
+
+        # A node told to boot from disk, and a Windows UEFI install waiting on
+        # the proxyDHCP daemon, are both to be handed no boot file. ISC writes
+        # filename = "" into the node's own host block, which outranks the
+        # subnet; the reservation is what outranks a class on Kea, so the empty
+        # name has to be set here or the architecture classes answer instead
+        # and the node netboots forever.
+        $boot{'boot-file-name'} = '';
+    } elsif ($netboot and $netboot eq 'yaboot') {
         $boot{'boot-file-name'} = "/yb/node/yaboot-$node";
     } elsif ($netboot and $netboot =~ /^grub2[-]?.*$/) {
         $boot{'boot-file-name'} = "/boot/grub2/grub2-$node";
@@ -4722,11 +4837,12 @@ sub addnet
 
         # $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements;
         push @netent, @{ xCAT::DHCP::BootPolicy->isc_client_architecture_lines(
-                next_server => $tftp,
-                portsuffix  => $portsuffix,
-                tftpdir     => $tftpdir,
-                net         => $net,
-                prefix      => $maskbits,
+                next_server    => $tftp,
+                portsuffix     => $portsuffix,
+                tftpdir        => $tftpdir,
+                net            => $net,
+                prefix         => $maskbits,
+                loader_present => sub { -e $_[0] },
             ) };
 
         if ($range) {

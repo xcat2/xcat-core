@@ -858,7 +858,7 @@ foreach my $case (@invalid_mac_cases) {
     };
     local *xCAT_plugin::dhcp::kea_next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
 
-    my $classes = xCAT_plugin::dhcp::kea_node_client_classes_for_nodes(['xnba01']);
+    my $classes = xCAT_plugin::dhcp::kea_node_client_classes_for_nodes(['xnba01'])->{classes};
     my ($bios_class) = grep { $_->{name} =~ /-bios\z/ } @$classes;
     ok( $bios_class, 'hyphenated xNBA MAC produces a BIOS client class' );
     is(
@@ -1257,7 +1257,7 @@ foreach my $case (@invalid_mac_cases) {
     };
     local *xCAT_plugin::dhcp::kea_next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
 
-    my $classes = xCAT_plugin::dhcp::kea_node_client_classes_for_nodes( [ 'smp01', 'san01' ] );
+    my $classes = xCAT_plugin::dhcp::kea_node_client_classes_for_nodes( [ 'smp01', 'san01' ] )->{classes};
     my %by_name = map { $_->{name} => $_ } @$classes;
 
     is( $by_name{'xcat-pxe-smp01-aabbccddee01-scalemp'}{'boot-file-name'},
@@ -1296,6 +1296,165 @@ foreach my $case (@invalid_mac_cases) {
     is( $defs{'dhcp4/isan-encap-opts'}{encapsulate}, 'isan', 'and says which space that is' );
     is( $defs{'isan/iqn'}{code},       203, 'the initiator name is sub-option 203' );
     is( $defs{'isan/root-path'}{code}, 201, 'the root path is sub-option 201' );
+}
+
+{
+    # A NIC marked *NOIP* in the mac table is meant to be answered with
+    # nothing. ISC writes "deny booting;" into its host block; Kea discards a
+    # packet assigned to the class named DROP, and nothing else will do --
+    # skipping the reservation still leaves the subnet-wide architecture
+    # classes handing the interface a boot file.
+    my %tables = (
+        noderes => DHCPKeaResTable->new(
+            { cn01 => { netboot => 'xnba' }, cn02 => { netboot => 'pxe' } }
+        ),
+        mac => DHCPKeaResTable->new(
+            {
+                cn01 => { mac => 'aa:bb:cc:dd:ee:01|aa:bb:cc:dd:ee:11!*NOIP*' },
+                cn02 => { mac => 'aa:bb:cc:dd:ee:02!*NOIP*' },
+            }
+        ),
+    );
+
+    no warnings 'redefine';
+    local *xCAT::Table::new = sub {
+        my ( $class, $name ) = @_;
+        return $tables{$name};
+    };
+    local *xCAT_plugin::dhcp::kea_next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
+
+    my $config = { Dhcp4 => { 'client-classes' => [] } };
+    ok( xCAT_plugin::dhcp::kea_sync_node_client_classes( $config, [ 'cn01', 'cn02' ] ),
+        'marking an interface *NOIP* changes the configuration' );
+
+    my ($drop) = grep { $_->{name} eq 'DROP' } @{ $config->{Dhcp4}{'client-classes'} };
+    ok( $drop, 'the MACs land in the one class Kea treats as a discard' );
+    is( $drop->{test},
+        'pkt4.mac == 0xaabbccddee11 or pkt4.mac == 0xaabbccddee02',
+        'every marked MAC in the range is named, and only those' );
+
+    # cn01's real NIC is untouched: the marking is per interface, not per node.
+    ok( ( grep { $_->{name} =~ /aabbccddee01/ } @{ $config->{Dhcp4}{'client-classes'} } ),
+        'the node\'s addressed NIC still gets its boot classes' );
+
+    # Re-running makedhcp for one node must not take the other node's
+    # interfaces out of the class they share.
+    xCAT_plugin::dhcp::kea_sync_node_client_classes( $config, ['cn01'] );
+    ($drop) = grep { $_->{name} eq 'DROP' } @{ $config->{Dhcp4}{'client-classes'} };
+    is( $drop->{test},
+        'pkt4.mac == 0xaabbccddee11 or pkt4.mac == 0xaabbccddee02',
+        'a makedhcp for one node leaves the rest of the cluster in the DROP class' );
+
+    # ...and makedhcp -d for a node takes only that node's out.
+    ok( xCAT_plugin::dhcp::kea_remove_node_client_classes( $config, ['cn02'] ),
+        'removing a node with a marked interface changes the configuration' );
+    ($drop) = grep { $_->{name} eq 'DROP' } @{ $config->{Dhcp4}{'client-classes'} };
+    is( $drop->{test}, 'pkt4.mac == 0xaabbccddee11',
+        'and leaves the other node still dropped' );
+
+    xCAT_plugin::dhcp::kea_remove_node_client_classes( $config, ['cn01'] );
+    is_deeply(
+        [ grep { $_->{name} eq 'DROP' } @{ $config->{Dhcp4}{'client-classes'} } ],
+        [],
+        'with nothing left to drop the class goes rather than matching nothing',
+    );
+}
+
+{
+    # A node that has an operating system now, and a Windows UEFI install
+    # waiting on the proxyDHCP daemon, both have to be handed no boot file.
+    # ISC writes filename = "" into the node's host block, which outranks the
+    # subnet chain. On Kea only a reservation outranks a class, so if the
+    # reservation stays silent the subnet's architecture classes answer instead
+    # and an installed node netboots forever.
+    no warnings 'redefine';
+    local *xCAT_plugin::dhcp::proxydhcp = sub { return 1; };
+
+    foreach my $state (qw(boot iscsiboot)) {
+        my $booted = xCAT_plugin::dhcp::kea_boot_for_node(
+            'cn01', { netboot => 'xnba' }, { currstate => $state }, undef, undef, '192.0.2.1'
+        );
+        is( $booted->{'boot-file-name'}, '',
+            "a node in state $state is handed no boot file rather than left to the subnet" );
+    }
+
+    my $installing = xCAT_plugin::dhcp::kea_boot_for_node(
+        'win01', { netboot => 'xnba' }, { currstate => 'install' },
+        { os => 'win2022' }, undef, '192.0.2.1'
+    );
+    is( $installing->{'boot-file-name'}, '',
+        'a Windows UEFI install names no boot file, which is what defers it to proxyDHCP' );
+
+    # ...and the same node on a Linux install is not deferred to anything.
+    my $linux = xCAT_plugin::dhcp::kea_boot_for_node(
+        'cn02', { netboot => 'pxe' }, { currstate => 'install' },
+        { os => 'rhels9' }, undef, '192.0.2.1'
+    );
+    ok( !exists $linux->{'boot-file-name'},
+        'a Linux install is left to its classes as before' );
+
+    # An iSCSI node told to boot from disk still needs its root path: it is
+    # what the disk is.
+    my $iscsi = xCAT_plugin::dhcp::kea_boot_for_node(
+        'cn03', {}, { currstate => 'iscsiboot' }, undef,
+        { server => '192.0.2.9', target => 'iqn.2024-01.test:cn03', lun => 0 },
+        '192.0.2.1'
+    );
+    is( $iscsi->{'boot-file-name'}, '', 'an iscsiboot node is handed no boot file' );
+    ok( ( grep { $_->{name} eq 'root-path' } @{ $iscsi->{'option-data'} } ),
+        'but it keeps the root path that says where its disk is' );
+}
+
+{
+    my %tables = (
+        noderes => DHCPKeaResTable->new(
+            {
+                booted => { netboot => 'xnba' },
+                win01  => { netboot => 'xnba' },
+            }
+        ),
+        mac => DHCPKeaResTable->new(
+            {
+                booted => { mac => 'aa:bb:cc:dd:ee:03' },
+                win01  => { mac => 'aa:bb:cc:dd:ee:04' },
+            }
+        ),
+        chain => DHCPKeaResTable->new(
+            { booted => { currstate => 'boot' }, win01 => { currstate => 'install' } }
+        ),
+        nodetype => DHCPKeaResTable->new(
+            { booted => { os => 'rhels9' }, win01 => { os => 'win2022' } }
+        ),
+    );
+
+    no warnings 'redefine';
+    local *xCAT::Table::new = sub {
+        my ( $class, $name ) = @_;
+        return $tables{$name};
+    };
+    local *xCAT_plugin::dhcp::kea_next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
+    local *xCAT_plugin::dhcp::proxydhcp = sub { return 1; };
+
+    my $classes = xCAT_plugin::dhcp::kea_node_client_classes_for_nodes( [ 'booted', 'win01' ] )->{classes};
+    my %by_name = map { $_->{name} => $_ } @$classes;
+
+    is_deeply(
+        [ grep { /booted/ } keys %by_name ],
+        [],
+        'a node booting from disk is given no second stage to chainload',
+    );
+
+    my $deferral = $by_name{'xcat-proxydhcp-win01-aabbccddee04'};
+    ok( $deferral, 'the Windows UEFI node gets the class that tags its reply' );
+    is_deeply(
+        $deferral->{'option-data'},
+        [ { name => 'vendor-class-identifier', data => 'PXEClient', 'always-send' => 1 } ],
+        'the tag is what sends the firmware to the daemon on 4011',
+    );
+    like( $deferral->{test}, qr/option\[93\]\.hex == 0x0000 or option\[93\]\.hex == 0x0007 or option\[93\]\.hex == 0x0009/,
+        'and only the architectures ISC tags are tagged' );
+    ok( !exists $by_name{'xcat-xnba-win01-aabbccddee04-bios'},
+        'the node gets no xNBA class that would pre-empt the deferral' );
 }
 
 done_testing();
