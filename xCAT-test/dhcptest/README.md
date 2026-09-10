@@ -140,6 +140,10 @@ One per line under a single multi-line `assert` key, as `target op value`.
 | `matches` `contains` `starts-with` `ends-with` | text |
 | `<` `<=` `>` `>=` | numeric |
 
+"Nothing to fetch" is `bootfile absent`, not a match against an empty string:
+a server that names no boot file sends an empty `file` header and no option 67,
+which is an absent value, and `matches ^$` can never hold against it.
+
 Assert on `bootfile`, not on `file`, unless the header itself is the point.
 Servers genuinely differ — ISC dhcpd fills the BOOTP header, dnsmasq answers in
 option 67 once the client has asked for it — and firmware reads whichever

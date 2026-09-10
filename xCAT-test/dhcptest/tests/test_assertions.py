@@ -72,6 +72,17 @@ class Evaluation(unittest.TestCase):
         self.assertTrue(self.check("siaddr == 10.0.0.1").ok)
         self.assertFalse(self.check("siaddr == 10.0.0.2").ok)
 
+    def test_a_reply_naming_no_boot_file_is_absent_not_empty(self):
+        # A server that hands out no boot file sends an empty `file` header and
+        # no option 67. "Nothing to fetch" is therefore written `bootfile
+        # absent`: a regex against an empty string can never hold, so a
+        # scenario written that way would fail whatever the server did.
+        nothing = offer(file="", options={54: "10.0.0.1"})
+        self.assertTrue(self.check("bootfile absent", nothing).ok)
+        self.assertFalse(self.check("bootfile present", nothing).ok)
+        self.assertFalse(self.check("bootfile matches ^$", nothing).ok)
+        self.assertTrue(self.check("bootfile present").ok)
+
     def test_options_by_number_and_name(self):
         self.assertTrue(self.check("option:54 == 10.0.0.1").ok)
         self.assertTrue(self.check("option:server_id == 10.0.0.1").ok)
