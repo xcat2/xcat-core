@@ -173,6 +173,11 @@ sub subvars {
         $inc =~ s/#INCLUDE_DEFAULT_RMPKGLIST_S#/#INCLUDE_RMPKGLIST:$pkglistfile#/g;
     }
 
+    # osimage environvar reaches apt-get through ospkgs alone, so such an image installs its list there,
+    # and its pkgdir mirrors, which may need those variables too, stay out of the installer's sources
+    my $environvar_set = ( $namedargs{environvar} // '' ) =~ /\S/;
+    my $installer_pkgdirs = $environvar_set ? undef : $namedargs{pkgdirs};
+    my @autoinstall;
     if (("ubuntu" eq $platform) || ("debian" eq $platform)) {
 
         # since debian/ubuntu uses a preseed file instead of a kickstart file, pkglist
@@ -186,6 +191,7 @@ sub subvars {
             if ($allpkglist =~ /#INCLUDEBAD:(.*)#/) {
                 return "$1";
             }
+            @autoinstall = ubuntu_autoinstall_packages( xCAT::Postage->get_pkglist_records($pkglistfile) ) unless $environvar_set;
             $allpkglist =~ s/,/ /g;
             $inc =~ s/#INCLUDE_DEFAULT_PKGLIST_PRESEED#/$allpkglist/g;
 
@@ -364,7 +370,7 @@ sub subvars {
             $inc =~ s/#INSTALL_SOURCES_IN_PRE#/$source_in_pre/g;
             if (("ubuntu" eq $platform) || ("debian" eq $platform)) {
                 $inc =~ s/#INCLUDE_OSIMAGE_PKGDIR#/$pkgdirs[-1]/;
-                $inc =~ s/#UBUNTU_SUBIQUITY_APT_CONFIG#/ubuntu_subiquity_apt_config($media_dir, $namedargs{osarch}, $namedargs{pkgdirs})/eg;
+                $inc =~ s/#UBUNTU_SUBIQUITY_APT_CONFIG#/ubuntu_subiquity_apt_config($media_dir, $namedargs{osarch}, $installer_pkgdirs)/eg;
             }
             $inc =~ s/#WRITEREPO#/$writerepo/g;
         }
@@ -377,7 +383,9 @@ sub subvars {
         $inc =~ s/#INCLUDE_NOP:([^#^\n]+)#/includefile($1,1,0)/eg;
         $inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
         $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
-        $inc =~ s/#UBUNTU_SUBIQUITY_APT_CONFIG#/ubuntu_subiquity_apt_config($media_dir, $namedargs{osarch}, $namedargs{pkgdirs})/eg;
+        $inc =~ s/#UBUNTU_SUBIQUITY_APT_CONFIG#/ubuntu_subiquity_apt_config($media_dir, $namedargs{osarch}, $installer_pkgdirs)/eg;
+        # in the include pass, so a template that includes the stock Subiquity one gets its list as well
+        $inc =~ s/^((?:[ \t]*- [^\n]*\n)*)([ \t]*)- #INCLUDE_DEFAULT_PKGLIST_AUTOINSTALL#[ \t]*\n/$1 . ubuntu_autoinstall_items($2, $1, \@autoinstall)/meg;
         $inc =~ s/#SUBIQUITYINSTALLNIC#/subiquity_install_nic()/eg;
         $inc =~ s/#SUBIQUITYINSTALLMAC#/subiquity_install_mac()/eg;
         $inc =~ s/#MACHINEPASSWORD#/machinepassword()/eg;
@@ -1764,6 +1772,59 @@ sub subiquity_install_mac {
     return $macaddress;
 }
 
+# ubuntu_autoinstall_packages: the packages of the pkglist records (whole lines, as
+# get_pkglist_records returns them) that a Subiquity autoinstall can install through its packages
+# list. A record holds one or more space-separated packages, as the preseed path reads it, each a
+# plain name or a task. A version pin or a target release stays with ospkgs, because the installer
+# runs apt-get without --allow-downgrades and a pin can require one, and so does a name with an
+# architecture qualifier, because a foreign architecture is enabled by a postscript that runs later. A preseed directive, told by its question type, a record that begins with a removal
+# or a group, which ospkgs removes or installs whole, a removal written with a trailing hyphen as
+# apt-get reads it, or a marker has
+# no autoinstall form, a comment ends the packages of a record, and a record with a token that is
+# none of these is left out whole. A list
+# that carries a #ENV: setting, which only ospkgs can pass to apt-get, or an unreadable include is
+# left to ospkgs whole; ospkgs still applies the whole list after the install.
+my %PRESEED_TYPE = map { $_ => 1 } qw(string boolean select multiselect note password text seen title error);
+
+sub ubuntu_autoinstall_packages
+{
+    my @records = grep { defined } @_;
+    return () if grep { /#(?:ENV:|INCLUDEBAD:)/ } @records;
+    my (@packages, %seen);
+  RECORD: foreach my $record (@records) {
+        my @tokens = grep { length } split( /\s+/, $record );
+        next unless @tokens;
+        next if @tokens >= 3 && $PRESEED_TYPE{ $tokens[2] };
+        next if $tokens[0] =~ /^[-@]/;    # ospkgs removes or installs the whole record
+        my @found;
+        foreach my $token (@tokens) {
+            last if $token =~ /^#/;
+            next if $token =~ /^[-@]/ || $token =~ /-$/;
+            next RECORD unless $token =~ m{^[a-z0-9][a-z0-9+.-]*(?::[a-z0-9-]+)?(?:[=/][^\s/=]+|\^)?$};
+            next if $token =~ m{[:=/]};
+            push @found, $token;
+        }
+        push @packages, grep { !$seen{$_}++ } @found;
+    }
+    return @packages;
+}
+
+# ubuntu_autoinstall_items: the list items for the pkglist packages at the token's indentation,
+# leaving out packages the items above the token already name, each quoted so a name such as null
+# or true stays a string. The time daemons exclude each
+# other, so when the template names one, the pkglist's stay with ospkgs, as they did before.
+my %UBUNTU_TIME_DAEMON = map { $_ => 1 } qw(chrony ntp ntpsec ntpdate ntpsec-ntpdate openntpd systemd-timesyncd);
+
+sub ubuntu_autoinstall_items
+{
+    my ($indent, $listed, $packages) = @_;
+    my %named = map { $_ => 1 } ( $listed =~ /^[ \t]*- (\S+)[ \t]*$/mg );
+    my $fixed_time_daemon = grep { $UBUNTU_TIME_DAEMON{$_} } keys %named;
+    my @items = grep { !$named{$_} } @$packages;
+    @items = grep { !$UBUNTU_TIME_DAEMON{ (split /[:=\/^]/, $_)[0] } } @items if $fixed_time_daemon;
+    return join( '', map { "$indent- \"$_\"\n" } @items );
+}
+
 sub ubuntu_subiquity_apt_mirror
 {
     my ($osarch) = @_;
@@ -1816,6 +1877,7 @@ sub ubuntu_subiquity_apt_config
             '  apt:',
             '    preserve_sources_list: false',
             '    geoip: false',
+            q(    conf: 'APT::Install-Recommends "false";'),
             '    mirror-selection:',
             '      primary:',
             "      - uri: $online_mirror",
@@ -1854,6 +1916,7 @@ sub ubuntu_subiquity_apt_config
         '    preserve_sources_list: false',
         '    fallback: offline-install',
         '    geoip: false',
+        q(    conf: 'APT::Install-Recommends "false";'),
         '    disable_suites:',
         '      - updates',
         '      - backports',
