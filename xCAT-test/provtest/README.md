@@ -8,8 +8,9 @@ Scenarios are `.conf` files, not Perl. The tool knows nothing about xCAT's
 database and never runs an xCAT command to decide what to expect: everything it
 expects arrives on the command line, from the fixture that set the cluster up.
 
-The specification the scenarios implement is [spec.md](spec.md); every scenario
-carries the `@P-nn` tag of the clause it covers.
+The specification the scenarios implement is `specs/provision-chain.md` in the
+internal repository; every scenario carries the `@P-nn` tag of the clause it
+covers, so a failure names the clause without the document being at hand.
 
 ## Why
 
@@ -197,7 +198,7 @@ something those programs will do.
 
 ## Shipped scenarios
 
-| File | Stage | Scenarios | spec.md |
+| File | Stage | Scenarios | Clauses |
 | --- | --- | --- | --- |
 | `dns.conf` | DNS | `node-forward`, `node-reverse`, `node-alias`, `forwarded-name`, `local-nxdomain`, `master-resolves` | P-01..P-07 |
 | `dns-removal.conf` | DNS | `removed-node` | P-08 |
@@ -299,7 +300,6 @@ on a cluster that could not boot a single node.
 
     provtest/
       README.md              this file
-      spec.md                the specification, @P-01 to @P-75
       src/provtest           entry point; runs from a checkout, no install
       src/provtest_lib/
         cli.py               argument parsing and the three subcommands

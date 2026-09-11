@@ -215,7 +215,7 @@ option 53 either, so `msgtype` reads `BOOTREPLY`.
 a different reason from the rest: one asserts the boot file a *known* machine
 is handed, the other the boot file an *unknown* one is handed, and a run that
 only has a node defined can use the first without the second. Both hold on any
-xCAT-served network — see `spec.md` S-56, which requires the subnet to answer
+xCAT-served network — see the spec, S-56, which requires the subnet to answer
 an unknown machine with a loader on either backend.
 
 Splitting on that boundary rather than using `-s` is deliberate: `--set` values
