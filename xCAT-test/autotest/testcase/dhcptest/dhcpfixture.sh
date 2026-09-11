@@ -146,7 +146,7 @@ STATE=/tmp/dhcptest-fixture
 # and is removed by that case's teardown.
 BSTATE=/tmp/dhcptest-backend
 DHCPTEST=/opt/xcat/share/xcat/tools/autotest/dhcptest
-[ -d "$DHCPTEST" ] || DHCPTEST="$(cd "$(dirname "$0")/../../dhcptest" 2>/dev/null && pwd)"
+[ -d "$DHCPTEST" ] || DHCPTEST="$(cd "$(dirname "$0")/../../../dhcptest" 2>/dev/null && pwd)"
 
 say()  { echo "dhcpfixture: $*"; }
 skip() { echo "dhcptest skipped: $*"; exit 1; }
