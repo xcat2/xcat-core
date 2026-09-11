@@ -817,7 +817,10 @@ do_run_loader_absent() {
     tftp=$(tftpdir)
     path="$tftp/xcat/xnba.kpxe"
     [ -f "$path" ] || die "$path is not there to remove"
-    mv -f "$path" "$STATE/xnba.kpxe.away" || die "cannot move $path aside"
+    # Moved aside within $tftpdir and not into $STATE: $STATE is under /tmp, and
+    # this is the machine's only copy of a loader xCAT does not rebuild. A
+    # reboot between here and restore_absent_loader would lose it.
+    mv -f "$path" "$path.provtest-away" || die "cannot move $path aside"
     echo "$path" > "$STATE/loader-away"
 
     if do_generate; then
@@ -837,7 +840,7 @@ restore_absent_loader() {
     local path
     [ -f "$STATE/loader-away" ] || return 0
     path=$(cat "$STATE/loader-away")
-    mv -f "$STATE/xnba.kpxe.away" "$path" 2>/dev/null
+    [ -n "$path" ] && mv -f "$path.provtest-away" "$path" 2>/dev/null
     rm -f "$STATE/loader-away"
 }
 
@@ -922,11 +925,14 @@ do_run_hierarchy() {
 }
 
 do_teardown() {
-    local unit
+    local unit failed=0
     [ -d "$STATE" ] || return 0
 
-    [ -f "$STATE/node" ] && { makedhcp -d "$NODE" >/dev/null 2>&1; makehosts -d "$NODE" >/dev/null 2>&1; rmdef "$NODE" >/dev/null 2>&1; }
-    [ -f "$STATE/adopt" ] && { makedhcp -d "$ADOPT_NODE" >/dev/null 2>&1; makehosts -d "$ADOPT_NODE" >/dev/null 2>&1; rmdef "$ADOPT_NODE" >/dev/null 2>&1; }
+    # Each removal is checked. A definition left behind makes the next run on
+    # this machine refuse, and deleting $STATE anyway would throw away the
+    # record of what still has to be put back.
+    [ -f "$STATE/node" ] && { makedhcp -d "$NODE" >/dev/null 2>&1; makehosts -d "$NODE" >/dev/null 2>&1; rmdef "$NODE" >/dev/null 2>&1 || { say "FAILED: cannot remove the node $NODE"; failed=1; }; }
+    [ -f "$STATE/adopt" ] && { makedhcp -d "$ADOPT_NODE" >/dev/null 2>&1; makehosts -d "$ADOPT_NODE" >/dev/null 2>&1; rmdef "$ADOPT_NODE" >/dev/null 2>&1 || { say "FAILED: cannot remove the node $ADOPT_NODE"; failed=1; }; }
     netboot_undefine
     extra_undefine
     [ -f "$STATE/iscsi" ] && chtab -d node="$ISCSI_NODE" iscsi >/dev/null 2>&1
@@ -939,11 +945,15 @@ do_teardown() {
 
     # tabrestore replaces the table wholesale, which is what is wanted here:
     # dhcpinterfaces and dhcpbackend go back to what they were, unset included.
-    [ -f "$STATE/site.csv" ] && tabrestore "$STATE/site.csv" >/dev/null 2>&1
+    if [ -f "$STATE/site.csv" ]; then
+        tabrestore "$STATE/site.csv" >/dev/null 2>&1 \
+            || { say "FAILED: cannot restore the site table from $STATE/site.csv"; failed=1; }
+    fi
 
     for f in /etc/dhcp/dhcpd.conf /etc/dhcpd.conf /etc/kea/kea-dhcp4.conf; do
         local saved="$STATE/$(echo "$f" | tr / _)"
-        [ -f "$saved" ] && cp -f "$saved" "$f"
+        [ -f "$saved" ] || continue
+        cp -f "$saved" "$f" || { say "FAILED: cannot restore $f"; failed=1; }
     done
 
     if [ -f "$STATE/backend" ]; then
@@ -958,6 +968,10 @@ do_teardown() {
         [ -n "$unit" ] && systemctl restart "$unit" >/dev/null 2>&1
     fi
 
+    if [ "$failed" != 0 ]; then
+        say "$STATE was kept; it holds what this machine has to be put back to"
+        return 1
+    fi
     rm -rf "$STATE"
     say "fixture removed"
 }

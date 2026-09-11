@@ -467,9 +467,16 @@ define_node() {
 mn_hosts_entry() {
     local short addr
     short=$(hostname -s) || die "cannot read this machine's hostname"
-    addr=$(getent ahostsv4 "$(hostname)" 2>/dev/null | awk '{print $1; exit}')
-    [ -n "$addr" ] || addr=$(hostname -I 2>/dev/null | awk '{print $1}')
-    [ -n "$addr" ] || die "cannot find an address for $short"
+    # Not a loopback address: Debian and Ubuntu map the hostname to 127.0.1.1 in
+    # /etc/hosts, and makedns would write that as the address of the zone's
+    # server -- a nameserver every node is told to ask and none can reach.
+    addr=$(getent ahostsv4 "$(hostname)" 2>/dev/null \
+            | awk '$1 !~ /^127\./ {print $1; exit}')
+    [ -n "$addr" ] || addr=$(hostname -I 2>/dev/null | tr ' ' '\n' \
+                                | awk '$1 != "" && $1 !~ /^127\./ {print; exit}')
+    # Last resort, and a true one: $IF_SRV holds it, and it is the address the
+    # node reaches this machine on.
+    [ -n "$addr" ] || addr=$SRV_IP
     printf '%s %s.%s\n' "$addr" "$short" "$DOMAIN" >> /etc/hosts \
         || die "cannot add $short.$DOMAIN to /etc/hosts"
 }
@@ -606,27 +613,46 @@ do_setup() {
 }
 
 save_dns_config() {
-    local f
+    local f saved
     for f in /etc/named.conf /etc/bind/named.conf /etc/bind/named.conf.local; do
-        [ -f "$f" ] && cp -f "$f" "$STATE/$(echo "$f" | tr / _)"
+        [ -f "$f" ] || continue
+        cp -f "$f" "$STATE/$(echo "$f" | tr / _)" || die "cannot save $f"
     done
     # The zone tree as a whole: makedns removes inside it, and a file-by-file
-    # restore would miss that.
+    # restore would miss that. Both written and read back here, because a tar
+    # that ran out of room still leaves a file behind -- and teardown deletes a
+    # live zone tree on the strength of this archive.
     for f in /var/named /var/lib/bind /etc/bind; do
-        [ -d "$f" ] && tar -C / -czf "$STATE/$(echo "$f" | tr / _).tgz" "${f#/}" 2>/dev/null
+        [ -d "$f" ] || continue
+        saved="$STATE/$(echo "$f" | tr / _).tgz"
+        tar -C / -czf "$saved" "${f#/}" 2>/dev/null || die "cannot archive $f to $saved"
+        tar -tzf "$saved" >/dev/null 2>&1 || die "the archive of $f is unreadable"
     done
+    return 0
 }
 
+# Non-zero if anything could not be put back. Teardown needs to know: makedns
+# reads the site table and rewrites the zones, so regenerating over a restore
+# that half-failed is what turns a recoverable mess into a permanent one.
 restore_dns_config() {
-    local f saved
+    local f saved rc=0
     for f in /var/named /var/lib/bind /etc/bind; do
         saved="$STATE/$(echo "$f" | tr / _).tgz"
-        [ -f "$saved" ] && { rm -rf "$f"; tar -C / -xzf "$saved" 2>/dev/null; }
+        [ -f "$saved" ] || continue
+        # Listed before the live tree is removed: an archive that cannot be read
+        # is one that cannot be extracted either, and then $f would simply be
+        # gone.
+        tar -tzf "$saved" >/dev/null 2>&1 \
+            || { say "FAILED: $saved is unreadable, so $f was left as it is"; rc=1; continue; }
+        rm -rf "$f"
+        tar -C / -xzf "$saved" 2>/dev/null || { say "FAILED: cannot restore $f from $saved"; rc=1; }
     done
     for f in /etc/named.conf /etc/bind/named.conf /etc/bind/named.conf.local; do
         saved="$STATE/$(echo "$f" | tr / _)"
-        [ -f "$saved" ] && cp -f "$saved" "$f"
+        [ -f "$saved" ] || continue
+        cp -f "$saved" "$f" || { say "FAILED: cannot restore $f"; rc=1; }
     done
+    return $rc
 }
 
 # The file a node of each netboot type is given, by the name the loader asks for
@@ -1008,28 +1034,43 @@ do_run_dns_removal() {
 # --- teardown -------------------------------------------------------------
 
 do_teardown() {
-    local name path dir
+    local name path dir failed=0
     [ -d "$STATE" ] || return 0
 
     # Every loop reads its list on file descriptor 3, because the xCAT clients
     # inside them read standard input themselves: on the first iteration the
     # command swallows the rest of the file and teardown stops after one name,
     # leaving nodes and a rewritten site table behind.
+    # Each removal is checked. A definition left behind is what makes the next
+    # run on this machine refuse -- and if $STATE were deleted anyway, the
+    # record of what to put back would be gone with it.
     if [ -f "$STATE/nodes" ]; then
         while read -r name <&3; do
             [ -n "$name" ] || continue
             nodeset "$name" offline >/dev/null 2>&1
             makedns -d "$name" >/dev/null 2>&1
             makehosts -d "$name" >/dev/null 2>&1
-            rmdef "$name" >/dev/null 2>&1
+            rmdef "$name" >/dev/null 2>&1 \
+                || { say "FAILED: cannot remove the node $name"; failed=1; }
         done 3< "$STATE/nodes"
     fi
     if [ -f "$STATE/osimages" ]; then
         while read -r name <&3; do
-            [ -n "$name" ] && rmdef -t osimage -o "$name" >/dev/null 2>&1
+            [ -n "$name" ] || continue
+            rmdef -t osimage -o "$name" >/dev/null 2>&1 \
+                || { say "FAILED: cannot remove the osimage $name"; failed=1; }
         done 3< "$STATE/osimages"
     fi
-    [ -f "$STATE/network" ] && rmdef -t network -o "$NETOBJ" >/dev/null 2>&1
+    if [ -f "$STATE/network" ]; then
+        rmdef -t network -o "$NETOBJ" >/dev/null 2>&1 \
+            || { say "FAILED: cannot remove the network $NETOBJ"; failed=1; }
+    fi
+
+    # mkinstall renders the node's kickstart here and nothing records it, so it
+    # is removed by name. Guarded on a non-empty name: this is a glob.
+    for name in "$NODE" "$PXE_NODE" "$BOOT_NODE" "$XNBA_NODE" "$PTB_NODE"; do
+        [ -n "$name" ] && rm -rf "$(installdir)/autoinst/$name" "$(installdir)/autoinst/$name".*
+    done
 
     # What nodeset offline did not take with it. It is not reliable here: it
     # exits as soon as it cannot reach the DHCP backend, and leaves the kernel
@@ -1083,20 +1124,38 @@ do_teardown() {
 
     # tabrestore replaces the table wholesale, which is what is wanted here:
     # site.master and site.domain go back to what they were, unset included.
-    [ -f "$STATE/site.csv" ] && tabrestore "$STATE/site.csv" >/dev/null 2>&1
-    [ -f "$STATE/hosts" ] && cp -f "$STATE/hosts" /etc/hosts
+    if [ -f "$STATE/site.csv" ]; then
+        tabrestore "$STATE/site.csv" >/dev/null 2>&1 \
+            || { say "FAILED: cannot restore the site table from $STATE/site.csv"; failed=1; }
+    fi
+    if [ -f "$STATE/hosts" ]; then
+        cp -f "$STATE/hosts" /etc/hosts \
+            || { say "FAILED: cannot restore /etc/hosts from $STATE/hosts"; failed=1; }
+    fi
 
-    restore_dns_config
+    restore_dns_config || failed=1
     # Regenerated from the restored configuration, so a machine that was serving
-    # its own zones is serving them again.
-    makedns -n >/dev/null 2>&1
+    # its own zones is serving them again -- but only once everything is back.
+    # makedns reads site.domain and site.master: run over a site table that did
+    # not restore, it would write this fixture's domain into the zones of a real
+    # cluster, and teardown would be the thing that broke it.
+    if [ "$failed" = 0 ]; then
+        [ -f "$STATE/dns" ] && { makedns -n >/dev/null 2>&1 || say "makedns -n reported an error"; }
+    else
+        say "the zones were left alone: regenerating them from a configuration that did not fully restore would make the damage permanent"
+    fi
     restore_services
 
+    if [ "$failed" != 0 ]; then
+        say "$STATE was kept; it holds what this machine has to be put back to"
+        return 1
+    fi
     rm -rf "$STATE"
     say "fixture removed"
 }
 
 dispatch() {
+    STAGE=${1:-fixture}
     case "${1:-}" in
     check)           do_check ;;
     setup)           do_setup ;;
