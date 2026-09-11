@@ -140,9 +140,21 @@ class Reply(object):
                 return container[tail]
         raise KeyError("%s reply has no field .%s" % (self.kind or "this", name))
 
+    def whole(self, name):
+        """Like `field`, but a list comes back entire instead of collapsed.
+
+        `$step.data` wants one value to substitute into a command line, so
+        `field` gives it the first. An assertion wants all of them: a name with
+        two A records satisfies `data == <either>`, and collapsing here would
+        make the second address unassertable without an index.
+        """
+        if name in self.fields:
+            return self.fields[name]
+        return self.field(name)
+
     def has(self, name):
         try:
-            value = self.field(name)
+            value = self.whole(name)
         except KeyError:
             return False
         # An empty list is "nothing came back", which is absence, not a value.

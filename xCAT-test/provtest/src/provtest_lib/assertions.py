@@ -149,7 +149,7 @@ def _actual(target, reply, context, extras):
         return False, None
     if not reply.has(target):
         return False, None
-    return True, reply.field(target)
+    return True, reply.whole(target)
 
 
 def _compare(op, actual, expected):
