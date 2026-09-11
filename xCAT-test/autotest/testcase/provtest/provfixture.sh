@@ -112,11 +112,24 @@ PROVTEST=/opt/xcat/share/xcat/tools/autotest/provtest
 [ -d "$PROVTEST" ] || PROVTEST="$(cd "$(dirname "$0")/../../../provtest" 2>/dev/null && pwd)"
 
 say()  { echo "provfixture: $*"; }
-skip() { echo "provtest skipped: $*"; exit 1; }
 die()  { echo "provfixture: $*" >&2; exit 1; }
 
-# A stage this machine cannot run: says what is missing and passes.
-stage_skip() { echo "provtest stage skipped: $*"; return 0; }
+# Three answers, not two. A machine missing a tool cannot run the cases and the
+# case passes; a machine holding this fixture's leftovers would have every later
+# run skip green forever, and a cluster with nodes of its own would be damaged
+# by the setup. Those two are refusals, and cases0 fails the case on them.
+skip()   { echo "provtest skipped: $*"; exit 1; }
+refuse() { echo "provtest refused: $*" >&2; exit 2; }
+
+# A stage this machine cannot run: says what is missing and passes. Counted and
+# named on one greppable line, because a build that is green because nothing ran
+# is the failure this suite exists to catch.
+SKIPPED=0
+stage_skip() {
+    SKIPPED=$((SKIPPED + 1))
+    echo "provtest SKIP: ${STAGE:-fixture}: $*"
+    return 0
+}
 
 site_attr() {
     lsdef -t site clustersite -i "$1" -c 2>/dev/null \
@@ -258,10 +271,13 @@ restore_services() {
 }
 
 # A daemon up with no socket makes every scenario fail on a timeout, which reads
-# as an xCAT fault. So each stage asks who holds its port first.
+# as an xCAT fault. So each stage asks who holds its port first. A probe that
+# cannot probe answers no: answering yes would make every assert_serving pass
+# vacuously and would let the httpport move be recorded as a success over a web
+# server that never started. do_check requires ss for that reason.
 serving() {
     local proto=$1 port=$2 flag
-    command -v ss >/dev/null 2>&1 || return 0
+    command -v ss >/dev/null 2>&1 || return 1
     [ "$proto" = udp ] && flag=-uanH || flag=-lanH
     ss $flag "( sport = :$port )" 2>/dev/null | grep -q .
 }
@@ -289,9 +305,10 @@ tftp_unit() { first_unit tftp.socket tftpd-hpa.service xinetd.service; }
 # --- check ----------------------------------------------------------------
 
 do_check() {
-    local leftover pkgdir port
+    local leftover pkgdir port others
     [ "$(id -u)" = 0 ] || skip "the wire cases bind source addresses and low ports, which needs root"
     command -v ip >/dev/null 2>&1 || skip "iproute2 is not installed"
+    command -v ss >/dev/null 2>&1 || skip "ss is not installed (iproute2), and every stage asks who holds its port"
     command -v nodeset >/dev/null 2>&1 || skip "nodeset is not on PATH, so this is not a management node"
     command -v makedns >/dev/null 2>&1 || skip "makedns is not on PATH, so this is not a management node"
     # -f rather than -x: the fixture runs it as `python3 src/provtest`, and
@@ -308,21 +325,38 @@ do_check() {
         || skip "this kernel has no veth support"
     ip link del "${IF_SRV}probe" 2>/dev/null
 
-    # Not a missing feature: this machine already uses something the fixture
-    # would take over.
-    ip -o addr show | grep -qw "$SRV_IP" && skip "$SRV_IP is already configured on this machine"
-    ip link show "$IF_SRV" >/dev/null 2>&1 && skip "$IF_SRV already exists"
-    ip netns list 2>/dev/null | grep -qw "$NETNS" && skip "a network namespace called $NETNS already exists"
+    # Refused rather than skipped, all of them: each is this fixture's own name
+    # or address still in place, which means a teardown did not finish. Skipping
+    # would pass the case, and pass it on every later run on the same machine --
+    # a runner that is reused would be green from then on without running
+    # anything. Whoever reads the failure can remove them.
+    ip -o addr show | grep -qw "$SRV_IP" && refuse "$SRV_IP is already configured on this machine"
+    ip link show "$IF_SRV" >/dev/null 2>&1 && refuse "$IF_SRV already exists; remove it with 'ip link del $IF_SRV'"
+    ip netns list 2>/dev/null | grep -qw "$NETNS" && refuse "a network namespace called $NETNS already exists; remove it with 'ip netns del $NETNS'"
     # Every name, not just $NODE: a half-finished teardown leaves some behind,
     # and setup would record them as the state to restore to.
     for leftover in "$NODE" "$PXE_NODE" "$BOOT_NODE" "$XNBA_NODE" "$PTB_NODE" \
                     "$MASTER_NODE"; do
         lsdef "$leftover" >/dev/null 2>&1 \
-            && skip "a node called $leftover is already defined"
+            && refuse "a node called $leftover is already defined; remove it with 'rmdef $leftover'"
     done
-    lsdef -t network -o "$NETOBJ" >/dev/null 2>&1 && skip "a network called $NETOBJ is already defined"
+    lsdef -t network -o "$NETOBJ" >/dev/null 2>&1 && refuse "a network called $NETOBJ is already defined"
     pkgdir=$(pkgdir_for "$NODE_ARCH")
-    [ -d "$pkgdir" ] && skip "$pkgdir already exists"
+    [ -d "$pkgdir" ] && refuse "$pkgdir already exists"
+
+    # setup rewrites site.master, site.domain and every zone this machine
+    # serves, and puts them back from a record under $STATE. For the minutes the
+    # cases run, a cluster's own nodes resolve to nothing and are told the wrong
+    # master -- so a management node with nodes of its own is opted in to, not
+    # warned about.
+    if [ "${PROVTEST_ALLOW_LIVE:-0}" != 1 ]; then
+        # One name per line, and lsdef says "Could not find any object
+        # definitions to display." on an empty cluster -- counted as a node, it
+        # would refuse everywhere. A node name carries no spaces.
+        others=$(lsdef -t node -s 2>/dev/null | grep -c '^[^[:space:]]\+$')
+        [ "${others:-0}" != 0 ] \
+            && refuse "this management node has ${others} node definition(s) of its own; setup rewrites site.master, site.domain and the zones, so run the wire cases on a scratch node or set PROVTEST_ALLOW_LIVE=1"
+    fi
 
     # P-43 needs a network xCAT does not manage; if this machine manages it, the
     # scenario asserts the opposite of what it says.
@@ -1021,6 +1055,20 @@ do_run_ordering() {
 do_run_dns_removal() {
     assert_serving udp 53 "the name server"
 
+    # Put back first. cases0 runs this stage after run-ordering, which ends by
+    # withdrawing the same name -- so without this the records are already gone
+    # on entry and NXDOMAIN would be asserted about a removal makedns never
+    # performed. The stage has to do the removal it is asserting.
+    if [ -f "$STATE/ptrgone" ]; then
+        makehosts "$NODE" >/dev/null 2>&1 || say "makehosts $NODE reported an error"
+        makedns -n >/dev/null 2>&1 || say "makedns -n reported an error"
+        rm -f "$STATE/ptrgone"
+        # And the record is there to be taken away again, or the removal below
+        # proves nothing.
+        dig +short +time=5 +tries=1 "@$SRV_IP" "$NODE.$DOMAIN" A 2>/dev/null | grep -q . \
+            || die "$NODE.$DOMAIN could not be put back, so its removal cannot be asserted"
+    fi
+
     makedns -d "$NODE" >/dev/null 2>&1 || say "makedns -d $NODE reported an error"
     echo done > "$STATE/ptrgone"
 
@@ -1175,3 +1223,8 @@ dispatch() {
 }
 
 dispatch "$@"
+rc=$?
+# Said once at the end, so a reader of a passing run sees that something was
+# left out without having to notice a line in the middle of the output.
+[ "$SKIPPED" != 0 ] && echo "provtest SKIPPED-TOTAL: $STAGE: $SKIPPED"
+exit $rc

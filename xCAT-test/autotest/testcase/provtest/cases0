@@ -47,7 +47,10 @@ os:Linux
 cmd:#!/bin/bash
     set -u
     FIX=/opt/xcat/share/xcat/tools/autotest/testcase/provtest/provfixture.sh
-    "$FIX" check || exit 0
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
     trap '"$FIX" teardown' EXIT
     "$FIX" setup || exit 1
     "$FIX" run-dns || exit 1
@@ -68,7 +71,10 @@ os:Linux
 cmd:#!/bin/bash
     set -u
     FIX=/opt/xcat/share/xcat/tools/autotest/testcase/provtest/provfixture.sh
-    "$FIX" check || exit 0
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
     trap '"$FIX" teardown' EXIT
     "$FIX" setup || exit 1
     "$FIX" run-tftp || exit 1
@@ -87,7 +93,10 @@ os:Linux
 cmd:#!/bin/bash
     set -u
     FIX=/opt/xcat/share/xcat/tools/autotest/testcase/provtest/provfixture.sh
-    "$FIX" check || exit 0
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
     trap '"$FIX" teardown' EXIT
     "$FIX" setup || exit 1
     "$FIX" run-http || exit 1
@@ -103,7 +112,10 @@ os:Linux
 cmd:#!/bin/bash
     set -u
     FIX=/opt/xcat/share/xcat/tools/autotest/testcase/provtest/provfixture.sh
-    "$FIX" check || exit 0
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
     trap '"$FIX" teardown' EXIT
     "$FIX" setup || exit 1
     "$FIX" run-genesis || exit 1
@@ -122,7 +134,10 @@ os:Linux
 cmd:#!/bin/bash
     set -u
     FIX=/opt/xcat/share/xcat/tools/autotest/testcase/provtest/provfixture.sh
-    "$FIX" check || exit 0
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
     trap '"$FIX" teardown' EXIT
     "$FIX" setup || exit 1
     "$FIX" run-discovery || exit 1
@@ -141,7 +156,10 @@ os:Linux
 cmd:#!/bin/bash
     set -u
     FIX=/opt/xcat/share/xcat/tools/autotest/testcase/provtest/provfixture.sh
-    "$FIX" check || exit 0
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
     trap '"$FIX" teardown' EXIT
     "$FIX" setup || exit 1
     "$FIX" run-xcatd || exit 1
@@ -158,7 +176,10 @@ os:Linux
 cmd:#!/bin/bash
     set -u
     FIX=/opt/xcat/share/xcat/tools/autotest/testcase/provtest/provfixture.sh
-    "$FIX" check || exit 0
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
     trap '"$FIX" teardown' EXIT
     "$FIX" setup || exit 1
     "$FIX" run-monitor || exit 1
@@ -178,7 +199,10 @@ os:Linux
 cmd:#!/bin/bash
     set -u
     FIX=/opt/xcat/share/xcat/tools/autotest/testcase/provtest/provfixture.sh
-    "$FIX" check || exit 0
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
     trap '"$FIX" teardown' EXIT
     "$FIX" setup || exit 1
     rc=0

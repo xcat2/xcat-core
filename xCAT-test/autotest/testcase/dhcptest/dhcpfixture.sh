@@ -131,8 +131,15 @@ DHCPTEST=/opt/xcat/share/xcat/tools/autotest/dhcptest
 [ -d "$DHCPTEST" ] || DHCPTEST="$(cd "$(dirname "$0")/../../../dhcptest" 2>/dev/null && pwd)"
 
 say()  { echo "dhcpfixture: $*"; }
-skip() { echo "dhcptest skipped: $*"; exit 1; }
 die()  { echo "dhcpfixture: $*" >&2; exit 1; }
+
+# Two different reasons not to run, and they must not be confused. A missing
+# tool is a machine that cannot run the cases, and the case passes; leftovers
+# from a killed run, or a cluster with nodes of its own, are refusals -- cases0
+# fails on those, because skipping them would make every later run on the same
+# machine green without running anything.
+skip()   { echo "dhcptest skipped: $*"; exit 1; }
+refuse() { echo "dhcptest refused: $*" >&2; exit 2; }
 
 # The netboot method decides the boot file a reserved node is handed. grub2 is
 # the one every backend renders the same way without needing a loader on disk,
@@ -297,6 +304,28 @@ do_check() {
     ip link add "${IF_SRV}probe" type veth peer name "${IF_CLI}probe" 2>/dev/null \
         || skip "this kernel has no veth support"
     ip link del "${IF_SRV}probe" 2>/dev/null
+
+    # This fixture's own leftovers. Every node it defines is named dhcptest*, so
+    # one that is still here is a teardown that did not finish.
+    local leftovers others
+    leftovers=$(lsdef -t node -s 2>/dev/null | sed 's/ *(node)//' | grep -c '^dhcptest')
+    [ "${leftovers:-0}" != 0 ] \
+        && refuse "$leftovers node definition(s) from an earlier run are still here; remove them with 'rmdef' before running the wire cases"
+    ip link show "$IF_SRV" >/dev/null 2>&1 \
+        && refuse "$IF_SRV already exists; remove it with 'ip link del $IF_SRV'"
+
+    # setup changes site.dhcpinterfaces and site.dhcpbackend and restarts the
+    # DHCP daemon, so for the length of a run this machine serves the fixture's
+    # network and not its own. On a cluster with nodes that is opted in to.
+    if [ "${DHCPTEST_ALLOW_LIVE:-0}" != 1 ]; then
+        # One name per line, and lsdef says "Could not find any object
+        # definitions to display." on an empty cluster -- counted as a node, it
+        # would refuse everywhere. A node name carries no spaces.
+        others=$(lsdef -t node -s 2>/dev/null | grep -c '^[^[:space:]]\+$')
+        [ "${others:-0}" != 0 ] \
+            && refuse "this management node has ${others} node definition(s) of its own; setup rewrites site.dhcpinterfaces and site.dhcpbackend and restarts the DHCP daemon, so run the wire cases on a scratch node or set DHCPTEST_ALLOW_LIVE=1"
+    fi
+
     say "environment is able to run the wire cases"
 }
 
