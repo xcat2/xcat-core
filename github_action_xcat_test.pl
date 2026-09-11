@@ -668,8 +668,14 @@ sub write_regression_conf{
 # Fuction name: list_cases
 # Description:  the names of the cases matching an xcattest label expression
 # Attributes:   $expression - e.g. "ci_test-dhcp_wire"
-# Return code:  the list of case names, empty if none match or the query failed
+# Return code:  the list of case names; empty if none match.  A query that
+#               failed returns $QUERY_FAILED instead, because the two must not
+#               be confused: "no case carries this label" is a phase with
+#               nothing to do, and "xcattest could not be asked" is a broken
+#               installation that would otherwise be reported as green.
 #--------------------------------------------------------
+our $QUERY_FAILED = "__list_cases_failed__";
+
 sub list_cases{
     my $expression = shift;
     my $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh && xcattest -s \"$expression\" -l'";
@@ -677,7 +683,7 @@ sub list_cases{
     if($::RUNCMD_RC){
         print RED "[list_cases] $cmd ....[Failed]\n";
         print Dumper \@cases;
-        return ();
+        return ($QUERY_FAILED);
     }
     print "[list_cases] $expression:\n";
     print Dumper \@cases;
@@ -745,6 +751,12 @@ sub run_cases{
 #--------------------------------------------------------
 sub run_dhcp_wire_test{
     my @cases = list_cases("dhcp_wire");
+    if(@cases and $cases[0] eq $QUERY_FAILED){
+        print RED "[run_dhcp_wire_test] the case list could not be read\n";
+        $check_result_str .= "> **DHCP WIRE TEST Failed**: xcattest could not be asked which cases carry the dhcp_wire label\n";
+        print $check_result_str;
+        return 1;
+    }
     unless(@cases){
         print "[run_dhcp_wire_test] no DHCP wire cases to run\n";
         $check_result_str .= "> **DHCP WIRE TEST Skipped**: no case carries the dhcp_wire label\n";
@@ -771,6 +783,11 @@ sub run_dhcp_wire_test{
     }
     print "[run_dhcp_wire_test] DHCP backends installed here: @backends\n";
 
+    # What has to be accounted for at the end.  run_cases counts a case only
+    # when its output carries a verdict line, so a case that hung, was killed or
+    # was truncated is counted nowhere -- and pass+fail would then agree with
+    # itself and report a clean run of however many cases survived.
+    my $expected = 0;
     my %counts = (pass => 0, fail => 0, failed => []);
     foreach my $backend (@backends){
         my $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh && $fixture backend-setup $backend'";
@@ -780,9 +797,15 @@ sub run_dhcp_wire_test{
             print RED "[run_dhcp_wire_test] cannot serve with $backend\n";
             push @{$counts{failed}}, "backend-setup($backend)";
             ++$counts{fail};
+            ++$expected;
+            # Torn down even though it never came up: backend-setup writes
+            # site.dhcpbackend and $BSTATE before it can fail, and leaving them
+            # would hand the next backend's pass a machine already reconfigured.
+            runcmd("sudo bash -c '. /etc/profile.d/xcat.sh && $fixture backend-teardown $backend'");
             next;
         }
 
+        $expected += scalar(@cases);
         run_cases($conf_file, \@cases, "($backend)", \%counts, "run_dhcp_wire_test");
 
         @output = runcmd("sudo bash -c '. /etc/profile.d/xcat.sh && $fixture backend-teardown $backend'");
@@ -794,9 +817,16 @@ sub run_dhcp_wire_test{
         print "[run_dhcp_wire_test] WARNING: only $backend_str is installed here, so the backends were not compared\n";
     }
 
-    # Case runs rather than cases: each case is run once per backend.
-    my $casenum = $counts{pass} + $counts{fail};
-    if($counts{fail}){
+    # Case runs rather than cases: each case is run once per backend.  Counted
+    # from what was asked for, so a run that produced no verdict is missing from
+    # the arithmetic and says so.
+    my $casenum = $expected;
+    my $missing = $expected - ($counts{pass} + $counts{fail});
+    if($missing){
+        print RED "[run_dhcp_wire_test] $missing case run(s) produced no verdict\n";
+        push @{$counts{failed}}, "$missing-without-a-verdict";
+    }
+    if($counts{fail} or $missing){
         my $log_str = join(",", @{$counts{failed}});
         $check_result_str .= "> **DHCP WIRE TEST Failed** ($backend_str): Totalrun $casenum Passed $counts{pass} Failed $counts{fail} FailedCases: $log_str.  Please click ``Details`` label in ``Merge pull request`` box for detailed information\n";
         print $check_result_str;
@@ -827,6 +857,12 @@ sub run_dhcp_wire_test{
 #--------------------------------------------------------
 sub run_prov_wire_test{
     my @cases = list_cases("prov_wire");
+    if(@cases and $cases[0] eq $QUERY_FAILED){
+        print RED "[run_prov_wire_test] the case list could not be read\n";
+        $check_result_str .= "> **PROVISION WIRE TEST Failed**: xcattest could not be asked which cases carry the prov_wire label\n";
+        print $check_result_str;
+        return 1;
+    }
     unless(@cases){
         print "[run_prov_wire_test] no provisioning wire cases to run\n";
         $check_result_str .= "> **PROVISION WIRE TEST Skipped**: no case carries the prov_wire label\n";
@@ -846,8 +882,16 @@ sub run_prov_wire_test{
     my %counts = (pass => 0, fail => 0, failed => []);
     run_cases($conf_file, \@cases, "", \%counts, "run_prov_wire_test");
 
-    my $casenum = $counts{pass} + $counts{fail};
-    if($counts{fail}){
+    # From the list that was asked for, not from what came back with a verdict:
+    # a case that hung or was killed is counted by neither, and pass+fail would
+    # report the survivors as a complete run.
+    my $casenum = scalar(@cases);
+    my $missing = $casenum - ($counts{pass} + $counts{fail});
+    if($missing){
+        print RED "[run_prov_wire_test] $missing case(s) produced no verdict\n";
+        push @{$counts{failed}}, "$missing-without-a-verdict";
+    }
+    if($counts{fail} or $missing){
         my $log_str = join(",", @{$counts{failed}});
         $check_result_str .= "> **PROVISION WIRE TEST Failed**: Totalcase $casenum Passed $counts{pass} Failed $counts{fail} FailedCases: $log_str.  Please click ``Details`` label in ``Merge pull request`` box for detailed information\n";
         print $check_result_str;
@@ -913,6 +957,16 @@ sub run_fast_regression_test{
     my $passnum = $counts{pass};
     my $failnum = $counts{fail};
     my @failcase = @{$counts{failed}};
+
+    # This phase already counted the cases it asked for rather than the ones
+    # that answered; what was missing from it is the failure when the two
+    # disagree.  A case that hung or was killed carries no verdict line.
+    my $missing = $casenum - ($passnum + $failnum);
+    if($missing){
+        print RED "[run_fast_regression_test] $missing case(s) produced no verdict\n";
+        push @failcase, "$missing-without-a-verdict";
+        ++$failnum;
+    }
 
     if($failnum){
         my $log_str = join (",", @failcase );
