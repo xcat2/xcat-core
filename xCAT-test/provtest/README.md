@@ -8,9 +8,8 @@ Scenarios are `.conf` files, not Perl. The tool knows nothing about xCAT's
 database and never runs an xCAT command to decide what to expect: everything it
 expects arrives on the command line, from the fixture that set the cluster up.
 
-The specification the scenarios implement is `specs/provision-chain.md` in the
-internal repository; every scenario carries the `@P-nn` tag of the clause it
-covers, so a failure names the clause without the document being at hand.
+Every scenario carries the `@P-nn` tag of the clause it covers, so a failure
+names the clause without the specification being at hand.
 
 ## Why
 
