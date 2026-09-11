@@ -301,6 +301,10 @@ do_check() {
 }
 
 do_setup() {
+    # A second setup over a live fixture would save the fixture's own dhcpd.conf
+    # and site table as the originals, so teardown would restore them instead of
+    # what was there first. Refuse rather than leave the machine in that state.
+    [ -d "$STATE" ] && die "a fixture is already up; run '$0 teardown' first"
     mkdir -p "$STATE" || die "cannot create $STATE"
 
     # Recorded before it is changed, so teardown is exact rather than a guess.

@@ -463,6 +463,11 @@ define_node() {
 
 do_setup() {
     local tmpl http dns tftp
+    # A second setup over a live fixture would overwrite the record teardown
+    # restores from -- the site table, /etc/hosts, the name server's
+    # configuration -- and orphan the veth and the namespace it no longer knows
+    # about. Refuse rather than leave the machine in that state.
+    [ -d "$STATE" ] && die "a fixture is already up; run '$0 teardown' first"
     mkdir -p "$STATE" || die "cannot create $STATE"
     : > "$STATE/files"; : > "$STATE/dirs"
     : > "$STATE/nodes"; : > "$STATE/osimages"; : > "$STATE/services"
