@@ -36,6 +36,11 @@ like(
     qr/option conf-file = "http:\/\/192\.0\.2\.10:8080\/tftpboot\/pxelinux\.cfg\/p\/192\.0\.2\.0_24";/,
     'the existing OPAL branch keeps its subnet URL',
 );
+like(
+    $rendered,
+    qr/client-architecture = 00:1f \{ #QEMU s390x\n\s+option conf-file = "s390x\/192\.0\.2\.0_24";/,
+    'QEMU s390x receives its network configuration',
+);
 
 my @riscv_ids = $rendered =~ /client-architecture = (00:1[9a-e])/g;
 is_deeply(

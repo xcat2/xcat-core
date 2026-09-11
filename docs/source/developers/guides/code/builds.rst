@@ -58,7 +58,10 @@ the repository declares. Only ``xCAT``, ``xCATsn`` and ``xCAT-genesis-scripts``
 carry an architecture, and there the difference is packaging metadata rather than
 compiled output. That is why this build needs no ``sbuild`` and no per-codename
 chroot -- unlike xcat-deps, whose packages are compiled and genuinely differ per
-release.
+release. ``xCAT`` and ``xCATsn`` are built for riscv64 as well as amd64 and
+ppc64el, and every release the repository serves declares the architecture;
+``xCAT-genesis-scripts`` keeps the two architectures it has control files for,
+because riscv64 Genesis ships as an OpenEmbedded package instead.
 
 Helpers shared by both builders live in ``build-utils/lib/XCAT/BuildUtils.pm``.
 

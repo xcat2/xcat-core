@@ -107,6 +107,7 @@ void xcat_set_text(char *destination, size_t size, const char *format, ...);
 char *xcat_read_allocated_line(const char *path);
 bool xcat_read_line(const char *path, char *value, size_t size);
 bool xcat_read_key(const char *path, const char *key, char *value, size_t size);
+bool xcat_read_colon_key(const char *path, const char *key, char *value, size_t size);
 bool xcat_safe_name(const char *value);
 bool xcat_cmdline_value(const char *cmdline, const char *key, char *value, size_t size);
 unsigned long long xcat_read_uptime(void);

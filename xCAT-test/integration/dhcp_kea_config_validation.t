@@ -42,6 +42,14 @@ my $json = $backend->render_dhcp4_config(
                 ],
             },
             {
+                name            => 'xcat-s390x-qemu-192.168.122.0_24',
+                test            => 'option[93].hex == 0x001f',
+                additional_only => JSON::true,
+                'option-data'   => [
+                    { name => 'conf-file', data => 's390x/192.168.122.0_24' },
+                ],
+            },
+            {
                 name             => 'xcat-uefi-x64',
                 test             => "(option[93].hex == 0x0007 or option[93].hex == 0x0009 or option[93].hex == 0x0010) and not ((option[77].exists and (option[77].text == 'xNBA' or option[77].hex == 0x784e4241 or substring(option[77].hex,1,4) == 'xNBA')))",
                 'boot-file-name' => 'xcat/xnba.efi',
@@ -65,7 +73,10 @@ my $json = $backend->render_dhcp4_config(
                 subnet       => '192.168.122.0/24',
                 dynamicrange => '192.168.122.100-192.168.122.120',
                 next_server  => '192.168.122.1',
-                additional_client_classes => ['xcat-opal-v3-192.168.122.0-24'],
+                additional_client_classes => [
+                    'xcat-opal-v3-192.168.122.0-24',
+                    'xcat-s390x-qemu-192.168.122.0_24',
+                ],
                 option_data  => [
                     { name => 'routers',             data => '192.168.122.1' },
                     { name => 'domain-name',         data => 'cluster.test' },

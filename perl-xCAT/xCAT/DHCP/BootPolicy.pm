@@ -103,6 +103,33 @@ sub kea_httpboot_network_classes {
     return \@classes;
 }
 
+sub kea_s390x_network_classes {
+    my ( $class, %opts ) = @_;
+
+    if ( !$opts{net} || !defined $opts{prefix} ) {
+        return [];
+    }
+
+    my $network_id = "$opts{net}_$opts{prefix}";
+    my $safe_network = $network_id;
+    $safe_network =~ s{[^A-Za-z0-9_.-]}{_}gxms;
+
+    return [
+        {
+            name            => "xcat-s390x-qemu-$safe_network",
+            test            => 'option[93].hex == 0x001f',
+            additional_only => 1,
+            'option-data'   => [
+                {
+                    name          => 'conf-file',
+                    data          => "s390x/$network_id",
+                    'always-send' => 1,
+                },
+            ],
+        },
+    ];
+}
+
 sub isc_client_architecture_lines {
     my ( $class, %opts ) = @_;
 
@@ -136,6 +163,8 @@ sub isc_client_architecture_lines {
         "    } else if option client-architecture = 00:1c { #riscv64 uefi http boot\n ",
         "      option vendor-class-identifier \"HTTPClient\";\n",
         "      filename \"http://$tftp$portsuffix/tftpboot/boot/grub2/grub2.riscv64\";\n",
+        "    } else if option client-architecture = 00:1f { #QEMU s390x\n ",
+        "      option conf-file = \"s390x/${net}_${maskbits}\";\n",
         "    } else if option client-architecture = 00:0e { #OPAL-v3\n ",
         "        option conf-file = \"http://$tftp$portsuffix/tftpboot/pxelinux.cfg/p/${net}_${maskbits}\";\n",
         "    } else if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { #for onie on cumulus switch\n",

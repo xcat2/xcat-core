@@ -3362,6 +3362,12 @@ sub kea_subnet4_intent
             loader_present => sub { -e $_[0] },
         )
       };
+    push @client_classes, @{
+        xCAT::DHCP::BootPolicy->kea_s390x_network_classes(
+            net    => $net,
+            prefix => $prefix,
+        )
+      };
     if (@client_classes) {
         $subnet{additional_client_classes} = [ map { $_->{name} } @client_classes ];
         $subnet{client_classes} = \@client_classes;

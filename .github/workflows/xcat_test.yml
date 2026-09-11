@@ -7,7 +7,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Install dependencies
-        run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests build-essential fakeroot reprepro devscripts debhelper libcapture-tiny-perl libfile-slurper-perl libjson-perl libparallel-forkmanager-perl libsoap-lite-perl libdbi-perl libcgi-pm-perl quilt openssh-server dpkg looptools genometools software-properties-common
+        run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests bats build-essential fakeroot reprepro devscripts debhelper libcapture-tiny-perl libfile-slurper-perl libjson-perl libparallel-forkmanager-perl libsoap-lite-perl libdbi-perl libcgi-pm-perl quilt openssh-server dpkg looptools genometools software-properties-common
       - name: Run tests
         run: perl github_action_xcat_test.pl
 
@@ -38,16 +38,21 @@ jobs:
           KAS_WORK_DIR: ${{ runner.temp }}/kas-work
         run: |
           set -euo pipefail
-          for architecture in x86 x86_64 ppc64 ppc64le armv7hf aarch64 riscv64; do
+          for architecture in x86 x86_64 ppc64 ppc64le armv7hf aarch64 riscv64 s390x; do
               export KAS_BUILD_DIR="${RUNNER_TEMP}/kas-build-${architecture}"
               configuration="xCAT-genesis-builder/oe/kas/${architecture}.yml"
               kas dump "${configuration}" >/dev/null
               kas shell "${configuration}" -c 'bitbake -p'
           done
       - name: Validate the image task graph
+        shell: bash
         env:
           KAS_WORK_DIR: ${{ runner.temp }}/kas-work
           KAS_BUILD_DIR: ${{ runner.temp }}/kas-build-x86_64
-        run: >-
-          kas shell xCAT-genesis-builder/oe/kas/x86_64.yml -c
-          'bitbake -n xcat-genesis-image xcat-genesis-extension-smoke'
+        run: |
+          set -euo pipefail
+          kas shell xCAT-genesis-builder/oe/kas/x86_64.yml -c \
+              'bitbake -n xcat-genesis-image xcat-genesis-extension-smoke'
+          export KAS_BUILD_DIR="${RUNNER_TEMP}/kas-build-s390x"
+          kas shell xCAT-genesis-builder/oe/kas/s390x.yml -c \
+              'bitbake -n xcat-genesis-image xcat-genesis-extension-smoke'

@@ -5,7 +5,10 @@ BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/o
 
 use lib "$::XCATROOT/probe/lib/perl";
 use probe_utils;
+use xCAT::CommandUtils;
 use File::Basename;
+use File::Temp qw(tempfile);
+use POSIX qw(_exit sigprocmask WNOHANG SIG_BLOCK SIG_SETMASK SIGINT SIGTERM);
 use IO::Socket::INET;
 use Time::HiRes qw(gettimeofday sleep);
 use Getopt::Long;
@@ -16,7 +19,6 @@ my $program_name = basename("$0");
 my $output       = "stdout";
 my $duration     = 10;
 my $test         = 0;
-my $dumpfile     = "/tmp/dhcpdumpfile.log";
 my $nic;
 
 $::USAGE = "Usage:
@@ -63,7 +65,8 @@ if ($::TEST) {
     exit 0;
 }
 
-unless (-x "/usr/sbin/tcpdump") {
+my $tcpdump = xCAT::CommandUtils::find_executable('tcpdump');
+unless ($tcpdump) {
     probe_utils->send_msg("$output", "f", "Tool 'tcpdump' is installed on current server");
     probe_utils->send_msg("$output", "d", "$program_name needs to leverage 'tcpdump', please install 'tcpdump' first");
     exit 1;
@@ -151,44 +154,57 @@ my $package = packdhcppkg($MAC);
 probe_utils->send_msg("$output", "i", "Start to detect DHCP, please wait $duration seconds");
 
 $msg = "fork a process to capture the packet by tcpdump";
+my ($dumpfh, $dumpfile) = tempfile("detect_dhcpd.XXXXXX", TMPDIR => 1, UNLINK => 1);
+close($dumpfh);
+# INT and TERM stay blocked from the fork until the handler that stops the capture is in place.
+my $stop_signals = POSIX::SigSet->new(SIGINT, SIGTERM);
+my $signal_mask  = POSIX::SigSet->new();
+sigprocmask(SIG_BLOCK, $stop_signals, $signal_mask);
 my $pid = fork;
 if (!defined $pid) {
+    sigprocmask(SIG_SETMASK, $signal_mask);
     probe_utils->send_msg("$output", "f", $msg);
     exit 1;
 } elsif ($pid == 0) {
 
-    # Child process
-    my $cmd = "tcpdump -i $nic port 68 -n -vvvvvv > $dumpfile 2>/dev/null";
-    `$cmd`;
-    exit 0;
+    # Child process: tcpdump itself, so the parent owns exactly this pid.
+    sigprocmask(SIG_SETMASK, $signal_mask);
+    open(STDOUT, '>', $dumpfile) or _exit(1);
+    open(STDERR, '>', '/dev/null');
+    exec($tcpdump, '-i', $nic, 'port', '68', '-n', '-vvvvvv');
+    _exit(1);
 }
+$SIG{INT} = $SIG{TERM} = sub { kill_child(); exit 1; };
+sigprocmask(SIG_SETMASK, $signal_mask);
 probe_utils->send_msg("$output", "d", "The id of process which is used to capture the packet by tcpdump is $pid") if ($::VERBOSE);
 
 my $start = Time::HiRes::gettimeofday();
 $start =~ s/(\d.*)\.(\d.*)/$1/;
 my $end = $start;
 while ($end - $start <= $duration) {
-    $sock->send($package);
-    probe_utils->send_msg("$output", "d", "Send DHCP rquest result: $@") if ($::VERBOSE && $@);
+    unless ($sock->send($package)) {
+        probe_utils->send_msg("$output", "d", "Send DHCP discover error: $!") if ($::VERBOSE);
+        probe_utils->send_msg("$output", "f", "Send out DHCP discover");
+        kill_child();
+        exit 1;
+    }
     sleep 2;
     $end = Time::HiRes::gettimeofday();
     $end =~ s/(\d.*)\.(\d.*)/$1/;
 }
 
-$msg = "Kill the process which is used to capture the packet by tcpdump";
-kill_child();
-waitpid($pid, 0);
-sleep 1;
-`ps aux|grep -v grep |grep $pid > /dev/null 2>&1`;
-if (!$?) {
+$msg = "Capture the packets by tcpdump";
+my $capture_problem = kill_child();
+if ($capture_problem) {
+    probe_utils->send_msg("$output", "d", "tcpdump $capture_problem") if ($::VERBOSE);
     probe_utils->send_msg("$output", "f", $msg);
+    exit 1;
 }
 
 $msg = "Dump test result";
 unless (open(FILE, "<$dumpfile")) {
     probe_utils->send_msg("$output", "d", "Open dump file $dumpfile failed") if ($::VERBOSE);
     probe_utils->send_msg("$output", "f", $msg);
-    `rm -f $dumpfile` if (-e "$dumpfile");
     exit 1;
 }
 my %output;
@@ -271,7 +287,6 @@ if (scalar(@server)) {
     }
 }
 
-`rm -f $dumpfile` if (-e "$dumpfile");
 exit 0;
 
 
@@ -377,11 +392,39 @@ sub packdhcppkg {
     return $package;
 }
 
+# Stop the capture and reap it, once: INT and TERM are blocked while the pid is taken and until
+# tcpdump is reaped, so an interrupt in that window cannot orphan it or reach a recycled pid. The
+# handlers stay installed, so a later signal still leaves through exit and the END cleanup.
+# Returns '' when tcpdump ran until this TERM and stopped cleanly, otherwise what went wrong: it
+# ended on its own, ignored TERM and was killed, or left on another signal or with a non-zero
+# status.
 sub kill_child {
-    kill 15, $pid;
-    my @pidoftcpdump = `ps -ef | grep -E "[0-9]+:[0-9]+:[0-9]+ tcpdump -i $nic" | awk -F' ' '{print \$2}'`;
-    foreach my $cpid (@pidoftcpdump) {
-        kill 15, $cpid;
+    sigprocmask(SIG_BLOCK, $stop_signals);
+    my $child = $pid;
+    $pid = undef;
+    unless ($child) {
+        sigprocmask(SIG_SETMASK, $signal_mask);
+        return '';
     }
-    probe_utils->send_msg("$output", "d", "Kill process $pid used to capture the packet by 'tcpdump'") if ($::VERBOSE);
+    my $reaped = waitpid($child, WNOHANG);
+    my $early = ($reaped == $child) ? 1 : 0;
+    if ($reaped == 0) {
+        kill 'TERM', $child;
+        foreach (1 .. 50) {
+            last if ($reaped = waitpid($child, WNOHANG)) != 0;
+            select(undef, undef, undef, 0.1);
+        }
+        if ($reaped == 0) {
+            kill 'KILL', $child;
+            $reaped = waitpid($child, 0);
+        }
+    }
+    sigprocmask(SIG_SETMASK, $signal_mask);
+    return "could not be reaped" if $reaped != $child;
+    my ($signal, $status) = ($? & 127, $? >> 8);
+    probe_utils->send_msg("$output", "d", "Kill process $child used to capture the packet by 'tcpdump'") if ($::VERBOSE);
+    my $how = $signal ? "on signal $signal" : "with status $status";
+    return "ended before the capture window did, $how" if $early;
+    return '' if $signal == 15 || (!$signal && !$status);
+    return "left the capture $how";
 }

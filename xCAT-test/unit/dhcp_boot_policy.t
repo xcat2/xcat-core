@@ -217,4 +217,27 @@ unlike(
     'the global class list keeps HTTP boot out: it needs the address of the management node',
 );
 
+my $s390x = xCAT::DHCP::BootPolicy->kea_s390x_network_classes(
+    net    => '10.0.0.0',
+    prefix => 24,
+);
+is_deeply(
+    $s390x,
+    [
+        {
+            name            => 'xcat-s390x-qemu-10.0.0.0_24',
+            test            => 'option[93].hex == 0x001f',
+            additional_only => 1,
+            'option-data'   => [
+                {
+                    name          => 'conf-file',
+                    data          => 's390x/10.0.0.0_24',
+                    'always-send' => 1,
+                },
+            ],
+        },
+    ],
+    's390x firmware receives its supported network configuration method',
+);
+
 done_testing();

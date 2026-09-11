@@ -2,10 +2,22 @@
 use strict;
 use warnings;
 
+use File::Path qw(make_path);
+use File::Temp qw(tempdir);
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../../perl-xCAT";
 use Test::More;
+
+# xCAT modules put $::XCATROOT/lib/perl ahead of @INC as they compile, so on a host with xCAT
+# installed the schema, loaded after them, would come from /opt/xcat. XCATROOT points at this
+# checkout before any of them compiles.
+BEGIN {
+    my $root = tempdir( CLEANUP => 1 );
+    make_path("$root/lib");
+    symlink( "$FindBin::Bin/../../perl-xCAT", "$root/lib/perl" ) or die "symlink: $!";
+    $ENV{XCATROOT} = $root;
+}
 
 use XCAT::Test::File qw(repo_path);
 use xCAT::ProfiledNodeUtils;
@@ -56,16 +68,25 @@ is( xCAT::ProfiledNodeUtils::cal_netboot( $rule_table, [ 'aarch64', 'rhels', '9'
 # ---------------------------------------------------------------------------
 # Schema descriptions
 # ---------------------------------------------------------------------------
-SKIP: {
-    skip 'xCAT::Schema is not loadable here', 3
-      unless eval { require lib; lib->import( repo_path('perl-xCAT') ); require xCAT::Schema; 1 };
+# The schema comes from this checkout, not from an installed xCAT, or the descriptions checked
+# below would be those of whatever version the host carries.
+{
+    require xCAT::Schema;
+    require Cwd;
+    like( Cwd::realpath( $INC{'xCAT/Schema.pm'} ), qr/^\Q@{[ Cwd::realpath( repo_path('perl-xCAT') ) ]}\E/,
+        'xCAT::Schema is loaded from the checkout' );
 
     like( $xCAT::Schema::tabspec{nodetype}{descriptions}{arch}, qr/\briscv64\b/,
         'nodetype.arch documents riscv64 as a valid value' );
+    like( $xCAT::Schema::tabspec{nodetype}{descriptions}{arch}, qr/\bs390x\b/,
+        'nodetype.arch documents s390x as a valid value' );
     like( $xCAT::Schema::tabspec{osimage}{descriptions}{osarch}, qr/\briscv64\b/,
         'osimage.osarch documents riscv64 as a valid value' );
-    like( $xCAT::Schema::tabspec{noderes}{descriptions}{netboot}, qr/riscv64\s+>=el10\s+grub2,grub2-http,grub2-tftp/,
-        'noderes.netboot documents the riscv64 grub2 methods' );
+    like( $xCAT::Schema::tabspec{osimage}{descriptions}{osarch}, qr/\bs390x\b/,
+        'osimage.osarch documents s390x as a valid value' );
+    like( $xCAT::Schema::tabspec{noderes}{descriptions}{netboot},
+        qr/riscv64\s+>=el10, >=ubuntu24\.04\s+grub2,grub2-http,grub2-tftp/,
+        'noderes.netboot documents the riscv64 grub2 methods for EL and Ubuntu' );
 }
 
 done_testing();

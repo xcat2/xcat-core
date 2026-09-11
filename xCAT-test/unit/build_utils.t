@@ -62,17 +62,17 @@ is_deeply( [deb_package_arches('xCAT-probe')], ['all'],
     'xCAT-probe is arch-independent too' );
 for my $pkg (qw(xCAT xCATsn)) {
     is_deeply( [deb_package_arches($pkg)], ['amd64', 'ppc64el', 'riscv64'],
-        "$pkg is built per architecture" );
+        "$pkg is built for every architecture a management node runs on" );
 }
-# xcat-genesis-scripts-<arch> Depends on xcat-genesis-base-<arch> and there is no riscv64
-# genesis-base deb, so a riscv64 build of it would be uninstallable.
+# xCAT-genesis-scripts has one control file per architecture and there is no riscv64 one,
+# so asking for that build would stop the whole run.
 is_deeply( [deb_package_arches('xCAT-genesis-scripts')], ['amd64', 'ppc64el'],
-    'xcat-genesis-scripts is built per architecture, but never for riscv64' );
+    'xCAT-genesis-scripts is built only for the architectures it has a control file for' );
 is_deeply( [deb_package_arches(undef)], ['all'],
     'an undefined package name does not blow up the arch lookup' );
 
 is_deeply( [dist_arches('noble')], ['amd64', 'ppc64el', 'riscv64'],
-    'a current release serves every architecture xCAT builds' );
+    'a current release serves every architecture' );
 is_deeply( [dist_arches('saucy')], ['amd64'],
     'saucy predates ppc64el and serves only amd64' );
 

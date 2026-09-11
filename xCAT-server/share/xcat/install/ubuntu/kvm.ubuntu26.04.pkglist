@@ -1,0 +1,13 @@
+openssh-server
+chrony
+gawk
+nfs-common
+snmpd
+qemu-system
+qemu-utils
+libvirt-daemon-system
+libvirt-clients
+bridge-utils
+libcap2-bin
+vlan
+tmux

@@ -43,7 +43,7 @@
 # 2022-11-01 Mark Gurevich <gurevich@us.ibm.com>
 #     - Make sure initscripts installed on RH family of OSes
 # 2022-12-06 Mark Gurevich <gurevich@us.ibm.com>
-#     - Check for EPEL and CRB repository on EL9 family of OSes
+#     - Check for EPEL and CRB repositories on EL9 and EL10 family of OSes
 # 2023-01-19 Mark Gurevich <gurevich@us.ibm.com>
 #     - Add support for Alma Linux
 # 2026-07-20 Daniel Hilst <392820+dhilst@users.noreply.github.com>
@@ -208,7 +208,7 @@ GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
 	xCAT-genesis-openembedded-x86 xCAT-genesis-openembedded-x86_64
 	xCAT-genesis-openembedded-ppc64 xCAT-genesis-openembedded-ppc64le
 	xCAT-genesis-openembedded-armv7hf xCAT-genesis-openembedded-aarch64
-	xCAT-genesis-openembedded-riscv64
+	xCAT-genesis-openembedded-riscv64 xCAT-genesis-openembedded-s390x
 	xCAT-openbmc-py xCAT-probe xCAT-test xCAT-vlan xCATsn xCAT-UI-deps
     xCAT-buildkit conserver-xcat yaboot-xcat)
 # For Debian/Ubuntu, it will need a slightly different package list
@@ -218,13 +218,13 @@ GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
 	xcat-genesis-openembedded-x86 xcat-genesis-openembedded-x86-64
 	xcat-genesis-openembedded-ppc64 xcat-genesis-openembedded-ppc64le
 	xcat-genesis-openembedded-armv7hf xcat-genesis-openembedded-aarch64
-	xcat-genesis-openembedded-riscv64
+	xcat-genesis-openembedded-riscv64 xcat-genesis-openembedded-s390x
     xcat-buildkit conserver-xcat)
 
 PATH="/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
-EL9_EPEL_TEST_RPM="perl-Crypt-CBC"
-EL9_CRB_TEST_RPM="perl-IO-Tty"
+EL_EPEL_TEST_RPM="perl-Crypt-CBC"
+EL_CRB_TEST_RPM="perl-IO-Tty"
 
 #
 # warn_if_bad		Put out warning message(s) if $1 has bad RC.
@@ -1815,7 +1815,7 @@ function update_repo()
 function install_packages_dnf()
 {
 	type dnf >/dev/null 2>&1 || return 255
-	el9_epel_and_crb_check dnf
+	el_epel_and_crb_check dnf
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	dnf --nogpgcheck "${yes[@]}" install initscripts
@@ -1825,7 +1825,7 @@ function install_packages_dnf()
 function install_packages_yum()
 {
 	type yum >/dev/null 2>&1 || return 255
-	el9_epel_and_crb_check yum
+	el_epel_and_crb_check yum
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	yum --nogpgcheck "${yes[@]}" install initscripts
@@ -1850,10 +1850,31 @@ function github_issue_6525_workaround()
 	return 0
 }
 
-# Check for EPEL and CRB repositories when installing on RH family of OSes
-function el9_epel_and_crb_check()
+# Whether an enabled repository carries the package for this architecture. An
+# installed copy and a source repository do not count, so a binary repository
+# that was disabled is still reported. A failed query stops the run with the
+# package manager's own error.
+function repo_carries()
+{
+	local rpm="$1"
+	local found errors
+	errors="$(mktemp)"
+	found="$(${action} repoquery -q --arch "${GO_XCAT_ARCH},noarch" --qf '%{name}' "${rpm}" 2>"${errors}")" || {
+		cat "${errors}"
+		rm -f "${errors}"
+		echo "Could not query the package repositories with '${action} repoquery'"
+		exit 1
+	}
+	rm -f "${errors}"
+	grep -Fxq -- "${rpm}" <<<"${found}"
+}
+
+# Check for EPEL and CRB repositories when installing on RH family of OSes.
+# CentOS Stream reports the major version alone, the others report major.minor.
+function el_epel_and_crb_check()
 {
 	action="$*" # Passed parameter will only be 'yum' or 'dnf'
+	local major
 	if [[ "${GO_XCAT_LINUX_DISTRO}" = "fedora" ]]
 	then
 		# For Fedora, version 35 is equivalent to EL9
@@ -1862,40 +1883,24 @@ function el9_epel_and_crb_check()
 		# found
 		return 0
 	else
-		[[ "${GO_XCAT_LINUX_VERSION}" =~ ^9(\.[0-9]) ]] || return 0
+		[[ "${GO_XCAT_LINUX_VERSION}" =~ ^(9|10)(\.[0-9]+)?$ ]] || return 0
 	fi
-	${action} list -q "${EL9_EPEL_TEST_RPM}"
-	ret="$?"
-	case "${ret}" in
-	"1")
-		# Can not find EL9_EPEL_TEST_RPM
+	major="${GO_XCAT_LINUX_VERSION%%.*}"
+	if ! repo_carries "${EL_EPEL_TEST_RPM}"
+	then
 		echo "
 Installation on ${GO_XCAT_LINUX_DISTRO} ${GO_XCAT_LINUX_VERSION} requires EPEL repository to be enabled"
-		echo "Running '${action} install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm' will enable EPEL repository"
+		echo "Running '${action} install https://dl.fedoraproject.org/pub/epel/epel-release-latest-${major}.noarch.rpm' will enable EPEL repository"
 		exit 1
-		;;
-	esac
-	${action} list -q "${EL9_CRB_TEST_RPM}"
-	ret="$?"
-	case "${ret}" in
-	"1")
-		# Can not find EL9_CRB_TEST_RPM
+	fi
+	if ! repo_carries "${EL_CRB_TEST_RPM}"
+	then
 		echo "
 Installation on ${GO_XCAT_LINUX_DISTRO} ${GO_XCAT_LINUX_VERSION} requires CRB repository to be enabled"
-		echo "Try adding the following entries to new or existing '.repo' file:"
-		echo "
-[crb]
-name=CentOS Stream \$releasever - CRB
-metalink=https://mirrors.centos.org/metalink?repo=centos-crb-\$stream&arch=\$basearch&protocol=https,http
-gpgcheck=0
-repo_gpgcheck=0
-metadata_expire=6h
-countme=1
-enabled=1
-		"
+		echo "Running '${action} update epel-release' and then 'crb enable' will enable it on Red Hat Enterprise Linux, Rocky Linux, AlmaLinux and CentOS Stream"
+		echo "On Oracle Linux, running 'dnf config-manager --enable ol${major}_codeready_builder' will enable it"
 		exit 1
-		;;
-	esac
+	fi
 	return 0
 }
 
@@ -2456,12 +2461,44 @@ case "${GO_XCAT_OS}" in
 esac
 
 case "${GO_XCAT_ARCH}" in
-"ppc64"|"ppc64le"|"x86_64")
+"ppc64"|"ppc64le"|"riscv64"|"x86_64")
 	;;
 *)
 	exit_if_bad 1 "${GO_XCAT_ARCH}: unsupported instruction set architecture"
 	;;
 esac
+
+# A riscv64 management node has no legacy Genesis: its image ships as the OpenEmbedded package,
+# which mknb installs. The legacy Genesis scripts and bases are therefore dropped and the
+# OpenEmbedded package of the architecture is asked for instead.
+#
+# The x86 boot loaders stay: they are payload a management node SERVES to x86 nodes over TFTP,
+# not host binaries, so a riscv64 management node needs them to boot a mixed cluster.
+function riscv64_install_list()
+{
+	local genesis_package="xCAT-genesis-openembedded-riscv64"
+	type dpkg >/dev/null 2>&1 && genesis_package="xcat-genesis-openembedded-riscv64"
+	local package
+	for package in "$@"; do
+		case "${package}" in
+		*genesis-scripts-*|*genesis-base-*)
+			;;
+		*)
+			printf '%s\n' "${package}"
+			;;
+		esac
+	done
+	printf '%s\n' "${genesis_package}"
+}
+
+if [ "${GO_XCAT_ARCH}" = "riscv64" ]; then
+	riscv64_list=()
+	while read -r package; do
+		riscv64_list+=("${package}")
+	done < <(riscv64_install_list "${GO_XCAT_INSTALL_LIST[@]}")
+	GO_XCAT_INSTALL_LIST=("${riscv64_list[@]}")
+	unset riscv64_list package
+fi
 
 GO_XCAT_LINUX_DISTRO="$(check_linux_distro)"
 GO_XCAT_LINUX_VERSION="$(check_linux_version)"

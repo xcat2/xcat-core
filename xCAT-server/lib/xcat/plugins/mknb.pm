@@ -1,16 +1,17 @@
 package xCAT_plugin::mknb;
 use strict;
 use Digest::SHA ();
-use File::Temp qw(tempdir);
+use File::Temp qw(tempdir tempfile);
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::NodeRange;
 use File::Path;
 use File::Copy;
+use English qw(-no_match_vars);
 
 my $GENESIS_EXPORT_MANIFEST = 'xcat-genesis.manifest';
 my %GENESIS_ARCHITECTURES = map { $_ => 1 }
-  qw(x86 x86_64 ppc64 ppc64le armv7hf aarch64 riscv64);
+  qw(x86 x86_64 ppc64 ppc64le armv7hf aarch64 riscv64 s390x);
 
 sub _canonical_genesis_arch {
     my ($arch) = @_;
@@ -300,6 +301,21 @@ sub _remove_openembedded_genesis {
         "$directory/genesis.fs.$arch.lzma",
         "$directory/genesis.exact-arch.$arch",
     );
+    if ($arch eq 's390x') {
+        my $config_directory = "$tftpdir/pxelinux.cfg/s390x";
+        if (opendir my $config_stream, $config_directory) {
+            foreach my $name (readdir $config_stream) {
+                if ($name =~ m{\A[.][.]?\z}xms) {
+                    next;
+                }
+                my $path = "$config_directory/$name";
+                if (_is_generated_s390x_config($path)) {
+                    push @artifacts, $path;
+                }
+            }
+            closedir $config_stream;
+        }
+    }
     my $removed = 0;
     my @failed;
     foreach my $artifact (@artifacts) {
@@ -318,6 +334,19 @@ sub _remove_openembedded_genesis {
             'Unable to remove Genesis artifacts: ' . join(', ', @failed));
     }
     return ($removed, undef);
+}
+
+sub _is_generated_s390x_config {
+    my ($path) = @_;
+    if (-l $path || !-f $path) {
+        return 0;
+    }
+    open my $config, '<', $path or return 0;
+    my $header = <$config>;
+    if (!close $config) {
+        return 0;
+    }
+    return defined($header) && $header eq "# pxelinux.cfg xCAT Genesis s390x\n";
 }
 
 sub genesis_lzma_command {
@@ -456,7 +485,7 @@ sub process_request {
     my $tftpdir = xCAT::TableUtils->getTftpDir();
     my $requested_arch = $request->{arg}->[0];
     if (!$requested_arch) {
-        $callback->({ error => "Need to specify architecture (x86, x86_64, ppc64, ppc64le, armv7hf, aarch64 or riscv64)" }, { errorcode => [1] });
+        $callback->({ error => "Need to specify architecture (x86, x86_64, ppc64, ppc64le, armv7hf, aarch64, riscv64 or s390x)" }, { errorcode => [1] });
         return;
     }
 
@@ -711,7 +740,9 @@ sub process_request {
         $normnet_addresses, \@master_addresses
     );
     my $consolecmdline;
-    if (defined($serialport) and $serialspeed) {
+    if ($arch eq 's390x') {
+        $consolecmdline = 'console=ttysclp0';
+    } elsif (defined($serialport) and $serialspeed) {
         if ($arch =~ /ppc/) {
             $consolecmdline = "console=tty0 console=hvc$serialport,$serialspeed";
         } else {
@@ -746,15 +777,30 @@ sub process_request {
         mkpath("$tftpdir/boot/grub2");
         chmod(0755, "$tftpdir/boot/grub2");
     }
+    if ($arch eq 's390x') {
+        mkpath "$tftpdir/pxelinux.cfg/s390x";
+        chmod 0755, "$tftpdir/pxelinux.cfg";
+        chmod 0755, "$tftpdir/pxelinux.cfg/s390x";
+    }
     my $dopxe = 0;
+    my $s390x_config_error = 0;
     foreach (keys %{$normnets}) {
         my $net = $_;
         my $nicip = $normnets->{$net};
         my $xcatd_address = defined($xcatdnormnets->{$net}) ? $xcatdnormnets->{$net} : $nicip;
         $net =~ s/\//_/;
-        if (defined($nobootnicips{$nicip})) {
+        if (defined($nobootnicips{$nicip})
+            || ($arch eq 's390x' && defined($nobootnicips{$xcatd_address}))) {
             if ($arch =~ /ppc/ and -r "$tftpdir/pxelinux.cfg/p/$net") {
                 unlink("$tftpdir/pxelinux.cfg/p/$net");
+            } elsif ($arch eq 's390x') {
+                my $path = "$tftpdir/pxelinux.cfg/s390x/$net";
+                if (_is_generated_s390x_config($path)) {
+                    if (!unlink $path) {
+                        $callback->({ error => ["Unable to remove s390x Genesis configuration: $path: $OS_ERROR"], errorcode => [1] });
+                        $s390x_config_error = 1;
+                    }
+                }
             }
             next;
         }
@@ -816,6 +862,22 @@ sub process_request {
             print $cfgfile "   initrd http://" . $xcatd_address . "$portsuffix/$initrd_file\n";
             print $cfgfile '   append "xcatd=' . $xcatd_address . ":$xcatdport $consolecmdline\"\n";
             close($cfgfile);
+        } elsif ($arch eq 's390x') {
+            my (undef, $config_error) = _write_s390x_discovery_config(
+                tftpdir        => $tftpdir,
+                network        => $net,
+                xcatd_address  => $xcatd_address,
+                xcatdport      => $xcatdport,
+                consolecmdline => $consolecmdline,
+                kernel         => $invisibletouch
+                  ? "xcat/genesis.kernel.$arch"
+                  : "xcat/nbk.$arch",
+                initrd         => $initrd_file,
+            );
+            if ($config_error) {
+                $callback->({ error => [$config_error], errorcode => [1] });
+                $s390x_config_error = 1;
+            }
         }
     }
     $dopxe = 0;
@@ -876,13 +938,86 @@ sub process_request {
         }
     }
     if (exists $GRUB2_DISCOVERY_ARCHES{$arch} && !-e "$tftpdir/boot/grub2/grub2.$arch") {
-        # These configurations are only reachable through grub2.<arch>, which xCAT
-        # does not build.
-        $callback->({ data => ["Note: $tftpdir/boot/grub2/grub2.$arch is missing; $arch nodes need it to reach these configurations (it is installed by grub2-xcat, or copied from the EL $arch installation media)"] });
+        # These configurations are only reachable through grub2.<arch>. copycd builds it from
+        # Ubuntu media; on EL it is supplied by grub2-xcat or copied from the media.
+        $callback->({ data => ["Note: $tftpdir/boot/grub2/grub2.$arch is missing; $arch nodes need it to reach these configurations (copycd builds it from Ubuntu media; on EL it is installed by grub2-xcat or copied from the $arch installation media)"] });
     }
-    if ($configfileonly) {
+    if ($configfileonly && !$s390x_config_error) {
         $callback->({ data => ["Write netboot config file done"] });
     }
+}
+
+sub _write_s390x_discovery_config {
+    my (%args) = @_;
+    my $tftpdir = $args{tftpdir};
+    my $initrd = $args{initrd};
+    $initrd =~ s{^\Q$tftpdir\E/?}{}xms;
+    my $cmdline = "xcatd=$args{xcatd_address}:$args{xcatdport} xcat.bootloader=s390-ccw";
+    if (defined $args{consolecmdline} and length $args{consolecmdline}) {
+        $cmdline .= " $args{consolecmdline}";
+    }
+
+    my $qemu_path = "$tftpdir/pxelinux.cfg/s390x/$args{network}";
+    my $qemu_config = "# pxelinux.cfg xCAT Genesis s390x\n"
+      . "DEFAULT xCAT\n"
+      . "LABEL xCAT\n"
+      . "  KERNEL $args{kernel}\n"
+      . "  INITRD $initrd\n"
+      . "  APPEND $cmdline\n";
+    my $error = _write_s390x_config($qemu_path, $qemu_config);
+    return (undef, $error) if $error;
+
+    return ($qemu_path, undef);
+}
+
+sub _write_s390x_config {
+    my ($path, $contents) = @_;
+    if ((-e $path || -l $path) && !_is_generated_s390x_config($path)) {
+        return "Refusing to replace unmanaged s390x configuration: $path";
+    }
+
+    my $directory = $path;
+    $directory =~ s{/[^/]+\z}{}xms;
+    my ($config, $temporary);
+    my $created = eval {
+        ($config, $temporary) = tempfile(
+            '.mknb-s390x-XXXXXX', DIR => $directory, UNLINK => 0
+        );
+        1;
+    };
+    if (!$created) {
+        my $create_error = $EVAL_ERROR || $OS_ERROR;
+        chomp $create_error;
+        return "Unable to write s390x Genesis configuration: $path: $create_error";
+    }
+
+    my $write_ok = print {$config} $contents;
+    my $write_error = $OS_ERROR;
+    my $close_ok = close $config;
+    my $close_error = $OS_ERROR;
+    if (!$write_ok) {
+        unlink $temporary;
+        return "Unable to write s390x Genesis configuration: $path: $write_error";
+    }
+    if (!$close_ok) {
+        unlink $temporary;
+        return "Unable to write s390x Genesis configuration: $path: $close_error";
+    }
+    if (!chmod 0644, $temporary) {
+        my $chmod_error = $OS_ERROR;
+        unlink $temporary;
+        return "Unable to set s390x Genesis configuration permissions: $path: $chmod_error";
+    }
+    if ((-e $path || -l $path) && !_is_generated_s390x_config($path)) {
+        unlink $temporary;
+        return "Refusing to replace unmanaged s390x configuration: $path";
+    }
+    if (!rename $temporary, $path) {
+        my $rename_error = $OS_ERROR;
+        unlink $temporary;
+        return "Unable to install s390x Genesis configuration: $path: $rename_error";
+    }
+    return;
 }
 
 # Return the grub2-class architectures whose Genesis kernel and initrd are

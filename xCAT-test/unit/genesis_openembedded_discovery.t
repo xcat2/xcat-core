@@ -121,6 +121,7 @@ write_file( File::Spec->catfile( $dmi_dir, 'product_uuid' ),
     "00112233-4455-6677-8899-aabbccddeeff\n" );
 write_file( File::Spec->catfile( $proc_root, 'cpuinfo' ), <<'CPU' );
 processor : 0
+vendor_id : Test Vendor
 model name : Test CPU & Controller
 processor : 1
 CPU
@@ -419,6 +420,61 @@ like( $packet, qr{<cpucount>2</cpucount>},
 like( $packet,
     qr{<uuid>9009-42a-02ab123-525400000002</uuid>},
     'Power discovery creates a stable fallback UUID' );
+
+unlink(
+    File::Spec->catfile( $device_tree, 'model' ),
+    File::Spec->catfile( $device_tree, 'system-id' ),
+);
+write_file( File::Spec->catfile( $proc_root, 'sysinfo' ), <<'SYSINFO' );
+Manufacturer:         IBM
+Type:                 3931
+Model:                701 A01
+Sequence Code:        0000000012345
+Plant:                02
+LPAR Name:            LP4KVM09
+LPAR UUID:            93724168-fda3-429b-8b28-a5d245dcb3ff
+VM00 Name:            GENESIS1
+VM00 Control Program: KVM/Linux
+VM00 UUID:            82038f2a-1344-aaf7-1a85-2a7250be2076
+SYSINFO
+write_file( File::Spec->catfile( $proc_root, 'cpuinfo' ),
+    "vendor_id       : IBM/S390\nprocessor 0: version = 00\nprocessor 1: version = 00\n" );
+$environment{XCAT_TEST_ARCH} = 's390x';
+is( run_script( $discover_script, \%environment ), 0,
+    's390x discovery accepts proc sysinfo identity' );
+$packet = read_file($packet_file);
+like( $packet, qr{<arch>s390x</arch>},
+    's390x discovery keeps the canonical architecture' );
+like( $packet, qr{<nodetype>virtual</nodetype>},
+    's390x discovery identifies a hypervisor guest' );
+like( $packet, qr{<mtm>3931-A01</mtm>},
+    's390x discovery reports the machine type and model' );
+unlike( $packet, qr{<serial>},
+    's390x discovery does not treat the shared machine serial as guest identity' );
+like( $packet, qr{<platform>KVM/Linux</platform>},
+    's390x discovery reports the closest hypervisor' );
+like( $packet, qr{<cpucount>2</cpucount>},
+    's390x discovery counts processor records' );
+like( $packet, qr{<cputype>IBM/S390</cputype>},
+    's390x discovery reports the CPU vendor' );
+like( $packet,
+    qr{<uuid>82038f2a-1344-aaf7-1a85-2a7250be2076</uuid>},
+    's390x discovery uses the closest guest UUID' );
+
+write_file( File::Spec->catfile( $proc_root, 'sysinfo' ), <<'SYSINFO' );
+Manufacturer:         IBM
+Type:                 3931
+Model:                701 A01
+LPAR UUID:            93724168-fda3-429b-8b28-a5d245dcb3ff
+VM00 Control Program: KVM/Linux
+SYSINFO
+is( run_script( $discover_script, \%environment ), 0,
+    's390x discovery accepts a guest without a reported UUID' );
+$packet = read_file($packet_file);
+unlike( $packet, qr{<serial>},
+    'a UUID-less s390x guest still omits the shared machine serial' );
+like( $packet, qr{<uuid>3931-a01-unknown-525400000002</uuid>},
+    'a UUID-less s390x guest retains the MAC-based fallback identity' );
 
 unlink($response_file);
 is( run_script( $callback_script, \%environment, "restart (eth0)" ), 0,

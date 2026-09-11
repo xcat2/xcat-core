@@ -833,6 +833,42 @@ function msgutil {
    msgutil_r "" "$@"
 }
 
+function xcat_wait_for_processes_to_exit {
+    local pidlist="$1"
+    local max_wait="${2:-10}"
+    local waited=0
+    local alive
+    local pid
+
+    while [ $waited -lt $max_wait ]; do
+        alive=0
+        for pid in $pidlist; do
+            if kill -0 $pid 2>/dev/null; then
+                alive=1
+            fi
+        done
+        if [ $alive -eq 0 ]; then
+            return 0
+        fi
+        sleep 1
+        waited=`expr $waited + 1`
+    done
+
+    return 1
+}
+
+function xcat_restart_sshd_after_failed_service_restart {
+    local sshd_cmd="${1:-/usr/sbin/sshd}"
+    local PIDLIST
+
+    PIDLIST=`ps aux | grep -v grep | grep "/usr/sbin/sshd"|awk -F" " '{print $2}'|xargs`
+    if [ -n "$PIDLIST" ]; then
+        kill -9 $PIDLIST
+        xcat_wait_for_processes_to_exit "$PIDLIST"
+    fi
+    $sshd_cmd
+}
+
 function fetch_mypostscript {
     local postroot
     postroot=$1

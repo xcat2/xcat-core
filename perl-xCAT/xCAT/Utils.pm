@@ -4876,6 +4876,7 @@ sub splitkcmdline {
 # without network drivers instead of stopping at debootstrap.
 my %DEBIAN_ARCH = (
     'x86_64' => 'amd64',
+    'x86'    => 'i386',
 );
 
 sub debian_arch {
@@ -4898,6 +4899,7 @@ my @XCAT_ARCH_FROM_DEBIAN = (
     [ qr/^ppc64el$/ => 'ppc64el' ],
     [ qr/ppc|powerpc/ => 'ppc64' ],
     [ qr/^amd64$/   => 'x86_64' ],
+    [ qr/^riscv64$/ => 'riscv64' ],
 );
 
 sub xcat_arch_from_debian {

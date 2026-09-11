@@ -129,6 +129,13 @@ The following matrix is the default live validation gate for DHCP backend work.
      - ``makedhcp -n``; ``kea-dhcp4 -t``; reservation add/query/delete;
        xNBA shell boot; stateful subiquity and stateless compute-image handoff
        through kernel, initrd, and root image when image validation is in scope
+   * - QEMU ``s390-ccw``
+     - ``s390x``
+     - ``ISC``
+     - ``s390-ccw BIOS network IPL``
+     - ``makedhcp -n``; backend parser; architecture ``0x001f``; DHCP option
+       209; TFTP fetch of the generated ``pxelinux.cfg``-style configuration,
+       Genesis kernel, and initramfs
 
 Kea Boot and Reservation Regression Matrix
 ------------------------------------------

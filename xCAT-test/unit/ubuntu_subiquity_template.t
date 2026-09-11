@@ -16,6 +16,9 @@ like($tmpl, qr/autoinstall:/, 'template has autoinstall: key');
 like($tmpl, qr/version:\s*1/, 'template has version: 1');
 
 like($tmpl, qr/^\s*identity:/m, 'template has an identity section so subiquity does not prompt');
+like($tmpl, qr/^    - #INCLUDE_DEFAULT_PKGLIST_AUTOINSTALL#\n/m, 'the packages list carries the osimage pkglist through the autoinstall token');
+like($tmpl, qr/^    - openssh-server\n/m, '... and keeps openssh-server, which xCAT needs on the node');
+like($tmpl, qr/^    - wget\n/m, '... and wget, which the early and late commands use');
 like($tmpl, qr/kernel:/, 'template has kernel section');
 like($tmpl, qr/package:\s*linux-generic/, 'template specifies linux-generic kernel');
 like($tmpl, qr/#UBUNTU_SUBIQUITY_APT_CONFIG#/, 'template renders apt section from osimage context');
@@ -78,5 +81,39 @@ unlike($tmpl, qr/if \[ -x \/tmp\/pre\.sh \]/, 'pre.sh not checked with -x');
 # Subiquity behavior can be handled without cloning this template per release.
 unlike($tmpl, qr/noble-|jammy-|focal-/, 'template avoids release-specific apt suite names');
 like($tmpl, qr/#UBUNTU_SUBIQUITY_APT_CONFIG#/, 'template keeps dynamic apt renderer marker');
+like($tmpl, qr{2>&1'\n(?:\s*#[^\n]*\n)*\s*- rm -f (?:/target/etc/apt/sources\.list\.d/xcat-(?:otherpkgs|pkgdir)-\*\.(?:list|sources)\s+){4}/target/etc/apt/apt\.conf\.d/94curtin-config$}m,
+    'the installer sources for the otherpkgs repository and the pkgdir mirrors, and the apt configuration curtin wrote, are removed from the target by a late-command of their own, after the post script block');
+
+# the post script block: its status is the post script's, so a failed post script stops the install
+{
+    my ($block) = $tmpl =~ /\n    - '(\{\n.*?\n    \} >>\/target\/var\/log\/xcat\/xcat\.log 2>&1)'\n/s;
+    ok( defined $block, 'the post script block is found' ) or last;
+    $block =~ s/''/'/g;
+    require File::Temp;
+    my $root = File::Temp->newdir();
+    mkdir "$root/bin" or die;
+    for my $tool ( 'curtin', 'wget' ) {
+        open( my $fh, '>', "$root/bin/$tool" ) or die;
+        print {$fh} $tool eq 'curtin' ? "#!/bin/sh\ncase \"\$*\" in *post.script*) exit 42;; esac\nexit 0\n" : "#!/bin/sh\nfor a; do case \"\$a\" in http*) touch \"\${a##*/}\";; esac; done\nexit 0\n";
+        close $fh; chmod 0755, "$root/bin/$tool";
+    }
+    ( my $script = $block ) =~ s{/target}{$root/target}g;
+    $script =~ s{/tmp/pre-install\.log}{$root/pre-install.log}g;
+    for my $token ( [ '#SUBIQUITYINSTALLNIC#', '' ], [ '#SUBIQUITYINSTALLMAC#', '52:54:00:00:00:01' ], [ '#HOSTNAME#', 'cn1' ], [ '#XCATVAR:XCATMASTER#', '192.0.2.10' ],
+        [ '#COLONHTTPPORT#', '' ], [ '#TABLEBLANKOKAY:bootparams:$NODE:kcmdline#', '' ] ) {
+        $script =~ s/\Q$token->[0]\E/$token->[1]/g;
+    }
+    require File::Path;
+    File::Path::make_path( map { "$root/target/$_" } qw(etc/default root var/log/xcat) );
+    open( my $hosts, '>', "$root/target/etc/hosts" ) or die; print {$hosts} "127.0.0.1 localhost\n"; close $hosts;
+    open( my $pre, '>', "$root/pre-install.log" ) or die; close $pre;
+    my $cwd = File::Spec->rel2abs('.');
+    chdir $root or die;
+    local $ENV{PATH} = "$root/bin:$ENV{PATH}";
+    system( 'sh', '-c', $script );
+    my $status = $? >> 8;
+    chdir $cwd or die;
+    is( $status, 42, 'a failing post script fails the late-command block, so Subiquity stops the install instead of switching the node to disk boot' );
+}
 
 done_testing();

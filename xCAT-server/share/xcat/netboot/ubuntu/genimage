@@ -259,8 +259,13 @@ unless ($onlyinitrd) {
         # site.ubuntu_apt_mirror overrides; otherwise default to the public archive. A live-server
         # ISO is never a complete debootstrap source, so a real mirror is always required here.
         my @aptmirror = xCAT::TableUtils->get_site_attribute("ubuntu_apt_mirror");
+        # archive.ubuntu.com publishes amd64 and i386 only. Every other architecture, ppc64el
+        # and riscv64 included, is on the ports archive.
+        my $default = ($uarch =~ /^(?:amd64|i386)$/)
+                    ? 'http://archive.ubuntu.com/ubuntu'
+                    : 'http://ports.ubuntu.com/ubuntu-ports';
         my $mirror = (defined $aptmirror[0] && length $aptmirror[0])
-                   ? $aptmirror[0] : 'http://archive.ubuntu.com/ubuntu';
+                   ? $aptmirror[0] : $default;
         (my $codename = $osver) =~ s/^ubuntu//;
         # Strip ONLY a trailing third component. A bare s/\.\d+$// also strips the minor from a
         # two-part osvers (ubuntu26.04 -> "26"), which misses the %cn map below and reaches
@@ -1783,6 +1788,11 @@ EOMS
         }
     } elsif ($arch =~ /ppc64el/) {
         foreach ("lib/powerpc64le-linux-gnu/libnss_files.so.2", "lib/powerpc64le-linux-gnu/libnss_dns.so.2") {
+            push @filestoadd, $_ if (-e "$rootimg_dir/$_");
+        }
+
+    } elsif ($arch =~ /riscv64/) {
+        foreach ("lib/riscv64-linux-gnu/libnss_files.so.2", "lib/riscv64-linux-gnu/libnss_dns.so.2") {
             push @filestoadd, $_ if (-e "$rootimg_dir/$_");
         }
 

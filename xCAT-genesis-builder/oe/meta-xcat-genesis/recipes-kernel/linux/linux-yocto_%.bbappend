@@ -84,3 +84,15 @@ do_kernel_metadata:prepend:xcat-genesis-ppc64() {
     fi
 }
 do_kernel_metadata[depends] += "patch-native:do_populate_sysroot"
+
+COMPATIBLE_MACHINE:xcat-genesis-s390x = "^xcat-genesis-s390x$"
+KMACHINE:xcat-genesis-s390x = "xcat-genesis-s390x"
+KBRANCH:xcat-genesis-s390x = "v6.18/standard/base"
+SRCREV_machine:xcat-genesis-s390x = "b1ba5428513b52c2bd6acfd3ad0a910f699bc395"
+KBUILD_DEFCONFIG:xcat-genesis-s390x = "defconfig"
+KCONFIG_MODE:xcat-genesis-s390x = "--alldefconfig"
+KERNEL_FEATURES:remove:xcat-genesis-s390x = "features/drm-bochs/drm-bochs.scc"
+SRC_URI:append:xcat-genesis-s390x = " \
+    file://0001-s390-use-stable-generator-name.patch \
+    file://xcat-genesis-s390x.cfg \
+"

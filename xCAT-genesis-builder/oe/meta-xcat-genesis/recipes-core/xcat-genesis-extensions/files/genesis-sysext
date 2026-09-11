@@ -46,7 +46,7 @@ canonical_architecture() {
     case "$machine" in
         i?86) printf '%s\n' x86 ;;
         armv7*) printf '%s\n' armv7hf ;;
-        x86_64|ppc64|ppc64le|aarch64|riscv64) printf '%s\n' "$machine" ;;
+        x86_64|ppc64|ppc64le|aarch64|riscv64|s390x) printf '%s\n' "$machine" ;;
         *) fail "unsupported runtime architecture: $machine" ;;
     esac
 }
@@ -75,7 +75,7 @@ validate_manifest() {
         .schema == 1 and
         (.name | type == "string" and test("^[a-z0-9][a-z0-9._-]{0,63}$")) and
         (.version | type == "string" and test("^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$")) and
-        (.architecture | IN("x86", "x86_64", "ppc64", "ppc64le", "armv7hf", "aarch64", "riscv64")) and
+        (.architecture | IN("x86", "x86_64", "ppc64", "ppc64le", "armv7hf", "aarch64", "riscv64", "s390x")) and
         (.genesis_release | type == "string" and test("^[A-Za-z0-9._-]+$")) and
         (.key_id | type == "string" and test("^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")) and
         (.license_class | IN("open", "redistributable", "restricted")) and

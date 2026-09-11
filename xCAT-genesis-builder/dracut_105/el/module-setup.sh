@@ -9,14 +9,15 @@ depends() {
 }
 
 installkernel() {
-    local modules_dep modfile modname
+    local modules_dep modules_root modfile modname
 
-    if [[ -n "${kernel:-}" && -r "/lib/modules/$kernel/modules.dep" ]]; then
-        modules_dep="/lib/modules/$kernel/modules.dep"
-    elif [[ -n "${KERNELVERSION:-}" && -r "/lib/modules/$KERNELVERSION/modules.dep" ]]; then
-        modules_dep="/lib/modules/$KERNELVERSION/modules.dep"
+    modules_root="${DRACUT_MODULES_ROOT:-/lib/modules}"
+    if [[ -n "${kernel:-}" && -r "$modules_root/$kernel/modules.dep" ]]; then
+        modules_dep="$modules_root/$kernel/modules.dep"
+    elif [[ -n "${KERNELVERSION:-}" && -r "$modules_root/$KERNELVERSION/modules.dep" ]]; then
+        modules_dep="$modules_root/$KERNELVERSION/modules.dep"
     else
-        modules_dep=$(ls -1 /lib/modules/*/modules.dep 2>/dev/null | head -n 1)
+        modules_dep=$(ls -1 "$modules_root"/*/modules.dep 2>/dev/null | head -n 1)
     fi
 
     [[ -r "$modules_dep" ]] || return 0
