@@ -92,6 +92,10 @@ FORWARDED=example.com
 
 XCATPORT=3001
 MONITORPORT=3002
+# A callback port above 1023, which credentials.pm:138-143 must refuse: only
+# root can bind a privileged one, so a high port would let any user on the node
+# collect the cluster's keys.
+HIGHPORT=30300
 
 # The web port the cluster is told to use, if the fixture can arrange one.
 # grub2 writes the port into a node's config only when site.httpport is not 80
@@ -1047,6 +1051,7 @@ do_run_xcatd() {
     provtest_run \
         "${COMMON[@]}" \
         --set xcatport="$XCATPORT" --set credtype=xcat_server_cred \
+        --set highport="$HIGHPORT" \
         conf/xcatd-credentials.conf || rc=1
 
     # Last, and after the node has been reset, because these scenarios end by
