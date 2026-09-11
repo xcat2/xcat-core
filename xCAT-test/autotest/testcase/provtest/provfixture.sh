@@ -745,7 +745,7 @@ do_run_tftp() {
         "${COMMON[@]}" \
         --set node="$NODE" --set hexip="$(hex_ip "$NODE_IP")" \
         --set macdashes="$(dashed_mac "$NODE_MAC")" --set mac="$NODE_MAC" \
-        --set loader="$loader" --set bootfile="$loader" \
+        --set loader="$loader" --set bootfile="boot/grub2/grub2-$NODE" \
         --set master="$SRV_IP" --set xcatport="$XCATPORT" --set destiny="$DESTINY" \
         conf/tftp-grub2.conf || rc=1
 
