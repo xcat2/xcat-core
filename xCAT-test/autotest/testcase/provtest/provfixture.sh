@@ -410,16 +410,26 @@ EOF
 }
 
 # The template mkinstall renders into /install/autoinst/<node>: P-35 fetches the
-# rendered result, so a finished file would not do.
+# rendered result, so a finished file would not do. It carries a directive of
+# each kind the renderer has to handle -- a #TABLE: read per node, an #INCLUDE:
+# of a second file -- because a template with none of them is rendered correctly
+# by doing nothing at all, and the HTTP stage asserts what came out.
 fabricate_template() {
-    local path=$1
-    write_file "$path" <<'EOF'
+    local path=$1 include
+    include="$(dirname "$path")/provtest-include.tmpl"
+    write_file "$include" <<'EOF'
+provtest_included yes
+EOF
+    write_file "$path" <<EOF
 # provtest kickstart template. Rendered by mkinstall, fetched by the wire cases,
 # never installed.
 install
 text
 reboot
 rootpw --iscrypted *
+provtest_xcatmaster #TABLE:noderes:\$NODE:xcatmaster#
+provtest_arch #TABLE:nodetype:\$NODE:arch#
+#INCLUDE:$include#
 %post
 #XCAT_KICKSTART_POST__
 %end
@@ -925,14 +935,18 @@ do_run_http() {
     # `set root=http,` line only grub2 writes.
     select="-s install-tree -s tftp-tree-over-http -s urls-the-node-was-given"
     select="$select -s outside-the-aliases -s postscripts-listing"
+    # The kernel and initrd are named on a `linux`/`initrd` line, which only the
+    # grub2 loaders write; an xnba script names its kernel in its own form and
+    # the xnba case asserts that one.
     case "$(node_netboot)" in
         grub2-http)
+            select="$select -s boot-images-over-http"
             if [ "$port" = 80 ]; then
                 select="$select -s default-port-the-node-was-told"
             else
                 select="$select -s port-the-node-was-told"
             fi ;;
-        *)  stage_skip "$NODE is set with $(node_netboot), whose config names no port, so the port half of P-39 is left out" ;;
+        *)  stage_skip "$NODE is set with $(node_netboot), whose config names no port and no kernel line, so the port half of P-39 and the boot images are left out" ;;
     esac
 
     # shellcheck disable=SC2086
@@ -943,6 +957,7 @@ do_run_http() {
         --set knownfile="$(node_config_rel)" \
         --set installpath="autoinst/$NODE" \
         --set repofile="repodata/repomd.xml" \
+        --set master="$SRV_IP" --set arch="$NODE_ARCH" \
         conf/http.conf
 }
 
