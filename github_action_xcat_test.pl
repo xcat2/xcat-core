@@ -921,9 +921,11 @@ sub run_fast_regression_test{
          print Dumper \@caseslist;
     }
 
-    # The DHCP wire cases are not in this set: they reconfigure the DHCP server
-    # out from under whatever else is running, so they are labelled dhcp_wire
-    # instead and run as their own phase after this one. See run_dhcp_wire_test.
+    # Neither wire set is in this one: the DHCP cases reconfigure the DHCP
+    # server out from under whatever else is running, and the provisioning
+    # cases add an interface, nodes, a network and a rewritten zone. Both are
+    # labelled separately -- dhcp_wire and prov_wire -- and run as their own
+    # phases after this one. See run_prov_wire_test and run_dhcp_wire_test.
     my $casenum = @caseslist;
     my %counts = (pass => 0, fail => 0, failed => []);
     run_cases($conf_file, \@caseslist, "", \%counts);
