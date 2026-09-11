@@ -543,6 +543,49 @@ sub run_dhcptest_unit_tests{
 }
 
 #--------------------------------------------------------
+# Fuction name: run_provtest_unit_tests
+# Description:  Run the provtest offline checks: its Python unit tests and
+#               `provtest validate` over every shipped .conf. Both are
+#               unprivileged and touch no network -- the wire scenarios need a
+#               veth pair, a network namespace and a running xcatd, so they are
+#               not run here. Skipped when python3 is absent rather than
+#               failing the build.
+# Attributes:
+# Return code:  0 all checks passed, 1 otherwise
+#--------------------------------------------------------
+sub run_provtest_unit_tests{
+    my $testdir = "$unitsrc/xCAT-test/provtest";
+    if (! -d $testdir) {
+        print "[run_provtest_unit_tests] no provtest found under $testdir\n";
+        return 0;
+    }
+    runcmd("which python3 2>/dev/null");
+    if($::RUNCMD_RC){
+        print "[run_provtest_unit_tests] python3 is not installed, skipping\n";
+        return 0;
+    }
+
+    # The unit tests are discovered from inside tests/ because that is where
+    # their own context module puts the package on the path.
+    my $cmd = "cd $testdir/tests && python3 -m unittest discover -s . -p 'test_*.py'"
+            . " && cd $testdir && python3 src/provtest validate conf/*.conf";
+    print "[run_provtest_unit_tests] running $cmd\n";
+    my @output = runcmd("$cmd");
+    print Dumper \@output;
+    if($::RUNCMD_RC){
+        print RED "[run_provtest_unit_tests] $cmd ....[Failed]\n";
+        $check_result_str .= "> **PROVTEST TESTS Failed** : Please click ``Details`` label in ``Merge pull request`` box for detailed information\n";
+        print $check_result_str;
+        return 1;
+    }
+
+    print "[run_provtest_unit_tests] $cmd ....[Pass]\n";
+    $check_result_str .= "> **PROVTEST TESTS Successful**\n";
+    print $check_result_str;
+    return 0;
+}
+
+#--------------------------------------------------------
 # Fuction name: check_syntax
 # Description:
 # Attributes:
@@ -781,6 +824,60 @@ sub run_dhcp_wire_test{
 }
 
 #--------------------------------------------------------
+# Fuction name: run_prov_wire_test
+# Description:  run the provisioning wire cases.
+#
+#   These come after the ci_test set and before the DHCP wire phase, which is
+#   the order a node experiences: DNS, then the loader and its config, then the
+#   install tree, then the discovery and xcatd protocols. They are deliberately
+#   not labelled ci_test, for the same reason the DHCP wire cases are not --
+#   while one runs, the management node has an extra veth pair and network
+#   namespace, a network object and four nodes it did not have, a rewritten
+#   zone, and possibly a web server on another port. Each case puts all of it
+#   back from a trap, but a ci_test case running in between would be sharing a
+#   machine that is mid-reconfiguration.
+#
+#   Unlike the DHCP cases these are run once rather than once per backend:
+#   nothing here depends on which DHCP server is installed, and the cases that
+#   would -- what a node is told over DHCP -- are dhcptest's subject.
+# Attributes:
+# Return code:  0 if every case passed
+#--------------------------------------------------------
+sub run_prov_wire_test{
+    my @cases = list_cases("prov_wire");
+    unless(@cases){
+        print "[run_prov_wire_test] no provisioning wire cases to run\n";
+        $check_result_str .= "> **PROVISION WIRE TEST Skipped**: no case carries the prov_wire label\n";
+        print $check_result_str;
+        return 0;
+    }
+
+    my $fixture = "/opt/xcat/share/xcat/tools/autotest/testcase/provtest/provfixture.sh";
+    unless(-f $fixture){
+        print RED "[run_prov_wire_test] $fixture is missing, so the wire cases cannot be run\n";
+        $check_result_str .= "> **PROVISION WIRE TEST Failed**: $fixture is not installed\n";
+        print $check_result_str;
+        return 1;
+    }
+
+    my $conf_file = write_regression_conf("prov-wire.conf", 0);
+    my %counts = (pass => 0, fail => 0, failed => []);
+    run_cases($conf_file, \@cases, "", \%counts, "run_prov_wire_test");
+
+    my $casenum = $counts{pass} + $counts{fail};
+    if($counts{fail}){
+        my $log_str = join(",", @{$counts{failed}});
+        $check_result_str .= "> **PROVISION WIRE TEST Failed**: Totalcase $casenum Passed $counts{pass} Failed $counts{fail} FailedCases: $log_str.  Please click ``Details`` label in ``Merge pull request`` box for detailed information\n";
+        print $check_result_str;
+        return 1;
+    }
+
+    $check_result_str .= "> **PROVISION WIRE TEST Successful**: Totalcase $casenum Passed $counts{pass} Failed $counts{fail}\n";
+    print $check_result_str;
+    return 0;
+}
+
+#--------------------------------------------------------
 # Fuction name: run_fast_regression_test
 # Description:
 # Attributes:
@@ -952,6 +1049,27 @@ if($rst){
     exit $rst;
 }
 mark_time("run_fast_regression_test");
+
+#The provisioning wire cases come next: after the ci_test set, so they are not
+#reconfiguring the machine underneath it, and before the DHCP phases, which is
+#the order a booting node meets them in. Their offline checks run first, so a
+#scenario file that does not even parse is reported as that rather than as a
+#case failure.
+print GREEN "\n------Running xCAT-test provtest checks ------\n";
+$rst = run_provtest_unit_tests();
+if($rst){
+    print RED "Run of xCAT-test provtest checks failed\n";
+    exit $rst;
+}
+mark_time("run_provtest_unit_tests");
+
+print GREEN "\n------Running provisioning on-wire test ------\n";
+$rst = run_prov_wire_test();
+if($rst){
+    print RED "Run of provisioning on-wire test failed\n";
+    exit $rst;
+}
+mark_time("run_prov_wire_test");
 
 #Run the dhcptest offline checks -- unit tests plus `dhcptest validate` -- last:
 #they exercise the source tree rather than the installed copy, and nothing else
