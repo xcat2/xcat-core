@@ -37,6 +37,11 @@ PREFIX=24
 # an underscore because a slash cannot be a file name.
 NET_FILE=10.99.1.0_24
 SRV_IP=10.99.1.1
+# A second address on the same interface, so $NODE can be given a tftpserver
+# that is not site.master and not its xcatmaster. P-55 has four sources to pick
+# from and no error when the wrong one wins; with every source holding the same
+# address the assertion cannot tell them apart.
+ALT_IP=10.99.1.2
 DOMAIN=provtest.cluster
 
 # site.master is an address; P-07 is about a name, so the master gets a node
@@ -107,6 +112,12 @@ PTB_ARCH=ppc64le
 # writes destiny= on the kernel command line, which is what P-75 asserts.
 DESTINY=install
 SECOND_DESTINY=shell
+
+# Where nextdestiny takes a node that was last set to install: `nodeset
+# osimage=` leaves chain.currchain holding the single word `boot`
+# (destiny.pm:550), and nextdestiny shifts it off. The state that boots the disk
+# the install just wrote, and the only one that ends a provision.
+NEXT_DESTINY=boot
 
 STATE=/tmp/provtest-fixture
 PROVTEST=/opt/xcat/share/xcat/tools/autotest/provtest
@@ -558,6 +569,10 @@ do_setup() {
     ip link add "$IF_SRV" type veth peer name "$IF_CLI" || die "cannot create the veth pair"
     echo done > "$STATE/veth"
     ip addr add "$SRV_IP/$PREFIX" dev "$IF_SRV" || die "cannot address $IF_SRV"
+    # The node's own tftpserver, so P-55 has something to discriminate with. On
+    # the same interface and the same subnet: what it must not be is any of the
+    # other three addresses destiny.pm would fall back to.
+    ip addr add "$ALT_IP/$PREFIX" dev "$IF_SRV" || die "cannot add $ALT_IP to $IF_SRV"
     ip link set "$IF_SRV" up || die "cannot bring up $IF_SRV"
 
     # The foreign network is routed to rather than put on this interface, and
@@ -643,8 +658,12 @@ do_setup() {
 
     # hostnames= is what becomes the CNAME P-04 asks for, by way of /etc/hosts
     # and makedns.
+    # tftpserver last, so it wins over the one define_node gives every node:
+    # destiny.pm reads it before noderes.xcatmaster, and grub2.pm builds the
+    # node's `set root=` line from it, so both are asserted against an address
+    # site.master does not hold.
     define_node "$NODE" "$NODE_IP" "$NODE_MAC" "$NODE_ARCH" "$(node_netboot)" \
-        "$OSIMAGE" hostnames="$ALIAS"
+        "$OSIMAGE" hostnames="$ALIAS" tftpserver="$ALT_IP"
     define_node "$PXE_NODE" "$PXE_IP" "$PXE_MAC" "$NODE_ARCH" pxe "$OSIMAGE"
     define_node "$BOOT_NODE" "$BOOT_IP" "$BOOT_MAC" "$NODE_ARCH" pxe "$OSIMAGE"
     define_node "$XNBA_NODE" "$XNBA_IP" "$XNBA_MAC" "$NODE_ARCH" xnba "$OSIMAGE"
@@ -1022,6 +1041,7 @@ do_run_xcatd() {
         "${COMMON[@]}" \
         --set unknown="$UNKNOWN_IP" --set node="$NODE" \
         --set xcatport="$XCATPORT" --set monitorport="$MONITORPORT" \
+        --set master="$SRV_IP" --set domain="$DOMAIN" \
         conf/xcatd-postscript.conf || rc=1
 
     provtest_run \
@@ -1038,6 +1058,7 @@ do_run_xcatd() {
         "${COMMON[@]}" \
         --set unknown="$UNKNOWN_IP" --set node="$NODE" \
         --set destiny="$DESTINY" --set master="$SRV_IP" --set xcatport="$XCATPORT" \
+        --set imgserver="$ALT_IP" --set next="$NEXT_DESTINY" \
         conf/xcatd-destiny.conf || rc=1
     return $rc
 }
