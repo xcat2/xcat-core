@@ -281,14 +281,15 @@ ensure_running() {
 restore_services() {
     local unit was
     [ -f "$STATE/services" ] || return 0
-    while read -r unit was; do
+    # On descriptor 3, for the reason given in do_teardown.
+    while read -r unit was <&3; do
         [ -n "$unit" ] || continue
         if [ "$was" = active ]; then
             systemctl restart "$unit" >/dev/null 2>&1
         else
             systemctl stop "$unit" >/dev/null 2>&1
         fi
-    done < "$STATE/services"
+    done 3< "$STATE/services"
 }
 
 # Being alive is not the same as being able to answer, and a daemon that is up
@@ -338,6 +339,7 @@ tftp_unit() {
 # --- check ----------------------------------------------------------------
 
 do_check() {
+    local leftover
     [ "$(id -u)" = 0 ] || skip "the wire cases bind source addresses and low ports, which needs root"
     command -v ip >/dev/null 2>&1 || skip "iproute2 is not installed"
     command -v nodeset >/dev/null 2>&1 || skip "nodeset is not on PATH, so this is not a management node"
@@ -364,7 +366,14 @@ do_check() {
     ip -o addr show | grep -qw "$SRV_IP" && skip "$SRV_IP is already configured on this machine"
     ip link show "$IF_SRV" >/dev/null 2>&1 && skip "$IF_SRV already exists"
     ip netns list 2>/dev/null | grep -qw "$NETNS" && skip "a network namespace called $NETNS already exists"
-    lsdef "$NODE" >/dev/null 2>&1 && skip "a node called $NODE is already defined"
+    # Every name, not just $NODE: a teardown that stopped half way leaves some
+    # of them behind, and checking only the first one defined would let setup
+    # run again and record the leftovers as the configuration to restore to.
+    for leftover in "$NODE" "$PXE_NODE" "$BOOT_NODE" "$XNBA_NODE" "$PTB_NODE" \
+                    "$MASTER_NODE"; do
+        lsdef "$leftover" >/dev/null 2>&1 \
+            && skip "a node called $leftover is already defined"
+    done
     lsdef -t network -o "$NETOBJ" >/dev/null 2>&1 && skip "a network called $NETOBJ is already defined"
     [ -d "$(pkgdir_for $NODE_ARCH)" ] && skip "$(pkgdir_for $NODE_ARCH) already exists"
 
@@ -1067,36 +1076,79 @@ do_teardown() {
     local name path dir
     [ -d "$STATE" ] || return 0
 
+    # Every loop here reads its list on file descriptor 3 rather than on
+    # standard input, because the xCAT clients inside them read standard input
+    # themselves: on the first iteration the command swallows the rest of the
+    # file, `read` sees end of file, and teardown stops after one name having
+    # said it removed everything. That leaves nodes, a network object and a
+    # rewritten site table behind, and the next setup records the leftovers as
+    # the state to restore to.
     if [ -f "$STATE/nodes" ]; then
-        while read -r name; do
+        while read -r name <&3; do
             [ -n "$name" ] || continue
             nodeset "$name" offline >/dev/null 2>&1
             makedns -d "$name" >/dev/null 2>&1
             makehosts -d "$name" >/dev/null 2>&1
             rmdef "$name" >/dev/null 2>&1
-        done < "$STATE/nodes"
+        done 3< "$STATE/nodes"
     fi
     if [ -f "$STATE/osimages" ]; then
-        while read -r name; do
+        while read -r name <&3; do
             [ -n "$name" ] && rmdef -t osimage -o "$name" >/dev/null 2>&1
-        done < "$STATE/osimages"
+        done 3< "$STATE/osimages"
     fi
     [ -f "$STATE/network" ] && rmdef -t network -o "$NETOBJ" >/dev/null 2>&1
 
-    # The generated artefacts: nodeset offline removes the per-node configs it
-    # wrote, and what is left is what this fixture put there itself.
+    # What nodeset offline did not take with it.
+    #
+    # It is not reliable here: it exits as soon as it cannot reach the DHCP
+    # backend -- which on a machine where these cases have just moved the DHCP
+    # configuration about is likely -- and it leaves the kernel and initrd it
+    # staged under the osimage name whatever happens. So the artefacts this
+    # fixture's own nodes and images could have produced are removed by name.
+    # Every name is the fixture's: a node it defined, an image it created, or
+    # an address in the network it built, so nothing here can match a file the
+    # machine had before.
+    local tftp
+    tftp=$(tftpdir)
+    # Guarded, because the one recursive removal in this fixture must not be
+    # able to become the whole directory if a name ever arrives empty.
+    for name in "$OSIMAGE" "$PTB_OSIMAGE"; do
+        [ -n "$name" ] && rm -rf "$tftp/xcat/osimage/$name"
+    done
+    # One node produces several files, and not all of them are named after it
+    # plainly: xnba writes .uefi and .elilo beside the script, and grub2 writes
+    # both <node> and grub2-<node> beside the hex-IP config. The globs are
+    # anchored on a node name this fixture defined, so they cannot reach
+    # anything else.
+    for name in "$NODE" "$PXE_NODE" "$BOOT_NODE" "$XNBA_NODE" "$PTB_NODE"; do
+        rm -f "$tftp/pxelinux.cfg/$name" "$tftp/petitboot/$name" \
+              "$tftp/xcat/xnba/nodes/$name" "$tftp/xcat/xnba/nodes/$name".* \
+              "$tftp/boot/grub2/$name" "$tftp/boot/grub2/grub2-$name"
+    done
+    for path in "$NODE_IP" "$PXE_IP" "$BOOT_IP" "$XNBA_IP" "$PTB_IP"; do
+        name=$(hex_ip "$path")
+        rm -f "$tftp/pxelinux.cfg/$name" "$tftp/boot/grub2/grub.cfg-$name" \
+              "$tftp/$name"
+    done
+    # And the per-network ones, which mknb writes for the discovery stage. The
+    # xnba form is named after the network and its prefix rather than in hex.
+    name=$(hex_net "$NET" "$PREFIX")
+    rm -f "$tftp/pxelinux.cfg/$name" "$tftp/boot/grub2/grub.cfg-$name" \
+          "$tftp/xcat/xnba/nets/$NET_FILE"
+
+    # The generated artefacts: what is left is what this fixture put there
+    # itself.
     if [ -f "$STATE/files" ]; then
-        while read -r path; do
+        while read -r path <&3; do
             [ -n "$path" ] && rm -f "$path"
-        done < "$STATE/files"
+        done 3< "$STATE/files"
     fi
     if [ -f "$STATE/dirs" ]; then
         # Deepest first, and only if empty: a directory that still has
         # something in it was not this fixture's alone.
-        while read -r dir; do
-            [ -n "$dir" ] && echo "$dir"
-        done < "$STATE/dirs" | sort -r | while read -r dir; do
-            rmdir -p "$dir" 2>/dev/null
+        sort -r "$STATE/dirs" | while read -r dir; do
+            [ -n "$dir" ] && rmdir -p "$dir" 2>/dev/null
         done
     fi
 
