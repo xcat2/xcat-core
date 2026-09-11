@@ -204,15 +204,15 @@ something those programs will do.
 | `dns-removal.conf` | DNS | `removed-node` | P-08 |
 | `tftp-grub2.conf` | TFTP | `grub2-binary`, `grub2-node-config`, `grub2-config-by-mac`, `grub2-kernel-and-initrd`, `tftp-escape`, `dhcp-named-file-must-exist` | P-09, P-11..P-17, P-24, P-70, P-71 |
 | `tftp-pxelinux.conf` | TFTP | `pxelinux-node-config`, `pxelinux-boot-from-disk` | P-18..P-20 |
-| `tftp-xnba.conf` | TFTP | `xnba-script` | P-21, P-22 |
+| `tftp-xnba.conf` | TFTP | `xnba-script`, `xnba-kernel` | P-21, P-22 |
 | `tftp-petitboot.conf` | TFTP | `petitboot-config` | P-23 |
-| `discovery-artefacts.conf` | TFTP | `grub2-discovery-config`, `pxelinux-discovery-config`, `genesis-kernel-and-initrd` | P-25..P-31 |
-| `http.conf` | HTTP | `install-tree`, `tftp-tree-over-http`, `urls-the-node-was-given`, `outside-the-aliases`, `postscripts-listing`, `port-the-node-was-told` | P-32..P-39 |
+| `discovery-artefacts.conf` | TFTP | `grub2-discovery-config`, `pxelinux-discovery-config`, `xnba-discovery-config`, `genesis-images-pxelinux`, `genesis-images-grub2` | P-25..P-31 |
+| `http.conf` | HTTP | `install-tree`, `tftp-tree-over-http`, `urls-the-node-was-given`, `boot-images-over-http`, `outside-the-aliases`, `postscripts-listing`, `port-the-node-was-told`, `default-port-the-node-was-told` | P-32..P-39 |
 | `flowcontrol.conf` | UDP 3001 | `acknowledged`, `granted` | P-40, P-41 |
 | `findme.conf` | UDP 3001 | `findme-callbacks`, `findme-plain-xml`, `findme-unprivileged-port`, `findme-foreign-address` | P-42..P-46, P-48, P-73 |
 | `xcatd-destiny.conf` | TLS 3001 | `certless-handshake`, `unknown-client`, `known-node`, `chain-advances` | P-49..P-56 |
 | `xcatd-postscript.conf` | TLS 3001, TCP 3002 | `postscript-terminated`, `postscript-unknown-client`, `postscript-both-transports` | P-57, P-58, P-67 |
-| `xcatd-credentials.conf` | TLS 3001 | `credentials-granted`, `credentials-refused` | P-61..P-63 |
+| `xcatd-credentials.conf` | TLS 3001 | `credentials-granted`, `credentials-refused`, `credentials-unprivileged-callback`, `credentials-nameless` | P-61..P-63, P-76 |
 | `xcatd-policy.conf` | TLS 3001 | `command-outside-policy`, `malformed-request` | P-59, P-60 |
 | `monitor.conf` | TCP 3002 | `monitor-accepts-status`, `monitor-unknown-client`, `monitor-unknown-verb`, `monitor-is-not-tls` | P-64..P-66, P-68, P-69 |
 | `ordering.conf` | whole chain | `unreachable-master`, `missing-ptr`, `state-replaced` | P-72, P-74, P-75 |
@@ -220,6 +220,23 @@ something those programs will do.
 A node has exactly one netboot method, so the four `tftp-*.conf` files are
 alternatives, not a set: running all four against one node fails three of them.
 The fixture selects the one the node is defined with.
+
+### What is deliberately not covered
+
+`getcredentials` has a second form: genesis asks for `x509cert` and encloses a
+certificate signing request, and `xcatd` signs it and returns the certificate.
+None of these scenarios exercise it. A CSR is not something a wire test can
+fabricate meaningfully — a signature over a key that belongs to nothing proves
+only that OpenSSL works — and the part of the exchange that decides whether a
+node gets a credential at all is the callback on port 300, which is the same for
+both forms and is asserted three ways here. A cluster where signing itself is
+broken fails at `credentials-granted`; one where the x509 path alone is broken
+is not caught, and that is the gap.
+
+Nothing here installs an operating system either. The install tree the nodes
+point at is fabricated, not produced by `copycds`: the scenarios fetch the files
+a node fetches and assert what they contain, and the media that would have to be
+staged to do more is measured in gigabytes.
 
 ## What it does to the host
 
