@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+"""provtest -- drive the xCAT provision chain the way a booting node does.
+
+Runs straight out of a checkout: this script puts its own directory on
+sys.path, so no installation, no virtualenv and no pip are involved. Nothing
+beyond the standard library is imported; the DNS, HTTP and TFTP stages are
+driven by `dig`, `curl` and `tftp`, and the xCAT stages by a socket.
+"""
+
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+
+from provtest_lib.cli import main          # noqa: E402  (path set up above)
+
+if __name__ == "__main__":
+    sys.exit(main())
