@@ -26,4 +26,4 @@ Operating System & Hardware Support Matrix
 
 .. note::
 
-   EL: Enterprise Linux, such as: RHEL, Rocky Linux, Alma Linux, CentOS and Oracle Linux.
+   EL stands for Enterprise Linux, such as: Red Hat Enterprise Linux (RHEL), Rocky Linux, AlmaLinux, CentOS and Oracle Linux.
