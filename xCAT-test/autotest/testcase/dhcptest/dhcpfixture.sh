@@ -598,15 +598,21 @@ netboot_define() {
     makedhcp "$NOIP_NODE" || die "makedhcp $NOIP_NODE failed"
 }
 
+# The list is read on file descriptor 3 because the xCAT clients called inside
+# the loop read standard input themselves: on the first iteration makedhcp
+# swallows the rest of the file, the loop ends after one name and every other
+# node this fixture defined is left on the machine.
 netboot_undefine() {
-    local name
+    local name failed=0
     [ -f "$STATE/netboot" ] || return 0
-    while read -r name; do
+    while read -r name <&3; do
         [ -n "$name" ] || continue
         makedhcp -d "$name" >/dev/null 2>&1
         makehosts -d "$name" >/dev/null 2>&1
-        rmdef "$name" >/dev/null 2>&1
-    done < "$STATE/netboot"
+        rmdef "$name" >/dev/null 2>&1 \
+            || { say "FAILED: cannot remove the node $name"; failed=1; }
+    done 3< "$STATE/netboot"
+    return $failed
 }
 
 do_run_netboot() {
@@ -738,16 +744,19 @@ extra_define() {
     makehosts "$name" || die "cannot add $name to /etc/hosts"
 }
 
+# On file descriptor 3, for the reason netboot_undefine gives.
 extra_undefine() {
-    local name
+    local name failed=0
     [ -f "$STATE/extra" ] || return 0
-    while read -r name; do
+    while read -r name <&3; do
         [ -n "$name" ] || continue
         makedhcp -d "$name" >/dev/null 2>&1
         makehosts -d "$name" >/dev/null 2>&1
-        rmdef "$name" >/dev/null 2>&1
-    done < "$STATE/extra"
-    rm -f "$STATE/extra"
+        rmdef "$name" >/dev/null 2>&1 \
+            || { say "FAILED: cannot remove the node $name"; failed=1; }
+    done 3< "$STATE/extra"
+    [ "$failed" = 0 ] && rm -f "$STATE/extra"
+    return $failed
 }
 
 # S-36, S-37, S-38. Three nodes, three sources for next-server, three different
@@ -962,8 +971,8 @@ do_teardown() {
     # record of what still has to be put back.
     [ -f "$STATE/node" ] && { makedhcp -d "$NODE" >/dev/null 2>&1; makehosts -d "$NODE" >/dev/null 2>&1; rmdef "$NODE" >/dev/null 2>&1 || { say "FAILED: cannot remove the node $NODE"; failed=1; }; }
     [ -f "$STATE/adopt" ] && { makedhcp -d "$ADOPT_NODE" >/dev/null 2>&1; makehosts -d "$ADOPT_NODE" >/dev/null 2>&1; rmdef "$ADOPT_NODE" >/dev/null 2>&1 || { say "FAILED: cannot remove the node $ADOPT_NODE"; failed=1; }; }
-    netboot_undefine
-    extra_undefine
+    netboot_undefine || failed=1
+    extra_undefine || failed=1
     [ -f "$STATE/iscsi" ] && chtab -d node="$ISCSI_NODE" iscsi >/dev/null 2>&1
     [ -f "$STATE/network" ] && rmdef -t network -o "$NETOBJ" >/dev/null 2>&1
     [ -f "$STATE/veth" ] && ip link del "$IF_SRV" >/dev/null 2>&1
