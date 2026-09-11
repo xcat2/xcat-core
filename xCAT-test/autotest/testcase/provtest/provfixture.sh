@@ -164,18 +164,22 @@ site_attr() {
         | grep "$1=" | awk -F= '{print $2}'
 }
 
+# Asked once each. Every one of these costs an lsdef, which is a fork and a
+# round trip to xcatd, and one stage resolves tftpdir nine times for the same
+# answer. Neither is changed by this fixture or by anything it runs, so the
+# first answer is the answer for the life of the process.
 tftpdir() {
-    local dir
-    dir=$(site_attr tftpdir)
-    echo "${dir:-/tftpboot}"
+    [ -n "${TFTPDIR:-}" ] || TFTPDIR=$(site_attr tftpdir)
+    echo "${TFTPDIR:-/tftpboot}"
 }
 
 installdir() {
-    local dir
-    dir=$(site_attr installdir)
-    echo "${dir:-/install}"
+    [ -n "${INSTALLDIR:-}" ] || INSTALLDIR=$(site_attr installdir)
+    echo "${INSTALLDIR:-/install}"
 }
 
+# Not cached, unlike the two above: setup moves site.httpport when it can, so
+# the answer changes within a single run.
 httpport() {
     local port
     port=$(site_attr httpport)
@@ -219,30 +223,32 @@ http_confdir() {
 
 pkgdir_for() { echo "$(installdir)/$OSVERS/$1"; }
 
-# The names the loaders ask for, computed here rather than asserted here: an
-# encoding that is wrong by one digit produces no error anywhere, so the
-# fixture has to arrive at the name the same way the firmware does.
-hex_ip() {
-    local a b c d
-    IFS=. read -r a b c d <<< "$1"
-    printf '%02X%02X%02X%02X' "$a" "$b" "$c" "$d"
+# The names the loaders and the resolver ask for, computed here rather than
+# asserted here: an encoding that is wrong by one digit produces no error
+# anywhere, so the fixture has to arrive at the name the same way the firmware
+# does rather than ask xCAT what it wrote.
+#
+# Arrived at by calling provtest's own encoders, not by a second implementation
+# of them in shell. Two implementations of a name that nothing validates are
+# two chances to be wrong and no way to notice, and only one of them would have
+# the unit tests that provtest_lib.netutil already has.
+netutil() {
+    local fn=$1
+    shift
+    python3 -c 'import sys
+sys.path.insert(0, sys.argv[1])
+from provtest_lib import netutil
+sys.stdout.write(str(getattr(netutil, sys.argv[2])(*sys.argv[3:])))' \
+        "$PROVTEST/src" "$fn" "$@"
 }
 
-# The name a per-network file is written under: as many hex digits as the
-# netmask covers, rounded up to a whole digit. A /24 is six digits, which is
-# what a loader asks for after failing to find a file for its own address.
-hex_net() {
-    local ip=$1 prefix=$2
-    hex_ip "$ip" | cut -c1-$(( (prefix + 3) / 4 ))
-}
-
-dashed_mac() { echo "$1" | tr ':' '-'; }
-
-reverse_name() {
-    local a b c d
-    IFS=. read -r a b c d <<< "$1"
-    echo "$d.$c.$b.$a.in-addr.arpa"
-}
+hex_ip()       { netutil hex_ip "$1"; }
+# As many hex digits as the netmask covers, rounded up to a whole digit: a /24
+# is six, which is what a loader asks for after failing to find a file for its
+# own address.
+hex_net()      { netutil hex_net "$1" "$2"; }
+dashed_mac()   { netutil dashed_mac "$1"; }
+reverse_name() { netutil reverse_name "$1"; }
 
 # A port nothing answers on: one for the web server to be moved to, and one
 # for the control half of P-39, which needs a port that demonstrably refuses.
@@ -338,34 +344,25 @@ assert_serving() {
         || die "nothing holds $proto/$port, so $what cannot answer"
 }
 
-dns_unit() {
+# The first of these unit names this machine has. Which name a service goes by
+# is the distribution's choice and nothing else about it differs, so the three
+# services are asked the same question with different lists.
+first_unit() {
     local unit
-    for unit in named.service bind9.service named-chroot.service; do
+    for unit in "$@"; do
         systemctl list-unit-files "$unit" >/dev/null 2>&1 && { echo "$unit"; return 0; }
     done
     return 1
 }
 
-http_unit() {
-    local unit
-    for unit in httpd.service apache2.service; do
-        systemctl list-unit-files "$unit" >/dev/null 2>&1 && { echo "$unit"; return 0; }
-    done
-    return 1
-}
-
-tftp_unit() {
-    local unit
-    for unit in tftp.socket tftpd-hpa.service xinetd.service; do
-        systemctl list-unit-files "$unit" >/dev/null 2>&1 && { echo "$unit"; return 0; }
-    done
-    return 1
-}
+dns_unit()  { first_unit named.service bind9.service named-chroot.service; }
+http_unit() { first_unit httpd.service apache2.service; }
+tftp_unit() { first_unit tftp.socket tftpd-hpa.service xinetd.service; }
 
 # --- check ----------------------------------------------------------------
 
 do_check() {
-    local leftover
+    local leftover pkgdir port
     [ "$(id -u)" = 0 ] || skip "the wire cases bind source addresses and low ports, which needs root"
     command -v ip >/dev/null 2>&1 || skip "iproute2 is not installed"
     command -v nodeset >/dev/null 2>&1 || skip "nodeset is not on PATH, so this is not a management node"
@@ -401,7 +398,8 @@ do_check() {
             && skip "a node called $leftover is already defined"
     done
     lsdef -t network -o "$NETOBJ" >/dev/null 2>&1 && skip "a network called $NETOBJ is already defined"
-    [ -d "$(pkgdir_for $NODE_ARCH)" ] && skip "$(pkgdir_for $NODE_ARCH) already exists"
+    pkgdir=$(pkgdir_for "$NODE_ARCH")
+    [ -d "$pkgdir" ] && skip "$pkgdir already exists"
 
     # P-43 is about a network xCAT does not manage. If this machine happens to
     # manage it, the scenario would be asserting the opposite of what it says.
@@ -412,8 +410,9 @@ do_check() {
     # nothing to do with the web server, and a machine that cannot run the HTTP
     # ones can still run those. Setup may yet fix this by moving the web server
     # to a port of its own, so this is a warning and not a verdict.
-    http_serves_xcat "$(httpport)" \
-        || say "the web server on port $(httpport) answers 404 for $(tftpdir); unless setup can move the web server, the HTTP stages will be left out"
+    port=$(httpport)
+    http_serves_xcat "$port" \
+        || say "the web server on port $port answers 404 for $(tftpdir); unless setup can move the web server, the HTTP stages will be left out"
 
     say "environment is able to run the wire cases"
 }
@@ -793,8 +792,20 @@ provtest_run() {
     ( cd "$PROVTEST" && in_ns python3 src/provtest run "$@" )
 }
 
-common_set() {
-    echo "--set server=$SRV_IP --set client=$NODE_IP"
+# What every scenario file is told: who is being asked, and whose address the
+# asking is done from. Named once rather than retyped at each call, so that a
+# third universal setting, or a renamed one, is one edit and not nineteen.
+COMMON=(--set server="$SRV_IP" --set client="$NODE_IP")
+
+# The node put back to the state setup left it in. Two stages need this and
+# they need the same thing: a node still set to install, with the configuration
+# that says so on disk. Checked rather than assumed, because nodeset exits
+# non-zero when it cannot reach the DHCP backend and still writes the file --
+# so the file is the evidence and the exit status is not.
+reset_node() {
+    nodeset "$NODE" osimage="$OSIMAGE" >/dev/null 2>&1
+    generated "$NODE_NETBOOT" "$NODE" "$NODE_IP" \
+        || die "nodeset wrote no $NODE_NETBOOT configuration for $NODE"
 }
 
 # Stage 1. The forwarded-name scenario is selected separately because it needs
@@ -807,7 +818,7 @@ do_run_dns() {
 
     scenarios="-s node-forward -s node-reverse -s node-alias -s local-nxdomain -s master-resolves"
     provtest_run $scenarios \
-        --set server="$SRV_IP" --set client="$NODE_IP" \
+        "${COMMON[@]}" \
         --set node="$NODE" --set domain="$DOMAIN" \
         --set nodeip="$NODE_IP" --set revname="$(reverse_name "$NODE_IP")" \
         --set alias="$ALIAS" --set master="$MASTER_NODE.$DOMAIN" \
@@ -818,7 +829,7 @@ do_run_dns() {
     if dig +short +time=5 +tries=1 "$FORWARDED" A >/dev/null 2>&1 && \
        [ -n "$(dig +short +time=5 +tries=1 "$FORWARDED" A 2>/dev/null)" ]; then
         provtest_run -s forwarded-name \
-            --set server="$SRV_IP" --set client="$NODE_IP" \
+            "${COMMON[@]}" \
             --set node="$NODE" --set domain="$DOMAIN" \
             --set nodeip="$NODE_IP" --set revname="$(reverse_name "$NODE_IP")" \
             --set alias="$ALIAS" --set master="$MASTER_NODE.$DOMAIN" \
@@ -834,7 +845,7 @@ do_run_dns() {
 # Stage 3. One file per netboot method, one node per file: the method is an
 # attribute of the node, so a single node cannot answer for all four.
 do_run_tftp() {
-    local rc=0 loader tftp scenarios xnba
+    local rc=0 loader tftp scenarios xnba port
     assert_serving udp 69 "the TFTP server"
     tftp=$(tftpdir)
 
@@ -850,7 +861,7 @@ do_run_tftp() {
         stage_skip "$tftp/$loader is not present, so the loader fetches are left out"
     fi
     provtest_run $scenarios \
-        --set server="$SRV_IP" --set client="$NODE_IP" \
+        "${COMMON[@]}" \
         --set node="$NODE" --set hexip="$(hex_ip "$NODE_IP")" \
         --set macdashes="$(dashed_mac "$NODE_MAC")" --set mac="$NODE_MAC" \
         --set loader="$loader" --set bootfile="$loader" \
@@ -858,7 +869,7 @@ do_run_tftp() {
         conf/tftp-grub2.conf || rc=1
 
     provtest_run \
-        --set server="$SRV_IP" --set client="$NODE_IP" \
+        "${COMMON[@]}" \
         --set node="$PXE_NODE" --set hexip="$(hex_ip "$PXE_IP")" \
         --set master="$SRV_IP" --set xcatport="$XCATPORT" --set destiny="$DESTINY" \
         --set bootnode="$BOOT_NODE" \
@@ -868,21 +879,22 @@ do_run_tftp() {
     # web server serving the wrong tree can fail for a reason that has nothing
     # to do with the script it fetched. The script is asserted either way; the
     # kernel it names is asserted only where something serves it.
-    if http_serves_xcat "$(httpport)"; then
+    port=$(httpport)
+    if http_serves_xcat "$port"; then
         xnba="-s xnba-script -s xnba-kernel"
     else
         xnba="-s xnba-script"
-        stage_skip "the web server on port $(httpport) does not serve $tftp, so the kernel half of the xnba case is left out"
+        stage_skip "the web server on port $port does not serve $tftp, so the kernel half of the xnba case is left out"
     fi
     # shellcheck disable=SC2086
     provtest_run $xnba \
-        --set server="$SRV_IP" --set client="$NODE_IP" \
-        --set node="$XNBA_NODE" --set httpport="$(httpport)" \
+        "${COMMON[@]}" \
+        --set node="$XNBA_NODE" --set httpport="$port" \
         conf/tftp-xnba.conf || rc=1
 
     if [ -f "$tftp/petitboot/$PTB_NODE" ]; then
         provtest_run \
-            --set server="$SRV_IP" --set client="$NODE_IP" \
+            "${COMMON[@]}" \
             --set node="$PTB_NODE" --set hexip="$(hex_ip "$PTB_IP")" \
             --set master="$SRV_IP" --set xcatport="$XCATPORT" --set destiny="$DESTINY" \
             conf/tftp-petitboot.conf || rc=1
@@ -920,7 +932,7 @@ do_run_http() {
 
     # shellcheck disable=SC2086
     provtest_run $select \
-        --set server="$SRV_IP" --set client="$NODE_IP" \
+        "${COMMON[@]}" \
         --set node="$NODE" --set httpport="$port" --set otherport="$other" \
         --set hexip="$(hex_ip "$NODE_IP")" \
         --set knownfile="boot/grub2/grub.cfg-$(hex_ip "$NODE_IP")" \
@@ -956,7 +968,7 @@ do_run_genesis() {
     # itself, and there is nothing in it a word split can damage.
     # shellcheck disable=SC2086
     provtest_run $select \
-        --set server="$SRV_IP" --set client="$NODE_IP" \
+        "${COMMON[@]}" \
         --set hexnet="$hexnet" --set netfile="$NET_FILE" \
         --set master="$SRV_IP" --set xcatport="$XCATPORT" \
         conf/discovery-artefacts.conf
@@ -969,11 +981,11 @@ do_run_discovery() {
     assert_serving udp "$XCATPORT" "the xcatd flow-control listener"
 
     provtest_run \
-        --set server="$SRV_IP" --set client="$NODE_IP" \
+        "${COMMON[@]}" \
         conf/flowcontrol.conf || rc=1
 
     provtest_run \
-        --set server="$SRV_IP" --set client="$NODE_IP" \
+        "${COMMON[@]}" \
         --set foreign="$FOREIGN_IP" \
         conf/findme.conf || rc=1
     return $rc
@@ -987,18 +999,18 @@ do_run_xcatd() {
     assert_serving tcp "$XCATPORT" "xcatd"
 
     provtest_run \
-        --set server="$SRV_IP" --set client="$NODE_IP" \
+        "${COMMON[@]}" \
         --set xcatport="$XCATPORT" --set refused=rpower --set node="$NODE" \
         conf/xcatd-policy.conf || rc=1
 
     provtest_run \
-        --set server="$SRV_IP" --set client="$NODE_IP" \
+        "${COMMON[@]}" \
         --set unknown="$UNKNOWN_IP" --set node="$NODE" \
         --set xcatport="$XCATPORT" --set monitorport="$MONITORPORT" \
         conf/xcatd-postscript.conf || rc=1
 
     provtest_run \
-        --set server="$SRV_IP" --set client="$NODE_IP" \
+        "${COMMON[@]}" \
         --set xcatport="$XCATPORT" --set credtype=xcat_server_cred \
         conf/xcatd-credentials.conf || rc=1
 
@@ -1007,12 +1019,10 @@ do_run_xcatd() {
     # question, it is a write, and a second run of this stage against the node
     # it left behind would be asserting install against a node that is now set
     # to boot. Resetting here is what makes the stage repeatable.
-    nodeset "$NODE" osimage="$OSIMAGE" >/dev/null 2>&1
-    generated "$NODE_NETBOOT" "$NODE" "$NODE_IP" \
-        || die "nodeset wrote no $NODE_NETBOOT configuration for $NODE"
+    reset_node
 
     provtest_run \
-        --set server="$SRV_IP" --set client="$NODE_IP" \
+        "${COMMON[@]}" \
         --set unknown="$UNKNOWN_IP" --set node="$NODE" \
         --set destiny="$DESTINY" --set master="$SRV_IP" --set xcatport="$XCATPORT" \
         conf/xcatd-destiny.conf || rc=1
@@ -1024,7 +1034,7 @@ do_run_monitor() {
     assert_serving tcp "$MONITORPORT" "the xcatd install monitor"
 
     provtest_run \
-        --set server="$SRV_IP" --set client="$NODE_IP" \
+        "${COMMON[@]}" \
         --set unknown="$UNKNOWN_IP" --set monitorport="$MONITORPORT" \
         --set xcatport="$XCATPORT" \
         conf/monitor.conf
@@ -1034,8 +1044,18 @@ do_run_monitor() {
 # state, so the fixture drives them in order and selects them by name rather
 # than running the file whole.
 do_run_ordering() {
-    local rc=0
+    local rc=0 flags
     assert_serving tcp "$XCATPORT" "xcatd"
+
+    # The three scenarios below are the same question asked of a cluster in
+    # three states, so they are given the same settings and differ only in
+    # which one is selected. Built once, because three copies of one list is
+    # three places to add the next setting to and two places to forget it.
+    flags=("${COMMON[@]}"
+           --set node="$NODE" --set hexip="$(hex_ip "$NODE_IP")"
+           --set xcatport="$XCATPORT" --set unreachable="$UNREACHABLE_IP"
+           --set master="$SRV_IP"
+           --set destiny="$DESTINY" --set second="$SECOND_DESTINY")
 
     # This stage ends by withdrawing the node's name, and everything before
     # that needs it back: nodeset resolves the node to name the config it
@@ -1051,17 +1071,9 @@ do_run_ordering() {
     # P-74 is about a node that is still set to install being told to discover
     # itself anyway. Against a node already set to boot it would assert
     # nothing.
-    nodeset "$NODE" osimage="$OSIMAGE" >/dev/null 2>&1
-    generated "$NODE_NETBOOT" "$NODE" "$NODE_IP" \
-        || die "nodeset wrote no $NODE_NETBOOT configuration for $NODE"
+    reset_node
 
-    provtest_run -s unreachable-master \
-        --set server="$SRV_IP" --set client="$NODE_IP" \
-        --set node="$NODE" --set hexip="$(hex_ip "$NODE_IP")" \
-        --set xcatport="$XCATPORT" --set unreachable="$UNREACHABLE_IP" \
-        --set master="$SRV_IP" \
-        --set destiny="$DESTINY" --set second="$SECOND_DESTINY" \
-        conf/ordering.conf || rc=1
+    provtest_run -s unreachable-master "${flags[@]}" conf/ordering.conf || rc=1
 
     # P-75 before P-74, and the order is forced rather than chosen: the second
     # nodeset has to resolve the node to write a config named after its
@@ -1074,13 +1086,7 @@ do_run_ordering() {
         nodeset "$NODE" "$SECOND_DESTINY" >/dev/null 2>&1
         generated "$NODE_NETBOOT" "$NODE" "$NODE_IP" \
             || die "nodeset $NODE $SECOND_DESTINY wrote no $NODE_NETBOOT configuration"
-        provtest_run -s state-replaced \
-            --set server="$SRV_IP" --set client="$NODE_IP" \
-            --set node="$NODE" --set hexip="$(hex_ip "$NODE_IP")" \
-            --set xcatport="$XCATPORT" --set unreachable="$UNREACHABLE_IP" \
-            --set master="$SRV_IP" \
-            --set destiny="$DESTINY" --set second="$SECOND_DESTINY" \
-            conf/ordering.conf || rc=1
+        provtest_run -s state-replaced "${flags[@]}" conf/ordering.conf || rc=1
     else
         stage_skip "genesis has not been built here, so there is no second state to set"
     fi
@@ -1096,13 +1102,7 @@ do_run_ordering() {
     makedns -d "$NODE" >/dev/null 2>&1 || say "makedns -d $NODE reported an error"
     makehosts -d "$NODE" >/dev/null 2>&1 || say "makehosts -d $NODE reported an error"
     echo done > "$STATE/ptrgone"
-    provtest_run -s missing-ptr \
-        --set server="$SRV_IP" --set client="$NODE_IP" \
-        --set node="$NODE" --set hexip="$(hex_ip "$NODE_IP")" \
-        --set xcatport="$XCATPORT" --set unreachable="$UNREACHABLE_IP" \
-        --set master="$SRV_IP" \
-        --set destiny="$DESTINY" --set second="$SECOND_DESTINY" \
-        conf/ordering.conf || rc=1
+    provtest_run -s missing-ptr "${flags[@]}" conf/ordering.conf || rc=1
 
     return $rc
 }
@@ -1116,7 +1116,7 @@ do_run_dns_removal() {
     echo done > "$STATE/ptrgone"
 
     provtest_run \
-        --set server="$SRV_IP" --set client="$NODE_IP" \
+        "${COMMON[@]}" \
         --set node="$NODE" --set domain="$DOMAIN" \
         --set revname="$(reverse_name "$NODE_IP")" \
         conf/dns-removal.conf
