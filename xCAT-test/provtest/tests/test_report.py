@@ -134,8 +134,21 @@ class AddressTests(unittest.TestCase):
         self.assertEqual(netutil.hex_ip("10.99.1.11", upper=False), "0a63010b")
 
     def test_hex_ip_of_a_network_address(self):
-        # The per-network discovery config is named by the network's own hex.
         self.assertEqual(netutil.hex_ip("10.99.1.0"), "0A630100")
+
+    def test_a_per_network_config_is_named_by_the_prefix_only(self):
+        # 10.99.1.0/24 is 0A6301, not 0A630100: the file is named by as many
+        # digits as the netmask covers. Asking for all eight gets a machine
+        # with no definition nothing at all, which is the whole failure this
+        # stage exists to catch.
+        self.assertEqual(netutil.hex_net("10.99.1.0", 24), "0A6301")
+        self.assertEqual(netutil.hex_net("10.99.0.0", 16), "0A63")
+        self.assertEqual(netutil.hex_net("10.99.1.0", 26), "0A63010")
+        self.assertEqual(netutil.hex_net("10.99.1.0", 24, upper=False), "0a6301")
+
+    def test_a_prefix_that_is_not_one_is_refused(self):
+        self.assertRaises(ValueError, netutil.hex_net, "10.99.1.0", 33)
+        self.assertRaises(ValueError, netutil.hex_net, "10.99.1.0", "wide")
 
     def test_hex_ip_rejects_what_is_not_an_address(self):
         self.assertRaises(ValueError, netutil.hex_ip, "provtestcn")

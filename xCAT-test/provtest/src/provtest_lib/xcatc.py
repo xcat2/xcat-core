@@ -33,7 +33,7 @@ from .model import Reply
 #: The elements a node's own scripts read out of a response. Everything else
 #: found in the XML is still available through `elements.<name>`.
 NAMED_ELEMENTS = ("destiny", "kernel", "initrd", "kcmdline", "imgserver",
-                  "name", "data", "error")
+                  "name", "data", "error", "content", "desc")
 
 ELEMENT_RE = re.compile(r"<([A-Za-z_][\w.-]*)>([^<]*)</\1>")
 

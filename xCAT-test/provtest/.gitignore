@@ -1,0 +1,6 @@
+# Python leaves these next to the source it imports, and provtest is run in
+# place -- from a checkout during development and from
+# /opt/xcat/share/xcat/tools/autotest after packaging -- so they appear in the
+# tree rather than in a build directory.
+__pycache__/
+*.pyc

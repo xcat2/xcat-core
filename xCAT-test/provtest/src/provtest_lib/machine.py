@@ -65,7 +65,12 @@ REPLY_FIELDS = {
     "xcatreq": frozenset(["destiny", "kernel", "initrd", "kcmdline",
                           "imgserver", "name", "error", "serverdone",
                           "elements", "data", "text", "handshake", "ok",
-                          "callback_seen", "callback_data", "raw"]),
+                          "callback_seen", "callback_data", "raw",
+                          # getcredentials wraps its payload one level deeper,
+                          # as <data><content/><desc/></data>, and `desc` is
+                          # how a reply carrying several credentials says
+                          # which one each part is.
+                          "content", "desc"]),
     "monitor": frozenset(["greeting", "lines", "raw", "text", "ok", "closed",
                           "error"]),
     "flowrequest": frozenset(["replies", "count", "ok", "error", "raw"]),

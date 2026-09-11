@@ -63,6 +63,26 @@ def hex_ip(address, upper=True):
     return text if upper else text.lower()
 
 
+def hex_net(address, prefix, upper=True):
+    """The name a per-network configuration is written under.
+
+    A loader that finds no file for its own address asks for ever shorter
+    prefixes of it, so the per-network file is named by as many hex digits as
+    the netmask covers, rounded up to a whole digit: 10.99.1.0/24 is 0A6301,
+    six digits and not eight. Anything defined for a network rather than for a
+    node -- which is everything a machine nobody has defined can reach -- is
+    named this way.
+    """
+    text = hex_ip(address, upper=upper)
+    try:
+        bits = int(prefix)
+    except (TypeError, ValueError):
+        raise ValueError("not a prefix length: %r" % (prefix,))
+    if not 0 <= bits <= 32:
+        raise ValueError("not a prefix length: %r" % (prefix,))
+    return text[:(bits + 3) // 4]
+
+
 def reverse_name(address):
     """The IN-ADDR.ARPA name a resolver is asked for a PTR by."""
     ip = parse_ip(address)
