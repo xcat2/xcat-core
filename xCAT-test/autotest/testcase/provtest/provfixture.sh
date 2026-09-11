@@ -461,6 +461,19 @@ define_node() {
     echo "$name" >> "$STATE/nodes"
 }
 
+# This machine's own name under the fixture's domain, resolvable. Only the
+# qualified name is added: the short one is whatever the machine already
+# answers to, and shadowing it would change what every other lookup returns.
+mn_hosts_entry() {
+    local short addr
+    short=$(hostname -s) || die "cannot read this machine's hostname"
+    addr=$(getent ahostsv4 "$(hostname)" 2>/dev/null | awk '{print $1; exit}')
+    [ -n "$addr" ] || addr=$(hostname -I 2>/dev/null | awk '{print $1}')
+    [ -n "$addr" ] || die "cannot find an address for $short"
+    printf '%s %s.%s\n' "$addr" "$short" "$DOMAIN" >> /etc/hosts \
+        || die "cannot add $short.$DOMAIN to /etc/hosts"
+}
+
 do_setup() {
     local tmpl http dns tftp
     # A second setup over a live fixture would overwrite the record teardown
@@ -579,6 +592,13 @@ do_setup() {
     makehosts "$MASTER_NODE,$NODE,$PXE_NODE,$BOOT_NODE,$XNBA_NODE,$PTB_NODE" \
         || die "makehosts failed"
     echo done > "$STATE/hostsadded"
+
+    # makedns names each zone's server and qualifies it with site.domain, so on
+    # a cluster whose networks name theirs as <xcatmaster> the name it looks up
+    # is this machine's own, inside the fixture's domain -- which nothing
+    # resolves, and makedns fails before writing a record. Give it that name.
+    # /etc/hosts is saved above and put back by teardown.
+    mn_hosts_entry || return 1
 
     do_generate || return 1
 
