@@ -614,11 +614,9 @@ foreach my $case (@sysconfig_policy_cases) {
     is( $r->{'ip-address'},  '192.168.201.21',    'service node reservation carries the node IP' );
     is( $r->{'hw-address'},  '42:d7:c0:a8:c9:15', 'service node reservation carries the node MAC' );
     # The name travels as the reservation's own host-name option and the
-    # "hostname" field is left out entirely. Kea builds option 12 out of that
-    # field and appends ddns-qualifying-suffix to it, so a node asking who it
-    # was got an FQDN while ISC, which writes option 12 and the DDNS name as
-    # separate statements, sent the node's own name. S-35 asks for the node's
-    # own name on both.
+    # "hostname" field is left out: Kea builds option 12 from that field and
+    # appends ddns-qualifying-suffix, so a node asking who it was got an FQDN
+    # while ISC sent the node's own name. S-35 asks for the node's name on both.
     ok( !exists $r->{hostname},
         'a reservation carries no hostname field for Kea to qualify' );
     is_deeply(
@@ -1230,15 +1228,14 @@ foreach my $case (@invalid_mac_cases) {
 }
 
 {
-    # Two netboot methods the Kea path used to answer differently from the ISC
-    # one, so the same node booted on one backend and not on the other.
+    # Two netboot methods the Kea path used to answer differently from ISC.
     #
-    # nimol: ISC supersedes server.filename with /vios/nodes/<node>; Kea named
-    # no boot file at all, so a VIOS install got nothing to fetch.
+    # nimol: ISC supersedes server.filename with /vios/nodes/<node>; Kea named no
+    # boot file, so a VIOS install got nothing to fetch.
     #
-    # petitboot: ISC sends the conf-file option and nothing else.  Kea also set
-    # boot-file-name, and petitboot acts on a boot file name when it sees one,
-    # sending the machine after a TFTP fetch of a file that was never put there.
+    # petitboot: ISC sends the conf-file option and nothing else. Kea also set
+    # boot-file-name, and petitboot acts on one when it sees it, sending the
+    # machine after a file that was never put there.
     my $nimol = xCAT_plugin::dhcp::kea_boot_for_node(
         'vios01', { netboot => 'nimol' }, undef, undef, undef, '192.0.2.1'
     );
@@ -1272,12 +1269,11 @@ foreach my $case (@invalid_mac_cases) {
 }
 
 {
-    # A ScaleMP hypervisor and an ISAN iSCSI initiator both need to be answered
-    # differently from the machine next to them, and on ISC both are an
-    # if/else inside the node's own host block. A Kea reservation outranks
-    # every class, so anything the reservation names cannot be overridden --
-    # which is why neither the pxe boot file nor an ISAN node's root path is
-    # reserved. What the reservation does not name, a class can decide.
+    # A ScaleMP hypervisor and an ISAN iSCSI initiator both need a different
+    # answer from the machine next to them, and on ISC both are an if/else in the
+    # node's host block. A Kea reservation outranks every class, so neither the
+    # pxe boot file nor an ISAN node's root path is reserved: what the
+    # reservation does not name, a class can decide.
     my $pxe = xCAT_plugin::dhcp::kea_boot_for_node(
         'cn01', { netboot => 'pxe' }, undef, undef, undef, '192.0.2.1'
     );
@@ -1349,10 +1345,10 @@ foreach my $case (@invalid_mac_cases) {
     like( $by_name{'xcat-pxe-smp01-aabbccddee01'}{test}, qr/\Qnot (option[60].text == 'ScaleMP')\E/,
         'the two are mutually exclusive: Kea has no else to fall into' );
 
-    # The empty container comes first because without it Kea has nowhere to put
-    # the two sub-options and sends neither: an encapsulated space travels only
-    # inside the option that encapsulates it, and option 43 carries no data of
-    # its own. ISC builds the container from the sub-option declarations.
+    # The empty container comes first: an encapsulated space travels only inside
+    # the option that encapsulates it, and option 43 carries no data of its own,
+    # so without it Kea sends neither sub-option. ISC builds the container from
+    # the sub-option declarations.
     is_deeply(
         $by_name{'xcat-iscsi-san01-aabbccddee02-isan'}{'option-data'},
         [
@@ -1384,11 +1380,10 @@ foreach my $case (@invalid_mac_cases) {
 }
 
 {
-    # A NIC marked *NOIP* in the mac table is meant to be answered with
-    # nothing. ISC writes "deny booting;" into its host block; Kea discards a
-    # packet assigned to the class named DROP, and nothing else will do --
-    # skipping the reservation still leaves the subnet-wide architecture
-    # classes handing the interface a boot file.
+    # A NIC marked *NOIP* is meant to be answered with nothing. ISC writes
+    # "deny booting;"; Kea discards a packet assigned to the class named DROP,
+    # and nothing else will do -- skipping the reservation still leaves the
+    # architecture classes handing the interface a boot file.
     my %tables = (
         noderes => DHCPKeaResTable->new(
             { cn01 => { netboot => 'xnba' }, cn02 => { netboot => 'pxe' } }
@@ -1446,16 +1441,13 @@ foreach my $case (@invalid_mac_cases) {
 }
 
 {
-    # A node that has an operating system now, and a Windows UEFI install
-    # waiting on the proxyDHCP daemon, both have to be handed no boot file.
-    # ISC writes filename = "" into the node's host block, which outranks the
-    # subnet chain.
+    # A node that has an operating system, and a Windows UEFI install waiting on
+    # proxyDHCP, both get no boot file. ISC writes filename = "" into the host
+    # block, which outranks the subnet chain.
     #
-    # The empty boot-file-name below is necessary and not sufficient on Kea:
-    # Kea reads an empty string as "not specified" and falls through to the
-    # classes, so the reservation alone does not stop the architecture classes
-    # answering. What stops them is the xcat-localboot class, asserted further
-    # down.
+    # On Kea the empty boot-file-name below is necessary and not sufficient: Kea
+    # reads it as "not specified" and falls through to the classes. What stops
+    # them is the xcat-localboot class, asserted further down.
     no warnings 'redefine';
     local *xCAT_plugin::dhcp::proxydhcp = sub { return 1; };
 
@@ -1547,16 +1539,13 @@ foreach my $case (@invalid_mac_cases) {
 }
 
 {
-    # spec.md S-31. Withholding the node's own classes and writing an empty
-    # boot-file-name into its reservation does not stop an installed node being
-    # netbooted: Kea reads the empty string as "not specified" and the classes
-    # everybody shares match on architecture and hand it a loader anyway. The
-    # machine then comes back as an xNBA second stage and is answered with the
-    # network's script -- so it reinstalls itself on every power cycle, and each
-    # such boot looks like a successful one.
+    # spec.md S-31. Withholding the node's classes and writing an empty
+    # boot-file-name does not stop an installed node being netbooted: Kea reads
+    # the empty string as "not specified" and the shared classes hand it a loader
+    # on architecture alone. It then returns as an xNBA second stage and is
+    # answered with the network's script, reinstalling on every power cycle.
     #
-    # The MACs therefore go into one class that every boot-naming class is
-    # written to exclude.
+    # So the MACs go into one class that every boot-naming class excludes.
     my %tables = (
         noderes => DHCPKeaResTable->new(
             {

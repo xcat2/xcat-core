@@ -506,9 +506,8 @@ sub run_bats_tests{
 # Fuction name: run_dhcptest_unit_tests
 # Description:  Run the dhcptest offline checks: its Python unit tests and
 #               `dhcptest validate` over every shipped .conf. Both are
-#               unprivileged and touch no network -- the wire scenarios need a
-#               provisioning NIC and a DHCP server, so they are not run here.
-#               Skipped when python3 is absent rather than failing the build.
+#               unprivileged and touch no network. Skipped when python3 is
+#               absent rather than failing the build.
 # Attributes:
 # Return code:  0 all checks passed, 1 otherwise
 #--------------------------------------------------------
@@ -546,10 +545,8 @@ sub run_dhcptest_unit_tests{
 # Fuction name: run_provtest_unit_tests
 # Description:  Run the provtest offline checks: its Python unit tests and
 #               `provtest validate` over every shipped .conf. Both are
-#               unprivileged and touch no network -- the wire scenarios need a
-#               veth pair, a network namespace and a running xcatd, so they are
-#               not run here. Skipped when python3 is absent rather than
-#               failing the build.
+#               unprivileged and touch no network. Skipped when python3 is
+#               absent rather than failing the build.
 # Attributes:
 # Return code:  0 all checks passed, 1 otherwise
 #--------------------------------------------------------
@@ -565,8 +562,8 @@ sub run_provtest_unit_tests{
         return 0;
     }
 
-    # The unit tests are discovered from inside tests/ because that is where
-    # their own context module puts the package on the path.
+    # Discovered from inside tests/ because that is where their own context
+    # module puts the package on the path.
     my $cmd = "cd $testdir/tests && python3 -m unittest discover -s . -p 'test_*.py'"
             . " && cd $testdir && python3 src/provtest validate conf/*.conf";
     print "[run_provtest_unit_tests] running $cmd\n";
@@ -639,12 +636,10 @@ sub check_syntax{
 # Attributes:   $name        - the file name, under the working directory
 #               $pin_backend - set site.dhcpbackend in [Table_site]
 #
-#   xcattest applies [Table_site] before every case it runs, so a file that
-#   pins dhcpbackend pins it again on each invocation. That is what the fast
-#   regression set wants -- one known backend for the whole run -- and exactly
-#   what the DHCP wire phase must not have: it selects the backend itself, once
-#   per pass, and a conf file that reset it would undo the kea pass case by
-#   case and leave the run silently testing isc twice.
+#   xcattest applies [Table_site] before every case, so a file pinning
+#   dhcpbackend pins it on each invocation. The fast regression set wants that;
+#   the DHCP wire phase must not have it, since it selects the backend once per
+#   pass and a conf file resetting it would leave the run testing isc twice.
 # Return code:  the path written
 #--------------------------------------------------------
 sub write_regression_conf{
@@ -733,28 +728,18 @@ sub run_cases{
 # Fuction name: run_dhcp_wire_test
 # Description:  run the DHCP wire cases, once per backend installed here.
 #
-#   This is the last phase of the run, after the ci_test set, and the wire
-#   cases are deliberately not labelled ci_test. They do not leave the machine
-#   alone while they run -- a veth pair appears, site.dhcpinterfaces and
-#   site.dhcpbackend change, the DHCP daemon is stopped and started -- and
-#   although each case restores all of it from a trap, a ci_test case running
-#   in between would be sharing a management node that is mid-reconfiguration.
-#   Keeping them out of the set is also what stops them being run twice.
+#   The last phase of the run. The cases are deliberately not labelled ci_test:
+#   a veth pair appears, site.dhcpinterfaces and site.dhcpbackend change, the
+#   daemon is stopped and started, and a ci_test case running in between would
+#   be sharing a management node that is mid-reconfiguration.
 #
-#   Which DHCP backend a management node runs is an implementation default --
-#   kea on the newer distros, isc on the older ones -- so a node booting on the
-#   same network must be told the same things either way. Testing whichever
-#   backend the runner happened to configure proves half of that and hides
-#   every drift between the two.
+#   Which backend a management node runs is an implementation default -- kea on
+#   newer distros, isc on older -- so a node must be told the same things either
+#   way. The whole set runs against one backend and then the other, rather than
+#   switching per case: the daemon is reconfigured once per pass, and each
+#   failure in the summary carries the backend it belongs to.
 #
-#   The whole set is therefore run against one backend and then again against
-#   the other, rather than each case switching backends internally: the daemon
-#   is reconfigured once per pass instead of once per case, and each failure in
-#   the summary carries the backend it belongs to.
-#
-#   dhcpfixture.sh brackets each pass -- backend-setup selects the backend and
-#   stops the other daemon, backend-teardown puts the site table back and
-#   restarts what was running before.
+#   dhcpfixture.sh brackets each pass with backend-setup and backend-teardown.
 # Attributes:
 # Return code:  0 if every case passed under every backend
 #--------------------------------------------------------
@@ -827,19 +812,16 @@ sub run_dhcp_wire_test{
 # Fuction name: run_prov_wire_test
 # Description:  run the provisioning wire cases.
 #
-#   These come after the ci_test set and before the DHCP wire phase, which is
-#   the order a node experiences: DNS, then the loader and its config, then the
-#   install tree, then the discovery and xcatd protocols. They are deliberately
-#   not labelled ci_test, for the same reason the DHCP wire cases are not --
-#   while one runs, the management node has an extra veth pair and network
-#   namespace, a network object and four nodes it did not have, a rewritten
-#   zone, and possibly a web server on another port. Each case puts all of it
-#   back from a trap, but a ci_test case running in between would be sharing a
-#   machine that is mid-reconfiguration.
+#   After the ci_test set and before the DHCP wire phase, which is the order a
+#   node experiences: DNS, then the loader and its config, then the install
+#   tree, then the discovery and xcatd protocols. Not labelled ci_test for the
+#   same reason the DHCP cases are not -- while one runs the machine has an
+#   extra veth pair and namespace, a network and four nodes, a rewritten zone,
+#   and possibly a web server on another port.
 #
-#   Unlike the DHCP cases these are run once rather than once per backend:
-#   nothing here depends on which DHCP server is installed, and the cases that
-#   would -- what a node is told over DHCP -- are dhcptest's subject.
+#   Run once rather than once per backend: nothing here depends on which DHCP
+#   server is installed, and what a node is told over DHCP is dhcptest's
+#   subject.
 # Attributes:
 # Return code:  0 if every case passed
 #--------------------------------------------------------
@@ -921,11 +903,9 @@ sub run_fast_regression_test{
          print Dumper \@caseslist;
     }
 
-    # Neither wire set is in this one: the DHCP cases reconfigure the DHCP
-    # server out from under whatever else is running, and the provisioning
-    # cases add an interface, nodes, a network and a rewritten zone. Both are
-    # labelled separately -- dhcp_wire and prov_wire -- and run as their own
-    # phases after this one. See run_prov_wire_test and run_dhcp_wire_test.
+    # Neither wire set is in this one: both reconfigure the machine underneath
+    # whatever else is running. They are labelled dhcp_wire and prov_wire and
+    # run as their own phases after this one.
     my $casenum = @caseslist;
     my %counts = (pass => 0, fail => 0, failed => []);
     run_cases($conf_file, \@caseslist, "", \%counts);
@@ -1052,11 +1032,9 @@ if($rst){
 }
 mark_time("run_fast_regression_test");
 
-#The provisioning wire cases come next: after the ci_test set, so they are not
-#reconfiguring the machine underneath it, and before the DHCP phases, which is
-#the order a booting node meets them in. Their offline checks run first, so a
-#scenario file that does not even parse is reported as that rather than as a
-#case failure.
+#The provisioning wire cases come next: after the ci_test set, and before the
+#DHCP phases, which is the order a booting node meets them in. Their offline
+#checks run first, so a scenario file that does not parse is reported as that.
 print GREEN "\n------Running xCAT-test provtest checks ------\n";
 $rst = run_provtest_unit_tests();
 if($rst){
@@ -1073,9 +1051,8 @@ if($rst){
 }
 mark_time("run_prov_wire_test");
 
-#Run the dhcptest offline checks -- unit tests plus `dhcptest validate` -- last:
-#they exercise the source tree rather than the installed copy, and nothing else
-#in the run depends on them.
+#The dhcptest offline checks run last: they exercise the source tree rather than
+#the installed copy, and nothing else in the run depends on them.
 print GREEN "\n------Running xCAT-test dhcptest checks ------\n";
 $rst = run_dhcptest_unit_tests();
 if($rst){
@@ -1086,9 +1063,7 @@ mark_time("run_dhcptest_unit_tests");
 
 #The DHCP wire cases go last, once per backend installed. They are the only
 #phase that reconfigures the DHCP server and restarts the daemon, so nothing
-#that follows them could be trusted to be running against the machine it was
-#given -- and the ci_test set above must not be sharing a management node that
-#is mid-reconfiguration, which is why they are not labelled ci_test.
+#following them could be trusted to run against the machine it was given.
 print GREEN "\n------Running DHCP on-wire test on every backend ------\n";
 $rst = run_dhcp_wire_test();
 if($rst){

@@ -9,8 +9,8 @@ use Test::More;
 use xCAT::DHCP::BootPolicy;
 
 # ISC dhcpd's expression grammar has no parenthesised grouping. dhcp-eval(5)
-# documents exactly three boolean forms -- `not E`, `E1 and E2`, `E1 or E2` --
-# and nothing that groups them, so a condition written as
+# documents three boolean forms -- `not E`, `E1 and E2`, `E1 or E2` -- and
+# nothing that groups them, so a condition written as
 #
 #     if (option user-class-identifier = "xNBA" or ...) and option client-architecture = 00:00 {
 #
@@ -18,22 +18,16 @@ use xCAT::DHCP::BootPolicy;
 #
 #     /etc/dhcp/dhcpd.conf line 11: left brace expected.
 #
-# followed by a cascade of "expecting a parameter or declaration" at every
-# `} else` after it. The daemon does not start, so the whole cluster stops
-# answering DHCP -- not just the branch that was mis-written.
+# The daemon does not start, so the whole cluster stops answering DHCP.
 #
-# There is no way to unit test the per-node statements in dhcp.pm directly:
-# they are built inline inside addnode against a live database. What can be
-# checked cheaply is that no generated ISC condition anywhere in the plugin
-# groups a boolean with parentheses, which is the only construct that produces
-# this failure. A function call -- substring(...), suffix(...), binary-to-ascii
-# -- is fine and is deliberately not matched: `option` never follows an opening
-# paren in a call, only in a grouped comparison.
+# The per-node statements in dhcp.pm cannot be unit tested directly -- they are
+# built inline against a live database -- but no generated ISC condition anywhere
+# in the plugin should group a boolean with parentheses. A function call is fine
+# and deliberately not matched: `option` never follows `(` in a call.
 #
 # The tokens looked for are dhcpd's, not Perl's: `exists` and `not` are left out
-# because the plugin's own Perl uses them parenthesised on nearly every page,
-# and a bareword `option` or `filename` immediately after `(` cannot be Perl --
-# a Perl variable there would carry its sigil.
+# because the plugin's own Perl uses them parenthesised, and a bareword `option`
+# after `(` cannot be Perl -- a Perl variable there would carry its sigil.
 
 my $grouping = qr/\b(?:if|and|or)\s+\(\s*(?:option|substring|suffix|hardware|packet|filename)\b/;
 

@@ -19,18 +19,13 @@ if ( -f $source_dhcp_plugin ) {
     require xCAT_plugin::dhcp;
 }
 
-# What `makedhcp` writes into /etc/default/isc-dhcp-server only matters for one
+# What `makedhcp` writes into /etc/default/isc-dhcp-server matters for one
 # reason: it decides which interfaces dhcpd is launched with. So assert that,
 # not the name of any variable.
 #
-# On Ubuntu the daemon is started by isc-dhcp-server.service, which sources that
-# file and expands one variable onto dhcpd's command line:
-#
-#   EnvironmentFile=/etc/default/isc-dhcp-server
-#   ExecStart=/bin/sh -ec '... exec dhcpd ... -cf $CONFIG_FILE $INTERFACESv4'
-#
-# The variable it expands changed with the package. Verified by unpacking the
-# archive's own debs:
+# isc-dhcp-server.service sources that file and expands one variable onto the
+# command line, and which one changed with the package. Verified by unpacking
+# the archive's own debs:
 #
 #   trusty  4.2.4-7ubuntu12       sysvinit only        INTERFACES
 #   xenial  4.3.3-5ubuntu12       unit                 $INTERFACES
@@ -39,15 +34,9 @@ if ( -f $source_dhcp_plugin ) {
 #   jammy   4.4.1-2.3ubuntu2      unit                 $INTERFACESv4
 #   noble   4.4.3-P1-4ubuntu2     unit                 $INTERFACESv4  (+ v6 unit)
 #
-# and every package from bionic on ships a default file containing only
-# INTERFACESv4/INTERFACESv6, seeded empty by postinst.
-#
 # dhcpd given no interface argument does not fail: it binds every interface it
-# can find and ignores the ones with no subnet declaration. So the damage is
-# silent. A management node whose site.dhcpinterfaces names one provisioning
-# NIC gets a daemon listening on all of them, and the provisioning NIC is served
-# only because makedhcp also wrote a subnet for it -- not because anything
-# honoured the setting.
+# can find. So the damage is silent -- a management node naming one provisioning
+# NIC in site.dhcpinterfaces gets a daemon listening on all of them.
 
 # The stock file as the package ships it on bionic and later.
 my $stock = <<'EOF';
@@ -76,9 +65,8 @@ sub launched_with {
     return defined($out) ? $out : '';
 }
 
-# Every release in support, the package it ships, and the variable its
-# isc-dhcp-server unit expands onto dhcpd's command line. This table is the
-# contract: the writer has to satisfy every row.
+# Every release in support, the package it ships, and the variable its unit
+# expands. This table is the contract: the writer has to satisfy every row.
 my @RELEASES = (
     [ '16.04', '4.3.3-5ubuntu12',   'INTERFACES'   ],
     [ '18.04', '4.3.5-3ubuntu7',    'INTERFACES'   ],
@@ -119,9 +107,8 @@ foreach my $release (@RELEASES) {
     unlike( launched_with($remote, $variable), qr/remote/,
         "$ubuntu ($version): a !remote! interface is not passed to the local daemon" );
 
-    # The v6 unit takes $INTERFACES before 22.04 and $INTERFACESv6 after it.
-    # Leaving its variable empty is how dhcpd6, once the admin enables it, ends
-    # up bound to everything.
+    # The v6 unit takes $INTERFACES before 22.04 and $INTERFACESv6 after. Leaving
+    # its variable empty is how dhcpd6, once enabled, ends up bound to everything.
     my $v6 = $variable eq 'INTERFACES' ? 'INTERFACES' : 'INTERFACESv6';
     is( launched_with($written, $v6), 'eth1',
         "$ubuntu ($version): the v6 unit is restricted to the same interfaces" );
@@ -143,9 +130,8 @@ foreach my $release (@RELEASES) {
     }
 }
 
-# With no package version to go on -- dpkg-query unavailable, or a machine that
-# is not the one being configured -- err towards writing every spelling. An
-# unset variable is what leaves dhcpd bound to everything.
+# With no package version to go on, err towards writing every spelling: an unset
+# variable is what leaves dhcpd bound to everything.
 foreach my $unknown (undef, '', 'none') {
     my @keys = xCAT_plugin::dhcp::debian_sysconfig_interface_keys($unknown);
     my $written = xCAT_plugin::dhcp::_sysconfig_interfaces_content(
@@ -156,11 +142,9 @@ foreach my $unknown (undef, '', 'none') {
     }
 }
 
-# ...and it means that on every machine, not just one with no isc-dhcp-server
-# on it. A writer that goes and asks the local dpkg when it is handed no
-# version answers differently on the build host than on the machine being
-# configured, which is exactly the kind of thing a test only catches once it
-# runs somewhere else.
+# ...and on every machine, not just one with no isc-dhcp-server. A writer that
+# asks the local dpkg when handed no version answers differently on the build
+# host than on the machine being configured.
 {
     no warnings qw(redefine once);
     local *xCAT_plugin::dhcp::isc_dhcp_installed_version = sub {
@@ -173,9 +157,8 @@ foreach my $unknown (undef, '', 'none') {
         'an unknown version is not silently replaced by the local package version' );
 }
 
-# Ordering of the package versions themselves. 20.04 and 22.04 both ship
-# upstream 4.4.1 and are told apart only by the Debian revision, so a
-# comparison that stops at the upstream version puts them on the wrong side.
+# Ordering of the package versions themselves. 20.04 and 22.04 both ship upstream
+# 4.4.1 and differ only in the Debian revision.
 is( xCAT_plugin::dhcp::_isc_dhcp_version_cmp('4.4.1-2.1ubuntu5', '4.4.1-2.3ubuntu2'), -1,
     '20.04 sorts below 22.04 despite sharing upstream 4.4.1' );
 is( xCAT_plugin::dhcp::_isc_dhcp_version_cmp('4.4.3-P1-4ubuntu2', '4.4.1-2.3ubuntu2'), 1,
@@ -186,18 +169,16 @@ is( xCAT_plugin::dhcp::_isc_dhcp_version_cmp('4.4.1-2.3ubuntu2', '4.4.1-2.3ubunt
     'a version equals itself' );
 
 # Debian's own packages have no systemd unit; the sysvinit script reads
-# INTERFACESv4 and only falls back to INTERFACES when v4 is empty, so the
-# post-split keys are right for them too.
+# INTERFACESv4 and falls back to INTERFACES only when v4 is empty.
 foreach my $debian ('4.4.1-2.3+deb11u2', '4.4.3-P1-2', '4.4.3-P1-8') {
     my $written = written_for($debian, ['eth1']);
     is( launched_with($written, 'INTERFACESv4'), 'eth1',
         "Debian $debian: dhcpd is launched restricted to the interface xCAT serves" );
 }
 
-# A management node upgraded from an xCAT that wrote the wrong key is left with
-# the damage already on disk: no INTERFACESv4 at all and two INTERFACES lines
-# where the package's two variables used to be. Running makedhcp again has to
-# repair that file, not add to it.
+# A node upgraded from an xCAT that wrote the wrong key has the damage on disk
+# already: no INTERFACESv4 and two INTERFACES lines. Running makedhcp again has
+# to repair that file, not add to it.
 my $damaged = <<'EOF';
 # Defaults for isc-dhcp-server (sourced by /etc/init.d/isc-dhcp-server)
 INTERFACES="eth1"

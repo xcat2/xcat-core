@@ -44,10 +44,8 @@ like(
 
 # Two architectures the chain did not name, so a client announcing either fell
 # through to the /yaboot default: a ppc64 machine, which cannot boot yaboot at
-# all, and an x86-64 UEFI machine set to fetch its loader over HTTP, which is
-# the same firmware and the same loader as 0x0007. The Kea policy has always
-# matched both (xcat-ppc64, uefi_x64_client_architecture_match_expr), so until
-# now the same machine booted on one backend and not on the other.
+# all, and an x86-64 UEFI machine fetching over HTTP, the same firmware and
+# loader as 0x0007. The Kea policy has always matched both.
 like(
     $rendered,
     qr/client-architecture = 00:0c \{ #ppc64 grub2\n\s+filename "\/boot\/grub2\/grub2\.ppc";/,
@@ -89,18 +87,13 @@ like($rendered, qr/filename "\/yaboot";\n\s*\}\n\z/, 'the policy ends with the e
 # recognised in both the encodings firmware sends.
 #
 # RFC 3004 length-prefixes each string in option 77, so the same loader appears
-# on the wire either as "xNBA" or as "\x04xNBA" depending on how it was built.
-# Recognising only the bare form hands a conforming loader the first stage
-# again, and it chainloads itself forever -- a node that never finishes booting
-# and never says why. The Kea side of this plugin has always accepted both
-# (kea_xnba_user_class_test); the ISC side has to agree, or the same machine
-# boots on one backend and loops on the other.
+# as "xNBA" or as "\x04xNBA". Recognising only the bare form hands a conforming
+# loader the first stage again and it chainloads forever. The Kea side has always
+# accepted both, so the ISC side has to agree.
 #
-# suffix() takes the last four bytes, which is "xNBA" either way: the bare
-# string is its own suffix, and "\x04xNBA" ends in the same four bytes. One
-# expression rather than an alternation, because dhcpd has no parenthesised
-# grouping -- `if (a or b) and c {` is rejected outright with "left brace
-# expected" and the daemon does not start.
+# suffix() takes the last four bytes, which is "xNBA" either way. One expression
+# rather than an alternation, because dhcpd has no parenthesised grouping --
+# `if (a or b) and c {` is rejected with "left brace expected".
 foreach my $case (
     [ '"',   'a config file written directly' ],
     [ '\\"', 'a statement passed through omshell' ],
@@ -133,12 +126,8 @@ unlike( $rendered, qr/option user-class-identifier = "xNBA" and/,
     'no xNBA branch is left matching the bare encoding alone' );
 
 # The short lease firmware is given, so a pool address taken by a PXE ROM comes
-# back in ten minutes rather than in half a day.
-#
-# A maximum alone did not shorten anything: dhcpd applies the subnet's
-# min-lease-time after the maximum, and the cluster default is larger, so the
-# class matched and then changed nothing. The Kea side is given the same number
-# by kea_pxe_lease_client_class.
+# back in ten minutes rather than half a day. A maximum alone shortened nothing:
+# dhcpd applies the subnet's min-lease-time after the maximum.
 my $pxe_class = join '', @{ xCAT::DHCP::BootPolicy->isc_pxe_lease_class_lines() };
 like( $pxe_class, qr/match if substring \(option vendor-class-identifier, 0, 9\) = "PXEClient";/,
     'the class matches the vendor class firmware announces' );
@@ -152,10 +141,8 @@ is(
     'and both backends land on the same number',
 );
 
-# A loader that is not on disk is not named. Naming one costs the client a
-# full TFTP timeout it cannot diagnose, and the Kea side has always left the
-# class out for exactly that reason -- so the same missing file has to produce
-# the same silence on both backends.
+# A loader that is not on disk is not named: naming one costs the client a full
+# TFTP timeout it cannot diagnose. The Kea side has always left the class out.
 {
     my @asked;
     my %present = map { $_ => 1 } (
@@ -183,12 +170,10 @@ is(
     like( $partial, qr{/xcat/xnba/nets/192\.0\.2\.0_24\.uefi"},
         'the UEFI second stage is advertised, because its first stage exists' );
 
-    # Dropping the branch is only half the rule. ISC evaluates these as one
-    # if/else chain, so a BIOS client whose branch is gone keeps falling until
-    # the /yaboot catch-all hands it a loader nobody chose -- the substitution
-    # S-12 forbids, and the one Kea cannot make because its fallback class
-    # excludes every architecture another class recognises. What is left behind
-    # is a branch that matches the same client and says nothing.
+# Dropping the branch is only half the rule. ISC evaluates these as one if/else
+# chain, so a BIOS client whose branch is gone falls to the /yaboot catch-all and
+# is handed a loader nobody chose -- the substitution S-12 forbids. What is left
+# behind is a branch that matches the same client and says nothing.
     like( $partial,
         qr/option client-architecture = 00:00 \{ #the loader for this client is not on disk\n\s*\}/,
         'a BIOS client whose loader is missing is matched and told nothing' );
@@ -217,9 +202,9 @@ is(
 }
 
 {
-    # Nothing on disk at all: the architecture branches that name a file xCAT
-    # never builds stay, and the client that matches none of them still ends up
-    # at the fallback rather than at a parse error.
+    # Nothing on disk at all: the branches naming files xCAT never builds stay,
+    # and a client matching none of them reaches the fallback rather than a parse
+    # error.
     my $bare = join '', @{ xCAT::DHCP::BootPolicy->isc_client_architecture_lines(
             next_server    => '192.0.2.10',
             portsuffix     => '',

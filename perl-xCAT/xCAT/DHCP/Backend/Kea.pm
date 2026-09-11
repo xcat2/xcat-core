@@ -89,11 +89,10 @@ sub render_dhcp4_config {
         'reservations-in-subnet'   => _json_bool( _first_defined( $intent->{'reservations-in-subnet'},   $intent->{reservations_in_subnet},   1 ) ),
         'reservations-out-of-pool' => _json_bool( _first_defined( $intent->{'reservations-out-of-pool'}, $intent->{reservations_out_of_pool}, 1 ) ),
         'match-client-id'          => _json_bool( _first_defined( $intent->{'match-client-id'},          $intent->{match_client_id},          0 ) ),
-        # ISC writes "authoritative;" into every subnet it generates. Kea
-        # defaults to the opposite, and a node that moved rack then asks to
-        # keep an address belonging to a network it has left and is answered
-        # with nothing at all -- so it waits out a lease that will never be
-        # renewed instead of being told to start over.
+        # ISC writes "authoritative;" into every subnet; Kea defaults to the
+        # opposite, so a node that moved rack asks to keep an address from a
+        # network it has left and is answered with nothing at all -- waiting out
+        # a lease that will never be renewed instead of starting over.
         'authoritative'            => _json_bool( _first_defined( $intent->{authoritative},             1 ) ),
         subnet4                    => [ map { $self->_render_subnet4($_) } @{ _first_defined( $intent->{subnet4}, $intent->{subnets}, [] ) } ],
     );
@@ -551,15 +550,13 @@ my %CONTROL_SOCKET_OF = (
 # Ask the running daemon to reload, and find out whether it did.
 #
 # `systemctl reload` sends SIGHUP and reports success as soon as the signal is
-# delivered -- it cannot know that Kea then rejected the file and went on
-# serving the configuration it already had. That failure is invisible from the
-# outside: the unit is active, the process is up, and every client is answered
-# from a stale configuration, or from none. Kea's own control socket does know,
-# so the reload is asked for there and the answer is read back.
+# delivered -- it cannot know Kea then rejected the file and went on serving the
+# one it had. The unit is active, the process is up, and every client is answered
+# from a stale configuration. Kea's control socket does know, so the reload is
+# asked for there.
 #
-# Returns 0 when the daemon confirmed the new configuration, and non-zero on
-# anything else -- no socket, no answer, or a rejection -- so the caller can
-# fall back to the restart that always re-reads the file.
+# Returns 0 when the daemon confirmed the new configuration, non-zero on anything
+# else, so the caller can fall back to a restart.
 sub reload_via_control_socket {
     my ( $self, $service ) = @_;
 

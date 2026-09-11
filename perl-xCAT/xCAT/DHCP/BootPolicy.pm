@@ -9,18 +9,17 @@ sub kea_client_classes {
     my $xnba_user_class = xnba_user_class_test();
     my $uefi_x64_arch_match = uefi_x64_client_architecture_match_expr();
     my $etherboot = etherboot_vendor_class_test();
-    # No substitute when the loader is not on disk. Naming a file the TFTP
-    # server does not have costs the client a timeout it cannot diagnose, and
-    # handing it a different loader boots something nobody asked for -- so the
-    # class is simply not written and the client is served an address alone.
+    # No substitute when the loader is not on disk: naming a file the TFTP
+    # server does not have costs the client a timeout it cannot diagnose, and a
+    # different loader boots something nobody asked for.
     my $bios_boot = $opts{xnba_kpxe} ? 'xcat/xnba.kpxe' : '';
     my $uefi_boot = $opts{xnba_efi}  ? 'xcat/xnba.efi'  : '';
     my @classes;
 
     push @classes, @{ $opts{xnba_node_classes} || [] };
 
-    # The short lease names no boot file, so where it sits among the classes
-    # that do name one does not change what anything boots.
+    # The short lease names no boot file, so its place among the classes that do
+    # name one changes nothing.
     push @classes, kea_pxe_lease_client_class();
 
     if ($bios_boot ne '') {
@@ -31,7 +30,7 @@ sub kea_client_classes {
                 'boot-file-name' => $bios_boot,
             },
             # Etherboot predates option 93: it says what it is in option 60 and
-            # nothing else, so the vendor class is the only thing to key on.
+            # nothing else.
             {
                 name             => 'xcat-etherboot',
                 test             => $etherboot,
@@ -76,8 +75,8 @@ sub kea_client_classes {
     return \@classes;
 }
 
-#: Every client architecture some class in this file, or in the per-network
-#: classes beside it, already answers. The fallback is what is left over.
+#: Every client architecture some class here, or in the per-network classes
+#: beside it, already answers. The fallback is what is left over.
 my @RECOGNISED_ARCH_IDS = qw(
   0x0000 0x0002 0x0007 0x0009 0x000b 0x000c 0x000e 0x0010 0x001b 0x001c 0x001f
 );
@@ -86,13 +85,11 @@ my @RECOGNISED_ARCH_IDS = qw(
 #
 # ISC reaches this by falling off the end of an if/else chain, which Kea has no
 # equivalent of: every class is evaluated on its own. So the condition is
-# written out -- none of the architectures another class answers, and none of
-# the vendor or user classes either -- rather than left to depend on which
-# class Kea happens to consult first for a boot file name.
+# written out rather than left to depend on which class Kea consults first.
 #
 # /yaboot is a poor universal default, but it is the one xCAT has always had on
-# ISC. What matters here is that both backends give the same answer: a client
-# left with an address and no boot file cannot tell it was served at all.
+# ISC. What matters is that both backends answer the same: a client left with an
+# address and no boot file cannot tell it was served at all.
 sub kea_fallback_client_class {
     my @recognised = map { "option[93].hex == $_" } @RECOGNISED_ARCH_IDS;
     push @recognised, etherboot_vendor_class_test(), onie_vendor_class_test(),
@@ -106,17 +103,14 @@ sub kea_fallback_client_class {
 }
 
 #: How long firmware keeps a pool address. A discovery of a few thousand
-#: machines takes every one of those addresses through a PXE ROM first, and a
-#: cluster-default lease holds each of them for half a day after the ROM has
-#: finished with it.
+#: machines takes every address through a PXE ROM first, and a cluster-default
+#: lease holds each one for half a day afterwards.
 our $PXE_LEASE_SECONDS = 600;
 
-# The short lease a PXE client is given, on either backend.
-#
-# ISC has always had `class "pxe"` for this, but with `max-lease-time 600`
-# alone: dhcpd applies the subnet's `min-lease-time` after the maximum, so the
-# cluster default won and the class did nothing. Both backends name the number
-# outright instead.
+# The short lease a PXE client is given, on either backend. ISC has always had
+# `class "pxe"` for this, but with `max-lease-time 600` alone: dhcpd applies the
+# subnet's min-lease-time after the maximum, so the cluster default won and the
+# class did nothing.
 sub kea_pxe_lease_client_class {
     return {
         name             => 'xcat-pxe-lease',
@@ -129,12 +123,9 @@ sub pxe_vendor_class_test {
     return "substring(option[60].hex,0,9) == 'PXEClient'";
 }
 
-# The same decision as an ISC class.
-#
-# A maximum alone did not shorten anything: dhcpd applies the subnet's
-# min-lease-time after the maximum, so the cluster default won and every pool
-# address a PXE ROM touched was held for half a day. All three bounds are named
-# so the class does what it says.
+# The same decision as an ISC class. A maximum alone shortened nothing: dhcpd
+# applies min-lease-time after the maximum, so every pool address a PXE ROM
+# touched was held for half a day. All three bounds are named.
 sub isc_pxe_lease_class_lines {
     my ($class) = @_;
 
@@ -231,13 +222,10 @@ sub kea_s390x_network_classes {
     ];
 }
 
-# The installer URL an ONIE switch is offered, per subnet.
-#
-# A switch announces onie_vendor on its very first boot, which is necessarily
-# before anyone has defined it as a node -- so a URL that only a node
-# definition can produce is one the switch can never reach. ISC writes this
-# into every subnet; this is the same answer, per network because the URL
-# carries the address of the management node serving it.
+# The installer URL an ONIE switch is offered, per subnet. A switch announces
+# onie_vendor on its first boot, necessarily before anyone has defined it as a
+# node, so a URL only a node definition can produce is one it can never reach.
+# Per network, because the URL carries the address of the server.
 sub kea_onie_network_classes {
     my ( $class, %opts ) = @_;
 
@@ -260,14 +248,11 @@ sub kea_onie_network_classes {
     ];
 }
 
-# The installer URL goes in option 114, which is where ONIE looks for it.
-#
-# xCAT's dhcpd.conf says so by declaring "option www-server code 114 = string"
-# -- a local redefinition, because ISC's own www-server is the standard option
-# 72. Kea has no such redefinition: to it, www-server means option 72, a list
-# of IPv4 addresses, and a URL in one is a configuration error that stops the
-# server from starting at all. Naming the code says the same thing to both,
-# and puts the same bytes on the wire.
+# The installer URL goes in option 114, where ONIE looks for it. xCAT's
+# dhcpd.conf declares "option www-server code 114 = string" -- a local
+# redefinition, because ISC's own www-server is the standard option 72. Kea has
+# no such redefinition, and a URL in option 72 is a configuration error that
+# stops the server from starting. Naming the code says the same to both.
 sub kea_onie_url_option {
     my ( $class, $url ) = @_;
 
@@ -281,21 +266,15 @@ sub kea_onie_url_option {
 # The user class a chainloaded second stage announces itself with, as an ISC
 # dhcpd condition.
 #
-# RFC 3004 length-prefixes each string in option 77; plenty of clients send the
-# bare string instead, and both are seen in the field from the same firmware
-# depending on how it was built. Matching only the bare form means a loader
-# that follows the RFC is handed the first stage again and chainloads itself
-# forever, which is why the Kea policy has always accepted both
-# (xnba_user_class_test) and why this one has to as well.
+# RFC 3004 length-prefixes each string in option 77 and plenty of clients send
+# the bare string instead, so matching only the bare form hands an RFC-following
+# loader the first stage again and it chainloads forever.
 #
-# suffix() takes the last N bytes, so one expression covers both encodings: the
-# bare "xNBA" is its own last four bytes, and the RFC 3004 form "\x04xNBA" ends
-# in the same four. It has to be a single expression, because dhcpd's grammar
-# has no parenthesised grouping -- writing the two forms as `(a or b)` is a
-# parse error ("left brace expected") that stops the daemon from starting.
+# suffix() takes the last N bytes, so one expression covers both: "xNBA" is its
+# own last four bytes and "\x04xNBA" ends in the same four. It has to be one --
+# dhcpd's grammar has no grouping, and `(a or b)` stops the daemon starting.
 #
-# `quote` is the quoting the caller's context needs: a plain " for a config
-# file written directly, and \" for a statement that reaches dhcpd through
+# `quote` is " for a config file and \" for a statement reaching dhcpd through
 # omshell.
 sub isc_xnba_user_class_test {
     my ( $class, %opts ) = @_;
@@ -314,21 +293,18 @@ sub isc_client_architecture_lines {
     my $maskbits   = $opts{prefix}      // '';
     my $xnba       = $class->isc_xnba_user_class_test();
 
-    # Which loaders are actually on disk. A branch that names a file the TFTP
-    # server does not have costs the client a full timeout it has no way to
-    # diagnose, so the branch is left out and the client falls through to
-    # whatever the chain answers next. The Kea side has always worked this way
-    # (kea_client_classes takes the same two flags, kea_httpboot_network_classes
-    # the same probe); until now ISC named all of them unconditionally.
+    # Which loaders are actually on disk. A branch naming a file the TFTP server
+    # does not have costs the client a full timeout it cannot diagnose, so the
+    # branch is left out and the client falls through. The Kea side has always
+    # worked this way; until now ISC named all of them unconditionally.
     my $present = $opts{loader_present} || sub { return 1 };
     my $tftpdir = $opts{tftpdir} || '/tftpboot';
     $tftpdir =~ s{/+$}{};
     my $kpxe = $present->("$tftpdir/xcat/xnba.kpxe");
     my $efi  = $present->("$tftpdir/xcat/xnba.efi");
 
-    # Each entry is the head of one branch and the statements inside it. They
-    # are chained afterwards so that dropping one still leaves a well-formed
-    # if/else if chain -- the first branch present has to be the `if`.
+    # Each entry is the head of one branch and its statements. They are chained
+    # afterwards so dropping one still leaves a well-formed if/else chain.
     my @branches;
 
     if ($kpxe) {
@@ -368,9 +344,9 @@ sub isc_client_architecture_lines {
             "        filename \"xcat/xnba.efi\";\n",
           ],
 
-          # 0x0010 is the same x86-64 UEFI firmware and the same loader as
-          # 0x0007, announced by a machine set to fetch it over HTTP. Without
-          # the branch a mainstream client falls through to /yaboot.
+          # 0x0010 is the same x86-64 UEFI firmware and loader as 0x0007,
+          # announced by a machine set to fetch it over HTTP. Without the branch
+          # a mainstream client falls through to /yaboot.
           [
             "option client-architecture = 00:10 { #x86_64 uefi http boot\n ",
             "        filename \"xcat/xnba.efi\";\n",
@@ -386,8 +362,8 @@ sub isc_client_architecture_lines {
         "      filename \"boot/grub2/grub2.aarch64\";\n",
       ],
 
-      # yaboot, which is what a ppc64 client fell through to without this
-      # branch, is not a UEFI loader and cannot boot one of these machines.
+      # yaboot, what a ppc64 client fell through to without this branch, is not
+      # a UEFI loader and cannot boot one of these machines.
       [
         "option client-architecture = 00:0c { #ppc64 grub2\n ",
         "      filename \"/boot/grub2/grub2.ppc\";\n",
@@ -407,12 +383,10 @@ sub isc_client_architecture_lines {
     }
 
     # Leaving a branch out is not the same as answering nothing. ISC evaluates
-    # these as one if/else chain, so a client whose branch was dropped keeps
-    # falling until it reaches the /yaboot catch-all at the end and is handed a
-    # loader nobody chose -- the substitution S-12 forbids. Kea cannot do this:
-    # its fallback class excludes every architecture another class recognises.
-    # So each dropped branch leaves a branch behind that matches the same client
-    # and says nothing, which stops the fall exactly where it should stop.
+    # these as one if/else chain, so a client whose branch was dropped falls to
+    # the /yaboot catch-all and is handed a loader nobody chose -- the
+    # substitution S-12 forbids. So each dropped branch leaves one behind that
+    # matches the same client and says nothing.
     my @suppressed;
     push @suppressed, "option client-architecture = 00:00",
       "option vendor-class-identifier = \"Etherboot-5.4\""
@@ -487,13 +461,12 @@ sub kea_xnba_node_classes {
     return \@classes;
 }
 
-#: A ScaleMP hypervisor is an ordinary BIOS PXE client in every respect except
-#: the binary it has to be handed, and the vendor class is the only thing that
-#: tells it apart from the machines around it.
+#: A ScaleMP hypervisor is an ordinary BIOS PXE client except for the binary it
+#: has to be handed, and the vendor class is the only thing that tells it apart.
 sub scalemp_vendor_class_test { return "option[60].text == 'ScaleMP'"; }
 
-#: IBM's iSCSI initiators announce this and then read the initiator name and
-#: the root path out of option 43 rather than out of option 17.
+#: IBM's iSCSI initiators announce this and then read the initiator name and the
+#: root path out of option 43 rather than option 17.
 sub isan_vendor_class_test { return "option[60].text == 'ISAN'"; }
 
 # ISC writes the ScaleMP choice as one if/else on the node's own host block:
@@ -502,9 +475,8 @@ sub isan_vendor_class_test { return "option[60].text == 'ISAN'"; }
 #   else { filename = "pxelinux.0"; }
 #
 # Kea has no else, and a reservation's boot-file-name outranks every class, so
-# the same choice has to be written as two classes that exclude one another and
-# the reservation has to name no boot file at all. Without this a ScaleMP
-# machine is handed the reservation's pxelinux.0 and boots the wrong loader.
+# the choice becomes two mutually exclusive classes and the reservation names no
+# boot file at all.
 sub kea_pxe_node_classes {
     my ( $class, %opts ) = @_;
 
@@ -534,11 +506,9 @@ sub kea_pxe_node_classes {
     return \@classes;
 }
 
-# The same shape for iSCSI, and for the same reason: ISC chooses between the
-# ISAN vendor form and the standard one with an if/else, and an ISAN initiator
-# is deliberately not sent option 17 at all. Only a node with an initiator name
-# needs the choice -- without one, ISC emits the standard root-path alone and
-# the reservation can carry it.
+# The same shape for iSCSI: ISC chooses between the ISAN vendor form and the
+# standard one with an if/else, and an ISAN initiator is deliberately not sent
+# option 17 at all. Only a node with an initiator name needs the choice.
 sub kea_iscsi_node_classes {
     my ( $class, %opts ) = @_;
 
@@ -555,13 +525,11 @@ sub kea_iscsi_node_classes {
             name          => "$base-isan",
             test          => "$mac_test and $isan",
             'option-data' => [
-                # Kea appends an encapsulated space to a reply only when the
-                # option that carries it is itself configured, and option 43
-                # has no data of its own. Naming only the sub-options leaves
-                # them with nothing to travel in, and the initiator is offered
-                # an address with no target -- so the empty container is named
-                # too. ISC needs no equivalent: declaring `option isan.iqn`
-                # builds option 43 for it.
+                # Kea appends an encapsulated space only when the option that
+                # carries it is itself configured, and option 43 has no data of
+                # its own -- so the empty container is named too, or the
+                # initiator is offered an address with no target. ISC needs no
+                # equivalent: declaring `option isan.iqn` builds option 43.
                 { name => 'isan-encap-opts' },
                 { space => 'isan', name => 'iqn',       data => $node->{iname} },
                 { space => 'isan', name => 'root-path', data => $node->{root_path} },
@@ -585,12 +553,12 @@ sub kea_iscsi_node_classes {
 # The tag that hands a client to the proxyDHCP daemon.
 #
 # Windows UEFI firmware that is offered no boot file, but sees option 60 set to
-# PXEClient, goes and asks the daemon listening on port 4011 for one. ISC does
-# this in the node's own host block, for the three architecture ids its
-# firmware announces; anything else on that node is simply given no boot file.
+# PXEClient, asks the daemon listening on port 4011 for one. ISC does this in
+# the node's own host block, for the three architecture ids its firmware
+# announces.
 #
-# The empty boot file is the reservation's job -- it outranks every class -- so
-# what is left for the class is the tag, and the architectures it is meant for.
+# The empty boot file is the reservation's job, so what is left for the class is
+# the tag and the architectures it is meant for.
 sub kea_proxydhcp_node_classes {
     my ( $class, %opts ) = @_;
 
@@ -620,16 +588,13 @@ sub kea_proxydhcp_node_classes {
 
 # The MACs that are to be answered with nothing at all.
 #
-# ISC writes `deny booting;` into the host block of a NIC marked *NOIP* in the
-# mac table, and dhcpd then says nothing to it. Kea has one way to do that: a
-# packet assigned to a class named exactly DROP is discarded. Nothing else
-# about the name is special, and there can only be one of it, so every such
-# MAC in the cluster shares the class and the user-context records whose they
-# are, so a later makedhcp for one node can rebuild it without losing the rest.
+# ISC writes `deny booting;` into the host block of a NIC marked *NOIP*. Kea has
+# one way to do that: a packet assigned to the class named DROP is discarded.
+# There can only be one of it, so every such MAC shares it, and the user-context
+# records whose they are so a later makedhcp for one node can rebuild it.
 #
-# Skipping the reservation is not enough on its own: the subnet-wide classes
-# match on architecture and would still hand the interface a boot file, which
-# is the whole thing the marking exists to prevent.
+# Skipping the reservation is not enough: the subnet-wide classes match on
+# architecture and would still hand the interface a boot file.
 sub kea_drop_client_class {
     my ( $class, %opts ) = @_;
 
@@ -658,24 +623,16 @@ sub kea_localboot_guard {
 
 # The MACs of nodes that have an operating system and must be left to start it.
 #
-# A node whose chain.currstate is boot or iscsiboot is given an empty
-# boot-file-name in its reservation, and that is not enough on its own: Kea
-# reads an empty string as "not specified" and falls through to the classes,
-# which match on architecture and hand the machine a loader anyway. It is the
-# same trap the DROP class above exists to avoid, and it is worse here, because
-# the loader then asks again as an xNBA second stage and is answered with the
-# network's boot script -- so an installed node netboots on every power cycle
-# instead of starting its disk. spec.md S-31.
+# A node in state boot or iscsiboot gets an empty boot-file-name, which is not
+# enough: Kea reads it as "not specified" and falls through to the classes, which
+# hand the machine a loader on architecture alone. It then asks again as an xNBA
+# second stage and is answered with the network's boot script, so an installed
+# node netboots on every power cycle. spec.md S-31.
 #
-# So the MACs are collected into one class and every class that names a boot
-# file is written to exclude members of it -- see kea_apply_localboot_guard.
-# One class shared by the whole cluster, with the user-context recording whose
-# MACs they are, so a later makedhcp for one node can rebuild it without losing
-# the rest: exactly how DROP is kept.
-#
-# A node booting from an iSCSI target is deliberately not in here. Its root
-# disk is on the network and gPXE is what attaches it, so it does still want a
-# loader; ISC draws the same line with $doiscsi.
+# So the MACs go into one class every boot-file class excludes -- see
+# kea_apply_localboot_guard -- kept the way DROP is kept. A node booting from an
+# iSCSI target is deliberately not here: gPXE attaches its root disk, so it does
+# want a loader. ISC draws the same line.
 sub kea_localboot_client_class {
     my ( $class, %opts ) = @_;
 
@@ -694,8 +651,8 @@ sub kea_localboot_client_class {
     };
 }
 
-#: The encapsulated space ISC declares as "option space isan" -- option 43
-#: carrying the initiator name in 203 and the root path in 201.
+#: The encapsulated space ISC declares as "option space isan": option 43 with
+#: the initiator name in 203 and the root path in 201.
 sub kea_isan_option_defs {
     return [
         {

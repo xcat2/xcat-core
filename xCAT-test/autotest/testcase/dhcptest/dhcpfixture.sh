@@ -1,19 +1,10 @@
 #!/bin/bash
 #
-# The xCAT side of the dhcptest wire cases.
-#
-# dhcptest itself never reads the xCAT database and never runs an xCAT
-# command -- that is the whole point of it, and it is why the same .conf files
-# can be pointed at any DHCP server. Everything that *does* know about xCAT
-# lives here.
-#
-# It builds a self-contained provisioning network out of a veth pair, so the
-# wire cases have something real to talk to on a management node that has no
-# spare NIC -- a single-node CI runner, most of all. The server end carries
-# the management address and is the only interface the DHCP daemon is told to
-# listen on; the client end has no address at all, which is exactly the state
-# a provisioning NIC is in when a machine boots on it.
-#
+# The xCAT side of the dhcptest wire cases: dhcptest knows nothing about xCAT,
+# so everything that does lives here. It builds a provisioning network out of a
+# veth pair, the server end carrying the management address and the only
+# interface the daemon is told to listen on, the client end carrying nothing --
+# the state a provisioning NIC is in when a machine boots on it.
 # Usage:
 #     dhcpfixture.sh check                   is this machine able to run the wire cases
 #     dhcpfixture.sh setup                   build the network, the node and the config
@@ -39,8 +30,7 @@
 #     dhcpfixture.sh run-adoption            discover a machine, define it, serve it its own address
 #     dhcpfixture.sh teardown                put everything back
 #
-# `setup` records what it changed under $STATE and `teardown` restores it, so
-# a case that fails half way still leaves the machine serving its own config.
+# setup records what it changed under $STATE; teardown puts it back.
 
 set -u
 
@@ -57,27 +47,23 @@ DOMAIN=dhcptest.cluster
 NODE=dhcptestcn
 NODE_IP=10.99.0.11
 NODE_MAC=52:54:00:dc:11:01
-# Locally administered, so it belongs to no vendor and can never collide with
-# a real machine on a real lab network.
+# Locally administered, so it collides with no real machine on a real network.
 UNKNOWN_MAC=02:00:dc:11:00:99
 
-# The machine that gets discovered and then adopted while the server keeps
-# running. Defined by `run-adoption`, not by `setup`, because the whole point
-# is what changes between the two DISCOVERs.
+# The machine discovered and then adopted while the server keeps running.
+# Defined by run-adoption, because the point is what changes between DISCOVERs.
 ADOPT_NODE=dhcptestcn2
 ADOPT_IP=10.99.0.12
 ADOPT_MAC=02:00:dc:11:00:aa
 
 # An address on a network this server has never heard of, for the DHCPNAK case.
-# 192.0.2.0/24 is TEST-NET-1 and is not routable anywhere.
+# 192.0.2.0/24 is TEST-NET-1 and is routable nowhere.
 FOREIGN_IP=192.0.2.77
 
-# Where a node is told to fetch its boot file from has three possible sources,
-# and in a flat cluster all three are this machine -- which is exactly why the
-# test would prove nothing there. These two addresses stand in for the service
-# nodes a hierarchical cluster would have. Nothing ever connects to them: the
-# assertion is on the address in the reply, so they only have to be distinct
-# from each other and from this server.
+# next-server has three possible sources, and in a flat cluster all three are
+# this machine -- which is why the test would prove nothing there. These two
+# stand in for a hierarchical cluster's service nodes. Nothing connects to
+# them: the assertion is on the address in the reply.
 SN_TFTP_IP=10.99.0.61
 SN_XCAT_IP=10.99.0.62
 
@@ -91,9 +77,9 @@ NS_SUB_NODE=dhcptestnssub
 NS_SUB_IP=10.99.0.33
 NS_SUB_MAC=02:00:dc:11:00:33
 
-# One machine, two provisioning ports, one hostname each. The second hostname
-# is a node of its own so that it has an address xCAT can resolve; what makes
-# the pair a single machine is the first node's mac attribute naming both.
+# One machine, two provisioning ports, one hostname each. The second hostname is
+# a node so it has an address xCAT can resolve; what makes the pair one machine
+# is the first node's mac attribute naming both.
 MM_NODE=dhcptestmm
 MM_IP=10.99.0.41
 MM_MAC=02:00:dc:11:00:41
@@ -113,37 +99,33 @@ RM_NODE=dhcptestrm
 RM_IP=10.99.0.71
 RM_MAC=02:00:dc:11:00:71
 
-# A node that has been installed already: chain.currstate says it has an
-# operating system and must be left to start it. netboot is xnba rather than
-# the fixture's usual grub2 because the script that must not be sent is an
-# xNBA second stage, and only netboot=xnba generates one.
+# A node already installed: chain.currstate says it has an operating system and
+# must be left to start it. netboot is xnba because the script that must not be
+# sent is an xNBA second stage, and only xnba generates one.
 LB_NODE=dhcptestboot
 LB_IP=10.99.0.81
 LB_MAC=02:00:dc:11:00:61
 
-# The same state on the other netboot method that has a boot-from-disk rule of
-# its own. An installed node must be left alone whichever way it was
-# provisioned, and the two methods are written as separate branches in the ISC
-# generator, so one of them being right proves nothing about the other.
+# The same state on the other netboot method with a boot-from-disk rule of its
+# own. The two are separate branches in the ISC generator, so one of them being
+# right proves nothing about the other.
 LB_PXE_NODE=dhcptestbootpxe
 LB_PXE_IP=10.99.0.82
 LB_PXE_MAC=02:00:dc:11:00:62
 
-# A machine that speaks BOOTP and not DHCP, and the web port a cluster that is
-# not serving on 80 would use.
+# A machine that speaks BOOTP and not DHCP, and the web port a cluster not
+# serving on 80 would use.
 BOOTP_MAC=02:00:de:ad:b0:07
 ALT_HTTPPORT=8080
 
 # The dynamic range in the other notation networks.dynamicrange accepts. The
-# block covers every address $POOL names and no address any node in this
-# fixture holds, so the only thing that can change the answer is which of the
-# two notations the backend understands.
+# block covers the same addresses, so the only thing that can change the answer
+# is which notation the backend understands.
 POOL_CIDR=10.99.0.192/26
 
 STATE=/tmp/dhcptest-fixture
 # What backend-setup saved, so backend-teardown can put it back. Separate from
-# $STATE because it outlives every case in the pass: $STATE belongs to one case
-# and is removed by that case's teardown.
+# $STATE, which belongs to one case and dies with that case's teardown.
 BSTATE=/tmp/dhcptest-backend
 DHCPTEST=/opt/xcat/share/xcat/tools/autotest/dhcptest
 [ -d "$DHCPTEST" ] || DHCPTEST="$(cd "$(dirname "$0")/../../../dhcptest" 2>/dev/null && pwd)"
@@ -153,9 +135,8 @@ skip() { echo "dhcptest skipped: $*"; exit 1; }
 die()  { echo "dhcpfixture: $*" >&2; exit 1; }
 
 # The netboot method decides the boot file a reserved node is handed. grub2 is
-# the one every backend renders the same way and without needing a loader to be
-# present in the tftp directory first, so the wire expectation is exact rather
-# than "something non-empty".
+# the one every backend renders the same way without needing a loader on disk,
+# so the wire expectation is exact rather than "something non-empty".
 NETBOOT=grub2
 node_loader() { echo "/boot/grub2/grub2-$NODE"; }
 
@@ -177,30 +158,23 @@ lease_time() {
     echo "${value:-43200}"
 }
 
-# What an unknown machine is told to boot.
-#
-# A machine being discovered has no reservation by definition, so the answer can
-# only come from the subnet -- and it has to come, or the machine has no way to
-# reach the state where someone could define it. The specification says so for
-# both backends (S-56), so this no longer asks which one is running.
+# What an unknown machine is told to boot. A machine being discovered has no
+# reservation, so the answer can only come from the subnet -- and it has to
+# come, or the machine never reaches the state where someone could define it.
+# The specification says so for both backends (S-56).
 discovery_loader() {
     arch_loader bios
 }
 
 # What a machine of a given client architecture, with no reservation, must be
-# told to boot: one answer per architecture, the same one for every backend.
+# told to boot: one answer per architecture, the same for every backend.
 #
 # This used to branch on the backend, which made the drift it exists to catch
-# impossible to see -- whatever each backend did was what the test expected of
-# it, so the two could disagree for ever and the case would still pass. A node
-# does not choose its management node's DHCP backend, so an architecture that
-# boots under one and hangs under the other is a bug in whichever one is wrong,
-# and a wire test has to be able to say so.
+# invisible. A node does not choose its management node's backend, so an
+# architecture that boots under one and hangs under the other is a bug.
 #
-# The backends do read one thing off this machine before deciding: whether the
-# loader is already unpacked under tftpdir. setup puts every loader they key on
-# in place (see provide_loaders), so both are configured from the same inputs
-# and any difference left in the reply is a difference in behaviour.
+# The backends do read one thing off this machine: whether the loader is already
+# unpacked under tftpdir. setup puts every loader they key on in place.
 arch_loader() {
     case "$1" in
         bios)        echo "xcat/xnba.kpxe" ;;
@@ -209,36 +183,34 @@ arch_loader() {
         riscv64)     echo "boot/grub2/grub2.riscv64" ;;
         ia64)        echo "elilo.efi" ;;
         ppc64)       echo "/boot/grub2/grub2.ppc" ;;
-        # No option 93 and no vendor class anyone recognises. The reply still
-        # has to name something, or the client cannot tell it was served.
+        # No option 93 and no vendor class anyone recognises. The reply still has
+        # to name something, or the client cannot tell it was served.
         fallback)    echo "/yaboot" ;;
     esac
 }
 
-# The three subnet answers that are a URL or a conf-file rather than a loader.
-# All of them are built out of the network the fixture defined, which is why
-# they are here and not in arch_loader.
+# The three subnet answers that are a URL or a conf file rather than a loader,
+# all built out of the network the fixture defined.
 NETID="${NET}_${PREFIX}"
 opal_conf()  { echo "http://$SRV_IP/tftpboot/pxelinux.cfg/p/$NETID"; }
 s390x_conf() { echo "s390x/$NETID"; }
 onie_url()   { echo "http://$SRV_IP/install/onie/onie-installer"; }
 
-# Option 239, pushed on every subnet whether or not a Cumulus switch will ever
-# discover on it. It is a subnet-wide answer, so any client sees it.
+# Option 239, pushed on every subnet whether or not a Cumulus switch discovers
+# on it. Subnet-wide, so any client sees it.
 cumulus_url() { echo "http://$SRV_IP/install/postscripts/cumulusztp"; }
 
-# The second stage of a chained xNBA boot, in its two forms. A client the
-# server holds no reservation for can only be answered per network; one it does
-# know is answered per node, and that is the whole point of the second stage --
-# two machines chainloading at the same instant must not run the same script.
+# The second stage of a chained xNBA boot, in its two forms. A client with no
+# reservation can only be answered per network; one the server knows is answered
+# per node -- two machines chainloading at once must not run the same script.
 xnba_net_url()  { echo "http://$SRV_IP/tftpboot/xcat/xnba/nets/$NETID"; }
 xnba_node_url() { echo "http://$SRV_IP/tftpboot/xcat/xnba/nodes/$1"; }
 
 # The loaders whose presence changes what a backend answers, relative to tftpdir.
 #
-#   xcat/xnba.kpxe             Kea names it if it is there and falls back to
-#                              pxelinux.0 if it is not; ISC names it either way.
-#   xcat/xnba.efi              Kea emits no UEFI x64 class at all without it;
+#   xcat/xnba.kpxe             Kea names it if present and falls back to
+#                              pxelinux.0 if not; ISC names it either way.
+#   xcat/xnba.efi              Kea emits no UEFI x64 class without it;
 #                              ISC names it either way.
 #   boot/grub2/grub2.riscv64   gates Kea's riscv64 HTTP boot class; ISC emits
 #                              the HTTP branch either way.
@@ -246,14 +218,10 @@ xnba_node_url() { echo "http://$SRV_IP/tftpboot/xcat/xnba/nodes/$1"; }
 # grub2.aarch64 is not listed: neither backend keys on it.
 GATING_LOADERS="xcat/xnba.kpxe xcat/xnba.efi boot/grub2/grub2.riscv64"
 
-# Put an empty file where a gating loader is missing, and record it so teardown
-# takes back exactly what was added and nothing else.
-#
-# An empty file is enough because nothing here fetches one: dhcptest asserts the
-# name in the BOOTP file field and never opens a TFTP session. What matters is
-# that the two backends are asked the same question -- otherwise a parity
-# failure would only mean this machine had not unpacked a loader, which is a
-# fact about the runner and not about xCAT.
+# Put an empty file where a gating loader is missing, recording it so teardown
+# takes back exactly what was added. Empty is enough because nothing fetches
+# one: dhcptest asserts the name in the BOOTP file field and never opens a TFTP
+# session. What matters is that both backends are asked the same question.
 provide_loaders() {
     local rel path tftp
     tftp=$(tftpdir)
@@ -321,10 +289,9 @@ do_check() {
     [ "$(id -u)" = 0 ] || skip "the wire cases send raw frames, which needs root"
     command -v ip >/dev/null 2>&1 || skip "iproute2 is not installed"
     command -v makedhcp >/dev/null 2>&1 || skip "makedhcp is not on PATH, so this is not a management node"
-    # -f rather than -x: the fixture runs it as `python3 src/dhcptest`, so the
-    # execute bit is only needed by whoever calls it directly. Testing -x here
-    # made every wire case skip -- and pass -- on Debian, where dh_install keeps
-    # the source mode and the RPM's chmod has no counterpart.
+    # -f rather than -x: the fixture runs it as `python3 src/dhcptest`. Testing
+    # -x made every wire case skip -- and pass -- on Debian, where dh_install
+    # keeps the source mode.
     [ -f "$DHCPTEST/src/dhcptest" ] || skip "dhcptest is not installed under $DHCPTEST"
     python3 -c "import scapy" 2>/dev/null || skip "python3-scapy is not installed"
     ip link add "${IF_SRV}probe" type veth peer name "${IF_CLI}probe" 2>/dev/null \
@@ -336,8 +303,7 @@ do_check() {
 do_setup() {
     mkdir -p "$STATE" || die "cannot create $STATE"
 
-    # Everything that gets changed is recorded first, so teardown is exact
-    # rather than a guess at what the defaults used to be.
+    # Recorded before it is changed, so teardown is exact rather than a guess.
     tabdump site > "$STATE/site.csv" || die "cannot read the site table"
     for f in /etc/dhcp/dhcpd.conf /etc/dhcpd.conf /etc/kea/kea-dhcp4.conf; do
         [ -f "$f" ] && cp -f "$f" "$STATE/$(echo "$f" | tr / _)"
@@ -351,10 +317,9 @@ do_setup() {
     ip link set "$IF_CLI" up || die "cannot bring up $IF_CLI"
     echo done > "$STATE/veth"
 
-    # Every attribute set here is one option the reply has to carry. An
-    # installer that gets an address and no gateway, resolver or MTU fails much
-    # later and much less obviously than one that gets no address at all, which
-    # is why they are configured and asserted rather than left at the default.
+    # Every attribute set here is one option the reply has to carry. An installer
+    # given an address but no gateway, resolver or MTU fails much later and much
+    # less obviously than one given no address at all.
     mkdef -f -t network -o "$NETOBJ" net="$NET" mask="$MASK" mgtifname="$IF_SRV" \
         gateway="$SRV_IP" tftpserver="$SRV_IP" nameservers="$SRV_IP" \
         dynamicrange="$POOL" domain="$DOMAIN" mtu="$MTU" \
@@ -367,26 +332,23 @@ do_setup() {
     echo done > "$STATE/node"
     makehosts "$NODE" || die "cannot add $NODE to /etc/hosts"
 
-    # The daemon is told to listen on the fixture interface and nothing else,
-    # so a stray reply from the real provisioning network cannot be mistaken
-    # for the answer under test.
+    # The daemon listens on the fixture interface and nothing else, so a stray
+    # reply from the real provisioning network cannot be taken for the answer.
     chdef -t site -o clustersite dhcpinterfaces="$IF_SRV" \
         || die "cannot set site.dhcpinterfaces"
 
     # Before the config is generated: both backends read tftpdir while deciding
-    # which boot classes to write, so the loaders have to be in place first.
+    # which boot classes to write.
     provide_loaders
 
     do_generate || return 1
     say "fixture is up on $IF_SRV/$IF_CLI, backend $(current_backend)"
 }
 
-# Being alive is not the same as being able to answer. Kea opens a UDP
-# fallback socket per address and, when something else already holds port 67,
-# logs DHCPSRV_NO_SOCKETS_OPEN and keeps running with no way to hear a client.
-# Every wire case then fails on a timeout and reads as backend drift, which is
-# exactly the wrong diagnosis. So the fixture asks who holds port 67 before it
-# believes a daemon is serving.
+# Being alive is not the same as being able to answer. Kea opens a UDP fallback
+# socket per address and, when something else holds port 67, logs
+# DHCPSRV_NO_SOCKETS_OPEN and keeps running deaf. Every wire case then fails on
+# a timeout and reads as backend drift, which is the wrong diagnosis.
 assert_serving() {
     local daemon=$1 foreign
     command -v ss >/dev/null 2>&1 || return 0
@@ -394,8 +356,8 @@ assert_serving() {
     foreign=$(ss -uapnH "( sport = :67 )" 2>/dev/null | grep -v "\"$daemon\"" | tr -s ' ')
     [ -n "$foreign" ] && die "another process holds port 67, so $daemon cannot serve: $foreign"
 
-    # ISC binds a raw LPF socket, which no UDP listing shows, so only Kea can
-    # be asked to prove its socket is open.
+    # ISC binds a raw LPF socket, which no UDP listing shows, so only Kea can be
+    # asked to prove its socket is open.
     case "$daemon" in
         kea-dhcp4)
             ss -uapnH "( sport = :67 )" 2>/dev/null | grep -q "\"$daemon\"" \
@@ -430,20 +392,15 @@ installed_backends() {
 # Select a DHCP backend for a whole pass of the wire cases.
 #
 # Which backend a cluster runs is an implementation default -- Backend.pm picks
-# kea on Ubuntu >= 22.04 and EL >= 10 and isc below, and `auto` flips the moment
-# kea-dhcp4 appears -- so a booting machine must see the same answers either
-# way. Testing whichever backend happened to be configured proves half of that
-# and hides every drift between the two.
+# kea on Ubuntu >= 22.04 and EL >= 10, isc below -- so a booting machine must see
+# the same answers either way. Testing whichever backend happened to be
+# configured hides every drift between the two.
 #
-# The choice is made once per pass and not once per case: the caller runs every
-# case against isc, then every case again against kea. Switching inside each
-# case would reconfigure and restart the daemon between every one of them, and a
-# failure in the log would not say which backend it belonged to without counting
-# lines.
+# Once per pass, not once per case: switching inside each case would restart the
+# daemon between every one of them, and a failure in the log would not say which
+# backend it belonged to.
 #
-# Only site.dhcpbackend is set here. Each case's own setup saves the site table
-# and its teardown restores it, so the selection survives the whole pass, and
-# the config itself is generated per case by makedhcp as before.
+# Only site.dhcpbackend is set here.
 do_backend_setup() {
     local want=${1:-} unit other
     [ "$want" = isc ] || [ "$want" = kea ] || die "usage: $0 backend-setup <isc|kea>"
@@ -454,7 +411,7 @@ do_backend_setup() {
     current_backend > "$BSTATE/backend"
 
     # Two daemons on one wire both answer the same DISCOVER, and the case would
-    # be asserting on whichever won the race.
+    # assert on whichever won the race.
     [ "$want" = isc ] && other=kea || other=isc
     unit=$(service_of "$other")
     [ -n "$unit" ] && { say "stopping $unit"; systemctl stop "$unit" >/dev/null 2>&1; }
@@ -464,7 +421,7 @@ do_backend_setup() {
 }
 
 # Undo backend-setup: stop what the pass was serving with and put the site table
-# back exactly as it was, unset included, rather than to a guess at the default.
+# back exactly as it was, unset included.
 do_backend_teardown() {
     local want=${1:-} unit was
     [ -d "$BSTATE" ] || { say "no backend pass to tear down"; return 0; }
@@ -497,8 +454,8 @@ do_run() {
         conf/provision-vs-discovery.conf || rc=1
 
     # A reservation is a reservation whichever way the node was reached, so the
-    # same node has to answer static-vs-dynamic.conf as well: it asks the same
-    # question from the other end, starting from the pool.
+    # same node answers static-vs-dynamic.conf: the same question from the other
+    # end, starting from the pool.
     dhcptest_run \
         --set reserved_mac="$NODE_MAC" --set reserved_ip="$NODE_IP" \
         --set unreserved_mac="$UNKNOWN_MAC" --set pool="$POOL" \
@@ -515,13 +472,9 @@ do_run() {
 # One DISCOVER per client architecture, asserting the loader each one is handed.
 #
 # This is the part of xCAT's DHCP behaviour with the most branches and, until
-# now, the least wire coverage: a single grub2 assertion for one architecture.
-# Every architecture is asserted under every backend, with the same expected
-# loader for both -- see arch_loader for why nothing is skipped by backend.
-# The whole file runs in one invocation. It used to run one scenario at a time
-# with every other loader variable set to a placeholder, because only one of
-# them had a real value; now that each architecture has an answer the
-# specification states for both backends, there is nothing left to hide.
+# now, the least wire coverage. Every architecture is asserted under every
+# backend with the same expected loader -- see arch_loader for why nothing is
+# skipped by backend. The whole file runs in one invocation.
 #
 # The riscv64 HTTP scenario asserts a prefix and a substring rather than the
 # whole URL, so it reads the same riscv64_loader path the TFTP scenario does.
@@ -544,11 +497,11 @@ do_run_arch() {
 #
 # The method is an attribute of the node, so the loader can only come from what
 # the operator wrote against it. A subnet-wide boot class sees the client
-# architecture and nothing else, so a backend that leans on one answers a nimol
+# architecture and nothing else, so a backend leaning on one answers a nimol
 # node with an x86 loader and the machine does not install.
 #
-# name:method:ip:mac -- the addresses sit above the node the rest of the
-# fixture defines and below the dynamic pool, so nothing here collides.
+# name:method:ip:mac -- the addresses sit above the fixture's own node and below
+# the dynamic pool, so nothing collides.
 NETBOOT_NODES="
 dhcptestnbxnba:xnba:10.99.0.21:02:00:dc:11:00:21
 dhcptestnbpxe:pxe:10.99.0.22:02:00:dc:11:00:22
@@ -559,9 +512,8 @@ dhcptestnbptb:petitboot:10.99.0.26:02:00:dc:11:00:26
 "
 
 # The node carrying the second NIC the operator marked *NOIP*: a port that must
-# never boot, on a machine that provisions through another one. It is a mac
-# table entry rather than a node of its own, which is the only way xCAT can
-# express it.
+# never boot, on a machine that provisions through another one. A mac table
+# entry rather than a node, which is the only way xCAT can express it.
 NOIP_NODE=dhcptestnbnoip
 NOIP_NODE_IP=10.99.0.27
 NOIP_NODE_MAC=02:00:dc:11:00:27
@@ -570,8 +522,8 @@ NOIP_MAC=02:00:dc:11:00:07
 netboot_field() { echo "$1" | cut -d: -f"$2"; }
 netboot_mac()   { echo "$1" | cut -d: -f4-9; }
 
-# What each method's node has to be handed. Same expectation for both backends:
-# the operator wrote the method, not the backend.
+# What each method's node has to be handed. Same for both backends: the operator
+# wrote the method, not the backend.
 netboot_loader() {
     local method=$1 node=$2
     case "$method" in
@@ -602,7 +554,7 @@ netboot_define() {
         makedhcp "$name" || die "makedhcp $name failed"
     done
 
-    # Two entries on one node: the port that provisions, and the port that must
+    # Two entries on one node: the port that provisions and the port that must
     # not. Only the second is asserted, but it cannot exist without the first.
     mkdef -f -t node -o "$NOIP_NODE" groups=dhcptest ip="$NOIP_NODE_IP" \
         mac="$NOIP_NODE_MAC!$NOIP_NODE|$NOIP_MAC!*NOIP*" \
@@ -658,15 +610,13 @@ do_run_netboot() {
 # The two halves of a chained network boot.
 #
 # Firmware PXE sends no user class and must be handed a loader binary. The
-# loader that firmware just ran announces itself with user class xNBA and must
-# be handed something else -- the per-network script URL -- or it chainloads
-# itself forever, and the machine sits at a boot prompt that never advances.
+# loader that firmware just ran announces user class xNBA and must be handed
+# something else -- the per-network script URL -- or it chainloads itself
+# forever at a boot prompt that never advances.
 #
 # Both encodings of option 77 are sent: the bare string, and the length-prefixed
 # form RFC 3004 specifies. The same firmware sends either depending on how it
-# was built, so a server that recognises only one of them boots half the fleet
-# and loops the other half. Both backends render this branch on the subnet, so
-# no node has to be defined with netboot=xnba for it.
+# was built, so a server recognising only one boots half the fleet.
 do_run_chainload() {
     dhcptest_run --set user_class=xNBA --set stage1_loader="$(arch_loader bios)" \
         --set stage1_uefi_loader="$(arch_loader uefi)" \
@@ -674,13 +624,10 @@ do_run_chainload() {
         conf/ipxe-userclass.conf
 }
 
-# The lease itself, rather than what is booted with it: the four-way handshake,
-# renewal, rebinding, and the refusal of an address this network cannot give.
-#
-# The DHCPNAK matters as much as the ACK. A node moved between racks comes back
-# asking for the address it still holds; a server that stays silent leaves it
-# retrying forever, which on a provisioning network is indistinguishable from a
-# node that will not boot.
+# The lease itself rather than what is booted with it: the handshake, renewal,
+# rebinding, and the refusal of an address this network cannot give. The DHCPNAK
+# matters as much as the ACK: a node moved between racks comes back asking for
+# the address it still holds, and silence leaves it retrying forever.
 do_run_lease() {
     local rc=0
     dhcptest_run --set net="$NET/$PREFIX" conf/full-lease.conf   || rc=1
@@ -689,15 +636,15 @@ do_run_lease() {
     return $rc
 }
 
-# Discovery, end to end: a machine nobody has heard of takes a pool address,
-# gets defined as a node, and from the next DISCOVER on is served its own
-# address instead -- with the daemon never restarted in between.
+# Discovery end to end: a machine nobody has heard of takes a pool address, gets
+# defined as a node, and from the next DISCOVER on is served its own address --
+# with the daemon never restarted in between.
 #
-# That last part is the assertion with teeth. xCAT injects ISC reservations
-# into the leases file over OMAPI precisely so a node being adopted does not
-# interrupt every other node still being discovered; a regression to rewriting
-# dhcpd.conf and bouncing the daemon would still pass every static test in this
-# tree. So the daemon's pid is taken before and after and has to match.
+# That last part is the assertion with teeth. xCAT injects ISC reservations over
+# OMAPI precisely so adopting a node does not interrupt every other node being
+# discovered; a regression to rewriting dhcpd.conf and bouncing the daemon would
+# still pass every static test in this tree. So the pid is taken before and
+# after and has to match.
 do_run_adoption() {
     local rc=0 daemon before after
     daemon=$(daemon_of "$(current_backend)")
@@ -734,9 +681,8 @@ do_run_adoption() {
 
 # Hand the subnet's dynamic pool to another server, the way a management node
 # does when a service node takes over a rack. Both backends drop a pool whose
-# networks.dhcpserver is not this host, and the node's own next-server follows
-# noderes.tftpserver, so the delegation is visible from the wire without a
-# second machine existing.
+# networks.dhcpserver is not this host, and the node's next-server follows
+# noderes.tftpserver, so the delegation is visible without a second machine.
 DELEGATE_IP=10.99.0.5
 
 do_delegate() {
@@ -749,9 +695,8 @@ do_delegate() {
     say "the pool on $NET/$PREFIX now belongs to $DELEGATE_IP"
 }
 
-# Nodes each of the following cases defines are recorded by name in
-# $STATE/extra, so teardown withdraws exactly what was added even when the case
-# died half way through its own cleanup.
+# Nodes the following cases define are recorded by name in $STATE/extra, so
+# teardown withdraws exactly what was added even when a case died half way.
 extra_define() {
     local name=$1
     shift
@@ -773,8 +718,8 @@ extra_undefine() {
 }
 
 # S-36, S-37, S-38. Three nodes, three sources for next-server, three different
-# answers -- which is the only arrangement in which a server that ignores the
-# node attributes can be told apart from one that honours them.
+# answers -- the only arrangement in which a server that ignores the node
+# attributes can be told apart from one that honours them.
 do_run_nextserver() {
     local rc=0
     extra_define "$NS_TFTP_NODE" groups=dhcptest ip="$NS_TFTP_IP" mac="$NS_TFTP_MAC" \
@@ -797,9 +742,9 @@ do_run_nextserver() {
     return $rc
 }
 
-# S-08. The second hostname is defined as a node so that xCAT can resolve it to
-# an address; what makes the two one machine is the first node's mac attribute,
-# which names both ports and says which hostname each answers to.
+# S-08. The second hostname is a node so xCAT can resolve it to an address; what
+# makes the two one machine is the first node's mac attribute, which names both
+# ports and says which hostname each answers to.
 do_run_multimac() {
     local rc=0
     extra_define "$MM_NODE2" groups=dhcptest ip="$MM_IP2" arch=x86_64
@@ -816,7 +761,7 @@ do_run_multimac() {
 }
 
 # S-33, S-34. server, target, lun and iname live in the iscsi table; only the
-# first two have a node attribute, so the other two are set through chtab.
+# first two have a node attribute, so the others are set through chtab.
 do_run_iscsi() {
     local rc=0
     extra_define "$ISCSI_NODE" groups=dhcptest ip="$ISCSI_IP" mac="$ISCSI_MAC" \
@@ -834,13 +779,12 @@ do_run_iscsi() {
     return $rc
 }
 
-# S-31. A node that has already been installed. chain.currstate is what says
-# so, and it is set through chtab because it has no node attribute of its own.
+# S-31. A node already installed. chain.currstate says so, and is set through
+# chtab because it has no node attribute of its own.
 #
-# The script that must not be sent is the second stage of an xNBA boot, so the
-# node is defined with netboot=xnba and the case asks twice: once as firmware,
-# once announcing the user class the first stage sets. Only the second request
-# can be answered with the script, so only the second request can catch this.
+# The script that must not be sent is an xNBA second stage, so the case asks
+# twice: once as firmware, once announcing the user class the first stage sets.
+# Only the second request can be answered with the script.
 do_run_localboot() {
     local rc=0
     extra_define "$LB_NODE" groups=dhcptest ip="$LB_IP" mac="$LB_MAC" \
@@ -861,9 +805,9 @@ do_run_localboot() {
     return $rc
 }
 
-# S-12. One gating loader is taken away and the configuration regenerated --
-# both backends decide which boot classes to write by looking at what is on
-# disk, so the file has to be gone before makedhcp runs, not after.
+# S-12. One gating loader is taken away and the configuration regenerated: both
+# backends decide which boot classes to write from what is on disk, so the file
+# has to be gone before makedhcp runs.
 do_run_loader_absent() {
     local rc=0 tftp path
     tftp=$(tftpdir)
@@ -893,9 +837,8 @@ restore_absent_loader() {
     rm -f "$STATE/loader-away"
 }
 
-# S-14. site.httpport is restored from $STATE/site.csv by teardown in any case,
-# but it is put back here as well so the cases that follow are not run against
-# a cluster on a port they do not expect.
+# S-14. site.httpport is restored from $STATE/site.csv by teardown anyway, but it
+# is put back here too so later cases are not run against an unexpected port.
 do_run_httpport() {
     local rc=0
     chdef -t site -o clustersite httpport="$ALT_HTTPPORT" \
@@ -938,9 +881,9 @@ do_run_rangecidr() {
     return $rc
 }
 
-# S-59. The node stays defined in the database throughout: only its reservation
-# is withdrawn, and the configuration is deliberately not regenerated in
-# between, because regenerating would put the reservation straight back.
+# S-59. The node stays defined throughout: only its reservation is withdrawn, and
+# the configuration is deliberately not regenerated, because that would put the
+# reservation straight back.
 do_run_removal() {
     local rc=0
     extra_define "$RM_NODE" groups=dhcptest ip="$RM_IP" mac="$RM_MAC" \
@@ -959,8 +902,8 @@ do_run_removal() {
     return $rc
 }
 
-# S-54. Nothing to configure: the dynamic range a discovery cluster needs
-# anyway is what a BOOTP client is served out of.
+# S-54. Nothing to configure: a BOOTP client is served out of the dynamic range
+# a discovery cluster needs anyway.
 do_run_bootp() {
     dhcptest_run --set bootp_mac="$BOOTP_MAC" --set pool="$POOL" \
         conf/bootp-client.conf
@@ -985,14 +928,13 @@ do_teardown() {
     [ -f "$STATE/iscsi" ] && chtab -d node="$ISCSI_NODE" iscsi >/dev/null 2>&1
     [ -f "$STATE/network" ] && rmdef -t network -o "$NETOBJ" >/dev/null 2>&1
     [ -f "$STATE/veth" ] && ip link del "$IF_SRV" >/dev/null 2>&1
-    # Before withdraw_loaders, so a case that died between moving the loader
-    # aside and putting it back does not leave it in $STATE to be deleted.
+    # Before withdraw_loaders, so a case that died between moving a loader aside
+    # and putting it back does not leave it in $STATE to be deleted.
     restore_absent_loader
     withdraw_loaders
 
     # tabrestore replaces the table wholesale, which is what is wanted here:
-    # dhcpinterfaces and dhcpbackend go back to exactly what they were, unset
-    # included, rather than to a guess at the default.
+    # dhcpinterfaces and dhcpbackend go back to what they were, unset included.
     [ -f "$STATE/site.csv" ] && tabrestore "$STATE/site.csv" >/dev/null 2>&1
 
     for f in /etc/dhcp/dhcpd.conf /etc/dhcpd.conf /etc/kea/kea-dhcp4.conf; do
@@ -1004,7 +946,7 @@ do_teardown() {
         local was other
         was=$(cat "$STATE/backend")
         # Two servers on one network answer the same DISCOVER, so stop the other
-        # one before restarting the backend this case was serving with.
+        # before restarting the backend this case was serving with.
         [ "$was" = isc ] && other=kea || other=isc
         unit=$(service_of "$other")
         [ -n "$unit" ] && systemctl stop "$unit" >/dev/null 2>&1
