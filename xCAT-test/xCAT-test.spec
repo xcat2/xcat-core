@@ -75,6 +75,11 @@ cp -r unit $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/autotest
 cp -r integration $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/autotest
 cp -r dhcptest $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/autotest
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/autotest/dhcptest/src/dhcptest
+# provtest needs nothing that is not already on a management node: dig, tftp
+# and curl come with the DNS, TFTP and HTTP the node itself talks to, and the
+# xcatd client is python3 and the standard library.
+cp -r provtest $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/autotest
+chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/autotest/provtest/src/provtest
 
 
 %clean
