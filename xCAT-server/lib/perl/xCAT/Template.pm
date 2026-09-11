@@ -173,6 +173,11 @@ sub subvars {
         $inc =~ s/#INCLUDE_DEFAULT_RMPKGLIST_S#/#INCLUDE_RMPKGLIST:$pkglistfile#/g;
     }
 
+    # osimage environvar reaches apt-get through ospkgs alone, so such an image installs its list there,
+    # and its pkgdir mirrors, which may need those variables too, stay out of the installer's sources
+    my $environvar_set = ( $namedargs{environvar} // '' ) =~ /\S/;
+    my $installer_pkgdirs = $environvar_set ? undef : $namedargs{pkgdirs};
+    my @autoinstall;
     if (("ubuntu" eq $platform) || ("debian" eq $platform)) {
 
         # since debian/ubuntu uses a preseed file instead of a kickstart file, pkglist
@@ -186,6 +191,7 @@ sub subvars {
             if ($allpkglist =~ /#INCLUDEBAD:(.*)#/) {
                 return "$1";
             }
+            @autoinstall = ubuntu_autoinstall_packages( xCAT::Postage->get_pkglist_records($pkglistfile) ) unless $environvar_set;
             $allpkglist =~ s/,/ /g;
             $inc =~ s/#INCLUDE_DEFAULT_PKGLIST_PRESEED#/$allpkglist/g;
 
@@ -364,7 +370,7 @@ sub subvars {
             $inc =~ s/#INSTALL_SOURCES_IN_PRE#/$source_in_pre/g;
             if (("ubuntu" eq $platform) || ("debian" eq $platform)) {
                 $inc =~ s/#INCLUDE_OSIMAGE_PKGDIR#/$pkgdirs[-1]/;
-                $inc =~ s/#UBUNTU_SUBIQUITY_APT_CONFIG#/ubuntu_subiquity_apt_config($media_dir, $namedargs{osarch})/eg;
+                $inc =~ s/#UBUNTU_SUBIQUITY_APT_CONFIG#/ubuntu_subiquity_apt_config($media_dir, $namedargs{osarch}, $installer_pkgdirs)/eg;
             }
             $inc =~ s/#WRITEREPO#/$writerepo/g;
         }
@@ -377,7 +383,9 @@ sub subvars {
         $inc =~ s/#INCLUDE_NOP:([^#^\n]+)#/includefile($1,1,0)/eg;
         $inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
         $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
-        $inc =~ s/#UBUNTU_SUBIQUITY_APT_CONFIG#/ubuntu_subiquity_apt_config($media_dir, $namedargs{osarch})/eg;
+        $inc =~ s/#UBUNTU_SUBIQUITY_APT_CONFIG#/ubuntu_subiquity_apt_config($media_dir, $namedargs{osarch}, $installer_pkgdirs)/eg;
+        # in the include pass, so a template that includes the stock Subiquity one gets its list as well
+        $inc =~ s/^((?:[ \t]*- [^\n]*\n)*)([ \t]*)- #INCLUDE_DEFAULT_PKGLIST_AUTOINSTALL#[ \t]*\n/$1 . ubuntu_autoinstall_items($2, $1, \@autoinstall)/meg;
         $inc =~ s/#SUBIQUITYINSTALLNIC#/subiquity_install_nic()/eg;
         $inc =~ s/#SUBIQUITYINSTALLMAC#/subiquity_install_mac()/eg;
         $inc =~ s/#MACHINEPASSWORD#/machinepassword()/eg;
@@ -1764,6 +1772,59 @@ sub subiquity_install_mac {
     return $macaddress;
 }
 
+# ubuntu_autoinstall_packages: the packages of the pkglist records (whole lines, as
+# get_pkglist_records returns them) that a Subiquity autoinstall can install through its packages
+# list. A record holds one or more space-separated packages, as the preseed path reads it, each a
+# plain name or a task. A version pin or a target release stays with ospkgs, because the installer
+# runs apt-get without --allow-downgrades and a pin can require one, and so does a name with an
+# architecture qualifier, because a foreign architecture is enabled by a postscript that runs later. A preseed directive, told by its question type, a record that begins with a removal
+# or a group, which ospkgs removes or installs whole, a removal written with a trailing hyphen as
+# apt-get reads it, or a marker has
+# no autoinstall form, a comment ends the packages of a record, and a record with a token that is
+# none of these is left out whole. A list
+# that carries a #ENV: setting, which only ospkgs can pass to apt-get, or an unreadable include is
+# left to ospkgs whole; ospkgs still applies the whole list after the install.
+my %PRESEED_TYPE = map { $_ => 1 } qw(string boolean select multiselect note password text seen title error);
+
+sub ubuntu_autoinstall_packages
+{
+    my @records = grep { defined } @_;
+    return () if grep { /#(?:ENV:|INCLUDEBAD:)/ } @records;
+    my (@packages, %seen);
+  RECORD: foreach my $record (@records) {
+        my @tokens = grep { length } split( /\s+/, $record );
+        next unless @tokens;
+        next if @tokens >= 3 && $PRESEED_TYPE{ $tokens[2] };
+        next if $tokens[0] =~ /^[-@]/;    # ospkgs removes or installs the whole record
+        my @found;
+        foreach my $token (@tokens) {
+            last if $token =~ /^#/;
+            next if $token =~ /^[-@]/ || $token =~ /-$/;
+            next RECORD unless $token =~ m{^[a-z0-9][a-z0-9+.-]*(?::[a-z0-9-]+)?(?:[=/][^\s/=]+|\^)?$};
+            next if $token =~ m{[:=/]};
+            push @found, $token;
+        }
+        push @packages, grep { !$seen{$_}++ } @found;
+    }
+    return @packages;
+}
+
+# ubuntu_autoinstall_items: the list items for the pkglist packages at the token's indentation,
+# leaving out packages the items above the token already name, each quoted so a name such as null
+# or true stays a string. The time daemons exclude each
+# other, so when the template names one, the pkglist's stay with ospkgs, as they did before.
+my %UBUNTU_TIME_DAEMON = map { $_ => 1 } qw(chrony ntp ntpsec ntpdate ntpsec-ntpdate openntpd systemd-timesyncd);
+
+sub ubuntu_autoinstall_items
+{
+    my ($indent, $listed, $packages) = @_;
+    my %named = map { $_ => 1 } ( $listed =~ /^[ \t]*- (\S+)[ \t]*$/mg );
+    my $fixed_time_daemon = grep { $UBUNTU_TIME_DAEMON{$_} } keys %named;
+    my @items = grep { !$named{$_} } @$packages;
+    @items = grep { !$UBUNTU_TIME_DAEMON{ (split /[:=\/^]/, $_)[0] } } @items if $fixed_time_daemon;
+    return join( '', map { "$indent- \"$_\"\n" } @items );
+}
+
 sub ubuntu_subiquity_apt_mirror
 {
     my ($osarch) = @_;
@@ -1786,13 +1847,28 @@ sub ubuntu_subiquity_apt_mirror
     return ($ent && defined($ent->{value}) && length($ent->{value})) ? $ent->{value} : $default;
 }
 
+# The key curtin names in the Deb822 source it writes for the primary apt mirror on 24.04 and later.
+my $UBUNTU_ARCHIVE_KEYRING = '/usr/share/keyrings/ubuntu-archive-keyring.gpg';
+
 sub ubuntu_subiquity_apt_config
 {
-    my ($media_dir, $osarch) = @_;
+    my ($media_dir, $osarch, $pkgdirs) = @_;
     my $use_deb822 = ubuntu_subiquity_uses_deb822_sources($media_dir);
-    my @otherpkg_sources = ubuntu_subiquity_otherpkg_sources();
+    my $online_mirror    = ubuntu_subiquity_apt_mirror($osarch);
+    my $mirror_key       = $use_deb822 ? $UBUNTU_ARCHIVE_KEYRING : '';
+    my @otherpkg_sources = map { ubuntu_subiquity_otherpkg_source_spec( $_, $mirror_key, $online_mirror ) } ubuntu_subiquity_otherpkg_sources();
+    my @pkgdir_sources   = ubuntu_subiquity_pkgdir_source_specs( $pkgdirs, $mirror_key, $online_mirror );
 
-    my $online_mirror = ubuntu_subiquity_apt_mirror($osarch);
+    # apt rejects two sources for one repository whose options differ, so a pkgdir entry that repeats an
+    # otherpkgs repository adds its components to that source instead
+    my %otherpkg_by_key = map { ( my $uri = $_->{uri} ) =~ s{/+$}{}; ( "$uri $_->{suites}" => $_ ) } @otherpkg_sources;
+    @pkgdir_sources = grep {
+        ( my $uri = $_->{uri} ) =~ s{/+$}{};
+        my $other = $otherpkg_by_key{"$uri $_->{suites}"};
+        ubuntu_subiquity_add_components( $other, $_->{components} ) if $other;
+        !$other;
+    } @pkgdir_sources;
+
     if ($online_mirror) {
         # Online install: use the configured archive as the primary apt mirror so
         # Subiquity/curtin can fetch whatever the minimal media lacks. No
@@ -1801,6 +1877,7 @@ sub ubuntu_subiquity_apt_config
             '  apt:',
             '    preserve_sources_list: false',
             '    geoip: false',
+            q(    conf: 'APT::Install-Recommends "false";'),
             '    mirror-selection:',
             '      primary:',
             "      - uri: $online_mirror",
@@ -1818,12 +1895,16 @@ sub ubuntu_subiquity_apt_config
             push @lines, '      xcat-ubuntu-updates.list:';
             push @lines, qq(        source: "deb $online_mirror \$RELEASE-updates main restricted universe multiverse");
         }
-        if (@otherpkg_sources) {
+        if (@otherpkg_sources || @pkgdir_sources) {
             push @lines, '    sources:' unless $need_sources_block;
             my $index = 0;
             foreach my $source (@otherpkg_sources) {
-                push @lines, "      xcat-otherpkgs-$index.list:";
-                push @lines, qq(        source: "deb [trusted=yes] $source ./");
+                push @lines, ubuntu_subiquity_source_lines( "xcat-otherpkgs-$index", $source, $use_deb822 );
+                $index++;
+            }
+            $index = 0;
+            foreach my $source (@pkgdir_sources) {
+                push @lines, ubuntu_subiquity_source_lines( "xcat-pkgdir-$index", $source, $use_deb822 );
                 $index++;
             }
         }
@@ -1835,6 +1916,7 @@ sub ubuntu_subiquity_apt_config
         '    preserve_sources_list: false',
         '    fallback: offline-install',
         '    geoip: false',
+        q(    conf: 'APT::Install-Recommends "false";'),
         '    disable_suites:',
         '      - updates',
         '      - backports',
@@ -1864,22 +1946,36 @@ sub ubuntu_subiquity_apt_config
         foreach my $source (@otherpkg_sources) {
             push @lines, '';
             push @lines, '      Types: deb';
-            push @lines, "      URIs: $source";
-            push @lines, '      Suites: ./';
-            push @lines, '      Components:';
+            push @lines, "      URIs: $source->{uri}";
+            push @lines, "      Suites: $source->{suites}";
+            push @lines, '      Components:' . ( length $source->{components} ? " $source->{components}" : '' );
             push @lines, '      Trusted: yes';
+        }
+        foreach my $source (@pkgdir_sources) {
+            push @lines, '';
+            push @lines, '      Types: deb';
+            push @lines, "      URIs: $source->{uri}";
+            push @lines, "      Suites: $source->{suites}";
+            push @lines, '      Components:' . ( length $source->{components} ? " $source->{components}" : '' );
+            push @lines, '      Trusted: yes' if $source->{trusted};
         }
     } else {
         push @lines, '    mirror-selection:';
         push @lines, '      primary:';
         push @lines, '      - uri: file:/cdrom';
 
-        if (@otherpkg_sources) {
+        if (@otherpkg_sources || @pkgdir_sources) {
             push @lines, '    sources:';
             my $index = 0;
             foreach my $source (@otherpkg_sources) {
                 push @lines, "      xcat-otherpkgs-$index.list:";
-                push @lines, qq(        source: "deb [trusted=yes] $source ./");
+                push @lines, qq(        source: "$source->{line}");
+                $index++;
+            }
+            $index = 0;
+            foreach my $source (@pkgdir_sources) {
+                push @lines, "      xcat-pkgdir-$index.list:";
+                push @lines, qq(        source: "$source->{line}");
                 $index++;
             }
         }
@@ -1887,6 +1983,56 @@ sub ubuntu_subiquity_apt_config
 
     return join( "\n", @lines );
 }
+
+# ubuntu_subiquity_pkgdir_source_specs: the apt sources of the entries after the install media in
+# an osimage pkgdir value, which mkinstall hands over as pkgdirs and ospkgs receives as OSPKGDIR.
+# An entry written as "URL suite components" is an apt source line, as ospkgs writes it, and a
+# suite that is an exact path needs no component. A local directory that is a flat repository is
+# served by the management node and trusted, as an otherpkgdir is. Anything else is no apt source
+# for ospkgs either and is left out. An entry that names an Ubuntu archive mirror the installer
+# already has a source for, the configured one or a default one, carries that source's signing
+# key, the archive keyring on the Deb822 releases and none before them: apt rejects a second source
+# for the same suite whose signing key differs.
+sub ubuntu_subiquity_pkgdir_source_specs
+{
+    my ( $pkgdirval, $mirror_key, @mirrors ) = @_;
+    $mirror_key //= '';
+    my %signed_uri = ubuntu_subiquity_signed_mirror_uris(@mirrors);
+    my @specs;
+    foreach my $entry ( split( /,/, $pkgdirval // '' ) ) {
+        $entry =~ s/^\s+|\s+$//g;
+        next if $entry eq '';
+        if ( $entry =~ m{^https?://} ) {
+            my ( $uri, $suite, @components ) = split( /\s+/, $entry );
+            next unless defined $suite && ( @components || $suite =~ m{/$} );
+            ( my $bare = $uri ) =~ s{/+$}{};
+            my %spec = ( uri => $uri, suites => $suite, components => join( ' ', @components ), trusted => 0, signed_by => $signed_uri{$bare} ? $mirror_key : '' );
+            $spec{line} = ubuntu_subiquity_source_line( \%spec );
+            push @specs, \%spec;
+        }
+        elsif ( $entry !~ m{^[a-z]+://} && ubuntu_subiquity_local_apt_repo($entry) ) {
+            my $uri = ubuntu_subiquity_pkgdir_uri($entry);
+            my %spec = ( uri => $uri, suites => './', components => '', trusted => 1, signed_by => '' );
+            $spec{line} = ubuntu_subiquity_source_line( \%spec );
+            push @specs, \%spec;
+        }
+    }
+
+    # a directory and its own URL are one repository: one source, with the trust and components of both
+    my ( %kept, @unique );
+    foreach my $spec (@specs) {
+        ( my $uri = $spec->{uri} ) =~ s{/+$}{};
+        if ( my $first = $kept{"$uri $spec->{suites}"} ) {
+            $first->{trusted}   ||= $spec->{trusted};
+            $first->{signed_by} ||= $spec->{signed_by};
+            ubuntu_subiquity_add_components( $first, $spec->{components} );
+            next;
+        }
+        push @unique, $kept{"$uri $spec->{suites}"} = $spec;
+    }
+    return @unique;
+}
+
 
 sub ubuntu_subiquity_otherpkg_sources
 {
@@ -1913,6 +2059,73 @@ sub ubuntu_subiquity_otherpkg_sources
     }
 
     return @sources;
+}
+
+# ubuntu_subiquity_add_components: the components of a repeated repository join the source kept for it.
+sub ubuntu_subiquity_add_components
+{
+    my ( $spec, $components ) = @_;
+    my %have = map { $_ => 1 } split( ' ', $spec->{components} );
+    $spec->{components} = join( ' ', split( ' ', $spec->{components} ), grep { !$have{$_}++ } split( ' ', $components // '' ) );
+    $spec->{line} = ubuntu_subiquity_source_line($spec);
+    return;
+}
+
+# ubuntu_subiquity_signed_mirror_uris: the apt mirror the installer already has a source for, the
+# configured one or the architecture default, without a trailing slash.
+sub ubuntu_subiquity_signed_mirror_uris
+{
+    my (@mirrors) = @_;
+    return map { ( my $uri = $_ ) =~ s{/+$}{}; ( $uri => 1 ) } grep { defined && length } @mirrors;
+}
+
+# ubuntu_subiquity_source_line: the one-line form of a source, with the option its Deb822 form carries.
+sub ubuntu_subiquity_source_line
+{
+    my ($spec) = @_;
+    my @option = $spec->{trusted} ? ('[trusted=yes]') : $spec->{signed_by} ? ("[signed-by=$spec->{signed_by}]") : ();
+    return join( ' ', 'deb', @option, $spec->{uri}, $spec->{suites}, grep { length } $spec->{components} );
+}
+
+# ubuntu_subiquity_otherpkg_source_spec: the apt source of one otherpkgdir entry the installer gets.
+# A bare URL or a local repository is a flat trusted repository, as otherpkgs treats it. An entry
+# written as URL, suite and components is that source, trusted as well, unless the URL is an Ubuntu
+# archive mirror the installer already has a source for: that one gets the same signing key and no
+# trust, since apt rejects a second source for one suite whose options differ.
+sub ubuntu_subiquity_otherpkg_source_spec
+{
+    my ( $entry, $mirror_key, @mirrors ) = @_;
+    my ( $uri, $suite, @components ) = split( /\s+/, $entry );
+    my %spec = ( uri => $uri, suites => './', components => '', trusted => 1, signed_by => '' );
+    if ( defined $suite && length $suite ) {
+        my %signed = ubuntu_subiquity_signed_mirror_uris(@mirrors);
+        ( my $bare = $uri ) =~ s{/+$}{};
+        @spec{qw(suites components)} = ( $suite, join( ' ', @components ) );
+        @spec{qw(trusted signed_by)} = ( 0, $mirror_key // '' ) if $signed{$bare};
+    }
+    $spec{line} = ubuntu_subiquity_source_line( \%spec );
+    return \%spec;
+}
+
+# ubuntu_subiquity_source_lines: one entry of the autoinstall sources mapping, a one-line source
+# before Deb822 and a Deb822 stanza from 24.04 on: curtin converts a one-line source to Deb822
+# there and keeps only its type, URI, suite and components, so a trusted repository would come out
+# unsigned and be rejected.
+sub ubuntu_subiquity_source_lines
+{
+    my ( $name, $source, $use_deb822 ) = @_;
+    return ( "      $name.list:", qq(        source: "$source->{line}") ) unless $use_deb822;
+    my @lines = (
+        "      $name.sources:",
+        '        source: |',
+        '          Types: deb',
+        "          URIs: $source->{uri}",
+        "          Suites: $source->{suites}",
+        '          Components:' . ( length $source->{components} ? " $source->{components}" : '' ),
+    );
+    push @lines, "          Signed-By: $source->{signed_by}" if $source->{signed_by};
+    push @lines, '          Trusted: yes' if $source->{trusted};
+    return @lines;
 }
 
 sub ubuntu_subiquity_uses_deb822_sources

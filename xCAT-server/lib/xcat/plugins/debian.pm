@@ -895,6 +895,7 @@ sub mkinstall {
         my $partitionfile;
         my $pkgdir;
         my $pkgdirval;
+        my $environvar;
         my @mirrors;
         my $pkglistfile;
         my $imagename;    # set it if running of 'nodeset osimage=xxx'
@@ -917,12 +918,13 @@ sub mkinstall {
                 if (!$osimagetab) {
                     $osimagetab = xCAT::Table->new('osimage', -create => 1);
                 }
-                (my $ref) = $osimagetab->getAttribs({ imagename => $imagename }, 'osvers', 'osarch', 'profile', 'provmethod');
+                (my $ref) = $osimagetab->getAttribs({ imagename => $imagename }, 'osvers', 'osarch', 'profile', 'provmethod', 'environvar');
                 if ($ref) {
                     $img_hash{$imagename}->{osver}      = $ref->{'osvers'};
                     $img_hash{$imagename}->{osarch}     = $ref->{'osarch'};
                     $img_hash{$imagename}->{profile}    = $ref->{'profile'};
                     $img_hash{$imagename}->{provmethod} = $ref->{'provmethod'};
+                    $img_hash{$imagename}->{environvar} = $ref->{'environvar'};
                     if (!$linuximagetab) {
                         $linuximagetab = xCAT::Table->new('linuximage', -create => 1);
                     }
@@ -995,6 +997,7 @@ sub mkinstall {
 
             $tmplfile  = $ph->{template};
             $pkgdirval = $ph->{pkgdir};
+            $environvar = $ph->{environvar};
             my @pkgdirlist = split(/,/, $pkgdirval);
             foreach (@pkgdirlist) {
                 if ($_ =~ /^http|ssh/) {
@@ -1123,7 +1126,9 @@ sub mkinstall {
                 $platform,
                 $partitionfile,
                 \%tmpl_hash,
-                osarch => $arch
+                osarch     => $arch,
+                pkgdirs    => $pkgdirval,
+                environvar => $environvar
               );
         }
 

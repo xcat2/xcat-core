@@ -43,6 +43,7 @@ autoinstall:
     - bind9-dnsutils
     - chrony
     - gpg
+    - #INCLUDE_DEFAULT_PKGLIST_AUTOINSTALL#
   early-commands:
     - |
       exec >/tmp/pre-install.log 2>&1
@@ -111,6 +112,11 @@ autoinstall:
     cp ./#HOSTNAME#.post /target/root/post.script;
     curtin in-target --target /target /root/post.script;
     } >>/target/var/log/xcat/xcat.log 2>&1'
+    # The installer's sources for the otherpkgs repository and the pkgdir mirrors, and the apt
+    # configuration that kept recommended packages out, served the install; ospkgs and otherpkgs
+    # write their own after the first boot. A separate item, so the status of the post script above
+    # still decides whether the install goes on.
+    - rm -f /target/etc/apt/sources.list.d/xcat-otherpkgs-*.list /target/etc/apt/sources.list.d/xcat-otherpkgs-*.sources /target/etc/apt/sources.list.d/xcat-pkgdir-*.list /target/etc/apt/sources.list.d/xcat-pkgdir-*.sources /target/etc/apt/apt.conf.d/94curtin-config
     # Flip the node to local-disk boot, or it PXE-loops back into the installer on reboot.
     # xcatd's install monitor greets with "ready", then answers "next" with "done" and runs
     # "nodeset <node> next". Require both tokens: another service on that port is not a flipped
