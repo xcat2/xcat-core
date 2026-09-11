@@ -44,7 +44,8 @@ DOMAIN=provtest.cluster
 MASTER_NODE=provtestmn
 
 # The node every stage runs as; the client end holds this address alone.
-# netboot is grub2-http because P-39 reads the port out of the HTTP entry.
+# netboot is grub2-http because P-39 reads the port out of the HTTP entry, and
+# xnba where no grub2 loader could be built -- see node_netboot.
 NODE=provtestcn
 NODE_IP=10.99.1.11
 NODE_MAC=52:54:00:dc:11:01
@@ -431,25 +432,38 @@ EOF
 # asserts a node can fetch it, and an empty file would stop at the firmware.
 # Without the modules there is nothing to build from, and the stage says so.
 provide_grub2_loader() {
-    local arch=$1 tftp path platform
+    local arch=$1 tftp path mkimage platform dir mods
     tftp=$(tftpdir)
     path="$tftp/boot/grub2/grub2.$arch"
     [ -f "$path" ] && return 0
+    [ "$arch" = x86_64 ] || return 1
 
-    command -v grub2-mkimage >/dev/null 2>&1 || return 1
-    case "$arch" in
-        x86_64) platform=x86_64-efi ;;
-        *)      return 1 ;;
-    esac
-    [ -d "/usr/lib/grub/$platform" ] || return 1
+    # grub2-mkimage on the EL family and grub-mkimage on the Debian one: the
+    # same program under the name each distribution gives it.
+    mkimage=$(command -v grub2-mkimage || command -v grub-mkimage) || return 1
 
     make_dir "$(dirname "$path")"
-    grub2-mkimage -O "$platform" -o "$path" -p /boot/grub2 \
-        tftp http efinet net linux normal configfile echo test search \
-        >/dev/null 2>&1 || { rm -f "$path"; return 1; }
-    record_file "$path"
-    say "built a grub2 network loader at $path"
-    return 0
+    # EFI first and BIOS after: either is a loader a node can be handed, and
+    # which module tree is installed is a property of this machine, not of what
+    # the node will boot.
+    for platform in x86_64-efi i386-pc; do
+        case "$platform" in
+            x86_64-efi) mods="efinet" ;;
+            i386-pc)    mods="pxe" ;;
+        esac
+        for dir in /usr/lib/grub /usr/lib/grub2 /usr/share/grub2; do
+            [ -d "$dir/$platform" ] || continue
+            # shellcheck disable=SC2086
+            "$mkimage" -d "$dir/$platform" -O "$platform" -o "$path" \
+                -p /boot/grub2 $mods tftp http net linux normal configfile \
+                echo test search >/dev/null 2>&1 \
+                || { rm -f "$path"; continue; }
+            record_file "$path"
+            say "built a grub2 network loader at $path from $dir/$platform"
+            return 0
+        done
+    done
+    return 1
 }
 
 # Move the web server to a port the cluster does not use yet. The aliases in
@@ -605,8 +619,10 @@ do_setup() {
         say "the web server was left on port $(httpport); the default-port half of the HTTP stage will run instead"
     fi
 
-    provide_grub2_loader "$NODE_ARCH" \
-        || say "no grub2 network loader could be built; the grub2 scenarios will be left out"
+    if ! provide_grub2_loader "$NODE_ARCH"; then
+        echo xnba > "$STATE/netboot"
+        say "no grub2 network loader could be built, so $NODE is set with xnba and the grub2 files are left out"
+    fi
 
     tmpl="$(installdir)/custom/install/provtest/provtest.tmpl"
     fabricate_template "$tmpl"
@@ -617,7 +633,7 @@ do_setup() {
 
     # hostnames= is what becomes the CNAME P-04 asks for, by way of /etc/hosts
     # and makedns.
-    define_node "$NODE" "$NODE_IP" "$NODE_MAC" "$NODE_ARCH" "$NODE_NETBOOT" \
+    define_node "$NODE" "$NODE_IP" "$NODE_MAC" "$NODE_ARCH" "$(node_netboot)" \
         "$OSIMAGE" hostnames="$ALIAS"
     define_node "$PXE_NODE" "$PXE_IP" "$PXE_MAC" "$NODE_ARCH" pxe "$OSIMAGE"
     define_node "$BOOT_NODE" "$BOOT_IP" "$BOOT_MAC" "$NODE_ARCH" pxe "$OSIMAGE"
@@ -708,6 +724,25 @@ generated() {
     [ -n "$path" ] && [ -e "$path" ]
 }
 
+# The method $NODE was actually set with. grub2.pm writes no configuration at
+# all for a node whose loader is missing (grub2.pm:309-311), and this node is
+# the one every stage after the loader depends on, so a machine with no grub2
+# modules runs it on xnba and leaves the grub2 files out. Setup records the
+# choice: each stage is a process of its own.
+node_netboot() {
+    [ -s "$STATE/netboot" ] && { cat "$STATE/netboot"; return 0; }
+    echo "$NODE_NETBOOT"
+}
+
+# $NODE's own boot configuration as a path under $tftpdir, which is how the HTTP
+# stage names the file it proves the TFTP tree is serving.
+node_config_rel() {
+    local tftp path
+    tftp=$(tftpdir)
+    path=$(node_config "$(node_netboot)" "$NODE" "$NODE_IP")
+    echo "${path#"$tftp"/}"
+}
+
 # Generate the artefacts a node fetches and the records that decide whose they
 # are. Separate from setup so run-ordering can regenerate after changing one
 # thing. nodeset is run for the files it writes, not the status it exits with:
@@ -719,8 +754,8 @@ do_generate() {
     echo done > "$STATE/dns"
 
     nodeset "$NODE,$PXE_NODE,$XNBA_NODE" osimage="$OSIMAGE" >/dev/null 2>&1
-    generated "$NODE_NETBOOT" "$NODE" "$NODE_IP" \
-        || die "nodeset wrote no $NODE_NETBOOT configuration for $NODE"
+    generated "$(node_netboot)" "$NODE" "$NODE_IP" \
+        || die "nodeset wrote no $(node_netboot) configuration for $NODE"
     generated pxe "$PXE_NODE" "$PXE_IP" \
         || die "nodeset wrote no pxelinux configuration for $PXE_NODE"
     generated xnba "$XNBA_NODE" "$XNBA_IP" \
@@ -773,8 +808,8 @@ COMMON=(--set server="$SRV_IP" --set client="$NODE_IP")
 # writes the file: the file is the evidence, not the exit status.
 reset_node() {
     nodeset "$NODE" osimage="$OSIMAGE" >/dev/null 2>&1
-    generated "$NODE_NETBOOT" "$NODE" "$NODE_IP" \
-        || die "nodeset wrote no $NODE_NETBOOT configuration for $NODE"
+    generated "$(node_netboot)" "$NODE" "$NODE_IP" \
+        || die "nodeset wrote no $(node_netboot) configuration for $NODE"
 }
 
 # Stage 1. The forwarded-name scenario is selected separately: it needs a
@@ -816,16 +851,18 @@ do_run_tftp() {
     assert_serving udp 69 "the TFTP server"
     tftp=$(tftpdir)
 
-    # The loader comes from a package or from copycds; the fixture cannot create
-    # it. Where it is absent the two scenarios that fetch it are left out rather
-    # than satisfied with a placeholder the fixture wrote.
+    # The loader comes from a package, from copycds or from provide_grub2_loader;
+    # the fixture will not stand a placeholder in for it. Where it is absent the
+    # node is on xnba and grub2 wrote nothing at all for it, so only the escape
+    # scenario -- which asks grub2 for nothing -- is left to run.
     loader="boot/grub2/grub2.$NODE_ARCH"
     if [ -f "$tftp/$loader" ]; then
         scenarios=""
     else
-        scenarios="-s grub2-node-config -s grub2-config-by-mac -s grub2-kernel-and-initrd -s tftp-escape"
-        stage_skip "$tftp/$loader is not present, so the loader fetches are left out"
+        scenarios="-s tftp-escape"
+        stage_skip "$tftp/$loader is not present, so $NODE is not a grub2 node and only the escape scenario runs"
     fi
+    # shellcheck disable=SC2086
     provtest_run $scenarios \
         "${COMMON[@]}" \
         --set node="$NODE" --set hexip="$(hex_ip "$NODE_IP")" \
@@ -884,21 +921,26 @@ do_run_http() {
 
     # P-39 has two halves and a cluster is on one side or the other: a node is
     # told a port, or told none and expected to use the default. The port the
-    # cluster is on decides which is asserted.
+    # cluster is on decides which is asserted, and both read the port out of a
+    # `set root=http,` line only grub2 writes.
     select="-s install-tree -s tftp-tree-over-http -s urls-the-node-was-given"
     select="$select -s outside-the-aliases -s postscripts-listing"
-    if [ "$port" = 80 ]; then
-        select="$select -s default-port-the-node-was-told"
-    else
-        select="$select -s port-the-node-was-told"
-    fi
+    case "$(node_netboot)" in
+        grub2-http)
+            if [ "$port" = 80 ]; then
+                select="$select -s default-port-the-node-was-told"
+            else
+                select="$select -s port-the-node-was-told"
+            fi ;;
+        *)  stage_skip "$NODE is set with $(node_netboot), whose config names no port, so the port half of P-39 is left out" ;;
+    esac
 
     # shellcheck disable=SC2086
     provtest_run $select \
         "${COMMON[@]}" \
         --set node="$NODE" --set httpport="$port" --set otherport="$other" \
         --set hexip="$(hex_ip "$NODE_IP")" \
-        --set knownfile="boot/grub2/grub.cfg-$(hex_ip "$NODE_IP")" \
+        --set knownfile="$(node_config_rel)" \
         --set installpath="autoinst/$NODE" \
         --set repofile="repodata/repomd.xml" \
         conf/http.conf
@@ -1029,13 +1071,17 @@ do_run_ordering() {
     # name has been withdrawn.
     #
     # P-75: a second nodeset, to a state whose name the config must now carry.
-    if have_genesis; then
-        nodeset "$NODE" "$SECOND_DESTINY" >/dev/null 2>&1
-        generated "$NODE_NETBOOT" "$NODE" "$NODE_IP" \
-            || die "nodeset $NODE $SECOND_DESTINY wrote no $NODE_NETBOOT configuration"
-        provtest_run -s state-replaced "${flags[@]}" conf/ordering.conf || rc=1
-    else
+    if ! have_genesis; then
         stage_skip "genesis has not been built here, so there is no second state to set"
+    elif [ "$(node_netboot)" != grub2-http ]; then
+        # The scenario reads the state off the first line of a grub2 config; the
+        # other loaders write their state elsewhere and in their own form.
+        stage_skip "$NODE is set with $(node_netboot), so the grub2 config P-75 reads is not written"
+    else
+        nodeset "$NODE" "$SECOND_DESTINY" >/dev/null 2>&1
+        generated "$(node_netboot)" "$NODE" "$NODE_IP" \
+            || die "nodeset $NODE $SECOND_DESTINY wrote no $(node_netboot) configuration"
+        provtest_run -s state-replaced "${flags[@]}" conf/ordering.conf || rc=1
     fi
 
     # P-74: the node's name taken out of resolution, nothing else. Both the zone
