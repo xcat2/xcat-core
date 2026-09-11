@@ -2,7 +2,8 @@
 # debuild-xcat-genesis-base converts the EL Genesis base rpm to a deb. The rpm name carries the
 # Genesis target architecture, and the deb must carry the Debian architecture: ppc64 becomes
 # ppc64el, x86_64 becomes amd64. An unmapped architecture leaves the deb named after the rpm and
-# makes it break a genesis-scripts package that no repository publishes.
+# makes it break a genesis-scripts package that no repository publishes. The rename also has to
+# name the deb it supersedes, or an upgraded ppc node keeps xcat-genesis-base-ppc64 as well.
 #
 # The script is driven here with alien and dpkg-buildpackage shadowed by shell functions.
 use strict;
@@ -75,6 +76,13 @@ my %expected = (
     'xCAT-genesis-base-ppc64-2.13.10-snap202601010000.noarch.rpm'  => 'ppc64el',
 );
 
+# The package the new deb takes over from. On ppc that is the deb this rename leaves behind:
+# without the relation dpkg keeps xcat-genesis-base-ppc64 and its copy of the same files.
+my %superseded = (
+    'amd64'   => 'xcat-genesis-amd64',
+    'ppc64el' => 'xcat-genesis-ppc64, xcat-genesis-base-ppc64',
+);
+
 for my $rpm (sort keys %expected) {
     my $arch = $expected{$rpm};
     my ($dir, $control) = convert($arch, $rpm);
@@ -84,8 +92,12 @@ for my $rpm (sort keys %expected) {
     like($dir, qr/\Q-$arch-\E/, "$rpm builds in a $arch source tree");
     like($control, qr/^Package:\s*xcat-genesis-base-\Q$arch\E$/m,
         "$rpm builds the package xcat-genesis-base-$arch");
-    like($control, qr/^Breaks:\s*xcat-genesis-scripts-\Q$arch\E\b/m,
+    like($control, qr/^Breaks:.*\bxcat-genesis-scripts-\Q$arch\E\b/m,
         "xcat-genesis-base-$arch breaks the genesis scripts of its own architecture");
+    like($control, qr/^Replaces:\s*\Q$superseded{$arch}\E\s*$/m,
+        "xcat-genesis-base-$arch replaces $superseded{$arch}");
+    like($control, qr/^Breaks:\s*\Q$superseded{$arch}\E\b/m,
+        "xcat-genesis-base-$arch breaks $superseded{$arch}");
 }
 
 done_testing();
