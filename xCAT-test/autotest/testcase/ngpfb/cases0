@@ -78,7 +78,7 @@ description:for hwconn
 label:others,hctrl_fsp
 cmd:rmhwconn $$CN
 check:rc==0
-check:rc!~(state=LINE UP)
+check:output!~(state=LINE UP)
 cmd:mkhwconn $$CN -t
 check:rc==0
 cmd:sleep 40
@@ -87,7 +87,7 @@ check:rc==0
 check:output=~(LINE UP)
 cmd:rmhwconn blade
 check:rc==0
-check:rc!~(state=LINE UP)
+check:output!~(state=LINE UP)
 cmd:mkhwconn blade -t
 check:rc==0
 cmd:sleep 50

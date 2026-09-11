@@ -42,11 +42,11 @@ start:xdcp_RP
 label:cn_os_ready,parallel_cmds
 cmd:xdsh $$CN "mkdir -p /tmp/xdcp/test1"
 check:rc==0
-cmd:xdsh $$CN "echo "test1" > /tmp/xdcp/test1/test1.txt"
+cmd:xdsh $$CN "echo "xdcpdata1" > /tmp/xdcp/test1/test1.txt"
 check:rc==0
 cmd:xdsh $$CN "mkdir -p /tmp/xdcp/test2"
 check:rc==0
-cmd:xdsh $$CN "echo "test2" > /tmp/xdcp/test2/test2.txt"
+cmd:xdsh $$CN "echo "xdcpdata2" > /tmp/xdcp/test2/test2.txt"
 check:rc==0
 cmd:xdcp $$CN -RP /tmp/xdcp  /tmp
 check:rc==0
@@ -58,9 +58,9 @@ check:output=~test1.txt
 cmd:ls -l /tmp/xdcp._$$CN/test2
 check:output=~test2.txt
 cmd:cat /tmp/xdcp._$$CN/test1/test1.txt
-check:output=~test1
+check:output=~xdcpdata1
 cmd:cat /tmp/xdcp._$$CN/test2/test2.txt
-check:output=~test2
+check:output=~xdcpdata2
 cmd:xdsh $$CN "rm -rf /tmp/xdcp"
 check:rc==0
 cmd:rm -rf /tmp/xdcp._$$CN
@@ -71,11 +71,11 @@ start:xdcp_R
 label:cn_os_ready,parallel_cmds
 cmd:mkdir -p /tmp/xdcp/test1
 check:rc==0
-cmd:echo "test1" > /tmp/xdcp/test1/test1.txt
+cmd:echo "xdcpdata1" > /tmp/xdcp/test1/test1.txt
 check:rc==0
 cmd:mkdir -p /tmp/xdcp/test2
 check:rc==0
-cmd:echo "test2" > /tmp/xdcp/test2/test2.txt
+cmd:echo "xdcpdata2" > /tmp/xdcp/test2/test2.txt
 check:rc==0
 cmd:xdcp $$CN -R /tmp/xdcp  /tmp
 check:rc==0
@@ -89,9 +89,9 @@ check:output=~test1.txt
 cmd:xdsh $$CN "ls -l /tmp/xdcp/test2"
 check:output=~test2.txt
 cmd:xdsh $$CN "cat /tmp/xdcp/test1/test1.txt"
-check:output=~test1
+check:output=~xdcpdata1
 cmd:xdsh $$CN "cat /tmp/xdcp/test2/test2.txt"
-check:output=~test2
+check:output=~xdcpdata2
 cmd:xdsh $$CN "rm -rf /tmp/xdcp"
 check:rc==0
 cmd:rm -rf /tmp/xdcp

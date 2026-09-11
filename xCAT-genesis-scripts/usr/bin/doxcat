@@ -205,6 +205,47 @@ secondary_nic_needs_dhcp() {
     return 0
 }
 
+# RHEL 10 packages no ISC dhcp-client, so the image carries whichever client its release
+# ships. Print the command line for one interface and one address family, or nothing when
+# the image carries no client at all.
+genesis_dhcp_command() {
+    local family=$1
+    local nic=$2
+
+    if command -v dhclient >/dev/null 2>&1; then
+        if [ "$family" = 6 ]; then
+            echo "dhclient -6 -pf /var/run/dhclient6.$nic.pid $nic -lf /var/lib/dhclient/dhclient6.leases"
+        else
+            echo "dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$nic.pid $nic"
+        fi
+        return 0
+    fi
+
+    if command -v dhcpcd >/dev/null 2>&1; then
+        # dhcpcd carries its own resolv.conf, hostname and ntp hooks, so it does not need
+        # dhclient-script. On a single interface it exits when its timeout expires, and it
+        # de-configures the interface as it goes; -t 0 and -p turn both off.
+        echo "dhcpcd -$family -b -p -t 0 $nic"
+        return 0
+    fi
+
+    return 0
+}
+
+# Run the client genesis_dhcp_command chose. The caller backgrounds this.
+genesis_start_dhcp() {
+    local family=$1
+    local nic=$2
+    local command
+
+    command=$(genesis_dhcp_command "$family" "$nic")
+    if [ -z "$command" ]; then
+        logger -s -t $log_label -p local4.err "The image carries no DHCP client, so $nic gets no IPv$family address."
+        return 1
+    fi
+    $command
+}
+
 # see if they specified static ip info, otherwise use dhcp
 XCATPORT=3001
 for parm in `cat /proc/cmdline`; do
@@ -253,8 +294,8 @@ else
             while [ $tries -lt 100 ]; do
                 ALLUP_NICS=`ip link show | grep -v "^ " | grep "state UP" | awk '{print $2}' | sed -e 's/:$//'|grep -v lo | sort -n -r`
                 for tmp1 in $ALLUP_NICS; do
-                    dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$tmp1.pid $tmp1 &
-                    dhclient -6 -pf /var/run/dhclient6.$tmp1.pid $tmp1 -lf /var/lib/dhclient/dhclient6.leases &
+                    genesis_start_dhcp 4 "$tmp1" &
+                    genesis_start_dhcp 6 "$tmp1" &
                     #bootnic=$tmp1
                     #break
                 done
@@ -290,11 +331,11 @@ else
                 /bin/bash
             fi
         else
-	    dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$bootnic.pid $bootnic &
+	    genesis_start_dhcp 4 "$bootnic" &
 	    #we'll kick of IPv6 and IPv4 on all nics, but not wait for them to come up unless doing discovery, to reduce
 	    #chances that we'll perform a partial discovery
 	    #in other scenarios where downed non-bootnics cause issues, will rely on retries to fix things up
-	    dhclient -6 -pf /var/run/dhclient6.$bootnic.pid $bootnic -lf /var/lib/dhclient/dhclient6.leases &
+	    genesis_start_dhcp 6 "$bootnic" &
 	    NICCANDIDATES=`ip link|grep mtu|grep -v LOOPBACK|grep -v $bootnic|grep -v usb|awk -F: '{print $2}'`
 	    TSMNIC=$(cat /tmp/tsmhostnic 2>/dev/null)
 	    NICSTOBRINGUP=
@@ -305,8 +346,8 @@ else
 	    done
 	    export NICSTOBRINGUP
 	    for nic in $NICSTOBRINGUP; do
-		(while ! ethtool $nic | grep Link\ detected|grep yes > /dev/null && [ ! -f /tmp/netinitted ]; do sleep 5; done; dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$nic.pid $nic ) &
-		(while ! ethtool $nic | grep Link\ detected|grep yes > /dev/null && [ ! -f /tmp/netinitted ]; do sleep 5; done; dhclient -cf /etc/dhclient.conf -6 -pf /var/run/dhclient6.$nic.pid -lf /var/lib/dhclient/dhclient6.leases $nic ) &
+		(while ! ethtool $nic | grep Link\ detected|grep yes > /dev/null && [ ! -f /tmp/netinitted ]; do sleep 5; done; genesis_start_dhcp 4 "$nic" ) &
+		(while ! ethtool $nic | grep Link\ detected|grep yes > /dev/null && [ ! -f /tmp/netinitted ]; do sleep 5; done; genesis_start_dhcp 6 "$nic" ) &
 	    done
 
             gripeiter=101

@@ -498,6 +498,8 @@ sub build_diskstruct {
     my @suffixes     = ('a', 'b', 'd' .. 'zzz');
     my $suffidx      = 0;
     my $storagemodel = $confdata->{vm}->{$node}->[0]->{storagemodel};
+    my $profile      = guest_arch_profile($confdata->{nodetype}->{$node}->[0]->{arch},
+        $confdata->{ $confdata->{vm}->{$node}->[0]->{host} }->{cpumodel});
     my $cachemethod  = "none";
     if ($confdata->{vm}->{$node}->[0]->{storagecache}) {
         $cachemethod = $confdata->{vm}->{$node}->[0]->{storagecache};
@@ -511,13 +513,17 @@ sub build_diskstruct {
 
             #Setting default values of a virtual disk backed by a file at hd*.
             my $diskhash;
-            $disk =~ s/=(.*)//;
-            my $model = $1;
+            # A failed substitution leaves $1 as the last successful capture, which can come
+            # from a match made by a caller. Read $1 only when this substitution matches.
+            my $model;
+            if ($disk =~ s/=(.*)//) {
+                $model = $1;
+            }
             unless ($model) {
 
                 #if not defined, model will stay undefined like above
                 $model = $storagemodel;
-                unless ($model) { $model = 'ide'; }   #if still not defined, ide
+                unless ($model) { $model = $profile->{disk_model}; }
             }
             my $prefix = 'hd';
             if ($model eq 'virtio') {
@@ -549,13 +555,16 @@ sub build_diskstruct {
                     $tdiskhash->{driver}->{type}  = $disks{$_}->{format};
                     $tdiskhash->{driver}->{cache} = $cachemethod;
                     $tdiskhash->{source}->{file}  = $_;
-                    $tdiskhash->{target}->{dev}   = $disks{$_}->{device};
+                    my $device = $disks{$_}->{device};
+                    $tdiskhash->{target}->{dev}   = $device;
 
-                    if ($disks{$_} =~ /^vd/) {
+                    # libvirt reads the bus out of the device name when the disk states
+                    # none: hd* is ide, sd* is scsi, vd* is virtio. State the same bus.
+                    if ($device =~ /^vd/) {
                         $tdiskhash->{target}->{bus} = 'virtio';
-                    } elsif ($disks{$_} =~ /^hd/) {
+                    } elsif ($device =~ /^hd/) {
                         $tdiskhash->{target}->{bus} = 'ide';
-                    } elsif ($disks{$_} =~ /^sd/) {
+                    } elsif ($device =~ /^sd/) {
                         $tdiskhash->{target}->{bus} = 'scsi';
                     }
                     push @returns, $tdiskhash;
@@ -586,7 +595,8 @@ sub build_diskstruct {
             push @returns, $diskhash;
         }
     }
-    my $cdprefix = 'hd';
+    # The riscv64 virt machine has no IDE controller, so the optical drive is scsi there.
+    my $cdprefix = $profile->{cd_prefix};
 
     # Normally for vmstoragemodel=virtio, we would set prefix of "vd", but device name vd*
     # doesn't work for CDROM, so for now use the same prefix "sd" as for vmstoragemodel=scsi.
@@ -704,6 +714,63 @@ sub getUnits {
     }
 }
 
+# default_storagemodel: the storage model of a node whose vmstoragemodel is empty.
+#
+# The model names the volume of the node, createstorage builds that name, and libvirt reads
+# the bus of the disk out of it. scsi keeps every architecture on sd*, which is the only disk
+# controller the riscv64 virt machine has.
+sub default_storagemodel {
+    return 'scsi';
+}
+
+# guest_arch_profile: the libvirt domain type and <os> settings for one guest.
+#
+# The architecture of the guest comes from the node, not from the hypervisor. A node whose
+# arch is not the arch of the hypervisor runs under emulation, which libvirt expresses as
+# domain type "qemu". riscv64 has no BIOS: the virt machine boots UEFI, and pae/acpi/apic
+# are x86 features that libvirt rejects there.
+#
+# POWER keeps reading the hypervisor cpumodel. ppc64le hypervisors report "ppc64le" (not
+# "ppc64"); both are pseries guests whose libvirt <os> arch is "ppc64".
+#
+# arch and machine stay undef when libvirt is to use its own default for the hypervisor.
+sub guest_arch_profile {
+    my ($guest_arch, $hyp_cpumodel) = @_;
+    my %profile = (
+        domtype      => 'kvm',
+        arch         => undef,
+        machine      => undef,
+        firmware     => undef,
+        x86_features => 1,
+        bios         => 1,
+        sound        => 1,
+        video        => 'vga',
+        usb_input    => 1,
+        disk_model   => 'ide',
+        cd_prefix    => 'hd',
+    );
+    if (defined($guest_arch) and $guest_arch eq 'riscv64') {
+        $profile{domtype}      = 'qemu';
+        $profile{arch}         = 'riscv64';
+        $profile{machine}      = 'virt';
+        $profile{firmware}     = 'efi';
+        $profile{x86_features} = 0;
+        $profile{bios}         = 0;
+        $profile{sound}        = 0;
+        $profile{video}        = 'virtio';
+        $profile{usb_input}    = 0;
+        $profile{disk_model}   = 'scsi';
+        $profile{cd_prefix}    = 'sd';
+    } elsif (defined($hyp_cpumodel) and ($hyp_cpumodel eq "ppc64" or $hyp_cpumodel eq "ppc64le")) {
+        $profile{arch}         = 'ppc64';
+        $profile{machine}      = 'pseries';
+        $profile{x86_features} = 0;
+        $profile{bios}         = 0;
+        $profile{sound}        = 0;
+    }
+    return \%profile;
+}
+
 sub build_xmldesc {
     my $node  = shift;
     my %args  = @_;
@@ -716,19 +783,16 @@ sub build_xmldesc {
         $hypcputhreads = "1";
     }
 
-    $xtree{type}            = 'kvm';
+    my $profile = guest_arch_profile($confdata->{nodetype}->{$node}->[0]->{arch}, $hypcpumodel);
+
+    $xtree{type}            = $profile->{domtype};
     $xtree{name}->{content} = $node;
     $xtree{uuid}->{content} = getNodeUUID($node);
     $xtree{os}              = build_oshash();
-    # ppc64le hypervisors report cpumodel "ppc64le" (not "ppc64"); both are pseries
-    # guests whose libvirt <os> arch is "ppc64". Without this the guest is emitted
-    # as an x86-style domain (no machine, plus the pae/acpi/apic below) which libvirt
-    # rejects on ppc64le hosts: "machine type 'pseries-*' does not support ACPI".
-    if (defined($hypcpumodel) and ($hypcpumodel eq "ppc64" or $hypcpumodel eq "ppc64le")) {
-        $xtree{os}->{type}->{arch}    = "ppc64";
-        $xtree{os}->{type}->{machine} = "pseries";
-        delete $xtree{os}->{bios};
-    }
+    $xtree{os}->{type}->{arch}    = $profile->{arch}     if defined $profile->{arch};
+    $xtree{os}->{type}->{machine} = $profile->{machine}  if defined $profile->{machine};
+    $xtree{os}->{firmware}        = $profile->{firmware} if defined $profile->{firmware};
+    delete $xtree{os}->{bios} unless $profile->{bios};
     if ($args{memory}) {
         $xtree{memory}->{content} = getUnits($args{memory}, "M", 1024);
         if ($confdata->{vm}->{$node}->[0]->{memory}) {
@@ -940,9 +1004,7 @@ sub build_xmldesc {
         }
     }
 
-    # pae/acpi/apic are x86 features; pseries (ppc64/ppc64le) guests do not support
-    # them and libvirt rejects the domain if they are present.
-    unless (defined($hypcpumodel) and ($hypcpumodel eq "ppc64" or $hypcpumodel eq "ppc64le")) {
+    if ($profile->{x86_features}) {
         $xtree{features}->{pae}     = {};
         $xtree{features}->{acpi}    = {};
         $xtree{features}->{apic}    = {};
@@ -965,10 +1027,13 @@ sub build_xmldesc {
             $vram = 65536; } #surprise, spice blows up with less vram than this after version 0.6 and up
         $xtree{devices}->{video} = [ { 'content' => '', 'model' => { type => $model, vram => $vram } } ];
     } else {
-        $xtree{devices}->{video} = [ { 'content' => '', 'model' => { type => 'vga', vram => 8192 } } ];
+        $xtree{devices}->{video} = [ { 'content' => '', 'model' => { type => $profile->{video}, vram => 8192 } } ];
     }
-    $xtree{devices}->{input}->{type} = 'tablet';
-    $xtree{devices}->{input}->{bus}  = 'usb';
+    # The riscv64 virt machine has no USB controller, and libvirt refuses a USB device there.
+    if ($profile->{usb_input}) {
+        $xtree{devices}->{input}->{type} = 'tablet';
+        $xtree{devices}->{input}->{bus}  = 'usb';
+    }
     if (defined($confdata->{vm}->{$node}->[0]->{vidproto})) {
         $xtree{devices}->{graphics}->{type} = $confdata->{vm}->{$node}->[0]->{vidproto};
     } else {
@@ -983,10 +1048,9 @@ sub build_xmldesc {
     }
     if (defined($hypcpumodel) and $hypcpumodel eq 'ppc64') {
         $xtree{devices}->{emulator}->{content} = "/usr/bin/qemu-system-ppc64";
-    } elsif (defined($hypcpumodel) and $hypcpumodel eq 'ppc64le') {
-        # do nothing for ppc64le, do not support sound at this time
-        ;
-    } else {
+    }
+    # libvirt resolves the emulator for every other architecture from its own capabilities.
+    if ($profile->{sound}) {
         $xtree{devices}->{sound}->{model} = 'ich6';
     }
 
@@ -1531,8 +1595,12 @@ sub createstorage {
     if ($mastername and $size) {
         return 1, "Can not specify both a master to clone and size(s)";
     }
-    $filename =~ s/=(.*)//;
-    my $model = $1;
+    # A failed substitution leaves $1 as the last successful capture, which can come from a
+    # match made by a caller. Read $1 only when this substitution matches.
+    my $model;
+    if ($filename =~ s/=(.*)//) {
+        $model = $1;
+    }
     unless ($model) {
 
         #if not defined, model will stay undefined like above
@@ -4251,8 +4319,7 @@ sub dohyp {
 
     foreach $node (sort (keys %{ $hyphash{$hyp}->{nodes} })) {
         unless ($confdata->{vm}->{$node}->[0]->{storagemodel}) {
-            # Storage model is not set, default to  scsi for all architectures
-            $confdata->{vm}->{$node}->[0]->{storagemodel} = "scsi";
+            $confdata->{vm}->{$node}->[0]->{storagemodel} = default_storagemodel();
         }
         if ($confdata->{$hyp}->{cpu_thread}) {
             $confdata->{vm}->{$node}->[0]->{cpu_thread} = $confdata->{$hyp}->{cpu_thread};

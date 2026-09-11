@@ -5,11 +5,11 @@ Maintainer: xCAT <xcat-user@lists.sourceforge.net>
 Build-Depends: debhelper (>= 9)
 Standards-Version: 3.9.4
 
-Package: xcat-genesis-scripts-ppc64
+Package: xcat-genesis-scripts-ppc64el
 Architecture: all
-Depends: xcat-genesis-base-ppc64 (>= 2.13.10)
-Conflicts: xcat-genesis-scripts
-Replaces: xcat-genesis-scripts
+Depends: xcat-genesis-base-ppc64el (>= 2.13.10)
+Conflicts: xcat-genesis-scripts, xcat-genesis-scripts-ppc64
+Replaces: xcat-genesis-scripts, xcat-genesis-scripts-ppc64
 Description: xCAT genesis
  (Genesis Enhanced Netboot Environment for System Information and Servicing)
  is a small, embedded-like environment for xCAT's use in discovery and

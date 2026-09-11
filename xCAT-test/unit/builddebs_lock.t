@@ -7,9 +7,7 @@
 # builds of DIFFERENT checkouts share nothing and must run concurrently. The historic
 # host-global lock got that backwards and made the devel and stable CD lanes collide.
 #
-# This drives the real lock. The predecessor extracted a marked region out of
-# build-ubunturepo with a regex and ran that; now the lock is a function, so it is
-# called directly.
+# This drives the real lock. The lock is a function, so it is called directly.
 use strict;
 use warnings;
 
