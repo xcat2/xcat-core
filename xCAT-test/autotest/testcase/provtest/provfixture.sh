@@ -182,6 +182,32 @@ httpport() {
     echo "${port:-80}"
 }
 
+# Whether the web server answering a port serves what xCAT tells a node to
+# fetch, rather than merely answering.
+#
+# Answering is not enough and is not a detail: a management node can end up
+# with a web server that is not the one xcatconfig configured -- a stock nginx
+# holding port 80 in front of the httpd whose xcat.conf has the aliases in it,
+# say -- and that server replies 404 to every path a node is ever given. The
+# HTTP half of the chain cannot be asserted against it, and the failure it
+# produces looks like a broken boot configuration rather than like a web
+# server serving the wrong tree.
+#
+# The probe asks for the two directories xCAT aliases, by the paths it aliases
+# them under: the alias is the directory's own path, so the URL and the
+# directory are the same string. Anything but 404 means the alias is there,
+# 403 included, because neither alias allows a listing.
+http_serves_xcat() {
+    local port=$1 path code
+    for path in "$(tftpdir)" "$(installdir)"; do
+        code=$(curl -s -m 5 -o /dev/null -w '%{http_code}' \
+                    "http://127.0.0.1:$port$path/" 2>/dev/null)
+        # 000 is curl's own: nothing answered at all.
+        case "$code" in 404|000|'') return 1 ;; esac
+    done
+    return 0
+}
+
 # Where a web server keeps the configuration fragments it reads on startup.
 http_confdir() {
     local dir
@@ -381,6 +407,13 @@ do_check() {
     # manage it, the scenario would be asserting the opposite of what it says.
     lsdef -t network -i net -c 2>/dev/null | grep -q "net=$FOREIGN_NET\$" \
         && skip "$FOREIGN_NET is a managed network here, so the foreign-address case cannot be run"
+
+    # Said here rather than refused here: the DNS, TFTP and xcatd stages have
+    # nothing to do with the web server, and a machine that cannot run the HTTP
+    # ones can still run those. Setup may yet fix this by moving the web server
+    # to a port of its own, so this is a warning and not a verdict.
+    http_serves_xcat "$(httpport)" \
+        || say "the web server on port $(httpport) answers 404 for $(tftpdir); unless setup can move the web server, the HTTP stages will be left out"
 
     say "environment is able to run the wire cases"
 }
@@ -801,7 +834,7 @@ do_run_dns() {
 # Stage 3. One file per netboot method, one node per file: the method is an
 # attribute of the node, so a single node cannot answer for all four.
 do_run_tftp() {
-    local rc=0 loader tftp scenarios
+    local rc=0 loader tftp scenarios xnba
     assert_serving udp 69 "the TFTP server"
     tftp=$(tftpdir)
 
@@ -831,7 +864,18 @@ do_run_tftp() {
         --set bootnode="$BOOT_NODE" \
         conf/tftp-pxelinux.conf || rc=1
 
-    provtest_run \
+    # The xnba case is the one that crosses transports, so it is the one that a
+    # web server serving the wrong tree can fail for a reason that has nothing
+    # to do with the script it fetched. The script is asserted either way; the
+    # kernel it names is asserted only where something serves it.
+    if http_serves_xcat "$(httpport)"; then
+        xnba="-s xnba-script -s xnba-kernel"
+    else
+        xnba="-s xnba-script"
+        stage_skip "the web server on port $(httpport) does not serve $tftp, so the kernel half of the xnba case is left out"
+    fi
+    # shellcheck disable=SC2086
+    provtest_run $xnba \
         --set server="$SRV_IP" --set client="$NODE_IP" \
         --set node="$XNBA_NODE" --set httpport="$(httpport)" \
         conf/tftp-xnba.conf || rc=1
@@ -853,6 +897,14 @@ do_run_http() {
     local port other select
     port=$(httpport)
     assert_serving tcp "$port" "the web server"
+    # Every scenario in this stage fetches a path xCAT aliases, so a web server
+    # without the aliases fails all of them for one reason. Said once, as a
+    # skip, rather than nine times as an assertion failure that reads like a
+    # boot configuration fault.
+    http_serves_xcat "$port" || {
+        stage_skip "the web server on port $port answers 404 for $(tftpdir), so it is not the one xCAT configured and the HTTP stage is left out"
+        return 0
+    }
     other=$(free_port "$port") || die "no port is free for the control half of the port case"
 
     # P-39 has two halves and a cluster is on one side of it or the other: a
