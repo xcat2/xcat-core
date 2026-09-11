@@ -51,7 +51,19 @@ then
 	sed -i -e "s/${ALIEN_ARCH}/${DEB_ARCH}/g" "${EXTRACT_DIR}/debian/changelog"
 fi
 
-sed -i -e "/^Description:/i Breaks: xcat-genesis-scripts-${DEB_ARCH} (<< 2.13.10)" "${EXTRACT_DIR}/debian/control"
+# The Genesis debs carry the architecture in the package name, so the packages an upgrade has
+# to displace carry it too. 2.19 renames the ppc64 debs to ppc64el; dpkg keeps the old package,
+# and its copy of the same files, unless the new one replaces it by name.
+case "${DEB_ARCH}" in
+ppc64el)
+	SUPERSEDED="xcat-genesis-ppc64, xcat-genesis-base-ppc64" ;;
+*)
+	SUPERSEDED="xcat-genesis-${DEB_ARCH}" ;;
+esac
+
+sed -i -e "/^Description:/i Replaces: ${SUPERSEDED}" \
+	-e "/^Description:/i Breaks: ${SUPERSEDED}, xcat-genesis-scripts-${DEB_ARCH} (<< 2.13.10)" \
+	"${EXTRACT_DIR}/debian/control"
 
 cat >"${EXTRACT_DIR}/debian/preinst" <<EOF
 #!/bin/bash

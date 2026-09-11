@@ -7,9 +7,11 @@
 # openssl, no sshd-session and no UTF-8 locale. Check the extracted payload before it becomes
 # an rpm.
 #
-# Paths are relative to <payload-root>. --commands-from reads back the command names the
-# dracut module installs. The caller adds what only it knows (the DHCP client is not the same
-# package on every release); the rules below come from the payload itself.
+# Paths given on the command line are relative to <payload-root>. --commands-from reads back
+# what the dracut module installs: a bare command name is looked for in the four binary
+# directories, an absolute path under <payload-root> itself. The caller adds what only it
+# knows (the DHCP client is not the same package on every release); the rules below come from
+# the payload itself.
 
 set -u
 
@@ -55,9 +57,10 @@ for path in "$@"; do
     require "$path" "required by the build"
 done
 
-# The dracut module names every command Genesis runs. A name that the build root does not
-# supply installs nothing and says nothing, so read the names back and check each one.
-# Names under a condition are release-dependent, so only the top level of install() counts.
+# The dracut module names every command and every data file Genesis needs. A name the build
+# root does not supply installs nothing and says nothing, so read the names back and check
+# each one. Names under a condition are release-dependent, so only the top level of install()
+# counts.
 if [ -n "$commands_from" ]; then
     if [ ! -r "$commands_from" ]; then
         echo "verify-genesis-payload: cannot read $commands_from" >&2
@@ -70,16 +73,24 @@ if [ -n "$commands_from" ]; then
             sub(/#.*/, "")
             sub(/^    dracut_install /, "")
             print
-        }' "$commands_from" | tr ' \t' '\n\n' | grep -v '^$' | grep -v '^[/-]' | sort -u)
+        }' "$commands_from" | tr ' \t' '\n\n' | grep -v '^$' | grep -v '^-' | sort -u)
     if [ -z "$commands" ]; then
         echo "verify-genesis-payload: no command name read from $commands_from" >&2
         exit 2
     fi
-    for command in $commands; do
-        have "bin/$command" || have "sbin/$command" \
-            || have "usr/bin/$command" || have "usr/sbin/$command" \
-            || missing="$missing
-  $command (installed by $commands_from)"
+    for want in $commands; do
+        case "$want" in
+            # dracut_install installs an absolute path at that same path, so read it back
+            # under the payload root. Dropping these let an image with no /usr/bin/awk pass.
+            /*) have "${want#/}" || missing="$missing
+  $want (installed by $commands_from)"
+                ;;
+            *)  have "bin/$want" || have "sbin/$want" \
+                    || have "usr/bin/$want" || have "usr/sbin/$want" \
+                    || missing="$missing
+  $want (installed by $commands_from)"
+                ;;
+        esac
     done
 fi
 
