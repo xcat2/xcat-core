@@ -106,7 +106,11 @@ def _decode(done, url, body_file, header_file):
         "header": _headers(header_file),
         "content_type": content_type,
         "error": error,
-        "ok": bool(status and 200 <= status < 400),
+        # curl prints the status as soon as the response header arrives. A
+        # transfer that then stopped -- the connection closed mid-body, the
+        # clock ran out -- leaves a status of 200 and a file holding part of a
+        # kernel, so the status alone does not say the fetch worked.
+        "ok": bool(status and 200 <= status < 400 and not error),
     }
     return Reply(kind="http", fields=fields, ok=fields["ok"], error=error,
                  sent=done.command(), raw=body)
