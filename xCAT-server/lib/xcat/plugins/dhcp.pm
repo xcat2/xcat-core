@@ -4588,24 +4588,20 @@ sub addnet6
     if ($netcfgs{$net}->{ddnsdomain}) {
         $ddnsdomain = $netcfgs{$net}->{ddnsdomain};
     }
-    if ($::XCATSITEVALS{dnshandler} =~ /ddns/) {
-        my $settings = _omapi_settings();
+    my $ddns_on = $::XCATSITEVALS{dnshandler} =~ /ddns/ ? 1 : 0;
+    my $settings;
+    if ($ddns_on) {
+        $settings = _omapi_settings();
         return 1 unless $settings;
-
-        if ($ddnsdomain) {
-            push @netent, "    ddns-domainname \"" . $ddnsdomain . "\";\n";
-            push @netent, "    zone $ddnsdomain. {\n";
-        } else {
-            push @netent, "    zone $netdomain. {\n";
-        }
-        push @netent, "       primary $ddnserver; key $settings->{key_name}; \n";
-        push @netent, "    }\n";
-        foreach (getzonesfornet($net)) {
-            push @netent, "    zone $_ {\n";
-            push @netent, "       primary $ddnserver; key $settings->{key_name}; \n";
-            push @netent, "    }\n";
-        }
     }
+    push @netent, isc_ddns_zone_statements(
+        enabled    => $ddns_on,
+        domain     => "$netdomain.",
+        ddnsdomain => $ddnsdomain,
+        server     => $ddnserver,
+        key_name   => $settings ? $settings->{key_name} : undef,
+        zones      => [ getzonesfornet($net) ],
+    );
     if ($netcfgs{$net}->{range}) {
         push @netent, "    range6 " . $netcfgs{$net}->{range} . ";\n";
     } else {
@@ -4613,6 +4609,50 @@ sub addnet6
     }
     push @netent, "  } # $net subnet_end\n";
     splice(@dhcp6conf, $idx, 0, @netent);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 isc_ddns_zone_statements
+
+Descriptions: The zone and key statements that let dhcpd update the cluster's
+DNS. One forward zone, plus one for every reverse zone the network covers.
+
+An update aimed at no server, or sent unsigned, is refused by named and lost
+without a word on the DHCP side, so the server and the key are written with the
+zone or not at all. With dynamic DNS switched off nothing is written: makedns
+owns the records then, and a second writer holding a key for the same names is
+how two answers for one node appear.
+
+Arguments:
+    %args - enabled, domain, ddnsdomain, server, key_name, zones (arrayref)
+Returns: the configuration lines, as a list. Empty when there is nothing to say.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub isc_ddns_zone_statements
+{
+    my (%args) = @_;
+
+    return () unless $args{enabled};
+
+    my $forward = $args{ddnsdomain} ? "$args{ddnsdomain}." : $args{domain};
+    return () unless $forward;
+
+    # "primary <server>; key <name>;" is one statement in two halves. A zone
+    # written without it names a zone dhcpd cannot reach.
+    my @key_line;
+    @key_line = ("       primary $args{server}; key $args{key_name}; \n")
+      if $args{server} && $args{key_name};
+
+    my @lines;
+    push @lines, "    ddns-domainname \"$args{ddnsdomain}\";\n" if $args{ddnsdomain};
+    push @lines, "    zone $forward {\n", @key_line, "    }\n";
+    foreach my $zone ( @{ $args{zones} || [] } ) {
+        push @lines, "    zone $zone {\n", @key_line, "    }\n";
+    }
+    return @lines;
 }
 
 sub addnet
@@ -4918,30 +4958,20 @@ sub addnet
         if ($netcfgs{$net}->{ddnsdomain}) {
             $ddnsdomain = $netcfgs{$net}->{ddnsdomain};
         }
-        if ($::XCATSITEVALS{dnshandler} =~ /ddns/) {
-            my $settings = _omapi_settings();
+        my $ddns_on = $::XCATSITEVALS{dnshandler} =~ /ddns/ ? 1 : 0;
+        my $settings;
+        if ($ddns_on) {
+            $settings = _omapi_settings();
             return 1 unless $settings;
-
-            if ($ddnsdomain) {
-                push @netent, "    ddns-domainname \"" . $ddnsdomain . "\";\n";
-                push @netent, "    zone $ddnsdomain. {\n";
-            } else {
-                push @netent, "    zone $domain. {\n";
-            }
-            if ($ddnserver)
-            {
-                push @netent, "       primary $ddnserver; key $settings->{key_name}; \n";
-            }
-            push @netent, "    }\n";
-            foreach (getzonesfornet($net, $mask)) {
-                push @netent, "    zone $_ {\n";
-                if ($ddnserver)
-                {
-                    push @netent, "       primary $ddnserver; key $settings->{key_name}; \n";
-                }
-                push @netent, "    }\n";
-            }
         }
+        push @netent, isc_ddns_zone_statements(
+            enabled    => $ddns_on,
+            domain     => "$domain.",
+            ddnsdomain => $ddnsdomain,
+            server     => $ddnserver,
+            key_name   => $settings ? $settings->{key_name} : undef,
+            zones      => [ getzonesfornet($net, $mask) ],
+        );
 
         my $tmpmaskn = unpack("N", inet_aton($mask));
         my $maskbits = 32;
