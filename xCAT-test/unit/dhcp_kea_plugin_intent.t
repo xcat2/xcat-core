@@ -613,12 +613,14 @@ foreach my $case (@sysconfig_policy_cases) {
     my $r = $reservations->[0] || {};
     is( $r->{'ip-address'},  '192.168.201.21',    'service node reservation carries the node IP' );
     is( $r->{'hw-address'},  '42:d7:c0:a8:c9:15', 'service node reservation carries the node MAC' );
-    # The name travels as the reservation's own host-name option and the
-    # "hostname" field is left out: Kea builds option 12 from that field and
-    # appends ddns-qualifying-suffix, so a node asking who it was got an FQDN
-    # while ISC sent the node's own name. S-35 asks for the node's name on both.
-    ok( !exists $r->{hostname},
-        'a reservation carries no hostname field for Kea to qualify' );
+    # The reservation names the node in two places, and both are needed. The
+    # "hostname" field is the only name a client cannot displace: with the
+    # field absent, Kea 2.4.1 wrote the name the client advertised into the
+    # lease and sent it back in option 12, so a node calling itself anything
+    # took over the node's DNS record. The host-name option carries the
+    # unqualified name for a server that sends it verbatim.
+    is( $r->{hostname}, 'svc01',
+        'service node reservation carries the hostname field' );
     is_deeply(
         [ grep { $_->{name} eq 'host-name' } @{ $r->{'option-data'} || [] } ],
         [ { name => 'host-name', data => 'svc01' } ],
@@ -911,8 +913,8 @@ foreach my $case (@invalid_mac_cases) {
     }
 
     is_deeply(
-        [ map { $_->{'ip-address'} } @$reservations ],
-        ['192.0.2.30'],
+        [ map { $_->{hostname} } @$reservations ],
+        ['valid01'],
         'an unresolved hostname does not block later valid Kea reservations'
     );
     is_deeply(
