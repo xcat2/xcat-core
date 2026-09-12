@@ -613,12 +613,13 @@ foreach my $case (@sysconfig_policy_cases) {
     my $r = $reservations->[0] || {};
     is( $r->{'ip-address'},  '192.168.201.21',    'service node reservation carries the node IP' );
     is( $r->{'hw-address'},  '42:d7:c0:a8:c9:15', 'service node reservation carries the node MAC' );
-    # The reservation names the node in two places, and both are needed. The
-    # "hostname" field is the only name a client cannot displace: with the
+    # S-74. The reservation names the node in two places and both are needed.
+    # The "hostname" field is the only name a client cannot displace: with the
     # field absent, Kea 2.4.1 wrote the name the client advertised into the
-    # lease and sent it back in option 12, so a node calling itself anything
-    # took over the node's DNS record. The host-name option carries the
-    # unqualified name for a server that sends it verbatim.
+    # lease and into the DDNS update, and sent it back in option 12 as well, so
+    # a node calling itself anything took over the node's DNS record. The
+    # host-name option carries the unqualified name for a server that sends it
+    # verbatim.
     is( $r->{hostname}, 'svc01',
         'service node reservation carries the hostname field' );
     is_deeply(
