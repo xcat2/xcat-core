@@ -91,6 +91,18 @@ is(
     'POWER does not accept the x86 live layout',
 );
 
+# --- riscv64 -------------------------------------------------------------
+is(
+    resolved('riscv64', 'riscv64', media('casper/vmlinux', 'casper/initrd')),
+    'casper/vmlinux|casper/initrd',
+    'the riscv64 live image keeps its kernel under a different name',
+);
+is(
+    resolved('riscv64', 'riscv64', media('casper/vmlinuz', 'casper/initrd')),
+    undef,
+    'riscv64 does not accept the kernel name the other live images use',
+);
+
 # --- nothing to boot -------------------------------------------------------
 is(resolved('x86_64', 'amd64', media('casper/vmlinuz')), undef,
     'a kernel without its initrd is not a match');

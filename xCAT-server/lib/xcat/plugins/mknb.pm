@@ -907,9 +907,9 @@ sub process_request {
         }
     }
     if (exists $GRUB2_DISCOVERY_ARCHES{$arch} && !-e "$tftpdir/boot/grub2/grub2.$arch") {
-        # These configurations are only reachable through grub2.<arch>, which xCAT
-        # does not build.
-        $callback->({ data => ["Note: $tftpdir/boot/grub2/grub2.$arch is missing; $arch nodes need it to reach these configurations (it is installed by grub2-xcat, or copied from the EL $arch installation media)"] });
+        # These configurations are only reachable through grub2.<arch>. copycd builds it from
+        # Ubuntu media; on EL it is supplied by grub2-xcat or copied from the media.
+        $callback->({ data => ["Note: $tftpdir/boot/grub2/grub2.$arch is missing; $arch nodes need it to reach these configurations (copycd builds it from Ubuntu media; on EL it is installed by grub2-xcat or copied from the $arch installation media)"] });
     }
     if ($configfileonly && !$s390x_config_error) {
         $callback->({ data => ["Write netboot config file done"] });
