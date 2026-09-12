@@ -1,0 +1,276 @@
+# dhcptest drives real DHCP transactions on the wire and asserts on the replies.
+# It never reads the xCAT database and never runs an xCAT command, so it tests
+# what a booting node would see rather than what the generated config says.
+#
+# The first two cases are offline and safe anywhere. The wire cases build their
+# own provisioning network out of a veth pair via dhcpfixture.sh, which is where
+# all the xCAT knowledge lives: it defines a network and a node and runs makedhcp
+# so the configuration comes from xCAT rather than by hand.
+#
+# Each wire case is one script, so its teardown runs from a trap and the machine
+# is left serving its own config even when an assertion fails.
+#
+# A case that cannot run says so and passes. Read a pass as coverage only when
+# the log shows the ok lines.
+
+start:dhcptest_unit_tests
+description:dhcptest's own unit tests: no network, no root, no scapy needed
+label:mn_only,ci_test,dhcp
+os:Linux
+cmd:cd /opt/xcat/share/xcat/tools/autotest/dhcptest && python3 -m unittest discover -s tests
+check:rc==0
+end
+
+start:dhcptest_validate_conf
+description:Every shipped dhcptest scenario parses and is a legal DHCP exchange
+label:mn_only,ci_test,dhcp
+os:Linux
+cmd:cd /opt/xcat/share/xcat/tools/autotest/dhcptest && python3 src/dhcptest validate conf/*.conf
+check:rc==0
+check:output=~scenario
+end
+
+start:dhcptest_provision_vs_discovery
+description:A defined node gets its reservation and an unknown one gets a pool address
+label:mn_only,dhcp,dhcp_wire
+os:Linux
+# Every case below carries dhcp_wire and, deliberately, not ci_test: while one
+# runs, a veth pair exists, site.dhcpinterfaces points at it, site.dhcpbackend
+# may have switched and the daemon has been restarted. Each puts it back from a
+# trap, but a ci_test case running in between would be sharing a management node
+# that is mid-reconfiguration. See run_dhcp_wire_test.
+#
+# The set is run once per backend installed, each pass bracketed by
+# `dhcpfixture.sh backend-setup` and `backend-teardown`. Which backend a cluster
+# runs is decided by the distro, not the operator, so a scenario that holds on
+# one and not the other is a node that boots on RHEL 9 and hangs on RHEL 10.
+#
+# So the backend is not chosen in here: each case serves whatever
+# site.dhcpbackend the surrounding pass selected.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    "$FIX" run || exit 1
+check:rc==0
+end
+
+start:dhcptest_boot_architectures
+description:Each client architecture is handed the loader that belongs to it
+label:mn_only,dhcp,dhcp_wire
+os:Linux
+# Option 93 is where xCAT's DHCP behaviour branches most, and where a mistake is
+# most expensive: the wrong loader either hangs the firmware or boots the wrong
+# thing. Every architecture is asserted under every backend against the same
+# expected loader, and the fixture puts the loaders they key on in place first.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    "$FIX" run-arch || exit 1
+check:rc==0
+end
+
+start:dhcptest_netboot_methods
+description:A node is handed the loader its netboot method names, whatever its architecture says
+label:mn_only,dhcp,dhcp_wire
+os:Linux
+# The other direction from the architecture case: there nobody has defined the
+# machine and the answer comes from the subnet; here the operator has said how
+# this node boots. A backend leaning on a subnet-wide boot class answers a nimol
+# or yaboot node with an x86 loader and the machine does not install.
+#
+# The *NOIP* port is the same question backwards: a marking on one node's NIC has
+# to beat whatever the subnet would otherwise have said.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    "$FIX" run-netboot || exit 1
+check:rc==0
+end
+
+start:dhcptest_node_identity
+description:Which node an address, a name and a next-server belong to
+label:mn_only,dhcp,dhcp_wire
+os:Linux
+# Three questions that come down to keeping one node's answer apart from
+# another's: a node with two provisioning ports reachable on either and named
+# right on each; a next-server following the node's own attributes rather than
+# the subnet's, which decides whether a machine boots at all in a hierarchical
+# cluster; and a withdrawn reservation no longer handing out somebody else's
+# address.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    rc=0
+    "$FIX" run-nextserver || rc=1
+    "$FIX" run-multimac || rc=1
+    "$FIX" run-removal || rc=1
+    exit $rc
+check:rc==0
+end
+
+start:dhcptest_boot_file_conditions
+description:A loader is named only when it is fetchable, when it is wanted, and its URL names the right port
+label:mn_only,dhcp,dhcp_wire
+os:Linux
+# The first two change the management node before the configuration is generated
+# -- one takes a loader off disk, the other moves the web server's port -- since
+# both backends decide what to write by reading those. Each puts the machine back
+# and regenerates before returning.
+#
+# The third asks the opposite: a node that already has an operating system must
+# not be named a netboot script, or it reinstalls itself on every power cycle.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    rc=0
+    "$FIX" run-loader-absent || rc=1
+    "$FIX" run-httpport || rc=1
+    "$FIX" run-localboot || rc=1
+    exit $rc
+check:rc==0
+end
+
+start:dhcptest_legacy_and_storage_clients
+description:A BOOTP-only client, a CIDR dynamic range and a diskless node are all served
+label:mn_only,dhcp,dhcp_wire
+os:Linux
+# Three things a cluster has that the mainstream path does not exercise: hardware
+# old enough to speak BOOTP, a dynamic range written as a block rather than a
+# pair, and a diskless node that has to be told which iSCSI target its root is
+# on. Each is silent when it breaks -- the machine simply never finishes booting.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    rc=0
+    "$FIX" run-bootp || rc=1
+    "$FIX" run-rangecidr || rc=1
+    "$FIX" run-iscsi || rc=1
+    exit $rc
+check:rc==0
+end
+
+start:dhcptest_chainload_user_class
+description:A chainloaded second stage is recognised in both encodings of option 77
+label:mn_only,dhcp,dhcp_wire
+os:Linux
+# RFC 3004 length-prefixes each string in the user class option and plenty of
+# firmware sends the bare string instead. A server matching only one hands the
+# loader the first stage again and the machine chainloads itself forever.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    "$FIX" run-chainload || exit 1
+check:rc==0
+end
+
+start:dhcptest_lease_lifecycle
+description:A lease can be taken, renewed and rebound, and a foreign address is refused
+label:mn_only,dhcp,dhcp_wire
+os:Linux
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    "$FIX" run-lease || exit 1
+check:rc==0
+end
+
+start:dhcptest_discovery_adoption
+description:A discovered machine is served its own address once defined, without restarting the daemon
+label:mn_only,dhcp,dhcp_wire
+os:Linux
+# The daemon staying up is half the assertion. xCAT injects ISC reservations over
+# OMAPI so adopting one node does not drop every other node part-way through
+# discovery; a regression to rewriting dhcpd.conf and restarting would pass every
+# config-level test in this tree.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    "$FIX" run-adoption || exit 1
+check:rc==0
+end
+
+start:dhcptest_hierarchy_dhcpserver
+description:A network whose dynamic pool was handed to another server stops answering unknown MACs
+label:mn_only,dhcp,dhcp_wire
+os:Linux
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    "$FIX" run || exit 1
+    "$FIX" delegate || exit 1
+    "$FIX" run-hierarchy || exit 1
+check:rc==0
+end
+
+start:dhcptest_discover_offer
+description:A DISCOVER on an existing provisioning NIC draws exactly one OFFER from this MN
+label:mn_only,dhcp
+os:Linux
+# For a real lab management node that already has a provisioning network: point
+# it at that NIC with DHCPTEST_NIC and it asserts against the live config,
+# building and changing nothing. A plain environment variable rather than an
+# xcattest $$VAR, because an undefined $$VAR fails the case outright and this one
+# has to be able to stand down.
+cmd:NIC=${DHCPTEST_NIC:-}; if [ -z "$NIC" ]; then echo "dhcptest skipped: set DHCPTEST_NIC to a provisioning NIC to run this"; exit 0; fi; if ! python3 -c "import scapy" 2>/dev/null; then echo "dhcptest skipped: python3-scapy is not installed"; exit 0; fi; CIDR=$(ip -4 -o addr show dev $NIC 2>/dev/null | awk '{print $4; exit}'); if [ -z "$CIDR" ]; then echo "dhcptest skipped: $NIC has no address, so there is no network to assert on"; exit 0; fi; MNIP=${CIDR%%/*}; NET=$(python3 -c "import ipaddress,sys; print(ipaddress.ip_interface(sys.argv[1]).network)" $CIDR); cd /opt/xcat/share/xcat/tools/autotest/dhcptest && python3 src/dhcptest run -i $NIC --set net=$NET --set server=$MNIP conf/discover-offer.conf
+check:rc==0
+end

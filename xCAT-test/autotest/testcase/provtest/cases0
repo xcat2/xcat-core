@@ -1,0 +1,213 @@
+# provtest issues the requests a provisioning node issues -- dig for DNS, tftp,
+# curl, and a small client of its own for the xcatd protocols -- and asserts on
+# the answers. It never reads the xCAT database and never runs an xCAT command:
+# everything it knows arrives on the command line from provfixture.sh.
+#
+# The first two cases are offline and safe anywhere. The wire cases build a
+# provisioning network out of a veth pair, the client end in a namespace of its
+# own because xcatd calls a discovering machine back on TCP 3001 -- the port it
+# is itself listening on, which a client sharing its stack could never hold.
+#
+# Each wire case is one script, so its teardown runs from a trap and the machine
+# is left serving its own configuration even when an assertion fails.
+#
+# A case that cannot run says so and passes. Read a pass as coverage only when
+# the log shows the ok lines.
+
+start:provtest_unit_tests
+description:provtest's own unit tests: no network and no root needed
+label:mn_only,ci_test,prov
+os:Linux
+cmd:cd /opt/xcat/share/xcat/tools/autotest/provtest/tests && python3 -m unittest discover -s . -p 'test_*.py'
+check:rc==0
+end
+
+start:provtest_validate_conf
+description:Every shipped provtest scenario parses and every assertion names a field its step can carry
+label:mn_only,ci_test,prov
+os:Linux
+cmd:cd /opt/xcat/share/xcat/tools/autotest/provtest && python3 src/provtest validate conf/*.conf
+check:rc==0
+check:output=~scenario
+end
+
+start:provtest_name_resolution
+description:Every name a node resolves during provisioning answers, in both directions
+label:mn_only,prov,prov_wire
+os:Linux
+# Every case below carries prov_wire and, deliberately, not ci_test: while one
+# runs the machine has an extra veth pair and namespace, a network and four
+# nodes, a rewritten zone and possibly a moved httpport. Each puts it all back
+# from a trap, but a ci_test case running in between would be sharing a
+# management node that is mid-reconfiguration. See run_prov_wire_test.
+#
+# This case is the one the rest depend on: xcatd identifies a client by the
+# reverse lookup of the address its connection arrived from, so the PTR is not a
+# convenience but the authentication model.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/provtest/provfixture.sh
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    "$FIX" run-dns || exit 1
+check:rc==0
+end
+
+start:provtest_loader_and_config_fetch
+description:Each netboot method's loader, config and kernel are fetchable under the names the firmware asks for
+label:mn_only,prov,prov_wire
+os:Linux
+# Four netboot methods, four naming schemes. The firmware asks for an exact name
+# and a name wrong by one hex digit produces no error anywhere -- just a machine
+# sitting at the loader. Each method gets its own node, since a node has one.
+#
+# The cross-stage steps are the point: the config is fetched, the kernel path
+# read out of it, and that path fetched. Nothing in the scenarios says what the
+# kernel is called, which is what stops them asserting xCAT against xCAT.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/provtest/provfixture.sh
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    "$FIX" run-tftp || exit 1
+check:rc==0
+end
+
+start:provtest_install_tree_over_http
+description:The repository, the kickstart and the port the node was told about all answer
+label:mn_only,prov,prov_wire
+os:Linux
+# After the loader everything arrives over HTTP, on whichever port site.httpport
+# named at nodeset time -- it is written into the kernel command line, so a web
+# server moved afterwards leaves configured nodes fetching from a dead port. The
+# fixture moves the port on purpose and the scenarios assert against the port the
+# node was told about.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/provtest/provfixture.sh
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    "$FIX" run-http || exit 1
+check:rc==0
+end
+
+start:provtest_genesis_and_discovery_artefacts
+description:The genesis images and the per-network discovery configs a node with no definition boots
+label:mn_only,prov,prov_wire
+os:Linux
+# An undefined machine boots from the per-network configuration, and what it
+# finds there decides whether it can announce itself at all.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/provtest/provfixture.sh
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    "$FIX" run-genesis || exit 1
+check:rc==0
+end
+
+start:provtest_discovery_requests
+description:Flow control and findme, including the requests xcatd must acknowledge and then ignore
+label:mn_only,prov,prov_wire
+os:Linux
+# xcatd acknowledges a findme before checking where it came from, and drops it
+# afterwards if the source port is unprivileged or the address is on no network
+# it is attached to. So the scenarios assert on the number of callbacks rather
+# than their presence, and the fixture reaches the foreign address through a
+# gateway instead of putting it on the wire.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/provtest/provfixture.sh
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    "$FIX" run-discovery || exit 1
+check:rc==0
+end
+
+start:provtest_xcatd_protocol
+description:getdestiny, getpostscript and getcredentials, from the address that is the identity
+label:mn_only,prov,prov_wire
+os:Linux
+# The requests genesis and the installing node make over TLS 3001, issued the way
+# they issue them: no client certificate, the source address as the whole of the
+# authentication. Known and unknown differ in one thing -- which address the
+# request left by. getcredentials is asserted in both directions: the callback to
+# the client's port 300 is what stands between a PTR and a signed certificate.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/provtest/provfixture.sh
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    "$FIX" run-xcatd || exit 1
+check:rc==0
+end
+
+start:provtest_install_monitor
+description:The plain-text service on 3002 that an installing node reports progress to
+label:mn_only,prov,prov_wire
+os:Linux
+# The one transport with no TLS and no framing: the installer opens it, says what
+# it is doing, and xCAT updates the node's status. A node whose reports are not
+# accepted installs perfectly and shows as stuck.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/provtest/provfixture.sh
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    "$FIX" run-monitor || exit 1
+check:rc==0
+end
+
+start:provtest_failing_at_one_place
+description:A master that cannot be reached, a name that was withdrawn, and a state that was replaced
+label:mn_only,prov,prov_wire
+os:Linux
+# The argument for a wire suite, in one case: each stage before the interesting
+# one is arranged to be correct, so the run goes red at one identifiable point.
+# Today all three failures look the same from outside -- the node times out.
+#
+# The DNS removal comes last and has to: nodeset names the config it writes after
+# the node's address, so a name withdrawn cannot be set again afterwards.
+cmd:#!/bin/bash
+    set -u
+    FIX=/opt/xcat/share/xcat/tools/autotest/testcase/provtest/provfixture.sh
+    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
+    # machine is dirty or is a live cluster -- which must fail, or one unfinished
+    # teardown would make every later run here green without running anything.
+    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    trap '"$FIX" teardown' EXIT
+    "$FIX" setup || exit 1
+    rc=0
+    "$FIX" run-ordering || rc=1
+    "$FIX" run-dns-removal || rc=1
+    exit $rc
+check:rc==0
+end

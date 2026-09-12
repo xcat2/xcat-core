@@ -126,6 +126,16 @@ sub process_request
         xCAT::MsgUtils->trace(0, "E", "Received getcredentials from $origclient, which couldn't be correlated to a node (domain mismatch?)");
         return;
     }
+
+    # Which credential is wanted is named in <arg>.  A request without one is
+    # checked here, before the callback is made, so that a malformed request
+    # is refused the same way a bad callback port is rather than dying in the
+    # dereference below and sending the client a Perl error.
+    unless (ref($request->{arg}) eq 'ARRAY' and scalar(@{ $request->{arg} })) {
+        xCAT::MsgUtils->trace(0, 'E', "Received getcredentials from $origclient naming no credential, ignore it.");
+        return;
+    }
+
     my $credcheck;
     if ($request->{'callback_port'} and $request->{'callback_port'}->[0] and $request->{'callback_port'}->[0] < 1024) {
         $credcheck = [ 0, $request->{'callback_port'}->[0] ];

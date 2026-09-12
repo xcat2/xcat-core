@@ -81,16 +81,20 @@ is(
     'an HFI interface uses the HFI hardware type',
 );
 
+# "option host-name", not "send host-name". `send` is a dhcpd *client* keyword;
+# on the server it governs sname and file handling and never reaches option 12,
+# which is what genesis and the installers read to learn the node's own name.
+# The Kea side has always sent the option, so this is the two backends agreeing.
 is(
     xCAT_plugin::dhcp::_node_host_statements('node01', ''),
-    'ddns-hostname \"node01\"; send host-name \"node01\";',
+    'ddns-hostname \"node01\"; option host-name \"node01\";',
     'the default host statements identify the node',
 );
 is(
     xCAT_plugin::dhcp::_node_host_statements(
         'node01', 'filename = \"bootfile\";'
     ),
-    'ddns-hostname \"node01\"; send host-name \"node01\";filename = \"bootfile\";',
+    'ddns-hostname \"node01\"; option host-name \"node01\";filename = \"bootfile\";',
     'node identity is prepended to existing host statements',
 );
 is(
@@ -116,7 +120,7 @@ set hardware-address = b8:3f:d2:03:00:4a:68:aa
 set dhcp-client-identifier = b8:3f:d2:03:00:4a:68:aa
 set hardware-type = 32
 set ip-address = 192.0.2.10
-set statements = "ddns-hostname \"node01\"; send host-name \"node01\";"
+set statements = "ddns-hostname \"node01\"; option host-name \"node01\";"
 create
 close
 OMAPI
@@ -124,7 +128,7 @@ OMAPI
 is(
     xCAT_plugin::dhcp::_infiniband_twin_create_commands(
         'node01', 'b8:3f:d2:4a:68:aa', 1, 'ib0', '192.0.2.10',
-        'ddns-hostname \"node01\"; send host-name \"node01\";', 1, 0
+        'ddns-hostname \"node01\"; option host-name \"node01\";', 1, 0
     ),
     $create_commands,
     'an Ethernet identity on an IPoIB network creates the InfiniBand twin',
@@ -133,7 +137,7 @@ is(
 is(
     xCAT_plugin::dhcp::_infiniband_twin_create_commands(
         'node01', 'b8:3f:d2:4a:68:aa', 1, '!service!ib0', '192.0.2.10',
-        'ddns-hostname \"node01\"; send host-name \"node01\";', 1, 0
+        'ddns-hostname \"node01\"; option host-name \"node01\";', 1, 0
     ),
     $create_commands,
     'a relayed IPoIB interface creates the InfiniBand twin',
@@ -170,14 +174,14 @@ set hardware-address = b8:3f:d2:03:00:4a:68:aa
 set dhcp-client-identifier = b8:3f:d2:03:00:4a:68:aa
 set hardware-type = 32
 set ip-address = 192.0.2.10
-set statements = "ddns-hostname \"node01\"; send host-name \"node01\";"
+set statements = "ddns-hostname \"node01\"; option host-name \"node01\";"
 create
 close
 OMAPI
 is(
     xCAT_plugin::dhcp::_infiniband_twin_create_commands(
         'node01', 'b8:3f:d2:4a:68:aa', 1, 'ib0', '192.0.2.10',
-        'ddns-hostname \"node01\"; send host-name \"node01\";', 0, 0
+        'ddns-hostname \"node01\"; option host-name \"node01\";', 0, 0
     ),
     $create_without_cleanup,
     'the Ubuntu-limited OMAPI path creates the twin without a failed-open cleanup',
@@ -187,7 +191,7 @@ $create_without_address =~ s/^set ip-address = .*\n//m;
 is(
     xCAT_plugin::dhcp::_infiniband_twin_create_commands(
         'node01', 'b8:3f:d2:4a:68:aa', 1, 'ib0', undef,
-        'ddns-hostname \"node01\"; send host-name \"node01\";', 0, 0
+        'ddns-hostname \"node01\"; option host-name \"node01\";', 0, 0
     ),
     $create_without_address,
     'an unresolved IP omits only the twin address',
@@ -285,7 +289,7 @@ is_deeply(
 my @moved_network_update_commands =
   xCAT_plugin::dhcp::_infiniband_twin_update_commands(
     'node01', 'b8:3f:d2:4a:68:aa', 1, 'eth0', '192.0.2.10',
-    'ddns-hostname \"node01\"; send host-name \"node01\";', 1, 0
+    'ddns-hostname \"node01\"; option host-name \"node01\";', 1, 0
   );
 is_deeply(
     \@moved_network_update_commands,
@@ -296,7 +300,7 @@ is_deeply(
 my @infiniband_update_commands =
   xCAT_plugin::dhcp::_infiniband_twin_update_commands(
     'node01', 'b8:3f:d2:4a:68:aa', 1, 'ib0', '192.0.2.10',
-    'ddns-hostname \"node01\"; send host-name \"node01\";', 1, 0
+    'ddns-hostname \"node01\"; option host-name \"node01\";', 1, 0
   );
 is_deeply(
     \@infiniband_update_commands,
@@ -307,7 +311,7 @@ is_deeply(
 my @limited_update_commands =
   xCAT_plugin::dhcp::_infiniband_twin_update_commands(
     'node01', 'b8:3f:d2:4a:68:aa', 1, 'ib0', '192.0.2.10',
-    'ddns-hostname \"node01\"; send host-name \"node01\";', 0, 0
+    'ddns-hostname \"node01\"; option host-name \"node01\";', 0, 0
   );
 is_deeply(
     \@limited_update_commands,
@@ -318,7 +322,7 @@ is_deeply(
 my @explicit_identity_update_commands =
   xCAT_plugin::dhcp::_infiniband_twin_update_commands(
     'node01', 'b8:3f:d2:4a:68:aa', 1, 'ib0', '192.0.2.10',
-    'ddns-hostname \"node01\"; send host-name \"node01\";', 1, 1
+    'ddns-hostname \"node01\"; option host-name \"node01\";', 1, 1
   );
 is_deeply(
     \@explicit_identity_update_commands,

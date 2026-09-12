@@ -89,6 +89,11 @@ sub render_dhcp4_config {
         'reservations-in-subnet'   => _json_bool( _first_defined( $intent->{'reservations-in-subnet'},   $intent->{reservations_in_subnet},   1 ) ),
         'reservations-out-of-pool' => _json_bool( _first_defined( $intent->{'reservations-out-of-pool'}, $intent->{reservations_out_of_pool}, 1 ) ),
         'match-client-id'          => _json_bool( _first_defined( $intent->{'match-client-id'},          $intent->{match_client_id},          0 ) ),
+        # ISC writes "authoritative;" into every subnet; Kea defaults to the
+        # opposite, so a node that moved rack asks to keep an address from a
+        # network it has left and is answered with nothing at all -- waiting out
+        # a lease that will never be renewed instead of starting over.
+        'authoritative'            => _json_bool( _first_defined( $intent->{authoritative},             1 ) ),
         subnet4                    => [ map { $self->_render_subnet4($_) } @{ _first_defined( $intent->{subnet4}, $intent->{subnets}, [] ) } ],
     );
 
@@ -208,16 +213,19 @@ sub render_ctrl_agent_config {
     return JSON->new->canonical->pretty->encode($config);
 }
 
-sub host_cmds_hook_path {
-    my ( $self, @extra_paths ) = @_;
+# Where a distribution puts a Kea hook library. The name of the hook is the
+# only thing that varies, and where the packages put them does not.
+sub hook_path {
+    my ( $self, $hook, @extra_paths ) = @_;
 
-    my @default_paths = exists $self->{host_cmds_hook_paths}
-      ? @{ $self->{host_cmds_hook_paths} || [] }
+    my $override = "${hook}_hook_paths";
+    my @default_paths = exists $self->{$override}
+      ? @{ $self->{$override} || [] }
       : (
-        '/usr/lib64/kea/hooks/libdhcp_host_cmds.so',
-        '/usr/lib/kea/hooks/libdhcp_host_cmds.so',
-        '/usr/local/lib/kea/hooks/libdhcp_host_cmds.so',
-        glob('/usr/lib/*/kea/hooks/libdhcp_host_cmds.so'),
+        "/usr/lib64/kea/hooks/libdhcp_$hook.so",
+        "/usr/lib/kea/hooks/libdhcp_$hook.so",
+        "/usr/local/lib/kea/hooks/libdhcp_$hook.so",
+        glob("/usr/lib/*/kea/hooks/libdhcp_$hook.so"),
       );
 
     foreach my $path (
@@ -229,6 +237,18 @@ sub host_cmds_hook_path {
     }
 
     return;
+}
+
+sub host_cmds_hook_path {
+    my ( $self, @extra_paths ) = @_;
+    return $self->hook_path( 'host_cmds', @extra_paths );
+}
+
+# BOOTP is a hook on Kea and a range keyword on ISC, but it is the same
+# decision either way: a client that speaks BOOTP and not DHCP is answered.
+sub bootp_hook_path {
+    my ( $self, @extra_paths ) = @_;
+    return $self->hook_path( 'bootp', @extra_paths );
 }
 
 sub load_dhcp4_config {
@@ -518,6 +538,53 @@ sub _validate_config_with {
     return { output => $output };
 }
 
+# Which control socket each daemon answers on. The name has to match what
+# render_ctrl_agent_config hands the agent, or a reload would be sent into a
+# socket nobody is reading.
+my %CONTROL_SOCKET_OF = (
+    'kea-dhcp4'     => 'kea4-ctrl-socket',
+    'kea-dhcp6'     => 'kea6-ctrl-socket',
+    'kea-dhcp-ddns' => 'kea-ddns-ctrl-socket',
+);
+
+# Ask the running daemon to reload, and find out whether it did.
+#
+# `systemctl reload` sends SIGHUP and reports success as soon as the signal is
+# delivered -- it cannot know Kea then rejected the file and went on serving the
+# one it had. The unit is active, the process is up, and every client is answered
+# from a stale configuration. Kea's control socket does know, so the reload is
+# asked for there.
+#
+# Returns 0 when the daemon confirmed the new configuration, non-zero on anything
+# else, so the caller can fall back to a restart.
+sub reload_via_control_socket {
+    my ( $self, $service ) = @_;
+
+    my $name = $CONTROL_SOCKET_OF{$service} or return -1;
+    my $path = $self->control_socket_path($name);
+    return -1 unless -S $path;
+
+    require IO::Socket::UNIX;
+    my $sock = IO::Socket::UNIX->new( Type => IO::Socket::UNIX::SOCK_STREAM(), Peer => $path )
+      or return -1;
+
+    print $sock JSON->new->encode( { command => 'config-reload' } );
+    $sock->shutdown(1);
+
+    my $answer = do { local $/; <$sock> };
+    close $sock;
+    return -1 unless defined $answer && length $answer;
+
+    my $decoded = eval { JSON->new->decode($answer) };
+    return -1 if $@ || ref($decoded) ne 'HASH';
+
+    # Kea answers 0 for success and names the reason otherwise. Passing the
+    # reason on is the whole point: "is not present in the system" is a
+    # sentence an operator can act on, and a silent SIGHUP is not.
+    return 0 if defined $decoded->{result} && $decoded->{result} == 0;
+    return $decoded->{text} || -1;
+}
+
 sub restart_services {
     my ( $self, %opts ) = @_;
 
@@ -539,14 +606,32 @@ sub restart_services {
         }
         my $ret;
         if ( xCAT::Utils->checkservicestatus($unit) == 0 ) {
-            # Already running: reload the config (SIGHUP) instead of a full restart.
-            # Kea reconfigures from the regenerated config file on SIGHUP, and -- unlike
-            # restart -- this does not count against systemd's start-rate limit
+            # Already running: reload the config instead of a full restart. Kea
+            # reconfigures from the regenerated file, and -- unlike restart --
+            # this does not count against systemd's start-rate limit
             # (StartLimitBurst=5/10s on EL). A burst of makedhcp calls (e.g. the
-            # makedhcp_remote_network test loop, or rapid provisioning) would otherwise
-            # trip that limit and fail with "Failed to restart kea-dhcp4".
-            xCAT::Utils->runcmd("systemctl reload $unit", -1);
-            $ret = $::RUNCMD_RC;
+            # makedhcp_remote_network test loop, or rapid provisioning) would
+            # otherwise trip that limit and fail with "Failed to restart kea-dhcp4".
+            #
+            # The reload is asked for over the control socket rather than with
+            # SIGHUP, because only the socket says whether Kea accepted the file.
+            # A rejected reload leaves the daemon up and answering from the
+            # configuration it already had, which looks healthy from every angle
+            # except the one that matters -- an interface added since the daemon
+            # started is a config Kea refuses, and the clients on it go unserved
+            # while `systemctl status` still reads active.
+            if ( $CONTROL_SOCKET_OF{$service} ) {
+                $ret = $self->reload_via_control_socket($service);
+                # No socket, no answer, or a rejection: fall through to the
+                # restart below, which re-reads the file from a clean start.
+                $ret = 1 if $ret ne '0';
+            } else {
+                # The Control Agent serves no clients of its own, so a stale
+                # configuration there cannot silently strand a network the way
+                # a stale kea-dhcp4 can. It keeps the cheaper signal.
+                xCAT::Utils->runcmd("systemctl reload $unit", -1);
+                $ret = $::RUNCMD_RC;
+            }
         }
         if ( !defined($ret) || $ret != 0 ) {
             # Not running (first start) or reload failed: clear any start-limit latch,
@@ -921,7 +1006,16 @@ sub _reservation_matches {
 
     foreach my $field ( 'hostname', 'hw-address', 'duid', 'ip-address' ) {
         next unless defined $match->{$field} && $match->{$field} ne '';
-        return 1 if defined $reservation->{$field} && lc( $reservation->{$field} ) eq lc( $match->{$field} );
+        next unless defined $reservation->{$field};
+        my ( $have, $want ) = ( lc( $reservation->{$field} ), lc( $match->{$field} ) );
+
+        # A hostname written by another tool may be fully qualified, with the
+        # trailing dot that says so. A caller looking a node up by name has no
+        # reason to know that, so the dot is not part of the comparison.
+        if ( $field eq 'hostname' ) {
+            s/\.$// foreach ( $have, $want );
+        }
+        return 1 if $have eq $want;
     }
     if ( defined $match->{'ip-address'} && ref( $reservation->{'ip-addresses'} ) eq 'ARRAY' ) {
         foreach my $ip ( @{ $reservation->{'ip-addresses'} } ) {
