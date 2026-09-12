@@ -3663,18 +3663,20 @@ sub kea_node_reservations
             next;
         }
 
-        # Option 12 is written as the reservation's own option-data and the
-        # reservation carries no "hostname" field, because Kea builds option 12
-        # out of that field and runs it through ddns-qualifying-suffix: with
-        # DDNS configured a node asking who it was got the FQDN while ISC, which
-        # writes the two as separate statements, said "node01". Kea 3.0 leaves a
-        # dotted name alone, but 2.4 -- what Ubuntu 24.04 ships -- qualifies
-        # regardless, and option-data cannot override the field either, since
-        # processHostnameOption runs before appendRequestedOptions. Leaving the
-        # field out is the one form that answers "node01" on both.
+        # The name goes in the "hostname" field, and kea_boot_for_node writes it
+        # again as a host-name option. The field is the only one a client cannot
+        # displace: Kea reads the lease name and the DDNS name from it, and with
+        # the field absent it uses whatever the client advertised in option 12 --
+        # so a node calling itself "ubuntu" takes the node's DNS record.
+        #
+        # The cost is that Kea 2.4 runs the field through ddns-qualifying-suffix
+        # before it puts it in option 12, so the node is told "node01.cluster" and
+        # not "node01" where ISC says the short name. That is the node's own name
+        # either way. A name the client chose is not.
         my %reservation = (
             'subnet-id'  => $subnet_id,
             'hw-address' => $mac,
+            hostname     => $hname,
             'ip-address' => $ip,
         );
         $reservation{'next-server'} = $nxtsrv if $nxtsrv && $nxtsrv !~ /\$\{/;
