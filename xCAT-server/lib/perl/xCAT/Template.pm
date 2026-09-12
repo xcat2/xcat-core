@@ -1850,6 +1850,19 @@ sub ubuntu_subiquity_apt_mirror
 # The key curtin names in the Deb822 source it writes for the primary apt mirror on 24.04 and later.
 my $UBUNTU_ARCHIVE_KEYRING = '/usr/share/keyrings/ubuntu-archive-keyring.gpg';
 
+# The apt lines that keep the recommended packages out of the install. ospkgs installs without
+# them and the installer matches it. ppc64el is the exception: curtin installs a bootloader
+# package of its own for UEFI and for s390x only, and on a PReP machine install_grub runs
+# "dpkg-reconfigure grub-ieee1275" on a package the Ubuntu kernel image merely recommends. With
+# the recommended packages off that package is absent and the install stops there.
+sub ubuntu_subiquity_no_recommends_lines
+{
+    my ($osarch) = @_;
+
+    return () if defined($osarch) && $osarch =~ /^ppc64/i;
+    return (q(    conf: 'APT::Install-Recommends "false";'));
+}
+
 sub ubuntu_subiquity_apt_config
 {
     my ($media_dir, $osarch, $pkgdirs) = @_;
@@ -1877,7 +1890,7 @@ sub ubuntu_subiquity_apt_config
             '  apt:',
             '    preserve_sources_list: false',
             '    geoip: false',
-            q(    conf: 'APT::Install-Recommends "false";'),
+            ubuntu_subiquity_no_recommends_lines($osarch),
             '    mirror-selection:',
             '      primary:',
             "      - uri: $online_mirror",
@@ -1916,7 +1929,7 @@ sub ubuntu_subiquity_apt_config
         '    preserve_sources_list: false',
         '    fallback: offline-install',
         '    geoip: false',
-        q(    conf: 'APT::Install-Recommends "false";'),
+        ubuntu_subiquity_no_recommends_lines($osarch),
         '    disable_suites:',
         '      - updates',
         '      - backports',
