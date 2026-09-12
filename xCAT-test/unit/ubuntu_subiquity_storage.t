@@ -41,9 +41,15 @@ BAIL_OUT('the block no longer asks uname for the machine architecture')
 
 my $sandbox   = File::Temp::tempdir( CLEANUP => 1 );
 my $partfile  = File::Spec->catfile( $sandbox, 'partitionfile' );
+# One redirect per firmware branch. Counting the branches rather than naming a number
+# keeps the guard true when a branch is added, and still fails loudly if a redirect
+# escapes the sandbox.
+my $branches  = () = $storage_block =~ /^\s*cat <<EOF >\/tmp\/partitionfile$/mg;
 my $rewrites  = ( $storage_block =~ s{/tmp/partitionfile}{$partfile}g );
-BAIL_OUT("expected two partition-file redirects to sandbox, rewrote $rewrites")
-    unless $rewrites == 2;
+BAIL_OUT("the block writes the partition file in $branches places and $rewrites were rewritten")
+    unless $branches >= 2 && $rewrites == $branches;
+BAIL_OUT('a partition-file path escaped the sandbox')
+    if $storage_block =~ m{/tmp/partitionfile};
 
 my %YAML_FOR;
 
