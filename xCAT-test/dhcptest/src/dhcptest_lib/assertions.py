@@ -23,7 +23,7 @@ META_TARGETS = frozenset(["offers", "attempt"])
 
 #: Targets a client works out from more than one place in the message. Assert
 #: on these rather than on `file` unless the header itself is the point.
-DERIVED_TARGETS = frozenset(["bootfile"])
+DERIVED_TARGETS = frozenset(["bootfile", "fqdn_flags", "dns_name"])
 
 #: Operators that take no value.
 NULLARY_OPS = frozenset(["present", "absent"])
@@ -176,7 +176,11 @@ def _actual(target, reply, context, extras):
     if target in DERIVED_TARGETS:
         if reply is None:
             return False, None
-        value = reply.bootfile()
+        value = {
+            "fqdn_flags": reply.fqdn_flags,
+            "dns_name": reply.dns_name,
+            "bootfile": reply.bootfile,
+        }[target]()
         return bool(value), value
 
     if target in HEADER_TARGETS:

@@ -128,6 +128,8 @@ One per line under a single multi-line `assert` key, as `target op value`.
 | `msgtype` | option 53, by name: `OFFER`, `ACK`, `NAK` |
 | `yiaddr` `siaddr` `ciaddr` `giaddr` `file` `sname` `xid` `chaddr` | BOOTP header |
 | `bootfile` | option 67 if the server sent one, else the `file` header |
+| `dns_name` | option 81 if the server sent one, else option 12 |
+| `fqdn_flags` | option 81's flag letters: `S` `O` `E` `N` |
 | `option:<num>` / `option:<name>` / bare `<num>` | a DHCP option |
 | `offers` | how many *servers* answered |
 | `$step.field` | a field of an earlier reply |
@@ -151,6 +153,17 @@ some other loader and for one that names none, which is what "must not be sent
 its install script" means. Every other operator fails on an absent target,
 because there is nothing to compare against.
 
+Assert on `dns_name`, not on option 12 or option 81, unless one option in
+particular is the point. The two servers answer a client that sent option 81 in
+different places -- Kea replies in option 81, ISC under `ignore client-updates`
+replies in option 12 only -- and the node reads whichever arrived. This is the
+same reason `bootfile` exists.
+
+`fqdn_flags` is the other half of option 81: `S` says the server will update the
+A record, `O` that it overrode what the client asked for, `E` that the name is in
+wire format, `N` that no update is wanted. It is absent when the reply carries no
+option 81 at all.
+
 Assert on `bootfile`, not on `file`, unless the header itself is the point.
 Servers genuinely differ — ISC dhcpd fills the BOOTP header, dnsmasq answers in
 option 67 once the client has asked for it — and firmware reads whichever
@@ -173,10 +186,18 @@ Control: `type`, `expect`, `mac`, `xid`, `timeout`, `retries`,
 
 Message: `request_options` (55), `vendor_class` (60), `user_class` (77) with
 `user_class_form` = `raw` or `rfc3004`, `client_arch` (93), `client_ndi` (94),
-`client_uuid` (97), `client_id` (61), `hostname` (12), `max_message_size` (57),
+`client_uuid` (97), `client_id` (61), `hostname` (12), `fqdn` (81),
+`max_message_size` (57),
 `vendor_specific` (43, hex), `ipxe_options` (175, hex), `requested_address`
 (50), `server_id` (54), `lease_time` (51), `ciaddr`, `giaddr`, and
 `option:<n>` for anything else.
+
+`fqdn` takes a name, optionally prefixed with the flags the client is setting:
+`fqdn = node01` sends none, `fqdn = S:node01` asks the server to do the update,
+`fqdn = N:node01` asks for no update, and `E` among the letters sends the name in
+RFC 1035 wire format rather than ASCII. The prefix is read as flags only when
+every character before the colon is a flag letter, so a name holding a colon is
+still a name.
 
 Step types: `discover`, `request`, `renew`, `rebind`, `release`, `decline`,
 `inform`, `bootrequest`, `noop`, `sleep`. `expect` is `offer`, `ack`, `nak`,
@@ -198,7 +219,7 @@ option 53 either, so `msgtype` reads `BOOTREPLY`.
 | `renew-rebind.conf` | a lease survives RENEW and REBIND | `net` |
 | `provision-vs-discovery.conf` | a known machine gets its reservation and its own loader; an unknown one gets a pool address | `node_mac`, `node_ip`, `node_loader`, `pool`, `next_server`, `unknown_mac` |
 | `discovery-bootfile.conf` | an unknown machine is handed a loader too, not just an address | `unknown_mac`, `pool`, `discovery_loader` |
-| `netboot-methods.conf` | a node is handed the loader its netboot method names, and a `*NOIP*` port is not answered | `*_mac`, `*_ip`, `*_loader`, `xnba_node`, `petitboot_conf`, `noip_mac` |
+| `netboot-methods.conf` | a node is handed the loader its netboot method names, is told its own name whatever it calls itself, and a `*NOIP*` port is not answered | `*_mac`, `*_ip`, `*_loader`, `xnba_node`, `petitboot_conf`, `noip_mac` |
 | `hierarchy-dhcpserver.conf` | a subnet whose pool belongs to another server ignores unknown MACs but still points known ones at it | `node_mac`, `node_ip`, `delegate`, `unknown_mac` |
 | `discovery-adoption.conf` | a machine discovered out of the pool is served its own address once defined | `adopt_mac`, `adopt_ip`, `pool` |
 | `nak-foreign-address.conf` | a REQUEST for an address off this network is refused | `foreign_ip` |

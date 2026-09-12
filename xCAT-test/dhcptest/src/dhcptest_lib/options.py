@@ -8,6 +8,7 @@ nothing else.
 
 import binascii
 import ipaddress
+import re
 
 from .errors import ConfigError
 
@@ -163,6 +164,75 @@ def format_hex(data):
     return ":".join("%02x" % b for b in bytearray(data))
 
 
+#: Option 81's flag bits, in the order RFC 4702 numbers them. S says the server
+#: is to update the A record, O that it overrode what the client asked for, E
+#: that the name is in wire format rather than ASCII, and N that no update is
+#: wanted at all.
+FQDN_FLAGS = (("S", 0x01), ("O", 0x02), ("E", 0x04), ("N", 0x08))
+
+
+def fqdn_flag_letters(flags):
+    """`0x03` -> `"SO"`. An empty set of flags is `"-"`, so it prints."""
+    return "".join(letter for letter, bit in FQDN_FLAGS if flags & bit) or "-"
+
+
+def fqdn_flag_bits(letters):
+    """`"SO"` -> `0x03`. Unknown letters are a config error, not a silent 0."""
+    bits = 0
+    known = dict(FQDN_FLAGS)
+    for letter in str(letters).upper():
+        if letter not in known:
+            raise ConfigError(
+                "unknown option 81 flag %r: expected any of S, O, E, N"
+                % (letter,))
+        bits |= known[letter]
+    return bits
+
+
+def encode_fqdn(text):
+    """Encode a `fqdn` step value into option 81.
+
+    `node01` sends the name with no flags; `S:node01` asks the server to do
+    the update; `N:node01` asks for none. With E among the flags the name is
+    sent in RFC 1035 wire format, which is what the option's E bit announces.
+    """
+    text = "" if text is None else str(text).strip()
+    letters, _, name = text.partition(":")
+    if not _ or not letters or not re.match(r"\A[SOENsoen]+\Z", letters):
+        letters, name = "", text
+    flags = fqdn_flag_bits(letters)
+    if flags & 0x04:
+        body = b""
+        for label in name.rstrip(".").split("."):
+            raw = label.encode("utf-8")
+            if len(raw) > 63:
+                raise ConfigError("DNS label longer than 63 bytes: %r" % (label,))
+            body += bytes([len(raw)]) + raw
+        body += b"\x00"
+    else:
+        body = name.encode("utf-8")
+    return bytes([flags, 0, 0]) + body
+
+
+def decode_fqdn(raw):
+    """Option 81 as `(flags, name)`, or None when the bytes are not that.
+
+    Returning None rather than guessing keeps a malformed option printable as
+    hex instead of asserted against as a misreading.
+    """
+    data = bytes(raw)
+    if len(data) < 3:
+        return None
+    flags = data[0]
+    body = data[3:]
+    if flags & 0x04:
+        names = decode_name_list(body)
+        if names is None:
+            return None
+        return flags, ".".join(names)
+    return flags, body.decode("utf-8", "replace").rstrip("\x00")
+
+
 #: Options carrying a list of DNS names in RFC 1035 wire form, which RFC 3397
 #: allows to be compressed against earlier names in the same option.
 NAME_LIST_OPTIONS = frozenset([119])
@@ -250,6 +320,13 @@ def decode_value(code, raw):
             names = decode_name_list(raw)
             if names is not None:
                 return names
+        if code == 81:
+            # The name alone, because that is the fact a scenario asserts: a
+            # server must answer with the node's name and not the client's.
+            # The flags are reached through the `fqdn_flags` target.
+            decoded = decode_fqdn(raw)
+            if decoded is not None:
+                return decoded[1]
         return format_hex(raw)
     return raw
 
@@ -344,6 +421,7 @@ def decode(packet):
         secs=int(getattr(bootp, "secs", 0)),
         flags=int(getattr(bootp, "flags", 0)),
         options=options,
+        raw_options=blob,
         src_ip=src_ip,
         src_mac=src_mac,
         raw=packet,

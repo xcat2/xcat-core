@@ -112,6 +112,7 @@ class Reply(object):
         "secs",
         "flags",
         "options",
+        "raw_options",
         "src_ip",
         "src_mac",
         "attempt",
@@ -121,7 +122,7 @@ class Reply(object):
     def __init__(self, msgtype="", xid=0, yiaddr="0.0.0.0", siaddr="0.0.0.0",
                  ciaddr="0.0.0.0", giaddr="0.0.0.0", chaddr="", file="",
                  sname="", secs=0, flags=0, options=None, src_ip="",
-                 src_mac="", attempt=0, raw=None):
+                 src_mac="", attempt=0, raw=None, raw_options=b""):
         self.msgtype = msgtype
         self.xid = xid
         self.yiaddr = yiaddr
@@ -134,6 +135,9 @@ class Reply(object):
         self.secs = secs
         self.flags = flags
         self.options = dict(options or {})
+        # The option area as it arrived. Option 81 is decoded to its name, so
+        # the flag bits are only recoverable from here.
+        self.raw_options = raw_options
         self.src_ip = src_ip
         self.src_mac = src_mac
         self.attempt = attempt
@@ -149,7 +153,7 @@ class Reply(object):
     }
 
     #: Fields a client derives from more than one place in the message.
-    DERIVED_FIELDS = frozenset(["bootfile"])
+    DERIVED_FIELDS = frozenset(["bootfile", "fqdn_flags", "dns_name"])
 
     #: Fields that come from an option rather than the BOOTP header.
     FIELD_OPTIONS = {
@@ -177,10 +181,55 @@ class Reply(object):
         """
         return self.options.get(67) or self.file
 
+    def dns_name(self):
+        """The name this reply says the node will be known by.
+
+        Option 81 when the server sent one, option 12 otherwise. The two
+        backends put it in different places -- Kea answers a client that sent
+        option 81 with option 81, ISC with `ignore client-updates` sends only
+        option 12 -- and a scenario about the name should not have to know
+        which. A client reads whichever arrived, exactly as with `bootfile`.
+        """
+        return self.options.get(81) or self.options.get(12) or ""
+
+    def fqdn_flags(self):
+        """Option 81's flags as letters -- "SO" -- or "" when it is absent.
+
+        S says the server will update the A record and O that it overrode what
+        the client asked for. The two together are how a reply says the client
+        does not get to name itself.
+        """
+        from . import options              # local import: avoids a cycle
+
+        raw = self.options.get(81)
+        if raw is None:
+            return ""
+        if isinstance(raw, str):
+            # decode_value already reduced the option to its name, so the flag
+            # bits have to come off the packet again.
+            raw = self._raw_option(81)
+            if raw is None:
+                return ""
+        decoded = options.decode_fqdn(raw)
+        return options.fqdn_flag_letters(decoded[0]) if decoded else ""
+
+    def _raw_option(self, code):
+        """The undecoded bytes of one option, straight off the wire."""
+        from . import options              # local import: avoids a cycle
+
+        blob = self.raw_options
+        if not blob:
+            return None
+        return options.unpack_options(blob).get(code)
+
     def field(self, name):
         """Resolve one `$step.<name>` reference, or raise KeyError."""
         if name == "bootfile":
             return self.bootfile()
+        if name == "fqdn_flags":
+            return self.fqdn_flags()
+        if name == "dns_name":
+            return self.dns_name()
         if name in self.FIELD_OPTIONS:
             code = self.FIELD_OPTIONS[name]
             if code not in self.options:
@@ -208,7 +257,7 @@ class Reply(object):
         names.update(cls.DERIVED_FIELDS)
         names.update(
             f for f in cls.__slots__
-            if f not in ("options", "raw", "attempt")
+            if f not in ("options", "raw_options", "raw", "attempt")
         )
         return names
 

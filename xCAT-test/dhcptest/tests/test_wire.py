@@ -36,6 +36,7 @@ user_class_form = rfc3004
 request_options = 1, 3, 6, 43, 54, 60, 66, 67
 max_message_size = 1260
 hostname        = probe
+fqdn            = N:probe.cluster.local
 expect          = offer
 """
 
@@ -78,6 +79,14 @@ class RoundTrip(unittest.TestCase):
         self.assertEqual(options[12], "probe")                             # text
         self.assertEqual(options[55], [1, 3, 6, 43, 54, 60, 66, 67])       # list
         self.assertEqual(options[61], "01:02:00:de:ad:be:ef")              # hex
+        self.assertEqual(options[81], "probe.cluster.local")               # fqdn
+
+    def test_the_client_fqdn_carries_the_flags_the_step_asked_for(self):
+        # "N" is a client saying it wants no DNS update at all. A server xCAT
+        # configures overrides that, so the step has to be able to send it.
+        raw = opt.unpack_options(bytes(self.frame["BOOTP"].payload))[81]
+        self.assertEqual(raw[:3], b"\x08\x00\x00")
+        self.assertEqual(self.reply.fqdn_flags(), "N")
 
     def test_rfc3004_user_class_is_length_prefixed(self):
         raw = opt.unpack_options(bytes(self.frame["BOOTP"].payload))[77]

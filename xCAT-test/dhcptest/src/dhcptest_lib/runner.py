@@ -82,6 +82,8 @@ def _encode(code, text):
                                for item in text.split(",") if item.strip()))
     if code in opt.TEXT_OPTIONS:
         return text.encode("utf-8")
+    if code == 81:
+        return opt.encode_fqdn(text)
     return opt.parse_hex(text)
 
 
@@ -108,7 +110,8 @@ def build_options(step, session, context, msgtype):
 
     simple = [
         ("requested_address", 50), ("server_id", 54), ("lease_time", 51),
-        ("hostname", 12), ("max_message_size", 57), ("vendor_class", 60),
+        ("hostname", 12), ("fqdn", 81), ("max_message_size", 57),
+        ("vendor_class", 60),
         ("client_arch", 93), ("client_ndi", 94), ("client_uuid", 97),
         ("vendor_specific", 43), ("ipxe_options", 175),
         ("request_options", 55),

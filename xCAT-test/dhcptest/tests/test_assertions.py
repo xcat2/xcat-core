@@ -155,5 +155,43 @@ class Evaluation(unittest.TestCase):
         self.assertFalse(result.ok)
 
 
+class FqdnFlagsTarget(unittest.TestCase):
+    """`fqdn_flags` is a target of its own, because option 81 holds two facts."""
+
+    def _reply(self, raw):
+        from dhcptest_lib import options
+        blob = options.pack_options([(53, b"\x02"), (81, raw)])
+        decoded = dict((code, options.decode_value(code, value))
+                       for code, value in options.unpack_options(blob).items())
+        return Reply(msgtype="OFFER", options=decoded, raw_options=blob)
+
+    def test_the_flags_and_the_name_are_asserted_separately(self):
+        reply = self._reply(b"\x03\x00\x00node01.cluster.local.")
+        self.assertTrue(self._ok("fqdn_flags == SO", reply))
+        self.assertTrue(self._ok("option:81 == node01.cluster.local.", reply))
+
+    def test_the_dns_name_prefers_option_81_and_falls_back_to_12(self):
+        # The two servers put the name in different options. A scenario about
+        # the name asserts on one target and holds for both.
+        both = self._reply(b"\x03\x00\x00node01.cluster.local.")
+        both.options[12] = "node01"
+        self.assertEqual(both.dns_name(), "node01.cluster.local.")
+        only12 = Reply(msgtype="OFFER", options={12: "node01"})
+        self.assertEqual(only12.dns_name(), "node01")
+        self.assertTrue(self._ok("dns_name matches ^node01", only12))
+
+    def test_a_reply_naming_the_node_nowhere_has_no_dns_name(self):
+        self.assertTrue(
+            self._ok("dns_name absent", Reply(msgtype="OFFER", options={53: 2})))
+
+    def test_a_reply_with_no_option_81_has_no_flags(self):
+        reply = Reply(msgtype="OFFER", options={53: 2})
+        self.assertEqual(reply.fqdn_flags(), "")
+        self.assertTrue(self._ok("fqdn_flags absent", reply))
+
+    def _ok(self, text, reply):
+        return assertions.evaluate(assertions.parse(text), reply, {}).ok
+
+
 if __name__ == "__main__":
     unittest.main()

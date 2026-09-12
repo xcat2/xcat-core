@@ -26,6 +26,59 @@ class OptionNames(unittest.TestCase):
         self.assertEqual(options.msgtype_name(99), "TYPE-99")
 
 
+class ClientFqdn(unittest.TestCase):
+    """Option 81, RFC 4702: who names the node, and who updates DNS."""
+
+    def test_a_bare_name_is_sent_with_no_flags(self):
+        self.assertEqual(options.encode_fqdn("node01"),
+                         b"\x00\x00\x00node01")
+
+    def test_flags_are_taken_from_the_prefix(self):
+        self.assertEqual(options.encode_fqdn("S:node01")[0], 0x01)
+        self.assertEqual(options.encode_fqdn("N:node01")[0], 0x08)
+        self.assertEqual(options.encode_fqdn("SO:node01")[0], 0x03)
+
+    def test_a_name_with_a_colon_is_not_read_as_flags(self):
+        # The prefix is flags only when every character before the colon is a
+        # flag letter. Otherwise a name is a name.
+        flags, name = options.decode_fqdn(options.encode_fqdn("host:1"))
+        self.assertEqual((flags, name), (0, "host:1"))
+
+    def test_a_prefix_that_is_not_all_flag_letters_is_part_of_the_name(self):
+        # There is no way to tell a typo'd flag from a name that holds a colon,
+        # so the rule is mechanical: flags only when every character before the
+        # first colon is one. A mistyped flag then sends a name no server
+        # answers with, which fails the step rather than passing it quietly.
+        flags, name = options.decode_fqdn(options.encode_fqdn("SX:node01"))
+        self.assertEqual((flags, name), (0, "SX:node01"))
+
+    def test_an_unknown_flag_letter_is_refused_when_it_is_read_as_flags(self):
+        self.assertRaises(ConfigError, options.fqdn_flag_bits, "SX")
+
+    def test_the_e_flag_sends_the_name_in_wire_format(self):
+        raw = options.encode_fqdn("SE:node01.cluster.local")
+        self.assertEqual(raw[0], 0x05)
+        self.assertEqual(raw[3:], b"\x06node01\x07cluster\x05local\x00")
+        self.assertEqual(options.decode_fqdn(raw),
+                         (0x05, "node01.cluster.local"))
+
+    def test_the_option_decodes_to_the_name_a_scenario_asserts_on(self):
+        # The flags are reached through `fqdn_flags`, so the option itself is
+        # the name and `option:81 == node01` reads as it should.
+        raw = b"\x03\x00\x00node01.cluster.local."
+        self.assertEqual(options.decode_value(81, raw),
+                         "node01.cluster.local.")
+
+    def test_flag_letters_round_trip(self):
+        self.assertEqual(options.fqdn_flag_letters(0x03), "SO")
+        self.assertEqual(options.fqdn_flag_letters(0), "-")
+        self.assertEqual(options.fqdn_flag_bits("so"), 0x03)
+
+    def test_a_truncated_option_is_left_as_hex(self):
+        self.assertIsNone(options.decode_fqdn(b"\x03\x00"))
+        self.assertEqual(options.decode_value(81, b"\x03\x00"), "03:00")
+
+
 class OptionArea(unittest.TestCase):
 
     def test_pack_then_unpack(self):

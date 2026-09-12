@@ -43,7 +43,8 @@ STEP_CONTROL_KEYS = frozenset([
 #: Keys that put something into the packet.
 STEP_FIELD_KEYS = frozenset([
     "ciaddr", "giaddr", "requested_address", "server_id", "lease_time",
-    "hostname", "client_id", "vendor_class", "user_class", "user_class_form",
+    "hostname", "fqdn", "client_id", "vendor_class", "user_class",
+    "user_class_form",
     "client_arch", "client_ndi", "client_uuid", "max_message_size",
     "request_options", "vendor_specific", "ipxe_options", "relay",
     "bootfile", "sname",
