@@ -127,4 +127,9 @@ autoinstall:
     # monitor that died and never came back is #7759.
     - ['bash', '-c', 'xm=#XCATVAR:XCATMASTER#; port="#TABLEBLANKOKAY:site:key=xcatiport:value#"; [ -n "$port" ] || port=3002; ok=0; for i in 1 2 3 4 5; do if exec 3<>/dev/tcp/$xm/$port; then if read -r -t 10 hello <&3 && [ "$hello" = "ready" ]; then printf "next\n" >&3; if read -r -t 10 ack <&3 && [ "$ack" = "done" ]; then ok=1; fi; fi; exec 3>&- 3<&-; [ "$ok" = 1 ] && break; fi; sleep 5; done; if [ "$ok" != 1 ]; then echo "xcat: FAILED to flip $(hostname) to local-disk boot via $xm:$port; the node will PXE back into the installer" >>/target/var/log/xcat/xcat.log; fi; exit 0']
   error-commands:
-    - tar -c --ignore-failed-read --transform='s/^/#HOSTNAME#-logs\//' /var/crash /var/log/installer /tmp/pre-install.log /autoinstall.yaml 2>/dev/null |nc -l 8080
+    # Subiquity waits for every error command to return. "nc -l 8080" waits for a collector, which
+    # an unattended install does not have, so the node held the failure until the provisioning
+    # timeout reset it and the reason never left the node. Keep the archive on the installer, and
+    # print the end of the curtin log to the console, which the management node records.
+    - ['sh', '-c', 'tar -c --ignore-failed-read --transform="s/^/#HOSTNAME#-logs\//" /var/crash /var/log/installer /tmp/pre-install.log /autoinstall.yaml >/run/#HOSTNAME#-logs.tar 2>/dev/null; exit 0']
+    - ['sh', '-c', 'tail -n 80 /var/log/installer/curtin-install.log >"${XCAT_ERROR_CONSOLE:-/dev/console}" 2>/dev/null; exit 0']
