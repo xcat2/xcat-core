@@ -133,9 +133,11 @@ class HttpDecodingTests(unittest.TestCase):
             handle.write(headers)
         return body_file, header_file
 
-    def decode(self, write_out, body=b"", headers="", rc=0, err=""):
+    def decode(self, write_out, body=b"", headers="", rc=0, err="",
+               timed_out=False):
         body_file, header_file = self.files(body, headers)
-        done = proc.Completed(["curl"], rc, write_out.encode(), err.encode())
+        done = proc.Completed(["curl"], rc, write_out.encode(), err.encode(),
+                              timed_out=timed_out)
         return httpc._decode(done, "http://10.99.1.1/install/x",
                              body_file, header_file)
 
@@ -179,6 +181,27 @@ class HttpDecodingTests(unittest.TestCase):
                     "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n")
         self.assertNotIn("location", reply.fields["header"])
         self.assertEqual(reply.fields["header"]["content-type"], "text/plain")
+
+    def test_a_body_cut_short_is_not_ok(self):
+        # curl prints the status as soon as the header arrives. The server that
+        # closed the connection in the middle of a 200 MB kernel still answered
+        # 200, so a check on the status alone reads a truncated file as served.
+        reply = self.decode(
+            "200\t10\tapplication/octet-stream\thttp://10.99.1.1/tftpboot/k\n",
+            body=b"x" * 10, rc=18,
+            err="curl: (18) transfer closed with 1048566 bytes remaining\n")
+        self.assertEqual(reply.fields["status"], 200)
+        self.assertFalse(reply.ok)
+        self.assertFalse(reply.fields["ok"])
+        self.assertIn("transfer closed", reply.error)
+
+    def test_a_timeout_while_reading_the_body_is_not_ok(self):
+        reply = self.decode(
+            "200\t4096\tapplication/octet-stream\thttp://10.99.1.1/install/x\n",
+            body=b"x" * 4096, rc=124, timed_out=True)
+        self.assertEqual(reply.fields["status"], 200)
+        self.assertFalse(reply.ok)
+        self.assertIn("timeout", reply.error)
 
     def test_the_body_is_digested(self):
         first = self.decode("200\t3\ttext/plain\thttp://h/x\n", body=b"abc")
