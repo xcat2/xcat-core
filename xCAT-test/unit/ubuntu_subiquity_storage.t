@@ -34,9 +34,10 @@ my ($storage_block) = $script =~ /(^if \[ -d \/sys\/firmware\/efi \]; then\n.*?\
 BAIL_OUT('the firmware branch that writes the partition file no longer matches')
     unless $storage_block;
 
-my $brackets = () = $storage_block =~ /\[ /g;
-BAIL_OUT("the partitioning block now has $brackets bracket tests; the shadow below covers one")
-    unless $brackets == 1;
+BAIL_OUT('the firmware test the shadow below answers is gone')
+    unless $storage_block =~ /\[ -d \/sys\/firmware\/efi \]/;
+BAIL_OUT('the block no longer asks uname for the machine architecture')
+    unless $storage_block =~ /uname -m/;
 
 my $sandbox   = File::Temp::tempdir( CLEANUP => 1 );
 my $partfile  = File::Spec->catfile( $sandbox, 'partitionfile' );
@@ -54,13 +55,17 @@ sub partition_config_for {
     open( my $fh, '>', $script ) or die "Unable to write $script: $!";
     # `[` is shadowed rather than the condition rewritten: bash resolves a function
     # ahead of the builtin, so the script's own test runs unmodified.
+    my $machine = $firmware eq 'prep' ? 'ppc64le' : 'x86_64';
     print {$fh} <<"SHELL";
 INSTALL_DISK=/dev/sdz
 logger() { :; }
+uname() { builtin echo $machine; }
+# `[` is shadowed only for the firmware probe; every other test runs unmodified,
+# so the architecture branch is taken by the block's own comparison.
 [() {
   case "\$1 \$2" in
     "-d /sys/firmware/efi") return @{[ $firmware eq 'uefi' ? 0 : 1 ]} ;;
-    *) builtin echo "unexpected bracket test: \$*" >&2; builtin return 2 ;;
+    *) builtin [ "\$@" ;;
   esac
 }
 $storage_block
@@ -110,7 +115,22 @@ ok( !exists $bios->{'efi-part'}, 'BIOS installs get no EFI partition' );
 is( $bios->{'bios-grub'}{flag}, 'bios_grub', 'they get a bios_grub partition instead' );
 is( $bios->{'disk-detected'}{grub_device}, 'true', 'and grub is installed to the disk' );
 
-foreach my $firmware ( [ UEFI => $uefi ], [ BIOS => $bios ] ) {
+# POWER firmware reads neither an ESP nor a bios_grub partition. It boots from a PReP
+# partition, and curtin installs grub to that partition rather than to the disk.
+my $prep = partition_config_for('prep');
+ok( !exists $prep->{'efi-part'},  'POWER installs get no EFI partition' );
+ok( !exists $prep->{'bios-grub'}, 'POWER installs get no bios_grub partition' );
+is( $prep->{'prep-part'}{type},        'partition',     'POWER installs get a PReP partition' );
+is( $prep->{'prep-part'}{device},      'disk-detected', 'on the detected install disk' );
+is( $prep->{'prep-part'}{flag},        'prep',          'flagged prep, which is what SLOF reads' );
+is( $prep->{'prep-part'}{number},      '1',             'as the first partition' );
+is( $prep->{'prep-part'}{grub_device}, 'true',          'and grub is installed to it' );
+isnt( $prep->{'disk-detected'}{grub_device}, 'true',
+    'not to the disk, which leaves POWER with nothing to boot' );
+ok( !exists $prep->{'prep-part-fs'},
+    'the PReP partition carries no filesystem' );
+
+foreach my $firmware ( [ UEFI => $uefi ], [ BIOS => $bios ], [ PReP => $prep ] ) {
     my ( $name, $config ) = @{$firmware};
     is( $config->{'root-part-fs'}{fstype}, 'ext4', "$name root filesystem is ext4" );
     is( $config->{'root-part-mount'}{path}, '/',   "$name mounts root at /" );
@@ -122,7 +142,7 @@ foreach my $firmware ( [ UEFI => $uefi ], [ BIOS => $bios ] ) {
 
 # Subiquity re-serializes autoinstall.yaml and appends this file, so the block has
 # to start at column 0 -- asserted on what was written, not on the heredoc.
-foreach my $firmware ( [ UEFI => 'uefi' ], [ BIOS => 'bios' ] ) {
+foreach my $firmware ( [ UEFI => 'uefi' ], [ BIOS => 'bios' ], [ PReP => 'prep' ] ) {
     my ( $name, $key ) = @{$firmware};
     like( partition_yaml_for($key), qr/\Astorage:\n  version: 1\n/,
         "$name config starts at column 0 with storage: version: 1" );
