@@ -255,14 +255,17 @@ append_xcatpost_cleanup()
 
     cleanupdiskfullxcatpost=`grep CLEANUPDISKFULLXCATPOST= "$mypostscript" |awk -F = '{print $2}' | tr -d \'\" | tr A-Z a-z`
     if [[ "$cleanupdiskfullxcatpost" =~ ^(1|yes|y)$ ]]; then
-      cat >> "$mypostscript" <<EOF
+      # post.xcat and the other install scripts embed this whole file in a here-document
+      # that ends at a line "EOF". A line "EOF" here ends that here-document early and
+      # leaves the rest of this file as shell code in the generated install script.
+      cat >> "$mypostscript" <<XCATPOST_CLEANUP
 if [ "\$return_value" -eq "0" ]; then
   cd /
   find $postdir/ -type f -not -name 'updateflag.awk' -delete
   find $postdir/ -type d -empty -delete
   msgutil_r \$MASTER_IP "info" "cleanup of $postdir completed.(\$NODE)" "/var/log/xcat/xcat.log" "\$log_label"
 fi
-EOF
+XCATPOST_CLEANUP
     fi
 }
 
