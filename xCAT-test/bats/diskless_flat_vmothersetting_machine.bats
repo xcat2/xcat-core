@@ -1,0 +1,85 @@
+#!/usr/bin/env bats
+#
+# reg_linux_diskless_installation_flat corrupts the KVM machine type of the compute node, checks
+# that the node fails to boot, and then restores it. The restore reads a machine type from a
+# ladder that names ppc64 and x86_64 only, so on any other architecture it writes an empty
+# vmothersetting and the check after it fails.
+#
+# The two commands are lifted out of the case file and RUN, with lsdef and chdef shadowed, so
+# the assertions read the value the case would write. The extraction fails the test when it
+# stops matching, so a rewrite fails loudly instead of covering nothing.
+
+load 'helpers/shell_source'
+
+setup()
+{
+    CASE="$(repo_path 'xCAT-test/autotest/testcase/installation/reg_linux_diskless_installation_flat')"
+    [ -r "$CASE" ] || skip "$CASE is required"
+    export CASE
+}
+
+# The command that restores the machine type, and the one that removes it again afterwards.
+restore_command()
+{
+    extract_first_matching_line "$CASE" \
+        '^cmd:.*str2="machine:invalid".*chdef [$][$]CN vmothersetting=[$]str5'
+}
+
+remove_command()
+{
+    extract_first_matching_line "$CASE" \
+        '^cmd:.*str2=";".*~ "ppc64".*chdef [$][$]CN vmothersetting='
+}
+
+# Render one command the way xcattest does, then run it with lsdef and chdef shadowed. bash
+# resolves a function ahead of PATH, so the case's own backticks read the stub.
+#
+# Sets OUT to everything the command printed and WRITTEN to the value it gave chdef.
+run_case_command()
+{
+    local cmd="$1" arch="$2" lsdef_value="$3"
+
+    cmd="${cmd#cmd:}"
+    cmd="${cmd//__GETNODEATTR(\$\$CN,arch)__/$arch}"
+    cmd="${cmd//__GETNODEATTR(\$\$CN,mgt)__/kvm}"
+    cmd="${cmd//\$\$CN/cn1}"
+
+    OUT="$(bash -c "lsdef() { echo '    vmothersetting=$lsdef_value'; }
+chdef() { echo \"CHDEF:\$*\"; }
+$cmd" 2>&1)" || true
+    WRITTEN="$(sed -n 's/^CHDEF:cn1 vmothersetting=//p' <<<"$OUT")"
+}
+
+# The machine type each architecture must end up with. riscv64 guests run the qemu "virt"
+# machine; kvm.pm sets it in guest_arch_profile.
+assert_arch()
+{
+    local arch="$1" machine="$2" restore remove
+
+    restore="$(restore_command)"
+    remove="$(remove_command)"
+
+    run_case_command "$restore" "$arch" 'machine:invalid'
+    [ -n "$WRITTEN" ]
+    [[ "$WRITTEN" == *machine:* ]]
+    [[ "$WRITTEN" == *"$machine"* ]]
+
+    # The check the case runs straight after the restore.
+    [[ "$WRITTEN" == *machine* ]]
+
+    # The remove path reads the same ladder; it must not die on an empty str3.
+    run_case_command "$remove" "$arch" "machine:$machine"
+    [ "$(grep -c 'unary operator expected' <<<"$OUT")" -eq 0 ]
+}
+
+@test "ppc64le: the restore writes the machine type, and the remove path compares two strings" {
+    assert_arch ppc64le pseries
+}
+
+@test "x86_64: the restore writes the machine type, and the remove path compares two strings" {
+    assert_arch x86_64 pc
+}
+
+@test "riscv64: the restore writes the machine type, and the remove path compares two strings" {
+    assert_arch riscv64 virt
+}
