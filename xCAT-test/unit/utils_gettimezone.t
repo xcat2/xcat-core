@@ -4,11 +4,8 @@
 # /usr/share/zoneinfo, and when that pipeline failed it returned the sentence "Could not determine
 # timezone checksum" as if it were a name.
 #
-# A Rocky 10.2 riscv64 cloud image has no /etc/localtime at all and runs on UTC. The compute node
-# xcat56-cn was therefore written /install/autoinst/xcat56-cn line 21
-# "timezone Could not determine timezone checksum --utc", anaconda answered "One or zero arguments
-# are expected for the timezone command", and the install stopped before it installed one package.
-# The node stayed at status=installing for 59 minutes until retry_install.sh reinstalled over it.
+# A cloud image that runs on UTC ships no /etc/localtime, so the scan finds nothing there, and
+# anaconda refuses a timezone command that carries more than one argument.
 #
 # Utils.pm cannot be loaded here, so the routine is extracted and driven against a scratch root
 # with the two collaborators it calls replaced.
@@ -28,13 +25,13 @@ close($source_fh) or die "close $source: $!";
 my @routines;
 for my $name (qw(gettimezone _zone_from_path)) {
     my ($routine) = $content =~ /^(sub \Q$name\E\s*\n?\{.*?^\})/ms;
-    BAIL_OUT("could not extract $name from Utils.pm") unless $routine;
+    die("could not extract $name from Utils.pm") unless $routine;
     push(@routines, $routine);
 }
 # The routines call each other unqualified and the caller reaches them through the class, so
 # they go back into the package they came from.
 eval "package xCAT::Utils;\n" . join("\n", @routines); ## no critic (BuiltinFunctions::ProhibitStringyEval)
-BAIL_OUT("could not load the timezone routines: $@") if $@;
+die("could not load the timezone routines: $@") if $@;
 
 # The collaborators gettimezone calls. The scan runs `find`, which must never look at the host
 # this test runs on, so it answers from the scratch root instead.
@@ -74,7 +71,7 @@ sub scratch_root {
 is(xCAT::Utils->gettimezone(root => scratch_root('America/Sao_Paulo')), 'America/Sao_Paulo',
     'the /etc/localtime symlink names the zone');
 
-# The failure that stopped the riscv64 install: no /etc/localtime, so the scan reports nothing.
+# No /etc/localtime, so the scan reports nothing.
 my $none = xCAT::Utils->gettimezone(root => scratch_root(undef));
 is($none, 'UTC', 'a root with no /etc/localtime falls back to UTC');
 unlike($none, qr/\s/,
