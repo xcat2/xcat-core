@@ -224,6 +224,29 @@ parsehttpserver ()
    fi
 }
 
+#####################################################
+# Append to the generated mypostscript the /xcatpost cleanup the site table asks for.
+#
+# The append happens on every path this script serves: node deployment, and each
+# updatenode, moncfg or reboot run.
+#
+#   $1 - path of the generated mypostscript
+#   $2 - the xcatpost directory to remove the postscripts from
+#####################################################
+append_xcatpost_cleanup()
+{
+    local mypostscript=$1
+    local postdir=$2
+    local cleanupxcatpost
+
+    cleanupxcatpost=`grep CLEANUPXCATPOST= "$mypostscript" |awk -F = '{print $2}' | tr -d \'\" | tr A-Z a-z`
+    if [[ "$cleanupxcatpost" =~ ^(1|yes|y)$ ]]; then
+      echo "cd /" >> "$mypostscript"
+      # /xcatpost might be read-only for statelite nodes
+      echo "rm -rf $postdir/*" >> "$mypostscript"
+    fi
+}
+
 if [ "$XCATDSKLSPOST_SOURCE_ONLY" = "1" ]; then
     return 0 2>/dev/null || exit 0
 fi
@@ -1086,12 +1109,7 @@ fi
 DHCP_TMP=`sed 's/\(DHCPINTERFACES=\)\(.*\)$/\1"\2"/' /$xcatpost/mypostscript`
 echo "$DHCP_TMP" > /$xcatpost/mypostscript
 
-CLEANUPXCATPOST=`grep CLEANUPXCATPOST= /$xcatpost/mypostscript |awk -F = '{print $2}' | tr -d \'\" | tr A-Z a-z`
-if [[ "$CLEANUPXCATPOST" =~ ^(1|yes|y)$ ]]; then
-  echo "cd /" >> /$xcatpost/mypostscript
-  # /xcatpost might be read-only for statelite nodes
-  echo "rm -rf /$xcatpost/*" >> /$xcatpost/mypostscript
-fi
+append_xcatpost_cleanup /$xcatpost/mypostscript /$xcatpost
 
 
 
