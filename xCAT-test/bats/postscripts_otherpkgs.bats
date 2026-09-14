@@ -153,3 +153,71 @@ run_plain_preremove_block()
     [ "$status" -eq 0 ]
     [ "$(logger_calls)" -eq 3 ]
 }
+
+run_install_block()
+{
+    local block
+    block="$(otherpkgs_block '#installation using yum/dnf or zypper' 'if [ "$repo_pkgs" != "" ]; then')" || return 99
+    local hasyum=0 haszypper=0 hasapt=0
+    eval "$1=1"
+    local envlist="" yumcmd=fake_pkg VERBOSE= log_label=otherpkgs RETURNVAL=0 REPOFILE=/dev/null result=""
+    local repo_pkgs="foo bar"
+    shadow_logger
+    shadow_pkg_manager
+    eval "$block"
+    printf 'RETURNVAL=%s\n' "$RETURNVAL"
+}
+
+run_repo_postremove_block()
+{
+    local block
+    block="$(otherpkgs_block '#remove more rpms if specified with' 'if [ "$repo_pkgs_postremove" != "" ]; then')" || return 99
+    local hasyum=0 haszypper=0 hasapt=0
+    eval "$1=1"
+    local envlist="" yumcmd=fake_pkg VERBOSE= log_label=otherpkgs RETURNVAL=0 REPOFILE=/dev/null result=""
+    local repo_pkgs_postremove="oldfoo"
+    shadow_logger
+    shadow_pkg_manager
+    eval "$block"
+    printf 'RETURNVAL=%s\n' "$RETURNVAL"
+}
+
+@test "a failed package install is not logged as installed" {
+    local manager
+    for manager in hasyum haszypper hasapt; do
+        : >"$LOGGER_LOG"
+        PKG_STATUS=1 run run_install_block "$manager"
+        [ "$status" -eq 0 ]
+        [[ "$output" == *'RETURNVAL=1'* ]]
+        refute_grep -q 'foo bar installed\.' "$LOGGER_LOG"
+        grep -q 'failed\.' "$LOGGER_LOG"
+    done
+}
+
+@test "a successful package install is logged as installed" {
+    local manager
+    for manager in hasyum haszypper hasapt; do
+        : >"$LOGGER_LOG"
+        run run_install_block "$manager"
+        [ "$status" -eq 0 ]
+        [[ "$output" == *'RETURNVAL=0'* ]]
+        grep -q 'foo bar installed\.' "$LOGGER_LOG"
+        refute_grep -q 'failed\.' "$LOGGER_LOG"
+    done
+}
+
+@test "a failed package removal is not logged as removed" {
+    local manager
+    for manager in hasyum haszypper hasapt; do
+        : >"$LOGGER_LOG"
+        PKG_STATUS=1 run run_repo_postremove_block "$manager"
+        [ "$status" -eq 0 ]
+        [[ "$output" == *'RETURNVAL=1'* ]]
+        refute_grep -q 'oldfoo removed\.' "$LOGGER_LOG"
+    done
+
+    : >"$LOGGER_LOG"
+    run run_repo_postremove_block hasyum
+    [ "$status" -eq 0 ]
+    grep -q 'oldfoo removed\.' "$LOGGER_LOG"
+}
