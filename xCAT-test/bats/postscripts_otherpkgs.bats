@@ -221,3 +221,18 @@ run_repo_postremove_block()
     [ "$status" -eq 0 ]
     grep -q 'oldfoo removed\.' "$LOGGER_LOG"
 }
+
+@test "the url repository guard is false when OTHERPKGDIR has no http entry" {
+    local guard cond
+    guard="$(extract_first_matching_line "$OTHERPKGS" 'OTHERPKGDIR_INTERNET" *[]] *; *then')" || return 99
+    cond="${guard#*if }"
+    cond="${cond%%;then*}"
+
+    OTHERPKGDIR_INTERNET=""
+    run eval "$cond"
+    [ "$status" -ne 0 ]
+
+    OTHERPKGDIR_INTERNET="http://192.0.2.1/repo,"
+    run eval "$cond"
+    [ "$status" -eq 0 ]
+}
