@@ -13,7 +13,9 @@ load 'helpers/shell_source'
 setup()
 {
     SCRIPT="$(repo_path 'xCAT-genesis-builder/debuild-xcat-genesis-base')"
-    [ -r "$SCRIPT" ] || skip "$SCRIPT is required"
+    # Fail rather than skip: a checkout without the converter has no deb rename to measure,
+    # and a skip there covers nothing while reading green.
+    [ -r "$SCRIPT" ]
     export SCRIPT
 }
 
