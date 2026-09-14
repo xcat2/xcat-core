@@ -7,10 +7,9 @@ use File::Temp qw(tempdir);
 use FindBin;
 use Test::More;
 
-# The installer kernel and initrd sit in a different place on every Ubuntu media layout:
-# netboot trees name them after the Debian architecture, live images keep them under
-# casper, and a hardware-enablement kernel ships beside the release one. Build each layout
-# on disk and ask the resolver, rather than reading the table that describes them.
+# The installer kernel and initrd sit in a different place on every Ubuntu media layout.
+# Build each layout on disk and ask the resolver, rather than read the table that
+# describes them.
 
 use lib "$FindBin::Bin/../../perl-xCAT";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
@@ -103,10 +102,9 @@ is(
     'riscv64 does not accept the kernel name the other live images use',
 );
 
-# The Ubuntu ppc64el live-server ISO carries no netboot tree at all. 22.04 and 24.04 ship
-# casper/hwe-vmlinux + casper/hwe-initrd beside casper/vmlinux + casper/initrd; 26.04 ships
-# the release pair only. Without these entries nodeset stops the diskful install with
-# "The network boot initrd.gz is not found in <pkgdir>/install/netboot".
+# The Ubuntu ppc64el live-server ISO carries no netboot tree. 22.04 and 24.04 ship the
+# hardware-enablement pair under casper beside the release pair; 26.04 ships the release
+# pair only.
 is(
     resolved('ppc64le', 'ppc64el', media('casper/vmlinux', 'casper/initrd')),
     'casper/vmlinux|casper/initrd',
@@ -127,8 +125,7 @@ is(
     'a POWER netboot tree still wins over a live image on the same media',
 );
 
-# mkinstall refused POWER media that carried no install/netboot/initrd.gz, whatever
-# install_boot_files could resolve. One routine answers the question now.
+# mkinstall asks this routine, so it accepts every media install_boot_files resolves.
 can_ok('xCAT_plugin::debian', 'install_media_is_bootable');
 is(
     xCAT_plugin::debian::install_media_is_bootable('ppc64le', 'ppc64el',
