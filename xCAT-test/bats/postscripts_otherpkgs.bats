@@ -236,3 +236,32 @@ run_repo_postremove_block()
     run eval "$cond"
     [ "$status" -eq 0 ]
 }
+
+# Runs the OTHERPKGDIR split and then the url repository block, and leaves the repository
+# files the url block wrote under BATS_TEST_TMPDIR.
+run_url_repo_block()
+{
+    local split url_block
+    split="$(extract_shell_if_block "$OTHERPKGS" 'if [ -n "$OTHERPKGDIR" ]; then')" || return 99
+    url_block="$(otherpkgs_block '#add repo for url repos in otherpkgdir' 'OTHERPKGDIR_INTERNET')" || return 99
+    local OTHERPKGDIR="$1" OTHERPKGDIR_INTERNET="" OTHERPKGDIR_LOCAL=""
+    local hasyum="${2:-1}" haszypper=0 hasapt="${3:-0}"
+    local repo_base="$BATS_TEST_TMPDIR" urlrepoindex=0
+    eval "$split"
+    eval "$url_block"
+    printf 'urlrepoindex=%s\n' "$urlrepoindex"
+}
+
+@test "the generated yum baseurl carries no trailing space" {
+    run run_url_repo_block 'http://192.0.2.1/repo-a,/install/post/otherpkgs,http://192.0.2.1/repo-b'
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'urlrepoindex=2'* ]]
+    [ "$(grep '^baseurl=' "${BATS_TEST_TMPDIR}/xCAT-otherpkgs0.repo")" = "baseurl=http://192.0.2.1/repo-a" ]
+    [ "$(grep '^baseurl=' "${BATS_TEST_TMPDIR}/xCAT-otherpkgs1.repo")" = "baseurl=http://192.0.2.1/repo-b" ]
+}
+
+@test "the generated apt source carries no trailing space" {
+    run run_url_repo_block 'http://192.0.2.1/repo-a' 0 1
+    [ "$status" -eq 0 ]
+    [ "$(cat "${BATS_TEST_TMPDIR}/xCAT-otherpkgs0.list")" = "deb http://192.0.2.1/repo-a" ]
+}
