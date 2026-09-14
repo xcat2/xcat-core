@@ -532,8 +532,7 @@ sub genesis_target_arch {
 # genesis_build_plan: one Genesis build per codename, for one architecture.
 #
 # The set of codenames comes from the caller, so a pipeline builds exactly the releases it
-# publishes. Returns the codename, the chroot to build it in and the package the build
-# produces, which is what the caller needs to run and to collect.
+# publishes.
 sub genesis_build_plan {
     my ($dists, $arch) = @_;
     my @dists = @{ $dists || [] };
@@ -556,11 +555,9 @@ sub genesis_build_plan {
 # genesis_log_deny_rules / genesis_log_errors: what a Genesis build log says when the build
 # failed but the exit status did not.
 #
-# dracut reports a command it cannot install with a FAILED: line and returns 0, and the
-# builder never reads dracut's result. That is how an image with no dhclient was packaged,
-# signed and published by a command that reported success. apt has the same shape: a
-# missing package leaves a diagnostic and a zero status behind a `|| true`. So the log is
-# the gate, not the exit status.
+# dracut reports a command it cannot install with a FAILED: line and returns 0. apt has the
+# same shape: a missing package leaves a diagnostic and a zero status behind a `|| true`. So
+# the log is the gate, not the exit status.
 my @GENESIS_LOG_DENY = (
     [ qr/\bFAILED:/                    => 'dracut could not install a command' ],
     [ qr/Cannot find module/           => 'a kernel module the build names is absent' ],

@@ -1,12 +1,11 @@
 #!/usr/bin/env perl
 # The Ubuntu Genesis build root must carry every command the Ubuntu dracut module marks
-# mandatory. dracut_install reports a missing command and returns, so a command the build
-# root does not supply leaves a hole in the image and the build still exits 0.
+# mandatory. dracut_install reports a missing command and returns 0, so a hole in the image
+# does not fail the build.
 #
-# The mandatory list is read by RUNNING the module: module-setup.sh is sourced with
-# dracut_install shadowed, _dracut_install_opt neutralised (its callers are optional by
-# construction), and install() is called. The package list is read by extracting the
-# REQUIRED_PACKAGES assignment from builddeb-genesis-base and evaluating it.
+# The mandatory list comes from RUNNING the module: module-setup.sh is sourced with
+# dracut_install shadowed, _dracut_install_opt neutralised, and install() called. The
+# package list comes from evaluating the REQUIRED_PACKAGES assignment in the build script.
 use strict;
 use warnings;
 
@@ -23,11 +22,9 @@ plan skip_all => 'builddeb-genesis-base not found' unless -f $builder;
 plan skip_all => 'ubuntu module-setup.sh not found' unless -f $module;
 plan tests => 9;
 
-# Commands the Ubuntu dracut module marks mandatory that a minimal Ubuntu server root does
-# NOT already provide, and the packages that supply each one. Every command here needs one of
-# its packages in the build root or the image ships without it. hwclock has two names because
-# it left util-linux for util-linux-extra in 23.04, and the build root asks apt which name the
-# release it is building for carries.
+# Mandatory commands a minimal Ubuntu server root does NOT already provide, and the packages
+# that supply each one. hwclock has two names: it left util-linux for util-linux-extra in
+# 23.04, and the build root asks apt which name this release carries.
 my %PACKAGES_FOR = (
     dhclient  => ['isc-dhcp-client'],
     ifenslave => ['ifenslave'],
@@ -45,24 +42,20 @@ for my $command (sort keys %PACKAGES_FOR) {
        "the build root installs @{[ join ' or ', @provider ]}, which provides '$command'");
 }
 
-# doxcat asks dhclient for the provisioning lease. An image without it never gets an address,
-# so the node netboots and never reports in -- the failure this test exists for.
+# doxcat asks dhclient for the provisioning lease.
 ok($mandatory{dhclient} && scalar(grep { $_ eq 'isc-dhcp-client' } @packages),
    'the Genesis image can obtain a DHCP lease');
 
-# dracut_install is silent about a hole, so the payload needs its own gate before it is
-# packaged. This is the EL path's behaviour (xCAT-genesis-base.spec runs the same verifier).
+# dracut_install is silent about a missing command, so the payload needs its own gate.
+# xCAT-genesis-base.spec runs the same verifier on the EL path.
 my $text = do { open my $fh, '<', $builder or die "$builder: $!"; local $/; <$fh> };
 like($text, qr{verify-genesis-payload}, 'builddeb-genesis-base verifies the payload it packages');
 
 # The image belongs to the release whose kernel it carries, so the builder must refuse a
-# root of any other release. Without the refusal one build on the build host serves every
-# codename with the build host's kernel.
+# root of any other release.
 like($text, qr{--expect-codename}, 'builddeb-genesis-base takes the release it is building for');
 
-# mandatory_commands($module): source the dracut module with dracut_install shadowed, call
-# install(), and return the bare command names it installs unconditionally. Absolute paths are
-# data files, not commands, and are left out.
+# An absolute path in the install() output is a data file, not a command.
 sub mandatory_commands {
     my ($path) = @_;
     my $dir = tempdir(CLEANUP => 1);
@@ -75,32 +68,31 @@ inst_multiple() { :; }
 inst() { :; }
 dpkg-architecture() { echo x86_64-linux-gnu; }
 . '$path'
-# Every caller of _dracut_install_opt is optional by construction: it installs only what the
-# build root already has. Neutralise it AFTER sourcing so it cannot add to the mandatory set.
+# _dracut_install_opt installs only what the build root already has. Neutralise it after
+# sourcing, so its commands stay out of the mandatory set.
 _dracut_install_opt() { :; }
 install
 BASH
     close $fh;
     my @out = qx{bash '$driver' 2>/dev/null};
-    BAIL_OUT("running install() from $path produced nothing") unless @out;
+    die("running install() from $path produced nothing") unless @out;
     my %seen;
     my @names = grep { !$seen{$_}++ } grep { length && !m{^/} } map { chomp; $_ } @out;
-    BAIL_OUT("install() from $path named no bare commands") unless @names;
+    die("install() from $path named no bare commands") unless @names;
     return @names;
 }
 
-# required_packages($path): the packages the build root installs. The fixed list is the
-# REQUIRED_PACKAGES assignment, evaluated so the value comes from the script itself; a command
-# whose package name changed between releases is added by add_first_available, whose candidates
-# count too -- the script picks whichever one apt knows.
+# Evaluate the assignment rather than parse it, so the list is the value the script uses.
+# add_first_available names the alternatives for a package that was renamed between releases,
+# so its candidates count too.
 sub required_packages {
     my ($path) = @_;
     my $text = do { open my $fh, '<', $path or die "$path: $!"; local $/; <$fh> };
     my ($block) = $text =~ /^(REQUIRED_PACKAGES="[^"]*")/ms;
-    BAIL_OUT("no REQUIRED_PACKAGES assignment in $path") unless $block;
+    die("no REQUIRED_PACKAGES assignment in $path") unless $block;
     my $out = qx{bash -c 'set -u; $block; printf "%s\\n" \$REQUIRED_PACKAGES' 2>/dev/null};
     my @packages = grep { length } split /\s+/, ($out // '');
-    BAIL_OUT("REQUIRED_PACKAGES in $path evaluated to nothing") unless @packages;
+    die("REQUIRED_PACKAGES in $path evaluated to nothing") unless @packages;
     push @packages, grep { length } split /\s+/, $1
         while $text =~ /^add_first_available\s+(.+)$/mg;
     return @packages;

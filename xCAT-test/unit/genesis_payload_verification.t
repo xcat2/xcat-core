@@ -31,8 +31,7 @@ my $good = build_payload(sshd_execs_session => 1, session_helper => 1, tmux => 1
 my ($rc, $err) = run($good, 'usr/sbin/dhclient');
 is($rc, 0, 'a complete payload passes') or diag($err);
 
-# doxcat calls dhclient with ISC flags. The released el9 image carried dhclient.conf and
-# dhclient-script but no dhclient, so Genesis never acquired an address.
+# doxcat calls dhclient with ISC flags. dhclient.conf and dhclient-script are not enough.
 my $nodhcp = build_payload(sshd_execs_session => 1, session_helper => 1, tmux => 1, locale => 1, dhclient => 0, mktemp => 1);
 ($rc, $err) = run($nodhcp, 'usr/sbin/dhclient');
 isnt($rc, 0, 'a payload without dhclient fails');
@@ -55,16 +54,14 @@ my $nolocale = build_payload(sshd_execs_session => 1, session_helper => 1, tmux 
 isnt($rc, 0, 'a payload with tmux and no UTF-8 locale fails');
 like($err, qr{C\.utf8}, 'the missing locale is named');
 
-# getdestiny makes its request file with mktemp. Without it the node never reports its destiny,
-# so xcatd never sets nodelist.status and the node stays at powering-on.
+# getdestiny makes its request file with mktemp.
 my $nomktemp = build_payload(sshd_execs_session => 1, session_helper => 1, tmux => 1, locale => 1, dhclient => 1, mktemp => 0);
 ($rc, $err) = run($nomktemp, 'usr/sbin/dhclient');
 isnt($rc, 0, 'a payload without mktemp fails');
 like($err, qr{usr/bin/mktemp}, 'the missing mktemp is named');
 
 # dracut_install reports a missing binary and returns, so every name the dracut module
-# installs has to be checked against the payload. The el10 image shipped with no openssl and
-# getcert waited on it for the life of the node.
+# installs has to be checked against the payload.
 my $module = write_module_setup([qw(openssl wget tar)]);
 my $full = build_payload(sshd_execs_session => 1, session_helper => 1, tmux => 1, locale => 1,
     dhclient => 1, mktemp => 1, commands => [qw(openssl wget tar)]);

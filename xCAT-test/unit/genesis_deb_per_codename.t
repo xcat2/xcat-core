@@ -1,12 +1,7 @@
 #!/usr/bin/env perl
-# The Genesis image carries the kernel and the kernel modules of the root that built it.
-# One build on the build host therefore gives every Ubuntu release the build host's kernel.
-# builddebs.pl --genesis builds one image per codename, in that codename's chroot.
-#
-# Three decisions are tested here, each on the value the code returns:
-#   the chroot each codename builds in;
-#   the lines in a build log that mean the build failed although it exited 0;
-#   the refusal of the builder to run in a root of another release.
+# The Genesis image carries the kernel and the kernel modules of the root that built it, so
+# builddebs.pl --genesis builds one image per codename, in that codename's chroot. Each
+# assertion here reads the value the code returns.
 use strict;
 use warnings;
 
@@ -52,7 +47,6 @@ is($ppc[0]{target},  'ppc64', 'ppc64el reads its image from the ppc64 directory'
 is(XCAT::BuildUtils::genesis_target_arch('amd64'), 'x86_64',
     'amd64 reads its image from the x86_64 directory');
 
-# A codename given twice is still one build.
 is(scalar(() = XCAT::BuildUtils::genesis_build_plan([qw(noble noble)], 'amd64')), 1,
     'a repeated codename does not build twice');
 
@@ -79,8 +73,7 @@ if (XCAT::BuildUtils->can('deb_belongs_to_dist')) {
 
 # --- the log guard ---------------------------------------------------------------------
 #
-# dracut prints FAILED: for a command it cannot install and exits 0. This is the log of the
-# build that shipped the image with no dhclient.
+# dracut prints FAILED: for a command it cannot install and exits 0.
 my $dracut_log = <<'LOG';
 Installing build dependencies...
 dracut: Executing: /usr/bin/dracut --compress gzip -m xcat base -N -f /tmp/genesis.rfs 6.8.0-45-generic

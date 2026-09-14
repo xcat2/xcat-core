@@ -10,10 +10,8 @@
 # every codename. Only xCAT, xCATsn and xCAT-genesis-scripts carry an architecture, and
 # even there the difference is packaging metadata, not compiled output.
 #
-# The Genesis image is the one exception, and it is why --genesis exists. dracut copies the
-# kernel, the kernel modules and every command out of the root it runs in, so that image
-# genuinely differs per release and is built once per codename inside that codename's
-# sbuild chroot -- the same chroots xcat-dep builds its compiled packages in.
+# The Genesis image is the one exception. --genesis builds it once per codename, inside
+# that codename's sbuild chroot.
 use strict;
 use warnings;
 use feature 'say';
@@ -91,9 +89,7 @@ $opts{packages} = @cli_packages ? \@cli_packages : \@PACKAGES;
 $opts{dists}    = @cli_dists    ? \@cli_dists    : \@DISTS;
 $opts{gpg_key_name} //= 'xCAT Signing Key';
 
-# The Genesis step is off unless it is asked for, so every run that exists today keeps its
-# behaviour. It takes its own codename list: the Genesis deb is the one package that is not
-# the same file for every release, so the caller says which releases it wants built.
+# The Genesis step is off unless it is asked for, so today's runs keep their behaviour.
 $opts{genesis} = 1 if $opts{genesis_only};
 $opts{genesis_dists} = @cli_genesis_dists ? \@cli_genesis_dists : $opts{dists};
 die "FATAL: --genesis-dist needs --genesis\n" if @cli_genesis_dists && !$opts{genesis};
@@ -283,15 +279,14 @@ sub collect_debs {
 
 # ----------------------------------------------------------- the Genesis deb --
 #
-# Every other xcat-core deb is Perl and is built once for every release. The Genesis image
-# is not: dracut copies the kernel, the kernel modules and every command out of the root it
-# runs in. Built on the build host, one image serves every codename with the build host's
-# kernel -- which is how Ubuntu management nodes came to install an image built from an EL
-# kernel. So this step builds one image per codename, inside that codename's sbuild chroot.
+# dracut copies the kernel, the kernel modules and every command out of the root it runs in,
+# so the Genesis image belongs to the release that built it. One build on the build host
+# serves every codename with the build host's kernel. This step builds one image per
+# codename, inside that codename's sbuild chroot.
 #
 # The chroots are the ones xcat-dep's sbuild-all.pl creates on the Ubuntu build host
-# (<codename>-<arch>-sbuild). They hand out disposable overlay sessions, so what the build
-# installs is discarded and the next codename starts from the pristine base.
+# (<codename>-<arch>-sbuild). A session is a disposable overlay, so the next codename starts
+# from the pristine base.
 
 # Where the build runs inside the chroot. A directory of its own at the chroot root, because
 # every other candidate is shared: /build and /opt/xcat-ci-shared are bind mounts the sbuild
@@ -326,9 +321,8 @@ sub begin_chroot_session {
 
 # genesis_build_log_problems: what the log says went wrong when the exit status did not.
 #
-# dracut prints FAILED: for a command it cannot install and exits 0. Reporting the first few
-# offending lines rather than all of them keeps a build console readable; the log file has
-# the rest and is named in the message.
+# Report the first few offending lines only, so a build console stays readable. The message
+# names the log file that has the rest.
 sub genesis_build_log_problems {
     my ($logfile) = @_;
     my $text = -f $logfile ? read_text($logfile) : '';
@@ -352,14 +346,9 @@ sub build_one_genesis_deb {
     my $err;
 
     eval {
-        # The builder needs its own directory, and Version and Release beside it. Copy them
-        # in rather than bind-mount the checkout: the build rewrites debian/control and
-        # debian/changelog, and it must not rewrite them in the tree the pipeline builds from.
-        #
-        # NOT under /build: the sbuild chroots bind-mount /var/lib/sbuild/build there, so every
-        # session of every chroot shares one directory. Two builds running at once overwrite each
-        # other's copy of the builder, and the output of an earlier run is still in it. A
-        # directory of its own at the chroot root lives in the session overlay and goes with it.
+        # Copy the builder in rather than bind-mount the checkout: the build rewrites
+        # debian/control and debian/changelog, and it must not rewrite them in the tree the
+        # pipeline builds from.
         my $stage = "$root$GENESIS_STAGE";
         sh_or_die("rm -rf " . sh_quote($stage) . " && mkdir -p "
                 . sh_quote("$stage/xCAT-genesis-builder"),
@@ -379,8 +368,8 @@ sub build_one_genesis_deb {
             '--expect-codename', sh_quote($codename), '--outdir', "$GENESIS_STAGE/out";
         my $rc = sh("$cmd > " . sh_quote($logfile) . " 2>&1");
 
-        # The log is read whether or not the command failed: a build that exits 0 with
-        # FAILED: lines in its log is the failure this gate exists for.
+        # The log is read whether or not the command failed: dracut exits 0 with FAILED:
+        # lines in its log.
         my $problems = genesis_build_log_problems($logfile);
         if ($rc != 0) {
             die "FATAL: the Genesis build for $codename failed (exit $rc); log: $logfile\n"

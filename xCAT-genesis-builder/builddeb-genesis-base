@@ -5,8 +5,7 @@
 # in, so this must run inside a root of the target codename. builddebs.pl --genesis starts
 # it in that codename's <codename>-<arch>-sbuild chroot, one build per codename.
 # --expect-codename is what stops a run on the build host: a single build there gives every
-# Ubuntu release the build host's kernel, which is how the EL-built image reached Ubuntu
-# management nodes in the first place.
+# Ubuntu release the build host's kernel.
 #
 # Parallel to xCAT-genesis-base.spec, which does the same for EL.
 
