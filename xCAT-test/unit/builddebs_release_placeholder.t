@@ -10,9 +10,8 @@ use Test::More;
 use XCAT::BuildUtils qw(read_line snap_release);
 
 # builddebs.pl takes the Release file as authoritative. The tracked file holds the
-# placeholder snap000000000000, and buildrpms.pl overwrites it with the commit time.
-# A pipeline that builds only the Genesis debs never runs buildrpms.pl, so the
-# placeholder stays and every deb carries the same version forever.
+# placeholder snap000000000000, and only buildrpms.pl overwrites it with the commit
+# time. A pipeline that does not run buildrpms.pl keeps the placeholder.
 #
 # The release decision is extracted from builddebs.pl and run here, so the assertions
 # measure the shipped code rather than a copy of it.
@@ -23,10 +22,10 @@ plan skip_all => "builddebs.pl not found" unless -f $builder;
 
 my $src = do { local $/; open my $fh, '<', $builder or die $!; <$fh> };
 
-# BAIL_OUT rather than skip: a rewrite that stops this matching must fail loudly
+# die rather than skip: a rewrite that stops this matching must fail loudly
 # instead of silently covering nothing.
 my ($block) = $src =~ /^(my \$FILE_RELEASE\b.*?^my \$RELEASE\s*=.*?;\n)/ms;
-BAIL_OUT('could not extract the release decision from builddebs.pl')
+die('could not extract the release decision from builddebs.pl')
     unless defined $block;
 
 my $dir = tempdir( CLEANUP => 1 );
