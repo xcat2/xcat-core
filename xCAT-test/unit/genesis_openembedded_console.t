@@ -31,7 +31,7 @@ is(
       ) >> 8,
     0,
     'plain console builds with strict warnings'
-) or BAIL_OUT('unable to build the console test binary');
+) or die('unable to build the console test binary');
 
 sub write_file {
     my ( $path, $contents ) = @_;

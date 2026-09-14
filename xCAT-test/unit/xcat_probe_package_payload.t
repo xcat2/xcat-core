@@ -138,7 +138,7 @@ sub copy_tree {
     my ($source, $destination) = @_;
     my $rc = system('cp', '-R', $source, $destination);
     is($rc, 0, "copied $source into the package fixture")
-        or BAIL_OUT("unable to create package fixture from $source");
+        or die("unable to create package fixture from $source");
 }
 
 sub run_command {
