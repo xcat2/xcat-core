@@ -1,11 +1,10 @@
 #!/usr/bin/env perl
 # xCAT-genesis-base.spec builds the Genesis image from a tarball that buildrpms.pl stages:
 # the dracut_105 modules and 80-net-name-slot.rules. Renaming the directory they live in
-# breaks that staging silently -- the spec then builds an image with no 97xcat module, and
-# the failure appears as a node that netboots into a plain dracut shell.
+# breaks that staging silently.
 #
-# buildsources_genesis_base() needs a management-node-free environment but not much else, so
-# it is lifted out of buildrpms.pl and run against a scratch checkout.
+# buildsources_genesis_base() is lifted out of buildrpms.pl and run against a scratch
+# checkout, because buildrpms.pl itself does not load outside a build.
 use strict;
 use warnings;
 
@@ -24,14 +23,14 @@ plan skip_all => 'buildrpms.pl not found' unless -f $builder;
 
 my $source = read_text($builder);
 our ($body) = $source =~ /(sub\s+buildsources_genesis_base\s*\(\$\).*?\n\}\n)/s;
-# BAIL_OUT rather than skip: a rename that stops this matching must fail loudly instead of
+# die rather than skip: a rename that stops this matching must fail loudly instead of
 # quietly covering nothing.
-BAIL_OUT("could not extract buildsources_genesis_base from buildrpms.pl") unless $body;
+die("could not extract buildsources_genesis_base from buildrpms.pl") unless $body;
 
 # The staged directory the spec reads, as buildrpms.pl names it. Read back from the code so
 # the test cannot disagree with it about the name.
 my ($staged_dir) = $body =~ m{\bcp -a "([^/"]+)/dracut_105"};
-BAIL_OUT('buildsources_genesis_base stages no dracut_105 directory') unless $staged_dir;
+die('buildsources_genesis_base stages no dracut_105 directory') unless $staged_dir;
 is($staged_dir, 'xCAT-genesis-base', 'the dracut assets are staged from xCAT-genesis-base');
 ok(-d repo_path($staged_dir), "$staged_dir is in the checkout");
 
