@@ -10,16 +10,9 @@ use Test::More;
 # early-commands append to /autoinstall.yaml. pre.ubuntu.ppc64 writes a partman recipe
 # for the debian-installer, which is not YAML at all.
 #
-# mkinstall chose the subiquity script, then overwrote that choice for every ppc64
-# node. A ppc64el 24.04 install therefore appended a partman recipe to its
-# autoinstall.yaml, Subiquity failed on the malformed document, the error-commands
-# tarred /var/log/installer and the node rebooted into the installer again -- nine
-# times in build #121 of xcat-core-devel-ubuntu-cd, cell ubuntu-24-ppc64le-devel,
-# case reg_linux_diskfull_installation_flat. The node answered ping from the live
-# installer the whole time, so the case failed on
-# "root@xcat25-cn: Permission denied (publickey,password)".
-#
-# The ppc64 script belongs to the debian-installer path only.
+# mkinstall chose the subiquity script, then overwrote that choice for every ppc64 node,
+# so a ppc64el Subiquity install appended a partman recipe to its autoinstall.yaml. The
+# ppc64 script belongs to the debian-installer path only.
 
 use lib "$FindBin::Bin/../../perl-xCAT";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
@@ -28,7 +21,7 @@ plan skip_all => 'debian.pm not found' unless -r $plugin;
 eval { require $plugin; 1 } or plan skip_all => "could not load debian.pm: $@";
 
 can_ok('xCAT_plugin::debian', 'install_prescript')
-    or BAIL_OUT('mkinstall still chooses the pre-install script inline, so nothing can drive it');
+    or die('mkinstall still chooses the pre-install script inline, so nothing can drive it');
 
 sub chosen {
     my ($platform, $arch, $subiquity) = @_;

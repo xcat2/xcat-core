@@ -31,12 +31,12 @@ is( system("bash -n $pre_path 2>/dev/null"), 0,
 # redirected into a scratch tree. Both substitutions are asserted: if either stops
 # matching, this bails out rather than silently covering nothing or writing to /tmp.
 my ($storage_block) = $script =~ /(^if \[ -d \/sys\/firmware\/efi \]; then\n.*?\n^fi$)/ms;
-BAIL_OUT('the firmware branch that writes the partition file no longer matches')
+die('the firmware branch that writes the partition file no longer matches')
     unless $storage_block;
 
-BAIL_OUT('the firmware test the shadow below answers is gone')
+die('the firmware test the shadow below answers is gone')
     unless $storage_block =~ /\[ -d \/sys\/firmware\/efi \]/;
-BAIL_OUT('the block no longer asks uname for the machine architecture')
+die('the block no longer asks uname for the machine architecture')
     unless $storage_block =~ /uname -m/;
 
 my $sandbox   = File::Temp::tempdir( CLEANUP => 1 );
@@ -46,9 +46,9 @@ my $partfile  = File::Spec->catfile( $sandbox, 'partitionfile' );
 # escapes the sandbox.
 my $branches  = () = $storage_block =~ /^\s*cat <<EOF >\/tmp\/partitionfile$/mg;
 my $rewrites  = ( $storage_block =~ s{/tmp/partitionfile}{$partfile}g );
-BAIL_OUT("the block writes the partition file in $branches places and $rewrites were rewritten")
+die("the block writes the partition file in $branches places and $rewrites were rewritten")
     unless $branches >= 2 && $rewrites == $branches;
-BAIL_OUT('a partition-file path escaped the sandbox')
+die('a partition-file path escaped the sandbox')
     if $storage_block =~ m{/tmp/partitionfile};
 
 my %YAML_FOR;
@@ -66,8 +66,7 @@ sub partition_config_for {
 INSTALL_DISK=/dev/sdz
 logger() { :; }
 uname() { builtin echo $machine; }
-# `[` is shadowed only for the firmware probe; every other test runs unmodified,
-# so the architecture branch is taken by the block's own comparison.
+# Only the firmware probe is answered here; every other test falls through to the builtin.
 [() {
   case "\$1 \$2" in
     "-d /sys/firmware/efi") return @{[ $firmware eq 'uefi' ? 0 : 1 ]} ;;
@@ -80,9 +79,9 @@ SHELL
 
     unlink $partfile;
     system( 'bash', $script ) == 0
-        or BAIL_OUT("the extracted partitioning block failed to run for $firmware");
+        or die("the extracted partitioning block failed to run for $firmware");
     open( my $out_fh, '<', $partfile )
-        or BAIL_OUT("the partitioning block wrote no file for $firmware: $!");
+        or die("the partitioning block wrote no file for $firmware: $!");
     my $yaml = do { local $/; <$out_fh> };
     close($out_fh);
     $YAML_FOR{$firmware} = $yaml;
