@@ -669,7 +669,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 
     urlrepoindex=0
     #add repo for url repos in otherpkgdir
-    if [ -n "OTHERPKGDIR_INTERNET" ];then
+    if [ -n "$OTHERPKGDIR_INTERNET" ];then
          OIFS=$IFS
          IFS=','
          OTHERPKGDIRLIST_INTERNET=($OTHERPKGDIR_INTERNET)
