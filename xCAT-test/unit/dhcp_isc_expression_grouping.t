@@ -8,31 +8,21 @@ use Test::More;
 
 use xCAT::DHCP::BootPolicy;
 
-# ISC dhcpd's expression grammar has no parenthesised grouping. dhcp-eval(5)
-# documents three boolean forms -- `not E`, `E1 and E2`, `E1 or E2` -- and
-# nothing that groups them, so a condition written as
+# ISC dhcpd's expression grammar has no parenthesised grouping. dhcp-eval(5) documents
+# `not E`, `E1 and E2` and `E1 or E2`, and nothing that groups them, so dhcpd rejects a
+# grouped condition at the opening paren with "left brace expected" and does not start.
 #
-#     if (option user-class-identifier = "xNBA" or ...) and option client-architecture = 00:00 {
+# The per-node statements in dhcp.pm are built inline against a live database, so they are
+# scanned rather than driven. The two chains that can be rendered are driven below.
 #
-# is rejected at the opening paren:
-#
-#     /etc/dhcp/dhcpd.conf line 11: left brace expected.
-#
-# The daemon does not start, so the whole cluster stops answering DHCP.
-#
-# The per-node statements in dhcp.pm cannot be unit tested directly -- they are
-# built inline against a live database -- but no generated ISC condition anywhere
-# in the plugin should group a boolean with parentheses. A function call is fine
-# and deliberately not matched: `option` never follows `(` in a call.
-#
-# The tokens looked for are dhcpd's, not Perl's: `exists` and `not` are left out
-# because the plugin's own Perl uses them parenthesised, and a bareword `option`
-# after `(` cannot be Perl -- a Perl variable there would carry its sigil.
+# The tokens looked for are dhcpd's, not Perl's. `exists` and `not` are left out because the
+# plugin's own Perl uses them parenthesised, and a bareword `option` after `(` cannot be
+# Perl, which would carry a sigil there.
 
 my $grouping = qr/\b(?:if|and|or)\s+\(\s*(?:option|substring|suffix|hardware|packet|filename)\b/;
 
 my $plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/dhcp.pm";
-open( my $fh, '<', $plugin ) or BAIL_OUT("cannot read $plugin: $!");
+open( my $fh, '<', $plugin ) or die("cannot read $plugin: $!");
 my @offenders;
 while ( my $line = <$fh> ) {
     next if $line =~ /^\s*#/;

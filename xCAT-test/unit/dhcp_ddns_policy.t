@@ -20,7 +20,7 @@ $ENV{XCATCFG} ||= 'SQLite:/tmp';
 my $plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/dhcp.pm";
 if ( -f $plugin ) { require $plugin } else { require xCAT_plugin::dhcp }
 
-BAIL_OUT('xCAT_plugin::dhcp::isc_ddns_zone_statements is missing')
+die('xCAT_plugin::dhcp::isc_ddns_zone_statements is missing')
   unless defined &xCAT_plugin::dhcp::isc_ddns_zone_statements;
 
 sub isc_zones { return xCAT_plugin::dhcp::isc_ddns_zone_statements(@_) }

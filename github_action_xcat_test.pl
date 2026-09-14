@@ -734,18 +734,12 @@ sub run_cases{
 # Fuction name: run_dhcp_wire_test
 # Description:  run the DHCP wire cases, once per backend installed here.
 #
-#   The last phase of the run. The cases are deliberately not labelled ci_test:
-#   a veth pair appears, site.dhcpinterfaces and site.dhcpbackend change, the
-#   daemon is stopped and started, and a ci_test case running in between would
-#   be sharing a management node that is mid-reconfiguration.
+#   The last phase of the run. The cases are not labelled ci_test: they
+#   reconfigure the management node, so no other case may run beside them.
 #
-#   Which backend a management node runs is an implementation default -- kea on
-#   newer distros, isc on older -- so a node must be told the same things either
-#   way. The whole set runs against one backend and then the other, rather than
-#   switching per case: the daemon is reconfigured once per pass, and each
-#   failure in the summary carries the backend it belongs to.
-#
-#   dhcpfixture.sh brackets each pass with backend-setup and backend-teardown.
+#   A node must be told the same things whichever backend it runs, so the whole
+#   set runs against one backend and then the other. dhcpfixture.sh brackets each
+#   pass with backend-setup and backend-teardown.
 # Attributes:
 # Return code:  0 if every case passed under every backend
 #--------------------------------------------------------
@@ -843,15 +837,12 @@ sub run_dhcp_wire_test{
 # Description:  run the provisioning wire cases.
 #
 #   After the ci_test set and before the DHCP wire phase, which is the order a
-#   node experiences: DNS, then the loader and its config, then the install
-#   tree, then the discovery and xcatd protocols. Not labelled ci_test for the
-#   same reason the DHCP cases are not -- while one runs the machine has an
-#   extra veth pair and namespace, a network and four nodes, a rewritten zone,
-#   and possibly a web server on another port.
+#   node experiences: DNS, then the loader and its config, then the install tree,
+#   then the discovery and xcatd protocols. Not labelled ci_test for the same
+#   reason the DHCP cases are not.
 #
 #   Run once rather than once per backend: nothing here depends on which DHCP
-#   server is installed, and what a node is told over DHCP is dhcptest's
-#   subject.
+#   server is installed.
 # Attributes:
 # Return code:  0 if every case passed
 #--------------------------------------------------------

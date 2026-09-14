@@ -266,13 +266,10 @@ sub kea_onie_url_option {
 # The user class a chainloaded second stage announces itself with, as an ISC
 # dhcpd condition.
 #
-# RFC 3004 length-prefixes each string in option 77 and plenty of clients send
-# the bare string instead, so matching only the bare form hands an RFC-following
-# loader the first stage again and it chainloads forever.
-#
-# suffix() takes the last N bytes, so one expression covers both: "xNBA" is its
-# own last four bytes and "\x04xNBA" ends in the same four. It has to be one --
-# dhcpd's grammar has no grouping, and `(a or b)` stops the daemon starting.
+# RFC 3004 length-prefixes each string in option 77 and plenty of clients send the
+# bare string instead, so both forms have to match. suffix() takes the last N
+# bytes, which covers both in one expression -- and it has to be one, because
+# dhcpd's grammar has no grouping.
 #
 # `quote` is " for a config file and \" for a statement reaching dhcpd through
 # omshell.
@@ -622,17 +619,12 @@ sub kea_localboot_guard {
 }
 
 # The MACs of nodes that have an operating system and must be left to start it.
+# spec.md S-31.
 #
-# A node in state boot or iscsiboot gets an empty boot-file-name, which is not
-# enough: Kea reads it as "not specified" and falls through to the classes, which
-# hand the machine a loader on architecture alone. It then asks again as an xNBA
-# second stage and is answered with the network's boot script, so an installed
-# node netboots on every power cycle. spec.md S-31.
-#
-# So the MACs go into one class every boot-file class excludes -- see
-# kea_apply_localboot_guard -- kept the way DROP is kept. A node booting from an
-# iSCSI target is deliberately not here: gPXE attaches its root disk, so it does
-# want a loader. ISC draws the same line.
+# An empty boot-file-name is not enough: Kea reads it as "not specified" and falls
+# through to the classes. So the MACs go into one class every boot-file class
+# excludes -- see kea_apply_localboot_guard. A node booting from an iSCSI target is
+# deliberately not here: gPXE attaches its root disk, so it does want a loader.
 sub kea_localboot_client_class {
     my ( $class, %opts ) = @_;
 

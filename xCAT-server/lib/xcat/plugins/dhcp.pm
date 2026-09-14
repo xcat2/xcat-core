@@ -1138,13 +1138,7 @@ sub addnode
                     # needs a loader, because the root disk is on the network
                     # and gPXE attaches it: BIOS firmware is given xnba.kpxe,
                     # and the second stage, which announces gpxe.bus-id, is
-                    # given nothing. Without a target the node is given no boot
-                    # file at all, which is what Kea does for either state.
-                    #
-                    # This used to be gated on $doiscsi, so an installed node
-                    # fell through to the netboot branches below and its xNBA
-                    # second stage was handed the install script -- silently
-                    # reinstalling the machine on every power cycle.
+                    # given nothing.
                     if ($doiscsi) {
                         $lstatements = 'if option client-architecture = 00:00 and not exists gpxe.bus-id { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; } ' . $lstatements;
                     } else {
@@ -1174,8 +1168,7 @@ sub addnode
             if (-f "$tftpdir/xcat/xnba.kpxe") {
                 if ($chainent and $chainent->{currstate} and ($chainent->{currstate} eq 'iscsiboot' or $chainent->{currstate} eq 'boot')) {
 
-                    # S-31 again, and the same $doiscsi gate: without it an
-                    # installed pxe node was handed pxelinux.0 on every boot.
+                    # S-31 again, and the same $doiscsi gate.
                     if ($doiscsi) {
                         $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } ' . $lstatements;
                     } else {
@@ -2926,9 +2919,7 @@ sub kea_build_dhcp4_intent
 
     # The daemon gets its own control socket whether or not the Control Agent is
     # asked for: the agent is a REST front end onto this socket, not the thing
-    # that creates it. Without it the only way to reconfigure a running Kea is
-    # SIGHUP, which reports success on delivery and so cannot tell makedhcp that
-    # Kea rejected the file.
+    # that creates it.
     $intent->{'control-socket'} = {
         'socket-type' => 'unix',
         'socket-name' => $backend->control_socket_path('kea4-ctrl-socket'),
@@ -3225,15 +3216,9 @@ sub isc_dhcp_installed_version
 }
 
 # Which variables /etc/default/isc-dhcp-server has to carry for dhcpd to be
-# started on the interfaces xCAT is serving. The systemd unit expands exactly
-# one of them onto the command line, and which one changed with the package:
-#   14.04  4.2.4-7ubuntu12      sysvinit only   $INTERFACES
-#   16.04  4.3.3-5ubuntu12      unit            $INTERFACES
-#   18.04  4.3.5-3ubuntu7       unit            $INTERFACES
-#   20.04  4.4.1-2.1ubuntu5     unit            $INTERFACES
-#   22.04  4.4.1-2.3ubuntu2     unit            $INTERFACESv4  (v6 unit: v6)
-#   24.04  4.4.3-P1-4ubuntu2    unit            $INTERFACESv4  (v6 unit: v6)
-#   26.04  4.4.3-P1-4ubuntu2    unit            $INTERFACESv4  (v6 unit: v6)
+# started on the interfaces xCAT is serving. The systemd unit expands exactly one
+# of them onto the command line: $INTERFACES up to 20.04, $INTERFACESv4 from
+# 22.04, and $INTERFACESv6 for the v6 unit.
 #
 # The sysvinit script copies INTERFACES into INTERFACESv4, but nothing on a
 # systemd host runs it, so that bridge cannot be relied on.
@@ -3734,13 +3719,9 @@ sub kea_sync_node_client_classes
 # from its disk, and keep the class those nodes are named in ahead of them: Kea
 # rejects a member() test naming a class not defined above it.
 #
-# This runs over the whole config rather than one generator's output -- the
-# architecture, per-network xNBA and per-node classes all name a boot file -- so
-# guarding where the config is assembled covers a class added later.
-#
-# It is its own inverse: with no such node left the class is gone and the guard
-# comes off, because a member() test naming a class that no longer exists is a
-# configuration Kea refuses to load.
+# This runs over the whole assembled config, so a class added later is guarded
+# too. It is its own inverse: with no such node left, the class and the guard
+# both go.
 sub kea_apply_localboot_guard
 {
     my ($config) = @_;
@@ -4182,9 +4163,7 @@ sub _needs_absolute_next_server
 #: Returns ( next-server, tftpserver ) or the empty list, having already told
 #: the caller's callback why.
 #:
-#: Both backends read this. They had a copy each and the copies had drifted:
-#: ISC honoured xcatmaster only for petitboot and onie, and Kea fell back to
-#: my_ip_facing for every node, so the two disagreed in a hierarchical cluster.
+#: Both backends read this, so they answer a hierarchical cluster alike.
 sub next_server_for_node
 {
     my ( $node, $nrent ) = @_;
@@ -4258,10 +4237,8 @@ sub kea_boot_for_node
     if ( $intent ne 'netboot' ) {
 
         # A node told to boot from disk, and a Windows UEFI install waiting on
-        # the proxyDHCP daemon, are both handed no boot file. ISC writes
-        # filename = "" into the host block; on Kea the reservation is what
-        # outranks a class, so the empty name has to be set here or the
-        # architecture classes answer and the node netboots forever.
+        # the proxyDHCP daemon, are both handed no boot file. On Kea only a
+        # reservation outranks a class, so the empty name is set here.
         $boot{'boot-file-name'} = '';
     } elsif ($netboot and $netboot eq 'yaboot') {
         $boot{'boot-file-name'} = "/yb/node/yaboot-$node";

@@ -550,10 +550,8 @@ my %CONTROL_SOCKET_OF = (
 # Ask the running daemon to reload, and find out whether it did.
 #
 # `systemctl reload` sends SIGHUP and reports success as soon as the signal is
-# delivered -- it cannot know Kea then rejected the file and went on serving the
-# one it had. The unit is active, the process is up, and every client is answered
-# from a stale configuration. Kea's control socket does know, so the reload is
-# asked for there.
+# delivered, whether or not Kea accepted the file. The control socket answers with
+# the result of the reload itself.
 #
 # Returns 0 when the daemon confirmed the new configuration, non-zero on anything
 # else, so the caller can fall back to a restart.
@@ -606,20 +604,9 @@ sub restart_services {
         }
         my $ret;
         if ( xCAT::Utils->checkservicestatus($unit) == 0 ) {
-            # Already running: reload the config instead of a full restart. Kea
-            # reconfigures from the regenerated file, and -- unlike restart --
-            # this does not count against systemd's start-rate limit
-            # (StartLimitBurst=5/10s on EL). A burst of makedhcp calls (e.g. the
-            # makedhcp_remote_network test loop, or rapid provisioning) would
-            # otherwise trip that limit and fail with "Failed to restart kea-dhcp4".
-            #
-            # The reload is asked for over the control socket rather than with
-            # SIGHUP, because only the socket says whether Kea accepted the file.
-            # A rejected reload leaves the daemon up and answering from the
-            # configuration it already had, which looks healthy from every angle
-            # except the one that matters -- an interface added since the daemon
-            # started is a config Kea refuses, and the clients on it go unserved
-            # while `systemctl status` still reads active.
+            # Already running: reload the config instead of a full restart. A
+            # restart counts against systemd's start-rate limit
+            # (StartLimitBurst=5/10s on EL), which a burst of makedhcp calls trips.
             if ( $CONTROL_SOCKET_OF{$service} ) {
                 $ret = $self->reload_via_control_socket($service);
                 # No socket, no answer, or a rejection: fall through to the
