@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
-# Drive verify-genesis-payload against payload trees that reproduce the three holes the
-# released legacy Genesis image shipped with.
+# Drive verify-genesis-payload against payload trees that each leave out one thing the image
+# needs.
 use strict;
 use warnings;
 
