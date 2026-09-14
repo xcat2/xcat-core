@@ -1,13 +1,11 @@
 #!/usr/bin/perl
 # reg_linux_diskless_installation_flat corrupts the KVM machine type of the compute node, checks
-# that the node fails to boot, and then restores it. Both the restore and the check after it read a
-# machine type chosen by architecture. The ladder that chooses it names ppc64 and x86_64 only, so on
-# any other architecture str3 stays empty: the restore writes an EMPTY vmothersetting, and the check
-# that follows -- "vmothersetting contains machine" -- fails. The compute node has provisioned
-# correctly by then, so the case reports a red cell for a gap in its own arithmetic.
+# that the node fails to boot, and then restores it. The restore reads a machine type from a ladder
+# that names ppc64 and x86_64 only, so on any other architecture it writes an empty vmothersetting
+# and the check after it fails.
 #
 # The two commands are lifted out of the case file and RUN, with lsdef and chdef shadowed, so the
-# assertions read the value the case would write. BAIL_OUT when an extraction stops matching, so a
+# assertions read the value the case would write. die when an extraction stops matching, so a
 # rewrite fails loudly instead of covering nothing.
 use strict;
 use warnings;
@@ -16,15 +14,15 @@ use File::Basename qw(dirname);
 
 my $case = dirname(__FILE__)
     . '/../autotest/testcase/installation/reg_linux_diskless_installation_flat';
-open my $fh, '<', $case or BAIL_OUT("cannot read $case: $!");
+open my $fh, '<', $case or die("cannot read $case: $!");
 my @lines = <$fh>;
 close $fh;
 
 # The command that restores the machine type, and the one that removes it again afterwards.
 my ($restore) = grep { /^cmd:.*str2="machine:invalid".*chdef \$\$CN vmothersetting=\$str5/ } @lines;
 my ($remove)  = grep { /^cmd:.*str2=";".*=~ "ppc64".*chdef \$\$CN vmothersetting=/ } @lines;
-BAIL_OUT('cannot find the command that restores the machine type') unless $restore;
-BAIL_OUT('cannot find the command that removes the machine type')  unless $remove;
+die('cannot find the command that restores the machine type') unless $restore;
+die('cannot find the command that removes the machine type')  unless $remove;
 
 # Render one command the way xcattest does, then run it with lsdef and chdef shadowed. bash
 # resolves a function ahead of PATH, so the case's own backticks read the stub.
