@@ -294,7 +294,7 @@ if [ -n "$OTHERPKGDIR" ]; then
     do
         dirtype=${dir:0:4}
         if [ $dirtype = 'http' ]; then
-            OTHERPKGDIR_INTERNET="${OTHERPKGDIR_INTERNET}${dir} ,"
+            OTHERPKGDIR_INTERNET="${OTHERPKGDIR_INTERNET}${dir},"
         else
             OTHERPKGDIR_LOCAL=$dir
         fi
