@@ -2255,6 +2255,23 @@ sub CheckVersion
     return 0;
 }
 
+sub normalize_openeuler_version {
+    my $version = shift;
+    $version = shift if defined($version) && $version eq __PACKAGE__;
+    return undef unless defined($version);
+    $version =~ s/^\s+|\s+$//g;
+
+    return '24.03' if $version =~ /^2403-LTS$/i;
+    if ($version =~ /^((?:20|22|24)\.03)(?:sp([1-9][0-9]*))?$/i) {
+        return $1 . (defined($2) ? "sp$2" : '');
+    }
+    if ($version =~ /^((?:20|22|24)\.03)(?:-LTS(?:-SP([1-9][0-9]*))?|\s+\(LTS(?:-SP([1-9][0-9]*))?\))$/i) {
+        my $sp = defined($2) ? $2 : $3;
+        return $1 . (defined($sp) ? "sp$sp" : '');
+    }
+    return undef;
+}
+
 #-------------------------------------------------------------------------------
 
 =head3  osver
@@ -2295,6 +2312,7 @@ sub osver
 
     if (-f "/etc/os-release") {
         my $version;
+        my $version_text;
         my $version_id;
         my $id;
         my $id_like;
@@ -2308,6 +2326,11 @@ sub osver
 
             #print Dumper(\@text);
             foreach my $line (@text) {
+                if ($line =~ /^\s*VERSION=(.*)$/) {
+                    $version_text = $1;
+                    $version_text =~ s/^\s+|\s+$//g;
+                    $version_text =~ s/^(['"])(.*)\1$/$2/;
+                }
                 if ($line =~ /^\s*VERSION=\"?([0-9\.]+).*/) {
                     $version = $1;
                 }
@@ -2316,7 +2339,9 @@ sub osver
                 }
 
 
-                if ($line =~ /^\s*ID=\"?([0-9a-z\_\-\.]+).*/) {
+                if ($line =~ /^\s*ID=(?:"openeuler"|'openeuler'|openeuler)\s*$/i) {
+                    $id = 'openeuler';
+                } elsif ($line =~ /^\s*ID=\"?([0-9a-z\_\-\.]+).*/) {
                     $id = $1;
                 }
                 if ($line =~ /^\s*ID_LIKE=\"?([0-9a-z\_\-\.]+).*/) {
@@ -2337,6 +2362,12 @@ sub osver
         }
 
         $os = $id;
+        if (defined($os) && $os eq 'openeuler') {
+            $version = normalize_openeuler_version(
+                defined($version_text) ? $version_text : $version_id);
+            $version_id = undef;
+            $platform = '';
+        }
         if (!$os and $id_like) {
             $os = $id_like;
         }
