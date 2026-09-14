@@ -68,9 +68,8 @@ my $noopenssl = build_payload(sshd_execs_session => 1, session_helper => 1, tmux
 isnt($rc, 0, 'a payload without openssl fails');
 like($err, qr/openssl/, 'the missing openssl is named');
 
-# dracut_install installs an absolute path at that same path. The verifier used to drop every
-# name that started with "/", so an image with no /usr/bin/awk passed. doxcat, getdestiny and
-# the firmware wrappers all run awk.
+# dracut_install installs an absolute path at that same path, so a name starting with "/" is a
+# command the payload must carry. doxcat, getdestiny and the firmware wrappers all run awk.
 my $noawk = build_payload(sshd_execs_session => 1, session_helper => 1, tmux => 1, locale => 1,
     dhclient => 1, mktemp => 1, commands => [qw(openssl wget tar)], absent => ['usr/bin/awk']);
 ($rc, $err) = run_with_commands($module, $noawk);
