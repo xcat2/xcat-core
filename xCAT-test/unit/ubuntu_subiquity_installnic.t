@@ -139,9 +139,7 @@ SKIP: {
             "the netplan written for $case->{name} matches the resolved values");
 
         # systemd-networkd defaults UseDomains to no, so a netplan carrying dhcp4: true alone
-        # takes the DNS server from DHCP and drops the offered domain-search. The node then
-        # resolves no single-label name: updateflag.awk runs "$MASTER 3002" with the short
-        # management node name, cannot resolve it, and the node never leaves postbooting.
+        # drops the search domain DHCP offers, and no single-label name resolves on the node.
         like($netplan, qr/^\s+use-domains: true$/m,
             "the netplan for $case->{name} asks networkd to use the DHCP search domain");
     }
