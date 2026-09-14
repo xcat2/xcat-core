@@ -265,3 +265,72 @@ run_url_repo_block()
     [ "$status" -eq 0 ]
     [ "$(cat "${BATS_TEST_TMPDIR}/xCAT-otherpkgs0.list")" = "deb http://192.0.2.1/repo-a" ]
 }
+
+# Drives the lines that name the local otherpkgs repository for zypper: the alias written into
+# the repository file, and the alias the refresh and the delete use.
+run_zypper_local_repo()
+{
+    local urlrepoindex="$1" index="$2"
+    local repo_base="$BATS_TEST_TMPDIR" mounted=1 whole_path=/install/post/otherpkgs/sles15/x86_64
+    local OSVER=sles15 VERBOSE= localrepoindex REPOFILE rc=1 result="" path=/pkgdir
+    zypper()
+    {
+        printf '%s\n' "$*" >>"$CMD_LOG"
+        case "$1" in
+        ar) sed -n '1s/^\[\(.*\)\]$/added=\1/p' "$3" >>"$CMD_LOG" ;;
+        esac
+        return "${ZYPPER_STATUS:-0}"
+    }
+    array_set_element() { :; }
+    # The extraction is kept apart from the eval: a failing zypper must not read as a failed
+    # extraction.
+    local pattern line
+    for pattern in \
+        'localrepoindex=' \
+        'REPOFILE="[$]repo_base/xCAT-otherpkgs[$]localrepoindex.repo"' \
+        'echo "[[]xcat-otherpkgs[$]localrepoindex[]]"' \
+        'result=`zypper ar -c [$]REPOFILE`' \
+        'zypper --non-interactive refresh xcat-otherpkgs' \
+        'result=`zypper sd xcat-otherpkgs'; do
+        line="$(extract_first_matching_line "$OTHERPKGS" "$pattern")" || return 99
+        eval "$line"
+    done
+    return 0
+}
+
+@test "zypper refreshes the otherpkgs repository it added" {
+    run run_zypper_local_repo 2 0
+    [ "$status" -eq 0 ]
+    [ "$(cmd_call 2)" = "added=xcat-otherpkgs2" ]
+    [ "$(cmd_call 3)" = "--non-interactive refresh xcat-otherpkgs2" ]
+}
+
+@test "zypper deletes the otherpkgs repository it added when the refresh fails" {
+    ZYPPER_STATUS=1 run run_zypper_local_repo 2 0
+    [ "$status" -eq 0 ]
+    [ "$(cmd_call 2)" = "added=xcat-otherpkgs2" ]
+    [ "$(cmd_call 4)" = "sd xcat-otherpkgs2" ]
+}
+
+run_sdk_block()
+{
+    local block
+    block="$(otherpkgs_block '#adds SDK repository' 'if [ "$SDKDIR" != "" ]; then')" || return 99
+    local SDKDIR=/install/sles15/x86_64/sdk1 OSVER=sles15 mounted=1 VERBOSE= log_label=otherpkgs result=""
+    local NFSSERVER=192.0.2.1 HTTPPORT=80
+    eval "$(extract_shell_function "$OTHERPKGS" pmatch)" || return 99
+    shadow_logger
+    zypper()
+    {
+        printf 'zypper failed\n'
+        return 1
+    }
+    eval "$block"
+    return 0
+}
+
+@test "a failed SDK repository add is logged with the repository name" {
+    run run_sdk_block
+    [ "$status" -eq 0 ]
+    grep -q 'xCAT-sles15-sdk1' "$LOGGER_LOG"
+}
