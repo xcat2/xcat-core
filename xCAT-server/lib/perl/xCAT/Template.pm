@@ -1853,8 +1853,7 @@ my $UBUNTU_ARCHIVE_KEYRING = '/usr/share/keyrings/ubuntu-archive-keyring.gpg';
 # The apt lines that keep the recommended packages out of the install. ospkgs installs without
 # them and the installer matches it. ppc64el is the exception: curtin installs a bootloader
 # package of its own for UEFI and for s390x only, and on a PReP machine install_grub runs
-# "dpkg-reconfigure grub-ieee1275" on a package the Ubuntu kernel image merely recommends. With
-# the recommended packages off that package is absent and the install stops there.
+# "dpkg-reconfigure grub-ieee1275" on a package the Ubuntu kernel image only recommends.
 sub ubuntu_subiquity_no_recommends_lines
 {
     my ($osarch) = @_;
