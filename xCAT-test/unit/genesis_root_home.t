@@ -22,9 +22,8 @@ my @HOOKS = (
     'xCAT-genesis-builder/dracut_105/ubuntu/xcat-cmdline.sh',
 );
 
-# dracut 99base writes the root entry itself. Up to dracut 057 the password field is
-# always x. From dracut 060 the x arrives only with --hostonly, and the Genesis image is
-# built with -N, so el10 (dracut 107) ships an empty password field.
+# dracut 99base writes the root entry itself. Up to dracut 057 the password field is always
+# x; from dracut 060 the x arrives only with --hostonly, and the Genesis image is built -N.
 my %SHIPPED = (
     'dracut 049/057 (el8, el9)' => "root:x:0:0::/root:/bin/sh\n",
     'dracut 107 (el10)'         => "root::0:0::/root:/bin/sh\n",
@@ -62,7 +61,7 @@ sub extract_passwd_block {
     my ($path, $label) = @_;
     my $text = read_text($path);
     my ($block) = $text =~ m{^(sed [^\n]*/etc/passwd\ncat >>/etc/passwd <<"__ENDL"\n.*?^__ENDL)$}ms;
-    BAIL_OUT("$label: the /etc/passwd rewrite was not found") unless defined $block;
+    die("$label: the /etc/passwd rewrite was not found") unless defined $block;
     return $block;
 }
 
@@ -80,11 +79,11 @@ sub run_rewrite {
 
     my $script = $block;
     my $hits = ($script =~ s{/etc/passwd}{$passwd}g);
-    BAIL_OUT("$label: expected 2 references to /etc/passwd, found $hits") unless $hits == 2;
-    BAIL_OUT("$label: a reference to the real /etc/passwd survived") if index($script, '/etc/passwd') >= 0;
+    die("$label: expected 2 references to /etc/passwd, found $hits") unless $hits == 2;
+    die("$label: a reference to the real /etc/passwd survived") if index($script, '/etc/passwd') >= 0;
 
     write_text("$dir/rewrite.sh", "set -e\n$script\n");
     system('/bin/bash', "$dir/rewrite.sh") == 0
-      or BAIL_OUT("$label: the /etc/passwd rewrite failed to run");
+      or die("$label: the /etc/passwd rewrite failed to run");
     return read_text($passwd);
 }

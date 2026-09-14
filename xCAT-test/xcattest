@@ -1417,9 +1417,8 @@ sub run_case {
             log_this($running_log_fd, ("ElapsedTime:$diffduration sec", "RETURN rc = $rc", "OUTPUT:", @output));
             push(@caselog, ("ElapsedTime:$diffduration sec", "RETURN rc = $rc", "OUTPUT:", @output));
 
-            # $checkfail is the result of this check, $failflag the result of the case. They
-            # were one variable, so a failed check made every later check read as failed, and
-            # the guard that hid that also hid the checks (issue #76).
+            # $checkfail is the result of this check, $failflag the result of the case. One
+            # variable for both makes a failed check read as failing every later check.
             my $checkfail = 0;
             foreach my $check (@{ $cases_ref->[ $case_name_index_map_ref->{$case} ]->{check}->[$j] }) {
                 $checkfail = 0;

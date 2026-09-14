@@ -1,8 +1,6 @@
 #!/usr/bin/env perl
-# mknb stages the Genesis payload before it can build a netboot image. Those copies are the
-# only point at which mknb learns that an installed Genesis image is unusable, so a copy that
-# fails silently produces an initramfs built from nothing and an exit status of 0 -- the node
-# then never boots, with no error anywhere naming the cause.
+# mknb stages the Genesis payload before it can build a netboot image. Those copies are the only
+# point at which mknb learns that an installed Genesis image is unusable.
 use strict;
 use warnings;
 
@@ -18,7 +16,7 @@ BEGIN { $INC{'xCAT/Utils.pm'} = 1; $INC{'xCAT/MsgUtils.pm'} = 1;
 require "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/mknb.pm";
 
 can_ok('xCAT_plugin::mknb', 'stage_genesis_payload')
-    or BAIL_OUT('mknb has no stage_genesis_payload to drive');
+    or die('mknb has no stage_genesis_payload to drive');
 
 # Drive the routine with a runner that fails exactly one copy, so each assertion names the
 # copy it is about rather than the pair.

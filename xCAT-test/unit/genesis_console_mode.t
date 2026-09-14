@@ -24,8 +24,7 @@ plan tests => 5 * scalar(keys %HOOK) + 2;
 
 my $tmpdir = tempdir(CLEANUP => 1);
 
-# The failure this captures: with no UTF-8 locale in the image, tmux exits and the old
-# unconditional `while :; do tmux ...; done` never reached doxcat.
+# tmux exits under the C locale, so an unguarded tmux loop never reaches doxcat.
 my $el = read_text(repo_path($HOOK{el}{path}));
 ok($el !~ qr/^while :; do tmux attach-session/m,
     'el: no unguarded tmux loop is left at column 0');
@@ -62,7 +61,7 @@ sub extract_function {
     my ($path, $name, $label) = @_;
     my $text = read_text($path);
     my ($body) = $text =~ /^($name\(\)\s*\{.*?^\})$/ms;
-    BAIL_OUT("$label: $name() not found in $path") unless defined $body;
+    die("$label: $name() not found in $path") unless defined $body;
     return $body;
 }
 

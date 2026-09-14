@@ -1,9 +1,8 @@
 #!/usr/bin/env perl
 # The genesis specs name their package after the target arch: xCAT-genesis-scripts-<tarch> and
 # xCAT-genesis-base-<tarch>. %{tarch} comes from an %ifarch ladder, and an arch missing from that
-# ladder leaves the macro UNEXPANDED instead of failing: rpm then builds a package literally named
-# "xCAT-genesis-scripts-%{tarch}", buildrpms.pl cannot find the srpm it asked for, and the whole
-# target build dies with a "Cannot find/open srpm" that names the right file.
+# ladder leaves the macro unexpanded instead of failing, so rpm builds a package whose Name
+# carries the macro.
 #
 # Expand each spec with rpmspec for every arch xCAT supports and assert the Name carries that arch.
 use strict;

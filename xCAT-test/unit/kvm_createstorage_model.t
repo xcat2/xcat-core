@@ -17,7 +17,7 @@ my @routines;
 for my $name (qw(createstorage build_diskstruct guest_arch_profile getUnits
     default_storagemodel)) {
     my ($routine) = $content =~ /^(sub \Q$name\E\s*\{.*?^\})/ms;
-    BAIL_OUT("could not extract $name from kvm.pm") unless $routine;
+    die("could not extract $name from kvm.pm") unless $routine;
     push(@routines, $routine);
 }
 
@@ -34,7 +34,7 @@ sub get_multiple_paths_by_url { return {}; }
 PERL
 
 eval $harness . join("\n", @routines) . "\n1;\n";    ## no critic (BuiltinFunctions::ProhibitStringyEval)
-BAIL_OUT("could not load the kvm storage routines: $@") if $@;
+die("could not load the kvm storage routines: $@") if $@;
 
 # The name createstorage gives the volume of one node. $stale is a capture left live in this
 # block by an earlier successful match, which is the state createstorage runs in when a
@@ -81,13 +81,12 @@ is(volume_dev(storage => 'dir:///var/lib/libvirt/images/=scsi'), 'sda',
 is(volume_dev(storagemodel => 'virtio'), 'vda',
     'vmstoragemodel=virtio names a vd* volume');
 
-# createstorage on its own defaults to ide. Nothing in the product reaches this today, because
-# dohyp gives every node the default storage model first.
+# createstorage on its own defaults to ide. Nothing in the product reaches this today: dohyp
+# gives every node the default storage model first.
 is(volume_dev(), 'hda', 'createstorage alone defaults to an hd* volume');
 
-# So the sd* name of a node with no vmstoragemodel rests on that default, and a riscv64 node
-# rests on the sd* name. Drive the two together, so a change to the default fails here rather
-# than on a riscv64 node that stops booting.
+# A node with no vmstoragemodel takes its sd* name from that default, so the two are driven
+# together.
 is(volume_dev(storagemodel => KVMStore::default_storagemodel()), 'sda',
     'the default storage model names an sd* volume');
 

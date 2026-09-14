@@ -3,9 +3,7 @@
 # verify-genesis-payload [--commands-from <module-setup.sh>] <payload-root> [required-path ...]
 #
 # dracut_install() reports a missing binary and returns, so the module install function keeps
-# going and the image ships without it. Four such holes reached a release: no dhclient, no
-# openssl, no sshd-session and no UTF-8 locale. Check the extracted payload before it becomes
-# an rpm.
+# going and the image ships without it. Check the extracted payload before it is packaged.
 #
 # Paths given on the command line are relative to <payload-root>. --commands-from reads back
 # what the dracut module installs: a bare command name is looked for in the four binary

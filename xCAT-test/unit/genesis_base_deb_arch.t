@@ -15,7 +15,7 @@ use Test::More;
 
 my $root   = "$FindBin::Bin/../..";
 my $script = "$root/xCAT-genesis-builder/debuild-xcat-genesis-base";
-BAIL_OUT("debuild-xcat-genesis-base not found at $script") unless -f $script;
+die("debuild-xcat-genesis-base not found at $script") unless -f $script;
 
 my $tmpdir = tempdir(CLEANUP => 1);
 my $driver = "$tmpdir/driver.sh";
@@ -86,7 +86,7 @@ my %superseded = (
 for my $rpm (sort keys %expected) {
     my $arch = $expected{$rpm};
     my ($dir, $control) = convert($arch, $rpm);
-    BAIL_OUT("debuild-xcat-genesis-base produced no source tree for $rpm")
+    die("debuild-xcat-genesis-base produced no source tree for $rpm")
       unless defined $dir;
 
     like($dir, qr/\Q-$arch-\E/, "$rpm builds in a $arch source tree");

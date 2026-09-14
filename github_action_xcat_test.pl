@@ -33,9 +33,8 @@ my $GITHUB_API = "https://api.github.com";
 # before building and run the unit tests out of the copy.
 #
 # The copy is tidiness, not a requirement: builddebs.pl writes under dist/debs
-# inside the checkout and restores every file it edits, so it isolates the tests
-# from build residue and nothing more. Its predecessor deleted the checkout's
-# parent directory, which is why the copy was added.
+# inside the checkout and restores every file it edits, so the copy only keeps
+# build residue away from the tests.
 my $srcdir = getcwd();
 my $unitsrc = ($ENV{'RUNNER_TEMP'} ? $ENV{'RUNNER_TEMP'} : "/tmp") . "/xcat-core-unitsrc";
 

@@ -25,7 +25,7 @@ plan tests => 8;
 
 my $text = slurp_repo_file('xCAT-genesis-builder/builddeb-genesis-base');
 my ($function) = $text =~ /^(rewrite_control\(\)\s*\{.*?^\})/ms;
-BAIL_OUT('rewrite_control() no longer matches in builddeb-genesis-base')
+die('rewrite_control() no longer matches in builddeb-genesis-base')
   unless defined $function;
 
 my $tmpdir = tempdir(CLEANUP => 1);
@@ -59,6 +59,6 @@ sub rewrite {
     my $driver = "$tmpdir/driver.$arch.sh";
     write_text($driver, "#!/bin/bash\nset -eu\n$function\nrewrite_control \"\$1\" \"\$2\"\n");
     system('bash', $driver, $copy, $arch) == 0
-      or BAIL_OUT("rewrite_control failed for $arch");
+      or die("rewrite_control failed for $arch");
     return read_text($copy);
 }

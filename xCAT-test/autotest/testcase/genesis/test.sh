@@ -16,8 +16,7 @@ function runcmd(){
 # We should be using private networks
 TESTNODE=testnode
 TESTNODE_IP="192.168.3.1"
-# nodeset resolves the genesis kernel by the node arch. A hardcoded ppc64le node fails on
-# every other management node with "Could not find genesis.kernel.ppc64".
+# nodeset resolves the genesis kernel by the node arch, so the node takes this machine's.
 TESTNODE_ARCH="$(uname -m)"
 # The boot-loader configuration lives under the tftp root. Overridable so the check can run
 # against a scratch tree.

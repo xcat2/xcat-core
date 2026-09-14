@@ -23,9 +23,7 @@ my $ISC6   = 'dhclient -6 -pf /var/run/dhclient6.eth0.pid eth0 -lf /var/lib/dhcl
 my $source = read_text( repo_path($DOXCAT) );
 my $tmpdir = tempdir( CLEANUP => 1 );
 
-# The failure this captures: doxcat named dhclient at six call sites, so on a release that
-# packages no ISC client Genesis reported "dhclient: command not found" and no node ever got
-# an address.
+# A release that packages no ISC client has no dhclient, so doxcat must not name one directly.
 ok( $source !~ qr/^\s*dhclient\s/m,
     'doxcat starts no command line with dhclient' );
 ok( $source !~ qr/;\s*dhclient\s/,

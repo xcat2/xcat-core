@@ -52,8 +52,7 @@ is(os_for("NAME=\"Ubuntu\"\nID=ubuntu\n"),           'ubuntu', 'Ubuntu is still 
         1, 'report_genesis_files propagates the failure to its caller');
 }
 
-# Genesis generates new host keys at every boot and each case boots the node several times, so
-# the second boot met "REMOTE HOST IDENTIFICATION HAS CHANGED" and xdsh could not reach it.
+# Genesis generates new host keys at every boot, and each case boots the node several times.
 {
     no warnings 'once';
     eval_subs($source, qw(forget_host_keys testxdsh));
@@ -65,8 +64,7 @@ is(os_for("NAME=\"Ubuntu\"\nID=ubuntu\n"),           'ubuntu', 'Ubuntu is still 
 }
 
 # xCAT sets nodelist.status from the destiny the node reports with getdestiny: "shell" for the
-# shell destiny, "configuring" for runcmd. A Genesis node never reaches "booted" -- that status
-# belongs to an operating system install reporting through updateflag.
+# shell destiny, "configuring" for runcmd. "booted" belongs to an operating system install.
 {
     no warnings 'once';
     local $GenesisTest::noderange = 'xcat71-cn';
@@ -147,11 +145,11 @@ sub eval_subs {
     $code .= "sub send_msg { push \@GenesisTest::MSG, \$_[1]; return 0; }\n";
     foreach my $name (@names) {
         my ($body) = $text =~ /^(sub \Q$name\E \{.*?^\})$/ms;
-        BAIL_OUT("sub $name() not found in $helper") unless defined $body;
+        die("sub $name() not found in $helper") unless defined $body;
         $code .= "$body\n";
     }
     $code .= "1;\n";
-    eval $code or BAIL_OUT("cannot compile the extracted helpers: $@");
+    eval $code or die("cannot compile the extracted helpers: $@");
 }
 
 #---
@@ -162,7 +160,7 @@ sub waiter_name {
     foreach my $name (qw(wait_for_node_status wait_for_boot)) {
         return $name if $text =~ /^sub \Q$name\E \{/m;
     }
-    BAIL_OUT("no destiny status check found in $helper");
+    die("no destiny status check found in $helper");
 }
 
 #---

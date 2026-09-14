@@ -16,7 +16,7 @@ close($source_fh) or die "close $source: $!";
 my @routines;
 for my $name (qw(build_diskstruct guest_arch_profile getUnits)) {
     my ($routine) = $content =~ /^(sub \Q$name\E\s*\{.*?^\})/ms;
-    BAIL_OUT("could not extract $name from kvm.pm") unless $routine;
+    die("could not extract $name from kvm.pm") unless $routine;
     push(@routines, $routine);
 }
 
@@ -30,7 +30,7 @@ sub get_multiple_paths_by_url { return $pool; }
 PERL
 
 eval $harness . join("\n", @routines) . "\n1;\n";    ## no critic (BuiltinFunctions::ProhibitStringyEval)
-BAIL_OUT("could not load the kvm disk builder: $@") if $@;
+die("could not load the kvm disk builder: $@") if $@;
 
 # Build the disks of a node of $arch whose vmstorage is a libvirt pool holding the volumes
 # in $pool: a path => { device, format } map, the shape get_multiple_paths_by_url returns.
@@ -54,7 +54,7 @@ sub pool_disks {
         local *STDOUT = $capture;
         ($disks) = KVMDisk::build_diskstruct(undef);
     }
-    BAIL_OUT('build_diskstruct returned no disks') unless ref $disks eq 'ARRAY';
+    die('build_diskstruct returned no disks') unless ref $disks eq 'ARRAY';
     return $disks;
 }
 

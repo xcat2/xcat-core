@@ -1,10 +1,8 @@
 #!/usr/bin/env perl
 # go-xcat installs and uninstalls a fixed list of package names, and it keeps one list per
 # packaging format. The Genesis packages are named after the architecture, and the two formats
-# spell that architecture differently: the rpm is xCAT-genesis-scripts-ppc64, the deb is
-# xcat-genesis-scripts-ppc64el. A name that no repository publishes makes apt fail the whole
-# transaction, so one stale entry stops "go-xcat install" and "go-xcat uninstall" on that
-# architecture.
+# spell it differently: the rpm is xCAT-genesis-scripts-ppc64, the deb is
+# xcat-genesis-scripts-ppc64el.
 #
 # The lists are built by go-xcat itself here, not read as text: the deb list exists only when
 # "type dpkg" succeeds, so a shell function decides which branch each run takes.
@@ -17,7 +15,7 @@ use Test::More;
 
 my $root    = "$FindBin::Bin/../..";
 my $go_xcat = "$root/xCAT-server/share/xcat/tools/go-xcat";
-BAIL_OUT("go-xcat not found at $go_xcat") unless -f $go_xcat;
+die("go-xcat not found at $go_xcat") unless -f $go_xcat;
 
 my $tmpdir = tempdir(CLEANUP => 1);
 my $driver = "$tmpdir/driver.sh";
@@ -60,7 +58,7 @@ sub package_lists {
         $list{$which} = [ split /\s+/, ($packages // '') ];
     }
     close($out);
-    BAIL_OUT('go-xcat package arrays could not be evaluated')
+    die('go-xcat package arrays could not be evaluated')
       unless $list{install} && $list{uninstall};
     return \%list;
 }
@@ -82,16 +80,16 @@ sub named {
 
 my $rpm = package_lists(0);
 my $deb = package_lists(1);
-BAIL_OUT('the dpkg branch of go-xcat was not taken')
+die('the dpkg branch of go-xcat was not taken')
   unless grep { $_ eq 'xcat-client' } @{ $deb->{install} };
-BAIL_OUT('the rpm branch of go-xcat was not taken')
+die('the rpm branch of go-xcat was not taken')
   unless grep { $_ eq 'xCAT-client' } @{ $rpm->{install} };
 
 # The deb names come from the packaging: one control file per Debian architecture names the
 # genesis-scripts package, and its Depends names the genesis-base package that carries the
 # Genesis tree for that same architecture.
 my @control = sort glob("$root/xCAT-genesis-scripts/debian/control-*");
-BAIL_OUT('no xCAT-genesis-scripts Debian control files') unless @control;
+die('no xCAT-genesis-scripts Debian control files') unless @control;
 my (@deb_scripts, @deb_base);
 for my $control (@control) {
     my $text = slurp($control);
@@ -112,7 +110,7 @@ for my $which (qw(install uninstall)) {
 # architecture name.
 my %tarch = map { $_ => 1 } (slurp("$root/xCAT-genesis-builder/xCAT-genesis-base.spec")
       =~ /^%define\s+tarch\s+(\S+)/mg);
-BAIL_OUT('no Genesis target architectures in xCAT-genesis-base.spec') unless %tarch;
+die('no Genesis target architectures in xCAT-genesis-base.spec') unless %tarch;
 
 for my $which (qw(install uninstall)) {
     for my $prefix (qw(xCAT-genesis-scripts- xCAT-genesis-base-)) {

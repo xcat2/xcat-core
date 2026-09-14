@@ -9,7 +9,7 @@ use File::Temp qw(tempdir);
 use Test::More;
 
 my $program = "$FindBin::Bin/../xcattest";
-BAIL_OUT("xcattest is not at $program") unless -f $program;
+die("xcattest is not at $program") unless -f $program;
 
 #---
 =head3 run_harness
@@ -29,29 +29,29 @@ sub run_harness {
     # under the scratch tree keeps every file the run writes inside that tree.
     my $root = tempdir(CLEANUP => 1);
     make_path("$root/bin", "$root/cases");
-    copy($program, "$root/bin/xcattest") or BAIL_OUT("copy xcattest: $!");
+    copy($program, "$root/bin/xcattest") or die("copy xcattest: $!");
     chmod 0755, "$root/bin/xcattest";
 
-    open(my $case_fh, '>', "$root/cases/fixture") or BAIL_OUT("write the fixture case: $!");
+    open(my $case_fh, '>', "$root/cases/fixture") or die("write the fixture case: $!");
     print $case_fh $case_text;
-    close($case_fh) or BAIL_OUT("close the fixture case: $!");
+    close($case_fh) or die("close the fixture case: $!");
 
     local $ENV{XCATTEST_CASEDIR} = "$root/cases";
     system($^X, "$root/bin/xcattest", '-q', '-t', join(',', @names));
 
     my $slurp = sub {
         my ($path) = @_;
-        open(my $fh, '<', $path) or BAIL_OUT("open $path: $!");
+        open(my $fh, '<', $path) or die("open $path: $!");
         my @lines = <$fh>;
-        close($fh) or BAIL_OUT("close $path: $!");
+        close($fh) or die("close $path: $!");
         chomp(@lines);
         return @lines;
     };
 
     my ($log) = glob("$root/share/xcat/tools/autotest/result/xcattest.log.*");
-    BAIL_OUT("the harness wrote no running log under $root") unless $log;
+    die("the harness wrote no running log under $root") unless $log;
     my ($failed) = glob("$root/share/xcat/tools/autotest/result/failedcases.*");
-    BAIL_OUT("the harness wrote no failed-cases report under $root") unless $failed;
+    die("the harness wrote no failed-cases report under $root") unless $failed;
 
     return ([ $slurp->($log) ], [ $slurp->($failed) ]);
 }

@@ -1,11 +1,6 @@
 #!/usr/bin/env perl
 # xCAT and xCATsn name their Debian architectures explicitly. An architecture missing from that
-# list is not a build failure -- it is a package that never exists: apt on that architecture says
-#
-#   E: Unable to locate package xcat
-#
-# and the management node cannot be installed at all. riscv64 was missing while the rest of the
-# tree already carried riscv64 install templates, DHCP boot policy and a Genesis machine config.
+# list is not a build failure: it is a package apt cannot find at all.
 #
 # The list is compared against the architectures the DEB build itself supports, taken from
 # build-utils/lib/XCAT/BuildUtils or, failing that, the documented set.
@@ -38,16 +33,12 @@ for my $ctl (@controls) {
 }
 
 # The genesis dependency must follow the architecture. xCAT and xCATsn are built once per
-# architecture from one control file, so an unrestricted "Depends: xcat-genesis-scripts-amd64"
-# reaches the ppc64el and riscv64 debs too. That package is Architecture: all, so it installs and
-# apt reports no error -- it lays down the x86_64 Genesis tree and pulls the 128 MB amd64
-# genesis-base, and the management node gets no Genesis for its own architecture. The rpm side
-# already selects per architecture through %{?genesistarch:Requires: xCAT-genesis-scripts-...}.
+# architecture from one control file, and xcat-genesis-scripts-amd64 is Architecture: all, so an
+# unrestricted Depends on it installs the x86_64 Genesis tree on every architecture.
 #
-# xCAT-genesis-scripts keeps one control file per Debian architecture, and the file name is the
-# Debian architecture. Its package name and its genesis-base dependency must carry that same
-# architecture: xcat-genesis-base-ppc64 is a name no repository publishes, while the base deb
-# that builddeb-genesis-base builds for ppc64el is xcat-genesis-base-ppc64el.
+# xCAT-genesis-scripts keeps one control file per Debian architecture, named for it. Its package
+# name and its genesis-base dependency must carry that same architecture: the base deb
+# builddeb-genesis-base builds for ppc64el is xcat-genesis-base-ppc64el, not -ppc64.
 
 # Return the folded value of a control field, or undef.
 sub control_field {

@@ -16,7 +16,7 @@ close($source_fh) or die "close $source: $!";
 my @routines;
 for my $name (qw(build_xmldesc guest_arch_profile build_oshash build_diskstruct getUnits)) {
     my ($routine) = $content =~ /^(sub \Q$name\E\s*\{.*?^\})/ms;
-    BAIL_OUT("could not extract $name from kvm.pm") unless $routine;
+    die("could not extract $name from kvm.pm") unless $routine;
     push(@routines, $routine);
 }
 
@@ -34,7 +34,7 @@ sub genpassword      { return 'password'; }
 PERL
 
 eval $harness . join("\n", @routines) . "\n1;\n";    ## no critic (BuiltinFunctions::ProhibitStringyEval)
-BAIL_OUT("could not load the kvm domain builder: $@") if $@;
+die("could not load the kvm domain builder: $@") if $@;
 
 # Build one domain for a node of $guest_arch on a hypervisor that reports $hyp_cpumodel.
 sub domain_xml {
@@ -47,7 +47,7 @@ sub domain_xml {
     };
     local $KVMArch::updatetable = {};
     my $xml = KVMArch::build_xmldesc('cn1');
-    BAIL_OUT("build_xmldesc returned no XML for $guest_arch on $hyp_cpumodel")
+    die("build_xmldesc returned no XML for $guest_arch on $hyp_cpumodel")
       unless defined $xml and !ref $xml;
     return $xml;
 }
