@@ -2,23 +2,34 @@
 use strict;
 use warnings;
 
-use File::Copy qw(copy);
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(repo_path slurp_repo_file);
+
 use File::Path qw(make_path);
 use File::Slurper qw(read_text write_text);
 use File::Temp qw(tempdir);
-use FindBin;
-use lib "$FindBin::Bin/../lib";
 use Test::More;
+use XCAT::Test::Sandbox qw(replace_required assert_no_host_paths stub_bin run_confined);
 
-use XCAT::Test::File qw(repo_path);
-
-my $postscripts = repo_path('xCAT/postscripts');
-my $remoteshell = "$postscripts/remoteshell";
-my $sshd_helper = "$postscripts/remoteshell-sshd-config";
-plan skip_all => 'remoteshell postscript not found' unless -r $remoteshell;
-plan skip_all => 'remoteshell sshd helper not found' unless -x $sshd_helper;
 # The postscript is written against GNU sed; sed -i means something else on BSD.
 plan skip_all => 'postscript targets Linux nodes' unless $^O eq 'linux';
+
+my $postscripts = repo_path('xCAT/postscripts');
+my $sshd_helper = "$postscripts/remoteshell-sshd-config";
+die "the remoteshell sshd helper is not executable: $sshd_helper\n" unless -x $sshd_helper;
+
+# The helper honours XCAT_SSH_ETC and XCAT_LOGGER. It runs confined with these tools as its only
+# PATH, so a change that stops honouring them fails instead of editing the host sshd.
+my $helper_bin = stub_bin( tools => [qw(sh head grep sed mkdir chmod mv rm cat cp)] );
+
+# remoteshell installs host keys under /etc/ssh and root keys under /root/.ssh. The wrapper cases
+# stop at the helper call, but the staged copy points every host path into the case's scratch
+# root all the same.
+my @REMOTESHELL_HOST_PATHS = qw(
+  /etc/os-release /etc/xCATMN /xcatpost/_ssh /root/.ssh /usr/bin/openssl /etc/ssh/ /etc/group
+  /etc/xcat/hostkeys /var/run/sshd /tmp/ssh_ /tmp/ecdsa_key /tmp/ed25519_key /tmp/secure_root_hash
+);
 is( system( 'sh', '-n', $sshd_helper ), 0,
     'the sshd configuration helper has POSIX shell syntax' );
 
@@ -55,20 +66,13 @@ sub run_sshd_helper {
         defined $opt{osver} ? $opt{osver} : '',
         'xcat',
     );
-    my $rc;
-    my $output;
-    {
-        local $ENV{XCAT_SSH_ETC} = $sshdir;
-        local $ENV{XCAT_LOGGER}  = "$root/bin/logger";
-        open(
-            my $pipe,
-            '-|', 'sh', '-c', 'exec "$@" 2>&1', 'sh',
-            $sshd_helper, @args,
-        ) or die "Unable to run $sshd_helper: $!";
-        $output = do { local $/; <$pipe> };
-        close($pipe);
-        $rc = $?;
-    }
+    my ( $rc, $output ) = run_confined(
+        cmd      => [ 'sh', $sshd_helper, @args ],
+        bin      => $helper_bin,
+        env      => { XCAT_SSH_ETC => $sshdir, XCAT_LOGGER => "$root/bin/logger" },
+        writable => [$root],
+        dir      => $root,
+    );
 
     return {
         root        => $root,
@@ -89,39 +93,49 @@ sub read_file {
     return read_text($path);
 }
 
+sub write_executable {
+    my ( $path, $contents ) = @_;
+    write_text( $path, $contents );
+    chmod 0755, $path or die "Unable to make $path executable: $!";
+    return;
+}
+
 sub run_remoteshell_wrapper {
     my (%opt) = @_;
     my $helper_contents = $opt{helper};
     my $root = tempdir(CLEANUP => 1);
-    my $bin = "$root/bin";
-    make_path($bin);
+    my $scripts = "$root/scripts";
+    make_path($scripts);
 
-    for my $name (qw(remoteshell xcatlib.sh)) {
-        my $source = "$postscripts/$name";
-        my $destination = "$bin/$name";
-        copy($source, $destination)
-          or die "Unable to stage $name: $!";
-        chmod 0755, $destination or die "Unable to make $destination executable: $!";
-    }
-    if (defined $helper_contents) {
-        write_text("$bin/remoteshell-sshd-config", $helper_contents);
-        chmod 0755, "$bin/remoteshell-sshd-config"
-          or die "Unable to make staged helper executable: $!";
-    }
-    write_text("$bin/logger", "#!/bin/sh\nprintf '%s\\n' \"\$*\" >>'$root/logger.log'\n");
-    chmod 0755, "$bin/logger" or die "Unable to make logger executable: $!";
+    my $remoteshell = slurp_repo_file('xCAT/postscripts/remoteshell');
+    replace_required( \$remoteshell, $_, "$root$_" ) foreach @REMOTESHELL_HOST_PATHS;
+    assert_no_host_paths(
+        $remoteshell,
+        root     => $root,
+        prefixes => [qw(/etc /var /root /home /boot /opt /srv /install /tftpboot /xcatpost /tmp)],
+        allow    => [qr/^\s*#/],
+    );
+    write_executable( "$scripts/remoteshell", $remoteshell );
+    write_executable( "$scripts/xcatlib.sh", slurp_repo_file('xCAT/postscripts/xcatlib.sh') );
+    write_executable( "$scripts/remoteshell-sshd-config", $helper_contents ) if defined $helper_contents;
 
-    my $status;
-    {
-        local %ENV = (
-            %ENV,
-            PATH     => "$bin:/usr/bin:/bin",
+    my $bin = stub_bin(
+        dir   => "$root/bin",
+        tools => [qw(bash dirname uname tr cat grep)],
+        stubs => { logger => qq{printf '%s\\n' "\$*" >>'$root/logger.log'} },
+    );
+
+    my ( $status ) = run_confined(
+        cmd => [ "$scripts/remoteshell", @{ $opt{args} || [] } ],
+        bin => $bin,
+        env => {
             OSVER    => defined($opt{osver}) ? $opt{osver} : '',
             LOGLABEL => defined($opt{log_label}) ? $opt{log_label} : 'xcat',
-        );
-        $status = system( "$bin/remoteshell", @{ $opt{args} || [] } );
-    }
-    return ($status >> 8, read_file("$root/logger.log"));
+        },
+        writable => [$root],
+        dir      => $root,
+    );
+    return ($status, read_file("$root/logger.log"));
 }
 
 my $ADMIN_POLICY = <<'EOF';
@@ -132,10 +146,7 @@ EOF
 
 my $WITH_INCLUDE = "Include /etc/ssh/sshd_config.d/*.conf\n" . $ADMIN_POLICY;
 
-SKIP: {
-    skip 'the management-node marker bypasses remoteshell setup', 6
-      if -e '/etc/xCATMN';
-
+{
     my ($missing_status, $missing_log) = run_remoteshell_wrapper();
     isnt($missing_status, 0, 'the wrapper fails when its sshd helper is missing');
     like($missing_log, qr/required sshd configuration helper not found/,
