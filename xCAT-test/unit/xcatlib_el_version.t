@@ -2,10 +2,18 @@
 use strict;
 use warnings;
 
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
+
 use File::Spec;
 use File::Temp qw(tempdir);
-use FindBin;
 use Test::More;
+use XCAT::Test::Sandbox qw(stub_bin confined_command);
+
+# The workflows shadow nmcli, grep, sed and uname with shell functions. Anything else they call
+# is looked up in this directory only, so a command the shadows miss is not found on the host.
+my $bin = stub_bin( tools => [qw(bash cat awk cut tr sort head tail wc dirname grep sed)] );
 
 my $xcatlib = File::Spec->catfile(
     $FindBin::Bin, '..', '..', 'xCAT', 'postscripts', 'xcatlib.sh'
@@ -59,20 +67,14 @@ BASH
     open(
         my $output,
         '-|',
-        'bash',
-        '--noprofile',
-        '--norc',
-        '-c',
-        $script,
-        'bash',
-        $xcatlib,
-        $nicutils,
-        $osver,
-        $report_rematch
+        confined_command(
+            cmd => [ 'bash', '--noprofile', '--norc', '-c', $script, 'bash', $xcatlib, $nicutils, $osver, $report_rematch ],
+            bin => $bin,
+        )
     ) or die "Unable to run EL postscript workflow: $!";
 
     my $result = do { local $/; <$output> };
-    close($output) or die "EL postscript workflow failed: $?";
+    close($output) or die "EL postscript workflow failed: $?\n" . ( $result // '' );
     chomp $result;
     return $result;
 }
@@ -117,22 +119,19 @@ trap report_route_path EXIT
 source "$1" noop 192.0.2.0 24 192.0.2.1 eth0
 BASH
 
-    local $ENV{ROUTE_TEST_UNAME} = 'Linux';
-    local $ENV{ROUTE_TEST_UNSET_HELPER} = $stale_library ? 0 : 1;
     open(
         my $output,
         '-|',
-        'bash',
-        '--noprofile',
-        '--norc',
-        '-c',
-        $script,
-        $runner,
-        $routeop
+        confined_command(
+            cmd      => [ 'bash', '--noprofile', '--norc', '-c', $script, $runner, $routeop ],
+            bin      => $bin,
+            env      => { ROUTE_TEST_UNAME => 'Linux', ROUTE_TEST_UNSET_HELPER => $stale_library ? 0 : 1 },
+            writable => [$tempdir],
+        )
     ) or die "Unable to run routeop workflow: $!";
 
     my $result = do { local $/; <$output> };
-    close($output) or die "routeop workflow failed: $?";
+    close($output) or die "routeop workflow failed: $?\n" . ( $result // '' );
     chomp $result;
     return $result;
 }

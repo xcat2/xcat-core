@@ -6,9 +6,13 @@ use File::Path qw(make_path);
 use File::Spec;
 use File::Temp qw(tempdir);
 use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
+
 use IO::Socket::INET;
 use POSIX qw(WNOHANG);
 use Test::More;
+use XCAT::Test::Sandbox qw(stub_bin confined_command);
 
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
 my $network_script = File::Spec->catfile(
@@ -60,16 +64,29 @@ sub read_file {
     return $contents;
 }
 
+# The Genesis scripts run with the fixture directory as their only PATH. They share the host
+# network namespace, because the readiness probe connects to a listener in this process.
+my ( $confined_root, $confined_bin );
+
+sub confined {
+    my ( $environment, @command ) = @_;
+    return confined_command(
+        cmd      => \@command,
+        bin      => $confined_bin,
+        env      => { %{$environment} },
+        writable => [$confined_root],
+        net      => 0,
+    );
+}
+
 sub run_script {
     my ( $script, $environment, @arguments ) = @_;
-    local %ENV = ( %ENV, %{$environment} );
-    return system( '/bin/bash', $script, @arguments ) >> 8;
+    return system( confined( $environment, '/bin/bash', $script, @arguments ) ) >> 8;
 }
 
 sub capture_command {
     my ( $environment, @command ) = @_;
-    local %ENV = ( %ENV, %{$environment} );
-    open( my $fh, '-|', @command ) or die "Unable to run @command: $!";
+    open( my $fh, '-|', confined( $environment, @command ) ) or die "Unable to run @command: $!";
     my $output = do { local $/; <$fh> };
     close($fh);
     return ( $? >> 8, $output );
@@ -77,16 +94,25 @@ sub capture_command {
 
 sub terminate_command {
     my ( $environment, @command ) = @_;
+    my @run = confined( $environment, @command );
+
+    # The signal must reach the script, not the confinement setup that runs before it, so it is
+    # sent once the script has made its first request.
+    my $log = $environment->{XCAT_TEST_LOG};
+    my $logged = -s $log || 0;
     my $pid = fork();
     die "Unable to fork signal test: $!" unless defined($pid);
     if ( $pid == 0 ) {
-        local %ENV = ( %ENV, %{$environment} );
         open( STDOUT, '>', File::Spec->devnull() ) or exit 125;
         open( STDERR, '>', File::Spec->devnull() ) or exit 125;
-        exec @command;
+        exec @run;
         exit 125;
     }
 
+    for ( 1 .. 200 ) {
+        last if ( -s $log || 0 ) > $logged;
+        select( undef, undef, undef, 0.05 );
+    }
     select( undef, undef, undef, 0.2 );
     kill 'TERM', $pid;
     for ( 1 .. 30 ) {
@@ -120,6 +146,15 @@ my $listener_port = $listener->sockport();
 my $listener_pid = fork();
 die "Unable to fork test listener: $!" unless defined($listener_pid);
 if ( $listener_pid == 0 ) {
+    # prove waits for every holder of the test's stdout, and Test::More keeps copies of it on
+    # other descriptors. If the test dies before the probes arrive, this child must not keep
+    # prove waiting.
+    open( STDOUT, '>', File::Spec->devnull() ) or exit 1;
+    open( STDERR, '>', File::Spec->devnull() ) or exit 1;
+    for my $fd ( 3 .. 255 ) {
+        POSIX::close($fd) unless $fd == fileno($listener);
+    }
+    alarm 300;
     for ( 1 .. 4 ) {
         my $client = $listener->accept() or exit 1;
         close($client);
@@ -128,6 +163,11 @@ if ( $listener_pid == 0 ) {
 }
 
 make_path( $bin, $state_dir, $eth0, $eth1 );
+stub_bin(
+    dir   => $bin,
+    tools => [qw(cat sed awk grep cut tr sort head tail wc sleep mkdir rm mv cp chmod date mktemp dirname basename ln tee od install timeout)],
+);
+( $confined_root, $confined_bin ) = ( $root, $bin );
 write_file( File::Spec->catfile( $eth0, 'address' ),
     "52:54:00:00:00:35\n" );
 write_file( File::Spec->catfile( $eth0, 'operstate' ), "up\n" );
@@ -223,7 +263,6 @@ SH
 );
 
 my %environment = (
-    PATH               => "$bin:$ENV{PATH}",
     XCAT_CMDLINE_FILE  => $cmdline,
     XCAT_STATE_DIR     => $state_dir,
     XCAT_STATUS_COMMAND => $status_script,
@@ -641,9 +680,8 @@ like(
 );
 
 {
-    local %ENV = ( %ENV, %environment );
-    is( system( '/bin/sh', $status_script, 'console', 'DEGRADED',
-            "bad\n\tvalue\x01" ) >> 8,
+    is( system( confined( \%environment, '/bin/sh', $status_script, 'console', 'DEGRADED',
+            "bad\n\tvalue\x01" ) ) >> 8,
         0, 'status helper accepts a valid record' );
     like(
         read_file(
@@ -653,9 +691,9 @@ like(
         'status detail is reduced to printable text'
     );
     write_file( $uptime, "130.00 500.00\n" );
-    is( system( '/bin/sh', $status_script, 'console', 'DEGRADED',
+    is( system( confined( \%environment, '/bin/sh', $status_script, 'console', 'DEGRADED',
             'waiting for operator', 'CODE=OPERATOR_WAIT',
-            'RECOVERY=Review diagnostics' ) >> 8,
+            'RECOVERY=Review diagnostics' ) ) >> 8,
         0, 'status helper accepts structured fields' );
     is(
         read_file(
@@ -676,12 +714,12 @@ ENV
       or die "Unable to duplicate stderr: $!";
     open( STDERR, '>', File::Spec->devnull() )
       or die "Unable to redirect stderr: $!";
-    isnt( system( '/bin/sh', $status_script, '../console', 'READY' ) >> 8,
+    isnt( system( confined( \%environment, '/bin/sh', $status_script, '../console', 'READY' ) ) >> 8,
         0, 'status helper rejects an unsafe component' );
-    isnt( system( '/bin/sh', $status_script, 'console', 'UNKNOWN' ) >> 8,
+    isnt( system( confined( \%environment, '/bin/sh', $status_script, 'console', 'UNKNOWN' ) ) >> 8,
         0, 'status helper rejects an unknown state' );
-    isnt( system( '/bin/sh', $status_script, 'console', 'READY', '',
-            'ATTEMPT=invalid' ) >> 8,
+    isnt( system( confined( \%environment, '/bin/sh', $status_script, 'console', 'READY', '',
+            'ATTEMPT=invalid' ) ) >> 8,
         0, 'status helper rejects invalid numeric fields' );
     open( STDERR, '>&', $saved_stderr )
       or die "Unable to restore stderr: $!";

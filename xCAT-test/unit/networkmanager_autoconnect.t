@@ -9,14 +9,15 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use Test::More;
 
-use XCAT::Test::File qw(repo_path slurp_repo_file);
+use XCAT::Test::Source qw(repo_path slurp_repo_file);
+use XCAT::Test::Sandbox qw(stub_bin run_confined);
 
 my $scriptlib = repo_path(
     File::Spec->catfile(
         'xCAT-server', 'share', 'xcat', 'install', 'scripts', 'scriptlib'
     )
 );
--r $scriptlib or BAIL_OUT("$scriptlib is required");
+-r $scriptlib or die "$scriptlib is required\n";
 
 is( system( 'bash', '-n', $scriptlib ), 0,
     'the install script library has valid Bash syntax' );
@@ -25,6 +26,10 @@ my $tmpdir = tempdir( CLEANUP => 1 );
 my $test_bin = File::Spec->catdir( $tmpdir, 'bin' );
 my $empty_bin = File::Spec->catdir( $tmpdir, 'empty-bin' );
 make_path( $test_bin, $empty_bin );
+
+# The fake nmcli is the only network command on PATH; the empty directory stands for a node
+# without NetworkManager.
+stub_bin( dir => $test_bin, tools => [qw(cat grep sed awk cut tr sort head tail wc)] );
 
 my $nmcli_log = File::Spec->catfile( $tmpdir, 'nmcli.log' );
 my $message_log = File::Spec->catfile( $tmpdir, 'messages.log' );
@@ -216,17 +221,20 @@ sub run_program {
     write_file( $nmcli_log, '' );
     write_file( $message_log, '' );
 
-    local %ENV = %ENV;
-    $ENV{PATH} = $has_nmcli ? "$test_bin:$ENV{PATH}" : $empty_bin;
-    $ENV{XCATDEBUGMODE} = $options{debug} // '0';
-    $ENV{MASTER_IP} = '192.0.2.10';
-    $ENV{XCAT_TEST_MESSAGE_LOG} = $message_log;
-    $ENV{XCAT_TEST_NMCLI_LOG} = $nmcli_log;
-    $ENV{XCAT_TEST_NMCLI_OUTPUT} = $options{connections} // '';
-    $ENV{XCAT_TEST_SCRIPTLIB} = $scriptlib;
-
-    my $status = system( '/bin/bash', $program, @{$arguments} );
-    return $status == -1 ? 255 : $status >> 8;
+    my ( $status, $output ) = run_confined(
+        cmd => [ '/bin/bash', $program, @{$arguments} ],
+        bin => $has_nmcli ? $test_bin : $empty_bin,
+        env => {
+            XCATDEBUGMODE          => $options{debug} // '0',
+            MASTER_IP              => '192.0.2.10',
+            XCAT_TEST_MESSAGE_LOG  => $message_log,
+            XCAT_TEST_NMCLI_LOG    => $nmcli_log,
+            XCAT_TEST_NMCLI_OUTPUT => $options{connections} // '',
+            XCAT_TEST_SCRIPTLIB    => $scriptlib,
+        },
+        writable => [$tmpdir],
+    );
+    return $status;
 }
 
 sub stage_rendered_postscript {
@@ -243,7 +251,7 @@ sub stage_rendered_postscript {
     );
     my $include = '#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#';
     $postscript =~ s/^\Q$include\E$/$library/m
-      or BAIL_OUT("Unable to render the scriptlib include in $name");
+      or die "Unable to render the scriptlib include in $name\n";
 
     my $preamble = <<'SH';
 compgen() { return 1; }
@@ -259,7 +267,7 @@ msgutil_r() {
 }
 SH
     $postscript =~ s/\A(#![^\n]*\n)/$1$preamble/
-      or BAIL_OUT("Unable to stage the test preamble in $name");
+      or die "Unable to stage the test preamble in $name\n";
 
     my $destination = File::Spec->catfile( $tmpdir, $name );
     write_file( $destination, $postscript );

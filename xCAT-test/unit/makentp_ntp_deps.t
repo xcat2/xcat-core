@@ -3,8 +3,12 @@ use strict;
 use warnings;
 
 use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
+
 use File::Temp qw(tempdir);
 use Test::More;
+use XCAT::Test::Sandbox qw(stub_bin run_confined);
 
 # A stock Ubuntu MN broke three ways: a missing hwclock aborted the whole NTP setup,
 # systemd-timesyncd kept fighting the daemon being configured, and the xcat package pulled in no
@@ -13,7 +17,7 @@ use Test::More;
 
 my $repo = "$FindBin::Bin/../..";
 my $setupntp_path = "$repo/xCAT/postscripts/setupntp";
-plan skip_all => 'setupntp not found' unless -r $setupntp_path;
+die "setupntp not found\n" unless -r $setupntp_path;
 plan skip_all => 'setupntp targets Linux management nodes' unless $^O eq 'linux';
 
 open(my $fh, '<', $setupntp_path) or die "open $setupntp_path: $!";
@@ -28,10 +32,15 @@ my ($helpers) = $source =~ /\A(.*?)^\[ "\$\{UID\}" -eq "0" \]/ms;
 my ($args)    = $source =~ /^(# Handle command line arguments\n.*?)^if \[ "\$\{#NTP_SERVERS\[@\]\}"/ms;
 my ($select)  = $source =~ /^(# The requested backend is a preference.*?)^if \[ -n "\$\{USE_NTPD\}"/ms;
 my ($body)    = $source =~ /^(check_exec_or_exit cp cat logger grep\n.*?)^CHRONY_CONF=/ms;
-BAIL_OUT('could not take the helper functions from setupntp')          unless $helpers;
-BAIL_OUT('could not take the daemon setup section from setupntp')      unless $body;
-BAIL_OUT('could not take the argument parsing from setupntp')          unless $args;
-BAIL_OUT('could not take the backend selection from setupntp')         unless $select;
+die "could not take the helper functions from setupntp\n"          unless $helpers;
+die "could not take the daemon setup section from setupntp\n"      unless $body;
+die "could not take the argument parsing from setupntp\n"          unless $args;
+die "could not take the backend selection from setupntp\n"         unless $select;
+
+# The shell functions below shadow the commands that change the host. The extracted regions move,
+# and an unstubbed systemctl once disabled timesyncd on the host running the suite, so every other
+# command comes from this directory only.
+my $bin = stub_bin( tools => [qw(bash cp cat grep sed awk cut tr sort head tail mkdir)] );
 
 sub run_setupntp {
     my (%opt) = @_;
@@ -55,11 +64,11 @@ BASH
     $doubles .= "declare -a NTP_SERVERS=(" . ($opt{server} ? qq{"$opt{server}"} : '') . ")\n";
     $doubles .= "log_label=xcat\n";
 
-    my $rc = system('bash', '-c', $doubles . $helpers . $body);
+    my ($rc) = run_confined( cmd => [ 'bash', '-c', $doubles . $helpers . $body ], bin => $bin, writable => [$root] );
 
     my $calls = '';
     if (open my $ch, '<', "$root/calls") { local $/; $calls = <$ch>; close $ch }
-    return { rc => $rc >> 8, calls => $calls };
+    return { rc => $rc, calls => $calls };
 }
 
 # --- a management node with no hwclock: the bug this fix exists for --------
@@ -152,8 +161,11 @@ foreach my $case (
         . "hwclock() { echo \"hwclock \$*\" >>\"$root/calls\"; return 0; }\n"
         . "check_executes() { for c in \"\$@\"; do case \" $missing \" in *\" \$c \"*) return 1;; esac; done; return 0; }\n"
         . "log_label=xcat\nset -- $argv\n";
-    my $out = `bash -c 'exec 2>/dev/null; $prelude$args$select
-printf "USE_NTPD=%s\\n" "\${USE_NTPD:-}"' 2>/dev/null`;
+    my ( undef, $out ) = run_confined(
+        cmd      => [ 'bash', '-c', "exec 2>/dev/null; $prelude$args$select\nprintf \"USE_NTPD=%s\\n\" \"\${USE_NTPD:-}\"\n" ],
+        bin      => $bin,
+        writable => [$root],
+    );
     my $got = ($out =~ /USE_NTPD=yes/) ? 'ntpd' : 'chrony';
     is($got, $want, $name);
 }

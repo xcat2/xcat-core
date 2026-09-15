@@ -11,12 +11,13 @@ use lib "$FindBin::Bin/../lib";
 use Symbol qw(gensym);
 use Test::More;
 
-use XCAT::Test::File qw(repo_path);
+use XCAT::Test::Source qw(repo_path);
+use XCAT::Test::Sandbox qw(stub_bin confined_command run_confined);
 
 my $nicutils = repo_path(
     File::Spec->catfile( 'xCAT', 'postscripts', 'nicutils.sh' )
 );
--r $nicutils or BAIL_OUT("$nicutils is required");
+-r $nicutils or die "$nicutils is required\n";
 
 is( system( 'bash', '-n', $nicutils ), 0,
     'nicutils has valid Bash syntax' );
@@ -24,6 +25,10 @@ is( system( 'bash', '-n', $nicutils ), 0,
 my $tmpdir = tempdir( CLEANUP => 1 );
 my $test_bin = File::Spec->catdir( $tmpdir, 'bin' );
 make_path($test_bin);
+
+# The fake nmcli and ip below are the only network commands on PATH. The bond and bridge callers
+# run nmcli con up and ip link set; with the host PATH, a renamed stub let them reach the host.
+stub_bin( dir => $test_bin, tools => [qw(bash sh cat grep sed awk cut tr sort head tail wc sleep)] );
 
 my $command_log = File::Spec->catfile( $tmpdir, 'commands.log' );
 my $helper_log = File::Spec->catfile( $tmpdir, 'helper.log' );
@@ -282,22 +287,25 @@ sub run_helper
     my ( $helper, $device, %options ) = @_;
     write_file( $command_log, '' );
 
-    local %ENV = %ENV;
-    $ENV{PATH} = "$test_bin:$ENV{PATH}";
-    $ENV{XCAT_TEST_COMMAND_LOG} = $command_log;
-    $ENV{XCAT_TEST_NICUTILS} = $nicutils;
-    $ENV{XCAT_TEST_SCOPE_LOG} = $scope_log;
-    $ENV{XCAT_TEST_NMCLI_ERROR} = $options{error} // '';
-    $ENV{XCAT_TEST_NMCLI_OUTPUT} = $options{output} // '';
-    $ENV{XCAT_TEST_NMCLI_STATUS} = $options{status} // 0;
-    $ENV{XCAT_TEST_NMCLI_NAME_ERROR} = $options{name_error} // '';
-    $ENV{XCAT_TEST_NMCLI_NAME_OUTPUT} = $options{name_output} // '';
-    $ENV{XCAT_TEST_NMCLI_NAME_STATUS} = $options{name_status} // 0;
-    delete $ENV{XCAT_TEST_FORBID_UUID_QUERY};
+    my @command = confined_command(
+        cmd => [ 'bash', $helper_driver, $helper, $device ],
+        bin => $test_bin,
+        env => {
+            XCAT_TEST_COMMAND_LOG      => $command_log,
+            XCAT_TEST_NICUTILS         => $nicutils,
+            XCAT_TEST_SCOPE_LOG        => $scope_log,
+            XCAT_TEST_NMCLI_ERROR      => $options{error} // '',
+            XCAT_TEST_NMCLI_OUTPUT     => $options{output} // '',
+            XCAT_TEST_NMCLI_STATUS     => $options{status} // 0,
+            XCAT_TEST_NMCLI_NAME_ERROR => $options{name_error} // '',
+            XCAT_TEST_NMCLI_NAME_OUTPUT => $options{name_output} // '',
+            XCAT_TEST_NMCLI_NAME_STATUS => $options{name_status} // 0,
+        },
+        writable => [$tmpdir],
+    );
 
     my $stderr = gensym;
-    my $pid = open3( my $stdin, my $stdout, $stderr,
-        '/bin/bash', $helper_driver, $helper, $device );
+    my $pid = open3( my $stdin, my $stdout, $stderr, @command );
     close($stdin) or die "Unable to close helper stdin: $!";
     my $captured_output = do { local $/; <$stdout> };
     my $captured_error = do { local $/; <$stderr> };
@@ -312,17 +320,20 @@ sub run_caller
     write_file( $command_log, '' );
     write_file( $helper_log, '' );
 
-    local %ENV = %ENV;
-    $ENV{PATH} = "$test_bin:$ENV{PATH}";
-    $ENV{XCAT_TEST_COMMAND_LOG} = $command_log;
-    $ENV{XCAT_TEST_HELPER_LOG} = $helper_log;
-    $ENV{XCAT_TEST_NICUTILS} = $nicutils;
-    $ENV{XCAT_TEST_FORBID_UUID_QUERY} = 1;
-    $ENV{XCAT_TEST_NMCLI_NAME_OUTPUT} =
-      "GENERAL.CONNECTION:Wired connection 2\n";
-
-    my $status = system( '/bin/bash', $caller_driver, $scenario );
-    return $status == -1 ? 255 : $status >> 8;
+    my ( $status, $output ) = run_confined(
+        cmd => [ 'bash', $caller_driver, $scenario ],
+        bin => $test_bin,
+        env => {
+            XCAT_TEST_COMMAND_LOG       => $command_log,
+            XCAT_TEST_HELPER_LOG        => $helper_log,
+            XCAT_TEST_NICUTILS          => $nicutils,
+            XCAT_TEST_FORBID_UUID_QUERY => 1,
+            XCAT_TEST_NMCLI_NAME_OUTPUT => "GENERAL.CONNECTION:Wired connection 2\n",
+        },
+        writable => [$tmpdir],
+    );
+    diag($output) if $status;
+    return $status;
 }
 
 sub command_line
