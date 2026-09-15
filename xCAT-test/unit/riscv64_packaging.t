@@ -4,10 +4,11 @@ use warnings;
 
 use FindBin;
 use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(repo_path slurp_repo_file);
+
 use lib "$FindBin::Bin/../../build-utils/lib";
 use Test::More;
 
-use XCAT::Test::File qw(repo_path slurp_repo_file);
 use XCAT::BuildUtils qw(targetarch_from_target);
 
 # riscv64 packaging: the arch-named packages (xCAT, xCATsn) must resolve their
@@ -30,13 +31,17 @@ SKIP: {
     chomp($rpmspec);
     skip 'rpmspec is not installed', 2 unless $rpmspec && -x $rpmspec;
 
+    # Without these, the spec reads Version and Release with cat from the working directory.
     my $spec = repo_path('xCAT/xCAT.spec');
+    chomp( my $version = slurp_repo_file('Version') );
+    chomp( my $release = slurp_repo_file('Release') );
     open( my $requires_fh, '-|',
-        $rpmspec, '-q', '--target', 'riscv64', '--requires', $spec )
-      or BAIL_OUT("unable to run $rpmspec: $!");
+        $rpmspec, '--define', "version $version", '--define', "release $release",
+        '-q', '--target', 'riscv64', '--requires', $spec )
+      or die "unable to run $rpmspec: $!\n";
     my $requires = do { local $/; <$requires_fh> };
     close($requires_fh)
-      or BAIL_OUT("rpmspec failed for $spec with status " . ($? >> 8));
+      or die "rpmspec failed for $spec with status " . ($? >> 8) . "\n";
 
     unlike( $requires, qr/genesis-scripts/, 'a riscv64 build requires no legacy Genesis package' );
     unlike( $requires, qr/\Q%{genesistarch}\E/, 'a riscv64 build leaves no unexpanded architecture macro' );
@@ -74,9 +79,9 @@ open(
     'sh', '-c',
     '. "$1"; printf "%s\n%s\n%s\n" "$XCAT_CORE_RPM_ARCHES" "$XCAT_LOCAL_RPM_ARCHES" "$XCAT_LOCAL_COLLECT_ARCHES"',
     'sh', $architectures,
-) or BAIL_OUT("unable to load $architectures: $!");
+) or die "unable to load $architectures: $!\n";
 my @architecture_sets = <$arch_fh>;
-close($arch_fh) or BAIL_OUT("unable to read architecture data from $architectures");
+close($arch_fh) or die "unable to read architecture data from $architectures\n";
 chomp @architecture_sets;
 
 is(
