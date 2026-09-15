@@ -1,18 +1,13 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(slurp_repo_file);
+
 use Test::More;
 
-my $tmpl_path = defined $ENV{XCATROOT} ? "$ENV{XCATROOT}/share/xcat/install/ubuntu/compute.tmpl" : '';
-$tmpl_path = "xCAT-server/share/xcat/install/ubuntu/compute.tmpl"
-    unless -f $tmpl_path;
-
-plan skip_all => "compute.tmpl not found" unless -f $tmpl_path;
-
-my $tmpl = do { local $/; open my $fh, '<', $tmpl_path or die $!; <$fh> };
-my $template_pm_path = defined $ENV{XCATROOT} ? "$ENV{XCATROOT}/lib/perl/xCAT/Template.pm" : '';
-$template_pm_path = "xCAT-server/lib/perl/xCAT/Template.pm"
-    unless -f $template_pm_path;
+my $tmpl = slurp_repo_file('xCAT-server/share/xcat/install/ubuntu/compute.tmpl');
 
 like($tmpl, qr/^d-i apt-setup\/multiverse boolean false$/m, 'legacy Ubuntu preseed disables multiverse');
 like($tmpl, qr/^d-i apt-setup\/universe boolean false$/m, 'legacy Ubuntu preseed disables universe');
@@ -23,9 +18,8 @@ unlike($tmpl, qr/^d-i apt-setup\/services-select multiselect .*\S/m, 'legacy Ubu
 like($tmpl, qr/sed -i .*security.*updates.*backports.*\/target\/etc\/apt\/sources\.list/s,
     'legacy Ubuntu late command comments disabled apt service suites in the installed target');
 
-SKIP: {
-    skip "Template.pm not found", 3 unless -f $template_pm_path;
-    my $template_pm = do { local $/; open my $fh, '<', $template_pm_path or die $!; <$fh> };
+{
+    my $template_pm = slurp_repo_file('xCAT-server/lib/perl/xCAT/Template.pm');
 
     like($template_pm, qr/\$ENV\{HTTPPORT\} \|\| \$ENV\{httpport\} \|\| '80'/,
         'legacy Ubuntu mirror spec uses the rendered HTTP port for local mirrors');

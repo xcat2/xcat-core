@@ -1,15 +1,13 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(slurp_repo_file);
+
 use Test::More;
 
-my $xnba_path = defined $ENV{XCATROOT} ? "$ENV{XCATROOT}/lib/perl/xCAT_plugin/xnba.pm" : '';
-$xnba_path = "xCAT-server/lib/xcat/plugins/xnba.pm"
-    unless -f $xnba_path;
-
-plan skip_all => "xnba.pm not found" unless -f $xnba_path;
-
-my $src = do { local $/; open my $fh, '<', $xnba_path or die $!; <$fh> };
+my $src = slurp_repo_file('xCAT-server/lib/xcat/plugins/xnba.pm');
 
 # iPXE only treats a standalone ; token as a command separator.
 # A ; embedded inside an argument value (e.g. ds=nocloud-net;s=...)

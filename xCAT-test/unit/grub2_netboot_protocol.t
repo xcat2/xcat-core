@@ -1,15 +1,13 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(slurp_repo_file);
+
 use Test::More;
 
-my $grub2_path = defined $ENV{XCATROOT} ? "$ENV{XCATROOT}/lib/perl/xCAT_plugin/grub2.pm" : '';
-$grub2_path = "xCAT-server/lib/xcat/plugins/grub2.pm"
-    unless -f $grub2_path;
-
-plan skip_all => "grub2.pm not found" unless -f $grub2_path;
-
-my $grub2 = do { local $/; open my $fh, '<', $grub2_path or die $!; <$fh> };
+my $grub2 = slurp_repo_file('xCAT-server/lib/xcat/plugins/grub2.pm');
 
 # pull the real validation pattern out of the plugin so this tests the shipped
 # regex rather than a copy of it

@@ -12,10 +12,12 @@ use strict;
 use warnings;
 
 use FindBin;
-use lib "$FindBin::Bin/../../perl-xCAT";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(slurp_repo_file);
+
 use File::Temp qw(tempdir);
 use Test::More;
+use XCAT::Test::Sandbox qw(replace_required assert_no_host_paths);
 use xCAT::Template;
 
 my $NODE = 'node01';
@@ -90,23 +92,14 @@ for my $case (@cases) {
 }
 
 # ---- rendering: run the template's own late-command and read the netplan it writes --------------
-my $tmpl_path = defined $ENV{XCATROOT}
-    ? "$ENV{XCATROOT}/share/xcat/install/ubuntu/compute.subiquity.tmpl" : '';
-$tmpl_path = 'xCAT-server/share/xcat/install/ubuntu/compute.subiquity.tmpl'
-    unless -f $tmpl_path;
-$tmpl_path = "$FindBin::Bin/../../xCAT-server/share/xcat/install/ubuntu/compute.subiquity.tmpl"
-    unless -f $tmpl_path;
-
-SKIP: {
-    skip 'compute.subiquity.tmpl not found', 4 unless -f $tmpl_path;
-    my $tmpl = do { local $/; open my $fh, '<', $tmpl_path or die $!; <$fh> };
+{
+    my $tmpl = slurp_repo_file('xCAT-server/share/xcat/install/ubuntu/compute.subiquity.tmpl');
 
     # The netplan-writing part of late-commands, verbatim: from the resolved values down to the
     # chmod. Rendering it here is what proves the shell branches on what Perl resolved.
     my ($snippet) = $tmpl =~ /(installnic="#SUBIQUITYINSTALLNIC#".*?fi;)/s;
     ok($snippet, 'the netplan late-command is rendered from the resolved values');
-
-    skip 'netplan late-command not found in the template', 3 unless $snippet;
+    die "the netplan late-command is not in compute.subiquity.tmpl\n" unless $snippet;
     $snippet =~ s/''/'/g;    # undo the YAML single-quote escaping
 
     for my $case (
@@ -118,7 +111,9 @@ SKIP: {
         my $script = $snippet;
         $script =~ s/#SUBIQUITYINSTALLNIC#/$case->{setname}/g;
         $script =~ s/#SUBIQUITYINSTALLMAC#/$case->{mac}/g;
-        $script =~ s{/target/}{$dir/target/}g;
+        replace_required( \$script, '/target/', "$dir/target/" );
+        assert_no_host_paths( $script, root => $dir,
+            prefixes => [qw(/etc /var /root /home /boot /opt /srv /install /tftpboot /xcatpost /tmp /target)] );
         system('sh', '-c', "set -e\n$script") == 0
           or die "netplan late-command failed for $case->{name}\n";
 
