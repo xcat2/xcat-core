@@ -1,65 +1,81 @@
 # xCAT-test/unit
 
 Unit tests. These run against the **source tree only** -- no xCAT installation, no
-running daemons, no management node.
+running daemons, no management node. They are safe to run as a normal user and as root.
 
-They are executed on every pull request by the `xcat_test` GitHub Actions workflow,
-which calls `run_unit_tests()` in `github_action_xcat_test.pl`:
-
-```
-prove -r xCAT-test/unit
-```
-
-You can run exactly the same thing from a clean checkout:
+The `xcat_test` GitHub Actions workflow runs them on every pull request, from a copy of the
+checkout taken before the build:
 
 ```
 cd <xcat-core checkout>
-prove -r xCAT-test/unit
+prove --timer -j4 -r xCAT-test/unit
 ```
 
-## What belongs here
+The same command works on any host that has the Perl modules the xCAT packages depend on. When
+a test dies with `Can't locate Some/Module.pm`, install the package that provides that module.
+As root, `unshare` and `mount` must also be available; see the sandbox section below.
 
-A test belongs in `unit/` when everything it needs is in the checkout: plugin and
-library sources, kickstart/preseed/subiquity templates, postscripts, packaging
-metadata. Such a test asserts on rendered output or module logic and reaches the
-repository root through `FindBin`:
+## The first lines of every test
 
 ```perl
+use strict;
+use warnings;
 use FindBin;
-use lib "$FindBin::Bin/../../perl-xCAT";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(repo_path slurp_repo_file);
 ```
 
-Because of those `FindBin` paths the tests only work from a source tree. The copy
-installed under `/opt/xcat/share/xcat/tools/autotest/unit` is not a substitute --
-`../..` resolves to `/opt/xcat/share/xcat/tools` there and the tests die or silently
-skip. The CI takes a copy of the checkout before the build for this reason; see
-`preserve_source_tree()`.
+xCAT modules set `$::XCATROOT` from `$ENV{XCATROOT}`, or `/opt/xcat`, and put
+`$::XCATROOT/lib/perl` in `@INC` when they compile. On a host with xCAT installed, a test that
+loads one of them without `XCAT::Test::Source` measures the installed product.
+`XCAT::Test::Source`:
+
+- points `XCATROOT`, `XCATCFG` and `TMPDIR` into a scratch directory of the test process;
+- puts the checkout library directories first in `@INC`, removes `/opt/xcat`, and loads
+  `xCAT_plugin::`, `xCAT_monitoring::`, `xCAT_schema::` and `Confluent::` from the checkout
+  only;
+- fails the test at exit when a module came from `/opt/xcat` or from outside the checkout.
+
+Do not add `use lib` lines for `perl-xCAT` or `xCAT-server/lib/perl`, and do not set
+`XCATROOT` or `XCATCFG` in a test. Use `repo_path` and `slurp_repo_file` for checkout files, and
+`perl_command` to start a child perl.
+
+`unit_suite_policy.t` checks every test file for three rules: `XCAT::Test::Source` is the first
+module loaded, no test calls `BAIL_OUT`, and no test skips because a checkout file is missing.
+
+## Running product code without reaching the host
+
+A sandbox made of path rewrites and command stubs fails open: when a rewrite stops matching,
+or the product calls a command the test did not stub, the code acts on the host. Use
+`XCAT::Test::Sandbox`, which fails closed:
+
+- `replace_required` dies when the string to rewrite does not occur;
+- `assert_no_host_paths` dies when a staged script still names a host path;
+- `stub_bin` builds a directory of stubs and allowed tools, and `run_confined` or
+  `confined_command` runs a command with that directory as its only `PATH` and an empty
+  environment. As root, the command also runs in private mount and network namespaces with host
+  directories read-only, and a host without namespaces fails the test;
+- `confine_self` runs a test that calls product Perl in process again inside those namespaces,
+  as root.
+
+Use a TEST-NET-1 address (`192.0.2.0/24`) for any server a test names.
+
+## Fail, do not skip
+
+A missing checkout file, an extraction that no longer matches, and a module the checkout needs
+that does not load all mean the test covers nothing. Die in those cases. `die` fails only its
+own file; `BAIL_OUT` stops every test file after it.
+
+Skip only when the host lacks an optional tool the test uses, such as `rpmspec` or `netplan`,
+or when the test needs input that is not in the checkout, such as installation media.
 
 ## What does not belong here
 
-Anything that needs an installed xCAT, a populated `/install`, a real service binary
-or a live daemon. Those go in [`../integration`](../integration/README.md) and run on
-a management node through `xcattest`. Both suites run on every pull request -- the
-workflow installs xCAT on the runner and then runs the `ci_test` cases against it --
-so putting a test in `integration/` does not cost it CI coverage. What differs is what
-each suite is allowed to depend on, and that unit tests also run standalone from a
-bare checkout with no xCAT at all.
+Anything that needs an installed xCAT, a populated `/install`, a real service binary or a live
+daemon. Those go in [`../integration`](../integration/README.md) and run on a management node
+through `xcattest`. Both suites run on every pull request. Unit tests are never run from the
+installed tree.
 
-Shell-script unit tests belong in [`../bats`](../bats/README.md)
-and run with BATS. Do not add Perl `.t` tests that grep shell source when the
-behavior can be exercised by sourcing a shell library or script and shadowing the
-external commands it calls.
-
-The distinction matters because a test that needs an absent environment does not fail
--- it calls `plan skip_all` and reports as skipped. A handful of those in a suite of
-several hundred assertions is easy to stop reading. Keeping the two kinds in separate
-directories means a skip in `unit/` is a real signal rather than routine noise.
-
-Guarding on a *source* file, on the other hand, is fine and common here:
-
-```perl
-plan skip_all => "compute.subiquity.tmpl not found" unless -f $tmpl_path;
-```
-
-That guard never fires when the tree is intact.
+Shell-script unit tests belong in [`../bats`](../bats/README.md) and run with BATS. Do not add
+Perl `.t` tests that grep shell source when the behavior can be exercised by sourcing a shell
+library or script and shadowing the external commands it calls.
