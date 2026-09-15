@@ -2,10 +2,16 @@
 use strict;
 use warnings;
 
-use File::Temp qw(tempdir);
 use FindBin;
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
-use lib "$FindBin::Bin/../../perl-xCAT";
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
+use XCAT::Test::Sandbox qw(confine_self);
+
+# The NFS setup routines run in this process. As root, the test runs again with the host
+# directories read-only, so an unstubbed path cannot change /etc/exports.
+BEGIN { confine_self() }
+
+use File::Temp qw(tempdir);
 use Test::More;
 
 use xCAT::SvrUtils;
@@ -175,6 +181,7 @@ sub exercise_workflow {
         my @args = @_;
         shift @args if @args && $args[0] eq 'xCAT::Utils';
         my ($command) = @args;
+        known_command($command);
         push @commands, $command;
         push @command_args, [@args];
 
@@ -252,6 +259,7 @@ sub exercise_remote_export {
         my @args = @_;
         shift @args if @args && $args[0] eq 'xCAT::Utils';
         my ($command) = @args;
+        known_command($command);
         push @commands, $command;
         push @command_args, [@args];
         return ("node1: nfs-server:$directory")
@@ -304,6 +312,7 @@ sub exercise_multiple_tree_uris {
         my @args = @_;
         shift @args if @args && $args[0] eq 'xCAT::Utils';
         my ($command) = @args;
+        known_command($command);
         push @command_args, [@args];
         if ( $command eq 'XCATBYPASS=Y litetree node1' ) {
             return (
@@ -331,6 +340,15 @@ sub exercise_multiple_tree_uris {
         messages         => \@messages,
         remote_directory => $remote_directory,
     };
+}
+
+# The runcmd stubs answer these commands only. Any other command would have reached the host
+# before, so it stops the test.
+sub known_command {
+    my ($command) = @_;
+    return
+      if $command =~ m{\A(?:XCATBYPASS=Y litetree \S+|showmount -e \S+|/usr/sbin/exportfs \S+ -o \S+|/usr/sbin/exportfs -r|echo "[^"]*" ?>> ?/etc/exports)\z};
+    die "runcmd stub: unexpected command: $command\n";
 }
 
 sub invoke_caller {

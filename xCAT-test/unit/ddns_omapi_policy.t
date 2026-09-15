@@ -3,25 +3,19 @@ use strict;
 use warnings;
 
 use FindBin;
-use lib "$FindBin::Bin/../../xCAT-server/lib";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
-use lib "$FindBin::Bin/../../perl-xCAT";
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(repo_path);
+use XCAT::Test::Sandbox qw(confine_self);
+
+# ensure_ddns_key_file writes /etc/xcat/ddns.key in this process whenever the context holds a
+# key. As root, the test runs again with the host directories read-only.
+BEGIN { confine_self() }
 
 use File::Temp qw(tempfile);
 use Test::More;
 
-$ENV{XCATCFG}  ||= 'SQLite:/tmp';
-$ENV{XCATROOT} ||= "$FindBin::Bin/../../xCAT-server";
-
-my $ddns_plugin_path =
-  "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/ddns.pm";
-if ( -f $ddns_plugin_path ) {
-    require $ddns_plugin_path;
-}
-else {
-    require xCAT_plugin::ddns;
-    $ddns_plugin_path = $INC{'xCAT_plugin/ddns.pm'};
-}
+my $ddns_plugin_path = repo_path('xCAT-server/lib/xcat/plugins/ddns.pm');
+require $ddns_plugin_path;
 
 sub omapi_settings {
     my (%overrides) = @_;

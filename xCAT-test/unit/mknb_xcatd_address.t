@@ -5,12 +5,11 @@ use warnings;
 
 use FindBin;
 use lib "$FindBin::Bin/../lib";
-use lib "$FindBin::Bin/../../perl-xCAT";
+use XCAT::Test::Source qw(repo_path);
 use File::Slurper qw(write_text);
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
 use Test::More;
-use XCAT::Test::File qw(repo_path);
 use xCAT::DHCP::BootPolicy;
 
 BEGIN {
