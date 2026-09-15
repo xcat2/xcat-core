@@ -338,6 +338,41 @@ my $rescanwritepipe;
 my $rescanrselect;
 my $rescanrequest = "rescanplugins";
 
+# The install monitor gives each connection its own child, so a slow request from one node does
+# not hold up the others. %installm_kids maps a live child to the node it serves.
+#
+# Requests for one node still must not overlap: 'nodeset next' and 'installstatus' write the
+# same chain row. %installm_gate holds, per node, the read end of a pipe whose write end only
+# the newest child for that node has. The next child for the same node reads that pipe to end
+# of file first, and so starts only when its predecessor has exited.
+my %installm_kids;
+my %installm_gate;
+my %installm_gate_owner;
+my $installm_maxkids = 64;
+
+# Account for finished children. With $block set, wait for one to finish first.
+sub reap_installm_kids {
+    my ($block) = @_;
+
+    my $pid = waitpid(-1, $block ? 0 : WNOHANG);
+    while ($pid > 0) {
+        my $node = delete $installm_kids{$pid};
+        if (defined $node and ($installm_gate_owner{$node} || 0) == $pid) {
+            close($installm_gate{$node});
+            delete $installm_gate{$node};
+            delete $installm_gate_owner{$node};
+        }
+        $pid = waitpid(-1, WNOHANG);
+    }
+    if ($pid < 0) {    # no children at all, so no gate can still be held
+        %installm_kids = ();
+        close($_) for values %installm_gate;
+        %installm_gate       = ();
+        %installm_gate_owner = ();
+    }
+    return;
+}
+
 sub do_installm_service {
     unless ($sport) { return; }
 
@@ -346,6 +381,7 @@ sub do_installm_service {
     my $installpidfile;
     my $retry = 1;
     $SIG{TERM} = $SIG{INT} = 'DEFAULT';
+    $SIG{CHLD} = 'DEFAULT';    # the monitor accounts for its own children
     $SIG{USR2} = sub {
         if ($socket) { # do not mess with pid file except when we still have the socket.
             unlink("/var/run/xcat/installservice.pid"); close($socket); $quit = 1;
@@ -486,6 +522,52 @@ sub do_installm_service {
             sleep 0.01;
             next;
         }
+        # A thousand nodes netbooting must not become a thousand children. Anything over the
+        # limit waits in the listen backlog, where an unaccepted connection costs nothing.
+        reap_installm_kids(0);
+        while (scalar(keys %installm_kids) >= $installm_maxkids) {
+            reap_installm_kids(1);
+        }
+
+        my $predecessor = delete $installm_gate{$node};
+        my ($gate_read, $gate_write);
+        unless (pipe($gate_read, $gate_write)) {
+            xCAT::MsgUtils->trace(0, "E", "xcatd: install monitor cannot order requests for $node: $!");
+            undef $gate_read;
+            undef $gate_write;
+        }
+
+        my $handler = xCAT::Utils->xfork();
+        if ($handler) {
+            $installm_kids{$handler} = $node;
+            if ($gate_read) {
+                $installm_gate{$node}       = $gate_read;
+                $installm_gate_owner{$node} = $handler;
+            }
+            close($gate_write)  if $gate_write;
+            close($predecessor) if $predecessor;
+            close($conn);
+            next;
+        }
+        if (defined $handler) {
+            # This child answers one node and exits. It must not hold the listening socket, and
+            # USR2 belongs to the process that owns the pid file. It keeps $gate_write, which
+            # closes when it exits and so releases the next request for the same node.
+            $SIG{USR2} = 'DEFAULT';
+            close($socket);
+            close($gate_read) if $gate_read;
+            if ($predecessor) {
+                my $ignored;
+                sysread($predecessor, $ignored, 1);    # end of file when the last child exits
+                close($predecessor);
+            }
+        } else {
+            xCAT::MsgUtils->trace(0, "W", "xcatd: install monitor cannot fork, serving $node in line");
+            close($gate_read)   if $gate_read;
+            close($gate_write)  if $gate_write;
+            close($predecessor) if $predecessor;
+        }
+
         my $tftpdir = xCAT::TableUtils->getTftpDir();
         eval {
             alarm(2);
@@ -632,7 +714,7 @@ sub do_installm_service {
                 close($conn);
             }
         }
-
+        xexit(0) if (defined $handler);
     }
     if (open($installpidfile, "<", "/var/run/xcat/installservice.pid")) {
         my $pid = <$installpidfile>;
