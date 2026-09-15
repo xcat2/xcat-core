@@ -507,8 +507,8 @@ if ($::INITIALINSTALL || $::FORCE)
             xCAT::Utils->enableservice("dhcp");
         }
 
-        # Turn off selinux on RedHat
-        if (-f "/etc/redhat-release")
+        # Disable SELinux on RPM-based management nodes.
+        if (-f "/etc/redhat-release" || -f "/etc/openEuler-release")
         {
             my $rc = xCAT::Utils->isSELINUX();
 
