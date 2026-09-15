@@ -13,27 +13,27 @@ use Test::More;
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
 my $network_script = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-network-state)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-network-state)
 );
 my $network_refresh_script = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-network-refresh)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-network-refresh)
 );
 my $register_script = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-register)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-register)
 );
 my $status_script = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-status)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-status)
 );
 my $maintenance_shell_script = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-maintenance-shell)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-maintenance-shell)
 );
 my $functions_file = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-functions)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-functions)
 );
 my $getdestiny_script = File::Spec->catfile(
     $repo_root,

@@ -11,14 +11,14 @@ use Test::More;
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
 my $qeth_dir = File::Spec->catdir(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-connectivity xcat-genesis-qeth)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-connectivity xcat-genesis-qeth)
 );
 my $qeth_script = File::Spec->catfile( $qeth_dir, qw(files genesis-qeth) );
 my $qeth_service = File::Spec->catfile( $qeth_dir, qw(files xcat-genesis-qeth.service) );
 my $qeth_recipe = File::Spec->catfile( $qeth_dir, 'xcat-genesis-qeth_1.0.bb' );
 my $s390_tools_recipe = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-support s390-tools
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-support s390-tools
       s390-tools-znetconf_2.41.0.bb)
 );
 

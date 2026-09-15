@@ -11,19 +11,19 @@ use Test::More;
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
 my $recipe = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-xcat xcat-genesis-bmcsetup xcat-genesis-bmcsetup_1.0.bb)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-xcat xcat-genesis-bmcsetup xcat-genesis-bmcsetup_1.0.bb)
 );
 my $wrapper = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-xcat xcat-genesis-bmcsetup files genesis-bmcsetup)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-xcat xcat-genesis-bmcsetup files genesis-bmcsetup)
 );
 my $credential_wait = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-xcat xcat-genesis-bmcsetup files genesis-credential-wait)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-xcat xcat-genesis-bmcsetup files genesis-credential-wait)
 );
 my $image_recipe = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core images xcat-genesis-image.bb)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core images xcat-genesis-image.bb)
 );
 my $legacy_dir = File::Spec->catdir(
     $repo_root, qw(xCAT-genesis-scripts usr bin)

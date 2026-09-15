@@ -204,7 +204,7 @@ GO_XCAT_INSTALL_LIST=(perl-xcat xcat-client xcat xcat-buildkit
 	xcat-genesis-base-amd64 xcat-genesis-base-ppc64el xnba-undi)
 # The package list of all the packages should be uninstalled
 GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
-	goconserver xCAT-SoftLayer xCAT-confluent xCAT-csm xCAT-genesis-builder
+	goconserver xCAT-SoftLayer xCAT-confluent xCAT-csm
 	xCAT-genesis-openembedded-x86 xCAT-genesis-openembedded-x86_64
 	xCAT-genesis-openembedded-ppc64 xCAT-genesis-openembedded-ppc64le
 	xCAT-genesis-openembedded-armv7hf xCAT-genesis-openembedded-aarch64
