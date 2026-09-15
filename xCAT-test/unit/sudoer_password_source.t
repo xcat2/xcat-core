@@ -2,16 +2,18 @@
 use strict;
 use warnings;
 
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(slurp_repo_file);
+
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
-use FindBin;
 use Test::More;
+use XCAT::Test::Sandbox qw(replace_required assert_no_host_paths stub_bin run_confined);
 
-my $script = "$FindBin::Bin/../../xCAT/postscripts/sudoer";
-plan skip_all => 'sudoer postscript not found' unless -r $script;
 plan skip_all => 'postscript targets Linux nodes' unless $^O eq 'linux';
 
-my $source = read_file($script);
+my $source = slurp_repo_file('xCAT/postscripts/sudoer');
 
 sub field_reply {
     my ($field) = @_;
@@ -55,7 +57,7 @@ sub managed_for {
 sub scratch_tree {
     my (%opt) = @_;
     my $root = tempdir(CLEANUP => 1);
-    make_path("$root/bin", "$root/etc", "$root/xcatpost/hostkeys");
+    make_path("$root/etc", "$root/xcatpost/hostkeys");
 
     my $passwd = '';
     foreach my $account (@{ $opt{accounts} || [] }) {
@@ -64,22 +66,24 @@ sub scratch_tree {
         $passwd .= "$name:x:$uid:100::$root/home/$name:$shell\n";
     }
     write_file("$root/etc/passwd", $passwd);
-    write_stub("$root/bin/useradd",
-        "echo \"useradd \$*\" >> '$root/calls'\n"
-      . ($opt{useradd_fails} ? "exit 1\n"
-          : "name=\$2; mkdir -p '$root/home/'\$name\n"
-          . "echo \"\$name:x:1001:100::$root/home/\$name:/bin/bash\" >> '$root/etc/passwd'\n"));
-    write_stub("$root/bin/usermod",
-        "echo \"usermod \$*\" >> '$root/calls'\n" . ($opt{usermod_fails} ? "exit 1\n" : ''));
-    write_stub("$root/bin/getent",
-        "awk -F: -v n=\"\$2\" '\$1 == n' '$root/etc/passwd'\n");
-    write_stub("$root/bin/visudo",
-        "echo \"visudo \$*\" >> '$root/calls'\n" . ($opt{visudo_rejects} ? "exit 1\n" : ''));
-    write_stub("$root/bin/getcredentials.awk",
-        "echo \"getcredentials \$*\" >> '$root/calls'\ncat '$root/reply.xml'\n");
-    write_stub("$root/bin/allowcred.awk", "sleep 30\n");
-    write_stub("$root/bin/logger", "echo \"\$*\" >> '$root/log'\n");
-    write_stub("$root/bin/chown", "exit 0\n");
+    # sudoer names useradd and usermod by absolute path; the staged copy calls these stubs.
+    stub_bin(
+        dir   => "$root/bin",
+        tools => [qw(bash sh grep sed awk cut rm mktemp chmod mv cat tr uname sleep mkdir touch dirname)],
+        stubs => {
+            useradd => "echo \"useradd \$*\" >> '$root/calls'\n"
+              . ( $opt{useradd_fails} ? "exit 1\n"
+                : "name=\$2; mkdir -p '$root/home/'\$name\n"
+                . "echo \"\$name:x:1001:100::$root/home/\$name:/bin/bash\" >> '$root/etc/passwd'\n" ),
+            usermod => "echo \"usermod \$*\" >> '$root/calls'\n" . ( $opt{usermod_fails} ? "exit 1\n" : '' ),
+            getent  => "awk -F: -v n=\"\$2\" '\$1 == n' '$root/etc/passwd'\n",
+            visudo  => "echo \"visudo \$*\" >> '$root/calls'\n" . ( $opt{visudo_rejects} ? "exit 1\n" : '' ),
+            'getcredentials.awk' => "echo \"getcredentials \$*\" >> '$root/calls'\ncat '$root/reply.xml'\n",
+            'allowcred.awk'      => "sleep 30\n",
+            logger               => "echo \"\$*\" >> '$root/log'\n",
+            chown                => "exit 0\n",
+        },
+    );
     write_file("$root/xcatlib.sh", "restartservice(){ :; }\n");
     write_file("$root/etc/redhat-release", "stub\n");
     write_file("$root/etc/login.defs", "UID_MIN 1000\nUID_MAX 60000\n");
@@ -95,12 +99,14 @@ sub scratch_tree {
     write_file("$root/etc/sudoers", $sudoers);
 
     my $src = $source;
-    $src =~ s{/usr/sbin/(useradd|usermod)}{$root/bin/$1}g;
-    $src =~ s{/etc/sudoers\.d}{$root/etc/sudoers.d}g;
-    $src =~ s{ /etc/sudoers\b}{ $root/etc/sudoers}g;
-    $src =~ s{/etc/redhat-release}{$root/etc/redhat-release}g;
-    $src =~ s{/etc/login\.defs}{$root/etc/login.defs}g;
-    $src =~ s{/xcatpost/hostkeys}{$root/xcatpost/hostkeys}g;
+    replace_required( \$src, '/usr/sbin/useradd',   "$root/bin/useradd" );
+    replace_required( \$src, '/usr/sbin/usermod',   "$root/bin/usermod" );
+    # Also rewrites /etc/sudoers.d and the mktemp templates next to /etc/sudoers.
+    replace_required( \$src, '/etc/sudoers',        "$root/etc/sudoers" );
+    replace_required( \$src, '/etc/redhat-release', "$root/etc/redhat-release" );
+    replace_required( \$src, '/etc/login.defs',     "$root/etc/login.defs" );
+    replace_required( \$src, '/xcatpost/',          "$root/xcatpost/" );
+    assert_no_host_paths( $src, root => $root, allow => [qr/^\s*#/] );
     write_file("$root/sudoer", $src);
     chmod 0755, "$root/sudoer";
     return $root;
@@ -116,9 +122,14 @@ sub run_sudoer {
     write_file("$root/reply.xml", defined $opt{reply} ? $opt{reply} : '');
     unlink "$root/calls", "$root/log";
 
-    system(qq{cd '$root' && MASTER='10.0.0.1' XCATSERVER='10.0.0.1:3001' }
-         . qq{PATH="$root/bin:\$PATH" ./sudoer $args >/dev/null 2>&1});
-    my $rc = $? >> 8;
+    # MASTER is TEST-NET-1: a stub that stops answering must not reach a real xcatd.
+    my ($rc) = run_confined(
+        cmd      => [ 'sh', '-c', "./sudoer $args" ],
+        bin      => "$root/bin",
+        env      => { MASTER => '192.0.2.1', XCATSERVER => '192.0.2.1:3001' },
+        writable => [$root],
+        dir      => $root,
+    );
 
     return {
         root            => $root,
@@ -177,7 +188,7 @@ sub leftovers {
     is((stat "$r->{root}$managed")[2] & 07777, 0440, 'the managed file is mode 0440');
     like($r->{calls}, qr{^visudo -cf }m, 'the managed file is checked with visudo before it is installed');
     is(leftovers($r->{root}), '', 'no temporary sudoers file is left behind');
-    unlike($r->{sudoers}, qr{xcat}, '/etc/sudoers itself is not touched');
+    unlike($r->{sudoers}, qr{^(?:xcat |Defaults:xcat)}m, '/etc/sudoers itself is not touched');
     like($r->{authorized_keys}, qr{^ssh-rsa RSAKEY$}m, 'the RSA host key is installed');
     like($r->{authorized_keys}, qr{^ssh-dss DSAKEY$}m, 'the DSA host key is installed');
     like($r->{log}, qr{xcat has no password in the passwd table}, 'the locked account is logged');
@@ -231,7 +242,7 @@ sub leftovers {
     my $r = run_sudoer(root => $root, reply => $hash_reply);
 
     is($r->{rc}, 0, 'the postscript completes on a node set up by the previous version');
-    unlike($r->{sudoers}, qr{xcat}, 'the legacy lines are gone from /etc/sudoers');
+    unlike($r->{sudoers}, qr{^(?:xcat |Defaults:xcat)}m, 'the legacy lines are gone from /etc/sudoers');
     like($r->{sudoers}, qr{^root ALL=\(ALL\) ALL$}m, 'the other lines of /etc/sudoers stay');
     like($r->{sudoers}, qr{^#includedir }m, 'the includedir line stays');
     is((stat "$r->{root}/etc/sudoers")[2] & 07777, 0440, '/etc/sudoers is mode 0440 after the migration');
@@ -249,7 +260,7 @@ sub leftovers {
     my $r = run_sudoer(root => $root, user => 'ops', args => '-u ops', reply => $hash_reply);
 
     is($r->{rc}, 0, 'a rename on a node set up by the previous version completes');
-    unlike($r->{sudoers}, qr{xcat}, 'the legacy lines are gone after the rename');
+    unlike($r->{sudoers}, qr{^(?:xcat |Defaults:xcat)}m, 'the legacy lines are gone after the rename');
     like($r->{calls}, qr{^usermod -p ! xcat$}m, 'the legacy xcat account is locked when the sudoer is renamed');
     is(read_file("$root/home/xcat/.ssh/authorized_keys"), '', 'the cluster keys are removed from the legacy account');
     is($r->{managed}, managed_for('ops'), 'the managed file names the new sudoer');
@@ -324,7 +335,7 @@ sub leftovers {
     unlike($r->{calls}, qr{^usermod}m, 'the password is left unchanged without a reply');
     is($r->{managed}, '', 'no sudo rule is granted without a reply');
     is($r->{authorized_keys}, '', 'no key is installed without a reply');
-    like($r->{log}, qr{no password for xcat, leaving the account unprivileged: no reply from 10\.0\.0\.1},
+    like($r->{log}, qr{no password for xcat, leaving the account unprivileged: no reply from 192\.0\.2\.1},
         'the missing reply is logged');
 }
 {
