@@ -8,6 +8,7 @@ use XCAT::Test::Source;
 
 use File::Temp qw(tempdir);
 use Test::More;
+use XCAT::Test::Sandbox qw(stub_bin);
 
 require probe_utils;
 
@@ -30,6 +31,8 @@ sub read_file {
 }
 
 my $fake_bin = tempdir(CLEANUP => 1);
+# The fake netplan is a perl script started through env, so perl is the one host tool on PATH.
+stub_bin( dir => $fake_bin, tools => [qw(perl)] );
 my $argv_file = "$fake_bin/argv";
 my $fake_netplan = "$fake_bin/netplan";
 
@@ -68,7 +71,7 @@ if ($mode eq 'multiple-lines') {
 EOF
 chmod oct('755'), $fake_netplan;
 
-local $ENV{PATH} = "$fake_bin:$ENV{PATH}";
+local $ENV{PATH} = $fake_bin;
 local $ENV{XCAT_TEST_NETPLAN_ARGV} = $argv_file;
 
 {

@@ -12,6 +12,7 @@ use IO::Select;
 use IPC::Open3;
 use Symbol qw(gensym);
 use Test::More;
+use XCAT::Test::Sandbox qw(stub_bin confined_command);
 
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
 my $discovery_dir = File::Spec->catdir(
@@ -54,26 +55,39 @@ sub read_file {
     return $contents;
 }
 
+# The discovery scripts run with the fixture bin directory as their only PATH and the listed
+# variables as their only environment. XCAT_SYS_ROOT is the scratch root they may write.
+sub confined_script {
+    my ( $script, $environment ) = @_;
+    my %environment = %{$environment};
+    my $bin = delete $environment{XCAT_TEST_BIN} or die "confined_script: XCAT_TEST_BIN is required\n";
+    return confined_command(
+        cmd      => [ '/bin/bash', $script ],
+        bin      => $bin,
+        env      => \%environment,
+        writable => [ $environment{XCAT_SYS_ROOT} ],
+    );
+}
+
 sub run_script {
     my ( $script, $environment, $input ) = @_;
-    local %ENV = ( %ENV, %{$environment} );
+    my @command = confined_script( $script, $environment );
     if ( defined($input) ) {
-        open( my $pipe, '|-', '/bin/bash', $script )
+        open( my $pipe, '|-', @command )
           or die "Unable to run $script: $!";
         print {$pipe} $input;
         close($pipe);
         return $? >> 8;
     }
-    return system( '/bin/bash', $script ) >> 8;
+    return system(@command) >> 8;
 }
 
 sub read_callback_before_eof {
     my ( $script, $environment, $input ) = @_;
-    local %ENV = ( %ENV, %{$environment} );
     my ( $child_in, $child_out );
     my $child_err = gensym;
     my $pid = open3( $child_in, $child_out, $child_err,
-        '/bin/bash', $script );
+        confined_script( $script, $environment ) );
     print {$child_in} $input;
     my $ready = IO::Select->new($child_out)->can_read(2);
     my $response = $ready ? <$child_out> : undef;
@@ -104,6 +118,8 @@ my $uptime = File::Spec->catfile( $root, 'uptime' );
 make_path( $bin, $state_dir, $key_dir, $proc_root, $dmi_dir,
     File::Spec->catdir( $eth0, 'device' ), $driver,
     File::Spec->catdir( $root, 'dev' ) );
+# The fakes written below replace these wrappers; any other command is not found.
+stub_bin( dir => $bin, tools => [qw(bash sh cat grep sed awk cut tr sort uniq head tail wc ls basename dirname mkdir rm mv cp touch date sleep xargs expr env readlink gzip od install mktemp chmod ln tee cmp stat)] );
 symlink( $driver, File::Spec->catfile( $eth0, 'device', 'driver' ) )
   or die "Unable to create driver link: $!";
 write_file( File::Spec->catfile( $eth0, 'address' ),
@@ -253,7 +269,7 @@ printf 'network-refresh %s\n' "$1" >>"$XCAT_TEST_LOG"
 SH
 
 my %environment = (
-    PATH                         => "$bin:$ENV{PATH}",
+    XCAT_TEST_BIN                => $bin,
     XCAT_DISCOVERY_ATTEMPTS      => 1,
     XCAT_DISCOVERY_RESPONSE_FILE => $response_file,
     XCAT_DISCOVERY_RETRY_SECONDS => 1,

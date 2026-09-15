@@ -12,6 +12,7 @@ use File::Temp qw(tempdir);
 use Test::More;
 
 use XCAT::Test::File qw(repo_path);
+use XCAT::Test::Sandbox qw(stub_bin run_confined);
 
 my $library = repo_path('xCAT/postscripts/xcatpkgutils.sh');
 my $loader  = repo_path('xCAT/postscripts/xcatpkgutils-loader.sh');
@@ -83,6 +84,8 @@ sub caller_repository_paths {
     my $bindir = File::Spec->catdir( $tmpdir, 'bin' );
     my $trace = File::Spec->catfile( $tmpdir, 'repository-paths.trace' );
     make_path($bindir);
+    # The mount and uname fakes written below replace their wrappers; any other command is not found.
+    stub_bin( dir => $bindir, tools => [qw(bash sh cat grep sed awk cut tr sort uniq head tail wc ls basename dirname mkdir rm mv cp touch date sleep xargs expr env readlink gzip od install mktemp chmod ln tee cmp stat)] );
 
     my $mount = File::Spec->catfile( $bindir, 'mount' );
     write_fixture( $mount, "#!/bin/sh\nexit 1\n" );
@@ -125,33 +128,26 @@ logger()
 SH
     );
 
-    local %ENV = %ENV;
-    delete @ENV{
-        qw(HTTPPORT KERNELDIR MASTER NODESETSTATE OTHERPKGDIR OSPKGDIR VERBOSE)
-    };
-    $ENV{ARCH} = 'x86_64';
-    $ENV{BASH_ENV} = $bash_env;
-    $ENV{INSTALLDIR} = 'INSTALLDIR';
-    $ENV{NFSSERVER} = 'package-test-server';
-    $ENV{OSVER} = $osver;
-    $ENV{PATH} = "$bindir:$ENV{PATH}";
-    $ENV{UPDATENODE} = 1;
-    $ENV{XCAT_REPOSITORY_PATH_TRACE} = $trace;
-    if ( $caller eq 'ospkgs' ) {
-        $ENV{OSPKGS} = 'package-test';
-        delete @ENV{qw(OTHERPKGS OTHERPKGS_INDEX)};
-    } else {
-        $ENV{OTHERPKGS_INDEX} = 1;
-        delete @ENV{qw(OSPKGS)};
-    }
+    # The caller sees only these variables, so no HTTPPORT, MASTER or OSPKGDIR from the host.
+    my %environment = (
+        ARCH                       => 'x86_64',
+        BASH_ENV                   => $bash_env,
+        INSTALLDIR                 => 'INSTALLDIR',
+        NFSSERVER                  => 'package-test-server',
+        OSVER                      => $osver,
+        UPDATENODE                 => 1,
+        XCAT_REPOSITORY_PATH_TRACE => $trace,
+        ( $caller eq 'ospkgs' ? ( OSPKGS => 'package-test' ) : ( OTHERPKGS_INDEX => 1 ) ),
+    );
 
     my $script = File::Spec->catfile( $tmpdir, $caller );
-    my $status = system($script);
-    die "Unable to execute $script: $!" if $status == -1;
-    die "$script terminated by signal " . ( $status & 127 )
-      if $status & 127;
-    die "$script exited unexpectedly with " . ( $status >> 8 )
-      unless ( $status >> 8 ) == 73;
+    my ( $status, $output ) = run_confined(
+        cmd      => [$script],
+        bin      => $bindir,
+        env      => \%environment,
+        writable => [$tmpdir],
+    );
+    die "$script exited unexpectedly with $status:\n$output" unless $status == 73;
 
     my $contents = read_fixture($trace);
     chomp($contents);
