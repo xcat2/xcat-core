@@ -77,7 +77,8 @@ for my $pkg (@packages) {
         qr{
             ^%if \s+ 0%\{\?fedora\} \s* \|\| \s*
                      0%\{\?rhel\} \s* >= \s* 7 \s* \|\| \s*
-                     0%\{\?suse_version\} \s* >= \s* 1200 \s* $ \n
+                     0%\{\?suse_version\} \s* >= \s* 1200 \s* \|\| \s*
+                     0%\{\?openEuler\} \s* $ \n
             ^cp \s+ %\{SOURCE$apache24\} \s+ \$RPM_BUILD_ROOT/etc/$first/conf\.d/xcat\.conf \s* $ \n
             ^cp \s+ %\{SOURCE$apache24\} \s+ \$RPM_BUILD_ROOT/etc/$second/conf\.d/xcat\.conf \s* $ \n
             ^%else \s* $ \n
@@ -85,7 +86,7 @@ for my $pkg (@packages) {
             ^cp \s+ %\{SOURCE1\} \s+ \$RPM_BUILD_ROOT/etc/$second/conf\.d/xcat\.conf \s* $ \n
             ^%endif \s* $
         }mx,
-        "$label package selects the Apache generation at build time, Apache 2.4 on Fedora, EL7+ and SLES 12+"
+        "$label package selects Apache 2.4 at build time on Fedora, EL7+, SLES 12+ and openEuler"
     );
 
     # The next upgrade's %pretrans compares against these, so they must stay shipped.
