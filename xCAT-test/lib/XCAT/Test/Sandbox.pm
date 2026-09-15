@@ -139,9 +139,12 @@ sub assert_no_host_paths {
 
 =head3 stub_bin
 
-    Descriptions: Builds a directory to use as the whole PATH: shell stubs, plus links to
-                  the real tools the code under test is allowed to run. Any other command
-                  is "not found" instead of reaching the host.
+    Descriptions: Builds a directory to use as the whole PATH: shell stubs, plus wrappers
+                  that run the real tools the code under test is allowed to run. Any other
+                  command is "not found" instead of reaching the host.
+                  A tool is a wrapper, not a symbolic link: a test that later writes a fake
+                  command of the same name into the directory replaces the wrapper, where it
+                  would write through a link onto the host binary.
     Arguments:
         %opt - dir => the directory (a new temporary directory by default);
                stubs => { name => shell body }; tools => [ names ]
@@ -167,9 +170,12 @@ sub stub_bin {
 
     foreach my $tool ( @{ $opt{tools} || [] } ) {
         die "stub_bin: $tool is both a stub and a tool\n" if exists $stubs{$tool};
-        my $real = _system_executable($tool) or die "stub_bin: $tool is not installed\n";
-        my $link = File::Spec->catfile( $dir, $tool );
-        symlink( $real, $link ) or die "stub_bin: unable to link $link: $!\n";
+        my $real    = _system_executable($tool) or die "stub_bin: $tool is not installed\n";
+        my $wrapper = File::Spec->catfile( $dir, $tool );
+        open( my $fh, '>', $wrapper ) or die "stub_bin: unable to write $wrapper: $!\n";
+        print {$fh} "#!/bin/sh\nexec '$real' \"\$@\"\n";
+        close($fh) or die "stub_bin: unable to close $wrapper: $!\n";
+        chmod( 0755, $wrapper ) or die "stub_bin: unable to chmod $wrapper: $!\n";
     }
 
     return $dir;

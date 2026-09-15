@@ -8,6 +8,7 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source qw(repo_path scratch_dir);
 
+use File::Spec;
 use File::Temp ();
 use IPC::Open3 qw(open3);
 use Symbol qw(gensym);
@@ -86,7 +87,11 @@ use XCAT::Test::Sandbox qw(
     my $bin = stub_bin( stubs => { systemctl => 'echo "stub systemctl $*"' }, tools => ['cat'] );
 
     ok( -x "$bin/systemctl", 'a stub is executable' );
-    ok( -l "$bin/cat",       'a tool is a link to the real binary' );
+    ok( -x "$bin/cat" && !-l "$bin/cat", 'a tool is a wrapper, not a link a later write would follow' );
+    open( my $echoed, '-|', "$bin/cat", File::Spec->devnull() ) or die "Unable to run the cat wrapper: $!";
+    my $nothing = do { local $/; <$echoed> };
+    close($echoed);
+    is( $?, 0, 'the wrapper runs the real tool' );
     ok( !eval { stub_bin( tools => ['xcat-unit-no-such-tool'] ); 1 }, 'a tool that is not installed dies' );
     ok( !eval { stub_bin( stubs => { cat => 'exit 0' }, tools => ['cat'] ); 1 },
         'a name that is both a stub and a tool dies' );
