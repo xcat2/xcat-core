@@ -358,3 +358,73 @@ run_pkglist_diagnostics()
     [[ "$output" == *'pkgsarray: foo bar, 2'* ]]
     [[ "$output" == *'yum/dnf: 1 (dnf), apt: 0, zypper: 0'* ]]
 }
+
+run_plain_install_block()
+{
+    local block
+    block="$(otherpkgs_block '#Handle the rest with rpm' 'if [ "$plain_pkgs" != "" -a -n "$OTHERPKGDIR" ]; then')" || return 99
+    local envlist="" VERBOSE= log_label=otherpkgs RETURNVAL=0 result=""
+    local supdatecommand=fake_pkg plain_pkgs="foo bar" mounted=1
+    local OTHERPKGDIR="$BATS_TEST_TMPDIR"
+    shadow_logger
+    shadow_pkg_manager
+    # The block changes directory. A subshell keeps the test in its own directory.
+    (
+        eval "$block"
+        printf 'RETURNVAL=%s\n' "$RETURNVAL"
+    )
+}
+
+run_plain_postremove_block()
+{
+    local block
+    block="$(otherpkgs_block '#remove more rpms if specified with' 'if [ "$plain_pkgs_postremove" != "" ]; then')" || return 99
+    local envlist="" VERBOSE= log_label=otherpkgs RETURNVAL=0 result=""
+    local sremovecommand=fake_pkg plain_pkgs_postremove="oldfoo"
+    shadow_logger
+    shadow_pkg_manager
+    eval "$block"
+    printf 'RETURNVAL=%s\n' "$RETURNVAL"
+}
+
+@test "a failed rpm fallback install is logged as failed" {
+    PKG_STATUS=1 run run_plain_install_block
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'RETURNVAL=1'* ]]
+    refute_grep -q 'foo bar installed\.' "$LOGGER_LOG"
+    grep -q 'foo bar failed\.' "$LOGGER_LOG"
+}
+
+@test "a successful rpm fallback install is logged as installed" {
+    run run_plain_install_block
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'RETURNVAL=0'* ]]
+    grep -q 'foo bar installed\.' "$LOGGER_LOG"
+    refute_grep -q 'failed\.' "$LOGGER_LOG"
+}
+
+@test "a failed package removal is logged as failed" {
+    local manager
+    for manager in hasyum haszypper hasapt; do
+        : >"$LOGGER_LOG"
+        PKG_STATUS=1 run run_repo_postremove_block "$manager"
+        [ "$status" -eq 0 ]
+        [[ "$output" == *'RETURNVAL=1'* ]]
+        grep -q 'oldfoo failed\.' "$LOGGER_LOG"
+    done
+
+    : >"$LOGGER_LOG"
+    PKG_STATUS=1 run run_plain_postremove_block
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'RETURNVAL=1'* ]]
+    refute_grep -q 'oldfoo removed\.' "$LOGGER_LOG"
+    grep -q 'oldfoo failed\.' "$LOGGER_LOG"
+}
+
+@test "a successful package removal is logged as removed only" {
+    run run_plain_postremove_block
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'RETURNVAL=0'* ]]
+    grep -q 'oldfoo removed\.' "$LOGGER_LOG"
+    refute_grep -q 'failed\.' "$LOGGER_LOG"
+}
