@@ -2,6 +2,9 @@
 
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
 use File::Spec;
 use File::Temp qw(tempdir);

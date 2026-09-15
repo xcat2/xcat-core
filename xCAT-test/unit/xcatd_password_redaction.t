@@ -1,6 +1,9 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
 use FindBin;
 use File::Spec;
@@ -11,7 +14,7 @@ my $xcatd  = File::Spec->catfile( $repo_root, 'xCAT-server/lib/perl/xCAT/xcatd.p
 my $daemon = File::Spec->catfile( $repo_root, 'xCAT-server/sbin/xcatd' );
 my $schema = File::Spec->catfile( $repo_root, 'perl-xCAT/xCAT/Schema.pm' );
 
-plan skip_all => 'xcatd.pm, xcatd or Schema.pm not found' unless -r $xcatd && -r $daemon && -r $schema;
+die "xcatd.pm, xcatd or Schema.pm not found\n" unless -r $xcatd && -r $daemon && -r $schema;
 
 sub slurp {
     open( my $fh, '<', $_[0] ) or die "Unable to read $_[0]: $!";

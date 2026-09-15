@@ -1,6 +1,9 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
 use FindBin;
 use Test::More;
@@ -20,8 +23,8 @@ BEGIN {
 use lib "$FindBin::Bin/../../perl-xCAT";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 my $module = "$FindBin::Bin/../../xCAT-server/lib/perl/xCAT/Template.pm";
-plan skip_all => 'Template.pm not found' unless -r $module;
-eval { require $module; 1 } or plan skip_all => "could not load Template.pm: $@";
+die "Template.pm not found\n" unless -r $module;
+require $module;
 
 my $mirror = \&xCAT::Template::ubuntu_subiquity_apt_mirror;
 

@@ -9,6 +9,9 @@
 # with its placeholders intact and `lsxcatd -v` printed a bare "Version".
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
 use File::Copy qw(copy);
 use File::Path qw(make_path);
@@ -21,7 +24,7 @@ use Test::More;
 use XCAT::Test::File qw(repo_path);
 
 my $script = repo_path('perl-xCAT/modifyUtils');
-plan skip_all => 'modifyUtils not found' unless -r $script;
+die "modifyUtils not found\n" unless -r $script;
 
 # The real placeholders, as xCAT::Version ships them.
 my $TEMPLATE = <<'PM';

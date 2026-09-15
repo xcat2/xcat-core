@@ -1,6 +1,9 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 ## no critic (Modules::RequireFilenameMatchesPackage)
 
 use FindBin;
@@ -24,7 +27,7 @@ my $imgutils_relative = File::Spec->catfile(
     $share_relative, 'netboot', 'imgutils', 'imgutils.pm'
 );
 my $imgutils = repo_path($imgutils_relative);
-plan skip_all => "$imgutils not found" unless -r $imgutils;
+die "$imgutils not found\n" unless -r $imgutils;
 require $imgutils;
 
 my @families = (

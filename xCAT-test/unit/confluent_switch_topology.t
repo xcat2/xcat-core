@@ -1,6 +1,9 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
 use FindBin;
 use lib "$FindBin::Bin/../lib";
@@ -12,7 +15,7 @@ use Test::More;
 use XCAT::Test::File qw(repo_path);
 
 my $plugin = repo_path('xCAT-server/lib/xcat/plugins/confluent.pm');
-plan skip_all => 'confluent.pm not found' unless -r $plugin;
+die "confluent.pm not found\n" unless -r $plugin;
 
 # Every collaborator this plugin reaches for is stood in below: the tables, the
 # transport, and the few helpers it calls. Stand the modules in as well, so the

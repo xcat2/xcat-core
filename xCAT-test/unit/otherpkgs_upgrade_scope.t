@@ -1,6 +1,9 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
 use FindBin;
 use File::Spec;
@@ -9,7 +12,7 @@ use Test::More;
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
 my $script_path = File::Spec->catfile( $repo_root, 'xCAT/postscripts/otherpkgs' );
 
-plan skip_all => "$script_path not found" unless -r $script_path;
+die "$script_path not found\n" unless -r $script_path;
 
 open( my $fh, '<', $script_path ) or die "Unable to read $script_path: $!";
 my $script = do { local $/; <$fh> };

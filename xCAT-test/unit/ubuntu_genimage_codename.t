@@ -1,6 +1,9 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
 use File::Spec;
 use FindBin;
@@ -27,7 +30,7 @@ my $repo_root = File::Spec->rel2abs(
 my $genimage_path = File::Spec->catfile(
     $repo_root, 'xCAT-server', 'share', 'xcat', 'netboot', 'ubuntu', 'genimage'
 );
-plan skip_all => "genimage not found at $genimage_path" unless -f $genimage_path;
+die "genimage not found at $genimage_path\n" unless -f $genimage_path;
 
 my $src = do { local $/; open my $fh, '<', $genimage_path or die $!; <$fh> };
 

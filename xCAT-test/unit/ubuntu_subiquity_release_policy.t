@@ -2,6 +2,9 @@
 ## no critic (NamingConventions::Capitalization, TestingAndDebugging::ProhibitNoWarnings)
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
 our $VERSION = '1.0';
 

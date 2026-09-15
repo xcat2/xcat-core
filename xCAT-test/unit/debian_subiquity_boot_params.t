@@ -1,6 +1,9 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
 use File::Spec;
 use FindBin;
@@ -23,7 +26,7 @@ my $repo_root = File::Spec->rel2abs(
 my $plugin = File::Spec->catfile(
     $repo_root, 'xCAT-server', 'lib', 'xcat', 'plugins', 'debian.pm'
 );
-plan skip_all => "debian.pm not found" unless -f $plugin;
+die "debian.pm not found\n" unless -f $plugin;
 
 my $src = do { local $/; open my $fh, '<', $plugin or die $!; <$fh> };
 

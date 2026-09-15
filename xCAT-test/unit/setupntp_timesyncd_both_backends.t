@@ -1,6 +1,9 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
 use File::Spec;
 use File::Temp qw(tempdir);
@@ -24,7 +27,7 @@ my $repo_root = File::Spec->rel2abs(
     File::Spec->catdir( $FindBin::Bin, '..', '..' )
 );
 my $setupntp = File::Spec->catfile( $repo_root, 'xCAT', 'postscripts', 'setupntp' );
-plan skip_all => "setupntp not found" unless -f $setupntp;
+die "setupntp not found\n" unless -f $setupntp;
 
 my $src = do { local $/; open my $fh, '<', $setupntp or die $!; <$fh> };
 

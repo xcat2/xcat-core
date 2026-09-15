@@ -1,6 +1,9 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
 use FindBin;
 use File::Temp qw(tempfile);
@@ -8,7 +11,7 @@ use Test::More;
 
 my $libdir = "$FindBin::Bin/../../xCAT-server/lib/perl";
 my $xmlpm  = "$libdir/xCAT/XML.pm";
-plan skip_all => 'xCAT::XML not found' unless -r $xmlpm;
+die "xCAT::XML not found\n" unless -r $xmlpm;
 eval { require XML::Simple; require XML::Parser; 1 }
     or plan skip_all => 'XML::Simple and XML::Parser are required';
 

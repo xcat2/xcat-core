@@ -1,6 +1,9 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
 use FindBin;
 use File::Spec;
@@ -45,7 +48,7 @@ sub unreachable_after_return {
 my $destiny = slurp('xCAT-server/lib/xcat/plugins/destiny.pm');
 my $packimage = slurp('xCAT-server/lib/xcat/plugins/packimage.pm');
 
-plan skip_all => 'destiny.pm or packimage.pm not found'
+die "destiny.pm or packimage.pm not found\n"
   unless defined($destiny) && defined($packimage);
 
 my @destiny_dead = unreachable_after_return($destiny);

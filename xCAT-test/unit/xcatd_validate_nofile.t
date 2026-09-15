@@ -1,12 +1,15 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
 use FindBin;
 use Test::More;
 
 my $xcatdlib = "$FindBin::Bin/../../xCAT-server/lib/perl";
-plan skip_all => 'xcatd.pm not found' unless -r "$xcatdlib/xCAT/xcatd.pm";
+die "xcatd.pm not found\n" unless -r "$xcatdlib/xCAT/xcatd.pm";
 
 # Load xcatd.pm with stub modules. The policy is one nameless rule that allows
 # rpower. An authorized request returns 1, so only the ^file guard can deny it.

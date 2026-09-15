@@ -1,6 +1,9 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
 use FindBin;
 use File::Spec;
@@ -9,7 +12,7 @@ use Getopt::Long qw(GetOptionsFromArray);
 
 my $plugin = File::Spec->catfile( $FindBin::Bin, '..', '..',
     'xCAT-server', 'lib', 'xcat', 'plugins', 'nodestat.pm' );
-plan skip_all => 'nodestat.pm not found' unless -r $plugin;
+die "nodestat.pm not found\n" unless -r $plugin;
 
 open( my $fh, '<', $plugin ) or die "Unable to read $plugin: $!";
 my $source = do { local $/; <$fh> };

@@ -26,6 +26,9 @@
 
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
 use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT";
@@ -36,7 +39,7 @@ use Socket;
 use xCAT::RespawnUtils;
 
 my $XCATD = "$FindBin::Bin/../../xCAT-server/sbin/xcatd";
-plan skip_all => "xcatd not found at $XCATD" unless -r $XCATD;
+die "xcatd not found at $XCATD\n" unless -r $XCATD;
 
 my $src = do {
     open my $fh, '<', $XCATD or die("cannot read $XCATD: $!");

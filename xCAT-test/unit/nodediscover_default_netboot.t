@@ -1,6 +1,9 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 ## no critic (Modules::RequireFilenameMatchesPackage)
 
 use FindBin;
@@ -49,7 +52,7 @@ BEGIN {
 }
 
 my $plugin = repo_path('xCAT-server/lib/xcat/plugins/nodediscover.pm');
-plan skip_all => "$plugin not found" unless -r $plugin;
+die "$plugin not found\n" unless -r $plugin;
 
 require $plugin;
 

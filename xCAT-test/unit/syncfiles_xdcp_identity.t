@@ -1,6 +1,9 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
 use FindBin;
 use File::Spec;
@@ -22,7 +25,7 @@ my $syncfiles  = slurp('xCAT-server/lib/xcat/plugins/syncfiles.pm');
 my $updatenode = slurp('xCAT-server/lib/xcat/plugins/updatenode.pm');
 my $xdsh       = slurp('xCAT-server/lib/xcat/plugins/xdsh.pm');
 
-plan skip_all => 'plugins not found'
+die "plugins not found\n"
   unless defined($syncfiles) && defined($updatenode) && defined($xdsh);
 
 # The xdcp subrequest has to state the identity the sync runs as.

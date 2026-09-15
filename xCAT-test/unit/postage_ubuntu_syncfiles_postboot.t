@@ -1,6 +1,9 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
 use FindBin;
 use Test::More;
@@ -12,7 +15,7 @@ use Test::More;
 # postbootscripts, which run on the booted node. Drive that decision directly.
 
 my $repo = "$FindBin::Bin/../..";
-plan skip_all => 'Postage.pm not found' unless -r "$repo/xCAT-server/lib/perl/xCAT/Postage.pm";
+die "Postage.pm not found\n" unless -r "$repo/xCAT-server/lib/perl/xCAT/Postage.pm";
 
 use lib "$FindBin::Bin/../../perl-xCAT";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";

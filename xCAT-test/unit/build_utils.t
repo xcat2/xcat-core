@@ -6,6 +6,9 @@
 # call removed.
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
 use File::Path qw(make_path);
 use File::Slurper qw(read_text write_text);

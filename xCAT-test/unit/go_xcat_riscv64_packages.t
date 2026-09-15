@@ -1,6 +1,9 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
 use File::Temp qw(tempdir);
 use FindBin;
@@ -17,7 +20,7 @@ use Test::More;
 # assertions read the package names go-xcat would hand to the package manager.
 
 my $go_xcat = "$FindBin::Bin/../../xCAT-server/share/xcat/tools/go-xcat";
-plan skip_all => 'go-xcat not found' unless -r $go_xcat;
+die "go-xcat not found\n" unless -r $go_xcat;
 
 my $tmpdir = tempdir( CLEANUP => 1 );
 my $driver = "$tmpdir/driver.sh";

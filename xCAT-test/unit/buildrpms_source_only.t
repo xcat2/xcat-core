@@ -8,6 +8,9 @@
 # program.
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
 use Cwd qw(getcwd);
 use File::Basename qw(dirname);
@@ -23,7 +26,7 @@ use Test::More;
 use XCAT::Test::File qw(repo_path);
 
 my $builder = repo_path('buildrpms.pl');
-plan skip_all => 'buildrpms.pl not found' unless -r $builder;
+die "buildrpms.pl not found\n" unless -r $builder;
 
 my $source = read_text($builder);
 
