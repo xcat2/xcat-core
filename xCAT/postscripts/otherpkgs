@@ -261,14 +261,17 @@ if [ -z "$UPDATENODE" ] || [ $UPDATENODE -ne 1 ]; then
   fi
 fi
 
-if ! pmatch $OSVER "rhel*" && [ "$repoonly" -eq 1 ]; then
-    echo "$0: the option \"repoonly\" only support rhel right now"
+if ! pmatch "$OSVER" "rhel*" && ! pmatch "$OSVER" "openeuler*" && [ "$repoonly" -eq 1 ]; then
+    echo "$0: the option \"repoonly\" only supports rhel and openEuler"
     exit 0
 fi
 
 if [ -z "$OTHERPKGS_INDEX" ] && [ "$repoonly" -ne 1 ]; then
   echo "$(basename $0): no extra rpms to install"
   exit 0
+fi
+if pmatch "$OSVER" "openeuler*" && [ "$repoonly" -eq 1 ]; then
+    OTHERPKGS_INDEX=${OTHERPKGS_INDEX:-0}
 fi
 
 if [ -z "$NFSSERVER" ]; then
@@ -505,6 +508,15 @@ fi
 
 
 
+if pmatch "$OSVER" "openeuler*"; then
+    if [ "$yumcmd" != dnf ]; then
+        echo "otherpkgs: openEuler package installation requires dnf" >&2
+        exit 1
+    fi
+    yumcmd=xcat_dnf_strict
+fi
+cleancmd=$yumcmd
+
 ###########
 ##start generating the os pkg repositories
 if ( ! ( pmatch "$OSVER" "sles10*" ) && [ $haszypper -eq 1 ] ); then
@@ -589,7 +601,7 @@ if ( ! ( pmatch "$OSVER" "sles10*" ) && [ $haszypper -eq 1 ] ); then
 
     result=`zypper --non-interactive --no-gpg-checks refresh 2>&1`
 
-elif ( is_el_yum_distro && [ $hasyum -eq 1 ] ); then
+elif ( { is_el_yum_distro || pmatch "$OSVER" "openeuler*"; } && [ $hasyum -eq 1 ] ); then
     #remove old repo files
     mkdir -p /etc/yum.repos.d
     if [ `ls -1 /etc/yum.repos.d/local-repository*.repo 2>/dev/null | wc -l` -gt 0 ]; then
@@ -599,7 +611,7 @@ elif ( is_el_yum_distro && [ $hasyum -eq 1 ] ); then
     result=`rm /etc/yum.repos.d/xCAT-$OSVER-path*.repo 2>&1`
     result=`rm /etc/yum.repos.d/xCAT-otherpkgs*.repo 2>&1`
 
-    result=`$yumcmd clean all`
+    result=`$cleancmd clean all`
 
     SUM=$(array_get_size os_path)
     i=0
@@ -618,8 +630,7 @@ elif ( is_el_yum_distro && [ $hasyum -eq 1 ] ); then
 	           echo "baseurl=file://$OSPKGDIR" >> $REPOFILE
 	       fi
 	       echo "enabled=1" >> $REPOFILE
-	       echo "gpgcheck=0" >> $REPOFILE
-               echo "skip_if_unavailable=True" >> $REPOFILE
+               xcat_rpm_repository_policy "$OSVER" >> "$REPOFILE"
            fi
            i=$((i+1))
       done
@@ -627,6 +638,11 @@ fi
 
 ##end generating the os pkg repositories
 ###########
+
+if pmatch "$OSVER" "openeuler*"; then
+    xcat_dnf_repositories="xCAT-$OSVER-path*,xcat-otherpkgs*"
+    yumcmd=xcat_dnf_scoped
+fi
 
 
 ###########
@@ -645,7 +661,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     if [ $hasyum -eq 1 ]; then
         mkdir -p /etc/yum.repos.d
         result=`rm /etc/yum.repos.d/xCAT-otherpkgs*.repo 2>&1`
-        result=`$yumcmd clean all`
+        result=`$cleancmd clean all`
         repo_base="/etc/yum.repos.d"
     elif [ $haszypper -eq 1 ]; then
         #remove old repo
@@ -683,8 +699,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
                 echo "name=xcat-otherpkgs$urlrepoindex" >> $REPOFILE
                 echo "baseurl=$url" >> $REPOFILE
                 echo "enabled=1" >> $REPOFILE
-                echo "gpgcheck=0" >> $REPOFILE
-                echo "skip_if_unavailable=True" >> $REPOFILE
+                xcat_rpm_repository_policy "$OSVER" "${url%/}/repodata/repomd.xml.key" >> "$REPOFILE"
 
             elif [ $hasapt -eq 1 ] ; then 
                 REPOFILE="$repo_base/xCAT-otherpkgs${urlrepoindex}.list"
@@ -788,10 +803,13 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 		        echo "baseurl=file://$whole_path" >> $REPOFILE
 	            fi
 	            echo "enabled=1" >> $REPOFILE
-	            echo "gpgcheck=0" >> $REPOFILE
-                    echo "skip_if_unavailable=True" >> $REPOFILE
+                    if [ $mounted -eq 0 ]; then
+                        xcat_rpm_repository_policy "$OSVER" "http://$whole_path/repodata/repomd.xml.key" >> "$REPOFILE"
+                    else
+                        xcat_rpm_repository_policy "$OSVER" "file://$whole_path/repodata/repomd.xml.key" >> "$REPOFILE"
+                    fi
                 if [ $hasyum -eq 1 ]; then
-                    $yumcmd clean all
+                    $cleancmd clean all
                 fi
                 if [ $haszypper -eq 1 ]; then
 	                     result=`zypper --non-interactive refresh 2>&1`
@@ -859,6 +877,10 @@ EOF`
 	    if [ $rc -eq 0 ]; then
 	        repo_pkgs="$repo_pkgs $fn"
 	    else
+                if pmatch "$OSVER" "openeuler*"; then
+                    echo "otherpkgs: required native package $fn could not be resolved: $result" >&2
+                    exit 1
+                fi
                 #now no hope we have to use rpm command
 	        plain_pkgs="$plain_pkgs $x*"
 	    fi
