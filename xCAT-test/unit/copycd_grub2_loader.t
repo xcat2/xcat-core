@@ -1,15 +1,16 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(repo_path);
+
 no warnings 'once';
 
 use File::Path qw(make_path);
 use File::Slurper qw(read_text write_text);
 use File::Spec;
 use File::Temp qw(tempdir);
-use FindBin;
-use lib "$FindBin::Bin/../lib";
-use XCAT::Test::Source qw(repo_path);
 use Test::More;
 
 # copycd publishes the grub2 UEFI image of the installation media so that nodes

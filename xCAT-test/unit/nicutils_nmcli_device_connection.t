@@ -1,17 +1,17 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(repo_path);
 
 use File::Path qw(make_path);
 use File::Spec;
 use File::Temp qw(tempdir);
-use FindBin;
 use IPC::Open3 qw(open3);
-use lib "$FindBin::Bin/../lib";
 use Symbol qw(gensym);
 use Test::More;
 
-use XCAT::Test::Source qw(repo_path);
 use XCAT::Test::Sandbox qw(stub_bin confined_command run_confined);
 
 my $nicutils = repo_path(

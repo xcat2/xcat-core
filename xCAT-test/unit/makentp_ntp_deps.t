@@ -115,8 +115,8 @@ BASH
 sub slurp { my $p = shift; open my $h, '<', "$repo/$p" or return undef; local $/; <$h> }
 
 my $ctrl = slurp('xCAT/debian/control');
-SKIP: {
-    skip 'debian/control not found', 2 unless defined $ctrl;
+die "xCAT/debian/control is not in the checkout\n" unless defined $ctrl;
+{
     like($ctrl, qr/^Depends:.*\bchrony \| ntp\b/m,
         'the xcat debian package depends on a server-capable NTP daemon');
     like($ctrl, qr/^Recommends:.*\butil-linux-extra\b/m,
@@ -124,8 +124,8 @@ SKIP: {
 }
 
 my $spec = slurp('xCAT/xCAT.spec');
-SKIP: {
-    skip 'xCAT.spec not found', 1 unless defined $spec;
+die "xCAT/xCAT.spec is not in the checkout\n" unless defined $spec;
+{
     like($spec, qr/^Requires:\s*\(chrony or ntp\)/m,
         'the xCAT rpm requires a server-capable NTP daemon');
 }

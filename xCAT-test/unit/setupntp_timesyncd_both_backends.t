@@ -120,8 +120,8 @@ ok( defined $before_exec && $before_exec =~ /systemctl disable systemd-timesyncd
 # setupntp.traditional does not do it either, which is why the ordering above matters.
 my $trad_src = File::Spec->catfile(
     $repo_root, 'xCAT', 'postscripts', 'setupntp.traditional' );
-SKIP: {
-    skip 'setupntp.traditional not found', 1 unless -f $trad_src;
+die "$trad_src is not in the checkout\n" unless -f $trad_src;
+{
     my $t = do { local $/; open my $h, '<', $trad_src or die $!; <$h> };
     unlike( $t, qr/timesyncd/,
         'setupntp.traditional does not handle timesyncd itself' );

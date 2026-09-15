@@ -1,16 +1,16 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(repo_path);
 
 use File::Path qw(make_path);
 use File::Spec;
 use File::Temp qw(tempdir);
-use FindBin;
-use lib "$FindBin::Bin/../lib";
 use POSIX qw(_exit);
 use Test::More;
 
-use XCAT::Test::Source qw(repo_path);
 use XCAT::Test::Sandbox qw(replace_required assert_no_host_paths);
 
 my $source_getadapter;

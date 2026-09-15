@@ -1,15 +1,15 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(repo_path slurp_repo_file);
 
 use File::Path qw(make_path);
 use File::Spec;
 use File::Temp qw(tempdir);
-use FindBin;
-use lib "$FindBin::Bin/../lib";
 use Test::More;
 
-use XCAT::Test::Source qw(repo_path slurp_repo_file);
 use XCAT::Test::Sandbox qw(stub_bin run_confined);
 
 my $scriptlib = repo_path(
