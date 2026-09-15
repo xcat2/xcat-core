@@ -11,7 +11,7 @@ use File::Temp qw(tempdir);
 use POSIX qw(_exit);
 use Test::More;
 
-use XCAT::Test::Sandbox qw(replace_required);
+use XCAT::Test::Sandbox qw(replace_required stub_bin confined_command);
 
 my $go_xcat_relative = 'xCAT-server/share/xcat/tools/go-xcat';
 my ( $source_go_xcat, $go_xcat_source );
@@ -182,6 +182,12 @@ sub run_case
     my $fixtures = File::Spec->catdir( $root, 'fixtures' );
     my $bin = File::Spec->catdir( $root, 'bin' );
     make_path( $fixtures, $bin );
+    # When the case selects gawk, awk is a link to the host gawk. A wrapper written under that name
+    # would write through the link, so awk is left out of the tool list then.
+    stub_bin(
+        dir   => $bin,
+        tools => [ qw(bash sh cat grep sed cut tr sort uniq head tail wc ls basename dirname mkdir rm mv cp touch date sleep xargs expr env readlink), ( defined $option{gawk} ? () : 'awk' ) ],
+    );
 
     my $os_release = File::Spec->catfile( $fixtures, 'os-release' );
     my $redhat_release = File::Spec->catfile( $fixtures, 'redhat-release' );
@@ -267,11 +273,14 @@ DRIVER
           or die "Unable to select gawk: $!";
     }
 
-    local %ENV = (
-        %ENV,
-        GO_XCAT_SOURCE    => $sandboxed_source,
-        HELPER_OS_RELEASE => $helper_file,
-        PATH              => "$bin:$ENV{PATH}",
+    my @command = confined_command(
+        cmd => [ 'bash', $driver, @{ $option{command} } ],
+        bin => $bin,
+        env => {
+            GO_XCAT_SOURCE    => $sandboxed_source,
+            HELPER_OS_RELEASE => $helper_file,
+        },
+        writable => [$root],
     );
 
     my $pid = fork();
@@ -280,7 +289,7 @@ DRIVER
         open( STDIN, '<', '/dev/null' ) or _exit(126);
         open( STDOUT, '>:raw', $stdout_file ) or _exit(126);
         open( STDERR, '>:raw', $stderr_file ) or _exit(126);
-        exec 'bash', $driver, @{ $option{command} } or _exit(127);
+        exec(@command) or _exit(127);
     }
     my $reaped = waitpid( $pid, 0 );
     my $raw_status = $?;

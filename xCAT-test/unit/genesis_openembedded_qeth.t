@@ -9,6 +9,7 @@ use File::Path qw(make_path);
 use File::Spec;
 use File::Temp qw(tempdir);
 use Test::More;
+use XCAT::Test::Sandbox qw(stub_bin confined_command);
 
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
 my $qeth_dir = File::Spec->catdir(
@@ -51,6 +52,8 @@ my $znetconf = File::Spec->catfile( $bin, 'znetconf' );
 my $status = File::Spec->catfile( $bin, 'genesis-status' );
 
 make_path($bin);
+# The fakes written below replace these wrappers; any other command is not found.
+stub_bin( dir => $bin, tools => [qw(bash sh cat grep sed awk cut tr sort uniq head tail wc ls basename dirname mkdir rm mv cp touch date sleep xargs expr env readlink)] );
 write_file(
     $znetconf,
     <<'SH', 0755
@@ -87,7 +90,6 @@ SH
 );
 
 my %base_environment = (
-    PATH                        => "$bin:$ENV{PATH}",
     XCAT_CIO_SETTLE_FILE        => $cio_settle,
     XCAT_CMDLINE_FILE           => $cmdline,
     XCAT_STATUS_COMMAND         => $status,
@@ -104,8 +106,14 @@ sub run_qeth {
     write_file( $cio_settle, '' );
     write_file( $configured, $environment->{XCAT_TEST_CONFIGURED_OUTPUT} // '' );
     write_file( $unconfigured, $environment->{XCAT_TEST_UNCONFIGURED_OUTPUT} // '' );
-    local %ENV = ( %ENV, %base_environment, %{$environment} );
-    return system( '/bin/bash', $qeth_script ) >> 8;
+    return system(
+        confined_command(
+            cmd      => [ '/bin/bash', $qeth_script ],
+            bin      => $bin,
+            env      => { %base_environment, %{$environment} },
+            writable => [$root],
+        )
+    ) >> 8;
 }
 
 sub command_log {

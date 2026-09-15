@@ -4,6 +4,10 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
+use XCAT::Test::Sandbox qw(stub_bin confine_self);
+
+# copycd runs in this process. As root, the test runs again with host directories read-only.
+BEGIN { confine_self() }
 
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
@@ -14,8 +18,8 @@ use Test::More;
 # filesystem, so a node that loads it drops to a grub prompt instead of reading the network
 # configuration. copycd builds a netboot image from the grub2 package the media ship.
 #
-# dpkg-deb and grub-mkimage are shadowed by stubs ahead of $PATH, because a management node
-# is the only place they exist. They record what copycd asked for, so the arguments that
+# dpkg-deb and grub-mkimage are stubs in a directory that is the whole $PATH, because a management
+# node is the only place they exist. They record what copycd asked for, so the arguments that
 # decide whether the image can boot over the network are what the assertions read.
 
 BEGIN {
@@ -31,6 +35,7 @@ require $plugin;
 
 my $stubs = tempdir(CLEANUP => 1);
 my $log   = "$stubs/mkimage.args";
+stub_bin( dir => $stubs, tools => [qw(bash sh perl cat mkdir rm mv cp ls find)] );
 
 sub write_stub {
     my ($name, $body) = @_;
@@ -71,7 +76,7 @@ perl -e 'my ($prefix, @modules) = @ARGV;
   print $i, "\0" x (4096 - length $i)' "$prefix" "${modules[@]}" > "$out"
 SH
 
-$ENV{PATH}        = "$stubs:$ENV{PATH}";
+$ENV{PATH}        = $stubs;
 $ENV{MKIMAGE_LOG} = $log;
 
 sub media_with {
