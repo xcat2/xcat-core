@@ -5,13 +5,49 @@ no warnings 'once';
 
 use FindBin;
 use lib "$FindBin::Bin/../lib";
-use lib "$FindBin::Bin/../../perl-xCAT";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
+use XCAT::Test::Source qw(repo_path scratch_dir);
 
+use File::Path qw(make_path);
 use File::Temp qw(tempdir);
 use Socket ();
+use Symbol ();
 use Test::More;
-use XCAT::Test::File qw(repo_path);
+
+# kea_process_request takes its lock at the literal /tmp/xcat/dhcplock. On a management node
+# xcatd holds that lock, and as root the test would create the directory on the host. Every open
+# and mkdir compiled after this block goes through these overrides; only /tmp/xcat paths move.
+my $lock_root = scratch_dir() . '/tmp-xcat';
+my %redirected;
+make_path($lock_root);
+
+sub redirect_lock_path {
+    my ($path) = @_;
+    return $path if ref $path || !defined $path || $path !~ m{\A/tmp/xcat(?=/|\z)};
+    $redirected{$path}++;
+    ( my $moved = $path ) =~ s{\A/tmp/xcat}{$lock_root};
+    return $moved;
+}
+
+BEGIN {
+    *CORE::GLOBAL::mkdir = sub (_;$) {
+        my $path = redirect_lock_path( $_[0] );
+        return @_ > 1 ? CORE::mkdir( $path, $_[1] ) : CORE::mkdir($path);
+    };
+
+    # A bareword handle arrives as its name and belongs to the caller's package.
+    *CORE::GLOBAL::open = sub (*;$@) {
+        if ( defined $_[0] && !ref $_[0] ) {
+            my $handle = Symbol::qualify_to_ref( $_[0], scalar caller );
+            return CORE::open($handle) if @_ == 1;
+            return CORE::open( $handle, $_[1] ) if @_ == 2;
+            return CORE::open( $handle, $_[1], redirect_lock_path( $_[2] ) ) if @_ == 3;
+            return CORE::open( $handle, $_[1], @_[ 2 .. $#_ ] );
+        }
+        return CORE::open( $_[0], $_[1] ) if @_ == 2;
+        return CORE::open( $_[0], $_[1], redirect_lock_path( $_[2] ) ) if @_ == 3;
+        return CORE::open( $_[0], $_[1], @_[ 2 .. $#_ ] );
+    };
+}
 
 BEGIN {
     package xCAT::Table;
@@ -461,6 +497,8 @@ foreach my $case (@sysconfig_policy_cases) {
     ok( $backend->{write_options}{backup_existing}, 'makedhcp -n backs up the replaced Kea configuration' );
     ok( $backend->{restart_options}{enable}, 'makedhcp -n enables and restarts Kea after replacement' );
     is_deeply( \@errors, [], 'makedhcp -n replacement completes without errors' );
+    ok( $redirected{'/tmp/xcat/dhcplock'}, 'makedhcp -n takes the DHCP lock through the test redirect' );
+    ok( -f "$lock_root/dhcplock", 'the DHCP lock file is created in the scratch directory' );
 }
 
 {
