@@ -1,1 +1,2 @@
 xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto/0001-s390-use-stable-generator-name.patch whitespace=-space-before-tab
+xCAT-test/fixtures/openeuler-media/*/.treeinfo whitespace=-blank-at-eol,-blank-at-eof
