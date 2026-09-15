@@ -7,7 +7,11 @@ use File::Path qw(make_path);
 use File::Spec;
 use File::Temp qw(tempdir);
 use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
+
 use Test::More;
+use XCAT::Test::Sandbox qw(stub_bin run_confined confined_command);
 
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
 my $helper = File::Spec->catfile(
@@ -32,6 +36,7 @@ sub stage_root {
     );
     my $fake_bin = File::Spec->catdir( $root, 'test-bin' );
     make_path( $scripts, $fake_bin );
+    stub_bin( dir => $fake_bin, tools => [qw(sh cat sed grep awk cut tr mkdir rm cp mv chmod ln readlink dirname basename mktemp cmp head tail sort ls)] );
     copy( $template, File::Spec->catfile( $scripts, 'xcatd' ) )
       or die "Unable to stage legacy init template: $!";
     my $systemctl = File::Spec->catfile( $fake_bin, 'systemctl' );
@@ -78,21 +83,30 @@ sub set_systemd_state {
     close($fh);
 }
 
+# The helpers act on the root in XCAT_COMPAT_ROOT, and on the host when it is empty. They run with
+# the staged test-bin as their only PATH, and as root with the host directories read-only.
+sub compat_command {
+    my ( $root, @command ) = @_;
+    die "the compatibility root is not a staged directory: " . ( $root // '<undef>' ) . "\n"
+      unless defined $root && length $root && -d File::Spec->catdir( $root, 'test-bin' );
+    return (
+        cmd      => \@command,
+        bin      => File::Spec->catdir( $root, 'test-bin' ),
+        env      => { XCAT_COMPAT_ROOT => $root, XCATROOT => '/opt/xcat' },
+        writable => [$root],
+    );
+}
+
 sub run_helper {
     my ( $root, @arguments ) = @_;
-    local $ENV{XCAT_COMPAT_ROOT} = $root;
-    local $ENV{XCATROOT}         = '/opt/xcat';
-    local $ENV{PATH} = File::Spec->catdir( $root, 'test-bin' ) . ':/usr/bin:/bin';
-    system( '/bin/sh', $helper, @arguments );
-    return $? >> 8;
+    my ($status) = run_confined( compat_command( $root, '/bin/sh', $helper, @arguments ) );
+    return $status;
 }
 
 sub helper_output {
     my ( $root, @arguments ) = @_;
-    local $ENV{XCAT_COMPAT_ROOT} = $root;
-    local $ENV{XCATROOT}         = '/opt/xcat';
-    local $ENV{PATH} = File::Spec->catdir( $root, 'test-bin' ) . ':/usr/bin:/bin';
-    open( my $pipe, '-|', '/bin/sh', $helper, @arguments )
+    my %confined = compat_command( $root, '/bin/sh', $helper, @arguments );
+    open( my $pipe, '-|', confined_command(%confined) )
       or die "Unable to run compatibility helper: $!";
     my $output = do { local $/; <$pipe> };
     close($pipe) or die "Compatibility helper failed: $?";
@@ -660,11 +674,13 @@ ok( !-e legacy_init($legacy_remove_root)
       && !-e managed_marker($legacy_remove_root),
     'legacy remove clears both the script and stale provenance' );
 
-my $systemctl_ready_status = system(
-    '/bin/sh', '-c',
-    '[ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1'
-) >> 8;
-is( run_helper( stage_root(), 'can-use-systemctl' ), $systemctl_ready_status,
+# The predicate is taken in the same confinement as the helper, where /run is empty.
+my $predicate_root = stage_root();
+my ($systemctl_ready_status) = run_confined(
+    compat_command( $predicate_root, '/bin/sh', '-c',
+        '[ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1' )
+);
+is( run_helper( $predicate_root, 'can-use-systemctl' ), $systemctl_ready_status,
     'shared helper preserves the host systemctl readiness predicate' );
 is( run_helper( stage_root(), 'can-use-systemctl', '--invalid' ), 2,
     'systemctl readiness rejects unexpected arguments' );
