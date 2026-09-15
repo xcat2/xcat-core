@@ -708,8 +708,10 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     IFS=$','
     pkgsarray=($pkglist)
     IFS=$oifs
-    echo "pkgsarray: ${pkgsarray[@]}, ${#pkgsarray[@]}"
-    echo "yum/dnf: $hasyum ($yumcmd), apt: $hasapt, zypper: $haszypper"
+    if [ $VERBOSE  ]; then
+      echo "pkgsarray: ${pkgsarray[@]}, ${#pkgsarray[@]}"
+      echo "yum/dnf: $hasyum ($yumcmd), apt: $hasapt, zypper: $haszypper"
+    fi
     for x in ${pkgsarray[@]}
     do
         #check if the file name starts with -- or -.

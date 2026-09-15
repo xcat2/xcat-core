@@ -334,3 +334,27 @@ run_sdk_block()
     [ "$status" -eq 0 ]
     grep -q 'xCAT-sles15-sdk1' "$LOGGER_LOG"
 }
+
+# Drives the package list split and the two diagnostic lines that follow it. The range ends on
+# the "for" line that starts the package loop, and that line is dropped: the loop is not part of
+# what is measured.
+run_pkglist_diagnostics()
+{
+    local range
+    range="$(extract_line_range "$OTHERPKGS" 'pkgsarray=' '^[[:space:]]*for x in')" || return 99
+    local pkglist="foo bar" hasyum=1 yumcmd=dnf hasapt=0 haszypper=0 oifs=$IFS
+    eval "$(printf '%s\n' "$range" | sed '$d')"
+}
+
+@test "the package list diagnostics print nothing when VERBOSE is not set" {
+    VERBOSE= run run_pkglist_diagnostics
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "the package list diagnostics print the list and the package manager under VERBOSE" {
+    VERBOSE=1 run run_pkglist_diagnostics
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'pkgsarray: foo bar, 2'* ]]
+    [[ "$output" == *'yum/dnf: 1 (dnf), apt: 0, zypper: 0'* ]]
+}
