@@ -3,21 +3,14 @@ use strict;
 use warnings;
 
 use FindBin;
-use lib "$FindBin::Bin/../../xCAT-server/lib";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
-use lib "$FindBin::Bin/../../perl-xCAT";
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(repo_path);
 
 use MIME::Base64 qw(encode_base64);
 use Test::More;
 
-$ENV{XCATCFG} ||= 'SQLite:/tmp';
-
-my $source_dhcp_plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/dhcp.pm";
-if ( -f $source_dhcp_plugin ) {
-    require $source_dhcp_plugin;
-} else {
-    require xCAT_plugin::dhcp;
-}
+my $source_dhcp_plugin = repo_path('xCAT-server/lib/xcat/plugins/dhcp.pm');
+require $source_dhcp_plugin;
 
 {
     package Local::PasswdTable;

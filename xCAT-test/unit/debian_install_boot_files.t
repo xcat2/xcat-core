@@ -2,9 +2,12 @@
 use strict;
 use warnings;
 
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(repo_path);
+
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
-use FindBin;
 use Test::More;
 
 # The installer kernel and initrd sit in a different place on every Ubuntu media layout:
@@ -12,11 +15,8 @@ use Test::More;
 # casper, and a hardware-enablement kernel ships beside the release one. Build each layout
 # on disk and ask the resolver, rather than reading the table that describes them.
 
-use lib "$FindBin::Bin/../../perl-xCAT";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
-my $plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/debian.pm";
-plan skip_all => 'debian.pm not found' unless -r $plugin;
-eval { require $plugin; 1 } or plan skip_all => "could not load debian.pm: $@";
+my $plugin = repo_path('xCAT-server/lib/xcat/plugins/debian.pm');
+require $plugin;
 
 sub media {
     my (@relative) = @_;

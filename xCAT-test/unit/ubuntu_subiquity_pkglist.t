@@ -5,11 +5,11 @@ no warnings 'once';
 
 use FindBin;
 use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(repo_path perl_command);
+
 use File::Spec;
 use File::Temp;
 use Test::More;
-
-use XCAT::Test::File qw(repo_path);
 
 sub read_text  { my ($path) = @_; open( my $fh, '<', $path ) or die "$path: $!"; local $/; my $text = <$fh>; close($fh); return $text; }
 sub write_text { my ( $path, $text ) = @_; open( my $fh, '>', $path ) or die "$path: $!"; print {$fh} $text; close($fh); return; }
@@ -19,24 +19,9 @@ sub write_text { my ( $path, $text ) = @_; open( my $fh, '>', $path ) or die "$p
 # the first boot. The template can now carry #INCLUDE_DEFAULT_PKGLIST_AUTOINSTALL# on a list line,
 # and Template.pm renders one list item per pkglist package in its place.
 
-my $module = repo_path('xCAT-server/lib/perl/xCAT/Template.pm');
-plan skip_all => 'Template.pm not found' unless -r $module;
-
-my @incs = ( repo_path('perl-xCAT'), repo_path('xCAT-server/lib/perl') );
-
-# Every xCAT module prepends $XCATROOT/lib/perl as it compiles, so on a host with xCAT installed
-# the modules Template.pm loads afterwards would come from /opt/xcat. Point it at the checkout.
-my $xcatroot = File::Temp->newdir();
-mkdir "$xcatroot/lib" or die "$xcatroot/lib: $!";
-symlink( repo_path('xCAT-server/lib/perl'), "$xcatroot/lib/perl" ) or die "symlink: $!";
-$ENV{XCATROOT} = "$xcatroot";
-
-my $devnull = File::Spec->devnull();
-my $probe = join( ' ', $^X, ( map { "-I$_" } @incs ), '-e', "'require xCAT::Template; 1'", ">$devnull", "2>&1" );
-plan skip_all => 'xCAT::Template cannot be loaded here' if system($probe) != 0;
-
-require lib;
-lib->import(@incs);
+# A mismatched DBI aborts the process instead of dying, so a child perl loads the module first.
+system( perl_command( '-e', 'require xCAT::Template; 1' ) ) == 0
+  or die "xCAT::Template does not load in a child perl from the checkout\n";
 require xCAT::Template;
 require xCAT::Postage;    # the pkglist reader Template.pm calls, loaded by the plugin in production
 

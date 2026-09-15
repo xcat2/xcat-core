@@ -2,9 +2,12 @@
 use strict;
 use warnings;
 
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(perl_command);
+
 use File::Spec;
 use File::Temp;
-use FindBin;
 use Test::More;
 
 # ospkgs installs the pkglist from every pkgdir entry, the media first and the mirrors after it,
@@ -12,13 +15,9 @@ use Test::More;
 # same mirrors. The specs are derived from the pkgdir value alone, and the apt configuration is
 # rendered for real with only the database readers stubbed.
 
-my $repo = File::Spec->rel2abs( File::Spec->catdir( $FindBin::Bin, '..', '..' ) );
-my @incs = ( "$repo/perl-xCAT", "$repo/xCAT-server/lib/perl" );
-my $devnull = File::Spec->devnull();
-my $probe = join( ' ', $^X, ( map { "-I$_" } @incs ), '-e', "'require xCAT::Template; 1'", ">$devnull", "2>&1" );
-plan skip_all => 'xCAT::Template cannot be loaded here' if system($probe) != 0;
-require lib;
-lib->import(@incs);
+# A mismatched DBI aborts the process instead of dying, so a child perl loads the module first.
+system( perl_command( '-e', 'require xCAT::Template; 1' ) ) == 0
+  or die "xCAT::Template does not load in a child perl from the checkout\n";
 require xCAT::Template;
 
 {

@@ -4,6 +4,9 @@ use warnings;
 ## no critic (Modules::RequireFilenameMatchesPackage)
 
 use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(repo_path);
+
 use Test::More;
 
 BEGIN {
@@ -23,8 +26,7 @@ BEGIN {
     $INC{'xCAT/ServiceNodeUtils.pm'} = __FILE__;
 }
 
-my $plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/networks.pm";
-$plugin = "$ENV{XCATROOT}/lib/perl/xCAT_plugin/networks.pm" unless -f $plugin;
+my $plugin = repo_path('xCAT-server/lib/xcat/plugins/networks.pm');
 require $plugin;
 
 ok(

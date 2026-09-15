@@ -4,26 +4,17 @@ use strict;
 use warnings;
 no warnings 'once';
 
-use File::Spec;
 use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(repo_path);
+
+use File::Spec;
 use Test::More;
 
-my @plugin_candidates = (
-    File::Spec->catfile(
-        $FindBin::Bin, '..', '..', 'xCAT-server', 'lib', 'xcat', 'plugins',
-        'openbmc.pm'
-    ),
-);
-push @plugin_candidates,
-  File::Spec->catfile($ENV{XCATROOT}, 'lib', 'perl', 'xCAT_plugin', 'openbmc.pm')
-  if defined $ENV{XCATROOT};
-push @plugin_candidates, '/opt/xcat/lib/perl/xCAT_plugin/openbmc.pm';
-
-my ($plugin_path) = grep { -f } @plugin_candidates;
-BAIL_OUT('Could not locate the OpenBMC plugin') if !defined $plugin_path;
+my $plugin_path = repo_path('xCAT-server/lib/xcat/plugins/openbmc.pm');
 
 open my $plugin_fh, '<', $plugin_path
-  or BAIL_OUT("Could not open $plugin_path: $!");
+  or die "Could not open $plugin_path: $!\n";
 my $plugin_source = do { local $/; <$plugin_fh> };
 close $plugin_fh;
 
@@ -31,7 +22,7 @@ sub extract_subroutine {
     my ($name) = @_;
     my ($subroutine) =
       $plugin_source =~ /(^sub \Q$name\E \{.*?^\}\n)(?=\n#-+)/ms;
-    BAIL_OUT("Could not extract $name from $plugin_path")
+    die "Could not extract $name from $plugin_path\n"
       if !defined $subroutine;
     return $subroutine;
 }
@@ -72,7 +63,7 @@ $deal_with_response
 1;
 HARNESS
 ## use critic
-BAIL_OUT("Could not load the OpenBMC response harness: $@") if !$loaded;
+die "Could not load the OpenBMC response harness: $@\n" if !$loaded;
 
 $::RESPONSE_OK                  = '200 OK';
 $::RESPONSE_SERVICE_UNAVAILABLE = '503 Service Unavailable';

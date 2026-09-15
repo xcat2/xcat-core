@@ -3,12 +3,13 @@ use strict;
 use warnings;
 
 use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
+
 use File::Spec;
 use File::Temp qw(tempfile);
 use Test::More;
 
-my $libdir = "$FindBin::Bin/../../perl-xCAT";
-plan skip_all => 'NodeRange.pm not found' unless -r "$libdir/xCAT/NodeRange.pm";
 
 # NodeRange requires xCAT::Table at load and creates a nodelist handle once, on
 # entry. Stub Table so the module loads and that init succeeds without a
@@ -23,9 +24,8 @@ BEGIN {
     sub AUTOLOAD { return }
     sub DESTROY  { }
 }
-eval { require Text::Balanced; 1 } or plan skip_all => 'Text::Balanced is required';
+require Text::Balanced;
 
-push @INC, $libdir;
 require xCAT::NodeRange;
 
 # The command an injected ^file range would run. The marker must never appear.

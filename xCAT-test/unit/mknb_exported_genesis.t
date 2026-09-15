@@ -3,10 +3,13 @@ use strict;
 use warnings;
 ## no critic (Modules::RequireFilenameMatchesPackage, TestingAndDebugging::ProhibitNoStrict, TestingAndDebugging::ProhibitNoWarnings)
 
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(repo_path);
+
 use Digest::SHA qw(sha256_hex);
 use File::Path qw(make_path remove_tree);
 use File::Temp qw(tempdir);
-use FindBin;
 use Test::More;
 
 BEGIN {
@@ -40,13 +43,8 @@ BEGIN {
     $INC{'xCAT/NodeRange.pm'} = __FILE__;
 }
 
-my $source_mknb_plugin =
-  "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/mknb.pm";
-if (-f $source_mknb_plugin) {
-    require $source_mknb_plugin;
-} else {
-    require xCAT_plugin::mknb;
-}
+my $source_mknb_plugin = repo_path('xCAT-server/lib/xcat/plugins/mknb.pm');
+require $source_mknb_plugin;
 
 sub write_file {
     my ($filename, $content) = @_;

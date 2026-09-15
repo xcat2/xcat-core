@@ -5,30 +5,16 @@ no warnings 'once';
 
 use FindBin;
 use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(repo_path perl_command);
+
 use File::Slurper qw(read_text write_text);
 use File::Spec;
 use File::Temp;
 use Test::More;
 
-use XCAT::Test::File qw(repo_path);
-
-my $module = repo_path('xCAT-server/lib/perl/xCAT/Template.pm');
-plan skip_all => 'Template.pm not found' unless -r $module;
-
-my @incs = (
-    repo_path('perl-xCAT'),
-    repo_path('xCAT-server/lib/perl'),
-);
-
-# A mismatched DBI aborts the process instead of dying, so ask a child before
-# loading the module in this process.
-my $devnull = File::Spec->devnull();
-my $probe = join( ' ', $^X, ( map { "-I$_" } @incs ),
-    '-e', "'require xCAT::Template; 1'", ">$devnull", "2>&1" );
-plan skip_all => 'xCAT::Template cannot be loaded here' if system($probe) != 0;
-
-require lib;
-lib->import(@incs);
+# A mismatched DBI aborts the process instead of dying, so a child perl loads the module first.
+system( perl_command( '-e', 'require xCAT::Template; 1' ) ) == 0
+  or die "xCAT::Template does not load in a child perl from the checkout\n";
 require xCAT::Template;
 
 sub suffix { return xCAT::Template::httpport_suffix(@_); }

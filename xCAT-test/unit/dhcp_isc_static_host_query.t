@@ -3,24 +3,17 @@ use strict;
 use warnings;
 
 use FindBin;
-use lib "$FindBin::Bin/../../xCAT-server/lib";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
-use lib "$FindBin::Bin/../../perl-xCAT";
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(repo_path);
 
 use File::Temp qw(tempdir);
 use Test::More;
 
-$ENV{XCATCFG} ||= 'SQLite:/tmp';
-
 # `makedhcp -q <node>` must answer from dhcpd.conf and never spawn omshell: Ubuntu's ISC
 # DHCP 4.4 omshell can wedge at 100% CPU, unreapable, which hung the CI provisioning retry
 # loop on focal.
-my $source_dhcp_plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/dhcp.pm";
-if ( -f $source_dhcp_plugin ) {
-    require $source_dhcp_plugin;
-} else {
-    require xCAT_plugin::dhcp;
-}
+my $source_dhcp_plugin = repo_path('xCAT-server/lib/xcat/plugins/dhcp.pm');
+require $source_dhcp_plugin;
 
 # Two static host blocks exactly as _add_isc_static_host writes them, so both
 # the query parse and the end-marker isolation are exercised.
@@ -148,10 +141,10 @@ is($tip, 'ip-address = 192.0.2.21',
 # file it cannot read must not look like a node without a reservation.
 my $tmpdir   = tempdir(CLEANUP => 1);
 my $conffile = "$tmpdir/dhcpd.conf";
-open(my $wfh, '>', $conffile) or BAIL_OUT("cannot write $conffile: $!");
+open(my $wfh, '>', $conffile) or die "cannot write $conffile: $!\n";
 print $wfh @dhcpconf;
 close($wfh);
-open(my $efh, '>', "$tmpdir/empty.conf") or BAIL_OUT("cannot write empty.conf: $!");
+open(my $efh, '>', "$tmpdir/empty.conf") or die "cannot write empty.conf: $!\n";
 close($efh);
 
 {

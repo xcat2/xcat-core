@@ -3,6 +3,9 @@ use strict;
 use warnings;
 
 use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(repo_path);
+
 use Test::More;
 
 # grub2 reads its configuration as a script. A word carrying a command separator ends the
@@ -10,11 +13,8 @@ use Test::More;
 # (ds=nocloud-net;s=<url>) is written as one such word: the node booted without the seed URL
 # and without BOOTIF, and the installer waited for someone to answer its questions.
 
-use lib "$FindBin::Bin/../../perl-xCAT";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
-my $plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/grub2.pm";
-plan skip_all => 'grub2.pm not found' unless -r $plugin;
-eval { require $plugin; 1 } or plan skip_all => "could not load grub2.pm: $@";
+my $plugin = repo_path('xCAT-server/lib/xcat/plugins/grub2.pm');
+require $plugin;
 
 my $quote = \&xCAT_plugin::grub2::quote_kcmdline;
 

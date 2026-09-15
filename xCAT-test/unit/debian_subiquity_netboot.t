@@ -3,6 +3,9 @@ use strict;
 use warnings;
 
 use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(repo_path);
+
 use Test::More;
 
 # The Ubuntu live installer (Subiquity) is booted over NFS. Three things on the kernel command
@@ -18,11 +21,8 @@ use Test::More;
 #
 # Build the command line for real and inspect it, rather than reading the source that builds it.
 
-use lib "$FindBin::Bin/../../perl-xCAT";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
-my $plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/debian.pm";
-plan skip_all => 'debian.pm not found' unless -r $plugin;
-eval { require $plugin; 1 } or plan skip_all => "could not load debian.pm: $@";
+my $plugin = repo_path('xCAT-server/lib/xcat/plugins/debian.pm');
+require $plugin;
 
 my $cmdline = xCAT_plugin::debian::subiquity_kcmdline(
     'nofb utf8 auto xcatd=xcatmn',    # what mkinstall has built so far

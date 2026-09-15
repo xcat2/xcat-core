@@ -3,12 +3,13 @@ use strict;
 use warnings;
 
 use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
+
 use File::Spec;
 use File::Temp qw(tempfile);
 use Test::More;
 
-my $libdir = "$FindBin::Bin/../../perl-xCAT";
-plan skip_all => 'NodeRange.pm not found' unless -r "$libdir/xCAT/NodeRange.pm";
 
 # Stub Table so NodeRange loads without a database. The ^ file path does not
 # call a Table method.
@@ -22,9 +23,8 @@ BEGIN {
     sub AUTOLOAD { return }
     sub DESTROY  { }
 }
-eval { require Text::Balanced; 1 } or plan skip_all => 'Text::Balanced is required';
+require Text::Balanced;
 
-push @INC, $libdir;
 require xCAT::NodeRange;
 
 my ($fh, $listfile) = tempfile('xcat_nrlist_XXXXXX', TMPDIR => 1, UNLINK => 1);
