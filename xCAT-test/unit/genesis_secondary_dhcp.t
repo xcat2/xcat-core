@@ -6,7 +6,11 @@ use File::Path qw(make_path);
 use File::Spec;
 use File::Temp qw(tempdir tempfile);
 use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
+
 use Test::More;
+use XCAT::Test::Sandbox qw(replace_required assert_no_host_paths);
 
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
 my $doxcat = File::Spec->catfile(
@@ -24,6 +28,7 @@ ok( defined($helper), 'doxcat defines the secondary DHCP eligibility helper' );
 my ($selection) =
   $source =~ /(^\s*NICCANDIDATES=`.*?^\s*export NICSTOBRINGUP\s*$)/ms;
 ok( defined($selection), 'doxcat filters candidates before exporting them' );
+my $extracted = defined($selection);
 
 # Keep the test runnable against the old source for a behavioral negative control.
 if ( !defined($helper) ) {
@@ -38,8 +43,12 @@ if ( !defined($selection) ) {
 
 my $test_tsm_file = '"$TEST_TSM_FILE"';
 my $test_sys_class_net = '"$TEST_SYS_CLASS_NET"';
-$selection =~ s{/tmp/tsmhostnic}{$test_tsm_file}g;
-$selection =~ s{/sys/class/net}{$test_sys_class_net}g;
+# The fallback for an older doxcat names neither path; the scan still guards it.
+if ($extracted) {
+    replace_required( \$selection, '/tmp/tsmhostnic', $test_tsm_file );
+    replace_required( \$selection, '/sys/class/net',  $test_sys_class_net );
+}
+assert_no_host_paths( $selection, prefixes => [qw(/etc /var /root /home /boot /opt /srv /install /tftpboot /xcatpost /proc /tmp /sys)] );
 
 my $scratch = tempdir( CLEANUP => 1 );
 my ( $runner_fh, $runner ) = tempfile( DIR => $scratch, UNLINK => 1 );

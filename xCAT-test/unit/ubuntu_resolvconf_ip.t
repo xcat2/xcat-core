@@ -3,8 +3,12 @@ use strict;
 use warnings;
 
 use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(slurp_repo_file);
+
 use File::Temp qw(tempdir);
 use Test::More;
+use XCAT::Test::Sandbox qw(replace_required assert_no_host_paths);
 
 # A nameserver line in /etc/resolv.conf must hold an IP address: glibc's resolver discards an
 # entry naming a host. Writing the xcatmaster *name* left the installer -- and the in-target
@@ -15,15 +19,10 @@ use Test::More;
 #
 # Run the template's own shell for that step and inspect the file it writes.
 
-my $tmpl = "$FindBin::Bin/../../xCAT-server/share/xcat/install/ubuntu/compute.subiquity.tmpl";
-plan skip_all => 'compute.subiquity.tmpl not found' unless -r $tmpl;
-
-open(my $fh, '<', $tmpl) or die "open $tmpl: $!";
-my $source = do { local $/; <$fh> };
-close $fh;
+my $source = slurp_repo_file('xCAT-server/share/xcat/install/ubuntu/compute.subiquity.tmpl');
 
 my ($fragment) = $source =~ m{^(\s*xcatmaster_host=.*?\n)\s*echo "=== early-commands complete}ms;
-BAIL_OUT('the template does not build /etc/resolv.conf from the xcatmaster') unless $fragment;
+die "the template does not build /etc/resolv.conf from the xcatmaster\n" unless $fragment;
 
 # $NODE, the xcatmaster and the domain come from the xCAT template renderer; stand in for them.
 sub write_resolv_conf {
@@ -38,18 +37,11 @@ sub write_resolv_conf {
     my $script = $fragment;
     $script =~ s/\#TABLE:noderes:\$NODE:xcatmaster\#/$opt{xcatmaster}/;
     $script =~ s/\#TABLE:site:key=domain:value\#/cluster/;
-    $script =~ s{/etc/resolv\.conf}{$root/resolv.conf}g;
+    replace_required( \$script, '/etc/resolv.conf', "$root/resolv.conf" );
 
-    # The fragment contains `rm -f /etc/resolv.conf` and this suite runs as root in CI, so a
-    # rewrite that stops matching would delete the runner's resolver configuration rather than
-    # fail a test. Sandboxing by rewriting paths is fragile by nature -- respelling the path in
-    # the template as, say, `etcdir=/etc; rm -f "$etcdir/resolv.conf"` slips straight past the
-    # substitution above. Refuse to execute anything that still points outside the scratch tree.
-    # \b not "/etc/": the respelling this guard exists to catch -- `etcdir=/etc; rm -f
-    # "$etcdir/resolv.conf"` -- has no slash after /etc, so requiring one let it straight past.
-    if ($script =~ m{(?<!\Q$root\E)/etc\b}) {
-        BAIL_OUT('the /etc rewrite no longer covers the fragment; refusing to run it as root');
-    }
+    # The fragment runs rm -f /etc/resolv.conf. A respelled path such as
+    # `etcdir=/etc; rm -f "$etcdir/resolv.conf"` passes the rewrite, so the scan stops it.
+    assert_no_host_paths( $script, root => $root );
 
     # getent is the resolver the fragment uses; make it answer as the test wants.
     my $getent = $opt{resolves}

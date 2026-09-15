@@ -6,7 +6,11 @@ use File::Path qw(make_path);
 use File::Spec;
 use File::Temp qw(tempdir);
 use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
+
 use Test::More;
+use XCAT::Test::Sandbox qw(replace_required assert_no_host_paths);
 
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
 
@@ -59,7 +63,8 @@ sub run_legacy_state_block {
       or die "Unable to stage RPM-only runlevel link: $!";
 
     my $isolated_block = $block;
-    $isolated_block =~ s{/etc/rc}{\$fixture_root/etc/rc}g;
+    replace_required( \$isolated_block, '/etc/rc', '$fixture_root/etc/rc' );
+    assert_no_host_paths($isolated_block);
     my $runner = File::Spec->catfile( $root, 'run-detector' );
     open( my $runner_fh, '>', $runner )
       or die "Unable to stage detector runner: $!";

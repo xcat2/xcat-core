@@ -10,7 +10,8 @@ use lib "$FindBin::Bin/../lib";
 use POSIX qw(_exit);
 use Test::More;
 
-use XCAT::Test::File qw(repo_path);
+use XCAT::Test::Source qw(repo_path);
+use XCAT::Test::Sandbox qw(replace_required assert_no_host_paths);
 
 my $source_getadapter;
 if ( defined $ENV{XCAT_TEST_GETADAPTER} ) {
@@ -24,7 +25,7 @@ else {
     $source_getadapter =
       repo_path('xCAT-genesis-scripts/usr/bin/getadapter');
 }
-plan skip_all => "$source_getadapter is required"
+die "$source_getadapter is required\n"
   unless -f $source_getadapter && -r _;
 
 my $tmpdir = tempdir( CLEANUP => 1 );
@@ -39,18 +40,15 @@ my $test_interface = File::Spec->catdir( $sys_class_net, 'eth0' );
 make_path( $test_bin, $test_interface );
 
 my $getadapter_body = read_file($source_getadapter);
-my $adapter_file_rewrites =
-  $getadapter_body =~ s{/tmp/adapterinfo}{$adapter_file}g;
-my $scan_log_rewrites =
-  $getadapter_body =~ s{/tmp/adapterscan\.log}{$scan_log}g;
-my $sysfs_rewrites =
-  $getadapter_body =~ s{/sys/class/net}{$sys_class_net}g;
-die 'Unable to sandbox getadapter adapter file'
-  unless $adapter_file_rewrites;
-die 'Unable to sandbox getadapter scan log'
-  unless $scan_log_rewrites;
-die 'Unable to sandbox getadapter sysfs paths'
-  unless $sysfs_rewrites;
+replace_required( \$getadapter_body, '/tmp/adapterinfo',     $adapter_file );
+replace_required( \$getadapter_body, '/tmp/adapterscan.log', $scan_log );
+replace_required( \$getadapter_body, '/sys/class/net',       $sys_class_net );
+# The scan result is sent with the node certificate when one exists, and the DHCP server is read
+# from the dhclient leases. Neither exists in the scratch directory.
+replace_required( \$getadapter_body, '/etc/xcat/cert.pem',    File::Spec->catfile( $tmpdir, 'cert.pem' ) );
+replace_required( \$getadapter_body, '/etc/xcat/certkey.pem', File::Spec->catfile( $tmpdir, 'certkey.pem' ) );
+replace_required( \$getadapter_body, '/var/lib/dhclient/dhclient.leases', File::Spec->catfile( $tmpdir, 'dhclient.leases' ) );
+assert_no_host_paths( $getadapter_body, root => $tmpdir, prefixes => [qw(/etc /var /root /home /boot /opt /srv /install /tftpboot /xcatpost /proc /tmp)], allow => [qr/^\s*#/] );
 write_executable( $getadapter, $getadapter_body );
 write_file( File::Spec->catfile( $test_interface, 'address' ),
     "aa:bb:cc:dd:ee:ff\n" );

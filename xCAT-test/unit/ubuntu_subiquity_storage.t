@@ -9,17 +9,17 @@
 use strict;
 use warnings;
 
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(repo_path slurp_repo_file);
+
 use File::Spec;
 use File::Temp ();
 use Test::More;
+use XCAT::Test::Sandbox qw(replace_required);
 
-my $pre_path = defined $ENV{XCATROOT} ? "$ENV{XCATROOT}/share/xcat/install/scripts/pre.ubuntu.subiquity" : '';
-$pre_path = "xCAT-server/share/xcat/install/scripts/pre.ubuntu.subiquity"
-    unless -f $pre_path;
-
-plan skip_all => "pre.ubuntu.subiquity not found" unless -f $pre_path;
-
-my $script = do { local $/; open my $fh, '<', $pre_path or die $!; <$fh> };
+my $pre_path = repo_path('xCAT-server/share/xcat/install/scripts/pre.ubuntu.subiquity');
+my $script   = slurp_repo_file('xCAT-server/share/xcat/install/scripts/pre.ubuntu.subiquity');
 
 is( system("bash -n $pre_path 2>/dev/null"), 0,
     'pre.ubuntu.subiquity passes bash -n syntax check' );
@@ -29,19 +29,19 @@ is( system("bash -n $pre_path 2>/dev/null"), 0,
 # markers -- so the block that writes the partition file is lifted out and executed,
 # with its one bracket test shadowed to choose the firmware branch and its output
 # redirected into a scratch tree. Both substitutions are asserted: if either stops
-# matching, this bails out rather than silently covering nothing or writing to /tmp.
+# matching, the test dies rather than silently covering nothing or writing to /tmp.
 my ($storage_block) = $script =~ /(^if \[ -d \/sys\/firmware\/efi \]; then\n.*?\n^fi$)/ms;
-BAIL_OUT('the firmware branch that writes the partition file no longer matches')
+die('the firmware branch that writes the partition file no longer matches')
     unless $storage_block;
 
 my $brackets = () = $storage_block =~ /\[ /g;
-BAIL_OUT("the partitioning block now has $brackets bracket tests; the shadow below covers one")
+die("the partitioning block now has $brackets bracket tests; the shadow below covers one")
     unless $brackets == 1;
 
 my $sandbox   = File::Temp::tempdir( CLEANUP => 1 );
 my $partfile  = File::Spec->catfile( $sandbox, 'partitionfile' );
-my $rewrites  = ( $storage_block =~ s{/tmp/partitionfile}{$partfile}g );
-BAIL_OUT("expected two partition-file redirects to sandbox, rewrote $rewrites")
+my $rewrites  = replace_required( \$storage_block, '/tmp/partitionfile', $partfile );
+die("expected two partition-file redirects to sandbox, rewrote $rewrites\n")
     unless $rewrites == 2;
 
 my %YAML_FOR;
@@ -69,9 +69,9 @@ SHELL
 
     unlink $partfile;
     system( 'bash', $script ) == 0
-        or BAIL_OUT("the extracted partitioning block failed to run for $firmware");
+        or die("the extracted partitioning block failed to run for $firmware");
     open( my $out_fh, '<', $partfile )
-        or BAIL_OUT("the partitioning block wrote no file for $firmware: $!");
+        or die("the partitioning block wrote no file for $firmware: $!");
     my $yaml = do { local $/; <$out_fh> };
     close($out_fh);
     $YAML_FOR{$firmware} = $yaml;

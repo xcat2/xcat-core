@@ -10,7 +10,8 @@ use lib "$FindBin::Bin/../lib";
 use POSIX qw(_exit);
 use Test::More;
 
-use XCAT::Test::File qw(repo_path slurp_repo_file);
+use XCAT::Test::Source qw(repo_path slurp_repo_file);
+use XCAT::Test::Sandbox qw(replace_required);
 
 my $go_xcat_relative = 'xCAT-server/share/xcat/tools/go-xcat';
 my ( $source_go_xcat, $go_xcat_source );
@@ -294,14 +295,6 @@ DRIVER
     };
 }
 
-sub replace_required
-{
-    my ( $body_ref, $from, $to ) = @_;
-    my $count = $$body_ref =~ s/\Q$from\E/$to/g;
-    die "Unable to sandbox $from" unless $count;
-    die "Sandbox rewrite left $from in go-xcat"
-      if index( $$body_ref, $from ) >= 0;
-}
 
 sub write_executable
 {
