@@ -4,6 +4,11 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
+use XCAT::Test::Sandbox qw(stub_bin confine_self);
+
+# The loader runs in this process environment. As root, the test runs again with host
+# directories read-only.
+BEGIN { confine_self() }
 
 use File::Copy qw(copy);
 use File::Path qw(make_path);
@@ -83,6 +88,9 @@ my $command_log = File::Spec->catfile( $root, 'commands.log' );
 my $status_log = File::Spec->catfile( $root, 'status.log' );
 
 make_path( $bin, $keys, $run_dir );
+# The systemd-sysext and genesis-status fakes written below replace their wrappers; the loader
+# finds no other command, so a host systemd-sysext cannot merge the test extension.
+stub_bin( dir => $bin, tools => [qw(bash sh cat grep sed awk cut tr sort uniq head tail wc ls basename dirname mkdir rm mv cp touch date sleep xargs expr env readlink gzip od install mktemp chmod ln tee cmp stat openssl sha256sum tar jq)] );
 write_file( $image, "extension payload\n" );
 write_file( $os_release, "ID=xcat-genesis\nVERSION_ID=0.1\n" );
 write_file( $command_log, '' );
@@ -147,7 +155,7 @@ is( $bundle_checksum_status, 0, 'extension bundle checksums verify' );
 
 local %ENV = (
     %ENV,
-    PATH                            => "$bin:$ENV{PATH}",
+    PATH                            => $bin,
     XCAT_GENESIS_EXTENSION_KEY_DIR => $keys,
     XCAT_GENESIS_EXTENSION_RUN_DIR => $run_dir,
     XCAT_GENESIS_OS_RELEASE        => $os_release,

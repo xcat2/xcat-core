@@ -15,6 +15,7 @@ use Test::More;
 
 use XCAT::BuildUtils qw(XCAT_PROBE_HELPERS);
 use XCAT::Test::File qw(repo_path slurp_repo_file);
+use XCAT::Test::Sandbox qw(stub_bin);
 
 my @helpers = qw(
     CommandUtils.pm
@@ -96,6 +97,8 @@ my $subcmd_dir = File::Spec->catdir($probe_root, 'subcmds');
 my $helper_dir = File::Spec->catdir($probe_root, 'lib', 'perl', 'xCAT');
 
 make_path($probe_root, $bin_dir);
+# xcatprobe and the xcatclient fake are copied in below; the subcommands find no other command.
+stub_bin( dir => $bin_dir, tools => [qw(perl which bash sh cat grep sed awk cut tr sort uniq head tail wc ls basename dirname mkdir rm mv cp touch date sleep xargs expr env readlink gzip od install mktemp chmod ln tee cmp stat)] );
 copy_tree(repo_path(File::Spec->catdir('xCAT-probe', 'lib')), File::Spec->catdir($probe_root, 'lib'));
 copy_tree(repo_path(File::Spec->catdir('xCAT-probe', 'subcmds')), $subcmd_dir);
 
@@ -117,7 +120,7 @@ write_text($xcatclient, "#!/bin/sh\nprintf '[ok]:dummy xcatclient\\n'\n");
 chmod 0755, $xcatclient or die "chmod $xcatclient: $!";
 
 local $ENV{XCATROOT} = $xcatroot;
-local $ENV{PATH} = "$bin_dir:$ENV{PATH}";
+local $ENV{PATH} = $bin_dir;
 local $ENV{PERL5LIB};
 local $ENV{PERL5OPT};
 local $ENV{PERLLIB};

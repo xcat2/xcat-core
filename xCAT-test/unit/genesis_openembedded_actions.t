@@ -9,6 +9,7 @@ use File::Path qw(make_path);
 use File::Spec;
 use File::Temp qw(tempdir);
 use Test::More;
+use XCAT::Test::Sandbox qw(stub_bin confined_command);
 
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
 my $action_script = File::Spec->catfile(
@@ -63,6 +64,8 @@ my $getdestiny_queue = File::Spec->catfile( $root, 'getdestiny.queue' );
 my $nextdestiny_queue = File::Spec->catfile( $root, 'nextdestiny.queue' );
 
 make_path( $bin, $state_dir, $status_dir, $approved_dir );
+# The fakes written below replace these wrappers; any other command is not found.
+stub_bin( dir => $bin, tools => [qw(bash sh cat grep sed awk cut tr sort uniq head tail wc ls basename dirname mkdir rm mv cp touch date sleep xargs expr env readlink install timeout mktemp chmod ln od)] );
 write_file( $network_file, <<'ENV' );
 XCATDEST=192.0.2.10:3001
 XCATMASTER=192.0.2.10
@@ -138,7 +141,6 @@ printf '%s\n' bmcsetup >>"$XCAT_TEST_LOG"
 SH
 
 my %base_environment = (
-    PATH                         => "$bin:$ENV{PATH}",
     XCAT_STATE_DIR               => $state_dir,
     XCAT_STATUS_COMMAND          => $status_script,
     XCAT_STATUS_DIR              => $status_dir,
@@ -177,10 +179,18 @@ sub run_action {
         $options{nextdestiny} // "standby\n" );
     write_file( $certificate_file, "certificate\n" )
       unless $options{without_certificate};
-    local %ENV = ( %ENV, %base_environment,
-        XCAT_ACTION_MAX_STEPS => ( $options{maximum_steps} // 1 ),
-        XCAT_TEST_IPMI        => ( $options{ipmi} // 0 ) );
-    my $status = system( '/bin/bash', $action_script ) >> 8;
+    my $status = system(
+        confined_command(
+            cmd => [ '/bin/bash', $action_script ],
+            bin => $bin,
+            env => {
+                %base_environment,
+                XCAT_ACTION_MAX_STEPS => ( $options{maximum_steps} // 1 ),
+                XCAT_TEST_IPMI        => ( $options{ipmi} // 0 ),
+            },
+            writable => [$root],
+        )
+    ) >> 8;
     my $log = -r $command_log ? read_file($command_log) : '';
     my $action_status = File::Spec->catfile( $status_dir, 'action.env' );
     my $record = -r $action_status ? read_file($action_status) : '';
