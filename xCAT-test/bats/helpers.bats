@@ -114,6 +114,40 @@ EOF
     [ "$output" = middle ]
 }
 
+@test "refute_grep passes when the pattern is absent and fails when it is present" {
+    run refute_grep -q 'no such text' "$(fixture)"
+    [ "$status" -eq 0 ]
+    run refute_grep -q 'start marker' "$(fixture)"
+    [ "$status" -ne 0 ]
+}
+
+@test "extract_first_matching_line takes the first of several matches and fails when none match" {
+    run extract_first_matching_line "$(fixture)" 'marker'
+    [ "$status" -eq 0 ]
+    [ "$output" = 'start marker' ]
+    run extract_first_matching_line "$(fixture)" '^no such line$'
+    [ "$status" -ne 0 ]
+    [ -z "$output" ]
+}
+
+@test "extract_shell_function prints one function and fails for a name the file does not define" {
+    local file="${BATS_TEST_TMPDIR}/functions"
+    printf 'first()\n{\n    echo one\n}\n\nsecond()\n{\n    if true\n    then\n        echo two\n    fi\n}\n' >"$file"
+
+    run extract_shell_function "$file" first
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'echo one'* ]]
+    [[ "$output" != *'echo two'* ]]
+
+    run extract_shell_function "$file" second
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'echo two'* ]]
+    [[ "$output" == *fi* ]]
+
+    run extract_shell_function "$file" missing
+    [ "$status" -ne 0 ]
+}
+
 @test "go_xcat_extract_functions fails for a missing function and for one without a closing brace" {
     GO_XCAT_SOURCE="${BATS_TEST_TMPDIR}/go-xcat"
     printf 'function good()\n{\n\techo good\n}\nfunction open()\n{\n\techo open\nfunction next()\n{\n}\n' >"$GO_XCAT_SOURCE"

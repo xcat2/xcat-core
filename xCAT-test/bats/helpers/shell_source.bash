@@ -193,3 +193,71 @@ extract_unique_line()
         }
     ' "$file"
 }
+
+# refute_grep ARGUMENTS
+# Fails when grep finds a match. The arguments are grep's own.
+# grep answers 2 for an unreadable file, which this reads as "no match", so a test that names
+# the wrong file passes. The callers assert on log files that a run does not always create, so
+# the branch that owns them decides whether a missing file is an error.
+refute_grep()
+{
+    ! grep "$@"
+    return $?
+}
+
+# extract_first_matching_line FILE PATTERN
+# Prints the first line matching PATTERN, and fails when no line matches.
+# Callers that want the match to be the only one use extract_unique_line. This one stays
+# because tests on other branches read the first of several matches on purpose.
+extract_first_matching_line()
+{
+    local file="$1"
+    local pattern="$2"
+
+    awk -v pattern="$pattern" '
+        $0 ~ pattern {
+            print
+            found = 1
+            exit
+        }
+        END {
+            if (!found) {
+                exit 1
+            }
+        }
+    ' "$file"
+}
+
+# extract_shell_function FILE NAME
+# Prints the body of the shell function NAME, and fails when the file does not define it.
+# The brace count decides where the function ends, so a function that opens a brace in a
+# string ends at the wrong line; extract_shell_if_block covers the blocks inside one.
+extract_shell_function()
+{
+    local file="$1"
+    local name="$2"
+
+    awk -v name="$name" '
+        BEGIN {
+            signature = "^[[:space:]]*(function[[:space:]]+)?" name "([[:space:]]*\\(\\))?[[:space:]]*$"
+            inline_signature = "^[[:space:]]*(function[[:space:]]+)?" name "([[:space:]]*\\(\\))?[[:space:]]*\\{"
+        }
+        $0 ~ signature || $0 ~ inline_signature {
+            copy = 1
+        }
+        copy {
+            print
+            opened += gsub(/\{/, "{")
+            closed += gsub(/\}/, "}")
+            if (opened > 0 && opened == closed) {
+                found = 1
+                exit
+            }
+        }
+        END {
+            if (!found) {
+                exit 1
+            }
+        }
+    ' "$file"
+}
