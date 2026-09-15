@@ -34,14 +34,14 @@ plan skip_all => "debian.pm not found" unless -f $plugin;
 my $src = do { local $/; open my $fh, '<', $plugin or die $!; <$fh> };
 
 # Lift the routine into a scratch package: debian.pm itself needs a management node to load.
-# BAIL_OUT rather than skip, so a rename fails loudly instead of silently covering nothing.
+# die rather than skip, so a rename fails loudly instead of silently covering nothing.
 my ($body) = $src =~ /\n(sub subiquity_nfsroot_server \{.*?\n\})\n/s;
-BAIL_OUT('could not extract subiquity_nfsroot_server from debian.pm')
+die('could not extract subiquity_nfsroot_server from debian.pm')
   unless defined $body;
 
 {
     package T;
-    eval "$body; 1" or main::BAIL_OUT("could not eval subiquity_nfsroot_server: $@");
+    eval "$body; 1" or die("could not eval subiquity_nfsroot_server: $@");
 }
 
 # A resolver that records what it was asked, so "never asked" is checkable.

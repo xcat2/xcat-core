@@ -21,7 +21,7 @@ my ($loop) = $source =~ m{
 }sx;
 
 ok( $loop, 'the service node dispatch loop was located' )
-  or BAIL_OUT('dhcp.pm no longer matches the expected dispatch shape');
+  or die('dhcp.pm no longer matches the expected dispatch shape');
 
 like(
     $loop,

@@ -16,7 +16,7 @@ use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../../build-utils/lib";
 use Test::More;
 
-BEGIN { use_ok('XCAT::BuildUtils') or BAIL_OUT('XCAT::BuildUtils does not load'); }
+BEGIN { use_ok('XCAT::BuildUtils') or die('XCAT::BuildUtils does not load'); }
 
 use XCAT::BuildUtils qw(
     source_date_epoch snap_release deb_version

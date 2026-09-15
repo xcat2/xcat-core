@@ -28,7 +28,7 @@ plan skip_all => 'plugins not found'
 # The xdcp subrequest has to state the identity the sync runs as.
 my ($call) = $syncfiles =~ /(\$subreq->\(\{[^}]*command\s*=>\s*\['xdcp'\][^}]*\})/s;
 ok( $call, 'the xdcp subrequest was located in syncfiles' )
-  or BAIL_OUT('syncfiles.pm no longer matches the expected subrequest shape');
+  or die('syncfiles.pm no longer matches the expected subrequest shape');
 
 like( $call, qr/username\s*=>/, 'the xdcp subrequest names a username' );
 

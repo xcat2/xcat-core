@@ -31,13 +31,13 @@ my ($maps)     = $source =~ /(my %secret_command_options = \(.*?my %secret_site_
 my ($arg_sub)  = $source =~ /(sub redact_password_arg \{.*?\n\}\n)/s;
 my ($args_sub) = $source =~ /(sub redact_password_args \{.*?\n\}\n)/s;
 my ($cmd_sub)  = $source =~ /(sub redact_password \{.*?\n\}\n)/s;
-BAIL_OUT('could not extract the secret set from xcatd.pm')       unless $set;
-BAIL_OUT('could not extract the command maps from xcatd.pm')     unless $maps;
-BAIL_OUT('could not extract redact_password_arg from xcatd.pm')  unless $arg_sub;
-BAIL_OUT('could not extract redact_password_args from xcatd.pm') unless $args_sub;
-BAIL_OUT('could not extract redact_password from xcatd.pm')      unless $cmd_sub;
+die('could not extract the secret set from xcatd.pm')       unless $set;
+die('could not extract the command maps from xcatd.pm')     unless $maps;
+die('could not extract redact_password_arg from xcatd.pm')  unless $arg_sub;
+die('could not extract redact_password_args from xcatd.pm') unless $args_sub;
+die('could not extract redact_password from xcatd.pm')      unless $cmd_sub;
 eval "package RedactUnderTest; $set $maps $arg_sub $args_sub $cmd_sub 1;"
-  or BAIL_OUT("could not evaluate the redaction routines: $@");
+  or die("could not evaluate the redaction routines: $@");
 
 sub arg { return RedactUnderTest::redact_password_arg( 'xCAT::xcatd', $_[0] ); }
 sub cmd { return RedactUnderTest::redact_password( $_[0], $_[1] ); }
@@ -287,7 +287,7 @@ while ( $schema_source =~ /attr_name\s*=>\s*'([^']+)'(.{0,400}?)tabentry\s*=>\s*
     push @pairs, [ $attr, $tabentry ];
 }
 ok( scalar(@pairs) > 0, 'Schema.pm yielded attributes mapped to secret columns' )
-  or BAIL_OUT('the Schema.pm mapping could not be parsed, so this test proves nothing');
+  or die('the Schema.pm mapping could not be parsed, so this test proves nothing');
 
 my @uncovered;
 foreach my $pair (@pairs) {

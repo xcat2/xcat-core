@@ -15,11 +15,11 @@ close($source_fh) or die "close $source: $!";
 my @routines;
 for my $name (qw(_genesis_boot_arch _genesis_uses_power_console)) {
     my ($routine) = $content =~ /^(sub \Q$name\E\s*\{.*?^\})/ms;
-    BAIL_OUT("could not extract $name from destiny.pm") unless $routine;
+    die("could not extract $name from destiny.pm") unless $routine;
     push(@routines, $routine);
 }
 eval join("\n", @routines); ## no critic (BuiltinFunctions::ProhibitStringyEval)
-BAIL_OUT("could not load Genesis architecture helpers: $@") if $@;
+die("could not load Genesis architecture helpers: $@") if $@;
 
 my $tftp = tempdir(CLEANUP => 1);
 make_path("$tftp/xcat");

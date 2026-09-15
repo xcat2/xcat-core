@@ -32,15 +32,15 @@ my $src = do { local $/; open my $fh, '<', $setupntp or die $!; <$fh> };
 # order they appear in -- the ordering is asserted at runtime below, from what the run actually
 # recorded, not from where the text sits. Anchored on the dispatch and on the `unset` block that
 # follows it, so a reordering does not silently shrink the region to cover only one of them.
-# BAIL_OUT rather than skip, so a rename fails loudly instead of silently covering nothing.
+# die rather than skip, so a rename fails loudly instead of silently covering nothing.
 my $dispatch_at = index( $src, 'if [ -n "${USE_NTPD}" ]' . "\nthen" );
 my $timesyncd_at = index( $src, 'systemctl stop systemd-timesyncd.service' );
 my $end_at = index( $src, '# Unset xCAT passed environment variables' );
-BAIL_OUT('could not locate the ntpd dispatch in setupntp')      if $dispatch_at < 0;
-BAIL_OUT('could not locate the timesyncd handling in setupntp') if $timesyncd_at < 0;
-BAIL_OUT('could not locate the end of the dispatch region')     if $end_at < 0;
+die('could not locate the ntpd dispatch in setupntp')      if $dispatch_at < 0;
+die('could not locate the timesyncd handling in setupntp') if $timesyncd_at < 0;
+die('could not locate the end of the dispatch region')     if $end_at < 0;
 
-BAIL_OUT('the timesyncd handling is outside the extracted region')
+die('the timesyncd handling is outside the extracted region')
   if $timesyncd_at > $end_at;
 
 # Start at the top of the paragraph the earlier landmark sits in, so an enclosing `if ... then`
@@ -51,7 +51,7 @@ my $para = rindex( $src, "\n\n", $start_at );
 $start_at = $para + 2 if $para >= 0;
 
 my $region = substr( $src, $start_at, $end_at - $start_at );
-BAIL_OUT('the extracted region does not parse as shell')
+die('the extracted region does not parse as shell')
   if system( '/bin/bash', '-n', '-c', "f(){ :; }\n$region" ) != 0;
 
 my $dir = tempdir( CLEANUP => 1 );

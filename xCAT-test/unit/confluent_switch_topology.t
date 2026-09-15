@@ -43,7 +43,7 @@ BEGIN {
 
 # With every collaborator stood in, a plugin that still will not load is a
 # broken command rather than an unsupported environment, so fail loudly.
-eval { require $plugin; 1 } or BAIL_OUT("confluent.pm did not load: $@");
+eval { require $plugin; 1 } or die("confluent.pm did not load: $@");
 
 # A table that answers the two calls the command makes of it. Rows are given
 # per node exactly as xCAT::Table returns them, a list of hashes per node.

@@ -27,11 +27,11 @@ plan skip_all => "debian.pm not found" unless -f $plugin;
 
 my $src = do { local $/; open my $fh, '<', $plugin or die $!; <$fh> };
 
-# BAIL_OUT rather than skip, so a rename fails loudly instead of silently covering nothing.
+# die rather than skip, so a rename fails loudly instead of silently covering nothing.
 my $body = '';
 for my $name (qw(subiquity_nfsroot_server subiquity_kcmdline subiquity_boot_params)) {
     my ($sub) = $src =~ /\n(sub \Q$name\E \{.*?\n\})\n/s;
-    BAIL_OUT("could not extract $name from debian.pm") unless defined $sub;
+    die("could not extract $name from debian.pm") unless defined $sub;
     $body .= "$sub\n";
 }
 
@@ -46,7 +46,7 @@ for my $name (qw(subiquity_nfsroot_server subiquity_kcmdline subiquity_boot_para
 
 {
     package T;
-    eval "$body; 1" or main::BAIL_OUT("could not eval the subiquity helpers: $@");
+    eval "$body; 1" or die("could not eval the subiquity helpers: $@");
 }
 
 my $resolver = sub { $_[0] eq 'mn.cluster' ? '10.0.0.1' : undef };

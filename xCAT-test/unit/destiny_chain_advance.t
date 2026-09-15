@@ -26,7 +26,7 @@ my ($block) = $source =~ m{
 }sx;
 
 ok( $block, 'the chain-advance block was located in nextdestiny()' )
-  or BAIL_OUT('destiny.pm no longer matches the expected chain-advance shape');
+  or die('destiny.pm no longer matches the expected chain-advance shape');
 
 sub advance {
     my (%chain) = @_;

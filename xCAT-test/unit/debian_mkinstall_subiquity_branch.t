@@ -27,12 +27,12 @@ plan skip_all => "debian.pm not found" unless -f $plugin;
 
 my $src = do { local $/; open my $fh, '<', $plugin or die $!; <$fh> };
 
-# The helpers the branch calls, plus the branch itself. BAIL_OUT rather than skip, so a rename
+# The helpers the branch calls, plus the branch itself. die rather than skip, so a rename
 # fails loudly instead of silently covering nothing.
 my $helpers = '';
 for my $name (qw(subiquity_nfsroot_server subiquity_kcmdline subiquity_boot_params)) {
     my ($sub) = $src =~ /\n(sub \Q$name\E \{.*?\n\})\n/s;
-    BAIL_OUT("could not extract $name from debian.pm") unless defined $sub;
+    die("could not extract $name from debian.pm") unless defined $sub;
     $helpers .= "$sub\n";
 }
 
@@ -41,12 +41,12 @@ for my $name (qw(subiquity_nfsroot_server subiquity_kcmdline subiquity_boot_para
 # another above it does not silently swap which branch is under test.
 my @candidates = $src =~ /\n[ ]+if \(using_subiquity\([^)]*\)\) \{\n(.*?)\n[ ]+\} else \{\n/gs;
 my @wanted = grep { /subiquity_boot_params\(/ } @candidates;
-BAIL_OUT('could not find the mkinstall branch that builds the subiquity boot parameters')
+die('could not find the mkinstall branch that builds the subiquity boot parameters')
   unless @wanted == 1;
 my $branch = $wanted[0];
-BAIL_OUT('the extracted branch does not skip the node on error')
+die('the extracted branch does not skip the node on error')
   unless $branch =~ /\bnext\b/;
-BAIL_OUT('the extracted branch is implausibly large -- the match ran past its block')
+die('the extracted branch is implausibly large -- the match ran past its block')
   if ($branch =~ tr/\n//) > 20;
 
 my @reported;
@@ -88,7 +88,7 @@ $driver =~ s/\bnext;/next NODE;/g;
 
 {
     package T;
-    eval "$driver; 1" or main::BAIL_OUT("could not eval the mkinstall branch: $@");
+    eval "$driver; 1" or die("could not eval the mkinstall branch: $@");
 }
 
 # A resolvable install server: the branch must produce a live command line.

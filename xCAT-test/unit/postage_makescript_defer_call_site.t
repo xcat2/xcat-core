@@ -28,14 +28,14 @@ plan skip_all => "Postage.pm not found" unless -f $postage;
 
 my $src = do { local $/; open my $fh, '<', $postage or die $!; <$fh> };
 
-# The helper, and the block in makescript that calls it. BAIL_OUT rather than skip, so a rename
+# The helper, and the block in makescript that calls it. die rather than skip, so a rename
 # fails loudly instead of silently covering nothing.
 my ($helper) = $src =~ /\n(sub defer_syncfiles_to_postboot \{.*?\n\})\n/s;
-BAIL_OUT('could not extract defer_syncfiles_to_postboot from Postage.pm') unless defined $helper;
+die('could not extract defer_syncfiles_to_postboot from Postage.pm') unless defined $helper;
 
 my ($block) = $src =~ /\n([ ]+my \$effective_provmethod = \$provmethod;\n.*?defer_syncfiles_to_postboot\(\n.*?\);)\n/s;
-BAIL_OUT('could not extract the makescript call site from Postage.pm') unless defined $block;
-BAIL_OUT('the extracted call site does not consult the image hash')
+die('could not extract the makescript call site from Postage.pm') unless defined $block;
+die('the extracted call site does not consult the image hash')
   unless $block =~ /\$image_hash\{\$osimgname\}\{'provmethod'\}/;
 
 my $driver = <<"CODE";
@@ -57,7 +57,7 @@ CODE
 
 {
     package T;
-    eval "$driver; 1" or main::BAIL_OUT("could not eval the makescript call site: $@");
+    eval "$driver; 1" or die("could not eval the makescript call site: $@");
 }
 
 my $POST = "otherpkgs\nsyncfiles\nremoteshell\n";

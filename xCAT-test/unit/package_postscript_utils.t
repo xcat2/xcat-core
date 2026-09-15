@@ -21,7 +21,7 @@ my @callers = qw(ospkgs otherpkgs);
 
 for my $required ( $library, $loader,
     map { File::Spec->catfile( $postscripts, $_ ) } @callers ) {
-    -r $required or BAIL_OUT("$required is required");
+    -r $required or die("$required is required");
 }
 
 is( system( 'sh', '-n', $library ), 0,

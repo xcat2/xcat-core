@@ -21,7 +21,7 @@
 # xcatd cannot be loaded here: it needs the database, SSL, the plugin tree and
 # /var/run/xcat, and it starts serving at the bottom of the file. So the routine and the
 # fork block under test are lifted out of the program text and run in a scratch package
-# against stand-in handles. BAIL_OUT if a lift stops matching, so this fails loudly rather
+# against stand-in handles. die if a lift stops matching, so this fails loudly rather
 # than quietly covering nothing.
 
 use strict;
@@ -39,7 +39,7 @@ my $XCATD = "$FindBin::Bin/../../xCAT-server/sbin/xcatd";
 plan skip_all => "xcatd not found at $XCATD" unless -r $XCATD;
 
 my $src = do {
-    open my $fh, '<', $XCATD or BAIL_OUT("cannot read $XCATD: $!");
+    open my $fh, '<', $XCATD or die("cannot read $XCATD: $!");
     local $/;
     <$fh>;
 };
@@ -55,7 +55,7 @@ sub lift_sub {
 
 my %reaper = map { $_ => lift_sub($_) } qw(generic_reaper ssl_reaper);
 for my $name (sort keys %reaper) {
-    BAIL_OUT("cannot lift $name out of xcatd -- the lift needs updating")
+    die("cannot lift $name out of xcatd -- the lift needs updating")
       unless $reaper{$name};
 }
 
@@ -75,7 +75,7 @@ my $shared = lift_sub('reap_install_monitor') || 'sub reap_install_monitor { }';
       $reaper{generic_reaper},
       $reaper{ssl_reaper},
       '1;';
-    eval $scratch or BAIL_OUT("cannot compile the lifted reapers: $@");
+    eval $scratch or die("cannot compile the lifted reapers: $@");
 }
 
 # Fork a child, let it exit, and hand it to $reaper as the install monitor. Returns the
@@ -84,7 +84,7 @@ sub reap_a_dead_monitor {
     my ($reaper) = @_;
 
     my $pid = fork();
-    BAIL_OUT("cannot fork: $!") unless defined $pid;
+    die("cannot fork: $!") unless defined $pid;
     POSIX::_exit(0) unless $pid;
 
     my $now = time();
@@ -127,10 +127,10 @@ for my $reaper (qw(generic_reaper ssl_reaper)) {
 
 # Both supervise() blocks in xcatd: the startup fork and the respawn in the service loop.
 my @blocks = $src =~ /xCAT::RespawnUtils::supervise \s* \{ (.*?) ^\s* \} \s* state \s* =>/msgx;
-BAIL_OUT("expected two supervise blocks in xcatd, found " . scalar(@blocks))
+die("expected two supervise blocks in xcatd, found " . scalar(@blocks))
   unless @blocks == 2;
 my ($respawn) = grep { /\$listener/ } @blocks;
-BAIL_OUT("cannot tell the respawn block from the startup one -- the lift needs updating")
+die("cannot tell the respawn block from the startup one -- the lift needs updating")
   unless $respawn;
 
 {
@@ -142,16 +142,16 @@ BAIL_OUT("cannot tell the respawn block from the startup one -- the lift needs u
       'sub do_installm_service { $served++ }',
       'sub xexit { die "xexit\n" }',
       '1;';
-    eval $stubs or BAIL_OUT("cannot compile the monitor stubs: $@");
+    eval $stubs or die("cannot compile the monitor stubs: $@");
 
     my $body = "package t::monitor; no strict; no warnings; sub become_monitor { $respawn }; 1;";
-    eval $body or BAIL_OUT("cannot compile the lifted respawn block: $@");
+    eval $body or die("cannot compile the lifted respawn block: $@");
 }
 
 # A connected pair of descriptors, so close() has something real to close.
 sub a_socket {
     socketpair(my $near, my $far, AF_UNIX, SOCK_STREAM, PF_UNSPEC)
-      or BAIL_OUT("socketpair failed: $!");
+      or die("socketpair failed: $!");
     return ($near, $far);
 }
 

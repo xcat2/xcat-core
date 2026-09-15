@@ -17,8 +17,8 @@ close($fh);
 # mknb.pm needs a management node to load, so lift the routine out and drive
 # the real code on its own.
 my ($routine) = $source =~ /(sub genesis_lzma_command \{.*?\n\}\n)/s;
-BAIL_OUT('could not extract genesis_lzma_command from mknb.pm') unless $routine;
-eval "package MknbCompressor; $routine 1;" or BAIL_OUT("could not evaluate: $@");
+die('could not extract genesis_lzma_command from mknb.pm') unless $routine;
+eval "package MknbCompressor; $routine 1;" or die("could not evaluate: $@");
 
 sub command { return MknbCompressor::genesis_lzma_command(@_); }
 
