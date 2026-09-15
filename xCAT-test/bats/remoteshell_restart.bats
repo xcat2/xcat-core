@@ -6,8 +6,7 @@ load 'helpers/shell_source'
 
 setup()
 {
-    XCATLIB="$(repo_path 'xCAT/postscripts/xcatlib.sh')"
-    [ -r "$XCATLIB" ] || skip "$XCATLIB is required"
+    XCATLIB="$(require_repo_file 'xCAT/postscripts/xcatlib.sh')"
     export XCATLIB
 }
 
@@ -15,12 +14,15 @@ run_restart_fallback()
 {
     local poll_count=0
 
+    # A kill that misses its shadow must not reach a host process: the only pid ps reports is
+    # the shell running this block, and kill is not a builtin here.
+    enable -n kill
     ps()
     {
-        cat <<'EOF'
-root      4321  0.0  0.0  15432  2048 ?        Ss   10:00   0:00 /usr/sbin/sshd
-EOF
+        printf 'root %s 0.0 0.0 15432 2048 ? Ss 10:00 0:00 /usr/sbin/sshd\n' "$SANDBOX_PID"
     }
+    SANDBOX_PID=$BASHPID
+    printf '%s\n' "$SANDBOX_PID" >"$PID_FILE"
     kill()
     {
         if [ "$1" = "-9" ]; then
@@ -43,6 +45,7 @@ EOF
     }
 
     source "$XCATLIB"
+    PATH="$(sandbox_path grep awk xargs expr echo)"
     xcat_restart_sshd_after_failed_service_restart sshd
 }
 
@@ -59,11 +62,15 @@ run_wait_for_processes()
 
 @test "remoteshell restart fallback kills, waits, then starts sshd" {
     EVENT_LOG="${BATS_TEST_TMPDIR}/events.log"
-    export EVENT_LOG
+    PID_FILE="${BATS_TEST_TMPDIR}/sandbox.pid"
+    export EVENT_LOG PID_FILE
 
     run run_restart_fallback
     [ "$status" -eq 0 ]
-    [ "$(read_file_or_empty "$EVENT_LOG")" = $'kill -9 4321\npoll 4321 alive\npoll 4321 gone\nstart' ]
+    local pid
+    pid="$(read_file_or_empty "$PID_FILE")"
+    [ -n "$pid" ]
+    [ "$(read_file_or_empty "$EVENT_LOG")" = "kill -9 $pid"$'\n'"poll $pid alive"$'\n'"poll $pid gone"$'\n'"start" ]
     run -1 grep -Eq '^kill 9( |$)' "$EVENT_LOG"
 }
 
@@ -82,7 +89,14 @@ run_wait_for_processes()
 }
 
 @test "remoteshell wait loop returns as soon as killed processes are gone" {
-    run run_wait_for_processes 999999
+    local child
+
+    # A pid that just exited and was reaped, rather than a number that may belong to a host process.
+    sleep 0 &
+    child=$!
+    wait "$child"
+
+    run run_wait_for_processes "$child"
     [ "$status" -eq 0 ]
     [ "$output" = "0" ]
 }

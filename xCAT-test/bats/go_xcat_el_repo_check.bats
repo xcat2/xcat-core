@@ -25,7 +25,9 @@ run_el_repo_check()
         repo_carries \
         el_epel_and_crb_check \
         install_packages_dnf \
-        install_packages_yum
+        install_packages_yum || return 1
+    # dnf and yum are the shadows below; the host package managers are not on PATH.
+    PATH="$(sandbox_path grep mktemp cat rm)"
 
     EL_EPEL_TEST_RPM=perl-Crypt-CBC
     EL_CRB_TEST_RPM=perl-IO-Tty

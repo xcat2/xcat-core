@@ -4,10 +4,8 @@ load 'helpers/shell_source'
 
 setup()
 {
-    SCRIPT_LIB="$(repo_path 'xCAT-server/share/xcat/install/scripts/scriptlib')"
-    XCATDSKLSPOST="$(repo_path 'xCAT/postscripts/xcatdsklspost')"
-    [ -r "$SCRIPT_LIB" ] || skip "$SCRIPT_LIB is required"
-    [ -r "$XCATDSKLSPOST" ] || skip "$XCATDSKLSPOST is required"
+    SCRIPT_LIB="$(require_repo_file 'xCAT-server/share/xcat/install/scripts/scriptlib')"
+    XCATDSKLSPOST="$(require_repo_file 'xCAT/postscripts/xcatdsklspost')"
     export SCRIPT_LIB XCATDSKLSPOST
 }
 
@@ -21,8 +19,12 @@ capture_install_scriptlib_wget()
         return 0
     }
 
+    local postroot="${BATS_TEST_TMPDIR}/xcatpost"
+
     source "$SCRIPT_LIB"
-    xcat_download_postscripts "192.0.2.10:80" "/install" "/xcatpost" "$wget_log"
+    require_scratch_path "$postroot" || return 1
+    PATH="$(sandbox_path)"
+    xcat_download_postscripts "192.0.2.10:80" "/install" "$postroot" "$wget_log"
 }
 
 capture_xcatdsklspost_wget()
@@ -47,6 +49,8 @@ capture_xcatdsklspost_wget()
     unset -f cat grep dirname
 
     xcatpost="${BATS_TEST_TMPDIR}/xcatpost"
+    # download_postscripts runs rm -rf "$xcatpost" before the download.
+    require_scratch_path "$xcatpost" || return 1
     INSTALLDIR=/install
     echolog() { :; }
     sleep() { :; }
@@ -57,6 +61,7 @@ capture_xcatdsklspost_wget()
         return 0
     }
 
+    PATH="$(sandbox_path grep cut rm cat mkdir)"
     download_postscripts 192.0.2.10:80
     [ "$(read_file_or_empty "$download_log")" = "mock wget stderr" ]
 }

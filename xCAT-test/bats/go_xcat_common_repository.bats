@@ -23,9 +23,11 @@ run_common_repository_case()
     go_xcat_load_functions \
         add_xcat_dep_common_repo_yum_or_zypper \
         xcat_dep_common_repo_configured \
-        refresh_xcat_dep_repository_ids
+        refresh_xcat_dep_repository_ids || return 1
 
+    require_scratch_path "$TEST_TMP" || return 1
     TMP_DIR="$TEST_TMP"
+    PATH="$(sandbox_path cat grep sed mkdir rm cp)"
     GO_XCAT_DEFAULT_BASE_URL=https://repo.example.invalid
     GO_XCAT_DEP_REPOSITORY_IDS=(xcat-dep)
 
@@ -62,10 +64,12 @@ run_template_generation()
     export REPO_LOG="$repo_log"
     export TEST_TMP="$tmp_dir"
 
-    go_xcat_load_functions add_repo_by_url_yum_or_zypper
+    go_xcat_load_functions add_repo_by_url_yum_or_zypper || return 1
 
+    require_scratch_path "$TEST_TMP" || return 1
     TMP_DIR="$TEST_TMP"
-    GO_XCAT_DEFAULT_INSTALL_PATH=/install/xcat
+    GO_XCAT_DEFAULT_INSTALL_PATH="${TEST_TMP}/install/xcat"
+    PATH="$(sandbox_path cat cp)"
     yum() { :; }
     add_repo_by_file() { cp "$1" "$REPO_LOG"; }
 

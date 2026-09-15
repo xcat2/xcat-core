@@ -4,12 +4,9 @@ load 'helpers/shell_source'
 
 setup()
 {
-    GENESIS_SPEC="$(repo_path 'xCAT-genesis-builder/xCAT-genesis-base.spec')"
-    DRACUT_MODULE="$(repo_path 'xCAT-genesis-builder/dracut_105/el/module-setup.sh')"
-    DOXCAT="$(repo_path 'xCAT-genesis-scripts/usr/bin/doxcat')"
-    [ -r "$GENESIS_SPEC" ] || skip "$GENESIS_SPEC is required"
-    [ -r "$DRACUT_MODULE" ] || skip "$DRACUT_MODULE is required"
-    [ -r "$DOXCAT" ] || skip "$DOXCAT is required"
+    GENESIS_SPEC="$(require_repo_file 'xCAT-genesis-builder/xCAT-genesis-base.spec')"
+    DRACUT_MODULE="$(require_repo_file 'xCAT-genesis-builder/dracut_105/el/module-setup.sh')"
+    DOXCAT="$(require_repo_file 'xCAT-genesis-scripts/usr/bin/doxcat')"
     export GENESIS_SPEC DRACUT_MODULE DOXCAT
 }
 
@@ -26,6 +23,7 @@ run_installkernel()
     }
 
     source "$DRACUT_MODULE"
+    PATH="$(sandbox_path ls head)"
     installkernel
 }
 
@@ -39,6 +37,7 @@ run_doxcat_modprobe_preamble()
         printf '%s\n' "$*" >>"$modprobe_log"
     }
 
+    PATH="$(sandbox_path)"
     eval "$preamble"
 }
 
@@ -49,10 +48,16 @@ run_doxcat_bootif_block()
     BOOTIF=01-aa-bb-cc-dd-ee-ff
     bootnic=
     log_label=test
-    gripeiter=2
 
     logger() { :; }
-    sleep() { :; }
+    # The block retries for 6000 iterations and then sleeps forever. A lookup that never finds
+    # the NIC must fail the test instead of hanging it.
+    sleep()
+    {
+        SLEEPS=$((${SLEEPS:-0} + 1))
+        [ "$SLEEPS" -le 20 ] || { printf 'the BOOTIF lookup did not finish\n' >&2; exit 98; }
+    }
+    PATH="$(sandbox_path sed grep awk cat)"
     ip()
     {
         printf '%s\n' "$*" >>"$IP_LOG"
@@ -98,6 +103,7 @@ EOF
     local modprobe_log="${BATS_TEST_TMPDIR}/modprobe.log"
 
     preamble="$(extract_line_range "$DOXCAT" '^modprobe acpi_cpufreq' '^modprobe ib_ipoib$')" || return 1
+    [ "$(printf '%s\n' "$preamble" | wc -l)" -eq 3 ]
 
     run run_doxcat_modprobe_preamble "$preamble" "$modprobe_log"
     [ "$status" -eq 0 ]
@@ -110,6 +116,7 @@ EOF
     IP_LOG="${BATS_TEST_TMPDIR}/ip.log"
     export IP_LOG
     block="$(extract_shell_if_block "$DOXCAT" 'if [ ! -z "$BOOTIF" ]; then')" || return 1
+    [ "$(printf '%s\n' "$block" | wc -l)" -eq 18 ]
 
     run run_doxcat_bootif_block "$block"
     [ "$status" -eq 0 ]

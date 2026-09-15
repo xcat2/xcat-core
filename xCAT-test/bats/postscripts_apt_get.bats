@@ -4,14 +4,13 @@ load 'helpers/shell_source'
 
 setup()
 {
-    PKGUTILS="$(repo_path 'xCAT/postscripts/xcatpkgutils.sh')"
-    OSPKGS="$(repo_path 'xCAT/postscripts/ospkgs')"
-    OTHERPKGS="$(repo_path 'xCAT/postscripts/otherpkgs')"
-    [ -r "$PKGUTILS" ] || skip "$PKGUTILS is required"
-    [ -r "$OSPKGS" ] || skip "$OSPKGS is required"
-    [ -r "$OTHERPKGS" ] || skip "$OTHERPKGS is required"
+    PKGUTILS="$(require_repo_file 'xCAT/postscripts/xcatpkgutils.sh')"
+    OSPKGS="$(require_repo_file 'xCAT/postscripts/ospkgs')"
+    OTHERPKGS="$(require_repo_file 'xCAT/postscripts/otherpkgs')"
     APT_LOG="${BATS_TEST_TMPDIR}/apt-get.log"
-    export PKGUTILS OSPKGS OTHERPKGS APT_LOG
+    # The apt-get calls under test reach the shadow function; a real apt-get is not on PATH.
+    SANDBOX_TOOLS="cat cut"
+    export PKGUTILS OSPKGS OTHERPKGS APT_LOG SANDBOX_TOOLS
 }
 
 # Every apt-get call is recorded as "<DEBIAN_FRONTEND>|<arguments>" and answers with APT_STATUS.
@@ -37,7 +36,7 @@ apt_calls()
 run_ospkgs_apt_block()
 {
     local block
-    block="$(extract_line_range "$OSPKGS" '# upgrade existing packages' '# remove packages')" || return 99
+    block="$(PATH=/usr/bin:/bin extract_line_range "$OSPKGS" '# upgrade existing packages' '# remove packages')" || return 99
     local ENVLIST="" groups="" pkgs=" foo bar" cudapkgs="${1:-}" RETURNVAL=0 ARCH=x86_64
     eval "$block"
     printf 'RETURNVAL=%s\n' "$RETURNVAL"
@@ -46,7 +45,7 @@ run_ospkgs_apt_block()
 run_otherpkgs_apt_line()
 {
     local line
-    line="$(extract_first_matching_line "$OTHERPKGS" "$1")" || return 99
+    line="$(PATH=/usr/bin:/bin extract_unique_line "$OTHERPKGS" "$1")" || return 99
     local envlist="" repo_pkgs="foo bar" result=""
     eval "$line"
     printf 'R=%s\n' "$?"
@@ -63,7 +62,7 @@ run_otherpkgs_apt_line()
     source "$PKGUTILS"
     shadow_apt_get
 
-    run xcat_apt_get -q install --no-install-recommends foo bar
+    run run_in_sandbox_path xcat_apt_get -q install --no-install-recommends foo bar
     [ "$status" -eq 0 ]
     [ "$(apt_call 1)" = "noninteractive|-y --allow-unauthenticated -q install --no-install-recommends foo bar" ]
     [ "$(apt_calls)" -eq 1 ]
@@ -73,7 +72,7 @@ run_otherpkgs_apt_line()
     source "$PKGUTILS"
     shadow_apt_get
 
-    APT_STATUS=100 run xcat_apt_get upgrade
+    APT_STATUS=100 run run_in_sandbox_path xcat_apt_get upgrade
     [ "$status" -eq 100 ]
 }
 
@@ -85,7 +84,7 @@ run_otherpkgs_apt_line()
     }
     local ENVLIST="ACCEPT_EULA=y"
 
-    run eval "$ENVLIST xcat_apt_get -q install foo"
+    run run_in_sandbox_path eval "$ENVLIST xcat_apt_get -q install foo"
     [ "$status" -eq 0 ]
     [ "$(apt_call 1)" = "y" ]
 }
@@ -94,7 +93,7 @@ run_otherpkgs_apt_line()
     source "$PKGUTILS"
     shadow_apt_get
 
-    run run_ospkgs_apt_block
+    run run_in_sandbox_path run_ospkgs_apt_block
     [ "$status" -eq 0 ]
     [[ "$output" == *'RETURNVAL=0'* ]]
     [ "$(apt_call 1 | cut -d'|' -f2)" = "-y update" ]
@@ -108,7 +107,7 @@ run_otherpkgs_apt_line()
     source "$PKGUTILS"
     shadow_apt_get
 
-    APT_STATUS=100 run run_ospkgs_apt_block
+    APT_STATUS=100 run run_in_sandbox_path run_ospkgs_apt_block
     [ "$status" -eq 0 ]
     [[ "$output" == *'RETURNVAL=100'* ]]
     [ "$(apt_calls)" -eq 3 ]
@@ -125,7 +124,7 @@ run_otherpkgs_apt_line()
         return 0
     }
 
-    run run_ospkgs_apt_block " cuda-toolkit"
+    run run_in_sandbox_path run_ospkgs_apt_block " cuda-toolkit"
     [ "$status" -eq 0 ]
     [[ "$output" == *'RETURNVAL=100'* ]]
     [ "$(apt_call 4)" = "noninteractive|-y --allow-unauthenticated -q install --no-install-recommends cuda-toolkit" ]
@@ -135,8 +134,8 @@ run_otherpkgs_apt_line()
 run_ospkgs_rpm_cuda_block()
 {
     local block tail="${BATS_TEST_TMPDIR}/ospkgs-rpm-tail"
-    sed -n '/#install cuda package if any/,$p' "$OSPKGS" >"$tail"
-    block="$(extract_shell_if_block "$tail" 'if [ -n "$cudapkgs" ]; then')" || return 99
+    PATH=/usr/bin:/bin sed -n '/#install cuda package if any/,$p' "$OSPKGS" >"$tail"
+    block="$(PATH=/usr/bin:/bin extract_shell_if_block "$tail" 'if [ -n "$cudapkgs" ]; then')" || return 99
     local ENVLIST="" yumcmd=fake_dnf cudapkgs=" cuda-toolkit" RETURNVAL=0 ARCH=x86_64 debug=0 log_label=ospkgs
     logger() { :; }
     fake_dnf()
@@ -149,7 +148,7 @@ run_ospkgs_rpm_cuda_block()
 }
 
 @test "ospkgs reports a failed cuda package install on yum and dnf nodes" {
-    run run_ospkgs_rpm_cuda_block
+    run run_in_sandbox_path run_ospkgs_rpm_cuda_block
     [ "$status" -eq 0 ]
     [[ "$output" == *'RETURNVAL=100'* ]]
     [ "$(apt_call 1)" = "-y install cuda-toolkit" ]
@@ -160,7 +159,7 @@ run_ospkgs_rpm_cuda_block()
     source "$PKGUTILS"
     shadow_apt_get
 
-    run run_otherpkgs_apt_line 'result=`eval [$]envlist .*Dpkg::Options.* upgrade 2>&1`'
+    run run_in_sandbox_path run_otherpkgs_apt_line 'result=`eval [$]envlist .*Dpkg::Options.* upgrade 2>&1`'
     [ "$status" -eq 0 ]
     [[ "$output" == *'R=0'* ]]
     [ "$(apt_call 1)" = "noninteractive|-y --allow-unauthenticated -o Dpkg::Options::=--force-confold -o Dpkg::Options::=--force-confdef upgrade" ]
@@ -171,7 +170,7 @@ run_ospkgs_rpm_cuda_block()
     source "$PKGUTILS"
     shadow_apt_get
 
-    run run_otherpkgs_apt_line 'result=`eval [$]envlist .*Dpkg::Options.* install [$]repo_pkgs 2>&1`'
+    run run_in_sandbox_path run_otherpkgs_apt_line 'result=`eval [$]envlist .*Dpkg::Options.* install [$]repo_pkgs 2>&1`'
     [ "$status" -eq 0 ]
     [[ "$output" == *'R=0'* ]]
     [ "$(apt_call 1)" = "noninteractive|-y --allow-unauthenticated -q -o Dpkg::Options::=--force-confold -o Dpkg::Options::=--force-confdef install foo bar" ]

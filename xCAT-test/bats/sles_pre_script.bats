@@ -6,9 +6,9 @@ load 'helpers/shell_source'
 
 setup()
 {
-    SCRIPT_LIB="$(repo_path 'xCAT-server/share/xcat/install/scripts/scriptlib')"
-    [ -r "$SCRIPT_LIB" ] || skip "$SCRIPT_LIB is required"
-    export SCRIPT_LIB
+    SCRIPT_LIB="$(require_repo_file 'xCAT-server/share/xcat/install/scripts/scriptlib')"
+    SANDBOX_TOOLS="grep sed"
+    export SCRIPT_LIB SANDBOX_TOOLS
 }
 
 @test "SLES 11 UEFI install changes the AutoYaST bootloader to elilo" {
@@ -25,7 +25,7 @@ setup()
 EOF
 
     source "$SCRIPT_LIB"
-    run set_sles11_uefi_bootloader "$cmdline" "$profile"
+    run run_in_sandbox_path set_sles11_uefi_bootloader "$cmdline" "$profile"
     [ "$status" -eq 0 ]
     grep -Fxq '<loader_type>elilo</loader_type>' "$profile"
     run -1 grep -q '<location>mbr</location>' "$profile"
@@ -41,7 +41,7 @@ EOF
     printf '%s\n' '<location>mbr</location>' >"$profile"
 
     source "$SCRIPT_LIB"
-    run set_sles11_uefi_bootloader "$cmdline" "$profile"
+    run run_in_sandbox_path set_sles11_uefi_bootloader "$cmdline" "$profile"
     [ "$status" -eq 0 ]
     grep -Fxq '<location>mbr</location>' "$profile"
 }
