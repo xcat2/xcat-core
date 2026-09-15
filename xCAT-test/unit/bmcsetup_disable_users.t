@@ -1,34 +1,37 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(slurp_repo_file);
 
 use File::Path qw(make_path);
 use File::Slurper qw(read_lines write_text);
 use File::Temp qw(tempdir);
-use FindBin;
-use lib "$FindBin::Bin/../lib";
 use Test::More;
+use XCAT::Test::Sandbox qw(replace_required assert_no_host_paths stub_bin run_confined);
 
-use XCAT::Test::File qw(repo_path);
+# bmcsetup reads its BMC settings from /tmp/ipmicfg.xml, caches ipmitool output in
+# /tmp/xcat.ipmitool.mcinfo and reads the kernel command line. The staged copy points each of them
+# into a scratch root, and ipmitool, getipmi and the other genesis helpers are stubs.
+my $tmpdir = tempdir( CLEANUP => 1 );
+my $root   = "$tmpdir/root";
+make_path( "$root/tmp", "$root/proc" );
+write_text( "$root/proc/cmdline", "quiet\n" );
 
-my $bmcsetup = repo_path('xCAT-genesis-scripts/usr/bin/bmcsetup');
-plan skip_all => 'bmcsetup script not found' unless -x $bmcsetup;
+my $script = slurp_repo_file('xCAT-genesis-scripts/usr/bin/bmcsetup');
+replace_required( \$script, '/tmp/ipmicfg.xml',          "$root/tmp/ipmicfg.xml" );
+replace_required( \$script, '/tmp/xcat.ipmitool.mcinfo', "$root/tmp/xcat.ipmitool.mcinfo" );
+replace_required( \$script, '/proc/cmdline',             "$root/proc/cmdline" );
+assert_no_host_paths( $script, root => $root, prefixes => [qw(/etc /var /root /home /boot /opt /srv /install /tftpboot /xcatpost /proc /tmp /sys)] );
+my $bmcsetup = "$tmpdir/bmcsetup";
+write_text( $bmcsetup, $script );
 
-my $ipmicfg = '/tmp/ipmicfg.xml';
-my $cleanup_ipmicfg = !-e $ipmicfg;
-plan skip_all => "$ipmicfg already exists" unless $cleanup_ipmicfg;
-END {
-    unlink $ipmicfg if $cleanup_ipmicfg && -e $ipmicfg;
-}
-
-my $tmpdir = tempdir(CLEANUP => 1);
-my $bindir = "$tmpdir/bin";
-make_path($bindir);
-
-write_executable(
-    "$bindir/ipmitool",
-    <<'EOF'
-#!/bin/sh
+my $bin = stub_bin(
+    dir   => "$tmpdir/bin",
+    tools => [qw(bash awk grep sed cut cat rm wc uname)],
+    stubs => {
+        ipmitool => <<'EOF',
 echo "$@" >> "$IPMITOOL_CALL_LOG"
 
 if [ "$1" = "-V" ]; then
@@ -83,19 +86,14 @@ esac
 
 exit 0
 EOF
-);
-
-write_executable("$bindir/logger",       "#!/bin/sh\nexit 0\n");
-write_executable("$bindir/modprobe",     "#!/bin/sh\nexit 0\n");
-write_executable("$bindir/sleep",        "#!/bin/sh\nexit 0\n");
-write_executable("$bindir/updateflag.awk", "#!/bin/sh\nexit 0\n");
-write_executable("$bindir/remoteimmsetup", "#!/bin/sh\nexit 0\n");
-write_executable("$bindir/allowcred.awk", "#!/bin/sh\nexit 0\n");
-write_executable(
-    "$bindir/getipmi",
-    <<'EOF'
-#!/bin/sh
-cat > /tmp/ipmicfg.xml <<IPMICFG
+        logger            => 'exit 0',
+        modprobe          => 'exit 0',
+        sleep             => 'exit 0',
+        'updateflag.awk'  => 'exit 0',
+        remoteimmsetup    => 'exit 0',
+        'allowcred.awk'   => 'exit 0',
+        getipmi           => <<"EOF",
+cat > '$root/tmp/ipmicfg.xml' <<IPMICFG
 <bmcip>10.0.0.2</bmcip>
 <taggedvlan>off</taggedvlan>
 <gateway>10.0.0.1</gateway>
@@ -106,6 +104,7 @@ cat > /tmp/ipmicfg.xml <<IPMICFG
 IPMICFG
 exit 0
 EOF
+    },
 );
 
 my $user_list = "$tmpdir/user-list.txt";
@@ -124,29 +123,30 @@ EOF
 my $call_log    = "$tmpdir/ipmitool-calls.log";
 my $disable_log = "$tmpdir/disabled-users.log";
 
-local $ENV{PATH}                 = "$bindir:$ENV{PATH}";
-local $ENV{IPMITOOL_USER_LIST}   = $user_list;
-local $ENV{IPMITOOL_CALL_LOG}    = $call_log;
-local $ENV{IPMITOOL_DISABLE_LOG} = $disable_log;
-
-my $output = `bash "$bmcsetup" 2>&1`;
-my $rc = $? >> 8;
-is($rc, 0, 'bmcsetup exits successfully with stubbed IPMI commands')
+my ( $rc, $output ) = run_confined(
+    cmd => [ 'bash', $bmcsetup ],
+    bin => $bin,
+    env => {
+        IPMITOOL_USER_LIST   => $user_list,
+        IPMITOOL_CALL_LOG    => $call_log,
+        IPMITOOL_DISABLE_LOG => $disable_log,
+    },
+    writable => [$tmpdir],
+    dir      => $tmpdir,
+);
+is( $rc, 0, 'bmcsetup exits successfully with stubbed IPMI commands' )
   or diag($output);
 
 my @disabled = -e $disable_log ? read_lines($disable_log) : ();
-is_deeply(\@disabled, ['4'], 'bmcsetup disables only enabled non-target user slots');
+is_deeply( \@disabled, ['4'], 'bmcsetup disables only enabled non-target user slots' );
 
 my @calls = -e $call_log ? read_lines($call_log) : ();
 ok(
-    !grep({ /user disable (1|3|5)\b/ } @calls),
+    !grep( { /user disable (1|3|5)\b/ } @calls ),
     'bmcsetup does not retry user disable for slots that are already disabled'
 );
+ok( -s $call_log, 'bmcsetup talked to the ipmitool stub' );
+ok( -e "$root/tmp/xcat.ipmitool.mcinfo", 'bmcsetup caches the ipmitool output in the scratch root' );
+ok( !-e "$root/tmp/ipmicfg.xml", 'bmcsetup removes the settings getipmi wrote into the scratch root' );
 
 done_testing();
-
-sub write_executable {
-    my ($path, $content) = @_;
-    write_text($path, $content);
-    chmod 0755, $path or die "chmod $path: $!";
-}
