@@ -11,7 +11,7 @@ use File::Temp qw(tempdir);
 use POSIX qw(_exit);
 use Test::More;
 
-use XCAT::Test::Sandbox qw(replace_required);
+use XCAT::Test::Sandbox qw(replace_required stub_bin confined_command);
 
 my $getadapter_relative = 'xCAT-genesis-scripts/usr/bin/getadapter';
 my ( $source_getadapter, $getadapter_source );
@@ -209,6 +209,8 @@ sub run_scenario
     my $lease_dir = File::Spec->catdir( $root, 'lease-fixture' );
     make_path( $bin, File::Spec->catdir( $sys_class_net, 'lo' ),
         $cert_dir, $lease_dir );
+    # The fakes written below replace these wrappers; any other command is not found.
+    stub_bin( dir => $bin, tools => [qw(bash sh cat grep sed awk cut tr sort uniq head tail wc ls basename dirname mkdir rm mv cp touch date sleep xargs expr env readlink)] );
 
     my $adapter_file = File::Spec->catfile( $root, 'adapterinfo' );
     my $scan_log = File::Spec->catfile( $root, 'adapterscan.log' );
@@ -259,21 +261,20 @@ SH
         write_file( $adapter_file, $option{initial_adapter} );
     }
 
-    local %ENV = (
-        %ENV,
-        PATH                     => "$bin:$ENV{PATH}",
+    my %environment = (
         XCAT_TEST_OPENSSL_ARGS   => $args_file,
         XCAT_TEST_OPENSSL_STATUS => $option{openssl_status} // 0,
         XCAT_TEST_OPENSSL_STDOUT => $option{openssl_stdout} // '',
         XCAT_TEST_OPENSSL_STDERR => $option{openssl_stderr} // '',
         XCAT_TEST_REQUEST_COPY   => $request_copy,
     );
-    if ( defined $option{master} ) {
-        $ENV{XCATMASTER} = $option{master};
-    }
-    else {
-        delete $ENV{XCATMASTER};
-    }
+    $environment{XCATMASTER} = $option{master} if defined $option{master};
+    my @command = confined_command(
+        cmd      => [ 'bash', $getadapter ],
+        bin      => $bin,
+        env      => \%environment,
+        writable => [$root],
+    );
 
     my $pid = fork();
     die "Unable to fork getadapter: $!" unless defined $pid;
@@ -281,7 +282,7 @@ SH
         open( STDIN, '<', '/dev/null' ) or _exit(126);
         open( STDOUT, '>:raw', $stdout_file ) or _exit(126);
         open( STDERR, '>:raw', $stderr_file ) or _exit(126);
-        exec 'bash', $getadapter or _exit(127);
+        exec(@command) or _exit(127);
     }
     my $reaped = waitpid( $pid, 0 );
     my $raw_status = $?;

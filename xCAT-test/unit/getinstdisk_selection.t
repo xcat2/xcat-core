@@ -9,7 +9,7 @@ use XCAT::Test::Source;
 use File::Spec;
 use File::Temp qw(tempdir);
 use Test::More;
-use XCAT::Test::Sandbox qw(replace_required assert_no_host_paths);
+use XCAT::Test::Sandbox qw(replace_required assert_no_host_paths stub_bin run_confined);
 
 my $repo_root  = File::Spec->catdir( $FindBin::Bin, '..', '..' );
 my $script_dir = File::Spec->catdir( $repo_root, 'xCAT-server', 'share', 'xcat', 'install', 'scripts' );
@@ -36,6 +36,8 @@ sub run_scenario {
     my $bindir  = "$sandbox/bin";
     mkdir $fixdir;
     mkdir $bindir;
+    # The udevadm fake written below replaces its wrapper; any other command is not found.
+    stub_bin( dir => $bindir, tools => [qw(bash sh cat grep sed awk cut tr sort uniq head tail wc ls basename dirname mkdir rm mv cp touch date sleep xargs expr env readlink)] );
 
     my $body = slurp($script);
     replace_required( \$body, '/proc/partitions',         "$sandbox/partitions" );
@@ -91,10 +93,15 @@ UDEV
     close($udev);
     chmod 0755, "$bindir/udevadm";
 
-    local $ENV{FIXDIR}     = $fixdir;
-    local $ENV{PATH}       = "$bindir:$ENV{PATH}";
-    local $ENV{MASTER_IP}  = '';
-    system("sh $sandbox/getinstdisk >$sandbox/log 2>&1");
+    my ( undef, $log ) = run_confined(
+        cmd      => [ 'sh', "$sandbox/getinstdisk" ],
+        bin      => $bindir,
+        env      => { FIXDIR => $fixdir, MASTER_IP => '' },
+        writable => [$sandbox],
+    );
+    open( my $log_fh, '>', "$sandbox/log" ) or die "Unable to write $sandbox/log: $!";
+    print {$log_fh} $log;
+    close($log_fh);
     my $chosen = -r "$sandbox/xcat.install_disk" ? slurp("$sandbox/xcat.install_disk") : '';
     chomp $chosen;
     return $chosen;

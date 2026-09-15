@@ -11,7 +11,7 @@ use File::Temp qw(tempdir);
 use POSIX qw(_exit);
 use Test::More;
 
-use XCAT::Test::Sandbox qw(replace_required assert_no_host_paths);
+use XCAT::Test::Sandbox qw(replace_required assert_no_host_paths stub_bin confined_command);
 
 my $source_getadapter;
 if ( defined $ENV{XCAT_TEST_GETADAPTER} ) {
@@ -38,6 +38,8 @@ my $stdout_file    = File::Spec->catfile( $tmpdir, 'stdout' );
 my $stderr_file    = File::Spec->catfile( $tmpdir, 'stderr' );
 my $test_interface = File::Spec->catdir( $sys_class_net, 'eth0' );
 make_path( $test_bin, $test_interface );
+# The fakes written below replace these wrappers; any other command is not found.
+stub_bin( dir => $test_bin, tools => [qw(bash sh cat grep sed awk cut tr sort uniq head tail wc ls basename dirname mkdir rm mv cp touch date sleep xargs expr env readlink)] );
 
 my $getadapter_body = read_file($source_getadapter);
 replace_required( \$getadapter_body, '/tmp/adapterinfo',     $adapter_file );
@@ -162,13 +164,16 @@ done_testing();
 
 sub run_getadapter
 {
-    local %ENV = (
-        %ENV,
-        PATH                     => "$test_bin:$ENV{PATH}",
-        XCATMASTER               => '192.0.2.1',
-        XCAT_TEST_LSPCI_FIXTURE  => $lspci_fixture,
-        XCAT_TEST_LSPCI_LOG      => $lspci_log,
-        XCAT_TEST_REQUEST_COPY   => $request_copy,
+    my @command = confined_command(
+        cmd => [ 'bash', $getadapter ],
+        bin => $test_bin,
+        env => {
+            XCATMASTER              => '192.0.2.1',
+            XCAT_TEST_LSPCI_FIXTURE => $lspci_fixture,
+            XCAT_TEST_LSPCI_LOG     => $lspci_log,
+            XCAT_TEST_REQUEST_COPY  => $request_copy,
+        },
+        writable => [$tmpdir],
     );
 
     my $pid = fork();
@@ -176,7 +181,7 @@ sub run_getadapter
     if ( $pid == 0 ) {
         open( STDOUT, '>:raw', $stdout_file ) or _exit(126);
         open( STDERR, '>:raw', $stderr_file ) or _exit(126);
-        exec 'bash', $getadapter or _exit(127);
+        exec(@command) or _exit(127);
     }
     my $reaped     = waitpid( $pid, 0 );
     my $raw_status = $?;
