@@ -384,7 +384,7 @@ sub subvars {
         $inc =~ s/#CRYPT:([^:]+):([^:]+):([^#]+)#/crydb($1,$2,$3)/eg;
         $inc =~ s/#CRYPTORLOCKED:([^:]+):([^:]+):([^#]+)#/crydb_or_locked($1,$2,$3)/eg;
         $inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
-        $inc =~ s/#KICKSTARTNET#/kickstartnetwork()/eg;
+        $inc =~ s/#KICKSTARTNET#/kickstartnetwork($platform)/eg;
         $inc =~ s/#MIRRORSPEC#/mirrorspec()/eg;
         $inc =~ s/#YAST2NET#/yast2network()/eg;
         $inc =~ s/#KICKSTARTBOOTLOADER#/kickstartbootloader()/eg;
@@ -1046,6 +1046,7 @@ sub esxipv6setup {
 
 
 sub kickstartnetwork {
+    my $platform = shift;
     my $line = "network --onboot=yes --bootproto=";
     my $hoststab;
     my $mactab = xCAT::Table->new('mac', -create => 0);
@@ -1108,6 +1109,7 @@ sub kickstartnetwork {
         #return "#KSNET static unsupported";
     } else {
         $line .= "dhcp --device=$suffix";
+        $line .= " --hostname=$node" if (defined($platform) && $platform eq 'openeuler');
     }
     return $line;
 }

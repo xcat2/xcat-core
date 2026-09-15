@@ -1,0 +1,4 @@
+#INCLUDE:${XCATROOT}/share/xcat/install/openeuler/compute.openeuler.pkglist#
+openssl
+perl-DBD-MySQL
+perl-DBD-Pg

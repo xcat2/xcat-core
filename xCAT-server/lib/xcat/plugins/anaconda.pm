@@ -144,11 +144,11 @@ sub _set_driver_disk_marker
 
 sub _driver_disk_kernel_arg
 {
-    my ($kversion, $initrd) = @_;
+    my ($kversion, $initrd, $modern_installer) = @_;
     my $marker = _driver_disk_marker_path($initrd);
 
     return '' unless defined($marker) && -f $initrd && -f $marker;
-    return '' if xCAT::Utils->version_cmp($kversion, "7.0") < 0;
+    return '' unless $modern_installer || xCAT::Utils->version_cmp($kversion, "7.0") >= 0;
     return " inst.dd=/dd.img";
 }
 
@@ -157,8 +157,8 @@ sub handled_commands
 {
     return {
         copycd => "anaconda",
-        mknetboot => "nodetype:os=(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)",
-        mkinstall => "nodetype:os=(pkvm.*)|(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
+        mknetboot => "nodetype:os=(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)|(openeuler.*)",
+        mkinstall => "nodetype:os=(pkvm.*)|(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)|(openeuler.*)",
         mksysclone => "nodetype:os=(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
         mkstatelite => "nodetype:os=(esx[34].*)|(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)",
 
@@ -1508,10 +1508,12 @@ sub mkinstall
             my $kversion = $os;
             $kversion =~ s/^\D*([\.0-9]+)/$1/;
             $kversion =~ s/\.$//;
+            my $modern_installer = $os =~ /^openeuler/
+              || xCAT::Utils->version_cmp($kversion, "7.0") >= 0;
             if ($pkvm) {
                 $kcmdline = "ksdevice=bootif kssendmac text selinux=0 rd.dm=0 rd.md=0 repo=$httpmethod://$instserver:$httpport$httpprefix/packages/ kvmp.inst.auto=$httpmethod://$instserver:$httpport/install/autoinst/$node root=live:$httpmethod://$instserver:$httpport$httpprefix/LiveOS/squashfs.img";
             } else {
-                if (xCAT::Utils->version_cmp($kversion, "7.0") < 0) {
+                if (!$modern_installer) {
                     $kcmdline = "repo=$httpmethod://$instserver:$httpport$httpprefix ks=$httpmethod://"
                       . $instserver . ":" . $httpport
                       . "/install/autoinst/"
@@ -1542,7 +1544,7 @@ sub mkinstall
 
             my $nicname = $net_params->{nicname};
 
-            if (xCAT::Utils->version_cmp($kversion, "7.0") < 0) {
+            if (!$modern_installer) {
                 $kcmdline .= " $net_params->{ksdevice} ";
             } elsif ($arch =~ /ppc/) {
                 $kcmdline .= " $net_params->{BOOTIF} ";
@@ -1562,7 +1564,7 @@ sub mkinstall
                     unless ($gatewayd[0]) { $gateway = $gatewayd[1]; }
                 }
 
-                if (xCAT::Utils->version_cmp($kversion, "7.0") < 0) {
+                if (!$modern_installer) {
                     $kcmdline .= " ip=$ipaddr netmask=$netmask gateway=$gateway  hostname=$hostname ";
                 } else {
                     $kcmdline .= " ip=$ipaddr" . "::" . "$gateway" . ":" . "$netmask" . ":" . "$hostname" . ":";
@@ -1593,7 +1595,7 @@ sub mkinstall
                 }
 
                 if (scalar @nameserversIP) {
-                    if (xCAT::Utils->version_cmp($kversion, "7.0") < 0) {
+                    if (!$modern_installer) {
                         $kcmdline .= " dns=" . join(",", @nameserversIP);
                     } else {
                         foreach (@nameserversIP) {
@@ -1602,7 +1604,7 @@ sub mkinstall
                     }
                 }
             } else {
-                if (xCAT::Utils->version_cmp($kversion, "7.0") >= 0) {
+                if ($modern_installer) {
                     $kcmdline .= " $net_params->{ip} ";
                 }
             }
@@ -1613,7 +1615,7 @@ sub mkinstall
                     $instserver = $ip;
                 }
 
-                if (xCAT::Utils->version_cmp($kversion, "7.0") >= 0) {
+                if ($modern_installer) {
                     if ($::XCATSITEVALS{xcatdebugmode} eq "2") {
 
                         #enable ssh access during installation
@@ -1637,7 +1639,7 @@ sub mkinstall
 
 
             $kcmdline .= _driver_disk_kernel_arg(
-                $kversion, "$tftppath/initrd.img"
+                $kversion, "$tftppath/initrd.img", $modern_installer
             );
             if (defined($sent->{serialport})) {
                 unless ($sent->{serialspeed}) {
@@ -1646,7 +1648,7 @@ sub mkinstall
                 }
 
                 #go cmdline if serial console is requested, the shiny ansi is just impractical
-                if (xCAT::Utils->version_cmp($kversion, "7.0") < 0) {
+                if (!$modern_installer) {
                     $kcmdline .= " cmdline ";
                 } else {
                     $kcmdline .= " inst.cmdline ";

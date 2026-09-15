@@ -330,7 +330,7 @@ fi
 export OSVER="#TABLE:nodetype:THISNODE:os#"
 # Create the post init service as a hook to run PS and PBS, as well as status updating
 cat >/etc/systemd/system/xcatpostinit1.service <<'EOF'
-#INCLUDE:/install/postscripts/xcatpostinit1.service#
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatpostinit1.service#
 EOF
 
 case "$XCATDEBUGMODE" in
@@ -348,7 +348,7 @@ case "$XCATDEBUGMODE" in
 esac
 
 cat >/opt/xcat/xcatpostinit1 <<'EOF'
-#INCLUDE:/install/postscripts/xcatpostinit1.install#
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatpostinit1.install#
 EOF
 chmod 0755 /opt/xcat/xcatpostinit1
 

@@ -916,8 +916,6 @@ sub update_tables_with_templates
                     }
                 }
 
-                #		if ($found) { next; }
-
                 my $imagename = $osver . "-" . $arch . "-install-" . $profile;
 
                 #TODO: check if there happen to be a row that has the same imagename but with different contents
@@ -941,7 +939,9 @@ sub update_tables_with_templates
                 if ($args{description}) {
                     $tb_cols{description} = $args{description};
                 }
-                $osimagetab->setAttribs(\%key_col, \%tb_cols);
+                $osimagetab->setAttribs(\%key_col, \%tb_cols)
+                  unless $osver =~ /^openeuler/
+                    && $osimagetab->getAttribs(\%key_col, 'imagename');
 
                 if ($osname =~ /^win/) {
                     if (!$winimagetab) { $winimagetab = xCAT::Table->new('winimage', -create => 1); }
@@ -964,7 +964,9 @@ sub update_tables_with_templates
                         _apply_new_linuximage_defaults(
                             $linuximagetab, $imagename, \%tb_cols);
 
-                        $linuximagetab->setAttribs(\%key_col, \%tb_cols);
+                        $linuximagetab->setAttribs(\%key_col, \%tb_cols)
+                          unless $osver =~ /^openeuler/
+                            && $linuximagetab->getAttribs(\%key_col, 'imagename');
 
                     } else {
                         return (1, "Cannot open the linuximage table.");
@@ -1352,7 +1354,6 @@ sub update_tables_with_diskless_image
                 }
                 if ($found) {
                     print "The image is already in the db.\n";
-
                     #                         next;
                 }
 
@@ -1369,7 +1370,9 @@ sub update_tables_with_diskless_image
                     osarch       => $arch,
                     synclists    => $synclistfile,
                     osdistroname => $osdistroname);
-                $osimagetab->setAttribs(\%key_col, \%tb_cols);
+                $osimagetab->setAttribs(\%key_col, \%tb_cols)
+                  unless $osver =~ /^openeuler/
+                    && $osimagetab->getAttribs(\%key_col, 'imagename');
 
                 if ($osname !~ /^win/) {
                     if (!$linuximagetab) { $linuximagetab = xCAT::Table->new('linuximage', -create => 1); }
@@ -1384,7 +1387,9 @@ sub update_tables_with_diskless_image
                             rootimgdir => "$installroot/netboot/$osver/$arch/$profile");
                         _apply_new_linuximage_defaults(
                             $linuximagetab, $imagename, \%tb_cols);
-                        $linuximagetab->setAttribs(\%key_col, \%tb_cols);
+                        $linuximagetab->setAttribs(\%key_col, \%tb_cols)
+                          unless $osver =~ /^openeuler/
+                            && $linuximagetab->getAttribs(\%key_col, 'imagename');
 
                     } else {
                         return (1, "Cannot open the linuximage table.");
