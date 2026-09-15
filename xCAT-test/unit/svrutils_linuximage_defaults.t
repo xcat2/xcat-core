@@ -82,7 +82,6 @@ no warnings qw(once redefine);
 use File::Path qw(make_path);
 use File::Spec;
 use File::Temp qw(tempdir);
-use FindBin;
 use Test::More;
 
 my $fixture_root = tempdir( CLEANUP => 1 );

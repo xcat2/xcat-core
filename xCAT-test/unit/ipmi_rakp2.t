@@ -33,8 +33,6 @@ package main;
 
 no warnings qw/once redefine/;
 use Digest::SHA ();
-use FindBin;
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use Test::More;
 
 require xCAT::IPMI;

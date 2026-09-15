@@ -7,7 +7,6 @@ use XCAT::Test::Source;
 
 use File::Spec;
 use File::Temp qw(tempdir);
-use FindBin;
 use Test::More;
 
 # Regression: on a netplan-rendered node configeth took the NIC down on every reconfigure,

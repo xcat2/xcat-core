@@ -17,8 +17,6 @@ use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 
 use File::Temp qw(tempdir);
-use FindBin;
-use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../../build-utils/lib";
 use Test::More;
 

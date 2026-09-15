@@ -6,11 +6,8 @@ use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 
 use File::Spec;
-use FindBin;
 use Test::More;
 
-use lib "$FindBin::Bin/../../perl-xCAT";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use xCAT::Postage;
 use xCAT::SvrUtils;
 
@@ -23,7 +20,7 @@ use xCAT::SvrUtils;
 my $repo     = File::Spec->rel2abs( File::Spec->catdir( $FindBin::Bin, '..', '..' ) );
 my $install  = "$repo/xCAT-server/share/xcat/install/ubuntu";
 my $template = "$install/compute.subiquity.tmpl";
-plan skip_all => 'the Ubuntu install directory is not here' unless -d $install && -f $template;
+die "the Ubuntu install directory is not in the checkout: $install\n" unless -d $install && -f $template;
 
 sub packages_in {
     my ($path) = @_;

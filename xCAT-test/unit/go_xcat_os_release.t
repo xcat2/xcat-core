@@ -25,7 +25,7 @@ if ( defined $ENV{XCAT_TEST_GO_XCAT} ) {
 }
 else {
     $source_go_xcat = repo_path($go_xcat_relative);
-    plan skip_all => "$source_go_xcat is required"
+    die "$source_go_xcat is required\n"
       unless -f $source_go_xcat && -r _;
     $go_xcat_source = slurp_repo_file($go_xcat_relative);
 }

@@ -6,14 +6,12 @@ use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 
 use File::Spec;
-use FindBin;
 use Test::More;
 
 # A diskless image needs a kernel and the tools its boot scripts call. Without a package
 # list for the architecture, genimage debootstraps whatever the generic list holds and the
 # image cannot boot. Compare the riscv64 lists with the x86_64 ones they follow.
 
-use lib "$FindBin::Bin/../lib";
 use XCAT::Test::File qw(repo_path);
 
 sub packages {

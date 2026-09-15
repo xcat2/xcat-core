@@ -6,7 +6,6 @@ use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 
 use File::Spec;
-use FindBin;
 use Test::More;
 
 # A riscv64 management node has no legacy Genesis: the image ships as the OpenEmbedded package

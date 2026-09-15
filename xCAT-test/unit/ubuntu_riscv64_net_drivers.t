@@ -5,7 +5,6 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 
-use FindBin;
 use Test::More;
 
 # Without a driver list the Ubuntu netboot image ships no network module at all, and a node
@@ -13,8 +12,6 @@ use Test::More;
 # because virtio-net is built into the Ubuntu riscv64 kernel; a machine with an r8169 or an
 # e1000e does not boot.
 
-use lib "$FindBin::Bin/../../perl-xCAT";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use lib "$FindBin::Bin/../../xCAT-server/share/xcat/netboot/imgutils";
 require imgutils;
 

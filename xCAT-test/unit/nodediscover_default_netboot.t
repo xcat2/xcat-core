@@ -6,8 +6,6 @@ use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 ## no critic (Modules::RequireFilenameMatchesPackage)
 
-use FindBin;
-use lib "$FindBin::Bin/../lib";
 use Test::More;
 
 use XCAT::Test::File qw(repo_path);

@@ -7,9 +7,6 @@ use XCAT::Test::Source;
 
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
-use FindBin;
-use lib "$FindBin::Bin/../lib";
-use lib "$FindBin::Bin/../../perl-xCAT";
 use Test::More;
 
 # xCAT modules put $::XCATROOT/lib/perl ahead of @INC as they compile, so on a host with xCAT

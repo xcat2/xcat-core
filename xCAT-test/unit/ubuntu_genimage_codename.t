@@ -6,7 +6,6 @@ use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 
 use File::Spec;
-use FindBin;
 use Test::More;
 
 # Regression: the Ubuntu netboot genimage derives a debootstrap suite from the osimage's

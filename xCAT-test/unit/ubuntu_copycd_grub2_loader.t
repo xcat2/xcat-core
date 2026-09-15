@@ -7,7 +7,6 @@ use XCAT::Test::Source;
 
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
-use FindBin;
 use Test::More;
 
 # riscv64 nodes have no boot loader unless one reaches /tftpboot/boot/grub2. The image on
@@ -26,8 +25,6 @@ BEGIN {
     $INC{'xCAT/TableUtils.pm'} = __FILE__;
 }
 
-use lib "$FindBin::Bin/../../perl-xCAT";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 my $plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/debian.pm";
 die "debian.pm not found\n" unless -r $plugin;
 require $plugin;

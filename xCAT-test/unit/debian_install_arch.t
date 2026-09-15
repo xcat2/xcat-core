@@ -7,7 +7,6 @@ use XCAT::Test::Source;
 
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
-use FindBin;
 use Test::More;
 
 # mkinstall logged "Unknown arch" for every architecture other than x86_64, x86, ppc64le and
@@ -31,8 +30,6 @@ BEGIN {
     $INC{'xCAT/TableUtils.pm'} = __FILE__;
 }
 
-use lib "$FindBin::Bin/../../perl-xCAT";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 my $plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/debian.pm";
 require $plugin;
 

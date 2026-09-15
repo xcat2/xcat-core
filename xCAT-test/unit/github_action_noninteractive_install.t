@@ -6,7 +6,6 @@ use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 
 use File::Spec;
-use FindBin;
 use Test::More;
 
 my $script = File::Spec->catfile(

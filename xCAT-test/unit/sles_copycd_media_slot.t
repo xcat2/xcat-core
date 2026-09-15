@@ -8,11 +8,8 @@ use XCAT::Test::Source;
 use File::Path qw(make_path);
 use File::Slurper qw(write_text);
 use File::Temp qw(tempdir);
-use FindBin;
 use Test::More;
 
-use lib "$FindBin::Bin/../../perl-xCAT";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use lib "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins";
 
 require sles;

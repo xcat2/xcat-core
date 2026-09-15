@@ -5,7 +5,6 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 
-use FindBin;
 use Test::More;
 
 # archive.ubuntu.com publishes amd64 and i386 only, so a ppc64el or riscv64 stateful install
@@ -20,8 +19,6 @@ BEGIN {
     $INC{'xCAT/Table.pm'} = __FILE__;
 }
 
-use lib "$FindBin::Bin/../../perl-xCAT";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 my $module = "$FindBin::Bin/../../xCAT-server/lib/perl/xCAT/Template.pm";
 die "Template.pm not found\n" unless -r $module;
 require $module;

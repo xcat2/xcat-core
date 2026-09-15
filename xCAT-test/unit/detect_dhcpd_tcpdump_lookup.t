@@ -9,10 +9,8 @@ use Config;
 use File::Path qw(make_path);
 use File::Spec;
 use File::Temp qw(tempdir);
-use FindBin;
 use Test::More;
 
-use lib "$FindBin::Bin/../../perl-xCAT";
 use xCAT::CommandUtils;
 
 # Both detect_dhcpd copies refused to run unless /usr/sbin/tcpdump existed. Debian and Ubuntu

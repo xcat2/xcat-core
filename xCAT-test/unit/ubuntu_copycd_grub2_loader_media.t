@@ -6,7 +6,6 @@ use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 
 use File::Temp qw(tempdir);
-use FindBin;
 use Test::More;
 
 # The stubbed test proves the decisions copycd makes. This one proves the artifact: it runs the
@@ -32,8 +31,6 @@ foreach my $tool (qw(dpkg-deb grub-mkimage)) {
     plan skip_all => "$tool is not installed" unless $found;
 }
 
-use lib "$FindBin::Bin/../../perl-xCAT";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 my $plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/debian.pm";
 die "debian.pm not found\n" unless -r $plugin;
 require $plugin;

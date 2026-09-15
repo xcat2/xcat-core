@@ -25,7 +25,7 @@ if ( defined $ENV{XCAT_TEST_GETADAPTER} ) {
 }
 else {
     $source_getadapter = repo_path($getadapter_relative);
-    plan skip_all => "$source_getadapter is required"
+    die "$source_getadapter is required\n"
       unless -f $source_getadapter && -r _;
     $getadapter_source = slurp_repo_file($getadapter_relative);
 }

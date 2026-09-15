@@ -6,7 +6,6 @@ use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 
 use File::Spec;
-use FindBin;
 use Test::More;
 
 # Regression: xCAT manages the cluster DNS with `makedns`, which drives named, so a management

@@ -7,7 +7,6 @@ use XCAT::Test::Source;
 
 use Digest::MD5 qw(md5_hex);
 use File::Spec;
-use FindBin;
 use Test::More;
 
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );

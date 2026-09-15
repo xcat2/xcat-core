@@ -6,10 +6,6 @@ use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 ## no critic (Modules::RequireFilenameMatchesPackage)
 
-use FindBin;
-use lib "$FindBin::Bin/../lib";
-use lib "$FindBin::Bin/../../perl-xCAT";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use File::Spec;
 use Test::More;
 

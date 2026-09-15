@@ -5,7 +5,6 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 
-use FindBin;
 use Test::More;
 
 my $xcatdlib = "$FindBin::Bin/../../xCAT-server/lib/perl";

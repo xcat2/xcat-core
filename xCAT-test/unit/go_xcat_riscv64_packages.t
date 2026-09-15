@@ -6,7 +6,6 @@ use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 
 use File::Temp qw(tempdir);
-use FindBin;
 use Test::More;
 
 # go-xcat installs a fixed package list. On riscv64 that list asked for the amd64 and ppc64

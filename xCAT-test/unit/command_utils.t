@@ -4,9 +4,6 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 
-use FindBin;
-use lib "$FindBin::Bin/../lib";
-use lib "$FindBin::Bin/../../perl-xCAT";
 
 use Cwd qw/getcwd/;
 use File::Path qw/make_path/;

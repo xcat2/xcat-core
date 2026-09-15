@@ -7,7 +7,6 @@ use XCAT::Test::Source;
 
 use File::Basename qw(basename);
 use File::Spec;
-use FindBin;
 use Test::More;
 
 use lib "$FindBin::Bin/../../perl-xCAT", "$FindBin::Bin/../../xCAT-server/lib/perl";

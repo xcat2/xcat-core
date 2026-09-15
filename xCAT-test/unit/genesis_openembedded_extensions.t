@@ -9,7 +9,6 @@ use File::Copy qw(copy);
 use File::Path qw(make_path);
 use File::Spec;
 use File::Temp qw(tempdir);
-use FindBin;
 use JSON::PP;
 use Test::More;
 

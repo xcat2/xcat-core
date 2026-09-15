@@ -7,8 +7,6 @@ use XCAT::Test::Source;
 
 use Cwd qw(abs_path getcwd);
 use File::Spec;
-use FindBin;
-use lib "$FindBin::Bin/../lib";
 use Test::More;
 
 use XCAT::Test::File qw(repo_root repo_path slurp_repo_file);

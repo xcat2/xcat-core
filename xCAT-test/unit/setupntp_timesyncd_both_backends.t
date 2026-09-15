@@ -7,7 +7,6 @@ use XCAT::Test::Source;
 
 use File::Spec;
 use File::Temp qw(tempdir);
-use FindBin;
 use Test::More;
 
 # Regression: systemd-timesyncd is only stopped on the chrony path.

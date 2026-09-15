@@ -19,8 +19,6 @@ use File::Path qw(make_path);
 use File::Slurper qw(read_text);
 use File::Spec;
 use File::Temp qw(tempdir);
-use FindBin;
-use lib "$FindBin::Bin/../lib";
 use Test::More;
 
 use XCAT::Test::File qw(repo_path);

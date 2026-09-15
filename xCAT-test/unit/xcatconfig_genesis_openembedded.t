@@ -7,7 +7,6 @@ use XCAT::Test::Source;
 
 use File::Path qw(make_path remove_tree);
 use File::Temp qw(tempdir);
-use FindBin;
 use Test::More;
 
 my $source = "$FindBin::Bin/../../xCAT-server/sbin/xcatconfig";

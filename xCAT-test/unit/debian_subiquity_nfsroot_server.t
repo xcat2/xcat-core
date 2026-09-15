@@ -6,7 +6,6 @@ use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 
 use File::Spec;
-use FindBin;
 use Test::More;
 
 # Regression: nodes whose noderes.xcatmaster is unset stopped getting a boot config at all.

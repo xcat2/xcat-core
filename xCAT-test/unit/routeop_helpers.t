@@ -7,7 +7,6 @@ use XCAT::Test::Source;
 
 use File::Spec;
 use File::Temp qw(tempfile);
-use FindBin;
 use Test::More;
 
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );

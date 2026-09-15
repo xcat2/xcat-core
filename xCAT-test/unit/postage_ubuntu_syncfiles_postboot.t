@@ -5,7 +5,6 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 
-use FindBin;
 use Test::More;
 
 # On the Ubuntu/Debian DISKFUL install path a node's postscripts run inside the installer's
@@ -17,9 +16,7 @@ use Test::More;
 my $repo = "$FindBin::Bin/../..";
 die "Postage.pm not found\n" unless -r "$repo/xCAT-server/lib/perl/xCAT/Postage.pm";
 
-use lib "$FindBin::Bin/../../perl-xCAT";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
-eval { require xCAT::Postage; 1 } or plan skip_all => "could not load xCAT::Postage: $@";
+require xCAT::Postage;
 
 my $DEFERRED = "# ubuntu-deferred-postbootscripts-start-here\nsyncfiles\n"
              . "# ubuntu-deferred-postbootscripts-end-here\n";

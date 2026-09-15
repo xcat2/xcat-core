@@ -5,14 +5,13 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 
-use FindBin;
 use Test::More;
 
 my $libdir = "$FindBin::Bin/../../xCAT-server/lib/perl";
 my $xmlpm  = "$libdir/xCAT/XML.pm";
 die "xCAT::XML not found\n" unless -r $xmlpm;
-eval { require XML::Simple; require XML::Parser; 1 }
-    or plan skip_all => 'XML::Simple and XML::Parser are required';
+require XML::Simple;
+require XML::Parser;
 
 # xCAT::XML loads xCAT::MsgUtils, which loads much of the xCAT tree. The parser
 # paths never call it. Stub it before loading xCAT::XML.

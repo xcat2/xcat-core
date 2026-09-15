@@ -10,10 +10,6 @@ use File::Basename qw(dirname);
 use File::Path qw(make_path);
 use File::Slurper qw(read_text write_text);
 use File::Temp qw(tempdir);
-use FindBin;
-use lib "$FindBin::Bin/../lib";
-use lib "$FindBin::Bin/../../perl-xCAT";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use lib "$FindBin::Bin/../../xCAT-server/share/xcat/netboot/imgutils";
 use Test::More;
 

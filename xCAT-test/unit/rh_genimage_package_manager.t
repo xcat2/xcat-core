@@ -5,10 +5,7 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 
-use FindBin;
-use lib "$FindBin::Bin/../../perl-xCAT";
 use lib "$FindBin::Bin/../../xCAT-server/share/xcat/netboot/imgutils";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use Test::More;
 
 use imgutils;

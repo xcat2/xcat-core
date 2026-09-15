@@ -6,7 +6,6 @@ use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 
 use File::Spec;
-use FindBin;
 use Test::More;
 
 # copycd builds the riscv64 boot loader by running grub-mkimage, and the plugin that runs it ships

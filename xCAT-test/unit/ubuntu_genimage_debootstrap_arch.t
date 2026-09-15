@@ -6,15 +6,12 @@ use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 
 use File::Spec;
-use FindBin;
 use Test::More;
 
 # debootstrap takes the Debian architecture name, which differs from the name xCAT uses for
 # the node. Drive the assignment genimage makes and check the name it computes. The
 # invocation that consumes it is not exercised here.
 
-use lib "$FindBin::Bin/../lib";
-use lib "$FindBin::Bin/../../perl-xCAT";
 use xCAT::Utils;
 
 my $repo_root = File::Spec->rel2abs(File::Spec->catdir($FindBin::Bin, '..', '..'));

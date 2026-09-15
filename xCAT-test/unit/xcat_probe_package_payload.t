@@ -10,8 +10,6 @@ use File::Path qw(make_path);
 use File::Slurper qw(write_text);
 use File::Spec;
 use File::Temp qw(tempdir);
-use FindBin;
-use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../../build-utils/lib";
 use Test::More;
 

@@ -5,15 +5,12 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 
-use FindBin;
 use Test::More;
 
 # Debian, xCAT and the kernel each name the same architecture differently. copycd reads the
 # name from the media and genimage gives debootstrap the Debian one, so both directions have
 # to agree on every architecture xCAT supports.
 
-use lib "$FindBin::Bin/../lib";
-use lib "$FindBin::Bin/../../perl-xCAT";
 use xCAT::Utils;
 
 # --- what debootstrap and the package lists are given ----------------------

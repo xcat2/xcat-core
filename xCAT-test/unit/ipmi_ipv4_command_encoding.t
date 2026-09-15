@@ -84,7 +84,6 @@ sub subcmd {
 package main;
 
 no warnings qw(once redefine);
-use FindBin;
 use File::Spec;
 use Test::More;
 

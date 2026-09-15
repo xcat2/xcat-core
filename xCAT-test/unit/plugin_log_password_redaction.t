@@ -17,10 +17,6 @@ BEGIN {
     };
 }
 
-use FindBin;
-use lib "$FindBin::Bin/../lib";
-use lib "$FindBin::Bin/../../perl-xCAT";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use HTTP::Request;
 use POSIX qw(_exit);
 use Test::More;

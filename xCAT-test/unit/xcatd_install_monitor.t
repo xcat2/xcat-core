@@ -30,8 +30,6 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source;
 
-use FindBin;
-use lib "$FindBin::Bin/../../perl-xCAT";
 use Test::More;
 use POSIX ();
 use Socket;

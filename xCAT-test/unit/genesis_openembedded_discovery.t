@@ -8,7 +8,6 @@ use XCAT::Test::Source;
 use File::Path qw(make_path);
 use File::Spec;
 use File::Temp qw(tempdir);
-use FindBin;
 use IO::Select;
 use IPC::Open3;
 use Symbol qw(gensym);
