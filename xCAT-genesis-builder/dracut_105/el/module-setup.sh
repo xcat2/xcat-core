@@ -40,6 +40,8 @@ _dracut_install_opt() {
 }
 
 install() {
+    local genesis_openeuler=0 timezone timezone_files
+    [[ -f /etc/openEuler-release ]] && genesis_openeuler=1
     dracut_install wget openssl tar mstflint ipmitool cpio gzip lsmod ethtool modprobe touch echo cut wc bash
     dracut_install netstat # broadcom update requires
     dracut_install uniq # mellanox update requires
@@ -52,9 +54,21 @@ install() {
     dracut_install poweroff hwclock date /usr/share/terminfo/x/xterm /usr/share/terminfo/s/screen /etc/nsswitch.conf /etc/services
     dracut_install /sbin/rsyslogd /etc/protocols umount /bin/rpm /usr/lib/rpm/rpmrc
     #dracut_install chmod /sbin/route /sbin/ifconfig /usr/bin/whoami /usr/bin/head /usr/bin/tail basename /etc/redhat-release ping tr lsusb /usr/share/hwdata/usb.ids #ibm fw wrapper requirements
-    dracut_install chmod ip /usr/bin/whoami /usr/bin/head /usr/bin/tail basename /etc/redhat-release ping tr lsusb /usr/share/hwdata/usb.ids #ibm fw wrapper requirements
+    dracut_install chmod ip /usr/bin/whoami /usr/bin/head /usr/bin/tail basename ping tr lsusb /usr/share/hwdata/usb.ids #ibm fw wrapper requirements
+    if [[ $genesis_openeuler == 1 ]]; then
+        dracut_install /etc/openEuler-release /etc/os-release
+    else
+        dracut_install /etc/redhat-release
+    fi
     dracut_install efibootmgr dmidecode #uxspi prereqs, but will use dmidecode to improve decision on loading ipmi_si
     dracut_install lldptool
+    if [[ $genesis_openeuler == 1 ]]; then
+        timezone_files=$(find /usr/share/zoneinfo \( -type f -o -type l \) -print) || exit $?
+        [[ -n $timezone_files ]] || exit 1
+        while IFS= read -r timezone; do
+            inst "$timezone" || exit $?
+        done <<< "$timezone_files"
+    else
     dracut_install /usr/share/zoneinfo/posix/Zulu
     dracut_install /usr/share/zoneinfo/posix/GMT-0
     dracut_install /usr/share/zoneinfo/posix/Europe/Istanbul
@@ -620,6 +634,7 @@ install() {
     dracut_install /usr/share/zoneinfo/posix/PRC
     dracut_install /usr/share/zoneinfo/posix/Chile/EasterIsland
     dracut_install /usr/share/zoneinfo/posix/Chile/Continental
+    fi
     inst "$moddir/xcatroot" "/sbin/xcatroot"
     inst "$moddir/dhclient.conf" "/etc/dhclient.conf"
     # dhclient executes this helper, so it must stay executable in initramfs.

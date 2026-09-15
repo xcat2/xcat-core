@@ -13,6 +13,11 @@ Release: %{?release:%{release}}%{!?release:%(cat Release)}
 %define tarch aarch64
 %endif
 BuildArch: noarch
+%if 0%{?openEuler}
+%define genesis_build_cpu %{tarch}
+%else
+%define genesis_build_cpu %{_target_cpu}
+%endif
 %define name	xCAT-genesis-base-%{tarch}
 %define __spec_install_post :
 %define debug_package %{nil}
@@ -38,7 +43,7 @@ BuildRequires: chrony
 BuildRequires: cpio
 BuildRequires: e2fsprogs
 BuildRequires: hostname
-%if "%{_target_cpu}" == "x86_64"
+%if "%{genesis_build_cpu}" == "x86_64"
 BuildRequires: dmidecode
 BuildRequires: efibootmgr
 %endif
@@ -50,9 +55,16 @@ BuildRequires: gawk
 BuildRequires: ipmitool
 BuildRequires: iproute
 BuildRequires: kexec-tools
+%if 0%{?openEuler}
+BuildRequires: kernel
+BuildRequires: openssl
+BuildRequires: tar
+BuildRequires: tzdata
+%else
 BuildRequires: kernel-core
 BuildRequires: kernel-modules
 BuildRequires: kernel-modules-extra
+%endif
 BuildRequires: lldpad
 BuildRequires: lvm2
 BuildRequires: mdadm
@@ -117,12 +129,15 @@ rm -rf "$DRACUTMODDIR"
 mkdir -p "$DRACUTMODDIR"
 cp -a "%{_builddir}/xCAT-genesis-base-build-support/dracut_105/el/." "$DRACUTMODDIR/"
 chmod 0755 "$DRACUTMODDIR/module-setup.sh" "$DRACUTMODDIR/xcatroot" "$DRACUTMODDIR/dhclient-script"
-if [ "%{_target_cpu}" != "x86_64" ]; then
+if [ "%{genesis_build_cpu}" != "x86_64" ]; then
     sed -i '/efibootmgr dmidecode/d' "$DRACUTMODDIR/module-setup.sh"
 fi
 
 KERNELVERSION=$(ls -1 /lib/modules | sort -V | tail -n 1)
 test -n "$KERNELVERSION"
+%if 0%{?openEuler}
+test -s "/lib/modules/$KERNELVERSION/modules.dep"
+%endif
 
 mkdir -p "$GENESIS_FS/etc/ssh"
 mkdir -p /run/rpcbind
@@ -132,6 +147,20 @@ dracut --compress gzip -m "xcat base" --no-early-microcode -N -f "$DRACUT_IMAGE"
     cd "$GENESIS_FS"
     zcat "$DRACUT_IMAGE" | cpio -dumi
 )
+%if 0%{?openEuler}
+cmp /etc/openEuler-release "$GENESIS_FS/etc/openEuler-release"
+(
+    . /etc/os-release
+    genesis_version_id=$VERSION_ID
+    unset ID VERSION_ID
+    . "$GENESIS_FS/etc/os-release"
+    test "$ID" = openEuler
+    test "$VERSION_ID" = "$genesis_version_id"
+)
+test -s "$GENESIS_FS/lib/modules/$KERNELVERSION/modules.dep"
+test -n "$(find "$GENESIS_FS/lib/modules/$KERNELVERSION" -name '*.ko*' -print -quit)"
+test -f "$GENESIS_FS/usr/share/zoneinfo/UTC"
+%endif
 
 # usrmerge collapse: on a usr-merged build host the extracted genesis fs can
 # contain /bin,/sbin,/lib,/lib64 as real directories that duplicate the files
