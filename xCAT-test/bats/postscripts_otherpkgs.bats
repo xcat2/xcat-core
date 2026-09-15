@@ -72,18 +72,24 @@ shadow_pkg_manager()
     apt_get_update_if_repos_changed() { :; }
 }
 
-# Answers with the shell if-block that starts at the first line after the anchor.
+# otherpkgs_block ANCHOR START [NTH TOTAL]
+# Answers with the shell if-block that starts at the first line after the anchor. NTH and TOTAL
+# go to extract_shell_if_block, which counts START in the text from the anchor to the end of the
+# file. Name a START that occurs once where one exists; pass NTH and TOTAL where the candidate
+# lines are the same text.
 otherpkgs_block()
 {
     local tail="${BATS_TEST_TMPDIR}/tail-$$"
     awk -v anchor="$1" 'index($0, anchor) { copy = 1 } copy { print }' "$OTHERPKGS" >"$tail"
-    extract_shell_if_block "$tail" "$2"
+    extract_shell_if_block "$tail" "$2" "$3" "$4"
 }
 
 run_upgrade_block()
 {
     local block
-    block="$(otherpkgs_block '#now update the existing rpms' 'if [ $hasyum -eq 1 ]; then')" || return 99
+    # The upgrade block opens with the same line as the yum branch of the preremove, the install
+    # and the postremove blocks. The upgrade block is the first of the four.
+    block="$(otherpkgs_block '#now update the existing rpms' 'if [ $hasyum -eq 1 ]; then' 1 4)" || return 99
     local hasyum=0 haszypper=0 hasapt=0
     eval "$1=1"
     local envlist="" yumcmd=fake_pkg VERBOSE= log_label=otherpkgs RETURNVAL=0 REPOFILE=/dev/null result=""
@@ -243,7 +249,7 @@ run_url_repo_block()
 {
     local split url_block
     split="$(extract_shell_if_block "$OTHERPKGS" 'if [ -n "$OTHERPKGDIR" ]; then')" || return 99
-    url_block="$(otherpkgs_block '#add repo for url repos in otherpkgdir' 'OTHERPKGDIR_INTERNET')" || return 99
+    url_block="$(otherpkgs_block '#add repo for url repos in otherpkgdir' 'if [ -n "$OTHERPKGDIR_INTERNET" ];then')" || return 99
     local OTHERPKGDIR="$1" OTHERPKGDIR_INTERNET="" OTHERPKGDIR_LOCAL=""
     local hasyum="${2:-1}" haszypper=0 hasapt="${3:-0}"
     local repo_base="$BATS_TEST_TMPDIR" urlrepoindex=0
