@@ -1,26 +1,57 @@
 #!/usr/bin/env bash
 
-go_xcat_default_source()
-{
-    printf '%s\n' "${BATS_TEST_DIRNAME}/../../xCAT-server/share/xcat/tools/go-xcat"
-}
+source "$(dirname "${BASH_SOURCE[0]}")/shell_source.bash"
 
+# go-xcat is read from the checkout only.
 go_xcat_require_source()
 {
-    GO_XCAT_SOURCE="${XCAT_TEST_GO_XCAT:-$(go_xcat_default_source)}"
+    GO_XCAT_SOURCE="$(require_repo_file 'xCAT-server/share/xcat/tools/go-xcat')" || return 1
     export GO_XCAT_SOURCE
-    [ -r "$GO_XCAT_SOURCE" ] || skip "$GO_XCAT_SOURCE is required"
 }
 
+# Prints the named go-xcat functions. A function that go-xcat does not define exactly once, that
+# reaches the next function or the end of the file before its closing brace, fails instead of
+# printing a partial body.
 go_xcat_extract_functions()
 {
     local function_name
     for function_name in "$@"; do
         awk -v name="$function_name" '
-            $0 == "function " name "()" { copy = 1 }
-            copy { print }
-            copy && /^}$/ { exit }
-        ' "$GO_XCAT_SOURCE"
+            $0 == "function " name "()" {
+                found++
+                if (found == 1) {
+                    copy = 1
+                    print
+                    next
+                }
+            }
+            copy {
+                if ($0 ~ /^function [A-Za-z_][A-Za-z0-9_]*\(\)$/) {
+                    reached_next = 1
+                    copy = 0
+                    next
+                }
+                print
+                if ($0 == "}") {
+                    closed = 1
+                    copy = 0
+                }
+            }
+            END {
+                if (found != 1) {
+                    printf "go-xcat defines %s %d times, expected 1\n", name, found > "/dev/stderr"
+                    exit 1
+                }
+                if (reached_next) {
+                    printf "%s: the next function starts before the closing brace\n", name > "/dev/stderr"
+                    exit 1
+                }
+                if (!closed) {
+                    printf "%s: no closing brace before the end of go-xcat\n", name > "/dev/stderr"
+                    exit 1
+                }
+            }
+        ' "$GO_XCAT_SOURCE" || return 1
     done
 }
 
@@ -35,13 +66,6 @@ go_xcat_load_functions()
             return 70
         }
     done
-}
-
-read_file_or_empty()
-{
-    local path="$1"
-    [ -f "$path" ] || return 0
-    cat "$path"
 }
 
 joined_file_lines()
