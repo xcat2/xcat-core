@@ -5,8 +5,11 @@ use warnings;
 ## no critic (Modules::RequireFilenameMatchesPackage, TestingAndDebugging::ProhibitNoStrict, TestingAndDebugging::ProhibitNoWarnings)
 no warnings qw(once redefine);
 
-use File::Spec;
 use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
+
+use File::Spec;
 use Test::More;
 
 BEGIN {
@@ -75,7 +78,6 @@ BEGIN {
 package main;
 
 my $repo_root = File::Spec->catdir($FindBin::Bin, '..', '..');
-$ENV{XCATROOT} = File::Spec->catdir($repo_root, 'xCAT-server');
 my $plugin = File::Spec->catfile(
     $repo_root, qw(xCAT-server lib xcat plugins ipmi.pm)
 );

@@ -2,12 +2,9 @@
 use strict;
 use warnings;
 
-BEGIN {
-    $ENV{XCATCFG} ||= 'SQLite:/tmp';
-}
-
 use FindBin;
-use lib "$FindBin::Bin/../../perl-xCAT";
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
 use Scalar::Util qw(refaddr);
 use Test::More;

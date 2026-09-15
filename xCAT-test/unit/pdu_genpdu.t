@@ -3,8 +3,11 @@ use warnings;
 ## no critic (Modules::RequireFilenameMatchesPackage, TestingAndDebugging::ProhibitNoWarnings, TestingAndDebugging::ProhibitNoStrict)
 no warnings 'once';
 
-use File::Spec;
 use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
+
+use File::Spec;
 use Test::More;
 
 BEGIN {
@@ -46,7 +49,6 @@ BEGIN {
 }
 
 my $repo_root = File::Spec->catdir($FindBin::Bin, '..', '..');
-$ENV{XCATROOT} = File::Spec->catdir($repo_root, 'xCAT-server');
 my $plugin = File::Spec->catfile($repo_root, 'xCAT-server', 'lib', 'xcat',
     'plugins', 'pdu.pm');
 do $plugin or die $@ || "Unable to load $plugin: $!";

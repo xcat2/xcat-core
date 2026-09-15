@@ -1,15 +1,14 @@
 use strict;
 use warnings;
 
-use File::Spec;
 use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
+
+use File::Spec;
 use Test::More;
 
 my $repo_root = File::Spec->catdir($FindBin::Bin, '..', '..');
-$ENV{XCATROOT} = File::Spec->catdir($repo_root, 'xCAT-server');
-
-use lib "$FindBin::Bin/../../perl-xCAT";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 
 my $anaconda = File::Spec->catfile(
     $repo_root,

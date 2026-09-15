@@ -2,13 +2,12 @@
 use strict;
 use warnings;
 
-use File::Spec;
 use FindBin;
-use Test::More;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
-my $repo_root = $ENV{XCAT_REPO_ROOT}
-  || File::Spec->catdir( $FindBin::Bin, '..', '..' );
-unshift @INC, File::Spec->catdir( $repo_root, 'perl-xCAT' );
+use File::Spec;
+use Test::More;
 require xCAT::NetworkUtils;
 
 subtest 'isIpv4addr accepts host addresses' => sub {

@@ -2,13 +2,12 @@
 use strict;
 use warnings;
 
-use File::Spec;
 use FindBin;
-use Test::More;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source;
 
-my $repo_root = $ENV{XCAT_REPO_ROOT}
-  || File::Spec->catdir( $FindBin::Bin, '..', '..' );
-unshift @INC, File::Spec->catdir( $repo_root, 'perl-xCAT' );
+use File::Spec;
+use Test::More;
 
 # parse_args never opens the database, so keep the table layer and the
 # driver out of the test

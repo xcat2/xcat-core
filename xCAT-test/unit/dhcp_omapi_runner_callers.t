@@ -4,8 +4,7 @@ use warnings;
 
 use FindBin;
 use lib "$FindBin::Bin/../lib";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
-use lib "$FindBin::Bin/../../perl-xCAT";
+use XCAT::Test::Source qw(repo_path);
 
 use Config;
 use File::Path qw(make_path);
@@ -15,10 +14,7 @@ use IPC::Open3;
 use Symbol qw(gensym);
 use Test::More;
 
-use XCAT::Test::File qw(repo_path);
 use xCAT::DHCP::OmapiRunner;
-
-$ENV{XCATCFG} ||= 'SQLite:/tmp';
 
 my $source_dhcp_plugin = repo_path('xCAT-server/lib/xcat/plugins/dhcp.pm');
 require $source_dhcp_plugin;

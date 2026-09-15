@@ -8,15 +8,11 @@ use File::Spec;
 use File::Temp qw(tempdir);
 use FindBin;
 use lib "$FindBin::Bin/../lib";
-use lib "$FindBin::Bin/../../perl-xCAT";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
+use XCAT::Test::Source qw(repo_path);
 use Test::More;
 
-use XCAT::Test::File qw(repo_path);
-
 my $plugin = repo_path('xCAT-server/lib/xcat/plugins/anaconda.pm');
-plan skip_all => 'anaconda.pm not found' unless -r $plugin;
-$ENV{XCATROOT} ||= repo_path('xCAT-server');
+die "$plugin not found\n" unless -r $plugin;
 require $plugin;
 
 my $tempdir = tempdir(CLEANUP => 1);
