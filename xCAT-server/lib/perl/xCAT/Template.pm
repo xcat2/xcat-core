@@ -311,7 +311,7 @@ sub subvars {
             my $space10 = " " x 10;
             my $space12 = " " x 12;
             foreach my $pkgdir (@pkgdirs) {
-                if ($platform =~ /^(rh|SL|centos|alma|ol|fedora|rocky)$/) {
+                if ($platform =~ /^(rh|SL|centos|alma|ol|fedora|rocky|openeuler)$/) {
                     if ($c == 0) {
                         # After some tests, if we put the repo in  pre scripts in the kickstart like for rhels6.x
                         # the rhels5.9 will not be installed successfully. So put in kickstart directly.
@@ -321,7 +321,7 @@ sub subvars {
                         $source_in_pre .= "\necho 'repo --name=pkg$c --baseurl=http://'\$nextserver'$httpportsuffix/$pkgdir' >> /tmp/repos";
                         $source .= "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#$httpportsuffix/$pkgdir\n"; #for rhels5.9
                     }
-                    my $distrepofile="/install/postscripts/repos/$pkgdir/local-repository.tmpl";
+                    my $distrepofile="$installroot/postscripts/repos/$pkgdir/local-repository.tmpl";
                     if( -f "$distrepofile" and -s "$distrepofile"){
                         my $repofd;
                         my $repo_in_post;
