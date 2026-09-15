@@ -9,10 +9,12 @@ use lib "$FindBin::Bin/../lib";
 use XCAT::Test::Source qw(repo_path scratch_dir);
 
 use File::Temp ();
+use IPC::Open3 qw(open3);
+use Symbol qw(gensym);
 use Test::More;
 use XCAT::Test::Sandbox qw(
   replace_required replace_required_re assert_no_host_paths
-  stub_bin run_confined confinement
+  stub_bin confined_command run_confined confinement
 );
 
 # --- replace_required -----------------------------------------------------------------------
@@ -111,12 +113,27 @@ use XCAT::Test::Sandbox qw(
     like( $output, qr/^path=\Q$bin\E$/m, 'PATH is the stub directory and nothing else' );
     like( $output, qr/^leak=none$/m,     'the caller environment does not reach the command' );
     like( $output, qr/^given=yes$/m,     'variables the test passes do' );
+
+    # confined_command hands the streams to the caller.
+    my @command = confined_command(
+        cmd => [ 'sh', '-c', 'echo "out path=$PATH leak=${XCAT_UNIT_LEAK:-none}"; echo err >&2; exit 3' ],
+        bin => $bin,
+    );
+    my $stderr = gensym;
+    my $pid    = open3( my $stdin, my $stdout, $stderr, @command );
+    close($stdin);
+    my $out = do { local $/; <$stdout> };
+    my $err = do { local $/; <$stderr> };
+    waitpid( $pid, 0 );
+    is( $? >> 8, 3, 'confined_command keeps the exit status' );
+    is( $out, "out path=$bin leak=none\n", 'confined_command keeps stdout apart, with the stub PATH and no caller environment' );
+    is( $err, "err\n", 'confined_command keeps stderr apart' );
 }
 
 # --- run_confined: host paths and network ---------------------------------------------------
 SKIP: {
     my $how = confinement();
-    skip "this host offers no namespaces to a normal user, so file permissions are the protection ($how)", 5
+    skip "this host offers no namespaces to a normal user, so file permissions are the protection ($how)", 6
         if $how eq 'none';
 
     my $bin   = stub_bin( tools => [qw(sh cat)] );
@@ -130,6 +147,14 @@ SKIP: {
     ( $status, $output ) = run_confined( cmd => [ 'cat', '/proc/net/dev' ], bin => $bin );
     my @interfaces = map { /^\s*([^:\s]+):/ ? $1 : () } split /\n/, $output;
     is_deeply( \@interfaces, ['lo'], 'only the loopback interface exists inside the confinement' ) or diag($output);
+
+    # net => 0 is for a command that talks to a listener in the test process.
+    open( my $host_dev, '<', '/proc/net/dev' ) or die "Unable to read /proc/net/dev: $!";
+    my $host_interfaces = grep { /^\s*[^:\s]+:/ } <$host_dev>;
+    close($host_dev);
+    ( $status, $output ) = run_confined( cmd => [ 'cat', '/proc/net/dev' ], bin => $bin, net => 0 );
+    is( scalar( grep { /^\s*[^:\s]+:/ } split /\n/, $output ), $host_interfaces,
+        'with net => 0 the command keeps the host network' ) or diag($output);
 
     ( $status, $output ) = run_confined(
         cmd => [ 'sh', '-c', 'echo ok > "$TMPDIR/written" && cat "$TMPDIR/written"' ],

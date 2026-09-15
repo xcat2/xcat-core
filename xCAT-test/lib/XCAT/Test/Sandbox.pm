@@ -12,7 +12,7 @@ use POSIX ();
 
 our @EXPORT_OK = qw(
   replace_required replace_required_re assert_no_host_paths
-  stub_bin run_confined confine_self confinement
+  stub_bin confined_command run_confined confine_self confinement
 );
 
 # Where real tools are looked up. The caller's PATH is not used: it may hold stubs of its own.
@@ -210,16 +210,52 @@ sub confinement {
 
 #-------------------------------------------------------------------------------
 
-=head3 run_confined
+=head3 confined_command
 
-    Descriptions: Runs a command with an empty environment, PATH limited to a stub
-                  directory, and, where the host allows, inside private mount and network
-                  namespaces: /run is empty (no systemd or D-Bus socket), host paths are
-                  read-only, and only the loopback interface exists.
+    Descriptions: Builds the command line run_confined executes, for a test that needs the
+                  standard streams itself (open3, a pipe, a signal). The command gets an empty
+                  environment and PATH limited to a stub directory. Where the host allows, it
+                  runs inside private mount and network namespaces: /run is empty (no systemd
+                  or D-Bus socket), host paths are read-only, and only the loopback interface
+                  exists. The caller runs the list once; the setup script removes itself.
     Arguments:
         %opt - cmd => [ command, args ]; bin => the PATH directory (from stub_bin);
                env => { extra variables }; writable => [ directories to keep writable ];
-               dir => the working directory
+               net => 0 to keep the host network, for a command that talks to a listener in
+               the test process
+    Returns: the command line, as a list
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub confined_command {
+    my (%opt) = @_;
+
+    my @cmd = @{ $opt{cmd} || die "confined_command: cmd is required\n" };
+    my $bin = $opt{bin} or die "confined_command: bin is required\n";
+    my $env = _system_executable('env') or die "confined_command: env is not installed\n";
+    my $tmp = defined $ENV{TMPDIR} && -d $ENV{TMPDIR} ? $ENV{TMPDIR} : File::Spec->tmpdir();
+
+    my %vars = ( PATH => $bin, HOME => $tmp, TMPDIR => $tmp, LANG => 'C', LC_ALL => 'C', %{ $opt{env} || {} } );
+    my @run = ( $env, '-i', map( {"$_=$vars{$_}"} sort keys %vars ), @cmd );
+
+    my $how = confinement();
+    return @run if $how eq 'none';
+
+    my $net    = exists $opt{net} ? $opt{net} : 1;
+    my $script = _setup_script( dir => $tmp, writable => [ $tmp, @{ $opt{writable} || [] } ], net => $net );
+    my @flags  = $how eq 'root' ? ('--mount') : ( '--map-root-user', '--mount' );
+    push @flags, '--net' if $net;
+    return ( _system_executable('unshare'), @flags, _system_executable('sh'), $script, @run );
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 run_confined
+
+    Descriptions: Runs confined_command and collects its output.
+    Arguments:
+        %opt - the options of confined_command; dir => the working directory
     Returns: the exit status and the combined stdout and stderr
 
 =cut
@@ -228,21 +264,7 @@ sub confinement {
 sub run_confined {
     my (%opt) = @_;
 
-    my @cmd = @{ $opt{cmd} || die "run_confined: cmd is required\n" };
-    my $bin = $opt{bin} or die "run_confined: bin is required\n";
-    my $env = _system_executable('env') or die "run_confined: env is not installed\n";
-    my $tmp = defined $ENV{TMPDIR} && -d $ENV{TMPDIR} ? $ENV{TMPDIR} : File::Spec->tmpdir();
-
-    my %vars = ( PATH => $bin, HOME => $tmp, TMPDIR => $tmp, LANG => 'C', LC_ALL => 'C', %{ $opt{env} || {} } );
-    my @run = ( $env, '-i', map( {"$_=$vars{$_}"} sort keys %vars ), @cmd );
-
-    my $how = confinement();
-    if ( $how ne 'none' ) {
-        my $script = _setup_script( dir => $tmp, writable => [ $tmp, @{ $opt{writable} || [] } ] );
-        my @flags = $how eq 'root' ? qw(--mount --net) : qw(--map-root-user --mount --net);
-        @run = ( _system_executable('unshare'), @flags, _system_executable('sh'), $script, @run );
-    }
-
+    my @run = confined_command(%opt);
     return _capture( dir => $opt{dir}, cmd => \@run );
 }
 
@@ -284,9 +306,12 @@ sub _setup_script {
     my $mount = _system_executable('mount') or die "XCAT::Test::Sandbox: mount is not installed\n";
     my $ip    = _system_executable('ip');
 
+    my $net = exists $opt{net} ? $opt{net} : 1;
+
     my $script = File::Temp->new( TEMPLATE => 'xcat-confine-XXXXXXXX', DIR => $opt{dir}, SUFFIX => '.sh', UNLINK => 0 );
     print {$script} "set -e\n";
-    print {$script} "$ip link set lo up\n" if $ip;
+    # Without a private network namespace, lo is the host's.
+    print {$script} "$ip link set lo up\n" if $ip && $net;
     print {$script} "$mount -t tmpfs tmpfs /run\n";
     foreach my $dir (@READ_ONLY) {
         print {$script} "if [ -d '$dir' ]; then $mount --bind '$dir' '$dir' && $mount -o remount,bind,ro '$dir'; fi\n";
