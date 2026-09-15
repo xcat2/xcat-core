@@ -10,6 +10,7 @@ use File::Spec;
 use File::Temp qw(tempdir);
 use JSON::PP;
 use Test::More;
+use XCAT::Test::Sandbox qw(stub_bin confined_command);
 
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
 my $dispatcher = File::Spec->catfile(
@@ -51,10 +52,15 @@ sub shell_quote {
     return "'$value'";
 }
 
+# The providers run with the fixture bin directory as their only PATH and the listed variables as
+# their only environment. The parent of that directory is the scratch root they may write.
 sub run_command {
     my ( $environment, @command ) = @_;
-    local %ENV = ( %ENV, %{$environment} );
-    my $shell_command = join( ' ', map { shell_quote($_) } @command );
+    my %environment = %{$environment};
+    my $bin = delete $environment{XCAT_TEST_BIN} or die "run_command: XCAT_TEST_BIN is required\n";
+    ( my $scratch = $bin ) =~ s{/[^/]+\z}{};
+    my @run = confined_command( cmd => \@command, bin => $bin, env => \%environment, writable => [$scratch] );
+    my $shell_command = join( ' ', map { shell_quote($_) } @run );
     my $output = qx{$shell_command 2>&1};
     return ( $? >> 8, $output );
 }
@@ -71,6 +77,8 @@ my $executables = File::Spec->catdir( $root, 'providers' );
 my $audit = File::Spec->catfile( $root, 'audit', 'hardware.jsonl' );
 my $request = File::Spec->catfile( $root, 'request.json' );
 make_path( $bin, $manifests, $executables );
+# The fakes written below replace these wrappers; any other command is not found.
+stub_bin( dir => $bin, tools => [qw(bash sh cat grep sed awk cut tr sort uniq head tail wc ls basename dirname mkdir rm mv cp touch date sleep xargs expr env readlink gzip od install mktemp chmod ln tee cmp stat jq sha256sum)] );
 
 write_file(
     File::Spec->catfile( $bin, 'timeout' ),
@@ -128,7 +136,7 @@ write_file(
 write_file( $request, "{\"level\":\"1\"}\n" );
 
 my %environment = (
-    PATH                           => "$bin:$ENV{PATH}",
+    XCAT_TEST_BIN                           => $bin,
     XCAT_GENESIS_HARDWARE_AUDIT   => $audit,
     XCAT_GENESIS_PROVIDER_DIR     => $manifests,
     XCAT_GENESIS_PROVIDER_EXEC_DIR => $executables,
@@ -277,7 +285,7 @@ my $dev = File::Spec->catdir( $root, 'dev' );
 make_path( File::Spec->catdir( $sys_nvme, 'nvme0' ), $dev );
 write_file( File::Spec->catfile( $dev, 'nvme0' ), '' );
 my %nvme_environment = (
-    PATH                        => "$bin:$ENV{PATH}",
+    XCAT_TEST_BIN                        => $bin,
     XCAT_GENESIS_DEV_DIR        => $dev,
     XCAT_GENESIS_SYS_CLASS_NVME => $sys_nvme,
 );
@@ -310,7 +318,7 @@ make_path( $mellanox, $other );
 write_file( File::Spec->catfile( $mellanox, 'vendor' ), "0x15b3\n" );
 write_file( File::Spec->catfile( $other, 'vendor' ), "0x8086\n" );
 my %mstflint_environment = (
-    PATH                         => "$bin:$ENV{PATH}",
+    XCAT_TEST_BIN                         => $bin,
     XCAT_GENESIS_SYS_PCI_DEVICES => $pci,
 );
 ( $status, $output ) =
@@ -350,7 +358,7 @@ make_path( $ipr_host, $other_host );
 write_file( File::Spec->catfile( $ipr_host, 'proc_name' ), "ipr\n" );
 write_file( File::Spec->catfile( $other_host, 'proc_name' ), "megaraid_sas\n" );
 my %iprutils_environment = (
-    PATH                       => "$bin:$ENV{PATH}",
+    XCAT_TEST_BIN                       => $bin,
     XCAT_GENESIS_SYS_SCSI_HOSTS => $scsi_hosts,
 );
 ( $status, $output ) =
