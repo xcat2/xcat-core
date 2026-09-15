@@ -11,6 +11,7 @@ use XCAT::Test::Source qw(repo_path scratch_dir);
 use File::Spec;
 use File::Temp ();
 use IPC::Open3 qw(open3);
+use POSIX ();
 use Symbol qw(gensym);
 use Test::More;
 use XCAT::Test::Sandbox qw(
@@ -133,6 +134,45 @@ use XCAT::Test::Sandbox qw(
     is( $? >> 8, 3, 'confined_command keeps the exit status' );
     is( $out, "out path=$bin leak=none\n", 'confined_command keeps stdout apart, with the stub PATH and no caller environment' );
     is( $err, "err\n", 'confined_command keeps stderr apart' );
+}
+
+# --- the setup script stops a root command when a mount fails -------------------------------
+# A normal user outside a namespace cannot mount, so every mount in the script fails. The strict
+# script, which root uses, must stop before the command; the quiet one runs it.
+SKIP: {
+    skip 'as root the mounts would succeed on the host itself, so the failure cannot be staged', 4
+      if $> == 0;
+
+    foreach my $case ( [ strict => 1, 125, '' ], [ quiet => 0, 0, "ran\n" ] ) {
+        my ( $name, $strict, $want_status, $want_output ) = @$case;
+        my $script = XCAT::Test::Sandbox::_setup_script(
+            dir      => scratch_dir(),
+            writable => [ scratch_dir() ],
+            net      => 0,
+            strict   => $strict,
+        );
+        my $bin = stub_bin( tools => [qw(sh echo)] );
+        my ( $status, $output ) = run_command( '/bin/sh', $script, "$bin/echo", 'ran' );
+        is( $status, $want_status, "the $name setup script exits $want_status when a mount fails" ) or diag($output);
+        if ($strict) {
+            like( $output, qr/XCAT::Test::Sandbox: .* failed/, 'the strict script names the mount that failed' );
+        } else {
+            is( $output, $want_output, 'the quiet script runs the command and prints no mount error' );
+        }
+    }
+}
+
+sub run_command {
+    my (@command) = @_;
+    my $pid = open( my $pipe, '-|' );
+    die "Unable to fork: $!" unless defined $pid;
+    if ( !$pid ) {
+        open( STDERR, '>&', \*STDOUT ) or POSIX::_exit(126);
+        exec(@command) or POSIX::_exit(127);
+    }
+    my $output = do { local $/; <$pipe> };
+    close($pipe);
+    return ( $? >> 8, defined $output ? $output : '' );
 }
 
 # --- run_confined: host paths and network ---------------------------------------------------

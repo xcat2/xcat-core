@@ -249,7 +249,12 @@ sub confined_command {
     return @run if $how eq 'none';
 
     my $net    = exists $opt{net} ? $opt{net} : 1;
-    my $script = _setup_script( dir => $tmp, writable => [ $tmp, @{ $opt{writable} || [] } ], net => $net );
+    my $script = _setup_script(
+        dir      => $tmp,
+        writable => [ $tmp, @{ $opt{writable} || [] } ],
+        net      => $net,
+        strict   => $how eq 'root',
+    );
     my @flags  = $how eq 'root' ? ('--mount') : ( '--map-root-user', '--mount' );
     push @flags, '--net' if $net;
     return ( _system_executable('unshare'), @flags, _system_executable('sh'), $script, @run );
@@ -298,7 +303,7 @@ sub confine_self {
     # script therefore goes next to that tree, not inside it.
     my $scratch = defined &XCAT::Test::Source::scratch_dir ? XCAT::Test::Source::scratch_dir() : undef;
     my $outside = $scratch ? File::Basename::dirname($scratch) : File::Spec->tmpdir();
-    my $script  = _setup_script( dir => $outside, writable => [$outside] );
+    my $script  = _setup_script( dir => $outside, writable => [$outside], strict => 1 );
     File::Path::remove_tree($scratch) if $scratch;
 
     $ENV{XCAT_TEST_CONFINED} = 1;
@@ -314,16 +319,31 @@ sub _setup_script {
 
     my $net = exists $opt{net} ? $opt{net} : 1;
 
+    # As root the read-only view is what protects the host, so a mount that fails stops the
+    # command. In a user namespace the kernel locks the flags of the mounts it inherits, so some
+    # remounts fail; file permissions protect the host there, and the error stays out of the
+    # output the test inspects.
+    my $on_failure = sub {
+        my ($what) = @_;
+        return $opt{strict}
+          ? " || { echo 'XCAT::Test::Sandbox: $what failed' >&2; exit 125; }"
+          : ' 2>/dev/null || true';
+    };
+
     my $script = File::Temp->new( TEMPLATE => 'xcat-confine-XXXXXXXX', DIR => $opt{dir}, SUFFIX => '.sh', UNLINK => 0 );
     print {$script} "set -e\n";
     # Without a private network namespace, lo is the host's.
     print {$script} "$ip link set lo up\n" if $ip && $net;
-    print {$script} "$mount -t tmpfs tmpfs /run\n";
+    print {$script} "$mount -t tmpfs tmpfs /run" . $on_failure->('an empty /run') . "\n";
     foreach my $dir (@READ_ONLY) {
-        print {$script} "if [ -d '$dir' ]; then $mount --bind '$dir' '$dir' && $mount -o remount,bind,ro '$dir'; fi\n";
+        print {$script} "if [ -d '$dir' ]; then\n"
+          . "  $mount --bind '$dir' '$dir'" . $on_failure->("the bind mount of $dir") . "\n"
+          . "  $mount -o remount,bind,ro '$dir'" . $on_failure->("the read-only remount of $dir") . "\n"
+          . "fi\n";
     }
     foreach my $dir ( grep { defined $_ && -d $_ } @{ $opt{writable} || [] } ) {
-        print {$script} "$mount --bind '$dir' '$dir' && $mount -o remount,bind,rw '$dir'\n";
+        print {$script} "$mount --bind '$dir' '$dir'" . $on_failure->("the bind mount of $dir") . "\n";
+        print {$script} "$mount -o remount,bind,rw '$dir'" . $on_failure->("the writable remount of $dir") . "\n";
     }
     print {$script} "rm -f \"\$0\"\nexec \"\$@\"\n";
     close($script) or die "XCAT::Test::Sandbox: unable to write the confinement script: $!\n";
