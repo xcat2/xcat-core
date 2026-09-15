@@ -9,7 +9,7 @@ use File::Basename qw(dirname);
 use File::Spec;
 use IO::Handle;
 
-our @EXPORT_OK = qw(repo_path slurp_repo_file);
+our @EXPORT_OK = qw(repo_root repo_path slurp_repo_file);
 
 my $module_dir = dirname( File::Spec->rel2abs(__FILE__) );
 my $repo_root = abs_path(
@@ -24,6 +24,10 @@ my $repo_root = abs_path(
 die "Unable to resolve the repository root from $module_dir: $!" unless defined $repo_root;
 my $module_path = File::Spec->catfile( $repo_root, 'xCAT-test', 'lib', 'XCAT', 'Test', 'File.pm' );
 die "Unable to locate the repository test support at $module_path" unless -f $module_path;
+
+sub repo_root {
+    return $repo_root;
+}
 
 sub repo_path {
     my ($relative) = @_;
