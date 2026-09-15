@@ -979,10 +979,11 @@ sub pgreboot
         #xCAT::Utils->runcmd($cmd, 0);
         #if ($::RUNCMD_RC != 0)
         my $ret = xCAT::Utils->enableservice($cmd);
-        if ($cmd != 0)
+        if (($::linuxos =~ /^openeuler[0-9]/ ? $ret : $cmd) != 0)
         {
             xCAT::MsgUtils->message("E",
 "enable service $cmd failed. PostgreSQL will not restart on reboot.");
+            exit(1) if $::linuxos =~ /^openeuler[0-9]/;
         }
     }
 
@@ -1003,6 +1004,7 @@ sub setupxcatdb
 
 {
     my $cmd;
+    my $native = $::osname eq 'Linux' && $::linuxos =~ /^openeuler[0-9]/;
 
     # create the database
     if ($::osname eq 'AIX')
@@ -1067,6 +1069,7 @@ sub setupxcatdb
     {
         xCAT::MsgUtils->message("E",
             "Unable to run $spawncmd to add xcat admin user.");
+        exit(1) if $native;
         return;
 
     }
@@ -1128,6 +1131,7 @@ sub setupxcatdb
     {
         xCAT::MsgUtils->message("E",
             "Unable to run $spawncmd to add xcat root user.");
+        exit(1) if $native;
         return;
 
     }
@@ -1157,6 +1161,17 @@ sub setupxcatdb
     }
     $pgsql->soft_close();
 
+    if ($native)
+    {
+        $cmd = "$::pgcmddir/psql -v ON_ERROR_STOP=1 -d $::dbname -c \"GRANT USAGE, CREATE ON SCHEMA public TO xcatadm, root\"";
+        my $ret = &runpostgrescmd($cmd);
+        if ($ret != 0)
+        {
+            xCAT::MsgUtils->message("E",
+                "Failed granting xCAT roles access to the public schema.");
+            exit(1);
+        }
+    }
 
 }
 
@@ -1431,6 +1446,11 @@ sub restorexcatdb
     {
         #$xcmd = "service xcatd start";
         my $ret = xCAT::Utils->startservice("xcatd");
+        if ($::linuxos =~ /^openeuler[0-9]/ && $ret != 0)
+        {
+            xCAT::MsgUtils->message("E", "Failed to start xcatd on the PostgreSQL database.");
+            exit(1);
+        }
         return $ret;
     }
 
