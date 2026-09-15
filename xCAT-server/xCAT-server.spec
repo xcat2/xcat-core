@@ -40,7 +40,7 @@ BuildArch: noarch
 %if %s390x
 Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser perl(Digest::SHA)
 %else
-%if 0%{?rhel} >= 8
+%if 0%{?rhel} >= 8 || 0%{?openEuler}
 BuildRequires: perl-generators
 %endif
 %if 0%{?fedora}

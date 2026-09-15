@@ -54,14 +54,8 @@ Requires: net-tools
 Requires: /usr/bin/killall
 # yaboot-xcat is pulled in so any SN can manage ppc nodes
 Requires: httpd nfs-utils nmap bind
-# DHCP backend resolved at INSTALL time (not build time) via an RPM rich
-# dependency, so a single flat xcat-core build is correct on every EL: el10+
-# dropped ISC dhcp from its distro and uses Kea; el8/el9 use ISC dhcpd. SLES
-# has no "system-release" provide, so the condition is false there and it
-# falls to dhcp-server (/usr/sbin/dhcpd), preserving prior behavior.
-# system-release is versioned per release package (el10=10.x, el9=9.x, el8=8.x).
-Requires: (kea if (system-release >= 10) else /usr/sbin/dhcpd)
-Requires: (kea-hooks if (system-release >= 10))
+# openEuler uses ISC DHCP; its calendar-based system-release version is not an EL version.
+Requires: (/usr/sbin/dhcpd if openEuler-release else ((kea and kea-hooks) if (system-release >= 10) else /usr/sbin/dhcpd))
 # On RHEL this pulls in openssh-server, on SLES it pulls in openssh
 Requires: /usr/bin/ssh
 %ifnarch s390x
@@ -120,7 +114,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/
 # cd -
 # Pick the Apache generation at build time.  Selecting it in the post scriptlet
 # instead rewrites a file rpm has already checksummed, defeating noreplace.
-%if 0%{?fedora} || 0%{?rhel} >= 7 || 0%{?suse_version} >= 1200
+%if 0%{?fedora} || 0%{?rhel} >= 7 || 0%{?suse_version} >= 1200 || 0%{?openEuler}
 cp %{SOURCE6} $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat.conf
 cp %{SOURCE6} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf
 %else
@@ -258,7 +252,7 @@ fi
 fi
 # for install or upgrade restart the daemon
 %ifos linux
-if [ -e "/etc/redhat-release" ]; then
+if [ -e "/etc/redhat-release" ] || [ -e "/etc/openEuler-release" ]; then
     apachedaemon='httpd'
     apacheserviceunit='httpd.service'
 else # SuSE
