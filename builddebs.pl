@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # Build the xcat-core Debian packages and assemble a signed apt repository.
 #
-# Replaces build-ubunturepo. The shape mirrors buildrpms.pl -- Getopt::Long options,
+# Builds every xCAT deb and the apt repository. The shape mirrors buildrpms.pl -- Getopt::Long options,
 # one package list, build then index then sign -- so the two builders read the same way
 # and share XCAT::BuildUtils.
 #
@@ -385,7 +385,7 @@ carry an architecture, and there the difference is packaging metadata rather tha
 compiled output. Consequently this builder needs no C<sbuild> and no per-codename
 chroot. (xcat-dep is different: its packages are compiled, so it builds per codename.)
 
-Replaces C<build-ubunturepo>. The GSA upload paths, the C<PROMOTE>/C<PREGA> release
+Replaced C<build-ubunturepo>, removed in 2.19. The GSA upload paths, the C<PROMOTE>/C<PREGA> release
 flows and the C<-d> xcat-dep repository mode were not carried over: publishing is done
 by the CD pipeline's own deploy step, and xcat-dep is built from its own repository.
 

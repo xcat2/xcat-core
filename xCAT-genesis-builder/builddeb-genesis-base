@@ -15,6 +15,20 @@ case "$BUILDARCH" in
     *)       echo "ERROR: unsupported architecture: $BUILDARCH" >&2; exit 1 ;;
 esac
 
+# The Genesis debs carry the architecture in the package name, so the packages an upgrade has
+# to displace carry it too. 2.19 renames the ppc64 debs to ppc64el; dpkg keeps the old package,
+# and its copy of the same files, unless the new one replaces it by name.
+rewrite_control() {
+    local control=$1 arch=$2 superseded
+    case "$arch" in
+        ppc64el) superseded="xcat-genesis-ppc64, xcat-genesis-base-ppc64" ;;
+        *)       superseded="xcat-genesis-$arch" ;;
+    esac
+    sed -i -e "s/xcat-genesis-base-amd64/xcat-genesis-base-$arch/g" \
+           -e "s/xcat-genesis-scripts-amd64/xcat-genesis-scripts-$arch/g" \
+           -e "s/xcat-genesis-amd64/$superseded/g" "$control"
+}
+
 VERSION=$(cat "$DIR/../Version" 2>/dev/null || echo "2.18.0")
 RELEASE=$(cat "$DIR/../Release" 2>/dev/null || echo "snap$(date +%Y%m%d%H%M)")
 CODENAME=$(. /etc/os-release && echo "$VERSION_CODENAME")
@@ -148,8 +162,7 @@ rm -rf "$DIR/opt"
 cp -a "$GENESIS_TMPDIR/opt" "$DIR/"
 
 # Adjust control file for target arch
-sed -i "s/xcat-genesis-base-amd64/xcat-genesis-base-$BUILDARCH/g" "$DIR/debian/control"
-sed -i "s/xcat-genesis-scripts-amd64/xcat-genesis-scripts-$BUILDARCH/g" "$DIR/debian/control"
+rewrite_control "$DIR/debian/control" "$BUILDARCH"
 
 PKG_VERSION="${VERSION}-${RELEASE}~${CODENAME}"
 rm -f "$DIR/debian/changelog"

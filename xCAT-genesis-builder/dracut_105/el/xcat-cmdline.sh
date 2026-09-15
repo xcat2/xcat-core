@@ -2,13 +2,29 @@
 root=1
 rootok=1
 netroot=xcat
+
+# The image ships the C.UTF-8 locale only. tmux refuses to start under the C locale.
+export LC_ALL=C.UTF-8
+
+# tmux exits when the image carries no UTF-8 locale. doxcat is the whole of Genesis, so it
+# must run whether or not the multiplexer starts. Prints tmux or direct.
+xcat_console_mode() {
+    if tmux -f /dev/null new-session -d -s xcatprobe true >/dev/null 2>&1; then
+        tmux kill-session -t xcatprobe >/dev/null 2>&1
+        echo tmux
+    else
+        echo direct
+    fi
+}
 clear
 echo PS1="'"'[xCAT Genesis running on \H \w]\$ '"'" > /.bashrc
 echo PS1="'"'[xCAT Genesis running on \H \w]\$ '"'" > /.bash_profile
 mkdir -p /etc/ssh
 mkdir -p /var/tmp/
 mkdir -p /var/empty/sshd
-sed -i '/^root:x/d' /etc/passwd
+# dracut writes this entry itself, with an empty password field unless the image is
+# built --hostonly. Match the user name only.
+sed -i '/^root:/d' /etc/passwd
 cat >>/etc/passwd <<"__ENDL"
 root:x:0:0::/:/bin/bash
 sshd:x:30:30:SSH User:/var/empty/sshd:/sbin/nologin
@@ -39,10 +55,13 @@ mkdir -p /var/lib/dhclient/
 mkdir -p /var/log
 ip link set lo up
 echo '127.0.0.1 localhost' >> /etc/hosts
-if grep -q console=ttyS /proc/cmdline; then
+XCAT_CONSOLE_MODE="$(xcat_console_mode)"
+if [ "$XCAT_CONSOLE_MODE" = "tmux" ]; then
+    if grep -q console=ttyS /proc/cmdline; then
         while :; do sleep 1; tmux attach-session -t doxcat </dev/tty1 &>/dev/tty1; clear &>/dev/tty1 ; done &
+    fi
+    while :; do tmux new-session < /dev/tty2 &> /dev/tty2 ; done &
 fi
-while :; do tmux new-session < /dev/tty2 &> /dev/tty2 ; done &
 
 # The section below is just for System P LE hardware discovery
 
@@ -87,4 +106,8 @@ elif [[ ${ARCH} =~ x86_64 ]]; then
     done
 fi
 
-while :; do tmux attach-session -t doxcat || tmux new-session -s doxcat doxcat; done
+if [ "$XCAT_CONSOLE_MODE" = "tmux" ]; then
+    while :; do tmux attach-session -t doxcat || tmux new-session -s doxcat doxcat; done
+else
+    while :; do doxcat; sleep 5; done
+fi
