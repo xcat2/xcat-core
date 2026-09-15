@@ -131,6 +131,24 @@ PERL
     is( $f{perl5lib_installed}, 0, 'PERL5LIB holds no /opt/xcat entry' );
 }
 
+# --- an empty import list still points the test at the checkout ------------------------------
+# `use Module ()` does not call import.
+{
+    my ( $status, $output ) = run_child( $^X, "-I$test_lib", '-e', <<'PERL');
+use XCAT::Test::Source ();
+print "scratch=", ( XCAT::Test::Source::scratch_dir() // '' ), "\n";
+print "xcatroot=$ENV{XCATROOT}\n";
+print "inc_installed=", ( scalar grep { !ref && m{\A/opt/xcat} } @INC ), "\n";
+print "hook=", ( scalar grep { ref } @INC ), "\n";
+PERL
+    my %f = fields($output);
+    is( $status, 0, 'a child that loads the module with an empty import list starts cleanly' ) or diag($output);
+    ok( length $f{scratch}, 'the scratch directory exists without import' ) or diag($output);
+    is( $f{xcatroot}, "$f{scratch}/xcatroot", 'XCATROOT points into the scratch directory without import' );
+    is( $f{inc_installed}, 0, '@INC holds no /opt/xcat entry without import' );
+    ok( $f{hook}, 'the namespace hook is in @INC without import' );
+}
+
 # --- product code comes from the checkout ---------------------------------------------------
 {
     my ( $status, $output ) = run_perl(<<'PERL');

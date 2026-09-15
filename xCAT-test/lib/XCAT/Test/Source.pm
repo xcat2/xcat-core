@@ -334,6 +334,10 @@ sub _within {
     return $path eq $dir || index( $path, "$dir/" ) == 0;
 }
 
+# `use XCAT::Test::Source ()` loads the module without calling import, so the setup runs when
+# the module is loaded, not only from import.
+_setup() unless defined $importer_pid;
+
 # This module is loaded before Test::More, so this END block runs after Test::Builder has
 # set the exit status, and its $? replaces that status.
 END { _guard() }
