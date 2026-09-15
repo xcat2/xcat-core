@@ -110,9 +110,9 @@ for my $case (
 is_deeply([ XCAT::BuildUtils::genesis_log_errors(undef) ], [], 'no log is not an error');
 
 # --- the builder refuses a root of another release -------------------------------------
-my $builder = repo_path('xCAT-genesis-builder/builddeb-genesis-base');
+my $builder = repo_path('xCAT-genesis-base/builddeb-genesis-base');
 if (!-f $builder) {
-    fail('xCAT-genesis-builder/builddeb-genesis-base is missing');
+    fail('xCAT-genesis-base/builddeb-genesis-base is missing');
     done_testing();
     exit;
 }

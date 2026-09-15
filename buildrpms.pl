@@ -347,7 +347,7 @@ sub buildsources_genesis_base($) {
     cp "xCAT-genesis-base/80-net-name-slot.rules",
        "$staging_root/80-net-name-slot.rules";
     # %install runs this against the extracted payload before it becomes an rpm.
-    cp "xCAT-genesis-builder/verify-genesis-payload",
+    cp "xCAT-genesis-base/verify-genesis-payload",
        "$staging_root/verify-genesis-payload";
 
     unlink $support_tarball if -f $support_tarball;

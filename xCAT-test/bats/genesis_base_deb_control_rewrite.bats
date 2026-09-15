@@ -13,8 +13,8 @@ load 'helpers/shell_source'
 
 setup()
 {
-    SCRIPT="$(repo_path 'xCAT-genesis-builder/builddeb-genesis-base')"
-    CONTROL="$(repo_path 'xCAT-genesis-builder/debian/control')"
+    SCRIPT="$(repo_path 'xCAT-genesis-base/builddeb-genesis-base')"
+    CONTROL="$(repo_path 'xCAT-genesis-base/debian/control')"
     [ -r "$SCRIPT" ] || skip "$SCRIPT is required"
     [ -r "$CONTROL" ] || skip "$CONTROL is required"
     export SCRIPT CONTROL
