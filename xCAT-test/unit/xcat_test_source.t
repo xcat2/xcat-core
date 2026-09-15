@@ -20,7 +20,9 @@ my $test_lib = repo_path('xCAT-test/lib');
 my $checkout = Cwd::realpath( repo_path('perl-xCAT') );
 $checkout =~ s{/perl-xCAT\z}{};
 
-# What a careless caller hands a test: every variable points at an installed xCAT.
+# What a careless caller hands a test: every variable points at an installed xCAT. The patterns
+# below anchor on /opt/xcat and a separator, because a checkout under /opt/xcat-ci-shared is not
+# the installed tree.
 my %HOSTILE = (
     XCATROOT => '/opt/xcat',
     XCATCFG  => 'mysql:dbname=xcatdb;host=192.0.2.1',
@@ -110,13 +112,13 @@ print "share_client=", ( -e "$root/share/xcat/tools/groupfiles4dsh" ? 1 : 0 ), "
 print "share_client_rvid=", ( -e "$root/share/xcat/rvid/rvid.kvm" ? 1 : 0 ), "\n";
 print "lib_perl=", ( -e "$root/lib/perl" ? 1 : 0 ), "\n";
 print "bin=", ( -e "$root/bin" || -e "$root/sbin" ? 1 : 0 ), "\n";
-print "inc_installed=", ( scalar grep { !ref && m{\A/opt/xcat} } @INC ), "\n";
-print "perl5lib_installed=", ( scalar grep { m{\A/opt/xcat} } split /:/, $ENV{PERL5LIB} ), "\n";
+print "inc_installed=", ( scalar grep { !ref && m{\A/opt/xcat(?:/|\z)} } @INC ), "\n";
+print "perl5lib_installed=", ( scalar grep { m{\A/opt/xcat(?:/|\z)} } split /:/, $ENV{PERL5LIB} ), "\n";
 PERL
     my %f = fields($output);
     is( $status, 0, 'a child in an environment pointing at /opt/xcat starts cleanly' ) or diag($output);
 
-    ok( $f{scratch} && $f{scratch} !~ m{\A/opt/xcat}, 'the child has a scratch directory of its own' )
+    ok( $f{scratch} && $f{scratch} !~ m{\A/opt/xcat(?:/|\z)}, 'the child has a scratch directory of its own' )
         or diag($output);
     is( $f{xcatroot}, "$f{scratch}/xcatroot", 'XCATROOT points into the scratch directory' );
     is( $f{xcatcfg}, "SQLite:$f{scratch}/cfg", 'XCATCFG points into the scratch directory' );
@@ -138,7 +140,7 @@ PERL
 use XCAT::Test::Source ();
 print "scratch=", ( XCAT::Test::Source::scratch_dir() // '' ), "\n";
 print "xcatroot=$ENV{XCATROOT}\n";
-print "inc_installed=", ( scalar grep { !ref && m{\A/opt/xcat} } @INC ), "\n";
+print "inc_installed=", ( scalar grep { !ref && m{\A/opt/xcat(?:/|\z)} } @INC ), "\n";
 print "hook=", ( scalar grep { ref } @INC ), "\n";
 PERL
     my %f = fields($output);
