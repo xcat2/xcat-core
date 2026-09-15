@@ -1,66 +1,61 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(repo_path slurp_repo_file scratch_dir);
 
-use File::Copy qw(copy);
 use File::Path qw(make_path);
 use File::Slurper qw(read_text write_text);
 use File::Spec;
 use File::Temp qw(tempdir);
-use FindBin;
-use lib "$FindBin::Bin/../lib";
 use Test::More;
+use XCAT::Test::Sandbox qw(replace_required assert_no_host_paths stub_bin run_confined);
 
-use XCAT::Test::File qw(repo_path);
+my $postscripts = repo_path( File::Spec->catdir( 'xCAT', 'postscripts' ) );
+my $library     = File::Spec->catfile( $postscripts, 'xcatpkgutils.sh' );
 
-my $postscripts = repo_path(File::Spec->catdir('xCAT', 'postscripts'));
-my $library = File::Spec->catfile( $postscripts, 'xcatpkgutils.sh' );
-my $loader = File::Spec->catfile( $postscripts, 'xcatpkgutils-loader.sh' );
-
-my $tmpdir = tempdir( CLEANUP => 1 );
+my $tmpdir    = tempdir( CLEANUP => 1 );
 my $dnf_first = File::Spec->catdir( $tmpdir, 'dnf-first' );
-my $yum_only = File::Spec->catdir( $tmpdir, 'yum-only' );
-my $neither = File::Spec->catdir( $tmpdir, 'neither' );
+my $yum_only  = File::Spec->catdir( $tmpdir, 'yum-only' );
+my $neither   = File::Spec->catdir( $tmpdir, 'neither' );
 make_path( $dnf_first, $yum_only, $neither );
 write_executable( File::Spec->catfile( $dnf_first, 'dnf' ), "#!/bin/sh\n" );
 write_executable( File::Spec->catfile( $dnf_first, 'yum' ), "#!/bin/sh\n" );
-write_executable( File::Spec->catfile( $yum_only, 'yum' ), "#!/bin/sh\n" );
+write_executable( File::Spec->catfile( $yum_only,  'yum' ), "#!/bin/sh\n" );
 
 SKIP: {
     skip 'the shared discovery helper is introduced by the production commit', 3
       unless helper_available();
-    is_deeply(
-        [ run_helper($dnf_first) ],
-        [ 0, "dnf\n" ],
-        'dnf is preferred when both RPM package managers are executable'
-    );
-    is_deeply(
-        [ run_helper($yum_only) ],
-        [ 0, "yum\n" ],
-        'yum is used when dnf is unavailable'
-    );
-    is_deeply(
-        [ run_helper($neither) ],
-        [ 1, '' ],
-        'discovery fails without output when neither package manager is executable'
-    );
+    is_deeply( [ run_helper($dnf_first) ], [ 0, "dnf\n" ], 'dnf is preferred when both RPM package managers are executable' );
+    is_deeply( [ run_helper($yum_only) ],  [ 0, "yum\n" ], 'yum is used when dnf is unavailable' );
+    is_deeply( [ run_helper($neither) ],   [ 1, '' ],      'discovery fails without output when neither package manager is executable' );
 }
 
+# ospkgs and otherpkgs write repository files under /etc, and otherpkgs downloads into /xcatpost
+# and /tmp/postage when it cannot mount the install tree. Every such path in the staged copies
+# points into $root, and a path the rewrites miss stops the test before the scripts run.
 my $caller_dir = File::Spec->catdir( $tmpdir, 'callers' );
-my $test_bin = File::Spec->catdir( $caller_dir, 'bin' );
-make_path($test_bin);
+my $root       = File::Spec->catdir( $caller_dir, 'root' );
+make_path( map { File::Spec->catdir( $root, $_ ) } qw(etc/yum.repos.d etc/apt/sources.list.d xcatpost tmp) );
 stage_callers($caller_dir);
-write_executable( File::Spec->catfile( $test_bin, 'logger' ), "#!/bin/sh\nexit 0\n" );
-write_executable( File::Spec->catfile( $test_bin, 'mount' ), "#!/bin/sh\nexit 1\n" );
-write_executable(
-    File::Spec->catfile( $test_bin, 'uname' ),
-    "#!/bin/sh\nprintf '%s\\n' Linux\n"
-);
-write_executable( File::Spec->catfile( $test_bin, 'dpkg' ), "#!/bin/sh\nexit 1\n" );
-write_executable(
-    File::Spec->catfile( $test_bin, 'rpm' ),
-    <<'SH'
-#!/bin/sh
+
+my $wget_trace = File::Spec->catfile( $caller_dir, 'wget.trace' );
+my $bin        = stub_bin(
+    dir   => File::Spec->catdir( $caller_dir, 'bin' ),
+    tools => [qw(bash sh expr grep dirname sed rm cat mkdir mv cut)],
+    stubs => {
+        logger => 'exit 0',
+        mount  => 'exit 1',
+        uname  => "printf '%s\\n' Linux",
+        dpkg   => 'exit 1',
+        dnf    => 'exit 0',
+        yum    => 'exit 0',
+        zypper => 'exit 0',
+        # The install tree is not mounted, so otherpkgs downloads it. The download fails, as
+        # it does for a server the node cannot reach.
+        wget => qq{printf '%s\\n' "\$*" >> '$wget_trace'\nexit 4},
+        rpm  => <<'SH',
 case "$*" in
     --version) exit 0 ;;
     -q\ zypper)
@@ -74,10 +69,8 @@ if [ -n "${XCAT_RPM_TRACE:-}" ]; then
 fi
 exit 1
 SH
+    },
 );
-write_executable( File::Spec->catfile( $test_bin, 'dnf' ), "#!/bin/sh\nexit 0\n" );
-write_executable( File::Spec->catfile( $test_bin, 'yum' ), "#!/bin/sh\nexit 0\n" );
-write_executable( File::Spec->catfile( $test_bin, 'zypper' ), "#!/bin/sh\nexit 0\n" );
 
 my $bash_env = File::Spec->catfile( $caller_dir, 'bash-env.sh' );
 # Fake only the absolute executable probes; the staged callers and library stay unchanged.
@@ -114,41 +107,45 @@ my %common_env = (
     NFSSERVER  => 'package-test-server',
     NODE       => 'node1',
     OSVER      => 'rocky9',
-    PATH       => "$test_bin:$ENV{PATH}",
 );
 
-for my $scenario (
-    [ dnf => 'dnf||||' ],
-    [ yum => 'yum||||' ],
-  )
-{
+for my $scenario ( [ dnf => 'dnf||||' ], [ yum => 'yum||||' ] ) {
     my ( $name, $expected_state ) = @{$scenario};
     my ( $status, $output, $state ) = run_caller( 'ospkgs', $name );
     is( $status, 0, "ospkgs completes with $name" ) or diag($output);
     is( $state, $expected_state, "ospkgs selects $name" );
 }
 
-my ( $ospkgs_status, $ospkgs_output, $ospkgs_state ) =
-  run_caller( 'ospkgs', 'neither' );
+# ospkgs writes one repository per OS package directory. They are written into the sandbox root,
+# where they can be read, and not into the host's /etc/yum.repos.d.
+{
+    my %expected = (
+        0 => 'baseurl=http://package-test-server:INSTALLDIR/rocky9/x86_64/BaseOS',
+        1 => 'baseurl=http://package-test-server:INSTALLDIR/rocky9/x86_64/AppStream',
+    );
+    foreach my $index ( sort keys %expected ) {
+        my $repo = File::Spec->catfile( $root, 'etc', 'yum.repos.d', "xCAT-rocky9-path$index.repo" );
+        ok( -f $repo, "ospkgs writes xCAT-rocky9-path$index.repo inside the sandbox root" );
+        like( -f $repo ? read_text($repo) : '', qr/^\Q$expected{$index}\E$/m,
+            "xCAT-rocky9-path$index.repo points at the OS package directory" );
+    }
+}
+
+my ( $ospkgs_status, $ospkgs_output, $ospkgs_state ) = run_caller( 'ospkgs', 'neither' );
 is( $ospkgs_status, 1, 'ospkgs still stops when neither dnf nor yum is available' );
 is( $ospkgs_state, '||||', 'ospkgs leaves package-manager state empty on failure' );
-like(
-    $ospkgs_output,
-    qr/^Please install yum or dnf on node1\.$/m,
-    'ospkgs retains its package-manager installation error'
-);
+like( $ospkgs_output, qr/^Please install yum or dnf on node1\.$/m, 'ospkgs retains its package-manager installation error' );
 
 for my $scenario (
-    [ dnf     => 'dnf|1|1|0|rpm -Uvh --replacepkgs' ],
-    [ yum     => 'yum|1|1|0|rpm -Uvh --replacepkgs' ],
-    [ zypper  => '|1|0|1|rpm -Uvh --replacepkgs' ],
-    [ rpm      => '|1|0|0|rpm -Uvh --replacepkgs' ],
+    [ dnf    => 'dnf|1|1|0|rpm -Uvh --replacepkgs' ],
+    [ yum    => 'yum|1|1|0|rpm -Uvh --replacepkgs' ],
+    [ zypper => '|1|0|1|rpm -Uvh --replacepkgs' ],
+    [ rpm    => '|1|0|0|rpm -Uvh --replacepkgs' ],
   )
 {
     my ( $name, $expected_state ) = @{$scenario};
     my ( $status, $output, $state ) = run_caller( 'otherpkgs', $name );
-    is( $status, 0, "otherpkgs completes with the $name discovery outcome" )
-      or diag($output);
+    is( $status, 0, "otherpkgs completes with the $name discovery outcome" ) or diag($output);
     is( $state, $expected_state, "otherpkgs retains the $name discovery outcome" );
 }
 
@@ -157,75 +154,108 @@ like(
     qr/^-Uvh --replacepkgs package-test\*$/m,
     'otherpkgs executes its raw RPM installation fallback'
 );
+like( -f $wget_trace ? read_text($wget_trace) : '', qr{package-test-server},
+    'otherpkgs downloads through the wget stub, not the network' );
 
 done_testing();
 
 sub run_helper {
     my ($directory) = @_;
-    return run_command(
-        '/bin/sh', '-c', '. "$1"; xcat_find_rpm_package_manager "$2"',
-        'package-manager-discovery-test', $library, $directory
-    );
+    return run_command( '/bin/sh', '-c', '. "$1"; xcat_find_rpm_package_manager "$2"',
+        'package-manager-discovery-test', $library, $directory );
 }
 
 sub helper_available {
-    return system(
-        '/bin/sh', '-c',
-        '. "$1"; command -v xcat_find_rpm_package_manager >/dev/null 2>&1',
-        'package-manager-discovery-test', $library
-    ) == 0;
+    return system( '/bin/sh', '-c', '. "$1"; command -v xcat_find_rpm_package_manager >/dev/null 2>&1',
+        'package-manager-discovery-test', $library ) == 0;
 }
 
 sub run_caller {
     my ( $caller, $scenario ) = @_;
     my $trace = File::Spec->catfile( $caller_dir, "$caller-$scenario.trace" );
-    local %ENV = ( %ENV, %common_env );
-    $ENV{XCAT_PM_SCENARIO} = $scenario;
-    $ENV{XCAT_PM_STATE_TRACE} = $trace;
+    my %env   = (
+        %common_env,
+        XCAT_PM_SCENARIO    => $scenario,
+        XCAT_PM_STATE_TRACE => $trace,
+    );
 
     my @arguments;
     if ( $caller eq 'ospkgs' ) {
-        delete @ENV{qw(OTHERPKGS OTHERPKGS_INDEX UPDATENODE)};
-        $ENV{OSPKGS} = 'package-test';
+        $env{OSPKGS} = 'package-test';
         @arguments = ('--keeprepo');
     } else {
-        delete @ENV{qw(OSPKGS OTHERPKGS)};
-        $ENV{OSVER} = 'custom9';
+        $env{OSVER}      = 'custom9';
+        $env{UPDATENODE} = 1;
         if ( $scenario eq 'rpm' ) {
-            $ENV{OTHERPKGS1} = 'package-test';
-            $ENV{OTHERPKGS_INDEX} = 1;
-            $ENV{XCAT_RPM_TRACE} = File::Spec->catfile(
-                $caller_dir, 'otherpkgs-rpm-command.trace'
-            );
+            $env{OTHERPKGS1}      = 'package-test';
+            $env{OTHERPKGS_INDEX} = 1;
+            $env{XCAT_RPM_TRACE}  = File::Spec->catfile( $caller_dir, 'otherpkgs-rpm-command.trace' );
         } else {
-            delete @ENV{qw(OTHERPKGS1 XCAT_RPM_TRACE)};
-            $ENV{OTHERPKGS_INDEX} = 0;
+            $env{OTHERPKGS_INDEX} = 0;
         }
-        $ENV{UPDATENODE} = 1;
     }
 
-    my ( $status, $output ) = run_command(
-        File::Spec->catfile( $caller_dir, $caller ), @arguments
+    my ( $status, $output ) = run_confined(
+        cmd      => [ File::Spec->catfile( $caller_dir, $caller ), @arguments ],
+        bin      => $bin,
+        env      => \%env,
+        writable => [$caller_dir],
+        dir      => $caller_dir,
     );
-    my $state = read_text($trace);
+    my $state = -f $trace ? read_text($trace) : '';
     chomp($state);
     return ( $status, $output, $state );
 }
 
+#-------------------------------------------------------------------------------
+
+=head3 stage_callers
+
+    Descriptions: Copies ospkgs, otherpkgs and the helper library into a directory, with every
+                  host path the two callers name moved under the sandbox root.
+    Arguments:
+        $directory - the directory to stage into
+    Returns: nothing
+
+=cut
+
+#-------------------------------------------------------------------------------
 sub stage_callers {
     my ($directory) = @_;
-    for my $source (
-        $library, $loader,
-        map { File::Spec->catfile( $postscripts, $_ ) } qw(ospkgs otherpkgs)
-      )
-    {
-        my $filename = ( File::Spec->splitpath($source) )[2];
-        my $destination = File::Spec->catfile( $directory, $filename );
-        copy( $source, $destination )
-          or die "Unable to stage $source as $destination: $!";
-        chmod 0755, $destination
-          or die "Unable to make $destination executable: $!";
+
+    my %rewrites = (
+        ospkgs => [
+            [ '/etc/yum.repos.d',      "$root/etc/yum.repos.d" ],
+            [ '/etc/apt/sources.list', "$root/etc/apt/sources.list" ],
+            [ '="/install"',           "=\"$root/install\"" ],
+        ],
+        otherpkgs => [
+            [ '/etc/yum.repos.d',        "$root/etc/yum.repos.d" ],
+            [ '/etc/apt/sources.list.d', "$root/etc/apt/sources.list.d" ],
+            [ '/etc/os-release',         "$root/etc/os-release" ],
+            [ '/xcatpost',               "$root/xcatpost" ],
+            [ '/tmp/postage',            "$root/tmp/postage" ],
+            [ '/tmp/wget.log',           "$root/tmp/wget.log" ],
+            [ 'repo_base="/tmp"',        "repo_base=\"$root/tmp\"" ],
+            [ '="/install"',             "=\"$root/install\"" ],
+        ],
+    );
+
+    foreach my $name (qw(xcatpkgutils.sh xcatpkgutils-loader.sh ospkgs otherpkgs)) {
+        my $script = slurp_repo_file( File::Spec->catfile( 'xCAT', 'postscripts', $name ) );
+        foreach my $rewrite ( @{ $rewrites{$name} || [] } ) {
+            replace_required( \$script, @$rewrite );
+        }
+        assert_no_host_paths(
+            $script,
+            root     => $root,
+            prefixes => [qw(/etc /var /root /home /boot /opt /srv /install /tftpboot /xcatpost /tmp)],
+            allow    => [qr/^\s*#/],
+        );
+        write_executable( File::Spec->catfile( $directory, $name ), $script );
     }
+
+    return;
 }
 
 sub write_executable {
