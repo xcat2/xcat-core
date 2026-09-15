@@ -23,6 +23,31 @@ xcat_is_el9_or_later()
     [[ "$1" =~ ^(rhel|rhels|alma|almalinux|rocky|centos|ol)(9|1[0-9]) ]]
 }
 
+xcat_is_openeuler()
+{
+    case "$1" in
+        openeuler*) return 0 ;;
+        ?*) return 1 ;;
+    esac
+    grep -Eq '^ID="?openEuler"?$' /etc/os-release 2>/dev/null
+}
+
+xcat_uses_nm_keyfile()
+{
+    xcat_is_el9_or_later "$1" && return 0
+    [ "$networkmanager_active" = "1" ] && xcat_is_openeuler "$1" || return 1
+    local uuid
+    local filename
+    uuid=$(nmcli -g connection.uuid connection show "$2" 2>/dev/null)
+    [ -n "$uuid" ] || return 1
+    filename=$(nmcli -t -f UUID,FILENAME connection show 2>/dev/null | sed -n "s/^$uuid://p")
+    case "$filename" in
+        /etc/NetworkManager/system-connections/*|/run/NetworkManager/system-connections/*|/var/run/NetworkManager/system-connections/*)
+            return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 function debianpreconf(){
     #create the config sub dir
     if [ ! -d "/etc/network/interfaces.d" ];then
