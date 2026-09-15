@@ -2,10 +2,14 @@
 use strict;
 use warnings;
 
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Source qw(slurp_repo_file);
+
 use File::Spec;
 use File::Temp qw(tempdir);
-use FindBin;
 use Test::More;
+use XCAT::Test::Sandbox qw(stub_bin run_confined);
 
 # Regression (issue #7454): on Ubuntu 18.04+ the network is rendered by netplan. ifupdown is
 # not installed and /etc/network/interfaces.d/* is ignored entirely, so configeth's Debian
@@ -19,26 +23,28 @@ use Test::More;
 # whole node's network with it rather than one interface. Where netplan is installed (it is on
 # the ubuntu-24.04 CI runner) the last test feeds the generated tree to the real parser.
 
-my $repo_root = File::Spec->rel2abs(
-    File::Spec->catdir( $FindBin::Bin, '..', '..' )
-);
-my $configeth = File::Spec->catfile( $repo_root, 'xCAT', 'postscripts', 'configeth' );
-plan skip_all => "configeth not found" unless -f $configeth;
-
-my $src = do { local $/; open my $fh, '<', $configeth or die $!; <$fh> };
+my $src = slurp_repo_file('xCAT/postscripts/configeth');
 
 # Everything from the netplan detection through delete_nic_config_files: the writers, the
-# configipv4/configipv6 dispatch, and the removal path. BAIL_OUT rather than skip, so that a
+# configipv4/configipv6 dispatch, and the removal path. die rather than skip, so that a
 # rename which stops this matching fails loudly instead of silently covering nothing.
 my ($unit) = $src =~ /^(netplan_active=0\n.*?\nfunction delete_nic_config_files\(\)\{.*?\n\})\n/ms;
-BAIL_OUT('could not extract the netplan unit from configeth') unless defined $unit;
+die "could not extract the netplan unit from configeth\n" unless defined $unit;
 
 my $dir = tempdir( CLEANUP => 1 );
+
+# The unit also holds the ifcfg, interfaces.d and nmcli branches, which write under /etc. Only
+# netplan_active=1 and str_os_type=debian keep the harness off them, so the harness runs with the
+# tools below as its only PATH, and as root with host directories read-only.
+my $bin = stub_bin(
+    dir   => File::Spec->catdir( $dir, 'bin' ),
+    tools => [qw(bash sed grep rm mv cat mkdir cp sort head tail cut tr wc awk chmod cmp)],
+);
 
 # The real sentinel configeth uses for "this attribute is unset" (configeth sets
 # str_default_token="default"); a made-up token here would let a hard-coded literal pass.
 my ($token) = $src =~ /^str_default_token="([^"]+)"/m;
-BAIL_OUT('could not read str_default_token from configeth') unless defined $token;
+die "could not read str_default_token from configeth\n" unless defined $token;
 is( $token, 'default', 'the harness drives the sentinel configeth actually uses' );
 
 my $run_no = 0;
@@ -96,7 +102,7 @@ PRE
     print $fh "netplan_active=1\n";
     print $fh "$script\n";
     close $fh;
-    system( '/bin/bash', $harness ) == 0 or die "harness failed";
+    run_harness( $harness, $root );
     return $root;
 }
 
@@ -110,6 +116,13 @@ sub yaml_of {
     # the "# xcat-state:" lines are this writer's own bookkeeping, not netplan config
     $c =~ s/^# xcat-state:.*\n//mg;
     return $c;
+}
+
+sub run_harness {
+    my ( $harness, $cwd ) = @_;
+    my ( $status, $output ) = run_confined( cmd => [ 'bash', $harness ], bin => $bin, writable => [$dir], dir => $cwd );
+    die "harness failed ($status):\n$output" if $status;
+    return;
 }
 
 sub slurp { my ($p) = @_; return '' unless -f $p; local $/; open my $f, '<', $p or die $!; return <$f>; }
@@ -255,9 +268,19 @@ unlike( $applied, qr/reconfigure/,
 # --root-dir is a filesystem root: netplan reads <root>/etc/netplan/*.yaml, which is why the
 # harness writes the drop-ins there rather than flat into the scratch directory.
 SKIP: {
-    my $netplan = `command -v netplan 2>/dev/null`;
-    chomp $netplan;
-    skip 'netplan not installed', 1 unless $netplan && -x $netplan;
+    # netplan generate reloads udev and, without --root-dir, systemd on the host it runs on.
+    my $netplan_calls = File::Spec->catfile( $dir, 'netplan-host-calls' );
+    my $netplan_bin = eval {
+        stub_bin(
+            dir   => File::Spec->catdir( $dir, 'netplan-bin' ),
+            tools => ['netplan'],
+            stubs => {
+                udevadm   => qq{echo "udevadm \$*" >> '$netplan_calls'},
+                systemctl => qq{echo "systemctl \$*" >> '$netplan_calls'},
+            },
+        );
+    };
+    skip 'netplan not installed', 2 unless $netplan_bin;
 
     my $root = File::Spec->catdir( $dir, 'generate' );
     mkdir $root;
@@ -278,9 +301,15 @@ SH
     close $ci;
     chmod 0600, glob("$np/*.yaml");
 
-    my $out = `netplan generate --root-dir '$root' 2>&1`;
-    is( $? >> 8, 0, "netplan generate accepts the generated configuration" )
+    my ( $status, $out ) = run_confined(
+        cmd      => [ 'netplan', 'generate', '--root-dir', $root ],
+        bin      => $netplan_bin,
+        writable => [$dir],
+    );
+    is( $status, 0, "netplan generate accepts the generated configuration" )
       or diag($out);
+    like( slurp($netplan_calls), qr/^udevadm control --reload$/m,
+        'the udev reload netplan generate runs reaches the stub, not the host' );
 }
 
 # same harness, writing into a caller-chosen netplan directory
@@ -327,7 +356,7 @@ declare -a array_extra_param_values
 PRE
     print $fh "$unit\nnetplan_active=1\n$script\n";
     close $fh;
-    system( '/bin/bash', $harness ) == 0 or die "harness failed";
+    run_harness( $harness, $root );
     return;
 }
 
