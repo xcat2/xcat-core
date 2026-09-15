@@ -452,7 +452,7 @@ sub install_xcat{
 # Return code:  0 all tests passed, 1 otherwise
 #--------------------------------------------------------
 sub run_unit_tests{
-    my $cmd = "cd $unitsrc && prove -r xCAT-test/unit";
+    my $cmd = "cd $unitsrc && prove --timer -j4 -r xCAT-test/unit";
     print "[run_unit_tests] running $cmd\n";
     my @output = runcmd("$cmd");
     print Dumper \@output;
@@ -485,7 +485,7 @@ sub run_bats_tests{
         return 0;
     }
 
-    my $cmd = "cd $unitsrc && bats -r xCAT-test/bats";
+    my $cmd = "cd $unitsrc && bats --timing --jobs 4 -r xCAT-test/bats";
     print "[run_bats_tests] running $cmd\n";
     @output = runcmd("$cmd");
     print Dumper \@output;
