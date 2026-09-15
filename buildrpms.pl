@@ -9,6 +9,15 @@ sub install_deps {
     system(<<"EOF");
     set -x
     source /etc/os-release
+    xcat_mock_bootstrap_package=podman
+    case "\$ID" in
+        openEuler|openeuler)
+            set -e
+            xcat_mock_bootstrap_package=
+            dnf() { command dnf --setopt=gpgcheck=1 '--setopt=*.gpgcheck=1' --setopt=strict=1 --setopt=install_weak_deps=False "\$@"; }
+            dnf install -y perl-generators /usr/bin/systemd-nspawn
+            ;;
+        *)
     case "\$ID" in
         rhel)
             subscription-manager repos --enable codeready-builder-for-rhel-10-\$(arch)-rpms
@@ -18,8 +27,10 @@ sub install_deps {
             ;;
     esac
     dnf install -y perl-generators https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
+            ;;
+    esac
     dnf install -y \$(/usr/lib/rpm/perl.req $0)
-    dnf install -y tar mock nginx createrepo_c podman rpmdevtools rpm-sign
+    dnf install -y tar mock nginx createrepo_c \$xcat_mock_bootstrap_package rpmdevtools rpm-sign
 
     systemctl enable --now nginx
 
@@ -44,7 +55,8 @@ use File::Temp qw(tempdir tempfile);
 use FindBin qw($Bin);
 use lib "$Bin/build-utils/lib";
 use XCAT::BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildinfo_text
-                        write_script read_line targetarch_from_target);
+                        write_script read_line targetarch_from_target
+                        openeuler_build_target openeuler_repo_subdir);
 use Fcntl qw(:flock);           # per-target build lock (concurrency guard; see main())
 use Getopt::Long qw(GetOptions);
 use POSIX qw(strftime);
@@ -131,10 +143,7 @@ my @PACKAGES = qw(
     xCAT-release
 );
 
-# The arch-native packages: their rpms carry the target arch. Everything else in @PACKAGES
-# is noarch and byte-identical on every arch, so `--native-only` builds just these -- a
-# secondary-arch build (e.g. ppc64le) then produces only what the x86_64 build cannot already
-# provide, and the multi-arch merge has no duplicate noarch to reconcile.
+# --native-only selects architecture-tagged packages for assembly with separately validated noarch packages.
 my @NATIVE_PACKAGES = qw(xCAT xCATsn xCAT-genesis-scripts);
 
 my @TARGETS = (
@@ -142,6 +151,8 @@ my @TARGETS = (
     "$DISTRO+epel-9-$ARCH",
     "$DISTRO+epel-10-$ARCH",
 );
+my $native_target = openeuler_build_target(\%OS, $ARCH);
+@TARGETS = ($native_target) if defined($native_target);
 
 
 my %opts = (
@@ -157,7 +168,7 @@ my %opts = (
     packages => \@PACKAGES,
     release => "",
     repo_mode => "file",
-    repo_baseurl => "https://xcat.org/files/xcat/repos/yum/devel/xcat-core",
+    repo_baseurl => undef,
     targets => \@TARGETS,
     verbose => 0,
     xcat_dep_path => "$PWD/../xcat-dep/",
@@ -223,8 +234,13 @@ if (@cli_targets) {
         if @cli_targets > 1;
     $opts{targets} = [@cli_targets];
 } else {
-    $opts{targets} = ["$DISTRO+epel-10-$ARCH"];
+    $opts{targets} = [$native_target // "$DISTRO+epel-10-$ARCH"];
 }
+my $native_subdir = openeuler_repo_subdir($opts{targets}->[0]);
+usage(message => "openEuler repositories must retain their release and architecture; use dist/<target>/rpms instead of --merge-core-repos")
+    if defined($native_subdir) && $opts{merge_core_repos};
+$opts{repo_baseurl} //= "https://xcat.org/files/xcat/repos/yum/devel/xcat-core"
+    . (defined($native_subdir) ? "/$native_subdir" : '');
 
 # Release is derived from SOURCE_DATE_EPOCH (the git commit time), NOT wall-clock,
 # so identical sources -> identical Version-Release -> bit-reproducible packages
@@ -386,6 +402,33 @@ sub prepare_xcat_probe_source_tar {
     rename $archive_path, $source_tarball;
 }
 
+sub prepare_xcat_release_source_tar {
+    my ($subdir) = @_;
+    my $staging_parent = tempdir("xcat-release-source.XXXXXX", TMPDIR => 1, CLEANUP => 1);
+    my $staging_root = "$staging_parent/xCAT-release";
+    my $source_tarball = "$SOURCES/xCAT-release-$VERSION.tar.gz";
+
+    sh_or_die(qq(cp -a "xCAT-release" "$staging_root"),
+        "Error staging xCAT-release sources");
+    for my $repo (qw(xcat-core xcat-dep)) {
+        my $path = "$staging_root/$repo.repo";
+        my $contents = read_text($path);
+        my $suffix = $repo eq 'xcat-dep' ? '/rh$releasever/$basearch' : '';
+        my $changed = $contents =~ s{^(baseurl=\S+/\Q$repo\E)\Q$suffix\E$}{$1/$subdir}mg;
+        die "Expected one bootstrap baseurl in $repo.repo\n" unless $changed == 1;
+        write_text($path, $contents);
+    }
+
+    my ($archive_fh, $archive_path) = tempfile(
+        ".xCAT-release-$VERSION.XXXXXX", DIR => $SOURCES, UNLINK => 1,
+    );
+    close $archive_fh;
+    sh_or_die(qq(tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="\@$SOURCE_DATE_EPOCH" --use-compress-program="gzip -n" -cf "$archive_path" -C "$staging_parent" xCAT-release),
+        "Error creating $source_tarball");
+    chmod 0644, $archive_path;
+    rename $archive_path, $source_tarball;
+}
+
 sub buildsources {
     my ($pkg, $target) = @_;
 
@@ -406,6 +449,8 @@ sub buildsources {
           cp xcat.conf.apach24 $SOURCES
           cp xCATMN $SOURCES
 EOF
+    } elsif ($pkg eq "xCAT-release" && defined(openeuler_repo_subdir($target))) {
+        prepare_xcat_release_source_tar(openeuler_repo_subdir($target));
     } elsif ($pkg eq "xCAT-genesis-scripts") {
       sh qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -cjf "$SOURCES/$pkg.tar.bz2" $pkg);
     } elsif ($pkg eq "xCAT-genesis-base") {
@@ -552,7 +597,11 @@ sub configure_nginx {
     my $version = $os{VERSION_ID};
     my $xcat_dep_path;
 
-    if ($version > 10) {
+    if (defined($native_subdir)) {
+        $xcat_dep_path = $opts{xcat_dep_path};
+        confess "Missing xcat-dep folder in $xcat_dep_path: No such file or directory"
+            unless -d $xcat_dep_path;
+    } elsif ($version > 10) {
         setup_repo
             -id => "VersatusHPC",
             -baseurl => "https://mirror.versatushpc.com.br/versatushpc/rpm/el10/";
@@ -578,7 +627,7 @@ EOF
 
     # We always generate the nginx config for all
     # the targets, not $opts{targets}
-    for my $target (@TARGETS) {
+    for my $target (defined($native_subdir) ? @{$opts{targets}} : @TARGETS) {
         my $fullpath = "$PWD/dist/$target/rpms";
         $conf .= <<"EOF";
     location /$target/ {
@@ -610,12 +659,12 @@ sub repo_mode {
 }
 
 sub xcat_dep_file_repo_baseurl {
-    my ($version, $arch) = @_;
+    my ($version, $arch, $native) = @_;
     my $xcat_dep_path = $opts{xcat_dep_path};
     confess "Missing xcat-dep path: --xcat_dep_path is empty"
         unless defined $xcat_dep_path && length $xcat_dep_path;
     $xcat_dep_path =~ s{/+$}{};
-    my $repo_path = "$xcat_dep_path/el$version/$arch";
+    my $repo_path = "$xcat_dep_path/" . ($native // "el$version/$arch");
     confess "Missing xcat-dep repository path in $repo_path: No such directory"
         unless -d $repo_path;
     return "file://$repo_path";
@@ -626,12 +675,13 @@ sub setup_local_repos {
     $target //= $opts{targets}->[0]
         or die "A target must be provided for setup_local_repos";
     my $mode = repo_mode();
+    my $native = openeuler_repo_subdir($target);
     my $core_baseurl = (
         $mode eq "file"
         ? "file://$PWD/dist/$target/rpms"
         : "http://127.0.0.1:$opts{nginx_port}/$target"
     );
-    my $gpgkey = $opts{gpg_sign}
+    my $gpgkey = $opts{gpg_sign} || defined($native)
         ? "file://$PWD/dist/$target/rpms/repodata/repomd.xml.key"
         : undef;
     my $exit = setup_repo
@@ -640,17 +690,19 @@ sub setup_local_repos {
         -gpgkey => $gpgkey;
     return $exit if $exit;
     my %os = os_release();
-    my $version = int $os{VERSION_ID};
-    my $arch = $ARCH;
+    my $version = defined($native) ? undef : int $os{VERSION_ID};
+    my $arch = defined($native) ? targetarch_from_target($target, $ARCH) : $ARCH;
+    my $dep_subdir = $native // "el$version/$arch";
     my $xcat_dep_baseurl = (
         $mode eq "file"
-        ? xcat_dep_file_repo_baseurl($version, $arch)
-        : "http://127.0.0.1:$opts{nginx_port}/xcat-dep/el$version/$arch"
+        ? xcat_dep_file_repo_baseurl($version, $arch, $native)
+        : "http://127.0.0.1:$opts{nginx_port}/xcat-dep/$dep_subdir"
     );
 
     $exit = setup_repo
             -id => "xcat-dep",
-            -baseurl => $xcat_dep_baseurl;
+            -baseurl => $xcat_dep_baseurl,
+            -gpgkey => (defined($native) ? "$xcat_dep_baseurl/repodata/repomd.xml.key" : undef);
 }
 
 
@@ -774,8 +826,8 @@ sub write_repo_metadata_dir {
     # Shipped baseurl points at xcat.org (--repo-baseurl overrides it per family, e.g. the
     # sles/apt layout); mklocalrepo.sh rewrites baseurl/gpgkey to file:// at deploy time.
     my $baseurl = $opts{repo_baseurl};
-    my $gpgcheck = $opts{gpg_sign} ? 1 : 0;
-    my $gpgkey_line = $opts{gpg_sign}
+    my $gpgcheck = $opts{gpg_sign} || defined($native_subdir) ? 1 : 0;
+    my $gpgkey_line = $gpgcheck
         ? "gpgkey=$baseurl/repodata/repomd.xml.key"
         : "# gpgkey=";
     write_text("$repodir/xcat-core.repo", <<"EOF");
@@ -812,7 +864,8 @@ EOF2
     # BUILD_TIME from SOURCE_DATE_EPOCH keeps buildinfo reproducible across rebuilds.
     write_text("$repodir/buildinfo.txt", buildinfo_text(
         version => $VERSION, release => $RELEASE, epoch => $SOURCE_DATE_EPOCH,
-        commit => $GITINFO, time_format => "%a %b %e %H:%M:%S %Z %Y"));
+        commit => $GITINFO, time_format => "%a %b %e %H:%M:%S %Z %Y")
+        . (defined($native_subdir) ? "BUILD_TARGET=$opts{targets}->[0]\n" : ''));
 }
 
 # Assemble the flat MULTI-ARCH core from per-arch build outputs and sign it, in the upstream
@@ -831,6 +884,11 @@ sub merge_core_repos {
     my @ins = @{ $opts{input_core_repos} || [] };
     die "FATAL: --merge-core-repos requires at least one --input-core-repos dir\n" unless @ins;
     -d $_ or die "FATAL: --input-core-repos dir '$_' does not exist\n" for @ins;
+    for my $in (@ins) {
+        my $info = -f "$in/buildinfo.txt" ? read_text("$in/buildinfo.txt") : '';
+        die "FATAL: openEuler repositories must retain their release and architecture: $in\n"
+            if $in =~ m{(?:^|/)openeuler[/-]} || $info =~ /^BUILD_TARGET=openeuler-/m;
+    }
 
     sh_or_die(qq(rm -rf "$out"),
         "Failed to clean output dir '$out'\n");
@@ -1077,14 +1135,21 @@ Show usage text and exit.
 
 Install host build dependencies, mock, nginx, and supporting tools.
 This option is handled before normal option parsing.
+On openEuler, use a build host whose native repositories provide mock and its
+Perl dependencies. OpenEuler 24.03 LTS-SP3 provides these tools; older target
+releases can use their exact mock configuration on that build host.
 
 =item B<--target>=I<TARGET>
 
 Build for the specified mock target, e.g. C<alma+epel-10-ppc64le>. Exactly ONE target
 is built per invocation: passing more than one C<--target> is an error (run the script
-once per target). When omitted, the default is a single C<< <distro>+epel-10-<arch> >>
-derived from the host. The multi-arch flat core is assembled from per-arch builds via
-C<--merge-core-repos>.
+once per target). On openEuler, the default retains the host release and service pack,
+for example C<openeuler-24.03sp3-x86_64>. Install the matching configuration from
+C<xcat-dep/mock-configs> before building. Other hosts retain the default
+C<< <distro>+epel-10-<arch> >>. OpenEuler output stays in
+C<dist/E<lt>targetE<gt>/rpms>; publish it under
+C<xcat-core/openeulerE<lt>releaseSPE<gt>/E<lt>archE<gt>>.
+C<--merge-core-repos> rejects native openEuler inputs.
 
 A riscv64 build on an x86_64 builder needs a mock configuration that sets
 C<config_opts['forcearch'] = 'riscv64'> (with the riscv64 qemu-user-static
@@ -1099,10 +1164,9 @@ Build only selected package(s). Repeatable.
 =item B<--native-only>
 
 Build only the arch-native packages (C<xCAT>, C<xCATsn>, C<xCAT-genesis-scripts>) -- the
-ones whose rpms carry the target arch. Everything else in the default set is C<noarch> and
-identical on every arch, so a secondary-arch builder (e.g. ppc64le or riscv64) uses this to avoid
-rebuilding the noarch packages that the x86_64 builder already produces. Ignored if
-C<--package> is given.
+ones whose rpms carry the target arch. Use this only when the remaining C<noarch>
+packages have been validated for the same distribution release and architecture.
+Ignored if C<--package> is given.
 
 =item B<--nproc>=I<N>
 
