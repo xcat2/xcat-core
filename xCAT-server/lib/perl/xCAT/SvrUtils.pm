@@ -403,6 +403,7 @@ sub getsynclistfile()
                     elsif ($os =~ /centos.*/) { $platform = "centos"; }
 		    elsif ($os =~ /alma.*/) { $platform = "alma"; }
                     elsif ($os =~ /rocky.*/) { $platform = "rocky"; }
+                    elsif ($os =~ /^openeuler/) { $platform = "openeuler"; }
                     elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
                     elsif ($os =~ /sles.*/)   { $platform = "sles"; }
                     elsif ($os =~ /SL.*/)     { $platform = "SL"; }
@@ -435,6 +436,7 @@ sub getsynclistfile()
             elsif ($os =~ /centos.*/) { $platform = "centos"; }
 	    elsif ($os =~ /alma.*/) { $platform = "alma"; }
             elsif ($os =~ /rocky.*/) { $platform = "rocky"; }
+            elsif ($os =~ /^openeuler/) { $platform = "openeuler"; }
             elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
             elsif ($os =~ /sles.*/)   { $platform = "sles"; }
             elsif ($os =~ /SL.*/)     { $platform = "SL"; }
@@ -486,6 +488,9 @@ sub getsynclistfile()
 
 sub get_os_search_list {
     my $os = shift;
+    if ($os =~ /^(openeuler(?:20|22|24)\.03)(sp[1-9][0-9]*)?$/) {
+        return defined($2) ? ($os, $1, 'openeuler') : ($os, 'openeuler');
+    }
     #example: for os=rhels7.6-alternate
     my ($baseos, $alter) = split(/\-/, $os);
     my @word = split(/\./, $baseos);
@@ -542,7 +547,7 @@ sub _profile_file_matches {
     }
 
     my %valid_os_suffix = map { $_ => 1 } xCAT::SvrUtils::get_os_search_list($osver);
-    $valid_os_suffix{$genos} = 1 if $genos;
+    $valid_os_suffix{$genos} = 1 if $genos && $osver !~ /^openeuler/;
 
     if ($valid_os_suffix{$suffix}) {
         return 1;
@@ -559,6 +564,7 @@ sub _profile_file_matches {
 
 sub get_file_name {
     my ($searchpath, $extension, $profile, $os, $arch, $genos) = @_;
+    $genos = undef if $os =~ /^openeuler/;
 
     #usally there're only 4 arguments passed for this function
     #the $genos is only used for the Redhat family
@@ -634,6 +640,10 @@ sub get_postinstall_file_name {
     my $arch      = shift;
     my $genos     = shift;
     my $extension = "postinstall";
+    if ($os =~ /^openeuler/) {
+        my $file = get_file_name($searchpath, $extension, $profile, $os, $arch, undef);
+        return defined($file) && -x $file ? $file : undef;
+    }
     my $dotpos    = rindex($os, ".");
     my $osbase    = substr($os, 0, $dotpos);
 
@@ -2148,6 +2158,10 @@ sub parseosver
 {
     my $osver = shift;
 
+    if ($osver =~ /^(openeuler)(20|22|24)\.(03(?:sp[1-9][0-9]*)?)$/) {
+        return ($1, $2, $3);
+    }
+
     if ($osver =~ (/(\D+)(\d*)\.*(\d*)/))
     {
         return ($1, $2, $3);
@@ -2366,6 +2380,10 @@ sub getplatform {
     elsif ($os =~ /rocky.*/)
     {
         $platform = "rocky";
+    }
+    elsif ($os =~ /^openeuler/)
+    {
+        $platform = "openeuler";
     }
     elsif ($os =~ /fedora.*/)
     {
