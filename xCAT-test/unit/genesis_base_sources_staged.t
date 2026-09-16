@@ -19,7 +19,7 @@ use Test::More;
 use XCAT::Test::File qw(repo_path);
 
 my $builder = repo_path('buildrpms.pl');
-plan skip_all => 'buildrpms.pl not found' unless -f $builder;
+die "buildrpms.pl not found\n" unless -f $builder;
 
 my $source = read_text($builder);
 our ($body) = $source =~ /(sub\s+buildsources_genesis_base\s*\(\$\).*?\n\}\n)/s;
