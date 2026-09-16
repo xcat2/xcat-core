@@ -38,6 +38,7 @@ our @EXPORT_OK = qw(
     targetarch_from_target
     genesis_chroot_name genesis_target_arch genesis_build_plan
     genesis_log_errors genesis_log_deny_rules deb_belongs_to_dist
+    genesis_dists genesis_dist_reason
 );
 
 # Both builders echo the commands they run under --verbose.  Set once, after
@@ -569,16 +570,42 @@ my @GENESIS_LOG_DENY = (
 
 sub genesis_log_deny_rules { return @GENESIS_LOG_DENY; }
 
+# The package built once per codename. It is the only one: it carries the kernel and the kernel
+# modules of the root that built it.
+my $GENESIS_IMAGE_DEB = qr{\Axcat-genesis-base-};
+
+# Releases whose stock chroot cannot build that package, and why. focal ships debhelper 12 and
+# xCAT-genesis-base declares debhelper-compat (= 13), so sbuild stops on the build dependencies
+# before dracut runs.
+my %GENESIS_DIST_UNSUPPORTED = (
+    focal => 'debhelper 12 cannot satisfy debhelper-compat (= 13)',
+);
+
+# genesis_dists: the releases of @dists a Genesis image can be built on.
+sub genesis_dists {
+    my (@dists) = @_;
+    return grep { !exists $GENESIS_DIST_UNSUPPORTED{$_} } @dists;
+}
+
+# genesis_dist_reason: why a release was left out, or undef.
+sub genesis_dist_reason { return $GENESIS_DIST_UNSUPPORTED{ $_[0] // '' }; }
+
 # deb_belongs_to_dist: whether a built .deb may be published into one release.
 #
 # Almost every xcat-core deb is Architecture:all and the same file serves every release, so the
 # answer is yes. The Genesis image is not: it is built per codename and carries that codename in
 # its version (2.19.0-snap...~noble). Publishing all three into every suite lets apt serve the
 # newest, which is the image of another release.
+#
+# Only that package is asked. A ~ in a version is Debian's prerelease separator before it is
+# anything else, and --release takes whatever the caller gives it, so reading every ~ as a
+# codename drops a whole `--release 1~rc1` build from every suite.
 sub deb_belongs_to_dist {
     my ($deb, $dist) = @_;
     return 1 unless defined $deb && defined $dist && $dist ne '';
     my $base = basename($deb);
+    my ($name) = $base =~ /\A([^_]+)_/;
+    return 1 unless defined $name && $name =~ $GENESIS_IMAGE_DEB;
     return 1 unless $base =~ /_[^_]*~([A-Za-z0-9.]+)_[^_]*\.deb\z/;
     return $1 eq $dist ? 1 : 0;
 }

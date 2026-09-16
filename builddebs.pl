@@ -40,6 +40,7 @@ use XCAT::BuildUtils qw(
     lock_id_for take_build_lock sh_quote
     sh sh_or_die usage rewrite_file write_script read_line buildinfo_text
     genesis_build_plan genesis_log_errors deb_belongs_to_dist
+    genesis_dists genesis_dist_reason
 );
 
 # The xcat-core packages that ship as debs. xCAT-openbmc-py, xCAT-rmc and xCAT-release
@@ -91,7 +92,18 @@ $opts{gpg_key_name} //= 'xCAT Signing Key';
 
 # The Genesis step is off unless it is asked for, so today's runs keep their behaviour.
 $opts{genesis} = 1 if $opts{genesis_only};
-$opts{genesis_dists} = @cli_genesis_dists ? \@cli_genesis_dists : $opts{dists};
+# A release named on the command line is built as asked. The default list is the one the rest
+# of the build uses, and not every release on it can build the image, so those are dropped and
+# named rather than failing the run on its first codename.
+if (@cli_genesis_dists) {
+    $opts{genesis_dists} = \@cli_genesis_dists;
+} else {
+    $opts{genesis_dists} = [ genesis_dists($opts{dists}->@*) ];
+    for my $dist ($opts{dists}->@*) {
+        my $why = genesis_dist_reason($dist) or next;
+        say "genesis: leaving out $dist -- $why";
+    }
+}
 die "FATAL: --genesis-dist needs --genesis\n" if @cli_genesis_dists && !$opts{genesis};
 die "FATAL: --genesis-arch needs --genesis\n" if $opts{genesis_arch} && !$opts{genesis};
 
