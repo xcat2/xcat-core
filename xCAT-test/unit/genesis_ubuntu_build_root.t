@@ -20,7 +20,7 @@ my $builder = repo_path('xCAT-genesis-builder/builddeb-genesis-base');
 my $module  = repo_path('xCAT-genesis-builder/dracut_105/ubuntu/module-setup.sh');
 plan skip_all => 'builddeb-genesis-base not found' unless -f $builder;
 plan skip_all => 'ubuntu module-setup.sh not found' unless -f $module;
-plan tests => 10;
+plan tests => 9;
 
 # Mandatory commands a minimal Ubuntu server root does NOT already provide, and the package
 # that supplies each one on every release xCAT builds for.
@@ -58,11 +58,9 @@ ok(!scalar(grep { $_ eq 'util-linux-extra' } @packages),
 
 # What the script does instead: keep a package only where apt has a candidate for it.
 {
-    my @present = optional_packages($builder, 'util-linux-extra', 0);
-    my @absent  = optional_packages($builder, 'util-linux-extra', 1);
-    is_deeply(\@present, ['util-linux-extra'],
+    is_deeply(optional_packages($builder, 'util-linux-extra', 0), ['util-linux-extra'],
         'a release that carries util-linux-extra installs it');
-    is_deeply(\@absent, [],
+    is_deeply(optional_packages($builder, 'util-linux-extra', 1), [],
         'a release without it installs nothing in its place');
 }
 

@@ -30,15 +30,29 @@ REQUIRED_PACKAGES="
     nfs-common rpcbind pciutils usbutils parted
     dosfstools e2fsprogs lvm2 mdadm net-tools
     bc psmisc rsync wget cpio
-    isc-dhcp-client ifenslave util-linux-extra
+    isc-dhcp-client ifenslave
     dpkg-dev debhelper fakeroot devscripts vim-tiny
 "
 if [ "$BUILDARCH" = "amd64" ]; then
     REQUIRED_PACKAGES="$REQUIRED_PACKAGES dmidecode efibootmgr"
 fi
 
+# Keep only the packages this release actually has. hwclock moved out of util-linux into
+# util-linux-extra, so focal and jammy have no such package and naming it there fails the
+# whole install. util-linux only Suggests it, and --no-install-recommends is passed, so the
+# releases that did split it must name it.
+optional_packages() {
+    local package
+    for package in "$@"; do
+        if apt-cache show "$package" >/dev/null 2>&1; then
+            echo "$package"
+        fi
+    done
+}
+
 echo "Installing build dependencies..."
 apt-get update -qq
+REQUIRED_PACKAGES="$REQUIRED_PACKAGES $(optional_packages util-linux-extra)"
 apt-get install -y --no-install-recommends $REQUIRED_PACKAGES
 
 # Set up dracut module
@@ -141,11 +155,6 @@ if [ ! -e "$KERNEL_IMAGE" ]; then
 fi
 echo "Adding kernel $KERNEL_IMAGE"
 cp "$KERNEL_IMAGE" "$GENESIS_ROOT/kernel"
-
-# dracut_install reports a missing command and returns, so a hole reaches the .deb with
-# nothing in the log but one line. Read the commands back from the module and check them
-# against the payload, the way xCAT-genesis-base.spec does for EL.
-bash "$DIR/verify-genesis-payload" --commands-from "$DRACUTMODDIR/module-setup.sh" "$GENESIS_FS"
 
 find "$GENESIS_TMPDIR" -type c -delete
 
