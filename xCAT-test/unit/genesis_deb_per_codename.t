@@ -69,6 +69,40 @@ if (XCAT::BuildUtils->can('deb_belongs_to_dist')) {
         'a deb with no codename in its version reaches every suite');
     ok(XCAT::BuildUtils::deb_belongs_to_dist('xcat_2.19.0-snap1_amd64.deb', 'resolute'),
         'an architecture deb reaches every suite');
+
+    # A `~` in a version is not a codename. Debian uses it for a prerelease, and --release
+    # takes whatever the caller gives it, so `--release 1~rc1` puts one in every package
+    # name. Reading it as a codename drops the whole build from every suite, and the run
+    # still reports the packages it published.
+    for my $dist (qw(focal jammy noble resolute)) {
+        ok(XCAT::BuildUtils::deb_belongs_to_dist('xcat-client_2.19.0-1~rc1_all.deb', $dist),
+            "a prerelease version reaches $dist");
+    }
+    ok(XCAT::BuildUtils::deb_belongs_to_dist('xcat-genesis-scripts-amd64_2.19.0-1~rc1_amd64.deb', 'noble'),
+        'a prerelease Genesis SCRIPTS deb reaches every suite: only the image is per codename');
+
+    # And the rule the exclusion exists for still holds under a prerelease version.
+    ok(XCAT::BuildUtils::deb_belongs_to_dist('xcat-genesis-base-amd64_2.19.0-1~rc1~noble_amd64.deb', 'noble'),
+        'a prerelease Genesis image reaches its own suite');
+    ok(!XCAT::BuildUtils::deb_belongs_to_dist('xcat-genesis-base-amd64_2.19.0-1~rc1~noble_amd64.deb', 'jammy'),
+        'and no other');
+}
+
+# --- the releases a Genesis image can be built on ------------------------------------------
+# A plain --genesis run takes the release list the rest of the build uses. focal is on it and
+# cannot build the package: it ships debhelper 12.10 and xCAT-genesis-base declares
+# debhelper-compat (= 13), so sbuild stops on the build dependencies before dracut runs and
+# the run ends on its first release.
+ok(XCAT::BuildUtils->can('genesis_dists'),
+    'XCAT::BuildUtils says which releases a Genesis image can be built on');
+if (XCAT::BuildUtils->can('genesis_dists')) {
+    is_deeply([ XCAT::BuildUtils::genesis_dists(XCAT::BuildUtils::default_dists()) ],
+        [qw(jammy noble resolute)],
+        'the default plan leaves out the release whose chroot cannot build the package');
+    is_deeply([ XCAT::BuildUtils::genesis_dists(qw(jammy noble)) ], [qw(jammy noble)],
+        'a list with none of them is unchanged');
+    is_deeply([ XCAT::BuildUtils::genesis_dists('focal') ], [],
+        'a list of only that release plans nothing');
 }
 
 # --- the log guard ---------------------------------------------------------------------
