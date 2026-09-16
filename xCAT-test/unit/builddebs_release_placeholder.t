@@ -18,7 +18,7 @@ use XCAT::BuildUtils qw(read_line snap_release);
 
 my $repo_root = File::Spec->rel2abs( File::Spec->catdir( $FindBin::Bin, '..', '..' ) );
 my $builder = File::Spec->catfile( $repo_root, 'builddebs.pl' );
-plan skip_all => "builddebs.pl not found" unless -f $builder;
+die "builddebs.pl not found\n" unless -f $builder;
 
 my $src = do { local $/; open my $fh, '<', $builder or die $!; <$fh> };
 
