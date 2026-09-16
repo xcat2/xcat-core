@@ -25,7 +25,7 @@ use Test::More;
 use Time::HiRes qw(sleep time);
 
 my $XCATD = "$FindBin::Bin/../../xCAT-server/sbin/xcatd";
-plan skip_all => "xcatd not found at $XCATD" unless -r $XCATD;
+die "xcatd not found at $XCATD\n" unless -r $XCATD;
 
 my $SLOW    = 3;    # seconds one node's request spends in its plugin
 my $EVENTS  = "/tmp/xcatd-installm-events.$$";
