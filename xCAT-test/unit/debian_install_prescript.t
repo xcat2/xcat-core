@@ -17,7 +17,7 @@ use Test::More;
 use lib "$FindBin::Bin/../../perl-xCAT";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 my $plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/debian.pm";
-plan skip_all => 'debian.pm not found' unless -r $plugin;
+die "debian.pm not found\n" unless -r $plugin;
 eval { require $plugin; 1 } or plan skip_all => "could not load debian.pm: $@";
 
 can_ok('xCAT_plugin::debian', 'install_prescript')
