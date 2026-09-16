@@ -44,13 +44,13 @@ my %HOSTILE = (
 
 #-------------------------------------------------------------------------------
 sub run_child {
-    my (@cmd) = @_;
+    my ( $env, @cmd ) = @_;
 
     my $log = File::Temp->new( DIR => scratch_dir() );
     my $pid = fork();
     die "fork: $!" unless defined $pid;
     if ( !$pid ) {
-        %ENV = ( %ENV, %HOSTILE );
+        %ENV = ( %ENV, %HOSTILE, %{ $env || {} } );
         delete @ENV{qw(XCAT_TEST_SOURCE_CHILD XCAT_TEST_SOURCE_REPORT HARNESS_ACTIVE TAP_VERSION_13)};
         chdir('/') or POSIX::_exit(126);
         open( STDIN,  '<',  File::Spec->devnull() ) or POSIX::_exit(126);
@@ -81,9 +81,9 @@ sub run_child {
 
 #-------------------------------------------------------------------------------
 sub run_perl {
-    my ($code) = @_;
+    my ( $code, $env ) = @_;
     my @script = ( $code !~ /\n/ && -f $code ) ? ($code) : ( '-e', $code );
-    return run_child( $^X, "-I$test_lib", '-MXCAT::Test::Source', @script );
+    return run_child( $env, $^X, "-I$test_lib", '-MXCAT::Test::Source', @script );
 }
 
 sub fields {
@@ -136,7 +136,7 @@ PERL
 # --- an empty import list still points the test at the checkout ------------------------------
 # `use Module ()` does not call import.
 {
-    my ( $status, $output ) = run_child( $^X, "-I$test_lib", '-e', <<'PERL');
+    my ( $status, $output ) = run_child( undef, $^X, "-I$test_lib", '-e', <<'PERL');
 use XCAT::Test::Source ();
 print "scratch=", ( XCAT::Test::Source::scratch_dir() // '' ), "\n";
 print "xcatroot=$ENV{XCATROOT}\n";
@@ -209,6 +209,44 @@ PERL
     my ( $status, $output ) = run_perl(qq{unshift \@INC, '$outside'; require XcatUnitOutside;});
     is( $status, 255, 'a module loaded from a directory outside the checkout fails the test' ) or diag($output);
     like( $output, qr/XcatUnitOutside\.pm loaded from outside the checkout/, 'the failure names the module' );
+}
+
+# --- an xCAT module from an inherited PERL5LIB directory fails the test ----------------------
+# PERL5LIB and -I reach a test from whoever ran it, and their directories are kept because a
+# test needs its third-party dependencies. An older xcat-core checkout on that path is a
+# different matter: it serves xCAT modules this one does not have, so a test that should have
+# failed on a missing module passes having measured the other tree.
+{
+    my $decoy_dir = File::Temp::tempdir( DIR => scratch_dir() );
+    make_path("$decoy_dir/xCAT");
+    open( my $fh, '>', "$decoy_dir/xCAT/XcatUnitDecoy.pm" ) or die $!;
+    print {$fh} "package xCAT::XcatUnitDecoy; 1;\n";
+    close($fh);
+
+    my ( $status, $output ) = run_perl(
+        q{my $ok = eval { require xCAT::XcatUnitDecoy; 1 }; print "loaded=", ( $ok ? 1 : 0 ), "\n";},
+        { PERL5LIB => $decoy_dir } );
+    is( $status, 255, 'an xCAT module from an inherited PERL5LIB directory fails the test' )
+        or diag($output);
+    like( $output, qr{xCAT/XcatUnitDecoy\.pm}, 'the failure names the module' );
+}
+
+# --- a third-party module from the same directory still passes ------------------------------
+# The rule is about the xCAT namespaces, not about the directory. A test's dependencies arrive
+# on PERL5LIB in every packaging this project has, so refusing the path outright would fail
+# every test that has one.
+{
+    my $dep_dir = File::Temp::tempdir( DIR => scratch_dir() );
+    open( my $fh, '>', "$dep_dir/XcatUnitDependency.pm" ) or die $!;
+    print {$fh} "package XcatUnitDependency; 1;\n";
+    close($fh);
+
+    my ( $status, $output ) = run_perl(
+        q{require XcatUnitDependency; print "loaded=1\n";},
+        { PERL5LIB => $dep_dir } );
+    is( $status, 0, 'a third-party module from an inherited PERL5LIB directory is allowed' )
+        or diag($output);
+    like( $output, qr/loaded=1/, 'and it really was loaded' );
 }
 
 # --- stubs written the way the tests write them pass ----------------------------------------
