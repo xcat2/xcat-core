@@ -18,8 +18,8 @@ use XCAT::Test::File qw(repo_path);
 
 my $builder = repo_path('xCAT-genesis-builder/builddeb-genesis-base');
 my $module  = repo_path('xCAT-genesis-builder/dracut_105/ubuntu/module-setup.sh');
-plan skip_all => 'builddeb-genesis-base not found' unless -f $builder;
-plan skip_all => 'ubuntu module-setup.sh not found' unless -f $module;
+die "builddeb-genesis-base not found\n" unless -f $builder;
+die "ubuntu module-setup.sh not found\n" unless -f $module;
 plan tests => 9;
 
 # Mandatory commands a minimal Ubuntu server root does NOT already provide, and the packages
