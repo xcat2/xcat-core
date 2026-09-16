@@ -33,6 +33,14 @@ my %NAMESPACE_DIR = (
 # The directories that supply product modules, in the order the installed tree uses.
 my @PRODUCT_LIB = qw(perl-xCAT xCAT-server/lib/perl xCAT-probe/lib/perl);
 
+# The namespaces this repository ships. A module in one of them has to come from this checkout
+# or from a stub the test wrote: nowhere else can be the code under test. Everything else is a
+# dependency, and a dependency may come from wherever the caller installed it.
+my $PRODUCT_NAME = do {
+    my $prefixes = join '|', map { quotemeta } sort( keys(%NAMESPACE_DIR), 'xCAT/' );
+    qr{\A(?:$prefixes)};
+};
+
 my $INSTALLED = qr{\A/opt/xcat(?:/|\z)};
 
 my ( $root, $scratch, $importer_pid, $child, @trusted, %mapped_from );
@@ -272,8 +280,15 @@ sub _violations {
             push @found, "$name loaded from the installed tree: $value";
             next;
         }
-        next if grep { _within( $real, $_ ) } $root, $scratch, @trusted;
-        push @found, "$name loaded from outside the checkout: $value";
+        # PERL5LIB and -I reach the test from whoever ran it, and @trusted holds their
+        # directories so a test keeps its dependencies. An older xcat-core checkout on that
+        # path is a different thing: it answers for the code under test, and a module missing
+        # from this tree is served from there with nothing said.
+        my $product = $name =~ $PRODUCT_NAME;
+        next if grep { _within( $real, $_ ) } $root, $scratch, ( $product ? () : @trusted );
+        push @found, $product
+            ? "$name is an xCAT module loaded from outside the checkout: $value"
+            : "$name loaded from outside the checkout: $value";
     }
 
     return @found;
