@@ -18,7 +18,7 @@ use Test::More;
 
 my $root = "$FindBin::Bin/../..";
 my $scriptdir = "$root/xCAT-server/share/xcat/install/scripts";
-plan skip_all => "$scriptdir not found" unless -d $scriptdir;
+die "$scriptdir not found\n" unless -d $scriptdir;
 
 # Return every (post script, delimiter, embedded file) the install scripts declare.
 sub embeddings {
