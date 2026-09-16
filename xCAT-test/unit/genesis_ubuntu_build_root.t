@@ -20,15 +20,21 @@ my $builder = repo_path('xCAT-genesis-builder/builddeb-genesis-base');
 my $module  = repo_path('xCAT-genesis-builder/dracut_105/ubuntu/module-setup.sh');
 plan skip_all => 'builddeb-genesis-base not found' unless -f $builder;
 plan skip_all => 'ubuntu module-setup.sh not found' unless -f $module;
-plan tests => 8;
+plan tests => 10;
 
 # Mandatory commands a minimal Ubuntu server root does NOT already provide, and the package
-# that supplies each one.
+# that supplies each one on every release xCAT builds for.
 my %PACKAGE_FOR = (
     dhclient  => 'isc-dhcp-client',
     ifenslave => 'ifenslave',
-    hwclock   => 'util-linux-extra',
 );
+
+# hwclock is not in that list because the package that carries it moved. Measured on the
+# four Ubuntu management nodes: focal and jammy have it in util-linux, which is essential
+# and always in the build root, and no util-linux-extra exists to install; noble and
+# resolute have it in util-linux-extra. util-linux only Suggests that package, and this
+# build passes --no-install-recommends, so the releases that split it must name it and the
+# releases that did not must not.
 
 my %mandatory = map { $_ => 1 } mandatory_commands($module);
 my @packages  = required_packages($builder);
@@ -43,10 +49,22 @@ for my $command (sort keys %PACKAGE_FOR) {
 ok($mandatory{dhclient} && scalar(grep { $_ eq 'isc-dhcp-client' } @packages),
    'the Genesis image can obtain a DHCP lease');
 
-# dracut_install is silent about a missing command, so the payload needs its own gate.
-# xCAT-genesis-base.spec runs the same verifier on the EL path.
-my $text = do { open my $fh, '<', $builder or die "$builder: $!"; local $/; <$fh> };
-like($text, qr{verify-genesis-payload}, 'builddeb-genesis-base verifies the payload it packages');
+ok($mandatory{hwclock}, "the Ubuntu dracut module installs 'hwclock' unconditionally");
+
+# Naming a package apt cannot locate fails the whole install, and the script runs under
+# set -e, so an unconditional util-linux-extra stops the build on focal and jammy.
+ok(!scalar(grep { $_ eq 'util-linux-extra' } @packages),
+   'the unconditional list does not name util-linux-extra');
+
+# What the script does instead: keep a package only where apt has a candidate for it.
+{
+    my @present = optional_packages($builder, 'util-linux-extra', 0);
+    my @absent  = optional_packages($builder, 'util-linux-extra', 1);
+    is_deeply(\@present, ['util-linux-extra'],
+        'a release that carries util-linux-extra installs it');
+    is_deeply(\@absent, [],
+        'a release without it installs nothing in its place');
+}
 
 # An absolute path in the install() output is a data file, not a command.
 sub mandatory_commands {
@@ -73,6 +91,17 @@ BASH
     my @names = grep { !$seen{$_}++ } grep { length && !m{^/} } map { chomp; $_ } @out;
     die("install() from $path named no bare commands") unless @names;
     return @names;
+}
+
+# Run the script's own selector with apt-cache shadowed, so the decision is exercised
+# rather than read. $rc is what the shadow returns: 0 for a release that has the package.
+sub optional_packages {
+    my ($path, $package, $rc) = @_;
+    my $text = do { open my $fh, '<', $path or die "$path: $!"; local $/; <$fh> };
+    my ($block) = $text =~ /^(optional_packages\(\)\s*\{.*?^\})/ms;
+    BAIL_OUT("no optional_packages() in $path") unless $block;
+    my $out = qx{bash -c 'set -u; apt-cache() { return $rc; }; $block; optional_packages $package' 2>/dev/null};
+    return [ grep { length } split /\s+/, ($out // '') ];
 }
 
 # Evaluate the assignment rather than parse it, so the list is the value the script uses.
