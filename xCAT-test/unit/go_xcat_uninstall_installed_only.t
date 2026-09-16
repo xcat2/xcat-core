@@ -79,7 +79,10 @@ sub uninstall_args {
     my $present = join ' ', @{$installed};
     open my $fh, '>', $driver or die "$driver: $!";
     print {$fh} "set -u\n";
-    print {$fh} "type() { return 1; }\n";              # the rpm branch of the lists
+    # An rpm host: dpkg is absent, so the lists take the rpm branch and the deb arm of the
+    # dispatch stands down. Shadowing `type` to fail for everything would stand both arms
+    # down and the filter would answer nothing, whatever it does.
+    print {$fh} "type() { case \"\$1\" in dpkg|dpkg-query|apt-get) return 1 ;; *) return 0 ;; esac; }\n";
     print {$fh} $lists, "\n";
     print {$fh} <<"BASH";
 INSTALLED="$present"
