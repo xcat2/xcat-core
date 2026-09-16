@@ -39,6 +39,11 @@ error_commands()
 
 # bash resolves a function ahead of PATH, so the commands run as written while nothing reaches
 # the host or the network. The nc shadow waits the way a listener with no collector waits.
+#
+# Shadowing a command does not stop the shell opening the file the command redirects into: the
+# redirection is the shell's, and it happens whether or not tar runs. So the archive path is
+# taken from the environment too, and pointed inside the test's own directory. Without that,
+# this test truncates /run/testnode-logs.tar on the host running it, and CI runs as root.
 run_error_commands()
 {
     local script="${BATS_TEST_TMPDIR}/error-commands.sh" command
@@ -46,8 +51,9 @@ run_error_commands()
     : >"$script"
     {
         printf "export XCAT_ERROR_CONSOLE='%s'\n" "$CONSOLE"
+        printf "export XCAT_ERROR_ARCHIVE='%s'\n" "$ARCHIVE"
         printf 'nc() { sleep 300; }\n'
-        printf 'tar() { :; }\n'
+        printf 'tar() { echo XCAT_LOGS_ARCHIVE; }\n'
         printf 'tail() { echo XCAT_CURTIN_LOG_TAIL; }\n'
     } >>"$script"
 
@@ -63,8 +69,26 @@ run_error_commands()
 @test "the error commands return instead of waiting for someone to collect the logs" {
     [ -n "$(error_commands)" ]
     CONSOLE="${BATS_TEST_TMPDIR}/console"
+    ARCHIVE="${BATS_TEST_TMPDIR}/logs.tar"
 
     run run_error_commands
     [ "$status" -ne 124 ]
     grep -q XCAT_CURTIN_LOG_TAIL "$CONSOLE"
+}
+
+@test "the log archive is written where the caller points, and nowhere else" {
+    CONSOLE="${BATS_TEST_TMPDIR}/console"
+    ARCHIVE="${BATS_TEST_TMPDIR}/logs.tar"
+
+    run run_error_commands
+    [ "$status" -ne 124 ]
+
+    # The archive command redirects into the path it was given, so its output is the proof
+    # that the redirection went there and not to the default under /run.
+    grep -q XCAT_LOGS_ARCHIVE "$ARCHIVE"
+
+    # And the default path is untouched. This assertion is what an unprivileged run cannot
+    # make for itself -- there the write fails silently and "exit 0" hides it -- but CI runs
+    # as root, where the same redirection truncates the file.
+    [ ! -e /run/testnode-logs.tar ]
 }
