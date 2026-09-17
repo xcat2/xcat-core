@@ -272,8 +272,9 @@ run_url_repo_block()
     [ "$(cat "${BATS_TEST_TMPDIR}/xCAT-otherpkgs0.list")" = "deb http://192.0.2.1/repo-a" ]
 }
 
-# Drives the lines that name the local otherpkgs repository for zypper: the alias written into
-# the repository file, and the alias the refresh and the delete use.
+# Drives the zypper branch that adds the local otherpkgs repository, refreshes it and deletes
+# it again when the refresh fails. The branch is evaluated whole, so the success case shows
+# that a repository which refreshes is kept.
 run_zypper_local_repo()
 {
     local urlrepoindex="$1" index="$2"
@@ -288,32 +289,47 @@ run_zypper_local_repo()
         return "${ZYPPER_STATUS:-0}"
     }
     array_set_element() { :; }
-    # The extraction is kept apart from the eval: a failing zypper must not read as a failed
-    # extraction.
+    eval "$(extract_shell_function "$OTHERPKGS" pmatch)" || return 99
+
+    # The three lines that name the repository are straight-line assignments, so each one is
+    # taken on its own. The zypper branch that follows is a branch: it is taken whole, because
+    # what is measured is which arm runs. Keep the extraction apart from the eval, so a failing
+    # zypper does not read as a failed extraction.
     local pattern line
     for pattern in \
         'localrepoindex=' \
         'REPOFILE="[$]repo_base/xCAT-otherpkgs[$]localrepoindex.repo"' \
-        'echo "[[]xcat-otherpkgs[$]localrepoindex[]]"' \
-        'result=`zypper ar -c [$]REPOFILE`' \
-        'zypper --non-interactive refresh xcat-otherpkgs' \
-        'result=`zypper sd xcat-otherpkgs'; do
+        'echo "[[]xcat-otherpkgs[$]localrepoindex[]]"'; do
         line="$(extract_first_matching_line "$OTHERPKGS" "$pattern")" || return 99
         eval "$line"
     done
+
+    # The range ends on the apt branch that follows; its two lines are dropped.
+    local branch
+    branch="$(extract_line_range "$OTHERPKGS" '#use zypper' '#use apt')" || return 99
+    branch="$(printf '%s\n' "$branch" | head -n -2)"
+    case "$branch" in
+    *'zypper sd xcat-otherpkgs'*) ;;
+    *) return 99 ;;
+    esac
+    eval "$branch"
+    printf 'rc=%s\n' "$rc"
     return 0
 }
 
-@test "zypper refreshes the otherpkgs repository it added" {
+@test "zypper keeps the otherpkgs repository it added when the refresh succeeds" {
     run run_zypper_local_repo 2 0
     [ "$status" -eq 0 ]
+    [ "$output" = "rc=0" ]
     [ "$(cmd_call 2)" = "added=xcat-otherpkgs2" ]
     [ "$(cmd_call 3)" = "--non-interactive refresh xcat-otherpkgs2" ]
+    refute_grep -q '^sd ' "$CMD_LOG"
 }
 
 @test "zypper deletes the otherpkgs repository it added when the refresh fails" {
     ZYPPER_STATUS=1 run run_zypper_local_repo 2 0
     [ "$status" -eq 0 ]
+    [ "$output" = "rc=1" ]
     [ "$(cmd_call 2)" = "added=xcat-otherpkgs2" ]
     [ "$(cmd_call 4)" = "sd xcat-otherpkgs2" ]
 }
