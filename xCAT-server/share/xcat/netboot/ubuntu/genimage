@@ -1829,7 +1829,9 @@ EOMS
 
     # The whole firmware tree is 666 MB on Ubuntu 26.04, and grub2 on a pseries node cannot
     # load an initrd of that size. The initrd only has to reach the network.
-    foreach my $firmware (initrd_firmware_files($rootimg_dir, \@filestoadd)) {
+    foreach my $firmware (
+        initrd_firmware_files($rootimg_dir, \@filestoadd, $kernelver, $customdir, $pathtofiles))
+    {
         copy_initrd_file("$rootimg_dir/lib/firmware/$firmware",
             "/tmp/xcatinitrd.$$/lib/firmware/$firmware");
     }
@@ -1904,13 +1906,16 @@ sub isnetdriver {
         rootimg_dir - the root image directory
         filestoadd  - reference to the list of files that go into the initrd. A module
                       is either a plain path or a [ source, destination ] pair.
+        kernelver   - the kernel release, which names one of the firmware directories
+        module_dirs - directories searched for a module before the root image, in the
+                      same order the copy step searches them
     Returns: the firmware files that exist, as paths below lib/firmware
 
 =cut
 
 #-------------------------------------------------------------------------------
 sub initrd_firmware_files {
-    my ($rootimg_dir, $filestoadd) = @_;
+    my ($rootimg_dir, $filestoadd, $kernelver, @module_dirs) = @_;
 
     return () unless (-d "$rootimg_dir/lib/firmware");
 
@@ -1918,9 +1923,18 @@ sub initrd_firmware_files {
     foreach my $entry (@$filestoadd) {
         my $module = ref($entry) ? $entry->[0] : $entry;
         next unless ($module =~ /\.ko(?:\.(?:gz|xz|zst))?$/);
-        next unless (-f "$rootimg_dir/$module");
 
-        my $out = `modinfo -F firmware "$rootimg_dir/$module" 2>/dev/null`;
+        # Ask about the module the copy step takes, which is the custom one where there is
+        # one. A custom driver is not in the root image at all.
+        my $source;
+        foreach my $dir (grep { defined && length } @module_dirs, $rootimg_dir) {
+            next unless (-f "$dir/$module");
+            $source = "$dir/$module";
+            last;
+        }
+        next unless (defined $source);
+
+        my $out = `modinfo -F firmware "$source" 2>/dev/null`;
         if ($?) {
             print "Warning: cannot read the firmware of $module\n";
             next;
@@ -1931,14 +1945,26 @@ sub initrd_firmware_files {
         }
     }
 
+    # The kernel looks for a firmware name in these directories below lib/firmware, in this
+    # order, and loads the first file it finds. Keep every one that exists, so an override
+    # still wins on the node.
+    my @dirs = ("updates", "");
+    if (defined $kernelver and length $kernelver) {
+        unshift @dirs, "updates/$kernelver";
+        splice(@dirs, 2, 0, $kernelver);
+    }
+
     my @files;
     foreach my $name (sort keys %wanted) {
+        foreach my $dir (@dirs) {
+            my $prefix = length($dir) ? "$dir/" : "";
 
-        # Ubuntu keeps the firmware compressed and the kernel asks for the plain name.
-        foreach my $candidate ($name, "$name.zst", "$name.xz", "$name.gz") {
-            next unless (-e "$rootimg_dir/lib/firmware/$candidate");
-            push @files, $candidate;
-            last;
+            # Ubuntu keeps the firmware compressed and the kernel asks for the plain name.
+            foreach my $candidate ($name, "$name.zst", "$name.xz", "$name.gz") {
+                next unless (-e "$rootimg_dir/lib/firmware/$prefix$candidate");
+                push @files, "$prefix$candidate";
+                last;
+            }
         }
     }
     return @files;

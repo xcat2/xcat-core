@@ -103,6 +103,9 @@ close($custom);
     use File::Copy;
     use File::Path qw(mkpath);
     our $rootimg_dir;
+    our $customdir;
+    our $pathtofiles;
+    our $kernelver;
     our @filestoadd;
     sub xdie { die @_ }
 }
