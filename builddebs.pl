@@ -93,9 +93,12 @@ my $VERSION = read_line("$ROOT/Version") // die "Cannot read $ROOT/Version\n";
 my $EPOCH   = source_date_epoch();
 # A Release file, when present, is authoritative: buildrpms.pl writes one, and a
 # pipeline that builds both must stamp the rpms and the debs with the same release.
+# The tracked file holds snap000000000000, which no build writes -- snap_release()
+# renders a real time. A tree where buildrpms.pl has not run still carries it, so
+# treat the placeholder as an unstamped tree and derive the release from the commit.
 my $FILE_RELEASE = do {
     my $r = read_line("$ROOT/Release");
-    ($r && $r =~ /\S/) ? $r : undef;
+    ($r && $r =~ /\S/ && $r !~ /\Asnap0+\z/) ? $r : undef;
 };
 my $RELEASE = $opts{release} || $FILE_RELEASE || snap_release($EPOCH);
 my $PKGVER  = deb_version($VERSION, $RELEASE);
