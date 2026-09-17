@@ -130,3 +130,13 @@ extract_first_matching_line()
         }
     ' "$file"
 }
+
+# grep that fails when the pattern IS present.
+#
+# Do not write "! grep ..." for this. bash ignores errexit for a command inverted with "!",
+# so such a line never fails a test unless it is the last line of one.
+refute_grep()
+{
+    ! grep "$@"
+    return $?
+}

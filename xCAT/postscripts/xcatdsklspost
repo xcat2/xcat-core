@@ -224,6 +224,51 @@ parsehttpserver ()
    fi
 }
 
+#####################################################
+# Append to the generated mypostscript the /xcatpost cleanup the site table asks for.
+#
+# The append happens on every path this script serves: node deployment, and each
+# updatenode, moncfg or reboot run.
+#
+# The two site attributes do not ask for the same thing. cleanupxcatpost removes
+# every file and ignores the result of the run. cleanupdiskfullxcatpost keeps
+# updateflag.awk, which the node needs to report its status, and removes nothing
+# after a failed run, so the postscripts stay on the node for diagnosis.
+# xcatinstallpost applies the same rule at install time.
+#
+#   $1 - path of the generated mypostscript
+#   $2 - the xcatpost directory to remove the postscripts from
+#####################################################
+append_xcatpost_cleanup()
+{
+    local mypostscript=$1
+    local postdir=$2
+    local cleanupxcatpost
+    local cleanupdiskfullxcatpost
+
+    cleanupxcatpost=`grep CLEANUPXCATPOST= "$mypostscript" |awk -F = '{print $2}' | tr -d \'\" | tr A-Z a-z`
+    if [[ "$cleanupxcatpost" =~ ^(1|yes|y)$ ]]; then
+      echo "cd /" >> "$mypostscript"
+      # /xcatpost might be read-only for statelite nodes
+      echo "rm -rf $postdir/*" >> "$mypostscript"
+    fi
+
+    cleanupdiskfullxcatpost=`grep CLEANUPDISKFULLXCATPOST= "$mypostscript" |awk -F = '{print $2}' | tr -d \'\" | tr A-Z a-z`
+    if [[ "$cleanupdiskfullxcatpost" =~ ^(1|yes|y)$ ]]; then
+      # post.xcat and the other install scripts embed this whole file in a here-document
+      # that ends at a line "EOF". A line "EOF" here ends that here-document early and
+      # leaves the rest of this file as shell code in the generated install script.
+      cat >> "$mypostscript" <<XCATPOST_CLEANUP
+if [ "\$return_value" -eq "0" ]; then
+  cd /
+  find $postdir/ -type f -not -name 'updateflag.awk' -delete
+  find $postdir/ -type d -empty -delete
+  msgutil_r \$MASTER_IP "info" "cleanup of $postdir completed.(\$NODE)" "/var/log/xcat/xcat.log" "\$log_label"
+fi
+XCATPOST_CLEANUP
+    fi
+}
+
 if [ "$XCATDSKLSPOST_SOURCE_ONLY" = "1" ]; then
     return 0 2>/dev/null || exit 0
 fi
@@ -1086,12 +1131,7 @@ fi
 DHCP_TMP=`sed 's/\(DHCPINTERFACES=\)\(.*\)$/\1"\2"/' /$xcatpost/mypostscript`
 echo "$DHCP_TMP" > /$xcatpost/mypostscript
 
-CLEANUPXCATPOST=`grep CLEANUPXCATPOST= /$xcatpost/mypostscript |awk -F = '{print $2}' | tr -d \'\" | tr A-Z a-z`
-if [[ "$CLEANUPXCATPOST" =~ ^(1|yes|y)$ ]]; then
-  echo "cd /" >> /$xcatpost/mypostscript
-  # /xcatpost might be read-only for statelite nodes
-  echo "rm -rf /$xcatpost/*" >> /$xcatpost/mypostscript
-fi
+append_xcatpost_cleanup /$xcatpost/mypostscript /$xcatpost
 
 
 
