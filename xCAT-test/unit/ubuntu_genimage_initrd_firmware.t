@@ -54,6 +54,7 @@ case "$*" in
     *mlx5_core*)  echo mellanox/fw-a.mfa2 ;;
     *bnx2x*)      echo bnx2x/bnx2x-e2.fw ;;
     *e1000e*)     echo intel/absent-from-this-image.bin ;;
+    *custom_nic*) echo custom/custom-nic.bin ;;
     *virtio_net*) : ;;
     *)            exit 1 ;;
 esac
@@ -64,6 +65,8 @@ $ENV{PATH} = "$bin:$ENV{PATH}";
 
 foreach my $file (
     'lib/firmware/mellanox/fw-a.mfa2',
+    'lib/firmware/updates/7.0.0/mellanox/fw-a.mfa2',
+    'lib/firmware/custom/custom-nic.bin',
     'lib/firmware/bnx2x/bnx2x-e2.fw.zst',
     'lib/firmware/amdgpu/never-asked-for.bin',
     'lib/firmware/qcom/never-asked-for-either.bin',
@@ -81,6 +84,16 @@ foreach my $file (
     close($fh);
 }
 make_path("$initrd_dir/lib/firmware");
+
+# A driver the administrator put in the custom directory. genimage takes the module from there
+# and not from the root image, so that is the file its firmware has to be read from.
+my $customdir   = "$scratch/custom";
+my $pathtofiles = "$scratch/pathtofiles";
+make_path("$customdir/lib/modules/7.0.0/kernel/drivers/net");
+make_path($pathtofiles);
+open(my $custom, '>', "$customdir/lib/modules/7.0.0/kernel/drivers/net/custom_nic.ko") or die $!;
+print $custom "content of a custom driver\n";
+close($custom);
 
 {
     package Scratch;
@@ -101,11 +114,15 @@ if (defined $helper) {
 }
 
 $Scratch::rootimg_dir = $rootimg;
+$Scratch::customdir   = $customdir;
+$Scratch::pathtofiles = $pathtofiles;
+$Scratch::kernelver   = '7.0.0';
 @Scratch::filestoadd  = (
     [ 'lib/modules/7.0.0/kernel/drivers/net/virtio_net.ko', 'lib/virtio_net.ko' ],
     [ 'lib/modules/7.0.0/kernel/drivers/net/mlx5_core.ko',  'lib/mlx5_core.ko' ],
     [ 'lib/modules/7.0.0/kernel/drivers/net/bnx2x.ko.zst',  'lib/bnx2x.ko' ],
     [ 'lib/modules/7.0.0/kernel/drivers/net/e1000e.ko',     'lib/e1000e.ko' ],
+    [ 'lib/modules/7.0.0/kernel/drivers/net/custom_nic.ko', 'lib/custom_nic.ko' ],
     [ 'bin/busybox',                                        'bin/busybox' ],
 );
 eval "package Scratch;\nno strict 'vars';\n$step\n1" or die $@;
@@ -120,5 +137,9 @@ ok(!-e "$initrd_dir/lib/firmware/qcom/never-asked-for-either.bin",
     'the whole firmware tree does not reach the initrd');
 ok(!-e "$initrd_dir/lib/firmware/intel/absent-from-this-image.bin",
     'a firmware name the root image does not have is left out');
+ok(-e "$initrd_dir/lib/firmware/custom/custom-nic.bin",
+    'the firmware of a driver taken from the custom directory reaches the initrd');
+ok(-e "$initrd_dir/lib/firmware/updates/7.0.0/mellanox/fw-a.mfa2",
+    'a firmware override under updates/<kernel> reaches the initrd');
 
 done_testing();
