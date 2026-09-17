@@ -45,13 +45,20 @@ run_case_command()
     cmd="${cmd//\$\$CN/cn1}"
 
     OUT="$(bash -c "lsdef() { echo '    vmothersetting=$lsdef_value'; }
-chdef() { echo \"CHDEF:\$*\"; }
+chdef() { echo \"CHDEF:[\$*]\"; }
 $cmd" 2>&1)" || true
-    WRITTEN="$(sed -n 's/^CHDEF:cn1 vmothersetting=//p' <<<"$OUT")"
+    # The brackets keep an empty value apart from no call at all: the cleanup is meant to write
+    # an empty vmothersetting, and a command that never reaches chdef must not read as that.
+    CHDEF_CALLS="$(grep -c '^CHDEF:' <<<"$OUT" || true)"
+    WRITTEN="$(sed -n 's/^CHDEF:\[cn1 vmothersetting=\(.*\)\]$/\1/p' <<<"$OUT")"
 }
 
 # The machine type each architecture must end up with. riscv64 guests run the qemu "virt"
 # machine; kvm.pm sets it in guest_arch_profile.
+#
+# The restore writes the machine type; the cleanup after it takes the same machine type away
+# again and leaves every other setting. Both read the same ladder, so both are checked against
+# the same value.
 assert_arch()
 {
     local arch="$1" machine="$2" restore remove
@@ -59,27 +66,37 @@ assert_arch()
     restore="$(restore_command)"
     remove="$(remove_command)"
 
+    # The node carries the corrupt value only.
     run_case_command "$restore" "$arch" 'machine:invalid'
-    [ -n "$WRITTEN" ]
-    [[ "$WRITTEN" == *machine:* ]]
-    [[ "$WRITTEN" == *"$machine"* ]]
+    [ "$CHDEF_CALLS" -eq 1 ]
+    [ "$WRITTEN" = "machine:$machine" ]
 
-    # The check the case runs straight after the restore.
-    [[ "$WRITTEN" == *machine* ]]
+    # The node carries a setting of its own beside the corrupt value.
+    run_case_command "$restore" "$arch" 'cpumode:host-passthrough;machine:invalid'
+    [ "$CHDEF_CALLS" -eq 1 ]
+    [ "$WRITTEN" = "cpumode:host-passthrough;machine:$machine" ]
 
-    # The remove path reads the same ladder; it must not die on an empty str3.
+    # The cleanup, with nothing but the machine type to remove.
     run_case_command "$remove" "$arch" "machine:$machine"
     [ "$(grep -c 'unary operator expected' <<<"$OUT")" -eq 0 ]
+    [ "$CHDEF_CALLS" -eq 1 ]
+    [ "$WRITTEN" = "" ]
+
+    # The cleanup, with a setting of its own that must survive it.
+    run_case_command "$remove" "$arch" "cpumode:host-passthrough;machine:$machine"
+    [ "$(grep -c 'unary operator expected' <<<"$OUT")" -eq 0 ]
+    [ "$CHDEF_CALLS" -eq 1 ]
+    [ "$WRITTEN" = "cpumode:host-passthrough" ]
 }
 
-@test "ppc64le: the restore writes the machine type, and the remove path compares two strings" {
-    assert_arch ppc64le pseries
+@test "ppc64le: the restore writes the machine type and the cleanup takes it away" {
+    assert_arch ppc64le pseries-rhel7.6.0
 }
 
-@test "x86_64: the restore writes the machine type, and the remove path compares two strings" {
+@test "x86_64: the restore writes the machine type and the cleanup takes it away" {
     assert_arch x86_64 pc
 }
 
-@test "riscv64: the restore writes the machine type, and the remove path compares two strings" {
+@test "riscv64: the restore writes the machine type and the cleanup takes it away" {
     assert_arch riscv64 virt
 }
