@@ -3,49 +3,29 @@ use strict;
 use warnings;
 
 use FindBin;
-use File::Spec;
+use Capture::Tiny qw(capture);
+use JSON::PP qw(encode_json decode_json);
+use Storable qw(dclone);
 use Test::More;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::File qw(repo_path);
 
-my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
-my $xcatd  = File::Spec->catfile( $repo_root, 'xCAT-server/lib/perl/xCAT/xcatd.pm' );
-my $daemon = File::Spec->catfile( $repo_root, 'xCAT-server/sbin/xcatd' );
-my $schema = File::Spec->catfile( $repo_root, 'perl-xCAT/xCAT/Schema.pm' );
+use lib repo_path('perl-xCAT'), repo_path('xCAT-server/lib/perl');
+use lib repo_path('xCAT-test/unit/fixtures/redaction');
+use RedactionDependencies;
 
-plan skip_all => 'xcatd.pm, xcatd or Schema.pm not found' unless -r $xcatd && -r $daemon && -r $schema;
+local $ENV{XCATROOT} = repo_path('xCAT-test/unit/fixtures/redaction');
+require xCAT::Schema;
+require xCAT::xcatd;
+our %XCATSITEVALS;
 
-sub slurp {
-    open( my $fh, '<', $_[0] ) or die "Unable to read $_[0]: $!";
-    my $c = do { local $/; <$fh> };
-    close($fh);
-    return $c;
-}
-
-my $source        = slurp($xcatd);
-my $daemon_source = slurp($daemon);
-my $schema_source = slurp($schema);
-
-# xcatd.pm cannot be loaded here (dependencies), so lift out the secret set, the
-# command maps, and the redaction routines and evaluate them alone.
-my ($set)      = $source =~ /(my \@secret_attributes = qw\(.*?\);\s*my %secret_attribute = map.*?;)/s;
-my ($maps)     = $source =~ /(my %secret_command_options = \(.*?my %secret_site_keys = map.*?;)/s;
-my ($arg_sub)  = $source =~ /(sub redact_password_arg \{.*?\n\}\n)/s;
-my ($args_sub) = $source =~ /(sub redact_password_args \{.*?\n\}\n)/s;
-my ($cmd_sub)  = $source =~ /(sub redact_password \{.*?\n\}\n)/s;
-BAIL_OUT('could not extract the secret set from xcatd.pm')       unless $set;
-BAIL_OUT('could not extract the command maps from xcatd.pm')     unless $maps;
-BAIL_OUT('could not extract redact_password_arg from xcatd.pm')  unless $arg_sub;
-BAIL_OUT('could not extract redact_password_args from xcatd.pm') unless $args_sub;
-BAIL_OUT('could not extract redact_password from xcatd.pm')      unless $cmd_sub;
-eval "package RedactUnderTest; $set $maps $arg_sub $args_sub $cmd_sub 1;"
-  or BAIL_OUT("could not evaluate the redaction routines: $@");
-
-sub arg { return RedactUnderTest::redact_password_arg( 'xCAT::xcatd', $_[0] ); }
-sub cmd { return RedactUnderTest::redact_password( $_[0], $_[1] ); }
+sub arg { return xCAT::xcatd->redact_password_arg($_[0]); }
+sub cmd { return xCAT::xcatd::redact_password($_[0], $_[1]); }
 
 sub vec_ {
     my ( $command, @args ) = @_;
     my ( $redacted, $changed ) =
-      RedactUnderTest->redact_password_args( $command, \@args );
+      xCAT::xcatd->redact_password_args( $command, \@args );
     return ( join( ' ', @$redacted ), $changed );
 }
 
@@ -275,19 +255,17 @@ unlike( arg('prodkey.key=SEKRET'), qr/SEKRET/, 'a table-qualified product key is
 unlike( arg('tokenid=SEKRET'), qr/SEKRET/, 'an authentication token is redacted' );
 unlike( arg('token.tokenid=SEKRET'), qr/SEKRET/, 'a table-qualified token is redacted' );
 
-# Every attribute and column Schema.pm marks secret must be covered. Keep every
-# (attribute, column) pair so a removed table-qualified column is caught, not
-# masked by another pair that shares the attribute name.
 my @pairs;
-while ( $schema_source =~ /attr_name\s*=>\s*'([^']+)'(.{0,400}?)tabentry\s*=>\s*'([^']+)'/gs ) {
-    my ( $attr, $tabentry ) = ( $1, $3 );
-    next
-      unless $tabentry =~ /\.(password|passwd|authkey|privkey|adminpassword|sshpassword|community)$/i
-      or $tabentry eq 'prodkey.key';
-    push @pairs, [ $attr, $tabentry ];
+foreach my $object ( sort keys %xCAT::Schema::defspec ) {
+    foreach my $definition ( @{ $xCAT::Schema::defspec{$object}->{attrs} || [] } ) {
+        my ($attr, $tabentry) = @{$definition}{qw(attr_name tabentry)};
+        next unless defined $attr && defined $tabentry;
+        next unless $tabentry =~ /\.(password|passwd|authkey|privkey|adminpassword|sshpassword|community)$/i
+          || $tabentry eq 'prodkey.key';
+        push @pairs, [ $attr, $tabentry ];
+    }
 }
-ok( scalar(@pairs) > 0, 'Schema.pm yielded attributes mapped to secret columns' )
-  or BAIL_OUT('the Schema.pm mapping could not be parsed, so this test proves nothing');
+ok( scalar(@pairs) > 0, 'the loaded schema exposes secret-column mappings' );
 
 my @uncovered;
 foreach my $pair (@pairs) {
@@ -295,19 +273,102 @@ foreach my $pair (@pairs) {
     push @uncovered, $attr   if arg("$attr=SEKRET")   =~ /SEKRET/;
     push @uncovered, $column if arg("$column=SEKRET") =~ /SEKRET/;
 }
-is_deeply( \@uncovered, [], 'every attribute and column Schema.pm marks secret is redacted' );
+is_deeply( \@uncovered, [], 'secret-column mappings are redacted' );
 
-# validate() must redact the argument vector and still run the joined result
-# through redact_password, so every secret reaches syslog and the auditlog
-# table redacted.
-like( $source, qr/=\s*xCAT::xcatd->redact_password_args\(\$request->\{command\}->\[0\]/, 'validate() redacts the argument vector' );
-like( $source, qr/\$redacted_arglist\s*=\s*redact_password\b/, 'validate() redacts the arguments through redact_password' );
+is(arg(undef), undef, 'an undefined argument stays undefined');
+is(arg(''), '', 'an empty argument stays empty');
+for my $args (undef, [], [undef, '']) {
+    my ($masked, $changed) = xCAT::xcatd->redact_password_args('chdef', $args);
+    is_deeply($masked, $args || [], 'missing and empty arguments stay unchanged');
+    is($changed, 0, 'missing and empty arguments report no redaction');
+}
 
-# The debug dispatch trace must not rebuild the command from the raw request.
-like( $daemon_source, qr/\(\$trace_args\)\s*=\s*xCAT::xcatd->redact_password_args\(\$req->\{command\}->\[0\]/,
-    'the dispatch trace builds its text from redacted arguments' );
+my @requests = (
+    ['chdef', ['bmcpassword=SEKRET phrase', 'groups=compute'],
+        ' bmcpassword=xxxxxxxx groups=compute'],
+    ['bmcdiscover', ['--bmcpasswd=SEKRET', '--range', '192.0.2.1'],
+        ' --bmcpasswd=xxxxxxxx --range 192.0.2.1'],
+    ['rspconfig', ['USERID=SEKRET', 'general=visible'],
+        ' USERID=xxxxxxxx general=visible'],
+    ['rspconfig', ['HMC_user=x admin_passwd=SEKRET'],
+        ' HMC_user=x admin_passwd=xxxxxxxx'],
+    ['mkvm', ['zvm02', '--password', 'SEKRET'],
+        ' zvm02 --password ******** '],
+    ['mkvm', ['zvm02', '-w', 'SEKRET'],
+        ' zvm02 -w ******** '],
+    ['tabch', ['key=snmpc', 'site.value=SEKRET'],
+        ' key=snmpc site.value=xxxxxxxx'],
+    ['chdef', ['groups=compute', 'usercomment=visible'],
+        ' groups=compute usercomment=visible'],
+);
 
-# The auditlog table and syslog use the same redacted arguments.
-like( $source, qr/\$rsp->\{args\}->\[0\]\s*=\s*\$redacted_arglist/, 'the auditlog table stores the redacted arguments' );
+for my $rule ('allow', 'deny') {
+    for my $sink ('SA', 'A', 'S') {
+        for my $case (@requests) {
+            my ($command, $args, $expected) = @$case;
+            subtest "$rule $command to $sink: @$args" => sub {
+                local $xCAT::Table::rule = $rule;
+                local %XCATSITEVALS = $sink eq 'A' ? (auditnosyslog => 1)
+                  : $sink eq 'S' ? (auditskipcmds => 'ALL') : ();
+                my $request = {
+                    command => [$command], arg => dclone($args),
+                    node => ['node01'], username => ['operator'], clienttype => ['cli'],
+                };
+                my @deferred;
+                my $allowed = xCAT::xcatd->validate(
+                    'operator', 'client.example', $request, undef, \@deferred,
+                );
+                is($allowed, $rule eq 'allow' ? 1 : 0, 'policy result is preserved');
+                is($deferred[0], $sink, 'the configured logging sinks are selected');
+                my $status = $rule eq 'allow' ? 'Allowing' : 'Denying';
+                my $syslog = "xCAT: $status $command to node01$expected for operator from client.example";
+                if ($sink eq 'S') {
+                    is($deferred[1], $syslog, 'syslog-only output masks secrets and keeps context');
+                } else {
+                    is($deferred[1]->{args}->[0], $expected, 'audit arguments mask secrets and keep context');
+                    if ($sink eq 'SA') {
+                        is($deferred[1]->{syslogdata}->[0], $syslog, 'syslog has the same masked arguments');
+                    } else {
+                        ok(!exists $deferred[1]->{syslogdata}, 'audit-only output omits syslog');
+                    }
+                }
+                is_deeply($request->{arg}, $args, 'logging leaves execution arguments intact');
+            };
+        }
+    }
+}
+
+my @traces = (
+    ['password assignment', {command => ['rspconfig'], noderange => ['node01', 'node02'],
+        arg => ['admin_passwd=SEKRET phrase', 'general=visible']},
+        'rspconfig node01,node02 admin_passwd=xxxxxxxx general=visible'],
+    ['bundled option', {command => ['bmcdiscover'], arg => ['-zpSEKRET', '--range', '192.0.2.1']},
+        'bmcdiscover -zpxxxxxxxx --range 192.0.2.1'],
+    ['nonsecret argument', {command => ['chdef'], arg => ['groups=compute']}, 'chdef groups=compute'],
+    ['empty argument vector', {command => ['lsdef'], arg => []}, 'lsdef'],
+    ['missing argument vector', {command => ['lsdef']}, 'lsdef '],
+);
+for my $case (@traces) {
+    my ($name, $request, $expected) = @$case;
+    subtest "dispatch trace: $name" => sub {
+        local $ENV{XCATROOT} = repo_path('xCAT-test/unit/fixtures/redaction');
+        local $ENV{ENABLE_TRACE_CODE};
+        delete $ENV{ENABLE_TRACE_CODE};
+        my ($stdout, $stderr, $status) = capture {
+            system($^X, '-I', repo_path('perl-xCAT'),
+                '-I', repo_path('xCAT-server/lib/perl'),
+                '-I', repo_path('xCAT-test/unit/fixtures/redaction'),
+                '-MDispatchTrace', repo_path('xCAT-server/sbin/xcatd'), encode_json($request));
+        };
+        is($status, 0, 'the real daemon reaches the trace sink') or diag($stderr);
+        is($stderr, '', 'the trace emits no warnings');
+        return unless $status == 0;
+        my $result = decode_json($stdout);
+        is_deeply($result->{trace}, ['xCAT::MsgUtils', 0, 'D',
+            "xcatd: dispatch request '$expected' to plugin 'testplugin'"],
+            'the dispatch trace masks secrets and keeps command context');
+        is_deeply($result->{request}, $request, 'tracing leaves the request intact');
+    };
+}
 
 done_testing();
