@@ -333,8 +333,8 @@ sub createmockconfig {
 sub buildsources_genesis_base($) {
     my ($target) = @_;
 
-    die "Assertion failed! No directory xCAT-genesis-builder in the current directory"
-        unless -d "./xCAT-genesis-builder";
+    die "Assertion failed! No directory xCAT-genesis-base in the current directory"
+        unless -d "./xCAT-genesis-base";
     my $staging_parent = "/tmp/xcat-genesis-base-build-support.$$";
     my $staging_root = "$staging_parent/xCAT-genesis-base-build-support";
     my $support_tarball = "$SOURCES/xCAT-genesis-base-build-support.tar.bz2";
@@ -342,9 +342,9 @@ sub buildsources_genesis_base($) {
     remove_tree($staging_parent) if -e $staging_parent;
     make_path("$staging_root/dracut_105");
 
-    sh_or_die(qq(cp -a "xCAT-genesis-builder/dracut_105" "$staging_root/"),
+    sh_or_die(qq(cp -a "xCAT-genesis-base/dracut_105" "$staging_root/"),
         "Error copying dracut_105 sources");
-    cp "xCAT-genesis-builder/80-net-name-slot.rules",
+    cp "xCAT-genesis-base/80-net-name-slot.rules",
        "$staging_root/80-net-name-slot.rules";
 
     unlink $support_tarball if -f $support_tarball;
@@ -444,11 +444,8 @@ sub buildspkgs {
       : "dist/$target/rpms/SRPMS/$pkg-$VERSION-$RELEASE.src.rpm";
     return if -f $diskcache and not $opts{force};
 
-    my $dir = sub {
-        return "xCAT-genesis-builder"
-            if $pkg eq "xCAT-genesis-base";
-        $pkg;
-    }->();
+    # The source directory is the package name now that xCAT-genesis-builder is gone.
+    my $dir = $pkg;
 
     my @opts;
     push @opts, "--quiet" unless $opts{verbose};

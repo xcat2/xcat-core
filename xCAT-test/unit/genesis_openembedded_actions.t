@@ -11,23 +11,23 @@ use Test::More;
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
 my $action_script = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-action)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-action)
 );
 my $status_script = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-status)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-status)
 );
 my $functions_file = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-functions)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-functions)
 );
 my $action_service = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-init files xcat-genesis-action.service)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-init files xcat-genesis-action.service)
 );
 my $init_recipe = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-init xcat-genesis-init_1.0.bb)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-init xcat-genesis-init_1.0.bb)
 );
 
 sub write_file {

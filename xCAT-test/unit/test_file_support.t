@@ -19,7 +19,7 @@ is( $readme_path, File::Spec->catfile( $expected_root, $readme_relative ), 'repo
 my $readme = slurp_repo_file($readme_relative);
 like( $readme, qr/^# xCAT-test\/unit\n.*\n.*source tree/s, 'multiline text contents are preserved' );
 
-is( slurp_repo_file('xCAT-genesis-builder/cmdlist_check'), '', 'empty file contents are preserved' );
+is( slurp_repo_file('xCAT-genesis-scripts/debian/docs'), '', 'empty file contents are preserved' );
 
 my $favicon = slurp_repo_file('xCAT-UI/images/favicon.ico');
 is( length($favicon), 5686, 'binary file length is preserved' );

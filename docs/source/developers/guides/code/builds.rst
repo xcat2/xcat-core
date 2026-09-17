@@ -32,14 +32,10 @@ emitted, because a source-only run has no binary packages to advertise.
 
 .. note::
 
-   ``buildcore.sh``, ``makerpm`` and ``buildlocal.sh`` were removed in 2.19;
-   ``buildrpms.pl`` replaces all three, and its ``--source-only`` replaces the
-   old ``SRCONLY=1``.
-
-   ``build-ubunturepo`` is superseded by ``builddebs.pl`` but is **still in the
-   tree for now**, as a differential oracle: it is the reference the new builder
-   is checked against, and it is removed once the CD pipelines have been moved
-   over. Do not add features to it.
+   ``buildcore.sh``, ``makerpm``, ``buildlocal.sh`` and ``build-ubunturepo``
+   were removed in 2.19. ``buildrpms.pl`` replaces the first three, and its
+   ``--source-only`` replaces the old ``SRCONLY=1``; ``builddebs.pl`` replaces
+   ``build-ubunturepo``.
 
 Debian and Ubuntu packages
 --------------------------

@@ -4,8 +4,8 @@ load 'helpers/shell_source'
 
 setup()
 {
-    GENESIS_SPEC="$(repo_path 'xCAT-genesis-builder/xCAT-genesis-base.spec')"
-    DRACUT_MODULE="$(repo_path 'xCAT-genesis-builder/dracut_105/el/module-setup.sh')"
+    GENESIS_SPEC="$(repo_path 'xCAT-genesis-base/xCAT-genesis-base.spec')"
+    DRACUT_MODULE="$(repo_path 'xCAT-genesis-base/dracut_105/el/module-setup.sh')"
     DOXCAT="$(repo_path 'xCAT-genesis-scripts/usr/bin/doxcat')"
     [ -r "$GENESIS_SPEC" ] || skip "$GENESIS_SPEC is required"
     [ -r "$DRACUT_MODULE" ] || skip "$DRACUT_MODULE is required"

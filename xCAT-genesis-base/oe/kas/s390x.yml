@@ -1,6 +1,6 @@
 header:
   version: 19
   includes:
-    - xCAT-genesis-builder/oe/kas/common.yml
+    - xCAT-genesis-base/oe/kas/common.yml
 
 machine: xcat-genesis-s390x

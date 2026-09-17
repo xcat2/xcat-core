@@ -13,17 +13,17 @@ use Test::More;
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
 my $loader = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-extensions files genesis-sysext)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-extensions files genesis-sysext)
 );
 my $signer = File::Spec->catfile(
-    $repo_root, qw(xCAT-genesis-builder oe scripts sign-extension)
+    $repo_root, qw(xCAT-genesis-base oe scripts sign-extension)
 );
 my $exporter = File::Spec->catfile(
-    $repo_root, qw(xCAT-genesis-builder oe export-extension)
+    $repo_root, qw(xCAT-genesis-base oe export-extension)
 );
 my $extension_recipe = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-extensions xcat-genesis-extensions_1.0.bb)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-extensions xcat-genesis-extensions_1.0.bb)
 );
 
 sub write_file {
