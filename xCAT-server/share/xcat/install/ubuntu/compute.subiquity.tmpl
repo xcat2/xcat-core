@@ -90,9 +90,9 @@ autoinstall:
     installmac="#SUBIQUITYINSTALLMAC#";
     mkdir -p /target/etc/netplan;
     if [ -z "${installnic}" ]; then
-        printf ''%s\n'' "network:" "  version: 2" "  ethernets:" "    xcat-install:" "      match:" "        macaddress: \"${installmac}\"" "      dhcp4: true" >/target/etc/netplan/00-xcat-install.yaml;
+        printf ''%s\n'' "network:" "  version: 2" "  ethernets:" "    xcat-install:" "      match:" "        macaddress: \"${installmac}\"" "      dhcp4: true" "      dhcp4-overrides:" "        use-domains: true" >/target/etc/netplan/00-xcat-install.yaml;
     else
-        printf ''%s\n'' "network:" "  version: 2" "  ethernets:" "    xcat-install:" "      match:" "        macaddress: \"${installmac}\"" "      set-name: ${installnic}" "      dhcp4: true" >/target/etc/netplan/00-xcat-install.yaml;
+        printf ''%s\n'' "network:" "  version: 2" "  ethernets:" "    xcat-install:" "      match:" "        macaddress: \"${installmac}\"" "      set-name: ${installnic}" "      dhcp4: true" "      dhcp4-overrides:" "        use-domains: true" >/target/etc/netplan/00-xcat-install.yaml;
     fi;
     chmod 600 /target/etc/netplan/00-xcat-install.yaml;
     printf ''%s\n'' ''#HOSTNAME#'' >/target/etc/hostname;
