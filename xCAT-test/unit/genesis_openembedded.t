@@ -20,15 +20,15 @@ sub read_file {
     return $contents;
 }
 
-my $kas = read_file('xCAT-genesis-builder/oe/kas/common.yml');
+my $kas = read_file('xCAT-genesis-base/oe/kas/common.yml');
 like( $kas, qr/tag: yocto-6\.0\.2/, 'build uses Yocto 6.0.2' );
 like( $kas, qr/fingerprint: 2AFB13F28FBBB0D1B9DAF63087EB3D32FB631AD9/,
     'build trusts the Yocto release key' );
 like( $kas,
-    qr{yocto-release:.*?repo: xcat-core.*?path: xCAT-genesis-builder/oe/keys/yocto-release\.asc}s,
+    qr{yocto-release:.*?repo: xcat-core.*?path: xCAT-genesis-base/oe/keys/yocto-release\.asc}s,
     'build loads the Yocto release key from the source tree' );
 like( $kas,
-    qr{xcat-core:.*?layers:.*?xCAT-genesis-builder/oe/meta-xcat-genesis:}s,
+    qr{xcat-core:.*?layers:.*?xCAT-genesis-base/oe/meta-xcat-genesis:}s,
     'build loads the Genesis layer from the source tree' );
 unlike( $kas, qr/gpg_keyserver:/,
     'build does not depend on a public keyserver' );
@@ -42,7 +42,7 @@ like( $kas, qr/ARCHIVER_MODE\[recipe\] = "1"/,
     'release archives retain recipe metadata' );
 
 my $yocto_release_key =
-  read_file('xCAT-genesis-builder/oe/keys/yocto-release.asc');
+  read_file('xCAT-genesis-base/oe/keys/yocto-release.asc');
 is( sha256_hex($yocto_release_key),
     '42d49e59f2aa01a1c1417a52d3c915a24a64060c852f33e3bd04fbb738457e70',
     'vendored Yocto release key matches the reviewed key material' );
@@ -56,56 +56,56 @@ like( $kas,
     qr{meta-openembedded:.*?commit: af8b6d6b2f0b11595b0a0d5b82efa3129d52a628}s,
     'meta-openembedded revision is pinned' );
 
-my $x86_kas = read_file('xCAT-genesis-builder/oe/kas/x86_64.yml');
-like( $x86_kas, qr{includes:\s*\n\s*- xCAT-genesis-builder/oe/kas/common\.yml},
+my $x86_kas = read_file('xCAT-genesis-base/oe/kas/x86_64.yml');
+like( $x86_kas, qr{includes:\s*\n\s*- xCAT-genesis-base/oe/kas/common\.yml},
     'x86_64 build includes the common configuration' );
 like( $x86_kas, qr/^machine: xcat-genesis-x86-64$/m,
     'x86_64 build selects its machine' );
 
-my $x86_32_kas = read_file('xCAT-genesis-builder/oe/kas/x86.yml');
-like( $x86_32_kas, qr{includes:\s*\n\s*- xCAT-genesis-builder/oe/kas/common\.yml},
+my $x86_32_kas = read_file('xCAT-genesis-base/oe/kas/x86.yml');
+like( $x86_32_kas, qr{includes:\s*\n\s*- xCAT-genesis-base/oe/kas/common\.yml},
     'x86 build includes the common configuration' );
 like( $x86_32_kas, qr/^machine: xcat-genesis-x86$/m,
     'x86 build selects its machine' );
 
-my $armv7hf_kas = read_file('xCAT-genesis-builder/oe/kas/armv7hf.yml');
-like( $armv7hf_kas, qr{includes:\s*\n\s*- xCAT-genesis-builder/oe/kas/common\.yml},
+my $armv7hf_kas = read_file('xCAT-genesis-base/oe/kas/armv7hf.yml');
+like( $armv7hf_kas, qr{includes:\s*\n\s*- xCAT-genesis-base/oe/kas/common\.yml},
     'armv7hf build includes the common configuration' );
 like( $armv7hf_kas, qr/^machine: xcat-genesis-armv7hf$/m,
     'armv7hf build selects its machine' );
 
-my $aarch64_kas = read_file('xCAT-genesis-builder/oe/kas/aarch64.yml');
-like( $aarch64_kas, qr{includes:\s*\n\s*- xCAT-genesis-builder/oe/kas/common\.yml},
+my $aarch64_kas = read_file('xCAT-genesis-base/oe/kas/aarch64.yml');
+like( $aarch64_kas, qr{includes:\s*\n\s*- xCAT-genesis-base/oe/kas/common\.yml},
     'aarch64 build includes the common configuration' );
 like( $aarch64_kas, qr/^machine: xcat-genesis-aarch64$/m,
     'aarch64 build selects its machine' );
 
-my $riscv64_kas = read_file('xCAT-genesis-builder/oe/kas/riscv64.yml');
-like( $riscv64_kas, qr{includes:\s*\n\s*- xCAT-genesis-builder/oe/kas/common\.yml},
+my $riscv64_kas = read_file('xCAT-genesis-base/oe/kas/riscv64.yml');
+like( $riscv64_kas, qr{includes:\s*\n\s*- xCAT-genesis-base/oe/kas/common\.yml},
     'riscv64 build includes the common configuration' );
 like( $riscv64_kas, qr/^machine: xcat-genesis-riscv64$/m,
     'riscv64 build selects its machine' );
 
-my $s390x_kas = read_file('xCAT-genesis-builder/oe/kas/s390x.yml');
-like( $s390x_kas, qr{includes:\s*\n\s*- xCAT-genesis-builder/oe/kas/common\.yml},
+my $s390x_kas = read_file('xCAT-genesis-base/oe/kas/s390x.yml');
+like( $s390x_kas, qr{includes:\s*\n\s*- xCAT-genesis-base/oe/kas/common\.yml},
     's390x build includes the common configuration' );
 like( $s390x_kas, qr/^machine: xcat-genesis-s390x$/m,
     's390x build selects its machine' );
 
-my $ppc64le_kas = read_file('xCAT-genesis-builder/oe/kas/ppc64le.yml');
-like( $ppc64le_kas, qr{includes:\s*\n\s*- xCAT-genesis-builder/oe/kas/common\.yml},
+my $ppc64le_kas = read_file('xCAT-genesis-base/oe/kas/ppc64le.yml');
+like( $ppc64le_kas, qr{includes:\s*\n\s*- xCAT-genesis-base/oe/kas/common\.yml},
     'ppc64le build includes the common configuration' );
 like( $ppc64le_kas, qr/^machine: xcat-genesis-ppc64le$/m,
     'ppc64le build selects its machine' );
 
-my $ppc64_kas = read_file('xCAT-genesis-builder/oe/kas/ppc64.yml');
-like( $ppc64_kas, qr{includes:\s*\n\s*- xCAT-genesis-builder/oe/kas/common\.yml},
+my $ppc64_kas = read_file('xCAT-genesis-base/oe/kas/ppc64.yml');
+like( $ppc64_kas, qr{includes:\s*\n\s*- xCAT-genesis-base/oe/kas/common\.yml},
     'ppc64 build includes the common configuration' );
 like( $ppc64_kas, qr/^machine: xcat-genesis-ppc64$/m,
     'ppc64 build selects its machine' );
 
 my $build_path = File::Spec->catfile(
-    $repo_root, qw(xCAT-genesis-builder oe build)
+    $repo_root, qw(xCAT-genesis-base oe build)
 );
 open(my $architecture_report, '-|', $build_path, '--list-architectures')
   or die "Unable to query $build_path: $!";
@@ -145,12 +145,12 @@ my @kas_invocations = <$kas_log_file>;
 close($kas_log_file) or die "Unable to close $kas_log: $!";
 is_deeply(
     \@kas_invocations,
-    ["build $repo_root/xCAT-genesis-builder/oe/kas/s390x.yml\n"],
+    ["build $repo_root/xCAT-genesis-base/oe/kas/s390x.yml\n"],
     'build invokes the s390x kas configuration once',
 );
 
 my $distro = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/conf/distro/xcat-genesis.conf'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/conf/distro/xcat-genesis.conf'
 );
 like( $distro, qr/^DISTRO_CODENAME = "cheetah"$/m,
     'distro uses the Cheetah codename' );
@@ -185,7 +185,7 @@ unlike( $distro, qr/\b(?:dhclient|dhcpcd)\b/,
     'distro excludes external DHCP clients' );
 
 my $machine = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/conf/machine/xcat-genesis-x86-64.conf'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/conf/machine/xcat-genesis-x86-64.conf'
 );
 like( $machine, qr/^DEFAULTTUNE = "x86-64"$/m,
     'x86_64 uses the baseline tune' );
@@ -205,7 +205,7 @@ like( $machine, qr/^XCAT_GENESIS_ARCHITECTURE = "x86_64"$/m,
     'x86_64 exports its canonical extension identity' );
 
 my $ppc64le_machine = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/conf/machine/xcat-genesis-ppc64le.conf'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/conf/machine/xcat-genesis-ppc64le.conf'
 );
 like( $ppc64le_machine, qr/^DEFAULTTUNE = "ppc64p8le"$/m,
     'ppc64le uses the POWER8 little-endian tune' );
@@ -223,7 +223,7 @@ like( $ppc64le_machine, qr/^XCAT_GENESIS_ARCHITECTURE = "ppc64le"$/m,
     'ppc64le exports its canonical extension identity' );
 
 my $ppc64_machine = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/conf/machine/xcat-genesis-ppc64.conf'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/conf/machine/xcat-genesis-ppc64.conf'
 );
 like( $ppc64_machine, qr/^DEFAULTTUNE = "powerpc64"$/m,
     'ppc64 uses the generic big-endian ABI' );
@@ -239,7 +239,7 @@ like( $ppc64_machine, qr/^XCAT_GENESIS_ARCHITECTURE = "ppc64"$/m,
     'ppc64 exports its canonical extension identity' );
 
 my $x86_machine = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/conf/machine/xcat-genesis-x86.conf'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/conf/machine/xcat-genesis-x86.conf'
 );
 like( $x86_machine, qr/^DEFAULTTUNE = "i686"$/m,
     'x86 uses the i686 baseline' );
@@ -253,7 +253,7 @@ like( $x86_machine, qr/^XCAT_GENESIS_ARCHITECTURE = "x86"$/m,
     'x86 exports its canonical extension identity' );
 
 my $armv7hf_machine = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/conf/machine/xcat-genesis-armv7hf.conf'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/conf/machine/xcat-genesis-armv7hf.conf'
 );
 like( $armv7hf_machine, qr/^DEFAULTTUNE = "armv7ahf"$/m,
     'armv7hf uses the ARMv7-A hard-float tune' );
@@ -271,7 +271,7 @@ like( $armv7hf_machine, qr/^XCAT_GENESIS_CONSOLE_TTY = "ttyAMA0"$/m,
     'armv7hf status console uses its PL011 terminal' );
 
 my $aarch64_machine = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/conf/machine/xcat-genesis-aarch64.conf'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/conf/machine/xcat-genesis-aarch64.conf'
 );
 like( $aarch64_machine, qr/^DEFAULTTUNE = "aarch64"$/m,
     'aarch64 uses the generic ARMv8-A tune' );
@@ -285,7 +285,7 @@ like( $aarch64_machine, qr/^XCAT_GENESIS_CONSOLE_TTY = "ttyAMA0"$/m,
     'aarch64 status console uses its PL011 terminal' );
 
 my $riscv64_machine = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/conf/machine/xcat-genesis-riscv64.conf'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/conf/machine/xcat-genesis-riscv64.conf'
 );
 like( $riscv64_machine, qr/^DEFAULTTUNE = "riscv64"$/m,
     'riscv64 uses the RV64GC tune' );
@@ -318,7 +318,7 @@ for my $machine_console (
 }
 
 my $image = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-core/images/xcat-genesis-image.bb'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/images/xcat-genesis-image.bb'
 );
 unlike( $image,
     qr/\b(?:dhclient|dhcpcd|busybox-udhcpc|systemd-networkd)\b/,
@@ -335,7 +335,7 @@ like( $image, qr/\bxcat-genesis-console\b/,
     'base image includes the status console' );
 
 my $hardware_group = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-core/packagegroups/packagegroup-xcat-genesis-hardware.bb'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/packagegroups/packagegroup-xcat-genesis-hardware.bb'
 );
 for my $tool (
     qw(
@@ -374,7 +374,7 @@ unlike( $hardware_group,
     'base image excludes vendor-only tools' );
 
 my $hardware_recipe = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-core/xcat-genesis-hardware-control/xcat-genesis-hardware-control_1.0.bb'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/xcat-genesis-hardware-control/xcat-genesis-hardware-control_1.0.bb'
 );
 like( $hardware_recipe,
     qr/^RDEPENDS:\$\{PN\} = "bash coreutils jq mstflint nvme-cli util-linux-flock"$/m,
@@ -398,7 +398,7 @@ unlike( $hardware_recipe,
     'hardware control excludes vendor-only tools' );
 
 my $hardware_dispatcher = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-core/xcat-genesis-hardware-control/files/genesis-hardware'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/xcat-genesis-hardware-control/files/genesis-hardware'
 );
 like( $hardware_dispatcher,
     qr/destructive capability requires a task identity/,
@@ -415,14 +415,14 @@ like( $hardware_dispatcher, qr/write_audit failed/,
 
 for my $provider (qw(nvme mstflint iprutils)) {
     my $manifest = read_file(
-        "xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-core/xcat-genesis-hardware-control/files/$provider.json"
+        "xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/xcat-genesis-hardware-control/files/$provider.json"
     );
     unlike( $manifest, qr/"destructive"\s*:\s*true/,
         "$provider base provider is read-only" );
 }
 
 my $mstflint = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-support/mstflint/mstflint_4.36.0.bb'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-support/mstflint/mstflint_4.36.0.bb'
 );
 like( $mstflint,
     qr/^LICENSE = "Linux-OpenIB & MIT & BSD-2-Clause"$/m,
@@ -438,7 +438,7 @@ unlike( $mstflint, qr/--enable-(?:fw-mgr|nvml)/,
     'mstflint excludes vendor-coupled features' );
 
 my $iprutils = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-support/iprutils/iprutils_2.4.19.bb'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-support/iprutils/iprutils_2.4.19.bb'
 );
 like( $iprutils, qr/^LICENSE = "CPL-1\.0"$/m,
     'iprutils records its source license' );
@@ -451,7 +451,7 @@ like( $iprutils, qr/--without-systemd --without-initscripts/,
     'iprutils omits unused background services' );
 
 my $kernel_append = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto_%.bbappend'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto_%.bbappend'
 );
 like( $kernel_append, qr/file:\/\/xcat-genesis-x86-64\.cfg/,
     'x86_64 kernel uses the Genesis hardware fragment' );
@@ -492,7 +492,7 @@ like( $kernel_append, qr/file:\/\/xcat-genesis-ppc64\.cfg/,
     'ppc64 kernel uses its big-endian fragment' );
 
 my $ppc64_kernel_config = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto/xcat-genesis-ppc64.cfg'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto/xcat-genesis-ppc64.cfg'
 );
 like( $ppc64_kernel_config, qr/^CONFIG_CPU_BIG_ENDIAN=y$/m,
     'ppc64 kernel is big endian' );
@@ -500,7 +500,7 @@ like( $ppc64_kernel_config, qr/^# CONFIG_CPU_LITTLE_ENDIAN is not set$/m,
     'ppc64 kernel is not little endian' );
 
 my $kernel_config = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto/xcat-genesis-x86-common.cfg'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto/xcat-genesis-x86-common.cfg'
 );
 for my $symbol (
     qw(
@@ -517,7 +517,7 @@ for my $symbol (
 }
 
 my $x86_kernel_config = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto/xcat-genesis-x86.cfg'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto/xcat-genesis-x86.cfg'
 );
 like( $x86_kernel_config, qr/^CONFIG_M686=y$/m,
     'x86 kernel selects the i686 processor family' );
@@ -534,13 +534,13 @@ for my $vendor (qw(AMD INTEL)) {
 }
 
 my $x86_64_kernel_config = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto/xcat-genesis-x86-64.cfg'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto/xcat-genesis-x86-64.cfg'
 );
 like( $x86_64_kernel_config, qr/^CONFIG_EDAC_AMD64=m$/m,
     'x86_64 keeps its architecture-specific EDAC driver' );
 
 my $armv7hf_kernel_config = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto/xcat-genesis-armv7hf.cfg'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto/xcat-genesis-armv7hf.cfg'
 );
 for my $symbol (
     qw(
@@ -558,7 +558,7 @@ for my $symbol (
 }
 
 my $aarch64_kernel_config = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto/xcat-genesis-aarch64.cfg'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto/xcat-genesis-aarch64.cfg'
 );
 for my $symbol (
     qw(
@@ -577,7 +577,7 @@ for my $symbol (
 }
 
 my $riscv64_kernel_config = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto/xcat-genesis-riscv64.cfg'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto/xcat-genesis-riscv64.cfg'
 );
 for my $symbol (
     qw(
@@ -607,7 +607,7 @@ for my $symbol (
 }
 
 my $powerpc64_kernel_config = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto/xcat-genesis-powerpc64.cfg'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto/xcat-genesis-powerpc64.cfg'
 );
 for my $symbol (
     qw(
@@ -627,7 +627,7 @@ like( $powerpc64_kernel_config, qr/^# CONFIG_PPC_VAS is not set$/m,
     'POWER8 image disables unsupported VAS facilities' );
 
 my $protocol_recipe = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-xcat/xcat-genesis-protocol/xcat-genesis-protocol_1.0.bb'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-xcat/xcat-genesis-protocol/xcat-genesis-protocol_1.0.bb'
 );
 like( $protocol_recipe,
     qr{^FILESEXTRAPATHS:prepend := "\$\{THISDIR\}/\.\./\.\./\.\./\.\./\.\./xCAT-genesis-scripts/usr/bin:"$}m,
@@ -640,7 +640,7 @@ unlike( $protocol_recipe, qr/\bdoxcat\b/,
     'obsolete bootstrap script is excluded' );
 
 my $networkmanager = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-connectivity/networkmanager/networkmanager_%.bbappend'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-connectivity/networkmanager/networkmanager_%.bbappend'
 );
 like( $networkmanager, qr/^EXTRA_OEMESON:append = " -Dtests=no"$/m,
     'NetworkManager omits its test suite' );
@@ -649,14 +649,14 @@ like( $networkmanager,
     'NetworkManager does not enable wait-online' );
 
 my $network_recipe = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-connectivity/xcat-genesis-network/xcat-genesis-network_1.0.bb'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-connectivity/xcat-genesis-network/xcat-genesis-network_1.0.bb'
 );
 like( $network_recipe,
     qr/^RDEPENDS:\$\{PN\} = "networkmanager-daemon networkmanager-nmcli"$/m,
     'network policy installs the daemon and nmcli' );
 
 my $network_config = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-connectivity/xcat-genesis-network/files/10-xcat-genesis.conf'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-connectivity/xcat-genesis-network/files/10-xcat-genesis.conf'
 );
 like( $network_config, qr/^ipv4\.dhcp-timeout=20$/m,
     'IPv4 DHCP has a bounded timeout' );
@@ -666,7 +666,7 @@ like( $network_config, qr/^ipv6\.dhcp-timeout=20$/m,
     'IPv6 DHCP has a bounded timeout' );
 
 my $init_recipe = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-core/xcat-genesis-init/xcat-genesis-init_1.0.bb'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/xcat-genesis-init/xcat-genesis-init_1.0.bb'
 );
 like( $init_recipe, qr/\bcoreutils\b/,
     'runtime status dependencies are explicit' );
@@ -686,17 +686,17 @@ unlike( $init_recipe, qr/genesis-debug-shell|XCAT_GENESIS_DEBUG/,
 
 my $legacy_debug_shell = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-debug-shell)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-debug-shell)
 );
 my $legacy_debug_service = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-init files xcat-genesis-debug-shell@.service)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-init files xcat-genesis-debug-shell@.service)
 );
 ok( !-e $legacy_debug_shell, 'legacy debug shell script is removed' );
 ok( !-e $legacy_debug_service, 'legacy debug shell service is removed' );
 
 my $maintenance_shell = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-core/xcat-genesis-init/files/genesis-maintenance-shell'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/xcat-genesis-init/files/genesis-maintenance-shell'
 );
 like( $maintenance_shell, qr/^#!\/bin\/bash$/m,
     'maintenance shell uses the packaged Bash runtime' );
@@ -710,7 +710,7 @@ like( $maintenance_shell, qr{^exec /bin/bash --noprofile --norc -i$}m,
     'maintenance shell starts isolated Bash' );
 
 my $status_helper = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-core/xcat-genesis-init/files/genesis-status'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/xcat-genesis-init/files/genesis-status'
 );
 like( $status_helper, qr/mktemp .*\.\$\{component\}\.XXXXXX/,
     'runtime status records use atomic temporary files' );
@@ -718,7 +718,7 @@ like( $status_helper, qr/tr -cd '\\040-\\176'/,
     'runtime status details are printable text' );
 
 my $console_recipe = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-core/xcat-genesis-console/xcat-genesis-console_1.0.bb'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/xcat-genesis-console/xcat-genesis-console_1.0.bb'
 );
 like( $console_recipe, qr/^DEPENDS = "libnewt systemd"$/m,
     'status console builds against libnewt and the journal API' );
@@ -731,7 +731,7 @@ unlike( $console_recipe, qr/\b(?:whiptail|popt)\b/,
     'status console omits the dialog wrapper' );
 
 my $console_build = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-core/xcat-genesis-console/files/xcat-genesis-console/meson.build'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/xcat-genesis-console/files/xcat-genesis-console/meson.build'
 );
 like( $console_build, qr/'c_std=c17'/,
     'status console uses the C17 language contract' );
@@ -741,7 +741,7 @@ like( $console_build, qr/'werror=true'/,
     'status console treats compiler warnings as build failures' );
 
 my $console_service = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-core/xcat-genesis-console/files/xcat-genesis-console@.service'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/xcat-genesis-console/files/xcat-genesis-console@.service'
 );
 like( $console_service, qr/^Environment=TERM=xterm$/m,
     'status console redraws line graphics after a late attach' );
@@ -755,13 +755,13 @@ unlike( $console_service, qr/xcat\.debug-shell|genesis-debug-shell/,
     'status console has no boot-time debug escape' );
 
 my $console_source_dir =
-  'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-core/xcat-genesis-console/files/xcat-genesis-console/src';
+  'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/xcat-genesis-console/files/xcat-genesis-console/src';
 my $console_source = join "\n", map {
     read_file("$console_source_dir/$_")
 } qw(console.h main.c newt_ui.c plain_ui.c shell.c state.c support.c);
 ok( !-e File::Spec->catfile(
         $repo_root,
-        qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-console files xcat-genesis-console.c)
+        qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-console files xcat-genesis-console.c)
     ),
     'status console is not kept as a monolithic source file' );
 unlike( $console_source, qr/genesis-debug-shell|XCAT_ON_DEMAND_SHELL/,
@@ -841,7 +841,7 @@ unlike( $console_source, qr/\b(?:system|popen)\s*\(/,
     'status console avoids command-string execution' );
 
 my $network_state_service = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-core/xcat-genesis-init/files/xcat-genesis-network-state.service'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/xcat-genesis-init/files/xcat-genesis-network-state.service'
 );
 like( $network_state_service, qr/^After=NetworkManager\.service$/m,
     'network selection follows NetworkManager' );
@@ -850,7 +850,7 @@ like( $network_state_service,
     'network selection gates Genesis readiness' );
 
 my $register_service = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-core/xcat-genesis-init/files/xcat-genesis-register.service'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/xcat-genesis-init/files/xcat-genesis-register.service'
 );
 like( $register_service,
     qr/^Requires=xcat-genesis-network-ready\.target xcat-genesis-extensions\.service$/m,
@@ -862,14 +862,14 @@ unlike( $register_service, qr/network-online\.target/,
     'registration avoids generic network readiness' );
 
 my $extension_recipe = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-core/xcat-genesis-extensions/xcat-genesis-extensions_1.0.bb'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/xcat-genesis-extensions/xcat-genesis-extensions_1.0.bb'
 );
 like( $extension_recipe,
     qr/^RDEPENDS:\$\{PN\} = "bash coreutils jq openssl-bin systemd xcat-genesis-init"$/m,
     'extension verifier dependencies are explicit' );
 
 my $extension_loader = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-core/xcat-genesis-extensions/files/genesis-sysext'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/xcat-genesis-extensions/files/genesis-sysext'
 );
 like( $extension_loader, qr/openssl pkeyutl -verify -pubin .* -rawin/s,
     'extension manifests use Ed25519 verification' );
@@ -883,7 +883,7 @@ like( $extension_loader, qr/systemd-sysext refresh/,
     'verified extensions are merged by systemd' );
 
 my $extension_service = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-core/xcat-genesis-extensions/files/xcat-genesis-extensions.service'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/xcat-genesis-extensions/files/xcat-genesis-extensions.service'
 );
 like( $extension_service,
     qr{^ConditionDirectoryNotEmpty=/var/lib/xcat/genesis/extensions$}m,
@@ -892,7 +892,7 @@ like( $extension_service, qr/^Before=xcat-genesis-register\.service$/m,
     'extensions load before xCAT registration' );
 
 my $extension_class = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/classes-recipe/xcat-genesis-extension.bbclass'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/classes-recipe/xcat-genesis-extension.bbclass'
 );
 like( $extension_class, qr/^inherit sysext-image$/m,
     'extensions use the upstream systemd image class' );
@@ -913,13 +913,13 @@ like( $extension_class, qr/"sha256":/,
     'extension manifests record the image digest' );
 
 my $smoke_extension = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-extensions/images/xcat-genesis-extension-smoke.bb'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-extensions/images/xcat-genesis-extension-smoke.bb'
 );
 like( $smoke_extension, qr/^XCAT_GENESIS_EXTENSION_NAME = "xcat-smoke"$/m,
     'open smoke extension exercises the build path' );
 
 my $preset = read_file(
-    'xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-core/xcat-genesis-init/files/00-xcat-genesis.preset'
+    'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/xcat-genesis-init/files/00-xcat-genesis.preset'
 );
 is( $preset, "disable getty\@.service\n",
     'preset disables the unused virtual-terminal getty' );

@@ -32,14 +32,10 @@ emitted, because a source-only run has no binary packages to advertise.
 
 .. note::
 
-   ``buildcore.sh``, ``makerpm`` and ``buildlocal.sh`` were removed in 2.19;
-   ``buildrpms.pl`` replaces all three, and its ``--source-only`` replaces the
-   old ``SRCONLY=1``.
-
-   ``build-ubunturepo`` is superseded by ``builddebs.pl`` but is **still in the
-   tree for now**, as a differential oracle: it is the reference the new builder
-   is checked against, and it is removed once the CD pipelines have been moved
-   over. Do not add features to it.
+   ``buildcore.sh``, ``makerpm``, ``buildlocal.sh`` and ``build-ubunturepo``
+   were removed in 2.19. ``buildrpms.pl`` replaces the first three, and its
+   ``--source-only`` replaces the old ``SRCONLY=1``; ``builddebs.pl`` replaces
+   ``build-ubunturepo``, and the CD pipelines build every Ubuntu target with it.
 
 Debian and Ubuntu packages
 --------------------------
@@ -64,6 +60,20 @@ release. ``xCAT`` and ``xCATsn`` are built for riscv64 as well as amd64 and
 ppc64el, and every release the repository serves declares the architecture;
 ``xCAT-genesis-scripts`` keeps the two architectures it has control files for,
 because riscv64 Genesis ships as an OpenEmbedded package instead.
+
+The Genesis image is the exception, and it is off unless it is asked for::
+
+    ./builddebs.pl --genesis-only --genesis-dist jammy --genesis-dist noble
+
+``dracut`` copies the kernel, the kernel modules and every command out of the root
+it runs in, so the image belongs to the release that built it. ``--genesis`` builds
+one image per ``--genesis-dist`` codename inside that codename's
+``<codename>-<arch>-sbuild`` schroot -- the chroots xcat-dep's ``sbuild-all.pl``
+creates on the Ubuntu build host -- for the architecture of the build host. It
+refuses to run in a root of another release, it fails the build on an error in the
+log even when the exit status is 0, and it checks the extracted payload against the
+commands the dracut module installs. ``--genesis-only`` builds the images and
+nothing else, which is what xcat-dep consumes with ``--genesis-deb``.
 
 Helpers shared by both builders live in ``build-utils/lib/XCAT/BuildUtils.pm``.
 

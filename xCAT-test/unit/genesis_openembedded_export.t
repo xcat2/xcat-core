@@ -24,7 +24,7 @@ sub read_file {
 }
 
 my $root = File::Spec->catdir($FindBin::Bin, '..', '..');
-my $export = File::Spec->catfile($root, 'xCAT-genesis-builder', 'oe', 'export');
+my $export = File::Spec->catfile($root, 'xCAT-genesis-base', 'oe', 'export');
 my $tmpdir = tempdir(CLEANUP => 1);
 my $deploy = File::Spec->catdir($tmpdir, 'deploy');
 my $machine = 'xcat-genesis-x86-64';

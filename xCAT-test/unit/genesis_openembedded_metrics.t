@@ -11,19 +11,19 @@ use Test::More;
 
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
 my $report = File::Spec->catfile(
-    $repo_root, qw(xCAT-genesis-builder oe report)
+    $repo_root, qw(xCAT-genesis-base oe report)
 );
 my $metrics = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-metrics)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-metrics)
 );
 my $recipe = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-init xcat-genesis-init_1.0.bb)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-init xcat-genesis-init_1.0.bb)
 );
 my $service = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-init files xcat-genesis-metrics.service)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-init files xcat-genesis-metrics.service)
 );
 
 sub write_file {

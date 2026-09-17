@@ -12,19 +12,19 @@ use Test::More;
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
 my $dispatcher = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-hardware-control files genesis-hardware)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-hardware-control files genesis-hardware)
 );
 my $nvme_provider = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-hardware-control files provider-nvme)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-hardware-control files provider-nvme)
 );
 my $mstflint_provider = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-hardware-control files provider-mstflint)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-hardware-control files provider-mstflint)
 );
 my $iprutils_provider = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-hardware-control files provider-iprutils)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-hardware-control files provider-iprutils)
 );
 
 sub write_file {

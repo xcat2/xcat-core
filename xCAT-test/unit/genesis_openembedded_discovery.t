@@ -14,7 +14,7 @@ use Test::More;
 my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
 my $discovery_dir = File::Spec->catdir(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-xcat xcat-genesis-discovery)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-xcat xcat-genesis-discovery)
 );
 my $discover_script = File::Spec->catfile(
     $discovery_dir, qw(files genesis-discover)
@@ -33,7 +33,7 @@ my $udp_sender_source = File::Spec->catfile(
 );
 my $status_script = File::Spec->catfile(
     $repo_root,
-    qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-status)
+    qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core xcat-genesis-init files genesis-status)
 );
 
 sub write_file {
@@ -583,7 +583,7 @@ like( read_file($discover_script), qr{/usr/libexec/xcat/genesis-udp-send},
 my $image = read_file(
     File::Spec->catfile(
         $repo_root,
-        qw(xCAT-genesis-builder oe meta-xcat-genesis recipes-core images xcat-genesis-image.bb)
+        qw(xCAT-genesis-base oe meta-xcat-genesis recipes-core images xcat-genesis-image.bb)
     )
 );
 like( $image, qr/\bxcat-genesis-discovery\b/,

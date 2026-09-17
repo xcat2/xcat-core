@@ -1,0 +1,6 @@
+header:
+  version: 19
+  includes:
+    - xCAT-genesis-base/oe/kas/common.yml
+
+machine: xcat-genesis-ppc64
