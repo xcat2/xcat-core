@@ -383,6 +383,32 @@ sub _no_grub2_loader {
 
 #-------------------------------------------------------
 
+=head3  install_prescript
+
+    Descriptions: Return the pre-install script an Ubuntu or Debian install runs.
+    Arguments:
+        $platform   - the distribution family, for example ubuntu
+        $arch       - the architecture of the node
+        $subiquity  - true when the osimage template is a Subiquity autoinstall
+    Returns: the full path of the pre-install script
+
+=cut
+
+#-------------------------------------------------------
+sub install_prescript
+{
+    my ($platform, $arch, $subiquity) = @_;
+    my $base = "$::XCATROOT/share/xcat/install/scripts/pre.$platform";
+
+    # pre.ubuntu.ppc64 writes a partman recipe, which only the debian-installer
+    # reads. Subiquity gets its POWER partitioning from pre.ubuntu.subiquity.
+    return "$base.subiquity" if ($subiquity);
+    return "$base.ppc64" if (defined($arch) and $arch =~ /ppc64/i and $platform eq "ubuntu");
+    return $base;
+}
+
+#-------------------------------------------------------
+
 =head3  install_media_is_bootable
 
     Descriptions: Report whether copied media carries an install kernel and initrd.
@@ -1155,17 +1181,9 @@ sub mkinstall {
               );
         }
 
-        # maybe Debian will decide to use subiquity at some point?
-        my $prescript = "$::XCATROOT/share/xcat/install/scripts/pre.$platform";
-        if (using_subiquity($os,$tmplfile)) {
-            $prescript = $prescript . ".subiquity";
-        }
+        my $prescript =
+          install_prescript($platform, $arch, using_subiquity($os, $tmplfile));
         my $postscript = "$::XCATROOT/share/xcat/install/scripts/post.$platform";
-
-        # for powerkvm VM ubuntu LE#
-        if ($arch =~ /ppc64/i and $platform eq "ubuntu") {
-            $prescript = "$::XCATROOT/share/xcat/install/scripts/pre.$platform.ppc64";
-        }
 
 
         if (-r "$prescript") {
