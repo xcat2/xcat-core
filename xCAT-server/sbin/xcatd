@@ -338,6 +338,64 @@ my $rescanwritepipe;
 my $rescanrselect;
 my $rescanrequest = "rescanplugins";
 
+# The install monitor gives each connection its own handler process, so a slow request from one
+# node does not hold up the others.
+#
+# Requests for one node are answered in the order they arrived, and the parent owns that
+# ordering. %installm_busy names the handler serving a node and %installm_queue holds the
+# connections accepted for that node meanwhile. The next one is forked when the handler ahead
+# of it is reaped, so a handler that dies cannot release the one behind it early.
+my %installm_kids;     # handler pid -> node
+my %installm_busy;     # node        -> handler pid
+my %installm_queue;    # node        -> [ [ connection, peer address ], ... ]
+my $installm_maxkids = 64;
+
+# Under the systemd TimeoutStopSec of 30 seconds, so the drain finishes before the kill.
+my $installm_drain_seconds = 20;
+
+# One path, so a test can point the lifted routine somewhere else.
+my $installm_pidfile = "/var/run/xcat/installservice.pid";
+
+# Account for finished handlers. With $block set, wait for one to finish first.
+sub reap_installm_kids {
+    my ($block) = @_;
+
+    my $pid = waitpid(-1, $block ? 0 : WNOHANG);
+    while ($pid > 0) {
+        my $node = delete $installm_kids{$pid};
+        if (defined $node and ($installm_busy{$node} || 0) == $pid) {
+            delete $installm_busy{$node};
+        }
+        $pid = waitpid(-1, WNOHANG);
+    }
+
+    # ECHILD is the only answer that means there is nothing left to account for. An interrupted
+    # wait answers -1 as well, and clearing on that loses track of live handlers.
+    if ($pid < 0 and $! == ECHILD) {
+        %installm_kids = ();
+        %installm_busy = ();
+    }
+    return;
+}
+
+# The next queued connection whose node has no handler running, as (node, connection, peer
+# address), or the empty list. Fetch each queue into a variable: dereferencing the hash element
+# creates an entry for a node that has none.
+sub dequeue_installm_request {
+    foreach my $node (keys %installm_queue) {
+        next if exists $installm_busy{$node};
+        my $queued = $installm_queue{$node};
+        unless ($queued and @{$queued}) {
+            delete $installm_queue{$node};
+            next;
+        }
+        my $entry = shift @{$queued};
+        delete $installm_queue{$node} unless @{$queued};
+        return ($node, @{$entry});
+    }
+    return ();
+}
+
 sub do_installm_service {
     unless ($sport) { return; }
 
@@ -346,9 +404,13 @@ sub do_installm_service {
     my $installpidfile;
     my $retry = 1;
     $SIG{TERM} = $SIG{INT} = 'DEFAULT';
+    # The monitor accounts for its own handlers, so this must not reap. It exists to interrupt
+    # the accept below: a handler that exits may have left a connection queued for its node,
+    # and without the interruption that connection waits for the next unrelated client.
+    $SIG{CHLD} = sub { };
     $SIG{USR2} = sub {
         if ($socket) { # do not mess with pid file except when we still have the socket.
-            unlink("/var/run/xcat/installservice.pid"); close($socket); $quit = 1;
+            unlink($installm_pidfile); close($socket); $quit = 1;
             $udpctl = 0;
             xCAT::MsgUtils->message("S", "xcatd install monitor $$ quiescing");
         }
@@ -364,7 +426,7 @@ sub do_installm_service {
             ReuseAddr => 1,
             Listen    => 8192);
     }
-    if (not $socket and open($installpidfile, "<", "/var/run/xcat/installservice.pid")) { # if we couldn't get the socket, go to pid to figure out current owner
+    if (not $socket and open($installpidfile, "<", $installm_pidfile)) { # if we couldn't get the socket, go to pid to figure out current owner
             # TODO: lsof or similar may be a more accurate measure
         my $pid = <$installpidfile>;
         if ($pid) {
@@ -396,7 +458,7 @@ sub do_installm_service {
     }
 
     # we have the socket, now we claim the pid file as our own
-    open($installpidfile, ">", "/var/run/xcat/installservice.pid"); # if here, everyone else has unlinked installservicepid or doesn't care
+    open($installpidfile, ">", $installm_pidfile); # if here, everyone else has unlinked installservicepid or doesn't care
     print $installpidfile $$;
     close($installpidfile);
     xCAT::MsgUtils->trace(0, "I", "xcatd: install monitor process $$ start");
@@ -407,93 +469,145 @@ sub do_installm_service {
         my $node;
         my $validclient = 0;
 
-        next unless $conn = $socket->accept;
-        eval {
-            # check if a rescanplugins request has come in
-            my @rescans;
-            if (@rescans = $rescanrselect->can_read(0)) {
-                foreach my $rrequest (@rescans) {
-                    my $rescan_request = fd_retrieve($rrequest);
-                    if ($$rescan_request =~ /rescanplugins/) {
-                        scan_plugins('', '1');
-                    } else {
-                        xCAT::MsgUtils->trace(0, "W", "xcatd: ignoring unrecognized pipe request received by install monitor from ssl listener:  $rescan_request.");
+        # A handler that finished may have left a connection waiting for its node. SIGCHLD
+        # interrupts the accept below, so the parent comes back here to look.
+        reap_installm_kids(0);
+        ($node, $conn, $conn_peer_addr) = dequeue_installm_request();
+
+        # Nothing was queued, so take a new connection and name its peer.
+        unless (defined $conn) {
+            next unless $conn = $socket->accept;
+            eval {
+                # check if a rescanplugins request has come in
+                my @rescans;
+                if (@rescans = $rescanrselect->can_read(0)) {
+                    foreach my $rrequest (@rescans) {
+                        my $rescan_request = fd_retrieve($rrequest);
+                        if ($$rescan_request =~ /rescanplugins/) {
+                            scan_plugins('', '1');
+                        } else {
+                            xCAT::MsgUtils->trace(0, "W", "xcatd: ignoring unrecognized pipe request received by install monitor from ssl listener:  $rescan_request.");
+                        }
                     }
                 }
-            }
-            $conn_peer_addr = $conn->peerhost();
-            xCAT::MsgUtils->trace(0, "I", "xcatd: install monitor received a connection request from $conn_peer_addr");
+                $conn_peer_addr = $conn->peerhost();
+                xCAT::MsgUtils->trace(0, "I", "xcatd: install monitor received a connection request from $conn_peer_addr");
 
-            my $client_name;
-            my $client_aliases;
-            my @clients;
-            if ($inet6support) {
-                ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET6);
-                unless ($client_name) {
+                my $client_name;
+                my $client_aliases;
+                my @clients;
+                if ($inet6support) {
+                    ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET6);
+                    unless ($client_name) {
+                        ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET);
+                    }
+                } else {
                     ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET);
                 }
-            } else {
-                ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET);
-            }
 
-            unless ($client_name) {
-                die "XCATUNKOWNCLIENT"; # use die instead of next to avoid 'Exiting eval via next' message
-            }
-
-            $clients[0] = $client_name;
-            if ($client_aliases) {
-                push @clients, split(/\s+/, $client_aliases);
-            }
-
-            my $domain;
-            my %handled_client=();
-            foreach my $client (@clients) {
-                next if (exists $handled_client{$client});
-                $handled_client{$client}=1;
-                my @ndn         = ($client);
-                my $nd          = xCAT::NetworkUtils->getNodeDomains(\@ndn);
-                my %nodedomains = %{$nd};
-                $domain = $nodedomains{$client};
-                $client =~ s/\..*//;
-                if ($domain) {
-                    $client =~ s/\.$domain//;
-                } else {
-                    $client =~ s/\..*//;
+                unless ($client_name) {
+                    die "XCATUNKOWNCLIENT"; # use die instead of next to avoid 'Exiting eval via next' message
                 }
 
-                # ensure this is coming from a node IP at least
-                ($node) = noderange($client);
-                if ($node) {    # Means the source isn't valid
-                    #$validclient = 1;
-                    xCAT::MsgUtils->trace(0, "I", "xcatd: $conn_peer_addr is matched with node $node");
-                    last;
+                $clients[0] = $client_name;
+                if ($client_aliases) {
+                    push @clients, split(/\s+/, $client_aliases);
+                }
+
+                my $domain;
+                my %handled_client=();
+                foreach my $client (@clients) {
+                    next if (exists $handled_client{$client});
+                    $handled_client{$client}=1;
+                    my @ndn         = ($client);
+                    my $nd          = xCAT::NetworkUtils->getNodeDomains(\@ndn);
+                    my %nodedomains = %{$nd};
+                    $domain = $nodedomains{$client};
+                    $client =~ s/\..*//;
+                    if ($domain) {
+                        $client =~ s/\.$domain//;
+                    } else {
+                        $client =~ s/\..*//;
+                    }
+
+                    # ensure this is coming from a node IP at least
+                    ($node) = noderange($client);
+                    if ($node) {    # Means the source isn't valid
+                        #$validclient = 1;
+                        xCAT::MsgUtils->trace(0, "I", "xcatd: $conn_peer_addr is matched with node $node");
+                        last;
+                    }
+                }
+                unless ($node) {
+                    xCAT::MsgUtils->trace(0, "E", "xcatd: received a connection request from $conn_peer_addr($client_name), which can not be found in xCAT nodelist table. The connection request will be ignored");
+                }
+            };
+            if ($@) {
+                $node = undef;
+                if ($@ =~ /XCATUNKOWNCLIENT/) {
+                    xCAT::MsgUtils->trace(0, "E", "xcatd: received a connection request from unknown host with ip address $conn_peer_addr, please check whether the reverse name resolution works correctly. The connection request will be ignored");
+                } else {
+                    xCAT::MsgUtils->trace(0, "E", "xcatd: possible BUG encountered by xCAT install monitor service: " . $@);
                 }
             }
             unless ($node) {
-                xCAT::MsgUtils->trace(0, "E", "xcatd: received a connection request from $conn_peer_addr($client_name), which can not be found in xCAT nodelist table. The connection request will be ignored");
+                close($conn);
+                sleep 0.01;
+                next;
             }
-        };
-        if ($@) {
-            $node = undef;
-            if ($@ =~ /XCATUNKOWNCLIENT/) {
-                xCAT::MsgUtils->trace(0, "E", "xcatd: received a connection request from unknown host with ip address $conn_peer_addr, please check whether the reverse name resolution works correctly. The connection request will be ignored");
-            } else {
-                xCAT::MsgUtils->trace(0, "E", "xcatd: possible BUG encountered by xCAT install monitor service: " . $@);
+
+            if (exists $installm_busy{$node}) {
+                # The node has a handler already. Hold the connection unread until that handler is
+                # reaped, so the greeting and the answer keep the order the node sent them in.
+                $installm_queue{$node} ||= [];
+                push @{ $installm_queue{$node} }, [ $conn, $conn_peer_addr ];
+                next;
             }
         }
-        unless ($node) {
+
+        # A thousand nodes netbooting must not become a thousand handlers. Anything over the
+        # limit waits in the listen backlog, where an unaccepted connection costs nothing.
+        while (scalar(keys %installm_kids) >= $installm_maxkids) {
+            reap_installm_kids(1);
+        }
+
+        my $handler = xCAT::Utils->xfork();
+        if ($handler) {
+            $installm_kids{$handler} = $node;
+            $installm_busy{$node}    = $handler;
             close($conn);
-            sleep 0.01;
             next;
         }
+        if (defined $handler) {
+            # This handler answers one node and exits. It must not hold the listening socket or
+            # the connections queued for other nodes, and USR2 belongs to the process that owns
+            # the pid file.
+            $SIG{USR2} = 'DEFAULT';
+            $SIG{CHLD} = 'DEFAULT';
+            close($socket);
+            close($_->[0]) for map { @{$_} } values %installm_queue;
+            %installm_queue = ();
+            %installm_kids  = ();
+            %installm_busy  = ();
+        } else {
+            xCAT::MsgUtils->trace(0, "W", "xcatd: install monitor cannot fork, serving $node in line");
+        }
+
         my $tftpdir = xCAT::TableUtils->getTftpDir();
         eval {
             alarm(2);
             print $conn "ready\n";
             while (my $text = <$conn>) {
                 alarm(0);
-                print $conn "done\n";
                 $text =~ s/\r//g;
+
+                # "done" releases the node. Every request but a destiny advance is answered
+                # before it runs, because its result does not change what the node does next.
+                # A destiny advance decides what the node boots, so the node waits for it --
+                # which costs no other node anything now that each connection has a handler of
+                # its own, and which lets the node retry a request whose handler died.
+                print $conn "done\n" unless ($text =~ /next/);
+
                 # Clear IP-Name cache, Workaround (#4913) for IP changed cases.
                 xCAT::NetworkUtils->clearcache();
                 if ($text =~ /next/) {
@@ -503,13 +617,9 @@ sub do_installm_service {
                         arg     => ['next'],
                     );
 
-                    # node should be blocked, race condition may occur otherwise
-                    #my $pid=xCAT::Utils->xfork();
-                    #unless ($pid) { # fork off the nodeset and potential slowness
                     xCAT::MsgUtils->trace(0, "I", "xcatd: triggering \'nodeset $node next\'...");
                     plugin_command(\%request, undef, \&build_response);
-                    #exit(0);
-                    #}
+                    print $conn "done\n";
                     close($conn);
                 } elsif ($text =~ /installstatus/) {
                     my @tmpa = split(' ', $text);
@@ -526,13 +636,7 @@ sub do_installm_service {
                         } elsif ($newstat eq 'netbooting') {
                             xCAT::MsgUtils->trace(0, "I", "xcat.updatestatus - $node: provisioning detected...");
                         }
-                        # node should be blocked, race condition may occur otherwise
-                        #my $pid=xCAT::Utils->xfork();
-                        #unless ($pid) { # fork off the nodeset and potential slowness
                         plugin_command(\%request, undef, \&build_response);
-
-                        #exit(0);
-                        #}
                     }
                     close($conn);
                 } elsif ($text =~ /^unlocktftpdir/) { # TODO: only nodes in install state should be allowed
@@ -632,12 +736,30 @@ sub do_installm_service {
                 close($conn);
             }
         }
-
+        xexit(0) if (defined $handler);
     }
-    if (open($installpidfile, "<", "/var/run/xcat/installservice.pid")) {
+
+    # Handlers accepted before the stand-down finish their work here. Without this they are
+    # orphaned into the systemd service cgroup, where anything still running at TimeoutStopSec
+    # is killed -- after its "done" was already on the wire, so the node never retries.
+    # A queued connection has had no greeting, so closing it makes the client retry, by which
+    # time the next monitor owns the port.
+    close($_->[0]) for map { @{$_} } values %installm_queue;
+    %installm_queue = ();
+    my $drain_until = time() + $installm_drain_seconds;
+    while (%installm_kids and time() < $drain_until) {
+        reap_installm_kids(0);
+        sleep 0.05 if %installm_kids;
+    }
+    if (%installm_kids) {
+        xCAT::MsgUtils->trace(0, "W", "xcatd: install monitor stopped waiting for the requests of "
+              . join(", ", sort values %installm_kids));
+    }
+
+    if (open($installpidfile, "<", $installm_pidfile)) {
         my $pid = <$installpidfile>;
         if ($pid == $$) { # if our pid, unlink the file, otherwise, we managed to see the pid after someone else created it
-            unlink("/var/run/xcat/installservice.pid");
+            unlink($installm_pidfile);
         }
         close($installpidfile);
     }
