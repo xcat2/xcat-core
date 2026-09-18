@@ -35,6 +35,10 @@ push @config, @{ xCAT::DHCP::BootPolicy->isc_client_architecture_lines(
         prefix      => 24,
     ) }, "}\n";
 
+# The PXE class names all three lease bounds rather than a maximum alone.
+# dhcpd is the only thing that can say whether it accepts them in class scope.
+push @config, @{ xCAT::DHCP::BootPolicy->isc_pxe_lease_class_lines() };
+
 my $configuration_root = -d '/etc/dhcp' ? '/etc/dhcp' : '/etc';
 my $directory = tempdir(DIR => $configuration_root, CLEANUP => 1);
 my $path = File::Spec->catfile($directory, 'dhcpd.conf');
@@ -43,6 +47,6 @@ print {$config_file} @config;
 close($config_file) or die "Cannot close $path: $!";
 
 my $status = system($dhcpd, '-t', '-cf', $path);
-is($status, 0, 'ISC accepts the s390x boot policy');
+is($status, 0, 'ISC accepts the boot policy and the PXE lease class');
 
 done_testing();
