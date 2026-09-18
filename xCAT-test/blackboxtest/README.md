@@ -144,7 +144,7 @@ step with `expect = none` fails when anything answers.
 | `dns` | `dig` | `server` `port` `name` `rrtype` `recursion` `bind` | `status` `rcode` `flags` `count` `data` `type` `ttl` `name` `question` `answers` `authority` `server` |
 | `tftp` | `tftp` | `server` `port` `path` `mode` | `ok` `size` `sha256` `text` `error` `path` `server` |
 | `http` | `curl` | `server` `port` `path` `url` `method` `header` `insecure` `bind` | `status` `size` `sha256` `text` `url` `header` `content_type` `error` `ok` |
-| `xcatreq` | TLS socket | `server` `port` `command` `element` `raw` `source_port` `callback_port` `callback_listen` `callback_reply` `callback_wait` `cert` `key` `bind` | `destiny` `kernel` `initrd` `kcmdline` `imgserver` `name` `error` `serverdone` `elements` `data` `content` `desc` `text` `handshake` `ok` `callback_seen` `callback_data` |
+| `xcatreq` | TLS socket | `server` `port` `command` `element` `raw` `source_port` `callback_port` `callback_listen` `callback_reply` `callback_wait` `cert` `key` `bind` | `destiny` `kernel` `initrd` `kcmdline` `imgserver` `name` `error` `serverdone` `elements` `data` `content` `desc` `text` `handshake` `ok` `callback_seen` `callback_data` `transport_error` |
 | `monitor` | TCP socket | `server` `port` `send` `source_port` `bind` | `greeting` `lines` `text` `ok` `closed` `error` |
 | `flowrequest` | UDP socket | `server` `port` `message` `replies` `source_port` `bind` | `replies` `count` `ok` `error` |
 | `findme` | UDP socket | `server` `port` `payload` `encoding` `source_port` `callback_listen` `callback_wait` `bind` | `callbacks` `count` `ok` `error` |

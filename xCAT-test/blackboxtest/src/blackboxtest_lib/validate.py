@@ -44,13 +44,21 @@ def scenario_problems(scenario):
         for value in step.params.values():
             check(value, bound)
 
+        rebound = set()
         if kind.family == "dhcp":
-            state = _walk_dhcp(step, state, bound, where, problems)
+            state, rebound = _walk_dhcp(step, state, bound, where, problems)
         bound[step.name] = step.type
 
         # An assertion runs after its own step has bound its reply.
         for assertion in step.assertions:
             check(assertion.value, bound)
+            # The step rebinds these to its own reply before its assertions run.
+            for name, _ in subst.references("%s %s" % (assertion.target,
+                                                       assertion.value)):
+                if name in rebound:
+                    problems.append("%s: $%s is this step's own reply here; "
+                                    "name the earlier step instead"
+                                    % (where, name))
             target = assertion.target
             if target.startswith("$"):
                 if len(subst.references(target)) != 1:
@@ -65,7 +73,10 @@ def scenario_problems(scenario):
 
 
 def _walk_dhcp(step, state, bound, where, problems):
-    """Check one DHCP step against the client state; return the next state."""
+    """Check one DHCP step against the client state.
+
+    Returns the next state and the aliases the step rebinds.
+    """
     mac = step.param("mac") or ""
     if mac and "$" not in mac and not subst.variables(mac):
         try:
@@ -78,7 +89,7 @@ def _walk_dhcp(step, state, bound, where, problems):
         legal = sorted(s for s, kind in dhcp.TRANSITIONS if kind == step.type)
         problems.append("%s: a %s step is not legal in state %s (legal in: %s)"
                         % (where, step.type, state, ", ".join(legal)))
-        return state
+        return state, set()
     for key in trans.requires:
         if not step.param(key):
             problems.append("%s: a %s step in state %s needs %s="
@@ -90,11 +101,10 @@ def _walk_dhcp(step, state, bound, where, problems):
                         % (where, expect, step.type, state,
                            ", ".join(sorted(trans.expects)) or "nothing"))
     answered = expect != "none"
-    if answered:
-        bound["reply"] = step.type
-        for name in trans.binds:
-            bound[name] = step.type
-    return dhcp.advance(state, trans, answered)
+    rebound = set(["reply"]) | set(trans.binds) if answered else set()
+    for name in rebound:
+        bound[name] = step.type
+    return dhcp.advance(state, trans, answered), rebound
 
 
 def required_variables(scenarios):

@@ -71,7 +71,8 @@ TYPES.update({
         # getcredentials nests its payload as <data><content/><desc/></data>.
         fields=["destiny", "kernel", "initrd", "kcmdline", "imgserver", "name",
                 "error", "serverdone", "elements", "data", "text", "handshake",
-                "ok", "callback_seen", "callback_data", "content", "desc"]),
+                "ok", "callback_seen", "callback_data", "content", "desc",
+                "transport_error"]),
     "monitor": StepType(
         "service", ["bind", "server", "port", "send", "source_port"],
         required=("server", "send"),

@@ -189,6 +189,9 @@ def request(server, command, port=3001, elements=(), bind=None, timeout=10.0,
     fields.update(decode_elements(text))
     fields["text"] = text
     fields["handshake"] = handshake
+    # Assertable, unlike Reply.error: a refused port and a failed TLS handshake
+    # are different answers.
+    fields["transport_error"] = error
     fields["ok"] = handshake and bool(text) and not fields.get("error")
     return Reply(kind="xcatreq", fields=fields, ok=fields["ok"], error=error,
                  sent=body.strip().replace("\n", " "))

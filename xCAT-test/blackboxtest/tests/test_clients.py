@@ -299,6 +299,16 @@ class TftpCommandTests(unittest.TestCase):
         self.assertEqual(argv[1:3], ["10.99.1.1", "6969"])
 
 
+class XcatTransportTests(unittest.TestCase):
+
+    def test_a_refused_port_is_an_assertable_transport_error(self):
+        from blackboxtest_lib import xcatc
+        reply = xcatc.request("127.0.0.1", "getdestiny", port=1, timeout=2)
+        self.assertFalse(reply.fields["handshake"])
+        self.assertIn("refused", reply.fields["transport_error"].lower())
+        self.assertNotIn("TLS handshake failed", reply.fields["transport_error"])
+
+
 class ProcessTests(unittest.TestCase):
 
     def test_a_missing_program_is_an_unsupported_host_not_a_failure(self):

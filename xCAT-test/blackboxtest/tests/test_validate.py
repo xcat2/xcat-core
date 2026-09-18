@@ -66,6 +66,20 @@ class DhcpWalk(unittest.TestCase):
                              "[step d2]\ntype = discover\n[step fetch]")
         self.assertEqual(problems(self, text), [])
 
+    def test_an_alias_the_step_rebinds_is_not_an_earlier_reply(self):
+        # A renew rebinds $lease to its own ACK before its assertions run, so
+        # `yiaddr == $lease.address` compares the reply with itself.
+        text = LEASE.replace("[step fetch]", """[step renew]
+type = renew
+server_id = $lease.server_id
+assert =
+    yiaddr == $lease.address
+    yiaddr == $request.address
+[step fetch]""")
+        found = problems(self, text)
+        self.assertEqual(len(found), 1, found)
+        self.assertIn("$lease is this step's own reply", found[0])
+
     def test_a_literal_mac_is_checked(self):
         found = problems(self, "[scenario s]\n[step d]\ntype = discover\n"
                                "mac = 02:00:zz:00:00:01\n")
