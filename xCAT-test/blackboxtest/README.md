@@ -185,16 +185,17 @@ a flag letter (`S` `O` `E` `N`); `E` sends the name in wire format.
 Reply fields: the BOOTP header (`msgtype` `xid` `yiaddr` `siaddr` `ciaddr`
 `giaddr` `chaddr` `file` `sname` `secs` `flags` `src_ip` `src_mac`), the
 aliases `address` `mac` `next_server`, any option as `54`, `option:54`,
-`opt54` or `server_id`, and three fields a client reads from two places:
+`opt54` or `server_id`, and three derived fields:
 
-- `bootfile`: option 67 when sent, else the `file` header. ISC fills the
-  header, dnsmasq answers in option 67, and firmware reads either.
+- `bootfile`: the loader, from the BOOTP `file` header only. xCAT names the
+  loader there, and the firmware it serves does not read option 67. A "no boot
+  file" check also asserts `67 absent`.
 - `dns_name`: option 81 when sent, else option 12. Kea answers option 81 in
   option 81; ISC with `ignore client-updates` sends option 12 only.
 - `fqdn_flags`: option 81's flags as letters, absent without option 81.
 
-Assert on those rather than on `file` or one option, unless the one place is
-the point. `msgtype` is `BOOTREPLY` for a reply with no option 53.
+Assert on `dns_name` rather than on option 12 or 81, unless one option is the
+point. `msgtype` is `BOOTREPLY` for a reply with no option 53.
 
 The client MAC is a random locally administered address, so the host's own
 network stack never takes a reply as its own. The tool answers ARP only for an
@@ -265,8 +266,8 @@ not ok 3 - pxe-bios-x86/bios-discover: bootfile == pxelinux.0
   ---
   expected: 'pxelinux.0'
   received: 'xcat/xnba.kpxe'
-  reply: OFFER from 10.99.0.1 (9a:3d:4f:3d:59:1b) xid=0xc45c6376 yiaddr=10.99.0.175 siaddr=10.99.0.1 file=''
-  options: {1 (subnet_mask)=255.255.255.0, 54 (server_id)=10.99.0.1, 67 (bootfile_name)=xcat/xnba.kpxe}
+  reply: OFFER from 10.99.0.1 (9a:3d:4f:3d:59:1b) xid=0xc45c6376 yiaddr=10.99.0.175 siaddr=10.99.0.1 file='xcat/xnba.kpxe'
+  options: {1 (subnet_mask)=255.255.255.0, 54 (server_id)=10.99.0.1}
   sent: DISCOVER mac=02:da:16:d0:80:dd xid=0xc45c6376 client_arch=0x0000
   attempt: 1 of 3
   ...

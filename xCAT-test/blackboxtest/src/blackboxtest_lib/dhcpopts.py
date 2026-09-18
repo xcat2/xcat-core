@@ -439,12 +439,12 @@ class DhcpReply(Reply):
         self.raw_options = raw_options
 
     def bootfile(self):
-        """What a client boots: option 67 when sent, else the `file` header.
+        """The loader a node boots: the BOOTP `file` header.
 
-        ISC fills the header, dnsmasq answers in option 67, and firmware
-        reads whichever arrived.
+        The firmware xCAT serves reads the header. A loader named only in
+        option 67 does not boot it.
         """
-        return self.options.get(67) or self.fields.get("file", "")
+        return self.fields.get("file", "")
 
     def dns_name(self):
         """The node's name: option 81 when sent, else option 12.

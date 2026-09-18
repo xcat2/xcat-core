@@ -114,11 +114,14 @@ class DhcpFields(unittest.TestCase):
         for target in ("54", "option:54", "server_id", "opt54"):
             self.assertTrue(check("%s == 10.0.0.1" % target, reply).ok, target)
 
-    def test_the_boot_file_prefers_option_67(self):
+    def test_the_boot_file_is_the_header_and_never_option_67(self):
+        # xCAT names the loader in the BOOTP header; its firmware does not
+        # read option 67.
         reply = offer({67: "grub2.aarch64"})
+        self.assertTrue(check("bootfile absent", reply).ok)
         reply.fields["file"] = "pxelinux.0"
-        self.assertTrue(check("bootfile == grub2.aarch64", reply).ok)
-        self.assertTrue(check("file == pxelinux.0", reply).ok)
+        self.assertTrue(check("bootfile == pxelinux.0", reply).ok)
+        self.assertTrue(check("67 == grub2.aarch64", reply).ok)
 
     def test_the_dns_name_prefers_option_81_and_falls_back_to_12(self):
         self.assertTrue(check("dns_name == n1", offer({12: "n1"})).ok)
