@@ -1,0 +1,4 @@
+# The tool runs in place, from a checkout and from
+# /opt/xcat/share/xcat/tools/autotest, so Python writes its caches here.
+__pycache__/
+*.pyc

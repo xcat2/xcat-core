@@ -1,0 +1,3 @@
+perl:Depends=perl:any
+misc:Depends=
+misc:Pre-Depends=

@@ -503,81 +503,40 @@ sub run_bats_tests{
 }
 
 #--------------------------------------------------------
-# Fuction name: run_dhcptest_unit_tests
-# Description:  Run the dhcptest offline checks: its Python unit tests and
-#               `dhcptest validate` over every shipped .conf. Both are
+# Fuction name: run_blackboxtest_unit_tests
+# Description:  Run the blackboxtest offline checks: its Python unit tests and
+#               `blackboxtest validate` over every shipped .conf. Both are
 #               unprivileged and touch no network. Skipped when python3 is
 #               absent rather than failing the build.
 # Attributes:
 # Return code:  0 all checks passed, 1 otherwise
 #--------------------------------------------------------
-sub run_dhcptest_unit_tests{
-    my $testdir = "$unitsrc/xCAT-test/dhcptest";
+sub run_blackboxtest_unit_tests{
+    my $testdir = "$unitsrc/xCAT-test/blackboxtest";
     if (! -d $testdir) {
-        print "[run_dhcptest_unit_tests] no dhcptest found under $testdir\n";
+        print "[run_blackboxtest_unit_tests] no blackboxtest found under $testdir\n";
         return 0;
     }
     runcmd("which python3 2>/dev/null");
     if($::RUNCMD_RC){
-        print "[run_dhcptest_unit_tests] python3 is not installed, skipping\n";
+        print "[run_blackboxtest_unit_tests] python3 is not installed, skipping\n";
         return 0;
     }
 
     my $cmd = "cd $testdir && python3 -m unittest discover -s tests"
-            . " && python3 src/dhcptest validate conf/*.conf";
-    print "[run_dhcptest_unit_tests] running $cmd\n";
+            . " && python3 src/blackboxtest validate conf/*/*.conf";
+    print "[run_blackboxtest_unit_tests] running $cmd\n";
     my @output = runcmd("$cmd");
     print Dumper \@output;
     if($::RUNCMD_RC){
-        print RED "[run_dhcptest_unit_tests] $cmd ....[Failed]\n";
-        $check_result_str .= "> **DHCPTEST TESTS Failed** : Please click ``Details`` label in ``Merge pull request`` box for detailed information\n";
+        print RED "[run_blackboxtest_unit_tests] $cmd ....[Failed]\n";
+        $check_result_str .= "> **BLACKBOXTEST TESTS Failed** : Please click ``Details`` label in ``Merge pull request`` box for detailed information\n";
         print $check_result_str;
         return 1;
     }
 
-    print "[run_dhcptest_unit_tests] $cmd ....[Pass]\n";
-    $check_result_str .= "> **DHCPTEST TESTS Successful**\n";
-    print $check_result_str;
-    return 0;
-}
-
-#--------------------------------------------------------
-# Fuction name: run_provtest_unit_tests
-# Description:  Run the provtest offline checks: its Python unit tests and
-#               `provtest validate` over every shipped .conf. Both are
-#               unprivileged and touch no network. Skipped when python3 is
-#               absent rather than failing the build.
-# Attributes:
-# Return code:  0 all checks passed, 1 otherwise
-#--------------------------------------------------------
-sub run_provtest_unit_tests{
-    my $testdir = "$unitsrc/xCAT-test/provtest";
-    if (! -d $testdir) {
-        print "[run_provtest_unit_tests] no provtest found under $testdir\n";
-        return 0;
-    }
-    runcmd("which python3 2>/dev/null");
-    if($::RUNCMD_RC){
-        print "[run_provtest_unit_tests] python3 is not installed, skipping\n";
-        return 0;
-    }
-
-    # Discovered from inside tests/ because that is where their own context
-    # module puts the package on the path.
-    my $cmd = "cd $testdir/tests && python3 -m unittest discover -s . -p 'test_*.py'"
-            . " && cd $testdir && python3 src/provtest validate conf/*.conf";
-    print "[run_provtest_unit_tests] running $cmd\n";
-    my @output = runcmd("$cmd");
-    print Dumper \@output;
-    if($::RUNCMD_RC){
-        print RED "[run_provtest_unit_tests] $cmd ....[Failed]\n";
-        $check_result_str .= "> **PROVTEST TESTS Failed** : Please click ``Details`` label in ``Merge pull request`` box for detailed information\n";
-        print $check_result_str;
-        return 1;
-    }
-
-    print "[run_provtest_unit_tests] $cmd ....[Pass]\n";
-    $check_result_str .= "> **PROVTEST TESTS Successful**\n";
+    print "[run_blackboxtest_unit_tests] $cmd ....[Pass]\n";
+    $check_result_str .= "> **BLACKBOXTEST TESTS Successful**\n";
     print $check_result_str;
     return 0;
 }
@@ -759,7 +718,7 @@ sub run_dhcp_wire_test{
     }
 
     my $conf_file = write_regression_conf("dhcp-wire.conf", 0);
-    my $fixture = "/opt/xcat/share/xcat/tools/autotest/testcase/dhcptest/dhcpfixture.sh";
+    my $fixture = "/opt/xcat/share/xcat/tools/autotest/testcase/blackboxtest/dhcpfixture.sh";
     unless(-f $fixture){
         print RED "[run_dhcp_wire_test] $fixture is missing, so the wire cases cannot be run per backend\n";
         $check_result_str .= "> **DHCP WIRE TEST Failed**: $fixture is not installed\n";
@@ -861,7 +820,7 @@ sub run_prov_wire_test{
         return 0;
     }
 
-    my $fixture = "/opt/xcat/share/xcat/tools/autotest/testcase/provtest/provfixture.sh";
+    my $fixture = "/opt/xcat/share/xcat/tools/autotest/testcase/blackboxtest/provfixture.sh";
     unless(-f $fixture){
         print RED "[run_prov_wire_test] $fixture is missing, so the wire cases cannot be run\n";
         $check_result_str .= "> **PROVISION WIRE TEST Failed**: $fixture is not installed\n";
@@ -1078,15 +1037,15 @@ if($rst){
 mark_time("run_fast_regression_test");
 
 #The provisioning wire cases come next: after the ci_test set, and before the
-#DHCP phases, which is the order a booting node meets them in. Their offline
+#DHCP phase, which is the order a booting node meets them in. The offline
 #checks run first, so a scenario file that does not parse is reported as that.
-print GREEN "\n------Running xCAT-test provtest checks ------\n";
-$rst = run_provtest_unit_tests();
+print GREEN "\n------Running xCAT-test blackboxtest checks ------\n";
+$rst = run_blackboxtest_unit_tests();
 if($rst){
-    print RED "Run of xCAT-test provtest checks failed\n";
+    print RED "Run of xCAT-test blackboxtest checks failed\n";
     exit $rst;
 }
-mark_time("run_provtest_unit_tests");
+mark_time("run_blackboxtest_unit_tests");
 
 print GREEN "\n------Running provisioning on-wire test ------\n";
 $rst = run_prov_wire_test();
@@ -1095,16 +1054,6 @@ if($rst){
     exit $rst;
 }
 mark_time("run_prov_wire_test");
-
-#The dhcptest offline checks run last: they exercise the source tree rather than
-#the installed copy, and nothing else in the run depends on them.
-print GREEN "\n------Running xCAT-test dhcptest checks ------\n";
-$rst = run_dhcptest_unit_tests();
-if($rst){
-    print RED "Run of xCAT-test dhcptest checks failed\n";
-    exit $rst;
-}
-mark_time("run_dhcptest_unit_tests");
 
 #The DHCP wire cases go last, once per backend installed. They are the only
 #phase that reconfigures the DHCP server and restarts the daemon, so nothing

@@ -7,7 +7,7 @@ language:
 | --------- | -------- | ------ |
 | Perl unit tests | `xCAT-test/unit/*.t` | `prove -r xCAT-test/unit` |
 | Shell unit tests | `xCAT-test/bats/*.bats` | `bats -r xCAT-test/bats` |
-| DHCP wire tests | `xCAT-test/dhcptest/` | `python3 -m unittest discover -s tests`, then `dhcptest run -i <nic> <conf>` |
+| Black-box service tests | `xCAT-test/blackboxtest/` | `python3 -m unittest discover -s tests`, then `blackboxtest run <conf>` on a management node |
 | CLI functional tests | `xCAT-test/autotest/testcase/` and `xCAT-test/autotest/bundle/` | `xcattest -f <cluster.conf> -t <case>` or `xcattest -f <cluster.conf> -b <bundle>` |
 
 Use Perl `.t` tests for Perl modules, Perl scripts, templates, and repository
@@ -18,11 +18,11 @@ commands.
 Shell behavior should not be tested by Perl tests that grep shell source. Put
 those tests under `xCAT-test/bats` instead.
 
-`dhcptest` is the odd one out: its Python unit tests and `dhcptest validate`
-run offline like the others, but its point is the third column -- driving real
-DHCP transactions on a provisioning NIC and asserting on what came back. It
-talks to the server only over the wire, so it is agnostic to which DHCP
-implementation is answering and to xCAT itself.
+`blackboxtest` is the odd one out: its Python unit tests and `blackboxtest
+validate` run offline like the others, but its point is the third column --
+asking a management node what a booting node asks (DHCP, DNS, TFTP, HTTP,
+xcatd) and asserting on the answers. It talks to the services only as a client,
+so it does not depend on which DHCP server answers or on the xCAT database.
 
-See `unit/README.md`, `bats/README.md` and `dhcptest/README.md` for the
+See `unit/README.md`, `bats/README.md` and `blackboxtest/README.md` for the
 detailed rules for each suite.
