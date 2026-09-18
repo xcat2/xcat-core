@@ -164,7 +164,8 @@ class FakeWire(object):
     def send(self, frame):
         self.sent += 1
 
-    def collect(self, session, deadline):
+    def collect(self, session, deadline, stop=()):
+        self.stop = stop
         return self.answers.pop(0) if self.answers else []
 
     def close(self):
@@ -238,6 +239,16 @@ class StepLoop(unittest.TestCase):
             _, extras, _ = dhcp.run_step(step, session, subst.Context(), 0.1, 2)
             self.assertEqual(extras["met"], met)
             self.assertEqual(session.state, dhcp.INIT)
+
+    def test_a_step_stops_listening_once_its_reply_arrived(self):
+        # Unless it counts the servers that answered, or proves silence.
+        cases = (("", {"OFFER"}), ("assert =\n    offers == 1\n", set()),
+                 ("expect = none\n", set()))
+        for extra, stop in cases:
+            step, = self.step("[step d]\ntype = discover\n" + extra)
+            session = dhcp.Session(FakeWire([reply("OFFER")]))
+            dhcp.run_step(step, session, subst.Context(), 0.1, 1)
+            self.assertEqual(set(session.wire.stop), stop, extra)
 
     def test_a_step_mac_replaces_the_random_one(self):
         step, = self.step("[step d]\ntype = discover\nmac = 02-00-00-00-00-AA\n")

@@ -228,8 +228,9 @@ class Wire(object):
     def send(self, frame):
         self.socket.send(frame)
 
-    def collect(self, session, deadline):
-        """Every reply to this session's xid until `deadline`.
+    def collect(self, session, deadline, stop=()):
+        """Every reply to this session's xid until `deadline`, or until a
+        reply of a type in `stop` arrives.
 
         A reply of an unexpected type is kept, so a NAK where an ACK was
         wanted is reported as a NAK rather than as a timeout.
@@ -237,7 +238,8 @@ class Wire(object):
         found = []
         while True:
             remaining = deadline - time.monotonic()
-            if remaining <= 0 or not select.select([self.socket], [], [], remaining)[0]:
+            if remaining <= 0 or any(r.fields["msgtype"] in stop for r in found) \
+                    or not select.select([self.socket], [], [], remaining)[0]:
                 return found
             frame = self.socket.recv(2048)
             if frame is None:
@@ -293,7 +295,8 @@ def run_step(step, session, context, timeout, retries):
         sent = describe(step, session, trans, context)
         session.wire.send(build_frame(step, session, trans, context,
                                       session.wire.scapy))
-        replies = session.wire.collect(session, time.monotonic() + timeout)
+        replies = session.wire.collect(session, time.monotonic() + timeout,
+                                       stop_on(step, wanted))
         if any(r.fields["msgtype"] in wanted for r in replies) \
                 or (replies and not wanted):
             break
@@ -326,6 +329,18 @@ def run_step(step, session, context, timeout, retries):
     session.state = advance(session.state, trans,
                             bool(wanted) and chosen is not None, msgtype)
     return chosen, extras, sent
+
+
+def stop_on(step, wanted):
+    """The reply types that end a step's listening window early.
+
+    A step that counts `offers` must hear every server, so it listens for the
+    whole timeout. So does `expect = none`, where silence is the result.
+    """
+    if any("offers" in (a.target, a.value)
+           for a in step.assertions):
+        return frozenset()
+    return wanted
 
 
 def distinct_servers(replies):
