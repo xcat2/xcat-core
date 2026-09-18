@@ -12,6 +12,7 @@ running them needs a server, and that is the wire suite's job.
 import os
 import shutil
 import tempfile
+import time
 import unittest
 
 import context  # noqa: F401
@@ -300,6 +301,28 @@ class TftpCommandTests(unittest.TestCase):
 
 
 class XcatTransportTests(unittest.TestCase):
+
+    def test_a_listener_collects_a_late_second_callback(self):
+        import socket
+        import threading
+        from blackboxtest_lib import xcatc
+        listener = xcatc.Listener("127.0.0.1", 0).start()
+        port = listener._socket.getsockname()[1]
+
+        def call(delay, text):
+            time.sleep(delay)
+            with socket.create_connection(("127.0.0.1", port)) as conn:
+                conn.sendall(text)
+
+        callers = [threading.Thread(target=call, args=(0.1, b"processing")),
+                   threading.Thread(target=call, args=(0.8, b"processed"))]
+        for caller in callers:
+            caller.start()
+        listener.wait(1.5)
+        received = listener.stop()          # as request() and findme() do
+        for caller in callers:
+            caller.join()
+        self.assertEqual(received, ["processing", "processed"])
 
     def test_a_refused_port_is_an_assertable_transport_error(self):
         from blackboxtest_lib import xcatc

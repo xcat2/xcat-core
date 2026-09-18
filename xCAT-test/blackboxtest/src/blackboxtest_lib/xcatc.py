@@ -131,10 +131,14 @@ class Listener(object):
         return self.received
 
     def wait(self, seconds):
-        """Block until something arrives, or the time runs out."""
-        deadline = time.time() + float(seconds)
-        while time.time() < deadline and not self.received:
-            time.sleep(0.05)
+        """Collect for the whole window.
+
+        xcatd calls a discovering node back twice, `processing` and then
+        `processed`, and a scenario counts the callbacks. A listener closed at
+        the first one misses the second, and the next scenario's listener on
+        the same port receives it.
+        """
+        time.sleep(float(seconds))
         return self.received
 
 
