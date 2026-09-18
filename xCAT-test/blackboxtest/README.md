@@ -240,7 +240,9 @@ chain clauses (`P-nn`). Each scenario's description names its clause.
 | `prov/ordering.conf` | an unreachable master, a missing PTR, a replaced state |
 
 A node has one netboot method, so the four `tftp-*.conf` files are
-alternatives: the fixture runs the one the node is defined with.
+alternatives: the fixture runs the one the node is defined with. The fixture
+also defines a grub2 node for ppc64le and one for riscv64 beside the x86_64
+ones, as a mixed cluster has, and runs `tftp-grub2.conf` for each.
 
 Not covered: the `getcredentials` form that asks xcatd to sign a CSR, and an
 operating system install. The install tree is fabricated; the scenarios fetch

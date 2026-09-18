@@ -72,6 +72,14 @@ PTB_NODE=provtestpb
 PTB_IP=10.99.1.15
 PTB_MAC=02:00:dc:11:01:15
 
+# A mixed cluster boots every architecture from this node. One grub2 node per
+# architecture whose loader xCAT ships, set with plain grub2 over TFTP: $NODE
+# covers grub2-http. Fields: node, address, MAC, architecture.
+GRUB_MATRIX=(
+    "provtestgp 10.99.1.16 02:00:dc:11:01:16 ppc64le"
+    "provtestgr 10.99.1.17 02:00:dc:11:01:17 riscv64"
+)
+
 # An address no node holds and no PTR names. Every "unknown client" scenario is
 # this address and nothing else.
 UNKNOWN_IP=10.99.1.201
@@ -111,6 +119,8 @@ OSIMAGE=provtest-install
 PTB_OSIMAGE=provtest-install-ppc64
 NODE_ARCH=x86_64
 PTB_ARCH=ppc64le
+RV_ARCH=riscv64
+RV_OSIMAGE=provtest-install-riscv64
 
 # What nodeset is told to do, twice. `shell` not `boot`: only a genesis destiny
 # writes destiny= on the kernel command line, which is what P-75 asserts.
@@ -653,8 +663,10 @@ do_setup() {
     fabricate_template "$tmpl"
     fabricate_tree "$NODE_ARCH"
     fabricate_tree "$PTB_ARCH"
+    fabricate_tree "$RV_ARCH"
     define_osimage "$OSIMAGE" "$NODE_ARCH" "$tmpl"
     define_osimage "$PTB_OSIMAGE" "$PTB_ARCH" "$tmpl"
+    define_osimage "$RV_OSIMAGE" "$RV_ARCH" "$tmpl"
 
     # hostnames= is what becomes the CNAME P-04 asks for, by way of /etc/hosts
     # and makedns.
@@ -668,6 +680,12 @@ do_setup() {
     define_node "$BOOT_NODE" "$BOOT_IP" "$BOOT_MAC" "$NODE_ARCH" pxe "$OSIMAGE"
     define_node "$XNBA_NODE" "$XNBA_IP" "$XNBA_MAC" "$NODE_ARCH" xnba "$OSIMAGE"
     define_node "$PTB_NODE" "$PTB_IP" "$PTB_MAC" "$PTB_ARCH" petitboot "$PTB_OSIMAGE"
+    local entry name ip mac arch matrix_nodes=""
+    for entry in "${GRUB_MATRIX[@]}"; do
+        read -r name ip mac arch <<< "$entry"
+        define_node "$name" "$ip" "$mac" "$arch" grub2 "$(matrix_osimage "$arch")"
+        matrix_nodes="$matrix_nodes,$name"
+    done
 
     # The master gets a definition so P-07 has a name to resolve. Never
     # provisioned and never nodeset.
@@ -675,7 +693,7 @@ do_setup() {
         || die "cannot define $MASTER_NODE"
     echo "$MASTER_NODE" >> "$STATE/nodes"
 
-    makehosts "$MASTER_NODE,$NODE,$PXE_NODE,$BOOT_NODE,$XNBA_NODE,$PTB_NODE" \
+    makehosts "$MASTER_NODE,$NODE,$PXE_NODE,$BOOT_NODE,$XNBA_NODE,$PTB_NODE$matrix_nodes" \
         || die "makehosts failed"
     echo done > "$STATE/hostsadded"
 
@@ -772,6 +790,21 @@ node_config_rel() {
     echo "${path#"$tftp"/}"
 }
 
+# The osimage and the grub2 loader of one architecture in GRUB_MATRIX. grub2.pm
+# names every ppc64 variant's loader grub2.ppc (grub2.pm:306).
+matrix_osimage() {
+    case "$1" in
+        ppc64*) echo "$PTB_OSIMAGE" ;;
+        *)      echo "$RV_OSIMAGE" ;;
+    esac
+}
+matrix_loader() {
+    case "$1" in
+        ppc64*) echo boot/grub2/grub2.ppc ;;
+        *)      echo "boot/grub2/grub2.$1" ;;
+    esac
+}
+
 # Generate the artefacts a node fetches and the records that decide whose they
 # are. Separate from setup so run-ordering can regenerate after changing one
 # thing. nodeset is run for the files it writes, not the status it exits with:
@@ -790,12 +823,17 @@ do_generate() {
     generated xnba "$XNBA_NODE" "$XNBA_IP" \
         || die "nodeset wrote no xnba configuration for $XNBA_NODE"
 
-    # The ppc64le node is set separately: a management node that cannot generate
-    # for another architecture skips the petitboot stage instead of failing
-    # setup.
     nodeset "$PTB_NODE" osimage="$PTB_OSIMAGE" >/dev/null 2>&1
     generated petitboot "$PTB_NODE" "$PTB_IP" \
-        || say "no petitboot configuration was written for $PTB_NODE; the petitboot stage will say so"
+        || die "nodeset wrote no petitboot configuration for $PTB_NODE"
+
+    local entry name ip mac arch
+    for entry in "${GRUB_MATRIX[@]}"; do
+        read -r name ip mac arch <<< "$entry"
+        nodeset "$name" osimage="$(matrix_osimage "$arch")" >/dev/null 2>&1
+        generated grub2 "$name" "$ip" \
+            || die "nodeset wrote no grub2 configuration for the $arch node $name; is $(tftpdir)/$(matrix_loader "$arch") installed?"
+    done
 
     nodeset "$BOOT_NODE" boot >/dev/null 2>&1
     generated pxe "$BOOT_NODE" "$BOOT_IP" \
@@ -922,6 +960,22 @@ do_run_tftp() {
         "${COMMON[@]}" \
         --set node="$XNBA_NODE" --set httpport="$port" \
         conf/prov/tftp-xnba.conf || rc=1
+
+    # The same grub2 chain for each architecture of a mixed cluster: its own
+    # loader, config, kernel and initrd. tftp-escape does not depend on the node.
+    local entry name ip mac arch
+    for entry in "${GRUB_MATRIX[@]}"; do
+        read -r name ip mac arch <<< "$entry"
+        say "grub2 chain for $name ($arch)"
+        prov_run -s grub2-binary -s grub2-node-config -s grub2-config-by-mac \
+            -s grub2-kernel-and-initrd -s dhcp-named-file-must-exist \
+            "${COMMON[@]}" \
+            --set node="$name" --set hexip="$(hex_ip "$ip")" \
+            --set macdashes="$(dashed_mac "$mac")" --set mac="$mac" \
+            --set loader="$(matrix_loader "$arch")" --set bootfile="boot/grub2/grub2-$name" \
+            --set master="$SRV_IP" --set xcatport="$XCATPORT" --set destiny="$DESTINY" \
+            conf/prov/tftp-grub2.conf || rc=1
+    done
 
     # A mixed cluster boots ppc64 nodes from an x86 management node.
     prov_run \
@@ -1190,7 +1244,14 @@ do_teardown() {
 
     # mkinstall renders the node's kickstart here and nothing records it, so it
     # is removed by name. Guarded on a non-empty name: this is a glob.
-    for name in "$NODE" "$PXE_NODE" "$BOOT_NODE" "$XNBA_NODE" "$PTB_NODE"; do
+    local entry ip mac arch matrix_names="" matrix_ips=""
+    for entry in "${GRUB_MATRIX[@]}"; do
+        read -r name ip mac arch <<< "$entry"
+        matrix_names="$matrix_names $name"
+        matrix_ips="$matrix_ips $ip"
+        rm -f "$(tftpdir)/boot/grub2/grub.cfg-01-$(dashed_mac "$mac")"
+    done
+    for name in "$NODE" "$PXE_NODE" "$BOOT_NODE" "$XNBA_NODE" "$PTB_NODE" $matrix_names; do
         [ -n "$name" ] && rm -rf "$(installdir)/autoinst/$name" "$(installdir)/autoinst/$name".*
     done
 
@@ -1202,18 +1263,18 @@ do_teardown() {
     tftp=$(tftpdir)
     # Guarded: the one recursive removal here must not become the whole
     # directory if a name ever arrives empty.
-    for name in "$OSIMAGE" "$PTB_OSIMAGE"; do
+    for name in "$OSIMAGE" "$PTB_OSIMAGE" "$RV_OSIMAGE"; do
         [ -n "$name" ] && rm -rf "$tftp/xcat/osimage/$name"
     done
     # One node produces several files: xnba writes .uefi and .elilo beside the
     # script, grub2 writes both <node> and grub2-<node>. The globs are anchored
     # on a node name this fixture defined.
-    for name in "$NODE" "$PXE_NODE" "$BOOT_NODE" "$XNBA_NODE" "$PTB_NODE"; do
+    for name in "$NODE" "$PXE_NODE" "$BOOT_NODE" "$XNBA_NODE" "$PTB_NODE" $matrix_names; do
         rm -f "$tftp/pxelinux.cfg/$name" "$tftp/petitboot/$name" \
               "$tftp/xcat/xnba/nodes/$name" "$tftp/xcat/xnba/nodes/$name".* \
               "$tftp/boot/grub2/$name" "$tftp/boot/grub2/grub2-$name"
     done
-    for path in "$NODE_IP" "$PXE_IP" "$BOOT_IP" "$XNBA_IP" "$PTB_IP"; do
+    for path in "$NODE_IP" "$PXE_IP" "$BOOT_IP" "$XNBA_IP" "$PTB_IP" $matrix_ips; do
         name=$(hex_ip "$path")
         rm -f "$tftp/pxelinux.cfg/$name" "$tftp/boot/grub2/grub.cfg-$name" \
               "$tftp/$name"
