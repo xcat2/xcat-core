@@ -18,51 +18,42 @@ use XCAT::Test::File qw(repo_path);
 
 my $builder = repo_path('xCAT-genesis-builder/builddeb-genesis-base');
 my $module  = repo_path('xCAT-genesis-builder/dracut_105/ubuntu/module-setup.sh');
-plan skip_all => 'builddeb-genesis-base not found' unless -f $builder;
-plan skip_all => 'ubuntu module-setup.sh not found' unless -f $module;
+die "builddeb-genesis-base not found\n" unless -f $builder;
+die "ubuntu module-setup.sh not found\n" unless -f $module;
 plan tests => 9;
 
-# Mandatory commands a minimal Ubuntu server root does NOT already provide, and the package
-# that supplies each one on every release xCAT builds for.
-my %PACKAGE_FOR = (
-    dhclient  => 'isc-dhcp-client',
-    ifenslave => 'ifenslave',
+# Mandatory commands a minimal Ubuntu server root does NOT already provide, and the packages
+# that supply each one. hwclock has two names: it left util-linux for util-linux-extra in
+# 23.04, and the build root asks apt which name this release carries.
+my %PACKAGES_FOR = (
+    dhclient  => ['isc-dhcp-client'],
+    ifenslave => ['ifenslave'],
+    hwclock   => [ 'util-linux-extra', 'util-linux' ],
 );
-
-# hwclock is not in that list because the package that carries it moved. Measured on the
-# four Ubuntu management nodes: focal and jammy have it in util-linux, which is essential
-# and always in the build root, and no util-linux-extra exists to install; noble and
-# resolute have it in util-linux-extra. util-linux only Suggests that package, and this
-# build passes --no-install-recommends, so the releases that split it must name it and the
-# releases that did not must not.
 
 my %mandatory = map { $_ => 1 } mandatory_commands($module);
 my @packages  = required_packages($builder);
 
-for my $command (sort keys %PACKAGE_FOR) {
+for my $command (sort keys %PACKAGES_FOR) {
+    my @provider = @{ $PACKAGES_FOR{$command} };
     ok($mandatory{$command}, "the Ubuntu dracut module installs '$command' unconditionally");
-    ok(scalar(grep { $_ eq $PACKAGE_FOR{$command} } @packages),
-       "the build root installs $PACKAGE_FOR{$command}, which provides '$command'");
+    my @named = grep { my $p = $_; grep { $_ eq $p } @packages } @provider;
+    ok(scalar @named,
+       "the build root installs @{[ join ' or ', @provider ]}, which provides '$command'");
 }
 
 # doxcat asks dhclient for the provisioning lease.
 ok($mandatory{dhclient} && scalar(grep { $_ eq 'isc-dhcp-client' } @packages),
    'the Genesis image can obtain a DHCP lease');
 
-ok($mandatory{hwclock}, "the Ubuntu dracut module installs 'hwclock' unconditionally");
+# dracut_install is silent about a missing command, so the payload needs its own gate.
+# xCAT-genesis-base.spec runs the same verifier on the EL path.
+my $text = do { open my $fh, '<', $builder or die "$builder: $!"; local $/; <$fh> };
+like($text, qr{verify-genesis-payload}, 'builddeb-genesis-base verifies the payload it packages');
 
-# Naming a package apt cannot locate fails the whole install, and the script runs under
-# set -e, so an unconditional util-linux-extra stops the build on focal and jammy.
-ok(!scalar(grep { $_ eq 'util-linux-extra' } @packages),
-   'the unconditional list does not name util-linux-extra');
-
-# What the script does instead: keep a package only where apt has a candidate for it.
-{
-    is_deeply(optional_packages($builder, 'util-linux-extra', 0), ['util-linux-extra'],
-        'a release that carries util-linux-extra installs it');
-    is_deeply(optional_packages($builder, 'util-linux-extra', 1), [],
-        'a release without it installs nothing in its place');
-}
+# The image belongs to the release whose kernel it carries, so the builder must refuse a
+# root of any other release.
+like($text, qr{--expect-codename}, 'builddeb-genesis-base takes the release it is building for');
 
 # An absolute path in the install() output is a data file, not a command.
 sub mandatory_commands {
@@ -91,18 +82,9 @@ BASH
     return @names;
 }
 
-# Run the script's own selector with apt-cache shadowed, so the decision is exercised
-# rather than read. $rc is what the shadow returns: 0 for a release that has the package.
-sub optional_packages {
-    my ($path, $package, $rc) = @_;
-    my $text = do { open my $fh, '<', $path or die "$path: $!"; local $/; <$fh> };
-    my ($block) = $text =~ /^(optional_packages\(\)\s*\{.*?^\})/ms;
-    BAIL_OUT("no optional_packages() in $path") unless $block;
-    my $out = qx{bash -c 'set -u; apt-cache() { return $rc; }; $block; optional_packages $package' 2>/dev/null};
-    return [ grep { length } split /\s+/, ($out // '') ];
-}
-
 # Evaluate the assignment rather than parse it, so the list is the value the script uses.
+# add_first_available names the alternatives for a package that was renamed between releases,
+# so its candidates count too.
 sub required_packages {
     my ($path) = @_;
     my $text = do { open my $fh, '<', $path or die "$path: $!"; local $/; <$fh> };
@@ -111,5 +93,7 @@ sub required_packages {
     my $out = qx{bash -c 'set -u; $block; printf "%s\\n" \$REQUIRED_PACKAGES' 2>/dev/null};
     my @packages = grep { length } split /\s+/, ($out // '');
     die("REQUIRED_PACKAGES in $path evaluated to nothing") unless @packages;
+    push @packages, grep { length } split /\s+/, $1
+        while $text =~ /^add_first_available\s+(.+)$/mg;
     return @packages;
 }
