@@ -9,8 +9,7 @@
 # Each wire case is one script, so its teardown runs from a trap and the machine
 # is left serving its own config even when an assertion fails.
 #
-# A case that cannot run says so and passes. Read a pass as coverage only when
-# the log shows the ok lines.
+# A case that cannot run fails, and says what is missing.
 
 start:blackbox_dhcp_provision_vs_discovery
 description:A defined node gets its reservation and an unknown one gets a pool address
@@ -32,10 +31,8 @@ os:Linux
 cmd:#!/bin/bash
     set -u
     FIX=/opt/xcat/share/xcat/tools/autotest/testcase/blackboxtest/dhcpfixture.sh
-    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
-    # machine is dirty or is a live cluster -- which must fail, or one unfinished
-    # teardown would make every later run here green without running anything.
-    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    # A machine that cannot run the case fails it: a pass must mean it ran.
+    "$FIX" check || exit 1
     trap '"$FIX" teardown' EXIT
     "$FIX" setup || exit 1
     "$FIX" run || exit 1
@@ -53,10 +50,8 @@ os:Linux
 cmd:#!/bin/bash
     set -u
     FIX=/opt/xcat/share/xcat/tools/autotest/testcase/blackboxtest/dhcpfixture.sh
-    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
-    # machine is dirty or is a live cluster -- which must fail, or one unfinished
-    # teardown would make every later run here green without running anything.
-    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    # A machine that cannot run the case fails it: a pass must mean it ran.
+    "$FIX" check || exit 1
     trap '"$FIX" teardown' EXIT
     "$FIX" setup || exit 1
     "$FIX" run-arch || exit 1
@@ -77,10 +72,8 @@ os:Linux
 cmd:#!/bin/bash
     set -u
     FIX=/opt/xcat/share/xcat/tools/autotest/testcase/blackboxtest/dhcpfixture.sh
-    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
-    # machine is dirty or is a live cluster -- which must fail, or one unfinished
-    # teardown would make every later run here green without running anything.
-    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    # A machine that cannot run the case fails it: a pass must mean it ran.
+    "$FIX" check || exit 1
     trap '"$FIX" teardown' EXIT
     "$FIX" setup || exit 1
     "$FIX" run-netboot || exit 1
@@ -100,10 +93,8 @@ os:Linux
 cmd:#!/bin/bash
     set -u
     FIX=/opt/xcat/share/xcat/tools/autotest/testcase/blackboxtest/dhcpfixture.sh
-    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
-    # machine is dirty or is a live cluster -- which must fail, or one unfinished
-    # teardown would make every later run here green without running anything.
-    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    # A machine that cannot run the case fails it: a pass must mean it ran.
+    "$FIX" check || exit 1
     trap '"$FIX" teardown' EXIT
     "$FIX" setup || exit 1
     rc=0
@@ -128,10 +119,8 @@ os:Linux
 cmd:#!/bin/bash
     set -u
     FIX=/opt/xcat/share/xcat/tools/autotest/testcase/blackboxtest/dhcpfixture.sh
-    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
-    # machine is dirty or is a live cluster -- which must fail, or one unfinished
-    # teardown would make every later run here green without running anything.
-    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    # A machine that cannot run the case fails it: a pass must mean it ran.
+    "$FIX" check || exit 1
     trap '"$FIX" teardown' EXIT
     "$FIX" setup || exit 1
     rc=0
@@ -153,10 +142,8 @@ os:Linux
 cmd:#!/bin/bash
     set -u
     FIX=/opt/xcat/share/xcat/tools/autotest/testcase/blackboxtest/dhcpfixture.sh
-    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
-    # machine is dirty or is a live cluster -- which must fail, or one unfinished
-    # teardown would make every later run here green without running anything.
-    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    # A machine that cannot run the case fails it: a pass must mean it ran.
+    "$FIX" check || exit 1
     trap '"$FIX" teardown' EXIT
     "$FIX" setup || exit 1
     rc=0
@@ -177,10 +164,8 @@ os:Linux
 cmd:#!/bin/bash
     set -u
     FIX=/opt/xcat/share/xcat/tools/autotest/testcase/blackboxtest/dhcpfixture.sh
-    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
-    # machine is dirty or is a live cluster -- which must fail, or one unfinished
-    # teardown would make every later run here green without running anything.
-    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    # A machine that cannot run the case fails it: a pass must mean it ran.
+    "$FIX" check || exit 1
     trap '"$FIX" teardown' EXIT
     "$FIX" setup || exit 1
     "$FIX" run-chainload || exit 1
@@ -194,10 +179,8 @@ os:Linux
 cmd:#!/bin/bash
     set -u
     FIX=/opt/xcat/share/xcat/tools/autotest/testcase/blackboxtest/dhcpfixture.sh
-    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
-    # machine is dirty or is a live cluster -- which must fail, or one unfinished
-    # teardown would make every later run here green without running anything.
-    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    # A machine that cannot run the case fails it: a pass must mean it ran.
+    "$FIX" check || exit 1
     trap '"$FIX" teardown' EXIT
     "$FIX" setup || exit 1
     "$FIX" run-lease || exit 1
@@ -215,10 +198,8 @@ os:Linux
 cmd:#!/bin/bash
     set -u
     FIX=/opt/xcat/share/xcat/tools/autotest/testcase/blackboxtest/dhcpfixture.sh
-    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
-    # machine is dirty or is a live cluster -- which must fail, or one unfinished
-    # teardown would make every later run here green without running anything.
-    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    # A machine that cannot run the case fails it: a pass must mean it ran.
+    "$FIX" check || exit 1
     trap '"$FIX" teardown' EXIT
     "$FIX" setup || exit 1
     "$FIX" run-adoption || exit 1
@@ -232,10 +213,8 @@ os:Linux
 cmd:#!/bin/bash
     set -u
     FIX=/opt/xcat/share/xcat/tools/autotest/testcase/blackboxtest/dhcpfixture.sh
-    # 0 run, 1 this machine cannot run the wire cases and the case passes, 2 the
-    # machine is dirty or is a live cluster -- which must fail, or one unfinished
-    # teardown would make every later run here green without running anything.
-    "$FIX" check || { [ $? -eq 1 ] && exit 0; exit 1; }
+    # A machine that cannot run the case fails it: a pass must mean it ran.
+    "$FIX" check || exit 1
     trap '"$FIX" teardown' EXIT
     "$FIX" setup || exit 1
     "$FIX" run || exit 1

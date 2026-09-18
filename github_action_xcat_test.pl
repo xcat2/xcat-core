@@ -766,8 +766,11 @@ sub run_dhcp_wire_test{
     }
 
     my $backend_str = join(" and ", @backends);
+    # Both backends are shipped, so a pass that served with one of them says
+    # nothing about the other.
     if(@backends < 2){
-        print "[run_dhcp_wire_test] WARNING: only $backend_str is installed here, so the backends were not compared\n";
+        print RED "[run_dhcp_wire_test] only $backend_str is installed here, so the backends were not compared\n";
+        push @{$counts{failed}}, "only-$backend_str-installed";
     }
 
     # Case runs rather than cases: each case is run once per backend.  Counted
@@ -779,7 +782,7 @@ sub run_dhcp_wire_test{
         print RED "[run_dhcp_wire_test] $missing case run(s) produced no verdict\n";
         push @{$counts{failed}}, "$missing-without-a-verdict";
     }
-    if($counts{fail} or $missing){
+    if($counts{fail} or $missing or @backends < 2){
         my $log_str = join(",", @{$counts{failed}});
         $check_result_str .= "> **DHCP WIRE TEST Failed** ($backend_str): Totalrun $casenum Passed $counts{pass} Failed $counts{fail} FailedCases: $log_str.  Please click ``Details`` label in ``Merge pull request`` box for detailed information\n";
         print $check_result_str;

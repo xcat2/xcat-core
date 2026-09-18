@@ -133,11 +133,8 @@ TOOL=/opt/xcat/share/xcat/tools/autotest/blackboxtest
 say()  { echo "dhcpfixture: $*"; }
 die()  { echo "dhcpfixture: $*" >&2; exit 1; }
 
-# Two different reasons not to run, and they must not be confused. A missing
-# tool is a machine that cannot run the cases, and the case passes; leftovers
-# from a killed run, or a cluster with nodes of its own, are refusals -- cases0
-# fails on those, because skipping them would make every later run on the same
-# machine green without running anything.
+# Both fail the case. skip: this machine lacks a tool the cases need. refuse:
+# the machine holds this fixture's leftovers, or a cluster of its own.
 skip()   { echo "dhcpfixture skipped: $*"; exit 1; }
 refuse() { echo "dhcpfixture refused: $*" >&2; exit 2; }
 

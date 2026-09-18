@@ -130,16 +130,12 @@ TOOL=/opt/xcat/share/xcat/tools/autotest/blackboxtest
 say()  { echo "provfixture: $*"; }
 die()  { echo "provfixture: $*" >&2; exit 1; }
 
-# Three answers, not two. A machine missing a tool cannot run the cases and the
-# case passes; a machine holding this fixture's leftovers would have every later
-# run skip green forever, and a cluster with nodes of its own would be damaged
-# by the setup. Those two are refusals, and cases0 fails the case on them.
+# Both fail the case. skip: this machine lacks a tool the cases need. refuse:
+# the machine holds this fixture's leftovers, or a cluster of its own.
 skip()   { echo "provfixture skipped: $*"; exit 1; }
 refuse() { echo "provfixture refused: $*" >&2; exit 2; }
 
-# A stage this machine cannot run: says what is missing and passes. Counted and
-# named on one greppable line, because a build that is green because nothing ran
-# is the failure this suite exists to catch.
+# A stage left out: says what is missing, and fails the run at exit.
 SKIPPED=0
 stage_skip() {
     SKIPPED=$((SKIPPED + 1))
@@ -927,15 +923,12 @@ do_run_tftp() {
         --set node="$XNBA_NODE" --set httpport="$port" \
         conf/prov/tftp-xnba.conf || rc=1
 
-    if [ -f "$tftp/petitboot/$PTB_NODE" ]; then
-        prov_run \
-            "${COMMON[@]}" \
-            --set node="$PTB_NODE" --set hexip="$(hex_ip "$PTB_IP")" \
-            --set master="$SRV_IP" --set xcatport="$XCATPORT" --set destiny="$DESTINY" \
-            conf/prov/tftp-petitboot.conf || rc=1
-    else
-        stage_skip "no petitboot config was generated for $PTB_NODE on this management node"
-    fi
+    # A mixed cluster boots ppc64 nodes from an x86 management node.
+    prov_run \
+        "${COMMON[@]}" \
+        --set node="$PTB_NODE" --set hexip="$(hex_ip "$PTB_IP")" \
+        --set master="$SRV_IP" --set xcatport="$XCATPORT" --set destiny="$DESTINY" \
+        conf/prov/tftp-petitboot.conf || rc=1
     return $rc
 }
 
@@ -991,17 +984,11 @@ do_run_genesis() {
     have_genesis || { stage_skip "genesis has not been built here ($(genesis_kernel) is missing); run mknb $NODE_ARCH"; return 0; }
     tftp=$(tftpdir); hexnet=$(hex_net "$NET" "$PREFIX")
 
-    # One scenario per loader family, and only the families this architecture is
-    # given: selecting by name means a family that is not written is absent from
-    # the report rather than passing vacuously.
-    [ -e "$tftp/pxelinux.cfg/$hexnet" ] &&
-        select="$select -s pxelinux-discovery-config -s genesis-images-pxelinux"
-    [ -e "$tftp/xcat/xnba/nets/$NET_FILE" ] &&
-        select="$select -s xnba-discovery-config"
+    # mknb for x86 writes the pxelinux and xnba files. It writes the grub2 file
+    # only for riscv64 (mknb.pm), so only grub2 is optional here.
+    select="-s pxelinux-discovery-config -s genesis-images-pxelinux -s xnba-discovery-config"
     [ -e "$tftp/boot/grub2/grub.cfg-$hexnet" ] &&
         select="$select -s grub2-discovery-config -s genesis-images-grub2"
-
-    [ -n "$select" ] || { stage_skip "mknb has written no configuration for $NET/$PREFIX, so there is nothing a machine without a definition would fetch"; return 0; }
     assert_serving udp 69 "the TFTP server"
 
     # Unquoted on purpose: the selection is a list this script built itself.
@@ -1311,7 +1298,8 @@ dispatch() {
 
 dispatch "$@"
 rc=$?
-# Said once at the end, so a reader of a passing run sees that something was
-# left out without having to notice a line in the middle of the output.
-[ "$SKIPPED" != 0 ] && echo "provfixture SKIPPED-TOTAL: $STAGE: $SKIPPED"
+if [ "$SKIPPED" != 0 ]; then
+    echo "provfixture SKIPPED-TOTAL: $STAGE: $SKIPPED" >&2
+    rc=1
+fi
 exit $rc
