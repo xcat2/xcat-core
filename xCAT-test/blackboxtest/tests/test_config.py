@@ -126,9 +126,13 @@ class Loading(unittest.TestCase):
 
 class ShippedFiles(unittest.TestCase):
 
-    def test_every_shipped_scenario_has_a_description(self):
+    def test_every_shipped_scenario_has_a_description_and_a_check(self):
+        # A scenario with no assertion and no stated expectation produces no
+        # test point, and passes whatever the server does.
         for scenario in config.load(context.conf_files(), raw=True):
             self.assertTrue(scenario.description, scenario.name)
+            self.assertTrue(any(s.assertions or s.expect for s in scenario.steps),
+                            scenario.name)
 
 
 if __name__ == "__main__":

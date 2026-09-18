@@ -193,6 +193,7 @@ class StepLoop(unittest.TestCase):
         self.assertIs(got, first)
         self.assertIs(ctx.get("offer"), first)
         self.assertEqual(extras["offers"], 2)
+        self.assertTrue(extras["met"])
         self.assertEqual(session.state, dhcp.SELECTING)
         self.assertEqual(session.wire.sent, 1)
         self.assertTrue(sent.startswith("DISCOVER mac=02:"))
@@ -203,6 +204,7 @@ class StepLoop(unittest.TestCase):
         got, extras, _ = dhcp.run_step(step, session, subst.Context(), 0.1, 3)
         self.assertIsNone(got)
         self.assertEqual(session.wire.sent, 3)
+        self.assertFalse(extras["met"])
         self.assertEqual(session.state, dhcp.INIT)
 
     def test_a_nak_is_reported_as_a_nak_and_does_not_bind_the_lease(self):
@@ -213,6 +215,8 @@ class StepLoop(unittest.TestCase):
         ctx = subst.Context()
         got, extras, _ = dhcp.run_step(step, session, ctx, 0.1, 1)
         self.assertEqual(got.fields["msgtype"], "NAK")
+        self.assertEqual((extras["expect"], extras["got"], extras["met"]),
+                         ("ack", "NAK", False))
         self.assertRaises(ConfigError, ctx.get, "lease")
         self.assertEqual(session.state, dhcp.INIT)
 
@@ -226,6 +230,14 @@ class StepLoop(unittest.TestCase):
         self.assertEqual(ctx.get("lease").fields["yiaddr"], "10.0.0.101")
         self.assertEqual(session.leases, set(["10.0.0.101"]))
         self.assertEqual(session.state, dhcp.BOUND)
+
+    def test_expect_none_is_met_by_silence_only(self):
+        step, = self.step("[step d]\ntype = discover\nexpect = none\n")
+        for answers, met in (([], True), ([[reply("OFFER")]], False)):
+            session = dhcp.Session(FakeWire(*answers))
+            _, extras, _ = dhcp.run_step(step, session, subst.Context(), 0.1, 2)
+            self.assertEqual(extras["met"], met)
+            self.assertEqual(session.state, dhcp.INIT)
 
     def test_a_step_mac_replaces_the_random_one(self):
         step, = self.step("[step d]\ntype = discover\nmac = 02-00-00-00-00-AA\n")

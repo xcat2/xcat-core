@@ -92,5 +92,43 @@ assert =
 
 
 
+class DhcpExpectations(unittest.TestCase):
+    """A DHCP step's expectation is a test point, as a service step's is."""
+
+    CONF = """
+[scenario noip]
+description = S-07: a port marked *NOIP* is not answered
+interface = lo
+[step discover]
+type = discover
+expect = none
+retries = 1
+timeout = 0.1
+"""
+
+    def run_against(self, *answers):
+        from blackboxtest_lib import dhcp
+        from test_dhcp import FakeWire
+
+        for name, value in (("require", lambda: None),
+                            ("Wire", lambda interface: FakeWire(*answers)),
+                            ("build_frame", lambda *args: None)):
+            self.addCleanup(setattr, dhcp, name, getattr(dhcp, name))
+            setattr(dhcp, name, value)
+        return run(self, self.CONF)
+
+    def test_silence_passes_an_expect_none_step(self):
+        text, code = self.run_against()
+        self.assertEqual(code, 0, text)
+        self.assertIn("ok 1 - noip/discover: expect none", text)
+
+    def test_an_answer_fails_an_expect_none_step(self):
+        from test_dhcp import reply
+        text, code = self.run_against([reply("OFFER")])
+        self.assertEqual(code, 1, text)
+        self.assertIn("not ok 1 - noip/discover: expect none", text)
+        self.assertIn("received: 'OFFER'", text)
+
+
 if __name__ == "__main__":
     unittest.main()
