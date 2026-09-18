@@ -300,10 +300,15 @@ def run_step(step, session, context, timeout, retries):
 
     chosen = next((r for r in replies if r.fields["msgtype"] in wanted),
                   replies[0] if replies else None)
+    expect = step.expect or trans.default_expect
+    got = chosen.fields["msgtype"] if chosen is not None else "no reply"
     extras = {
         "attempt": attempt,
         "offers": len(distinct_servers(
             r for r in replies if r.fields["msgtype"] == "OFFER")),
+        # expect=none is met by silence; anything else by a wanted type.
+        "expect": expect, "got": got,
+        "met": chosen is None if not wanted else got in wanted,
     }
 
     msgtype = None

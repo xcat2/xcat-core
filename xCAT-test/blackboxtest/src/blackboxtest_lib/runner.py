@@ -124,8 +124,9 @@ def _record(scenario, step, reply, context, extras, reporter):
     common = dict(reply=reply, sent=reply.sent if reply else extras.get("sent", ""),
                   attempt=extras["attempt"], attempts=extras["attempts"])
 
-    # The expectation is a test point of its own. A service step that waited
-    # for an answer and got none fails with no assertion about it.
+    # The expectation is a test point of its own. A step that waited for an
+    # answer and got none fails with no assertion about it, and an
+    # `expect = none` step fails when something does answer.
     expect = extras.get("expect", "any")
     if expect != "any":
         reporter.add(report.Record(

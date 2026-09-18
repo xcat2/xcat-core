@@ -125,7 +125,7 @@ come from the runner. `$step.field` may be a target.
 
 ### Expectations
 
-`expect` states what the transport must do:
+`expect` states what the transport must do, and it is a test point of its own:
 
 | Family | `expect` | Default |
 | --- | --- | --- |
@@ -133,8 +133,8 @@ come from the runner. `$step.field` may be a target.
 | service | `ok` `fail` `any` | `ok` |
 | `extract`, `noop` | `ok` `fail` `any` | `any` |
 
-A service step that waited for an answer and got none fails with no
-assertion.
+A step that waited for an answer and got none fails with no assertion. A DHCP
+step with `expect = none` fails when anything answers.
 
 ## Step types
 
