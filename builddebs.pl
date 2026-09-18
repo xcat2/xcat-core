@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # Build the xcat-core Debian packages and assemble a signed apt repository.
 #
-# Replaces build-ubunturepo. The shape mirrors buildrpms.pl -- Getopt::Long options,
+# Builds every xCAT deb and the apt repository. The shape mirrors buildrpms.pl -- Getopt::Long options,
 # one package list, build then index then sign -- so the two builders read the same way
 # and share XCAT::BuildUtils.
 #
@@ -117,9 +117,12 @@ my $VERSION = read_line("$ROOT/Version") // die "Cannot read $ROOT/Version\n";
 my $EPOCH   = source_date_epoch();
 # A Release file, when present, is authoritative: buildrpms.pl writes one, and a
 # pipeline that builds both must stamp the rpms and the debs with the same release.
+# The tracked file holds snap000000000000, which no build writes -- snap_release()
+# renders a real time. A tree where buildrpms.pl has not run still carries it, so
+# treat the placeholder as an unstamped tree and derive the release from the commit.
 my $FILE_RELEASE = do {
     my $r = read_line("$ROOT/Release");
-    ($r && $r =~ /\S/) ? $r : undef;
+    ($r && $r =~ /\S/ && $r !~ /\Asnap0+\z/) ? $r : undef;
 };
 my $RELEASE = $opts{release} || $FILE_RELEASE || snap_release($EPOCH);
 my $PKGVER  = deb_version($VERSION, $RELEASE);
@@ -554,7 +557,7 @@ xcat-dep's C<sbuild-all.pl> creates on the Ubuntu build host. The build refuses 
 in a root of another release, and it reads its own log: dracut reports a command it
 cannot install with a C<FAILED:> line and still exits 0.
 
-Replaces C<build-ubunturepo>. The GSA upload paths, the C<PROMOTE>/C<PREGA> release
+Replaced C<build-ubunturepo>, removed in 2.19. The GSA upload paths, the C<PROMOTE>/C<PREGA> release
 flows and the C<-d> xcat-dep repository mode were not carried over: publishing is done
 by the CD pipeline's own deploy step, and xcat-dep is built from its own repository.
 

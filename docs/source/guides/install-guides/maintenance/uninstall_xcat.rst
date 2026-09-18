@@ -64,7 +64,7 @@ Remove xCAT Files
 
   [Ubuntu] ::	
 
-      apt-get remove conserver-xcat elilo-xcat goconserver grub2-xcat ipmitool-xcat perl-xcat syslinux-xcat xcat xcat-buildkit xcat-client xcat-confluent xcat-genesis-base-amd64 xcat-genesis-base-ppc64 xcat-genesis-scripts-amd64 xcat-genesis-scripts-ppc64 xcat-probe xcat-server xcat-test xcat-vlan xcatsn xnba-undi
+      apt-get remove conserver-xcat elilo-xcat goconserver grub2-xcat ipmitool-xcat perl-xcat syslinux-xcat xcat xcat-buildkit xcat-client xcat-confluent xcat-genesis-base-amd64 xcat-genesis-base-ppc64el xcat-genesis-scripts-amd64 xcat-genesis-scripts-ppc64el xcat-probe xcat-server xcat-test xcat-vlan xcatsn xnba-undi
 
   To do an even more thorough cleanup, use links below to get a list of RPMs installed by xCAT. Some RPMs may not to be installed in a specific environment.
 

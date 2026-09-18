@@ -21,7 +21,7 @@ if (!-f $verifier) {
     done_testing();
     exit;
 }
-plan tests => 18;
+plan tests => 22;
 
 my $tmpdir = tempdir(CLEANUP => 1);
 my $module_seq = 0;
@@ -74,6 +74,22 @@ my $noopenssl = build_payload(sshd_execs_session => 1, session_helper => 1, tmux
 isnt($rc, 0, 'a payload without openssl fails');
 like($err, qr/openssl/, 'the missing openssl is named');
 
+# dracut_install installs an absolute path at that same path, so a name starting with "/" is a
+# command the payload must carry. doxcat, getdestiny and the firmware wrappers all run awk.
+my $noawk = build_payload(sshd_execs_session => 1, session_helper => 1, tmux => 1, locale => 1,
+    dhclient => 1, mktemp => 1, commands => [qw(openssl wget tar)], absent => ['usr/bin/awk']);
+($rc, $err) = run_with_commands($module, $noawk);
+isnt($rc, 0, 'a payload without the absolute path /usr/bin/awk fails');
+like($err, qr{/usr/bin/awk}, 'the missing /usr/bin/awk is named');
+
+# The module names data files by absolute path too. Genesis resolves service names with
+# /etc/services.
+my $noservices = build_payload(sshd_execs_session => 1, session_helper => 1, tmux => 1, locale => 1,
+    dhclient => 1, mktemp => 1, commands => [qw(openssl wget tar)], absent => ['etc/services']);
+($rc, $err) = run_with_commands($module, $noservices);
+isnt($rc, 0, 'a payload without the absolute path /etc/services fails');
+like($err, qr{/etc/services}, 'the missing /etc/services is named');
+
 # The DHCP client is release-dependent, so the module installs it inside a conditional. Those
 # names are not the contract; the spec passes the one it wants as a required path.
 my $conditional = write_module_setup(['wget'], ['dhclient']);
@@ -114,12 +130,16 @@ sub build_payload {
     }
     write_text("$root/usr/sbin/dhclient", "dhclient\n") if $opt{dhclient};
     write_text("$root/usr/bin/mktemp", "mktemp\n") if $opt{mktemp};
-    # The module also names two absolute paths, and dracut_install installs an absolute
-    # path at that same path. They are data files every payload carries.
-    make_path("$root/etc");
-    write_text("$root/usr/bin/awk", "awk\n");
-    write_text("$root/etc/services", "services\n");
     write_text("$root/usr/bin/$_", "$_\n") for @{ $opt{commands} || [] };
+
+    # The module written by write_module_setup names these two by absolute path.
+    my %absent = map { $_ => 1 } @{ $opt{absent} || [] };
+    for my $path (qw(usr/bin/awk etc/services)) {
+        next if $absent{$path};
+        my ($dir) = $path =~ m{^(.*)/};
+        make_path("$root/$dir");
+        write_text("$root/$path", "$path\n");
+    }
     return $root;
 }
 
