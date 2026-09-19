@@ -56,6 +56,7 @@ BuildRequires: ipmitool
 BuildRequires: iproute
 BuildRequires: kexec-tools
 %if 0%{?openEuler}
+BuildRequires: glibc-common
 BuildRequires: kernel
 BuildRequires: openssl
 BuildRequires: tar

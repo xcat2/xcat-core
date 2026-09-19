@@ -40,7 +40,7 @@ _dracut_install_opt() {
 }
 
 install() {
-    local genesis_openeuler=0 timezone timezone_files
+    local genesis_openeuler=0 timezone timezone_files locale_file locale_files
     [[ -f /etc/openEuler-release ]] && genesis_openeuler=1
     dracut_install wget openssl tar mstflint ipmitool cpio gzip lsmod ethtool modprobe touch echo cut wc bash
     dracut_install netstat # broadcom update requires
@@ -57,6 +57,11 @@ install() {
     dracut_install chmod ip /usr/bin/whoami /usr/bin/head /usr/bin/tail basename ping tr lsusb /usr/share/hwdata/usb.ids #ibm fw wrapper requirements
     if [[ $genesis_openeuler == 1 ]]; then
         dracut_install /etc/openEuler-release /etc/os-release
+        locale_files=$(find /usr/lib/locale/C.utf8 \( -type f -o -type l \) -print) || exit $?
+        [[ -n $locale_files && -s /usr/lib/locale/C.utf8/LC_CTYPE ]] || exit 1
+        while IFS= read -r locale_file; do
+            inst "$locale_file" || exit $?
+        done <<< "$locale_files"
     else
         dracut_install /etc/redhat-release
     fi
