@@ -26,6 +26,7 @@ for my $arch (qw(x86_64 ppc64le)) {
     ok($requires{tar}, "$arch explicitly requests its archive tool");
     ok($requires{openssl}, "$arch explicitly requests its TLS command");
     ok($requires{tzdata}, "$arch explicitly requests the native timezone database");
+    ok($requires{'glibc-common'}, "$arch explicitly requests the native UTF-8 locale");
     is(!!$requires{dmidecode}, $arch eq 'x86_64' ? 1 : '', "$arch retains the correct DMI tool requirement");
     is(!!$requires{efibootmgr}, $arch eq 'x86_64' ? 1 : '', "$arch retains the correct EFI tool requirement");
     SKIP: {
@@ -42,8 +43,10 @@ for my $arch (qw(x86_64 ppc64le)) {
 
 SKIP: {
     my ($probe_status) = run('unshare', '--user', '--map-root-user', '--mount', 'true');
-    skip 'Unprivileged user/mount namespaces unavailable', 13 if $probe_status;
+    skip 'Unprivileged user/mount namespaces unavailable', 22 if $probe_status;
     make_path("$tmp/native-etc", "$tmp/legacy-etc", "$tmp/zones/Etc", "$tmp/zones/Native", "$tmp/modules/fixture", "$tmp/empty-zones");
+    make_path("$tmp/locales/C.utf8/LC_MESSAGES", "$tmp/missing-locales", "$tmp/empty-locales/C.utf8",
+        "$tmp/missing-ctype/C.utf8", "$tmp/empty-ctype/C.utf8");
     write_file("$tmp/native-etc/openEuler-release", "openEuler release 24.03 (LTS-SP3)\n");
     write_file("$tmp/native-etc/os-release", "ID=openEuler\n");
     write_file("$tmp/legacy-etc/redhat-release", "Rocky Linux release 10\n");
@@ -51,6 +54,11 @@ SKIP: {
     write_file("$tmp/zones/Etc/UTC", "native UTC fixture\n");
     write_file("$tmp/zones/Native/Fixture", "native timezone fixture\n");
     symlink('Etc/UTC', "$tmp/zones/UTC") or die $!;
+    write_file("$tmp/locales/C.utf8/LC_CTYPE", "native UTF-8 fixture\n");
+    write_file("$tmp/locales/C.utf8/LC_MESSAGES/SYS_LC_MESSAGES", "native message fixture\n");
+    symlink('LC_CTYPE', "$tmp/locales/C.utf8/LC_NUMERIC") or die $!;
+    write_file("$tmp/missing-ctype/C.utf8/LC_NUMERIC", "partial locale fixture\n");
+    write_file("$tmp/empty-ctype/C.utf8/LC_CTYPE", '');
     write_file("$tmp/modules/fixture/modules.dep", join("\n",
         'kernel/drivers/infiniband/ulp/ipoib/ib_ipoib.ko.xz:',
         'kernel/drivers/net/ethernet/intel/e1000e/e1000e.ko:',
@@ -61,15 +69,18 @@ mount --make-rslave / || exit
 mount --bind "$2" /etc || exit
 mount --bind "$3" /usr/share/zoneinfo || exit
 mount --bind "$4" /lib/modules || exit
+mount --bind "$6" /usr/lib/locale || exit
 source "$1"
 moddir=${1%/*}
 dracut_install() { printf 'file\t%s\n' "$@"; }
 inst() {
     [[ ${FAIL_TIMEZONE:-} == "$1" ]] && return 73
+    [[ ${FAIL_LOCALE:-} == "$1" ]] && return 75
     printf 'file\t%s\n' "${2:-$1}"
 }
 find() {
-    [[ ${FAIL_FIND:-0} == 1 ]] && return 74
+    [[ ${FAIL_FIND:-0} == 1 && $1 == /usr/share/zoneinfo ]] && return 74
+    [[ ${FAIL_LOCALE_FIND:-0} == 1 && $1 == /usr/lib/locale/C.utf8 ]] && return 76
     command find "$@"
 }
 inst_script() { printf 'script\t%s\n' "${1##*/}"; }
@@ -87,6 +98,25 @@ SH
     my @zones = sort grep { /^file\t\/usr\/share\/zoneinfo\// } split /\n/, $native;
     is_deeply(\@zones, [map { "file\t/usr/share/zoneinfo/$_" } qw(Etc/UTC Native/Fixture UTC)],
         'native payload copies every packaged timezone file and symlink');
+    my @locales = sort grep { /^file\t\/usr\/lib\/locale\// } split /\n/, $native;
+    is_deeply(\@locales, [map { "file\t/usr/lib/locale/C.utf8/$_" } qw(LC_CTYPE LC_MESSAGES/SYS_LC_MESSAGES LC_NUMERIC)],
+        'native payload copies every C.utf8 file and symlink, including nested categories');
+    {
+        local $ENV{FAIL_LOCALE} = '/usr/lib/locale/C.utf8/LC_CTYPE';
+        my ($status, $output) = trace_module($module, "$tmp/native-etc", 'install');
+        is($status, 75, 'a native locale install failure fails dracut');
+        unlike($output, qr{^file\t/sbin/xcatroot$}m, 'a later successful copy cannot hide a locale failure');
+    }
+    {
+        local $ENV{FAIL_LOCALE_FIND} = 1;
+        my ($status, $output) = trace_module($module, "$tmp/native-etc", 'install');
+        is($status, 76, 'a native locale enumeration failure fails dracut');
+        unlike($output, qr{^file\t/sbin/xcatroot$}m, 'installation stops when locale enumeration fails');
+    }
+    for my $fixture (qw(missing-locales empty-locales missing-ctype empty-ctype)) {
+        my ($status) = trace_module($module, "$tmp/native-etc", 'install', undef, "$tmp/$fixture");
+        isnt($status, 0, "native locale fixture $fixture fails dracut");
+    }
     {
         local $ENV{FAIL_TIMEZONE} = '/usr/share/zoneinfo/Native/Fixture';
         my ($status, $output) = trace_module($module, "$tmp/native-etc", 'install');
@@ -117,9 +147,9 @@ SH
     }
 
     sub trace_module {
-        my ($path, $etc, $mode, $zones) = @_;
+        my ($path, $etc, $mode, $zones, $locales) = @_;
         return run('unshare', '--user', '--map-root-user', '--mount', 'bash',
-            "$tmp/module-trace.sh", $path, $etc, $zones // "$tmp/zones", "$tmp/modules", $mode);
+            "$tmp/module-trace.sh", $path, $etc, $zones // "$tmp/zones", "$tmp/modules", $mode, $locales // "$tmp/locales");
     }
 }
 
