@@ -35,6 +35,13 @@ is a functional target; its qualification does not establish maintained
 POWER service-pack support. Consult the distribution's maintenance policy
 separately.
 
+The baseline uses virtual BIOS boot on x86_64 and KVM Open Firmware on
+ppc64le. It includes management nodes, installed and diskless service nodes,
+and both compute modes through each serving role. Stateless images use
+cpio with gzip compression. SQLite serves standalone management nodes;
+MariaDB serves the service-node hierarchy. Additional firmware, database,
+image-format and network combinations need separate qualification.
+
 Keep the complete OS name in node, image and repository definitions.
 For example, ``openeuler24.03sp4`` must not be shortened to
 ``openeuler24`` or replaced with an EL version. Profile lookup prefers
@@ -114,10 +121,10 @@ update and rollback. Image generation alone does not verify node operation.
 Service nodes
 -------------
 
-Use MariaDB or PostgreSQL on the management node before deploying service
-nodes. SQLite is for standalone management-node operation. Install the
-matching native database client modules on each service node; a PostgreSQL
-client package does not provide a PostgreSQL server.
+Use MariaDB on the management node for the baseline service-node hierarchy.
+SQLite is for standalone management-node operation. Install the matching
+native database client modules on each service node. PostgreSQL is outside
+the baseline qualification; its client package does not provide a server.
 
 Use the normal :doc:`/advanced/hierarchy/index` procedures for database
 credentials, service-node definitions, resource sharing and downstream
@@ -164,9 +171,11 @@ Discovery, security and upgrades
 
 Install Genesis packages for each payload architecture served by the
 management node. ``mknb x86_64`` and ``mknb ppc64le`` use different payloads.
-An openEuler Genesis build requires native UTF-8 locale data for its terminal
-multiplexer. A successful ``mknb`` command must be followed by an actual
-discovery boot, registration and subsequent provisioning.
+An openEuler Genesis build includes native UTF-8 locale data and ``mktemp``.
+Automatic discovery registration is outside the baseline qualification.
+Sequential discovery rejects virtual nodes. Provision explicitly defined
+nodes with the installation and netboot procedures above. A successful
+``mknb`` command alone does not establish working discovery.
 
 The current validation configuration disables SELinux and the host firewall.
 It uses signed packages, TLS client authorization, SSH keys and secure-root
@@ -182,6 +191,9 @@ data after reboot. Use the native repositories with the normal
 
 An xCAT RPM upgrade does not qualify an operating-system service-pack upgrade.
 Document each supported OS transition separately; no cross-LTS in-place
-upgrade or downgrade is implied. POWER PostgreSQL server availability and
-physical firmware qualification remain unresolved requirements. Virtual
-firmware results do not establish physical BIOS, UEFI or Petitboot support.
+upgrade or downgrade is implied. Offline installation and RPM upgrade
+preservation are qualified separately on 24.03 SP4. Physical platform
+certification, automatic discovery, manual service-node takeover and
+mixed-distribution provisioning are outside the baseline qualification.
+Virtual firmware results do not establish physical BIOS, UEFI or Petitboot
+support.
