@@ -18,6 +18,10 @@ plan skip_all => 'requires the packaged openEuler key path'
   unless -f '/etc/pki/rpm-gpg/RPM-GPG-KEY-openEuler';
 
 my $postscripts = File::Spec->rel2abs("$FindBin::Bin/../../xCAT/postscripts");
+unless (-x "$postscripts/otherpkgs") {
+    require xCAT::TableUtils;
+    $postscripts = xCAT::TableUtils->getInstallDir() . '/postscripts';
+}
 my $dir = tempdir(CLEANUP => 1);
 my $case_index = 0;
 chmod 0755, $dir;
