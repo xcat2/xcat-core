@@ -56,6 +56,7 @@ install() {
     #dracut_install chmod /sbin/route /sbin/ifconfig /usr/bin/whoami /usr/bin/head /usr/bin/tail basename /etc/redhat-release ping tr lsusb /usr/share/hwdata/usb.ids #ibm fw wrapper requirements
     dracut_install chmod ip /usr/bin/whoami /usr/bin/head /usr/bin/tail basename ping tr lsusb /usr/share/hwdata/usb.ids #ibm fw wrapper requirements
     if [[ $genesis_openeuler == 1 ]]; then
+        dracut_install mktemp || exit $?
         dracut_install /etc/openEuler-release /etc/os-release
         locale_files=$(find /usr/lib/locale/C.utf8 \( -type f -o -type l \) -print) || exit $?
         [[ -n $locale_files && -s /usr/lib/locale/C.utf8/LC_CTYPE ]] || exit 1
