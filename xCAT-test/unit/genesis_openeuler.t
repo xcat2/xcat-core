@@ -25,6 +25,7 @@ for my $arch (qw(x86_64 ppc64le)) {
         "$arch native spec does not select EL kernel splits or unrelated module providers");
     ok($requires{tar}, "$arch explicitly requests its archive tool");
     ok($requires{openssl}, "$arch explicitly requests its TLS command");
+    ok($requires{coreutils}, "$arch explicitly requests the temporary-file tool provider");
     ok($requires{tzdata}, "$arch explicitly requests the native timezone database");
     ok($requires{'glibc-common'}, "$arch explicitly requests the native UTF-8 locale");
     is(!!$requires{dmidecode}, $arch eq 'x86_64' ? 1 : '', "$arch retains the correct DMI tool requirement");
@@ -43,7 +44,7 @@ for my $arch (qw(x86_64 ppc64le)) {
 
 SKIP: {
     my ($probe_status) = run('unshare', '--user', '--map-root-user', '--mount', 'true');
-    skip 'Unprivileged user/mount namespaces unavailable', 22 if $probe_status;
+    skip 'Unprivileged user/mount namespaces unavailable', 25 if $probe_status;
     make_path("$tmp/native-etc", "$tmp/legacy-etc", "$tmp/zones/Etc", "$tmp/zones/Native", "$tmp/modules/fixture", "$tmp/empty-zones");
     make_path("$tmp/locales/C.utf8/LC_MESSAGES", "$tmp/missing-locales", "$tmp/empty-locales/C.utf8",
         "$tmp/missing-ctype/C.utf8", "$tmp/empty-ctype/C.utf8");
@@ -72,7 +73,10 @@ mount --bind "$4" /lib/modules || exit
 mount --bind "$6" /usr/lib/locale || exit
 source "$1"
 moddir=${1%/*}
-dracut_install() { printf 'file\t%s\n' "$@"; }
+dracut_install() {
+    [[ ${FAIL_MKTEMP:-0} == 1 && $1 == mktemp ]] && return 77
+    printf 'file\t%s\n' "$@"
+}
 inst() {
     [[ ${FAIL_TIMEZONE:-} == "$1" ]] && return 73
     [[ ${FAIL_LOCALE:-} == "$1" ]] && return 75
@@ -92,6 +96,13 @@ if [[ $5 == kernel ]]; then installkernel; else install; fi
 SH
     my ($native_status, $native) = trace_module($module, "$tmp/native-etc", 'install');
     is($native_status, 0, 'native full dracut module installation requests succeed');
+    like($native, qr{^file\tmktemp$}m, 'native payload requires the getdestiny temporary-file tool');
+    {
+        local $ENV{FAIL_MKTEMP} = 1;
+        my ($status, $output) = trace_module($module, "$tmp/native-etc", 'install');
+        is($status, 77, 'a missing native temporary-file tool fails dracut');
+        unlike($output, qr{^file\t/sbin/xcatroot$}m, 'installation stops when the temporary-file tool cannot be copied');
+    }
     like($native, qr{^file\t/etc/openEuler-release$}m, 'native release file is a mandatory install request');
     like($native, qr{^file\t/etc/os-release$}m, 'native os-release is a mandatory install request');
     unlike($native, qr{^file\t/etc/redhat-release$}m, 'native payload retains its own distribution identity');
