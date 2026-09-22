@@ -41,6 +41,18 @@ cpio with gzip compression. SQLite serves standalone management nodes;
 MariaDB serves the service-node hierarchy. Additional firmware, database,
 image-format and network combinations need separate qualification.
 
+The tested provisioning networks use IPv4 and ISC DHCP on isolated links,
+with separate upstream and downstream interfaces on service nodes. The
+qualification covers on-link access to the assigned management or service
+node. The 20.03 SP4 and 22.03 SP4 direct stateless cases use
+``net.ipv4.ip_forward=0`` without a DHCP default router. Off-subnet reachability
+is outside this qualification.
+
+The tested service-node hierarchies use ``sharedtftp=1`` and
+``disjointdhcps=1``. The 20.03 SP4 and 22.03 SP4 installed-service-node cases
+and the 24.03 SP4 cases use ``installloc=/install``. The 20.03 SP4 and
+22.03 SP4 hierarchy cases use ``hierarchicalattrs=postscripts``.
+
 Keep the complete OS name in node, image and repository definitions.
 For example, ``openeuler24.03sp4`` must not be shortened to
 ``openeuler24`` or replaced with an EL version. Profile lookup prefers
