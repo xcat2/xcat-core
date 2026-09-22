@@ -676,6 +676,12 @@ sub setup_local_repos {
         or die "A target must be provided for setup_local_repos";
     my $mode = repo_mode();
     my $native = openeuler_repo_subdir($target);
+    if (defined($native)) {
+        for my $repo ("$PWD/dist/$target/rpms", "$opts{xcat_dep_path}/$native") {
+            die "Missing openEuler repository signing key: $repo/repodata/repomd.xml.key; build the repository with --gpg-sign first\n"
+                unless -s "$repo/repodata/repomd.xml.key";
+        }
+    }
     my $core_baseurl = (
         $mode eq "file"
         ? "file://$PWD/dist/$target/rpms"
@@ -998,6 +1004,9 @@ sub main {
     return exit(setup_local_repos()) if $opts{setup_local_repos};
     return exit(merge_core_repos()) if $opts{merge_core_repos};
 
+    usage(message => "openEuler binary repository builds require --gpg-sign")
+        if defined($native_subdir) && !$opts{source_only} && !$opts{gpg_sign};
+
     prepare_xcat_probe_source_tar()
         if grep { $_ eq "xCAT-probe" } $opts{packages}->@*;
 
@@ -1248,6 +1257,9 @@ This is an explicit action and does not run during the default build flow.
 Sign RPMs and repository metadata after build. Requires a GPG key
 in the active keyring (default C<~/.gnupg> or the directory set by
 C<--gpg-home>).
+Required for native openEuler binary repository builds. C<--source-only>
+does not require signing. C<--setup_local_repos> consumes existing signed
+repositories and requires their exported keys, without requiring this flag.
 
 =item B<--gpg-home>=I<PATH>
 
