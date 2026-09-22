@@ -77,7 +77,7 @@ Requires: /usr/bin/killall
 # makentp/setupntp configure the MN as an NTP server for its compute nodes and support chronyd/ntpd
 # only. chrony is the default on EL7+/SLES15+ (and the only option on EL8+); ntp covers the rest.
 Requires: (chrony or ntp)
-# openEuler uses ISC DHCP; its calendar-based system-release version is not an EL version.
+# openEuler's system-release version does not identify an EL release.
 Requires: (/usr/sbin/dhcpd if openEuler-release else ((kea and kea-hooks) if (system-release >= 10) else /usr/sbin/dhcpd))
 # On RHEL this pulls in openssh-server, on SLES it pulls in openssh
 Requires: /usr/bin/ssh

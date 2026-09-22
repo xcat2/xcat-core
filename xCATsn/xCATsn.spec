@@ -54,7 +54,7 @@ Requires: net-tools
 Requires: /usr/bin/killall
 # yaboot-xcat is pulled in so any SN can manage ppc nodes
 Requires: httpd nfs-utils nmap bind
-# openEuler uses ISC DHCP; its calendar-based system-release version is not an EL version.
+# openEuler's system-release version does not identify an EL release.
 Requires: (/usr/sbin/dhcpd if openEuler-release else ((kea and kea-hooks) if (system-release >= 10) else /usr/sbin/dhcpd))
 # On RHEL this pulls in openssh-server, on SLES it pulls in openssh
 Requires: /usr/bin/ssh
