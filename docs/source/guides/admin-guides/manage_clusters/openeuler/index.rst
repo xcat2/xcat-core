@@ -1,12 +1,12 @@
 openEuler
 =========
 
-This page describes the openEuler installation and image profiles.
-Release and role qualification is still in progress; this page does not
-declare a completed support matrix.
+This page describes installation and image profiles for three openEuler LTS
+release families: 20.03, 22.03 and 24.03. It covers management nodes, installed
+and diskless service nodes, and stateful and stateless compute nodes.
 
-Release targets
----------------
+Release profiles
+----------------
 
 Qualification uses one service pack from each LTS release:
 
@@ -29,9 +29,8 @@ Qualification uses one service pack from each LTS release:
      - ppc64le
      - ``openeuler24.03``
 
-These service packs are fixed for this delivery. Earlier service packs
-do not require a separate full qualification matrix. The POWER GA image
-is a functional target; its qualification does not establish maintained
+Earlier service packs are outside this qualification. The POWER GA image
+is a functional exception; its qualification does not establish maintained
 POWER service-pack support. Consult the distribution's maintenance policy
 separately.
 
@@ -142,6 +141,11 @@ these repository paths below ``otherpkgdir``::
 Each directory needs its RPMs and repository metadata. The selected service
 profile supplies ``xCATsn`` and ``goconserver`` through these repositories.
 
+Make the repository signing keys available inside each service-node image.
+For installed service nodes, run the site's key-import postscript before
+``otherpkgs``. Verify the keys against trusted fingerprints and keep package
+signature checking enabled.
+
 Create a diskless service image from the imported compute template, then
 select every service asset explicitly::
 
@@ -197,3 +201,9 @@ certification, automatic discovery, manual service-node takeover and
 mixed-distribution provisioning are outside the baseline qualification.
 Virtual firmware results do not establish physical BIOS, UEFI or Petitboot
 support.
+
+Crash dump arming is not qualified. Some 24.03 guests reported a failed
+kdump service without a reserved crash kernel.
+
+The POWER console test verified input and responses. The client required
+forced termination; graceful exit remains unqualified.
