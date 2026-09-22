@@ -32,13 +32,9 @@ my $GITHUB_API = "https://api.github.com";
 # through FindBin, so they can only be run from a source tree. Take a copy
 # before building and run the unit tests out of the copy.
 #
-# This used to be mandatory rather than tidy: build-ubunturepo set
-#     local_core_repo_path="$curdir/../../xcat-core"
-# which, under the work/<repo>/<repo> layout GitHub checks out into, resolved to
-# the checkout's own parent, and it rm -rf'd that path to make room for the apt
-# repository -- destroying the tree the tests need. builddebs.pl writes under
-# dist/debs INSIDE the checkout and restores every file it edits, so the copy is
-# now only isolating the tests from build residue.
+# The copy is tidiness, not a requirement: builddebs.pl writes under dist/debs
+# inside the checkout and restores every file it edits, so the copy only keeps
+# build residue away from the tests.
 my $srcdir = getcwd();
 my $unitsrc = ($ENV{'RUNNER_TEMP'} ? $ENV{'RUNNER_TEMP'} : "/tmp") . "/xcat-core-unitsrc";
 
@@ -311,8 +307,11 @@ sub preserve_source_tree{
         return 1;
     }
 
-    @output = runcmd("ls $unitsrc/xCAT-test/unit/*.t | wc -l");
-    print "[preserve_source_tree] preserved $srcdir in $unitsrc ($output[0] unit tests)\n";
+    @output = runcmd("find $unitsrc/xCAT-test/unit -name '*.t' | wc -l");
+    my $perl_count = $output[0];
+    @output = runcmd("find $unitsrc/xCAT-test/bats -name '*.bats' 2>/dev/null | wc -l");
+    my $bats_count = $output[0];
+    print "[preserve_source_tree] preserved $srcdir in $unitsrc ($perl_count Perl unit tests, $bats_count BATS tests)\n";
     return 0;
 }
 
@@ -462,6 +461,39 @@ sub run_unit_tests{
 
     print "[run_unit_tests] $cmd ....[Pass]\n";
     $check_result_str .= "> **UNIT TESTS Successful**\n";
+    print $check_result_str;
+    return 0;
+}
+
+#--------------------------------------------------------
+# Fuction name: run_bats_tests
+# Description:  Run shell-script unit tests under xCAT-test/bats.
+#               Runs against the pre-build copy of the source tree taken by
+#               preserve_source_tree(), like the Perl unit tests.
+# Attributes:
+# Return code:  0 all tests passed, 1 otherwise
+#--------------------------------------------------------
+sub run_bats_tests{
+    my $testdir = "$unitsrc/xCAT-test/bats";
+    my @output = runcmd("find $testdir -name '*.bats' -print -quit 2>/dev/null");
+    if (!@output) {
+        print "[run_bats_tests] no BATS tests found under $testdir\n";
+        return 0;
+    }
+
+    my $cmd = "cd $unitsrc && bats -r xCAT-test/bats";
+    print "[run_bats_tests] running $cmd\n";
+    @output = runcmd("$cmd");
+    print Dumper \@output;
+    if($::RUNCMD_RC){
+        print RED "[run_bats_tests] $cmd ....[Failed]\n";
+        $check_result_str .= "> **BATS TESTS Failed** : Please click ``Details`` label in ``Merge pull request`` box for detailed information\n";
+        print $check_result_str;
+        return 1;
+    }
+
+    print "[run_bats_tests] $cmd ....[Pass]\n";
+    $check_result_str .= "> **BATS TESTS Successful**\n";
     print $check_result_str;
     return 0;
 }
@@ -688,6 +720,15 @@ if($rst){
     exit $rst;
 }
 mark_time("run_unit_tests");
+
+#Run shell-script unit tests.
+print GREEN "\n------Running xCAT-test BATS tests ------\n";
+$rst = run_bats_tests();
+if($rst){
+    print RED "Run of xCAT-test BATS tests failed\n";
+    exit $rst;
+}
+mark_time("run_bats_tests");
 
 #Check the syntax of changing code
 print GREEN "\n------ Checking the syntax of changed code------\n";

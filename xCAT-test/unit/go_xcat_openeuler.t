@@ -22,7 +22,14 @@ awk() {
     done
     command awk "${args[@]}"
 }
-dnf() { printf 'dnf'; printf ' <%s>' "$@"; printf '\n'; return "${PACKAGE_STATUS:-0}"; }
+dnf() {
+    if [[ $1 == repoquery ]]; then
+        printf '%s\n' "${@: -1}"
+    else
+        printf 'dnf'; printf ' <%s>' "$@"; printf '\n'
+    fi
+    return "${PACKAGE_STATUS:-0}"
+}
 yum() { printf 'yum'; printf ' <%s>' "$@"; printf '\n'; return "${PACKAGE_STATUS:-0}"; }
 download_file() { return 1; }
 add_repo_by_file() { cp "$1" "$FIXTURE/$2.repo"; }
@@ -124,6 +131,7 @@ foreach my $distro (['rocky', '9.6', 'rh9'], ['rhel', '10.1', 'rh10'], ['sles', 
     like($r->{dep}, qr{/xcat-dep/\Q$distro->[2]\E/x86_64$}m, 'existing dependency mapping is preserved');
 }
 my $el_install = run_case(id => 'rhel', version_id => '10.1', action => 'install-dnf');
+is($el_install->{status}, 0, 'EL installation completes after repository checks');
 like($el_install->{stdout}, qr/<--nogpgcheck> <--setopt=strict=0>/, 'existing EL install options are unchanged');
 my $cleanup = run_case(action => 'cleanup-dnf');
 is($cleanup->{status}, 0, 'repository replacement works with DNF and no yum command');

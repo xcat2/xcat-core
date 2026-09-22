@@ -85,6 +85,29 @@ sub getstate {
     }
 }
 
+# grub2 reads its configuration as a script, so an unquoted word carrying one of the
+# characters below ends the linux command and the rest of the kernel command line is lost.
+# The Ubuntu installer seed (ds=nocloud-net;s=<url>) is the usual casualty.
+my $GRUB2_TERMINATOR = qr/[;{}|&<>()]/;
+
+sub quote_kcmdline {
+    my $kcmdline = shift;
+
+    return $kcmdline unless (defined $kcmdline and $kcmdline =~ $GRUB2_TERMINATOR);
+
+    # Escaped in place rather than quoted as a whole: a value the caller quoted keeps the
+    # quoting it was given, which grub2 removes before the kernel sees the value.
+    my $escaped = '';
+    while (length $kcmdline) {
+        if ($kcmdline =~ s/^('[^']*'|"[^"]*")//) { $escaped .= $1; next; }
+        if ($kcmdline =~ s/^(\\.)//)             { $escaped .= $1; next; }
+        $kcmdline =~ s/^(.)//s;
+        my $char = $1;
+        $escaped .= ($char =~ $GRUB2_TERMINATOR) ? "\\$char" : $char;
+    }
+    return $escaped;
+}
+
 sub setstate {
 
 =pod
@@ -260,7 +283,8 @@ sub setstate {
             }
 
             if ($kern and $kern->{kcmdline}) {
-                print $pcfg "    linux$efi $protocolrootdir/$kern->{kernel} $kern->{kcmdline} BOOTIF=\$net_default_mac\n";
+                my $kcmdline = quote_kcmdline($kern->{kcmdline});
+                print $pcfg "    linux$efi $protocolrootdir/$kern->{kernel} $kcmdline BOOTIF=\$net_default_mac\n";
             } else {
                 print $pcfg "    linux$efi $protocolrootdir/$kern->{kernel} BOOTIF=\$net_default_mac\n";
             }

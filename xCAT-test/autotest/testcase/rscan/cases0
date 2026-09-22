@@ -77,7 +77,7 @@ cmd:rmdef $$CN
 cmd:rscan __GETNODEATTR(testnode,hcp)__  -z -w
 check:rc==0
 check:output=~parent=[\w-]+
-check:lsdef -l $$CN
+cmd:lsdef -l $$CN
 check:rc==0
 check:output=~parent=[\w-]+
 cmd:rmdef all

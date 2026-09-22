@@ -191,6 +191,11 @@ my %INSTALL_BOOT_FILES = (
     'ppc64' => [
         [ 'install/netboot/ubuntu-installer/{darch}/vmlinux', 'install/netboot/ubuntu-installer/{darch}/initrd.gz' ],
         [ 'install/vmlinux',                                  'install/netboot/initrd.gz' ],
+        [ 'casper/hwe-vmlinux',                               'casper/hwe-initrd' ],
+        [ 'casper/vmlinux',                                   'casper/initrd' ],
+    ],
+    'riscv64' => [
+        [ 'casper/vmlinux', 'casper/initrd' ],
     ],
 );
 
@@ -201,9 +206,10 @@ sub install_boot_files
     $darch = '' unless defined $darch;
 
     my $family =
-        $arch =~ /x86/i   ? 'x86'
-      : $arch =~ /ppc64/i ? 'ppc64'
-      :                     undef;
+        $arch =~ /x86/i     ? 'x86'
+      : $arch =~ /ppc64/i   ? 'ppc64'
+      : $arch =~ /riscv64/i ? 'riscv64'
+      :                       undef;
     return unless $family;
 
     foreach my $candidate (@{ $INSTALL_BOOT_FILES{$family} }) {
@@ -213,6 +219,213 @@ sub install_boot_files
         return ($kernel, $initrd) if -r $kernel and -r $initrd;
     }
     return;
+}
+
+# The grub2 image on the media boots only from the media: it carries a built-in
+# configuration that looks for the live filesystem and never reads the network
+# configuration nodeset writes. A netboot image is built from the grub2 package
+# the media ships instead.
+my %MEDIA_GRUB2_BUILDS = (
+    'riscv64' => {
+        format  => 'riscv64-efi',
+        package => 'grub-efi-riscv64-bin',
+        machine => 0x5064,
+    },
+);
+
+# Where the loader looks for the configuration nodeset writes, stored inside the image.
+my $GRUB2_PREFIX = '/boot/grub2';
+
+# The modules the network path needs before it can read a configuration file.
+my @GRUB2_NETBOOT_MODULES = qw(
+  efinet tftp http net normal linux echo test configfile
+  search search_label search_fs_uuid search_fs_file
+  gzio part_gpt part_msdos ext2 fat all_video video font terminal reboot halt
+);
+
+sub install_media_grub2_loader {
+    my ($path, $arch, $callback) = @_;
+
+    my $build = $MEDIA_GRUB2_BUILDS{$arch};
+    return unless $build;
+
+    my $tftpdir = xCAT::TableUtils->getTftpDir();
+    unless ($tftpdir) {
+        _no_grub2_loader($arch, 'the TFTP directory is not known', $callback);
+        return;
+    }
+    my $target = "$tftpdir/boot/grub2/grub2.$arch";
+    return $target if _is_netboot_loader($target, $build);
+
+    # A file that failed the check is left where it is. The check cannot tell an image built for
+    # another boot path from one this plugin did not build: the loader on the media carries the
+    # same modules and differs only in the prefix. Moving a file aside on that evidence can take
+    # a working loader away from every node of the architecture, so it is replaced only once a
+    # working one exists, by the rename below.
+    my $kept = -e $target ? 1 : 0;
+
+    my ($package) = glob("$path/pool/main/g/grub2/$build->{package}_*_$arch.deb");
+    unless ($package && -r $package) {
+        _no_grub2_loader($arch, "the media carry no $build->{package} package", $callback, $kept);
+        return;
+    }
+
+    my $workdir = tempdir(CLEANUP => 1);
+    if (system('dpkg-deb', '-x', $package, $workdir) != 0) {
+        _no_grub2_loader($arch, "$package could not be unpacked", $callback, $kept);
+        return;
+    }
+
+    my $moduledir = "$workdir/usr/lib/grub/$build->{format}";
+    unless (-d $moduledir) {
+        _no_grub2_loader($arch, "$package carries no $build->{format} modules", $callback, $kept);
+        return;
+    }
+
+    mkpath("$tftpdir/boot/grub2");
+
+    # Built beside the target and renamed, so an interrupted run cannot leave a partial
+    # loader that nodeset would hand to every node of the architecture.
+    my $partial = "$target.$$";
+    my $rc = system('grub-mkimage', '-O', $build->{format}, '-d', $moduledir,
+        '-p', $GRUB2_PREFIX, '-o', $partial, @GRUB2_NETBOOT_MODULES);
+    unless ($rc == 0 and _is_netboot_loader($partial, $build)) {
+        unlink $partial;
+        _no_grub2_loader($arch, 'grub-mkimage could not build it', $callback, $kept);
+        return;
+    }
+    chmod 0644, $partial;
+    unless (rename($partial, $target)) {
+        unlink $partial;
+        _no_grub2_loader($arch, "it could not be renamed to $target: $!", $callback, $kept);
+        return;
+    }
+    $callback->({ data => "Installed $target from the media" }) if $callback;
+    return $target;
+}
+
+# UEFI loads the loader as a PE image for one machine, so anything else -- a truncated
+# file, a stub carrying only headers, or the loader of another architecture -- cannot boot
+# a node and is replaced. The fields below are the ones an image must have to be executed
+# at all: sections to load, an entry point to jump to, and the subsystem UEFI runs.
+sub _is_uefi_image {
+    my ($file, $machine) = @_;
+
+    my $size = -s $file;
+    return 0 unless ($machine and $size);
+    open(my $fh, '<', $file) or return 0;
+    binmode($fh);
+
+    my $ok = 0;
+    my ($dos, $coff, $optional);
+    if (read($fh, $dos, 64) == 64
+        and substr($dos, 0, 2) eq 'MZ'
+        and seek($fh, unpack('V', substr($dos, 60, 4)), 0)
+        and read($fh, $coff, 24) == 24
+        and substr($coff, 0, 4) eq "PE\0\0"
+        and unpack('v', substr($coff, 4, 2)) == $machine
+        and unpack('v', substr($coff, 6, 2)) > 0
+        and read($fh, $optional, 72) == 72
+        and unpack('v', substr($optional, 0, 2)) == 0x20b)
+    {
+        my $entry   = unpack('V', substr($optional, 16, 4));
+        my $image   = unpack('V', substr($optional, 56, 4));
+        my $headers = unpack('V', substr($optional, 60, 4));
+        my $system  = unpack('v', substr($optional, 68, 2));
+
+        # 10 is the EFI application subsystem, the only one the firmware loads.
+        $ok = ($entry and $image and $headers and $system == 10
+              and $headers <= $size and $image <= $size);
+    }
+    close($fh);
+    return $ok ? 1 : 0;
+}
+
+# The modules a net boot cannot happen without. grub-mkimage records the name of every module
+# it embeds, so their absence says the file is not a grub2 image built for this boot path,
+# whatever its headers claim.
+my @GRUB2_REQUIRED_MODULES = qw(efinet tftp http linux normal configfile search);
+
+# grub-mkimage stores the prefix inside the image, so a loader built for this boot path
+# carries the directory nodeset writes its configuration into. The image on the media has
+# the same modules but no such prefix, which is why it cannot find that configuration: a
+# file without it is replaced rather than trusted.
+sub _is_netboot_loader {
+    my ($file, $build) = @_;
+
+    return 0 unless _is_uefi_image($file, $build->{machine});
+    open(my $fh, '<', $file) or return 0;
+    binmode($fh);
+    my $image = do { local $/; <$fh> };
+    close($fh);
+    return 0 unless defined $image and index($image, $GRUB2_PREFIX) >= 0;
+    for my $module (@GRUB2_REQUIRED_MODULES) {
+        return 0 if index($image, "\0$module\0") < 0;
+    }
+    return 1;
+}
+
+# Nothing else on an Ubuntu management node installs this loader, so a node of this
+# architecture cannot boot until an administrator supplies one.
+sub _no_grub2_loader {
+    my ($arch, $reason, $callback, $kept) = @_;
+
+    return unless $callback;
+    my $consequence = $kept
+      ? "The grub2.$arch already in the boot/grub2 directory of the TFTP root was left alone. It "
+        . "was not built for this boot path, so check that nodes of this architecture still boot."
+      : "Nodes of this architecture will not boot until one is placed in the boot/grub2 "
+        . "directory of the TFTP root.";
+    $callback->({
+        warning => [ "No grub2.$arch boot loader was installed because $reason. $consequence" ] });
+    return;
+}
+
+#-------------------------------------------------------
+
+=head3  install_prescript
+
+    Descriptions: Return the pre-install script an Ubuntu or Debian install runs.
+    Arguments:
+        $platform   - the distribution family, for example ubuntu
+        $arch       - the architecture of the node
+        $subiquity  - true when the osimage template is a Subiquity autoinstall
+    Returns: the full path of the pre-install script
+
+=cut
+
+#-------------------------------------------------------
+sub install_prescript
+{
+    my ($platform, $arch, $subiquity) = @_;
+    my $base = "$::XCATROOT/share/xcat/install/scripts/pre.$platform";
+
+    # pre.ubuntu.ppc64 writes a partman recipe, which only the debian-installer
+    # reads. Subiquity gets its POWER partitioning from pre.ubuntu.subiquity.
+    return "$base.subiquity" if ($subiquity);
+    return "$base.ppc64" if (defined($arch) and $arch =~ /ppc64/i and $platform eq "ubuntu");
+    return $base;
+}
+
+#-------------------------------------------------------
+
+=head3  install_media_is_bootable
+
+    Descriptions: Report whether copied media carries an install kernel and initrd.
+    Arguments:
+        $arch   - the xCAT architecture of the node
+        $darch  - the dpkg architecture
+        $pkgdir - the directory copycds wrote the media to
+    Returns: 1 when the media can boot a network install, 0 when it cannot
+
+=cut
+
+#-------------------------------------------------------
+sub install_media_is_bootable
+{
+    my ($arch, $darch, $pkgdir) = @_;
+
+    return install_boot_files($arch, $darch, $pkgdir) ? 1 : 0;
 }
 
 sub is_ubuntu_live_media
@@ -517,6 +730,7 @@ sub copycd
         }
 
         $callback->({ data => "Media copy operation successful" });
+        install_media_grub2_loader($temppath, $arch, $callback);
         unless ($noosimage) {
             my @ret = xCAT::SvrUtils->update_tables_with_templates($distname, $arch, $temppath, $osdistroname, $legacyUB20);
             if ($ret[0] != 0) {
@@ -645,6 +859,15 @@ sub subiquity_boot_params {
     return (subiquity_kcmdline($base, $nfsip, $pkgdir, $instserver, $httpport, $node), undef);
 }
 
+# The Debian name of an install architecture, and whether xCAT installs Ubuntu
+# on it. ppc64le is kept as is: the media paths key on both spellings.
+my %INSTALL_ARCH = map { $_ => 1 } qw(x86_64 x86 ppc64le ppc64el riscv64);
+
+sub install_darch {
+    my ($arch) = @_;
+    return ( xCAT::Utils::debian_arch($arch), $INSTALL_ARCH{ $arch // '' } ? 1 : 0 );
+}
+
 sub mkinstall {
     xCAT::MsgUtils->message("S", "Doing debian mkinstall");
     my $request  = shift;
@@ -721,6 +944,7 @@ sub mkinstall {
         my $partitionfile;
         my $pkgdir;
         my $pkgdirval;
+        my $environvar;
         my @mirrors;
         my $pkglistfile;
         my $imagename;    # set it if running of 'nodeset osimage=xxx'
@@ -743,12 +967,13 @@ sub mkinstall {
                 if (!$osimagetab) {
                     $osimagetab = xCAT::Table->new('osimage', -create => 1);
                 }
-                (my $ref) = $osimagetab->getAttribs({ imagename => $imagename }, 'osvers', 'osarch', 'profile', 'provmethod');
+                (my $ref) = $osimagetab->getAttribs({ imagename => $imagename }, 'osvers', 'osarch', 'profile', 'provmethod', 'environvar');
                 if ($ref) {
                     $img_hash{$imagename}->{osver}      = $ref->{'osvers'};
                     $img_hash{$imagename}->{osarch}     = $ref->{'osarch'};
                     $img_hash{$imagename}->{profile}    = $ref->{'profile'};
                     $img_hash{$imagename}->{provmethod} = $ref->{'provmethod'};
+                    $img_hash{$imagename}->{environvar} = $ref->{'environvar'};
                     if (!$linuximagetab) {
                         $linuximagetab = xCAT::Table->new('linuximage', -create => 1);
                     }
@@ -821,6 +1046,7 @@ sub mkinstall {
 
             $tmplfile  = $ph->{template};
             $pkgdirval = $ph->{pkgdir};
+            $environvar = $ph->{environvar};
             my @pkgdirlist = split(/,/, $pkgdirval);
             foreach (@pkgdirlist) {
                 if ($_ =~ /^http|ssh/) {
@@ -868,18 +1094,9 @@ sub mkinstall {
             xCAT::MsgUtils->trace($verbose_on_off, "d", "debian->mkinstall: pkgdir=$pkgdir pkglistfile=$pkglistfile tmplfile=$tmplfile");
         }
 
-        if ($arch eq "x86_64") {
-            $darch = "amd64";
-        }
-        elsif ($arch eq "x86") {
-            $darch = "i386";
-        }
-        else {
-            if ($arch ne "ppc64le" and $arch ne "ppc64el") {
-                xCAT::MsgUtils->message("S", "debian.pm: Unknown arch ($arch)");
-            }
-            $darch = $arch;
-        }
+        my $known;
+        ($darch, $known) = install_darch($arch);
+        xCAT::MsgUtils->message("S", "debian.pm: Unknown arch ($arch)") unless $known;
 
         my @missingparms;
         unless ($os) {
@@ -957,21 +1174,16 @@ sub mkinstall {
                 $pkgdir,
                 $platform,
                 $partitionfile,
-                \%tmpl_hash
+                \%tmpl_hash,
+                osarch     => $arch,
+                pkgdirs    => $pkgdirval,
+                environvar => $environvar
               );
         }
 
-        # maybe Debian will decide to use subiquity at some point?
-        my $prescript = "$::XCATROOT/share/xcat/install/scripts/pre.$platform";
-        if (using_subiquity($os,$tmplfile)) {
-            $prescript = $prescript . ".subiquity";
-        }
+        my $prescript =
+          install_prescript($platform, $arch, using_subiquity($os, $tmplfile));
         my $postscript = "$::XCATROOT/share/xcat/install/scripts/post.$platform";
-
-        # for powerkvm VM ubuntu LE#
-        if ($arch =~ /ppc64/i and $platform eq "ubuntu") {
-            $prescript = "$::XCATROOT/share/xcat/install/scripts/pre.$platform.ppc64";
-        }
 
 
         if (-r "$prescript") {
@@ -1005,10 +1217,11 @@ sub mkinstall {
             next;
         }
 
-        if ($arch =~ /ppc64/i and !(-e "$pkgdir/install/netboot/initrd.gz") and
-            !(-e "$pkgdir/install/netboot/ubuntu-installer/$darch/initrd.gz")) {
-            xCAT::MsgUtils->report_node_error($callback, $node, 
-                "The network boot initrd.gz is not found in $pkgdir/install/netboot.  This is provided by Ubuntu, please download and retry."
+        # The POWER live-server ISO keeps its installer under casper and ships no netboot
+        # tree, so the media that can boot it is the media install_boot_files resolves.
+        unless (install_media_is_bootable($arch, $darch, $pkgdir)) {
+            xCAT::MsgUtils->report_node_error($callback, $node,
+                "No install kernel and initrd were found on the media in $pkgdir."
                 );
             next;
         }

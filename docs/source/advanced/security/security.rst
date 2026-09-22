@@ -146,6 +146,14 @@ You can enable **secureroot** feature for more secure consideration. ::
 
 Then, after the new ``packimage`` or ``nodeset`` command, the root password hash can only be acquired on-the-fly with strict security control.
 
+The ``sudoer`` postscript creates a login user with passwordless ``sudo``, named ``xcat`` unless the postscript runs as ``sudoer -u <username>``, and adds the cluster SSH host key to its ``authorized_keys``. An existing login account is kept, together with the other keys in its ``authorized_keys``. Root, service accounts, and accounts without a login shell are refused. The password of the account is always managed: it comes from the ``passwd`` table, and the account is locked when the table has no row for it: ::
+
+    chtab key=system,username=xcat passwd.password=<password>
+
+The node acquires the password hash on-the-fly, the same way as the **secureroot** root password hash. The management node serves the hash only for the sudoer named in the ``postscripts`` or ``postbootscripts`` of the node, its osimage, or ``xcatdefaults``. The postscript grants ``sudo`` and installs the key only after the password is set or locked. If the management node does not answer or refuses the request, the postscript fails and leaves the account unprivileged.
+
+The ``sudo`` rule lives in ``/etc/sudoers.d/xcat-sudoer``, which each run replaces and which records the account it grants. A rerun with another name revokes the previous account: it loses the rule, its password is locked, and the cluster key is removed from its ``authorized_keys``, while its other keys and its login stay. Lines that an older version of the postscript appended to ``/etc/sudoers`` are moved out on the first run, after ``visudo`` accepts the result. A failed run removes the managed rule, so a node keeps no grant from an earlier run. On a node without ``/etc/sudoers.d`` the rule is appended once to ``/etc/sudoers`` and a rename does not revoke the previous name.
+
 
 Nodes Inter-Access in The Cluster
 ---------------------------------

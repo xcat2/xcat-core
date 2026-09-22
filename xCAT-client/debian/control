@@ -7,8 +7,8 @@ Standards-Version: 3.9.4
 
 Package: xcat-client
 Architecture: all
-Depends: ${perl:Depends}, perl-xcat (>= 2.13-snap000000000000)
-Recommends: libsort-versions-perl, nmap
+Depends: ${perl:Depends}, perl-xcat (>= 2.13-snap000000000000), libcapture-tiny-perl, nmap
+Recommends: libsort-versions-perl
 Description: Core executables and data of the xCAT management project
  xCAT-client provides the fundamental xCAT commands (chtab, chnode, rpower,
  etc) helpful in administrating systems at scale, with particular attention

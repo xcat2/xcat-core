@@ -28,6 +28,8 @@ for my $arch (qw(x86_64 ppc64le)) {
     ok($requires{coreutils}, "$arch explicitly requests the temporary-file tool provider");
     ok($requires{tzdata}, "$arch explicitly requests the native timezone database");
     ok($requires{'glibc-common'}, "$arch explicitly requests the native UTF-8 locale");
+    ok($requires{'dhcp-client'}, "$arch requests the native DHCP client package");
+    ok(!$requires{dhcpcd}, "$arch does not request the EL10 DHCP client package");
     is(!!$requires{dmidecode}, $arch eq 'x86_64' ? 1 : '', "$arch retains the correct DMI tool requirement");
     is(!!$requires{efibootmgr}, $arch eq 'x86_64' ? 1 : '', "$arch retains the correct EFI tool requirement");
     SKIP: {
