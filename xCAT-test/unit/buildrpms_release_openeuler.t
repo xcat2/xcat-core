@@ -127,6 +127,8 @@ sub run_builder {
         : "ID=rocky\nVERSION=9.6\nVERSION_ID=9.6\n");
     write_file("$fixture/mock/$target.cfg", "config_opts['root'] = '$target'\n");
     write_file("$fixture/bin/createrepo_c", "#!/bin/sh\nexit 0\n");
+    write_file("$fixture/bin/rpmsign", "#!/bin/sh\nexit 0\n");
+    write_file("$fixture/bin/gpg", "#!/bin/sh\nexit 0\n");
     write_file("$fixture/bin/cp", "#!/bin/sh\n[ \"\$XCAT_RELEASE_TEST_FAILURE\" != cp ] || exit 41\nexec /usr/bin/cp \"\$@\"\n");
     write_file("$fixture/bin/tar", <<'SH');
 #!/bin/sh
@@ -142,7 +144,7 @@ fi
 exec /usr/bin/tar "$@"
 SH
     write_file("$fixture/bin/mock", mock_command());
-    chmod 0755, map {"$fixture/bin/$_"} qw(mock createrepo_c cp tar);
+    chmod 0755, map {"$fixture/bin/$_"} qw(mock createrepo_c rpmsign gpg cp tar);
     if ($failure) {
         write_file("$fixture/home/rpmbuild/SOURCES/xCAT-release-2.19.0.tar.gz", 'prior archive');
         unlink "$fixture/xCAT-release/xcat-core.repo" if $failure eq 'missing-core';
@@ -156,6 +158,7 @@ SH
         XCAT_RELEASE_TEST_FAILURE => ($failure && $failure eq 'copy' ? 'cp' : $failure || ''));
     my @target = $default ? () : ('--target', $target);
     my ($status, $output) = run($fixture, $^X, 'buildrpms.pl', '--package', 'xCAT-release', @target,
+        (defined($subdir) ? '--gpg-sign' : ()),
         '--release', 'releasecontract', '--mock-uniqueext', 'release-contract', '--nproc', '1');
     write_file("$fixture/builder-output", $output);
     return {fixture => $fixture, status => $status, output => $output};
