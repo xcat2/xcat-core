@@ -10,6 +10,9 @@ The GitHub Actions `xcat_test` workflow runs this command after the Perl `.t`
 unit tests. Use BATS for shell behavior that can be exercised from the source
 tree without an installed xCAT, a live management node, or real services.
 
+The existing `otherpkgs_upgrade_scope.t` remains in `unit/` for its structured
+command and repository assertions. See its [sandbox prerequisites](../unit/README.md#postscript-sandbox-prerequisites).
+
 Prefer sourcing an existing shell library or sourceable script and calling the
 function under test. Keep reusable install-template helpers in
 `xCAT-server/share/xcat/install/scripts/scriptlib`, and reusable postscript
