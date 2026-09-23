@@ -6,7 +6,7 @@ use File::Copy qw(copy);
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
 use FindBin;
-use lib "$FindBin::Bin/../lib";
+use lib "$FindBin::Bin/../lib", "$FindBin::Bin/../../perl-xCAT", "$FindBin::Bin/../../xCAT-server/lib/perl";
 use Test::More;
 use XCAT::Test::File qw(repo_path slurp_repo_file);
 
@@ -17,19 +17,21 @@ plan skip_all => 'mount and network namespaces unavailable'
 
 my $tmp = tempdir(DIR => '/var/tmp', CLEANUP => !$ENV{XCAT_POST_REPOS_KEEP});
 diag("fixtures: $tmp") if $ENV{XCAT_POST_REPOS_KEEP};
-my $scriptdir = 'xCAT-server/share/xcat/install/scripts';
-my $postscript = slurp_repo_file("$scriptdir/post.rhels8");
-my $library = slurp_repo_file("$scriptdir/scriptlib");
-my $include = '#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#';
-$postscript =~ s/^\Q$include\E$/$library/m
-    or BAIL_OUT('Unable to render the scriptlib include');
-my $preamble = <<'SH';
-compgen() { return 1; }
-nmcli() { return 0; }
-SH
-$postscript =~ s/\A(#![^\n]*\n)/$1$preamble/
-    or BAIL_OUT('Unable to stage the network fixture');
-write_file("$tmp/post.rhels8", $postscript);
+make_path("$tmp/db", "$tmp/bin");
+$ENV{XCATROOT} = repo_path('xCAT-server');
+$ENV{XCATCFG} = "SQLite:$tmp/db";
+$ENV{MASTER_IP} = '192.0.2.1';
+require xCAT::Table;
+require xCAT::Template;
+my $site = xCAT::Table->new('site', -create => 1);
+$site->setAttribs({key => 'xcatdebugmode'}, {value => '0'});
+$site->close();
+my $error = xCAT::Template->subvars(repo_path('xCAT-server/share/xcat/install/scripts/post.rhels8'),
+    "$tmp/post.rhels8", 'node', undef, '/install/media', 'openeuler', undef,
+    {xcatmaster => '192.0.2.1'});
+die "Cannot render post.rhels8: $error" if $error;
+write_file("$tmp/bin/nmcli", "#!/bin/sh\nexit 0\n");
+chmod 0755, "$tmp/bin/nmcli" or die $!;
 is(system('/bin/bash', '-n', "$tmp/post.rhels8"), 0,
     'the complete rendered post owner has valid Bash syntax');
 write_file("$tmp/namespace", <<'SH');
@@ -42,13 +44,7 @@ mount --bind "$XCAT_POST_REPOS_FIXTURE/etc" /etc
 exec /bin/bash "$XCAT_POST_REPOS_OWNER"
 SH
 chmod 0755, "$tmp/namespace" or die $!;
-my @legacy = qw(
-    oracle-linux-ol8.repo oracle-linux-ol9.repo uek-ol8.repo uek-ol9.repo
-    Rocky-AppStream.repo Rocky-BaseOS.repo Rocky-Extras.repo rocky.repo
-    rocky-extras.repo CentOS-Base.repo centos.repo centos-addons.repo
-    almalinux-ha.repo almalinux-nfv.repo almalinux-powertools.repo
-    almalinux.repo almalinux-resilientstorage.repo almalinux-rt.repo
-);
+my @legacy = qw(Rocky-BaseOS.repo almalinux.repo CentOS-Base.repo oracle-linux-ol8.repo);
 my $enabled = "[fixture]\nenabled=1\ngpgcheck=1\nbaseurl=https://repo.invalid/\n";
 my $disabled = "[fixture]\nenabled=0\ngpgcheck=1\nbaseurl=https://repo.invalid/\n";
 my $native = "[OS]\nenabled=1\ngpgcheck=1\n[update]\n \tenabled = 1\n[disabled]\nenabled=0\n#enabled=1\n";
@@ -77,7 +73,7 @@ for my $case (
         local %ENV = (%ENV, XCATDEBUGMODE => '0', MASTER_IP => '192.0.2.1',
             XCAT_POST_REPOS_FIXTURE => $fixture, XCAT_POST_REPOS_OWNER => "$tmp/post.rhels8",
             XCAT_POST_HOST_MOUNT => $host_mount, XCAT_POST_HOST_NET => $host_net,
-            PATH => '/usr/sbin:/usr/bin:/sbin:/bin', LC_ALL => 'C');
+            PATH => "$tmp/bin:/usr/sbin:/usr/bin:/sbin:/bin", LC_ALL => 'C');
         for my $pass (1, 2) {
             my $pid = fork(); die $! unless defined $pid;
             if (!$pid) {

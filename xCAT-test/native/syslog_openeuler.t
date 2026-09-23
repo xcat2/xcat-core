@@ -140,6 +140,7 @@ for my $case (@cases) {
     is(system('unshare', '-mn', '--', "$tmp/bin/namespace"), 0, "$name: isolated driver completed");
     my $rc = read_file("$fixture/postscript-1.rc");
     chomp $rc;
+    die "Missing postscript status for $name" unless $rc =~ /^\d+$/;
     if ($failure) {
         isnt($rc, 0, "$name: failure reaches postscript exit");
         is(read_file("$fixture/logger.log"), '', "$name: no success log");

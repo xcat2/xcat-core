@@ -21,13 +21,18 @@ sub asset {
     return $path;
 }
 
-foreach my $version (qw(20.03sp4 22.03sp4 24.03sp1 24.03sp3 24.03sp4 24.03)) {
-    my $os = "openeuler$version";
-    my ($base) = $os =~ /^(openeuler[0-9]+\.03)/;
-    my @expected = $os eq $base ? ($os, 'openeuler') : ($os, $base, 'openeuler');
-    is_deeply([xCAT::SvrUtils::get_os_search_list($os)], \@expected,
+for my $case (
+    ['openeuler20.03sp4', [qw(openeuler20.03sp4 openeuler20.03 openeuler)], '20', '03sp4'],
+    ['openeuler22.03sp4', [qw(openeuler22.03sp4 openeuler22.03 openeuler)], '22', '03sp4'],
+    ['openeuler24.03sp1', [qw(openeuler24.03sp1 openeuler24.03 openeuler)], '24', '03sp1'],
+    ['openeuler24.03sp3', [qw(openeuler24.03sp3 openeuler24.03 openeuler)], '24', '03sp3'],
+    ['openeuler24.03sp4', [qw(openeuler24.03sp4 openeuler24.03 openeuler)], '24', '03sp4'],
+    ['openeuler24.03', [qw(openeuler24.03 openeuler)], '24', '03'],
+) {
+    my ($os, $expected, $major, $minor) = @$case;
+    my $base = "openeuler$major.03";
+    is_deeply([xCAT::SvrUtils::get_os_search_list($os)], $expected,
         "$os falls back within its LTS family without an earlier SP");
-    my ($major, $minor) = split /\./, $version, 2;
     is_deeply([xCAT::SvrUtils::parseosver($os)], ['openeuler', $major, $minor],
         "$os keeps the service pack in osdistro version fields");
     is(xCAT::SvrUtils->getplatform($os), 'openeuler', "$os uses native platform assets");

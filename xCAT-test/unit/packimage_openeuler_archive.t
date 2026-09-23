@@ -15,6 +15,7 @@ use XCAT::Test::File qw(repo_path);
 
 plan skip_all => 'requires Linux cpio, gzip and tar'
   unless $^O eq 'linux' && -x '/usr/bin/cpio' && -x '/usr/bin/gzip' && -x '/usr/bin/tar';
+local $ENV{PATH} = "$ENV{PATH}:/usr/sbin:/sbin";
 my $dir = tempdir(CLEANUP => 1);
 make_path("$dir/db", "$dir/root/lib/perl", "$dir/root/share", "$dir/install/postscripts");
 symlink(repo_path('perl-xCAT/xCAT'), "$dir/root/lib/perl/xCAT") or die $!;

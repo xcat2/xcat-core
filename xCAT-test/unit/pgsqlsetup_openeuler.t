@@ -43,7 +43,7 @@ my ($help, $load_error);
 is(ref($load_error), 'PgSetupTestExit', 'the complete CLI reaches its help exit');
 is(ref($load_error) ? $load_error->{status} : undef, 0, 'help exits successfully');
 like($help, qr/pgsqlsetup/, 'help prints usage');
-BAIL_OUT("Unable to load complete pgsqlsetup: $load_error")
+die("Unable to load complete pgsqlsetup: $load_error")
   unless ref($load_error) eq 'PgSetupTestExit' && $load_error->{status} == 0;
 
 sub invoke {

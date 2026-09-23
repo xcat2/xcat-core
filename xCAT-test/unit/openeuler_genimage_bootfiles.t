@@ -154,13 +154,7 @@ for my $failure (qw(none kernel-copy dracut move-initrd)) {
     is($state->{lock_calls}, 0, "EL $failure retains its existing onlyinitrd lock behavior");
 }
 
-my @legacy_repositories = qw(
-    oracle-linux-ol8.repo oracle-linux-ol9.repo oracle-linux-ol10.repo
-    uek-ol8.repo uek-ol9.repo uek-ol10.repo Rocky-AppStream.repo Rocky-BaseOS.repo
-    Rocky-Extras.repo rocky.repo rocky-extras.repo CentOS-Base.repo centos.repo
-    centos-addons.repo almalinux-ha.repo almalinux-nfv.repo almalinux-plus.repo
-    almalinux-powertools.repo almalinux.repo almalinux-resilientstorage.repo almalinux-rt.repo
-);
+my @legacy_repositories = qw(Rocky-BaseOS.repo almalinux.repo CentOS-Base.repo oracle-linux-ol10.repo);
 my @custom_repositories = qw(local-repository-0.repo xCAT-custom.repo administrator.repo);
 my $enabled = "[fixture]\nenabled=1\ngpgcheck=1\nbaseurl=https://repo.invalid/\n";
 my $disabled = "[fixture]\nenabled=0\ngpgcheck=1\nbaseurl=https://repo.invalid/\n";

@@ -57,25 +57,25 @@ for my $name (qw(uname blockdev udevadm mknod chown vgs vgchange vgremove logger
 my $small = 62914560;
 my $large = 8589934592;
 my @cases = (
-    ['native BIOS small', 'openeuler', 'x86_64', 0, $small, 1, 0, 0],
-    ['native BIOS large', 'openeuler', 'x86_64', 0, $large, 1, 0, 0],
-    ['native UEFI small', 'openeuler', 'x86_64', 1, $small, 0, 1, 0],
-    ['native UEFI large', 'openeuler', 'x86_64', 1, $large, 0, 1, 0],
-    ['native POWER small', 'openeuler', 'ppc64le', 0, $small, 0, 0, 1],
-    ['native POWER large', 'openeuler', 'ppc64le', 0, $large, 0, 0, 1],
-    ['legacy BIOS small', 'rhels8', 'x86_64', 0, $small, 0, 0, 0],
-    ['legacy BIOS large', 'rhels8', 'x86_64', 0, $large, 1, 0, 0],
-    ['legacy UEFI small', 'rhels8', 'x86_64', 1, $small, 0, 1, 0],
-    ['legacy UEFI large', 'rhels8', 'x86_64', 1, $large, 1, 1, 0],
-    ['legacy POWER large', 'rhels8', 'ppc64le', 0, $large, 1, 0, 1],
-    ['legacy POWER big endian', 'rhels8', 'ppc64', 0, $small, 0, 0, 1],
-    ['native BIOS static custom', 'openeuler', 'x86_64', 0, $small, 0, 0, 0, 'static'],
-    ['native BIOS script custom', 'openeuler', 'x86_64', 0, $small, 0, 0, 0, 'script'],
-    ['native UEFI custom', 'openeuler', 'x86_64', 1, $small, 0, 0, 0, 'static'],
-    ['native POWER custom', 'openeuler', 'ppc64le', 0, $large, 0, 0, 0, 'static'],
+    ['native BIOS small', 'openeuler', 'x86_64', 0, $small, 1, 0, 0, 'xfs'],
+    ['native BIOS large', 'openeuler', 'x86_64', 0, $large, 1, 0, 0, 'xfs'],
+    ['native UEFI small', 'openeuler', 'x86_64', 1, $small, 0, 1, 0, 'xfs'],
+    ['native UEFI large', 'openeuler', 'x86_64', 1, $large, 0, 1, 0, 'xfs'],
+    ['native POWER small', 'openeuler', 'ppc64le', 0, $small, 0, 0, 1, 'ext4'],
+    ['native POWER large', 'openeuler', 'ppc64le', 0, $large, 0, 0, 1, 'ext4'],
+    ['legacy BIOS small', 'rhels8', 'x86_64', 0, $small, 0, 0, 0, 'xfs'],
+    ['legacy BIOS large', 'rhels8', 'x86_64', 0, $large, 1, 0, 0, 'xfs'],
+    ['legacy UEFI small', 'rhels8', 'x86_64', 1, $small, 0, 1, 0, 'xfs'],
+    ['legacy UEFI large', 'rhels8', 'x86_64', 1, $large, 1, 1, 0, 'xfs'],
+    ['legacy POWER large', 'rhels8', 'ppc64le', 0, $large, 1, 0, 1, 'xfs'],
+    ['legacy POWER big endian', 'rhels8', 'ppc64', 0, $small, 0, 0, 1, 'xfs'],
+    ['native BIOS static custom', 'openeuler', 'x86_64', 0, $small, 0, 0, 0, 'xfs', 'static'],
+    ['native BIOS script custom', 'openeuler', 'x86_64', 0, $small, 0, 0, 0, 'xfs', 'script'],
+    ['native UEFI custom', 'openeuler', 'x86_64', 1, $small, 0, 0, 0, 'xfs', 'static'],
+    ['native POWER custom', 'openeuler', 'ppc64le', 0, $large, 0, 0, 0, 'ext4', 'static'],
 );
 for my $case (@cases) {
-    my ($label, $platform, $arch, $efi, $sectors, $bios, $esp, $prep, $custom) = @$case;
+    my ($label, $platform, $arch, $efi, $sectors, $bios, $esp, $prep, $fstype, $custom) = @$case;
     my $fixture = tempdir(DIR => $tmp, CLEANUP => 1);
     make_path(map { "$fixture/$_" } qw(tmp dev proc sys/firmware var/log/xcat etc));
     make_path("$fixture/sys/firmware/efi") if $efi;
@@ -103,7 +103,7 @@ for my $case (@cases) {
     my $rendered = read_file("$fixture/output.ks");
     my ($pre) = $rendered =~ /^%pre[^\n]*\n(.*?)^%end/ms;
     defined($pre) or die 'rendered Kickstart did not contain a pre-install script';
-    $pre =~ s{(/(?:tmp|dev|proc|sys|etc|var)(?=/|\b)|/foo\.log)}{$fixture$1}g;
+    $pre =~ s{(?<![[:alnum:]_/:])(/(?:tmp|dev|proc|sys|etc|var)(?=/|\b)|/foo\.log)}{$fixture$1}g;
     $pre =~ s{/(?:usr/bin/python3|usr/libexec/platform-python)}{$tmp/bin/python3}g;
     write_file("$fixture/pre.sh", $pre);
     my ($rc, $output);
@@ -114,7 +114,7 @@ for my $case (@cases) {
         open(my $pipe, '-|', 'sh', '-c', 'exec "$@" 2>&1', 'sh', '/bin/bash', "$fixture/pre.sh") or die $!;
         $output = do {local $/; <$pipe>};
         close($pipe);
-        $rc = $? >> 8;
+        $rc = (($? & 127) ? 128 + ($? & 127) : $? >> 8);
     }
     is($rc, 0, "$label executes the complete generated pre-install script") or diag($output);
     my $layout = read_file("$fixture/tmp/partitionfile");
@@ -129,7 +129,6 @@ for my $case (@cases) {
         my $disk = "$fixture/dev/vda";
         like($layout, qr/^ignoredisk --only-use=\Q$disk\E$/m, "$label retains actual selected disk");
         like($layout, qr/^part biosboot --ondisk=\Q$disk\E --size=1$/m, "$label reserves one MiB on the selected disk") if $bios;
-        my $fstype = $platform eq 'openeuler' && $arch eq 'ppc64le' ? 'ext4' : 'xfs';
         like($layout, qr{^part /boot --fstype=$fstype }m, "$label retains boot filesystem policy");
         like($layout, qr{^logvol / --fstype=$fstype }m, "$label retains root filesystem policy");
         like($layout, qr/^bootloader --boot-drive=vda$/m, "$label retains selected boot drive");

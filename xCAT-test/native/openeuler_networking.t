@@ -149,7 +149,7 @@ sub run_case {
         die $!;
     }
     waitpid($pid, 0);
-    return ($? >> 8, read_file("$fixture/commands"), read_file("$fixture/output"), $fixture);
+    return ((($? & 127) ? 128 + ($? & 127) : $? >> 8), read_file("$fixture/commands"), read_file("$fixture/output"), $fixture);
 }
 
 for my $case (

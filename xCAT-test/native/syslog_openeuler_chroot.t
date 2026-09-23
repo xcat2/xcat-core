@@ -103,8 +103,8 @@ for my $case (['mn', 0], ['snlocal', 0], ['snforward', 0], ['cn', 0], ['mn', 1],
     is(read_file("$evidence/helper.rc"), "1\n", "$name: shared restart helper retains its existing contract");
     is(read_file("$evidence/services-postscript.log"), '', "$name: postscript does not attempt service activation");
     if ($invalid) {
-        isnt(read_file("$evidence/postscript-1.rc"), "0\n", "$name: parser failure reaches the postscript exit");
-        isnt(read_file("$evidence/parser.rc"), "0\n", "$name: actual native parser rejects the configuration");
+        is(read_file("$evidence/postscript-1.rc"), "1\n", "$name: parser failure reaches the postscript exit");
+        is(read_file("$evidence/parser.rc"), "1\n", "$name: actual native parser rejects the configuration");
         is(read_file("$evidence/logger.log"), '', "$name: no success log follows invalid configuration");
     } else {
         is(read_file("$evidence/postscript-1.rc"), "0\n", "$name: configuration completes successfully");

@@ -2,16 +2,20 @@
 use strict;
 use warnings;
 use FindBin;
+use File::Copy qw(copy);
 use File::Path qw(make_path);
 use File::Spec;
 use File::Temp qw(tempdir);
-use JSON::PP qw(decode_json encode_json);
+use JSON::PP qw(decode_json);
 use Test::More;
+
+plan skip_all => 'set XCAT_NATIVE_REPOSITORIES=1 to build and transact signed RPM fixtures'
+  unless $ENV{XCAT_NATIVE_REPOSITORIES};
 
 plan skip_all => 'requires Linux root and a private mount namespace'
   unless $^O eq 'linux' && $> == 0
   && system('unshare', '--mount', '--propagation', 'private', '/bin/true') == 0;
-for my $tool (qw(dnf rpm rpmbuild rpmsign createrepo_c gpg python3 runuser)) {
+for my $tool (qw(dnf rpm rpmbuild rpmsign createrepo_c gpg gpgconf runuser)) {
     plan skip_all => "requires $tool" unless system('sh', '-c', 'command -v "$1" >/dev/null', 'sh', $tool) == 0;
 }
 plan skip_all => 'requires the packaged openEuler key path'
@@ -22,69 +26,61 @@ unless (-x "$postscripts/otherpkgs") {
     require xCAT::TableUtils;
     $postscripts = xCAT::TableUtils->getInstallDir() . '/postscripts';
 }
+my $parent_pid = $$;
 my $dir = tempdir(CLEANUP => 1);
-my $case_index = 0;
+
 chmod 0755, $dir;
 make_path("$dir/bin", "$dir/fixtures", "$dir/gnupg");
 chmod 0700, "$dir/gnupg";
-write_text("$dir/build-fixtures.py", <<'PY');
-from pathlib import Path
-import os, shutil, subprocess, sys
-b = Path(sys.argv[1]); home = b / 'gnupg'; top = b / 'build'
-top.mkdir(); top.chmod(0o777)
-subprocess.run(['gpg', '--homedir', str(home), '--batch', '--passphrase', '', '--quick-generate-key',
-                'xCAT repository test <repo-test@example.invalid>', 'rsa2048', 'sign', '0'], check=True)
-key = b / 'key.asc'
-key.write_bytes(subprocess.check_output(['gpg', '--homedir', str(home), '--armor', '--export']))
-specs = [('oe-scope-os', '1', '', 'old'), ('oe-scope-os', '2', '', 'os'),
-         ('oe-scope-os', '3', '', 'vendor'), ('oe-scope-dependency', '1', '', 'os'),
-         ('oe-scope-extra', '1', 'Requires: oe-scope-dependency = 1', 'other/native')]
-for name, version, requires, repo in specs:
-    spec = b / (name + '-' + version + '.spec')
-    spec.write_text('''Name: %s
-Version: %s
+END {
+    local $?;
+    capture('gpgconf', '--homedir', "$dir/gnupg", '--kill', 'gpg-agent')
+      if defined($parent_pid) && $$ == $parent_pid && defined($dir) && -d "$dir/gnupg";
+}
+my $top = "$dir/build";
+make_path($top);
+chmod 0777, $top;
+checked('gpg', '--homedir', "$dir/gnupg", '--batch', '--passphrase', '',
+    '--quick-generate-key', 'xCAT repository test <repo-test@example.invalid>', 'rsa2048', 'sign', '0');
+checked('gpg', '--homedir', "$dir/gnupg", '--armor', '--output', "$dir/key.asc", '--export');
+for my $package (
+    ['oe-scope-os', '1', '', 'old'],
+    ['oe-scope-os', '2', '', 'os'],
+    ['oe-scope-os', '3', '', 'vendor'],
+    ['oe-scope-dependency', '1', '', 'os'],
+    ['oe-scope-extra', '1', 'Requires: oe-scope-dependency = 1', 'other/native'],
+) {
+    my ($name, $version, $requires, $repo) = @$package;
+    my $spec = "$dir/$name-$version.spec";
+    write_text($spec, <<"SPEC");
+Name: $name
+Version: $version
 Release: 1
 Summary: Isolated package repository fixture
 License: MIT
 BuildArch: noarch
 AutoReqProv: no
-%s
-%%description
+$requires
+%description
 Isolated package repository fixture.
-%%install
-mkdir -p %%{buildroot}/usr/share/oe-scope
-echo %%{version} > %%{buildroot}/usr/share/oe-scope/%%{name}
-%%files
-/usr/share/oe-scope/%%{name}
-''' % (name, version, requires))
-    subprocess.run(['runuser', '-u', 'nobody', '--', 'rpmbuild', '--define', '_topdir ' + str(top), '-bb', str(spec)], check=True)
-    rpm = top / 'RPMS/noarch' / (name + '-' + version + '-1.noarch.rpm')
-    subprocess.run(['rpmsign', '--define', '_gpg_name repo-test@example.invalid',
-                    '--define', '_gpg_path ' + str(home), '--addsign', str(rpm)], check=True)
-    dest = b / 'fixtures' / repo; dest.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(rpm, dest / rpm.name)
-for repo in ('old', 'os', 'vendor', 'other/native'):
-    dest = b / 'fixtures' / repo
-    subprocess.run(['createrepo_c', str(dest)], check=True)
-    shutil.copyfile(key, dest / 'repodata/repomd.xml.key')
-PY
-my ($fixture_rc, $fixture_output) = capture('python3', "$dir/build-fixtures.py", $dir);
-is($fixture_rc, 0, 'signed RPM fixtures are built by an unprivileged user') or BAIL_OUT($fixture_output);
-
-write_text("$dir/bin/dnf", <<'PY');
-#!/usr/bin/python3
-import json, os, pathlib, sys
-import dnf.rpm
-args = sys.argv[1:]
-with open(os.environ['DNF_TRACE'], 'a') as out:
-    out.write(json.dumps(args) + '\n')
-if 'clean' not in args and os.environ.get('REMOVE_REPO'):
-    for path in pathlib.Path('/etc/yum.repos.d').glob(os.environ['REMOVE_REPO']):
-        path.unlink()
-os.execv('/usr/bin/dnf', ['dnf', '--installroot=' + os.environ['TEST_ROOT'],
-    '--releasever=' + dnf.rpm.detect_releasever('/'), '--setopt=reposdir=/etc/yum.repos.d',
-    '--setopt=install_weak_deps=False', '--setopt=tsflags=noscripts', '--noplugins'] + args)
-PY
+%install
+mkdir -p %{buildroot}/usr/share/oe-scope
+echo %{version} > %{buildroot}/usr/share/oe-scope/%{name}
+%files
+/usr/share/oe-scope/%{name}
+SPEC
+    checked('runuser', '-u', 'nobody', '--', 'rpmbuild', '--define', "_topdir $top", '-bb', $spec);
+    my $rpm = "$name-$version-1.noarch.rpm";
+    checked('rpmsign', '--define', '_gpg_name repo-test@example.invalid',
+        '--define', "_gpg_path $dir/gnupg", '--addsign', "$top/RPMS/noarch/$rpm");
+    make_path("$dir/fixtures/$repo");
+    copy("$top/RPMS/noarch/$rpm", "$dir/fixtures/$repo/$rpm") or die "copy $rpm: $!";
+}
+for my $repo (qw(old os vendor other/native)) {
+    checked('createrepo_c', "$dir/fixtures/$repo");
+    copy("$dir/key.asc", "$dir/fixtures/$repo/repodata/repomd.xml.key") or die "copy key: $!";
+}
+copy("$FindBin::Bin/fixtures/dnf.pl", "$dir/bin/dnf") or die "copy DNF adapter: $!";
 write_text("$dir/bin/mount", <<'SH');
 #!/bin/sh
 printf '%s on %s type nfs\n' "$NFSSERVER" "$INSTALLDIR"
@@ -98,13 +94,7 @@ SH
 for my $name (qw(logger dpkg wget)) {
     write_text("$dir/bin/$name", "#!/bin/sh\nexit 1\n");
 }
-write_text("$dir/run", <<'SH');
-#!/bin/bash
-set -e
-/bin/mount --bind "$TEST_REPOS" /etc/yum.repos.d
-/bin/mount --bind "$TEST_KEY" /etc/pki/rpm-gpg/RPM-GPG-KEY-openEuler
-exec "$@"
-SH
+copy("$FindBin::Bin/fixtures/postscript-root.sh", "$dir/run") or die "copy isolation wrapper: $!";
 chmod 0755, glob("$dir/bin/*"), "$dir/run";
 
 my $os = run_case('ospkgs');
@@ -162,8 +152,7 @@ SKIP: {
       unless defined($rpm) && -f $rpm;
     my $repo = "$dir/native-key-repo";
     make_path($repo);
-    require File::Copy;
-    File::Copy::copy($rpm, "$repo/native-key.rpm") or die "copy native key RPM: $!";
+    copy($rpm, "$repo/native-key.rpm") or die "copy native key RPM: $!";
     my ($rc, $out) = capture('createrepo_c', $repo);
     is($rc, 0, 'the official native key package fixture has repository metadata') or diag($out);
     my $native = run_case('ospkgs', osrepo => $repo, package => 'openEuler-gpg-keys', native_key => 1);
@@ -200,7 +189,9 @@ sub run_case {
         ($rc, $output) = capture('/usr/bin/rpm', '--root', "$run/root", '-i', "$dir/fixtures/old/oe-scope-os-1-1.noarch.rpm");
         die $output if $rc;
     }
+    my $sandbox = tempdir(CLEANUP => 1);
     local %ENV = %ENV;
+    @ENV{qw(TEST_SANDBOX TEST_FIXTURES TEST_POSTSCRIPTS)} = ($sandbox, $dir, $postscripts);
     delete @ENV{qw(BASH_ENV ENV ENVLIST OTHERPKGDIR_INTERNET KERNELDIR SDKDIR NODESETSTATE VERBOSE)};
     @ENV{qw(PATH TEST_REPOS TEST_ROOT TEST_KEY DNF_TRACE RPM_TRACE REMOVE_REPO)} =
       ("$dir/bin:$ENV{PATH}", "$run/repos", "$run/root", $key, "$run/dnf", "$run/rpm", $options{remove_repo} // '');
@@ -211,6 +202,7 @@ sub run_case {
     my ($rc, $output) = capture('unshare', '--mount', '--propagation', 'private', "$dir/run",
         "$postscripts/$caller", ($options{keeprepo} ? '--keeprepo' : ()));
     my ($query_rc, $packages) = capture('/usr/bin/rpm', '--root', "$run/root", '-qa', '--qf', '%{NAME} %{VERSION}\n');
+    die "RPM query failed: $packages" if $query_rc;
     my (%packages, $keys);
     $keys = 0;
     for my $line (split /\n/, $packages) {
@@ -220,11 +212,12 @@ sub run_case {
     my $result = { rc => $rc, output => $output, packages => \%packages, keys => $keys,
       vendor_preserved => read_text("$run/repos/openEuler.repo") eq $vendor,
       dnf => [map { decode_json($_) } split /\n/, read_text("$run/dnf")], rpm => read_text("$run/rpm") };
-    if (my $evidence = $ENV{XCAT_TEST_EVIDENCE}) {
-        make_path($evidence);
-        write_text("$evidence/" . ++$case_index . "-$caller.json", encode_json({ %$result, options => \%options }) . "\n");
-    }
     return $result;
+}
+
+sub checked {
+    my ($rc, $output) = capture(@_);
+    die "@_ failed ($rc): $output" if $rc;
 }
 
 sub capture {
@@ -238,7 +231,7 @@ sub capture {
     }
     my $output = do { local $/; <$pipe> } // '';
     close($pipe);
-    return ($? >> 8, $output);
+    return ((($? & 127) ? 128 + ($? & 127) : $? >> 8), $output);
 }
 
 sub read_text {

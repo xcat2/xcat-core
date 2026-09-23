@@ -127,7 +127,7 @@ for my $case (@cases) {
                 exec('unshare', '-mn', '--', "$tmp/namespace") or die $!;
             }
             waitpid($pid, 0);
-            my $status = $? >> 8;
+            my $status = (($? & 127) ? 128 + ($? & 127) : $? >> 8);
             is($status, 0, "pass $pass invokes the full production module in isolation");
             if ($status) { diag(read_file("$fixture/stderr-$pass.log")); next; }
             my $result = decode_json(read_file("$fixture/result-$pass.json"));

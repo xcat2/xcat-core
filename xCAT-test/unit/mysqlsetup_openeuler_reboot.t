@@ -32,7 +32,7 @@ my ($help, $load_error);
 is(ref($load_error), 'MysqlSetupTestExit', 'the complete CLI reaches its help exit');
 is(ref($load_error) ? $load_error->{status} : undef, 0, 'help exits successfully');
 like($help, qr/mysqlsetup/, 'help prints the CLI usage');
-BAIL_OUT("Unable to load complete mysqlsetup: $load_error")
+die("Unable to load complete mysqlsetup: $load_error")
   unless ref($load_error) eq 'MysqlSetupTestExit' && $load_error->{status} == 0;
 
 my $service_map = \&xCAT::Utils::servicemap;

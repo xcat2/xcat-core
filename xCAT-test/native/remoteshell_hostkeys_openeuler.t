@@ -40,7 +40,7 @@ sub public_identity {
 my @types = qw(dsa rsa ecdsa ed25519);
 for my $type (@types) {
     my $rc = system('/usr/bin/ssh-keygen', '-q', '-t', $type, '-f', "$tmp/keys/$type", '-N', '', '-C', '');
-    BAIL_OUT("native ssh-keygen cannot generate disposable $type fixture") if $rc;
+    die("native ssh-keygen cannot generate disposable $type fixture") if $rc;
 }
 for my $name (qw(remoteshell xcatlib.sh remoteshell-sshd-config)) {
     copy("$source/xCAT/postscripts/$name", "$tmp/bin/$name") or die $!;
@@ -119,7 +119,7 @@ for my $case (
                 'unshare', '-m', '--', "$tmp/bin/namespace", "$tmp/bin/remoteshell") or die $!;
             $output = do { local $/; <$pipe> };
             close($pipe);
-            $rc = $? >> 8;
+            $rc = (($? & 127) ? 128 + ($? & 127) : $? >> 8);
         }
         if ($fail_command) {
             is($rc, 1, "$label run $run reports failed key protection");

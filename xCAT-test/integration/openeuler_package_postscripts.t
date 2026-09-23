@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 use FindBin;
+use File::Copy qw(copy);
 use File::Path qw(make_path);
 use File::Spec;
 use File::Temp qw(tempdir);
@@ -45,26 +46,8 @@ write_text("$dir/bin/dpkg", "#!/bin/sh\nexit 1\n");
 write_text("$dir/bin/wget", "#!/bin/sh\nprintf 'wget\\n' >> \"\$RPM_TRACE\"\nexit 1\n");
 chmod 0755, glob("$dir/bin/*");
 my $wrapper = "$dir/run";
-write_text($wrapper, <<'SH');
-#!/bin/bash
-set -e
-/bin/mount --bind "$TEST_REPOS" /etc/yum.repos.d
-exec "$@"
-SH
+copy("$FindBin::Bin/fixtures/postscript-root.sh", $wrapper) or die "copy isolation wrapper: $!";
 chmod 0755, $wrapper;
-write_text("$dir/bash-env", <<'SH');
-echo()
-{
-    case "$*" in
-        'Warning: the packages '*fallback*|'Warning: the packages '*falling\ back*)
-            printf 'direct RPM fallback\n' >> "$RPM_TRACE"
-            builtin echo "$@"
-            exit 81
-            ;;
-    esac
-    builtin echo "$@"
-}
-SH
 
 for my $caller (qw(ospkgs otherpkgs)) {
     for my $os (qw(openeuler20.03sp4 openeuler22.03sp4 openeuler24.03sp1 openeuler24.03sp3 openeuler24.03sp4 openeuler24.03 rhels9.6)) {
@@ -117,11 +100,12 @@ sub run_case {
     my ($caller, $os, $list_rc, $install_rc, $repoonly, $empty) = @_;
     my $run = tempdir(DIR => $dir, CLEANUP => 1);
     make_path("$run/repos");
+    my $sandbox = tempdir(CLEANUP => 1);
     local %ENV = %ENV;
+    @ENV{qw(TEST_SANDBOX TEST_FIXTURES TEST_POSTSCRIPTS)} = ($sandbox, $dir, $postscripts);
     delete @ENV{qw(BASH_ENV ENV ENVLIST OTHERPKGDIR_INTERNET KERNELDIR SDKDIR NODESETSTATE OSPKGDIR VERBOSE)};
     @ENV{qw(PATH TEST_REPOS DNF_TRACE RPM_TRACE DNF_LIST_RC DNF_INSTALL_RC)} =
       ("$dir/bin:$ENV{PATH}", "$run/repos", "$run/dnf", "$run/rpm", $list_rc, $install_rc);
-    $ENV{BASH_ENV} = "$dir/bash-env";
     @ENV{qw(OSVER ARCH MASTER NFSSERVER HTTPPORT INSTALLDIR UPDATENODE)} =
       ($os, 'x86_64', '192.0.2.1', '192.0.2.1', 8080, '/install', 1);
     @ENV{qw(OSPKGS OTHERPKGDIR OTHERPKGS_INDEX OTHERPKGS1)} =
@@ -138,7 +122,7 @@ sub run_case {
     }
     my $output = do { local $/; <$pipe> } // '';
     close($pipe);
-    my $rc = $? >> 8;
+    my $rc = (($? & 127) ? 128 + ($? & 127) : $? >> 8);
     my $repos = join('', map { read_text($_) } sort glob("$run/repos/*.repo"));
     return ($rc, $output, $repos, -f "$run/dnf" ? read_text("$run/dnf") : '',
         -f "$run/rpm" ? read_text("$run/rpm") : '');

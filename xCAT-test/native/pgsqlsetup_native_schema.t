@@ -13,9 +13,9 @@ use DBI;
 
 my $bindir = $ENV{XCAT_TEST_PG_BINDIR};
 plan skip_all => 'Set XCAT_TEST_PG_BINDIR to native PostgreSQL binaries' unless $bindir;
-BAIL_OUT('The private PostgreSQL fixture must run without root privileges') if $< == 0;
+die('The private PostgreSQL fixture must run without root privileges') if $< == 0;
 for my $command (qw(initdb pg_ctl postgres psql createdb)) {
-    BAIL_OUT("Missing native PostgreSQL program $command") unless -x "$bindir/$command";
+    die("Missing native PostgreSQL program $command") unless -x "$bindir/$command";
 }
 BEGIN {
     *CORE::GLOBAL::exit = sub { die bless { status => $_[0] || 0 }, 'PgSchemaTestExit' };
@@ -47,7 +47,7 @@ push @init, ('-L', $ENV{XCAT_TEST_PG_SHAREDIR}) if $ENV{XCAT_TEST_PG_SHAREDIR};
 is(quiet_system(@init), 0, 'native initdb creates a private cluster');
 my $start = quiet_system("$bindir/pg_ctl", '-D', "$tmp/data", '-l', "$tmp/server.log", '-o', "-k $tmp/socket -h '' -p $ENV{PGPORT}", '-w', 'start');
 is($start, 0, 'private PostgreSQL starts with only a private Unix socket');
-BAIL_OUT('Unable to start the private PostgreSQL fixture') if $start != 0;
+die('Unable to start the private PostgreSQL fixture') if $start != 0;
 $started = 1;
 my $admin = DBI->connect("dbi:Pg:dbname=postgres;host=$ENV{PGHOST};port=$ENV{PGPORT}", 'postgres', '', { RaiseError => 1, PrintError => 0, AutoCommit => 1 });
 my ($version) = $admin->selectrow_array('SHOW server_version_num');
@@ -64,7 +64,7 @@ my ($help, $load_error);
     $load_error = $@;
 }
 is(ref($load_error), 'PgSchemaTestExit', 'complete pgsqlsetup loads through its help path');
-BAIL_OUT("Unable to load pgsqlsetup: $load_error") unless ref($load_error) eq 'PgSchemaTestExit' && $load_error->{status} == 0;
+die("Unable to load pgsqlsetup: $load_error") unless ref($load_error) eq 'PgSchemaTestExit' && $load_error->{status} == 0;
 {
     local $::osname = 'Linux';
     local $::linuxos = 'openeuler24.03sp3';

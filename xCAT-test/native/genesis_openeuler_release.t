@@ -14,6 +14,7 @@ plan skip_all => 'requires native openEuler, an unprivileged user, rpmbuild and 
     unless $^O eq 'linux' && $> && -f '/etc/openEuler-release'
     && -d '/usr/lib/dracut' && system('sh', '-c', 'command -v rpmbuild >/dev/null && unshare -Ur -m true') == 0;
 
+local $ENV{PATH} = "$ENV{PATH}:/usr/sbin:/sbin";
 my $root = abs_path("$RealBin/../..");
 my $spec = $ENV{XCAT_GENESIS_RELEASE_SPEC} // "$root/xCAT-genesis-builder/xCAT-genesis-base.spec";
 my $tmp = tempdir(CLEANUP => 1);

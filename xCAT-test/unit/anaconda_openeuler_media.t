@@ -59,9 +59,9 @@ for my $case (
         "$fixture retains the exact release and architecture");
 }
 
-for my $version ('20.03-LTS-SP4', '22.03-LTS-SP4', '24.03-LTS-SP1', '24.03-LTS-SP3') {
-    (my $os = lc($version)) =~ s/-lts//;
-    $os =~ s/-sp/sp/;
+for my $case (['20.03-LTS-SP4', '20.03sp4'], ['22.03-LTS-SP4', '22.03sp4'],
+              ['24.03-LTS-SP1', '24.03sp1'], ['24.03-LTS-SP3', '24.03sp3']) {
+    my ($version, $os) = @$case;
     my $responses = inspect_media(media_tree($version, 'x86_64'));
     like($responses->[0]{info} || '', qr/^DISTNAME:openeuler\Q$os\E\n/,
         "$version keeps its service pack");

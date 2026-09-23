@@ -182,11 +182,11 @@ sub run {
     die $! unless defined($pid);
     if (!$pid) {
         open(STDOUT, '>', $log) or die $!;
-        open(STDERR, '>', "$log.stderr") or die $!;
+        open(STDERR, '>&', STDOUT) or die $!;
         exec(@command) or die $!;
     }
     waitpid($pid, 0);
-    my $status = $? >> 8;
+    my $status = (($? & 127) ? 128 + ($? & 127) : $? >> 8);
     open(my $fh, '<', $log) or die $!;
     my $output = do { local $/; <$fh> } // '';
     close($fh);

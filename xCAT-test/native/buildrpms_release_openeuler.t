@@ -13,6 +13,10 @@ plan skip_all => 'requires unprivileged Linux RPM tooling'
     unless $^O eq 'linux' && $>
     && system('sh', '-c', 'command -v rpmbuild >/dev/null && command -v rpm2cpio >/dev/null && command -v cpio >/dev/null') == 0;
 
+plan skip_all => 'requires user and mount namespaces'
+    if system('unshare', '--user', '--map-root-user', '--mount', '/bin/true');
+my $wrapper = "$FindBin::Bin/fixtures/buildrpms-namespace.sh";
+
 my $root = tempdir(CLEANUP => !$ENV{XCAT_RELEASE_TEST_KEEP});
 diag("Release contract fixtures: $root") if $ENV{XCAT_RELEASE_TEST_KEEP};
 my $builder = $ENV{XCAT_RELEASE_TEST_BUILDER} || repo_path('buildrpms.pl');
@@ -83,6 +87,8 @@ for my $case (@cases) {
 for my $failure (qw(missing-core duplicate-dep copy tar)) {
     my $result = run_builder('openeuler-24.03sp3-x86_64', 'openeuler24.03sp3/x86_64', undef, $failure);
     isnt($result->{status}, 0, "$failure stops the native builder");
+    like($result->{output}, qr/Error staging xCAT-release sources/,
+        'the copy fault reaches production source staging') if $failure eq 'copy';
     my $fixture = $result->{fixture};
     is(read_file("$fixture/home/rpmbuild/SOURCES/xCAT-release-2.19.0.tar.gz"), 'prior archive',
         "$failure preserves the preceding source archive");
@@ -110,12 +116,7 @@ sub run_builder {
     my ($target, $subdir, $default, $failure) = @_;
     my $fixture = tempdir(DIR => $root, CLEANUP => !$ENV{XCAT_RELEASE_TEST_KEEP});
     make_path(map {"$fixture/$_"} qw(build-utils/lib/XCAT bin mock locks tmp xCAT-release home/rpmbuild/SOURCES));
-    my $body = read_file($builder);
-    $body =~ s{'/etc/os-release'}{'$fixture/os-release'}g;
-    $body =~ s{/etc/mock/}{$fixture/mock/}g;
-    $body =~ s{/var/lock/}{$fixture/locks/}g;
-    $body =~ s/\$ENV\{HOME\}/\$ENV{XCAT_RELEASE_TEST_HOME}/g;
-    write_file("$fixture/buildrpms.pl", $body);
+    copy($builder, "$fixture/buildrpms.pl") or die $!;
     copy(repo_path('build-utils/lib/XCAT/BuildUtils.pm'), "$fixture/build-utils/lib/XCAT/BuildUtils.pm") or die $!;
     copy($spec, "$fixture/xCAT-release/xCAT-release.spec") or die $!;
     write_file("$fixture/xCAT-release/$_", $original{$_}) for @files;
@@ -153,11 +154,11 @@ SH
             "baseurl=https://xcat.org/files/xcat/repos/yum/latest/xcat-dep/rh\$releasever/\$basearch\n")
             if $failure eq 'duplicate-dep';
     }
-    local %ENV = (%ENV, PATH => "$fixture/bin:$ENV{PATH}", TMPDIR => "$fixture/tmp", XCAT_RELEASE_TEST_FIXTURE => $fixture,
-        XCAT_RELEASE_TEST_HOME => "$fixture/home", XCAT_RELEASE_TEST_NATIVE => defined($subdir) ? 1 : 0,
+    local %ENV = (%ENV, PATH => "$fixture/bin:$ENV{PATH}", TMPDIR => "$fixture/tmp", XCAT_RELEASE_TEST_FIXTURE => $fixture, BUILD_FIXTURE => $fixture,
+        HOME => "$fixture/home", LC_ALL => 'C',
         XCAT_RELEASE_TEST_FAILURE => ($failure && $failure eq 'copy' ? 'cp' : $failure || ''));
     my @target = $default ? () : ('--target', $target);
-    my ($status, $output) = run($fixture, $^X, 'buildrpms.pl', '--package', 'xCAT-release', @target,
+    my ($status, $output) = run($fixture, 'unshare', '--user', '--map-root-user', '--mount', 'bash', $wrapper, $^X, 'buildrpms.pl', '--package', 'xCAT-release', @target,
         (defined($subdir) ? '--gpg-sign' : ()),
         '--release', 'releasecontract', '--mock-uniqueext', 'release-contract', '--nproc', '1');
     write_file("$fixture/builder-output", $output);
@@ -182,11 +183,13 @@ while (@ARGV) {
     elsif ($arg =~ /^(?:-r|--spec|--sources|--resultdir|--rebuild)$/) {$args{$arg} = shift;}
     else {$args{$arg} = 1;}
 }
+die "Missing selected mock configuration\n" unless -f "/etc/mock/$args{'-r'}.cfg";
 exit 0 if $args{'--init'};
 my $top = "$fixture/mock-rpm";
 make_path(map {"$top/$_"} qw(BUILD BUILDROOT RPMS SOURCES SPECS SRPMS));
-my @command = ('rpmbuild', @defines, '--define', "_topdir $top", '--undefine', 'openEuler');
-push @command, '--define', 'openEuler 2' if $ENV{XCAT_RELEASE_TEST_NATIVE};
+my @command = ('rpmbuild', @defines, '--define', "_topdir $top");
+push @command, ($args{'-r'} // '') =~ m{(?:^|[-/])openeuler-}
+    ? ('--define', 'openEuler 2') : ('--undefine', 'openEuler');
 my @built;
 if ($args{'--buildsrpm'}) {
     push @command, '--define', "_sourcedir $args{'--sources'}", '-bs', $args{'--spec'};
@@ -195,7 +198,7 @@ if ($args{'--buildsrpm'}) {
     push @command, '--rebuild', $args{'--rebuild'};
     @built = ("$top/RPMS/noarch/*.rpm");
 } else {die "Unexpected mock operation\n";}
-system(@command) == 0 or exit(($? >> 8) || 1);
+system(@command) == 0 or exit(($? & 127) ? 128 + ($? & 127) : ($? >> 8) || 1);
 make_path($args{'--resultdir'});
 for my $file (map {glob($_)} @built) {copy($file, $args{'--resultdir'}) or die $!;}
 PERL
@@ -213,7 +216,8 @@ sub run {
         exec(@command) or die "exec @command: $!";
     }
     waitpid($pid, 0);
-    return ($? ? (($? >> 8) || 1) : 0, read_file($log));
+    my $status = ($? & 127) ? 128 + ($? & 127) : $? >> 8;
+    return ($status, read_file($log));
 }
 sub write_file {
     my ($path, $contents) = @_;

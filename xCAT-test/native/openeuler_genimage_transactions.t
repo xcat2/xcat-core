@@ -17,6 +17,7 @@ write_file($driver, <<'PERL');
 use strict;
 use warnings;
 use Storable qw(nstore);
+use Text::ParseWords qw(shellwords);
 our (@commands, $reached, $config, $restored);
 BEGIN {
     *CORE::GLOBAL::readpipe = sub {
@@ -28,7 +29,10 @@ BEGIN {
         my $command = join(' ', @_);
         push @commands, $command;
         if ($command =~ /^\s*(?:dnf|yum) /) {
-            open(my $file, '<', "/tmp/genimage.$$.yum.conf") or die $!;
+            my @args = shellwords($command);
+            my ($index) = grep { $args[$_] eq '-c' } 0 .. $#args - 1;
+            die 'Package command omitted its configuration' unless defined($index);
+            open(my $file, '<', $args[$index + 1]) or die $!;
             $config = do { local $/; <$file> };
             close($file);
             my $phase = $command =~ / erase .*pre-remove/ ? 'pre-remove'
@@ -126,7 +130,7 @@ sub run_case {
         die "exec: $!";
     }
     waitpid($pid, 0);
-    my $status = $? >> 8;
+    my $status = (($? & 127) ? 128 + ($? & 127) : $? >> 8);
     open(my $file, '<', "$case/output") or die $!;
     my $output = do { local $/; <$file> };
     close($file);
