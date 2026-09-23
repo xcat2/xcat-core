@@ -463,12 +463,27 @@ sub lock_path_for {
 # Returns the open handle -- the lock is held for as long as the caller keeps it.
 sub take_build_lock {
     my ($path, $dir) = @_;
-    require Fcntl;
-    my $lockfile = lock_path_for($path, $dir);
-    open my $fh, '>', $lockfile or die "FATAL: cannot open $lockfile: $!\n";
-    flock($fh, Fcntl::LOCK_EX() | Fcntl::LOCK_NB())
-        or die "FATAL: another build of $path already holds $lockfile\n";
-    return $fh;
+    require POSIX;
+    # A directory, not an flock. A build tree can live on an NFS re-export, where the kernel
+    # refuses locks outright: every attempt answers errno 524. mkdir(2) is arbitrated by the
+    # server and needs no lock daemon.
+    my $lockdir = lock_path_for($path, $dir) . '.d';
+    unless (mkdir $lockdir) {
+        die "FATAL: cannot take $lockdir: $!\n" unless $! == POSIX::EEXIST();
+        my $who = ''; if (open(my $h, '<', "$lockdir/owner")) { local $/; $who = <$h> // ''; close $h }
+        chomp $who;
+        die "FATAL: another build of $path already holds $lockdir"
+          . ($who ? " (held by [$who])" : "") . "\n";
+    }
+    if (open(my $ow, '>', "$lockdir/owner")) { print {$ow} "pid=$$\n"; close $ow }
+    # The caller keeps the returned value; release is by pid so a fork cannot free the parent's.
+    my $owner = $$;
+    return XCAT::BuildUtils::_BuildLock->new($lockdir, $owner);
+}
+
+{   package XCAT::BuildUtils::_BuildLock;
+    sub new { my ($c,$d,$p)=@_; return bless { dir=>$d, pid=>$p }, $c }
+    sub DESTROY { my $s=shift; return unless $$ == $s->{pid}; unlink "$s->{dir}/owner"; rmdir $s->{dir} }
 }
 
 # The rpm architecture a mock target builds for. A target carries the arch as its
