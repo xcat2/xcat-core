@@ -236,6 +236,12 @@ parsehttpserver ()
 # after a failed run, so the postscripts stay on the node for diagnosis.
 # xcatinstallpost applies the same rule at install time.
 #
+# cleanupdiskfullxcatpost names the node type it applies to, and this script serves
+# every type: updatenode calls it for a diskless or statelite node as well. The site
+# value is one row and reaches all of them, so the diskful branch reads NODESETSTATE
+# and does nothing for netboot or statelite. cleanupxcatpost carries no such word and
+# keeps applying everywhere.
+#
 #   $1 - path of the generated mypostscript
 #   $2 - the xcatpost directory to remove the postscripts from
 #####################################################
@@ -253,8 +259,11 @@ append_xcatpost_cleanup()
       echo "rm -rf $postdir/*" >> "$mypostscript"
     fi
 
+    local nodesetstate
+    nodesetstate=`grep '^NODESETSTATE=' "$mypostscript" |awk -F = '{print $2}' | tr -d \'\" | tr A-Z a-z`
     cleanupdiskfullxcatpost=`grep CLEANUPDISKFULLXCATPOST= "$mypostscript" |awk -F = '{print $2}' | tr -d \'\" | tr A-Z a-z`
-    if [[ "$cleanupdiskfullxcatpost" =~ ^(1|yes|y)$ ]]; then
+    if [[ "$cleanupdiskfullxcatpost" =~ ^(1|yes|y)$ ]] \
+       && [ "$nodesetstate" != "netboot" ] && [ "$nodesetstate" != "statelite" ]; then
       # post.xcat and the other install scripts embed this whole file in a here-document
       # that ends at a line "EOF". A line "EOF" here ends that here-document early and
       # leaves the rest of this file as shell code in the generated install script.

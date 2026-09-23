@@ -98,6 +98,55 @@ append_cleanup()
     [ ! -e "$XCATPOST/setroute" ]
 }
 
+# cleanupdiskfullxcatpost names the node type it applies to. updatenode calls this script for a
+# diskless or statelite node as well, and the site value is one row that reaches all of them, so
+# without a guard a diskless node loses its postscripts to a setting that does not name it.
+@test "a netboot node keeps its postscripts when site.cleanupdiskfullxcatpost is set" {
+    make_xcatpost
+    make_mypostscript 0 "NODESETSTATE='netboot'" "CLEANUPDISKFULLXCATPOST='yes'"
+    append_cleanup
+
+    run bash "$MYPS"
+    [ "$status" -eq 0 ]
+    [ -f "$XCATPOST/setroute" ]
+    [ -f "$XCATPOST/_xcat/postscript.cfg" ]
+    # Nothing was appended, so the run cannot report a cleanup it did not do.
+    refute_grep -q 'cleanup of .* completed' "$MSGLOG"
+}
+
+@test "a statelite node keeps its postscripts when site.cleanupdiskfullxcatpost is set" {
+    make_xcatpost
+    make_mypostscript 0 "NODESETSTATE='statelite'" "CLEANUPDISKFULLXCATPOST='yes'"
+    append_cleanup
+
+    run bash "$MYPS"
+    [ "$status" -eq 0 ]
+    [ -f "$XCATPOST/setroute" ]
+}
+
+@test "a diskful node is still cleaned when site.cleanupdiskfullxcatpost is set" {
+    make_xcatpost
+    make_mypostscript 0 "NODESETSTATE='install'" "CLEANUPDISKFULLXCATPOST='yes'"
+    append_cleanup
+
+    run bash "$MYPS"
+    [ "$status" -eq 0 ]
+    [ ! -e "$XCATPOST/setroute" ]
+    [ -f "$XCATPOST/updateflag.awk" ]
+}
+
+# site.cleanupxcatpost names no node type, so it keeps applying to every one. A guard added to the
+# wrong branch would show up here.
+@test "site.cleanupxcatpost still applies to a netboot node" {
+    make_xcatpost
+    make_mypostscript 0 "NODESETSTATE='netboot'" "CLEANUPXCATPOST='yes'"
+    append_cleanup
+
+    run bash "$MYPS"
+    [ "$status" -eq 0 ]
+    [ -z "$(ls -A "$XCATPOST")" ]
+}
+
 @test "site.cleanupxcatpost removes every file including updateflag.awk" {
     make_xcatpost
     make_mypostscript 0 "CLEANUPXCATPOST='yes'" "CLEANUPDISKFULLXCATPOST='no'"
