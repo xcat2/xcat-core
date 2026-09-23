@@ -56,6 +56,17 @@ A test belongs in `integration/` when it needs something the checkout cannot pro
 
 ## Environment guards
 
+`openeuler_postscript_repositories.t` builds and signs RPM fixtures and runs real
+DNF transactions. Enable it explicitly on a disposable openEuler host:
+
+```
+sudo env XCAT_NATIVE_REPOSITORIES=1 prove -v \
+    xCAT-test/integration/openeuler_postscript_repositories.t
+```
+
+The Perl test builds the RPM fixtures directly. Its DNF adapter records arguments
+and uses only local fixture repositories, with a fixed fixture release version.
+
 Tests with optional runtime dependencies guard with `plan skip_all` -- an MN with no
 Kea installed should skip the Kea tests, not go red. The `HTML::Form` test is different:
 it verifies a required installed dependency and fails when that module is absent. A
