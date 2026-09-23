@@ -10,3 +10,4 @@ This page is for developers interested in working with xCAT.
    license/index.rst
    github/index.rst
    guides/index.rst
+   releases/index.rst
