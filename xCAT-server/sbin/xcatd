@@ -353,6 +353,11 @@ my $installm_maxkids = 64;
 # Under the systemd TimeoutStopSec of 30 seconds, so the drain finishes before the kill.
 my $installm_drain_seconds = 20;
 
+# How long the parent waits for a connection while it still holds queued ones. SIGCHLD only
+# wakes a wait that is already running, so a handler that exits just before the wait begins
+# interrupts nothing. The bound is the parent's own second look.
+my $installm_wakeup_seconds = 1;
+
 # One path, so a test can point the lifted routine somewhere else.
 my $installm_pidfile = "/var/run/xcat/installservice.pid";
 
@@ -394,6 +399,34 @@ sub dequeue_installm_request {
         return ($node, @{$entry});
     }
     return ();
+}
+
+# --------------------------------------------------------------------------------
+
+=head3 wait_for_installm_connection
+
+    Descriptions:
+        Wait until the install monitor has a connection to accept.
+    Arguments:
+        socket:  the listening socket
+        seconds: how long to wait, or undef to wait until a connection arrives
+    Returns:
+        1 - the socket has a connection to accept
+        0 - the wait ended without one, so the caller looks at its queue again
+=cut
+
+# --------------------------------------------------------------------------------
+sub wait_for_installm_connection {
+    my ($socket, $seconds) = @_;
+
+    # USR2 closes the socket under the monitor. There is nothing to wait for then.
+    my $fd = fileno($socket);
+    return 0 unless defined $fd;
+
+    my $waiting = '';
+    vec($waiting, $fd, 1) = 1;
+    my $ready = select($waiting, undef, undef, $seconds);
+    return (defined $ready and $ready > 0) ? 1 : 0;
 }
 
 sub do_installm_service {
@@ -476,6 +509,11 @@ sub do_installm_service {
 
         # Nothing was queued, so take a new connection and name its peer.
         unless (defined $conn) {
+            # A handler can exit between the check above and the accept below, where the
+            # SIGCHLD has no accept to interrupt. Bound the wait while connections are queued,
+            # so the parent looks again instead of waiting for the next unrelated client.
+            next unless wait_for_installm_connection($socket,
+                %installm_queue ? $installm_wakeup_seconds : undef);
             next unless $conn = $socket->accept;
             eval {
                 # check if a rescanplugins request has come in
