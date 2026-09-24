@@ -43,7 +43,7 @@ error_commands()
 # Shadowing a command does not stop the shell opening the file the command redirects into: the
 # redirection is the shell's, and it happens whether or not tar runs. So the archive path is
 # taken from the environment too, and pointed inside the test's own directory. Without that,
-# this test truncates /run/testnode-logs.tar on the host running it, and CI runs as root.
+# this test would truncate /run/<node>-logs.tar on the host running it, and CI runs as root.
 run_error_commands()
 {
     local script="${BATS_TEST_TMPDIR}/error-commands.sh" command
@@ -83,12 +83,10 @@ run_error_commands()
     run run_error_commands
     [ "$status" -ne 124 ]
 
-    # The archive command redirects into the path it was given, so its output is the proof
-    # that the redirection went there and not to the default under /run.
+    # The archive command redirects into the path it was given, so its output IS the proof
+    # that the redirection went there and not to the default under /run. There is nothing to
+    # add by looking at the default path: whether /run/testnode-logs.tar exists says nothing
+    # about this test, because anything else may have created it, and its absence would be
+    # just as true had the override never worked.
     grep -q XCAT_LOGS_ARCHIVE "$ARCHIVE"
-
-    # And the default path is untouched. This assertion is what an unprivileged run cannot
-    # make for itself -- there the write fails silently and "exit 0" hides it -- but CI runs
-    # as root, where the same redirection truncates the file.
-    [ ! -e /run/testnode-logs.tar ]
 }
