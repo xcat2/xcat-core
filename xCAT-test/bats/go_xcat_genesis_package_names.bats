@@ -15,7 +15,7 @@ setup()
 {
     go_xcat_require_source
     SCRIPTS_DEBIAN="$(repo_path 'xCAT-genesis-scripts/debian')"
-    SPEC="$(repo_path 'xCAT-genesis-builder/xCAT-genesis-base.spec')"
+    SPEC="$(repo_path 'xCAT-genesis-base/xCAT-genesis-base.spec')"
     [ -d "$SCRIPTS_DEBIAN" ] || skip "$SCRIPTS_DEBIAN is required"
     [ -r "$SPEC" ] || skip "$SPEC is required"
     export SCRIPTS_DEBIAN SPEC

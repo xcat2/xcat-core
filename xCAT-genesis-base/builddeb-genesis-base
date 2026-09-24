@@ -37,36 +37,12 @@ echo "Building xcat-genesis-base for $BUILDARCH ($TARCH) on Ubuntu $CODENAME"
 
 export DEBIAN_FRONTEND=noninteractive
 
-REQUIRED_PACKAGES="
-    dracut linux-image-generic
-    ipmitool lldpad ethtool iproute2 kexec-tools screen
-    openssh-server openssh-client rsyslog chrony
-    nfs-common rpcbind pciutils usbutils parted
-    dosfstools e2fsprogs lvm2 mdadm net-tools
-    bc psmisc rsync wget cpio
-    isc-dhcp-client ifenslave
-    dpkg-dev debhelper fakeroot devscripts vim-tiny
-"
-if [ "$BUILDARCH" = "amd64" ]; then
-    REQUIRED_PACKAGES="$REQUIRED_PACKAGES dmidecode efibootmgr"
-fi
-
-# Keep only the packages this release actually has. hwclock moved out of util-linux into
-# util-linux-extra, so focal and jammy have no such package and naming it there fails the
-# whole install. util-linux only Suggests it, and --no-install-recommends is passed, so the
-# releases that did split it must name it.
-optional_packages() {
-    local package
-    for package in "$@"; do
-        if apt-cache show "$package" >/dev/null 2>&1; then
-            echo "$package"
-        fi
-    done
-}
-
 echo "Installing build dependencies..."
 apt-get update -qq
-REQUIRED_PACKAGES="$REQUIRED_PACKAGES $(optional_packages util-linux-extra)"
+
+# XCAT::GenesisBuildRoot holds the package list, so the unit tests can call it.
+REQUIRED_PACKAGES=$(perl -I"$DIR/lib" -MXCAT::GenesisBuildRoot=required_packages \
+    -e 'print "$_\n" for required_packages(@ARGV)' "$BUILDARCH" "$CODENAME")
 apt-get install -y --no-install-recommends $REQUIRED_PACKAGES
 
 # Set up dracut module

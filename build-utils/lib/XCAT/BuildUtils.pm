@@ -382,9 +382,9 @@ sub stage_probe_helpers {
 
     Descriptions:
         Write the build support tarball that xCAT-genesis-base.spec unpacks:
-        the dracut_105 modules, 80-net-name-slot.rules and
-        verify-genesis-payload, taken from the xCAT-genesis-base directory of
-        a checkout.
+        the dracut_105 modules, 80-net-name-slot.rules, and
+        verify-genesis-payload with its XCAT::GenesisPayload module, taken from
+        the xCAT-genesis-base directory of a checkout.
     Arguments:
         $checkout: the top of the xcat-core checkout
         $tarball:  the path of the tarball to write
@@ -414,6 +414,9 @@ sub stage_genesis_base_sources {
     # The spec runs the verifier against the extracted payload in %install.
     copy("$source/verify-genesis-payload", "$staging_root/verify-genesis-payload")
         or die "Unable to stage $source/verify-genesis-payload: $!\n";
+    make_path("$staging_root/lib/XCAT");
+    copy("$source/lib/XCAT/GenesisPayload.pm", "$staging_root/lib/XCAT/GenesisPayload.pm")
+        or die "Unable to stage $source/lib/XCAT/GenesisPayload.pm: $!\n";
 
     unlink $tarball if -f $tarball;
     sh_or_die(qq(tar --sort=name --owner=0 --group=0 --mtime="\@$epoch" -cjf "$tarball" -C "$staging_parent" xCAT-genesis-base-build-support),
