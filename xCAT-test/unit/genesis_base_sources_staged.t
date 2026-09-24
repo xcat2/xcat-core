@@ -2,89 +2,74 @@
 # xCAT-genesis-base.spec builds the Genesis image from a tarball that buildrpms.pl stages:
 # the dracut_105 modules and 80-net-name-slot.rules. Renaming the directory they live in
 # breaks that staging silently.
-#
-# buildsources_genesis_base() is lifted out of buildrpms.pl and run against a scratch
-# checkout, because buildrpms.pl itself does not load outside a build.
 use strict;
 use warnings;
 
-use Cwd qw(getcwd);
 use File::Path qw(make_path);
-use File::Slurper qw(read_text write_text);
+use File::Slurper qw(write_text);
 use File::Temp qw(tempdir);
 use FindBin;
 use lib "$FindBin::Bin/../lib";
+use lib "$FindBin::Bin/../../build-utils/lib";
 use Test::More;
 
 use XCAT::Test::File qw(repo_path);
+use XCAT::BuildUtils qw(stage_genesis_base_sources);
 
-my $builder = repo_path('buildrpms.pl');
-plan skip_all => 'buildrpms.pl not found' unless -f $builder;
+my $EPOCH   = 1700000000;
+my $MODULE  = 'module-setup.sh';
+my $scratch = tempdir(CLEANUP => 1);
 
-my $source = read_text($builder);
-our ($body) = $source =~ /(sub\s+buildsources_genesis_base\s*\(\$\).*?\n\}\n)/s;
-# die rather than skip: a rename that stops this matching must fail loudly instead of
-# quietly covering nothing.
-die("could not extract buildsources_genesis_base from buildrpms.pl") unless $body;
-
-# The staged directory the spec reads, as buildrpms.pl names it. Read back from the code so
-# the test cannot disagree with it about the name.
-my ($staged_dir) = $body =~ m{\bcp -a "([^/"]+)/dracut_105"};
-die('buildsources_genesis_base stages no dracut_105 directory') unless $staged_dir;
-is($staged_dir, 'xCAT-genesis-base', 'the dracut assets are staged from xCAT-genesis-base');
-ok(-d repo_path($staged_dir), "$staged_dir is in the checkout");
-
-{
-    package Scratch;
-    use File::Copy qw(cp);
-    use File::Path qw(make_path remove_tree);
-    our ($SOURCES, $SOURCE_DATE_EPOCH);
-    sub sh_or_die {
-        my ($cmd, $message) = @_;
-        system($cmd) == 0 or die "$message\n";
-        return 0;
-    }
-    eval $main::body;    ## no critic
-    die $@ if $@;
+sub members {
+    my ($tarball) = @_;
+    my @members = `TZ=UTC tar tjvf '$tarball'`;
+    die "tar cannot list $tarball\n" if $?;
+    chomp @members;
+    return @members;
 }
 
-my $scratch = tempdir(CLEANUP => 1);
+sub names { return sort map { (split ' ', $_)[-1] } @_ }
+
+# A scratch checkout in the layout the spec expects.
 my $checkout = "$scratch/checkout";
-make_path("$checkout/$staged_dir/dracut_105/el", "$checkout/$staged_dir/dracut_105/ubuntu");
-write_text("$checkout/$staged_dir/dracut_105/el/module-setup.sh", "el module\n");
-write_text("$checkout/$staged_dir/dracut_105/ubuntu/module-setup.sh", "ubuntu module\n");
-write_text("$checkout/$staged_dir/80-net-name-slot.rules", "rules\n");
+make_path("$checkout/xCAT-genesis-base/dracut_105/el",
+    "$checkout/xCAT-genesis-base/dracut_105/ubuntu");
+write_text("$checkout/xCAT-genesis-base/dracut_105/$_/$MODULE", "$_ module\n") for qw(el ubuntu);
+write_text("$checkout/xCAT-genesis-base/80-net-name-slot.rules", "rules\n");
 
-$Scratch::SOURCES = "$scratch/SOURCES";
-$Scratch::SOURCE_DATE_EPOCH = 1700000000;
-make_path($Scratch::SOURCES);
+my $tarball = "$scratch/scratch.tar.bz2";
+is(stage_genesis_base_sources($checkout, $tarball, $EPOCH), $tarball,
+    'the dracut assets are staged from xCAT-genesis-base');
 
-my $cwd = getcwd();
-chdir $checkout or die "chdir $checkout: $!";
-my $ok = eval { Scratch::buildsources_genesis_base('alma+epel-10-x86_64'); 1 };
-my $err = $@;
-chdir $cwd or die "chdir back: $!";
-ok($ok, 'buildsources_genesis_base stages the Genesis build sources') or diag($err);
+my @listing = members($tarball);
+is_deeply([ names(@listing) ], [
+        'xCAT-genesis-base-build-support/',
+        'xCAT-genesis-base-build-support/80-net-name-slot.rules',
+        'xCAT-genesis-base-build-support/dracut_105/',
+        'xCAT-genesis-base-build-support/dracut_105/el/',
+        "xCAT-genesis-base-build-support/dracut_105/el/$MODULE",
+        'xCAT-genesis-base-build-support/dracut_105/ubuntu/',
+        "xCAT-genesis-base-build-support/dracut_105/ubuntu/$MODULE",
+    ],
+    'the tarball holds the EL and Ubuntu dracut modules and 80-net-name-slot.rules');
+is_deeply([ grep { !m{ root/root .* 2023-11-14 22:13 } } @listing ], [],
+    'every member is owned by root and dated SOURCE_DATE_EPOCH');
 
-my $tarball = "$Scratch::SOURCES/xCAT-genesis-base-build-support.tar.bz2";
-ok(-s $tarball, 'the build support tarball is written');
+# The checkout itself, so the directory the spec needs is known to be there.
+my %shipped = map { $_ => 1 }
+    names(members(stage_genesis_base_sources(repo_path('.'), "$scratch/shipped.tar.bz2", $EPOCH)));
+is_deeply([ grep { !$shipped{"xCAT-genesis-base-build-support/$_"} }
+        "dracut_105/el/$MODULE", "dracut_105/ubuntu/$MODULE", '80-net-name-slot.rules' ], [],
+    'xCAT-genesis-base in the checkout carries both dracut modules and the rules file');
 
-my @members = split /\n/, (`tar tjf '$tarball' 2>/dev/null` // '');
-ok(scalar(grep { m{dracut_105/el/module-setup\.sh$} } @members),
-    'the EL dracut module is in the tarball');
-ok(scalar(grep { m{dracut_105/ubuntu/module-setup\.sh$} } @members),
-    'the Ubuntu dracut module is in the tarball');
-ok(scalar(grep { m{/80-net-name-slot\.rules$} } @members),
-    '80-net-name-slot.rules is in the tarball');
-
-# A checkout without the directory must stop the build, not produce an empty tarball.
-my $empty = "$scratch/empty";
-make_path($empty);
-chdir $empty or die "chdir $empty: $!";
-my $died = !eval { Scratch::buildsources_genesis_base('alma+epel-10-x86_64'); 1 };
-my $message = $@;
-chdir $cwd or die "chdir back: $!";
-ok($died, 'a checkout without the Genesis directory stops the build');
-like($message, qr/\Q$staged_dir\E/, 'the message names the directory it wants');
+# A checkout that still uses the old name must stop the build, not produce an empty tarball.
+my $old = "$scratch/old";
+make_path("$old/xCAT-genesis-builder/dracut_105");
+my $empty_tarball = "$scratch/empty.tar.bz2";
+my $died = !eval { stage_genesis_base_sources($old, $empty_tarball, $EPOCH); 1 };
+ok($died, 'a checkout without xCAT-genesis-base stops the build');
+like($@, qr/No directory xCAT-genesis-base in \Q$old\E/,
+    'the message names the directory it wants');
+ok(!-e $empty_tarball, 'and no tarball is written');
 
 done_testing();
