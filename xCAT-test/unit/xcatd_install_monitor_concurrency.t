@@ -71,6 +71,11 @@ $PIDFILE or die "xcatd no longer declares \$installm_pidfile";
 is($PIDFILE, '/var/run/xcat/installservice.pid',
     'the monitor still claims the pid file xcatd and its restart handshake use');
 
+# One variable, so pointing it at the scratch tree below redirects the whole routine. A path
+# written out again inside the routine would reach the host file whatever this test sets.
+unlike($service, qr{/var/run/},
+    'the monitor reaches its pid file only through $installm_pidfile');
+
 # The monitor writes a pid file. Point it at the scratch tree: the live monitor's file is how a
 # restarting xcatd tells the running one to let go of the port, and a test that runs as root
 # would otherwise leave this process's pid in it.
@@ -80,6 +85,10 @@ my @HOST_PIDFILE    = stat($PIDFILE);
 # Every test client connects from 127.0.0.1, so the monitor's own reverse lookup cannot tell
 # them apart. Name them in accept order instead.
 our @PEER_QUEUE;
+
+# Each entry answers one xfork: true forks, false fails. Empty means fork normally. A case sets
+# it before the monitor starts, so the monitor's fork-failure fallback can be exercised.
+our @FORK_PLAN;
 BEGIN { *CORE::GLOBAL::gethostbyaddr = sub { return (shift(@main::PEER_QUEUE) || 'unknown', '') } }
 
 # Whole microseconds. A %.3f stamp rounds, so an event can be recorded at a time LATER than the
@@ -181,8 +190,10 @@ sub wait_for_event {
     *xCAT::NetworkUtils::clearcache     = sub { };
     *xCAT::NetworkUtils::getNodeDomains = sub { return {} };
     *xCAT::TableUtils::getTftpDir       = sub { return '/tmp' };
-
-    *xCAT::Utils::xfork                 = sub { return fork() };
+    *xCAT::Utils::xfork                 = sub {
+        if (@main::FORK_PLAN) { return undef unless shift @main::FORK_PLAN }
+        return fork();
+    };
     *t::rescan::new                     = sub { return bless {}, shift };
     *t::rescan::can_read                = sub { return () };
 }
@@ -313,6 +324,68 @@ sub stop_monitor {
         'the request whose handler died did run');
 
     close $_ for grep { $_ } $one, $two, $three;
+    stop_monitor($mon);
+}
+
+# --- a queued connection whose client goes away keeps the order ---------------
+
+# One request runs for a node and two more are queued for it. The client of the middle one gives
+# up. The parent holds queued connections unread, so dropping one must not let the request
+# behind it overtake the request that is still running.
+{
+    $EVENTS = "$SCRATCH/events-abandoned";
+    my $port = free_port();
+    my $mon  = open_monitor($port, qw(portprobe gonenode gonenode gonenode));
+
+    my $one = talk_to($port, 'installstatus slow');
+    wait_for_event('start gonenode slow', 10)
+      or diag('the first request never reached its plugin');
+    my $two   = talk_to($port, 'installstatus middle');
+    my $three = talk_to($port, 'installstatus last');
+    close $two;
+    $two = undef;
+
+    ok(wait_for_event('end gonenode last', 30),
+        'the request behind the abandoned one was served in the end');
+    ok(wait_for_event('end gonenode slow', 30), 'the running request finished');
+    my $running_end = event_index('end gonenode slow');
+    my $last_start  = event_index('start gonenode last');
+    cmp_ok($running_end, '>=', 0, 'the running request is recorded as finished');
+    cmp_ok($last_start,  '>=', 0, 'the request behind the abandoned one is recorded as started');
+    cmp_ok($last_start, '>', $running_end,
+        'an abandoned queued connection does not release the request behind it')
+      or diag('a client that gave up let a later request for the node overtake the running one');
+
+    close $_ for grep { $_ } $one, $three;
+    stop_monitor($mon);
+}
+
+# --- the fork-failure fallback answers in line, in order ----------------------
+
+# A monitor that cannot fork answers the node itself. The request must be answered rather than
+# dropped, and the node's next request must wait for that answer.
+{
+    $EVENTS = "$SCRATCH/events-nofork";
+    my $port = free_port();
+    @FORK_PLAN = (1, 0);    # the port probe gets a handler; the first real request does not
+    my $mon = open_monitor($port, qw(portprobe forknode forknode));
+    @FORK_PLAN = ();
+
+    my $inline = talk_to($port, 'installstatus slow');
+    ok(wait_for_event('start forknode slow', 20),
+        'the monitor answered the request in line when it could not fork')
+      or diag('a monitor that cannot fork drops the request instead of answering it itself');
+    my $after = talk_to($port, 'installstatus after');
+
+    ok(wait_for_event('end forknode after', 30), 'the next request for the node was served');
+    my $inline_end  = event_index('end forknode slow');
+    my $after_start = event_index('start forknode after');
+    cmp_ok($inline_end, '>=', 0, 'the in-line request is recorded as finished');
+    cmp_ok($after_start, '>', $inline_end,
+        'the request after an in-line one starts only once the in-line one has finished')
+      or diag('the fork-failure fallback released the next request before its own had finished');
+
+    close $_ for grep { $_ } $inline, $after;
     stop_monitor($mon);
 }
 
