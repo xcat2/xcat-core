@@ -657,14 +657,20 @@ sub setup_local_repos {
 }
 
 
-# Index one repo dir with deterministic, upstream-matching metadata. createrepo_c's
-# defaults already emit primary/filelists/other as *.xml.zst plus *.sqlite.bz2
-# (--database), exactly the upstream shape; --set-timestamp-to-revision pins the
-# repomd timestamp to SOURCE_DATE_EPOCH.
+# Index one repo dir with deterministic, upstream-matching metadata: primary/filelists/other as
+# *.xml.zst, with --set-timestamp-to-revision pinning the repomd timestamp to SOURCE_DATE_EPOCH.
+#
+# NO --database. It writes *.sqlite.bz2, and building those needs SQLite, which needs POSIX
+# locks. A build tree can live on an NFS re-export, where the kernel refuses locks outright:
+# every attempt answers errno 524, and createrepo_c then dies on every target with
+# "Cannot open .repodata/primary.sqlite: Can not create db_info table: disk I/O error".
+# Without --database it succeeds there.
+#
+# Nothing this project ships reads the sqlite metadata. dnf on el8+ and zypper both read the XML.
 sub createrepo_dir {
     my ($dir, $extra) = @_;
     $extra //= '';
-    sh_or_die(qq(createrepo_c --update --database )
+    sh_or_die(qq(createrepo_c --update )
        . qq(--revision "$SOURCE_DATE_EPOCH" --set-timestamp-to-revision $extra "$dir"),
         "Failed to createrepo_c $dir\n");
 }
