@@ -121,4 +121,67 @@ my $ckout   = tempdir(CLEANUP => 1);
                 system("pkill -f '[s]leep $marker'") };
 }
 
+# ---------------------------------------------------------------------------
+# 4. THE WHOLE PROCESS GROUP GOES, not just the shell.
+#    Killing /bin/sh does not kill what it started: dpkg-buildpackage leaves workers behind, and
+#    those keep writing the checkout after the lock would otherwise have been handed to the next
+#    build. The command runs in its own process group so cancellation can take all of it.
+# ---------------------------------------------------------------------------
+{
+    my $tag     = '661277';                     # the worker, a grandchild of the build
+    my $started = "$lockdir/started4";
+    my $pid = fork();
+    die "cannot fork\n" unless defined $pid;
+    unless ($pid) {
+        XCAT::BuildUtils::install_build_cancellation();
+        my $l = XCAT::BuildUtils::take_build_lock($ckout, $lockdir);
+        if (open(my $st, '>', $started)) { close $st }
+        # a shell that spawns a worker and waits: the worker is a GRANDCHILD of this process
+        XCAT::BuildUtils::sh("sleep $tag & sleep $tag");
+        POSIX::_exit(0);
+    }
+    my $up = 0;
+    for (1 .. 100) { if (-e $started) { $up = 1; last } select undef, undef, undef, 0.1 }
+    ok($up, 'the build started');
+
+    my $workers = 0;
+    for (1 .. 100) {
+        $workers = `pgrep -f "[s]leep $tag" 2>/dev/null | wc -l`; chomp $workers;
+        last if $workers >= 2;
+        select undef, undef, undef, 0.1;
+    }
+    cmp_ok($workers, '>=', 2, 'the build has a worker of its own -- the control for the check below');
+
+    kill 'TERM' => $pid;
+    for (1 .. 100) { last if waitpid($pid, WNOHANG) > 0; select undef, undef, undef, 0.1 }
+
+    my $left = 1;
+    for (1 .. 100) {
+        $left = `pgrep -f "[s]leep $tag" 2>/dev/null | wc -l`; chomp $left;
+        last if $left == 0;
+        select undef, undef, undef, 0.1;
+    }
+    is($left, 0, 'cancelling the build takes its workers with it, not just its shell')
+        or do { diag('a build worker outlived the cancellation and can still write the checkout');
+                system("pkill -f '[s]leep $tag'") };
+}
+
+# ---------------------------------------------------------------------------
+# 5. A command killed by a signal reports as killed, not as success.
+#    $? >> 8 is 0 for a signalled child, so a build stopped mid-way looked like it had worked.
+# ---------------------------------------------------------------------------
+{
+    my $rc = -1;
+    my $pid = fork();
+    die "cannot fork\n" unless defined $pid;
+    unless ($pid) {
+        my $got = XCAT::BuildUtils::sh("kill -TERM \$\$");
+        POSIX::_exit($got);
+    }
+    waitpid($pid, 0);
+    $rc = $? >> 8;
+    is($rc, 128 + 15, 'a command killed by SIGTERM reports 128+15, not 0');
+}
+
+
 done_testing();

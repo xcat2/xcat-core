@@ -118,23 +118,51 @@ END { release_build_locks() }
 
 sub sh {
     my ($cmd) = @_;
+    require POSIX;
     say "Running: $cmd" if $VERBOSE;
+
+    # Do not let cancellation run between fork and publishing the process group.
+    my $blocked = POSIX::SigSet->new(POSIX::SIGINT(), POSIX::SIGTERM());
+    my $oldmask = POSIX::SigSet->new();
+    POSIX::sigprocmask(POSIX::SIG_BLOCK(), $blocked, $oldmask)
+        or die "Cannot block build cancellation signals: $!\n";
+
     my $pid = fork();
     unless (defined $pid) {
-        warn "FATAL: cannot fork to run: $cmd\n";
+        my $error = "$!";
+        POSIX::sigprocmask(POSIX::SIG_SETMASK(), $oldmask)
+            or POSIX::_exit(127);
+        warn "FATAL: cannot fork to run $cmd: $error\n";
         return 127;
     }
     unless ($pid) {
-        # _exit, not exit: the child must not run the parent's END block and release a lock
-        # the parent still holds.
-        require POSIX;
+        $SIG{INT} = $SIG{TERM} = 'DEFAULT';
+        POSIX::setpgid(0, 0) or POSIX::_exit(127);
+        POSIX::sigprocmask(POSIX::SIG_SETMASK(), $oldmask)
+            or POSIX::_exit(127);
         exec('/bin/sh', '-c', $cmd) or POSIX::_exit(127);
     }
-    local $CURRENT_CHILD = $pid;
-    # waitpid returns -1 with EINTR when a signal arrives, and a build takes signals.
+
+    local $CURRENT_CHILD = $pid;  # also the command's process-group ID
+    # Both sides set the group, so neither depends on which side runs first.
+    # EACCES means the child already exec'd, after setting its group; ESRCH
+    # means it has already gone away.
+    unless (POSIX::setpgid($pid, $pid) || $!{EACCES} || $!{ESRCH}) {
+        warn "FATAL: cannot create build process group $pid: $!; retaining locks\n";
+        kill 'KILL', $pid;
+        POSIX::_exit(127);
+    }
+    POSIX::sigprocmask(POSIX::SIG_SETMASK(), $oldmask) or do {
+        warn "FATAL: cannot restore signal mask: $!\n";
+        cancel_build('TERM');
+        POSIX::_exit(127);
+    };
+
     my $got;
     do { $got = waitpid($pid, 0) } while ($got == -1 && $!{EINTR});
-    return $? >> 8;
+    my $status = $?;
+    return 127 if $got == -1;
+    return ($status & 127) ? 128 + ($status & 127) : $status >> 8;
 }
 
 # pod2usage reads the POD of the running program, so each builder keeps its own
@@ -596,17 +624,31 @@ Returns:
 sub cancel_build {
     my ($sig) = @_;
     require POSIX;
-    if ($CURRENT_CHILD) {
-        kill $sig => $CURRENT_CHILD;
-        my $gone = 0;
-        for (1 .. 50) {
-            if (waitpid($CURRENT_CHILD, POSIX::WNOHANG()) > 0) { $gone = 1; last }
-            select undef, undef, undef, 0.1;
+    # A second Ctrl-C must not interrupt cleanup and release the lock early.
+    local $SIG{INT}  = 'IGNORE';
+    local $SIG{TERM} = 'IGNORE';
+
+    if (my $pgid = $CURRENT_CHILD) {
+        my $reaped = 0;
+        for my $stop_signal ($sig, 'KILL') {
+            kill $stop_signal, -$pgid;
+            for (1 .. 50) {
+                unless ($reaped) {
+                    my $got = waitpid($pgid, POSIX::WNOHANG());
+                    $reaped = 1 if $got == $pgid || ($got == -1 && $!{ECHILD});
+                }
+                # The shell exiting is not enough: its workers may still exist.
+                if (!kill(0, -$pgid) && $!{ESRCH}) {
+                    $CURRENT_CHILD = undef;
+                    release_build_locks();
+                    return;
+                }
+                select undef, undef, undef, 0.1;
+            }
         }
-        unless ($gone) {
-            kill 'KILL' => $CURRENT_CHILD;
-            waitpid($CURRENT_CHILD, 0);
-        }
+        # Never let END/DESTROY unlock a checkout whose workers may still run.
+        warn "FATAL: build process group $pgid has not disappeared; retaining locks\n";
+        POSIX::_exit(1);
     }
     release_build_locks();
     return;
