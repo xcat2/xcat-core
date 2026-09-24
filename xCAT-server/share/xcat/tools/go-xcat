@@ -487,7 +487,8 @@ function debug_trace()
 	return "${rc}"
 }
 
-internal_setup
+# Sourced by a test: define the functions and lists, and change nothing on the host.
+(return 0 2>/dev/null) || internal_setup
 
 # Check operating system
 function check_os()
@@ -2393,6 +2394,9 @@ function boo_boo_if_bad()
 #              |       _|            _|
 #
 # Main program goes here.
+
+# Sourced by a test: stop before the main program.
+(return 0 2>/dev/null) && return 0
 
 declare -a GO_XCAT_YES=()
 GO_XCAT_ACTION=""
