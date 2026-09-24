@@ -44,9 +44,11 @@ like( $@, qr/already holds/, 'and says which checkout is already building' );
 my $stable = eval { take_build_lock('/opt/builds/stable/xcat-core', $lockdir) };
 ok( $stable, 'a build of a DIFFERENT checkout runs concurrently' );
 
-# Releasing lets the next build in.
-close $first;
+# Releasing lets the next build in. The lock is a directory now, not an flock on a filehandle --
+# an NFS re-export refuses locks outright (errno 524) -- so it is freed when the returned object
+# goes out of scope, not when a handle is closed.
+undef $first;
 my $again = eval { take_build_lock($devel, $lockdir) };
-ok( $again, 'the lock is released when the handle is closed' );
+ok( $again, 'the lock is released when the returned value goes out of scope' );
 
 done_testing();
