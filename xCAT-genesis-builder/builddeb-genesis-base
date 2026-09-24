@@ -72,53 +72,12 @@ echo "Building xcat-genesis-base for $BUILDARCH ($TARCH) on Ubuntu $CODENAME"
 
 export DEBIAN_FRONTEND=noninteractive
 
-REQUIRED_PACKAGES="
-    dracut linux-image-generic
-    ipmitool lldpad ethtool iproute2 kexec-tools screen
-    openssh-server openssh-client rsyslog chrony
-    nfs-common rpcbind pciutils usbutils parted
-    dosfstools e2fsprogs lvm2 mdadm net-tools
-    bc psmisc rsync wget cpio
-    isc-dhcp-client ifenslave
-    systemd-sysv hwdata btrfs-progs netcat-openbsd iputils-ping fdisk ncurses-term
-    dpkg-dev debhelper fakeroot devscripts vim-tiny
-"
-if [ "$BUILDARCH" = "amd64" ]; then
-    REQUIRED_PACKAGES="$REQUIRED_PACKAGES dmidecode efibootmgr"
-fi
-
 echo "Installing build dependencies..."
 apt-get update -qq
 
-# Two commands the image needs changed package between releases: nslookup left dnsutils for
-# bind9-dnsutils in 22.04, and hwclock left util-linux for util-linux-extra in 23.04. Ask apt
-# which name this release carries rather than branch on the codename.
-add_first_available() {
-    local p
-    for p in "$@"; do
-        if apt-cache show "$p" >/dev/null 2>&1; then
-            REQUIRED_PACKAGES="$REQUIRED_PACKAGES $p"
-            return 0
-        fi
-    done
-    echo "ERROR: $CODENAME carries none of these packages: $*" >&2
-    exit 1
-}
-# A package that exists only on some releases. 26.04 moved the backward-compatibility zone
-# names (Chile/Continental and the rest of the list the dracut module installs) out of tzdata
-# into tzdata-legacy.
-add_if_available() {
-    local p
-    for p in "$@"; do
-        apt-cache show "$p" >/dev/null 2>&1 && REQUIRED_PACKAGES="$REQUIRED_PACKAGES $p"
-    done
-    return 0
-}
-
-add_first_available bind9-dnsutils dnsutils
-add_first_available util-linux-extra util-linux
-add_if_available tzdata-legacy
-
+# XCAT::GenesisBuildRoot holds the package list, so the unit tests can call it.
+REQUIRED_PACKAGES=$(perl -I"$DIR/lib" -MXCAT::GenesisBuildRoot=required_packages \
+    -e 'print "$_\n" for required_packages(@ARGV)' "$BUILDARCH" "$CODENAME")
 apt-get install -y --no-install-recommends $REQUIRED_PACKAGES
 
 # dpkg-architecture comes from dpkg-dev, which the line above installs.
