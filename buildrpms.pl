@@ -349,6 +349,9 @@ sub buildsources_genesis_base($) {
     # %install runs this against the extracted payload before it becomes an rpm.
     cp "xCAT-genesis-builder/verify-genesis-payload",
        "$staging_root/verify-genesis-payload";
+    make_path("$staging_root/lib/XCAT");
+    cp "xCAT-genesis-builder/lib/XCAT/GenesisPayload.pm",
+       "$staging_root/lib/XCAT/GenesisPayload.pm";
 
     unlink $support_tarball if -f $support_tarball;
     sh_or_die(qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -cjf "$support_tarball" -C "$staging_parent" xCAT-genesis-base-build-support),
