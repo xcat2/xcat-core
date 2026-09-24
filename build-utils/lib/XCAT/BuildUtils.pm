@@ -107,11 +107,62 @@ sub rewrite_file {
 # status, which is the exit code times 256, so it is shifted here: a caller
 # comparing the result against a specific code gets the code it expects, not a
 # multiple of it.
+# The pid of the command sh() is running, so a cancellation handler can stop it before the
+# build lock is released. system() gives no pid, which is why this forks explicitly.
+our $CURRENT_CHILD;
+
+# Locks this process holds, weakly. Released by a signal handler or at exit, because
+# _BuildLock::DESTROY does not run when a signal ends the process.
+our @LIVE_LOCKS;
+END { release_build_locks() }
+
 sub sh {
     my ($cmd) = @_;
+    require POSIX;
     say "Running: $cmd" if $VERBOSE;
-    system($cmd);
-    return $? >> 8;
+
+    # Do not let cancellation run between fork and publishing the process group.
+    my $blocked = POSIX::SigSet->new(POSIX::SIGINT(), POSIX::SIGTERM());
+    my $oldmask = POSIX::SigSet->new();
+    POSIX::sigprocmask(POSIX::SIG_BLOCK(), $blocked, $oldmask)
+        or die "Cannot block build cancellation signals: $!\n";
+
+    my $pid = fork();
+    unless (defined $pid) {
+        my $error = "$!";
+        POSIX::sigprocmask(POSIX::SIG_SETMASK(), $oldmask)
+            or POSIX::_exit(127);
+        warn "FATAL: cannot fork to run $cmd: $error\n";
+        return 127;
+    }
+    unless ($pid) {
+        $SIG{INT} = $SIG{TERM} = 'DEFAULT';
+        POSIX::setpgid(0, 0) or POSIX::_exit(127);
+        POSIX::sigprocmask(POSIX::SIG_SETMASK(), $oldmask)
+            or POSIX::_exit(127);
+        exec('/bin/sh', '-c', $cmd) or POSIX::_exit(127);
+    }
+
+    local $CURRENT_CHILD = $pid;  # also the command's process-group ID
+    # Both sides set the group, so neither depends on which side runs first.
+    # EACCES means the child already exec'd, after setting its group; ESRCH
+    # means it has already gone away.
+    unless (POSIX::setpgid($pid, $pid) || $!{EACCES} || $!{ESRCH}) {
+        warn "FATAL: cannot create build process group $pid: $!; retaining locks\n";
+        kill 'KILL', $pid;
+        POSIX::_exit(127);
+    }
+    POSIX::sigprocmask(POSIX::SIG_SETMASK(), $oldmask) or do {
+        warn "FATAL: cannot restore signal mask: $!\n";
+        cancel_build('TERM');
+        POSIX::_exit(127);
+    };
+
+    my $got;
+    do { $got = waitpid($pid, 0) } while ($got == -1 && $!{EINTR});
+    my $status = $?;
+    return 127 if $got == -1;
+    return ($status & 127) ? 128 + ($status & 127) : $status >> 8;
 }
 
 # pod2usage reads the POD of the running program, so each builder keeps its own
@@ -463,12 +514,160 @@ sub lock_path_for {
 # Returns the open handle -- the lock is held for as long as the caller keeps it.
 sub take_build_lock {
     my ($path, $dir) = @_;
-    require Fcntl;
-    my $lockfile = lock_path_for($path, $dir);
-    open my $fh, '>', $lockfile or die "FATAL: cannot open $lockfile: $!\n";
-    flock($fh, Fcntl::LOCK_EX() | Fcntl::LOCK_NB())
-        or die "FATAL: another build of $path already holds $lockfile\n";
-    return $fh;
+    require POSIX;
+    # A directory, not an flock. A build tree can live on an NFS re-export, where the kernel
+    # refuses locks outright: every attempt answers errno 524. mkdir(2) is arbitrated by the
+    # server and needs no lock daemon.
+    my $lockdir = lock_path_for($path, $dir) . '.d';
+    unless (mkdir $lockdir) {
+        die "FATAL: cannot take $lockdir: $!\n" unless $! == POSIX::EEXIST();
+        my $who = ''; if (open(my $h, '<', "$lockdir/owner")) { local $/; $who = <$h> // ''; close $h }
+        chomp $who;
+        die "FATAL: another build of $path already holds $lockdir"
+          . ($who ? " (held by [$who])" : "") . "\n";
+    }
+    if (open(my $ow, '>', "$lockdir/owner")) { print {$ow} "pid=$$\n"; close $ow }
+    # The caller keeps the returned value; release is by pid so a fork cannot free the parent's.
+    my $owner = $$;
+    my $lock = XCAT::BuildUtils::_BuildLock->new($lockdir, $owner);
+    # Registered weakly, so holding it here does not keep the lock alive past its caller's
+    # scope. The registry exists only so a signal can release what DESTROY will not.
+    require Scalar::Util;
+    push @LIVE_LOCKS, $lock;
+    Scalar::Util::weaken($LIVE_LOCKS[-1]);
+    return $lock;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 release_build_locks
+
+Descriptions:
+    Release every build lock this process still holds.
+
+    DESTROY does not run when a signal terminates the process, so a cancelled build left its
+    lock directory behind and the next build of that checkout died on "another build already
+    holds" naming a pid that had long exited. One such directory blocked an openSUSE target
+    across three consecutive runs before anyone looked.
+
+Arguments:
+    None.
+Returns:
+    Nothing.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub release_build_locks {
+    for my $l (@LIVE_LOCKS) { $l->release if defined $l }
+    return;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 install_build_cancellation
+
+Descriptions:
+    Install the INT and TERM handlers that stop the build and release its locks.
+
+    It lives here rather than in the builder so the behaviour can be tested. A builder that
+    wired its own handler inline could only be covered by reading its source, and a test that
+    installs an equivalent handler of its own proves the helper works while saying nothing
+    about whether anything calls it.
+
+    The signal is re-raised with the default disposition afterwards, so the exit status still
+    tells a caller the build was cancelled rather than that it failed.
+
+Arguments:
+    $announce - optional coderef called with the signal name before the build is stopped
+Returns:
+    Nothing.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub install_build_cancellation {
+    my ($announce) = @_;
+    for my $sig (qw(INT TERM)) {
+        $SIG{$sig} = sub {
+            my ($caught) = @_;
+            $announce->($caught) if $announce;
+            cancel_build($caught);
+            $SIG{$caught} = 'DEFAULT';
+            kill $caught => $$;
+        };
+    }
+    return;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 cancel_build
+
+Descriptions:
+    Stop the command in flight, then release the build locks.
+
+    The order matters. Releasing first would hand the checkout to a second build while
+    dpkg-buildpackage is still rewriting debian/changelog and debian/control in it.
+
+    The wait is bounded: a child that ignores the signal must not keep the lock for ever, so
+    it is given a few seconds and then killed outright.
+
+Arguments:
+    $sig - the signal name that started the cancellation
+Returns:
+    Nothing.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub cancel_build {
+    my ($sig) = @_;
+    require POSIX;
+    # A second Ctrl-C must not interrupt cleanup and release the lock early.
+    local $SIG{INT}  = 'IGNORE';
+    local $SIG{TERM} = 'IGNORE';
+
+    if (my $pgid = $CURRENT_CHILD) {
+        my $reaped = 0;
+        for my $stop_signal ($sig, 'KILL') {
+            kill $stop_signal, -$pgid;
+            for (1 .. 50) {
+                unless ($reaped) {
+                    my $got = waitpid($pgid, POSIX::WNOHANG());
+                    $reaped = 1 if $got == $pgid || ($got == -1 && $!{ECHILD});
+                }
+                # The shell exiting is not enough: its workers may still exist.
+                if (!kill(0, -$pgid) && $!{ESRCH}) {
+                    $CURRENT_CHILD = undef;
+                    release_build_locks();
+                    return;
+                }
+                select undef, undef, undef, 0.1;
+            }
+        }
+        # Never let END/DESTROY unlock a checkout whose workers may still run.
+        warn "FATAL: build process group $pgid has not disappeared; retaining locks\n";
+        POSIX::_exit(1);
+    }
+    release_build_locks();
+    return;
+}
+
+{   package XCAT::BuildUtils::_BuildLock;
+    sub new { my ($c,$d,$p)=@_; return bless { dir=>$d, pid=>$p, released=>0 }, $c }
+    # Idempotent: a signal handler and then DESTROY both reach here, and the second must not
+    # remove a directory a LATER build has since taken.
+    sub release {
+        my $s = shift;
+        return if $s->{released};
+        $s->{released} = 1;
+        return unless $$ == $s->{pid};
+        unlink "$s->{dir}/owner";
+        rmdir $s->{dir};
+        return;
+    }
+    sub DESTROY { shift->release }
 }
 
 # The rpm architecture a mock target builds for. A target carries the arch as its

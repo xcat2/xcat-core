@@ -335,6 +335,20 @@ SCRIPT
 }
 
 # ----------------------------------------------------------------- main ------
+# A cancelled build must not keep the checkout. The lock releases in DESTROY, which perl does
+# not run when a signal ends the process, so a killed build left its directory behind and the
+# next build of that checkout died on "another build already holds" naming a pid that had
+# already exited. buildrpms.pl has released its lock on cancellation for some time; this is the
+# Debian builder catching up.
+#
+# cancel_build stops the command in flight BEFORE releasing: handing the checkout to a second
+# build while dpkg-buildpackage is still rewriting debian/changelog in it is worse than holding
+# the lock a moment longer.
+XCAT::BuildUtils::install_build_cancellation(sub {
+    my ($caught) = @_;
+    print STDERR "\n[builddebs] SIG$caught: stopping the build and releasing the lock\n";
+});
+
 my $lock = take_build_lock($ROOT);
 
 my $dest   = resolve_dest($opts{dest}, "$ROOT/dist/debs");
