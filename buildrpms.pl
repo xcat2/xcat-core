@@ -44,6 +44,7 @@ use File::Temp qw(tempdir tempfile);
 use FindBin qw($Bin);
 use lib "$Bin/build-utils/lib";
 use XCAT::BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildinfo_text
+                        stage_genesis_base_sources
                         write_script read_line targetarch_from_target);
 use Fcntl qw(:flock);           # per-target build lock (concurrency guard; see main())
 use Getopt::Long qw(GetOptions);
@@ -331,27 +332,8 @@ sub createmockconfig {
 }
 
 sub buildsources_genesis_base($) {
-    my ($target) = @_;
-
-    die "Assertion failed! No directory xCAT-genesis-base in the current directory"
-        unless -d "./xCAT-genesis-base";
-    my $staging_parent = "/tmp/xcat-genesis-base-build-support.$$";
-    my $staging_root = "$staging_parent/xCAT-genesis-base-build-support";
-    my $support_tarball = "$SOURCES/xCAT-genesis-base-build-support.tar.bz2";
-
-    remove_tree($staging_parent) if -e $staging_parent;
-    make_path("$staging_root/dracut_105");
-
-    sh_or_die(qq(cp -a "xCAT-genesis-base/dracut_105" "$staging_root/"),
-        "Error copying dracut_105 sources");
-    cp "xCAT-genesis-base/80-net-name-slot.rules",
-       "$staging_root/80-net-name-slot.rules";
-
-    unlink $support_tarball if -f $support_tarball;
-    sh_or_die(qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -cjf "$support_tarball" -C "$staging_parent" xCAT-genesis-base-build-support),
-        "Error creating $support_tarball");
-
-    remove_tree($staging_parent);
+    stage_genesis_base_sources(".", "$SOURCES/xCAT-genesis-base-build-support.tar.bz2",
+        $SOURCE_DATE_EPOCH);
 }
 
 sub prepare_xcat_probe_source_tar {
