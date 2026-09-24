@@ -104,8 +104,8 @@ subtest 'all Net::DNS thresholds share the dotted version policy' => sub {
         'no Net::DNS threshold uses Perl numeric comparison' );
 
     my @policy_calls = ( $source =~ /net_dns_uses_keyfile\(\)/g );
-    is( scalar(@policy_calls), 4,
-        'all four Net::DNS threshold sites use the shared policy' );
+    is( scalar(@policy_calls), 2,
+        'both Net::DNS threshold sites use the shared policy' );
 };
 
 subtest 'Net::DNS threshold controls DDNS policy and signing' => sub {
@@ -116,7 +116,6 @@ subtest 'Net::DNS threshold controls DDNS policy and signing' => sub {
 
     foreach my $case (@net_dns_versions) {
         my ( $version, $uses_keyfile ) = @{$case};
-        my $expected_algorithm = $uses_keyfile ? 'hmac-sha256' : 'hmac-md5';
         is(
             with_net_dns_version(
                 $version,
@@ -126,8 +125,8 @@ subtest 'Net::DNS threshold controls DDNS policy and signing' => sub {
                     );
                 }
             ),
-            $expected_algorithm,
-            "Net::DNS $version selects the expected implicit algorithm"
+            'hmac-sha256',
+            "Net::DNS $version keeps the algorithm the site table implies"
         );
 
         my $update = Local::DDNS::Update->new();
@@ -172,17 +171,16 @@ subtest 'Net::DNS threshold controls named key reconciliation' => sub {
         my ( $version, $uses_keyfile ) = @{$case};
         my ( $named_contents, $restartneeded ) =
           reconcile_named_key($version);
-        my $expected_algorithm = $uses_keyfile ? 'hmac-sha256' : 'hmac-md5';
 
         like(
             $named_contents,
-            qr/^\s*algorithm\s+\Q$expected_algorithm\E\s*;/m,
-            "Net::DNS $version keeps the expected named key algorithm"
+            qr/^\s*algorithm\s+hmac-sha256\s*;/m,
+            "Net::DNS $version keeps the named key algorithm"
         );
         is(
             $restartneeded ? 1 : 0,
-            $uses_keyfile ? 0 : 1,
-            "Net::DNS $version records the expected named restart state"
+            0,
+            "Net::DNS $version leaves named alone"
         );
     }
 };

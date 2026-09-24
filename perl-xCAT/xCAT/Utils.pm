@@ -3909,36 +3909,80 @@ sub fullpathbin
 #--------------------------------------------------------------------------------
 sub gettimezone
 {
-    my ($class) = @_;
+    my ($class, %opt) = @_;
 
-    my $tz;
     if (xCAT::Utils->isAIX()) {
-        $tz = $ENV{'TZ'};
-    } else {    # all linux
-        my $localtime = "/etc/localtime";
-        my $zoneinfo  = "/usr/share/zoneinfo";
+        return $ENV{'TZ'};
+    }
+
+    # all linux. %opt{root} prefixes every path, so a test drives this against a scratch tree.
+    my $root      = defined($opt{root}) ? $opt{root} : '';
+    my $localtime = "$root/etc/localtime";
+    my $zoneinfo  = "$root/usr/share/zoneinfo";
+
+    # On every current distribution /etc/localtime is a symlink into the zoneinfo tree and its
+    # target is the name. Read it before the scan: the scan compares /etc/localtime against every
+    # file in the tree, and a cloud image running on UTC may ship no /etc/localtime at all.
+    if (-l $localtime) {
+        my $zone = _zone_from_path(readlink($localtime));
+        return $zone if defined $zone;
+    }
+
+    if (-e $localtime) {
         my $cmd = "find $zoneinfo -xtype f -exec cmp -s $localtime {} \\; -print | grep -v posix | grep -v SystemV | grep -v right | grep -v localtime ";
         my $zone_result = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            $tz = "Could not determine timezone checksum";
-            return $tz;
+        if ($::RUNCMD_RC == 0) {
+            my @zones = split /\n/, $zone_result;
+            my $zone = _zone_from_path($zones[0]);
+            return $zone if defined $zone;
         }
-        my @zones = split /\n/, $zone_result;
-
-        $zones[0] =~ s/$zoneinfo\///;
-        if (!$zones[0]) {    # if we still did not get one, then default
-            $tz = `cat /etc/timezone`;
-            chomp $tz;
-        } else {
-            $tz = $zones[0];
-        }
-
-
     }
-    return $tz;
 
+    if (open(my $tz_fh, '<', "$root/etc/timezone")) {
+        my $zone = <$tz_fh>;
+        close($tz_fh);
+        if (defined $zone) {
+            chomp $zone;
+            return $zone if length($zone) and $zone !~ /\s/;
+        }
+    }
 
+    # The caller writes this value into a kickstart or an autoyast profile, where it must be one
+    # token. Name the zone the host is actually on rather than a sentence that stops the installer.
+    return 'UTC';
+}
+
+#--------------------------------------------------------------------------------
+
+=head3   _zone_from_path
+    Returns the timezone name inside a path under a zoneinfo tree, for a symlink target or a
+    line of the zoneinfo scan. Both absolute and relative targets carry "/zoneinfo/", so the
+    name is whatever follows it.
+    Arguments:
+      A path, or undef
+    Returns:
+      The timezone name, or undef when the path names no zone
+    Globals:
+        none
+    Error:
+      None
+    Example:
+         my $zone = _zone_from_path("../usr/share/zoneinfo/America/Sao_Paulo");
+    Comments:
+        none
+=cut
+
+#--------------------------------------------------------------------------------
+sub _zone_from_path
+{
+    my ($path) = @_;
+
+    return undef unless defined($path) and length($path);
+    return undef unless $path =~ m{(?:^|/)zoneinfo/(.+)\z};
+    my $zone = $1;
+    $zone =~ s{^posix/}{};
+    return undef if $zone eq '' or $zone eq 'localtime' or $zone =~ /\s/;
+    return $zone;
 }
 
 #--------------------------------------------------------------------------------

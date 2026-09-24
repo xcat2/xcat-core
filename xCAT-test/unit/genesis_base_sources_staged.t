@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 # xCAT-genesis-base.spec builds the Genesis image from a tarball that buildrpms.pl stages:
-# the dracut_105 modules and 80-net-name-slot.rules. Renaming the directory they live in
-# breaks that staging silently.
+# the dracut_105 modules, 80-net-name-slot.rules and verify-genesis-payload. Renaming the
+# directory they live in breaks that staging silently.
 use strict;
 use warnings;
 
@@ -36,6 +36,7 @@ make_path("$checkout/xCAT-genesis-base/dracut_105/el",
     "$checkout/xCAT-genesis-base/dracut_105/ubuntu");
 write_text("$checkout/xCAT-genesis-base/dracut_105/$_/$MODULE", "$_ module\n") for qw(el ubuntu);
 write_text("$checkout/xCAT-genesis-base/80-net-name-slot.rules", "rules\n");
+write_text("$checkout/xCAT-genesis-base/verify-genesis-payload", "verifier\n");
 
 my $tarball = "$scratch/scratch.tar.bz2";
 is(stage_genesis_base_sources($checkout, $tarball, $EPOCH), $tarball,
@@ -50,8 +51,9 @@ is_deeply([ names(@listing) ], [
         "xCAT-genesis-base-build-support/dracut_105/el/$MODULE",
         'xCAT-genesis-base-build-support/dracut_105/ubuntu/',
         "xCAT-genesis-base-build-support/dracut_105/ubuntu/$MODULE",
+        'xCAT-genesis-base-build-support/verify-genesis-payload',
     ],
-    'the tarball holds the EL and Ubuntu dracut modules and 80-net-name-slot.rules');
+    'the tarball holds the dracut modules, the rules file and the payload verifier');
 is_deeply([ grep { !m{ root/root .* 2023-11-14 22:13 } } @listing ], [],
     'every member is owned by root and dated SOURCE_DATE_EPOCH');
 
@@ -59,8 +61,9 @@ is_deeply([ grep { !m{ root/root .* 2023-11-14 22:13 } } @listing ], [],
 my %shipped = map { $_ => 1 }
     names(members(stage_genesis_base_sources(repo_path('.'), "$scratch/shipped.tar.bz2", $EPOCH)));
 is_deeply([ grep { !$shipped{"xCAT-genesis-base-build-support/$_"} }
-        "dracut_105/el/$MODULE", "dracut_105/ubuntu/$MODULE", '80-net-name-slot.rules' ], [],
-    'xCAT-genesis-base in the checkout carries both dracut modules and the rules file');
+        "dracut_105/el/$MODULE", "dracut_105/ubuntu/$MODULE", '80-net-name-slot.rules',
+        'verify-genesis-payload' ], [],
+    'xCAT-genesis-base in the checkout carries the dracut modules, the rules file and the verifier');
 
 # A checkout that still uses the old name must stop the build, not produce an empty tarball.
 my $old = "$scratch/old";

@@ -59,10 +59,11 @@ unlike($tmpl, qr/tr ''A-F'' ''a-f''/,
     'the shell no longer normalizes the MAC (Template.pm resolves mac.mac entries)');
 unlike($tmpl, qr/cut -d''\|'' -f1/,
     'the shell no longer splits mac.mac entries (Template.pm resolves them for this node)');
-like($tmpl, qr/printf ''%s\\n'' "network:" "  version: 2" "  ethernets:" "    xcat-install:" "      match:" "        macaddress: \\"\$\{installmac\}\\"" "      set-name: \$\{installnic\}" "      dhcp4: true" >\/target\/etc\/netplan\/00-xcat-install\.yaml;/, 'target netplan printf stays on one shell line');
+like($tmpl, qr/printf ''%s\\n'' "network:" "  version: 2" "  ethernets:" "    xcat-install:" "      match:" "        macaddress: \\"\$\{installmac\}\\"" "      set-name: \$\{installnic\}" "      dhcp4: true" "      dhcp4-overrides:" "        use-domains: true" >\/target\/etc\/netplan\/00-xcat-install\.yaml;/, 'target netplan printf stays on one shell line');
 like($tmpl, qr/"        macaddress: \\"\$\{installmac\}\\""/, 'target netplan matches by MAC address');
 like($tmpl, qr/"      set-name: \$\{installnic\}"/, 'target netplan sets the expected installnic name');
 like($tmpl, qr/"\s+dhcp4: true"/, 'target netplan enables DHCPv4 on installnic');
+like($tmpl, qr/"\s+use-domains: true"/, 'target netplan takes the search domain DHCP offers, so short names resolve on the node');
 like($tmpl, qr/printf ''%s\\n'' ''#HOSTNAME#'' >\/target\/etc\/hostname/, 'template writes target hostname before disabling cloud-init');
 like($tmpl, qr/sed -i ''s\/\^127\\\.0\\\.1\\\.1\.\*\/127\.0\.1\.1 #HOSTNAME#\/'' \/target\/etc\/hosts/, 'template updates target hosts entry for hostname');
 like($tmpl, qr/touch \/target\/etc\/cloud\/cloud-init\.disabled/, 'target cloud-init is disabled after target netplan is written');

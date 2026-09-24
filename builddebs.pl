@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # Build the xcat-core Debian packages and assemble a signed apt repository.
 #
-# Replaces build-ubunturepo. The shape mirrors buildrpms.pl -- Getopt::Long options,
+# Builds every xCAT deb and the apt repository. The shape mirrors buildrpms.pl -- Getopt::Long options,
 # one package list, build then index then sign -- so the two builders read the same way
 # and share XCAT::BuildUtils.
 #
@@ -93,9 +93,12 @@ my $VERSION = read_line("$ROOT/Version") // die "Cannot read $ROOT/Version\n";
 my $EPOCH   = source_date_epoch();
 # A Release file, when present, is authoritative: buildrpms.pl writes one, and a
 # pipeline that builds both must stamp the rpms and the debs with the same release.
+# The tracked file holds snap000000000000, which no build writes -- snap_release()
+# renders a real time. A tree where buildrpms.pl has not run still carries it, so
+# treat the placeholder as an unstamped tree and derive the release from the commit.
 my $FILE_RELEASE = do {
     my $r = read_line("$ROOT/Release");
-    ($r && $r =~ /\S/) ? $r : undef;
+    ($r && $r =~ /\S/ && $r !~ /\Asnap0+\z/) ? $r : undef;
 };
 my $RELEASE = $opts{release} || $FILE_RELEASE || snap_release($EPOCH);
 my $PKGVER  = deb_version($VERSION, $RELEASE);
@@ -332,6 +335,20 @@ SCRIPT
 }
 
 # ----------------------------------------------------------------- main ------
+# A cancelled build must not keep the checkout. The lock releases in DESTROY, which perl does
+# not run when a signal ends the process, so a killed build left its directory behind and the
+# next build of that checkout died on "another build already holds" naming a pid that had
+# already exited. buildrpms.pl has released its lock on cancellation for some time; this is the
+# Debian builder catching up.
+#
+# cancel_build stops the command in flight BEFORE releasing: handing the checkout to a second
+# build while dpkg-buildpackage is still rewriting debian/changelog in it is worse than holding
+# the lock a moment longer.
+XCAT::BuildUtils::install_build_cancellation(sub {
+    my ($caught) = @_;
+    print STDERR "\n[builddebs] SIG$caught: stopping the build and releasing the lock\n";
+});
+
 my $lock = take_build_lock($ROOT);
 
 my $dest   = resolve_dest($opts{dest}, "$ROOT/dist/debs");
@@ -385,7 +402,7 @@ carry an architecture, and there the difference is packaging metadata rather tha
 compiled output. Consequently this builder needs no C<sbuild> and no per-codename
 chroot. (xcat-dep is different: its packages are compiled, so it builds per codename.)
 
-Replaces C<build-ubunturepo>. The GSA upload paths, the C<PROMOTE>/C<PREGA> release
+Replaced C<build-ubunturepo>, removed in 2.19. The GSA upload paths, the C<PROMOTE>/C<PREGA> release
 flows and the C<-d> xcat-dep repository mode were not carried over: publishing is done
 by the CD pipeline's own deploy step, and xcat-dep is built from its own repository.
 
