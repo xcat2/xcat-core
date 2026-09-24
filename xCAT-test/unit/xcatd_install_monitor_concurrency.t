@@ -27,13 +27,15 @@ use IO::Socket::INET;
 use POSIX ();
 use Socket;
 use Test::More;
-use Time::HiRes qw(sleep time);
+use Time::HiRes qw(gettimeofday sleep time);
 
 my $XCATD = "$FindBin::Bin/../../xCAT-server/sbin/xcatd";
 die "xcatd not found at $XCATD\n" unless -r $XCATD;
 
 my $SLOW   = 3;                                  # seconds one node's request spends in its plugin
 my $SCRATCH = tempdir(CLEANUP => 1);
+# One file per case. A handler left over from an earlier case outlives the monitor that forked
+# it, and would otherwise append to the case that is running now.
 my $EVENTS = "$SCRATCH/events";
 
 my $src = do {
@@ -80,11 +82,19 @@ my @HOST_PIDFILE    = stat($PIDFILE);
 our @PEER_QUEUE;
 BEGIN { *CORE::GLOBAL::gethostbyaddr = sub { return (shift(@main::PEER_QUEUE) || 'unknown', '') } }
 
+# Whole microseconds. A %.3f stamp rounds, so an event can be recorded at a time LATER than the
+# moment it was taken -- and an assertion that the event precedes a reading taken after it then
+# fails on the rounding instead of on the order. gettimeofday rounds nothing.
+sub now_us {
+    my ($seconds, $micros) = gettimeofday();
+    return $seconds * 1_000_000 + $micros;
+}
+
 # One line per plugin entry and exit, appended by whichever process is running it.
 sub note_event {
     my ($what) = @_;
     open my $fh, '>>', $EVENTS or return;
-    printf {$fh} "%s %.3f\n", $what, time();
+    printf {$fh} "%s %d\n", $what, now_us();
     close $fh;
     return;
 }
@@ -112,7 +122,7 @@ sub event_time {
     my $i = event_index($want);
     return undef if $i < 0;
     my @all = events();
-    my ($t) = $all[$i] =~ /\s([\d.]+)$/;
+    my ($t) = $all[$i] =~ /\s(\d+)$/;
     return $t;
 }
 
@@ -171,6 +181,7 @@ sub wait_for_event {
     *xCAT::NetworkUtils::clearcache     = sub { };
     *xCAT::NetworkUtils::getNodeDomains = sub { return {} };
     *xCAT::TableUtils::getTftpDir       = sub { return '/tmp' };
+
     *xCAT::Utils::xfork                 = sub { return fork() };
     *t::rescan::new                     = sub { return bless {}, shift };
     *t::rescan::can_read                = sub { return () };
@@ -247,7 +258,7 @@ sub stop_monitor {
 # --- one node's slow request must not delay another node ----------------------
 
 {
-    unlink $EVENTS;
+    $EVENTS = "$SCRATCH/events-slow-vs-other";
     my $port = free_port();
     my $mon  = open_monitor($port, qw(portprobe slownode othernode));
 
@@ -274,7 +285,7 @@ sub stop_monitor {
 # --- requests for one node keep their order, even when a handler dies ---------
 
 {
-    unlink $EVENTS;
+    $EVENTS = "$SCRATCH/events-order";
     my $port = free_port();
     my $mon  = open_monitor($port, qw(portprobe ordernode ordernode ordernode));
 
@@ -308,7 +319,7 @@ sub stop_monitor {
 # --- a handler that dies must not take the monitor with it --------------------
 
 {
-    unlink $EVENTS;
+    $EVENTS = "$SCRATCH/events-dies";
     my $port = free_port();
     my $mon  = open_monitor($port, qw(portprobe diesnode lastnode));
 
@@ -328,7 +339,7 @@ sub stop_monitor {
 # --- the answer to a destiny advance follows the advance ----------------------
 
 {
-    unlink $EVENTS;
+    $EVENTS = "$SCRATCH/events-advance";
     my $port = free_port();
     my $mon  = open_monitor($port, qw(portprobe slownode));
 
@@ -337,7 +348,7 @@ sub stop_monitor {
     my $ready = $c ? scalar <$c> : undef;
     is($ready, "ready\n", 'the greeting comes first');
     my $done    = $c ? scalar <$c> : undef;
-    my $done_at = time();
+    my $done_at = now_us();
     is($done, "done\n", 'the advance is answered');
 
     ok(wait_for_event('end slownode next', 30), 'the advance reached its plugin');
@@ -353,7 +364,7 @@ sub stop_monitor {
 # --- a request accepted before the stand-down is finished, not abandoned ------
 
 {
-    unlink $EVENTS;
+    $EVENTS = "$SCRATCH/events-stand-down";
     my $port = free_port();
     my $mon  = open_monitor($port, qw(portprobe slownode));
 
@@ -367,7 +378,7 @@ sub stop_monitor {
     my $exited_at;
     my $until = time() + 30;
     while (time() < $until) {
-        if (waitpid($mon, POSIX::WNOHANG()) == $mon) { $exited_at = time(); last }
+        if (waitpid($mon, POSIX::WNOHANG()) == $mon) { $exited_at = now_us(); last }
         sleep 0.05;
     }
     ok(defined $exited_at, 'the monitor stood down');
@@ -388,7 +399,7 @@ sub stop_monitor {
 # netbooting must not become a thousand handlers; the rest of them wait in the listen backlog.
 # On a monitor that forks without a limit this wait is gone.
 {
-    unlink $EVENTS;
+    $EVENTS = "$SCRATCH/events-cap";
     my $port = free_port();
     my $mon  = start_monitor($port, 1, qw(portprobe slowcap nextcap));
     my $up   = talk_to($port, 'installmonitor', 200)
