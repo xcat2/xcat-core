@@ -57,6 +57,8 @@ my $reaper = lift_sub('reap_installm_kids')
   or die "xcatd no longer defines reap_installm_kids";
 my $dequeue = lift_sub('dequeue_installm_request')
   or die "xcatd no longer defines dequeue_installm_request";
+my $waiter = lift_sub('wait_for_installm_connection')
+  or die "xcatd no longer defines wait_for_installm_connection";
 
 # Settings the lifted routine reads from file-scope variables xcatd declares but this file does
 # not lift. Read the defaults out of the source, so a rename fails here instead of silently
@@ -65,6 +67,8 @@ my ($MAXKIDS) = $src =~ /^my \s+ \$installm_maxkids \s* = \s* (\d+) ;/mx;
 $MAXKIDS or die "xcatd no longer declares \$installm_maxkids";
 my ($DRAIN) = $src =~ /^my \s+ \$installm_drain_seconds \s* = \s* (\d+) ;/mx;
 $DRAIN or die "xcatd no longer declares \$installm_drain_seconds";
+my ($WAKEUP) = $src =~ /^my \s+ \$installm_wakeup_seconds \s* = \s* ([\d.]+) ;/mx;
+$WAKEUP or die "xcatd no longer declares \$installm_wakeup_seconds";
 my ($PIDFILE) = $src =~ /^my \s+ \$installm_pidfile \s* = \s* "([^"]+)" ;/mx;
 $PIDFILE or die "xcatd no longer declares \$installm_pidfile";
 
@@ -176,6 +180,7 @@ sub wait_for_event {
       '}',
       $reaper,
       $dequeue,
+      $waiter,
       $service,
       '1;';
     eval $scratch or die "cannot compile the lifted install monitor: $@";
@@ -224,6 +229,7 @@ sub start_monitor {
     no warnings 'once';
     $t::installm::installm_maxkids       = $maxkids;
     $t::installm::installm_drain_seconds = $DRAIN;
+    $t::installm::installm_wakeup_seconds = $WAKEUP;
     $t::installm::installm_pidfile       = $SCRATCH_PIDFILE;
     $t::installm::sport                  = $port;
     $t::installm::quit                   = 0;
@@ -494,6 +500,46 @@ sub stop_monitor {
 
     close $_ for grep { $_ } $busy, $queued;
     stop_monitor($mon);
+}
+
+# --- the wait before the accept must end on its own ---------------------------
+
+# SIGCHLD only interrupts a wait that has already begun. A handler that exits between the queue
+# check and the wait leaves nothing to interrupt, so a wait that ends only when a connection
+# arrives strands the connection queued for that node until some other node calls in.
+{
+    my $listen = IO::Socket::INET->new(LocalAddr => '127.0.0.1', LocalPort => 0,
+        Listen => 1, Proto => 'tcp', ReuseAddr => 1)
+      or die "cannot open a listening socket: $!";
+
+    my $bounded;
+    eval {
+        local $SIG{ALRM} = sub { die "BLOCKED\n" };
+        alarm 10;
+        $bounded = t::installm::wait_for_installm_connection($listen, 0.2);
+        alarm 0;
+        1;
+    } or alarm 0;
+    is($@, '', 'the wait before the accept ends on its own bound with nothing to accept')
+      or diag('the wait ends only when a connection arrives, so a SIGCHLD handled before it is lost');
+    is($bounded, 0, 'and it reports that there is nothing to accept');
+
+    my $client = IO::Socket::INET->new(PeerAddr => '127.0.0.1',
+        PeerPort => $listen->sockport(), Proto => 'tcp', Timeout => 10);
+    ok($client, 'a client reached the listening socket');
+    my $ready;
+    eval {
+        local $SIG{ALRM} = sub { die "BLOCKED\n" };
+        alarm 10;
+        $ready = t::installm::wait_for_installm_connection($listen, $WAKEUP);
+        alarm 0;
+        1;
+    } or alarm 0;
+    is($ready, 1, 'a waiting connection ends the wait at once')
+      or diag('the monitor waits out its bound before accepting a connection that is already there');
+
+    close $client if $client;
+    close $listen;
 }
 
 # --- the per-node queue does not outlive the requests in it -------------------
