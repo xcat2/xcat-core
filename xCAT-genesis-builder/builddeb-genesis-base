@@ -1,13 +1,35 @@
 #!/bin/bash
-# Build xcat-genesis-base .deb package natively on Ubuntu.
-# Must run as root on an Ubuntu system (22.04, 24.04, or 26.04).
-# Parallel to buildrpm for EL targets.
+# Build the xcat-genesis-base .deb for ONE Ubuntu codename.
+#
+# dracut copies the kernel, the kernel modules and every command out of the root it runs
+# in, so this must run inside a root of the target codename. builddebs.pl --genesis starts
+# it in that codename's <codename>-<arch>-sbuild chroot, one build per codename.
+# --expect-codename is what stops a run on the build host: a single build there gives every
+# Ubuntu release the build host's kernel.
+#
+# Parallel to xCAT-genesis-base.spec, which does the same for EL.
 
 set -euo pipefail
 
 DIR=$(readlink -f "$(dirname "$0")")
+OS_RELEASE=${OS_RELEASE:-/etc/os-release}
+expect_codename=""
+outdir=""
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --expect-codename) expect_codename=${2:-}; shift 2 ;;
+        --expect-codename=*) expect_codename=${1#*=}; shift ;;
+        --outdir)          outdir=${2:-}; shift 2 ;;
+        --outdir=*)        outdir=${1#*=}; shift ;;
+        -h|--help)
+            echo "usage: builddeb-genesis-base [--expect-codename <codename>] [--outdir <dir>]"
+            exit 0 ;;
+        *) echo "ERROR: unknown argument: $1" >&2; exit 2 ;;
+    esac
+done
+
 BUILDARCH=$(dpkg --print-architecture)
-TRIPLET=$(dpkg-architecture -qDEB_HOST_MULTIARCH)
 
 case "$BUILDARCH" in
     amd64)   TARCH=x86_64 ;;
@@ -31,43 +53,44 @@ rewrite_control() {
 
 VERSION=$(cat "$DIR/../Version" 2>/dev/null || echo "2.18.0")
 RELEASE=$(cat "$DIR/../Release" 2>/dev/null || echo "snap$(date +%Y%m%d%H%M)")
-CODENAME=$(. /etc/os-release && echo "$VERSION_CODENAME")
+CODENAME=$(. "$OS_RELEASE" && echo "${VERSION_CODENAME:-}")
+
+if [ -z "$CODENAME" ]; then
+    echo "ERROR: $OS_RELEASE names no VERSION_CODENAME" >&2
+    exit 1
+fi
+
+# The image is only valid for the release whose kernel it carries. Refuse to build a
+# codename's image anywhere but in that codename's root.
+if [ -n "$expect_codename" ] && [ "$expect_codename" != "$CODENAME" ]; then
+    echo "ERROR: this root is $CODENAME, not $expect_codename." >&2
+    echo "       The image would carry the $CODENAME kernel and boot under $expect_codename." >&2
+    exit 1
+fi
 
 echo "Building xcat-genesis-base for $BUILDARCH ($TARCH) on Ubuntu $CODENAME"
 
 export DEBIAN_FRONTEND=noninteractive
 
-REQUIRED_PACKAGES="
-    dracut linux-image-generic
-    ipmitool lldpad ethtool iproute2 kexec-tools screen
-    openssh-server openssh-client rsyslog chrony
-    nfs-common rpcbind pciutils usbutils parted
-    dosfstools e2fsprogs lvm2 mdadm net-tools
-    bc psmisc rsync wget cpio
-    isc-dhcp-client ifenslave
-    dpkg-dev debhelper fakeroot devscripts vim-tiny
-"
-if [ "$BUILDARCH" = "amd64" ]; then
-    REQUIRED_PACKAGES="$REQUIRED_PACKAGES dmidecode efibootmgr"
-fi
-
-# Keep only the packages this release actually has. hwclock moved out of util-linux into
-# util-linux-extra, so focal and jammy have no such package and naming it there fails the
-# whole install. util-linux only Suggests it, and --no-install-recommends is passed, so the
-# releases that did split it must name it.
-optional_packages() {
-    local package
-    for package in "$@"; do
-        if apt-cache show "$package" >/dev/null 2>&1; then
-            echo "$package"
-        fi
-    done
-}
-
 echo "Installing build dependencies..."
 apt-get update -qq
-REQUIRED_PACKAGES="$REQUIRED_PACKAGES $(optional_packages util-linux-extra)"
+
+# XCAT::GenesisBuildRoot holds the package list, so the unit tests can call it.
+REQUIRED_PACKAGES=$(perl -I"$DIR/lib" -MXCAT::GenesisBuildRoot=required_packages \
+    -e 'print "$_\n" for required_packages(@ARGV)' "$BUILDARCH" "$CODENAME")
 apt-get install -y --no-install-recommends $REQUIRED_PACKAGES
+
+# dpkg-architecture comes from dpkg-dev, which the line above installs.
+TRIPLET=$(dpkg-architecture -qDEB_HOST_MULTIARCH)
+
+# ncurses-base put its terminfo entries under /lib/terminfo before 24.04, and both dracut's own
+# terminfo module and the 97xcat module ask for /usr/share/terminfo. On jammy the build stopped
+# on /usr/share/terminfo/l/linux. Give this build root the path they ask for; the chroot is
+# thrown away when the build ends.
+if [ -d /lib/terminfo ]; then
+    mkdir -p /usr/share/terminfo
+    cp -an /lib/terminfo/. /usr/share/terminfo/ 2>/dev/null || true
+fi
 
 # Set up dracut module
 if [ -d /usr/lib/dracut/modules.d ]; then
@@ -100,6 +123,8 @@ if [ "$BUILDARCH" != "amd64" ]; then
     sed -i '/efibootmgr dmidecode/d' "$DRACUTMODDIR/module-setup.sh"
 fi
 
+# linux-image-generic pulls exactly one kernel into this root, and this root belongs to
+# $CODENAME, so this is the target release's kernel.
 KERNELVERSION=$(ls -1 /lib/modules | sort -V | tail -n 1)
 if [ -z "$KERNELVERSION" ]; then
     echo "ERROR: no kernel modules found in /lib/modules" >&2
@@ -152,23 +177,52 @@ if [ ! -e "$KERNEL_IMAGE" ]; then
     for candidate in \
         "/boot/vmlinux-$KERNELVERSION" \
         "/usr/lib/modules/$KERNELVERSION/vmlinuz" \
-        "/lib/modules/$KERNELVERSION/vmlinuz" \
-        "$(find /usr/lib/modules/"$KERNELVERSION" -maxdepth 2 -name 'vmlinuz*' -o -name 'vmlinux*' 2>/dev/null | head -n 1)" \
-        "$(find /lib/modules/"$KERNELVERSION" -maxdepth 2 -name 'vmlinuz*' -o -name 'vmlinux*' 2>/dev/null | head -n 1)" \
-        "$(ls -1 /boot/vmlinuz-* /boot/vmlinux-* 2>/dev/null | sort -V | tail -n 1)"
+        "/lib/modules/$KERNELVERSION/vmlinuz"
     do
-        if [ -n "$candidate" ] && [ -e "$candidate" ]; then
+        if [ -e "$candidate" ]; then
             KERNEL_IMAGE="$candidate"
             break
         fi
     done
 fi
 if [ ! -e "$KERNEL_IMAGE" ]; then
-    echo "ERROR: cannot find kernel image" >&2
+    echo "ERROR: cannot find the image of kernel $KERNELVERSION" >&2
     exit 1
 fi
 echo "Adding kernel $KERNEL_IMAGE"
 cp "$KERNEL_IMAGE" "$GENESIS_ROOT/kernel"
+
+# dracut_install reports a missing command and returns, so a hole reaches the .deb with
+# nothing in the log but one line. Read the commands back from the module and check them
+# against the payload, the way xCAT-genesis-base.spec does for EL.
+bash "$DIR/verify-genesis-payload" --commands-from "$DRACUTMODDIR/module-setup.sh" "$GENESIS_FS" \
+    usr/sbin/dhclient bin/sh sbin/xcatroot sbin/dhclient-script etc/rsyslog.conf
+
+# What the verifier cannot know: that this image belongs to this chroot's kernel. An image
+# built against another root's /lib/modules boots and then finds no driver for its NIC.
+if [ ! -d "$GENESIS_FS/lib/modules/$KERNELVERSION" ]; then
+    echo "ERROR: the image carries no /lib/modules/$KERNELVERSION" >&2
+    ls -1 "$GENESIS_FS/lib/modules" 2>/dev/null >&2 || true
+    exit 1
+fi
+if [ -z "$(find "$GENESIS_FS/lib/modules/$KERNELVERSION" -name '*.ko*' -print -quit)" ]; then
+    echo "ERROR: /lib/modules/$KERNELVERSION in the image holds no kernel module" >&2
+    exit 1
+fi
+for stray in "$GENESIS_FS"/lib/modules/*; do
+    [ -d "$stray" ] || continue
+    if [ "$(basename "$stray")" != "$KERNELVERSION" ]; then
+        echo "ERROR: the image carries $(basename "$stray"), not the $KERNELVERSION of this root" >&2
+        exit 1
+    fi
+done
+
+# The 97xcat hooks are what makes the image xCAT's. dracut drops a module whose check()
+# fails without a word, and the image then boots to a plain dracut shell.
+if [ -z "$(find "$GENESIS_FS" -path '*/hooks/cmdline/*xcat-cmdline.sh' -print -quit)" ]; then
+    echo "ERROR: the image carries no 97xcat cmdline hook" >&2
+    exit 1
+fi
 
 find "$GENESIS_TMPDIR" -type c -delete
 
@@ -178,6 +232,11 @@ cp -a "$GENESIS_TMPDIR/opt" "$DIR/"
 
 # Adjust control file for target arch
 rewrite_control "$DIR/debian/control" "$BUILDARCH"
+# debian/dirs names the image directory, which is the rpm architecture.
+echo "/opt/xcat/share/xcat/netboot/genesis/$TARCH/" > "$DIR/debian/dirs"
+
+# dch reads debian/control from the current directory, not from the file it writes.
+cd "$DIR"
 
 PKG_VERSION="${VERSION}-${RELEASE}~${CODENAME}"
 rm -f "$DIR/debian/changelog"
@@ -187,8 +246,14 @@ dch --create --package "xcat-genesis-base-$BUILDARCH" \
     "Native Ubuntu build on $CODENAME $BUILDARCH"
 
 echo "Building .deb package..."
-cd "$DIR"
 dpkg-buildpackage -rfakeroot -uc -us -b
 
-echo "Build complete. .deb files:"
-ls -la "$DIR/../"xcat-genesis-base*.deb 2>/dev/null || echo "Check parent directory for .deb files"
+if [ -n "$outdir" ]; then
+    mkdir -p "$outdir"
+    mv "$DIR/../"xcat-genesis-base-*_*.deb "$outdir/"
+    echo "Build complete. .deb files in $outdir:"
+    ls -la "$outdir"
+else
+    echo "Build complete. .deb files:"
+    ls -la "$DIR/../"xcat-genesis-base*.deb 2>/dev/null || echo "Check parent directory for .deb files"
+fi
