@@ -8,7 +8,6 @@ use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use lib "$FindBin::Bin/../../perl-xCAT";
 
 use Test::More;
-use File::Temp qw(tempdir);
 
 $ENV{XCATCFG} ||= 'SQLite:/tmp';
 
@@ -50,19 +49,13 @@ INTERFACESv4=""
 INTERFACESv6=""
 EOF
 
-# Expand a variable exactly as the systemd unit does: source the file in sh and
-# print what would land on dhcpd's command line.
+# The value of the last assignment to $variable, as sh would see it after
+# sourcing the file. The writer emits only KEY="value" lines.
 sub launched_with {
     my ($content, $variable) = @_;
-
-    my $dir  = tempdir(CLEANUP => 1);
-    my $path = "$dir/isc-dhcp-server";
-    open(my $fh, '>', $path) or die "cannot write $path: $!";
-    print $fh $content;
-    close($fh);
-
-    my $out = `sh -c '. "$path"; printf %s "\$$variable"' 2>/dev/null`;
-    return defined($out) ? $out : '';
+    my ($value) = (reverse($content =~ /^\s*\Q$variable\E=(.*)$/mg), '');
+    $value =~ s/^"(.*)"$/$1/;
+    return $value;
 }
 
 # Every release in support, the package it ships, and the variable its unit
