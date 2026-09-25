@@ -10,7 +10,7 @@ use Test::More;
 
 use XCAT::Test::File qw(repo_path slurp_repo_file);
 
-my $relative = 'xCAT-genesis-builder/xCAT-genesis-base.spec';
+my $relative = 'xCAT-genesis-base/xCAT-genesis-base.spec';
 plan skip_all => "$relative not found" unless -f repo_path($relative);
 plan tests => 4;
 

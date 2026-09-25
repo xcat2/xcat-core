@@ -11,7 +11,7 @@ use File::Slurper qw(write_text);
 use File::Temp qw(tempdir);
 use FindBin;
 use lib "$FindBin::Bin/../lib";
-use lib "$FindBin::Bin/../../xCAT-genesis-builder/lib";
+use lib "$FindBin::Bin/../../xCAT-genesis-base/lib";
 use Test::More;
 
 use XCAT::GenesisPayload qw(module_commands missing_paths check_payload);

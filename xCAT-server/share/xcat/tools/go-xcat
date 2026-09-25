@@ -487,7 +487,8 @@ function debug_trace()
 	return "${rc}"
 }
 
-internal_setup
+# Sourced by a test: define the functions and lists, and change nothing on the host.
+(return 0 2>/dev/null) || internal_setup
 
 # Check operating system
 function check_os()
@@ -2033,10 +2034,47 @@ function update_xcat()
 	install_packages "$@" "${install_list[@]}"
 }
 
+#       $@      package names
+#       Prints the ones this system actually has. `go-xcat uninstall` names packages xCAT no
+#       longer produces, so that a node installed before they went away is still cleaned up.
+#       Handing those names to the package manager on a node that never had them costs a
+#       warning each on apt, and fails the whole call on dnf when none of them match.
+function installed_packages_rpm()
+{
+	type rpm >/dev/null 2>&1 || return 255
+	local package=""
+	for package in "$@"
+	do
+		rpm -q --quiet "${package}" && echo "${package}"
+	done
+	return 0
+}
+
+#       $@      package names
+function installed_packages_deb()
+{
+	type dpkg-query >/dev/null 2>&1 || return 255
+	local package=""
+	for package in "$@"
+	do
+		[[ "$(dpkg-query --show '--showformat=${Status}' "${package}" 2>/dev/null)" \
+			= "install ok installed" ]] && echo "${package}"
+	done
+	return 0
+}
+
+function installed_packages()
+{
+	function_dispatch "${FUNCNAME[0]}" "$@"
+}
+
 #       $1      -y
 function uninstall_xcat()
 {
-	remove_package "$@" "${GO_XCAT_UNINSTALL_LIST[@]}"
+	local -a present=()
+	readarray -t present < <(installed_packages "${GO_XCAT_UNINSTALL_LIST[@]}")
+	[[ "${#present[@]}" -gt "0" ]] || return 0
+	remove_package "$@" "${present[@]}"
 }
 
 function kill_xcat()
@@ -2091,7 +2129,9 @@ function trash_xcat()
 
 function uninstall_xcat_completely()
 {
-	purge_package -y "${GO_XCAT_UNINSTALL_LIST[@]}"
+	local -a present=()
+	readarray -t present < <(installed_packages "${GO_XCAT_UNINSTALL_LIST[@]}")
+	[[ "${#present[@]}" -eq "0" ]] || purge_package -y "${present[@]}"
 
 	kill_xcat
 	trash_xcat
@@ -2354,6 +2394,9 @@ function boo_boo_if_bad()
 #              |       _|            _|
 #
 # Main program goes here.
+
+# Sourced by a test: stop before the main program.
+(return 0 2>/dev/null) && return 0
 
 declare -a GO_XCAT_YES=()
 GO_XCAT_ACTION=""

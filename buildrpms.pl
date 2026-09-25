@@ -44,6 +44,7 @@ use File::Temp qw(tempdir tempfile);
 use FindBin qw($Bin);
 use lib "$Bin/build-utils/lib";
 use XCAT::BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildinfo_text
+                        stage_genesis_base_sources
                         write_script read_line targetarch_from_target);
 use POSIX ();                   # EEXIST, for the directory build lock (see main())
 use Getopt::Long qw(GetOptions);
@@ -331,33 +332,8 @@ sub createmockconfig {
 }
 
 sub buildsources_genesis_base($) {
-    my ($target) = @_;
-
-    die "Assertion failed! No directory xCAT-genesis-builder in the current directory"
-        unless -d "./xCAT-genesis-builder";
-    my $staging_parent = "/tmp/xcat-genesis-base-build-support.$$";
-    my $staging_root = "$staging_parent/xCAT-genesis-base-build-support";
-    my $support_tarball = "$SOURCES/xCAT-genesis-base-build-support.tar.bz2";
-
-    remove_tree($staging_parent) if -e $staging_parent;
-    make_path("$staging_root/dracut_105");
-
-    sh_or_die(qq(cp -a "xCAT-genesis-builder/dracut_105" "$staging_root/"),
-        "Error copying dracut_105 sources");
-    cp "xCAT-genesis-builder/80-net-name-slot.rules",
-       "$staging_root/80-net-name-slot.rules";
-    # %install runs this against the extracted payload before it becomes an rpm.
-    cp "xCAT-genesis-builder/verify-genesis-payload",
-       "$staging_root/verify-genesis-payload";
-    make_path("$staging_root/lib/XCAT");
-    cp "xCAT-genesis-builder/lib/XCAT/GenesisPayload.pm",
-       "$staging_root/lib/XCAT/GenesisPayload.pm";
-
-    unlink $support_tarball if -f $support_tarball;
-    sh_or_die(qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -cjf "$support_tarball" -C "$staging_parent" xCAT-genesis-base-build-support),
-        "Error creating $support_tarball");
-
-    remove_tree($staging_parent);
+    stage_genesis_base_sources(".", "$SOURCES/xCAT-genesis-base-build-support.tar.bz2",
+        $SOURCE_DATE_EPOCH);
 }
 
 sub prepare_xcat_probe_source_tar {
@@ -450,11 +426,8 @@ sub buildspkgs {
       : "dist/$target/rpms/SRPMS/$pkg-$VERSION-$RELEASE.src.rpm";
     return if -f $diskcache and not $opts{force};
 
-    my $dir = sub {
-        return "xCAT-genesis-builder"
-            if $pkg eq "xCAT-genesis-base";
-        $pkg;
-    }->();
+    # The source directory is the package name now that xCAT-genesis-builder is gone.
+    my $dir = $pkg;
 
     my @opts;
     push @opts, "--quiet" unless $opts{verbose};

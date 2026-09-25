@@ -24,7 +24,7 @@ use feature 'say';
 
 our @EXPORT_OK = qw(
     source_date_epoch snap_release deb_version
-    stage_probe_helpers XCAT_PROBE_HELPERS
+    stage_probe_helpers XCAT_PROBE_HELPERS stage_genesis_base_sources
     deb_package_arches dist_arches default_dists
     orig_tarball_name upstream_version resolve_dest
     pin_control_version rewrite_changelog_header
@@ -377,6 +377,56 @@ sub stage_probe_helpers {
         push @staged, $to;
     }
     return @staged;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 stage_genesis_base_sources
+
+    Descriptions:
+        Write the build support tarball that xCAT-genesis-base.spec unpacks:
+        the dracut_105 modules, 80-net-name-slot.rules, and
+        verify-genesis-payload with its XCAT::GenesisPayload module, taken from
+        the xCAT-genesis-base directory of a checkout.
+    Arguments:
+        $checkout: the top of the xcat-core checkout
+        $tarball:  the path of the tarball to write
+        $epoch:    SOURCE_DATE_EPOCH, the mtime of every member
+    Returns:
+        $tarball. Dies when the checkout has no xCAT-genesis-base directory,
+        so a rename stops the build instead of producing an empty tarball.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub stage_genesis_base_sources {
+    my ($checkout, $tarball, $epoch) = @_;
+    my $source = "$checkout/xCAT-genesis-base";
+    die "Assertion failed! No directory xCAT-genesis-base in $checkout\n"
+        unless -d $source;
+
+    my $staging_parent = "/tmp/xcat-genesis-base-build-support.$$";
+    my $staging_root   = "$staging_parent/xCAT-genesis-base-build-support";
+    remove_tree($staging_parent) if -e $staging_parent;
+    make_path("$staging_root/dracut_105");
+
+    sh_or_die(qq(cp -a "$source/dracut_105" "$staging_root/"),
+        "Error copying dracut_105 sources");
+    copy("$source/80-net-name-slot.rules", "$staging_root/80-net-name-slot.rules")
+        or die "Unable to stage $source/80-net-name-slot.rules: $!\n";
+    # The spec runs the verifier against the extracted payload in %install.
+    copy("$source/verify-genesis-payload", "$staging_root/verify-genesis-payload")
+        or die "Unable to stage $source/verify-genesis-payload: $!\n";
+    make_path("$staging_root/lib/XCAT");
+    copy("$source/lib/XCAT/GenesisPayload.pm", "$staging_root/lib/XCAT/GenesisPayload.pm")
+        or die "Unable to stage $source/lib/XCAT/GenesisPayload.pm: $!\n";
+
+    unlink $tarball if -f $tarball;
+    sh_or_die(qq(tar --sort=name --owner=0 --group=0 --mtime="\@$epoch" -cjf "$tarball" -C "$staging_parent" xCAT-genesis-base-build-support),
+        "Error creating $tarball");
+
+    remove_tree($staging_parent);
+    return $tarball;
 }
 
 # deb_package_arches: the architectures to build a package for.

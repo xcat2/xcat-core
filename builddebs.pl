@@ -366,11 +366,11 @@ sub build_one_genesis_deb {
         # pipeline builds from.
         my $stage = "$root$GENESIS_STAGE";
         sh_or_die("rm -rf " . sh_quote($stage) . " && mkdir -p "
-                . sh_quote("$stage/xCAT-genesis-builder"),
+                . sh_quote("$stage/xCAT-genesis-base"),
             "FATAL: cannot make the build directory in session:$id\n");
-        sh_or_die("cp -a " . sh_quote("$ROOT/xCAT-genesis-builder") . "/. "
-                . sh_quote("$stage/xCAT-genesis-builder") . "/",
-            "FATAL: cannot copy xCAT-genesis-builder into session:$id\n");
+        sh_or_die("cp -a " . sh_quote("$ROOT/xCAT-genesis-base") . "/. "
+                . sh_quote("$stage/xCAT-genesis-base") . "/",
+            "FATAL: cannot copy xCAT-genesis-base into session:$id\n");
         copy("$ROOT/Version", "$stage/Version")
             or die "FATAL: cannot copy Version into session:$id: $!\n";
         write_text("$stage/Release", "$RELEASE\n");
@@ -379,7 +379,7 @@ sub build_one_genesis_deb {
         # builder stops when the root it woke up in is not the release it was asked for.
         my $cmd = join ' ',
             'schroot', '--run-session', '-c', sh_quote("session:$id"), '-u', 'root', '-d', '/',
-            '--', '/bin/bash', "$GENESIS_STAGE/xCAT-genesis-builder/builddeb-genesis-base",
+            '--', '/bin/bash', "$GENESIS_STAGE/xCAT-genesis-base/builddeb-genesis-base",
             '--expect-codename', sh_quote($codename), '--outdir', "$GENESIS_STAGE/out";
         my $rc = sh("$cmd > " . sh_quote($logfile) . " 2>&1");
 
