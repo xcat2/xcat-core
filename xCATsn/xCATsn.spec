@@ -70,17 +70,15 @@ Requires: goconserver >= 0.3.3
 %endif
 
 %ifarch i386 i586 i686 x86 x86_64
+Requires: ipxe-xcat
 Requires: xnba-undi
 Requires: syslinux-xcat
 Requires: ipmitool-xcat >= 1.8.17-1
 %endif
 %ifos linux
-%ifarch ppc ppc64 ppc64le
-Requires: ipmitool-xcat >= 1.8.17-1
-%endif
-%endif
-%ifos linux
-%ifarch riscv64
+%ifarch ppc ppc64 ppc64le riscv64
+# A POWER or riscv64 service node can serve x86 nodes, which boot the upstream iPXE loader.
+Requires: ipxe-xcat
 Requires: ipmitool-xcat >= 1.8.17-1
 %endif
 %endif

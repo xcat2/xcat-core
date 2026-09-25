@@ -195,13 +195,13 @@ GO_XCAT_DEP_REPOSITORY_IDS=(xcat-dep)
 GO_XCAT_INSTALL_LIST=(perl-xCAT xCAT-client xCAT xCAT-buildkit
 	xCAT-genesis-scripts-ppc64 xCAT-genesis-scripts-x86_64 xCAT-server
 	elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
-	xCAT-genesis-base-ppc64 xCAT-genesis-base-x86_64 xnba-undi)
+	xCAT-genesis-base-ppc64 xCAT-genesis-base-x86_64 ipxe-xcat xnba-undi)
 # For Debian/Ubuntu, it will need a slightly different package list
 type dpkg >/dev/null 2>&1 &&
 GO_XCAT_INSTALL_LIST=(perl-xcat xcat-client xcat xcat-buildkit
 	xcat-genesis-scripts-amd64 xcat-genesis-scripts-ppc64el xcat-server
 	elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
-	xcat-genesis-base-amd64 xcat-genesis-base-ppc64el xnba-undi)
+	xcat-genesis-base-amd64 xcat-genesis-base-ppc64el ipxe-xcat xnba-undi)
 # The package list of all the packages should be uninstalled
 GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
 	goconserver xCAT-SoftLayer xCAT-confluent xCAT-csm xCAT-genesis-builder
