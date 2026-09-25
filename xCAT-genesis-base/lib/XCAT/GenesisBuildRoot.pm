@@ -16,13 +16,13 @@ my @BASE_PACKAGES = qw(
   dosfstools e2fsprogs lvm2 mdadm net-tools
   bc psmisc rsync wget cpio
   isc-dhcp-client ifenslave
+  systemd-sysv hwdata btrfs-progs netcat-openbsd iputils-ping fdisk ncurses-term
   dpkg-dev debhelper fakeroot devscripts vim-tiny
 );
 
-# hwclock moved out of util-linux into util-linux-extra. focal and jammy have no such package,
-# and naming it there fails the whole install. util-linux only Suggests it, and the build
-# passes --no-install-recommends, so the releases that split it must name it.
-my @OPTIONAL_PACKAGES = qw(util-linux-extra);
+# Two commands the image needs changed package between releases: nslookup left dnsutils for
+# bind9-dnsutils in 22.04, and hwclock left util-linux for util-linux-extra in 23.04.
+my @RENAMED_PACKAGES = ([qw(bind9-dnsutils dnsutils)], [qw(util-linux-extra util-linux)]);
 
 #-------------------------------------------------------------------------------
 
@@ -48,14 +48,18 @@ sub apt_carries {
 =head3 required_packages
 
     Descriptions: list the packages the Genesis build root needs.
-        An optional package is listed only when the release carries it.
+        For a renamed package, apt says which name the release carries, so the list does
+        not branch on the codename. 26.04 moved the backward-compatibility zone names that
+        the dracut module installs out of tzdata into tzdata-legacy.
     Arguments:
         $arch: the dpkg architecture (amd64, ppc64el)
-        $codename: the release name
+        $codename: the release name, used in the error message
         $carries: optional code ref. It takes a package name and returns true when the
                   release carries that package. The default is apt_carries.
     Returns:
         the package names, in install order.
+        Dies with "ERROR: <codename> carries none of these packages: ..." when the release
+        carries neither name of a renamed package.
 
 =cut
 
@@ -66,7 +70,18 @@ sub required_packages {
 
     my @packages = @BASE_PACKAGES;
     push @packages, qw(dmidecode efibootmgr) if $arch eq 'amd64';
-    push @packages, grep { $carries->($_) } @OPTIONAL_PACKAGES;
+
+  RENAMED:
+    for my $alternatives (@RENAMED_PACKAGES) {
+        for my $package (@$alternatives) {
+            if ($carries->($package)) {
+                push @packages, $package;
+                next RENAMED;
+            }
+        }
+        die "ERROR: $codename carries none of these packages: @$alternatives\n";
+    }
+    push @packages, 'tzdata-legacy' if $carries->('tzdata-legacy');
     return @packages;
 }
 

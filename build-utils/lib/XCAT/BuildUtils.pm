@@ -36,6 +36,9 @@ our @EXPORT_OK = qw(
     rewrite_file write_script read_line
     buildinfo_text
     targetarch_from_target
+    genesis_chroot_name genesis_target_arch genesis_build_plan
+    genesis_log_errors genesis_log_deny_rules deb_belongs_to_dist
+    genesis_dists genesis_dist_reason
 );
 
 # Both builders echo the commands they run under --verbose.  Set once, after
@@ -738,6 +741,137 @@ sub targetarch_from_target {
           if $part =~ /^(?:x86_64|i[3-6]86|ppc64le|ppc64|aarch64|riscv64|s390x|armv7hl)$/;
     }
     return $parts[-1];
+}
+
+# ------------------------------------------------------------------ Genesis --
+#
+# The Genesis image carries the kernel and the kernel modules of the release it boots,
+# because dracut copies them out of the root it runs in. So the Ubuntu Genesis deb is built
+# once per Ubuntu codename, inside that codename's chroot. A single build on the build host
+# gives every codename the build host's kernel.
+
+# genesis_chroot_name: the schroot chroot that builds the Genesis deb for one codename.
+#
+# Same name xcat-dep's sbuild-all.pl ensure_chroots creates, so both repositories build in
+# the same chroots and neither has to bootstrap a second set.
+sub genesis_chroot_name {
+    my ($codename, $arch) = @_;
+    die "genesis_chroot_name: a codename is required\n"
+        unless defined $codename && length $codename;
+    die "genesis_chroot_name: an architecture is required\n"
+        unless defined $arch && length $arch;
+    return "$codename-$arch-sbuild";
+}
+
+# genesis_target_arch: the directory xCAT reads the Genesis image from, for a deb
+# architecture. mknb reads /opt/xcat/share/xcat/netboot/genesis/<arch>, and that name is
+# the rpm architecture, not the deb one.
+my %GENESIS_TARGET_ARCH = (
+    amd64   => 'x86_64',
+    ppc64el => 'ppc64',
+);
+
+sub genesis_target_arch {
+    my ($arch) = @_;
+    my $target = $GENESIS_TARGET_ARCH{ $arch // '' };
+    die "genesis_target_arch: no Genesis image directory for '" . ($arch // '') . "'\n"
+        unless $target;
+    return $target;
+}
+
+# genesis_build_plan: one Genesis build per codename, for one architecture.
+#
+# The set of codenames comes from the caller, so a pipeline builds exactly the releases it
+# publishes.
+sub genesis_build_plan {
+    my ($dists, $arch) = @_;
+    my @dists = @{ $dists || [] };
+    die "genesis_build_plan: at least one codename is required\n" unless @dists;
+    die "genesis_build_plan: an architecture is required\n"
+        unless defined $arch && length $arch;
+
+    my %seen;
+    return map {
+        {
+            codename => $_,
+            arch     => $arch,
+            chroot   => genesis_chroot_name($_, $arch),
+            package  => "xcat-genesis-base-$arch",
+            target   => genesis_target_arch($arch),
+        }
+    } grep { !$seen{$_}++ } @dists;
+}
+
+# genesis_log_deny_rules / genesis_log_errors: what a Genesis build log says when the build
+# failed but the exit status did not.
+#
+# dracut reports a command it cannot install with a FAILED: line and returns 0. apt has the
+# same shape: a missing package leaves a diagnostic and a zero status behind a `|| true`. So
+# the log is the gate, not the exit status.
+my @GENESIS_LOG_DENY = (
+    [ qr/\bFAILED:/                    => 'dracut could not install a command' ],
+    [ qr/Cannot find module/           => 'a kernel module the build names is absent' ],
+    [ qr/dracut: Cannot/               => 'dracut refused the request' ],
+    [ qr/command not found/            => 'the build root has no such command' ],
+    [ qr/E: Unable to locate package/  => 'apt has no such package' ],
+    [ qr/Unable to correct problems/   => 'apt could not resolve the build root' ],
+);
+
+sub genesis_log_deny_rules { return @GENESIS_LOG_DENY; }
+
+# The package built once per codename. It is the only one: it carries the kernel and the kernel
+# modules of the root that built it.
+my $GENESIS_IMAGE_DEB = qr{\Axcat-genesis-base-};
+
+# Releases whose stock chroot cannot build that package, and why. focal ships debhelper 12 and
+# xCAT-genesis-base declares debhelper-compat (= 13), so sbuild stops on the build dependencies
+# before dracut runs.
+my %GENESIS_DIST_UNSUPPORTED = (
+    focal => 'debhelper 12 cannot satisfy debhelper-compat (= 13)',
+);
+
+# genesis_dists: the releases of @dists a Genesis image can be built on.
+sub genesis_dists {
+    my (@dists) = @_;
+    return grep { !exists $GENESIS_DIST_UNSUPPORTED{$_} } @dists;
+}
+
+# genesis_dist_reason: why a release was left out, or undef.
+sub genesis_dist_reason { return $GENESIS_DIST_UNSUPPORTED{ $_[0] // '' }; }
+
+# deb_belongs_to_dist: whether a built .deb may be published into one release.
+#
+# Almost every xcat-core deb is Architecture:all and the same file serves every release, so the
+# answer is yes. The Genesis image is not: it is built per codename and carries that codename in
+# its version (2.19.0-snap...~noble). Publishing all three into every suite lets apt serve the
+# newest, which is the image of another release.
+#
+# Only that package is asked. A ~ in a version is Debian's prerelease separator before it is
+# anything else, and --release takes whatever the caller gives it, so reading every ~ as a
+# codename drops a whole `--release 1~rc1` build from every suite.
+sub deb_belongs_to_dist {
+    my ($deb, $dist) = @_;
+    return 1 unless defined $deb && defined $dist && $dist ne '';
+    my $base = basename($deb);
+    my ($name) = $base =~ /\A([^_]+)_/;
+    return 1 unless defined $name && $name =~ $GENESIS_IMAGE_DEB;
+    return 1 unless $base =~ /_[^_]*~([A-Za-z0-9.]+)_[^_]*\.deb\z/;
+    return $1 eq $dist ? 1 : 0;
+}
+
+sub genesis_log_errors {
+    my ($text) = @_;
+    return () unless defined $text && length $text;
+    my @found;
+    for my $line (split /\n/, $text) {
+        for my $rule (@GENESIS_LOG_DENY) {
+            my ($pattern, $why) = @{$rule};
+            next unless $line =~ $pattern;
+            push @found, { line => $line, why => $why };
+            last;
+        }
+    }
+    return @found;
 }
 
 1;
