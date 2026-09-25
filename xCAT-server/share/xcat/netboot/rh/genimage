@@ -823,15 +823,7 @@ if ((-d "$rootimg_dir/usr/share/dracut") or (-d "$rootimg_dir/usr/lib/dracut")) 
 xdie("Error: failed to generate the initial ramdisk: native image has no dracut installation\n")
   if $native_bootdir && !$dracutmode;
 
-# List of internet repos to be disabled
-
-my @internet_repo_file_list = ("oracle-linux-ol8.repo", "oracle-linux-ol9.repo", "oracle-linux-ol10.repo", "uek-ol8.repo", "uek-ol9.repo", "uek-ol10.repo", "Rocky-AppStream.repo", "Rocky-BaseOS.repo", "Rocky-Extras.repo", "rocky.repo", "rocky-extras.repo", "CentOS-Base.repo", "centos.repo", "centos-addons.repo", "almalinux-ha.repo", "almalinux-nfv.repo", "almalinux-plus.repo", "almalinux-powertools.repo", "almalinux.repo", "almalinux-resilientstorage.repo", "almalinux-rt.repo", "openEuler.repo");
-
-foreach ( @internet_repo_file_list ) {
-  if (-e "$rootimg_dir/etc/yum.repos.d/$_") {
-    system("sed -i -e 's/^[[:space:]]*enabled[[:space:]]*=[[:space:]]*1/enabled=0/' $rootimg_dir/etc/yum.repos.d/$_");
-  }
-}
+imgutils::disable_vendor_repositories($rootimg_dir);
 
 #-- run postinstall script
 unless ($imagename) {
@@ -1311,26 +1303,10 @@ sub mkinitrd_dracut {
       or xdie("Error: failed to generate the initial ramdisk for $mode.\n");
     umount_chroot($rootimg_dir);
     if ($native_bootdir) {
-        move("$rootimg_dir/tmp/initrd.$$.gz", "$native_bootdir/initrd-$mode.gz")
-          or xdie("Error: failed to move the initial ramdisk for $mode: $!\n");
-        my $old_kernel = -e "$destdir/kernel" || -l "$destdir/kernel";
-        if ($old_kernel) {
-            link("$destdir/kernel", "$native_bootdir/previous-kernel")
-              or xdie("Error: failed to preserve the previous kernel: $!\n");
-        }
-        rename("$native_bootdir/kernel", "$destdir/kernel")
-          or xdie("Error: failed to publish the kernel: $!\n");
-        unless (rename("$native_bootdir/initrd-$mode.gz", "$destdir/initrd-$mode.gz")) {
-            my $error = $!;
-            my $restored = $old_kernel
-              ? rename("$native_bootdir/previous-kernel", "$destdir/kernel")
-              : unlink("$destdir/kernel");
-            unless ($restored) {
-                $native_bootdir->unlink_on_destroy(0);
-                xdie("Error: failed to publish the initial ramdisk: $error; kernel rollback failed: $!. Boot files retained in $native_bootdir\n");
-            }
-            xdie("Error: failed to publish the initial ramdisk for $mode: $error\n");
-        }
+        eval {
+            imgutils::publish_boot_files($native_bootdir, $destdir,
+                "$rootimg_dir/tmp/initrd.$$.gz", $mode);
+        } or xdie($@);
         print "the initial ramdisk for $mode is generated successfully.\n";
         return;
     }

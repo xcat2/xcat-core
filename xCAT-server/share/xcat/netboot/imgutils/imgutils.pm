@@ -7,6 +7,7 @@ use strict;
 use warnings "all";
 
 use File::Basename;
+use File::Copy qw(move);
 use File::Find;
 use File::Path;
 use Cwd qw(realpath);
@@ -88,6 +89,42 @@ sub rpm_repository_config {
         $config .= "gpgcheck=0\nskip_if_unavailable=True\n\n";
     }
     return $config;
+}
+
+sub disable_vendor_repositories {
+    my ($rootimg_dir) = @_;
+    my @internet_repo_file_list = ("oracle-linux-ol8.repo", "oracle-linux-ol9.repo", "oracle-linux-ol10.repo", "uek-ol8.repo", "uek-ol9.repo", "uek-ol10.repo", "Rocky-AppStream.repo", "Rocky-BaseOS.repo", "Rocky-Extras.repo", "rocky.repo", "rocky-extras.repo", "CentOS-Base.repo", "centos.repo", "centos-addons.repo", "almalinux-ha.repo", "almalinux-nfv.repo", "almalinux-plus.repo", "almalinux-powertools.repo", "almalinux.repo", "almalinux-resilientstorage.repo", "almalinux-rt.repo", "openEuler.repo");
+
+    foreach (@internet_repo_file_list) {
+        if (-e "$rootimg_dir/etc/yum.repos.d/$_") {
+            system("sed -i -e 's/^[[:space:]]*enabled[[:space:]]*=[[:space:]]*1/enabled=0/' $rootimg_dir/etc/yum.repos.d/$_");
+        }
+    }
+}
+
+sub publish_boot_files {
+    my ($native_bootdir, $destdir, $initrd, $mode) = @_;
+    move($initrd, "$native_bootdir/initrd-$mode.gz")
+      or die("Error: failed to move the initial ramdisk for $mode: $!\n");
+    my $old_kernel = -e "$destdir/kernel" || -l "$destdir/kernel";
+    if ($old_kernel) {
+        link("$destdir/kernel", "$native_bootdir/previous-kernel")
+          or die("Error: failed to preserve the previous kernel: $!\n");
+    }
+    rename("$native_bootdir/kernel", "$destdir/kernel")
+      or die("Error: failed to publish the kernel: $!\n");
+    unless (rename("$native_bootdir/initrd-$mode.gz", "$destdir/initrd-$mode.gz")) {
+        my $error = $!;
+        my $restored = $old_kernel
+          ? rename("$native_bootdir/previous-kernel", "$destdir/kernel")
+          : unlink("$destdir/kernel");
+        unless ($restored) {
+            $native_bootdir->unlink_on_destroy(0);
+            die("Error: failed to publish the initial ramdisk: $error; kernel rollback failed: $!. Boot files retained in $native_bootdir\n");
+        }
+        die("Error: failed to publish the initial ramdisk for $mode: $error\n");
+    }
+    return 1;
 }
 
 sub varsubinline{
