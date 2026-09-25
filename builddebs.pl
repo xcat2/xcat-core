@@ -8,9 +8,10 @@
 # The central fact this design rests on: xcat-core debs are Perl. They are byte-identical
 # for every Ubuntu release, so they are built ONCE and the same files are published into
 # every codename. Only xCAT, xCATsn and xCAT-genesis-scripts carry an architecture, and
-# even there the difference is packaging metadata, not compiled output. That is why this
-# needs no sbuild and no per-codename chroot -- unlike xcat-dep, whose compiled packages
-# genuinely differ per release.
+# even there the difference is packaging metadata, not compiled output.
+#
+# The Genesis image is the one exception. --genesis builds it once per codename, inside
+# that codename's sbuild chroot.
 use strict;
 use warnings;
 use feature 'say';
@@ -38,6 +39,8 @@ use XCAT::BuildUtils qw(
     reprepro_distributions reprepro_options
     lock_id_for take_build_lock sh_quote
     sh sh_or_die usage rewrite_file write_script read_line buildinfo_text
+    genesis_build_plan genesis_log_errors deb_belongs_to_dist
+    genesis_dists genesis_dist_reason
 );
 
 # The xcat-core packages that ship as debs. xCAT-openbmc-py, xCAT-rmc and xCAT-release
@@ -61,10 +64,14 @@ my @PACKAGES = qw(
 my @DISTS = default_dists();
 
 my %opts;
-my (@cli_packages, @cli_dists);
+my (@cli_packages, @cli_dists, @cli_genesis_dists);
 GetOptions(
     "dist=s@"          => \@cli_dists,
     "package=s@"       => \@cli_packages,
+    "genesis"          => \$opts{genesis},
+    "genesis-only"     => \$opts{genesis_only},
+    "genesis-dist=s@"  => \@cli_genesis_dists,
+    "genesis-arch=s"   => \$opts{genesis_arch},
     "dest=s"           => \$opts{dest},
     "builddir=s"       => \$opts{builddir},
     "release=s"        => \$opts{release},
@@ -82,6 +89,23 @@ $XCAT::BuildUtils::VERBOSE = $opts{verbose};
 $opts{packages} = @cli_packages ? \@cli_packages : \@PACKAGES;
 $opts{dists}    = @cli_dists    ? \@cli_dists    : \@DISTS;
 $opts{gpg_key_name} //= 'xCAT Signing Key';
+
+# The Genesis step is off unless it is asked for, so today's runs keep their behaviour.
+$opts{genesis} = 1 if $opts{genesis_only};
+# A release named on the command line is built as asked. The default list is the one the rest
+# of the build uses, and not every release on it can build the image, so those are dropped and
+# named rather than failing the run on its first codename.
+if (@cli_genesis_dists) {
+    $opts{genesis_dists} = \@cli_genesis_dists;
+} else {
+    $opts{genesis_dists} = [ genesis_dists($opts{dists}->@*) ];
+    for my $dist ($opts{dists}->@*) {
+        my $why = genesis_dist_reason($dist) or next;
+        say "genesis: leaving out $dist -- $why";
+    }
+}
+die "FATAL: --genesis-dist needs --genesis\n" if @cli_genesis_dists && !$opts{genesis};
+die "FATAL: --genesis-arch needs --genesis\n" if $opts{genesis_arch} && !$opts{genesis};
 
 for my $pkg ($opts{packages}->@*) {
     die "FATAL: unknown package '$pkg'. Known: @PACKAGES\n"
@@ -268,6 +292,132 @@ sub collect_debs {
     return $moved;
 }
 
+# ----------------------------------------------------------- the Genesis deb --
+#
+# dracut copies the kernel, the kernel modules and every command out of the root it runs in,
+# so the Genesis image belongs to the release that built it. One build on the build host
+# serves every codename with the build host's kernel. This step builds one image per
+# codename, inside that codename's sbuild chroot.
+#
+# The chroots are the ones xcat-dep's sbuild-all.pl creates on the Ubuntu build host
+# (<codename>-<arch>-sbuild). A session is a disposable overlay, so the next codename starts
+# from the pristine base.
+
+# Where the build runs inside the chroot. A directory of its own at the chroot root, because
+# every other candidate is shared: /build and /opt/xcat-ci-shared are bind mounts the sbuild
+# chroots give to every session.
+my $GENESIS_STAGE = '/xcat-genesis-build';
+
+sub host_deb_arch {
+    my $arch = `dpkg --print-architecture 2>/dev/null` // '';
+    chomp $arch;
+    die "FATAL: dpkg does not report a host architecture\n" unless $arch;
+    return $arch;
+}
+
+# begin_chroot_session: start a disposable schroot session and return its id and its root.
+sub begin_chroot_session {
+    my ($chroot) = @_;
+    my $id = `schroot --begin-session --chroot @{[ sh_quote($chroot) ]} 2>&1` // '';
+    my $rc = $? >> 8;
+    chomp $id;
+    die "FATAL: cannot start a session in chroot '$chroot' (exit $rc): $id\n"
+      . "       sbuild-all.pl ensure_chroots creates it; run it on this host first.\n"
+        if $rc != 0 || $id !~ /\A\S+\z/;
+
+    my $root = `schroot --location -c @{[ sh_quote("session:$id") ]} 2>/dev/null` // '';
+    chomp $root;
+    unless ($root && -d $root) {
+        sh("schroot --end-session -c " . sh_quote("session:$id") . " >/dev/null 2>&1");
+        die "FATAL: schroot reports no location for session:$id\n";
+    }
+    return ($id, $root);
+}
+
+# genesis_build_log_problems: what the log says went wrong when the exit status did not.
+#
+# Report the first few offending lines only, so a build console stays readable. The message
+# names the log file that has the rest.
+sub genesis_build_log_problems {
+    my ($logfile) = @_;
+    my $text = -f $logfile ? read_text($logfile) : '';
+    my @errors = genesis_log_errors($text);
+    return '' unless @errors;
+    my $shown = @errors > 10 ? 10 : scalar @errors;
+    my $report = "FATAL: the Genesis build log reports " . scalar(@errors) . " error(s):\n";
+    $report .= "  $_->{line}\n      ($_->{why})\n" for @errors[0 .. $shown - 1];
+    $report .= "  ... " . (@errors - $shown) . " more\n" if @errors > $shown;
+    $report .= "  the whole log is at $logfile\n";
+    return $report;
+}
+
+sub build_one_genesis_deb {
+    my ($step, $pkgdir) = @_;
+    my ($codename, $chroot) = ($step->{codename}, $step->{chroot});
+    say "Building $step->{package} for $codename in $chroot";
+
+    my ($id, $root) = begin_chroot_session($chroot);
+    my $logfile = "$pkgdir/$step->{package}-$codename.buildlog";
+    my $err;
+
+    eval {
+        # Copy the builder in rather than bind-mount the checkout: the build rewrites
+        # debian/control and debian/changelog, and it must not rewrite them in the tree the
+        # pipeline builds from.
+        my $stage = "$root$GENESIS_STAGE";
+        sh_or_die("rm -rf " . sh_quote($stage) . " && mkdir -p "
+                . sh_quote("$stage/xCAT-genesis-builder"),
+            "FATAL: cannot make the build directory in session:$id\n");
+        sh_or_die("cp -a " . sh_quote("$ROOT/xCAT-genesis-builder") . "/. "
+                . sh_quote("$stage/xCAT-genesis-builder") . "/",
+            "FATAL: cannot copy xCAT-genesis-builder into session:$id\n");
+        copy("$ROOT/Version", "$stage/Version")
+            or die "FATAL: cannot copy Version into session:$id: $!\n";
+        write_text("$stage/Release", "$RELEASE\n");
+
+        # --expect-codename is the guard that keeps the image and the root together: the
+        # builder stops when the root it woke up in is not the release it was asked for.
+        my $cmd = join ' ',
+            'schroot', '--run-session', '-c', sh_quote("session:$id"), '-u', 'root', '-d', '/',
+            '--', '/bin/bash', "$GENESIS_STAGE/xCAT-genesis-builder/builddeb-genesis-base",
+            '--expect-codename', sh_quote($codename), '--outdir', "$GENESIS_STAGE/out";
+        my $rc = sh("$cmd > " . sh_quote($logfile) . " 2>&1");
+
+        # The log is read whether or not the command failed: dracut exits 0 with FAILED:
+        # lines in its log.
+        my $problems = genesis_build_log_problems($logfile);
+        if ($rc != 0) {
+            die "FATAL: the Genesis build for $codename failed (exit $rc); log: $logfile\n"
+              . $problems;
+        }
+        die $problems if $problems;
+
+        my @debs = glob("$root$GENESIS_STAGE/out/*.deb");
+        die "FATAL: the Genesis build for $codename produced no .deb; log: $logfile\n"
+            unless @debs;
+        for my $deb (@debs) {
+            my $dest = "$pkgdir/" . basename($deb);
+            copy($deb, $dest) or die "FATAL: cannot collect $deb: $!\n";
+            say "  $dest";
+        }
+        1;
+    } or $err = $@;
+
+    sh("schroot --end-session -c " . sh_quote("session:$id") . " >/dev/null 2>&1");
+    die $err if $err;
+    return;
+}
+
+sub build_genesis_debs {
+    my ($pkgdir) = @_;
+    my $arch = $opts{genesis_arch} || host_deb_arch();
+    my @plan = genesis_build_plan($opts{genesis_dists}, $arch);
+    say "Genesis: @{[ scalar @plan ]} build(s) for $arch: "
+      . join(' ', map { $_->{codename} } @plan);
+    build_one_genesis_deb($_, $pkgdir) for @plan;
+    return scalar @plan;
+}
+
 # ------------------------------------------------------------- apt assembly --
 sub gpg_key_id {
     my ($name) = @_;
@@ -304,6 +454,9 @@ sub assemble_repo {
         for my $deb (@debs) {
             # A release that predates an architecture must not be handed its packages.
             next if basename($deb) =~ /_(\w+)\.deb\z/ && $1 ne 'all' && !$ok{$1};
+            # Nor an image built for another release: the Genesis deb carries the codename it
+            # was built on, because it carries that release's kernel.
+            next unless deb_belongs_to_dist($deb, $dist);
             sh_or_die("cd " . sh_quote($repodir) . " && reprepro -b ./ includedeb "
                . sh_quote($dist) . ' ' . sh_quote($deb),
             "FATAL: reprepro could not add $deb to $dist\n");
@@ -369,16 +522,25 @@ unlink glob("$ROOT/*.deb"), glob("$ROOT/*.buildinfo"), glob("$ROOT/*.changes"),
 say "xcat-core $PKGVER -> $dest";
 say "releases: @{[ join ' ', $opts{dists}->@* ]}";
 
-for my $pkg ($opts{packages}->@*) {
-    for my $arch (deb_package_arches($pkg)) {
-        build_package($pkg, $arch, $pkgdir);
+unless ($opts{genesis_only}) {
+    for my $pkg ($opts{packages}->@*) {
+        for my $arch (deb_package_arches($pkg)) {
+            build_package($pkg, $arch, $pkgdir);
+        }
+        collect_debs($pkg, $pkgdir);
     }
-    collect_debs($pkg, $pkgdir);
 }
 
-my $count = assemble_repo($pkgdir, $repo);
-write_repo_metadata($repo);
-say "published $count package(s) into @{[ scalar $opts{dists}->@* ]} release(s) at $repo";
+build_genesis_debs($pkgdir) if $opts{genesis};
+
+if ($opts{genesis_only}) {
+    say "Genesis debs are in $pkgdir";
+}
+else {
+    my $count = assemble_repo($pkgdir, $repo);
+    write_repo_metadata($repo);
+    say "published $count package(s) into @{[ scalar $opts{dists}->@* ]} release(s) at $repo";
+}
 
 __END__
 
@@ -399,8 +561,15 @@ xcat-core packages are Perl. The same binary serves every Ubuntu release, so eac
 package is built B<once> and the resulting C<.deb> files are published into every
 codename the repository declares. Only C<xCAT>, C<xCATsn> and C<xCAT-genesis-scripts>
 carry an architecture, and there the difference is packaging metadata rather than
-compiled output. Consequently this builder needs no C<sbuild> and no per-codename
-chroot. (xcat-dep is different: its packages are compiled, so it builds per codename.)
+compiled output.
+
+C<xcat-genesis-base> is the exception. dracut copies the kernel, the kernel modules
+and every command out of the root it runs in, so the Genesis image belongs to the
+release that built it. With C<--genesis> this builder makes one image per codename,
+each inside that codename's C<< <codename>-<arch>-sbuild >> schroot -- the chroots
+xcat-dep's C<sbuild-all.pl> creates on the Ubuntu build host. The build refuses to run
+in a root of another release, and it reads its own log: dracut reports a command it
+cannot install with a C<FAILED:> line and still exits 0.
 
 Replaced C<build-ubunturepo>, removed in 2.19. The GSA upload paths, the C<PROMOTE>/C<PREGA> release
 flows and the C<-d> xcat-dep repository mode were not carried over: publishing is done
@@ -417,6 +586,25 @@ Publish into this release. Repeatable. Defaults to focal, jammy, noble and resol
 =item B<--package>=I<NAME>
 
 Build only this package. Repeatable. Defaults to every xcat-core deb package.
+
+=item B<--genesis>
+
+Also build C<xcat-genesis-base-E<lt>archE<gt>>, one C<.deb> per codename, each inside
+that codename's schroot. Off by default.
+
+=item B<--genesis-only>
+
+Build the Genesis debs and nothing else, and assemble no repository. This is what
+xcat-dep needs: it consumes the debs with C<sbuild-all.pl --genesis-deb>.
+
+=item B<--genesis-dist>=I<CODENAME>
+
+Build the Genesis image for this release. Repeatable. Defaults to the C<--dist> list.
+
+=item B<--genesis-arch>=I<ARCH>
+
+Build the Genesis image for this Debian architecture. Defaults to the architecture of
+the build host, because the chroot has to match it.
 
 =item B<--dest>=I<DIR>
 
@@ -459,5 +647,6 @@ This message.
   ./builddebs.pl
   ./builddebs.pl --dist noble --package perl-xCAT
   ./builddebs.pl --dest /srv/out --gpg-sign --gpg-home /keys/xcat-gpg-home
+  ./builddebs.pl --genesis-only --genesis-dist jammy --genesis-dist noble --dest /srv/out
 
 =cut
