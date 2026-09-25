@@ -10,19 +10,6 @@ which calls `run_unit_tests()` in `github_action_xcat_test.pl`:
 prove -r xCAT-test/unit
 ```
 
-## Postscript sandbox prerequisites
-
-`otherpkgs_upgrade_scope.t` runs the complete postscript in a Linux filesystem
-sandbox. It requires Bubblewrap, Bash, GNU core utilities, and permission to create
-user namespaces. The CI workflow installs Bubblewrap and enables those namespaces.
-Missing prerequisites fail this test without stopping unrelated test files.
-Non-Linux hosts report a skip. Set `TMPDIR` to a writable, executable filesystem
-if the default temporary directory is mounted with `noexec`.
-
-This test is an exception to the shell-test placement rule below. It stays in Perl
-to compare structured command arguments and generated repository records with the
-existing test helpers. It does not read or extract postscript source.
-
 You can run exactly the same thing from a clean checkout:
 
 ```
