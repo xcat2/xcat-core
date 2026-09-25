@@ -597,6 +597,30 @@ sub route_exists {
     return 0;
 }
 
+sub run_routeop {
+    my ($callback, $op, $net, $mask, $gw_ip, $ifname) = @_;
+    my $installdir = xCAT::TableUtils->getInstallDir();
+    my $host = hostname();
+    my $result = eval {
+        xCAT::Utils::runcmd3(command => [
+            "$installdir/postscripts/routeop", $op, $net, $mask,
+            $gw_ip // '', $ifname // ''
+        ]);
+    };
+    if (!$result) {
+        $callback->({ error => ["$host: Unable to run routeop: $@"] });
+        return 1;
+    }
+    if ($result->{output}) {
+        $callback->({ data => [map { "$host: $_" } split(/\n/, $result->{output})] });
+    }
+    if ($result->{exitcode}) {
+        $callback->({ error => ["$host: routeop failed with exit code $result->{exitcode}: " . ($result->{errors} // '')] });
+        return 1;
+    }
+    return 0;
+}
+
 # sets the route with given parameters
 sub set_route {
     my $callback = shift;
@@ -605,6 +629,10 @@ sub set_route {
     my $gw_ip    = shift;
     my $gw       = shift;
     my $ifname   = shift;
+
+    if (xCAT::Utils->isLinux() && xCAT::Utils->osver() =~ /^openeuler/) {
+        return run_routeop($callback, "add", $net, $mask, $gw_ip, $ifname);
+    }
 
     my $host = hostname();
 
@@ -693,6 +721,10 @@ sub delete_route {
     my $gw_ip    = shift;
     my $gw       = shift;
     my $ifname   = shift;
+
+    if (xCAT::Utils->isLinux() && xCAT::Utils->osver() =~ /^openeuler/) {
+        return run_routeop($callback, "delete", $net, $mask, $gw_ip, $ifname);
+    }
 
     my $host = hostname();
 

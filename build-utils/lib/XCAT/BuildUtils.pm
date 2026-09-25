@@ -36,6 +36,7 @@ our @EXPORT_OK = qw(
     rewrite_file write_script read_line
     buildinfo_text
     targetarch_from_target
+    openeuler_build_target openeuler_repo_subdir
     genesis_chroot_name genesis_target_arch genesis_build_plan
     genesis_log_errors genesis_log_deny_rules deb_belongs_to_dist
     genesis_dists genesis_dist_reason
@@ -671,6 +672,26 @@ sub cancel_build {
         return;
     }
     sub DESTROY { shift->release }
+}
+
+sub openeuler_build_target {
+    my ($os, $arch) = @_;
+    return undef unless lc($os->{ID} // '') eq 'openeuler';
+    my $version = $os->{VERSION} || $os->{VERSION_ID} || '';
+    if ($version =~ /\A(20|22|24)\.03\s+\(LTS(?:-SP([1-9][0-9]*))?\)\z/) {
+        $version = "$1.03" . (defined($2) ? "sp$2" : '');
+    }
+    my $target = "openeuler-$version-$arch";
+    openeuler_repo_subdir($target);
+    return $target;
+}
+
+sub openeuler_repo_subdir {
+    my ($target) = @_;
+    return undef unless defined($target) && $target =~ /\Aopeneuler-/;
+    die "Unsupported openEuler build target '$target'\n"
+        unless $target =~ /\Aopeneuler-((?:20|22|24)\.03(?:sp[1-9][0-9]*)?)-(x86_64|ppc64le)\z/;
+    return "openeuler$1/$2";
 }
 
 # The rpm architecture a mock target builds for. A target carries the arch as its

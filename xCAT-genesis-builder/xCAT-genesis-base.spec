@@ -56,7 +56,7 @@ BuildRequires: dracut-network
 # doxcat chooses its DHCP client at run time. RHEL 10 packages no ISC dhcp-client; its
 # baseos packages dhcpcd, which carries its own resolv.conf, hostname and ntp hooks and so
 # needs no dhclient-script.
-%if 0%{?rhel} && 0%{?rhel} < 10
+%if 0%{?openEuler} || (0%{?rhel} && 0%{?rhel} < 10)
 BuildRequires: dhcp-client
 %endif
 %if 0%{?rhel} >= 10
@@ -67,9 +67,17 @@ BuildRequires: gawk
 BuildRequires: ipmitool
 BuildRequires: iproute
 BuildRequires: kexec-tools
+%if 0%{?openEuler}
+BuildRequires: coreutils
+BuildRequires: glibc-common
+BuildRequires: kernel
+BuildRequires: tar
+BuildRequires: tzdata
+%else
 BuildRequires: kernel-core
 BuildRequires: kernel-modules
 BuildRequires: kernel-modules-extra
+%endif
 BuildRequires: lldpad
 BuildRequires: lvm2
 BuildRequires: mdadm
@@ -140,6 +148,9 @@ chmod 0755 "$DRACUTMODDIR/module-setup.sh" "$DRACUTMODDIR/xcatroot" "$DRACUTMODD
 
 KERNELVERSION=$(ls -1 /lib/modules | sort -V | tail -n 1)
 test -n "$KERNELVERSION"
+%if 0%{?openEuler}
+test -s "/lib/modules/$KERNELVERSION/modules.dep"
+%endif
 
 mkdir -p "$GENESIS_FS/etc/ssh"
 mkdir -p /run/rpcbind
@@ -149,6 +160,20 @@ dracut --compress gzip -m "xcat base" --no-early-microcode -N -f "$DRACUT_IMAGE"
     cd "$GENESIS_FS"
     zcat "$DRACUT_IMAGE" | cpio -dumi
 )
+%if 0%{?openEuler}
+cmp /etc/openEuler-release "$GENESIS_FS/etc/openEuler-release"
+(
+    . /etc/os-release
+    genesis_version_id=$VERSION_ID
+    unset ID VERSION_ID
+    . "$GENESIS_FS/etc/os-release"
+    test "$ID" = openEuler
+    test "$VERSION_ID" = "$genesis_version_id"
+)
+test -s "$GENESIS_FS/lib/modules/$KERNELVERSION/modules.dep"
+test -n "$(find "$GENESIS_FS/lib/modules/$KERNELVERSION" -name '*.ko*' -print -quit)"
+test -f "$GENESIS_FS/usr/share/zoneinfo/UTC"
+%endif
 
 # usrmerge collapse: on a usr-merged build host the extracted genesis fs can
 # contain /bin,/sbin,/lib,/lib64 as real directories that duplicate the files
@@ -236,11 +261,19 @@ cp "$KERNEL_IMAGE" "$GENESIS_ROOT/kernel"
 # dracut_install reports a missing binary and returns, so a hole in the image reaches the
 # rpm silently. Three of them did.
 GENESIS_REQUIRED=""
-%if 0%{?rhel} && 0%{?rhel} < 10
+%if 0%{?openEuler} || (0%{?rhel} && 0%{?rhel} < 10)
 GENESIS_REQUIRED="usr/sbin/dhclient"
 %endif
 %if 0%{?rhel} >= 10
 GENESIS_REQUIRED="usr/sbin/dhcpcd"
+%endif
+%if !0%{?openEuler}
+GENESIS_REQUIRED="$GENESIS_REQUIRED etc/redhat-release $(awk '
+    $1 == "dracut_install" && $2 ~ "^/usr/share/zoneinfo/posix/" {
+        sub("^/", "", $2)
+        print $2
+    }
+' "$DRACUTMODDIR/module-setup.sh")"
 %endif
 bash "%{_builddir}/xCAT-genesis-base-build-support/verify-genesis-payload" \
     --commands-from "$DRACUTMODDIR/module-setup.sh" \

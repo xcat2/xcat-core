@@ -27,11 +27,10 @@ against it.
 Note the `-I` flags: unlike the unit tests these run from the installed location, so
 they pick up xCAT modules from `/opt/xcat/lib/perl` rather than from a source tree.
 
-The case checks `rc==0` and `output=~Files=5,`. The second assertion is there because
-`prove` exits 0 both when tests pass and when they all skip, so `rc==0` alone would let
-the case report green having run nothing. Matching `Files=5,` proves `prove` actually
-found all five files, which catches a packaging regression or a test renamed away from
-`.t` without updating the count. **Add to that number when you add a test.** A missing
+The case checks `rc==0` and `output=~Files=7,`. The file count checks that `prove`
+found all seven files, which catches a packaging regression or a test renamed away from
+`.t` without updating the count. It does not prove that environment-gated cases ran;
+inspect the TAP output for skips. **Add to that number when you add a test.** A missing
 directory is already caught by `rc==0` -- `prove -r` on a path that does not exist exits
 2.
 
@@ -52,8 +51,21 @@ A test belongs in `integration/` when it needs something the checkout cannot pro
 | `dhcp_kea_config_validation.t` | a `kea-dhcp4` binary that can read the generated config |
 | `dhcp_kea_control_agent_smoke.t` | live `kea-dhcp4` and `kea-ctrl-agent`, root, and the Kea host-commands hook |
 | `html_form_runtime_dependency.t` | the installed `HTML::Form` module |
+| `openeuler_package_postscripts.t` | Linux root, private mount namespaces and DNF; tests complete package postscripts with command doubles and an isolated repository directory |
+| `openeuler_postscript_repositories.t` | Linux root, private mount namespaces, DNF and RPM signing tools; tests actual signed repository transactions in isolated install roots |
 
 ## Environment guards
+
+`openeuler_postscript_repositories.t` builds and signs RPM fixtures and runs real
+DNF transactions. Enable it explicitly on a disposable openEuler host:
+
+```
+sudo env XCAT_NATIVE_REPOSITORIES=1 prove -v \
+    xCAT-test/integration/openeuler_postscript_repositories.t
+```
+
+The Perl test builds the RPM fixtures directly. Its DNF adapter records arguments
+and uses only local fixture repositories, with a fixed fixture release version.
 
 Tests with optional runtime dependencies guard with `plan skip_all` -- an MN with no
 Kea installed should skip the Kea tests, not go red. The `HTML::Form` test is different:

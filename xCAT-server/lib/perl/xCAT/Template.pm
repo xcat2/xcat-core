@@ -317,7 +317,7 @@ sub subvars {
             my $space10 = " " x 10;
             my $space12 = " " x 12;
             foreach my $pkgdir (@pkgdirs) {
-                if ($platform =~ /^(rh|SL|centos|alma|ol|fedora|rocky)$/) {
+                if ($platform =~ /^(rh|SL|centos|alma|ol|fedora|rocky|openeuler)$/) {
                     if ($c == 0) {
                         # After some tests, if we put the repo in  pre scripts in the kickstart like for rhels6.x
                         # the rhels5.9 will not be installed successfully. So put in kickstart directly.
@@ -327,7 +327,7 @@ sub subvars {
                         $source_in_pre .= "\necho 'repo --name=pkg$c --baseurl=http://'\$nextserver'$httpportsuffix/$pkgdir' >> /tmp/repos";
                         $source .= "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#$httpportsuffix/$pkgdir\n"; #for rhels5.9
                     }
-                    my $distrepofile="/install/postscripts/repos/$pkgdir/local-repository.tmpl";
+                    my $distrepofile="$installroot/postscripts/repos/$pkgdir/local-repository.tmpl";
                     if( -f "$distrepofile" and -s "$distrepofile"){
                         my $repofd;
                         my $repo_in_post;
@@ -392,7 +392,7 @@ sub subvars {
         $inc =~ s/#CRYPT:([^:]+):([^:]+):([^#]+)#/crydb($1,$2,$3)/eg;
         $inc =~ s/#CRYPTORLOCKED:([^:]+):([^:]+):([^#]+)#/crydb_or_locked($1,$2,$3)/eg;
         $inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
-        $inc =~ s/#KICKSTARTNET#/kickstartnetwork()/eg;
+        $inc =~ s/#KICKSTARTNET#/kickstartnetwork($platform)/eg;
         $inc =~ s/#MIRRORSPEC#/mirrorspec()/eg;
         $inc =~ s/#YAST2NET#/yast2network()/eg;
         $inc =~ s/#KICKSTARTBOOTLOADER#/kickstartbootloader()/eg;
@@ -1054,6 +1054,7 @@ sub esxipv6setup {
 
 
 sub kickstartnetwork {
+    my $platform = shift;
     my $line = "network --onboot=yes --bootproto=";
     my $hoststab;
     my $mactab = xCAT::Table->new('mac', -create => 0);
@@ -1116,6 +1117,7 @@ sub kickstartnetwork {
         #return "#KSNET static unsupported";
     } else {
         $line .= "dhcp --device=$suffix";
+        $line .= " --hostname=$node" if (defined($platform) && $platform eq 'openeuler');
     }
     return $line;
 }

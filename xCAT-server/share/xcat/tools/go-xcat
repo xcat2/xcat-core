@@ -487,7 +487,7 @@ function debug_trace()
 	return "${rc}"
 }
 
-internal_setup
+[[ "${BASH_SOURCE[0]}" != "$0" ]] || internal_setup
 
 # Check operating system
 function check_os()
@@ -542,6 +542,9 @@ function check_linux_distro()
 {
 	local distro
 	distro="$(os_release_value ID)"
+	case "${distro}" in
+	"openEuler"|"openeuler"|"'openEuler'"|"'openeuler'") distro="openeuler" ;;
+	esac
 	[[ -z "${distro}" && -f /etc/redhat-release ]] && distro="rhel"
 	[[ -z "${distro}" && -f /etc/SuSE-release ]] && distro="sles"
 	[[ -z "${distro}" && -f /etc/SUSE-brand ]] && distro="sles"
@@ -551,6 +554,18 @@ function check_linux_distro()
 function check_linux_version()
 {
 	local ver
+	if [[ "$(check_linux_distro)" = "openeuler" ]]; then
+		ver="$(os_release_value VERSION)"
+		[[ -n "${ver}" ]] || ver="$(os_release_value VERSION_ID)"
+		ver="${ver#\'}"
+		ver="${ver%\'}"
+		if [[ "${ver}" =~ ^(20|22|24)\.03[[:space:]]+\(LTS(-SP([1-9][0-9]*))?\)$ ]]; then
+			ver="${BASH_REMATCH[1]}.03${BASH_REMATCH[3]:+sp${BASH_REMATCH[3]}}"
+		fi
+		[[ "${ver}" =~ ^(20|22|24)\.03(sp[1-9][0-9]*)?$ ]] || return 1
+		echo "${ver}"
+		return 0
+	fi
 	ver="$(os_release_value VERSION_ID)"
 	[[ -z "${ver}" && -f /etc/redhat-release ]] &&
 		# Need gawk to do this trick
@@ -561,6 +576,19 @@ function check_linux_version()
 	[[ -z "${ver}" && -f /etc/SUSE-brand ]] &&
 		ver="$(awk '/VERSION/ { print $NF }' /etc/SUSE-brand)"
 	echo "${ver}"
+}
+
+function openeuler_repo_target()
+{
+	[[ "${GO_XCAT_LINUX_VERSION}" =~ ^(20|22|24)\.03(sp[1-9][0-9]*)?$ ]] || {
+		warn_if_bad 1 "${GO_XCAT_LINUX_VERSION}: unsupported openEuler LTS version"
+		return 1
+	}
+	case "${GO_XCAT_ARCH}" in
+	"x86_64"|"ppc64le") ;;
+	*) warn_if_bad 1 "${GO_XCAT_ARCH}: unsupported openEuler architecture"; return 1 ;;
+	esac
+	echo "openeuler${GO_XCAT_LINUX_VERSION}/${GO_XCAT_ARCH}"
 }
 
 function function_dispatch()
@@ -1422,7 +1450,7 @@ function add_repo_by_url_yum_or_zypper()
 			echo "skip_if_unavailable=1"
 		fi
 		} >"${tmp}"
-		if [ -f "${url%/}/repodata/repomd.xml.asc" ]
+		if [[ "${GO_XCAT_LINUX_DISTRO}" = "openeuler" ]] || [ -f "${url%/}/repodata/repomd.xml.asc" ]
 		then
 			echo "gpgcheck=1" >>"${tmp}"
 			[[ "${policy}" != "optional" ]] \
@@ -1508,7 +1536,11 @@ function add_repo_by_url()
 #       $1      repo id
 function remove_repo_yum()
 {
-	type yum >/dev/null 2>&1 || return 255
+	local manager="yum"
+	type yum >/dev/null 2>&1 || {
+		type dnf >/dev/null 2>&1 || return 255
+		manager="dnf"
+	}
 	local repo_id="$1"
 	# This deleting method is not good enough. Since there could be more
 	# than one repository definitions in a single repo file.
@@ -1525,7 +1557,7 @@ function remove_repo_yum()
 		mv /etc/yum.repos.d/xCAT-dep-common.repo{,.nouse} 2>/dev/null
 		;;
 	esac
-	yum clean metadata
+	"${manager}" clean metadata
 	:
 }
 
@@ -1567,7 +1599,7 @@ function remove_repo()
 #               can be "2.10", "2.11", "2.12", "latest" or "devel"
 function add_xcat_core_repo_yum_or_zypper()
 {
-	type yum >/dev/null 2>&1 || type zypper >/dev/null 2>&1 || return 255
+	type dnf >/dev/null 2>&1 || type yum >/dev/null 2>&1 || type zypper >/dev/null 2>&1 || return 255
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	local url="$1"
@@ -1585,6 +1617,11 @@ function add_xcat_core_repo_yum_or_zypper()
 			url="${GO_XCAT_DEFAULT_BASE_URL}/yum/${ver}/xcat-core"
 			;;
 		esac
+		if [[ "${GO_XCAT_LINUX_DISTRO}" = "openeuler" ]]; then
+			local target
+			target="$(openeuler_repo_target)" || return 1
+			url="${url}/${target}"
+		fi
 	fi
 	add_repo_by_url_yum_or_zypper "${url}" "xcat-core"
 }
@@ -1630,7 +1667,7 @@ function add_xcat_core_repo()
 
 function add_xcat_dep_common_repo_yum_or_zypper()
 {
-	type yum >/dev/null 2>&1 || type zypper >/dev/null 2>&1 || return 255
+	type dnf >/dev/null 2>&1 || type yum >/dev/null 2>&1 || type zypper >/dev/null 2>&1 || return 255
 	local url="$1"
 	local ver="$2"
 	local common_url=""
@@ -1685,7 +1722,7 @@ function refresh_xcat_dep_repository_ids()
 
 function add_xcat_dep_repo_yum_or_zypper()
 {
-	type yum >/dev/null 2>&1 || type zypper >/dev/null 2>&1 || return 255
+	type dnf >/dev/null 2>&1 || type yum >/dev/null 2>&1 || type zypper >/dev/null 2>&1 || return 255
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	local url="$1"
@@ -1696,6 +1733,10 @@ function add_xcat_dep_repo_yum_or_zypper()
 	local install_path="${GO_XCAT_DEFAULT_INSTALL_PATH}"
 	local distro="${GO_XCAT_LINUX_DISTRO}${GO_XCAT_LINUX_VERSION%%.*}"
 	case "${distro}" in
+	"openeuler"*)
+		distro="$(openeuler_repo_target)" || return 1
+		distro="${distro%/*}"
+		;;
 	"centos"*)             distro="rh${distro#centos}" ;;
 	"ol"*)                 distro="rh${distro#ol}" ;;
 	"rocky"*)              distro="rh${distro#rocky}" ;;
@@ -1781,12 +1822,20 @@ function add_xcat_dep_repo()
 function update_repo_dnf()
 {
 	type dnf >/dev/null 2>&1 || return 255
+	if [[ "${GO_XCAT_LINUX_DISTRO}" = "openeuler" ]]; then
+		dnf --setopt=gpgcheck=1 '--setopt=*.gpgcheck=1' updateinfo
+		return "$?"
+	fi
 	dnf --nogpgcheck updateinfo
 }
 
 function update_repo_yum()
 {
 	type yum >/dev/null 2>&1 || return 255
+	if [[ "${GO_XCAT_LINUX_DISTRO}" = "openeuler" ]]; then
+		yum --setopt=gpgcheck=1 '--setopt=*.gpgcheck=1' updateinfo
+		return "$?"
+	fi
 	# Check if `yum' support `updateinfo' command.
 	yum --help 2>/dev/null | grep -q "^updateinfo" >/dev/null 2>&1
 	warn_if_bad "$?" "Lacking support of \`updateinfo' command for \`yum'."
@@ -1815,9 +1864,14 @@ function update_repo()
 function install_packages_dnf()
 {
 	type dnf >/dev/null 2>&1 || return 255
-	el_epel_and_crb_check dnf
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
+	if [[ "${GO_XCAT_LINUX_DISTRO}" = "openeuler" ]]; then
+		dnf --setopt=gpgcheck=1 '--setopt=*.gpgcheck=1' --setopt=localpkg_gpgcheck=1 --setopt=strict=1 \
+			"${yes[@]}" install initscripts "$@"
+		return "$?"
+	fi
+	el_epel_and_crb_check dnf
 	dnf --nogpgcheck "${yes[@]}" install initscripts
 	dnf --nogpgcheck --setopt=strict=0 "${yes[@]}" install "$@"
 }
@@ -1825,9 +1879,14 @@ function install_packages_dnf()
 function install_packages_yum()
 {
 	type yum >/dev/null 2>&1 || return 255
-	el_epel_and_crb_check yum
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
+	if [[ "${GO_XCAT_LINUX_DISTRO}" = "openeuler" ]]; then
+		yum --setopt=gpgcheck=1 '--setopt=*.gpgcheck=1' --setopt=localpkg_gpgcheck=1 \
+			"${yes[@]}" install initscripts "$@"
+		return "$?"
+	fi
+	el_epel_and_crb_check yum
 	yum --nogpgcheck "${yes[@]}" install initscripts
 	yum --nogpgcheck "${yes[@]}" install "$@"
 }
@@ -2355,6 +2414,8 @@ function boo_boo_if_bad()
 #
 # Main program goes here.
 
+[[ "${BASH_SOURCE[0]}" = "$0" ]] || return 0
+
 declare -a GO_XCAT_YES=()
 GO_XCAT_ACTION=""
 GO_XCAT_CORE_URL=""
@@ -2502,6 +2563,13 @@ fi
 
 GO_XCAT_LINUX_DISTRO="$(check_linux_distro)"
 GO_XCAT_LINUX_VERSION="$(check_linux_version)"
+exit_if_bad "$?" "Unsupported ${GO_XCAT_LINUX_DISTRO} release"
+
+if [[ "${GO_XCAT_LINUX_DISTRO}" = "openeuler" ]]; then
+	openeuler_repo_target >/dev/null
+	exit_if_bad "$?" "Unsupported openEuler platform"
+	GO_XCAT_INSTALL_LIST=(xCAT)
+fi
 
 debug_logger <<EOF
 Linux Distribution: ${GO_XCAT_LINUX_DISTRO}
@@ -2509,7 +2577,7 @@ Version:            ${GO_XCAT_LINUX_VERSION}
 EOF
 
 case "${GO_XCAT_LINUX_DISTRO}" in
-"centos"|"fedora"|"rhel"|"sles"|"ubuntu"|"ol"|"rocky"|"almalinux")
+"centos"|"fedora"|"rhel"|"sles"|"ubuntu"|"ol"|"rocky"|"almalinux"|"openeuler")
 	;;
 *)
 	warn_if_bad 1 "${GO_XCAT_LINUX_DISTRO}: unsupported Linux distro"

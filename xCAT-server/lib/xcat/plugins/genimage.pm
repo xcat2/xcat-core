@@ -166,6 +166,10 @@ sub process_request {
             $callback->({ error => ["\'$imagename\' cannot be used to build diskless image. Make sure osimage.provmethod is 'netboot'."], errorcode => [1] });
             return 1;
         }
+        if ($osver =~ /^openeuler/ && $provmethod eq 'statelite') {
+            $callback->({ error => ['openEuler StateLite images are not supported.'], errorcode => [1] });
+            return 1;
+        }
 
         unless ($ref_linuximage_tab->{'pkglist'}) {
             $callback->({ error => ["A .pkglist file must be specified for image \'$imagename\' in the linuximage table."], errorcode => [1] });
@@ -288,6 +292,14 @@ sub process_request {
     # openSUSE Leap 15.x reuses the existing SLES diskless image scripts.
     if ($osver =~ /^leap15/) {
         $osfamily = "sles";
+    }
+    if ($osver =~ /^openeuler/) {
+        unless (defined(xCAT::Utils::normalize_openeuler_version(substr($osver, 9)))
+            && $arch =~ /^(?:x86_64|ppc64le)$/) {
+            $callback->({ error => ["Unsupported openEuler release or architecture: $osver $arch"], errorcode => [1] });
+            return 1;
+        }
+        $osfamily = 'openeuler';
     }
 
     $osfamily =~ s/ //g;

@@ -68,7 +68,7 @@ str_cfg_dir=''
 str_temp=''
 if [ "$str_os_type" = "linux" ];then
     str_temp=`echo $OSVER | grep -E '(sles|suse)'`
-    if [ -f "/etc/redhat-release" ];then
+    if [ -f "/etc/redhat-release" ] || xcat_is_openeuler "$OSVER"; then
         str_os_type="redhat"
         str_cfg_dir="/etc/sysconfig/network-scripts"
     elif [ -f "/etc/SuSE-release" -o -n "$str_temp" ];then
@@ -190,6 +190,23 @@ if [ -z "$str_bond_net" ] || [ -z "$str_bond_mask" ]; then
 fi
 
 showmsg "IP information for $str_bond_name: IP=$str_bond_ip; network=$str_bond_net; netmask=$str_bond_mask"
+
+if xcat_is_openeuler "$OSVER"; then
+    . "$str_dir_name/nicutils.sh"
+    check_NetworkManager_or_network_service
+    if [ $? -ne 1 ]; then
+        showmsg "NetworkManager must be active to configure a bond on openEuler" "error"
+        exit 1
+    fi
+    networkmanager_active=1
+    str_bond_ports=$(IFS=,; echo "${array_bond_slaves[*]}")
+    str_bond_options=${array_bond_opts[*]}
+    create_bond_interface_nmcli "bondname=$str_bond_name" \
+        "slave_ports=$str_bond_ports" "slave_type=ethernet" \
+        "_ipaddr=$str_bond_ip" "_netmask=$str_bond_mask" \
+        "_bonding_opts=${str_bond_options// /,}"
+    exit $?
+fi
 
 # Create bond config file
 

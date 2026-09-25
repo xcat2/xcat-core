@@ -38,7 +38,7 @@ is_redhat=0
 is_debian=0
 is_sles=0
 str_temp=`echo $OSVER | grep -E '(sles|suse)'`
-if [ -f "/etc/redhat-release" ];then
+if [ -f "/etc/redhat-release" ] || xcat_is_openeuler "$OSVER"; then
     is_redhat=1
     nwdir="/etc/sysconfig/network-scripts"
 elif [ -f "/etc/SuSE-release" -o -n "$str_temp" ];then
