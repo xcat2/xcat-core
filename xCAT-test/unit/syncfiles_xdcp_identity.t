@@ -55,7 +55,6 @@ sub run_syncfiles {
     local $xCAT::SvrUtils::synclist = $case->{synclist};
     local @xCAT::MsgUtils::messages;
     local @ARGV;
-    local $RCP;
     my @sent;
     my $callback = sub { return; };
     my $request = dclone($case->{request} || {
@@ -117,14 +116,6 @@ my @cases = (
         messages => [],
     },
     {
-        name     => 'one sync file',
-        client   => 'node1.example.test',
-        args     => [],
-        synclist => { node1 => '/install/custom/sync-a' },
-        expected => [ [ 'node1', '/install/custom/sync-a', [] ] ],
-        messages => [],
-    },
-    {
         name     => 'multiple sync files retain order and identity',
         client   => 'node2.example.test',
         args     => [],
@@ -153,6 +144,14 @@ for my $option ( '-r', '-c', '--node-rcp' ) {
 }
 
 push @cases,
+    {
+        name     => 'one sync file',
+        client   => 'node1.example.test',
+        args     => [],
+        synclist => { node1 => '/install/custom/sync-a' },
+        expected => [ [ 'node1', '/install/custom/sync-a', [] ] ],
+        messages => [],
+    },
     {
         name     => 'invalid option sends no request',
         client   => 'node1.example.test',
@@ -188,7 +187,43 @@ push @cases,
     };
 
 for my $case (@cases) {
-    subtest $case->{name} => sub { run_syncfiles($case); };
+    subtest $case->{name} => sub {
+        local $RCP;
+        run_syncfiles($case);
+    };
+}
+
+# Direct same-process calls share the existing override; daemon process isolation is outside this test.
+for my $option ( '-r', '-c', '--node-rcp' ) {
+    subtest "same-process copy override $option" => sub {
+        local $RCP;
+        for my $step (
+            [ 'clean sequence state', [], 'node1', 'sync-default', undef ],
+            [ 'initial override', [ $option, '/usr/bin/scp' ], 'node1', 'sync-a', '/usr/bin/scp' ],
+            [ 'rejected override', [ $option, '/usr/bin/false', '--bogus' ], 'node1', 'sync-rejected', undef, 1 ],
+            [ 'request without override', [], 'node2', 'sync-b', '/usr/bin/scp' ],
+            [ 'replacement override', [ $option, '/usr/bin/rsync' ], 'node1', 'sync-c', '/usr/bin/rsync' ],
+            [ 'request after replacement', [], 'node2', 'sync-d', '/usr/bin/rsync' ],
+          )
+        {
+            my ( $name, $args, $node, $list, $copy_command, $invalid ) = @$step;
+            subtest $name => sub {
+                my $file = "/install/custom/$list";
+                my $copy_args = defined $copy_command ? [ '-r', $copy_command ] : [];
+                my %diagnostics = $invalid ? (
+                    messages => [ qr/Received syncfiles from \Q$node.example.test\E, with invalid options\b/ ],
+                    warnings => ["Unknown option: bogus\n"],
+                ) : ( messages => [] );
+                run_syncfiles({
+                    client   => "$node.example.test",
+                    args     => $args,
+                    synclist => { $node => $file },
+                    expected => $invalid ? [] : [ [ $node, $file, $copy_args ] ],
+                    %diagnostics,
+                });
+            };
+        }
+    };
 }
 
 done_testing();
