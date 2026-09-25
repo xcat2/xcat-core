@@ -6,3 +6,11 @@ cmd:prove -I/opt/xcat/lib/perl -I/opt/xcat/lib/perl/xCAT -r /opt/xcat/share/xcat
 check:rc==0
 check:output=~Files=7,
 end
+
+start:xcatd_dispatch_redaction
+description:Check password redaction in the live daemon's syslog output
+os:Linux
+label:mn_only,ci_test,integration
+cmd:sh /opt/xcat/share/xcat/tools/autotest/integration/xcatd_dispatch_redaction.sh
+check:rc==0
+end

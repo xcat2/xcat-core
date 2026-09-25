@@ -3,8 +3,6 @@ use strict;
 use warnings;
 
 use FindBin;
-use Capture::Tiny qw(capture);
-use JSON::PP qw(encode_json decode_json);
 use Storable qw(dclone);
 use Test::More;
 use lib "$FindBin::Bin/../lib";
@@ -339,39 +337,6 @@ for my $rule ('allow', 'deny') {
             };
         }
     }
-}
-
-my @traces = (
-    ['password assignment', {command => ['rspconfig'], noderange => ['node01', 'node02'],
-        arg => ['admin_passwd=SEKRET phrase', 'general=visible']},
-        'rspconfig node01,node02 admin_passwd=xxxxxxxx general=visible'],
-    ['bundled option', {command => ['bmcdiscover'], arg => ['-zpSEKRET', '--range', '192.0.2.1']},
-        'bmcdiscover -zpxxxxxxxx --range 192.0.2.1'],
-    ['nonsecret argument', {command => ['chdef'], arg => ['groups=compute']}, 'chdef groups=compute'],
-    ['empty argument vector', {command => ['lsdef'], arg => []}, 'lsdef'],
-    ['missing argument vector', {command => ['lsdef']}, 'lsdef '],
-);
-for my $case (@traces) {
-    my ($name, $request, $expected) = @$case;
-    subtest "dispatch trace: $name" => sub {
-        local $ENV{XCATROOT} = repo_path('xCAT-test/unit/fixtures/redaction');
-        local $ENV{ENABLE_TRACE_CODE};
-        delete $ENV{ENABLE_TRACE_CODE};
-        my ($stdout, $stderr, $status) = capture {
-            system($^X, '-I', repo_path('perl-xCAT'),
-                '-I', repo_path('xCAT-server/lib/perl'),
-                '-I', repo_path('xCAT-test/unit/fixtures/redaction'),
-                '-MDispatchTrace', repo_path('xCAT-server/sbin/xcatd'), encode_json($request));
-        };
-        is($status, 0, 'the real daemon reaches the trace sink') or diag($stderr);
-        is($stderr, '', 'the trace emits no warnings');
-        return unless $status == 0;
-        my $result = decode_json($stdout);
-        is_deeply($result->{trace}, ['xCAT::MsgUtils', 0, 'D',
-            "xcatd: dispatch request '$expected' to plugin 'testplugin'"],
-            'the dispatch trace masks secrets and keeps command context');
-        is_deeply($result->{request}, $request, 'tracing leaves the request intact');
-    };
 }
 
 done_testing();
