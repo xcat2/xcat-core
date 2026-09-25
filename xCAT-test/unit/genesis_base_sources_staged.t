@@ -5,6 +5,7 @@
 use strict;
 use warnings;
 
+use Archive::Tar;
 use File::Path qw(make_path);
 use File::Slurper qw(write_text);
 use File::Temp qw(tempdir);
@@ -20,15 +21,16 @@ my $EPOCH   = 1700000000;
 my $MODULE  = 'module-setup.sh';
 my $scratch = tempdir(CLEANUP => 1);
 
+# The members of a tarball: name (a directory ends in /), uid, gid and mtime.
 sub members {
     my ($tarball) = @_;
-    my @members = `TZ=UTC tar tjvf '$tarball'`;
-    die "tar cannot list $tarball\n" if $?;
-    chomp @members;
-    return @members;
+    my $tar = Archive::Tar->new($tarball) or die "cannot read $tarball: " . Archive::Tar->error . "\n";
+    return map {
+        { name => ($_->full_path =~ s{/+\z}{}r) . ($_->is_dir ? '/' : ''), uid => $_->uid, gid => $_->gid, mtime => $_->mtime }
+    } $tar->get_files;
 }
 
-sub names { return sort map { (split ' ', $_)[-1] } @_ }
+sub names { return sort map { $_->{name} } @_ }
 
 # A scratch checkout in the layout the spec expects.
 my $checkout = "$scratch/checkout";
@@ -59,7 +61,7 @@ is_deeply([ names(@listing) ], [
         'xCAT-genesis-base-build-support/verify-genesis-payload',
     ],
     'the tarball holds the dracut modules, the rules file and the payload verifier with its module');
-is_deeply([ grep { !m{ root/root .* 2023-11-14 22:13 } } @listing ], [],
+is_deeply([ map { $_->{name} } grep { $_->{uid} != 0 || $_->{gid} != 0 || $_->{mtime} != $EPOCH } @listing ], [],
     'every member is owned by root and dated SOURCE_DATE_EPOCH');
 
 # The checkout itself, so the directory the spec needs is known to be there.
