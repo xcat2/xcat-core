@@ -297,7 +297,7 @@ if [ -n "$OTHERPKGDIR" ]; then
     do
         dirtype=${dir:0:4}
         if [ $dirtype = 'http' ]; then
-            OTHERPKGDIR_INTERNET="${OTHERPKGDIR_INTERNET}${dir} ,"
+            OTHERPKGDIR_INTERNET="${OTHERPKGDIR_INTERNET}${dir},"
         else
             OTHERPKGDIR_LOCAL=$dir
         fi
@@ -588,9 +588,9 @@ if ( ! ( pmatch "$OSVER" "sles10*" ) && [ $haszypper -eq 1 ] ); then
             result=`zypper ar $sdk_src xCAT-$OSVER-$bname 2>&1`
             if [ $? -ne 0 ]; then
                 if ( ! pmatch "$result" "*exists*" ); then
-                    logger -t $log_label -p local4.info "otherpkgs: zypper ar $sdk_src xCAT-$OSVER-bname\n    $result"
+                    logger -t $log_label -p local4.info "otherpkgs: zypper ar $sdk_src xCAT-$OSVER-$bname\n    $result"
                     if [ $VERBOSE ]; then
-                        echo "otherpkgs: zypper ar $sdk_src xCAT-$OSVER-bname"
+                        echo "otherpkgs: zypper ar $sdk_src xCAT-$OSVER-$bname"
                         echo "    $result"
                     fi
                 fi
@@ -685,7 +685,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 
     urlrepoindex=0
     #add repo for url repos in otherpkgdir
-    if [ -n "OTHERPKGDIR_INTERNET" ];then
+    if [ -n "$OTHERPKGDIR_INTERNET" ];then
          OIFS=$IFS
          IFS=','
          OTHERPKGDIRLIST_INTERNET=($OTHERPKGDIR_INTERNET)
@@ -723,8 +723,10 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     IFS=$','
     pkgsarray=($pkglist)
     IFS=$oifs
-    echo "pkgsarray: ${pkgsarray[@]}, ${#pkgsarray[@]}"
-    echo "yum/dnf: $hasyum ($yumcmd), apt: $hasapt, zypper: $haszypper"
+    if [ $VERBOSE  ]; then
+      echo "pkgsarray: ${pkgsarray[@]}, ${#pkgsarray[@]}"
+      echo "yum/dnf: $hasyum ($yumcmd), apt: $hasapt, zypper: $haszypper"
+    fi
     for x in ${pkgsarray[@]}
     do
         #check if the file name starts with -- or -.
@@ -848,7 +850,7 @@ EOF`
                         result=`zypper ar -c $REPOFILE`
                     fi
 
-		    result=`zypper --non-interactive refresh xcat-otherpkgs$index 2>&1`
+		    result=`zypper --non-interactive refresh xcat-otherpkgs$localrepoindex 2>&1`
 		    if [ $? -eq 0 ]; then
 		        rc=0
 		        array_set_element repo_path $index $path
@@ -858,7 +860,7 @@ EOF`
                             rc=0
                             array_set_element repo_path $index $path
                         else
-		            result=`zypper sd xcat-otherpkgs$index`
+		            result=`zypper sd xcat-otherpkgs$localrepoindex`
                         fi
 		    fi
 		elif [ $hasapt -eq 1 ]; then
@@ -906,7 +908,7 @@ EOF`
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
         fi
-        logger -p local4.info -t $log_label "$result"
+        printf '%s\n' "$result" | logger -p local4.info -t $log_label
         if [ $VERBOSE  ]; then
           echo "$result"
         fi
@@ -920,7 +922,7 @@ EOF`
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
         fi
-        logger -p local4.info -t $log_label "$result"
+        printf '%s\n' "$result" | logger -p local4.info -t $log_label
         if [ $VERBOSE  ]; then
           echo "$result"
         fi
@@ -934,7 +936,7 @@ EOF`
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
         fi
-	logger -p local4.info -t $log_label "$result"
+	printf '%s\n' "$result" | logger -p local4.info -t $log_label
         if [ $VERBOSE  ]; then
 	  echo "$result"
         fi
@@ -955,7 +957,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
             fi
-            logger -p local4.info -t $log_label "$result"
+            printf '%s\n' "$result" | logger -p local4.info -t $log_label
             if [ $VERBOSE  ]; then
               echo "$result"
             fi
@@ -968,7 +970,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
             fi
-            logger -p local4.info -t $log_label "$result"
+            printf '%s\n' "$result" | logger -p local4.info -t $log_label
             if [ $VERBOSE  ]; then
               echo "$result"
             fi
@@ -982,7 +984,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
             fi
-            logger -p local4.info -t $log_label "$result"
+            printf '%s\n' "$result" | logger -p local4.info -t $log_label
             if [ $VERBOSE  ]; then
               echo "$result"
             fi
@@ -998,7 +1000,7 @@ EOF`
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
         fi
-        logger -p local4.info -t $log_label "$result"
+        printf '%s\n' "$result" | logger -p local4.info -t $log_label
         if [ $VERBOSE  ]; then
           echo "$result"
         fi
@@ -1016,8 +1018,9 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
               logger -p local4.err -t $log_label "$envlist $yumcmd -y install $repo_pkgs failed."
+            else
+              logger -p local4.info -t $log_label "$repo_pkgs installed."
             fi
-	    logger -p local4.info -t $log_label "$repo_pkgs installed."
             if [ $VERBOSE  ]; then
               echo "$result"
             fi
@@ -1030,8 +1033,9 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
               logger -p local4.err -t $log_label "$envlist zypper install -y $repo_pkgs 2>&1 failed."
-	    fi
-            logger -p local4.info -t $log_label "$repo_pkgs installed."
+            else
+              logger -p local4.info -t $log_label "$repo_pkgs installed."
+            fi
             if [ $VERBOSE  ]; then
               echo "$result"
 	    fi
@@ -1051,8 +1055,9 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
               logger -p local4.err -t $log_label "install $repo_pkgs failed."
-	    fi
-	    logger -p local4.info -t $log_label "$repo_pkgs installed."
+            else
+              logger -p local4.info -t $log_label "$repo_pkgs installed."
+            fi
             if [ $VERBOSE  ]; then
              echo "$result"
 	    fi
@@ -1088,8 +1093,10 @@ EOF`
         R=$?
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
-	fi
-        logger -p local4.info -t $log_label "$plain_pkgs installed."
+              logger -p local4.err -t $log_label "$envlist $supdatecommand $plain_pkgs failed."
+        else
+              logger -p local4.info -t $log_label "$plain_pkgs installed."
+        fi
         if [ $VERBOSE  ]; then
           echo "$result"
 	fi
@@ -1112,8 +1119,10 @@ EOF`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
-	    fi
-            logger -p local4.info -t $log_label "$repo_pkgs_postremove removed."
+              logger -p local4.err -t $log_label "$envlist $yumcmd -y remove $repo_pkgs_postremove failed."
+            else
+              logger -p local4.info -t $log_label "$repo_pkgs_postremove removed."
+            fi
             if [ $VERBOSE  ]; then
               echo "$result"
 	    fi
@@ -1125,8 +1134,10 @@ EOF`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
-	    fi
-            logger -p local4.info -t $log_label "$repo_pkgs_postremove removed."
+              logger -p local4.err -t $log_label "$envlist zypper remove -y $repo_pkgs_postremove failed."
+            else
+              logger -p local4.info -t $log_label "$repo_pkgs_postremove removed."
+            fi
             if [ $VERBOSE  ]; then
               echo "$result"
 	    fi
@@ -1139,8 +1150,10 @@ EOF`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
-	    fi
-            logger -p local4.info  -t $log_label "$repo_pkgs_postremove removed."
+              logger -p local4.err -t $log_label "$envlist apt-get -y remove $repo_pkgs_postremove failed."
+            else
+              logger -p local4.info  -t $log_label "$repo_pkgs_postremove removed."
+            fi
             if [ $VERBOSE  ]; then
               echo "$result"
 	    fi
@@ -1155,8 +1168,10 @@ EOF`
         R=$?
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
-	fi
-        logger -p local4.info -t $log_label "$plain_pkgs_postremove removed."
+              logger -p local4.err -t $log_label "$envlist $sremovecommand $plain_pkgs_postremove failed."
+        else
+              logger -p local4.info -t $log_label "$plain_pkgs_postremove removed."
+        fi
         if [ $VERBOSE  ]; then
           echo "$result"
 	fi

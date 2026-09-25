@@ -37,6 +37,9 @@ our @EXPORT_OK = qw(
     buildinfo_text
     targetarch_from_target
     openeuler_build_target openeuler_repo_subdir
+    genesis_chroot_name genesis_target_arch genesis_build_plan
+    genesis_log_errors genesis_log_deny_rules deb_belongs_to_dist
+    genesis_dists genesis_dist_reason
 );
 
 # Both builders echo the commands they run under --verbose.  Set once, after
@@ -108,11 +111,62 @@ sub rewrite_file {
 # status, which is the exit code times 256, so it is shifted here: a caller
 # comparing the result against a specific code gets the code it expects, not a
 # multiple of it.
+# The pid of the command sh() is running, so a cancellation handler can stop it before the
+# build lock is released. system() gives no pid, which is why this forks explicitly.
+our $CURRENT_CHILD;
+
+# Locks this process holds, weakly. Released by a signal handler or at exit, because
+# _BuildLock::DESTROY does not run when a signal ends the process.
+our @LIVE_LOCKS;
+END { release_build_locks() }
+
 sub sh {
     my ($cmd) = @_;
+    require POSIX;
     say "Running: $cmd" if $VERBOSE;
-    system($cmd);
-    return $? >> 8;
+
+    # Do not let cancellation run between fork and publishing the process group.
+    my $blocked = POSIX::SigSet->new(POSIX::SIGINT(), POSIX::SIGTERM());
+    my $oldmask = POSIX::SigSet->new();
+    POSIX::sigprocmask(POSIX::SIG_BLOCK(), $blocked, $oldmask)
+        or die "Cannot block build cancellation signals: $!\n";
+
+    my $pid = fork();
+    unless (defined $pid) {
+        my $error = "$!";
+        POSIX::sigprocmask(POSIX::SIG_SETMASK(), $oldmask)
+            or POSIX::_exit(127);
+        warn "FATAL: cannot fork to run $cmd: $error\n";
+        return 127;
+    }
+    unless ($pid) {
+        $SIG{INT} = $SIG{TERM} = 'DEFAULT';
+        POSIX::setpgid(0, 0) or POSIX::_exit(127);
+        POSIX::sigprocmask(POSIX::SIG_SETMASK(), $oldmask)
+            or POSIX::_exit(127);
+        exec('/bin/sh', '-c', $cmd) or POSIX::_exit(127);
+    }
+
+    local $CURRENT_CHILD = $pid;  # also the command's process-group ID
+    # Both sides set the group, so neither depends on which side runs first.
+    # EACCES means the child already exec'd, after setting its group; ESRCH
+    # means it has already gone away.
+    unless (POSIX::setpgid($pid, $pid) || $!{EACCES} || $!{ESRCH}) {
+        warn "FATAL: cannot create build process group $pid: $!; retaining locks\n";
+        kill 'KILL', $pid;
+        POSIX::_exit(127);
+    }
+    POSIX::sigprocmask(POSIX::SIG_SETMASK(), $oldmask) or do {
+        warn "FATAL: cannot restore signal mask: $!\n";
+        cancel_build('TERM');
+        POSIX::_exit(127);
+    };
+
+    my $got;
+    do { $got = waitpid($pid, 0) } while ($got == -1 && $!{EINTR});
+    my $status = $?;
+    return 127 if $got == -1;
+    return ($status & 127) ? 128 + ($status & 127) : $status >> 8;
 }
 
 # pod2usage reads the POD of the running program, so each builder keeps its own
@@ -464,12 +518,160 @@ sub lock_path_for {
 # Returns the open handle -- the lock is held for as long as the caller keeps it.
 sub take_build_lock {
     my ($path, $dir) = @_;
-    require Fcntl;
-    my $lockfile = lock_path_for($path, $dir);
-    open my $fh, '>', $lockfile or die "FATAL: cannot open $lockfile: $!\n";
-    flock($fh, Fcntl::LOCK_EX() | Fcntl::LOCK_NB())
-        or die "FATAL: another build of $path already holds $lockfile\n";
-    return $fh;
+    require POSIX;
+    # A directory, not an flock. A build tree can live on an NFS re-export, where the kernel
+    # refuses locks outright: every attempt answers errno 524. mkdir(2) is arbitrated by the
+    # server and needs no lock daemon.
+    my $lockdir = lock_path_for($path, $dir) . '.d';
+    unless (mkdir $lockdir) {
+        die "FATAL: cannot take $lockdir: $!\n" unless $! == POSIX::EEXIST();
+        my $who = ''; if (open(my $h, '<', "$lockdir/owner")) { local $/; $who = <$h> // ''; close $h }
+        chomp $who;
+        die "FATAL: another build of $path already holds $lockdir"
+          . ($who ? " (held by [$who])" : "") . "\n";
+    }
+    if (open(my $ow, '>', "$lockdir/owner")) { print {$ow} "pid=$$\n"; close $ow }
+    # The caller keeps the returned value; release is by pid so a fork cannot free the parent's.
+    my $owner = $$;
+    my $lock = XCAT::BuildUtils::_BuildLock->new($lockdir, $owner);
+    # Registered weakly, so holding it here does not keep the lock alive past its caller's
+    # scope. The registry exists only so a signal can release what DESTROY will not.
+    require Scalar::Util;
+    push @LIVE_LOCKS, $lock;
+    Scalar::Util::weaken($LIVE_LOCKS[-1]);
+    return $lock;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 release_build_locks
+
+Descriptions:
+    Release every build lock this process still holds.
+
+    DESTROY does not run when a signal terminates the process, so a cancelled build left its
+    lock directory behind and the next build of that checkout died on "another build already
+    holds" naming a pid that had long exited. One such directory blocked an openSUSE target
+    across three consecutive runs before anyone looked.
+
+Arguments:
+    None.
+Returns:
+    Nothing.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub release_build_locks {
+    for my $l (@LIVE_LOCKS) { $l->release if defined $l }
+    return;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 install_build_cancellation
+
+Descriptions:
+    Install the INT and TERM handlers that stop the build and release its locks.
+
+    It lives here rather than in the builder so the behaviour can be tested. A builder that
+    wired its own handler inline could only be covered by reading its source, and a test that
+    installs an equivalent handler of its own proves the helper works while saying nothing
+    about whether anything calls it.
+
+    The signal is re-raised with the default disposition afterwards, so the exit status still
+    tells a caller the build was cancelled rather than that it failed.
+
+Arguments:
+    $announce - optional coderef called with the signal name before the build is stopped
+Returns:
+    Nothing.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub install_build_cancellation {
+    my ($announce) = @_;
+    for my $sig (qw(INT TERM)) {
+        $SIG{$sig} = sub {
+            my ($caught) = @_;
+            $announce->($caught) if $announce;
+            cancel_build($caught);
+            $SIG{$caught} = 'DEFAULT';
+            kill $caught => $$;
+        };
+    }
+    return;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 cancel_build
+
+Descriptions:
+    Stop the command in flight, then release the build locks.
+
+    The order matters. Releasing first would hand the checkout to a second build while
+    dpkg-buildpackage is still rewriting debian/changelog and debian/control in it.
+
+    The wait is bounded: a child that ignores the signal must not keep the lock for ever, so
+    it is given a few seconds and then killed outright.
+
+Arguments:
+    $sig - the signal name that started the cancellation
+Returns:
+    Nothing.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub cancel_build {
+    my ($sig) = @_;
+    require POSIX;
+    # A second Ctrl-C must not interrupt cleanup and release the lock early.
+    local $SIG{INT}  = 'IGNORE';
+    local $SIG{TERM} = 'IGNORE';
+
+    if (my $pgid = $CURRENT_CHILD) {
+        my $reaped = 0;
+        for my $stop_signal ($sig, 'KILL') {
+            kill $stop_signal, -$pgid;
+            for (1 .. 50) {
+                unless ($reaped) {
+                    my $got = waitpid($pgid, POSIX::WNOHANG());
+                    $reaped = 1 if $got == $pgid || ($got == -1 && $!{ECHILD});
+                }
+                # The shell exiting is not enough: its workers may still exist.
+                if (!kill(0, -$pgid) && $!{ESRCH}) {
+                    $CURRENT_CHILD = undef;
+                    release_build_locks();
+                    return;
+                }
+                select undef, undef, undef, 0.1;
+            }
+        }
+        # Never let END/DESTROY unlock a checkout whose workers may still run.
+        warn "FATAL: build process group $pgid has not disappeared; retaining locks\n";
+        POSIX::_exit(1);
+    }
+    release_build_locks();
+    return;
+}
+
+{   package XCAT::BuildUtils::_BuildLock;
+    sub new { my ($c,$d,$p)=@_; return bless { dir=>$d, pid=>$p, released=>0 }, $c }
+    # Idempotent: a signal handler and then DESTROY both reach here, and the second must not
+    # remove a directory a LATER build has since taken.
+    sub release {
+        my $s = shift;
+        return if $s->{released};
+        $s->{released} = 1;
+        return unless $$ == $s->{pid};
+        unlink "$s->{dir}/owner";
+        rmdir $s->{dir};
+        return;
+    }
+    sub DESTROY { shift->release }
 }
 
 sub openeuler_build_target {
@@ -510,6 +712,137 @@ sub targetarch_from_target {
           if $part =~ /^(?:x86_64|i[3-6]86|ppc64le|ppc64|aarch64|riscv64|s390x|armv7hl)$/;
     }
     return $parts[-1];
+}
+
+# ------------------------------------------------------------------ Genesis --
+#
+# The Genesis image carries the kernel and the kernel modules of the release it boots,
+# because dracut copies them out of the root it runs in. So the Ubuntu Genesis deb is built
+# once per Ubuntu codename, inside that codename's chroot. A single build on the build host
+# gives every codename the build host's kernel.
+
+# genesis_chroot_name: the schroot chroot that builds the Genesis deb for one codename.
+#
+# Same name xcat-dep's sbuild-all.pl ensure_chroots creates, so both repositories build in
+# the same chroots and neither has to bootstrap a second set.
+sub genesis_chroot_name {
+    my ($codename, $arch) = @_;
+    die "genesis_chroot_name: a codename is required\n"
+        unless defined $codename && length $codename;
+    die "genesis_chroot_name: an architecture is required\n"
+        unless defined $arch && length $arch;
+    return "$codename-$arch-sbuild";
+}
+
+# genesis_target_arch: the directory xCAT reads the Genesis image from, for a deb
+# architecture. mknb reads /opt/xcat/share/xcat/netboot/genesis/<arch>, and that name is
+# the rpm architecture, not the deb one.
+my %GENESIS_TARGET_ARCH = (
+    amd64   => 'x86_64',
+    ppc64el => 'ppc64',
+);
+
+sub genesis_target_arch {
+    my ($arch) = @_;
+    my $target = $GENESIS_TARGET_ARCH{ $arch // '' };
+    die "genesis_target_arch: no Genesis image directory for '" . ($arch // '') . "'\n"
+        unless $target;
+    return $target;
+}
+
+# genesis_build_plan: one Genesis build per codename, for one architecture.
+#
+# The set of codenames comes from the caller, so a pipeline builds exactly the releases it
+# publishes.
+sub genesis_build_plan {
+    my ($dists, $arch) = @_;
+    my @dists = @{ $dists || [] };
+    die "genesis_build_plan: at least one codename is required\n" unless @dists;
+    die "genesis_build_plan: an architecture is required\n"
+        unless defined $arch && length $arch;
+
+    my %seen;
+    return map {
+        {
+            codename => $_,
+            arch     => $arch,
+            chroot   => genesis_chroot_name($_, $arch),
+            package  => "xcat-genesis-base-$arch",
+            target   => genesis_target_arch($arch),
+        }
+    } grep { !$seen{$_}++ } @dists;
+}
+
+# genesis_log_deny_rules / genesis_log_errors: what a Genesis build log says when the build
+# failed but the exit status did not.
+#
+# dracut reports a command it cannot install with a FAILED: line and returns 0. apt has the
+# same shape: a missing package leaves a diagnostic and a zero status behind a `|| true`. So
+# the log is the gate, not the exit status.
+my @GENESIS_LOG_DENY = (
+    [ qr/\bFAILED:/                    => 'dracut could not install a command' ],
+    [ qr/Cannot find module/           => 'a kernel module the build names is absent' ],
+    [ qr/dracut: Cannot/               => 'dracut refused the request' ],
+    [ qr/command not found/            => 'the build root has no such command' ],
+    [ qr/E: Unable to locate package/  => 'apt has no such package' ],
+    [ qr/Unable to correct problems/   => 'apt could not resolve the build root' ],
+);
+
+sub genesis_log_deny_rules { return @GENESIS_LOG_DENY; }
+
+# The package built once per codename. It is the only one: it carries the kernel and the kernel
+# modules of the root that built it.
+my $GENESIS_IMAGE_DEB = qr{\Axcat-genesis-base-};
+
+# Releases whose stock chroot cannot build that package, and why. focal ships debhelper 12 and
+# xCAT-genesis-base declares debhelper-compat (= 13), so sbuild stops on the build dependencies
+# before dracut runs.
+my %GENESIS_DIST_UNSUPPORTED = (
+    focal => 'debhelper 12 cannot satisfy debhelper-compat (= 13)',
+);
+
+# genesis_dists: the releases of @dists a Genesis image can be built on.
+sub genesis_dists {
+    my (@dists) = @_;
+    return grep { !exists $GENESIS_DIST_UNSUPPORTED{$_} } @dists;
+}
+
+# genesis_dist_reason: why a release was left out, or undef.
+sub genesis_dist_reason { return $GENESIS_DIST_UNSUPPORTED{ $_[0] // '' }; }
+
+# deb_belongs_to_dist: whether a built .deb may be published into one release.
+#
+# Almost every xcat-core deb is Architecture:all and the same file serves every release, so the
+# answer is yes. The Genesis image is not: it is built per codename and carries that codename in
+# its version (2.19.0-snap...~noble). Publishing all three into every suite lets apt serve the
+# newest, which is the image of another release.
+#
+# Only that package is asked. A ~ in a version is Debian's prerelease separator before it is
+# anything else, and --release takes whatever the caller gives it, so reading every ~ as a
+# codename drops a whole `--release 1~rc1` build from every suite.
+sub deb_belongs_to_dist {
+    my ($deb, $dist) = @_;
+    return 1 unless defined $deb && defined $dist && $dist ne '';
+    my $base = basename($deb);
+    my ($name) = $base =~ /\A([^_]+)_/;
+    return 1 unless defined $name && $name =~ $GENESIS_IMAGE_DEB;
+    return 1 unless $base =~ /_[^_]*~([A-Za-z0-9.]+)_[^_]*\.deb\z/;
+    return $1 eq $dist ? 1 : 0;
+}
+
+sub genesis_log_errors {
+    my ($text) = @_;
+    return () unless defined $text && length $text;
+    my @found;
+    for my $line (split /\n/, $text) {
+        for my $rule (@GENESIS_LOG_DENY) {
+            my ($pattern, $why) = @{$rule};
+            next unless $line =~ $pattern;
+            push @found, { line => $line, why => $why };
+            last;
+        }
+    }
+    return @found;
 }
 
 1;

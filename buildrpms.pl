@@ -57,7 +57,7 @@ use lib "$Bin/build-utils/lib";
 use XCAT::BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildinfo_text
                         write_script read_line targetarch_from_target
                         openeuler_build_target openeuler_repo_subdir);
-use Fcntl qw(:flock);           # per-target build lock (concurrency guard; see main())
+use POSIX ();                   # EEXIST, for the directory build lock (see main())
 use Getopt::Long qw(GetOptions);
 use POSIX qw(strftime);
 use Parallel::ForkManager;
@@ -365,6 +365,9 @@ sub buildsources_genesis_base($) {
     # %install runs this against the extracted payload before it becomes an rpm.
     cp "xCAT-genesis-builder/verify-genesis-payload",
        "$staging_root/verify-genesis-payload";
+    make_path("$staging_root/lib/XCAT");
+    cp "xCAT-genesis-builder/lib/XCAT/GenesisPayload.pm",
+       "$staging_root/lib/XCAT/GenesisPayload.pm";
 
     unlink $support_tarball if -f $support_tarball;
     sh_or_die(qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -cjf "$support_tarball" -C "$staging_parent" xCAT-genesis-base-build-support),
@@ -715,14 +718,20 @@ sub setup_local_repos {
 }
 
 
-# Index one repo dir with deterministic, upstream-matching metadata. createrepo_c's
-# defaults already emit primary/filelists/other as *.xml.zst plus *.sqlite.bz2
-# (--database), exactly the upstream shape; --set-timestamp-to-revision pins the
-# repomd timestamp to SOURCE_DATE_EPOCH.
+# Index one repo dir with deterministic, upstream-matching metadata: primary/filelists/other as
+# *.xml.zst, with --set-timestamp-to-revision pinning the repomd timestamp to SOURCE_DATE_EPOCH.
+#
+# NO --database. It writes *.sqlite.bz2, and building those needs SQLite, which needs POSIX
+# locks. A build tree can live on an NFS re-export, where the kernel refuses locks outright:
+# every attempt answers errno 524, and createrepo_c then dies on every target with
+# "Cannot open .repodata/primary.sqlite: Can not create db_info table: disk I/O error".
+# Without --database it succeeds there.
+#
+# Nothing this project ships reads the sqlite metadata. dnf on el8+ and zypper both read the XML.
 sub createrepo_dir {
     my ($dir, $extra) = @_;
     $extra //= '';
-    sh_or_die(qq(createrepo_c --update --database )
+    sh_or_die(qq(createrepo_c --update )
        . qq(--revision "$SOURCE_DATE_EPOCH" --set-timestamp-to-revision $extra "$dir"),
         "Failed to createrepo_c $dir\n");
 }
@@ -934,9 +943,17 @@ sub merge_core_repos {
 # file and the cached chroot dirs left behind are normal mock state, not leaks.)
 my %MOCK_INFLIGHT;      # ForkManager child pid => mock chroot (-r) name it is building
 my $ABORTING = 0;
-my $BUILD_LOCK_FH;      # per-target build flock; MUST stay file-scoped so the fd (and thus the
-                        # lock) lives for the whole process. A lexical inside main()'s block would
-                        # be DESTROYED at block exit -> lock released before any worker forks.
+my $BUILD_LOCK_DIR;     # per-target build lock, an atomic mkdir rather than an flock. The build
+                        # tree can live on an NFS re-export, where the kernel refuses locks
+                        # outright ("Clients are not allowed to get file locks or delegations from
+                        # a reexport server"), so every flock there fails with errno 524. mkdir(2)
+                        # is arbitrated by the server and needs no lock daemon. File-scoped so the
+                        # release runs once, from END, for the whole process.
+my $BUILD_LOCK_PID;     # the pid that took it. ForkManager children inherit $BUILD_LOCK_DIR, and
+                        # their END would release the PARENT's lock -- the flock this replaces
+                        # could not be released by a child, and neither may this.
+END { rmdir $BUILD_LOCK_DIR if defined $BUILD_LOCK_DIR and defined $BUILD_LOCK_PID and $$ == $BUILD_LOCK_PID }
+
 my @CHILD_FAILURES;     # idents (chroot names) of ForkManager children that exited non-zero
 
 # PIDs of running mock processes whose `-r <chroot>` matches one of @chroots.
@@ -993,6 +1010,9 @@ sub abort_builds {
         sweep_mock_mounts(@chroots);
     }
     warn "[buildrpms] abort cleanup done\n";
+    # The re-raise below kills this process by signal, and END blocks do not run then. Release the
+    # build lock here or a killed build strands it for every later run.
+    rmdir $BUILD_LOCK_DIR if defined $BUILD_LOCK_DIR and defined $BUILD_LOCK_PID and $$ == $BUILD_LOCK_PID;
     $SIG{$sig} = 'DEFAULT';
     kill $sig, $$;                                  # re-raise for the correct exit status
 }
@@ -1025,9 +1045,10 @@ sub main {
         my $key = join('-', $opts{targets}->@*)
                 . ($opts{mock_uniqueext} ? "-$opts{mock_uniqueext}" : "");
         $key =~ s/[^A-Za-z0-9._-]/-/g;
-        my $lock = "/var/lock/buildrpms.$key.lock";
-        if (open($BUILD_LOCK_FH, '>', $lock)) {
-            unless (flock($BUILD_LOCK_FH, LOCK_EX | LOCK_NB)) {
+        my $lock = "/var/lock/buildrpms.$key.lock.d";
+        {
+            unless (mkdir $lock) {
+                die "FATAL: cannot take the build lock $lock: $!\n" unless $! == POSIX::EEXIST();
                 die "FATAL: another buildrpms.pl is already building target '@{$opts{targets}}'"
                   . ($opts{mock_uniqueext} ? " (uniqueext=$opts{mock_uniqueext})" : "") . ".\n"
                   . "       ($lock is held). Concurrent builds of the same target collide on the shared\n"
@@ -1035,9 +1056,7 @@ sub main {
                   . "       cleanup unmounts this build's chroot). Serialize them, or pass a distinct\n"
                   . "       --mock-uniqueext per build.\n";
             }
-            # $BUILD_LOCK_FH is file-scoped, so the fd stays open (lock held) until this process
-            # exits. Child forks inherit the fd but their exits never release it (the parent's
-            # still-open fd keeps the lock), which is exactly what we want.
+            $BUILD_LOCK_DIR = $lock; $BUILD_LOCK_PID = $$;
         }
     }
 

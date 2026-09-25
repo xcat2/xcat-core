@@ -193,8 +193,21 @@ is( $render->( $pkglist, environvar => 'ACCEPT_EULA=Y' ), $without,
     };
     like( $apt_render->(), qr{URIs: http://mirror\.example/ubuntu}, 'the pkgdir mirror joins the installer sources' );
     like( $apt_render->(), qr{^    conf: 'APT::Install-Recommends "false";'$}m, 'the installer installs without recommended packages, as ospkgs does' );
+    # On a PReP machine curtin installs no bootloader package of its own: install_missing_packages
+    # covers UEFI and s390x only, and install_grub then runs "dpkg-reconfigure grub-ieee1275".
+    # The Ubuntu kernel image recommends grub-ieee1275, so the package reaches the target only
+    # when the installer keeps recommended packages.
+    unlike( $apt_render->( osarch => 'ppc64el' ), qr{APT::Install-Recommends},
+        'except on ppc64el, where the bootloader the installer configures is a recommended package' );
     unlike( $apt_render->( environvar => 'http_proxy=http://proxy.example:3128' ), qr{mirror\.example|xcat-pkgdir},
         'but not for an osimage with environvar, whose mirrors may need those variables' );
+
+    # The offline configuration installs from the media alone and carries the same setting.
+    local *xCAT::Template::ubuntu_subiquity_apt_mirror = sub { '' };
+    like( $apt_render->(), qr{^    conf: 'APT::Install-Recommends "false";'$}m,
+        'an offline install drops the recommended packages as well' );
+    unlike( $apt_render->( osarch => 'ppc64el' ), qr{APT::Install-Recommends},
+        'and keeps them on ppc64el for the same reason' );
 }
 
 done_testing();
