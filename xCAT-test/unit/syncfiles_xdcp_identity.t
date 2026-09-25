@@ -65,17 +65,22 @@ sub run_syncfiles {
         _xcat_clienthost => [ $case->{client} ],
     });
     my $original = dclone($request);
+    my @warnings;
 
-    xCAT_plugin::syncfiles::process_request(
-        $request,
-        $callback,
-        sub {
-            my ( $outgoing, $response_callback ) = @_;
-            push @sent, [ dclone($outgoing), $response_callback ];
-            return;
-        },
-    );
+    {
+        local $SIG{__WARN__} = sub { push @warnings, @_ } if $case->{warnings};
+        xCAT_plugin::syncfiles::process_request(
+            $request,
+            $callback,
+            sub {
+                my ( $outgoing, $response_callback ) = @_;
+                push @sent, [ dclone($outgoing), $response_callback ];
+                return;
+            },
+        );
+    }
 
+    is_deeply( \@warnings, $case->{warnings}, 'the option diagnostics match' ) if $case->{warnings};
     is_deeply( $request, $original, 'the caller request is unchanged' );
     is( scalar @sent, scalar @{ $case->{expected} }, 'the request count matches' );
     for my $index ( 0 .. $#{ $case->{expected} } ) {
@@ -148,6 +153,15 @@ for my $option ( '-r', '-c', '--node-rcp' ) {
 }
 
 push @cases,
+    {
+        name     => 'invalid option sends no request',
+        client   => 'node1.example.test',
+        args     => ['--bogus'],
+        synclist => { node1 => '/install/custom/sync-a' },
+        expected => [],
+        messages => [ qr/Received syncfiles from node1\.example\.test, with invalid options\b/ ],
+        warnings => ["Unknown option: bogus\n"],
+    },
     {
         name     => 'unavailable synclist lookup sends no request',
         client   => 'node1.example.test',
