@@ -222,4 +222,35 @@ is(
         'the riscv64 HTTP branch goes with the image it would have served' );
 }
 
+
+# The x86 lines, pinned: what the renderer produces with the xNBA loader.
+my @lines = @{ xCAT::DHCP::BootPolicy->isc_client_architecture_lines(
+        next_server => '192.0.2.10',
+        portsuffix  => ':8080',
+        net         => '192.0.2.0',
+        prefix      => 24,
+    ) };
+is_deeply(
+    [ @lines[ 0 .. 16 ] ],
+    [
+        "    if suffix(option user-class-identifier, 4) = \"xNBA\" and option client-architecture = 00:00 { #x86, xCAT Network Boot Agent\n",
+        "        always-broadcast on;\n",
+        "        filename = \"http://192.0.2.10:8080/tftpboot/xcat/xnba/nets/192.0.2.0_24\";\n",
+        "    } else if suffix(option user-class-identifier, 4) = \"xNBA\" and option client-architecture = 00:09 { #x86, xCAT Network Boot Agent\n",
+        "        filename = \"http://192.0.2.10:8080/tftpboot/xcat/xnba/nets/192.0.2.0_24.uefi\";\n",
+        "    } else if suffix(option user-class-identifier, 4) = \"xNBA\" and option client-architecture = 00:07 { #x86-64 UEFI, xCAT Network Boot Agent\n",
+        "        filename = \"http://192.0.2.10:8080/tftpboot/xcat/xnba/nets/192.0.2.0_24.uefi\";\n",
+        "    } else if option client-architecture = 00:00  { #x86\n",
+        "        filename \"xcat/xnba.kpxe\";\n",
+        "    } else if option vendor-class-identifier = \"Etherboot-5.4\"  { #x86\n",
+        "        filename \"xcat/xnba.kpxe\";\n",
+        "    } else if option client-architecture = 00:07 { #x86_64 uefi\n ",
+        "        filename \"xcat/xnba.efi\";\n",
+        "    } else if option client-architecture = 00:09 { #x86_64 uefi alternative id\n ",
+        "        filename \"xcat/xnba.efi\";\n",
+        "    } else if option client-architecture = 00:10 { #x86_64 uefi http boot\n ",
+        "        filename \"xcat/xnba.efi\";\n",
+    ],
+    'the x86 lines give the network scripts to xNBA clients and xNBA to the rest'
+);
 done_testing();

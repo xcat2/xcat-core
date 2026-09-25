@@ -344,4 +344,145 @@ is_deeply(
     's390x firmware receives its supported network configuration method',
 );
 
+# ---- xNBA output, pinned ------------------------------------------------------------------------
+# The classes and host statements below are what the renderers produced before the x86 loader became
+# selectable, byte for byte. They must not change while the xNBA loader is in use.
+my $xnba_user_class = q{(option[77].exists and (option[77].text == 'xNBA' or option[77].hex == 0x784e4241 or substring(option[77].hex,1,4) == 'xNBA'))};
+my $uefi_x64        = q{(option[93].hex == 0x0007 or option[93].hex == 0x0009 or option[93].hex == 0x0010)};
+
+my %x86_global = map { $_ => 1 } qw(xcat-bios xcat-etherboot xcat-uefi-x64);
+is_deeply(
+    [ grep { $x86_global{ $_->{name} } } @{ xCAT::DHCP::BootPolicy->kea_client_classes( xnba_kpxe => 1, xnba_efi => 1 ) } ],
+    [
+        {
+            name             => 'xcat-bios',
+            test             => "option[93].hex == 0x0000 and not ($xnba_user_class)",
+            'boot-file-name' => 'xcat/xnba.kpxe',
+        },
+        {
+            name             => 'xcat-etherboot',
+            test             => "option[60].text == 'Etherboot-5.4'",
+            'boot-file-name' => 'xcat/xnba.kpxe',
+        },
+        {
+            name             => 'xcat-uefi-x64',
+            test             => "$uefi_x64 and not ($xnba_user_class)",
+            'boot-file-name' => 'xcat/xnba.efi',
+        },
+    ],
+    'the global x86 classes give xNBA to every client that is not already xNBA'
+);
+is_deeply(
+    [ map { $_->{name} } @{ xCAT::DHCP::BootPolicy->kea_client_classes() } ],
+    [qw(xcat-pxe-lease xcat-aarch64 xcat-riscv64 xcat-ppc64 xcat-ia64 xcat-fallback)],
+    'without the xNBA files, no global x86 class names a loader'
+);
+
+my $xnba_context = { 'xcat-mac' => '52:54:4b:10:00:11', 'xcat-node' => 'cn01', 'xcat-purpose' => 'xnba-second-stage' };
+is_deeply(
+    xCAT::DHCP::BootPolicy->kea_xnba_node_classes(
+        xnba_efi => 1,
+        nodes    => [ { node => 'cn01', mac => '52:54:4B:10:00:11', next_server => '192.0.2.10', httpport => '8080' } ],
+    ),
+    [
+        {
+            name             => 'xcat-xnba-cn01-52544b100011-bios',
+            test             => "$xnba_user_class and option[93].hex == 0x0000 and pkt4.mac == 0x52544b100011",
+            'boot-file-name' => 'http://192.0.2.10:8080/tftpboot/xcat/xnba/nodes/cn01',
+            'user-context'   => $xnba_context,
+        },
+        {
+            name             => 'xcat-xnba-cn01-52544b100011-uefi',
+            test             => "$xnba_user_class and $uefi_x64 and pkt4.mac == 0x52544b100011",
+            'boot-file-name' => 'http://192.0.2.10:8080/tftpboot/xcat/xnba/nodes/cn01.uefi',
+            'user-context'   => $xnba_context,
+        },
+    ],
+    'the node classes give the node scripts to xNBA clients only'
+);
+is_deeply(
+    xCAT::DHCP::BootPolicy->kea_xnba_network_classes(
+        net         => '192.0.2.0',
+        prefix      => 24,
+        next_server => '192.0.2.10',
+        httpport    => '8080',
+        xnba_kpxe   => 1,
+        xnba_efi    => 1,
+    ),
+    [
+        {
+            name             => 'xcat-xnba-net-192.0.2.0_24-bios',
+            test             => "$xnba_user_class and option[93].hex == 0x0000",
+            'boot-file-name' => 'http://192.0.2.10:8080/tftpboot/xcat/xnba/nets/192.0.2.0_24',
+            additional_only  => 1,
+        },
+        {
+            name             => 'xcat-xnba-net-192.0.2.0_24-uefi',
+            test             => "$xnba_user_class and $uefi_x64",
+            'boot-file-name' => 'http://192.0.2.10:8080/tftpboot/xcat/xnba/nets/192.0.2.0_24.uefi',
+            additional_only  => 1,
+        },
+    ],
+    'the network classes give the network scripts to xNBA clients only'
+);
+
+# ISC host statements, as dhcp.pm wrote them for node cn01 before they moved into BootPolicy.
+my %statements = (
+    bios => q{if suffix(option user-class-identifier, 4) = \"xNBA\" and option client-architecture = 00:00 { filename = \"http://192.0.2.10:8080/tftpboot/xcat/xnba/nodes/cn01\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }},
+    uefi => q{if suffix(option user-class-identifier, 4) = \"xNBA\" and option client-architecture = 00:00 { always-broadcast on; filename = \"http://192.0.2.10:8080/tftpboot/xcat/xnba/nodes/cn01\"; } else if suffix(option user-class-identifier, 4) = \"xNBA\" and option client-architecture = 00:09 { filename = \"http://192.0.2.10:8080/tftpboot/xcat/xnba/nodes/cn01.uefi\"; } else if suffix(option user-class-identifier, 4) = \"xNBA\" and option client-architecture = 00:07 { filename = \"http://192.0.2.10:8080/tftpboot/xcat/xnba/nodes/cn01.uefi\"; } else if option client-architecture = 00:07 { filename = \"xcat/xnba.efi\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }},
+    at_boot => q{filename = \"\";},
+    iscsi_boot => q{if option client-architecture = 00:00 and not exists gpxe.bus-id { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; } },
+    iscsi_iscsiboot => q{if option client-architecture = 00:00 and not exists gpxe.bus-id { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; } },
+    winshell_proxy => q{if option client-architecture = 00:00 or option client-architecture = 00:07 or option client-architecture = 00:09 { filename = \"\"; option vendor-class-identifier \"PXEClient\"; } else { filename = \"\"; }},
+    winshell => q{if suffix(option user-class-identifier, 4) = \"xNBA\" and option client-architecture = 00:00 { always-broadcast on; filename = \"http://192.0.2.10:8080/tftpboot/xcat/xnba/nodes/cn01\"; } else if option client-architecture = 00:07 or option client-architecture = 00:09 { filename = \"\"; option vendor-class-identifier \"PXEClient\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }},
+    windows_install => q{if suffix(option user-class-identifier, 4) = \"xNBA\" and option client-architecture = 00:00 { always-broadcast on; filename = \"http://192.0.2.10:8080/tftpboot/xcat/xnba/nodes/cn01\"; } else if option client-architecture = 00:07 or option client-architecture = 00:09 { filename = \"\"; option vendor-class-identifier \"PXEClient\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }},
+    pxe_iscsi => q{if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } },
+    pxe => q{if option vendor-class-identifier = \"ScaleMP\" { filename = \"vsmp/pxelinux.0\"; } else { filename = \"pxelinux.0\"; }},
+);
+my @statement_cases = (
+    [ bios            => { netboot => 'xnba', uefi => 0, currstate => 'install rhels9' } ],
+    [ uefi            => { netboot => 'xnba', uefi => 1, currstate => 'install rhels9' } ],
+    [ at_boot         => { netboot => 'xnba', uefi => 1, currstate => 'boot' } ],
+    [ iscsi_boot      => { netboot => 'xnba', uefi => 1, currstate => 'boot', iscsi => 1 } ],
+    [ iscsi_iscsiboot => { netboot => 'xnba', uefi => 0, currstate => 'iscsiboot', iscsi => 1 } ],
+    [ winshell_proxy  => { netboot => 'xnba', uefi => 1, currstate => 'winshell', proxydhcp => sub { 1 } } ],
+    [ winshell        => { netboot => 'xnba', uefi => 1, currstate => 'winshell', proxydhcp => sub { 0 } } ],
+    [ windows_install => { netboot => 'xnba', uefi => 2, currstate => 'install win2022', proxydhcp => sub { 0 } } ],
+    [ pxe_iscsi       => { netboot => 'pxe',  uefi => 0, currstate => 'boot', iscsi => 1 } ],
+    [ at_boot         => { netboot => 'pxe',  uefi => 0, currstate => 'iscsiboot' } ],
+    [ pxe             => { netboot => 'pxe',  uefi => 0, currstate => 'install rhels9' } ],
+);
+for my $case (@statement_cases) {
+    my ( $name, $opts ) = @$case;
+    is(
+        xCAT::DHCP::BootPolicy->isc_node_boot_statements(
+            %$opts,
+            loader_present => 1,
+            node           => 'cn01',
+            next_server    => '192.0.2.10',
+            portsuffix     => ':8080',
+        ),
+        $statements{$name},
+        "ISC host statements for the $name case"
+    );
+}
+for my $netboot (qw(xnba pxe)) {
+    is(
+        xCAT::DHCP::BootPolicy->isc_node_boot_statements( netboot => $netboot, loader_present => 0, node => 'cn01' ),
+        '',
+        "no ISC host statement for netboot $netboot without the xNBA BIOS file"
+    );
+}
+is(
+    xCAT::DHCP::BootPolicy->isc_node_boot_statements( netboot => 'grub2', loader_present => 1, node => 'cn01' ),
+    '',
+    'no ISC host statement for a netboot method that does not use the x86 loader'
+);
+my $proxy_asked = 0;
+xCAT::DHCP::BootPolicy->isc_node_boot_statements(
+    netboot => 'xnba', loader_present => 1, uefi => 1, currstate => 'install rhels9', node => 'cn01',
+    proxydhcp => sub { $proxy_asked++; 1 },
+);
+is( $proxy_asked, 0, 'the proxy DHCP daemon is looked up only for a Windows boot' );
+
 done_testing();
