@@ -210,7 +210,9 @@ config_native_rsyslog_receiver()
     ' "$expanded" >> "$1"
     status=$?
   fi
-  rm -f "$expanded"
+  if [ -n "$expanded" ]; then
+    rm -f "$expanded"
+  fi
   return $status
 }
 
