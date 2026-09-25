@@ -10,6 +10,7 @@ Run the package and unprivileged namespace cases as an ordinary user:
 prove xCAT-test/native/buildrpms_openeuler.t \
       xCAT-test/native/buildrpms_release_openeuler.t \
       xCAT-test/native/genesis_openeuler*.t \
+      xCAT-test/native/openeuler_genimage_bootfiles.t \
       xCAT-test/native/openeuler_package_policy.t
 ```
 
