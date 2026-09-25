@@ -725,6 +725,42 @@ sub kea_ipxe_option_defs {
     ];
 }
 
+# An upgrade keeps the configuration of an older makedhcp -n. These add the declarations it lacks
+# and return how many they added, or an error when they cannot add them.
+sub isc_declare_ipxe_features {
+    my ( $class, $conf ) = @_;
+
+    my ($space) = grep { $conf->[$_] =~ /^\s*option\s+space\s+gpxe\s*;/ } 0 .. $#$conf;
+    return ( 0, 'it declares no gpxe option space' ) unless defined $space;
+    my @missing = grep {
+        my ($name) = /^option (\S+) code /;
+        !grep { /^\s*option\s+\Q$name\E\s+code\s/ } @$conf;
+    } @{ $class->isc_ipxe_feature_option_lines() };
+    splice( @$conf, $space + 1, 0, @missing );
+    return ( scalar @missing, undef );
+}
+
+# The Kea variant also returns an error for an option 175 without the gpxe encapsulation: Kea cannot
+# decode the features in it, and option data can name it, so makedhcp does not replace it.
+sub kea_declare_ipxe_features {
+    my ( $class, $dhcp4 ) = @_;
+
+    # Compare codes as numbers: JSON::XS writes a number used as a string as a JSON string.
+    my $defs = $dhcp4->{'option-def'} || [];
+    my ($opaque) = grep {
+        ( $_->{space} // 'dhcp4' ) eq 'dhcp4' && $_->{code} == 175 && ( $_->{encapsulate} // '' ) ne 'gpxe'
+    } @$defs;
+    return ( 0, "The Kea option definition $opaque->{name} gives option 175 no gpxe encapsulation, so netboot=ipxe "
+          . "clients cannot report their iPXE features. Run makedhcp -n, or give $opaque->{name} the gpxe encapsulation." )
+      if $opaque;
+    my @missing = grep {
+        my $def = $_;
+        !grep { ( $_->{space} // 'dhcp4' ) eq $def->{space} && $_->{code} == $def->{code} } @$defs;
+    } @{ $class->kea_ipxe_option_defs() };
+    push @{ $dhcp4->{'option-def'} }, @missing if @missing;
+    return ( scalar @missing, undef );
+}
+
 # The x86 loader: its BIOS and UEFI files, and the tests that recognize a client that runs it and
 # can fetch the boot script.
 sub x86_loader {

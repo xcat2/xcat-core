@@ -228,6 +228,32 @@ sub _omapi_next_server_statement
     return 'next-server ' . $server . ';';
 }
 
+# dhcpd must load the iPXE feature options of an upgraded configuration before it gets a subnet or
+# an OMAPI host statement that tests them. The marker outlives a run that stops before dhcpd loads
+# them, so the next run restarts dhcpd before it changes a host.
+sub _isc_declare_ipxe_features
+{
+    my ($conf, $path) = @_;
+
+    my $pending = "$path.ipxe-restart";
+    my ($added, $why) = xCAT::DHCP::BootPolicy->isc_declare_ipxe_features($conf);
+    return "Unable to add the iPXE feature options to $path: $why. Run makedhcp -n." if $why;
+    if ($added) {
+        my $fh;
+        unless (open($fh, '>', $pending) and close($fh)) {
+            return "Unable to add the iPXE feature options to $path: cannot create $pending: $!";
+        }
+        unless (open($fh, '>', $path) and print($fh @$conf) and close($fh)) {
+            return "Unable to add the iPXE feature options to $path: $!";
+        }
+    }
+    return unless -e $pending;
+    return "Unable to restart the DHCP server after adding the iPXE feature options to $path"
+      if xCAT::Utils->restartservice("dhcp");
+    unlink($pending);
+    return;
+}
+
 sub _isc_static_host_fallback
 {
     return _ubuntu_isc_omapi_limited() && !$::XCATSITEVALS{externaldhcpservers};
@@ -2075,6 +2101,15 @@ sub process_request
             $restartdhcp = 1;
             @dhcpconf    = ();
         }
+        # newconfig() declares the options in the configuration it writes for a missing or foreign file.
+        if ($^O ne 'aix' and @dhcpconf) {
+            my $error = _isc_declare_ipxe_features(\@dhcpconf, $dhcpconffile);
+            if ($error) {
+                # OMAPI removes a host before it adds it again, so stop before any host update.
+                $callback->({ error => [$error], errorcode => [1] });
+                return;
+            }
+        }
         if ($dhcp6conffile and -e $dhcp6conffile) {
             open($rconf, $dhcp6conffile);
             while (<$rconf>) { push @dhcp6conf, $_; }
@@ -2736,6 +2771,7 @@ sub kea_process_request
     my $reservations4 = [];
     my $reservations6 = [];
     my $client_classes_changed = 0;
+    my $option_defs_added = 0;
     if ($opt->{d}) {
         foreach my $match (@{ kea_reservation_matches_for_nodes($nodes) }) {
             push @deleted4, @{ $backend->delete_reservations($loaded4, $match) };
@@ -2743,6 +2779,13 @@ sub kea_process_request
         }
         $client_classes_changed = kea_remove_node_client_classes($loaded4, $nodes);
     } else {
+        # An upgrade keeps the option definitions of an older makedhcp -n.
+        ( $option_defs_added, my $defs_error ) = xCAT::DHCP::BootPolicy->kea_declare_ipxe_features($loaded4->{Dhcp4});
+        if ($defs_error) {
+            $callback->({ error => [$defs_error], errorcode => [1] });
+            flock($dhcplockfd, LOCK_UN);
+            return;
+        }
         $reservations4 = kea_build_node_reservations($backend, $loaded4, $nodes);
         $backend->upsert_reservations($loaded4, $reservations4);
         $client_classes_changed = kea_sync_node_client_classes($loaded4, $nodes);
@@ -2785,7 +2828,7 @@ sub kea_process_request
         }
     }
 
-    unless ($live_ok && !$client_classes_changed && !$ddns_added) {
+    unless ($live_ok && !$client_classes_changed && !$ddns_added && !$option_defs_added) {
         my $restart = $backend->restart_services(ipv6 => $using_dhcp6, ctrl_agent => kea_control_agent_enabled(), ddns => $using_ddns, enable => $ddns_added);
         if ($restart->{error}) {
             $callback->({ error => [ $restart->{error} ], errorcode => [1] });
