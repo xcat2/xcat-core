@@ -99,3 +99,14 @@ missing_from()
         done
     done
 }
+
+@test "every install list asks for ipxe-xcat and xnba-undi" {
+    for format in rpm deb; do
+        for list in install riscv64; do
+            packages="$(go_xcat_list "$format" "$list")"
+            for package in ipxe-xcat xnba-undi; do
+                grep -Fqx "$package" <<<"$packages" || { echo "$format $list: no $package"; false; }
+            done
+        done
+    done
+}
