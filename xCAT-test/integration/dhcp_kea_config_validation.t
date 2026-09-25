@@ -10,6 +10,7 @@ use Test::More;
 
 use xCAT::CommandUtils;
 use xCAT::DHCP::Backend::Kea;
+use xCAT::DHCP::BootPolicy;
 
 my $kea_dhcp4 = xCAT::CommandUtils::find_executable('kea-dhcp4');
 plan skip_all => 'kea-dhcp4 is not installed' unless $kea_dhcp4;
@@ -115,6 +116,23 @@ my $path = write_validation_file( $json, 'xcat-test-kea-dhcp4' );
 my $result = $backend->validate_dhcp4_config($path);
 ok( !$result->{error}, 'generated Kea DHCPv4 config validates with kea-dhcp4 -t' )
   or diag $result->{error};
+
+# makedhcp without -n adds the iPXE feature options to the configuration of an older makedhcp -n, and
+# writes it back. The next makedhcp reads the upgraded configuration.
+{
+    my $source = $path;
+    my @written;
+    for my $label ( 'an upgraded', 'a current' ) {
+        my $loaded = $backend->load_dhcp4_config($source);
+        xCAT::DHCP::BootPolicy->kea_declare_ipxe_features( $loaded->{Dhcp4} );
+        $source = write_validation_file( $backend->encode_config($loaded), 'xcat-test-kea-dhcp4-upgraded' );
+        push @written, $source;
+        my $check = $backend->validate_dhcp4_config($source);
+        ok( !$check->{error}, "makedhcp writes $label Kea DHCPv4 config that validates with kea-dhcp4 -t" )
+          or diag $check->{error};
+    }
+    unlink @written;
+}
 
 unlink $path;
 SKIP: {
