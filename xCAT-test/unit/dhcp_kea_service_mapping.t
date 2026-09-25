@@ -203,23 +203,32 @@ foreach my $unit ( values %packaged_units ) {
         },
         'restart reports the resolved systemd units in lifecycle order',
     );
+    # The three daemons that serve clients are reloaded over their control
+    # socket, because that is the only way to learn that Kea rejected the file
+    # -- SIGHUP reports success as soon as it is delivered. There is no socket
+    # in this fixture, so each of them falls back to the restart that always
+    # re-reads the configuration. The Control Agent has no such socket to fall
+    # back from and keeps the signal.
     is_deeply(
         \@systemd_calls,
         [
             [ enable  => 'kea-dhcp-ddns-server' ],
             [ status  => 'kea-dhcp-ddns-server' ],
-            [ command => 'systemctl reload kea-dhcp-ddns-server', -1 ],
+            [ command => 'systemctl reset-failed kea-dhcp-ddns-server', -1 ],
+            [ restart => 'kea-dhcp-ddns-server' ],
             [ enable  => 'kea-dhcp4' ],
             [ status  => 'kea-dhcp4' ],
-            [ command => 'systemctl reload kea-dhcp4', -1 ],
+            [ command => 'systemctl reset-failed kea-dhcp4', -1 ],
+            [ restart => 'kea-dhcp4' ],
             [ enable  => 'kea-dhcp6-server' ],
             [ status  => 'kea-dhcp6-server' ],
-            [ command => 'systemctl reload kea-dhcp6-server', -1 ],
+            [ command => 'systemctl reset-failed kea-dhcp6-server', -1 ],
+            [ restart => 'kea-dhcp6-server' ],
             [ enable  => 'kea-ctrl-agent' ],
             [ status  => 'kea-ctrl-agent' ],
             [ command => 'systemctl reload kea-ctrl-agent', -1 ],
         ],
-        'systemd lifecycle calls preserve enable, status, and reload behavior',
+        'a daemon that cannot confirm a reload is restarted instead',
     );
 
     {
