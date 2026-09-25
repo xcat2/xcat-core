@@ -11,8 +11,7 @@ use XCAT::Test::File qw(repo_path slurp_repo_file);
 
 # The Yocto configuration, recipes, kernel fragments and units of the OpenEmbedded Genesis
 # image are the artifact: kas and bitbake read these lines. The scripts and programs the image
-# runs are tested in xCAT-test/bats/genesis_openembedded_*.bats, and the Newt console source in
-# genesis_openembedded_console.t.
+# runs are tested in xCAT-test/bats/genesis_openembedded_*.bats.
 
 my $kas = slurp_repo_file('xCAT-genesis-base/oe/kas/common.yml');
 like( $kas, qr/tag: yocto-6\.0\.2/, 'build uses Yocto 6.0.2' );
