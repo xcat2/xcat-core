@@ -4321,6 +4321,7 @@ sub kea_option_defs
         { name => 'iscsi-initiator-iqn', code => 203, type => 'string', space => 'dhcp4' },
         { name => 'cumulus-provision-url', code => 239, type => 'string', space => 'dhcp4' },
         @{ xCAT::DHCP::BootPolicy->kea_isan_option_defs() },
+        @{ xCAT::DHCP::BootPolicy->kea_ipxe_option_defs() },
     ];
 }
 
@@ -5264,6 +5265,7 @@ sub newconfig
     push @dhcpconf, "option space gpxe;\n";
     push @dhcpconf, "option gpxe-encap-opts code 175 = encapsulate gpxe;\n";
     push @dhcpconf, "option gpxe.bus-id code 177 = string;\n";
+    push @dhcpconf, @{ xCAT::DHCP::BootPolicy->isc_ipxe_feature_option_lines() };
     push @dhcpconf, "option user-class-identifier code 77 = string;\n";
     push @dhcpconf, "option gpxe.no-pxedhcp code 176 = unsigned integer 8;\n";
     push @dhcpconf, "option tcode code 101 = text;\n";

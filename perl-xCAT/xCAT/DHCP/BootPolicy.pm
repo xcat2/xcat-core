@@ -698,6 +698,33 @@ sub kea_xnba_network_classes {
     return \@classes;
 }
 
+# iPXE feature indicators: sub-options of DHCP option 175 that iPXE sends, one byte each, for the
+# protocols and image formats it was built with.
+my @IPXE_FEATURES = (
+    [ iscsi   => 17 ],
+    [ http    => 19 ],
+    [ bzimage => 24 ],
+    [ pxe     => 33 ],
+    [ efi     => 36 ],
+);
+
+# The ISC declarations of the iPXE feature indicators, in the gpxe option space. They decode the
+# options and change no rule. OMAPI keeps host statements in dhcpd.leases, so they are always
+# declared: a statement that tests them must parse even when no node needs it any more.
+sub isc_ipxe_feature_option_lines {
+    return [ map { "option gpxe.$_->[0] code $_->[1] = unsigned integer 8;\n" } @IPXE_FEATURES ];
+}
+
+# The Kea definition of option 175 and of the iPXE feature indicators it encapsulates. Kea tests a
+# sub-option without a definition, but never finds it there.
+sub kea_ipxe_option_defs {
+    return [
+        { name => 'gpxe-encap-opts', code => 175, space => 'dhcp4', type => 'empty', encapsulate => 'gpxe' },
+        # The ISC lines use these codes as strings, and JSON::XS then writes them as JSON strings.
+        map { { name => $_->[0], code => 0 + $_->[1], space => 'gpxe', type => 'uint8' } } @IPXE_FEATURES,
+    ];
+}
+
 # The x86 loader: its BIOS and UEFI files, and the tests that recognize a client that runs it and
 # can fetch the boot script.
 sub x86_loader {
