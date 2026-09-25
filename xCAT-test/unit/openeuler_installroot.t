@@ -46,6 +46,8 @@ is($repo, "[compute-os]\nname=compute-os\nbaseurl=https://mirror.example/OS/x86_
 $ok = eval { imgutils::rpm_repository_config('openeuler24.03sp3', 'otherpkgs',
     'file:///install/otherpkgs'); 1 };
 ok(!$ok, 'native repository cannot silently omit its signing keys');
+is($@, "openEuler repositories require trusted RPM signing keys\n",
+    'native repository reports the missing signing keys');
 is(imgutils::rpm_repository_config('rhels9.6', 'legacy-os', 'file:///install/rhels9.6/x86_64'),
     "[legacy-os]\nname=legacy-os\nbaseurl=file:///install/rhels9.6/x86_64\ngpgcheck=0\nskip_if_unavailable=True\n\n",
     'existing repository configuration is preserved');

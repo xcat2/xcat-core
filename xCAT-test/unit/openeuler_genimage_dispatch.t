@@ -59,6 +59,9 @@ for my $case (['openeuler25.03', 'x86_64'], ['openeuler24.03sp0', 'x86_64'],
     ['openeuler', 'x86_64'], ['openeuler24.03', 'aarch64']) {
     my ($responses, $out) = dispatch(@$case);
     ok(grep({ $_->{error} && $_->{errorcode}[0] == 1 } @$responses), "@$case is rejected");
+    is_deeply([map { @{$_->{error} // []} } @$responses],
+        ["Unsupported openEuler release or architecture: @$case"],
+        "@$case reports the unsupported release or architecture");
     is($out, '', 'invalid native image does not produce a build command');
 }
 for my $case (['rhels9.6', 'rh'], ['rocky9.6', 'rocky'], ['leap15.6', 'sles']) {

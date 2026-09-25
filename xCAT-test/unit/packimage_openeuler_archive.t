@@ -83,7 +83,13 @@ for my $case (
     my @errors = map { @{$_->{error} // []} } @responses;
     my $label = "$method $compress " . ($failure ? "$failure failure" : 'success');
     if ($failure) {
-        ok($result && @errors, "$label is reported by the production pack command");
+        my $error = $failure eq 'find'
+          ? qr/\ACannot enumerate \Q$dest\/rootimg\E: injected archive failure\n\z/
+          : $failure eq 'mksquashfs'
+          ? qr/\ACommand "mksquashfs .*" failed\z/s
+          : qr/\Apackimage failed while running:\s+.*\b\Q$failure\E\b/s;
+        ok($result, "$label returns failure from the production pack command");
+        like(join("\n", @errors), $error, "$label reports the failed archive stage");
         is(archive_content($archive), "retained archive\n", "$label preserves the selected previous archive");
         is(archive_content("$dest/rootimg.previous"), "retained alternative\n", "$label preserves other previous formats");
     } else {
