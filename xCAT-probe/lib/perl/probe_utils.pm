@@ -352,6 +352,15 @@ sub dhcp_query_reply_matches {
     return lc($reply_mac) eq lc($mac);
 }
 
+# Whether a download starts the Genesis discovery of an unknown node: its pxelinux configuration, or
+# its network boot script for the upstream iPXE loader or for xNBA.
+sub discovery_boot_download {
+    my ($file) = @_;
+
+    return 0 unless defined $file;
+    return ( $file =~ m{/pxelinux\.cfg/}i or $file =~ m{/xcat/(?:ipxe|xnba)/nets/}i ) ? 1 : 0;
+}
+
 # Whether a TFTP download is the network boot loader: xNBA, the upstream iPXE loader, the POWER grub2
 # image, or yaboot.
 sub boot_loader_download {
