@@ -19,6 +19,10 @@ my @config = (
     "#xCAT generated dhcp configuration\n",
     "\n",
     "option conf-file code 209 = text;\n",
+    "option space gpxe;\n",
+    "option gpxe-encap-opts code 175 = encapsulate gpxe;\n",
+    "option gpxe.bus-id code 177 = string;\n",
+    @{ xCAT::DHCP::BootPolicy->isc_ipxe_feature_option_lines() },
     "option user-class-identifier code 77 = string;\n",
     "option client-architecture code 93 = unsigned integer 16;\n",
     "option www-server code 114 = string;\n",
@@ -47,6 +51,6 @@ print {$config_file} @config;
 close($config_file) or die "Cannot close $path: $!";
 
 my $status = system($dhcpd, '-t', '-cf', $path);
-is($status, 0, 'ISC accepts the boot policy and the PXE lease class');
+is($status, 0, 'ISC accepts the iPXE feature declarations, the boot policy and the PXE lease class');
 
 done_testing();

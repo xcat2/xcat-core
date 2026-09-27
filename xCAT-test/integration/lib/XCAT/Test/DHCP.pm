@@ -27,16 +27,7 @@ sub start_daemon {
     if ($pid == 0) {
         open(STDOUT, '>', $log) or child_exit("Unable to write $log: $!");
         open(STDERR, '>&', \*STDOUT) or child_exit("Unable to redirect stderr: $!");
-        $) = "$account->{gid} $account->{gid}";
-        defined( setgid( $account->{gid} ) )
-          or child_exit("Unable to set group identity to $account->{gid}: $!");
-        my @group_ids = split /\s+/, $);
-        $( == $account->{gid} && @group_ids && !grep { $_ != $account->{gid} } @group_ids
-          or child_exit("Kea child did not assume group identity $account->{gid}");
-        defined( setuid( $account->{uid} ) )
-          or child_exit("Unable to set user identity to $account->{uid}: $!");
-        $> == $account->{uid} && $< == $account->{uid}
-          or child_exit("Kea child did not assume user identity $account->{uid}");
+        _assume_account($account) if $account;
         {
             no warnings 'exec';
             exec { $command } $command, @args;
@@ -44,6 +35,21 @@ sub start_daemon {
         }
     }
     return $pid;
+}
+
+sub _assume_account {
+    my ($account) = @_;
+
+    $) = "$account->{gid} $account->{gid}";
+    defined( setgid( $account->{gid} ) )
+      or child_exit("Unable to set group identity to $account->{gid}: $!");
+    my @group_ids = split /\s+/, $);
+    $( == $account->{gid} && @group_ids && !grep { $_ != $account->{gid} } @group_ids
+      or child_exit("The child did not assume group identity $account->{gid}");
+    defined( setuid( $account->{uid} ) )
+      or child_exit("Unable to set user identity to $account->{uid}: $!");
+    $> == $account->{uid} && $< == $account->{uid}
+      or child_exit("The child did not assume user identity $account->{uid}");
 }
 
 sub child_exit {
