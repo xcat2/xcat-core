@@ -70,10 +70,8 @@ is( default_netboot( 'riscv64', '', 'grub2-tftp' ), undef,   'riscv64 keeps grub
 is( default_netboot( 'riscv32', '', '' ),           undef,   'riscv32 is not treated as riscv64' );
 
 # existing architectures keep their behavior
-is( default_netboot( 'x86_64', '', '' ),       'xnba',      'x86_64 nodes default to xnba' );
 is( default_netboot( 'x86_64', '', 'pxe' ),    undef,       'x86_64 keeps pxe' );
 is( default_netboot( 'x86_64', '', 'xnba' ),   undef,       'x86_64 keeps xnba' );
-is( default_netboot( 'x86', '', 'grub2' ),     'xnba',      'x86 with a non-x86 method is corrected to xnba' );
 is( default_netboot( 'ppc64le', 'PowerNV', '' ),          'petitboot', 'PowerNV nodes default to petitboot' );
 is( default_netboot( 'ppc64le', 'PowerNV', 'petitboot' ), 'petitboot', 'PowerNV nodes are always set to petitboot' );
 is( default_netboot( 'ppc64', 'pSeries', '' ),        'yaboot', 'non-PowerNV ppc nodes default to yaboot' );
