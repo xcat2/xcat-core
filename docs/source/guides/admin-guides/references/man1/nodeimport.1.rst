@@ -113,7 +113,7 @@ To import nodes using a profile, follow the following steps:
        grouptype=static
        installnic=eth0
        members=compute-000,compute-001
-       netboot=xnba
+       netboot=ipxe
        nichostnamesuffixes=eth0:-eth0
        nicnetworks=eth0:provision
        nictypes=eth0:Ethernet

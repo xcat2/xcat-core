@@ -34,7 +34,7 @@ You can get the detail description of each object by ``man <object type>`` e.g. 
     mgt: ipmi
         The management method which will be used to manage the node.
         This node will use ipmi protocol.
-    netboot: xnba
+    netboot: ipxe
         The network bootloader that will be used to deploy OS for the node.
     provmethod: rhels7.1-x86_64-install-compute
         The osimage that will be deployed to the node.
@@ -43,7 +43,7 @@ You can get the detail description of each object by ``man <object type>`` e.g. 
 
     $mkdef -t node cn1 groups=all,x86_64 arch=x86_64 bmc=10.4.14.254
                        bmcusername=ADMIN bmcpassword=admin mac=6C:AE:8B:1B:E8:52
-                       mgt=ipmi netboot=xnba provmethod=rhels7.1-x86_64-install-compute
+                       mgt=ipmi netboot=ipxe provmethod=rhels7.1-x86_64-install-compute
 
   After the define, I can use ``lsdef`` command to display the defined node: ::
 
@@ -56,7 +56,7 @@ You can get the detail description of each object by ``man <object type>`` e.g. 
         groups=all,x86_64
         mac=6C:AE:8B:1B:E8:52
         mgt=ipmi
-        netboot=xnba
+        netboot=ipxe
         postbootscripts=otherpkgs
         postscripts=syslog,remoteshell,syncfiles
         provmethod=rhels7.1-x86_64-install-compute
@@ -110,7 +110,7 @@ You can get the detail description of each object by ``man <object type>`` e.g. 
           groups=all,x86_64
           mac=6C:AE:8B:1B:E8:52
           mgt=ipmi
-          netboot=xnba
+          netboot=ipxe
           postbootscripts=otherpkgs
           postscripts=syslog,remoteshell,syncfiles
           provmethod=rhels7.1-x86_64-install-compute
