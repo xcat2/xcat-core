@@ -670,7 +670,7 @@ passed as argument rather than by table value',
             netboot => 'The type of network booting to use for this node.  Valid values:
 
                        Arch                    OS                           valid netboot options
-                       x86, x86_64             ALL                          pxe, xnba, grub2
+                       x86, x86_64             ALL                          pxe, ipxe, xnba (deprecated), grub2
                        ppc64                   <=rhel6, <=sles11.3          yaboot
                        ppc64                   >=rhels7, >=sles11.4         grub2,grub2-http,grub2-tftp
                        ppc64le NonVirtualize   ALL                          petitboot
