@@ -50,7 +50,7 @@ for my $case (@lookup_cases) {
 
 # x86_64 accepts more than one iPXE method, so its methods are checked as a set.
 my %x86_64 = map { $_ => 1 } split /,/, xCAT::Utils->lookupNetboot( 'rhels9.4', 'x86_64', 'Linux' );
-ok( $x86_64{$_}, "x86_64 accepts netboot=$_" ) for qw(xnba pxe grub2);
+ok( $x86_64{$_}, "x86_64 accepts netboot=$_" ) for qw(ipxe xnba pxe grub2);
 
 # ---------------------------------------------------------------------------
 # xCAT::ProfiledNodeUtils netboot rule table + cal_netboot
@@ -90,6 +90,8 @@ is( xCAT::ProfiledNodeUtils::cal_netboot( $rule_table, [ 'aarch64', 'rhels', '9'
     like( $xCAT::Schema::tabspec{noderes}{descriptions}{netboot},
         qr/riscv64\s+>=el10, >=ubuntu24\.04\s+grub2,grub2-http,grub2-tftp/,
         'noderes.netboot documents the riscv64 grub2 methods for EL and Ubuntu' );
+    like( $xCAT::Schema::tabspec{noderes}{descriptions}{netboot}, qr/x86, x86_64\s+ALL\s+pxe, ipxe, xnba \(deprecated\), grub2/,
+        'noderes.netboot documents ipxe for x86 and marks xnba deprecated' );
 }
 
 done_testing();
