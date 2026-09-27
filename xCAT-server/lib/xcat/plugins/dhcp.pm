@@ -254,6 +254,41 @@ sub _isc_declare_ipxe_features
     return;
 }
 
+# An external dhcpd keeps a configuration that makedhcp does not write, and OMAPI removes a host before
+# it adds it again. The netboot=ipxe nodes stay unchanged unless that dhcpd keeps a host that tests the
+# iPXE feature options: a second omshell reads it back, as only the dhcpd can return its address.
+sub _isc_external_ipxe_check
+{
+    my ($nodes, $nrhash, $settings, $secret) = @_;
+
+    my $server = $::XCATSITEVALS{externaldhcpservers};
+    return ({}) unless $server;
+    my @ipxe = grep { ((($nrhash->{$_} || [])->[0] || {})->{netboot} // '') eq 'ipxe' } @$nodes;
+    return ({}) unless @ipxe;
+
+    # A host of its own for each run, as other xCAT servers can check the same dhcpd at the same time.
+    # No cleanup open before the create: the omshell of Ubuntu 20.04 and 22.04 can hang on a failed open.
+    my $id = sprintf('%04x%06x', $$ & 0xffff, int(rand(0x1000000)));
+    my $name = "xcat-ipxe-check-$id";
+    my $mac = join ':', '02', unpack('(A2)5', substr($id, 0, 10));
+    my $test = join ' and ', map { /^option (\S+) code / ? "exists $1" : () }
+      @{ xCAT::DHCP::BootPolicy->isc_ipxe_feature_option_lines() };
+    my $connect = xCAT::DHCP::OmapiPolicy->omshell_preamble($settings, secret => $secret, server => $server) . "connect\n";
+    my @created = _run_omshell(
+        $connect . "new host\nset name = \"$name\"\nset hardware-address = $mac\nset hardware-type = 1\n"
+          . "set statements = \"if $test { filename = \\\"\\\"; }\"\ncreate\nclose\n",
+        $settings);
+    my @kept = _run_omshell($connect . "new host\nset name = \"$name\"\nopen\nremove\nclose\n", $settings);
+    return ({}) if grep { /^hardware-address = \Q$mac\E$/ } @kept;
+
+    my $why = (grep { /parse error/i } @created)
+      ? "does not declare the iPXE feature options that the host statements of netboot=ipxe nodes test"
+      : "did not confirm a check of the iPXE feature options";
+    return ({ map { $_ => 1 } @ipxe },
+        "The DHCP server $server $why, so makedhcp leaves the reservations of these nodes unchanged: @ipxe. "
+          . "Declare the gpxe options of a makedhcp -n configuration on that server.");
+}
+
 sub _isc_static_host_fallback
 {
     return _ubuntu_isc_omapi_limited() && !$::XCATSITEVALS{externaldhcpservers};
@@ -2479,6 +2514,7 @@ sub process_request
             }
         }
 
+        my ($omapi_settings, $omapi_secret);
         if ($^O ne 'aix' and !_isc_static_host_fallback())
         {
             my $settings = _omapi_settings();
@@ -2491,6 +2527,7 @@ sub process_request
                 syslog("local4|err", "Unable to access omapi key from passwd table, unable to update DHCP configuration");
                 return;
             }    # TODO sane err
+            ($omapi_settings, $omapi_secret) = ($settings, $ent->{password});
 
             #Have nodes to update
             #open2($omshellout,$omshell,"/usr/bin/omshell");
@@ -2551,6 +2588,11 @@ sub process_request
         }
         my $vpdtab = xCAT::Table->new('vpd');
         $vpdhash = $vpdtab->getNodesAttribs($req->{node}, ['uuid']);
+        my ($unchanged, $external_error) = ({});
+        if ($omapi_settings and not $opt{d}) {
+            ($unchanged, $external_error) = _isc_external_ipxe_check($req->{node}, $nrhash, $omapi_settings, $omapi_secret);
+            $callback->({ error => [$external_error], errorcode => [1] }) if $external_error;
+        }
         foreach (@{ $req->{node} })
         {
             if ($opt{d})
@@ -2570,6 +2612,7 @@ sub process_request
                 {
                     next;
                 }
+                next if $unchanged->{$_};
                 addnode $_;
                 if ($usingipv6) {
                     addnode6 $_;
