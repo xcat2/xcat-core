@@ -38,7 +38,6 @@ my @lookup_cases = (
     [ 'ubuntu24.04.4', 'riscv64', 'Linux', 'grub2,grub2-tftp,grub2-http', 'riscv64 is arch-driven, not distro-driven' ],
     [ 'rhels10.2', 'RISCV64', 'Linux', 'grub2,grub2-tftp,grub2-http', 'the arch match is case-insensitive like the other arches' ],
     [ 'rhels9.4',  'aarch64', 'Linux', 'grub2', 'aarch64 keeps its single grub2 method' ],
-    [ 'rhels9.4',  'x86_64',  'Linux', 'xnba,pxe,grub2', 'x86_64 methods are unchanged' ],
     [ 'rhels9.4',  'ppc64le', 'Linux', 'petitboot,grub2,grub2-tftp,grub2-http', 'ppc64le methods are unchanged' ],
     [ 'rhels10.2', 'riscv64', 'NIM',   'nimol', 'NIM images are not affected by the arch' ],
     [ 'rhels10.2', 'riscv32', 'Linux', '', 'unknown architectures still resolve to no netboot method' ],
@@ -48,6 +47,10 @@ for my $case (@lookup_cases) {
     my ( $osvers, $osarch, $imgtype, $expected, $label ) = @$case;
     is( xCAT::Utils->lookupNetboot( $osvers, $osarch, $imgtype ), $expected, $label );
 }
+
+# x86_64 accepts more than one iPXE method, so its methods are checked as a set.
+my %x86_64 = map { $_ => 1 } split /,/, xCAT::Utils->lookupNetboot( 'rhels9.4', 'x86_64', 'Linux' );
+ok( $x86_64{$_}, "x86_64 accepts netboot=$_" ) for qw(xnba pxe grub2);
 
 # ---------------------------------------------------------------------------
 # xCAT::ProfiledNodeUtils netboot rule table + cal_netboot
