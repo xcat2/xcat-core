@@ -485,4 +485,130 @@ xCAT::DHCP::BootPolicy->isc_node_boot_statements(
 );
 is( $proxy_asked, 0, 'the proxy DHCP daemon is looked up only for a Windows boot' );
 
+# ---- netboot=ipxe nodes --------------------------------------------------------------------------
+# An ipxe node gets the upstream loader whether or not it is on this server, and its boot script
+# only when it reports the iPXE features that script needs. Its own first-stage classes negate
+# exactly the same test.
+my $bios_next = 'option[175].option[19].exists and option[175].option[24].exists and option[175].option[33].exists';
+my $uefi_next = 'option[175].option[19].exists and option[175].option[36].exists';
+my $context   = { 'xcat-mac' => '52:54:00:00:00:01', 'xcat-node' => 'cn01', 'xcat-purpose' => 'ipxe-boot' };
+my %ipxe_node = ( node => 'cn01', mac => '52:54:00:00:00:01', next_server => '192.0.2.10', netboot => 'ipxe' );
+is_deeply(
+    xCAT::DHCP::BootPolicy->kea_xnba_node_classes( nodes => [ {%ipxe_node} ] ),
+    [
+        {
+            name             => 'xcat-ipxe-cn01-525400000001-bios',
+            test             => "$bios_next and option[93].hex == 0x0000 and pkt4.mac == 0x525400000001",
+            'boot-file-name' => 'http://192.0.2.10/tftpboot/xcat/ipxe/nodes/cn01',
+            'user-context'   => $context,
+        },
+        {
+            name             => 'xcat-ipxe-cn01-525400000001-uefi',
+            test             => "$uefi_next and $uefi_x64 and pkt4.mac == 0x525400000001",
+            'boot-file-name' => 'http://192.0.2.10/tftpboot/xcat/ipxe/nodes/cn01.uefi',
+            'user-context'   => $context,
+        },
+        {
+            name             => 'xcat-ipxe-cn01-525400000001-bios-first-stage',
+            test             => "option[93].hex == 0x0000 and not ($bios_next) and pkt4.mac == 0x525400000001",
+            'boot-file-name' => 'xcat/ipxe/i386/undionly.kpxe',
+            'user-context'   => $context,
+        },
+        {
+            name             => 'xcat-ipxe-cn01-525400000001-uefi-first-stage',
+            test             => "$uefi_x64 and not ($uefi_next) and pkt4.mac == 0x525400000001",
+            'boot-file-name' => 'xcat/ipxe/x86_64-sb/snponly-shim.efi',
+            'user-context'   => $context,
+        },
+    ],
+    'an ipxe node gets its script with the iPXE features it needs, and the upstream loader otherwise, with no local file'
+);
+
+# iPXE hooks the iSCSI root path of a SAN node before it runs the script, so the script of a SAN
+# node goes only to a client with iSCSI.
+my $san_bios = "$bios_next and option[175].option[17].exists";
+my $san_uefi = "$uefi_next and option[175].option[17].exists";
+is_deeply(
+    [ map { [ $_->{name}, $_->{test} ] } @{ xCAT::DHCP::BootPolicy->kea_xnba_node_classes( nodes => [ { %ipxe_node, iscsi => 1 } ] ) } ],
+    [
+        [ 'xcat-ipxe-cn01-525400000001-bios', "$san_bios and option[93].hex == 0x0000 and pkt4.mac == 0x525400000001" ],
+        [ 'xcat-ipxe-cn01-525400000001-uefi', "$san_uefi and $uefi_x64 and pkt4.mac == 0x525400000001" ],
+        [ 'xcat-ipxe-cn01-525400000001-bios-first-stage', "option[93].hex == 0x0000 and not ($san_bios) and pkt4.mac == 0x525400000001" ],
+        [ 'xcat-ipxe-cn01-525400000001-uefi-first-stage', "$uefi_x64 and not ($san_uefi) and pkt4.mac == 0x525400000001" ],
+    ],
+    'a SAN ipxe node gets its script only with iSCSI, and the upstream loader otherwise'
+);
+
+my %xnba_node = ( node => 'cn02', mac => '52:54:00:00:00:02', next_server => '192.0.2.10', netboot => 'xnba' );
+is_deeply(
+    xCAT::DHCP::BootPolicy->kea_xnba_node_classes( xnba_efi => 1, nodes => [ {%ipxe_node}, { %xnba_node, iscsi => 1 } ] ),
+    [
+        @{ xCAT::DHCP::BootPolicy->kea_xnba_node_classes( xnba_efi => 1, nodes => [ {%ipxe_node} ] ) },
+        @{ xCAT::DHCP::BootPolicy->kea_xnba_node_classes( xnba_efi => 1, nodes => [ { node => 'cn02', mac => '52:54:00:00:00:02', next_server => '192.0.2.10' } ] ) },
+    ],
+    'an xnba node beside an ipxe node keeps the classes of a node with no method, also when it boots from SAN'
+);
+
+is_deeply(
+    xCAT::DHCP::BootPolicy->kea_ipxe_option_defs(),
+    [
+        { name => 'gpxe-encap-opts', code => 175, space => 'dhcp4', type => 'empty', encapsulate => 'gpxe' },
+        { name => 'iscsi',   code => 17, space => 'gpxe', type => 'uint8' },
+        { name => 'http',    code => 19, space => 'gpxe', type => 'uint8' },
+        { name => 'bzimage', code => 24, space => 'gpxe', type => 'uint8' },
+        { name => 'pxe',     code => 33, space => 'gpxe', type => 'uint8' },
+        { name => 'efi',     code => 36, space => 'gpxe', type => 'uint8' },
+    ],
+    'Kea decodes option 175 and the iPXE feature indicators'
+);
+
+my $isc_bios_next = 'exists gpxe.http and exists gpxe.bzimage and exists gpxe.pxe';
+my $isc_uefi_next = 'exists gpxe.http and exists gpxe.efi';
+my $isc_san       = 'exists gpxe.iscsi';
+my $script        = 'http://192.0.2.10:8080/tftpboot/xcat/ipxe/nodes/cn01';
+my $up_bios       = 'xcat/ipxe/i386/undionly.kpxe';
+my $up_uefi       = 'xcat/ipxe/x86_64-sb/snponly-shim.efi';
+my %ipxe_statements = (
+    bios            => qq{if option client-architecture = 00:00 { if $isc_bios_next { filename = \\"$script\\"; } else { filename = \\"$up_bios\\"; } } else { filename = \\"\\"; }},
+    uefi            => qq{if option client-architecture = 00:00 { if $isc_bios_next { always-broadcast on; filename = \\"$script\\"; } else { filename = \\"$up_bios\\"; } } else if option client-architecture = 00:09 or option client-architecture = 00:07 { if $isc_uefi_next { filename = \\"$script.uefi\\"; } else { filename = \\"$up_uefi\\"; } } else { filename = \\"\\"; }},
+    iscsi_boot      => qq{if option client-architecture = 00:00 and not $isc_san { filename = \\"$up_bios\\"; } else if option client-architecture = 00:07 and not $isc_san { filename = \\"$up_uefi\\"; } else if option client-architecture = 00:09 and not $isc_san { filename = \\"$up_uefi\\"; } else { filename = \\"\\"; } },
+    iscsi_install   => qq{if option client-architecture = 00:00 { if $isc_bios_next and $isc_san { always-broadcast on; filename = \\"$script\\"; } else { filename = \\"$up_bios\\"; } } else if option client-architecture = 00:09 or option client-architecture = 00:07 { if $isc_uefi_next and $isc_san { filename = \\"$script.uefi\\"; } else { filename = \\"$up_uefi\\"; } } else { filename = \\"\\"; }},
+    winshell        => qq{if option client-architecture = 00:00 { if $isc_bios_next { always-broadcast on; filename = \\"$script\\"; } else { filename = \\"$up_bios\\"; } } else if option client-architecture = 00:07 or option client-architecture = 00:09 { filename = \\"\\"; option vendor-class-identifier \\"PXEClient\\"; } else { filename = \\"\\"; }},
+    winshell_proxy  => $statements{winshell_proxy},
+);
+my @ipxe_cases = (
+    [ bios           => { uefi => 0, currstate => 'install rhels9' } ],
+    [ uefi           => { uefi => 1, currstate => 'install rhels9' } ],
+    [ iscsi_boot     => { uefi => 1, currstate => 'boot', iscsi => 1 } ],
+    [ iscsi_install  => { uefi => 1, currstate => 'install rhels9', iscsi => 1 } ],
+    [ winshell       => { uefi => 1, currstate => 'winshell', proxydhcp => sub { 0 } } ],
+    [ winshell_proxy => { uefi => 1, currstate => 'winshell', proxydhcp => sub { 1 } } ],
+);
+for my $case (@ipxe_cases) {
+    my ( $name, $opts ) = @$case;
+    is(
+        xCAT::DHCP::BootPolicy->isc_node_boot_statements(
+            %$opts,
+            netboot        => 'ipxe',
+            loader_present => 0,
+            node           => 'cn01',
+            next_server    => '192.0.2.10',
+            portsuffix     => ':8080',
+        ),
+        $ipxe_statements{$name},
+        "ISC host statements of an ipxe node for the $name case, with no local xNBA file"
+    );
+}
+
+# dhcpd saves host statements in dhcpd.leases without parentheses, so no ipxe statement may depend
+# on them.
+my @grouped = map { $_->[0] } grep {
+    xCAT::DHCP::BootPolicy->isc_node_boot_statements( %{ $_->[1] }, netboot => 'ipxe', node => 'cn01', next_server => '192.0.2.10' ) =~ /[()]/
+} @ipxe_cases;
+is_deeply( \@grouped, [], 'no ISC host statement of an ipxe node depends on parentheses' );
+
+my %declared = map { /^option gpxe\.(\w+) code/ ? ( $1 => 1 ) : () } @{ xCAT::DHCP::BootPolicy->isc_ipxe_feature_option_lines() };
+my @undeclared = grep { !$declared{$_} } join( ' ', values %ipxe_statements ) =~ /gpxe\.([\w-]+)/g;
+is_deeply( \@undeclared, [], 'the ISC header declares every iPXE feature that an ipxe node statement tests' );
+
 done_testing();

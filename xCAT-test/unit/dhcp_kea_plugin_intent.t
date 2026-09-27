@@ -950,6 +950,48 @@ foreach my $case (@invalid_mac_cases) {
 }
 
 {
+    # The xNBA and iPXE node classes depend on the netboot method of each node and on whether it
+    # boots from SAN, so each record their builder gets carries both.
+    my %tables = (
+        noderes => DHCPKeaResTable->new( {
+            ipxe01  => { netboot => 'ipxe' },
+            san01   => { netboot => 'ipxe' },
+            san02   => { netboot => 'ipxe' },
+            xnba01  => { netboot => 'xnba' },
+            grub01  => { netboot => 'grub2' },
+        } ),
+        mac => DHCPKeaResTable->new( {
+            ipxe01 => { mac => '52:54:00:00:20:01' },
+            san01  => { mac => '52:54:00:00:20:02' },
+            san02  => { mac => '52:54:00:00:20:03' },
+            xnba01 => { mac => '52:54:00:00:20:04' },
+            grub01 => { mac => '52:54:00:00:20:05' },
+        } ),
+        iscsi => DHCPKeaResTable->new( { san01 => { server => '192.0.2.5', target => 'iqn.2026-01.test:disk1' }, san02 => { server => '192.0.2.5' } } ),
+    );
+
+    no warnings 'redefine';
+    local *xCAT::Table::new = sub {
+        my ( $class, $name ) = @_;
+        return $tables{$name};
+    };
+    local *xCAT_plugin::dhcp::next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
+    my $records;
+    local *xCAT::DHCP::BootPolicy::kea_xnba_node_classes = sub {
+        my ( $class, %opts ) = @_;
+        $records = $opts{nodes};
+        return [];
+    };
+
+    xCAT_plugin::dhcp::kea_node_client_classes_for_nodes( [qw(ipxe01 san01 san02 xnba01 grub01)] );
+    is_deeply(
+        { map { $_->{node} => [ $_->{netboot}, $_->{iscsi} ] } @{ $records || [] } },
+        { ipxe01 => [ 'ipxe', 0 ], san01 => [ 'ipxe', 1 ], san02 => [ 'ipxe', 0 ], xnba01 => [ 'xnba', 0 ] },
+        'ipxe and xnba nodes get node classes with their method, and an iscsi entry without a target is no SAN disk'
+    );
+}
+
+{
     # Regression: a node whose mac table entry uses the *NOIP* sentinel for a
     # secondary NIC (e.g. "mac1|mac2!*NOIP*") must still get exactly one Kea
     # reservation -- for the real NIC only.  The *NOIP* NIC intentionally has no
