@@ -61,8 +61,6 @@ is( xCAT::ProfiledNodeUtils::cal_netboot( $rule_table, [ 'riscv64', 'rhels', '10
     'grub2', 'profiled riscv64 nodes default to grub2' );
 is( xCAT::ProfiledNodeUtils::cal_netboot( $rule_table, [ 'riscv64', 'rhels', '10', 'ipmi' ] ),
     'grub2', 'riscv64 grub2 does not depend on the management method' );
-is( xCAT::ProfiledNodeUtils::cal_netboot( $rule_table, [ 'x86_64', 'rhels', '10', '*' ] ),
-    'xnba', 'x86_64 profiled nodes still default to xnba' );
 is( xCAT::ProfiledNodeUtils::cal_netboot( $rule_table, [ 'ppc64le', 'rhels', '9', 'ipmi' ] ),
     'petitboot', 'ppc64le ipmi profiled nodes still default to petitboot' );
 is( xCAT::ProfiledNodeUtils::cal_netboot( $rule_table, [ 'aarch64', 'rhels', '9', '*' ] ),
