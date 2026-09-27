@@ -852,6 +852,18 @@ sub upstream_loader_warnings {
     return @warnings;
 }
 
+# Whether this server has a loader that can SAN-boot an x86 node without iSCSI boot data: an
+# undionly.kpxe that the administrator put in the TFTP root, or the BIOS file of the loader of the
+# netboot method of the node.
+sub x86_san_loader_present {
+    my ( $class, %opts ) = @_;
+
+    my $tftpdir = $opts{tftpdir} // '/tftpboot';
+    $tftpdir =~ s{/+$}{};
+    my $loader = $class->x86_loader( method => $opts{method} );
+    return ( -f "$tftpdir/undionly.kpxe" || -f "$tftpdir/$loader->{bios}" ) ? 1 : 0;
+}
+
 # The ISC host statements that choose the boot file of a node with netboot ipxe, xnba or pxe. They
 # reach dhcpd through omshell, so their quotes are escaped.
 sub isc_node_boot_statements {
