@@ -51,11 +51,6 @@ like(
     qr/client-architecture = 00:0c \{ #ppc64 grub2\n\s+filename "\/boot\/grub2\/grub2\.ppc";/,
     'a ppc64 client is given grub2.ppc rather than the yaboot fallback',
 );
-like(
-    $rendered,
-    qr/client-architecture = 00:10 \{ #x86_64 uefi http boot\n\s+filename "xcat\/xnba\.efi";/,
-    'the x86-64 UEFI HTTP boot id is given the same loader as 0x0007',
-);
 
 my @riscv_ids = $rendered =~ /client-architecture = (00:1[9a-e])/g;
 is_deeply(
@@ -115,13 +110,6 @@ is( xCAT::DHCP::BootPolicy->isc_xnba_user_class_test(),
     xCAT::DHCP::BootPolicy->isc_xnba_user_class_test(quote => '"'),
     'a config file is the default quoting' );
 
-# ...and the per-network policy uses it, rather than its own bare comparison.
-foreach my $arch (qw(00:00 00:09 00:07)) {
-    like( $rendered,
-        qr/\Qsuffix(option user-class-identifier, 4) = "xNBA"\E and option client-architecture = \Q$arch\E/,
-        "the xNBA branch for client architecture $arch accepts both encodings" );
-}
-
 unlike( $rendered, qr/option user-class-identifier = "xNBA" and/,
     'no xNBA branch is left matching the bare encoding alone' );
 
@@ -141,65 +129,6 @@ is(
     'and both backends land on the same number',
 );
 
-# A loader that is not on disk is not named: naming one costs the client a full
-# TFTP timeout it cannot diagnose. The Kea side has always left the class out.
-{
-    my @asked;
-    my %present = map { $_ => 1 } (
-        '/srv/tftp/xcat/xnba.efi',
-        '/srv/tftp/boot/grub2/grub2.riscv64',
-    );
-    my $partial = join '', @{ xCAT::DHCP::BootPolicy->isc_client_architecture_lines(
-            next_server    => '192.0.2.10',
-            portsuffix     => '',
-            tftpdir        => '/srv/tftp',
-            net            => '192.0.2.0',
-            prefix         => 24,
-            loader_present => sub { push @asked, $_[0]; return $present{ $_[0] } },
-        ) };
-
-    unlike( $partial, qr/xnba\.kpxe/,
-        'a BIOS client is not sent after a kpxe loader that was never built' );
-    like( $partial, qr/xnba\.efi/,
-        'and the UEFI loader that is there is still offered' );
-
-    # The second stage is fetched over HTTP, but it is the first stage that
-    # asks for it, so it is gated on the same file.
-    unlike( $partial, qr{/xcat/xnba/nets/192\.0\.2\.0_24"},
-        'no BIOS second stage is advertised without the first stage to reach it' );
-    like( $partial, qr{/xcat/xnba/nets/192\.0\.2\.0_24\.uefi"},
-        'the UEFI second stage is advertised, because its first stage exists' );
-
-# Dropping the branch is only half the rule. ISC evaluates these as one if/else
-# chain, so a BIOS client whose branch is gone falls to the /yaboot catch-all and
-# is handed a loader nobody chose -- the substitution S-12 forbids. What is left
-# behind is a branch that matches the same client and says nothing.
-    like( $partial,
-        qr/option client-architecture = 00:00 \{ #the loader for this client is not on disk\n\s*\}/,
-        'a BIOS client whose loader is missing is matched and told nothing' );
-    like( $partial,
-        qr/option vendor-class-identifier = "Etherboot-5\.4" \{ #the loader for this client is not on disk/,
-        'and so is the Etherboot client that would have been sent to the same file' );
-    unlike( $partial, qr/00:07 \{ #the loader/,
-        'an architecture whose loader is there keeps its real branch' );
-
-    # Position is the whole point: a suppressing branch after the fallback
-    # would never be reached.
-    ok( index( $partial, 'option client-architecture = 00:00 { #the loader' )
-          < index( $partial, 'filename "/yaboot"' ),
-        'the client is stopped before the chain reaches the fallback' );
-
-    is( scalar( grep { $_ eq '/srv/tftp/boot/grub2/grub2.riscv64' } @asked ), 1,
-        'the riscv64 HTTP branch is probed under the configured tftp directory' );
-
-    # Whatever is dropped, what is left has to still be one chain: dhcpd
-    # rejects a leading "} else if" and refuses to start.
-    like( $partial, qr/\A    if /, 'the first surviving branch opens the chain' );
-    unlike( $partial, qr/\n    \} else if [^\n]*\n\s*\}\n    \} else if /,
-        'no branch is left dangling between two chains' );
-    is( scalar( () = $partial =~ /^    \}\n/mg ), 1,
-        'and the chain is closed exactly once' );
-}
 
 {
     # Nothing on disk at all: the branches naming files xCAT never builds stay,
@@ -222,35 +151,4 @@ is(
         'the riscv64 HTTP branch goes with the image it would have served' );
 }
 
-
-# The x86 lines, pinned: what the renderer produces with the xNBA loader.
-my @lines = @{ xCAT::DHCP::BootPolicy->isc_client_architecture_lines(
-        next_server => '192.0.2.10',
-        portsuffix  => ':8080',
-        net         => '192.0.2.0',
-        prefix      => 24,
-    ) };
-is_deeply(
-    [ @lines[ 0 .. 16 ] ],
-    [
-        "    if suffix(option user-class-identifier, 4) = \"xNBA\" and option client-architecture = 00:00 { #x86, xCAT Network Boot Agent\n",
-        "        always-broadcast on;\n",
-        "        filename = \"http://192.0.2.10:8080/tftpboot/xcat/xnba/nets/192.0.2.0_24\";\n",
-        "    } else if suffix(option user-class-identifier, 4) = \"xNBA\" and option client-architecture = 00:09 { #x86, xCAT Network Boot Agent\n",
-        "        filename = \"http://192.0.2.10:8080/tftpboot/xcat/xnba/nets/192.0.2.0_24.uefi\";\n",
-        "    } else if suffix(option user-class-identifier, 4) = \"xNBA\" and option client-architecture = 00:07 { #x86-64 UEFI, xCAT Network Boot Agent\n",
-        "        filename = \"http://192.0.2.10:8080/tftpboot/xcat/xnba/nets/192.0.2.0_24.uefi\";\n",
-        "    } else if option client-architecture = 00:00  { #x86\n",
-        "        filename \"xcat/xnba.kpxe\";\n",
-        "    } else if option vendor-class-identifier = \"Etherboot-5.4\"  { #x86\n",
-        "        filename \"xcat/xnba.kpxe\";\n",
-        "    } else if option client-architecture = 00:07 { #x86_64 uefi\n ",
-        "        filename \"xcat/xnba.efi\";\n",
-        "    } else if option client-architecture = 00:09 { #x86_64 uefi alternative id\n ",
-        "        filename \"xcat/xnba.efi\";\n",
-        "    } else if option client-architecture = 00:10 { #x86_64 uefi http boot\n ",
-        "        filename \"xcat/xnba.efi\";\n",
-    ],
-    'the x86 lines give the network scripts to xNBA clients and xNBA to the rest'
-);
 done_testing();

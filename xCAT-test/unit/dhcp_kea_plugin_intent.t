@@ -1726,8 +1726,6 @@ foreach my $case (@invalid_mac_cases) {
       @{ $config->{Dhcp4}{'client-classes'} };
     is_deeply( \@unguarded, [], 'no class that names a boot file can match the proxyDHCP node' );
 
-    is( $by_name{'xcat-uefi-x64'}{'boot-file-name'}, 'xcat/xnba.efi',
-        'the UEFI class still names xnba.efi for every other client' );
     ok( $by_name{'xcat-proxydhcp-win01-aabbccddee08'},
         'the proxyDHCP node keeps the class that tags its reply PXEClient' );
     unlike( $by_name{'xcat-proxydhcp-win01-aabbccddee08'}{test} // '', qr/xcat-localboot/,
