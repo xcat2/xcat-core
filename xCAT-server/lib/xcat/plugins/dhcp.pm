@@ -1881,6 +1881,13 @@ sub process_request
           . "Install '$from' or set site.dhcpbackend to silence this.";
         xCAT::MsgUtils->message("W", $rsp, $callback);
     }
+    if ( $opt{n} || $opt{a} ) {
+        foreach my $warning ( xCAT::DHCP::BootPolicy->upstream_loader_warnings( tftpdir => $tftpdir ) ) {
+            my $rsp = {};
+            $rsp->{data}->[0] = $warning;
+            xCAT::MsgUtils->message("W", $rsp, $callback);
+        }
+    }
     if ( $backend->name eq 'kea' && $statements ) {
         my $rsp = {};
         $rsp->{data}->[0] = "The -s option contains ISC DHCP statement text and is not supported with the Kea DHCP backend.";

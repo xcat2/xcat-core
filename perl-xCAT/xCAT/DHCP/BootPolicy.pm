@@ -813,6 +813,7 @@ sub x86_loader {
         method                => 'ipxe',
         bios                  => 'xcat/ipxe/i386/undionly.kpxe',
         uefi                  => 'xcat/ipxe/x86_64-sb/snponly-shim.efi',
+        uefi_payload          => 'xcat/ipxe/x86_64-sb/snponly.efi',
         scripts               => 'xcat/ipxe',
         isc_second_stage_bios => _isc_features( qw(http bzimage pxe), @san ),
         isc_second_stage_uefi => _isc_features( qw(http efi), @san ),
@@ -829,6 +830,26 @@ sub _isc_features {
 sub _kea_features {
     my %code = map { @$_ } @IPXE_FEATURES;
     return join ' and ', map { "option[175].option[$code{$_}].exists" } @_;
+}
+
+# What keeps this server from booting an unknown x86 client: an upstream loader file that is missing
+# from the local TFTP directory, or network boot scripts that mknb has not written to xcat/ipxe/nets.
+# Only a server with x86 network boot scripts serves x86 discovery. A node can load from another TFTP
+# server, so these are warnings, not errors.
+sub upstream_loader_warnings {
+    my ( $class, %opts ) = @_;
+
+    my $tftpdir = $opts{tftpdir} // '/tftpboot';
+    $tftpdir =~ s{/+$}{};
+    my $loader = $class->x86_loader( method => 'ipxe' );
+    my %scripts = map { $_ => [ grep { -f } glob("$tftpdir/xcat/$_/nets/*") ] } qw(ipxe xnba);
+    return unless @{ $scripts{ipxe} } || @{ $scripts{xnba} };
+
+    my @warnings = map { "$tftpdir/$_ is missing on this server, so unknown x86 clients and netboot=ipxe nodes cannot load the upstream iPXE loader from it. Install ipxe-xcat on the TFTP server of the x86 nodes." }
+      grep { !-f "$tftpdir/$_" } @{$loader}{qw(bios uefi uefi_payload)};
+    push @warnings, "$tftpdir/$loader->{scripts}/nets has no network boot script, so unknown x86 clients cannot start Genesis. Run mknb for each x86 architecture."
+      unless @{ $scripts{ipxe} };
+    return @warnings;
 }
 
 # The ISC host statements that choose the boot file of a node with netboot ipxe, xnba or pxe. They
