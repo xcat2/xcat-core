@@ -9,7 +9,7 @@ use Test::More;
 use xCAT::DHCP::BootPolicy;
 
 my $fallback_classes = xCAT::DHCP::BootPolicy->kea_client_classes();
-is( scalar @$fallback_classes, 6, 'Kea boot policy omits xNBA classes when xNBA loaders are unavailable' );
+is( scalar @$fallback_classes, 6, 'Kea boot policy omits the x86 classes when the x86 loaders are unavailable' );
 my %fallback_by_name = map { $_->{name} => $_ } @$fallback_classes;
 # Naming a loader that is not on disk costs the client a timeout it cannot
 # diagnose, and pxelinux.0 in its place boots something nobody asked for. With
@@ -19,9 +19,13 @@ ok( !exists $fallback_by_name{'xcat-bios'}, 'no BIOS class is written when the B
 ok( !exists $fallback_by_name{'xcat-etherboot'}, 'and no Etherboot class either, since it names the same file' );
 ok( !exists $fallback_by_name{'xcat-xnba-bios'}, 'xNBA user-class is not advertised without xNBA kpxe' );
 
-my $classes = xCAT::DHCP::BootPolicy->kea_client_classes(xnba_kpxe => 1, xnba_efi => 1);
+my $classes = xCAT::DHCP::BootPolicy->kea_client_classes(ipxe_bios => 1, ipxe_uefi => 1);
+is( scalar @$classes, 9, 'Kea boot policy renders the expected client classes with the upstream loader' );
 
 my %by_name = map { $_->{name} => $_ } @$classes;
+like( $by_name{'xcat-uefi-x64'}{test}, qr/0x0007/, 'UEFI x64 class matches architecture 7' );
+like( $by_name{'xcat-uefi-x64'}{test}, qr/0x0009/, 'UEFI x64 class matches architecture 9' );
+like( $by_name{'xcat-uefi-x64'}{test}, qr/0x0010/, 'UEFI x64 class matches HTTP boot architecture 16' );
 is( $by_name{'xcat-aarch64'}{'boot-file-name'}, 'boot/grub2/grub2.aarch64', 'AArch64 clients receive grub2 boot file' );
 is( $by_name{'xcat-ppc64'}{'boot-file-name'}, '/boot/grub2/grub2.ppc', 'POWER clients receive grub2 Open Firmware boot file' );
 is( $by_name{'xcat-ppc64'}{test}, 'option[93].hex == 0x000c', 'POWER class keeps existing POWER architecture id' );
@@ -467,5 +471,142 @@ is_deeply( \@grouped, [], 'no ISC host statement of an ipxe node depends on pare
 my %declared = map { /^option gpxe\.(\w+) code/ ? ( $1 => 1 ) : () } @{ xCAT::DHCP::BootPolicy->isc_ipxe_feature_option_lines() };
 my @undeclared = grep { !$declared{$_} } join( ' ', values %ipxe_statements ) =~ /gpxe\.([\w-]+)/g;
 is_deeply( \@undeclared, [], 'the ISC header declares every iPXE feature that an ipxe node statement tests' );
+
+# ---- unknown x86 clients --------------------------------------------------------------------------
+# A client without a node definition gets the upstream loader when this server has it, and the
+# Genesis script of its network once it reports the iPXE features it needs. As for xNBA, a loader
+# that is not on disk is not named, and neither is the second stage that it would fetch.
+my %x86_names = map { $_ => 1 } qw(xcat-bios xcat-etherboot xcat-uefi-x64);
+my $x86_global = sub {
+    return [ grep { $x86_names{ $_->{name} } } @{ xCAT::DHCP::BootPolicy->kea_client_classes(@_) } ];
+};
+is_deeply(
+    $x86_global->( ipxe_bios => 1, ipxe_uefi => 1 ),
+    [
+        {
+            name             => 'xcat-bios',
+            test             => "option[93].hex == 0x0000 and not ($bios_next)",
+            'boot-file-name' => 'xcat/ipxe/i386/undionly.kpxe',
+        },
+        {
+            name             => 'xcat-etherboot',
+            test             => "option[60].text == 'Etherboot-5.4'",
+            'boot-file-name' => 'xcat/ipxe/i386/undionly.kpxe',
+        },
+        {
+            name             => 'xcat-uefi-x64',
+            test             => "$uefi_x64 and not ($uefi_next)",
+            'boot-file-name' => 'xcat/ipxe/x86_64-sb/snponly-shim.efi',
+        },
+    ],
+    'the global x86 classes give the upstream loader to every client that cannot fetch its script'
+);
+is_deeply( $x86_global->( xnba_kpxe => 1, xnba_efi => 1 ), [], 'the xNBA files on this server name no global x86 class' );
+is_deeply( [ map { $_->{name} } @{ $x86_global->( ipxe_uefi => 1 ) } ], ['xcat-uefi-x64'],
+    'without the upstream BIOS loader, neither BIOS nor Etherboot clients are named a loader' );
+
+my %net = ( net => '192.0.2.0', prefix => 24, next_server => '192.0.2.10' );
+is_deeply(
+    xCAT::DHCP::BootPolicy->kea_xnba_network_classes( %net, httpport => '8080', ipxe_bios => 1, ipxe_uefi => 1 ),
+    [
+        {
+            name             => 'xcat-ipxe-net-192.0.2.0_24-bios',
+            test             => "$bios_next and option[93].hex == 0x0000",
+            'boot-file-name' => 'http://192.0.2.10:8080/tftpboot/xcat/ipxe/nets/192.0.2.0_24',
+            additional_only  => 1,
+        },
+        {
+            name             => 'xcat-ipxe-net-192.0.2.0_24-uefi',
+            test             => "$uefi_next and $uefi_x64",
+            'boot-file-name' => 'http://192.0.2.10:8080/tftpboot/xcat/ipxe/nets/192.0.2.0_24.uefi',
+            additional_only  => 1,
+        },
+    ],
+    'the network classes give the network scripts under xcat/ipxe/nets to clients with the iPXE features'
+);
+is( xCAT::DHCP::BootPolicy->kea_xnba_network_classes( %net, ipxe_bios => 1 )->[0]{'boot-file-name'},
+    'http://192.0.2.10/tftpboot/xcat/ipxe/nets/192.0.2.0_24', 'the default HTTP port stays out of the network script URL' );
+is_deeply( [ map { $_->{name} } @{ xCAT::DHCP::BootPolicy->kea_xnba_network_classes( %net, ipxe_uefi => 1 ) } ],
+    ['xcat-ipxe-net-192.0.2.0_24-uefi'], 'a network script is offered only with the loader that fetches it' );
+is_deeply( xCAT::DHCP::BootPolicy->kea_xnba_network_classes( net => '192.0.2.0', prefix => 24, ipxe_bios => 1, ipxe_uefi => 1 ), [],
+    'the network classes need a next server' );
+
+# The global classes now give the upstream loader, so an xnba node carries the first stage of xNBA
+# when this server has the xNBA BIOS file, as it has its ISC host statements.
+my %xnba_first = ( node => 'cn02', mac => '52:54:00:00:00:02', next_server => '192.0.2.10', netboot => 'xnba' );
+my $xnba_first_context = { 'xcat-mac' => '52:54:00:00:00:02', 'xcat-node' => 'cn02', 'xcat-purpose' => 'xnba-first-stage' };
+is_deeply(
+    [ @{ xCAT::DHCP::BootPolicy->kea_xnba_node_classes( xnba_kpxe => 1, xnba_efi => 1, nodes => [ {%xnba_first} ] ) }[ 2, 3 ] ],
+    [
+        {
+            name             => 'xcat-xnba-cn02-525400000002-bios-first-stage',
+            test             => "option[93].hex == 0x0000 and not ($xnba_user_class) and pkt4.mac == 0x525400000002",
+            'boot-file-name' => 'xcat/xnba.kpxe',
+            'user-context'   => $xnba_first_context,
+        },
+        {
+            name             => 'xcat-xnba-cn02-525400000002-uefi-first-stage',
+            test             => "$uefi_x64 and not ($xnba_user_class) and pkt4.mac == 0x525400000002",
+            'boot-file-name' => 'xcat/xnba.efi',
+            'user-context'   => $xnba_first_context,
+        },
+    ],
+    'an xnba node gets xNBA from its own first-stage classes'
+);
+is_deeply(
+    [ map { [ $_->{name}, $_->{'boot-file-name'} ] } @{ xCAT::DHCP::BootPolicy->kea_xnba_node_classes( xnba_kpxe => 1, nodes => [ {%xnba_first} ] ) } ],
+    [
+        [ 'xcat-xnba-cn02-525400000002-bios', 'http://192.0.2.10/tftpboot/xcat/xnba/nodes/cn02' ],
+        [ 'xcat-xnba-cn02-525400000002-bios-first-stage', 'xcat/xnba.kpxe' ],
+        [ 'xcat-xnba-cn02-525400000002-uefi-first-stage', 'xcat/xnba.efi' ],
+    ],
+    'without the local xNBA UEFI file, an xnba node still gets it for UEFI, as in ISC'
+);
+is_deeply(
+    [ map { $_->{name} } @{ xCAT::DHCP::BootPolicy->kea_xnba_node_classes( nodes => [ {%xnba_first} ] ) } ],
+    ['xcat-xnba-cn02-525400000002-bios'],
+    'without the local xNBA BIOS file, an xnba node has no first-stage classes, as it has no ISC host statements'
+);
+is_deeply(
+    [ map { [ $_->{name}, $_->{'boot-file-name'} ] }
+          grep { $_->{name} =~ /-first-stage$/ } @{ xCAT::DHCP::BootPolicy->kea_xnba_node_classes( nodes => [ {%ipxe_node} ] ) } ],
+    [
+        [ 'xcat-ipxe-cn01-525400000001-bios-first-stage', 'xcat/ipxe/i386/undionly.kpxe' ],
+        [ 'xcat-ipxe-cn01-525400000001-uefi-first-stage', 'xcat/ipxe/x86_64-sb/snponly-shim.efi' ],
+    ],
+    'an ipxe node without a SAN disk carries the upstream loader in its own first-stage classes'
+);
+
+my @x86_lines = @{ xCAT::DHCP::BootPolicy->isc_client_architecture_lines(
+        next_server => '192.0.2.10',
+        portsuffix  => ':8080',
+        net         => '192.0.2.0',
+        prefix      => 24,
+    ) }[ 0 .. 16 ];
+is_deeply(
+    \@x86_lines,
+    [
+        "    if $isc_bios_next and option client-architecture = 00:00 { #x86, iPXE second stage\n",
+        "        always-broadcast on;\n",
+        "        filename = \"http://192.0.2.10:8080/tftpboot/xcat/ipxe/nets/192.0.2.0_24\";\n",
+        "    } else if $isc_uefi_next and option client-architecture = 00:09 { #x86, iPXE second stage\n",
+        "        filename = \"http://192.0.2.10:8080/tftpboot/xcat/ipxe/nets/192.0.2.0_24.uefi\";\n",
+        "    } else if $isc_uefi_next and option client-architecture = 00:07 { #x86-64 UEFI, iPXE second stage\n",
+        "        filename = \"http://192.0.2.10:8080/tftpboot/xcat/ipxe/nets/192.0.2.0_24.uefi\";\n",
+        "    } else if option client-architecture = 00:00  { #x86\n",
+        "        filename \"xcat/ipxe/i386/undionly.kpxe\";\n",
+        "    } else if option vendor-class-identifier = \"Etherboot-5.4\"  { #x86\n",
+        "        filename \"xcat/ipxe/i386/undionly.kpxe\";\n",
+        "    } else if option client-architecture = 00:07 { #x86_64 uefi\n ",
+        "        filename \"xcat/ipxe/x86_64-sb/snponly-shim.efi\";\n",
+        "    } else if option client-architecture = 00:09 { #x86_64 uefi alternative id\n ",
+        "        filename \"xcat/ipxe/x86_64-sb/snponly-shim.efi\";\n",
+        "    } else if option client-architecture = 00:10 { #x86_64 uefi http boot\n ",
+        "        filename \"xcat/ipxe/x86_64-sb/snponly-shim.efi\";\n",
+    ],
+    'the ISC x86 lines apply the same test and name the upstream loader and xcat/ipxe/nets'
+);
+my @tested = join( ' ', @x86_lines ) =~ /gpxe\.([\w-]+)/g;
+is_deeply( [ grep { !$declared{$_} } @tested ], [], 'the ISC header declares every iPXE feature that the x86 lines test' );
 
 done_testing();

@@ -157,6 +157,20 @@ my %network_entry = (
         ['xcat-onie-10.0.0.0_24'],
         'the ONIE policy is evaluated only for its subnet',
     );
+    # The local TFTP directory has no upstream loader, so the subnet offers no network script.
+    is_deeply( [ grep { /^xcat-ipxe-net-/ } @{ $subnet->{additional_client_classes} } ], [],
+        'without the upstream loader on this server, the Kea subnet names no network script' );
+
+    local *xCAT_plugin::dhcp::kea_ipxe_loader_flags = sub { return ( ipxe_bios => 1, ipxe_uefi => 1 ); };
+    $subnet = xCAT_plugin::dhcp::kea_subnet4_intent( $nettab, '10.0.0.0', '255.255.255.0', 'eth0', 0, 1, 80 );
+    %classes = map { $_->{name} => $_ } @{ $subnet->{client_classes} };
+    is_deeply(
+        [ grep { /^xcat-ipxe-net-/ } @{ $subnet->{additional_client_classes} } ],
+        [ 'xcat-ipxe-net-10.0.0.0_24-bios', 'xcat-ipxe-net-10.0.0.0_24-uefi' ],
+        'with it, the Kea subnet gives unknown x86 clients the network scripts of the upstream loader',
+    );
+    like( $classes{'xcat-ipxe-net-10.0.0.0_24-bios'}{'boot-file-name'}, qr{/tftpboot/xcat/ipxe/nets/10\.0\.0\.0_24$},
+        'from xcat/ipxe/nets' );
 }
 
 my @sysconfig_policy_cases = (
@@ -1710,7 +1724,7 @@ foreach my $case (@invalid_mac_cases) {
 
     my $config = {
         Dhcp4 => {
-            'client-classes' => xCAT::DHCP::BootPolicy->kea_client_classes( xnba_kpxe => 1, xnba_efi => 1 ),
+            'client-classes' => xCAT::DHCP::BootPolicy->kea_client_classes( ipxe_bios => 1, ipxe_uefi => 1 ),
         },
     };
     xCAT_plugin::dhcp::kea_sync_node_client_classes( $config, [ 'win01', 'cn01' ] );
@@ -1725,6 +1739,9 @@ foreach my $case (@invalid_mac_cases) {
       grep { defined $_->{'boot-file-name'} and $_->{test} !~ /\Qnot member('xcat-localboot')\E$/ }
       @{ $config->{Dhcp4}{'client-classes'} };
     is_deeply( \@unguarded, [], 'no class that names a boot file can match the proxyDHCP node' );
+
+    is( $by_name{'xcat-uefi-x64'}{'boot-file-name'}, 'xcat/ipxe/x86_64-sb/snponly-shim.efi',
+        'the UEFI class still names the upstream UEFI loader for every other client' );
 
     ok( $by_name{'xcat-proxydhcp-win01-aabbccddee08'},
         'the proxyDHCP node keeps the class that tags its reply PXEClient' );
