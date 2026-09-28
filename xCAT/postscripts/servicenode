@@ -59,6 +59,10 @@ if ($useSocketSSL) {
 my $rc  = 0;
 my $msg = "";
 
+# A unit test loads this file for its subroutines. Everything below runs commands on the
+# node, so stop here when the file is required rather than run.
+if (caller) { return 1; }
+
 $::osname = `uname`;
 chomp $::osname;
 
@@ -138,14 +142,13 @@ else
     #  Copy Certificates, and config file to apprpriate directories
     #  from /install and restart xcat
 
-    # xCAT-server pulls perl deps (Crypt::CBC/PBKDF2, Expect, Net-DNS, ...) that
-    # live in EPEL; enable it here, before the otherpkgs postbootscript installs
-    # xCATsn, on EL service nodes. Tolerant by design: runcmd() only logs on
-    # failure, so RHEL nodes without epel-release in a default repo (or sites
-    # without EPEL reachability) do not fail service-node setup.
+    # xCAT-server requires perl modules EL splits between EPEL and the distribution builder
+    # repository: perl-IO-Tty, perl-Crypt-CBC, perl-Crypt-Rijndael, perl(Expect). Both are off
+    # on a fresh EL install, and the otherpkgs postbootscript installs xCATsn after this script.
+    # Neither step fails the node: a site can run without EPEL, and xcat-dep carries the same
+    # closure. An unmet dependency must be visible here rather than at otherpkgs.
     if (-e "/etc/os-release" && `grep -Ei 'platform:el' /etc/os-release 2>/dev/null`) {
-        `logger -t $log_label -p local4.info servicenode: ensuring EPEL is enabled for xCAT-server dependencies`;
-        &runcmd("dnf -y install epel-release");
+        &enable_el_dependency_repos($log_label);
     }
 
     &runcmd("rpm -e OpenIPMI-tools");
@@ -171,6 +174,101 @@ exit $rc;
 #
 # Subroutines
 #
+
+#-----------------------------------------------------------------------------
+
+=head3 builder_repo_ids
+
+    The repository ids that carry the EL builder packages, most likely first.
+
+    xCAT-server requires perl-IO-Tty, perl-Crypt-CBC, perl-Crypt-Rijndael and perl(Expect).
+    EL keeps them in the builder repository, which every vendor names differently and which is
+    disabled on a fresh install. The caller enables the first id dnf knows.
+
+    Covered: AlmaLinux, Rocky and CentOS Stream (crb on 9 and 10, powertools on 8), RHEL
+    (codeready-builder-for-rhel-<major>-<arch>-rpms) and Oracle Linux
+    (ol<major>_codeready_builder). Not covered: any other vendor, which gets crb on 9 and later
+    and powertools on 8 because those are the community spellings.
+
+    Arguments:
+        $id         the ID field of /etc/os-release
+        $version    the VERSION_ID field of /etc/os-release
+        $arch       the machine architecture, for the RHEL id only
+    Returns:
+        the repository ids to try, in order, or an empty list when the arguments name no EL
+        release. An empty list is the answer for "do not guess".
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub builder_repo_ids {
+    my ($id, $version, $arch) = @_;
+
+    return () unless defined $id && length $id;
+    return () unless defined $version;
+    my ($major) = $version =~ /^(\d+)/;
+    return () unless defined $major;
+    $arch = 'x86_64' unless defined $arch && length $arch;
+
+    return ("codeready-builder-for-rhel-$major-$arch-rpms") if $id eq 'rhel';
+    return ("ol${major}_codeready_builder")                 if $id eq 'ol';
+    return ('powertools', 'PowerTools')                     if $major == 8;
+    return ('crb');
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 enable_el_dependency_repos
+
+    Enable EPEL and the builder repository on an EL service node, and say so when either is
+    still absent. Neither is fatal: a site can run without EPEL, and xcat-dep carries the same
+    perl closure. What must not happen is silence.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub enable_el_dependency_repos {
+    my ($log_label) = @_;
+
+    my $osrel = `cat /etc/os-release 2>/dev/null` || '';
+    my ($id)      = $osrel =~ /^ID="?([^"\n]+)"?/m;
+    my ($version) = $osrel =~ /^VERSION_ID="?([^"\n]+)"?/m;
+    my $arch = `uname -m 2>/dev/null`;
+    chomp $arch if defined $arch;
+
+    `logger -t $log_label -p local4.info servicenode: enabling EPEL and the builder repository for xCAT-server dependencies`;
+    &runcmd("dnf -y install epel-release");
+    unless (`dnf repolist --enabled 2>/dev/null` =~ /^epel\b/m) {
+        my $m = "servicenode: EPEL is not enabled on $::hname. xCAT-server perl dependencies must"
+              . " then come from xcat-dep, or xCATsn will not install.";
+        print "$m\n";
+        `logger -t $log_label -p local4.warning "$m"`;
+    }
+
+    my @ids = &builder_repo_ids($id, $version, $arch);
+    my $known = `dnf repolist --all 2>/dev/null` || '';
+    my $enabled = '';
+    foreach my $repo (@ids) {
+        next unless $known =~ /^\Q$repo\E\s/m;
+        &runcmd("dnf -y install dnf-plugins-core") unless -x "/usr/bin/dnf-3";
+        if (&runcmd("dnf config-manager --set-enabled $repo") == 0) {
+            $enabled = $repo;
+            last;
+        }
+    }
+    if ($enabled) {
+        `logger -t $log_label -p local4.info "servicenode: enabled the builder repository $enabled"`;
+    }
+    else {
+        my $m = "servicenode: no builder repository could be enabled on $::hname (tried: "
+              . join(', ', @ids) . "). perl-IO-Tty, perl-Crypt-CBC, perl-Crypt-Rijndael and"
+              . " perl(Expect) must then come from xcat-dep, or xCATsn will not install.";
+        print "$m\n";
+        `logger -t $log_label -p local4.warning "$m"`;
+    }
+    return 0;
+}
+
 
 # run the command
 sub runcmd
