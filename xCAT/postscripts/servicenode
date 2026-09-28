@@ -44,6 +44,10 @@ if ($^O =~ /^aix/i) {
 }
 
 use lib "$::XCATROOT/lib/perl";
+# ELBuilderRepo ships beside this script and reaches the node in /xcatpost with it.
+use File::Basename qw(dirname);
+use Cwd qw(abs_path);
+use lib dirname(abs_path($0));
 use strict;
 
 # MAIN
@@ -177,52 +181,14 @@ exit $rc;
 
 #-----------------------------------------------------------------------------
 
-=head3 builder_repo_ids
-
-    The repository ids that carry the EL builder packages, most likely first.
-
-    xCAT-server requires perl-IO-Tty, perl-Crypt-CBC, perl-Crypt-Rijndael and perl(Expect).
-    EL keeps them in the builder repository, which every vendor names differently and which is
-    disabled on a fresh install. The caller enables the first id dnf knows.
-
-    Covered: AlmaLinux, Rocky and CentOS Stream (crb on 9 and 10, powertools on 8), RHEL
-    (codeready-builder-for-rhel-<major>-<arch>-rpms) and Oracle Linux
-    (ol<major>_codeready_builder). Not covered: any other vendor, which gets crb on 9 and later
-    and powertools on 8 because those are the community spellings.
-
-    Arguments:
-        $id         the ID field of /etc/os-release
-        $version    the VERSION_ID field of /etc/os-release
-        $arch       the machine architecture, for the RHEL id only
-    Returns:
-        the repository ids to try, in order, or an empty list when the arguments name no EL
-        release. An empty list is the answer for "do not guess".
-
-=cut
-
-#-----------------------------------------------------------------------------
-sub builder_repo_ids {
-    my ($id, $version, $arch) = @_;
-
-    return () unless defined $id && length $id;
-    return () unless defined $version;
-    my ($major) = $version =~ /^(\d+)/;
-    return () unless defined $major;
-    $arch = 'x86_64' unless defined $arch && length $arch;
-
-    return ("codeready-builder-for-rhel-$major-$arch-rpms") if $id eq 'rhel';
-    return ("ol${major}_codeready_builder")                 if $id eq 'ol';
-    return ('powertools', 'PowerTools')                     if $major == 8;
-    return ('crb');
-}
-
-#-----------------------------------------------------------------------------
-
 =head3 enable_el_dependency_repos
 
-    Enable EPEL and the builder repository on an EL service node, and say so when either is
-    still absent. Neither is fatal: a site can run without EPEL, and xcat-dep carries the same
-    perl closure. What must not happen is silence.
+    Enable EPEL and the distribution builder repository on an EL service node, and say so when
+    either is still absent. Neither is fatal: a site can run without EPEL, and xcat-dep carries
+    the same perl closure. What must not happen is silence.
+
+    ELBuilderRepo names the builder repository. It ships beside this script and reaches the node
+    in /xcatpost with it, so it loads where no xCAT package is installed yet.
 
 =cut
 
@@ -231,41 +197,56 @@ sub enable_el_dependency_repos {
     my ($log_label) = @_;
 
     my $osrel = `cat /etc/os-release 2>/dev/null` || '';
-    my ($id)      = $osrel =~ /^ID="?([^"\n]+)"?/m;
+    my ($vendor)  = $osrel =~ /^ID="?([^"\n]+)"?/m;
     my ($version) = $osrel =~ /^VERSION_ID="?([^"\n]+)"?/m;
+    my ($major)   = defined $version ? $version =~ /^(\d+)/ : ();
     my $arch = `uname -m 2>/dev/null`;
     chomp $arch if defined $arch;
 
     `logger -t $log_label -p local4.info servicenode: enabling EPEL and the builder repository for xCAT-server dependencies`;
     &runcmd("dnf -y install epel-release");
     unless (`dnf repolist --enabled 2>/dev/null` =~ /^epel\b/m) {
-        my $m = "servicenode: EPEL is not enabled on $::hname. xCAT-server perl dependencies must"
-              . " then come from xcat-dep, or xCATsn will not install.";
-        print "$m\n";
-        `logger -t $log_label -p local4.warning "$m"`;
+        &report_missing_repo($log_label, "EPEL", "");
     }
 
-    my @ids = &builder_repo_ids($id, $version, $arch);
-    my $known = `dnf repolist --all 2>/dev/null` || '';
-    my $enabled = '';
-    foreach my $repo (@ids) {
-        next unless $known =~ /^\Q$repo\E\s/m;
-        &runcmd("dnf -y install dnf-plugins-core") unless -x "/usr/bin/dnf-3";
-        if (&runcmd("dnf config-manager --set-enabled $repo") == 0) {
-            $enabled = $repo;
-            last;
-        }
-    }
-    if ($enabled) {
-        `logger -t $log_label -p local4.info "servicenode: enabled the builder repository $enabled"`;
+    my @ids;
+    if (eval { require ELBuilderRepo; 1 }) {
+        @ids = ELBuilderRepo::builder_repo_ids($vendor, $major, $arch);
     }
     else {
-        my $m = "servicenode: no builder repository could be enabled on $::hname (tried: "
-              . join(', ', @ids) . "). perl-IO-Tty, perl-Crypt-CBC, perl-Crypt-Rijndael and"
-              . " perl(Expect) must then come from xcat-dep, or xCATsn will not install.";
-        print "$m\n";
-        `logger -t $log_label -p local4.warning "$m"`;
+        `logger -t $log_label -p local4.warning "servicenode: ELBuilderRepo did not load: $@"`;
     }
+
+    my $known = `dnf repolist --all 2>/dev/null` || '';
+    foreach my $repo (@ids) {
+        next unless $known =~ /^\Q$repo\E\s/m;
+        &runcmd("dnf -y install dnf-plugins-core");
+        next unless &runcmd("dnf config-manager --set-enabled $repo") == 0;
+        `logger -t $log_label -p local4.info "servicenode: enabled the builder repository $repo"`;
+        return 0;
+    }
+    &report_missing_repo($log_label, "no builder repository", " (tried: " . join(', ', @ids) . ")");
+    return 0;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 report_missing_repo
+
+    Print and log that a repository could not be enabled. Printing is what makes it visible: the
+    node copies this script's output into /var/log/xcat/xcat.log, while the EPEL step reported
+    only to syslog, where nothing read it.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub report_missing_repo {
+    my ($log_label, $what, $detail) = @_;
+    my $m = "servicenode: $what could be enabled on $::hname$detail. perl-IO-Tty, perl-Crypt-CBC,"
+          . " perl-Crypt-Rijndael and perl(Expect) must then come from xcat-dep, or xCATsn will"
+          . " not install.";
+    print "$m\n";
+    `logger -t $log_label -p local4.warning "$m"`;
     return 0;
 }
 
