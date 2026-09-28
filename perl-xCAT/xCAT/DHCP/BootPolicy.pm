@@ -554,8 +554,9 @@ sub kea_iscsi_node_classes {
 # the node's own host block, for the three architecture ids its firmware
 # announces.
 #
-# The empty boot file is the reservation's job, so what is left for the class is
-# the tag and the architectures it is meant for.
+# The empty boot file is the reservation's job, and xcat-localboot keeps the
+# boot-file classes off the MAC. What is left for this class is the tag and the
+# architectures it is meant for.
 sub kea_proxydhcp_node_classes {
     my ( $class, %opts ) = @_;
 
@@ -618,8 +619,9 @@ sub kea_localboot_guard {
     return "not member('" . kea_localboot_class_name() . "')";
 }
 
-# The MACs of nodes that have an operating system and must be left to start it.
-# spec.md S-31.
+# The MACs of nodes that are to be handed no boot file: a node that has an
+# operating system and must be left to start it (spec.md S-31), and a Windows
+# UEFI install deferred to proxyDHCP.
 #
 # An empty boot-file-name is not enough: Kea reads it as "not specified" and falls
 # through to the classes. So the MACs go into one class every boot-file class

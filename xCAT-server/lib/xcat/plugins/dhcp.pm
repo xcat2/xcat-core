@@ -3921,7 +3921,11 @@ sub kea_node_client_classes_for_nodes
             }
 
             if ( $intent eq 'proxydhcp' ) {
+
+                # Kea reads the reservation's empty boot file as unset, so the
+                # MAC also goes into the class every boot-file class excludes.
                 push @proxydhcp, {%record};
+                push @localboot, {%record};
             } elsif ( $intent eq 'disk' ) {
 
                 # No boot classes of its own, and an empty boot file in the
