@@ -74,6 +74,13 @@ check:rc==0
 check:output=~NODE=$$CN
 check:output=~IMAGENAME=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:output=~SERVICEGROUP=$$SN
+# SERVICEGROUP above is a copy of the noderes.servicenode value this case wrote, so it says
+# what xCAT set and not which server sent the boot payload. Both dhcpd instances answer for
+# $$CN, so the management node can win the xNBA exchange and serve it. The httpd access logs
+# are what separates the two topologies.
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/check_provisioning_source.sh $$CN $$SN
+check:rc==0
+check:output=~provisioning source ok
 cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 cmd:xdsh $$CN "cat /test.synclist"
 check:rc==0
