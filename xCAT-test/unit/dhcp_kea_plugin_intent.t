@@ -1692,4 +1692,32 @@ foreach my $case (@invalid_mac_cases) {
         'and that class, which names no boot file, is not excluded from it' );
 }
 
+{
+    # makedhcp <node> writes the loaded config back through encode_config, not
+    # through the renderer. Kea rejects an option flag written as the number 1.
+    my %tables = (
+        noderes  => DHCPKeaResTable->new( { win01 => { netboot => 'xnba' } } ),
+        mac      => DHCPKeaResTable->new( { win01 => { mac => 'aa:bb:cc:dd:ee:0a' } } ),
+        chain    => DHCPKeaResTable->new( { win01 => { currstate => 'install' } } ),
+        nodetype => DHCPKeaResTable->new( { win01 => { os => 'win2022' } } ),
+    );
+
+    no warnings 'redefine';
+    local *xCAT::Table::new = sub {
+        my ( $class, $name ) = @_;
+        return $tables{$name};
+    };
+    local *xCAT_plugin::dhcp::next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
+    local *xCAT_plugin::dhcp::proxydhcp = sub { return 1; };
+
+    my $config = { Dhcp4 => { 'client-classes' => [] } };
+    xCAT_plugin::dhcp::kea_sync_node_client_classes( $config, ['win01'] );
+    my $written = JSON::decode_json( xCAT::DHCP::Backend::Kea->new()->encode_config($config) );
+    my ($deferral) = grep { $_->{name} eq 'xcat-proxydhcp-win01-aabbccddee0a' }
+      @{ $written->{Dhcp4}{'client-classes'} };
+    ok( $deferral, 'the proxyDHCP class is written by a makedhcp for one node' );
+    is( ref( $deferral ? $deferral->{'option-data'}[0]{'always-send'} : undef ), 'JSON::PP::Boolean',
+        'and its always-send flag is written as a boolean, which is what Kea parses' );
+}
+
 done_testing();
