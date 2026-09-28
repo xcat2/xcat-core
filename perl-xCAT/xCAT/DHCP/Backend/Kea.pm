@@ -375,6 +375,14 @@ sub _write_json_file {
 
 sub encode_config {
     my ( $self, $config ) = @_;
+
+    # makedhcp <node> adds classes to a loaded config without the renderer.
+    foreach my $family (qw/Dhcp4 Dhcp6/) {
+        my $scope = ref($config) eq 'HASH' ? $config->{$family} : undef;
+        next unless ref($scope) eq 'HASH' and $scope->{'client-classes'};
+        $scope->{'client-classes'} = _render_entry_option_data( $scope->{'client-classes'} );
+    }
+
     return JSON->new->canonical->pretty->encode($config);
 }
 
