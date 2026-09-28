@@ -18,6 +18,7 @@
 #     dhcpfixture.sh run-iscsi               a diskless node is told where its root is
 #     dhcpfixture.sh run-loader-absent       a loader that is not on disk is not named
 #     dhcpfixture.sh run-localboot           an installed node is sent no xNBA script
+#     dhcpfixture.sh run-proxydhcp           a node deferred to proxyDHCP is sent no loader
 #     dhcpfixture.sh run-httpport            URLs carry a non-default web port
 #     dhcpfixture.sh run-rangecidr           a dynamic range written as a CIDR block
 #     dhcpfixture.sh run-removal             makedhcp -d stops the address being served
@@ -112,6 +113,12 @@ LB_MAC=02:00:dc:11:00:61
 LB_PXE_NODE=dhcptestbootpxe
 LB_PXE_IP=10.99.0.82
 LB_PXE_MAC=02:00:dc:11:00:62
+
+# A Windows UEFI install, which xCAT defers to the proxyDHCP daemon.
+PD_NODE=dhcptestwin
+PD_IP=10.99.0.83
+PD_MAC=02:00:dc:11:00:63
+PD_DAEMON=/opt/xcat/sbin/proxydhcp-xcat
 
 # A machine that speaks BOOTP and not DHCP, and the web port a cluster not
 # serving on 80 would use.
@@ -844,6 +851,39 @@ do_run_localboot() {
     return $rc
 }
 
+# makedhcp defers a node to proxyDHCP only while proxydhcp-xcat runs, and only
+# for a Windows install on UEFI. chain.currstate has no node attribute.
+do_run_proxydhcp() {
+    local rc=0
+    if ! pgrep -x proxydhcp-xcat >/dev/null; then
+        [ -x "$PD_DAEMON" ] || skip "$PD_DAEMON is not installed"
+        "$PD_DAEMON" -d || die "cannot start $PD_DAEMON"
+        pgrep -x proxydhcp-xcat > "$STATE/proxydhcp" \
+            || die "$PD_DAEMON did not stay up"
+    fi
+    extra_define "$PD_NODE" groups=dhcptest ip="$PD_IP" mac="$PD_MAC" \
+        arch=x86_64 os=win2022 netboot=xnba tftpserver="$SRV_IP" xcatmaster="$SRV_IP"
+    chtab node="$PD_NODE" chain.currstate=install \
+        || die "cannot set chain.currstate for $PD_NODE"
+    makedhcp "$PD_NODE" || die "makedhcp $PD_NODE failed"
+
+    dhcp_run \
+        --set proxy_mac="$PD_MAC" --set proxy_ip="$PD_IP" \
+        --set uefi_loader="$(arch_loader uefi)" \
+        conf/dhcp/proxydhcp.conf || rc=1
+    return $rc
+}
+
+stop_proxydhcp() {
+    local pid
+    [ -f "$STATE/proxydhcp" ] || return 0
+    # After SIGTERM, proxydhcp-xcat blocks in recv until a packet arrives.
+    while read -r pid; do
+        [ -n "$pid" ] && kill -KILL "$pid" >/dev/null 2>&1
+    done < "$STATE/proxydhcp"
+    rm -f "$STATE/proxydhcp"
+}
+
 # S-12. One gating loader is taken away and the configuration regenerated: both
 # backends decide which boot classes to write from what is on disk, so the file
 # has to be gone before makedhcp runs.
@@ -969,6 +1009,7 @@ do_teardown() {
     [ -f "$STATE/adopt" ] && { makedhcp -d "$ADOPT_NODE" >/dev/null 2>&1; makehosts -d "$ADOPT_NODE" >/dev/null 2>&1; rmdef "$ADOPT_NODE" >/dev/null 2>&1 || { say "FAILED: cannot remove the node $ADOPT_NODE"; failed=1; }; }
     netboot_undefine || failed=1
     extra_undefine || failed=1
+    stop_proxydhcp
     [ -f "$STATE/iscsi" ] && chtab -d node="$ISCSI_NODE" iscsi >/dev/null 2>&1
     [ -f "$STATE/network" ] && rmdef -t network -o "$NETOBJ" >/dev/null 2>&1
     [ -f "$STATE/veth" ] && ip link del "$IF_SRV" >/dev/null 2>&1
@@ -1028,6 +1069,7 @@ dispatch() {
     run-iscsi)        do_run_iscsi ;;
     run-loader-absent) do_run_loader_absent ;;
     run-localboot)     do_run_localboot ;;
+    run-proxydhcp)     do_run_proxydhcp ;;
     run-httpport)     do_run_httpport ;;
     run-rangecidr)    do_run_rangecidr ;;
     run-removal)      do_run_removal ;;
@@ -1036,7 +1078,7 @@ dispatch() {
     run-hierarchy) do_run_hierarchy ;;
     run-adoption)  do_run_adoption ;;
     teardown)    do_teardown ;;
-    *)           die "usage: $0 {check|setup|generate|backends|backend-setup <isc|kea>|backend-teardown <isc|kea>|run|run-arch|run-netboot|run-lease|run-chainload|run-nextserver|run-multimac|run-iscsi|run-loader-absent|run-localboot|run-httpport|run-rangecidr|run-removal|run-bootp|delegate|run-hierarchy|run-adoption|teardown}" ;;
+    *)           die "usage: $0 {check|setup|generate|backends|backend-setup <isc|kea>|backend-teardown <isc|kea>|run|run-arch|run-netboot|run-lease|run-chainload|run-nextserver|run-multimac|run-iscsi|run-loader-absent|run-localboot|run-proxydhcp|run-httpport|run-rangecidr|run-removal|run-bootp|delegate|run-hierarchy|run-adoption|teardown}" ;;
     esac
 }
 

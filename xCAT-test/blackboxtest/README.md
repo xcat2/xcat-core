@@ -230,6 +230,7 @@ chain clauses (`P-nn`). Each scenario's description names its clause.
 | `dhcp/node-removal.conf` | a withdrawn node stops being offered its old address |
 | `dhcp/bootp-client.conf` | a BOOTP client is still given an address |
 | `dhcp/localboot.conf` | an installed node is offered its address and no boot script |
+| `dhcp/proxydhcp.conf` | a node deferred to proxyDHCP is offered PXEClient and no boot file |
 | `prov/dns.conf`, `prov/dns-removal.conf` | forward, reverse, alias, forwarded and removed names |
 | `prov/tftp-{grub2,pxelinux,xnba,petitboot}.conf` | each netboot method's loader, config, kernel and initrd, by the name the firmware asks for |
 | `prov/discovery-artefacts.conf` | the configs and genesis images an unknown machine fetches |

@@ -116,6 +116,7 @@ os:Linux
 #
 # The third asks the opposite: a node that already has an operating system must
 # not be named a netboot script, or it reinstalls itself on every power cycle.
+# The fourth is a node deferred to proxyDHCP, which must be named no loader.
 cmd:#!/bin/bash
     set -u
     FIX=/opt/xcat/share/xcat/tools/autotest/testcase/blackboxtest/dhcpfixture.sh
@@ -127,6 +128,7 @@ cmd:#!/bin/bash
     "$FIX" run-loader-absent || rc=1
     "$FIX" run-httpport || rc=1
     "$FIX" run-localboot || rc=1
+    "$FIX" run-proxydhcp || rc=1
     exit $rc
 check:rc==0
 end
