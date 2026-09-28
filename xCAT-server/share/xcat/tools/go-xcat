@@ -2068,6 +2068,35 @@ function installed_packages()
 	function_dispatch "${FUNCNAME[0]}" "$@"
 }
 
+#       $@      package names
+#       Prints the ones this system can purge. rpm has no removed-but-configured state.
+function purgeable_packages_rpm()
+{
+	installed_packages_rpm "$@"
+}
+
+#       $@      package names
+#       `apt-get remove` leaves "deinstall ok config-files". `apt-get purge` still removes those files.
+function purgeable_packages_deb()
+{
+	type dpkg-query >/dev/null 2>&1 || return 255
+	local package=""
+	for package in "$@"
+	do
+		case "$(dpkg-query --show '--showformat=${Status}' "${package}" 2>/dev/null)" in
+		"install ok installed"|*" ok config-files")
+			echo "${package}"
+			;;
+		esac
+	done
+	return 0
+}
+
+function purgeable_packages()
+{
+	function_dispatch "${FUNCNAME[0]}" "$@"
+}
+
 #       $1      -y
 function uninstall_xcat()
 {
@@ -2130,7 +2159,7 @@ function trash_xcat()
 function uninstall_xcat_completely()
 {
 	local -a present=()
-	readarray -t present < <(installed_packages "${GO_XCAT_UNINSTALL_LIST[@]}")
+	readarray -t present < <(purgeable_packages "${GO_XCAT_UNINSTALL_LIST[@]}")
 	[[ "${#present[@]}" -eq "0" ]] || purge_package -y "${present[@]}"
 
 	kill_xcat
