@@ -1632,4 +1632,64 @@ foreach my $case (@invalid_mac_cases) {
         'and the guard naming it goes with it' );
 }
 
+{
+    # A Windows UEFI install deferred to proxyDHCP gets an empty boot-file-name
+    # in its reservation, and Kea reads that as "not specified". So its MAC
+    # must be excluded from every class that names a boot file, or
+    # xcat-uefi-x64 hands it xcat/xnba.efi.
+    my %tables = (
+        noderes => DHCPKeaResTable->new(
+            {
+                win01 => { netboot => 'xnba' },
+                cn01  => { netboot => 'xnba' },
+            }
+        ),
+        mac => DHCPKeaResTable->new(
+            {
+                win01 => { mac => 'aa:bb:cc:dd:ee:08' },
+                cn01  => { mac => 'aa:bb:cc:dd:ee:09' },
+            }
+        ),
+        chain => DHCPKeaResTable->new(
+            { win01 => { currstate => 'install' }, cn01 => { currstate => 'install' } }
+        ),
+        nodetype => DHCPKeaResTable->new(
+            { win01 => { os => 'win2022' }, cn01 => { os => 'rhels9' } }
+        ),
+    );
+
+    no warnings 'redefine';
+    local *xCAT::Table::new = sub {
+        my ( $class, $name ) = @_;
+        return $tables{$name};
+    };
+    local *xCAT_plugin::dhcp::next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
+    local *xCAT_plugin::dhcp::proxydhcp = sub { return 1; };
+
+    my $config = {
+        Dhcp4 => {
+            'client-classes' => xCAT::DHCP::BootPolicy->kea_client_classes( xnba_kpxe => 1, xnba_efi => 1 ),
+        },
+    };
+    xCAT_plugin::dhcp::kea_sync_node_client_classes( $config, [ 'win01', 'cn01' ] );
+    my %by_name = map { $_->{name} => $_ } @{ $config->{Dhcp4}{'client-classes'} };
+
+    my $excluded = $by_name{'xcat-localboot'};
+    ok( $excluded, 'a proxyDHCP node puts its MAC in the class the boot-file classes exclude' );
+    is( $excluded ? $excluded->{test} : undef, 'pkt4.mac == 0xaabbccddee08',
+        'the proxyDHCP node is in it, and the node that netboots is not' );
+
+    my @unguarded = sort map { $_->{name} }
+      grep { defined $_->{'boot-file-name'} and $_->{test} !~ /\Qnot member('xcat-localboot')\E$/ }
+      @{ $config->{Dhcp4}{'client-classes'} };
+    is_deeply( \@unguarded, [], 'no class that names a boot file can match the proxyDHCP node' );
+
+    is( $by_name{'xcat-uefi-x64'}{'boot-file-name'}, 'xcat/xnba.efi',
+        'the UEFI class still names xnba.efi for every other client' );
+    ok( $by_name{'xcat-proxydhcp-win01-aabbccddee08'},
+        'the proxyDHCP node keeps the class that tags its reply PXEClient' );
+    unlike( $by_name{'xcat-proxydhcp-win01-aabbccddee08'}{test} // '', qr/xcat-localboot/,
+        'and that class, which names no boot file, is not excluded from it' );
+}
+
 done_testing();
