@@ -12,8 +12,8 @@ use Test::More;
 #
 # The deb side named xcat-genesis-scripts-amd64 in a plain Depends, and that package is
 # Architecture: all, so apt installed the x86 Genesis scripts (and, through them, the x86 Genesis
-# base) on a riscv64 management node. Restrict the dependency to the architectures that have a
-# legacy Genesis, and leave amd64 and ppc64el untouched.
+# base) on every management node that is not amd64. Name one scripts package per architecture that
+# has a legacy Genesis, so riscv64 gets none and ppc64el gets its own.
 
 my $repo_root = File::Spec->rel2abs(
     File::Spec->catdir( $FindBin::Bin, '..', '..' )
@@ -37,10 +37,12 @@ foreach my $pkg ( [ 'xCAT', 'xcat' ], [ 'xCATsn', 'xcatsn' ] ) {
     my ($recommends) = $control =~ /^Recommends:\s*(.*)$/m;
     ok( defined $recommends, "$name debian/control has a Recommends line" );
 
-    my ($entry) = grep { /xcat-genesis-scripts/ } split( /\s*,\s*/, $depends );
-    ok( defined $entry, "$name depends on a legacy Genesis scripts package" );
-    like( $entry, qr/\[!riscv64\]/,
-        "$name excludes riscv64 from the legacy Genesis scripts dependency" );
+    my @entries = grep { /xcat-genesis-scripts/ } split( /\s*,\s*/, $depends );
+    ok( scalar(@entries), "$name depends on a legacy Genesis scripts package" );
+    my @unqualified = grep { !/\[(?:amd64|ppc64el)\]\s*$/ } @entries;
+    is_deeply( \@unqualified, [],
+        "$name asks for the legacy Genesis scripts of an architecture that has them" )
+        or diag( "unqualified: @unqualified" );
 
   SKIP: {
         skip( "Dpkg::Deps is not available", 7 ) unless $have_dpkg_deps;
@@ -56,8 +58,8 @@ foreach my $pkg ( [ 'xCAT', 'xcat' ], [ 'xCATsn', 'xcatsn' ] ) {
             "$name on riscv64 does not pull the legacy Genesis scripts" );
         like( $reduced{amd64}, qr/xcat-genesis-scripts-amd64/,
             "$name on amd64 still pulls them" );
-        like( $reduced{ppc64el}, qr/xcat-genesis-scripts-amd64/,
-            "$name on ppc64el still pulls them" );
+        like( $reduced{ppc64el}, qr/xcat-genesis-scripts-ppc64el/,
+            "$name on ppc64el pulls the ppc64el ones" );
 
         # The restriction must not take anything else with it: every other dependency of the
         # amd64 package must survive on riscv64.

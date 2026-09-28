@@ -32,13 +32,9 @@ my $GITHUB_API = "https://api.github.com";
 # through FindBin, so they can only be run from a source tree. Take a copy
 # before building and run the unit tests out of the copy.
 #
-# This used to be mandatory rather than tidy: build-ubunturepo set
-#     local_core_repo_path="$curdir/../../xcat-core"
-# which, under the work/<repo>/<repo> layout GitHub checks out into, resolved to
-# the checkout's own parent, and it rm -rf'd that path to make room for the apt
-# repository -- destroying the tree the tests need. builddebs.pl writes under
-# dist/debs INSIDE the checkout and restores every file it edits, so the copy is
-# now only isolating the tests from build residue.
+# The copy is tidiness, not a requirement: builddebs.pl writes under dist/debs
+# inside the checkout and restores every file it edits, so the copy only keeps
+# build residue away from the tests.
 my $srcdir = getcwd();
 my $unitsrc = ($ENV{'RUNNER_TEMP'} ? $ENV{'RUNNER_TEMP'} : "/tmp") . "/xcat-core-unitsrc";
 
@@ -364,8 +360,8 @@ sub install_xcat{
 
     my @cmds = ("sudo $repo/mklocalrepo.sh",
                "sudo chmod 777 /etc/apt/sources.list",
-               "sudo echo \"deb [arch=amd64 allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/latest/xcat-dep noble main\" >> /etc/apt/sources.list",
-               "sudo echo \"deb [arch=ppc64el allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/latest/xcat-dep noble main\" >> /etc/apt/sources.list",
+               "sudo echo \"deb [arch=amd64 allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep noble main\" >> /etc/apt/sources.list",
+               "sudo echo \"deb [arch=ppc64el allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep noble main\" >> /etc/apt/sources.list",
                "sudo timeout 600 apt-get -qq -o Acquire::Retries=3 -o Acquire::http::Timeout=30 --allow-insecure-repositories update");
     chdir $ENV{RUNNER_WORKSPACE};;
 

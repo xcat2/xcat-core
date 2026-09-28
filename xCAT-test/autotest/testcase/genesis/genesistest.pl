@@ -68,13 +68,7 @@ if (!defined($noderange)) {
 }
 my $os = &get_os;
 if ($check_genesis_file) {
-    send_msg(2, "[$$]:Check if genesis packages are installed on mn...............");
-    &check_genesis_file(&get_arch);
-    if ($?) {
-        send_msg(0, "genesis packages are not installed");
-    } else {
-        send_msg(2, "genesis packages are installed");
-    }
+    exit 1 if &report_genesis_files(&get_arch);
 }
 my $master=`lsdef -t site -i master -c  2>&1 | awk -F'=' '{print \$2}'`;
 if (!$master) { $master=hostname(); }
@@ -89,29 +83,7 @@ if (!(-e $nodestanza)) {
 ####nodesetshell test for genesis
 ####################################
 if ($genesis_nodesetshell_test) {
-    send_msg(2, "[$$]:Running nodeset NODE shell test...............");
-    `nodeset $noderange shell`;
-    if ($?) {
-        send_msg(0, "[$$]:nodeset $noderange shell failed...............");
-        exit 1;
-    }
-    `rpower $noderange boot`;
-    if ($?) {
-        send_msg(0, "[$$]:rpower $noderange failed...............");
-        exit 1;
-    }
-    else {
-        send_msg(2, "Installing with \"nodeset $noderange shell\" for shell test");
-        sleep 120; # wait 2 min for install to finish
-        wait_for_boot();
-    }
-    #run nodeshell test
-    send_msg(2, "prepare for nodeshell script.");
-    if ( &testxdsh(3)) {
-        send_msg(0, "[$$]:Could not verify test results using xdsh...............");
-        exit 1;
-    }
-    send_msg(2, "[$$]:Running nodesetshell test success...............");
+    exit 1 if &run_nodeset_shell_test();
 }
 ####################################
 ####runcmd test for genesis
@@ -146,6 +118,51 @@ if ($clear_env) {
         exit 1;
     }
     send_msg(2, "[$$]:Clear genesis test enviroment success...............");
+}
+##################################
+#run_nodeset_shell_test
+#################################
+sub run_nodeset_shell_test {
+    send_msg(2, "[$$]:Running nodeset NODE shell test...............");
+    `nodeset $noderange shell`;
+    if ($?) {
+        send_msg(0, "[$$]:nodeset $noderange shell failed...............");
+        return 1;
+    }
+    `rpower $noderange boot`;
+    if ($?) {
+        send_msg(0, "[$$]:rpower $noderange failed...............");
+        return 1;
+    }
+    send_msg(2, "Installing with \"nodeset $noderange shell\" for shell test");
+    sleep 120; # wait 2 min for install to finish
+    if (&wait_for_node_status("shell")) {
+        send_msg(0, "[$$]:$noderange did not report the shell destiny...............");
+        return 1;
+    }
+    #run nodeshell test
+    send_msg(2, "prepare for nodeshell script.");
+    if (&testxdsh(3)) {
+        send_msg(0, "[$$]:Could not verify test results using xdsh...............");
+        return 1;
+    }
+    send_msg(2, "[$$]:Running nodesetshell test success...............");
+    return 0;
+}
+##################################
+#report_genesis_files
+#################################
+sub report_genesis_files {
+    my ($arch) = @_;
+    send_msg(2, "[$$]:Check if genesis packages are installed on mn...............");
+    # The caller used to test $?, which holds the exit status of the last child process, not
+    # this return value. A node with no genesis packages therefore reported success.
+    if (&check_genesis_file($arch)) {
+        send_msg(0, "genesis packages are not installed");
+        return 1;
+    }
+    send_msg(2, "genesis packages are installed");
+    return 0;
 }
 ##################################
 #check_genesis_file
@@ -214,7 +231,7 @@ sub rungenesiscmd {
     else {
         send_msg(2, "Installing with \"$rinstall_cmd\" for runcmd test");
         sleep 120; # wait 2 min for install to finish
-        wait_for_boot();
+        $value = -1 if &wait_for_node_status("configuring");
     }
     return $value;
 }
@@ -257,13 +274,24 @@ sub rungenesisimg {
     } else {
         send_msg(2, "Installing with \"$rinstall_cmd\" for runimage test\n");
         sleep 120; # wait 2 min for install to finish
-        wait_for_boot();
+        $value = -1 if &wait_for_node_status("booting");
     }
     return $value;
 }
 ########################################
 ####sleep while for xdsh $$CN could work
 #########################################
+##########################################
+####forget the node ssh host keys
+##########################################
+sub forget_host_keys {
+    my ($noderange) = @_;
+    # Genesis makes new host keys on every boot, and each case boots the node several times.
+    # The stale known_hosts entry then makes ssh refuse the changed key, and xdsh cannot reach
+    # the Genesis shell.
+    system("makeknownhosts $noderange -r >/dev/null 2>&1");
+    return 0;
+}
 sub testxdsh {
     my $value = shift;
     my $checkstring;
@@ -284,6 +312,8 @@ sub testxdsh {
         send_msg(0,"Error setting up the node for testxdsh");
         return 1;
     }
+
+    &forget_host_keys($noderange);
 
     # Check shell prompt on the node to verify it is running Genesis
     `xdsh $noderange -t 2 "echo \\\$PS1" | grep "Genesis"`;
@@ -353,8 +383,9 @@ sub clearenv {
     `cat $nodestanza | chdef -z`;
     unlink("$nodestanza");
     }
+    # "rinstall <node> boot" boots the node from its disk, which carries no operating system,
+    # so the node reports no destiny and nodelist.status stays at powering-on. Only wait.
     sleep 120; # wait 2 min for reboot to finish
-    wait_for_boot();
     return 0;
 }
 ####################################
@@ -365,7 +396,10 @@ sub get_os {
     my $output = `cat /etc/*release* 2>&1`;
     if ($output =~ /suse/i) {
         $os = "sles";
-    } elsif ($output =~ /Red Hat/i) {
+    } elsif ($output =~ /Red Hat/i
+        or $output =~ /\b(?:almalinux|rocky|centos|fedora|oracle\s+linux)\b/i
+        or $output =~ /^ID_LIKE=.*\brhel\b/mi) {
+        # AlmaLinux and Rocky release files name neither Red Hat nor themselves as one.
         $os = "redhat";
     } elsif ($output =~ /ubuntu/i) {
         $os = "ubuntu";
@@ -423,9 +457,10 @@ sub send_msg {
 
 }
 #########################################
-### Wait for node to be in "booted" state
+### Wait for the node to report the status its destiny implies
 ##########################################
-sub wait_for_boot {
+sub wait_for_node_status {
+    my ($expected) = @_;
     my $iterations = 30; # Max wait 30x10 = 5 min
     my $sleep_interval = 10;
     my $boot_status;
@@ -433,11 +468,11 @@ sub wait_for_boot {
     foreach my $i (1..$iterations) {
         $boot_status = `lsdef $noderange -i status -c | cut -d'=' -f2`;
         chop($boot_status);
-        if ($boot_status eq "booted") {
+        if ($boot_status eq $expected) {
             return 0;
         }
         sleep $sleep_interval;
     }
-    print "After $iterations iterations node status: $boot_status \n";
+    print "After $iterations iterations node status: $boot_status, expected $expected \n";
     return 1;
 }

@@ -232,6 +232,20 @@ foreach my $relative_path (
     );
 }
 
+my $bios_genesis = read_config(
+    "$xCAT::TableUtils::tftpdir/xcat/xnba/nets/192.168.144.0_20"
+);
+like(
+    $bios_genesis,
+    qr{^imgfetch -n kernel \S+/xcat/genesis\.kernel\.x86_64 .* BOOTIF=01-\$\{netX/mac:hexhyp\}$}m,
+    'the BIOS Genesis script takes BOOTIF from mac:hexhyp',
+);
+unlike(
+    $bios_genesis,
+    qr/machyp/,
+    'the BIOS Genesis script does not use the xNBA-only machyp setting',
+);
+
 use_reporter_address_maps();
 prepare_tftpdir($tmpdir, 'tftpboot-x86-legacy', 'x86_64', 'legacy');
 $responses = run_mknb('x86_64');

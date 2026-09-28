@@ -21,10 +21,31 @@ sub apt_config_for {
     no warnings 'redefine';
     local *xCAT::Template::ubuntu_subiquity_apt_mirror         = sub { $opt{mirror} };
     local *xCAT::Template::ubuntu_subiquity_uses_deb822_sources = sub { $opt{deb822} };
-    local *xCAT::Template::ubuntu_subiquity_otherpkg_sources    = sub { () };
+    local *xCAT::Template::ubuntu_subiquity_otherpkg_sources    = sub { @{ $opt{others} || [] } };
     local *xCAT::Template::ubuntu_subiquity_uses_generated_cdrom_source = sub { 0 };
     return xCAT::Template::ubuntu_subiquity_apt_config('/some/media/dir');
 }
+
+# --- the otherpkgs repository: a one-line source before Deb822, a Deb822 stanza from 24.04 on, ---
+# --- since curtin drops the options of a one-line source when it converts it there            ---
+my $others = [ 'http://192.0.2.10/install/post/otherpkgs/ubuntu24.04/x86_64' ];
+my $classic_others = apt_config_for( mirror => $MIRROR, deb822 => 0, others => $others );
+like( $classic_others, qr{^      xcat-otherpkgs-0\.list:\n        source: "deb \[trusted=yes\] http://192\.0\.2\.10/install/post/otherpkgs/ubuntu24\.04/x86_64 \./"$}m,
+    'classic: the otherpkgs repository is a one-line trusted source' );
+my $deb822_others = apt_config_for( mirror => $MIRROR, deb822 => 1, others => $others );
+like( $deb822_others,
+    qr{^      xcat-otherpkgs-0\.sources:\n        source: \|\n          Types: deb\n          URIs: http://192\.0\.2\.10/install/post/otherpkgs/ubuntu24\.04/x86_64\n          Suites: \./\n          Components:\n          Trusted: yes(?:\n|\z)}m,
+    'Deb822: the otherpkgs repository is a Deb822 stanza carrying Trusted: yes' );
+unlike( $deb822_others, qr/xcat-otherpkgs-0\.list|trusted=yes/, 'Deb822: and no one-line form remains' );
+
+# an otherpkgdir written as URL, suite and components is that source, trusted, not a flat repository at a URL with spaces
+my $mirror_others = [ 'http://mirror.example/ubuntu noble main universe' ];
+like( apt_config_for( mirror => $MIRROR, deb822 => 0, others => $mirror_others ),
+    qr{^      xcat-otherpkgs-0\.list:\n        source: "deb \[trusted=yes\] http://mirror\.example/ubuntu noble main universe"$}m,
+    'classic: an otherpkgdir mirror entry keeps its suite and components' );
+like( apt_config_for( mirror => $MIRROR, deb822 => 1, others => $mirror_others ),
+    qr{^      xcat-otherpkgs-0\.sources:\n        source: \|\n          Types: deb\n          URIs: http://mirror\.example/ubuntu\n          Suites: noble\n          Components: main universe\n          Trusted: yes(?:\n|\z)}m,
+    'Deb822: and becomes a stanza with them as fields, so apt reads one URI' );
 
 # --- online, classic sources (20.04 / 22.04): the archive must be added via sources: ---
 my $classic = apt_config_for( mirror => $MIRROR, deb822 => 0 );

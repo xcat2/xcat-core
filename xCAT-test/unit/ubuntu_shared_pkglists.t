@@ -39,12 +39,19 @@ sub resolved {
 }
 
 # The shared lists keep ntp for the releases that still carry it. aarch64 has no list of its own.
-foreach my $case ( [ $install, 'compute' ], [ $install, 'service' ], [ $install, 'kvm' ], [ $netboot, 'compute' ] ) {
+# The install compute profile has a 24.04 list of its own, with chrony: the Subiquity template
+# installs chrony and ntp cannot join it in one apt transaction (ubuntu_subiquity_pkglists.t).
+foreach my $case ( [ $install, 'service' ], [ $install, 'kvm' ], [ $netboot, 'compute' ] ) {
     my ( $dir, $profile ) = @$case;
     my ( $file, $p ) = resolved( $dir, $profile, 'ubuntu24.04.4', 'aarch64' );
     is( $file, "$profile.pkglist", "$profile on 24.04 without a list of its own resolves to the shared list" );
     ok( $p->{ntp}, "... which keeps ntp" );
     ok( !$p->{$_}, "... and no longer names $_" ) for qw(libodbc1 qemu-kvm libvirt-bin);
+}
+{
+    my ( $file, $p ) = resolved( $install, 'compute', 'ubuntu24.04.4', 'aarch64' );
+    is( $file, 'compute.ubuntu24.04.pkglist', 'the install compute profile on 24.04 resolves its own list' );
+    ok( $p->{chrony} && !$p->{ntp}, '... which names chrony and not ntp' );
 }
 ok( packages_in("$install/service.pkglist")->{unixodbc}, 'the shared service list names unixodbc' );
 ok( packages_in("$install/service.pkglist")->{'libdbd-pg-perl'}, '... and the PostgreSQL driver beside the MySQL one' );

@@ -66,6 +66,13 @@ sub normalize_algorithm {
     return;
 }
 
+sub algorithm_rr_type {
+    my ( $class, $algorithm ) = @_;
+
+    $algorithm = $class->normalize_algorithm($algorithm) or return;
+    return $ALGORITHMS{$algorithm};
+}
+
 sub new_install_default_algorithm {
     my ( $class, %args ) = @_;
 

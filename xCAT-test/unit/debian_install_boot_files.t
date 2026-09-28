@@ -7,10 +7,9 @@ use File::Temp qw(tempdir);
 use FindBin;
 use Test::More;
 
-# The installer kernel and initrd sit in a different place on every Ubuntu media layout:
-# netboot trees name them after the Debian architecture, live images keep them under
-# casper, and a hardware-enablement kernel ships beside the release one. Build each layout
-# on disk and ask the resolver, rather than reading the table that describes them.
+# The installer kernel and initrd sit in a different place on every Ubuntu media layout.
+# Build each layout on disk and ask the resolver, rather than read the table that
+# describes them.
 
 use lib "$FindBin::Bin/../../perl-xCAT";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
@@ -101,6 +100,56 @@ is(
     resolved('riscv64', 'riscv64', media('casper/vmlinuz', 'casper/initrd')),
     undef,
     'riscv64 does not accept the kernel name the other live images use',
+);
+
+# The Ubuntu ppc64el live-server ISO carries no netboot tree. 22.04 and 24.04 ship the
+# hardware-enablement pair under casper beside the release pair; 26.04 ships the release
+# pair only.
+is(
+    resolved('ppc64le', 'ppc64el', media('casper/vmlinux', 'casper/initrd')),
+    'casper/vmlinux|casper/initrd',
+    'the POWER live image keeps its kernel under casper',
+);
+is(
+    resolved('ppc64le', 'ppc64el',
+        media('casper/hwe-vmlinux', 'casper/hwe-initrd', 'casper/vmlinux', 'casper/initrd')),
+    'casper/hwe-vmlinux|casper/hwe-initrd',
+    'the POWER hardware-enablement kernel wins over the release kernel',
+);
+is(
+    resolved('ppc64le', 'ppc64el',
+        media('install/netboot/ubuntu-installer/ppc64el/vmlinux',
+              'install/netboot/ubuntu-installer/ppc64el/initrd.gz',
+              'casper/vmlinux', 'casper/initrd')),
+    'install/netboot/ubuntu-installer/ppc64el/vmlinux|install/netboot/ubuntu-installer/ppc64el/initrd.gz',
+    'a POWER netboot tree still wins over a live image on the same media',
+);
+
+# mkinstall asks this routine, so it accepts every media install_boot_files resolves.
+can_ok('xCAT_plugin::debian', 'install_media_is_bootable');
+is(
+    xCAT_plugin::debian::install_media_is_bootable('ppc64le', 'ppc64el',
+        media('casper/vmlinux', 'casper/initrd')),
+    1,
+    'a POWER live image is bootable media',
+);
+is(
+    xCAT_plugin::debian::install_media_is_bootable('ppc64le', 'ppc64el',
+        media('install/netboot/ubuntu-installer/ppc64el/vmlinux',
+              'install/netboot/ubuntu-installer/ppc64el/initrd.gz')),
+    1,
+    'a POWER netboot tree is bootable media',
+);
+is(
+    xCAT_plugin::debian::install_media_is_bootable('ppc64le', 'ppc64el', media('README')),
+    0,
+    'media with no installer is not bootable media',
+);
+is(
+    xCAT_plugin::debian::install_media_is_bootable('x86_64', 'amd64',
+        media('casper/vmlinuz', 'casper/initrd')),
+    1,
+    'an x86 live image is bootable media',
 );
 
 # --- nothing to boot -------------------------------------------------------

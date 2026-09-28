@@ -1095,6 +1095,23 @@ sub setupxcatdb
 
     }
     $pgsql->soft_close();
+    # PostgreSQL 15 removed the default CREATE privilege on schema public
+    # for PUBLIC, so xcatadm must be granted it explicitly before xcatd
+    # can create the xCAT tables. No-op on earlier releases.
+    my $grantsql = "GRANT USAGE, CREATE ON SCHEMA public TO xcatadm;";
+    my $grantcmd;
+    if ($::osname eq 'AIX')
+    {
+        $grantcmd = "$::installdir/bin/psql -d $::dbname -U postgres -v ON_ERROR_STOP=1 -c \"$grantsql\"";
+    } else {
+        $grantcmd = "$::pgcmddir/psql -d $::dbname -U postgres -v ON_ERROR_STOP=1 -c \"$grantsql\"";
+    }
+    $rc = &runpgcmd_chkoutput($grantcmd);
+    if ($rc > 0) {
+        xCAT::MsgUtils->message("E",
+            "Failed granting xcatadm privileges on schema public in $::dbname");
+        exit(1);
+    }
 
     # setup root user
     $pgsql = new Expect;

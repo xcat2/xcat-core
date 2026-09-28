@@ -288,7 +288,9 @@ site Attributes:
   
    cleanupdiskfullxcatpost:  (yes/1 or no/0). Set to 'yes' or '1' to clean up the /xcatpost
                      directory on the diskfull nodes after the
-                     postscripts are run with no errors. Default is no.
+                     postscripts are run with no errors: at deployment, after each
+                     updatenode run, and after a reboot. updateflag.awk stays, so
+                     the node can still report its status. Default is no.
   
    db2installloc:  The location which the service nodes should mount for
                    the db2 code to install. Format is hostname:/path.  If hostname is

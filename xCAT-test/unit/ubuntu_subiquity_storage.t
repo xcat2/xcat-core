@@ -31,18 +31,25 @@ is( system("bash -n $pre_path 2>/dev/null"), 0,
 # redirected into a scratch tree. Both substitutions are asserted: if either stops
 # matching, this bails out rather than silently covering nothing or writing to /tmp.
 my ($storage_block) = $script =~ /(^if \[ -d \/sys\/firmware\/efi \]; then\n.*?\n^fi$)/ms;
-BAIL_OUT('the firmware branch that writes the partition file no longer matches')
+die('the firmware branch that writes the partition file no longer matches')
     unless $storage_block;
 
-my $brackets = () = $storage_block =~ /\[ /g;
-BAIL_OUT("the partitioning block now has $brackets bracket tests; the shadow below covers one")
-    unless $brackets == 1;
+die('the firmware test the shadow below answers is gone')
+    unless $storage_block =~ /\[ -d \/sys\/firmware\/efi \]/;
+die('the block no longer asks uname for the machine architecture')
+    unless $storage_block =~ /uname -m/;
 
 my $sandbox   = File::Temp::tempdir( CLEANUP => 1 );
 my $partfile  = File::Spec->catfile( $sandbox, 'partitionfile' );
+# One redirect per firmware branch. Counting the branches rather than naming a number
+# keeps the guard true when a branch is added, and still fails loudly if a redirect
+# escapes the sandbox.
+my $branches  = () = $storage_block =~ /^\s*cat <<EOF >\/tmp\/partitionfile$/mg;
 my $rewrites  = ( $storage_block =~ s{/tmp/partitionfile}{$partfile}g );
-BAIL_OUT("expected two partition-file redirects to sandbox, rewrote $rewrites")
-    unless $rewrites == 2;
+die("the block writes the partition file in $branches places and $rewrites were rewritten")
+    unless $branches >= 2 && $rewrites == $branches;
+die('a partition-file path escaped the sandbox')
+    if $storage_block =~ m{/tmp/partitionfile};
 
 my %YAML_FOR;
 
@@ -54,13 +61,16 @@ sub partition_config_for {
     open( my $fh, '>', $script ) or die "Unable to write $script: $!";
     # `[` is shadowed rather than the condition rewritten: bash resolves a function
     # ahead of the builtin, so the script's own test runs unmodified.
+    my $machine = $firmware eq 'prep' ? 'ppc64le' : 'x86_64';
     print {$fh} <<"SHELL";
 INSTALL_DISK=/dev/sdz
 logger() { :; }
+uname() { builtin echo $machine; }
+# Only the firmware probe is answered here; every other test falls through to the builtin.
 [() {
   case "\$1 \$2" in
     "-d /sys/firmware/efi") return @{[ $firmware eq 'uefi' ? 0 : 1 ]} ;;
-    *) builtin echo "unexpected bracket test: \$*" >&2; builtin return 2 ;;
+    *) builtin [ "\$@" ;;
   esac
 }
 $storage_block
@@ -69,9 +79,9 @@ SHELL
 
     unlink $partfile;
     system( 'bash', $script ) == 0
-        or BAIL_OUT("the extracted partitioning block failed to run for $firmware");
+        or die("the extracted partitioning block failed to run for $firmware");
     open( my $out_fh, '<', $partfile )
-        or BAIL_OUT("the partitioning block wrote no file for $firmware: $!");
+        or die("the partitioning block wrote no file for $firmware: $!");
     my $yaml = do { local $/; <$out_fh> };
     close($out_fh);
     $YAML_FOR{$firmware} = $yaml;
@@ -110,7 +120,22 @@ ok( !exists $bios->{'efi-part'}, 'BIOS installs get no EFI partition' );
 is( $bios->{'bios-grub'}{flag}, 'bios_grub', 'they get a bios_grub partition instead' );
 is( $bios->{'disk-detected'}{grub_device}, 'true', 'and grub is installed to the disk' );
 
-foreach my $firmware ( [ UEFI => $uefi ], [ BIOS => $bios ] ) {
+# POWER firmware reads neither an ESP nor a bios_grub partition. It boots from a PReP
+# partition, and curtin installs grub to that partition rather than to the disk.
+my $prep = partition_config_for('prep');
+ok( !exists $prep->{'efi-part'},  'POWER installs get no EFI partition' );
+ok( !exists $prep->{'bios-grub'}, 'POWER installs get no bios_grub partition' );
+is( $prep->{'prep-part'}{type},        'partition',     'POWER installs get a PReP partition' );
+is( $prep->{'prep-part'}{device},      'disk-detected', 'on the detected install disk' );
+is( $prep->{'prep-part'}{flag},        'prep',          'flagged prep, which is what SLOF reads' );
+is( $prep->{'prep-part'}{number},      '1',             'as the first partition' );
+is( $prep->{'prep-part'}{grub_device}, 'true',          'and grub is installed to it' );
+isnt( $prep->{'disk-detected'}{grub_device}, 'true',
+    'not to the disk, which leaves POWER with nothing to boot' );
+ok( !exists $prep->{'prep-part-fs'},
+    'the PReP partition carries no filesystem' );
+
+foreach my $firmware ( [ UEFI => $uefi ], [ BIOS => $bios ], [ PReP => $prep ] ) {
     my ( $name, $config ) = @{$firmware};
     is( $config->{'root-part-fs'}{fstype}, 'ext4', "$name root filesystem is ext4" );
     is( $config->{'root-part-mount'}{path}, '/',   "$name mounts root at /" );
@@ -122,7 +147,7 @@ foreach my $firmware ( [ UEFI => $uefi ], [ BIOS => $bios ] ) {
 
 # Subiquity re-serializes autoinstall.yaml and appends this file, so the block has
 # to start at column 0 -- asserted on what was written, not on the heredoc.
-foreach my $firmware ( [ UEFI => 'uefi' ], [ BIOS => 'bios' ] ) {
+foreach my $firmware ( [ UEFI => 'uefi' ], [ BIOS => 'bios' ], [ PReP => 'prep' ] ) {
     my ( $name, $key ) = @{$firmware};
     like( partition_yaml_for($key), qr/\Astorage:\n  version: 1\n/,
         "$name config starts at column 0 with storage: version: 1" );

@@ -278,6 +278,60 @@ storage:
       path: /
       device: root-part-fs
 EOF
+elif [ "$(uname -m)" = "ppc64le" ] || [ "$(uname -m)" = "ppc64" ]; then
+        # POWER firmware reads neither an ESP nor a bios_grub partition. It loads the
+        # boot loader from a PReP partition, and curtin writes grub to the partition
+        # flagged prep, not to the disk.
+        cat <<EOF >/tmp/partitionfile
+storage:
+  version: 1
+  config:
+    - id: disk-detected
+      type: disk
+      ptable: gpt
+      path: $INSTALL_DISK
+      wipe: superblock-recursive
+      preserve: false
+    - id: prep-part
+      type: partition
+      device: disk-detected
+      size: 8M
+      flag: prep
+      number: 1
+      preserve: false
+      grub_device: true
+    - id: swap-part
+      type: partition
+      device: disk-detected
+      size: 2G
+      number: 2
+      preserve: false
+    - id: root-part
+      type: partition
+      device: disk-detected
+      size: -1
+      wipe: superblock
+      number: 3
+      preserve: false
+    - id: swap-part-fs
+      type: format
+      fstype: swap
+      volume: swap-part
+      preserve: false
+    - id: root-part-fs
+      type: format
+      fstype: ext4
+      volume: root-part
+      preserve: false
+    - id: swap-part-mount
+      type: mount
+      path: none
+      device: swap-part-fs
+    - id: root-part-mount
+      type: mount
+      path: /
+      device: root-part-fs
+EOF
 else
         cat <<EOF >/tmp/partitionfile
 storage:

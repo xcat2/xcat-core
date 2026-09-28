@@ -1889,6 +1889,68 @@ sub get_pkglist_tex
 
 #----------------------------------------------------------------------------
 
+=head3   get_pkglist_records
+
+        The records of one or more pkglist files, one per line kept whole and
+        includes followed. get_pkglist_tex joins records with commas, so it
+        cannot separate a record that itself contains a comma.
+        Arguments: comma-separated pkglist file names
+        Returns:   list of records
+=cut
+
+#-----------------------------------------------------------------------------
+sub get_pkglist_records
+{
+    my $allfiles_pkglist = shift;
+    if ($allfiles_pkglist =~ "xCAT::") {
+        $allfiles_pkglist = shift;
+    }
+    my @records;
+    foreach my $pkglist (split(/,/, $allfiles_pkglist // ''))
+    {
+        next if $pkglist eq '';
+        push(@records, pkglist_file_records($pkglist, dirname($pkglist), 0));
+    }
+    return @records;
+}
+
+# pkglist_file_records: the records of one pkglist file, read as get_pkglist_tex reads them, with an
+# #INCLUDE: record replaced by the records of the named file.
+# A nested include resolves against the directory of the listed pkglist, as get_pkglist_tex resolves it.
+sub pkglist_file_records
+{
+    my ($file, $idir, $depth) = @_;
+    my @records;
+    open(my $fh, '<', $file) or return ("#INCLUDEBAD:cannot open pkglist file $file#");
+    while (my $line = <$fh>)
+    {
+        chomp($line);
+        $line =~ s/\s+$//;
+        $line =~ s/^\s*//;
+        next if $line eq '';
+        next
+          if ($line =~ /^#/
+            && $line !~ /^#INCLUDE:[^#^\n]+#/
+            && $line !~ /^#NEW_INSTALL_LIST#/
+            && $line !~ /^#ENV:[^#^\n]+#/);
+        if ($line =~ /^#INCLUDE:([^#^\n]+)#(.*)$/ && $depth < 20)
+        {
+            my ($name, $note) = ($1, $2);
+            my $include = xCAT::Utils->varsubinline($name, \%ENV);
+            $include = "$idir/$include" unless $include =~ m{^/};
+            my @included = pkglist_file_records($include, $idir, $depth + 1);
+            $included[-1] .= $note if @included && $note ne '';
+            push(@records, @included);
+            next;
+        }
+        push(@records, $line);
+    }
+    close($fh);
+    return @records;
+}
+
+#----------------------------------------------------------------------------
+
 =head3   includefile
 
         handles #INCLUDE# in otherpkg.pkglist file

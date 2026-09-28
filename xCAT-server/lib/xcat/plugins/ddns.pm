@@ -37,10 +37,10 @@ sub ddns_tsig_algorithm {
 
     my $settings = $ctx->{omapi_settings} || xCAT::DHCP::OmapiPolicy->settings();
 
-    # Keep old Net::DNS on MD5 unless the administrator explicitly selects a
-    # different OMAPI algorithm. Old Net::DNS can sign non-MD5 updates only
-    # through a KEY RR, which ddns_sign_update builds below.
-    return "hmac-md5" if (!net_dns_uses_keyfile() && !$settings->{algorithm_explicit});
+    # $ctx->{tsig_algorithm} is the algorithm the named.conf key stanza already declares.
+    # The Net::DNS version does not select the algorithm: old Net::DNS signs every algorithm
+    # except MD5 through a KEY RR, which ddns_sign_update builds.
+    return $settings->{algorithm} if $settings->{algorithm_explicit};
     return $ctx->{tsig_algorithm} || $settings->{algorithm};
 }
 
@@ -65,13 +65,17 @@ sub ddns_sign_update {
         return;
     }
 
-    if ($settings->{algorithm} eq 'hmac-md5') {
+    # named matches the key by name and by algorithm. Sign with the algorithm the key stanza
+    # declares, not with the OMAPI default.
+    my $algorithm = ddns_tsig_algorithm($ctx);
+    if ($algorithm eq 'hmac-md5') {
         $update->sign_tsig($settings->{key_name}, $ctx->{privkey});
         return;
     }
 
-    my $owner = xCAT::DHCP::OmapiPolicy->key_owner($settings);
-    my $keyrr = Net::DNS::RR->new("$owner IN KEY 512 3 $settings->{key_rr_type} $ctx->{privkey}");
+    my $owner   = xCAT::DHCP::OmapiPolicy->key_owner($settings);
+    my $rr_type = xCAT::DHCP::OmapiPolicy->algorithm_rr_type($algorithm);
+    my $keyrr   = Net::DNS::RR->new("$owner IN KEY 512 3 $rr_type $ctx->{privkey}");
     $update->sign_tsig($keyrr);
 }
 
@@ -1345,10 +1349,6 @@ sub update_namedconf {
                         $ctx->{tsig_algorithm} = $omapi_settings->{algorithm};
                         push @newnamed, ddns_key_contents($ctx);
                         $ctx->{restartneeded} = 1;
-                    } elsif ($algorithmnow && !net_dns_uses_keyfile() && lc($algorithmnow) ne "hmac-md5") {
-                        $ctx->{tsig_algorithm} = "hmac-md5";
-                        push @newnamed, ddns_key_contents($ctx);
-                        $ctx->{restartneeded} = 1;
                     } else {
                         push @newnamed, @keyblock;
                     }
@@ -1579,6 +1579,26 @@ sub update_namedconf {
     }
 }
 
+#-------------------------------------------------------------------------------
+
+=head3 ddns_update_request
+
+    Descriptions: Copy the records of one dynamic DNS update into a new, unsigned request.
+    Arguments:    the update the caller built, the zone name
+    Returns:      a Net::DNS::Update holding the same prerequisite and update records
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub ddns_update_request {
+    my ($update, $zone) = @_;
+
+    my $request = Net::DNS::Update->new($zone);
+    $request->push(pre     => $_) for $update->answer;
+    $request->push(update  => $_) for $update->authority;
+    return $request;
+}
+
 # Send a signed dynamic DNS update, retrying transient rejections. Right after a zone (re)load named
 # can reply NOTAUTH, or SERVFAIL before the zone is ready to accept dynamic updates; both are
 # recoverable, so retry a few times (pausing on SERVFAIL). Returns 0 only when the update was
@@ -1589,8 +1609,11 @@ sub send_ddns_update {
     my ($ctx, $resolver, $update, $zone, $entry) = @_;
 
     for my $attempt (1 .. 3) {
-        ddns_sign_update($ctx, $update);
-        my $reply = $resolver->send($update);
+        # sign_tsig appends the TSIG to the additional section. A second signature on the same
+        # packet sends two TSIG records, and named answers FORMERR. Sign a copy for each attempt.
+        my $request = ddns_update_request($update, $zone);
+        ddns_sign_update($ctx, $request);
+        my $reply = $resolver->send($request);
         if (!$reply) {
             xCAT::SvrUtils::sendmsg([ 1, "No reply received when sending DNS update to zone $zone" ], $callback);
             return 1;
