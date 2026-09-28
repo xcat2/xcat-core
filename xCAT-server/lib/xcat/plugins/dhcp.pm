@@ -1058,6 +1058,19 @@ sub _isc_omapi_host_commands
     return $commands;
 }
 
+# omshell reads 1023 bytes of a line, and the commands remove the old host before they create it again.
+sub _send_isc_omapi_host
+{
+    my ($omshell, $node, $commands) = @_;
+
+    my ($long) = grep { length($_) > 1023 } $commands =~ /([^\n]*\n)/g;
+    return "$node: an omshell command for its DHCP host is " . length($long)
+      . " bytes, over the 1023 bytes that omshell reads in a line, so makedhcp leaves the host unchanged"
+      if defined $long;
+    print $omshell $commands;
+    return;
+}
+
 
 sub addnode
 {
@@ -1315,11 +1328,19 @@ sub addnode
             if ($ip ne "DENIED") {
                 $lstatements = _node_host_statements($node, $lstatements);
             }
-            print $omshell _isc_omapi_host_commands(
-                $hostname, $mac, $hardwaretype,
-                $client_nethash{$node}{mgtifname}, $ip, $lstatements,
-                $has_infiniband_identity
+            my $error = _send_isc_omapi_host(
+                $omshell, $node,
+                _isc_omapi_host_commands(
+                    $hostname, $mac, $hardwaretype,
+                    $client_nethash{$node}{mgtifname}, $ip, $lstatements,
+                    $has_infiniband_identity
+                )
             );
+            if ($error) {
+                $callback->({ error => [$error], errorcode => [1] });
+                $count = $count + 2;
+                next;
+            }
             unless ($::XCATSITEVALS{externaldhcpservers}) {
                 unless (grep /#definition for host $node aka host $hostname/, @dhcpconf)
                 {
