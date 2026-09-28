@@ -1019,6 +1019,45 @@ sub _infiniband_twin_update_commands
     return ($namecommands, $addresscommands, $createcommands);
 }
 
+sub _isc_omapi_host_commands
+{
+    my ($hostname, $mac, $hardwaretype, $mgtifname, $ip, $statements,
+        $has_infiniband_identity) = @_;
+    my ($ibnamecommands, $ibaddresscommands, $ibcreatecommands) =
+      _infiniband_twin_update_commands(
+        $hostname, $mac, $hardwaretype, $mgtifname, $ip, $statements,
+        _omapi_pre_create_cleanup_supported(), $has_infiniband_identity
+      );
+
+    my $commands = '';
+    if (_omapi_pre_create_cleanup_supported()) {
+        $commands .= "new host\nset name = \"$hostname\"\nopen\nremove\nclose\n";    #Find and destroy conflict name
+        $commands .= $ibnamecommands if ($ibnamecommands);
+    }
+    if ($ip and $ip ne 'DENIED' and _omapi_ip_lookup_supported()) {
+        $commands .= "new host\nset ip-address = $ip\nopen\nremove\nclose\n";    #find and destroy ip conflict
+    }
+    if (_omapi_pre_create_cleanup_supported()) {
+        $commands .= _hardware_address_delete_commands($mac, $hardwaretype);
+        $commands .= $ibaddresscommands if ($ibaddresscommands);
+    }
+    $commands .= "new host\n"
+      . "set name = \"$hostname\"\n"
+      . "set hardware-address = $mac\n"
+      . "set dhcp-client-identifier = $mac\n"
+      . "set hardware-type = $hardwaretype\n";
+    if ($ip eq "DENIED") { #Blacklist this mac to preclude confusion, give best shot at things working
+        $commands .= "set statements = \"deny booting;\"\n";
+    } else {
+        $commands .= "set ip-address = $ip\n" if ($ip);
+        $commands .= "set statements = \"$statements\"\n";
+    }
+    $commands .= "create\nclose\n";
+    $commands .= $ibcreatecommands if ($ibcreatecommands);
+
+    return $commands;
+}
+
 
 sub addnode
 {
@@ -1276,57 +1315,11 @@ sub addnode
             if ($ip ne "DENIED") {
                 $lstatements = _node_host_statements($node, $lstatements);
             }
-            my ($ibnamecommands, $ibaddresscommands, $ibcreatecommands) =
-              _infiniband_twin_update_commands(
+            print $omshell _isc_omapi_host_commands(
                 $hostname, $mac, $hardwaretype,
                 $client_nethash{$node}{mgtifname}, $ip, $lstatements,
-                _omapi_pre_create_cleanup_supported(),
                 $has_infiniband_identity
-              );
-
-            #syslog("local4|err", "Setting $node ($hname|$ip) to " . $mac);
-            if (_omapi_pre_create_cleanup_supported()) {
-                print $omshell "new host\n";
-                print $omshell
-                  "set name = \"$hostname\"\n";    #Find and destroy conflict name
-                print $omshell "open\n";
-                print $omshell "remove\n";
-                print $omshell "close\n";
-                print $omshell $ibnamecommands if ($ibnamecommands);
-            }
-            if ($ip and $ip ne 'DENIED' and _omapi_ip_lookup_supported()) {
-                print $omshell "new host\n";
-                print $omshell "set ip-address = $ip\n"; #find and destroy ip conflict
-                print $omshell "open\n";
-                print $omshell "remove\n";
-                print $omshell "close\n";
-            }
-            if (_omapi_pre_create_cleanup_supported()) {
-                print $omshell
-                  _hardware_address_delete_commands($mac, $hardwaretype);
-                print $omshell $ibaddresscommands if ($ibaddresscommands);
-            }
-            print $omshell "new host\n";
-            print $omshell "set name = \"$hostname\"\n";
-            print $omshell "set hardware-address = " . $mac . "\n";
-            print $omshell "set dhcp-client-identifier = " . $mac . "\n";
-            print $omshell "set hardware-type = $hardwaretype\n";
-
-            if ($ip eq "DENIED")
-            { #Blacklist this mac to preclude confusion, give best shot at things working
-                print $omshell "set statements = \"deny booting;\"\n";
-            }
-            else
-            {
-                if ($ip) {
-                    print $omshell "set ip-address = $ip\n";
-                }
-                print $omshell "set statements = \"$lstatements\"\n";
-            }
-
-            print $omshell "create\n";
-            print $omshell "close\n";
-            print $omshell $ibcreatecommands if ($ibcreatecommands);
+            );
             unless ($::XCATSITEVALS{externaldhcpservers}) {
                 unless (grep /#definition for host $node aka host $hostname/, @dhcpconf)
                 {
