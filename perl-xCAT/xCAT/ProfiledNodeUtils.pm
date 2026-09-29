@@ -1585,3 +1585,29 @@ sub cal_netboot {
         return 0;
     }
 }
+
+#-------------------------------------------------------------------------------
+
+=head3 remove_node_config_files
+      Description : Remove the autoinstall configuration of each node in a list.
+      Arguments   : $config_dir - the autoinstall directory, normally /install/autoinst
+                    $nodes - reference to the list of node names
+      Returns     : N/A
+      Example     :
+                    xCAT::ProfiledNodeUtils->remove_node_config_files("/install/autoinst", \@nodes);
+=cut
+
+#-------------------------------------------------------------------------------
+sub remove_node_config_files {
+    my $class      = shift;
+    my $config_dir = shift;
+    my $nodes      = shift;
+
+    foreach my $one_node (@$nodes) {
+        foreach my $suffix ("", ".pre", ".post") {
+            my $path = "$config_dir/$one_node$suffix";
+            next unless (-e $path);
+            unlink $path;
+        }
+    }
+}
