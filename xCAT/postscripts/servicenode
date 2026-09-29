@@ -63,8 +63,7 @@ if ($useSocketSSL) {
 my $rc  = 0;
 my $msg = "";
 
-# A unit test loads this file for its subroutines. Everything below runs commands on the
-# node, so stop here when the file is required rather than run.
+# Everything below runs commands on the node, so a require must stop here.
 if (caller) { return 1; }
 
 $::osname = `uname`;
@@ -146,11 +145,8 @@ else
     #  Copy Certificates, and config file to apprpriate directories
     #  from /install and restart xcat
 
-    # xCAT-server requires perl modules EL splits between EPEL and the distribution builder
-    # repository: perl-IO-Tty, perl-Crypt-CBC, perl-Crypt-Rijndael, perl(Expect). Both are off
-    # on a fresh EL install, and the otherpkgs postbootscript installs xCATsn after this script.
-    # Neither step fails the node: a site can run without EPEL, and xcat-dep carries the same
-    # closure. An unmet dependency must be visible here rather than at otherpkgs.
+    # EPEL and the builder repository are both off on a fresh EL install, and xCAT-server needs
+    # perl modules from each. Enable them before otherpkgs installs xCATsn.
     if (-e "/etc/os-release" && `grep -Ei 'platform:el' /etc/os-release 2>/dev/null`) {
         &enable_el_dependency_repos($log_label);
     }

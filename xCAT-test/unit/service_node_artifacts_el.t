@@ -1,18 +1,11 @@
 #!/usr/bin/env perl
 
-# Every service node defect found in this change set was a GENERATED ARTIFACT that was wrong, not
-# a runtime fault: the repository file that did not enable the builder repo, the install template
-# that resolved to the wrong installer, the exports line that was never written. None of them was
-# visible in the boot; all of them were decided before it.
+# The artifacts an EL service node needs, rendered from one fixture and asserted: the builder
+# repository per release and vendor, the install template the service profile resolves, and the
+# NFS export line for a local directory and for a re-exported mount.
 #
-# So this test renders the artifacts an EL service node needs, from one fixture, and asserts each
-# one. It fails for ANY wrong artifact, including a defect nobody has hit yet, which is what makes
-# it usable as the fast oracle for the EL cell: the end-to-end suite provisions three machines and
-# takes 45 to 90 minutes, and this runs in a second.
-#
-# What it cannot cover, and what keeps the end-to-end run necessary: the boot half. Whether the
-# compute node takes its lease from the service node, whether tftp hands over, whether the
-# installer mounts what was exported. Those are not artifacts and are not here.
+# The boot itself is not here. Whether the compute node takes its lease from the service node,
+# and whether the installer mounts what was exported, are end-to-end questions.
 
 use strict;
 use warnings;

@@ -1706,10 +1706,8 @@ sub nfs_export_exists {
     Returns:
         one export line, with no trailing newline.
 
-    A local directory keeps the options xCAT has always written. Re-exporting an NFS mount needs
-    two more: the kernel cannot derive a filesystem id for one, so exportfs refuses it without an
-    explicit fsid, and crossmnt lets a client cross into the mount below. The fsid is derived
-    from the path so that it survives a restart -- a new one would make every client's mount
+    exportfs refuses an NFS mount without an explicit fsid, and crossmnt lets a client cross into
+    the mount below. The fsid is derived from the path, so a restart does not make client mounts
     stale.
 
 =cut

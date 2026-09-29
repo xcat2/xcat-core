@@ -27,10 +27,8 @@ use warnings;
         no EL release. An empty list is the answer for "do not guess".
 
     Covered: AlmaLinux, Rocky and CentOS Stream (crb on 9 and later, powertools on 8, with the
-    capitalised PowerTools that Rocky 8.4 and earlier shipped after it), RHEL
-    (codeready-builder-for-rhel-<major>-<arch>-rpms) and Oracle Linux
-    (ol<major>_codeready_builder). Another vendor takes the community spellings, which is a
-    guess.
+    EL8 names it powertools, and Rocky 8.4 and earlier capitalised it. RHEL and Oracle Linux
+    each have their own name. An unknown vendor takes the community spelling.
 
 =cut
 
