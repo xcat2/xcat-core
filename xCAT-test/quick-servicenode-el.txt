@@ -1,0 +1,19 @@
+# The fast oracle of the EL service node cell.
+#
+#   xCAT-test/quick.sh -f xCAT-test/quick-servicenode-el.txt
+#
+# One test, not seven. Every service node defect in this change set was a generated artifact that
+# was wrong before any node booted, so this renders the artifacts an EL service node needs from
+# one fixture and asserts each: the builder repository per release and vendor, the install
+# template the service profile resolves, and the NFS export line for a local directory and for a
+# re-exported mount.
+#
+# It fails for any wrong artifact, including one nobody has hit, which a file-per-fix list cannot
+# do. Measured: PASS on the branch, FAIL on the base with two named gaps rather than a death at
+# the first.
+#
+# What it does NOT cover, and why the end-to-end run stays: the boot half. Whether the compute
+# node takes its lease from the service node, whether tftp hands over, whether the installer
+# mounts what was exported. Those are not artifacts.
+
+xCAT-test/unit/service_node_artifacts_el.t
