@@ -1,0 +1,15 @@
+# The fast oracle of the Ubuntu 24.04 service node cell.
+#
+#   xCAT-test/quick.sh -f xCAT-test/quick-servicenode-ub.txt
+#
+# RUN IT ON xcat-master-ub. otherpkgs_apt_source_trusted skips its two resolving assertions where
+# apt-get is absent, so on an EL host this list silently proves less and the trusted=yes fix
+# reads as unnecessary.
+#
+# KNOWN HOLES, which is where a wrong drop will come from: nothing here covers the xdsh PATH fix
+# or the named reload. Close them before trusting this list for a minimization.
+
+xCAT-test/unit/ubuntu_service_subiquity_template.t
+xCAT-test/bats/makenamed_forwarders.bats
+xCAT-test/bats/otherpkgs_apt_source_trusted.bats
+xCAT-test/bats/stage_sn_apt_repo.bats

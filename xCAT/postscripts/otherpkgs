@@ -810,7 +810,11 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	                else
 		            type=file
 	                fi
-                        echo "deb $type://$whole_path ./"  > $REPOFILE
+                        # trusted=yes: this repository is the xCAT-staged otherpkgs directory,
+                        # which carries a Packages file and no Release, and apt refuses an
+                        # unsigned repository outright -- "does not have a Release file". The
+                        # rpm arm of this same block writes gpgcheck=0 for the same reason.
+                        echo "deb [trusted=yes] $type://$whole_path ./"  > $REPOFILE
                     fi
 		fi
 	    fi
