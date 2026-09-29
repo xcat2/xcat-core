@@ -1693,6 +1693,45 @@ sub nfs_export_exists {
     return 0;
 }
 
+#-----------------------------------------------------------------------------
+
+=head3 nfs_export_line
+
+    The /etc/exports line for a directory a service node serves to its nodes.
+
+    Arguments:
+        $dir        the directory to export
+        reexport    true when $dir is itself an NFS mount
+
+    Returns:
+        one export line, with no trailing newline.
+
+    A local directory keeps the options xCAT has always written. Re-exporting an NFS mount needs
+    two more: the kernel cannot derive a filesystem id for one, so exportfs refuses it without an
+    explicit fsid, and crossmnt lets a client cross into the mount below. The fsid is derived
+    from the path so that it survives a restart -- a new one would make every client's mount
+    stale.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub nfs_export_line {
+    my ( $dir, %opts ) = _nfs_method_args(@_);
+    my $options = 'rw,no_root_squash,sync,no_subtree_check,insecure';
+    if ( $opts{reexport} ) {
+        $options .= ',crossmnt,fsid=' . _nfs_export_fsid($dir);
+    }
+    return "$dir *($options)";
+}
+
+# A stable, non-zero fsid for a path. 0 is reserved for the export root.
+sub _nfs_export_fsid {
+    my ($dir) = @_;
+    my $sum = 0;
+    $sum = ( $sum * 31 + ord($_) ) % 2147483647 for split //, $dir;
+    return $sum || 1;
+}
+
 sub _ensure_nfs_exported {
     my ($nfsserver, $nfsdirectory, $callback, %opts) = @_;
     my $export_options = 'rw,no_root_squash,sync,no_subtree_check,insecure';
