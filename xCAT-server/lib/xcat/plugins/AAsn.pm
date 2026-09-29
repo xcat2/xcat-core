@@ -788,6 +788,8 @@ sub setup_FTP
 =cut
 
 #-----------------------------------------------------------------------------
+
+
 sub setup_DNS
 {
     my $srvclist = shift;
@@ -827,11 +829,15 @@ sub setup_DNS
     #}
 
     #my $rc = xCAT::Utils->startService($serv);
+    # Restart, not start. makenamed.conf has just rewritten named.conf, and a start is a no-op
+    # where the package already runs the daemon -- Debian does -- so the service keeps serving the
+    # configuration it read at install time.
     my $rc = 0;
-    if (xCAT::Utils->isAIX()) {
+    my $action = xCAT::SvrUtils::named_service_action(xCAT::Utils->isAIX() ? 'aix' : 'linux');
+    if ($action eq 'start') {
         $rc = xCAT::Utils->startService("named");
-    } elsif (xCAT::Utils->isLinux()) {
-        $rc = xCAT::Utils->startservice("named");
+    } elsif ($action eq 'restart') {
+        $rc = xCAT::Utils->restartservice("named");
     }
 
     if ($rc != 0)

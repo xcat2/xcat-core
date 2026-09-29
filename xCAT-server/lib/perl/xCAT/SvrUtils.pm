@@ -2528,4 +2528,31 @@ sub searchcompressedrootimg{
 }
 
 
+
+#-----------------------------------------------------------------------------
+
+=head3 named_service_action
+
+    Which service action brings a freshly written named configuration into effect.
+
+    Linux gets a restart, not a start. On Debian the package already runs the daemon, so a start
+    is a no-op and named keeps serving the configuration it read at install time: the zone
+    makenamed.conf has just written is never loaded, and a compute node cannot resolve its
+    service node. AIX keeps the start it has always used.
+
+    Arguments: the platform, 'aix' or 'linux'
+    Returns: 'start', 'restart', or '' for a platform with no action
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub named_service_action {
+    my ($platform) = @_;
+    $platform = '' unless defined $platform;
+    return 'start'   if $platform eq 'aix';
+    return 'restart' if $platform eq 'linux';
+    return '';
+}
+
+
 1;
