@@ -1706,10 +1706,8 @@ sub nfs_export_exists {
     Returns:
         one export line, with no trailing newline.
 
-    A local directory keeps the options xCAT has always written. Re-exporting an NFS mount needs
-    two more: the kernel cannot derive a filesystem id for one, so exportfs refuses it without an
-    explicit fsid, and crossmnt lets a client cross into the mount below. The fsid is derived
-    from the path so that it survives a restart -- a new one would make every client's mount
+    exportfs refuses an NFS mount without an explicit fsid, and crossmnt lets a client cross into
+    the mount below. The fsid is derived from the path, so a restart does not make client mounts
     stale.
 
 =cut
@@ -2535,10 +2533,8 @@ sub searchcompressedrootimg{
 
     Which service action brings a freshly written named configuration into effect.
 
-    Linux gets a restart, not a start. On Debian the package already runs the daemon, so a start
-    is a no-op and named keeps serving the configuration it read at install time: the zone
-    makenamed.conf has just written is never loaded, and a compute node cannot resolve its
-    service node. AIX keeps the start it has always used.
+    Linux gets a restart. On Debian the package already runs named, so a start is a no-op and
+    the daemon keeps serving the configuration it read at install time.
 
     Arguments: the platform, 'aix' or 'linux'
     Returns: 'start', 'restart', or '' for a platform with no action
