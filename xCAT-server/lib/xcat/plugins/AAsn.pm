@@ -919,6 +919,24 @@ sub setup_NFS
     my $rc = 0;
     if (xCAT::Utils->isLinux())
     {
+        # servicenode.nfsserver=1 means this node serves files to the nodes behind it. With
+        # site.installloc set it MOUNTS the install directory from the management node and the
+        # caller exports nothing, so the node served no NFS at all: an Ubuntu compute node stops
+        # at "Unable to find a live file system on the network", because casper mounts the
+        # install tree over NFS from its own service node. Exporting a mount needs an fsid, which
+        # nfs_export_line adds.
+        my $installdir = xCAT::TableUtils->getInstallDir() || "/install";
+        unless (xCAT::SvrUtils->nfs_export_exists($installdir))
+        {
+            my $line = xCAT::SvrUtils->nfs_export_line($installdir,
+                reexport => (xCAT::Utils->isMounted($installdir) ? 1 : 0));
+            xCAT::Utils->runcmd("/bin/echo '$line' >> /etc/exports", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message('S', "Could not add $installdir to /etc/exports.");
+            }
+        }
+
         #my $os = xCAT::Utils->osver();
         #if ($os =~ /sles.*/)
         #{
@@ -930,6 +948,14 @@ sub setup_NFS
         #    $rc = xCAT::Utils->startService("nfs");
         #}
         $rc = xCAT::Utils->startservice("nfs");
+
+        # After the daemon, so a fresh export is picked up. An export the kernel refuses is
+        # reported and does not fail the service node, which has other services to set up.
+        xCAT::Utils->runcmd("/usr/sbin/exportfs -a", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('S', "Error with /usr/sbin/exportfs -a.");
+        }
     }
     else
     {    #AIX
