@@ -553,4 +553,32 @@ my $unsafe = xCAT_plugin::mknb::_select_genesis_source(
 );
 is($unsafe, undef, 'unsupported architecture names cannot escape the image root');
 
+$::XCATROOT = "$tmpdir/openembedded-x86_64-xcatroot";
+prepare_export(
+    "$::XCATROOT/share/xcat/netboot/genesis-openembedded/x86_64",
+    'openembedded x86_64 kernel',
+    'openembedded x86_64 initramfs',
+    'x86_64',
+);
+$xCAT::TableUtils::tftpdir = "$tmpdir/openembedded-x86_64-tftpboot";
+@responses = ();
+xCAT_plugin::mknb::process_request(
+    { arg => ['x86_64'] },
+    sub { push(@responses, @_); },
+);
+ok(
+    !grep({ ref($_) eq 'HASH' && $_->{error} } @responses),
+    'mknb installs an x86_64 OpenEmbedded export',
+);
+is(
+    read_file("$xCAT::TableUtils::tftpdir/xcat/genesis.kernel.x86_64"),
+    'openembedded x86_64 kernel',
+    'mknb publishes the OpenEmbedded x86_64 kernel',
+);
+like(
+    read_file("$xCAT::TableUtils::tftpdir/xcat/xnba/nets/192.0.2.0_24"),
+    qr{^imgfetch -n kernel \S+/xcat/genesis\.kernel\.x86_64 .* BOOTIF=01-\$\{netX/mac:hexhyp\}$}m,
+    'the OpenEmbedded BIOS Genesis script takes BOOTIF from mac:hexhyp',
+);
+
 done_testing();

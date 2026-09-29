@@ -360,8 +360,8 @@ sub install_xcat{
 
     my @cmds = ("sudo $repo/mklocalrepo.sh",
                "sudo chmod 777 /etc/apt/sources.list",
-               "sudo echo \"deb [arch=amd64 allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/latest/xcat-dep noble main\" >> /etc/apt/sources.list",
-               "sudo echo \"deb [arch=ppc64el allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/latest/xcat-dep noble main\" >> /etc/apt/sources.list",
+               "sudo echo \"deb [arch=amd64 allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep noble main\" >> /etc/apt/sources.list",
+               "sudo echo \"deb [arch=ppc64el allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep noble main\" >> /etc/apt/sources.list",
                "sudo timeout 600 apt-get -qq -o Acquire::Retries=3 -o Acquire::http::Timeout=30 --allow-insecure-repositories update");
     chdir $ENV{RUNNER_WORKSPACE};;
 
