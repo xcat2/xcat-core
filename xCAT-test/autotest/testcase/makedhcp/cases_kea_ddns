@@ -1,0 +1,37 @@
+start:kea_makedhcp_without_ddns_key
+description:makedhcp -n configures Kea when no DDNS key material exists, which is the state of a management node on which makedns -n has not run yet
+os:Linux
+label:mn_only,ci_test,dhcp
+cmd:test -f /etc/kea/kea-dhcp4.conf
+check:rc==0
+cmd:lsdef -t site -i dnshandler
+check:output=~ddns
+cmd:cp -p /etc/xcat/ddns.key /tmp/kea_ddns_key.saved
+check:rc==0
+cmd:sed -n 's/^key[[:space:]]\+\([^[:space:]{]\+\).*/\1/p' /tmp/kea_ddns_key.saved > /tmp/kea_ddns_keyname.saved
+check:rc==0
+cmd:sed -n 's/.*secret[[:space:]]\+"\([^"]\+\)".*/\1/p' /tmp/kea_ddns_key.saved > /tmp/kea_ddns_secret.saved
+check:rc==0
+cmd:test -s /tmp/kea_ddns_keyname.saved && test -s /tmp/kea_ddns_secret.saved
+check:rc==0
+cmd:rm -f /etc/xcat/ddns.key
+check:rc==0
+cmd:chtab -d key=omapi passwd
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+check:output=~DNS updates stay off until
+cmd:python3 -c 'import json; c=json.load(open("/etc/kea/kea-dhcp4.conf")); print("d2-section", "present" if "dhcp-ddns" in c["Dhcp4"] else "missing")'
+check:rc==0
+check:output=~d2-section missing
+cmd:cp -p /tmp/kea_ddns_key.saved /etc/xcat/ddns.key
+check:rc==0
+cmd:chtab key=omapi,username="$(cat /tmp/kea_ddns_keyname.saved)" passwd.password="$(cat /tmp/kea_ddns_secret.saved)"
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:python3 -c 'import json; c=json.load(open("/etc/kea/kea-dhcp4.conf")); print("d2-section", "present" if "dhcp-ddns" in c["Dhcp4"] else "missing")'
+check:rc==0
+check:output=~d2-section present
+cmd:rm -f /tmp/kea_ddns_key.saved /tmp/kea_ddns_keyname.saved /tmp/kea_ddns_secret.saved
+end
