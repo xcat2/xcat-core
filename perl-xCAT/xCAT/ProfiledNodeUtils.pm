@@ -4,7 +4,7 @@ package xCAT::ProfiledNodeUtils;
 use strict;
 use warnings;
 use Socket;
-use File::Path qw/mkpath/;
+use File::Path qw/mkpath rmtree/;
 use File::Temp qw/tempfile/;
 use Fcntl qw(:flock);
 require xCAT::Table;
@@ -1607,7 +1607,14 @@ sub remove_node_config_files {
         foreach my $suffix ("", ".pre", ".post") {
             my $path = "$config_dir/$one_node$suffix";
             next unless (-e $path);
-            unlink $path;
+
+            # mkinstall writes a directory here for a Subiquity node, with meta-data,
+            # user-data and vendor-data in it. unlink cannot remove a directory.
+            if (-d $path) {
+                rmtree($path);
+            } else {
+                unlink $path;
+            }
         }
     }
 }
