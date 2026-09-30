@@ -53,6 +53,10 @@ check:rc==0
 cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 
+# The logs carry requests from earlier runs, so record where both of them end
+# before this provision. The check below reads only what comes after.
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/check_provisioning_source.sh --baseline $$CN $$SN
+check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 
@@ -178,6 +182,10 @@ cmd:packimage -m squashfs __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-ne
 check:rc==0
 check:output=~archive method:squashfs
 
+# The logs carry requests from earlier runs, so record where both of them end
+# before this provision. The check below reads only what comes after.
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/check_provisioning_source.sh --baseline $$CN $$SN
+check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 
