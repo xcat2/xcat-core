@@ -202,10 +202,11 @@ if [ "$SN_STATE" != ok ]; then
     RC=1
 fi
 
-# The management node provisioned the service node over http, so its log gains lines on every
-# hierarchical run. A log with nothing new cannot show that the management node served nothing.
-if [ "$MN_STATE" != ok ] || [ "$MN_NEW" -eq 0 ]; then
-    echo "provisioning source error: no httpd access log with new entries could be read on $MN" >&2
+# An empty log makes "the management node served nothing" a property of the file, not a
+# measurement. New lines are NOT required: the service node is provisioned before the baseline, so
+# after it a correct hierarchical run leaves the management node's log unchanged.
+if [ "$MN_STATE" != ok ] || [ "$MN_LINES" -eq 0 ]; then
+    echo "provisioning source error: no httpd access log with entries could be read on $MN" >&2
     RC=1
 fi
 
