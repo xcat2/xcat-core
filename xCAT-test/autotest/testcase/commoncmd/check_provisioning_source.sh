@@ -21,7 +21,8 @@
 # Run --baseline before provisioning: an earlier flat run leaves management-node requests for the
 # same address, and counting the whole log fails a later hierarchical run for them. And only a
 # request under /install or /tftpboot is a boot payload: a 404 for /favicon.ico is a request from
-# the compute node that carries no payload, and it must not stand for one.
+# the compute node that carries no payload, and it must not stand for one. wget asks for the root
+# image as //install/..., so the leading slash repeats.
 #
 # Scope: the PXE ROM exchange hands out xcat/xnba.kpxe over TFTP and httpd never sees it.
 # xnba.kpxe is the same binary on both servers, so it decides nothing about the fetch source.
@@ -108,7 +109,7 @@ count_local_requests()
             if ($1 != ip && $2 != ip) next
             path = ""
             for (i = 1; i <= NF; i++) if ($i ~ /^"(GET|HEAD|POST)$/) { path = $(i + 1); break }
-            if (path ~ /^\/(install|tftpboot)\//) payload++
+            if (path ~ /^\/+(install|tftpboot)\//) payload++
         }
         END { print token, "ok", payload + 0, fresh + 0, total + 0 }
     ' $logs
