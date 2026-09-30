@@ -213,11 +213,11 @@ if [ "$SN_STATE" != ok ]; then
     RC=1
 fi
 
-# An empty log answers nothing: it counts 0 whether the management node served the compute node
-# or not. It does NOT have to gain lines after the baseline -- it provisions the service node
-# before it and is then idle, and that silence is the hierarchical result.
+# An empty log makes "the management node served nothing" a property of the file, not a
+# measurement. New lines are NOT required: the service node is provisioned before the baseline, so
+# after it a correct hierarchical run leaves the management node's log unchanged.
 if [ "$MN_STATE" != ok ] || [ "$MN_LINES" -eq 0 ]; then
-    echo "provisioning source error: no httpd access log with any entry could be read on $MN" >&2
+    echo "provisioning source error: no httpd access log with entries could be read on $MN" >&2
     RC=1
 fi
 

@@ -218,7 +218,7 @@ seed_logs()
 
     run_check
     [ "$status" -ne 0 ]
-    [[ "$output" == *"no httpd access log with any entry could be read on mn01"* ]]
+    [[ "$output" == *"no httpd access log with entries could be read on mn01"* ]]
 }
 
 # The compute node fetches the root image with wget from a URL that carries a double slash, so
