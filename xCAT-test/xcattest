@@ -12,8 +12,11 @@ use File::Path;
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
+    my $here = File::Basename::dirname(__FILE__);
+    unshift @INC, "$here/../lib/perl", "$here/lib";
 }
 use lib "$::XCATROOT/lib/perl";
+use xCAT::Test::OS;
 
 #--------------global attributes----------------
 my $program_path = dirname(File::Spec->rel2abs(__FILE__));
@@ -1040,7 +1043,7 @@ sub load_case {
                     my @newvalidoslist = ();
                     foreach my $validos (@validoslist) {
                         if ($validos =~ /linux/i) {
-                            push(@newvalidoslist, ("rhels", "sles", "ubuntu"));
+                            push(@newvalidoslist, xCAT::Test::OS::linux_aliases());
                         } else {
                             push(@newvalidoslist, $validos);
                         }
@@ -1831,28 +1834,7 @@ sub is_valid_case_name {
 # Return code:
 #--------------------------------------------------------
 sub get_current_os {
-    if (-f "/etc/redhat-release") {
-        # Try to return "rhels" + major version, if can not get it, just return "rhels"
-        my $major_version = "";
-        my @output = &runcmd("cat /etc/redhat-release");
-        my $out_line = $output[0];
-        if ($out_line =~ (/(\d+)\.(\d*)/)) {
-             $major_version = $1;
-        }
-        return "rhels".$major_version;
-    } elsif (-f "/etc/lsb-release") {
-        return "ubuntu";
-    } elsif (-f "/etc/os-release") {
-        my $file="/etc/os-release";
-        &runcmd("grep -q sles $file");
-        if ($::RUNCMD_RC == 0) {
-            return "sles";
-        }
-    } elsif (-f "/etc/SuSE-release") {
-        return "sles";
-    } else {
-        return "aix";
-    }
+    return xCAT::Test::OS::current_os();
 }
 
 

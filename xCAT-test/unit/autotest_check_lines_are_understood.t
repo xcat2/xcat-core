@@ -54,9 +54,11 @@ for my $file (sort keys %checks) {
 # xcattest derives its result directory from the location of the program, so the copy under the
 # scratch tree keeps every file the run writes inside that tree.
 my $root = tempdir(CLEANUP => 1);
-make_path("$root/bin", "$root/cases");
+make_path("$root/bin", "$root/cases", "$root/lib/perl/xCAT/Test");
 copy($program, "$root/bin/xcattest") or die("copy xcattest: $!");
 chmod 0755, "$root/bin/xcattest";
+copy("$FindBin::Bin/../lib/xCAT/Test/OS.pm", "$root/lib/perl/xCAT/Test/OS.pm")
+    or die("copy xCAT/Test/OS.pm: $!");
 open(my $fixture_fh, '>', "$root/cases/fixture") or die("write the fixture case: $!");
 print $fixture_fh $fixture;
 close($fixture_fh) or die("close the fixture case: $!");
