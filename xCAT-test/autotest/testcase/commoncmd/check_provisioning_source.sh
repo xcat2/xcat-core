@@ -38,8 +38,14 @@ STATE="${XCAT_PROV_SOURCE_STATE:-/var/tmp/xcat-provisioning-source.base}"
 # Debian per-vhost format puts the vhost there and the client in field 2.
 local_logs()
 {
-    for f in ${XCAT_HTTPD_ACCESS_LOG:-} \
-             /var/log/httpd/access_log \
+    # An explicit log REPLACES the search. Without this a test that points here still reads the
+    # host's own apache log, so it cannot control what the check counts.
+    if [ -n "${XCAT_HTTPD_ACCESS_LOG:-}" ]; then
+        [ -r "$XCAT_HTTPD_ACCESS_LOG" ] && echo "$XCAT_HTTPD_ACCESS_LOG"
+        return 0
+    fi
+
+    for f in /var/log/httpd/access_log \
              /var/log/apache2/access.log \
              /var/log/apache2/access_log \
              /var/log/apache2/other_vhosts_access.log
