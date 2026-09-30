@@ -43,7 +43,7 @@ ok($have_builder_repo, 'ELBuilderRepo is present, so something can enable the bu
     or diag("ELBuilderRepo did not load: $@");
 
 SKIP: {
-    skip 'ELBuilderRepo absent', 5 unless $have_builder_repo;
+    skip 'ELBuilderRepo absent', 11 unless $have_builder_repo;
 
 my @ids = ELBuilderRepo::builder_repo_ids($SN{vendor}, $SN{major}, $SN{arch});
 is_deeply(\@ids, ['crb'], 'EL9 enables crb, the name the builder repo has from EL9 onwards');
@@ -57,6 +57,24 @@ is_deeply([ELBuilderRepo::builder_repo_ids('ol', 9, 'x86_64')], ['ol9_codeready_
     'Oracle names it its own way');
 is_deeply([ELBuilderRepo::builder_repo_ids('alma', undef, 'x86_64')], [],
     'an unknown release enables nothing rather than guessing crb');
+
+my $rhel_repo = 'codeready-builder-for-rhel-9-x86_64-rpms';
+is_deeply([ELBuilderRepo::enable_repo_commands('rhel', $rhel_repo, 1)],
+    [ "subscription-manager repos --enable=$rhel_repo",
+      "dnf config-manager --set-enabled $rhel_repo" ],
+    'RHEL asks subscription-manager first, because it rewrites redhat.repo');
+is_deeply([ELBuilderRepo::enable_repo_commands('rhel', $rhel_repo, 0)],
+    [ "dnf config-manager --set-enabled $rhel_repo" ],
+    'RHEL without subscription-manager still tries config-manager');
+is_deeply([ELBuilderRepo::enable_repo_commands('alma', 'crb', 1)],
+    [ 'dnf config-manager --set-enabled crb' ],
+    'AlmaLinux never runs subscription-manager, which it does not use');
+is_deeply([ELBuilderRepo::enable_repo_commands('rhel', '', 1)], [],
+    'no repository id means no command to run');
+ok(ELBuilderRepo::uses_subscription_manager('rhel'),
+    'RHEL keeps its repositories in a file subscription-manager owns');
+ok(!ELBuilderRepo::uses_subscription_manager('alma'),
+    'AlmaLinux does not, so nothing asks subscription-manager there');
 }
 
 # ---------------------------------------------------------------------------

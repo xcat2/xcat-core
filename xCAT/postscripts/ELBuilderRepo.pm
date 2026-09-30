@@ -46,4 +46,56 @@ sub builder_repo_ids {
     return ('crb');
 }
 
+#-----------------------------------------------------------------------------
+
+=head3 enable_repo_commands
+
+    Arguments:
+        $vendor  the ID field of /etc/os-release
+        $repo    the repository id to enable
+        $has_sm  true when subscription-manager is installed
+
+    Returns:
+        the commands to try, in order, until one succeeds. An empty list when there is no
+        repository id.
+
+    A vendor whose repositories come from subscription-manager gets that command first, and
+    config-manager as the fallback. Every other vendor gets config-manager alone.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub enable_repo_commands {
+    my ($vendor, $repo, $has_sm) = @_;
+
+    return () unless defined $repo && length $repo;
+
+    my @cmds;
+    push @cmds, "subscription-manager repos --enable=$repo"
+      if $has_sm && uses_subscription_manager($vendor);
+    push @cmds, "dnf config-manager --set-enabled $repo";
+    return @cmds;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 uses_subscription_manager
+
+    Arguments:
+        $vendor  the ID field of /etc/os-release
+
+    Returns:
+        true when this vendor keeps its repositories in a file that subscription-manager owns.
+
+    subscription-manager rewrites /etc/yum.repos.d/redhat.repo, so a config-manager change
+    there does not survive its next refresh.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub uses_subscription_manager {
+    my ($vendor) = @_;
+    return defined $vendor && $vendor eq 'rhel' ? 1 : 0;
+}
+
 1;

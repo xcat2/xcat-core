@@ -214,10 +214,17 @@ sub enable_el_dependency_repos {
     }
 
     my $known = `dnf repolist --all 2>/dev/null` || '';
+    my $has_sm = system('command -v subscription-manager >/dev/null 2>&1') == 0 ? 1 : 0;
     foreach my $repo (@ids) {
         next unless $known =~ /^\Q$repo\E\s/m;
         &runcmd("dnf -y install dnf-plugins-core");
-        next unless &runcmd("dnf config-manager --set-enabled $repo") == 0;
+        my $enabled = 0;
+        foreach my $cmd (ELBuilderRepo::enable_repo_commands($vendor, $repo, $has_sm)) {
+            next unless &runcmd($cmd) == 0;
+            $enabled = 1;
+            last;
+        }
+        next unless $enabled;
         `logger -t $log_label -p local4.info "servicenode: enabled the builder repository $repo"`;
         return 0;
     }
