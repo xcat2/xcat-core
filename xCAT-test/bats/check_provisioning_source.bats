@@ -251,3 +251,18 @@ seed_logs()
     [ "$status" -ne 0 ]
     [[ "$output" == *"has no address"* ]]
 }
+
+@test "a baseline that cannot reach the service node names the service node" {
+    seed_logs
+    printf '#!/bin/sh\nexit 1\n' >"$BIN/xdsh"
+    chmod 0755 "$BIN/xdsh"
+
+    run env XCAT_HTTPD_ACCESS_LOG="$MN_LOG" XCAT_PROV_SOURCE_STATE="$STATE" \
+        "$SCRIPT" --baseline "$CN" "$SN"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"no access log to baseline on $SN"* ]]
+    # The message used to append the management node's baseline spec after the node name, so a
+    # substring match on the name alone passes either way.
+    [[ "$output" != *"$MN_LOG"* ]]
+    [ ! -e "$STATE" ]
+}

@@ -160,8 +160,12 @@ MN=$(hostname)
 if [ "$MODE" = baseline ]; then
     MN_BASE=$(baseline_local | read_baseline)
     SN_BASE=$(xdsh "$SN" -e "$SELF" --baseline-local 2>&1 | read_baseline)
-    if [ -z "$MN_BASE" ] || [ -z "$SN_BASE" ]; then
-        echo "provisioning source error: no access log to baseline on ${MN_BASE:+$SN}${MN_BASE:-$MN}" >&2
+    if [ -z "$MN_BASE" ]; then
+        echo "provisioning source error: no access log to baseline on $MN" >&2
+        exit 1
+    fi
+    if [ -z "$SN_BASE" ]; then
+        echo "provisioning source error: no access log to baseline on $SN" >&2
         exit 1
     fi
     printf 'MN %s\nSN %s\n' "$MN_BASE" "$SN_BASE" >"$STATE" || exit 1
