@@ -2706,9 +2706,9 @@ sub kea_process_request
         flock($dhcplockfd, LOCK_UN);
         return;
     }
-    my ( $using_ddns, $ddns_deferred ) =
+    my ( $using_ddns, $ddns_warning ) =
       kea_apply_ddns_intent($ddns_intent, $intent4, $intent6, $using_dhcp6);
-    $callback->({ warning => [$ddns_deferred] }) if $ddns_deferred;
+    $callback->({ warning => [$ddns_warning] }) if $ddns_warning;
 
     if ($opt->{n}) {
         my $result = $backend->write_dhcp4_config($intent4, backup_existing => 1);
@@ -3062,7 +3062,7 @@ sub kea_build_ddns_intent
     # xcatconfig sets site.dnshandler=ddns on every new installation, and only makedns -n writes
     # the key material.
     my ( $key_algorithm, $key_secret ) = kea_ddns_key();
-    return { deferred => "No DDNS key material exists yet. DNS updates stay off until makedns -n runs." } unless $key_secret;
+    return { warning => "No DDNS key material exists yet. DNS updates stay off until makedns -n runs." } unless $key_secret;
 
     my @tsig_keys = (
         {
@@ -3146,7 +3146,7 @@ sub kea_apply_ddns_intent
     my ( $ddns_intent, $intent4, $intent6, $using_dhcp6 ) = @_;
 
     return ( 0, undef ) unless $ddns_intent;
-    return ( 0, $ddns_intent->{deferred} ) if $ddns_intent->{deferred};
+    return ( 0, $ddns_intent->{warning} ) if $ddns_intent->{warning};
 
     my $dhcp_ddns = kea_dhcp_ddns_section();
     $intent4->{'dhcp-ddns'} = $dhcp_ddns;
