@@ -198,14 +198,54 @@ seed_logs()
     [[ "$output" == *"no httpd access log could be read on $SN"* ]]
 }
 
-@test "a management node log with nothing new fails the check instead of reading as silence" {
+# The management node provisions the service node BEFORE this baseline, so it can serve nothing
+# after it. That is the hierarchical result, and it was read as a broken log.
+@test "a management node that serves nothing after the baseline passes" {
     seed_logs
     take_baseline
     access_line "$CN_IP" 12345678 /tftpboot/xcat/genesis.kernel >>"$SN_LOG"
 
     run_check
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"provisioning source ok"* ]]
+}
+
+@test "a management node log with no entry at all fails the check instead of reading as silence" {
+    : >"$MN_LOG"
+    access_line 192.0.2.30 512 /install/rh/x86_64/ >"$SN_LOG"
+    take_baseline
+    access_line "$CN_IP" 12345678 /tftpboot/xcat/genesis.kernel >>"$SN_LOG"
+
+    run_check
     [ "$status" -ne 0 ]
-    [[ "$output" == *"no httpd access log with new entries could be read on mn01"* ]]
+    [[ "$output" == *"no httpd access log with any entry could be read on mn01"* ]]
+}
+
+# The compute node fetches the root image with wget from a URL that carries a double slash, so
+# the path in the log reads //install/... and the payload filter did not match it.
+@test "a boot payload requested under a doubled slash counts" {
+    seed_logs
+    take_baseline
+    access_line "$CN_IP" 978729607 //install/netboot/ubuntu/x86_64/compute/rootimg.cpio.gz >>"$SN_LOG"
+    access_line 192.0.2.21 4096 /install/rh/x86_64/ >>"$MN_LOG"
+
+    run_check
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"provisioning source ok"* ]]
+}
+
+@test "a doubled-slash boot payload from the management node reads as a flat provision" {
+    seed_logs
+    take_baseline
+    access_line "$CN_IP" 12345678 /tftpboot/xcat/genesis.kernel >>"$SN_LOG"
+    {
+        access_line 192.0.2.21 4096 /install/rh/x86_64/
+        access_line "$CN_IP" 978729607 //install/netboot/ubuntu/x86_64/compute/rootimg.cpio.gz
+    } >>"$MN_LOG"
+
+    run_check
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"this provision was flat"* ]]
 }
 
 @test "the Debian per-vhost log format is read as the client address" {
