@@ -828,7 +828,9 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	                else
 		            type=file
 	                fi
-                        echo "deb $type://$whole_path ./"  > $REPOFILE
+                        # apt refuses an unsigned repository outright, and this one carries a
+                        # Packages file and no Release. The rpm arm writes gpgcheck=0 for this.
+                        echo "deb [trusted=yes] $type://$whole_path ./"  > $REPOFILE
                     fi
 		fi
 	    fi

@@ -1708,6 +1708,43 @@ sub nfs_export_exists {
     return 0;
 }
 
+#-----------------------------------------------------------------------------
+
+=head3 nfs_export_line
+
+    The /etc/exports line for a directory a service node serves to its nodes.
+
+    Arguments:
+        $dir        the directory to export
+        reexport    true when $dir is itself an NFS mount
+
+    Returns:
+        one export line, with no trailing newline.
+
+    exportfs refuses an NFS mount without an explicit fsid, and crossmnt lets a client cross into
+    the mount below. The fsid is derived from the path, so a restart does not make client mounts
+    stale.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub nfs_export_line {
+    my ( $dir, %opts ) = _nfs_method_args(@_);
+    my $options = 'rw,no_root_squash,sync,no_subtree_check,insecure';
+    if ( $opts{reexport} ) {
+        $options .= ',crossmnt,fsid=' . _nfs_export_fsid($dir);
+    }
+    return "$dir *($options)";
+}
+
+# A stable, non-zero fsid for a path. 0 is reserved for the export root.
+sub _nfs_export_fsid {
+    my ($dir) = @_;
+    my $sum = 0;
+    $sum = ( $sum * 31 + ord($_) ) % 2147483647 for split //, $dir;
+    return $sum || 1;
+}
+
 sub _ensure_nfs_exported {
     my ($nfsserver, $nfsdirectory, $callback, %opts) = @_;
     my $export_options = 'rw,no_root_squash,sync,no_subtree_check,insecure';
@@ -2509,6 +2546,31 @@ sub searchcompressedrootimg{
     }
 
     return $cpsdrootimg;
+}
+
+
+
+#-----------------------------------------------------------------------------
+
+=head3 named_service_action
+
+    Which service action brings a freshly written named configuration into effect.
+
+    Linux gets a restart. On Debian the package already runs named, so a start is a no-op and
+    the daemon keeps serving the configuration it read at install time.
+
+    Arguments: the platform, 'aix' or 'linux'
+    Returns: 'start', 'restart', or '' for a platform with no action
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub named_service_action {
+    my ($platform) = @_;
+    $platform = '' unless defined $platform;
+    return 'start'   if $platform eq 'aix';
+    return 'restart' if $platform eq 'linux';
+    return '';
 }
 
 
