@@ -43,7 +43,7 @@ ok($have_builder_repo, 'ELBuilderRepo is present, so something can enable the bu
     or diag("ELBuilderRepo did not load: $@");
 
 SKIP: {
-    skip 'ELBuilderRepo absent', 11 unless $have_builder_repo;
+    skip 'ELBuilderRepo absent', 16 unless $have_builder_repo;
 
 my @ids = ELBuilderRepo::builder_repo_ids($SN{vendor}, $SN{major}, $SN{arch});
 is_deeply(\@ids, ['crb'], 'EL9 enables crb, the name the builder repo has from EL9 onwards');
@@ -59,22 +59,42 @@ is_deeply([ELBuilderRepo::builder_repo_ids('alma', undef, 'x86_64')], [],
     'an unknown release enables nothing rather than guessing crb');
 
 my $rhel_repo = 'codeready-builder-for-rhel-9-x86_64-rpms';
-is_deeply([ELBuilderRepo::enable_repo_commands('rhel', $rhel_repo, 1)],
+is_deeply([ELBuilderRepo::enable_repo_commands($rhel_repo, 1)],
     [ "subscription-manager repos --enable=$rhel_repo",
       "dnf config-manager --set-enabled $rhel_repo" ],
-    'RHEL asks subscription-manager first, because it rewrites redhat.repo');
-is_deeply([ELBuilderRepo::enable_repo_commands('rhel', $rhel_repo, 0)],
+    'a registered node asks subscription-manager first, because it rewrites redhat.repo');
+is_deeply([ELBuilderRepo::enable_repo_commands($rhel_repo, 0)],
     [ "dnf config-manager --set-enabled $rhel_repo" ],
-    'RHEL without subscription-manager still tries config-manager');
-is_deeply([ELBuilderRepo::enable_repo_commands('alma', 'crb', 1)],
-    [ 'dnf config-manager --set-enabled crb' ],
-    'AlmaLinux never runs subscription-manager, which it does not use');
-is_deeply([ELBuilderRepo::enable_repo_commands('rhel', '', 1)], [],
+    'an unregistered node runs config-manager alone');
+unlike(join(' ', ELBuilderRepo::enable_repo_commands($rhel_repo, 0)), qr/subscription-manager/,
+    '... and never runs subscription-manager, whose failure names the registration');
+is_deeply([ELBuilderRepo::enable_repo_commands('crb', 1)],
+    [ 'subscription-manager repos --enable=crb',
+      'dnf config-manager --set-enabled crb' ],
+    'a registered AlmaLinux or Rocky node takes the same path, which is the Katello case');
+is_deeply([ELBuilderRepo::enable_repo_commands('', 1)], [],
     'no repository id means no command to run');
-ok(ELBuilderRepo::uses_subscription_manager('rhel'),
-    'RHEL keeps its repositories in a file subscription-manager owns');
-ok(!ELBuilderRepo::uses_subscription_manager('alma'),
-    'AlmaLinux does not, so nothing asks subscription-manager there');
+
+# The registration probe. `subscription-manager identity` is the question, and its answer decides
+# which of the commands above runs. The registered and the unregistered form below are the wording
+# of subscription-manager 1.30.12, which is what EL10 ships.
+ok(ELBuilderRepo::registered_with_subscription_manager(0,
+        "system identity: 7a6bd2ee-1f43-4b0c-9d61-6c0e4f2a55b8\nname: sn\norg ID: 1234567\n"),
+    'an identity and an exit status of 0 report a registered node');
+ok(!ELBuilderRepo::registered_with_subscription_manager(1,
+        "This system is not yet registered."
+      . " Try 'subscription-manager register --help' for more information.\n"),
+    'the unregistered message reports no registration');
+ok(!ELBuilderRepo::registered_with_subscription_manager(127, ''),
+    'a missing subscription-manager reports no registration');
+ok(!ELBuilderRepo::registered_with_subscription_manager(8,
+        "Error: this command requires root access to execute\n"),
+    'a call without root privilege reports no registration');
+ok(!ELBuilderRepo::registered_with_subscription_manager(0, "Unable to read consumer identity\n"),
+    'an exit status of 0 without an identity line reports no registration');
+ok(!ELBuilderRepo::registered_with_subscription_manager(1,
+        "system identity: 7a6bd2ee-1f43-4b0c-9d61-6c0e4f2a55b8\n"),
+    'an identity line with a non-zero exit status reports no registration');
 }
 
 # ---------------------------------------------------------------------------

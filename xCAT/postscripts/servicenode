@@ -214,12 +214,21 @@ sub enable_el_dependency_repos {
     }
 
     my $known = `dnf repolist --all 2>/dev/null` || '';
-    my $has_sm = system('command -v subscription-manager >/dev/null 2>&1') == 0 ? 1 : 0;
+
+    # @ids is empty when ELBuilderRepo did not load, so no sub of it is called outside this guard.
+    my $registered = 0;
+    if (@ids) {
+        my $identity = `subscription-manager identity 2>&1`;
+        $registered = ELBuilderRepo::registered_with_subscription_manager($? >> 8, $identity);
+        my $state = $registered ? 'registered' : 'not registered';
+        `logger -t $log_label -p local4.info "servicenode: subscription-manager reports the node $state"`;
+    }
+
     foreach my $repo (@ids) {
         next unless $known =~ /^\Q$repo\E\s/m;
         &runcmd("dnf -y install dnf-plugins-core");
         my $enabled = 0;
-        foreach my $cmd (ELBuilderRepo::enable_repo_commands($vendor, $repo, $has_sm)) {
+        foreach my $cmd (ELBuilderRepo::enable_repo_commands($repo, $registered)) {
             next unless &runcmd($cmd) == 0;
             $enabled = 1;
             last;

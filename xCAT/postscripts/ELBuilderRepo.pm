@@ -51,51 +51,61 @@ sub builder_repo_ids {
 =head3 enable_repo_commands
 
     Arguments:
-        $vendor  the ID field of /etc/os-release
-        $repo    the repository id to enable
-        $has_sm  true when subscription-manager is installed
+        $repo        the repository id to enable
+        $registered  true when the node is registered with subscription-manager
 
     Returns:
         the commands to try, in order, until one succeeds. An empty list when there is no
         repository id.
 
-    A vendor whose repositories come from subscription-manager gets that command first, and
-    config-manager as the fallback. Every other vendor gets config-manager alone.
+    A registered node asks subscription-manager first. subscription-manager rewrites
+    /etc/yum.repos.d/redhat.repo, so a config-manager change there does not survive its next
+    refresh. A Foreman, Katello or Red Hat Satellite client registers the same way, so it takes
+    the same path. The vendor id does not decide, because a Satellite client can be RHEL,
+    AlmaLinux or Rocky.
+
+    An unregistered node gets config-manager alone. subscription-manager can only fail there, and
+    its failure names the registration, not the repository.
 
 =cut
 
 #-----------------------------------------------------------------------------
 sub enable_repo_commands {
-    my ($vendor, $repo, $has_sm) = @_;
+    my ($repo, $registered) = @_;
 
     return () unless defined $repo && length $repo;
 
     my @cmds;
-    push @cmds, "subscription-manager repos --enable=$repo"
-      if $has_sm && uses_subscription_manager($vendor);
+    push @cmds, "subscription-manager repos --enable=$repo" if $registered;
     push @cmds, "dnf config-manager --set-enabled $repo";
     return @cmds;
 }
 
 #-----------------------------------------------------------------------------
 
-=head3 uses_subscription_manager
+=head3 registered_with_subscription_manager
 
     Arguments:
-        $vendor  the ID field of /etc/os-release
+        $rc      the exit status of `subscription-manager identity`
+        $output  what that command wrote, stdout and stderr together
 
     Returns:
-        true when this vendor keeps its repositories in a file that subscription-manager owns.
+        true when the node is registered.
 
-    subscription-manager rewrites /etc/yum.repos.d/redhat.repo, so a config-manager change
-    there does not survive its next refresh.
+    A registered node prints "system identity: <uuid>" and exits 0. An unregistered one prints
+    "This system is not yet registered" and exits 1. A missing binary, a corrupt consumer
+    certificate and a call by a non-root user each exit non-zero as well, so the status alone
+    never reports registration. The identity line must be there too.
 
 =cut
 
 #-----------------------------------------------------------------------------
-sub uses_subscription_manager {
-    my ($vendor) = @_;
-    return defined $vendor && $vendor eq 'rhel' ? 1 : 0;
+sub registered_with_subscription_manager {
+    my ($rc, $output) = @_;
+
+    return 0 unless defined $rc     && $rc == 0;
+    return 0 unless defined $output && $output =~ /^\s*system identity:\s*\S/mi;
+    return 1;
 }
 
 1;
