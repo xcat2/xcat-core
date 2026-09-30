@@ -38,6 +38,10 @@ skip. The CI takes a copy of the checkout before the build for this reason; see
 
 ## What does not belong here
 
+Tests that build RPMs, create Linux namespaces or start service binaries belong
+in [`../native`](../native/README.md). They run explicitly on a suitable host,
+outside the default unit suite.
+
 Anything that needs an installed xCAT, a populated `/install`, a real service binary
 or a live daemon. Those go in [`../integration`](../integration/README.md) and run on
 a management node through `xcattest`. Both suites run on every pull request -- the

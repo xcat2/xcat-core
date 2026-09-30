@@ -54,6 +54,19 @@ if [ "$USEFLOWCONTROL" = "YES" ] || [ "$USEFLOWCONTROL" = "yes" ] || [ "$USEFLOW
   useflowcontrol=1
 fi
 
+set_hostkey_permissions()
+{
+    if xcat_is_openeuler "${OSVER:-}"; then
+        if ! chown root:root "$1" || ! chmod 600 "$1"; then
+            logger -t $log_label -p local4.err "remoteshell: failed to secure $1"
+            kill -9 "$CREDPID" 2>/dev/null
+            exit 1
+        fi
+    else
+        egrep -i "^ssh_keys:" /etc/group >/dev/null 2>&1 && chown root:ssh_keys "$1" 2>/dev/null && chmod 640 "$1"
+    fi
+}
+
 sshd_config_helper="$(dirname "$0")/remoteshell-sshd-config"
 if [ -x "$sshd_config_helper" ]; then
     if ! "$sshd_config_helper" "${SETUPFORPCM:-0}" "${OSVER:-}" "$log_label"; then
@@ -136,7 +149,7 @@ if [ $? -ne 0 ]; then
                 getcredentials.awk ssh_dsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_dsa_key
                 MYCONT=`cat /etc/ssh/ssh_host_dsa_key`
    done
-   egrep  -i "^ssh_keys:" /etc/group >/dev/null 2>&1 && chown root:ssh_keys /etc/ssh/ssh_host_dsa_key 2>/dev/null && chmod 640 /etc/ssh/ssh_host_dsa_key
+   set_hostkey_permissions /etc/ssh/ssh_host_dsa_key
    if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_dsa_key > /dev/null 2>&1 ; then
         rm /etc/ssh/ssh_host_dsa_key
 	else
@@ -206,7 +219,7 @@ if [ $? -ne 0 ]; then
     		getcredentials.awk ssh_rsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_rsa_key
     		MYCONT=`cat /etc/ssh/ssh_host_rsa_key`
 	done
-        egrep  -i "^ssh_keys:" /etc/group >/dev/null 2>&1 && chown root:ssh_keys /etc/ssh/ssh_host_rsa_key 2>/dev/null && chmod 640 /etc/ssh/ssh_host_rsa_key
+        set_hostkey_permissions /etc/ssh/ssh_host_rsa_key
 	if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_rsa_key > /dev/null 2>&1 ; then
    		rm /etc/ssh/ssh_host_rsa_key
 	else
@@ -277,7 +290,7 @@ if ssh-keygen -t ecdsa -f /tmp/ecdsa_key -P "" &>/dev/null ; then
     		getcredentials.awk ssh_ecdsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_ecdsa_key
     		MYCONT=`cat /etc/ssh/ssh_host_ecdsa_key`
 	done
-	egrep  -i "^ssh_keys:" /etc/group >/dev/null 2>&1 && chown root:ssh_keys /etc/ssh/ssh_host_ecdsa_key 2>/dev/null && chmod 640 /etc/ssh/ssh_host_ecdsa_key
+	set_hostkey_permissions /etc/ssh/ssh_host_ecdsa_key
 	if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_ecdsa_key > /dev/null 2>&1 ; then
    		rm /etc/ssh/ssh_host_ecdsa_key
 	else
@@ -357,7 +370,7 @@ if ssh-keygen -t ed25519 -f /tmp/ed25519_key -P "" &>/dev/null ; then
     		getcredentials.awk ssh_ed25519_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_ed25519_key
     		MYCONT=`cat /etc/ssh/ssh_host_ed25519_key`
 	done
-	egrep  -i "^ssh_keys:" /etc/group >/dev/null 2>&1 && chown root:ssh_keys /etc/ssh/ssh_host_ed25519_key 2>/dev/null && chmod 640 /etc/ssh/ssh_host_ed25519_key
+	set_hostkey_permissions /etc/ssh/ssh_host_ed25519_key
 	if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_ed25519_key > /dev/null 2>&1 ; then
    		rm /etc/ssh/ssh_host_ed25519_key
 	else

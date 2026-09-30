@@ -896,6 +896,13 @@ else
 	echo "Please install yum or dnf on $NODE."
 	exit 1;
     fi
+    if pmatch "$OSVER" "openeuler*"; then
+        if [ "$yumcmd" != dnf ]; then
+            echo "ospkgs: openEuler package installation requires dnf" >&2
+            exit 1
+        fi
+        yumcmd=xcat_dnf_strict
+    fi
 
     if [ $keeprepo -ne 1 ]; then
        #remove old repo files
@@ -926,11 +933,15 @@ else
 	           echo "baseurl=file://$OSPKGDIR" >> $REPOFILE
 	       fi
 	       echo "enabled=1" >> $REPOFILE
-	       echo "gpgcheck=0" >> $REPOFILE
-               echo "skip_if_unavailable=True" >> $REPOFILE
+               xcat_rpm_repository_policy "$OSVER" >> "$REPOFILE"
            fi
            i=$((i+1))
      done
+
+    if pmatch "$OSVER" "openeuler*" && [ "$keeprepo" -ne 1 ]; then
+        xcat_dnf_repositories="xCAT-$OSVER-path*"
+        yumcmd=xcat_dnf_scoped
+    fi
 
     #import the release key?
     #my $key = "$installDIR/$os/$arch/RPM-GPG-KEY-redhat-release";

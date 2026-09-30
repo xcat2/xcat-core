@@ -1066,6 +1066,16 @@ sub mysqlreboot
             }
         }
     }
+    elsif ($::linuxos =~ /^openeuler[0-9]/)
+    {
+        my $ret = xCAT::Utils->enableservice("mysql");
+        if ($ret != 0)
+        {
+            xCAT::MsgUtils->message("E",
+                " failed to enable MySQL/MariaDB on reboot.");
+            exit(1);
+        }
+    }
     else    # linux
     {
         if ($::MariaDB == 1) {    # MariaDB not MySQL

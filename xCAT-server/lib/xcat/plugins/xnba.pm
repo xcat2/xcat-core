@@ -711,9 +711,8 @@ sub process_request {
     unless (@nodes) {
         xCAT::MsgUtils->message("S", "xCAT: xnba netboot: no valid nodes. Stop the operation on this server.");
 
-        # If non-shared tftproot and non disjoint mode, need to figure out if no nodes here is a normal case.
-        if ($::XNBA_request->{'_disparatetftp'}->[0] && $::XNBA_request->{'_disjointmode'}->[0] != 1) {
-            # Find out which nodes are really mine only when not sharedtftp and not disjoint mode.
+        # A request can reach a server that owns none of these nodes.
+        if ($::XNBA_request->{'_disparatetftp'}->[0]) {
             my %iphash   = ();
             # flag the IPs or names in iphash
             foreach (@hostinfo) { $iphash{$_} = 1; }

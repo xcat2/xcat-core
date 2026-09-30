@@ -1048,6 +1048,19 @@ rm_persistent_route()
 
 
 
+if command -v xcat_is_openeuler >/dev/null 2>&1 && xcat_is_openeuler "$OSVER"; then
+    case "$op" in
+        add|delete|replace)
+            nmcli_persistent_route "$op" "$net" "$mask" "$gw" "$ifname"
+            route_rc=$?
+            [ $route_rc -eq 0 ] || exit $route_rc
+            route_dev=$(route_ifname "$net" "$gw" "$ifname")
+            nmcli device reapply "$route_dev"
+            exit $?
+            ;;
+    esac
+fi
+
 if [ "$op" = "add" ]; then
     result=$(route_exists $net $mask $gw)
     if [ "$result" = "0" ]; then

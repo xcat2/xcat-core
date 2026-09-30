@@ -1,0 +1,4 @@
+./boot*
+./tmp*
+./var/cache/dnf*
+./var/cache/yum*
