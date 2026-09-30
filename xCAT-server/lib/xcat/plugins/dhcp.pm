@@ -3059,8 +3059,8 @@ sub kea_build_ddns_intent
     my @vnets = $nettab->getAllAttribs('net', 'mask', 'nameservers', 'ddnsdomain', 'domain');
     $nettab->close;
 
-    # xcatconfig sets site.dnshandler=ddns on every new installation, and only makedns -n
-    # writes the key material. Kea must still get a configuration before that happens.
+    # xcatconfig sets site.dnshandler=ddns on every new installation, and only makedns -n writes
+    # the key material.
     my ( $key_algorithm, $key_secret ) = kea_ddns_key();
     return { deferred => "No DDNS key material exists yet. DNS updates stay off until makedns -n runs." } unless $key_secret;
 
