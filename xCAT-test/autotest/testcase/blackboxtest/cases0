@@ -1,0 +1,20 @@
+# blackboxtest's offline checks: its unit tests, and every shipped scenario
+# parsed and walked. No network, no root, no scapy. The wire cases that use
+# the tool are in dhcp_cases and prov_cases.
+
+start:blackboxtest_unit_tests
+description:blackboxtest's own unit tests: no network and no root needed
+label:mn_only,ci_test,dhcp,prov
+os:Linux
+cmd:cd /opt/xcat/share/xcat/tools/autotest/blackboxtest && python3 -m unittest discover -s tests
+check:rc==0
+end
+
+start:blackboxtest_validate_conf
+description:Every shipped scenario parses, and every assertion names a field its step can carry
+label:mn_only,ci_test,dhcp,prov
+os:Linux
+cmd:cd /opt/xcat/share/xcat/tools/autotest/blackboxtest && python3 src/blackboxtest validate conf/*/*.conf
+check:rc==0
+check:output=~scenario
+end
