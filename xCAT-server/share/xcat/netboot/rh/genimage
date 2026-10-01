@@ -15,7 +15,7 @@ use File::Copy qw/copy cp mv move/;
 use File::Find;
 use Getopt::Long;
 use Cwd qw(realpath);
-use File::Temp qw/mkdtemp/;
+use File::Temp qw/mkdtemp tempfile/;
 use FindBin;
 use lib "$FindBin::Bin/../imgutils";
 use imgutils;
@@ -70,12 +70,22 @@ my $ignorekernelchk;
 my $noupdate;
 my $lock;
 my $envar;
+my $native_bootdir;
 
 
 sub xdie {
+    unlink("$rootimg_dir/tmp/initrd.$$.gz")
+      if $rootimg_dir && defined(imgutils::openeuler_release_version($osver));
     system("rm -rf /tmp/xcatinitrd.$$");
     umount_chroot($rootimg_dir);
     die @_;
+}
+
+sub check_package_result {
+    my ($rc) = @_;
+    return unless $rc && defined(imgutils::openeuler_release_version($osver));
+    unuse_hackuname();
+    xdie("RPM package manager invocation failed\n");
 }
 
 
@@ -99,7 +109,7 @@ sub mount_chroot {
     #For Redhat7 or above, mount /proc,/sys from host to avoid error messages
     #For Redhat7 or above, create /dev according to /dev on the host to avoid error messages
     #For Redhat6 or below, mount these directories might introduce error messages
-    if (majversion($osver) > 6) {
+    if (defined(imgutils::openeuler_release_version($osver)) || majversion($osver) > 6) {
         system("mkdir -p $rootimage_dir/proc");
         system("mount proc $rootimage_dir/proc -t proc");
         system("mkdir -p $rootimage_dir/sys");
@@ -143,7 +153,7 @@ sub umount_chroot {
         system("umount -l $mntpt >/dev/null 2>&1");
     }
 
-    if (majversion($osver) > 6) {
+    if (defined(imgutils::openeuler_release_version($osver)) || majversion($osver) > 6) {
         #only remove the /dev in rootimg directory if it is not a mount point
         system("findmnt $rootimage_dir/dev/ >/dev/null 2>&1 || rm -rf $rootimage_dir/dev/*");
     }
@@ -290,6 +300,14 @@ if($onlyinitrd){
         print("the root image directory \"$rootimg_dir\"does not exist, please run \"genimage $imagename\" to generate the root image directory first!\n");
         exit 1;
     }
+    if (defined(imgutils::openeuler_release_version($osver))) {
+        my $retcode;
+        ($retcode, $lock) = xCAT::Utils->acquire_lock_imageop($rootimg_dir);
+        if ($retcode) {
+            print "Could not acquire image operation lock for $rootimg_dir\n";
+            exit 1;
+        }
+    }
 }else
 {
     @yumdirs = ();
@@ -343,12 +361,19 @@ if($onlyinitrd){
     }
 
     my $repnum = 0;
+    my $gpgkey;
+    if (defined(imgutils::openeuler_release_version($osver))) {
+        my ($keyfh, $keyfile) = tempfile('genimage-rpm-keys.XXXXXX', DIR => '/tmp', UNLINK => 1);
+        print $keyfh imgutils::rpm_trusted_keys() or die "Cannot write RPM signing keys: $!\n";
+        close($keyfh) or die "Cannot close RPM signing keys: $!\n";
+        $gpgkey = "file://$keyfile";
+    }
     foreach $srcdir (@yumdirs) {
-        print $yumconfig "[$osver-$arch-$repnum]\nname=$osver-$arch-$repnum\nbaseurl=file://$srcdir\ngpgcheck=0\nskip_if_unavailable=True\n\n";
+        print $yumconfig imgutils::rpm_repository_config($osver, "$osver-$arch-$repnum", "file://$srcdir", $gpgkey);
         $repnum += 1;
     }
     foreach $srcdir (@pkgdir_internet) {
-       print $yumconfig "[$osver-$arch-$repnum]\nname=$osver-$arch-$repnum\nbaseurl=$srcdir\ngpgcheck=0\nskip_if_unavailable=True\n\n";
+       print $yumconfig imgutils::rpm_repository_config($osver, "$osver-$arch-$repnum", $srcdir, $gpgkey);
        $repnum += 1;
     }
     $repnum -= 1;
@@ -518,14 +543,16 @@ if($onlyinitrd){
 
                 if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next; }
                 foreach(@otherpkgdir_url){
-                    print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=$_\ngpgcheck=0\nskip_if_unavailable=True\n\n";
+                    print $yumconfig imgutils::rpm_repository_config($osver, "otherpkgs$index", $_, $gpgkey);
                     $repohash{$pass}{$index} = 1;
                     $index++;
                 }
 
-                print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs_local/$_\ngpgcheck=0\nskip_if_unavailable=True\n\n";
-                $repohash{$pass}{$index} = 1;
-                $index++;
+                if (defined($srcdir_otherpkgs_local) || !defined(imgutils::openeuler_release_version($osver))) {
+                    print $yumconfig imgutils::rpm_repository_config($osver, "otherpkgs$index", "file://$srcdir_otherpkgs_local/$_", $gpgkey);
+                    $repohash{$pass}{$index} = 1;
+                    $index++;
+                }
                 my $pa = $extra_hash{$pass}{$_};
                 $extrapkgnames{$pass} .= " " . join(' ', @$pa);
             }
@@ -571,6 +598,7 @@ if($onlyinitrd){
                 if ($rm_packges) {
                     print "$envlist $yumcmd_remove $rm_packges\n";
                     $rc = system("$envlist $yumcmd_remove $rm_packges");
+                    check_package_result($rc);
                 }
             }
 
@@ -617,6 +645,7 @@ if($onlyinitrd){
                 if ($rm_packges) {
                     print "$envlist $yumcmd_remove $rm_packges\n";
                     $rc = system("$envlist $yumcmd_remove $rm_packges");
+                    check_package_result($rc);
                 }
             }
             $yumcmd = $yumcmd_base;
@@ -629,6 +658,7 @@ if($onlyinitrd){
                 my $excludecmd = $kernelver ? " --exclude=kernel\*" : "";
                 my $yumcmd_update = $yumcmd_base . $excludecmd . " update  ";
                 $rc = system("$yumcmd_update");
+                check_package_result($rc);
             }
         }
 
@@ -693,17 +723,25 @@ chomp($kernelver);
 #$updates{'kernelver'} = $kernelver if ($tempfile);
 
 # copy the kernel to $destdir
+my $kernel_output = "$destdir/kernel";
+if (defined(imgutils::openeuler_release_version($osver))) {
+    $native_bootdir = File::Temp->newdir('.genimage-boot.XXXXXX', DIR => $destdir, CLEANUP => 1);
+    $kernel_output = "$native_bootdir/kernel";
+}
+my $kernel_copy;
 if (-e "$rootimg_dir/boot/vmlinux-$kernelver") {
-    cp("$rootimg_dir/boot/vmlinux-$kernelver", "$destdir/kernel");
+    $kernel_copy = cp("$rootimg_dir/boot/vmlinux-$kernelver", $kernel_output);
 } elsif (-e "$rootimg_dir/boot/vmlinuz-$kernelver") {
-    cp("$rootimg_dir/boot/vmlinuz-$kernelver", "$destdir/kernel");
+    $kernel_copy = cp("$rootimg_dir/boot/vmlinuz-$kernelver", $kernel_output);
 } elsif (-e "$rootimg_dir/boot/image-$kernelver") {
-    cp("$rootimg_dir/boot/image-$kernelver", "$destdir/kernel");
+    $kernel_copy = cp("$rootimg_dir/boot/image-$kernelver", $kernel_output);
 } elsif (-e "$rootimg_dir/lib/modules/$kernelver/vmlinuz") {
-    cp("$rootimg_dir/lib/modules/$kernelver/vmlinuz", "$destdir/kernel");
+    $kernel_copy = cp("$rootimg_dir/lib/modules/$kernelver/vmlinuz", $kernel_output);
 } else {
     xdie("couldn't find the kernel file matched $kernelver in $rootimg_dir/boot");
 }
+xdie("Error: failed to copy the kernel to $kernel_output: $!\n")
+  if $native_bootdir && !$kernel_copy;
 
 # Load driver update disk, and copy them to the root image
 my @dd_drivers = &load_dd();
@@ -782,16 +820,10 @@ if ((-d "$rootimg_dir/usr/share/dracut") or (-d "$rootimg_dir/usr/lib/dracut")) 
     }
     print "Enter the dracut mode. Dracut version: $dracutver. Dracut directory: $dracutdir.\n";
 }
+xdie("Error: failed to generate the initial ramdisk: native image has no dracut installation\n")
+  if $native_bootdir && !$dracutmode;
 
-# List of internet repos to be disabled
-
-my @internet_repo_file_list = ("oracle-linux-ol8.repo", "oracle-linux-ol9.repo", "oracle-linux-ol10.repo", "uek-ol8.repo", "uek-ol9.repo", "uek-ol10.repo", "Rocky-AppStream.repo", "Rocky-BaseOS.repo", "Rocky-Extras.repo", "rocky.repo", "rocky-extras.repo", "CentOS-Base.repo", "centos.repo", "centos-addons.repo", "almalinux-ha.repo", "almalinux-nfv.repo", "almalinux-plus.repo", "almalinux-powertools.repo", "almalinux.repo", "almalinux-resilientstorage.repo", "almalinux-rt.repo");
-
-foreach ( @internet_repo_file_list ) {
-  if (-e "$rootimg_dir/etc/yum.repos.d/$_") {
-    system("sed -i -e 's/^[[:space:]]*enabled[[:space:]]*=[[:space:]]*1/enabled=0/' $rootimg_dir/etc/yum.repos.d/$_");
-  }
-}
+imgutils::disable_vendor_repositories($rootimg_dir);
 
 #-- run postinstall script
 unless ($imagename) {
@@ -880,21 +912,23 @@ if ($tempfile) {
         print FILE join('::', @a) . "\n";
         print FILE "The output for table updates ends here\n";
 
-        # update the imagename for statelite
-        $updates_os{'provmethod'} = 'statelite';
-        print FILE "The output for table updates starts here\n";
-        print FILE "table::osimage\n";
-        print FILE "imagename::$osver-$arch-statelite-$profile\n";
-        my @a = %updates_os;
-        print FILE join('::', @a) . "\n";
-        print FILE "The output for table updates ends here\n";
+        unless (defined(imgutils::openeuler_release_version($osver))) {
+            # update the imagename for statelite
+            $updates_os{'provmethod'} = 'statelite';
+            print FILE "The output for table updates starts here\n";
+            print FILE "table::osimage\n";
+            print FILE "imagename::$osver-$arch-statelite-$profile\n";
+            my @a = %updates_os;
+            print FILE join('::', @a) . "\n";
+            print FILE "The output for table updates ends here\n";
 
-        print FILE "The output for table updates starts here\n";
-        print FILE "table::linuximage\n";
-        print FILE "imagename::$osver-$arch-statelite-$profile\n";
-        my @a = %updates;
-        print FILE join('::', @a) . "\n";
-        print FILE "The output for table updates ends here\n";
+            print FILE "The output for table updates starts here\n";
+            print FILE "table::linuximage\n";
+            print FILE "imagename::$osver-$arch-statelite-$profile\n";
+            my @a = %updates;
+            print FILE join('::', @a) . "\n";
+            print FILE "The output for table updates ends here\n";
+        }
     }
     close FILE;
 }
@@ -905,21 +939,23 @@ if ($tempfile) {
 # statelite .statelite directory added here.
 # this is where tmpfs will be created.
 
-mkpath "$rootimg_dir/.statelite";           # create place for NFS mounts.
-mkpath "$rootimg_dir/.sllocal/localmnt";    # create place for localdisk mount
-mkpath "$rootimg_dir/.sllocal/log";         # create place for localdisk log
+unless (defined(imgutils::openeuler_release_version($osver))) {
+    mkpath "$rootimg_dir/.statelite";           # create place for NFS mounts.
+    mkpath "$rootimg_dir/.sllocal/localmnt";    # create place for localdisk mount
+    mkpath "$rootimg_dir/.sllocal/log";         # create place for localdisk log
 
-# this script will get the directories.
-# TODO: the file is re-copied in liteimg.pm
-my $cwd = $FindBin::Bin;
-unless (-f "$cwd/../add-on/statelite/rc.statelite") {
-    print "Can't find $cwd/../add-on/statelite/rc.statelite!\n";
-    exit 1;
+    # this script will get the directories.
+    # TODO: the file is re-copied in liteimg.pm
+    my $cwd = $FindBin::Bin;
+    unless (-f "$cwd/../add-on/statelite/rc.statelite") {
+        print "Can't find $cwd/../add-on/statelite/rc.statelite!\n";
+        exit 1;
+    }
+
+    mkpath "$rootimg_dir/etc/init.d";
+    system("cp $cwd/../add-on/statelite/rc.statelite $rootimg_dir/etc/init.d/statelite");
+    system("cp $cwd/../add-on/statelite/rc.localdisk $rootimg_dir/etc/init.d/localdisk");
 }
-
-mkpath "$rootimg_dir/etc/init.d";
-system("cp $cwd/../add-on/statelite/rc.statelite $rootimg_dir/etc/init.d/statelite");
-system("cp $cwd/../add-on/statelite/rc.localdisk $rootimg_dir/etc/init.d/localdisk");
 
 # also need to add this file:
 # may have already been made into a symbolic link, if so ignore it
@@ -975,7 +1011,7 @@ system("chroot $rootimg_dir depmod $kernelver");
 
 if ($dracutmode) {
     mkinitrd_dracut("stateless");
-    mkinitrd_dracut("statelite");
+    mkinitrd_dracut("statelite") unless defined(imgutils::openeuler_release_version($osver));
 } else {
     mkinitrd("statelite");
     mkinitrd("stateless");
@@ -1166,7 +1202,9 @@ sub mkinitrd_dracut {
             #update etc/dracut.conf
             open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
             my $dracutmodulelist = "xcat nfs base network kernel-modules syslog";
-            if (majversion($osver) >= 10) {
+            if (defined(imgutils::openeuler_release_version($osver))
+                ? scalar(glob($dracutmoduledir . '[0-9]*network-manager'))
+                : majversion($osver) >= 10) {
                 $dracutmodulelist .= " network-manager";
             }
 
@@ -1211,7 +1249,9 @@ sub mkinitrd_dracut {
             chmod($perm & 07777, "$dracutmpath/installkernel");
 
             my $dracutmodulelist = "xcat nfs base network kernel-modules syslog";
-            if (majversion($osver) >= 10) {
+            if (defined(imgutils::openeuler_release_version($osver))
+                ? scalar(glob($dracutmoduledir . '[0-9]*network-manager'))
+                : majversion($osver) >= 10) {
                 $dracutmodulelist .= " network-manager";
             }
 
@@ -1262,6 +1302,14 @@ sub mkinitrd_dracut {
     !system("chroot $rootimg_dir dracut $additional_options -f /tmp/initrd.$$.gz $kernelver")
       or xdie("Error: failed to generate the initial ramdisk for $mode.\n");
     umount_chroot($rootimg_dir);
+    if ($native_bootdir) {
+        eval {
+            imgutils::publish_boot_files($native_bootdir, $destdir,
+                "$rootimg_dir/tmp/initrd.$$.gz", $mode);
+        } or xdie($@);
+        print "the initial ramdisk for $mode is generated successfully.\n";
+        return;
+    }
     print "the initial ramdisk for $mode is generated successfully.\n";
     print("Move $rootimg_dir/tmp/initrd.$$.gz -> $destdir/initrd-$mode.gz");
     move("$rootimg_dir/tmp/initrd.$$.gz", "$destdir/initrd-$mode.gz");
@@ -2030,6 +2078,7 @@ sub postscripts {
 
 sub using_systemd {
     my $os = shift;
+    return 1 if defined(imgutils::openeuler_release_version($os));
     if ($os =~ /fedora(\d+)/) {
         if ($1 >= 15) {
             return 1;

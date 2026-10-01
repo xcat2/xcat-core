@@ -53,6 +53,7 @@ rm -rf $RPM_BUILD_ROOT
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/bin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/sbin
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/Test
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/autotest
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man1
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man1
@@ -60,6 +61,9 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man1
 cp bin/* $RPM_BUILD_ROOT/%{prefix}/bin
 cp xcattest $RPM_BUILD_ROOT/%{prefix}/bin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
+
+cp lib/xCAT/Test/OS.pm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/Test
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/Test/OS.pm
 
 cp restapitest $RPM_BUILD_ROOT/%{prefix}/sbin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/sbin/*

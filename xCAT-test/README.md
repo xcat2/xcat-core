@@ -8,6 +8,7 @@ language:
 | Perl unit tests | `xCAT-test/unit/*.t` | `prove -r xCAT-test/unit` |
 | Shell unit tests | `xCAT-test/bats/*.bats` | `bats -r xCAT-test/bats` |
 | Black-box service tests | `xCAT-test/blackboxtest/` | `python3 -m unittest discover -s tests`, then `blackboxtest run <conf>` on a management node |
+| Native host tests | `xCAT-test/native/*.t` | Explicit lab runs; see [native/README.md](native/README.md) |
 | CLI functional tests | `xCAT-test/autotest/testcase/` and `xCAT-test/autotest/bundle/` | `xcattest -f <cluster.conf> -t <case>` or `xcattest -f <cluster.conf> -b <bundle>` |
 
 Use Perl `.t` tests for Perl modules, Perl scripts, templates, and repository

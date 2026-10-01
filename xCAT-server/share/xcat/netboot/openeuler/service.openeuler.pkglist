@@ -1,0 +1,3 @@
+#INCLUDE:${XCATROOT}/share/xcat/netboot/openeuler/compute.openeuler.pkglist#
+perl-DBD-MySQL
+perl-DBD-Pg
