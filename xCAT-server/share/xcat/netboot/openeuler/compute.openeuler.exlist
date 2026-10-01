@@ -2,3 +2,18 @@
 ./tmp*
 ./var/cache/dnf*
 ./var/cache/yum*
+# openEuler's kernel requires linux-firmware, so the package cannot be left out of the image.
+# It installs 1364 MB. These trees are for hardware a compute node is not: Qualcomm laptop and
+# phone SoCs, WiFi, and GPUs. Stripping them leaves 292 MB. The interconnect and server NIC
+# firmware stays: mellanox, intel/ice, intel/qat, bnx2x, cxgb4, qed.
+./usr/lib/firmware/qcom*
+./usr/lib/firmware/intel/iwlwifi*
+./usr/lib/firmware/nvidia*
+./usr/lib/firmware/amdgpu*
+./usr/lib/firmware/amdnpu*
+./usr/lib/firmware/i915*
+./usr/lib/firmware/xe*
+./usr/lib/firmware/radeon*
+./usr/lib/firmware/rtw89*
+./usr/lib/firmware/dpaa2*
+./usr/lib/firmware/ueagle-atm*
