@@ -30,6 +30,7 @@ our @EXPORT_OK = qw(
     pin_control_version rewrite_changelog_header
     reprepro_distributions reprepro_options
     lock_id_for take_build_lock
+    build_sources_dir prepare_build_sources_dir
     sh_quote clean_debian_residue git_revision
     backup_file restore_file
     sh sh_or_die usage
@@ -893,6 +894,61 @@ sub genesis_log_errors {
         }
     }
     return @found;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 build_sources_dir
+
+Descriptions: The rpmbuild SOURCES directory for one package and one target.
+
+Arguments:
+  $package   - the package being built, e.g. xCAT
+  $target    - the mock target, e.g. openeuler-24.03sp4-x86_64
+  $uniqueext - the mock uniqueext, or undef
+  $home      - the home directory; defaults to $ENV{HOME}
+
+Returns: the absolute path of the staging directory.
+
+=cut
+
+#-------------------------------------------------------------------------------
+# Keyed like the mock chroot. buildrpms.pl forks a child per package and target, and
+# mock --sources copies the whole directory, so one shared directory lets a peer's tar
+# truncate an archive mid-copy. xCAT and xCATsn both write etc.tar.gz.
+sub build_sources_dir {
+    my ($package, $target, $uniqueext, $home) = @_;
+
+    # An empty key names the shared directory again.
+    die "build_sources_dir: package is required\n" unless defined $package && length $package;
+    die "build_sources_dir: target is required\n"  unless defined $target  && length $target;
+
+    $home = $ENV{HOME} unless defined $home && length $home;
+    die "build_sources_dir: no home directory\n" unless defined $home && length $home;
+
+    my $key = "$package-$target";
+    $key .= "-$uniqueext" if defined $uniqueext && length $uniqueext;
+    return "$home/rpmbuild/$key/SOURCES";
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 prepare_build_sources_dir
+
+Descriptions: Create the staging directory for one package and target, and return it.
+
+Arguments: the same as build_sources_dir.
+
+Returns: the absolute path of the staging directory.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub prepare_build_sources_dir {
+    my $dir = build_sources_dir(@_);
+    make_path($dir);
+    die "build_sources_dir: $dir was not created\n" unless -d $dir;
+    return $dir;
 }
 
 1;

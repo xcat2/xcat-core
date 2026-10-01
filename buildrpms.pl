@@ -55,6 +55,7 @@ use File::Temp qw(tempdir tempfile);
 use FindBin qw($Bin);
 use lib "$Bin/build-utils/lib";
 use XCAT::BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildinfo_text
+    prepare_build_sources_dir
                         stage_genesis_base_sources
                         write_script read_line targetarch_from_target
                         openeuler_build_target openeuler_repo_subdir);
@@ -68,7 +69,8 @@ use autodie;
 use autodie qw(cp);
 
 
-my $SOURCES = "$ENV{HOME}/rpmbuild/SOURCES";
+# Set per package and target in buildall, so each forked child stages alone.
+my $SOURCES = '';
 # Ensure the rpmbuild tree exists. buildrpms stages source tarballs into $SOURCES, but it only
 # runs rpmdev-setuptree in the one-time env-setup path -- so on a host where that never ran (or
 # $HOME/rpmbuild was cleaned) source staging fails with "SOURCES/...: No such file or directory",
@@ -414,6 +416,9 @@ sub prepare_xcat_release_source_tar {
 sub buildsources {
     my ($pkg, $target) = @_;
 
+    die "FATAL: buildsources ran outside buildall; the staging directory is unset\n"
+        unless length $SOURCES;
+
     if ($pkg eq "xCAT") {
         my @files = ("bmcsetup", "getipmi");
         for my $f (@files) {
@@ -458,6 +463,9 @@ EOF
 
 sub buildspkgs {
     my ($pkg, $target) = @_;
+
+    die "FATAL: buildspkgs ran outside buildall; the staging directory is unset\n"
+        unless length $SOURCES;
 
     my $ext = $opts{mock_uniqueext} ? "-$opts{mock_uniqueext}" : "";
     my $chroot = "$pkg-$target$ext";
@@ -560,6 +568,8 @@ EOF
 
 sub buildall {
     my ($pkg, $target) = @_;
+    # This process is the child for one pair, so the assignment cannot reach a peer.
+    $SOURCES = prepare_build_sources_dir($pkg, $target, $opts{mock_uniqueext});
     createmockconfig($pkg, $target);
     buildsources($pkg, $target);
     buildspkgs($pkg, $target);
