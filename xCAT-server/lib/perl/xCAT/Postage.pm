@@ -1295,6 +1295,7 @@ sub getImageitems_for_node
                 elsif ($os =~ /sles.*/)   { $platform = "sles"; }
                 elsif ($os =~ /ubuntu.*/) { $platform = "ubuntu"; }
                 elsif ($os =~ /debian.*/) { $platform = "debian"; }
+                elsif ($os =~ /^openeuler/) { $platform = "openeuler"; }
                 elsif ($os =~ /aix.*/)    { $platform = "aix"; }
                 elsif ($os =~ /AIX.*/)    { $platform = "AIX"; }
             }

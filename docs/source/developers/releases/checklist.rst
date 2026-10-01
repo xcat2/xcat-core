@@ -106,8 +106,10 @@ The release is the last candidate that passed the tests.
     xcat-dep/2.x_Linux/xcat-dep-X.Y.Z-linux.tar.bz2
     xcat-dep/2.x_Ubuntu/xcat-dep-X.Y.Z-ubuntu.tar.bz2
 
-#. Make sure that the ``.repo`` files in the published repositories point at the published
-   location, not at ``devel``.
+#. Make sure that each ``.repo`` file under ``repos/yum/X.Y/`` points at ``repos/yum/X.Y/``, not at
+   ``devel`` or ``latest``. ``latest`` is a link into the newest series, so a series path is right
+   through both. A file that names ``latest`` gives the next series to users of this one as soon as
+   that series ships.
 
 #. If X.Y is the newest series, point ``latest`` at ``X.Y`` for yum and for apt.
 
@@ -146,9 +148,9 @@ Verify the Published Packages
    ``go-xcat`` installation does not prove the signatures.
 
    On EL, use the three published ``.repo`` files, which set ``gpgcheck=1``. Enable the other
-   repositories that the installation guide requires first. The published files point at
-   ``latest``. For an older series, replace ``latest`` with ``X.Y`` in the three files. Install the
-   Genesis image for the host architecture by name, because ``xCAT`` only recommends it. ::
+   repositories that the installation guide requires first. Use the files as published: each one
+   must point at ``repos/yum/X.Y/``. Install the Genesis image for the host architecture by name,
+   because ``xCAT`` only recommends it. ::
 
     $ curl -fsSo /etc/yum.repos.d/xcat-core.repo \
         https://xcat.org/files/xcat/repos/yum/X.Y/xcat-core/xcat-core.repo

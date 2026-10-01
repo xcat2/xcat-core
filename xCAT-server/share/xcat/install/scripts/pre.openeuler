@@ -1,0 +1,7 @@
+XCAT_INSTALL_PYTHON=/usr/bin/python3
+XCAT_BIOSBOOT=1
+if [ "$(uname -m)" = ppc64le ]; then
+    XCAT_BOOT_FSTYPE=ext4
+    XCAT_ROOT_FSTYPE=ext4
+fi
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.rhels8#

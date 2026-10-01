@@ -112,7 +112,9 @@ elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
             xz -cd /rootimg.cpio.xz |cpio -idum
         fi
     fi
-    $NEWROOT/etc/init.d/localdisk
+    if [ -x "$NEWROOT/etc/init.d/localdisk" ]; then
+        "$NEWROOT/etc/init.d/localdisk"
+    fi
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Done extracting the root filesystem..."
     echo "Done extracting the root filesystem..."
 elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
@@ -138,7 +140,9 @@ elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
             tar --selinux -Jxf /rootimg.tar.xz
         fi
     fi
-    $NEWROOT/etc/init.d/localdisk
+    if [ -x "$NEWROOT/etc/init.d/localdisk" ]; then
+        "$NEWROOT/etc/init.d/localdisk"
+    fi
     msg="Done extracting the root filesystem."
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "$msg"
     echo "$msg"

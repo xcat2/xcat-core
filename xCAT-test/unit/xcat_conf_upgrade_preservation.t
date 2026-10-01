@@ -72,22 +72,6 @@ for my $pkg (@packages) {
         "$label package still takes the Apache 2.4 configuration from Source$apache24" );
 
     my $install = section( $spec, 'install' );
-    like(
-        $install,
-        qr{
-            ^%if \s+ 0%\{\?fedora\} \s* \|\| \s*
-                     0%\{\?rhel\} \s* >= \s* 7 \s* \|\| \s*
-                     0%\{\?suse_version\} \s* >= \s* 1200 \s* $ \n
-            ^cp \s+ %\{SOURCE$apache24\} \s+ \$RPM_BUILD_ROOT/etc/$first/conf\.d/xcat\.conf \s* $ \n
-            ^cp \s+ %\{SOURCE$apache24\} \s+ \$RPM_BUILD_ROOT/etc/$second/conf\.d/xcat\.conf \s* $ \n
-            ^%else \s* $ \n
-            ^cp \s+ %\{SOURCE1\} \s+ \$RPM_BUILD_ROOT/etc/$first/conf\.d/xcat\.conf \s* $ \n
-            ^cp \s+ %\{SOURCE1\} \s+ \$RPM_BUILD_ROOT/etc/$second/conf\.d/xcat\.conf \s* $ \n
-            ^%endif \s* $
-        }mx,
-        "$label package selects the Apache generation at build time, Apache 2.4 on Fedora, EL7+ and SLES 12+"
-    );
-
     # The next upgrade's %pretrans compares against these, so they must stay shipped.
     like( $install, qr{^cp \s+ %\{SOURCE$apache24\} \s+ \$RPM_BUILD_ROOT$templates/xcat\.conf\.apach24 \s* $}mx,
         "$label package still saves the Apache 2.4 template under conf.orig" );

@@ -7,6 +7,7 @@ use strict;
 use warnings "all";
 
 use File::Basename;
+use File::Copy qw(move);
 use File::Find;
 use File::Path;
 use Cwd qw(realpath);
@@ -31,11 +32,18 @@ sub rpm_installroot_command {
     $non_interactive ||= "";
     $dnf_available = -x "/usr/bin/dnf" unless defined($dnf_available);
     my $majorrel = el_major_version($osver);
+    my $openeuler_release = openeuler_release_version($osver);
+    die "Unsupported openEuler image release: $osver\n"
+      if defined($osver) && $osver =~ /^openeuler/ && !defined($openeuler_release);
     my $pkgmgr = "yum";
 
     # EL8 and newer are dnf-native. Keep yum as the fallback for legacy
     # systems and minimal environments that still provide only yum.
     if (defined($majorrel) && $majorrel > 7 && $dnf_available) {
+        $pkgmgr = "dnf";
+    }
+    if (defined($openeuler_release)) {
+        die "openEuler image creation requires dnf\n" unless $dnf_available;
         $pkgmgr = "dnf";
     }
 
@@ -44,8 +52,79 @@ sub rpm_installroot_command {
         $cmd .= "--releasever=" . $majorrel . " ";
         $cmd .= "--setopt=module_platform_id=platform:el" . $majorrel . " ";
     }
+    if (defined($openeuler_release)) {
+        $cmd .= "--releasever=$openeuler_release --setopt=strict=1 '--setopt=*.skip_if_unavailable=False' '--setopt=*.gpgcheck=1' ";
+    }
 
     return $cmd;
+}
+
+sub openeuler_release_version {
+    my $osver = shift;
+    return undef unless defined($osver) && $osver =~ /^openeuler(.+)$/;
+    my $release = xCAT::Utils::normalize_openeuler_version($1);
+    return undef unless defined($release);
+    $release =~ s/sp([0-9]+)$/LTS_SP$1/ or $release .= 'LTS';
+    return $release;
+}
+
+sub rpm_trusted_keys {
+    open(my $rpm, '-|', 'rpm', '-qa', '--qf', "%{DESCRIPTION}\n", 'gpg-pubkey*')
+      or die "Cannot read trusted RPM keys: $!\n";
+    local $/;
+    my $keys = <$rpm>;
+    close($rpm) or die "Cannot read trusted RPM keys\n";
+    die "No trusted RPM signing keys are installed\n" unless defined($keys) && length($keys);
+    return $keys;
+}
+
+sub rpm_repository_config {
+    my ($osver, $id, $url, $gpgkey) = @_;
+    my $config = "[$id]\nname=$id\nbaseurl=$url\n";
+    if (defined(openeuler_release_version($osver))) {
+        die "openEuler repositories require trusted RPM signing keys\n"
+          unless defined($gpgkey) && length($gpgkey);
+        $config .= "gpgcheck=1\ngpgkey=$gpgkey\nskip_if_unavailable=False\n\n";
+    } else {
+        $config .= "gpgcheck=0\nskip_if_unavailable=True\n\n";
+    }
+    return $config;
+}
+
+sub disable_vendor_repositories {
+    my ($rootimg_dir) = @_;
+    my @internet_repo_file_list = ("oracle-linux-ol8.repo", "oracle-linux-ol9.repo", "oracle-linux-ol10.repo", "uek-ol8.repo", "uek-ol9.repo", "uek-ol10.repo", "Rocky-AppStream.repo", "Rocky-BaseOS.repo", "Rocky-Extras.repo", "rocky.repo", "rocky-extras.repo", "CentOS-Base.repo", "centos.repo", "centos-addons.repo", "almalinux-ha.repo", "almalinux-nfv.repo", "almalinux-plus.repo", "almalinux-powertools.repo", "almalinux.repo", "almalinux-resilientstorage.repo", "almalinux-rt.repo", "openEuler.repo");
+
+    foreach (@internet_repo_file_list) {
+        if (-e "$rootimg_dir/etc/yum.repos.d/$_") {
+            system("sed -i -e 's/^[[:space:]]*enabled[[:space:]]*=[[:space:]]*1/enabled=0/' $rootimg_dir/etc/yum.repos.d/$_");
+        }
+    }
+}
+
+sub publish_boot_files {
+    my ($native_bootdir, $destdir, $initrd, $mode) = @_;
+    move($initrd, "$native_bootdir/initrd-$mode.gz")
+      or die("Error: failed to move the initial ramdisk for $mode: $!\n");
+    my $old_kernel = -e "$destdir/kernel" || -l "$destdir/kernel";
+    if ($old_kernel) {
+        link("$destdir/kernel", "$native_bootdir/previous-kernel")
+          or die("Error: failed to preserve the previous kernel: $!\n");
+    }
+    rename("$native_bootdir/kernel", "$destdir/kernel")
+      or die("Error: failed to publish the kernel: $!\n");
+    unless (rename("$native_bootdir/initrd-$mode.gz", "$destdir/initrd-$mode.gz")) {
+        my $error = $!;
+        my $restored = $old_kernel
+          ? rename("$native_bootdir/previous-kernel", "$destdir/kernel")
+          : unlink("$destdir/kernel");
+        unless ($restored) {
+            $native_bootdir->unlink_on_destroy(0);
+            die("Error: failed to publish the initial ramdisk: $error; kernel rollback failed: $!. Boot files retained in $native_bootdir\n");
+        }
+        die("Error: failed to publish the initial ramdisk for $mode: $error\n");
+    }
+    return 1;
 }
 
 sub varsubinline{

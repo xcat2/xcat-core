@@ -1,0 +1,15 @@
+@core
+kernel
+chrony
+NetworkManager
+net-tools
+nfs-utils
+openssh-server
+openssh-clients
+rsync
+util-linux
+wget
+python3
+tar
+bzip2
+perl
