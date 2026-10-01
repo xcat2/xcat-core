@@ -2701,19 +2701,14 @@ sub kea_process_request
     }
     my $using_dhcp6 = @{ $intent6->{subnets} || [] } ? 1 : 0;
     my $ddns_intent = kea_build_ddns_intent();
-    my $using_ddns = $ddns_intent && !$ddns_intent->{error} ? 1 : 0;
     if ($ddns_intent && $ddns_intent->{error}) {
         $callback->({ error => [ $ddns_intent->{error} ], errorcode => [1] });
         flock($dhcplockfd, LOCK_UN);
         return;
     }
-    if ($using_ddns) {
-        my $dhcp_ddns = kea_dhcp_ddns_section();
-        $intent4->{'dhcp-ddns'} = $dhcp_ddns;
-        kea_apply_ddns_behavior($intent4);
-        $intent6->{'dhcp-ddns'} = $dhcp_ddns if $using_dhcp6;
-        kea_apply_ddns_behavior($intent6) if $using_dhcp6;
-    }
+    my ( $using_ddns, $ddns_warning ) =
+      kea_apply_ddns_intent($ddns_intent, $intent4, $intent6, $using_dhcp6);
+    $callback->({ warning => [$ddns_warning] }) if $ddns_warning;
 
     if ($opt->{n}) {
         my $result = $backend->write_dhcp4_config($intent4, backup_existing => 1);
@@ -2760,6 +2755,7 @@ sub kea_process_request
         flock($dhcplockfd, LOCK_UN);
         return;
     }
+    my $ddns_added = $using_ddns && !$loaded4->{Dhcp4}{'dhcp-ddns'};
     if (!@{ $loaded4->{Dhcp4}{subnet4} || [] }) {
         my $result = $backend->write_dhcp4_config($intent4);
         if ($result->{error}) {
@@ -2790,6 +2786,15 @@ sub kea_process_request
                 return;
             }
             $loaded6 = $backend->load_dhcp6_config();
+        }
+    }
+
+    if ($ddns_added) {
+        my $added = kea_add_ddns_to_loaded($backend, $ddns_intent, $intent4, $loaded4, $intent6, $loaded6, $using_dhcp6);
+        if ($added->{error}) {
+            $callback->({ error => [ $added->{error} ], errorcode => [1] });
+            flock($dhcplockfd, LOCK_UN);
+            return;
         }
     }
 
@@ -2853,8 +2858,8 @@ sub kea_process_request
         }
     }
 
-    unless ($live_ok && !$client_classes_changed) {
-        my $restart = $backend->restart_services(ipv6 => $using_dhcp6, ctrl_agent => kea_control_agent_enabled(), ddns => $using_ddns);
+    unless ($live_ok && !$client_classes_changed && !$ddns_added) {
+        my $restart = $backend->restart_services(ipv6 => $using_dhcp6, ctrl_agent => kea_control_agent_enabled(), ddns => $using_ddns, enable => $ddns_added);
         if ($restart->{error}) {
             $callback->({ error => [ $restart->{error} ], errorcode => [1] });
         }
@@ -3064,8 +3069,10 @@ sub kea_build_ddns_intent
     my @vnets = $nettab->getAllAttribs('net', 'mask', 'nameservers', 'ddnsdomain', 'domain');
     $nettab->close;
 
+    # xcatconfig sets site.dnshandler=ddns on every new installation, and only makedns -n writes
+    # the key material.
     my ( $key_algorithm, $key_secret ) = kea_ddns_key();
-    return { error => "Unable to find DDNS key material for Kea D2. Run makedns with dnshandler=ddns first." } unless $key_secret;
+    return { warning => "No DDNS key material exists yet. DNS updates stay off until makedns -n runs." } unless $key_secret;
 
     my @tsig_keys = (
         {
@@ -3142,6 +3149,59 @@ sub kea_dhcp_ddns_section
         'ncr-protocol'         => 'UDP',
         'ncr-format'           => 'JSON',
     };
+}
+
+sub kea_apply_ddns_intent
+{
+    my ( $ddns_intent, $intent4, $intent6, $using_dhcp6 ) = @_;
+
+    return ( 0, undef ) unless $ddns_intent;
+    return ( 0, $ddns_intent->{warning} ) if $ddns_intent->{warning};
+
+    my $dhcp_ddns = kea_dhcp_ddns_section();
+    $intent4->{'dhcp-ddns'} = $dhcp_ddns;
+    kea_apply_ddns_behavior($intent4);
+    if ($using_dhcp6) {
+        $intent6->{'dhcp-ddns'} = $dhcp_ddns;
+        kea_apply_ddns_behavior($intent6);
+    }
+    return ( 1, undef );
+}
+
+#--------------------------------------------------------------------------------
+
+=head3   kea_add_ddns_to_loaded
+
+    Descriptions:
+        Add the D2 connection to the loaded Kea configurations and write the D2
+        and Control Agent configurations.  makedhcp -a uses this when makedns -n
+        wrote the DDNS key after makedhcp -n.
+    Arguments:
+        $backend, $ddns_intent, $intent4, $loaded4, $intent6, $loaded6, $using_dhcp6
+    Returns:
+        {} on success, { error => $message } on failure
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub kea_add_ddns_to_loaded
+{
+    my ( $backend, $ddns_intent, $intent4, $loaded4, $intent6, $loaded6, $using_dhcp6 ) = @_;
+
+    my @fields = qw/dhcp-ddns ddns-send-updates ddns-override-no-update ddns-override-client-update ddns-qualifying-suffix ddns-update-on-renew/;
+    foreach my $field (@fields) {
+        $loaded4->{Dhcp4}{$field} = $intent4->{$field} if exists $intent4->{$field};
+        $loaded6->{Dhcp6}{$field} = $intent6->{$field} if $loaded6 && exists $intent6->{$field};
+    }
+
+    my $result = $backend->write_ddns_config($ddns_intent, backup_existing => 1);
+    return $result if $result->{error};
+
+    if (kea_control_agent_enabled()) {
+        $result = $backend->write_ctrl_agent_config({ dhcp6 => $using_dhcp6, ddns => 1 });
+        return $result if $result->{error};
+    }
+    return {};
 }
 
 sub kea_apply_ddns_behavior
