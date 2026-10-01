@@ -77,13 +77,13 @@ assert_hook()
 }
 
 @test "the legacy hook gives root the home directory /" {
-    assert_hook 'xCAT-genesis-builder/xcat-cmdline.sh'
+    assert_hook 'xCAT-genesis-base/xcat-cmdline.sh'
 }
 
 @test "the el dracut 105 hook gives root the home directory /" {
-    assert_hook 'xCAT-genesis-builder/dracut_105/el/xcat-cmdline.sh'
+    assert_hook 'xCAT-genesis-base/dracut_105/el/xcat-cmdline.sh'
 }
 
 @test "the ubuntu dracut 105 hook gives root the home directory /" {
-    assert_hook 'xCAT-genesis-builder/dracut_105/ubuntu/xcat-cmdline.sh'
+    assert_hook 'xCAT-genesis-base/dracut_105/ubuntu/xcat-cmdline.sh'
 }

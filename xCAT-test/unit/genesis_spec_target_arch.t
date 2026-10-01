@@ -29,7 +29,7 @@ my %tarch = (
 
 my %spec = (
     'xCAT-genesis-scripts' => "$root/xCAT-genesis-scripts/xCAT-genesis-scripts.spec",
-    'xCAT-genesis-base'    => "$root/xCAT-genesis-builder/xCAT-genesis-base.spec",
+    'xCAT-genesis-base'    => "$root/xCAT-genesis-base/xCAT-genesis-base.spec",
 );
 
 for my $pkg (sort keys %spec) {

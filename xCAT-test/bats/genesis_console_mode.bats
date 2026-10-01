@@ -9,8 +9,8 @@ load 'helpers/shell_source'
 
 setup()
 {
-    EL_HOOK="$(repo_path 'xCAT-genesis-builder/dracut_105/el/xcat-cmdline.sh')"
-    UBUNTU_HOOK="$(repo_path 'xCAT-genesis-builder/dracut_105/ubuntu/xcat-cmdline.sh')"
+    EL_HOOK="$(repo_path 'xCAT-genesis-base/dracut_105/el/xcat-cmdline.sh')"
+    UBUNTU_HOOK="$(repo_path 'xCAT-genesis-base/dracut_105/ubuntu/xcat-cmdline.sh')"
     [ -r "$EL_HOOK" ] || skip "$EL_HOOK is required"
     [ -r "$UBUNTU_HOOK" ] || skip "$UBUNTU_HOOK is required"
     export EL_HOOK UBUNTU_HOOK

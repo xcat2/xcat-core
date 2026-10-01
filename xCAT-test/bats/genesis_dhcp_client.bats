@@ -14,8 +14,8 @@ ISC6='dhclient -6 -pf /var/run/dhclient6.eth0.pid eth0 -lf /var/lib/dhclient/dhc
 setup()
 {
     DOXCAT="$(repo_path 'xCAT-genesis-scripts/usr/bin/doxcat')"
-    SPEC="$(repo_path 'xCAT-genesis-builder/xCAT-genesis-base.spec')"
-    MODULE="$(repo_path 'xCAT-genesis-builder/dracut_105/el/module-setup.sh')"
+    SPEC="$(repo_path 'xCAT-genesis-base/xCAT-genesis-base.spec')"
+    MODULE="$(repo_path 'xCAT-genesis-base/dracut_105/el/module-setup.sh')"
     [ -r "$DOXCAT" ] || skip "$DOXCAT is required"
     [ -r "$SPEC" ] || skip "$SPEC is required"
     [ -r "$MODULE" ] || skip "$MODULE is required"

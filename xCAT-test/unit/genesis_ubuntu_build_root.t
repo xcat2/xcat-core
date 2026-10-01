@@ -14,15 +14,15 @@ use File::Slurper qw(read_text);
 use File::Temp qw(tempdir);
 use FindBin;
 use lib "$FindBin::Bin/../lib";
-use lib "$FindBin::Bin/../../xCAT-genesis-builder/lib";
+use lib "$FindBin::Bin/../../xCAT-genesis-base/lib";
 use Test::More;
 
 use XCAT::GenesisBuildRoot qw(required_packages);
 use XCAT::GenesisPayload qw(module_commands);
 use XCAT::Test::File qw(repo_path);
 
-my $builder  = repo_path('xCAT-genesis-builder/builddeb-genesis-base');
-my $module   = repo_path('xCAT-genesis-builder/dracut_105/ubuntu/module-setup.sh');
+my $builder  = repo_path('xCAT-genesis-base/builddeb-genesis-base');
+my $module   = repo_path('xCAT-genesis-base/dracut_105/ubuntu/module-setup.sh');
 
 # Mandatory commands a minimal Ubuntu server root does NOT already provide, and the packages
 # that supply each one. hwclock has two names: it left util-linux for util-linux-extra in
