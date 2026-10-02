@@ -1123,60 +1123,19 @@ sub addnode
         }
         my $douefi = check_uefi_support($ntent);
 
-        # These statements reach dhcpd through omshell, so the quoting is \"
-        # rather than ". Both encodings of option 77 are accepted for the same
-        # reason as in the per-network classes: a second stage that
-        # length-prefixes its user class per RFC 3004 would chainload forever.
-        my $xnba_user_class = xCAT::DHCP::BootPolicy->isc_xnba_user_class_test(quote => '\"');
-
-        if ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'xnba' and $lstatements !~ /filename/) {
-            if (-f "$tftpdir/xcat/xnba.kpxe") {
-                if ($chainent and $chainent->{currstate} and ($chainent->{currstate} eq 'iscsiboot' or $chainent->{currstate} eq 'boot')) {
-
-                    # A node in state boot or iscsiboot has an operating system
-                    # and must be left to start it -- spec.md S-31. iSCSI still
-                    # needs a loader, because the root disk is on the network
-                    # and gPXE attaches it: BIOS firmware is given xnba.kpxe,
-                    # and the second stage, which announces gpxe.bus-id, is
-                    # given nothing.
-                    if ($doiscsi) {
-                        $lstatements = 'if option client-architecture = 00:00 and not exists gpxe.bus-id { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; } ' . $lstatements;
-                    } else {
-                        $lstatements = 'filename = \"\";' . $lstatements;
-                    }
-                } else {
-
-                    # If proxydhcp daemon is enabled for windows deployment, do vendor-class-identifier of "PXEClient" to bump it over to proxydhcp.c
-                    if (($douefi == 2 and $chainent->{currstate} =~ /^install/) or $chainent->{currstate} =~ /^winshell/) {
-                        if (proxydhcp($nrent)) { #proxy dhcp required in uefi invocation
-                            $lstatements = 'if option client-architecture = 00:00 or option client-architecture = 00:07 or option client-architecture = 00:09 { filename = \"\"; option vendor-class-identifier \"PXEClient\"; } else { filename = \"\"; }' . $lstatements; #If proxydhcp daemon is enable, use it.
-                        } else {
-                            $lstatements = 'if ' . $xnba_user_class . ' and option client-architecture = 00:00 { always-broadcast on; filename = \"http://' . $nxtsrv . $portsuffix  . '/tftpboot/xcat/xnba/nodes/' . $node . '\"; } else if option client-architecture = 00:07 or option client-architecture = 00:09 { filename = \"\"; option vendor-class-identifier \"PXEClient\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }' . $lstatements; #Only PXE compliant clients should ever receive xNBA
-                        }
-                    } elsif ($douefi and $chainent->{currstate} ne "boot" and $chainent->{currstate} ne "iscsiboot") {
-                        # Separate branches rather than one parenthesised
-                        # alternation: dhcpd's expression grammar has no
-                        # grouping, so `... and (a or b) {` is a parse error.
-                        my $uefi_second_stage = 'filename = \"http://' . $nxtsrv . $portsuffix . '/tftpboot/xcat/xnba/nodes/' . $node . '.uefi\";';
-                        $lstatements = 'if ' . $xnba_user_class . ' and option client-architecture = 00:00 { always-broadcast on; filename = \"http://' . $nxtsrv . $portsuffix . '/tftpboot/xcat/xnba/nodes/' . $node . '\"; } else if ' . $xnba_user_class . ' and option client-architecture = 00:09 { ' . $uefi_second_stage . ' } else if ' . $xnba_user_class . ' and option client-architecture = 00:07 { ' . $uefi_second_stage . ' } else if option client-architecture = 00:07 { filename = \"xcat/xnba.efi\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }' . $lstatements; #Only PXE compliant clients should ever receive xNBA
-                    } else {
-                        $lstatements = 'if ' . $xnba_user_class . ' and option client-architecture = 00:00 { filename = \"http://' . $nxtsrv . $portsuffix . '/tftpboot/xcat/xnba/nodes/' . $node . '\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }' . $lstatements; #Only PXE compliant clients should ever receive xNBA
-                    }
-                }
-            }    #TODO: warn when windows
-        } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'pxe' and $lstatements !~ /filename/) {
-            if (-f "$tftpdir/xcat/xnba.kpxe") {
-                if ($chainent and $chainent->{currstate} and ($chainent->{currstate} eq 'iscsiboot' or $chainent->{currstate} eq 'boot')) {
-
-                    # S-31 again, and the same $doiscsi gate.
-                    if ($doiscsi) {
-                        $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } ' . $lstatements;
-                    } else {
-                        $lstatements = 'filename = \"\";' . $lstatements;
-                    }
-                } else {
-                    $lstatements = 'if option vendor-class-identifier = \"ScaleMP\" { filename = \"vsmp/pxelinux.0\"; } else { filename = \"pxelinux.0\"; }' . $lstatements;
-                }
+        if ($nrent and $nrent->{netboot} and ($nrent->{netboot} eq 'xnba' or $nrent->{netboot} eq 'pxe')) {
+            if ($lstatements !~ /filename/) {
+                $lstatements = xCAT::DHCP::BootPolicy->isc_node_boot_statements(
+                    netboot        => $nrent->{netboot},
+                    loader_present => -f "$tftpdir/xcat/xnba.kpxe",
+                    iscsi          => $doiscsi,
+                    currstate      => $chainent ? $chainent->{currstate} : undef,
+                    uefi           => $douefi,
+                    proxydhcp      => sub { proxydhcp($nrent) },
+                    node           => $node,
+                    next_server    => $nxtsrv,
+                    portsuffix     => $portsuffix,
+                ) . $lstatements;
             }
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'yaboot') {
             $lstatements = 'filename = \"/yb/node/yaboot-' . $node . '\";' . $lstatements;
