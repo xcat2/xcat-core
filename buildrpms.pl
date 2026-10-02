@@ -55,7 +55,8 @@ use File::Temp qw(tempdir tempfile);
 use FindBin qw($Bin);
 use lib "$Bin/build-utils/lib";
 use XCAT::BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildinfo_text
-    prepare_build_sources_dir stage_xcat_probe_sources stage_xcatsn_templates
+    build_sources_base prepare_build_sources_dir remove_build_sources_dir
+    sweep_build_sources_dirs stage_xcat_probe_sources stage_xcatsn_templates
                         stage_genesis_base_sources
                         write_script read_line targetarch_from_target
                         openeuler_build_target openeuler_repo_subdir);
@@ -69,8 +70,9 @@ use autodie;
 use autodie qw(cp);
 
 
-# Set per package and target in buildall, so each forked child stages alone.
+# Set in buildall to a directory named for the child's pid, so each forked child stages alone.
 my $SOURCES = '';
+my $SOURCES_BASE = build_sources_base();
 # Ensure the rpmbuild tree exists. buildrpms stages source tarballs into $SOURCES, but it only
 # runs rpmdev-setuptree in the one-time env-setup path -- so on a host where that never ran (or
 # $HOME/rpmbuild was cleaned) source staging fails with "SOURCES/...: No such file or directory",
@@ -527,8 +529,8 @@ EOF
 
 sub buildall {
     my ($pkg, $target) = @_;
-    # This process is the child for one pair, so the assignment cannot reach a peer.
-    $SOURCES = prepare_build_sources_dir($pkg, $target, $opts{mock_uniqueext});
+    # The parent deletes this directory when it reaps the child.
+    $SOURCES = prepare_build_sources_dir($SOURCES_BASE, $$);
     createmockconfig($pkg, $target);
     buildsources($pkg, $target);
     buildspkgs($pkg, $target);
@@ -938,7 +940,8 @@ sub abort_builds {
     warn "\n[buildrpms] caught SIG$sig: aborting -- signalling mock to self-clean...\n";
     my @chroots = values %MOCK_INFLIGHT;
     kill 'TERM', mock_pids(@chroots);               # mock unmounts + orphanKills itself
-    kill 'TERM', keys %MOCK_INFLIGHT;               # unwind the ForkManager builders too
+    my @builders = keys %MOCK_INFLIGHT;
+    kill 'TERM', @builders;                         # unwind the ForkManager builders too
     my @mock;
     for (1 .. 30) {                                 # wait for mock to finish its own cleanup
         @mock = mock_pids(@chroots);
@@ -950,6 +953,17 @@ sub abort_builds {
         kill 'KILL', @mock, keys %MOCK_INFLIGHT;
         select undef, undef, undef, 2;
         sweep_mock_mounts(@chroots);
+    }
+    # Delete the staging directory of each builder that has exited. A builder that is
+    # still alive keeps its directory, and the sweep in the next run deletes it.
+    for my $pid (@builders) {
+        my $reaped = 0;
+        for (1 .. 10) {
+            $reaped = waitpid($pid, POSIX::WNOHANG());
+            last if $reaped;
+            select undef, undef, undef, 0.5;
+        }
+        remove_build_sources_dir($SOURCES_BASE, $pid) if $reaped == $pid;
     }
     warn "[buildrpms] abort cleanup done\n";
     # The re-raise below kills this process by signal, and END blocks do not run then. Release the
@@ -999,6 +1013,9 @@ sub main {
         }
     }
 
+    # A builder killed with SIGKILL together with this parent leaves its directory behind.
+    sweep_build_sources_dirs($SOURCES_BASE);
+
     my @rpms = product($opts{packages}, $opts{targets});
     my $pm = Parallel::ForkManager->new($opts{nproc});
 
@@ -1009,6 +1026,7 @@ sub main {
     $pm->run_on_finish(sub {
         my ($pid, $exit_code, $ident, $exit_signal, $core_dump) = @_;
         delete $MOCK_INFLIGHT{$pid};
+        remove_build_sources_dir($SOURCES_BASE, $pid);
         # A child that die()s exits non-zero; one killed by a SIGNAL (SIGKILL / OOM-killer) is reaped
         # with $exit_code==0 but $exit_signal!=0 (and maybe $core_dump). Checking $exit_code alone
         # would let an OOM-killed worker through and the parent would index+sign a partial repository

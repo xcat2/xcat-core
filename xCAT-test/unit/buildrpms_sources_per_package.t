@@ -1,63 +1,92 @@
 #!/usr/bin/env perl
-# buildrpms.pl staged every source tarball into one $HOME/rpmbuild/SOURCES while forking a child
-# per package and target, so a build could read a truncated archive:
-#
-#   error: File /builddir/build/SOURCES/xCAT-test-2.20.0.tar.gz is smaller than 13 bytes
-#
-# Two packages of one target collide the same way: xCAT and xCATsn both write etc.tar.gz.
+# buildrpms.pl forks a child per package and target. Each child stages its source
+# tarballs into a directory named for its pid, and the parent deletes it after the child.
 use strict;
 use warnings;
 
-use File::Spec ();
+use File::Path qw(make_path);
+use File::Slurper qw(write_text);
 use File::Temp qw(tempdir);
 use FindBin;
 use lib "$FindBin::Bin/../../build-utils/lib";
 use Test::More;
 
-use XCAT::BuildUtils qw(build_sources_dir prepare_build_sources_dir);
+use XCAT::BuildUtils qw(build_sources_base build_sources_dir prepare_build_sources_dir
+    remove_build_sources_dir sweep_build_sources_dirs);
 
 my $home = tempdir(CLEANUP => 1);
+my $base = build_sources_base($home);
+is($base, "$home/rpmbuild/sources", 'the base directory is under the rpmbuild tree');
 
-# The key is the package AND the target. Either one alone leaves a pair sharing a directory.
-my $a = build_sources_dir('xCAT',   'openeuler-24.03sp4-x86_64', 'ci', $home);
-my $b = build_sources_dir('xCATsn', 'openeuler-24.03sp4-x86_64', 'ci', $home);
-my $c = build_sources_dir('xCAT',   'openeuler-22.03sp4-x86_64', 'ci', $home);
-isnt($a, $b, 'two packages of one target stage into different directories');
-isnt($a, $c, 'two targets of one package stage into different directories');
+# Two live processes on one host never have the same pid. The host name keeps two
+# hosts apart when $HOME is on NFS.
+my $a = build_sources_dir($base, 101, 'hosta');
+my $b = build_sources_dir($base, 102, 'hosta');
+my $c = build_sources_dir($base, 101, 'hostb');
+isnt($a, $b, 'two pids stage into different directories');
+isnt($a, $c, 'one pid on two hosts stages into different directories');
+is($a, "$base/SOURCES.hosta.101", 'the directory name carries the host and the pid');
+is(build_sources_dir($base, undef, 'hosta'), "$base/SOURCES.hosta.$$",
+    'the pid defaults to the calling process');
 
-# Keyed like the mock chroot, so the staging directory and the chroot cannot disagree about
-# which build owns which files.
-is($a, "$home/rpmbuild/xCAT-openeuler-24.03sp4-x86_64-ci/SOURCES",
-    'the directory is keyed like the mock chroot: package, target, uniqueext');
-is(build_sources_dir('xCAT', 'openeuler-24.03sp4-x86_64', '', $home),
-    "$home/rpmbuild/xCAT-openeuler-24.03sp4-x86_64/SOURCES",
-    'an empty uniqueext adds no trailing separator');
-isnt(build_sources_dir('xCAT', 'el9-x86_64', 'ci', $home),
-     build_sources_dir('xCAT', 'el9-x86_64', 'other', $home),
-    'two uniqueexts of one pair do not share, so two runs on one host cannot collide');
+ok(!eval { build_sources_dir($base, 'x1', 'hosta'); 1 }, 'a pid that is not a number is fatal');
+like($@, qr/build_sources_dir: pid 'x1' is not a number/, 'and the message names the pid');
+ok(!eval { build_sources_dir('', 101, 'hosta'); 1 }, 'an empty base is fatal');
+like($@, qr/build_sources_dir: no base directory/, 'and the message names the base');
 
-# A missing argument must not collapse the key back to the one shared directory.
-for my $case (['package', undef, 'el9-x86_64'], ['target', 'xCAT', undef],
-              ['empty package', '', 'el9-x86_64'], ['empty target', 'xCAT', '']) {
-    my ($what, $pkg, $tg) = @$case;
-    my $died = eval { build_sources_dir($pkg, $tg, 'ci', $home); 1 } ? 0 : 1;
-    ok($died, "a missing $what is fatal rather than a shared directory");
-    like($@, qr/build_sources_dir: (?:package|target) is required/,
-        "the message names the missing argument for $what");
+# A directory with the same name is left by a dead process that had this pid.
+make_path($a);
+write_text("$a/stale.tar.gz", "old\n");
+my $made = prepare_build_sources_dir($base, 101, 'hosta');
+is($made, $a, 'prepare returns the directory of that pid');
+ok(-d $made, 'the staging directory is created');
+opendir(my $dh, $made) or die "cannot read $made: $!\n";
+my @left = grep { !/^\.\.?$/ } readdir $dh;
+closedir $dh;
+is_deeply(\@left, [], 'the staging directory is created empty');
+remove_build_sources_dir($base, 101, 'hosta');
+
+# The parent calls remove_build_sources_dir when it reaps a child, whatever its exit.
+for my $how ('success', 'failure') {
+    my $dir = prepare_build_sources_dir($base, 201, 'hosta');
+    write_text("$dir/xCAT-test-2.20.0.tar.gz", "payload\n");
+    my $pid = fork // die "fork: $!\n";
+    if ($pid == 0) {
+        require POSIX;
+        POSIX::_exit($how eq 'success' ? 0 : 1);
+    }
+    waitpid($pid, 0);
+    is($? >> 8, $how eq 'success' ? 0 : 1, "the child exits for $how");
+    ok(remove_build_sources_dir($base, 201, 'hosta'), "remove reports the directory gone after $how");
+    ok(!-e $dir, "the directory is deleted after $how");
 }
+ok(remove_build_sources_dir($base, 202, 'hosta'), 'removing a directory that does not exist is not an error');
 
-# prepare_build_sources_dir is what buildall calls: it must CREATE the directory, because
-# staging into a path that does not exist is how the shared tree came to be created up front.
-my $made = prepare_build_sources_dir('xCAT-test', 'openeuler-24.03sp4-x86_64', 'ci', $home);
-ok(-d $made, 'the staging directory is created, not merely named');
-my $again = prepare_build_sources_dir('xCAT-test', 'openeuler-24.03sp4-x86_64', 'ci', $home);
-is($again, $made, 'a second call is idempotent and returns the same directory');
+# The sweep deletes the directories of dead pids on this host only.
+my %alive = (301 => 1);
+my $is_alive = sub { $alive{ $_[0] } };
+my $dead  = prepare_build_sources_dir($base, 300, 'hosta');
+my $live  = prepare_build_sources_dir($base, 301, 'hosta');
+my $other = prepare_build_sources_dir($base, 300, 'hostb');
+make_path("$base/unrelated");
+my @swept = sweep_build_sources_dirs($base, 'hosta', $is_alive);
+is_deeply(\@swept, [$dead], 'the sweep reports the directory of the dead pid');
+ok(!-e $dead, 'the directory of a dead pid is deleted');
+ok(-d $live, 'the directory of a live pid is kept');
+ok(-d $other, 'the directory of another host is kept');
+ok(-d "$base/unrelated", 'a directory with another name is kept');
 
-# Nothing writes beside the per-pair directories: a path that escaped $home/rpmbuild would put
-# one build's sources where another build reads them.
-my @dirs = map { build_sources_dir($_, 'el9-x86_64', 'ci', $home) } qw(xCAT xCATsn xCAT-test);
-for my $d (@dirs) {
-    like($d, qr{^\Q$home/rpmbuild/\E[^/]+/SOURCES$}, "$d is one level under rpmbuild");
-}
+# The default liveness check: this process is alive, a reaped child is not.
+my $own = prepare_build_sources_dir($base, $$, 'hosta');
+my $gone = fork // die "fork: $!\n";
+if ($gone == 0) { require POSIX; POSIX::_exit(0) }
+waitpid($gone, 0);
+my $reaped = prepare_build_sources_dir($base, $gone, 'hosta');
+sweep_build_sources_dirs($base, 'hosta');
+ok(-d $own, 'the default check keeps the directory of a running process');
+ok(!-e $reaped, 'the default check deletes the directory of a reaped process');
+
+is_deeply([sweep_build_sources_dirs("$home/absent", 'hosta', $is_alive)], [],
+    'a missing base directory is not an error');
 
 done_testing;

@@ -52,7 +52,7 @@ our @STAGES;
     sub buildsources     { push @main::STAGES, 'buildsources'; }
     sub buildspkgs       { push @main::STAGES, 'buildspkgs'; }
     sub buildpkgs        { push @main::STAGES, 'buildpkgs'; }
-    # buildall assigns a staging directory per package and target.
+    # buildall assigns a staging directory per build process.
     sub prepare_build_sources_dir { return '/nonexistent/rpmbuild/stub/SOURCES'; }
 }
 
@@ -64,6 +64,7 @@ my $harness = join "\n",
     'use strict; use warnings;',
     'our %opts;',
     'our $SOURCES = \'\';',
+    'our $SOURCES_BASE = \'/nonexistent/rpmbuild/sources\';',
     'sub say { }',
     # write_repo_metadata_dir does real work past the guard; stop it there so the
     # test observes the guard and nothing else.

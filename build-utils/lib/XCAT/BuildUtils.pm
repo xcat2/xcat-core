@@ -20,6 +20,7 @@ use File::Path qw(make_path remove_tree);
 use File::Temp qw(tempdir tempfile);
 use File::Slurper qw(read_text write_text);
 use POSIX qw(strftime);
+use Sys::Hostname ();
 use Pod::Usage qw(pod2usage);
 use feature 'say';
 
@@ -32,7 +33,8 @@ our @EXPORT_OK = qw(
     pin_control_version rewrite_changelog_header
     reprepro_distributions reprepro_options
     lock_id_for take_build_lock
-    build_sources_dir prepare_build_sources_dir
+    build_sources_base build_sources_dir prepare_build_sources_dir
+    remove_build_sources_dir sweep_build_sources_dirs
     sh_quote clean_debian_residue git_revision
     backup_file restore_file
     sh sh_or_die usage
@@ -972,44 +974,65 @@ sub genesis_log_errors {
 
 #-------------------------------------------------------------------------------
 
-=head3 build_sources_dir
+=head3 build_sources_base
 
-Descriptions: The rpmbuild SOURCES directory for one package and one target.
+Descriptions: The directory that holds the per-process rpmbuild SOURCES directories.
 
 Arguments:
-  $package   - the package being built, e.g. xCAT
-  $target    - the mock target, e.g. openeuler-24.03sp4-x86_64
-  $uniqueext - the mock uniqueext, or undef
-  $home      - the home directory; defaults to $ENV{HOME}
+  $home - the home directory; defaults to $ENV{HOME}
+
+Returns: the absolute path of the base directory.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub build_sources_base {
+    my ($home) = @_;
+    $home = $ENV{HOME} unless defined $home && length $home;
+    die "build_sources_base: no home directory\n" unless defined $home && length $home;
+    return "$home/rpmbuild/sources";
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 build_sources_dir
+
+Descriptions: The rpmbuild SOURCES directory of one build process.
+
+Arguments:
+  $base - the directory from build_sources_base
+  $pid  - the pid of the process that stages; defaults to $$
+  $host - the host name; defaults to this host
 
 Returns: the absolute path of the staging directory.
 
 =cut
 
 #-------------------------------------------------------------------------------
-# Keyed like the mock chroot. buildrpms.pl forks a child per package and target, and
-# mock --sources copies the whole directory, so one shared directory lets a peer's tar
-# truncate an archive mid-copy. xCAT and xCATsn both write etc.tar.gz.
+# Keyed by the process that stages. buildrpms.pl forks a child per package and target,
+# and mock --sources copies the whole directory, so a shared directory lets a peer's tar
+# truncate an archive mid-copy. A pid is unique only on one host, and $HOME can be on NFS.
 sub build_sources_dir {
-    my ($package, $target, $uniqueext, $home) = @_;
+    my ($base, $pid, $host) = @_;
+    die "build_sources_dir: no base directory\n" unless defined $base && length $base;
+    $pid  = $$ unless defined $pid;
+    die "build_sources_dir: pid '$pid' is not a number\n" unless $pid =~ /^[0-9]+$/;
+    $host = _sources_host($host);
+    return "$base/SOURCES.$host.$pid";
+}
 
-    # An empty key names the shared directory again.
-    die "build_sources_dir: package is required\n" unless defined $package && length $package;
-    die "build_sources_dir: target is required\n"  unless defined $target  && length $target;
-
-    $home = $ENV{HOME} unless defined $home && length $home;
-    die "build_sources_dir: no home directory\n" unless defined $home && length $home;
-
-    my $key = "$package-$target";
-    $key .= "-$uniqueext" if defined $uniqueext && length $uniqueext;
-    return "$home/rpmbuild/$key/SOURCES";
+sub _sources_host {
+    my ($host) = @_;
+    $host = Sys::Hostname::hostname() unless defined $host && length $host;
+    $host =~ s/[^A-Za-z0-9._-]/-/g;
+    return $host;
 }
 
 #-------------------------------------------------------------------------------
 
 =head3 prepare_build_sources_dir
 
-Descriptions: Create the staging directory for one package and target, and return it.
+Descriptions: Create the staging directory of one build process, empty, and return it.
 
 Arguments: the same as build_sources_dir.
 
@@ -1020,9 +1043,75 @@ Returns: the absolute path of the staging directory.
 #-------------------------------------------------------------------------------
 sub prepare_build_sources_dir {
     my $dir = build_sources_dir(@_);
+    # A directory with this name belongs to a dead process that had the same pid.
+    remove_tree($dir) if -e $dir;
     make_path($dir);
     die "build_sources_dir: $dir was not created\n" unless -d $dir;
     return $dir;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 remove_build_sources_dir
+
+Descriptions: Delete the staging directory of one build process.
+
+Arguments: the same as build_sources_dir. The caller makes sure the process has exited.
+
+Returns: true when the directory is gone.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub remove_build_sources_dir {
+    my $dir = build_sources_dir(@_);
+    remove_tree($dir) if -e $dir;
+    return !-e $dir;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 sweep_build_sources_dirs
+
+Descriptions: Delete the staging directories that processes on this host left behind
+              when they were killed before their parent could delete them.
+
+Arguments:
+  $base  - the directory from build_sources_base
+  $host  - the host name; defaults to this host
+  $alive - a sub that takes a pid and returns true when that process exists;
+           defaults to kill 0
+
+Returns: the list of directories deleted.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub sweep_build_sources_dirs {
+    my ($base, $host, $alive) = @_;
+    $host  = _sources_host($host);
+    $alive //= \&_pid_alive;
+    opendir(my $dh, $base) or return ();
+    my @entries = readdir $dh;
+    closedir $dh;
+
+    my @removed;
+    for my $entry (sort @entries) {
+        # Another host's pids say nothing about this host's processes.
+        my ($pid) = $entry =~ /^SOURCES\.\Q$host\E\.([0-9]+)$/ or next;
+        next if $alive->($pid);
+        remove_tree("$base/$entry");
+        push @removed, "$base/$entry" unless -e "$base/$entry";
+    }
+    return @removed;
+}
+
+# EPERM means the process exists and belongs to another user. An unreaped zombie
+# also answers here, and its parent deletes the directory when it reaps it.
+sub _pid_alive {
+    my ($pid) = @_;
+    return 1 if kill 0, $pid;
+    return $!{EPERM} ? 1 : 0;
 }
 
 1;
