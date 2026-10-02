@@ -1683,6 +1683,49 @@ foreach my $case (@invalid_mac_cases) {
 }
 
 {
+    # An installed node that boots from SAN: its own classes give the loader of its method to a
+    # client without iSCSI, and the local-boot class keeps every boot file from a client with iSCSI.
+    my %tables = (
+        noderes => DHCPKeaResTable->new( { san01 => { netboot => 'ipxe' }, booted => { netboot => 'xnba' } } ),
+        mac     => DHCPKeaResTable->new( { san01 => { mac => 'aa:bb:cc:dd:ee:07' }, booted => { mac => 'aa:bb:cc:dd:ee:05' } } ),
+        chain   => DHCPKeaResTable->new( { san01 => { currstate => 'iscsiboot' }, booted => { currstate => 'boot' } } ),
+        iscsi   => DHCPKeaResTable->new( { san01 => { server => '192.0.2.9', target => 'iqn.2024-01.test:san01', lun => 0 } } ),
+    );
+
+    no warnings 'redefine';
+    local *xCAT::Table::new = sub {
+        my ( $class, $name ) = @_;
+        return $tables{$name};
+    };
+    local *xCAT_plugin::dhcp::next_server_for_node = sub { return ( '192.0.2.1', '192.0.2.1' ); };
+
+    my $config = {
+        Dhcp4 => {
+            'client-classes' => [
+                { name => 'xcat-bios', test => 'option[93].hex == 0x0000', 'boot-file-name' => 'xcat/ipxe/i386/undionly.kpxe' },
+            ],
+        },
+    };
+    xCAT_plugin::dhcp::kea_sync_node_client_classes( $config, [ 'san01', 'booted' ] );
+    my %by_name = map { $_->{name} => $_ } @{ $config->{Dhcp4}{'client-classes'} };
+    is( $by_name{'xcat-localboot'}{test},
+        'pkt4.mac == 0xaabbccddee05 or (pkt4.mac == 0xaabbccddee07 and option[175].option[17].exists)',
+        'an installed SAN node is in the local-boot class for a client with iSCSI only' );
+    is( $by_name{'xcat-ipxe-san01-aabbccddee07-bios-san'}{'boot-file-name'}, 'xcat/ipxe/i386/undionly.kpxe',
+        'and gets the upstream loader on a BIOS client without iSCSI' );
+    like( $by_name{'xcat-ipxe-san01-aabbccddee07-bios-san'}{test}, qr/\Qand not member('xcat-localboot')\E$/,
+        'under the guard that every boot-file class carries' );
+    is( $by_name{'xcat-ipxe-san01-aabbccddee07-uefi-san'}{'boot-file-name'}, 'xcat/ipxe/x86_64-sb/snponly-shim.efi',
+        'and the upstream UEFI loader on a UEFI client without iSCSI' );
+
+    xCAT_plugin::dhcp::kea_remove_node_client_classes( $config, ['san01'] );
+    %by_name = map { $_->{name} => $_ } @{ $config->{Dhcp4}{'client-classes'} };
+    is( $by_name{'xcat-localboot'}{test}, 'pkt4.mac == 0xaabbccddee05',
+        'removing the SAN node takes it out of the local-boot class' );
+    ok( !grep( { /-san$/ } keys %by_name ), 'and removes its classes' );
+}
+
+{
     # A Windows UEFI install deferred to proxyDHCP gets an empty boot-file-name
     # in its reservation, and Kea reads that as "not specified". So its MAC
     # must be excluded from every class that names a boot file, or

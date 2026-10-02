@@ -8,6 +8,8 @@ use warnings;
 
 use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT";
+use lib "$FindBin::Bin/../../xCAT-server/lib";
+use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use lib "$FindBin::Bin/lib";
 
 use File::Copy qw(copy);
@@ -135,8 +137,8 @@ my @network_rows = (
     [ 'unknown node, iPXE without HTTP, BIOS', { mac => $unknown, arch => 0, user_class => 'iPXE', ipxe => ipxe(qw(bzimage pxe)) }, $first{ipxe}{bios} ],
     [ 'unknown node, xNBA with every feature, BIOS', { mac => $unknown, arch => 0, user_class => 'xNBA', ipxe => ipxe(qw(http bzimage pxe)) }, $network ],
 );
-# In the boot state ISC gives a SAN client the empty file name. Kea keeps its own iSCSI handling of
-# that state, so these rows are for ISC only.
+# In the boot state ISC gives a SAN client the empty file name. ISC tests the bus ID that every iPXE
+# sends for an xnba node, and Kea the iSCSI feature for both methods, so Kea has rows of its own.
 my @iscsi_rows = (
     [ 'xnba iSCSI node, iPXE with iSCSI',    { mac => $xnba_iscsi{mac}, arch => 0, user_class => 'iPXE', ipxe => ipxe(qw(http bzimage pxe iscsi)) }, '' ],
     [ 'xnba iSCSI node, iPXE without iSCSI', { mac => $xnba_iscsi{mac}, arch => 0, user_class => 'iPXE', ipxe => ipxe(qw(http bzimage pxe)) },       '' ],
@@ -145,6 +147,17 @@ my @iscsi_rows = (
     [ 'ipxe iSCSI node, firmware PXE, UEFI arch 7', { mac => $ipxe_iscsi{mac}, arch => 7 }, $first{ipxe}{uefi} ],
     [ 'ipxe iSCSI node, firmware PXE, UEFI arch 9', { mac => $ipxe_iscsi{mac}, arch => 9 }, $first{ipxe}{uefi} ],
     [ 'ipxe iSCSI node, iPXE with iSCSI, UEFI', { mac => $ipxe_iscsi{mac}, arch => 7, user_class => 'iPXE', ipxe => ipxe(qw(http efi iscsi)) }, '' ],
+);
+
+my @kea_iscsi_rows = (
+    [ 'xnba iSCSI node, firmware PXE, BIOS', { mac => $xnba_iscsi{mac}, arch => 0 }, $first{xnba}{bios} ],
+    [ 'xnba iSCSI node, iPXE without iSCSI', { mac => $xnba_iscsi{mac}, arch => 0, user_class => 'iPXE', ipxe => ipxe(qw(http bzimage pxe)) }, $first{xnba}{bios} ],
+    [ 'xnba iSCSI node, iPXE with iSCSI',    { mac => $xnba_iscsi{mac}, arch => 0, user_class => 'iPXE', ipxe => ipxe(qw(http bzimage pxe iscsi)) }, '' ],
+    [ 'ipxe iSCSI node, firmware PXE, BIOS', { mac => $ipxe_iscsi{mac}, arch => 0 }, $first{ipxe}{bios} ],
+    [ 'ipxe iSCSI node, iPXE without iSCSI', { mac => $ipxe_iscsi{mac}, arch => 0, user_class => 'iPXE', ipxe => ipxe(qw(http bzimage pxe)) }, $first{ipxe}{bios} ],
+    [ 'ipxe iSCSI node, iPXE with iSCSI',    { mac => $ipxe_iscsi{mac}, arch => 0, user_class => 'iPXE', ipxe => ipxe(qw(http bzimage pxe iscsi)) }, '' ],
+    [ 'ipxe iSCSI node, firmware PXE, UEFI arch 7', { mac => $ipxe_iscsi{mac}, arch => 7 }, $first{ipxe}{uefi} ],
+    [ 'ipxe iSCSI node, iPXE with iSCSI, UEFI',     { mac => $ipxe_iscsi{mac}, arch => 7, user_class => 'iPXE', ipxe => ipxe(qw(http efi iscsi)) }, '' ],
 );
 
 sub boot_file {
@@ -262,6 +275,14 @@ if ( grep { $_ eq 'isc' } @backends ) {
 
 # ---- Kea ------------------------------------------------------------------------------------------
 if ( grep { $_ eq 'kea' } @backends ) {
+    # The Kea classes get the local-boot guard from the plugin, as makedhcp gives them.
+    local $ENV{XCATCFG} = $ENV{XCATCFG} || 'SQLite:/tmp';
+    my $dhcp_plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/dhcp.pm";
+    if ( -f $dhcp_plugin ) {
+        require $dhcp_plugin;
+    } else {
+        require xCAT_plugin::dhcp;
+    }
     my $kea_dir = tempdir( CLEANUP => 1 );
     chmod 0755, $kea_dir or die "Unable to make $kea_dir traversable: $!";
     # The kea-dhcp4 AppArmor profile of Ubuntu writes only the files of the system service. No profile
@@ -281,13 +302,14 @@ if ( grep { $_ eq 'kea' } @backends ) {
     my $network_classes = xCAT::DHCP::BootPolicy->kea_xnba_network_classes(
         net => '192.0.2.0', prefix => 24, next_server => '192.0.2.1', %upstream );
     my $run_kea = sub {
-        my ( $label, $option_defs, $globals, $xnba_efi, @rows ) = @_;
+        my ( $label, $option_defs, $globals, $xnba_efi, $extra, @rows ) = @_;
         my $config = JSON::decode_json( $backend->render_dhcp4_config(
                 {
                     interfaces       => ["${interface}s"],
                     'lease-database' => { type => 'memfile', name => "$kea_dir/data/kea-leases4.csv", persist => JSON::false },
                     'option-def'     => $option_defs,
                     'client-classes' => [
+                        @$extra,
                         @{ xCAT::DHCP::BootPolicy->kea_xnba_node_classes(
                                 xnba_kpxe => 1,
                                 xnba_efi  => $xnba_efi,
@@ -313,6 +335,7 @@ if ( grep { $_ eq 'kea' } @backends ) {
 
         # The test sends relayed unicast packets, which need no raw socket.
         $config->{Dhcp4}{'interfaces-config'}{'dhcp-socket-type'} = 'udp';
+        xCAT_plugin::dhcp::kea_apply_localboot_guard($config);
         my $path = "$kea_dir/kea-dhcp4.conf";
         open( my $fh, '>', $path ) or die "Cannot create $path: $!";
         print {$fh} JSON::encode_json($config);
@@ -329,11 +352,20 @@ if ( grep { $_ eq 'kea' } @backends ) {
     my @old_defs = ( { name => 'conf-file', code => 209, type => 'string', space => 'dhcp4' } );
     my @defs = ( @old_defs, @{ xCAT::DHCP::BootPolicy->kea_ipxe_option_defs() } );
     my $globals = xCAT::DHCP::BootPolicy->kea_client_classes(%upstream);
-    $run_kea->( 'Kea', \@defs, $globals, 1, @node_rows, @network_rows, @san_rows );
+    $run_kea->( 'Kea', \@defs, $globals, 1, [], @node_rows, @network_rows, @san_rows );
+
+    # A SAN node in the boot state gets the loader of its method only on a client without iSCSI. A
+    # client with iSCSI gets no boot file, though the subnet offers its network scripts.
+    my $san_nodes = [ map { { node => $_->{name}, mac => $_->{mac}, netboot => $_->{netboot}, iscsi => 1, san_boot => 1 } } \%xnba_iscsi, \%ipxe_iscsi ];
+    my @san_boot = (
+        @{ xCAT::DHCP::BootPolicy->kea_xnba_node_classes( xnba_kpxe => 1, xnba_efi => 1, nodes => $san_nodes ) },
+        xCAT::DHCP::BootPolicy->kea_localboot_client_class( macs => [ map { { node => $_->{node}, mac => $_->{mac}, san => 1 } } @$san_nodes ] ),
+    );
+    $run_kea->( 'Kea, SAN nodes in the boot state', \@defs, $globals, 1, \@san_boot, @kea_iscsi_rows );
 
     # Without the local xNBA UEFI file the UEFI clients of an xnba node still get that file, as in ISC, and
     # not the upstream loader and the discovery script that the global classes give unknown clients.
-    $run_kea->( 'Kea, no xNBA UEFI file', \@defs, $globals, 0, map { [ "xnba node, $_->[0]", { mac => $xnba{mac}, %{ $_->[1] } }, $first{xnba}{uefi} ] } (
+    $run_kea->( 'Kea, no xNBA UEFI file', \@defs, $globals, 0, [], map { [ "xnba node, $_->[0]", { mac => $xnba{mac}, %{ $_->[1] } }, $first{xnba}{uefi} ] } (
             [ 'firmware PXE, UEFI', { arch => 7 } ],
             [ 'iPXE with HTTP and EFI, UEFI', { arch => 7, user_class => 'iPXE', ipxe => ipxe(qw(http efi)) } ],
         ) );
@@ -351,7 +383,7 @@ if ( grep { $_ eq 'kea' } @backends ) {
             'boot-file-name' => 'xcat/xnba.efi',
         },
     );
-    $run_kea->( 'Kea, upgraded', $upgraded->{'option-def'}, \@old_globals, 1, grep { $_->[0] =~ /^ipxe / } @node_rows, @san_rows );
+    $run_kea->( 'Kea, upgraded', $upgraded->{'option-def'}, \@old_globals, 1, [], grep { $_->[0] =~ /^ipxe / } @node_rows, @san_rows );
 }
 
 done_testing();

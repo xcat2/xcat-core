@@ -609,4 +609,35 @@ is_deeply(
 my @tested = join( ' ', @x86_lines ) =~ /gpxe\.([\w-]+)/g;
 is_deeply( [ grep { !$declared{$_} } @tested ], [], 'the ISC header declares every iPXE feature that the x86 lines test' );
 
+# ---- SAN nodes in state boot or iscsiboot ---------------------------------------------------------
+# Kea gives such a node the loader of its method only on a client without iSCSI, as ISC does, and
+# keeps every boot file from a client with iSCSI, which boots the root path.
+my $iscsi = 'option[175].option[17].exists';
+my %san_boot = ( mac => '52:54:00:00:00:07', iscsi => 1, san_boot => 1 );
+is_deeply(
+    [ map { [ $_->{name}, $_->{test}, $_->{'boot-file-name'} ] }
+          @{ xCAT::DHCP::BootPolicy->kea_xnba_node_classes( nodes => [ { %san_boot, node => 'san07', netboot => 'ipxe' } ] ) } ],
+    [
+        [ 'xcat-ipxe-san07-525400000007-bios-san', "option[93].hex == 0x0000 and not ($iscsi) and pkt4.mac == 0x525400000007", 'xcat/ipxe/i386/undionly.kpxe' ],
+        [ 'xcat-ipxe-san07-525400000007-uefi-san', "$uefi_x64 and not ($iscsi) and pkt4.mac == 0x525400000007", 'xcat/ipxe/x86_64-sb/snponly-shim.efi' ],
+    ],
+    'an installed ipxe SAN node gets the upstream loader on a BIOS or UEFI client without iSCSI'
+);
+is_deeply(
+    [ map { [ $_->{name}, $_->{'boot-file-name'} ] }
+          @{ xCAT::DHCP::BootPolicy->kea_xnba_node_classes( xnba_kpxe => 1, xnba_efi => 1, nodes => [ { %san_boot, node => 'san07', netboot => 'xnba' } ] ) } ],
+    [ [ 'xcat-xnba-san07-525400000007-bios-san', 'xcat/xnba.kpxe' ] ],
+    'an installed xnba SAN node gets xNBA on a BIOS client without iSCSI only'
+);
+is_deeply( xCAT::DHCP::BootPolicy->kea_xnba_node_classes( nodes => [ { %san_boot, node => 'san07', netboot => 'xnba' } ] ), [],
+    'and nothing without the local xNBA BIOS file' );
+
+my $localboot = xCAT::DHCP::BootPolicy->kea_localboot_client_class(
+    macs => [ { node => 'san07', mac => '52:54:00:00:00:07', san => 1 }, { node => 'cn08', mac => '52:54:00:00:00:08' } ] );
+is( $localboot->{test}, "pkt4.mac == 0x525400000008 or (pkt4.mac == 0x525400000007 and $iscsi)",
+    'the local-boot class holds a SAN node only for a client with iSCSI' );
+is_deeply( $localboot->{'user-context'}{'xcat-macs'},
+    [ { node => 'cn08', mac => '52:54:00:00:00:08' }, { node => 'san07', mac => '52:54:00:00:00:07', san => 1 } ],
+    'and records which entry is a SAN node, so that a later makedhcp writes it again' );
+
 done_testing();
