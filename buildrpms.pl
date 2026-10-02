@@ -55,7 +55,7 @@ use File::Temp qw(tempdir tempfile);
 use FindBin qw($Bin);
 use lib "$Bin/build-utils/lib";
 use XCAT::BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildinfo_text
-    prepare_build_sources_dir stage_xcat_probe_sources
+    prepare_build_sources_dir stage_xcat_probe_sources stage_xcatsn_templates
                         stage_genesis_base_sources
                         write_script read_line targetarch_from_target
                         openeuler_build_target openeuler_repo_subdir);
@@ -412,8 +412,7 @@ EOF
       system('build-utils/sync-xcat-apache-configs', '--stage', $SOURCES) == 0
           or die "FATAL: unable to stage canonical Apache configurations\n";
       cp "$pkg/xCATSN", $SOURCES;
-      # xCATsn.spec consumes templates from xCAT shared templates payload.
-      sh qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf "$SOURCES/templates.tar.gz" xCAT/templates) unless -f "$SOURCES/templates.tar.gz";
+      stage_xcatsn_templates(".", $SOURCES, $SOURCE_DATE_EPOCH);
     } elsif ($pkg eq "xCAT-probe") {
       stage_xcat_probe_sources(".", $SOURCES, $VERSION, $SOURCE_DATE_EPOCH);
     } else {

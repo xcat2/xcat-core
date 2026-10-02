@@ -26,7 +26,7 @@ use feature 'say';
 our @EXPORT_OK = qw(
     source_date_epoch snap_release deb_version
     stage_probe_helpers XCAT_PROBE_HELPERS stage_genesis_base_sources
-    stage_xcat_probe_sources
+    stage_xcat_probe_sources stage_xcatsn_templates
     deb_package_arches dist_arches default_dists
     orig_tarball_name upstream_version resolve_dest
     pin_control_version rewrite_changelog_header
@@ -473,6 +473,36 @@ sub stage_xcat_probe_sources {
     chmod 0644, $archive_path;
     rename $archive_path, $tarball
         or die "Unable to publish $tarball: $!\n";
+    return $tarball;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 stage_xcatsn_templates
+
+Descriptions: Write the templates archive that xCATsn.spec extracts into
+              %{prefix}/share/xcat.
+
+Arguments:
+  $checkout    - the xcat-core source tree
+  $sources_dir - the staging directory of the xCATsn build
+  $epoch       - SOURCE_DATE_EPOCH for the archive mtimes
+
+Returns: the path of the archive.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub stage_xcatsn_templates {
+    my ($checkout, $sources_dir, $epoch) = @_;
+    die "stage_xcatsn_templates: no staging directory\n"
+        unless defined $sources_dir && -d $sources_dir;
+
+    my $tarball = "$sources_dir/templates.tar.gz";
+    sh_or_die(qq(tar --sort=name --owner=0 --group=0 --mtime="\@$epoch" )
+            . qq(-czf "$tarball" -C "$checkout" xCAT/templates),
+        "Error creating $tarball")
+        unless -f $tarball;
     return $tarball;
 }
 
