@@ -387,9 +387,12 @@ if ssh-keygen -t ed25519 -f /tmp/ed25519_key -P "" &>/dev/null ; then
 		fi
 	fi
   else
-	#This is an error message
+	#the message received is an error, so parse it
 	ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/ssh_ed25519_hostkey`
-	logger -s -t $log_label -p local4.err Error: $ERR_MSG
+	# A FIPS management node has no ed25519 host key, because ssh-keygen refuses the type in
+	# FIPS mode. That is expected, not an error: log to syslog only (no -s) and without the
+	# word "Error" so it does not pollute postscript output, as the DSA key above does.
+	logger -t $log_label -p local4.info "remoteshell: ssh_host_ed25519_key unavailable, skipping ($ERR_MSG)"
   fi
   rm /tmp/ssh_ed25519_hostkey
 fi
