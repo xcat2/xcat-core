@@ -3923,7 +3923,7 @@ sub kea_node_client_classes_for_nodes
 
     my $nrtab = xCAT::Table->new('noderes');
     my $mactab = xCAT::Table->new('mac');
-    return { classes => [], noip => [] } unless $nrtab && $mactab;
+    return { classes => [], noip => [], localboot => [] } unless $nrtab && $mactab;
 
     my $iscsitab = xCAT::Table->new('iscsi', -create => 0);
     my $chaintab = xCAT::Table->new('chain', -create => 0);

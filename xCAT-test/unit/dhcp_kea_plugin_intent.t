@@ -1720,4 +1720,17 @@ foreach my $case (@invalid_mac_cases) {
         'and its always-send flag is written as a boolean, which is what Kea parses' );
 }
 
+# Without the noderes or mac table there are no node classes. kea_sync_node_client_classes reads
+# all three lists of the answer, so each one must be present, empty.
+{
+    no warnings 'redefine';
+    local *xCAT::Table::new = sub { return; };
+    is_deeply( xCAT_plugin::dhcp::kea_node_client_classes_for_nodes(['cn01']),
+        { classes => [], noip => [], localboot => [] },
+        'with no noderes or mac table there are no classes, no NOIP MACs and no localboot MACs' );
+    my $config = { Dhcp4 => { 'client-classes' => [] } };
+    ok( eval { xCAT_plugin::dhcp::kea_sync_node_client_classes( $config, ['cn01'] ); 1 },
+        'syncing the node client classes with no noderes or mac table does not die' ) or diag($@);
+}
+
 done_testing();
