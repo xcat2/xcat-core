@@ -481,7 +481,7 @@ sub stage_xcat_probe_sources {
 =head3 stage_xcatsn_templates
 
 Descriptions: Write the templates archive that xCATsn.spec extracts into
-              %{prefix}/share/xcat.
+              %{prefix}/share/xcat, with members rooted at templates/.
 
 Arguments:
   $checkout    - the xcat-core source tree
@@ -500,9 +500,8 @@ sub stage_xcatsn_templates {
 
     my $tarball = "$sources_dir/templates.tar.gz";
     sh_or_die(qq(tar --sort=name --owner=0 --group=0 --mtime="\@$epoch" )
-            . qq(-czf "$tarball" -C "$checkout" xCAT/templates),
-        "Error creating $tarball")
-        unless -f $tarball;
+            . qq(-czf "$tarball" -C "$checkout/xCAT" templates),
+        "Error creating $tarball");
     return $tarball;
 }
 
