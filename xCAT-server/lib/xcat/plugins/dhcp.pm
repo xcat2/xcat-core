@@ -2367,10 +2367,22 @@ sub process_request
         }
     }
 
+    my $newconf;
     unless ($dhcpconf[0])
     {    #populate an empty config with some starter data...
         $restartdhcp = 1;
+        $newconf     = 1;
         newconfig();
+    }
+
+    # Until dhcpd restarts, it can run without the options of this new configuration: see _isc_declare_ipxe_features.
+    my $pending = "$dhcpconffile.ipxe-restart";
+    if ($newconf and $^O ne 'aix' and not $::XCATSITEVALS{externaldhcpservers}) {
+        my $fh;
+        unless (open($fh, '>', $pending) and close($fh)) {
+            $callback->({ error => ["Unable to write a new configuration to $dhcpconffile: cannot create $pending: $!"], errorcode => [1] });
+            return;
+        }
     }
     if ($usingipv6 and not $dhcp6conf[0]) {
         $restartdhcp6 = 1;
@@ -2550,6 +2562,21 @@ sub process_request
             }    # TODO sane err
             ($omapi_settings, $omapi_secret) = ($settings, $ent->{password});
 
+            # OMAPI replaces each host on the running dhcpd, so dhcpd first loads the configuration this run built.
+            if ($newconf and @{ $req->{node} } and not $::XCATSITEVALS{externaldhcpservers}) {
+                # writeout() empties the configuration in memory, which the final writeout() still needs.
+                my @conf  = @dhcpconf;
+                my @conf6 = @dhcp6conf;
+                writeout();
+                @dhcpconf  = @conf;
+                @dhcp6conf = @conf6;
+                if (restart_dhcpd()) {
+                    $callback->({ error => ["Unable to restart the DHCP server with the new configuration in $dhcpconffile"], errorcode => [1] });
+                    return;
+                }
+                unlink($pending);
+            }
+
             #Have nodes to update
             #open2($omshellout,$omshell,"/usr/bin/omshell");
             ($omshell, $omshellpid) = _open_omshell_writer($settings);
@@ -2651,7 +2678,7 @@ sub process_request
             restart_dhcpd_aix();
         }
         else {
-            restart_dhcpd();
+            unlink($pending) unless restart_dhcpd();
             print "xx";
         }
     }
