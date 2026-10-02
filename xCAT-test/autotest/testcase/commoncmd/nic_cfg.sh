@@ -181,12 +181,15 @@ case "$1" in
         esac
         ;;
     backup)
-        be=$(detect_backend); rm -rf "$BACKUP"; mkdir -p "$BACKUP"
+        # A source directory that does not exist holds no configuration to snapshot, which is
+        # the state of a node that has just netbooted. Report success: the exit status of a cp
+        # over an absent directory made the caller read "nothing to back up" as a failure.
+        be=$(detect_backend); rm -rf "$BACKUP"; mkdir -p "$BACKUP" || exit 1
         case "$be" in
-            nm)   cp -af "$NMDIR"/. "$BACKUP"/ 2>/dev/null ;;
-            suse) cp -af "$SUSEDIR"/ifcfg-* "$BACKUP"/ 2>/dev/null ;;
-            rh)   cp -af "$RHDIR" "$BACKUP"/ 2>/dev/null ;;
-            ubuntu) cp -af "$UBUDIR"/. "$BACKUP"/ 2>/dev/null ;;
+            nm)     if [ -d "$NMDIR" ];   then cp -af "$NMDIR"/. "$BACKUP"/ 2>/dev/null; fi ;;
+            suse)   if [ -d "$SUSEDIR" ]; then cp -af "$SUSEDIR"/ifcfg-* "$BACKUP"/ 2>/dev/null || :; fi ;;
+            rh)     if [ -d "$RHDIR" ];   then cp -af "$RHDIR" "$BACKUP"/ 2>/dev/null; fi ;;
+            ubuntu) if [ -d "$UBUDIR" ];  then cp -af "$UBUDIR"/. "$BACKUP"/ 2>/dev/null; fi ;;
         esac
         ;;
     restore)
