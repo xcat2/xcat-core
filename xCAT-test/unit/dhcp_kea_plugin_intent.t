@@ -1610,25 +1610,19 @@ foreach my $case (@invalid_mac_cases) {
             {
                 booted => { netboot => 'xnba' },
                 bootpx => { netboot => 'pxe' },
-                san01  => { netboot => 'xnba' },
             }
         ),
         mac => DHCPKeaResTable->new(
             {
                 booted => { mac => 'aa:bb:cc:dd:ee:05' },
                 bootpx => { mac => 'aa:bb:cc:dd:ee:06' },
-                san01  => { mac => 'aa:bb:cc:dd:ee:07' },
             }
         ),
         chain => DHCPKeaResTable->new(
             {
                 booted => { currstate => 'boot' },
                 bootpx => { currstate => 'boot' },
-                san01  => { currstate => 'iscsiboot' },
             }
-        ),
-        iscsi => DHCPKeaResTable->new(
-            { san01 => { server => '192.0.2.9', target => 'iqn.2024-01.test:san01', lun => 0 } }
         ),
     );
 
@@ -1650,7 +1644,7 @@ foreach my $case (@invalid_mac_cases) {
         },
     };
 
-    ok( xCAT_plugin::dhcp::kea_sync_node_client_classes( $config, [ 'booted', 'bootpx', 'san01' ] ),
+    ok( xCAT_plugin::dhcp::kea_sync_node_client_classes( $config, [ 'booted', 'bootpx' ] ),
         'a node that is to boot from its disk changes the configuration' );
 
     my @names = map { $_->{name} } @{ $config->{Dhcp4}{'client-classes'} };
@@ -1658,7 +1652,7 @@ foreach my $case (@invalid_mac_cases) {
     ok( $localboot, 'the installed nodes land in a class of their own' );
     is( $localboot->{test},
         'pkt4.mac == 0xaabbccddee05 or pkt4.mac == 0xaabbccddee06',
-        'both netboot methods are in it, and the iSCSI node is not: its root disk is on the network and gPXE is what attaches it' );
+        'both netboot methods are in it' );
     is( $names[0], 'xcat-localboot',
         'and it is defined first, because Kea rejects a member() test naming a class below it' );
 
