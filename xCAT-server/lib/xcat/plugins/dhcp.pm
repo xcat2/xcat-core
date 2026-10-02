@@ -4057,9 +4057,17 @@ sub kea_node_client_classes_for_nodes
 
                 # No boot classes of its own, and an empty boot file in the
                 # reservation -- but neither stops the shared classes from
-                # naming one, so the MAC goes into the class they exclude.
-                # Unless the node boots from an iSCSI target.
-                push @localboot, {%record} unless $ient and $ient->{server} and $ient->{target};
+                # naming one, so the MAC goes into the class they exclude. A
+                # node that boots from an iSCSI target goes into it only for a
+                # client that can attach the disk, and gets the loader of its
+                # method on one that cannot.
+                if ( $ient and $ient->{server} and $ient->{target} ) {
+                    push @localboot, { %record, san => 1 };
+                    push @xnba, { %record, netboot => $netboot, san_boot => 1 }
+                      if $netboot and $netboot =~ /^(?:ipxe|xnba|pxe)$/;
+                } else {
+                    push @localboot, {%record};
+                }
             } elsif ($netboot and ($netboot eq 'xnba' or $netboot eq 'ipxe') and $nxtsrv) {
                 push @xnba, {
                     %record,

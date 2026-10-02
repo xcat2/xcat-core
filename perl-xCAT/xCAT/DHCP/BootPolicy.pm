@@ -432,14 +432,36 @@ sub kea_xnba_node_classes {
     my @classes;
 
     foreach my $node (@$nodes) {
-        next unless $node->{node} && $node->{mac} && $node->{next_server};
+        next unless $node->{node} && $node->{mac};
         my $loader = $class->x86_loader( method => $node->{netboot}, san => $node->{iscsi} );
         my $class_base = _node_class_base( $loader->{method}, $node->{node}, $node->{mac} );
         my $mac_test = _mac_test( $node->{mac} );
+        my $context = $loader->{method} eq 'ipxe' ? _node_user_context( $node, 'ipxe-boot' ) : _xnba_user_context($node);
+
+        # A node that boots from its SAN disk gets the loader of its method only on a client that
+        # cannot attach the disk, as its ISC host statements do: BIOS for xNBA, BIOS and UEFI for iPXE.
+        if ( $node->{san_boot} ) {
+            next if $loader->{method} eq 'xnba' && !$opts{xnba_kpxe};
+            my $san_context = $loader->{method} eq 'ipxe' ? $context : _node_user_context( $node, 'xnba-first-stage' );
+            push @classes, {
+                name             => "$class_base-bios-san",
+                test             => "option[93].hex == 0x0000 and not ($loader->{kea_san_boot}) and $mac_test",
+                'boot-file-name' => $loader->{bios},
+                'user-context'   => $san_context,
+            };
+            push @classes, {
+                name             => "$class_base-uefi-san",
+                test             => "($uefi_x64_arch_match) and not ($loader->{kea_san_boot}) and $mac_test",
+                'boot-file-name' => $loader->{uefi},
+                'user-context'   => $san_context,
+            } if $loader->{method} eq 'ipxe';
+            next;
+        }
+
+        next unless $node->{next_server};
         my $httpport = $node->{httpport} || '80';
         my $portsuffix = ( $httpport eq '80' ) ? '' : ":$httpport";
         my $base_url = 'http://' . $node->{next_server} . $portsuffix . "/tftpboot/$loader->{scripts}/nodes/" . $node->{node};
-        my $context = $loader->{method} eq 'ipxe' ? _node_user_context( $node, 'ipxe-boot' ) : _xnba_user_context($node);
 
         push @classes, {
             name             => "$class_base-bios",
@@ -647,7 +669,7 @@ sub kea_localboot_guard {
 # An empty boot-file-name is not enough: Kea reads it as "not specified" and falls
 # through to the classes. So the MACs go into one class every boot-file class
 # excludes -- see kea_apply_localboot_guard. A node booting from an iSCSI target is
-# deliberately not here: gPXE attaches its root disk, so it does want a loader.
+# here only for a client that can attach the disk: an earlier stage wants a loader.
 sub kea_localboot_client_class {
     my ( $class, %opts ) = @_;
 
@@ -658,10 +680,10 @@ sub kea_localboot_client_class {
 
     return {
         name           => kea_localboot_class_name(),
-        test           => join( ' or ', map { _mac_test( $_->{mac} ) } @sorted ),
+        test           => join( ' or ', map { $_->{san} ? '(' . _mac_test( $_->{mac} ) . ' and ' . _kea_features(qw(iscsi)) . ')' : _mac_test( $_->{mac} ) } @sorted ),
         'user-context' => {
             'xcat-purpose' => 'localboot-suppress',
-            'xcat-macs'    => [ map { { node => $_->{node}, mac => lc( $_->{mac} ) } } @sorted ],
+            'xcat-macs'    => [ map { { node => $_->{node}, mac => lc( $_->{mac} ), ( $_->{san} ? ( san => 1 ) : () ) } } @sorted ],
         },
     };
 }
@@ -798,6 +820,7 @@ sub x86_loader {
             isc_second_stage_bios => $class->isc_xnba_user_class_test(),
             isc_second_stage_uefi => $class->isc_xnba_user_class_test(),
             isc_san_boot          => 'exists gpxe.bus-id',
+            kea_san_boot          => _kea_features(qw(iscsi)),
             kea_second_stage_bios => xnba_user_class_test(),
             kea_second_stage_uefi => xnba_user_class_test(),
         };
@@ -818,6 +841,7 @@ sub x86_loader {
         isc_second_stage_bios => _isc_features( qw(http bzimage pxe), @san ),
         isc_second_stage_uefi => _isc_features( qw(http efi), @san ),
         isc_san_boot          => _isc_features(qw(iscsi)),
+        kea_san_boot          => _kea_features(qw(iscsi)),
         kea_second_stage_bios => _kea_features( qw(http bzimage pxe), @san ),
         kea_second_stage_uefi => _kea_features( qw(http efi), @san ),
     };
