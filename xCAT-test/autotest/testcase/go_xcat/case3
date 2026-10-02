@@ -21,6 +21,17 @@ check:rc==0
 #Install additional packages on Red Hat, Rocky and Alma
 cmd:if xdsh $$CN "grep \"Red Hat\|Rocky\|Alma\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils dnf-utils bzip2"; fi
 
+#Enable EPEL on Red Hat, Rocky and Alma. xCAT resolves perl-Expect, perl-Crypt-CBC,
+#perl-Crypt-Rijndael and, on EL8, kea from EPEL, and the node carries the OS repositories
+#alone.
+cmd:if xdsh $$CN "grep \"Red Hat\|Rocky\|Alma\" /etc/*release >/dev/null"; then xdsh $$CN 'rpm -q epel-release || dnf -y install epel-release || dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-$(rpm -E %rhel).noarch.rpm'; fi
+check:rc==0
+
+#Enable the CodeReady Builder content, which go-xcat requires on EL9 and EL10. It is named
+#crb on EL9 and later and PowerTools on EL8, and dnf5 enables it through setopt. Some
+#releases enable it already, so this step is not checked: go-xcat reports it if it is absent.
+cmd:if xdsh $$CN "grep \"Red Hat\|Rocky\|Alma\" /etc/*release >/dev/null"; then xdsh $$CN 'dnf config-manager --set-enabled crb || dnf config-manager --set-enabled powertools || dnf config-manager setopt crb.enabled=1'; fi
+
 #Install additional packages on Ubuntu
 cmd:if xdsh $$CN "grep \"Ubuntu\" /etc/*release >/dev/null"; then xdsh $$CN "DEBIAN_FRONTEND=noninteractive apt-get install -y gnupg"; fi
 
