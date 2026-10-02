@@ -6,14 +6,15 @@ use warnings;
 sub kea_client_classes {
     my ( $class, %opts ) = @_;
 
-    my $loader = $class->x86_loader();
+    # An unknown x86 client boots the upstream loader.
+    my $loader = $class->x86_loader( method => 'ipxe' );
     my $uefi_x64_arch_match = uefi_x64_client_architecture_match_expr();
     my $etherboot = etherboot_vendor_class_test();
     # No substitute when the loader is not on disk: naming a file the TFTP
     # server does not have costs the client a timeout it cannot diagnose, and a
     # different loader boots something nobody asked for.
-    my $bios_boot = $opts{xnba_kpxe} ? $loader->{bios} : '';
-    my $uefi_boot = $opts{xnba_efi}  ? $loader->{uefi} : '';
+    my $bios_boot = $opts{ipxe_bios} ? $loader->{bios} : '';
+    my $uefi_boot = $opts{ipxe_uefi} ? $loader->{uefi} : '';
     my @classes;
 
     push @classes, @{ $opts{xnba_node_classes} || [] };
@@ -288,7 +289,8 @@ sub isc_client_architecture_lines {
     my $portsuffix = $opts{portsuffix}  // '';
     my $net        = $opts{net}         // '';
     my $maskbits   = $opts{prefix}      // '';
-    my $loader     = $class->x86_loader();
+    my $loader     = $class->x86_loader( method => 'ipxe' );
+    my $nets       = "http://$tftp$portsuffix/tftpboot/$loader->{scripts}/nets/${net}_${maskbits}";
 
     # Which loaders are actually on disk. A branch naming a file the TFTP server
     # does not have costs the client a full timeout it cannot diagnose, so the
@@ -306,19 +308,19 @@ sub isc_client_architecture_lines {
 
     if ($kpxe) {
         push @branches, [
-            "$loader->{isc_second_stage_bios} and option client-architecture = 00:00 { #x86, xCAT Network Boot Agent\n",
+            "$loader->{isc_second_stage_bios} and option client-architecture = 00:00 { #x86, iPXE second stage\n",
             "        always-broadcast on;\n",
-            "        filename = \"http://$tftp$portsuffix/tftpboot/xcat/xnba/nets/${net}_${maskbits}\";\n",
+            "        filename = \"$nets\";\n",
         ];
     }
     if ($efi) {
         push @branches, [
-            "$loader->{isc_second_stage_uefi} and option client-architecture = 00:09 { #x86, xCAT Network Boot Agent\n",
-            "        filename = \"http://$tftp$portsuffix/tftpboot/xcat/xnba/nets/${net}_${maskbits}.uefi\";\n",
+            "$loader->{isc_second_stage_uefi} and option client-architecture = 00:09 { #x86, iPXE second stage\n",
+            "        filename = \"$nets.uefi\";\n",
           ],
           [
-            "$loader->{isc_second_stage_uefi} and option client-architecture = 00:07 { #x86-64 UEFI, xCAT Network Boot Agent\n",
-            "        filename = \"http://$tftp$portsuffix/tftpboot/xcat/xnba/nets/${net}_${maskbits}.uefi\";\n",
+            "$loader->{isc_second_stage_uefi} and option client-architecture = 00:07 { #x86-64 UEFI, iPXE second stage\n",
+            "        filename = \"$nets.uefi\";\n",
           ];
     }
     if ($kpxe) {
@@ -455,20 +457,22 @@ sub kea_xnba_node_classes {
             };
         }
 
-        # The global first-stage classes give the loader of unknown clients, and do not know which
-        # nodes boot from SAN.
-        next unless $loader->{method} eq 'ipxe';
+        # Each node carries its own first-stage classes, as its ISC host statements do, because an
+        # upgrade keeps the global classes of an older makedhcp -n until the next makedhcp -n. An
+        # xnba node has them only with the local xNBA BIOS file, as it has its ISC host statements.
+        next if $loader->{method} eq 'xnba' && !$opts{xnba_kpxe};
+        my $first_context = $loader->{method} eq 'ipxe' ? $context : _node_user_context( $node, 'xnba-first-stage' );
         push @classes, {
             name             => "$class_base-bios-first-stage",
             test             => "option[93].hex == 0x0000 and not ($loader->{kea_second_stage_bios}) and $mac_test",
             'boot-file-name' => $loader->{bios},
-            'user-context'   => $context,
+            'user-context'   => $first_context,
           },
           {
             name             => "$class_base-uefi-first-stage",
             test             => "($uefi_x64_arch_match) and not ($loader->{kea_second_stage_uefi}) and $mac_test",
             'boot-file-name' => $loader->{uefi},
-            'user-context'   => $context,
+            'user-context'   => $first_context,
           };
     }
 
@@ -683,7 +687,7 @@ sub kea_xnba_network_classes {
 
     return [] unless $opts{net} && defined $opts{prefix} && $opts{next_server};
 
-    my $loader = $class->x86_loader();
+    my $loader = $class->x86_loader( method => 'ipxe' );
     my $uefi_x64_arch_match = uefi_x64_client_architecture_match_expr();
     my $httpport = $opts{httpport} || '80';
     my $portsuffix = ( $httpport eq '80' ) ? '' : ":$httpport";
@@ -691,21 +695,23 @@ sub kea_xnba_network_classes {
     my $safe_network = $network_id;
     $safe_network =~ s/[^A-Za-z0-9_.-]/_/g;
     my $base_url = 'http://' . $opts{next_server} . $portsuffix
-      . '/tftpboot/xcat/xnba/nets/' . $network_id;
+      . "/tftpboot/$loader->{scripts}/nets/" . $network_id;
+
     my @classes;
 
-    if ( $opts{xnba_kpxe} ) {
+    # The second stage is fetched over HTTP, but it is the first stage that asks for it.
+    if ( $opts{ipxe_bios} ) {
         push @classes, {
-            name             => "xcat-xnba-net-$safe_network-bios",
+            name             => "xcat-ipxe-net-$safe_network-bios",
             test             => "$loader->{kea_second_stage_bios} and option[93].hex == 0x0000",
             'boot-file-name' => $base_url,
             additional_only  => 1,
         };
     }
 
-    if ( $opts{xnba_efi} ) {
+    if ( $opts{ipxe_uefi} ) {
         push @classes, {
-            name             => "xcat-xnba-net-$safe_network-uefi",
+            name             => "xcat-ipxe-net-$safe_network-uefi",
             test             => "$loader->{kea_second_stage_uefi} and ($uefi_x64_arch_match)",
             'boot-file-name' => "$base_url.uefi",
             additional_only  => 1,

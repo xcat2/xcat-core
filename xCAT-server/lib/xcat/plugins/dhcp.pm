@@ -3549,8 +3549,7 @@ sub kea_subnet4_intent
             prefix      => $prefix,
             next_server => $tftp,
             httpport    => $httpport,
-            xnba_kpxe   => -f "$tftpdir/xcat/xnba.kpxe" ? 1 : 0,
-            xnba_efi    => -f "$tftpdir/xcat/xnba.efi"  ? 1 : 0,
+            kea_ipxe_loader_flags(),
         );
     }
     my %subnet = (
@@ -3912,6 +3911,7 @@ sub kea_set_drop_client_class
 #: that changes netboot method loses the classes the old one wrote.
 my %KEA_NODE_CLASS_PURPOSES = map { $_ => 1 } qw(
   xnba-second-stage
+  xnba-first-stage
   ipxe-boot
   pxe-vendor
   proxydhcp-deferral
@@ -4061,8 +4061,9 @@ sub kea_node_client_classes_for_nodes
     return {
         classes => [
             @{ xCAT::DHCP::BootPolicy->kea_xnba_node_classes(
-                    nodes    => \@xnba,
-                    xnba_efi => -f "$tftpdir/xcat/xnba.efi" ? 1 : 0,
+                    nodes     => \@xnba,
+                    xnba_kpxe => -f "$tftpdir/xcat/xnba.kpxe" ? 1 : 0,
+                    xnba_efi  => -f "$tftpdir/xcat/xnba.efi"  ? 1 : 0,
                 ) },
             @{ xCAT::DHCP::BootPolicy->kea_pxe_node_classes( nodes => \@pxe ) },
             @{ xCAT::DHCP::BootPolicy->kea_proxydhcp_node_classes( nodes => \@proxydhcp ) },
@@ -4401,9 +4402,16 @@ sub kea_onie_url_for_node
 
 sub kea_boot_client_classes
 {
-    return xCAT::DHCP::BootPolicy->kea_client_classes(
-        xnba_kpxe => -f "$tftpdir/xcat/xnba.kpxe" ? 1 : 0,
-        xnba_efi  => -f "$tftpdir/xcat/xnba.efi"  ? 1 : 0,
+    return xCAT::DHCP::BootPolicy->kea_client_classes( kea_ipxe_loader_flags() );
+}
+
+# Which upstream loader files the local TFTP tree has, as the Kea class builders take them.
+sub kea_ipxe_loader_flags
+{
+    my $loader = xCAT::DHCP::BootPolicy->x86_loader( method => 'ipxe' );
+    return (
+        ipxe_bios => -f "$tftpdir/$loader->{bios}" ? 1 : 0,
+        ipxe_uefi => -f "$tftpdir/$loader->{uefi}" ? 1 : 0,
     );
 }
 
