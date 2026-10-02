@@ -114,6 +114,30 @@ require xCAT::DHCP::Backend::Kea;
     sub close { return; }
 }
 
+{
+    # Several networks, answered per net and mask, so a test can tell one subnet from
+    # another. DHCPKeaIntentNetTable answers every query with the same row.
+    package DHCPKeaIntentMultiNetTable;
+    sub new {
+        my ( $class, @entries ) = @_;
+        return bless { entries => [@entries] }, $class;
+    }
+    sub getAllAttribs {
+        my ($self) = @_;
+        return map { { %{$_} } } @{ $self->{entries} };
+    }
+    sub getAttribs {
+        my ( $self, $criteria ) = @_;
+        foreach my $entry ( @{ $self->{entries} } ) {
+            next unless $entry->{net} eq $criteria->{net};
+            next unless $entry->{mask} eq $criteria->{mask};
+            return { %{$entry} };
+        }
+        return;
+    }
+    sub close { return; }
+}
+
 my %network_entry = (
     net          => '10.0.0.0',
     mask         => '255.255.255.0',
@@ -1825,6 +1849,62 @@ foreach my $case (@invalid_mac_cases) {
     my $config = { Dhcp4 => { 'client-classes' => [] } };
     ok( eval { xCAT_plugin::dhcp::kea_sync_node_client_classes( $config, ['cn01'] ); 1 },
         'syncing the node client classes with no noderes or mac table does not die' ) or diag($@);
+}
+
+{
+    # A network whose mgtifname is "!remote!<nic>" is reached through a relay agent, so
+    # site.dhcpinterfaces never names it and %activenics never carries a "!remote!" key.
+    # Without a subnet4 of its own, subnet_id_for_ip finds nothing for a node on that
+    # network and makedhcp writes no reservation (makedhcp_remote_network).
+    my %local_net = (
+        net          => '10.0.0.0',
+        mask         => '255.255.255.0',
+        mgtifname    => 'eth0',
+        dynamicrange => '10.0.0.100-10.0.0.150',
+        domain       => 'cluster.test',
+        tftpserver   => '<xcatmaster>',
+    );
+    my %relayed_net = (
+        net        => '100.100.100.0',
+        mask       => '255.255.255.0',
+        mgtifname  => '!remote!eth0',
+        domain     => 'cluster.test',
+        tftpserver => '<xcatmaster>',
+    );
+
+    no warnings 'redefine';
+    local *xCAT::NetworkUtils::thishostisnot = sub { return 0; };
+    local *xCAT_plugin::dhcp::kea_ipv4_routes = sub {
+        return (
+            [ '10.0.0.0',      'eth0',         '255.255.255.0', '' ],
+            [ '100.100.100.0', '!remote!eth0', '255.255.255.0', '' ],
+        );
+    };
+    local *xCAT_plugin::dhcp::kea_boot_client_classes   = sub { return []; };
+    local *xCAT_plugin::dhcp::kea_option_defs           = sub { return []; };
+    local *xCAT_plugin::dhcp::kea_global_option_data    = sub { return []; };
+    local *xCAT_plugin::dhcp::kea_dhcp_lease_time       = sub { return 43200; };
+    local *xCAT_plugin::dhcp::kea_control_agent_enabled = sub { return 0; };
+
+    local $xCAT::Table::networks =
+      DHCPKeaIntentMultiNetTable->new( \%local_net, \%relayed_net );
+
+    my $intent = xCAT_plugin::dhcp::kea_build_dhcp4_intent(
+        bless( {}, 'DHCPKeaIntentBackend' ), { eth0 => 1 }
+    );
+
+    is_deeply(
+        [
+            map { [ $_->{subnet}, exists $_->{interface} ? $_->{interface} : undef ] }
+            sort { $a->{subnet} cmp $b->{subnet} } @{ $intent->{subnets} }
+        ],
+        [ [ '10.0.0.0/24', 'eth0' ], [ '100.100.100.0/24', undef ] ],
+        'the relayed network gets a subnet, and it names no local interface'
+    );
+    is_deeply(
+        $intent->{interfaces}, ['eth0'],
+        'the relay marker is not served as an interface'
+    );
 }
 
 done_testing();
