@@ -1184,7 +1184,7 @@ sub addnode
         }
         my $douefi = check_uefi_support($ntent);
 
-        if ($nrent and $nrent->{netboot} and ($nrent->{netboot} eq 'xnba' or $nrent->{netboot} eq 'pxe')) {
+        if ($nrent and $nrent->{netboot} and $nrent->{netboot} =~ /^(?:ipxe|xnba|pxe)$/) {
             if ($lstatements !~ /filename/) {
                 $lstatements = xCAT::DHCP::BootPolicy->isc_node_boot_statements(
                     netboot        => $nrent->{netboot},
@@ -3912,6 +3912,7 @@ sub kea_set_drop_client_class
 #: that changes netboot method loses the classes the old one wrote.
 my %KEA_NODE_CLASS_PURPOSES = map { $_ => 1 } qw(
   xnba-second-stage
+  ipxe-boot
   pxe-vendor
   proxydhcp-deferral
   iscsi-initiator
@@ -4038,8 +4039,14 @@ sub kea_node_client_classes_for_nodes
                 # naming one, so the MAC goes into the class they exclude.
                 # Unless the node boots from an iSCSI target.
                 push @localboot, {%record} unless $ient and $ient->{server} and $ient->{target};
-            } elsif ($netboot and $netboot eq 'xnba' and $nxtsrv) {
-                push @xnba, { %record, next_server => $nxtsrv, httpport => $httpport };
+            } elsif ($netboot and ($netboot eq 'xnba' or $netboot eq 'ipxe') and $nxtsrv) {
+                push @xnba, {
+                    %record,
+                    next_server => $nxtsrv,
+                    httpport    => $httpport,
+                    netboot     => $netboot,
+                    iscsi       => ( $ient and $ient->{server} and $ient->{target} ) ? 1 : 0,
+                };
             } elsif ($netboot and $netboot eq 'pxe') {
                 push @pxe, {%record};
             }
