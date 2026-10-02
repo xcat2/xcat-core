@@ -2475,6 +2475,29 @@ function boo_boo_if_bad()
 	exit "${rc}"
 }
 
+# A riscv64 management node has no legacy Genesis: its image ships as the OpenEmbedded package,
+# which mknb installs. The legacy Genesis scripts and bases are therefore dropped and the
+# OpenEmbedded package of the architecture is asked for instead.
+#
+# The x86 boot loaders stay: they are payload a management node SERVES to x86 nodes over TFTP,
+# not host binaries, so a riscv64 management node needs them to boot a mixed cluster.
+function riscv64_install_list()
+{
+	local genesis_package="xCAT-genesis-openembedded-riscv64"
+	type dpkg >/dev/null 2>&1 && genesis_package="xcat-genesis-openembedded-riscv64"
+	local package
+	for package in "$@"; do
+		case "${package}" in
+		*genesis-scripts-*|*genesis-base-*)
+			;;
+		*)
+			printf '%s\n' "${package}"
+			;;
+		esac
+	done
+	printf '%s\n' "${genesis_package}"
+}
+
 #
 # |\/| _.o._   ._ .__  _ .__.._ _    _  _  _  _  |_  _ .__
 # |  |(_||| |  |_)|(_)(_||(_|| | |  (_|(_)(/__>  | |(/_|(/_ o
@@ -2596,29 +2619,6 @@ case "${GO_XCAT_ARCH}" in
 	exit_if_bad 1 "${GO_XCAT_ARCH}: unsupported instruction set architecture"
 	;;
 esac
-
-# A riscv64 management node has no legacy Genesis: its image ships as the OpenEmbedded package,
-# which mknb installs. The legacy Genesis scripts and bases are therefore dropped and the
-# OpenEmbedded package of the architecture is asked for instead.
-#
-# The x86 boot loaders stay: they are payload a management node SERVES to x86 nodes over TFTP,
-# not host binaries, so a riscv64 management node needs them to boot a mixed cluster.
-function riscv64_install_list()
-{
-	local genesis_package="xCAT-genesis-openembedded-riscv64"
-	type dpkg >/dev/null 2>&1 && genesis_package="xcat-genesis-openembedded-riscv64"
-	local package
-	for package in "$@"; do
-		case "${package}" in
-		*genesis-scripts-*|*genesis-base-*)
-			;;
-		*)
-			printf '%s\n' "${package}"
-			;;
-		esac
-	done
-	printf '%s\n' "${genesis_package}"
-}
 
 if [ "${GO_XCAT_ARCH}" = "riscv64" ]; then
 	riscv64_list=()
