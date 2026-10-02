@@ -2651,30 +2651,7 @@ sub process_request
             restart_dhcpd_aix();
         }
         else {
-            if ($distro =~ /ubuntu.*/ || $distro =~ /debian.*/i)
-            {
-                if (-e '/etc/dhcp/dhcpd.conf') {
-                    system("chmod a+r /etc/dhcp/dhcpd.conf");
-
-                    #system("/etc/init.d/isc-dhcp-server restart");
-                }
-                else {
-                    #ubuntu config
-                    system("chmod a+r /etc/dhcp3/dhcpd.conf");
-
-                    #system("/etc/init.d/dhcp3-server restart");
-                }
-            }
-
-            #else
-            #{
-            #    system("/etc/init.d/dhcpd restart");
-            #    # should not chkconfig dhcpd on every makedhcp invoation
-            #    # it is not appropriate and will cause problem for HAMN
-            #    # do it in xcatconfig instead
-            #    #system("chkconfig dhcpd on");
-            #}
-            xCAT::Utils->restartservice("dhcp");
+            restart_dhcpd();
             print "xx";
         }
     }
@@ -4496,6 +4473,20 @@ sub kea_skip_ipv4_network
     return 1 if $net eq "127.0.0.0" || $net eq '127';
     return 1 if ($firstoctet >= 224 and $firstoctet <= 239);
     return 0;
+}
+
+sub restart_dhcpd
+{
+    if ($distro =~ /ubuntu.*/ || $distro =~ /debian.*/i)
+    {
+        if (-e '/etc/dhcp/dhcpd.conf') {
+            system("chmod a+r /etc/dhcp/dhcpd.conf");
+        }
+        else {
+            system("chmod a+r /etc/dhcp3/dhcpd.conf");
+        }
+    }
+    return xCAT::Utils->restartservice("dhcp");
 }
 
 # Restart dhcpd on aix
