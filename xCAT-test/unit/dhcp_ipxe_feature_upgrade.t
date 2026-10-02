@@ -175,8 +175,9 @@ my @responses;
 
     package DHCPUpgradeTable;
     sub getNodeAttribs { return; }
+    sub getNodesAttribs { return {}; }
     sub getAllAttribs { return; }
-    sub getAttribs { return { password => 'dGVzdA==' }; }
+    sub getAttribs { return { username => 'xcat_key', password => 'dGVzdA==' }; }
     sub close { return; }
 
     package main;
@@ -194,20 +195,27 @@ my @responses;
     local *xCAT::MsgUtils::trace = sub { return; };
     local *xCAT_plugin::dhcp::addnic = sub { push @reached, 'addnic'; };
     local *xCAT_plugin::dhcp::addnet = sub { push @reached, 'addnet'; };
+    local *xCAT_plugin::dhcp::addnet6 = sub { return; };
+    my $writeout = \&xCAT_plugin::dhcp::writeout;
     local *xCAT_plugin::dhcp::writeout = sub { push @reached, 'writeout'; };
     local *xCAT_plugin::dhcp::_open_omshell_writer = sub { push @reached, 'omshell'; return; };
     local $::XCATSITEVALS{externaldhcpservers};
     local $xCAT_plugin::dhcp::dhcpconffile = "$dir/dhcpd.conf";
+    local $xCAT_plugin::dhcp::distro = 'rhels9.4';
 
     my $makedhcp = sub {
         my ($restart) = @_;
         local *xCAT::Utils::restartservice = sub { push @restarts, 'dhcp'; return $restart; };
         @responses = @reached = @restarts = ();
         my $umask = umask;
+        # process_request prints after it restarts dhcpd, and that text would break the TAP output.
+        open( my $printed, '>', \my $text ) or die "Cannot open an output buffer: $!";
+        my $selected = select($printed);
         eval {
             xCAT_plugin::dhcp::process_request( { _xcatpreprocessed => [1], node => ['cn1'], arg => [] }, sub { push @responses, @_; } );
             1;
         } or push @reached, "died: $@";
+        select($selected);
         umask $umask;
         return join ' ', map { @{ $_->{error} || [] } } @responses;
     };
@@ -232,18 +240,59 @@ my @responses;
         'ISC: makedhcp reports a configuration without the gpxe option space' );
     is_deeply( [ \@restarts, \@reached ], [ [], [] ], 'ISC: and neither restarts dhcpd nor changes a subnet or host' );
 
-    # makedhcp -a before makedhcp -n writes a new configuration, which declares the options. The run
-    # stops at the node loop, which this test does not cover.
+    # makedhcp -a before makedhcp -n writes a new configuration, which declares the options. dhcpd can
+    # still run an older one, so it loads the new one before OMAPI replaces a host.
     my $newconfig = \&xCAT_plugin::dhcp::newconfig;
     for my $case ( [ 'no dhcpd.conf' ], [ 'a dhcpd.conf that xCAT did not write', "ddns-update-style none;\n" ] ) {
         my ( $label, @lines ) = @$case;
+        my $conf = $xCAT_plugin::dhcp::dhcpconffile;
+        my $loaded;
         local *xCAT_plugin::dhcp::newconfig = sub { push @reached, 'newconfig'; return $newconfig->(@_); };
-        local *xCAT::DBobjUtils::getnodetype = sub { die "node loop\n"; };
-        unlink $xCAT_plugin::dhcp::dhcpconffile;
+        local *xCAT_plugin::dhcp::writeout = sub { push @reached, 'writeout'; return $writeout->(@_); };
+        local *xCAT_plugin::dhcp::_open_omshell_writer = sub {
+            $loaded = "@restarts";
+            push @reached, 'omshell';
+            open( my $fh, '>', \my $commands ) or die "Cannot open an omshell buffer: $!";
+            return $fh;
+        };
+        local *xCAT_plugin::dhcp::_close_omshell_writer = sub { return; };
+        local *xCAT_plugin::dhcp::addnode = sub { push @reached, 'addnode'; };
+        local *xCAT::DBobjUtils::getnodetype = sub { return {}; };
+        local *xCAT::NetworkUtils::getipaddr = sub { return; };
+        unlink $conf, "$conf.ipxe-restart";
         $write->( 0, @lines ) if @lines;
         unlike( $makedhcp->(0), qr/iPXE feature options|gpxe/, "ISC: makedhcp with $label gives no iPXE option error" );
-        ok( ( grep { $_ eq 'newconfig' } @reached ) && $reached[-1] eq "died: node loop\n",
-            'ISC: and goes on to write a new configuration' ) or diag("reached: @reached");
+        is_deeply( [ grep { /^(?:newconfig|writeout|omshell|addnode)$/ } @reached ],
+            [qw(newconfig writeout omshell addnode writeout)],
+            'ISC: and writes a new configuration before OMAPI changes a host' ) or diag("reached: @reached");
+        is( $loaded, 'dhcp', 'ISC: and restarts dhcpd with it first' );
+        open( my $fh, '<', $conf ) or die "Cannot read $conf: $!";
+        my $final = do { local $/; <$fh> };
+        close($fh);
+        ok( ( grep { index( $final, $_ ) >= 0 } @features ) == @features && $final =~ /^omapi-port 7911;$/m,
+            'ISC: and the configuration it writes last keeps the iPXE options and the OMAPI port' );
+        ok( !-e "$conf.ipxe-restart", 'ISC: and leaves no restart marker' );
+
+        unlink $conf, "$conf.ipxe-restart";
+        $write->( 0, @lines ) if @lines;
+        like( $makedhcp->(1), qr/Unable to restart the DHCP server with the new configuration/,
+            "ISC: makedhcp with $label reports a dhcpd that does not restart with the new configuration" );
+        ok( !grep( { $_ eq 'omshell' } @reached ), 'ISC: and changes no host' ) or diag("reached: @reached");
+
+        # The configuration is on disk once a run stops before dhcpd restarts, so the next run takes the
+        # path of an upgraded configuration that already declares the options.
+        unlink $conf, "$conf.ipxe-restart";
+        $write->( 0, @lines ) if @lines;
+        {
+            local *xCAT_plugin::dhcp::restart_dhcpd = sub { die "stopped\n"; };
+            $makedhcp->(0);
+        }
+        $loaded = undef;
+        unlike( $makedhcp->(0), qr/iPXE feature options|Unable to restart/,
+            "ISC: makedhcp after a run with $label that stopped before the restart gives no restart error" );
+        ok( !grep( { $_ eq 'newconfig' } @reached ), 'ISC: and keeps the configuration of that run' ) or diag("reached: @reached");
+        is( $loaded, 'dhcp', 'ISC: and restarts dhcpd before OMAPI changes a host' );
+        ok( !-e "$conf.ipxe-restart", 'ISC: and then removes the marker' );
     }
 
   SKIP: {
