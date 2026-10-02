@@ -128,9 +128,11 @@ end
 
 start:xdsh_o
 label:cn_os_ready,parallel_cmds
+#OpenSSH 10 prints its version banner behind a "debug1:" prefix, so the banner is no longer
+#the first text after the node name. Match the banner itself; the next check keeps the prefix.
 cmd:xdsh $$CN -o "-v" date
 check:rc==0
-check:output=~$$CN: OpenSSH
+check:output=~OpenSSH_[0-9]
 check:output=~$$CN: debug
 end
 
