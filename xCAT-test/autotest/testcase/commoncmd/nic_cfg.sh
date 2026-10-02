@@ -53,15 +53,21 @@ detect_backend() {
     fi
 }
 
-# Resolve a connection's on-disk keyfile path. NM names it "<id>-<uuid>.nmconnection"
-# (not just "<id>.nmconnection") whenever a same-named file already exists, so resolve by
-# UUID rather than assuming the plain name.
-nm_keyfile() {
-    local conn=$1 uuid
+# Resolve a connection's on-disk file, which NM reports. The keyfile plugin keeps it under
+# /etc/NetworkManager/system-connections; the ifcfg-rh plugin, which owns xCAT connections on
+# EL8, keeps it under /etc/sysconfig/network-scripts.
+#
+# Resolve by UUID: NM names a keyfile "<id>-<uuid>.nmconnection", not "<id>.nmconnection",
+# whenever a same-named file already exists.
+nm_conn_file() {
+    local conn=$1 uuid file
     uuid=$(nmcli -g connection.uuid connection show "$conn" 2>/dev/null)
-    if [ -n "$uuid" ]; then
-        grep -l "uuid=$uuid" "$NMDIR"/*.nmconnection 2>/dev/null | head -1
+    [ -n "$uuid" ] || return 0
+    file=$(nmcli -t -f UUID,FILENAME connection show 2>/dev/null | sed -n "s|^${uuid}:||p" | head -1)
+    if [ -z "$file" ]; then
+        file=$(grep -l "uuid=$uuid" "$NMDIR"/*.nmconnection 2>/dev/null | head -1)
     fi
+    printf '%s\n' "$file"
 }
 
 # Resolve the NetworkManager connection name bound to a device.
@@ -101,14 +107,15 @@ nm_show() {
     done
     IFS="$oldifs"
     mtu=$(nmcli -g 802-3-ethernet.mtu connection show "$conn" 2>/dev/null)
-    kf=$(nm_keyfile "$conn")
+    kf=$(nm_conn_file "$conn")
+    # A keyfile spells it "mtu=", an ifcfg file "MTU=".
     if { [ -z "$mtu" ] || [ "$mtu" = "auto" ]; } && [ -n "$kf" ] && [ -r "$kf" ]; then
-        mtu=$(awk -F= '/^[[:space:]]*mtu=/{print $2; exit}' "$kf")
+        mtu=$(awk -F= '/^[[:space:]]*[Mm][Tt][Uu]=/{print $2; exit}' "$kf")
     fi
     [ -n "$mtu" ] && [ "$mtu" != "auto" ] && echo "MTU=$mtu"
-    # Raw keyfile so anything not normalized above (extra params, slaves, vlan id, ...)
+    # Raw backend file so anything not normalized above (extra params, slaves, vlan id, ...)
     # is still visible and greppable by the case's check: lines.
-    if [ -r "$kf" ]; then echo "# --- $kf ---"; cat "$kf"; fi
+    if [ -n "$kf" ] && [ -r "$kf" ]; then echo "# --- $kf ---"; cat "$kf"; fi
 }
 
 file_show() {
