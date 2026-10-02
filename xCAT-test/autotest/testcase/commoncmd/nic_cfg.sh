@@ -33,13 +33,15 @@
 # know the connection naming.
 ###############################################################################
 
-NMDIR=/etc/NetworkManager/system-connections
-RHDIR=/etc/sysconfig/network-scripts
-SUSEDIR=/etc/sysconfig/network
-UBUDIR=/etc/network/interfaces.d
-BACKUP=/tmp/backupnet
+# Overridable so a bats test can drive the subcommands against a scratch tree.
+NMDIR=${NMDIR:-/etc/NetworkManager/system-connections}
+RHDIR=${RHDIR:-/etc/sysconfig/network-scripts}
+SUSEDIR=${SUSEDIR:-/etc/sysconfig/network}
+UBUDIR=${UBUDIR:-/etc/network/interfaces.d}
+BACKUP=${BACKUP:-/tmp/backupnet}
 
 detect_backend() {
+    if [ -n "$NIC_CFG_BACKEND" ]; then echo "$NIC_CFG_BACKEND"; return 0; fi
     if command -v nmcli >/dev/null 2>&1 && systemctl is-active --quiet NetworkManager 2>/dev/null; then
         echo nm
     elif [ -d "$SUSEDIR" ] && grep -qi suse /etc/*release 2>/dev/null; then
