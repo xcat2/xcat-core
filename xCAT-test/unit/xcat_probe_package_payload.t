@@ -28,33 +28,15 @@ my @affected_subcommands = qw(
     xcatmn
 );
 
-my $builder = slurp_repo_file('buildrpms.pl');
+# How buildrpms.pl stages the xCAT-probe sources is asserted by
+# xcat_probe_sources_staged.t, which runs the staging and reads the archive. Seven assertions
+# here matched the text of buildrpms.pl instead, and four of them could not fail: three matched
+# the xCAT-release routine, which stages the same way, and one spanned the rest of the file. All
+# seven stayed green while the staging directory was unset and every RPM target died.
 my $installed_probe_test =
   slurp_repo_file('xCAT-test/autotest/testcase/probe/xcatproble_list');
 my $rpm_spec = slurp_repo_file('xCAT-probe/xCAT-probe.spec');
 my $debian_control = slurp_repo_file('xCAT-probe/debian/control');
-like($builder, qr/sub prepare_xcat_probe_source_tar\b/, 'RPM builder has dedicated xCAT-probe source preparation');
-like(
-    $builder,
-    qr/for my \$helper \(\@XCAT_PROBE_HELPERS\).*?cp "perl-xCAT\/xCAT\/\$helper", \$destination;/s,
-    'RPM builder copies every declared helper into the staged package tree'
-);
-like($builder, qr/tempfile\(.*?DIR\s*=>\s*\$SOURCES/s, 'RPM builder writes a unique archive in the source directory');
-like($builder, qr/--use-compress-program="gzip -n"/, 'RPM builder normalizes gzip metadata');
-like($builder, qr/rename\s+\$archive_path,\s*\$source_tarball/, 'RPM builder publishes the source archive atomically');
-like(
-    $builder,
-    qr/elsif \(\$pkg eq "xCAT-probe"\)\s*\{.*?\breturn;/s,
-    'target workers reuse the source archive prepared before the fork'
-);
-
-my $prepare_call = rindex($builder, 'prepare_xcat_probe_source_tar()');
-my $worker_fanout = index($builder, 'Parallel::ForkManager->new');
-ok(
-    $prepare_call >= 0 && $worker_fanout >= 0 && $prepare_call < $worker_fanout,
-    'xCAT-probe source preparation runs before worker processes fork'
-);
-
 like(
     $rpm_spec,
     qr/%if 0%\{\?suse_version\}\s+Requires: iproute2\s+%else\s+Requires: iproute\s+%endif/s,
@@ -75,7 +57,6 @@ stage_probe_helpers(repo_path(File::Spec->catdir('perl-xCAT', 'xCAT')), $staged_
 for my $helper (@helpers) {
     my $source = repo_path(File::Spec->catfile('perl-xCAT', 'xCAT', $helper));
     ok(-f $source, "$helper source exists");
-    like($builder, qr/^\s*\Q$helper\E\s*$/m, "RPM builder stages $helper");
     ok(
         scalar(grep { $_ eq $helper } XCAT_PROBE_HELPERS),
         "the shared builder helper list carries $helper"

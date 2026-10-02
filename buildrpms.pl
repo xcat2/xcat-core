@@ -55,7 +55,7 @@ use File::Temp qw(tempdir tempfile);
 use FindBin qw($Bin);
 use lib "$Bin/build-utils/lib";
 use XCAT::BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildinfo_text
-    prepare_build_sources_dir
+    prepare_build_sources_dir stage_xcat_probe_sources
                         stage_genesis_base_sources
                         write_script read_line targetarch_from_target
                         openeuler_build_target openeuler_repo_subdir);
@@ -79,13 +79,6 @@ my $SOURCES = '';
 system('mkdir', '-p', map { "$ENV{HOME}/rpmbuild/$_" } qw(SOURCES SPECS BUILD BUILDROOT RPMS SRPMS));
 my $VERSION = read_line("Version") // die "Cannot read Version\n";
 my $PWD = Cwd::cwd();
-my @XCAT_PROBE_HELPERS = qw(
-    CommandUtils.pm
-    GlobalDef.pm
-    NetworkUtils.pm
-    ServiceNodeUtils.pm
-);
-
 
 # Gitinfo is regenerated at each run with the current git revision.
 my $GITINFO = git_revision();
@@ -354,38 +347,6 @@ sub buildsources_genesis_base($) {
         $SOURCE_DATE_EPOCH);
 }
 
-sub prepare_xcat_probe_source_tar {
-    my $staging_parent = tempdir("xcat-probe-source.XXXXXX", TMPDIR => 1, CLEANUP => 1);
-    my $staging_root = "$staging_parent/xCAT-probe";
-    my $helper_dir = "$staging_root/lib/perl/xCAT";
-    my $source_tarball = "$SOURCES/xCAT-probe-$VERSION.tar.gz";
-
-    sh_or_die(qq(cp -a "xCAT-probe" "$staging_root"),
-        "Error staging xCAT-probe sources");
-
-    remove_tree($helper_dir) if -e $helper_dir;
-    make_path($helper_dir);
-    chmod 0755, $helper_dir;
-    for my $helper (@XCAT_PROBE_HELPERS) {
-        my $destination = "$helper_dir/$helper";
-        cp "perl-xCAT/xCAT/$helper", $destination;
-        chmod 0644, $destination;
-    }
-
-    my ($archive_fh, $archive_path) = tempfile(
-        ".xCAT-probe-$VERSION.XXXXXX",
-        DIR => $SOURCES,
-        UNLINK => 1,
-    );
-    close $archive_fh;
-
-    sh_or_die(qq(tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="\@$SOURCE_DATE_EPOCH" --use-compress-program="gzip -n" -cf "$archive_path" -C "$staging_parent" xCAT-probe),
-        "Error creating $source_tarball");
-
-    chmod 0644, $archive_path;
-    rename $archive_path, $source_tarball;
-}
-
 sub prepare_xcat_release_source_tar {
     my ($subdir) = @_;
     my $staging_parent = tempdir("xcat-release-source.XXXXXX", TMPDIR => 1, CLEANUP => 1);
@@ -454,8 +415,7 @@ EOF
       # xCATsn.spec consumes templates from xCAT shared templates payload.
       sh qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf "$SOURCES/templates.tar.gz" xCAT/templates) unless -f "$SOURCES/templates.tar.gz";
     } elsif ($pkg eq "xCAT-probe") {
-      # Prepared once before target builds fork so workers only read a complete archive.
-      return;
+      stage_xcat_probe_sources(".", $SOURCES, $VERSION, $SOURCE_DATE_EPOCH);
     } else {
       sh qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf "$SOURCES/$pkg-$VERSION.tar.gz" $pkg);
     }
@@ -1012,9 +972,6 @@ sub main {
 
     usage(message => "openEuler binary repository builds require --gpg-sign")
         if defined($native_subdir) && !$opts{source_only} && !$opts{gpg_sign};
-
-    prepare_xcat_probe_source_tar()
-        if grep { $_ eq "xCAT-probe" } $opts{packages}->@*;
 
     # ---- concurrency guard (mirrors cluster-test.pl's per-cluster lock) --------------------------
     # Every per-package mock chroot/config for this run shares the "<pkg>-<target><ext>" namespace:
