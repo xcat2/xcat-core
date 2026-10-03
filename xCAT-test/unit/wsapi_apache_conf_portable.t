@@ -1,8 +1,6 @@
 #!/usr/bin/env perl
-# The artifacts under test are an Apache configuration fragment and an RPM spec.
-# Neither one executes, and in both the text IS the contract, so this test parses
-# them instead of running them: the fragment into directives and enclosing
-# sections, the spec into its scriptlet sections.
+# The fragment and the spec do not execute and their text IS the contract, so this
+# test parses them rather than running them.
 use strict;
 use warnings;
 
@@ -98,9 +96,7 @@ sub guarded_by {
 }
 
 #-----------------------------------------------------------------------------
-# The fragments xCAT-server ships to the RPM families (EL, openEuler, SUSE).
-# xcat-ws.conf.ubuntu is excluded on purpose: only debian/rules uses it, and
-# Debian keeps its Apache modules in one stable directory on every release.
+# The RPM families only. debian/rules owns xcat-ws.conf.ubuntu.
 #-----------------------------------------------------------------------------
 my @fragments = sort grep { !m{\.ubuntu$} }
   map { my $p = $_; $p =~ s{^.*/(xCAT-server/)}{$1}; $p }
@@ -112,9 +108,7 @@ die "No Apache fragment found under $wsapi_dir; the test can measure nothing\n"
 foreach my $fragment (@fragments) {
     my @directives = parse_apache_fragment( slurp_repo_file($fragment) );
 
-    # The defect: a LoadModule naming one distribution's MPM directory. The
-    # path is absent on EL and openEuler, and absent on SUSE under any MPM but
-    # prefork, and a LoadModule whose file is missing stops Apache from starting.
+    # A LoadModule naming one distribution's MPM directory is absent on the others.
     my @load_module = grep { lc( $_->{directive} ) eq 'loadmodule' } @directives;
     is( scalar @load_module, 0,
         "$fragment declares no LoadModule, so the server owns module loading" )
@@ -130,9 +124,7 @@ foreach my $fragment (@fragments) {
       or diag( 'absolute path in: '
           . join( ', ', map { $_->{directive} } @absolute ) );
 
-    # One file must serve Apache 2.2 and 2.4. mod_rewrite may be absent, so the
-    # redirect is guarded rather than loaded; the authorization directives come
-    # in both generations' spellings, each behind its own guard.
+    # One file serves both generations, each directive behind its own guard.
     my @rewrite = grep { lc( $_->{directive} ) =~ /^rewrite/ } @directives;
     ok( scalar @rewrite, "$fragment still redirects http to https" );
     foreach my $directive (@rewrite) {
@@ -155,10 +147,7 @@ foreach my $fragment (@fragments) {
 }
 
 #-----------------------------------------------------------------------------
-# The packaging half. %post must not replace the conf the payload installed:
-# every supported distribution runs Apache 2.4, so a replacement always happens
-# and "rpm -V xCAT-server" then reports the file changed on every management
-# node, for ever.
+# %post must not replace the payload, or rpm -V reports drift for the life of the install.
 #-----------------------------------------------------------------------------
 my $spec = parse_spec_sections( slurp_repo_file('xCAT-server/xCAT-server.spec') );
 
