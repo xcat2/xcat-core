@@ -302,7 +302,7 @@ if ( grep { $_ eq 'kea' } @backends ) {
     my $network_classes = xCAT::DHCP::BootPolicy->kea_xnba_network_classes(
         net => '192.0.2.0', prefix => 24, next_server => '192.0.2.1', %upstream );
     my $run_kea = sub {
-        my ( $label, $option_defs, $globals, $xnba_efi, $extra, @rows ) = @_;
+        my ( $label, $option_defs, $globals, $xnba_files, $extra, @rows ) = @_;
         my $config = JSON::decode_json( $backend->render_dhcp4_config(
                 {
                     interfaces       => ["${interface}s"],
@@ -311,9 +311,8 @@ if ( grep { $_ eq 'kea' } @backends ) {
                     'client-classes' => [
                         @$extra,
                         @{ xCAT::DHCP::BootPolicy->kea_xnba_node_classes(
-                                xnba_kpxe => 1,
-                                xnba_efi  => $xnba_efi,
-                                nodes     => [
+                                %$xnba_files,
+                                nodes => [
                                     map { { node => $_->{name}, mac => $_->{mac}, next_server => '192.0.2.1', netboot => $_->{netboot}, iscsi => $_->{iscsi} } }
                                       \%xnba, \%ipxe, \%xnba_san, \%ipxe_san
                                 ],
@@ -352,7 +351,8 @@ if ( grep { $_ eq 'kea' } @backends ) {
     my @old_defs = ( { name => 'conf-file', code => 209, type => 'string', space => 'dhcp4' } );
     my @defs = ( @old_defs, @{ xCAT::DHCP::BootPolicy->kea_ipxe_option_defs() } );
     my $globals = xCAT::DHCP::BootPolicy->kea_client_classes(%upstream);
-    $run_kea->( 'Kea', \@defs, $globals, 1, [], @node_rows, @network_rows, @san_rows );
+    my %xnba_files = ( xnba_kpxe => 1, xnba_efi => 1 );
+    $run_kea->( 'Kea', \@defs, $globals, {%xnba_files}, [], @node_rows, @network_rows, @san_rows );
 
     # A SAN node in the boot state gets the loader of its method only on a client without iSCSI. A
     # client with iSCSI gets no boot file, though the subnet offers its network scripts.
@@ -361,13 +361,20 @@ if ( grep { $_ eq 'kea' } @backends ) {
         @{ xCAT::DHCP::BootPolicy->kea_xnba_node_classes( xnba_kpxe => 1, xnba_efi => 1, nodes => $san_nodes ) },
         xCAT::DHCP::BootPolicy->kea_localboot_client_class( macs => [ map { { node => $_->{node}, mac => $_->{mac}, san => 1 } } @$san_nodes ] ),
     );
-    $run_kea->( 'Kea, SAN nodes in the boot state', \@defs, $globals, 1, \@san_boot, @kea_iscsi_rows );
+    $run_kea->( 'Kea, SAN nodes in the boot state', \@defs, $globals, {%xnba_files}, \@san_boot, @kea_iscsi_rows );
 
     # Without the local xNBA UEFI file the UEFI clients of an xnba node still get that file, as in ISC, and
     # not the upstream loader and the discovery script that the global classes give unknown clients.
-    $run_kea->( 'Kea, no xNBA UEFI file', \@defs, $globals, 0, [], map { [ "xnba node, $_->[0]", { mac => $xnba{mac}, %{ $_->[1] } }, $first{xnba}{uefi} ] } (
+    $run_kea->( 'Kea, no xNBA UEFI file', \@defs, $globals, { xnba_kpxe => 1 }, [], map { [ "xnba node, $_->[0]", { mac => $xnba{mac}, %{ $_->[1] } }, $first{xnba}{uefi} ] } (
             [ 'firmware PXE, UEFI', { arch => 7 } ],
             [ 'iPXE with HTTP and EFI, UEFI', { arch => 7, user_class => 'iPXE', ipxe => ipxe(qw(http efi)) } ],
+        ) );
+
+    # With the local xNBA UEFI file only, the UEFI clients of an xnba node still get xNBA and then the
+    # node script, as the global UEFI class gives only the upstream loader.
+    $run_kea->( 'Kea, no xNBA BIOS file', \@defs, $globals, { xnba_efi => 1 }, [], map { [ "xnba node, $_->[0]", { mac => $xnba{mac}, %{ $_->[1] } }, $_->[2] ] } (
+            [ 'firmware PXE, UEFI', { arch => 7 }, $first{xnba}{uefi} ],
+            [ 'xNBA, UEFI arch 7', { arch => 7, user_class => 'xNBA', ipxe => ipxe(qw(http efi iscsi)) }, "http://192.0.2.1/tftpboot/xcat/xnba/nodes/$xnba{name}.uefi" ],
         ) );
 
     # makedhcp without -n adds the iPXE feature options to the configuration of an older makedhcp -n,
@@ -383,7 +390,7 @@ if ( grep { $_ eq 'kea' } @backends ) {
             'boot-file-name' => 'xcat/xnba.efi',
         },
     );
-    $run_kea->( 'Kea, upgraded', $upgraded->{'option-def'}, \@old_globals, 1, [], grep { $_->[0] =~ /^ipxe / } @node_rows, @san_rows );
+    $run_kea->( 'Kea, upgraded', $upgraded->{'option-def'}, \@old_globals, {%xnba_files}, [], grep { $_->[0] =~ /^ipxe / } @node_rows, @san_rows );
 }
 
 done_testing();

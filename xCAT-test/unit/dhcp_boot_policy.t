@@ -532,7 +532,8 @@ is_deeply( xCAT::DHCP::BootPolicy->kea_xnba_network_classes( net => '192.0.2.0',
     'the network classes need a next server' );
 
 # The global classes now give the upstream loader, so an xnba node carries the first stage of xNBA
-# when this server has the xNBA BIOS file, as it has its ISC host statements.
+# when this server has the xNBA BIOS file, as it has its ISC host statements, and the UEFI one when it
+# has the xNBA UEFI file.
 my %xnba_first = ( node => 'cn02', mac => '52:54:00:00:00:02', next_server => '192.0.2.10', netboot => 'xnba' );
 my $xnba_first_context = { 'xcat-mac' => '52:54:00:00:00:02', 'xcat-node' => 'cn02', 'xcat-purpose' => 'xnba-first-stage' };
 is_deeply(
@@ -566,6 +567,15 @@ is_deeply(
     [ map { $_->{name} } @{ xCAT::DHCP::BootPolicy->kea_xnba_node_classes( nodes => [ {%xnba_first} ] ) } ],
     ['xcat-xnba-cn02-525400000002-bios'],
     'without the local xNBA BIOS file, an xnba node has no first-stage classes, as it has no ISC host statements'
+);
+is_deeply(
+    [ map { [ $_->{name}, $_->{'boot-file-name'} ] } @{ xCAT::DHCP::BootPolicy->kea_xnba_node_classes( xnba_efi => 1, nodes => [ {%xnba_first} ] ) } ],
+    [
+        [ 'xcat-xnba-cn02-525400000002-bios',             'http://192.0.2.10/tftpboot/xcat/xnba/nodes/cn02' ],
+        [ 'xcat-xnba-cn02-525400000002-uefi',             'http://192.0.2.10/tftpboot/xcat/xnba/nodes/cn02.uefi' ],
+        [ 'xcat-xnba-cn02-525400000002-uefi-first-stage', 'xcat/xnba.efi' ],
+    ],
+    'with the local xNBA UEFI file only, an xnba node gets xNBA for UEFI from its own first-stage class'
 );
 is_deeply(
     [ map { [ $_->{name}, $_->{'boot-file-name'} ] }
