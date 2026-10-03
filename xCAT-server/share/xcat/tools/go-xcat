@@ -195,13 +195,13 @@ GO_XCAT_DEP_REPOSITORY_IDS=(xcat-dep)
 GO_XCAT_INSTALL_LIST=(perl-xCAT xCAT-client xCAT xCAT-buildkit
 	xCAT-genesis-scripts-ppc64 xCAT-genesis-scripts-x86_64 xCAT-server
 	elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
-	xCAT-genesis-base-ppc64 xCAT-genesis-base-x86_64 xnba-undi)
+	xCAT-genesis-base-ppc64 xCAT-genesis-base-x86_64 ipxe-xcat xnba-undi)
 # For Debian/Ubuntu, it will need a slightly different package list
 type dpkg >/dev/null 2>&1 &&
 GO_XCAT_INSTALL_LIST=(perl-xcat xcat-client xcat xcat-buildkit
 	xcat-genesis-scripts-amd64 xcat-genesis-scripts-ppc64el xcat-server
 	elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
-	xcat-genesis-base-amd64 xcat-genesis-base-ppc64el xnba-undi)
+	xcat-genesis-base-amd64 xcat-genesis-base-ppc64el ipxe-xcat xnba-undi)
 # The package list of all the packages should be uninstalled
 GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
 	goconserver xCAT-SoftLayer xCAT-confluent xCAT-csm xCAT-genesis-builder
@@ -2475,6 +2475,29 @@ function boo_boo_if_bad()
 	exit "${rc}"
 }
 
+# A riscv64 management node has no legacy Genesis: its image ships as the OpenEmbedded package,
+# which mknb installs. The legacy Genesis scripts and bases are therefore dropped and the
+# OpenEmbedded package of the architecture is asked for instead.
+#
+# The x86 boot loaders stay: they are payload a management node SERVES to x86 nodes over TFTP,
+# not host binaries, so a riscv64 management node needs them to boot a mixed cluster.
+function riscv64_install_list()
+{
+	local genesis_package="xCAT-genesis-openembedded-riscv64"
+	type dpkg >/dev/null 2>&1 && genesis_package="xcat-genesis-openembedded-riscv64"
+	local package
+	for package in "$@"; do
+		case "${package}" in
+		*genesis-scripts-*|*genesis-base-*)
+			;;
+		*)
+			printf '%s\n' "${package}"
+			;;
+		esac
+	done
+	printf '%s\n' "${genesis_package}"
+}
+
 #
 # |\/| _.o._   ._ .__  _ .__.._ _    _  _  _  _  |_  _ .__
 # |  |(_||| |  |_)|(_)(_||(_|| | |  (_|(_)(/__>  | |(/_|(/_ o
@@ -2596,29 +2619,6 @@ case "${GO_XCAT_ARCH}" in
 	exit_if_bad 1 "${GO_XCAT_ARCH}: unsupported instruction set architecture"
 	;;
 esac
-
-# A riscv64 management node has no legacy Genesis: its image ships as the OpenEmbedded package,
-# which mknb installs. The legacy Genesis scripts and bases are therefore dropped and the
-# OpenEmbedded package of the architecture is asked for instead.
-#
-# The x86 boot loaders stay: they are payload a management node SERVES to x86 nodes over TFTP,
-# not host binaries, so a riscv64 management node needs them to boot a mixed cluster.
-function riscv64_install_list()
-{
-	local genesis_package="xCAT-genesis-openembedded-riscv64"
-	type dpkg >/dev/null 2>&1 && genesis_package="xcat-genesis-openembedded-riscv64"
-	local package
-	for package in "$@"; do
-		case "${package}" in
-		*genesis-scripts-*|*genesis-base-*)
-			;;
-		*)
-			printf '%s\n' "${package}"
-			;;
-		esac
-	done
-	printf '%s\n' "${genesis_package}"
-}
 
 if [ "${GO_XCAT_ARCH}" = "riscv64" ]; then
 	riscv64_list=()

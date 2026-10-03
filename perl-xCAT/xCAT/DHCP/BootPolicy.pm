@@ -6,14 +6,15 @@ use warnings;
 sub kea_client_classes {
     my ( $class, %opts ) = @_;
 
-    my $xnba_user_class = xnba_user_class_test();
+    # An unknown x86 client boots the upstream loader.
+    my $loader = $class->x86_loader( method => 'ipxe' );
     my $uefi_x64_arch_match = uefi_x64_client_architecture_match_expr();
     my $etherboot = etherboot_vendor_class_test();
     # No substitute when the loader is not on disk: naming a file the TFTP
     # server does not have costs the client a timeout it cannot diagnose, and a
     # different loader boots something nobody asked for.
-    my $bios_boot = $opts{xnba_kpxe} ? 'xcat/xnba.kpxe' : '';
-    my $uefi_boot = $opts{xnba_efi}  ? 'xcat/xnba.efi'  : '';
+    my $bios_boot = $opts{ipxe_bios} ? $loader->{bios} : '';
+    my $uefi_boot = $opts{ipxe_uefi} ? $loader->{uefi} : '';
     my @classes;
 
     push @classes, @{ $opts{xnba_node_classes} || [] };
@@ -26,7 +27,7 @@ sub kea_client_classes {
         push @classes, (
             {
                 name             => 'xcat-bios',
-                test             => "option[93].hex == 0x0000 and not ($xnba_user_class)",
+                test             => "option[93].hex == 0x0000 and not ($loader->{kea_second_stage_bios})",
                 'boot-file-name' => $bios_boot,
             },
             # Etherboot predates option 93: it says what it is in option 60 and
@@ -42,7 +43,7 @@ sub kea_client_classes {
     if ($uefi_boot ne '') {
         push @classes, {
             name             => 'xcat-uefi-x64',
-            test             => "($uefi_x64_arch_match) and not ($xnba_user_class)",
+            test             => "($uefi_x64_arch_match) and not ($loader->{kea_second_stage_uefi})",
             'boot-file-name' => $uefi_boot,
         };
     }
@@ -288,7 +289,8 @@ sub isc_client_architecture_lines {
     my $portsuffix = $opts{portsuffix}  // '';
     my $net        = $opts{net}         // '';
     my $maskbits   = $opts{prefix}      // '';
-    my $xnba       = $class->isc_xnba_user_class_test();
+    my $loader     = $class->x86_loader( method => 'ipxe' );
+    my $nets       = "http://$tftp$portsuffix/tftpboot/$loader->{scripts}/nets/${net}_${maskbits}";
 
     # Which loaders are actually on disk. A branch naming a file the TFTP server
     # does not have costs the client a full timeout it cannot diagnose, so the
@@ -297,8 +299,8 @@ sub isc_client_architecture_lines {
     my $present = $opts{loader_present} || sub { return 1 };
     my $tftpdir = $opts{tftpdir} || '/tftpboot';
     $tftpdir =~ s{/+$}{};
-    my $kpxe = $present->("$tftpdir/xcat/xnba.kpxe");
-    my $efi  = $present->("$tftpdir/xcat/xnba.efi");
+    my $kpxe = $present->("$tftpdir/$loader->{bios}");
+    my $efi  = $present->("$tftpdir/$loader->{uefi}");
 
     # Each entry is the head of one branch and its statements. They are chained
     # afterwards so dropping one still leaves a well-formed if/else chain.
@@ -306,39 +308,39 @@ sub isc_client_architecture_lines {
 
     if ($kpxe) {
         push @branches, [
-            "$xnba and option client-architecture = 00:00 { #x86, xCAT Network Boot Agent\n",
+            "$loader->{isc_second_stage_bios} and option client-architecture = 00:00 { #x86, iPXE second stage\n",
             "        always-broadcast on;\n",
-            "        filename = \"http://$tftp$portsuffix/tftpboot/xcat/xnba/nets/${net}_${maskbits}\";\n",
+            "        filename = \"$nets\";\n",
         ];
     }
     if ($efi) {
         push @branches, [
-            "$xnba and option client-architecture = 00:09 { #x86, xCAT Network Boot Agent\n",
-            "        filename = \"http://$tftp$portsuffix/tftpboot/xcat/xnba/nets/${net}_${maskbits}.uefi\";\n",
+            "$loader->{isc_second_stage_uefi} and option client-architecture = 00:09 { #x86, iPXE second stage\n",
+            "        filename = \"$nets.uefi\";\n",
           ],
           [
-            "$xnba and option client-architecture = 00:07 { #x86-64 UEFI, xCAT Network Boot Agent\n",
-            "        filename = \"http://$tftp$portsuffix/tftpboot/xcat/xnba/nets/${net}_${maskbits}.uefi\";\n",
+            "$loader->{isc_second_stage_uefi} and option client-architecture = 00:07 { #x86-64 UEFI, iPXE second stage\n",
+            "        filename = \"$nets.uefi\";\n",
           ];
     }
     if ($kpxe) {
         push @branches, [
             "option client-architecture = 00:00  { #x86\n",
-            "        filename \"xcat/xnba.kpxe\";\n",
+            "        filename \"$loader->{bios}\";\n",
           ],
           [
             "option vendor-class-identifier = \"Etherboot-5.4\"  { #x86\n",
-            "        filename \"xcat/xnba.kpxe\";\n",
+            "        filename \"$loader->{bios}\";\n",
           ];
     }
     if ($efi) {
         push @branches, [
             "option client-architecture = 00:07 { #x86_64 uefi\n ",
-            "        filename \"xcat/xnba.efi\";\n",
+            "        filename \"$loader->{uefi}\";\n",
           ],
           [
             "option client-architecture = 00:09 { #x86_64 uefi alternative id\n ",
-            "        filename \"xcat/xnba.efi\";\n",
+            "        filename \"$loader->{uefi}\";\n",
           ],
 
           # 0x0010 is the same x86-64 UEFI firmware and loader as 0x0007,
@@ -346,7 +348,7 @@ sub isc_client_architecture_lines {
           # a mainstream client falls through to /yaboot.
           [
             "option client-architecture = 00:10 { #x86_64 uefi http boot\n ",
-            "        filename \"xcat/xnba.efi\";\n",
+            "        filename \"$loader->{uefi}\";\n",
           ];
     }
 
@@ -426,33 +428,75 @@ sub kea_xnba_node_classes {
     my ( $class, %opts ) = @_;
 
     my $nodes = $opts{nodes} || [];
-    my $xnba_user_class = xnba_user_class_test();
     my $uefi_x64_arch_match = uefi_x64_client_architecture_match_expr();
     my @classes;
 
     foreach my $node (@$nodes) {
-        next unless $node->{node} && $node->{mac} && $node->{next_server};
-        my $class_base = _xnba_class_base( $node->{node}, $node->{mac} );
+        next unless $node->{node} && $node->{mac};
+        my $loader = $class->x86_loader( method => $node->{netboot}, san => $node->{iscsi} );
+        my $class_base = _node_class_base( $loader->{method}, $node->{node}, $node->{mac} );
         my $mac_test = _mac_test( $node->{mac} );
+        my $context = $loader->{method} eq 'ipxe' ? _node_user_context( $node, 'ipxe-boot' ) : _xnba_user_context($node);
+
+        # A node that boots from its SAN disk gets the loader of its method only on a client that
+        # cannot attach the disk, as its ISC host statements do: BIOS for xNBA, BIOS and UEFI for iPXE.
+        if ( $node->{san_boot} ) {
+            next if $loader->{method} eq 'xnba' && !$opts{xnba_kpxe};
+            my $san_context = $loader->{method} eq 'ipxe' ? $context : _node_user_context( $node, 'xnba-first-stage' );
+            push @classes, {
+                name             => "$class_base-bios-san",
+                test             => "option[93].hex == 0x0000 and not ($loader->{kea_san_boot}) and $mac_test",
+                'boot-file-name' => $loader->{bios},
+                'user-context'   => $san_context,
+            };
+            push @classes, {
+                name             => "$class_base-uefi-san",
+                test             => "($uefi_x64_arch_match) and not ($loader->{kea_san_boot}) and $mac_test",
+                'boot-file-name' => $loader->{uefi},
+                'user-context'   => $san_context,
+            } if $loader->{method} eq 'ipxe';
+            next;
+        }
+
+        next unless $node->{next_server};
         my $httpport = $node->{httpport} || '80';
         my $portsuffix = ( $httpport eq '80' ) ? '' : ":$httpport";
-        my $base_url = 'http://' . $node->{next_server} . $portsuffix . '/tftpboot/xcat/xnba/nodes/' . $node->{node};
+        my $base_url = 'http://' . $node->{next_server} . $portsuffix . "/tftpboot/$loader->{scripts}/nodes/" . $node->{node};
 
         push @classes, {
             name             => "$class_base-bios",
-            test             => "$xnba_user_class and option[93].hex == 0x0000 and $mac_test",
+            test             => "$loader->{kea_second_stage_bios} and option[93].hex == 0x0000 and $mac_test",
             'boot-file-name' => $base_url,
-            'user-context'   => _xnba_user_context($node),
+            'user-context'   => $context,
         };
 
-        if ( $opts{xnba_efi} ) {
+        if ( $loader->{method} eq 'ipxe' || $opts{xnba_efi} ) {
             push @classes, {
                 name             => "$class_base-uefi",
-                test             => "$xnba_user_class and ($uefi_x64_arch_match) and $mac_test",
+                test             => "$loader->{kea_second_stage_uefi} and ($uefi_x64_arch_match) and $mac_test",
                 'boot-file-name' => "$base_url.uefi",
-                'user-context'   => _xnba_user_context($node),
+                'user-context'   => $context,
             };
         }
+
+        # Each node carries its own first-stage classes, as its ISC host statements do, because an
+        # upgrade keeps the global classes of an older makedhcp -n until the next makedhcp -n. An
+        # xnba node has them with the local xNBA BIOS file, as it has its ISC host statements, and the
+        # UEFI one also with the local xNBA UEFI file, as the global UEFI class gives only the upstream loader.
+        my $xnba = $loader->{method} eq 'xnba';
+        my $first_context = $xnba ? _node_user_context( $node, 'xnba-first-stage' ) : $context;
+        push @classes, {
+            name             => "$class_base-bios-first-stage",
+            test             => "option[93].hex == 0x0000 and not ($loader->{kea_second_stage_bios}) and $mac_test",
+            'boot-file-name' => $loader->{bios},
+            'user-context'   => $first_context,
+          } unless $xnba && !$opts{xnba_kpxe};
+        push @classes, {
+            name             => "$class_base-uefi-first-stage",
+            test             => "($uefi_x64_arch_match) and not ($loader->{kea_second_stage_uefi}) and $mac_test",
+            'boot-file-name' => $loader->{uefi},
+            'user-context'   => $first_context,
+          } unless $xnba && !$opts{xnba_kpxe} && !$opts{xnba_efi};
     }
 
     return \@classes;
@@ -626,7 +670,7 @@ sub kea_localboot_guard {
 # An empty boot-file-name is not enough: Kea reads it as "not specified" and falls
 # through to the classes. So the MACs go into one class every boot-file class
 # excludes -- see kea_apply_localboot_guard. A node booting from an iSCSI target is
-# deliberately not here: gPXE attaches its root disk, so it does want a loader.
+# here only for a client that can attach the disk: an earlier stage wants a loader.
 sub kea_localboot_client_class {
     my ( $class, %opts ) = @_;
 
@@ -637,10 +681,10 @@ sub kea_localboot_client_class {
 
     return {
         name           => kea_localboot_class_name(),
-        test           => join( ' or ', map { _mac_test( $_->{mac} ) } @sorted ),
+        test           => join( ' or ', map { $_->{san} ? '(' . _mac_test( $_->{mac} ) . ' and ' . _kea_features(qw(iscsi)) . ')' : _mac_test( $_->{mac} ) } @sorted ),
         'user-context' => {
             'xcat-purpose' => 'localboot-suppress',
-            'xcat-macs'    => [ map { { node => $_->{node}, mac => lc( $_->{mac} ) } } @sorted ],
+            'xcat-macs'    => [ map { { node => $_->{node}, mac => lc( $_->{mac} ), ( $_->{san} ? ( san => 1 ) : () ) } } @sorted ],
         },
     };
 }
@@ -666,7 +710,7 @@ sub kea_xnba_network_classes {
 
     return [] unless $opts{net} && defined $opts{prefix} && $opts{next_server};
 
-    my $xnba_user_class = xnba_user_class_test();
+    my $loader = $class->x86_loader( method => 'ipxe' );
     my $uefi_x64_arch_match = uefi_x64_client_architecture_match_expr();
     my $httpport = $opts{httpport} || '80';
     my $portsuffix = ( $httpport eq '80' ) ? '' : ":$httpport";
@@ -674,28 +718,250 @@ sub kea_xnba_network_classes {
     my $safe_network = $network_id;
     $safe_network =~ s/[^A-Za-z0-9_.-]/_/g;
     my $base_url = 'http://' . $opts{next_server} . $portsuffix
-      . '/tftpboot/xcat/xnba/nets/' . $network_id;
+      . "/tftpboot/$loader->{scripts}/nets/" . $network_id;
+
     my @classes;
 
-    if ( $opts{xnba_kpxe} ) {
+    # The second stage is fetched over HTTP, but it is the first stage that asks for it.
+    if ( $opts{ipxe_bios} ) {
         push @classes, {
-            name             => "xcat-xnba-net-$safe_network-bios",
-            test             => "$xnba_user_class and option[93].hex == 0x0000",
+            name             => "xcat-ipxe-net-$safe_network-bios",
+            test             => "$loader->{kea_second_stage_bios} and option[93].hex == 0x0000",
             'boot-file-name' => $base_url,
             additional_only  => 1,
         };
     }
 
-    if ( $opts{xnba_efi} ) {
+    if ( $opts{ipxe_uefi} ) {
         push @classes, {
-            name             => "xcat-xnba-net-$safe_network-uefi",
-            test             => "$xnba_user_class and ($uefi_x64_arch_match)",
+            name             => "xcat-ipxe-net-$safe_network-uefi",
+            test             => "$loader->{kea_second_stage_uefi} and ($uefi_x64_arch_match)",
             'boot-file-name' => "$base_url.uefi",
             additional_only  => 1,
         };
     }
 
     return \@classes;
+}
+
+# iPXE feature indicators: sub-options of DHCP option 175 that iPXE sends, one byte each, for the
+# protocols and image formats it was built with.
+my @IPXE_FEATURES = (
+    [ iscsi   => 17 ],
+    [ http    => 19 ],
+    [ bzimage => 24 ],
+    [ pxe     => 33 ],
+    [ efi     => 36 ],
+);
+
+# The ISC declarations of the iPXE feature indicators, in the gpxe option space. They decode the
+# options and change no rule. OMAPI keeps host statements in dhcpd.leases, so they are always
+# declared: a statement that tests them must parse even when no node needs it any more.
+sub isc_ipxe_feature_option_lines {
+    return [ map { "option gpxe.$_->[0] code $_->[1] = unsigned integer 8;\n" } @IPXE_FEATURES ];
+}
+
+# The Kea definition of option 175 and of the iPXE feature indicators it encapsulates. Kea tests a
+# sub-option without a definition, but never finds it there.
+sub kea_ipxe_option_defs {
+    return [
+        { name => 'gpxe-encap-opts', code => 175, space => 'dhcp4', type => 'empty', encapsulate => 'gpxe' },
+        # The ISC lines use these codes as strings, and JSON::XS then writes them as JSON strings.
+        map { { name => $_->[0], code => 0 + $_->[1], space => 'gpxe', type => 'uint8' } } @IPXE_FEATURES,
+    ];
+}
+
+# An upgrade keeps the configuration of an older makedhcp -n. These add the declarations it lacks
+# and return how many they added, or an error when they cannot add them.
+sub isc_declare_ipxe_features {
+    my ( $class, $conf ) = @_;
+
+    my ($space) = grep { $conf->[$_] =~ /^\s*option\s+space\s+gpxe\s*;/ } 0 .. $#$conf;
+    return ( 0, 'it declares no gpxe option space' ) unless defined $space;
+    my @missing = grep {
+        my ($name) = /^option (\S+) code /;
+        !grep { /^\s*option\s+\Q$name\E\s+code\s/ } @$conf;
+    } @{ $class->isc_ipxe_feature_option_lines() };
+    splice( @$conf, $space + 1, 0, @missing );
+    return ( scalar @missing, undef );
+}
+
+# The Kea variant also returns an error for an option 175 without the gpxe encapsulation: Kea cannot
+# decode the features in it, and option data can name it, so makedhcp does not replace it.
+sub kea_declare_ipxe_features {
+    my ( $class, $dhcp4 ) = @_;
+
+    # Compare codes as numbers: JSON::XS writes a number used as a string as a JSON string.
+    my $defs = $dhcp4->{'option-def'} || [];
+    my ($opaque) = grep {
+        ( $_->{space} // 'dhcp4' ) eq 'dhcp4' && $_->{code} == 175 && ( $_->{encapsulate} // '' ) ne 'gpxe'
+    } @$defs;
+    return ( 0, "The Kea option definition $opaque->{name} gives option 175 no gpxe encapsulation, so netboot=ipxe "
+          . "clients cannot report their iPXE features. Run makedhcp -n, or give $opaque->{name} the gpxe encapsulation." )
+      if $opaque;
+    my @missing = grep {
+        my $def = $_;
+        !grep { ( $_->{space} // 'dhcp4' ) eq $def->{space} && $_->{code} == $def->{code} } @$defs;
+    } @{ $class->kea_ipxe_option_defs() };
+    push @{ $dhcp4->{'option-def'} }, @missing if @missing;
+    return ( scalar @missing, undef );
+}
+
+# The x86 loader of a netboot method, ipxe or xnba: its BIOS and UEFI files, the directory of its boot
+# scripts, and the tests that recognize a client that runs it and can fetch the boot script.
+sub x86_loader {
+    my ( $class, %opts ) = @_;
+
+    if ( ( $opts{method} // 'xnba' ) ne 'ipxe' ) {
+        return {
+            method                => 'xnba',
+            bios                  => 'xcat/xnba.kpxe',
+            uefi                  => 'xcat/xnba.efi',
+            scripts               => 'xcat/xnba',
+            isc_second_stage_bios => $class->isc_xnba_user_class_test(),
+            isc_second_stage_uefi => $class->isc_xnba_user_class_test(),
+            isc_san_boot          => 'exists gpxe.bus-id',
+            kea_san_boot          => _kea_features(qw(iscsi)),
+            kea_second_stage_bios => xnba_user_class_test(),
+            kea_second_stage_uefi => xnba_user_class_test(),
+        };
+    }
+
+    # A client gets the boot script only when it reports the iPXE features that script needs.
+    # Every other client gets the first-stage loader, which has them all. iPXE hooks the iSCSI
+    # root path of a SAN node before it runs the script, so the script of a SAN node also needs iSCSI.
+    # A UEFI client gets the shim that Microsoft signs, and the shim loads snponly.efi from its own
+    # directory: UEFI Secure Boot does not load snponly.efi directly, as only the iPXE CA signs it.
+    my @san = $opts{san} ? ('iscsi') : ();
+    return {
+        method                => 'ipxe',
+        bios                  => 'xcat/ipxe/i386/undionly.kpxe',
+        uefi                  => 'xcat/ipxe/x86_64-sb/snponly-shim.efi',
+        uefi_payload          => 'xcat/ipxe/x86_64-sb/snponly.efi',
+        scripts               => 'xcat/ipxe',
+        isc_second_stage_bios => _isc_features( qw(http bzimage pxe), @san ),
+        isc_second_stage_uefi => _isc_features( qw(http efi), @san ),
+        isc_san_boot          => _isc_features(qw(iscsi)),
+        kea_san_boot          => _kea_features(qw(iscsi)),
+        kea_second_stage_bios => _kea_features( qw(http bzimage pxe), @san ),
+        kea_second_stage_uefi => _kea_features( qw(http efi), @san ),
+    };
+}
+
+sub _isc_features {
+    return join ' and ', map { "exists gpxe.$_" } @_;
+}
+
+sub _kea_features {
+    my %code = map { @$_ } @IPXE_FEATURES;
+    return join ' and ', map { "option[175].option[$code{$_}].exists" } @_;
+}
+
+# What keeps this server from booting an unknown x86 client: an upstream loader file that is missing
+# from the local TFTP directory, or network boot scripts that mknb has not written to xcat/ipxe/nets.
+# Only a server with x86 network boot scripts serves x86 discovery. A node can load from another TFTP
+# server, so these are warnings, not errors.
+sub upstream_loader_warnings {
+    my ( $class, %opts ) = @_;
+
+    my $tftpdir = $opts{tftpdir} // '/tftpboot';
+    $tftpdir =~ s{/+$}{};
+    my $loader = $class->x86_loader( method => 'ipxe' );
+    my %scripts = map { $_ => [ grep { -f } glob("$tftpdir/xcat/$_/nets/*") ] } qw(ipxe xnba);
+    return unless @{ $scripts{ipxe} } || @{ $scripts{xnba} };
+
+    my @warnings = map { "$tftpdir/$_ is missing on this server, so unknown x86 clients and netboot=ipxe nodes cannot load the upstream iPXE loader from it. Install ipxe-xcat on the TFTP server of the x86 nodes." }
+      grep { !-f "$tftpdir/$_" } @{$loader}{qw(bios uefi uefi_payload)};
+    push @warnings, "$tftpdir/$loader->{scripts}/nets has no network boot script, so unknown x86 clients cannot start Genesis. Run mknb for each x86 architecture."
+      unless @{ $scripts{ipxe} };
+    return @warnings;
+}
+
+# Whether this server has a loader that can SAN-boot an x86 node without iSCSI boot data: an
+# undionly.kpxe that the administrator put in the TFTP root, or the BIOS file of the loader of the
+# netboot method of the node.
+sub x86_san_loader_present {
+    my ( $class, %opts ) = @_;
+
+    my $tftpdir = $opts{tftpdir} // '/tftpboot';
+    $tftpdir =~ s{/+$}{};
+    my $loader = $class->x86_loader( method => $opts{method} );
+    return ( -f "$tftpdir/undionly.kpxe" || -f "$tftpdir/$loader->{bios}" ) ? 1 : 0;
+}
+
+# The ISC host statements that choose the boot file of a node with netboot ipxe, xnba or pxe. They
+# reach dhcpd through omshell, so their quotes are escaped.
+sub isc_node_boot_statements {
+    my ( $class, %opts ) = @_;
+
+    my $netboot = $opts{netboot} // '';
+    return '' if $netboot ne 'ipxe' && $netboot ne 'xnba' && $netboot ne 'pxe';
+
+    # The upstream loader can come from another TFTP server, and xNBA only from this one.
+    my $loader = $class->x86_loader( method => $netboot, san => $opts{iscsi} );
+    return '' unless $loader->{method} eq 'ipxe' || $opts{loader_present};
+
+    my $bios      = $loader->{bios};
+    my $uefi      = $loader->{uefi};
+    my $bios_next = _omapi_quote( $loader->{isc_second_stage_bios} );
+    my $uefi_next = _omapi_quote( $loader->{isc_second_stage_uefi} );
+    my $san_boot  = _omapi_quote( $loader->{isc_san_boot} );
+    my $currstate = $opts{currstate} // '';
+    my $script    = 'http://' . ( $opts{next_server} // '' ) . ( $opts{portsuffix} // '' )
+      . "/tftpboot/$loader->{scripts}/nodes/" . ( $opts{node} // '' );
+
+    # A node in state boot or iscsiboot has an operating system and is left to start it (S-31).
+    # An iSCSI root still needs the loader, which attaches the disk.
+    if ( $currstate eq 'boot' || $currstate eq 'iscsiboot' ) {
+        return 'filename = \"\";' unless $opts{iscsi};
+        return 'if ' . $san_boot . ' { filename = \"\"; } else if exists client-architecture { filename = \"' . $bios . '\"; } '
+          if $netboot eq 'pxe';
+
+        # A UEFI client of an ipxe node gets the upstream loader to boot its SAN disk as well.
+        my $uefi_san = $loader->{method} eq 'ipxe'
+          ? ' else if option client-architecture = 00:07 and not ' . $san_boot . ' { filename = \"' . $uefi . '\"; }'
+          . ' else if option client-architecture = 00:09 and not ' . $san_boot . ' { filename = \"' . $uefi . '\"; }'
+          : '';
+        return 'if option client-architecture = 00:00 and not ' . $san_boot . ' { filename = \"' . $bios . '\"; }' . $uefi_san . ' else { filename = \"\"; } ';
+    }
+    return 'if option vendor-class-identifier = \"ScaleMP\" { filename = \"vsmp/pxelinux.0\"; } else { filename = \"pxelinux.0\"; }'
+      if $netboot eq 'pxe';
+
+    # The ipxe rules nest each feature test inside its architecture test: dhcpd saves a host statement
+    # in dhcpd.leases without parentheses, and omshell reads only 1023 bytes of a line.
+    my $bios_rule = sub {
+        my ($broadcast) = @_;
+        my $to_script = '{ ' . ( $broadcast ? 'always-broadcast on; ' : '' ) . 'filename = \"' . $script . '\"; }';
+        return ( 'if option client-architecture = 00:00 { if ' . $bios_next . ' ' . $to_script . ' else { filename = \"' . $bios . '\"; } }', '' )
+          if $loader->{method} eq 'ipxe';
+        return ( 'if ' . $bios_next . ' and option client-architecture = 00:00 ' . $to_script,
+            ' else if option client-architecture = 00:00 { filename = \"' . $bios . '\"; }' );
+    };
+
+    my $uefi_mode = $opts{uefi} // 0;
+    if ( ( $uefi_mode == 2 && $currstate =~ /^install/ ) || $currstate =~ /^winshell/ ) {
+        return 'if option client-architecture = 00:00 or option client-architecture = 00:07 or option client-architecture = 00:09 { filename = \"\"; option vendor-class-identifier \"PXEClient\"; } else { filename = \"\"; }'
+          if $opts{proxydhcp} && $opts{proxydhcp}->();
+        my ( $first, $last ) = $bios_rule->(1);
+        return $first . ' else if option client-architecture = 00:07 or option client-architecture = 00:09 { filename = \"\"; option vendor-class-identifier \"PXEClient\"; }' . $last . ' else { filename = \"\"; }';
+    }
+    if ($uefi_mode) {
+        # dhcpd's expression grammar has no grouping, so each xNBA UEFI architecture gets its own branch.
+        my $uefi_script = 'filename = \"' . $script . '.uefi\";';
+        my $uefi_rule = $loader->{method} eq 'xnba'
+          ? 'else if ' . $uefi_next . ' and option client-architecture = 00:09 { ' . $uefi_script . ' } else if ' . $uefi_next . ' and option client-architecture = 00:07 { ' . $uefi_script . ' } else if option client-architecture = 00:07 { filename = \"' . $uefi . '\"; }'
+          : 'else if option client-architecture = 00:09 or option client-architecture = 00:07 { if ' . $uefi_next . ' { ' . $uefi_script . ' } else { filename = \"' . $uefi . '\"; } }';
+        my ( $first, $last ) = $bios_rule->(1);
+        return $first . ' ' . $uefi_rule . $last . ' else { filename = \"\"; }';
+    }
+    my ( $first, $last ) = $bios_rule->(0);
+    return $first . $last . ' else { filename = \"\"; }';
+}
+
+sub _omapi_quote {
+    my ($text) = @_;
+    $text =~ s/"/\\"/g;
+    return $text;
 }
 
 sub xnba_user_class_test {
@@ -716,12 +982,6 @@ sub _node_class_base {
     $safe_mac =~ s/[^0-9a-f]//g;
 
     return "xcat-$purpose-$safe_node-$safe_mac";
-}
-
-sub _xnba_class_base {
-    my ( $node, $mac ) = @_;
-
-    return _node_class_base( 'xnba', $node, $mac );
 }
 
 sub _mac_test {

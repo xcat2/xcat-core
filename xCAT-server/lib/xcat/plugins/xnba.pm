@@ -19,6 +19,9 @@ my $dhcpconf = "/etc/dhcpd.conf";
 #my $tftpdir = "/tftpboot";
 my $globaltftpdir = xCAT::TableUtils->getTftpDir();
 
+# The directory of the boot scripts under the TFTP root. The ipxe method sets it to xcat/ipxe.
+our $SCRIPTS = 'xcat/xnba';
+
 #my $dhcpver = 3;
 
 my %usage = (
@@ -65,9 +68,9 @@ sub getstate {
     my $tftpdir = shift;
     unless ($tftpdir) { $tftpdir = _slow_get_tftpdir($node); }
     if (check_dhcp($node)) {
-        if (-r $tftpdir . "/xcat/xnba/nodes/" . $node) {
+        if (-r "$tftpdir/$SCRIPTS/nodes/$node") {
             my $fhand;
-            open($fhand, $tftpdir . "/xcat/xnba/nodes/" . $node);
+            open($fhand, "$tftpdir/$SCRIPTS/nodes/$node");
             my $headline = <$fhand>;
             $headline = <$fhand>;    #second line is the comment now...
             close $fhand;
@@ -251,7 +254,7 @@ sub setstate {
         }
     }
 
-    my $bootloader_root = "$tftpdir/xcat/xnba/nodes";
+    my $bootloader_root = "$tftpdir/$SCRIPTS/nodes";
     unless (-d "$bootloader_root") {
         mkpath("$bootloader_root");
     }
@@ -291,24 +294,24 @@ sub setstate {
             my $hypervisor;
             my $kernel;
             ($kernel, $hypervisor) = split /!/, $kern->{kernel};
-            print $pcfg " set 209:string xcat/xnba/nodes/$node.pxelinux\n";
+            print $pcfg " set 209:string $SCRIPTS/nodes/$node.pxelinux\n";
             print $pcfg " set 210:string http://" . '${next-server}' . $portsuffix . "/tftpboot/\n";
             print $pcfg " imgfetch -n pxelinux.0 http://" . '${next-server}' . $portsuffix . "/tftpboot/xcat/pxelinux.0\n";
             print $pcfg " imgload pxelinux.0\n";
             print $pcfg " imgexec pxelinux.0\n";
             close($pcfg);
-            open($pcfg, '>', $tftpdir . "/xcat/xnba/nodes/" . $node . ".pxelinux");
+            open($pcfg, '>', "$bootloader_root/$node.pxelinux");
             print $pcfg "DEFAULT xCAT\nLABEL xCAT\n   KERNEL mboot.c32\n";
             print $pcfg " APPEND $hypervisor --- $kernel " . $pxelinuxkcmdline . " --- " . $kern->{initrd} . "\n";
         } else {
             if ($kern->{kernel} =~ /\.c32\z/ or $kern->{kernel} =~ /memdisk\z/) { #gPXE comboot support seems insufficient, chain pxelinux instead
-                print $pcfg " set 209:string xcat/xnba/nodes/$node.pxelinux\n";
+                print $pcfg " set 209:string $SCRIPTS/nodes/$node.pxelinux\n";
                 print $pcfg " set 210:string http://" . '${next-server}' . $portsuffix . "/tftpboot/\n";
                 print $pcfg " imgfetch -n pxelinux.0 http://" . '${next-server}' . $portsuffix . "/tftpboot/xcat/pxelinux.0\n";
                 print $pcfg " imgload pxelinux.0\n";
                 print $pcfg " imgexec pxelinux.0\n";
                 close($pcfg);
-                open($pcfg, '>', $tftpdir . "/xcat/xnba/nodes/" . $node . ".pxelinux");
+                open($pcfg, '>', "$bootloader_root/$node.pxelinux");
 
                 #It's time to set pxelinux for this node to boot the kernel..
                 print $pcfg "DEFAULT xCAT\nLABEL xCAT\n";
@@ -327,7 +330,7 @@ sub setstate {
                 print $pcfg "IPAPPEND 2\n";
                 if ($kern->{kernel} =~ /esxi[56]/) {  #Make uefi boot provisions
                     my $ucfg;
-                    open($ucfg, '>', $tftpdir . "/xcat/xnba/nodes/" . $node . ".uefi");
+                    open($ucfg, '>', "$bootloader_root/$node.uefi");
                     if ($kern->{kcmdline} =~ /xcat\/netboot/) {
                         $kern->{kcmdline} =~ s/xcat\/netboot/\/tftpboot\/xcat\/netboot/;
                     }
@@ -349,7 +352,7 @@ sub setstate {
                 print $pcfg "imgexec kernel\n";
                 if ($kern->{kcmdline} and $kern->{initrd}) { #only a linux kernel/initrd pair should land here, write elilo config and uefi variant of xnba config file
                     my $ucfg;
-                    open($ucfg, '>', $tftpdir . "/xcat/xnba/nodes/" . $node . ".uefi");
+                    open($ucfg, '>', "$bootloader_root/$node.uefi");
                     if (_use_efistub_for_uefi($kern)) {
                         print $ucfg "#!gpxe\n";
                         print $ucfg "imgfetch -n kernel http://" . '${next-server}' . $portsuffix.'/tftpboot/' . $kern->{kernel} . "\n";
@@ -364,9 +367,9 @@ sub setstate {
                         close($ucfg);
                    } else {
                        print $ucfg "#!gpxe\n";
-                       print $ucfg 'chain http://${next-server}'.$portsuffix.'/tftpboot/xcat/elilo-x64.efi -C /tftpboot/xcat/xnba/nodes/' . $node . ".elilo\n";
+                       print $ucfg 'chain http://${next-server}'.$portsuffix.'/tftpboot/xcat/elilo-x64.efi -C /tftpboot/' . "$SCRIPTS/nodes/$node.elilo\n";
                        close($ucfg);
-                       open($ucfg, '>', $tftpdir . "/xcat/xnba/nodes/" . $node . ".elilo");
+                       open($ucfg, '>', "$bootloader_root/$node.elilo");
                        print $ucfg 'default="xCAT"' . "\n";
                        print $ucfg "delay=0\n\n";
                        print $ucfg "image=/tftpboot/" . $kern->{kernel} . "\n";

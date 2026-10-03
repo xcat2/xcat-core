@@ -2236,6 +2236,10 @@ sub getPostScripts
         {
             $nodecfg = "$tftpdir/xcat/xnba/nodes/$node";
 
+        } elsif ($netboot eq "ipxe")
+        {
+            $nodecfg = "$tftpdir/xcat/ipxe/nodes/$node";
+
         } elsif ($netboot eq "pxe")
         {
             $nodecfg = "$tftpdir/pxelinux.cfg/$node";

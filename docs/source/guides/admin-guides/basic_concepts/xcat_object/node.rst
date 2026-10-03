@@ -33,7 +33,7 @@ Key Attributes
               +--------------------------+----------------------+-----------------------------------+
               | Arch and Machine Type    |   OS                 |       valid netboot options       |
               +==========================+======================+===================================+
-              |       x86, x86_64        |   ALL                |       pxe, xnba, grub2            |
+              |       x86, x86_64        |   ALL                |       pxe, ipxe, xnba, grub2      |
               +--------------------------+----------------------+-----------------------------------+
               |         ppc64            | <=rhel6, <=sles11.3  |       yaboot                      |
               +--------------------------+----------------------+-----------------------------------+
@@ -47,6 +47,8 @@ Key Attributes
               +--------------------------+----------------------+-----------------------------------+
               |        riscv64           | >=el10, >=ubuntu24.04|       grub2,grub2-http,grub2-tftp |
               +--------------------------+----------------------+-----------------------------------+
+
+    On x86, ``ipxe`` boots the node with the upstream iPXE release, and ``xnba`` with the xCAT Network Boot Agent, which is deprecated. See :doc:`/advanced/ipxe/index`.
 
 * postscripts:
     Comma separated list of scripts, that should be run on this node after diskful installation or diskless boot, finish some system configuration and maintenance work. For installation of RedHat, CentOS, Fedora, the scripts will be run before the reboot. For installation of SLES, the scripts will be run after the reboot but before the init.d process.

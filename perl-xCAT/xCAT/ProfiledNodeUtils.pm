@@ -1430,7 +1430,7 @@ sub get_all_vmhosts
 
 #-------------------------------------------------------------------------------
 our %NETBOOT_RULES = (
-    'x86_64' => 'xnba',
+    'x86_64' => 'ipxe',
     'riscv64' => 'grub2',
     'ppc64' => {
         'rhels' => {
@@ -1517,7 +1517,7 @@ sub get_netboot_attr {
     # Rule for netboot attribute.If update the rule,just update %netboot_dict and @condition_array
     # It's sequence sensitive: os arch -> os name -> os major version -> hardware profile
     # Priority |  Arch       | OS Name | OS Major Version | Management method | Noderes.netboot  |
-    # 1        |  x86_64/x86 | *       | *                | *                 | xnba             |
+    # 1        |  x86_64/x86 | *       | *                | *                 | ipxe             |
     # 2        |  ppc64      | rhels   | 7                | *                 | grub2            |
     # 2        |  ppc64      | pkvm    | *                | *                 | petitboot        |
     # 3        |             | *       | *                | *                 | yaboot           |
@@ -1535,6 +1535,25 @@ sub get_netboot_attr {
     {
         return 1, $netboot;
     }
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 profile_netboot
+      Description : The netboot method of a node after a profile change: the method of its new profile,
+                    but a node keeps netboot=xnba, as moving it to the upstream iPXE loader is the
+                    choice of the site.
+      Arguments   : $profile_netboot - the netboot method of the new profile, from get_netboot_attr
+                    $current - the netboot method of the node now, optional
+      Returns     : the netboot method to set
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub profile_netboot {
+    my ( $class, $profile_netboot, $current ) = @_;
+    return $current if ( $current // '' ) eq 'xnba' && $profile_netboot eq 'ipxe';
+    return $profile_netboot;
 }
 
 #-------------------------------------------------------------------------------

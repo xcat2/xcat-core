@@ -27,8 +27,8 @@ against it.
 Note the `-I` flags: unlike the unit tests these run from the installed location, so
 they pick up xCAT modules from `/opt/xcat/lib/perl` rather than from a source tree.
 
-The case checks `rc==0` and `output=~Files=7,`. The file count checks that `prove`
-found all seven files, which catches a packaging regression or a test renamed away from
+The case checks `rc==0` and `output=~Files=9,`. The file count checks that `prove`
+found all nine files, which catches a packaging regression or a test renamed away from
 `.t` without updating the count. It does not prove that environment-gated cases ran;
 inspect the TAP output for skips. **Add to that number when you add a test.** A missing
 directory is already caught by `rc==0` -- `prove -r` on a path that does not exist exits
@@ -48,6 +48,8 @@ A test belongs in `integration/` when it needs something the checkout cannot pro
 | --- | --- |
 | `copycds_packages_integrity.t` | `/install` populated by a real `copycds` |
 | `dhcp_isc_config_validation.t` | a `dhcpd` binary that can read the generated config, as root |
+| `dhcp_isc_ipxe_leases.t` | `dhcpd` and `omshell`, root, and `ip netns` for a private network namespace |
+| `dhcp_ipxe_dispatch.t` | `dhcpd` with `omshell`, or `kea-dhcp4`, root, and `ip netns` for two private network namespaces |
 | `dhcp_kea_config_validation.t` | a `kea-dhcp4` binary that can read the generated config |
 | `dhcp_kea_control_agent_smoke.t` | live `kea-dhcp4` and `kea-ctrl-agent`, root, and the Kea host-commands hook |
 | `html_form_runtime_dependency.t` | the installed `HTML::Form` module |
