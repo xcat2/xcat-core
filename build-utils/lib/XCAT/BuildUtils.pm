@@ -17,19 +17,24 @@ use Exporter 'import';
 use File::Copy qw(copy move);
 use File::Basename qw(basename);
 use File::Path qw(make_path remove_tree);
+use File::Temp qw(tempdir tempfile);
 use File::Slurper qw(read_text write_text);
 use POSIX qw(strftime);
+use Sys::Hostname ();
 use Pod::Usage qw(pod2usage);
 use feature 'say';
 
 our @EXPORT_OK = qw(
     source_date_epoch snap_release deb_version
     stage_probe_helpers XCAT_PROBE_HELPERS stage_genesis_base_sources
+    stage_xcat_probe_sources stage_xcatsn_templates
     deb_package_arches dist_arches default_dists
     orig_tarball_name upstream_version resolve_dest
     pin_control_version rewrite_changelog_header
     reprepro_distributions reprepro_options
     lock_id_for take_build_lock
+    build_sources_base build_sources_dir prepare_build_sources_dir
+    remove_build_sources_dir sweep_build_sources_dirs
     sh_quote clean_debian_residue git_revision
     backup_file restore_file
     sh sh_or_die usage
@@ -427,6 +432,78 @@ sub stage_genesis_base_sources {
         "Error creating $tarball");
 
     remove_tree($staging_parent);
+    return $tarball;
+}
+
+# Stage the xCAT-probe package sources, with the xCAT helper modules xcatprobe loads at
+# runtime copied in beside them. The archive is built under a temporary name in $sources_dir
+# and renamed into place, so a mock build never reads a partial file.
+#
+# $sources_dir is the staging directory of ONE package build, and it is validated rather than
+# interpolated: buildrpms.pl sets it in the child it forks per package, so a caller that runs
+# before the fork passes the empty string. That composed /xCAT-probe-<version>.tar.gz and every
+# RPM target died on the rename. Composing the file name here also keeps one spelling of it.
+sub stage_xcat_probe_sources {
+    my ($checkout, $sources_dir, $version, $epoch) = @_;
+    my $source = "$checkout/xCAT-probe";
+    die "Assertion failed! No directory xCAT-probe in $checkout\n"
+        unless -d $source;
+    die "stage_xcat_probe_sources: staging directory is required\n"
+        unless defined $sources_dir && length $sources_dir;
+    die "stage_xcat_probe_sources: no staging directory $sources_dir\n"
+        unless -d $sources_dir;
+    die "stage_xcat_probe_sources: version is required\n"
+        unless defined $version && length $version;
+
+    my $tarball        = "$sources_dir/xCAT-probe-$version.tar.gz";
+    my $staging_parent = tempdir("xcat-probe-source.XXXXXX", TMPDIR => 1, CLEANUP => 1);
+    my $staging_root   = "$staging_parent/xCAT-probe";
+    sh_or_die(qq(cp -a "$source" "$staging_root"), "Error staging xCAT-probe sources");
+
+    my $helper_dir = "$staging_root/lib/perl/xCAT";
+    remove_tree($helper_dir) if -e $helper_dir;
+    make_path($helper_dir);
+    chmod 0755, $helper_dir;
+    chmod 0644, $_ for stage_probe_helpers("$checkout/perl-xCAT/xCAT", $helper_dir);
+
+    my ($archive_fh, $archive_path) =
+        tempfile(".xCAT-probe-$version.XXXXXX", DIR => $sources_dir, UNLINK => 1);
+    close $archive_fh;
+    sh_or_die(qq(tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="\@$epoch" )
+            . qq(--use-compress-program="gzip -n" -cf "$archive_path" -C "$staging_parent" xCAT-probe),
+        "Error creating $tarball");
+    chmod 0644, $archive_path;
+    rename $archive_path, $tarball
+        or die "Unable to publish $tarball: $!\n";
+    return $tarball;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 stage_xcatsn_templates
+
+Descriptions: Write the templates archive that xCATsn.spec extracts into
+              %{prefix}/share/xcat, with members rooted at templates/.
+
+Arguments:
+  $checkout    - the xcat-core source tree
+  $sources_dir - the staging directory of the xCATsn build
+  $epoch       - SOURCE_DATE_EPOCH for the archive mtimes
+
+Returns: the path of the archive.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub stage_xcatsn_templates {
+    my ($checkout, $sources_dir, $epoch) = @_;
+    die "stage_xcatsn_templates: no staging directory\n"
+        unless defined $sources_dir && -d $sources_dir;
+
+    my $tarball = "$sources_dir/templates.tar.gz";
+    sh_or_die(qq(tar --sort=name --owner=0 --group=0 --mtime="\@$epoch" )
+            . qq(-czf "$tarball" -C "$checkout/xCAT" templates),
+        "Error creating $tarball");
     return $tarball;
 }
 
@@ -893,6 +970,148 @@ sub genesis_log_errors {
         }
     }
     return @found;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 build_sources_base
+
+Descriptions: The directory that holds the per-process rpmbuild SOURCES directories.
+
+Arguments:
+  $home - the home directory; defaults to $ENV{HOME}
+
+Returns: the absolute path of the base directory.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub build_sources_base {
+    my ($home) = @_;
+    $home = $ENV{HOME} unless defined $home && length $home;
+    die "build_sources_base: no home directory\n" unless defined $home && length $home;
+    return "$home/rpmbuild/sources";
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 build_sources_dir
+
+Descriptions: The rpmbuild SOURCES directory of one build process.
+
+Arguments:
+  $base - the directory from build_sources_base
+  $pid  - the pid of the process that stages; defaults to $$
+  $host - the host name; defaults to this host
+
+Returns: the absolute path of the staging directory.
+
+=cut
+
+#-------------------------------------------------------------------------------
+# Keyed by the process that stages. buildrpms.pl forks a child per package and target,
+# and mock --sources copies the whole directory, so a shared directory lets a peer's tar
+# truncate an archive mid-copy. A pid is unique only on one host, and $HOME can be on NFS.
+sub build_sources_dir {
+    my ($base, $pid, $host) = @_;
+    die "build_sources_dir: no base directory\n" unless defined $base && length $base;
+    $pid  = $$ unless defined $pid;
+    die "build_sources_dir: pid '$pid' is not a number\n" unless $pid =~ /^[0-9]+$/;
+    $host = _sources_host($host);
+    return "$base/SOURCES.$host.$pid";
+}
+
+sub _sources_host {
+    my ($host) = @_;
+    $host = Sys::Hostname::hostname() unless defined $host && length $host;
+    $host =~ s/[^A-Za-z0-9._-]/-/g;
+    return $host;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 prepare_build_sources_dir
+
+Descriptions: Create the staging directory of one build process, empty, and return it.
+
+Arguments: the same as build_sources_dir.
+
+Returns: the absolute path of the staging directory.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub prepare_build_sources_dir {
+    my $dir = build_sources_dir(@_);
+    # A directory with this name belongs to a dead process that had the same pid.
+    remove_tree($dir) if -e $dir;
+    make_path($dir);
+    die "build_sources_dir: $dir was not created\n" unless -d $dir;
+    return $dir;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 remove_build_sources_dir
+
+Descriptions: Delete the staging directory of one build process.
+
+Arguments: the same as build_sources_dir. The caller makes sure the process has exited.
+
+Returns: true when the directory is gone.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub remove_build_sources_dir {
+    my $dir = build_sources_dir(@_);
+    remove_tree($dir) if -e $dir;
+    return !-e $dir;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 sweep_build_sources_dirs
+
+Descriptions: Delete the staging directories that processes on this host left behind
+              when they were killed before their parent could delete them.
+
+Arguments:
+  $base  - the directory from build_sources_base
+  $host  - the host name; defaults to this host
+  $alive - a sub that takes a pid and returns true when that process exists;
+           defaults to kill 0
+
+Returns: the list of directories deleted.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub sweep_build_sources_dirs {
+    my ($base, $host, $alive) = @_;
+    $host  = _sources_host($host);
+    $alive //= \&_pid_alive;
+    opendir(my $dh, $base) or return ();
+    my @entries = readdir $dh;
+    closedir $dh;
+
+    my @removed;
+    for my $entry (sort @entries) {
+        # Another host's pids say nothing about this host's processes.
+        my ($pid) = $entry =~ /^SOURCES\.\Q$host\E\.([0-9]+)$/ or next;
+        next if $alive->($pid);
+        remove_tree("$base/$entry");
+        push @removed, "$base/$entry" unless -e "$base/$entry";
+    }
+    return @removed;
+}
+
+# EPERM means the process exists and belongs to another user. An unreaped zombie
+# also answers here, and its parent deletes the directory when it reaps it.
+sub _pid_alive {
+    my ($pid) = @_;
+    return 1 if kill 0, $pid;
+    return $!{EPERM} ? 1 : 0;
 }
 
 1;

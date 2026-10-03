@@ -28,13 +28,13 @@ plan skip_all => 'buildrpms.pl not found' unless -r $builder;
 my $source = read_text($builder);
 
 # ---------------------------------------------------------------- extraction --
-# Lift the two routines that decide what a source-only run publishes. BAIL_OUT
+# Lift the two routines that decide what a source-only run publishes. die
 # rather than skip: if the extraction stops matching, this file would silently
 # cover nothing.
 my %routine;
 for my $name (qw(index_repo write_repo_metadata_dir buildall)) {
     my ($body) = $source =~ /\n(sub \Q$name\E \{.*?\n\})\n/s;
-    BAIL_OUT("could not extract $name from buildrpms.pl") unless $body;
+    die("could not extract $name from buildrpms.pl\n") unless $body;
     $routine{$name} = $body;
 }
 
@@ -52,6 +52,8 @@ our @STAGES;
     sub buildsources     { push @main::STAGES, 'buildsources'; }
     sub buildspkgs       { push @main::STAGES, 'buildspkgs'; }
     sub buildpkgs        { push @main::STAGES, 'buildpkgs'; }
+    # buildall assigns a staging directory per build process.
+    sub prepare_build_sources_dir { return '/nonexistent/rpmbuild/stub/SOURCES'; }
 }
 
 # %opts lives in the scratch package and is set directly. Aliasing it to a hash in
@@ -61,6 +63,8 @@ my $harness = join "\n",
     'package Scratch;',
     'use strict; use warnings;',
     'our %opts;',
+    'our $SOURCES = \'\';',
+    'our $SOURCES_BASE = \'/nonexistent/rpmbuild/sources\';',
     'sub say { }',
     # write_repo_metadata_dir does real work past the guard; stop it there so the
     # test observes the guard and nothing else.
@@ -69,7 +73,7 @@ my $harness = join "\n",
     ($routine{write_repo_metadata_dir} =~ s/(return if \$opts\{source_only\};).*\n\}\z/$1\n    push \@main::METADATA_WRITTEN, \$repodir;\n    return 1;\n}/sr),
     '1;';
 
-eval $harness or BAIL_OUT("could not evaluate the extracted routines: $@");
+eval $harness or die("could not evaluate the extracted routines: $@\n");
 
 sub run_index {
     my (%args) = @_;
@@ -149,15 +153,15 @@ my $sandbox = tempdir(CLEANUP => 1);
 for my $needed (qw(buildrpms.pl Version
                    build-utils/lib/XCAT/BuildUtils.pm)) {
     my $from = repo_path($needed);
-    BAIL_OUT("$needed is missing from the repository") unless -r $from;
+    die("$needed is missing from the repository\n") unless -r $from;
     my $to = File::Spec->catfile($sandbox, split(m{/}, $needed));
     make_path(dirname($to));
     File::Copy::copy($from, $to)
-        or BAIL_OUT("could not stage $needed: $!");
+        or die("could not stage $needed: $!\n");
 }
 
 my $cwd = getcwd();
-chdir $sandbox or BAIL_OUT("cannot chdir to the sandbox: $!");
+chdir $sandbox or die("cannot chdir to the sandbox: $!\n");
 local $ENV{HOME} = $sandbox;
 my $out = qx($^X buildrpms.pl --source-only --merge-core-repos 2>&1);
 my $rc  = $? >> 8;

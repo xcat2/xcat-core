@@ -55,6 +55,8 @@ use File::Temp qw(tempdir tempfile);
 use FindBin qw($Bin);
 use lib "$Bin/build-utils/lib";
 use XCAT::BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildinfo_text
+    build_sources_base prepare_build_sources_dir remove_build_sources_dir
+    sweep_build_sources_dirs stage_xcat_probe_sources stage_xcatsn_templates
                         stage_genesis_base_sources
                         write_script read_line targetarch_from_target
                         openeuler_build_target openeuler_repo_subdir);
@@ -68,7 +70,9 @@ use autodie;
 use autodie qw(cp);
 
 
-my $SOURCES = "$ENV{HOME}/rpmbuild/SOURCES";
+# Set in buildall to a directory named for the child's pid, so each forked child stages alone.
+my $SOURCES = '';
+my $SOURCES_BASE = build_sources_base();
 # Ensure the rpmbuild tree exists. buildrpms stages source tarballs into $SOURCES, but it only
 # runs rpmdev-setuptree in the one-time env-setup path -- so on a host where that never ran (or
 # $HOME/rpmbuild was cleaned) source staging fails with "SOURCES/...: No such file or directory",
@@ -77,13 +81,6 @@ my $SOURCES = "$ENV{HOME}/rpmbuild/SOURCES";
 system('mkdir', '-p', map { "$ENV{HOME}/rpmbuild/$_" } qw(SOURCES SPECS BUILD BUILDROOT RPMS SRPMS));
 my $VERSION = read_line("Version") // die "Cannot read Version\n";
 my $PWD = Cwd::cwd();
-my @XCAT_PROBE_HELPERS = qw(
-    CommandUtils.pm
-    GlobalDef.pm
-    NetworkUtils.pm
-    ServiceNodeUtils.pm
-);
-
 
 # Gitinfo is regenerated at each run with the current git revision.
 my $GITINFO = git_revision();
@@ -352,38 +349,6 @@ sub buildsources_genesis_base($) {
         $SOURCE_DATE_EPOCH);
 }
 
-sub prepare_xcat_probe_source_tar {
-    my $staging_parent = tempdir("xcat-probe-source.XXXXXX", TMPDIR => 1, CLEANUP => 1);
-    my $staging_root = "$staging_parent/xCAT-probe";
-    my $helper_dir = "$staging_root/lib/perl/xCAT";
-    my $source_tarball = "$SOURCES/xCAT-probe-$VERSION.tar.gz";
-
-    sh_or_die(qq(cp -a "xCAT-probe" "$staging_root"),
-        "Error staging xCAT-probe sources");
-
-    remove_tree($helper_dir) if -e $helper_dir;
-    make_path($helper_dir);
-    chmod 0755, $helper_dir;
-    for my $helper (@XCAT_PROBE_HELPERS) {
-        my $destination = "$helper_dir/$helper";
-        cp "perl-xCAT/xCAT/$helper", $destination;
-        chmod 0644, $destination;
-    }
-
-    my ($archive_fh, $archive_path) = tempfile(
-        ".xCAT-probe-$VERSION.XXXXXX",
-        DIR => $SOURCES,
-        UNLINK => 1,
-    );
-    close $archive_fh;
-
-    sh_or_die(qq(tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="\@$SOURCE_DATE_EPOCH" --use-compress-program="gzip -n" -cf "$archive_path" -C "$staging_parent" xCAT-probe),
-        "Error creating $source_tarball");
-
-    chmod 0644, $archive_path;
-    rename $archive_path, $source_tarball;
-}
-
 sub prepare_xcat_release_source_tar {
     my ($subdir) = @_;
     my $staging_parent = tempdir("xcat-release-source.XXXXXX", TMPDIR => 1, CLEANUP => 1);
@@ -413,6 +378,9 @@ sub prepare_xcat_release_source_tar {
 
 sub buildsources {
     my ($pkg, $target) = @_;
+
+    die "FATAL: buildsources ran outside buildall; the staging directory is unset\n"
+        unless length $SOURCES;
 
     if ($pkg eq "xCAT") {
         my @files = ("bmcsetup", "getipmi");
@@ -446,11 +414,9 @@ EOF
       system('build-utils/sync-xcat-apache-configs', '--stage', $SOURCES) == 0
           or die "FATAL: unable to stage canonical Apache configurations\n";
       cp "$pkg/xCATSN", $SOURCES;
-      # xCATsn.spec consumes templates from xCAT shared templates payload.
-      sh qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf "$SOURCES/templates.tar.gz" xCAT/templates) unless -f "$SOURCES/templates.tar.gz";
+      stage_xcatsn_templates(".", $SOURCES, $SOURCE_DATE_EPOCH);
     } elsif ($pkg eq "xCAT-probe") {
-      # Prepared once before target builds fork so workers only read a complete archive.
-      return;
+      stage_xcat_probe_sources(".", $SOURCES, $VERSION, $SOURCE_DATE_EPOCH);
     } else {
       sh qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf "$SOURCES/$pkg-$VERSION.tar.gz" $pkg);
     }
@@ -458,6 +424,9 @@ EOF
 
 sub buildspkgs {
     my ($pkg, $target) = @_;
+
+    die "FATAL: buildspkgs ran outside buildall; the staging directory is unset\n"
+        unless length $SOURCES;
 
     my $ext = $opts{mock_uniqueext} ? "-$opts{mock_uniqueext}" : "";
     my $chroot = "$pkg-$target$ext";
@@ -560,6 +529,8 @@ EOF
 
 sub buildall {
     my ($pkg, $target) = @_;
+    # The parent deletes this directory when it reaps the child.
+    $SOURCES = prepare_build_sources_dir($SOURCES_BASE, $$);
     createmockconfig($pkg, $target);
     buildsources($pkg, $target);
     buildspkgs($pkg, $target);
@@ -969,7 +940,8 @@ sub abort_builds {
     warn "\n[buildrpms] caught SIG$sig: aborting -- signalling mock to self-clean...\n";
     my @chroots = values %MOCK_INFLIGHT;
     kill 'TERM', mock_pids(@chroots);               # mock unmounts + orphanKills itself
-    kill 'TERM', keys %MOCK_INFLIGHT;               # unwind the ForkManager builders too
+    my @builders = keys %MOCK_INFLIGHT;
+    kill 'TERM', @builders;                         # unwind the ForkManager builders too
     my @mock;
     for (1 .. 30) {                                 # wait for mock to finish its own cleanup
         @mock = mock_pids(@chroots);
@@ -981,6 +953,17 @@ sub abort_builds {
         kill 'KILL', @mock, keys %MOCK_INFLIGHT;
         select undef, undef, undef, 2;
         sweep_mock_mounts(@chroots);
+    }
+    # Delete the staging directory of each builder that has exited. A builder that is
+    # still alive keeps its directory, and the sweep in the next run deletes it.
+    for my $pid (@builders) {
+        my $reaped = 0;
+        for (1 .. 10) {
+            $reaped = waitpid($pid, POSIX::WNOHANG());
+            last if $reaped;
+            select undef, undef, undef, 0.5;
+        }
+        remove_build_sources_dir($SOURCES_BASE, $pid) if $reaped == $pid;
     }
     warn "[buildrpms] abort cleanup done\n";
     # The re-raise below kills this process by signal, and END blocks do not run then. Release the
@@ -1002,9 +985,6 @@ sub main {
 
     usage(message => "openEuler binary repository builds require --gpg-sign")
         if defined($native_subdir) && !$opts{source_only} && !$opts{gpg_sign};
-
-    prepare_xcat_probe_source_tar()
-        if grep { $_ eq "xCAT-probe" } $opts{packages}->@*;
 
     # ---- concurrency guard (mirrors cluster-test.pl's per-cluster lock) --------------------------
     # Every per-package mock chroot/config for this run shares the "<pkg>-<target><ext>" namespace:
@@ -1033,6 +1013,9 @@ sub main {
         }
     }
 
+    # A builder killed with SIGKILL together with this parent leaves its directory behind.
+    sweep_build_sources_dirs($SOURCES_BASE);
+
     my @rpms = product($opts{packages}, $opts{targets});
     my $pm = Parallel::ForkManager->new($opts{nproc});
 
@@ -1043,6 +1026,7 @@ sub main {
     $pm->run_on_finish(sub {
         my ($pid, $exit_code, $ident, $exit_signal, $core_dump) = @_;
         delete $MOCK_INFLIGHT{$pid};
+        remove_build_sources_dir($SOURCES_BASE, $pid);
         # A child that die()s exits non-zero; one killed by a SIGNAL (SIGKILL / OOM-killer) is reaped
         # with $exit_code==0 but $exit_signal!=0 (and maybe $core_dump). Checking $exit_code alone
         # would let an OOM-killed worker through and the parent would index+sign a partial repository
