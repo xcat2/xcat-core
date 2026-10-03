@@ -1726,12 +1726,8 @@ if [ $networkmanager_active -eq 1 ] && [ -n "$tmp_con_name" ]; then
         nmcli con delete $tmp_con_name
     fi
 fi
-# Persist nicextraparams that NetworkManager has no native setting for (e.g. CONNECTED_MODE).
-# Done here as the very last step: the nmcli con reload/up in the restart phase above
-# re-serializes the connection from NM's in-memory model and drops anything NM does not model,
-# so an earlier write would be lost. This covers both stores NM can use -- a keyfile holds the
-# key under [user], an ifcfg file holds it directly -- because the write at configipv4 time is
-# lost either way. We do NOT reload after, so the file keeps the key.
+# nmcli con reload/up above re-serializes the connection and drops keys NM does not model,
+# so this write comes last and is not followed by a reload. Both stores need it.
 if [ "$str_os_type" = "redhat" ] && [ "$networkmanager_active" = "1" ]; then
     ep_con="xcat-${str_nic_name}"
     ep_file=$(xcat_nm_conn_file "$ep_con")

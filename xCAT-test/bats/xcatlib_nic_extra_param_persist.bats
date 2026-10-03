@@ -1,11 +1,6 @@
 #!/usr/bin/env bats
-#
-# nicextraparams that NetworkManager does not model survive only if configeth writes them into
-# the file NM reports, after the activation that re-serializes it. The keyfile store was already
-# covered; an ifcfg store was not, so CONNECTED_MODE=yes never reached the profile on el8 and
-# openEuler (confignetwork_secondarynic_nicextraparams_updatenode).
-#
-# `nmcli` is stubbed, so nothing on the host is read.
+# A nicextraparams key NM does not model survives only if configeth writes it into the file
+# NM reports. nmcli is stubbed, so nothing on the host is read.
 
 load 'helpers/shell_source'
 
@@ -17,7 +12,6 @@ setup()
     export PATH="$BIN:$PATH"
 }
 
-# Write an `nmcli` that reports $2 as the file for connection $1.
 stub_nmcli()
 {
     cat >"$BIN/nmcli" <<STUB
@@ -67,8 +61,8 @@ stub_nmcli_no_connection()
     printf 'TYPE=Ethernet\n' >"$f"
     source "$LIB"
     xcat_persist_nic_extra_param "$f" CONNECTED_MODE yes
-    ! grep -q '\[user\]' "$f"
-    ! grep -q 'xcat\.CONNECTED_MODE' "$f"
+    refute_grep -q '\[user\]' "$f"
+    refute_grep -q 'xcat\.CONNECTED_MODE' "$f"
 }
 
 @test "a keyfile keeps the key under [user] with the xcat prefix" {
@@ -79,7 +73,7 @@ stub_nmcli_no_connection()
     [ "$status" -eq 0 ]
     grep -q '^\[user\]' "$f"
     grep -qx 'xcat.CONNECTED_MODE=yes' "$f"
-    ! grep -qx 'CONNECTED_MODE=yes' "$f"
+    refute_grep -qx 'CONNECTED_MODE=yes' "$f"
 }
 
 @test "writing the same key twice does not duplicate it" {
