@@ -32,6 +32,45 @@ xcat_is_openeuler()
     grep -Eq '^ID="?openEuler"?$' /etc/os-release 2>/dev/null
 }
 
+# xcat_nm_conn_file <connection> -- the configuration file NetworkManager reports for this
+# connection, or non-zero if it reports none. NetworkManager names the file itself, so it can be
+# "ifcfg-xcat-ens4-1" or "<id>-<uuid>.nmconnection" when a file of the plain name already exists.
+# Resolve it rather than composing the name.
+xcat_nm_conn_file()
+{
+    local uuid
+    local file
+    uuid=$(nmcli -g connection.uuid connection show "$1" 2>/dev/null)
+    [ -n "$uuid" ] || return 1
+    file=$(nmcli -t -f UUID,FILENAME connection show 2>/dev/null | sed -n "s|^${uuid}:||p" | head -1)
+    [ -n "$file" ] || return 1
+    echo "$file"
+}
+
+# xcat_persist_nic_extra_param <file> <name> <value> -- record one nicextraparams key in the
+# connection file NetworkManager reports. A keyfile holds it under [user] with an "xcat." prefix,
+# which is the only place NetworkManager keeps a key it does not model; an ifcfg file takes the
+# key as the profile writes it. Appending only when the key is absent keeps a second call from
+# duplicating it.
+xcat_persist_nic_extra_param()
+{
+    local file="$1"
+    local name="$2"
+    local value="$3"
+    [ -n "$file" ] && [ -f "$file" ] || return 1
+    [ -n "$name" ] || return 1
+    case "$file" in
+        *.nmconnection)
+            grep -q '^\[user\]' "$file" || printf '\n[user]\n' >> "$file"
+            grep -q "^xcat\.${name}=" "$file" || echo "xcat.${name}=${value}" >> "$file"
+            chmod 600 "$file"
+            ;;
+        *)
+            grep -q "^${name}=" "$file" || echo "${name}=${value}" >> "$file"
+            ;;
+    esac
+}
+
 xcat_uses_nm_keyfile()
 {
     xcat_is_el9_or_later "$1" && return 0

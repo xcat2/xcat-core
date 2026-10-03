@@ -1726,34 +1726,27 @@ if [ $networkmanager_active -eq 1 ] && [ -n "$tmp_con_name" ]; then
         nmcli con delete $tmp_con_name
     fi
 fi
-# Persist nicextraparams that NetworkManager has no native setting for (e.g. CONNECTED_MODE)
-# into the connection keyfile's [user] section. Done here as the very last step: the
-# nmcli con reload/up in the restart phase above re-serializes the keyfile from NM's
-# in-memory model and drops anything NM does not model, so an earlier write would be lost.
-# On EL10 (keyfile-only) there is no ifcfg file to hold these. We do NOT reload after, so
-# the file keeps the section; NM tolerates an unknown [user] section in keyfile mode.
-if [ "$str_os_type" = "redhat" ] && [ "$networkmanager_active" = "1" ] && xcat_uses_nm_keyfile "$OSVER" "$con_name"; then
-    # Resolve the connection's keyfile by UUID -- NM may name it "<id>-<uuid>.nmconnection"
-    # (not the plain "<id>.nmconnection") when a same-named file already exists.
+# Persist nicextraparams that NetworkManager has no native setting for (e.g. CONNECTED_MODE).
+# Done here as the very last step: the nmcli con reload/up in the restart phase above
+# re-serializes the connection from NM's in-memory model and drops anything NM does not model,
+# so an earlier write would be lost. This covers both stores NM can use -- a keyfile holds the
+# key under [user], an ifcfg file holds it directly -- because the write at configipv4 time is
+# lost either way. We do NOT reload after, so the file keeps the key.
+if [ "$str_os_type" = "redhat" ] && [ "$networkmanager_active" = "1" ]; then
     ep_con="xcat-${str_nic_name}"
-    ep_uuid=$(nmcli -g connection.uuid connection show "$ep_con" 2>/dev/null)
-    ep_kf=""
-    [ -n "$ep_uuid" ] && ep_kf=$(grep -l "uuid=$ep_uuid" /etc/NetworkManager/system-connections/*.nmconnection 2>/dev/null | head -1)
-    if [ -n "$ep_kf" ] && [ -f "$ep_kf" ]; then
+    ep_file=$(xcat_nm_conn_file "$ep_con")
+    if [ -n "$ep_file" ] && [ -f "$ep_file" ]; then
         for ep in "${array_nic_params[@]}"; do
             [ -z "$ep" ] && continue
             [ "$ep" = "$str_default_token" ] && continue
             parse_nic_extra_params "$ep"
             j=0
             while [ $j -lt ${#array_extra_param_names[@]} ]; do
-                nm="${array_extra_param_names[$j]}"
-                vl="${array_extra_param_values[$j]}"
-                grep -q '^\[user\]' "$ep_kf" || printf '\n[user]\n' >> "$ep_kf"
-                grep -q "^xcat\.${nm}=" "$ep_kf" || echo "xcat.${nm}=${vl}" >> "$ep_kf"
+                xcat_persist_nic_extra_param "$ep_file" \
+                    "${array_extra_param_names[$j]}" "${array_extra_param_values[$j]}"
                 j=$((j+1))
             done
         done
-        chmod 600 "$ep_kf"
     fi
 fi
 exit $error_code
