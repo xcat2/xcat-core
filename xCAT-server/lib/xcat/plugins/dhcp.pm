@@ -534,7 +534,8 @@ sub _run_omshell
     print $in $omcmds;
     close($in);
 
-    my @output;
+    # A line read waits for a newline, and omshell writes its prompt without one.
+    my $output = '';
     my $selector = IO::Select->new($out, $err);
     my $deadline = time + 10;
     while ($selector->count) {
@@ -545,9 +546,9 @@ sub _run_omshell
         }
 
         foreach my $fh ($selector->can_read($remaining)) {
-            my $line = <$fh>;
-            if (defined $line) {
-                push @output, $line if fileno($fh) == fileno($out);
+            my $chunk;
+            if (sysread($fh, $chunk, 4096)) {
+                $output .= $chunk if fileno($fh) == fileno($out);
             } else {
                 $selector->remove($fh);
                 close($fh);
@@ -564,7 +565,7 @@ sub _run_omshell
         waitpid($pid, 0);
     }
 
-    return @output;
+    return split /^/m, $output;
 }
 
 sub _parse_omshell_host_output
