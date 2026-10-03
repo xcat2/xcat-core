@@ -481,21 +481,22 @@ sub kea_xnba_node_classes {
 
         # Each node carries its own first-stage classes, as its ISC host statements do, because an
         # upgrade keeps the global classes of an older makedhcp -n until the next makedhcp -n. An
-        # xnba node has them only with the local xNBA BIOS file, as it has its ISC host statements.
-        next if $loader->{method} eq 'xnba' && !$opts{xnba_kpxe};
-        my $first_context = $loader->{method} eq 'ipxe' ? $context : _node_user_context( $node, 'xnba-first-stage' );
+        # xnba node has them with the local xNBA BIOS file, as it has its ISC host statements, and the
+        # UEFI one also with the local xNBA UEFI file, as the global UEFI class gives only the upstream loader.
+        my $xnba = $loader->{method} eq 'xnba';
+        my $first_context = $xnba ? _node_user_context( $node, 'xnba-first-stage' ) : $context;
         push @classes, {
             name             => "$class_base-bios-first-stage",
             test             => "option[93].hex == 0x0000 and not ($loader->{kea_second_stage_bios}) and $mac_test",
             'boot-file-name' => $loader->{bios},
             'user-context'   => $first_context,
-          },
-          {
+          } unless $xnba && !$opts{xnba_kpxe};
+        push @classes, {
             name             => "$class_base-uefi-first-stage",
             test             => "($uefi_x64_arch_match) and not ($loader->{kea_second_stage_uefi}) and $mac_test",
             'boot-file-name' => $loader->{uefi},
             'user-context'   => $first_context,
-          };
+          } unless $xnba && !$opts{xnba_kpxe} && !$opts{xnba_efi};
     }
 
     return \@classes;
