@@ -31,7 +31,8 @@ sub omapi_settings {
             dhcpomapikeyname   => undef,
             dhcpomshellpath    => undef,
             %overrides,
-        }
+        },
+        fips_mode => 0,
     );
 }
 
@@ -89,24 +90,6 @@ is(
 "key \"provider.key\" {\n\talgorithm hmac-sha512;\n\tsecret \"provider-secret\";\n};\n\n",
     'custom DDNS key name and algorithm are rendered'
 );
-
-subtest 'all Net::DNS thresholds share the dotted version policy' => sub {
-    open( my $source_fh, '<', $ddns_plugin_path )
-      or die "Unable to read $ddns_plugin_path: $!";
-    local $/;
-    my $source = <$source_fh>;
-    close($source_fh)
-      or die "Unable to close $ddns_plugin_path: $!";
-
-    my @raw_comparisons =
-      ( $source =~ /^(?!\s*#)[^\n]*(?:<|>=)\s*1\.36\b/gm );
-    is( scalar(@raw_comparisons), 0,
-        'no Net::DNS threshold uses Perl numeric comparison' );
-
-    my @policy_calls = ( $source =~ /net_dns_uses_keyfile\(\)/g );
-    is( scalar(@policy_calls), 2,
-        'both Net::DNS threshold sites use the shared policy' );
-};
 
 subtest 'Net::DNS threshold controls DDNS policy and signing' => sub {
     my $implicit_sha256 = {

@@ -188,6 +188,7 @@ my @responses;
     local *xCAT::DHCP::Backend::new_backend = sub { return bless {}, 'DHCPUpgradeISCBackend'; };
     local *xCAT::Utils::isServiceNode = sub { return 0; };
     local *xCAT::Utils::isLinux = sub { return 1; };
+    local *xCAT::Utils::isFIPS = sub { return 0; };
     local *xCAT::Utils::checkservicestatus = sub { return 0; };
     local *xCAT::Table::new = sub { return bless {}, 'DHCPUpgradeTable'; };
     local *xCAT::NetworkUtils::determinehostname = sub { return ('mn'); };

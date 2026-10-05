@@ -149,7 +149,8 @@ sub run_makedns {
             dhcpomapialgorithm => $args{site_algorithm},
             dhcpomapikeyname   => undef,
             dhcpomshellpath    => undef,
-        }
+        },
+        fips_mode => 0,
     );
     die "Unusable OMAPI settings: $settings->{error}" if $settings->{error};
 
