@@ -4,7 +4,7 @@ Integration tests. These run against an **installed management node** -- they ne
 real xCAT installation, and depending on the test a populated `/install`, a service
 binary they can execute, or a live daemon.
 
-They are driven by `xcattest` through the testcase in
+The Perl tests are driven by `xcattest` through the testcase in
 `../autotest/testcase/integration/`, which proves the copy installed by the
 `xcat-test` package:
 
@@ -55,6 +55,12 @@ A test belongs in `integration/` when it needs something the checkout cannot pro
 | `html_form_runtime_dependency.t` | the installed `HTML::Form` module |
 | `openeuler_package_postscripts.t` | Linux root, private mount namespaces and DNF; tests complete package postscripts with command doubles and an isolated repository directory |
 | `openeuler_postscript_repositories.t` | Linux root, private mount namespaces, DNF and RPM signing tools; tests actual signed repository transactions in isolated install roots |
+| `xcatd_dispatch_redaction.sh` | a live `xcatd`, syslog delivery to `/var/log/xcat/cluster.log`, and root |
+
+Run `xcattest -t xcatd_dispatch_redaction` to check password redaction in the
+daemon's syslog output. This separate case has the `ci_test` label. It enables
+`site.xcatdebugmode`, creates a temporary node, and restores the setting and removes
+the node on exit. Run it without concurrent changes to `site.xcatdebugmode`.
 
 ## Environment guards
 
