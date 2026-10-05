@@ -1264,8 +1264,9 @@ sub initDB
         my $omapi_algorithm =
           xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
             is_new_install => $initializing_new_site,
-            platform      => xCAT::Utils->osver("platform"),
-            os            => xCAT::Utils->osver("all"),
+            fips_mode      => xCAT::Utils->isFIPS(),
+            platform       => xCAT::Utils->osver("platform"),
+            os             => xCAT::Utils->osver("all"),
           );
         if ($omapi_algorithm) {
             $chtabcmds .=
