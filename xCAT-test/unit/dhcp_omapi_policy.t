@@ -53,6 +53,41 @@ is(
     'default omshell preamble keeps legacy key command without key-algorithm'
 );
 
+my $fips_defaults = xCAT::DHCP::OmapiPolicy->settings(
+    site_values => {
+        dhcpomapialgorithm => undef,
+        dhcpomapikeyname   => undef,
+        dhcpomshellpath    => undef,
+    },
+    fips_mode => 1,
+);
+is( $fips_defaults->{algorithm}, 'hmac-sha256',
+    'FIPS mode defaults OMAPI to hmac-sha256' );
+ok( !$fips_defaults->{algorithm_explicit},
+    'FIPS default remains distinct from an administrator override' );
+ok( $fips_defaults->{needs_omshell_key_algorithm},
+    'FIPS default emits the omshell key algorithm' );
+is(
+    xCAT::DHCP::OmapiPolicy->omshell_preamble(
+        $fips_defaults, secret => 'fips-secret'
+    ),
+    "key-algorithm hmac-sha256\nkey xcat_key \"fips-secret\"\n",
+    'FIPS omshell preamble selects hmac-sha256'
+);
+
+like(
+    xCAT::DHCP::OmapiPolicy->settings(
+        site_values => {
+            dhcpomapialgorithm => 'hmac-md5',
+            dhcpomapikeyname   => undef,
+            dhcpomshellpath    => undef,
+        },
+        fips_mode => 1,
+    )->{error},
+    qr/hmac-md5 is not allowed while FIPS mode is enabled/,
+    'FIPS mode rejects an explicit hmac-md5 override'
+);
+
 is(
     xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
         is_new_install => 1,
@@ -69,6 +104,23 @@ is(
     undef,
     'new EL8 installations retain the implicit MD5 default'
 );
+foreach my $platform ('el8', 'el9', 'sles15', 'ubuntu') {
+    my $algorithm = xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
+        is_new_install => 1, platform => $platform, fips_mode => 1,
+    );
+    is($algorithm, 'hmac-sha256', "new FIPS $platform sites save SHA-256");
+    foreach my $fips_mode (0, 1) {
+        my $settings = xCAT::DHCP::OmapiPolicy->settings(
+            site_values => { dhcpomapialgorithm => $algorithm },
+            fips_mode => $fips_mode,
+        );
+        is($settings->{algorithm}, 'hmac-sha256',
+            "the shared $platform site selects SHA-256 on a host with FIPS=$fips_mode");
+    }
+    is(xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
+        is_new_install => 0, platform => $platform, fips_mode => 1,
+    ), undef, "existing $platform sites are not overwritten");
+}
 is(
     xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
         is_new_install => 1,
