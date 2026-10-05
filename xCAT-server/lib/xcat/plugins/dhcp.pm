@@ -1932,6 +1932,17 @@ sub process_request
         return;
     }
 
+    if ($backend->name eq 'isc' && xCAT::Utils->isLinux()
+        && !($opt{q} && _isc_static_host_fallback())) {
+        my $settings = _omapi_settings();
+        return unless $settings;
+        my $error = xCAT::DHCP::OmapiRunner->key_algorithm_error($settings);
+        if ($error) {
+            $callback->({ error => [$error], errorcode => [1] });
+            return;
+        }
+    }
+
     # if not -n,  dhcp service needs to be running
     if (!($opt{n})) {
         if (xCAT::Utils->isLinux()) {
