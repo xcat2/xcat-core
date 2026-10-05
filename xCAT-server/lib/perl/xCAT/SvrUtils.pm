@@ -52,6 +52,7 @@ sub getNodesetStates
         my @pxenodes       = ();
         my @yabootnodes    = ();
         my @xnbanodes      = ();
+        my @ipxenodes      = ();
         my @grub2nodes     = ();
         my @petitbootnodes = ();
         my $tabdata = $tab->getNodesAttribs(\@nodes, [ 'node', 'netboot' ]);
@@ -67,6 +68,10 @@ sub getNodesetStates
             elsif ($nb eq "xnba")
             {
                 push(@xnbanodes, $node);
+            }
+            elsif ($nb eq "ipxe")
+            {
+                push(@ipxenodes, $node);
             }
             elsif ($nb eq "pxe")
             {
@@ -120,6 +125,18 @@ sub getNodesetStates
             require xCAT_plugin::xnba;
             @retarray =
               xCAT_plugin::xnba::getNodesetStates(\@xnbanodes, $hashref);
+            if ($retarray[0])
+            {
+                $retcode = $retarray[0];
+                $errormsg .= $retarray[1];
+                xCAT::MsgUtils->message('E', $retarray[1]);
+            }
+        }
+        if (@ipxenodes > 0)
+        {
+            require xCAT_plugin::ipxe;
+            @retarray =
+              xCAT_plugin::ipxe::getNodesetStates(\@ipxenodes, $hashref);
             if ($retarray[0])
             {
                 $retcode = $retarray[0];
@@ -239,6 +256,13 @@ sub get_nodeset_state
         {
             require xCAT_plugin::xnba;
             my $tmp = xCAT_plugin::xnba::getstate($node, $tftpdir);
+            my @a = split(' ', $tmp);
+            $state = $a[0];
+        }
+        elsif ($boottype eq "ipxe")
+        {
+            require xCAT_plugin::ipxe;
+            my $tmp = xCAT_plugin::ipxe::getstate($node, $tftpdir);
             my @a = split(' ', $tmp);
             $state = $a[0];
         }

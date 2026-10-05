@@ -246,6 +246,14 @@ unlike(
     'the BIOS Genesis script does not use the xNBA-only machyp setting',
 );
 
+# The upstream iPXE loader of an unknown client fetches the discovery scripts from xcat/ipxe/nets.
+foreach my $script ('192.168.144.0_20', '192.168.144.0_20.uefi', '192.168.144.0_20.elilo') {
+    my $ipxe = "$xCAT::TableUtils::tftpdir/xcat/ipxe/nets/$script";
+    ok( -s $ipxe, "mknb writes xcat/ipxe/nets/$script" );
+    is( -s $ipxe ? read_config($ipxe) : undef, read_config("$xCAT::TableUtils::tftpdir/xcat/xnba/nets/$script"),
+        "and it is the discovery script that xcat/xnba/nets keeps" );
+}
+
 use_reporter_address_maps();
 prepare_tftpdir($tmpdir, 'tftpboot-x86-legacy', 'x86_64', 'legacy');
 $responses = run_mknb('x86_64');

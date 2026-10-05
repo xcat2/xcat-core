@@ -14,6 +14,7 @@ Advanced Topics
    gpu/index.rst
    hamn/index.rst
    hierarchy/index.rst
+   ipxe/index.rst
    kit/index.rst
    mixed_cluster/index.rst
    networks/index.rst

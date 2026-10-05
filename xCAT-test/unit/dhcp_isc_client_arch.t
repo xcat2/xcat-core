@@ -53,7 +53,7 @@ like(
 );
 like(
     $rendered,
-    qr/client-architecture = 00:10 \{ #x86_64 uefi http boot\n\s+filename "xcat\/xnba\.efi";/,
+    qr/client-architecture = 00:10 \{ #x86_64 uefi http boot\n\s+filename "xcat\/ipxe\/x86_64-sb\/snponly-shim\.efi";/,
     'the x86-64 UEFI HTTP boot id is given the same loader as 0x0007',
 );
 
@@ -115,11 +115,12 @@ is( xCAT::DHCP::BootPolicy->isc_xnba_user_class_test(),
     xCAT::DHCP::BootPolicy->isc_xnba_user_class_test(quote => '"'),
     'a config file is the default quoting' );
 
-# ...and the per-network policy uses it, rather than its own bare comparison.
-foreach my $arch (qw(00:00 00:09 00:07)) {
-    like( $rendered,
-        qr/\Qsuffix(option user-class-identifier, 4) = "xNBA"\E and option client-architecture = \Q$arch\E/,
-        "the xNBA branch for client architecture $arch accepts both encodings" );
+# The per-network second stage is the upstream loader, which a client shows by its iPXE features.
+like( $rendered, qr/\Qexists gpxe.http and exists gpxe.bzimage and exists gpxe.pxe and option client-architecture = 00:00\E/,
+    'the BIOS second stage is recognised by the iPXE features of its script' );
+foreach my $arch (qw(00:09 00:07)) {
+    like( $rendered, qr/\Qexists gpxe.http and exists gpxe.efi and option client-architecture = $arch\E/,
+        "the UEFI second stage for client architecture $arch is recognised the same way" );
 }
 
 unlike( $rendered, qr/option user-class-identifier = "xNBA" and/,
@@ -146,7 +147,7 @@ is(
 {
     my @asked;
     my %present = map { $_ => 1 } (
-        '/srv/tftp/xcat/xnba.efi',
+        '/srv/tftp/xcat/ipxe/x86_64-sb/snponly-shim.efi',
         '/srv/tftp/boot/grub2/grub2.riscv64',
     );
     my $partial = join '', @{ xCAT::DHCP::BootPolicy->isc_client_architecture_lines(
@@ -158,16 +159,16 @@ is(
             loader_present => sub { push @asked, $_[0]; return $present{ $_[0] } },
         ) };
 
-    unlike( $partial, qr/xnba\.kpxe/,
+    unlike( $partial, qr/undionly\.kpxe/,
         'a BIOS client is not sent after a kpxe loader that was never built' );
-    like( $partial, qr/xnba\.efi/,
+    like( $partial, qr/snponly-shim\.efi/,
         'and the UEFI loader that is there is still offered' );
 
     # The second stage is fetched over HTTP, but it is the first stage that
     # asks for it, so it is gated on the same file.
-    unlike( $partial, qr{/xcat/xnba/nets/192\.0\.2\.0_24"},
+    unlike( $partial, qr{/xcat/ipxe/nets/192\.0\.2\.0_24"},
         'no BIOS second stage is advertised without the first stage to reach it' );
-    like( $partial, qr{/xcat/xnba/nets/192\.0\.2\.0_24\.uefi"},
+    like( $partial, qr{/xcat/ipxe/nets/192\.0\.2\.0_24\.uefi"},
         'the UEFI second stage is advertised, because its first stage exists' );
 
 # Dropping the branch is only half the rule. ISC evaluates these as one if/else

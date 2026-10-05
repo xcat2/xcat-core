@@ -753,10 +753,15 @@ sub process_request {
         }
     }
     my $cfgfile;
+    # The upstream iPXE loader of an unknown x86 client fetches the discovery scripts from xcat/ipxe.
+    # xcat/xnba keeps them for a server whose DHCP configuration still names it.
+    my @x86_nets = map { "$tftpdir/xcat/$_/nets" } qw(ipxe xnba);
     if ($arch =~ /x86/) {
         mkpath("$tftpdir/xcat/xnba/nets");
         chmod(0755, "$tftpdir/xcat/xnba");
         chmod(0755, "$tftpdir/xcat/xnba/nets");
+        mkpath("$tftpdir/xcat/ipxe/nets");
+        chmod(0755, "$tftpdir/xcat/ipxe/nets");
         mkpath("$tftpdir/pxelinux.cfg");
         chmod(0755, "$tftpdir/pxelinux.cfg");
         if (-r "/usr/lib/syslinux/pxelinux.0") {
@@ -804,54 +809,55 @@ sub process_request {
             }
             next;
         }
-        $dopxe = 0;
-        if ($arch =~ /x86/) {    #only do pxe if just x86 or x86_64 and no x86
-            if ($arch =~ /x86_64/ and not $invisibletouch) {
-                if (-r "$tftpdir/xcat/xnba/nets/$net") {
-                    my $cfg;
-                    my @contents;
-                    open($cfg, "<", "$tftpdir/xcat/xnba/nets/$net");
-                    @contents = <$cfg>;
-                    close($cfg);
-                    if (grep (/x86_64/, @contents)) {
+        if ($arch =~ /x86/) {
+            foreach my $nets (@x86_nets) {
+                $dopxe = 0;
+                if ($arch =~ /x86_64/ and not $invisibletouch) {    #only do pxe if just x86 or x86_64 and no x86
+                    if (-r "$nets/$net") {
+                        my $cfg;
+                        my @contents;
+                        open($cfg, "<", "$nets/$net");
+                        @contents = <$cfg>;
+                        close($cfg);
+                        if (grep (/x86_64/, @contents)) {
+                            $dopxe = 1;
+                        }
+                    } else {
                         $dopxe = 1;
                     }
                 } else {
                     $dopxe = 1;
                 }
-            } else {
-                $dopxe = 1;
-            }
-        }
-        if ($dopxe) {
-            my $cfg;
-            open($cfg, ">", "$tftpdir/xcat/xnba/nets/$net");
-            print $cfg "#!gpxe\n";
-            if ($invisibletouch) {
-                print $cfg 'imgfetch -n kernel http://${next-server}'.$portsuffix.'/tftpboot/xcat/genesis.kernel.' . "$arch xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/mac:hexhyp}' . "\n";
-                print $cfg 'imgfetch -n nbfs http://${next-server}'.$portsuffix . "$initrd_file\n";
-            } else {
-                print $cfg 'imgfetch -n kernel http://${next-server}'.$portsuffix.'/tftpboot/xcat/nbk.' . "$arch xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline\n";
-                print $cfg 'imgfetch -n nbfs http://${next-server}'.$portsuffix . "$initrd_file\n";
-            }
-            print $cfg "imgload kernel\n";
-            print $cfg "imgexec kernel\n";
-            close($cfg);
-            if ($invisibletouch and $arch =~ /x86_64/) {    #UEFI time
-                open($cfg, ">", "$tftpdir/xcat/xnba/nets/$net.elilo");
-                print $cfg "default=\"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
-                print $cfg "   delay=5\n";
-                print $cfg '   image=/tftpboot/xcat/genesis.kernel.' . "$arch\n";
-                print $cfg "   label=\"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
-                print $cfg "   initrd=$initrd_file\n";
-                print $cfg "   append=\"xcatd=" . $xcatd_address . ":$xcatdport destiny=discover $consolecmdline BOOTIF=%B\"\n";
-                close($cfg);
-                open($cfg, ">", "$tftpdir/xcat/xnba/nets/$net.uefi");
+                next unless $dopxe;
+                my $cfg;
+                open($cfg, ">", "$nets/$net");
                 print $cfg "#!gpxe\n";
-                print $cfg 'imgfetch -n kernel http://${next-server}'.$portsuffix.'/tftpboot/xcat/genesis.kernel.' . "$arch\nimgload kernel\n";
-                print $cfg "imgargs kernel xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/mac:hexhyp}' . " destiny=discover initrd=initrd\n";
-                print $cfg 'imgfetch -n initrd http://${next-server}'.$portsuffix . "$initrd_file\nimgexec kernel\n";
+                if ($invisibletouch) {
+                    print $cfg 'imgfetch -n kernel http://${next-server}'.$portsuffix.'/tftpboot/xcat/genesis.kernel.' . "$arch xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/mac:hexhyp}' . "\n";
+                    print $cfg 'imgfetch -n nbfs http://${next-server}'.$portsuffix . "$initrd_file\n";
+                } else {
+                    print $cfg 'imgfetch -n kernel http://${next-server}'.$portsuffix.'/tftpboot/xcat/nbk.' . "$arch xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline\n";
+                    print $cfg 'imgfetch -n nbfs http://${next-server}'.$portsuffix . "$initrd_file\n";
+                }
+                print $cfg "imgload kernel\n";
+                print $cfg "imgexec kernel\n";
                 close($cfg);
+                if ($invisibletouch and $arch =~ /x86_64/) {    #UEFI time
+                    open($cfg, ">", "$nets/$net.elilo");
+                    print $cfg "default=\"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
+                    print $cfg "   delay=5\n";
+                    print $cfg '   image=/tftpboot/xcat/genesis.kernel.' . "$arch\n";
+                    print $cfg "   label=\"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
+                    print $cfg "   initrd=$initrd_file\n";
+                    print $cfg "   append=\"xcatd=" . $xcatd_address . ":$xcatdport destiny=discover $consolecmdline BOOTIF=%B\"\n";
+                    close($cfg);
+                    open($cfg, ">", "$nets/$net.uefi");
+                    print $cfg "#!gpxe\n";
+                    print $cfg 'imgfetch -n kernel http://${next-server}'.$portsuffix.'/tftpboot/xcat/genesis.kernel.' . "$arch\nimgload kernel\n";
+                    print $cfg "imgargs kernel xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/mac:hexhyp}' . " destiny=discover initrd=initrd\n";
+                    print $cfg 'imgfetch -n initrd http://${next-server}'.$portsuffix . "$initrd_file\nimgexec kernel\n";
+                    close($cfg);
+                }
             }
         } elsif ($arch =~ /ppc/) {
             open($cfgfile, ">", "$tftpdir/pxelinux.cfg/p/$net");

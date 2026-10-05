@@ -35,9 +35,10 @@ initrd, kernel, userspace, or packaging follow-up work. They must be tracked,
 but they do not turn the DHCP backend acceptance row red unless the failure is
 caused by DHCP policy, allocation, or boot option rendering.
 
-Secure Boot is not part of this matrix. Secure OVMF builds such as
-``OVMF_CODE.secboot.fd`` and ``OVMF_VARS.secboot.fd`` must be treated as
-unsupported unless xCAT explicitly adds Secure Boot support.
+Secure Boot is part of this matrix only for the upstream iPXE loader: the UEFI
+Secure Boot row checks that the shim loads ``snponly.efi``. Every other row runs
+with Secure Boot off. A Secure Boot OVMF build, such as ``OVMF_CODE.secboot.fd``
+with ``OVMF_VARS.secboot.fd``, can serve that row.
 
 Backend Policy
 --------------
@@ -70,6 +71,8 @@ Run these checks for every DHCP backend change before live validation:
 * backend-native configuration validation:
 
   * ``dhcpd -t -cf <config>`` for ISC
+  * ``dhcpd -T -cf <config> -lf <leases>`` for ISC host statements saved in
+    ``dhcpd.leases``
   * ``kea-dhcp4 -t <config>`` for Kea DHCPv4
   * ``kea-dhcp6 -t <config>`` for Kea DHCPv6 when used
   * ``kea-ctrl-agent -t <config>`` for Control Agent when used
@@ -203,6 +206,77 @@ classification, address pools, or host reservations.
      - Reproduce a node with static reservation and no usable dynamic pool;
        confirm Kea still allocates the reserved address and no allocation
        failure is logged.
+
+x86 iPXE Loader Matrix
+----------------------
+
+Run this matrix whenever a change touches the ``ipxe`` or ``xnba`` netboot
+method, the x86 second-stage test, the iPXE feature options, or the ISC host
+statements of x86 nodes.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 18 62
+
+   * - Scenario
+     - Backend Scope
+     - Minimum Required Checks
+   * - xNBA output
+     - ``ISC`` and ``Kea``
+     - The ISC host statements and the Kea second-stage classes of an ``xnba``
+       node equal the output of the base code, and in Kea the node gets xNBA
+       from its own first-stage classes.
+   * - Client dispatch
+     - ``ISC`` and ``Kea``
+     - ``xCAT-test/integration/dhcp_ipxe_dispatch.t`` passes as root. It covers
+       firmware PXE, xNBA and iPXE clients, with each feature option present or
+       missing, for ``xnba`` and ``ipxe`` nodes, SAN nodes and unknown clients.
+       In Kea it repeats the ``ipxe`` nodes with a configuration that an older
+       ``makedhcp -n`` wrote and ``makedhcp`` upgraded.
+   * - ISC host statements after a restart
+     - ``ISC``
+     - ``xCAT-test/integration/dhcp_isc_ipxe_leases.t`` passes as root: dhcpd
+       reads the host statements of ``ipxe`` nodes back from ``dhcpd.leases``.
+   * - BIOS and UEFI boot with the upstream loader
+     - ``ISC`` and ``Kea``
+     - A SeaBIOS guest and an OVMF guest with ``netboot=ipxe`` load
+       ``xcat/ipxe/i386/undionly.kpxe`` and ``xcat/ipxe/x86_64-sb/snponly-shim.efi``,
+       fetch the node script from ``xcat/ipxe/nodes``, and reach the Genesis
+       shell.
+   * - UEFI Secure Boot
+     - ``ISC`` or ``Kea``
+     - A UEFI node with Secure Boot on loads ``snponly-shim.efi``, the shim
+       loads ``snponly.efi``, and iPXE fetches the node script from
+       ``xcat/ipxe/nodes``.
+   * - Discovery
+     - ``ISC`` or ``Kea``
+     - An unknown BIOS client and an unknown UEFI client load the upstream
+       loader, fetch the network script from ``xcat/ipxe/nets``, and start
+       Genesis discovery. A discovered x86 node gets ``netboot=ipxe``.
+   * - 32-bit BIOS
+     - ``ISC`` or ``Kea``
+     - A SeaBIOS guest with ``-cpu qemu32`` and ``netboot=ipxe`` boots
+       ``undionly.kpxe`` and fetches the node script.
+   * - BIOS local boot after ``exit``
+     - ``ISC`` or ``Kea``
+     - A physical BIOS server with ``netboot=ipxe`` boots from its local disk
+       after the xCAT boot script runs ``exit``. A change that moves BIOS nodes
+       to the upstream loader does not merge until this row passes.
+   * - Firmware iPXE
+     - ``ISC`` and ``Kea``
+     - A SeaBIOS guest with the QEMU iPXE option ROM gets the node script
+       directly when its ROM reports the features, and ``undionly.kpxe`` first
+       when one is missing.
+   * - Service node TFTP
+     - ``ISC`` or ``Kea``
+     - Local TFTP (``sharedtftp=0``), shared TFTP, ``sharedtftp=<hostname>`` and
+       a node ``tftpserver`` serve the upstream loader files and the
+       ``xcat/ipxe/nets`` scripts.
+   * - Upgrade
+     - n/a
+     - An upgrade keeps the ``netboot`` value of every node. ``makedhcp -n``
+       warns until ``mknb`` has written ``xcat/ipxe/nets``, and unknown x86
+       clients then get the upstream loader.
 
 Extended Architecture Matrix
 ----------------------------
