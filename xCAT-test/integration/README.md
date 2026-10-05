@@ -27,8 +27,8 @@ against it.
 Note the `-I` flags: unlike the unit tests these run from the installed location, so
 they pick up xCAT modules from `/opt/xcat/lib/perl` rather than from a source tree.
 
-The case checks `rc==0` and `output=~Files=7,`. The file count checks that `prove`
-found all seven files, which catches a packaging regression or a test renamed away from
+The case checks `rc==0` and `output=~Files=8,`. The file count checks that `prove`
+found all eight files, which catches a packaging regression or a test renamed away from
 `.t` without updating the count. It does not prove that environment-gated cases ran;
 inspect the TAP output for skips. **Add to that number when you add a test.** A missing
 directory is already caught by `rc==0` -- `prove -r` on a path that does not exist exits
@@ -53,6 +53,7 @@ A test belongs in `integration/` when it needs something the checkout cannot pro
 | `html_form_runtime_dependency.t` | the installed `HTML::Form` module |
 | `openeuler_package_postscripts.t` | Linux root, private mount namespaces and DNF; tests complete package postscripts with command doubles and an isolated repository directory |
 | `openeuler_postscript_repositories.t` | Linux root, private mount namespaces, DNF and RPM signing tools; tests actual signed repository transactions in isolated install roots |
+| `wsapi_apache_access.t` | an Apache binary and its modules; reads `xcat-ws.conf` from the source tree, so `github_action_xcat_test.pl` runs it from the checkout and the installed copy skips |
 
 ## Environment guards
 
