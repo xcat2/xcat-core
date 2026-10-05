@@ -1726,23 +1726,8 @@ if [ $networkmanager_active -eq 1 ] && [ -n "$tmp_con_name" ]; then
         nmcli con delete $tmp_con_name
     fi
 fi
-# nmcli con reload/up above re-serializes the connection and drops keys NM does not model,
-# so this write comes last and is not followed by a reload. Both stores need it.
+# The last nmcli con up above dropped the keys NM does not model. Do not reload after this.
 if [ "$str_os_type" = "redhat" ] && [ "$networkmanager_active" = "1" ]; then
-    ep_con="xcat-${str_nic_name}"
-    ep_file=$(xcat_nm_conn_file "$ep_con")
-    if [ -n "$ep_file" ] && [ -f "$ep_file" ]; then
-        for ep in "${array_nic_params[@]}"; do
-            [ -z "$ep" ] && continue
-            [ "$ep" = "$str_default_token" ] && continue
-            parse_nic_extra_params "$ep"
-            j=0
-            while [ $j -lt ${#array_extra_param_names[@]} ]; do
-                xcat_persist_nic_extra_param "$ep_file" \
-                    "${array_extra_param_names[$j]}" "${array_extra_param_values[$j]}"
-                j=$((j+1))
-            done
-        done
-    fi
+    xcat_nm_persist_nic_extra_params "xcat-${str_nic_name}" "${array_nic_params[@]}"
 fi
 exit $error_code
