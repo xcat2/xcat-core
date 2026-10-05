@@ -188,8 +188,8 @@ discovery_loader() {
 # unpacked under tftpdir. setup puts every loader they key on in place.
 arch_loader() {
     case "$1" in
-        bios)        echo "xcat/xnba.kpxe" ;;
-        uefi)        echo "xcat/xnba.efi" ;;
+        bios)        echo "xcat/ipxe/i386/undionly.kpxe" ;;
+        uefi)        echo "xcat/ipxe/x86_64-sb/snponly-shim.efi" ;;
         aarch64)     echo "boot/grub2/grub2.aarch64" ;;
         riscv64)     echo "boot/grub2/grub2.riscv64" ;;
         ia64)        echo "elilo.efi" ;;
@@ -197,6 +197,14 @@ arch_loader() {
         # No option 93 and no vendor class anyone recognises. The reply still has
         # to name something, or the client cannot tell it was served.
         fallback)    echo "/yaboot" ;;
+    esac
+}
+
+# What an xnba node is handed by its own host statements or classes.
+xnba_loader() {
+    case "$1" in
+        bios) echo "xcat/xnba.kpxe" ;;
+        uefi) echo "xcat/xnba.efi" ;;
     esac
 }
 
@@ -211,23 +219,30 @@ onie_url()   { echo "http://$SRV_IP/install/onie/onie-installer"; }
 # on it. Subnet-wide, so any client sees it.
 cumulus_url() { echo "http://$SRV_IP/install/postscripts/cumulusztp"; }
 
-# The second stage of a chained xNBA boot, in its two forms. A client with no
-# reservation can only be answered per network; one the server knows is answered
-# per node -- two machines chainloading at once must not run the same script.
-xnba_net_url()  { echo "http://$SRV_IP/tftpboot/xcat/xnba/nets/$NETID"; }
+# The second stage of a chained boot, in its two forms. A client with no
+# reservation is answered per network, with the script of the upstream iPXE; an
+# xnba node is answered per node -- two machines chainloading at once must not
+# run the same script.
+ipxe_net_url()  { echo "http://$SRV_IP/tftpboot/xcat/ipxe/nets/$NETID"; }
 xnba_node_url() { echo "http://$SRV_IP/tftpboot/xcat/xnba/nodes/$1"; }
+
+# The option 175 of an iPXE that can run the network script: one-byte features
+# HTTP (19), bzImage (24) and PXE (33) on BIOS, HTTP and EFI (36) on UEFI.
+IPXE_BIOS_FEATURES=130101180101210101
+IPXE_UEFI_FEATURES=130101240101
 
 # The loaders whose presence changes what a backend answers, relative to tftpdir.
 #
-#   xcat/xnba.kpxe             Kea names it if present and falls back to
-#                              pxelinux.0 if not; ISC names it either way.
-#   xcat/xnba.efi              Kea emits no UEFI x64 class without it;
-#                              ISC names it either way.
-#   boot/grub2/grub2.riscv64   gates Kea's riscv64 HTTP boot class; ISC emits
-#                              the HTTP branch either way.
+#   xcat/ipxe/i386/undionly.kpxe          both backends name it to an x86 BIOS
+#                                         client with no reservation only if present.
+#   xcat/ipxe/x86_64-sb/snponly-shim.efi  the same for a UEFI x64 client.
+#   xcat/xnba.kpxe, xcat/xnba.efi         an xnba node is handed xNBA only if
+#                                         they are present.
+#   boot/grub2/grub2.riscv64              gates Kea's riscv64 HTTP boot class; ISC
+#                                         emits the HTTP branch either way.
 #
 # grub2.aarch64 is not listed: neither backend keys on it.
-GATING_LOADERS="xcat/xnba.kpxe xcat/xnba.efi boot/grub2/grub2.riscv64"
+GATING_LOADERS="xcat/ipxe/i386/undionly.kpxe xcat/ipxe/x86_64-sb/snponly-shim.efi xcat/xnba.kpxe xcat/xnba.efi boot/grub2/grub2.riscv64"
 
 # Put an empty file where a gating loader is missing, recording it so teardown
 # takes back exactly what was added. Empty is enough because nothing fetches
@@ -564,7 +579,7 @@ netboot_mac()   { echo "$1" | cut -d: -f4-9; }
 netboot_loader() {
     local method=$1 node=$2
     case "$method" in
-        xnba)      arch_loader bios ;;
+        xnba)      xnba_loader bios ;;
         pxe)       echo "pxelinux.0" ;;
         grub2)     echo "/boot/grub2/grub2-$node" ;;
         yaboot)    echo "/yb/node/yaboot-$node" ;;
@@ -653,17 +668,20 @@ do_run_netboot() {
 # The two halves of a chained network boot.
 #
 # Firmware PXE sends no user class and must be handed a loader binary. The
-# loader that firmware just ran announces user class xNBA and must be handed
-# something else -- the per-network script URL -- or it chainloads itself
-# forever at a boot prompt that never advances.
+# iPXE that firmware just ran announces user class iPXE and the features it has
+# in option 175. With the features the script needs, it must be handed the
+# per-network script URL, or it chainloads itself forever at a boot prompt that
+# never advances. Without them, it is handed the loader again.
 #
 # Both encodings of option 77 are sent: the bare string, and the length-prefixed
 # form RFC 3004 specifies. The same firmware sends either depending on how it
 # was built, so a server recognising only one boots half the fleet.
 do_run_chainload() {
-    dhcp_run --set user_class=xNBA --set stage1_loader="$(arch_loader bios)" \
+    dhcp_run --set user_class=iPXE --set stage1_loader="$(arch_loader bios)" \
         --set stage1_uefi_loader="$(arch_loader uefi)" \
-        --set stage2_loader="$(xnba_net_url)" \
+        --set stage2_loader="$(ipxe_net_url)" \
+        --set bios_features="$IPXE_BIOS_FEATURES" \
+        --set uefi_features="$IPXE_UEFI_FEATURES" \
         conf/dhcp/ipxe-userclass.conf
 }
 
@@ -869,7 +887,7 @@ do_run_proxydhcp() {
 
     dhcp_run \
         --set proxy_mac="$PD_MAC" --set proxy_ip="$PD_IP" \
-        --set uefi_loader="$(arch_loader uefi)" \
+        --set uefi_loader="$(xnba_loader uefi)" \
         conf/dhcp/proxydhcp.conf || rc=1
     return $rc
 }
@@ -890,7 +908,7 @@ stop_proxydhcp() {
 do_run_loader_absent() {
     local rc=0 tftp path
     tftp=$(tftpdir)
-    path="$tftp/xcat/xnba.kpxe"
+    path="$tftp/$(arch_loader bios)"
     [ -f "$path" ] || die "$path is not there to remove"
     # Moved aside within $tftpdir and not into $STATE: $STATE is under /tmp, and
     # this is the machine's only copy of a loader xCAT does not rebuild. A

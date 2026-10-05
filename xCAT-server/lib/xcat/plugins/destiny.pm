@@ -14,6 +14,7 @@ use xCAT::TableUtils;
 use Sys::Syslog;
 use xCAT::GlobalDef;
 use xCAT::Table;
+use xCAT::DHCP::BootPolicy;
 use xCAT_monitoring::monitorctrl;
 use Getopt::Long;
 use strict;
@@ -234,11 +235,15 @@ sub setdestiny {
         my $nodetype = xCAT::Table->new('nodetype');
         my $ntents = $nodetype->getNodesAttribs($req->{node}, [qw(os arch profile)]);
         my $ients = $iscsitab->getNodesAttribs($req->{node}, [qw(kernel kcmdline initrd)]);
+        my $noderes = xCAT::Table->new('noderes');
+        my $nrents = $noderes ? $noderes->getNodesAttribs($req->{node}, ['netboot']) : {};
         foreach (@{ $req->{node} }) {
             my $ient = $ients->{$_}->[0]; #$iscsitab->getNodeAttribs($_,[qw(kernel kcmdline initrd)]);
             my $ntent = $ntents->{$_}->[0];
             unless ($ient and $ient->{kernel}) {
-                unless ($ntent and $ntent->{arch} =~ /x86/ and -f ("$tftpdir/undionly.kpxe" or -f "$tftpdir/xcat/xnba.kpxe")) {
+                my $netboot = $nrents->{$_} && $nrents->{$_}->[0] ? $nrents->{$_}->[0]->{netboot} : undef;
+                unless ($ntent and $ntent->{arch} =~ /x86/
+                    and xCAT::DHCP::BootPolicy->x86_san_loader_present(tftpdir => $tftpdir, method => $netboot)) {
                     $failurenodes{$_} = 1;
                     xCAT::MsgUtils->report_node_error($callback, $_, "No iscsi boot data available");
                 } #If x86 node and undionly.kpxe exists, presume they know what they are doing

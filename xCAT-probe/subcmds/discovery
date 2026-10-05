@@ -674,7 +674,7 @@ sub check_genesis_file {
     }
 
     { # check genesis files for x86_64 arch
-        $genesis_folder = "$tftpdir/xcat/xnba/nets";
+        $genesis_folder = "$tftpdir/xcat/ipxe/nets";
         unless (-d "$genesis_folder") {
             push @errors, "There is no genesis file for x86_64. Run 'mknb x86_64' if using x86_64 machine.";
             $rst = 1;
@@ -961,7 +961,7 @@ sub dhcp_dynamic_range_check {
         ($net_ip, $net_mask) = split('/', $net);
         $net_cdir = xCAT::NetworkUtils::formatNetmask($net_mask, 0, 1);
         $net_file_p = "$tftpdir/pxelinux.cfg/p/$net_ip" . "_$net_cdir";
-        $net_file_x = "$tftpdir/xcat/xnba/nets/$net_ip" . "_$net_cdir.uefi";
+        $net_file_x = "$tftpdir/xcat/ipxe/nets/$net_ip" . "_$net_cdir.uefi";
 
         if (! -e "$net_file_p") {
             push @errors, "The default petitboot configuration file $net_file_p for net $net dose not exist.";
@@ -1431,7 +1431,7 @@ sub handle_tftp_msg {
             probe_utils->send_msg("stdout", "d", "[$mac] $log_ref->{time_record} $record") if ($monitor);
             push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug);
 
-            if ($file =~ /\/pxelinux.cfg\//i or $file =~ /\/xcat\/xnba\/nets\//i) {
+            if (probe_utils::discovery_boot_download($file)) {
                 set_node_state($node_state_ref, $mac, $::STATE_DISCOVER_BOOTLODER);
             } elsif ($file =~ /genesis\.kernel/i) {
                 set_node_state($node_state_ref, $mac, $::STATE_DISCOVER_KERNEL);
@@ -1471,7 +1471,7 @@ sub handle_http_msg {
             probe_utils->send_msg("stdout", "d", "[$mac] $log_ref->{time_record} $record") if ($monitor);
             push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug);
 
-            if ($file =~ /\/pxelinux.cfg\//i or $file =~ /\/xcat\/xnba\/nets\//i) {
+            if (probe_utils::discovery_boot_download($file)) {
                 set_node_state($node_state_ref, $mac, $::STATE_DISCOVER_BOOTLODER);
             } elsif ($file =~ /genesis\.kernel/i) {
                 set_node_state($node_state_ref, $mac, $::STATE_DISCOVER_KERNEL);

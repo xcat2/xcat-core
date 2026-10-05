@@ -16,8 +16,8 @@ use XCAT::BuildUtils qw(targetarch_from_target);
 # packages, so there is no arch-named Genesis package to resolve here.
 
 my $xcat = slurp_repo_file('xCAT/xCAT.spec');
-like( $xcat, qr/^%ifarch riscv64\n(?:#[^\n]*\n)*Requires: ipmitool-xcat >= 1\.8\.18-4\n%endif$/m, 'xCAT.spec requires ipmitool-xcat on riscv64' );
 my ($xcat_rv) = $xcat =~ /^%ifarch riscv64\n((?:#[^\n]*\n|Requires:[^\n]*\n)*)%endif$/m;
+like( $xcat_rv || '', qr/^Requires: ipmitool-xcat >= 1\.8\.18-4$/m, 'xCAT.spec requires ipmitool-xcat on riscv64' );
 unlike( $xcat_rv || '', qr/xnba-undi|syslinux-xcat|elilo-xcat/, 'xCAT.spec does not require the x86 PXE loaders on riscv64' );
 
 # riscv64 has no legacy Genesis package: the requirement must disappear rather than
@@ -43,7 +43,8 @@ SKIP: {
 }
 
 my $xcatsn = slurp_repo_file('xCATsn/xCATsn.spec');
-like( $xcatsn, qr/^%ifarch riscv64\nRequires: ipmitool-xcat >= 1\.8\.17-1\n%endif$/m, 'xCATsn.spec requires ipmitool-xcat on riscv64' );
+my ($xcatsn_rv) = $xcatsn =~ /^%ifarch [^\n]*\briscv64\b[^\n]*\n((?:#[^\n]*\n|Requires:[^\n]*\n)*)%endif$/m;
+like( $xcatsn_rv || '', qr/^Requires: ipmitool-xcat >= 1\.8\.17-1$/m, 'xCATsn.spec requires ipmitool-xcat on riscv64' );
 like( $xcatsn, qr/^Recommends: xCAT-genesis-openembedded-riscv64$/m, 'xCATsn.spec recommends the RISC-V OpenEmbedded Genesis image' );
 
 my $server = slurp_repo_file('xCAT-server/xCAT-server.spec');

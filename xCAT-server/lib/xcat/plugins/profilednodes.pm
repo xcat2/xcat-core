@@ -952,13 +952,19 @@ Usage:
     }
 
     # Update nodes' attributes
+    my $netbootents = {};
+    if ($new_netboot) {
+        my $nrtab = xCAT::Table->new('noderes');
+        $netbootents = $nrtab->getNodesAttribs($nodes, ['netboot']) if $nrtab;
+    }
     foreach (@$nodes) {
         $updatenodeshash{$_}{'groups'} .= $profile_groups;
         if ($is_kvm_hypv) {
             $updatenodeshash{$_}{'groups'} .= ",__Hypervisor_kvm";
         }
         if ($new_netboot) {
-            $updatenodereshash{$_}{'netboot'} = $new_netboot;
+            my $current = $netbootents->{$_} ? $netbootents->{$_}->[0]->{netboot} : undef;
+            $updatenodereshash{$_}{'netboot'} = xCAT::ProfiledNodeUtils->profile_netboot($new_netboot, $current);
         }
     }
 

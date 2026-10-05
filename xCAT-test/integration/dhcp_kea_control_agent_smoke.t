@@ -3,16 +3,17 @@ use warnings;
 
 use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT";
+use lib "$FindBin::Bin/lib";
 
 use File::Path qw/make_path/;
 use File::Temp qw/tempdir/;
 use IO::Socket::INET;
-use POSIX qw/WNOHANG _exit setgid setuid/;
 use Test::More;
 use Time::HiRes qw/sleep time/;
 
 use xCAT::CommandUtils;
 use xCAT::DHCP::Backend::Kea;
+use XCAT::Test::DHCP qw(start_daemon process_running stop_daemons wait_for_socket wait_for_file diag_file);
 
 plan skip_all => 'set XCAT_KEA_LIVE_SMOKE=1 to run live Kea daemon smoke test'
   unless $ENV{XCAT_KEA_LIVE_SMOKE};
@@ -193,63 +194,6 @@ SKIP: {
 stop_daemons(\%children);
 done_testing();
 
-sub start_daemon {
-    my ( $account, $command, $log, @args ) = @_;
-    my $pid = fork();
-    die "Unable to fork $command: $!" unless defined $pid;
-    if ($pid == 0) {
-        open(STDOUT, '>', $log) or child_exit("Unable to write $log: $!");
-        open(STDERR, '>&', \*STDOUT) or child_exit("Unable to redirect stderr: $!");
-        $) = "$account->{gid} $account->{gid}";
-        defined( setgid( $account->{gid} ) )
-          or child_exit("Unable to set group identity to $account->{gid}: $!");
-        my @group_ids = split /\s+/, $);
-        $( == $account->{gid} && @group_ids && !grep { $_ != $account->{gid} } @group_ids
-          or child_exit("Kea child did not assume group identity $account->{gid}");
-        defined( setuid( $account->{uid} ) )
-          or child_exit("Unable to set user identity to $account->{uid}: $!");
-        $> == $account->{uid} && $< == $account->{uid}
-          or child_exit("Kea child did not assume user identity $account->{uid}");
-        {
-            no warnings 'exec';
-            exec { $command } $command, @args;
-            child_exit("Unable to exec $command: $!");
-        }
-    }
-    return $pid;
-}
-
-sub child_exit {
-    my ($message) = @_;
-
-    warn "$message\n";
-    _exit(127);
-}
-
-sub wait_for_socket {
-    my ( $pid, $socket_path, $children ) = @_;
-
-    for (1 .. 100) {
-        return 0 unless process_running( $pid, $children );
-        return 1 if -S $socket_path;
-        sleep 0.1;
-    }
-
-    return 0;
-}
-
-sub wait_for_file {
-    my ( $pid, $path, $children ) = @_;
-
-    for (1 .. 100) {
-        return 0 unless process_running( $pid, $children );
-        return 1 if -f $path;
-        sleep 0.1;
-    }
-
-    return 0;
-}
-
 sub wait_for_control_agent {
     my ( $backend, $pid, $children ) = @_;
 
@@ -271,36 +215,6 @@ sub wait_for_control_agent {
     return ( 0, $last_result );
 }
 
-sub process_running {
-    my ( $pid, $children ) = @_;
-
-    my $waited = waitpid( $pid, WNOHANG );
-    return 1 if $waited == 0;
-
-    delete $children->{$pid};
-    return 0;
-}
-
-sub stop_daemons {
-    my ($children) = @_;
-
-    my @pids = keys %$children;
-    kill 'TERM', @pids if @pids;
-    foreach my $pid (@pids) {
-        for (1 .. 50) {
-            last unless process_running( $pid, $children );
-            sleep 0.1;
-        }
-        next unless exists $children->{$pid};
-
-        kill 'KILL', $pid;
-        waitpid( $pid, 0 );
-        delete $children->{$pid};
-    }
-
-    return;
-}
-
 sub response_arguments {
     my ($result) = @_;
 
@@ -309,19 +223,6 @@ sub response_arguments {
     my $item = ref($response) eq 'ARRAY' ? $response->[0] : $response;
     return unless ref($item) eq 'HASH';
     return $item->{arguments} if ref( $item->{arguments} ) eq 'HASH';
-
-    return;
-}
-
-sub diag_file {
-    my ($path) = @_;
-
-    return unless -e $path;
-    open( my $fh, '<', $path ) or return;
-    local $/;
-    my $content = <$fh>;
-    close($fh) or diag("Unable to close $path: $!");
-    diag($content) if defined($content) && $content ne '';
 
     return;
 }

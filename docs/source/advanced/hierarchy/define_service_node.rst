@@ -56,7 +56,7 @@ Now set some of the common attributes for the SNs at the group level: ::
                          os=rhels7 \
                          nodetype=osi
                          profile=service \
-                         netboot=xnba installnic=mac \
+                         netboot=ipxe installnic=mac \
                          primarynic=mac \
                          provmethod=rhels7-x86_64-install-service
 

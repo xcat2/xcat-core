@@ -94,6 +94,7 @@ Requires: goconserver >= 0.3.3-snap202011021058
 %endif
 
 %ifarch i386 i586 i686 x86 x86_64
+Requires: ipxe-xcat >= 2.0.0-1
 Requires: xnba-undi >= 1.21.1-1
 Requires: syslinux-xcat >= 6.03-1
 Requires: ipmitool-xcat >= 1.8.18-4
@@ -102,6 +103,7 @@ Requires: ipmitool-xcat >= 1.8.18-4
 %ifos linux
 %ifarch ppc ppc64 ppc64le
 # Mixed-arch management nodes also need the x86 PXE stack kept current.
+Requires: ipxe-xcat >= 2.0.0-1
 Requires: xnba-undi >= 1.21.1-1
 Requires: syslinux-xcat >= 6.03-1
 Requires: ipmitool-xcat >= 1.8.18-4
@@ -110,8 +112,9 @@ Requires: ipmitool-xcat >= 1.8.18-4
 
 %ifos linux
 %ifarch riscv64
-# riscv64 management nodes manage BMC based nodes; the x86 PXE loaders are
-# x86-only packages and riscv64 nodes boot through UEFI and grub2.
+# riscv64 nodes boot through UEFI and grub2. A riscv64 management node can serve x86
+# nodes, which boot the upstream iPXE loader.
+Requires: ipxe-xcat >= 2.0.0-1
 Requires: ipmitool-xcat >= 1.8.18-4
 %endif
 %endif
