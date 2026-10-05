@@ -1047,18 +1047,22 @@ passed as argument rather than by table value',
 " dhcpomapialgorithm:  The TSIG algorithm used by BIND DDNS and, for legacy\n" .
 "                      ISC DHCP, OMAPI. Valid values are hmac-md5,\n" .
 "                      hmac-sha1, hmac-sha224, hmac-sha256, hmac-sha384,\n" .
-"                      and hmac-sha512. New installations on Enterprise Linux\n" .
-"                      9 or later and Ubuntu 20.04 or later set hmac-sha256.\n" .
-"                      Ubuntu 18.04, SLES 12, SLES 15, and openSUSE Leap 15\n" .
-"                      leave this attribute unset because their bundled\n" .
-"                      omshell does not support the key-algorithm command.\n" .
-"                      When this attribute is not set, including on an\n" .
-"                      existing installation, xCAT uses hmac-md5 for\n" .
-"                      compatibility. HMAC-MD5 is not approved for FIPS\n" .
-"                      mode; a FIPS-mode site that needs OMAPI must provide\n" .
-"                      an omshell supporting key-algorithm and explicitly\n" .
-"                      select a SHA-2 algorithm. Kea does not use OMAPI, but\n" .
-"                      Kea DDNS uses this TSIG algorithm.\n\n" .
+"                      and hmac-sha512. For new installations on Enterprise\n" .
+"                      Linux 9 or later and Ubuntu 20.04 or later, xCAT sets\n" .
+"                      hmac-sha256. Outside FIPS mode, xCAT leaves this\n" .
+"                      attribute unset on Ubuntu 18.04, SLES 12, SLES 15,\n" .
+"                      and openSUSE Leap 15. On these systems, the bundled\n" .
+"                      omshell lacks key-algorithm support.\n" .
+"                      On new FIPS installations, xCAT always sets hmac-sha256.\n" .
+"                      Outside FIPS mode, if this value is unset, xCAT uses\n" .
+"                      hmac-md5 for compatibility, including on existing\n" .
+"                      installations. In FIPS mode, if this value is unset,\n" .
+"                      xCAT uses hmac-sha256. In FIPS mode, xCAT rejects\n" .
+"                      explicit hmac-md5 values. A FIPS-mode site\n" .
+"                      on a platform whose bundled omshell lacks the\n" .
+"                      key-algorithm command must provide a compatible\n" .
+"                      omshell. Kea does not use OMAPI, but Kea DDNS uses\n" .
+"                      this TSIG algorithm.\n\n" .
 " dhcpomapikeyname:  The TSIG/OMAPI key name used by legacy ISC DHCP and\n" .
 "                   BIND DDNS integration. The default is xcat_key. The\n" .
 "                   value maps to the passwd table entry where key=omapi\n" .

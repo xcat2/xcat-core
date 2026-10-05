@@ -47,7 +47,11 @@ The ``auto`` setting keeps ISC DHCP on platforms where it is still available and
 For legacy ISC DHCP deployments that need a non-default OMAPI/TSIG key, use
 ``site.dhcpomapialgorithm`` and ``site.dhcpomapikeyname``. If the system uses
 an alternate ISC DHCP build, ``site.dhcpomshellpath`` can point xCAT at that
-build's ``omshell`` binary.
+build's ``omshell`` binary. In FIPS mode, xCAT defaults to ``hmac-sha256``
+and rejects an explicit ``hmac-md5`` value.
+Before using SHA-based OMAPI, xCAT checks that the configured ``omshell``
+supports the ``key-algorithm`` command. If this check fails, upgrade ISC
+DHCP or set ``site.dhcpomshellpath`` to a compatible binary.
 
 
 1.
