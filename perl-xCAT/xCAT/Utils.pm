@@ -555,6 +555,60 @@ sub isLinux
 
 #-------------------------------------------------------------------------------
 
+=head3    isFIPS
+    returns 1 when the local Linux kernel is running in FIPS mode
+    Arguments:
+        optional path to the kernel FIPS status file
+    Returns:
+        1 - FIPS mode is enabled
+        0 - FIPS mode is disabled or cannot be determined
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         if (xCAT::Utils->isFIPS()) { blah; }
+    Comments:
+        Linux exposes the active FIPS state through
+        /proc/sys/crypto/fips_enabled.
+=cut
+
+#-------------------------------------------------------------------------------
+sub isFIPS
+{
+    my $status_file = shift;
+    if (defined($status_file) && $status_file eq __PACKAGE__) {
+        $status_file = shift;
+    }
+    $status_file ||= '/proc/sys/crypto/fips_enabled';
+
+    return 0 unless -r $status_file;
+    open(my $fh, '<', $status_file) or return 0;
+    my $enabled = <$fh>;
+    close($fh);
+
+    return (defined($enabled) && $enabled =~ /^\s*1\s*$/) ? 1 : 0;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 dsaHostKeyAllowed
+
+    Arguments: platform name and kernel FIPS state.
+    Returns: 1 when legacy DSA host-key generation is permitted, otherwise 0.
+
+=cut
+
+sub dsaHostKeyAllowed {
+    my ($class, $platform, $fips_mode) = @_;
+
+    return 0 if $fips_mode;
+    return 0 if defined($platform) && $platform =~ /el(\d+)/ && $1 >= 10;
+    return 1;
+}
+
+#-------------------------------------------------------------------------------
+
 =head3   Version
     Arguments:
         Optional 'short' string to request only the version;
