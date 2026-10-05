@@ -59,6 +59,7 @@ my $localonly;     # flag for running only on local server - needs to be global
 # Package-scoped rather than file-lexical so a test can put its own collector in
 # place of the caller's response handler.
 our $callback;
+our $kea_ddns_key_path = '/etc/xcat/ddns.key';
 my $restartdhcp;
 my $restartdhcp6;
 my $sitenameservers;
@@ -3130,7 +3131,8 @@ sub kea_build_ddns_intent
 
     # xcatconfig sets site.dnshandler=ddns on every new installation, and only makedns -n writes
     # the key material.
-    my ( $key_algorithm, $key_secret ) = kea_ddns_key();
+    my ( $key_algorithm, $key_secret, $key_error ) = kea_ddns_key();
+    return { error => $key_error } if $key_error;
     return { warning => "No DDNS key material exists yet. DNS updates stay off until makedns -n runs." } unless $key_secret;
 
     my @tsig_keys = (
@@ -3423,8 +3425,10 @@ sub kea_ddns_enabled
 
 sub kea_ddns_key
 {
-    my $key_path = "/etc/xcat/ddns.key";
-    if (open(my $fh, '<', $key_path)) {
+    my $settings = xCAT::DHCP::OmapiPolicy->settings();
+    return (undef, undef, $settings->{error}) if $settings->{error};
+
+    if (open(my $fh, '<', $kea_ddns_key_path)) {
         local $/;
         my $contents = <$fh>;
         close($fh);
@@ -3432,11 +3436,13 @@ sub kea_ddns_key
         my ($secret)    = $contents =~ /secret\s+"([^"]+)"/;
         $algorithm ||= 'HMAC-SHA256';
         $algorithm = uc($algorithm);
+        if ($settings->{fips_mode} && $algorithm eq 'HMAC-MD5') {
+            return (undef, undef, 'The DDNS key uses HMAC-MD5 in FIPS mode. Run makedns -n to regenerate it.');
+        }
         $algorithm =~ s/^HMAC-/HMAC-/;
         return ($algorithm, $secret) if $secret;
     }
 
-    my $settings = xCAT::DHCP::OmapiPolicy->settings();
     my $passtab = xCAT::Table->new('passwd');
     my $pent = $passtab ? $passtab->getAttribs({ key => 'omapi', username => $settings->{key_name} }, ['password']) : undef;
     return (uc($settings->{algorithm}), $pent->{password}) if $pent && $pent->{password};
