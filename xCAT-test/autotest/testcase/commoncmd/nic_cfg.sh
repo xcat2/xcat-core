@@ -135,6 +135,11 @@ nm_del() {
     return 0
 }
 
+# Sourced by xCAT-test/bats/nic_cfg.bats: define the functions only.
+if [ "${BASH_SOURCE[0]}" != "$0" ]; then
+    return 0
+fi
+
 case "$1" in
     show)
         be=$(detect_backend); dev=$2
