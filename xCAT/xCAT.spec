@@ -119,6 +119,15 @@ Requires: ipmitool-xcat >= 1.8.18-4
 %endif
 %endif
 
+%ifos linux
+%ifarch aarch64
+# aarch64 nodes boot through UEFI and grub2. An aarch64 management node can serve x86
+# nodes, which boot the upstream iPXE loader.
+Requires: ipxe-xcat >= 2.0.0-1
+Requires: ipmitool-xcat >= 1.8.18-4
+%endif
+%endif
+
 %description
 xCAT is a server management package intended for at-scale management, including
 hardware management and software management.
