@@ -13,6 +13,7 @@ use xCAT::Table;
 #use Data::Dumper;
 use File::Path;
 use File::Copy;
+use Cwd qw(realpath);
 use Getopt::Long;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
@@ -74,6 +75,7 @@ sub process_request {
     my $ignorekernelchk;
     my $noupdate;
     my $envar;
+    my $gpgcheck;
 
     GetOptions(
         'a=s'             => \$arch,
@@ -145,7 +147,7 @@ sub process_request {
             return 1;
         }
 
-        (my $ref_linuximage_tab) = $linuximagetab->getAttribs({ imagename => $imagename }, 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'postinstall', 'rootimgdir', 'kerneldir', 'krpmver', 'nodebootif', 'otherifce', 'kernelver', 'netdrivers', 'permission', 'driverupdatesrc');
+        (my $ref_linuximage_tab) = $linuximagetab->getAttribs({ imagename => $imagename }, 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'postinstall', 'rootimgdir', 'kerneldir', 'krpmver', 'nodebootif', 'otherifce', 'kernelver', 'netdrivers', 'permission', 'driverupdatesrc', 'gpgcheck');
         unless ($ref_linuximage_tab) {
             $callback->({ error => ["Cannot find $imagename from the linuximage table."], errorcode => [1] });
             return 1;
@@ -210,6 +212,14 @@ sub process_request {
         $destdir         = $ref_linuximage_tab->{'rootimgdir'};
         $rootimg_dir     = $ref_linuximage_tab->{'rootimgdir'};
         $driverupdatesrc = $ref_linuximage_tab->{'driverupdatesrc'};
+
+        my $gpgcheck_value = $ref_linuximage_tab->{'gpgcheck'};
+        if (defined($gpgcheck_value) && $gpgcheck_value =~ /^(?:1|yes)$/i) {
+            $gpgcheck = 1;
+        } elsif (defined($gpgcheck_value) && $gpgcheck_value !~ /^(?:0|no)?$/i) {
+            $callback->({ error => ["Invalid linuximage.gpgcheck value \'$gpgcheck_value\' for image \'$imagename\'. Valid values are 1, yes, 0 or no."], errorcode => [1] });
+            return 1;
+        }
 
         # TODO: how can we do if the user specifies one wrong value to the following attributes?
         # currently, one message is output to indicate the users there will be some updates
@@ -320,6 +330,12 @@ sub process_request {
         return 1;
     }
 
+    # Only the shared RPM image builder (rh/genimage) implements gpgcheck.
+    if ($gpgcheck && realpath("$profDir/genimage") ne realpath("$::XCATROOT/share/xcat/netboot/rh/genimage")) {
+        $callback->({ error => ["linuximage.gpgcheck is not supported for $osver diskless images."], errorcode => [1] });
+        return 1;
+    }
+
     my $cmd = "cd $profDir; ./genimage";
     if ($arch)    { $cmd .= " -a $arch"; }
     if ($osver)   { $cmd .= " -o $osver"; }
@@ -350,6 +366,7 @@ sub process_request {
     if ($driverupdatesrc) { $cmd .= " --driverupdatesrc $driverupdatesrc"; }
     if ($ignorekernelchk) { $cmd .= " --ignorekernelchk $ignorekernelchk"; }
     if ($noupdate)        { $cmd .= " --noupdate $noupdate"; }
+    if ($gpgcheck)        { $cmd .= " --gpgcheck"; }
 
     if ($osfamily eq "sles") {
         my @entries = xCAT::TableUtils->get_site_attribute("timezone");
