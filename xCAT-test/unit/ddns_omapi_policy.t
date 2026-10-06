@@ -3,25 +3,35 @@ use strict;
 use warnings;
 
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../../xCAT-server/lib";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use lib "$FindBin::Bin/../../perl-xCAT";
 
-use File::Temp qw(tempfile);
+use File::Slurper qw(read_text write_text);
+use File::Temp qw(tempdir tempfile);
 use Test::More;
+use XCAT::Test::File qw(repo_path);
 
-$ENV{XCATCFG}  ||= 'SQLite:/tmp';
-$ENV{XCATROOT} ||= "$FindBin::Bin/../../xCAT-server";
+my $tmp = tempdir(CLEANUP => 1);
+local $ENV{XCATCFG} = "SQLite:$tmp";
+local $ENV{XCATROOT} = repo_path('xCAT-server');
 
-my $ddns_plugin_path =
-  "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/ddns.pm";
-if ( -f $ddns_plugin_path ) {
-    require $ddns_plugin_path;
+our $key_file = "$tmp/ddns.key";
+BEGIN {
+    # Redirect the fixed key path without replacing the production read/write decisions.
+    *CORE::GLOBAL::open = sub (*;$@) {
+        return CORE::open($_[0], $_[1], $key_file)
+          if @_ == 3 && !ref($_[2]) && $_[2] eq '/etc/xcat/ddns.key';
+        die 'Unexpected key-file open form'
+          if @_ == 2 && index($_[1], '/etc/xcat/ddns.key') >= 0;
+        return CORE::open($_[0], $_[1]) if @_ == 2;
+        return CORE::open($_[0], $_[1], @_[2 .. $#_]);
+    };
 }
-else {
-    require xCAT_plugin::ddns;
-    $ddns_plugin_path = $INC{'xCAT_plugin/ddns.pm'};
-}
+
+my $ddns_plugin_path = repo_path('xCAT-server/lib/xcat/plugins/ddns.pm');
+require $ddns_plugin_path;
 
 sub omapi_settings {
     my (%overrides) = @_;
@@ -68,6 +78,8 @@ my $sha512 = omapi_settings(
     dhcpomapialgorithm => 'hmac-sha512',
     dhcpomapikeyname   => 'provider.key',
 );
+my $provider_key =
+  "key \"provider.key\" {\n\talgorithm hmac-sha512;\n\tsecret \"provider-secret\";\n};\n\n";
 
 is(
     xCAT_plugin::ddns::ddns_tsig_algorithm(
@@ -86,27 +98,9 @@ is(
             privkey        => 'provider-secret',
         }
     ),
-"key \"provider.key\" {\n\talgorithm hmac-sha512;\n\tsecret \"provider-secret\";\n};\n\n",
+    $provider_key,
     'custom DDNS key name and algorithm are rendered'
 );
-
-subtest 'all Net::DNS thresholds share the dotted version policy' => sub {
-    open( my $source_fh, '<', $ddns_plugin_path )
-      or die "Unable to read $ddns_plugin_path: $!";
-    local $/;
-    my $source = <$source_fh>;
-    close($source_fh)
-      or die "Unable to close $ddns_plugin_path: $!";
-
-    my @raw_comparisons =
-      ( $source =~ /^(?!\s*#)[^\n]*(?:<|>=)\s*1\.36\b/gm );
-    is( scalar(@raw_comparisons), 0,
-        'no Net::DNS threshold uses Perl numeric comparison' );
-
-    my @policy_calls = ( $source =~ /net_dns_uses_keyfile\(\)/g );
-    is( scalar(@policy_calls), 2,
-        'both Net::DNS threshold sites use the shared policy' );
-};
 
 subtest 'Net::DNS threshold controls DDNS policy and signing' => sub {
     my $implicit_sha256 = {
@@ -151,18 +145,52 @@ subtest 'Net::DNS threshold controls DDNS policy and signing' => sub {
             "Net::DNS $version signs through the expected interface"
         );
 
-        my $tracker = tie my %key_context, 'Local::DDNS::TrackingHash';
+        unlink $key_file if -e $key_file;
+        my $key_context = {
+            omapi_settings => $sha512,
+            privkey        => 'provider-secret',
+        };
         with_net_dns_version(
             $version,
             sub {
-                xCAT_plugin::ddns::ensure_ddns_key_file(\%key_context);
+                xCAT_plugin::ddns::ensure_ddns_key_file($key_context);
             }
         );
-        is_deeply(
-            $tracker->{fetches},
-            $uses_keyfile ? ['privkey'] : [],
-            "Net::DNS $version applies the expected keyfile write gate"
+        is(
+            -f $key_file ? read_text($key_file) : undef,
+            $uses_keyfile ? $provider_key : undef,
+            "Net::DNS $version creates a key file only when required"
         );
+
+        write_text($key_file, "previous key\n");
+        with_net_dns_version(
+            $version,
+            sub { xCAT_plugin::ddns::ensure_ddns_key_file($key_context); }
+        );
+        is(
+            read_text($key_file),
+            $uses_keyfile ? $provider_key : "previous key\n",
+            "Net::DNS $version refreshes an existing key only when required"
+        );
+
+        for my $secret (undef, '') {
+            $key_context->{privkey} = $secret;
+            unlink $key_file or die "Unable to remove $key_file: $!";
+            with_net_dns_version(
+                $version,
+                sub { xCAT_plugin::ddns::ensure_ddns_key_file($key_context); }
+            );
+            ok(!-e $key_file,
+                "Net::DNS $version does not create a key without a secret");
+
+            write_text($key_file, "previous key\n");
+            with_net_dns_version(
+                $version,
+                sub { xCAT_plugin::ddns::ensure_ddns_key_file($key_context); }
+            );
+            is(read_text($key_file), "previous key\n",
+                "Net::DNS $version preserves an existing key without a secret");
+        }
     }
 };
 
@@ -182,6 +210,13 @@ subtest 'Net::DNS threshold controls named key reconciliation' => sub {
             0,
             "Net::DNS $version leaves named alone"
         );
+        is(
+            -f $key_file ? read_text($key_file) : undef,
+            $uses_keyfile
+              ? "key \"xcat_key\" {\n\talgorithm hmac-sha256;\n\tsecret \"legacy-secret\";\n};\n\n"
+              : undef,
+            "Net::DNS $version writes the named algorithm to the key file when required"
+        );
     }
 };
 
@@ -197,6 +232,7 @@ sub with_net_dns_version {
 sub reconcile_named_key {
     my ($version) = @_;
 
+    unlink $key_file if -e $key_file;
     my ( $named_fh, $named_path ) = tempfile(UNLINK => 1);
     print {$named_fh}
       "options {\n};\n"
@@ -220,7 +256,6 @@ sub reconcile_named_key {
 
     no warnings qw(redefine once);
     local *xCAT_plugin::ddns::get_conf = sub { return $named_path; };
-    local *xCAT_plugin::ddns::ensure_ddns_key_file = sub { return; };
     local *xCAT::TableUtils::get_site_attribute = sub { return; };
     local *xCAT::Utils::runcmd = sub { return (); };
     local *xCAT::Utils::isAIX = sub { return 0; };
@@ -234,13 +269,7 @@ sub reconcile_named_key {
         sub { xCAT_plugin::ddns::update_namedconf( $ctx, 0 ); }
     );
 
-    open( my $result_fh, '<', $named_path )
-      or die "Unable to read $named_path: $!";
-    local $/;
-    my $contents = <$result_fh>;
-    close($result_fh) or die "Unable to close $named_path: $!";
-
-    return ( $contents, $ctx->{restartneeded} );
+    return ( read_text($named_path), $ctx->{restartneeded} );
 }
 
 {
@@ -262,19 +291,5 @@ sub reconcile_named_key {
 
     sub setAttribs {
         return 1;
-    }
-}
-
-{
-    package Local::DDNS::TrackingHash;
-
-    sub TIEHASH {
-        return bless { fetches => [] }, shift;
-    }
-
-    sub FETCH {
-        my ( $self, $key ) = @_;
-        push @{ $self->{fetches} }, $key;
-        return;
     }
 }
