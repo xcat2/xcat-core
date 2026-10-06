@@ -418,32 +418,26 @@ rm -f $RPM_BUILD_ROOT/%{prefix}/ws/zvmxcatws.cgi
 
 %if %fsm
 %else
-echo "ScriptAlias /xcatrhevh %{prefix}/ws/xcatrhevh.cgi" > $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache22
-echo "ScriptAlias /xcatrhevh %{prefix}/ws/xcatrhevh.cgi" > $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24
+echo "ScriptAlias /xcatrhevh %{prefix}/ws/xcatrhevh.cgi" > $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf
 %if %notpcm
 %if %nots390x
-echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache22
-echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24
+echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf
 %else
 # Add in old version 1 REST-API and version 2 REST-API to z/VM, default to version 1
-echo "ScriptAlias /xcatwsv2 %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache22
-echo "ScriptAlias /xcatwsv2 %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24
-echo "ScriptAlias /xcatws %{prefix}/ws/zvmxcatws.cgi" >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache22
-echo "ScriptAlias /xcatws %{prefix}/ws/zvmxcatws.cgi" >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24
+echo "ScriptAlias /xcatwsv2 %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf
+echo "ScriptAlias /xcatws %{prefix}/ws/zvmxcatws.cgi" >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf
 %endif
 %endif
 
-cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache22 >>  $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache22
-cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache24 >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24
-#install lower version(<2.4) apache/httpd conf files by default
-cp $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache22 $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf
-cp $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache22 $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat-ws.conf
+cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf
+# One fragment serves Apache 2.2 and 2.4, so the payload is also the final file.
+cp $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf
+cp $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat-ws.conf
 %endif
 
 
 
-rm -f $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache22
-rm -f $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache24
+rm -f $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -607,23 +601,9 @@ if [ "$1" -gt "1" ]; then #only on upgrade for AIX...
 fi
 %endif
 
-#Apply the correct httpd/apache configuration file according to the httpd/apache version
-if [ -n "$(httpd -v 2>&1 |grep -e '^Server version\s*:.*/2\.4')" ]
-then
-   rm -rf /etc/httpd/conf.d/xcat-ws.conf
-   cp /etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24 /etc/httpd/conf.d/xcat-ws.conf
-fi
-
-if [ -n "$(apachectl -v 2>&1 |grep -e '^Server version\s*:.*/2\.4')" ]
-then
-   rm -rf /etc/apache2/conf.d/xcat-ws.conf
-   cp /etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24 /etc/apache2/conf.d/xcat-ws.conf
-fi
-
-if [ -n "$(apache2ctl -v 2>&1 |grep -e '^Server version\s*:.*/2\.4')" ]
-then
-   rm -rf /etc/apache2/conf.d/xcat-ws.conf
-   cp /etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24 /etc/apache2/conf.d/xcat-ws.conf
+# SUSE does not load mod_rewrite by default. A no-op where a2enmod is absent.
+if command -v a2enmod >/dev/null 2>&1; then
+    a2enmod rewrite >/dev/null 2>&1 || :
 fi
 
 exit 0
