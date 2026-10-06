@@ -1,16 +1,5 @@
 #!/usr/bin/env bats
-#
-# nic_cfg.sh backup must succeed on a node that has no persistent network configuration yet.
-#
-# Regression: the backup arm ended in a cp over the backend's config directory, so the script
-# exited with that cp's status. A node that has just netbooted has no
-# /etc/network/interfaces.d, so the cp failed and the caller read "nothing to back up" as a
-# failure. confignetwork_static_installnic failed on its third command for that reason, while
-# the identical call seven seconds later, after confignetwork had created the directory,
-# returned 0.
-#
-# The backend and every directory come from the environment, so nothing on the host is read or
-# written.
+# nic_cfg.sh backup must succeed on a node with no persistent network configuration.
 
 load 'helpers/shell_source'
 

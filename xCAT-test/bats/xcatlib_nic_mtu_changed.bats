@@ -1,11 +1,6 @@
 #!/usr/bin/env bats
-#
-# xcat_nic_mtu_changed is the decision configeth makes when it has to choose between writing
-# the configuration files and also restarting the NIC. Its address comparison cannot see an
-# MTU change, so a run that changes nothing else left the NIC on its old MTU: the profile said
-# 1496 and `ip link` still said 1500 (confignetwork_secondarynic_updatenode on EL8 and EL9).
-#
-# `ip` is stubbed, so nothing on the host is read.
+# xcat_nic_mtu_changed decides whether configeth restarts the NIC. An address comparison
+# cannot see an MTU-only change.
 
 load 'helpers/shell_source'
 

@@ -115,8 +115,7 @@ require xCAT::DHCP::Backend::Kea;
 }
 
 {
-    # Several networks, answered per net and mask, so a test can tell one subnet from
-    # another. DHCPKeaIntentNetTable answers every query with the same row.
+    # Answered per net and mask, so a test can tell one subnet from another.
     package DHCPKeaIntentMultiNetTable;
     sub new {
         my ( $class, @entries ) = @_;
@@ -1852,10 +1851,7 @@ foreach my $case (@invalid_mac_cases) {
 }
 
 {
-    # A network whose mgtifname is "!remote!<nic>" is reached through a relay agent, so
-    # site.dhcpinterfaces never names it and %activenics never carries a "!remote!" key.
-    # Without a subnet4 of its own, subnet_id_for_ip finds nothing for a node on that
-    # network and makedhcp writes no reservation (makedhcp_remote_network).
+    # A "!remote!<nic>" mgtifname is reached through a relay, so %activenics never holds it.
     my %local_net = (
         net          => '10.0.0.0',
         mask         => '255.255.255.0',

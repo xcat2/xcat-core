@@ -181,9 +181,7 @@ case "$1" in
         esac
         ;;
     backup)
-        # A source directory that does not exist holds no configuration to snapshot, which is
-        # the state of a node that has just netbooted. Report success: the exit status of a cp
-        # over an absent directory made the caller read "nothing to back up" as a failure.
+        # An absent source directory is the state of a node that has just netbooted.
         be=$(detect_backend); rm -rf "$BACKUP"; mkdir -p "$BACKUP" || exit 1
         case "$be" in
             nm)     if [ -d "$NMDIR" ];   then cp -af "$NMDIR"/. "$BACKUP"/ 2>/dev/null; fi ;;

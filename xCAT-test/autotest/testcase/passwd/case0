@@ -8,9 +8,7 @@ check:rc==0
 cmd:if grep Ubuntu /etc/*release;then if [ ! -e /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/initrd.gz ]; then copycds $$ISO;mkdir -p /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/;touch /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/initrd.gz;fi;fi
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-#On Ubuntu the artefact is a cloud-init directory, so the crypted password is in its
-#user-data; on the other families it is a single file. Reading the directory as a file
-#answers "Is a directory" and measures nothing.
+#On Ubuntu the artefact is a cloud-init directory; on the other families it is a file.
 cmd:f=/install/autoinst/$$CN; [ -d "$f" ] && f="$f/user-data"; grep '\$1\$' "$f"
 check:rc==0
 check:output=~\$1\$
@@ -86,9 +84,7 @@ check:rc==0
 cmd:if grep Ubuntu /etc/*release;then if [ ! -e /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/initrd.gz ]; then copycds $$ISO;mkdir -p /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/;touch /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/initrd.gz;fi;fi
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-#On Ubuntu the artefact is a cloud-init directory, so the crypted password is in its
-#user-data; on the other families it is a single file. Reading the directory as a file
-#answers "Is a directory" and measures nothing.
+#On Ubuntu the artefact is a cloud-init directory; on the other families it is a file.
 cmd:f=/install/autoinst/$$CN; [ -d "$f" ] && f="$f/user-data"; grep '\$5\$' "$f"
 check:rc==0
 check:output=~\$5\$
@@ -164,9 +160,7 @@ check:rc==0
 cmd:if grep Ubuntu /etc/*release;then if [ ! -e /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/initrd.gz ]; then copycds $$ISO;mkdir -p /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/;touch /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/initrd.gz;fi;fi
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-#On Ubuntu the artefact is a cloud-init directory, so the crypted password is in its
-#user-data; on the other families it is a single file. Reading the directory as a file
-#answers "Is a directory" and measures nothing.
+#On Ubuntu the artefact is a cloud-init directory; on the other families it is a file.
 cmd:f=/install/autoinst/$$CN; [ -d "$f" ] && f="$f/user-data"; grep '\$6\$' "$f"
 check:rc==0
 check:output=~\$6\$
@@ -247,8 +241,7 @@ check:rc==0
 cmd:if grep Ubuntu /etc/*release;then if [ ! -e /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/initrd.gz ]; then copycds $$ISO;mkdir -p /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/;touch /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/initrd.gz;fi;fi
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-#The Ubuntu branch reads the cloud-init user-data, where the hash is quoted and may carry a
-#"root:" prefix, so take the hash itself rather than a field position.
+#In cloud-init user-data the hash is quoted and may carry a "root:" prefix.
 cmd:if grep SUSE /etc/*release;then grep '\$6\$' /install/autoinst/$$CN | awk 'gsub(/^ *| *$/,"")'| awk -v head="<user_password>" -v tail="</user_password>" '{print substr($0, index($0,head)+length(head),index($0,tail)-index($0,head)-length(head))}' > /tmp/instcryptedpasswd; elif grep -E "Red Hat|CentOS|Rocky|Alma|openEuler" /etc/*release;then grep '\$6\$' /install/autoinst/$$CN |awk -F " " '{print $3}' > /tmp/instcryptedpasswd; elif grep Ubuntu /etc/*release;then grep -ho '\$6\$[^"]*' /install/autoinst/$$CN/user-data | head -1 > /tmp/instcryptedpasswd;else echo "Sorry,this is not supported os"; fi
 check:rc==0
 cmd:diff /tmp/tmpcryptedpasswd /tmp/instcryptedpasswd

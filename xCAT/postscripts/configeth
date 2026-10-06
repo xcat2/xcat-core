@@ -1565,7 +1565,6 @@ else
 		bool_modify_flag=1
 	fi
 
-    #The restart below is what hands a changed MTU to the running NIC.
     if [ $bool_restart_flag -eq 0 ];then
         for str_mtu_wanted in "${array_nic_mtu[@]}"
         do

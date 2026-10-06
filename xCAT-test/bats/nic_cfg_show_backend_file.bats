@@ -1,15 +1,6 @@
 #!/usr/bin/env bats
-#
-# nic_cfg.sh show must dump the file NetworkManager actually keeps the connection in.
-#
-# Regression: nm_show looked for a keyfile under /etc/NetworkManager/system-connections and
-# dumped nothing when it found none. On EL8 the ifcfg-rh plugin owns an xCAT connection and
-# writes /etc/sysconfig/network-scripts/ifcfg-xcat-<nic>, which is where configeth puts an
-# extra param such as CONNECTED_MODE. So confignetwork_secondarynic_nicextraparams_updatenode
-# read a dump with no extra params in it and failed on EL8 while passing on EL9 and EL10.
-#
-# nmcli and systemctl are stubbed, so no NetworkManager is needed and nothing on the host is
-# read or written.
+# nic_cfg.sh show must dump the file NetworkManager keeps the connection in. On EL8 that is
+# an ifcfg file, not a keyfile.
 
 load 'helpers/shell_source'
 
