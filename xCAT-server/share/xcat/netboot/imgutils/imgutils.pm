@@ -48,6 +48,39 @@ sub rpm_installroot_command {
     return $cmd;
 }
 
+sub rpm_trusted_keys {
+    open(my $rpm, '-|', 'rpm', '-qa', '--qf', "%{DESCRIPTION}\n", 'gpg-pubkey*')
+      or die "Cannot read trusted RPM keys: $!\n";
+    local $/;
+    my $keys = <$rpm>;
+    close($rpm) or die "Cannot read trusted RPM keys\n";
+    die "No trusted RPM signing keys are installed\n" unless defined($keys) && length($keys);
+    return $keys;
+}
+
+sub rpm_repository_config {
+    my ($osver, $id, $url, $gpgkey) = @_;
+    my $config = "[$id]\nname=$id\nbaseurl=$url\n";
+    if (defined($gpgkey) && length($gpgkey)) {
+        # RPM images verify signatures only when the caller opts in
+        # by supplying the trusted keys (linuximage.gpgcheck).
+        $config .= "gpgcheck=1\ngpgkey=$gpgkey\nskip_if_unavailable=True\n\n";
+    } else {
+        $config .= "gpgcheck=0\nskip_if_unavailable=True\n\n";
+    }
+    return $config;
+}
+
+sub otherpkgs_repository_urls {
+    my ($subdir, $local_dir, @urls) = @_;
+    my @repos = @urls;
+
+    # Without a local otherpkgdir there is no local repository to add; a
+    # file:///<subdir> entry would only produce a metadata download failure.
+    push @repos, "file://$local_dir/$subdir" if defined($local_dir) && length($local_dir);
+    return @repos;
+}
+
 sub varsubinline{
     my $line=shift;
     my $refvardict=shift;
