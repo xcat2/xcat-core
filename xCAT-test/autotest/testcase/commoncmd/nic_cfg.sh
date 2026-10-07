@@ -185,7 +185,12 @@ case "$1" in
         be=$(detect_backend); rm -rf "$BACKUP"; mkdir -p "$BACKUP" || exit 1
         case "$be" in
             nm)     if [ -d "$NMDIR" ];   then cp -af "$NMDIR"/. "$BACKUP"/ 2>/dev/null; fi ;;
-            suse)   if [ -d "$SUSEDIR" ]; then cp -af "$SUSEDIR"/ifcfg-* "$BACKUP"/ 2>/dev/null || :; fi ;;
+            suse)
+                for f in "$SUSEDIR"/ifcfg-*; do
+                    [ -e "$f" ] || continue
+                    cp -af "$f" "$BACKUP"/ || exit 1
+                done
+                ;;
             rh)     if [ -d "$RHDIR" ];   then cp -af "$RHDIR" "$BACKUP"/ 2>/dev/null; fi ;;
             ubuntu) if [ -d "$UBUDIR" ];  then cp -af "$UBUDIR"/. "$BACKUP"/ 2>/dev/null; fi ;;
         esac
