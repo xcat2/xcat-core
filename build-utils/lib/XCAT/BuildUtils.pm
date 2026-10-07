@@ -1152,10 +1152,11 @@ sub mock_config_text {
     # that only surfaces later as a confusing MN install failure. 'simple' isolation is a plain
     # chroot -- reliable for these RPM builds -- and sidesteps the nspawn cgroup race entirely.
     $text .= "config_opts['isolation'] = 'simple'\n";
-    # mock creates --resultdir and its own logs as chrootuid, and buildrpms.pl passes a
-    # relative one under a root-owned tree. The last assignment wins; the inherited line
-    # stays for the chroot. chrootgid is left alone: gid 0 collides with the root group.
+    # mock creates --resultdir and its logs as chrootuid, and buildrpms.pl passes a relative
+    # one under a tree it owns as root. This assignment replaces any uid the target declares,
+    # so the in-chroot build user becomes uid 0 as well.
     $text .= "config_opts['chrootuid'] = 0\n";
+    # chrootgid is left unset on purpose: groupadd for the in-chroot group fails on gid 0.
     return $text;
 }
 

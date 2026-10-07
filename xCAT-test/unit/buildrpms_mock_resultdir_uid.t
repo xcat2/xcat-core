@@ -37,9 +37,6 @@ is(effective($out, 'chrootuid'), '0', 'the ppc64le core build writes its resultd
 is(effective($out, 'chrootgid'), '1000', 'the group the target declared is left alone');
 is(effective($out, 'root'), '"xCAT-openeuler-24.03-ppc64le"', 'the chroot is still named per package');
 
-# mock also reads this file for the chroot, so the inherited line stays.
-like($out, qr/\Qconfig_opts['chrootuid'] = 1000\E/, 'the declaration xcat-dep ships is left in place');
-
 my $plain = mock_config_text('xCAT', 'openeuler-24.03sp4-x86_64', $x86, 1790988617);
 is(effective($plain, 'chrootuid'), '0', 'a target that declares no uid is pinned to root too');
 is(effective($plain, 'chrootgid'), undef, 'and no group is invented for it');
