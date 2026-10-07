@@ -22,11 +22,12 @@ when the behavior can be tested with BATS.
 
 ## Postscript sandbox prerequisites
 
-`otherpkgs_upgrade_scope.bats` runs the complete postscript in a Linux filesystem
-sandbox because it writes to `/etc/yum.repos.d`. It requires Bubblewrap, Bash,
-GNU core utilities, and permission to create user namespaces. The CI workflow
-installs Bubblewrap and enables those namespaces.
+`otherpkgs_upgrade_scope.bats` and `routeop.bats` run complete postscripts in
+Linux filesystem and network namespaces. Their `/etc` writes stay inside test
+fixtures. They require Bubblewrap, Bash, GNU core utilities, grep, sed, and
+permission to create user namespaces. The CI workflow installs Bubblewrap and
+enables those namespaces.
 
-Missing prerequisites fail this test without stopping unrelated test files.
+Missing prerequisites fail these tests without stopping unrelated test files.
 Non-Linux hosts report a skip. Set `TMPDIR` to a writable, executable filesystem
 if the default temporary directory is mounted with `noexec`.
