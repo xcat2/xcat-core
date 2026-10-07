@@ -43,15 +43,34 @@ before=$(nodeset "$node" stat 2>/dev/null | sed -n "s/^$node: *//p" | head -1)
 provmethod=$(node_value provmethod)
 echo "nodeset state of $node before this case: ${before:-unknown}, provmethod=${provmethod:-unset}"
 
+# The case reconfigures the node for installation. A restoration that fails leaves it that way,
+# so the failure has to reach the caller in place of the result of the case.
+restore_done=0
+restore_rc=0
 restore_state() {
+    [ "$restore_done" = 1 ] && return "$restore_rc"
+    restore_done=1
     if [ -z "$provmethod" ]; then
-        chdef -t node -o "$node" provmethod= > /dev/null
+        if ! chdef -t node -o "$node" provmethod= > /dev/null; then
+            echo "IPXE_SHIM_FAIL: chdef -t node -o $node provmethod= returned non-zero, $node keeps the provmethod this case set"
+            restore_rc=1
+        fi
     fi
     case "${before%% *}" in
         boot | offline | shell | standby)
-            nodeset "$node" "${before%% *}" || echo "could not put $node back to ${before%% *}"
+            if ! nodeset "$node" "${before%% *}"; then
+                echo "IPXE_SHIM_FAIL: nodeset $node ${before%% *} returned non-zero, $node stays configured for installation"
+                restore_rc=1
+            fi
             ;;
     esac
+    return "$restore_rc"
+}
+
+on_exit() {
+    status=$?
+    restore_state || status=1
+    exit "$status"
 }
 
 # A hand run reaches this case before any provisioning case has set nodetype.provmethod, so name
@@ -66,14 +85,16 @@ if [ -z "$provmethod" ]; then
     destiny="osimage=$image"
 fi
 
+# Arm the restoration before the call that changes the state, and not earlier: a skip above this
+# line has nothing to put back. Every exit after it passes through the restoration.
+trap on_exit EXIT
+
 if ! nodeset "$node" "$destiny"; then
     echo "IPXE_SHIM_FAIL: nodeset $node $destiny returned non-zero"
-    restore_state
     exit 1
 fi
 if [ ! -f "$uefi" ]; then
     echo "IPXE_SHIM_FAIL: nodeset wrote no $uefi"
-    restore_state
     exit 1
 fi
 echo "--- $uefi ---"
@@ -84,7 +105,6 @@ echo "--- end ---"
 # that imgload selected, so the shim line must follow it.
 if ! grep -q '^imgload kernel$' "$uefi"; then
     echo "IPXE_SHIM_FAIL: the UEFI script of $node selects no kernel image with imgload"
-    restore_state
     exit 1
 fi
 after=$(awk '/^imgload kernel$/ { if ((getline line) > 0) { print line } exit }' "$uefi")
@@ -92,7 +112,6 @@ case "$after" in
     "shim http://"*) ;;
     *)
         echo "IPXE_SHIM_FAIL: the line after imgload is [$after], not a shim command"
-        restore_state
         exit 1
         ;;
 esac
@@ -104,16 +123,14 @@ case "$urlpath" in
     /tftpboot/*) shimfile="$tftpdir/${urlpath#/tftpboot/}" ;;
     *)
         echo "IPXE_SHIM_FAIL: the shim path [$urlpath] is under neither /install nor /tftpboot"
-        restore_state
         exit 1
         ;;
 esac
 if [ ! -f "$shimfile" ]; then
     echo "IPXE_SHIM_FAIL: the script names $urlpath and $shimfile does not exist"
-    restore_state
     exit 1
 fi
 
-restore_state
+restore_state || exit 1
 echo "IPXE_SHIM_OK: $after resolves to $shimfile"
 exit 0
