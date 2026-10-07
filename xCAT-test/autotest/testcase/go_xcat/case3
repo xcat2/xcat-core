@@ -25,8 +25,9 @@ cmd:if xdsh $$CN "grep \"Red Hat\|Rocky\|Alma\" /etc/*release >/dev/null"; then 
 cmd:if xdsh $$CN "grep \"Red Hat\|Rocky\|Alma\" /etc/*release >/dev/null"; then xdsh $$CN 'rpm -q epel-release || dnf -y install epel-release || dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-$(rpm -E %rhel).noarch.rpm'; fi
 check:rc==0
 
-#go-xcat requires CodeReady Builder, named crb on EL9 and later and PowerTools on EL8.
+#go-xcat requires CodeReady Builder.
 cmd:if xdsh $$CN "grep \"Red Hat\|Rocky\|Alma\" /etc/*release >/dev/null"; then xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/go_xcat/enable_crb.sh; fi
+check:rc==0
 
 #Install additional packages on Ubuntu
 cmd:if xdsh $$CN "grep \"Ubuntu\" /etc/*release >/dev/null"; then xdsh $$CN "DEBIAN_FRONTEND=noninteractive apt-get install -y gnupg"; fi
