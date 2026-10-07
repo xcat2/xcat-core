@@ -77,9 +77,13 @@ sub install_source {
 sub nodeset {
     my ( $plugin, $node, %attrib ) = @_;
     $rows{noderes}{$node} = { tftpdir => $tftp, netboot => $plugin };
-    $rows{chain}{$node}   = { currstate => 'install rhels9-x86_64-compute' };
-    $rows{nodetype}{$node} =
-      { provmethod => 'install', os => $attrib{os}, arch => $attrib{arch} };
+    $rows{chain}{$node} =
+      { currstate => $attrib{currstate} || 'install rhels9-x86_64-compute' };
+    $rows{nodetype}{$node} = {
+        provmethod => exists( $attrib{provmethod} ) ? $attrib{provmethod} : 'install',
+        os         => $attrib{os},
+        arch       => $attrib{arch},
+    };
     my $subreq = sub {
         my ($request) = @_;
         $request->{bootparams}{$node} = [ { map { $_ => $attrib{$_} } qw(kernel initrd kcmdline) } ]
@@ -162,6 +166,26 @@ like(
     ipxe_shim_line('/install/alma9.8/x86_64/EFI/BOOT/BOOTX64.EFI'),
     'the install source answers even when the shim of ipxe-xcat is also on disk'
 );
+
+# The shell, discover, standby and runcmd destinies load the Genesis kernel through the same UEFI
+# script. No distribution signs that kernel, so the vendor certificate of an install source cannot
+# verify it and only the shim of ipxe-xcat can. cn08 keeps the install source of cn01, which does
+# carry a shim.
+nodeset(
+    ipxe       => 'cn08',
+    os         => 'alma9.8', arch => 'x86_64',
+    currstate  => 'shell',
+    provmethod => '',
+    kernel     => kernel_with_efistub('xcat/genesis.kernel.x86_64'),
+    initrd     => 'xcat/genesis.fs.x86_64.gz', kcmdline => 'quiet destiny=shell',
+);
+like(
+    script('xcat/ipxe/nodes/cn08.uefi'),
+    ipxe_shim_line('/tftpboot/xcat/ipxe/x86_64-sb/shimx64.efi'),
+    'a node that loads the Genesis kernel names the shim of ipxe-xcat'
+);
+unlike( script('xcat/ipxe/nodes/cn08.uefi'), qr{^shim \S*/install/}m,
+    'and never the shim of an install source, which signs no Genesis kernel' );
 
 # ppc64le has no UEFI shim, and netboot=xnba loads an unsigned loader that Secure Boot refuses.
 nodeset(
