@@ -17,14 +17,28 @@ my %ALGORITHMS = (
 sub settings {
     my ( $class, %args ) = @_;
 
+    my $fips_mode;
+    if (exists $args{fips_mode}) {
+        $fips_mode = $args{fips_mode} ? 1 : 0;
+    } else {
+        require xCAT::Utils;
+        $fips_mode = xCAT::Utils->isFIPS();
+    }
     my $raw_algorithm      = _site_value( 'dhcpomapialgorithm', %args );
     my $algorithm_explicit = defined($raw_algorithm) && $raw_algorithm ne '';
-    my $algorithm          = $class->normalize_algorithm($raw_algorithm);
+    my $default_algorithm  = $fips_mode ? 'hmac-sha256' : 'hmac-md5';
+    my $algorithm =
+      $class->normalize_algorithm($raw_algorithm, $default_algorithm);
     unless ($algorithm) {
         return {
             error => "Invalid site.dhcpomapialgorithm value '$raw_algorithm'. Valid values are: "
               . join( ', ', sort keys %ALGORITHMS )
               . ".",
+        };
+    }
+    if ($fips_mode && $algorithm eq 'hmac-md5') {
+        return {
+            error => 'site.dhcpomapialgorithm=hmac-md5 is not allowed while FIPS mode is enabled. Use hmac-sha256.',
         };
     }
 
@@ -47,6 +61,7 @@ sub settings {
     return {
         algorithm                   => $algorithm,
         algorithm_explicit          => $algorithm_explicit,
+        fips_mode                   => $fips_mode,
         key_name                    => $key_name,
         key_name_for_regex          => quotemeta($key_name),
         key_rr_type                 => $ALGORITHMS{$algorithm},
@@ -56,9 +71,10 @@ sub settings {
 }
 
 sub normalize_algorithm {
-    my ( $class, $algorithm ) = @_;
+    my ( $class, $algorithm, $default_algorithm ) = @_;
 
-    $algorithm = 'hmac-md5' unless defined($algorithm) && $algorithm ne '';
+    $default_algorithm ||= 'hmac-md5';
+    $algorithm = $default_algorithm unless defined($algorithm) && $algorithm ne '';
     $algorithm = trim($algorithm);
     $algorithm = lc($algorithm);
 
@@ -80,6 +96,7 @@ sub new_install_default_algorithm {
     my $os       = $args{os};
 
     return unless $args{is_new_install};
+    return 'hmac-sha256' if $args{fips_mode};
     return 'hmac-sha256'
       if defined($platform) && $platform =~ /^el(\d+)\b/i && $1 >= 9;
     if ( defined($os) && $os =~ /^ubuntu,(\d+\.\d+(?:\.\d+)*)\b/i ) {

@@ -25,6 +25,14 @@ The B<makedhcp> command is supported for both Linux and AIX clusters.  Note that
 generate UEFI configuration if the OS indicated in nodetype.os is not UEFI supported, even if the OS being booted is shell.
 On Linux, the DHCP implementation is selected by the C<site.dhcpbackend> attribute.
 The C<auto> setting keeps ISC DHCP on platforms where it is still available and uses Kea DHCP on platforms such as EL10 and Ubuntu 24.04.
+For legacy ISC DHCP deployments that need a non-default OMAPI/TSIG key, use
+C<site.dhcpomapialgorithm> and C<site.dhcpomapikeyname>. If the system uses an
+alternate ISC DHCP build, C<site.dhcpomshellpath> can point xCAT at that build's
+C<omshell> binary. In FIPS mode, xCAT defaults to C<hmac-sha256> and rejects
+an explicit C<hmac-md5> value.
+Before using SHA-based OMAPI, xCAT checks that the configured C<omshell>
+supports the C<key-algorithm> command. If this check fails, upgrade ISC
+DHCP or set C<site.dhcpomshellpath> to a compatible binary.
 
 =over 3
 

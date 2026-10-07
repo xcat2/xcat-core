@@ -105,6 +105,13 @@ if($help){
         print "Error: $settings->{error}\n";
         exit 1;
     }
+    if ($settings->{needs_omshell_key_algorithm}) {
+        my $error = xCAT::DHCP::OmapiRunner->key_algorithm_error($settings);
+        if ($error) {
+            print "Error: $error\n";
+            exit 1;
+        }
+    }
 
     my $passtab = xCAT::Table->new('passwd');
     my $pent = $passtab->getAttribs({ key => 'omapi', username => $settings->{key_name} }, qw(username password));
