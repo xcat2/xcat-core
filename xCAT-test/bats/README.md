@@ -57,3 +57,16 @@ Missing Linux prerequisites fail these cases. Non-Linux hosts skip them.
 The RPM prerequisite check requires `rpmspec` but does not use the sandbox.
 Run containers with an init process to
 reap children created by deliberate-fault tests.
+
+## Genesis sandbox prerequisites
+
+`genesis_bmcsetup_users.bats` and `genesis_getadapter.bats` run the complete
+checkout scripts with private filesystem, process, and network namespaces.
+They replace hardware and transport commands, not the scripts under test.
+The fixtures do not contact a BMC or transmit an adapter request.
+
+These tests require Linux, bats-core 1.4 or newer, Bubblewrap, Bash, GNU core
+utilities, awk, grep, sed, and user namespace support. The adapter tests also
+require `cmp` from diffutils. The CI environment provides these dependencies.
+Missing prerequisites fail on Linux; non-Linux hosts report a skip.
+The temporary filesystem must allow executable files.
