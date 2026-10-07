@@ -7,7 +7,7 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../../build-utils/lib";
 use Test::More;
-use XCAT::BuildUtils qw(mock_config_text);
+use XCAT::BuildUtils qw(mock_config_text mock_build_owner);
 
 my $ppc = <<'CFG';
 config_opts['root'] = 'openeuler-24.03-ppc64le'
@@ -54,17 +54,17 @@ unlike(mock_config_text('perl-xCAT', 'opensuse-leap-15.6-x86_64', $x86, 1),
     qr/perl-generators/, 'and still does not on a SUSE target');
 
 # The owner the resultdir needs, read from the configuration mock will read.
-is_deeply([ XCAT::BuildUtils::mock_build_owner($out) ], [ 1000, 1000 ],
+is_deeply([ mock_build_owner($out) ], [ 1000, 1000 ],
     'the resultdir owner comes from the rendered configuration');
-is_deeply([ XCAT::BuildUtils::mock_build_owner($plain) ], [ undef, undef ],
+is_deeply([ mock_build_owner($plain) ], [ undef, undef ],
     'a target that declares no uid needs no chown: mock uses the caller');
-is_deeply([ XCAT::BuildUtils::mock_build_owner("config_opts['chrootuid'] = 1000\nconfig_opts['chrootuid'] = 48\n") ],
+is_deeply([ mock_build_owner("config_opts['chrootuid'] = 1000\nconfig_opts['chrootuid'] = 48\n") ],
     [ 48, undef ], 'the last assignment wins, as it does in mock');
-is_deeply([ XCAT::BuildUtils::mock_build_owner("config_opts['chrootgid'] = 135\n") ], [ undef, 135 ],
+is_deeply([ mock_build_owner("config_opts['chrootgid'] = 135\n") ], [ undef, 135 ],
     'a group without a uid is still reported');
-is_deeply([ XCAT::BuildUtils::mock_build_owner("# config_opts['chrootuid'] = 1000\n") ], [ undef, undef ],
+is_deeply([ mock_build_owner("# config_opts['chrootuid'] = 1000\n") ], [ undef, undef ],
     'a commented assignment is not one');
-is_deeply([ XCAT::BuildUtils::mock_build_owner("config_opts['chrootuid'] = '{{nobody}}'\n") ], [ undef, undef ],
+is_deeply([ mock_build_owner("config_opts['chrootuid'] = '{{nobody}}'\n") ], [ undef, undef ],
     'a value that is not a plain number is left to mock');
 
 done_testing();
