@@ -31,3 +31,15 @@ enables those namespaces.
 Missing prerequisites fail these tests without stopping unrelated test files.
 Non-Linux hosts report a skip. Set `TMPDIR` to a writable, executable filesystem
 if the default temporary directory is mounted with `noexec`.
+
+## Genesis sandbox prerequisites
+
+`genesis_bmcsetup_users.bats` and `genesis_getadapter.bats` run the complete
+checkout scripts with private filesystem, process, and network namespaces.
+They replace hardware and transport commands, not the scripts under test.
+The fixtures do not contact a BMC or transmit an adapter request.
+
+These tests require Linux, bats-core 1.4 or newer, Bubblewrap, Bash, GNU core
+utilities, awk, grep, sed, and user namespace support. The adapter tests also
+require `cmp` from diffutils. The CI environment provides these dependencies.
+Missing prerequisites fail on Linux; non-Linux hosts report a skip.
