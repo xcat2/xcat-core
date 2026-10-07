@@ -42,6 +42,7 @@ our @EXPORT_OK = qw(
     buildinfo_text
     targetarch_from_target
     openeuler_build_target openeuler_repo_subdir
+    mock_config_text
     genesis_chroot_name genesis_target_arch genesis_build_plan
     genesis_log_errors genesis_log_deny_rules deb_belongs_to_dist
     genesis_dists genesis_dist_reason
@@ -1115,3 +1116,47 @@ sub _pid_alive {
 }
 
 1;
+
+#-------------------------------------------------------------------------------
+
+=head3 mock_config_text
+
+    Descriptions: Render the per-package mock configuration from a target configuration.
+
+    Arguments:
+        $pkg    - the package being built, e.g. xCAT or perl-xCAT
+        $target - the mock target, e.g. openeuler-24.03-ppc64le
+        $base   - the text of /etc/mock/<target>.cfg
+        $epoch  - SOURCE_DATE_EPOCH, passed into the chroot
+
+    Returns: the text to write to /etc/mock/<pkg>-<target>.cfg
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub mock_config_text {
+    my ($pkg, $target, $base, $epoch) = @_;
+    my $chroot = "$pkg-$target";
+    my $text = $base;
+    $text =~ s/config_opts\['root'\]\s+=.*/config_opts['root'] = \"$chroot\"/;
+    if ($pkg eq "perl-xCAT" && $target !~ /suse|sles|leap/i) {
+        # perl-generators exports perl(xCAT::...) provides on RHEL/Fedora; it does not
+        # exist on openSUSE/SLES (rpm there generates perl provides itself), so injecting
+        # it into a SUSE chroot aborts chroot setup. Suppress it for SUSE targets.
+        $text .= "config_opts['chroot_additional_packages'] = 'perl-generators'\n";
+    }
+    $text .= "config_opts['environment']['SOURCE_DATE_EPOCH'] = '$epoch'\n";
+    # Avoid systemd-nspawn: it INTERMITTENTLY fails chroot setup with
+    #   "Failed to determine whether the unified cgroups hierarchy is used: No medium found"
+    # (ENOMEDIUM), which drops that package from the (still-signed) core -> an incomplete build
+    # that only surfaces later as a confusing MN install failure. 'simple' isolation is a plain
+    # chroot -- reliable for these RPM builds -- and sidesteps the nspawn cgroup race entirely.
+    $text .= "config_opts['isolation'] = 'simple'\n";
+    # mock creates --resultdir and its logs as chrootuid, and buildrpms.pl passes a relative
+    # one under a tree it owns as root. This assignment replaces any uid the target declares,
+    # so the in-chroot build user becomes uid 0 as well.
+    $text .= "config_opts['chrootuid'] = 0\n";
+    # chrootgid is left unset on purpose: groupadd for the in-chroot group fails on gid 0.
+    return $text;
+}
+
