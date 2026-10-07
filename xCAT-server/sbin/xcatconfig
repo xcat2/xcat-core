@@ -1021,8 +1021,9 @@ sub genSSHNodeHostKey
     }
 
 
-    # Skip DSA generation in EL10+
-    if (xCAT::Utils->osver("platform") =~ /el(\d+)/ and $1 < 10) {
+    my $platform = xCAT::Utils->osver("platform");
+    if ($platform =~ /el(\d+)/
+        && xCAT::Utils->dsaHostKeyAllowed($platform, xCAT::Utils->isFIPS())) {
         xCAT::MsgUtils->message('I', "Generating SSH2 DSA Key...");
         $cmd =
     "/usr/bin/ssh-keygen -t dsa -f /etc/xcat/hostkeys/ssh_host_dsa_key -C '' -N ''";
@@ -1263,8 +1264,9 @@ sub initDB
         my $omapi_algorithm =
           xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
             is_new_install => $initializing_new_site,
-            platform      => xCAT::Utils->osver("platform"),
-            os            => xCAT::Utils->osver("all"),
+            fips_mode      => xCAT::Utils->isFIPS(),
+            platform       => xCAT::Utils->osver("platform"),
+            os             => xCAT::Utils->osver("all"),
           );
         if ($omapi_algorithm) {
             $chtabcmds .=

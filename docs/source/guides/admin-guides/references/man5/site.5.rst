@@ -95,18 +95,22 @@ site Attributes:
    dhcpomapialgorithm:  The TSIG algorithm used by BIND DDNS and, for legacy
                         ISC DHCP, OMAPI. Valid values are hmac-md5,
                         hmac-sha1, hmac-sha224, hmac-sha256, hmac-sha384,
-                        and hmac-sha512. New installations on Enterprise Linux
-                        9 or later and Ubuntu 20.04 or later set hmac-sha256.
-                        Ubuntu 18.04, SLES 12, SLES 15, and openSUSE Leap 15
-                        leave this attribute unset because their bundled
-                        omshell does not support the key-algorithm command.
-                        When this attribute is not set, including on an
-                        existing installation, xCAT uses hmac-md5 for
-                        compatibility. HMAC-MD5 is not approved for FIPS
-                        mode; a FIPS-mode site that needs OMAPI must provide
-                        an omshell supporting key-algorithm and explicitly
-                        select a SHA-2 algorithm. Kea does not use OMAPI, but
-                        Kea DDNS uses this TSIG algorithm.
+                        and hmac-sha512. For new installations on Enterprise
+                        Linux 9 or later and Ubuntu 20.04 or later, xCAT sets
+                        hmac-sha256. Outside FIPS mode, xCAT leaves this
+                        attribute unset on Ubuntu 18.04, SLES 12, SLES 15,
+                        and openSUSE Leap 15. On these systems, the bundled
+                        omshell lacks key-algorithm support.
+                        On new FIPS installations, xCAT always sets hmac-sha256.
+                        Outside FIPS mode, if this value is unset, xCAT uses
+                        hmac-md5 for compatibility, including on existing
+                        installations. In FIPS mode, if this value is unset,
+                        xCAT uses hmac-sha256. In FIPS mode, xCAT rejects
+                        explicit hmac-md5 values. A FIPS-mode site
+                        on a platform whose bundled omshell lacks the
+                        key-algorithm command must provide a compatible
+                        omshell. Kea does not use OMAPI, but Kea DDNS uses
+                        this TSIG algorithm.
 
    dhcpomapikeyname:  The TSIG/OMAPI key name used by legacy ISC DHCP and
                      BIND DDNS integration. The default is xcat_key. The

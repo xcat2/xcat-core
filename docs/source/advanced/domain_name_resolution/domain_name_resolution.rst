@@ -93,7 +93,22 @@ Edit **/etc/resolv.conf** to contain the cluster domain value you set in the sit
 Legacy ISC DHCP and BIND TSIG Key Options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-xCAT uses **xcat_key** for BIND DDNS updates and legacy ISC DHCP OMAPI. New installations on Enterprise Linux 9 or later and Ubuntu 20.04 or later set **hmac-sha256**. Ubuntu 18.04, SLES 12, SLES 15, and openSUSE Leap 15 leave **dhcpomapialgorithm** unset because their bundled ``omshell`` does not support the ``key-algorithm`` command. If **dhcpomapialgorithm** is not set, including on an existing installation, xCAT continues to use **hmac-md5** for compatibility. HMAC-MD5 is not approved for FIPS mode; a FIPS-mode site that needs OMAPI must provide an ``omshell`` supporting ``key-algorithm`` and set a SHA-2 algorithm explicitly. Kea does not use OMAPI, but Kea DDNS uses this TSIG algorithm.
+xCAT uses **xcat_key** for BIND DDNS updates and legacy ISC DHCP OMAPI.
+For new installations on Enterprise Linux 9 or later and Ubuntu 20.04 or
+later, xCAT sets **hmac-sha256**. Outside FIPS mode, if **dhcpomapialgorithm**
+is unset, xCAT uses **hmac-md5** for compatibility, including on existing
+installations.
+
+In FIPS mode, xCAT defaults to **hmac-sha256** and rejects an explicit
+**hmac-md5** setting. On new FIPS installations, xCAT saves **hmac-sha256**
+in the site table.
+
+Outside FIPS mode, xCAT leaves this attribute unset on Ubuntu 18.04,
+SLES 12, SLES 15, and openSUSE Leap 15. On these systems, the bundled
+``omshell`` lacks the ``key-algorithm`` command. If these systems use OMAPI
+in FIPS mode, provide a compatible ``omshell``.
+
+Kea does not use OMAPI, but Kea DDNS uses this TSIG algorithm.
 
 To use another supported algorithm, set **dhcpomapialgorithm** in the site table and update the matching **passwd** table secret. Supported values are **hmac-md5**, **hmac-sha1**, **hmac-sha224**, **hmac-sha256**, **hmac-sha384**, and **hmac-sha512**. For example: ::
 

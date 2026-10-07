@@ -1,4 +1,48 @@
 #!/bin/bash
+# Postscripts ship separately from xCAT-genesis-scripts/usr/lib/xcat/fips.sh but must use the same FIPS policy.
+xcat_fips_enabled()
+{
+    grep -q '^1$' "${1:-/proc/sys/crypto/fips_enabled}" 2>/dev/null
+}
+
+xcat_fips_state()
+{
+    if xcat_fips_enabled "${1:-}"; then
+        printf '1'
+    else
+        printf '0'
+    fi
+}
+
+xcat_generate_discovery_private_key()
+{
+    case "$1" in
+        1) openssl ecparam -name prime256v1 -genkey -noout -out "$2" ;;
+        0) openssl genrsa -out "$2" 1024 ;;
+        *) return 1 ;;
+    esac
+}
+
+xcat_discovery_public_key()
+{
+    case "$1" in
+        0|1) ;;
+        *) return 1 ;;
+    esac
+    openssl pkey -in "$2" -pubout 2>/dev/null ||
+        openssl rsa -in "$2" -pubout 2>/dev/null ||
+        openssl ec -in "$2" -pubout
+}
+
+xcat_prepare_discovery_key()
+{
+    case "$1" in
+        1) xcat_generate_discovery_private_key "$1" "$2" ;;
+        0) [ -s "$2" ] || xcat_generate_discovery_private_key "$1" "$2" ;;
+        *) return 1 ;;
+    esac
+}
+
 function hashencode(){
     local str_map="$1"
     echo `echo $str_map | sed 's/\./xDOTx/g' | sed 's/:/xCOLONx/g' | sed 's/,/:xCOMMAx/g' | sed 's/-/xHYPHENx/g'`
