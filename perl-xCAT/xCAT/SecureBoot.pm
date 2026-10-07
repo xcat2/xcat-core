@@ -18,6 +18,10 @@ my %LOADER_SHIM = (
     x86_64 => 'xcat/ipxe/x86_64-sb/shimx64.efi',
 );
 
+# The kernel of the Genesis image, as the boot scripts name it. mknb builds it and the site signs
+# it, or leaves it unsigned, so no vendor certificate of a distribution verifies it.
+my $GENESIS_KERNEL = qr{(?:\A|/)genesis\.kernel\.};
+
 #-------------------------------------------------------------------------------
 
 =head3 shim_url_path
@@ -34,6 +38,8 @@ my %LOADER_SHIM = (
     Arguments:
         arch        - the architecture of the node, as the nodetype table spells it
         os          - the operating system of the node, or undef for an unknown client
+        kernel      - the kernel the boot script loads, relative to the TFTP root. A Genesis
+                      kernel takes the shim of ipxe-xcat whatever the os of the node is.
         installroot - the install directory, /install by default
         tftpdir     - the TFTP directory of the node, /tftpboot by default
 
@@ -50,7 +56,12 @@ sub shim_url_path {
     my $arch = $opts{arch};
     return unless defined($arch) and $INSTALL_SHIM{$arch};
 
-    if (defined($opts{os}) and length($opts{os})) {
+    # nodeset writes the Genesis kernel into the UEFI script of a node for the shell, discover,
+    # standby and runcmd destinies, beside the install source of the os of that node. The vendor
+    # certificate of that install source signs its own kernel and not this one.
+    my $genesis = defined($opts{kernel}) && $opts{kernel} =~ $GENESIS_KERNEL;
+
+    if (!$genesis and defined($opts{os}) and length($opts{os})) {
         my $installroot = defined($opts{installroot}) ? $opts{installroot} : '/install';
         $installroot =~ s{/+$}{};
         foreach my $name (@{ $INSTALL_SHIM{$arch} }) {

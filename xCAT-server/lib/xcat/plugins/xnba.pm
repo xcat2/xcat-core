@@ -366,6 +366,7 @@ sub setstate {
                         my $shim = ($METHOD eq 'ipxe') ? xCAT::SecureBoot->shim_url_path(
                             arch        => $nodetyperef->{arch},
                             os          => $nodetyperef->{os},
+                            kernel      => $kern->{kernel},
                             installroot => xCAT::TableUtils->getInstallDir(),
                             tftpdir     => $tftpdir) : undef;
                         print $ucfg "shim http://" . '${next-server}' . $portsuffix . $shim . "\n" if ($shim);
