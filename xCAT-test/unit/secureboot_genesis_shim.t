@@ -96,6 +96,13 @@ unlike( script('xcat/ipxe/nets/192.168.144.0_20'), qr{^shim }m,
 unlike( script('xcat/ipxe/nets/192.168.144.0_20.elilo'), qr{^shim }m,
     'the elilo configuration names no shim' );
 
+# mknb writes the discovery scripts of both methods in one loop. The loader of xnba does not know
+# the shim command, so the line stops that script whether Secure Boot is on or off.
+like( script('xcat/xnba/nets/192.168.144.0_20.uefi'), qr{^imgload kernel$}m,
+    'mknb writes the UEFI discovery script of the xnba method as well' );
+unlike( script('xcat/xnba/nets/192.168.144.0_20.uefi'), qr{^shim }m,
+    'and that script names no shim, while the shim of ipxe-xcat is on disk' );
+
 prepare( name => 'tftpboot-noshim', shim => 0 );
 unlike( script('xcat/ipxe/nets/192.168.144.0_20.uefi'), qr{^shim }m,
     'a server without the ipxe-xcat shim names no shim' );
