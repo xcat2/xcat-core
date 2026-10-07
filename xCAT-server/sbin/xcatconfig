@@ -28,6 +28,7 @@ use xCAT::DHCP::Backend;
 use xCAT::DHCP::OmapiPolicy;
 use xCAT::TLSPolicy qw(tls_setting_warnings);
 use xCAT::NetworkUtils;
+use xCAT::SELinux;
 use Getopt::Long;
 use xCAT::MsgUtils;
 use xCAT::Table;
@@ -509,27 +510,19 @@ if ($::INITIALINSTALL || $::FORCE)
 
         if (-f "/etc/redhat-release" || -f "/etc/openEuler-release")
         {
-            my $rc = xCAT::Utils->isSELINUX();
-
-            # rc 0 means SELinux is enabled
-            # rc 1 means SELinux is not enabled
-            if ($rc == 0)
+            my $selinux = xCAT::SELinux->xcatconfig_action();
+            if ($selinux->{warning})
             {
-                xCAT::MsgUtils->message('W', "SELINUX is not disabled, disabling it now...");
-
+                xCAT::MsgUtils->message('W', $selinux->{warning});
+            }
+            if ($selinux->{disable})
+            {
                 # set selinux be in permissive mode for running system,
                 # if the user forgot to disable selinux,
                 # try to not hurt xcat too much
-                my $enforcefile;
-                if (-f "/selinux/enforce")
+                if ($selinux->{enforce_file})
                 {
-                    $enforcefile = "/selinux/enforce";
-                } elsif (-f "/sys/fs/selinux/enforce") {
-                    $enforcefile = "/sys/fs/selinux/enforce";
-                }
-                if ($enforcefile)
-                {
-                    my $cmd = "echo 0 > $enforcefile";
+                    my $cmd = "echo 0 > $selinux->{enforce_file}";
                     my $outref = xCAT::Utils->runcmd("$cmd", 0);
                     if ($::RUNCMD_RC != 0)
                     {
@@ -538,7 +531,7 @@ if ($::INITIALINSTALL || $::FORCE)
                 }
 
                 # Disable selinux through reboots
-                my $cmd = "sed -i 's/^SELINUX=.*\$/SELINUX=disabled/' /etc/selinux/config";
+                my $cmd = "sed -i 's/^SELINUX=.*\$/SELINUX=disabled/' $xCAT::SELinux::CONFIG_FILE";
                 my $outref = xCAT::Utils->runcmd("$cmd", 0);
                 if ($::RUNCMD_RC != 0)
                 {
