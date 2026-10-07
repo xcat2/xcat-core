@@ -387,8 +387,15 @@ sub stage_genesis_payload {
         # status nor the name of the unreadable file is lost to the one that follows it.
         $rc = $run->("shopt -s dotglob; GLOBIGNORE=\".:..\" cp -a $a{genesis_dir}/fs/* $a{tempdir}");
         return ($rc, "$a{genesis_dir}/fs") if $rc;
-        $rc = $run->("cp -a $a{genesis_dir}/kernel $a{tftpdir}/xcat/genesis.kernel.$a{arch}");
+        my $kernel = "$a{tftpdir}/xcat/genesis.kernel.$a{arch}";
+        # cp -a implies --preserve=all, which carries the SELinux context of the xCAT install
+        # tree into the TFTP root, where the policy declares tftpdir_t. The context also
+        # travels in the security.selinux xattr, so xattr has to go with context here.
+        $rc = $run->("cp -a --no-preserve=context,xattr $a{genesis_dir}/kernel $kernel");
         return ($rc, "$a{genesis_dir}/kernel") if $rc;
+        # A kernel staged by an earlier xCAT keeps its own context through the copy, so set
+        # the context from the policy. isSELINUX returns 0 when SELinux is enabled.
+        $run->("restorecon -F $kernel") if xCAT::Utils->isSELINUX() == 0;
         return (0, undef);
     }
     $rc = $run->("cp -a $a{genesis_dir}/nbroot/* $a{tempdir}");
