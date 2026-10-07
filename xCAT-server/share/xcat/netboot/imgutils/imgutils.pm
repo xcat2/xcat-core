@@ -85,10 +85,24 @@ sub rpm_repository_config {
         die "openEuler repositories require trusted RPM signing keys\n"
           unless defined($gpgkey) && length($gpgkey);
         $config .= "gpgcheck=1\ngpgkey=$gpgkey\nskip_if_unavailable=False\n\n";
+    } elsif (defined($gpgkey) && length($gpgkey)) {
+        # Other RPM images verify signatures only when the caller opts in
+        # by supplying the trusted keys (linuximage.gpgcheck).
+        $config .= "gpgcheck=1\ngpgkey=$gpgkey\nskip_if_unavailable=True\n\n";
     } else {
         $config .= "gpgcheck=0\nskip_if_unavailable=True\n\n";
     }
     return $config;
+}
+
+sub otherpkgs_repository_urls {
+    my ($subdir, $local_dir, @urls) = @_;
+    my @repos = @urls;
+
+    # Without a local otherpkgdir there is no local repository to add; a
+    # file:///<subdir> entry would only produce a metadata download failure.
+    push @repos, "file://$local_dir/$subdir" if defined($local_dir) && length($local_dir);
+    return @repos;
 }
 
 sub disable_vendor_repositories {
