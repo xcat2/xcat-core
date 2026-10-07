@@ -149,6 +149,20 @@ like(
     'a node whose install source carries no shim falls back to the shim of ipxe-xcat'
 );
 
+# The vendor certificate of the distribution shim signs the kernel of that distribution, so the
+# install source answers before the shim of ipxe-xcat.
+nodeset(
+    ipxe => 'cn07',
+    os   => 'alma9.8', arch => 'x86_64',
+    kernel => kernel_with_efistub('xcat/osimage/alma9.8-again/vmlinuz'),
+    initrd => 'xcat/osimage/alma9.8-again/initrd.img', kcmdline => 'quiet',
+);
+like(
+    script('xcat/ipxe/nodes/cn07.uefi'),
+    ipxe_shim_line('/install/alma9.8/x86_64/EFI/BOOT/BOOTX64.EFI'),
+    'the install source answers even when the shim of ipxe-xcat is also on disk'
+);
+
 # ppc64le has no UEFI shim, and netboot=xnba loads an unsigned loader that Secure Boot refuses.
 nodeset(
     ipxe => 'cn04',

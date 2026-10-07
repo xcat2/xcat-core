@@ -49,7 +49,16 @@ UEFI Secure Boot
 
 With Secure Boot on, the firmware loads the shim only when it trusts the Microsoft third-party UEFI CA, 2011 or 2023, that signs it. Some firmware turns that CA off by default: turn it on in the firmware setup.
 
-Secure Boot covers the loader only. The boot scripts then load a Linux kernel, ``elilo-x64.efi`` or the Genesis kernel, and the firmware refuses each one that no key in its database signs. Install nodes and run Genesis with Secure Boot off.
+The signature database of the firmware does not hold the keys of a Linux distribution, so the firmware refuses the kernel that the boot script loads. The UEFI boot scripts of ``netboot=ipxe`` nodes name a shim, and iPXE runs the kernel through it:
+
+* A node with an ``os`` value in its ``nodetype`` entry uses the shim of its install source, ``EFI/BOOT/BOOTX64.EFI`` or ``EFI/boot/bootx64.efi`` under ``/install/<os>/x86_64``. The vendor certificate of that shim signs the kernel of its own distribution.
+* Every other node uses ``xcat/ipxe/x86_64-sb/shimx64.efi``, which ``ipxe-xcat`` installs.
+
+iPXE fetches a shim only when it cannot load the kernel itself, so a node with Secure Boot off reads neither file.
+
+A shim also accepts a kernel that a MOK key signs. Nothing signs the Genesis kernel, so a node boots Genesis with Secure Boot on only after the site signs ``xcat/genesis.kernel.x86_64`` with its own key and enrolls that key with ``mokutil``. The discovery scripts under ``xcat/ipxe/nets`` name the shim of ``ipxe-xcat`` for that purpose.
+
+Two paths stay Secure Boot off. A kernel without an EFI stub boots through ``elilo-x64.efi``, and ESXi boots through ``esxboot-x64.efi``. No key signs either file. Boot these nodes with Secure Boot off.
 
 Known limits of the upstream loader
 -----------------------------------

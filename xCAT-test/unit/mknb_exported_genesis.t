@@ -7,6 +7,7 @@ use Digest::SHA qw(sha256_hex);
 use File::Path qw(make_path remove_tree);
 use File::Temp qw(tempdir);
 use FindBin;
+use lib "$FindBin::Bin/../../perl-xCAT";
 use Test::More;
 
 BEGIN {

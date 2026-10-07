@@ -5,6 +5,7 @@ use File::Temp qw(tempdir tempfile);
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::NodeRange;
+use xCAT::SecureBoot;
 use File::Path;
 use File::Copy;
 use English qw(-no_match_vars);
@@ -859,6 +860,9 @@ sub process_request {
                     open($cfg, ">", "$nets/$net.uefi");
                     print $cfg "#!gpxe\n";
                     print $cfg 'imgfetch -n kernel http://${next-server}'.$portsuffix.'/tftpboot/xcat/genesis.kernel.' . "$arch\nimgload kernel\n";
+                    # The shim command reads the selected image, so it comes after imgload.
+                    my $shim = xCAT::SecureBoot->shim_url_path(arch => $arch, tftpdir => $tftpdir);
+                    print $cfg 'shim http://${next-server}' . $portsuffix . $shim . "\n" if ($shim);
                     print $cfg "imgargs kernel xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/mac:hexhyp}' . " destiny=discover initrd=initrd\n";
                     print $cfg 'imgfetch -n initrd http://${next-server}'.$portsuffix . "$initrd_file\nimgexec kernel\n";
                     close($cfg);
