@@ -26,7 +26,7 @@ cmd:if xdsh $$CN "grep \"Red Hat\|Rocky\|Alma\" /etc/*release >/dev/null"; then 
 check:rc==0
 
 #go-xcat requires CodeReady Builder, named crb on EL9 and later and PowerTools on EL8.
-cmd:if xdsh $$CN "grep \"Red Hat\|Rocky\|Alma\" /etc/*release >/dev/null"; then xdsh $$CN 'dnf config-manager --set-enabled crb || dnf config-manager --set-enabled powertools || dnf config-manager setopt crb.enabled=1'; fi
+cmd:if xdsh $$CN "grep \"Red Hat\|Rocky\|Alma\" /etc/*release >/dev/null"; then xdsh $$CN -e /opt/xcat/share/xcat/tools/autotest/testcase/go_xcat/enable_crb.sh; fi
 
 #Install additional packages on Ubuntu
 cmd:if xdsh $$CN "grep \"Ubuntu\" /etc/*release >/dev/null"; then xdsh $$CN "DEBIAN_FRONTEND=noninteractive apt-get install -y gnupg"; fi
