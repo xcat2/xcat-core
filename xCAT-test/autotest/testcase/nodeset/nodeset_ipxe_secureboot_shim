@@ -1,0 +1,7 @@
+start:nodeset_ipxe_secureboot_shim
+label:others,nodeset
+description:verify the UEFI boot script of an ipxe node names a Secure Boot shim after imgload
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/nodeset/ipxe_secureboot_shim.sh $$CN
+check:rc==0
+check:output=~IPXE_SHIM_(OK|SKIPPED)
+end
