@@ -45,7 +45,7 @@ sub stage {
     my @ran;
     no warnings qw(redefine once);
     local *xCAT::Utils::isSELINUX = sub { return $opt{selinux} ? 0 : 1 };
-    my ($rc, $src) = xCAT_plugin::mknb::stage_genesis_payload(
+    my ($rc, $src, $error) = xCAT_plugin::mknb::stage_genesis_payload(
         genesis_type => 'legacy',
         genesis_dir  => '/opt/xcat/share/xcat/netboot/genesis/x86_64',
         tftpdir      => $TFTPDIR,
@@ -57,7 +57,7 @@ sub stage {
             return ($opt{fail} && $cmd =~ /$opt{fail}/) ? 256 : 0;
         },
     );
-    return { rc => $rc, src => $src, ran => \@ran };
+    return { rc => $rc, src => $src, error => $error, ran => \@ran };
 }
 
 # --- the copy must not carry the install tree's context into the TFTP root ---------
@@ -91,14 +91,22 @@ my $off = stage(selinux => 0);
 is(scalar(grep { m{restorecon} } @{ $off->{ran} }), 0,
     'a node without SELinux runs no relabel');
 
-# --- a relabel that fails must not fail the step ----------------------------------
+# --- a relabel that fails must fail the step --------------------------------------
+# A relabel that is attempted and fails leaves the kernel with the context the copy gave it,
+# which is the defect this routine exists to prevent. Reporting success hides it.
 my $norelabel = stage(selinux => 1, fail => qr{restorecon});
-is($norelabel->{rc}, 0, 'a failed relabel leaves the staged payload in place');
-is($norelabel->{src}, undef, 'and names no unreadable source');
+isnt($norelabel->{rc}, 0, 'a failed relabel fails the step');
+is($norelabel->{src}, $KERNEL, 'and names the staged Genesis kernel');
+like($norelabel->{error} // '', qr{SELinux context},
+    'and the message names the relabel, not a copy');
+like($norelabel->{error} // '', qr{\Q$KERNEL\E},
+    'and the message carries the kernel path');
 
 # --- the existing failures still name the copy that failed ------------------------
 my $nokernel = stage(selinux => 1, fail => qr{/kernel\s});
 isnt($nokernel->{rc}, 0, 'an unreadable kernel still fails the step');
+like($nokernel->{error} // '', qr{\QFailed to copy\E},
+    'and still reports the copy it could not make');
 is(scalar(grep { m{restorecon} } @{ $nokernel->{ran} }), 0,
     'and a kernel that was not copied is not relabelled');
 
