@@ -81,17 +81,16 @@ sub config_mode {
 =head3 xcatconfig_action
 
     Descriptions:
-        Decides what xcatconfig does about SELinux on this node. The caller
-        makes the changes the answer asks for.
+        Decides what xcatconfig does about SELinux on this node. The answer
+        asks for no change, because the SELinux policy belongs to the site.
+        The caller reports the warning.
     Arguments:
         root - a prefix for the paths this module reads.
     Returns:
         A hash reference:
-            mode         - the mode runtime_mode reports
-            config_mode  - the mode config_mode reports
-            warning      - a message for the admin, or undef
-            disable      - true when xcatconfig must turn SELinux off
-            enforce_file - the selinuxfs file that sets the running mode
+            mode        - the mode runtime_mode reports
+            config_mode - the mode config_mode reports
+            warning     - a message for the admin, or undef when SELinux is off
     Example:
         my $answer = xCAT::SELinux->xcatconfig_action();
 
@@ -104,22 +103,15 @@ sub xcatconfig_action {
 
     my $mode = $class->runtime_mode(root => $root);
     my %answer = (
-        mode         => $mode,
-        config_mode  => $class->config_mode(root => $root),
-        warning      => undef,
-        disable      => 0,
-        enforce_file => undef,
+        mode        => $mode,
+        config_mode => $class->config_mode(root => $root),
+        warning     => undef,
     );
 
     return \%answer if $mode eq 'disabled';
 
-    $answer{warning} = 'SELINUX is not disabled, disabling it now...';
-    $answer{disable} = 1;
-    foreach my $path (@ENFORCE_FILES) {
-        next unless -f "$root$path";
-        $answer{enforce_file} = $path;
-        last;
-    }
+    $answer{warning} =
+      "SELINUX is $mode. xCAT does not change the SELinux mode or $CONFIG_FILE.";
 
     return \%answer;
 }

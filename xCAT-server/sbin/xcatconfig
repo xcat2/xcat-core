@@ -515,29 +515,6 @@ if ($::INITIALINSTALL || $::FORCE)
             {
                 xCAT::MsgUtils->message('W', $selinux->{warning});
             }
-            if ($selinux->{disable})
-            {
-                # set selinux be in permissive mode for running system,
-                # if the user forgot to disable selinux,
-                # try to not hurt xcat too much
-                if ($selinux->{enforce_file})
-                {
-                    my $cmd = "echo 0 > $selinux->{enforce_file}";
-                    my $outref = xCAT::Utils->runcmd("$cmd", 0);
-                    if ($::RUNCMD_RC != 0)
-                    {
-                        xCAT::MsgUtils->message('E', "Failed to disable SELINUX.");
-                    }
-                }
-
-                # Disable selinux through reboots
-                my $cmd = "sed -i 's/^SELINUX=.*\$/SELINUX=disabled/' $xCAT::SELinux::CONFIG_FILE";
-                my $outref = xCAT::Utils->runcmd("$cmd", 0);
-                if ($::RUNCMD_RC != 0)
-                {
-                    xCAT::MsgUtils->message('E', "Failed to disable SELINUX.");
-                }
-            }
         }
 
         my $ret = xCAT::Utils->stopservice("firewall");
