@@ -19,7 +19,10 @@ can_ok('xCAT_plugin::mknb', 'stage_genesis_payload')
     or die('mknb has no stage_genesis_payload to drive');
 
 # Drive the routine with a runner that fails exactly one copy, so each assertion names the
-# copy it is about rather than the pair.
+# copy it is about rather than the pair. The staging commands are the subject here, so report
+# SELinux as disabled and leave the relabel to mknb_genesis_selinux_context.t.
+BEGIN { no warnings 'once'; *xCAT::Utils::isSELINUX = sub { return 1 }; }
+
 sub stage {
     my (%opt) = @_;
     my @ran;
