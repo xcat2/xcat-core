@@ -31,6 +31,11 @@ setup()
     export STUB_PROVMETHOD=
     export STUB_NODESET_RESTORE_RC=0
     export STUB_CHDEF_RC=0
+    export STUB_CHDEF_NETBOOT_RC=0
+    # The netboot the node is declared with. Four of the six confs that carry this case declare
+    # their compute node netboot=xnba, so this is not a hypothetical value.
+    export STUB_NETBOOT=ipxe
+    export STUB_ARCH=x86_64
     export STUB_NO_OSIMAGE=
     export STUB_UEFI="$TFTPDIR/xcat/ipxe/nodes/${NODE}.uefi"
     export STUB_SHIM_LINE="shim http://\${next-server}/install/$OS/x86_64/EFI/BOOT/BOOTX64.EFI"
@@ -54,8 +59,8 @@ done
 case "$type/$attr" in
     site/tftpdir)    echo "    tftpdir=$STUB_TFTPDIR" ;;
     site/installdir) echo "    installdir=$STUB_INSTALLDIR" ;;
-    node/netboot)    echo "    netboot=ipxe" ;;
-    node/arch)       echo "    arch=x86_64" ;;
+    node/netboot)    echo "    netboot=$STUB_NETBOOT" ;;
+    node/arch)       echo "    arch=$STUB_ARCH" ;;
     node/os)         echo "    os=$STUB_OS" ;;
     node/provmethod) [ -n "$STUB_PROVMETHOD" ] && echo "    provmethod=$STUB_PROVMETHOD" ;;
     osimage/)        [ -n "$STUB_NO_OSIMAGE" ] && exit 1; exit 0 ;;
@@ -93,6 +98,9 @@ STUB
     cat >"$BIN/chdef" <<'STUB'
 #!/bin/bash
 echo "chdef $*" >>"$STUB_CALLS"
+case "$*" in
+    *netboot=*) exit "$STUB_CHDEF_NETBOOT_RC" ;;
+esac
 exit "$STUB_CHDEF_RC"
 STUB
 
@@ -136,13 +144,68 @@ STUB
     grep -q "^nodeset $NODE boot$" "$CALLS"
 }
 
-# A skip above the nodeset call changed nothing, so the helper must not call nodeset to put a
-# state back it never left. An osimage that is not defined is such a skip.
-@test "a node the helper skips calls no nodeset and no chdef" {
+# An exit above the nodeset call changed nothing, so the helper must not call nodeset to put a
+# state back it never left.
+@test "a node with no osimage to name fails and calls no nodeset and no chdef" {
     STUB_NO_OSIMAGE=1
     run "$SCRIPT" "$NODE"
-    [ "$status" -eq 0 ]
-    [[ "$output" == *IPXE_SHIM_SKIPPED* ]]
+    [ "$status" -ne 0 ]
+    [[ "$output" == *IPXE_SHIM_FAIL* ]]
     refute_grep -q "^nodeset $NODE boot$" "$CALLS"
     refute_grep -q "^chdef " "$CALLS"
+}
+
+# The case asserted output =~ IPXE_SHIM_(OK|SKIPPED), so a node the helper skipped PASSED the
+# case. Four of the six confs that carry this case declare netboot=xnba on their compute node,
+# so four cells passed it without reading a boot script at all. The helper now sets the netboot
+# method it needs, measures, and puts the method back.
+@test "a node declared netboot=xnba is measured, not skipped" {
+    STUB_NETBOOT=xnba
+    run "$SCRIPT" "$NODE"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *IPXE_SHIM_OK* ]]
+    [[ "$output" != *IPXE_SHIM_SKIPPED* ]]
+    grep -q "^chdef -t node -o $NODE netboot=ipxe$" "$CALLS"
+    grep -q "^chdef -t node -o $NODE netboot=xnba$" "$CALLS"
+}
+
+# The netboot method goes back before the restoring nodeset, or that nodeset writes the boot
+# files of the wrong method.
+@test "the netboot method goes back before the nodeset that restores the state" {
+    STUB_NETBOOT=xnba
+    run "$SCRIPT" "$NODE"
+    [ "$status" -eq 0 ]
+    back=$(grep -n "^chdef -t node -o $NODE netboot=xnba$" "$CALLS" | cut -d: -f1)
+    reset=$(grep -n "^nodeset $NODE boot$" "$CALLS" | cut -d: -f1)
+    [ -n "$back" ] && [ -n "$reset" ] && [ "$back" -lt "$reset" ]
+}
+
+# A netboot method left as the case set it makes the next case on that node boot the wrong way,
+# which is the same defect the provmethod and nodeset restorations already report.
+@test "a netboot method that cannot be put back fails the case" {
+    STUB_NETBOOT=xnba
+    STUB_CHDEF_NETBOOT_RC=1
+    run "$SCRIPT" "$NODE"
+    [ "$status" -ne 0 ]
+    [[ "$output" != *IPXE_SHIM_OK* ]]
+    [[ "$output" == *IPXE_SHIM_FAIL* ]]
+}
+
+# The case file now requires the OK token, so an exit 0 without it is a pass the run cannot
+# tell from a measurement. Nothing the helper does may produce one.
+@test "the helper never exits 0 without reporting IPXE_SHIM_OK" {
+    for arch in x86_64 ppc64le; do
+        for netboot in ipxe xnba; do
+            for noimage in "" 1; do
+                : >"$CALLS"
+                STUB_ARCH=$arch STUB_NETBOOT=$netboot STUB_NO_OSIMAGE=$noimage \
+                    run "$SCRIPT" "$NODE"
+                if [ "$status" -eq 0 ] && [[ "$output" != *IPXE_SHIM_OK* ]]; then
+                    echo "exit 0 with no OK: arch=$arch netboot=$netboot noimage=$noimage" >&2
+                    echo "$output" >&2
+                    return 1
+                fi
+            done
+        done
+    done
 }
