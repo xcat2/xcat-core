@@ -4,10 +4,10 @@
 #
 # Usage: ipxe_secureboot_shim.sh <node>
 #
-# The caller asserts on one of three tokens, so no error message can carry the token of a pass:
-#   IPXE_SHIM_OK        the script names a shim after imgload, and the file is served
-#   IPXE_SHIM_SKIPPED   the node is not an x86_64 netboot=ipxe node
-#   IPXE_SHIM_FAIL      the shim is missing, out of order, or not served
+# The caller asserts on IPXE_SHIM_OK, so no error message can carry the token of a pass:
+#   IPXE_SHIM_OK    the script names a shim after imgload, and the file is served
+#   IPXE_SHIM_FAIL  the shim is missing, out of order, or not served, or the case could not read
+#                   a boot script at all
 
 node="$1"
 if [ -z "$node" ]; then
@@ -24,13 +24,11 @@ node_value() {
 
 netboot=$(node_value netboot)
 arch=$(node_value arch)
-if [ "$netboot" != "ipxe" ]; then
-    echo "IPXE_SHIM_SKIPPED: $node has netboot=$netboot, and only the ipxe method names a shim"
-    exit 0
-fi
+# The case file declares arch:x86, so xcattest does not run this on another architecture. A hand
+# run can still reach it, and a case that cannot measure must not report a pass.
 if [ "$arch" != "x86_64" ]; then
-    echo "IPXE_SHIM_SKIPPED: $node has arch=$arch, and only x86_64 has a UEFI shim"
-    exit 0
+    echo "IPXE_SHIM_FAIL: $node has arch=$arch, and only x86_64 has a UEFI shim"
+    exit 1
 fi
 
 tftpdir=$(site_value tftpdir)
@@ -47,9 +45,18 @@ echo "nodeset state of $node before this case: ${before:-unknown}, provmethod=${
 # so the failure has to reach the caller in place of the result of the case.
 restore_done=0
 restore_rc=0
+netboot_set=
 restore_state() {
     [ "$restore_done" = 1 ] && return "$restore_rc"
     restore_done=1
+    # Before the nodeset below, or that nodeset writes the boot files of the ipxe method on a node
+    # the cluster boots another way.
+    if [ -n "$netboot_set" ]; then
+        if ! chdef -t node -o "$node" "netboot=$netboot" > /dev/null; then
+            echo "IPXE_SHIM_FAIL: chdef -t node -o $node netboot=$netboot returned non-zero, $node keeps the netboot method this case set"
+            restore_rc=1
+        fi
+    fi
     if [ -z "$provmethod" ]; then
         if ! chdef -t node -o "$node" provmethod= > /dev/null; then
             echo "IPXE_SHIM_FAIL: chdef -t node -o $node provmethod= returned non-zero, $node keeps the provmethod this case set"
@@ -79,15 +86,27 @@ destiny=osimage
 if [ -z "$provmethod" ]; then
     image="$(node_value os)-$arch-install-compute"
     if ! lsdef -t osimage -o "$image" > /dev/null 2>&1; then
-        echo "IPXE_SHIM_SKIPPED: $node has no provmethod and osimage $image is not defined"
-        exit 0
+        echo "IPXE_SHIM_FAIL: $node has no provmethod and osimage $image is not defined, so this"
+        echo "IPXE_SHIM_FAIL: case has no boot script to read"
+        exit 1
     fi
     destiny="osimage=$image"
 fi
 
-# Arm the restoration before the call that changes the state, and not earlier: a skip above this
+# Arm the restoration before the call that changes the state, and not earlier: an exit above this
 # line has nothing to put back. Every exit after it passes through the restoration.
 trap on_exit EXIT
+
+# Only the ipxe method writes a shim line, so the case sets the method it reads rather than
+# reporting a pass on a node that is declared another way. Four of the six confs that carry this
+# case declare netboot=xnba on their compute node.
+if [ "$netboot" != "ipxe" ]; then
+    if ! chdef -t node -o "$node" netboot=ipxe > /dev/null; then
+        echo "IPXE_SHIM_FAIL: chdef -t node -o $node netboot=ipxe returned non-zero"
+        exit 1
+    fi
+    netboot_set=1
+fi
 
 if ! nodeset "$node" "$destiny"; then
     echo "IPXE_SHIM_FAIL: nodeset $node $destiny returned non-zero"
