@@ -761,7 +761,7 @@ sub process_request {
     my $cfgfile;
     # The upstream iPXE loader of an unknown x86 client fetches the discovery scripts from xcat/ipxe.
     # xcat/xnba keeps them for a server whose DHCP configuration still names it.
-    my @x86_nets = map { "$tftpdir/xcat/$_/nets" } qw(ipxe xnba);
+    my @x86_nets = map { { method => $_, dir => "$tftpdir/xcat/$_/nets" } } qw(ipxe xnba);
     if ($arch =~ /x86/) {
         mkpath("$tftpdir/xcat/xnba/nets");
         chmod(0755, "$tftpdir/xcat/xnba");
@@ -816,7 +816,9 @@ sub process_request {
             next;
         }
         if ($arch =~ /x86/) {
-            foreach my $nets (@x86_nets) {
+            foreach my $netsent (@x86_nets) {
+                my $method = $netsent->{method};
+                my $nets   = $netsent->{dir};
                 $dopxe = 0;
                 if ($arch =~ /x86_64/ and not $invisibletouch) {    #only do pxe if just x86 or x86_64 and no x86
                     if (-r "$nets/$net") {
@@ -861,7 +863,10 @@ sub process_request {
                     print $cfg "#!gpxe\n";
                     print $cfg 'imgfetch -n kernel http://${next-server}'.$portsuffix.'/tftpboot/xcat/genesis.kernel.' . "$arch\nimgload kernel\n";
                     # The shim command reads the selected image, so it comes after imgload.
-                    my $shim = xCAT::SecureBoot->shim_url_path(arch => $arch, tftpdir => $tftpdir);
+                    # The loader of xnba does not know the shim command, and no key signs xnba.efi.
+                    my $shim = ($method eq 'ipxe')
+                      ? xCAT::SecureBoot->shim_url_path(arch => $arch, tftpdir => $tftpdir)
+                      : undef;
                     print $cfg 'shim http://${next-server}' . $portsuffix . $shim . "\n" if ($shim);
                     print $cfg "imgargs kernel xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/mac:hexhyp}' . " destiny=discover initrd=initrd\n";
                     print $cfg 'imgfetch -n initrd http://${next-server}'.$portsuffix . "$initrd_file\nimgexec kernel\n";
