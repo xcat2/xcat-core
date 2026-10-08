@@ -13,31 +13,24 @@ load 'helpers/shell_source'
 
 setup()
 {
-    go_xcat_require_source
+    GO_XCAT_SOURCE="${XCAT_TEST_GO_XCAT:-$(go_xcat_default_source)}"
+    export GO_XCAT_SOURCE
     SCRIPTS_DEBIAN="$(repo_path 'xCAT-genesis-scripts/debian')"
     SPEC="$(repo_path 'xCAT-genesis-base/xCAT-genesis-base.spec')"
-    [ -d "$SCRIPTS_DEBIAN" ] || skip "$SCRIPTS_DEBIAN is required"
-    [ -r "$SPEC" ] || skip "$SPEC is required"
+    [ -r "$GO_XCAT_SOURCE" ] && [ -d "$SCRIPTS_DEBIAN" ] && [ -r "$SPEC" ]
     export SCRIPTS_DEBIAN SPEC
 }
 
-# Run the array definitions of go-xcat and print the two lists it built, one per line.
 package_lists()
 {
-    local want_dpkg="$1" list_body
-    list_body="$(awk '
-        /^GO_XCAT_INSTALL_LIST=\(/ { copy = 1 }
-        /^PATH=/ { exit }
-        copy { print }
-    ' "$GO_XCAT_SOURCE")"
-    [ -n "$list_body" ] || { echo 'go-xcat package arrays not found' >&2; return 3; }
+    local want_dpkg="$1"
     (
         if [ "$want_dpkg" = 1 ]; then
             dpkg() { :; }
         fi
         # A real dpkg on the build host would select the deb branch on every run.
         PATH=""
-        eval "$list_body"
+        source "$GO_XCAT_SOURCE" || exit 70
         printf 'install %s\n' "${GO_XCAT_INSTALL_LIST[*]}"
         printf 'uninstall %s\n' "${GO_XCAT_UNINSTALL_LIST[*]}"
     )

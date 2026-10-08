@@ -11,6 +11,7 @@ use Sys::Syslog;
 use File::Temp qw/tempdir/;
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::BootUtils qw(_find_genesis_boot_files);
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::SvrUtils;
@@ -42,31 +43,6 @@ sub handled_commands
         mkstatelite => "nodetype:os=(sle.*)|(leap15.*)",
         mksysclone  => "nodetype:os=(sle.*)|(suse.*)|(leap15.*)"
     };
-}
-
-sub _find_genesis_boot_files
-{
-    my ($tftpdir, $arch) = @_;
-    return unless defined($arch) && $arch =~ /\A[A-Za-z0-9_]+\z/;
-
-    my $directory = "$tftpdir/xcat";
-    my $kernel = "genesis.kernel.$arch";
-    return unless -r "$directory/$kernel";
-
-    my $lzma = "genesis.fs.$arch.lzma";
-    my $gzip = "genesis.fs.$arch.gz";
-    my $initrd;
-    if (-r "$directory/$lzma" && -r "$directory/$gzip") {
-        $initrd = -C "$directory/$lzma" > -C "$directory/$gzip"
-          ? $gzip
-          : $lzma;
-    } elsif (-r "$directory/$lzma") {
-        $initrd = $lzma;
-    } elsif (-r "$directory/$gzip") {
-        $initrd = $gzip;
-    }
-    return unless defined($initrd);
-    return ($kernel, $initrd);
 }
 
 sub precreate_sles11_mypostscript

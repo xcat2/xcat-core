@@ -1827,4 +1827,32 @@ foreach my $case (@invalid_mac_cases) {
         'syncing the node client classes with no noderes or mac table does not die' ) or diag($@);
 }
 
+for my $case ([undef, ''], ['', ''], [0, ''], ['0', ''], ['80', ''], ['080', ':080'], ['8080', ':8080']) {
+    my ($port, $suffix) = @$case;
+    no warnings 'redefine';
+    local *xCAT::TableUtils::get_site_attribute = sub {
+        return ($port) if $_[-1] eq 'httpport' && defined($port);
+        return;
+    };
+    for my $method (qw(onie petitboot)) {
+        my $boot = xCAT_plugin::dhcp::kea_boot_for_node('cn1', {netboot => $method},
+            {currstate => 'install'}, {}, {}, '192.0.2.1');
+        my $path = $method eq 'onie' ? '/install/onie/onie-installer' : '/tftpboot/petitboot/cn1';
+        is($boot->{'option-data'}[0]{data}, "http://192.0.2.1$suffix$path",
+            "$method reservation preserves site port defaulting");
+    }
+}
+for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
+    my ($port, $suffix) = @$case;
+    my $opal = xCAT_plugin::dhcp::kea_opal_client_class('192.0.2.0', 24, '192.0.2.1', $port);
+    is($opal->{'option-data'}[0]{data}, "http://192.0.2.1$suffix/tftpboot/pxelinux.cfg/p/192.0.2.0_24",
+        'OPAL preserves the supplied port');
+    my $subnet = xCAT_plugin::dhcp::kea_subnet4_intent(
+        DHCPKeaIntentNetTable->new(\%network_entry), '10.0.0.0', '255.255.255.0', 'eth0', 0, 1, $port,
+    );
+    my ($onie) = grep { $_->{name} eq 'xcat-onie-10.0.0.0_24' } @{$subnet->{client_classes}};
+    is($onie->{'option-data'}[0]{data}, "http://10.0.0.1$suffix/install/onie/onie-installer",
+        'subnet generation preserves the supplied port');
+}
+
 done_testing();

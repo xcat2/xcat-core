@@ -7,13 +7,11 @@ use Digest::SHA qw(sha256_hex);
 use File::Path qw(make_path remove_tree);
 use File::Temp qw(tempdir);
 use FindBin;
+use lib "$FindBin::Bin/../../perl-xCAT";
+use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use Test::More;
 
 BEGIN {
-    package xCAT::Utils;
-    sub genpassword { return 'test-token'; }
-    $INC{'xCAT/Utils.pm'} = __FILE__;
-
     package xCAT::TableUtils;
     our ($tftpdir, $site_master);
     sub getTftpDir { return $tftpdir; }
@@ -40,6 +38,8 @@ BEGIN {
     $INC{'xCAT/NodeRange.pm'} = __FILE__;
 }
 
+$ENV{XCATROOT} = "$FindBin::Bin/../../xCAT-server";
+$ENV{XCATCFG} = tempdir(CLEANUP => 1);
 my $source_mknb_plugin =
   "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/mknb.pm";
 if (-f $source_mknb_plugin) {
@@ -97,7 +97,11 @@ sub published_files {
 sub temporary_files {
     my ($directory) = @_;
     opendir(my $dir_fh, $directory) or return;
-    my @files = grep { /\.test-token\.(?:new|old)$/ } readdir($dir_fh);
+    my @files = sort grep {
+        $_ ne '.' && $_ ne '..'
+          && !/^genesis\.(?:kernel|exact-arch)\.[A-Za-z0-9_]+$/
+          && !/^genesis\.fs\.[A-Za-z0-9_]+\.(?:gz|lzma)$/
+    } readdir($dir_fh);
     closedir($dir_fh);
     return @files;
 }

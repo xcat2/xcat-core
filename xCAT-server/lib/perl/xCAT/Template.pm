@@ -13,6 +13,7 @@ use File::Path;
 use Sys::Syslog;
 use xCAT::ADUtils;    #to allow setting of one-time machine passwords
 use xCAT::Utils;
+use xCAT::HTTPUtils ();
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::PasswordUtils;
@@ -50,8 +51,7 @@ my %tab_replacement = (
 sub httpport_suffix {
     my $httpport = shift;
     $httpport = "80" unless defined $httpport and length $httpport;
-    return "" if $httpport eq "80";
-    return ":$httpport";
+    return xCAT::HTTPUtils::httpport_suffix($httpport);
 }
 
 sub subvars {

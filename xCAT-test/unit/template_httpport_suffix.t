@@ -13,20 +13,15 @@ use Test::More;
 use XCAT::Test::File qw(repo_path);
 
 my $module = repo_path('xCAT-server/lib/perl/xCAT/Template.pm');
-plan skip_all => 'Template.pm not found' unless -r $module;
 
 my @incs = (
     repo_path('perl-xCAT'),
     repo_path('xCAT-server/lib/perl'),
 );
 
-# A mismatched DBI aborts the process instead of dying, so ask a child before
-# loading the module in this process.
-my $devnull = File::Spec->devnull();
-my $probe = join( ' ', $^X, ( map { "-I$_" } @incs ),
-    '-e', "'require xCAT::Template; 1'", ">$devnull", "2>&1" );
-plan skip_all => 'xCAT::Template cannot be loaded here' if system($probe) != 0;
-
+my $config = File::Temp->newdir();
+$ENV{XCATROOT} = repo_path('xCAT-server');
+$ENV{XCATCFG} = "$config";
 require lib;
 lib->import(@incs);
 require xCAT::Template;
@@ -128,6 +123,13 @@ local *xCAT::TableUtils::get_site_Master = sub { return '192.0.2.10'; };
         'the mirror security host keeps a custom port' );
     like( $mirror, qr{deb http://192\.0\.2\.10:8080/install/other \./},
         'a local mirror keeps a custom port' );
+}
+
+for my $case ([undef, ''], ['', ''], [0, ':0'], ['0', ':0'], ['80', ''], ['080', ':080'], ['8080', ':8080']) {
+    my ($port, $suffix) = @$case;
+    is(suffix($port), $suffix, 'Template keeps its defined-value defaulting');
+    like($render->($port), qr{^url --url http://192\.0\.2\.10\Q$suffix\E/install/pkg$}m,
+        'rendered installer URL keeps the same port');
 }
 
 done_testing();
