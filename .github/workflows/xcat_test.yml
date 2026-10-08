@@ -23,6 +23,9 @@ jobs:
       - name: Exercise image driver selection
         if: ${{ !cancelled() }}
         run: prove xCAT-test/native/genimage_network_drivers.t
+      - name: Exercise image package policy
+        if: ${{ !cancelled() }}
+        run: prove xCAT-test/native/el10_image_package_policy.t
       - name: Prepare xCAT syslog directory
         if: ${{ !cancelled() }}
         run: sudo install -d -o syslog -g adm -m 0750 /var/log/xcat
