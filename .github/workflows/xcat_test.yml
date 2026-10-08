@@ -22,7 +22,8 @@ jobs:
           set -o pipefail
           docker run --rm -v "$PWD:/src:ro" -w /src fedora:42 bash -ec '
             dnf -y -q install mock perl perl-File-Slurper >/dev/null
-            prove -v xCAT-test/native/mock_resultdir_owner.t' 2>&1 | tee mock.tap
+            prove -v xCAT-test/native/mock_resultdir_owner.t \
+              xCAT-test/native/build_sources_other_uid.t' 2>&1 | tee mock.tap
           if grep -iE '# skip' mock.tap; then
             echo 'a mock result directory test was skipped' >&2
             exit 1
