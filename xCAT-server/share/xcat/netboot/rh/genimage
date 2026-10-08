@@ -20,6 +20,7 @@ use FindBin;
 use lib "$FindBin::Bin/../imgutils";
 use imgutils;
 use xCAT::Utils;
+use xCAT::SELinux;
 use Digest::MD5 qw(md5_hex);
 
 #use strict;
@@ -821,6 +822,9 @@ xdie("Error: failed to generate the initial ramdisk: native image has no dracut 
 
 imgutils::disable_vendor_repositories($rootimg_dir);
 
+# The kernel command line that mknetboot writes selects the SELinux mode of each node.
+xCAT::SELinux->write_image_config(root => $rootimg_dir);
+
 #-- run postinstall script
 unless ($imagename) {
     $postinstall_filename = imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "postinstall");
@@ -1091,6 +1095,7 @@ sub mkinitrd_dracut {
                 'installkernel',
                 'module-setup.sh',
                 'xcat-cmdline.sh',
+                'xcat-selinux-relabel.sh',
                 'xcatroot',
                 'xcat-updateflag',
             ],
@@ -1164,6 +1169,12 @@ sub mkinitrd_dracut {
                 if (-d $dir) {
                     $dracutmodulelist .= " $_";
                 }
+            }
+
+            # 98selinux loads the policy of the image before the xCAT relabel hook runs.
+            my @selinux_module = glob($dracutmoduledir . "[0-9]*selinux");
+            if (-r "$dracutmpath/xcat-selinux-relabel.sh" and @selinux_module) {
+                $dracutmodulelist .= " selinux";
             }
 
             # update etc/dracut.conf
@@ -1244,6 +1255,11 @@ sub mkinitrd_dracut {
             $perm = (stat("$fullpath/$dracutdir/installkernel"))[2];
             chmod($perm & 07777, "$dracutmpath/installkernel");
 
+            if (-r "$fullpath/$dracutdir/xcat-selinux-relabel.sh") {
+                cp("$fullpath/$dracutdir/xcat-selinux-relabel.sh", "$dracutmpath/");
+                chmod(0755, "$dracutmpath/xcat-selinux-relabel.sh");
+            }
+
             my $dracutmodulelist = "xcat nfs base network kernel-modules syslog";
             if (defined(imgutils::openeuler_release_version($osver))
                 ? scalar(glob($dracutmoduledir . '[0-9]*network-manager'))
@@ -1256,6 +1272,12 @@ sub mkinitrd_dracut {
                 if (-d $dir) {
                     $dracutmodulelist .= " $_";
                 }
+            }
+
+            # 98selinux loads the policy of the image before the xCAT relabel hook runs.
+            my @selinux_module = glob($dracutmoduledir . "[0-9]*selinux");
+            if (-r "$dracutmpath/xcat-selinux-relabel.sh" and @selinux_module) {
+                $dracutmodulelist .= " selinux";
             }
 
             # update etc/dracut.conf

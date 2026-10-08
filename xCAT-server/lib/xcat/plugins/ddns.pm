@@ -432,13 +432,6 @@ sub process_request {
         }
     }
 
-    # check for selinux disabled
-    my $rc = xCAT::Utils->isSELINUX();
-    if ($rc == 0)
-    {
-        xCAT::SvrUtils::sendmsg([ 0, "Warning:SELINUX is not disabled. The makedns command will not be able to generate a complete DNS setup. Disable SELINUX and run the command again." ], $callback);
-
-    }
     my @entries = xCAT::TableUtils->get_site_attribute("nameservers");
     my $sitens  = $entries[0];
     unless (defined($site_entry)) {

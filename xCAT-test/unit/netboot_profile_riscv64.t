@@ -68,7 +68,7 @@ for my $family (@families) {
             File::Spec->catfile( $base_relative, "$profile.$osbase.riscv64.postinstall" )
         );
         like( $postinstall, qr/^#!\/bin\/sh/, "$dir/$profile.$osbase riscv64 postinstall is a shell script" );
-        like( $postinstall, qr/SELINUX=disabled/, "$dir/$profile.$osbase riscv64 postinstall disables SELinux in the image" );
+        unlike( $postinstall, qr/SELINUX=disabled/, "$dir/$profile.$osbase riscv64 postinstall leaves the SELinux mode to the kernel command line" );
     }
 
     my $otherpkgs = File::Spec->catfile( $base, "service.$osbase.riscv64.otherpkgs.pkglist" );

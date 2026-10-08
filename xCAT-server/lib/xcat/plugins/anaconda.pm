@@ -17,6 +17,7 @@ use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
 use xCAT::SvrUtils;
 use xCAT::Yum;
+use xCAT::SELinux;
 
 use Getopt::Long;
 Getopt::Long::Configure("bundling");
@@ -411,6 +412,9 @@ sub mknetboot
         $statetab = xCAT::Table->new('statelite', -create => 1);
         $stateHash = $statetab->getNodesAttribs(\@nodes, ['statemnt']);
     }
+
+    my %selinux_why;
+    my $selinux_modes = xCAT::SELinux->node_modes(\@nodes, \%selinux_why);
 
     foreach my $node (@nodes)
     {
@@ -951,10 +955,21 @@ sub mknetboot
             }
         }
 
-        # turn off the selinux
-        if ($osver =~ m/(fedora12|fedora13|(?:rhels|ol|alma|rocky)(?:[7-9]|10))/) {
-            $kcmdline .= " selinux=0 ";
+        my $selinux = $selinux_modes->{$node} || 'disabled';
+        if ($selinux ne 'disabled') {
+            if (!xCAT::SELinux->netboot_supported($osver)) {
+                $selinux_why{$node} = "the $osver stateless image cannot label its root";
+                $selinux = 'disabled';
+            } elsif (defined($compressedrootimg) and $compressedrootimg eq 'rootimg.sfs'
+                and !-e "$rootimgdir/$xCAT::SELinux::SQUASHFS_LABELS") {
+                $selinux_why{$node} = "rootimg.sfs has no SELinux labels, run packimage with squashfs-tools 4.6 or later";
+                $selinux = 'disabled';
+            }
         }
+        if ($selinux_why{$node}) {
+            $callback->({ warning => ["$node: SELinux is disabled: $selinux_why{$node}"] });
+        }
+        $kcmdline .= " " . xCAT::SELinux->kcmdline_selinux($selinux, $osver) . " ";
 
         # if kdump service is enbaled, add "crashkernel=" and "kdtarget="
         if ($dump) {
@@ -1089,6 +1104,7 @@ sub mkinstall
     my %hents = %{ $hmtab->getNodesAttribs(\@nodes,
             [ 'serialport', 'serialspeed', 'serialflow' ]) };
     my %macents = %{ $mactab->getNodesAttribs(\@nodes, ['mac']) };
+    my $selinux_modes = xCAT::SELinux->node_modes(\@nodes);
 
     require xCAT::Template;
 
@@ -1386,6 +1402,11 @@ sub mkinstall
         if ($tmperr) {
             xCAT::MsgUtils->report_node_error($callback, $node, $tmperr);
             next;
+        }
+        if ($os =~ $xCAT::SELinux::POLICY_OS and open(my $ksfh, '<', "/$installroot/autoinst/$node")) {
+            my $mismatch = xCAT::SELinux->kickstart_mismatch($selinux_modes->{$node}, join('', <$ksfh>));
+            close($ksfh);
+            $callback->({ warning => ["$node: $mismatch"] }) if $mismatch;
         }
 
         #To support multiple paths for osimage.pkgdir. We require the first value of osimage.pkgdir

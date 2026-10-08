@@ -377,10 +377,6 @@ fi
 [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Saving $NEWROOT/etc/resolv.conf"
 cp /etc/resolv.conf "$NEWROOT/etc/"
 
-if [ -d "$NEWROOT/etc/sysconfig" -a ! -e "$NEWROOT/etc/sysconfig/selinux" ]; then
-    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "disable selinux ..."
-    echo "SELINUX=disabled" >> "$NEWROOT/etc/sysconfig/selinux"
-fi
 
 logger $SYSLOGHOST -t $log_label -p local4.info "Exiting xcatroot..."
 # inject new exit_if_exists

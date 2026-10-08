@@ -37,6 +37,7 @@ use File::Path;
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::SvrUtils;
+use xCAT::SELinux;
 use xCAT::PasswordUtils;
 use Digest::MD5 qw(md5_hex);
 
@@ -599,6 +600,7 @@ sub process_request {
         }
         $oldmask = umask 0077;
     } elsif ($method =~ /squashfs/) {
+        unlink("$destdir/$xCAT::SELinux::SQUASHFS_LABELS");
         $temppath = mkdtemp("/tmp/packimage.$$.XXXXXXXX");
         chmod 0755, $temppath;
         chdir("$rootimg_dir");
@@ -662,9 +664,27 @@ sub process_request {
         }
         my $squashfs_output = $is_openeuler ? $archive_output : '../rootimg.sfs';
         $flags .= ' -noappend' if $is_openeuler;
+
+        # The temporary copy has the labels of this host. Store the labels of the image policy.
+        my $selinux_pseudo;
+        if ($osver =~ $xCAT::SELinux::POLICY_OS) {
+            my ($label_args, $label_warning) = xCAT::SELinux->squashfs_label_args(
+                root    => $temppath,
+                pseudo  => "$temppath.selinux",
+                version => scalar(`mksquashfs -version 2>&1`),
+            );
+            if ($label_args) {
+                $selinux_pseudo = "$temppath.selinux";
+                $flags .= join('', map { " '$_'" } @{$label_args});
+            } else {
+                $callback->({ warning => ["$label_warning. Nodes that boot rootimg.sfs get SELinux disabled."] });
+            }
+        }
+
         my $mksquashfs_command = "mksquashfs $temppath $squashfs_output $flags";
         xCAT::Utils->runcmd($mksquashfs_command, 0, 1);
         my $rc = $::RUNCMD_RC;
+        unlink($selinux_pseudo) if $selinux_pseudo;
         if ($rc) {
             return $native_failure->("Command \"$mksquashfs_command\" failed") if $is_openeuler;
             $callback->({ error => ["Command \"$mksquashfs_command\" failed"], errorcode => [1] });
@@ -678,6 +698,9 @@ sub process_request {
         }
         return 1 if $is_openeuler && $publish_native_archive->();
         chmod(0644, "../rootimg.sfs");
+        if ($selinux_pseudo and open(my $marker, '>', "$destdir/$xCAT::SELinux::SQUASHFS_LABELS")) {
+            close($marker);
+        }
     }
     system("rm -f $xcat_packimg_tmpfile");
 
