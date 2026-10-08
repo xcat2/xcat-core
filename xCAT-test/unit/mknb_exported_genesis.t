@@ -8,13 +8,10 @@ use File::Path qw(make_path remove_tree);
 use File::Temp qw(tempdir);
 use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT";
+use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use Test::More;
 
 BEGIN {
-    package xCAT::Utils;
-    sub genpassword { return 'test-token'; }
-    $INC{'xCAT/Utils.pm'} = __FILE__;
-
     package xCAT::TableUtils;
     our ($tftpdir, $site_master);
     sub getTftpDir { return $tftpdir; }
@@ -41,6 +38,8 @@ BEGIN {
     $INC{'xCAT/NodeRange.pm'} = __FILE__;
 }
 
+$ENV{XCATROOT} = "$FindBin::Bin/../../xCAT-server";
+$ENV{XCATCFG} = tempdir(CLEANUP => 1);
 my $source_mknb_plugin =
   "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/mknb.pm";
 if (-f $source_mknb_plugin) {
