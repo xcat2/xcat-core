@@ -19,5 +19,6 @@ jobs:
           prove xCAT-test/native/ubuntu_live_media_guardrails.t
           xCAT-test/native/ubuntu_genimage_debootstrap_arch.t
           xCAT-test/native/ubuntu_genimage_apt_mirror.t
+          xCAT-test/native/ubuntu_genimage_resolver_libs.t
       - name: Run tests
         run: perl github_action_xcat_test.pl
