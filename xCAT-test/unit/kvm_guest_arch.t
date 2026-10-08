@@ -76,11 +76,36 @@ unlike($riscv, qr/<bios\b/,
 unlike($riscv, qr/<input\b/,
     'the riscv64 virt machine has no USB controller, so it gets no USB tablet');
 
+# An aarch64 node on an x86_64 hypervisor. The emulation case is the riscv64 one, plus a named
+# CPU model: with no <cpu> element libvirt passes -cpu max, which under TCG turns on SVE, and the
+# guest then stays in its firmware.
+my $arm = domain_xml('aarch64', 'x86_64');
+like($arm, qr/<domain\b[^>]*\btype="qemu"/,
+    'an aarch64 guest on an x86_64 hypervisor is a qemu domain, not kvm');
+like(os_type_element($arm), qr/\barch="aarch64"/,
+    'the domain arch of an aarch64 node is aarch64');
+like(os_type_element($arm), qr/\bmachine="virt"/,
+    'an aarch64 guest uses the virt machine type');
+like($arm, qr/<os\b[^>]*\bfirmware="efi"/,
+    'an aarch64 virt guest boots UEFI');
+like($arm, qr{<cpu\b[^>]*>\s*<model>cortex-a57</model>}s,
+    'an aarch64 guest states the cortex-a57 CPU model');
+like($arm, qr/<model\b[^>]*\btype="vga"/,
+    'an aarch64 guest keeps the vga video model: the aarch64 virt machine offers no virtio one');
+unlike($arm, qr/<(?:pae|acpi|apic)\b/,
+    'pae, acpi and apic are x86 features and are left out of an aarch64 guest');
+unlike($arm, qr/<bios\b/,
+    'the SeaBIOS serial option is left out of an aarch64 guest');
+unlike($arm, qr/<input\b/,
+    'the aarch64 virt machine has no USB controller, so it gets no USB tablet');
+
 # POWER is unchanged: the arch still comes from the hypervisor there.
 my $power = domain_xml('ppc64le', 'ppc64le');
 like($power, qr/<domain\b[^>]*\btype="kvm"/, 'a POWER guest stays a kvm domain');
 like(os_type_element($power), qr/\barch="ppc64"/,   'ppc64le hypervisors keep arch ppc64');
 like(os_type_element($power), qr/\bmachine="pseries"/, 'ppc64le hypervisors keep machine pseries');
+like($power, qr/<cpu\b[^>]*\bcores="4"/, 'a POWER guest keeps its CPU topology');
+unlike($power, qr/<model>cortex-a57<\/model>/, 'a POWER guest states no aarch64 CPU model');
 
 # x86_64 on x86_64 is unchanged: libvirt picks the arch and the machine type.
 my $x86 = domain_xml('x86_64', 'x86_64');
@@ -88,6 +113,7 @@ like($x86, qr/<domain\b[^>]*\btype="kvm"/, 'an x86_64 guest stays a kvm domain')
 unlike(os_type_element($x86), qr/\barch=/,    'an x86_64 guest states no arch');
 unlike(os_type_element($x86), qr/\bmachine=/, 'an x86_64 guest states no machine type');
 like($x86, qr/<input\b[^>]*\bbus="usb"/, 'an x86_64 guest keeps the USB tablet');
+unlike($x86, qr/<cpu\b/, 'an x86_64 guest states no cpu element');
 
 # The disks of a riscv64 guest. The virt machine has no IDE controller, so an ide disk or an
 # hd* optical drive makes libvirt refuse the domain.
@@ -114,6 +140,11 @@ is($riscv_disks->[0]->{target}->{bus}, 'scsi', 'a riscv64 disk is scsi, not ide'
 like($riscv_disks->[0]->{target}->{dev}, qr/^sd/, 'a riscv64 disk is named sd*');
 is($riscv_disks->[1]->{device}, 'cdrom', 'the guest still gets an optical drive');
 like($riscv_disks->[1]->{target}->{dev}, qr/^sd/, 'a riscv64 optical drive is named sd*, not hd*');
+
+my $arm_disks = disk_struct('aarch64');
+is($arm_disks->[0]->{target}->{bus}, 'scsi', 'an aarch64 disk is scsi, not ide');
+like($arm_disks->[0]->{target}->{dev}, qr/^sd/, 'an aarch64 disk is named sd*');
+like($arm_disks->[1]->{target}->{dev}, qr/^sd/, 'an aarch64 optical drive is named sd*, not hd*');
 
 my $x86_disks = disk_struct('x86_64');
 is($x86_disks->[0]->{target}->{bus}, 'ide', 'an x86_64 disk keeps the ide default');
