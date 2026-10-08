@@ -60,7 +60,7 @@ use XCAT::BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildi
                         stage_genesis_base_sources
                         write_script read_line targetarch_from_target
                         openeuler_build_target openeuler_repo_subdir
-                        mock_config_text mock_build_owner);
+                        mock_config_text);
 use POSIX ();                   # EEXIST, for the directory build lock (see main())
 use Getopt::Long qw(GetOptions);
 use POSIX qw(strftime);
@@ -330,23 +330,12 @@ sub createmockconfig {
         mock_config_text($pkg, "$target$ext", read_text("/etc/mock/$target.cfg"), $SOURCE_DATE_EPOCH));
 }
 
-# mock creates --resultdir and the logs under it as chrootuid, and the two mock calls below
-# pass a relative directory under dist/, which this script owns as root. Give the directory
-# to the build uid before mock runs, so the build does not need to be root to write its own
-# results. openeuler-24.03-ppc64le is the only target that declares a uid; everywhere else
-# mock builds as the caller and there is nothing to change.
+# mock writes --resultdir as chrootuid, and this script runs as root.
 sub prepare_mock_resultdirs {
     my ($pkg, $target) = @_;
     my $ext = $opts{mock_uniqueext} ? "-$opts{mock_uniqueext}" : "";
-    my ($uid, $gid) = mock_build_owner(read_text("/etc/mock/$pkg-$target$ext.cfg"));
-    return unless defined $uid || defined $gid;
-    for my $dir ("dist/$target/rpms", "dist/$target/rpms/SRPMS") {
-        make_path($dir);
-        chown(defined $uid ? $uid : -1, defined $gid ? $gid : -1, $dir) == 1
-            or die "FATAL: cannot give $dir to the build uid: $!\n";
-        # The group needs the write bit: mock writes the rpms as chrootuid:chrootgid.
-        chmod 0775, $dir;
-    }
+    XCAT::BuildUtils::prepare_mock_resultdirs("$pkg-$target$ext", undef,
+        "dist/$target/rpms", "dist/$target/rpms/SRPMS");
 }
 
 sub buildsources_genesis_base($) {

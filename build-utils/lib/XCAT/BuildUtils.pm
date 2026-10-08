@@ -42,7 +42,7 @@ our @EXPORT_OK = qw(
     buildinfo_text
     targetarch_from_target
     openeuler_build_target openeuler_repo_subdir
-    mock_config_text mock_build_owner
+    mock_config_text mock_build_owner prepare_mock_resultdirs
     genesis_chroot_name genesis_target_arch genesis_build_plan
     genesis_log_errors genesis_log_deny_rules deb_belongs_to_dist
     genesis_dists genesis_dist_reason
@@ -1159,32 +1159,77 @@ sub mock_config_text {
 
 =head3 mock_build_owner
 
-    Descriptions: Report the uid and gid mock creates its --resultdir as.
-
-    mock creates the result directory and its logs as chrootuid, and buildrpms.pl
-    passes a relative one under a tree it owns as root. The caller gives the
-    directory to this owner before the build starts.
-
-    No mock template declares chrootuid or chrootgid (56 on the ppc64le builder,
-    none), so the target configuration carries the whole answer.
+    Descriptions: Report the uid and gid mock builds as, from mock's own
+                  configuration loader. The loader resolves include() and
+                  the assignments around it as a build does.
 
     Arguments:
-        $text - the rendered mock configuration
+        $chroot    - the name passed to mock -r
+        $configdir - the mock configuration directory; mock's default when undef
 
-    Returns: ($uid, $gid), each undef when the configuration declares none. mock
-             then builds as the calling user, and the directory needs no change.
+    Returns: ($uid, $gid). With no chrootuid, $uid is the caller, as in mock.
+             $gid is undef when the loader reports none.
 
 =cut
 
 #-------------------------------------------------------------------------------
+my $MOCK_OWNER_LOADER = <<'PYTHON';
+import sys
+try:
+    from mockbuild.config import MOCKCONFDIR, load_config
+except ImportError:
+    sys.exit('mock is not installed: cannot import mockbuild.config')
+opts = load_config(sys.argv[2] or MOCKCONFDIR, sys.argv[1])
+print(opts['chrootuid'], opts.get('chrootgid', ''))
+PYTHON
+
 sub mock_build_owner {
-    my ($text) = @_;
-    my ($uid, $gid);
-    # mock takes the last assignment.
-    for my $line (split /\n/, $text) {
-        $uid = $1 if $line =~ /\Aconfig_opts\['chrootuid'\]\s*=\s*(\d+)\s*\z/;
-        $gid = $1 if $line =~ /\Aconfig_opts\['chrootgid'\]\s*=\s*(\d+)\s*\z/;
+    my ($chroot, $configdir) = @_;
+    open my $pipe, '-|', 'python3', '-c', $MOCK_OWNER_LOADER, $chroot, $configdir // ''
+        or die "Cannot run python3 to load the mock configuration $chroot: $!\n";
+    my $out = do { local $/; <$pipe> } // '';
+    close $pipe or die "mock cannot load the configuration $chroot\n";
+    my ($uid, $gid) = $out =~ /\A(\d+) (\d*)\n\z/
+        or die "mock gives no chrootuid for $chroot\n";
+    return ($uid, length $gid ? $gid : undef);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 prepare_mock_resultdirs
+
+    Descriptions: Give the --resultdir directories, and the files a previous
+                  build left in them, to the uid and gid mock builds as.
+                  mock writes its logs and packages there as chrootuid. A
+                  root build that stopped part way leaves root-owned 0644
+                  files that a non-root build cannot append to or replace.
+
+    Arguments:
+        $chroot    - the name passed to mock -r
+        $configdir - the mock configuration directory; mock's default when undef
+        @dirs      - the result directories, created when missing
+
+    Returns: nothing. Dies when a chown fails.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub prepare_mock_resultdirs {
+    my ($chroot, $configdir, @dirs) = @_;
+    my ($uid, $gid) = mock_build_owner($chroot, $configdir);
+    make_path(@dirs);
+    return if $uid == $>;
+    $gid //= -1;
+    for my $dir (@dirs) {
+        opendir(my $dh, $dir) or die "Cannot read $dir: $!\n";
+        my @files = grep { -f $_ && !-l $_ } map { "$dir/$_" } readdir $dh;
+        closedir $dh;
+        for my $path ($dir, @files) {
+            chown($uid, $gid, $path) == 1
+                or die "FATAL: cannot give $path to uid $uid: $!\n";
+        }
+        # mock writes the packages as chrootuid:chrootgid.
+        chmod 0775, $dir;
     }
-    return ($uid, $gid);
 }
 
