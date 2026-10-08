@@ -1,0 +1,82 @@
+start:selinux_xcatd_domain
+description:on an enforcing management node, xcatd and its workers run in unconfined_service_t
+label:mn_only,selinux
+cmd:getenforce
+check:rc==0
+check:output=~^Enforcing$
+cmd:ps -o label= -p "$(cat /run/xcatd.pid)"
+check:rc==0
+check:output=~:unconfined_service_t:
+cmd:ps -eo label,args | grep '[x]catd:'
+check:rc==0
+check:output=~:unconfined_service_t:
+check:output!~initrc_t
+end
+
+start:selinux_mn_labels
+description:on an enforcing management node, xCAT-selinux labels /install, httpd serves /install and /tftpboot, and SELinux denies nothing
+label:mn_only,selinux
+cmd:getenforce
+check:rc==0
+check:output=~^Enforcing$
+cmd:sh -c 'date "+%x %T" > /tmp/selinux_mn_labels.start'
+check:rc==0
+cmd:rpm -q xCAT-selinux
+check:rc==0
+cmd:sh -c 'semodule -l | grep -x -E "xcat([[:space:]].*)?"'
+check:rc==0
+cmd:matchpathcon /install
+check:rc==0
+check:output=~:public_content_t:
+cmd:matchpathcon /install/netboot/alma10/x86_64/compute/rootimg/etc/passwd
+check:rc==0
+check:output=~<<none>>
+cmd:ls -dZ /install
+check:rc==0
+check:output=~:public_content_t:
+cmd:ls -dZ /install/postscripts
+check:rc==0
+check:output=~:public_content_t:
+cmd:matchpathcon /tftpboot/xcat
+check:rc==0
+check:output=~:tftpdir_t:
+cmd:curl -s -f -o /dev/null http://localhost/install/postscripts/xcatdsklspost
+check:rc==0
+cmd:sh -c 'mkdir -p /tftpboot/xcat && echo xcat-selinux-probe-ok > /tftpboot/xcat/selinux_mn_labels.probe'
+check:rc==0
+cmd:ls -Z /tftpboot/xcat/selinux_mn_labels.probe
+check:rc==0
+check:output=~:tftpdir_t:
+cmd:curl -s -f http://localhost/tftpboot/xcat/selinux_mn_labels.probe
+check:rc==0
+check:output=~^xcat-selinux-probe-ok$
+cmd:rm -f /tftpboot/xcat/selinux_mn_labels.probe
+check:rc==0
+cmd:sh -c 'ausearch -m AVC,USER_AVC -ts $(cat /tmp/selinux_mn_labels.start)'
+check:rc==1
+check:output=~<no matches>
+cmd:rm -f /tmp/selinux_mn_labels.start
+end
+
+start:selinux_restapi_avc
+description:on an enforcing management node, xcatws.cgi reaches xcatd and SELinux denies nothing
+label:mn_only,selinux,restapi
+cmd:getenforce
+check:rc==0
+check:output=~^Enforcing$
+cmd:sh -c 'date "+%x %T" > /tmp/selinux_restapi_avc.start'
+check:rc==0
+cmd:sh -c 'rpm -q mod_ssl || dnf install -y mod_ssl'
+check:rc==0
+cmd:systemctl restart httpd
+check:rc==0
+cmd:tabch key=xcat,username=__GETTABLEVALUE(key,system,username,passwd)__ passwd.password=__GETTABLEVALUE(key,system,password,passwd)__
+check:rc==0
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;curl -k -s -f "https://localhost/xcatws/globalconf/attrs/master?userName=$username&userPW=$password"
+check:rc==0
+check:output=~clustersite
+cmd:sh -c 'ausearch -m AVC,USER_AVC -ts $(cat /tmp/selinux_restapi_avc.start)'
+check:rc==1
+check:output=~<no matches>
+cmd:rm -f /tmp/selinux_restapi_avc.start
+end
