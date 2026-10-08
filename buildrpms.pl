@@ -136,6 +136,7 @@ my @PACKAGES = qw(
     xCAT-openbmc-py
     xCAT-probe
     xCAT-rmc
+    xCAT-selinux
     xCAT-server
     xCAT-test
     xCAT-vlan

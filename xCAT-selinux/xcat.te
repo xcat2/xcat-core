@@ -1,0 +1,13 @@
+policy_module(xcat, 1.0.0)
+
+gen_require(`
+    type httpd_t, httpd_sys_script_t, tftpdir_t, ntop_port_t;
+')
+
+# httpd serves /tftpboot through the AliasMatch in xcat.conf. The stock policy lets only tftpd read tftpdir_t.
+allow httpd_t tftpdir_t:dir list_dir_perms;
+allow httpd_t tftpdir_t:file read_file_perms;
+allow httpd_t tftpdir_t:lnk_file read_lnk_file_perms;
+
+# xcatws.cgi connects to xcatd on site.xcatdport, and the stock policy labels TCP 3001 ntop_port_t.
+allow httpd_sys_script_t ntop_port_t:tcp_socket name_connect;
