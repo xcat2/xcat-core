@@ -126,6 +126,19 @@ write_text("$root/tftp/xcat/pxelinux.0", 'loader');
 is_deeply(nodeset('present', 'install', {kernel => 'xcat/memdisk', initrd => 'initrd', kcmdline => 'quiet'}),
     [], 'an installed pxelinux needs no warning');
 
+for my $case ([undef, ''], ['', ''], [0, ''], ['0', ''], ['80', ''], ['080', ':080'], ['8080', ':8080']) {
+    my ($value, $suffix) = @$case;
+    $port = $value;
+    nodeset('port', 'install', {kernel => 'xcat/ubuntu24.04/vmlinuz', initrd => 'xcat/initrd', kcmdline => 'quiet'});
+    for my $name ('port', 'port.uefi') {
+        my @urls = script($name) =~ /^imgfetch -n \w+ (\S+)$/mg;
+        is_deeply(\@urls, [
+            'http://${next-server}' . $suffix . '/tftpboot/xcat/ubuntu24.04/vmlinuz',
+            'http://${next-server}' . $suffix . '/tftpboot/xcat/initrd',
+        ], "$name retains its HTTP port defaulting");
+    }
+}
+
 done_testing();
 
 package Local::BootTable;

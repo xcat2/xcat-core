@@ -698,4 +698,26 @@ ok(!-e $s390x_qemu_path, 'a :noboot network gets no QEMU s390x configuration');
 %xCAT::TableUtils::site_extra = ();
 $xCAT::NetworkUtils::nic_ips = undef;
 
+%xCAT::TableUtils::site_extra = ();
+use_reporter_address_maps();
+for my $case ([undef, ''], ['', ''], [0, ''], ['0', ''], ['80', ''], ['080', ':080'], ['8080', ':8080']) {
+    my ($port, $suffix) = @$case;
+    $xCAT::TableUtils::site_httpport = $port;
+    prepare_tftpdir($tmpdir, 'http-port', 'x86_64');
+    generation_succeeded(run_mknb('x86_64'), 'mknb renders the HTTP-port case');
+    for my $loader (qw(xnba ipxe)) {
+        for my $mode ('', '.uefi') {
+            my $script = read_config("$xCAT::TableUtils::tftpdir/xcat/$loader/nets/192.168.144.0_20$mode");
+            my @authorities = $script =~ m{^imgfetch -n \w+ (http://[^/\s]+)}mg;
+            is_deeply(\@authorities, [('http://${next-server}' . $suffix) x 2],
+                "$loader$mode preserves HTTP port defaulting for kernel and initrd");
+        }
+    }
+    prepare_tftpdir($tmpdir, 'http-port-grub', 'riscv64');
+    generation_succeeded(run_mknb('riscv64'), 'mknb renders the GRUB HTTP-port case');
+    like(read_config("$xCAT::TableUtils::tftpdir/boot/grub2/grub.cfg-C0A89"),
+        qr/^    set root=\Qhttp,192.168.148.10$suffix\E$/m,
+        'GRUB discovery preserves HTTP port defaulting');
+}
+
 done_testing();
