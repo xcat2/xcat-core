@@ -49,17 +49,64 @@ sub domain_xml {
                     cpus   => 4,
                     (defined $opt{othersettings}
                           ? (othersettings => $opt{othersettings}) : ()),
+                    (defined $opt{vidmodel} ? (vidmodel => $opt{vidmodel}) : ()),
             } ]
         },
         nodetype => { cn1 => [ { arch => $guest_arch, os => 'rocky10.2' } ] },
         hyp1     => { cpumodel => $hyp_cpumodel, cputype => $opt{cputype} },
     };
+    local $KVMArch::hypconn    = $opt{hypconn};
     local $KVMArch::updatetable = {};
     my $xml = KVMArch::build_xmldesc('cn1');
     die("build_xmldesc returned no XML for $guest_arch on $hyp_cpumodel")
       unless defined $xml and !ref $xml;
     return $xml;
 }
+
+# A hypervisor connection that answers one domain capabilities document.
+{
+
+    package CapsConn;
+    sub new { my ($class, $xml) = @_; return bless { xml => $xml }, $class; }
+    sub get_domain_capabilities { return $_[0]->{xml}; }
+}
+
+# The modelType enum of an aarch64 virt machine, as libvirt 11.10 reports it on a host whose
+# aarch64 emulator carries no virtio-gpu device. libvirt refuses a domain that names virtio
+# there.
+my $caps_without_virtio = <<'CAPS';
+<domainCapabilities>
+  <arch>aarch64</arch>
+  <devices>
+    <video supported='yes'>
+      <enum name='modelType'>
+        <value>vga</value>
+        <value>cirrus</value>
+        <value>none</value>
+        <value>bochs</value>
+        <value>ramfb</value>
+      </enum>
+    </video>
+  </devices>
+</domainCapabilities>
+CAPS
+
+my $caps_with_virtio = <<'CAPS';
+<domainCapabilities>
+  <arch>aarch64</arch>
+  <devices>
+    <video supported='yes'>
+      <enum name='modelType'>
+        <value>vga</value>
+        <value>virtio</value>
+        <value>ramfb</value>
+      </enum>
+    </video>
+  </devices>
+</domainCapabilities>
+CAPS
+
+my $caps_without_video = "<domainCapabilities><arch>aarch64</arch></domainCapabilities>\n";
 
 sub os_type_element {
     my ($xml) = @_;
@@ -99,14 +146,37 @@ like($arm, qr/<os\b[^>]*\bfirmware="efi"/,
     'an aarch64 virt guest boots UEFI');
 like($arm, qr{<cpu\b[^>]*\bmode="custom"[^>]*>\s*<model>cortex-a57</model>}s,
     'an emulated aarch64 guest states cortex-a57 as a custom CPU model');
-like($arm, qr/<model\b[^>]*\btype="virtio"/,
-    'an aarch64 virt guest takes the virtio video model, as a riscv64 virt guest does');
+like($arm, qr/<model\b[^>]*\btype="vga"/,
+    'an aarch64 guest falls back to vga when no hypervisor states its video models');
 unlike($arm, qr/<(?:pae|acpi|apic)\b/,
     'pae, acpi and apic are x86 features and are left out of an aarch64 guest');
 unlike($arm, qr/<bios\b/,
     'the SeaBIOS serial option is left out of an aarch64 guest');
 unlike($arm, qr/<input\b/,
     'the aarch64 virt machine has no USB controller, so it gets no USB tablet');
+
+# The video models of a machine type come from the emulator build, not from the architecture.
+# libvirt refuses a domain that names a model the emulator of the hypervisor has no device
+# for, so the model comes from the capabilities of that hypervisor.
+my $arm_no_virtio =
+  domain_xml('aarch64', 'x86_64', hypconn => CapsConn->new($caps_without_virtio));
+like($arm_no_virtio, qr/<model\b[^>]*\btype="vga"/,
+    'an aarch64 guest takes vga from a hypervisor that offers no virtio video model');
+
+my $arm_virtio =
+  domain_xml('aarch64', 'x86_64', hypconn => CapsConn->new($caps_with_virtio));
+like($arm_virtio, qr/<model\b[^>]*\btype="virtio"/,
+    'an aarch64 guest takes virtio from a hypervisor that offers it');
+
+my $arm_no_video =
+  domain_xml('aarch64', 'x86_64', hypconn => CapsConn->new($caps_without_video));
+like($arm_no_video, qr/<model\b[^>]*\btype="vga"/,
+    'an aarch64 guest falls back to vga when the hypervisor states no video models');
+
+my $arm_vidmodel = domain_xml('aarch64', 'x86_64',
+    hypconn => CapsConn->new($caps_with_virtio), vidmodel => 'ramfb');
+like($arm_vidmodel, qr/<model\b[^>]*\btype="ramfb"/,
+    'vm.vidmodel still names the video model of an aarch64 guest');
 
 # An aarch64 node on an aarch64 hypervisor. The guest arch is the host arch, so the domain runs
 # under KVM. KVM on ARM runs the host CPU and no other model, and libvirt reports
