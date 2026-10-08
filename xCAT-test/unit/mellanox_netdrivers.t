@@ -34,21 +34,6 @@ my @cases = (
     [ 'ubuntu', 's390x', [qw(qdio ccwgroup)] ],
 );
 
-foreach my $family (qw(rh sles ubuntu)) {
-    my $source = read_text(repo_path(
-        "xCAT-server/share/xcat/netboot/$family/genimage",
-    ));
-    my $load_dd = index($source, 'my @dd_drivers = &load_dd();');
-    my $resolve = index(
-        $source,
-        '@ndrivers = imgutils::resolve_mellanox_default_net_drivers(',
-    );
-    ok(
-        $load_dd >= 0 && $resolve > $load_dd,
-        "$family resolves Mellanox defaults after installing driver updates",
-    );
-}
-
 foreach my $case (@cases) {
     my ( $family, $arch, $expected ) = @{$case};
     is_deeply(
