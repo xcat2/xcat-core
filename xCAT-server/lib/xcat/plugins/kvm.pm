@@ -502,7 +502,8 @@ sub build_diskstruct {
     my $suffidx      = 0;
     my $storagemodel = $confdata->{vm}->{$node}->[0]->{storagemodel};
     my $profile      = guest_arch_profile($confdata->{nodetype}->{$node}->[0]->{arch},
-        $confdata->{ $confdata->{vm}->{$node}->[0]->{host} }->{cpumodel});
+        $confdata->{ $confdata->{vm}->{$node}->[0]->{host} }->{cpumodel},
+        requested_firmware($confdata->{vm}->{$node}->[0]->{othersettings}));
     my $cachemethod  = "none";
     if ($confdata->{vm}->{$node}->[0]->{storagecache}) {
         $cachemethod = $confdata->{vm}->{$node}->[0]->{storagecache};
@@ -726,6 +727,18 @@ sub default_storagemodel {
     return 'scsi';
 }
 
+# requested_firmware: the firmware a node asks for in vm.othersettings, or undef.
+#
+# No node asks by default, so an existing guest keeps the firmware of its machine type.
+sub requested_firmware {
+    my ($othersettings) = @_;
+    return undef unless defined $othersettings;
+    foreach my $setting (split /;/, $othersettings) {
+        return $1 if $setting =~ /^\s*firmware:(.*)/;
+    }
+    return undef;
+}
+
 # guest_arch_profile: the libvirt domain type and <os> settings for one guest.
 #
 # The architecture of the guest comes from the node, not from the hypervisor. A node whose
@@ -733,12 +746,15 @@ sub default_storagemodel {
 # domain type "qemu". riscv64 has no BIOS: the virt machine boots UEFI, and pae/acpi/apic
 # are x86 features that libvirt rejects there.
 #
+# An x86_64 guest that asks for efi moves to q35, because every x86_64 OVMF descriptor targets
+# pc-q35-* only. q35 has no IDE controller, so its disks and its optical drive move to scsi.
+#
 # POWER keeps reading the hypervisor cpumodel. ppc64le hypervisors report "ppc64le" (not
 # "ppc64"); both are pseries guests whose libvirt <os> arch is "ppc64".
 #
 # arch and machine stay undef when libvirt is to use its own default for the hypervisor.
 sub guest_arch_profile {
-    my ($guest_arch, $hyp_cpumodel) = @_;
+    my ($guest_arch, $hyp_cpumodel, $firmware) = @_;
     my %profile = (
         domtype      => 'kvm',
         arch         => undef,
@@ -771,6 +787,14 @@ sub guest_arch_profile {
         $profile{bios}         = 0;
         $profile{sound}        = 0;
     }
+    if (defined($firmware) and $firmware eq 'efi' and not defined $profile{firmware}) {
+        $profile{firmware} = 'efi';
+        if ($profile{x86_features}) {
+            $profile{machine}    = 'q35';
+            $profile{disk_model} = 'scsi';
+            $profile{cd_prefix}  = 'sd';
+        }
+    }
     return \%profile;
 }
 
@@ -786,7 +810,12 @@ sub build_xmldesc {
         $hypcputhreads = "1";
     }
 
-    my $profile = guest_arch_profile($confdata->{nodetype}->{$node}->[0]->{arch}, $hypcpumodel);
+    my $firmware = requested_firmware($confdata->{vm}->{$node}->[0]->{othersettings});
+    if (defined $firmware and $firmware ne 'efi') {
+        return (-1, "vm.othersettings firmware:$firmware names no firmware libvirt can select for $node. Use firmware:efi.");
+    }
+
+    my $profile = guest_arch_profile($confdata->{nodetype}->{$node}->[0]->{arch}, $hypcpumodel, $firmware);
 
     $xtree{type}            = $profile->{domtype};
     $xtree{name}->{content} = $node;
@@ -824,6 +853,7 @@ sub build_xmldesc {
     #memory binding:     "membind:<numa node set>"
     #cpu mode:           "cpumode:<host-model|host-passthrough>"
     #machine type:       "machine:<pc|q35|any valid VM machine type>"
+    #firmware:           "firmware:efi"
     if ($advsettings) {
         my @tmp_array = split ";", $advsettings;
         foreach (@tmp_array) {

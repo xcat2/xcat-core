@@ -15,7 +15,7 @@ close($source_fh) or die "close $source: $!";
 
 my @routines;
 for my $name (qw(createstorage build_diskstruct guest_arch_profile getUnits
-    default_storagemodel)) {
+    default_storagemodel requested_firmware)) {
     my ($routine) = $content =~ /^(sub \Q$name\E\s*\{.*?^\})/ms;
     die("could not extract $name from kvm.pm") unless $routine;
     push(@routines, $routine);
