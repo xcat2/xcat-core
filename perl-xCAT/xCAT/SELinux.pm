@@ -123,6 +123,32 @@ sub xcatconfig_action {
 
 #-----------------------------------------------------------------------------
 
+=head3 install_default
+
+    Descriptions:
+        Decides the site.selinux value that the first install records.
+        Only an enforcing management node gives enforcing. An existing
+        value belongs to the admin and stays.
+    Arguments:
+        mode     - the value runtime_mode returns
+        existing - the current site.selinux value, or undef
+    Returns:
+        'enforcing' or 'disabled' to write, or undef to write nothing.
+    Example:
+        my $value = xCAT::SELinux->install_default($mode, $existing);
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub install_default {
+    my ($class, $mode, $existing) = @_;
+
+    return undef if defined $existing && $existing =~ /\S/;
+    return (defined $mode && $mode eq 'enforcing') ? 'enforcing' : 'disabled';
+}
+
+#-----------------------------------------------------------------------------
+
 =head3 node_modes
 
     Descriptions:
