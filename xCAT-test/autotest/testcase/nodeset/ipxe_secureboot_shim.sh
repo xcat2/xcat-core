@@ -15,15 +15,33 @@ if [ -z "$node" ]; then
     exit 1
 fi
 
-site_value() {
-    lsdef -t site -i "$1" 2>/dev/null | sed -n "s/^[[:space:]]*$1=//p"
-}
-node_value() {
-    lsdef -t node -o "$node" -i "$1" 2>/dev/null | sed -n "s/^[[:space:]]*$1=//p"
+# lsdef prints nothing for an attribute that is unset, and a pipeline reports the exit status of
+# its last command, so "lsdef | sed" answered "unset" for a lookup that failed. The restoration
+# writes back what it read, so a failed lookup made this case delete a value the node had. Keep
+# the status of lsdef itself, and leave the value in $lookup.
+lookup=
+read_attr() {
+    local out
+    if [ "$1" = site ]; then
+        out=$(lsdef -t site -i "$2" 2>&1) || return 1
+    else
+        out=$(lsdef -t node -o "$node" -i "$2" 2>&1) || return 1
+    fi
+    lookup=$(printf '%s\n' "$out" | sed -n "s/^[[:space:]]*$2=//p" | head -1)
+    return 0
 }
 
-netboot=$(node_value netboot)
-arch=$(node_value arch)
+# Every lookup runs before the first mutation, so a failed one ends the case with nothing to put
+# back.
+must_read() {
+    read_attr "$1" "$2" && return 0
+    echo "IPXE_SHIM_FAIL: lsdef -t $1 -i $2 for $node returned non-zero, and a lookup that failed"
+    echo "IPXE_SHIM_FAIL: is not an attribute that is unset, so this case changes nothing"
+    exit 1
+}
+
+must_read node arch
+arch=$lookup
 # The case file declares arch:x86, so xcattest does not run this on another architecture. A hand
 # run can still reach it, and a case that cannot measure must not report a pass.
 if [ "$arch" != "x86_64" ]; then
@@ -31,15 +49,49 @@ if [ "$arch" != "x86_64" ]; then
     exit 1
 fi
 
-tftpdir=$(site_value tftpdir)
+must_read node netboot
+netboot=$lookup
+must_read node os
+os=$lookup
+must_read node provmethod
+provmethod=$lookup
+# nodeset osimage= writes nodetype.provmethod, profile, os and arch from the osimage row it
+# resolved. On the path below the image is named <os>-<arch>-install-compute, so os and arch come
+# back as the values read here; profile becomes the row's profile and has to be put back.
+must_read node profile
+profile=$lookup
+
+must_read site tftpdir
+tftpdir=$lookup
 [ -n "$tftpdir" ] || tftpdir=/tftpboot
-installdir=$(site_value installdir)
+must_read site installdir
+installdir=$lookup
 [ -n "$installdir" ] || installdir=/install
 uefi="$tftpdir/xcat/ipxe/nodes/$node.uefi"
 
-before=$(nodeset "$node" stat 2>/dev/null | sed -n "s/^$node: *//p" | head -1)
-provmethod=$(node_value provmethod)
-echo "nodeset state of $node before this case: ${before:-unknown}, provmethod=${provmethod:-unset}"
+if ! stat_out=$(nodeset "$node" stat 2>&1); then
+    echo "IPXE_SHIM_FAIL: nodeset $node stat returned non-zero, so this case cannot read the"
+    echo "IPXE_SHIM_FAIL: state it has to put back, and it changes nothing"
+    printf '%s\n' "$stat_out"
+    exit 1
+fi
+before=$(printf '%s\n' "$stat_out" | sed -n "s/^$node: *//p" | head -1)
+echo "nodeset state of $node before this case: ${before:-empty}, provmethod=${provmethod:-unset}"
+
+# nodeset stat reports chain.currstate verbatim, and a state can carry an argument, so the
+# restoration replays the whole string. A state outside this list cannot be replayed: install,
+# netboot and statelite are deprecated and the restoring nodeset rejects them, and iscsiboot,
+# image, winshell and sysclone read rows this case never saved. The node would keep the
+# installation this case configures, so refuse while it is still untouched.
+case "$before" in
+    boot | offline | shell | shutdown | standby | osimage) ;;
+    osimage=?* | runcmd=?* | runimage=?*) ;;
+    *)
+        echo "IPXE_SHIM_FAIL: nodeset reports $node in state [${before:-empty}], which this case"
+        echo "IPXE_SHIM_FAIL: cannot put back, so it changes nothing"
+        exit 1
+        ;;
+esac
 
 # The case reconfigures the node for installation. A restoration that fails leaves it that way,
 # so the failure has to reach the caller in place of the result of the case.
@@ -58,19 +110,15 @@ restore_state() {
         fi
     fi
     if [ -z "$provmethod" ]; then
-        if ! chdef -t node -o "$node" provmethod= > /dev/null; then
-            echo "IPXE_SHIM_FAIL: chdef -t node -o $node provmethod= returned non-zero, $node keeps the provmethod this case set"
+        if ! chdef -t node -o "$node" provmethod= "profile=$profile" > /dev/null; then
+            echo "IPXE_SHIM_FAIL: chdef -t node -o $node provmethod= profile=$profile returned non-zero, $node keeps the image attributes this case set"
             restore_rc=1
         fi
     fi
-    case "${before%% *}" in
-        boot | offline | shell | standby)
-            if ! nodeset "$node" "${before%% *}"; then
-                echo "IPXE_SHIM_FAIL: nodeset $node ${before%% *} returned non-zero, $node stays configured for installation"
-                restore_rc=1
-            fi
-            ;;
-    esac
+    if ! nodeset "$node" "$before"; then
+        echo "IPXE_SHIM_FAIL: nodeset $node $before returned non-zero, $node stays configured for installation"
+        restore_rc=1
+    fi
     return "$restore_rc"
 }
 
@@ -84,7 +132,7 @@ on_exit() {
 # the stateful image of the node here. In a bundle the provisioning cases have already set it.
 destiny=osimage
 if [ -z "$provmethod" ]; then
-    image="$(node_value os)-$arch-install-compute"
+    image="$os-$arch-install-compute"
     if ! lsdef -t osimage -o "$image" > /dev/null 2>&1; then
         echo "IPXE_SHIM_FAIL: $node has no provmethod and osimage $image is not defined, so this"
         echo "IPXE_SHIM_FAIL: case has no boot script to read"
