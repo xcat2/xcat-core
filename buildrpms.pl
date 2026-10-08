@@ -55,7 +55,7 @@ use File::Temp qw(tempdir tempfile);
 use FindBin qw($Bin);
 use lib "$Bin/build-utils/lib";
 use XCAT::BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildinfo_text
-    build_sources_base prepare_build_sources_dir remove_build_sources_dir
+    build_sources_base prepare_build_sources_dir remove_build_sources_dir share_build_sources_dir
     sweep_build_sources_dirs stage_xcat_probe_sources stage_xcatsn_templates
                         stage_genesis_base_sources
                         write_script read_line targetarch_from_target
@@ -528,6 +528,7 @@ sub buildall {
     createmockconfig($pkg, $target);
     prepare_mock_resultdirs($pkg, $target);
     buildsources($pkg, $target);
+    share_build_sources_dir($SOURCES);
     buildspkgs($pkg, $target);
     # --source-only stops here: buildspkgs has produced the src.rpm, and the binary
     # rebuild is the only thing buildpkgs does. Everything upstream of this point --
