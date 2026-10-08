@@ -730,10 +730,15 @@ sub default_storagemodel {
 # domain type "qemu". riscv64 has no BIOS: the virt machine boots UEFI, and pae/acpi/apic
 # are x86 features that libvirt rejects there.
 #
+# aarch64 is the same emulation case and needs one thing more: a named CPU model. With no
+# <cpu> element libvirt passes -cpu max, which under TCG turns on SVE, and the guest stays in
+# its firmware.
+#
 # POWER keeps reading the hypervisor cpumodel. ppc64le hypervisors report "ppc64le" (not
 # "ppc64"); both are pseries guests whose libvirt <os> arch is "ppc64".
 #
 # arch and machine stay undef when libvirt is to use its own default for the hypervisor.
+# machine is the unversioned alias; libvirt resolves it to the version the hypervisor has.
 sub guest_arch_profile {
     my ($guest_arch, $hyp_cpumodel) = @_;
     my %profile = (
@@ -741,6 +746,7 @@ sub guest_arch_profile {
         arch         => undef,
         machine      => undef,
         firmware     => undef,
+        cpu_model    => undef,
         x86_features => 1,
         bios         => 1,
         sound        => 1,
@@ -758,6 +764,18 @@ sub guest_arch_profile {
         $profile{bios}         = 0;
         $profile{sound}        = 0;
         $profile{video}        = 'virtio';
+        $profile{usb_input}    = 0;
+        $profile{disk_model}   = 'scsi';
+        $profile{cd_prefix}    = 'sd';
+    } elsif (defined($guest_arch) and $guest_arch eq 'aarch64') {
+        $profile{domtype}      = 'qemu';
+        $profile{arch}         = 'aarch64';
+        $profile{machine}      = 'virt';
+        $profile{firmware}     = 'efi';
+        $profile{cpu_model}    = 'cortex-a57';
+        $profile{x86_features} = 0;
+        $profile{bios}         = 0;
+        $profile{sound}        = 0;
         $profile{usb_input}    = 0;
         $profile{disk_model}   = 'scsi';
         $profile{cd_prefix}    = 'sd';
@@ -989,6 +1007,12 @@ sub build_xmldesc {
         } else {
             $xtree{vcpu}->{content} = 1;
         }
+    }
+    # vm.cpumode and a pseries guest build their own cpu element; leave either alone.
+    if (defined $profile->{cpu_model} and !exists $xtree{cpu}) {
+        $xtree{cpu}->{mode}             = 'custom';
+        $xtree{cpu}->{match}            = 'exact';
+        $xtree{cpu}->{model}->{content} = $profile->{cpu_model};
     }
     if (defined($confdata->{vm}->{$node}->[0]->{clockoffset})) {
 
