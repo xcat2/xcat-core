@@ -4,6 +4,15 @@ These tests use the source checkout with RPM tools, Linux namespaces or real
 service binaries. They are separate from `unit/` and are not discovered by the
 default pull-request unit run. Run them explicitly on a disposable Linux host.
 
+The Debian probe permission test has a separate pull-request CI step. It needs
+Debian build tools, BATS, bubblewrap, fakeroot, reprepro and
+libfile-slurper-perl. Run it as an ordinary user on a Debian or Ubuntu host
+with unprivileged namespaces enabled:
+
+```
+bats xCAT-test/native/probe_debian_permissions.bats
+```
+
 Run the package and unprivileged namespace cases as an ordinary user:
 
 ```
