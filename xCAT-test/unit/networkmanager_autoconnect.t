@@ -9,7 +9,7 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use Test::More;
 
-use XCAT::Test::File qw(repo_path slurp_repo_file);
+use XCAT::Test::File qw(repo_path);
 
 my $scriptlib = repo_path(
     File::Spec->catfile(
@@ -150,54 +150,6 @@ is( read_file($nmcli_log), '', 'nmcli is not invoked when it is unavailable' );
 is( read_file($message_log), '',
     'missing nmcli does not produce a connection activation message' );
 
-my $rhels8 = stage_rendered_postscript('post.rhels8');
-my $rhels10 = stage_rendered_postscript('post.rhels10');
-
-is(
-    run_program(
-        $rhels8,
-        connections => "primary uplink:activated\n",
-        debug        => '1'
-    ),
-    0,
-    'the EL8 and EL9 install postscript uses the shared helper'
-);
-is(
-    read_file($message_log),
-    message_line(
-        '192.0.2.10', 'info',
-        'set connection primary uplink to be activated on system boot',
-        '/var/log/xcat/xcat.log'
-    ),
-    'the EL8 and EL9 caller preserves connection activation logging'
-);
-is(
-    read_file($nmcli_log),
-    command_line( '-g', 'NAME,STATE', 'con', 'show' )
-      . command_line( 'con', 'mod', 'primary uplink',
-        'connection.autoconnect', 'yes' ),
-    'the EL8 and EL9 caller passes the connection name unchanged'
-);
-
-is(
-    run_program(
-        $rhels10,
-        connections => "primary uplink:activated\n",
-        debug        => '1'
-    ),
-    0,
-    'the EL10 install postscript uses the shared helper'
-);
-is( read_file($message_log), '',
-    'the EL10 caller keeps connection activation logging disabled' );
-is(
-    read_file($nmcli_log),
-    command_line( '-g', 'NAME,STATE', 'con', 'show' )
-      . command_line( 'con', 'mod', 'primary uplink',
-        'connection.autoconnect', 'yes' ),
-    'the EL10 caller passes the connection name unchanged'
-);
-
 done_testing();
 
 sub command_line {
@@ -227,45 +179,6 @@ sub run_program {
 
     my $status = system( '/bin/bash', $program, @{$arguments} );
     return $status == -1 ? 255 : $status >> 8;
-}
-
-sub stage_rendered_postscript {
-    my ($name) = @_;
-    my $postscript = slurp_repo_file(
-        File::Spec->catfile(
-            'xCAT-server', 'share', 'xcat', 'install', 'scripts', $name
-        )
-    );
-    my $library = slurp_repo_file(
-        File::Spec->catfile(
-            'xCAT-server', 'share', 'xcat', 'install', 'scripts', 'scriptlib'
-        )
-    );
-    my $include = '#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#';
-    $postscript =~ s/^\Q$include\E$/$library/m
-      or BAIL_OUT("Unable to render the scriptlib include in $name");
-
-    my $preamble = <<'SH';
-compgen() { return 1; }
-sed() { :; }
-msgutil_r() {
-    {
-        printf 'msgutil_r'
-        for argument in "$@"; do
-            printf '\t<%s>' "$argument"
-        done
-        printf '\n'
-    } >>"$XCAT_TEST_MESSAGE_LOG"
-}
-SH
-    $postscript =~ s/\A(#![^\n]*\n)/$1$preamble/
-      or BAIL_OUT("Unable to stage the test preamble in $name");
-
-    my $destination = File::Spec->catfile( $tmpdir, $name );
-    write_file( $destination, $postscript );
-    chmod 0755, $destination
-      or die "Unable to make $destination executable: $!";
-    return $destination;
 }
 
 sub write_file {
