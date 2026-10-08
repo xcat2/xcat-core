@@ -14,7 +14,8 @@ my $content = do { local $/; <$source_fh> };
 close($source_fh) or die "close $source: $!";
 
 my @routines;
-for my $name (qw(build_xmldesc guest_arch_profile build_oshash build_diskstruct getUnits)) {
+for my $name (qw(build_xmldesc guest_arch_profile preferred_video_model build_oshash
+    build_diskstruct getUnits)) {
     my ($routine) = $content =~ /^(sub \Q$name\E\s*\{.*?^\})/ms;
     die("could not extract $name from kvm.pm") unless $routine;
     push(@routines, $routine);
@@ -25,7 +26,7 @@ for my $name (qw(build_xmldesc guest_arch_profile build_oshash build_diskstruct 
 # itself is the code under test.
 my $harness = <<'PERL';
 package KVMArch;
-use XML::Simple qw(XMLout);
+use XML::Simple qw(XMLin XMLout);
 our ($node, $confdata, $updatetable, $hypconn);
 sub getNodeUUID      { return '00000000-0000-0000-0000-000000000001'; }
 sub get_multiple_paths_by_url { return {}; }

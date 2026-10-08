@@ -736,6 +736,9 @@ sub default_storagemodel {
 # as unsupported there, and the emulator default turns on SVE, which stops the guest in its
 # firmware.
 #
+# video is the model to use when the hypervisor states none. video_prefer is read first, in
+# order, against what the hypervisor offers.
+#
 # POWER keeps reading the hypervisor cpumodel. ppc64le hypervisors report "ppc64le" (not
 # "ppc64"); both are pseries guests whose libvirt <os> arch is "ppc64". pseries marks that
 # guest, because the CPU model, the CPU topology and the emulator belong to it and not to the
@@ -753,6 +756,7 @@ sub guest_arch_profile {
         cpu_mode     => undef,
         cpu_model    => undef,
         pseries      => 0,
+        video_prefer => undef,
         x86_features => 1,
         bios         => 1,
         sound        => 1,
@@ -784,7 +788,7 @@ sub guest_arch_profile {
         $profile{x86_features} = 0;
         $profile{bios}         = 0;
         $profile{sound}        = 0;
-        $profile{video}        = 'virtio';
+        $profile{video_prefer} = ['virtio'];
         $profile{usb_input}    = 0;
         $profile{disk_model}   = 'scsi';
         $profile{cd_prefix}    = 'sd';
@@ -797,6 +801,48 @@ sub guest_arch_profile {
         $profile{sound}        = 0;
     }
     return \%profile;
+}
+
+#-------------------------------------------------------
+
+=head3 preferred_video_model
+
+    Descriptions:
+        The first wanted video model that the hypervisor offers.
+
+        The video models of a machine type come from the emulator build, not from the
+        architecture: the aarch64 emulator of a host can carry no virtio-gpu device while its
+        riscv64 emulator does. libvirt refuses a domain that names a model its emulator has no
+        device for, so the model is read from the capabilities of the hypervisor.
+    Arguments:
+        $capsxml - the domain capabilities XML of the hypervisor, or undef
+        $wanted - the models to look for, in order
+        $fallback - the model to use when none of them is offered
+    Returns:
+        the video model to write into the domain
+
+=cut
+
+#-------------------------------------------------------
+sub preferred_video_model {
+    my ($capsxml, $wanted, $fallback) = @_;
+    return $fallback unless defined $capsxml and ref($wanted) eq 'ARRAY';
+    my $caps;
+    eval { $caps = XMLin($capsxml, ForceArray => [ 'enum', 'value' ], KeyAttr => []); };
+    return $fallback unless ref($caps) eq 'HASH';
+    my $video = $caps->{devices}->{video};
+    return $fallback unless ref($video) eq 'HASH' and ref($video->{enum}) eq 'ARRAY';
+    my %offered;
+    foreach my $enum (@{ $video->{enum} }) {
+        next unless ref($enum) eq 'HASH';
+        next unless defined $enum->{name} and $enum->{name} eq 'modelType';
+        next unless ref($enum->{value}) eq 'ARRAY';
+        %offered = map { $_ => 1 } @{ $enum->{value} };
+    }
+    foreach my $model (@$wanted) {
+        return $model if $offered{$model};
+    }
+    return $fallback;
 }
 
 sub build_xmldesc {
@@ -1066,7 +1112,16 @@ sub build_xmldesc {
             $vram = 65536; } #surprise, spice blows up with less vram than this after version 0.6 and up
         $xtree{devices}->{video} = [ { 'content' => '', 'model' => { type => $model, vram => $vram } } ];
     } else {
-        $xtree{devices}->{video} = [ { 'content' => '', 'model' => { type => $profile->{video}, vram => 8192 } } ];
+        my $vidmodel = $profile->{video};
+        if ($profile->{video_prefer} and $hypconn) {
+            my $capsxml;
+            eval {
+                $capsxml = $hypconn->get_domain_capabilities(undef, $profile->{arch},
+                    $profile->{machine}, $profile->{domtype});
+            };
+            $vidmodel = preferred_video_model($capsxml, $profile->{video_prefer}, $vidmodel);
+        }
+        $xtree{devices}->{video} = [ { 'content' => '', 'model' => { type => $vidmodel, vram => 8192 } } ];
     }
     # The riscv64 virt machine has no USB controller, and libvirt refuses a USB device there.
     if ($profile->{usb_input}) {
