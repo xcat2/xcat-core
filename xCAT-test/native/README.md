@@ -14,6 +14,23 @@ prove xCAT-test/native/buildrpms_openeuler.t \
       xCAT-test/native/openeuler_package_policy.t
 ```
 
+The image caller tests need `bubblewrap`, `cpio`, `gzip`, RPM tools and the
+Perl modules used by the unit suite, including DBD::SQLite, XML::Simple and
+Net::DNS:
+
+```
+prove xCAT-test/native/genimage_network_drivers.t \
+      xCAT-test/native/el10_image_package_policy.t
+bats xCAT-test/bats/networkmanager_postscript.bats
+```
+
+These cases run complete callers in private filesystems with no network.
+They check driver configuration after real driver-disk loading, media-import
+records, parsed RPM installation scriptlets and rendered installation postscripts.
+External package downloads, service management, disk mounts and initrd creation
+use command fixtures. These cases do not boot an image or qualify hardware.
+The two Perl image caller tests fail if run as root.
+
 Run the isolated system cases as root:
 
 ```
