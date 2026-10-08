@@ -8,6 +8,11 @@ use warnings;
 our @ENFORCE_FILES = ('/sys/fs/selinux/enforce', '/selinux/enforce');
 our $CONFIG_FILE = '/etc/selinux/config';
 
+our @MODES = qw(enforcing permissive disabled);
+
+# The OS families that ship SELinux and get the xCAT policy. SLES 15 and Ubuntu use AppArmor.
+our $POLICY_OS = qr/^(?:rhel|rhes|rhels|centos|alma|rocky|ol|fedora|openeuler|sl\d)/i;
+
 #-----------------------------------------------------------------------------
 
 =head3 runtime_mode
@@ -114,6 +119,117 @@ sub xcatconfig_action {
       "SELINUX is $mode. xCAT does not change the SELinux mode or $CONFIG_FILE.";
 
     return \%answer;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 node_modes
+
+    Descriptions:
+        Resolves the SELinux mode each node gets when it is provisioned.
+        The order is the noderes row of the node, the noderes rows of its
+        groups, site.selinux, then disabled. A node row can enable SELinux
+        when site.selinux is disabled. A node resolves to disabled when its
+        OS has no xCAT SELinux policy, when its OS is not known, and when it
+        is statelite.
+    Arguments:
+        nodes   - a reference to a list of node names
+        reasons - optional hash reference. For each node that resolves to
+                  disabled against its configured mode, the sub sets a message.
+    Returns:
+        A hash reference: node name => enforcing, permissive or disabled.
+    Example:
+        my $modes = xCAT::SELinux->node_modes(\@nodes, \%why);
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub node_modes {
+    my ($class, $nodes, $reasons) = @_;
+    $reasons = {} unless ref($reasons) eq 'HASH';
+
+    my %modes;
+    return \%modes unless $nodes && @{$nodes};
+
+    require xCAT::Table;
+    require xCAT::TableUtils;
+
+    my $site = xCAT::TableUtils->get_site_attribute('selinux');
+
+    my $noderes = _nodes_attribs('noderes', $nodes, ['selinux']);
+    my $nodetype = _nodes_attribs('nodetype', $nodes, [ 'os', 'provmethod' ]);
+    my %images;
+
+    foreach my $node (@{$nodes}) {
+        my $value = $noderes->{$node}{selinux};
+        $value = $site unless defined $value && $value =~ /\S/;
+        my $mode = _normalize_mode($value);
+        if (!defined $mode) {
+            $reasons->{$node} = "selinux value '$value' is not one of @MODES";
+            $modes{$node} = 'disabled';
+            next;
+        }
+
+        my ($os, $provmethod) = @{ $nodetype->{$node} }{qw(os provmethod)};
+        if (defined $provmethod && $provmethod !~ /^(?:install|netboot|statelite)$/) {
+            $images{$provmethod} ||= _image_attribs($provmethod);
+            my $image = $images{$provmethod};
+            $os = $image->{osvers} if $image->{osvers};
+            $provmethod = $image->{provmethod};
+        }
+
+        if ($mode ne 'disabled') {
+            if (!defined $os || $os eq '') {
+                $reasons->{$node} = "SELinux $mode needs a known OS";
+                $mode = 'disabled';
+            } elsif ($os !~ $POLICY_OS) {
+                $reasons->{$node} = "$os has no xCAT SELinux policy";
+                $mode = 'disabled';
+            } elsif (defined $provmethod && $provmethod eq 'statelite') {
+                $reasons->{$node} = "statelite does not support SELinux $mode";
+                $mode = 'disabled';
+            }
+        }
+
+        $modes{$node} = $mode;
+    }
+
+    return \%modes;
+}
+
+sub _normalize_mode {
+    my ($value) = @_;
+
+    return 'disabled' unless defined $value;
+    $value = lc($value);
+    $value =~ s/^\s+|\s+$//g;
+    return 'disabled' if $value eq '';
+    return (grep { $_ eq $value } @MODES) ? $value : undef;
+}
+
+sub _nodes_attribs {
+    my ($table, $nodes, $attrs) = @_;
+
+    my %rows;
+    my $tab = xCAT::Table->new($table) or return \%rows;
+    my $all = $tab->getNodesAttribs($nodes, $attrs) || {};
+    $tab->close();
+    foreach my $node (keys %{$all}) {
+        my $row = ref($all->{$node}) eq 'ARRAY' ? $all->{$node}[0] : undef;
+        $rows{$node} = $row if ref($row) eq 'HASH';
+    }
+
+    return \%rows;
+}
+
+sub _image_attribs {
+    my ($imagename) = @_;
+
+    my $tab = xCAT::Table->new('osimage') or return {};
+    my $row = $tab->getAttribs({ imagename => $imagename }, 'osvers', 'provmethod');
+    $tab->close();
+
+    return $row || {};
 }
 
 sub _first_line {
