@@ -238,6 +238,26 @@ my ($other_keys) = domain_xml( othersettings => 'cpumode:host-passthrough' );
 is( attribute( $other_keys, '/domain/os', 'firmware' ), undef,
     'another vm.othersettings key does not select a firmware' );
 
+# Reading the setting must not create the row it reads. An rvalue dereference chain
+# autovivifies its intermediate links, so $confdata->{vm}->{$node}->[0]->{othersettings} makes
+# a vm row exist for a node that is not a VM, and a later truth test on that row answers yes.
+{
+    local $xCAT_plugin::kvm::confdata = { nodetype => { cn9 => [ { arch => 'x86_64' } ] } };
+    is( xCAT_plugin::kvm::vm_othersettings('cn9'), undef,
+        'vm_othersettings answers undef for a node with no vm row' );
+    ok( !exists $xCAT_plugin::kvm::confdata->{vm},
+        'and the read autovivified no vm table in confdata' );
+}
+{
+    local $xCAT_plugin::kvm::confdata = { vm => { cn8 => [ { host => 'hyp1' } ] } };
+    is( xCAT_plugin::kvm::vm_othersettings('cn9'), undef,
+        'vm_othersettings answers undef for a node absent from a populated vm table' );
+    ok( !exists $xCAT_plugin::kvm::confdata->{vm}->{cn9},
+        'and the read autovivified no row for that node' );
+    is_deeply( $xCAT_plugin::kvm::confdata, { vm => { cn8 => [ { host => 'hyp1' } ] } },
+        'and left confdata as it was' );
+}
+
 # A value libvirt cannot select is refused by name. A typo must not quietly leave the node on
 # SeaBIOS, because the node then fails a long way from here.
 my ( $refused, $errstr ) = domain_xml( othersettings => 'firmware:uefi' );

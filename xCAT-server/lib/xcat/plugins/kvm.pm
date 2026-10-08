@@ -503,7 +503,7 @@ sub build_diskstruct {
     my $storagemodel = $confdata->{vm}->{$node}->[0]->{storagemodel};
     my $profile      = guest_arch_profile($confdata->{nodetype}->{$node}->[0]->{arch},
         $confdata->{ $confdata->{vm}->{$node}->[0]->{host} }->{cpumodel},
-        requested_firmware($confdata->{vm}->{$node}->[0]->{othersettings}));
+        requested_firmware(vm_othersettings($node)));
     my $cachemethod  = "none";
     if ($confdata->{vm}->{$node}->[0]->{storagecache}) {
         $cachemethod = $confdata->{vm}->{$node}->[0]->{storagecache};
@@ -727,6 +727,19 @@ sub default_storagemodel {
     return 'scsi';
 }
 
+# vm_othersettings: the vm.othersettings of one node, or undef when the node has no vm row.
+#
+# An rvalue dereference chain autovivifies its intermediate links, so reading the column as
+# $confdata->{vm}->{$node}->[0]->{othersettings} creates a vm row for a node that has none.
+sub vm_othersettings {
+    my ($nodename) = @_;
+    return undef unless ref($confdata) eq 'HASH';
+    my $vm   = $confdata->{vm}  or return undef;
+    my $rows = $vm->{$nodename} or return undef;
+    my $row  = $rows->[0]       or return undef;
+    return $row->{othersettings};
+}
+
 # requested_firmware: the firmware a node asks for in vm.othersettings, or undef.
 #
 # No node asks by default, so an existing guest keeps the firmware of its machine type.
@@ -810,7 +823,7 @@ sub build_xmldesc {
         $hypcputhreads = "1";
     }
 
-    my $firmware = requested_firmware($confdata->{vm}->{$node}->[0]->{othersettings});
+    my $firmware = requested_firmware(vm_othersettings($node));
     if (defined $firmware and $firmware ne 'efi') {
         return (-1, "vm.othersettings firmware:$firmware names no firmware libvirt can select for $node. Use firmware:efi.");
     }

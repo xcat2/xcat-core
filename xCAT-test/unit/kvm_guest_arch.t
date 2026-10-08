@@ -15,7 +15,7 @@ close($source_fh) or die "close $source: $!";
 
 my @routines;
 for my $name (qw(build_xmldesc guest_arch_profile build_oshash build_diskstruct getUnits
-    requested_firmware)) {
+    requested_firmware vm_othersettings)) {
     my ($routine) = $content =~ /^(sub \Q$name\E\s*\{.*?^\})/ms;
     die("could not extract $name from kvm.pm") unless $routine;
     push(@routines, $routine);
