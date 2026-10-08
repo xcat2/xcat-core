@@ -1,5 +1,15 @@
 use strict;
 use warnings;
+BEGIN {
+    *CORE::GLOBAL::rename = sub ($$) {
+        my ($source, $destination) = @_;
+        if ($destination =~ m{\A/tmp/fixture/tftp/xcat/genesis\.}) {
+            die "Genesis staging crosses destination filesystem\n"
+                unless (stat($source))[0] == (stat('/tmp/fixture/tftp/xcat'))[0];
+        }
+        return CORE::rename($source, $destination);
+    };
+}
 use FindBin;
 use lib "$FindBin::Bin/../../../perl-xCAT";
 use lib "$FindBin::Bin/../../../xCAT-server/lib/perl";

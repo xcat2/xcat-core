@@ -49,3 +49,26 @@ check_payload()
     [[ "$output" == *'failed, falling back to gzip'* ]]
     check_payload "$fixture/tftp/xcat/genesis.fs.x86_64.gz" gzip 640
 }
+
+@test "mknb stops if its destination staging directory cannot be created" {
+    [ "$(id -u)" -ne 0 ] || skip 'root can write mode-500 directories'
+    mkdir -p "$fixture/tftp/xcat"
+    printf 'old kernel\n' > "$fixture/tftp/xcat/genesis.kernel.x86_64"
+    chmod 500 "$fixture/tftp/xcat"
+    run build_image 022
+    chmod 700 "$fixture/tftp/xcat"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *'Failed to create a temporary directory'* ]] || { printf '%s\n' "$output"; return 1; }
+    [ "$(find "$fixture/tftp/xcat" -mindepth 1 -maxdepth 1 -printf '%f\n')" = genesis.kernel.x86_64 ]
+}
+
+@test "mknb publishes exported Genesis with a separate temporary filesystem" {
+    run bwrap --die-with-parent --unshare-net --ro-bind / / --dev /dev --proc /proc \
+        --tmpfs /tmp --ro-bind "$BATS_TEST_DIRNAME/../.." /tmp/source \
+        --bind "$fixture" /tmp/fixture --setenv TMPDIR /tmp \
+        --chdir /tmp sh -c '
+            [ "$(stat -c %d /tmp)" != "$(stat -c %d /tmp/fixture)" ] || exit 70
+            exec perl /tmp/source/xCAT-test/unit/mknb_genesis_atomic.t /tmp/fixture
+        '
+    [ "$status" -eq 0 ] || { printf '%s\n' "$output"; return 1; }
+}
