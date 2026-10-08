@@ -14,7 +14,9 @@ package XCAT::BuildUtils;
 use strict;
 use warnings;
 use Exporter 'import';
+use Cwd ();
 use File::Copy qw(copy move);
+use File::Find qw(find);
 use File::Basename qw(basename);
 use File::Path qw(make_path remove_tree);
 use File::Temp qw(tempdir tempfile);
@@ -34,7 +36,7 @@ our @EXPORT_OK = qw(
     reprepro_distributions reprepro_options
     lock_id_for take_build_lock
     build_sources_base build_sources_dir prepare_build_sources_dir
-    remove_build_sources_dir sweep_build_sources_dirs
+    remove_build_sources_dir sweep_build_sources_dirs share_build_sources_dir
     sh_quote clean_debian_residue git_revision
     backup_file restore_file
     sh sh_or_die usage
@@ -980,18 +982,19 @@ sub genesis_log_errors {
 Descriptions: The directory that holds the per-process rpmbuild SOURCES directories.
 
 Arguments:
-  $home - the home directory; defaults to $ENV{HOME}
+  $checkout - the source checkout; defaults to the working directory
 
 Returns: the absolute path of the base directory.
 
 =cut
 
 #-------------------------------------------------------------------------------
+# mock reads the sources as chrootuid, and $HOME of a root build is /root, mode 0550.
 sub build_sources_base {
-    my ($home) = @_;
-    $home = $ENV{HOME} unless defined $home && length $home;
-    die "build_sources_base: no home directory\n" unless defined $home && length $home;
-    return "$home/rpmbuild/sources";
+    my ($checkout) = @_;
+    $checkout = Cwd::getcwd() unless defined $checkout && length $checkout;
+    die "build_sources_base: no checkout directory\n" unless defined $checkout && length $checkout;
+    return "$checkout/dist/sources";
 }
 
 #-------------------------------------------------------------------------------
@@ -1012,7 +1015,7 @@ Returns: the absolute path of the staging directory.
 #-------------------------------------------------------------------------------
 # Keyed by the process that stages. buildrpms.pl forks a child per package and target,
 # and mock --sources copies the whole directory, so a shared directory lets a peer's tar
-# truncate an archive mid-copy. A pid is unique only on one host, and $HOME can be on NFS.
+# truncate an archive mid-copy. A pid is unique only on one host, and the checkout can be on NFS.
 sub build_sources_dir {
     my ($base, $pid, $host) = @_;
     die "build_sources_dir: no base directory\n" unless defined $base && length $base;
@@ -1046,9 +1049,34 @@ sub prepare_build_sources_dir {
     my $dir = build_sources_dir(@_);
     # A directory with this name belongs to a dead process that had the same pid.
     remove_tree($dir) if -e $dir;
-    make_path($dir);
+    chmod 0755, make_path($dir), $dir;
     die "build_sources_dir: $dir was not created\n" unless -d $dir;
     return $dir;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 share_build_sources_dir
+
+Descriptions: Make a staging directory and its contents readable by every user,
+              whatever the umask was when they were written.
+
+Arguments:
+  $dir - the directory from prepare_build_sources_dir
+
+Returns: nothing.
+
+=cut
+
+#-------------------------------------------------------------------------------
+# mock copies --sources into the chroot as chrootuid, not as the uid that staged them.
+sub share_build_sources_dir {
+    my ($dir) = @_;
+    find({ no_chdir => 1, wanted => sub {
+        return if -l $_;
+        my $mode = (lstat $_)[2] & 07777;
+        chmod $mode | (-d _ ? 0555 : 0444), $_;
+    } }, $dir);
 }
 
 #-------------------------------------------------------------------------------
