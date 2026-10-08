@@ -209,7 +209,7 @@ sub _install_prebuilt_genesis {
     return (undef, "Unable to create Genesis destination: $destination_dir")
       unless -d $destination_dir;
 
-    my $suffix = xCAT::Utils::genpassword(24);
+    my $staging;
     my @artifacts = (
         [ 'kernel',             "$destination_dir/genesis.kernel.$arch" ],
         [ 'initramfs.cpio.gz', "$destination_dir/genesis.fs.$arch.gz" ],
@@ -230,7 +230,14 @@ sub _install_prebuilt_genesis {
             return (undef, "Missing Genesis checksum entry: $name");
         }
 
-        my $temporary = "$destination.$suffix.new";
+        unless ($staging) {
+            # Keep staging on the destination filesystem for atomic rename.
+            $staging = eval {
+                File::Temp->newdir('mknb.XXXXXX', DIR => $destination_dir, CLEANUP => 1);
+            };
+            return (undef, "Unable to stage Genesis artifact: $source_path") unless $staging;
+        }
+        my $temporary = "$staging/$name.new";
         unless (copy($source_path, $temporary) && chmod(0644, $temporary)) {
             unlink(@staged, $temporary);
             return (undef, "Unable to stage Genesis artifact: $source_path");
@@ -253,7 +260,7 @@ sub _install_prebuilt_genesis {
             return (undef, "Invalid Genesis destination: $destination");
         }
 
-        my $backup = "$destination.$suffix.old";
+        my $backup = "$staging/$artifact->[0].old";
         unless (copy($destination, $backup)) {
             unlink(@staged, values(%backups));
             return (undef, "Unable to preserve Genesis artifact: $destination");
@@ -668,29 +675,36 @@ sub process_request {
     my $lzma_exit_value = 1;
     if ($invisibletouch) {
         my $done = 0;
-        # Build each image under a unique suffix and atomically rename it into
-        # place, so concurrent mknb runs sharing $tftpdir cannot read or clobber
-        # a half-written genesis.fs.
-        my $suffix = xCAT::Utils::genpassword(24);
+        # Keep staging on the destination filesystem for atomic rename.
+        my $staging = eval {
+            File::Temp->newdir('mknb.XXXXXX', DIR => "$tftpdir/xcat", CLEANUP => 1);
+        };
+        unless ($staging) {
+            rmtree($tempdir);
+            $callback->({ error => ["Failed to create a temporary directory"], errorcode => [1] });
+            return;
+        }
+        my $lzma_temporary = "$staging/genesis.fs.$arch.lzma";
         my $lzma_command = genesis_lzma_command(-x "/usr/bin/lzma", -x "/usr/bin/xz");
         if ($lzma_command) {    #let's reclaim some of that size...
             $callback->({ data => ["Creating genesis.fs.$arch.lzma in $tftpdir/xcat"] });
-            system("cd $tempdir; find . | cpio -o -H newc | $lzma_command > $tftpdir/xcat/genesis.fs.$arch.lzma.$suffix");
+            system("cd $tempdir; find . | cpio -o -H newc | $lzma_command > $lzma_temporary");
             $lzma_exit_value = $? >> 8;
             if ($lzma_exit_value) {
                 $callback->({ data => ["Creating genesis.fs.$arch.lzma in $tftpdir/xcat failed, falling back to gzip"] });
-                unlink("$tftpdir/xcat/genesis.fs.$arch.lzma.$suffix");
+                unlink($lzma_temporary);
             } else {
-                move("$tftpdir/xcat/genesis.fs.$arch.lzma.$suffix", "$tftpdir/xcat/genesis.fs.$arch.lzma");
+                move($lzma_temporary, "$tftpdir/xcat/genesis.fs.$arch.lzma");
                 $done        = 1;
                 $initrd_file = "$tftpdir/xcat/genesis.fs.$arch.lzma";
             }
         }
 
         if (not $done) {
+            my $gzip_temporary = "$staging/genesis.fs.$arch.gz";
             $callback->({ data => ["Creating genesis.fs.$arch.gz in $tftpdir/xcat"] });
-            system("cd $tempdir; find . | cpio -o -H newc | gzip -9 > $tftpdir/xcat/genesis.fs.$arch.gz.$suffix");
-            move("$tftpdir/xcat/genesis.fs.$arch.gz.$suffix", "$tftpdir/xcat/genesis.fs.$arch.gz");
+            system("cd $tempdir; find . | cpio -o -H newc | gzip -9 > $gzip_temporary");
+            move($gzip_temporary, "$tftpdir/xcat/genesis.fs.$arch.gz");
             $initrd_file = "$tftpdir/xcat/genesis.fs.$arch.gz";
         }
     } else {
