@@ -2,6 +2,7 @@ package xCAT::DHCP::BootPolicy;
 
 use strict;
 use warnings;
+use xCAT::HTTPUtils qw(httpport_suffix);
 
 sub kea_client_classes {
     my ( $class, %opts ) = @_;
@@ -166,7 +167,7 @@ sub kea_httpboot_network_classes {
     return [] unless $opts{net} && defined( $opts{prefix} ) && $opts{next_server};
 
     my $httpport   = $opts{httpport} || '80';
-    my $portsuffix = ( $httpport eq '80' ) ? '' : ":$httpport";
+    my $portsuffix = httpport_suffix($httpport);
     my $tftpdir    = $opts{tftpdir} || '/tftpboot';
     $tftpdir =~ s{/+$}{};
     my $http_tftp_root = '/tftpboot';
@@ -233,7 +234,7 @@ sub kea_onie_network_classes {
     return [] unless $opts{net} && defined( $opts{prefix} ) && $opts{next_server};
 
     my $httpport   = $opts{httpport} || '80';
-    my $portsuffix = ( $httpport eq '80' ) ? '' : ":$httpport";
+    my $portsuffix = httpport_suffix($httpport);
     my $name = "xcat-onie-$opts{net}_$opts{prefix}";
     $name =~ s{[^A-Za-z0-9_.-]}{_}gxms;
 
@@ -460,7 +461,7 @@ sub kea_xnba_node_classes {
 
         next unless $node->{next_server};
         my $httpport = $node->{httpport} || '80';
-        my $portsuffix = ( $httpport eq '80' ) ? '' : ":$httpport";
+        my $portsuffix = httpport_suffix($httpport);
         my $base_url = 'http://' . $node->{next_server} . $portsuffix . "/tftpboot/$loader->{scripts}/nodes/" . $node->{node};
 
         push @classes, {
@@ -713,7 +714,7 @@ sub kea_xnba_network_classes {
     my $loader = $class->x86_loader( method => 'ipxe' );
     my $uefi_x64_arch_match = uefi_x64_client_architecture_match_expr();
     my $httpport = $opts{httpport} || '80';
-    my $portsuffix = ( $httpport eq '80' ) ? '' : ":$httpport";
+    my $portsuffix = httpport_suffix($httpport);
     my $network_id = $opts{net} . '_' . $opts{prefix};
     my $safe_network = $network_id;
     $safe_network =~ s/[^A-Za-z0-9_.-]/_/g;
