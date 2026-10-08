@@ -32,6 +32,7 @@ use xCAT::SELinux;
 use Getopt::Long;
 use xCAT::MsgUtils;
 use xCAT::Table;
+use xCAT::TableUtils;
 use Socket;
 
 #-----------------------------------------------------------------------------
@@ -414,6 +415,11 @@ if ($::INITIALINSTALL || $::UPDATEINSTALL || $::FORCE || $::genCredentials)
 if ($::INITIALINSTALL || $::UPDATEINSTALL || $::FORCE || $::initDB)
 {
     &initDB;
+}
+
+if ($::INITIALINSTALL)
+{
+    &recordselinuxdefault;
 }
 
 #
@@ -1075,6 +1081,31 @@ sub is_redhat6sp4
 }
 
 
+
+#-----------------------------------------------------------------------------
+
+=head3 recordselinuxdefault
+
+    Records site.selinux from the SELinux mode of the management node, when
+    site.selinux is not set. The mode of the management node does not change.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub recordselinuxdefault
+{
+    my $existing = xCAT::TableUtils->get_site_attribute('selinux');
+    my $value = xCAT::SELinux->install_default(xCAT::SELinux->runtime_mode(), $existing);
+    return unless defined $value;
+
+    xCAT::Utils->runcmd("$::XCATROOT/sbin/chtab key=selinux site.value=$value", 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        xCAT::MsgUtils->message('E', "Could not set site.selinux to $value.");
+        return;
+    }
+    xCAT::MsgUtils->message('I', "Set site.selinux to $value.");
+}
 
 #-----------------------------------------------------------------------------
 
