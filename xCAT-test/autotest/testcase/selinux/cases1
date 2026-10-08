@@ -1,0 +1,168 @@
+start:selinux_cn_diskful_enforcing
+description:on an enforcing management node, a diskful compute node with noderes.selinux=enforcing boots enforcing, with correct labels and no denial
+label:selinux,provision
+os:Linux
+cmd:getenforce
+check:rc==0
+check:output=~^Enforcing$
+cmd:sh -c 'date "+%x %T" > /tmp/selinux_cn_diskful.start'
+check:rc==0
+cmd:chdef -t node -o $$CN selinux=enforcing
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+check:output=~Provision node\(s\)\: $$CN
+cmd:xdsh $$CN getenforce
+check:rc==0
+check:output=~Enforcing
+cmd:xdsh $$CN cat /proc/cmdline
+check:rc==0
+check:output!~selinux=0
+cmd:xdsh $$CN "ls -dZ /root/.ssh /etc/ssh/sshd_config /opt/xcat /xcatpost"
+check:rc==0
+check:output=~ssh_home_t
+check:output!~default_t
+check:output!~unlabeled_t
+cmd:xdsh $$CN "restorecon -RnvF /xcatpost /opt/xcat /root /etc/ssh /var/log/xcat"
+check:rc==0
+check:output!~Would relabel
+cmd:xdsh $$CN "ausearch -m AVC,USER_AVC -ts boot"
+check:output=~<no matches>
+check:output!~type=AVC
+cmd:sh -c 'ausearch -m AVC,USER_AVC -ts $(cat /tmp/selinux_cn_diskful.start)'
+check:rc==1
+check:output=~<no matches>
+cmd:chdef -t node -o $$CN selinux=
+check:rc==0
+cmd:rm -f /tmp/selinux_cn_diskful.start
+end
+
+start:selinux_cn_diskless_enforcing
+description:on an enforcing management node, a stateless (cpio) compute node with noderes.selinux=enforcing labels its RAM root at boot and runs enforcing with no denial
+label:selinux,provision
+os:Linux
+cmd:getenforce
+check:rc==0
+check:output=~^Enforcing$
+cmd:sh -c 'date "+%x %T" > /tmp/selinux_cn_diskless.start'
+check:rc==0
+cmd:chdef -t node -o $$CN selinux=enforcing
+check:rc==0
+cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:packimage -m cpio __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+check:output=~Provision node\(s\)\: $$CN
+cmd:xdsh $$CN mount
+check:rc==0
+check:output=~on / type tmpfs
+cmd:xdsh $$CN getenforce
+check:rc==0
+check:output=~Enforcing
+cmd:xdsh $$CN cat /proc/cmdline
+check:rc==0
+check:output!~selinux=0
+cmd:xdsh $$CN "ls -dZ / /usr/bin/bash /root/.ssh /etc/ssh/sshd_config /opt/xcat /xcatpost"
+check:rc==0
+check:output=~bin_t
+check:output=~ssh_home_t
+check:output!~tmpfs_t
+check:output!~default_t
+check:output!~unlabeled_t
+cmd:xdsh $$CN "restorecon -RnvF /xcatpost /opt/xcat /root /etc/ssh /usr/sbin"
+check:rc==0
+check:output!~Would relabel
+cmd:xdsh $$CN "ausearch -m AVC,USER_AVC -ts boot"
+check:output=~<no matches>
+check:output!~type=AVC
+cmd:sh -c 'ausearch -m AVC,USER_AVC -ts $(cat /tmp/selinux_cn_diskless.start)'
+check:rc==1
+check:output=~<no matches>
+cmd:chdef -t node -o $$CN selinux=
+check:rc==0
+cmd:rm -f /tmp/selinux_cn_diskless.start
+end
+
+start:selinux_cn_diskless_squashfs_enforcing
+description:on an enforcing management node with squashfs-tools 4.6 or later, a stateless squashfs compute node with noderes.selinux=enforcing boots from labels stored in the image and runs enforcing with no denial
+label:selinux,provision
+os:Linux
+cmd:getenforce
+check:rc==0
+check:output=~^Enforcing$
+cmd:sh -c 'date "+%x %T" > /tmp/selinux_cn_squashfs.start'
+check:rc==0
+cmd:chdef -t node -o $$CN selinux=enforcing
+check:rc==0
+cmd:sh -c 'rpm -q squashfs-tools || dnf install -y squashfs-tools'
+check:rc==0
+cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:packimage -m squashfs __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+check:output=~archive method:squashfs
+check:output!~Nodes that boot
+cmd:sh -c 'ls "$(lsdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute -i rootimgdir -c | cut -d= -f2)/rootimg.sfs.selinux"'
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+check:output=~Provision node\(s\)\: $$CN
+cmd:xdsh $$CN mount
+check:rc==0
+check:output=~on / type overlay
+cmd:xdsh $$CN getenforce
+check:rc==0
+check:output=~Enforcing
+cmd:xdsh $$CN "ls -dZ / /usr/bin/bash /etc/ssh/sshd_config /opt/xcat /xcatpost"
+check:rc==0
+check:output=~bin_t
+check:output!~tmp_t
+check:output!~default_t
+check:output!~unlabeled_t
+cmd:xdsh $$CN "restorecon -RnvF /usr/bin /usr/sbin /etc/ssh /xcatpost /opt/xcat"
+check:rc==0
+check:output!~Would relabel
+cmd:xdsh $$CN "ausearch -m AVC,USER_AVC -ts boot"
+check:output=~<no matches>
+check:output!~type=AVC
+cmd:sh -c 'ausearch -m AVC,USER_AVC -ts $(cat /tmp/selinux_cn_squashfs.start)'
+check:rc==1
+check:output=~<no matches>
+cmd:chdef -t node -o $$CN selinux=
+check:rc==0
+cmd:rm -f /tmp/selinux_cn_squashfs.start
+end
+
+start:selinux_cn_diskless_site_disabled
+description:with site.selinux=disabled and no noderes.selinux value, a stateless compute node boots with SELinux disabled, as before
+label:selinux,provision
+os:Linux
+cmd:sh -c 'lsdef -t site -i selinux -c | cut -d= -f2 > /tmp/selinux_site.orig'
+check:rc==0
+cmd:chtab key=selinux site.value=disabled
+check:rc==0
+cmd:chdef -t node -o $$CN selinux=
+check:rc==0
+cmd:lsdef -t node -o $$CN -i selinux
+check:rc==0
+check:output!~selinux=enforcing
+check:output!~selinux=permissive
+cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:packimage -m cpio __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+check:output=~Provision node\(s\)\: $$CN
+cmd:xdsh $$CN cat /proc/cmdline
+check:rc==0
+check:output=~selinux=0
+cmd:xdsh $$CN getenforce
+check:rc==0
+check:output=~Disabled
+cmd:sh -c 'chtab key=selinux site.value="$(cat /tmp/selinux_site.orig)"'
+check:rc==0
+cmd:rm -f /tmp/selinux_site.orig
+end

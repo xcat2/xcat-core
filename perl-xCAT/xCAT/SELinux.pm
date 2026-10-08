@@ -10,6 +10,9 @@ our $CONFIG_FILE = '/etc/selinux/config';
 
 our @MODES = qw(enforcing permissive disabled);
 
+# packimage writes this file beside rootimg.sfs when the squashfs carries the image labels.
+our $SQUASHFS_LABELS = 'rootimg.sfs.selinux';
+
 # The OS families that ship SELinux and get the xCAT policy. SLES 15 and Ubuntu use AppArmor.
 our $POLICY_OS = qr/^(?:rhel|rhes|rhels|centos|alma|rocky|ol|fedora|openeuler|sl\d)/i;
 
@@ -221,6 +224,368 @@ sub node_modes {
     }
 
     return \%modes;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 netboot_supported
+
+    Descriptions:
+        Reports whether a stateless image of this OS can boot with SELinux on.
+        genimage builds these images from the dracut_047 or dracut_105 module,
+        which carries the pre-pivot hook that labels the RAM root.
+    Arguments:
+        osver - the OS of the image, for example rhels9.6 or openeuler24.03sp3
+    Returns:
+        1 when it can, 0 otherwise.
+    Example:
+        my $ok = xCAT::SELinux->netboot_supported($osver);
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub netboot_supported {
+    my ($class, $osver) = @_;
+
+    return 0 unless defined $osver;
+    return 1 if $osver =~ /^openeuler/i;
+    if ($osver =~ /^(?:rhels|rhel|alma|rocky|ol|centos-stream|centos)(\d+)/i) {
+        return $1 >= 8 ? 1 : 0;
+    }
+
+    return 0;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 kcmdline_selinux
+
+    Descriptions:
+        Gives the kernel arguments that select the SELinux mode of a
+        stateless node. One image serves every mode.
+    Arguments:
+        mode  - the mode node_modes resolved for the node
+        osver - the OS of the image
+    Returns:
+        'selinux=0' for disabled and for an image that cannot label its root,
+        'enforcing=0' for permissive, and the empty string for enforcing.
+    Example:
+        $kcmdline .= ' ' . xCAT::SELinux->kcmdline_selinux($mode, $osver);
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub kcmdline_selinux {
+    my ($class, $mode, $osver) = @_;
+
+    return 'selinux=0' unless defined $mode && $class->netboot_supported($osver);
+    return '' if $mode eq 'enforcing';
+    return 'enforcing=0' if $mode eq 'permissive';
+    return 'selinux=0';
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 kickstart_relabel
+
+    Descriptions:
+        Gives the %post command that relabels the files the xCAT post
+        scripts wrote. rpm labels what it installs; scripts that write in the
+        installer chroot can leave the label of the parent directory.
+    Arguments:
+        mode - the mode of the node
+    Returns:
+        The command, or the empty string when the mode is disabled.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub kickstart_relabel {
+    my ($class, $mode) = @_;
+
+    return '' unless defined $mode && ($mode eq 'enforcing' || $mode eq 'permissive');
+    return '/usr/sbin/restorecon -RF /xcatpost /opt/xcat /etc /root /var/log'
+      . ' || echo "restorecon returned $?"';
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 kickstart_mode
+
+    Descriptions:
+        Reads the SELinux mode a rendered kickstart asks anaconda for.
+    Arguments:
+        text - the kickstart
+    Returns:
+        enforcing, permissive or disabled. A kickstart with no selinux line
+        gets the anaconda default, enforcing.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub kickstart_mode {
+    my ($class, $text) = @_;
+
+    my $mode = 'enforcing';
+    foreach my $line (split /\n/, (defined $text ? $text : '')) {
+        next unless $line =~ /^\s*selinux\s+--(\w+)/;
+        my $word = lc($1);
+        $mode = $word eq 'disable' ? 'disabled' : $word;
+    }
+
+    return $mode;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 kickstart_mismatch
+
+    Descriptions:
+        Compares the mode of a node with the mode its kickstart asks for.
+        A template that hard-codes the selinux line cannot follow the node.
+    Arguments:
+        mode - the mode node_modes resolved for the node
+        text - the rendered kickstart
+    Returns:
+        A warning, or undef when both agree.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub kickstart_mismatch {
+    my ($class, $mode, $text) = @_;
+
+    my $asked = $class->kickstart_mode($text);
+    return undef if !defined $mode || $mode eq $asked;
+    return "SELinux mode is $mode, but the install template sets $asked. "
+      . "Use selinux --#SELINUXMODE# in the template.";
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 write_image_config
+
+    Descriptions:
+        Sets SELINUX=enforcing in /etc/selinux/config of a rootimg. The
+        kernel command line that mknetboot writes then selects the mode of
+        each node.
+    Arguments:
+        root - the rootimg directory
+    Returns:
+        1 when the file was written, 0 when the image has no SELinux policy.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub write_image_config {
+    my ($class, %args) = @_;
+    my $path = "$args{root}$CONFIG_FILE";
+
+    open(my $in, '<', $path) or return 0;
+    my @lines = <$in>;
+    close($in);
+
+    my $found = 0;
+    foreach my $line (@lines) {
+        next if $line =~ /^\s*#/;
+        $found = 1 if $line =~ s/^(\s*SELINUX\s*=\s*)\S*/${1}enforcing/;
+    }
+    push @lines, "SELINUX=enforcing\n" unless $found;
+
+    open(my $out, '>', $path) or return 0;
+    print $out @lines;
+    close($out);
+
+    return 1;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 image_file_contexts
+
+    Descriptions:
+        Finds the file_contexts of the policy that an image boots with.
+    Arguments:
+        root - the image root directory
+    Returns:
+        The path of the file under root, or undef when there is none.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub image_file_contexts {
+    my ($class, $root) = @_;
+
+    my $type = 'targeted';
+    if (open(my $fh, '<', "$root$CONFIG_FILE")) {
+        while (my $line = <$fh>) {
+            $type = $1 if $line =~ /^\s*SELINUXTYPE\s*=\s*(\S+)/;
+        }
+        close($fh);
+    }
+    my $path = "$root/etc/selinux/$type/contexts/files/file_contexts";
+
+    return -r $path ? $path : undef;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 mksquashfs_supports_pseudo_xattr
+
+    Descriptions:
+        Reports whether mksquashfs takes xattr pseudo definitions, which
+        squashfs-tools 4.6 added.
+    Arguments:
+        version - the output of mksquashfs -version
+    Returns:
+        1 or 0.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub mksquashfs_supports_pseudo_xattr {
+    my ($class, $version) = @_;
+
+    return 0 unless defined $version && $version =~ /version\s+(\d+)\.(\d+)/;
+    return ($1 > 4 || ($1 == 4 && $2 >= 6)) ? 1 : 0;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 label_paths
+
+    Descriptions:
+        Looks up the default context of node paths in the file_contexts of
+        an image. matchpathcon reads the file and does not ask the policy of
+        this host, so an image type that this host does not know is fine.
+    Arguments:
+        file_contexts - the file_contexts of the image
+        type          - file, dir, lnk_file, chr_file, blk_file, sock_file
+                        or fifo_file
+        paths         - a reference to a list of absolute paths on the node
+    Returns:
+        A hash reference: path => context. A path with no context is absent.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub label_paths {
+    my ($class, $file_contexts, $type, $paths) = @_;
+
+    my %contexts;
+    my @todo = @{$paths};
+    while (my @batch = splice(@todo, 0, 1000)) {
+        open(my $fh, '-|', 'matchpathcon', '-m', $type, '-f', $file_contexts, @batch)
+          or return \%contexts;
+        while (my $line = <$fh>) {
+            chomp($line);
+            $contexts{$1} = $2 if $line =~ /^(.*)\t(\S+)$/ && $2 ne '<<none>>';
+        }
+        close($fh);
+    }
+
+    return \%contexts;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 squashfs_label_args
+
+    Descriptions:
+        Prepares mksquashfs to store the labels of the image policy. It
+        writes a pseudo file with one security.selinux definition for each
+        path, and drops the labels that the temporary copy got on this host.
+    Arguments:
+        root    - the temporary copy of the rootimg that mksquashfs reads
+        pseudo  - the pseudo file to write
+        version - the output of mksquashfs -version
+    Returns:
+        (\@args) with the mksquashfs arguments, or (undef, $warning) when
+        the image cannot be labelled.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub squashfs_label_args {
+    my ($class, %args) = @_;
+    my ($root, $pseudo) = @args{qw(root pseudo)};
+
+    return (undef, 'squashfs-tools 4.6 or later is needed to store SELinux labels in a squashfs image')
+      unless $class->mksquashfs_supports_pseudo_xattr($args{version});
+    my $fc = $class->image_file_contexts($root);
+    return (undef, 'the image has no SELinux file_contexts') unless $fc;
+
+    my %by_type;
+    require File::Find;
+    File::Find::find({
+            no_chdir => 1,
+            wanted   => sub {
+                my $path = $File::Find::name;
+                my $rel = substr($path, length($root));
+                return if $rel =~ /\n/;
+                $rel = '/' if $rel eq '';
+                push @{ $by_type{ _file_type($path) } }, $rel;
+            },
+    }, $root);
+
+    open(my $out, '>', $pseudo) or return (undef, "cannot write $pseudo: $!");
+    foreach my $type (sort keys %by_type) {
+        my $contexts = $class->label_paths($fc, $type, $by_type{$type});
+        foreach my $path (@{ $by_type{$type} }) {
+            next unless defined $contexts->{$path};
+            print $out _pseudo_name($path), " x security.selinux=$contexts->{$path}\n";
+        }
+    }
+    close($out);
+
+    return ([ '-xattrs-exclude', '^security\.selinux$', '-pf', $pseudo ]);
+}
+
+sub _file_type {
+    my ($path) = @_;
+
+    return 'lnk_file' if -l $path;
+    return 'dir'       if -d _;
+    return 'chr_file'  if -c _;
+    return 'blk_file'  if -b _;
+    return 'sock_file' if -S _;
+    return 'fifo_file' if -p _;
+    return 'file';
+}
+
+# mksquashfs reads a quoted pseudo name with backslash escapes, relative to the image root.
+sub _pseudo_name {
+    my ($path) = @_;
+
+    return '"/"' if $path eq '/';
+    (my $name = substr($path, 1)) =~ s/(["\\])/\\$1/g;
+    return "\"$name\"";
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 nfs_mount_options
+
+    Descriptions:
+        Gives the mount options for a tree that a service node mounts from
+        the management node. NFSv3 and NFSv4 without security_label carry no
+        per-file label, so the mount gets one type for every file.
+    Arguments:
+        base - the options without a context
+        type - the SELinux type of the tree, for example public_content_t
+        mode - the runtime mode of the service node
+    Returns:
+        The options. The kernel refuses context= when SELinux is off, so a
+        disabled node gets base unchanged.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub nfs_mount_options {
+    my ($class, $base, $type, $mode) = @_;
+
+    return $base if !defined $mode || $mode eq 'disabled';
+    return "$base,context=system_u:object_r:$type:s0";
 }
 
 sub _normalize_mode {
