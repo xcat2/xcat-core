@@ -4,119 +4,70 @@ load 'helpers/go_xcat'
 
 setup()
 {
-    go_xcat_require_source
+    [ -n "$BATS_TEST_TMPDIR" ] || return 1
+    fixture="$BATS_TEST_TMPDIR/repository"
+    mkdir -p "$fixture/etc/yum.repos.d"
+    COMMON_PRESENT=1
 }
 
-run_common_repository_case()
+configure_repository()
 {
-    local case_dir="$1"
-    local common_present="$2"
-    shift 2
-
-    mkdir -p "$case_dir"
-    export ADD_LOG="${case_dir}/add.log"
-    export COMMON_PRESENT="$common_present"
-    export DOWNLOAD_LOG="${case_dir}/download.log"
-    export ID_LOG="${case_dir}/id.log"
-    export TEST_TMP="$case_dir"
-
-    go_xcat_load_functions \
-        add_xcat_dep_common_repo_yum_or_zypper \
-        xcat_dep_common_repo_configured \
-        refresh_xcat_dep_repository_ids
-
-    TMP_DIR="$TEST_TMP"
-    GO_XCAT_DEFAULT_BASE_URL=https://repo.example.invalid
-    GO_XCAT_DEP_REPOSITORY_IDS=(xcat-dep)
-
-    yum() { :; }
-
-    download_file()
-    {
-        printf '%s\n' "$1" >>"$DOWNLOAD_LOG"
-        [[ ${COMMON_PRESENT:-0} == 1 ]] || return 1
-        : >"$2"
-    }
-
-    add_repo_by_url_yum_or_zypper()
-    {
-        printf '%s %s\n' "$1" "$2" >>"$ADD_LOG"
-    }
-
-    xcat_dep_common_repo_configured()
-    {
-        [[ -s "$ADD_LOG" ]]
-    }
-
-    ( add_xcat_dep_common_repo_yum_or_zypper "$@" )
-    refresh_xcat_dep_repository_ids
-    printf '%s\n' "${GO_XCAT_DEP_REPOSITORY_IDS[*]}" >"$ID_LOG"
+    bwrap --die-with-parent --unshare-net --ro-bind / / --dev /dev --proc /proc \
+        --tmpfs /tmp --ro-bind "$BATS_TEST_DIRNAME/../.." /tmp/source \
+        --bind "$fixture" /tmp/fixture --bind "$fixture/etc" /etc \
+        --setenv COMMON_PRESENT "$COMMON_PRESENT" --chdir /tmp/fixture \
+        bash /tmp/source/xCAT-test/bats/fixtures/go-xcat-common.sh "$@"
 }
 
-run_template_generation()
-{
-    local tmp_dir="$1"
-    local repo_log="$2"
-
-    mkdir -p "$tmp_dir"
-    export REPO_LOG="$repo_log"
-    export TEST_TMP="$tmp_dir"
-
-    go_xcat_load_functions add_repo_by_url_yum_or_zypper
-
-    TMP_DIR="$TEST_TMP"
-    GO_XCAT_DEFAULT_INSTALL_PATH=/install/xcat
-    yum() { :; }
-    add_repo_by_file() { cp "$1" "$REPO_LOG"; }
-
-    add_repo_by_url_yum_or_zypper \
-        https://repo.example.invalid/xcat-dep/common xcat-dep-common optional
-}
-
-@test "an available remote common repository is enabled" {
-    local case_dir="${BATS_TEST_TMPDIR}/remote-present"
-
-    run run_common_repository_case "$case_dir" 1 "" latest
-    [ "$status" -eq 0 ]
-    [ "$(read_file_or_empty "${case_dir}/download.log")" = "https://repo.example.invalid/yum/latest/xcat-dep/common/repodata/repomd.xml" ]
-    [ "$(read_file_or_empty "${case_dir}/add.log")" = "https://repo.example.invalid/yum/latest/xcat-dep/common xcat-dep-common" ]
-    [ "$(read_file_or_empty "${case_dir}/id.log")" = "xcat-dep xcat-dep-common" ]
+@test "an available remote common repository is installed and activated" {
+    run configure_repository '' latest
+    [ "$status" -eq 0 ] || { printf '%s\n' "$output"; return 1; }
+    [ "$(cat "$fixture/download.log")" = 'https://repo.example.invalid/yum/latest/xcat-dep/common/repodata/repomd.xml' ]
+    [ "$(cat "$fixture/ids")" = 'xcat-dep xcat-dep-common' ]
+    repo="$fixture/etc/yum.repos.d/xcat-dep-common.repo"
+    grep -Fxq '[xcat-dep-common]' "$repo"
+    grep -Fxq 'baseurl=https://repo.example.invalid/yum/latest/xcat-dep/common' "$repo"
+    grep -Fxq 'enabled=1' "$repo"
+    grep -Fxq 'skip_if_unavailable=1' "$repo"
+    grep -Fxq 'repo_gpgcheck=1' "$repo"
+    grep -Fxq 'gpgcheck=1' "$repo"
+    grep -Fxq 'gpgkey=https://repo.example.invalid/yum/latest/xcat-dep/common/repodata/repomd.xml.key' "$repo"
+    [ "$(cat "$fixture/yum.log")" = 'clean metadata' ]
 }
 
 @test "a release without the remote common repository remains usable" {
-    local case_dir="${BATS_TEST_TMPDIR}/remote-missing"
-
-    run run_common_repository_case "$case_dir" 0 "" 2.18
+    COMMON_PRESENT=0
+    run configure_repository '' 2.18
     [ "$status" -eq 0 ]
-    [ "$(read_file_or_empty "${case_dir}/add.log")" = "" ]
-    [ "$(read_file_or_empty "${case_dir}/id.log")" = "xcat-dep" ]
+    [ "$(cat "$fixture/ids")" = xcat-dep ]
+    [ ! -e "$fixture/etc/yum.repos.d/xcat-dep-common.repo" ]
+    [ ! -e "$fixture/yum.log" ]
 }
 
 @test "a custom repository file does not guess an unrelated common repository" {
-    local case_dir="${BATS_TEST_TMPDIR}/repo-file"
-
-    run run_common_repository_case "$case_dir" 1 https://repo.example.invalid/custom/xcat-dep.repo latest
+    run configure_repository https://repo.example.invalid/custom/xcat-dep.repo latest
     [ "$status" -eq 0 ]
-    [ "$(read_file_or_empty "${case_dir}/download.log")" = "" ]
-    [ "$(read_file_or_empty "${case_dir}/add.log")" = "" ]
+    [ ! -e "$fixture/download.log" ]
+    [ ! -e "$fixture/etc/yum.repos.d/xcat-dep-common.repo" ]
+    [ "$(cat "$fixture/ids")" = xcat-dep ]
 }
 
-@test "a local common repository is enabled beside the distribution repository" {
-    local local_root="${BATS_TEST_TMPDIR}/local-repository"
-    local case_dir="${BATS_TEST_TMPDIR}/local-present"
-    mkdir -p "${local_root}/common/repodata"
-    : >"${local_root}/common/repodata/repomd.xml"
-
-    run run_common_repository_case "$case_dir" 0 "$local_root" latest
-    [ "$status" -eq 0 ]
-    [ "$(read_file_or_empty "${case_dir}/add.log")" = "${local_root}/common xcat-dep-common" ]
+@test "a local common repository is installed beside the distribution repository" {
+    mkdir -p "$fixture/local/common/repodata"
+    printf '<repomd/>\n' > "$fixture/local/common/repodata/repomd.xml"
+    run configure_repository /tmp/fixture/local latest
+    [ "$status" -eq 0 ] || { printf '%s\n' "$output"; return 1; }
+    [ ! -e "$fixture/download.log" ]
+    [ "$(cat "$fixture/ids")" = 'xcat-dep xcat-dep-common' ]
+    grep -Fxq 'baseurl=file:///tmp/fixture/local/common' "$fixture/etc/yum.repos.d/xcat-dep-common.repo"
 }
 
-@test "the optional common repository template tolerates outages and verifies metadata" {
-    local template_log="${BATS_TEST_TMPDIR}/generated-common.repo"
-
-    run run_template_generation "$BATS_TEST_TMPDIR" "$template_log"
+@test "an existing zypper common repository is retained without a new download" {
+    mkdir -p "$fixture/etc/zypp/repos.d"
+    printf '[xcat-dep-common]\n' > "$fixture/etc/zypp/repos.d/xcat-dep-common.repo"
+    COMMON_PRESENT=0
+    run configure_repository '' latest
     [ "$status" -eq 0 ]
-    grep -Fxq 'skip_if_unavailable=1' "$template_log"
-    grep -Fxq 'repo_gpgcheck=1' "$template_log"
+    [ "$(cat "$fixture/ids")" = 'xcat-dep xcat-dep-common' ]
+    [ "$(cat "$fixture/etc/zypp/repos.d/xcat-dep-common.repo")" = '[xcat-dep-common]' ]
 }
