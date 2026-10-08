@@ -51,6 +51,7 @@ our @STAGES;
     sub createmockconfig { push @main::STAGES, 'createmockconfig'; }
     sub prepare_mock_resultdirs { push @main::STAGES, 'prepare_mock_resultdirs'; }
     sub buildsources     { push @main::STAGES, 'buildsources'; }
+    sub share_build_sources_dir { push @main::STAGES, 'share_build_sources_dir'; }
     sub buildspkgs       { push @main::STAGES, 'buildspkgs'; }
     sub buildpkgs        { push @main::STAGES, 'buildpkgs'; }
     # buildall assigns a staging directory per build process.
@@ -129,11 +130,11 @@ sub stages_for {
 }
 
 is_deeply( stages_for(0),
-    [qw(createmockconfig prepare_mock_resultdirs buildsources buildspkgs buildpkgs)],
+    [qw(createmockconfig prepare_mock_resultdirs buildsources share_build_sources_dir buildspkgs buildpkgs)],
     'a normal run builds the source rpm and then rebuilds it into binaries' );
 
 is_deeply( stages_for(1),
-    [qw(createmockconfig prepare_mock_resultdirs buildsources buildspkgs)],
+    [qw(createmockconfig prepare_mock_resultdirs buildsources share_build_sources_dir buildspkgs)],
     'a source-only run stops once the source rpm exists' );
 
 ok( !grep( { $_ eq 'buildpkgs' } @{ stages_for(1) } ),
