@@ -16,6 +16,8 @@ jobs:
         run: sudo apt-get install -y --no-install-recommends cpio gzip libdbd-sqlite3-perl libxml-simple-perl libnet-dns-perl
       - name: Exercise image driver selection
         run: prove xCAT-test/native/genimage_network_drivers.t
+      - name: Exercise image package policy
+        run: prove xCAT-test/native/el10_image_package_policy.t
       - name: Prepare xCAT syslog directory
         run: sudo install -d -o syslog -g adm -m 0750 /var/log/xcat
       - name: Run tests
