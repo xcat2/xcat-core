@@ -3,12 +3,15 @@ Description=xCAT management service
 After=network.target syslog.service
 
 [Service]
+# systemd runs a shell in initrc_t. xcatd must start directly to run in unconfined_service_t.
+Environment=XCATROOT=/opt/xcat PERL_BADLANG=0
+Environment=PATH=/opt/xcat/bin:/opt/xcat/sbin:/opt/xcat/share/xcat/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 EnvironmentFile=-/etc/sysconfig/xcat
 Type=forking
 PIDFile=/run/xcatd.pid
 RuntimeDirectory=xcat
 RuntimeDirectoryMode=0755
-ExecStart=/bin/sh -c '[ -r /etc/profile.d/xcat.sh ] && . /etc/profile.d/xcat.sh; exec /usr/sbin/xcatd -p /run/xcatd.pid'
+ExecStart=/usr/sbin/xcatd -p /run/xcatd.pid
 ExecStop=/bin/sh -c 'if [ -s /run/xcatd.pid ]; then kill -TERM "$(cat /run/xcatd.pid)" 2>/dev/null || true; fi'
 LimitNOFILE=16000
 RemainAfterExit=no
