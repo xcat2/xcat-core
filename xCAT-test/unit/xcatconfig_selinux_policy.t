@@ -157,4 +157,37 @@ my $CONFIG = "SELINUX=enforcing\nSELINUXTYPE=targeted\n";
         'a commented SELINUX line is ignored');
 }
 
+# At the first install, site.selinux records enforcing only for an enforcing
+# management node. An existing value is never replaced.
+{
+    my %expected = (
+        enforcing  => 'enforcing',
+        permissive => 'disabled',
+        disabled   => 'disabled',
+        enabled    => 'disabled',
+    );
+    foreach my $mode (sort keys %expected) {
+        is(xCAT::SELinux->install_default($mode, undef), $expected{$mode},
+            "a $mode management node with no site.selinux records $expected{$mode}");
+        is(xCAT::SELinux->install_default($mode, ''), $expected{$mode},
+            "a $mode management node with an empty site.selinux records $expected{$mode}");
+        foreach my $existing (qw(enforcing permissive disabled)) {
+            is(xCAT::SELinux->install_default($mode, $existing), undef,
+                "a $mode management node keeps site.selinux=$existing");
+        }
+    }
+}
+
+# install_default only decides. It writes nothing under the root it reads.
+{
+    my $root   = selinux_root(enforce => "1\n", config => $CONFIG);
+    my $before = tree_contents($root);
+    my $mode   = xCAT::SELinux->runtime_mode(root => $root);
+
+    is(xCAT::SELinux->install_default($mode, undef), 'enforcing',
+        'the runtime mode of an enforcing root gives enforcing');
+    is_deeply(tree_contents($root), $before,
+        '... and the enforce file and /etc/selinux/config are not rewritten');
+}
+
 done_testing();
