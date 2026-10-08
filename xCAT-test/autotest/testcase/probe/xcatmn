@@ -1,0 +1,7 @@
+start:xcatprobe_xcatmn_selinux
+description:To test if xcatprobe xcatmn reports the SELinux mode of the management node, and does not report that mode as a failure. This case must run in xcat mn
+label:mn_only,ci_test
+cmd:xcatprobe xcatmn 2>&1 | grep -i selinux
+check:rc==0
+check:output!~FAIL
+end
