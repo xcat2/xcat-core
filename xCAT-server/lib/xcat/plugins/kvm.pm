@@ -36,10 +36,13 @@ my %vm_comm_pids;
 my %offlinehyps;
 my %hypstats;
 my %offlinevms;
-my $parser;
+# process_request sets $parser, $node, $confdata and $updatetable before it calls the domain
+# builder. They are package variables so a unit test can set them the same way and call the
+# builder itself, rather than extracting it from this file and testing a copy.
+our $parser;
 my @destblacklist;
-my $updatetable; #when a function is performing per-node operations, it can queue up a table update by populating parts of this hash
-my $confdata;    #a reference to serve as a common pointer betweer VMCommon functions and this plugin
+our $updatetable; #when a function is performing per-node operations, it can queue up a table update by populating parts of this hash
+our $confdata;    #a reference to serve as a common pointer betweer VMCommon functions and this plugin
 my %allnodestatus;
 require Sys::Virt;
 
@@ -97,7 +100,7 @@ my $hypconn;
 my $hyp;
 my $doreq;
 my %hyphash;
-my $node;
+our $node;
 my $vmtab;
 
 
