@@ -21,7 +21,9 @@ jobs:
         run: sudo install -d -o syslog -g adm -m 0750 /var/log/xcat
       - name: Run Ubuntu image fixture tests
         if: ${{ !cancelled() }}
-        run: prove xCAT-test/native/ubuntu_live_media_guardrails.t
+        run: >-
+          prove xCAT-test/native/ubuntu_live_media_guardrails.t
+          xCAT-test/native/ubuntu_genimage_debootstrap_arch.t
       - name: Run tests
         if: ${{ !cancelled() }}
         run: perl github_action_xcat_test.pl

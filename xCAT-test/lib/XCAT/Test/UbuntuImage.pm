@@ -8,6 +8,7 @@ use File::Basename qw(dirname);
 use File::Path qw(make_path);
 use File::Slurper qw(read_binary write_binary);
 use File::Temp qw(tempdir);
+use JSON::PP qw(encode_json);
 use XCAT::Test::File qw(repo_path);
 
 sub new {
@@ -59,6 +60,35 @@ sub run {
         $?;
     };
     return ($status, $output);
+}
+
+sub prepare_genimage {
+    my ($self) = @_;
+    $self->write('etc/lsb-release', "DISTRIB_ID=Ubuntu\nDISTRIB_RELEASE=24.04\n");
+    $self->write('etc/sysconfig/network-scripts/ifcfg-eth0', "SUBCHANNELS=0.0.f500,0.0.f501,0.0.f502\n");
+}
+
+sub bootstrap {
+    my ($self, %options) = @_;
+    $self->prepare_genimage();
+    $self->write('work/packages/Packages.gz', 'package index fixture');
+    $self->write('work/site.json', encode_json({}));
+    my $command = $self->write('work/bin/debootstrap', <<'SH');
+#!/bin/sh
+printf '%s\n' "$@" > /work/debootstrap.args
+exit 23
+SH
+    chmod(0755, $command) or die "chmod $command: $!";
+    my ($status, $output) = $self->run('perl',
+        '/repo/xCAT-test/native/fixtures/ubuntu_image/genimage.pl',
+        '/repo/xCAT-server/share/xcat/netboot/ubuntu/genimage',
+        '-a', $options{arch} || 'x86_64', '-o', 'ubuntu24.04',
+        '-p', 'compute', '-i', 'eth0', '-n', 'fixture',
+        '--rootimgdir', '/work/image',
+        '--srcdir', $options{pkgdir} || '/work/packages', 'fixture-image');
+    my $args = -f "$self->{root}/work/debootstrap.args"
+      ? [split /\n/, $self->read('work/debootstrap.args')] : undef;
+    return ($status, $output, $args);
 }
 
 1;
