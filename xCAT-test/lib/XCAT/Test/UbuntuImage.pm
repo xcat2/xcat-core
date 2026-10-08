@@ -72,10 +72,33 @@ sub bootstrap {
     my ($self, %options) = @_;
     $self->prepare_genimage();
     $self->write('work/packages/Packages.gz', 'package index fixture');
-    $self->write('work/site.json', encode_json({}));
+    $self->write('work/site.json', encode_json({
+        (exists $options{mirror} ? (ubuntu_apt_mirror => $options{mirror}) : ()),
+    }));
+    if ($options{bootstrap_success}) {
+        $self->write('work/bootstrap-success', '');
+        for my $tool (qw(mount umount)) {
+            my $path = $self->write("work/bin/$tool", "#!/bin/sh\nexit 0\n");
+            chmod(0755, $path) or die "chmod $path: $!";
+        }
+        my $chroot = $self->write('work/bin/chroot', <<'SH');
+#!/bin/sh
+case "$*" in
+    '/work/image/rootimg apt-get update')
+        printf '%s\n' "$@" > /work/apt-update.args
+        exit 23 ;;
+    *) printf 'Unexpected chroot command: %s\n' "$*" >&2; exit 97 ;;
+esac
+SH
+        chmod(0755, $chroot) or die "chmod $chroot: $!";
+    }
     my $command = $self->write('work/bin/debootstrap', <<'SH');
 #!/bin/sh
 printf '%s\n' "$@" > /work/debootstrap.args
+if [ -f /work/bootstrap-success ]; then
+    mkdir -p "$5/etc/apt" "$5/proc" "$5/usr/sbin" "$5/mnt"
+    exit 0
+fi
 exit 23
 SH
     chmod(0755, $command) or die "chmod $command: $!";
