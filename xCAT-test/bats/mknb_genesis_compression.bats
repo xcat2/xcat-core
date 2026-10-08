@@ -29,7 +29,8 @@ check_payload()
     [ "$(cat "$fixture/unpacked/.ssh/authorized_keys")" = 'fixture public key' ]
     [ "$(stat -c '%a' "$fixture/unpacked/.ssh/authorized_keys")" = 600 ]
     [ "$(cat "$fixture/tftp/xcat/genesis.kernel.x86_64")" = 'fixture kernel' ]
-    [ "$(find "$fixture/tftp/xcat" -maxdepth 1 -type f | wc -l)" -eq 2 ]
+    [ "$(find "$fixture/tftp/xcat" -mindepth 1 -maxdepth 1 -printf '%f\n' | sort)" = \
+        "$(printf '%s\n' "$(basename "$image")" genesis.kernel.x86_64 ipxe xnba | sort)" ]
 }
 
 @test "mknb publishes a complete LZMA image with the caller's umask" {

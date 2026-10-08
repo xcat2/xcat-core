@@ -98,7 +98,11 @@ sub published_files {
 sub temporary_files {
     my ($directory) = @_;
     opendir(my $dir_fh, $directory) or return;
-    my @files = grep { /\.test-token\.(?:new|old)$/ } readdir($dir_fh);
+    my @files = sort grep {
+        $_ ne '.' && $_ ne '..'
+          && !/^genesis\.(?:kernel|exact-arch)\.[A-Za-z0-9_]+$/
+          && !/^genesis\.fs\.[A-Za-z0-9_]+\.(?:gz|lzma)$/
+    } readdir($dir_fh);
     closedir($dir_fh);
     return @files;
 }
