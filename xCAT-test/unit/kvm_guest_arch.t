@@ -37,13 +37,22 @@ eval $harness . join("\n", @routines) . "\n1;\n";    ## no critic (BuiltinFuncti
 die("could not load the kvm domain builder: $@") if $@;
 
 # Build one domain for a node of $guest_arch on a hypervisor that reports $hyp_cpumodel.
+# %opt carries the hypervisor cputype and the vm.othersettings of the node.
 sub domain_xml {
-    my ($guest_arch, $hyp_cpumodel) = @_;
+    my ($guest_arch, $hyp_cpumodel, %opt) = @_;
     local $KVMArch::node     = 'cn1';
     local $KVMArch::confdata = {
-        vm       => { cn1 => [ { host => 'hyp1', memory => 8192, cpus => 4 } ] },
+        vm => {
+            cn1 => [ {
+                    host   => 'hyp1',
+                    memory => 8192,
+                    cpus   => 4,
+                    (defined $opt{othersettings}
+                          ? (othersettings => $opt{othersettings}) : ()),
+            } ]
+        },
         nodetype => { cn1 => [ { arch => $guest_arch, os => 'rocky10.2' } ] },
-        hyp1     => { cpumodel => $hyp_cpumodel },
+        hyp1     => { cpumodel => $hyp_cpumodel, cputype => $opt{cputype} },
     };
     local $KVMArch::updatetable = {};
     my $xml = KVMArch::build_xmldesc('cn1');
@@ -76,9 +85,9 @@ unlike($riscv, qr/<bios\b/,
 unlike($riscv, qr/<input\b/,
     'the riscv64 virt machine has no USB controller, so it gets no USB tablet');
 
-# An aarch64 node on an x86_64 hypervisor. The emulation case is the riscv64 one, plus a named
-# CPU model: with no <cpu> element libvirt passes -cpu max, which under TCG turns on SVE, and the
-# guest then stays in its firmware.
+# An aarch64 node on an x86_64 hypervisor. The guest arch is not the host arch, so the domain
+# runs under emulation and needs a named CPU model: TCG has no host CPU, and with no <cpu>
+# element the emulator turns on SVE, which stops the guest in its firmware.
 my $arm = domain_xml('aarch64', 'x86_64');
 like($arm, qr/<domain\b[^>]*\btype="qemu"/,
     'an aarch64 guest on an x86_64 hypervisor is a qemu domain, not kvm');
@@ -88,10 +97,10 @@ like(os_type_element($arm), qr/\bmachine="virt"/,
     'an aarch64 guest uses the virt machine type');
 like($arm, qr/<os\b[^>]*\bfirmware="efi"/,
     'an aarch64 virt guest boots UEFI');
-like($arm, qr{<cpu\b[^>]*>\s*<model>cortex-a57</model>}s,
-    'an aarch64 guest states the cortex-a57 CPU model');
-like($arm, qr/<model\b[^>]*\btype="vga"/,
-    'an aarch64 guest keeps the vga video model: the aarch64 virt machine offers no virtio one');
+like($arm, qr{<cpu\b[^>]*\bmode="custom"[^>]*>\s*<model>cortex-a57</model>}s,
+    'an emulated aarch64 guest states cortex-a57 as a custom CPU model');
+like($arm, qr/<model\b[^>]*\btype="virtio"/,
+    'an aarch64 virt guest takes the virtio video model, as a riscv64 virt guest does');
 unlike($arm, qr/<(?:pae|acpi|apic)\b/,
     'pae, acpi and apic are x86 features and are left out of an aarch64 guest');
 unlike($arm, qr/<bios\b/,
@@ -99,13 +108,71 @@ unlike($arm, qr/<bios\b/,
 unlike($arm, qr/<input\b/,
     'the aarch64 virt machine has no USB controller, so it gets no USB tablet');
 
-# POWER is unchanged: the arch still comes from the hypervisor there.
-my $power = domain_xml('ppc64le', 'ppc64le');
+# An aarch64 node on an aarch64 hypervisor. The guest arch is the host arch, so the domain runs
+# under KVM. KVM on ARM runs the host CPU and no other model, and libvirt reports
+# host-passthrough as unsupported for an emulated aarch64 domain.
+my $arm_native = domain_xml('aarch64', 'aarch64');
+like($arm_native, qr/<domain\b[^>]*\btype="kvm"/,
+    'an aarch64 guest on an aarch64 hypervisor is a kvm domain, not qemu');
+like($arm_native, qr/<cpu\b[^>]*\bmode="host-passthrough"/,
+    'a native aarch64 guest takes the host CPU');
+unlike($arm_native, qr{<model>cortex-a57</model>},
+    'a native aarch64 guest pins no cortex-a57 model');
+like(os_type_element($arm_native), qr/\barch="aarch64"/,
+    'a native aarch64 guest states arch aarch64');
+like(os_type_element($arm_native), qr/\bmachine="virt"/,
+    'a native aarch64 guest states machine virt');
+like($arm_native, qr/<os\b[^>]*\bfirmware="efi"/,
+    'a native aarch64 virt guest boots UEFI');
+
+# An aarch64 node on a POWER hypervisor. The CPU model, the CPU topology and the emulator are
+# settings of a pseries guest, and this guest is not one.
+my $arm_on_power = domain_xml('aarch64', 'ppc64', cputype => 'POWER9');
+like($arm_on_power, qr/<domain\b[^>]*\btype="qemu"/,
+    'an aarch64 guest on a POWER hypervisor is a qemu domain, not kvm');
+like(os_type_element($arm_on_power), qr/\barch="aarch64"/,
+    'an aarch64 guest on a POWER hypervisor keeps arch aarch64');
+like(os_type_element($arm_on_power), qr/\bmachine="virt"/,
+    'an aarch64 guest on a POWER hypervisor keeps machine virt');
+unlike($arm_on_power, qr/\bmodel="POWER9"/,
+    'an aarch64 guest takes no POWER CPU model from the hypervisor');
+unlike($arm_on_power, qr/<topology\b/,
+    'an aarch64 guest takes no pseries CPU topology from the hypervisor');
+unlike($arm_on_power, qr{<emulator>},
+    'libvirt resolves the emulator of an aarch64 guest on a POWER hypervisor');
+like($arm_on_power, qr{<model>cortex-a57</model>},
+    'an aarch64 guest on a POWER hypervisor still states cortex-a57');
+
+# vm.othersettings can name a CPU mode. TCG has no host CPU, so libvirt refuses both
+# host-passthrough and host-model on an emulated domain.
+my $arm_passthrough =
+  domain_xml('aarch64', 'x86_64', othersettings => 'cpumode:host-passthrough');
+unlike($arm_passthrough, qr/\bmode="host-passthrough"/,
+    'host-passthrough from vm.othersettings is left out of an emulated aarch64 domain');
+like($arm_passthrough, qr{<model>cortex-a57</model>},
+    'the emulated aarch64 guest keeps cortex-a57 when host-passthrough is left out');
+
+my $arm_native_hostmodel =
+  domain_xml('aarch64', 'aarch64', othersettings => 'cpumode:host-model');
+like($arm_native_hostmodel, qr/<cpu\b[^>]*\bmode="host-model"/,
+    'host-model from vm.othersettings reaches a native aarch64 domain');
+unlike($arm_native_hostmodel, qr/\bmode="host-passthrough"/,
+    'the mode from vm.othersettings replaces the host-passthrough default');
+
+# POWER is unchanged: a pseries guest keeps the arch, the CPU model and the topology of the
+# hypervisor.
+my $power = domain_xml('ppc64le', 'ppc64le', cputype => 'POWER9');
 like($power, qr/<domain\b[^>]*\btype="kvm"/, 'a POWER guest stays a kvm domain');
 like(os_type_element($power), qr/\barch="ppc64"/,   'ppc64le hypervisors keep arch ppc64');
 like(os_type_element($power), qr/\bmachine="pseries"/, 'ppc64le hypervisors keep machine pseries');
-like($power, qr/<cpu\b[^>]*\bcores="4"/, 'a POWER guest keeps its CPU topology');
-unlike($power, qr/<model>cortex-a57<\/model>/, 'a POWER guest states no aarch64 CPU model');
+like($power, qr/<cpu\b[^>]*\bmodel="POWER9"/, 'a POWER guest keeps the hypervisor CPU model');
+like($power, qr/<topology\b[^>]*\bcores="4"/, 'a POWER guest keeps its CPU topology');
+unlike($power, qr{<model>cortex-a57</model>}, 'a POWER guest states no aarch64 CPU model');
+
+# A ppc64 hypervisor names its own emulator, and a pseries guest still gets it.
+my $power_ppc64 = domain_xml('ppc64', 'ppc64', cputype => 'POWER9');
+like($power_ppc64, qr{<emulator>/usr/bin/qemu-system-ppc64</emulator>},
+    'a pseries guest on a ppc64 hypervisor keeps the qemu-system-ppc64 emulator');
 
 # x86_64 on x86_64 is unchanged: libvirt picks the arch and the machine type.
 my $x86 = domain_xml('x86_64', 'x86_64');
@@ -114,6 +181,11 @@ unlike(os_type_element($x86), qr/\barch=/,    'an x86_64 guest states no arch');
 unlike(os_type_element($x86), qr/\bmachine=/, 'an x86_64 guest states no machine type');
 like($x86, qr/<input\b[^>]*\bbus="usb"/, 'an x86_64 guest keeps the USB tablet');
 unlike($x86, qr/<cpu\b/, 'an x86_64 guest states no cpu element');
+
+my $x86_passthrough =
+  domain_xml('x86_64', 'x86_64', othersettings => 'cpumode:host-passthrough');
+like($x86_passthrough, qr/<cpu\b[^>]*\bmode="host-passthrough"/,
+    'host-passthrough from vm.othersettings reaches a native x86_64 domain');
 
 # The disks of a riscv64 guest. The virt machine has no IDE controller, so an ide disk or an
 # hd* optical drive makes libvirt refuse the domain.
