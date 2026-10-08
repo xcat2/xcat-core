@@ -62,6 +62,35 @@ sub run {
     return ($status, $output);
 }
 
+sub initrd {
+    my ($self, $arch, @libraries) = @_;
+    $self->prepare_genimage();
+    my $root = 'work/image/rootimg';
+    for my $file (qw(boot/vmlinuz-7.0 bin/cpio bin/busybox bin/bash sbin/mount.nfs
+        usr/bin/dig usr/bin/rsync sbin/insmod sbin/udevadm sbin/modprobe sbin/blkid
+        sbin/depmod usr/bin/wget usr/bin/xz bin/gzip bin/tar etc/udev/fixture
+        lib/udev/fixture sbin/udevsettle sbin/udevtrigger sbin/udevd), @libraries) {
+        $self->write("$root/$file", "fixture $file\n");
+    }
+    $self->write("$root/lib/modules/7.0/$_", '')
+      for qw(modules.dep modules.builtin modules.order);
+    make_path("$self->{root}/$root/etc/init.d");
+    my $chroot = $self->write('work/bin/chroot', <<'SH');
+#!/bin/sh
+case "$1:$2" in
+    /work/image/rootimg:ldd) printf 'statically linked\n' ;;
+    /work/image/rootimg:depmod|/tmp/xcatinitrd.*/:/sbin/depmod) : ;;
+    *) printf 'Unexpected chroot command: %s\n' "$*" >&2; exit 97 ;;
+esac
+SH
+    chmod(0755, $chroot) or die "chmod $chroot: $!";
+    return $self->run('perl',
+        '/repo/xCAT-server/share/xcat/netboot/ubuntu/genimage',
+        '--onlyinitrd', '-a', $arch, '-o', 'ubuntu24.04', '-p', 'compute',
+        '-k', '7.0', '-i', 'eth0', '-n', 'fixture',
+        '--rootimgdir', '/work/image', 'fixture-image');
+}
+
 sub prepare_genimage {
     my ($self) = @_;
     $self->write('etc/lsb-release', "DISTRIB_ID=Ubuntu\nDISTRIB_RELEASE=24.04\n");
