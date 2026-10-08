@@ -660,7 +660,7 @@ passed as argument rather than by table value',
         },
     },
     noderes => {
-        cols => [qw(node servicenode netboot tftpserver tftpdir nfsserver monserver nfsdir installnic primarynic discoverynics cmdinterface xcatmaster current_osimage next_osimage nimserver routenames nameservers proxydhcp syslog comments disable)],
+        cols => [qw(node servicenode netboot tftpserver tftpdir nfsserver monserver nfsdir installnic primarynic discoverynics cmdinterface xcatmaster current_osimage next_osimage nimserver routenames nameservers proxydhcp syslog selinux comments disable)],
         keys         => [qw(node)],
         tablespace   => 'XCATTBS16K',
         table_desc   => 'Resources and settings to use when installing nodes.',
@@ -696,6 +696,7 @@ passed as argument rather than by table value',
             nameservers => 'An optional node/group specific override for name server list.  Most people want to stick to site or network defined nameserver configuration.',
             proxydhcp => 'To specify whether the node supports proxydhcp protocol. Valid values: yes or 1, no or 0. Default value is yes.',
             syslog => "To configure how to configure syslog for compute node. Valid values:blank(not set), ignore. blank - run postscript syslog; ignore - do NOT run postscript syslog",
+            selinux => 'The SELinux mode of the node after it is provisioned. Valid values: enforcing, permissive, disabled. A node row takes precedence over a group row. If not set, site.selinux is used. Nodes whose OS does not support the xCAT SELinux policy, and statelite nodes, are provisioned with SELinux disabled.',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -1239,6 +1240,11 @@ passed as argument rather than by table value',
 "              If no, it will not generate the mypostscript file in the tftpdir.\n\n" .
 " secureroot:  If set to 1, xCAT will use secure mode to transfer root password hash\n" .
 "              during the installation.  Default is 0.\n\n" .
+" selinux:  The default SELinux mode of the nodes. Valid values are enforcing,\n" .
+"           permissive and disabled. If not set, the mode is disabled.\n" .
+"           noderes.selinux overrides this value for a node or a group.\n" .
+"           xcatconfig sets enforcing at the first install when the management\n" .
+"           node is enforcing, and disabled otherwise.\n\n" .
 " setinstallnic:  Set the network configuration for installnic to be static.\n\n" .
 " sharedtftp:  Set to 0 or no, xCAT should not assume the directory\n" .
 "              in tftpdir is mounted on all on Service Nodes. Default is 1/yes.\n" .
@@ -2067,6 +2073,10 @@ my @nodeattrs = (
     },
     { attr_name => 'syslog',
         tabentry        => 'noderes.syslog',
+        access_tabentry => 'noderes.node=attr:node',
+    },
+    { attr_name => 'selinux',
+        tabentry        => 'noderes.selinux',
         access_tabentry => 'noderes.node=attr:node',
     },
 
