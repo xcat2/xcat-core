@@ -13,9 +13,9 @@ jobs:
       - name: Enable postscript test namespaces
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Install lifecycle test dependencies
-        run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests ucf debconf-utils systemd
+        run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests ucf debconf-utils systemd libxml-simple-perl
       - name: Test Debian package lifecycle
-        run: prove -v xCAT-test/native/xcatd_debian_lifecycle.t
+        run: prove -v xCAT-test/native/xcatd_debian_lifecycle.t xCAT-test/native/xcatd_restart_callers.t
       - name: Prepare xCAT syslog directory
         if: ${{ !cancelled() }}
         run: sudo install -d -o syslog -g adm -m 0750 /var/log/xcat
