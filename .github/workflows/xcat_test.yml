@@ -18,4 +18,4 @@ jobs:
         run: perl github_action_xcat_test.pl
       - name: Run profile artifact tests
         working-directory: ${{ runner.temp }}/xcat-core-unitsrc
-        run: prove -v xCAT-test/native/install_profile_riscv64.t
+        run: prove -v xCAT-test/native/install_profile_riscv64.t xCAT-test/native/netboot_profile_riscv64.t

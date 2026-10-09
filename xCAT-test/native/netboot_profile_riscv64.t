@@ -8,15 +8,18 @@ use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../../perl-xCAT";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use File::Spec;
+use File::Path qw(make_path);
+use File::Slurper qw(read_text write_text);
+use File::Temp qw(tempdir);
 use Test::More;
 
 use XCAT::Test::File qw(repo_path slurp_repo_file);
-use xCAT::SvrUtils;
-
-# EL10 riscv64 diskless and service profiles are plain data files resolved by
-# imgutils::get_profile_def_filename (osver.arch first, then osbase.arch, then
-# the arch-less fallbacks). Pin that the riscv64 files exist, win the lookup
-# for rocky10/rhels10 point releases, and carry the right content.
+use XCAT::Test::Sandbox qw(sandbox_root sandbox_run);
+plan skip_all => 'postinstall execution requires Linux' unless $^O eq 'linux';
+my $database = tempdir(CLEANUP => 1);
+$ENV{XCATROOT} = repo_path('xCAT-server');
+$ENV{XCATCFG} = "SQLite:$database";
+require xCAT::SvrUtils;
 
 my $share_relative = File::Spec->catdir( 'xCAT-server', 'share', 'xcat' );
 my $share = repo_path($share_relative);
@@ -24,7 +27,6 @@ my $imgutils_relative = File::Spec->catfile(
     $share_relative, 'netboot', 'imgutils', 'imgutils.pm'
 );
 my $imgutils = repo_path($imgutils_relative);
-plan skip_all => "$imgutils not found" unless -r $imgutils;
 require $imgutils;
 
 my @families = (
@@ -64,11 +66,39 @@ for my $family (@families) {
         unlike( $exlist, qr{^\./lib/kdb/}m, "$dir/$profile.$osbase riscv64 exlist has no kdb typo" );
         is( scalar( () = $exlist =~ m{^\./usr/share/man\*$}mg ), 1, "$dir/$profile.$osbase riscv64 exlist lists usr/share/man once" );
 
-        my $postinstall = slurp_repo_file(
-            File::Spec->catfile( $base_relative, "$profile.$osbase.riscv64.postinstall" )
-        );
-        like( $postinstall, qr/^#!\/bin\/sh/, "$dir/$profile.$osbase riscv64 postinstall is a shell script" );
-        like( $postinstall, qr/SELINUX=disabled/, "$dir/$profile.$osbase riscv64 postinstall disables SELinux in the image" );
+        my $postinstall = imgutils::get_profile_def_filename($osver, $profile, 'riscv64', $base, 'postinstall');
+        for my $mode (qw(enforcing disabled absent)) {
+            subtest "$osver $profile SELinux $mode" => sub {
+                my $root = sandbox_root();
+                my $image = "$root/target";
+                make_path("$image/etc/selinux", "$root/etc/selinux");
+                write_text("$root/etc/fstab", "host fstab\n");
+                write_text("$root/etc/selinux/config", "SELINUX=enforcing\n# host policy\n");
+                write_text("$image/etc/fstab", "obsolete\n");
+                write_text("$image/etc/selinux/config", "SELINUX=$mode\nSELINUXTYPE=targeted\n")
+                    unless $mode eq 'absent';
+                for my $pass (1, 2) {
+                    my ($status, $output) = sandbox_run($root,
+                        {read_only => {repo_path('.') => repo_path('.')}},
+                        $postinstall, '/target', $osver, 'riscv64', $profile, $base);
+                    is($status, 0, "pass $pass executes the selected script") or diag($output);
+                    is(read_text("$root/etc/fstab"), "host fstab\n", "pass $pass leaves the host fstab unchanged");
+                    is(read_text("$root/etc/selinux/config"), "SELINUX=enforcing\n# host policy\n", "pass $pass leaves host SELinux unchanged");
+                    if ($mode eq 'absent') {
+                        ok(!-e "$image/etc/selinux/config", "pass $pass leaves absent SELinux configuration absent");
+                    } else {
+                        is(read_text("$image/etc/selinux/config"), "SELINUX=disabled\nSELINUXTYPE=targeted\n",
+                            "pass $pass disables SELinux without changing the policy type");
+                    }
+                    my @mounts = map { [split /\s+/] } grep { /\S/ } split /\n/, read_text("$image/etc/fstab");
+                    is_deeply(\@mounts, [
+                        [qw(proc /proc proc rw 0 0)],
+                        [qw(sysfs /sys sysfs rw 0 0)],
+                        ['devpts', '/dev/pts', 'devpts', 'rw,gid=5,mode=620', 0, 0],
+                    ], "pass $pass writes the diskless virtual filesystems once");
+                }
+            };
+        }
     }
 
     my $otherpkgs = File::Spec->catfile( $base, "service.$osbase.riscv64.otherpkgs.pkglist" );
