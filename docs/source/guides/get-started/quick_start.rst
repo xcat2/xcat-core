@@ -20,10 +20,9 @@ All the following steps should be executed in ``xcatmn.mydomain.com``.
 Prepare the Management Node ``xcatmn.mydomain.com``
 ```````````````````````````````````````````````````
 
-#. Disable SELinux: ::
-
-    echo 0 > /selinux/enforce
-    sed -i 's/^SELINUX=.*$/SELINUX=disabled/' /etc/selinux/config
+#. SELinux can stay enabled. xCAT runs with SELinux enforcing on the management node, and
+   the ``xCAT-selinux`` package carries the rules the confined OS services need. See
+   :doc:`SELinux <../../advanced/security/selinux>`.
 
 #. Set the hostname of ``xcatmn.mydomain.com``: ::
 
