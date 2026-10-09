@@ -34,5 +34,26 @@ an ordinary user with `XCAT_TEST_PG_BINDIR` set to the directory containing
 XCAT_TEST_PG_BINDIR=/usr/bin prove xCAT-test/native/pgsqlsetup_native_schema.t
 ```
 
+The disk, kdump and sudoer cases require Bubblewrap, Capture::Tiny,
+File::Slurper and sudo's `visudo`. Enable Linux user namespaces. Run the group
+as root because the disk case creates dummy block-device entries:
+
+```
+sudo prove xCAT-test/native/getinstdisk_selection.t \
+      xCAT-test/native/enablekdump_per_node.t \
+      xCAT-test/native/sudoer_password_source.t
+```
+
+When the checkout is inside another user's private home, copy it as root to a
+temporary directory under `/tmp` first. Root inside the test's user namespace
+cannot traverse a private directory owned by that user. CI uses a root-owned
+copy for this reason.
+
+These cases run the unchanged scripts with private filesystems and no network.
+Disk discovery, NFS mounts, credentials, account commands and service commands
+use fixtures. The disk case never opens its dummy devices. The sudoer case
+checks generated rules with the real `visudo` parser. These tests do not perform
+an installation, capture a kernel crash or modify host accounts.
+
 Check the TAP output for skipped prerequisites. A successful `prove` exit with
 skipped cases does not qualify those cases.
