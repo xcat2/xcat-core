@@ -13,11 +13,13 @@ jobs:
       - name: Enable postscript test namespaces
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Install package test dependencies
-        run: sudo apt-get install -y --no-install-recommends cpio createrepo-c rsync gnupg libxml-libxml-perl
+        run: sudo apt-get install -y --no-install-recommends cpio createrepo-c rsync gnupg libxml-libxml-perl python3-rpm
       - name: Exercise probe package payloads
         run: prove xCAT-test/native/probe_package_payload.t
       - name: Exercise release repositories
         run: prove xCAT-test/native/release_repository.t
+      - name: Check parsed package relations
+        run: prove xCAT-test/native/package_relations.t
       - name: Prepare xCAT syslog directory
         run: sudo install -d -o syslog -g adm -m 0750 /var/log/xcat
       - name: Run tests
