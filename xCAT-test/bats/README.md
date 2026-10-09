@@ -31,3 +31,15 @@ enables those namespaces.
 Missing prerequisites fail these tests without stopping unrelated test files.
 Non-Linux hosts report a skip. Set `TMPDIR` to a writable, executable filesystem
 if the default temporary directory is mounted with `noexec`.
+
+`go_xcat_os_release.bats` and the full-script cases in
+`postscripts_apt_get.bats` use the same namespace isolation. They require
+bats-core 1.4 or newer. OS detection also requires GNU awk for the legacy
+Red Hat release parser. Postscript cases require GNU diffutils.
+
+`go_xcat_os_release.bats` and `go_xcat_el_repo_check.bats` source the complete
+go-xcat script. OS detection uses mawk when available, otherwise the host AWK.
+The two legacy Red Hat version cases use GNU awk. CI installs both interpreters.
+Package-manager commands are test doubles, so these cases check selection,
+arguments and error handling, not repository
+availability or package installation.
