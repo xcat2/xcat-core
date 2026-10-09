@@ -196,6 +196,7 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
                     # Get the LAN Configuration Parameters (OEM)
                     CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
                 done
+                sleep 15
                 let idev=idev+1
             done
             unset IFS
@@ -219,6 +220,7 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
                         sleep 1
                         CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
                     done
+                    sleep 15
                     let idev=idev+1
                 done
                 unset IFS
@@ -227,6 +229,25 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
     fi
 elif [ "$IPMIMFG" == 19046 -a "$XPROD" == 13616 ] ; then
    LOCKEDUSERS=1
+elif [ "$IPMIMFG" = "19046" -a "$XPROD" = "1287" ]; then
+    # Lenovo SR635/SR655: bring up the TSM LAN-over-USB and select the BMC LAN channel
+    BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    echo -n "Initializing TSM network...."
+    if [ "$BMCPORT" = 0 ]; then
+        ipmitool raw 0x32 0x71 0 1 0
+        sleep 15
+        ipmitool raw 0x32 0x71 0 0 3
+        LANCHAN=$(ipmitool raw 0x32 0x72 4 0 0|sed -e 's/^ 0//')
+    else
+        ipmitool raw 0x32 0x71 0 0 0
+        sleep 15
+        ipmitool raw 0x32 0x71 0 1 3
+        LANCHAN=$(ipmitool raw 0x32 0x72 4 1 0|sed -e 's/^ 0//')
+    fi
+    echo -n "Ready"
+    ipmitool raw 0x3c 0x70 0 1 2> /dev/null
+    ipmitool raw 0x3c 0x70 1 1 2> /dev/null
+    USBSTATE=$(ipmitool raw 0x32 0xab)
 elif [ "$IPMIMFG" == 20301 -o "$IPMIMFG" == 19046 ] ; then
     IBMVPDV=`ipmitool raw 0x3a 0xb 2 0 16 1`
     logger -s -t $log_label -p local4.info "XPROD is $XPROD, IBMVPDV is $IBMVPDV"
@@ -333,6 +354,16 @@ if [ ! -z "$ISOPENBMC" ]; then
     LAN_MED_TYPE="802.3|Other LAN"
 fi
 # Loop through channels and pick the one to communicate on
+# Intel Walker Pass (S9200WK) in dedicated LAN mode uses channel 3
+if [ "$IPMIMFG" = "343" -a "$XPROD" = "149" ] ; then
+    BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    logger -s -t $log_label -p local4.info "BMCPORT is $BMCPORT"
+    if [ "$BMCPORT" == "1" ]; then
+        LANCHAN=3
+        logger -s -t $log_label -p local4.info "Detected Intel Walker Pass system and dedicated LAN mode, setting LAN channel=$LANCHAN"
+    fi
+fi
+
 while [ -z "$LANCHAN" ]; do
     logger -s -t $log_label -p local4.info "Auto detecting LAN channel..."
     for TLANCHAN in {1..16}; do
@@ -356,24 +387,28 @@ if [ $IPCFGMETHOD="static" ]; then
         let idev=idev-1
         TRIES=0
         # Set the channel to use STATIC IP address
-        while ! ipmitool -d $idev lan set $LANCHAN ipsrc static; do
+        CURRMETH=$(ipmitool -d $idev lan print $LANCHAN | grep '^IP Address Source'|awk -F': ' '{print $2}')
+        while [ "$CURRMETH" != "Static Address" ] && ! ipmitool -d $idev lan set $LANCHAN ipsrc static; do
             snooze
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then
                 break;
             fi
+            CURRMETH=$(ipmitool -d $idev lan print $LANCHAN | grep '^IP Address Source'|awk -F': ' '{print $2}')
         done
     done
     let idev=0
     for b in $BMCIP; do
         TRIES=0
         # Set the IP for the current channel
-        while ! ipmitool -d $idev lan set $LANCHAN ipaddr $b; do
+        CURRIP=$(ipmitool -d $idev lan print $LANCHAN | grep '^IP Address'|grep -v Source|awk -F': ' '{print $2}')
+        while [ "$CURRIP" != $b ] && ! ipmitool -d $idev lan set $LANCHAN ipaddr $b; do
             snooze
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then
                 break;
             fi
+            CURRIP=$(ipmitool -d $idev lan print $LANCHAN | grep '^IP Address'|grep -v Source|awk -F': ' '{print $2}')
         done
         let idev=idev+1
     done
@@ -381,12 +416,14 @@ if [ $IPCFGMETHOD="static" ]; then
     for m in $BMCNM; do
         TRIES=0
         # Set the NETMASK for the current channel
-        while ! ipmitool -d $idev lan set $LANCHAN netmask $m; do
+        CURRMASK=$(ipmitool -d $idev lan print $LANCHAN | grep '^Subnet Mask'|grep -v Source|awk -F': ' '{print $2}')
+        while [ "$CURRMASK" != $m ] && ! ipmitool -d $idev lan set $LANCHAN netmask $m; do
             snooze
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then
                 break;
             fi
+            CURRMASK=$(ipmitool -d $idev lan print $LANCHAN | grep '^Subnet Mask'|grep -v Source|awk -F': ' '{print $2}')
         done
         let idev=idev+1
     done
@@ -396,12 +433,14 @@ if [ $IPCFGMETHOD="static" ]; then
         for g in $BMCGW; do
             TRIES=0
             # Set the GATEWAY for the current channel
-            while ! ipmitool -d $idev lan set $LANCHAN defgw ipaddr $g; do
+            CURRGW=$(ipmitool -d $idev lan print $LANCHAN | grep '^Default Gateway IP'|grep -v Source|awk -F': ' '{print $2}')
+            while [ "$CURRGW" != $g ] && ! ipmitool -d $idev lan set $LANCHAN defgw ipaddr $g; do
                 snooze
                 let TRIES=TRIES+1
                 if [ $TRIES -gt $TIMEOUT ]; then
                     break;
                 fi
+                CURRGW=$(ipmitool -d $idev lan print $LANCHAN | grep '^Default Gateway IP'|grep -v Source|awk -F': ' '{print $2}')
             done
             let idev=idev+1
         done
@@ -440,12 +479,18 @@ else
     for b in $BMCVLAN; do
         TRIES=0
         # Set VLAN for the current channel
-        while ! ipmitool -d $idev lan set $LANCHAN vlan id $b; do
+        CURRVID=$(ipmitool -d $idev lan print $LANCHAN | grep '802.1q VLAN ID'|awk -F': ' '{print $2}')
+        EXPECTEDVID=$b
+        if [ "$EXPECTEDVID" = "off" ]; then
+            EXPECTEDVID="Disabled"
+        fi
+        while [ "$CURRVID" != "$EXPECTEDVID" ] && ! ipmitool -d $idev lan set $LANCHAN vlan id $b; do
             snooze
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then
                 break;
             fi
+            CURRVID=$(ipmitool -d $idev lan print $LANCHAN | grep '802.1q VLAN ID'|awk -F': ' '{print $2}')
         done
         let idev=idev+1
     done
@@ -505,8 +550,8 @@ for user in $BMCUS; do
     if [ -z "$USERSLOT" ]; then
         USERSLOT=$((`ipmitool raw 6 0x44 1 1|awk '{print $3}'` + 1))
     fi
-    if [ "$USERSLOT" == 0 ]; then
-        # automatically find first unlocked user slot
+    if [ "$USERSLOT" == 0 ] && ! [ "$IPMIMFG" = 19046 -a "$XPROD" = 1287 ]; then
+        # automatically find first unlocked user slot (skipped on SR635/SR655)
         for slot in {1..16}; do
             USERLOCKED=`ipmitool channel getaccess $LANCHAN $slot | grep Fixed | awk '{print $4}'`
             if [ "$USERLOCKED" == "No" ]; then
@@ -581,7 +626,7 @@ for user in $BMCUS; do
 
     TRIES=0
     # Enable the channel link for the specified user
-    if [ "$IPMIMFG" == 343 -a "$XPROD" == 124 ]; then # For Intel S2600BP system boards
+    if [ "$IPMIMFG" == 343 -a \( "$XPROD" == 124 -o "$XPROD" == 149 \) ]; then # For Intel S2600BP and S9200WK system boards
         cmd="ipmitool -d $idev channel setaccess $LANCHAN $USERSLOT link=on ipmi=on"
     else
         cmd="ipmitool -d $idev channel setaccess $LANCHAN $USERSLOT link=on"
@@ -600,8 +645,12 @@ for bmcp in $BMCPW; do
     if [ "$bmcp" = "" ]; then continue; fi
 
     TRIES=0
-    # Set the password for the specified user
-    while ! ipmitool -d $idev user set password $USERSLOT "$bmcp"; do
+    # Set the password for the specified user. A password longer than 16 chars
+    # needs the 20-byte IPMI 2.0 form; shorter ones use the default so a
+    # 16-byte-only BMC is not asked for a length it cannot store.
+    PWSIZE=""
+    if [ ${#bmcp} -gt 16 ]; then PWSIZE=20; fi
+    while ! ipmitool -d $idev user set password $USERSLOT "$bmcp" $PWSIZE; do
         sleep 1
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
@@ -765,6 +814,26 @@ while [ $idev -gt 0 ]; do
         done &
     fi
 done
+
+if [ ! -z "$USBSTATE" ]; then  # Continuation of SR635/SR655 specific code
+    echo -n "Restarting TSM networking...."
+    if [ "$BMCPORT" = 0 ]; then
+        sleep 45
+        ipmitool raw 0x32 0x71 0 0 0
+        sleep 45
+        ipmitool raw 0x32 0x71 0 0 3
+        sleep 45
+        ipmitool raw 0x32 0x71 0 0 3
+    else
+        sleep 45
+        ipmitool raw 0x32 0x71 0 1 0
+        sleep 45
+        ipmitool raw 0x32 0x71 0 1 3
+        sleep 45
+        ipmitool raw 0x32 0x71 0 1 3
+    fi
+    echo "Done"
+fi
 
 # remove the bmc configuration information before exit
 rm -f /tmp/ipmicfg.xml
