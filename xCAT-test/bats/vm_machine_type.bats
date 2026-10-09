@@ -131,3 +131,20 @@ assert_round_trip()
     vm_machine_type_main apply cn1 x86_64
     [ "$(vmother)" = 'cpumode:host-passthrough;machine:pc-q35-9.2' ]
 }
+
+@test "restore without a saved value fails and leaves vmothersetting alone" {
+    set_vmother 'cpumode:host-passthrough;machine:pc'
+    run vm_machine_type_main restore cn1 x86_64
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"no saved vmothersetting for cn1"* ]]
+    [ "$(vmother)" = 'cpumode:host-passthrough;machine:pc' ]
+}
+
+@test "apply fails for an architecture without a machine type" {
+    set_vmother ''
+    vm_machine_type_main invalid cn1
+    run vm_machine_type_main apply cn1 s390x
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"no machine type for arch 's390x'"* ]]
+    [ "$(vmother)" = 'machine:invalid' ]
+}
