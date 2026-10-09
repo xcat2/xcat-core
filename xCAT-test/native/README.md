@@ -2,7 +2,8 @@
 
 These tests use the source checkout with RPM tools, Linux namespaces or real
 service binaries. They are separate from `unit/` and are not discovered by the
-default pull-request unit run. Run them explicitly on a disposable Linux host.
+unit runner. CI selects specific cases explicitly; run the others on a
+disposable Linux host.
 
 Run the package and unprivileged namespace cases as an ordinary user:
 
@@ -36,3 +37,27 @@ XCAT_TEST_PG_BINDIR=/usr/bin prove xCAT-test/native/pgsqlsetup_native_schema.t
 
 Check the TAP output for skipped prerequisites. A successful `prove` exit with
 skipped cases does not qualify those cases.
+
+## Profile artifacts
+
+These cases render install profiles, run netboot postscripts, build a Debian
+repository, and execute rendered Subiquity commands. Run them as an ordinary
+user with Bubblewrap and unprivileged user namespaces enabled:
+
+```
+prove xCAT-test/native/install_profile_riscv64.t \
+      xCAT-test/native/netboot_profile_riscv64.t \
+      xCAT-test/native/builddebs_riscv64.t \
+      xCAT-test/native/ubuntu_subiquity_template.t
+```
+
+The renderers need the xCAT Perl dependencies, DBD::SQLite, Capture::Tiny,
+and File::Slurper. The Subiquity case also needs /usr/bin/python3 with PyYAML.
+The Debian case needs debhelper, devscripts, fakeroot, and reprepro, and skips
+on non-Debian hosts. Each case creates its own temporary files and database.
+The temporary directory must allow execution; set TMPDIR if /tmp is noexec.
+
+The Subiquity case replaces downloads and external commands, and uses a
+loopback install-monitor peer. It does not install an operating system.
+Architecture names in these fixtures do not qualify native firmware or boot
+behavior on those architectures.

@@ -1,0 +1,41 @@
+#!/bin/sh
+set -eu
+case "${0##*/}" in
+    ip) exit 0 ;;
+    getent)
+        [ "$*" = 'ahostsv4 127.0.0.1' ] || exit 64
+        [ "$XCAT_TEST_SCENARIO" != unresolved ] || exit 2
+        printf '127.0.0.1 STREAM master\n'
+        ;;
+    wget)
+        printf '%s\n' "$*" >>/fixture/downloads
+        output=
+        timeout=
+        while [ "$#" -gt 0 ]; do
+            case "$1" in
+                -T) timeout=$2; shift 2 ;;
+                -O) output=$2; shift 2 ;;
+                http://127.0.0.1:8080/install/autoinst/*) url=$1; shift ;;
+                *) exit 64 ;;
+            esac
+        done
+        [ "$timeout" = 30 ] || exit 64
+        name=${url##*/}
+        [ -n "$output" ] || output=$name
+        case "$XCAT_TEST_SCENARIO:$name" in
+            fail-disk:getinstdisk|fail-pre:node.pre) exit 8 ;;
+            empty-disk:getinstdisk|empty-pre:node.pre) : >"$output"; exit 0 ;;
+        esac
+        cp "/fixture/payloads/$name" "$output"
+        ;;
+    curtin)
+        [ "$1 $2 $3" = 'in-target --target /target' ] || exit 64
+        shift 3
+        case "$*" in
+            update-grub2) cp /target/etc/default/grub /fixture/grub-input ;;
+            /root/post.script) exec /target/root/post.script ;;
+            *) exit 64 ;;
+        esac
+        ;;
+    *) exit 64 ;;
+esac
