@@ -22,3 +22,27 @@ jobs:
       - name: Run tests
         if: ${{ !cancelled() }}
         run: perl github_action_xcat_test.pl
+  rpm_lifecycle_test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: almalinux:8
+            repository: powertools
+          - image: almalinux:10
+            repository: crb
+    container:
+      image: ${{ matrix.image }}
+      options: --privileged --init
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install lifecycle test dependencies
+        run: |
+          dnf install -y epel-release
+          dnf --enablerepo=${{ matrix.repository }} install -y perl perl-Capture-Tiny perl-File-Slurper perl-Test-Simple rpm-build bubblewrap systemd chkconfig initscripts tar gzip which diffutils procps-ng
+      - name: Enable lifecycle test namespaces
+        run: sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Test RPM service lifecycle
+        run: su -s /bin/sh nobody -c 'prove -v xCAT-test/native/xcatd_rpm_lifecycle.t'
