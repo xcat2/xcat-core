@@ -4,13 +4,15 @@ on:
     paths:
       - 'xCAT-genesis-base/oe/**'
       - 'xCAT-genesis-scripts/**'
+      - 'xCAT-test/native/genesis_metadata.py'
+      - 'xCAT-test/native/genesis_console.py'
       - '.github/workflows/genesis_openembedded.yml'
   workflow_dispatch:
 jobs:
   genesis_openembedded:
     name: OpenEmbedded metadata
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -20,14 +22,18 @@ jobs:
           cache-dependency-path: xCAT-genesis-base/oe/requirements.txt
       - name: Install OpenEmbedded host dependencies
         run: >-
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get update &&
           sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y
           --no-install-recommends --no-install-suggests
           build-essential chrpath cpio diffstat file gawk git locales
           lz4 openssl socat texinfo unzip wget xz-utils zstd
+          meson ninja-build pkg-config libnewt-dev libsystemd-dev
       - name: Install KAS
         run: python -m pip install -r xCAT-genesis-base/oe/requirements.txt
       - name: Enable BitBake user namespaces
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Build and run the Genesis console
+        run: python3 xCAT-test/native/genesis_console.py
       - name: Validate every architecture configuration
         shell: bash
         env:
@@ -37,8 +43,10 @@ jobs:
           for architecture in x86 x86_64 ppc64 ppc64le armv7hf aarch64 riscv64 s390x; do
               export KAS_BUILD_DIR="${RUNNER_TEMP}/kas-build-${architecture}"
               configuration="xCAT-genesis-base/oe/kas/${architecture}.yml"
-              kas dump "${configuration}" >/dev/null
+              kas dump --format json "${configuration}" >"${KAS_BUILD_DIR}.json"
               kas shell "${configuration}" -c 'bitbake -p'
+              kas shell "${configuration}" -c \
+                  "GENESIS_ARCHITECTURE='${architecture}' GENESIS_KAS_CONFIG='${KAS_BUILD_DIR}.json' python3 '${GITHUB_WORKSPACE}/xCAT-test/native/genesis_metadata.py'"
           done
       - name: Validate the image task graph
         shell: bash
