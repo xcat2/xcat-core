@@ -31,3 +31,17 @@ enables those namespaces.
 Missing prerequisites fail these tests without stopping unrelated test files.
 Non-Linux hosts report a skip. Set `TMPDIR` to a writable, executable filesystem
 if the default temporary directory is mounted with `noexec`.
+
+## Genesis startup
+
+`genesis_ib_modules.bats` and `genesis_secondary_dhcp.bats` run the complete
+`doxcat` script in a private filesystem and network namespace. They replace
+external services and device commands, then check the boot interface and the
+IPv4 and IPv6 DHCP requests. They do not contact a DHCP server or a BMC.
+
+The startup cases require Linux, bats-core 1.4 or newer, Bubblewrap, Bash, GNU
+core utilities, grep, sed, awk and permission to create user namespaces.
+Missing Linux prerequisites fail these cases. Non-Linux hosts skip them.
+The RPM prerequisite check requires `rpmspec` but does not use the sandbox.
+Run containers with an init process to
+reap children created by deliberate-fault tests.
