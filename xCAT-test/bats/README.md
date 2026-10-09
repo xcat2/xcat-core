@@ -32,7 +32,7 @@ Missing prerequisites fail these tests without stopping unrelated test files.
 Non-Linux hosts report a skip. Set `TMPDIR` to a writable, executable filesystem
 if the default temporary directory is mounted with `noexec`.
 
-`go_xcat_os_release.bats` and the full-script cases in
+`go_xcat_os_release.bats`, `go_xcat_activation.bats` and the full-script cases in
 `postscripts_apt_get.bats` use the same namespace isolation. They require
 bats-core 1.4 or newer. OS detection also requires GNU awk for the legacy
 Red Hat release parser. Postscript cases require GNU diffutils.

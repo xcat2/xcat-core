@@ -44,6 +44,23 @@ packages, execute target-architecture binaries or prove that the generated image
 
 ## Other native tests
 
+The pull-request workflow runs these packaging cases explicitly as an ordinary
+user:
+
+```
+prove xCAT-test/native/probe_package_payload.t \
+      xCAT-test/native/release_repository.t \
+      xCAT-test/native/package_relations.t
+```
+
+They need RPM build/query tools, cpio, createrepo_c, zstd, rsync, GnuPG, Python 3
+with RPM bindings, user/mount namespaces, and the Perl modules Capture::Tiny,
+File::Slurper, Parallel::ForkManager and XML::LibXML. The probe command also
+needs `which`. The release test uses an ephemeral signing key and removes its
+agent. These checks inspect real packages and repository output; they do not
+qualify package installation on every target architecture. On EL8, install both
+`python36` and `python3-rpm` to provide the interpreter and its RPM bindings.
+
 Run the package and unprivileged namespace cases as an ordinary user:
 
 ```
