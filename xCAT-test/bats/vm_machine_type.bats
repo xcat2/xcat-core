@@ -79,3 +79,55 @@ assert_arch()
     assert_arch aarch64 virt ''
     assert_arch aarch64 virt 'cpumode:host-passthrough'
 }
+
+# assert_round_trip <arch> <original> -- the case ends with the exact value it started with.
+assert_round_trip()
+{
+    local arch="$1" original="$2" machine
+
+    set_vmother "$original"
+    vm_machine_type_main invalid cn1
+    # kvm.pm uses the last machine: field of vmothersetting.
+    machine="$(vmother | tr ';' '\n' | grep '^machine:' | tail -n 1)"
+    [ "$machine" = "machine:invalid" ]
+
+    vm_machine_type_main apply cn1 "$arch"
+    vm_machine_type_main restore cn1 "$arch"
+    [ "$(vmother)" = "$original" ]
+    [ -z "$(ls -A "$VM_MACHINE_TYPE_STATE_DIR")" ]
+}
+
+@test "round trip: no vmothersetting" {
+    assert_round_trip x86_64 ''
+}
+
+@test "round trip: machine:invalid" {
+    assert_round_trip x86_64 'machine:invalid'
+}
+
+@test "round trip: cpumode:host-passthrough" {
+    assert_round_trip x86_64 'cpumode:host-passthrough'
+}
+
+@test "round trip: x86_64 with a versioned machine type" {
+    assert_round_trip x86_64 'cpumode:host-passthrough;machine:pc-q35-9.2'
+}
+
+@test "round trip: riscv64 with a versioned machine type" {
+    assert_round_trip riscv64 'machine:virt-9.2'
+}
+
+@test "round trip: riscv64 with a versioned machine type after another setting" {
+    assert_round_trip riscv64 'cpumode:host-passthrough;machine:virt-9.2'
+}
+
+@test "round trip: several settings" {
+    assert_round_trip ppc64le 'vcpupin:0-3;membind:0;devpassthrough:pci_0000_01_00_0,pci_0000_02_00_0;cpumode:host-model'
+}
+
+@test "apply keeps a machine type the node already names" {
+    set_vmother 'cpumode:host-passthrough;machine:pc-q35-9.2'
+    vm_machine_type_main invalid cn1
+    vm_machine_type_main apply cn1 x86_64
+    [ "$(vmother)" = 'cpumode:host-passthrough;machine:pc-q35-9.2' ]
+}
