@@ -730,10 +730,22 @@ sub default_storagemodel {
 # domain type "qemu". riscv64 has no BIOS: the virt machine boots UEFI, and pae/acpi/apic
 # are x86 features that libvirt rejects there.
 #
+# An aarch64 guest takes its accelerator from both architectures. The aarch64 hypervisor runs
+# it under KVM, which on ARM runs the host CPU and no other model. Every other hypervisor
+# emulates it, and TCG needs a named model: libvirt reports host-passthrough and host-model
+# as unsupported there, and the emulator default turns on SVE, which stops the guest in its
+# firmware.
+#
+# video is the model to use when the hypervisor states none. video_prefer is read first, in
+# order, against what the hypervisor offers.
+#
 # POWER keeps reading the hypervisor cpumodel. ppc64le hypervisors report "ppc64le" (not
-# "ppc64"); both are pseries guests whose libvirt <os> arch is "ppc64".
+# "ppc64"); both are pseries guests whose libvirt <os> arch is "ppc64". pseries marks that
+# guest, because the CPU model, the CPU topology and the emulator belong to it and not to the
+# hypervisor.
 #
 # arch and machine stay undef when libvirt is to use its own default for the hypervisor.
+# machine is the unversioned alias; libvirt resolves it to the version the hypervisor has.
 sub guest_arch_profile {
     my ($guest_arch, $hyp_cpumodel) = @_;
     my %profile = (
@@ -741,6 +753,10 @@ sub guest_arch_profile {
         arch         => undef,
         machine      => undef,
         firmware     => undef,
+        cpu_mode     => undef,
+        cpu_model    => undef,
+        pseries      => 0,
+        video_prefer => undef,
         x86_features => 1,
         bios         => 1,
         sound        => 1,
@@ -761,14 +777,72 @@ sub guest_arch_profile {
         $profile{usb_input}    = 0;
         $profile{disk_model}   = 'scsi';
         $profile{cd_prefix}    = 'sd';
+    } elsif (defined($guest_arch) and $guest_arch eq 'aarch64') {
+        my $native = (defined($hyp_cpumodel) and $hyp_cpumodel eq 'aarch64');
+        $profile{domtype}      = $native ? 'kvm' : 'qemu';
+        $profile{cpu_mode}     = $native ? 'host-passthrough' : 'custom';
+        $profile{cpu_model}    = $native ? undef : 'cortex-a57';
+        $profile{arch}         = 'aarch64';
+        $profile{machine}      = 'virt';
+        $profile{firmware}     = 'efi';
+        $profile{x86_features} = 0;
+        $profile{bios}         = 0;
+        $profile{sound}        = 0;
+        $profile{video_prefer} = ['virtio'];
+        $profile{usb_input}    = 0;
+        $profile{disk_model}   = 'scsi';
+        $profile{cd_prefix}    = 'sd';
     } elsif (defined($hyp_cpumodel) and ($hyp_cpumodel eq "ppc64" or $hyp_cpumodel eq "ppc64le")) {
         $profile{arch}         = 'ppc64';
         $profile{machine}      = 'pseries';
+        $profile{pseries}      = 1;
         $profile{x86_features} = 0;
         $profile{bios}         = 0;
         $profile{sound}        = 0;
     }
     return \%profile;
+}
+
+#-------------------------------------------------------
+
+=head3 preferred_video_model
+
+    Descriptions:
+        The first wanted video model that the hypervisor offers.
+
+        The video models of a machine type come from the emulator build, not from the
+        architecture: the aarch64 emulator of a host can carry no virtio-gpu device while its
+        riscv64 emulator does. libvirt refuses a domain that names a model its emulator has no
+        device for, so the model is read from the capabilities of the hypervisor.
+    Arguments:
+        $capsxml - the domain capabilities XML of the hypervisor, or undef
+        $wanted - the models to look for, in order
+        $fallback - the model to use when none of them is offered
+    Returns:
+        the video model to write into the domain
+
+=cut
+
+#-------------------------------------------------------
+sub preferred_video_model {
+    my ($capsxml, $wanted, $fallback) = @_;
+    return $fallback unless defined $capsxml and ref($wanted) eq 'ARRAY';
+    my $caps;
+    eval { $caps = XMLin($capsxml, ForceArray => [ 'enum', 'value' ], KeyAttr => []); };
+    return $fallback unless ref($caps) eq 'HASH';
+    my $video = $caps->{devices}->{video};
+    return $fallback unless ref($video) eq 'HASH' and ref($video->{enum}) eq 'ARRAY';
+    my %offered;
+    foreach my $enum (@{ $video->{enum} }) {
+        next unless ref($enum) eq 'HASH';
+        next unless defined $enum->{name} and $enum->{name} eq 'modelType';
+        next unless ref($enum->{value}) eq 'ARRAY';
+        %offered = map { $_ => 1 } @{ $enum->{value} };
+    }
+    foreach my $model (@$wanted) {
+        return $model if $offered{$model};
+    }
+    return $fallback;
 }
 
 sub build_xmldesc {
@@ -872,7 +946,9 @@ sub build_xmldesc {
     }
 
     if (defined $cpumode) {
-        if ($cpumode eq 'host-passthrough' or $cpumode eq 'host-model') {
+        # Both modes read the host CPU, which an emulated guest does not run.
+        if (($cpumode eq 'host-passthrough' or $cpumode eq 'host-model')
+            and $profile->{domtype} eq 'kvm') {
             $xtree{cpu}->{mode} = $cpumode;
         }
     }
@@ -955,7 +1031,7 @@ sub build_xmldesc {
     $xtree{devices}->{hostdev} = \@prdevarray;
 
 
-    if ($hypcpumodel eq "ppc64" or $hypcpumodel eq "ppc64le") {
+    if ($profile->{pseries}) {
         my %cpuhash = ();
         if ($hypcputype) {
             $cpuhash{model} = $hypcputype;
@@ -988,6 +1064,15 @@ sub build_xmldesc {
             $xtree{vcpu}->{content} = $confdata->{vm}->{$node}->[0]->{cpus};
         } else {
             $xtree{vcpu}->{content} = 1;
+        }
+    }
+    # vm.othersettings cpumode and a pseries guest build their own cpu element; leave either
+    # alone.
+    if (defined $profile->{cpu_mode} and !exists $xtree{cpu}) {
+        $xtree{cpu}->{mode} = $profile->{cpu_mode};
+        if (defined $profile->{cpu_model}) {
+            $xtree{cpu}->{match}            = 'exact';
+            $xtree{cpu}->{model}->{content} = $profile->{cpu_model};
         }
     }
     if (defined($confdata->{vm}->{$node}->[0]->{clockoffset})) {
@@ -1027,7 +1112,16 @@ sub build_xmldesc {
             $vram = 65536; } #surprise, spice blows up with less vram than this after version 0.6 and up
         $xtree{devices}->{video} = [ { 'content' => '', 'model' => { type => $model, vram => $vram } } ];
     } else {
-        $xtree{devices}->{video} = [ { 'content' => '', 'model' => { type => $profile->{video}, vram => 8192 } } ];
+        my $vidmodel = $profile->{video};
+        if ($profile->{video_prefer} and $hypconn) {
+            my $capsxml;
+            eval {
+                $capsxml = $hypconn->get_domain_capabilities(undef, $profile->{arch},
+                    $profile->{machine}, $profile->{domtype});
+            };
+            $vidmodel = preferred_video_model($capsxml, $profile->{video_prefer}, $vidmodel);
+        }
+        $xtree{devices}->{video} = [ { 'content' => '', 'model' => { type => $vidmodel, vram => 8192 } } ];
     }
     # The riscv64 virt machine has no USB controller, and libvirt refuses a USB device there.
     if ($profile->{usb_input}) {
@@ -1046,7 +1140,7 @@ sub build_xmldesc {
     } else {
         $xtree{devices}->{graphics}->{password} = genpassword(8);
     }
-    if (defined($hypcpumodel) and $hypcpumodel eq 'ppc64') {
+    if ($profile->{pseries} and defined($hypcpumodel) and $hypcpumodel eq 'ppc64') {
         $xtree{devices}->{emulator}->{content} = "/usr/bin/qemu-system-ppc64";
     }
     # libvirt resolves the emulator for every other architecture from its own capabilities.
