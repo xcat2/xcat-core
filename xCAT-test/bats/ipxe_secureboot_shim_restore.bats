@@ -37,7 +37,9 @@ setup()
     export STUB_LSDEF_FAIL_ATTR=
     export STUB_NODESET_RESTORE_RC=0
     export STUB_CHDEF_RC=0
-    export STUB_CHDEF_NETBOOT_RC=0
+    # Which chdef netboot= call to fail, counted from 1. The helper sets the method and later
+    # puts it back, so one return code for both cannot say which call failed.
+    export STUB_CHDEF_NETBOOT_FAIL_NTH=0
     # The netboot the node is declared with. Four of the six confs that carry this case declare
     # their compute node netboot=xnba, so this is not a hypothetical value.
     export STUB_NETBOOT=ipxe
@@ -46,6 +48,7 @@ setup()
     export STUB_UEFI="$TFTPDIR/xcat/ipxe/nodes/${NODE}.uefi"
     export STUB_SHIM_LINE="shim http://\${next-server}/install/$OS/x86_64/EFI/BOOT/BOOTX64.EFI"
     export STUB_CALLS="$CALLS"
+    export STUB_NETBOOT_COUNT="$BATS_TEST_TMPDIR/netboot-count"
     export STUB_TFTPDIR="$TFTPDIR"
     export STUB_INSTALLDIR="$INSTALLDIR"
     export STUB_OS="$OS"
@@ -113,7 +116,12 @@ STUB
 #!/bin/bash
 echo "chdef $*" >>"$STUB_CALLS"
 case "$*" in
-    *netboot=*) exit "$STUB_CHDEF_NETBOOT_RC" ;;
+    *netboot=*)
+        n=$(( $(cat "$STUB_NETBOOT_COUNT" 2>/dev/null || echo 0) + 1 ))
+        echo "$n" >"$STUB_NETBOOT_COUNT"
+        [ "$n" = "$STUB_CHDEF_NETBOOT_FAIL_NTH" ] && exit 1
+        exit 0
+        ;;
 esac
 exit "$STUB_CHDEF_RC"
 STUB
@@ -198,11 +206,16 @@ STUB
 # which is the same defect the provmethod and nodeset restorations already report.
 @test "a netboot method that cannot be put back fails the case" {
     STUB_NETBOOT=xnba
-    STUB_CHDEF_NETBOOT_RC=1
+    # Fail the SECOND netboot chdef, which is the restoring one. Failing both cannot tell a
+    # broken restoration from a forward chdef that never ran.
+    STUB_CHDEF_NETBOOT_FAIL_NTH=2
     run "$SCRIPT" "$NODE"
     [ "$status" -ne 0 ]
     [[ "$output" != *IPXE_SHIM_OK* ]]
-    [[ "$output" == *IPXE_SHIM_FAIL* ]]
+    # The forward chdef must have succeeded, or this measures the wrong call.
+    grep -q "^chdef -t node -o $NODE netboot=ipxe$" "$CALLS"
+    # Only the restoring branch prints this; the forward one does not.
+    [[ "$output" == *"keeps the netboot method this case set"* ]]
 }
 
 # The case file now requires the OK token, so an exit 0 without it is a pass the run cannot

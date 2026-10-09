@@ -6,7 +6,14 @@ xCAT boots x86 nodes with iPXE through two ``netboot`` methods:
 * ``ipxe``: the unmodified iPXE release in the ``ipxe-xcat`` package.
 * ``xnba``: the xCAT Network Boot Agent in the ``xnba-undi`` package, a patched iPXE. This method is deprecated, and a later release removes it.
 
-Both methods run the same boot scripts. ``nodeset`` writes them under ``xcat/ipxe/nodes`` for ``ipxe`` and under ``xcat/xnba/nodes`` for ``xnba``. The xCAT packages install both ``ipxe-xcat`` and ``xnba-undi``.
+The two methods share the script writer, so the scripts are the same except where the method
+decides otherwise. ``nodeset`` writes them under ``xcat/ipxe/nodes`` for ``ipxe`` and under
+``xcat/xnba/nodes`` for ``xnba``. The xCAT packages install both ``ipxe-xcat`` and ``xnba-undi``.
+
+**Secure Boot applies to ``netboot=ipxe`` only.** A node with ``netboot=ipxe`` gets a ``shim``
+line before the kernel, so the firmware verifies what it loads. A node with ``netboot=xnba``
+does not: ``xnba.efi`` is unsigned, and no shim can chain to it. ``grub2`` and ``grub2-http``
+nodes, which is every ppc64le, aarch64 and riscv64 node, are outside this chapter.
 
 New x86 nodes get ``netboot=ipxe``: node discovery, profile-based node definitions and the x86 node templates of ``mkdef --template`` set it.
 
