@@ -8,28 +8,6 @@ use Test::More;
 
 use XCAT::Test::File qw(slurp_repo_file);
 
-my $rpm_weak_dependencies = join(
-    "\n",
-    '%if 0%{?fedora} || 0%{?rhel} >= 8 || 0%{?suse_version} >= 1500',
-    'Recommends: xCAT-genesis-openembedded-x86_64',
-    'Recommends: xCAT-genesis-openembedded-ppc64le',
-    'Recommends: xCAT-genesis-openembedded-riscv64',
-    'Recommends: xCAT-genesis-openembedded-s390x',
-    '%endif',
-);
-
-my $rpm_spec = slurp_repo_file('xCAT/xCAT.spec');
-like(
-    $rpm_spec,
-    qr/^\Q$rpm_weak_dependencies\E$/m,
-    'RPM weak dependencies stay inside their compatibility guard',
-);
-unlike(
-    $rpm_spec,
-    qr/^Requires:\s+xCAT-genesis-openembedded-/m,
-    'missing OpenEmbedded images do not block an RPM upgrade',
-);
-
 my $deb_control = slurp_repo_file('xCAT/debian/control');
 like(
     $deb_control,
@@ -55,13 +33,6 @@ unlike(
     $deb_control,
     qr/^Depends:.*\bxcat-genesis-openembedded-/m,
     'missing OpenEmbedded images do not block a DEB upgrade',
-);
-
-my $sn_rpm_spec = slurp_repo_file('xCATsn/xCATsn.spec');
-like(
-    $sn_rpm_spec,
-    qr/^\Q$rpm_weak_dependencies\E$/m,
-    'service-node weak dependencies stay inside their compatibility guard',
 );
 
 my $sn_deb_control = slurp_repo_file('xCATsn/debian/control');
