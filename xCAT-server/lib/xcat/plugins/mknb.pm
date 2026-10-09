@@ -372,8 +372,10 @@ Arguments:
     genesis_type, genesis_dir, tftpdir, arch, tempdir, and an optional run
     coderef used in place of system() by the tests.
 Returns:
-    (rc, source) -- rc is the exit status of the copy that failed, and source
-    names it, so the caller reports the file it could not read.
+    (rc, source, error) -- rc is the exit status of the step that failed,
+    source names the file it acted on, and error is the message for the caller,
+    which says WHICH step failed. A copy and a relabel fail for different
+    reasons and need different messages.
 
 =cut
 
@@ -386,13 +388,26 @@ sub stage_genesis_payload {
         # Two copies, each able to fail on its own. Return on the first, so neither the exit
         # status nor the name of the unreadable file is lost to the one that follows it.
         $rc = $run->("shopt -s dotglob; GLOBIGNORE=\".:..\" cp -a $a{genesis_dir}/fs/* $a{tempdir}");
-        return ($rc, "$a{genesis_dir}/fs") if $rc;
-        $rc = $run->("cp -a $a{genesis_dir}/kernel $a{tftpdir}/xcat/genesis.kernel.$a{arch}");
-        return ($rc, "$a{genesis_dir}/kernel") if $rc;
-        return (0, undef);
+        return ($rc, "$a{genesis_dir}/fs", "Failed to copy $a{genesis_dir}/fs contents") if $rc;
+        my $kernel = "$a{tftpdir}/xcat/genesis.kernel.$a{arch}";
+        # cp -a implies --preserve=all, which carries the SELinux context of the xCAT install
+        # tree into the TFTP root, where the policy declares tftpdir_t. The context also
+        # travels in the security.selinux xattr, so xattr has to go with context here.
+        $rc = $run->("cp -a --no-preserve=context,xattr $a{genesis_dir}/kernel $kernel");
+        return ($rc, "$a{genesis_dir}/kernel", "Failed to copy $a{genesis_dir}/kernel contents") if $rc;
+        # A kernel staged by an earlier xCAT keeps its own context through the copy, so set
+        # the context from the policy. isSELINUX returns 0 when SELinux is enabled.
+        if (xCAT::Utils->isSELINUX() == 0) {
+            # A relabel that fails leaves the kernel with the context of the install tree,
+            # which is the state this routine exists to prevent. Report it.
+            $rc = $run->("restorecon -F $kernel");
+            return ($rc, $kernel, "Failed to set the SELinux context of $kernel") if $rc;
+        }
+        return (0, undef, undef);
     }
     $rc = $run->("cp -a $a{genesis_dir}/nbroot/* $a{tempdir}");
-    return ($rc, "$a{genesis_dir}/nbroot");
+    return ($rc, "$a{genesis_dir}/nbroot",
+        $rc ? "Failed to copy $a{genesis_dir}/nbroot contents" : undef);
 }
 
 sub process_request {
@@ -624,12 +639,12 @@ sub process_request {
         mkpath("$tftpdir/xcat");
     }
     $invisibletouch = 1 if $genesis_type eq 'legacy';
-    my ($rc, $failed_src) = stage_genesis_payload(
+    my ($rc, $failed_src, $failed_error) = stage_genesis_payload(
         genesis_type => $genesis_type, genesis_dir => $genesis_dir,
         tftpdir => $tftpdir, arch => $arch, tempdir => $tempdir);
     if ($rc) {
         system("rm -rf $tempdir");
-        $callback->({ error => ["Failed to copy $failed_src contents"], errorcode => [1] });
+        $callback->({ error => [$failed_error], errorcode => [1] });
         return;
     }
     my $sshdir;

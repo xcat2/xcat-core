@@ -28,9 +28,11 @@ use xCAT::DHCP::Backend;
 use xCAT::DHCP::OmapiPolicy;
 use xCAT::TLSPolicy qw(tls_setting_warnings);
 use xCAT::NetworkUtils;
+use xCAT::SELinux;
 use Getopt::Long;
 use xCAT::MsgUtils;
 use xCAT::Table;
+use xCAT::TableUtils;
 use Socket;
 
 #-----------------------------------------------------------------------------
@@ -415,6 +417,11 @@ if ($::INITIALINSTALL || $::UPDATEINSTALL || $::FORCE || $::initDB)
     &initDB;
 }
 
+if ($::INITIALINSTALL)
+{
+    &recordselinuxdefault;
+}
+
 #
 # set up syslog
 #
@@ -509,41 +516,10 @@ if ($::INITIALINSTALL || $::FORCE)
 
         if (-f "/etc/redhat-release" || -f "/etc/openEuler-release")
         {
-            my $rc = xCAT::Utils->isSELINUX();
-
-            # rc 0 means SELinux is enabled
-            # rc 1 means SELinux is not enabled
-            if ($rc == 0)
+            my $selinux = xCAT::SELinux->xcatconfig_action();
+            if ($selinux->{warning})
             {
-                xCAT::MsgUtils->message('W', "SELINUX is not disabled, disabling it now...");
-
-                # set selinux be in permissive mode for running system,
-                # if the user forgot to disable selinux,
-                # try to not hurt xcat too much
-                my $enforcefile;
-                if (-f "/selinux/enforce")
-                {
-                    $enforcefile = "/selinux/enforce";
-                } elsif (-f "/sys/fs/selinux/enforce") {
-                    $enforcefile = "/sys/fs/selinux/enforce";
-                }
-                if ($enforcefile)
-                {
-                    my $cmd = "echo 0 > $enforcefile";
-                    my $outref = xCAT::Utils->runcmd("$cmd", 0);
-                    if ($::RUNCMD_RC != 0)
-                    {
-                        xCAT::MsgUtils->message('E', "Failed to disable SELINUX.");
-                    }
-                }
-
-                # Disable selinux through reboots
-                my $cmd = "sed -i 's/^SELINUX=.*\$/SELINUX=disabled/' /etc/selinux/config";
-                my $outref = xCAT::Utils->runcmd("$cmd", 0);
-                if ($::RUNCMD_RC != 0)
-                {
-                    xCAT::MsgUtils->message('E', "Failed to disable SELINUX.");
-                }
+                xCAT::MsgUtils->message('W', $selinux->{warning});
             }
         }
 
@@ -1105,6 +1081,31 @@ sub is_redhat6sp4
 }
 
 
+
+#-----------------------------------------------------------------------------
+
+=head3 recordselinuxdefault
+
+    Records site.selinux from the SELinux mode of the management node, when
+    site.selinux is not set. The mode of the management node does not change.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub recordselinuxdefault
+{
+    my $existing = xCAT::TableUtils->get_site_attribute('selinux');
+    my $value = xCAT::SELinux->install_default(xCAT::SELinux->runtime_mode(), $existing);
+    return unless defined $value;
+
+    xCAT::Utils->runcmd("$::XCATROOT/sbin/chtab key=selinux site.value=$value", 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        xCAT::MsgUtils->message('E', "Could not set site.selinux to $value.");
+        return;
+    }
+    xCAT::MsgUtils->message('I', "Set site.selinux to $value.");
+}
 
 #-----------------------------------------------------------------------------
 

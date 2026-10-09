@@ -28,7 +28,7 @@ clearpart --all --initlabel
 
 # Do not configure any iptables rules
 firewall --disable
-selinux --disable
+selinux --#SELINUXMODE#
 reboot
 
 # riscv64: EL10 has no default crash kernel reservation for this architecture
@@ -63,6 +63,7 @@ echo "Running Kickstart Post-installation script..."
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.xcat.ng#
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.rhels10.riscv64#
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.rhels8#
+#SELINUXRELABEL#
 } &>>/var/log/xcat/xcat.log
 %end
 

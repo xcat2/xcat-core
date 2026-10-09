@@ -16,6 +16,7 @@ use xCAT::SvrUtils;
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::DHCP::Backend;
+use xCAT::SELinux;
 
 use xCAT::MsgUtils;
 use xCAT_plugin::dhcp;
@@ -346,15 +347,15 @@ sub setupInstallloc
 
                 # need to  mount the directory
                 my $cmd;
+                my $options = "rw,nolock";
                 my @nfsv4 = xCAT::TableUtils->get_site_attribute("useNFSv4onAIX");
                 if ($nfsv4[0] && ($nfsv4[0] =~ /1|Yes|yes|YES|Y|y/))
                 {
-                    $cmd = "mount -o vers=4,rw,nolock $master:$installloc $installdir";
+                    $options = "vers=4,rw,nolock";
                 }
-                else
-                {
-                    $cmd = "mount -o rw,nolock $master:$installloc $installdir";
-                }
+                $options = xCAT::SELinux->nfs_mount_options($options, 'public_content_t',
+                    xCAT::SELinux->runtime_mode());
+                $cmd = "mount -o $options $master:$installloc $installdir";
                 system $cmd;
                 if ($? > 0)
                 {    # error
@@ -451,7 +452,9 @@ sub setupInstallloc
         {
             if ($nomount == 0)    # then add the entry
             {
-`echo "$master:$installloc $installdir nfs timeo=14,intr 1 2" >>/etc/fstab`;
+                my $options = xCAT::SELinux->nfs_mount_options('timeo=14,intr', 'public_content_t',
+                    xCAT::SELinux->runtime_mode());
+`echo "$master:$installloc $installdir nfs $options 1 2" >>/etc/fstab`;
 
             }
         }
@@ -1225,15 +1228,15 @@ sub setup_TFTP
 
             # need to  mount the directory
             my $cmd;
+            my $options = "rw,nolock";
             my @nfsv4 = xCAT::TableUtils->get_site_attribute("useNFSv4onAIX");
             if ($nfsv4[0] && ($nfsv4[0] =~ /1|Yes|yes|YES|Y|y/))
             {
-                $cmd = " mount -o vers=4,rw,nolock $tftphost:$tftpdir $tftpdir";
+                $options = "vers=4,rw,nolock";
             }
-            else
-            {
-                $cmd = " mount -o rw,nolock $tftphost:$tftpdir $tftpdir";
-            }
+            $options = xCAT::SELinux->nfs_mount_options($options, 'tftpdir_t',
+                xCAT::SELinux->runtime_mode());
+            $cmd = " mount -o $options $tftphost:$tftpdir $tftpdir";
             system $cmd;
             if ($? > 0)
             {    # error
