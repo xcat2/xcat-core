@@ -3,13 +3,12 @@ use strict;
 use warnings;
 
 use Digest::SHA qw(sha256_hex);
-use File::Spec;
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 use Test::More;
+use XCAT::Test::File qw(slurp_repo_file);
 
-my $repo_root = File::Spec->rel2abs(File::Spec->catdir($FindBin::Bin, '..', '..'));
-
-my $spec = read_file('xCAT-release/xCAT-release.spec');
+my $spec = slurp_repo_file('xCAT-release/xCAT-release.spec');
 like($spec, qr/^Name:\s+xCAT-release$/m, 'package has the expected name');
 like($spec, qr/^Source0:\s+xCAT-release-%\{version\}\.tar\.gz$/m, 'source archive follows the package name');
 like($spec, qr/^BuildArch:\s+noarch$/m, 'package is architecture independent');
@@ -19,7 +18,7 @@ like($spec, qr/^%config\(noreplace\) .*xcat-dep\.repo$/m, 'dependency repo prese
 like($spec, qr/^%config\(noreplace\) .*xcat-dep-common\.repo$/m, 'common dependency repo preserves local changes');
 like($spec, qr{RPM-GPG-KEY-xCAT}, 'package installs the signing key');
 
-my $core = read_file('xCAT-release/xcat-core.repo');
+my $core = slurp_repo_file('xCAT-release/xcat-core.repo');
 assert_repo_security($core, 'core');
 like(
     $core,
@@ -27,7 +26,7 @@ like(
     'core repo uses the stable HTTPS endpoint'
 );
 
-my $dep = read_file('xCAT-release/xcat-dep.repo');
+my $dep = slurp_repo_file('xCAT-release/xcat-dep.repo');
 assert_repo_security($dep, 'dependency');
 like(
     $dep,
@@ -35,7 +34,7 @@ like(
     'dependency repo follows the DNF release and architecture variables'
 );
 
-my $common_dep = read_file('xCAT-release/xcat-dep-common.repo');
+my $common_dep = slurp_repo_file('xCAT-release/xcat-dep-common.repo');
 assert_repo_security($common_dep, 'common dependency');
 like(
     $common_dep,
@@ -48,46 +47,12 @@ like(
     'common dependency repo is independent of the management-node distribution'
 );
 
-my $key = read_file('xCAT-release/RPM-GPG-KEY-xCAT');
+my $key = slurp_repo_file('xCAT-release/RPM-GPG-KEY-xCAT');
 like($key, qr/^-----BEGIN PGP PUBLIC KEY BLOCK-----$/m, 'signing key is ASCII armored');
 is(
     sha256_hex($key),
     '72076f25ce4929d34a67e305327a37f89c964d3cbf1821e3afad4907c9d91249',
     'packaged key matches the published xCAT signing key'
-);
-
-my $builder = read_file('buildrpms.pl');
-like($builder, qr/^\s+xCAT-release\s*$/m, 'default RPM build includes xCAT-release');
-like(
-    $builder,
-    qr{\$repodir/xCAT-release-latest\.noarch\.rpm},
-    'stable bootstrap alias follows the package name'
-);
-like(
-    $builder,
-    qr{\$repodir/xCAT-release-\$VERSION-\$RELEASE\.noarch\.rpm},
-    'stable bootstrap alias selects the xCAT-release RPM'
-);
-like(
-    $builder,
-    qr/unlink \$alias.*?createrepo_dir\(\$repodir/s,
-    'stable bootstrap alias is excluded from repository metadata'
-);
-like(
-    $builder,
-    qr/cp \$release_rpms\[0\], \$alias/,
-    'repository export creates the stable bootstrap filename'
-);
-my $sign_call = rindex($builder, 'sign_rpms($target)');
-my $alias_call = rindex($builder, 'write_release_alias("dist/$target/rpms")');
-ok(
-    $sign_call >= 0 && $alias_call > $sign_call,
-    'stable bootstrap alias is created after signed metadata is finalized'
-);
-like(
-    $builder,
-    qr/sub merge_core_repos \{.*?write_repo_metadata_dir\(\$out\);.*?write_release_alias\(\$out\);/s,
-    'assembled core repository creates the stable alias after final metadata'
 );
 
 done_testing();
@@ -102,13 +67,4 @@ sub assert_repo_security {
         qr{^gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-xCAT$}m,
         "$label repo uses the packaged signing key"
     );
-}
-
-sub read_file {
-    my ($file) = @_;
-    my $path = File::Spec->catfile($repo_root, split m{/}, $file);
-    open(my $fh, '<', $path) or die "open $path: $!";
-    my $contents = do { local $/; <$fh> };
-    close($fh) or die "close $path: $!";
-    return $contents;
 }

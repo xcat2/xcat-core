@@ -17,10 +17,12 @@ jobs:
       - name: Test Debian package lifecycle
         run: prove -v xCAT-test/native/xcatd_debian_lifecycle.t xCAT-test/native/xcatd_restart_callers.t xCAT-test/native/apache_package_lifecycle.t xCAT-test/native/package_upgrade_logging.t
       - name: Install package test dependencies
-        run: sudo apt-get install -y --no-install-recommends cpio
+        run: sudo apt-get install -y --no-install-recommends cpio createrepo-c rsync gnupg libxml-libxml-perl
       - name: Exercise probe package payloads
         if: ${{ !cancelled() }}
         run: prove xCAT-test/native/probe_package_payload.t
+      - name: Exercise release repositories
+        run: prove xCAT-test/native/release_repository.t
       - name: Prepare xCAT syslog directory
         if: ${{ !cancelled() }}
         run: sudo install -d -o syslog -g adm -m 0750 /var/log/xcat
