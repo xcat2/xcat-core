@@ -26,10 +26,10 @@ check:output!~unlabeled_t
 cmd:xdsh $$CN "restorecon -RnvF /xcatpost /opt/xcat /root /etc/ssh /var/log/xcat"
 check:rc==0
 check:output!~Would relabel
-cmd:xdsh $$CN "ausearch -m AVC,USER_AVC -ts boot"
+cmd:xdsh $$CN "ausearch --input-logs -m AVC,USER_AVC -ts boot"
 check:output=~<no matches>
 check:output!~type=AVC
-cmd:sh -c 'ausearch -m AVC,USER_AVC -ts $(cat /tmp/selinux_cn_diskful.start)'
+cmd:sh -c 'ausearch --input-logs -m AVC,USER_AVC -ts $(cat /tmp/selinux_cn_diskful.start)'
 check:rc==1
 check:output=~<no matches>
 cmd:chdef -t node -o $$CN selinux=
@@ -74,10 +74,10 @@ check:output!~unlabeled_t
 cmd:xdsh $$CN "restorecon -RnvF /xcatpost /opt/xcat /root /etc/ssh /usr/sbin"
 check:rc==0
 check:output!~Would relabel
-cmd:xdsh $$CN "ausearch -m AVC,USER_AVC -ts boot"
+cmd:xdsh $$CN "ausearch --input-logs -m AVC,USER_AVC -ts boot"
 check:output=~<no matches>
 check:output!~type=AVC
-cmd:sh -c 'ausearch -m AVC,USER_AVC -ts $(cat /tmp/selinux_cn_diskless.start)'
+cmd:sh -c 'ausearch --input-logs -m AVC,USER_AVC -ts $(cat /tmp/selinux_cn_diskless.start)'
 check:rc==1
 check:output=~<no matches>
 cmd:chdef -t node -o $$CN selinux=
@@ -124,10 +124,10 @@ check:output!~unlabeled_t
 cmd:xdsh $$CN "restorecon -RnvF /usr/bin /usr/sbin /etc/ssh /xcatpost /opt/xcat"
 check:rc==0
 check:output!~Would relabel
-cmd:xdsh $$CN "ausearch -m AVC,USER_AVC -ts boot"
+cmd:xdsh $$CN "ausearch --input-logs -m AVC,USER_AVC -ts boot"
 check:output=~<no matches>
 check:output!~type=AVC
-cmd:sh -c 'ausearch -m AVC,USER_AVC -ts $(cat /tmp/selinux_cn_squashfs.start)'
+cmd:sh -c 'ausearch --input-logs -m AVC,USER_AVC -ts $(cat /tmp/selinux_cn_squashfs.start)'
 check:rc==1
 check:output=~<no matches>
 cmd:chdef -t node -o $$CN selinux=
