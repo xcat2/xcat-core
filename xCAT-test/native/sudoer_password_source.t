@@ -3,15 +3,19 @@ use strict;
 use warnings;
 
 use File::Path qw(make_path);
-use File::Temp qw(tempdir);
 use FindBin;
+use lib "$FindBin::Bin/../lib";
+use File::Slurper qw(read_text write_text);
+use Text::ParseWords qw(shellwords);
 use Test::More;
+use XCAT::Test::File qw(repo_path);
+use XCAT::Test::Sandbox qw(sandbox_root sandbox_run);
 
-my $script = "$FindBin::Bin/../../xCAT/postscripts/sudoer";
-plan skip_all => 'sudoer postscript not found' unless -r $script;
 plan skip_all => 'postscript targets Linux nodes' unless $^O eq 'linux';
-
-my $source = read_file($script);
+my $postscripts = repo_path('xCAT/postscripts');
+BAIL_OUT('sudoer and xcatlib.sh are required') unless -r "$postscripts/sudoer" && -r "$postscripts/xcatlib.sh";
+my $visudo = -x '/usr/sbin/visudo' ? '/usr/sbin/visudo' : '/sbin/visudo';
+BAIL_OUT('install sudo for the native visudo parser') unless -x $visudo;
 
 sub field_reply {
     my ($field) = @_;
@@ -50,59 +54,52 @@ sub managed_for {
     return "# xCAT sudoer: $name\n$name ALL=(ALL) NOPASSWD: ALL\nDefaults:$name !requiretty\n";
 }
 
-# Build a scratch tree. Existing accounts are passwd lines "name:uid:shell";
-# the useradd stub appends the account it creates, so getent sees it.
 sub scratch_tree {
     my (%opt) = @_;
-    my $root = tempdir(CLEANUP => 1);
-    make_path("$root/bin", "$root/etc", "$root/xcatpost/hostkeys");
+    my $root = sandbox_root();
+    make_path("$root/home", "$root/etc/systemd/system", "$root/xcatpost/hostkeys");
 
-    my $passwd = '';
+    my $passwd = grep(/^root:/, @{$opt{accounts} || []}) ? '' : "root:x:0:0::/root:/bin/bash\n";
+    $passwd .= "runner:x:$>:0::/home/runner:/bin/bash\n" if $>;
     foreach my $account (@{ $opt{accounts} || [] }) {
         my ($name, $uid, $shell) = split /:/, $account;
         make_path("$root/home/$name");
-        $passwd .= "$name:x:$uid:100::$root/home/$name:$shell\n";
+        $passwd .= "$name:x:$uid:100::/home/$name:$shell\n";
     }
-    write_file("$root/etc/passwd", $passwd);
+    write_text("$root/etc/passwd", $passwd);
+    write_text("$root/etc/group", "root:x:0:\n");
+    write_text("$root/etc/nsswitch.conf", "passwd: files\ngroup: files\n");
     write_stub("$root/bin/useradd",
-        "echo \"useradd \$*\" >> '$root/calls'\n"
+        "echo \"useradd \$*\" >> /fixture/calls\n"
       . ($opt{useradd_fails} ? "exit 1\n"
-          : "name=\$2; mkdir -p '$root/home/'\$name\n"
-          . "echo \"\$name:x:1001:100::$root/home/\$name:/bin/bash\" >> '$root/etc/passwd'\n"));
+          : "name=\$2; mkdir -p /home/\$name\n"
+          . "echo \"\$name:x:1001:100::/home/\$name:/bin/bash\" >> /etc/passwd\n"));
     write_stub("$root/bin/usermod",
-        "echo \"usermod \$*\" >> '$root/calls'\n" . ($opt{usermod_fails} ? "exit 1\n" : ''));
+        "echo \"usermod \$*\" >> /fixture/calls\n" . ($opt{usermod_fails} ? "exit 1\n" : ''));
     write_stub("$root/bin/getent",
-        "awk -F: -v n=\"\$2\" '\$1 == n' '$root/etc/passwd'\n");
+        "awk -F: -v n=\"\$2\" '\$1 == n' /etc/passwd\n");
     write_stub("$root/bin/visudo",
-        "echo \"visudo \$*\" >> '$root/calls'\n" . ($opt{visudo_rejects} ? "exit 1\n" : ''));
+        "echo \"visudo \$*\" >> /fixture/calls\n"
+        . ($opt{visudo_rejects} ? "exit 1\n" : 'exec /native-visudo "$@" >> /fixture/parser.log 2>&1'));
     write_stub("$root/bin/getcredentials.awk",
-        "echo \"getcredentials \$*\" >> '$root/calls'\ncat '$root/reply.xml'\n");
-    write_stub("$root/bin/allowcred.awk", "sleep 30\n");
-    write_stub("$root/bin/logger", "echo \"\$*\" >> '$root/log'\n");
+        "echo \"getcredentials \$*\" >> /fixture/calls\ncat /fixture/reply.xml\n");
+    write_stub("$root/bin/allowcred.awk", "exec /bin/sleep 30\n");
+    write_stub("$root/bin/sleep", "exit 0\n");
+    write_stub("$root/bin/logger", "echo \"\$*\" >> /fixture/messages\n");
     write_stub("$root/bin/chown", "exit 0\n");
-    write_file("$root/xcatlib.sh", "restartservice(){ :; }\n");
-    write_file("$root/etc/redhat-release", "stub\n");
-    write_file("$root/etc/login.defs", "UID_MIN 1000\nUID_MAX 60000\n");
+    write_stub("$root/bin/systemctl", "echo \"systemctl \$*\" >> /fixture/calls\n");
+    write_text("$root/etc/systemd/system/sshd.service", "[Service]\n");
+    write_text("$root/etc/redhat-release", "stub\n");
+    write_text("$root/etc/login.defs", "UID_MIN 1000\nUID_MAX 60000\n");
     # ssh-keygen leaves a trailing space after an empty comment
-    write_file("$root/xcatpost/hostkeys/ssh_host_rsa_key.pub", "ssh-rsa RSAKEY \n");
-    write_file("$root/xcatpost/hostkeys/ssh_host_dsa_key.pub", "ssh-dss DSAKEY \n");
-    # The includedir line names the scratch directory because the path
-    # rewrite below also rewrites the pattern the postscript greps for.
+    write_text("$root/xcatpost/hostkeys/ssh_host_rsa_key.pub", "ssh-rsa RSAKEY \n");
+    write_text("$root/xcatpost/hostkeys/ssh_host_dsa_key.pub", "ssh-dss DSAKEY \n");
     my $sudoers = "root ALL=(ALL) ALL\n";
-    $sudoers .= "#includedir $root/etc/sudoers.d\n" unless $opt{no_sudoers_d};
+    $sudoers .= "#includedir /etc/sudoers.d\n" unless $opt{no_sudoers_d};
     $sudoers .= $opt{legacy} x 1 if $opt{legacy};
     make_path("$root/etc/sudoers.d") unless $opt{no_sudoers_d};
-    write_file("$root/etc/sudoers", $sudoers);
+    write_text("$root/etc/sudoers", $sudoers);
 
-    my $src = $source;
-    $src =~ s{/usr/sbin/(useradd|usermod)}{$root/bin/$1}g;
-    $src =~ s{/etc/sudoers\.d}{$root/etc/sudoers.d}g;
-    $src =~ s{ /etc/sudoers\b}{ $root/etc/sudoers}g;
-    $src =~ s{/etc/redhat-release}{$root/etc/redhat-release}g;
-    $src =~ s{/etc/login\.defs}{$root/etc/login.defs}g;
-    $src =~ s{/xcatpost/hostkeys}{$root/xcatpost/hostkeys}g;
-    write_file("$root/sudoer", $src);
-    chmod 0755, "$root/sudoer";
     return $root;
 }
 
@@ -113,18 +110,21 @@ sub run_sudoer {
     my $user = $opt{user} || 'xcat';
     my $args = defined $opt{args} ? $opt{args} : '';
 
-    write_file("$root/reply.xml", defined $opt{reply} ? $opt{reply} : '');
-    unlink "$root/calls", "$root/log";
-
-    system(qq{cd '$root' && MASTER='10.0.0.1' XCATSERVER='10.0.0.1:3001' }
-         . qq{PATH="$root/bin:\$PATH" ./sudoer $args >/dev/null 2>&1});
-    my $rc = $? >> 8;
+    write_text("$root/reply.xml", defined $opt{reply} ? $opt{reply} : '');
+    unlink "$root/calls", "$root/messages";
+    my ($rc, $output) = sandbox_run($root, {
+        read_only => {$postscripts => '/postscripts', $visudo => '/native-visudo',
+            "$root/bin" => '/usr/sbin', "$root/xcatpost" => '/xcatpost'},
+        writable => {"$root/home" => '/home'},
+        env => {MASTER => '192.0.2.1', XCATSERVER => '192.0.2.1:3001'}},
+        '/bin/bash', '/postscripts/sudoer', shellwords($args));
+    diag($output) if $output =~ /bwrap:/;
 
     return {
         root            => $root,
         rc              => $rc,
         calls           => read_file("$root/calls"),
-        log             => read_file("$root/log"),
+        log             => read_file("$root/messages"),
         sudoers         => read_file("$root/etc/sudoers"),
         managed         => read_file("$root$managed"),
         authorized_keys => read_file("$root/home/$user/.ssh/authorized_keys"),
@@ -134,24 +134,12 @@ sub run_sudoer {
 sub read_file {
     my ($p) = @_;
     return '' unless -e $p;
-    open my $fh, '<', $p or die "open $p: $!";
-    local $/;
-    my $content = <$fh>;
-    close $fh;
-    return defined $content ? $content : '';
-}
-
-sub write_file {
-    my ($p, $c) = @_;
-    open my $fh, '>', $p or die "open $p: $!";
-    print {$fh} $c;
-    close $fh;
-    return;
+    return read_text($p);
 }
 
 sub write_stub {
     my ($p, $body) = @_;
-    write_file($p, "#!/bin/sh\n$body");
+    write_text($p, "#!/bin/sh\n$body");
     chmod 0755, $p;
     return;
 }
@@ -208,7 +196,7 @@ sub leftovers {
 
     my $opskeys = "$r->{root}/home/ops/.ssh/authorized_keys";
     make_path("$r->{root}/home/ops/.ssh");
-    write_file($opskeys, read_file($opskeys) . "ssh-ed25519 OPSKEY ops\@laptop\n");
+    write_text($opskeys, read_file($opskeys) . "ssh-ed25519 OPSKEY ops\@laptop\n");
     my $again = run_sudoer(root => $r->{root}, user => 'admin', args => '-u admin', reply => $hash_reply);
     is($again->{rc}, 0, 'a rerun with another name completes');
     is($again->{managed}, managed_for('admin'), 'the managed file names the new sudoer only');
@@ -227,7 +215,7 @@ sub leftovers {
     my $legacy = $legacy_rule . $legacy_tty . $legacy_rule . $legacy_tty;
     my $root = scratch_tree(legacy => $legacy, accounts => ['xcat:1001:/bin/bash']);
     make_path("$root/home/xcat/.ssh");
-    write_file("$root/home/xcat/.ssh/authorized_keys", "ssh-rsa RSAKEY\nssh-dss DSAKEY\n");
+    write_text("$root/home/xcat/.ssh/authorized_keys", "ssh-rsa RSAKEY\nssh-dss DSAKEY\n");
     my $r = run_sudoer(root => $root, reply => $hash_reply);
 
     is($r->{rc}, 0, 'the postscript completes on a node set up by the previous version');
@@ -245,7 +233,7 @@ sub leftovers {
     my $root = scratch_tree(reply => $hash_reply, legacy => $legacy_rule . $legacy_tty,
         accounts => ['xcat:1001:/bin/bash']);
     make_path("$root/home/xcat/.ssh");
-    write_file("$root/home/xcat/.ssh/authorized_keys", "ssh-rsa RSAKEY\nssh-dss DSAKEY\n");
+    write_text("$root/home/xcat/.ssh/authorized_keys", "ssh-rsa RSAKEY\nssh-dss DSAKEY\n");
     my $r = run_sudoer(root => $root, user => 'ops', args => '-u ops', reply => $hash_reply);
 
     is($r->{rc}, 0, 'a rename on a node set up by the previous version completes');
@@ -262,14 +250,14 @@ sub leftovers {
     like($r->{sudoers}, qr{^xcat ALL=}m, '/etc/sudoers is left as it was');
     is($r->{managed}, '', 'no managed file is written when the migration fails');
     is(leftovers($r->{root}), '', 'no temporary file is left behind by the failed migration');
-    like($r->{log}, qr{unable to take the legacy rule out of \S*/etc/sudoers}, 'the failed migration is logged');
+    like($r->{log}, qr{unable to take the legacy rule out of /etc/sudoers$}m, 'the failed migration is logged');
 }
 
 # --- an existing login account is kept, with its other keys -------------------
 {
     my $root = scratch_tree(accounts => ['xcat:1001:/bin/bash']);
     make_path("$root/home/xcat/.ssh");
-    write_file("$root/home/xcat/.ssh/authorized_keys", "ssh-ed25519 ADMINKEY admin\@mgmt\n");
+    write_text("$root/home/xcat/.ssh/authorized_keys", "ssh-ed25519 ADMINKEY admin\@mgmt\n");
     my $r = run_sudoer(root => $root, reply => $hash_reply);
 
     is($r->{rc}, 0, 'the postscript completes for an existing account');
@@ -303,8 +291,8 @@ sub leftovers {
 {
     my $root = scratch_tree(accounts => ['opsXadmin:1002:/bin/bash', 'ops.admin:1003:/bin/bash']);
     make_path("$root/home/opsXadmin/.ssh");
-    write_file("$root/home/opsXadmin/.ssh/authorized_keys", "KEEP\n");
-    write_file("$root/home/opsXadmin/keep.txt", "KEEP\n");
+    write_text("$root/home/opsXadmin/.ssh/authorized_keys", "KEEP\n");
+    write_text("$root/home/opsXadmin/keep.txt", "KEEP\n");
     my $r = run_sudoer(root => $root, user => 'ops.admin', args => '-u ops.admin', reply => $hash_reply);
 
     is($r->{rc}, 0, 'the postscript completes for a dotted name');
@@ -324,7 +312,7 @@ sub leftovers {
     unlike($r->{calls}, qr{^usermod}m, 'the password is left unchanged without a reply');
     is($r->{managed}, '', 'no sudo rule is granted without a reply');
     is($r->{authorized_keys}, '', 'no key is installed without a reply');
-    like($r->{log}, qr{no password for xcat, leaving the account unprivileged: no reply from 10\.0\.0\.1},
+    like($r->{log}, qr{no password for xcat, leaving the account unprivileged: no reply from 192\.0\.2\.1},
         'the missing reply is logged');
 }
 {
@@ -361,7 +349,7 @@ sub leftovers {
     is($r->{managed}, '', 'the rejected managed file is not installed');
     is(leftovers($r->{root}), '', 'the rejected temporary file is removed');
     is($r->{authorized_keys}, '', 'no key is installed when the rule cannot be written');
-    like($r->{log}, qr{unable to write .*xcat-sudoer}, 'the rejected rule is logged');
+    like($r->{log}, qr{unable to write /etc/sudoers\.d/xcat-sudoer$}m, 'the rejected rule is logged');
 }
 
 # --- root, service accounts, and non-login accounts are refused ---------------

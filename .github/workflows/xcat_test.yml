@@ -17,7 +17,7 @@ jobs:
           workdir=$(sudo mktemp -d /tmp/xcat-script-tests.XXXXXX)
           trap 'sudo rm -rf -- "$workdir"' EXIT
           sudo cp -R xCAT-test xCAT-server xCAT "$workdir/"
-          sudo sh -c 'cd "$1" && prove -v xCAT-test/native/getinstdisk_selection.t xCAT-test/native/enablekdump_per_node.t' sh "$workdir"
+          sudo sh -c 'cd "$1" && prove -v xCAT-test/native/getinstdisk_selection.t xCAT-test/native/enablekdump_per_node.t xCAT-test/native/sudoer_password_source.t' sh "$workdir"
       - name: Prepare xCAT syslog directory
         run: sudo install -d -o syslog -g adm -m 0750 /var/log/xcat
       - name: Run tests
