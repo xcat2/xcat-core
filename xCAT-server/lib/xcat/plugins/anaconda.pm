@@ -957,15 +957,9 @@ sub mknetboot
         }
 
         my $selinux = $selinux_modes->{$node} || 'disabled';
-        if ($selinux ne 'disabled') {
-            if (!xCAT::SELinux->netboot_supported($osver)) {
-                $selinux_why{$node} = "the $osver stateless image cannot label its root";
-                $selinux = 'disabled';
-            } elsif (defined($compressedrootimg) and $compressedrootimg eq 'rootimg.sfs'
-                and !-e "$rootimgdir/$xCAT::SELinux::SQUASHFS_LABELS") {
-                $selinux_why{$node} = "rootimg.sfs has no SELinux labels, run packimage with squashfs-tools 4.6 or later";
-                $selinux = 'disabled';
-            }
+        if ($selinux ne 'disabled' and !xCAT::SELinux->netboot_supported($osver)) {
+            $selinux_why{$node} = "a stateless $osver node cannot label its RAM root";
+            $selinux = 'disabled';
         }
         if ($selinux_why{$node}) {
             $callback->({ warning => ["$node: SELinux is disabled: $selinux_why{$node}"] });

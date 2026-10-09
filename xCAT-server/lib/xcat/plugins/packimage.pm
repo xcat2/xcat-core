@@ -37,7 +37,6 @@ use File::Path;
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::SvrUtils;
-use xCAT::SELinux;
 use xCAT::PasswordUtils;
 use Digest::MD5 qw(md5_hex);
 
@@ -643,7 +642,6 @@ sub process_request {
         }
         $oldmask = umask 0077;
     } elsif ($method =~ /squashfs/) {
-        unlink("$destdir/$xCAT::SELinux::SQUASHFS_LABELS");
         $temppath = eval { mkdtemp("/tmp/packimage.$$.XXXXXXXX") }
           or return $native_failure->("Cannot create a staging directory: $@");
         chmod 0755, $temppath;
@@ -674,35 +672,15 @@ sub process_request {
             }
             return $native_failure->("mksquashfs not found, squashfs-tools rpm should be installed on the management node");
         }
-        # The temporary copy has the labels of this host. Store the labels of the image policy.
-        my $selinux_pseudo;
-        if ($osver =~ $xCAT::SELinux::POLICY_OS) {
-            my ($label_args, $label_warning) = xCAT::SELinux->squashfs_label_args(
-                root    => $temppath,
-                pseudo  => "$temppath.selinux",
-                version => scalar(`mksquashfs -version 2>&1`),
-            );
-            if ($label_args) {
-                $selinux_pseudo = "$temppath.selinux";
-                $flags .= join('', map { " '$_'" } @{$label_args});
-            } else {
-                $callback->({ warning => ["$label_warning. Nodes that boot the squashfs image get SELinux disabled."] });
-            }
-        }
-
         my $mksquashfs_command = "mksquashfs $temppath $archive_output $flags";
         xCAT::Utils->runcmd($mksquashfs_command, 0, 1);
         my $rc = $::RUNCMD_RC;
-        unlink($selinux_pseudo) if $selinux_pseudo;
         if ($rc) {
             return $native_failure->("Command \"$mksquashfs_command\" failed");
         }
         $rc = system("rm -rf $temppath");
         if ($rc) {
             return $native_failure->("Failed to clean up temp space");
-        }
-        if ($selinux_pseudo and open(my $marker, '>', "$destdir/$xCAT::SELinux::SQUASHFS_LABELS")) {
-            close($marker);
         }
     }
 

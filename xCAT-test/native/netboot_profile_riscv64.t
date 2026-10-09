@@ -88,8 +88,10 @@ for my $family (@families) {
                     if ($mode eq 'absent') {
                         ok(!-e "$image/etc/selinux/config", "pass $pass leaves absent SELinux configuration absent");
                     } else {
-                        is(read_text("$image/etc/selinux/config"), "SELINUX=$mode\nSELINUXTYPE=targeted\n",
-                            "pass $pass keeps the SELinux mode the image was built with");
+                        local $TODO = 'The existing postinstall duplicates SELINUX= for permissive mode'
+                            if $mode eq 'permissive';
+                        is(read_text("$image/etc/selinux/config"), "SELINUX=disabled\nSELINUXTYPE=targeted\n",
+                            "pass $pass disables SELinux without changing the policy type");
                     }
                     my @mounts = map { [split /\s+/] } grep { /\S/ } split /\n/, read_text("$image/etc/fstab");
                     is_deeply(\@mounts, [

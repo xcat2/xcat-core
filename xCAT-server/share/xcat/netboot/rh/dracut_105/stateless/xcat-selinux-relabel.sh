@@ -1,1 +1,0 @@
-../../dracut_047/xcat-selinux-relabel.sh

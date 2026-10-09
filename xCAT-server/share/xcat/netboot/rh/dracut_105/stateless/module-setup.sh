@@ -28,9 +28,6 @@ install() {
     # cmdline hook
     inst_hook cmdline 10 "$moddir/xcat-cmdline.sh"
 
-    # After 98selinux loads the policy of the image at pre-pivot 50.
-    inst_hook pre-pivot 60 "$moddir/xcat-selinux-relabel.sh"
-
     # udev rules with "xcat"
     for file in /etc/udev/rules.d/*; do
         if grep -qi xcat "$file"; then
