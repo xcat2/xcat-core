@@ -13,9 +13,9 @@ jobs:
       - name: Enable postscript test namespaces
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Install lifecycle test dependencies
-        run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests ucf debconf-utils systemd libxml-simple-perl
+        run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests ucf debconf-utils systemd libxml-simple-perl apache2 curl
       - name: Test Debian package lifecycle
-        run: prove -v xCAT-test/native/xcatd_debian_lifecycle.t xCAT-test/native/xcatd_restart_callers.t
+        run: prove -v xCAT-test/native/xcatd_debian_lifecycle.t xCAT-test/native/xcatd_restart_callers.t xCAT-test/native/apache_package_lifecycle.t
       - name: Prepare xCAT syslog directory
         if: ${{ !cancelled() }}
         run: sudo install -d -o syslog -g adm -m 0750 /var/log/xcat
@@ -41,8 +41,8 @@ jobs:
       - name: Install lifecycle test dependencies
         run: |
           dnf install -y epel-release
-          dnf --enablerepo=${{ matrix.repository }} install -y perl perl-Capture-Tiny perl-File-Slurper perl-Test-Simple rpm-build bubblewrap systemd chkconfig initscripts tar gzip which diffutils procps-ng
+          dnf --enablerepo=${{ matrix.repository }} install -y perl perl-Capture-Tiny perl-File-Slurper perl-Test-Simple rpm-build bubblewrap systemd chkconfig initscripts tar gzip which diffutils httpd curl procps-ng
       - name: Enable lifecycle test namespaces
         run: sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Test RPM package lifecycle
-        run: su -s /bin/sh nobody -c 'prove -v xCAT-test/native/xcatd_rpm_lifecycle.t xCAT-test/native/apache_rpm_configuration.t'
+        run: su -s /bin/sh nobody -c 'prove -v xCAT-test/native/xcatd_rpm_lifecycle.t xCAT-test/native/apache_rpm_configuration.t xCAT-test/native/apache_package_lifecycle.t'
