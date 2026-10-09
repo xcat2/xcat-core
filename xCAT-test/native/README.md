@@ -2,7 +2,8 @@
 
 These tests use the source checkout with RPM tools, Linux namespaces or real
 service binaries. They are separate from `unit/` and are not discovered by the
-default pull-request unit run. Run them explicitly on a disposable Linux host.
+unit runner. CI selects specific cases explicitly; run the others on a
+disposable Linux host.
 
 The postinstall case requires bubblewrap and the Perl modules used by the xCAT
 template renderer. It runs complete rendered installer and postboot scripts in
@@ -246,3 +247,36 @@ The unit test retains checks of the vendored release key, requested kernel
 fragments and console service configuration. The BATS tests retain runtime,
 console, hardware and packet behavior. None of these checks replaces a full
 image build, inspection of its resolved kernel configuration or a boot test.
+
+## Profile artifacts
+
+These cases render install profiles, run netboot postscripts, build a Debian
+repository, and execute rendered Subiquity commands. Run them as an ordinary
+user with Bubblewrap and unprivileged user namespaces enabled:
+
+```
+prove xCAT-test/native/install_profile_riscv64.t \
+      xCAT-test/native/netboot_profile_riscv64.t \
+      xCAT-test/native/builddebs_riscv64.t \
+      xCAT-test/native/ubuntu_subiquity_template.t
+```
+
+The renderers need the system Perl with the xCAT dependencies, XML::Simple,
+DBD::SQLite, Capture::Tiny, and File::Slurper. The sandbox clears the environment
+and does not mount perlbrew or local::lib directories. The Subiquity case also
+needs /usr/bin/python3 with PyYAML; on EL8, install python36 for that path.
+The Debian case needs debhelper, devscripts, fakeroot, and reprepro, and skips
+on non-Debian hosts. Each case creates its own temporary files and database.
+The temporary directory must allow execution; set TMPDIR if /tmp is noexec.
+Sandbox commands require GNU timeout and have a 45-second limit.
+Pull-request CI runs these cases and rejects whole-file skips. The permissive
+SELinux case records an existing postinstall defect as TODO, without changing
+production behavior.
+
+The netboot case executes the selected postinstall file directly. Its private
+/bin/sh uses Bash, as on EL, including when the test host uses another shell.
+
+The Subiquity case replaces downloads and external commands, and uses a
+loopback install-monitor peer. It does not install an operating system.
+Architecture names in these fixtures do not qualify native firmware or boot
+behavior on those architectures.
