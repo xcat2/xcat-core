@@ -16,3 +16,6 @@ jobs:
         run: sudo install -d -o syslog -g adm -m 0750 /var/log/xcat
       - name: Run tests
         run: perl github_action_xcat_test.pl
+      - name: Run profile artifact tests
+        working-directory: ${{ runner.temp }}/xcat-core-unitsrc
+        run: prove -v xCAT-test/native/install_profile_riscv64.t
