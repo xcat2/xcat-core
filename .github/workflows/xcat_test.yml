@@ -12,6 +12,12 @@ jobs:
         run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests bats bubblewrap rpm rsyslog build-essential fakeroot reprepro devscripts debhelper libcapture-tiny-perl libfile-slurper-perl libjson-perl libyaml-pp-perl libparallel-forkmanager-perl libsoap-lite-perl libdbi-perl libcgi-pm-perl quilt openssh-server dpkg looptools genometools software-properties-common grub-common grub-efi-amd64-bin
       - name: Enable postscript test namespaces
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Test isolated system scripts
+        run: |
+          workdir=$(sudo mktemp -d /tmp/xcat-script-tests.XXXXXX)
+          trap 'sudo rm -rf -- "$workdir"' EXIT
+          sudo cp -R xCAT-test xCAT-server xCAT "$workdir/"
+          sudo sh -c 'cd "$1" && prove -v xCAT-test/native/getinstdisk_selection.t' sh "$workdir"
       - name: Prepare xCAT syslog directory
         run: sudo install -d -o syslog -g adm -m 0750 /var/log/xcat
       - name: Run tests
