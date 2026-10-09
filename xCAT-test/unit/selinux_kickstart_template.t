@@ -94,8 +94,18 @@ foreach my $case (@templates) {
             unlike($ks, $relabel, "$template does not relabel a $mode node");
         } else {
             like($post, $relabel, "$template relabels the xCAT files in %post for a $mode node");
-            like($post, qr/$relabel.*\n\}\s*&>>\/var\/log\/xcat\/xcat\.log\s*\n%end\z/s,
-                "$template relabels after the xCAT post scripts ran");
+
+            # The relabel has to run after the xCAT post scripts wrote their files, so
+            # compare where each one lands. A regex that only spans from the relabel to
+            # the end of %post passes wherever the relabel sits.
+            my @post_lines = split(/\n/, $post);
+            my ($relabel_at) = grep { $post_lines[$_] =~ $relabel } 0 .. $#post_lines;
+            my @xcat_at = grep {
+                $_ != $relabel_at && $post_lines[$_] =~ /mypostscript|xcatdsklspost|updateflag/
+            } 0 .. $#post_lines;
+            ok(scalar(@xcat_at) > 0, "$template runs the xCAT post scripts in %post");
+            ok(defined $relabel_at && $relabel_at > $xcat_at[-1],
+                "$template relabels at line $relabel_at, after the last xCAT post script at line $xcat_at[-1]");
         }
     }
 }

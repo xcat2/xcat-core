@@ -58,7 +58,7 @@ label:mn_only,selinux
 cmd:getenforce
 check:rc==0
 check:output=~^Enforcing$
-cmd:sh -c 'rm -f /tmp/selinux_mn_labels.ck; ausearch --input-logs -m AVC,USER_AVC --checkpoint /tmp/selinux_mn_labels.ck -ts today > /dev/null 2>&1; true'
+cmd:sh -c 'rm -f /tmp/selinux_mn_labels.ck; ausearch --input-logs -m AVC,USER_AVC --checkpoint /tmp/selinux_mn_labels.ck -ts today > /dev/null 2>&1; date "+%x %T" > /tmp/selinux_mn_labels.start; true'
 check:rc==0
 cmd:rpm -q xCAT-selinux
 check:rc==0
@@ -96,7 +96,25 @@ check:rc==0
 cmd:sh -c 'grep -F "permissive=0" /tmp/selinux_mn_labels.avc | wc -l'
 check:rc==0
 check:output=~^0$
-cmd:rm -f /tmp/selinux_mn_labels.ck /tmp/selinux_mn_labels.avc
+cmd:sh -c '/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/selinux_avc_check.sh "$(cat /tmp/selinux_mn_labels.start)"'
+check:rc==0
+check:output=~XCAT_AVC=0
+cmd:sh -c 'date "+%x %T" > /tmp/selinux_mn_control.start; sleep 1; chcon -t shadow_t /install/postscripts/xcatdsklspost'
+check:rc==0
+cmd:sh -c 'curl -s -o /dev/null -w "%{http_code}" http://localhost/install/postscripts/xcatdsklspost'
+check:rc==0
+check:output=~403
+cmd:sh -c '/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/selinux_avc_check.sh "$(cat /tmp/selinux_mn_control.start)"'
+check:rc==1
+check:output=~XCAT_AVC=[1-9]
+cmd:restorecon -F /install/postscripts/xcatdsklspost
+check:rc==0
+cmd:ls -Z /install/postscripts/xcatdsklspost
+check:rc==0
+check:output=~:public_content_t:
+cmd:sh -c 'curl -s -f -o /dev/null http://localhost/install/postscripts/xcatdsklspost'
+check:rc==0
+cmd:rm -f /tmp/selinux_mn_labels.start /tmp/selinux_mn_control.start /tmp/selinux_mn_labels.ck /tmp/selinux_mn_labels.avc
 end
 
 start:selinux_restapi_avc
@@ -105,7 +123,7 @@ label:mn_only,selinux,restapi
 cmd:getenforce
 check:rc==0
 check:output=~^Enforcing$
-cmd:sh -c 'rm -f /tmp/selinux_restapi_avc.ck; ausearch --input-logs -m AVC,USER_AVC --checkpoint /tmp/selinux_restapi_avc.ck -ts today > /dev/null 2>&1; true'
+cmd:sh -c 'rm -f /tmp/selinux_restapi_avc.ck; ausearch --input-logs -m AVC,USER_AVC --checkpoint /tmp/selinux_restapi_avc.ck -ts today > /dev/null 2>&1; date "+%x %T" > /tmp/selinux_restapi_avc.start; true'
 check:rc==0
 cmd:sh -c 'rpm -q mod_ssl || dnf install -y mod_ssl'
 check:rc==0
@@ -121,5 +139,8 @@ check:rc==0
 cmd:sh -c 'grep -F "permissive=0" /tmp/selinux_restapi_avc.avc | wc -l'
 check:rc==0
 check:output=~^0$
-cmd:rm -f /tmp/selinux_restapi_avc.ck /tmp/selinux_restapi_avc.avc
+cmd:sh -c '/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/selinux_avc_check.sh "$(cat /tmp/selinux_restapi_avc.start)"'
+check:rc==0
+check:output=~XCAT_AVC=0
+cmd:rm -f /tmp/selinux_restapi_avc.start /tmp/selinux_restapi_avc.ck /tmp/selinux_restapi_avc.avc
 end

@@ -23,15 +23,19 @@ check:rc==0
 check:output=~ssh_home_t
 check:output!~default_t
 check:output!~unlabeled_t
-cmd:xdsh $$CN "restorecon -RnvF /xcatpost /opt/xcat /root /etc/ssh /var/log/xcat"
+cmd:xdsh $$CN "restorecon -Rnv /xcatpost /opt/xcat /root /etc/ssh /var/log/xcat"
 check:rc==0
 check:output!~Would relabel
-cmd:xdsh $$CN "ausearch --input-logs -m AVC,USER_AVC -ts boot"
-check:output=~<no matches>
-check:output!~type=AVC
-cmd:sh -c 'ausearch --input-logs -m AVC,USER_AVC -ts $(cat /tmp/selinux_cn_diskful.start)'
-check:rc==1
-check:output=~<no matches>
+cmd:xdcp $$CN /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/selinux_avc_check.sh /tmp/
+check:rc==0
+cmd:xdsh $$CN "sh /tmp/selinux_avc_check.sh boot"
+check:rc==0
+check:output=~XCAT_AVC=0
+cmd:xdsh $$CN "rm -f /tmp/selinux_avc_check.sh"
+check:rc==0
+cmd:sh -c '/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/selinux_avc_check.sh "$(cat /tmp/selinux_cn_diskful.start)"'
+check:rc==0
+check:output=~XCAT_AVC=0
 cmd:chdef -t node -o $$CN selinux=
 check:rc==0
 cmd:rm -f /tmp/selinux_cn_diskful.start
@@ -71,15 +75,19 @@ check:output=~ssh_home_t
 check:output!~tmpfs_t
 check:output!~default_t
 check:output!~unlabeled_t
-cmd:xdsh $$CN "restorecon -RnvF /xcatpost /opt/xcat /root /etc/ssh /usr/sbin"
+cmd:xdsh $$CN "restorecon -Rnv /xcatpost /opt/xcat /root /etc/ssh /usr/sbin"
 check:rc==0
 check:output!~Would relabel
-cmd:xdsh $$CN "ausearch --input-logs -m AVC,USER_AVC -ts boot"
-check:output=~<no matches>
-check:output!~type=AVC
-cmd:sh -c 'ausearch --input-logs -m AVC,USER_AVC -ts $(cat /tmp/selinux_cn_diskless.start)'
-check:rc==1
-check:output=~<no matches>
+cmd:xdcp $$CN /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/selinux_avc_check.sh /tmp/
+check:rc==0
+cmd:xdsh $$CN "sh /tmp/selinux_avc_check.sh boot"
+check:rc==0
+check:output=~XCAT_AVC=0
+cmd:xdsh $$CN "rm -f /tmp/selinux_avc_check.sh"
+check:rc==0
+cmd:sh -c '/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/selinux_avc_check.sh "$(cat /tmp/selinux_cn_diskless.start)"'
+check:rc==0
+check:output=~XCAT_AVC=0
 cmd:chdef -t node -o $$CN selinux=
 check:rc==0
 cmd:rm -f /tmp/selinux_cn_diskless.start
@@ -121,15 +129,19 @@ check:output=~bin_t
 check:output!~tmp_t
 check:output!~default_t
 check:output!~unlabeled_t
-cmd:xdsh $$CN "restorecon -RnvF /usr/bin /usr/sbin /etc/ssh /xcatpost /opt/xcat"
+cmd:xdsh $$CN "restorecon -Rnv /usr/bin /usr/sbin /etc/ssh /xcatpost /opt/xcat"
 check:rc==0
 check:output!~Would relabel
-cmd:xdsh $$CN "ausearch --input-logs -m AVC,USER_AVC -ts boot"
-check:output=~<no matches>
-check:output!~type=AVC
-cmd:sh -c 'ausearch --input-logs -m AVC,USER_AVC -ts $(cat /tmp/selinux_cn_squashfs.start)'
-check:rc==1
-check:output=~<no matches>
+cmd:xdcp $$CN /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/selinux_avc_check.sh /tmp/
+check:rc==0
+cmd:xdsh $$CN "sh /tmp/selinux_avc_check.sh boot"
+check:rc==0
+check:output=~XCAT_AVC=0
+cmd:xdsh $$CN "rm -f /tmp/selinux_avc_check.sh"
+check:rc==0
+cmd:sh -c '/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/selinux_avc_check.sh "$(cat /tmp/selinux_cn_squashfs.start)"'
+check:rc==0
+check:output=~XCAT_AVC=0
 cmd:chdef -t node -o $$CN selinux=
 check:rc==0
 cmd:rm -f /tmp/selinux_cn_squashfs.start

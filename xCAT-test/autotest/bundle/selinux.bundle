@@ -1,0 +1,6 @@
+selinux_xcatd_domain
+selinux_mn_labels
+selinux_restapi_avc
+selinux_cn_diskful_enforcing
+selinux_cn_diskless_disabled_by_design
+selinux_cn_diskless_site_disabled
