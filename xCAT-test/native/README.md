@@ -4,6 +4,22 @@ These tests use the source checkout with RPM tools, Linux namespaces or real
 service binaries. They are separate from `unit/` and are not discovered by the
 default pull-request unit run. Run them explicitly on a disposable Linux host.
 
+The pull-request workflow runs these packaging cases explicitly as an ordinary
+user:
+
+```
+prove xCAT-test/native/probe_package_payload.t \
+      xCAT-test/native/release_repository.t \
+      xCAT-test/native/package_relations.t
+```
+
+They need RPM build/query tools, cpio, createrepo_c, zstd, rsync, GnuPG, Python RPM
+bindings, user/mount namespaces, and the Perl modules Capture::Tiny,
+File::Slurper, Parallel::ForkManager and XML::LibXML. The probe command also
+needs `which`. The release test uses an ephemeral signing key and removes its
+agent. These checks inspect real packages and repository output; they do not
+qualify package installation on every target architecture.
+
 Run the package and unprivileged namespace cases as an ordinary user:
 
 ```
