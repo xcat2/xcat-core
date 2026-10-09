@@ -12,6 +12,10 @@ jobs:
         run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests bats bubblewrap rpm rsyslog build-essential fakeroot reprepro devscripts debhelper libcapture-tiny-perl libfile-slurper-perl libjson-perl libyaml-pp-perl libparallel-forkmanager-perl libsoap-lite-perl libdbi-perl libcgi-pm-perl quilt openssh-server dpkg looptools genometools software-properties-common grub-common grub-efi-amd64-bin
       - name: Enable postscript test namespaces
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Install package test dependencies
+        run: sudo apt-get install -y --no-install-recommends cpio
+      - name: Exercise probe package payloads
+        run: prove xCAT-test/native/probe_package_payload.t
       - name: Prepare xCAT syslog directory
         run: sudo install -d -o syslog -g adm -m 0750 /var/log/xcat
       - name: Run tests
