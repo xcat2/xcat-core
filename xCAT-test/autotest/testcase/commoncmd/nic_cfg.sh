@@ -33,13 +33,15 @@
 # know the connection naming.
 ###############################################################################
 
-NMDIR=/etc/NetworkManager/system-connections
-RHDIR=/etc/sysconfig/network-scripts
-SUSEDIR=/etc/sysconfig/network
-UBUDIR=/etc/network/interfaces.d
-BACKUP=/tmp/backupnet
+# Overridable so a bats test can drive the subcommands against a scratch tree.
+NMDIR=${NMDIR:-/etc/NetworkManager/system-connections}
+RHDIR=${RHDIR:-/etc/sysconfig/network-scripts}
+SUSEDIR=${SUSEDIR:-/etc/sysconfig/network}
+UBUDIR=${UBUDIR:-/etc/network/interfaces.d}
+BACKUP=${BACKUP:-/tmp/backupnet}
 
 detect_backend() {
+    if [ -n "$NIC_CFG_BACKEND" ]; then echo "$NIC_CFG_BACKEND"; return 0; fi
     if command -v nmcli >/dev/null 2>&1 && systemctl is-active --quiet NetworkManager 2>/dev/null; then
         echo nm
     elif [ -d "$SUSEDIR" ] && grep -qi suse /etc/*release 2>/dev/null; then
@@ -179,12 +181,18 @@ case "$1" in
         esac
         ;;
     backup)
-        be=$(detect_backend); rm -rf "$BACKUP"; mkdir -p "$BACKUP"
+        # An absent source directory is the state of a node that has just netbooted.
+        be=$(detect_backend); rm -rf "$BACKUP"; mkdir -p "$BACKUP" || exit 1
         case "$be" in
-            nm)   cp -af "$NMDIR"/. "$BACKUP"/ 2>/dev/null ;;
-            suse) cp -af "$SUSEDIR"/ifcfg-* "$BACKUP"/ 2>/dev/null ;;
-            rh)   cp -af "$RHDIR" "$BACKUP"/ 2>/dev/null ;;
-            ubuntu) cp -af "$UBUDIR"/. "$BACKUP"/ 2>/dev/null ;;
+            nm)     if [ -d "$NMDIR" ];   then cp -af "$NMDIR"/. "$BACKUP"/ 2>/dev/null; fi ;;
+            suse)
+                for f in "$SUSEDIR"/ifcfg-*; do
+                    [ -e "$f" ] || continue
+                    cp -af "$f" "$BACKUP"/ || exit 1
+                done
+                ;;
+            rh)     if [ -d "$RHDIR" ];   then cp -af "$RHDIR" "$BACKUP"/ 2>/dev/null; fi ;;
+            ubuntu) if [ -d "$UBUDIR" ];  then cp -af "$UBUDIR"/. "$BACKUP"/ 2>/dev/null; fi ;;
         esac
         ;;
     restore)

@@ -2981,9 +2981,10 @@ sub kea_build_dhcp4_intent
         my $interface = $netif;
         my $remote = 0;
         if ($interface =~ /!remote!\S*/) {
+            # A relayed network has no local NIC, so site.dhcpinterfaces never names it.
+            # Without a subnet4, subnet_id_for_ip finds nothing and no reservation is written.
             $remote = 1;
             $interface =~ s/!remote!\s*(.*)$/$1/;
-            next unless $dhcp_interfaces{'!remote!'};
         } else {
             next unless $dhcp_interfaces{$interface};
         }
