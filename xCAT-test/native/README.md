@@ -26,6 +26,15 @@ sudo prove xCAT-test/native/ip_forwarding.t \
       xCAT-test/native/syslog_openeuler*.t
 ```
 
+The mock result directory case needs the mock Python library, and root for its
+ownership checks. The staged sources case needs root to read the sources as uid
+1000. The `xcat_test` workflow runs both as root in a Fedora container:
+
+```
+sudo prove xCAT-test/native/mock_resultdir_owner.t \
+      xCAT-test/native/build_sources_other_uid.t
+```
+
 The PostgreSQL case starts a private server with only a Unix socket. Run it as
 an ordinary user with `XCAT_TEST_PG_BINDIR` set to the directory containing
 `initdb`, `pg_ctl`, `postgres`, `psql` and `createdb`:

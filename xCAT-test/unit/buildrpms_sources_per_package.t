@@ -4,6 +4,7 @@
 use strict;
 use warnings;
 
+use Cwd ();
 use File::Path qw(make_path);
 use File::Slurper qw(write_text);
 use File::Temp qw(tempdir);
@@ -12,11 +13,23 @@ use lib "$FindBin::Bin/../../build-utils/lib";
 use Test::More;
 
 use XCAT::BuildUtils qw(build_sources_base build_sources_dir prepare_build_sources_dir
-    remove_build_sources_dir sweep_build_sources_dirs);
+    remove_build_sources_dir sweep_build_sources_dirs share_build_sources_dir);
 
+# mock reads the staged sources as the uid of the target's chrootuid, and $HOME of a
+# root build is /root, mode 0550. The base belongs to the checkout, not to $HOME.
 my $home = tempdir(CLEANUP => 1);
+local $ENV{HOME} = "$home/home";
 my $base = build_sources_base($home);
-is($base, "$home/rpmbuild/sources", 'the base directory is under the rpmbuild tree');
+is($base, "$home/dist/sources", 'the base directory is under the dist tree of the checkout');
+unlike($base, qr{^\Q$ENV{HOME}\E/}, 'the base directory is not under $HOME');
+{
+    my $cwd = Cwd::getcwd();
+    chdir $home or die "chdir $home: $!\n";
+    my $default = build_sources_base();
+    chdir $cwd or die "chdir $cwd: $!\n";
+    is($default, Cwd::abs_path($home) . "/dist/sources",
+        'the base directory defaults to the dist tree of the working directory');
+}
 
 # Two live processes on one host never have the same pid. The host name keeps two
 # hosts apart when $HOME is on NFS.
@@ -88,5 +101,24 @@ ok(!-e $reaped, 'the default check deletes the directory of a reaped process');
 
 is_deeply([sweep_build_sources_dirs("$home/absent", 'hosta', $is_alive)], [],
     'a missing base directory is not an error');
+
+# Another uid must traverse every directory and read every file, whatever the umask.
+{
+    my $root  = tempdir(CLEANUP => 1);
+    my $umask = umask 077;
+    my $sbase = build_sources_base($root);
+    my $dir   = prepare_build_sources_dir($sbase, 401, 'hosta');
+    make_path("$dir/sub");
+    write_text("$dir/xCAT-2.20.0.tar.gz", "payload\n");
+    write_text("$dir/sub/xcat.conf", "conf\n");
+    share_build_sources_dir($dir);
+    umask $umask;
+    for my $d ("$root/dist", $sbase, $dir, "$dir/sub") {
+        is((stat $d)[2] & 0055, 0055, "other users can list and enter $d");
+    }
+    for my $f ("$dir/xCAT-2.20.0.tar.gz", "$dir/sub/xcat.conf") {
+        is((stat $f)[2] & 0044, 0044, "other users can read $f");
+    }
+}
 
 done_testing;

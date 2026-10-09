@@ -14,7 +14,9 @@ package XCAT::BuildUtils;
 use strict;
 use warnings;
 use Exporter 'import';
+use Cwd ();
 use File::Copy qw(copy move);
+use File::Find qw(find);
 use File::Basename qw(basename);
 use File::Path qw(make_path remove_tree);
 use File::Temp qw(tempdir tempfile);
@@ -34,7 +36,7 @@ our @EXPORT_OK = qw(
     reprepro_distributions reprepro_options
     lock_id_for take_build_lock
     build_sources_base build_sources_dir prepare_build_sources_dir
-    remove_build_sources_dir sweep_build_sources_dirs
+    remove_build_sources_dir sweep_build_sources_dirs share_build_sources_dir
     sh_quote clean_debian_residue git_revision
     backup_file restore_file
     sh sh_or_die usage
@@ -42,7 +44,7 @@ our @EXPORT_OK = qw(
     buildinfo_text
     targetarch_from_target
     openeuler_build_target openeuler_repo_subdir
-    mock_config_text
+    mock_config_text mock_build_owner prepare_mock_resultdirs
     genesis_chroot_name genesis_target_arch genesis_build_plan
     genesis_log_errors genesis_log_deny_rules deb_belongs_to_dist
     genesis_dists genesis_dist_reason
@@ -980,18 +982,19 @@ sub genesis_log_errors {
 Descriptions: The directory that holds the per-process rpmbuild SOURCES directories.
 
 Arguments:
-  $home - the home directory; defaults to $ENV{HOME}
+  $checkout - the source checkout; defaults to the working directory
 
 Returns: the absolute path of the base directory.
 
 =cut
 
 #-------------------------------------------------------------------------------
+# mock reads the sources as chrootuid, and $HOME of a root build is /root, mode 0550.
 sub build_sources_base {
-    my ($home) = @_;
-    $home = $ENV{HOME} unless defined $home && length $home;
-    die "build_sources_base: no home directory\n" unless defined $home && length $home;
-    return "$home/rpmbuild/sources";
+    my ($checkout) = @_;
+    $checkout = Cwd::getcwd() unless defined $checkout && length $checkout;
+    die "build_sources_base: no checkout directory\n" unless defined $checkout && length $checkout;
+    return "$checkout/dist/sources";
 }
 
 #-------------------------------------------------------------------------------
@@ -1012,7 +1015,7 @@ Returns: the absolute path of the staging directory.
 #-------------------------------------------------------------------------------
 # Keyed by the process that stages. buildrpms.pl forks a child per package and target,
 # and mock --sources copies the whole directory, so a shared directory lets a peer's tar
-# truncate an archive mid-copy. A pid is unique only on one host, and $HOME can be on NFS.
+# truncate an archive mid-copy. A pid is unique only on one host, and the checkout can be on NFS.
 sub build_sources_dir {
     my ($base, $pid, $host) = @_;
     die "build_sources_dir: no base directory\n" unless defined $base && length $base;
@@ -1046,9 +1049,34 @@ sub prepare_build_sources_dir {
     my $dir = build_sources_dir(@_);
     # A directory with this name belongs to a dead process that had the same pid.
     remove_tree($dir) if -e $dir;
-    make_path($dir);
+    chmod 0755, make_path($dir), $dir;
     die "build_sources_dir: $dir was not created\n" unless -d $dir;
     return $dir;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 share_build_sources_dir
+
+Descriptions: Make a staging directory and its contents readable by every user,
+              whatever the umask was when they were written.
+
+Arguments:
+  $dir - the directory from prepare_build_sources_dir
+
+Returns: nothing.
+
+=cut
+
+#-------------------------------------------------------------------------------
+# mock copies --sources into the chroot as chrootuid, not as the uid that staged them.
+sub share_build_sources_dir {
+    my ($dir) = @_;
+    find({ no_chdir => 1, wanted => sub {
+        return if -l $_;
+        my $mode = (lstat $_)[2] & 07777;
+        chmod $mode | (-d _ ? 0555 : 0444), $_;
+    } }, $dir);
 }
 
 #-------------------------------------------------------------------------------
@@ -1152,11 +1180,84 @@ sub mock_config_text {
     # that only surfaces later as a confusing MN install failure. 'simple' isolation is a plain
     # chroot -- reliable for these RPM builds -- and sidesteps the nspawn cgroup race entirely.
     $text .= "config_opts['isolation'] = 'simple'\n";
-    # mock creates --resultdir and its logs as chrootuid, and buildrpms.pl passes a relative
-    # one under a tree it owns as root. This assignment replaces any uid the target declares,
-    # so the in-chroot build user becomes uid 0 as well.
-    $text .= "config_opts['chrootuid'] = 0\n";
-    # chrootgid is left unset on purpose: groupadd for the in-chroot group fails on gid 0.
     return $text;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 mock_build_owner
+
+    Descriptions: Report the uid and gid mock builds as, from mock's own
+                  configuration loader. The loader resolves include() and
+                  the assignments around it as a build does.
+
+    Arguments:
+        $chroot    - the name passed to mock -r
+        $configdir - the mock configuration directory; mock's default when undef
+
+    Returns: ($uid, $gid). With no chrootuid, $uid is the caller, as in mock.
+             $gid is undef when the loader reports none.
+
+=cut
+
+#-------------------------------------------------------------------------------
+my $MOCK_OWNER_LOADER = <<'PYTHON';
+import sys
+try:
+    from mockbuild.config import MOCKCONFDIR, load_config
+except ImportError:
+    sys.exit('mock is not installed: cannot import mockbuild.config')
+opts = load_config(sys.argv[2] or MOCKCONFDIR, sys.argv[1])
+print(opts['chrootuid'], opts.get('chrootgid', ''))
+PYTHON
+
+sub mock_build_owner {
+    my ($chroot, $configdir) = @_;
+    open my $pipe, '-|', 'python3', '-c', $MOCK_OWNER_LOADER, $chroot, $configdir // ''
+        or die "Cannot run python3 to load the mock configuration $chroot: $!\n";
+    my $out = do { local $/; <$pipe> } // '';
+    close $pipe or die "mock cannot load the configuration $chroot\n";
+    my ($uid, $gid) = $out =~ /\A(\d+) (\d*)\n\z/
+        or die "mock gives no chrootuid for $chroot\n";
+    return ($uid, length $gid ? $gid : undef);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 prepare_mock_resultdirs
+
+    Descriptions: Give the --resultdir directories, and the files a previous
+                  build left in them, to the uid and gid mock builds as.
+                  mock writes its logs and packages there as chrootuid. A
+                  root build that stopped part way leaves root-owned 0644
+                  files that a non-root build cannot append to or replace.
+
+    Arguments:
+        $chroot    - the name passed to mock -r
+        $configdir - the mock configuration directory; mock's default when undef
+        @dirs      - the result directories, created when missing
+
+    Returns: nothing. Dies when a chown fails.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub prepare_mock_resultdirs {
+    my ($chroot, $configdir, @dirs) = @_;
+    my ($uid, $gid) = mock_build_owner($chroot, $configdir);
+    make_path(@dirs);
+    return if $uid == $>;
+    $gid //= -1;
+    for my $dir (@dirs) {
+        opendir(my $dh, $dir) or die "Cannot read $dir: $!\n";
+        my @files = grep { -f $_ && !-l $_ } map { "$dir/$_" } readdir $dh;
+        closedir $dh;
+        for my $path ($dir, @files) {
+            chown($uid, $gid, $path) == 1
+                or die "FATAL: cannot give $path to uid $uid: $!\n";
+        }
+        # mock writes the packages as chrootuid:chrootgid.
+        chmod 0775, $dir;
+    }
 }
 
