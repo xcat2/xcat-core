@@ -70,6 +70,15 @@ jobs:
             echo 'a mock result directory test was skipped' >&2
             exit 1
           fi
+      - name: Run profile artifact tests
+        if: ${{ !cancelled() }}
+        working-directory: ${{ runner.temp }}/xcat-core-unitsrc
+        shell: bash
+        run: |
+          log=$(mktemp)
+          trap 'rm -f -- "$log"' EXIT
+          prove -v xCAT-test/native/install_profile_riscv64.t | tee "$log"
+          ! grep -qi skipped "$log"
   rpm_lifecycle_test:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
