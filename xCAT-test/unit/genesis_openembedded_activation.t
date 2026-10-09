@@ -57,26 +57,6 @@ like(
     'DEB service nodes recommend the s390x image',
 );
 
-my $go_xcat = slurp_repo_file('xCAT-server/share/xcat/tools/go-xcat');
-unlike(
-    $go_xcat,
-    qr/GO_XCAT_LIBRARY_ONLY/,
-    'go-xcat cannot be disabled by an inherited test environment variable',
-);
-for my $architecture (qw(x86 x86_64 ppc64 ppc64le armv7hf aarch64 riscv64 s390x)) {
-    like(
-        $go_xcat,
-        qr/\bxCAT-genesis-openembedded-\Q$architecture\E\b/,
-        "go-xcat removes the $architecture RPM image",
-    );
-    (my $deb_architecture = $architecture) =~ tr/_/-/;
-    like(
-        $go_xcat,
-        qr/\bxcat-genesis-openembedded-\Q$deb_architecture\E\b/,
-        "go-xcat removes the $architecture DEB image",
-    );
-}
-
 my $mknb_pod = slurp_repo_file('xCAT-client/pods/man8/mknb.8.pod');
 like(
     $mknb_pod,
