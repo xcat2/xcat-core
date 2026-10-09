@@ -6,7 +6,14 @@ xCAT boots x86 nodes with iPXE through two ``netboot`` methods:
 * ``ipxe``: the unmodified iPXE release in the ``ipxe-xcat`` package.
 * ``xnba``: the xCAT Network Boot Agent in the ``xnba-undi`` package, a patched iPXE. This method is deprecated, and a later release removes it.
 
-Both methods run the same boot scripts. ``nodeset`` writes them under ``xcat/ipxe/nodes`` for ``ipxe`` and under ``xcat/xnba/nodes`` for ``xnba``. The xCAT packages install both ``ipxe-xcat`` and ``xnba-undi``.
+The two methods share the script writer, so the scripts are the same except where the method
+decides otherwise. ``nodeset`` writes them under ``xcat/ipxe/nodes`` for ``ipxe`` and under
+``xcat/xnba/nodes`` for ``xnba``. The xCAT packages install both ``ipxe-xcat`` and ``xnba-undi``.
+
+**Secure Boot applies to ``netboot=ipxe`` only.** A node with ``netboot=ipxe`` gets a ``shim``
+line before the kernel, so the firmware verifies what it loads. A node with ``netboot=xnba``
+does not: ``xnba.efi`` is unsigned, and no shim can chain to it. ``grub2`` and ``grub2-http``
+nodes, which is every ppc64le, aarch64 and riscv64 node, are outside this chapter.
 
 New x86 nodes get ``netboot=ipxe``: node discovery, profile-based node definitions and the x86 node templates of ``mkdef --template`` set it.
 
@@ -49,7 +56,16 @@ UEFI Secure Boot
 
 With Secure Boot on, the firmware loads the shim only when it trusts the Microsoft third-party UEFI CA, 2011 or 2023, that signs it. Some firmware turns that CA off by default: turn it on in the firmware setup.
 
-Secure Boot covers the loader only. The boot scripts then load a Linux kernel, ``elilo-x64.efi`` or the Genesis kernel, and the firmware refuses each one that no key in its database signs. Install nodes and run Genesis with Secure Boot off.
+The signature database of the firmware does not hold the keys of a Linux distribution, so the firmware refuses the kernel that the boot script loads. The UEFI boot scripts of ``netboot=ipxe`` nodes name a shim, and iPXE runs the kernel through it:
+
+* A node with an ``os`` value in its ``nodetype`` entry uses the shim of its install source, ``EFI/BOOT/BOOTX64.EFI`` or ``EFI/boot/bootx64.efi`` under ``/install/<os>/x86_64``. The vendor certificate of that shim signs the kernel of its own distribution.
+* Every other node uses ``xcat/ipxe/x86_64-sb/shimx64.efi``, which ``ipxe-xcat`` installs.
+
+iPXE fetches a shim only when it cannot load the kernel itself, so a node with Secure Boot off reads neither file.
+
+A shim also accepts a kernel that a MOK key signs. Nothing signs the Genesis kernel, so a node boots Genesis with Secure Boot on only after the site signs ``xcat/genesis.kernel.x86_64`` with its own key and enrolls that key with ``mokutil``. The discovery scripts under ``xcat/ipxe/nets`` name the shim of ``ipxe-xcat`` for that purpose.
+
+Two paths stay Secure Boot off. A kernel without an EFI stub boots through ``elilo-x64.efi``, and ESXi boots through ``esxboot-x64.efi``. No key signs either file. Boot these nodes with Secure Boot off.
 
 Known limits of the upstream loader
 -----------------------------------

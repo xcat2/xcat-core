@@ -35,10 +35,11 @@ initrd, kernel, userspace, or packaging follow-up work. They must be tracked,
 but they do not turn the DHCP backend acceptance row red unless the failure is
 caused by DHCP policy, allocation, or boot option rendering.
 
-Secure Boot is part of this matrix only for the upstream iPXE loader: the UEFI
-Secure Boot row checks that the shim loads ``snponly.efi``. Every other row runs
-with Secure Boot off. A Secure Boot OVMF build, such as ``OVMF_CODE.secboot.fd``
-with ``OVMF_VARS.secboot.fd``, can serve that row.
+Secure Boot is part of this matrix for the upstream iPXE loader and for the
+kernels it loads. Four rows run with Secure Boot on: the loader row, a UEFI
+install, a netboot image and discovery. Every other row runs with Secure Boot
+off. A Secure Boot OVMF build, such as ``OVMF_CODE.secboot.fd`` with
+``OVMF_VARS.secboot.fd``, serves those four rows.
 
 Backend Policy
 --------------
@@ -248,6 +249,22 @@ statements of x86 nodes.
      - A UEFI node with Secure Boot on loads ``snponly-shim.efi``, the shim
        loads ``snponly.efi``, and iPXE fetches the node script from
        ``xcat/ipxe/nodes``.
+   * - UEFI install with Secure Boot on
+     - ``ISC`` or ``Kea``
+     - A UEFI node with Secure Boot on and ``netboot=ipxe`` installs an
+       operating system. Its script under ``xcat/ipxe/nodes`` names the shim of
+       its install source, and the installer kernel starts.
+   * - Netboot image with Secure Boot on
+     - ``ISC`` or ``Kea``
+     - A UEFI node with Secure Boot on boots a netboot osimage. The kernel of
+       the image carries the signature of its distribution, and the shim of the
+       install source verifies it.
+   * - Discovery with Secure Boot on
+     - ``ISC`` or ``Kea``
+     - An unknown UEFI client with Secure Boot on starts Genesis. The site
+       signs ``xcat/genesis.kernel.x86_64`` and enrolls its key with
+       ``mokutil`` first. Without that key the shim refuses the kernel, which
+       is the expected result.
    * - Discovery
      - ``ISC`` or ``Kea``
      - An unknown BIOS client and an unknown UEFI client load the upstream
