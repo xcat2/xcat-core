@@ -500,16 +500,14 @@ sub run_bats_tests{
 
 #--------------------------------------------------------
 # Fuction name: run_source_integration_tests
-# Description:  Run the integration tests that read a file the Debian
-#               packages do not install. They run against the pre-build copy
-#               of the source tree, after install_xcat() put Apache on the
-#               runner. A skip fails the phase: the runner has every
+# Description:  Run source-only integration and native tests after package
+#               installation. A skip fails the phase: the runner has every
 #               prerequisite.
 # Attributes:
 # Return code:  0 all tests passed, 1 otherwise
 #--------------------------------------------------------
 sub run_source_integration_tests{
-    my $cmd = "cd $unitsrc && prove -v xCAT-test/integration/wsapi_apache_access.t";
+    my $cmd = "cd $unitsrc && prove -v xCAT-test/integration/wsapi_apache_access.t xCAT-test/native/postinstall_bootstrap.t";
     print "[run_source_integration_tests] running $cmd\n";
     my @output = runcmd("$cmd");
     print Dumper \@output;
