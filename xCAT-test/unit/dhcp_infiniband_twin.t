@@ -288,6 +288,38 @@ is_deeply(
     'the Ubuntu-limited OMAPI path avoids a failed-open cleanup on Ethernet',
 );
 
+foreach my $ifname (qw(ib0!eth0 eth0!ib0!eth1 eth0!ib0 !service!ib0 ib0.8001)) {
+    foreach my $cleanup (0, 1) {
+        is_deeply(
+            [ xCAT_plugin::dhcp::_infiniband_twin_delete_commands(
+                'node01', 'B8-3F-D2-4A-68-AA', 1, $ifname, $cleanup, 0
+            ) ],
+            [ $delete_name_commands, $cleanup ? $delete_address_commands : undef ],
+            "twin deletion on $ifname preserves cleanup mode $cleanup",
+        );
+    }
+}
+foreach my $case (
+    [ absent => undef ],
+    [ empty => '' ],
+    [ 'native InfiniBand' => 'b8:3f:d2:03:00:4a:68:aa' ],
+) {
+    is_deeply(
+        [ xCAT_plugin::dhcp::_infiniband_twin_delete_commands(
+            'node01', $case->[1], 32, 'ib0', 1, 0
+        ) ],
+        [],
+        "the $case->[0] address has no Ethernet twin to delete",
+    );
+}
+is_deeply(
+    [ xCAT_plugin::dhcp::_infiniband_twin_delete_commands(
+        'node01', 'b8:3f:d2:4a:68:aa', 1, 'ib0', 0, 1
+    ) ],
+    [],
+    'limited cleanup leaves an explicit InfiniBand identity alone',
+);
+
 my @moved_network_update_commands =
   xCAT_plugin::dhcp::_infiniband_twin_update_commands(
     'node01', 'b8:3f:d2:4a:68:aa', 1, 'eth0', '192.0.2.10',
@@ -331,6 +363,38 @@ is_deeply(
     [ $delete_name_commands, undef, undef ],
     'updating an explicit InfiniBand identity does not remove it by address',
 );
+
+my $primary_create = <<'OMAPI';
+new host
+set name = "node01"
+set hardware-address = b8:3f:d2:4a:68:aa
+set dhcp-client-identifier = b8:3f:d2:4a:68:aa
+set hardware-type = 1
+set ip-address = 192.0.2.10
+set statements = "ddns-hostname \"node01\"; option host-name \"node01\";"
+create
+close
+OMAPI
+my $primary_name_delete = "new host\nset name = \"node01\"\nopen\nremove\nclose\n";
+my $primary_ip_delete = "new host\nset ip-address = 192.0.2.10\nopen\nremove\nclose\n";
+my $primary_address_delete =
+  "new host\nset hardware-address = b8:3f:d2:4a:68:aa\nopen\nremove\nclose\n";
+{
+    local $xCAT_plugin::dhcp::distro;
+    foreach my $case (
+        [ 'rh8', $primary_name_delete . $delete_name_commands . $primary_ip_delete
+            . $primary_address_delete . $delete_address_commands ],
+        [ 'ubuntu22.04', '' ],
+    ) {
+        $xCAT_plugin::dhcp::distro = $case->[0];
+        my $commands = xCAT_plugin::dhcp::_isc_omapi_host_commands(
+            'node01', 'b8:3f:d2:4a:68:aa', 1, 'eth0!ib0!eth1', '192.0.2.10',
+            'ddns-hostname \"node01\"; option host-name \"node01\";', 0
+        );
+        my $expected = $case->[1] . $primary_create . $create_without_cleanup;
+        is($commands, $expected, "$case->[0] preserves the complete host update order");
+    }
+}
 
 # The mgtifname of a network can name more than one interface, separated by !.
 # The InfiniBand interface is not always the last one, so a test that only
