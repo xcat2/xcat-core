@@ -13,13 +13,14 @@ use lib "$FindBin::Bin/../lib";
 use Test::More;
 
 use XCAT::Test::File qw(repo_path slurp_repo_file);
+use XCAT::Test::Process qw(run_command);
 
 my $sync_helper = repo_path('build-utils/sync-xcat-apache-configs');
 ok( -x $sync_helper, 'the Apache configuration sync helper is executable' );
 is( system( 'sh', '-n', $sync_helper ), 0,
     'the Apache configuration sync helper has POSIX shell syntax' );
 
-my ( $status, $output ) = run_command( {}, $sync_helper, '--check' );
+my ( $status, $output ) = run_command( $sync_helper, '--check' );
 is( $status, 0, 'the committed service-node configurations are current' )
   or diag($output);
 is( $output, '', 'a successful repository check is quiet' );
@@ -49,14 +50,14 @@ write_text( File::Spec->catfile( $fixture_root, 'xCATsn', 'xcat.conf' ),
 write_text( File::Spec->catfile( $fixture_root, 'xCATsn', 'xcat.conf.apach24' ),
     "apache24 stale\n\n" );
 
-( $status, $output ) = run_command( {}, $fixture_helper, '--check' );
+( $status, $output ) = run_command( $fixture_helper, '--check' );
 is( $status, 1, '--check rejects drift in generated configurations' );
 like( $output, qr{^xCATsn/xcat\.conf is out of date;}m,
     '--check identifies the stale Apache 2.2 copy' );
 like( $output, qr{^xCATsn/xcat\.conf\.apach24 is out of date;}m,
     '--check identifies the stale Apache 2.4 copy' );
 
-( $status, $output ) = run_command( {}, $fixture_helper, '--write' );
+( $status, $output ) = run_command( $fixture_helper, '--write' );
 is( $status, 0, '--write refreshes generated configurations' )
   or diag($output);
 like( $output, qr{^updated xCATsn/xcat\.conf$}m,
@@ -75,18 +76,18 @@ for my $pair (@config_pairs) {
         "--write gives $generated a deterministic file mode" );
 }
 
-( $status, $output ) = run_command( {}, $fixture_helper, '--write' );
+( $status, $output ) = run_command( $fixture_helper, '--write' );
 is( $status, 0, '--write accepts already-current configurations' );
 is( $output, '', '--write does not rewrite or report current configurations' );
 my $current_generated =
   File::Spec->catfile( $fixture_root, 'xCATsn', 'xcat.conf' );
 chmod 0600, $current_generated
   or die "Unable to change $current_generated mode: $!";
-( $status, $output ) = run_command( {}, $fixture_helper, '--check' );
+( $status, $output ) = run_command( $fixture_helper, '--check' );
 is( $status, 1, '--check rejects mode drift in generated configurations' );
 like( $output, qr{^xCATsn/xcat\.conf is out of date;}m,
     '--check identifies the generated configuration with mode drift' );
-( $status, $output ) = run_command( {}, $fixture_helper, '--write' );
+( $status, $output ) = run_command( $fixture_helper, '--write' );
 is( $status, 0, '--write repairs mode drift on current configurations' );
 is( sprintf( '%04o', S_IMODE( ( stat($current_generated) )[2] ) ), '0644',
     '--write normalizes a current generated configuration to mode 0644' );
@@ -97,11 +98,11 @@ write_text( $symlink_victim, "apache22 canonical\n" );
 unlink($current_generated) or die "Unable to remove $current_generated: $!";
 symlink( $symlink_victim, $current_generated )
   or die "Unable to create $current_generated symlink: $!";
-( $status, $output ) = run_command( {}, $fixture_helper, '--check' );
+( $status, $output ) = run_command( $fixture_helper, '--check' );
 is( $status, 1, '--check rejects a generated configuration symlink' );
 like( $output, qr{^xCATsn/xcat\.conf is out of date;}m,
     '--check identifies the generated configuration symlink' );
-( $status, $output ) = run_command( {}, $fixture_helper, '--write' );
+( $status, $output ) = run_command( $fixture_helper, '--write' );
 is( $status, 0, '--write replaces a generated configuration symlink' );
 ok( !-l $current_generated,
     '--write leaves a regular generated configuration behind' );
@@ -113,11 +114,11 @@ is( read_text($symlink_victim), "apache22 canonical\n",
 my $missing_generated =
   File::Spec->catfile( $fixture_root, 'xCATsn', 'xcat.conf.apach24' );
 unlink($missing_generated) or die "Unable to remove $missing_generated: $!";
-( $status, $output ) = run_command( {}, $fixture_helper, '--check' );
+( $status, $output ) = run_command( $fixture_helper, '--check' );
 is( $status, 1, '--check rejects a missing generated configuration' );
 like( $output, qr{^xCATsn/xcat\.conf\.apach24 is out of date;}m,
     '--check identifies the missing generated configuration' );
-( $status, $output ) = run_command( {}, $fixture_helper, '--write' );
+( $status, $output ) = run_command( $fixture_helper, '--write' );
 is( $status, 0, '--write recreates a missing generated configuration' )
   or diag($output);
 is( read_text($missing_generated), "apache24 canonical\n",
@@ -132,7 +133,7 @@ symlink( $staging_victim,
     File::Spec->catfile( $staging_directory, 'xcat.conf' ) )
   or die 'Unable to create staging symlink fixture';
 ( $status, $output ) =
-  run_command( {}, $fixture_helper, '--stage', $staging_directory );
+  run_command( $fixture_helper, '--stage', $staging_directory );
 is( $status, 0, '--stage copies canonical configurations for package builds' )
   or diag($output);
 is( $output, '', 'successful package staging is quiet' );
@@ -152,7 +153,7 @@ my $directory_target = File::Spec->catfile( $staging_directory, 'xcat.conf' );
 unlink($directory_target) or die "Unable to remove $directory_target: $!";
 mkdir($directory_target) or die "Unable to create $directory_target: $!";
 ( $status, $output ) =
-  run_command( {}, $fixture_helper, '--stage', $staging_directory );
+  run_command( $fixture_helper, '--stage', $staging_directory );
 is( $status, 1, '--stage refuses to replace a destination directory' );
 like( $output, qr{ cannot replace a directory$}m,
     '--stage identifies the destination directory' );
@@ -166,7 +167,7 @@ write_text( $canonical_symlink_target, $canonical_contents );
 unlink($canonical_path) or die "Unable to remove $canonical_path: $!";
 symlink( $canonical_symlink_target, $canonical_path )
   or die "Unable to create $canonical_path symlink: $!";
-( $status, $output ) = run_command( {}, $fixture_helper, '--check' );
+( $status, $output ) = run_command( $fixture_helper, '--check' );
 is( $status, 1, '--check rejects a canonical configuration symlink' );
 like( $output, qr{^xCAT/xcat\.conf must be a regular file$}m,
     '--check identifies the canonical configuration symlink' );
@@ -178,13 +179,13 @@ for my $arguments (
     [ '--stage', $staging_directory, 'extra' ]
   )
 {
-    ( $status, $output ) = run_command( {}, $fixture_helper, @{$arguments} );
+    ( $status, $output ) = run_command( $fixture_helper, @{$arguments} );
     is( $status, 2, 'invalid invocation exits with usage status 2' );
     like( $output,
         qr{^Usage: sync-xcat-apache-configs --check\|--write\|--stage DIRECTORY$}m,
         'invalid invocation prints concise usage' );
 }
-( $status, $output ) = run_command( {}, $fixture_helper, '--stage',
+( $status, $output ) = run_command( $fixture_helper, '--stage',
     File::Spec->catdir( $fixture_root, 'missing-stage-directory' ) );
 is( $status, 1, '--stage rejects a missing destination directory' );
 like( $output, qr{ is not a directory$}m,
@@ -223,22 +224,4 @@ sub stage_sync_fixture {
     chmod 0755, $destination
       or die "Unable to make the staged sync helper executable: $!";
     return $destination;
-}
-
-
-
-sub run_command {
-    my ( $environment, @command ) = @_;
-    my $pid = open( my $pipe, '-|' );
-    die "Unable to fork for @command: $!" unless defined($pid);
-    if ( $pid == 0 ) {
-        @ENV{ keys %{$environment} } = values %{$environment};
-        open( STDERR, '>&', STDOUT ) or die "Unable to merge stderr: $!";
-        exec { $command[0] } @command;
-        die "Unable to execute @command: $!";
-    }
-
-    my $command_output = do { local $/; <$pipe> } // '';
-    close($pipe);
-    return ( $? >> 8, $command_output );
 }
