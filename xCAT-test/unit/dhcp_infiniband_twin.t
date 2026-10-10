@@ -3,20 +3,22 @@ use strict;
 use warnings;
 
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../../xCAT-server/lib";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use lib "$FindBin::Bin/../../perl-xCAT";
 
+use File::Temp qw(tempdir);
 use Test::More;
+use XCAT::Test::File qw(repo_path);
 
-$ENV{XCATCFG} ||= 'SQLite:/tmp';
-
-my $source_dhcp_plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/dhcp.pm";
-if ( -f $source_dhcp_plugin ) {
-    require $source_dhcp_plugin;
-} else {
-    require xCAT_plugin::dhcp;
+BEGIN {
+    $ENV{XCATROOT} = repo_path('xCAT-server');
+    $ENV{XCATCFG} = 'SQLite:' . tempdir(CLEANUP => 1);
 }
+
+my $source_dhcp_plugin = repo_path('xCAT-server/lib/xcat/plugins/dhcp.pm');
+require $source_dhcp_plugin;
 
 sub twin { return xCAT_plugin::dhcp::_infiniband_twin_mac( $_[0] ); }
 
