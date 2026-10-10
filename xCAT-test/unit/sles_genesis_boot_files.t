@@ -3,6 +3,7 @@ use strict;
 use warnings;
 
 use File::Path qw(make_path);
+use File::Slurper qw(write_binary);
 use File::Temp qw(tempdir);
 use FindBin;
 use Test::More;
@@ -18,22 +19,15 @@ use lib "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins";
 
 require sles;
 
-sub write_file {
-    my ($path) = @_;
-    open(my $fh, '>', $path) or die "open $path: $!";
-    print {$fh} "test\n";
-    close($fh) or die "close $path: $!";
-}
-
 my $tftp = tempdir(CLEANUP => 1);
 make_path("$tftp/xcat");
 
 my $kernel = "$tftp/xcat/genesis.kernel.x86_64";
 my $lzma = "$tftp/xcat/genesis.fs.x86_64.lzma";
 my $gzip = "$tftp/xcat/genesis.fs.x86_64.gz";
-write_file($_) for ($kernel, $lzma);
+write_binary($_, "test\n") for ($kernel, $lzma);
 sleep(1.1);
-write_file($gzip);
+write_binary($gzip, "test\n");
 
 my ($selected_kernel, $selected_initrd) =
   xCAT_plugin::sles::_find_genesis_boot_files($tftp, 'x86_64');
@@ -43,7 +37,7 @@ is($selected_initrd, 'genesis.fs.x86_64.gz',
     'SLES selects the newer gzip initramfs');
 
 sleep(1.1);
-write_file($lzma);
+write_binary($lzma, "test\n");
 ($selected_kernel, $selected_initrd) =
   xCAT_plugin::sles::_find_genesis_boot_files($tftp, 'x86_64');
 is($selected_initrd, 'genesis.fs.x86_64.lzma',

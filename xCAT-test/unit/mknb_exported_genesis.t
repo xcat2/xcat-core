@@ -5,6 +5,7 @@ use warnings;
 
 use Digest::SHA qw(sha256_hex);
 use File::Path qw(make_path remove_tree);
+use File::Slurper qw(read_binary write_binary);
 use File::Temp qw(tempdir);
 use FindBin;
 use Test::More;
@@ -48,21 +49,6 @@ if (-f $source_mknb_plugin) {
     require xCAT_plugin::mknb;
 }
 
-sub write_file {
-    my ($filename, $content) = @_;
-    open(my $fh, '>:raw', $filename) or die "Unable to write $filename: $!";
-    print {$fh} $content;
-    close($fh) or die "Unable to close $filename: $!";
-}
-
-sub read_file {
-    my ($filename) = @_;
-    open(my $fh, '<:raw', $filename) or die "Unable to read $filename: $!";
-    my $content = do { local $/; <$fh> };
-    close($fh);
-    return $content;
-}
-
 sub export_manifest {
     my ($architecture) = @_;
     return "format=xcat-genesis\n"
@@ -74,11 +60,11 @@ sub prepare_export {
     my ($directory, $kernel, $initramfs, $architecture) = @_;
     $architecture //= 'x86_64';
     make_path($directory);
-    write_file("$directory/kernel", $kernel);
-    write_file("$directory/initramfs.cpio.gz", $initramfs);
+    write_binary("$directory/kernel", $kernel);
+    write_binary("$directory/initramfs.cpio.gz", $initramfs);
     my $manifest = export_manifest($architecture);
-    write_file("$directory/xcat-genesis.manifest", $manifest);
-    write_file(
+    write_binary("$directory/xcat-genesis.manifest", $manifest);
+    write_binary(
         "$directory/SHA256SUMS",
         sha256_hex($initramfs) . "  initramfs.cpio.gz\n"
           . sha256_hex($kernel) . "  kernel\n"
@@ -107,7 +93,7 @@ my $export = "$tmpdir/export";
 my $tftpdir = "$tmpdir/tftpboot";
 prepare_export($export, 'new kernel', 'new initramfs');
 make_path("$tftpdir/xcat");
-write_file("$tftpdir/xcat/genesis.fs.x86_64.lzma", 'old initramfs');
+write_binary("$tftpdir/xcat/genesis.fs.x86_64.lzma", 'old initramfs');
 
 ok(
     xCAT_plugin::mknb::_prebuilt_genesis_requested($export),
@@ -124,12 +110,12 @@ is(
 );
 my ($published_kernel, $published_initramfs) =
   published_files($tftpdir, 'x86_64');
-is(read_file($published_kernel), 'new kernel', 'the kernel is published');
-is(read_file($published_initramfs), 'new initramfs', 'the initramfs is published');
+is(scalar read_binary($published_kernel), 'new kernel', 'the kernel is published');
+is(scalar read_binary($published_initramfs), 'new initramfs', 'the initramfs is published');
 ok(!-e "$tftpdir/xcat/genesis.fs.x86_64.lzma",
     'installing an export removes the obsolete legacy initramfs');
 is(
-    read_file("$tftpdir/xcat/genesis.exact-arch.x86_64"),
+    scalar read_binary("$tftpdir/xcat/genesis.exact-arch.x86_64"),
     export_manifest('x86_64'),
     'the canonical architecture marker is published with the image',
 );
@@ -137,11 +123,11 @@ is(sprintf('%04o', (stat($published_kernel))[2] & oct('7777')), '0644', 'the ker
 is(sprintf('%04o', (stat($published_initramfs))[2] & oct('7777')), '0644', 'the initramfs is readable by TFTP');
 is_deeply([temporary_files("$tftpdir/xcat")], [], 'staging files are removed');
 
-write_file("$tftpdir/xcat/genesis.kernel.ppc64le", 'stale kernel');
-write_file("$tftpdir/xcat/genesis.fs.ppc64le.gz", 'stale initramfs');
-write_file("$tftpdir/xcat/genesis.fs.ppc64le.lzma", 'stale legacy initramfs');
-write_file("$tftpdir/xcat/genesis.exact-arch.ppc64le", export_manifest('ppc64le'));
-write_file("$tftpdir/xcat/genesis.kernel.ppc64", 'legacy kernel');
+write_binary("$tftpdir/xcat/genesis.kernel.ppc64le", 'stale kernel');
+write_binary("$tftpdir/xcat/genesis.fs.ppc64le.gz", 'stale initramfs');
+write_binary("$tftpdir/xcat/genesis.fs.ppc64le.lzma", 'stale legacy initramfs');
+write_binary("$tftpdir/xcat/genesis.exact-arch.ppc64le", export_manifest('ppc64le'));
+write_binary("$tftpdir/xcat/genesis.kernel.ppc64", 'legacy kernel');
 my ($removed, $remove_error) =
   xCAT_plugin::mknb::_remove_openembedded_genesis($tftpdir, 'ppc64le');
 is($remove_error, undef, 'OpenEmbedded boot artifacts can be retired cleanly');
@@ -162,29 +148,29 @@ for my $artifact (qw(
   genesis.fs.s390x.lzma
   genesis.exact-arch.s390x
 )) {
-    write_file("$tftpdir/xcat/$artifact", 'stale artifact');
+    write_binary("$tftpdir/xcat/$artifact", 'stale artifact');
 }
 make_path("$tftpdir/pxelinux.cfg/s390x");
-write_file(
+write_binary(
     "$tftpdir/pxelinux.cfg/s390x/192.0.2.0_24",
     "# pxelinux.cfg xCAT Genesis s390x\nstale config\n",
 );
-write_file("$tftpdir/pxelinux.cfg/s390x/default", "admin fallback\n");
+write_binary("$tftpdir/pxelinux.cfg/s390x/default", "admin fallback\n");
 ($removed, $remove_error) =
   xCAT_plugin::mknb::_remove_openembedded_genesis($tftpdir, 's390x');
 is($remove_error, undef, 's390x boot artifacts can be retired cleanly');
 is($removed, 5, 's390x image and generated discovery configurations are retired');
 ok(!-e "$tftpdir/pxelinux.cfg/s390x/192.0.2.0_24",
     'retiring s390x removes the generated discovery configuration');
-is(read_file("$tftpdir/pxelinux.cfg/s390x/default"), "admin fallback\n",
+is(scalar read_binary("$tftpdir/pxelinux.cfg/s390x/default"), "admin fallback\n",
     'retiring s390x preserves administrator-owned configurations');
 
 my $special_tftpdir = "$tmpdir/tftp root {s390x}";
 make_path("$special_tftpdir/xcat", "$special_tftpdir/pxelinux.cfg/s390x");
 for my $artifact (qw(genesis.kernel.s390x genesis.fs.s390x.gz genesis.exact-arch.s390x)) {
-    write_file("$special_tftpdir/xcat/$artifact", "artifact\n");
+    write_binary("$special_tftpdir/xcat/$artifact", "artifact\n");
 }
-write_file(
+write_binary(
     "$special_tftpdir/pxelinux.cfg/s390x/192.0.2.0_24",
     "# pxelinux.cfg xCAT Genesis s390x\nconfiguration\n",
 );
@@ -202,7 +188,7 @@ for my $artifact (qw(
   genesis.fs.aarch64.lzma
   genesis.exact-arch.aarch64
 )) {
-    write_file("$tftpdir/xcat/$artifact", 'stale artifact');
+    write_binary("$tftpdir/xcat/$artifact", 'stale artifact');
 }
 ($removed, $remove_error) =
   xCAT_plugin::mknb::_remove_openembedded_genesis($tftpdir, 'aarch64');
@@ -220,14 +206,14 @@ ok(
     'artifact cleanup removes every remaining path',
 );
 
-write_file($published_kernel, 'current kernel');
-write_file($published_initramfs, 'current initramfs');
-write_file("$export/kernel", 'corrupt kernel');
+write_binary($published_kernel, 'current kernel');
+write_binary($published_initramfs, 'current initramfs');
+write_binary("$export/kernel", 'corrupt kernel');
 ($installed_initrd, $install_error) =
   xCAT_plugin::mknb::_install_prebuilt_genesis($export, $tftpdir, 'x86_64');
 like($install_error, qr/Genesis checksum mismatch/, 'a checksum mismatch is rejected');
-is(read_file($published_kernel), 'current kernel', 'a bad export keeps the current kernel');
-is(read_file($published_initramfs), 'current initramfs', 'a bad export keeps the current initramfs');
+is(scalar read_binary($published_kernel), 'current kernel', 'a bad export keeps the current kernel');
+is(scalar read_binary($published_initramfs), 'current initramfs', 'a bad export keeps the current initramfs');
 is_deeply([temporary_files("$tftpdir/xcat")], [], 'a failed install removes staging files');
 
 my $unmarked_export = "$tmpdir/unmarked";
@@ -244,8 +230,8 @@ like($install_error, qr/Missing Genesis export manifest/, 'the installer require
 
 my $partial_export = "$tmpdir/partial";
 make_path($partial_export);
-write_file("$partial_export/initramfs.cpio.gz", 'partial initramfs');
-write_file(
+write_binary("$partial_export/initramfs.cpio.gz", 'partial initramfs');
+write_binary(
     "$partial_export/xcat-genesis.manifest",
     export_manifest('x86_64'),
 );
@@ -264,7 +250,7 @@ like($install_error, qr/Missing Genesis checksum file/, 'a partial export fails 
 
 my $missing_manifest_checksum = "$tmpdir/missing-manifest-checksum";
 prepare_export($missing_manifest_checksum, 'kernel', 'initramfs');
-write_file(
+write_binary(
     "$missing_manifest_checksum/SHA256SUMS",
     sha256_hex('kernel') . "  kernel\n"
       . sha256_hex('initramfs') . "  initramfs.cpio.gz\n",
@@ -276,7 +262,7 @@ like($install_error, qr/Missing Genesis checksum entry: xcat-genesis\.manifest/,
 
 my $bad_manifest_checksum = "$tmpdir/bad-manifest-checksum";
 prepare_export($bad_manifest_checksum, 'kernel', 'initramfs');
-write_file(
+write_binary(
     "$bad_manifest_checksum/xcat-genesis.manifest",
     "architecture=x86_64\nversion=1\nformat=xcat-genesis\n",
 );
@@ -297,7 +283,7 @@ foreach my $case (@invalid_manifests) {
     my ($name, $content, $error_pattern) = @{$case};
     my $invalid_export = "$tmpdir/manifest-$name";
     prepare_export($invalid_export, 'kernel', 'initramfs');
-    write_file("$invalid_export/xcat-genesis.manifest", $content);
+    write_binary("$invalid_export/xcat-genesis.manifest", $content);
     (undef, $install_error) = xCAT_plugin::mknb::_install_prebuilt_genesis(
         $invalid_export, $tftpdir, 'x86_64'
     );
@@ -320,7 +306,7 @@ like($install_error, qr/Missing Genesis export manifest/, 'export manifest symli
 
 my $missing_entry = "$tmpdir/missing-entry";
 prepare_export($missing_entry, 'kernel', 'initramfs');
-write_file(
+write_binary(
     "$missing_entry/SHA256SUMS",
     sha256_hex('kernel') . "  kernel\n"
       . sha256_hex(export_manifest('x86_64'))
@@ -333,7 +319,7 @@ like($install_error, qr/Missing Genesis checksum entry: initramfs\.cpio\.gz/, 'e
 
 my $duplicate_entry = "$tmpdir/duplicate-entry";
 prepare_export($duplicate_entry, 'kernel', 'initramfs');
-write_file(
+write_binary(
     "$duplicate_entry/SHA256SUMS",
     sha256_hex('kernel') . "  kernel\n"
       . sha256_hex('kernel') . "  kernel\n",
@@ -345,7 +331,7 @@ like($install_error, qr/Duplicate Genesis checksum entry: kernel/, 'duplicate ch
 
 my $malformed_entry = "$tmpdir/malformed-entry";
 prepare_export($malformed_entry, 'kernel', 'initramfs');
-write_file("$malformed_entry/SHA256SUMS", "not a checksum\n");
+write_binary("$malformed_entry/SHA256SUMS", "not a checksum\n");
 (undef, $install_error) = xCAT_plugin::mknb::_install_prebuilt_genesis(
     $malformed_entry, $tftpdir, 'x86_64'
 );
@@ -363,7 +349,7 @@ like($install_error, qr/Missing Genesis artifact: .*\/kernel/, 'artifact symlink
 
 my $legacy_directory = "$tmpdir/legacy";
 make_path("$legacy_directory/fs");
-write_file("$legacy_directory/kernel", 'legacy kernel');
+write_binary("$legacy_directory/kernel", 'legacy kernel');
 ok(
     !xCAT_plugin::mknb::_prebuilt_genesis_requested($legacy_directory),
     'the legacy fs layout does not select the prebuilt path',
@@ -392,8 +378,8 @@ ok(
 );
 my ($process_kernel, $process_initramfs) =
   published_files($xCAT::TableUtils::tftpdir, 'ppc64');
-is(read_file($process_kernel), 'process kernel', 'mknb publishes the exported kernel');
-is(read_file($process_initramfs), 'process initramfs', 'mknb publishes the exported initramfs');
+is(scalar read_binary($process_kernel), 'process kernel', 'mknb publishes the exported kernel');
+is(scalar read_binary($process_initramfs), 'process initramfs', 'mknb publishes the exported initramfs');
 ok(
     -f "$xCAT::TableUtils::tftpdir/pxelinux.cfg/p/192.0.2.0_24",
     'mknb writes boot configuration after publishing the export',
@@ -414,12 +400,12 @@ ok(
     'mknb rejects an incomplete marked export',
 );
 is(
-    read_file($process_kernel),
+    scalar read_binary($process_kernel),
     'process kernel',
     'an incomplete marked export keeps the published kernel',
 );
 is(
-    read_file($process_initramfs),
+    scalar read_binary($process_initramfs),
     'process initramfs',
     'an incomplete marked export keeps the published initramfs',
 );
@@ -453,11 +439,11 @@ ok(
 );
 my ($openembedded_kernel, $openembedded_initramfs) =
   published_files($xCAT::TableUtils::tftpdir, 'ppc64le');
-is(read_file($openembedded_kernel), 'openembedded ppc64le kernel',
+is(scalar read_binary($openembedded_kernel), 'openembedded ppc64le kernel',
     'mknb prefers the OpenEmbedded kernel when legacy Genesis is also installed');
-is(read_file($openembedded_initramfs), 'openembedded ppc64le initramfs',
+is(scalar read_binary($openembedded_initramfs), 'openembedded ppc64le initramfs',
     'mknb prefers the OpenEmbedded initramfs when legacy Genesis is also installed');
-my $ppc64le_config = read_file(
+my $ppc64le_config = scalar read_binary(
     "$xCAT::TableUtils::tftpdir/pxelinux.cfg/p/192.0.2.0_24"
 );
 like($ppc64le_config, qr/genesis\.kernel\.ppc64le/,
@@ -466,11 +452,11 @@ like($ppc64le_config, qr/genesis\.fs\.ppc64le\.gz/,
     'POWER boot configuration uses the exact ppc64le initramfs name');
 
 remove_tree($openembedded_process_export);
-write_file(
+write_binary(
     "$xCAT::TableUtils::tftpdir/xcat/genesis.kernel.ppc64",
     'canonical big-endian ppc64 kernel',
 );
-write_file(
+write_binary(
     "$xCAT::TableUtils::tftpdir/xcat/genesis.exact-arch.ppc64",
     export_manifest('ppc64'),
 );
@@ -488,7 +474,7 @@ ok(
     'the legacy ppc64le fallback cannot replace a canonical ppc64 image',
 );
 is(
-    read_file("$xCAT::TableUtils::tftpdir/xcat/genesis.kernel.ppc64"),
+    scalar read_binary("$xCAT::TableUtils::tftpdir/xcat/genesis.kernel.ppc64"),
     'canonical big-endian ppc64 kernel',
     'a refused ppc64le fallback leaves the canonical ppc64 kernel intact',
 );
@@ -571,12 +557,12 @@ ok(
     'mknb installs an x86_64 OpenEmbedded export',
 );
 is(
-    read_file("$xCAT::TableUtils::tftpdir/xcat/genesis.kernel.x86_64"),
+    scalar read_binary("$xCAT::TableUtils::tftpdir/xcat/genesis.kernel.x86_64"),
     'openembedded x86_64 kernel',
     'mknb publishes the OpenEmbedded x86_64 kernel',
 );
 like(
-    read_file("$xCAT::TableUtils::tftpdir/xcat/xnba/nets/192.0.2.0_24"),
+    scalar read_binary("$xCAT::TableUtils::tftpdir/xcat/xnba/nets/192.0.2.0_24"),
     qr{^imgfetch -n kernel \S+/xcat/genesis\.kernel\.x86_64 .* BOOTIF=01-\$\{netX/mac:hexhyp\}$}m,
     'the OpenEmbedded BIOS Genesis script takes BOOTIF from mac:hexhyp',
 );
