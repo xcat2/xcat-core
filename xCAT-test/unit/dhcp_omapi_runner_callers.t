@@ -9,6 +9,7 @@ use lib "$FindBin::Bin/../../perl-xCAT";
 
 use Config;
 use File::Path qw(make_path);
+use File::Slurper qw(read_binary write_binary);
 use File::Spec;
 use File::Temp qw(tempdir);
 use IPC::Open3;
@@ -22,23 +23,6 @@ $ENV{XCATCFG} ||= 'SQLite:/tmp';
 
 my $source_dhcp_plugin = repo_path('xCAT-server/lib/xcat/plugins/dhcp.pm');
 require $source_dhcp_plugin;
-
-sub write_file {
-    my ( $path, $contents ) = @_;
-
-    open( my $fh, '>', $path ) or die "Unable to create $path: $!";
-    print {$fh} $contents or die "Unable to write $path: $!";
-    close($fh) or die "Unable to close $path: $!";
-}
-
-sub read_file {
-    my ($path) = @_;
-
-    open( my $fh, '<', $path ) or die "Unable to read $path: $!";
-    my $contents = do { local $/; <$fh> };
-    close($fh) or die "Unable to close $path: $!";
-    return $contents;
-}
 
 my $workspace = tempdir( CLEANUP => 1 );
 my $plugin_command_directory = File::Spec->catdir( $workspace, 'plugin-commands' );
@@ -87,7 +71,7 @@ foreach my $status (qw(completed terminated killed fork_error)) {
                 my ( $class, @arguments ) = @_;
                 @run_arguments = @arguments;
                 $writer_closed_before_run = !defined fileno( $command->{handle} );
-                $run_contents = read_file( $arguments[0] );
+                $run_contents = scalar read_binary( $arguments[0] );
                 return $status;
             };
             local *xCAT_plugin::dhcp::syslog = sub { push @logs, [@_]; };
@@ -123,7 +107,7 @@ my $fake_dhcp = File::Spec->catdir( $fake_perl, 'xCAT', 'DHCP' );
 my $dhcpop_command_directory = File::Spec->catdir( $workspace, 'dhcpop-commands' );
 make_path( $fake_dhcp, $dhcpop_command_directory );
 
-write_file(
+write_binary(
     File::Spec->catfile( $fake_dhcp, 'Backend.pm' ),
     <<'MODULE'
 package xCAT::DHCP::Backend;
@@ -142,7 +126,7 @@ sub name {
 MODULE
 );
 
-write_file(
+write_binary(
     File::Spec->catfile( $fake_dhcp, 'OmapiPolicy.pm' ),
     <<'MODULE'
 package xCAT::DHCP::OmapiPolicy;
@@ -161,7 +145,7 @@ sub omshell_preamble {
 MODULE
 );
 
-write_file(
+write_binary(
     File::Spec->catfile( $fake_perl, 'xCAT', 'Table.pm' ),
     <<'MODULE'
 package xCAT::Table;
@@ -181,7 +165,7 @@ sub getAttribs {
 MODULE
 );
 
-write_file(
+write_binary(
     File::Spec->catfile( $fake_dhcp, 'OmapiRunner.pm' ),
     <<'MODULE'
 package xCAT::DHCP::OmapiRunner;
@@ -260,14 +244,14 @@ sub run_dhcpop {
     my $stderr = do { local $/; <$child_err> } // '';
     waitpid( $pid, 0 );
     my $exit_status = $? >> 8;
-    my $command_path = read_file($path_record);
+    my $command_path = scalar read_binary($path_record);
 
     return {
-        command        => read_file($capture),
+        command        => scalar read_binary($capture),
         command_path   => $command_path,
         exit_status    => $exit_status,
-        open_arguments => read_file($open_arguments),
-        omshell_path   => read_file($omshell_capture),
+        open_arguments => scalar read_binary($open_arguments),
+        omshell_path   => scalar read_binary($omshell_capture),
         stderr         => $stderr,
         stdout         => $stdout,
     };

@@ -7,6 +7,7 @@ use lib "$FindBin::Bin/../../perl-xCAT";
 
 use Config;
 use Errno qw(EAGAIN);
+use File::Slurper qw(read_binary write_binary);
 use File::Spec;
 use File::Temp qw(tempdir);
 use Test::More;
@@ -108,9 +109,7 @@ use xCAT::DHCP::OmapiRunner;
 sub write_executable {
     my ( $path, $contents ) = @_;
 
-    open( my $fh, '>', $path ) or die "Unable to create $path: $!";
-    print {$fh} $contents or die "Unable to write $path: $!";
-    close($fh) or die "Unable to close $path: $!";
+    write_binary( $path, $contents );
     chmod 0755, $path or die "Unable to make $path executable: $!";
 }
 
@@ -191,9 +190,7 @@ my ( $success_ok, $success_error );
 die $success_error unless $success_ok;
 is( $success_status, 'completed', 'a normally exiting command is reported as completed' );
 
-open( my $capture_fh, '<', $capture ) or die "Unable to read $capture: $!";
-my $captured = do { local $/; <$capture_fh> };
-close($capture_fh) or die "Unable to close $capture: $!";
+my $captured = read_binary($capture);
 is( $captured, "connect\nclose\n", 'the command file is connected to child stdin' );
 is( -s $parent_stdout, 0, 'child stdout is redirected away from the caller' );
 is( -s $parent_stderr, 0, 'child stderr is redirected away from the caller' );
