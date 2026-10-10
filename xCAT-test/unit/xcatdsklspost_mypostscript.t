@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 
+use File::Slurper qw(read_binary write_binary);
 use File::Spec;
 use File::Temp qw(tempdir tempfile);
 use FindBin;
@@ -47,7 +48,7 @@ sub run_fetch {
     mkdir($responses) or die "Unable to create $responses: $!";
 
     my $fetcher = File::Spec->catfile( $root, 'getpostscript.awk' );
-    write_file(
+    write_binary(
         $fetcher,
         <<'SH'
 #!/bin/sh
@@ -66,11 +67,11 @@ SH
     my $index = 0;
     for my $response ( @{ $options{responses} } ) {
         $index++;
-        write_file( File::Spec->catfile( $responses, $index ), $response );
+        write_binary( File::Spec->catfile( $responses, $index ), $response );
     }
 
     my $target = File::Spec->catfile( $root, 'mypostscript' );
-    write_file( $target, $options{preexisting} )
+    write_binary( $target, $options{preexisting} )
       if exists $options{preexisting};
     my $argv = File::Spec->catfile( $root, 'argv' );
     my $counter = File::Spec->catfile( $root, 'counter' );
@@ -93,26 +94,11 @@ SH
     my $status = $? >> 8;
 
     return {
-        argv   => -e $argv ? read_file($argv) : '',
+        argv   => -e $argv ? scalar read_binary($argv) : '',
         output => $output,
         status => $status,
-        target => -e $target ? read_file($target) : undef,
+        target => -e $target ? scalar read_binary($target) : undef,
     };
-}
-
-sub write_file {
-    my ( $path, $contents ) = @_;
-    open( my $fh, '>:raw', $path ) or die "Unable to write $path: $!";
-    print {$fh} $contents;
-    close($fh) or die "Unable to close $path: $!";
-}
-
-sub read_file {
-    my ($path) = @_;
-    open( my $fh, '<:raw', $path ) or die "Unable to read $path: $!";
-    my $contents = do { local $/; <$fh> };
-    close($fh) or die "Unable to close $path: $!";
-    return $contents;
 }
 
 my $decoded = run_fetch(
