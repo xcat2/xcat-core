@@ -67,3 +67,23 @@ plan skip_all => "compute.subiquity.tmpl not found" unless -f $tmpl_path;
 ```
 
 That guard never fires when the tree is intact.
+
+## Fixture files
+
+Use `XCAT::Test::File::repo_path` for checkout paths. `slurp_repo_file` reads a
+checkout-relative path. For an already resolved path or a temporary byte-oriented
+fixture, use `File::Slurper::read_binary` and `write_binary`:
+
+```perl
+use File::Slurper qw(read_binary write_binary);
+
+write_binary($fixture, $contents);
+is(scalar read_binary($fixture), $expected, 'fixture contents are preserved');
+```
+
+Read in scalar context, including assertion arguments and hash values. An empty
+file can return an empty list in list context. Use `read_text` and `write_text`
+when the fixture requires decoded text, with its encoding explicit.
+
+Keep caller-specific missing-file handling and executable permissions explicit.
+Use the existing handle when its lifetime, position or redirection is under test.
