@@ -1,179 +1,161 @@
 #!/usr/bin/env bats
 
-load 'helpers/shell_source'
+load 'helpers/script_sandbox'
 
 setup()
 {
-    PKGUTILS="$(repo_path 'xCAT/postscripts/xcatpkgutils.sh')"
-    OSPKGS="$(repo_path 'xCAT/postscripts/ospkgs')"
-    OTHERPKGS="$(repo_path 'xCAT/postscripts/otherpkgs')"
-    [ -r "$PKGUTILS" ] || skip "$PKGUTILS is required"
-    [ -r "$OSPKGS" ] || skip "$OSPKGS is required"
-    [ -r "$OTHERPKGS" ] || skip "$OTHERPKGS is required"
-    APT_LOG="${BATS_TEST_TMPDIR}/apt-get.log"
-    export PKGUTILS OSPKGS OTHERPKGS APT_LOG
+    postscripts=${XCAT_TEST_POSTSCRIPTS:-$(repo_path xCAT/postscripts)}
+    PKGUTILS="$postscripts/xcatpkgutils.sh"
+    local owner
+    for owner in ospkgs otherpkgs xcatpkgutils.sh xcatpkgutils-loader.sh; do
+        [ -r "$postscripts/$owner" ] || {
+            echo "Required postscript is unreadable: $postscripts/$owner" >&2
+            return 1
+        }
+    done
+    APT_LOG="${BATS_TEST_TMPDIR:?bats-core 1.4 or newer is required}/apt-get.log"
+    export APT_LOG
 }
 
-# Every apt-get call is recorded as "<DEBIAN_FRONTEND>|<arguments>" and answers with APT_STATUS.
-shadow_apt_get()
-{
-    apt-get()
-    {
-        printf '%s|%s\n' "${DEBIAN_FRONTEND:-unset}" "$*" >>"$APT_LOG"
-        return "${APT_STATUS:-0}"
-    }
-}
-
-apt_call()
-{
-    sed -n "${1}p" "$APT_LOG"
-}
-
-apt_calls()
-{
-    wc -l <"$APT_LOG" | tr -d ' '
-}
-
-run_ospkgs_apt_block()
-{
-    local block
-    block="$(extract_line_range "$OSPKGS" '# upgrade existing packages' '# remove packages')" || return 99
-    local ENVLIST="" groups="" pkgs=" foo bar" cudapkgs="${1:-}" RETURNVAL=0 ARCH=x86_64
-    eval "$block"
-    printf 'RETURNVAL=%s\n' "$RETURNVAL"
-}
-
-run_otherpkgs_apt_line()
-{
-    local line
-    line="$(extract_first_matching_line "$OTHERPKGS" "$1")" || return 99
-    local envlist="" repo_pkgs="foo bar" result=""
-    eval "$line"
-    printf 'R=%s\n' "$?"
-    printf '%s\n' "$result"
-}
-
-@test "the postscripts and the package utilities ship executable" {
-    [ -x "$OSPKGS" ]
-    [ -x "$OTHERPKGS" ]
+@test "the postscripts and package utilities ship executable" {
+    [ -x "$postscripts/ospkgs" ]
+    [ -x "$postscripts/otherpkgs" ]
     [ -x "$PKGUTILS" ]
 }
 
-@test "xcat_apt_get runs apt-get unattended and accepts the unsigned xCAT repositories" {
+@test "xcat_apt_get runs unattended and accepts unsigned xCAT repositories" {
     source "$PKGUTILS"
-    shadow_apt_get
-
+    apt-get() { printf '%s\t' "${DEBIAN_FRONTEND:-unset}" "$@" >"$APT_LOG"; }
     run xcat_apt_get -q install --no-install-recommends foo bar
     [ "$status" -eq 0 ]
-    [ "$(apt_call 1)" = "noninteractive|-y --allow-unauthenticated -q install --no-install-recommends foo bar" ]
-    [ "$(apt_calls)" -eq 1 ]
+    [ "$(cat "$APT_LOG")" = "$(printf '%s\t' noninteractive -y --allow-unauthenticated -q install --no-install-recommends foo bar)" ]
 }
 
-@test "xcat_apt_get returns the apt-get status" {
+@test "xcat_apt_get returns the package manager status" {
     source "$PKGUTILS"
-    shadow_apt_get
-
-    APT_STATUS=100 run xcat_apt_get upgrade
+    apt-get() { return 100; }
+    run xcat_apt_get upgrade
     [ "$status" -eq 100 ]
 }
 
-@test "a pkglist environment prefix reaches apt-get through the eval the postscripts use" {
-    source "$PKGUTILS"
-    apt-get()
-    {
-        printf '%s\n' "${ACCEPT_EULA:-unset}" >>"$APT_LOG"
-    }
-    local ENVLIST="ACCEPT_EULA=y"
-
-    run eval "$ENVLIST xcat_apt_get -q install foo"
-    [ "$status" -eq 0 ]
-    [ "$(apt_call 1)" = "y" ]
-}
-
-@test "ospkgs upgrades and installs through xcat_apt_get without --force-yes" {
-    source "$PKGUTILS"
-    shadow_apt_get
-
-    run run_ospkgs_apt_block
-    [ "$status" -eq 0 ]
-    [[ "$output" == *'RETURNVAL=0'* ]]
-    [ "$(apt_call 1 | cut -d'|' -f2)" = "-y update" ]
-    [ "$(apt_call 2)" = "noninteractive|-y --allow-unauthenticated -o Dpkg::Options::=--force-confold -o Dpkg::Options::=--force-confdef upgrade" ]
-    [ "$(apt_call 3)" = "noninteractive|-y --allow-unauthenticated -q install --no-install-recommends foo bar" ]
-    [ "$(apt_calls)" -eq 3 ]
-    ! grep -q -- '--force-yes' "$APT_LOG"
-}
-
-@test "ospkgs keeps the apt-get failure status and still runs the later steps" {
-    source "$PKGUTILS"
-    shadow_apt_get
-
-    APT_STATUS=100 run run_ospkgs_apt_block
-    [ "$status" -eq 0 ]
-    [[ "$output" == *'RETURNVAL=100'* ]]
-    [ "$(apt_calls)" -eq 3 ]
-}
-
-@test "ospkgs reports a failed cuda package install" {
-    source "$PKGUTILS"
-    apt-get()
-    {
-        printf '%s|%s\n' "${DEBIAN_FRONTEND:-unset}" "$*" >>"$APT_LOG"
-        case "$*" in
-        *cuda*) return 100 ;;
-        esac
-        return 0
-    }
-
-    run run_ospkgs_apt_block " cuda-toolkit"
-    [ "$status" -eq 0 ]
-    [[ "$output" == *'RETURNVAL=100'* ]]
-    [ "$(apt_call 4)" = "noninteractive|-y --allow-unauthenticated -q install --no-install-recommends cuda-toolkit" ]
-    [ "$(apt_calls)" -eq 4 ]
-}
-
-run_ospkgs_rpm_cuda_block()
+setup_postscript()
 {
-    local block tail="${BATS_TEST_TMPDIR}/ospkgs-rpm-tail"
-    sed -n '/#install cuda package if any/,$p' "$OSPKGS" >"$tail"
-    block="$(extract_shell_if_block "$tail" 'if [ -n "$cudapkgs" ]; then')" || return 99
-    local ENVLIST="" yumcmd=fake_dnf cudapkgs=" cuda-toolkit" RETURNVAL=0 ARCH=x86_64 debug=0 log_label=ospkgs
-    logger() { :; }
-    fake_dnf()
-    {
-        printf '%s\n' "$*" >>"$APT_LOG"
-        return 100
-    }
-    eval "$block"
-    printf 'RETURNVAL=%s\n' "$RETURNVAL"
+    setup_script_sandbox basename dirname cat cp expr grep ls mkdir rm uname wc sed stat diff
+    mkdir -p "$fixture/etc/apt/sources.list.d"
+    : >"$fixture/etc/apt/sources.list"
+    local tool
+    for tool in logger mount dpkg apt-cache apt-get; do
+        cp "$(repo_path xCAT-test/bats/fixtures/package-command.sh)" "$fixture/bin/$tool"
+        chmod +x "$fixture/bin/$tool"
+    done
+    sandbox+=(--ro-bind "$postscripts" /run/postscripts
+        --setenv OSVER ubuntu24.04 --setenv ARCH x86_64 --setenv UPDATENODE 1
+        --setenv NFSSERVER package-server --setenv HTTPPORT 80
+        --setenv INSTALLDIR /install --setenv OTHERPKGDIR /install/other
+        --setenv OSPKGDIR 'http://packages.example.invalid/ubuntu noble main'
+        --setenv OSPKGS 'foo,bar' --setenv OTHERPKGS_INDEX 1
+        --setenv OTHERPKGS1 'extra/foo,extra/bar'
+        --setenv ENVLIST ACCEPT_EULA=ospkgs --setenv ENVLIST1 ACCEPT_EULA=otherpkgs)
 }
 
-@test "ospkgs reports a failed cuda package install on yum and dnf nodes" {
-    run run_ospkgs_rpm_cuda_block
-    [ "$status" -eq 0 ]
-    [[ "$output" == *'RETURNVAL=100'* ]]
-    [ "$(apt_call 1)" = "-y install cuda-toolkit" ]
-    [ "$(apt_calls)" -eq 1 ]
+run_postscript()
+{
+    local script=$1 expected=$2
+    shift 2
+    : >"$fixture/commands"
+    run "${sandbox[@]}" "$@" timeout 15 bash "/run/postscripts/$script" </dev/null
+    if [ "$status" -ne "$expected" ]; then
+        printf 'Expected status %s, got %s\n%s\n' "$expected" "$status" "$output" >&2
+        return 1
+    fi
 }
 
-@test "otherpkgs upgrades through xcat_apt_get without --force-yes" {
-    source "$PKGUTILS"
-    shadow_apt_get
-
-    run run_otherpkgs_apt_line 'result=`eval [$]envlist .*Dpkg::Options.* upgrade 2>&1`'
-    [ "$status" -eq 0 ]
-    [[ "$output" == *'R=0'* ]]
-    [ "$(apt_call 1)" = "noninteractive|-y --allow-unauthenticated -o Dpkg::Options::=--force-confold -o Dpkg::Options::=--force-confdef upgrade" ]
-    [ "$(apt_calls)" -eq 1 ]
+expect_call()
+{
+    printf '%s\t' "$@" >>"$fixture/expected"
+    printf '\n' >>"$fixture/expected"
 }
 
-@test "otherpkgs installs through xcat_apt_get without --force-yes" {
-    source "$PKGUTILS"
-    shadow_apt_get
+expect_ospkgs_calls()
+{
+    : >"$fixture/expected"
+    expect_call apt-get unset unset x86_64 -y update
+    expect_call apt-get noninteractive unset x86_64 -y --allow-unauthenticated -o Dpkg::Options::=--force-confold -o Dpkg::Options::=--force-confdef upgrade
+    expect_call apt-get noninteractive ospkgs x86_64 -y --allow-unauthenticated -q install --no-install-recommends foo bar
+}
 
-    run run_otherpkgs_apt_line 'result=`eval [$]envlist .*Dpkg::Options.* install [$]repo_pkgs 2>&1`'
-    [ "$status" -eq 0 ]
-    [[ "$output" == *'R=0'* ]]
-    [ "$(apt_call 1)" = "noninteractive|-y --allow-unauthenticated -q -o Dpkg::Options::=--force-confold -o Dpkg::Options::=--force-confdef install foo bar" ]
-    [ "$(apt_calls)" -eq 1 ]
+expect_otherpkgs_calls()
+{
+    : >"$fixture/expected"
+    expect_call apt-get unset unset x86_64 -y update
+    expect_call apt-get noninteractive otherpkgs x86_64 -y --allow-unauthenticated -o Dpkg::Options::=--force-confold -o Dpkg::Options::=--force-confdef upgrade
+    expect_call apt-get noninteractive otherpkgs x86_64 -y --allow-unauthenticated -q -o Dpkg::Options::=--force-confold -o Dpkg::Options::=--force-confdef install foo bar
+}
+
+@test "ospkgs upgrades and installs through the unattended helper" {
+    setup_postscript
+    run_postscript ospkgs 0
+    expect_ospkgs_calls
+    diff -u "$fixture/expected" "$fixture/commands"
+}
+
+@test "ospkgs keeps upgrade failures while continuing the install" {
+    setup_postscript
+    run_postscript ospkgs 17 --setenv UPGRADE_STATUS 17
+    expect_ospkgs_calls
+    diff -u "$fixture/expected" "$fixture/commands"
+}
+
+@test "ospkgs returns install failures" {
+    setup_postscript
+    run_postscript ospkgs 23 --setenv INSTALL_STATUS 23
+    expect_ospkgs_calls
+    diff -u "$fixture/expected" "$fixture/commands"
+}
+
+@test "ospkgs preserves CUDA failure and restores ARCH before later removal" {
+    setup_postscript
+    run_postscript ospkgs 42 --setenv OSPKGS foo,bar,cuda-toolkit,-oldpkg --setenv CUDA_STATUS 42
+    expect_ospkgs_calls
+    expect_call apt-get noninteractive ospkgs unset -y --allow-unauthenticated -q install --no-install-recommends cuda-toolkit
+    expect_call apt-get unset ospkgs x86_64 -y remove oldpkg
+    diff -u "$fixture/expected" "$fixture/commands"
+}
+
+@test "ospkgs reports CUDA failures for both RPM managers" {
+    setup_postscript
+    local manager
+    for manager in yum dnf; do
+        cp "$(repo_path xCAT-test/bats/fixtures/package-command.sh)" "$fixture/bin/$manager"
+        chmod +x "$fixture/bin/$manager"
+        run_postscript ospkgs 42 --setenv OSVER rhel9 --setenv OSPKGS cuda-toolkit,-oldpkg --setenv CUDA_STATUS 42
+        : >"$fixture/expected"
+        expect_call "$manager" unset unset x86_64 clean all
+        expect_call "$manager" unset unset x86_64 -y upgrade
+        expect_call "$manager" unset ospkgs unset -y install cuda-toolkit
+        expect_call "$manager" unset ospkgs x86_64 -y remove oldpkg
+        diff -u "$fixture/expected" "$fixture/commands"
+        rm "$fixture/bin/$manager"
+    done
+}
+
+@test "otherpkgs upgrades and installs through the unattended helper" {
+    setup_postscript
+    run_postscript otherpkgs 0
+    expect_otherpkgs_calls
+    diff -u "$fixture/expected" "$fixture/commands"
+}
+
+@test "otherpkgs keeps upgrade failures while continuing the install" {
+    setup_postscript
+    run_postscript otherpkgs 17 --setenv UPGRADE_STATUS 17
+    expect_otherpkgs_calls
+    diff -u "$fixture/expected" "$fixture/commands"
+}
+
+@test "otherpkgs returns install failures after the upgrade" {
+    setup_postscript
+    run_postscript otherpkgs 23 --setenv INSTALL_STATUS 23
+    expect_otherpkgs_calls
+    diff -u "$fixture/expected" "$fixture/commands"
 }
