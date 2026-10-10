@@ -3,6 +3,7 @@ use strict;
 use warnings;
 
 use File::Path qw(make_path);
+use File::Slurper qw(read_binary write_binary);
 use File::Spec;
 use File::Temp qw(tempdir);
 use FindBin;
@@ -30,7 +31,7 @@ my $helper_log = File::Spec->catfile( $tmpdir, 'helper.log' );
 my $scope_log = File::Spec->catfile( $tmpdir, 'scope.log' );
 
 my $fake_nmcli = File::Spec->catfile( $test_bin, 'nmcli' );
-write_file( $fake_nmcli, <<'SH' );
+write_binary( $fake_nmcli, <<'SH' );
 #!/bin/sh
 {
     printf 'nmcli'
@@ -57,7 +58,7 @@ SH
 chmod 0755, $fake_nmcli or die "Unable to make $fake_nmcli executable: $!";
 
 my $fake_ip = File::Spec->catfile( $test_bin, 'ip' );
-write_file( $fake_ip, <<'SH' );
+write_binary( $fake_ip, <<'SH' );
 #!/bin/sh
 {
     printf 'ip'
@@ -70,7 +71,7 @@ SH
 chmod 0755, $fake_ip or die "Unable to make $fake_ip executable: $!";
 
 my $helper_driver = File::Spec->catfile( $tmpdir, 'run-helper' );
-write_file( $helper_driver, <<'SH' );
+write_binary( $helper_driver, <<'SH' );
 #!/bin/bash
 source "$XCAT_TEST_NICUTILS" >/dev/null
 nmcli=unused-nmcli-variable
@@ -101,10 +102,10 @@ is( $status, 0, 'device UUID lookup returns nmcli success' );
 is( $output, "11111111-2222-3333-4444-555555555555\n",
     'device UUID lookup preserves nmcli output' );
 is( $error, '', 'successful device UUID lookup keeps stderr empty' );
-is( read_file($scope_log), "device=<unset>\n",
+is( scalar read_binary($scope_log), "device=<unset>\n",
     'device UUID lookup does not leak its local variable' );
 is(
-    read_file($command_log),
+    scalar read_binary($command_log),
     command_line( 'nmcli', '-g', 'GENERAL.CON-UUID', 'device', 'show',
         'fabric', 'port' ),
     'device expansion preserves the existing literal nmcli arguments'
@@ -137,10 +138,10 @@ is( $status, 0, 'device connection name lookup returns pipeline success' );
 is( $output, "Wired connection 2\n",
     'device connection name lookup preserves the existing parsed output' );
 is( $error, '', 'successful connection name lookup keeps stderr empty' );
-is( read_file($scope_log), "device=<unset>\n",
+is( scalar read_binary($scope_log), "device=<unset>\n",
     'device connection name lookup does not leak its local variable' );
 is(
-    read_file($command_log),
+    scalar read_binary($command_log),
     command_line( 'nmcli', 'dev', 'show', 'eth1' ),
     'device connection name lookup preserves the existing nmcli command'
 );
@@ -159,7 +160,7 @@ is( $error, "nmcli-error\n",
     'connection name lookup preserves nmcli stderr' );
 
 my $caller_driver = File::Spec->catfile( $tmpdir, 'run-callers' );
-write_file( $caller_driver, <<'SH' );
+write_binary( $caller_driver, <<'SH' );
 #!/bin/bash
 source "$XCAT_TEST_NICUTILS" >/dev/null
 
@@ -213,10 +214,10 @@ chmod 0755, $caller_driver
 
 $status = run_caller('bridge');
 is( $status, 0, 'bridge setup completes with the shared device lookups' );
-is( read_file($helper_log), "name\t<eth0>\nuuid\t<eth0>\n",
+is( scalar read_binary($helper_log), "name\t<eth0>\nuuid\t<eth0>\n",
     'bridge setup resolves the existing profile name and UUID by device' );
 is(
-    read_file($command_log),
+    scalar read_binary($command_log),
     join( '',
         command_line(
             'nmcli', 'con', 'add', 'type', 'bridge', 'con-name',
@@ -244,10 +245,10 @@ is(
 
 $status = run_caller('bond');
 is( $status, 0, 'bond setup completes with the shared device lookups' );
-is( read_file($helper_log), "name\t<eth1>\nuuid\t<eth1>\n",
+is( scalar read_binary($helper_log), "name\t<eth1>\nuuid\t<eth1>\n",
     'bond setup resolves a foreign space-containing profile by its device' );
 is(
-    read_file($command_log),
+    scalar read_binary($command_log),
     join( '',
         command_line(
             'nmcli', 'con', 'add', 'type', 'bond', 'con-name',
@@ -280,7 +281,7 @@ done_testing();
 sub run_helper
 {
     my ( $helper, $device, %options ) = @_;
-    write_file( $command_log, '' );
+    write_binary( $command_log, '' );
 
     local %ENV = %ENV;
     $ENV{PATH} = "$test_bin:$ENV{PATH}";
@@ -309,8 +310,8 @@ sub run_helper
 sub run_caller
 {
     my ($scenario) = @_;
-    write_file( $command_log, '' );
-    write_file( $helper_log, '' );
+    write_binary( $command_log, '' );
+    write_binary( $helper_log, '' );
 
     local %ENV = %ENV;
     $ENV{PATH} = "$test_bin:$ENV{PATH}";
@@ -329,21 +330,4 @@ sub command_line
 {
     my ( $command, @arguments ) = @_;
     return join( '', $command, map { "\t<$_>" } @arguments ) . "\n";
-}
-
-sub write_file
-{
-    my ( $path, $contents ) = @_;
-    open( my $fh, '>:raw', $path ) or die "Unable to write $path: $!";
-    print {$fh} $contents;
-    close($fh) or die "Unable to close $path: $!";
-}
-
-sub read_file
-{
-    my ($path) = @_;
-    open( my $fh, '<:raw', $path ) or die "Unable to read $path: $!";
-    my $contents = do { local $/; <$fh> };
-    close($fh) or die "Unable to close $path: $!";
-    return $contents;
 }
