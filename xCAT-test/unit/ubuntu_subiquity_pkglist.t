@@ -5,14 +5,12 @@ no warnings 'once';
 
 use FindBin;
 use lib "$FindBin::Bin/../lib";
+use File::Slurper qw(read_binary write_binary);
 use File::Spec;
 use File::Temp;
 use Test::More;
 
 use XCAT::Test::File qw(repo_path);
-
-sub read_text  { my ($path) = @_; open( my $fh, '<', $path ) or die "$path: $!"; local $/; my $text = <$fh>; close($fh); return $text; }
-sub write_text { my ( $path, $text ) = @_; open( my $fh, '>', $path ) or die "$path: $!"; print {$fh} $text; close($fh); return; }
 
 # A Subiquity autoinstall installs the packages of its user-data packages list, and until now the
 # template named a fixed set, so the osimage pkglist reached the node only through ospkgs after
@@ -60,8 +58,8 @@ is_deeply( [ xCAT::Template::ubuntu_autoinstall_packages() ], [], 'no records gi
 # ---- the record reader: lines kept whole, includes followed, the comma text unchanged ---------
 {
     my $d = File::Temp->newdir();
-    write_text( "$d/common.pkglist", "# shared\nnfs-common\n\@Group With Space\n" );
-    write_text( "$d/compute.pkglist", "openssh-server\n  # a comment\nd-i tasksel/first multiselect standard,not-a-real-package\n#INCLUDE:$d/common.pkglist#\n#NEW_INSTALL_LIST#\nchrony\n" );
+    write_binary( "$d/common.pkglist", "# shared\nnfs-common\n\@Group With Space\n" );
+    write_binary( "$d/compute.pkglist", "openssh-server\n  # a comment\nd-i tasksel/first multiselect standard,not-a-real-package\n#INCLUDE:$d/common.pkglist#\n#NEW_INSTALL_LIST#\nchrony\n" );
     my @records = xCAT::Postage->get_pkglist_records("$d/compute.pkglist");
     is_deeply( \@records,
         [ 'openssh-server', 'd-i tasksel/first multiselect standard,not-a-real-package', 'nfs-common', '@Group With Space', '#NEW_INSTALL_LIST#', 'chrony' ],
@@ -74,16 +72,16 @@ is_deeply( [ xCAT::Template::ubuntu_autoinstall_packages() ], [], 'no records gi
 
     # top.pkglist includes sub/common.pkglist, which includes leaf.pkglist: the leaf next to top.pkglist is the one meant
     mkdir "$d/sub" or die "$d/sub: $!";
-    write_text( "$d/top.pkglist",        "#INCLUDE:sub/common.pkglist#\n" );
-    write_text( "$d/sub/common.pkglist", "#INCLUDE:leaf.pkglist#\n" );
-    write_text( "$d/leaf.pkglist",       "nfs-common\n" );
-    write_text( "$d/sub/leaf.pkglist",   "snmpd\n" );
+    write_binary( "$d/top.pkglist",        "#INCLUDE:sub/common.pkglist#\n" );
+    write_binary( "$d/sub/common.pkglist", "#INCLUDE:leaf.pkglist#\n" );
+    write_binary( "$d/leaf.pkglist",       "nfs-common\n" );
+    write_binary( "$d/sub/leaf.pkglist",   "snmpd\n" );
     is_deeply( [ xCAT::Postage->get_pkglist_records("$d/top.pkglist") ], ['nfs-common'],
         'a nested include resolves against the directory of the listed pkglist' );
     is_deeply( [ xCAT::Postage->get_pkglist_records("$d/top.pkglist") ], [ split /,/, xCAT::Postage->get_pkglist_tex("$d/top.pkglist") ],
         'and reads the same files get_pkglist_tex reads' );
 
-    write_text( "$d/note.pkglist", "#INCLUDE:leaf.pkglist# # the shared leaf\nbc # a calculator\n" );
+    write_binary( "$d/note.pkglist", "#INCLUDE:leaf.pkglist# # the shared leaf\nbc # a calculator\n" );
     my @noted = xCAT::Postage->get_pkglist_records("$d/note.pkglist");
     is_deeply( \@noted, [ split /,/, xCAT::Postage->get_pkglist_tex("$d/note.pkglist") ],
         'an include followed by a note is expanded, the note staying on the last record as get_pkglist_tex leaves it' );
@@ -112,11 +110,11 @@ use warnings;
 my $dir      = File::Temp->newdir();
 my $included = File::Spec->catfile( "$dir", 'common.pkglist' );
 my $pkglist  = File::Spec->catfile( "$dir", 'compute.pkglist' );
-write_text( $included, "# shared\nnfs-common\nsnmpd\n" );
-write_text( $pkglist,  "openssh-server\n# a comment\nchrony rsync # time and files\nwget=1.21.2-2ubuntu1\n-ntp\nwget-\n\@standard\nd-i tasksel/first multiselect standard,not-a-real-package\n#INCLUDE:$included#\n" );
+write_binary( $included, "# shared\nnfs-common\nsnmpd\n" );
+write_binary( $pkglist,  "openssh-server\n# a comment\nchrony rsync # time and files\nwget=1.21.2-2ubuntu1\n-ntp\nwget-\n\@standard\nd-i tasksel/first multiselect standard,not-a-real-package\n#INCLUDE:$included#\n" );
 
 my $in = File::Spec->catfile( "$dir", 'in.tmpl' );
-write_text( $in,
+write_binary( $in,
         "  packages:\n"
       . "    - openssh-server\n"
       . "    - wget\n"
@@ -130,7 +128,7 @@ my $render = sub {
     my $out = File::Spec->catfile( "$dir", 'out.' . ( defined $list ? 'list' : 'none' ) );
     xCAT::Template->subvars( $in, $out, 'testnode', $list, '/install/ubuntu24.04/x86_64', 'ubuntu', undef,
         { xcatmaster => '192.0.2.10' }, osarch => 'x86_64', %extra );
-    return read_text($out);
+    return scalar read_binary($out);
 };
 
 my $rendered = $render->($pkglist);
@@ -152,13 +150,13 @@ unlike( $rendered, qr/"(?:time|and|files)"/, 'an inline comment adds no items' )
 
 # a site template that includes the stock one: the token arrives with the include and must be expanded too
 my $wrapper = File::Spec->catfile( "$dir", 'wrapper.tmpl' );
-write_text( $wrapper, "#INCLUDE:$in#\n" );
+write_binary( $wrapper, "#INCLUDE:$in#\n" );
 my $render_via = sub {
     my ($list) = @_;
     %site = ( installdir => '/install' );
     my $out = File::Spec->catfile( "$dir", 'out.wrapper.' . ( defined $list ? 'list' : 'none' ) );
     xCAT::Template->subvars( $wrapper, $out, 'testnode', $list, '/install/ubuntu24.04/x86_64', 'ubuntu', undef, { xcatmaster => '192.0.2.10' }, osarch => 'x86_64' );
-    return read_text($out);
+    return scalar read_binary($out);
 };
 is( $render_via->($pkglist), $rendered, 'a template that includes the stock one renders the same package list' );
 
@@ -170,8 +168,8 @@ is( $render_via->(undef), $without, 'and through an including template the token
 
 my $env_list     = File::Spec->catfile( "$dir", 'env.pkglist' );
 my $env_included = File::Spec->catfile( "$dir", 'env-common.pkglist' );
-write_text( $env_included, "msodbcsql18 #ENV:ACCEPT_EULA=Y#\n" );
-write_text( $env_list,     "gawk\n#INCLUDE:$env_included#\n" );
+write_binary( $env_included, "msodbcsql18 #ENV:ACCEPT_EULA=Y#\n" );
+write_binary( $env_list,     "gawk\n#INCLUDE:$env_included#\n" );
 is( $render->($env_list), $without, 'a pkglist whose include carries an apt environment setting is left to ospkgs whole, and the token line goes' );
 is( $render->( $pkglist, environvar => 'ACCEPT_EULA=Y' ), $without,
     'an osimage with environvar installs its pkglist through ospkgs alone, where the variables reach apt-get, and the token line goes' );
@@ -182,14 +180,14 @@ is( $render->( $pkglist, environvar => 'ACCEPT_EULA=Y' ), $without,
     local *xCAT::Template::ubuntu_subiquity_otherpkg_sources = sub { () };
     local *xCAT::Template::ubuntu_subiquity_apt_mirror       = sub { 'http://archive.example/ubuntu' };
     my $apt_in = File::Spec->catfile( "$dir", 'apt.tmpl' );
-    write_text( $apt_in, "#UBUNTU_SUBIQUITY_APT_CONFIG#\n" );
+    write_binary( $apt_in, "#UBUNTU_SUBIQUITY_APT_CONFIG#\n" );
     my $apt_render = sub {
         my (%extra) = @_;
         %site = ( installdir => '/install' );
         my $out = File::Spec->catfile( "$dir", 'out.apt' );
         xCAT::Template->subvars( $apt_in, $out, 'testnode', $pkglist, '/install/ubuntu24.04/x86_64', 'ubuntu', undef, { xcatmaster => '192.0.2.10' },
             osarch => 'x86_64', pkgdirs => '/install/ubuntu24.04/x86_64,http://mirror.example/ubuntu noble main', %extra );
-        return read_text($out);
+        return scalar read_binary($out);
     };
     like( $apt_render->(), qr{URIs: http://mirror\.example/ubuntu}, 'the pkgdir mirror joins the installer sources' );
     like( $apt_render->(), qr{^    conf: 'APT::Install-Recommends "false";'$}m, 'the installer installs without recommended packages, as ospkgs does' );
