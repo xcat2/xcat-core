@@ -27,3 +27,22 @@ sub run_command {
 }
 
 1;
+
+__END__
+
+=head1 NAME
+
+XCAT::Test::Process - command execution for source-tree tests
+
+=head1 FUNCTIONS
+
+=head2 run_command
+
+Runs a literal argument list and returns the normal exit code and combined
+stdout/stderr output. Requires list context. Execution failures and signal
+termination raise errors.
+
+Inherits the caller's environment and directory. Capture::Tiny applies the
+caller's STDOUT PerlIO layers; use raw STDOUT for byte comparisons.
+
+=cut
