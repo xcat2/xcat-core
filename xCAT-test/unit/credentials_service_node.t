@@ -7,6 +7,9 @@ use File::Spec;
 use File::Temp qw(tempdir);
 use FindBin;
 use Test::More;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::File qw(repo_path);
+use lib repo_path('perl-xCAT');
 
 BEGIN {
     package xCAT::Table;
@@ -97,10 +100,7 @@ BEGIN {
     $INC{'HTTP/Request/Common.pm'} = 1;
 }
 
-my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
-my $plugin = File::Spec->catfile(
-    $repo_root, qw(xCAT-server lib xcat plugins credentials.pm)
-);
+my $plugin = repo_path('xCAT-server/lib/xcat/plugins/credentials.pm');
 require $plugin;
 
 sub reset_client {

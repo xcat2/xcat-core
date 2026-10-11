@@ -3,9 +3,11 @@
 use strict;
 use warnings;
 
-use File::Spec;
 use FindBin;
 use Test::More;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::File qw(repo_path);
+use lib repo_path('perl-xCAT');
 
 BEGIN {
     package xCAT::Table;
@@ -96,10 +98,7 @@ BEGIN {
     $INC{'HTTP/Request/Common.pm'} = 1;
 }
 
-my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
-my $plugin = File::Spec->catfile(
-    $repo_root, qw(xCAT-server lib xcat plugins credentials.pm)
-);
+my $plugin = repo_path('xCAT-server/lib/xcat/plugins/credentials.pm');
 require $plugin;
 
 # The node callback on port 300 is the only part that needs a live node.

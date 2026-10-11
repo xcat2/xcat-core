@@ -3,10 +3,10 @@ use strict;
 use warnings;
 
 use FindBin;
-use File::Spec;
 use Test::More;
-use lib File::Spec->catdir( $FindBin::Bin, '..', '..',
-    'xCAT-server', 'lib', 'perl' );
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::File qw(repo_path);
+use lib repo_path('perl-xCAT'), repo_path('xCAT-server/lib/perl');
 use xCAT::BladeUtils;
 
 sub blades {
