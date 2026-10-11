@@ -49,7 +49,8 @@ On Debian or Ubuntu, install `bubblewrap`, `debhelper`, `devscripts`, `fakeroot`
 ```
 prove xCAT-test/native/xcatd_debian_lifecycle.t \
       xCAT-test/native/xcatd_restart_callers.t \
-      xCAT-test/native/apache_package_lifecycle.t
+      xCAT-test/native/apache_package_lifecycle.t \
+      xCAT-test/native/package_upgrade_logging.t
 ```
 
 On EL8 or EL10, install `bubblewrap`, `rpm-build`, `systemd`, `chkconfig`,
@@ -59,7 +60,8 @@ On EL8 or EL10, install `bubblewrap`, `rpm-build`, `systemd`, `chkconfig`,
 ```
 prove xCAT-test/native/xcatd_rpm_lifecycle.t \
       xCAT-test/native/apache_rpm_configuration.t \
-      xCAT-test/native/apache_package_lifecycle.t
+      xCAT-test/native/apache_package_lifecycle.t \
+      xCAT-test/native/package_upgrade_logging.t
 ```
 
 These EL dependencies need EPEL plus PowerTools on EL8 or CRB on EL10.
@@ -73,6 +75,11 @@ fixture. RPM upgrades also cover the old package-owned init-script layout.
 The Debian Apache cases unpack built packages and execute their complete
 maintainer scripts. Restart-caller cases execute complete Debian scripts and
 RPM-rendered scriptlets without building the optional UI package.
+
+Upgrade logging cases run package transactions with a configuration-command
+fixture. They check output, warnings, PID relocation, temporary files and the
+different RPM and Debian failure policies. They do not run `xcatconfig` or
+build a Genesis image.
 
 The RPM Apache cases distinguish a root without `/proc` from a chroot with
 `/proc` mounted and a different PID 1 root. Debian and restart-caller cases
