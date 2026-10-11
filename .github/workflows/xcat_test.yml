@@ -12,7 +12,37 @@ jobs:
         run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests bats bubblewrap rpm rsyslog build-essential fakeroot reprepro devscripts debhelper libcapture-tiny-perl libfile-slurper-perl libjson-perl libyaml-pp-perl libparallel-forkmanager-perl libsoap-lite-perl libdbi-perl libcgi-pm-perl quilt openssh-server dpkg looptools genometools software-properties-common grub-common grub-efi-amd64-bin
       - name: Enable postscript test namespaces
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Install lifecycle test dependencies
+        run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests ucf debconf-utils systemd libxml-simple-perl apache2 curl
+      - name: Test Debian package lifecycle
+        run: prove -v xCAT-test/native/xcatd_debian_lifecycle.t xCAT-test/native/xcatd_restart_callers.t xCAT-test/native/apache_package_lifecycle.t
       - name: Prepare xCAT syslog directory
+        if: ${{ !cancelled() }}
         run: sudo install -d -o syslog -g adm -m 0750 /var/log/xcat
       - name: Run tests
+        if: ${{ !cancelled() }}
         run: perl github_action_xcat_test.pl
+  rpm_lifecycle_test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: almalinux:8
+            repository: powertools
+          - image: almalinux:10
+            repository: crb
+    container:
+      image: ${{ matrix.image }}
+      options: --privileged --init
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install lifecycle test dependencies
+        run: |
+          dnf install -y epel-release
+          dnf --enablerepo=${{ matrix.repository }} install -y perl perl-Capture-Tiny perl-File-Slurper perl-Test-Simple rpm-build bubblewrap systemd chkconfig initscripts tar gzip which diffutils httpd curl procps-ng
+      - name: Enable lifecycle test namespaces
+        run: sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Test RPM package lifecycle
+        run: su -s /bin/sh nobody -c 'prove -v xCAT-test/native/xcatd_rpm_lifecycle.t xCAT-test/native/apache_rpm_configuration.t xCAT-test/native/apache_package_lifecycle.t'
