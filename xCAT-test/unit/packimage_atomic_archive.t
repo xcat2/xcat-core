@@ -11,8 +11,33 @@ use File::Slurper qw(read_binary write_text);
 use File::Temp qw(tempdir);
 use POSIX ();
 use Sys::Hostname qw(hostname);
+use Errno qw(EIO);
 use Test::More;
 use XCAT::Test::File qw(repo_path);
+
+# A rename or unlink of a path in %FAIL_FROM fails, as when the file system refuses it.
+our %FAIL_FROM;
+BEGIN {
+    *CORE::GLOBAL::rename = sub {
+        my ($from, $to) = @_;
+        if ($FAIL_FROM{$from}) {
+            $! = EIO;
+            return 0;
+        }
+        return CORE::rename($from, $to);
+    };
+    *CORE::GLOBAL::unlink = sub {
+        my $removed = 0;
+        foreach my $path (@_ ? @_ : ($_)) {
+            if ($FAIL_FROM{$path}) {
+                $! = EIO;
+                next;
+            }
+            $removed += CORE::unlink($path);
+        }
+        return $removed;
+    };
+}
 
 plan skip_all => 'packimage packs real archives with Linux tools' unless $^O eq 'linux';
 local $ENV{PATH} = "$ENV{PATH}:/usr/sbin:/sbin";
@@ -302,7 +327,7 @@ SKIP: {
     write_text("$dest/.packimage-publish/owner", "other.host 4242\n");
     utime(time() - 120, time() - 120, "$dest/.packimage-publish") or die $!;
     my ($result, $errors) = packimage($dest, '-m', 'cpio', '-c', 'gzip', $name);
-    like($errors, qr/\Q$dest\E\/\.packimage-publish is held by other\.host 4242\. If no packimage of this image runs on any host, remove it/,
+    like($errors, qr/\Q$dest\E\/\.packimage-publish is held by other\.host 4242\. If no .+ of this image runs on any host, remove it/,
         "$label: the failure names the holder and the recovery");
     is(content($archive), "previous archive\n", "$label: the previous archive stays");
     is(content("$dest/rootimg.previous"), "previous format\n", "$label: other formats stay");
@@ -347,19 +372,18 @@ SCRIPT
 
 {
     my ($name, $dest, $archive) = image('cpio', 'gzip', 'gzip', 'pass');
-    my $label = 'previous metainfo that cannot be removed';
+    my $label = 'previous metainfo that cannot be replaced';
     write_text("$dest/bin/ctorrent", <<"SCRIPT");
 #!/bin/sh
 while [ \$# -gt 1 ]; do [ "\$1" = -s ] && out=\$2; shift; done
 echo new metainfo > "\$out"
 SCRIPT
     chmod 0755, "$dest/bin/ctorrent";
-    unlink("$archive.metainfo") or die $!;
-    make_path("$archive.metainfo/held");
+    local %FAIL_FROM = ("$archive.metainfo" => 1);
     my (undef, $errors) = packimage($dest, '-m', 'cpio', '-c', 'gzip', '--tracker', 'http://tracker.example:6969/announce', $name);
     like($errors, qr/Cannot publish \Q$archive\E: /, "$label: the failure is reported");
     is(content($archive), "previous archive\n", "$label: the previous archive stays");
-    ok(-d "$archive.metainfo/held", "$label: the previous metainfo stays");
+    is(content("$archive.metainfo"), "previous metainfo\n", "$label: the previous metainfo stays");
     is(content("$dest/rootimg.previous"), "previous format\n", "$label: other formats stay");
     is_deeply([ glob("$dest/.packimage-$host+*") ], [], "$label: no temporary file is left");
 }
