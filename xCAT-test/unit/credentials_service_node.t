@@ -44,9 +44,11 @@ BEGIN {
 
     package xCAT::NetworkUtils;
     our %addresses;
+    our @lookups;
     sub import { }
     sub getipaddr {
         my ($class, $endpoint) = @_;
+        push @lookups, $endpoint;
         return @{ $addresses{$endpoint} || [] };
     }
     $INC{'xCAT/NetworkUtils.pm'} = 1;
@@ -118,6 +120,50 @@ is( $commands->{getcredentials}, 'credentials',
     'credentials plugin still handles client requests' );
 is( $commands->{signx509cert}, 'credentials',
     'credentials plugin handles delegated signing' );
+
+{
+    local %xCAT::NetworkUtils::addresses = (
+        'Service-B.Example.Test.' => ['192.0.2.22'],
+    );
+    foreach my $case (
+        [ 'undefined endpoint', undef, undef, [] ],
+        [ 'empty endpoint', '', undef, [] ],
+        [ 'blank endpoint', " \t\r\n", undef, [] ],
+        [ 'defined false endpoint', '0', '0', ['0'] ],
+        [ 'padded endpoint', " \tService-B.Example.Test.\r\n",
+            'Service-B.Example.Test.', ['192.0.2.22', 'service-b.example.test'] ],
+        [ 'Unicode padding', "\x{2003}Service-B.Example.Test.\x{2003}",
+            'Service-B.Example.Test.', ['192.0.2.22', 'service-b.example.test'] ],
+        [ 'IPv4-mapped endpoint', " \t::ffff:192.0.2.22\n",
+            '::ffff:192.0.2.22', ['192.0.2.22'] ],
+        [ 'internal whitespace', ' service b ', 'service b', ['service b'] ],
+    ) {
+        my ($label, $input, $lookup, $expected) = @{$case};
+        my $original = $input;
+        local @xCAT::NetworkUtils::lookups;
+        my @identities = xCAT_plugin::credentials::_endpoint_identities($input);
+        is_deeply( [ sort @identities ], $expected, "$label preserves identities" );
+        is_deeply( \@xCAT::NetworkUtils::lookups,
+            defined($lookup) ? [$lookup] : [], "$label preserves DNS input" );
+        is( $input, $original, "$label leaves the caller input unchanged" );
+    }
+
+    local $xCAT::Table::servicenode = " \tService-B.Example.Test.\r\n";
+    foreach my $case (
+        [ 'padded assigned peer', " \t192.0.2.22\r\n", 1 ],
+        [ 'different peer', '192.0.2.23', 0 ],
+        [ 'empty peer', '', 0 ],
+        [ 'blank peer', " \t\r\n", 0 ],
+        [ 'undefined peer', undef, 0 ],
+    ) {
+        my ($label, $peer, $expected) = @{$case};
+        is( xCAT_plugin::credentials::_delegated_signer_allowed(
+                { _xcat_authname => ['root'], _xcat_clientip => [$peer] },
+                'compute-01'
+            ),
+            $expected, "$label preserves delegated signer authorization" );
+    }
+}
 
 $xCAT::Table::servicenode = 'service-a, service-b.example.test';
 %xCAT::NetworkUtils::addresses = (
