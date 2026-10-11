@@ -2,14 +2,15 @@
 use strict;
 use warnings;
 use FindBin;
+use File::Basename qw(basename);
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
-use File::Slurper qw(write_binary);
+use File::Slurper qw(read_binary write_binary);
 use Digest::MD5 qw(md5_hex);
 use lib "$FindBin::Bin/../lib";
 use Test::More;
 use XCAT::Test::Lifecycle;
-use XCAT::Test::File qw(slurp_repo_file);
+use XCAT::Test::File qw(repo_path slurp_repo_file);
 
 plan skip_all => 'Run on Linux with dpkg-buildpackage; other missing prerequisites fail'
     unless $^O eq 'linux' && -x '/usr/bin/dpkg-buildpackage';
@@ -223,6 +224,9 @@ for my $helper (
         $root->write('/etc/init.d/xcatd', $template, 0755);
         make_path($root->path('/etc/rc.d/rc3.d'));
         symlink('/etc/init.d/xcatd', $root->path('/etc/rc.d/rc3.d/S85xcatd')) or die "symlink: $!";
+        for my $source (glob repo_path('xCAT-server/share/xcat/scripts/xcatd-init-compat*')) {
+            $root->write('/opt/xcat/share/xcat/scripts/' . basename($source), scalar read_binary($source), 0755);
+        }
         $root->write('/opt/xcat/share/xcat/scripts/xcatd-init-compat',
             defined $helper->[1] ? "#!/bin/sh\n$helper->[1]\n" : slurp_repo_file('xCAT-server/share/xcat/scripts/xcatd-init-compat'), 0755);
         my ($status, $out, $err) = $root->deb_script($deb, 'preinst', 'upgrade', '2.0');

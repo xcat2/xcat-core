@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 
+use File::Basename qw(basename);
 use File::Copy qw(copy);
 use File::Path qw(make_path);
 use File::Spec;
@@ -50,8 +51,10 @@ sub stage_root {
     make_path( $scripts, $fake_bin, File::Spec->catdir( $root, 'sbin' ) );
     copy( $template, File::Spec->catfile( $scripts, 'xcatd' ) )
       or die "Unable to stage xcatd template: $!";
-    copy( $compat_helper, File::Spec->catfile( $scripts, 'xcatd-init-compat' ) )
-      or die "Unable to stage xcatd compatibility helper: $!";
+    for my $source (glob "$compat_helper*") {
+        copy( $source, File::Spec->catfile( $scripts, basename($source) ) )
+          or die "Unable to stage xcatd compatibility helper: $!";
+    }
     chmod 0755, File::Spec->catfile( $scripts, 'xcatd-init-compat' );
 
     write_file(
