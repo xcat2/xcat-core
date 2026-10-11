@@ -19,57 +19,7 @@ legacy_init="$compat_root/etc/init.d/xcatd"
 legacy_template="$compat_root$xcat_root/share/xcat/scripts/xcatd"
 managed_marker="$compat_root/var/lib/xcat/xcatd-init-compat-managed"
 
-systemd_os_release_status()
-{
-    os_release="$compat_root/etc/os-release"
-    [ -r "$os_release" ] || return 2
-
-    os_id=
-    os_version=
-    while IFS='=' read -r key value; do
-        value=${value#\"}
-        value=${value%\"}
-        value=${value#\'}
-        value=${value%\'}
-        case "$key" in
-            ID) os_id=$value ;;
-            VERSION_ID) os_version=$value ;;
-        esac
-    done < "$os_release"
-
-    # Debian testing/sid intentionally omits VERSION_ID.
-    if [ "$os_id" = "debian" ] && [ -z "$os_version" ]; then
-        return 0
-    fi
-
-    os_major=${os_version%%.*}
-    case "$os_major" in
-        ''|*[!0-9]*) return 2 ;;
-    esac
-
-    case "$os_id" in
-        rhel|centos|rocky|almalinux|ol|scientific)
-            [ "$os_major" -ge 7 ] && return 0
-            return 1
-            ;;
-        fedora|ubuntu)
-            [ "$os_major" -ge 15 ] && return 0
-            return 1
-            ;;
-        debian)
-            [ "$os_major" -ge 8 ] && return 0
-            return 1
-            ;;
-        sles|sled|opensuse|opensuse-leap|opensuse-tumbleweed)
-            [ "$os_major" -ge 12 ] && return 0
-            return 1
-            ;;
-        *)
-            return 2
-            ;;
-    esac
-
-}
+. "$(dirname "$0")/xcatd-init-compat-functions"
 
 uses_systemd()
 {
@@ -92,7 +42,7 @@ uses_systemd()
             return 1
         fi
 
-        if systemd_os_release_status; then
+        if xcat_systemd_os_release_status "$compat_root"; then
             return 0
         else
             os_release_status=$?
@@ -109,7 +59,7 @@ uses_systemd()
         return 0
     fi
 
-    if systemd_os_release_status; then
+    if xcat_systemd_os_release_status "$compat_root"; then
         return 0
     fi
 
