@@ -3,6 +3,8 @@ package XCAT::Test::RPM;
 use strict;
 use warnings;
 use parent 'XCAT::Test::Lifecycle';
+use Carp qw(croak);
+use File::Basename qw(basename);
 use File::Copy qw(copy);
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
@@ -19,6 +21,9 @@ sub build {
     XCAT::Test::Lifecycle::checked('tar', '-czf', "$top/SOURCES/$package-$version.tar.gz",
         '-C', repo_path('.'), $package);
     if ($package eq 'xCAT' || $package eq 'xCATsn') {
+        for my $source (glob repo_path('xCAT/*.lua')) {
+            copy($source, "$top/SOURCES/" . basename($source)) or croak "copy $source: $!";
+        }
         XCAT::Test::Lifecycle::checked('/bin/sh', repo_path('build-utils/sync-xcat-apache-configs'), '--stage', "$top/SOURCES");
         stage_xcatsn_templates(repo_path('.'), "$top/SOURCES", 0);
         XCAT::Test::Lifecycle::checked('tar', '-czf', "$top/SOURCES/etc.tar.gz", '-C', repo_path('xCAT'), 'etc');
