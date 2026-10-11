@@ -583,7 +583,7 @@ sub _archive_inventory {
     return;
 }
 
-sub _catalogue_prefix {
+sub catalogue_prefix {
     my $prefix = shift;
     _fail('Invalid repository catalogue prefix') if !defined($prefix) || ref($prefix)
       || length($prefix) > 4096
@@ -595,7 +595,7 @@ sub validate_repository_inventory {
     my $repository = shift;
     _fail('Invalid stored repository inventory') if ref($repository->{packages}) ne 'HASH'
       || ref($repository->{archives}) ne 'HASH';
-    my $prefix = _catalogue_prefix($repository->{catalogue_prefix});
+    my $prefix = catalogue_prefix($repository->{catalogue_prefix});
     my $packages = _records([values %{$repository->{packages}}], 'stored repository inventory');
     _fail('Stored package identities disagree') if _json($packages) ne _json($repository->{packages});
     my %archives;
@@ -656,7 +656,7 @@ sub inspect_repository {
     my %options = @arguments;
     _fail('Unknown native repository option') if grep { $_ !~ /\A(?:tool|trust|catalogue_prefix)\z/x } keys %options;
     $root = _root($root);
-    $options{catalogue_prefix} = _catalogue_prefix(
+    $options{catalogue_prefix} = catalogue_prefix(
         defined($options{catalogue_prefix}) ? $options{catalogue_prefix} : '');
     return _inspect_repository($root, \%options, snapshot_tree($root));
 }

@@ -52,8 +52,51 @@ sub _matching_media_row {
     return 1;
 }
 
+sub _validate_registered_media {
+    my ($table, $name, $row, $expected, $repositories) = @_;
+    die "The $table entry $name is disabled\n"
+      if defined($row->{disable}) && length($row->{disable})
+      && $row->{disable} !~ /\A(?:0|no)\z/i;
+    my %identity = %$expected;
+    delete $identity{profile};
+    delete $identity{otherpkgdir} if $repositories;
+    die "The $table entry $name does not match the imported media\n"
+      unless _matching_media_row($row, \%identity);
+    if ($repositories && $table eq 'freebsdimage') {
+        my $error = xCAT::Utils->freebsd_image_definition_error({ %$row, imagetype => 'freebsd' });
+        die "$name: $error\n" if defined($error) && length($error);
+    }
+    return;
+}
+
+sub _rollback_registered_media {
+    my $created = shift;
+    my $error = '';
+    for my $added (reverse @$created) {
+        my ($table, $key, $name, $expected) = @$added;
+        my $cleaned = eval {
+            my $row = _read_media_row($table, $key, $name);
+            if ($row) {
+                die "The entry changed during registration\n"
+                  unless _matching_media_row($row, $expected, 1);
+                my $tab = xCAT::Table->new($table, -create => 1, -autocommit => 1)
+                  or die "Cannot open $table\n";
+                my $deleted = eval { $tab->delEntries({ $key => $name }); 1 };
+                my $delete_error = $@;
+                $tab->close();
+                die $delete_error unless $deleted;
+                die "The entry still exists\n" if _read_media_row($table, $key, $name);
+            }
+            1;
+        };
+        $error .= "Cleanup failed for $table $name: $@" unless $cleaned;
+    }
+    return $error;
+}
+
 sub _register_media {
     my ($media, $noosimage) = @_;
+    my $repositories = ($media->{imageversion} || '') eq '2';
     my $suffix = substr($media->{digest}, 0, 12);
     my $distro = "$media->{distname}-$media->{arch}-$suffix";
     my $image = "$media->{distname}-$media->{arch}-install-compute-$suffix";
@@ -61,24 +104,32 @@ sub _register_media {
         ['osdistro', 'osdistroname', $distro, {
             osdistroname => $distro, basename => 'freebsd', majorversion => '15',
             minorversion => '1', arch => $media->{arch}, type => 'FreeBSD',
-            dirpaths => $media->{pkgdir},
+            dirpaths => $repositories ? dirname($media->{pkgdir}) : $media->{pkgdir},
         }],
     );
     unless ($noosimage) {
+        my %settings = (imagename => $image, pkgdir => $media->{pkgdir});
+        if ($repositories) {
+            $settings{imageversion} = '2';
+            $settings{otherpkgdir} = $media->{otherpkgdir} if defined($media->{otherpkgdir});
+        }
         push @records,
-          ['freebsdimage', 'imagename', $image, {
-              imagename => $image, pkgdir => $media->{pkgdir},
-          }],
+          ['freebsdimage', 'imagename', $image, \%settings],
           ['osimage', 'imagename', $image, {
               imagename => $image, imagetype => 'freebsd', osname => 'FreeBSD',
               osvers => $media->{distname}, osarch => $media->{arch},
               provmethod => 'install', profile => 'compute', osdistroname => $distro,
           }];
     }
-    my $lockpath = dirname($media->{pkgdir}) . '/.mfsbsd-register.lock';
-    sysopen(my $lock, $lockpath, O_CREAT | O_RDWR | O_NOFOLLOW, 0600)
-      or die "Cannot open media registration lock: $!\n";
-    flock($lock, LOCK_EX) or die "Cannot lock media registration: $!\n";
+    my $lock;
+    if ($repositories) {
+        $lock = xCAT::FreeBSDRepoImport::registration_lock(dirname(dirname($media->{pkgdir})));
+    } else {
+        my $lockpath = dirname($media->{pkgdir}) . '/.mfsbsd-register.lock';
+        sysopen($lock, $lockpath, O_CREAT | O_RDWR | O_NOFOLLOW, 0600)
+          or die "Cannot open media registration lock: $!\n";
+        flock($lock, LOCK_EX) or die "Cannot lock media registration: $!\n";
+    }
     my @missing;
     for my $record (@records) {
         my ($table, $key, $name, $expected) = @$record;
@@ -87,13 +138,7 @@ sub _register_media {
             push @missing, $record;
             next;
         }
-        die "The $table entry $name is disabled\n"
-          if defined($row->{disable}) && length($row->{disable})
-          && $row->{disable} !~ /\A(?:0|no)\z/i;
-        my %identity = %$expected;
-        delete $identity{profile};
-        die "The $table entry $name does not match the imported media\n"
-          unless _matching_media_row($row, \%identity);
+        _validate_registered_media($table, $name, $row, $expected, $repositories);
     }
     my @created;
     my $ok = eval {
@@ -119,28 +164,52 @@ sub _register_media {
     };
     unless ($ok) {
         my $error = $@ || "Media registration failed\n";
-        for my $added (reverse @created) {
-            my ($table, $key, $name, $expected) = @$added;
-            my $cleaned = eval {
-                my $row = _read_media_row($table, $key, $name);
-                if ($row) {
-                    die "The entry changed during registration\n"
-                      unless _matching_media_row($row, $expected, 1);
-                    my $tab = xCAT::Table->new($table, -create => 1, -autocommit => 1)
-                      or die "Cannot open $table\n";
-                    my $deleted = eval { $tab->delEntries({ $key => $name }); 1 };
-                    my $delete_error = $@;
-                    $tab->close();
-                    die $delete_error unless $deleted;
-                    die "The entry still exists\n" if _read_media_row($table, $key, $name);
-                }
-                1;
-            };
-            $error .= "Cleanup failed for $table $name: $@" unless $cleaned;
-        }
+        $error .= _rollback_registered_media(\@created);
         die $error . "Imported media retained at $media->{pkgdir}\n";
     }
     return $noosimage ? undef : $image;
+}
+
+sub _copy_release {
+    my ($mount, $inspect, $noosimage, $nonoverwrite, $callback) = @_;
+    require xCAT::FreeBSDRepoImport;
+    my $tree = xCAT::FreeBSDRepo::inspect_release_tree($mount);
+    die "The source is not supported FreeBSD release media\n" unless $tree;
+    if ($inspect) {
+        my $roles = join(',', sort keys %{$tree->{repositories}});
+        $callback->({ info => ["DISTNAME:$tree->{distname}\nARCH:$tree->{arch}\nTREE_DIGEST:$tree->{digest}\nREPOSITORIES:$roles\n"] });
+        return;
+    }
+    my $policy = xCAT::FreeBSDRepoImport::load_import_policy(_site('freebsdimportpolicy', ''));
+    my $options = xCAT::FreeBSDRepoImport::release_import_options($policy, $tree->{digest});
+    my $publication = xCAT::FreeBSDRepoImport::import_release($mount,
+        xCAT::TableUtils->getInstallDir(), %$options, nonoverwrite => $nonoverwrite);
+    my $media = { distname => $tree->{distname}, arch => $tree->{arch},
+        digest => $publication->{digest}, imageversion => '2', pkgdir => "$publication->{path}/base" };
+    $media->{otherpkgdir} = "$publication->{path}/applications"
+      if exists($publication->{repositories}{applications});
+    my $image = _register_media($media, $noosimage);
+    $callback->({ data => ["Imported FreeBSD repositories to $publication->{path}"] });
+    $callback->({ data => ["Approved selected release tree $tree->{digest}; operator-recorded ISO SHA256 $policy->{releases}{$tree->{digest}}{iso_sha256}"] });
+    $callback->({ data => ["Base repository: $media->{pkgdir}"] });
+    $callback->({ data => ["Application repository: $media->{otherpkgdir}"] }) if defined($media->{otherpkgdir});
+    $callback->({ data => ["Created or verified osimage $image"] }) if defined($image);
+    return;
+}
+
+sub _copy_bundle {
+    my ($mount, $inspect, $noosimage, $nonoverwrite, $callback) = @_;
+    if ($inspect) {
+        my $media = xCAT::FreeBSDImage::inspect_media($mount);
+        $callback->({ info => ["DISTNAME:$media->{distname}\nARCH:$media->{arch}\nDIGEST:$media->{digest}\n"] });
+        return;
+    }
+    my $media = xCAT::FreeBSDImage::import_media($mount,
+        xCAT::TableUtils->getInstallDir(), nonoverwrite => $nonoverwrite);
+    my $image = _register_media($media, $noosimage);
+    $callback->({ data => ["Imported FreeBSD media to $media->{pkgdir}"] });
+    $callback->({ data => ["Created or verified osimage $image"] }) if defined($image);
+    return;
 }
 
 sub copycd {
@@ -157,22 +226,18 @@ sub copycd {
             'o' => \$noosimage, 'w' => \$nonoverwrite, 'n=s' => \$name,
             'a=s' => \$arch, 'p=s' => \$path, 's' => \$specific);
     }
-    return unless defined($mount)
-      && (-e "$mount/xcat/mfsbsd.json" || -l "$mount/xcat/mfsbsd.json");
+    return unless defined($mount);
+    my $legacy = -e "$mount/xcat/mfsbsd.json" || -l "$mount/xcat/mfsbsd.json";
+    return unless $legacy || -e "$mount/bin/freebsd-version" || -l "$mount/bin/freebsd-version";
     %$request = ();
     my $ok = eval {
         die "Invalid FreeBSD copycd arguments: @parse_errors\n" unless $parsed && !@args;
         die "FreeBSD copycds does not support -n, -a, -p, or -s\n"
           if defined($name) || defined($arch) || defined($path) || $specific;
-        if ($inspect) {
-            my $media = xCAT::FreeBSDImage::inspect_media($mount);
-            $callback->({ info => ["DISTNAME:$media->{distname}\nARCH:$media->{arch}\nDIGEST:$media->{digest}\n"] });
+        if (!$legacy) {
+            _copy_release($mount, $inspect, $noosimage, $nonoverwrite, $callback);
         } else {
-            my $media = xCAT::FreeBSDImage::import_media($mount,
-                xCAT::TableUtils->getInstallDir(), nonoverwrite => $nonoverwrite);
-            my $image = _register_media($media, $noosimage);
-            $callback->({ data => ["Imported FreeBSD media to $media->{pkgdir}"] });
-            $callback->({ data => ["Created or verified osimage $image"] }) if defined($image);
+            _copy_bundle($mount, $inspect, $noosimage, $nonoverwrite, $callback);
         }
         1;
     };

@@ -1230,6 +1230,9 @@ passed as argument rather than by table value',
 " genpasswords:  Automatically generate random passwords for BMCs when configuring\n" .
 "                them.\n\n" .
 " installdir:  The local directory name used to hold the node deployment packages(obsoleted).\n\n" .
+" freebsdimportpolicy:  Absolute path of the protected administrator JSON policy\n" .
+"              for FreeBSD repository imports. It pins the native pkg tool,\n" .
+"              approved release trees and supplemental repository trust.\n\n" .
 " installloc:  The location from which the service nodes should mount the \n" .
 "              deployment packages in the format hostname:/path.  If hostname is\n" .
 "              omitted, it defaults to the management node. The path must\n" .

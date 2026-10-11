@@ -71,8 +71,9 @@ sub _parent {
 }
 
 sub _lock {
-    my $parent = shift;
-    my $path = "$parent/.repository-import.lock";
+    my ($parent, $name) = @_;
+    $name = '.repository-import.lock' unless defined($name);
+    my $path = "$parent/$name";
     sysopen(my $fh, $path, O_RDWR | O_CREAT | O_NOFOLLOW | O_NONBLOCK, oct('0600'))
       or _fail("Cannot open repository import lock: $!");
     my @state = stat($fh);
@@ -84,6 +85,11 @@ sub _lock {
     _fail('Repository import lock changed') unless @named
       && $named[0] == $state[0] && $named[1] == $state[1] && $named[3] == 1;
     return $fh;
+}
+
+sub registration_lock {
+    _fail('Repository registration locking requires one directory') unless @_ == 1;
+    return _lock(_installroot(shift), '.repository-register.lock');
 }
 
 sub _tree {
@@ -490,30 +496,185 @@ sub _checked_source {
     return;
 }
 
+sub _read_contents {
+    my ($fh, $before, $description) = @_;
+    my $bytes = '';
+    while (length($bytes) <= $before->[7]) {
+        my $remaining = $before->[7] - length($bytes) + 1;
+        my $length = $remaining < 1048576 ? $remaining : 1048576;
+        my $read = read($fh, my $buffer, $length);
+        _fail("Cannot read $description: $!") unless defined($read);
+        last unless $read;
+        $bytes .= $buffer;
+    }
+    my @after = stat($fh);
+    close($fh) or _fail("Cannot close $description: $!");
+    _fail("$description changed during reading") if length($bytes) != $before->[7]
+      || !@after || grep { $after[$_] != $before->[$_] } (0, 1, 7, 9, 10);
+    return $bytes;
+}
+
 sub _read_manifest {
     my $path = shift;
     my @state = lstat($path);
     _fail('Missing or oversized repository import manifest') if !@state
       || !S_ISREG($state[2]) || $state[7] > 536870912;
     my ($fh, $before) = _open_source($path, { size => $state[7] });
-    my $bytes = '';
-    while (length($bytes) <= $before->[7]) {
-        my $remaining = $before->[7] - length($bytes) + 1;
-        my $length = $remaining < 1048576 ? $remaining : 1048576;
-        my $read = read($fh, my $buffer, $length);
-        _fail("Cannot read import manifest: $!") unless defined($read);
-        last unless $read;
-        $bytes .= $buffer;
-    }
-    my @after = stat($fh);
-    close($fh) or _fail("Cannot close import manifest: $!");
-    _fail('Repository import manifest changed during reading') if length($bytes) != $before->[7]
-      || !@after || grep { $after[$_] != $before->[$_] } (0, 1, 7, 9, 10);
+    my $bytes = _read_contents($fh, $before, 'Repository import manifest');
     my $manifest = eval { JSON->new->utf8->max_depth(64)->decode($bytes) };
     _fail('Invalid repository import manifest JSON') if $@ || ref($manifest) ne 'HASH';
     _checked_digest($manifest, 'xcat-freebsd-repo-import-1');
     _fail('Repository import manifest is not canonical') unless _json($manifest) . "\n" eq $bytes;
     return ($manifest, $bytes);
+}
+
+sub _policy_fields {
+    my ($value, $description, @allowed) = @_;
+    _fail("Invalid $description object") unless ref($value) eq 'HASH';
+    my %allowed = map { $_ => 1 } @allowed;
+    _fail("Unknown $description field") if grep { !exists($allowed{$_}) } keys %$value;
+    return;
+}
+
+sub _policy_path {
+    my ($path, $description) = @_;
+    _fail("Invalid $description path") if !defined($path) || ref($path)
+      || length($path) > 4096 || $path !~ m{\A/[^\x00-\x1f\x7f]+\z}x
+      || grep { !length($_) || $_ eq '.' || $_ eq '..' } split(m{/}x, substr($path, 1), -1);
+    return $path;
+}
+
+sub _policy_digest {
+    my ($digest, $description) = @_;
+    _fail("Invalid $description digest") if !defined($digest) || ref($digest)
+      || $digest !~ /\A[0-9a-f]{64}\z/x;
+    return $digest;
+}
+
+sub _policy_tool {
+    my $tool = shift;
+    _policy_fields($tool, 'import policy tool', qw(path sha256 library_directory library_digest));
+    _policy_path($tool->{path}, 'native pkg tool');
+    _policy_digest($tool->{sha256}, 'native pkg tool');
+    if (exists($tool->{library_directory}) || exists($tool->{library_digest})) {
+        my $directory = _policy_path($tool->{library_directory}, 'native pkg library');
+        _fail('Native pkg library directory cannot contain a colon') if $directory =~ /:/x;
+        _policy_digest($tool->{library_digest}, 'native pkg library');
+    }
+    return;
+}
+
+sub _policy_repository {
+    my $repository = shift;
+    _policy_fields($repository, 'repository profile', qw(trust catalogue_prefix));
+    my $trust = $repository->{trust};
+    _fail('Invalid repository profile trust') if ref($trust) ne 'HASH'
+      || !defined($trust->{type}) || ref($trust->{type});
+    if ($trust->{type} eq 'pubkey') {
+        _policy_fields($trust, 'repository public key', qw(type path sha256));
+        _policy_path($trust->{path}, 'repository public key');
+        _policy_digest($trust->{sha256}, 'repository public key');
+    } else {
+        _fail('Unsupported repository profile trust') unless $trust->{type} eq 'operator-trusted-tree';
+        _policy_fields($trust, 'trusted repository tree', qw(type digest));
+        _policy_digest($trust->{digest}, 'trusted repository tree');
+    }
+    xCAT::FreeBSDRepo::catalogue_prefix(exists($repository->{catalogue_prefix}) ? $repository->{catalogue_prefix} : '');
+    return;
+}
+
+sub _validate_import_policy {
+    my $policy = shift;
+    _policy_fields($policy, 'FreeBSD import policy', qw(format tool releases repositories));
+    _fail('Unsupported FreeBSD import policy format') if !defined($policy->{format})
+      || ref($policy->{format}) || $policy->{format} ne 'xcat-freebsd-import-policy-1';
+    _policy_tool($policy->{tool});
+    _fail('Invalid import policy release approvals') unless ref($policy->{releases}) eq 'HASH';
+    for my $digest (sort keys %{$policy->{releases}}) {
+        _policy_digest($digest, 'approved release');
+        my $release = $policy->{releases}{$digest};
+        _policy_fields($release, 'release approval', 'iso_sha256');
+        _policy_digest($release->{iso_sha256}, 'approved ISO');
+    }
+    _fail('Invalid import policy repository profiles') unless ref($policy->{repositories}) eq 'HASH';
+    for my $profile (sort keys %{$policy->{repositories}}) {
+        _fail('Invalid repository profile name') unless $profile =~ /\A[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\z/x;
+        _policy_repository($policy->{repositories}{$profile});
+    }
+    return;
+}
+
+sub _policy_parents {
+    my $path = shift;
+    my @parts = split(m{/}x, substr($path, 1));
+    pop @parts;
+    my ($parent, @states) = ('');
+    for my $part ('', @parts) {
+        $parent .= "/$part" if length($part);
+        my $state = _controlled_directory(length($parent) ? $parent : '/', 1);
+        push @states, [@{$state}[0, 1, 2, 4]];
+    }
+    return \@states;
+}
+
+sub _protected_file {
+    my ($path, $description, $before) = @_;
+    my @state = lstat($path);
+    _fail("$description must be a protected bounded regular file") if !@state
+      || !S_ISREG($state[2]) || $state[3] != 1 || ($state[4] != 0 && $state[4] != $>)
+      || ($state[2] & oct('0022')) || $state[7] > 1048576;
+    _fail("$description file changed during reading")
+      if $before && grep { $state[$_] != $before->[$_] } (0, 1, 2, 3, 4, 7, 9, 10);
+    return \@state;
+}
+
+sub read_protected_file {
+    my ($path, $description) = @_;
+    _fail('Protected file reading requires a path and description') unless @_ == 2;
+    _policy_path($path, $description);
+    my $parents = _policy_parents($path);
+    my $before = _protected_file($path, $description);
+    sysopen(my $fh, $path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK)
+      or _fail("Cannot open $description: $!");
+    binmode($fh) or _fail("Cannot read $description bytes: $!");
+    my @opened = stat($fh);
+    _fail("$description file changed while opening") if !@opened
+      || grep { $opened[$_] != $before->[$_] } (0, 1, 2, 3, 4, 7, 9, 10);
+    my $bytes = _read_contents($fh, $before, $description);
+    _protected_file($path, $description, $before);
+    _fail("$description parent changed during reading") unless _json(_policy_parents($path)) eq _json($parents);
+    return $bytes;
+}
+
+sub load_import_policy {
+    _fail('Import policy loading requires one path') unless @_ == 1;
+    my $bytes = read_protected_file(shift, 'FreeBSD import policy');
+    my $policy = eval { JSON->new->utf8->max_depth(32)->decode($bytes) };
+    _fail('Invalid FreeBSD import policy JSON') if $@;
+    _validate_import_policy($policy);
+    return $policy;
+}
+
+sub release_import_options {
+    my ($policy, $digest) = @_;
+    _fail('Release import options require a policy and digest') unless @_ == 2;
+    _validate_import_policy($policy);
+    _policy_digest($digest, 'selected release');
+    _fail('The selected release is not approved by the import policy') unless exists($policy->{releases}{$digest});
+    return { tool => { %{$policy->{tool}} }, trust => { type => 'operator-trusted-release', digest => $digest } };
+}
+
+sub repository_import_options {
+    my ($policy, $profile) = @_;
+    _fail('Repository import options require a policy and profile') unless @_ == 2;
+    _validate_import_policy($policy);
+    _fail('Invalid selected repository profile') if !defined($profile) || ref($profile)
+      || $profile !~ /\A[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\z/x;
+    _fail('The selected repository profile is not approved by the import policy')
+      unless exists($policy->{repositories}{$profile});
+    my $repository = $policy->{repositories}{$profile};
+    return { tool => { %{$policy->{tool}} }, trust => { %{$repository->{trust}} },
+        catalogue_prefix => exists($repository->{catalogue_prefix}) ? $repository->{catalogue_prefix} : '' };
 }
 
 sub inspect_import {
