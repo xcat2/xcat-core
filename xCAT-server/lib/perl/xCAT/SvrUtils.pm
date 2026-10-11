@@ -12,8 +12,11 @@ require xCAT::NodeRange;
 require xCAT::Utils;
 require xCAT::TableUtils;
 require xCAT::NetworkUtils;
+use Errno qw(EEXIST);
 use File::Basename;
 use File::Path;
+use File::Temp;
+use Sys::Hostname ();
 use strict;
 use Exporter;
 our @ISA       = qw/Exporter/;
@@ -2570,6 +2573,88 @@ sub searchcompressedrootimg{
     }
 
     return $cpsdrootimg;
+}
+
+# Publication holds its lock briefly, so a writer that waits this long fails instead of taking the lock over.
+my $publish_lock_wait = 60;
+
+#--------------------------------------------------------------------------------------------------------
+#rootimg_stage:
+#description: create a private directory in an image directory for a new compressed rootimage, and remove
+#             the directories that writers on this host abandoned. Hold the image lock while you call it.
+#argument:
+#        $dir: the image directory
+#return:
+#        on success: a File::Temp directory object, which removes the directory when it goes out of scope
+#        on fail:    undef and the error message
+#--------------------------------------------------------------------------------------------------------
+sub rootimg_stage {
+    my (undef, $dir) = @_;
+
+    # The image lock is per host, so only this host's directories are known to be abandoned.
+    (my $host = Sys::Hostname::hostname()) =~ s/[^A-Za-z0-9.-]/_/gx;
+    my @abandoned = glob("$dir/.packimage-$host+????????");
+    rmtree(\@abandoned) if @abandoned;
+    my $stage = eval { File::Temp->newdir(".packimage-$host+XXXXXXXX", DIR => $dir) };
+    return ($stage) if $stage;
+    return (undef, "Cannot create a temporary directory in $dir: $@");
+}
+
+#--------------------------------------------------------------------------------------------------------
+#publish_rootimg:
+#description: replace a published compressed rootimage and its metainfo with staged files.
+#             Nodes keep downloading the previous rootimage until the rename replaces it.
+#argument:
+#        $staged:        the staged compressed rootimage, with <staged>.metainfo when it exists
+#        $target:        the published path
+#        $remove_others: true to remove the other rootimg.* files of the image directory
+#return:
+#        on success: nothing
+#        on fail:    the error message
+#--------------------------------------------------------------------------------------------------------
+sub publish_rootimg {
+    my (undef, $staged, $target, $remove_others) = @_;
+    my $dir = dirname($target);
+
+    # The image lock is per host, and mkdir is atomic for every host, also on NFS without locks.
+    my $lock = "$dir/.packimage-publish";
+    for (my $waited = 0; !mkdir($lock); $waited++) {
+        return "Cannot create $lock: $!" unless $! == EEXIST;
+        my $age = time() - ((stat($lock))[9] // time());
+        if ($waited >= $publish_lock_wait || $age > $publish_lock_wait) {
+            my $holder = '';
+            if (open(my $owner, '<', "$lock/owner")) {
+                $holder = <$owner> // '';
+                close($owner);
+                chomp($holder);
+                $holder = " by $holder" if $holder;
+            }
+            return "$lock is held$holder. If no packimage of this image runs on any host, "
+              . "remove it and run packimage again.";
+        }
+        sleep 1;
+    }
+    if (open(my $owner, '>', "$lock/owner")) {
+        print $owner Sys::Hostname::hostname() . " $$\n";
+        close($owner);
+    }
+    my @sidecars = grep { -e "$staged.$_" } qw(metainfo);
+    my @files = ($staged, map { "$staged.$_" } @sidecars);
+
+    # The previous metainfo goes first, so no failure leaves a metainfo that describes another archive.
+    my $published = -s $staged && chmod(0644, @files) == @files
+      && !grep { -e "$target.$_" && !unlink("$target.$_") } qw(metainfo);
+    $published &&= rename($staged, $target);
+    $published &&= rename("$staged.$_", "$target.$_") foreach @sidecars;
+    my $error = $!;
+    if ($published && $remove_others) {
+        my %kept = map { ($_ => 1) } ($target, "$target.metainfo");
+        unlink grep { !$kept{$_} } glob("$dir/rootimg.*");
+    }
+    unlink("$lock/owner");
+    rmdir($lock);
+    return if $published;
+    return "Cannot publish $target: $error";
 }
 
 

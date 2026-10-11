@@ -29,9 +29,7 @@ use Getopt::Long;
 use File::Path;
 use File::Copy;
 use Cwd;
-use Errno qw(EEXIST);
 use File::Temp;
-use Sys::Hostname ();
 use File::Basename;
 use File::Path;
 
@@ -49,9 +47,6 @@ Getopt::Long::Configure("pass_through");
 my $verbose = 0;
 
 #$verbose = 1;
-
-# Publication takes milliseconds, so packimage waits no longer than this for the publication lock.
-my $publish_lock_wait = 60;
 
 #-------------------------------------------------------
 
@@ -602,13 +597,9 @@ sub process_request {
 
     $suffix = $method.".".$suffix;
     my $image_file = $method eq 'squashfs' ? 'rootimg.sfs' : "rootimg.$suffix";
-    # The image lock is per host, so only this host's .packimage files are known to be abandoned.
-    (my $host = Sys::Hostname::hostname()) =~ s/[^A-Za-z0-9.-]/_/g;
-    my @abandoned = glob("$destdir/.packimage-$host+????????");
-    rmtree(\@abandoned) if @abandoned;
     # ctorrent names the metainfo after the archive, so both are built under their final names in a private directory.
-    my $stage = eval { File::Temp->newdir(".packimage-$host+XXXXXXXX", DIR => $destdir) }
-      or return $native_failure->("Cannot create a temporary directory in $destdir: $@");
+    my ($stage, $stage_error) = xCAT::SvrUtils->rootimg_stage($destdir);
+    return $native_failure->($stage_error) unless $stage;
     my $archive_output = "$stage/$image_file";
     $archive_output =~ s/'/'\\''/g;
     $archive_output = "'$archive_output'";
@@ -619,46 +610,6 @@ sub process_request {
         ($list_rc, $list_output) = native_pack_command("$includestr >> $xcat_packimg_tmpfile");
         return $native_failure->("Cannot enumerate included files: $list_output") if $list_rc;
     }
-    # Nodes keep downloading the previous archive until the rename replaces it.
-    my $publish_archive = sub {
-        # The image lock is per host, and mkdir is atomic for every host, also on NFS without locks.
-        my $publish_lock = "$destdir/.packimage-publish";
-        for (my $waited = 0; !mkdir($publish_lock); $waited++) {
-            return $native_failure->("Cannot create $publish_lock: $!") unless $! == EEXIST;
-            my $age = time() - ((stat($publish_lock))[9] // time());
-            if ($waited >= $publish_lock_wait || $age > $publish_lock_wait) {
-                my $holder = '';
-                if (open(my $owner, '<', "$publish_lock/owner")) {
-                    $holder = <$owner> // '';
-                    close($owner);
-                    chomp($holder);
-                    $holder = " by $holder" if $holder;
-                }
-                return $native_failure->("$publish_lock is held$holder. If no packimage of this image runs on any host, "
-                      . "remove it and run packimage again.");
-            }
-            sleep 1;
-        }
-        if (open(my $owner, '>', "$publish_lock/owner")) {
-            print $owner "$host $$\n";
-            close($owner);
-        }
-        my $target = "$destdir/$image_file";
-        my ($new_archive, $new_metainfo) = ("$stage/$image_file", "$stage/$image_file.metainfo");
-        my $metainfo = -e $new_metainfo;
-
-        # The previous metainfo goes first, so no failure leaves a metainfo that describes another archive.
-        my $published = -s $new_archive && chmod(0644, $new_archive) && (!$metainfo || chmod(0644, $new_metainfo))
-          && (!-e "$target.metainfo" || unlink("$target.metainfo"))
-          && rename($new_archive, $target)
-          && (!$metainfo || rename($new_metainfo, "$target.metainfo"));
-        my $error = $!;
-        unlink grep { $_ ne $target && $_ ne "$target.metainfo" } glob("$destdir/rootimg.*") if $published;
-        unlink("$publish_lock/owner");
-        rmdir($publish_lock);
-        return $native_failure->("Cannot publish $target: $error") unless $published;
-        return 0;
-    };
 
     if ($method =~ /cpio/) {
         if (!$excludestr) {
@@ -734,7 +685,9 @@ sub process_request {
     # The StateLite files must be back in place before the new archive replaces the previous one.
     return $native_failure->("$destdir keeps its previous archive because the StateLite files of $rootimg_dir were not restored")
       if $restore_statelite->();
-    return 1 if $publish_archive->();
+    if (my $error = xCAT::SvrUtils->publish_rootimg("$stage/$image_file", "$destdir/$image_file", 1)) {
+        return $native_failure->($error);
+    }
 
     umask($oldmask) if defined($oldmask);
     system("rm -f $xcat_packimg_tmpfile");
