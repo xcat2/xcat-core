@@ -19,6 +19,7 @@ Source5: xCATMN
 Source4: prescripts.tar.gz
 Source6: winpostscripts.tar.gz
 Source8: etc.tar.gz
+Source9: xcat-apache-pretrans.lua
 %endif
 
 Source7: xcat.conf.apach24
@@ -138,6 +139,7 @@ tar zxf %{SOURCE2}
 tar zxf %{SOURCE4}
 tar zxf %{SOURCE6}
 tar zxf %{SOURCE8}
+cp %{SOURCE9} xcat-apache-pretrans.lua
 %else
 rm -rf postscripts
 cp %{SOURCE2} /opt/freeware/src/packages/BUILD
@@ -148,41 +150,9 @@ tar -xf postscripts.tar
 %build
 
 %ifos linux
-# rpm fixes each config file's fate before %pre runs, so a migration there can
-# delete an active file rpm has already decided to leave as xcat.conf.rpmnew.
-# %pretrans runs before that decision.  It is Lua because a pre-transaction
-# scriptlet cannot rely on any dependency being unpacked yet.
-%pretrans -p <lua>
--- Older packages shipped xcat.conf as ordinary payload and then rewrote it
--- from conf.orig in %post, so rpm's recorded digest cannot tell a stock file
--- from a customised one.  Compare against the outgoing package's templates,
--- still on disk at this point, and drop only a file that still matches one.
-if arg[2] and tonumber(arg[2]) == 1 then return end
-
-local function contents(path)
-    local handle = io.open(path, "rb")
-    if not handle then return nil end
-    local data = handle:read("*a")
-    handle:close()
-    return data
-end
-
-local templates = { contents("/etc/%httpconfigdir/conf.orig/xcat.conf.apach24"),
-                    contents("/etc/%httpconfigdir/conf.orig/xcat.conf.apach22") }
-
-for _, active in ipairs({ "/etc/httpd/conf.d/xcat.conf",
-                          "/etc/apache2/conf.d/xcat.conf" }) do
-    -- A symlink or any other non-regular path is treated as locally managed.
-    if posix.stat(active, "type") == "regular" then
-        local current = contents(active)
-        for _, template in ipairs(templates) do
-            if current and current == template then
-                os.remove(active)
-                break
-            end
-        end
-    end
-end
+# RPM decides configuration ownership before pre-install scripts run.
+%pretrans -p <lua> -f xcat-apache-pretrans.lua
+local template_dir = "/etc/%httpconfigdir/conf.orig"
 %endif
 
 %pre
