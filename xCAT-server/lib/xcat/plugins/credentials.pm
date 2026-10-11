@@ -38,6 +38,7 @@ use xCAT::Utils;
 use xCAT::NetworkUtils;
 use xCAT::PasswordUtils;
 use xCAT::TableUtils;
+use xCAT::StringUtils qw(trim);
 
 use xCAT::MsgUtils;
 use Getopt::Long;
@@ -410,7 +411,7 @@ sub _delegated_signer_allowed {
 sub _endpoint_identities {
     my $endpoint = shift;
     return unless defined($endpoint);
-    $endpoint =~ s/^\s+|\s+$//g;
+    $endpoint = trim($endpoint);
     return unless length($endpoint);
 
     my %identities;

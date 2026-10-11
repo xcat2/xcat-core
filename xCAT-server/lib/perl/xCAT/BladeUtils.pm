@@ -3,6 +3,8 @@ package xCAT::BladeUtils;
 use strict;
 use warnings;
 
+use xCAT::StringUtils qw(trim);
+
 sub blade_nodes_from_mp {
     my @entries = @_;
     my %hwtype;
@@ -12,7 +14,7 @@ sub blade_nodes_from_mp {
         next unless ref $entry eq 'HASH' and defined $entry->{node};
         $hwtype{ $entry->{node} } =
           defined $entry->{nodetype} ? lc( $entry->{nodetype} ) : q{};
-        $hwtype{ $entry->{node} } =~ s/^\s+|\s+$//gx;
+        $hwtype{ $entry->{node} } = trim($hwtype{ $entry->{node} });
         $ownmpa{ $entry->{node} } = $entry->{mpa}
           if defined $entry->{mpa};
     }
