@@ -27,6 +27,36 @@ sub succeeds {
     is($result[0], 0, $label) or diag($result[1] . $result[2]);
 }
 
+for my $case (
+    ['rhel', '6', 0], ['rhel', '7', 1],
+    ['fedora', '14', 0], ['fedora', '15', 1],
+    ['ubuntu', '14.04', 0], ['ubuntu', '15.04', 1],
+    ['debian', '7', 0], ['debian', '8', 1], ['debian', undef, 1],
+    ['sles', '11', 0], ['sles', '12', 1],
+    ['rocky', '8', 1], ['almalinux', '10', 1], ['ol', '7', 1],
+    ['fixture', '1', 1],
+) {
+    my ($id, $version, $modern) = @$case;
+    subtest "$id " . ($version // 'rolling') . ' init classification' => sub {
+        my $root = XCAT::Test::Lifecycle->new;
+        $root->write('/etc/os-release', "ID='$id'\n" .
+            (defined $version ? "VERSION_ID=\"$version\"\n" : ''));
+        $root->record_command('/test-bin/dpkg-maintscript-helper', '/usr/bin/dpkg-maintscript-helper');
+        for my $script (qw(preinst postrm)) {
+            $root->write('/calls', '');
+            succeeds("run $script without installed package helpers",
+                $root->deb_script($deb, $script, $script eq 'preinst' ? 'install' : 'abort-install'));
+            my @migration = $root->read('/calls') =~ /^(dpkg-maintscript-helper <rm_conffile>.*)$/mg;
+            is(scalar @migration, $modern, "$script migrates the conffile only for a systemd target");
+        }
+        local $root->{deb} = $deb;
+        succeeds('unpack runtime helpers', $root->run('dpkg-deb', '-x', '/package.deb', '/unpacked'));
+        my ($status, $out, $err) = $root->run('env', 'XCAT_COMPAT_ROOT=/',
+            '/unpacked/opt/xcat/share/xcat/scripts/xcatd-init-compat', 'uses-systemd', '--explicit-target');
+        is($status, $modern ? 0 : 1, 'packaged helper classifies the target-root release') or diag "$out$err";
+    };
+}
+
 for my $mode (qw(systemd legacy explicit-legacy unknown)) {
     subtest "$mode package lifecycle" => sub {
         my $root = XCAT::Test::Lifecycle->new;
@@ -306,9 +336,11 @@ subtest 'preinst discards stale pending evidence' => sub {
     for my $file (qw(pending-xcatd pending-enabled pending-deleted pending-xcatd.tmp.123)) {
         $root->write("$state/$file", "stale evidence\n");
     }
+    $root->write("$state/administrator-note", 'unrelated state');
     succeeds('begin installation without installed conffile metadata', $root->deb_script($deb, 'preinst', 'install'));
     my @pending = glob $root->path("$state/pending-*");
     is_deeply(\@pending, [], 'preinst discards pending evidence without installed ownership');
+    is($root->read("$state/administrator-note"), 'unrelated state', 'cleanup preserves unrelated state');
 };
 
 for my $mode (qw(systemd legacy)) {
