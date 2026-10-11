@@ -5,7 +5,7 @@ use warnings;
 use Cwd qw(abs_path);
 use Digest::SHA qw(sha256_hex);
 use Encode qw(encode_utf8);
-use Fcntl qw(O_RDONLY O_NOFOLLOW O_NONBLOCK O_WRONLY O_CREAT O_EXCL S_ISREG);
+use Fcntl qw(O_RDONLY O_NOFOLLOW O_NONBLOCK O_WRONLY O_CREAT O_EXCL S_ISREG S_ISDIR S_ISLNK);
 use File::Temp;
 use JSON;
 use xCAT::FreeBSDPkg;
@@ -323,6 +323,50 @@ sub _metadata {
     return \%values;
 }
 
+sub _native_entry {
+    my ($path, $kind, $ancestor) = @_;
+    my @state = lstat($path);
+    _fail("Missing or unsupported native $kind: $path") unless @state;
+    my %types = (directory => S_ISDIR($state[2]), file => S_ISREG($state[2]),
+        link => S_ISLNK($state[2]), program => S_ISREG($state[2]) || S_ISLNK($state[2]));
+    _fail("Missing or unsupported native $kind: $path") unless $types{$kind};
+    _fail("Untrusted native path owner: $path") unless $state[4] == 0 || $state[4] == $>;
+    return if S_ISLNK($state[2]);
+    _fail("Writable native path: $path") if ($state[2] & oct('0022'))
+      && !($ancestor && S_ISDIR($state[2]) && ($state[2] & oct('1000')));
+    _fail("Unsafe native file links or privileges: $path") if S_ISREG($state[2])
+      && ($state[3] != 1 || ($state[2] & oct('6000')));
+    return;
+}
+
+sub _native_path {
+    my ($path, $kind) = @_;
+    _fail('Invalid protected native path') if !defined($path) || ref($path)
+      || length($path) > 4096 || $path !~ m{\A/[^\x00-\x1f\x7f]+\z}x;
+    my @parts = split(m{/}x, substr($path, 1), -1);
+    _fail('Invalid protected native path component')
+      if grep { !length($_) || $_ eq '.' || $_ eq '..' } @parts;
+    pop @parts;
+    _native_entry('/', 'directory', 1);
+    my $parent = '';
+    for my $part (@parts) {
+        $parent .= "/$part";
+        _native_entry($parent, 'directory', 1);
+    }
+    _native_entry($path, $kind, 0);
+    return;
+}
+
+sub _native_libraries {
+    my $directory = shift;
+    _native_path($directory, 'directory');
+    my $libraries = snapshot_tree($directory);
+    for my $path (sort keys %{$libraries->{entries}}) {
+        _native_entry("$directory/$path", $libraries->{entries}{$path}{type}, 0);
+    }
+    return $libraries;
+}
+
 sub _native_context {
     my ($tool, $scratch) = @_;
     _fail('A pinned native pkg tool is required') if ref($tool) ne 'HASH'
@@ -330,6 +374,7 @@ sub _native_context {
       || $tool->{path} !~ m{\A/[^\x00\r\n]+\z}x;
     _fail('Unknown native pkg tool option')
       if grep { $_ !~ /\A(?:path|sha256|library_directory|library_digest)\z/x } keys %$tool;
+    _native_path($tool->{path}, 'file');
     my ($binary) = _file($tool->{path}, 536870912, 0);
     _fail('Native pkg executable checksum mismatch') if $binary->{sha256} ne $tool->{sha256};
     _fail('Native pkg tool is not executable') unless -x $tool->{path};
@@ -337,9 +382,11 @@ sub _native_context {
     my $identity = { version => '2.8.2', sha256 => $binary->{sha256} };
     if (exists($tool->{library_directory}) || exists($tool->{library_digest})) {
         _fail('A pinned native pkg library directory is required') unless _digest($tool->{library_digest});
+        _native_path($tool->{library_directory}, 'directory');
         my $directory = _root($tool->{library_directory});
         _fail('Native pkg library directory cannot contain a colon') if $directory =~ /:/x;
-        my $libraries = snapshot_tree($directory);
+        _fail('Native pkg library directory cannot contain loader separators or variables') if $directory =~ /[;\$]/x;
+        my $libraries = _native_libraries($directory);
         _fail('Native pkg library checksum mismatch') if $libraries->{digest} ne $tool->{library_digest};
         $environment{LD_LIBRARY_PATH} = $directory;
         $identity->{library_digest} = $libraries->{digest};
