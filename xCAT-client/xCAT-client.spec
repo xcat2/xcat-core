@@ -208,6 +208,7 @@ ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/nodeadd
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/xcatsetup
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/makenetworks
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/copycds
+ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/freebsdrepo
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/regnotif
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/unregnotif
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/monstart
