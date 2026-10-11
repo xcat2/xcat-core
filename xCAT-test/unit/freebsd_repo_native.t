@@ -199,6 +199,162 @@ sub trust_cases {
     return;
 }
 
+sub rejects_before_native {
+    my ($action, $pattern, $description) = @_;
+    my $runner = \&xCAT::FreeBSDPkg::run_command;
+    my $calls = 0;
+    {
+        local *xCAT::FreeBSDPkg::run_command = gensym();
+        *xCAT::FreeBSDPkg::run_command = sub {
+            ++$calls;
+            return $runner->(@_);
+        };
+        rejects($action, $pattern, $description);
+    }
+    is($calls, 0, "$description without native execution");
+    return;
+}
+
+sub protected_tool_cases {
+    my $directory = new_directory();
+    chmod(oct('0700'), $directory) or croak $!;
+    my $executable = "$directory/pkg";
+    copy($tool->{path}, $executable) or croak $!;
+    chmod(oct('0700'), $executable) or croak $!;
+    my $selected = { %$tool, path => $executable };
+    is(inspect($unsigned, tool => $selected)->{native_validated}, 1,
+        'a protected copied native executable retains its pinned behavior');
+    for my $case (
+        ['group-writable executable', $executable, oct('0720'), oct('0700')],
+        ['other-writable executable', $executable, oct('0702'), oct('0700')],
+        ['group-writable executable ancestor', $directory, oct('0720'), oct('0700')],
+        ['other-writable executable ancestor', $directory, oct('0702'), oct('0700')],
+    ) {
+        chmod($case->[2], $case->[1]) or croak $!;
+        rejects_before_native(sub { inspect($unsigned, tool => $selected) }, qr/Writable[ ]native[ ]path/x,
+            "$case->[0] is rejected before execution");
+        chmod($case->[3], $case->[1]) or croak $!;
+    }
+    for my $bits (oct('4000'), oct('2000')) {
+        chmod(oct('0700') | $bits, $executable) or croak $!;
+        rejects_before_native(sub { inspect($unsigned, tool => $selected) }, qr/Unsafe[ ]native[ ]file[ ]links[ ]or[ ]privileges/x,
+            "executable privilege bit $bits is rejected");
+        chmod(oct('0700'), $executable) or croak $!;
+    }
+    chmod(oct('1777'), $directory) or croak $!;
+    is(inspect($unsigned, tool => $selected)->{native_validated}, 1,
+        'a protected executable below a sticky shared ancestor remains usable');
+    chmod(oct('0700'), $directory) or croak $!;
+    link($executable, "$directory/pkg-alias") or croak $!;
+    rejects_before_native(sub { inspect($unsigned, tool => $selected) }, qr/Unsafe[ ]native[ ]file[ ]links/x,
+        'an executable with another hardlink is rejected');
+    unlink("$directory/pkg-alias") or croak $!;
+    symlink($directory, "$tmp/native-link") or croak $!;
+    rejects_before_native(sub { inspect($unsigned, tool => { %$selected, path => "$tmp/native-link/pkg" }) },
+        qr/unsupported[ ]native[ ]directory/x, 'a symlinked executable ancestor is rejected');
+    SKIP: {
+        skip 'Foreign tool ownership requires root', 6 if $> != 0;
+        for my $path ($executable, $directory) {
+            chown(65534, -1, $path) or croak $!;
+            rejects_before_native(sub { inspect($unsigned, tool => $selected) }, qr/Untrusted[ ]native[ ]path[ ]owner/x,
+                'a foreign-owned executable or ancestor is rejected');
+            chown(0, -1, $path) or croak $!;
+        }
+    }
+    return;
+}
+
+sub protected_library_member_cases {
+    my ($directory, $relative, $selected) = @_;
+    my $file = "$directory/$relative";
+    my $descendant = "$directory/subtree";
+    make_path($descendant);
+    chmod(oct('0700'), $descendant) or croak $!;
+    copy($file, "$descendant/library-copy") or croak $!;
+    chmod(oct('0600'), "$descendant/library-copy") or croak $!;
+    symlink($relative, "$directory/owned-link") or croak $!;
+    $selected->{library_digest} = xCAT::FreeBSDRepo::snapshot_tree($directory)->{digest};
+    is(inspect($unsigned, tool => $selected)->{native_validated}, 1,
+        'protected library descendants and an internal link remain usable');
+    for my $bits (oct('0020'), oct('0002'), oct('1077')) {
+        chmod(oct('0700') | $bits, $descendant) or croak $!;
+        rejects_before_native(sub { inspect($unsigned, tool => $selected) }, qr/Writable[ ]native[ ]path/x,
+            "writable library descendant mode $bits is rejected");
+        chmod(oct('0700'), $descendant) or croak $!;
+    }
+    SKIP: {
+        skip 'Foreign library ownership requires root', 12 if $> != 0;
+        for my $path ($file, $directory, $descendant) {
+            chown(65534, -1, $path) or croak $!;
+            rejects_before_native(sub { inspect($unsigned, tool => $selected) }, qr/Untrusted[ ]native[ ]path[ ]owner/x,
+                'a foreign-owned library or directory is rejected');
+            chown(0, -1, $path) or croak $!;
+        }
+        command('/usr/bin/chown', '-h', '65534', "$directory/owned-link");
+        rejects_before_native(sub { inspect($unsigned, tool => $selected) }, qr/Untrusted[ ]native[ ]path[ ]owner/x,
+            'a foreign-owned internal library link is rejected');
+        command('/usr/bin/chown', '-h', '0', "$directory/owned-link");
+    }
+    return;
+}
+
+sub protected_library_cases {
+    my $parent = new_directory();
+    chmod(oct('0700'), $parent) or croak $!;
+    my $directory = "$parent/lib";
+    command('/usr/bin/cp', '-a', $tool->{library_directory}, $directory);
+    chmod(oct('0700'), $directory) or croak $!;
+    my $selected = { %$tool, library_directory => $directory,
+        library_digest => xCAT::FreeBSDRepo::snapshot_tree($directory)->{digest} };
+    is(inspect($unsigned, tool => $selected)->{native_validated}, 1,
+        'a protected library copy and its internal symlinks retain native behavior');
+    my ($relative) = sort grep { -f "$directory/$_" && !-l "$directory/$_" }
+      keys %{xCAT::FreeBSDRepo::snapshot_tree($directory)->{entries}};
+    croak 'Native fixture has no regular library file' unless defined($relative);
+    my $file = "$directory/$relative";
+    my $mode = (stat($file))[2] & oct('07777');
+    for my $case (
+        ['group-writable library', $file, $mode | oct('0020'), $mode],
+        ['other-writable library', $file, $mode | oct('0002'), $mode],
+        ['group-writable library directory', $directory, oct('0720'), oct('0700')],
+        ['other-writable library directory', $directory, oct('0702'), oct('0700')],
+        ['sticky writable library directory', $directory, oct('1777'), oct('0700')],
+    ) {
+        chmod($case->[2], $case->[1]) or croak $!;
+        rejects_before_native(sub { inspect($unsigned, tool => $selected) }, qr/Writable[ ]native[ ]path/x,
+            "$case->[0] is rejected before execution");
+        chmod($case->[3], $case->[1]) or croak $!;
+    }
+    for my $bits (oct('4000'), oct('2000')) {
+        chmod($mode | $bits, $file) or croak $!;
+        rejects_before_native(sub { inspect($unsigned, tool => $selected) }, qr/Unsafe[ ]native[ ]file[ ]links[ ]or[ ]privileges/x,
+            "library privilege bit $bits is rejected");
+        chmod($mode, $file) or croak $!;
+    }
+    link($file, "$tmp/library-hardlink") or croak $!;
+    rejects_before_native(sub { inspect($unsigned, tool => $selected) }, qr/Unsafe[ ]native[ ]file[ ]links/x,
+        'a pinned library with a hardlink outside its tree is rejected');
+    unlink("$tmp/library-hardlink") or croak $!;
+    symlink($directory, "$tmp/library-link") or croak $!;
+    rejects_before_native(sub { inspect($unsigned, tool => { %$selected, library_directory => "$tmp/library-link" }) },
+        qr/unsupported[ ]native[ ]directory/x, 'a symlinked library root is rejected');
+    symlink($parent, "$tmp/library-parent-link") or croak $!;
+    rejects_before_native(sub { inspect($unsigned, tool => {
+        %$selected, library_directory => "$tmp/library-parent-link/lib" }) },
+        qr/unsupported[ ]native[ ]directory/x, 'a symlinked library ancestor is rejected');
+    for my $name ('library;separator', 'library$ORIGIN') {
+        my $ambiguous = "$tmp/$name";
+        command('/usr/bin/cp', '-a', $directory, $ambiguous);
+        my $digest = xCAT::FreeBSDRepo::snapshot_tree($ambiguous)->{digest};
+        is($digest, $selected->{library_digest}, 'loader-special path contains the same pinned library bytes');
+        rejects_before_native(sub { inspect($unsigned, tool => {
+            %$selected, library_directory => $ambiguous, library_digest => $digest }) },
+            qr/loader[ ]separators[ ]or[ ]variables/x, 'a literal directory cannot alter the loader search path');
+    }
+    protected_library_member_cases($directory, $relative, $selected);
+    return;
+}
+
 sub catalogue_cases {
     my $one = repository(1, [['test-dep']]);
     my $mismatch = clone_tree($signed);
@@ -384,6 +540,12 @@ sub change_cases {
 
 success_cases();
 trust_cases();
+protected_tool_cases();
+SKIP: {
+    skip 'Set XCAT_FREEBSD_NATIVE_LIBDIR for native library protection cases', 1
+      unless exists($tool->{library_directory});
+    protected_library_cases();
+}
 catalogue_cases();
 archive_cases();
 release_cases();
