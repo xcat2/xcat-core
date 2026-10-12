@@ -395,6 +395,17 @@ VERIFIED_SECONDS=123' ]
     [ "$status" -eq 0 ]
 }
 
+@test "network status failures use the caller diagnostic and propagate a logging failure" {
+    export XCAT_STATUS_COMMAND=/bin/false
+    printf 'xcatd=127.0.0.1:%s BOOTIF=01-52-54-00-00-00-35\n' "$port" >"$XCAT_CMDLINE_FILE"
+    network_state
+    [ "$status" -eq 0 ]
+    grep -Fx 'logger -t xcat-genesis-network-state -- unable to publish network status' "$XCAT_TEST_LOG"
+    [ -s "$state_dir/genesis.env" ]
+    XCAT_TEST_LOGGER_FAIL=1 network_state
+    [ "$status" -eq 1 ]
+}
+
 @test "unsafe network data is rejected, never evaluated, and does not replace the prior state" {
     printf 'xcatd=127.0.0.1:%s BOOTIF=01-52-54-00-00-00-35\n' "$port" >"$XCAT_CMDLINE_FILE"
     network_state
@@ -474,6 +485,17 @@ with_network_state()
     grep -A2 -x ACTION=shell "$status_dir/registration.env" | paste -sd' ' | grep -qx 'ACTION=shell TARGET= NODE_NAME=node042'
     XCAT_TEST_LOGGER_FAIL=1 run /bin/bash "$REGISTER_SCRIPT"
     [ "$status" -eq 0 ]
+}
+
+@test "registration status failures use the caller diagnostic and propagate a logging failure" {
+    export XCATDEST=192.0.2.213:3001 XCAT_STATUS_COMMAND=/bin/false
+    printf 'xcatd=192.0.2.213:3001 destiny=shell\n' >"$XCAT_CMDLINE_FILE"
+    run /bin/bash "$REGISTER_SCRIPT"
+    [ "$status" -eq 0 ]
+    [ "$(cat "$state_dir/destiny")" = shell ]
+    grep -Fx 'logger -t xcat-genesis-register -- unable to publish registration status' "$XCAT_TEST_LOG"
+    XCAT_TEST_LOGGER_FAIL=1 run /bin/bash "$REGISTER_SCRIPT"
+    [ "$status" -eq 1 ]
 }
 
 @test "registration requests a missing destiny, and rejects an empty one without replacing state" {

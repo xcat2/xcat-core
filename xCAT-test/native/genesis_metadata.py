@@ -302,8 +302,12 @@ class GenesisMetadata(unittest.TestCase):
         library_owner = "xcat-genesis-init"
         if "xcat-genesis-common" in self.dependencies(library_owner):
             library_owner = "xcat-genesis-common"
+            self.assertIn(library_owner, self.dependencies("xcat-genesis-discovery"))
+            self.assertEqual(self.dependencies(library_owner), {"bash", "util-linux-logger"})
         library_data, library_root = self.install(library_owner)
-        self.installed(library_data, library_root, "libexecdir", "xcat/genesis-functions", 0o644)
+        library = self.installed(library_data, library_root, "libexecdir", "xcat/genesis-functions", 0o644)
+        self.assertEqual(library.read_bytes(),
+                         (LAYER / "recipes-core/xcat-genesis-init/files/genesis-functions").read_bytes())
         for name in ("genesis-status", "genesis-maintenance-shell"):
             self.installed(data, root, "libexecdir", "xcat/" + name, 0o755)
         self.assertFalse(list(root.rglob("*debug-shell*")))

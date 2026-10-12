@@ -42,7 +42,7 @@ setup()
     printf '%s\n' XCATDEST=192.0.2.10:3001 XCATMASTER=192.0.2.10 XCATPORT=3001 \
         XCAT_INTERFACE=eth0 XCAT_SOURCE_ADDRESS=192.0.2.98 >"$state_dir/genesis.env"
 
-    printf '#!/bin/sh\n[ -z "${XCAT_TEST_LOGGER_FAIL-}" ]\n' >"$bin/logger"
+    printf '#!/bin/sh\nprintf "logger %%s\\n" "$*" >>"$XCAT_TEST_LOG"\n[ -z "${XCAT_TEST_LOGGER_FAIL-}" ]\n' >"$bin/logger"
     printf '#!/bin/sh\n[ "$1" = "-m" ] && printf "%%s\\n" "${XCAT_TEST_ARCH-x86_64}"\n' >"$bin/uname"
     cat >"$bin/ipmitool" <<'SH'
 #!/bin/sh
@@ -292,12 +292,17 @@ not_in_packet()
     [ "$status" -ne 0 ]
 }
 
-@test "the certificate client installs only the PEM certificate from a signed x509 request" {
-    printf '%s\n' 'XCATDEST=[2001:db8::10]:3001' XCATMASTER=2001:db8::10 XCATPORT=3001 \
-        XCAT_INTERFACE=eth0 XCAT_SOURCE_ADDRESS=2001:db8::98 >"$state_dir/genesis.env"
+credential_response()
+{
     printf '%s\n' XCAT_NODE_NAME=node042 XCAT_DESTINY=standby >"$XCAT_METADATA_FILE"
     printf '%s\n' '<xcatresponse>' '<data><content>' '-----BEGIN CERTIFICATE-----' 'Q0VSVA==' \
         '-----END CERTIFICATE-----' '</content></data>' '</xcatresponse>' >"$XCAT_TEST_CREDENTIAL_RESPONSE"
+}
+
+@test "the certificate client installs only the PEM certificate from a signed x509 request" {
+    printf '%s\n' 'XCATDEST=[2001:db8::10]:3001' XCATMASTER=2001:db8::10 XCATPORT=3001 \
+        XCAT_INTERFACE=eth0 XCAT_SOURCE_ADDRESS=2001:db8::98 >"$state_dir/genesis.env"
+    credential_response
     run /bin/bash "$GETCERT"
     [ "$status" -eq 0 ]
     [ "$(cat "$XCAT_KEY_DIR/cert.pem")" = '-----BEGIN CERTIFICATE-----
@@ -310,6 +315,27 @@ Q0VSVA==
     grep -qx STATE=READY "$XCAT_STATUS_DIR/credentials.env"
     XCAT_TEST_LOGGER_FAIL=1 run /bin/bash "$GETCERT"
     [ "$status" -eq 0 ]
+}
+
+@test "discovery status failures use the caller diagnostic and propagate a logging failure" {
+    export XCAT_STATUS_COMMAND=/bin/false
+    discover
+    [ "$status" -eq 0 ]
+    [ -s "$packet" ]
+    grep -Fx 'logger -t xcat-genesis-discover -- unable to publish discovery status' "$XCAT_TEST_LOG"
+    XCAT_TEST_LOGGER_FAIL=1 discover
+    [ "$status" -eq 1 ]
+}
+
+@test "credential status failures keep the singular diagnostic and propagate a logging failure" {
+    export XCAT_STATUS_COMMAND=/bin/false
+    credential_response
+    run /bin/bash "$GETCERT"
+    [ "$status" -eq 0 ]
+    [ -s "$XCAT_KEY_DIR/cert.pem" ]
+    grep -Fx 'logger -t xcat-genesis-getcert -- unable to publish credential status' "$XCAT_TEST_LOG"
+    XCAT_TEST_LOGGER_FAIL=1 run /bin/bash "$GETCERT"
+    [ "$status" -eq 1 ]
 }
 
 @test "the certificate client rejects an unsafe node name with a specific code" {

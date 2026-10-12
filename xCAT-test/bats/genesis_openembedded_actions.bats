@@ -54,7 +54,7 @@ tail -n +2 "$XCAT_TEST_NEXTDESTINY_QUEUE" >"$XCAT_TEST_NEXTDESTINY_QUEUE.new"
 mv "$XCAT_TEST_NEXTDESTINY_QUEUE.new" "$XCAT_TEST_NEXTDESTINY_QUEUE"
 printf '%s\n' "$response"
 SH
-    printf '#!/bin/sh\nprintf "logger %%s\\n" "$*" >>"$XCAT_TEST_LOG"\n' >"$bin/logger"
+    printf '#!/bin/sh\nprintf "logger %%s\\n" "$*" >>"$XCAT_TEST_LOG"\n[ -z "${XCAT_TEST_LOGGER_FAIL-}" ]\n' >"$bin/logger"
     printf '#!/bin/sh\nprintf "%%s\\n" discover >>"$XCAT_TEST_LOG"\n' >"$bin/discover"
     printf '#!/bin/sh\nprintf "%%s\\n" getcert >>"$XCAT_TEST_LOG"\n: >"$XCAT_TEST_CERTIFICATE_FILE"\n' >"$bin/getcert"
     printf '#!/bin/sh\nprintf "reboot-control %%s\\n" "$*" >>"$XCAT_TEST_LOG"\n' >"$bin/reboot-control"
@@ -268,4 +268,14 @@ has_no_line()
     [ "$status" -eq 1 ]
     [ "$(cat "$destiny_file")" = osimage ]
     has_line "$record" '^CODE=XCAT_CHAIN_ADVANCE_FAILED$'
+}
+
+@test "action status failures use the caller diagnostic and propagate a logging failure" {
+    export XCAT_STATUS_COMMAND=/bin/false
+    run_action standby
+    [ "$status" -eq 0 ]
+    grep -Fx 'logger -t xcat-genesis-action -- unable to publish action status' "$command_log"
+    [ "$(cat "$destiny_file")" = standby ]
+    XCAT_TEST_LOGGER_FAIL=1 run_action standby
+    [ "$status" -eq 1 ]
 }
