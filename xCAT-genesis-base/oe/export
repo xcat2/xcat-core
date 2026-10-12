@@ -37,13 +37,8 @@ machine_dir=$deploy_dir/images/$machine
 image_name=xcat-genesis-image-$machine.rootfs
 license_machine=${machine//-/_}
 
-resolve_artifact() {
-    local path=$1 resolved
-
-    resolved=$(readlink -f -- "$path")
-    [[ -f $resolved && ! -L $resolved ]] || fail "missing artifact: $path"
-    printf '%s\n' "$resolved"
-}
+script_dir=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+source "$script_dir/scripts/export-functions"
 
 kernel=$(resolve_artifact "$machine_dir/$kernel_name")
 initramfs=$(resolve_artifact "$machine_dir/$image_name.cpio.gz")
