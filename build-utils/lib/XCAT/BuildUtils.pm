@@ -205,6 +205,7 @@ use constant XCAT_PROBE_HELPERS => qw(
     CommandUtils.pm
     GlobalDef.pm
     NetworkUtils.pm
+    PacketCapture.pm
     ServiceNodeUtils.pm
 );
 

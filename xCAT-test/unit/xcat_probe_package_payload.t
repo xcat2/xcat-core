@@ -19,10 +19,12 @@ my @helpers = qw(
     CommandUtils.pm
     GlobalDef.pm
     NetworkUtils.pm
+    PacketCapture.pm
     ServiceNodeUtils.pm
 );
 my @affected_subcommands = qw(
     code_template
+    detect_dhcpd
     discovery
     osdeploy
     xcatmn
