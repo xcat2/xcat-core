@@ -3,10 +3,10 @@ use strict;
 use warnings;
 
 use FindBin;
-use File::Spec;
 use Test::More;
-use lib File::Spec->catdir( $FindBin::Bin, '..', '..',
-    'xCAT-server', 'lib', 'perl' );
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::File qw(repo_path);
+use lib repo_path('perl-xCAT'), repo_path('xCAT-server/lib/perl');
 use xCAT::BladeUtils;
 
 sub blades {
@@ -82,5 +82,36 @@ is_deeply( blades( { node => 'lonely' } ), [],
 is_deeply( blades(), [], 'an empty table asks nothing' );
 is_deeply( blades( {}, { node => 'x220b', nodetype => 'blade' } ), ['x220b'],
     'a row without a node name is skipped' );
+
+foreach my $case (
+    [ 'mixed case and line endings', "\tBlAdE\r\n", ['blade-one'] ],
+    [ 'Unicode whitespace', "\x{2003}blade\x{2003}", ['blade-one'] ],
+    [ 'undefined type', undef, ['blade-one'] ],
+    [ 'empty type', '', ['blade-one'] ],
+    [ 'blank type', " \t\r\n", ['blade-one'] ],
+    [ 'internal whitespace', 'bl ade', [] ],
+    [ 'other hardware type', ' pbmc ', [] ],
+    [ 'defined false type', '0', [] ],
+) {
+    my ($label, $type, $expected) = @{$case};
+    my @entries = (
+        { node => 'chassis', nodetype => " \tMm\r\n" },
+        { node => 'blade-one', mpa => 'chassis', nodetype => $type },
+    );
+    my @original = map { { %{$_} } } @entries;
+    is_deeply( [ xCAT::BladeUtils::blade_nodes_from_mp(@entries) ],
+        $expected, "$label preserves blade selection" );
+    is_deeply( \@entries, \@original, "$label leaves table rows unchanged" );
+}
+
+is_deeply(
+    [ xCAT::BladeUtils::blade_nodes_from_mp(
+        { node => 'blade-b', nodetype => "\tblade\n" },
+        { node => 'blade-a', nodetype => ' BLADE ' },
+        { node => 'blade-b', nodetype => "\tblade\n" },
+    ) ],
+    [ 'blade-b', 'blade-a', 'blade-b' ],
+    'selection preserves input order and duplicate rows'
+);
 
 done_testing();
