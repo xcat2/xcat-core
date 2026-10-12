@@ -4,12 +4,14 @@
 import configparser
 import hashlib
 import json
+import logging
 import os
 from pathlib import Path
 import shutil
 import stat
 import sys
 import tempfile
+import time
 import unittest
 
 BITBAKE = shutil.which("bitbake")
@@ -347,6 +349,14 @@ class GenesisMetadata(unittest.TestCase):
                 with self.assertLogs("BitBake", level="ERROR") as errors:
                     with self.assertRaises(bb.BBHandledException):
                         self.tinfoil.parse_recipe_file(recipe, config_data=config)
+                    deadline = time.monotonic() + 10
+                    while not any(message in error for error in errors.output):
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0:
+                            break
+                        event = self.tinfoil.wait_event(timeout=min(remaining, 1))
+                        if isinstance(event, logging.LogRecord):
+                            self.tinfoil.logger.handle(event)
                 self.assertTrue(any(message in error for error in errors.output), errors.output)
         for values in ({"ARCHITECTURE": "armv7hf"},
                        {"LICENSE_CLASS": "restricted"},
