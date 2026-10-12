@@ -57,12 +57,16 @@ SRC_URI:append:xcat-genesis-ppc64le = " \
     file://xcat-genesis-powerpc64.cfg \
 "
 
-do_kernel_metadata:prepend:xcat-genesis-ppc64le() {
+xcat_genesis_patch_power_metadata() {
     metadata=${UNPACKDIR}/${KMETA}/bsp/qemu-ppc64/qemu-ppc64.cfg
     if grep -qx 'CONFIG_CRC32_SLICEBY8=y' "$metadata"; then
         patch -p1 -d ${UNPACKDIR}/${KMETA} \
             < ${UNPACKDIR}/0001-qemu-ppc64-drop-removed-crc32-option.patch
     fi
+}
+
+do_kernel_metadata:prepend:xcat-genesis-ppc64le() {
+    xcat_genesis_patch_power_metadata
 }
 
 COMPATIBLE_MACHINE:xcat-genesis-ppc64 = "^xcat-genesis-ppc64$"
@@ -77,11 +81,7 @@ SRC_URI:append:xcat-genesis-ppc64 = " \
 "
 
 do_kernel_metadata:prepend:xcat-genesis-ppc64() {
-    metadata=${UNPACKDIR}/${KMETA}/bsp/qemu-ppc64/qemu-ppc64.cfg
-    if grep -qx 'CONFIG_CRC32_SLICEBY8=y' "$metadata"; then
-        patch -p1 -d ${UNPACKDIR}/${KMETA} \
-            < ${UNPACKDIR}/0001-qemu-ppc64-drop-removed-crc32-option.patch
-    fi
+    xcat_genesis_patch_power_metadata
 }
 do_kernel_metadata[depends] += "patch-native:do_populate_sysroot"
 
