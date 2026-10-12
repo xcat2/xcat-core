@@ -21,7 +21,7 @@ sub build {
     XCAT::Test::Lifecycle::checked('tar', '-czf', "$top/SOURCES/$package-$version.tar.gz",
         '-C', repo_path('.'), $package);
     if ($package eq 'xCAT' || $package eq 'xCATsn') {
-        for my $source (glob repo_path('xCAT/*.lua')) {
+        for my $source (glob(repo_path('xCAT/*.lua')), glob(repo_path('xCAT/*.sh'))) {
             copy($source, "$top/SOURCES/" . basename($source)) or croak "copy $source: $!";
         }
         XCAT::Test::Lifecycle::checked('/bin/sh', repo_path('build-utils/sync-xcat-apache-configs'), '--stage', "$top/SOURCES");
