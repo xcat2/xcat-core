@@ -187,25 +187,27 @@ static const char help_text[] =
     "  F12 asks before opening a root maintenance shell. Exit returns here.\n"
     "  Up and Down scroll this page.";
 
-static void show_help(void) {
+static void show_text_dialog(const char *title, const char *text, int back_key,
+                             const char *help_line) {
     struct newtExitStruct event;
     newtComponent form;
     newtComponent text_box;
 
-    newtCenteredWindow(72, 19, "Genesis help");
+    newtCenteredWindow(72, 19, title);
     form = newtForm(NULL, NULL, NEWT_FLAG_NOF12);
     text_box = newtTextbox(1, 1, 68, 17, NEWT_FLAG_WRAP | NEWT_FLAG_SCROLL);
-    newtTextboxSetText(text_box, help_text);
+    newtTextboxSetText(text_box, text);
     newtFormAddComponent(form, text_box);
-    newtFormAddHotKey(form, NEWT_KEY_F1);
+    newtFormAddHotKey(form, back_key);
     newtFormAddHotKey(form, NEWT_KEY_ESCAPE);
-    newtPushHelpLine(" F1 Back   Esc Back   Up/Down Scroll");
+    newtPushHelpLine(help_line);
+    newtRefresh();
 
     while (!xcat_console_stop_requested) {
         newtFormRun(form, &event);
         if (event.reason == NEWT_EXIT_ERROR ||
             (event.reason == NEWT_EXIT_HOTKEY &&
-             (event.u.key == NEWT_KEY_F1 || event.u.key == NEWT_KEY_ESCAPE)))
+             (event.u.key == back_key || event.u.key == NEWT_KEY_ESCAPE)))
             break;
     }
 
@@ -214,36 +216,19 @@ static void show_help(void) {
     newtPopWindow();
 }
 
+static void show_help(void) {
+    show_text_dialog("Genesis help", help_text, NEWT_KEY_F1,
+                     " F1 Back   Esc Back   Up/Down Scroll");
+}
+
 static void show_diagnostics(void) {
     struct console_state state;
-    struct newtExitStruct event;
-    newtComponent form;
-    newtComponent text_box;
     char text[4096];
-
-    newtCenteredWindow(72, 19, "Genesis diagnostics");
-    form = newtForm(NULL, NULL, NEWT_FLAG_NOF12);
-    text_box = newtTextbox(1, 1, 68, 17, NEWT_FLAG_WRAP | NEWT_FLAG_SCROLL);
-    newtFormAddComponent(form, text_box);
-    newtFormAddHotKey(form, NEWT_KEY_F2);
-    newtFormAddHotKey(form, NEWT_KEY_ESCAPE);
-    newtPushHelpLine(" F2 Back   Esc Back   Up/Down Scroll");
 
     xcat_load_console_state(&state);
     xcat_format_diagnostics(&state, text, sizeof(text));
-    newtTextboxSetText(text_box, text);
-    newtRefresh();
-    while (!xcat_console_stop_requested) {
-        newtFormRun(form, &event);
-        if (event.reason == NEWT_EXIT_ERROR ||
-            (event.reason == NEWT_EXIT_HOTKEY &&
-             (event.u.key == NEWT_KEY_F2 || event.u.key == NEWT_KEY_ESCAPE)))
-            break;
-    }
-
-    newtFormDestroy(form);
-    newtPopHelpLine();
-    newtPopWindow();
+    show_text_dialog("Genesis diagnostics", text, NEWT_KEY_F2,
+                     " F2 Back   Esc Back   Up/Down Scroll");
 }
 
 static bool journal_value(sd_journal *journal, const char *field, char *value, size_t size) {
