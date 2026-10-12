@@ -135,6 +135,7 @@ SH
     export XCAT_PROC_ROOT="$proc"
     export XCAT_STATE_DIR="$state_dir"
     export XCAT_STATUS_COMMAND="$(require_repo_file 'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/xcat-genesis-init/files/genesis-status')"
+    export XCAT_GENESIS_FUNCTIONS="$(require_repo_file 'xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/xcat-genesis-init/files/genesis-functions')"
     export XCAT_STATUS_DIR="$state_dir/status"
     export XCAT_SYS_ROOT="$root"
     export XCAT_TEST_LOG="$root/commands.log"

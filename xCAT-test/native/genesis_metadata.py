@@ -201,6 +201,9 @@ class GenesisMetadata(unittest.TestCase):
         }.items():
             self.assertEqual(self.dependencies(recipe), set(expected.split()), recipe)
         self.assertLessEqual({"coreutils", "util-linux-logger"}, self.dependencies("xcat-genesis-init"))
+        discovery = self.dependencies("xcat-genesis-discovery") - {"xcat-genesis-common"}
+        self.assertEqual(discovery, set("bash coreutils gzip iproute2 openssl-bin "
+                                       "util-linux-logger util-linux-lsblk".split()))
         console = self.recipe("xcat-genesis-console")
         self.assertLessEqual({"libnewt", "systemd"}, self.words(console, "DEPENDS"))
         self.assertIn("sysext", self.words(self.recipe("systemd"), "PACKAGECONFIG"))
@@ -296,7 +299,11 @@ class GenesisMetadata(unittest.TestCase):
 
     def test_installed_init(self):
         data, root = self.install("xcat-genesis-init")
-        self.installed(data, root, "libexecdir", "xcat/genesis-functions", 0o644)
+        library_owner = "xcat-genesis-init"
+        if "xcat-genesis-common" in self.dependencies(library_owner):
+            library_owner = "xcat-genesis-common"
+        library_data, library_root = self.install(library_owner)
+        self.installed(library_data, library_root, "libexecdir", "xcat/genesis-functions", 0o644)
         for name in ("genesis-status", "genesis-maintenance-shell"):
             self.installed(data, root, "libexecdir", "xcat/" + name, 0o755)
         self.assertFalse(list(root.rglob("*debug-shell*")))
