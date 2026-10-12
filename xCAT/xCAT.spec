@@ -23,6 +23,7 @@ Source9: xcat-apache-pretrans.lua
 %endif
 
 Source7: xcat.conf.apach24
+Source10: xcat-upgrade-functions.sh
 
 Provides: xCAT = %{version}
 Conflicts: xCATsn
@@ -246,7 +247,8 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 
 
-%post
+cat %{SOURCE10} > xcat-post.sh
+cat >> xcat-post.sh <<'XCAT_POST'
 %ifos linux
 # On SUSE apache2, mod_headers is not loaded by default; enable it so the
 # security response headers in xcat.conf take effect (a no-op where a2enmod
@@ -285,7 +287,6 @@ if [ -r "/tmp/xcat/mainservice.pid" ]; then
   mv /tmp/xcat/mainservice.pid /var/run/xcat/mainservice.pid
 fi
 
-. /install/postscripts/xcatupgradeutils.sh
 xcat_run_upgrade $RPM_INSTALL_PREFIX0/sbin/xcatconfig -u -V
 
 # rpm has either updated a stock xcat.conf or preserved a modified one and left
@@ -308,6 +309,9 @@ if [ -f "/proc/cmdline" ] && [ "x$(stat -c '%i %d' /)" == "x$(stat -c '%i %d' /p
 fi
 fi
 exit 0
+XCAT_POST
+
+%post -f xcat-post.sh
 
 %clean
 

@@ -35,7 +35,6 @@ case "$1" in
             if [ -r "/tmp/xcat/mainservice.pid" ]; then
                 mv /tmp/xcat/mainservice.pid /var/run/xcat/mainservice.pid
             fi
-            . /install/postscripts/xcatupgradeutils.sh
             xcat_run_upgrade xcatconfig -u -V
             rm /tmp/xCAT_upgrade.tmp
         else

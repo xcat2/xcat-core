@@ -374,6 +374,8 @@ sub buildsources {
     }
 
     if ($pkg eq "xCAT") {
+        cp 'xCAT/xcat-upgrade-functions.sh', "$SOURCES/xcat-upgrade-functions.sh"
+            or die "FATAL: unable to stage upgrade functions: $!\n";
         my @files = ("bmcsetup", "getipmi");
         for my $f (@files) {
             cp "xCAT-genesis-scripts/usr/bin/$f", "$pkg/postscripts/$f";
