@@ -6,9 +6,24 @@ on:
       - 'xCAT-genesis-scripts/**'
       - 'xCAT-test/native/genesis_metadata.py'
       - 'xCAT-test/native/genesis_console.py'
+      - 'xCAT-test/native/genesis_console_dialogs.py'
       - '.github/workflows/genesis_openembedded.yml'
   workflow_dispatch:
 jobs:
+  console_dialogs:
+    name: Genesis console dialogs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install console test dependencies
+        run: |
+          sudo apt-get update
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            build-essential meson ninja-build pkg-config libnewt-dev \
+            libsystemd-dev python3-pyte
+      - name: Exercise the newt dialogs
+        run: /usr/bin/python3 xCAT-test/native/genesis_console_dialogs.py
   genesis_openembedded:
     name: OpenEmbedded metadata
     runs-on: ubuntu-24.04
