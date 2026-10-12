@@ -16,11 +16,11 @@ my $warning = "WARNING: mknb did not complete, so the Genesis netboot image may 
     "         See /var/log/xcat/upgrade.log, then rerun 'mknb <arch>' once the cause is resolved.\n";
 
 sub install_package {
-    my ($root, $package) = @_;
-    return $debian ? $root->install_deb($package) : $root->install($package);
+    my ($root, $package, @options) = @_;
+    return $debian ? $root->install_deb($package) : $root->install($package, @options);
 }
 
-for my $case (qw(fresh success warning stderr-warning historic-warning command-failure warning-failure temporary-failure)) {
+for my $case (qw(fresh success warning stderr-warning historic-warning command-failure warning-failure temporary-failure excluded-postscripts)) {
     subtest $case => sub {
         my $root = $debian ? XCAT::Test::Lifecycle->new : XCAT::Test::RPM->new;
         $root->write('/opt/xcat/share/xcat/scripts/xHRM', '');
@@ -32,8 +32,17 @@ if [ -f /command-output ]; then cat /command-output; fi
 if [ -f /command-error ]; then cat /command-error >&2; fi
 if [ -f /command-status ]; then exit "$(cat /command-status)"; fi
 SHELL
+        my @options;
+        if ($case eq 'excluded-postscripts') {
+            $root->write('/install/postscripts/.keep', '');
+            if ($debian) {
+                $root->write('/etc/dpkg/dpkg.cfg.d/xcat-test', "path-exclude=/install/postscripts/*\n");
+            } else {
+                @options = ('--excludepath', '/install/postscripts');
+            }
+        }
         if ($case ne 'fresh') {
-            my ($status, $out, $err) = install_package($root, $first);
+            my ($status, $out, $err) = install_package($root, $first, @options);
             is($status, 0, 'install the prior package') or diag "$out$err";
             unlike($err, qr/scriptlet failed|scriptlet failure/i, 'prior package scriptlets complete');
         }
@@ -53,7 +62,9 @@ SHELL
         for my $service (qw(installservice udpservice mainservice)) {
             $root->write("/tmp/xcat/$service.pid", "$service pid\n");
         }
-        my ($status, $out, $err) = install_package($root, $second);
+        my ($status, $out, $err) = install_package($root, $second, @options);
+        is(-e $root->path('/install/postscripts/configinterface') ? 1 : 0,
+            $case eq 'excluded-postscripts' ? 0 : 1, 'node postscript payload follows the exclusion policy');
         my $stopped = $debian && ($failed || $case eq 'temporary-failure');
         is($status == 0 ? 1 : 0, $stopped ? 0 : 1, 'transaction retains its failure policy') or diag "$out$err";
         unlike($err, qr/scriptlet failed|scriptlet failure/i, 'RPM scriptlet finishes') unless $debian;
