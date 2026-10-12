@@ -74,20 +74,69 @@ verify_changed()
     [ -s "$signature" ]
 }
 
-@test "the built extension exports as a signed bundle with its key and checksums" {
+prepare_extension_deploy()
+{
     stem=xcat-genesis-extension-smoke-xcat-genesis-x86-64
     machine_dir="$root/deploy/images/xcat-genesis-x86-64"
     mkdir -p "$machine_dir"
     cp "$image" "$machine_dir/$stem.sysext.squashfs-zst"
     cp "$manifest" "$machine_dir/$stem.sysext.manifest.json"
-    run "$EXPORTER" x86_64 xcat-genesis-extension-smoke "$root/deploy" \
+}
+
+export_extension()
+{
+    "$EXPORTER" x86_64 xcat-genesis-extension-smoke "$root/deploy" \
         "$private_key" "$public_key" "$root/bundle"
+}
+
+@test "the built extension exports as a signed bundle with its key and checksums" {
+    prepare_extension_deploy
+    run export_extension
     [ "$status" -eq 0 ]
     [ -f "$root/bundle/extensions/$stem.squashfs-zst" ]
     [ -f "$root/bundle/extensions/$stem.manifest.json" ]
     [ -f "$root/bundle/extensions/$stem.sig" ]
     [ -f "$root/bundle/extension-keys/xcat-release.pem" ]
     (cd "$root/bundle" && sha256sum -c SHA256SUMS >/dev/null)
+}
+
+@test "extension export follows deploy links and preserves payload bytes and modes" {
+    prepare_extension_deploy
+    local input="$machine_dir/$stem.sysext.squashfs-zst"
+    mv "$input" "$input.versioned"
+    ln -s "$(basename "$input").versioned" "$input"
+    export_extension
+    cmp "$image" "$root/bundle/extensions/$stem.squashfs-zst"
+    cmp "$manifest" "$root/bundle/extensions/$stem.manifest.json"
+    [ "$(stat -c %a "$root/bundle/extensions/$stem.squashfs-zst")" = 644 ]
+    [ "$(stat -c %a "$root/bundle/extensions/$stem.manifest.json")" = 644 ]
+    (cd "$root/bundle" && sha256sum -c SHA256SUMS >/dev/null)
+}
+
+@test "extension export rejects missing, dangling and directory artifacts" {
+    prepare_extension_deploy
+    local input="$machine_dir/$stem.sysext.squashfs-zst" kind
+    rm "$input"
+    for kind in missing dangling directory; do
+        case "$kind" in
+            dangling) ln -s absent "$input" ;;
+            directory) rm "$input"; mkdir "$input" ;;
+        esac
+        run export_extension
+        [ "$status" -eq 1 ]
+        [ "$output" = "Genesis extension export: missing artifact: $input" ]
+        [ ! -e "$root/bundle" ]
+    done
+}
+
+@test "an unreadable extension artifact leaves no partial bundle" {
+    [ "$(id -u)" -ne 0 ] || skip 'requires an unprivileged user'
+    prepare_extension_deploy
+    chmod 000 "$machine_dir/$stem.sysext.squashfs-zst"
+    run export_extension
+    [ "$status" -ne 0 ]
+    [ ! -e "$root/bundle" ]
+    [ -z "$(find "$root" -maxdepth 1 -name '.bundle.*' -print)" ]
 }
 
 @test "a valid extension is accepted" {
