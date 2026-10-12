@@ -4,8 +4,9 @@ load 'helpers/go_xcat'
 
 setup()
 {
-    go_xcat_require_source
-    export CALLS="${BATS_TEST_TMPDIR}/calls"
+    GO_XCAT_SOURCE=${XCAT_TEST_GO_XCAT:-$(go_xcat_default_source)}
+    [ -r "$GO_XCAT_SOURCE" ] || { echo "Required go-xcat is unreadable: $GO_XCAT_SOURCE" >&2; return 1; }
+    export CALLS="${BATS_TEST_TMPDIR:?bats-core 1.4 or newer is required}/calls"
     export GO_XCAT_ARCH=x86_64
     export GO_XCAT_LINUX_DISTRO=rocky
     export GO_XCAT_LINUX_VERSION=10.2
@@ -14,6 +15,7 @@ setup()
     export QUERY_FAIL=0
     export QUERY_WARNS=0
     export SOURCE_ONLY=0
+    export NEAR_MATCH=0
     export ENTRY=check
 }
 
@@ -21,23 +23,18 @@ run_el_repo_check()
 {
     rm -f "$CALLS"
 
-    go_xcat_load_functions \
-        repo_carries \
-        el_epel_and_crb_check \
-        install_packages_dnf \
-        install_packages_yum
+    source "$GO_XCAT_SOURCE" || return
 
-    EL_EPEL_TEST_RPM=perl-Crypt-CBC
-    EL_CRB_TEST_RPM=perl-IO-Tty
-
-    dnf()
+    package_command()
     {
-        echo "$*" >>"$CALLS"
-        if [[ ${QUERY_FAIL:-0} == 1 ]]; then
+        local manager=$1
+        shift
+        echo "$manager $*" >>"$CALLS"
+        if [[ ${QUERY_FAIL:-0} == 1 && $1 == repoquery ]]; then
             echo "Error: Failed to download metadata for repo 'epel'" >&2
             return 1
         fi
-        [[ ${QUERY_WARNS:-0} == 1 ]] && echo "Warning: repository 'extras' metadata is stale" >&2
+        [[ ${QUERY_WARNS:-0} == 1 && $1 == repoquery ]] && echo "Warning: repository 'extras' metadata is stale" >&2
 
         local has=0
         case "$*" in
@@ -47,16 +44,21 @@ run_el_repo_check()
 
         [[ ${SOURCE_ONLY:-0} == 1 && "$*" != *"--arch"* ]] && has=1
         case "$1" in
-            repoquery) [[ $has == 1 ]] && { echo "${@: -1}"; echo "${@: -1}"; }; return 0 ;;
-            list)      [[ $has == 1 ]] && return 0; return 1 ;;
+            repoquery)
+                if [[ $NEAR_MATCH == 1 ]]; then
+                    echo "${@: -1}-devel"
+                elif [[ $has == 1 ]]; then
+                    echo "${@: -1}"
+                    echo "${@: -1}"
+                fi
+                return 0 ;;
+            list) return 0 ;;
         esac
         return 0
     }
 
-    yum()
-    {
-        dnf "$@"
-    }
+    dnf() { package_command dnf "$@"; }
+    yum() { package_command yum "$@"; }
 
     case "${ENTRY:-check}" in
         dnf) install_packages_dnf -y xCAT ;;
@@ -72,7 +74,7 @@ run_el_repo_check()
     [ "$status" -eq 0 ]
     probes="$(joined_file_lines "$CALLS")"
     [[ "$probes" =~ perl-Crypt-CBC.*\;.*perl-IO-Tty ]]
-    [[ "$probes" =~ ^repoquery\  ]]
+    [[ "$probes" =~ ^dnf\ repoquery\  ]]
     [[ "$probes" =~ --arch\ x86_64,noarch ]]
 }
 
@@ -181,6 +183,14 @@ run_el_repo_check()
 
     run run_el_repo_check
     [ "$status" -eq 0 ]
+    [ "$(joined_file_lines "$CALLS")" = "" ]
+}
+
+@test "a similarly named package does not satisfy EPEL" {
+    export NEAR_MATCH=1
+    run run_el_repo_check
+    [ "$status" -eq 1 ]
+    [[ "$output" == *'requires EPEL repository'* ]]
 }
 
 @test "dnf and yum installer paths run the check before installing" {
@@ -194,6 +204,7 @@ run_el_repo_check()
         [[ "$output" =~ requires\ EPEL\ repository ]]
         probes="$(joined_file_lines "$CALLS")"
         [[ ! "$probes" =~ install ]]
+        [[ "$probes" == "$entry repoquery "* ]]
 
         export EPEL_HAS=1
         export CRB_HAS=1
@@ -202,5 +213,37 @@ run_el_repo_check()
         [ "$status" -eq 0 ]
         probes="$(joined_file_lines "$CALLS")"
         [[ "$probes" =~ perl-IO-Tty.*\;.*install\ initscripts.*\;.*install\ xCAT ]]
+        while IFS= read -r call; do
+            [[ "$call" == "$entry "* ]]
+        done <"$CALLS"
+    done
+}
+
+@test "dnf and yum do not install after CRB or query failure" {
+    for entry in dnf yum; do
+        export ENTRY="$entry" EPEL_HAS=1 CRB_HAS=0 QUERY_FAIL=0
+        run run_el_repo_check
+        [ "$status" -eq 1 ]
+        [[ "$output" == *'requires CRB repository'* ]]
+        [[ "$output" == *"'$entry update epel-release'"* ]]
+        probes="$(joined_file_lines "$CALLS")"
+        [[ "$probes" != *install* ]]
+
+        export CRB_HAS=1 QUERY_FAIL=1
+        run run_el_repo_check
+        [ "$status" -eq 1 ]
+        [[ "$output" == *'Could not query the package repositories'* ]]
+        [[ "$output" == *"with '$entry repoquery'"* ]]
+        probes="$(joined_file_lines "$CALLS")"
+        [[ "$probes" != *install* ]]
+    done
+}
+
+@test "repository queries use the target architecture" {
+    for arch in aarch64 ppc64le; do
+        export GO_XCAT_ARCH="$arch"
+        run run_el_repo_check
+        [ "$status" -eq 0 ]
+        [ "$(joined_file_lines "$CALLS")" = "dnf repoquery -q --arch $arch,noarch --qf %{name} perl-Crypt-CBC;dnf repoquery -q --arch $arch,noarch --qf %{name} perl-IO-Tty" ]
     done
 }
