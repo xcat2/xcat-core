@@ -43,6 +43,7 @@ publish_status() {
     [[ -z $last_verified_seconds ]] \
         || fields+=("VERIFIED_SECONDS=$last_verified_seconds")
     genesis_publish_status "$status_command" action xcat-genesis-action \
+        'unable to publish action status' \
         "$state" "$detail" "${fields[@]}" "$@"
 }
 

@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+functions_file=${XCAT_GENESIS_FUNCTIONS:-/usr/libexec/xcat/genesis-functions}
+source "$functions_file"
+
 state_dir=${XCAT_STATE_DIR:-/run/xcat}
 status_command=${XCAT_STATUS_COMMAND:-/usr/libexec/xcat/genesis-status}
 network_file=${XCAT_NETWORK_FILE:-$state_dir/genesis.env}
@@ -15,8 +18,8 @@ temporary_dir=
 [[ "$request_timeout" =~ ^[1-9][0-9]*$ ]] || request_timeout=20
 
 publish_status() {
-    "$status_command" credentials "$@" \
-        || logger -t xcat-genesis-getcert -- 'unable to publish credential status'
+    genesis_publish_status "$status_command" credentials \
+        xcat-genesis-getcert 'unable to publish credential status' "$@"
 }
 
 # shellcheck disable=SC2329
