@@ -4,6 +4,18 @@ These tests use the source checkout with RPM tools, Linux namespaces or real
 service binaries. They are separate from `unit/` and are not discovered by the
 default pull-request unit run. Run them explicitly on a disposable Linux host.
 
+The postinstall case requires bubblewrap and the Perl modules used by the xCAT
+template renderer. It runs complete rendered installer and postboot scripts in
+private filesystems, with doubles for downloads and service commands:
+
+```
+prove xCAT-test/native/postinstall_bootstrap.t
+```
+
+It can run as root or an ordinary user with user namespaces enabled. This case
+checks service policy and ordering; it does not boot or reinstall an OS.
+The client steps cannot access the source tree or the server postscripts directory.
+
 Run the package and unprivileged namespace cases as an ordinary user:
 
 ```
