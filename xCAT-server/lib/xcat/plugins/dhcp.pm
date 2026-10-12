@@ -975,12 +975,7 @@ sub _infiniband_twin_delete_commands
     my $addresscommands;
 
     if ($cleanup_supported && _is_infiniband_interface($mgtifname)) {
-        $addresscommands = "new host\n"
-          . "set hardware-address = $ibmac\n"
-          . "set hardware-type = 32\n"
-          . "open\n"
-          . "remove\n"
-          . "close\n";
+        $addresscommands = _hardware_address_delete_commands($ibmac, 32);
     }
 
     return ($namecommands, $addresscommands);
