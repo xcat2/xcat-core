@@ -12,6 +12,7 @@ use lib "$FindBin::Bin/../lib";
 use Test::More;
 
 use XCAT::Test::File qw(repo_path);
+use XCAT::Test::Process qw(run_command);
 
 my $postscripts = repo_path(File::Spec->catdir('xCAT', 'postscripts'));
 my $library = File::Spec->catfile( $postscripts, 'xcatpkgutils.sh' );
@@ -232,19 +233,4 @@ sub write_executable {
     my ( $path, $contents ) = @_;
     write_text( $path, $contents );
     chmod 0755, $path or die "Unable to make $path executable: $!";
-}
-
-sub run_command {
-    my (@command) = @_;
-    my $pid = open( my $pipe, '-|' );
-    die "Unable to fork for @command: $!" unless defined($pid);
-    if ( $pid == 0 ) {
-        open( STDERR, '>&', STDOUT ) or die "Unable to merge stderr: $!";
-        exec { $command[0] } @command;
-        die "Unable to execute @command: $!";
-    }
-
-    my $output = do { local $/; <$pipe> } // '';
-    close($pipe);
-    return ( $? >> 8, $output );
 }

@@ -36,6 +36,31 @@ installed under `/opt/xcat/share/xcat/tools/autotest/unit` is not a substitute -
 skip. The CI takes a copy of the checkout before the build for this reason; see
 `preserve_source_tree()`.
 
+## Running commands from Perl tests
+
+Use `XCAT::Test::Process` when a test needs a command's exit code and combined
+standard output and standard error:
+
+```perl
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Process qw(run_command);
+
+my ($status, $output) = run_command('/bin/sh', $script, '--check');
+```
+
+Call `run_command` in list context. It passes arguments without shell expansion
+and returns the normal exit code with the captured output. A command that cannot
+execute or terminates on a signal raises an error. Scalar and void contexts also
+raise errors, so they cannot discard the exit code.
+
+The helper uses `Capture::Tiny`, which the unit suite already requires. Captured
+output follows the caller's STDOUT PerlIO layers. Use `binmode STDOUT, ':raw'`
+before capture when comparing raw bytes.
+
+The command inherits the caller's environment and working directory. Keep
+fixture-specific environment changes and directory selection in the test.
+
 ## What does not belong here
 
 Tests that build RPMs, create Linux namespaces or start service binaries belong
