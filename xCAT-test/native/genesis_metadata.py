@@ -143,9 +143,12 @@ class GenesisMetadata(unittest.TestCase):
             "DISTRO_CODENAME": "cheetah", "LINUX_VERSION_EXTENSION": "-xCAT-genesis",
             "TCLIBC": "glibc", "INIT_MANAGER": "systemd", "NO_RECOMMENDATIONS": "1",
             "QB_DEFAULT_FSTYPE": "ext4",
+            "MACHINE_EXTRA_RRECOMMENDS": "",
         }.items():
             self.assertEqual(data.getVar(variable), value, variable)
         self.assertEqual(self.words(data, "IMAGE_FSTYPES"), {"cpio.gz", "ext4"})
+        self.assertEqual(self.words(data, "MACHINE_ESSENTIAL_EXTRA_RDEPENDS"), set())
+        self.assertEqual(self.words(data, "MACHINE_FEATURES_DEFAULTS"), {"rtc", "qemu-usermode"})
         self.assertEqual(self.words(data, "DISTRO_FEATURES"),
                          {"acl", "ipv4", "ipv6", "largefile", "pci", "seccomp", "systemd", "usrmerge"})
         self.assertEqual("pci" in self.words(data, "MACHINE_FEATURES"), self.arch != "s390x")
