@@ -6,11 +6,31 @@
 #   vm_machine_type.sh apply <node> <arch>     write the saved value with a valid machine type
 #   vm_machine_type.sh restore <node> [<arch>] write the saved value back and delete it
 #
-# The saved value is in $VM_MACHINE_TYPE_STATE_DIR (default /tmp), one file per node.
+# The saved value is in $VM_MACHINE_TYPE_STATE_DIR, one file per node. The
+# default directory is /tmp/xcattest-vmothersetting.<uid>.
+
+vm_machine_type_dir()
+{
+    printf '%s\n' "${VM_MACHINE_TYPE_STATE_DIR:-/tmp/xcattest-vmothersetting.$(id -u)}"
+}
 
 vm_machine_type_state()
 {
-    printf '%s/xcattest-%s-vmothersetting\n' "${VM_MACHINE_TYPE_STATE_DIR:-/tmp}" "$1"
+    printf '%s/xcattest-%s-vmothersetting\n' "$(vm_machine_type_dir)" "$1"
+}
+
+# private_dir -- create the state directory, or accept it only when it is a
+# directory that the current user owns and nobody else can open.
+vm_machine_type_private_dir()
+{
+    local dir
+    dir="$(vm_machine_type_dir)"
+    [ -e "$dir" ] || [ -L "$dir" ] || mkdir -m 0700 "$dir" 2>/dev/null
+    if [ -L "$dir" ] || [ ! -d "$dir" ] || [ ! -O "$dir" ] ||
+        [ -n "$(find "$dir" -maxdepth 0 -perm /077)" ]; then
+        echo "vm_machine_type.sh: $dir is not a private directory of $(id -un)" >&2
+        return 1
+    fi
 }
 
 vm_machine_type_for_arch()
@@ -26,15 +46,25 @@ vm_machine_type_for_arch()
 
 vm_machine_type_get()
 {
-    lsdef "$1" -i vmothersetting | sed -n 's/^[[:space:]]*vmothersetting=//p'
+    local out
+    if ! out="$(lsdef "$1" -i vmothersetting)"; then
+        echo "vm_machine_type.sh: cannot read vmothersetting of $1" >&2
+        return 1
+    fi
+    printf '%s\n' "$out" | sed -n 's/^[[:space:]]*vmothersetting=//p'
 }
 
 vm_machine_type_saved()
 {
     local state
+    vm_machine_type_private_dir || return 1
     state="$(vm_machine_type_state "$1")"
-    if [ ! -f "$state" ]; then
+    if [ ! -e "$state" ] && [ ! -L "$state" ]; then
         echo "vm_machine_type.sh: no saved vmothersetting for $1 in $state" >&2
+        return 1
+    fi
+    if [ -L "$state" ] || [ ! -f "$state" ] || [ ! -O "$state" ]; then
+        echo "vm_machine_type.sh: $state is not a regular file of $(id -un)" >&2
         return 1
     fi
     cat "$state"
@@ -52,11 +82,22 @@ vm_machine_type_join()
 
 vm_machine_type_invalid()
 {
-    local node="$1" original
-    original="$(vm_machine_type_get "$node")"
-    printf '%s' "$original" >"$(vm_machine_type_state "$node")" || return 1
+    local node="$1" state original
+    vm_machine_type_private_dir || return 1
+    state="$(vm_machine_type_state "$node")"
+    # A second invalid would save machine:invalid as the original value.
+    if [ -e "$state" ] || [ -L "$state" ]; then
+        echo "vm_machine_type.sh: a saved vmothersetting for $node already exists in $state" >&2
+        return 1
+    fi
+    original="$(vm_machine_type_get "$node")" || return 1
+    # noclobber makes bash create the file with O_EXCL.
+    (set -o noclobber && printf '%s' "$original" >"$state") || return 1
     # kvm.pm uses the last machine: setting.
-    chdef "$node" "vmothersetting=$(vm_machine_type_join "$original" 'machine:invalid')"
+    if ! chdef "$node" "vmothersetting=$(vm_machine_type_join "$original" 'machine:invalid')"; then
+        rm -f "$state"
+        return 1
+    fi
 }
 
 vm_machine_type_apply()
