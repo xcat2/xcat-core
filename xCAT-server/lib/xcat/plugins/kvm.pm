@@ -38,8 +38,10 @@ my %hypstats;
 my %offlinevms;
 my $parser;
 my @destblacklist;
-my $updatetable; #when a function is performing per-node operations, it can queue up a table update by populating parts of this hash
-my $confdata;    #a reference to serve as a common pointer betweer VMCommon functions and this plugin
+# $updatetable, $confdata, $hypconn and $node are package variables, not lexicals, so that
+# a unit test can set them with local.
+our $updatetable; #when a function is performing per-node operations, it can queue up a table update by populating parts of this hash
+our $confdata;    #a reference to serve as a common pointer betweer VMCommon functions and this plugin
 my %allnodestatus;
 require Sys::Virt;
 
@@ -93,11 +95,11 @@ sub handled_commands {
     };
 }
 
-my $hypconn;
+our $hypconn;
 my $hyp;
 my $doreq;
 my %hyphash;
-my $node;
+our $node;
 my $vmtab;
 
 

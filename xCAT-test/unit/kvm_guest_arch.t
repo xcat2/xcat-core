@@ -3,46 +3,49 @@ use strict;
 use warnings;
 
 use FindBin;
+use lib "$FindBin::Bin/../lib";
+use lib "$FindBin::Bin/../../perl-xCAT";
+use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use Test::More;
 
-# The scratch package below declares these; the test names them once each.
-no warnings 'once';
+use XCAT::Test::File qw(repo_path);
 
-my $source = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/kvm.pm";
-open(my $source_fh, '<', $source) or die "open $source: $!";
-my $content = do { local $/; <$source_fh> };
-close($source_fh) or die "close $source: $!";
-
-my @routines;
-for my $name (qw(build_xmldesc guest_arch_profile preferred_video_model build_oshash
-    build_diskstruct getUnits)) {
-    my ($routine) = $content =~ /^(sub \Q$name\E\s*\{.*?^\})/ms;
-    die("could not extract $name from kvm.pm") unless $routine;
-    push(@routines, $routine);
+# kvm.pm loads Sys::Virt and the monitoring plugin at compile time. The domain builder uses
+# neither: the hypervisor connection is a parameter of each test below.
+BEGIN {
+    $Sys::Virt::VERSION = '10.0.0';
+    $INC{'Sys/Virt.pm'} = __FILE__;
+    $INC{'xCAT_monitoring/monitorctrl.pm'} = __FILE__;
 }
 
-# kvm.pm needs a management node to load, so the domain builder runs in a scratch package.
+# xCAT modules put $XCATROOT/lib/perl first in @INC. Point it at the checkout, or a host
+# with xCAT installed tests the installed modules.
+$ENV{XCATROOT} = repo_path('xCAT-server');
+require(repo_path('xCAT-server/lib/xcat/plugins/kvm.pm'));
+my @installed = grep { defined and m{^/opt/xcat/} } values %INC;
+is_deeply(\@installed, [], 'kvm.pm and the xCAT modules it uses load from the checkout');
+
+# kvm.pm declares the package variables set below; the test names each one once.
+no warnings 'once';
+
 # Only the routines that reach libvirt or the xCAT database are replaced; the domain builder
 # itself is the code under test.
-my $harness = <<'PERL';
-package KVMArch;
-use XML::Simple qw(XMLin XMLout);
-our ($node, $confdata, $updatetable, $hypconn);
-sub getNodeUUID      { return '00000000-0000-0000-0000-000000000001'; }
-sub get_multiple_paths_by_url { return {}; }
-sub build_nicstruct  { return []; }
-sub genpassword      { return 'password'; }
-PERL
-
-eval $harness . join("\n", @routines) . "\n1;\n";    ## no critic (BuiltinFunctions::ProhibitStringyEval)
-die("could not load the kvm domain builder: $@") if $@;
+sub with_kvm_stubs {
+    my ($code) = @_;
+    no warnings 'redefine';
+    local *xCAT_plugin::kvm::getNodeUUID = sub { return '00000000-0000-0000-0000-000000000001'; };
+    local *xCAT_plugin::kvm::get_multiple_paths_by_url = sub { return {}; };
+    local *xCAT_plugin::kvm::build_nicstruct = sub { return []; };
+    local *xCAT_plugin::kvm::genpassword = sub { return 'password'; };
+    return $code->();
+}
 
 # Build one domain for a node of $guest_arch on a hypervisor that reports $hyp_cpumodel.
 # %opt carries the hypervisor cputype and the vm.othersettings of the node.
 sub domain_xml {
     my ($guest_arch, $hyp_cpumodel, %opt) = @_;
-    local $KVMArch::node     = 'cn1';
-    local $KVMArch::confdata = {
+    local $xCAT_plugin::kvm::node     = 'cn1';
+    local $xCAT_plugin::kvm::confdata = {
         vm => {
             cn1 => [ {
                     host   => 'hyp1',
@@ -56,9 +59,9 @@ sub domain_xml {
         nodetype => { cn1 => [ { arch => $guest_arch, os => 'rocky10.2' } ] },
         hyp1     => { cpumodel => $hyp_cpumodel, cputype => $opt{cputype} },
     };
-    local $KVMArch::hypconn    = $opt{hypconn};
-    local $KVMArch::updatetable = {};
-    my $xml = KVMArch::build_xmldesc('cn1');
+    local $xCAT_plugin::kvm::hypconn    = $opt{hypconn};
+    local $xCAT_plugin::kvm::updatetable = {};
+    my $xml = with_kvm_stubs(sub { xCAT_plugin::kvm::build_xmldesc('cn1') });
     die("build_xmldesc returned no XML for $guest_arch on $hyp_cpumodel")
       unless defined $xml and !ref $xml;
     return $xml;
@@ -262,8 +265,8 @@ like($x86_passthrough, qr/<cpu\b[^>]*\bmode="host-passthrough"/,
 # hd* optical drive makes libvirt refuse the domain.
 sub disk_struct {
     my ($guest_arch) = @_;
-    local $KVMArch::node     = 'cn1';
-    local $KVMArch::confdata = {
+    local $xCAT_plugin::kvm::node     = 'cn1';
+    local $xCAT_plugin::kvm::confdata = {
         vm       => { cn1 => [ { host => 'hyp1', storage => '/var/lib/libvirt/images/cn1.img' } ] },
         nodetype => { cn1 => [ { arch => $guest_arch } ] },
         hyp1     => { cpumodel => 'x86_64' },
@@ -273,7 +276,7 @@ sub disk_struct {
     {
         open(my $capture, '>', \\$chatter) or die "capture stdout: $!";
         local *STDOUT = $capture;
-        ($disks) = KVMArch::build_diskstruct(undef);
+        ($disks) = with_kvm_stubs(sub { xCAT_plugin::kvm::build_diskstruct(undef) });
     }
     return $disks;
 }
