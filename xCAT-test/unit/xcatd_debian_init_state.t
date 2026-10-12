@@ -4,36 +4,23 @@ use warnings;
 
 use File::Copy qw(copy);
 use File::Path qw(make_path);
+use File::Slurper qw(read_binary write_binary);
 use File::Spec;
 use File::Temp qw(tempdir);
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 use Test::More;
 
-my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
-my $state_helper = File::Spec->catfile(
-    $repo_root, 'xCAT-server', 'debian', 'xcatd-init-state'
-);
-my $compat_helper = File::Spec->catfile(
-    $repo_root, 'xCAT-server', 'share', 'xcat', 'scripts', 'xcatd-init-compat'
-);
-my $template = File::Spec->catfile(
-    $repo_root, 'xCAT-server', 'etc', 'init.d', 'xcatd'
-);
+use XCAT::Test::File qw(repo_path);
+
+my $state_helper = repo_path('xCAT-server/debian/xcatd-init-state');
+my $compat_helper = repo_path('xCAT-server/share/xcat/scripts/xcatd-init-compat');
+my $template = repo_path('xCAT-server/etc/init.d/xcatd');
 
 sub write_file {
     my ( $path, $contents, $mode ) = @_;
-    open( my $fh, '>', $path ) or die "Unable to write $path: $!";
-    print {$fh} $contents;
-    close($fh);
+    write_binary( $path, $contents );
     chmod $mode, $path if defined $mode;
-}
-
-sub read_file {
-    my ($path) = @_;
-    open( my $fh, '<', $path ) or die "Unable to read $path: $!";
-    my $contents = do { local $/; <$fh> };
-    close($fh);
-    return $contents;
 }
 
 sub path_mode {
@@ -252,7 +239,7 @@ sub old_systemd_marker {
 
 sub state_value {
     my ( $root, $field ) = @_;
-    my $state = read_file( File::Spec->catfile( state_dir($root), 'state' ) );
+    my $state = scalar read_binary( File::Spec->catfile( state_dir($root), 'state' ) );
     return $1 if $state =~ /^\Q$field\E=(.+)$/m;
     return '';
 }
@@ -369,7 +356,7 @@ is( run_state( $round_trip_root, 'commit-systemd' ), 0,
     'systemd transition state commits' );
 ok( !-e live_init($round_trip_root),
     'systemd mode omits the live legacy script' );
-like( read_file( File::Spec->catfile( state_dir($round_trip_root), 'xcatd' ) ),
+like( scalar read_binary( File::Spec->catfile( state_dir($round_trip_root), 'xcatd' ) ),
     qr/administrator customization/,
     'the exact customized script remains in the durable stash' );
 
@@ -377,7 +364,7 @@ set_systemd_state( $round_trip_root, 'enabled' );
 set_init_target( $round_trip_root, 'upstart' );
 is( run_state( $round_trip_root, 'configure-legacy', 'upgrade' ), 0,
     'systemd to legacy restoration succeeds' );
-is( read_file( live_init($round_trip_root) ), "administrator customization\n",
+is( scalar read_binary( live_init($round_trip_root) ), "administrator customization\n",
     'the customized init script survives a mode round trip' );
 ok( -l rc_link($round_trip_root),
     'systemd enablement maps back to SysV registration' );
@@ -423,7 +410,7 @@ set_systemd_state( $disabled_root, 'disabled' );
 set_init_target( $disabled_root, 'upstart' );
 is( run_state( $disabled_root, 'configure-legacy', 'upgrade' ), 0,
     'disabled systemd fixture returns to legacy' );
-is( read_file( live_init($disabled_root) ), "disabled customization\n",
+is( scalar read_binary( live_init($disabled_root) ), "disabled customization\n",
     'disabled customization is restored' );
 ok( !-e rc_link($disabled_root),
     'disabled systemd state stays disabled under SysV' );
@@ -504,7 +491,7 @@ is( run_state( $unregistered_root, 'commit-systemd' ), 0,
 set_init_target( $unregistered_root, 'upstart' );
 is( run_state( $unregistered_root, 'configure-legacy', 'upgrade' ), 0,
     'unregistered systemd fixture returns to legacy' );
-is( read_file( live_init($unregistered_root) ),
+is( scalar read_binary( live_init($unregistered_root) ),
     "unregistered customization\n",
     'unregistered customization is restored' );
 is( registration_link_count($unregistered_root), 0,
@@ -555,7 +542,7 @@ my @failed_stash_temps = glob( File::Spec->catfile(
 ) );
 is( scalar @failed_stash_temps, 0,
     'a failed atomic stash move removes its temporary file' );
-is( read_file( live_init($failed_stash_root) ),
+is( scalar read_binary( live_init($failed_stash_root) ),
     "failed-stash customization\n",
     'a failed stash leaves the live customization untouched' );
 is( state_value( $failed_stash_root, 'mode' ), 'legacy',
@@ -604,10 +591,10 @@ is( run_state( $malformed_legacy_helper_root, 'configure-legacy', 'fresh' ), 0,
     'malformed legacy fixture starts in stable legacy mode' );
 write_file( live_init($malformed_legacy_helper_root),
     "malformed helper survivor\n", 0755 );
-my $legacy_state_before = read_file( File::Spec->catfile(
+my $legacy_state_before = scalar read_binary( File::Spec->catfile(
     state_dir($malformed_legacy_helper_root), 'state'
 ) );
-my $legacy_content_before = read_file( live_init($malformed_legacy_helper_root) );
+my $legacy_content_before = scalar read_binary( live_init($malformed_legacy_helper_root) );
 my $legacy_links_before = registration_link_count($malformed_legacy_helper_root);
 write_file( staged_compat_helper($malformed_legacy_helper_root), <<'SH', 0755 );
 #!/bin/sh
@@ -619,11 +606,11 @@ esac
 SH
 isnt( run_state( $malformed_legacy_helper_root, 'configure-legacy', 'upgrade' ),
     0, 'successful malformed legacy detection fails closed' );
-is( read_file( File::Spec->catfile(
+is( scalar read_binary( File::Spec->catfile(
         state_dir($malformed_legacy_helper_root), 'state'
     ) ),
     $legacy_state_before, 'malformed legacy detection preserves durable state' );
-is( read_file( live_init($malformed_legacy_helper_root) ),
+is( scalar read_binary( live_init($malformed_legacy_helper_root) ),
     $legacy_content_before, 'malformed legacy detection preserves live content' );
 is( registration_link_count($malformed_legacy_helper_root),
     $legacy_links_before, 'malformed legacy detection preserves registration' );
@@ -877,7 +864,7 @@ is( state_value( $reinstall_state_root, 'content' ), 'stashed',
     'stale fallback deletion evidence cannot replace a durable stash' );
 is( state_value( $reinstall_state_root, 'enabled' ), 'yes',
     'a genuine reinstall restores the default enabled state' );
-is( read_file( File::Spec->catfile( state_dir($reinstall_state_root), 'xcatd' ) ),
+is( scalar read_binary( File::Spec->catfile( state_dir($reinstall_state_root), 'xcatd' ) ),
     "reinstall customization\n",
     'remove and reinstall preserves the exact administrator customization' );
 
@@ -892,7 +879,7 @@ write_file(
 );
 is( run_state( $stale_pending_root, 'prepare-systemd', 'upgrade' ), 0,
     'stable legacy state ignores stale pending evidence' );
-is( read_file( File::Spec->catfile( state_dir($stale_pending_root), 'xcatd' ) ),
+is( scalar read_binary( File::Spec->catfile( state_dir($stale_pending_root), 'xcatd' ) ),
     "current live content\n",
     'current live content wins over stale pending content' );
 ok( !-e File::Spec->catfile( state_dir($stale_pending_root), 'pending-xcatd' ),
@@ -929,7 +916,7 @@ isnt( run_state( $legacy_retry_root, 'configure-legacy', 'upgrade' ), 0,
     'same-mode failure after UCF mutation is reported' );
 is( state_value( $legacy_retry_root, 'origin' ), 'legacy',
     'failed same-mode configuration retains its legacy origin' );
-is( read_file( File::Spec->catfile( state_dir($legacy_retry_root), 'xcatd' ) ),
+is( scalar read_binary( File::Spec->catfile( state_dir($legacy_retry_root), 'xcatd' ) ),
     "same-mode original\n",
     'same-mode failure retains an exact transactional stash' );
 unlink( File::Spec->catfile( $legacy_retry_root, 'mutate-ucf' ) )
@@ -938,7 +925,7 @@ unlink( File::Spec->catfile( $legacy_retry_root, 'fail-ucfr' ) )
   or die "Unable to clear same-mode ucfr failure: $!";
 is( run_state( $legacy_retry_root, 'configure-legacy', 'upgrade' ), 0,
     'same-mode legacy retry succeeds' );
-is( read_file( live_init($legacy_retry_root) ), "same-mode original\n",
+is( scalar read_binary( live_init($legacy_retry_root) ), "same-mode original\n",
     'same-mode retry restores exact pre-failure content' );
 ok( !-e rc_link($legacy_retry_root),
     'same-mode retry does not import stale systemd enablement' );
@@ -1029,7 +1016,7 @@ set_systemd_state( $legacy_target_live_root, 'enabled' );
 set_init_target( $legacy_target_live_root, 'upstart' );
 is( run_state( $legacy_target_live_root, 'configure-legacy', 'upgrade' ), 0,
     'live conffile migrates directly to a legacy target' );
-is( read_file( live_init($legacy_target_live_root) ),
+is( scalar read_binary( live_init($legacy_target_live_root) ),
     "live first-migration content\n",
     'direct legacy migration preserves live administrator content' );
 ok( -l rc_link($legacy_target_live_root),
@@ -1059,7 +1046,7 @@ set_systemd_state( $backup_root, 'disabled' );
 set_init_target( $backup_root, 'upstart' );
 is( run_state( $backup_root, 'configure-legacy', 'upgrade' ), 0,
     'dpkg backup migration succeeds' );
-is( read_file( live_init($backup_root) ), "recoverable customization\n",
+is( scalar read_binary( live_init($backup_root) ), "recoverable customization\n",
     'a dpkg conffile backup is recovered through ucf' );
 
 my $origin_reversal_root = stage_root();
@@ -1122,7 +1109,7 @@ isnt( run_state( $retry_root, 'configure-legacy', 'upgrade' ), 0,
     'a failure after ucf mutation reports failure' );
 ok( -e File::Spec->catfile( state_dir($retry_root), 'xcatd' ),
     'failed restoration retains the durable stash' );
-is( read_file( File::Spec->catfile( state_dir($retry_root), 'xcatd' ) ),
+is( scalar read_binary( File::Spec->catfile( state_dir($retry_root), 'xcatd' ) ),
     "retry customization\n",
     'partial restoration cannot overwrite the original stash' );
 is( state_value( $retry_root, 'mode' ), 'transition-legacy',
@@ -1133,7 +1120,7 @@ unlink( File::Spec->catfile( $retry_root, 'fail-ucfr' ) )
   or die "Unable to clear injected ucfr failure: $!";
 is( run_state( $retry_root, 'configure-legacy', 'upgrade' ), 0,
     'a repeated configure completes the interrupted transition' );
-is( read_file( live_init($retry_root) ), "retry customization\n",
+is( scalar read_binary( live_init($retry_root) ), "retry customization\n",
     'retry preserves the customized content' );
 
 my $reversal_retry_root = stage_root();
@@ -1157,7 +1144,7 @@ isnt( run_state( $reversal_retry_root, 'configure-legacy', 'upgrade' ), 0,
 set_init_target( $reversal_retry_root, '../lib/systemd/systemd' );
 is( run_state( $reversal_retry_root, 'prepare-systemd', 'upgrade' ), 0,
     'a reversed transition prepares for systemd again' );
-is( read_file(
+is( scalar read_binary(
         File::Spec->catfile( state_dir($reversal_retry_root), 'xcatd' )
     ),
     "reversal customization\n",
@@ -1173,7 +1160,7 @@ unlink( File::Spec->catfile( $reversal_retry_root, 'fail-ucfr' ) )
 set_init_target( $reversal_retry_root, 'upstart' );
 is( run_state( $reversal_retry_root, 'configure-legacy', 'upgrade' ), 0,
     'reversed transition can later return to legacy mode' );
-is( read_file( live_init($reversal_retry_root) ), "reversal customization\n",
+is( scalar read_binary( live_init($reversal_retry_root) ), "reversal customization\n",
     'reversed transition eventually restores exact administrator content' );
 
 my $default_retry_root = stage_root();
@@ -1196,7 +1183,7 @@ unlink( File::Spec->catfile( $default_retry_root, 'fail-ucfr' ) )
   or die "Unable to clear package-default ucfr failure: $!";
 is( run_state( $default_retry_root, 'configure-legacy', 'upgrade' ), 0,
     'package-default restoration retries successfully' );
-is( read_file( live_init($default_retry_root) ), read_file($template),
+is( scalar read_binary( live_init($default_retry_root) ), scalar read_binary($template),
     'package-default retry rematerializes the exact packaged template' );
 ok( !-e File::Spec->catfile( state_dir($default_retry_root), 'xcatd' ),
     'package-default retry does not create a durable customization stash' );
@@ -1230,14 +1217,14 @@ write_file( File::Spec->catfile( state_dir($malformed_root), 'state' ),
     "format=9\nmode=legacy\ncontent=active\nenabled=yes\n" );
 isnt( run_state( $malformed_root, 'prepare-systemd', 'upgrade' ), 0,
     'malformed persistent state fails closed' );
-is( read_file( live_init($malformed_root) ), "must survive\n",
+is( scalar read_binary( live_init($malformed_root) ), "must survive\n",
     'malformed state cannot delete the live init script' );
 
 write_file( File::Spec->catfile( state_dir($malformed_root), 'state' ),
     "format=1\nmode=legacy\ncontent=active\nenabled=yes\n" );
 isnt( run_state( $malformed_root, 'prepare-systemd', 'upgrade' ), 0,
     'incomplete persistent state fails closed' );
-is( read_file( live_init($malformed_root) ), "must survive\n",
+is( scalar read_binary( live_init($malformed_root) ), "must survive\n",
     'incomplete state cannot delete the live init script' );
 
 done_testing();
