@@ -9,10 +9,12 @@ import os
 from pathlib import Path
 import shutil
 import stat
+import subprocess
 import sys
 import tempfile
 import time
 import unittest
+import xml.etree.ElementTree as ET
 
 BITBAKE = shutil.which("bitbake")
 if not BITBAKE:
@@ -244,9 +246,28 @@ class GenesisMetadata(unittest.TestCase):
 
     def test_installed_protocol(self):
         data, root = self.install("xcat-genesis-protocol")
+        work = Path(data.getVar("WORKDIR"))
+        tools = work / "tools"
+        tools.mkdir()
+        openssl = tools / "openssl"
+        openssl.write_text('#!/bin/sh\n[ "$1" = s_client ] || exit 99\n'
+                           'cat >"$GENESIS_TEST_REQUEST"\n'
+                           "printf '<xcatresponse><destiny>standby</destiny></xcatresponse>\\n'\n")
+        openssl.chmod(0o755)
         for name in ("getdestiny", "nextdestiny"):
             file = self.installed(data, root, "bindir", name, 0o755)
             self.assertEqual(file.read_bytes(), (ROOT / "xCAT-genesis-scripts/usr/bin" / name).read_bytes())
+            request_file = work / (name + ".xml")
+            environment = {"PATH": str(tools) + os.pathsep + os.environ["PATH"],
+                           "GENESIS_TEST_REQUEST": str(request_file), "TMPDIR": str(work), "LC_ALL": "C"}
+            result = subprocess.run([str(file), "192.0.2.10:3001", "--once"],
+                                    env=environment, capture_output=True, text=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout, "standby\n")
+            request = ET.parse(request_file).getroot()
+            self.assertEqual(request.tag, "xcatrequest")
+            self.assertEqual(request.findtext("command"), name)
+            self.assertEqual(request.findtext("callback_port"), "300")
         self.assertFalse(list(root.rglob("doxcat")))
 
     def test_installed_network(self):
