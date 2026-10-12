@@ -27,6 +27,7 @@ setup()
     cat >"$bin/getdestiny" <<'SH'
 #!/bin/sh
 printf 'getdestiny %s\n' "$*" >>"$XCAT_TEST_LOG"
+[ -z "${XCAT_TEST_DESTINY_DELAY-}" ] || sleep "$XCAT_TEST_DESTINY_DELAY"
 metadata=
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -46,6 +47,7 @@ SH
     cat >"$bin/nextdestiny" <<'SH'
 #!/bin/sh
 printf 'nextdestiny %s\n' "$*" >>"$XCAT_TEST_LOG"
+[ -z "${XCAT_TEST_DESTINY_DELAY-}" ] || sleep "$XCAT_TEST_DESTINY_DELAY"
 [ -s "$XCAT_TEST_NEXTDESTINY_QUEUE" ] || exit 1
 response=$(head -n 1 "$XCAT_TEST_NEXTDESTINY_QUEUE")
 tail -n +2 "$XCAT_TEST_NEXTDESTINY_QUEUE" >"$XCAT_TEST_NEXTDESTINY_QUEUE.new"
@@ -220,4 +222,50 @@ has_no_line()
     GETDESTINY='' run_action standby
     [ "$status" -eq 0 ]
     has_line "$record" '^STATE=DEGRADED$'
+}
+
+@test "current and next requests pass the endpoint, metadata path and one-shot flag" {
+    export XCAT_ACTION_REQUEST_TIMEOUT=10
+    GETDESTINY=$'standby\n' MAX_STEPS=2 run_action standby
+    [ "$status" -eq 0 ] || { printf '%s\n' "$log" "$record"; return 1; }
+    grep -Fx "getdestiny 192.0.2.10:3001 --metadata $XCAT_METADATA_FILE --once" "$command_log"
+    has_line "$record" '^VERIFIED_SECONDS=42$'
+    [ "$(cat "$destiny_file")" = standby ]
+    [ "$(stat -c %a "$destiny_file")" = 600 ]
+
+    GETDESTINY=$'standby\n' NEXTDESTINY=$'standby\n' MAX_STEPS=2 run_action osimage
+    [ "$status" -eq 0 ] || { printf '%s\n' "$log" "$record"; return 1; }
+    grep -Fx "nextdestiny 192.0.2.10:3001 --metadata $XCAT_METADATA_FILE --once" "$command_log"
+    has_line "$record" '^VERIFIED_SECONDS=42$'
+    has_line "$record" '^ACTION=standby$'
+    [ "$(cat "$destiny_file")" = standby ]
+}
+
+@test "empty current and next responses preserve the last action with distinct failure policies" {
+    GETDESTINY=$'\n' run_action standby
+    [ "$status" -eq 0 ]
+    [ "$(cat "$destiny_file")" = standby ]
+    has_line "$record" '^STATE=DEGRADED$'
+    has_line "$record" '^CODE=XCAT_ACTION_POLL_FAILED$'
+    has_no_line "$record" '^VERIFIED_SECONDS='
+
+    NEXTDESTINY=$'\n' run_action osimage
+    [ "$status" -eq 1 ]
+    [ "$(cat "$destiny_file")" = osimage ]
+    has_line "$record" '^STATE=FAILED$'
+    has_line "$record" '^CODE=XCAT_CHAIN_ADVANCE_FAILED$'
+    has_no_line "$record" '^VERIFIED_SECONDS='
+}
+
+@test "current and next action requests enforce the request timeout" {
+    export XCAT_ACTION_REQUEST_TIMEOUT=1 XCAT_TEST_DESTINY_DELAY=10
+    run_action standby
+    [ "$status" -eq 0 ]
+    [ "$(cat "$destiny_file")" = standby ]
+    has_line "$record" '^CODE=XCAT_ACTION_POLL_FAILED$'
+
+    run_action osimage
+    [ "$status" -eq 1 ]
+    [ "$(cat "$destiny_file")" = osimage ]
+    has_line "$record" '^CODE=XCAT_CHAIN_ADVANCE_FAILED$'
 }
