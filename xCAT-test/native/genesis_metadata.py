@@ -276,6 +276,38 @@ class GenesisMetadata(unittest.TestCase):
             self.assertEqual(request.findtext("callback_port"), "300")
         self.assertFalse(list(root.rglob("doxcat")))
 
+    def test_power_metadata_patch(self):
+        data = self.task_data("linux-yocto")
+        # Replace the upstream task body but retain BitBake's machine prepends.
+        data.setVar("do_kernel_metadata", ":\n", parsing=True)
+        patch_name = "0001-qemu-ppc64-drop-removed-crc32-option.patch"
+        fetcher = bb.fetch2.Fetch(["file://" + patch_name], data)
+        fetcher.download()
+        fetcher.unpack(data.getVar("UNPACKDIR"))
+        sources = Path(data.getVar("UNPACKDIR"))
+        metadata = sources / data.getVar("KMETA") / "bsp/qemu-ppc64/qemu-ppc64.cfg"
+        metadata.parent.mkdir(parents=True)
+        if self.arch == "x86":
+            x86_metadata = sources / data.getVar("KMETA") / "bsp/common-pc/common-pc-cpu.cfg"
+            x86_metadata.parent.mkdir(parents=True)
+            x86_metadata.write_text("CONFIG_M686=y\n")
+        before = ("CONFIG_DUMMY_CONSOLE=y\nCONFIG_FRAMEBUFFER_CONSOLE=y\n"
+                  "CONFIG_CRC32_SLICEBY8=y\nCONFIG_ZLIB_INFLATE=y\n"
+                  "CONFIG_GENERIC_ALLOCATOR=y\nCONFIG_TEXTSEARCH=y\n")
+        after = before.replace("CONFIG_CRC32_SLICEBY8=y\n", "")
+        power = self.arch in {"ppc64", "ppc64le"}
+        for content in (before, after):
+            with self.subTest(option_present=content == before):
+                metadata.write_text(content)
+                for unused in range(2):
+                    bb.build.exec_func("do_kernel_metadata", data, dirs=[data.getVar("WORKDIR")])
+                    self.assertEqual(metadata.read_text(), after if power else content)
+        if power:
+            metadata.write_text(before)
+            (sources / patch_name).write_text("invalid patch\n")
+            with self.assertRaises(bb.process.ExecutionError):
+                bb.build.exec_func("do_kernel_metadata", data, dirs=[data.getVar("WORKDIR")])
+
     def test_installed_network(self):
         data, root = self.install("xcat-genesis-network")
         file = self.installed(data, root, "sysconfdir", "NetworkManager/conf.d/10-xcat-genesis.conf", 0o644)
