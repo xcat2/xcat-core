@@ -283,4 +283,27 @@ for my $failed ('rootimg.cpio.gz', 'rootimg.cpio.gz.metainfo') {
     is(read_binary("$dir/rootimg.cpio.gz.sha256"), "checksum of v1\n", 'the previous checksum content goes back instead');
 }
 
+{
+    # glob splits a pattern at a space, so the first word of an image directory with a space named another path.
+    my $dir = "$fixture/custom images/node";
+    make_path("$fixture/custom/keep", $dir);
+    my ($stage) = xCAT::SvrUtils->rootimg_stage($dir);
+    my $path = "$stage";
+    $stage->unlink_on_destroy(0);
+    undef $stage;
+    xCAT::SvrUtils->remove_abandoned_rootimg_stages($dir);
+    ok(!-e $path, 'an abandoned stage in an image directory with a space is removed');
+    ok(-d "$fixture/custom/keep", 'the directory that the first word of the image directory names stays');
+
+    $dir = "$fixture/other images/node";
+    make_path("$dir/.stage");
+    write_text("$fixture/other", "file that the first word of the image directory names\n");
+    write_text("$dir/rootimg.tar.xz", "archive in another format\n");
+    write_text("$dir/.stage/rootimg.cpio.gz", "new archive\n");
+    is(xCAT::SvrUtils->publish_rootimg("$dir/.stage/rootimg.cpio.gz", "$dir/rootimg.cpio.gz", 1), undef,
+        'an archive is published in an image directory with a space');
+    ok(!-e "$dir/rootimg.tar.xz", 'the archive in another format is removed from the image directory with a space');
+    ok(-e "$fixture/other", 'the file that the first word of the image directory names stays');
+}
+
 done_testing();

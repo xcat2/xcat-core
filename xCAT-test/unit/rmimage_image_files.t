@@ -65,4 +65,24 @@ ok(!-e "$dir/.packimage-$host+KEEPPREV", 'a temporary directory that keeps the p
 ok(!-e "$dir/.rootimg-previous-KEPTARCH", 'a previous archive that a failed publication kept is removed with the image');
 ok(-e "$dir/notes.txt", 'a file that is not part of the image stays');
 
+{
+    # The image directory has a space, and the first word of its path names another directory, which stays.
+    my $spaced = "$fixture/install/netboot/custom images/lite";
+    make_path("$spaced/rootimg/etc", "$spaced/.rootimg-previous-KEPTARCH", "$fixture/install/netboot/custom/keep");
+    write_text("$spaced/$_", "$_\n") for qw(rootimg.cpio.gz rootimg-statelite.gz.sha256);
+    xCAT::Table->new('osimage')->setAttribs({ imagename => 'spaced' },
+        { osvers => 'rhels9.6', osarch => 'x86_64', profile => 'compute', provmethod => 'statelite' });
+    xCAT::Table->new('linuximage')->setAttribs({ imagename => 'spaced' }, { rootimgdir => $spaced });
+    my @spaced_responses;
+    {
+        no warnings 'once';
+        local %::XCATSITEVALS = (installdir => "$fixture/install", tftpdir => "$fixture/tftpboot");
+        xCAT_plugin::rmimage::process_request({ arg => ['spaced'] }, sub { push @spaced_responses, @_ }, sub { });
+    }
+    is(join("\n", map { @{ $_->{error} || [] } } @spaced_responses), '', 'rmimage of an image directory with a space reports no error');
+    ok(!-e "$spaced/rootimg.cpio.gz" && !-e "$spaced/rootimg-statelite.gz.sha256", 'the archives of the image directory with a space are removed');
+    ok(!-e "$spaced/.rootimg-previous-KEPTARCH", 'a kept previous archive of the image directory with a space is removed');
+    ok(-d "$fixture/install/netboot/custom/keep", 'the directory that the first word of the image directory names stays');
+}
+
 done_testing();
