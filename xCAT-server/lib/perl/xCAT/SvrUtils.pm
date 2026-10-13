@@ -2891,6 +2891,15 @@ sub _replace_rootimg {
     return;
 }
 
+# Moves the previous files that staging holds, $previous with each of @suffixes, to a new directory next to
+# $target, because staging cleanup would delete them. Returns that directory, or nothing when they cannot move.
+sub _keep_previous {
+    my ($target, $previous, @suffixes) = @_;
+    my $kept = eval { File::Temp::tempdir('.rootimg-previous-XXXXXXXX', DIR => dirname($target)) } or return;
+    my $name = basename($target);
+    return (grep { -e "$previous$_" && !rename("$previous$_", "$kept/$name$_") } @suffixes) ? undef : $kept;
+}
+
 # Puts back the previous files that _replace_rootimg changed, or returns why it cannot.
 sub _restore_rootimg {
     my ($state) = @_;
@@ -2901,22 +2910,23 @@ sub _restore_rootimg {
         unlink($target) or return "the new archive cannot be removed: $!";
     } elsif ($state->{replaced} && !rename($previous, $target)) {
         my $error = "$!";
-
-        # Staging cleanup would delete the previous archive, so it moves where no cleanup removes it.
-        my $kept = eval { File::Temp::tempdir('.rootimg-previous-XXXXXXXX', DIR => dirname($target)) };
-        my $name = basename($target);
-        my @moves = map { [ "$previous$_", "$kept/$name$_" ] } grep { -e "$previous$_" } ('', '.metainfo');
-        return "the previous archive cannot be put back: $error, nor kept" if !$kept || grep { !rename($_->[0], $_->[1]) } @moves;
-        _write_published_file("$kept/$name.sha256", $state->{sums}) if defined($state->{sums});
+        my $kept  = _keep_previous($target, $previous, '', '.metainfo');
+        return "the previous archive cannot be put back: $error, nor kept" if !$kept;
+        _write_published_file("$kept/" . basename($target) . '.sha256', $state->{sums}) if defined($state->{sums});
         return "the previous archive cannot be put back: $error. It is kept in $kept";
     }
-    rename("$previous.metainfo", "$target.metainfo") if $state->{metainfo_moved};
-    if ($state->{sums_changed} && defined($state->{sums})) {
-        _write_published_file("$target.sha256", $state->{sums});
-    } elsif ($state->{sums_changed}) {
-        unlink("$target.sha256");
+    my @errors;
+    if ($state->{metainfo_moved} && !rename("$previous.metainfo", "$target.metainfo")) {
+        my $error = "$!";
+        my $kept  = _keep_previous($target, $previous, '.metainfo');
+        push @errors, "the previous metainfo cannot be put back: $error" . ($kept ? ". It is kept in $kept" : ', nor kept');
     }
-    return;
+    if ($state->{sums_changed}) {
+        my $error = defined($state->{sums}) ? _write_published_file("$target.sha256", $state->{sums})
+          : (-e "$target.sha256" && !unlink("$target.sha256")) ? "Cannot remove $target.sha256: $!" : undef;
+        push @errors, "the previous checksum cannot be put back: $error" if $error;
+    }
+    return @errors ? join(', and ', @errors) : undef;
 }
 
 #--------------------------------------------------------------------------------------------------------
