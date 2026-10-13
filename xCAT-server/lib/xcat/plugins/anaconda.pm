@@ -12,7 +12,7 @@ use Thread qw(yield);
 use POSIX qw(WNOHANG nice);
 use xCAT::Table;
 use xCAT::Utils;
-use xCAT::BootUtils qw(find_genesis_boot_files _find_genesis_boot_files);
+use xCAT::BootUtils qw(find_genesis_boot_files);
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;

@@ -7,11 +7,7 @@ use Exporter qw(import);
 
 use xCAT::Utils;
 
-our @EXPORT_OK = qw(find_genesis_boot_files _find_genesis_boot_files);
-
-sub _find_genesis_boot_files {
-    return find_genesis_boot_files(@_);
-}
+our @EXPORT_OK = qw(find_genesis_boot_files);
 
 sub find_genesis_boot_files {
     my ($tftpdir, $arch) = @_;
