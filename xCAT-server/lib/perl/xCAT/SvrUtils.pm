@@ -2599,9 +2599,28 @@ sub remove_abandoned_rootimg_stages {
     my (undef, $dir, $all) = @_;
 
     # The image lock is per host, so only this host's directories are known to be abandoned.
-    my @abandoned = grep { $all || !_holds_previous($_) } glob("$dir/" . _rootimg_stage_prefix() . '????????');
+    my $prefix = _rootimg_stage_prefix();
+    my @abandoned = grep { $all || !_holds_previous($_) } __PACKAGE__->image_dir_entries($dir, qr/\A\Q$prefix\E.{8}\z/sx);
     rmtree(\@abandoned) if @abandoned;
     return;
+}
+
+#--------------------------------------------------------------------------------------------------------
+#image_dir_entries:
+#description: list the entries of an image directory whose names match a pattern. Unlike glob, it takes the
+#             directory literally, also when its path has a space or a wildcard character.
+#arguments:
+#        $dir:     the image directory
+#        $pattern: a regular expression for the names of the entries
+#return:
+#        the paths of the matching entries, sorted
+#--------------------------------------------------------------------------------------------------------
+sub image_dir_entries {
+    my (undef, $dir, $pattern) = @_;
+    opendir(my $handle, $dir) or return;
+    my @names = sort grep { $_ =~ $pattern } readdir($handle);
+    closedir($handle);
+    return map { "$dir/$_" } @names;
 }
 
 # Returns whether the staging directory $stage keeps previous files of a failed publication.
@@ -2854,7 +2873,7 @@ sub publish_rootimg {
         if ($remove_others) {
             # A node that already downloads another format checks it after the download, so the checksums stay.
             my %kept = map { ($_ => 1) } ($target, "$target.metainfo");
-            unlink grep { !$kept{$_} && !/\.sha256$/x } glob("$dir/rootimg.*");
+            unlink grep { !$kept{$_} && !/\.sha256$/x } $class->image_dir_entries($dir, qr/\Arootimg\./x);
         }
     }
 
