@@ -2861,6 +2861,7 @@ sub _replace_rootimg {
     my ($state) = @_;
     my ($staged, $target, $previous) = @$state{qw(staged target previous)};
     my @files = ($staged, grep { -e $_ } map { "$staged.$_" } qw(sha256 metainfo));
+    $state->{first} = !-e $target && !-l $target;
 
     # A failed publication puts the previous archive back from a link, or from a copy without hard links.
     return "$!" if -e $target && !_keep_copy($target, $previous);
@@ -2894,7 +2895,11 @@ sub _replace_rootimg {
 sub _restore_rootimg {
     my ($state) = @_;
     my ($target, $previous) = @$state{qw(target previous)};
-    if ($state->{replaced} && !rename($previous, $target)) {
+    if ($state->{replaced} && $state->{first}) {
+
+        # No archive was published before, so the new one leaves again.
+        unlink($target) or return "the new archive cannot be removed: $!";
+    } elsif ($state->{replaced} && !rename($previous, $target)) {
         my $error = "$!";
 
         # Staging cleanup would delete the previous archive, so it moves where no cleanup removes it.
