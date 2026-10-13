@@ -99,6 +99,14 @@ esac
 restore_done=0
 restore_rc=0
 netboot_set=
+restore_image_attrs() {
+    local attrs="provmethod=$provmethod os=$os arch=$arch profile=$profile"
+    if ! chdef -t node -o "$node" "provmethod=$provmethod" "os=$os" "arch=$arch" \
+        "profile=$profile" > /dev/null; then
+        echo "IPXE_SHIM_FAIL: chdef -t node -o $node $attrs returned non-zero, $node keeps the image attributes this case set"
+        restore_rc=1
+    fi
+}
 restore_state() {
     [ "$restore_done" = 1 ] && return "$restore_rc"
     restore_done=1
@@ -110,15 +118,20 @@ restore_state() {
             restore_rc=1
         fi
     fi
+    # Before the replay too: shell, standby and runcmd write Genesis boot files for the node arch,
+    # and a forward nodeset osimage that failed can leave the arch of the image.
+    restore_image_attrs
     if ! nodeset "$node" "$before"; then
         echo "IPXE_SHIM_FAIL: nodeset $node $before returned non-zero, $node stays configured for installation"
         restore_rc=1
     fi
-    # After the replay, because a replayed osimage= state writes the image attributes again.
-    attrs="provmethod=$provmethod os=$os arch=$arch profile=$profile currchain=$currchain"
-    if ! chdef -t node -o "$node" "provmethod=$provmethod" "os=$os" "arch=$arch" \
-        "profile=$profile" "currchain=$currchain" > /dev/null; then
-        echo "IPXE_SHIM_FAIL: chdef -t node -o $node $attrs returned non-zero, $node keeps the image attributes and chain this case set"
+    # A replayed osimage state writes the image attributes again.
+    case "$before" in
+        osimage | osimage=*) restore_image_attrs ;;
+    esac
+    # Last, because a replayed state can set the chain.
+    if ! chdef -t node -o "$node" "currchain=$currchain" > /dev/null; then
+        echo "IPXE_SHIM_FAIL: chdef -t node -o $node currchain=$currchain returned non-zero, $node keeps the chain this case set"
         restore_rc=1
     fi
     return "$restore_rc"
