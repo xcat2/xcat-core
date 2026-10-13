@@ -427,6 +427,10 @@ sub mknetboot
         }
         my $docopy = !$donetftp{$copykey};
 
+        # A statelite ramdisk image built with dracut boots the stateless initial ramdisk, which downloads the image.
+        my $initrd = "initrd-stateless.gz";
+        $initrd = "initrd-statelite.gz" if ($statelite && !(&using_dracut($rootimgdir) && $rootfstype eq "ramdisk"));
+
         # This runs before the boot files are copied, so a failure keeps the boot files that the node uses now.
         if (!$statelite || $rootfstype eq "ramdisk") {
             my $error = xCAT::SvrUtils->prepare_rootimg_checksum(value => $rootimgchecksum, rootimgdir => $rootimgdir,
@@ -440,12 +444,8 @@ sub mknetboot
         my $copied = 1;
         if ($docopy && !$noupdateinitrd) {
             mkpath("$tftppath");
-            $copied &&= copy("$rootimgdir/kernel", "$tftppath");
-            if ($statelite) {
-                $copied &&= copy("$rootimgdir/initrd-statelite.gz", "$tftppath");
-            } else {
-                $copied &&= copy("$rootimgdir/initrd-stateless.gz", "$tftppath");
-            }
+            $copied &&= copy("$rootimgdir/kernel",  "$tftppath");
+            $copied &&= copy("$rootimgdir/$initrd", "$tftppath");
         }
         unless ($copied) {
             xCAT::MsgUtils->report_node_error($callback, $node, qq{Copying to $tftppath failed: $!});
@@ -453,24 +453,16 @@ sub mknetboot
         }
         $donetftp{$copykey} = 1;
 
-        if ($statelite) {
-            unless (-r "$tftppath/kernel" and -r "$tftppath/initrd-statelite.gz") {
-                xCAT::MsgUtils->report_node_error($callback, $node, qq{Copying to $tftppath failed.});
-                next;
-            }
-        } else {
-            unless (-r "$tftppath/kernel"
-                and -r "$tftppath/initrd-stateless.gz") {
-                xCAT::MsgUtils->report_node_error($callback, $node, qq{Copying to $tftppath failed.});
-                next;
-            }
+        unless (-r "$tftppath/kernel" and -r "$tftppath/$initrd") {
+            xCAT::MsgUtils->report_node_error($callback, $node, qq{Copying to $tftppath failed.});
+            next;
         }
 
         # Nodes boot the initial ramdisk that is in TFTP now, so that copy decides the check.
         my $checksum_arg = '';
         if (!$statelite || $rootfstype eq "ramdisk") {
             $checksum_arg = xCAT::SvrUtils->rootimg_checksum_boot(value => $rootimgchecksum, rootimgdir => $rootimgdir,
-                initrd => "$tftppath/initrd-stateless.gz", imagename => $imagename, warned => \%rootimg_warned, callback => $callback);
+                initrd => "$tftppath/$initrd", imagename => $imagename, warned => \%rootimg_warned, callback => $callback);
         }
 
         # TODO: move the table operations out of the foreach loop
@@ -697,14 +689,7 @@ sub mknetboot
             }
         }
 
-        my $initrdstr = "$rtftppath/initrd-stateless.gz";
-
-        # special case for the dracut-enabled OSes
-        if ($statelite) {
-            unless (&using_dracut($rootimgdir) && ($rootfstype eq "ramdisk")) {
-                $initrdstr = "$rtftppath/initrd-statelite.gz";
-            }
-        }
+        my $initrdstr = "$rtftppath/$initrd";
 
         if ($statelite)
         {
