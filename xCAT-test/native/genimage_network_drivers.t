@@ -8,7 +8,7 @@ use Test::More;
 use XCAT::Test::ImageSandbox;
 
 plan skip_all => 'Linux namespaces require Linux' unless $^O eq 'linux';
-BAIL_OUT('Run the image caller tests as an unprivileged user') unless $>;
+die('Run the image caller tests as an unprivileged user') unless $>;
 
 for my $family (qw(rh sles ubuntu)) {
     for my $mode (qw(inbox update explicit)) {

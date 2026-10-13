@@ -9,7 +9,7 @@ use Test::More;
 use XCAT::Test::ImageSandbox;
 
 plan skip_all => 'Linux namespaces require Linux' unless $^O eq 'linux';
-BAIL_OUT('Run the image caller tests as an unprivileged user') unless $>;
+die('Run the image caller tests as an unprivileged user') unless $>;
 
 for my $os (qw(rhels10.1 alma10.1 rocky10.1)) {
     for my $arch (qw(x86_64 aarch64 ppc64le)) {

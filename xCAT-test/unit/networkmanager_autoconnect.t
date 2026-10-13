@@ -16,7 +16,7 @@ my $scriptlib = repo_path(
         'xCAT-server', 'share', 'xcat', 'install', 'scripts', 'scriptlib'
     )
 );
--r $scriptlib or BAIL_OUT("$scriptlib is required");
+-r $scriptlib or die("$scriptlib is required");
 
 is( system( 'bash', '-n', $scriptlib ), 0,
     'the install script library has valid Bash syntax' );
