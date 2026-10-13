@@ -240,4 +240,47 @@ for my $failed (qw(rootimg.cpio.gz rootimg.cpio.gz.metainfo)) {
     ok(!-e $path, 'the removal of abandoned stages removes staging that holds no previous file');
 }
 
+for my $failed ('rootimg.cpio.gz', 'rootimg.cpio.gz.metainfo') {
+    # The published checksum is a relative symlink, and the publication fails after it wrote the checksum list.
+    my $dir = "$fixture/symlink-rollback-" . ($failed =~ s/\W/-/gr);
+    make_path("$dir/releases", "$dir/.stage");
+    write_text("$dir/rootimg.cpio.gz",          "previous archive\n");
+    write_text("$dir/rootimg.cpio.gz.metainfo", "previous metainfo\n");
+    write_text("$dir/releases/v1.sha256",       "checksum of v1\n");
+    symlink('releases/v1.sha256', "$dir/rootimg.cpio.gz.sha256") or die $!;
+    write_text("$dir/.stage/rootimg.cpio.gz", "new archive\n");
+    write_text("$dir/.stage/rootimg.cpio.gz.$_", "new $_\n") for qw(sha256 metainfo);
+    my $error;
+    {
+        local %FAIL = ("$dir/$failed" => 1);
+        $error = xCAT::SvrUtils->publish_rootimg("$dir/.stage/rootimg.cpio.gz", "$dir/rootimg.cpio.gz");
+    }
+    like($error // '', qr/^Cannot publish /, "a failed rename to $failed is reported");
+    unlike($error // '', qr/cannot be put back/, "after a failed rename to $failed, the previous files go back");
+    is(readlink("$dir/rootimg.cpio.gz.sha256"), 'releases/v1.sha256', "after a failed rename to $failed, the checksum symlink goes back");
+    is(read_binary("$dir/releases/v1.sha256"), "checksum of v1\n", "after a failed rename to $failed, the file of the symlink keeps its content");
+    is(read_binary("$dir/rootimg.cpio.gz"), "previous archive\n", "after a failed rename to $failed, the previous archive goes back");
+}
+
+{
+    # The checksum symlink cannot go back after a failed publication, so its previous content goes back instead.
+    my $dir = "$fixture/symlink-content";
+    make_path("$dir/releases", "$dir/.stage");
+    write_text("$dir/rootimg.cpio.gz",          "previous archive\n");
+    write_text("$dir/rootimg.cpio.gz.metainfo", "previous metainfo\n");
+    write_text("$dir/releases/v1.sha256",       "checksum of v1\n");
+    symlink('releases/v1.sha256', "$dir/rootimg.cpio.gz.sha256") or die $!;
+    write_text("$dir/.stage/rootimg.cpio.gz", "new archive\n");
+    write_text("$dir/.stage/rootimg.cpio.gz.$_", "new $_\n") for qw(sha256 metainfo);
+    my $error;
+    {
+        local %FAIL       = ("$dir/rootimg.cpio.gz.metainfo" => 1);
+        local %FAIL_AFTER = ("$dir/rootimg.cpio.gz.sha256"   => 1);
+        $error = xCAT::SvrUtils->publish_rootimg("$dir/.stage/rootimg.cpio.gz", "$dir/rootimg.cpio.gz");
+    }
+    like($error // '', qr/the previous checksum cannot be put back: .*Its previous content went back instead/,
+        'a checksum symlink that cannot go back is reported');
+    is(read_binary("$dir/rootimg.cpio.gz.sha256"), "checksum of v1\n", 'the previous checksum content goes back instead');
+}
+
 done_testing();
