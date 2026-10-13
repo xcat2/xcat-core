@@ -194,4 +194,50 @@ for my $failed (qw(rootimg.cpio.gz rootimg.cpio.gz.metainfo)) {
     is(read_binary($target), "previous archive\n", 'the previous archive goes back when its checksum cannot');
 }
 
+{
+    # The previous archive can neither go back nor move out of staging, so staging stays when its owner drops it.
+    my $dir = "$fixture/retained";
+    make_path($dir);
+    write_text("$dir/rootimg.cpio.gz", "previous archive\n");
+    my ($stage) = xCAT::SvrUtils->rootimg_stage($dir);
+    my $path = "$stage";
+    write_text("$path/rootimg.cpio.gz",          "new archive\n");
+    write_text("$path/rootimg.cpio.gz.metainfo", "new metainfo\n");
+    my $error;
+    {
+        no warnings 'redefine';
+        local *File::Temp::tempdir = sub { die "No space left on device\n" };
+        local %FAIL      = ("$dir/rootimg.cpio.gz.metainfo" => 1);
+        local %FAIL_FROM = ("$path/previous"                => 1);
+        $error = xCAT::SvrUtils->publish_rootimg("$path/rootimg.cpio.gz", "$dir/rootimg.cpio.gz");
+    }
+    like($error // '', qr/the previous archive cannot be put back: .*It is kept in \Q$path\E$/,
+        'a previous archive that only staging keeps is reported with the staging directory');
+    undef $stage;
+    is(-e "$path/previous" && read_binary("$path/previous"), "previous archive\n", 'staging keeps the previous archive when its owner drops it');
+    xCAT::SvrUtils->remove_abandoned_rootimg_stages($dir);
+    ok(-e "$path/previous", 'the removal of abandoned stages keeps staging that holds the previous archive');
+    xCAT::SvrUtils->remove_abandoned_rootimg_stages($dir, 1);
+    ok(!-e $path, 'the removal of all stages, as rmimage asks for, removes it too');
+}
+
+{
+    # A publication that succeeds leaves no previous file in staging, so staging that its owner left is abandoned.
+    my $dir = "$fixture/succeeded";
+    make_path($dir);
+    write_text("$dir/rootimg.cpio.gz",          "previous archive\n");
+    write_text("$dir/rootimg.cpio.gz.metainfo", "previous metainfo\n");
+    my ($stage) = xCAT::SvrUtils->rootimg_stage($dir);
+    my $path = "$stage";
+    write_text("$path/rootimg.cpio.gz", "new archive\n");
+    is(xCAT::SvrUtils->publish_rootimg("$path/rootimg.cpio.gz", "$dir/rootimg.cpio.gz"), undef, 'a publication from staging succeeds');
+    is_deeply([ grep { -e "$path/$_" } qw(previous previous.metainfo) ], [], 'staging holds no previous file after the publication');
+
+    # The owner is killed and leaves staging behind.
+    $stage->unlink_on_destroy(0);
+    undef $stage;
+    xCAT::SvrUtils->remove_abandoned_rootimg_stages($dir);
+    ok(!-e $path, 'the removal of abandoned stages removes staging that holds no previous file');
+}
+
 done_testing();

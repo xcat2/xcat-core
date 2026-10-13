@@ -37,6 +37,8 @@ my $dir = "$fixture/install/netboot/lite";
 make_path("$dir/rootimg/etc", "$dir/.packimage-$host+ABANDONE", "$dir/.packimage-other.host+WRITING1");
 write_text("$dir/.packimage-$host+ABANDONE/rootimg-statelite.gz", "partial archive\n");
 write_text("$dir/.packimage-other.host+WRITING1/rootimg.cpio.gz", "archive that another host writes\n");
+make_path("$dir/.packimage-$host+KEEPPREV");
+write_text("$dir/.packimage-$host+KEEPPREV/previous", "previous archive that a failed publication keeps in staging\n");
 make_path("$dir/.rootimg-previous-KEPTARCH");
 write_text("$dir/.rootimg-previous-KEPTARCH/rootimg.cpio.gz", "previous archive that a failed publication kept\n");
 my @image_files = qw(kernel initrd-stateless.gz initrd-stateless.gz.rootimgcheck initrd-statelite.gz
@@ -59,6 +61,7 @@ is_deeply([ grep { -e "$dir/$_" } @image_files ], [], 'the archives, their check
 ok(!-e "$dir/rootimg", 'the image tree is removed');
 ok(!-e "$dir/.packimage-$host+ABANDONE", 'a temporary directory that this host abandoned is removed');
 ok(-e "$dir/.packimage-other.host+WRITING1/rootimg.cpio.gz", 'a temporary directory of another host stays');
+ok(!-e "$dir/.packimage-$host+KEEPPREV", 'a temporary directory that keeps the previous archive of a failed publication is removed with the image');
 ok(!-e "$dir/.rootimg-previous-KEPTARCH", 'a previous archive that a failed publication kept is removed with the image');
 ok(-e "$dir/notes.txt", 'a file that is not part of the image stays');
 
