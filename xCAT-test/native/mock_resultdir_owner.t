@@ -19,7 +19,12 @@ plan skip_all => 'requires the mock Python library'
 # Flush before the forks below, or each child repeats this file's TAP output on exit.
 $| = 1;
 
+# mock takes its build user from these. Each case below sets the ones it needs.
+delete @ENV{qw(SUDO_UID SUDO_GID SUDO_USER USERHELPER_UID PKEXEC_UID)};
+
 my $conf = tempdir(CLEANUP => 1);
+# Under sudo, mock reads its configuration as the caller.
+chmod 0755, $conf or die "Cannot make $conf readable: $!\n";
 make_path("$conf/templates");
 write_text("$conf/templates/owner.tpl",
     "config_opts['chrootuid'] = 1000\nconfig_opts['chrootgid'] = 1000\n");
@@ -65,12 +70,50 @@ SKIP: {
         write_text($file, "interrupted\n");
         chmod 0644, $file;
     }
-    chmod 0755, $tmp, "$tmp/dist", "$tmp/dist/openeuler-24.03-ppc64le";
 
     prepare_mock_resultdirs('included', $conf, @dirs);
     ok(writable_as(1000, 1000, $_), "uid 1000 can append to $_") for @stale[0 .. $#logs];
     ok(writable_as(1000, 1000, $stale[-1]), 'uid 1000 can replace the stale source rpm');
     ok(writable_as(1000, 1000, "$_/new.log"), "uid 1000 can create a file in $_") for @dirs;
+}
+
+SKIP: {
+    skip 'creating directories for uid 1000 requires root', 2 if $> != 0;
+
+    # A first build under umask 077: the helper creates every directory below the checkout.
+    my $tmp = tempdir(CLEANUP => 1);
+    chmod 0755, $tmp or die "Cannot make $tmp traversable: $!\n";
+    my @dirs = ("$tmp/dist/openeuler-24.03-ppc64le/rpms", "$tmp/dist/openeuler-24.03-ppc64le/rpms/SRPMS");
+    my $umask = umask 077;
+    prepare_mock_resultdirs('included', $conf, @dirs);
+    umask $umask;
+    ok(writable_as(1000, 1000, "$_/new.log"), "uid 1000 can create a file in the fresh $_") for @dirs;
+}
+
+SKIP: {
+    my $nobody = getpwnam 'nobody';
+    skip 'acting as the sudo caller requires root and a nobody user', 8
+        if $> != 0 || !defined $nobody;
+
+    # sudo mock with no chrootuid builds as SUDO_UID and the mock group.
+    local $ENV{SUDO_UID} = $nobody;
+    local $ENV{SUDO_GID} = (getpwnam 'nobody')[3];
+    local $ENV{SUDO_USER} = 'nobody';
+    is_deeply([ mock_build_owner('plain', $conf) ], [ $nobody, $mock_gid ],
+        'under sudo with no chrootuid, mock builds as the sudo caller and the mock group');
+
+    my $tmp = tempdir(CLEANUP => 1);
+    chmod 0755, $tmp or die "Cannot make $tmp traversable: $!\n";
+    my @dirs = ("$tmp/dist/openeuler-24.03sp4-x86_64/rpms", "$tmp/dist/openeuler-24.03sp4-x86_64/rpms/SRPMS");
+    make_path(@dirs);
+    my @logs = map { my $d = $_; map { "$d/$_" } qw(build.log root.log state.log) } @dirs;
+    for my $file (@logs) {
+        write_text($file, "interrupted\n");
+        chmod 0644, $file;
+    }
+    prepare_mock_resultdirs('plain', $conf, @dirs);
+    ok(writable_as($nobody, $mock_gid, $_), "the sudo caller can append to $_") for @logs;
+    ok(writable_as($nobody, $mock_gid, "$dirs[1]/new.log"), 'the sudo caller can create a file in SRPMS');
 }
 
 done_testing();

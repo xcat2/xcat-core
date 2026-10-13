@@ -97,4 +97,18 @@ XCAT::BuildUtils::prepare_mock_resultdirs($chroot, undef, "$tmp/caller");
 is_deeply(\@CHOWNED, [], 'nothing changes owner when mock builds as the caller');
 ok(-d "$tmp/caller", 'the directory is still created');
 
+# A first build under umask 077. mock must reach the result directories through
+# the parents the helper creates. The existing checkout keeps its mode.
+my $fresh = tempdir(CLEANUP => 1);
+my $fresh_mode = (stat $fresh)[2] & 07777;
+my $target = "$fresh/dist/openeuler-24.03-ppc64le";
+@owner = (1000, 135);
+@CHOWNED = ();
+my $umask = umask 077;
+XCAT::BuildUtils::prepare_mock_resultdirs($chroot, undef, "$target/rpms", "$target/rpms/SRPMS");
+umask $umask;
+is((stat $_)[2] & 07777, 0755, "the new parent $_ is traversable")
+    for "$fresh/dist", $target;
+is((stat $fresh)[2] & 07777, $fresh_mode, 'the existing checkout keeps its mode');
+
 done_testing();
