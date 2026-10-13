@@ -52,9 +52,11 @@ sub publish {
     my $stage = "$dir/.stage";
     make_path($stage);
     local $TARGET = "$dir/rootimg.cpio.gz";
-    write_text($TARGET, "previous archive\n");
-    write_text("$TARGET.sha256", "previous checksum\n") if !$case{unchecked};
-    write_text("$TARGET.metainfo", "previous metainfo\n");
+    if (!$case{first}) {
+        write_text($TARGET, "previous archive\n");
+        write_text("$TARGET.sha256", "previous checksum\n") if !$case{unchecked};
+        write_text("$TARGET.metainfo", "previous metainfo\n");
+    }
     write_text("$stage/rootimg.cpio.gz", "new archive\n");
     write_text("$stage/rootimg.cpio.gz.sha256", "new checksum\n") if $case{checksum};
     write_text("$stage/rootimg.cpio.gz.metainfo", "new metainfo\n") if $case{metainfo};
@@ -104,6 +106,16 @@ for my $failed (qw(rootimg.cpio.gz rootimg.cpio.gz.metainfo)) {
     is(read_binary("$target.sha256"), "previous checksum\n", "a failed rename to $failed leaves the previous checksum");
     is(read_binary("$target.metainfo"), "previous metainfo\n", "a failed rename to $failed leaves the previous metainfo");
     ok(!-e "$dir/.packimage-publish", "the publication lock is released after a failed rename to $failed");
+}
+
+for my $failed (qw(rootimg.cpio.gz rootimg.cpio.gz.metainfo)) {
+    # No archive was published before, as for the first pack or a change of format.
+    my ($error, $dir, $target) = publish(checksum => 1, metainfo => 1, first => 1, fail => [$failed]);
+    like($error, qr/^Cannot publish \Q$target\E: /, "a failed rename to $failed of a first archive is reported");
+    is_deeply([ grep { -e $_ } map { "$target$_" } ('', '.sha256', '.metainfo') ], [],
+        "a failed rename to $failed leaves no archive, checksum or metainfo where none was");
+    is_deeply([ glob("$dir/.rootimg-previous-*") ], [], "a failed rename to $failed of a first archive keeps no previous archive");
+    ok(!-e "$dir/.packimage-publish", "the publication lock is released after a failed rename to $failed of a first archive");
 }
 
 {
