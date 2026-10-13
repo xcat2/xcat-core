@@ -2580,6 +2580,27 @@ sub searchcompressedrootimg{
 # Publication holds its lock briefly, so a writer that waits this long fails instead of taking the lock over.
 my $publish_lock_wait = 60;
 
+sub _rootimg_stage_prefix {
+    (my $host = Sys::Hostname::hostname()) =~ s/[^A-Za-z0-9.-]/_/gx;
+    return ".packimage-$host+";
+}
+
+#--------------------------------------------------------------------------------------------------------
+#remove_abandoned_rootimg_stages:
+#description: remove the private directories that writers on this host abandoned in an image directory.
+#             Hold the image lock while you call it.
+#argument:
+#        $dir: the image directory
+#--------------------------------------------------------------------------------------------------------
+sub remove_abandoned_rootimg_stages {
+    my (undef, $dir) = @_;
+
+    # The image lock is per host, so only this host's directories are known to be abandoned.
+    my @abandoned = glob("$dir/" . _rootimg_stage_prefix() . '????????');
+    rmtree(\@abandoned) if @abandoned;
+    return;
+}
+
 #--------------------------------------------------------------------------------------------------------
 #rootimg_stage:
 #description: create a private directory in an image directory for a new compressed rootimage, and remove
@@ -2591,13 +2612,9 @@ my $publish_lock_wait = 60;
 #        on fail:    undef and the error message
 #--------------------------------------------------------------------------------------------------------
 sub rootimg_stage {
-    my (undef, $dir) = @_;
-
-    # The image lock is per host, so only this host's directories are known to be abandoned.
-    (my $host = Sys::Hostname::hostname()) =~ s/[^A-Za-z0-9.-]/_/gx;
-    my @abandoned = glob("$dir/.packimage-$host+????????");
-    rmtree(\@abandoned) if @abandoned;
-    my $stage = eval { File::Temp->newdir(".packimage-$host+XXXXXXXX", DIR => $dir) };
+    my ($class, $dir) = @_;
+    $class->remove_abandoned_rootimg_stages($dir);
+    my $stage = eval { File::Temp->newdir(_rootimg_stage_prefix() . 'XXXXXXXX', DIR => $dir) };
     return ($stage) if $stage;
     return (undef, "Cannot create a temporary directory in $dir: $@");
 }
