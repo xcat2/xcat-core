@@ -12,7 +12,7 @@ use XCAT::Test::File qw(repo_path slurp_repo_file);
 use XCAT::Test::Package qw(run_in);
 
 plan skip_all => 'requires Linux package tools' unless $^O eq 'linux';
-BAIL_OUT('run package builds as an unprivileged user') unless $>;
+die('run package builds as an unprivileged user') unless $>;
 my $root = tempdir(CLEANUP => 1);
 make_path(map { "$root/$_" } qw(SOURCES BUILD BUILDROOT RPMS SRPMS SPECS home));
 local %ENV = (%ENV, HOME => "$root/home", LC_ALL => 'C');
@@ -26,7 +26,7 @@ sub command {
     my ($rc, $out, $err) = run_in($directory, @args);
     unless (is($rc, 0, "$args[0] completes")) {
         diag($out, $err);
-        BAIL_OUT("@args failed");
+        die("@args failed");
     }
     return $out;
 }
@@ -34,7 +34,7 @@ sub command {
 command($root, 'rpmbuild', '-bb', '--define', "_topdir $root",
     '--define', 'version 9.9.9', '--define', 'release 1', repo_path('xCAT-probe/xCAT-probe.spec'));
 my @rpms = glob("$root/RPMS/noarch/xCAT-probe-*.rpm");
-is(scalar(@rpms), 1, 'build produces one probe RPM') or BAIL_OUT('missing probe RPM');
+is(scalar(@rpms), 1, 'build produces one probe RPM') or die('missing probe RPM');
 my $requires = command($root, 'rpm', '-qp', '--requires', $rpms[0]);
 like($requires, qr/^iproute$/m, 'RPM requires the Linux socket tool provider');
 make_path("$root/rpm");
@@ -47,10 +47,10 @@ sub check_payload {
     my $prefix = "$destination/opt/xcat";
     my $helper_dir = "$prefix/probe/lib/perl/xCAT";
     ok(-x $helper_dir, "$label helper directory is searchable")
-        or BAIL_OUT(sprintf('%s has mode %04o', $helper_dir, (stat($helper_dir))[2] & 0777));
+        or die(sprintf('%s has mode %04o', $helper_dir, (stat($helper_dir))[2] & 0777));
     for my $helper (@helpers) {
         my $path = "$prefix/probe/lib/perl/xCAT/$helper";
-        ok(-f $path, "$label carries $helper") or BAIL_OUT("missing $path");
+        ok(-f $path, "$label carries $helper") or die("missing $path");
         is(read_binary($path), slurp_repo_file("perl-xCAT/xCAT/$helper"),
             "$label carries the canonical $helper bytes");
         is((stat($path))[2] & 0777, 0644, "$label helper is readable without execute permission");

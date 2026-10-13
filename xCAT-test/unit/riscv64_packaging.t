@@ -18,9 +18,9 @@ open(
     'sh', '-c',
     '. "$1"; printf "%s\n%s\n%s\n" "$XCAT_CORE_RPM_ARCHES" "$XCAT_LOCAL_RPM_ARCHES" "$XCAT_LOCAL_COLLECT_ARCHES"',
     'sh', $architectures,
-) or BAIL_OUT("unable to load $architectures: $!");
+) or die("unable to load $architectures: $!");
 my @architecture_sets = <$arch_fh>;
-close($arch_fh) or BAIL_OUT("unable to read architecture data from $architectures");
+close($arch_fh) or die("unable to read architecture data from $architectures");
 chomp @architecture_sets;
 
 is(

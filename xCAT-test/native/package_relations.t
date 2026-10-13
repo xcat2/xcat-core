@@ -69,7 +69,7 @@ rpm.addMacro('__requires_exclude', '^retained$')
 rpm.spec(sys.argv[1])
 print(rpm.expandMacro('%{?__requires_exclude}'))
 PY
-    is($rc, 0, "$name parses server dependency generator policy") or BAIL_OUT($err);
+    is($rc, 0, "$name parses server dependency generator policy") or die($err);
     chomp $filter;
     ok('retained' =~ /$filter/, "$name keeps an inherited dependency filter");
     is('perl(DB_File)' =~ /$filter/ ? 1 : 0, $name eq 'EL10' ? 1 : 0,
@@ -94,7 +94,7 @@ sub query {
         (map { ('--undefine', $_) } qw(rhel fedora suse_version openEuler)),
         '--define', $macro, '--define', 'version 9.9.9', '--define', 'release 1',
         '--qf', $format, repo_path("$package/$package.spec"));
-    BAIL_OUT("$package $arch $macro: $err") if $rc;
+    die("$package $arch $macro: $err") if $rc;
     $out =~ s/[^\S\n]+$//mg;
     return $out;
 }

@@ -14,7 +14,7 @@ use XCAT::Test::File qw(repo_path);
 use XCAT::Test::Package qw(run_in);
 
 plan skip_all => 'requires Linux package tools' unless $^O eq 'linux';
-BAIL_OUT('run package builds as an unprivileged user') unless $>;
+die('run package builds as an unprivileged user') unless $>;
 my $root = tempdir(CLEANUP => 1);
 make_path(map { "$root/$_" } qw(home home/keys SOURCES BUILD BUILDROOT RPMS SRPMS SPECS work));
 chmod 0700, "$root/home/keys" or die $!;
@@ -33,7 +33,7 @@ command($root, 'rpmbuild', '-ba', '--define', "_topdir $root",
     '--define', 'version 9.9.9', '--define', 'release 1', repo_path('xCAT-release/xCAT-release.spec'));
 my $rpm = 'xCAT-release-9.9.9-1.noarch.rpm';
 my $srpm = 'xCAT-release-9.9.9-1.src.rpm';
-ok(-f "$root/RPMS/noarch/$rpm", 'real release RPM was built') or BAIL_OUT('missing release RPM');
+ok(-f "$root/RPMS/noarch/$rpm", 'real release RPM was built') or die('missing release RPM');
 my $requirements = command($root, 'rpm', '-qp', '--requires', "$root/RPMS/noarch/$rpm");
 like($requirements, qr/^dnf$/m, 'release package requires DNF');
 my $files = command($root, 'rpm', '-qp', '--qf', '[%{FILENAMES}\t%{FILEFLAGS}\n]', "$root/RPMS/noarch/$rpm");
@@ -107,7 +107,7 @@ done_testing();
 sub command {
     my ($directory, @args) = @_;
     my ($rc, $out, $err) = run_in($directory, @args);
-    is($rc, 0, "$args[0] completes") or do { diag($out, $err); BAIL_OUT("@args failed"); };
+    is($rc, 0, "$args[0] completes") or do { diag($out, $err); die("@args failed"); };
     return $out;
 }
 
@@ -133,7 +133,7 @@ sub primary_packages {
 sub check_repository {
     my ($directory, $signed, $label) = @_;
     my $alias = "$directory/xCAT-release-latest.noarch.rpm";
-    ok(-f $alias, "$label publishes the alias") or BAIL_OUT('missing bootstrap alias');
+    ok(-f $alias, "$label publishes the alias") or die('missing bootstrap alias');
     is(read_binary($alias), read_binary("$directory/$rpm"), "$label alias has final RPM bytes");
     is((stat($alias))[2] & 0777, 0644, "$label alias is readable");
     my @packages = primary_packages($directory);
