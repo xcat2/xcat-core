@@ -2859,7 +2859,7 @@ sub publish_rootimg {
     }
 
     # Afterwards, only a staging directory that keeps previous files for a failed publication holds them.
-    unlink(grep { -e $_ || -l $_ } ($state{previous}, "$state{previous}.metainfo")) if !$state{retained};
+    unlink(grep { -e $_ || -l $_ } map { "$state{previous}$_" } ('', '.metainfo', '.sha256')) if !$state{retained};
     _release_publish_lock($lock);
     return if !defined($error);
     return "Cannot publish $target: $error";
@@ -2883,6 +2883,26 @@ sub _replace_rootimg {
     # A failed publication puts the previous archive back from a link, or from a copy without hard links.
     return "$!" if -e $target && !_keep_copy($target, $previous);
     return "$!" if !-s $staged || chmod(0644, @files) != @files;
+    my $error = _replace_sums($state);
+    return $error if $error;
+
+    # The previous metainfo leaves first, so it never describes the new archive.
+    if (-e "$target.metainfo") {
+        $state->{metainfo_moved} = rename("$target.metainfo", "$previous.metainfo") or return "$!";
+    }
+    $state->{replaced} = rename($staged, $target) or return "$!";
+    return "$!" if -e "$staged.metainfo" && !rename("$staged.metainfo", "$target.metainfo");
+    return;
+}
+
+# Writes the checksum file of the publication in $state for the time that the archive is replaced, and returns
+# why it cannot.
+sub _replace_sums {
+    my ($state) = @_;
+    my ($staged, $target, $previous) = @$state{qw(staged target previous)};
+
+    # A rollback renames the previous checksum entry back, so a symlink stays a symlink.
+    $state->{sums_entry} = (-e "$target.sha256" || -l "$target.sha256") && link("$target.sha256", "$previous.sha256");
 
     # Until the archive is replaced, the checksum file lists the new and the previous archive, so the published
     # archive matches a line of it, also when the publisher is killed.
@@ -2892,19 +2912,12 @@ sub _replace_rootimg {
         ($previous_line, $error) = _rootimg_checksum_line($target) if !defined($previous_line) && -e $target;
         return $error if $error;
         $state->{sums_changed} = 1;
-        $error = _write_published_file("$target.sha256", _read_published_file("$staged.sha256") . ($previous_line // ''));
-        return $error if $error;
-    } elsif (defined($state->{sums})) {
+        return _write_published_file("$target.sha256", _read_published_file("$staged.sha256") . ($previous_line // ''));
+    }
+    if (defined($state->{sums})) {
         $state->{sums_changed} = 1;
         unlink("$target.sha256") or return "$!";
     }
-
-    # The previous metainfo leaves first, so it never describes the new archive.
-    if (-e "$target.metainfo") {
-        $state->{metainfo_moved} = rename("$target.metainfo", "$previous.metainfo") or return "$!";
-    }
-    $state->{replaced} = rename($staged, $target) or return "$!";
-    return "$!" if -e "$staged.metainfo" && !rename("$staged.metainfo", "$target.metainfo");
     return;
 }
 
@@ -2960,11 +2973,23 @@ sub _restore_rootimg {
         push @errors, "the previous metainfo cannot be put back: $error" . (@kept ? '. It is kept in ' . join(' and ', @kept) : ', nor kept');
     }
     if ($state->{sums_changed}) {
-        my $error = defined($state->{sums}) ? _write_published_file("$target.sha256", $state->{sums})
-          : (-e "$target.sha256" && !unlink("$target.sha256")) ? "Cannot remove $target.sha256: $!" : undef;
+        my $error = _restore_sums($state);
         push @errors, "the previous checksum cannot be put back: $error" if $error;
     }
     return @errors ? join(', and ', @errors) : undef;
+}
+
+# Puts back the previous checksum file of the publication in $state, or returns why it cannot. The kept entry goes
+# back as it was, also a symlink. Otherwise the previous content goes back, so that nodes can check the archive.
+sub _restore_sums {
+    my ($state) = @_;
+    my ($target, $previous) = @$state{qw(target previous)};
+    return if $state->{sums_entry} && rename("$previous.sha256", "$target.sha256");
+    my $entry_error = $state->{sums_entry} ? "$!" : undef;
+    my $error = defined($state->{sums}) ? _write_published_file("$target.sha256", $state->{sums})
+      : (-e "$target.sha256" && !unlink("$target.sha256")) ? "Cannot remove $target.sha256: $!" : undef;
+    return $error if $error;
+    return defined($entry_error) ? "$entry_error. Its previous content went back instead" : undef;
 }
 
 #--------------------------------------------------------------------------------------------------------
