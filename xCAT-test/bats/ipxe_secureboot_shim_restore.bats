@@ -6,15 +6,33 @@
 # the next case on that node measures the state this one left. So the helper has to report a
 # failed restoration instead of its own result.
 #
-# lsdef, nodeset and chdef are stubbed, and every call is recorded in a log the tests read. A
-# stub can also be told to fail: STUB_STAT_RC fails "nodeset stat", and STUB_LSDEF_FAIL_ATTR
-# fails the lsdef of one attribute. Both failures print nothing on stdout, which is what an
-# attribute that is unset prints too.
+# lsdef, nodeset and chdef are stubbed, and every call is recorded in a log the tests read. The
+# stubs share a store of node attributes and osimage rows in the test directory, so a test can
+# assert the values the node ends with. On its first call a stub fills the store from the STUB_*
+# variables. A stub can also be told to fail: STUB_STAT_RC fails "nodeset stat", and
+# STUB_LSDEF_FAIL_ATTR fails the lsdef of one attribute. Both failures print nothing on stdout,
+# which is what an attribute that is unset prints too.
 
 load 'helpers/shell_source'
 
 NODE=cn01
 OS=alma9.8
+
+# Write one osimage row. nodeset osimage= copies osvers, osarch and profile from this row into
+# the node, whatever the image name says.
+define_image()
+{
+    local dir="$STUB_STORE/osimage/$1"
+    mkdir -p "$dir"
+    printf '%s' "$2" >"$dir/osvers"
+    printf '%s' "$3" >"$dir/osarch"
+    printf '%s' "$4" >"$dir/profile"
+}
+
+node_attr()
+{
+    cat "$STUB_STORE/node/$1"
+}
 
 setup()
 {
@@ -31,6 +49,7 @@ setup()
     # The nodeset state the helper has to put back, and the provmethod it finds. An empty
     # provmethod is what sends the helper through chdef on the way out.
     export STUB_BEFORE=boot
+    export STUB_CURRCHAIN=
     export STUB_PROVMETHOD=
     export STUB_PROFILE=compute
     export STUB_STAT_RC=0
@@ -52,10 +71,38 @@ setup()
     export STUB_TFTPDIR="$TFTPDIR"
     export STUB_INSTALLDIR="$INSTALLDIR"
     export STUB_OS="$OS"
+    export STUB_STORE="$BATS_TEST_TMPDIR/store"
+    export STUB_LIB="$BIN/../stublib.sh"
+
+    cat >"$STUB_LIB" <<'STUB'
+# The node starts with the STUB_* values. A test that defines its own osimage rows before the
+# first call keeps them, and the default row is added only when STUB_NO_OSIMAGE is empty.
+store_init() {
+    [ -d "$STUB_STORE/node" ] && return 0
+    mkdir -p "$STUB_STORE/node" "$STUB_STORE/osimage"
+    printf '%s' "$STUB_NETBOOT" >"$STUB_STORE/node/netboot"
+    printf '%s' "$STUB_ARCH" >"$STUB_STORE/node/arch"
+    printf '%s' "$STUB_OS" >"$STUB_STORE/node/os"
+    printf '%s' "$STUB_PROVMETHOD" >"$STUB_STORE/node/provmethod"
+    printf '%s' "$STUB_PROFILE" >"$STUB_STORE/node/profile"
+    printf '%s' "$STUB_BEFORE" >"$STUB_STORE/node/currstate"
+    printf '%s' "$STUB_CURRCHAIN" >"$STUB_STORE/node/currchain"
+    if [ -z "$STUB_NO_OSIMAGE" ] && [ ! -d "$STUB_STORE/osimage/$STUB_OS-x86_64-install-compute" ]; then
+        mkdir -p "$STUB_STORE/osimage/$STUB_OS-x86_64-install-compute"
+        printf '%s' "$STUB_OS" >"$STUB_STORE/osimage/$STUB_OS-x86_64-install-compute/osvers"
+        printf '%s' x86_64 >"$STUB_STORE/osimage/$STUB_OS-x86_64-install-compute/osarch"
+        printf '%s' compute >"$STUB_STORE/osimage/$STUB_OS-x86_64-install-compute/profile"
+    fi
+}
+get() { cat "$STUB_STORE/node/$1" 2>/dev/null; }
+put() { printf '%s' "$2" >"$STUB_STORE/node/$1"; }
+store_init
+STUB
 
     cat >"$BIN/lsdef" <<'STUB'
 #!/bin/bash
 echo "lsdef $*" >>"$STUB_CALLS"
+. "$STUB_LIB"
 type=; obj=; attr=
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -74,28 +121,41 @@ fi
 case "$type/$attr" in
     site/tftpdir)    echo "    tftpdir=$STUB_TFTPDIR" ;;
     site/installdir) echo "    installdir=$STUB_INSTALLDIR" ;;
-    node/netboot)    echo "    netboot=$STUB_NETBOOT" ;;
-    node/arch)       echo "    arch=$STUB_ARCH" ;;
-    node/os)         echo "    os=$STUB_OS" ;;
-    node/provmethod) [ -n "$STUB_PROVMETHOD" ] && echo "    provmethod=$STUB_PROVMETHOD" ;;
-    node/profile)    [ -n "$STUB_PROFILE" ] && echo "    profile=$STUB_PROFILE" ;;
-    osimage/)        [ -n "$STUB_NO_OSIMAGE" ] && exit 1; exit 0 ;;
+    node/netboot | node/arch | node/os | node/provmethod | node/profile | node/currchain)
+        v=$(get "$attr")
+        [ -n "$v" ] && echo "    $attr=$v"
+        ;;
+    osimage/)        [ -d "$STUB_STORE/osimage/$obj" ] || exit 1 ;;
     *) echo "unexpected lsdef $type $obj $attr" >&2; exit 1 ;;
 esac
 exit 0
 STUB
 
-    # nodeset stat reports the state; osimage= writes the UEFI script; any destiny name is the
-    # restoration call, and its exit status is what these tests drive.
+    # nodeset osimage[=<image>] does what setdestiny does to the node: it writes provmethod, os,
+    # arch and profile from the osimage row, sets currchain to boot, and writes the UEFI script.
+    # Any other destiny sets currstate, and the actions after its first comma become currchain.
     cat >"$BIN/nodeset" <<'STUB'
 #!/bin/bash
 echo "nodeset $*" >>"$STUB_CALLS"
+. "$STUB_LIB"
 case "$2" in
     stat)
         [ "$STUB_STAT_RC" = 0 ] || { echo "Error: cannot reach the server" >&2; exit "$STUB_STAT_RC"; }
-        echo "$1: $STUB_BEFORE"
+        echo "$1: $(get currstate)"
+        exit 0
         ;;
-    osimage=*)
+    osimage | osimage=*)
+        image=${2#osimage}
+        image=${image#=}
+        [ -n "$image" ] || image=$(get provmethod)
+        row="$STUB_STORE/osimage/$image"
+        [ -n "$image" ] && [ -d "$row" ] || { echo "Error: Cannot find the OS image $image" >&2; exit 1; }
+        put provmethod "$image"
+        put os "$(cat "$row/osvers")"
+        put arch "$(cat "$row/osarch")"
+        put profile "$(cat "$row/profile")"
+        put currchain boot
+        put currstate "install $(get os)-$(get arch)-$(get profile)"
         {
             echo '#!gpxe'
             echo 'imgfetch -n kernel http://${next-server}/tftpboot/xcat/osimage/vmlinuz'
@@ -104,26 +164,36 @@ case "$2" in
             echo 'imgargs kernel quiet'
             echo 'imgexec kernel'
         } >"$STUB_UEFI"
+        exit 0
         ;;
     *)
-        exit "$STUB_NODESET_RESTORE_RC"
+        [ "$STUB_NODESET_RESTORE_RC" = 0 ] || exit "$STUB_NODESET_RESTORE_RC"
+        put currstate "${2%%,*}"
+        case "$2" in *,*) put currchain "${2#*,}" ;; esac
+        exit 0
         ;;
 esac
-exit 0
 STUB
 
     cat >"$BIN/chdef" <<'STUB'
 #!/bin/bash
 echo "chdef $*" >>"$STUB_CALLS"
+. "$STUB_LIB"
 case "$*" in
     *netboot=*)
         n=$(( $(cat "$STUB_NETBOOT_COUNT" 2>/dev/null || echo 0) + 1 ))
         echo "$n" >"$STUB_NETBOOT_COUNT"
         [ "$n" = "$STUB_CHDEF_NETBOOT_FAIL_NTH" ] && exit 1
-        exit 0
+        ;;
+    *)
+        [ "$STUB_CHDEF_RC" = 0 ] || exit "$STUB_CHDEF_RC"
         ;;
 esac
-exit "$STUB_CHDEF_RC"
+shift 4
+for kv in "$@"; do
+    put "${kv%%=*}" "${kv#*=}"
+done
+exit 0
 STUB
 
     chmod 0755 "$BIN"/*
@@ -135,7 +205,9 @@ STUB
     [ "$status" -eq 0 ]
     [[ "$output" == *IPXE_SHIM_OK* ]]
     grep -q "^nodeset $NODE boot$" "$CALLS"
-    grep -q "^chdef -t node -o $NODE provmethod= profile=compute$" "$CALLS"
+    [ "$(node_attr provmethod)" = "" ]
+    [ "$(node_attr profile)" = compute ]
+    [ "$(node_attr currstate)" = boot ]
 }
 
 @test "a nodeset that cannot put the state back fails the case" {
@@ -153,7 +225,7 @@ STUB
     [ "$status" -ne 0 ]
     [[ "$output" != *IPXE_SHIM_OK* ]]
     [[ "$output" == *IPXE_SHIM_FAIL* ]]
-    grep -q "^chdef -t node -o $NODE provmethod= profile=compute$" "$CALLS"
+    grep -q "^chdef -t node -o $NODE provmethod=" "$CALLS"
 }
 
 # A control: the helper already restores the state when its own assertion fails. It holds the
@@ -225,6 +297,7 @@ STUB
         for netboot in ipxe xnba; do
             for noimage in "" 1; do
                 : >"$CALLS"
+                rm -rf "$STUB_STORE"
                 STUB_ARCH=$arch STUB_NETBOOT=$netboot STUB_NO_OSIMAGE=$noimage \
                     run "$SCRIPT" "$NODE"
                 if [ "$status" -eq 0 ] && [[ "$output" != *IPXE_SHIM_OK* ]]; then
@@ -254,6 +327,7 @@ STUB
 # forward call and cannot fail.
 @test "an osimage state goes back with its image name" {
     STUB_BEFORE="osimage=$OS-x86_64-netboot-compute"
+    define_image "$OS-x86_64-netboot-compute" "$OS" x86_64 compute
     run "$SCRIPT" "$NODE"
     [ "$status" -eq 0 ]
     [[ "$output" == *IPXE_SHIM_OK* ]]
@@ -335,7 +409,8 @@ STUB
     run "$SCRIPT" "$NODE"
     [ "$status" -eq 0 ]
     [[ "$output" == *IPXE_SHIM_OK* ]]
-    grep -q "^chdef -t node -o $NODE provmethod= profile=service$" "$CALLS"
+    [ "$(node_attr profile)" = service ]
+    [ "$(node_attr provmethod)" = "" ]
 }
 
 # An arch that cannot be read is not an arch that is wrong, and the message has to say which.
@@ -345,4 +420,72 @@ STUB
     [ "$status" -ne 0 ]
     [[ "$output" == *"-i arch"* ]]
     [[ "$output" != *"only x86_64 has a UEFI shim"* ]]
+}
+
+# nodeset osimage= sets chain.currchain to boot. Replaying the saved currstate does not touch
+# currchain, so a node at runcmd=bmcsetup with an installation queued after it lost that step and
+# the case still reported a pass.
+@test "a pending chain after a runcmd state goes back" {
+    STUB_BEFORE='runcmd=bmcsetup'
+    STUB_CURRCHAIN="osimage=$OS-x86_64-install-compute"
+    run "$SCRIPT" "$NODE"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *IPXE_SHIM_OK* ]]
+    [ "$(node_attr currstate)" = runcmd=bmcsetup ]
+    [ "$(node_attr currchain)" = "osimage=$OS-x86_64-install-compute" ]
+}
+
+# With a provmethod set, the helper runs nodeset osimage on that image, and the osimage row
+# writes its own profile into the node. The node profile is not the profile of its image here.
+@test "the profile goes back when the provmethod image has another profile" {
+    define_image "$OS-x86_64-install-service" "$OS" x86_64 service
+    STUB_PROVMETHOD="$OS-x86_64-install-service"
+    STUB_PROFILE=compute
+    run "$SCRIPT" "$NODE"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *IPXE_SHIM_OK* ]]
+    [ "$(node_attr provmethod)" = "$OS-x86_64-install-service" ]
+    [ "$(node_attr profile)" = compute ]
+    [ "$(node_attr os)" = "$OS" ]
+    [ "$(node_attr arch)" = x86_64 ]
+    [ "$(node_attr currstate)" = boot ]
+    [ "$(node_attr currchain)" = "" ]
+}
+
+# nodeset copies osvers and osarch from the osimage row, not from the image name. An image named
+# <os>-x86_64-install-compute can carry another osvers, and the node os must still go back.
+@test "os and arch go back when the image row differs from its name" {
+    define_image "$OS-x86_64-install-compute" rhels9.6 x86_64 service
+    STUB_PROVMETHOD=
+    run "$SCRIPT" "$NODE"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *IPXE_SHIM_OK* ]]
+    [ "$(node_attr os)" = "$OS" ]
+    [ "$(node_attr arch)" = x86_64 ]
+    [ "$(node_attr profile)" = compute ]
+    [ "$(node_attr provmethod)" = "" ]
+}
+
+# The same row with a provmethod already set: both paths restore the image attributes.
+@test "os goes back on the provmethod path when the image row differs from its name" {
+    define_image "$OS-x86_64-install-compute" rhels9.6 x86_64 compute
+    STUB_PROVMETHOD="$OS-x86_64-install-compute"
+    run "$SCRIPT" "$NODE"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *IPXE_SHIM_OK* ]]
+    [ "$(node_attr os)" = "$OS" ]
+    [ "$(node_attr provmethod)" = "$OS-x86_64-install-compute" ]
+}
+
+# A restoration of the image attributes or the chain that fails leaves the node changed, so it
+# fails the case like the other restorations do.
+@test "a chdef that cannot restore the pending chain fails the case" {
+    STUB_BEFORE='runcmd=bmcsetup'
+    STUB_CURRCHAIN="osimage=$OS-x86_64-install-compute"
+    STUB_PROVMETHOD="$OS-x86_64-install-compute"
+    STUB_CHDEF_RC=1
+    run "$SCRIPT" "$NODE"
+    [ "$status" -ne 0 ]
+    [[ "$output" != *IPXE_SHIM_OK* ]]
+    [[ "$output" == *IPXE_SHIM_FAIL* ]]
 }
