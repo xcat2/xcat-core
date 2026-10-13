@@ -18,6 +18,15 @@ log_label="xcat.genesis.bmcsetup"
 
 TIMEOUT=15
 
+lan_field() {
+    ipmitool -d "$1" lan print "$2" | grep "$3" |
+        if [ "$#" -eq 4 ]; then
+            grep -v "$4"
+        else
+            cat
+        fi | awk -F': ' '{print $2}'
+}
+
 #
 # Function: cold_reset_bmc
 #
@@ -387,28 +396,28 @@ if [ $IPCFGMETHOD="static" ]; then
         let idev=idev-1
         TRIES=0
         # Set the channel to use STATIC IP address
-        CURRMETH=$(ipmitool -d $idev lan print $LANCHAN | grep '^IP Address Source'|awk -F': ' '{print $2}')
+        CURRMETH=$(lan_field "$idev" "$LANCHAN" '^IP Address Source')
         while [ "$CURRMETH" != "Static Address" ] && ! ipmitool -d $idev lan set $LANCHAN ipsrc static; do
             snooze
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then
                 break;
             fi
-            CURRMETH=$(ipmitool -d $idev lan print $LANCHAN | grep '^IP Address Source'|awk -F': ' '{print $2}')
+            CURRMETH=$(lan_field "$idev" "$LANCHAN" '^IP Address Source')
         done
     done
     let idev=0
     for b in $BMCIP; do
         TRIES=0
         # Set the IP for the current channel
-        CURRIP=$(ipmitool -d $idev lan print $LANCHAN | grep '^IP Address'|grep -v Source|awk -F': ' '{print $2}')
+        CURRIP=$(lan_field "$idev" "$LANCHAN" '^IP Address' Source)
         while [ "$CURRIP" != $b ] && ! ipmitool -d $idev lan set $LANCHAN ipaddr $b; do
             snooze
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then
                 break;
             fi
-            CURRIP=$(ipmitool -d $idev lan print $LANCHAN | grep '^IP Address'|grep -v Source|awk -F': ' '{print $2}')
+            CURRIP=$(lan_field "$idev" "$LANCHAN" '^IP Address' Source)
         done
         let idev=idev+1
     done
@@ -416,14 +425,14 @@ if [ $IPCFGMETHOD="static" ]; then
     for m in $BMCNM; do
         TRIES=0
         # Set the NETMASK for the current channel
-        CURRMASK=$(ipmitool -d $idev lan print $LANCHAN | grep '^Subnet Mask'|grep -v Source|awk -F': ' '{print $2}')
+        CURRMASK=$(lan_field "$idev" "$LANCHAN" '^Subnet Mask' Source)
         while [ "$CURRMASK" != $m ] && ! ipmitool -d $idev lan set $LANCHAN netmask $m; do
             snooze
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then
                 break;
             fi
-            CURRMASK=$(ipmitool -d $idev lan print $LANCHAN | grep '^Subnet Mask'|grep -v Source|awk -F': ' '{print $2}')
+            CURRMASK=$(lan_field "$idev" "$LANCHAN" '^Subnet Mask' Source)
         done
         let idev=idev+1
     done
@@ -433,14 +442,14 @@ if [ $IPCFGMETHOD="static" ]; then
         for g in $BMCGW; do
             TRIES=0
             # Set the GATEWAY for the current channel
-            CURRGW=$(ipmitool -d $idev lan print $LANCHAN | grep '^Default Gateway IP'|grep -v Source|awk -F': ' '{print $2}')
+            CURRGW=$(lan_field "$idev" "$LANCHAN" '^Default Gateway IP' Source)
             while [ "$CURRGW" != $g ] && ! ipmitool -d $idev lan set $LANCHAN defgw ipaddr $g; do
                 snooze
                 let TRIES=TRIES+1
                 if [ $TRIES -gt $TIMEOUT ]; then
                     break;
                 fi
-                CURRGW=$(ipmitool -d $idev lan print $LANCHAN | grep '^Default Gateway IP'|grep -v Source|awk -F': ' '{print $2}')
+                CURRGW=$(lan_field "$idev" "$LANCHAN" '^Default Gateway IP' Source)
             done
             let idev=idev+1
         done
@@ -479,7 +488,7 @@ else
     for b in $BMCVLAN; do
         TRIES=0
         # Set VLAN for the current channel
-        CURRVID=$(ipmitool -d $idev lan print $LANCHAN | grep '802.1q VLAN ID'|awk -F': ' '{print $2}')
+        CURRVID=$(lan_field "$idev" "$LANCHAN" '802.1q VLAN ID')
         EXPECTEDVID=$b
         if [ "$EXPECTEDVID" = "off" ]; then
             EXPECTEDVID="Disabled"
@@ -490,7 +499,7 @@ else
             if [ $TRIES -gt $TIMEOUT ]; then
                 break;
             fi
-            CURRVID=$(ipmitool -d $idev lan print $LANCHAN | grep '802.1q VLAN ID'|awk -F': ' '{print $2}')
+            CURRVID=$(lan_field "$idev" "$LANCHAN" '802.1q VLAN ID')
         done
         let idev=idev+1
     done
