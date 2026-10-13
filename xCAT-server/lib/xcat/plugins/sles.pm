@@ -11,7 +11,7 @@ use Sys::Syslog;
 use File::Temp qw/tempdir/;
 use xCAT::Table;
 use xCAT::Utils;
-use xCAT::BootUtils qw(_find_genesis_boot_files);
+use xCAT::BootUtils qw(find_genesis_boot_files _find_genesis_boot_files);
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::SvrUtils;
@@ -1452,7 +1452,7 @@ sub mksysclone
         # copy kernel and initrd from image dir to /tftpboot
         my $ramdisk_size = 200000;
         my ($genesis_kernel, $genesis_initrd) =
-          _find_genesis_boot_files($tftpdir, $arch);
+          find_genesis_boot_files($tftpdir, $arch);
 
         if (defined($genesis_kernel) && defined($genesis_initrd))
         {

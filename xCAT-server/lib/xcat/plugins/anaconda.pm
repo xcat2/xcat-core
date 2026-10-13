@@ -12,7 +12,7 @@ use Thread qw(yield);
 use POSIX qw(WNOHANG nice);
 use xCAT::Table;
 use xCAT::Utils;
-use xCAT::BootUtils qw(_find_genesis_boot_files);
+use xCAT::BootUtils qw(find_genesis_boot_files _find_genesis_boot_files);
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
@@ -1987,7 +1987,7 @@ sub mksysclone
 =cut
 
         my $ramdisk_size = 200000;
-        my ($kernpath, $initrdpath) = _find_genesis_boot_files($tftpdir, $arch);
+        my ($kernpath, $initrdpath) = find_genesis_boot_files($tftpdir, $arch);
 
         if (defined($kernpath) && defined($initrdpath))
         {
