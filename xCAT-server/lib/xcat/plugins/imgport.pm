@@ -30,6 +30,7 @@ use File::Copy;
 use File::Path qw/mkpath/;
 use File::Path qw/rmtree/;
 use File::Basename;
+use File::Spec;
 use xCAT::NodeRange;
 use xCAT::Schema;
 use xCAT::SvrUtils;
@@ -823,6 +824,16 @@ sub make_bundle {
     # get rid of spaces and put in underlines.
     $imagename =~ s/\s+/_/g;
 
+    # The bundle goes to the destination, which can include a directory. A local export takes a relative path from
+    # the current working directory, and a remote export takes the path on the remote host.
+    my ($bundleName, $destDir) = defined($dest) ? fileparse($dest) : ('', '');
+    $bundleName = "$imagename.tgz" if $bundleName eq '';
+    my $localBundle = File::Spec->rel2abs($destDir . $bundleName, $dir);
+    if (!defined($remoteHost) && !-d dirname($localBundle)) {
+        $callback->({ error => ["Cannot export $imagename to $localBundle: the directory does not exist"], errorcode => [1] });
+        return;
+    }
+
 
     # Create the directory in which we collect the files prior to tarring them.
     my $ttpath = mkdtemp("$workDir/imgexport.$$.XXXXXX");
@@ -1016,18 +1027,6 @@ sub make_bundle {
     chdir($ttpath);
     $callback->({ data => ["Inside $ttpath."] });
 
-    # Determine the name of the bundle that we will create.
-    my ($bundleName, $destDir);
-    if (defined $dest) {
-        ($bundleName, $destDir) = fileparse($dest);
-        if ($bundleName eq '') {
-            $bundleName = "$imagename.tgz";
-        }
-    } else {
-        $bundleName = "$imagename.tgz";
-    }
-
-
     # Determine the full file specification of the image bundle.
     my $remoteDest;
     my $tempBundle;
@@ -1041,16 +1040,15 @@ sub make_bundle {
         $remoteDest = "$destDir$bundleName";
     }
     else {
-        # Local imgexports go to the current working directory
-        $dest = "$dir/$bundleName";
+        $dest = $localBundle;
     }
 
     $callback->({ data => ["Compressing $imagename bundle.  Please be patient."] });
     if ($::VERBOSE) {
         $callback->({ data => ["tar czvf $dest . "] });
-        $rc = system("tar czvf $dest . ");
+        $rc = system('tar', 'czvf', $dest, '.');
     } else {
-        $rc = system("tar czf $dest . ");
+        $rc = system('tar', 'czf', $dest, '.');
     }
     $callback->({ data => ["Done!"] });
 
@@ -1061,8 +1059,7 @@ sub make_bundle {
         if (-e $dest) {
 
             # Remove the partially created image bundle.
-            $rc = system("rm $dest");
-            if ($rc) {
+            if (!unlink($dest)) {
                 $callback->({ error => ["Failed to clean up image bundle $dest"], errorcode => [1] });
             }
         }
@@ -1074,7 +1071,7 @@ sub make_bundle {
             my $remoteFile = $remoteHost . ':' . $remoteDest;
 
             $callback->({ data => ["Moving the image bundle to the remote system location $remoteFile"] });
-            $rc = system("/usr/bin/scp -B $dest $remoteFile");
+            $rc = system('/usr/bin/scp', '-B', $dest, $remoteFile);
             if ($rc) {
                 $callback->({ error => ["Unable to copy the image bundle $bundleName to the remote host (Maybe passwordless ssh was not setup?)"], errorcode => [1] });
             }
@@ -1082,9 +1079,8 @@ sub make_bundle {
     }
 
     # Remove the temporary image bundle if it is still around (for remote exports).
-    if (-e $tempBundle) {
-        $rc = system("rm -f $tempBundle");
-        if ($rc) {
+    if (defined($tempBundle) && -e $tempBundle) {
+        if (!unlink($tempBundle)) {
             $callback->({ error => ["Failed to clean up the temporary image bundle $tempBundle"], errorcode => [1] });
         }
     }
