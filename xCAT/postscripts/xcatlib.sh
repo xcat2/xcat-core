@@ -1053,6 +1053,16 @@ function xcat_restart_sshd_after_failed_service_restart {
     $sshd_cmd
 }
 
+function xcat_decode_credentials {
+    sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' \
+        -e 's/&quot/"/' -e "s/&apos;/'/"
+}
+
+function xcat_filter_credentials {
+    grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>' |
+        xcat_decode_credentials
+}
+
 function fetch_mypostscript {
     local postroot
     postroot=$1
