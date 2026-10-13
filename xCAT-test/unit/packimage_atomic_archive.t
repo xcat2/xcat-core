@@ -60,11 +60,12 @@ our @LITEFILES;
 my ($unsquashfs, $mksquashfs) = (tool('unsquashfs'), tool('mksquashfs'));
 my $sequence = 0;
 
-# The wrapper records what nodes would download while the pack runs, then runs or fails the real tool.
+# The wrapper records what nodes would download while the pack runs, then runs or fails the real tool. $parent
+# is the directory of the image directory.
 sub image {
-    my ($method, $compress, $wrapped, $mode) = @_;
+    my ($method, $compress, $wrapped, $mode, $parent) = @_;
     my $name = 'atomic-' . ++$sequence;
-    my $dest = "$fixture/images/$name";
+    my $dest = ($parent // "$fixture/images") . "/$name";
     my $root = "$dest/rootimg";
     make_path("$root/etc", "$root/opt/xcat", "$root/usr/bin", "$root/usr/lib/dracut/modules.d/97xcat", "$dest/bin");
     write_text("$root/etc/shadow", "root:*:1:0:99999:7:::\n");
@@ -362,6 +363,26 @@ SCRIPT
     ok(-d "$archive.metainfo/held", "$label: the previous metainfo stays");
     is(content("$dest/rootimg.previous"), "previous format\n", "$label: other formats stay");
     is_deeply([ glob("$dest/.packimage-$host+*") ], [], "$label: no temporary file is left");
+}
+
+for my $kind (qw(directory file)) {
+    # The shell splits an image directory with a space, and the first word of its path names another path.
+    my $word = "$fixture/word-$kind";
+    if ($kind eq 'directory') {
+        make_path("$word/keep");
+    } else {
+        write_text($word, "file that the first word of the image directory names\n");
+    }
+    my ($name, $dest, $archive) = image('cpio', 'gzip', 'gzip', 'pass', "$word images");
+    make_path("$dest/rootimg/xcatpost");
+    write_text("$dest/rootimg/xcatpost/previous", "postscript of the previous pack\n");
+    my ($result, $errors) = packimage($dest, '-m', 'cpio', '-c', 'gzip', $name);
+    my $label = "image directory with a space after the path of a $kind";
+    like($errors, qr/Cannot pack the image in \Q$dest\E: its path has a space or a shell character/, "$label: the pack is refused");
+    ok($kind eq 'directory' ? -d "$word/keep" : -f $word, "$label: the $kind that the first word of the path names stays");
+    is(content($archive), "previous archive\n", "$label: the previous archive stays");
+    is(content("$dest/rootimg.previous"), "previous format\n", "$label: other formats stay");
+    is(content("$dest/rootimg/xcatpost/previous"), "postscript of the previous pack\n", "$label: the image stays as it was");
 }
 
 done_testing();
