@@ -368,7 +368,14 @@ sub buildsources {
     die "FATAL: buildsources ran outside buildall; the staging directory is unset\n"
         unless length $SOURCES;
 
+    if ($pkg eq 'xCAT' || $pkg eq 'xCATsn') {
+        cp 'xCAT/xcat-apache-pretrans.lua', "$SOURCES/xcat-apache-pretrans.lua"
+            or die "FATAL: unable to stage Apache configuration migration: $!\n";
+    }
+
     if ($pkg eq "xCAT") {
+        cp 'xCAT/xcat-upgrade-functions.sh', "$SOURCES/xcat-upgrade-functions.sh"
+            or die "FATAL: unable to stage upgrade functions: $!\n";
         my @files = ("bmcsetup", "getipmi");
         for my $f (@files) {
             cp "xCAT-genesis-scripts/usr/bin/$f", "$pkg/postscripts/$f";

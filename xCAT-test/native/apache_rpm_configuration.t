@@ -17,23 +17,34 @@ sub succeeds {
 }
 
 for my $package (qw(xCAT xCATsn)) {
-    my $old_rpm = XCAT::Test::RPM->build_fixture('legacy-apache', '--define', "test_package $package");
-    for my $target (
+    my @targets = (
         ['el-modern', 'xcat.conf.apach24', '--define', 'rhel 8'],
         ['el-legacy', 'xcat.conf', '--define', 'rhel 6'],
         ['suse-modern', 'xcat.conf.apach24', '--define', 'rhel 0', '--define', 'suse_version 1500'],
-    ) {
+    );
+    push @targets, ['s390x-config', 'xcat.conf.apach24', '--define', 'rhel 8'] if $package eq 'xCAT';
+    for my $target (@targets) {
         my ($label, $source, @defines) = @$target;
+        local $ENV{s390x} = $label eq 's390x-config' ? 1 : 0;
+        my $configdir = $ENV{s390x} ? 'xcathttpdsave' : 'xcat';
+        my $old_rpm = XCAT::Test::RPM->build_fixture('legacy-apache',
+            '--define', "test_package $package", '--define', "test_httpconfigdir $configdir");
         my $rpm = XCAT::Test::RPM->build($package, 1, @defines);
         my $expected = slurp_repo_file("xCAT/$source");
-        for my $state (qw(default24 default22 edited absent symlink fresh)) {
+        for my $state (qw(default24 default22 edited absent symlink fresh missing24 missing22 missing-both)) {
             subtest "$package $label $state configuration" => sub {
                 my $root = XCAT::Test::RPM->new;
                 $root->write('/opt/xcat/sbin/xcatconfig', "#!/bin/sh\nexit 0\n", 0755);
                 $root->write('/opt/xcat/share/xcat/scripts/xHRM', '');
                 succeeds('install legacy ownership fixture', $root->install($old_rpm)) unless $state eq 'fresh';
                 my $prior = $state eq 'default22' ? "# prior Apache 2.2 default\n" : "# prior Apache 2.4 default\n";
-                $root->write('/etc/xcat/conf.orig/xcat.conf.apach24', $prior) if $state eq 'fresh';
+                $root->write("/etc/$configdir/conf.orig/xcat.conf.apach24", $prior) if $state eq 'fresh';
+                for my $generation (24, 22) {
+                    if ($state eq "missing$generation" || $state eq 'missing-both') {
+                        unlink $root->path("/etc/$configdir/conf.orig/xcat.conf.apach$generation") or die "unlink template: $!";
+                    }
+                }
+                $root->write('/etc/httpd/conf.d/administrator.conf', "unrelated configuration\n");
                 for my $daemon (qw(httpd apache2)) {
                     my $active = "/etc/$daemon/conf.d/xcat.conf";
                     if ($state eq 'absent' || $state eq 'symlink') {
@@ -51,7 +62,8 @@ for my $package (qw(xCAT xCATsn)) {
                     my $active = "/etc/$daemon/conf.d/xcat.conf";
                     ok(-e $root->path($active), "$daemon has active configuration");
                     next unless -e $root->path($active);
-                    if ($state eq 'edited' || $state eq 'symlink' || $state eq 'fresh') {
+                    if ($state eq 'edited' || $state eq 'symlink' || $state eq 'fresh' ||
+                        $state eq 'missing24' || $state eq 'missing-both') {
                         is($root->read($active), $state eq 'edited' ? "# administrator configuration\n" : $prior, "$daemon retains local bytes");
                         ok(-f $root->path("$active.rpmnew"), "$daemon receives a separate package default");
                         is($root->read("$active.rpmnew"), $expected, "$daemon rpmnew has selected Apache syntax") if -f $root->path("$active.rpmnew");
@@ -61,7 +73,10 @@ for my $package (qw(xCAT xCATsn)) {
                         ok(!-e $root->path("$active.rpmnew"), "$daemon default is active without an rpmnew");
                     }
                     ok(!-e $root->path("$active.rpmsave"), "$daemon does not leave an rpmsave on upgrade");
+                    is((stat($root->path($active)))[2] & 07777, 0644, "$daemon retains configuration permissions");
                 }
+                is($root->read('/etc/httpd/conf.d/administrator.conf'), "unrelated configuration\n",
+                    'unrelated administrator configuration is unchanged');
             };
         }
     }
