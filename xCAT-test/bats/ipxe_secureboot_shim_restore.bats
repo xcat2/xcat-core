@@ -56,6 +56,8 @@ setup()
     export STUB_LSDEF_FAIL_ATTR=
     export STUB_NODESET_RESTORE_RC=0
     export STUB_CHDEF_RC=0
+    # Fail the forward nodeset osimage after it wrote the image attributes into the node.
+    export STUB_NODESET_FORWARD_FAIL=
     # Which chdef netboot= call to fail, counted from 1. The helper sets the method and later
     # puts it back, so one return code for both cannot say which call failed.
     export STUB_CHDEF_NETBOOT_FAIL_NTH=0
@@ -73,6 +75,7 @@ setup()
     export STUB_OS="$OS"
     export STUB_STORE="$BATS_TEST_TMPDIR/store"
     export STUB_LIB="$BIN/../stublib.sh"
+    export STUB_BOOTCFG="$BATS_TEST_TMPDIR/bootcfg"
 
     cat >"$STUB_LIB" <<'STUB'
 # The node starts with the STUB_* values. A test that defines its own osimage rows before the
@@ -134,6 +137,7 @@ STUB
     # nodeset osimage[=<image>] does what setdestiny does to the node: it writes provmethod, os,
     # arch and profile from the osimage row, sets currchain to boot, and writes the UEFI script.
     # Any other destiny sets currstate, and the actions after its first comma become currchain.
+    # shell, standby and runcmd also write a Genesis boot configuration for the current arch.
     cat >"$BIN/nodeset" <<'STUB'
 #!/bin/bash
 echo "nodeset $*" >>"$STUB_CALLS"
@@ -156,6 +160,7 @@ case "$2" in
         put profile "$(cat "$row/profile")"
         put currchain boot
         put currstate "install $(get os)-$(get arch)-$(get profile)"
+        [ -z "$STUB_NODESET_FORWARD_FAIL" ] || { echo "Error: cannot write the boot files" >&2; exit 1; }
         {
             echo '#!gpxe'
             echo 'imgfetch -n kernel http://${next-server}/tftpboot/xcat/osimage/vmlinuz'
@@ -170,6 +175,13 @@ case "$2" in
         [ "$STUB_NODESET_RESTORE_RC" = 0 ] || exit "$STUB_NODESET_RESTORE_RC"
         put currstate "${2%%,*}"
         case "$2" in *,*) put currchain "${2#*,}" ;; esac
+        # shell, standby and runcmd boot Genesis, and nodeset selects its kernel and initrd from
+        # the arch of the node at the time of the call.
+        case "${2%%,*}" in
+            shell | standby | runcmd=*)
+                printf 'kernel genesis.kernel.%s\ninitrd genesis.fs.%s\n' "$(get arch)" "$(get arch)" >"$STUB_BOOTCFG"
+                ;;
+        esac
         exit 0
         ;;
 esac
@@ -488,4 +500,40 @@ STUB
     [ "$status" -ne 0 ]
     [[ "$output" != *IPXE_SHIM_OK* ]]
     [[ "$output" == *IPXE_SHIM_FAIL* ]]
+}
+
+# nodeset osimage writes the image attributes before it writes the boot files, so a forward call
+# that fails can leave the node with the arch of the image. A replay of shell, standby or runcmd
+# then writes the Genesis kernel and initrd of that arch, and a later chdef of the database does
+# not rewrite those files.
+@test "a Genesis state goes back with the kernel and initrd of the original arch" {
+    define_image "$OS-ppc64le-install-compute" "$OS" ppc64le compute
+    STUB_BEFORE=shell
+    STUB_PROVMETHOD="$OS-ppc64le-install-compute"
+    STUB_NODESET_FORWARD_FAIL=1
+    run "$SCRIPT" "$NODE"
+    [ "$status" -ne 0 ]
+    [[ "$output" != *IPXE_SHIM_OK* ]]
+    grep -q "^nodeset $NODE shell$" "$CALLS"
+    grep -qx 'kernel genesis.kernel.x86_64' "$STUB_BOOTCFG"
+    grep -qx 'initrd genesis.fs.x86_64' "$STUB_BOOTCFG"
+    [ "$(node_attr arch)" = x86_64 ]
+    [ "$(node_attr provmethod)" = "$OS-ppc64le-install-compute" ]
+    [ "$(node_attr currstate)" = shell ]
+}
+
+# The same for a runcmd state, which also restores the pending chain after the replay.
+@test "a runcmd state goes back with the kernel and initrd of the original arch" {
+    define_image "$OS-ppc64le-install-compute" "$OS" ppc64le compute
+    STUB_BEFORE='runcmd=bmcsetup'
+    STUB_CURRCHAIN=standby
+    STUB_PROVMETHOD="$OS-ppc64le-install-compute"
+    STUB_NODESET_FORWARD_FAIL=1
+    run "$SCRIPT" "$NODE"
+    [ "$status" -ne 0 ]
+    [[ "$output" != *IPXE_SHIM_OK* ]]
+    grep -qx 'kernel genesis.kernel.x86_64' "$STUB_BOOTCFG"
+    grep -qx 'initrd genesis.fs.x86_64' "$STUB_BOOTCFG"
+    [ "$(node_attr arch)" = x86_64 ]
+    [ "$(node_attr currchain)" = standby ]
 }
