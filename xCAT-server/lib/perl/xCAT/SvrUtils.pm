@@ -2640,6 +2640,106 @@ sub rootimg_checksum_enabled {
     return !(defined($value) && $value =~ /^\s*(?:no|0)\s*$/ix);
 }
 
+#--------------------------------------------------------------------------------------------------------
+#write_initrd_check_marker:
+#description: record that an initial ramdisk checks the compressed rootimage against its checksum.
+#             The marker holds the SHA-256 of the initial ramdisk, so a replaced ramdisk does not match it.
+#argument:
+#        $initrd: the path of the initial ramdisk
+#return:
+#        on success: nothing
+#        on fail:    the error message
+#--------------------------------------------------------------------------------------------------------
+sub write_initrd_check_marker {
+    my (undef, $initrd) = @_;
+    my $digest = eval { Digest::SHA->new(256)->addfile($initrd)->hexdigest }
+      or return "Cannot compute the SHA-256 checksum of $initrd: $@";
+    return _write_published_file("$initrd.rootimgcheck", "sha256=$digest\n");
+}
+
+#--------------------------------------------------------------------------------------------------------
+#initrd_checks_rootimg:
+#description: tell whether genimage built an initial ramdisk that checks the compressed rootimage
+#arguments:
+#        $initrd: the path of the initial ramdisk, or of a copy of it
+#        $marker: the marker that genimage wrote, by default <initrd>.rootimgcheck
+#return:
+#        true when the marker holds the SHA-256 of the initial ramdisk
+#--------------------------------------------------------------------------------------------------------
+sub initrd_checks_rootimg {
+    my (undef, $initrd, $marker_path) = @_;
+    open(my $marker, '<', $marker_path // "$initrd.rootimgcheck") or return 0;
+    my $line = <$marker> // '';
+    close($marker);
+    my ($recorded) = $line =~ /^sha256=([0-9a-f]{64})$/x or return 0;
+    my $digest = eval { Digest::SHA->new(256)->addfile($initrd)->hexdigest } or return 0;
+    return $digest eq $recorded;
+}
+
+#--------------------------------------------------------------------------------------------------------
+#prepare_rootimg_checksum:
+#description: write the missing checksums of an image before nodeset copies its boot files. With the check
+#             turned off, a checksum that cannot be written is a warning instead of an error.
+#arguments (by name):
+#        value:      the rootimgchecksum attribute of the image, or undef
+#        rootimgdir: the image directory
+#        imagename:  the image name, for the messages
+#        warned:     a hash of the image directories that already got a warning
+#        callback:   the request callback
+#return:
+#        nothing, or the error that keeps nodeset from setting up the node
+#--------------------------------------------------------------------------------------------------------
+sub prepare_rootimg_checksum {
+    my ($class, %args) = @_;
+    my $rootimgdir = $args{rootimgdir};
+    my $imagename  = $args{imagename} || $rootimgdir;
+
+    # A node whose boot entry nodeset wrote while the check was on still checks, so every archive gets a checksum.
+    my $error = $class->publish_missing_rootimg_checksums($rootimgdir) or return;
+    $error =~ s/\.$//x;
+    if (!$class->rootimg_checksum_enabled($args{value})) {
+        $args{callback}->({ warning => [ "$error. Nodes of $imagename whose boot entries still ask for the check "
+                  . "download the root image again until nodeset runs for them." ] }) unless $args{warned}{$rootimgdir}++;
+        return;
+    }
+    return "The root image of $imagename has no checksum that its initial ramdisk can check: $error. "
+      . "Run packimage for the image, then nodeset.";
+}
+
+#--------------------------------------------------------------------------------------------------------
+#rootimg_checksum_boot:
+#description: decide how a node checks the compressed rootimage that it downloads at boot, and warn once
+#             for each image whose initial ramdisk has no matching marker
+#arguments (by name):
+#        value:      the rootimgchecksum attribute of the image, or undef
+#        rootimgdir: the image directory
+#        initrd:     the initial ramdisk that nodes boot, as nodeset left it in TFTP
+#        imagename:  the image name, for the messages
+#        warned:     a hash of the image directories that already got a warning
+#        callback:   the request callback
+#return:
+#        the kernel argument that asks the node to check, or an empty string when the check is off
+#--------------------------------------------------------------------------------------------------------
+my %initrd_checks;
+sub rootimg_checksum_boot {
+    my ($class, %args) = @_;
+    return '' unless $class->rootimg_checksum_enabled($args{value});
+    my ($rootimgdir, $initrd) = @args{qw(rootimgdir initrd)};
+    my $imagename = $args{imagename} || $rootimgdir;
+
+    # The copy in TFTP checks only when it matches the marker that genimage wrote in the image directory.
+    my $marker = "$rootimgdir/" . basename($initrd) . '.rootimgcheck';
+
+    # nodeset runs this for every node, so each version of the initial ramdisk and its marker is hashed once.
+    my @version = map { (stat($_))[ 0, 1, 7, 9 ] } ($initrd, $marker);
+    my $key = join(':', $initrd, map { $_ // '' } @version);
+    $initrd_checks{$key} //= $class->initrd_checks_rootimg($initrd, $marker) ? 1 : 0;
+    $args{callback}->({ warning => [ "Cannot tell whether the initial ramdisk $initrd checks the root image checksum, so "
+              . "nodes may boot the root image of $imagename unchecked. Run genimage for the image and then nodeset, or "
+              . "set its rootimgchecksum attribute to no." ] }) unless $initrd_checks{$key} || $args{warned}{$rootimgdir}++;
+    return 'rootimgchecksum=yes ';
+}
+
 # Returns the content of a file, or undef when it cannot be read.
 sub _read_published_file {
     my ($path) = @_;
@@ -2768,6 +2868,34 @@ sub _restore_rootimg {
         unlink("$target.sha256");
     }
     return;
+}
+
+#--------------------------------------------------------------------------------------------------------
+#publish_missing_rootimg_checksums:
+#description: write the checksum of each published compressed rootimage of an image directory that has
+#             none. An initial ramdisk that checks the rootimage refuses an image packed before the check.
+#argument:
+#        $dir: the image directory
+#return:
+#        on success: nothing
+#        on fail:    the error message
+#--------------------------------------------------------------------------------------------------------
+sub publish_missing_rootimg_checksums {
+    my ($class, $dir) = @_;
+    my @formats = qw(rootimg.gz rootimg.cpio.gz rootimg.cpio.xz rootimg.tar.gz rootimg.tar.xz rootimg.sfs rootimg-statelite.gz);
+    my $missing = sub { grep { -f "$dir/$_" && !-e "$dir/$_.sha256" } @formats };
+    my @missing = $missing->();
+    return if !@missing;
+
+    # The lock keeps packimage from replacing an archive while this checksum is computed.
+    my ($lock, $error) = _acquire_publish_lock($dir);
+    return $error unless $lock;
+    foreach my $file ($missing->()) {
+        $error = $class->write_rootimg_checksum("$dir/$file");
+        last if $error;
+    }
+    _release_publish_lock($lock);
+    return $error;
 }
 
 # The image lock is per host, and mkdir is atomic for every host, also on NFS without locks.

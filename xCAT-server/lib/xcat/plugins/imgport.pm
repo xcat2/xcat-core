@@ -637,6 +637,9 @@ sub get_files {
                     $errors++;
                 } else {
                     $attrs->{ramdisk} = $ramdisk;
+
+                    # nodeset reads this marker to tell whether the ramdisk checks the root image checksum.
+                    $attrs->{ramdiskcheck} = "$ramdisk.rootimgcheck" if -r "$ramdisk.rootimgcheck";
                 }
 
                 unless ($kernel) {
@@ -917,7 +920,7 @@ sub make_bundle {
 
 
     # these are the only files we copy in.  (unless you have extras)
-    for my $a ("kernel", "ramdisk", "rootimg") {
+    for my $a ("kernel", "ramdisk", "ramdiskcheck", "rootimg") {
         my $filenames = $attribs->{$a};
         if ($filenames) {
             my @file_array = split(',', $filenames);
@@ -1333,7 +1336,7 @@ sub change_profile {
             $data->{linuximage}->{rootimgdir} = "$installdir/netboot/" . $data->{osimage}->{osvers} . "/" . $data->{osimage}->{osarch} . "/$new_profile";
         }
 
-        for my $a ("kernel", "ramdisk", "rootimg", "rootimgtree", "litefile") {
+        for my $a ("kernel", "ramdisk", "ramdiskcheck", "rootimg", "rootimgtree", "litefile") {
             if ($data->{$a}) {
                 my $fn = basename($data->{$a});
                 $data->{$a} = $data->{linuximage}->{rootimgdir} . "/$fn";
@@ -1946,7 +1949,7 @@ sub make_files {
     #        };
 
     # The root image goes first, so a failed publication leaves the kernel and ramdisk that match the published image.
-    for my $a ("rootimg", "kernel", "ramdisk", "rootimgtree", "litefile") {
+    for my $a ("rootimg", "kernel", "ramdisk", "ramdiskcheck", "rootimgtree", "litefile") {
         my $filenames = $data->{$a};
         if ($filenames) {
             my @file_array = split(',', $filenames);
