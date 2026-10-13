@@ -200,7 +200,7 @@ sub process_request {
     my @filestoremove = ("$imagedir/kernel", "$imagedir/initrd-stateless.gz", "$imagedir/initrd-stateless.gz.rootimgcheck", "$imagedir/initrd-statelite.gz");
     my @rootimgtars = (glob("$imagedir/rootimg.*"), glob("$imagedir/rootimg-statelite.gz*"));
     push @filestoremove,@rootimgtars;
-    xCAT::SvrUtils->remove_abandoned_rootimg_stages($imagedir);
+    xCAT::SvrUtils->remove_abandoned_rootimg_stages($imagedir, 1);
     rmtree([ glob("$imagedir/.rootimg-previous-????????") ]);
     #unmount all the mount points under rootimg directory
     #to avoid removing the directory/files on management node by mistake

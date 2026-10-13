@@ -18,6 +18,7 @@ use File::Basename;
 use File::Copy ();
 use File::Path;
 use File::Temp;
+use Scalar::Util ();
 use Sys::Hostname ();
 use strict;
 use Exporter;
@@ -2588,18 +2589,29 @@ sub _rootimg_stage_prefix {
 #--------------------------------------------------------------------------------------------------------
 #remove_abandoned_rootimg_stages:
 #description: remove the private directories that writers on this host abandoned in an image directory.
+#             A directory that keeps the previous files of a failed publication stays.
 #             Hold the image lock while you call it.
 #argument:
 #        $dir: the image directory
+#        $all: true to remove also the directories that keep previous files, as rmimage does
 #--------------------------------------------------------------------------------------------------------
 sub remove_abandoned_rootimg_stages {
-    my (undef, $dir) = @_;
+    my (undef, $dir, $all) = @_;
 
     # The image lock is per host, so only this host's directories are known to be abandoned.
-    my @abandoned = glob("$dir/" . _rootimg_stage_prefix() . '????????');
+    my @abandoned = grep { $all || !_holds_previous($_) } glob("$dir/" . _rootimg_stage_prefix() . '????????');
     rmtree(\@abandoned) if @abandoned;
     return;
 }
+
+# Returns whether the staging directory $stage keeps previous files of a failed publication.
+sub _holds_previous {
+    my ($stage) = @_;
+    return grep { -e "$stage/$_" || -l "$stage/$_" } qw(previous previous.metainfo);
+}
+
+# The staging directories that rootimg_stage created in this process, so that a publication can keep one.
+my %rootimg_stages;
 
 #--------------------------------------------------------------------------------------------------------
 #rootimg_stage:
@@ -2615,8 +2627,10 @@ sub rootimg_stage {
     my ($class, $dir) = @_;
     $class->remove_abandoned_rootimg_stages($dir);
     my $stage = eval { File::Temp->newdir(_rootimg_stage_prefix() . 'XXXXXXXX', DIR => $dir) };
-    return ($stage) if $stage;
-    return (undef, "Cannot create a temporary directory in $dir: $@");
+    return (undef, "Cannot create a temporary directory in $dir: $@") if !$stage;
+    $rootimg_stages{ $stage->dirname } = $stage;
+    Scalar::Util::weaken($rootimg_stages{ $stage->dirname });
+    return ($stage);
 }
 
 #--------------------------------------------------------------------------------------------------------
@@ -2843,6 +2857,9 @@ sub publish_rootimg {
             unlink grep { !$kept{$_} && !/\.sha256$/x } glob("$dir/rootimg.*");
         }
     }
+
+    # Afterwards, only a staging directory that keeps previous files for a failed publication holds them.
+    unlink(grep { -e $_ || -l $_ } ($state{previous}, "$state{previous}.metainfo")) if !$state{retained};
     _release_publish_lock($lock);
     return if !defined($error);
     return "Cannot publish $target: $error";
@@ -2891,13 +2908,33 @@ sub _replace_rootimg {
     return;
 }
 
-# Moves the previous files that staging holds, $previous with each of @suffixes, to a new directory next to
-# $target, because staging cleanup would delete them. Returns that directory, or nothing when they cannot move.
+# Moves the previous files that staging holds, the previous archive with each of @suffixes, to a new directory
+# next to the target, because staging cleanup would delete them. Staging that keeps a file that cannot move
+# stays. Returns the directories that keep the files.
 sub _keep_previous {
-    my ($target, $previous, @suffixes) = @_;
-    my $kept = eval { File::Temp::tempdir('.rootimg-previous-XXXXXXXX', DIR => dirname($target)) } or return;
+    my ($state, @suffixes) = @_;
+    my ($target, $previous) = @$state{qw(target previous)};
+    my $kept = eval { File::Temp::tempdir('.rootimg-previous-XXXXXXXX', DIR => dirname($target)) };
     my $name = basename($target);
-    return (grep { -e "$previous$_" && !rename("$previous$_", "$kept/$name$_") } @suffixes) ? undef : $kept;
+    my ($moved, $stuck) = (0, 0);
+    foreach my $suffix (grep { -e "$previous$_" || -l "$previous$_" } @suffixes) {
+        if ($kept && rename("$previous$suffix", "$kept/$name$suffix")) {
+            $moved++;
+        } else {
+            $stuck++;
+        }
+    }
+    rmdir($kept) if $kept && !$moved;
+    return (($moved ? $kept : ()), ($stuck ? _retain_stage($state) : ()));
+}
+
+# Keeps the staging directory of the publication in $state, also when its owner drops it, and returns it.
+sub _retain_stage {
+    my ($state) = @_;
+    my $stage = dirname($state->{previous});
+    $rootimg_stages{$stage}->unlink_on_destroy(0) if $rootimg_stages{$stage};
+    $state->{retained} = 1;
+    return $stage;
 }
 
 # Puts back the previous files that _replace_rootimg changed, or returns why it cannot.
@@ -2910,16 +2947,17 @@ sub _restore_rootimg {
         unlink($target) or return "the new archive cannot be removed: $!";
     } elsif ($state->{replaced} && !rename($previous, $target)) {
         my $error = "$!";
-        my $kept  = _keep_previous($target, $previous, '', '.metainfo');
-        return "the previous archive cannot be put back: $error, nor kept" if !$kept;
-        _write_published_file("$kept/" . basename($target) . '.sha256', $state->{sums}) if defined($state->{sums});
-        return "the previous archive cannot be put back: $error. It is kept in $kept";
+        my @kept  = _keep_previous($state, '', '.metainfo');
+        return "the previous archive cannot be put back: $error, nor kept" if !@kept;
+        my $archive = "$kept[0]/" . basename($target);
+        _write_published_file("$archive.sha256", $state->{sums}) if defined($state->{sums}) && -e $archive;
+        return "the previous archive cannot be put back: $error. It is kept in " . join(' and ', @kept);
     }
     my @errors;
     if ($state->{metainfo_moved} && !rename("$previous.metainfo", "$target.metainfo")) {
         my $error = "$!";
-        my $kept  = _keep_previous($target, $previous, '.metainfo');
-        push @errors, "the previous metainfo cannot be put back: $error" . ($kept ? ". It is kept in $kept" : ', nor kept');
+        my @kept  = _keep_previous($state, '.metainfo');
+        push @errors, "the previous metainfo cannot be put back: $error" . (@kept ? '. It is kept in ' . join(' and ', @kept) : ', nor kept');
     }
     if ($state->{sums_changed}) {
         my $error = defined($state->{sums}) ? _write_published_file("$target.sha256", $state->{sums})
