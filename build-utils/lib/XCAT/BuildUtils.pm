@@ -1196,19 +1196,27 @@ sub mock_config_text {
         $chroot    - the name passed to mock -r
         $configdir - the mock configuration directory; mock's default when undef
 
-    Returns: ($uid, $gid). With no chrootuid, $uid is the caller, as in mock.
-             $gid is undef when the loader reports none.
+    Returns: ($uid, $gid). With no chrootuid, $uid is the caller, as in mock:
+             as root, the user that SUDO_UID, USERHELPER_UID or PKEXEC_UID
+             names. $gid is undef when the loader reports none.
 
 =cut
 
 #-------------------------------------------------------------------------------
 my $MOCK_OWNER_LOADER = <<'PYTHON';
 import sys
+import os
 try:
     from mockbuild.config import MOCKCONFDIR, load_config
+    from mockbuild.uid import setup_uid_manager
 except ImportError:
     sys.exit('mock is not installed: cannot import mockbuild.config')
-opts = load_config(sys.argv[2] or MOCKCONFDIR, sys.argv[1])
+args = (sys.argv[2] or MOCKCONFDIR, sys.argv[1])
+if os.geteuid() == 0:
+    # As mock main(): load the configuration as the user that sudo names.
+    opts = setup_uid_manager().run_in_subprocess_without_privileges(load_config, *args)
+else:
+    opts = load_config(*args)
 print(opts['chrootuid'], opts.get('chrootgid', ''))
 PYTHON
 
@@ -1238,7 +1246,8 @@ sub mock_build_owner {
         $configdir - the mock configuration directory; mock's default when undef
         @dirs      - the result directories, created when missing
 
-    Returns: nothing. Dies when a chown fails.
+    Returns: nothing. Dies when a chown fails. The parent directories
+             that this sub creates get mode 0755.
 
 =cut
 
@@ -1246,7 +1255,11 @@ sub mock_build_owner {
 sub prepare_mock_resultdirs {
     my ($chroot, $configdir, @dirs) = @_;
     my ($uid, $gid) = mock_build_owner($chroot, $configdir);
-    make_path(@dirs);
+    my %resultdir = map { $_ => 1 } @dirs;
+    # make_path applies the umask, and mock must pass through the new parents.
+    for my $parent (grep { !$resultdir{$_} } make_path(@dirs)) {
+        chmod 0755, $parent or die "Cannot make $parent traversable: $!\n";
+    }
     return if $uid == $>;
     $gid //= -1;
     for my $dir (@dirs) {
