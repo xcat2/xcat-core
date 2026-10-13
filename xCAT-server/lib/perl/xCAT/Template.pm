@@ -1831,17 +1831,7 @@ sub ubuntu_subiquity_apt_mirror
 {
     my ($osarch) = @_;
 
-    # Apt mirror for Subiquity installs. site.ubuntu_apt_mirror overrides; otherwise default to the
-    # public archive. The minimal live-server install media is not a complete package source, so a
-    # real mirror is always required -- set site.ubuntu_apt_mirror to a local full mirror for
-    # airgapped clusters (or to a geo/ports mirror as needed).
-    #
-    # archive.ubuntu.com publishes amd64 and i386 only. Every other architecture, ppc64el and
-    # riscv64 included, is on the ports archive. The osimage's architecture decides it, because
-    # pkgdir is whatever path the administrator configured.
-    my $default = (!$osarch || $osarch =~ /^(?:amd64|i386|x86|x86_64)$/)
-                ? 'http://archive.ubuntu.com/ubuntu'
-                : 'http://ports.ubuntu.com/ubuntu-ports';
+    my $default = xCAT::Utils->ubuntu_default_mirror($osarch || 'amd64');
 
     my $site_tab = xCAT::Table->new('site');
     return $default unless $site_tab;
