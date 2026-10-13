@@ -9,7 +9,7 @@ jobs:
       - name: Refresh package indexes
         run: sudo apt-get update
       - name: Install dependencies
-        run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests bats bubblewrap gawk mawk rpm rsyslog build-essential fakeroot reprepro devscripts debhelper libcapture-tiny-perl libfile-slurper-perl libjson-perl libyaml-pp-perl libparallel-forkmanager-perl libsoap-lite-perl libdbi-perl libcgi-pm-perl quilt openssh-server dpkg looptools genometools software-properties-common grub-common grub-efi-amd64-bin squashfs-tools pigz
+        run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests bats bubblewrap cpio gawk mawk rpm rsyslog build-essential fakeroot reprepro devscripts debhelper libcapture-tiny-perl libfile-slurper-perl libjson-perl libyaml-pp-perl libparallel-forkmanager-perl libsoap-lite-perl libdbi-perl libdbd-sqlite3-perl libcgi-pm-perl quilt openssh-server dpkg looptools genometools software-properties-common grub-common grub-efi-amd64-bin squashfs-tools pigz
       - name: Enable postscript test namespaces
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Install lifecycle test dependencies
@@ -19,6 +19,13 @@ jobs:
       - name: Prepare xCAT syslog directory
         if: ${{ !cancelled() }}
         run: sudo install -d -o syslog -g adm -m 0750 /var/log/xcat
+      - name: Run Ubuntu image fixture tests
+        if: ${{ !cancelled() }}
+        run: >-
+          prove xCAT-test/native/ubuntu_live_media_guardrails.t
+          xCAT-test/native/ubuntu_genimage_debootstrap_arch.t
+          xCAT-test/native/ubuntu_genimage_apt_mirror.t
+          xCAT-test/native/ubuntu_genimage_resolver_libs.t
       - name: Run tests
         if: ${{ !cancelled() }}
         run: perl github_action_xcat_test.pl
