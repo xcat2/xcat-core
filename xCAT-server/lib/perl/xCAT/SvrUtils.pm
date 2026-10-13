@@ -2641,6 +2641,33 @@ sub rootimg_checksum_enabled {
 }
 
 #--------------------------------------------------------------------------------------------------------
+#upgrade_rootimg_checksum:
+#description: on an upgrade from a release without the root image check, keep the stateless and statelite
+#             ramdisk images of that release unchecked, and give new images the check. While
+#             site.rootimgchecksum is not set, set the rootimgchecksum attribute to no for each such image
+#             that does not set it, then set site.rootimgchecksum to yes. A later upgrade changes nothing.
+#return:
+#        nothing, or the error message
+#--------------------------------------------------------------------------------------------------------
+sub upgrade_rootimg_checksum {
+    my ($class) = @_;
+    my $sitetab = xCAT::Table->new('site', -create => 1) or return 'Cannot open the site table';
+    my ($site) = $sitetab->getAttribs({ key => 'rootimgchecksum' }, 'value');
+    return if $site && defined($site->{value}) && $site->{value} ne '';
+    my $osimagetab    = xCAT::Table->new('osimage',    -create => 1) or return 'Cannot open the osimage table';
+    my $linuximagetab = xCAT::Table->new('linuximage', -create => 1) or return 'Cannot open the linuximage table';
+    my %decided = map { ($_->{imagename} => 1) } grep { defined($_->{rootimgchecksum}) && $_->{rootimgchecksum} ne '' }
+      $linuximagetab->getAllAttribs('imagename', 'rootimgchecksum');
+    foreach my $image ($osimagetab->getAllAttribs('imagename', 'provmethod')) {
+        next if $decided{ $image->{imagename} } || ($image->{provmethod} // '') !~ /^(?:netboot|statelite)$/x;
+        my (undef, $image_error) = $linuximagetab->setAttribs({ imagename => $image->{imagename} }, { rootimgchecksum => 'no' });
+        return "Cannot turn the root image check off for $image->{imagename}: $image_error" if $image_error;
+    }
+    my (undef, $site_error) = $sitetab->setAttribs({ key => 'rootimgchecksum' }, { value => 'yes' });
+    return $site_error ? "Cannot set site.rootimgchecksum: $site_error" : undef;
+}
+
+#--------------------------------------------------------------------------------------------------------
 #write_initrd_check_marker:
 #description: record that an initial ramdisk checks the compressed rootimage against its checksum.
 #             The marker holds the SHA-256 of the initial ramdisk, so a replaced ramdisk does not match it.
