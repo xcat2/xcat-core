@@ -57,6 +57,8 @@ When finished, the original file will reside in
 
 Note: If you make any changes to your litefile table after running liteimg then you will need to rerun liteimg again.
 
+For an image with \ *rootfstype*\  set to \ *ramdisk*\ , \ **liteimg**\  also packs the image into \ *rootimg-statelite.gz*\ . It writes the new file and its SHA-256 checksum, \ *rootimg-statelite.gz.sha256*\ , next to the existing files. It replaces them only when the new file is complete. Compute nodes check the file as described in \ **packimage**\ (1), and the \ *rootimgchecksum*\  attribute turns the check off in the same way.
+
 
 **********
 PARAMETERS
