@@ -12,7 +12,7 @@ use XCAT::Test::Sandbox qw(sandbox_root sandbox_run);
 
 plan skip_all => 'postscript targets Linux nodes' unless $^O eq 'linux';
 my $postscripts = repo_path('xCAT/postscripts');
-BAIL_OUT('enablekdump and xcatlib.sh are required')
+die('enablekdump and xcatlib.sh are required')
     unless -r "$postscripts/enablekdump" && -r "$postscripts/xcatlib.sh";
 
 sub run_enablekdump {

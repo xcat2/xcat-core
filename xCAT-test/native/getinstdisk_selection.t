@@ -12,9 +12,9 @@ use XCAT::Test::Sandbox qw(sandbox_root sandbox_run);
 use XCAT::Test::Template qw(template_database set_row render_template);
 
 plan skip_all => 'disk selection requires Linux namespaces' unless $^O eq 'linux';
-BAIL_OUT('run as root to create isolated dummy block devices') if $>;
+die('run as root to create isolated dummy block devices') if $>;
 my $script = repo_path('xCAT-server/share/xcat/install/scripts/getinstdisk');
-BAIL_OUT("missing disk selector: $script") unless -r $script;
+die("missing disk selector: $script") unless -r $script;
 my $database;
 
 sub selects {
