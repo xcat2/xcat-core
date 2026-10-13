@@ -163,4 +163,13 @@ for my $failed (qw(rootimg.cpio.gz.sha256 rootimg.cpio.gz)) {
     is(read_binary("$archive.sha256"), sha256_hex($imported) . "  rootimg.cpio.gz\n", 'the checksum is written also when the check is turned off');
 }
 
+{
+    my ($placed, $errors, $dest, $archive) = import_image('rootimg.cpio.gz', sub {
+        write_text("$fixture/bundle-$sequence/initrd-stateless.gz.rootimgcheck", "sha256=marker of the bundled ramdisk\n");
+    }, ramdiskcheck => 'DEST/initrd-stateless.gz.rootimgcheck');
+    is($errors, '', 'a bundle with the initial ramdisk marker is placed');
+    is(read_binary("$dest/initrd-stateless.gz.rootimgcheck"), "sha256=marker of the bundled ramdisk\n",
+        'the marker of the bundled initial ramdisk is placed next to it');
+}
+
 done_testing();
