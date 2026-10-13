@@ -1775,7 +1775,7 @@ sub mknetboot
 
         my $kcmdline;
         if ($statelite) {
-            if (rootfstype ne "ramdisk") {
+            if ($rootfstype ne "ramdisk") {
 
                 # get entry for nfs root if it exists:
                 # have to get nfssvr and nfsdir from noderes table
