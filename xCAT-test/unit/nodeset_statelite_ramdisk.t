@@ -23,6 +23,7 @@ require xCAT::Table;
 require xCAT::SvrUtils;
 require xCAT::DBobjUtils;
 require(repo_path('xCAT-server/lib/xcat/plugins/debian.pm'));
+require(repo_path('xCAT-server/lib/xcat/plugins/sles.pm'));
 
 xCAT::Table->new('site', -create => 1)->setAttribs({ key => $_->[0] }, { value => $_->[1] })
   for ([ installdir => "$fixture/install" ], [ tftpdir => "$fixture/tftpboot" ]);
@@ -85,6 +86,16 @@ sub nodeset {
     is_deeply($errors, [], 'Ubuntu: nodeset of a statelite NFS node reports no error');
     like($boot->{kcmdline} // '', qr{root=nfs:\S*\Q$dir\E/rootimg}, 'Ubuntu: a statelite NFS node mounts the image over NFS');
     unlike($boot->{kcmdline} // '', qr{imgurl=}, 'Ubuntu: a statelite NFS node downloads no archive');
+}
+
+for my $case ([ ramdisk => 1, 'initrd-stateless.gz' ], [ ramdisk => 0, 'initrd-statelite.gz' ], [ nfs => 1, 'initrd-statelite.gz' ]) {
+    my ($rootfstype, $dracut, $initrd) = @$case;
+    my $label = "SLES $rootfstype" . ($dracut ? ' with dracut' : ' without dracut');
+    my ($node, $name, $dir) = image(plugin => 'sles', os => 'sle15.6', rootfstype => $rootfstype, dracut => $dracut);
+    my ($boot, $errors) = nodeset(sles => $node);
+    is_deeply($errors, [], "$label: nodeset reports no error");
+    like($boot->{initrd} // '', qr{/\Q$initrd\E$}, "$label: the node boots $initrd");
+    is(content("$fixture/tftpboot/xcat/osimage/$name/$initrd"), "$initrd of $name\n", "$label: $initrd is copied to TFTP");
 }
 
 done_testing();
