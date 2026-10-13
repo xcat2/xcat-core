@@ -16,7 +16,7 @@ use Test::More;
 # The first rename into a path of %FAIL, or from a path of %FAIL_FROM, fails, as when the file system refuses it.
 # With $NO_LINK, link fails, as on a file system without hard links.
 # Nodes may also be killed publishers, so the checksum file must list the archive at each rename of it.
-our ($TARGET, @SEEN, %FAIL, %FAIL_FROM, $NO_LINK);
+our ($TARGET, @SEEN, %FAIL, %FAIL_FROM, %FAIL_AFTER, $NO_LINK);
 BEGIN {
     *CORE::GLOBAL::link = sub {
         my ($from, $to) = @_;
@@ -32,9 +32,11 @@ BEGIN {
             my $checksum = -f "$TARGET.sha256" ? read_binary("$TARGET.sha256") : -e "$TARGET.sha256" ? 'other' : 'missing';
             push @SEEN, { checksum => $checksum, metainfo => -e "$TARGET.metainfo" ? 1 : 0 };
         }
-        if ($FAIL{$to} || $FAIL_FROM{$from}) {
+        # A rename into a path of %FAIL_AFTER fails after the number of renames into it that the value gives.
+        if ($FAIL{$to} || $FAIL_FROM{$from} || (defined($FAIL_AFTER{$to}) && $FAIL_AFTER{$to}-- <= 0)) {
             delete $FAIL{$to};
             delete $FAIL_FROM{$from};
+            delete $FAIL_AFTER{$to} if defined($FAIL_AFTER{$to}) && $FAIL_AFTER{$to} < 0;
             $! = EIO;
             return 0;
         }
@@ -62,6 +64,7 @@ sub publish {
     write_text("$stage/rootimg.cpio.gz.metainfo", "new metainfo\n") if $case{metainfo};
     local %FAIL = map { ("$dir/$_" => 1) } @{ $case{fail} || [] };
     local %FAIL_FROM = map { ("$stage/$_" => 1) } @{ $case{fail_from} || [] };
+    local %FAIL_AFTER = map { ("$dir/$_->[0]" => $_->[1]) } @{ $case{fail_after} || [] };
     local $NO_LINK = $case{no_link};
     no warnings 'redefine';
     local *File::Copy::copy = sub { $! = ENOSPC; return 0 } if $case{no_copy};
@@ -171,6 +174,24 @@ for my $failed (qw(rootimg.cpio.gz rootimg.cpio.gz.metainfo)) {
     like($error, qr/^Cannot publish \Q$target\E: /, 'a failure under umask 0077 without hard links is reported');
     is(read_binary($target), "previous archive\n", 'the copy puts the previous archive back');
     is((stat($target))[2] & 07777, 0666 & ~umask(), 'the previous archive keeps the mode that nodes read it with');
+}
+
+{
+    # The previous metainfo cannot go back after a failed publication, and staging cleanup would delete it.
+    my ($error, $dir, $target) = publish(checksum => 1, metainfo => 1, fail => ['rootimg.cpio.gz.metainfo'], fail_from => ['previous.metainfo']);
+    like($error // '', qr/the previous metainfo cannot be put back: .*It is kept in \Q$dir\E\/\.rootimg-previous-/,
+        'a previous metainfo that cannot go back is reported with the directory that keeps it');
+    my ($kept) = ($error // '') =~ /It is kept in (\S+)/;
+    is($kept && read_binary("$kept/rootimg.cpio.gz.metainfo"), "previous metainfo\n", 'the kept directory holds the previous metainfo');
+    is(read_binary($target), "previous archive\n", 'the previous archive goes back');
+}
+
+{
+    # The previous checksum cannot go back after a failed publication.
+    my ($error, $dir, $target) = publish(checksum => 1, metainfo => 1, fail => ['rootimg.cpio.gz.metainfo'],
+        fail_after => [ [ 'rootimg.cpio.gz.sha256', 1 ] ]);
+    like($error // '', qr/the previous checksum cannot be put back: /, 'a previous checksum that cannot go back is reported');
+    is(read_binary($target), "previous archive\n", 'the previous archive goes back when its checksum cannot');
 }
 
 done_testing();
