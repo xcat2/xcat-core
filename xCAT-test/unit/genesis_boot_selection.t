@@ -18,8 +18,8 @@ make_path($ENV{XCATCFG}, "$root/xcat");
 require(repo_path('xCAT-server/lib/xcat/plugins/anaconda.pm'));
 require(repo_path('xCAT-server/lib/xcat/plugins/sles.pm'));
 my @owners = (
-    ['Anaconda', \&xCAT_plugin::anaconda::_find_genesis_boot_files],
-    ['SLES', \&xCAT_plugin::sles::_find_genesis_boot_files],
+    ['Anaconda', \&xCAT_plugin::anaconda::find_genesis_boot_files],
+    ['SLES', \&xCAT_plugin::sles::find_genesis_boot_files],
 );
 
 sub selection {

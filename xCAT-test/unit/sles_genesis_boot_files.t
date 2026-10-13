@@ -30,7 +30,7 @@ sleep(1.1);
 write_binary($gzip, "test\n");
 
 my ($selected_kernel, $selected_initrd) =
-  xCAT_plugin::sles::_find_genesis_boot_files($tftp, 'x86_64');
+  xCAT_plugin::sles::find_genesis_boot_files($tftp, 'x86_64');
 is($selected_kernel, 'genesis.kernel.x86_64',
     'SLES selects the matching Genesis kernel');
 is($selected_initrd, 'genesis.fs.x86_64.gz',
@@ -39,19 +39,19 @@ is($selected_initrd, 'genesis.fs.x86_64.gz',
 sleep(1.1);
 write_binary($lzma, "test\n");
 ($selected_kernel, $selected_initrd) =
-  xCAT_plugin::sles::_find_genesis_boot_files($tftp, 'x86_64');
+  xCAT_plugin::sles::find_genesis_boot_files($tftp, 'x86_64');
 is($selected_initrd, 'genesis.fs.x86_64.lzma',
     'SLES keeps a newer legacy initramfs usable');
 
 unlink($gzip);
 ($selected_kernel, $selected_initrd) =
-  xCAT_plugin::sles::_find_genesis_boot_files($tftp, 'x86_64');
+  xCAT_plugin::sles::find_genesis_boot_files($tftp, 'x86_64');
 is($selected_initrd, 'genesis.fs.x86_64.lzma',
     'SLES accepts the legacy initramfs by itself');
 
 unlink($lzma);
 ($selected_kernel, $selected_initrd) =
-  xCAT_plugin::sles::_find_genesis_boot_files($tftp, 'x86_64');
+  xCAT_plugin::sles::find_genesis_boot_files($tftp, 'x86_64');
 is($selected_kernel, undef, 'a missing initramfs yields no partial boot selection');
 is($selected_initrd, undef, 'a missing initramfs leaves both paths undefined');
 
