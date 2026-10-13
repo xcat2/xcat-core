@@ -53,13 +53,14 @@ must_read node netboot
 netboot=$lookup
 must_read node os
 os=$lookup
+# nodeset osimage= writes provmethod, os, arch and profile from the osimage row, and sets
+# chain.currchain to boot. The replay of the saved state writes neither back.
 must_read node provmethod
 provmethod=$lookup
-# nodeset osimage= writes nodetype.provmethod, profile, os and arch from the osimage row it
-# resolved. On the path below the image is named <os>-<arch>-install-compute, so os and arch come
-# back as the values read here; profile becomes the row's profile and has to be put back.
 must_read node profile
 profile=$lookup
+must_read node currchain
+currchain=$lookup
 
 must_read site tftpdir
 tftpdir=$lookup
@@ -109,14 +110,15 @@ restore_state() {
             restore_rc=1
         fi
     fi
-    if [ -z "$provmethod" ]; then
-        if ! chdef -t node -o "$node" provmethod= "profile=$profile" > /dev/null; then
-            echo "IPXE_SHIM_FAIL: chdef -t node -o $node provmethod= profile=$profile returned non-zero, $node keeps the image attributes this case set"
-            restore_rc=1
-        fi
-    fi
     if ! nodeset "$node" "$before"; then
         echo "IPXE_SHIM_FAIL: nodeset $node $before returned non-zero, $node stays configured for installation"
+        restore_rc=1
+    fi
+    # After the replay, because a replayed osimage= state writes the image attributes again.
+    attrs="provmethod=$provmethod os=$os arch=$arch profile=$profile currchain=$currchain"
+    if ! chdef -t node -o "$node" "provmethod=$provmethod" "os=$os" "arch=$arch" \
+        "profile=$profile" "currchain=$currchain" > /dev/null; then
+        echo "IPXE_SHIM_FAIL: chdef -t node -o $node $attrs returned non-zero, $node keeps the image attributes and chain this case set"
         restore_rc=1
     fi
     return "$restore_rc"
