@@ -12,8 +12,10 @@ require xCAT::NodeRange;
 require xCAT::Utils;
 require xCAT::TableUtils;
 require xCAT::NetworkUtils;
+use Digest::SHA ();
 use Errno qw(EEXIST);
 use File::Basename;
+use File::Copy ();
 use File::Path;
 use File::Temp;
 use Sys::Hostname ();
@@ -2601,11 +2603,76 @@ sub rootimg_stage {
 }
 
 #--------------------------------------------------------------------------------------------------------
-#publish_rootimg:
-#description: replace a published compressed rootimage and its metainfo with staged files.
-#             Nodes keep downloading the previous rootimage until the rename replaces it.
+#write_rootimg_checksum:
+#description: write the SHA-256 checksum of a compressed rootimage to <rootimage>.sha256 in sha256sum format
 #argument:
-#        $staged:        the staged compressed rootimage, with <staged>.metainfo when it exists
+#        $rootimg: the path of the compressed rootimage
+#return:
+#        on success: nothing
+#        on fail:    the error message
+#--------------------------------------------------------------------------------------------------------
+sub write_rootimg_checksum {
+    my (undef, $rootimg) = @_;
+    my ($line, $error) = _rootimg_checksum_line($rootimg);
+    return $error if $error;
+    return _write_published_file("$rootimg.sha256", $line);
+}
+
+# Returns the sha256sum line of a compressed rootimage, or undef and the error message.
+sub _rootimg_checksum_line {
+    my ($rootimg) = @_;
+    my $digest = eval { Digest::SHA->new(256)->addfile($rootimg)->hexdigest }
+      or return (undef, "Cannot compute the SHA-256 checksum of $rootimg: $@");
+    return ("$digest  " . basename($rootimg) . "\n");
+}
+
+#--------------------------------------------------------------------------------------------------------
+#rootimg_checksum_enabled:
+#description: tell whether nodes must check the compressed rootimage of an image against its checksum
+#argument:
+#        $value: the rootimgchecksum attribute of the image, or undef
+#return:
+#        false when the image, or site.rootimgchecksum if the image does not set it, is 'no' or '0'
+#--------------------------------------------------------------------------------------------------------
+sub rootimg_checksum_enabled {
+    my (undef, $value) = @_;
+    ($value) = xCAT::TableUtils->get_site_attribute('rootimgchecksum') if !defined($value) || $value eq '';
+    return !(defined($value) && $value =~ /^\s*(?:no|0)\s*$/ix);
+}
+
+# Returns the content of a file, or undef when it cannot be read.
+sub _read_published_file {
+    my ($path) = @_;
+    open(my $file, '<', $path) or return;
+    local $/ = undef;
+    my $content = <$file>;
+    close($file);
+    return $content;
+}
+
+# A rename publishes the file, so no reader sees it partial.
+sub _write_published_file {
+    my ($path, $content) = @_;
+    my $temp = "$path.$$";
+    my $written;
+    if (open(my $file, '>', $temp)) {
+        $written = print($file $content) && close($file);
+    }
+    unless ($written && chmod(0644, $temp) && rename($temp, $path)) {
+        my $error = $!;
+        unlink($temp);
+        return "Cannot write $path: $error";
+    }
+    return;
+}
+
+#--------------------------------------------------------------------------------------------------------
+#publish_rootimg:
+#description: replace a published compressed rootimage, its checksum and its metainfo with staged files.
+#             Nodes keep downloading the previous rootimage until the rename replaces it. When the
+#             publication fails, the previous files stay as they were.
+#argument:
+#        $staged:        the staged compressed rootimage, with <staged>.sha256 and <staged>.metainfo when they exist
 #        $target:        the published path
 #        $remove_others: true to remove the other rootimg.* files of the image directory
 #return:
@@ -2613,13 +2680,102 @@ sub rootimg_stage {
 #        on fail:    the error message
 #--------------------------------------------------------------------------------------------------------
 sub publish_rootimg {
-    my (undef, $staged, $target, $remove_others) = @_;
+    my ($class, $staged, $target, $remove_others) = @_;
     my $dir = dirname($target);
+    my ($lock, $lock_error) = _acquire_publish_lock($dir);
+    return $lock_error unless $lock;
+    my %state = (staged => $staged, target => $target, previous => dirname($staged) . '/previous',
+        sums => _read_published_file("$target.sha256"));
+    my $error = _replace_rootimg(\%state);
+    if (defined($error)) {
+        my $restore_error = _restore_rootimg(\%state);
+        $error .= ", and $restore_error" if $restore_error;
+    } else {
+        # A checksum file that keeps the previous line still matches the new archive, so this rename may fail.
+        rename("$staged.sha256", "$target.sha256") if -e "$staged.sha256";
+        if ($remove_others) {
+            # A node that already downloads another format checks it after the download, so the checksums stay.
+            my %kept = map { ($_ => 1) } ($target, "$target.metainfo");
+            unlink grep { !$kept{$_} && !/\.sha256$/x } glob("$dir/rootimg.*");
+        }
+    }
+    _release_publish_lock($lock);
+    return if !defined($error);
+    return "Cannot publish $target: $error";
+}
 
-    # The image lock is per host, and mkdir is atomic for every host, also on NFS without locks.
+# Keeps $from at $to through a hard link, or through a copy with the mode of $from, which nodes need to read it.
+sub _keep_copy {
+    my ($from, $to) = @_;
+    return 1 if link($from, $to);
+    my $mode = (stat($from))[2];
+    return File::Copy::copy($from, $to) && defined($mode) && chmod(Fcntl::S_IMODE($mode), $to);
+}
+
+# Replaces the published archive and its metainfo with the staged files, and records in $state what changed.
+sub _replace_rootimg {
+    my ($state) = @_;
+    my ($staged, $target, $previous) = @$state{qw(staged target previous)};
+    my @files = ($staged, grep { -e $_ } map { "$staged.$_" } qw(sha256 metainfo));
+
+    # A failed publication puts the previous archive back from a link, or from a copy without hard links.
+    return "$!" if -e $target && !_keep_copy($target, $previous);
+    return "$!" if !-s $staged || chmod(0644, @files) != @files;
+
+    # Until the archive is replaced, the checksum file lists the new and the previous archive, so the published
+    # archive matches a line of it, also when the publisher is killed.
+    if (-e "$staged.sha256") {
+        # An archive packed without a checksum stays published until the rename, so the list needs its line too.
+        my ($previous_line, $error) = ($state->{sums});
+        ($previous_line, $error) = _rootimg_checksum_line($target) if !defined($previous_line) && -e $target;
+        return $error if $error;
+        $state->{sums_changed} = 1;
+        $error = _write_published_file("$target.sha256", _read_published_file("$staged.sha256") . ($previous_line // ''));
+        return $error if $error;
+    } elsif (defined($state->{sums})) {
+        $state->{sums_changed} = 1;
+        unlink("$target.sha256") or return "$!";
+    }
+
+    # The previous metainfo leaves first, so it never describes the new archive.
+    if (-e "$target.metainfo") {
+        $state->{metainfo_moved} = rename("$target.metainfo", "$previous.metainfo") or return "$!";
+    }
+    $state->{replaced} = rename($staged, $target) or return "$!";
+    return "$!" if -e "$staged.metainfo" && !rename("$staged.metainfo", "$target.metainfo");
+    return;
+}
+
+# Puts back the previous files that _replace_rootimg changed, or returns why it cannot.
+sub _restore_rootimg {
+    my ($state) = @_;
+    my ($target, $previous) = @$state{qw(target previous)};
+    if ($state->{replaced} && !rename($previous, $target)) {
+        my $error = "$!";
+
+        # Staging cleanup would delete the previous archive, so it moves where no cleanup removes it.
+        my $kept = eval { File::Temp::tempdir('.rootimg-previous-XXXXXXXX', DIR => dirname($target)) };
+        my $name = basename($target);
+        my @moves = map { [ "$previous$_", "$kept/$name$_" ] } grep { -e "$previous$_" } ('', '.metainfo');
+        return "the previous archive cannot be put back: $error, nor kept" if !$kept || grep { !rename($_->[0], $_->[1]) } @moves;
+        _write_published_file("$kept/$name.sha256", $state->{sums}) if defined($state->{sums});
+        return "the previous archive cannot be put back: $error. It is kept in $kept";
+    }
+    rename("$previous.metainfo", "$target.metainfo") if $state->{metainfo_moved};
+    if ($state->{sums_changed} && defined($state->{sums})) {
+        _write_published_file("$target.sha256", $state->{sums});
+    } elsif ($state->{sums_changed}) {
+        unlink("$target.sha256");
+    }
+    return;
+}
+
+# The image lock is per host, and mkdir is atomic for every host, also on NFS without locks.
+sub _acquire_publish_lock {
+    my ($dir) = @_;
     my $lock = "$dir/.packimage-publish";
     for (my $waited = 0; !mkdir($lock); $waited++) {
-        return "Cannot create $lock: $!" unless $! == EEXIST;
+        return (undef, "Cannot create $lock: $!") unless $! == EEXIST;
         my $age = time() - ((stat($lock))[9] // time());
         if ($waited >= $publish_lock_wait || $age > $publish_lock_wait) {
             my $holder = '';
@@ -2629,8 +2785,8 @@ sub publish_rootimg {
                 chomp($holder);
                 $holder = " by $holder" if $holder;
             }
-            return "$lock is held$holder. If no packimage of this image runs on any host, "
-              . "remove it and run packimage again.";
+            return (undef, "$lock is held$holder. If no packimage of this image runs on any host, "
+                  . "remove it and run packimage again.");
         }
         sleep 1;
     }
@@ -2638,23 +2794,14 @@ sub publish_rootimg {
         print $owner Sys::Hostname::hostname() . " $$\n";
         close($owner);
     }
-    my @sidecars = grep { -e "$staged.$_" } qw(metainfo);
-    my @files = ($staged, map { "$staged.$_" } @sidecars);
+    return ($lock);
+}
 
-    # The previous metainfo goes first, so no failure leaves a metainfo that describes another archive.
-    my $published = -s $staged && chmod(0644, @files) == @files
-      && !grep { -e "$target.$_" && !unlink("$target.$_") } qw(metainfo);
-    $published &&= rename($staged, $target);
-    $published &&= rename("$staged.$_", "$target.$_") foreach @sidecars;
-    my $error = $!;
-    if ($published && $remove_others) {
-        my %kept = map { ($_ => 1) } ($target, "$target.metainfo");
-        unlink grep { !$kept{$_} } glob("$dir/rootimg.*");
-    }
+sub _release_publish_lock {
+    my ($lock) = @_;
     unlink("$lock/owner");
     rmdir($lock);
-    return if $published;
-    return "Cannot publish $target: $error";
+    return;
 }
 
 

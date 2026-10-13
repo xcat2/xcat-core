@@ -677,6 +677,10 @@ sub process_request {
         }
     }
 
+    if (my $error = xCAT::SvrUtils->write_rootimg_checksum("$stage/$image_file")) {
+        return $native_failure->($error);
+    }
+
     if ($dotorrent && $method =~ /cpio/) {
         my $made = chdir("$stage") && !system("ctorrent -t -u $dotorrent -l 1048576 -s $image_file.metainfo $image_file");
         return $native_failure->("ctorrent cannot create the metainfo of $destdir/$image_file") unless $made;
