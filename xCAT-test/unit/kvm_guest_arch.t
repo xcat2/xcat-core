@@ -4,25 +4,11 @@ use warnings;
 
 use FindBin;
 use lib "$FindBin::Bin/../lib";
-use lib "$FindBin::Bin/../../perl-xCAT";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use Test::More;
 
-use XCAT::Test::File qw(repo_path);
+use XCAT::Test::KvmPlugin qw(load_kvm_plugin);
 
-# kvm.pm loads Sys::Virt and the monitoring plugin at compile time. The domain builder uses
-# neither: the hypervisor connection is a parameter of each test below.
-BEGIN {
-    $Sys::Virt::VERSION = '10.0.0';
-    $INC{'Sys/Virt.pm'} = __FILE__;
-    $INC{'xCAT_monitoring/monitorctrl.pm'} = __FILE__;
-}
-
-# xCAT modules put $XCATROOT/lib/perl first in @INC. Point it at the checkout, or a host
-# with xCAT installed tests the installed modules.
-$ENV{XCATROOT} = repo_path('xCAT-server');
-require(repo_path('xCAT-server/lib/xcat/plugins/kvm.pm'));
-my @installed = grep { defined and m{^/opt/xcat/} } values %INC;
+my @installed = load_kvm_plugin();
 is_deeply(\@installed, [], 'kvm.pm and the xCAT modules it uses load from the checkout');
 
 # kvm.pm declares the package variables set below; the test names each one once.

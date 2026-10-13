@@ -3,41 +3,23 @@ use strict;
 use warnings;
 
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 use Test::More;
 
-# The scratch package below declares these; the test names them once each.
+use XCAT::Test::KvmPlugin qw(load_kvm_plugin);
+
+my @installed = load_kvm_plugin();
+is_deeply(\@installed, [], 'kvm.pm and the xCAT modules it uses load from the checkout');
+
+# kvm.pm declares the package variables set below; the test names each one once.
 no warnings 'once';
-
-my $source = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/kvm.pm";
-open(my $source_fh, '<', $source) or die "open $source: $!";
-my $content = do { local $/; <$source_fh> };
-close($source_fh) or die "close $source: $!";
-
-my @routines;
-for my $name (qw(build_diskstruct guest_arch_profile getUnits)) {
-    my ($routine) = $content =~ /^(sub \Q$name\E\s*\{.*?^\})/ms;
-    die("could not extract $name from kvm.pm") unless $routine;
-    push(@routines, $routine);
-}
-
-# kvm.pm needs a management node to load, so the disk builder runs in a scratch package.
-# get_multiple_paths_by_url is the only routine it calls that reaches libvirt; it answers
-# from $pool, which holds what a storage pool reports for one node.
-my $harness = <<'PERL';
-package KVMDisk;
-our ($node, $confdata, $pool);
-sub get_multiple_paths_by_url { return $pool; }
-PERL
-
-eval $harness . join("\n", @routines) . "\n1;\n";    ## no critic (BuiltinFunctions::ProhibitStringyEval)
-die("could not load the kvm disk builder: $@") if $@;
 
 # Build the disks of a node of $arch whose vmstorage is a libvirt pool holding the volumes
 # in $pool: a path => { device, format } map, the shape get_multiple_paths_by_url returns.
 sub pool_disks {
     my ($arch, $pool) = @_;
-    local $KVMDisk::node     = 'cn1';
-    local $KVMDisk::confdata = {
+    local $xCAT_plugin::kvm::node     = 'cn1';
+    local $xCAT_plugin::kvm::confdata = {
         vm => { cn1 => [ {
             host         => 'hyp1',
             storage      => 'dir:///var/lib/libvirt/images/',
@@ -46,13 +28,16 @@ sub pool_disks {
         nodetype => { cn1 => [ { arch => $arch } ] },
         hyp1     => { cpumodel => 'x86_64' },
     };
-    local $KVMDisk::pool = $pool;
+    # get_multiple_paths_by_url is the only routine build_diskstruct calls that reaches
+    # libvirt. The stub answers what the storage pool holds for the node.
+    no warnings 'redefine';
+    local *xCAT_plugin::kvm::get_multiple_paths_by_url = sub { return $pool; };
     my $chatter = '';
     my $disks;
     {
         open(my $capture, '>', \$chatter) or die "capture stdout: $!";
         local *STDOUT = $capture;
-        ($disks) = KVMDisk::build_diskstruct(undef);
+        ($disks) = xCAT_plugin::kvm::build_diskstruct(undef);
     }
     die('build_diskstruct returned no disks') unless ref $disks eq 'ARRAY';
     return $disks;

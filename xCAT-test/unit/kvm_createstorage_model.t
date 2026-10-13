@@ -3,38 +3,20 @@ use strict;
 use warnings;
 
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 use Test::More;
 
-# The scratch package below declares these; the test names them once each.
+use XCAT::Test::KvmPlugin qw(load_kvm_plugin);
+
+my @installed = load_kvm_plugin();
+is_deeply(\@installed, [], 'kvm.pm and the xCAT modules it uses load from the checkout');
+
+# kvm.pm declares the package variables set below; the test names each one once.
 no warnings 'once';
 
-my $source = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/kvm.pm";
-open(my $source_fh, '<', $source) or die "open $source: $!";
-my $content = do { local $/; <$source_fh> };
-close($source_fh) or die "close $source: $!";
-
-my @routines;
-for my $name (qw(createstorage build_diskstruct guest_arch_profile getUnits
-    default_storagemodel)) {
-    my ($routine) = $content =~ /^(sub \Q$name\E\s*\{.*?^\})/ms;
-    die("could not extract $name from kvm.pm") unless $routine;
-    push(@routines, $routine);
-}
-
-# kvm.pm needs a management node to load, so createstorage runs in a scratch package.
-# get_filepath_by_url is the routine that reaches libvirt; it records the device name it is
-# asked for, which is the name createstorage gives the volume of the node.
-my $harness = <<'PERL';
-package KVMStore;
-our ($node, $confdata, $clonemethod, @asked);
-sub getstorageformat    { my ($cfginfo) = @_; return $cfginfo->{storageformat}; }
-sub get_filepath_by_url { my %args = @_; push(@asked, $args{dev}); return $args{dev}; }
-sub oldCreateStorage    { push(@asked, 'oldCreateStorage'); }
-sub get_multiple_paths_by_url { return {}; }
-PERL
-
-eval $harness . join("\n", @routines) . "\n1;\n";    ## no critic (BuiltinFunctions::ProhibitStringyEval)
-die("could not load the kvm storage routines: $@") if $@;
+# get_filepath_by_url is the routine that reaches libvirt. The stub records the device name
+# it is asked for, which is the name createstorage gives the volume of the node.
+my @asked;
 
 # The name createstorage gives the volume of one node. $stale is a capture left live in this
 # block by an earlier successful match, which is the state createstorage runs in when a
@@ -48,15 +30,22 @@ sub volume_dev {
         storage      => $storage,
         storagemodel => $args{storagemodel},
     };
-    @KVMStore::asked = ();
+    no warnings 'redefine';
+    local *xCAT_plugin::kvm::get_filepath_by_url = sub {
+        my %url = @_;
+        push(@asked, $url{dev});
+        return $url{dev};
+    };
+    local *xCAT_plugin::kvm::oldCreateStorage = sub { push(@asked, 'oldCreateStorage'); };
+    @asked = ();
     # The match must run in this block, and nothing may match after it: perl restores $1 when
     # the block that set it ends, and any later successful match replaces what it holds.
     my $subject = 'left by an earlier match: ' . ($args{stale} // '');
     $subject =~ /match: (.*)/ if defined $args{stale};
     # A match without a group empties $1, which is the clean state the other cases need.
     $subject =~ /^left/ unless defined $args{stale};
-    KVMStore::createstorage($storage, undef, '30G', $cfginfo, 1);
-    return $KVMStore::asked[0];
+    xCAT_plugin::kvm::createstorage($storage, undef, '30G', $cfginfo, 1);
+    return $asked[0];
 }
 
 # dohyp sets storagemodel to scsi for every node it dispatches, whatever the architecture,
@@ -87,15 +76,15 @@ is(volume_dev(), 'hda', 'createstorage alone defaults to an hd* volume');
 
 # A node with no vmstoragemodel takes its sd* name from that default, so the two are driven
 # together.
-is(volume_dev(storagemodel => KVMStore::default_storagemodel()), 'sda',
+is(volume_dev(storagemodel => xCAT_plugin::kvm::default_storagemodel()), 'sda',
     'the default storage model names an sd* volume');
 
 # build_diskstruct reads $1 the same way, for a disk backed by a plain file. The device name
 # and the bus of that disk must come from the node, not from a match made elsewhere.
 sub file_disk {
     my (%args) = @_;
-    local $KVMStore::node     = 'cn1';
-    local $KVMStore::confdata = {
+    local $xCAT_plugin::kvm::node     = 'cn1';
+    local $xCAT_plugin::kvm::confdata = {
         vm       => { cn1 => [ { host => 'hyp1', storage => '/var/lib/libvirt/images/cn1.img' } ] },
         nodetype => { cn1 => [ { arch => $args{arch} } ] },
         hyp1     => { cpumodel => 'x86_64' },
@@ -108,7 +97,7 @@ sub file_disk {
     {
         open(my $capture, '>', \$chatter) or die "capture stdout: $!";
         local *STDOUT = $capture;
-        ($disks) = KVMStore::build_diskstruct(undef);
+        ($disks) = xCAT_plugin::kvm::build_diskstruct(undef);
     }
     return $disks->[0];
 }
