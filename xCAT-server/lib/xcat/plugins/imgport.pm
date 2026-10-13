@@ -1270,14 +1270,8 @@ sub extract_bundle {
             $data = change_profile($data, $callback, $new_profile, $imgdir);
         }
 
-        #import manifest.xml into xCAT database
-        unless (set_config($data, $callback)) {
-            $error++;
-            next;
-        }
-
-        # now place files in appropriate directories.
-        unless (make_files($data, $imgdir, $callback)) {
+        # import manifest.xml into xCAT database, then place the files in appropriate directories
+        unless (place_image($data, $imgdir, $callback)) {
             $error++;
             next;
         }
@@ -1824,6 +1818,38 @@ sub verify_manifest {
     return 1;
 }
 
+#-------------------------------------------------------
+
+=head3   place_image
+
+    Import the image definition of an extracted bundle, then place its files, under the image lock.
+    Arguments:
+        data     -- the manifest of the bundle
+        imgdir   -- the extracted bundle
+        callback -- the request callback
+    Returns:
+        1 on success, 0 on failure
+
+=cut
+
+#-------------------------------------------------------
+sub place_image {
+    my ($data, $imgdir, $callback) = @_;
+
+    # genimage, packimage, liteimg and rmimage hold this lock while they change the image.
+    my $lock;
+    if ($data->{rootimg}) {
+        my $rootimgdir = dirname((split(',', $data->{rootimg}))[0]);
+        mkpath($rootimgdir) unless -d $rootimgdir;
+        (my $retcode, $lock) = xCAT::Utils->acquire_lock_imageop("$rootimgdir/rootimg");
+        if ($retcode) {
+            $callback->({ error => [$lock], errorcode => [1] });
+            return 0;
+        }
+    }
+    return set_config($data, $callback) && make_files($data, $imgdir, $callback);
+}
+
 sub make_files {
     my $data        = shift;
     my $imgdir      = shift;
@@ -1919,7 +1945,8 @@ sub make_files {
     #                   ],
     #        };
 
-    for my $a ("kernel", "ramdisk", "rootimg", "rootimgtree", "litefile") {
+    # The root image goes first, so a failed publication leaves the kernel and ramdisk that match the published image.
+    for my $a ("rootimg", "kernel", "ramdisk", "rootimgtree", "litefile") {
         my $filenames = $data->{$a};
         if ($filenames) {
             my @file_array = split(',', $filenames);
@@ -1929,6 +1956,13 @@ sub make_files {
                 my $dirname  = dirname($fn);
                 if (!-r $dirname) {
                     mkpath("$dirname", { verbose => 1, mode => 0755 });
+                }
+                if ($a eq 'rootimg') {
+                    if (my $error = place_rootimg("$imgdir/$basename", $fn, $callback)) {
+                        $callback->({ error => [$error], errorcode => [1] });
+                        return 0;
+                    }
+                    next;
                 }
                 if (-r $fn) {
                     $callback->({ data => ["  Moving old $fn to $fn.ORIG."] });
@@ -2143,6 +2177,37 @@ sub make_files {
 
     # return 1 meant everything was successful!
     return 1;
+}
+
+#-------------------------------------------------------
+
+=head3   place_rootimg
+
+    Replace a published root image with the one from a bundle, the way packimage publishes it.
+    Arguments:
+        bundled  -- the root image in the extracted bundle
+        fn       -- the published path
+        callback -- the request callback
+    Returns:
+        an error message, or nothing on success
+
+=cut
+
+#-------------------------------------------------------
+sub place_rootimg {
+    my ($bundled, $fn, $callback) = @_;
+    my ($stage, $error) = xCAT::SvrUtils->rootimg_stage(dirname($fn));
+    return $error unless $stage;
+    my $staged = "$stage/" . basename($fn);
+    move($bundled, $staged) or return "Cannot move $bundled to $staged: $!";
+    $error = xCAT::SvrUtils->write_rootimg_checksum($staged);
+    return $error if $error;
+    if (-r $fn) {
+        $callback->({ data => ["  Keeping old $fn as $fn.ORIG."] });
+        unlink("$fn.ORIG");
+        link($fn, "$fn.ORIG") or copy($fn, "$fn.ORIG");
+    }
+    return xCAT::SvrUtils->publish_rootimg($staged, $fn);
 }
 
 sub copyPostscripts {

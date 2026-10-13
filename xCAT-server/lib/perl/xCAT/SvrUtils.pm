@@ -2785,8 +2785,8 @@ sub _acquire_publish_lock {
                 chomp($holder);
                 $holder = " by $holder" if $holder;
             }
-            return (undef, "$lock is held$holder. If no packimage of this image runs on any host, "
-                  . "remove it and run packimage again.");
+            return (undef, "$lock is held$holder. If no packimage or imgimport of this image runs on any host, "
+                  . "remove it and run the command again.");
         }
         sleep 1;
     }
