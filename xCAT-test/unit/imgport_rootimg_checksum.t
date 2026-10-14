@@ -35,6 +35,9 @@ require xCAT::Table;
 require(repo_path('xCAT-server/lib/xcat/plugins/imgport.pm'));
 xCAT::Table->new('site', -create => 1)->setAttribs({ key => 'installdir' }, { value => "$fixture/install" });
 
+# noderange keeps the node list for a few seconds, so the node is defined before the first import.
+xCAT::Table->new('nodelist', -create => 1)->setAttribs({ node => 'psnode' }, { groups => 'compute' });
+
 # The image lock lives in /var/lock/xcat, so the test records the request and decides whether another operation holds it.
 our ($HELD, @LOCKED);
 {
@@ -71,6 +74,7 @@ sub import_image {
     @LOCKED = ();
     my @errors;
     my $checksum = delete $manifest{rootimgchecksum};
+    my $nodes    = delete $manifest{nodes};
     my $name = "import-$sequence";
     xCAT::Table->new('osimage', -create => 1)->setAttribs({ imagename => $name }, { osvers => 'rhels9.5', provmethod => 'netboot' });
     my $data = {
@@ -81,7 +85,7 @@ sub import_image {
         (defined $checksum ? (linuximage => { rootimgchecksum => $checksum }) : ()),
         osimage => { imagename => $name, osvers => 'rhels9.6', osarch => 'x86_64', profile => 'compute', provmethod => 'netboot' },
     };
-    my $placed = xCAT_plugin::imgport::place_image($data, $bundle, sub { push @errors, @{ $_[0]{error} || [] } });
+    my $placed = xCAT_plugin::imgport::place_image($data, $bundle, sub { push @errors, @{ $_[0]{error} || [] } }, $nodes);
     return ($placed, join("\n", @errors), $dest, "$dest/$archive_name");
 }
 
@@ -170,6 +174,21 @@ for my $failed (qw(rootimg.cpio.gz.sha256 rootimg.cpio.gz)) {
     is($errors, '', 'a bundle with the initial ramdisk marker is placed');
     is(read_binary("$dest/initrd-stateless.gz.rootimgcheck"), "sha256=marker of the bundled ramdisk\n",
         'the marker of the bundled initial ramdisk is placed next to it');
+}
+
+for my $nodes (qw(psnode undefined-node)) {
+    # The nodes that get the postscripts of the image exist, or not.
+    my ($placed, $errors, $dest, $archive) = import_image('rootimg.cpio.gz', undef, nodes => $nodes);
+    if ($nodes eq 'psnode') {
+        is($errors, '', 'an import for a defined node is placed');
+        is(read_binary($archive), $imported, 'the image of an import for a defined node is published');
+        next;
+    }
+    ok(!$placed, 'an import for an undefined node fails');
+    like($errors, qr/The nodes undefined-node are not defined in xCAT DB\./, 'the undefined node is reported');
+    is(read_binary($archive), $published, 'the published image stays for an undefined node');
+    is(read_binary("$dest/kernel"), "published kernel\n", 'the published kernel stays for an undefined node');
+    is(definition($dest), 'rhels9.5', 'the image definition stays for an undefined node');
 }
 
 done_testing();
