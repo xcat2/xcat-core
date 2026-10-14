@@ -81,7 +81,7 @@ sub import_image {
         rootimg => "$dest/$archive_name",
         kernel  => "$dest/kernel",
         ramdisk => "$dest/initrd-stateless.gz",
-        (map { ($_ => $manifest{$_} =~ s/DEST/$dest/r) } keys %manifest),
+        (map { ($_ => ref($manifest{$_}) ? $manifest{$_} : $manifest{$_} =~ s/DEST/$dest/r) } keys %manifest),
         (defined $checksum ? (linuximage => { rootimgchecksum => $checksum }) : ()),
         osimage => { imagename => $name, osvers => 'rhels9.6', osarch => 'x86_64', profile => 'compute', provmethod => 'netboot' },
     };
@@ -189,6 +189,21 @@ for my $nodes (qw(psnode undefined-node)) {
     is(read_binary($archive), $published, 'the published image stays for an undefined node');
     is(read_binary("$dest/kernel"), "published kernel\n", 'the published kernel stays for an undefined node');
     is(definition($dest), 'rhels9.5', 'the image definition stays for an undefined node');
+}
+
+for my $case ([ kernel => 'kernel' ], [ 'extra/missing.conf' => extra => { src => '/etc/missing.conf', dest => "$fixture/extra" } ],
+    [ missingkit => kit => { missingkit => { kitname => 'missingkit', kitdir => "$fixture/kits/missingkit" } } ])
+{
+    # The bundle lacks a file that its manifest names.
+    my ($lacks, $key, $value) = @$case;
+    my ($placed, $errors, $dest, $archive) = import_image('rootimg.cpio.gz', sub {
+        unlink("$fixture/bundle-$sequence/kernel") or die $! if $key eq 'kernel';
+    }, (defined $value ? ($key => $value) : ()));
+    ok(!$placed, "an import fails when the bundle lacks $lacks");
+    like($errors, qr/The image bundle lacks \Q$lacks\E\./, "the missing $lacks is reported");
+    is(read_binary($archive), $published, "the published image stays when the bundle lacks $lacks");
+    is(-e "$dest/kernel" ? read_binary("$dest/kernel") : undef, "published kernel\n", "the published kernel stays when the bundle lacks $lacks");
+    is(definition($dest), 'rhels9.5', "the image definition stays when the bundle lacks $lacks");
 }
 
 done_testing();
