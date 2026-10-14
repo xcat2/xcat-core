@@ -29,6 +29,18 @@ my ($help, $load_error);
 die("Unable to load mysqlsetup: $load_error")
   unless ref($load_error) eq 'MysqlSetupTestExit' && $load_error->{status} == 0;
 
+# THE SECOND DEFECT. The candidate list was a top-level statement below the
+# main flow's exit, so it never ran and the list was empty at run time: every
+# call reported "cannot read : No such file or directory". Each case below
+# localizes the list, so only this check sees the loaded script's own value.
+{
+    no warnings 'once';
+    ok(scalar(@main::BIND_FILES) > 0, 'the loaded script has candidate files');
+    is_deeply([ @main::BIND_FILES ],
+        [ '/etc/mysql/mariadb.conf.d/50-server.cnf', '/etc/mysql/my.cnf', '/etc/my.cnf' ],
+        '... the three the POD names, in order');
+}
+
 my $CONF = <<'CONF';
 [mysqld]
 datadir=/var/lib/mysql
