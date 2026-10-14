@@ -791,11 +791,17 @@ sub fixinstalldir
 # The candidate configuration files, in the order mysqlsetup reads them. On
 # Ubuntu 16.04 the bind-address line is in mariadb.conf.d/50-server.cnf, and on
 # SLE15 it is in /etc/my.cnf. The last one is the fallback.
-our @BIND_FILES = (
-    "/etc/mysql/mariadb.conf.d/50-server.cnf",
-    "/etc/mysql/my.cnf",
-    "/etc/my.cnf",
-);
+# BEGIN, because the main flow exits above this line: a plain assignment here
+# never runs, and the list is empty when comment_bind_address reads it.
+our @BIND_FILES;
+
+BEGIN {
+    @BIND_FILES = (
+        "/etc/mysql/mariadb.conf.d/50-server.cnf",
+        "/etc/mysql/my.cnf",
+        "/etc/my.cnf",
+    );
+}
 
 sub comment_bind_address
 {
