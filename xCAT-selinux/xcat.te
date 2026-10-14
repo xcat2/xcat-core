@@ -2,12 +2,36 @@ policy_module(xcat, 1.0.0)
 
 gen_require(`
     type httpd_t, httpd_sys_script_t, tftpdir_t, ntop_port_t;
+    type rsync_t, shadow_t;
+    type useradd_t, groupadd_t, public_content_t;
 ')
 
 # httpd serves /tftpboot through the AliasMatch in xcat.conf. The stock policy lets only tftpd read tftpdir_t.
+# mmap_read_file_perms, not read_file_perms: httpd maps the per-node xnba boot config it serves.
 allow httpd_t tftpdir_t:dir list_dir_perms;
-allow httpd_t tftpdir_t:file read_file_perms;
+allow httpd_t tftpdir_t:file mmap_read_file_perms;
 allow httpd_t tftpdir_t:lnk_file read_lnk_file_perms;
 
 # xcatws.cgi connects to xcatd on site.xcatdport, and the stock policy labels TCP 3001 ntop_port_t.
 allow httpd_sys_script_t ntop_port_t:tcp_socket name_connect;
+
+# xdcp and "updatenode -F" copy /etc/shadow to the nodes and into a rootimg.
+# rsync_export_all_ro holds the read, and rsync_full_access does not grant it:
+# shadow_t is not in non_auth_file_type. These two rules are narrower than
+# either boolean. They are reached only where rsync runs in rsync_t, which
+# needs a system-service caller; xcatd is unconfined_service_t and does not
+# transition there.
+allow rsync_t shadow_t:file { getattr open read };
+
+# rsync preserves the mode of /etc/shadow, so it writes a target it created at
+# mode 0000. As root that needs CAP_DAC_OVERRIDE. rsync_t already holds chown,
+# fowner, fsetid and dac_read_search; this is the write side of that set.
+allow rsync_t self:capability dac_override;
+
+# genimage installs packages into a rootimg with yum in a chroot, and the rpm
+# scriptlets run useradd and groupadd. Both read the rootimg /var/run symlink
+# while they look for their lock file. It carries public_content_t because the
+# rootimg is under /install, and the base grant for that read is a list of
+# explicit per-type rules that public_content_t is in none of.
+allow useradd_t public_content_t:lnk_file read;
+allow groupadd_t public_content_t:lnk_file read;
