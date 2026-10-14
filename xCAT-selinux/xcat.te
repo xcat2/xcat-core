@@ -1,10 +1,49 @@
-policy_module(xcat, 1.0.0)
+policy_module(xcat, 1.1.0)
 
 gen_require(`
     type httpd_t, httpd_sys_script_t, tftpdir_t, ntop_port_t;
     type rsync_t, shadow_t;
     type useradd_t, groupadd_t, public_content_t;
 ')
+
+########################################
+#
+# The xCAT domain
+#
+
+# xcatd and the client commands share one domain. Each command sends its
+# request to xcatd, and the two read the same tables and the same /install tree.
+type xcat_t;
+type xcatd_exec_t;
+init_daemon_domain(xcat_t, xcatd_exec_t)
+
+# /opt/xcat/bin/xcatclient is the entrypoint of every dispatching command.
+type xcat_client_exec_t;
+application_domain(xcat_t, xcat_client_exec_t)
+
+# The CI collects the accesses xcat_t needs while the host stays enforcing.
+# A later release removes this line and the domain becomes enforcing.
+permissive xcat_t;
+
+# xcatd and xcatclient are Perl scripts. The kernel enters the domain on the
+# script, so the domain runs the interpreter of the shebang line itself.
+corecmd_exec_bin(xcat_t)
+
+optional_policy(`
+    gen_require(`
+        type unconfined_t;
+    ')
+
+    # Targeted policy gives root unconfined_t, which is where the administrator
+    # and the CI run the commands. A confined user domain gets no transition: it
+    # would leave its own confinement for a permissive domain.
+    domtrans_pattern(unconfined_t, xcat_client_exec_t, xcat_t)
+')
+
+########################################
+#
+# Access for the services that read the xCAT trees
+#
 
 # httpd serves /tftpboot through the AliasMatch in xcat.conf. The stock policy lets only tftpd read tftpdir_t.
 # mmap_read_file_perms, not read_file_perms: httpd maps the per-node xnba boot config it serves.
@@ -18,9 +57,8 @@ allow httpd_sys_script_t ntop_port_t:tcp_socket name_connect;
 # xdcp and "updatenode -F" copy /etc/shadow to the nodes and into a rootimg.
 # rsync_export_all_ro holds the read, and rsync_full_access does not grant it:
 # shadow_t is not in non_auth_file_type. These two rules are narrower than
-# either boolean. They are reached only where rsync runs in rsync_t, which
-# needs a system-service caller; xcatd is unconfined_service_t and does not
-# transition there.
+# either boolean. They are reached only where rsync runs in rsync_t, and xcat_t
+# has no transition to it.
 allow rsync_t shadow_t:file { getattr open read };
 
 # rsync preserves the mode of /etc/shadow, so it writes a target it created at
