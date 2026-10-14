@@ -100,7 +100,7 @@ sub process_request
     }
 
     my ($sysos, $sysver) = split /,/, $tempstring;
-    if ( ($sysos =~ /rh/) && ($sysver ge 8) ) {
+    if ( ($sysos =~ /rh/) && ($sysver =~ /^(\d+)/x) && ($1 >= 8) ) {
         $callback->({ error => ["KITs are not supported on rhel8 or above"], errorcode => [1] });
         return 1;
     }
