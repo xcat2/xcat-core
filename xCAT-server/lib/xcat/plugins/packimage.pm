@@ -196,6 +196,13 @@ sub process_request {
     }
     $rootimg_dir = "$destdir/rootimg";
 
+    # packimage passes the image directory through the shell, which splits a path at a space and expands other
+    # characters, so a command such as rm -rf would act on another path.
+    if ($destdir =~ /[\s'"`\$;&|<>()\\*?\[\]{}]/x) {
+        $callback->({ error => ["Cannot pack the image in $destdir: its path has a space or a shell character"], errorcode => [1] });
+        return 1;
+    }
+
     my $is_openeuler = $osver =~ /^openeuler/;
     if ($is_openeuler) {
         unless (defined(xCAT::Utils::normalize_openeuler_version(substr($osver, 9)))
