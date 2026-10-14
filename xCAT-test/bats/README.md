@@ -37,6 +37,10 @@ if the default temporary directory is mounted with `noexec`.
 bats-core 1.4 or newer. OS detection also requires GNU awk for the legacy
 Red Hat release parser. Postscript cases require GNU diffutils.
 
+`networkmanager_postscript.bats` renders complete installation postscripts in
+private namespaces. It requires Bubblewrap, bats-core 1.4 or newer, user
+namespaces and the xCAT Perl dependencies, including DBI and DBD::SQLite.
+
 `go_xcat_os_release.bats` and `go_xcat_el_repo_check.bats` source the complete
 go-xcat script. OS detection uses mawk when available, otherwise the host AWK.
 The two legacy Red Hat version cases use GNU awk. CI installs both interpreters.

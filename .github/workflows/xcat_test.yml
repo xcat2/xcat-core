@@ -16,6 +16,16 @@ jobs:
         run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests ucf debconf-utils systemd libxml-simple-perl apache2 curl
       - name: Test Debian package lifecycle
         run: prove -v xCAT-test/native/xcatd_debian_lifecycle.t xCAT-test/native/xcatd_restart_callers.t xCAT-test/native/apache_package_lifecycle.t xCAT-test/native/package_upgrade_logging.t
+
+      - name: Install image test dependencies
+        if: ${{ !cancelled() }}
+        run: sudo apt-get install -y --no-install-recommends cpio gzip libdbd-sqlite3-perl libxml-simple-perl libnet-dns-perl
+      - name: Exercise image driver selection
+        if: ${{ !cancelled() }}
+        run: prove xCAT-test/native/genimage_network_drivers.t
+      - name: Exercise image package policy
+        if: ${{ !cancelled() }}
+        run: prove xCAT-test/native/el10_image_package_policy.t
       - name: Prepare xCAT syslog directory
         if: ${{ !cancelled() }}
         run: sudo install -d -o syslog -g adm -m 0750 /var/log/xcat
