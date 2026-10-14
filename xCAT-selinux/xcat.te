@@ -32,7 +32,14 @@ corecmd_exec_bin(xcat_t)
 optional_policy(`
     gen_require(`
         type unconfined_t;
+        role unconfined_r;
     ')
+
+    # The transition computes unconfined_u:unconfined_r:xcat_t. The role must
+    # hold the type, or the context is invalid and the kernel refuses the exec
+    # with EACCES. Permissive does not cover it: an invalid context is not a
+    # permission check, and the record is SELINUX_ERR, not AVC.
+    role unconfined_r types xcat_t;
 
     # Targeted policy gives root unconfined_t, which is where the administrator
     # and the CI run the commands. A confined user domain gets no transition: it
