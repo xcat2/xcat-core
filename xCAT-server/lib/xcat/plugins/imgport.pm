@@ -1821,7 +1821,8 @@ sub verify_manifest {
 
 =head3   check_import
 
-    Check what an import needs before it writes anything, so that a request that cannot succeed changes nothing.
+    Check what an import needs before it writes anything, so that a request that cannot succeed changes nothing:
+    the nodes, and the boot files, kits, extra files and raw image files in the bundle.
     Arguments:
         data     -- the manifest of the bundle
         imgdir   -- the extracted bundle
@@ -1839,7 +1840,22 @@ sub check_import {
         $callback->({ error => ["The nodes $nodes are not defined in xCAT DB."], errorcode => [1] });
         return 0;
     }
-    return 1;
+    my @missing = grep { !-e "$imgdir/$_" && !-l "$imgdir/$_" } map { basename($_) } map { split(',', $data->{$_} // '') } qw(rootimg kernel ramdisk rootimgtree);
+    push @missing, grep { $data->{kit}{$_}{kitdir} && !-d "$imgdir/$_" } sort keys %{ $data->{kit} || {} };
+
+    # imgexport keeps an extra directory under its path and an extra file under its name.
+    my $extra = $data->{extra};
+    foreach my $src (map { $_->{src} } ref($extra) eq 'HASH' ? ($extra) : @{ $extra || [] }) {
+        my $file = basename($src);
+        push @missing, "extra/$file" if !-d "$imgdir/extra/$src" && !-e "$imgdir/extra/$file";
+    }
+    if ($data->{osimage}{osarch} =~ /s390x/x && $data->{rawimagefiles}) {
+        my $files = $data->{rawimagefiles}{files};
+        push @missing, grep { !-e "$imgdir/$_" } map { basename($_) } ref($files) eq 'ARRAY' ? @$files : ($files // ());
+    }
+    return 1 if !@missing;
+    $callback->({ error => [ "The image bundle lacks " . join(', ', @missing) . '.' ], errorcode => [1] });
+    return 0;
 }
 
 #-------------------------------------------------------
