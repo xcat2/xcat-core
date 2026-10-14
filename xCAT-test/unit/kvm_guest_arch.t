@@ -35,7 +35,18 @@ sub video_caps {
 }
 my $caps_without_virtio = video_caps(qw(vga cirrus none bochs ramfb));
 my $caps_with_virtio    = video_caps(qw(vga virtio ramfb));
+my $caps_vga_only       = video_caps(qw(vga cirrus bochs));
+my $caps_no_usable      = video_caps(qw(cirrus bochs));
 my $caps_without_video  = { arch => 'aarch64' };
+my $caps_video_no       = { arch => 'aarch64', devices => { video => { supported => 'no' } } };
+
+# guest_video_model dies when it cannot choose a model. Returns [ model ] or [ 'died', $@ ].
+sub video {
+    my @args = @_;
+    my $model = eval { xCAT::KVMUtils::guest_video_model(@args) };
+    return [ 'died', $@ ] if $@;
+    return [$model];
+}
 
 # A riscv64 node on an x86_64 hypervisor. The guest architecture is not the host
 # architecture, so the domain runs under emulation and states its own machine type.
@@ -48,7 +59,7 @@ ok(!$riscv->{x86_features},
     'pae, acpi and apic are x86 features and are left out of a riscv64 guest');
 ok(!$riscv->{bios},      'the SeaBIOS serial option is left out of a riscv64 guest');
 ok(!$riscv->{usb_input}, 'the riscv64 virt machine has no USB controller, so it gets no USB tablet');
-is(xCAT::KVMUtils::guest_video_model($riscv, undef, undef), 'virtio',
+is_deeply(video($riscv, undef, undef), ['virtio'],
     'a riscv64 guest takes the virtio video model');
 
 # An aarch64 node on an x86_64 hypervisor. The domain runs under emulation and needs a named
@@ -61,8 +72,6 @@ is($arm->{firmware}, 'efi',     'an aarch64 virt guest boots UEFI');
 is_deeply(cpu($arm),
     { mode => 'custom', match => 'exact', model => { content => 'cortex-a57' } },
     'an emulated aarch64 guest states cortex-a57 as a custom CPU model');
-is(xCAT::KVMUtils::guest_video_model($arm, undef, undef), 'vga',
-    'an aarch64 guest falls back to vga when no hypervisor states its video models');
 ok(!$arm->{x86_features},
     'pae, acpi and apic are x86 features and are left out of an aarch64 guest');
 ok(!$arm->{bios},      'the SeaBIOS serial option is left out of an aarch64 guest');
@@ -70,16 +79,34 @@ ok(!$arm->{usb_input}, 'the aarch64 virt machine has no USB controller, so it ge
 ok(!$arm->{sound},     'an aarch64 guest gets no ich6 sound device');
 
 # The video models of a machine type come from the emulator build, not from the architecture.
-is(xCAT::KVMUtils::guest_video_model($arm, undef, $caps_without_virtio), 'vga',
-    'an aarch64 guest takes vga from a hypervisor that offers no virtio video model');
-is(xCAT::KVMUtils::guest_video_model($arm, undef, $caps_with_virtio), 'virtio',
-    'an aarch64 guest takes virtio from a hypervisor that offers it');
-is(xCAT::KVMUtils::guest_video_model($arm, undef, $caps_without_video), 'vga',
-    'an aarch64 guest falls back to vga when the hypervisor states no video models');
-is(xCAT::KVMUtils::guest_video_model($arm, 'ramfb', $caps_with_virtio), 'ramfb',
+is_deeply(video($arm, undef, $caps_without_virtio), ['vga'],
+    'an emulated aarch64 guest takes vga from a hypervisor that offers vga and no virtio');
+is_deeply(video($arm, undef, $caps_with_virtio), ['virtio'],
+    'an emulated aarch64 guest takes virtio from a hypervisor that offers it');
+is_deeply(video($arm, undef, $caps_no_usable), [undef],
+    'an emulated aarch64 guest has no video device when the hypervisor offers no wanted model');
+is_deeply(video($arm, undef, $caps_video_no), [undef],
+    'an emulated aarch64 guest has no video device when the hypervisor supports no video');
+is_deeply(video($arm, 'ramfb', $caps_with_virtio), ['ramfb'],
     'vm.vidmodel still names the video model of an aarch64 guest');
-is(xCAT::KVMUtils::preferred_video_model($caps_with_virtio, [ 'bochs', 'ramfb', 'virtio' ], 'vga'),
+is_deeply(video($arm, 'vga', undef, 'query failed'), ['vga'],
+    'vm.vidmodel names the video model when the capability query fails');
+is(xCAT::KVMUtils::preferred_video_model($caps_with_virtio, [ 'bochs', 'ramfb', 'virtio' ]),
     'ramfb', 'the first wanted model the hypervisor offers wins');
+
+# Without the capabilities there is no list to choose from, so no video model is guessed.
+foreach my $case ([ 'an emulated', $arm ], [ 'a native', profile('aarch64', 'aarch64') ]) {
+    my ($what, $p) = @$case;
+    my $got = video($p, undef, undef, 'libvirt error: unsupported call');
+    is($got->[0], 'died', "$what aarch64 guest gets no video model when the capability query fails");
+    like($got->[1] // '', qr/domain capabilities.*libvirt error: unsupported call.*vm\.vidmodel/s,
+        "$what aarch64 guest reports the query error and names vm.vidmodel");
+    $got = video($p, undef, $caps_without_video);
+    is($got->[0], 'died',
+        "$what aarch64 guest gets no video model when the capabilities state no video device");
+    like($got->[1] // '', qr/vm\.vidmodel/,
+        "$what aarch64 guest names vm.vidmodel when the capabilities state no video device");
+}
 
 # An aarch64 node on an aarch64 hypervisor. KVM on ARM runs the host CPU and no other model.
 my $arm_native = profile('aarch64', 'aarch64');
@@ -89,10 +116,16 @@ is_deeply(cpu($arm_native), { mode => 'host-passthrough' },
 is($arm_native->{arch},     'aarch64', 'a native aarch64 guest states arch aarch64');
 is($arm_native->{machine},  'virt',    'a native aarch64 guest states machine virt');
 is($arm_native->{firmware}, 'efi',     'a native aarch64 virt guest boots UEFI');
-is(xCAT::KVMUtils::guest_video_model($arm_native, undef, $caps_with_virtio), 'virtio',
+is_deeply(video($arm_native, undef, $caps_with_virtio), ['virtio'],
     'a native aarch64 guest takes virtio from a hypervisor that offers it');
-is(xCAT::KVMUtils::guest_video_model($arm_native, undef, $caps_without_virtio), 'vga',
-    'a native aarch64 guest takes vga from a hypervisor that offers no virtio video model');
+is_deeply(video($arm_native, undef, $caps_without_virtio), ['ramfb'],
+    'a native aarch64 guest takes ramfb, not vga, from a hypervisor that offers no virtio');
+is_deeply(video($arm_native, undef, $caps_vga_only), [undef],
+    'a native aarch64 guest has no video device when the hypervisor offers only VGA-type models');
+is_deeply(video($arm_native, undef, $caps_video_no), [undef],
+    'a native aarch64 guest has no video device when the hypervisor supports no video');
+is_deeply(video($arm_native, 'vga', $caps_with_virtio), ['vga'],
+    'vm.vidmodel names the video model of a native aarch64 guest');
 
 # An aarch64 node on a POWER hypervisor. The CPU model, the CPU topology and the emulator are
 # settings of a pseries guest, and this guest is not one.
@@ -144,8 +177,10 @@ ok($x86->{usb_input}, 'an x86_64 guest keeps the USB tablet');
 is(cpu($x86), undef, 'an x86_64 guest states no cpu element');
 is_deeply(cpu($x86, cpumode => 'host-passthrough'), { mode => 'host-passthrough' },
     'host-passthrough from vm.othersettings reaches a native x86_64 domain');
-is(xCAT::KVMUtils::guest_video_model($x86, undef, $caps_with_virtio), 'vga',
+is_deeply(video($x86, undef, $caps_with_virtio), ['vga'],
     'an x86_64 guest keeps vga whatever the hypervisor offers');
+is_deeply(video($x86, undef, undef, 'query failed'), ['vga'],
+    'an x86_64 guest keeps vga without the hypervisor capabilities');
 
 # The disks of a guest. The virt machine has no IDE controller, so an ide disk or an hd*
 # optical drive makes libvirt refuse a riscv64 or aarch64 domain.
