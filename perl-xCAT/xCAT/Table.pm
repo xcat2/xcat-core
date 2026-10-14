@@ -2044,6 +2044,7 @@ sub setAttribsWhere
         $self->trace_db(END_TYPE, "LINE ".__LINE__.": ".$sth->errstr);
         return (undef, $sth->errstr);
     }
+    $self->_refresh_cache();    #cache is invalid, refresh
 
     #notify the interested parties
     if ($notif == 1)
