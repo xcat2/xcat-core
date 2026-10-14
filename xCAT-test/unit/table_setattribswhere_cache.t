@@ -26,4 +26,14 @@ is($rc, 0, 'the conditional update succeeds');
 ($entry) = $tab->getNodeAttribs('cachenode', ['postscripts'], prefetchcache => 1);
 is($entry && $entry->{postscripts}, 'script after the update', 'the cached reader sees the conditional update at once');
 
+{
+    # A cached read sees a conditional update before the rollback rejects it.
+    $tab->setAttribsWhere(xCAT::Table::delimitcol('node') . " = 'cachenode'", { postscripts => 'script that the rollback rejects' });
+    ($entry) = $tab->getNodeAttribs('cachenode', ['postscripts'], prefetchcache => 1);
+    is($entry && $entry->{postscripts}, 'script that the rollback rejects', 'the cached reader sees the update before the rollback');
+    $tab->rollback;
+    ($entry) = $tab->getNodeAttribs('cachenode', ['postscripts'], prefetchcache => 1);
+    is($entry && $entry->{postscripts}, 'script after the update', 'the cached reader sees the committed value after the rollback');
+}
+
 done_testing();
