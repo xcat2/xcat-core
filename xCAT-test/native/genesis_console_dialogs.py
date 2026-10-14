@@ -88,8 +88,19 @@ class ConsoleTerminal(unittest.TestCase):
             self.assertIsNone(self.process.poll(), display)
         self.fail(f"Terminal did not show {description}:\n{display}")
 
+    def assert_screen_stays(self, predicate, description, duration):
+        deadline = time.monotonic() + duration
+        while time.monotonic() < deadline:
+            display = self.read_screen(0.1)
+            self.assertTrue(predicate(display), f"{description}:\n{display}")
+            self.assertIsNone(self.process.poll(), display)
+
     def key(self, sequence):
         os.write(self.master, sequence)
+
+    def visible_text(self, display):
+        return " ".join("".join(character if character.isascii() else " "
+                                for character in display).split())
 
 
 class ConsoleDialogs(ConsoleTerminal):
@@ -108,14 +119,63 @@ class ConsoleDialogs(ConsoleTerminal):
                     self.wait_text(first)
                     self.wait_text(help_line)
                     self.key(other_key)
-                    self.assertIn(title, self.read_screen(0.2))
                     self.key(b"\x1b[6~" * 20)
-                    self.wait_text(last)
+                    self.assertIn(title, self.wait_text(last))
                     self.key(close_key)
                     self.wait_text("Genesis status")
                     self.wait_text("F1 Help")
         self.process.send_signal(signal.SIGTERM)
         self.assertEqual(self.process.wait(timeout=5), 0)
+
+    def publish(self, name, text):
+        target = self.root / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary = target.with_suffix(".tmp")
+        temporary.write_text(text)
+        temporary.replace(target)
+
+    def test_status_refresh_and_diagnostic_snapshot(self):
+        self.publish("response_file", "XCAT_NODE_NAME=updated-node\n")
+        self.assertRegex(self.wait_text("updated-node"), r"Node +updated-node")
+        self.publish("status_dir/action.env", "SCHEMA=1\nSTATE=RUNNING\n"
+                     "DETAIL=Preparing test action\nUPDATED_SECONDS=100\n")
+        self.wait_text("Preparing test action")
+        self.assertIn("RUNNING", self.wait_text("Preparing test action"))
+        self.key(b"\x1bOQ")
+        self.wait_text("Node: updated-node")
+        self.publish("response_file", "XCAT_NODE_NAME=short-node\n")
+        self.publish("status_dir/action.env", "SCHEMA=1\nSTATE=FAILED\n"
+                     "DETAIL=Test action failed\nRECOVERY=Check test input\nUPDATED_SECONDS=101\n")
+        self.key(b"\x1b[6~" * 20)
+        self.wait_text("Provider names:")
+        self.key(b"\x1b[5~" * 20)
+        display = self.wait_text("Node: updated-node")
+        self.assertNotIn("short-node", display)
+        self.assert_screen_stays(lambda display: "Node: updated-node" in display
+                                 and "short-node" not in display,
+                                 "Diagnostics changed before reopening", 2)
+        self.key(b"\x1bOQ")
+        display = self.wait_text("Check test input")
+        self.assertRegex(display, r"Node +short-node +")
+        self.assertIn("FAILED", display)
+        self.assertIn("Test action failed", display)
+        self.assertNotIn("updated-node", display)
+        self.key(b"\x1bOQ")
+        self.wait_text("Node: short-node")
+
+    def test_rendered_help_explains_read_only_pages_logs_and_shell(self):
+        self.key(b"\x1bOP")
+        display = self.wait_text("Screen fields")
+        text = self.visible_text(display)
+        self.assertIn("Status pages are read-only.", text)
+        self.assertIn("confirmed root maintenance shell", text)
+        self.key(b"\x1b[6~" * 20)
+        display = self.wait_text("Up and Down scroll this page.")
+        text = self.visible_text(display)
+        self.assertIn("F3 opens recent Genesis logs", text)
+        self.assertIn("press End to resume.", text)
+        self.assertIn("F12 asks before opening", text)
+        self.assertIn("Exit returns here.", text)
 
 
 class ConsoleJournal(ConsoleTerminal):
@@ -189,11 +249,8 @@ class ConsoleJournal(ConsoleTerminal):
                                 f"selected log entry {text!r}")
 
     def assert_selection_stays(self, text):
-        deadline = time.monotonic() + 3
-        while time.monotonic() < deadline:
-            self.read_screen(0.1)
-            self.assertEqual(self.selected_text(), text)
-            self.assertIsNone(self.process.poll())
+        self.assert_screen_stays(lambda display: self.selected_text() == text,
+                                 "Selected journal entry changed", 3)
 
     def test_paused_entry_survives_history_rollover(self):
         self.write_journal([(f"RECORD-{number:04d}", "other.service", "xcat-genesis-register")
