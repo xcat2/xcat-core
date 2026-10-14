@@ -142,6 +142,7 @@ for my $archive_name (qw(rootimg.cpio.gz rootimg.tar.xz rootimg.sfs)) {
     is(read_binary($archive), $published, 'the published image stays while another host publishes');
     is(read_binary("$archive.sha256"), sha256_hex($published) . "  rootimg.cpio.gz\n", 'the published checksum stays while another host publishes');
     ok(-d "$dest/.packimage-publish", 'the publication lock of the other host is not taken over');
+    is(definition($dest), 'rhels9.5', 'the image definition stays while another host publishes');
     is_deeply([ glob("$dest/.packimage-$host+*") ], [], 'no temporary directory is left when the import cannot publish');
 }
 
@@ -158,6 +159,20 @@ for my $failed (qw(rootimg.cpio.gz.sha256 rootimg.cpio.gz)) {
     is(read_binary("$archive.metainfo"), "metainfo of the published image\n", "$failed: the published metainfo stays");
     is(read_binary("$dest/kernel"), "published kernel\n", "$failed: the published kernel stays with the published image");
     is(read_binary("$dest/initrd-stateless.gz"), "published ramdisk\n", "$failed: the published ramdisk stays with the published image");
+    is(definition($dest), 'rhels9.5', "$failed: the image definition stays with the published image");
+}
+
+{
+    # A file is at the parent of the destination directory, so the extra file fails to copy after the boot files.
+    my ($placed, $errors, $dest, $archive) = import_image('rootimg.cpio.gz', sub {
+        make_path("$fixture/bundle-$sequence/extra");
+        write_text("$fixture/bundle-$sequence/extra/late.conf", "extra file from the bundle\n");
+        write_text("$fixture/a-file", "a file where a directory goes\n");
+    }, extra => { src => '/etc/late.conf', dest => "$fixture/a-file/sub" });
+    ok(!$placed, 'an import fails when an extra file cannot be copied');
+    like($errors, qr{\Q$fixture/a-file/sub\E}, 'the destination of the failed extra file is reported');
+    is(read_binary($archive), $imported, 'the imported image is published before the extra files');
+    is(definition($dest), 'rhels9.6', 'the image definition matches the published image when a later step fails');
 }
 
 {
