@@ -917,40 +917,54 @@ sub build_xmldesc {
     $xtree{devices}->{interface} = build_nicstruct($node);
 
     my $vidmodel = $confdata->{vm}->{$node}->[0]->{vidmodel};
-    my $caps;
-    if (!defined($vidmodel) and $profile->{video_prefer} and $hypconn) {
-        eval {
-            my $capsxml = $hypconn->get_domain_capabilities(undef, $profile->{arch},
-                $profile->{machine}, $profile->{domtype});
-            $caps = XMLin($capsxml, ForceArray => [ 'enum', 'value' ], KeyAttr => [])
-              if defined $capsxml;
-        };
+    my ($caps, $caps_error);
+    if (!defined($vidmodel) and $profile->{video_prefer}) {
+        if ($hypconn) {
+            eval {
+                my $capsxml = $hypconn->get_domain_capabilities(undef, $profile->{arch},
+                    $profile->{machine}, $profile->{domtype});
+                $caps = XMLin($capsxml, ForceArray => [ 'enum', 'value' ], KeyAttr => [])
+                  if defined $capsxml;
+            };
+            $caps_error = "$@" if $@;
+        } else {
+            $caps_error = 'no connection to the hypervisor';
+        }
     }
-    my $model = xCAT::KVMUtils::guest_video_model($profile, $vidmodel, $caps);
+    my $model = eval { xCAT::KVMUtils::guest_video_model($profile, $vidmodel, $caps, $caps_error) };
+    if ($@) {
+        chomp(my $err = $@);
+        return (-1, $err);
+    }
     my $vram  = '8192';
-    if ($model eq 'qxl') {
+    if (defined $model and $model eq 'qxl') {
         $xtree{devices}->{channel}->{type}           = 'spicevmc';
         $xtree{devices}->{channel}->{target}->{type} = 'virtio';
         $xtree{devices}->{channel}->{target}->{name} = 'com.redhat.spice.0';
         $vram = 65536; } #surprise, spice blows up with less vram than this after version 0.6 and up
     #use content to force xml simple to not make model the 'name' of video
-    $xtree{devices}->{video} = [ { 'content' => '', 'model' => { type => $model, vram => $vram } } ];
+    $xtree{devices}->{video} = [ { 'content' => '', 'model' => { type => $model, vram => $vram } } ]
+      if defined $model;
     # The riscv64 virt machine has no USB controller, and libvirt refuses a USB device there.
     if ($profile->{usb_input}) {
         $xtree{devices}->{input}->{type} = 'tablet';
         $xtree{devices}->{input}->{bus}  = 'usb';
     }
-    if (defined($confdata->{vm}->{$node}->[0]->{vidproto})) {
-        $xtree{devices}->{graphics}->{type} = $confdata->{vm}->{$node}->[0]->{vidproto};
-    } else {
-        $xtree{devices}->{graphics}->{type} = 'vnc';
-    }
-    $xtree{devices}->{graphics}->{autoport} = 'yes';
-    $xtree{devices}->{graphics}->{listen}   = '0.0.0.0';
-    if ($confdata->{vm}->{$node}->[0]->{vidpassword}) {
-        $xtree{devices}->{graphics}->{password} = $confdata->{vm}->{$node}->[0]->{vidpassword};
-    } else {
-        $xtree{devices}->{graphics}->{password} = genpassword(8);
+    # libvirt adds a default video device to a domain with <graphics>, so a guest with no
+    # video device also gets no <graphics> and uses its serial console.
+    if (defined $model) {
+        if (defined($confdata->{vm}->{$node}->[0]->{vidproto})) {
+            $xtree{devices}->{graphics}->{type} = $confdata->{vm}->{$node}->[0]->{vidproto};
+        } else {
+            $xtree{devices}->{graphics}->{type} = 'vnc';
+        }
+        $xtree{devices}->{graphics}->{autoport} = 'yes';
+        $xtree{devices}->{graphics}->{listen}   = '0.0.0.0';
+        if ($confdata->{vm}->{$node}->[0]->{vidpassword}) {
+            $xtree{devices}->{graphics}->{password} = $confdata->{vm}->{$node}->[0]->{vidpassword};
+        } else {
+            $xtree{devices}->{graphics}->{password} = genpassword(8);
+        }
     }
     my $emulator = xCAT::KVMUtils::guest_emulator($profile, $hypcpumodel);
     $xtree{devices}->{emulator}->{content} = $emulator if defined $emulator;

@@ -47,8 +47,11 @@ sub default_storagemodel {
         host-passthrough and host-model as unsupported there, and the emulator default turns
         on SVE, which stops the guest in its firmware.
 
-        video is the model to use when the hypervisor states none. video_prefer is read
-        first, in order, against what the hypervisor offers.
+        video is the fixed video model of the guest. A profile with video_prefer instead
+        takes the first of those models that the hypervisor offers. A native aarch64 guest
+        wants no VGA-type model: vga, cirrus, bochs and qxl expose their framebuffer through a
+        PCI BAR, and under KVM on ARM the guest and the host map that memory with different
+        cache attributes, so the display is corrupt.
 
         POWER keeps reading the hypervisor cpumodel. ppc64le hypervisors report "ppc64le"
         (not "ppc64"); both are pseries guests whose libvirt <os> arch is "ppc64". pseries
@@ -109,7 +112,8 @@ sub guest_arch_profile {
         $profile{x86_features} = 0;
         $profile{bios}         = 0;
         $profile{sound}        = 0;
-        $profile{video_prefer} = ['virtio'];
+        $profile{video}        = undef;
+        $profile{video_prefer} = $native ? [ 'virtio', 'ramfb' ] : [ 'virtio', 'vga', 'ramfb' ];
         $profile{usb_input}    = 0;
         $profile{disk_model}   = 'scsi';
         $profile{cd_prefix}    = 'sd';
@@ -203,35 +207,49 @@ sub guest_emulator {
         architecture: the aarch64 emulator of a host can carry no virtio-gpu device while its
         riscv64 emulator does. libvirt refuses a domain that names a model its emulator has
         no device for, so the model is read from the capabilities of the hypervisor.
+
+        Capabilities that do not state the video models are unavailable, not empty. No model
+        is guessed then. <video supported="no"> and a list that holds no wanted model both
+        leave the guest with no video device.
     Arguments:
         $caps - the domain capabilities of the hypervisor as XML::Simple XMLin returns them
-                with ForceArray => [ 'enum', 'value' ] and KeyAttr => [], or undef
+                with ForceArray => [ 'enum', 'value' ] and KeyAttr => [], or undef when the
+                query failed
         $wanted - the models to look for, in order
-        $fallback - the model to use when none of them is offered
+        $caps_error - the error of the capability query, or undef
     Returns:
-        the video model to write into the domain
+        the video model, or undef for no video device.
+        Dies when the capabilities are unavailable.
 
 =cut
 
 #-------------------------------------------------------
 sub preferred_video_model {
-    my ($caps, $wanted, $fallback) = @_;
-    return $fallback unless ref($caps) eq 'HASH' and ref($wanted) eq 'ARRAY';
-    my $devices = $caps->{devices};
-    return $fallback unless ref($devices) eq 'HASH';
-    my $video = $devices->{video};
-    return $fallback unless ref($video) eq 'HASH' and ref($video->{enum}) eq 'ARRAY';
-    my %offered;
-    foreach my $enum (@{ $video->{enum} }) {
-        next unless ref($enum) eq 'HASH';
-        next unless defined $enum->{name} and $enum->{name} eq 'modelType';
-        next unless ref($enum->{value}) eq 'ARRAY';
-        %offered = map { $_ => 1 } @{ $enum->{value} };
+    my ($caps, $wanted, $caps_error) = @_;
+    my $video;
+    $video = $caps->{devices}->{video}
+      if ref($caps) eq 'HASH' and ref($caps->{devices}) eq 'HASH';
+    if (ref($video) eq 'HASH' and defined $video->{supported} and $video->{supported} eq 'no') {
+        return undef;
+    }
+    my $offered;
+    if (ref($video) eq 'HASH' and ref($video->{enum}) eq 'ARRAY') {
+        foreach my $enum (@{ $video->{enum} }) {
+            next unless ref($enum) eq 'HASH';
+            next unless defined $enum->{name} and $enum->{name} eq 'modelType';
+            $offered = { map { $_ => 1 } @{ $enum->{value} || [] } };
+        }
+    }
+    unless ($offered) {
+        my $why = defined $caps_error ? $caps_error : 'no video model list';
+        $why =~ s/\s+$//;
+        die "Cannot choose a video model: the domain capabilities of the hypervisor are "
+          . "unavailable ($why). Set vm.vidmodel for the node.\n";
     }
     foreach my $model (@$wanted) {
-        return $model if $offered{$model};
+        return $model if $offered->{$model};
     }
-    return $fallback;
+    return undef;
 }
 
 #-------------------------------------------------------
@@ -246,17 +264,19 @@ sub preferred_video_model {
         $profile - the hash reference from guest_arch_profile
         $vidmodel - vm.vidmodel of the node, or undef
         $caps - the parsed domain capabilities, as for preferred_video_model, or undef
+        $caps_error - the error of the capability query, or undef
     Returns:
-        the video model
+        the video model, or undef for no video device.
+        Dies as preferred_video_model does.
 
 =cut
 
 #-------------------------------------------------------
 sub guest_video_model {
-    my ($profile, $vidmodel, $caps) = @_;
+    my ($profile, $vidmodel, $caps, $caps_error) = @_;
     return $vidmodel if defined $vidmodel;
     return $profile->{video} unless $profile->{video_prefer};
-    return preferred_video_model($caps, $profile->{video_prefer}, $profile->{video});
+    return preferred_video_model($caps, $profile->{video_prefer}, $caps_error);
 }
 
 #-------------------------------------------------------
