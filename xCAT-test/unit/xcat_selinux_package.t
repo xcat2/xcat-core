@@ -110,6 +110,22 @@ is($fc{'/install/netboot/[^/]+/[^/]+/[^/]+/rootimg-statelite(/.*)?'}, '<<none>>'
     '... and a statelite rootimg too');
 ok(!(grep { m{^/tftpboot} } keys %fc), '/tftpboot keeps the stock tftpdir_t');
 
+# The type of an fc entry, dropping the file-type flag that executables carry.
+sub fc_type {
+    my ($path) = @_;
+    my $spec = $fc{$path} // return undef;
+    return $spec =~ /gen_context\(system_u:object_r:(\w+),s0\)/ ? $1 : $spec;
+}
+
+# restorecon labels the file that execve resolves to. /usr/sbin/xcatd is a
+# symlink, and a symlink is never an entrypoint.
+is(fc_type('/opt/xcat/sbin/xcatd'), 'xcatd_exec_t', 'xcatd is the entrypoint of the daemon');
+ok(!exists $fc{'/usr/sbin/xcatd'}, '... and the symlink to it carries no context');
+foreach my $client (qw(xcatclient xcatclientnnr)) {
+    is(fc_type("/opt/xcat/bin/$client"), 'xcat_client_exec_t',
+        "$client is the entrypoint of the client commands");
+}
+
 # The module source is the artifact: checkmodule compiles this text as written.
 # Each rule here is justified by a measured denial; see
 # docs/source/advanced/selinux/index.rst and the policy campaign REASONING.md.
@@ -170,6 +186,36 @@ ok(scalar(@rules) >= 4, 'xcat.te carries the allow rules this test reads');
 is_deeply([ grep { /^kernel_t / } @rules ], [],
     'no rule grants kernel_t anything');
 
+
+########################################
+#
+# The xcat_t domain
+#
+
+like($te, qr/^type xcat_t;$/m, 'xcat.te declares one domain for xcatd and the clients');
+like($te, qr/^permissive xcat_t;$/m,
+    '... which is permissive while the CI collects the accesses it needs');
+unlike($te, qr/^permissive (?!xcat_t\b)/m, '... and no other domain is made permissive');
+
+like($te, qr/^init_daemon_domain\(xcat_t, xcatd_exec_t\)$/m,
+    'systemd starts xcatd in xcat_t');
+like($te, qr/^application_domain\(xcat_t, xcat_client_exec_t\)$/m,
+    'a client command entered through xcatclient runs in xcat_t');
+
+# xcatd and xcatclient are Perl scripts. The kernel labels the new process from
+# the script, then the domain runs the interpreter named in the shebang.
+like($te, qr/^corecmd_exec_bin\(xcat_t\)$/m, 'xcat_t runs the interpreter of its own script');
+
+# Collects the source domains that xcat.te gives an automatic transition.
+my @domtrans = $te =~ /^\s*domtrans_pattern\((\w+), xcat_client_exec_t, xcat_t\)$/mg;
+is_deeply(\@domtrans, ['unconfined_t'],
+    'only the unconfined domain transitions into xcat_t');
+
+# A confined user domain that entered a permissive xcat_t would leave its own
+# confinement, so the module gives it no transition.
+foreach my $domain (qw(user_t staff_t sysadm_t guest_t xguest_t)) {
+    unlike($te, qr/\b\Q$domain\E\b/, "$domain gets no rule in xcat.te");
+}
 
 # A management node or a service node with the targeted policy installs the module.
 foreach my $pkg (qw(xCAT-server xCATsn)) {
