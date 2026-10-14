@@ -110,6 +110,67 @@ is($fc{'/install/netboot/[^/]+/[^/]+/[^/]+/rootimg-statelite(/.*)?'}, '<<none>>'
     '... and a statelite rootimg too');
 ok(!(grep { m{^/tftpboot} } keys %fc), '/tftpboot keeps the stock tftpdir_t');
 
+# The module source is the artifact: checkmodule compiles this text as written.
+# Each rule here is justified by a measured denial; see
+# docs/source/advanced/selinux/index.rst and the policy campaign REASONING.md.
+my @te = grep { !/^\s*(?:#|$)/ } lines_of("$root/xCAT-selinux/xcat.te");
+my $te = join("\n", @te);
+
+like($te, qr/^policy_module\(xcat,/m, 'xcat.te declares the xcat policy module');
+
+# Collects the permission set of each allow rule, keyed "source target:class".
+my %allow;
+foreach my $rule (split /;/, $te) {
+    next unless $rule =~ /\ballow\s+(\S+)\s+(\S+?):(\S+)\s+(.+)/s;
+    my ($source, $target, $class, $perms) = ($1, $2, $3, $4);
+    $perms =~ s/[{}]/ /g;
+    $allow{"$source $target:$class"}{$_} = 1 foreach split ' ', $perms;
+}
+
+# Taken before the lookups below, which autovivify the keys they miss.
+my @rules = sort keys %allow;
+
+# httpd mmaps the per-node xnba boot config it serves out of /tftpboot.
+# read_file_perms does not hold map, so httpd is denied on the map.
+ok($allow{'httpd_t tftpdir_t:file'}{mmap_read_file_perms}
+        || $allow{'httpd_t tftpdir_t:file'}{map},
+    'httpd may map a file it serves from /tftpboot');
+ok($allow{'httpd_t tftpdir_t:dir'} && $allow{'httpd_t tftpdir_t:lnk_file'},
+    '... and still reads the directory and the symlinks');
+
+# xcatws.cgi connects to xcatd, whose port the stock policy labels ntop_port_t.
+ok($allow{'httpd_sys_script_t ntop_port_t:tcp_socket'}{name_connect},
+    'the REST API connects to the xcatd port');
+
+# rsync copies /etc/shadow to the nodes and into a rootimg. The stock policy
+# holds that read behind rsync_export_all_ro, and rsync_full_access does not
+# grant it, because shadow_t is not in non_auth_file_type.
+foreach my $perm (qw(getattr open read)) {
+    ok($allow{'rsync_t shadow_t:file'}{$perm},
+        "rsync may $perm /etc/shadow when it runs confined");
+}
+
+# rsync preserves the mode of /etc/shadow, so it writes a target it created at
+# mode 0000. As root that needs CAP_DAC_OVERRIDE, which no boolean grants.
+ok($allow{'rsync_t self:capability'}{dac_override},
+    'rsync may write a target it created at mode 0000');
+
+# useradd and groupadd run from the %pre of a package genimage installs into a
+# rootimg, and look for their lock file through the rootimg /var/run symlink.
+# It carries public_content_t because the rootimg is under /install, and no
+# base rule reaches that type for lnk_file.
+foreach my $domain (qw(useradd_t groupadd_t)) {
+    ok($allow{"$domain public_content_t:lnk_file"}{read},
+        "$domain reads the rootimg /var/run symlink");
+}
+
+# Granting execute on an unlabelled file buys a boot by standing in for a
+# labelling step that has not run. See the EL10 note in the SELinux document.
+ok(scalar(@rules) >= 4, 'xcat.te carries the allow rules this test reads');
+is_deeply([ grep { /^kernel_t / } @rules ], [],
+    'no rule grants kernel_t anything');
+
+
 # A management node or a service node with the targeted policy installs the module.
 foreach my $pkg (qw(xCAT-server xCATsn)) {
     my @lines = lines_of("$root/$pkg/$pkg.spec");
