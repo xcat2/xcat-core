@@ -19,7 +19,8 @@ NODE=cn01
 OS=alma9.8
 
 # Write one osimage row. nodeset osimage= copies osvers, osarch and profile from this row into
-# the node, whatever the image name says.
+# the node, whatever the image name says. The fifth argument is osimage.provmethod, which
+# nodeset boot reads, and it defaults to install.
 define_image()
 {
     local dir="$STUB_STORE/osimage/$1"
@@ -27,6 +28,7 @@ define_image()
     printf '%s' "$2" >"$dir/osvers"
     printf '%s' "$3" >"$dir/osarch"
     printf '%s' "$4" >"$dir/profile"
+    printf '%s' "${5:-install}" >"$dir/provmethod"
 }
 
 node_attr()
@@ -95,6 +97,7 @@ store_init() {
         printf '%s' "$STUB_OS" >"$STUB_STORE/osimage/$STUB_OS-x86_64-install-compute/osvers"
         printf '%s' x86_64 >"$STUB_STORE/osimage/$STUB_OS-x86_64-install-compute/osarch"
         printf '%s' compute >"$STUB_STORE/osimage/$STUB_OS-x86_64-install-compute/profile"
+        printf '%s' install >"$STUB_STORE/osimage/$STUB_OS-x86_64-install-compute/provmethod"
     fi
 }
 get() { cat "$STUB_STORE/node/$1" 2>/dev/null; }
@@ -138,6 +141,8 @@ STUB
     # arch and profile from the osimage row, sets currchain to boot, and writes the UEFI script.
     # Any other destiny sets currstate, and the actions after its first comma become currchain.
     # shell, standby and runcmd also write a Genesis boot configuration for the current arch.
+    # boot clears nodetype.provmethod unless it resolves, through the osimage row, to install or
+    # sysclone (destiny.pm, "blank out the nodetype.provmethod").
     cat >"$BIN/nodeset" <<'STUB'
 #!/bin/bash
 echo "nodeset $*" >>"$STUB_CALLS"
@@ -175,6 +180,17 @@ case "$2" in
         [ "$STUB_NODESET_RESTORE_RC" = 0 ] || exit "$STUB_NODESET_RESTORE_RC"
         put currstate "${2%%,*}"
         case "$2" in *,*) put currchain "${2#*,}" ;; esac
+        if [ "${2%%,*}" = boot ] && [ -n "$(get provmethod)" ]; then
+            pm=$(get provmethod)
+            case "$pm" in
+                install | netboot | statelite) ;;
+                *) [ -s "$STUB_STORE/osimage/$pm/provmethod" ] && pm=$(cat "$STUB_STORE/osimage/$pm/provmethod") ;;
+            esac
+            case "$pm" in
+                install | sysclone) ;;
+                *) put provmethod "" ;;
+            esac
+        fi
         # shell, standby and runcmd boot Genesis, and nodeset selects its kernel and initrd from
         # the arch of the node at the time of the call.
         case "${2%%,*}" in
@@ -536,4 +552,53 @@ STUB
     grep -qx 'initrd genesis.fs.x86_64' "$STUB_BOOTCFG"
     [ "$(node_attr arch)" = x86_64 ]
     [ "$(node_attr currchain)" = standby ]
+}
+
+# nodeset boot clears nodetype.provmethod when the image of the node is a netboot or statelite
+# image. The helper restored the image attributes after the replay of an osimage state only, so
+# a node in boot lost its image assignment and the case still reported a pass.
+@test "a node in boot keeps its netboot image" {
+    define_image "$OS-x86_64-netboot-compute" "$OS" x86_64 compute netboot
+    STUB_BEFORE=boot
+    STUB_CURRCHAIN=standby
+    STUB_PROVMETHOD="$OS-x86_64-netboot-compute"
+    run "$SCRIPT" "$NODE"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *IPXE_SHIM_OK* ]]
+    grep -q "^nodeset $NODE boot$" "$CALLS"
+    [ "$(node_attr provmethod)" = "$OS-x86_64-netboot-compute" ]
+    [ "$(node_attr os)" = "$OS" ]
+    [ "$(node_attr arch)" = x86_64 ]
+    [ "$(node_attr profile)" = compute ]
+    [ "$(node_attr currstate)" = boot ]
+    [ "$(node_attr currchain)" = standby ]
+}
+
+@test "a node in boot keeps its statelite image" {
+    define_image "$OS-x86_64-statelite-compute" "$OS" x86_64 compute statelite
+    STUB_BEFORE=boot
+    STUB_CURRCHAIN=standby
+    STUB_PROVMETHOD="$OS-x86_64-statelite-compute"
+    run "$SCRIPT" "$NODE"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *IPXE_SHIM_OK* ]]
+    grep -q "^nodeset $NODE boot$" "$CALLS"
+    [ "$(node_attr provmethod)" = "$OS-x86_64-statelite-compute" ]
+    [ "$(node_attr os)" = "$OS" ]
+    [ "$(node_attr arch)" = x86_64 ]
+    [ "$(node_attr profile)" = compute ]
+    [ "$(node_attr currstate)" = boot ]
+    [ "$(node_attr currchain)" = standby ]
+}
+
+# A control for the stub: nodeset boot keeps the provmethod of an install image, so the two
+# tests above fail on the clearing, not on a stub that clears every provmethod.
+@test "the nodeset stub keeps the provmethod of an install image on boot" {
+    nodeset "$NODE" osimage="$OS-x86_64-install-compute"
+    nodeset "$NODE" boot
+    [ "$(node_attr provmethod)" = "$OS-x86_64-install-compute" ]
+    define_image "$OS-x86_64-netboot-compute" "$OS" x86_64 compute netboot
+    nodeset "$NODE" osimage="$OS-x86_64-netboot-compute"
+    nodeset "$NODE" boot
+    [ "$(node_attr provmethod)" = "" ]
 }
