@@ -211,6 +211,14 @@ my @domtrans = $te =~ /^\s*domtrans_pattern\((\w+), xcat_client_exec_t, xcat_t\)
 is_deeply(\@domtrans, ['unconfined_t'],
     'only the unconfined domain transitions into xcat_t');
 
+# The transition computes unconfined_u:unconfined_r:xcat_t. Without this
+# statement that context is invalid, and the kernel refuses the exec with
+# EACCES whether or not xcat_t is permissive. A permissive domain does not
+# help: an invalid context is not a permission check, and the record is
+# SELINUX_ERR, which no AVC query finds.
+like($te, qr/^\s*role unconfined_r types xcat_t;$/m,
+    'unconfined_r is authorized for xcat_t');
+
 # A confined user domain that entered a permissive xcat_t would leave its own
 # confinement, so the module gives it no transition.
 foreach my $domain (qw(user_t staff_t sysadm_t guest_t xguest_t)) {

@@ -20,6 +20,8 @@ label:mn_only,selinux
 cmd:getenforce
 check:rc==0
 check:output=~^Enforcing$
+cmd:sh -c 'date "+%x %T" > /tmp/selinux_client_domain.start'
+check:rc==0
 cmd:ls -Z /opt/xcat/bin/xcatclient
 check:rc==0
 check:output=~:xcat_client_exec_t:
@@ -36,7 +38,15 @@ check:rc==0
 check:output=~xcat_t
 cmd:sesearch -T -s unconfined_t -t bin_t -c process
 check:output!~xcat_t
+cmd:sh -c 'seinfo -runconfined_r -x | grep -w xcat_t'
+check:rc==0
 cmd:lsxcatd -v
+check:rc==0
+check:output=~^Version
+cmd:sh -c 'ausearch --input-logs -m SELINUX_ERR -ts "$(cat /tmp/selinux_client_domain.start)" 2>&1 | grep -F invalid_context | wc -l'
+check:rc==0
+check:output=~^0$
+cmd:rm -f /tmp/selinux_client_domain.start
 check:rc==0
 end
 
