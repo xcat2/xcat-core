@@ -764,6 +764,68 @@ sub fixinstalldir
 =cut
 
 #-----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+
+=head3 comment_bind_address
+
+    Descriptions:
+        Comments out the bind-address line of the MySQL configuration, so the
+        daemon listens on every interface.
+
+        The rewrite goes through the existing file. A temporary file somewhere
+        else takes the SELinux type of that place, and a rename over the
+        configuration keeps it, so mysqld is then denied read of its own
+        configuration. Truncating the file in place keeps its inode and its
+        label.
+    Arguments:
+        None. The candidates are @BIND_FILES.
+    Returns:
+        (0, the file it rewrote) or (1, a message).
+    Example:
+        my ($rc, $file) = comment_bind_address();
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+# The candidate configuration files, in the order mysqlsetup reads them. On
+# Ubuntu 16.04 the bind-address line is in mariadb.conf.d/50-server.cnf, and on
+# SLE15 it is in /etc/my.cnf. The last one is the fallback.
+our @BIND_FILES = (
+    "/etc/mysql/mariadb.conf.d/50-server.cnf",
+    "/etc/mysql/my.cnf",
+    "/etc/my.cnf",
+);
+
+sub comment_bind_address
+{
+    my $bind_file = $BIND_FILES[-1];
+    foreach my $candidate (@BIND_FILES)
+    {
+        if (-e $candidate)
+        {
+            $bind_file = $candidate;
+            last;
+        }
+    }
+
+    open(my $in, '<', $bind_file) or return (1, "cannot read $bind_file: $!");
+    my @lines = <$in>;
+    close($in);
+
+    foreach my $line (@lines)
+    {
+        $line =~ s/^bind/#bind/;
+    }
+
+    open(my $out, '>', $bind_file) or return (1, "cannot write $bind_file: $!");
+    print {$out} @lines or return (1, "cannot write $bind_file: $!");
+    close($out) or return (1, "cannot write $bind_file: $!");
+    chmod(0644, $bind_file);
+
+    return (0, $bind_file);
+}
+
 sub initmysqldb
 {
     my $cmd;
@@ -868,24 +930,10 @@ sub initmysqldb
         }
     }    # end AIX only
 
-    #bind-adress line in my.cnf should comment out
-    #on Ubuntu16.04, the bind-address line is in the mariadb.conf.d/50-server.cnf
-    #on SLE15, the bind-address line is in the /etc/my.cnf
-    my $bind_file;
-    if (-e "/etc/mysql/mariadb.conf.d/50-server.cnf")
+    my ($bind_rc, $bind_file) = comment_bind_address();
+    if ($bind_rc != 0)
     {
-        $bind_file = "/etc/mysql/mariadb.conf.d/50-server.cnf";
-    } elsif (-e "/etc/mysql/my.cnf") 
-    {
-        $bind_file = "/etc/mysql/my.cnf";
-    } else {
-        $bind_file = "/etc/my.cnf";
-    }
-    $cmd = "sed 's/^bind/#&/' $bind_file > /tmp/my.cnf; mv -f /tmp/my.cnf $bind_file;chmod 644 $bind_file";
-    xCAT::Utils->runcmd($cmd, 0);
-    if ($::RUNCMD_RC != 0)
-    {
-        xCAT::MsgUtils->message("E", " comment the bind-address line in $bind_file failed: $cmd.");
+        xCAT::MsgUtils->message("E", " comment the bind-address line failed: $bind_file.");
         exit(1);
     }
 
