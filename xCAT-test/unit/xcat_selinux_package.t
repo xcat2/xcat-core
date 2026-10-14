@@ -91,11 +91,22 @@ like(join("\n", @{ $spec->{post} || [] }),
     '%post installs the module');
 like(join("\n", @{ $spec->{postun} || [] }), qr/^%selinux_modules_uninstall -s targeted xcat$/m,
     '%postun removes the module');
+# On an erase the module leaves the policy, so each file labelled with one of
+# its types becomes unlabeled_t. %preun takes the snapshot that %postun needs
+# to relabel them, because %pre does not run on an erase.
+like(join("\n", @{ $spec->{preun} || [] }), qr/^%selinux_relabel_pre -s targeted$/m,
+    '%preun saves the file contexts before the module leaves the policy');
+my $postun = join("\n", @{ $spec->{postun} || [] });
+like($postun, qr/^%selinux_relabel_post -s targeted$/m,
+    '%postun relabels the files the removed module had labelled');
+like($postun, qr/\[ \$1 -eq 0 \]/,
+    '... on an erase only, so an upgrade keeps the labels');
+
 my $posttrans = join("\n", @{ $spec->{posttrans} || [] });
 like($posttrans, qr/^%selinux_relabel_post -s targeted$/m,
     '%posttrans relabels the files whose context changed');
 like($posttrans, qr{\brestorecon -R /install\b}, '... and relabels /install');
-foreach my $section (qw(pre post postun posttrans)) {
+foreach my $section (qw(pre preun post postun posttrans)) {
     unlike(join("\n", @{ $spec->{$section} || [] }), qr/\bsetenforce\b|\/etc\/selinux\/config/,
         "%$section does not change the SELinux mode");
 }
