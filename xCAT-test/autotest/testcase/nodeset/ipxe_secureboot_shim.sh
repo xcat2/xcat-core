@@ -125,10 +125,9 @@ restore_state() {
         echo "IPXE_SHIM_FAIL: nodeset $node $before returned non-zero, $node stays configured for installation"
         restore_rc=1
     fi
-    # A replayed osimage state writes the image attributes again.
-    case "$before" in
-        osimage | osimage=*) restore_image_attrs ;;
-    esac
+    # A replayed osimage state writes the image attributes, and boot clears the provmethod of a
+    # netboot or statelite image.
+    restore_image_attrs
     # Last, because a replayed state can set the chain.
     if ! chdef -t node -o "$node" "currchain=$currchain" > /dev/null; then
         echo "IPXE_SHIM_FAIL: chdef -t node -o $node currchain=$currchain returned non-zero, $node keeps the chain this case set"
