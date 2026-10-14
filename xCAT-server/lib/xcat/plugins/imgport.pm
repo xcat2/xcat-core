@@ -2218,12 +2218,19 @@ sub moveExtra {
         #print "This is a file\n";
         # this extra file is a file and we can just copy to the destination.
         $callback->({ data => ["$dest/$f"] });
+        mkpath($dest, { error => \my $errors }) unless -d $dest;
+        unless (-d $dest) {
+            $callback->({ error => ["Failed to create $dest"], errorcode => 1 });
+            return 0;
+        }
         if (-r "$dest/$f") {
             $callback->({ data => ["  Moving old $dest/$f to $dest/$f.ORIG."] });
-            move("$dest/$f", "$dest/$f.ORIG");
+            unless (move("$dest/$f", "$dest/$f.ORIG")) {
+                $callback->({ error => ["Failed to move $dest/$f to $dest/$f.ORIG"], errorcode => 1 });
+                return 0;
+            }
         }
-        `cp $imgdir/extra/$f $dest`;
-        if ($?) {
+        if (system('cp', "$imgdir/extra/$f", $dest)) {
             $callback->({ error => ["Failed to copy $imgdir/extra/$f to $dest"], errorcode => 1 });
             return 0;
         }
