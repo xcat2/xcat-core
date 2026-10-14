@@ -70,11 +70,12 @@ sub import_image {
     write_text("$dest/initrd-stateless.gz", "published ramdisk\n");
     write_text("$bundle/kernel", "kernel from the bundle\n");
     write_text("$bundle/initrd-stateless.gz", "ramdisk from the bundle\n");
-    $prepare->($dest) if $prepare;
+    $prepare->($dest, $bundle) if $prepare;
     @LOCKED = ();
     my @errors;
     my $checksum = delete $manifest{rootimgchecksum};
     my $nodes    = delete $manifest{nodes};
+    my $omit     = delete $manifest{omit} || [];
     my $name = "import-$sequence";
     xCAT::Table->new('osimage', -create => 1)->setAttribs({ imagename => $name }, { osvers => 'rhels9.5', provmethod => 'netboot' });
     my $data = {
@@ -85,6 +86,7 @@ sub import_image {
         (defined $checksum ? (linuximage => { rootimgchecksum => $checksum }) : ()),
         osimage => { imagename => $name, osvers => 'rhels9.6', osarch => 'x86_64', profile => 'compute', provmethod => 'netboot' },
     };
+    delete @{$data}{@$omit};
     my $placed = xCAT_plugin::imgport::place_image($data, $bundle, sub { push @errors, @{ $_[0]{error} || [] } }, $nodes);
     return ($placed, join("\n", @errors), $dest, "$dest/$archive_name");
 }
@@ -126,6 +128,22 @@ for my $archive_name (qw(rootimg.cpio.gz rootimg.tar.xz rootimg.sfs)) {
     is(read_binary("$archive.sha256"), sha256_hex($published) . "  rootimg.cpio.gz\n", 'the published checksum stays while the image lock is held');
     is(read_binary("$dest/kernel"), "published kernel\n", 'the published kernel stays while the image lock is held');
     is(definition($dest), 'rhels9.5', 'the image definition stays while the image lock is held');
+}
+
+{
+    # A statelite bundle has a rootimgtree and no rootimg, and its import needs the image lock too.
+    local $HELD = 1;
+    my $tree;
+    my ($placed, $errors, $dest) = import_image('rootimg.cpio.gz', sub {
+        my (undef, $bundle) = @_;
+        $tree = "$bundle/rootimgtree.gz";
+        write_text($tree, "tree from the bundle\n");
+    }, rootimgtree => 'DEST/rootimgtree.gz', omit => [qw(rootimg kernel ramdisk)]);
+    ok(!$placed, 'a statelite import fails while another command holds the image lock');
+    like($errors, qr/failed to acquire lock/, 'the held image lock is reported for a statelite import');
+    is_deeply(\@LOCKED, ["$dest/rootimg"], 'a statelite import asks for the lock of its image directory');
+    ok(-e $tree, 'the tree stays in the bundle while the lock is held');
+    is(definition($dest), 'rhels9.5', 'the image definition stays while the lock of a statelite image is held');
 }
 
 {
