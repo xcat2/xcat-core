@@ -23,7 +23,7 @@ sub tool {
     return $path;
 }
 for my $name (qw(cpio gzip find)) {
-    plan skip_all => "$name is required" unless tool($name);
+    die "The liteimg archive test requires $name\n" unless tool($name);
 }
 
 my $fixture = realpath(tempdir(CLEANUP => 1));
@@ -31,8 +31,8 @@ make_path("$fixture/db", "$fixture/root/lib/perl", "$fixture/root/share", "$fixt
 symlink(repo_path('perl-xCAT/xCAT'), "$fixture/root/lib/perl/xCAT") or die $!;
 symlink(repo_path('xCAT-server/share/xcat'), "$fixture/root/share/xcat") or die $!;
 write_text("$fixture/install/postscripts/xcatdsklspost", "#!/bin/sh\nexit 0\n");
-$ENV{XCATROOT} = "$fixture/root";
-$ENV{XCATCFG}  = "SQLite:$fixture/db";
+local $ENV{XCATROOT} = "$fixture/root";
+local $ENV{XCATCFG}  = "SQLite:$fixture/db";
 require xCAT::Table;
 require(repo_path('xCAT-server/lib/xcat/plugins/statelite.pm'));
 xCAT::Table->new('site', -create => 1)->setAttribs({ key => 'installdir' }, { value => "$fixture/install" });
@@ -50,19 +50,8 @@ our ($HELD, @LOCKED);
         push @LOCKED, $dir;
         return $HELD ? (1, "failed to acquire lock, seems there is another genimage/packimage/rmimage process 4242 running on root image dir \"$dir\"") : (0, {});
     };
-    *xCAT::Utils::runcmd = sub {
-        my ($class, $command) = @_;
-        if ($command =~ /^ilitefile /) {
-            $::RUNCMD_RC = 0;
-            return ([ "$main::IMAGE tmpfs /etc/hosts" ]);
-        }
-        my @output = `$command 2>&1`;
-        $::RUNCMD_RC = $? >> 8;
-        return (\@output);
-    };
 }
 
-our $IMAGE;
 (my $host = hostname()) =~ s/[^A-Za-z0-9.-]/_/g;
 my $sequence = 0;
 
@@ -91,6 +80,9 @@ $run
 SCRIPT
         chmod 0755, "$dest/bin/$compressor";
     }
+    # ilitefile asks xcatd for the litefile entries of the image.
+    write_text("$dest/bin/ilitefile", "#!/bin/sh\necho '$name tmpfs /etc/hosts'\n");
+    chmod 0755, "$dest/bin/ilitefile";
     $osimage->setAttribs({ imagename => $name },
         { osvers => 'rhels9.6', osarch => 'x86_64', profile => 'compute', provmethod => 'statelite', rootfstype => 'ramdisk' });
     $linuximage->setAttribs({ imagename => $name }, { rootimgdir => $dest });
@@ -100,7 +92,6 @@ SCRIPT
 sub liteimg {
     my ($dest, $name, @args) = @_;
     my ($cwd, $mask) = (getcwd(), umask());
-    local $IMAGE = $name;
     @LOCKED = ();
     my @responses;
     my $output = '';
