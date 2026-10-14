@@ -9,6 +9,11 @@ setup()
     printf 'fixture payload\n' > "$fixture/source/share/xcat/netboot/genesis/x86_64/fs/payload"
     printf 'fixture kernel\n' > "$fixture/source/share/xcat/netboot/genesis/x86_64/kernel"
     printf 'fixture public key\n' > "$fixture/root/.ssh/id_rsa.pub"
+    mkdir -p "$fixture/usr-bin"
+    for command in /usr/bin/*; do
+        [ "${command##*/}" = lzma ] || ln -s "/tmp/real-bin/${command##*/}" "$fixture/usr-bin/"
+    done
+    cp /usr/bin/xz "$fixture/usr-bin/lzma"
 }
 
 build_image()
@@ -17,6 +22,7 @@ build_image()
         --tmpfs /tmp --ro-bind "$BATS_TEST_DIRNAME/../.." /tmp/source \
         --bind "$fixture" /tmp/fixture --bind "$fixture/root" /root \
         --bind "$fixture/etc" /etc --chdir /tmp/fixture \
+        --ro-bind /usr/bin /tmp/real-bin --ro-bind "$fixture/usr-bin" /usr/bin \
         --setenv PATH /tmp/fixture/bin:/usr/bin:/bin \
         perl /tmp/source/xCAT-test/bats/fixtures/mknb-compress.pl "$1"
 }
@@ -25,6 +31,9 @@ check_payload()
 {
     local image="$1" compression="$2" mode="$3"
     [ "$(stat -c '%a' "$image")" = "$mode" ]
+    if [ "$compression" = xz ]; then
+        xz --format=lzma --test "$image"
+    fi
     (cd "$fixture/unpacked" && "$compression" -dc "$image" | cpio -id)
     [ "$(cat "$fixture/unpacked/payload")" = 'fixture payload' ]
     [ "$(cat "$fixture/unpacked/.ssh/authorized_keys")" = 'fixture public key' ]
@@ -34,7 +43,14 @@ check_payload()
         "$(printf '%s\n' "$(basename "$image")" genesis.kernel.x86_64 ipxe xnba | sort)" ]
 }
 
-@test "mknb publishes a complete LZMA image with the caller's umask" {
+@test "mknb publishes a complete image with lzma and the caller's umask" {
+    run build_image 022
+    [ "$status" -eq 0 ] || { printf '%s\n' "$output"; return 1; }
+    check_payload "$fixture/tftp/xcat/genesis.fs.x86_64.lzma" xz 644
+}
+
+@test "mknb publishes LZMA format with xz when lzma is unavailable" {
+    chmod 644 "$fixture/usr-bin/lzma"
     run build_image 022
     [ "$status" -eq 0 ] || { printf '%s\n' "$output"; return 1; }
     check_payload "$fixture/tftp/xcat/genesis.fs.x86_64.lzma" xz 644
