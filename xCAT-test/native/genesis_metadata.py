@@ -4,13 +4,17 @@
 import configparser
 import hashlib
 import json
+import logging
 import os
 from pathlib import Path
 import shutil
 import stat
+import subprocess
 import sys
 import tempfile
+import time
 import unittest
+import xml.etree.ElementTree as ET
 
 BITBAKE = shutil.which("bitbake")
 if not BITBAKE:
@@ -139,9 +143,12 @@ class GenesisMetadata(unittest.TestCase):
             "DISTRO_CODENAME": "cheetah", "LINUX_VERSION_EXTENSION": "-xCAT-genesis",
             "TCLIBC": "glibc", "INIT_MANAGER": "systemd", "NO_RECOMMENDATIONS": "1",
             "QB_DEFAULT_FSTYPE": "ext4",
+            "MACHINE_EXTRA_RRECOMMENDS": "",
         }.items():
             self.assertEqual(data.getVar(variable), value, variable)
         self.assertEqual(self.words(data, "IMAGE_FSTYPES"), {"cpio.gz", "ext4"})
+        self.assertEqual(self.words(data, "MACHINE_ESSENTIAL_EXTRA_RDEPENDS"), set())
+        self.assertEqual(self.words(data, "MACHINE_FEATURES_DEFAULTS"), {"rtc", "qemu-usermode"})
         self.assertEqual(self.words(data, "DISTRO_FEATURES"),
                          {"acl", "ipv4", "ipv6", "largefile", "pci", "seccomp", "systemd", "usrmerge"})
         self.assertEqual("pci" in self.words(data, "MACHINE_FEATURES"), self.arch != "s390x")
@@ -197,6 +204,9 @@ class GenesisMetadata(unittest.TestCase):
         }.items():
             self.assertEqual(self.dependencies(recipe), set(expected.split()), recipe)
         self.assertLessEqual({"coreutils", "util-linux-logger"}, self.dependencies("xcat-genesis-init"))
+        discovery = self.dependencies("xcat-genesis-discovery") - {"xcat-genesis-common"}
+        self.assertEqual(discovery, set("bash coreutils gzip iproute2 openssl-bin "
+                                       "util-linux-logger util-linux-lsblk".split()))
         console = self.recipe("xcat-genesis-console")
         self.assertLessEqual({"libnewt", "systemd"}, self.words(console, "DEPENDS"))
         self.assertIn("sysext", self.words(self.recipe("systemd"), "PACKAGECONFIG"))
@@ -242,10 +252,61 @@ class GenesisMetadata(unittest.TestCase):
 
     def test_installed_protocol(self):
         data, root = self.install("xcat-genesis-protocol")
+        work = Path(data.getVar("WORKDIR"))
+        tools = work / "tools"
+        tools.mkdir()
+        openssl = tools / "openssl"
+        openssl.write_text('#!/bin/sh\n[ "$1" = s_client ] || exit 99\n'
+                           'cat >"$GENESIS_TEST_REQUEST"\n'
+                           "printf '<xcatresponse><destiny>standby</destiny></xcatresponse>\\n'\n")
+        openssl.chmod(0o755)
         for name in ("getdestiny", "nextdestiny"):
             file = self.installed(data, root, "bindir", name, 0o755)
             self.assertEqual(file.read_bytes(), (ROOT / "xCAT-genesis-scripts/usr/bin" / name).read_bytes())
+            request_file = work / (name + ".xml")
+            environment = {"PATH": str(tools) + os.pathsep + os.environ["PATH"],
+                           "GENESIS_TEST_REQUEST": str(request_file), "TMPDIR": str(work), "LC_ALL": "C"}
+            result = subprocess.run([str(file), "192.0.2.10:3001", "--once"],
+                                    env=environment, capture_output=True, text=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout, "standby\n")
+            request = ET.parse(request_file).getroot()
+            self.assertEqual(request.tag, "xcatrequest")
+            self.assertEqual(request.findtext("command"), name)
+            self.assertEqual(request.findtext("callback_port"), "300")
         self.assertFalse(list(root.rglob("doxcat")))
+
+    def test_power_metadata_patch(self):
+        data = self.task_data("linux-yocto")
+        # Replace the upstream task body but retain BitBake's machine prepends.
+        data.setVar("do_kernel_metadata", ":\n", parsing=True)
+        patch_name = "0001-qemu-ppc64-drop-removed-crc32-option.patch"
+        fetcher = bb.fetch2.Fetch(["file://" + patch_name], data)
+        fetcher.download()
+        fetcher.unpack(data.getVar("UNPACKDIR"))
+        sources = Path(data.getVar("UNPACKDIR"))
+        metadata = sources / data.getVar("KMETA") / "bsp/qemu-ppc64/qemu-ppc64.cfg"
+        metadata.parent.mkdir(parents=True)
+        if self.arch == "x86":
+            x86_metadata = sources / data.getVar("KMETA") / "bsp/common-pc/common-pc-cpu.cfg"
+            x86_metadata.parent.mkdir(parents=True)
+            x86_metadata.write_text("CONFIG_M686=y\n")
+        before = ("CONFIG_DUMMY_CONSOLE=y\nCONFIG_FRAMEBUFFER_CONSOLE=y\n"
+                  "CONFIG_CRC32_SLICEBY8=y\nCONFIG_ZLIB_INFLATE=y\n"
+                  "CONFIG_GENERIC_ALLOCATOR=y\nCONFIG_TEXTSEARCH=y\n")
+        after = before.replace("CONFIG_CRC32_SLICEBY8=y\n", "")
+        power = self.arch in {"ppc64", "ppc64le"}
+        for content in (before, after):
+            with self.subTest(option_present=content == before):
+                metadata.write_text(content)
+                for unused in range(2):
+                    bb.build.exec_func("do_kernel_metadata", data, dirs=[data.getVar("WORKDIR")])
+                    self.assertEqual(metadata.read_text(), after if power else content)
+        if power:
+            metadata.write_text(before)
+            (sources / patch_name).write_text("invalid patch\n")
+            with self.assertRaises(bb.process.ExecutionError):
+                bb.build.exec_func("do_kernel_metadata", data, dirs=[data.getVar("WORKDIR")])
 
     def test_installed_network(self):
         data, root = self.install("xcat-genesis-network")
@@ -273,7 +334,15 @@ class GenesisMetadata(unittest.TestCase):
 
     def test_installed_init(self):
         data, root = self.install("xcat-genesis-init")
-        self.installed(data, root, "libexecdir", "xcat/genesis-functions", 0o644)
+        library_owner = "xcat-genesis-init"
+        if "xcat-genesis-common" in self.dependencies(library_owner):
+            library_owner = "xcat-genesis-common"
+            self.assertIn(library_owner, self.dependencies("xcat-genesis-discovery"))
+            self.assertEqual(self.dependencies(library_owner), {"bash", "util-linux-logger"})
+        library_data, library_root = self.install(library_owner)
+        library = self.installed(library_data, library_root, "libexecdir", "xcat/genesis-functions", 0o644)
+        self.assertEqual(library.read_bytes(),
+                         (LAYER / "recipes-core/xcat-genesis-init/files/genesis-functions").read_bytes())
         for name in ("genesis-status", "genesis-maintenance-shell"):
             self.installed(data, root, "libexecdir", "xcat/" + name, 0o755)
         self.assertFalse(list(root.rglob("*debug-shell*")))
@@ -347,6 +416,14 @@ class GenesisMetadata(unittest.TestCase):
                 with self.assertLogs("BitBake", level="ERROR") as errors:
                     with self.assertRaises(bb.BBHandledException):
                         self.tinfoil.parse_recipe_file(recipe, config_data=config)
+                    deadline = time.monotonic() + 10
+                    while not any(message in error for error in errors.output):
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0:
+                            break
+                        event = self.tinfoil.wait_event(timeout=min(remaining, 1))
+                        if isinstance(event, logging.LogRecord):
+                            self.tinfoil.logger.handle(event)
                 self.assertTrue(any(message in error for error in errors.output), errors.output)
         for values in ({"ARCHITECTURE": "armv7hf"},
                        {"LICENSE_CLASS": "restricted"},

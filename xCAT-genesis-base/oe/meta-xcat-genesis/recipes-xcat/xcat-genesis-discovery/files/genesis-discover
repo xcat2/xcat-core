@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+functions_file=${XCAT_GENESIS_FUNCTIONS:-/usr/libexec/xcat/genesis-functions}
+source "$functions_file"
+
 state_dir=${XCAT_STATE_DIR:-/run/xcat}
 status_command=${XCAT_STATUS_COMMAND:-/usr/libexec/xcat/genesis-status}
 network_file=${XCAT_NETWORK_FILE:-$state_dir/genesis.env}
@@ -22,8 +25,8 @@ temporary_dir=
 [[ "$retry_seconds" =~ ^[0-9]+$ ]] || retry_seconds=5
 
 publish_status() {
-    "$status_command" discovery "$@" \
-        || logger -t xcat-genesis-discover -- 'unable to publish discovery status'
+    genesis_publish_status "$status_command" discovery \
+        xcat-genesis-discover 'unable to publish discovery status' "$@"
 }
 
 # shellcheck disable=SC2317,SC2329

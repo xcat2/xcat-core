@@ -1,9 +1,9 @@
 genesis_publish_status() {
-    local status_command=$1 component=$2 log_tag=$3
-    shift 3
+    local status_command=$1 component=$2 log_tag=$3 log_message=$4
+    shift 4
 
     "$status_command" "$component" "$@" \
-        || logger -t "$log_tag" -- "unable to publish $component status"
+        || logger -t "$log_tag" -- "$log_message"
 }
 
 genesis_uptime_seconds() {

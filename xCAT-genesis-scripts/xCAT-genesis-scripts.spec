@@ -113,6 +113,7 @@ touch /etc/xcat/genesis-scripts-updated
 %{rpminstallroot}/usr/bin/update_flash_nv
 %{rpminstallroot}/usr/bin/restart
 %{rpminstallroot}/usr/lib/xcat/fips.sh
+%{rpminstallroot}/usr/lib/xcat/destiny.sh
 %{rpminstallroot}/etc/init.d/functions
 %{rpminstallroot}/etc/udev/rules.d/99-imm.rules
 %{rpminstallroot}/etc/udev/rules.d/99-tsm.rules
