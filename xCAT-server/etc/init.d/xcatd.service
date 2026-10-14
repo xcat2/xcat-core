@@ -3,7 +3,8 @@ Description=xCAT management service
 After=network.target syslog.service
 
 [Service]
-# systemd runs a shell in initrc_t. xcatd must start directly to run in unconfined_service_t.
+# A shell in ExecStart runs in initrc_t. xcatd must start directly, so the
+# kernel enters xcat_t on the xcatd script.
 Environment=XCATROOT=/opt/xcat PERL_BADLANG=0
 Environment=PATH=/opt/xcat/bin:/opt/xcat/sbin:/opt/xcat/share/xcat/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 EnvironmentFile=-/etc/sysconfig/xcat

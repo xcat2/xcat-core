@@ -30,7 +30,7 @@ sub service_settings {
 
 my $service = service_settings($unit_file);
 
-# systemd starts a shell in initrc_t and a bin_t binary in unconfined_service_t.
+# systemd starts a shell in initrc_t, which is not an entrypoint of xcat_t.
 my @exec = @{ $service->{ExecStart} || [] };
 is(scalar(@exec), 1, 'the unit has one ExecStart');
 my ($program) = split /\s+/, ($exec[0] // '');
