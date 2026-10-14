@@ -1270,7 +1270,7 @@ sub extract_bundle {
         }
 
         # import manifest.xml into xCAT database, then place the files in appropriate directories
-        unless (place_image($data, $imgdir, $callback)) {
+        unless (place_image($data, $imgdir, $callback, $nodes)) {
             $error++;
             next;
         }
@@ -1819,6 +1819,31 @@ sub verify_manifest {
 
 #-------------------------------------------------------
 
+=head3   check_import
+
+    Check what an import needs before it writes anything, so that a request that cannot succeed changes nothing.
+    Arguments:
+        data     -- the manifest of the bundle
+        imgdir   -- the extracted bundle
+        nodes    -- the noderange that gets the postscripts of the image, or undef
+        callback -- the request callback
+    Returns:
+        1 when the import can go on, 0 after it reported why not
+
+=cut
+
+#-------------------------------------------------------
+sub check_import {
+    my ($data, $imgdir, $nodes, $callback) = @_;
+    if ($nodes && !(my @defined = noderange($nodes))) {
+        $callback->({ error => ["The nodes $nodes are not defined in xCAT DB."], errorcode => [1] });
+        return 0;
+    }
+    return 1;
+}
+
+#-------------------------------------------------------
+
 =head3   place_image
 
     Import the image definition of an extracted bundle, then place its files, under the image lock.
@@ -1826,6 +1851,7 @@ sub verify_manifest {
         data     -- the manifest of the bundle
         imgdir   -- the extracted bundle
         callback -- the request callback
+        nodes    -- the noderange that gets the postscripts of the image, or undef
     Returns:
         1 on success, 0 on failure
 
@@ -1833,7 +1859,8 @@ sub verify_manifest {
 
 #-------------------------------------------------------
 sub place_image {
-    my ($data, $imgdir, $callback) = @_;
+    my ($data, $imgdir, $callback, $nodes) = @_;
+    return 0 if !check_import($data, $imgdir, $nodes, $callback);
 
     # genimage, packimage, liteimg and rmimage hold this lock while they change the image.
     my $lock;
