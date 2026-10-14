@@ -61,6 +61,24 @@ function hashget(){
     eval echo "\$${str_hashname}"
 }
 
+# True when the live MTU of NIC $1 differs from the MTU $2 the networks table declares.
+# A wanted value that is empty or not a number means the network declares no MTU.
+xcat_nic_mtu_changed()
+{
+    local nic="$1"
+    local wanted="$2"
+    local live
+
+    [ -n "$nic" ] || return 1
+    case "$wanted" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+
+    live=$(ip link show dev "$nic" 2>/dev/null | sed -n 's/.*[[:space:]]mtu[[:space:]]\{1,\}\([0-9]\{1,\}\).*/\1/p' | head -1)
+    [ -n "$live" ] || return 1
+    [ "$live" != "$wanted" ]
+}
+
 # Match the OSVER forms currently used by EL9+ postscript paths.
 xcat_is_el9_or_later()
 {
