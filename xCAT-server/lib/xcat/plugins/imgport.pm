@@ -1269,7 +1269,7 @@ sub extract_bundle {
             $data = change_profile($data, $callback, $new_profile, $imgdir);
         }
 
-        # import manifest.xml into xCAT database, then place the files in appropriate directories
+        # place the boot files, import manifest.xml into xCAT database, then place the other files
         unless (place_image($data, $imgdir, $callback, $nodes)) {
             $error++;
             next;
@@ -1822,7 +1822,8 @@ sub verify_manifest {
 =head3   check_import
 
     Check what an import needs before it writes anything, so that a request that cannot succeed changes nothing:
-    the nodes, and the boot files, kits, extra files and raw image files in the bundle.
+    the nodes, the tables of the image definition, and the boot files, kits, extra files and raw image files in the
+    bundle.
     Arguments:
         data     -- the manifest of the bundle
         imgdir   -- the extracted bundle
@@ -1838,6 +1839,13 @@ sub check_import {
     my ($data, $imgdir, $nodes, $callback) = @_;
     if ($nodes && !(my @defined = noderange($nodes))) {
         $callback->({ error => ["The nodes $nodes are not defined in xCAT DB."], errorcode => [1] });
+        return 0;
+    }
+
+    # set_config opens these tables the same way after the boot files.
+    foreach my $table (qw(osimage linuximage kit kitrepo kitcomponent)) {
+        next if xCAT::Table->new($table, -create => 1, -autocommit => 0);
+        $callback->({ error => ["Unable to open table '$table'"], errorcode => [1] });
         return 0;
     }
     my @missing = grep { !-e "$imgdir/$_" && !-l "$imgdir/$_" } map { basename($_) } map { split(',', $data->{$_} // '') } qw(rootimg kernel ramdisk rootimgtree);
@@ -1862,7 +1870,8 @@ sub check_import {
 
 =head3   place_image
 
-    Import the image definition of an extracted bundle, then place its files, under the image lock.
+    Place the boot files of an extracted bundle, import its image definition, then place its other files, under the
+    image lock.
     Arguments:
         data     -- the manifest of the bundle
         imgdir   -- the extracted bundle
@@ -1889,7 +1898,57 @@ sub place_image {
             return 0;
         }
     }
-    return set_config($data, $callback) && make_files($data, $imgdir, $callback);
+    # A publication that another host refuses leaves the image definition as it was.
+    # A later failure leaves the definition that matches the published boot files.
+    return place_boot_files($data, $imgdir, $callback) && set_config($data, $callback) && make_files($data, $imgdir, $callback);
+}
+
+#-------------------------------------------------------
+
+=head3   place_boot_files
+
+    Place the root image, kernel, ramdisk and statelite files of an extracted bundle.
+    Arguments:
+        data     -- the manifest of the bundle
+        imgdir   -- the extracted bundle
+        callback -- the request callback
+    Returns:
+        1 on success, 0 on failure
+
+=cut
+
+#-------------------------------------------------------
+sub place_boot_files {
+    my ($data, $imgdir, $callback) = @_;
+
+    # The root image goes first, so a failed publication leaves the kernel and ramdisk that match the published image.
+    for my $a ("rootimg", "kernel", "ramdisk", "ramdiskcheck", "rootimgtree", "litefile") {
+        my $filenames = $data->{$a};
+        if ($filenames) {
+            my @file_array = split(',', $filenames);
+            foreach my $fn (@file_array) {
+                $callback->({ data => ["$fn"] });
+                my $basename = basename($fn);
+                my $dirname  = dirname($fn);
+                if (!-r $dirname) {
+                    mkpath("$dirname", { verbose => 1, mode => 0755 });
+                }
+                if ($a eq 'rootimg') {
+                    if (my $error = place_rootimg("$imgdir/$basename", $fn, $callback)) {
+                        $callback->({ error => [$error], errorcode => [1] });
+                        return 0;
+                    }
+                    next;
+                }
+                if (-r $fn) {
+                    $callback->({ data => ["  Moving old $fn to $fn.ORIG."] });
+                    move("$fn", "$fn.ORIG");
+                }
+                move("$imgdir/$basename", $fn);
+            }
+        }
+    }
+    return 1;
 }
 
 sub make_files {
@@ -1986,34 +2045,6 @@ sub make_files {
     #                     }
     #                   ],
     #        };
-
-    # The root image goes first, so a failed publication leaves the kernel and ramdisk that match the published image.
-    for my $a ("rootimg", "kernel", "ramdisk", "ramdiskcheck", "rootimgtree", "litefile") {
-        my $filenames = $data->{$a};
-        if ($filenames) {
-            my @file_array = split(',', $filenames);
-            foreach my $fn (@file_array) {
-                $callback->({ data => ["$fn"] });
-                my $basename = basename($fn);
-                my $dirname  = dirname($fn);
-                if (!-r $dirname) {
-                    mkpath("$dirname", { verbose => 1, mode => 0755 });
-                }
-                if ($a eq 'rootimg') {
-                    if (my $error = place_rootimg("$imgdir/$basename", $fn, $callback)) {
-                        $callback->({ error => [$error], errorcode => [1] });
-                        return 0;
-                    }
-                    next;
-                }
-                if (-r $fn) {
-                    $callback->({ data => ["  Moving old $fn to $fn.ORIG."] });
-                    move("$fn", "$fn.ORIG");
-                }
-                move("$imgdir/$basename", $fn);
-            }
-        }
-    }
 
     for my $a ("template", "pkglist", "synclists", "otherpkglist", "postinstall", "exlist") {
         my $filenames;
