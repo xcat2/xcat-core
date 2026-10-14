@@ -49,8 +49,16 @@ install -m 0644 xcat.pp.bz2 $RPM_BUILD_ROOT%{_datadir}/selinux/packages/targeted
 %post
 %selinux_modules_install -s targeted %{_datadir}/selinux/packages/targeted/xcat.pp.bz2
 
+%preun
+# %pre does not run on an erase, and %postun needs the snapshot to find the
+# files whose context the removed module defined.
+%selinux_relabel_pre -s targeted
+
 %postun
 %selinux_modules_uninstall -s targeted xcat
+if [ $1 -eq 0 ]; then
+%selinux_relabel_post -s targeted
+fi
 
 %posttrans
 %selinux_relabel_post -s targeted
