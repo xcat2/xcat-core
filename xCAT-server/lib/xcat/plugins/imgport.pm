@@ -1888,9 +1888,11 @@ sub place_image {
     return 0 if !check_import($data, $imgdir, $nodes, $callback);
 
     # genimage, packimage, liteimg and rmimage hold this lock while they change the image.
+    # A statelite bundle has a rootimgtree instead of a rootimg.
+    my ($imagefile) = grep { $_ } map { (split(',', $data->{$_} // ''))[0] } qw(rootimg rootimgtree kernel ramdisk);
     my $lock;
-    if ($data->{rootimg}) {
-        my $rootimgdir = dirname((split(',', $data->{rootimg}))[0]);
+    if ($imagefile) {
+        my $rootimgdir = dirname($imagefile);
         mkpath($rootimgdir) unless -d $rootimgdir;
         (my $retcode, $lock) = xCAT::Utils->acquire_lock_imageop("$rootimgdir/rootimg");
         if ($retcode) {
