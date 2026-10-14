@@ -65,7 +65,7 @@ use DBI;
 $DBI::dbi_debug = 9;     # increase the debug output
 
 use strict;
-use Scalar::Util qw/weaken/;
+use Scalar::Util qw/blessed weaken/;
 use xCAT::Utils;
 require xCAT::Schema;
 require xCAT::NodeRange;
@@ -1625,6 +1625,12 @@ sub rollback
         return dbc_call($self, 'rollback', @_);
     }
     $self->{dbh}->rollback;
+
+    #the rollback undoes the changes of every table on this handle, so their caches are invalid
+    #new() registers a table before it opens it, so a table that failed to open stays unblessed
+    foreach my $table (@{ $dbobjsforhandle->{ $self->{dbh} } || [ \$self ] }) {
+        $$table->_refresh_cache() if blessed($$table);
+    }
     if ($self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
 
         #on rollback, if sharing a DB handle for autocommit and non-autocommit, put the handle back to autocommit
@@ -2044,6 +2050,7 @@ sub setAttribsWhere
         $self->trace_db(END_TYPE, "LINE ".__LINE__.": ".$sth->errstr);
         return (undef, $sth->errstr);
     }
+    $self->_refresh_cache();    #cache is invalid, refresh
 
     #notify the interested parties
     if ($notif == 1)
