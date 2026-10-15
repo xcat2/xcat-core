@@ -10,19 +10,53 @@ Scope
 This version covers the management node. A service node and a compute node are
 out of scope: no run measures them, and xCAT does not select their mode.
 
-The xcat_t domain
------------------
+The two domains
+---------------
 
-``xcatd`` and the xCAT client commands run in one domain, ``xcat_t``. The
-``xCAT-selinux`` package labels the three files the domain is entered through:
+``xcatd`` and the xCAT client commands run in ``xcat_t``. The image build runs
+in ``xcat_image_t``, because it creates a complete operating system tree and
+therefore writes and relabels files of every type. The ``xCAT-selinux`` package
+labels the files each domain is entered through:
 
-==============================  =======================
-File                            Type
-==============================  =======================
-/opt/xcat/sbin/xcatd            ``xcatd_exec_t``
-/opt/xcat/bin/xcatclient        ``xcat_client_exec_t``
-/opt/xcat/bin/xcatclientnnr     ``xcat_client_exec_t``
-==============================  =======================
+===========================================  =======================
+File                                         Type
+===========================================  =======================
+/opt/xcat/sbin/xcatd                         ``xcatd_exec_t``
+/opt/xcat/bin/xcatclient                     ``xcat_client_exec_t``
+/opt/xcat/bin/xcatclientnnr                  ``xcat_client_exec_t``
+/opt/xcat/bin/xcatDBcmds                     ``xcat_client_exec_t``
+/opt/xcat/bin/genimage                       ``xcat_client_exec_t``
+/opt/xcat/share/xcat/netboot/<os>/genimage   ``xcat_image_exec_t``
+/opt/xcat/share/xcat/netboot/<os>/geninitrd  ``xcat_image_exec_t``
+===========================================  =======================
+
+``xcatd`` runs the per-OS ``genimage`` through a shell, so the build enters
+``xcat_image_t`` from ``xcat_t``. An administrator who runs ``genimage``
+directly enters it the same way.
+
+What each domain holds
+----------------------
+
+``xcat_image_t`` may create, write and relabel a file of any type, including the
+security types a package installs inside the image: ``/etc/selinux``, the audit
+configuration and the keytabs of the image. The kernel cannot tell a path inside
+the image from the same type on the management node, so this is the broadest
+grant in the module and the reason the build has a domain of its own.
+
+``xcat_t`` keeps what the daemon needs: its sockets and the ``xcatd`` port,
+``/install``, ``/tftpboot``, the configuration of the services it drives, the
+credentials under ``/etc/xcat``, and the ``service`` class for the units it
+restarts. It also manages and relabels non-security files, because ``packimage``
+and ``liteimg`` are symlinks to ``xcatclientnnr`` and their work runs inside
+``xcatd``. What it never gets is the security types.
+
+Services xCAT starts itself
+---------------------------
+
+xCAT starts ``in.tftpd`` without a systemd unit. The module transitions it to
+the stock ``tftpd_t``, so the TFTP server does not serve UDP 69 with the
+authority of the management domain. ``chronyd``, which ``setupntp`` runs, reaches
+``chronyd_t`` the same way.
 
 systemd enters ``xcat_t`` on the ``xcatd`` script, so the ``ExecStart`` of the
 unit must name ``xcatd`` and not a shell. 115 command names are symlinks to
@@ -35,10 +69,11 @@ Read the domain of the running daemon with::
     ps -o label= -p "$(cat /run/xcatd.pid)"
     ps -eo label,args | grep '[x]catd:'
 
-The domain is permissive
-------------------------
+The domains are permissive
+--------------------------
 
-The policy source declares ``permissive xcat_t;``. The host policy stays
+The policy source declares ``permissive xcat_t;`` and
+``permissive xcat_image_t;``. The host policy stays
 enforcing, and the kernel records each access that ``xcat_t`` makes outside the
 rules rather than refusing it. The CI collects those records, and each rule the
 module gains comes from one of them. A later release removes the declaration
@@ -48,6 +83,9 @@ List the permissive domains of the loaded policy with::
 
     semodule -l | grep -x xcat
     seinfo --permissive
+
+A transition to another domain is not covered by a permissive declaration.
+``tftpd_t``, ``chronyd_t`` and the stock domains enforce their own rules.
 
 A denial that the kernel enforced carries ``permissive=0``. On a management node
 of this version, only such a record reports a refused access::
