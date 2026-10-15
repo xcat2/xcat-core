@@ -65,3 +65,8 @@ fi
 if selinuxenabled && [ -d /install ]; then
     restorecon -R /install || :
 fi
+# An upgrade does not relabel a directory that already exists, so a path whose
+# label predates its packaging keeps it. Relabel the product tree as well.
+if selinuxenabled && [ -d /opt/xcat ]; then
+    restorecon -R /opt/xcat || :
+fi
