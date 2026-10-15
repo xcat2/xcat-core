@@ -107,6 +107,11 @@ my $posttrans = join("\n", @{ $spec->{posttrans} || [] });
 like($posttrans, qr/^%selinux_relabel_post -s targeted$/m,
     '%posttrans relabels the files whose context changed');
 like($posttrans, qr{\brestorecon -R /install\b}, '... and relabels /install');
+# An upgrade does not relabel a directory that already exists, so a path whose
+# label was wrong before the fix stays wrong. /opt/xcat/probe/subcmds/bin was
+# that path on every management node. Relabelling the product tree here repairs
+# it, and any later drift, without a separate step.
+like($posttrans, qr{\brestorecon -R /opt/xcat\b}, '... and the product tree too');
 foreach my $section (qw(pre preun post postun posttrans)) {
     unlike(join("\n", @{ $spec->{$section} || [] }), qr/\bsetenforce\b|\/etc\/selinux\/config/,
         "%$section does not change the SELinux mode");
