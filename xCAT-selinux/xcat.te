@@ -300,7 +300,10 @@ corecmd_relabel_all_executables(xcat_image_t)
 auth_manage_shadow(xcat_image_t)
 auth_relabel_shadow(xcat_image_t)
 seutil_manage_file_contexts(xcat_image_t)
-seutil_domtrans_setfiles(xcat_image_t)
+# No transition to setfiles_t. The image domain already relabels every type, so
+# the transition removes no authority, and it put restorecon in an enforcing
+# stock domain that cannot append to the pipe it inherits: 20 enforced denials
+# per run, 4 of them setfiles_t xcat_t:fifo_file append.
 
 # dnf in the chroot, and the rpm scriptlets it runs.
 corecmd_exec_bin(xcat_image_t)
