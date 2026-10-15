@@ -313,6 +313,8 @@ storage_getattr_fixed_disk_dev(xcat_image_t)
 storage_getattr_removable_dev(xcat_image_t)
 dev_create_generic_chr_files(xcat_image_t)
 manage_chr_files_pattern(xcat_image_t, tmp_t, tmp_t)
+# dnf opens a fifo under /tmp for its progress output.
+manage_fifo_files_pattern(xcat_image_t, tmp_t, tmp_t)
 fs_getattr_nsfs_files(xcat_image_t)
 # dnf installs packages that own files of every type, including the security
 # types, and it relabels what it writes. The grant is per class over the
@@ -335,6 +337,10 @@ allow xcat_image_t file_type:dir relabel_dir_perms;
 allow xcat_image_t file_type:file relabel_file_perms;
 allow xcat_image_t file_type:lnk_file relabel_lnk_file_perms;
 allow xcat_image_t file_type:file map;
+# The image holds its own /dev. device_t is a device type, not a member of the
+# file_type attribute, so the grant above does not reach it.
+manage_chr_files_pattern(xcat_image_t, device_t, device_t)
+manage_blk_files_pattern(xcat_image_t, device_t, device_t)
 allow xcat_image_t device_t:chr_file setattr;
 allow xcat_image_t self:capability audit_control;
 allow xcat_image_t self:netlink_audit_socket nlmsg_readpriv;
