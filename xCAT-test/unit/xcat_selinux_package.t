@@ -207,7 +207,8 @@ is_deeply([ grep { /^kernel_t / } @rules ], [],
 like($te, qr/^type xcat_t;$/m, 'xcat.te declares one domain for xcatd and the clients');
 like($te, qr/^permissive xcat_t;$/m,
     '... which is permissive while the CI collects the accesses it needs');
-unlike($te, qr/^permissive (?!xcat_t\b)/m, '... and no other domain is made permissive');
+is_deeply([ sort($te =~ /^permissive (\w+);$/mg) ], [ 'xcat_image_t', 'xcat_t' ],
+    '... and the two xCAT domains are the only permissive ones');
 
 like($te, qr/^init_daemon_domain\(xcat_t, xcatd_exec_t\)$/m,
     'systemd starts xcatd in xcat_t');

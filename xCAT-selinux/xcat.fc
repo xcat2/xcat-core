@@ -4,6 +4,12 @@
 /opt/xcat/bin/xcatclient		--	gen_context(system_u:object_r:xcat_client_exec_t,s0)
 /opt/xcat/bin/xcatclientnnr	--	gen_context(system_u:object_r:xcat_client_exec_t,s0)
 
+# The entrypoints of the image build. The wrapper and the per-OS program are
+# both real files; packimage and liteimg are symlinks to xcatclientnnr, so the
+# work they ask for runs in xcat_t.
+/opt/xcat/bin/genimage		--	gen_context(system_u:object_r:xcat_image_exec_t,s0)
+/opt/xcat/share/xcat/netboot/[^/]+/genimage	--	gen_context(system_u:object_r:xcat_image_exec_t,s0)
+
 /install(/.*)?		gen_context(system_u:object_r:public_content_t,s0)
 
 # A rootimg keeps the labels of its own OS, so restorecon must not change them.
