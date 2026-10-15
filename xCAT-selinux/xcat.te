@@ -63,6 +63,9 @@ optional_policy(`
 
     domtrans_pattern(xcat_t, tftpd_exec_t, tftpd_t)
     allow xcat_t tftpd_t:process { noatsecure rlimitinh siginh };
+
+    # setup_tftpd kills a stray server before it starts its own.
+    allow xcat_t tftpd_t:process { signal signull };
 ')
 
 optional_policy(`
