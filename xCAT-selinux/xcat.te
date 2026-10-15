@@ -53,6 +53,18 @@ role system_r types xcat_image_t;
 permissive xcat_t;
 permissive xcat_image_t;
 
+# xCAT starts in.tftpd itself, with no systemd unit, so without this the daemon
+# inherits xcat_t and serves UDP 69 with this domain's authority. tftp.if ships
+# no tftp_domtrans, so the transition is written here.
+optional_policy(`
+    gen_require(`
+        type tftpd_t, tftpd_exec_t;
+    ')
+
+    domtrans_pattern(xcat_t, tftpd_exec_t, tftpd_t)
+    allow xcat_t tftpd_t:process { noatsecure rlimitinh siginh };
+')
+
 optional_policy(`
     gen_require(`
         type unconfined_t;
