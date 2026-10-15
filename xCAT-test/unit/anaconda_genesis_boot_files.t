@@ -30,7 +30,7 @@ for my $path (qw(
 }
 
 my ($kernel, $initrd) =
-  xCAT_plugin::anaconda::_find_genesis_boot_files($tftp, 'ppc64');
+  xCAT_plugin::anaconda::find_genesis_boot_files($tftp, 'ppc64');
 is($kernel, 'genesis.kernel.ppc64',
     'the legacy POWER kernel lookup is an exact architecture match');
 is($initrd, 'genesis.fs.ppc64.lzma',
@@ -38,7 +38,7 @@ is($initrd, 'genesis.fs.ppc64.lzma',
 unlike($kernel, qr/\n/, 'the selected kernel path contains one file');
 
 ($kernel, $initrd) =
-  xCAT_plugin::anaconda::_find_genesis_boot_files($tftp, 'ppc64le');
+  xCAT_plugin::anaconda::find_genesis_boot_files($tftp, 'ppc64le');
 is($kernel, 'genesis.kernel.ppc64le',
     'the OpenEmbedded POWER kernel remains independently selectable');
 is($initrd, 'genesis.fs.ppc64le.gz',
@@ -46,7 +46,7 @@ is($initrd, 'genesis.fs.ppc64le.gz',
 
 unlink("$tftp/xcat/genesis.fs.ppc64le.gz");
 ($kernel, $initrd) =
-  xCAT_plugin::anaconda::_find_genesis_boot_files($tftp, 'ppc64le');
+  xCAT_plugin::anaconda::find_genesis_boot_files($tftp, 'ppc64le');
 is($kernel, undef, 'a missing initramfs yields no partial boot selection');
 is($initrd, undef, 'a missing initramfs leaves both paths undefined');
 

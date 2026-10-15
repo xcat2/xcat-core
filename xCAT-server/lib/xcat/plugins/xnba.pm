@@ -9,6 +9,7 @@ use xCAT::Scope;
 use xCAT::MsgUtils;
 use Getopt::Long;
 use xCAT::Utils;
+use xCAT::HTTPUtils qw(httpport_suffix);
 require xCAT::BootUtils;
 use xCAT::TableUtils;
 use xCAT::ServiceNodeUtils;
@@ -164,7 +165,7 @@ sub setstate {
      if ($hports[0]){
          $httpport=$hports[0];
      }
-    my $portsuffix = ( $httpport eq "80" ) ? "" : ":$httpport";
+    my $portsuffix = httpport_suffix($httpport);
 
     # get kernel and initrd from boottarget table
     my $bttab;

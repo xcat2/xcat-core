@@ -31,6 +31,7 @@ my $candoipv6 = eval {
 use Sys::Syslog;
 use IPC::Open2;
 use xCAT::Utils;
+use xCAT::HTTPUtils qw(httpport_suffix);
 use xCAT::SvrUtils;
 use xCAT::DHCP::BootPolicy;
 use xCAT::DHCP::Backend;
@@ -1092,7 +1093,7 @@ sub addnode
      if ($hports[0]){
          $httpport=$hports[0];
      }
-    my $portsuffix = ( $httpport eq "80" ) ? "" : ":$httpport";
+    my $portsuffix = httpport_suffix($httpport);
 
     if ($chainents and $chainents->{$node}) {
         $chainent = $chainents->{$node}->[0];
@@ -2927,7 +2928,7 @@ sub kea_build_dhcp4_intent
     if ($hports[0]) {
         $httpport = $hports[0];
     }
-    my $portsuffix = ( $httpport eq "80" ) ? "" : ":$httpport";
+    my $portsuffix = httpport_suffix($httpport);
 
     my $nettab = xCAT::Table->new("networks");
     return { error => "Unable to open networks table, please run makenetworks" } unless $nettab;
@@ -3515,7 +3516,7 @@ sub kea_command_path
 sub kea_subnet4_intent
 {
     my ( $nettab, $net, $mask, $interface, $remote, $id, $httpport ) = @_;
-    my $portsuffix = ( $httpport eq "80" ) ? "" : ":$httpport";
+    my $portsuffix = httpport_suffix($httpport);
 
     my @myipd = xCAT::NetworkUtils->my_ip_facing($net);
     my $myip;
@@ -3636,7 +3637,7 @@ sub kea_subnet4_intent
 sub kea_opal_client_class
 {
     my ( $net, $prefix, $tftp, $httpport ) = @_;
-    my $portsuffix = ( $httpport eq "80" ) ? "" : ":$httpport";
+    my $portsuffix = httpport_suffix($httpport);
 
     return unless $net && defined($prefix) && $tftp;
 
@@ -4381,7 +4382,7 @@ sub kea_boot_for_node
     if ($hports[0]) {
         $httpport = $hports[0];
     }
-    my $portsuffix = ( $httpport eq "80" ) ? "" : ":$httpport";
+    my $portsuffix = httpport_suffix($httpport);
 
     my %boot = ( 'option-data' => [] );
     my $netboot = $nrent ? $nrent->{netboot} : undef;
@@ -4429,7 +4430,7 @@ sub kea_boot_for_node
 sub kea_onie_url_for_node
 {
     my ( $node, $ntent, $nxtsrv, $httpport ) = @_;
-    my $portsuffix = ( $httpport eq "80" ) ? "" : ":$httpport";
+    my $portsuffix = httpport_suffix($httpport);
 
     return unless $nxtsrv;
     my $provmethod = $ntent ? $ntent->{provmethod} : undef;
@@ -4830,7 +4831,7 @@ sub addnet
      if ($hports[0]){
          $httpport=$hports[0];
      }
-    my $portsuffix = ( $httpport eq "80" ) ? "" : ":$httpport";
+    my $portsuffix = httpport_suffix($httpport);
     my $firstoctet = $net;
     $firstoctet =~ s/^(\d+)\..*/$1/;
     if ($net eq "169.254.0.0" or ($firstoctet >= 224 and $firstoctet <= 239)) {

@@ -5,27 +5,26 @@ use warnings;
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
 use FindBin;
+use lib "$FindBin::Bin/../lib";
+use lib "$FindBin::Bin/../../perl-xCAT";
+use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use Test::More;
-
-my $source = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/destiny.pm";
-open(my $source_fh, '<', $source) or die "open $source: $!";
-my $content = do { local $/; <$source_fh> };
-close($source_fh) or die "close $source: $!";
-
-my @routines;
-for my $name (qw(_genesis_boot_arch _genesis_uses_power_console)) {
-    my ($routine) = $content =~ /^(sub \Q$name\E\s*\{.*?^\})/ms;
-    BAIL_OUT("could not extract $name from destiny.pm") unless $routine;
-    push(@routines, $routine);
-}
-eval join("\n", @routines); ## no critic (BuiltinFunctions::ProhibitStringyEval)
-BAIL_OUT("could not load Genesis architecture helpers: $@") if $@;
+use XCAT::Test::File qw(repo_path);
 
 my $tftp = tempdir(CLEANUP => 1);
-make_path("$tftp/xcat");
+$ENV{XCATROOT} = repo_path('xCAT-server');
+$ENV{XCATCFG} = "$tftp/config";
+make_path("$tftp/xcat", $ENV{XCATCFG});
+require xCAT::TableUtils;
+{
+    no warnings qw(redefine once);
+    local *xCAT::TableUtils::get_site_attribute = sub { return (0); };
+    local $INC{'xCAT_monitoring/monitorctrl.pm'} = __FILE__;
+    require(repo_path('xCAT-server/lib/xcat/plugins/destiny.pm'));
+}
 
 is(
-    _genesis_boot_arch($tftp, 'ppc64le'),
+    xCAT_plugin::destiny::_genesis_boot_arch($tftp, 'ppc64le'),
     'ppc64',
     'ppc64le keeps the legacy POWER fallback when no exact image exists',
 );
@@ -35,7 +34,7 @@ open(my $marker_fh, '>', "$tftp/xcat/genesis.exact-arch.ppc64")
 close($marker_fh) or die "close exact POWER marker: $!";
 
 is(
-    _genesis_boot_arch($tftp, 'ppc64le'),
+    xCAT_plugin::destiny::_genesis_boot_arch($tftp, 'ppc64le'),
     'ppc64le',
     'ppc64le does not fall back to a canonical big-endian ppc64 image',
 );
@@ -47,25 +46,21 @@ open(my $kernel_fh, '>', "$tftp/xcat/genesis.kernel.ppc64le")
 close($kernel_fh) or die "close exact POWER kernel: $!";
 
 is(
-    _genesis_boot_arch($tftp, 'ppc64le'),
+    xCAT_plugin::destiny::_genesis_boot_arch($tftp, 'ppc64le'),
     'ppc64le',
     'ppc64le uses the exact OpenEmbedded boot artifact',
 );
 is(
-    _genesis_boot_arch($tftp, 'ppc64el'),
+    xCAT_plugin::destiny::_genesis_boot_arch($tftp, 'ppc64el'),
     'ppc64le',
     'the Debian spelling resolves to the exact ppc64le artifact',
 );
-is(_genesis_boot_arch($tftp, 'x86_64'), 'x86_64', 'other architectures are unchanged');
+is(xCAT_plugin::destiny::_genesis_boot_arch($tftp, 'x86_64'), 'x86_64', 'other architectures are unchanged');
 
-ok(_genesis_uses_power_console('ppc64'), 'legacy POWER uses the hypervisor console');
-ok(_genesis_uses_power_console('ppc64le'), 'ppc64le uses the hypervisor console');
-ok(!_genesis_uses_power_console('x86_64'), 'x86_64 keeps the serial console path');
-
-like(
-    $content,
-    qr/my \$arch = _genesis_boot_arch\(\$tftpdir, \$ent->\{arch\}\);/,
-    'destiny applies the tested architecture selection to nodeset',
-);
+ok(xCAT_plugin::destiny::_genesis_uses_power_console('ppc64'), 'legacy POWER uses the hypervisor console');
+ok(xCAT_plugin::destiny::_genesis_uses_power_console('ppc64le'), 'ppc64le uses the hypervisor console');
+for my $arch (qw(x86_64 aarch64 s390x riscv64 ppc64el ppc64lex)) {
+    ok(!xCAT_plugin::destiny::_genesis_uses_power_console($arch), "$arch does not select a POWER console");
+}
 
 done_testing();
