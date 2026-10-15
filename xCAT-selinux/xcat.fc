@@ -3,12 +3,15 @@
 /opt/xcat/sbin/xcatd		--	gen_context(system_u:object_r:xcatd_exec_t,s0)
 /opt/xcat/bin/xcatclient		--	gen_context(system_u:object_r:xcat_client_exec_t,s0)
 /opt/xcat/bin/xcatclientnnr	--	gen_context(system_u:object_r:xcat_client_exec_t,s0)
+/opt/xcat/bin/xcatDBcmds		--	gen_context(system_u:object_r:xcat_client_exec_t,s0)
+/opt/xcat/bin/genimage		--	gen_context(system_u:object_r:xcat_client_exec_t,s0)
 
-# The entrypoints of the image build. The wrapper and the per-OS program are
-# both real files; packimage and liteimg are symlinks to xcatclientnnr, so the
-# work they ask for runs in xcat_t.
-/opt/xcat/bin/genimage		--	gen_context(system_u:object_r:xcat_image_exec_t,s0)
+# The entrypoints of the image build are the per-OS programs. The geninitrd
+# name needs its own line: most are symlinks to their sibling genimage, but
+# netboot/fedora12/geninitrd is a real program. packimage and liteimg are
+# symlinks to xcatclientnnr, so the work they ask for runs in xcat_t.
 /opt/xcat/share/xcat/netboot/[^/]+/genimage	--	gen_context(system_u:object_r:xcat_image_exec_t,s0)
+/opt/xcat/share/xcat/netboot/[^/]+/geninitrd	--	gen_context(system_u:object_r:xcat_image_exec_t,s0)
 
 /install(/.*)?		gen_context(system_u:object_r:public_content_t,s0)
 

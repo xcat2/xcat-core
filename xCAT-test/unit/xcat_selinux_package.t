@@ -273,8 +273,8 @@ like($te, qr/^\s*role unconfined_r types xcat_image_t;$/m,
 # (xCAT-client/bin/genimage:453), which transitions on its own. Labelling the
 # wrapper gave a dispatching client the authority of the image domain.
 is_deeply([ grep { fc_type($_) eq 'xcat_image_exec_t' } sort keys %fc ],
-    [ '/opt/xcat/share/xcat/netboot/[^/]+/geninitrd',
-      '/opt/xcat/share/xcat/netboot/[^/]+/genimage' ],
+    [ '/opt/xcat/share/xcat/netboot/[^/]+/genimage',
+      '/opt/xcat/share/xcat/netboot/[^/]+/geninitrd' ],
     'only the per-OS build programs carry the image entrypoint');
 is(fc_type('/opt/xcat/bin/genimage'), 'xcat_client_exec_t',
     'the genimage wrapper is a client, like every other dispatching command');
