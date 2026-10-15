@@ -1,6 +1,8 @@
 #!/bin/bash
 set -eu
 mount --make-rslave /
+# mockbuild/ stands in for the mock Python package that the build loads.
+export PYTHONPATH="$(dirname "$0")${PYTHONPATH:+:$PYTHONPATH}"
 etc="$BUILD_FIXTURE/etc"
 mkdir -p "$etc/mock" "$etc/yum.repos.d"
 for file in passwd group nsswitch.conf ld.so.cache; do
