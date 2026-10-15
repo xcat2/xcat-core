@@ -26,6 +26,9 @@ jobs:
       - name: Exercise image package policy
         if: ${{ !cancelled() }}
         run: prove xCAT-test/native/el10_image_package_policy.t
+      - name: Check Debian probe payload permissions
+        if: ${{ !cancelled() }}
+        run: bats xCAT-test/native/probe_debian_permissions.bats
       - name: Prepare xCAT syslog directory
         if: ${{ !cancelled() }}
         run: sudo install -d -o syslog -g adm -m 0750 /var/log/xcat

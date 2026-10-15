@@ -42,8 +42,8 @@ binary-arch:
 	dh_install -X".svn"
 	chmod 755 `pwd`/debian/xcat-probe/opt/xcat/bin/*
 	chmod 755 `pwd`/debian/xcat-probe/opt/xcat/probe/subcmds/*
-	chmod 644 `pwd`/debian/xcat-probe/opt/xcat/probe/lib/perl/*
-	chmod 644 `pwd`/debian/xcat-probe/opt/xcat/probe/lib/perl/xCAT/*
+	find `pwd`/debian/xcat-probe/opt/xcat/probe/lib -type d -exec chmod 755 {} +
+	find `pwd`/debian/xcat-probe/opt/xcat/probe/lib -type f -exec chmod 644 {} +
 #	dh_installmenu
 #	dh_installdebconf	
 #	dh_installlogrotate
