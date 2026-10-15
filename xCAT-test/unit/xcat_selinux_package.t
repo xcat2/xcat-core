@@ -271,11 +271,29 @@ is_deeply([ grep { fc_type($_) eq 'xcat_image_exec_t' } sort keys %fc ],
 # THE SECURITY PROPERTY OF THE SPLIT. The image build writes and relabels files
 # of every type, because it creates an operating system tree. The daemon that
 # listens on the network must not hold that authority.
-my @wide = $te =~ /^allow (\w+) file_type:\w+ \w+;$/mg;
+# The first form of this check matched only `allow X file_type:class perm;`
+# with a single unbraced permission, so every braced rule and every interface
+# call passed it. It is the whole security property of the split, so it now
+# reads both forms and names the interfaces that would grant the same thing.
+my @wide = $te =~ /^allow (\w+) file_type:\w+ [{\w]/mg;
 is_deeply([ sort(List::Util::uniq(@wide)) ], [ 'xcat_image_t' ],
-    'only the image domain may manage and relabel every file type');
-unlike($te, qr/^files_(manage|relabel)_all_files\(xcat_t\)$/m,
-    'the daemon domain gets no filesystem-wide grant by interface either');
+    'only the image domain may reach every file type directly');
+
+# The daemon domain may not relabel a security type, and may not manage one at
+# all. Those two are what keeps /etc/selinux, the keytabs and the audit
+# configuration of the management node out of reach of the network daemon.
+foreach my $iface (qw(files_manage_all_files files_relabel_all_files
+    auth_manage_shadow auth_relabel_shadow seutil_manage_file_contexts)) {
+    unlike($te, qr/^\Q$iface\E\(xcat_t\)$/m, "$iface is not given to xcat_t");
+    like($te, qr/^\Q$iface\E\(xcat_image_t\)$/m, "... and $iface is the image domain's")
+        if $te =~ /^\Q$iface\E\(/m;
+}
+
+# What xcat_t does keep, and why, so the next reader does not take the split for
+# more than it is: packimage and liteimg are symlinks to xcatclientnnr, so their
+# tree work runs in the daemon.
+like($te, qr/^files_manage_non_security_files\(xcat_t\)$/m,
+    'xcat_t still manages non-security files, for packimage');
 
 # A management node or a service node with the targeted policy installs the module.
 foreach my $pkg (qw(xCAT-server xCATsn)) {
