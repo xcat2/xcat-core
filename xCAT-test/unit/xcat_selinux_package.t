@@ -4,6 +4,7 @@ use warnings;
 
 use FindBin;
 use File::Slurper qw(read_lines);
+use List::Util ();
 use Test::More;
 
 # The spec files and the file context list are the artifacts: rpmbuild and
@@ -235,6 +236,40 @@ like($te, qr/^\s*role unconfined_r types xcat_t;$/m,
 foreach my $domain (qw(user_t staff_t sysadm_t guest_t xguest_t)) {
     unlike($te, qr/\b\Q$domain\E\b/, "$domain gets no rule in xcat.te");
 }
+
+########################################
+#
+# The image-build domain
+#
+
+like($te, qr/^type xcat_image_t;$/m, 'xcat.te declares a domain for the image build');
+like($te, qr/^permissive xcat_image_t;$/m, '... which is permissive too');
+like($te, qr/^application_domain\(xcat_image_t, xcat_image_exec_t\)$/m,
+    'genimage is the entrypoint of that domain');
+like($te, qr/^domtrans_pattern\(xcat_t, xcat_image_exec_t, xcat_image_t\)$/m,
+    'xcatd running genimage enters it');
+like($te, qr/^allow xcat_t xcat_image_t:process \{[^}]*\bnoatsecure\b/m,
+    '... and hands the child the three inherited process permissions');
+
+# The transition from a system service computes system_u:system_r:xcat_image_t.
+# application_domain does not authorize a role, and without the statement the
+# context is invalid: EACCES, reported as SELINUX_ERR and not as an AVC.
+like($te, qr/^role system_r types xcat_image_t;$/m, 'system_r is authorized for xcat_image_t');
+like($te, qr/^\s*role unconfined_r types xcat_image_t;$/m,
+    '... and so is unconfined_r, for an administrator who runs genimage');
+
+is_deeply([ grep { fc_type($_) eq 'xcat_image_exec_t' } sort keys %fc ],
+    [ '/opt/xcat/bin/genimage', '/opt/xcat/share/xcat/netboot/[^/]+/genimage' ],
+    'the two genimage programs carry the entrypoint, and nothing else does');
+
+# THE SECURITY PROPERTY OF THE SPLIT. The image build writes and relabels files
+# of every type, because it creates an operating system tree. The daemon that
+# listens on the network must not hold that authority.
+my @wide = $te =~ /^allow (\w+) file_type:\w+ \w+;$/mg;
+is_deeply([ sort(List::Util::uniq(@wide)) ], [ 'xcat_image_t' ],
+    'only the image domain may manage and relabel every file type');
+unlike($te, qr/^files_(manage|relabel)_all_files\(xcat_t\)$/m,
+    'the daemon domain gets no filesystem-wide grant by interface either');
 
 # A management node or a service node with the targeted policy installs the module.
 foreach my $pkg (qw(xCAT-server xCATsn)) {
