@@ -264,9 +264,25 @@ like($te, qr/^role system_r types xcat_image_t;$/m, 'system_r is authorized for 
 like($te, qr/^\s*role unconfined_r types xcat_image_t;$/m,
     '... and so is unconfined_r, for an administrator who runs genimage');
 
+# The per-OS programs are the entrypoint, and the geninitrd name needs its own
+# pattern: most are symlinks to their sibling genimage, but
+# netboot/fedora12/geninitrd is a real program the genimage glob never matches.
+#
+# /opt/xcat/bin/genimage is NOT one of them. It writes a request to the socket,
+# and in --interactive mode it runs the per-OS program through a shell
+# (xCAT-client/bin/genimage:453), which transitions on its own. Labelling the
+# wrapper gave a dispatching client the authority of the image domain.
 is_deeply([ grep { fc_type($_) eq 'xcat_image_exec_t' } sort keys %fc ],
-    [ '/opt/xcat/bin/genimage', '/opt/xcat/share/xcat/netboot/[^/]+/genimage' ],
-    'the two genimage programs carry the entrypoint, and nothing else does');
+    [ '/opt/xcat/share/xcat/netboot/[^/]+/geninitrd',
+      '/opt/xcat/share/xcat/netboot/[^/]+/genimage' ],
+    'only the per-OS build programs carry the image entrypoint');
+is(fc_type('/opt/xcat/bin/genimage'), 'xcat_client_exec_t',
+    'the genimage wrapper is a client, like every other dispatching command');
+
+# xcatDBcmds is the third dispatcher: 12 spec symlinks reach it, among them
+# lsdef, chdef, mkdef and rmdef, and it does nothing but submit_request.
+is(fc_type('/opt/xcat/bin/xcatDBcmds'), 'xcat_client_exec_t',
+    'the definition commands enter the domain too');
 
 # THE SECURITY PROPERTY OF THE SPLIT. The image build writes and relabels files
 # of every type, because it creates an operating system tree. The daemon that
