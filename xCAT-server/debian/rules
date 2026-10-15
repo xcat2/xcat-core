@@ -88,6 +88,15 @@ binary-arch:
 	dh_perl
 	dh_makeshlibs
 	dh_installdeb
+	# These scripts can run before unpacking or after the helpers are removed.
+	set -e; for script in preinst postrm; do \
+	    scriptfile=$(buildroot)/DEBIAN/$$script; \
+	    { head -n 1 "$$scriptfile"; \
+	      cat share/xcat/scripts/xcatd-init-compat-functions; \
+	      tail -n +2 "$$scriptfile"; } > "$$scriptfile.tmp"; \
+	    chmod 755 "$$scriptfile.tmp"; \
+	    mv "$$scriptfile.tmp" "$$scriptfile"; \
+	done
 	dh_shlibdeps
 	dh_gencontrol -- -Vperl:Depends=perl
 	dh_md5sums

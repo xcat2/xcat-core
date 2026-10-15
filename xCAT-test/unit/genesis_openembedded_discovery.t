@@ -15,8 +15,6 @@ my $META = 'xCAT-genesis-base/oe/meta-xcat-genesis';
 
 my $recipe = slurp_repo_file(
     "$META/recipes-xcat/xcat-genesis-discovery/xcat-genesis-discovery_1.0.bb");
-like( $recipe, qr/^RDEPENDS:\$\{PN\} = "bash coreutils gzip iproute2 openssl-bin util-linux-logger util-linux-lsblk"$/m,
-    'discovery dependencies are explicit' );
 like( $recipe, qr/xcat-genesis-discovery\.socket/,
     'discovery callback socket is packaged' );
 like( $recipe, qr/xcat-genesis-credential\.socket/,

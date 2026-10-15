@@ -103,9 +103,17 @@ SH
     cat >"$bin/openssl" <<'SH'
 #!/bin/sh
 printf 'openssl %s\n' "$*" >>"$XCAT_TEST_LOG"
+cat >"$XCAT_TEST_REQUEST_FILE"
+printf '%s\n' "$$" >"$XCAT_TEST_REQUEST_PID"
 [ -z "${XCAT_TEST_OPENSSL_DELAY-}" ] || exec sleep "$XCAT_TEST_OPENSSL_DELAY"
 [ -z "${XCAT_TEST_OPENSSL_STATUS-}" ] || exit "$XCAT_TEST_OPENSSL_STATUS"
+if [ -n "${XCAT_TEST_FIRST_ERROR-}" ] && [ ! -f "$XCAT_TEST_FIRST_ERROR" ]; then
+    touch "$XCAT_TEST_FIRST_ERROR"
+    printf '<xcatresponse><error>busy</error></xcatresponse>\n'
+    exit 1
+fi
 cat "$XCAT_TEST_RESPONSE_FILE"
+exit "${XCAT_TEST_OPENSSL_AFTER_STATUS:-0}"
 SH
     chmod 0755 "$bin"/*
 
@@ -117,6 +125,8 @@ SH
     export XCAT_SYS_CLASS_NET="$root/sys/class/net"
     export XCAT_TEST_LOG="$root/commands.log"
     export XCAT_TEST_RESPONSE_FILE="$root/destiny-response.xml"
+    export XCAT_TEST_REQUEST_FILE="$root/request.xml"
+    export XCAT_TEST_REQUEST_PID="$root/request.pid"
     export XCAT_TEST_ROUTE='127.0.0.1 via 192.0.2.1 dev eth0 src 192.0.2.98'
     export XCAT_UPTIME_FILE="$root/uptime"
     export XCAT_GENESIS_FUNCTIONS="$(require_repo_file "$INIT_FILES/genesis-functions")"
@@ -141,14 +151,20 @@ response()
         '</node>' '</xcatresponse>' >"$XCAT_TEST_RESPONSE_FILE"
 }
 
-# Start a command, send it SIGTERM after 0.2 s, and print its exit status. Prints "hung"
-# when it is still running 3 s later.
+# Stop the command and print its exit status, or "hung" if it does not exit.
 terminate_after()
 {
     local pid rc=0
     "$@" </dev/null >/dev/null 2>&1 &
     pid=$!
-    sleep 0.2
+    if [ "${XCAT_TEST_WAIT_REQUEST:-0}" -eq 1 ]; then
+        for _ in $(seq 50); do
+            [ -s "$XCAT_TEST_REQUEST_PID" ] && break
+            sleep 0.1
+        done
+    else
+        sleep 0.2
+    fi
     kill -TERM "$pid"
     for _ in $(seq 30); do
         kill -0 "$pid" 2>/dev/null || { wait "$pid" || rc=$?; echo "$rc"; return; }
@@ -227,6 +243,126 @@ network_state()
     [ "$(terminate_after /bin/bash "$NEXTDESTINY" 192.0.2.10:3001)" = 143 ]
 }
 
+@test "destiny commands send distinct requests and honor endpoint precedence" {
+    response standby
+    local command name
+    for command in "$GETDESTINY" "$NEXTDESTINY"; do
+        name=${command##*/}
+        run env XCATDEST=192.0.2.20:3001 /bin/bash "$command" 192.0.2.10:3001 --once
+        [ "$status" -eq 0 ]
+        [ "$(cat "$XCAT_TEST_REQUEST_FILE")" = "<xcatrequest>
+<command>$name</command>
+<callback_port>300</callback_port>
+</xcatrequest>" ]
+        grep -q -- '-connect 192.0.2.20:3001 -quiet$' "$XCAT_TEST_LOG"
+        : >"$XCAT_TEST_LOG"
+        run env XCATDEST=192.0.2.20:3001 /bin/bash "$command" --once -- 192.0.2.30:3001
+        [ "$status" -eq 0 ]
+        grep -q -- '-connect 192.0.2.30:3001 -quiet$' "$XCAT_TEST_LOG"
+        : >"$XCAT_TEST_LOG"
+    done
+}
+
+@test "destiny commands accept a complete response despite a TLS exit error" {
+    response standby
+    local command
+    for command in "$GETDESTINY" "$NEXTDESTINY"; do
+        run env XCAT_TEST_OPENSSL_AFTER_STATUS=1 /bin/bash "$command" 192.0.2.10:3001 --once
+        [ "$status" -eq 0 ]
+        [ "$output" = standby ]
+    done
+}
+
+@test "destiny clients use a certificate only when both credential files exist" {
+    command -v bwrap >/dev/null || { echo 'bubblewrap is required for isolated credential tests' >&2; return 1; }
+    response standby
+    mkdir -p "$root/cert-etc/xcat"
+    local command credentials expected
+    for credentials in absent certificate key both; do
+        rm -f "$root/cert-etc/xcat/cert.pem" "$root/cert-etc/xcat/certkey.pem"
+        case "$credentials" in
+            certificate|both) printf certificate >"$root/cert-etc/xcat/cert.pem" ;;
+        esac
+        case "$credentials" in
+            key|both) printf key >"$root/cert-etc/xcat/certkey.pem" ;;
+        esac
+        expected='openssl s_client -connect 192.0.2.10:3001 -quiet'
+        if [ "$credentials" = both ]; then
+            expected='openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect 192.0.2.10:3001 -quiet'
+        fi
+        for command in "$GETDESTINY" "$NEXTDESTINY"; do
+            : >"$XCAT_TEST_LOG"
+            run bwrap --unshare-all --die-with-parent --ro-bind / / \
+                --proc /proc --dev /dev --bind "$root" "$root" \
+                --ro-bind "$root/cert-etc" /etc --setenv TMPDIR "$root" \
+                /bin/bash "$command" 192.0.2.10:3001 --once
+            [ "$status" -eq 0 ]
+            [ "$(cat "$XCAT_TEST_LOG")" = "$expected" ]
+        done
+    done
+}
+
+@test "destiny metadata uses private modes and supports a relative output name" {
+    response osimage=test-image
+    local command
+    for command in "$GETDESTINY" "$NEXTDESTINY"; do
+        (cd "$state_dir" && /bin/bash "$command" 192.0.2.10:3001 --once --metadata response.env)
+        [ "$(cat "$state_dir/response.env")" = "$EXPECTED_METADATA" ]
+        [ "$(stat -c %a "$state_dir/response.env")" = 600 ]
+        [ -z "$(find "$state_dir" -name '.*destiny.*' -print)" ]
+    done
+}
+
+@test "destiny metadata retains the first printable element and empty fields" {
+    printf '<xcatresponse>\n<name>node\001042</name>\n<name>other</name>\n<destiny>standby</destiny>\n</xcatresponse>\n' >"$XCAT_TEST_RESPONSE_FILE"
+    local command
+    for command in "$GETDESTINY" "$NEXTDESTINY"; do
+        /bin/bash "$command" 192.0.2.10:3001 --once --metadata "$metadata"
+        [ "$(cat "$metadata")" = 'XCAT_NODE_NAME=node042
+XCAT_DESTINY=standby
+XCAT_IMAGE_SERVER=
+XCAT_KERNEL=
+XCAT_INITRD=
+XCAT_KERNEL_COMMAND_LINE=' ]
+    done
+}
+
+@test "destiny commands reject a missing metadata directory without leaving request files" {
+    response standby
+    mkdir "$root/requests"
+    local command
+    for command in "$GETDESTINY" "$NEXTDESTINY"; do
+        run env TMPDIR="$root/requests" /bin/bash "$command" 192.0.2.10:3001 --once --metadata "$root/absent/response"
+        [ "$status" -eq 1 ]
+        [ -z "$(find "$root/requests" -mindepth 1 -print)" ]
+    done
+}
+
+@test "terminating a destiny request stops its TLS child and removes temporary files" {
+    export XCAT_TEST_OPENSSL_DELAY=30 XCAT_TEST_WAIT_REQUEST=1
+    mkdir "$root/requests"
+    local command
+    for command in "$GETDESTINY" "$NEXTDESTINY"; do
+        rm -f "$XCAT_TEST_REQUEST_PID"
+        [ "$(TMPDIR="$root/requests" terminate_after /bin/bash "$command" 192.0.2.10:3001)" = 143 ]
+        [ -s "$XCAT_TEST_REQUEST_PID" ]
+        run kill -0 "$(cat "$XCAT_TEST_REQUEST_PID")"
+        [ "$status" -ne 0 ]
+        [ -z "$(find "$root/requests" -mindepth 1 -print)" ]
+    done
+}
+
+@test "legacy getdestiny retries an error before accepting the next response" {
+    response standby
+    printf '#!/bin/sh\nprintf "sleep %%s\\n" "$*" >>"$XCAT_TEST_LOG"\n' >"$bin/sleep"
+    chmod 0755 "$bin/sleep"
+    run env XCAT_TEST_FIRST_ERROR="$root/first-error" timeout 30 /bin/bash "$GETDESTINY" 192.0.2.10:3001
+    [ "$status" -eq 0 ]
+    [ "$(grep -c '^openssl ' "$XCAT_TEST_LOG")" = 2 ]
+    [ "$(grep -c '^sleep 1$' "$XCAT_TEST_LOG")" = 60 ]
+    [[ "$output" == *standby ]]
+}
+
 @test "the network state accepts DHCP boot state, probes the xCAT port, and publishes readiness" {
     printf 'xcatd=127.0.0.1:%s BOOTIF=01-52-54-00-00-00-35\n' "$port" >"$XCAT_CMDLINE_FILE"
     accepted_before="$(wc -l <"$LISTENER_LOG")"
@@ -257,6 +393,17 @@ VERIFIED_SECONDS=123' ]
     printf 'xcatd=127.0.0.1:%s BOOTIF=01-52-54-00-00-00-35\n' "$port" >"$XCAT_CMDLINE_FILE"
     XCAT_TEST_LOGGER_FAIL=1 network_state
     [ "$status" -eq 0 ]
+}
+
+@test "network status failures use the caller diagnostic and propagate a logging failure" {
+    export XCAT_STATUS_COMMAND=/bin/false
+    printf 'xcatd=127.0.0.1:%s BOOTIF=01-52-54-00-00-00-35\n' "$port" >"$XCAT_CMDLINE_FILE"
+    network_state
+    [ "$status" -eq 0 ]
+    grep -Fx 'logger -t xcat-genesis-network-state -- unable to publish network status' "$XCAT_TEST_LOG"
+    [ -s "$state_dir/genesis.env" ]
+    XCAT_TEST_LOGGER_FAIL=1 network_state
+    [ "$status" -eq 1 ]
 }
 
 @test "unsafe network data is rejected, never evaluated, and does not replace the prior state" {
@@ -338,6 +485,17 @@ with_network_state()
     grep -A2 -x ACTION=shell "$status_dir/registration.env" | paste -sd' ' | grep -qx 'ACTION=shell TARGET= NODE_NAME=node042'
     XCAT_TEST_LOGGER_FAIL=1 run /bin/bash "$REGISTER_SCRIPT"
     [ "$status" -eq 0 ]
+}
+
+@test "registration status failures use the caller diagnostic and propagate a logging failure" {
+    export XCATDEST=192.0.2.213:3001 XCAT_STATUS_COMMAND=/bin/false
+    printf 'xcatd=192.0.2.213:3001 destiny=shell\n' >"$XCAT_CMDLINE_FILE"
+    run /bin/bash "$REGISTER_SCRIPT"
+    [ "$status" -eq 0 ]
+    [ "$(cat "$state_dir/destiny")" = shell ]
+    grep -Fx 'logger -t xcat-genesis-register -- unable to publish registration status' "$XCAT_TEST_LOG"
+    XCAT_TEST_LOGGER_FAIL=1 run /bin/bash "$REGISTER_SCRIPT"
+    [ "$status" -eq 1 ]
 }
 
 @test "registration requests a missing destiny, and rejects an empty one without replacing state" {

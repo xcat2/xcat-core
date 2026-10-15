@@ -40,13 +40,7 @@ machine_dir=$deploy_dir/images/$machine
 stem=$extension-$machine
 artifact_stem=$stem.sysext
 
-resolve_artifact() {
-    local path=$1 resolved
-
-    resolved=$(readlink -f -- "$path")
-    [[ -f $resolved && ! -L $resolved ]] || fail "missing artifact: $path"
-    printf '%s\n' "$resolved"
-}
+source "$script_dir/scripts/export-functions"
 
 image=$(resolve_artifact "$machine_dir/$artifact_stem.squashfs-zst")
 manifest=$(resolve_artifact "$machine_dir/$artifact_stem.manifest.json")

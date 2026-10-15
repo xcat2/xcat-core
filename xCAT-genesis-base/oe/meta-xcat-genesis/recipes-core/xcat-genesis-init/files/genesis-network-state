@@ -16,7 +16,7 @@ failure_recovery='Check the management network and boot parameters'
 
 publish_status() {
     genesis_publish_status "$status_command" network \
-        xcat-genesis-network-state "$@"
+        xcat-genesis-network-state 'unable to publish network status' "$@"
 }
 
 finish_status() {

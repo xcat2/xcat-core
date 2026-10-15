@@ -125,10 +125,9 @@ OPTIONS
 
 \ *destination*\ 
  
- The output bundle file name. If remote host is specified with \ **-**\ **-remotehost**\  option, 
- the \ *destination*\  can include the path to the bundle file. If remote host is not
- specified, the bundle file is placed in a local working directory, even if \ *destination*\ 
- includes a path.
+ The output bundle file name, which can include a path. Without \ **-**\ **-remotehost**\ , a relative
+ path starts from the current working directory, and the directory must exist. With
+ \ **-**\ **-remotehost**\ , the path is on the remote host.
  
 
 

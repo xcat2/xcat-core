@@ -3,7 +3,6 @@ LICENSE = "EPL-1.0"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/EPL-1.0;md5=57f8d5e2b3e98ac6e088986c12bf94e6"
 
 SRC_URI = "file://00-xcat-genesis.preset \
-           file://genesis-functions \
            file://genesis-maintenance-shell \
            file://genesis-action \
            file://genesis-metrics \
@@ -21,7 +20,7 @@ S = "${UNPACKDIR}"
 
 inherit systemd
 
-RDEPENDS:${PN} = "bash coreutils ipmitool iproute2 networkmanager-nmcli util-linux-logger xcat-genesis-discovery xcat-genesis-protocol"
+RDEPENDS:${PN} = "bash coreutils ipmitool iproute2 networkmanager-nmcli util-linux-logger xcat-genesis-common xcat-genesis-discovery xcat-genesis-protocol"
 
 SYSTEMD_SERVICE:${PN} = "xcat-genesis-action.service \
                          xcat-genesis-metrics.service \
@@ -32,8 +31,6 @@ SYSTEMD_AUTO_ENABLE = "enable"
 
 do_install() {
     install -d ${D}${libexecdir}/xcat
-    install -m 0644 ${UNPACKDIR}/genesis-functions \
-        ${D}${libexecdir}/xcat/genesis-functions
     install -m 0755 ${UNPACKDIR}/genesis-maintenance-shell \
         ${D}${libexecdir}/xcat/genesis-maintenance-shell
     install -m 0755 ${UNPACKDIR}/genesis-action \
@@ -67,7 +64,6 @@ do_install() {
 }
 
 FILES:${PN} = "${libexecdir}/xcat/genesis-maintenance-shell \
-               ${libexecdir}/xcat/genesis-functions \
                ${libexecdir}/xcat/genesis-action \
                ${libexecdir}/xcat/genesis-metrics \
                ${libexecdir}/xcat/genesis-network-refresh \

@@ -59,6 +59,12 @@ binary-arch:
 	dh_perl
 	dh_makeshlibs
 	dh_installdeb
+	set -e; scriptfile=debian/xcat/DEBIAN/postinst; \
+	    { head -n 1 "$$scriptfile"; \
+	      cat xcat-upgrade-functions.sh; \
+	      tail -n +2 "$$scriptfile"; } > "$$scriptfile.tmp"; \
+	    chmod 755 "$$scriptfile.tmp"; \
+	    mv "$$scriptfile.tmp" "$$scriptfile"
 	dh_shlibdeps
 	dh_gencontrol -- -Vperl:Depends=perl
 	dh_md5sums

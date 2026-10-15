@@ -82,10 +82,9 @@ The name of the image. Use B<lsdef -t osimage> to find out all the image names.
 
 =item I<destination>
 
-The output bundle file name. If remote host is specified with B<--remotehost> option, 
-the I<destination> can include the path to the bundle file. If remote host is not
-specified, the bundle file is placed in a local working directory, even if I<destination>
-includes a path.
+The output bundle file name, which can include a path. Without B<--remotehost>, a relative
+path starts from the current working directory, and the directory must exist. With
+B<--remotehost>, the path is on the remote host.
 
 =back
 
