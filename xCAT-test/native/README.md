@@ -143,6 +143,40 @@ Compressor and ctorrent fixtures record what nodes can download during the
 pack, or fail on request. The image lock and the ilitefile query are test
 doubles. This case does not boot the image.
 
+The disk, kdump and sudoer cases require bats-core 1.4 or newer, Bubblewrap,
+GNU timeout, diffutils, Capture::Tiny, File::Slurper and sudo's `visudo`.
+Sandbox commands have a 45-second limit. Enable Linux user namespaces.
+Run the group as root because
+the disk-selection case creates dummy block-device entries:
+
+```
+sudo bats xCAT-test/native/getinstdisk_selection.bats
+sudo prove xCAT-test/native/getinstdisk_installer.t \
+      xCAT-test/native/enablekdump_per_node.t \
+      xCAT-test/native/sudoer_password_source.t
+```
+
+The BATS cases source the unchanged disk selector. Partition and udev fixtures
+are the inputs; the selected disk file is the output. Each case runs twice
+with awk discovery and twice without it. Discovery searches a private fixture,
+not the host's `/usr` tree.
+
+The separate Perl case renders and runs the RHEL 10 installer fragment. It
+checks that the partition plan uses the selected disk. It needs the system
+Perl with xCAT's dependencies, XML::Simple and DBD::SQLite. The sandbox does
+not mount perlbrew or local::lib directories.
+
+When the checkout is inside another user's private home, copy it as root to a
+temporary directory under `/tmp` first. Root inside the test's user namespace
+cannot traverse a private directory owned by that user. CI uses a root-owned
+copy for this reason.
+
+These cases run the unchanged scripts with private filesystems and no network.
+Disk discovery, NFS mounts, credentials, account commands and service commands
+use fixtures. The disk case never opens its dummy devices. The sudoer case
+checks generated rules with the real `visudo` parser. These tests do not perform
+an installation, capture a kernel crash or modify host accounts.
+
 Check the TAP output for skipped prerequisites. A successful `prove` exit with
 skipped cases does not qualify those cases.
 
