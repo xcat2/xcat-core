@@ -16,5 +16,7 @@
 /install(/.*)?		gen_context(system_u:object_r:public_content_t,s0)
 
 # A rootimg keeps the labels of its own OS, so restorecon must not change them.
-/install/netboot/[^/]+/[^/]+/[^/]+/rootimg(/.*)?		<<none>>
-/install/netboot/[^/]+/[^/]+/[^/]+/rootimg-statelite(/.*)?	<<none>>
+# genimage puts the tree at <rootimgdir>/rootimg, and rootimgdir can be at any
+# depth under /install.
+/install(/.*)?/rootimg(/.*)?		<<none>>
+/install(/.*)?/rootimg-statelite(/.*)?	<<none>>
