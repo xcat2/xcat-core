@@ -55,7 +55,7 @@ use File::Temp qw(tempdir tempfile);
 use FindBin qw($Bin);
 use lib "$Bin/build-utils/lib";
 use XCAT::BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildinfo_text
-    build_sources_base prepare_build_sources_dir remove_build_sources_dir
+    build_sources_base prepare_build_sources_dir remove_build_sources_dir share_build_sources_dir
     sweep_build_sources_dirs stage_xcat_probe_sources stage_xcatsn_templates
                         stage_genesis_base_sources
                         write_script read_line targetarch_from_target
@@ -330,6 +330,14 @@ sub createmockconfig {
         mock_config_text($pkg, "$target$ext", read_text("/etc/mock/$target.cfg"), $SOURCE_DATE_EPOCH));
 }
 
+# mock writes --resultdir as chrootuid, and this script runs as root.
+sub prepare_mock_resultdirs {
+    my ($pkg, $target) = @_;
+    my $ext = $opts{mock_uniqueext} ? "-$opts{mock_uniqueext}" : "";
+    XCAT::BuildUtils::prepare_mock_resultdirs("$pkg-$target$ext", undef,
+        "dist/$target/rpms", "dist/$target/rpms/SRPMS");
+}
+
 sub buildsources_genesis_base($) {
     stage_genesis_base_sources(".", "$SOURCES/xCAT-genesis-base-build-support.tar.bz2",
         $SOURCE_DATE_EPOCH);
@@ -368,7 +376,14 @@ sub buildsources {
     die "FATAL: buildsources ran outside buildall; the staging directory is unset\n"
         unless length $SOURCES;
 
+    if ($pkg eq 'xCAT' || $pkg eq 'xCATsn') {
+        cp 'xCAT/xcat-apache-pretrans.lua', "$SOURCES/xcat-apache-pretrans.lua"
+            or die "FATAL: unable to stage Apache configuration migration: $!\n";
+    }
+
     if ($pkg eq "xCAT") {
+        cp 'xCAT/xcat-upgrade-functions.sh', "$SOURCES/xcat-upgrade-functions.sh"
+            or die "FATAL: unable to stage upgrade functions: $!\n";
         my @files = ("bmcsetup", "getipmi");
         for my $f (@files) {
             cp "xCAT-genesis-scripts/usr/bin/$f", "$pkg/postscripts/$f";
@@ -518,7 +533,9 @@ sub buildall {
     # The parent deletes this directory when it reaps the child.
     $SOURCES = prepare_build_sources_dir($SOURCES_BASE, $$);
     createmockconfig($pkg, $target);
+    prepare_mock_resultdirs($pkg, $target);
     buildsources($pkg, $target);
+    share_build_sources_dir($SOURCES);
     buildspkgs($pkg, $target);
     # --source-only stops here: buildspkgs has produced the src.rpm, and the binary
     # rebuild is the only thing buildpkgs does. Everything upstream of this point --

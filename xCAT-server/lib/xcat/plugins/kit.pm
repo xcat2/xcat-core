@@ -23,6 +23,7 @@ use Getopt::Long;
 use File::Basename;
 use File::Path;
 use Cwd;
+use Scalar::Util qw(weaken);
 
 my $kitconf = "kit.conf";
 
@@ -31,6 +32,9 @@ $::KITFRAMEWORK = "2";
 
 # this code is compatible with other kits that are at framework 0 or 1.
 $::COMPATIBLE_KITFRAMEWORKS = "0,1,2";
+
+# The kit lock of the kit command that runs in this process, as a weak reference that ends with that command.
+my $kit_lock;
 
 my $debianflag = 0;
 my $tempstring = xCAT::Utils->osver(all);
@@ -82,25 +86,19 @@ sub process_request
     $::CALLBACK = $callback;
     $::args     = $request->{arg};
 
+    # A kit command that another kit command runs goes on under the lock of that command.
     my $lock;
-    my $locked = xCAT::Utils->is_locked("kit", 1);
-    if (!locked) {
+    unless ($kit_lock) {
         $lock = xCAT::Utils->acquire_lock("kit", 1);
         unless ($lock) {
-            $callback->({ error => ["Can not acquire lock."], errorcode => [1] });
-            return 1;
-        }
-    } else {
-        if ($::PID and $::PID != $$) {
             $callback->({ error => ["Can not acquire lock, another process is running."], errorcode => [1] });
             return 1;
         }
-
-        $::PID = $$;
+        weaken($kit_lock = $lock);
     }
 
     my ($sysos, $sysver) = split /,/, $tempstring;
-    if ( ($sysos =~ /rh/) && ($sysver ge 8) ) {
+    if ( ($sysos =~ /rh/) && ($sysver =~ /^(\d+)/x) && ($1 >= 8) ) {
         $callback->({ error => ["KITs are not supported on rhel8 or above"], errorcode => [1] });
         return 1;
     }

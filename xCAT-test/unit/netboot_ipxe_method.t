@@ -8,6 +8,7 @@ use warnings;
 
 use File::Temp qw(tempdir);
 use FindBin;
+use lib "$FindBin::Bin/../../perl-xCAT";
 use Test::More;
 
 my $repo = "$FindBin::Bin/../..";

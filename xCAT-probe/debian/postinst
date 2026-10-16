@@ -20,6 +20,12 @@ set -e
 
 case "$1" in
     configure)
+        probe_lib=/opt/xcat/probe/lib/perl/xCAT
+        if [ -d "$probe_lib" ] && [ ! -L "$probe_lib" ] &&
+            [ "$(stat -c %a "$probe_lib")" = 644 ] &&
+            ! dpkg-statoverride --list "$probe_lib" >/dev/null; then
+            chmod 755 "$probe_lib"
+        fi
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

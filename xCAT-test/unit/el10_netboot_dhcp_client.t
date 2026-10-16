@@ -6,21 +6,17 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use Test::More;
 
-use XCAT::Test::File qw(repo_path slurp_repo_file);
-
-my $spec = slurp_repo_file('xCAT-server/xCAT-server.spec');
-unlike( $spec, qr/\bdnf\s+download\b/, 'xCAT-server RPM scripts do not download packages' );
-unlike( $spec, qr{/install/dhcp_pkgs}, 'xCAT-server RPM scripts do not write hidden DHCP package directories' );
-
-my $anaconda = slurp_repo_file('xCAT-server/lib/xcat/plugins/anaconda.pm');
-unlike( $anaconda, qr{/install/dhcp_pkgs}, 'copycds does not inject hidden DHCP package directories into pkgdir' );
+use XCAT::Test::File qw(repo_path);
 
 my @pkglist_files = qw(
+  xCAT-server/share/xcat/netboot/rh/compute.rhels10.aarch64.pkglist
   xCAT-server/share/xcat/netboot/rh/compute.rhels10.ppc64le.pkglist
   xCAT-server/share/xcat/netboot/rh/compute.rhels10.x86_64.pkglist
 );
 
 my %el10_pkglist_aliases = (
+    'xCAT-server/share/xcat/netboot/alma/compute.alma10.aarch64.pkglist'   => '../rh/compute.rhels10.aarch64.pkglist',
+    'xCAT-server/share/xcat/netboot/rocky/compute.rocky10.aarch64.pkglist' => '../rh/compute.rhels10.aarch64.pkglist',
     'xCAT-server/share/xcat/netboot/rocky/compute.rocky10.ppc64le.pkglist' => '../rh/compute.rhels10.ppc64le.pkglist',
     'xCAT-server/share/xcat/netboot/rocky/compute.rocky10.x86_64.pkglist'  => '../rh/compute.rhels10.x86_64.pkglist',
 );

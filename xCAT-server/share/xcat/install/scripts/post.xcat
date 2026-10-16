@@ -358,38 +358,10 @@ fi
 mkdir -p /opt/xcat
 cat >/opt/xcat/xcatinstallpost << 'EOF'
 #!/bin/bash
-# Disable the xcatpostinit1 service *before* running the postscripts (the
-# INCLUDE at the end).  If a postscript reboots the node, the service is
-# already disabled, so the whole postscript set is not run again on reboot.
-# The disable decision needs OSVER, RUNBOOTSCRIPTS and NODESTATUS, which the
-# included script would otherwise set; read them up front (it re-reads them),
-# and source xcatlib.sh so msgutil_r is available for the debug messages.
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/postinit.sh#
 [ -f /xcatpost/xcatlib.sh ] && . /xcatpost/xcatlib.sh
-if [ -f /xcatpost/mypostscript.post ]; then
-    OSVER=`grep '^OSVER=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
-    RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript.post |cut -d= -f2 | tr -d \'\" | tr A-Z a-z`
-    XCATDEBUGMODE=`grep 'XCATDEBUGMODE=' /xcatpost/mypostscript.post |cut -d= -f2 | tr -d \'\" | tr A-Z a-z`
-    MASTER_IP=`grep '^MASTER_IP=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
-fi
-[ -f /xcatpost/mypostscript ] && NODESTATUS=`grep 'NODESTATUS=' /xcatpost/mypostscript |awk -F = '{print $2}'|tr -d \'\" | tr A-Z a-z `
-[ -z "$NODESTATUS" ] && NODESTATUS="1"
-
-if [[ $OSVER == ubuntu* ]]; then
-    if [[ ! "$RUNBOOTSCRIPTS" =~ ^(1|yes|y)$ ]]; then
-        update-rc.d -f xcatpostinit1 remove
-    fi
-    if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
-        msgutil_r "$MASTER_IP" "debug" "update-rc.d -f xcatpostinit1 remove" "/var/log/xcat/xcat.log" "xcat.xcatinstallpost"
-    fi
-else
-    if [[ ! "$RUNBOOTSCRIPTS" =~ ^(1|yes|y)$ ]] && [[ ! "$NODESTATUS" =~ ^(1|yes|y)$ ]]; then
-        chkconfig xcatpostinit1 off
-        if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
-            msgutil_r "$MASTER_IP" "debug" "service xcatpostinit1 disabled" "/var/log/xcat/xcat.log" "xcat.xcatinstallpost"
-        fi
-    fi
-
-fi
+# Disable the service before a postscript can reboot the node.
+xcat_disable_postinit legacy
 
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatinstallpost#
 

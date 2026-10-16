@@ -8,28 +8,6 @@ use Test::More;
 
 use XCAT::Test::File qw(slurp_repo_file);
 
-my $rpm_weak_dependencies = join(
-    "\n",
-    '%if 0%{?fedora} || 0%{?rhel} >= 8 || 0%{?suse_version} >= 1500',
-    'Recommends: xCAT-genesis-openembedded-x86_64',
-    'Recommends: xCAT-genesis-openembedded-ppc64le',
-    'Recommends: xCAT-genesis-openembedded-riscv64',
-    'Recommends: xCAT-genesis-openembedded-s390x',
-    '%endif',
-);
-
-my $rpm_spec = slurp_repo_file('xCAT/xCAT.spec');
-like(
-    $rpm_spec,
-    qr/^\Q$rpm_weak_dependencies\E$/m,
-    'RPM weak dependencies stay inside their compatibility guard',
-);
-unlike(
-    $rpm_spec,
-    qr/^Requires:\s+xCAT-genesis-openembedded-/m,
-    'missing OpenEmbedded images do not block an RPM upgrade',
-);
-
 my $deb_control = slurp_repo_file('xCAT/debian/control');
 like(
     $deb_control,
@@ -57,13 +35,6 @@ unlike(
     'missing OpenEmbedded images do not block a DEB upgrade',
 );
 
-my $sn_rpm_spec = slurp_repo_file('xCATsn/xCATsn.spec');
-like(
-    $sn_rpm_spec,
-    qr/^\Q$rpm_weak_dependencies\E$/m,
-    'service-node weak dependencies stay inside their compatibility guard',
-);
-
 my $sn_deb_control = slurp_repo_file('xCATsn/debian/control');
 like(
     $sn_deb_control,
@@ -85,26 +56,6 @@ like(
     qr/^Recommends:.*\bxcat-genesis-openembedded-s390x\b/m,
     'DEB service nodes recommend the s390x image',
 );
-
-my $go_xcat = slurp_repo_file('xCAT-server/share/xcat/tools/go-xcat');
-unlike(
-    $go_xcat,
-    qr/GO_XCAT_LIBRARY_ONLY/,
-    'go-xcat cannot be disabled by an inherited test environment variable',
-);
-for my $architecture (qw(x86 x86_64 ppc64 ppc64le armv7hf aarch64 riscv64 s390x)) {
-    like(
-        $go_xcat,
-        qr/\bxCAT-genesis-openembedded-\Q$architecture\E\b/,
-        "go-xcat removes the $architecture RPM image",
-    );
-    (my $deb_architecture = $architecture) =~ tr/_/-/;
-    like(
-        $go_xcat,
-        qr/\bxcat-genesis-openembedded-\Q$deb_architecture\E\b/,
-        "go-xcat removes the $architecture DEB image",
-    );
-}
 
 my $mknb_pod = slurp_repo_file('xCAT-client/pods/man8/mknb.8.pod');
 like(

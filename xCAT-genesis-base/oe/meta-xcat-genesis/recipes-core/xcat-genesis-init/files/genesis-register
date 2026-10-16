@@ -27,7 +27,7 @@ declare -a cmdline_arguments
 
 publish_status() {
     genesis_publish_status "$status_command" registration \
-        xcat-genesis-register "$@"
+        xcat-genesis-register 'unable to publish registration status' "$@"
 }
 
 finish_status() {

@@ -4,6 +4,7 @@ use warnings;
 
 use File::Copy qw(copy);
 use File::Path qw(make_path);
+use File::Slurper qw(read_binary write_binary);
 use File::Spec;
 use File::Temp qw(tempdir);
 use FindBin;
@@ -84,10 +85,10 @@ sub caller_repository_paths {
     make_path($bindir);
 
     my $mount = File::Spec->catfile( $bindir, 'mount' );
-    write_fixture( $mount, "#!/bin/sh\nexit 1\n" );
+    write_binary( $mount, "#!/bin/sh\nexit 1\n" );
     chmod 0755, $mount or die "Unable to make $mount executable: $!";
     my $uname = File::Spec->catfile( $bindir, 'uname' );
-    write_fixture( $uname, "#!/bin/sh\nprintf '%s\\n' Linux\n" );
+    write_binary( $uname, "#!/bin/sh\nprintf '%s\\n' Linux\n" );
     chmod 0755, $uname or die "Unable to make $uname executable: $!";
 
     for my $source (
@@ -103,7 +104,7 @@ sub caller_repository_paths {
     }
 
     my $bash_env = File::Spec->catfile( $tmpdir, 'bash-env.sh' );
-    write_fixture(
+    write_binary(
         $bash_env,
         <<'SH'
 logger()
@@ -152,25 +153,7 @@ SH
     die "$script exited unexpectedly with " . ( $status >> 8 )
       unless ( $status >> 8 ) == 73;
 
-    my $contents = read_fixture($trace);
+    my $contents = scalar read_binary($trace);
     chomp($contents);
     return split /\n/, $contents;
-}
-
-sub write_fixture {
-    my ( $path, $contents ) = @_;
-    open( my $fh, '>:raw', $path )
-      or die "Unable to open $path for writing: $!";
-    print {$fh} $contents or die "Unable to write $path: $!";
-    close($fh) or die "Unable to close $path: $!";
-}
-
-sub read_fixture {
-    my ($path) = @_;
-    open( my $fh, '<:raw', $path )
-      or die "Unable to open $path for reading: $!";
-    my $contents = do { local $/; <$fh> };
-    die "Unable to read $path: $!" unless defined $contents;
-    close($fh) or die "Unable to close $path: $!";
-    return $contents;
 }

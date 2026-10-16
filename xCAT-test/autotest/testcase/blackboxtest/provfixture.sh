@@ -879,6 +879,17 @@ reset_node() {
         || die "nodeset wrote no $(node_netboot) configuration for $NODE"
 }
 
+# Wait until the system resolver stops naming $2 for the address $1.
+# systemd-resolved rereads /etc/hosts at most every 2 seconds.
+wait_unresolved() {
+    local ip=$1 name=$2 waited=0
+    while getent hosts "$ip" | grep -qw "$name"; do
+        waited=$((waited + 1))
+        [ "$waited" -gt 50 ] && die "$ip still resolves to $name after its removal"
+        sleep 0.2
+    done
+}
+
 # Stage 1. The forwarded-name scenario is selected separately: it needs a
 # working forwarder, which is a fact about the runner's network, not about xCAT.
 do_run_dns() {
@@ -1173,6 +1184,7 @@ do_run_ordering() {
     makedns -d "$NODE" >/dev/null 2>&1 || say "makedns -d $NODE reported an error"
     makehosts -d "$NODE" >/dev/null 2>&1 || say "makehosts -d $NODE reported an error"
     echo done > "$STATE/ptrgone"
+    wait_unresolved "$NODE_IP" "$NODE"
     prov_run -s missing-ptr "${flags[@]}" conf/prov/ordering.conf || rc=1
 
     return $rc
