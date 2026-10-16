@@ -25,6 +25,7 @@ use IO::Socket;
 use IO::Select;
 use xCAT::TableUtils;
 use xCAT::ServiceNodeUtils;
+use xCAT::KVMUtils;
 use strict;
 use feature "switch"; # For given-when block
 
@@ -498,7 +499,7 @@ sub build_diskstruct {
     my @suffixes     = ('a', 'b', 'd' .. 'zzz');
     my $suffidx      = 0;
     my $storagemodel = $confdata->{vm}->{$node}->[0]->{storagemodel};
-    my $profile      = guest_arch_profile($confdata->{nodetype}->{$node}->[0]->{arch},
+    my $profile      = xCAT::KVMUtils::guest_arch_profile($confdata->{nodetype}->{$node}->[0]->{arch},
         $confdata->{ $confdata->{vm}->{$node}->[0]->{host} }->{cpumodel});
     my $cachemethod  = "none";
     if ($confdata->{vm}->{$node}->[0]->{storagecache}) {
@@ -513,24 +514,9 @@ sub build_diskstruct {
 
             #Setting default values of a virtual disk backed by a file at hd*.
             my $diskhash;
-            # A failed substitution leaves $1 as the last successful capture, which can come
-            # from a match made by a caller. Read $1 only when this substitution matches.
-            my $model;
-            if ($disk =~ s/=(.*)//) {
-                $model = $1;
-            }
-            unless ($model) {
-
-                #if not defined, model will stay undefined like above
-                $model = $storagemodel;
-                unless ($model) { $model = $profile->{disk_model}; }
-            }
-            my $prefix = 'hd';
-            if ($model eq 'virtio') {
-                $prefix = 'vd';
-            } elsif ($model eq 'scsi') {
-                $prefix = 'sd';
-            }
+            my ($model, $prefix);
+            ($disk, $model, $prefix) =
+              xCAT::KVMUtils::split_disk_spec($disk, $storagemodel, $profile->{disk_model});
             $diskhash->{type}          = 'file';
             $diskhash->{device}        = 'disk';
             $diskhash->{target}->{dev} = $prefix . $suffixes[$suffidx];
@@ -557,16 +543,8 @@ sub build_diskstruct {
                     $tdiskhash->{source}->{file}  = $_;
                     my $device = $disks{$_}->{device};
                     $tdiskhash->{target}->{dev}   = $device;
-
-                    # libvirt reads the bus out of the device name when the disk states
-                    # none: hd* is ide, sd* is scsi, vd* is virtio. State the same bus.
-                    if ($device =~ /^vd/) {
-                        $tdiskhash->{target}->{bus} = 'virtio';
-                    } elsif ($device =~ /^hd/) {
-                        $tdiskhash->{target}->{bus} = 'ide';
-                    } elsif ($device =~ /^sd/) {
-                        $tdiskhash->{target}->{bus} = 'scsi';
-                    }
+                    my $bus = xCAT::KVMUtils::pool_disk_bus($device);
+                    $tdiskhash->{target}->{bus} = $bus if defined $bus;
                     push @returns, $tdiskhash;
 
                 }
@@ -595,16 +573,7 @@ sub build_diskstruct {
             push @returns, $diskhash;
         }
     }
-    # The riscv64 virt machine has no IDE controller, so the optical drive is scsi there.
-    my $cdprefix = $profile->{cd_prefix};
-
-    # Normally for vmstoragemodel=virtio, we would set prefix of "vd", but device name vd*
-    # doesn't work for CDROM, so for now use the same prefix "sd" as for vmstoragemodel=scsi.
-    if ($storagemodel eq 'virtio') {
-        $cdprefix='sd';
-    } elsif ($storagemodel eq 'scsi') {
-        $cdprefix = 'sd';
-    }
+    my $cdprefix = xCAT::KVMUtils::cdrom_prefix($profile, $storagemodel);
     $suffidx += 1;
     if ($cdloc) {
         my $cdhash;
@@ -714,63 +683,6 @@ sub getUnits {
     }
 }
 
-# default_storagemodel: the storage model of a node whose vmstoragemodel is empty.
-#
-# The model names the volume of the node, createstorage builds that name, and libvirt reads
-# the bus of the disk out of it. scsi keeps every architecture on sd*, which is the only disk
-# controller the riscv64 virt machine has.
-sub default_storagemodel {
-    return 'scsi';
-}
-
-# guest_arch_profile: the libvirt domain type and <os> settings for one guest.
-#
-# The architecture of the guest comes from the node, not from the hypervisor. A node whose
-# arch is not the arch of the hypervisor runs under emulation, which libvirt expresses as
-# domain type "qemu". riscv64 has no BIOS: the virt machine boots UEFI, and pae/acpi/apic
-# are x86 features that libvirt rejects there.
-#
-# POWER keeps reading the hypervisor cpumodel. ppc64le hypervisors report "ppc64le" (not
-# "ppc64"); both are pseries guests whose libvirt <os> arch is "ppc64".
-#
-# arch and machine stay undef when libvirt is to use its own default for the hypervisor.
-sub guest_arch_profile {
-    my ($guest_arch, $hyp_cpumodel) = @_;
-    my %profile = (
-        domtype      => 'kvm',
-        arch         => undef,
-        machine      => undef,
-        firmware     => undef,
-        x86_features => 1,
-        bios         => 1,
-        sound        => 1,
-        video        => 'vga',
-        usb_input    => 1,
-        disk_model   => 'ide',
-        cd_prefix    => 'hd',
-    );
-    if (defined($guest_arch) and $guest_arch eq 'riscv64') {
-        $profile{domtype}      = 'qemu';
-        $profile{arch}         = 'riscv64';
-        $profile{machine}      = 'virt';
-        $profile{firmware}     = 'efi';
-        $profile{x86_features} = 0;
-        $profile{bios}         = 0;
-        $profile{sound}        = 0;
-        $profile{video}        = 'virtio';
-        $profile{usb_input}    = 0;
-        $profile{disk_model}   = 'scsi';
-        $profile{cd_prefix}    = 'sd';
-    } elsif (defined($hyp_cpumodel) and ($hyp_cpumodel eq "ppc64" or $hyp_cpumodel eq "ppc64le")) {
-        $profile{arch}         = 'ppc64';
-        $profile{machine}      = 'pseries';
-        $profile{x86_features} = 0;
-        $profile{bios}         = 0;
-        $profile{sound}        = 0;
-    }
-    return \%profile;
-}
-
 sub build_xmldesc {
     my $node  = shift;
     my %args  = @_;
@@ -783,7 +695,7 @@ sub build_xmldesc {
         $hypcputhreads = "1";
     }
 
-    my $profile = guest_arch_profile($confdata->{nodetype}->{$node}->[0]->{arch}, $hypcpumodel);
+    my $profile = xCAT::KVMUtils::guest_arch_profile($confdata->{nodetype}->{$node}->[0]->{arch}, $hypcpumodel);
 
     $xtree{type}            = $profile->{domtype};
     $xtree{name}->{content} = $node;
@@ -871,12 +783,6 @@ sub build_xmldesc {
         $xtree{vcpu}->{cpuset} =~ s/\"\'//g;
     }
 
-    if (defined $cpumode) {
-        if ($cpumode eq 'host-passthrough' or $cpumode eq 'host-model') {
-            $xtree{cpu}->{mode} = $cpumode;
-        }
-    }
-
     #prepare the xml hash for pci passthrough
     my @prdevarray;
     foreach my $devname (@passthrudevices) {
@@ -955,29 +861,17 @@ sub build_xmldesc {
     $xtree{devices}->{hostdev} = \@prdevarray;
 
 
-    if ($hypcpumodel eq "ppc64" or $hypcpumodel eq "ppc64le") {
-        my %cpuhash = ();
-        if ($hypcputype) {
-            $cpuhash{model} = $hypcputype;
-        }
+    my $cores;
+    if ($profile->{pseries}) {
         if ($args{cpus}) {
-            $xtree{vcpu}->{content}             = $args{cpus} * $hypcputhreads;
-            $cpuhash{topology}->{sockets}       = 1;
-            $cpuhash{topology}->{cores}         = $args{cpus};
-            $cpuhash{topology}->{threads}       = $hypcputhreads;
+            $cores = $args{cpus};
             $updatetable->{vm}->{$node}->{cpus} = $args{cpus};
         } elsif (defined $confdata->{vm}->{$node}->[0]->{cpus}) {
-            $xtree{vcpu}->{content} = $confdata->{vm}->{$node}->[0]->{cpus} * $hypcputhreads;
-            $cpuhash{topology}->{sockets} = 1;
-            $cpuhash{topology}->{cores} = $confdata->{vm}->{$node}->[0]->{cpus};
-            $cpuhash{topology}->{threads} = $hypcputhreads;
+            $cores = $confdata->{vm}->{$node}->[0]->{cpus};
         } else {
-            $xtree{vcpu}->{content}       = 1 * $hypcputhreads;
-            $cpuhash{topology}->{sockets} = 1;
-            $cpuhash{topology}->{cores}   = 1;
-            $cpuhash{topology}->{threads} = $hypcputhreads;
+            $cores = 1;
         }
-        $xtree{cpu} = \%cpuhash;
+        $xtree{vcpu}->{content} = $cores * $hypcputhreads;
     } else {
         if ($args{cpus}) {
             $xtree{vcpu}->{content} = $args{cpus};
@@ -990,6 +884,12 @@ sub build_xmldesc {
             $xtree{vcpu}->{content} = 1;
         }
     }
+    my $cpu = xCAT::KVMUtils::guest_cpu($profile,
+        cpumode => $cpumode,
+        cputype => $hypcputype,
+        cores   => $cores,
+        threads => $hypcputhreads);
+    $xtree{cpu} = $cpu if $cpu;
     if (defined($confdata->{vm}->{$node}->[0]->{clockoffset})) {
 
         #If user requested a specific behavior, give it
@@ -1016,40 +916,58 @@ sub build_xmldesc {
     }
     $xtree{devices}->{interface} = build_nicstruct($node);
 
-    #use content to force xml simple to not make model the 'name' of video
-    if (defined($confdata->{vm}->{$node}->[0]->{vidmodel})) {
-        my $model = $confdata->{vm}->{$node}->[0]->{vidmodel};
-        my $vram  = '8192';
-        if ($model eq 'qxl') {
-            $xtree{devices}->{channel}->{type}           = 'spicevmc';
-            $xtree{devices}->{channel}->{target}->{type} = 'virtio';
-            $xtree{devices}->{channel}->{target}->{name} = 'com.redhat.spice.0';
-            $vram = 65536; } #surprise, spice blows up with less vram than this after version 0.6 and up
-        $xtree{devices}->{video} = [ { 'content' => '', 'model' => { type => $model, vram => $vram } } ];
-    } else {
-        $xtree{devices}->{video} = [ { 'content' => '', 'model' => { type => $profile->{video}, vram => 8192 } } ];
+    my $vidmodel = $confdata->{vm}->{$node}->[0]->{vidmodel};
+    my ($caps, $caps_error);
+    if (!defined($vidmodel) and $profile->{video_prefer}) {
+        if ($hypconn) {
+            eval {
+                my $capsxml = $hypconn->get_domain_capabilities(undef, $profile->{arch},
+                    $profile->{machine}, $profile->{domtype});
+                $caps = XMLin($capsxml, ForceArray => [ 'enum', 'value' ], KeyAttr => [])
+                  if defined $capsxml;
+            };
+            $caps_error = "$@" if $@;
+        } else {
+            $caps_error = 'no connection to the hypervisor';
+        }
     }
+    my $model = eval { xCAT::KVMUtils::guest_video_model($profile, $vidmodel, $caps, $caps_error) };
+    if ($@) {
+        chomp(my $err = $@);
+        return (-1, $err);
+    }
+    my $vram  = '8192';
+    if (defined $model and $model eq 'qxl') {
+        $xtree{devices}->{channel}->{type}           = 'spicevmc';
+        $xtree{devices}->{channel}->{target}->{type} = 'virtio';
+        $xtree{devices}->{channel}->{target}->{name} = 'com.redhat.spice.0';
+        $vram = 65536; } #surprise, spice blows up with less vram than this after version 0.6 and up
+    #use content to force xml simple to not make model the 'name' of video
+    $xtree{devices}->{video} = [ { 'content' => '', 'model' => { type => $model, vram => $vram } } ]
+      if defined $model;
     # The riscv64 virt machine has no USB controller, and libvirt refuses a USB device there.
     if ($profile->{usb_input}) {
         $xtree{devices}->{input}->{type} = 'tablet';
         $xtree{devices}->{input}->{bus}  = 'usb';
     }
-    if (defined($confdata->{vm}->{$node}->[0]->{vidproto})) {
-        $xtree{devices}->{graphics}->{type} = $confdata->{vm}->{$node}->[0]->{vidproto};
-    } else {
-        $xtree{devices}->{graphics}->{type} = 'vnc';
+    # libvirt adds a default video device to a domain with <graphics>, so a guest with no
+    # video device also gets no <graphics> and uses its serial console.
+    if (defined $model) {
+        if (defined($confdata->{vm}->{$node}->[0]->{vidproto})) {
+            $xtree{devices}->{graphics}->{type} = $confdata->{vm}->{$node}->[0]->{vidproto};
+        } else {
+            $xtree{devices}->{graphics}->{type} = 'vnc';
+        }
+        $xtree{devices}->{graphics}->{autoport} = 'yes';
+        $xtree{devices}->{graphics}->{listen}   = '0.0.0.0';
+        if ($confdata->{vm}->{$node}->[0]->{vidpassword}) {
+            $xtree{devices}->{graphics}->{password} = $confdata->{vm}->{$node}->[0]->{vidpassword};
+        } else {
+            $xtree{devices}->{graphics}->{password} = genpassword(8);
+        }
     }
-    $xtree{devices}->{graphics}->{autoport} = 'yes';
-    $xtree{devices}->{graphics}->{listen}   = '0.0.0.0';
-    if ($confdata->{vm}->{$node}->[0]->{vidpassword}) {
-        $xtree{devices}->{graphics}->{password} = $confdata->{vm}->{$node}->[0]->{vidpassword};
-    } else {
-        $xtree{devices}->{graphics}->{password} = genpassword(8);
-    }
-    if (defined($hypcpumodel) and $hypcpumodel eq 'ppc64') {
-        $xtree{devices}->{emulator}->{content} = "/usr/bin/qemu-system-ppc64";
-    }
-    # libvirt resolves the emulator for every other architecture from its own capabilities.
+    my $emulator = xCAT::KVMUtils::guest_emulator($profile, $hypcpumodel);
+    $xtree{devices}->{emulator}->{content} = $emulator if defined $emulator;
     if ($profile->{sound}) {
         $xtree{devices}->{sound}->{model} = 'ich6';
     }
@@ -1595,23 +1513,9 @@ sub createstorage {
     if ($mastername and $size) {
         return 1, "Can not specify both a master to clone and size(s)";
     }
-    # A failed substitution leaves $1 as the last successful capture, which can come from a
-    # match made by a caller. Read $1 only when this substitution matches.
-    my $model;
-    if ($filename =~ s/=(.*)//) {
-        $model = $1;
-    }
-    unless ($model) {
-
-        #if not defined, model will stay undefined like above
-        $model = $cfginfo->{storagemodel};
-    }
-    my $prefix = 'hd';
-    if ($model eq 'scsi') {
-        $prefix = 'sd';
-    } elsif ($model eq 'virtio') {
-        $prefix = 'vd';
-    }
+    my ($model, $prefix);
+    ($filename, $model, $prefix) =
+      xCAT::KVMUtils::split_disk_spec($filename, $cfginfo->{storagemodel});
     my @suffixes = ('a', 'b', 'd' .. 'zzz');
     if ($filename =~ /^nfs:/ or $filename =~ /^dir:/ or $filename =~ /^lvm:/) { #libvirt storage pool to be used for this
         my @sizes = split /,/, $size;
@@ -4319,7 +4223,7 @@ sub dohyp {
 
     foreach $node (sort (keys %{ $hyphash{$hyp}->{nodes} })) {
         unless ($confdata->{vm}->{$node}->[0]->{storagemodel}) {
-            $confdata->{vm}->{$node}->[0]->{storagemodel} = default_storagemodel();
+            $confdata->{vm}->{$node}->[0]->{storagemodel} = xCAT::KVMUtils::default_storagemodel();
         }
         if ($confdata->{$hyp}->{cpu_thread}) {
             $confdata->{vm}->{$node}->[0]->{cpu_thread} = $confdata->{$hyp}->{cpu_thread};

@@ -3,120 +3,200 @@ use strict;
 use warnings;
 
 use FindBin;
+use lib "$FindBin::Bin/../../perl-xCAT";
 use Test::More;
 
-# The scratch package below declares these; the test names them once each.
-no warnings 'once';
+my %before = %INC;
+require xCAT::KVMUtils;
+my @xcat_loaded = sort grep { m{^xCAT} and !exists $before{$_} } keys %INC;
+is_deeply(\@xcat_loaded, ['xCAT/KVMUtils.pm'],
+    'xCAT::KVMUtils loads no other xCAT module');
+like($INC{'xCAT/KVMUtils.pm'}, qr{\Q$FindBin::Bin\E/\.\./\.\./perl-xCAT/},
+    'xCAT::KVMUtils loads from the checkout');
+ok(!exists $INC{'Sys/Virt.pm'}, 'xCAT::KVMUtils loads no libvirt binding');
 
-my $source = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/kvm.pm";
-open(my $source_fh, '<', $source) or die "open $source: $!";
-my $content = do { local $/; <$source_fh> };
-close($source_fh) or die "close $source: $!";
+sub profile { return xCAT::KVMUtils::guest_arch_profile(@_); }
+sub cpu     { return xCAT::KVMUtils::guest_cpu(@_); }
 
-my @routines;
-for my $name (qw(build_xmldesc guest_arch_profile build_oshash build_diskstruct getUnits)) {
-    my ($routine) = $content =~ /^(sub \Q$name\E\s*\{.*?^\})/ms;
-    die("could not extract $name from kvm.pm") unless $routine;
-    push(@routines, $routine);
-}
-
-# kvm.pm needs a management node to load, so the domain builder runs in a scratch package.
-# Only the routines that reach libvirt or the xCAT database are replaced; the domain builder
-# itself is the code under test.
-my $harness = <<'PERL';
-package KVMArch;
-use XML::Simple qw(XMLout);
-our ($node, $confdata, $updatetable, $hypconn);
-sub getNodeUUID      { return '00000000-0000-0000-0000-000000000001'; }
-sub get_multiple_paths_by_url { return {}; }
-sub build_nicstruct  { return []; }
-sub genpassword      { return 'password'; }
-PERL
-
-eval $harness . join("\n", @routines) . "\n1;\n";    ## no critic (BuiltinFunctions::ProhibitStringyEval)
-die("could not load the kvm domain builder: $@") if $@;
-
-# Build one domain for a node of $guest_arch on a hypervisor that reports $hyp_cpumodel.
-sub domain_xml {
-    my ($guest_arch, $hyp_cpumodel) = @_;
-    local $KVMArch::node     = 'cn1';
-    local $KVMArch::confdata = {
-        vm       => { cn1 => [ { host => 'hyp1', memory => 8192, cpus => 4 } ] },
-        nodetype => { cn1 => [ { arch => $guest_arch, os => 'rocky10.2' } ] },
-        hyp1     => { cpumodel => $hyp_cpumodel },
+# The domain capabilities of an aarch64 virt machine, as XMLin parses them with
+# ForceArray => [ 'enum', 'value' ] and KeyAttr => []. The values without virtio are what
+# libvirt 11.10 reports on a host whose aarch64 emulator carries no virtio-gpu device.
+sub video_caps {
+    my (@models) = @_;
+    return {
+        arch    => 'aarch64',
+        devices => {
+            video => {
+                supported => 'yes',
+                enum      => [ { name => 'modelType', value => [@models] } ],
+            },
+        },
     };
-    local $KVMArch::updatetable = {};
-    my $xml = KVMArch::build_xmldesc('cn1');
-    die("build_xmldesc returned no XML for $guest_arch on $hyp_cpumodel")
-      unless defined $xml and !ref $xml;
-    return $xml;
 }
+my $caps_without_virtio = video_caps(qw(vga cirrus none bochs ramfb));
+my $caps_with_virtio    = video_caps(qw(vga virtio ramfb));
+my $caps_vga_only       = video_caps(qw(vga cirrus bochs));
+my $caps_no_usable      = video_caps(qw(cirrus bochs));
+my $caps_without_video  = { arch => 'aarch64' };
+my $caps_video_no       = { arch => 'aarch64', devices => { video => { supported => 'no' } } };
 
-sub os_type_element {
-    my ($xml) = @_;
-    my ($attrs) = $xml =~ m{<type\b([^>]*)>hvm</type>}s;
-    return defined $attrs ? $attrs : '';
+# guest_video_model dies when it cannot choose a model. Returns [ model ] or [ 'died', $@ ].
+sub video {
+    my @args = @_;
+    my $model = eval { xCAT::KVMUtils::guest_video_model(@args) };
+    return [ 'died', $@ ] if $@;
+    return [$model];
 }
 
 # A riscv64 node on an x86_64 hypervisor. The guest architecture is not the host
 # architecture, so the domain runs under emulation and states its own machine type.
-my $riscv = domain_xml('riscv64', 'x86_64');
-like($riscv, qr/<domain\b[^>]*\btype="qemu"/,
-    'a riscv64 guest on an x86_64 hypervisor is a qemu domain, not kvm');
-like(os_type_element($riscv), qr/\barch="riscv64"/,
-    'the domain arch is the arch of the node');
-like(os_type_element($riscv), qr/\bmachine="virt"/,
-    'a riscv64 guest uses the virt machine type');
-like($riscv, qr/<os\b[^>]*\bfirmware="efi"/,
-    'a riscv64 virt guest boots UEFI');
-unlike($riscv, qr/<(?:pae|acpi|apic)\b/,
+my $riscv = profile('riscv64', 'x86_64');
+is($riscv->{domtype}, 'qemu', 'a riscv64 guest on an x86_64 hypervisor is a qemu domain, not kvm');
+is($riscv->{arch},     'riscv64', 'the domain arch is the arch of the node');
+is($riscv->{machine},  'virt',    'a riscv64 guest uses the virt machine type');
+is($riscv->{firmware}, 'efi',     'a riscv64 virt guest boots UEFI');
+ok(!$riscv->{x86_features},
     'pae, acpi and apic are x86 features and are left out of a riscv64 guest');
-unlike($riscv, qr/<bios\b/,
-    'the SeaBIOS serial option is left out of a riscv64 guest');
-unlike($riscv, qr/<input\b/,
-    'the riscv64 virt machine has no USB controller, so it gets no USB tablet');
+ok(!$riscv->{bios},      'the SeaBIOS serial option is left out of a riscv64 guest');
+ok(!$riscv->{usb_input}, 'the riscv64 virt machine has no USB controller, so it gets no USB tablet');
+is_deeply(video($riscv, undef, undef), ['virtio'],
+    'a riscv64 guest takes the virtio video model');
 
-# POWER is unchanged: the arch still comes from the hypervisor there.
-my $power = domain_xml('ppc64le', 'ppc64le');
-like($power, qr/<domain\b[^>]*\btype="kvm"/, 'a POWER guest stays a kvm domain');
-like(os_type_element($power), qr/\barch="ppc64"/,   'ppc64le hypervisors keep arch ppc64');
-like(os_type_element($power), qr/\bmachine="pseries"/, 'ppc64le hypervisors keep machine pseries');
+# An aarch64 node on an x86_64 hypervisor. The domain runs under emulation and needs a named
+# CPU model: TCG has no host CPU, and with no <cpu> element the emulator turns on SVE.
+my $arm = profile('aarch64', 'x86_64');
+is($arm->{domtype},  'qemu',    'an aarch64 guest on an x86_64 hypervisor is a qemu domain, not kvm');
+is($arm->{arch},     'aarch64', 'the domain arch of an aarch64 node is aarch64');
+is($arm->{machine},  'virt',    'an aarch64 guest uses the virt machine type');
+is($arm->{firmware}, 'efi',     'an aarch64 virt guest boots UEFI');
+is_deeply(cpu($arm),
+    { mode => 'custom', match => 'exact', model => { content => 'cortex-a57' } },
+    'an emulated aarch64 guest states cortex-a57 as a custom CPU model');
+ok(!$arm->{x86_features},
+    'pae, acpi and apic are x86 features and are left out of an aarch64 guest');
+ok(!$arm->{bios},      'the SeaBIOS serial option is left out of an aarch64 guest');
+ok(!$arm->{usb_input}, 'the aarch64 virt machine has no USB controller, so it gets no USB tablet');
+ok(!$arm->{sound},     'an aarch64 guest gets no ich6 sound device');
 
-# x86_64 on x86_64 is unchanged: libvirt picks the arch and the machine type.
-my $x86 = domain_xml('x86_64', 'x86_64');
-like($x86, qr/<domain\b[^>]*\btype="kvm"/, 'an x86_64 guest stays a kvm domain');
-unlike(os_type_element($x86), qr/\barch=/,    'an x86_64 guest states no arch');
-unlike(os_type_element($x86), qr/\bmachine=/, 'an x86_64 guest states no machine type');
-like($x86, qr/<input\b[^>]*\bbus="usb"/, 'an x86_64 guest keeps the USB tablet');
+# The video models of a machine type come from the emulator build, not from the architecture.
+is_deeply(video($arm, undef, $caps_without_virtio), ['vga'],
+    'an emulated aarch64 guest takes vga from a hypervisor that offers vga and no virtio');
+is_deeply(video($arm, undef, $caps_with_virtio), ['virtio'],
+    'an emulated aarch64 guest takes virtio from a hypervisor that offers it');
+is_deeply(video($arm, undef, $caps_no_usable), [undef],
+    'an emulated aarch64 guest has no video device when the hypervisor offers no wanted model');
+is_deeply(video($arm, undef, $caps_video_no), [undef],
+    'an emulated aarch64 guest has no video device when the hypervisor supports no video');
+is_deeply(video($arm, 'ramfb', $caps_with_virtio), ['ramfb'],
+    'vm.vidmodel still names the video model of an aarch64 guest');
+is_deeply(video($arm, 'vga', undef, 'query failed'), ['vga'],
+    'vm.vidmodel names the video model when the capability query fails');
+is(xCAT::KVMUtils::preferred_video_model($caps_with_virtio, [ 'bochs', 'ramfb', 'virtio' ]),
+    'ramfb', 'the first wanted model the hypervisor offers wins');
 
-# The disks of a riscv64 guest. The virt machine has no IDE controller, so an ide disk or an
-# hd* optical drive makes libvirt refuse the domain.
-sub disk_struct {
-    my ($guest_arch) = @_;
-    local $KVMArch::node     = 'cn1';
-    local $KVMArch::confdata = {
-        vm       => { cn1 => [ { host => 'hyp1', storage => '/var/lib/libvirt/images/cn1.img' } ] },
-        nodetype => { cn1 => [ { arch => $guest_arch } ] },
-        hyp1     => { cpumodel => 'x86_64' },
-    };
-    my $chatter = '';
-    my $disks;
-    {
-        open(my $capture, '>', \\$chatter) or die "capture stdout: $!";
-        local *STDOUT = $capture;
-        ($disks) = KVMArch::build_diskstruct(undef);
-    }
-    return $disks;
+# Without the capabilities there is no list to choose from, so no video model is guessed.
+foreach my $case ([ 'an emulated', $arm ], [ 'a native', profile('aarch64', 'aarch64') ]) {
+    my ($what, $p) = @$case;
+    my $got = video($p, undef, undef, 'libvirt error: unsupported call');
+    is($got->[0], 'died', "$what aarch64 guest gets no video model when the capability query fails");
+    like($got->[1] // '', qr/domain capabilities.*libvirt error: unsupported call.*vm\.vidmodel/s,
+        "$what aarch64 guest reports the query error and names vm.vidmodel");
+    $got = video($p, undef, $caps_without_video);
+    is($got->[0], 'died',
+        "$what aarch64 guest gets no video model when the capabilities state no video device");
+    like($got->[1] // '', qr/vm\.vidmodel/,
+        "$what aarch64 guest names vm.vidmodel when the capabilities state no video device");
 }
 
-my $riscv_disks = disk_struct('riscv64');
-is($riscv_disks->[0]->{target}->{bus}, 'scsi', 'a riscv64 disk is scsi, not ide');
-like($riscv_disks->[0]->{target}->{dev}, qr/^sd/, 'a riscv64 disk is named sd*');
-is($riscv_disks->[1]->{device}, 'cdrom', 'the guest still gets an optical drive');
-like($riscv_disks->[1]->{target}->{dev}, qr/^sd/, 'a riscv64 optical drive is named sd*, not hd*');
+# An aarch64 node on an aarch64 hypervisor. KVM on ARM runs the host CPU and no other model.
+my $arm_native = profile('aarch64', 'aarch64');
+is($arm_native->{domtype}, 'kvm', 'an aarch64 guest on an aarch64 hypervisor is a kvm domain, not qemu');
+is_deeply(cpu($arm_native), { mode => 'host-passthrough' },
+    'a native aarch64 guest takes the host CPU and pins no cortex-a57 model');
+is($arm_native->{arch},     'aarch64', 'a native aarch64 guest states arch aarch64');
+is($arm_native->{machine},  'virt',    'a native aarch64 guest states machine virt');
+is($arm_native->{firmware}, 'efi',     'a native aarch64 virt guest boots UEFI');
+is_deeply(video($arm_native, undef, $caps_with_virtio), ['virtio'],
+    'a native aarch64 guest takes virtio from a hypervisor that offers it');
+is_deeply(video($arm_native, undef, $caps_without_virtio), ['ramfb'],
+    'a native aarch64 guest takes ramfb, not vga, from a hypervisor that offers no virtio');
+is_deeply(video($arm_native, undef, $caps_vga_only), [undef],
+    'a native aarch64 guest has no video device when the hypervisor offers only VGA-type models');
+is_deeply(video($arm_native, undef, $caps_video_no), [undef],
+    'a native aarch64 guest has no video device when the hypervisor supports no video');
+is_deeply(video($arm_native, 'vga', $caps_with_virtio), ['vga'],
+    'vm.vidmodel names the video model of a native aarch64 guest');
 
-my $x86_disks = disk_struct('x86_64');
-is($x86_disks->[0]->{target}->{bus}, 'ide', 'an x86_64 disk keeps the ide default');
-like($x86_disks->[1]->{target}->{dev}, qr/^hd/, 'an x86_64 optical drive keeps the hd* name');
+# An aarch64 node on a POWER hypervisor. The CPU model, the CPU topology and the emulator are
+# settings of a pseries guest, and this guest is not one.
+my $arm_on_power = profile('aarch64', 'ppc64');
+is($arm_on_power->{domtype}, 'qemu',    'an aarch64 guest on a POWER hypervisor is a qemu domain, not kvm');
+is($arm_on_power->{arch},    'aarch64', 'an aarch64 guest on a POWER hypervisor keeps arch aarch64');
+is($arm_on_power->{machine}, 'virt',    'an aarch64 guest on a POWER hypervisor keeps machine virt');
+is_deeply(cpu($arm_on_power, cputype => 'POWER9', cores => 4, threads => 1),
+    { mode => 'custom', match => 'exact', model => { content => 'cortex-a57' } },
+    'an aarch64 guest on a POWER hypervisor takes no POWER CPU model or topology');
+is(xCAT::KVMUtils::guest_emulator($arm_on_power, 'ppc64'), undef,
+    'libvirt resolves the emulator of an aarch64 guest on a POWER hypervisor');
+
+# vm.othersettings can name a CPU mode. TCG has no host CPU, so libvirt refuses both
+# host-passthrough and host-model on an emulated domain.
+is_deeply(cpu($arm, cpumode => 'host-passthrough'),
+    { mode => 'custom', match => 'exact', model => { content => 'cortex-a57' } },
+    'host-passthrough from vm.othersettings is left out of an emulated aarch64 domain');
+is_deeply(cpu($arm, cpumode => 'host-model'),
+    { mode => 'custom', match => 'exact', model => { content => 'cortex-a57' } },
+    'host-model from vm.othersettings is left out of an emulated aarch64 domain');
+is_deeply(cpu($arm_native, cpumode => 'host-model'), { mode => 'host-model' },
+    'host-model from vm.othersettings replaces the host-passthrough default of a native aarch64 domain');
+
+# A pseries guest keeps the arch, the CPU model and the topology of the hypervisor.
+my $power = profile('ppc64le', 'ppc64le');
+is($power->{domtype}, 'kvm',     'a POWER guest stays a kvm domain');
+is($power->{arch},    'ppc64',   'ppc64le hypervisors keep arch ppc64');
+is($power->{machine}, 'pseries', 'ppc64le hypervisors keep machine pseries');
+is_deeply(cpu($power, cputype => 'POWER9', cores => 4, threads => 2),
+    { model => 'POWER9', topology => { sockets => 1, cores => 4, threads => 2 } },
+    'a POWER guest keeps the hypervisor CPU model and its CPU topology');
+is_deeply(cpu($power, cpumode => 'host-model', cores => 1, threads => 1),
+    { topology => { sockets => 1, cores => 1, threads => 1 } },
+    'the pseries CPU replaces the cpumode of vm.othersettings');
+is(xCAT::KVMUtils::guest_emulator($power, 'ppc64le'), undef,
+    'libvirt resolves the emulator of a pseries guest on a ppc64le hypervisor');
+
+my $power_ppc64 = profile('ppc64', 'ppc64');
+is(xCAT::KVMUtils::guest_emulator($power_ppc64, 'ppc64'), '/usr/bin/qemu-system-ppc64',
+    'a pseries guest on a ppc64 hypervisor keeps the qemu-system-ppc64 emulator');
+
+# x86_64 on x86_64: libvirt picks the arch and the machine type.
+my $x86 = profile('x86_64', 'x86_64');
+is($x86->{domtype}, 'kvm', 'an x86_64 guest stays a kvm domain');
+is($x86->{arch},    undef, 'an x86_64 guest states no arch');
+is($x86->{machine}, undef, 'an x86_64 guest states no machine type');
+ok($x86->{usb_input}, 'an x86_64 guest keeps the USB tablet');
+is(cpu($x86), undef, 'an x86_64 guest states no cpu element');
+is_deeply(cpu($x86, cpumode => 'host-passthrough'), { mode => 'host-passthrough' },
+    'host-passthrough from vm.othersettings reaches a native x86_64 domain');
+is_deeply(video($x86, undef, $caps_with_virtio), ['vga'],
+    'an x86_64 guest keeps vga whatever the hypervisor offers');
+is_deeply(video($x86, undef, undef, 'query failed'), ['vga'],
+    'an x86_64 guest keeps vga without the hypervisor capabilities');
+
+# The disks of a guest. The virt machine has no IDE controller, so an ide disk or an hd*
+# optical drive makes libvirt refuse a riscv64 or aarch64 domain.
+foreach my $arch (qw(riscv64 aarch64)) {
+    my $p = profile($arch, 'x86_64');
+    my (undef, $model, $prefix) =
+      xCAT::KVMUtils::split_disk_spec('/var/lib/libvirt/images/cn1.img', undef, $p->{disk_model});
+    is($model,  'scsi', "a $arch disk is scsi, not ide");
+    is($prefix, 'sd',   "a $arch disk is named sd*");
+    is(xCAT::KVMUtils::cdrom_prefix($p, undef), 'sd', "a $arch optical drive is named sd*, not hd*");
+}
+my (undef, $x86_model) =
+  xCAT::KVMUtils::split_disk_spec('/var/lib/libvirt/images/cn1.img', undef, $x86->{disk_model});
+is($x86_model, 'ide', 'an x86_64 disk keeps the ide default');
+is(xCAT::KVMUtils::cdrom_prefix($x86, undef), 'hd', 'an x86_64 optical drive keeps the hd* name');
+is(xCAT::KVMUtils::cdrom_prefix($x86, 'virtio'), 'sd',
+    'vmstoragemodel virtio names the optical drive sd*, not vd*');
 
 done_testing();
