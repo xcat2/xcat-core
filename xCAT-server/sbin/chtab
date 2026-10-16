@@ -6,6 +6,7 @@ BEGIN
 }
 use lib "$::XCATROOT/lib/perl";
 use xCAT::Table;
+use xCAT::TableUtils;
 use xCAT::NodeRange;
 use Getopt::Long;
 
@@ -97,10 +98,10 @@ if ($::DELETE) {
         usage;
         exit(1);
     }
-    for (@tables_to_del) {
-        $tables{$_} = xCAT::Table->new($_, -create => 1, -autocommit => 0);
-        $tables{$_}->delEntries(\%keyhash);
-        $tables{$_}->commit;
+    my $missing = xCAT::TableUtils->delete_rows(\%keyhash, @tables_to_del);
+    if (defined($missing)) {
+        print "Table $missing does not exist.\n";
+        exit(1);
     }
 }
 else {
