@@ -4991,6 +4991,14 @@ sub splitkcmdline {
 }
 
 
+sub ubuntu_default_mirror {
+    my $arch = shift;
+    $arch = shift if defined($arch) && $arch eq 'xCAT::Utils';
+    return defined($arch) && $arch =~ /^(?:amd64|i386|x86|x86_64)$/
+        ? 'http://archive.ubuntu.com/ubuntu'
+        : 'http://ports.ubuntu.com/ubuntu-ports';
+}
+
 ###################################################################################
 #subroutine debian_arch
 #Usage: give the Debian architecture name for an xCAT architecture. The media, the

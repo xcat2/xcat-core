@@ -3,59 +3,71 @@ use strict;
 use warnings;
 
 use FindBin;
+use lib "$FindBin::Bin/../lib";
+use File::Temp qw(tempdir);
 use Test::More;
+use YAML::PP;
+use XCAT::Test::File qw(repo_path);
 
-# archive.ubuntu.com publishes amd64 and i386 only, so a ppc64el or riscv64 stateful install
-# is handed a mirror that carries no package for it. The architecture being installed is the
-# last component of the media directory.
+my $dir = tempdir(CLEANUP => 1);
+$ENV{XCATROOT} = repo_path('xCAT-server');
+$ENV{XCATCFG} = "SQLite:$dir";
+require lib;
+lib->import(repo_path('perl-xCAT'), repo_path('xCAT-server/lib/perl'));
+require xCAT::Template;
 
-BEGIN {
-    package xCAT::Table;
-    our $value;
-    sub new { return bless {}, shift }
-    sub getAttribs { return defined $value ? { value => $value } : undef }
-    $INC{'xCAT/Table.pm'} = __FILE__;
+my $archive = 'http://archive.ubuntu.com/ubuntu';
+my $ports = 'http://ports.ubuntu.com/ubuntu-ports';
+my $override = 'https://mirror.example.invalid/ubuntu';
+my $yaml = YAML::PP->new();
+my $site = xCAT::Table->new('site', -create => 1);
+die 'Cannot create the site table' unless $site;
+
+for my $setting ('missing', 'override', 'cleared') {
+    $site->setAttribs({key => 'ubuntu_apt_mirror'}, {value => $override})
+        if $setting eq 'override';
+    $site->setAttribs({key => 'ubuntu_apt_mirror'}, {value => ''})
+        if $setting eq 'cleared';
+    for my $case (
+        ['x86_64', $archive], ['amd64', $archive],
+        ['x86', $archive], ['i386', $archive],
+        ['ppc64el', $ports], ['ppc64le', $ports],
+        ['riscv64', $ports], ['s390x', $ports],
+        [undef, $archive], ['', $archive],
+    ) {
+        my ($arch, $default) = @$case;
+        my $mirror = $setting eq 'override' ? $override : $default;
+        my $name = defined($arch) ? "'$arch'" : 'undefined';
+        is(xCAT::Template::ubuntu_subiquity_apt_mirror($arch), $mirror,
+            "$setting site, $name architecture: selected mirror");
+        for my $release (qw(ubuntu22.04 ubuntu24.04)) {
+            my $rendered = xCAT::Template::ubuntu_subiquity_apt_config($release, $arch);
+            my $apt = $yaml->load_string($rendered)->{apt};
+            is_deeply($apt->{'mirror-selection'}->{primary}, [{uri => $mirror}],
+                "$setting site, $name architecture, $release: primary mirror in YAML");
+            if ($release eq 'ubuntu22.04') {
+                is($apt->{sources}->{'xcat-ubuntu-archive.list'}->{source},
+                    "deb $mirror \$RELEASE main restricted universe multiverse",
+                    "$setting site, $name architecture: classic archive source");
+                is($apt->{sources}->{'xcat-ubuntu-updates.list'}->{source},
+                    "deb $mirror \$RELEASE-updates main restricted universe multiverse",
+                    "$setting site, $name architecture: classic updates source");
+            } else {
+                ok(!exists $apt->{sources},
+                    "$setting site, $name architecture: no duplicate Deb822 sources");
+            }
+        }
+    }
 }
+$site->close();
 
-use lib "$FindBin::Bin/../../perl-xCAT";
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
-my $module = "$FindBin::Bin/../../xCAT-server/lib/perl/xCAT/Template.pm";
-plan skip_all => 'Template.pm not found' unless -r $module;
-eval { require $module; 1 } or plan skip_all => "could not load Template.pm: $@";
-
-my $mirror = \&xCAT::Template::ubuntu_subiquity_apt_mirror;
-
-# The osimage's architecture decides the mirror. pkgdir cannot: it is whatever path the
-# administrator configured, so an amd64 image under /srv/custom-media would be read as a
-# non-x86 architecture and sent to the ports archive.
-is( $mirror->('riscv64'), 'http://ports.ubuntu.com/ubuntu-ports',
-    'a riscv64 image takes the ports archive' );
-is( $mirror->('ppc64el'), 'http://ports.ubuntu.com/ubuntu-ports',
-    'a ppc64el image takes the ports archive' );
-is( $mirror->('ppc64le'), 'http://ports.ubuntu.com/ubuntu-ports',
-    'the other spelling of ppc64 takes the ports archive' );
-
-for my $x86 (qw(x86_64 amd64 x86 i386)) {
-    is( $mirror->($x86), 'http://archive.ubuntu.com/ubuntu',
-        "an $x86 image keeps the main archive" );
-}
-
-# With no architecture there is nothing to key on, so the previous default stands.
-is( $mirror->(undef), 'http://archive.ubuntu.com/ubuntu',
-    'an unknown architecture keeps the previous default' );
-
-# site.ubuntu_apt_mirror still wins, which is how an airgapped cluster points at its own.
 {
-    local $xCAT::Table::value = 'http://mirror.example.invalid/ubuntu';
-    is( $mirror->('riscv64'), 'http://mirror.example.invalid/ubuntu',
-        'site.ubuntu_apt_mirror overrides the ports archive' );
-    is( $mirror->('x86_64'), 'http://mirror.example.invalid/ubuntu',
-        'site.ubuntu_apt_mirror overrides the main archive' );
-}
-{
-    local $xCAT::Table::value = '';
-    is( $mirror->('riscv64'), 'http://ports.ubuntu.com/ubuntu-ports',
-        'an empty site.ubuntu_apt_mirror does not blank the mirror' );
+    no warnings qw(redefine once);
+    local *xCAT::Table::new = sub { return };
+    is(xCAT::Template::ubuntu_subiquity_apt_mirror('riscv64'), $ports,
+        'unavailable site table keeps the architecture default');
+    is(xCAT::Template::ubuntu_subiquity_apt_mirror(undef), $archive,
+        'unavailable site table and architecture keep the main archive');
 }
 
 done_testing();
