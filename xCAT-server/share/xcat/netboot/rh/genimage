@@ -123,7 +123,8 @@ sub mount_chroot {
     }
 
     if (-d "/run") {
-        system("mount --bind /run $rootimg_dir/run");
+        system("mkdir -p $rootimage_dir/run");
+        system("mount --bind /run $rootimage_dir/run");
     }
 }
 
