@@ -19,6 +19,20 @@ Before packing the diskless image, you have the opportunity to change any files 
 
 However it's recommended that all changes to the image are made via post install scripts so that it's easily repeatable. Refer to :doc:`/guides/admin-guides/manage_clusters/ppc64le/diskless/customize_image/pre_post_script` for more details.
 
+Verify Package Signatures
+-------------------------
+
+By default ``genimage`` does not check package signatures for Red Hat family images. Set ``gpgcheck`` on the osimage to verify every package installed from the ``pkgdir``, ``kerneldir`` and ``otherpkgdir`` repositories: ::
+
+        chdef -t osimage rhels8.5.0-ppc64le-netboot-compute gpgcheck=yes
+
+``genimage`` trusts the RPM signing keys imported on the management node, the same keys ``rpm -q gpg-pubkey`` lists. Import the key of each repository the image uses before running ``genimage``, including the distribution key when the image release differs from the management node and the keys of third-party ``otherpkgdir`` repositories such as EPEL: ::
+
+        rpm --import /install/rhels8.5.0/ppc64le/RPM-GPG-KEY-redhat-release
+        rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-8
+
+A package signed by a key that is not imported, or not signed at all, makes ``genimage`` fail.
+
 
 Pack Diskless Image
 ===================

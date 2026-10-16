@@ -15,7 +15,7 @@ use File::Copy qw/copy cp mv move/;
 use File::Find;
 use Getopt::Long;
 use Cwd qw(realpath);
-use File::Temp qw/mkdtemp/;
+use File::Temp qw/mkdtemp tempfile/;
 use FindBin;
 use lib "$FindBin::Bin/../imgutils";
 use imgutils;
@@ -70,6 +70,7 @@ my $ignorekernelchk;
 my $noupdate;
 my $lock;
 my $envar;
+my $gpgcheck;
 
 
 sub xdie {
@@ -192,6 +193,7 @@ GetOptions(
     'onlyinitrd'        => \$onlyinitrd,
     'ignorekernelchk'   => \$ignorekernelchk,
     'noupdate'          => \$noupdate,
+    'gpgcheck'          => \$gpgcheck,                #internal flag
     'env=s'             => \$envar,
 );
 
@@ -343,12 +345,19 @@ if($onlyinitrd){
     }
 
     my $repnum = 0;
+    my $gpgkey;
+    if ($gpgcheck) {
+        my ($keyfh, $keyfile) = tempfile('genimage-rpm-keys.XXXXXX', DIR => '/tmp', UNLINK => 1);
+        print $keyfh imgutils::rpm_trusted_keys() or die "Cannot write RPM signing keys: $!\n";
+        close($keyfh) or die "Cannot close RPM signing keys: $!\n";
+        $gpgkey = "file://$keyfile";
+    }
     foreach $srcdir (@yumdirs) {
-        print $yumconfig "[$osver-$arch-$repnum]\nname=$osver-$arch-$repnum\nbaseurl=file://$srcdir\ngpgcheck=0\nskip_if_unavailable=True\n\n";
+        print $yumconfig imgutils::rpm_repository_config($osver, "$osver-$arch-$repnum", "file://$srcdir", $gpgkey);
         $repnum += 1;
     }
     foreach $srcdir (@pkgdir_internet) {
-       print $yumconfig "[$osver-$arch-$repnum]\nname=$osver-$arch-$repnum\nbaseurl=$srcdir\ngpgcheck=0\nskip_if_unavailable=True\n\n";
+       print $yumconfig imgutils::rpm_repository_config($osver, "$osver-$arch-$repnum", $srcdir, $gpgkey);
        $repnum += 1;
     }
     $repnum -= 1;
@@ -517,15 +526,11 @@ if($onlyinitrd){
                 }
 
                 if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next; }
-                foreach(@otherpkgdir_url){
-                    print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=$_\ngpgcheck=0\nskip_if_unavailable=True\n\n";
+                foreach my $url (imgutils::otherpkgs_repository_urls($_, $srcdir_otherpkgs_local, @otherpkgdir_url)) {
+                    print $yumconfig imgutils::rpm_repository_config($osver, "otherpkgs$index", $url, $gpgkey);
                     $repohash{$pass}{$index} = 1;
                     $index++;
                 }
-
-                print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs_local/$_\ngpgcheck=0\nskip_if_unavailable=True\n\n";
-                $repohash{$pass}{$index} = 1;
-                $index++;
                 my $pa = $extra_hash{$pass}{$_};
                 $extrapkgnames{$pass} .= " " . join(' ', @$pa);
             }
