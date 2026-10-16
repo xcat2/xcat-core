@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-load 'helpers/shell_source'
+load "${BASH_SOURCE[0]%/*}/shell_source.bash"
 
 setup_script_sandbox()
 {
