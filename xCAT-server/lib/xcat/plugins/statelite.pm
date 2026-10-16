@@ -79,7 +79,7 @@ sub process_request {
         "arch|a=s"       => \$arch,
         "osver|o=s"      => \$osver,
         "help|h"         => \$help,
-        "tracker"        => \$dotorrent,
+        "tracker=s"      => \$dotorrent,
         "version|v"      => \$version,
         "verbose|V"      => \$verbose
     );
@@ -163,6 +163,13 @@ sub process_request {
     unless ($destdir) {
         $destdir     = "$installroot/netboot/$osver/$arch/$profile";
         $rootimg_dir = "$destdir/rootimg";
+    }
+
+    # genimage, packimage, imgimport and rmimage take this lock before they change the image.
+    my ($lock_error, $lock) = xCAT::Utils->acquire_lock_imageop($rootimg_dir);
+    if ($lock_error) {
+        $callback->({ error => [$lock], errorcode => [1] });
+        return;
     }
     my $oldpath = cwd();
 
@@ -549,11 +556,7 @@ sub process_request {
         `echo TIMESTAMP="'$timestamp'" >> $rootimg_dir/opt/xcat/xcatinfo`;
 
         my $verb = "Packing";
-
-        my $temppath;
-        my $oldmask;
         $callback->({ data => ["$verb contents of $rootimg_dir ..."] });
-        unlink("$destdir/rootimg-statelite.gz");
 
         my $compress = "gzip";
 
@@ -565,31 +568,43 @@ sub process_request {
 
         $callback->({ info => ["compress method: $compress"] });
 
-        if ($exlistloc) {
-            chdir("$rootimg_dir");
-            system("$excludestr >> $xcat_packimg_tmpfile");
-            if ($includestr) {
-                system("$includestr >> $xcat_packimg_tmpfile");
-            }
-            $excludestr = "cat $xcat_packimg_tmpfile |cpio -H newc -o | $compress -c - > ../rootimg-statelite.gz";
-        } else {
-            $excludestr = "find . |cpio -H newc -o | $compress -c - > ../rootimg-statelite.gz";
+        # Nodes keep downloading the previous archive until the new one is complete and replaces it.
+        my ($stage, $stage_error) = xCAT::SvrUtils->rootimg_stage($destdir);
+        unless ($stage) {
+            $callback->({ error => [$stage_error], errorcode => [1] });
+            chdir($oldpath);
+            return;
         }
-        $oldmask = umask 0077;
+        my $archive = "$stage/rootimg-statelite.gz";
         chdir("$rootimg_dir");
-        xCAT::Utils->runcmd("$excludestr");
-        chmod 0644, "$destdir/rootimg-statelite.gz";
-        if ($dotorrent) {
-            my $currdir = getcwd;
-            chdir($destdir);
-            unlink("rootimg-statelite.gz.metainfo");
-            system("ctorrent -t -u $dotorrent -l 1048576 -s rootimg-statelite.gz.metainfo rootimg.gz");
-            chmod 0644, "rootimg-statelite.gz.metainfo";
-            chdir($currdir);
+        my @pack;
+        if ($exlistloc) {
+            push @pack, "$excludestr >> $xcat_packimg_tmpfile";
+            push @pack, "$includestr >> $xcat_packimg_tmpfile" if $includestr;
+            push @pack, "cat $xcat_packimg_tmpfile |cpio -H newc -o | $compress -c - > '$archive'";
+        } else {
+            push @pack, "find . |cpio -H newc -o | $compress -c - > '$archive'";
+        }
+        my $oldmask = umask 0077;
+        my $error;
+        foreach my $command (@pack) {
+            next unless system('/bin/bash', '-o', 'pipefail', '-c', $command);
+            $error = "liteimg failed while running: $command";
+            last;
         }
         umask $oldmask;
-
         system("rm -f $xcat_packimg_tmpfile");
+        if ($dotorrent && !$error) {
+            my $made = chdir($stage) && !system("ctorrent -t -u $dotorrent -l 1048576 -s rootimg-statelite.gz.metainfo rootimg-statelite.gz");
+            $error = "ctorrent cannot create the metainfo of $destdir/rootimg-statelite.gz" unless $made;
+        }
+        $error ||= xCAT::SvrUtils->write_rootimg_checksum($archive);
+        $error ||= xCAT::SvrUtils->publish_rootimg($archive, "$destdir/rootimg-statelite.gz");
+        chdir($oldpath);
+        if ($error) {
+            $callback->({ error => [$error], errorcode => [1] });
+            return;
+        }
         $callback->({ data => ["$verb contents of $rootimg_dir done."] });
     }
     chdir($oldpath);

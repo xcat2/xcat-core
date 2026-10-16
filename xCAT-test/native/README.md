@@ -129,6 +129,18 @@ an ordinary user with `XCAT_TEST_PG_BINDIR` set to the directory containing
 XCAT_TEST_PG_BINDIR=/usr/bin prove xCAT-test/native/pgsqlsetup_native_schema.t
 ```
 
+The pull-request workflow runs the liteimg archive case explicitly. It runs the
+statelite plugin with real cpio, gzip and find, and needs the Perl modules of
+the unit suite, including DBD::SQLite:
+
+```
+prove xCAT-test/native/liteimg_ramdisk_archive.t
+```
+
+Compressor and ctorrent fixtures record what nodes can download during the
+pack, or fail on request. The image lock and the ilitefile query are test
+doubles. This case does not boot the image.
+
 Check the TAP output for skipped prerequisites. A successful `prove` exit with
 skipped cases does not qualify those cases.
 

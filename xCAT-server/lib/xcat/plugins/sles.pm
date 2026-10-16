@@ -126,6 +126,7 @@ sub mknetboot
     my $reshash = $restab->getNodesAttribs(\@nodes, [ 'primarynic', 'tftpserver', 'tftpdir', 'xcatmaster', 'nfsserver', 'nfsdir', 'installnic' ]);
 
     my %donetftp = ();
+    my %rootimg_warned;
 
     foreach my $node (@nodes)
     {
@@ -140,6 +141,7 @@ sub mknetboot
         my $rootfstype;
         my $nfsrootopts;
         my $cfgpart;
+        my $rootimgchecksum;
         my $imagename;    # set it if running of 'nodeset osimage=xxx'
 
         my $ent = $ntents->{$node}->[0];
@@ -160,10 +162,11 @@ sub mknetboot
                     if (!$linuximagetab) {
                         $linuximagetab = xCAT::Table->new('linuximage', -create => 1);
                     }
-                    (my $ref1) = $linuximagetab->getAttribs({ imagename => $imagename }, 'rootimgdir', 'nodebootif', 'dump', 'crashkernelsize', 'partitionfile');
+                    (my $ref1) = $linuximagetab->getAttribs({ imagename => $imagename }, 'rootimgdir', 'nodebootif', 'dump', 'crashkernelsize', 'partitionfile', 'rootimgchecksum');
                     if (($ref1) && ($ref1->{'rootimgdir'})) {
                         $img_hash{$imagename}->{rootimgdir} = $ref1->{'rootimgdir'};
                     }
+                    $img_hash{$imagename}->{rootimgchecksum} = $ref1->{'rootimgchecksum'} if $ref1;
                     if (($ref1) && ($ref1->{'nodebootif'})) {
                         $img_hash{$imagename}->{nodebootif} = $ref1->{'nodebootif'};
                     }
@@ -213,6 +216,7 @@ sub mknetboot
             $dump            = $ph->{dump};
             $crashkernelsize = $ph->{crashkernelsize};
             $cfgpart         = $ph->{'cfgpart'};
+            $rootimgchecksum = $ph->{rootimgchecksum};
 
             $rootimgdir = $ph->{rootimgdir};
             unless ($rootimgdir) {
@@ -263,10 +267,11 @@ sub mknetboot
                 $linuximagetab = xCAT::Table->new('linuximage');
             }
             if ($linuximagetab) {
-                (my $ref1) = $linuximagetab->getAttribs({ imagename => $imgname }, 'dump', 'crashkernelsize', 'partitionfile');
+                (my $ref1) = $linuximagetab->getAttribs({ imagename => $imgname }, 'dump', 'crashkernelsize', 'partitionfile', 'rootimgchecksum');
                 if ($ref1 && $ref1->{'dump'}) {
                     $dump = $ref1->{'dump'};
                 }
+                $rootimgchecksum = $ref1->{'rootimgchecksum'} if $ref1;
                 if ($ref1 and $ref1->{'crashkernelsize'}) {
                     $crashkernelsize = $ref1->{'crashkernelsize'};
                 }
@@ -384,46 +389,56 @@ sub mknetboot
 
 
         # Copy the boot resource to /tftpboot and check to only copy once
-        my $docopy = 0;
         my $tftppath;
         my $rtftppath;    # the relative tftp path without /tftpboot/
+        my $copykey;
         if ($imagename) {
             $tftppath  = "$tftpdir/xcat/osimage/$imagename";
             $rtftppath = "xcat/osimage/$imagename";
-            unless ($donetftp{$imagename}) {
-                $docopy = 1;
-                $donetftp{$imagename} = 1;
-            }
+            $copykey   = $imagename;
         } else {
             $tftppath  = "/$tftpdir/xcat/netboot/$osver/$arch/$profile/";
             $rtftppath = "xcat/netboot/$osver/$arch/$profile/";
-            unless ($donetftp{ $osver, $arch, $profile, $tftpdir }) {
-                $docopy = 1;
-                $donetftp{ $osver, $arch, $profile, $tftpdir } = 1;
+            $copykey   = join($;, $osver, $arch, $profile, $tftpdir);
+        }
+        my $docopy = !$donetftp{$copykey};
+
+        # A statelite ramdisk image built with dracut boots the stateless initial ramdisk, which downloads the image.
+        my $initrd = "initrd-stateless.gz";
+        $initrd = "initrd-statelite.gz" if ($statelite && !(&using_dracut($rootimgdir) && $rootfstype eq "ramdisk"));
+
+        # This runs before the boot files are copied, so a failure keeps the boot files that the node uses now.
+        if (!$statelite || $rootfstype eq "ramdisk") {
+            my $error = xCAT::SvrUtils->prepare_rootimg_checksum(value => $rootimgchecksum, rootimgdir => $rootimgdir,
+                imagename => $imagename, warned => \%rootimg_warned, callback => $callback);
+            if ($error) {
+                xCAT::MsgUtils->report_node_error($callback, $node, $error);
+                next;
             }
         }
 
+        my $copied = 1;
         if ($docopy && !$noupdateinitrd) {
             mkpath("$tftppath");
-            copy("$rootimgdir/kernel", "$tftppath");
-            if ($statelite) {
-                copy("$rootimgdir/initrd-statelite.gz", "$tftppath");
-            } else {
-                copy("$rootimgdir/initrd-stateless.gz", "$tftppath");
-            }
+            $copied &&= copy("$rootimgdir/kernel",  "$tftppath");
+            $copied &&= copy("$rootimgdir/$initrd", "$tftppath");
+        }
+        unless ($copied) {
+            xCAT::MsgUtils->report_node_error($callback, $node, qq{Copying to $tftppath failed: $!});
+            next;
+        }
+        $donetftp{$copykey} = 1;
+
+        unless (-r "$tftppath/kernel" and -r "$tftppath/$initrd") {
+            xCAT::MsgUtils->report_node_error($callback, $node, qq{Copying to $tftppath failed.});
+            next;
         }
 
-        if ($statelite) {
-            unless (-r "$tftppath/kernel" and -r "$tftppath/initrd-statelite.gz") {
-                xCAT::MsgUtils->report_node_error($callback, $node, qq{Copying to $tftppath failed.});
-                next;
-            }
-        } else {
-            unless (-r "$tftppath/kernel"
-                and -r "$tftppath/initrd-stateless.gz") {
-                xCAT::MsgUtils->report_node_error($callback, $node, qq{Copying to $tftppath failed.});
-                next;
-            }
+        # Nodes boot the initial ramdisk that is in TFTP now, so that copy decides the check.
+        my $checksum_arg = '';
+        if (!$statelite || $rootfstype eq "ramdisk") {
+            $checksum_arg = xCAT::SvrUtils->rootimg_checksum_boot(value => $rootimgchecksum, rootimgdir => $rootimgdir,
+                initrd => "$tftppath/$initrd", imagename => $imagename, warned => \%rootimg_warned, callback => $callback);
         }
 
         # TODO: move the table operations out of the foreach loop
@@ -485,6 +500,7 @@ sub mknetboot
                 }
             } else {
                 $kcmdline = "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg-statelite.gz STATEMNT=";
+                $kcmdline = $checksum_arg . $kcmdline;
             }
 
             # add support for subVars in the value of "statemnt"
@@ -538,6 +554,7 @@ sub mknetboot
         {
             $kcmdline =
               "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/$compressedrootimg ";
+            $kcmdline .= $checksum_arg;
         }
         $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
         $kcmdline .= " XCATHTTPPORT=$httpport ";
@@ -648,14 +665,7 @@ sub mknetboot
             }
         }
 
-        my $initrdstr = "$rtftppath/initrd-stateless.gz";
-
-        # special case for the dracut-enabled OSes
-        if ($statelite) {
-            unless (&using_dracut($rootimgdir) && ($rootfstype eq "ramdisk")) {
-                $initrdstr = "$rtftppath/initrd-statelite.gz";
-            }
-        }
+        my $initrdstr = "$rtftppath/$initrd";
 
         if ($statelite)
         {
@@ -2763,5 +2773,6 @@ sub insert_dd () {
 #
 #  return "";
 #}
+
 
 1;

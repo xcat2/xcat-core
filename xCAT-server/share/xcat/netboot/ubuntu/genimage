@@ -1060,7 +1060,16 @@ sub mkinitrd_dracut {
     !system("chroot $rootimg_dir dracut -f /tmp/initrd.$$.gz $kernelver")
       or die("Error: failed to generate the initial ramdisk for $mode.\n");
     print "the initial ramdisk for $mode is generated successfully.\n";
-    move("$rootimg_dir/tmp/initrd.$$.gz", "$destdir/initrd-$mode.gz");
+    move("$rootimg_dir/tmp/initrd.$$.gz", "$destdir/initrd-$mode.gz") and mark_rootimg_check($mode);
+}
+
+# nodeset warns unless this marker says that the stateless initial ramdisk checks the root image checksum.
+sub mark_rootimg_check {
+    my ($mode) = @_;
+    return unless $mode eq 'stateless' && $dracutdir eq 'dracut';
+    require xCAT::SvrUtils;
+    my $error = xCAT::SvrUtils->write_initrd_check_marker("$destdir/initrd-$mode.gz");
+    print "Warning: $error\n" if $error;
 }
 
 sub mkinitrd {

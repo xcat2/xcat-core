@@ -39,6 +39,9 @@ jobs:
           xCAT-test/native/ubuntu_genimage_debootstrap_arch.t
           xCAT-test/native/ubuntu_genimage_apt_mirror.t
           xCAT-test/native/ubuntu_genimage_resolver_libs.t
+      - name: Exercise the liteimg ramdisk archive
+        if: ${{ !cancelled() }}
+        run: prove xCAT-test/native/liteimg_ramdisk_archive.t
       - name: Run tests
         if: ${{ !cancelled() }}
         run: perl github_action_xcat_test.pl

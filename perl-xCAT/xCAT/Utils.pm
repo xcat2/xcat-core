@@ -2597,22 +2597,37 @@ sub osver
         A reference for the lock being held.
 =cut
 
+# Returns the directory of the lock files of acquire_lock.
+sub lock_dir {
+    return "/var/lock/xcat";
+}
+
 sub acquire_lock {
     my $class         = shift;
     my $lock_name     = shift;
     my $nonblock_mode = shift;
 
     use File::Path;
-    mkpath("/var/lock/xcat/");
+    my $lock_dir = lock_dir();
+    mkpath("$lock_dir/");
     use Fcntl ":flock";
     my $tlock;
-    $tlock->{path} = "/var/lock/xcat/" . $lock_name;
-    sysopen($tlock->{fd}, $tlock->{path}, POSIX::O_CREAT | POSIX::O_WRONLY) or return undef;
-    unless ($tlock->{fd}) { return undef; }
-    if ($nonblock_mode) {
-        flock($tlock->{fd}, LOCK_EX | LOCK_NB) or return undef;
-    } else {
-        flock($tlock->{fd}, LOCK_EX) or return undef;
+    $tlock->{path} = "$lock_dir/" . $lock_name;
+    while (1) {
+        sysopen($tlock->{fd}, $tlock->{path}, POSIX::O_CREAT | POSIX::O_WRONLY) or return undef;
+        unless ($tlock->{fd}) { return undef; }
+        if ($nonblock_mode) {
+            flock($tlock->{fd}, LOCK_EX | LOCK_NB) or return undef;
+        } else {
+            flock($tlock->{fd}, LOCK_EX) or return undef;
+        }
+
+        # release_lock removes the file before it unlocks it. A process that waited then holds a file without a
+        # name, while another one can lock a new file at the path, so only the file at the path counts.
+        my @held  = stat($tlock->{fd});
+        my @named = stat($tlock->{path});
+        last if @named && $held[0] == $named[0] && $held[1] == $named[1];
+        close($tlock->{fd});
     }
 
     truncate $tlock->{fd},0;
@@ -5204,7 +5219,7 @@ sub acquire_lock_imageop {
     my $lock = xCAT::Utils->acquire_lock("$mylockfile", $NON_BLOCK);
     unless ($lock){
         my $pidfd;
-        open($pidfd,"<","/var/lock/xcat/$mylockfile");
+        open($pidfd,"<",lock_dir() . "/$mylockfile");
         my $pid=<$pidfd>;
         close($pidfd);
         return (1, "failed to acquire lock, seems there is another genimage/packimage/rmimage process $pid running on root image dir \"$rootimg_dir\"");
