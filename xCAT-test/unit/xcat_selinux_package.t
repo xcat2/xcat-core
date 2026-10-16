@@ -119,12 +119,8 @@ foreach my $section (qw(pre preun post postun posttrans)) {
 
 my @fc = grep { !/^\s*(?:#|$)/ } lines_of("$root/xCAT-selinux/xcat.fc");
 my %fc = map { (split /\s+/, $_, 2) } @fc;
-is($fc{'/install(/.*)?'}, 'gen_context(system_u:object_r:public_content_t,s0)',
-    '/install is public_content_t');
-is($fc{'/install/netboot/[^/]+/[^/]+/[^/]+/rootimg(/.*)?'}, '<<none>>',
-    '... and restorecon leaves a rootimg alone');
-is($fc{'/install/netboot/[^/]+/[^/]+/[^/]+/rootimg-statelite(/.*)?'}, '<<none>>',
-    '... and a statelite rootimg too');
+# The labels of /install and of the image trees are looked up in the compiled
+# policy by xCAT-test/native/selinux_file_contexts.t.
 ok(!(grep { m{^/tftpboot} } keys %fc), '/tftpboot keeps the stock tftpdir_t');
 
 # The type of an fc entry, dropping the file-type flag that executables carry.
