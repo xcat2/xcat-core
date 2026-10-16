@@ -61,9 +61,14 @@ sub default_storagemodel {
         arch and machine stay undef when libvirt is to use its own default for the
         hypervisor. machine is the unversioned alias; libvirt resolves it to the version the
         hypervisor has.
+
+        An x86_64 guest that asks for efi moves to q35, because every x86_64 OVMF descriptor
+        targets pc-q35-* only. q35 has no IDE controller, so its disks and its optical drive
+        move to scsi.
     Arguments:
         $guest_arch - nodetype.arch of the node, or undef
         $hyp_cpumodel - the cpumodel of the hypervisor, or undef
+        $firmware - the firmware the node asks for in vm.othersettings, or undef
     Returns:
         a hash reference of the profile
 
@@ -71,7 +76,7 @@ sub default_storagemodel {
 
 #-------------------------------------------------------
 sub guest_arch_profile {
-    my ($guest_arch, $hyp_cpumodel) = @_;
+    my ($guest_arch, $hyp_cpumodel, $firmware) = @_;
     my %profile = (
         domtype      => 'kvm',
         arch         => undef,
@@ -124,6 +129,14 @@ sub guest_arch_profile {
         $profile{x86_features} = 0;
         $profile{bios}         = 0;
         $profile{sound}        = 0;
+    }
+    if (defined($firmware) and $firmware eq 'efi' and not defined $profile{firmware}) {
+        $profile{firmware} = 'efi';
+        if ($profile{x86_features}) {
+            $profile{machine}    = 'q35';
+            $profile{disk_model} = 'scsi';
+            $profile{cd_prefix}  = 'sd';
+        }
     }
     return \%profile;
 }
@@ -384,6 +397,218 @@ sub cdrom_prefix {
         return 'sd';
     }
     return $profile->{cd_prefix};
+}
+
+#-------------------------------------------------------
+
+=head3 vm_othersettings
+
+    Descriptions:
+        The vm.othersettings of one node.
+
+        The read creates no vm table and no vm row. An rvalue dereference chain
+        autovivifies its intermediate links.
+    Arguments:
+        $confdata - the table data of the kvm plugin, or undef
+        $node - the node name
+    Returns:
+        the othersettings value, or undef when the node has no vm row
+
+=cut
+
+#-------------------------------------------------------
+sub vm_othersettings {
+    my ($confdata, $node) = @_;
+    return undef unless ref($confdata) eq 'HASH';
+    my $vm   = $confdata->{vm} or return undef;
+    my $rows = $vm->{$node}    or return undef;
+    my $row  = $rows->[0]      or return undef;
+    return $row->{othersettings};
+}
+
+#-------------------------------------------------------
+
+=head3 requested_firmware
+
+    Descriptions:
+        The firmware a node asks for in vm.othersettings. No node asks by default, so an
+        existing guest keeps the firmware of its machine type.
+    Arguments:
+        $othersettings - vm.othersettings of the node, or undef
+    Returns:
+        the value of the firmware: setting, or undef
+
+=cut
+
+#-------------------------------------------------------
+sub requested_firmware {
+    my ($othersettings) = @_;
+    return undef unless defined $othersettings;
+    foreach my $setting (split /;/, $othersettings) {
+        return $1 if $setting =~ /^\s*firmware:(.*)/;
+    }
+    return undef;
+}
+
+#-------------------------------------------------------
+
+=head3 firmware_error
+
+    Descriptions:
+        The refusal of a firmware value that libvirt cannot select. A node with a typo must
+        not stay on SeaBIOS without a message.
+    Arguments:
+        $firmware - the value from requested_firmware, or undef
+        $node - the node name
+    Returns:
+        the error message, or undef when the value is efi or undef
+
+=cut
+
+#-------------------------------------------------------
+sub firmware_error {
+    my ($firmware, $node) = @_;
+    return undef if !defined($firmware) or $firmware eq 'efi';
+    return "vm.othersettings firmware:$firmware names no firmware libvirt can select for $node. Use firmware:efi.";
+}
+
+#-------------------------------------------------------
+
+=head3 guest_os
+
+    Descriptions:
+        The <os> element of one guest, in the hash form XML::Simple XMLout writes.
+
+        A ppc64le hypervisor gets no <bios useserial>. A profile without bios drops it too.
+        A machine type from vm.othersettings replaces the machine type of the profile.
+    Arguments:
+        $profile - the hash reference from guest_arch_profile
+        %args - hyp_cpumodel: the cpumodel of the hypervisor; bootorder: vm.bootorder of the
+                node; machine: the machine: setting of vm.othersettings
+    Returns:
+        a hash reference for the <os> element
+
+=cut
+
+#-------------------------------------------------------
+sub guest_os {
+    my ($profile, %args) = @_;
+    my %os = (type => { content => 'hvm' });
+    unless (defined($args{hyp_cpumodel}) and $args{hyp_cpumodel} eq 'ppc64le') {
+        $os{bios}->{useserial} = 'yes';
+    }
+    if (defined $args{bootorder}) {
+        foreach my $dev (split(/[:,]/, $args{bootorder})) {
+            $dev = 'network' if ($dev eq 'net' or $dev eq 'n');
+            push @{ $os{boot} }, { dev => $dev };
+        }
+    } else {
+        $os{boot} = [ { dev => 'network' }, { dev => 'hd' } ];
+    }
+    $os{type}->{arch}    = $profile->{arch}     if defined $profile->{arch};
+    $os{type}->{machine} = $profile->{machine}  if defined $profile->{machine};
+    $os{firmware}        = $profile->{firmware} if defined $profile->{firmware};
+    delete $os{bios} unless $profile->{bios};
+    $os{type}->{machine} = $args{machine} if defined $args{machine};
+    return \%os;
+}
+
+#-------------------------------------------------------
+
+=head3 clock_offset
+
+    Descriptions:
+        The clock offset of one guest. vm.clockoffset wins. Otherwise a Windows guest uses
+        localtime and every other guest uses utc.
+    Arguments:
+        $clockoffset - vm.clockoffset of the node, or undef
+        $os - nodetype.os of the node, or undef
+    Returns:
+        the clock offset
+
+=cut
+
+#-------------------------------------------------------
+sub clock_offset {
+    my ($clockoffset, $os) = @_;
+    return $clockoffset if defined $clockoffset;
+    return 'localtime' if (defined($os) and $os =~ /win.*/);
+    return 'utc';
+}
+
+#-------------------------------------------------------
+
+=head3 reconfigure_domain
+
+    Descriptions:
+        Apply the clock offset, memory, CPU count and boot order of a node to the XML of
+        an existing domain. Every other element of the domain stays as it is.
+
+        XML::LibXML is loaded here, not by this module, so the other subs need only core Perl.
+    Arguments:
+        $xml - the domain XML
+        %args - clock_offset: the result of clock_offset; memory: the memory in KiB, or
+                undef; vcpus: the vcpus value of the vm row, or undef; bootorder:
+                vm.bootorder, or undef
+    Returns:
+        the new domain XML, or 0 when the domain needs no change
+
+=cut
+
+#-------------------------------------------------------
+sub reconfigure_domain {
+    my ($xml, %args) = @_;
+    require XML::LibXML;
+    my $parser   = XML::LibXML->new();
+    my $domdesc  = $parser->parse_string($xml);
+    my @bootdevs = $domdesc->findnodes("/domain/os/boot");
+    my $needfixin = 0;
+    my $clock = $domdesc->findnodes("/domain/clock")->[0];
+    if ($clock->getAttribute("offset") ne $args{clock_offset}) {
+        $needfixin = 1;
+        $clock->setAttribute("offset", $args{clock_offset});
+    }
+    if (defined $args{memory}) {
+        $needfixin = 1;
+        $domdesc->findnodes("/domain/memory/text()")->[0]->setData($args{memory});
+        foreach ($domdesc->findnodes("/domain/currentMemory/text()")) {
+            $_->setData($args{memory});
+        }
+    }
+    if (defined $args{vcpus}) {
+        $needfixin = 1;
+        $domdesc->findnodes("/domain/vcpu/text()")->[0]->setData($args{vcpus});
+    }
+    if (defined $args{bootorder}) {
+        my @oldbootdevs;
+        my @expectedorder = split(/[:,]/, $args{bootorder});
+        foreach (@expectedorder) {
+            my $currdev = shift @bootdevs;
+            if ("net" eq $_ or "n" eq $_) {
+                $_ = "network";
+            }
+            unless ($currdev and $currdev->getAttribute("dev") eq $_) {
+                $needfixin = 1;
+            }
+            if ($currdev) {
+                push @oldbootdevs, $currdev;
+            }
+        }
+        if (scalar(@bootdevs)) {
+            $needfixin = 1;
+            push @oldbootdevs, @bootdevs;
+        }
+        return 0 unless $needfixin;
+
+        foreach (@oldbootdevs) {
+            $_->parentNode->removeChild($_);
+        }
+        my $osnode = $domdesc->findnodes("/domain/os")->[0];
+        foreach (@expectedorder) {
+            $osnode->appendChild($parser->parse_balanced_chunk('<boot dev="' . $_ . '"/>'));
+        }
+    }
+    return $needfixin ? $domdesc->toString() : 0;
 }
 
 1;

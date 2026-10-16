@@ -19,24 +19,28 @@ sub _xnba {
 sub preprocess_request {
     _xnba();
     local $xCAT_plugin::xnba::SCRIPTS = 'xcat/ipxe';
+    local $xCAT_plugin::xnba::METHOD  = 'ipxe';
     return xCAT_plugin::xnba::preprocess_request(@_);
 }
 
 sub process_request {
     _xnba();
     local $xCAT_plugin::xnba::SCRIPTS = 'xcat/ipxe';
+    local $xCAT_plugin::xnba::METHOD  = 'ipxe';
     return xCAT_plugin::xnba::process_request(@_);
 }
 
 sub getstate {
     _xnba();
     local $xCAT_plugin::xnba::SCRIPTS = 'xcat/ipxe';
+    local $xCAT_plugin::xnba::METHOD  = 'ipxe';
     return xCAT_plugin::xnba::getstate(@_);
 }
 
 sub getNodesetStates {
     _xnba();
     local $xCAT_plugin::xnba::SCRIPTS = 'xcat/ipxe';
+    local $xCAT_plugin::xnba::METHOD  = 'ipxe';
     return xCAT_plugin::xnba::getNodesetStates(@_);
 }
 
