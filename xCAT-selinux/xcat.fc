@@ -1,0 +1,22 @@
+# The entrypoints of the xcat_t domain. /usr/sbin/xcatd is a symlink, and
+# execve resolves it, so the context belongs to the file it names.
+/opt/xcat/sbin/xcatd		--	gen_context(system_u:object_r:xcatd_exec_t,s0)
+/opt/xcat/bin/xcatclient		--	gen_context(system_u:object_r:xcat_client_exec_t,s0)
+/opt/xcat/bin/xcatclientnnr	--	gen_context(system_u:object_r:xcat_client_exec_t,s0)
+/opt/xcat/bin/xcatDBcmds		--	gen_context(system_u:object_r:xcat_client_exec_t,s0)
+/opt/xcat/bin/genimage		--	gen_context(system_u:object_r:xcat_client_exec_t,s0)
+
+# The entrypoints of the image build are the per-OS programs. The geninitrd
+# name needs its own line: most are symlinks to their sibling genimage, but
+# netboot/fedora12/geninitrd is a real program. packimage and liteimg are
+# symlinks to xcatclientnnr, so the work they ask for runs in xcat_t.
+/opt/xcat/share/xcat/netboot/[^/]+/genimage	--	gen_context(system_u:object_r:xcat_image_exec_t,s0)
+/opt/xcat/share/xcat/netboot/[^/]+/geninitrd	--	gen_context(system_u:object_r:xcat_image_exec_t,s0)
+
+/install(/.*)?		gen_context(system_u:object_r:public_content_t,s0)
+
+# A rootimg keeps the labels of its own OS, so restorecon must not change them.
+# genimage puts the tree at <rootimgdir>/rootimg, and rootimgdir can be at any
+# depth under /install.
+/install(/.*)?/rootimg(/.*)?		<<none>>
+/install(/.*)?/rootimg-statelite(/.*)?	<<none>>

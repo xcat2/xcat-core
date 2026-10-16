@@ -1,0 +1,125 @@
+start:selinux_xcatd_domain
+description:on an enforcing management node, xcatd and its workers run in xcat_t
+label:mn_only,selinux
+cmd:getenforce
+check:rc==0
+check:output=~^Enforcing$
+cmd:ps -o label= -p "$(cat /run/xcatd.pid)"
+check:rc==0
+check:output=~:xcat_t:
+cmd:ps -eo label,args | grep '[x]catd:'
+check:rc==0
+check:output=~:xcat_t:
+check:output!~initrc_t
+check:output!~unconfined_service_t
+end
+
+start:selinux_client_domain
+description:on an enforcing management node, a client command entered through xcatclient runs in xcat_t
+label:mn_only,selinux
+cmd:getenforce
+check:rc==0
+check:output=~^Enforcing$
+cmd:sh -c 'rm -f /tmp/selinux_client_domain.ck; ausearch --input-logs -m SELINUX_ERR --checkpoint /tmp/selinux_client_domain.ck -ts today > /dev/null 2>&1; true'
+check:rc==0
+cmd:ls -Z /opt/xcat/bin/xcatclient
+check:rc==0
+check:output=~:xcat_client_exec_t:
+cmd:ls -Z /opt/xcat/sbin/xcatd
+check:rc==0
+check:output=~:xcatd_exec_t:
+cmd:sh -c 'rpm -q setools-console || dnf install -y setools-console'
+check:rc==0
+cmd:sesearch -T -s init_t -t xcatd_exec_t -c process
+check:rc==0
+check:output=~xcat_t
+cmd:sesearch -T -s unconfined_t -t xcat_client_exec_t -c process
+check:rc==0
+check:output=~xcat_t
+cmd:sesearch -T -s unconfined_t -t bin_t -c process
+check:output!~xcat_t
+cmd:sh -c 'seinfo -runconfined_r -x | grep -w xcat_t'
+check:rc==0
+cmd:lsxcatd -v
+check:rc==0
+check:output=~^Version
+cmd:sh -c 'ausearch --input-logs -m SELINUX_ERR --checkpoint /tmp/selinux_client_domain.ck > /tmp/selinux_client_domain.err 2>&1; grep -q -e "^type=" -e "no matches" /tmp/selinux_client_domain.err'
+check:rc==0
+cmd:sh -c 'grep -F invalid_context /tmp/selinux_client_domain.err | wc -l'
+check:rc==0
+check:output=~^0$
+cmd:rm -f /tmp/selinux_client_domain.ck /tmp/selinux_client_domain.err
+check:rc==0
+end
+
+start:selinux_mn_labels
+description:on an enforcing management node, xCAT-selinux labels /install, httpd serves /install and /tftpboot, and no denial is enforced
+label:mn_only,selinux
+cmd:getenforce
+check:rc==0
+check:output=~^Enforcing$
+cmd:sh -c 'rm -f /tmp/selinux_mn_labels.ck; ausearch --input-logs -m AVC,USER_AVC --checkpoint /tmp/selinux_mn_labels.ck -ts today > /dev/null 2>&1; true'
+check:rc==0
+cmd:rpm -q xCAT-selinux
+check:rc==0
+cmd:sh -c 'semodule -l | grep -x -E "xcat([[:space:]].*)?"'
+check:rc==0
+cmd:matchpathcon /install
+check:rc==0
+check:output=~:public_content_t:
+cmd:matchpathcon /install/netboot/alma10/x86_64/compute/rootimg/etc/passwd
+check:rc==0
+check:output=~<<none>>
+cmd:ls -dZ /install
+check:rc==0
+check:output=~:public_content_t:
+cmd:ls -dZ /install/postscripts
+check:rc==0
+check:output=~:public_content_t:
+cmd:matchpathcon /tftpboot/xcat
+check:rc==0
+check:output=~:tftpdir_t:
+cmd:curl -s -f -o /dev/null http://localhost/install/postscripts/xcatdsklspost
+check:rc==0
+cmd:sh -c 'mkdir -p /tftpboot/xcat && echo xcat-selinux-probe-ok > /tftpboot/xcat/selinux_mn_labels.probe'
+check:rc==0
+cmd:ls -Z /tftpboot/xcat/selinux_mn_labels.probe
+check:rc==0
+check:output=~:tftpdir_t:
+cmd:curl -s -f http://localhost/tftpboot/xcat/selinux_mn_labels.probe
+check:rc==0
+check:output=~^xcat-selinux-probe-ok$
+cmd:rm -f /tftpboot/xcat/selinux_mn_labels.probe
+check:rc==0
+cmd:sh -c 'ausearch --input-logs -m AVC,USER_AVC --checkpoint /tmp/selinux_mn_labels.ck > /tmp/selinux_mn_labels.avc 2>&1; grep -q -e "^type=" -e "no matches" /tmp/selinux_mn_labels.avc'
+check:rc==0
+cmd:sh -c 'grep -F "permissive=0" /tmp/selinux_mn_labels.avc | wc -l'
+check:rc==0
+check:output=~^0$
+cmd:rm -f /tmp/selinux_mn_labels.ck /tmp/selinux_mn_labels.avc
+end
+
+start:selinux_restapi_avc
+description:on an enforcing management node, xcatws.cgi reaches xcatd and no denial is enforced
+label:mn_only,selinux,restapi
+cmd:getenforce
+check:rc==0
+check:output=~^Enforcing$
+cmd:sh -c 'rm -f /tmp/selinux_restapi_avc.ck; ausearch --input-logs -m AVC,USER_AVC --checkpoint /tmp/selinux_restapi_avc.ck -ts today > /dev/null 2>&1; true'
+check:rc==0
+cmd:sh -c 'rpm -q mod_ssl || dnf install -y mod_ssl'
+check:rc==0
+cmd:systemctl restart httpd
+check:rc==0
+cmd:tabch key=xcat,username=__GETTABLEVALUE(key,system,username,passwd)__ passwd.password=__GETTABLEVALUE(key,system,password,passwd)__
+check:rc==0
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;curl -k -s -f "https://localhost/xcatws/globalconf/attrs/master?userName=$username&userPW=$password"
+check:rc==0
+check:output=~clustersite
+cmd:sh -c 'ausearch --input-logs -m AVC,USER_AVC --checkpoint /tmp/selinux_restapi_avc.ck > /tmp/selinux_restapi_avc.avc 2>&1; grep -q -e "^type=" -e "no matches" /tmp/selinux_restapi_avc.avc'
+check:rc==0
+cmd:sh -c 'grep -F "permissive=0" /tmp/selinux_restapi_avc.avc | wc -l'
+check:rc==0
+check:output=~^0$
+cmd:rm -f /tmp/selinux_restapi_avc.ck /tmp/selinux_restapi_avc.avc
+end

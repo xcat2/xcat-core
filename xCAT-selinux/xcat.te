@@ -1,0 +1,444 @@
+policy_module(xcat, 1.2.0)
+
+gen_require(`
+    type httpd_t, httpd_sys_script_t, tftpdir_t, ntop_port_t;
+    type rsync_t, shadow_t;
+    type useradd_t, groupadd_t, public_content_t;
+    type named_zone_t, named_unit_file_t, systemd_unit_file_t;
+    type auditd_etc_t, selinux_config_t, ldconfig_cache_t, setfiles_t, tmp_t;
+    type device_t;
+    attribute file_type;
+    type admin_home_t, cert_t, krb5_keytab_t, var_run_t;
+    class service { start status stop reload enable disable };
+    class system { reload status start stop };
+    class dbus { send_msg };
+')
+
+########################################
+#
+# The xCAT domains
+#
+
+# xcatd and the client commands share one domain. Each command sends its
+# request to xcatd, and the two read the same tables and the same /install tree.
+type xcat_t;
+type xcatd_exec_t;
+init_daemon_domain(xcat_t, xcatd_exec_t)
+
+# /opt/xcat/bin/xcatclient is the entrypoint of every dispatching command.
+type xcat_client_exec_t;
+application_domain(xcat_t, xcat_client_exec_t)
+
+# genimage builds a whole operating system in a directory, so it creates and
+# relabels files of every type. It runs in its own domain to keep that out of
+# the daemon that also listens on the network.
+type xcat_image_t;
+type xcat_image_exec_t;
+application_domain(xcat_image_t, xcat_image_exec_t)
+domtrans_pattern(xcat_t, xcat_image_exec_t, xcat_image_t)
+# domtrans_pattern does not carry these three, and a parent that execs into
+# another domain needs them: the child inherits the signal mask, the rlimits
+# and the AT_SECURE flag of the exec.
+allow xcat_t xcat_image_t:process { noatsecure rlimitinh siginh };
+
+# xcatd runs genimage, so the transition computes system_u:system_r:xcat_image_t.
+# application_domain does not authorize a role for the type, and without this
+# the context is invalid: the kernel refuses the exec with EACCES and reports
+# SELINUX_ERR, not AVC. init_daemon_domain does this through the daemon
+# attribute, which is why xcat_t needs no such line.
+role system_r types xcat_image_t;
+
+# The CI collects the accesses each domain needs while the host stays
+# enforcing. A later release removes these two lines.
+permissive xcat_t;
+permissive xcat_image_t;
+
+# xCAT starts in.tftpd itself, with no systemd unit, so without this the daemon
+# inherits xcat_t and serves UDP 69 with this domain's authority. tftp.if ships
+# no tftp_domtrans, so the transition is written here.
+optional_policy(`
+    gen_require(`
+        type tftpd_t, tftpd_exec_t;
+    ')
+
+    domtrans_pattern(xcat_t, tftpd_exec_t, tftpd_t)
+    allow xcat_t tftpd_t:process { noatsecure rlimitinh siginh };
+
+    # setup_tftpd kills a stray server before it starts its own.
+    allow xcat_t tftpd_t:process { signal signull };
+')
+
+optional_policy(`
+    gen_require(`
+        type unconfined_t;
+        role unconfined_r;
+    ')
+
+    # The transition computes unconfined_u:unconfined_r:<domain>. The role must
+    # hold the type, or the context is invalid and the kernel refuses the exec
+    # with EACCES. Permissive does not cover it: an invalid context is not a
+    # permission check, and the record is SELINUX_ERR, not AVC.
+    role unconfined_r types xcat_t;
+    role unconfined_r types xcat_image_t;
+
+    # Targeted policy gives root unconfined_t, which is where the administrator
+    # and the CI run the commands. A confined user domain gets no transition: it
+    # would leave its own confinement for a permissive domain.
+    domtrans_pattern(unconfined_t, xcat_client_exec_t, xcat_t)
+    domtrans_pattern(unconfined_t, xcat_image_exec_t, xcat_image_t)
+')
+
+########################################
+#
+# xcat_t, the daemon and the commands
+#
+
+allow xcat_t self:capability { audit_control audit_write chown dac_override
+    dac_read_search fowner fsetid mknod net_admin net_bind_service setfcap
+    setgid setuid sys_admin sys_chroot sys_ptrace sys_resource sys_time };
+allow xcat_t self:process { setcap setfscreate setpgid setrlimit setsched signal_perms };
+allow xcat_t self:fifo_file rw_fifo_file_perms;
+allow xcat_t self:tcp_socket { create_stream_socket_perms accept listen };
+allow xcat_t self:udp_socket create_socket_perms;
+allow xcat_t self:unix_stream_socket { create_stream_socket_perms connectto };
+allow xcat_t self:unix_dgram_socket create_socket_perms;
+allow xcat_t self:netlink_route_socket { create_netlink_socket_perms nlmsg_read nlmsg_write };
+allow xcat_t self:netlink_audit_socket { create_netlink_socket_perms nlmsg_read nlmsg_write nlmsg_relay };
+allow xcat_t self:alg_socket create_socket_perms;
+
+# xcatd and xcatclient are Perl scripts, and both run ordinary commands: ip,
+# systemctl, hostname, mount, rsync, named, rpm.
+corecmd_exec_bin(xcat_t)
+corecmd_exec_shell(xcat_t)
+corecmd_exec_all_executables(xcat_t)
+
+# ps and pidof read /proc of the services xCAT manages.
+domain_read_all_domains_state(xcat_t)
+init_read_state(xcat_t)
+init_stream_connect(xcat_t)
+init_telinit(xcat_t)
+kernel_read_system_state(xcat_t)
+kernel_read_network_state(xcat_t)
+
+dev_getattr_all_chr_files(xcat_t)
+dev_read_sysfs(xcat_t)
+dev_read_urand(xcat_t)
+term_use_all_ttys(xcat_t)
+term_use_generic_ptys(xcat_t)
+userdom_use_user_terminals(xcat_t)
+
+# makehosts, makedns and makedhcp write the configuration of the services they
+# drive, and packimage reads the whole image tree it packs.
+files_read_etc_files(xcat_t)
+files_manage_etc_files(xcat_t)
+files_manage_generic_tmp_files(xcat_t)
+files_manage_generic_tmp_dirs(xcat_t)
+files_manage_generic_locks(xcat_t)
+# The postscript and prescript plugins write a script under /tmp and run it.
+can_exec(xcat_t, tmp_t)
+files_read_all_files(xcat_t)
+files_list_all(xcat_t)
+files_getattr_all_dirs(xcat_t)
+sysnet_read_config(xcat_t)
+sysnet_manage_config(xcat_t)
+miscfiles_read_localization(xcat_t)
+logging_send_syslog_msg(xcat_t)
+logging_read_syslog_config(xcat_t)
+seutil_read_config(xcat_t)
+seutil_read_file_contexts(xcat_t)
+
+# xdcp and "updatenode -F" copy /etc/shadow to the nodes.
+auth_read_shadow(xcat_t)
+
+# Both domains resolve users and groups through nsswitch, which reaches
+# systemd-userdbd over its runtime socket.
+auth_use_nsswitch(xcat_t)
+auth_use_nsswitch(xcat_image_t)
+
+# ps in a user namespace needs the namespaced capability as well.
+allow xcat_t self:cap_userns sys_ptrace;
+allow xcat_image_t self:cap_userns sys_ptrace;
+
+# nodeset and copycds write the rpm database of the image they prepare.
+optional_policy(`
+    rpm_manage_db(xcat_t)
+    rpm_manage_db(xcat_image_t)
+    rpm_manage_cache(xcat_t)
+')
+
+# xcatd rotates and stamps its own log directory.
+logging_manage_generic_logs(xcat_t)
+# logging_manage_generic_logs does not carry setattr on the directory itself.
+allow xcat_t var_log_t:dir setattr;
+
+# goconserver and the other services xCAT starts itself run unconfined, and
+# xcatd talks to them over their sockets.
+optional_policy(`
+    unconfined_server_stream_connectto(xcat_t)
+')
+
+# copycds loop-mounts the install DVD: the mount itself, the loop control
+# device and the block device the loop driver then presents.
+dev_rw_loop_control(xcat_t)
+storage_raw_rw_fixed_disk(xcat_t)
+fs_getattr_all_fs(xcat_t)
+fs_mount_all_fs(xcat_t)
+fs_unmount_all_fs(xcat_t)
+files_mounton_all_mountpoints(xcat_t)
+
+# xcatd listens on site.xcatdport and reaches the services it configures.
+corenet_tcp_bind_generic_node(xcat_t)
+corenet_tcp_bind_ntop_port(xcat_t)
+corenet_tcp_connect_ntop_port(xcat_t)
+corenet_tcp_bind_generic_port(xcat_t)
+corenet_tcp_connect_all_unreserved_ports(xcat_t)
+corenet_tcp_connect_all_ports(xcat_t)
+corenet_udp_bind_all_ports(xcat_t)
+corenet_udp_bind_generic_node(xcat_t)
+
+# /install and /tftpboot are the trees xCAT owns.
+manage_dirs_pattern(xcat_t, public_content_t, public_content_t)
+manage_files_pattern(xcat_t, public_content_t, public_content_t)
+manage_lnk_files_pattern(xcat_t, public_content_t, public_content_t)
+can_exec(xcat_t, public_content_t)
+# packimage runs cpio over the image tree, which creates the device nodes the
+# image holds. packimage is a symlink to xcatclientnnr, so the work runs here
+# and not in xcat_image_t.
+manage_chr_files_pattern(xcat_t, public_content_t, public_content_t)
+manage_blk_files_pattern(xcat_t, public_content_t, public_content_t)
+manage_sock_files_pattern(xcat_t, public_content_t, public_content_t)
+manage_fifo_files_pattern(xcat_t, public_content_t, public_content_t)
+allow xcat_t public_content_t:chr_file create;
+allow xcat_t public_content_t:blk_file create;
+allow xcat_t self:capability mknod;
+
+# packimage and liteimg are symlinks to xcatclientnnr, so the xcatd plugin
+# does their work in this domain: it writes and relabels the image tree, whose
+# files keep the labels of the node operating system. The authority can only
+# move to xcat_image_t when the plugin execs a helper instead.
+files_manage_non_security_files(xcat_t)
+files_manage_non_security_dirs(xcat_t)
+files_relabel_non_security_files(xcat_t)
+
+# mount writes its own state, and the clients read the enforcing mode.
+files_manage_mounttab(xcat_t)
+optional_policy(`
+    mount_manage_pid_files(xcat_t)
+')
+selinux_get_enforce_mode(xcat_t)
+storage_getattr_removable_dev(xcat_t)
+manage_dirs_pattern(xcat_t, tftpdir_t, tftpdir_t)
+manage_files_pattern(xcat_t, tftpdir_t, tftpdir_t)
+manage_lnk_files_pattern(xcat_t, tftpdir_t, tftpdir_t)
+
+# makedns writes the zones and restarts named. There is no stock interface for
+# the service class of a named unit, so the two rules are explicit.
+manage_dirs_pattern(xcat_t, named_zone_t, named_zone_t)
+manage_files_pattern(xcat_t, named_zone_t, named_zone_t)
+# systemctl daemon-reload and systemctl stop act on the init domain itself,
+# and no stock interface grants the system class.
+allow xcat_t init_t:system { reload status start stop };
+
+# setupntp sets the hardware clock and drives chronyd.
+dev_rw_realtime_clock(xcat_t)
+optional_policy(`
+    systemd_dbus_chat_timedated(xcat_t)
+')
+optional_policy(`
+    chronyd_manage_pid_files(xcat_t)
+    chronyd_manage_pid(xcat_t)
+    chronyd_systemctl(xcat_t)
+    chronyd_domtrans(xcat_t)
+    # setupntp execs chronyd, and the exec hands the child these three.
+    gen_require(` type chronyd_t; ')
+    allow xcat_t chronyd_t:process { noatsecure rlimitinh siginh };
+')
+
+allow xcat_t named_unit_file_t:service { start status stop reload enable disable };
+# makedhcp enables the kea units, so the set includes enable and disable. No
+# denial was recorded for either: the audit window was empty while makedhcp
+# still reported "Failed to enable kea-dhcp-ddns".
+allow xcat_t systemd_unit_file_t:service { start status stop reload enable disable };
+
+# xcatd keeps its credentials under /etc/xcat and its socket under /run/xcat.
+manage_dirs_pattern(xcat_t, cert_t, cert_t)
+manage_files_pattern(xcat_t, cert_t, cert_t)
+manage_dirs_pattern(xcat_t, krb5_keytab_t, krb5_keytab_t)
+manage_files_pattern(xcat_t, krb5_keytab_t, krb5_keytab_t)
+manage_dirs_pattern(xcat_t, var_run_t, var_run_t)
+manage_files_pattern(xcat_t, var_run_t, var_run_t)
+manage_sock_files_pattern(xcat_t, var_run_t, var_run_t)
+
+# the administrator's own files: xdsh reads /root/.ssh, and the clients write
+# their reports under /root.
+userdom_read_admin_home_files(xcat_t)
+manage_files_pattern(xcat_t, admin_home_t, admin_home_t)
+manage_dirs_pattern(xcat_t, admin_home_t, admin_home_t)
+
+########################################
+#
+# xcat_image_t, the image build
+#
+
+allow xcat_image_t self:capability { audit_write chown dac_override
+    dac_read_search fowner fsetid mknod net_admin setfcap setgid setuid
+    sys_admin sys_chroot sys_resource sys_ptrace };
+allow xcat_image_t self:process { setcap setfscreate setpgid setrlimit setsched signal_perms };
+allow xcat_image_t self:fifo_file rw_fifo_file_perms;
+allow xcat_image_t self:tcp_socket { create_stream_socket_perms accept listen };
+allow xcat_image_t self:udp_socket create_socket_perms;
+allow xcat_image_t self:unix_stream_socket { create_stream_socket_perms connectto };
+allow xcat_image_t self:unix_dgram_socket create_socket_perms;
+allow xcat_image_t self:netlink_route_socket { create_netlink_socket_perms nlmsg_read nlmsg_write };
+allow xcat_image_t self:netlink_audit_socket { create_netlink_socket_perms nlmsg_read nlmsg_write nlmsg_relay };
+allow xcat_image_t self:alg_socket { create_socket_perms accept };
+
+# It installs packages into a directory tree, so it creates every type that
+# tree holds and relabels what the package manager puts there.
+files_manage_non_security_files(xcat_image_t)
+files_manage_non_security_dirs(xcat_image_t)
+files_relabel_non_security_files(xcat_image_t)
+corecmd_manage_all_executables(xcat_image_t)
+corecmd_relabel_all_executables(xcat_image_t)
+auth_manage_shadow(xcat_image_t)
+auth_relabel_shadow(xcat_image_t)
+seutil_manage_file_contexts(xcat_image_t)
+# No transition to setfiles_t. The image domain already relabels every type, so
+# the transition removes no authority, and it put restorecon in an enforcing
+# stock domain that cannot append to the pipe it inherits: 20 enforced denials
+# per run, 4 of them setfiles_t xcat_t:fifo_file append.
+
+# dnf in the chroot, and the rpm scriptlets it runs.
+corecmd_exec_bin(xcat_image_t)
+corecmd_exec_shell(xcat_image_t)
+corecmd_exec_all_executables(xcat_image_t)
+can_exec(xcat_image_t, public_content_t)
+# dnf and cpio create the device nodes of the image under /install.
+manage_chr_files_pattern(xcat_image_t, public_content_t, public_content_t)
+manage_blk_files_pattern(xcat_image_t, public_content_t, public_content_t)
+manage_sock_files_pattern(xcat_image_t, public_content_t, public_content_t)
+manage_fifo_files_pattern(xcat_image_t, public_content_t, public_content_t)
+allow xcat_image_t public_content_t:chr_file create;
+allow xcat_image_t public_content_t:blk_file create;
+files_manage_mounttab(xcat_image_t)
+# ldd, ldconfig, dracut-install and modprobe inside the image.
+libs_exec_ld_so(xcat_image_t)
+files_read_kernel_modules(xcat_image_t)
+files_map_kernel_modules(xcat_image_t)
+files_map_etc_files(xcat_image_t)
+# cpio walks the device nodes of the image, and mknod creates them.
+storage_getattr_fixed_disk_dev(xcat_image_t)
+storage_getattr_removable_dev(xcat_image_t)
+dev_create_generic_chr_files(xcat_image_t)
+manage_chr_files_pattern(xcat_image_t, tmp_t, tmp_t)
+# dnf opens a fifo under /tmp for its progress output.
+manage_fifo_files_pattern(xcat_image_t, tmp_t, tmp_t)
+fs_getattr_nsfs_files(xcat_image_t)
+# dnf installs packages that own files of every type, including the security
+# types, and it relabels what it writes. The grant is per class over the
+# file_type attribute rather than a list: the measured tail named
+# selinux_config_t, auditd_etc_t, auditd_log_t, krb5_keytab_t,
+# semanage_store_t and default_context_t, and the next image adds more.
+#
+# This is the authority that keeps the image build out of xcat_t. Here it
+# reaches the tree the build creates; in the daemon it would reach the real
+# /etc/selinux, the audit configuration and the keytabs of the management node.
+# Manage as well as relabel: the build creates the tree, so it writes files of
+# every type the packages own. The kernel cannot tell a path inside the image
+# from the same type on the management node, so this authority is filesystem
+# wide and that is the reason it lives in a domain of its own, entered only
+# through genimage. REVIEW THIS GRANT FIRST.
+allow xcat_image_t file_type:dir manage_dir_perms;
+allow xcat_image_t file_type:file manage_file_perms;
+allow xcat_image_t file_type:lnk_file manage_lnk_file_perms;
+allow xcat_image_t file_type:dir relabel_dir_perms;
+allow xcat_image_t file_type:file relabel_file_perms;
+allow xcat_image_t file_type:lnk_file relabel_lnk_file_perms;
+allow xcat_image_t file_type:file map;
+# The image holds its own /dev. device_t is a device type, not a member of the
+# file_type attribute, so the grant above does not reach it.
+manage_chr_files_pattern(xcat_image_t, device_t, device_t)
+manage_blk_files_pattern(xcat_image_t, device_t, device_t)
+allow xcat_image_t device_t:chr_file setattr;
+allow xcat_image_t self:capability audit_control;
+allow xcat_image_t self:netlink_audit_socket nlmsg_readpriv;
+allow xcat_image_t ldconfig_cache_t:file map;
+# restorecon runs in setfiles_t, and the exec hands it these three.
+allow xcat_image_t setfiles_t:process { noatsecure rlimitinh siginh };
+optional_policy(`
+    mount_manage_pid_files(xcat_image_t)
+')
+selinux_get_enforce_mode(xcat_image_t)
+optional_policy(`
+    rpm_manage_cache(xcat_image_t)
+')
+
+# It mounts /proc and /sys inside the chroot and unmounts them afterwards.
+fs_getattr_all_fs(xcat_image_t)
+fs_mount_all_fs(xcat_image_t)
+fs_unmount_all_fs(xcat_image_t)
+files_mounton_all_mountpoints(xcat_image_t)
+
+domain_read_all_domains_state(xcat_image_t)
+init_read_state(xcat_image_t)
+kernel_read_system_state(xcat_image_t)
+kernel_read_network_state(xcat_image_t)
+dev_getattr_all_chr_files(xcat_image_t)
+dev_read_sysfs(xcat_image_t)
+dev_read_urand(xcat_image_t)
+term_use_all_ttys(xcat_image_t)
+term_use_generic_ptys(xcat_image_t)
+userdom_use_user_terminals(xcat_image_t)
+files_read_etc_files(xcat_image_t)
+files_manage_etc_files(xcat_image_t)
+files_manage_generic_tmp_files(xcat_image_t)
+files_manage_generic_tmp_dirs(xcat_image_t)
+sysnet_read_config(xcat_image_t)
+miscfiles_read_localization(xcat_image_t)
+logging_send_syslog_msg(xcat_image_t)
+seutil_read_config(xcat_image_t)
+seutil_read_file_contexts(xcat_image_t)
+
+# It downloads the packages it installs.
+corenet_tcp_connect_all_ports(xcat_image_t)
+corenet_tcp_bind_generic_node(xcat_image_t)
+
+# It reports progress back to xcatd.
+allow xcat_image_t xcat_t:unix_stream_socket connectto;
+allow xcat_image_t xcat_t:fd use;
+allow xcat_image_t xcat_t:fifo_file rw_fifo_file_perms;
+allow xcat_image_t xcat_t:process sigchld;
+
+########################################
+#
+# Access for the services that read the xCAT trees
+#
+
+# httpd serves /tftpboot through the AliasMatch in xcat.conf. The stock policy lets only tftpd read tftpdir_t.
+# mmap_read_file_perms, not read_file_perms: httpd maps the per-node xnba boot config it serves.
+allow httpd_t tftpdir_t:dir list_dir_perms;
+allow httpd_t tftpdir_t:file mmap_read_file_perms;
+allow httpd_t tftpdir_t:lnk_file read_lnk_file_perms;
+
+# xcatws.cgi connects to xcatd on site.xcatdport, and the stock policy labels TCP 3001 ntop_port_t.
+allow httpd_sys_script_t ntop_port_t:tcp_socket name_connect;
+
+# xdcp and "updatenode -F" copy /etc/shadow to the nodes and into a rootimg.
+# rsync_export_all_ro holds the read, and rsync_full_access does not grant it:
+# shadow_t is not in non_auth_file_type. These two rules are narrower than
+# either boolean. They are reached only where rsync runs in rsync_t, and xcat_t
+# has no transition to it.
+allow rsync_t shadow_t:file { getattr open read };
+
+# rsync preserves the mode of /etc/shadow, so it writes a target it created at
+# mode 0000. As root that needs CAP_DAC_OVERRIDE. rsync_t already holds chown,
+# fowner, fsetid and dac_read_search; this is the write side of that set.
+allow rsync_t self:capability dac_override;
+
+# genimage installs packages into a rootimg with yum in a chroot, and the rpm
+# scriptlets run useradd and groupadd. Both read the rootimg /var/run symlink
+# while they look for their lock file. It carries public_content_t because the
+# rootimg is under /install, and the base grant for that read is a list of
+# explicit per-type rules that public_content_t is in none of.
+allow useradd_t public_content_t:lnk_file read;
+allow groupadd_t public_content_t:lnk_file read;

@@ -104,6 +104,10 @@ Requires: perl-IO-Tty perl-Crypt-SSLeay make httpd
 Requires: perl-xCAT   = 4:%{version}-%{release}
 Requires: xCAT-client = 4:%{version}-%{release}
 
+%if 0%{?rhel} >= 8 || 0%{?fedora} || 0%{?openEuler}
+Requires: (xCAT-selinux = 4:%{version}-%{release} if selinux-policy-targeted)
+%endif
+
 %description
 xCAT-server provides the core server and configuration management components of xCAT.  This package should be installed on your management server
 
