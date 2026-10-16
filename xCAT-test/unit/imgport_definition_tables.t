@@ -30,8 +30,10 @@ my $published = "image that packimage published\n";
 my $sequence  = 0;
 my $new       = \&xCAT::Table::new;
 
-for my $table (qw(osimage linuximage kit kitrepo kitcomponent)) {
-    # The import cannot open a table of the image definition.
+for my $case (map { ([ $_, 0 ], [ $_, 1 ]) } qw(osimage linuximage kit kitrepo kitcomponent)) {
+    # The import cannot open a table of the image definition, or only without autocommit, as set_config opens it.
+    my ($table, $transaction) = @$case;
+    my $label = $transaction ? "$table without autocommit" : $table;
     my $name   = 'tables-' . ++$sequence;
     my $dest   = "$fixture/install/netboot/$name";
     my $bundle = "$fixture/bundle-$sequence";
@@ -45,7 +47,11 @@ for my $table (qw(osimage linuximage kit kitrepo kitcomponent)) {
     my $placed;
     {
         no warnings 'redefine';
-        local *xCAT::Table::new = sub { return if $_[1] eq $table && caller() eq 'xCAT_plugin::imgport'; goto &$new };
+        local *xCAT::Table::new = sub {
+            my (undef, $opened, %args) = @_;
+            return if $opened eq $table && caller() eq 'xCAT_plugin::imgport' && (!$transaction || defined $args{-autocommit} && !$args{-autocommit});
+            goto &$new;
+        };
         $placed = xCAT_plugin::imgport::place_image(
             {
                 rootimg => "$dest/rootimg.cpio.gz",
@@ -55,13 +61,13 @@ for my $table (qw(osimage linuximage kit kitrepo kitcomponent)) {
             },
             $bundle, sub { push @errors, @{ $_[0]{error} || [] } });
     }
-    ok(!$placed, "$table: an import fails when it cannot open the table");
-    like(join("\n", @errors), qr/Unable to open table '\Q$table\E'/, "$table: the table is reported");
-    is(read_binary("$dest/rootimg.cpio.gz"), $published, "$table: the published image stays");
-    is(read_binary("$dest/rootimg.cpio.gz.sha256"), sha256_hex($published) . "  rootimg.cpio.gz\n", "$table: the published checksum stays");
-    is(read_binary("$dest/$_"), "published $_\n", "$table: the published $_ stays") for qw(kernel initrd-stateless.gz);
+    ok(!$placed, "$label: an import fails when it cannot open the table");
+    like(join("\n", @errors), qr/Unable to open table '\Q$table\E'/, "$label: the table is reported");
+    is(read_binary("$dest/rootimg.cpio.gz"), $published, "$label: the published image stays");
+    is(read_binary("$dest/rootimg.cpio.gz.sha256"), sha256_hex($published) . "  rootimg.cpio.gz\n", "$label: the published checksum stays");
+    is(read_binary("$dest/$_"), "published $_\n", "$label: the published $_ stays") for qw(kernel initrd-stateless.gz);
     my ($row) = xCAT::Table->new('osimage')->getAttribs({ imagename => $name }, 'osvers');
-    is($row && $row->{osvers}, 'rhels9.5', "$table: the image definition stays");
+    is($row && $row->{osvers}, 'rhels9.5', "$label: the image definition stays");
 }
 
 done_testing();

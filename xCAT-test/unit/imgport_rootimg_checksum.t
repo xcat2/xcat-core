@@ -35,6 +35,9 @@ require xCAT::Table;
 require(repo_path('xCAT-server/lib/xcat/plugins/imgport.pm'));
 xCAT::Table->new('site', -create => 1)->setAttribs({ key => 'installdir' }, { value => "$fixture/install" });
 
+# noderange keeps the node list for a few seconds, so the node is defined before the first import.
+xCAT::Table->new('nodelist', -create => 1)->setAttribs({ node => 'psnode' }, { groups => 'compute' });
+
 # The image lock lives in /var/lock/xcat, so the test records the request and decides whether another operation holds it.
 our ($HELD, @LOCKED);
 {
@@ -67,21 +70,24 @@ sub import_image {
     write_text("$dest/initrd-stateless.gz", "published ramdisk\n");
     write_text("$bundle/kernel", "kernel from the bundle\n");
     write_text("$bundle/initrd-stateless.gz", "ramdisk from the bundle\n");
-    $prepare->($dest) if $prepare;
+    $prepare->($dest, $bundle) if $prepare;
     @LOCKED = ();
     my @errors;
     my $checksum = delete $manifest{rootimgchecksum};
+    my $nodes    = delete $manifest{nodes};
+    my $omit     = delete $manifest{omit} || [];
     my $name = "import-$sequence";
     xCAT::Table->new('osimage', -create => 1)->setAttribs({ imagename => $name }, { osvers => 'rhels9.5', provmethod => 'netboot' });
     my $data = {
         rootimg => "$dest/$archive_name",
         kernel  => "$dest/kernel",
         ramdisk => "$dest/initrd-stateless.gz",
-        (map { ($_ => $manifest{$_} =~ s/DEST/$dest/r) } keys %manifest),
+        (map { ($_ => ref($manifest{$_}) ? $manifest{$_} : $manifest{$_} =~ s/DEST/$dest/r) } keys %manifest),
         (defined $checksum ? (linuximage => { rootimgchecksum => $checksum }) : ()),
         osimage => { imagename => $name, osvers => 'rhels9.6', osarch => 'x86_64', profile => 'compute', provmethod => 'netboot' },
     };
-    my $placed = xCAT_plugin::imgport::place_image($data, $bundle, sub { push @errors, @{ $_[0]{error} || [] } });
+    delete @{$data}{@$omit};
+    my $placed = xCAT_plugin::imgport::place_image($data, $bundle, sub { push @errors, @{ $_[0]{error} || [] } }, $nodes);
     return ($placed, join("\n", @errors), $dest, "$dest/$archive_name");
 }
 
@@ -125,6 +131,22 @@ for my $archive_name (qw(rootimg.cpio.gz rootimg.tar.xz rootimg.sfs)) {
 }
 
 {
+    # A statelite bundle has a rootimgtree and no rootimg, and its import needs the image lock too.
+    local $HELD = 1;
+    my $tree;
+    my ($placed, $errors, $dest) = import_image('rootimg.cpio.gz', sub {
+        my (undef, $bundle) = @_;
+        $tree = "$bundle/rootimgtree.gz";
+        write_text($tree, "tree from the bundle\n");
+    }, rootimgtree => 'DEST/rootimgtree.gz', omit => [qw(rootimg kernel ramdisk)]);
+    ok(!$placed, 'a statelite import fails while another command holds the image lock');
+    like($errors, qr/failed to acquire lock/, 'the held image lock is reported for a statelite import');
+    is_deeply(\@LOCKED, ["$dest/rootimg"], 'a statelite import asks for the lock of its image directory');
+    ok(-e $tree, 'the tree stays in the bundle while the lock is held');
+    is(definition($dest), 'rhels9.5', 'the image definition stays while the lock of a statelite image is held');
+}
+
+{
     my ($placed, $errors, $dest, $archive) = import_image('rootimg.cpio.gz', sub {
         my ($dest) = @_;
         mkdir("$dest/.packimage-publish") or die $!;
@@ -138,6 +160,7 @@ for my $archive_name (qw(rootimg.cpio.gz rootimg.tar.xz rootimg.sfs)) {
     is(read_binary($archive), $published, 'the published image stays while another host publishes');
     is(read_binary("$archive.sha256"), sha256_hex($published) . "  rootimg.cpio.gz\n", 'the published checksum stays while another host publishes');
     ok(-d "$dest/.packimage-publish", 'the publication lock of the other host is not taken over');
+    is(definition($dest), 'rhels9.5', 'the image definition stays while another host publishes');
     is_deeply([ glob("$dest/.packimage-$host+*") ], [], 'no temporary directory is left when the import cannot publish');
 }
 
@@ -154,6 +177,20 @@ for my $failed (qw(rootimg.cpio.gz.sha256 rootimg.cpio.gz)) {
     is(read_binary("$archive.metainfo"), "metainfo of the published image\n", "$failed: the published metainfo stays");
     is(read_binary("$dest/kernel"), "published kernel\n", "$failed: the published kernel stays with the published image");
     is(read_binary("$dest/initrd-stateless.gz"), "published ramdisk\n", "$failed: the published ramdisk stays with the published image");
+    is(definition($dest), 'rhels9.5', "$failed: the image definition stays with the published image");
+}
+
+{
+    # A file is at the parent of the destination directory, so the extra file fails to copy after the boot files.
+    my ($placed, $errors, $dest, $archive) = import_image('rootimg.cpio.gz', sub {
+        make_path("$fixture/bundle-$sequence/extra");
+        write_text("$fixture/bundle-$sequence/extra/late.conf", "extra file from the bundle\n");
+        write_text("$fixture/a-file", "a file where a directory goes\n");
+    }, extra => { src => '/etc/late.conf', dest => "$fixture/a-file/sub" });
+    ok(!$placed, 'an import fails when an extra file cannot be copied');
+    like($errors, qr{\Q$fixture/a-file/sub\E}, 'the destination of the failed extra file is reported');
+    is(read_binary($archive), $imported, 'the imported image is published before the extra files');
+    is(definition($dest), 'rhels9.6', 'the image definition matches the published image when a later step fails');
 }
 
 {
@@ -170,6 +207,36 @@ for my $failed (qw(rootimg.cpio.gz.sha256 rootimg.cpio.gz)) {
     is($errors, '', 'a bundle with the initial ramdisk marker is placed');
     is(read_binary("$dest/initrd-stateless.gz.rootimgcheck"), "sha256=marker of the bundled ramdisk\n",
         'the marker of the bundled initial ramdisk is placed next to it');
+}
+
+for my $nodes (qw(psnode undefined-node)) {
+    # The nodes that get the postscripts of the image exist, or not.
+    my ($placed, $errors, $dest, $archive) = import_image('rootimg.cpio.gz', undef, nodes => $nodes);
+    if ($nodes eq 'psnode') {
+        is($errors, '', 'an import for a defined node is placed');
+        is(read_binary($archive), $imported, 'the image of an import for a defined node is published');
+        next;
+    }
+    ok(!$placed, 'an import for an undefined node fails');
+    like($errors, qr/The nodes undefined-node are not defined in xCAT DB\./, 'the undefined node is reported');
+    is(read_binary($archive), $published, 'the published image stays for an undefined node');
+    is(read_binary("$dest/kernel"), "published kernel\n", 'the published kernel stays for an undefined node');
+    is(definition($dest), 'rhels9.5', 'the image definition stays for an undefined node');
+}
+
+for my $case ([ kernel => 'kernel' ], [ 'extra/missing.conf' => extra => { src => '/etc/missing.conf', dest => "$fixture/extra" } ],
+    [ missingkit => kit => { missingkit => { kitname => 'missingkit', kitdir => "$fixture/kits/missingkit" } } ])
+{
+    # The bundle lacks a file that its manifest names.
+    my ($lacks, $key, $value) = @$case;
+    my ($placed, $errors, $dest, $archive) = import_image('rootimg.cpio.gz', sub {
+        unlink("$fixture/bundle-$sequence/kernel") or die $! if $key eq 'kernel';
+    }, (defined $value ? ($key => $value) : ()));
+    ok(!$placed, "an import fails when the bundle lacks $lacks");
+    like($errors, qr/The image bundle lacks \Q$lacks\E\./, "the missing $lacks is reported");
+    is(read_binary($archive), $published, "the published image stays when the bundle lacks $lacks");
+    is(-e "$dest/kernel" ? read_binary("$dest/kernel") : undef, "published kernel\n", "the published kernel stays when the bundle lacks $lacks");
+    is(definition($dest), 'rhels9.5', "the image definition stays when the bundle lacks $lacks");
 }
 
 done_testing();
