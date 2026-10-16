@@ -37,13 +37,10 @@ my %vm_comm_pids;
 my %offlinehyps;
 my %hypstats;
 my %offlinevms;
-# process_request sets $parser, $node, $confdata and $updatetable before it calls the domain
-# builder. They are package variables so a unit test can set them the same way and call the
-# builder itself, rather than extracting it from this file and testing a copy.
-our $parser;
+my $parser;
 my @destblacklist;
-our $updatetable; #when a function is performing per-node operations, it can queue up a table update by populating parts of this hash
-our $confdata;    #a reference to serve as a common pointer betweer VMCommon functions and this plugin
+my $updatetable; #when a function is performing per-node operations, it can queue up a table update by populating parts of this hash
+my $confdata;    #a reference to serve as a common pointer betweer VMCommon functions and this plugin
 my %allnodestatus;
 require Sys::Virt;
 
@@ -101,7 +98,7 @@ my $hypconn;
 my $hyp;
 my $doreq;
 my %hyphash;
-our $node;
+my $node;
 my $vmtab;
 
 
@@ -394,104 +391,13 @@ sub waitforack {
 
 sub reconfigvm {
     $node = shift;
-    my $xml      = shift;
-    my $domdesc  = $parser->parse_string($xml);
-    my @bootdevs = $domdesc->findnodes("/domain/os/boot");
-    my $curroffset = $domdesc->findnodes("/domain/clock")->[0]->getAttribute("offset");
-    my $newoffset;
-    my $needfixin = 0;
-    if (defined($confdata->{vm}->{$node}->[0]->{clockoffset})) {
-
-        #If user requested a specific behavior, give it
-        $newoffset = $confdata->{vm}->{$node}->[0]->{clockoffset};
-    } else {
-
-        #Otherwise, only do local time for things that look MS
-        if (defined($confdata->{nodetype}->{$node}->[0]->{os}) and $confdata->{nodetype}->{$node}->[0]->{os} =~ /win.*/) {
-            $newoffset = 'localtime';
-        } else {    #For everyone else, utc is preferred generally
-            $newoffset = 'utc';
-        }
-    }
-    if ($curroffset ne $newoffset) {
-        $needfixin = 1;
-        $domdesc->findnodes("/domain/clock")->[0]->setAttribute("offset", $newoffset);
-    }
-    my @oldbootdevs;
-    if (defined $confdata->{vm}->{$node}->[0]->{memory}) {
-        $needfixin = 1;
-        $domdesc->findnodes("/domain/memory/text()")->[0]->setData(getUnits($confdata->{vm}->{$node}->[0]->{memory}, "M", 1024));
-        foreach ($domdesc->findnodes("/domain/currentMemory/text()")) {
-            $_->setData(getUnits($confdata->{vm}->{$node}->[0]->{memory}, "M", 1024));
-        }
-    }
-    if (defined $confdata->{vm}->{$node}->[0]->{vcpus}) {
-        $needfixin = 1;
-        $domdesc->findnodes("/domain/vcpu/text()")->[0]->setData($confdata->{vm}->{$node}->[0]->{vcpus});
-    }
-    if (defined $confdata->{vm}->{$node}->[0]->{bootorder}) {
-        my @expectedorder = split(/[:,]/, $confdata->{vm}->{$node}->[0]->{bootorder});
-        foreach (@expectedorder) { #this loop will check for changes and fix 'n' and 'net'
-            my $currdev = shift @bootdevs;
-            if ("net" eq $_ or "n" eq $_) {
-                $_ = "network";
-            }
-            unless ($currdev and $currdev->getAttribute("dev") eq $_) {
-                $needfixin = 1;
-            }
-            if ($currdev) {
-                push @oldbootdevs, $currdev;
-            }
-        }
-        if (scalar(@bootdevs)) {
-            $needfixin = 1;
-            push @oldbootdevs, @bootdevs;
-        }
-        unless ($needfixin) { return 0; }
-
-        #ok, we need to remove all 'boot' nodes from current xml, and put in new ones in the order we like
-        foreach (@oldbootdevs) {
-            $_->parentNode->removeChild($_);
-        }
-
-        #now to add what we want...
-        my $osnode = $domdesc->findnodes("/domain/os")->[0];
-        foreach (@expectedorder) {
-            my $fragment = $parser->parse_balanced_chunk('<boot dev="' . $_ . '"/>');
-            $osnode->appendChild($fragment);
-        }
-    }
-    if ($needfixin) {
-        return $domdesc->toString();
-    } else { return 0; }
-}
-
-sub build_oshash {
-    my %rethash;
-    $rethash{type}->{content} = 'hvm';
-
-    my $hypcpumodel = $confdata->{ $confdata->{vm}->{$node}->[0]->{host} }->{cpumodel};
-    unless (defined($hypcpumodel) and $hypcpumodel eq "ppc64le") {
-        $rethash{bios}->{useserial} = 'yes';
-    }
-
-    if (defined $confdata->{vm}->{$node}->[0]->{bootorder}) {
-        my $bootorder = $confdata->{vm}->{$node}->[0]->{bootorder};
-        my @bootdevs  = split(/[:,]/, $bootorder);
-        my $bootnum   = 0;
-        foreach (@bootdevs) {
-            if ("net" eq $_ or "n" eq $_) {
-                $rethash{boot}->[$bootnum]->{dev} = "network";
-            } else {
-                $rethash{boot}->[$bootnum]->{dev} = $_;
-            }
-            $bootnum++;
-        }
-    } else {
-        $rethash{boot}->[0]->{dev} = 'network';
-        $rethash{boot}->[1]->{dev} = 'hd';
-    }
-    return \%rethash;
+    my $xml = shift;
+    my $vm  = $confdata->{vm}->{$node}->[0];
+    return xCAT::KVMUtils::reconfigure_domain($xml,
+        clock_offset => xCAT::KVMUtils::clock_offset($vm->{clockoffset}, $confdata->{nodetype}->{$node}->[0]->{os}),
+        memory       => (defined $vm->{memory} ? getUnits($vm->{memory}, "M", 1024) : undef),
+        vcpus        => $vm->{vcpus},
+        bootorder    => $vm->{bootorder});
 }
 
 sub build_diskstruct {
@@ -504,7 +410,7 @@ sub build_diskstruct {
     my $storagemodel = $confdata->{vm}->{$node}->[0]->{storagemodel};
     my $profile      = xCAT::KVMUtils::guest_arch_profile($confdata->{nodetype}->{$node}->[0]->{arch},
         $confdata->{ $confdata->{vm}->{$node}->[0]->{host} }->{cpumodel},
-        requested_firmware(vm_othersettings($node)));
+        xCAT::KVMUtils::requested_firmware(xCAT::KVMUtils::vm_othersettings($confdata, $node)));
     my $cachemethod  = "none";
     if ($confdata->{vm}->{$node}->[0]->{storagecache}) {
         $cachemethod = $confdata->{vm}->{$node}->[0]->{storagecache};
@@ -687,31 +593,6 @@ sub getUnits {
     }
 }
 
-# vm_othersettings: the vm.othersettings of one node, or undef when the node has no vm row.
-#
-# An rvalue dereference chain autovivifies its intermediate links, so reading the column as
-# $confdata->{vm}->{$node}->[0]->{othersettings} creates a vm row for a node that has none.
-sub vm_othersettings {
-    my ($nodename) = @_;
-    return undef unless ref($confdata) eq 'HASH';
-    my $vm   = $confdata->{vm}  or return undef;
-    my $rows = $vm->{$nodename} or return undef;
-    my $row  = $rows->[0]       or return undef;
-    return $row->{othersettings};
-}
-
-# requested_firmware: the firmware a node asks for in vm.othersettings, or undef.
-#
-# No node asks by default, so an existing guest keeps the firmware of its machine type.
-sub requested_firmware {
-    my ($othersettings) = @_;
-    return undef unless defined $othersettings;
-    foreach my $setting (split /;/, $othersettings) {
-        return $1 if $setting =~ /^\s*firmware:(.*)/;
-    }
-    return undef;
-}
-
 sub build_xmldesc {
     my $node  = shift;
     my %args  = @_;
@@ -724,21 +605,15 @@ sub build_xmldesc {
         $hypcputhreads = "1";
     }
 
-    my $firmware = requested_firmware(vm_othersettings($node));
-    if (defined $firmware and $firmware ne 'efi') {
-        return (-1, "vm.othersettings firmware:$firmware names no firmware libvirt can select for $node. Use firmware:efi.");
-    }
+    my $firmware = xCAT::KVMUtils::requested_firmware(xCAT::KVMUtils::vm_othersettings($confdata, $node));
+    my $firmware_error = xCAT::KVMUtils::firmware_error($firmware, $node);
+    return (-1, $firmware_error) if $firmware_error;
 
     my $profile = xCAT::KVMUtils::guest_arch_profile($confdata->{nodetype}->{$node}->[0]->{arch}, $hypcpumodel, $firmware);
 
     $xtree{type}            = $profile->{domtype};
     $xtree{name}->{content} = $node;
     $xtree{uuid}->{content} = getNodeUUID($node);
-    $xtree{os}              = build_oshash();
-    $xtree{os}->{type}->{arch}    = $profile->{arch}     if defined $profile->{arch};
-    $xtree{os}->{type}->{machine} = $profile->{machine}  if defined $profile->{machine};
-    $xtree{os}->{firmware}        = $profile->{firmware} if defined $profile->{firmware};
-    delete $xtree{os}->{bios} unless $profile->{bios};
     if ($args{memory}) {
         $xtree{memory}->{content} = getUnits($args{memory}, "M", 1024);
         if ($confdata->{vm}->{$node}->[0]->{memory}) {
@@ -800,9 +675,10 @@ sub build_xmldesc {
     }
 
     # Support VM machine types specified through vm.othersettings, e.g., q35, pseries-rhel7.4.0.
-    if (defined $machine_type) {
-        $xtree{os}->{type}->{machine} = $machine_type;
-    }
+    $xtree{os} = xCAT::KVMUtils::guest_os($profile,
+        hyp_cpumodel => $hypcpumodel,
+        bootorder    => $confdata->{vm}->{$node}->[0]->{bootorder},
+        machine      => $machine_type);
 
     #prepare the xml hash for memory binding
     if (defined $memnumanodes) {
