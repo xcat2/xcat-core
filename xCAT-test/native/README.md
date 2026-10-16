@@ -141,20 +141,28 @@ Compressor and ctorrent fixtures record what nodes can download during the
 pack, or fail on request. The image lock and the ilitefile query are test
 doubles. This case does not boot the image.
 
-The disk, kdump and sudoer cases require Bubblewrap, GNU timeout, Capture::Tiny,
-File::Slurper and sudo's `visudo`. Sandbox commands have a 45-second limit.
-Enable Linux user namespaces. Run the group
-as root because the disk case creates dummy block-device entries:
+The disk, kdump and sudoer cases require bats-core 1.4 or newer, Bubblewrap,
+GNU timeout, diffutils, Capture::Tiny, File::Slurper and sudo's `visudo`.
+Sandbox commands have a 45-second limit. Enable Linux user namespaces.
+Run the group as root because
+the disk-selection case creates dummy block-device entries:
 
 ```
-sudo prove xCAT-test/native/getinstdisk_selection.t \
+sudo bats xCAT-test/native/getinstdisk_selection.bats
+sudo prove xCAT-test/native/getinstdisk_installer.t \
       xCAT-test/native/enablekdump_per_node.t \
       xCAT-test/native/sudoer_password_source.t
 ```
 
-The disk case also renders and runs the RHEL 10 installer fragment. It needs
-the system Perl with xCAT's dependencies, XML::Simple and DBD::SQLite.
-The sandbox does not mount perlbrew or local::lib directories.
+The BATS cases source the unchanged disk selector. Partition and udev fixtures
+are the inputs; the selected disk file is the output. Each case runs twice
+with awk discovery and twice without it. Discovery searches a private fixture,
+not the host's `/usr` tree.
+
+The separate Perl case renders and runs the RHEL 10 installer fragment. It
+checks that the partition plan uses the selected disk. It needs the system
+Perl with xCAT's dependencies, XML::Simple and DBD::SQLite. The sandbox does
+not mount perlbrew or local::lib directories.
 
 When the checkout is inside another user's private home, copy it as root to a
 temporary directory under `/tmp` first. Root inside the test's user namespace
