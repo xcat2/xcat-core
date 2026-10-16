@@ -86,15 +86,17 @@ Net::DNS:
 
 ```
 prove xCAT-test/native/genimage_network_drivers.t \
-      xCAT-test/native/el10_image_package_policy.t
+      xCAT-test/native/el10_image_package_policy.t \
+      xCAT-test/native/rh_genimage_chroot_mounts.t
 ```
 
 These cases run complete callers in private filesystems with no network.
 They check driver configuration after real driver-disk loading, media-import
-records and parsed RPM installation scriptlets.
+records, parsed RPM installation scriptlets and the mounts that a new RPM
+image has when its packages install.
 External package downloads, service management, disk mounts and initrd creation
 use command fixtures. These cases do not boot an image or qualify hardware.
-The two Perl image caller tests fail if run as root.
+The Perl image caller tests fail if run as root.
 
 The default BATS suite also runs `networkmanager_postscript.bats`. It renders
 installation postscripts and checks their network configuration in isolation.
