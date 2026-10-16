@@ -491,10 +491,10 @@ IPADDR_$ipindex=$nicip" >> $dir/ifcfg-$nic
                             # ipv6
                             if echo $nicip | grep : 2>&1 1>/dev/null
                             then
-                                nmcli con modify $nic type infiniband con-name $nic ifname $nic ipv6.method manual ipv6.addresses $nicip
+                                nmcli con modify $nic type infiniband con-name $nic ifname $nic connection.autoconnect yes ipv6.method manual ipv6.addresses $nicip
                             else # ipv4
                                 prefix=$(convert_netmask_to_cidr $netmask)
-                                nmcli con modify $nic type infiniband con-name $nic ifname $nic ipv4.method manual ipv4.addresses $nicip/$prefix
+                                nmcli con modify $nic type infiniband con-name $nic ifname $nic connection.autoconnect yes ipv4.method manual ipv4.addresses $nicip/$prefix
                             fi
                        else # create new connection
                             # ipv6
@@ -570,10 +570,10 @@ IPADDR=$nicip" > $dir/ifcfg-$nic
                             # ipv6
                             if echo $nicip | grep : 2>&1 1>/dev/null
                             then
-                                nmcli con modify $nic type infiniband con-name $nic ifname $nic ipv6.method manual ipv6.addresses $nicip
+                                nmcli con modify $nic type infiniband con-name $nic ifname $nic connection.autoconnect yes ipv6.method manual ipv6.addresses $nicip
                             else # ipv4
                                 prefix=$(convert_netmask_to_cidr $netmask)
-                                nmcli con modify $nic type infiniband con-name $nic ifname $nic ipv4.method manual ipv4.addresses $nicip/$prefix
+                                nmcli con modify $nic type infiniband con-name $nic ifname $nic connection.autoconnect yes ipv4.method manual ipv4.addresses $nicip/$prefix
                             fi
                        else # create new connection
                             # ipv6
