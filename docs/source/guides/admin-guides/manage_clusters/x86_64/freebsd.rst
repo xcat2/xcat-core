@@ -25,8 +25,9 @@ Scope and requirements
   Multi-disk policies require a version 2 image with the current storage runtime.
   Encryption, separate boot pools, GEOM/UFS mirrors, and Linux ZFS provisioning
   are outside this implementation.
-* Use IPv4 and one provisioning interface selected by MAC address. The installed
-  system receives static addressing from the xCAT database. The node name must
+* Use IPv4 and one provisioning interface selected by MAC address. After disk
+  boot, ``confignetwork`` can configure additional interfaces and static IPv6.
+  The node name must
   resolve to that interface's address, and reverse resolution must identify the
   same xCAT node. Status callbacks must retain that source address without NAT.
 * Use one installation owner per node. Nodes assigned to a service node require
@@ -659,6 +660,156 @@ Use an image built with the current ``xcat-freebsd-install-4`` runtime.
 Preparation rejects a multi-disk policy with an older boot runtime.
 Disk replacement and pool expansion remain native administrative operations.
 xCAT does not perform ongoing pool management.
+
+Installed-node networking
+--------------------------
+
+Use ``confignetwork`` to configure the installed FreeBSD node from the ``nics``,
+``networks`` and selected ``routes`` tables. It supports physical Ethernet
+interfaces, VLANs, native LAGG failover or LACP, and bridges. These interfaces
+can carry multiple static IPv4 and IPv6 addresses.
+
+Provisioning still uses one IPv4 interface selected by MAC address. VLANs,
+aggregation, bridges and IPv6 inside PXE or mfsBSD are outside this path.
+DHCP, SLAAC, tunnels and switch configuration are outside this adapter.
+
+Select the postscript before ``nodeset`` to configure networking after the
+first disk boot::
+
+    chdef node01 -p postscripts=confignetwork
+
+For an installed node, apply the current table values with::
+
+    updatenode node01 -P confignetwork
+
+Use native FreeBSD interface names. Include every physical member in
+``nictypes``. Put addresses on the LAGG or bridge, not its members. A VLAN
+can use a physical interface or LAGG as its parent. A bridge can contain
+physical interfaces, LAGGs or VLANs.
+
+The adapter accepts these attributes:
+
+.. list-table:: FreeBSD NIC attributes
+   :header-rows: 1
+
+   * - Attribute
+     - Values
+   * - ``nictypes``
+     - ``Ethernet``, ``lagg`` or ``bond``, ``vlan``, and ``bridge``.
+       Type names are case insensitive. Clones require ``laggN``, ``vlanN``
+       or ``bridgeN`` names.
+   * - ``nicdevices``
+     - Pipe-separated member names. LAGG requires 2 to 16 physical members.
+       A VLAN requires one parent. A bridge accepts 1 to 16 members.
+   * - ``nicips``
+     - Pipe-separated static addresses. Each address requires a matching
+       ``nicnetworks`` entry. One network name can cover several addresses
+       from the same subnet.
+   * - ``nicnetworks``
+     - Network names in address order. Use dotted IPv4 masks. For IPv6, use
+       CIDR network notation and the matching prefix length in ``mask``.
+       A leading slash in the mask is accepted.
+   * - ``nicextraparams``
+     - Space-separated options from the table below. Linux interface-file
+       options and arbitrary ``ifconfig`` arguments are rejected.
+
+.. list-table:: FreeBSD NIC options
+   :header-rows: 1
+
+   * - Option
+     - Meaning
+   * - ``MTU=NUMBER``
+     - 576 through 9216, subject to the driver limit. IPv6 requires at least
+       1280. Otherwise, use ``networks.mtu`` or inherit the parent MTU.
+       Physical interfaces default to 1500. LAGG and bridge members require
+       equal MTUs.
+   * - ``LAGGPROTO=failover`` or ``LAGGPROTO=lacp``
+     - Required for LAGG. Member order selects the failover primary.
+       LACP requires a compatible peer or switch port channel.
+   * - ``VLAN_TAG=NUMBER``
+     - 1 through 4094. The default is the numeric suffix of the VLAN name.
+   * - ``STP=yes`` or ``STP=no``
+     - Enable or disable spanning tree on bridge members. The default is
+       ``yes``. Allow forwarding convergence before checking data traffic.
+
+For example, configure a physical interface with IPv4 and IPv6::
+
+    mkdef -t network -o data4 net=192.0.2.0 mask=255.255.255.0
+    mkdef -t network -o data6 net=2001:db8:1::/64 mask=/64
+    chdef node01 nictypes.vtnet1=Ethernet \
+        'nicips.vtnet1=192.0.2.10|2001:db8:1::10' \
+        'nicnetworks.vtnet1=data4|data6'
+    updatenode node01 -P confignetwork
+
+To move those addresses onto a bridge over a VLAN over LACP, use::
+
+    chdef node01 \
+        'nictypes=vtnet1!Ethernet,vtnet2!Ethernet,lagg0!lagg,vlan100!vlan,bridge0!bridge' \
+        'nicdevices=lagg0!vtnet1|vtnet2,vlan100!lagg0,bridge0!vlan100' \
+        'nicips=bridge0!192.0.2.10|2001:db8:1::10' \
+        'nicnetworks=bridge0!data4|data6' \
+        'nicextraparams=lagg0!LAGGPROTO=lacp'
+    updatenode node01 -P confignetwork
+
+Additional interfaces do not replace the IPv4 default route. A configured
+IPv6 network can supply ``networks.gateway``. IPv6 default gateways must agree.
+A link-local IPv6 gateway receives the interface scope automatically.
+The ``<xcatmaster>`` gateway token preserves the default selected during
+installation. Set an explicit gateway to change it during management adoption.
+When moving IPv6 management traffic, set the gateway on its new interface;
+a retained link-local gateway cannot use an interface whose IPv6 is disabled.
+
+Select static routes through ``noderes.routenames``. Each selected route needs
+``net``, ``mask``, ``gateway`` and an explicitly configured ``ifname``. For
+example::
+
+    mkdef -t route -o storage4 net=203.0.113.0 mask=255.255.255.0 \
+        gateway=192.0.2.1 ifname=bridge0
+    mkdef -t route -o storage6 net=2001:db8:2::/64 mask=/64 \
+        gateway=2001:db8:1::1 ifname=bridge0
+    chdef node01 routenames=storage4,storage6
+
+By default, the postscript preserves the installation interface. Use
+``confignetwork -s`` to include it in the declared topology::
+
+    updatenode node01 -P 'confignetwork -s'
+
+The topology must retain the node's existing IPv4 address on the installation
+interface or one of its descendants. Configure the corresponding switch ports
+before migrating management traffic. Retain console access during the change.
+Continue using ``-s`` for subsequent updates after adopting that interface.
+The existing ``site.setinstallnic=1`` or ``yes`` setting also enables this mode.
+
+The adapter validates the full plan before changing interfaces. It rejects
+overlapping subnets, conflicting membership, unmanaged dependencies and missing
+devices. It applies the plan in dependency order, reads back addresses and
+routes, and checks the controller connection from the node's IPv4 address.
+Only then does it save the managed block in ``/etc/rc.conf``. Verify traffic
+on each data network separately.
+
+An identical effective configuration is a no-op, including when unrelated
+settings follow the managed block. Keep previously managed physical
+interfaces in ``nictypes`` when updating. Clear their addresses to remove
+Layer 3 configuration. Removing a managed clone from the definition destroys
+that clone. The Linux ``-r`` option is not available on FreeBSD.
+
+Network configuration must use ``/etc/rc.conf`` with
+``network_interfaces=auto``. Existing unmanaged clones, manual routes on selected
+interfaces, DHCP or SLAAC configuration, ``rc.conf.local`` and service-specific
+network override files require manual integration. Route and clone list entries
+that the saved plan does not own are retained, including additions made with
+``sysrc``. Selected routes use ``xcat_net_NAME`` names; collisions with existing
+route variables or list entries are rejected. Run custom network scripts as
+separate postscripts.
+
+A failed live change attempts to restore the prior configuration. The adapter
+retains its last transaction under ``/var/db/xcat/network/last``. Execution
+timeouts can interrupt rollback and require console recovery. An interrupted
+or failed rollback leaves ``/var/db/xcat/network/pending`` and blocks another
+attempt. Preserve that directory and inspect its logs before recovery. The
+saved ``before.rc`` records the prior boot configuration. Use the console to
+reconcile live and persistent settings before moving the retained transaction
+aside and retrying.
 
 Bootstrap, console and boot options
 -----------------------------------
