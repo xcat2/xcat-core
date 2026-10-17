@@ -5,8 +5,11 @@ FreeBSD repository preparation
 15.1-RELEASE amd64 repositories. These helpers do not import an image, publish
 a repository, select an installation package list, or install packages.
 ``xCAT::FreeBSDRepoImport`` adds immutable repository publication after native
-inspection. Neither interface is connected to ``copycds`` or image registration
-yet. The existing mfsBSD bundle importer remains separate.
+inspection. The FreeBSD ``copycds`` plugin imports approved release repositories
+and registers version 2 image metadata. ``freebsdrepo inspect`` and
+``freebsdrepo import`` inspect and publish supplemental repositories without
+changing image definitions. These paths do not select packages or enable
+version 2 installation. The existing mfsBSD bundle importer remains separate.
 
 Trust and execution boundary
 ----------------------------
@@ -219,6 +222,215 @@ verification, or establish dependency closure. A caller who controls the entire
 publication can replace its content and evidence together; the digest is not
 an independent signature. Use the import interfaces for new repository content.
 ``selection_validated`` remains zero after readback.
+
+Package planning diagnostics
+----------------------------
+
+``freebsdrepo plan IMAGE --diagnostics`` requires authenticated xCAT root.
+The plugin checks the server-set ``_xcat_authname`` before reading image rows,
+policy, lists or repositories. It requires exactly one string equal to
+``root``. The daemon UID and request-supplied ``username`` confer no authority.
+The option is invalid for inspection and import.
+
+``xCAT::FreeBSDPackagePlan::resolve`` and ``resolve_image`` accept an optional
+``diagnostics => \$bytes`` argument. It must reference an undefined scalar
+before protected reads. Trusted in-process callers own authorization.
+Ordinary calls omit the argument.
+
+On a supported planning failure, the plugin adds one ``DIAGNOSTICS:`` data
+item containing canonical ASCII JSON. The normal client sends it to standard
+output and preserves the original standard error and nonzero exit status.
+No report appears on success or before complete import validation.
+The option does not change successful plan bytes or publication behavior.
+
+The JSON object has exactly four fields: ``format``, ``scope``, ``status``
+and ``records``. The format is ``xcat-freebsd-package-diagnostics-1``.
+Record fields depend on scope:
+
+* ``requested-selection``: ``kind``, ``selection`` and ``name``.
+  The kind is ``missing-component``, ``missing-application`` or
+  ``application-not-selected``. The selection index is 1-based and the name
+  is the exact validated input.
+* ``imported-catalogue-name-references``: ``kind``, ``repository``,
+  ``package`` and ``dependency``. The kind is
+  ``unavailable-dependency-name``. Repository fields are ``id``,
+  ``publication`` and ``role``. Package fields are ``name``, ``version``,
+  ``origin`` and ``abi``.
+
+Catalogue facts describe authenticated imported records, including unselected
+packages. Each dependency name lacks an exact, case-sensitive match among
+the imported base and application package names. The scan ignores versions,
+origins, ABIs and provider capabilities. A same-name package suppresses this
+fact but does not prove dependency satisfaction. Repository identities describe
+the observed attempt, not subsequent filesystem state. Native resolution
+remains the authority for planning success.
+
+Catalogue records follow repository order, package identity order, then
+dependency name order. Limits are 64 records, 65,536 encoded bytes per record,
+and 262,144 encoded bytes per report, excluding the ``DIAGNOSTICS:`` prefix.
+The collector reserves one byte for the longer ``truncated`` status.
+JSON escaping preserves decoded names, including non-ASCII characters.
+
+``complete`` means the scoped scan completed, not that it diagnosed the
+native failure. ``truncated`` retains the deterministic prefix before the
+first count or byte limit. ``unavailable`` has an empty ``records`` array
+when metadata or collection prevents a report. Collector failure never
+replaces the original planning error.
+
+Reports expose protected names only through the opted-in interface. They do
+not copy raw native stderr, exception text, request environments or complete
+manifests. The collector reads no additional repositories and does not retry
+resolution. It does not publish diagnostic files or alter imported content.
+
+Installer command budgets
+-------------------------
+
+Package preparation has a 30-minute budget. Installation has a 60-minute
+budget. Both use the required native ``xcat-postscript-time uptime`` helper,
+so wall-clock corrections do not change the remaining time. Each command
+receives the smaller of its own timeout and the remaining operation budget.
+Timer reads have a separate 5-second timeout. Failed, malformed or regressing
+readings stop the operation without a wall-clock fallback.
+
+Installed verification inputs
+-----------------------------
+
+Postscript verification uses ``xcat-freebsd-local-manifests-1``. Each package
+row retains the original archive fields and adds the full ``+MANIFEST`` size
+and SHA256. The controller extracts that member from the verified archive.
+The native helper parses those same bytes through pkg's manifest parser and
+keeps the full metadata and dependency comparisons used for archive inputs.
+Each manifest is limited to 128 MiB, with a 512 MiB total. Installation,
+update, preflight and prior managed requests reject this verify-only format.
+Managed output retains the original archive provenance format.
+
+``managed.request`` combines the current selection with previously managed
+packages that remain installed. Its ``plan`` header identifies the latest
+operation. Retained rows can carry repository IDs, repository paths and archive
+paths from older plans; the header does not reinterpret those fields against
+the latest repository list. Retained rows must match the installed package's
+name, version, origin and ABI. A selected package already at the requested
+version must also match the prior archive SHA256 and current package metadata.
+Source paths are historical annotations and must not authorize fetching or
+installation. A later operation resolves its own plan and verifies its current
+inputs. The previous operation's durable receipt binds the complete managed
+request before reuse.
+
+Payload retirement requires a committed terminal receipt. The node binds its
+retirement record to the snapshot, request, package head and terminal result.
+The controller binds its retirement record to the export manifest and retained
+terminal receipt. Each record is durable before deletion starts. Readers use
+that proof to accept payload absence while preserving status, reports and
+same-run retries. Framework failure results also permit retirement when their
+completed package receipt and committed head match the terminal result. Active,
+uncertain and package-rejected runs retain inputs.
+
+Interrupted package provenance
+------------------------------
+
+Explicit release holds the node lock and requires either a different boot or
+the complete same-boot observations described below. Native apply starts only
+after the action record and its
+directory are synced. When that record is absent, or a valid native rejection
+proves apply never started, the worker retains the previous package head.
+``packages.preserved`` binds that disposition to the run, snapshot, plan,
+installation anchor and previous head. A native rejection also binds its
+receipt digest. Earlier torn start or roster records do not prevent this
+no-apply disposition. The original execution remains uncertain.
+
+Otherwise, the worker invokes ``local-recover``. It validates the installation
+anchor, admitted snapshot, request,
+configuration and previous package head before invoking the pinned helper.
+Recovery uses a fresh, empty ``recovery.XXXXXXXX`` directory below the original
+package workspace. Capture writes outside that directory until the helper exits.
+
+The helper compares the installed roster with the retained ``before`` roster,
+previous managed request and original request. Unchanged managed identities keep
+their archive provenance. Nonempty operations can exclude prior identities that
+were already missing or different in the original ``before`` roster. Each
+drifted prior identity is logged, including identities re-added by the operation.
+This requires a valid action record and no native
+rejection. Empty requests and operations without that authorization remain strict.
+Captured diagnostics can be truncated. The receipt-bound prior request and
+``before`` roster retain the complete evidence for which prior identities were
+already absent or different; the diagnostic text is not authorization.
+Compare the prior request with the managed output to identify final exclusions.
+Changed identities take provenance from the current request's archive, including
+when an older prior record names the same identity with a different archive.
+Changed identities require an original update scope,
+no native rejection, matching archives and a complete action plan. Verify-only
+requests cannot authorize changed identities. Recovery does not adopt unchanged
+unmanaged packages, apply package jobs, execute triggers or repeat scripts.
+Unexplained package changes, missing packages, pending triggers and invalid
+records stop recovery. If actions exist and no valid rejection proves apply
+never started, torn records require restoration of verified evidence or a
+consistent system backup. They cannot be reconstructed from the installed
+package identities alone.
+
+``xcat-freebsd-local-recover-1`` binds the request, previous request, native start,
+before and observed rosters, managed output, action plan and rejection record.
+An absent action or rejection record uses ``-`` as its digest. The receipt
+records ``scope=provenance-only`` and ``execution=uncertain``. Its completion
+field describes reconciliation only. It does not establish payload integrity,
+package-script completion or compatibility of a partially upgraded system.
+
+The helper and worker limit each installed roster to 128 MiB. This includes
+dependency rows. Request and managed-request records keep their 8 MiB limit.
+
+The worker requires an observed helper exit of zero and closed capture streams.
+A native receipt alone cannot authorize publication. The separate
+``packages.recovered`` record binds the native receipt, capture and retained
+inputs. A version 2 package head identifies that record. Future operations
+validate the recovered head before using its managed request. Ordinary completed
+operations retain the version 1 head format.
+
+Package completion and recovery records are finished in private staging directories
+before atomic publication. Recovery retries preserve earlier attempts and can
+finish an interrupted head or release publication. Collected reports retain
+recovery evidence while reporting the original run as uncertain. Later
+operations cannot complete its unfinished script entries.
+
+Supervised execution and release
+--------------------------------
+
+New postscript runs bind the started record and native timer digest in a
+supervision record. Each guarded capture records its paths, bounds and start
+before executing a command. Its completion record binds the native observation
+and log digests. The capture supervisor retains the node lock until it observes
+the direct command; administrator scripts do not inherit that lock. Detached
+services may remain alive after their starting script completes.
+
+The outer framework observer has no independent deadline. Package and driver
+phases retain their separate deadlines, and each script keeps its entry limit.
+This avoids shortening the combined execution budget. Framework output remains
+bounded and is retained separately from script and package output.
+
+Same-boot release requires a fresh exclusive node lock, an unchanged timer,
+and complete capture observations. Package captures must also report closed
+streams. The process-state query must identify the original worker as absent,
+zombie, or replaced by a different process identity. Query errors and malformed
+responses refuse release. This query is only authoritative for the original
+worker, which keeps the observer's host-root credentials and visibility. It is
+not an absence test for services that change credentials or enter a jail.
+The reported running state includes stopped and exiting processes.
+
+Version 2 release records bind the original start, supervision record, process
+observation and capture inventory. Historical collection validates those
+retained observations, without querying a later process or package head. They
+are producer records, not independent kernel attestations. Version 1 release
+records continue to require a different boot. Neither format changes uncertain
+script execution into success.
+
+An observed framework failure can publish a version 3 terminal result after
+completed package evidence and the full capture inventory validate under a
+fresh node lock. Its immutable snapshot retains the entry dispositions,
+package proof, phase records and bounded diagnostics. The worker syncs that
+snapshot before publishing the separate terminal receipt. Version 4 evidence
+archives export these retained contents. A script without a completed entry
+record has no invented exit status, even though the framework outcome is
+terminal and failed. If a command observation or package proof is missing,
+the run remains uncertain. A failed terminal publication likewise cannot
+authorize cached terminal reporting or payload retirement.
 
 Behavioral validation
 ----------------------
