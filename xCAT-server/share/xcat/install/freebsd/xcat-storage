@@ -42,12 +42,12 @@ storage_approve()
 
 storage_load()
 {
-    for storage_file in config snapshot pins; do
+    for storage_file in config snapshot preserved pins; do
         [ -f "$storage_work/$storage_file" ] && [ ! -L "$storage_work/$storage_file" ] || exit 1
     done
-    [ "$(sha256 -q "$storage_work/config" "$storage_work/snapshot")" = "$(cat "$storage_work/pins")" ]
+    [ "$(sha256 -q "$storage_work/config" "$storage_work/snapshot" "$storage_work/preserved")" = "$(cat "$storage_work/pins")" ]
     xcat_read_config "$storage_work/config"
-    [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ]
+    xcat_guarded_storage
     XCAT_WORK=$storage_work
     storage_snapshot=$(cat "$storage_work/snapshot")
     storage_members=$(xcat_zfs_members)
@@ -73,6 +73,7 @@ storage_identity()
     storage_identity_now=$(printf '%s\n' "$storage_now" | cut -f1-5,7)
     storage_identity_old=$(printf '%s\n' "$storage_snapshot" | cut -f1-5,7)
     [ "$storage_identity_now" = "$storage_identity_old" ]
+    [ "$(xcat_preserved_inventory)" = "$(cat "$storage_work/preserved")" ]
     [ -z "$(geli status -s)" ]
 }
 
@@ -250,9 +251,15 @@ storage_pool()
         }')
     storage_expected=$(printf '%s\n' "$storage_members" | awk -F '\t' -v topology="$XCAT_ZFS_TOPOLOGY" -v partidx="$storage_root_index" '
         BEGIN {print "zroot"}
-        $3 != group {group=$3; print (topology == "raid10" ? "mirror" : topology) "-" (group-1)}
+        $3 != group {group=$3; if (topology != "stripe") print (topology == "raid10" ? "mirror" : topology) "-" (group-1)}
         {print "/dev/" $1 "p" partidx}')
     [ "$storage_leaves" = "$storage_expected" ]
+    if [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ]; then
+        [ "$(zfs get -H -o value compression zroot)" = "$XCAT_ZFS_COMPRESSION" ]
+        storage_config=$(zdb -C zroot)
+        printf '%s\n' "$storage_config" | awk -v ashift="$XCAT_ZFS_ASHIFT" \
+            '$1 == "ashift:" {found++; if ($2 != ashift) bad=1} END {exit !found || bad}'
+    fi
 }
 
 storage_labels()
@@ -426,6 +433,23 @@ storage_empty_part()
     xcat_check_empty_disks "$storage_record"
 }
 
+storage_clear_new_part()
+{
+    [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ] && [ "$XCAT_DISK_ACTION" = erase ] || return 0
+    storage_record=$(printf '%s\n' "$storage_table_now" | awk -F '\t' -v d="$storage_current" -v i="$storage_index" '
+        $1=="P" && $2==d && $3==i && $5~/^(efi|freebsd-zfs)$/ {print $4 "\t" $8 "\t" $9; found++}
+        END {if(found!=1) exit 1}')
+    IFS="$(printf '\t')" read -r storage_provider storage_size storage_sector <<XCAT_NEW_PART
+$storage_record
+XCAT_NEW_PART
+    storage_identity
+    for storage_offset in 0 "$(((storage_size-1048576)/storage_sector))"; do
+        dd if=/dev/zero of="/dev/$storage_provider" bs="$storage_sector" seek="$storage_offset" \
+            count="$((1048576/storage_sector))" conv=notrunc >> "$storage_work/clear-part.log" 2>&1
+    done
+    storage_empty_part "$storage_provider"
+}
+
 storage_native_before()
 {
     while [ "$#" -gt 0 ]; do
@@ -494,13 +518,17 @@ storage_native_before()
         'zpool:zpool create %s "%s" %s %s')
             [ "$#" -eq 4 ] && [ "$storage_next" -eq "$storage_count" ] && [ -z "$storage_current" ] && [ "$storage_phase" = partition ] || exit 1
             storage_root=$(cat "$storage_work/root")
-            [ "$1" = "-o altroot=$storage_root -O compression=on -O atime=off -o cachefile=none -m none " ] && [ "$2" = zroot ] || exit 1
+            storage_options='-O compression=on -O atime=off'
+            if [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ]; then
+                storage_options="-o ashift=$XCAT_ZFS_ASHIFT -O compression=$XCAT_ZFS_COMPRESSION -O atime=off"
+            fi
+            [ "$1" = "-o altroot=$storage_root $storage_options -o cachefile=none -m none " ] && [ "$2" = zroot ] || exit 1
             storage_vdevs=$(printf '%s\n' "$storage_members" | awk -F '\t' -v topology="$XCAT_ZFS_TOPOLOGY" -v partidx="$storage_root_index" '
                 $3 != group {group=$3; if (topology == "raid10") line=line " mirror"}
                 {line=line " " $1 "p" partidx} END {sub(/^ /,"",line); print line}')
             storage_given=$(printf '%s\n' "$4" | awk '{$1=$1; print}')
             [ "$storage_given" = "$storage_vdevs" ]
-            if [ "$XCAT_ZFS_TOPOLOGY" = raid10 ]; then [ -z "$3" ]; else [ "$3" = "$XCAT_ZFS_TOPOLOGY" ]; fi
+            case "$XCAT_ZFS_TOPOLOGY" in raid10|stripe) [ -z "$3" ] ;; *) [ "$3" = "$XCAT_ZFS_TOPOLOGY" ] ;; esac
             for storage_disk in $(printf '%s\n' "$storage_members" | cut -f1); do storage_empty_part "${storage_disk}p$storage_root_index"; done
             storage_kind=pool
             ;;
@@ -521,7 +549,8 @@ storage_native_before()
             [ "$storage_phase" = pool ] && [ "$#" -eq 2 ] || exit 1
             case "$1:$2" in 'mountpoint=/zroot:zroot'|'canmount=noauto:zroot/ROOT/default') ;; *) exit 1 ;; esac
             ;;
-        'sysctl:sysctl vfs.zfs.vdev.min_auto_ashift=12') [ "$#" -eq 0 ] && [ "$storage_phase" = partition ] || exit 1 ;;
+        'sysctl:sysctl vfs.zfs.vdev.min_auto_ashift=12')
+            [ "$#" -eq 0 ] && [ "$storage_phase" = partition ] && [ "$XCAT_FORMAT" != xcat-freebsd-install-5 ] || exit 1 ;;
         'sh::> "%s"')
             [ "$#" -eq 1 ] && [ "$1" = "$storage_tmpetc/fstab" ] && [ "$storage_phase" = partition ] || exit 1
             [ ! -L "$1" ] && [ "$(realpath "$storage_tmpetc")" = "$storage_tmpetc" ] || exit 1
@@ -567,8 +596,10 @@ if [ "$storage_action" = arm ]; then
     storage_checked=1
     cp "$1" "$storage_work/config"
     cp "$2" "$storage_work/snapshot"
-    chmod 0400 "$storage_work/config" "$storage_work/snapshot"
-    sha256 -q "$storage_work/config" "$storage_work/snapshot" > "$storage_work/pins"
+    xcat_read_config "$storage_work/config"
+    xcat_preserved_inventory > "$storage_work/preserved"
+    chmod 0400 "$storage_work/config" "$storage_work/snapshot" "$storage_work/preserved"
+    sha256 -q "$storage_work/config" "$storage_work/snapshot" "$storage_work/preserved" > "$storage_work/pins"
     printf '0\n' > "$storage_work/next"
     : > "$storage_work/current"
     : > "$storage_work/table"
@@ -608,6 +639,7 @@ case "$storage_action" in
         storage_disks=$(printf '%s\n' "$storage_members" | awk '{s=s (NR == 1 ? "" : " ") $1} END {print s}')
         [ "$1" = "$storage_disks" ] && [ "$2" = "$XCAT_ZFS_TOPOLOGY" ] && [ "$3" = zroot ] && [ "$4" = 0 ] && [ -z "$5$6" ] || exit 1
         [ "${ZFSBOOT_PARTITION_SCHEME:-}" = GPT ] && [ -z "${ZFSBOOT_POOL_SIZE:-}${ZFSBOOT_SWAP_ENCRYPTION:-}${ZFSBOOT_SWAP_MIRROR:-}" ] || exit 1
+        [ "$XCAT_FORMAT" != xcat-freebsd-install-5 ] || [ -z "${ZFSBOOT_FORCE_4K_SECTORS:-}" ]
         [ -z "${ZFSBOOT_BOOT_TYPE:-}" ] || [ "$ZFSBOOT_BOOT_TYPE" = "$storage_boot" ]
         storage_parent=$(dirname "$storage_work")
         [ "$(stat -f '%u:%Lp' "$storage_parent")" = 0:700 ]
@@ -684,6 +716,10 @@ case "$storage_action" in
             *) exit 1 ;;
         esac
         storage_graph
+        if [ "$storage_kind" = add ]; then
+            IFS="$(printf '\t')" read -r storage_index storage_type storage_label < "$storage_work/addition"
+            case "$storage_type" in efi|freebsd-zfs) storage_clear_new_part ;; esac
+        fi
         storage_pool
         if [ "$storage_kind" = pool ]; then
             storage_labels 0 > "$storage_work/labels"

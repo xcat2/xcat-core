@@ -12,6 +12,13 @@ set -eu
 XCAT_STORAGE_HOOKS=$(cat "$(dirname "$0")/xcat-storage-hooks.sh")
 export XCAT_STORAGE_HOOKS
 awk '
+    /^\tlocal setsize align_small align_big$/ {alignment=1}
+    alignment && /^\tif \[ "\$ZFSBOOT_FORCE_4K_SECTORS" \]; then$/ {
+        # Guarded layouts keep partition alignment independent of pool ashift.
+        $0="\tif [ \"$ZFSBOOT_FORCE_4K_SECTORS\" ] || [ -n \"${XCAT_STORAGE_WORK:-}\" ]; then"
+        alignment=0
+        aligned++
+    }
     /^############################################################ MAIN$/ {
         main++
         print ENVIRON["XCAT_STORAGE_HOOKS"]
@@ -60,5 +67,5 @@ awk '
         print "\t\txcat_storage_call attempt || exit 1"
         print "\tfi"
     }
-    END {if (main != 1 || cleanup != 1 || destroy != 2 || labels != 2 || force != 2 || partitioned != 1 || retry != 1 || finish != 1 || collision != 1) exit 1}
+    END {if (main != 1 || cleanup != 1 || destroy != 2 || labels != 2 || force != 2 || partitioned != 1 || retry != 1 || finish != 1 || collision != 1 || aligned != 1) exit 1}
 ' "$1"

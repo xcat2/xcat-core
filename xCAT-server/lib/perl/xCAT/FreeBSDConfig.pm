@@ -146,7 +146,7 @@ sub boot_settings {
     _boot_settings(\%boot);
     my %result = %$settings;
     delete $result{bootstrap};
-    if (($media->{install_contract} || '') =~ /\Axcat-freebsd-install-[34]\z/x) {
+    if (($media->{install_contract} || '') =~ /\Axcat-freebsd-install-[345]\z/x) {
         return { %result, %boot };
     }
     _fail('Boot settings require a runtime with xcat-freebsd-install-3') if
@@ -238,6 +238,12 @@ sub _policy {
     return \%values;
 }
 
+sub _disk_member {
+    my $member = shift;
+    my $device = qr/(?:ada|da|nda|nvd|vtbd)(?:0|[1-9][0-9]{0,4})/x;
+    return $member =~ /\A($device)@([A-Za-z0-9_.:+-]{1,128})\z/x;
+}
+
 sub _zfs_storage {
     my $settings = shift;
     return 0 unless grep { exists($settings->{$_}) } qw(zfs_topology zfs_vdevs swap_mode);
@@ -250,7 +256,7 @@ sub _zfs_storage {
     _fail('Multi-disk storage requires ZFS') unless $settings->{filesystem} eq 'zfs';
     _fail('Redundant storage requires swap_size=0 and swap_mode=none') unless
         $settings->{swap_size} eq '0' && $settings->{swap_mode} eq 'none';
-    my %minimum = (mirror => 2, raid10 => 4, raidz1 => 3, raidz2 => 4, raidz3 => 5);
+    my %minimum = (stripe => 1, mirror => 2, raid10 => 4, raidz1 => 3, raidz2 => 4, raidz3 => 5);
     my $topology = $settings->{zfs_topology};
     _fail('Unsupported ZFS topology') unless exists($minimum{$topology});
     _fail('ZFS membership exceeds its size limit') if length($settings->{zfs_vdevs}) > 4096;
@@ -262,14 +268,14 @@ sub _zfs_storage {
         _fail('Empty ZFS member group') unless length($group) && @members;
         push @sizes, scalar(@members);
         for my $member (@members) {
-            my ($device, $serial) = $member =~
-                /\A((?:ada|da|nda|nvd|vtbd)(?:0|[1-9][0-9]{0,4}))@([A-Za-z0-9_.:+-]{1,128})\z/x;
+            my ($device, $serial) = _disk_member($member);
             _fail('Invalid ZFS device and serial pair') unless defined($device);
             _fail('Duplicate ZFS device or serial') if $devices{$device}++ || $serials{$serial}++;
             _fail('ZFS policy exceeds 16 members') if ++$count > 16;
         }
     }
     _fail('Insufficient ZFS members') if $count < $minimum{$topology};
+    _fail('The OS stripe policy requires one disk') if $topology eq 'stripe' && $count != 1;
     if ($topology eq 'raid10') {
         _fail('Striped mirrors require at least two pairs') if @groups < 2 || grep { $_ != 2 } @sizes;
     } else {
@@ -278,13 +284,47 @@ sub _zfs_storage {
     return 1;
 }
 
+sub _zfs_disk_policy {
+    my $settings = shift;
+    my $extended = ($settings->{zfs_topology} || '') eq 'stripe' ||
+        grep { exists($settings->{$_}) } qw(zfs_compression zfs_ashift disk_action preserve_disks);
+    return 0 unless $extended;
+    _fail('Disk properties require an explicit ZFS member policy') unless _zfs_storage($settings);
+    $settings->{zfs_compression} //= 'lz4';
+    $settings->{zfs_ashift} //= '12';
+    $settings->{disk_action} //= 'empty';
+    $settings->{preserve_disks} //= '-';
+    _fail('Unsupported OS compression') unless $settings->{zfs_compression} =~ /\A(?:off|lz4|gzip(?:-[1-9])?|zstd(?:-(?:[1-9]|1[0-9]))?)\z/x;
+    _fail('Invalid ZFS ashift') unless $settings->{zfs_ashift} =~ /\A(?:9|1[0-6])\z/x;
+    _fail('Disk action must be empty or erase') unless $settings->{disk_action} =~ /\A(?:empty|erase)\z/x;
+    _fail('Preserved disk policy exceeds its size limit') if length($settings->{preserve_disks}) > 32768;
+    my (%devices, %serials);
+    for my $member (split(/[,;]/x, $settings->{zfs_vdevs})) {
+        my ($device, $serial) = split(/@/x, $member);
+        $devices{$device} = $serials{$serial} = 1;
+    }
+    if ($settings->{preserve_disks} ne '-') {
+        my @members = split(/,/x, $settings->{preserve_disks}, -1);
+        _fail('A preserved disk identity or dash is required') unless @members;
+        _fail('Too many preserved disks') if @members > 128;
+        for my $preserved_member (@members) {
+            my ($device, $serial) = _disk_member($preserved_member);
+            _fail('Invalid preserved disk identity') unless defined($device);
+            _fail('OS and preserved disk identities overlap or repeat') if $devices{$device}++ || $serials{$serial}++;
+        }
+    }
+    return 1;
+}
+
 sub load_settings {
     my ($node, $template, $partitionfile) = @_;
     my $settings = _policy($template, $node, qw(authorized_keys_file bootstrap));
     my $disk = _policy($partitionfile, $node,
-        qw(target_disk target_disk_ident filesystem swap_size zfs_topology zfs_vdevs swap_mode));
+        qw(target_disk target_disk_ident filesystem swap_size zfs_topology zfs_vdevs swap_mode
+        zfs_compression zfs_ashift disk_action preserve_disks));
     $disk->{swap_size} = '0' unless defined($disk->{swap_size});
     _zfs_storage($disk);
+    _zfs_disk_policy($disk);
     my ($keys, $keyfile) = _read_file($settings->{authorized_keys_file}, $node, 16384);
     my @keys = grep { /\S/ } split(/\n/, $keys);
     _fail('A plain SSH public key is required') unless @keys && !grep {
@@ -340,19 +380,27 @@ sub render_pkgbase {
         node => $node, generation => $generation, package_plan_sha256 => $install->{package_plan_sha256},
         boot_media_sha256 => $media->{digest}, runtime_sha256 => $media->{files}{'xcat/runtime.tsv'});
     my $multi_disk = _zfs_storage(\%config);
+    my $disk_policy = _zfs_disk_policy(\%config);
+    my $install_contract = $media->{install_contract} || '';
     my @storage = $multi_disk ? qw(zfs_topology zfs_vdevs swap_mode) : qw(target_disk target_disk_ident);
     my @order = (qw(format release node generation master port mac ipv4 netmask gateway hostname),
         @storage, qw(filesystem swap_size install_url package_plan_sha256
         boot_media_sha256 runtime_sha256 authorized_key_base64 nameservers));
     if ($multi_disk) {
         _fail('Multi-disk storage requires a runtime with xcat-freebsd-install-4') unless
-            ($media->{install_contract} || '') eq 'xcat-freebsd-install-4';
+            $install_contract =~ /\Axcat-freebsd-install-[45]\z/x;
     }
-    if (($media->{install_contract} || '') =~ /\Axcat-freebsd-install-[34]\z/x) {
+    if ($install_contract =~ /\Axcat-freebsd-install-[345]\z/x) {
         $config{format} = $multi_disk ? 'xcat-freebsd-install-4' : 'xcat-freebsd-install-3';
         push @order, qw(bootstrap console_port console_speed console_flow
             install_boot_options_base64 target_boot_options_base64);
         _boot_settings(\%config);
+    }
+    if ($disk_policy) {
+        _fail('Disk properties and reinstall require xcat-freebsd-install-5') unless
+            $install_contract eq 'xcat-freebsd-install-5';
+        $config{format} = 'xcat-freebsd-install-5';
+        push @order, qw(zfs_compression zfs_ashift disk_action preserve_disks);
     }
     return _render_config(\%config, \@order,
         [qw(generation package_plan_sha256 boot_media_sha256 runtime_sha256)], 'install_url', 'installation');
@@ -380,7 +428,7 @@ sub _render_config {
     _fail('Invalid status port') unless $config{port} =~ /\A[1-9][0-9]{0,4}\z/ && $config{port} <= 65535;
     _fail('Invalid provisioning MAC') unless $config{mac} =~ /\A(?:[0-9a-f]{2}:){5}[0-9a-f]{2}\z/;
     _node($config{hostname});
-    if ($config{format} eq 'xcat-freebsd-install-4') {
+    if ($config{format} =~ /\Axcat-freebsd-install-[45]\z/x) {
         _fail('Missing multi-disk policy') unless _zfs_storage(\%config);
     } else {
         _fail('Invalid target disk') unless $config{target_disk} =~ /\A(?:ada|da|nda|nvd|vtbd)[0-9]+\z/;

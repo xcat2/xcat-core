@@ -103,18 +103,27 @@ xcat_bootstrap_network()
 
 xcat_check_bootstrap()
 {
-    case "$XCAT_FORMAT" in xcat-freebsd-install-3|xcat-freebsd-install-4) ;; *) return 0 ;; esac
+    case "$XCAT_FORMAT" in xcat-freebsd-install-3|xcat-freebsd-install-4|xcat-freebsd-install-5) ;; *) return 0 ;; esac
     [ "$XCAT_BOOTSTRAP" = "$XCAT_BOOTSTRAP_MODE" ] || return 1
     [ "$XCAT_BOOTSTRAP" = static ] || return 0
     [ "$XCAT_IPV4" = "$XCAT_BOOTSTRAP_IPV4" ] && [ "$XCAT_NETMASK" = "$XCAT_BOOTSTRAP_NETMASK" ] &&
         [ "$XCAT_GATEWAY" = "$XCAT_BOOTSTRAP_GATEWAY" ]
 }
 
+xcat_guarded_storage()
+{
+    case "$XCAT_FORMAT" in xcat-freebsd-install-4|xcat-freebsd-install-5) return 0 ;; *) return 1 ;; esac
+}
+
 xcat_zfs_members()
 {
     [ "$XCAT_FILESYSTEM" = zfs ] && [ "$XCAT_SWAP_SIZE" = 0 ] &&
         [ "$XCAT_SWAP_MODE" = none ] || return 1
-    case "$XCAT_ZFS_TOPOLOGY" in mirror|raid10|raidz1|raidz2|raidz3) ;; *) return 1 ;; esac
+    case "$XCAT_ZFS_TOPOLOGY" in
+        stripe) [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ] || return 1 ;;
+        mirror|raid10|raidz1|raidz2|raidz3) ;;
+        *) return 1 ;;
+    esac
     printf '%s\n' "$XCAT_ZFS_VDEVS" | LC_ALL=C awk -v topology="$XCAT_ZFS_TOPOLOGY" '
         NR != 1 || length($0) > 4096 {bad=1; next}
         {
@@ -134,8 +143,9 @@ xcat_zfs_members()
             }
         }
         END {
-            minimum=(topology == "mirror" ? 2 : topology == "raidz1" ? 3 : topology == "raidz3" ? 5 : 4)
+            minimum=(topology == "stripe" ? 1 : topology == "mirror" ? 2 : topology == "raidz1" ? 3 : topology == "raidz3" ? 5 : 4)
             if (NR != 1 || bad || count<minimum || count>16 ||
+                (topology == "stripe" && count!=1) ||
                 (topology == "raid10" ? groups<2 : groups!=1)) exit 1
             for (i=1; i<=count; i++) print record[i]
         }'
@@ -147,6 +157,7 @@ xcat_read_config()
     XCAT_MAC= XCAT_IPV4= XCAT_NETMASK= XCAT_GATEWAY= XCAT_HOSTNAME=
     XCAT_TARGET_DISK= XCAT_TARGET_DISK_IDENT= XCAT_FILESYSTEM= XCAT_SWAP_SIZE=
     XCAT_ZFS_TOPOLOGY= XCAT_ZFS_VDEVS= XCAT_SWAP_MODE=
+    XCAT_ZFS_COMPRESSION= XCAT_ZFS_ASHIFT= XCAT_DISK_ACTION= XCAT_PRESERVE_DISKS=
     XCAT_DIST_URL= XCAT_BASE_SHA256= XCAT_KERNEL_SHA256= XCAT_AUTHORIZED_KEY_BASE64=
     XCAT_INSTALL_URL= XCAT_PACKAGE_PLAN_SHA256= XCAT_BOOT_MEDIA_SHA256= XCAT_RUNTIME_SHA256=
     XCAT_BOOTSTRAP= XCAT_CONSOLE_PORT= XCAT_CONSOLE_SPEED= XCAT_CONSOLE_FLOW=
@@ -183,6 +194,10 @@ xcat_read_config()
             zfs_topology) XCAT_ZFS_TOPOLOGY=$xcat_value ;;
             zfs_vdevs) XCAT_ZFS_VDEVS=$xcat_value ;;
             swap_mode) XCAT_SWAP_MODE=$xcat_value ;;
+            zfs_compression) XCAT_ZFS_COMPRESSION=$xcat_value ;;
+            zfs_ashift) XCAT_ZFS_ASHIFT=$xcat_value ;;
+            disk_action) XCAT_DISK_ACTION=$xcat_value ;;
+            preserve_disks) XCAT_PRESERVE_DISKS=$xcat_value ;;
             dist_url) XCAT_DIST_URL=$xcat_value ;;
             base_sha256) XCAT_BASE_SHA256=$xcat_value ;;
             kernel_sha256) XCAT_KERNEL_SHA256=$xcat_value ;;
@@ -202,7 +217,18 @@ xcat_read_config()
         esac
     done < "$1"
     [ "$XCAT_RELEASE" = 15.1-RELEASE ] || return 1
-    if [ "$XCAT_FORMAT" = xcat-freebsd-install-3 ] || [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ]; then
+    if [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ]; then
+        for xcat_required in zfs_compression zfs_ashift disk_action preserve_disks; do
+            case "$xcat_seen" in *" $xcat_required "*) ;; *) return 1 ;; esac
+        done
+        printf '%s\n' "$XCAT_ZFS_COMPRESSION" | awk '!/^(off|lz4|gzip(-[1-9])?|zstd(-([1-9]|1[0-9]))?)$/ {exit 1}' || return 1
+        case "$XCAT_ZFS_ASHIFT" in 9|10|11|12|13|14|15|16) ;; *) return 1 ;; esac
+        case "$XCAT_DISK_ACTION" in empty|erase) ;; *) return 1 ;; esac
+        xcat_preserved_members >/dev/null || return 1
+    else
+        case "$xcat_seen" in *' zfs_compression '*|*' zfs_ashift '*|*' disk_action '*|*' preserve_disks '*) return 1 ;; esac
+    fi
+    if [ "$XCAT_FORMAT" = xcat-freebsd-install-3 ] || xcat_guarded_storage; then
         for xcat_required in bootstrap console_port console_speed console_flow install_boot_options_base64 target_boot_options_base64; do
             case "$xcat_seen" in *" $xcat_required "*) ;; *) return 1 ;; esac
         done
@@ -222,13 +248,13 @@ xcat_read_config()
             xcat_hex "$XCAT_BASE_SHA256" 64 && xcat_hex "$XCAT_KERNEL_SHA256" 64 || return 1
             xcat_url "$XCAT_DIST_URL" || return 1
             ;;
-        xcat-freebsd-install-2|xcat-freebsd-install-3|xcat-freebsd-install-4)
+        xcat-freebsd-install-2|xcat-freebsd-install-3|xcat-freebsd-install-4|xcat-freebsd-install-5)
             [ "$xcat_read_bytes" -eq "$xcat_config_size" ] && [ "$xcat_unterminated" -eq 0 ] &&
                 [ "$xcat_skipped" -eq 0 ] || return 1
             LC_ALL=C awk '/[^ -~]/ {exit 1}' "$1" || return 1
             case "$xcat_seen" in *' dist_url '*|*' base_sha256 '*|*' kernel_sha256 '*) return 1 ;; esac
             xcat_disk_fields='target_disk target_disk_ident'
-            if [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ]; then
+            if xcat_guarded_storage; then
                 xcat_disk_fields='zfs_topology zfs_vdevs swap_mode'
                 case "$xcat_seen" in *' target_disk '*|*' target_disk_ident '*) return 1 ;; esac
             fi
@@ -254,7 +280,7 @@ xcat_read_config()
     case "$XCAT_PORT" in ''|*[!0-9]*) return 1 ;; esac
     [ "${#XCAT_PORT}" -le 5 ] && [ "$XCAT_PORT" -gt 0 ] && [ "$XCAT_PORT" -le 65535 ] || return 1
     printf '%s\n' "$XCAT_MAC" | awk '!/^[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]$/ {exit 1}' || return 1
-    if [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ]; then
+    if xcat_guarded_storage; then
         xcat_zfs_members >/dev/null || return 1
     else
         case "$xcat_seen" in *' zfs_topology '*|*' zfs_vdevs '*|*' swap_mode '*) return 1 ;; esac
@@ -310,14 +336,55 @@ xcat_status()
     xcat_error "Controller did not acknowledge $xcat_phase"
 }
 
+xcat_preserved_members()
+{
+    printf '%s\n' "$XCAT_PRESERVE_DISKS" | LC_ALL=C awk -v os="$XCAT_ZFS_VDEVS" '
+        BEGIN {
+            n=split(os,a,/[,;]/)
+            for(i=1;i<=n;i++) {split(a[i],p,"@"); devices[p[1]]=1; serials[p[2]]=1}
+        }
+        $0 == "-" {next}
+        {
+            n=split($0,a,",")
+            if (NR!=1 || n<1 || n>128) exit 1
+            for(i=1;i<=n;i++) {
+                if (split(a[i],p,"@")!=2 || p[1]!~/^(ada|da|nda|nvd|vtbd)(0|[1-9][0-9]{0,4})$/ ||
+                    p[2]!~/^[A-Za-z0-9_.:+-]+$/ || length(p[2])>128 || devices[p[1]]++ || serials[p[2]]++) exit 1
+                print p[1] "\t" p[2] "\t1"
+            }
+        }
+        END {if (NR!=1) exit 1}'
+}
+
 xcat_zfs_disk_inventory()
 (
-    [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ] || exit 1
+    xcat_guarded_storage || exit 1
     xcat_members=$(xcat_zfs_members) || exit 1
+    xcat_inventory=$(xcat_disk_inventory "$xcat_members" 4294967296) || exit 1
+    if [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ]; then
+        printf '%s\n' "$xcat_inventory" | awk -F '\t' -v ashift="$XCAT_ZFS_ASHIFT" '2^ashift < $5 {exit 1}' || {
+            xcat_error 'ZFS ashift is smaller than a selected disk sector'; exit 1
+        }
+    fi
+    printf '%s\n' "$xcat_inventory"
+)
+
+xcat_preserved_inventory()
+(
+    [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ] || exit 0
+    xcat_members=$(xcat_preserved_members) || exit 1
+    [ -n "$xcat_members" ] || exit 0
+    xcat_disk_inventory "$xcat_members"
+)
+
+xcat_disk_inventory()
+(
+    xcat_members=$1
+    [ -n "$xcat_members" ] || exit 1
     xcat_disks=$(sysctl -n kern.disks) || exit 1
     xcat_disk_info=$(geom disk list) || exit 1
     xcat_inventory=$(printf '%s\n' "$xcat_disk_info" |
-        XCAT_STORAGE_MEMBERS="$xcat_members" XCAT_STORAGE_DISKS="$xcat_disks" awk '
+        XCAT_STORAGE_MEMBERS="$xcat_members" XCAT_STORAGE_DISKS="$xcat_disks" awk -v minimum="${2:-1048576}" '
         BEGIN {
             members=ENVIRON["XCAT_STORAGE_MEMBERS"]; disks=ENVIRON["XCAT_STORAGE_DISKS"]
             count=split(members, rows, "\n")
@@ -344,7 +411,7 @@ xcat_zfs_disk_inventory()
                     id_count[d] != 1 || ident[d] != serial[d] || identities[serial[d]] != 1 ||
                     sizes[d] != 1 || sectors[d] != 1 || modes[d] != 1 ||
                     size[d] !~ /^[1-9][0-9]*$/ || length(size[d]) > 16 ||
-                    size[d]+0 > 9007199254740991 || size[d]+0 < 4294967296 ||
+                    size[d]+0 > 9007199254740991 || size[d]+0 < minimum ||
                     sector[d] !~ /^(512|4096)$/ || size[d] % sector[d] ||
                     mode[d] !~ /^r[0-9]+w[0-9]+e[0-9]+$/) exit 1
                 output=output rows[i] "\t" size[d] "\t" sector[d] "\t" mode[d] "\n"
@@ -437,6 +504,7 @@ XCAT_ZFS_SNAPSHOT
 
 xcat_check_zfs_initial()
 (
+    xcat_preserved_inventory >/dev/null || exit 1
     xcat_snapshot=$(xcat_zfs_disk_inventory) || exit 1
     printf '%s\n' "$xcat_snapshot" | awk -F '\t' 'NF != 7 || $6 != "r0w0e0" {exit 1}' || {
         xcat_error 'A selected ZFS disk is in use'; exit 1
@@ -453,6 +521,86 @@ xcat_check_zfs_initial()
     xcat_after=$(xcat_zfs_disk_inventory) || exit 1
     [ "$xcat_after" = "$xcat_snapshot" ] || { xcat_error 'The ZFS disk set changed during preflight'; exit 1; }
     printf '%s\n' "$xcat_snapshot"
+)
+
+xcat_check_zfs_reinstall()
+(
+    [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ] && [ "$XCAT_DISK_ACTION" = erase ] || exit 1
+    xcat_snapshot=$(xcat_zfs_disk_inventory) || exit 1
+    printf '%s\n' "$xcat_snapshot" | awk -F '\t' '$6 != "r0w0e0" {exit 1}' || {
+        xcat_error 'An OS disk is in use'; exit 1
+    }
+    xcat_preserved=$(xcat_preserved_inventory) || exit 1
+    xcat_pools=$(zpool list -H -o name) && xcat_geli=$(geli status -s) || exit 1
+    [ -z "$xcat_pools$xcat_geli" ] || { xcat_error 'Active storage prevents OS reinstall'; exit 1; }
+    xcat_graph=$(sysctl -n kern.geom.conftxt) || exit 1
+    printf '%s\n' "$xcat_graph" | XCAT_STORAGE_SNAPSHOT="$xcat_snapshot" awk '
+        BEGIN {
+            n=split(ENVIRON["XCAT_STORAGE_SNAPSHOT"],rows,"\n")
+            for(i=1;i<=n;i++) {split(rows[i],f,"\t"); size[f[1]]=f[4]; sector[f[1]]=f[5]; serial[f[1]]=f[2]}
+        }
+        $1 == 0 {root=$3; delete parent; if(root in size) {seen[root]++; if($2!="DISK" || $4!=size[root] || $5!=sector[root]) bad=1}; next}
+        root in size {
+            ancestor=parent[$1-1]; parent[$1]=$3
+            if($2=="PART" && (($1==1 && $3 ~ ("^" root "p[1-9][0-9]*$")) ||
+                ($1==2 && ancestor=="diskid/DISK-" serial[root] && index($3,ancestor "p")==1 &&
+                substr($3,length(ancestor)+2)~/^[1-9][0-9]*$/)) && $4>0 && $4+0<=size[root]+0 && $5==sector[root] &&
+                $6=="i" && $8=="o" && $9>0 && $9+$4<=size[root] && $10=="ty" &&
+                $11~/^(efi|freebsd-boot|freebsd-zfs|freebsd-ufs|freebsd-swap)$/ && $12=="xs" && $13=="GPT") {
+                signature=$4 " " $5 " " $9 " " $11
+                key=root SUBSEP $7
+                if($1==1) native[key]=signature; else aliases[key]=signature
+                part[$3]=1; next
+            }
+            if($2=="LABEL" && (($1==1 && $3=="diskid/DISK-" serial[root]) ||
+                (($1==2 || $1==3) && ancestor in part && $3~/^(gpt|gptid)\/[A-Za-z0-9_.+-]+$/))) next
+            bad=1
+        }
+        END {
+            for(d in size) if(seen[d]!=1) bad=1
+            for(k in aliases) if(aliases[k]!=native[k]) bad=1
+            exit bad
+        }' || {
+        xcat_error 'An OS disk has an unsupported provider or partition layout'; exit 1
+    }
+    xcat_scan_labels || exit 1
+    xcat_partitions=$(gpart list) || exit 1
+    xcat_selected_tables=$(printf '%s\n' "$xcat_partitions" | XCAT_STORAGE_SNAPSHOT="$xcat_snapshot" awk '
+        BEGIN {n=split(ENVIRON["XCAT_STORAGE_SNAPSHOT"],rows,"\n"); for(i=1;i<=n;i++){split(rows[i],f,"\t"); wanted[f[1]]=1}}
+        $1=="Geom" && $2=="name:" {selected=($3 in wanted)}
+        selected {
+            if(($1=="scheme:" && $2!="GPT") || ($1=="state:" && $2!="OK") ||
+                ($1=="modified:" && $2!="false") || ($1=="Mode:" && $2!="r0w0e0")) bad=1
+            print
+        }
+        END {exit bad}') || exit 1
+    [ "$(xcat_zfs_disk_inventory)" = "$xcat_snapshot" ] &&
+        [ "$(xcat_preserved_inventory)" = "$xcat_preserved" ] || exit 1
+    printf '%s\n' "$xcat_snapshot"
+    printf 'preserved\n%s\npartitions\n%s\nlabels\n%s\n' "$xcat_preserved" "$xcat_selected_tables" "$XCAT_REINSTALL_LABELS"
+)
+
+xcat_erase_os_disks()
+(
+    xcat_before=$(cat "$1") && xcat_now=$(xcat_check_zfs_reinstall) || exit 1
+    [ "$xcat_now" = "$xcat_before" ] || { xcat_error 'OS or preserved disk state changed before reinstall'; exit 1; }
+    xcat_snapshot=$(xcat_zfs_disk_inventory) && xcat_preserved=$(xcat_preserved_inventory) || exit 1
+    xcat_scan_labels || exit 1
+    for xcat_provider in $XCAT_CLEAR_LABELS; do zpool labelclear -f "$xcat_provider" >/dev/null || exit 1; done
+    while IFS="$(printf '\t')" read -r xcat_disk xcat_serial xcat_group xcat_size xcat_sector xcat_mode xcat_device_id; do
+        xcat_identity=$(xcat_zfs_disk_inventory) || exit 1
+        [ "$(printf '%s\n' "$xcat_identity" | cut -f1-5,7)" = "$(printf '%s\n' "$xcat_snapshot" | cut -f1-5,7)" ] || exit 1
+        xcat_parts=$(gpart show "$xcat_disk" 2>/dev/null) || xcat_parts=
+        if [ -n "$xcat_parts" ]; then gpart destroy -F "$xcat_disk" >/dev/null || exit 1; fi
+        for xcat_offset in 0 "$(( (xcat_size - 1048576) / xcat_sector ))"; do
+            dd if=/dev/zero of="/dev/$xcat_disk" bs="$xcat_sector" seek="$xcat_offset" \
+                count="$((1048576 / xcat_sector))" conv=notrunc || exit 1
+        done
+    done <<XCAT_OS_DISKS
+$xcat_snapshot
+XCAT_OS_DISKS
+    [ "$(xcat_preserved_inventory)" = "$xcat_preserved" ] || exit 1
+    xcat_check_zfs_initial
 )
 
 xcat_check_disk()
@@ -476,9 +624,10 @@ xcat_check_disk()
 
 xcat_scan_labels()
 {
+    XCAT_REINSTALL_LABELS=
     XCAT_CLEAR_LABELS=
     xcat_disks=$(sysctl -n kern.disks) || return 1
-    if [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ]; then
+    if xcat_guarded_storage; then
         xcat_selected=$(xcat_zfs_members) || return 1
         xcat_selected=$(printf '%s\n' "$xcat_selected" | awk '{print $1}') || return 1
         [ -n "$xcat_selected" ] || return 1
@@ -525,14 +674,24 @@ xcat_scan_labels()
             esac
             printf '%s\n' "$xcat_labels" | awk '$1 == "pool_guid:" {found=1} END {exit !found}' ||
                 { xcat_error "Cannot identify ZFS labels on $xcat_provider"; return 1; }
-            if [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ]; then
+            if xcat_guarded_storage; then
                 for xcat_member in $xcat_selected; do
                     [ "$xcat_member" != "$xcat_disk" ] || {
+                        if [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ] && [ "$XCAT_DISK_ACTION" = erase ]; then
+                            printf '%s\n' "$xcat_labels" | awk '
+                                $1 == "name:" {found++; if ($2 != "\047zroot\047") bad=1}
+                                END {exit !found || bad}' || { xcat_error 'An OS disk contains a data pool'; return 1; }
+                            XCAT_CLEAR_LABELS="$XCAT_CLEAR_LABELS /dev/$xcat_provider"
+                            xcat_label_hash=$(printf '%s\n' "$xcat_labels" | sha256 -q) || return 1
+                            XCAT_REINSTALL_LABELS="$XCAT_REINSTALL_LABELS$xcat_provider $xcat_label_hash
+"
+                            continue 2
+                        fi
                         xcat_error 'A selected disk already contains ZFS labels'; return 1
                     }
                 done
             fi
-            if [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ] || [ "$xcat_disk" != "$XCAT_TARGET_DISK" ]; then
+            if xcat_guarded_storage || [ "$xcat_disk" != "$XCAT_TARGET_DISK" ]; then
                 if [ "$XCAT_FILESYSTEM" = zfs ] && printf '%s\n' "$xcat_labels" | awk '$1 == "name:" && $2 == "\047zroot\047" {found=1} END {exit !found}'; then
                     xcat_error 'An unselected disk contains a zroot pool'; return 1
                 fi
@@ -580,7 +739,7 @@ xcat_write_installer()
         printf 'DISTRIBUTIONS="base.txz kernel.txz"\nBSDINSTALL_DISTDIR="%s/dist"\nexport nonInteractive="YES"\n' "$XCAT_WORK"
     fi
     if [ "$XCAT_FILESYSTEM" = zfs ]; then
-        if [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ]; then
+        if xcat_guarded_storage; then
             xcat_members=$(xcat_zfs_members) || return 1
             xcat_disks=$(printf '%s\n' "$xcat_members" | awk '{s=s (NR == 1 ? "" : " ") $1} END {print s}') || return 1
             printf 'export ZFSBOOT_DISKS="%s"\nexport ZFSBOOT_VDEV_TYPE="%s"\n' "$xcat_disks" "$XCAT_ZFS_TOPOLOGY"
@@ -588,13 +747,17 @@ xcat_write_installer()
             printf 'export ZFSBOOT_DISKS="%s"\nexport ZFSBOOT_VDEV_TYPE="stripe"\n' "$XCAT_TARGET_DISK"
         fi
         printf 'export ZFSBOOT_POOL_NAME="zroot"\nexport ZFSBOOT_PARTITION_SCHEME="GPT"\nexport ZFSBOOT_SWAP_SIZE="%s"\n' "$XCAT_SWAP_SIZE"
+        if [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ]; then
+            printf 'export ZFSBOOT_FORCE_4K_SECTORS=""\nexport ZFSBOOT_POOL_CREATE_OPTIONS="-o ashift=%s -O compression=%s -O atime=off"\n' \
+                "$XCAT_ZFS_ASHIFT" "$XCAT_ZFS_COMPRESSION"
+        fi
     elif [ "$XCAT_SWAP_SIZE" = 0 ]; then
         printf 'PARTITIONS="%s GPT { auto freebsd-ufs / }"\n' "$XCAT_TARGET_DISK"
     else
         printf 'PARTITIONS="%s GPT { %s freebsd-swap, auto freebsd-ufs / }"\n' "$XCAT_TARGET_DISK" "$XCAT_SWAP_SIZE"
     fi
     cat "$1" || return 1
-    if [ "$XCAT_FORMAT" = xcat-freebsd-install-3 ] || [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ]; then
+    if [ "$XCAT_FORMAT" = xcat-freebsd-install-3 ] || xcat_guarded_storage; then
         printf '\ncat >> /boot/loader.conf <<\047XCAT_LOADER_SETTINGS\047\n'
         xcat_boot_options "$XCAT_TARGET_BOOT_OPTIONS_BASE64" && xcat_console_settings || return 1
         printf 'XCAT_LOADER_SETTINGS\n'
@@ -632,7 +795,7 @@ xcat_pkgbase_workspace()
 
 xcat_prepare_pkgbase()
 {
-    case "$XCAT_FORMAT" in xcat-freebsd-install-2|xcat-freebsd-install-3|xcat-freebsd-install-4) ;; *) return 1 ;; esac
+    case "$XCAT_FORMAT" in xcat-freebsd-install-2|xcat-freebsd-install-3|xcat-freebsd-install-4|xcat-freebsd-install-5) ;; *) return 1 ;; esac
     xcat_hex "$XCAT_ATTEMPT" 32 || return 1
     # The caller owns begin and disk access. This entry only fills its RAM workspace.
     env -i PATH=/sbin:/bin:/usr/sbin:/usr/bin LC_ALL=C XCAT_ATTEMPT="$XCAT_ATTEMPT" \
@@ -645,7 +808,7 @@ xcat_install_system()
     xcat_install_parent=$XCAT_WORK
     case "$XCAT_FORMAT" in
         xcat-freebsd-install-1) ;;
-        xcat-freebsd-install-2|xcat-freebsd-install-3|xcat-freebsd-install-4)
+        xcat-freebsd-install-2|xcat-freebsd-install-3|xcat-freebsd-install-4|xcat-freebsd-install-5)
             [ -f /xcat/runtime.tsv ] && [ ! -L /xcat/runtime.tsv ] || {
                 xcat_error 'Pkgbase installation runtime is not available'
                 return 1
@@ -656,9 +819,13 @@ xcat_install_system()
         *) xcat_error 'Unsupported installation configuration'; return 1 ;;
     esac
     kldload -n zfs && kldload -n geom_eli || return 1
-    if [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ]; then
-        xcat_snapshot=$(xcat_check_zfs_initial) || return 1
-        printf '%s\n' "$xcat_snapshot" > "$XCAT_WORK/storage.snapshot" || return 1
+    if xcat_guarded_storage; then
+        if [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ] && [ "$XCAT_DISK_ACTION" = erase ]; then
+            xcat_check_zfs_reinstall > "$XCAT_WORK/reinstall.snapshot" || return 1
+        else
+            xcat_snapshot=$(xcat_check_zfs_initial) || return 1
+            printf '%s\n' "$xcat_snapshot" > "$XCAT_WORK/storage.snapshot" || return 1
+        fi
         for xcat_directory in target etc boot tmp; do
             mkdir -m 0700 "$xcat_install_parent/$xcat_directory" || return 1
         done
@@ -671,12 +838,16 @@ xcat_install_system()
     xcat_write_installer "$1" "${2:-${1%/*}/xcat-install-lib.sh}" > "$XCAT_WORK/installerconfig" || return 1
     xcat_status begin || return 1
     set --
-    if [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ]; then
-        xcat_current_snapshot=$(xcat_check_zfs_initial) || return 1
-        [ "$xcat_current_snapshot" = "$xcat_snapshot" ] || {
-            xcat_error 'The ZFS disk set changed while awaiting the controller'
-            return 1
-        }
+    if xcat_guarded_storage; then
+        if [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ] && [ "$XCAT_DISK_ACTION" = erase ]; then
+            xcat_erase_os_disks "$XCAT_WORK/reinstall.snapshot" > "$XCAT_WORK/storage.snapshot" || return 1
+        else
+            xcat_current_snapshot=$(xcat_check_zfs_initial) || return 1
+            [ "$xcat_current_snapshot" = "$xcat_snapshot" ] || {
+                xcat_error 'The ZFS disk set changed while awaiting the controller'
+                return 1
+            }
+        fi
         /usr/local/libexec/xcat-storage "$xcat_install_parent/job" arm \
             "$XCAT_WORK/config" "$XCAT_WORK/storage.snapshot" || return 1
         set -- "XCAT_STORAGE_WORK=$xcat_install_parent/job" \
@@ -693,7 +864,7 @@ xcat_install_system()
         XCAT_NETMASK="$XCAT_NETMASK" XCAT_GATEWAY="$XCAT_GATEWAY" XCAT_NAMESERVERS="$XCAT_NAMESERVERS" \
         XCAT_AUTHORIZED_KEY_BASE64="$XCAT_AUTHORIZED_KEY_BASE64" XCAT_WORK="$XCAT_WORK" \
         "$@" bsdinstall script "$XCAT_WORK/installerconfig" > "$XCAT_WORK/bsdinstall.log" 2>&1 || return 1
-    if [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ]; then
+    if xcat_guarded_storage; then
         xcat_storage_phase=$(cat "$xcat_install_parent/job/phase") || return 1
         [ "$xcat_storage_phase" = complete ] &&
             [ ! -e "$xcat_install_parent/job/failed" ] && [ ! -e "$xcat_install_parent/job/busy" ] &&

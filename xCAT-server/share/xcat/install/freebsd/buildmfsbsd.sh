@@ -165,7 +165,7 @@ fi
 awk '!/^[A-Za-z0-9_.+-]+(\/[A-Za-z0-9_.+-]+)*$/ || /(^|\/)\.\.?($|\/)/ {exit 1}' "$build_work/payload-files" || xcat_error 'Unsupported boot payload filename'
 {
     printf '{"format":"%s","release":"15.1-RELEASE","arch":"amd64","mfsbsd_commit":"%s",' "$bundle_format" "$source_commit"
-    [ "$bundle_format" != xcat-mfsbsd-2 ] || printf '"install_contract":"xcat-freebsd-install-4","postscript_contract":"xcat-freebsd-postscripts-1",'
+    [ "$bundle_format" != xcat-mfsbsd-2 ] || printf '"install_contract":"xcat-freebsd-install-5","postscript_contract":"xcat-freebsd-postscripts-1",'
     printf '"files":{'
     separator=
     while IFS= read -r payload_file; do
