@@ -84,7 +84,7 @@ cleanup()
 trap cleanup EXIT
 trap 'exit 1' HUP INT TERM
 
-printf '1..5\n'
+printf '1..7\n'
 sysrc -q xcat_network_fixture=YES
 fingerprint > "$work/appended.fingerprint"
 apply > "$work/appended.stdout" 2> "$work/appended.stderr"
@@ -99,9 +99,24 @@ route -n add -inet6 -net 2001:db8:99::/64 ::1
 route6=1
 ifconfig lo99 create
 clone=1
-sysrc -q 'static_routes+=xcat_network_fixture4' 'ipv6_static_routes+=xcat_network_fixture6' \
-    'cloned_interfaces+=lo99' 'route_xcat_network_fixture4=-net 203.0.113.0/24 127.0.0.1' \
-    'ipv6_route_xcat_network_fixture6=-net 2001:db8:99::/64 ::1'
+newline='
+'
+printf '%s="%s"\n' \
+    static_routes "$(sysrc -n static_routes)${newline}xcat_network_fixture4" \
+    ipv6_static_routes "$(sysrc -n ipv6_static_routes)${newline}xcat_network_fixture6" \
+    cloned_interfaces "$(sysrc -n cloned_interfaces)${newline}lo99" > "$work/manual-lists.rc"
+awk -v lists="$work/manual-lists.rc" '
+    /^(static_routes|ipv6_static_routes|cloned_interfaces)=/ {next}
+    $0 == "# END xCAT FreeBSD network" {
+        while ((getline line < lists) > 0) print line
+        close(lists)
+    }
+    {print}
+' /etc/rc.conf > "$work/manual.rc"
+cat "$work/manual.rc" > /etc/rc.conf
+printf '%s="%s"\n' \
+    route_xcat_network_fixture4 '-net 203.0.113.0/24 127.0.0.1' \
+    ipv6_route_xcat_network_fixture6 '-net 2001:db8:99::/64 ::1' >> /etc/rc.conf
 fingerprint > "$work/manual.fingerprint"
 apply > "$work/manual.stdout" 2> "$work/manual.stderr"
 grep -q 'configuration is unchanged' "$work/manual.stdout"
@@ -139,9 +154,9 @@ printf 'ok 4 - reverting the managed plan preserves the manual additions\n'
 
 cp -p /etc/rc.conf "$work/options.rc"
 options=1
-for setting in "ifconfig_$nic=up -lro -tso" "ifconfig_${nic}_ipv6=inet6 ifdisabled -auto_linklocal" \
+for setting in "ifconfig_$nic=up${newline}-lro -tso" "ifconfig_${nic}_ipv6=inet6 ifdisabled -auto_linklocal" \
     "ifconfig_${nic}_alias0=inet 198.19.0.2/24 fib 1"; do
-    sysrc -q "$setting"
+    printf '%s="%s"\n' "${setting%%=*}" "${setting#*=}" >> /etc/rc.conf
     fingerprint > "$work/options-before.fingerprint"
     status=0
     apply > "$work/options.stdout" 2> "$work/options.stderr" || status=$?
@@ -149,7 +164,33 @@ for setting in "ifconfig_$nic=up -lro -tso" "ifconfig_${nic}_ipv6=inet6 ifdisabl
     cp -p "$work/options.rc" /etc/rc.conf
     [ "$status" = 1 ]
     grep -q 'Interface options require manual integration' "$work/options.stderr"
+    if grep -q 'restoring the previous network configuration' "$work/options.stderr"; then exit 1; fi
     cmp -s "$work/options-before.fingerprint" "$work/options-after.fingerprint"
     [ ! -e "$state/pending" ]
 done
 printf 'ok 5 - existing interface options reject adoption before mutation\n'
+
+for setting in 'ifconfig_DEFAULT=up -lro' "ipv6_ifconfig_$nic=2001:db8:99::2 prefixlen 64" \
+    "ipv6_ifconfig_${nic}_alias0=2001:db8:99::3 prefixlen 64"; do
+    printf '%s="%s"\n' "${setting%%=*}" "${setting#*=}" >> /etc/rc.conf
+    case "$setting" in ifconfig_DEFAULT=*) printf '\nunset ifconfig_%s_ipv6\n' "$nic" >> /etc/rc.conf ;; esac
+    fingerprint > "$work/options-before.fingerprint"
+    status=0
+    apply > "$work/options.stdout" 2> "$work/options.stderr" || status=$?
+    fingerprint > "$work/options-after.fingerprint"
+    cp -p "$work/options.rc" /etc/rc.conf
+    [ "$status" = 1 ]
+    grep -q 'Interface options require manual integration' "$work/options.stderr"
+    if grep -q 'restoring the previous network configuration' "$work/options.stderr"; then exit 1; fi
+    cmp -s "$work/options-before.fingerprint" "$work/options-after.fingerprint"
+    [ ! -e "$state/pending" ]
+done
+printf 'ok 6 - IPv6 fallback and obsolete address settings require integration\n'
+
+printf '%s="%s"\n' ifconfig_DEFAULT 'up -lro' "ifconfig_${nic}_ipv6" '' >> /etc/rc.conf
+apply > "$work/empty-ipv6.stdout" 2> "$work/empty-ipv6.stderr"
+[ "$(sysrc -n ifconfig_DEFAULT)" = 'up -lro' ]
+cp -p "$work/options.rc" /etc/rc.conf
+cmp -s "$state/current" "$work/before.plan"
+[ ! -e "$state/pending" ]
+printf 'ok 7 - an explicitly empty IPv6 setting suppresses the default fallback\n'

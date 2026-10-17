@@ -419,6 +419,8 @@ subtest 'physical adoption protects existing interface options' => sub {
         'create_args_vtnet1: ether 52:54:00:12:34:56',
         'vlans_vtnet1: 100',
         'ipv6_prefix_vtnet1: 2001:db8:1::',
+        'ipv6_ifconfig_vtnet1: 2001:db8:1::10 prefixlen 64',
+        'ipv6_ifconfig_vtnet1_alias0: 2001:db8:1::11 prefixlen 64',
     ) {
         my ($status, undef, $error) = inspect_state('rcoptions', $plan, "$setting\n");
         isnt($status, 0, 'unsupported persistent options require integration');
@@ -431,6 +433,23 @@ subtest 'physical adoption protects existing interface options' => sub {
         . "ifconfig_vtnet1_aliases: inet6 2001:db8:1::11/64 alias\n"
         . "ifconfig_vtnet10: up -lro\nifconfig_vtnet0: up -tso\n");
     is($status, 0, 'static settings and unrelated interface options allow adoption') or diag($error);
+    ($status, undef, $error) = inspect_state('rcoptions', $plan,
+        "ifconfig_vtnet1_ipv6: DHCP NOAUTO SYNCDHCP nosyncdhcp WPA hostap\n");
+    is($status, 0, 'IPv6 accepts the pseudo arguments removed by native ifconfig_getargs') or diag($error);
+    done_testing();
+};
+
+subtest 'legacy IPv6 settings cannot configure a managed clone at boot' => sub {
+    my ($compiled, $plan) = compile_plan(chain());
+    is($compiled, 0, 'the composed topology compiles');
+    for my $key (qw(ipv6_ifconfig_bridge0 ipv6_ifconfig_bridge0_alias0)) {
+        my ($status, undef, $error) = inspect_state('rcoptions', $plan, "$key: 2001:db8:1::11 prefixlen 64\n");
+        isnt($status, 0, 'the obsolete address setting requires integration');
+        like($error, qr/Interface[ ]options[ ]require[ ]manual[ ]integration/x, 'the diagnostic identifies the boundary');
+    }
+    my ($status, undef, $error) = inspect_state('rcoptions', $plan,
+        "ipv6_ifconfig_bridge0: \nipv6_ifconfig_bridge0_alias0: \nipv6_ifconfig_bridge7: 2001:db8:7::1\n");
+    is($status, 0, 'empty settings and unrelated interfaces remain available') or diag($error);
     done_testing();
 };
 
