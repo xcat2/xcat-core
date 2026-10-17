@@ -827,4 +827,49 @@ sub dhcp6_configuration_tests {
 }
 dhcp6_configuration_tests();
 
+sub dhcp4_default_route_tests {
+    subtest 'DHCPv4 default routes follow native lease precedence' => sub {
+        my $path = "$directory/default.lease";
+        my $header = "Internet:\nDestination Gateway Flags Netif Expire\n";
+        for my $lease_case (
+            ['routers', '192.0.2.1 192.0.2.254', '', "R\tinet\tdefault\t192.0.2.1\tvtnet1\n"],
+            ['no router', '', '', ''],
+            ['classless default', '192.0.2.254', '0 192 0 2 1', "R\tinet\tdefault\t192.0.2.1\tvtnet1\n"],
+            ['classless without default', '192.0.2.254', '24 203 0 113 192 0 2 1', ''],
+            ['partial prefix then default', '', '9 10 128 192 0 2 254 0 192 0 2 1', "R\tinet\tdefault\t192.0.2.1\tvtnet1\n"],
+            ['on-link default', '', '0 0 0 0 0', "Q\tinet\tvtnet1\n"],
+            ['own address as router', '192.0.2.10', '', "Q\tinet\tvtnet1\n"],
+        ) {
+            open(my $out, '>', $path) or croak $!;
+            print {$out} "old_ip_address\t192.0.2.10\nold_routers\t$lease_case->[1]\nold_classless_routes\t$lease_case->[2]\n";
+            close($out) or croak $!;
+            my ($status, $plan, $error) = invoke({}, '-v', 'mode=dhcp4-default', '-v', 'nic=vtnet1', $path);
+            is($status, 0, "$lease_case->[0] is understood") or diag($error);
+            is($plan, $lease_case->[3], 'the default follows the lease options');
+            if ($plan ne '') {
+                my $gateway = $plan =~ /^Q/x ? 'link#2' : '192.0.2.1';
+                is((inspect_state('routes', $plan, $header . "default $gateway UGS vtnet1\n"))[0], 0,
+                    'the leased default passes kernel readback');
+                isnt((inspect_state('routes', $plan, $header))[0], 0, 'a missing default is incomplete');
+                isnt((inspect_state('routes', $plan, $header . "default $gateway UGS vtnet2\n"))[0], 0,
+                    'a default on the former interface is rejected');
+                if ($plan =~ /^R/x) {
+                    isnt((inspect_state('routes', $plan, $header . "default 192.0.2.254 UGS vtnet1\n"))[0], 0,
+                        'a wrong gateway on the right interface is rejected');
+                }
+            }
+        }
+        for my $bad ('0 192 0 2', '33 10 0 0 0 192 0 2 1', '0 256 0 2 1') {
+            open(my $out, '>', $path) or croak $!;
+            print {$out} "old_classless_routes\t$bad\n";
+            close($out) or croak $!;
+            my ($status, $plan) = invoke({}, '-v', 'mode=dhcp4-default', '-v', 'nic=vtnet1', $path);
+            isnt($status, 0, 'a malformed classless route is rejected');
+            is($plan, '', 'an invalid lease emits no expected route');
+        }
+    };
+    return;
+}
+dhcp4_default_route_tests();
+
 done_testing();
