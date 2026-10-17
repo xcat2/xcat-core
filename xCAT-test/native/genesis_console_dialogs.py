@@ -238,11 +238,14 @@ class ConsoleJournal(ConsoleTerminal):
         self.wait_text("Genesis logs")
         self.wait_text("F3 Back")
 
+    def selected_rows(self):
+        return ["".join(self.screen.buffer[row][column].data
+                        for column in range(self.screen.columns)
+                        if self.screen.buffer[row][column].bg == "red").strip()
+                for row in range(self.screen.lines)]
+
     def selected_text(self):
-        return "\n".join("".join(self.screen.buffer[row][column].data
-                                  for column in range(self.screen.columns)
-                                  if self.screen.buffer[row][column].bg == "red").strip()
-                         for row in range(self.screen.lines)).strip()
+        return "\n".join(self.selected_rows()).strip()
 
     def wait_selected(self, text):
         return self.wait_screen(lambda display: self.selected_text().endswith(text),
@@ -339,6 +342,77 @@ class ConsoleJournal(ConsoleTerminal):
         self.assert_selection_stays(selected)
         self.key(b"\x1b[B")
         self.wait_selected("RECORD-0003")
+
+    def visible_entries(self):
+        return [message for message, unit, identifier in self.entries
+                if any(message in line for line in self.screen.display)]
+
+    def assert_paused(self, text):
+        before = self.selected_rows()
+        self.assertIn(text, self.selected_text())
+        self.assert_screen_stays(lambda display: self.selected_rows() == before,
+                                 "Paused journal selection moved", 5)
+
+    def test_logs_follow_pause_and_reopen(self):
+        self.write_journal([
+            ("FIRST", "xcat-genesis-register.service", "unit-fixture"),
+            ("TAIL", "other.service", "xcat-genesis-discovery"),
+        ])
+        self.open_logs()
+        self.wait_selected("TAIL")
+        self.write_journal([("FOLLOWED", "other.service", "xcat-genesis-register")])
+        self.wait_selected("FOLLOWED")
+        self.key(b"\x1b[H")
+        self.wait_selected("FIRST")
+        self.write_journal([("PAUSED", "other.service", "xcat-genesis-register")])
+        self.wait_text("PAUSED")
+        self.assert_paused("FIRST")
+        self.key(b"\x1b[F")
+        self.wait_selected("PAUSED")
+        self.write_journal([("END-FOLLOWED", "other.service", "xcat-genesis-register")])
+        self.wait_selected("END-FOLLOWED")
+        for index, close_key in enumerate((b"\x1bOR", b"\x1b")):
+            with self.subTest(close_key=close_key):
+                self.key(b"\x1b[H")
+                self.wait_selected("FIRST")
+                self.key(close_key)
+                self.wait_text("Genesis status")
+                self.open_logs()
+                self.wait_selected("END-FOLLOWED" if index == 0 else "REOPENED-0")
+                message = f"REOPENED-{index}"
+                self.write_journal([(message, "other.service", "xcat-genesis-register")])
+                self.wait_selected(message)
+
+    def test_logs_arrow_and_page_keys_pause_and_resume(self):
+        self.write_journal([(f"HISTORY-{number:03d}", "other.service", "xcat-genesis-register")
+                            for number in range(40)])
+        self.open_logs()
+        self.wait_selected("HISTORY-039")
+        for up, down in ((b"\x1b[A", b"\x1b[B"), (b"\x1b[5~", b"\x1b[6~")):
+            with self.subTest(up=up):
+                previous_tail = f"HISTORY-{len(self.entries) - 1:03d}"
+                if up == b"\x1b[A":
+                    paused = f"HISTORY-{len(self.entries) - 2:03d}"
+                else:
+                    visible = self.visible_entries()
+                    self.assertGreater(len(visible), 2)
+                    paused = visible[0]
+                self.key(up)
+                self.wait_selected(paused)
+                message = f"HISTORY-{len(self.entries):03d}"
+                self.write_journal([(message, "other.service", "xcat-genesis-register")])
+                self.assert_paused(paused)
+                self.key(down)
+                self.wait_selected(previous_tail)
+                message = f"HISTORY-{len(self.entries):03d}"
+                self.write_journal([(message, "other.service", "xcat-genesis-register")])
+                self.assert_paused(previous_tail)
+                self.key(down)
+                self.key(down)
+                self.wait_selected(message)
+                following = f"HISTORY-{len(self.entries):03d}"
+                self.write_journal([(following, "other.service", "xcat-genesis-register")])
+                self.wait_selected(following)
 
     def test_empty_journal(self):
         self.open_logs()
