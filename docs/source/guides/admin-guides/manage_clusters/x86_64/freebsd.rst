@@ -20,13 +20,16 @@ Scope and requirements
 * Use ``netboot=xnba`` and an imported ``imagetype=freebsd`` installation image.
 * Select each disk by its FreeBSD device name and hardware serial. Automatic
   disk selection is not available. A single-disk policy replaces that disk's
-  contents. A new multi-disk policy accepts only blank initial disks.
+  contents. An explicit ZFS policy selects empty disks or whole OS-disk erase.
+  Keep user data on separate, dedicated drives.
 * Select single-disk UFS or ZFS, a ZFS mirror, striped mirrors, or RAID-Z1/2/3.
   Multi-disk policies require a version 2 image with the current storage runtime.
-  Encryption, separate boot pools, GEOM/UFS mirrors, and Linux ZFS provisioning
-  are outside this implementation.
+  Dedicated data pools can use log, cache and redundant special devices, with
+  optional automatic encryption. OS encryption, dRAID, separate boot pools,
+  GEOM/UFS mirrors and Linux ZFS provisioning are outside this implementation.
 * Use IPv4 and one provisioning interface selected by MAC address. After disk
-  boot, ``confignetwork`` can configure additional interfaces and static IPv6.
+  boot, ``confignetwork`` can configure additional interfaces, static addresses
+  and reserved DHCPv4/DHCPv6 leases.
   The node name must
   resolve to that interface's address, and reverse resolution must identify the
   same xCAT node. Status callbacks must retain that source address without NAT.
@@ -585,11 +588,9 @@ do not use the Linux installation-template syntax.
 Multi-disk ZFS policy
 ---------------------
 
-Multi-disk installation accepts blank disks only. It rejects existing
-partition tables, pools, other detected layouts, and ambiguous ownership.
-This includes a previous successful installation and a partially completed
-installation. There is no pool-GUID override or automatic destructive retry.
-The single-disk policy above retains its existing reinstall behavior.
+The default ``disk_action=empty`` accepts blank disks only. Existing layouts
+require the explicit reinstall policy below. There is no automatic destructive
+retry. The single-disk policy above retains its existing reinstall behavior.
 
 For a two-way mirror, use a disk policy such as::
 
@@ -598,6 +599,8 @@ For a two-way mirror, use a disk policy such as::
     zfs_vdevs=da0@SERIAL_A,da1@SERIAL_B
     swap_mode=none
     swap_size=0
+    zfs_compression=lz4
+    zfs_ashift=12
 
 Replace each example serial with the verified hardware serial. Each member is
 ``device@serial``. Commas separate members within a group. Semicolons separate
@@ -612,6 +615,8 @@ these values. Do not combine these fields with ``target_disk`` or
      - Required membership
    * - ``mirror``
      - One group of at least 2 members.
+   * - ``stripe``
+     - Exactly 1 OS disk, using the same explicit storage policy.
    * - ``raid10``
      - At least 2 groups, each containing exactly 2 members.
    * - ``raidz1``
@@ -631,7 +636,7 @@ For four-disk striped mirrors, the membership can be::
     zfs_topology=raid10
     zfs_vdevs=da0@SERIAL_A,da1@SERIAL_B;da2@SERIAL_C,da3@SERIAL_D
 
-Keep the other three fields from the mirror example. The pair boundaries are
+Keep the other fields from the mirror example. The pair boundaries are
 part of the policy. Losing both members of one pair prevents root-pool access,
 even when another pair remains intact. RAID-Z tolerates losses only within its
 parity limit. Its boot loader still needs enough surviving pool members.
@@ -656,10 +661,135 @@ installation. A failure after partitioning starts can leave partial layouts.
 It has no automatic rollback. Preserve the failure report and resolve the
 disk contents explicitly before requesting another initial installation.
 
-Use an image built with the current ``xcat-freebsd-install-4`` runtime.
-Preparation rejects a multi-disk policy with an older boot runtime.
+``zfs_compression`` defaults to ``lz4``. It also accepts ``off``, ``gzip``,
+``gzip-1`` through ``gzip-9``, ``zstd``, and ``zstd-1`` through ``zstd-19``.
+``zfs_ashift`` defaults to ``12`` and accepts integers from 9 through 16.
+It sets the pool sector size exponent at creation. It must accommodate every
+selected device's logical sector size. Choose it for the actual drive geometry.
+Changing the policy does not change an existing pool's vdev sector size.
+
+Use an image built with the current ``xcat-freebsd-install-5`` runtime for
+these properties and reinstall controls. Preparation rejects an older image
+when the policy requests these fields. Existing contract 4 layouts remain valid.
 Disk replacement and pool expansion remain native administrative operations.
 xCAT does not perform ongoing pool management.
+
+Reinstall the OS and preserve data
+----------------------------------
+
+Use dedicated OS disks and dedicated data disks. Reinstall erases every selected
+OS disk, including all its partitions. It does not preserve partitions or user
+datasets inside the OS pool. Data drives must not appear in ``zfs_vdevs``.
+
+Add the following settings to the explicit OS policy::
+
+    disk_action=erase
+    preserve_disks=da2@DATA_A,da3@DATA_B,da4@LOG_A,da5@LOG_B,da6@SPECIAL_A,da7@SPECIAL_B,da8@CACHE_A
+
+List every data, log, special and cache device by its verified identity.
+The preserved list accepts at most 128 devices and cannot overlap the OS list.
+The installer checks these identities before and during OS disk setup.
+It writes only the selected OS disks. It does not import the data pool.
+
+The OS disks must not be in use by the running installer. Supported existing
+layouts are whole disks or GPT with FreeBSD boot, EFI, UFS, swap or ZFS
+partitions. ZFS labels on selected
+disks must belong to ``zroot``. A remaining ``zroot`` member outside the OS list
+causes rejection. Active pools, attached encryption providers, ambiguous
+identities and unsupported layouts also cause rejection.
+
+Record data-pool GUIDs, properties, member identities, snapshots and key backups
+before reinstall. Export data pools before shutting down the old OS. Prepare
+the new installation with the normal ``nodeset`` and ``makedhcp`` commands.
+After disk boot, restore the protected data policy and keys, then import the
+existing pool as described below. Reinstallation never implies data-pool creation.
+
+Dedicated data pools
+--------------------
+
+``configzfs.freebsd`` creates or imports one dedicated data pool. It accepts a
+root-owned policy under ``/etc/xcat``. It requires the contract 5 runtime on the
+installed node. For example, ``/etc/xcat/storage.conf`` contains::
+
+    format=xcat-freebsd-data-1
+    action=create
+    pool=tank
+    os_disks=da0@OS_A,da1@OS_B
+    topology=mirror
+    vdevs=da2@DATA_A,da3@DATA_B
+    log_vdevs=da4@LOG_A,da5@LOG_B
+    special_vdevs=da6@SPECIAL_A,da7@SPECIAL_B
+    cache_vdevs=da8@CACHE_A
+    compression=lz4
+    ashift=12
+    special_small_blocks=0
+    encryption=off
+    mountpoint=/data/tank
+
+``os_disks`` excludes the OS devices from data operations. Every device identity
+across all roles must be unique. The complete policy accepts at most 128 devices.
+Data topologies accept ``stripe``, ``mirror``, ``raid10`` and ``raidz1/2/3``.
+A data stripe can contain multiple disks. Other membership rules match the OS
+policy. Compression and ashift use the same values and defaults as the OS policy.
+
+``log_vdevs`` selects separate intent log devices, commonly called SLOG devices.
+Comma-separated members form a mirror. Semicolons separate independent log groups.
+``cache_vdevs`` is a comma-separated list of L2ARC devices.
+``special_vdevs`` uses mirrored groups for metadata and optional small blocks.
+Each special group must have at least the data topology's redundancy: two members
+for a stripe, RAID-Z1 or striped mirrors, three for RAID-Z2, and four for RAID-Z3.
+For a data mirror, match its member count. Loss of a special group can lose the
+pool. Select suitable devices and redundancy before creation.
+
+Auxiliary roles default to ``-``, meaning absent. ``special_small_blocks`` defaults
+to zero. With special devices, it also accepts powers of two from 512 through
+16777216 bytes. The mountpoint must be a direct child of ``/data`` or ``/srv``.
+Descendants must remain under that directory and inherit the pool's encryption key.
+
+Deliver the policy through the image's protected ``synclists`` and run::
+
+    updatenode node01 -F -P configzfs.freebsd
+
+New pools require empty, dedicated data devices. The postscript does not force
+creation over existing layouts. A repeated completed creation policy verifies
+the same pool. A partial failure requires inspection and an explicit import
+policy before continuing. Attempt records remain under ``/var/db/xcat/storage``.
+
+For a preserved pool, change ``action`` and add its recorded GUID::
+
+    action=import
+    guid=REPLACE_WITH_RECORDED_DECIMAL_POOL_GUID
+
+Retain the recorded topology, identities, properties and key path. Import first
+checks the pool read-only without mounting it. The policy must match its actual
+members, health, properties and encryption key. The postscript then imports it
+for use, mounts its datasets and saves boot configuration. It does not force
+an import, replace members, expand pools or change existing data properties.
+
+Automatic data encryption
+-------------------------
+
+For a new encrypted data pool, add::
+
+    encryption=aes-256-gcm
+    keyfile=/etc/xcat/keys/tank.key
+
+Supply a cryptographically random 32-byte raw key before running the postscript.
+The key file must be owned by root, mode ``0600``, with one link. Its directory
+must be owned by root, mode ``0700``. Keep an independently recoverable copy on
+the installation owner or in the site's key backup system.
+
+Deliver keys through SSH file synchronization. Keep the source outside the HTTP
+installation tree. Do not put key bytes in image settings, disk policies,
+environment attributes, command arguments or postscripts. The postscript uses
+the native ``zfskeys`` service to unlock the data pool automatically at boot.
+It never prompts for a passphrase. Missing or incorrect keys cause failure.
+
+The OS pool remains unencrypted. A key stored on the OS disk protects detached
+data drives, but does not protect data if an attacker obtains that disk and the
+data drives together. After OS reinstall, restore the same protected key and
+use the recorded pool GUID with ``action=import``. Do not create a replacement
+key for an existing encrypted pool.
 
 Installed-node networking
 --------------------------
@@ -667,11 +797,12 @@ Installed-node networking
 Use ``confignetwork`` to configure the installed FreeBSD node from the ``nics``,
 ``networks`` and selected ``routes`` tables. It supports physical Ethernet
 interfaces, VLANs, native LAGG failover or LACP, and bridges. These interfaces
-can carry multiple static IPv4 and IPv6 addresses.
+can carry static IPv4 and IPv6 addresses or reserved DHCP leases.
 
 Provisioning still uses one IPv4 interface selected by MAC address. VLANs,
 aggregation, bridges and IPv6 inside PXE or mfsBSD are outside this path.
-DHCP, SLAAC, tunnels and switch configuration are outside this adapter.
+SLAAC address assignment, tunnels and switch configuration are outside this
+adapter. IPv6 router advertisements can supply routes for a DHCPv6 interface.
 
 Select the postscript before ``nodeset`` to configure networking after the
 first disk boot::
@@ -702,7 +833,7 @@ The adapter accepts these attributes:
      - Pipe-separated member names. LAGG requires 2 to 16 physical members.
        A VLAN requires one parent. A bridge accepts 1 to 16 members.
    * - ``nicips``
-     - Pipe-separated static addresses. Each address requires a matching
+     - Pipe-separated static or reserved DHCP addresses. Each address requires a matching
        ``nicnetworks`` entry. One network name can cover several addresses
        from the same subnet.
    * - ``nicnetworks``
@@ -731,6 +862,42 @@ The adapter accepts these attributes:
    * - ``STP=yes`` or ``STP=no``
      - Enable or disable spanning tree on bridge members. The default is
        ``yes``. Allow forwarding convergence before checking data traffic.
+   * - ``BOOTPROTO=dhcp`` or ``dhcp4=true``
+     - Use the native DHCPv4 client. ``BOOTPROTO=static`` or ``none``, and
+       ``dhcp4=false``, retain static IPv4 configuration.
+   * - ``DHCPV6C=yes`` or ``dhcp6=true``
+     - Use DHCPv6 through the ``dhcpcd`` package. Install that package first.
+       ``DHCPV6C=no`` or ``dhcp6=false`` retain static IPv6 configuration.
+   * - ``PEERDNS=yes`` or ``PEERDNS=no``
+     - Accept or ignore DHCP resolver settings. The default is ``yes``.
+   * - ``DEFROUTE=yes`` or ``DEFROUTE=no``
+     - Accept or ignore DHCPv4 routes. The default is ``yes`` for the management
+       interface and ``no`` for additional interfaces.
+   * - ``IPV6_DEFROUTE=yes`` or ``IPV6_DEFROUTE=no``
+     - Accept or ignore IPv6 router-advertisement defaults for DHCPv6.
+       Additional interfaces default to ``no``.
+   * - ``MACADDR=ADDRESS``
+     - Set a persistent unicast MAC on a clone. Required for a DHCP bridge.
+
+Each DHCP family requires exactly one matching reserved address in ``nicips``.
+The adapter verifies the acquired address against that reservation. DHCPv4 also
+checks the network prefix. A wrong or missing lease prevents completion.
+Configure reservations on the DHCP server before applying the node policy.
+DHCPv6 uses DUID-UUID from the node's hardware UUID, matching the xCAT DHCP
+backends. Keep ``vpd.uuid`` consistent with that UUID and retain it across OS
+replacement. A missing or invalid hardware UUID causes rejection. IPv4
+provisioning remains unchanged.
+
+For both DHCP families on the example data interface, set::
+
+    chdef node01 'nicextraparams.vtnet1=BOOTPROTO=dhcp DHCPV6C=yes PEERDNS=yes'
+    updatenode node01 -P confignetwork
+
+DHCPv6 uses one managed ``dhcpcd`` process with IPv4 and SLAAC address assignment
+disabled. Keep its global service disabled. The adapter installs its own
+``xcat_dhcp6`` service and protects its client policy under ``/var/db/xcat/network``.
+Do not run another DHCP client on managed interfaces. Explicit static defaults
+and DHCP defaults must not compete for the same address family.
 
 For example, configure a physical interface with IPv4 and IPv6::
 
@@ -795,7 +962,7 @@ that clone. The Linux ``-r`` option is not available on FreeBSD.
 
 Network configuration must use ``/etc/rc.conf`` with
 ``network_interfaces=auto``. Existing unmanaged clones, manual routes on selected
-interfaces, DHCP or SLAAC configuration, ``rc.conf.local`` and service-specific
+interfaces, unmanaged DHCP or SLAAC configuration, ``rc.conf.local`` and service-specific
 network override files require manual integration. Selected physical interfaces
 must not have additional ``ifconfig`` options, such as offload flags, media,
 MAC overrides or FIB selection. These settings are rejected before adoption;
@@ -1143,6 +1310,12 @@ For each firmware mode in use, perform the following storage checks:
    * - Wider layouts
      - Check the intended width and grouping, including a wider RAID-Z group
        and six-disk striped mirrors when these are deployed.
+   * - Dedicated data pool and OS reinstall
+     - Record pool and dataset GUIDs, a snapshot, file checksums and key backups.
+       Export the data pool, replace only the OS disks, and compare the preserved
+       devices before import. Restore the key through SSH, import the recorded
+       pool, and verify its data, auxiliary devices and properties. Cold boot
+       again and confirm automatic key loading and dataset mounting.
 
 Start each independent fault case from a healthy restored baseline. For every
 recoverable loss set, select each surviving boot-capable member in turn.
