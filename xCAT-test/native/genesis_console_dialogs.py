@@ -2,6 +2,7 @@
 """Exercise the linked Genesis console through a terminal, including newt dialogs."""
 
 import fcntl
+import json
 import os
 from pathlib import Path
 import pty
@@ -13,6 +14,7 @@ import tempfile
 import termios
 import time
 import unittest
+import uuid
 
 import pyte
 
@@ -21,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/xcat-genesis-console/files/xcat-genesis-console"
 
 
-class ConsoleDialogs(unittest.TestCase):
+class ConsoleTerminal(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.build_root = tempfile.TemporaryDirectory(prefix="genesis-dialog-build-")
@@ -35,7 +37,10 @@ class ConsoleDialogs(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory(prefix="genesis-dialog-state-")
         self.addCleanup(temporary.cleanup)
         root = Path(temporary.name)
-        environment = {"PATH": os.environ["PATH"], "LC_ALL": "C.UTF-8", "TERM": "xterm"}
+        self.root = root
+        environment = {"PATH": os.environ["PATH"], "LC_ALL": "C.UTF-8", "TERM": "xterm",
+                       "NEWT_COLORS": "listbox=black,white\nactlistbox=black,white\n"
+                                      "sellistbox=white,red\nactsellistbox=white,red"}
         for name in ("CMDLINE_FILE", "UPTIME_FILE", "OS_RELEASE", "STATUS_DIR", "STATE_FILE",
                      "DESTINY_FILE", "RESPONSE_FILE", "SYS_ROOT", "PROC_ROOT", "EXTENSION_DIR", "PROVIDER_DIR"):
             environment["XCAT_" + name] = str(root / name.lower())
@@ -44,7 +49,7 @@ class ConsoleDialogs(unittest.TestCase):
         self.addCleanup(os.close, self.master)
         fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 30, 100, 0, 0))
         try:
-            self.process = subprocess.Popen([str(self.binary)], stdin=slave, stdout=slave,
+            self.process = subprocess.Popen(self.console_command(), stdin=slave, stdout=slave,
                                             stderr=slave, env=environment, start_new_session=True)
         finally:
             os.close(slave)
@@ -52,6 +57,9 @@ class ConsoleDialogs(unittest.TestCase):
         self.screen = pyte.Screen(100, 30)
         self.stream = pyte.ByteStream(self.screen)
         self.wait_text("Genesis status")
+
+    def console_command(self):
+        return [str(self.binary)]
 
     def stop(self):
         if self.process.poll() is None:
@@ -69,17 +77,22 @@ class ConsoleDialogs(unittest.TestCase):
         return "\n".join(self.screen.display)
 
     def wait_text(self, text):
+        return self.wait_screen(lambda display: text in display, repr(text))
+
+    def wait_screen(self, predicate, description):
         deadline = time.monotonic() + 5
         while time.monotonic() < deadline:
             display = self.read_screen(0.1)
-            if text in display:
+            if predicate(display):
                 return display
             self.assertIsNone(self.process.poll(), display)
-        self.fail(f"Terminal did not show {text!r}:\n{display}")
+        self.fail(f"Terminal did not show {description}:\n{display}")
 
     def key(self, sequence):
         os.write(self.master, sequence)
 
+
+class ConsoleDialogs(ConsoleTerminal):
     def test_help_and_diagnostics_scroll_close_and_reopen(self):
         dialogs = [
             (b"\x1bOP", "Genesis help", "This console reports Genesis status.",
@@ -103,6 +116,228 @@ class ConsoleDialogs(unittest.TestCase):
                     self.wait_text("F1 Help")
         self.process.send_signal(signal.SIGTERM)
         self.assertEqual(self.process.wait(timeout=5), 0)
+
+
+class ConsoleJournal(ConsoleTerminal):
+    """Read real journal files in a private machine and journal namespace.
+
+    Requires bubblewrap, systemd-journal-remote, journalctl and user namespaces.
+    The host filesystem is read-only except for the fixture directory.
+    /run and /var/log are private tmpfs mounts with the journal bound read-only.
+    No journal service is started and no host journal is read or changed.
+    """
+
+    def console_command(self):
+        self.machine_id = uuid.uuid4().hex
+        self.boot_id = uuid.uuid4().hex
+        journal_root = self.root / "journal"
+        journal_directory = journal_root / self.machine_id
+        journal_directory.mkdir(parents=True)
+        self.journal = journal_directory / "system.journal"
+        self.entries = []
+        machine_id_file = self.root / "machine-id"
+        machine_id_file.write_text(self.machine_id + "\n")
+        sandbox = [
+            "bwrap", "--unshare-all", "--die-with-parent", "--ro-bind", "/", "/",
+            "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/run", "--tmpfs", "/var/log",
+            "--bind", str(self.root), str(self.root),
+            "--ro-bind", str(machine_id_file), "/etc/machine-id",
+            "--ro-bind", str(journal_root), "/var/log/journal",
+        ]
+        result = subprocess.run(sandbox + ["/bin/true"], text=True,
+                                capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 0,
+                         "Journal tests require working Bubblewrap namespaces: " + result.stderr)
+        self.sandbox = sandbox
+        return sandbox + [str(self.binary)]
+
+    def write_journal(self, entries, interval=1000000):
+        records = []
+        for sequence, (message, unit, identifier) in enumerate(entries, len(self.entries) + 1):
+            records.append(
+                f"__REALTIME_TIMESTAMP={1700000000000000 + sequence * interval}\n"
+                f"__MONOTONIC_TIMESTAMP={sequence * interval}\n"
+                f"_MACHINE_ID={self.machine_id}\n_BOOT_ID={self.boot_id}\n"
+                f"_SYSTEMD_UNIT={unit}\nSYSLOG_IDENTIFIER={identifier}\n"
+                f"MESSAGE={message}\n\n")
+        result = subprocess.run(
+            self.sandbox + ["/usr/lib/systemd/systemd-journal-remote", "--split-mode=none",
+             "--output=" + str(self.journal), "-"],
+            input="".join(records), text=True, capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.entries.extend(entries)
+        exported = subprocess.check_output(
+            ["journalctl", "--file=" + str(self.journal), "--output=json", "--no-pager"],
+            text=True, timeout=10)
+        actual = [json.loads(line) for line in exported.splitlines()]
+        self.assertEqual([(entry["MESSAGE"], entry["_SYSTEMD_UNIT"], entry["SYSLOG_IDENTIFIER"])
+                          for entry in actual], self.entries)
+
+    def open_logs(self):
+        self.key(b"\x1bOR")
+        self.wait_text("Genesis logs")
+        self.wait_text("F3 Back")
+
+    def selected_text(self):
+        return "\n".join("".join(self.screen.buffer[row][column].data
+                                  for column in range(self.screen.columns)
+                                  if self.screen.buffer[row][column].bg == "red").strip()
+                         for row in range(self.screen.lines)).strip()
+
+    def wait_selected(self, text):
+        return self.wait_screen(lambda display: self.selected_text().endswith(text),
+                                f"selected log entry {text!r}")
+
+    def assert_selection_stays(self, text):
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline:
+            self.read_screen(0.1)
+            self.assertEqual(self.selected_text(), text)
+            self.assertIsNone(self.process.poll())
+
+    def test_paused_entry_survives_history_rollover(self):
+        self.write_journal([(f"RECORD-{number:04d}", "other.service", "xcat-genesis-register")
+                            for number in range(1, 130)])
+        self.open_logs()
+        self.wait_selected("RECORD-0129")
+        self.key(b"\x1b[H")
+        self.wait_selected("RECORD-0002")
+        self.key(b"\x1b[B" * 60)
+        self.wait_selected("RECORD-0062")
+        selected = self.selected_text()
+        for number in (130, 131):
+            self.write_journal([(f"RECORD-{number:04d}", "other.service", "xcat-genesis-register")])
+            self.assert_selection_stays(selected)
+        self.key(b"\x1b[F")
+        self.wait_selected("RECORD-0131")
+        self.write_journal([("FOLLOWED", "other.service", "xcat-genesis-register")])
+        self.wait_selected("FOLLOWED")
+
+    def test_expired_selection_stays_paused_at_oldest_entry(self):
+        self.write_journal([(f"RECORD-{number:04d}", "other.service", "xcat-genesis-register")
+                            for number in range(1, 130)])
+        self.open_logs()
+        self.wait_selected("RECORD-0129")
+        self.key(b"\x1b[H")
+        self.wait_selected("RECORD-0002")
+        for first, last, oldest in ((130, 140, 12), (140, 270, 142)):
+            self.write_journal([(f"RECORD-{number:04d}", "other.service", "xcat-genesis-register")
+                                for number in range(first, last)])
+            self.wait_selected(f"RECORD-{oldest:04d}")
+            self.assert_selection_stays(self.selected_text())
+            if first == 130:
+                self.key(b"\x1b[B" * 50)
+                self.wait_selected("RECORD-0062")
+        self.write_journal([("STILL-PAUSED", "other.service", "xcat-genesis-register")])
+        self.wait_selected("RECORD-0143")
+        self.key(b"\x1b[F")
+        self.wait_selected("STILL-PAUSED")
+
+    def test_duplicate_text_keeps_the_selected_record(self):
+        self.write_journal([("DUPLICATE" if number in (60, 62, 63) else f"RECORD-{number:04d}",
+                             "other.service", "xcat-genesis-register")
+                            for number in range(1, 130)], interval=1)
+        self.open_logs()
+        self.wait_selected("RECORD-0129")
+        self.key(b"\x1b[H")
+        self.wait_selected("RECORD-0002")
+        self.key(b"\x1b[B" * 58)
+        self.wait_selected("DUPLICATE")
+        duplicate = self.selected_text()
+        self.key(b"\x1b[B")
+        self.wait_selected("RECORD-0061")
+        self.key(b"\x1b[B")
+        self.wait_selected("DUPLICATE")
+        self.assertEqual(self.selected_text(), duplicate)
+        self.write_journal([("APPENDED", "other.service", "xcat-genesis-register")], interval=1)
+        self.assert_selection_stays(duplicate)
+        self.key(b"\x1b[A")
+        self.wait_selected("RECORD-0061")
+        self.key(b"\x1b[H")
+        self.wait_selected("RECORD-0003")
+
+    def test_wrapped_selection_survives_history_rollover(self):
+        self.write_journal([
+            (" ".join(f"OLD-{number:02d}" for number in range(20)),
+             "other.service", "xcat-genesis-register"),
+            (" ".join(f"CONTEXT-{number:02d}" for number in range(16)) + " SELECTED-TAIL",
+             "other.service", "xcat-genesis-register"),
+        ] + [(f"RECORD-{number:04d}", "other.service", "xcat-genesis-register")
+             for number in range(3, 129)])
+        self.open_logs()
+        self.wait_selected("RECORD-0128")
+        self.key(b"\x1b[H")
+        self.wait_screen(lambda display: "OLD-00" in self.selected_text(), "oldest wrapped entry")
+        for _ in range(12):
+            if self.selected_text().endswith("SELECTED-TAIL"):
+                break
+            previous = self.selected_text()
+            self.key(b"\x1b[B")
+            self.wait_screen(lambda display: self.selected_text() != previous, "next wrapped row")
+        self.assertTrue(self.selected_text().endswith("SELECTED-TAIL"), self.selected_text())
+        selected = self.selected_text()
+        self.assertIn("OLD-00", self.read_screen(0))
+        self.write_journal([("APPENDED", "other.service", "xcat-genesis-register")])
+        self.wait_screen(lambda display: "OLD-00" not in display, "expired wrapped entry removed")
+        self.assert_selection_stays(selected)
+        self.key(b"\x1b[B")
+        self.wait_selected("RECORD-0003")
+
+    def test_empty_journal(self):
+        self.open_logs()
+        self.wait_text("No Genesis journal entries are available.")
+
+    def test_unrelated_entries_are_excluded(self):
+        self.write_journal([("UNRELATED-ENTRY", "other.service", "other")])
+        self.open_logs()
+        display = self.wait_text("No Genesis journal entries are available.")
+        self.assertNotIn("UNRELATED-ENTRY", display)
+
+    def test_single_entry_is_shown(self):
+        self.write_journal([("ONLY-ENTRY", "other.service", "xcat-genesis-register")])
+        self.open_logs()
+        display = self.wait_text("ONLY-ENTRY")
+        self.assertEqual(display.count("ONLY-ENTRY"), 1)
+        self.assertNotIn("No Genesis journal entries", display)
+
+    def test_first_entry_and_matching_order(self):
+        self.write_journal([
+            ("FIRST-ENTRY", "xcat-genesis-register.service", "unit-fixture"),
+            ("UNRELATED-ENTRY", "other.service", "other"),
+            ("LAST-ENTRY", "other.service", "xcat-genesis-discovery"),
+        ])
+        self.open_logs()
+        self.wait_text("LAST-ENTRY")
+        display = self.wait_text("FIRST-ENTRY")
+        self.assertLess(display.index("FIRST-ENTRY"), display.index("LAST-ENTRY"))
+        self.assertEqual(display.count("FIRST-ENTRY"), 1)
+        self.assertEqual(display.count("LAST-ENTRY"), 1)
+        self.assertNotIn("UNRELATED-ENTRY", display)
+
+    def test_scan_includes_first_of_latest_2048_entries(self):
+        self.write_journal([
+            ("OUTSIDE-WINDOW", "other.service", "xcat-genesis-register"),
+            ("WINDOW-FIRST", "other.service", "xcat-genesis-register"),
+        ] + [(f"UNRELATED-{number:04d}", "other.service", "other") for number in range(2046)] + [
+            ("WINDOW-LAST", "other.service", "xcat-genesis-discovery"),
+        ])
+        self.open_logs()
+        self.wait_text("WINDOW-LAST")
+        display = self.wait_text("WINDOW-FIRST")
+        self.assertLess(display.index("WINDOW-FIRST"), display.index("WINDOW-LAST"))
+        self.assertNotIn("OUTSIDE-WINDOW", display)
+        self.assertNotIn("UNRELATED-", display)
+
+    def test_view_retains_latest_128_matching_entries(self):
+        self.write_journal([(f"RECORD-{number:04d}", "other.service", "xcat-genesis-register")
+                            for number in range(1, 130)])
+        self.open_logs()
+        self.wait_text("RECORD-0129")
+        self.key(b"\x1b[H")
+        display = self.wait_text("RECORD-0002")
+        self.assertNotIn("RECORD-0001", display)
+        self.key(b"\x1b[F")
+        self.wait_text("RECORD-0129")
 
 
 if __name__ == "__main__":
