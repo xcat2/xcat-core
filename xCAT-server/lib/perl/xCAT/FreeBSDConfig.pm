@@ -295,6 +295,7 @@ sub _zfs_disk_policy {
     $settings->{disk_action} //= 'empty';
     $settings->{preserve_disks} //= '-';
     _fail('Unsupported OS compression') unless $settings->{zfs_compression} =~ /\A(?:off|lz4|gzip(?:-[1-9])?|zstd(?:-(?:[1-9]|1[0-9]))?)\z/x;
+    $settings->{zfs_compression} = 'gzip' if $settings->{zfs_compression} eq 'gzip-6';
     _fail('Invalid ZFS ashift') unless $settings->{zfs_ashift} =~ /\A(?:9|1[0-6])\z/x;
     _fail('Disk action must be empty or erase') unless $settings->{disk_action} =~ /\A(?:empty|erase)\z/x;
     _fail('Preserved disk policy exceeds its size limit') if length($settings->{preserve_disks}) > 32768;

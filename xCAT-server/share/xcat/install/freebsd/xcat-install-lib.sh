@@ -222,6 +222,7 @@ xcat_read_config()
             case "$xcat_seen" in *" $xcat_required "*) ;; *) return 1 ;; esac
         done
         printf '%s\n' "$XCAT_ZFS_COMPRESSION" | awk '!/^(off|lz4|gzip(-[1-9])?|zstd(-([1-9]|1[0-9]))?)$/ {exit 1}' || return 1
+        [ "$XCAT_ZFS_COMPRESSION" != gzip-6 ] || XCAT_ZFS_COMPRESSION=gzip
         case "$XCAT_ZFS_ASHIFT" in 9|10|11|12|13|14|15|16) ;; *) return 1 ;; esac
         case "$XCAT_DISK_ACTION" in empty|erase) ;; *) return 1 ;; esac
         xcat_preserved_members >/dev/null || return 1
@@ -550,10 +551,12 @@ xcat_check_zfs_reinstall()
                 signature=$4 " " $5 " " $9 " " $11
                 key=root SUBSEP $7
                 if($1==1) native[key]=signature; else aliases[key]=signature
-                part[$3]=1; next
+                part[$3]=$11; next
             }
             if($2=="LABEL" && (($1==1 && $3=="diskid/DISK-" serial[root]) ||
-                (($1==2 || $1==3) && ancestor in part && $3~/^(gpt|gptid)\/[A-Za-z0-9_.+-]+$/))) next
+                (($1==2 || $1==3) && ancestor in part &&
+                ($3~/^(gpt|gptid)\/[A-Za-z0-9_.+-]+$/ ||
+                (part[ancestor]=="freebsd-ufs" && $3~/^(ufs|ufsid)\/[A-Za-z0-9_.+-]+$/))))) next
             bad=1
         }
         END {

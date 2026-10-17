@@ -4,7 +4,7 @@ function fail(message) {
     exit 1
 }
 
-function members(role, text, minimum, grouping,    n, groups, g, count, list, i, pair, device, serial, kind) {
+function members(role, text, minimum, grouping,    n, groups, g, count, list, i, pair, device, serial, kind, tokens, nt, singles, ns) {
     if (text == "-")
         return
     n = split(text, groups, ";")
@@ -14,6 +14,8 @@ function members(role, text, minimum, grouping,    n, groups, g, count, list, i,
         count = split(groups[g], list, ",")
         if (count < minimum)
             fail("Insufficient members for " role)
+        if (role == "special" && count != minimum)
+            fail("Special devices must match the data replication level")
         kind = "stripe"
         if (role == "data") {
             kind = value["topology"] == "raid10" ? "mirror" : value["topology"]
@@ -35,11 +37,16 @@ function members(role, text, minimum, grouping,    n, groups, g, count, list, i,
             row[++rows] = "D\t" role "\t" device "\t" serial "\t" g
             if (role != "os") {
                 if (i == 1 && kind != "stripe")
-                    command[++commands] = kind
-                command[++commands] = "/dev/" device
+                    tokens[++nt] = kind
+                if (role == "log" && kind == "stripe")
+                    singles[++ns] = "/dev/" device
+                else
+                    tokens[++nt] = "/dev/" device
             }
         }
     }
+    for (i = 1; i <= ns; i++) command[++commands] = singles[i]
+    for (i = 1; i <= nt; i++) command[++commands] = tokens[i]
 }
 
 function compile(    allowed, keys, i, key, minimum, special_min, n) {
@@ -64,6 +71,7 @@ function compile(    allowed, keys, i, key, minimum, special_min, n) {
     if (!("compression" in value)) value["compression"] = "lz4"
     if (value["compression"] !~ /^(off|lz4|gzip(-[1-9])?|zstd(-([1-9]|1[0-9]))?)$/)
         fail("Unsupported compression")
+    if (value["compression"] == "gzip-6") value["compression"] = "gzip"
     if (!("ashift" in value)) value["ashift"] = "12"
     if (value["ashift"] !~ /^(9|1[0-6])$/)
         fail("Invalid ashift")
@@ -101,6 +109,8 @@ function compile(    allowed, keys, i, key, minimum, special_min, n) {
         key = i == 1 ? "special" : i == 2 ? "log" : "cache"
         if (!(key "_vdevs" in value)) value[key "_vdevs"] = "-"
         if (value[key "_vdevs"] == "-") continue
+        if (key == "special" && value["topology"] == "stripe")
+            fail("Striped data cannot use mirrored special devices")
         command[++commands] = key
         members(key, value[key "_vdevs"], key == "special" ? special_min : 1, key == "cache" ? "flat" : "groups")
     }
@@ -161,7 +171,7 @@ mode == "verify" {
         fail("The pool has unavailable members or errors")
     if ($1 == pool && !root_seen++) next
     if ($1 ~ /^(mirror|raidz[123])-[0-9]+$/) {
-        group = role SUBSEP ++group_number
+        group = role SUBSEP (++group_number)
         group_indent = match($0, /[^ \t]/)
         actual_type = $1; sub(/-[0-9]+$/, "", actual_type)
         next

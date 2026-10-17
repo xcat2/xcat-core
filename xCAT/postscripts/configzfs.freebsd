@@ -41,9 +41,26 @@ safe_parents()
     done
 )
 
+rc_enabled()
+{
+    case "$1" in [Yy][Ee][Ss]|[Tt][Rr][Uu][Ee]|[Oo][Nn]|1) return 0 ;; *) return 1 ;; esac
+}
+
+check_key_selection()
+{
+    old_keys=$(sysrc -n zfskeys_datasets 2>/dev/null || :)
+    if rc_enabled "$(sysrc -n zfskeys_enable)" && [ -z "$old_keys" ]; then
+        fail 'List existing automatic key datasets explicitly before adding this pool'
+    fi
+}
+
 for file in "$policy" "$library" /etc/rc.conf; do
     safe_file "$file" && safe_parents "$file" || fail 'Unsafe data policy, helper or rc.conf'
 done
+if [ ! -e "$cachefile" ] && [ ! -L "$cachefile" ] &&
+    { [ -e /boot/zfs/zpool.cache ] || [ -L /boot/zfs/zpool.cache ]; }; then
+    cachefile=/boot/zfs/zpool.cache
+fi
 safe_parents "$cachefile" || fail 'Unsafe pool cache directory'
 if [ -e "$cachefile" ] || [ -L "$cachefile" ]; then
     safe_file "$cachefile" || fail 'Unsafe pool cache'
@@ -103,6 +120,7 @@ if [ "$encryption" != off ]; then
     safe_file "$keyfile" && safe_parents "$keyfile" &&
         [ "$(stat -f '%Lp:%z' "$keyfile")" = 600:32 ] &&
         [ "$(stat -f '%Lp' /etc/xcat/keys)" = 700 ] || fail 'A private 32-byte raw key is required'
+    check_key_selection
 fi
 kldload -n zfs
 os_members=$(awk -F '\t' '$1=="D" && $2=="os" {print $3 "\t" $4 "\t" $5}' "$attempt/plan")
@@ -235,10 +253,7 @@ rc_stage=$(mktemp /etc/rc.conf.xcat-storage.XXXXXXXX)
 cp -p /etc/rc.conf "$rc_stage"
 sysrc -f "$rc_stage" zfs_enable=YES >/dev/null
 if [ "$encryption" != off ]; then
-    old_keys=$(sysrc -n zfskeys_datasets 2>/dev/null || :)
-    if [ "$(sysrc -n zfskeys_enable)" = YES ] && [ -z "$old_keys" ]; then
-        fail 'List existing automatic key datasets explicitly before adding this pool'
-    fi
+    check_key_selection
     sysrc -f "$rc_stage" zfskeys_enable=YES "zfskeys_datasets+=$pool" >/dev/null
 fi
 /bin/sh -n "$rc_stage"
@@ -246,9 +261,9 @@ cmp -s /etc/rc.conf "$attempt/before.rc" || fail 'rc.conf changed while configur
 fsync "$rc_stage"
 mv "$rc_stage" /etc/rc.conf
 fsync /etc/rc.conf /etc
-[ "$(sysrc -n zfs_enable)" = YES ] || fail 'Another rc configuration overrides ZFS startup'
+rc_enabled "$(sysrc -n zfs_enable)" || fail 'Another rc configuration overrides ZFS startup'
 if [ "$encryption" != off ]; then
-    [ "$(sysrc -n zfskeys_enable)" = YES ] || fail 'Another rc configuration disables automatic keys'
+    rc_enabled "$(sysrc -n zfskeys_enable)" || fail 'Another rc configuration disables automatic keys'
     case " $(sysrc -n zfskeys_datasets) " in *" $pool "*) ;; *) fail 'Another rc configuration overrides automatic keys' ;; esac
 fi
 zpool set "cachefile=$cachefile" "$pool"
