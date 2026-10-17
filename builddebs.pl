@@ -112,6 +112,11 @@ for my $pkg ($opts{packages}->@*) {
         unless grep { $_ eq $pkg } @PACKAGES;
 }
 
+if (grep { $_ eq 'xCAT' || $_ eq 'xCAT-genesis-scripts' } $opts{packages}->@*) {
+    system($^X, "$FindBin::Bin/build-utils/sync-fips-policy", '--check') == 0
+        or die "FATAL: generated FIPS policy is not current\n";
+}
+
 my $ROOT    = abs_path($FindBin::Bin);
 my $VERSION = read_line("$ROOT/Version") // die "Cannot read $ROOT/Version\n";
 my $EPOCH   = source_date_epoch();

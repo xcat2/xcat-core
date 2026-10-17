@@ -31,6 +31,12 @@ sub build_deb {
     my $work = tempdir(CLEANUP => 1);
     checked('tar', '-cf', "$work/source.tar", '-C', repo_path('.'), $package);
     checked('tar', '-xf', "$work/source.tar", '-C', $work);
+    if ($package eq 'xCAT-genesis-scripts') {
+        my $arch = checked('dpkg-architecture', '-qDEB_HOST_ARCH');
+        chomp $arch;
+        copy("$work/$package/debian/control-$arch", "$work/$package/debian/control")
+            or die "copy Genesis control-$arch: $!";
+    }
     my $previous = getcwd();
     chdir "$work/$package" or die "chdir: $!";
     local $ENV{PWD} = getcwd();

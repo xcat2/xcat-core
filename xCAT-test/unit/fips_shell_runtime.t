@@ -10,6 +10,7 @@ use File::Temp qw(tempdir);
 use Test::More;
 
 use XCAT::Test::File qw(repo_path);
+use XCAT::Test::Process qw(run_command);
 
 my $bash = qx(command -v bash 2>/dev/null);
 chomp($bash);
@@ -18,6 +19,10 @@ chomp($sh);
 my $openssl = qx(command -v openssl 2>/dev/null);
 chomp($openssl);
 my $host_fips = 0;
+my $genesis_library = $ENV{XCAT_TEST_FIPS_GENESIS_LIBRARY}
+    // repo_path('xCAT-genesis-scripts/usr/lib/xcat/fips.sh');
+my $cumulus_library = $ENV{XCAT_TEST_FIPS_CUMULUS_LIBRARY}
+    // repo_path('xCAT/postscripts/xcatlib.sh');
 if (-r '/proc/sys/crypto/fips_enabled') {
     $host_fips = read_text('/proc/sys/crypto/fips_enabled') =~ /^1\s*$/;
 }
@@ -27,11 +32,11 @@ SKIP: {
         unless $sh && -x $sh && $bash && -x $bash && $openssl && -x $openssl;
 
     foreach my $runtime (
-        ['xCAT-genesis-scripts/usr/lib/xcat/fips.sh', $sh],
-        ['xCAT/postscripts/xcatlib.sh', $bash],
+        [$genesis_library, $sh],
+        [$cumulus_library, $bash],
     ) {
         my ($relative, $shell) = @{$runtime};
-        my $library = repo_path($relative);
+        my $library = $relative;
         my $tmpdir = tempdir(CLEANUP => 1);
         my $status = File::Spec->catfile($tmpdir, 'fips_enabled');
         my $missing = File::Spec->catfile($tmpdir, 'missing');
@@ -110,13 +115,11 @@ SKIP: {
         }
     }
 
-    my $genesis_library = repo_path('xCAT-genesis-scripts/usr/lib/xcat/fips.sh');
     is(shell_status($sh, $genesis_library, 'xcat_dsa_allowed 0'), 0,
         'Genesis permits DSA outside FIPS mode');
     isnt(shell_status($sh, $genesis_library, 'xcat_dsa_allowed 1'), 0,
         'Genesis rejects DSA in FIPS mode');
 
-    my $cumulus_library = repo_path('xCAT/postscripts/xcatlib.sh');
     my $key_dir = tempdir(CLEANUP => 1);
     my $existing_key = "$key_dir/existing.pem";
     system($openssl, 'genrsa', '-out', $existing_key, 2048) == 0
@@ -145,11 +148,11 @@ sub shell_output {
 
 sub shell_status {
     my ($shell, $library, $command, @arguments) = @_;
-    system(
+    my ($status, $output) = run_command(
         $shell, '-c', '. "$1"; ' . $command,
         'xcat-fips-test', $library, @arguments,
     );
-    return $? >> 8;
+    return $status;
 }
 
 sub run_key_cycle {
@@ -161,11 +164,11 @@ printf '%s\n' "$3" > "$2"
 xcat_generate_discovery_private_key "$fips_state" "$4" 2>/dev/null || exit
 xcat_discovery_public_key "$fips_state" "$4" > "$5" 2>/dev/null
 EOF
-    system(
+    my ($exit_status, $output) = run_command(
         $shell, '-c', $command,
         'xcat-fips-test', $library, $status, $next_state, $key, $public,
     );
-    return $? >> 8;
+    return $exit_status;
 }
 
 sub command_output {
