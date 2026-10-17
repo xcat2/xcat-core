@@ -14,7 +14,8 @@ xCAT-server/share/xcat/netboot/ubuntu/dracut/xcatroot dash'
 # The scripts that receive the root image over UFTP when nodeset asks for it.
 UFTP_SCRIPTS='xCAT-server/share/xcat/netboot/rh/dracut_033/xcatroot bash
 xCAT-server/share/xcat/netboot/rh/dracut_047/xcatroot bash
-xCAT-server/share/xcat/netboot/rh/dracut_105/stateless/xcatroot bash'
+xCAT-server/share/xcat/netboot/rh/dracut_105/stateless/xcatroot bash
+xCAT-server/share/xcat/netboot/sles/dracut_033/xcatroot bash'
 
 setup()
 {
