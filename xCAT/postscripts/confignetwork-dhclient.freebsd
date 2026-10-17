@@ -33,6 +33,12 @@ private_file()
     [ -f "$1" ] && [ ! -L "$1" ] && [ "$(stat -f '%u:%g:%Lp:%l' "$1")" = 0:0:600:1 ]
 }
 private_file "$policy" || fail 'Unsafe DHCP policy'
+base=${state%/*}/resolver-base
+if [ -e "$base" ] || [ -L "$base" ]; then
+    [ -f "$base" ] && [ ! -L "$base" ] && [ "$(stat -f '%u:%g:%l' "$base")" = 0:0:1 ] || exit 1
+    case $(stat -f '%Lp' "$base") in 400|444|600|644) ;; *) exit 1 ;; esac
+    if [ -s "$base" ]; then resolvconf -a lo0:xcat < "$base" || exit 1; fi
+fi
 tab=$(printf '\t')
 IFS="$tab" read -r expected bits peerdns defroute < "$policy"
 case "$peerdns:$defroute" in yes:yes|yes:no|no:yes|no:no) ;; *) fail 'Invalid DHCP policy' ;; esac
@@ -94,13 +100,16 @@ fi
 /sbin/dhclient-script || fail 'The native DHCP script failed'
 case "$reason" in
 BOUND|RENEW|REBIND|REBOOT|TIMEOUT)
-    if [ "$peerdns" = yes ]; then
+    if [ "$peerdns" = yes ] &&
+        [ -n "${new_domain_search:-${new_domain_name:-}}${new_domain_name_servers:-}" ]; then
         {
             if [ -n "${new_domain_search:-${new_domain_name:-}}" ]; then
                 printf 'search %s\n' "${new_domain_search:-$new_domain_name}"
             fi
             for server in ${new_domain_name_servers:-}; do printf 'nameserver %s\n' "$server"; done
         } | resolvconf -a "$interface" || fail 'Cannot register DHCP resolver settings'
+    else
+        resolvconf -f -d "$interface" || fail 'Cannot remove empty DHCP resolver settings'
     fi
     [ ! -e "$lease" ] || private_file "$lease" || fail 'Unsafe DHCP lease record'
     stage=$(mktemp "$state/.lease.XXXXXXXX")

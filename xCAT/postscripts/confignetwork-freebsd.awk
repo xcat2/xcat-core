@@ -695,6 +695,31 @@ function static_options(value, ipv6_args,    count, words, i, item, parts, suffi
     return 1
 }
 
+# RFC 3442 suppresses the routers option even when it contains no default.
+function lease_default(    count, bytes, i, width, size, gateway, routers) {
+    if (lease["old_classless_routes"] != "") {
+        count = split(lease["old_classless_routes"], bytes, " ")
+        for (i = 1; i <= count; i++)
+            if (!number(bytes[i], 0, 255)) fail("Invalid DHCP classless route byte")
+        for (i = 1; i <= count; i += size + 5) {
+            width = bytes[i]
+            size = int((width + 7) / 8)
+            if (width > 32 || i + size + 4 > count) fail("Incomplete DHCP classless route")
+            if (width == 0 && gateway == "")
+                gateway = bytes[i + 1] "." bytes[i + 2] "." bytes[i + 3] "." bytes[i + 4]
+        }
+    } else {
+        split(lease["old_routers"], routers, " ")
+        gateway = routers[1]
+    }
+    if (gateway == "") return
+    if (ipv4(gateway) == "") fail("Invalid DHCP default gateway")
+    if (gateway == "0.0.0.0" || gateway == lease["old_ip_address"])
+        print "Q\tinet\t" nic
+    else
+        print "R\tinet\tdefault\t" gateway "\t" nic
+}
+
 BEGIN {
     if (mode == "dhcp6-duid") {
         uuid = tolower(uuid)
@@ -735,9 +760,16 @@ BEGIN {
         compile()
         exit
     }
-    if (mode != "verify" && mode != "verify-prior" && mode != "snapshot" && mode != "clear" && mode != "routes" &&
+    if (mode != "dhcp4-default" && mode != "verify" && mode != "verify-prior" && mode != "snapshot" && mode != "clear" && mode != "routes" &&
         mode != "routeconflicts" && mode != "rcconflicts" && mode != "rcoptions" && mode != "rclists" && mode != "conflicts")
         fail("Unknown network planner operation")
+}
+
+mode == "dhcp4-default" {
+    if (split($0, column, "\t") != 2 || column[1] in lease)
+        fail("Invalid DHCP lease record")
+    lease[column[1]] = column[2]
+    next
 }
 
 FILENAME == ARGV[1] {
@@ -756,6 +788,8 @@ FILENAME == ARGV[1] {
         wanted_address[column[2], column[3], column[4]] = column[5]
     else if (column[1] == "H")
         wanted_dhcp[column[2]] = 1
+    else if (column[1] == "Q")
+        wanted_dynamic_default[column[2]] = column[3]
     else if (column[1] == "H6") {
         wanted_dhcp6[column[2]] = 1
         if (column[6] == "yes") wanted_dynamic_default["inet6"] = column[2]
@@ -937,7 +971,10 @@ current in wanted_interface || mode == "conflicts" {
 END {
     if (failed)
         exit 1
-    if (mode == "rclists") {
+    if (mode == "dhcp4-default") {
+        if (!interface_name(nic)) fail("Invalid DHCP interface")
+        lease_default()
+    } else if (mode == "rclists") {
         print "cloned_interfaces: " retained_rc_list["cloned_interfaces"]
         print "static_routes: " retained_rc_list["static_routes"]
         print "ipv6_static_routes: " retained_rc_list["ipv6_static_routes"]

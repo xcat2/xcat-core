@@ -188,8 +188,16 @@ dhcp6_start()
 
 verify_routes()
 {
+    awk -F '\t' -v prior="${2:-}" 'BEGIN {OFS="\t"}
+        prior == "prior" && $1 == "H6" {$6="no"} {print}' "$1" > "$pending/routes.plan" || return 1
+    while IFS="$tab" read -r kind nic address bits peerdns defroute; do
+        [ "$kind:$defroute:${2:-}" = H:yes: ] || continue
+        protected_file "$state/dhcp/$nic.lease" || return 1
+        awk -v mode=dhcp4-default -v nic="$nic" -f "$planner" "$state/dhcp/$nic.lease" \
+            >> "$pending/routes.plan" || return 1
+    done < "$1"
     netstat -rnW > "$pending/routes.kernel" || return 1
-    awk -v mode=routes -f "$planner" "$1" "$pending/routes.kernel"
+    awk -v mode=routes -f "$planner" "$pending/routes.plan" "$pending/routes.kernel"
 }
 
 wait_ready()
@@ -321,6 +329,32 @@ default_routes()
     return 0
 }
 
+dhcp_default_routes()
+{
+    awk -F '\t' '$1 == "H" && $6 == "yes" {print "inet"}
+        $1 == "H6" && $6 == "yes" {print "inet6"}' "$1" > "$pending/dhcp.defaults" || return 1
+    while IFS= read -r family; do
+        if route -n get "-$family" default >/dev/null 2>&1; then
+            route -n delete "-$family" default || return 1
+        fi
+    done < "$pending/dhcp.defaults"
+}
+
+resolver_apply()
+{
+    if awk -F '\t' '$1 == "H" || $1 == "H6" {found=1} END {exit !found}' "$1" &&
+        [ -s "$state/resolver-base" ]; then
+        protected_file "$state/resolver-base" || return 1
+        resolvconf -a lo0:xcat < "$state/resolver-base" || return 1
+    else
+        resolvconf -f -d lo0:xcat || return 1
+        if [ -f "$state/resolver-base" ] && [ -z "$(resolvconf -i)" ]; then
+            protected_file "$state/resolver-base" || return 1
+            cp -p "$state/resolver-base" /etc/resolv.conf || return 1
+        fi
+    fi
+}
+
 rollback()
 {
     printf '%s\n' 'confignetwork: restoring the previous network configuration' >&2
@@ -349,6 +383,13 @@ rollback()
     if [ -s "$pending/before.plan" ]; then
         apply_plan "$pending/before.plan" > "$pending/rollback-apply.log" 2>&1 || return 1
     fi
+    if [ -f "$pending/before.resolv" ]; then
+        if [ -f "$pending/before.resolver-base" ]; then
+            cp -p "$pending/before.resolver-base" "$state/resolver-base" || return 1
+        else rm -f "$state/resolver-base" || return 1; fi
+        resolver_apply "$pending/before.plan" || return 1
+    fi
+    dhcp_default_routes "$pending/before.plan" >> "$pending/rollback-routes.log" 2>&1 || return 1
     if [ -d "$pending/before.dhcp" ]; then
         dhcp_start "$pending/before.plan" >> "$pending/rollback-dhcp.log" 2>&1 || return 1
     fi
@@ -458,7 +499,7 @@ awk -v mode=routeconflicts -f "$planner" "$pending/route-ownership" "$pending/ro
 if [ -s "$pending/before.plan" ]; then
     awk -v mode=verify-prior -f "$planner" "$pending/before.plan" "$pending/before.kernel" ||
         fail 'The previously managed network has drifted; reconcile it before updating'
-    verify_routes "$pending/before.plan" || fail 'Previously managed routes have drifted; reconcile them before updating'
+    verify_routes "$pending/before.plan" prior || fail 'Previously managed routes have drifted; reconcile them before updating'
 fi
 awk -v mode=snapshot -f "$planner" "$pending/union" "$pending/before.kernel" > "$pending/physical.snapshot"
 : > "$pending/physical.variables"
@@ -547,6 +588,7 @@ if [ -s "$pending/before.plan" ] && cmp -s "$pending/plan" "$pending/before.plan
     cmp -s "$pending/before.variables" "$pending/after.variables" &&
     awk -v mode=verify -f "$planner" "$pending/plan" "$pending/before.kernel" >/dev/null 2>&1 &&
     dhcp_ready "$pending/plan" &&
+    verify_routes "$pending/plan" >/dev/null 2>&1 &&
     dhcp_matches "$pending/plan" &&
     dhcp6_matches "$pending/plan" &&
     { ! awk -F '\t' '$1 == "H" {found=1} END {exit !found}' "$pending/plan" ||
@@ -605,10 +647,16 @@ done
 if awk -F '\t' '$1 == "H" || $1 == "H6" {found=1} END {exit !found}' "$pending/union"; then
     protected_file /etc/resolv.conf || fail 'A regular root-owned resolver configuration is required for DHCP'
     cp -p /etc/resolv.conf "$pending/before.resolv"
+    if [ -e "$state/resolver-base" ] || [ -L "$state/resolver-base" ]; then
+        protected_file "$state/resolver-base" || fail 'Unsafe saved resolver configuration'
+        cp -p "$state/resolver-base" "$pending/before.resolver-base"
+        cp -p "$state/resolver-base" "$pending/after.resolver-base"
+    fi
     if ! awk -F '\t' '$1 == "H" || $1 == "H6" {found=1} END {exit !found}' "$pending/before.plan"; then
-        { [ ! -e "$state/resolver-base" ] && [ ! -L "$state/resolver-base" ]; } ||
-            protected_file "$state/resolver-base" || fail 'Unsafe saved resolver configuration'
-        cp -p /etc/resolv.conf "$state/resolver-base"
+        # Existing resolver sources already own their DNS; do not freeze their leases.
+        if [ -z "$(resolvconf -i)" ]; then
+            cp -p /etc/resolv.conf "$pending/after.resolver-base"
+        else : > "$pending/after.resolver-base"; fi
     fi
 fi
 if awk -F '\t' '$1 == "H" {found=1} END {exit !found}' "$pending/union"; then
@@ -681,9 +729,9 @@ if [ -d "$pending/after.dhcp6" ]; then
     cp -p "$pending/after.dhcp6.conf" "$state/dhcp6.conf"
 fi
 if [ -f "$pending/dhclient-script" ]; then mv "$pending/dhclient-script" "$state/dhclient-script"; fi
-if [ -f "$state/resolver-base" ] && [ -z "$(resolvconf -i)" ]; then
-    protected_file "$state/resolver-base" || fail 'Unsafe saved resolver configuration'
-    cp -p "$state/resolver-base" /etc/resolv.conf
+if [ -f "$pending/after.resolver-base" ]; then
+    cp -p "$pending/after.resolver-base" "$state/resolver-base"
+    resolver_apply "$pending/plan" || fail 'Cannot preserve the installed resolver settings'
 fi
 if [ -d "$pending/after.dhcp" ]; then
     rm -rf "$state/dhcp"
@@ -693,6 +741,7 @@ routes delete "$pending/before.plan" "$pending/removed.routes" > "$pending/remov
     fail 'Cannot remove previously managed routes'
 clear_interfaces "$pending/union" > "$pending/clear.log" 2>&1 || fail 'Cannot clear the selected interfaces'
 apply_plan "$pending/plan" > "$pending/apply.log" 2>&1 || fail 'Cannot apply the selected interface configuration'
+dhcp_default_routes "$pending/plan" > "$pending/dhcp-defaults.log" 2>&1 || fail 'Cannot transfer default routes to DHCP'
 if [ -d "$pending/after.dhcp" ]; then
     dhcp_start "$pending/plan" > "$pending/start-dhcp.log" 2>&1 || fail 'Cannot start DHCP clients'
 fi

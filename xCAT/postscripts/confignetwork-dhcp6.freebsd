@@ -42,6 +42,12 @@ done
 policy=$state/$interface.policy
 lease=$state/$interface.lease
 private_file "$policy" && private_file "$state/planner" || exit 1
+base=${state%/*}/resolver-base
+if [ -e "$base" ] || [ -L "$base" ]; then
+    [ -f "$base" ] && [ ! -L "$base" ] && [ "$(stat -f '%u:%g:%l' "$base")" = 0:0:1 ] || exit 1
+    case $(stat -f '%Lp' "$base") in 400|444|600|644) ;; *) exit 1 ;; esac
+    if [ -s "$base" ]; then resolvconf -a lo0:xcat < "$base" || exit 1; fi
+fi
 IFS="$(printf '\t')" read -r expected peerdns < "$policy"
 case "$peerdns" in yes|no) ;; *) exit 1 ;; esac
 stage=
@@ -67,7 +73,11 @@ BOUND6|RENEW6|REBIND6|REBOOT6)
         while IFS= read -r address; do ifconfig "$interface" inet6 "$address" delete || exit 1; done
         exit 1
     fi
-    if [ "$peerdns" = yes ]; then resolvconf -a "$interface:dhcp6" < "$stage"; fi
+    if [ "$peerdns" = yes ] && [ -s "$stage" ]; then
+        resolvconf -a "$interface:dhcp6" < "$stage"
+    else
+        resolvconf -f -d "$interface:dhcp6"
+    fi
     printf '%s\t%s\t%s\n' "$expected" "$reason" "$(date +%s)" > "$stage"
     [ ! -e "$lease" ] || private_file "$lease" || exit 1
     fsync "$stage"
