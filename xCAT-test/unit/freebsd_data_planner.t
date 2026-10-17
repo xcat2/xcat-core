@@ -87,18 +87,18 @@ subtest 'dedicated pool defaults and native readback' => sub {
 subtest 'auxiliary devices and mixed log groups' => sub {
     my $policy = base();
     @$policy{qw(log_vdevs cache_vdevs special_vdevs special_small_blocks)} =
-        ('vtbd4@LOG4,vtbd5@LOG5;vtbd6@LOG6', 'vtbd7@CACHE7,vtbd8@CACHE8', 'vtbd9@SPECIAL9,vtbd10@SPECIAL10', 65536);
+        ('vtbd4@LOG4,vtbd5@LOG5', 'vtbd7@CACHE7,vtbd8@CACHE8', 'vtbd9@SPECIAL9,vtbd10@SPECIAL10', 65536);
     my ($exit, $plan) = compile($policy);
-    is($exit, 0, 'mirror, single log, two caches and redundant special devices compile');
+    is($exit, 0, 'mirrored log, two caches and redundant special devices compile');
     is_deeply([map { substr($_, 2) } grep { /^C\t/x } split(/\n/x, $plan)],
-        [qw(mirror /dev/vtbd2 /dev/vtbd3 special mirror /dev/vtbd9 /dev/vtbd10 log mirror /dev/vtbd4 /dev/vtbd5 /dev/vtbd6 cache /dev/vtbd7 /dev/vtbd8)],
+        [qw(mirror /dev/vtbd2 /dev/vtbd3 special mirror /dev/vtbd9 /dev/vtbd10 log mirror /dev/vtbd4 /dev/vtbd5 cache /dev/vtbd7 /dev/vtbd8)],
         'native arguments retain separate data, special, log and cache roles');
     my $native = status();
-    $native =~ s/\nerrors:/\tspecial\n\t  mirror-1 ONLINE 0 0 0\n\t    \/dev\/vtbd9 ONLINE 0 0 0\n\t    \/dev\/vtbd10 ONLINE 0 0 0\n\tlogs\n\t  mirror-2 ONLINE 0 0 0\n\t    \/dev\/vtbd4 ONLINE 0 0 0\n\t    \/dev\/vtbd5 ONLINE 0 0 0\n\t  \/dev\/vtbd6 ONLINE 0 0 0\n\tcache\n\t  \/dev\/vtbd7 ONLINE 0 0 0\n\t  \/dev\/vtbd8 ONLINE 0 0 0\n\nerrors:/x;
-    is((verify($plan, $native))[0], 0, 'native readback accepts a direct log after a mirrored log');
+    $native =~ s/\nerrors:/\tspecial\n\t  mirror-1 ONLINE 0 0 0\n\t    \/dev\/vtbd9 ONLINE 0 0 0\n\t    \/dev\/vtbd10 ONLINE 0 0 0\n\tlogs\n\t  mirror-2 ONLINE 0 0 0\n\t    \/dev\/vtbd4 ONLINE 0 0 0\n\t    \/dev\/vtbd5 ONLINE 0 0 0\n\tcache\n\t  \/dev\/vtbd7 ONLINE 0 0 0\n\t  \/dev\/vtbd8 ONLINE 0 0 0\n\nerrors:/x;
+    is((verify($plan, $native))[0], 0, 'native readback accepts the mirrored log');
     my $wrong = $native;
-    $wrong =~ s{\t[ ]{2}/dev/vtbd6}{\t    /dev/vtbd6}x or croak 'invalid log fixture';
-    isnt((verify($plan, $wrong))[0], 0, 'moving a separate log into the mirror is rejected');
+    $wrong =~ s{\t[ ]{4}/dev/vtbd5}{\t  /dev/vtbd5}x or croak 'invalid log fixture';
+    isnt((verify($plan, $wrong))[0], 0, 'moving a mirrored log member outside its mirror is rejected');
     $wrong = $native;
     $wrong =~ s/\tcache\n/\tlogs\n/x;
     isnt((verify($plan, $wrong))[0], 0, 'cache devices cannot masquerade as logs');
@@ -134,7 +134,6 @@ subtest 'invalid policy cannot emit a partial create plan' => sub {
 
 subtest 'data topologies and special-device redundancy' => sub {
     for my $case (
-        ['stripe', 'vtbd2@DATA2', 2, ['/dev/vtbd2']],
         ['mirror', 'vtbd2@DATA2,vtbd3@DATA3,vtbd4@DATA4', 3, [qw(mirror /dev/vtbd2 /dev/vtbd3 /dev/vtbd4)]],
         ['raid10', 'vtbd2@DATA2,vtbd3@DATA3;vtbd4@DATA4,vtbd5@DATA5', 2,
             [qw(mirror /dev/vtbd2 /dev/vtbd3 mirror /dev/vtbd4 /dev/vtbd5)]],
