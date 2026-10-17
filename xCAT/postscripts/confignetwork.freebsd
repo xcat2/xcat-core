@@ -30,6 +30,24 @@ protected_file()
     case $(stat -f '%Lp' "$1") in 400|444|600|644) ;; *) return 1 ;; esac
 }
 
+rc_setting()
+{
+    printf '%s: ' "$1"
+    printf '%s' "$2" | tr '\n' ' '
+    printf '\n'
+}
+
+rc_variables()
+{
+    rc_source=$1
+    sysrc -f "$rc_source" -a -N > "$pending/variable.names" || return 1
+    while IFS= read -r rc_key; do
+        case "$rc_key" in ''|*[!a-zA-Z0-9_]*) return 1 ;; esac
+        rc_value=$(sysrc -f "$rc_source" -n "$rc_key") || return 1
+        rc_setting "$rc_key" "$rc_value" || return 1
+    done < "$pending/variable.names"
+}
+
 state=/var/db/xcat/network
 if [ ! -e /var/db/xcat ]; then install -d -m 0700 /var/db/xcat; fi
 [ -d /var/db/xcat ] && [ ! -L /var/db/xcat ] || fail 'Unsafe xCAT state directory'
@@ -271,10 +289,13 @@ while IFS="$tab" read -r kind nic type rest; do
     [ "$kind" = I ] || continue
     if [ "$type" = ethernet ]; then
         ifconfig "$nic" >/dev/null || fail "Physical interface is missing: $nic"
-        setting=$(sysrc -n "ifconfig_$nic" 2>/dev/null || :)
-        [ -n "$setting" ] || setting=$(sysrc -n ifconfig_DEFAULT 2>/dev/null || :)
-        case "$setting" in *DHCP*) fail "Stop DHCP configuration before managing $nic" ;; esac
-        printf 'ifconfig_%s: %s\n' "$nic" "$setting" >> "$pending/physical.variables"
+        for suffix in '' _ipv6; do
+            if ! setting=$(sysrc -n "ifconfig_$nic$suffix" 2>/dev/null); then
+                setting=$(sysrc -n ifconfig_DEFAULT 2>/dev/null || :)
+            fi
+            case "$suffix:$setting" in :*DHCP*) fail "Stop DHCP configuration before managing $nic" ;; esac
+            rc_setting "ifconfig_$nic$suffix" "$setting" >> "$pending/physical.variables"
+        done
     elif ifconfig "$nic" >/dev/null 2>&1; then
         awk -F '\t' -v nic="$nic" '$1 == "I" && $2 == nic && $3 != "ethernet" {found=1} END {exit !found}' \
             "$pending/before.plan" || fail "An unmanaged clone already exists: $nic"
@@ -293,8 +314,8 @@ awk '
     !inside {print}
     END {if (inside) exit 1}
 ' "$pending/before.rc" > "$pending/base.rc" || fail 'Malformed managed rc.conf block'
-sysrc -f "$pending/base.rc" -a > "$pending/base.variables" || fail 'Cannot read base rc.conf settings'
-sysrc -f "$pending/before.rc" -a > "$pending/before.variables" || fail 'Cannot read current rc.conf settings'
+rc_variables "$pending/base.rc" > "$pending/base.variables" || fail 'Cannot read base rc.conf settings'
+rc_variables "$pending/before.rc" > "$pending/before.variables" || fail 'Cannot read current rc.conf settings'
 awk -v mode=rcoptions -f "$planner" "$pending/plan" "$pending/physical.variables" "$pending/before.variables"
 awk -v mode=rclists -f "$planner" "$pending/before.plan" "$pending/before.variables" > "$pending/retained.lists"
 cat "$pending/base.variables" "$pending/retained.lists" > "$pending/unmanaged.variables"
@@ -339,7 +360,7 @@ cat "$pending/base.rc" > "$pending/after.rc"
     printf '%s\n' '# END xCAT FreeBSD network'
 } >> "$pending/after.rc"
 /bin/sh -n "$pending/after.rc"
-sysrc -f "$pending/after.rc" -a > "$pending/after.variables" || fail 'Cannot read proposed rc.conf settings'
+rc_variables "$pending/after.rc" > "$pending/after.variables" || fail 'Cannot read proposed rc.conf settings'
 if [ -s "$pending/before.plan" ] && cmp -s "$pending/plan" "$pending/before.plan" &&
     cmp -s "$pending/before.variables" "$pending/after.variables"; then
     printf '%s\n' 'confignetwork: configuration is unchanged'

@@ -587,11 +587,13 @@ function compile(    n) {
         print records[n]
 }
 
-function static_options(value,    count, words, i, item, parts, suffix) {
+function static_options(value, ipv6_args,    count, words, i, item, parts, suffix) {
     count = split(value, words, /[ \t]+/)
     for (i = 1; i <= count; i++) {
         item = words[i]
         if (item == "" || item ~ /^(inet|inet6|up|down|alias|ifdisabled|-ifdisabled)$/)
+            continue
+        if (ipv6_args && toupper(item) ~ /^(DHCP|NOAUTO|NOSYNCDHCP|SYNCDHCP|WPA|HOSTAP)$/)
             continue
         if (item == "mtu" || item == "prefixlen") {
             if (!number(words[++i], 0, item == "mtu" ? 65535 : 128))
@@ -674,9 +676,11 @@ mode == "rcoptions" {
     key = substr($0, 1, position - 1)
     value = substr($0, position + 1)
     for (nic in wanted_interface) {
+        if (value ~ /[^ \t]/ && key ~ ("^ipv6_ifconfig_" nic "($|_alias[0-9]+$)"))
+            fail("Interface options require manual integration: " key)
         if (wanted_interface[nic] != "ethernet")
             continue
-        if (key ~ ("^ifconfig_" nic "($|_(ipv6|aliases|alias[0-9]+)$)") && !static_options(value))
+        if (key ~ ("^ifconfig_" nic "($|_(ipv6|aliases|alias[0-9]+)$)") && !static_options(value, key ~ /_ipv6$/))
             fail("Interface options require manual integration: " key)
         if (value ~ /[^ \t]/ && (key == "ifconfig_" nic "_name" || key ~ ("^(create_args|vlans|ipv6_prefix)_" nic "$")))
             fail("Interface options require manual integration: " key)
