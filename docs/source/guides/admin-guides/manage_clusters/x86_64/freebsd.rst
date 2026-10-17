@@ -771,6 +771,17 @@ FreeBSD startup reads first. It retains the GUIDs of imported pools using either
 standard cache path. Existing cached pools must be imported before configuration;
 stale or conflicting cached identities cause rejection before pool operations.
 
+Import temporarily offline cached pools before running the postscript again.
+For a permanently retired pool, first save both standard cache files and
+inventory their names and GUIDs with ``zdb -C -U cache-file``. Import every pool
+that must still start at boot. After confirming which cached identity is retired,
+move the old cache files aside and run
+``zpool set cachefile=/etc/zfs/zpool.cache pool`` for each intended startup pool,
+including the OS pool. Verify that the new cache contains all their recorded
+GUIDs before rerunning the postscript or rebooting. Do not discard an identity
+merely because its disks are temporarily unavailable. This is an administrator
+recovery operation; the postscript does not remove stale entries automatically.
+
 Automatic data encryption
 -------------------------
 
@@ -918,8 +929,8 @@ Do not run another DHCP client on managed interfaces. Explicit static defaults
 and DHCP defaults must not compete for the same address family.
 
 If an existing required IPv6 router-advertisement default disappears, restore
-the router or set ``IPV6_DEFROUTE=no`` before applying further changes on that
-interface. The postscript rejects the missing route before changing the network.
+the router or set ``IPV6_DEFROUTE=no`` before running ``confignetwork`` again.
+The postscript rejects the missing route before changing the network.
 
 For example, configure a physical interface with IPv4 and IPv6::
 
