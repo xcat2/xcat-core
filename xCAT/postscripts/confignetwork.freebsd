@@ -23,6 +23,8 @@ case ${SETINSTALLNIC:-} in 1|yes) configure_boot=1 ;; esac
 planner=$(CDPATH= cd -P "$(dirname "$0")" && pwd)/confignetwork-freebsd.awk
 [ -f "$planner" ] && [ ! -L "$planner" ] || fail 'The FreeBSD network planner is missing'
 dhcp_helper=${planner%/*}/confignetwork-dhclient.freebsd
+dhcp6_source=${planner%/*}/confignetwork-dhcp6.freebsd
+dhcp6_service=/usr/local/etc/rc.d/xcat_dhcp6
 
 protected_file()
 {
@@ -117,6 +119,71 @@ dhcp_ready()
         protected_file "$state/dhcp/$nic.lease" || return 1
         /etc/rc.d/dhclient forcestatus "$nic" >/dev/null 2>&1 || return 1
     done < "$pending/dhcp.ready"
+    dhcp6_ready "$1"
+}
+
+dhcp6_plan()
+{
+    awk -F '\t' '$1 == "H6" {found=1} END {exit !found}' "$1"
+}
+
+dhcp6_config()
+{
+    dhcp6_plan "$1" || return 0
+    dhcp6_uuid=$(kenv -q smbios.system.uuid) || return 1
+    dhcp6_duid=$(awk -v mode=dhcp6-duid -v uuid="$dhcp6_uuid" -f "$planner") || return 1
+    printf 'ipv6only\nduid %s\nipv6ra_noautoconf\nscript "%s"\n' "$dhcp6_duid" "$dhcp6_service"
+    printf 'option dhcp6_name_servers, dhcp6_domain_search\n'
+    awk -F '\t' '$1=="H6" {list=list " " $2} END {print "allowinterfaces" list}' "$1"
+    while IFS="$tab" read -r kind nic address bits peerdns defroute; do
+        [ "$kind" = H6 ] || continue
+        printf 'interface %s\n  ia_na\n' "$nic"
+        [ "$defroute" = yes ] || printf '  nogateway\n'
+    done < "$1"
+}
+
+dhcp6_matches()
+{
+    dhcp6_plan "$1" || return 0
+    protected_file "$state/dhcp6.conf" && protected_script "$dhcp6_service" || return 1
+    dhcp6_config "$1" | cmp -s - "$state/dhcp6.conf" || return 1
+    protected_file "$state/dhcp6/planner" &&
+        [ "$(stat -f '%Lp' "$state/dhcp6/planner")" = 600 ] &&
+        cmp -s "$dhcp6_source" "$dhcp6_service" && cmp -s "$planner" "$state/dhcp6/planner" || return 1
+    while IFS="$tab" read -r kind nic address bits peerdns defroute; do
+        [ "$kind" = H6 ] || continue
+        protected_file "$state/dhcp6/$nic.policy" &&
+            [ "$(stat -f '%Lp' "$state/dhcp6/$nic.policy")" = 600 ] || return 1
+        printf '%s\t%s\n' "$address" "$peerdns" | cmp -s - "$state/dhcp6/$nic.policy" || return 1
+    done < "$1"
+}
+
+dhcp6_ready()
+{
+    dhcp6_plan "$1" || return 0
+    "$dhcp6_service" forcestatus >/dev/null 2>&1 || return 1
+    while IFS="$tab" read -r kind nic rest; do
+        [ "$kind" != H6 ] || protected_file "$state/dhcp6/$nic.lease" || return 1
+    done < "$1"
+}
+
+dhcp6_stop()
+{
+    dhcp6_plan "$1" || return 0
+    if [ -f "$dhcp6_service" ] && "$dhcp6_service" forcestatus >/dev/null 2>&1; then
+        "$dhcp6_service" forcestop || return 1
+    fi
+    while IFS="$tab" read -r kind nic rest; do
+        [ "$kind" = H6 ] || continue
+        resolvconf -f -d "$nic:dhcp6" || return 1
+        rm -f "$state/dhcp6/$nic.lease" || return 1
+    done < "$1"
+}
+
+dhcp6_start()
+{
+    dhcp6_plan "$1" || return 0
+    "$dhcp6_service" forcestart
 }
 
 verify_routes()
@@ -132,7 +199,7 @@ wait_ready()
     attempt=0
     ready_limit=20
     if awk -F '\t' '$1 == "I" && $3 == "bridge" {bridge[$2]=1}
-        $1 == "H" && $2 in bridge {found=1} END {exit !found}' "$ready_plan"; then ready_limit=45; fi
+        ($1 == "H" || $1 == "H6") && $2 in bridge {found=1} END {exit !found}' "$ready_plan"; then ready_limit=45; fi
     while :; do
         ifconfig -a > "$pending/after.kernel" || return 1
         if awk -v mode=verify -f "$planner" "$ready_plan" "$pending/after.kernel" > "$pending/verify.log" 2>&1 &&
@@ -180,6 +247,10 @@ apply_plan()
         A)
             if [ "$value" = inet ] && awk -F '\t' -v nic="$nic" \
                 '$1 == "H" && $2 == nic {found=1} END {exit !found}' "$apply_file"; then
+                continue
+            fi
+            if [ "$value" = inet6 ] && awk -F '\t' -v nic="$nic" \
+                '$1 == "H6" && $2 == nic {found=1} END {exit !found}' "$apply_file"; then
                 continue
             fi
             if [ "$value" = inet6 ]; then ifconfig "$nic" inet6 -ifdisabled || return 1; fi
@@ -233,6 +304,10 @@ default_routes()
             '$1 == "H" && $6 == "yes" {owned=1} END {exit !owned}' "$2"; then
             continue
         fi
+        if [ "$family" = inet6 ] && awk -F '\t' \
+            '$1 == "H6" && $6 == "yes" {owned=1} END {exit !owned}' "$2"; then
+            continue
+        fi
         if [ -z "$gateway" ]; then
             if route -n get "-$family" default >/dev/null 2>&1; then
                 route -n delete "-$family" default || return 1
@@ -250,12 +325,23 @@ rollback()
 {
     printf '%s\n' 'confignetwork: restoring the previous network configuration' >&2
     dhcp_stop "$pending/union" > "$pending/rollback-dhcp.log" 2>&1 || return 1
+    dhcp6_stop "$pending/union" >> "$pending/rollback-dhcp.log" 2>&1 || return 1
     if [ -f "$pending/before.dhclient-script" ]; then
         cp -p "$pending/before.dhclient-script" "$state/dhclient-script" || return 1
     fi
     if [ -d "$pending/before.dhcp" ]; then
         rm -rf "$state/dhcp" || return 1
         cp -pR "$pending/before.dhcp" "$state/dhcp" || return 1
+    fi
+    if [ -d "$pending/before.dhcp6" ]; then
+        rm -rf "$state/dhcp6" || return 1
+        cp -pR "$pending/before.dhcp6" "$state/dhcp6" || return 1
+        if [ -f "$pending/before.dhcp6.conf" ]; then
+            cp -p "$pending/before.dhcp6.conf" "$state/dhcp6.conf" || return 1
+        else rm -f "$state/dhcp6.conf" || return 1; fi
+        if [ -f "$pending/before.dhcp6-service" ]; then
+            cp -p "$pending/before.dhcp6-service" "$dhcp6_service" || return 1
+        else rm -f "$dhcp6_service" || return 1; fi
     fi
     routes delete "$pending/added.routes" /dev/null > "$pending/rollback-routes.log" 2>&1 || return 1
     clear_interfaces "$pending/union" > "$pending/rollback-clear.log" 2>&1 || return 1
@@ -266,6 +352,7 @@ rollback()
     if [ -d "$pending/before.dhcp" ]; then
         dhcp_start "$pending/before.plan" >> "$pending/rollback-dhcp.log" 2>&1 || return 1
     fi
+    dhcp6_start "$pending/before.plan" >> "$pending/rollback-dhcp.log" 2>&1 || return 1
     if [ -f "$pending/before.resolv" ]; then
         cp -p "$pending/before.resolv" /etc/resolv.conf || return 1
     fi
@@ -365,7 +452,7 @@ ifconfig -a > "$pending/before.kernel"
 awk -v mode=conflicts -v configure_boot="$configure_boot" -f "$planner" "$pending/union" "$pending/before.kernel"
 awk -F '\t' '$1 == "I"' "$pending/union" > "$pending/route-ownership"
 awk -F '\t' 'BEGIN {OFS="\t"} $1 == "R" {$1="O"; print}' "$pending/before.plan" >> "$pending/route-ownership"
-awk -F '\t' '$1 == "H"' "$pending/before.plan" >> "$pending/route-ownership"
+awk -F '\t' '$1 == "H" || $1 == "H6"' "$pending/before.plan" >> "$pending/route-ownership"
 netstat -rnW > "$pending/routes.kernel"
 awk -v mode=routeconflicts -f "$planner" "$pending/route-ownership" "$pending/routes.kernel"
 if [ -s "$pending/before.plan" ]; then
@@ -461,6 +548,7 @@ if [ -s "$pending/before.plan" ] && cmp -s "$pending/plan" "$pending/before.plan
     awk -v mode=verify -f "$planner" "$pending/plan" "$pending/before.kernel" >/dev/null 2>&1 &&
     dhcp_ready "$pending/plan" &&
     dhcp_matches "$pending/plan" &&
+    dhcp6_matches "$pending/plan" &&
     { ! awk -F '\t' '$1 == "H" {found=1} END {exit !found}' "$pending/plan" ||
         cmp -s "$dhcp_helper" "$state/dhclient-script"; }; then
     printf '%s\n' 'confignetwork: configuration is unchanged'
@@ -484,15 +572,18 @@ for family in inet inet6; do
     variable=defaultrouter
     [ "$family" != inet6 ] || variable=ipv6_defaultrouter
     gateway=$(sysrc -f "$pending/after.rc" -n "$variable" 2>/dev/null || :)
-    if [ "$family" = inet ] && awk -F '\t' '$1 == "H" && $6 == "yes" {found=1} END {exit !found}' "$pending/plan"; then
-        printf 'inet\t\n' >> "$pending/after.defaults"
+    if awk -F '\t' -v family="$family" \
+        '(family == "inet" && $1 == "H" || family == "inet6" && $1 == "H6") && $6 == "yes" {found=1}
+        END {exit !found}' "$pending/plan"; then
+        printf '%s\t\n' "$family" >> "$pending/after.defaults"
         continue
     fi
     case "$gateway" in
     ''|NO)
         gateway=
         if ! awk -F '\t' -v family="$family" '$1 == "D" && $2 == family {found=1}
-            family == "inet" && $1 == "H" && $6 == "yes" {found=1} END {exit !found}' "$pending/before.plan"; then
+            family == "inet" && $1 == "H" && $6 == "yes" {found=1}
+            family == "inet6" && $1 == "H6" && $6 == "yes" {found=1} END {exit !found}' "$pending/before.plan"; then
             gateway=$current
         fi
         ;;
@@ -511,6 +602,15 @@ for family in inet inet6; do
 done
 : > "$pending/added.routes"
 : > "$pending/removed.routes"
+if awk -F '\t' '$1 == "H" || $1 == "H6" {found=1} END {exit !found}' "$pending/union"; then
+    protected_file /etc/resolv.conf || fail 'A regular root-owned resolver configuration is required for DHCP'
+    cp -p /etc/resolv.conf "$pending/before.resolv"
+    if ! awk -F '\t' '$1 == "H" || $1 == "H6" {found=1} END {exit !found}' "$pending/before.plan"; then
+        { [ ! -e "$state/resolver-base" ] && [ ! -L "$state/resolver-base" ]; } ||
+            protected_file "$state/resolver-base" || fail 'Unsafe saved resolver configuration'
+        cp -p /etc/resolv.conf "$state/resolver-base"
+    fi
+fi
 if awk -F '\t' '$1 == "H" {found=1} END {exit !found}' "$pending/union"; then
     [ "$(sysrc -n dhclient_program)" = /sbin/dhclient ] && [ -z "$(sysrc -n dhclient_flags)" ] ||
         fail 'Custom DHCP client programs or global flags require manual integration'
@@ -529,13 +629,6 @@ if awk -F '\t' '$1 == "H" {found=1} END {exit !found}' "$pending/union"; then
     else
         mkdir -m 0700 "$pending/before.dhcp"
     fi
-    protected_file /etc/resolv.conf || fail 'A regular root-owned resolver configuration is required for DHCP'
-    cp -p /etc/resolv.conf "$pending/before.resolv"
-    if ! awk -F '\t' '$1 == "H" {found=1} END {exit !found}' "$pending/before.plan"; then
-        { [ ! -e "$state/resolver-base" ] && [ ! -L "$state/resolver-base" ]; } ||
-            protected_file "$state/resolver-base" || fail 'Unsafe saved resolver configuration'
-        cp -p /etc/resolv.conf "$state/resolver-base"
-    fi
     mkdir -m 0700 "$pending/after.dhcp"
     while IFS="$tab" read -r kind nic address bits peerdns defroute; do
         [ "$kind" = H ] || continue
@@ -543,9 +636,50 @@ if awk -F '\t' '$1 == "H" {found=1} END {exit !found}' "$pending/union"; then
         dhcp_config > "$pending/after.dhcp/$nic.conf"
     done < "$pending/plan"
 fi
+if dhcp6_plan "$pending/union"; then
+    [ -x /usr/local/sbin/dhcpcd ] || fail 'DHCPv6 requires the dhcpcd package'
+    protected_script "$dhcp6_source" || fail 'The DHCPv6 service is missing or unsafe'
+    for override in /etc/rc.conf.d/xcat_dhcp6 /usr/local/etc/rc.conf.d/xcat_dhcp6; do
+        [ ! -e "$override" ] && [ ! -L "$override" ] || fail 'DHCPv6 service overrides require manual integration'
+    done
+    case $(sysrc -n dhcpcd_enable 2>/dev/null || :) in ''|NO|no) ;; *) fail 'Stop unmanaged dhcpcd configuration first' ;; esac
+    if pgrep -x dhcpcd >/dev/null; then
+        dhcp6_plan "$pending/before.plan" && protected_script "$dhcp6_service" &&
+            "$dhcp6_service" forcestatus >/dev/null 2>&1 || fail 'Stop unmanaged dhcpcd clients first'
+    fi
+    if [ -e "$dhcp6_service" ] || [ -L "$dhcp6_service" ]; then
+        protected_script "$dhcp6_service" && dhcp6_plan "$pending/before.plan" || fail 'Unmanaged DHCPv6 service exists'
+        cp -p "$dhcp6_service" "$pending/before.dhcp6-service"
+    fi
+    for file in "$state/dhcp6.conf"; do
+        if [ -e "$file" ] || [ -L "$file" ]; then
+            protected_file "$file" || fail 'Unsafe DHCPv6 configuration'
+            cp -p "$file" "$pending/before.dhcp6.conf"
+        fi
+    done
+    if [ -e "$state/dhcp6" ]; then
+        [ -d "$state/dhcp6" ] && [ ! -L "$state/dhcp6" ] &&
+            [ "$(stat -f '%u:%g:%Lp' "$state/dhcp6")" = 0:0:700 ] || fail 'Unsafe DHCPv6 state'
+        cp -pR "$state/dhcp6" "$pending/before.dhcp6"
+    else mkdir -m 0700 "$pending/before.dhcp6"; fi
+    mkdir -m 0700 "$pending/after.dhcp6"
+    cp "$planner" "$pending/after.dhcp6/planner"
+    chmod 0600 "$pending/after.dhcp6/planner"
+    dhcp6_config "$pending/plan" > "$pending/after.dhcp6.conf"
+    while IFS="$tab" read -r kind nic address bits peerdns defroute; do
+        [ "$kind" != H6 ] || printf '%s\t%s\n' "$address" "$peerdns" > "$pending/after.dhcp6/$nic.policy"
+    done < "$pending/plan"
+fi
 cmp -s /etc/rc.conf "$pending/before.rc" || fail 'rc.conf changed during preparation'
 mutating=1
 dhcp_stop "$pending/before.plan" > "$pending/stop-dhcp.log" 2>&1 || fail 'Cannot stop previous DHCP clients'
+dhcp6_stop "$pending/before.plan" >> "$pending/stop-dhcp.log" 2>&1 || fail 'Cannot stop previous DHCPv6 clients'
+if [ -d "$pending/after.dhcp6" ]; then
+    install -m 0700 "$dhcp6_source" "$dhcp6_service"
+    rm -rf "$state/dhcp6"
+    cp -pR "$pending/after.dhcp6" "$state/dhcp6"
+    cp -p "$pending/after.dhcp6.conf" "$state/dhcp6.conf"
+fi
 if [ -f "$pending/dhclient-script" ]; then mv "$pending/dhclient-script" "$state/dhclient-script"; fi
 if [ -f "$state/resolver-base" ] && [ -z "$(resolvconf -i)" ]; then
     protected_file "$state/resolver-base" || fail 'Unsafe saved resolver configuration'
@@ -562,6 +696,7 @@ apply_plan "$pending/plan" > "$pending/apply.log" 2>&1 || fail 'Cannot apply the
 if [ -d "$pending/after.dhcp" ]; then
     dhcp_start "$pending/plan" > "$pending/start-dhcp.log" 2>&1 || fail 'Cannot start DHCP clients'
 fi
+dhcp6_start "$pending/plan" >> "$pending/start-dhcp.log" 2>&1 || fail 'Cannot start DHCPv6 clients'
 wait_ready "$pending/plan" addresses || fail 'The configured addresses did not pass readback'
 routes add "$pending/plan" "$pending/added.routes" > "$pending/routes.log" 2>&1 || fail 'Cannot add the selected routes'
 default_routes "$pending/after.defaults" "$pending/plan" > "$pending/defaults.log" 2>&1 || fail 'Cannot configure default routes'
@@ -577,6 +712,9 @@ cp "$pending/plan" "$state/current.new"
 fsync "$state/current.new"
 mv "$state/current.new" "$state/current"
 fsync "$state"
+if [ -d "$pending/after.dhcp6" ] && ! dhcp6_plan "$pending/plan"; then
+    rm -f "$dhcp6_service" "$state/dhcp6.conf"
+fi
 printf '%s\n' committed > "$pending/result"
 fsync "$pending/result" "$pending"
 mutating=0

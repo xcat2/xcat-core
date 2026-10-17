@@ -200,10 +200,10 @@ function options(nic,    text, count, parts, pair, i, key, value) {
         } else if (key == "BOOTPROTO") {
             if (value != "dhcp" && value != "static" && value != "none")
                 fail("BOOTPROTO must be dhcp, static or none")
-        } else if (key == "dhcp4") {
+        } else if (key == "dhcp4" || key == "dhcp6") {
             if (value != "true" && value != "false")
-                fail("dhcp4 must be true or false")
-        } else if (key == "PEERDNS" || key == "DEFROUTE") {
+                fail(key " must be true or false")
+        } else if (key == "PEERDNS" || key == "DEFROUTE" || key == "DHCPV6C" || key == "IPV6_DEFROUTE") {
             if (value != "yes" && value != "no")
                 fail(key " must be yes or no")
         } else if (key == "LAGGPROTO" && type[nic] == "lagg") {
@@ -223,8 +223,14 @@ function options(nic,    text, count, parts, pair, i, key, value) {
         (option[nic, "BOOTPROTO"] == "dhcp") != (option[nic, "dhcp4"] == "true"))
         fail("Conflicting DHCP options for " nic)
     dhcp[nic] = option[nic, "BOOTPROTO"] == "dhcp" || option[nic, "dhcp4"] == "true"
-    if (!dhcp[nic] && (option[nic, "PEERDNS"] != "" || option[nic, "DEFROUTE"] != ""))
-        fail("PEERDNS and DEFROUTE require DHCP for " nic)
+    if (option[nic, "DHCPV6C"] != "" && option[nic, "dhcp6"] != "" &&
+        (option[nic, "DHCPV6C"] == "yes") != (option[nic, "dhcp6"] == "true"))
+        fail("Conflicting DHCPv6 options for " nic)
+    dhcp6[nic] = option[nic, "DHCPV6C"] == "yes" || option[nic, "dhcp6"] == "true"
+    if ((!dhcp[nic] && option[nic, "DEFROUTE"] != "") ||
+        (!dhcp6[nic] && option[nic, "IPV6_DEFROUTE"] != "") ||
+        (!dhcp[nic] && !dhcp6[nic] && option[nic, "PEERDNS"] != ""))
+        fail("PEERDNS and default route options require the corresponding DHCP family for " nic)
 }
 
 function visit(nic,    i, parent) {
@@ -256,7 +262,7 @@ function topology(    nic, count, i, j, parts, parent, tag, name) {
         if (attributes["NICCUSTOMSCRIPTS", nic] != "")
             fail("Use a separate postscript instead of niccustomscripts on FreeBSD")
         options(nic)
-        if (dhcp[nic] && type[nic] == "bridge" && option[nic, "MACADDR"] == "")
+        if ((dhcp[nic] || dhcp6[nic]) && type[nic] == "bridge" && option[nic, "MACADDR"] == "")
             fail("Set MACADDR for a bridge DHCP reservation")
     }
     if (total > 64)
@@ -412,6 +418,15 @@ function node_addresses(nic,    ips, nets, count, nc, i, name, ip, family, net, 
             fail("DHCP requires exactly one reserved IPv4 address in nicips for " nic)
         if (nic == management)
             delete default_gateway["inet"]
+    }
+    if (dhcp6[nic]) {
+        for (i = 1; i <= count; i++)
+            if (address_family[nic, i] == "inet6") {
+                dhcp6_address[nic] = address_value[nic, i]
+                dhcp6_count[nic]++
+            }
+        if (dhcp6_count[nic] != 1)
+            fail("DHCPv6 requires exactly one reserved IPv6 address in nicips for " nic)
     }
 }
 
@@ -573,7 +588,10 @@ function render(nic,    i, config, mtu, parent, family, ip, bits, alias, first4,
             fail("IPv6 requires an MTU of at least 1280 on " nic)
         if (family == "inet" && !first4++)
             primary4 = "inet " ip "/" bits " "
-        else if (family == "inet6" && !first6++)
+        else if (family == "inet6" && dhcp6[nic]) {
+            bits = 128
+            emit("ifconfig_" nic "_ipv6", "inet6 -ifdisabled")
+        } else if (family == "inet6" && !first6++)
             emit("ifconfig_" nic "_ipv6", "inet6 " ip " prefixlen " bits)
         else
             emit("ifconfig_" nic "_alias" alias++, family " " ip "/" bits)
@@ -589,6 +607,18 @@ function render(nic,    i, config, mtu, parent, family, ip, bits, alias, first4,
             if (++dhcp_defaults > 1 || default_gateway["inet"] != "")
                 fail("Select one IPv4 default route owner")
             emit("defaultrouter", "NO")
+        }
+    }
+    if (dhcp6[nic]) {
+        dhcp6_default = (option[nic, "IPV6_DEFROUTE"] == "yes" ||
+            (option[nic, "IPV6_DEFROUTE"] == "" && nic == management && default_gateway["inet6"] == ""))
+        records[++record_count] = "H6\t" nic "\t" dhcp6_address[nic] "\t128\t" \
+            (option[nic, "PEERDNS"] == "no" ? "no" : "yes") "\t" (dhcp6_default ? "yes" : "no")
+        dhcp6_interfaces++
+        if (dhcp6_default) {
+            if (++dhcp6_defaults > 1 || default_gateway["inet6"] != "")
+                fail("Select one IPv6 default route owner")
+            emit("ipv6_defaultrouter", "NO")
         }
     }
     emit("ifconfig_" nic, primary4 config " up")
@@ -621,6 +651,7 @@ function compile(    n) {
         render(order[n])
     }
     selected_routes()
+    if (dhcp6_interfaces) emit("xcat_dhcp6_enable", "YES")
     if (default_gateway["inet"] != "") {
         emit("defaultrouter", default_gateway["inet"])
         records[++record_count] = "D\tinet\t" default_gateway["inet"]
@@ -665,6 +696,41 @@ function static_options(value, ipv6_args,    count, words, i, item, parts, suffi
 }
 
 BEGIN {
+    if (mode == "dhcp6-duid") {
+        uuid = tolower(uuid)
+        if (uuid !~ /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/ ||
+            uuid == "00000000-0000-0000-0000-000000000000" || uuid == "ffffffff-ffff-ffff-ffff-ffffffffffff")
+            fail("DHCPv6 requires a valid hardware UUID")
+        gsub(/-/, "", uuid)
+        duid = "00:04"
+        for (i = 1; i <= 32; i += 2) duid = duid ":" substr(uuid, i, 2)
+        print duid
+        exit
+    }
+    if (mode == "dhcp6-options") {
+        lease_address = ""
+        for (key in ENVIRON)
+            if (key ~ /^new_dhcp6_ia_na[0-9]+_ia_addr[0-9]+$/) {
+                lease_address = address(ENVIRON[key], "inet6")
+                lease_addresses++
+            }
+        if (lease_addresses != 1 || lease_address != address(expected, "inet6"))
+            fail("The DHCPv6 lease differs from the reserved address")
+        if (peerdns == "yes") {
+            count = split(ENVIRON["new_dhcp6_domain_search"], domains, " ")
+            if (length(ENVIRON["new_dhcp6_domain_search"]) > 4096) fail("DHCPv6 search path exceeds its bound")
+            for (i = 1; i <= count; i++) {
+                if (domains[i] !~ /^[A-Za-z0-9_.-]+$/) fail("Invalid DHCPv6 search domain")
+                search = search (i == 1 ? "" : " ") domains[i]
+            }
+            count = split(ENVIRON["new_dhcp6_name_servers"], servers, " ")
+            if (count > 16) fail("Too many DHCPv6 name servers")
+            for (i = 1; i <= count; i++) dns[i] = address(servers[i], "inet6")
+            if (search != "") print "search " search
+            for (i = 1; i <= count; i++) print "nameserver " dns[i] (dns[i] ~ /^fe[89ab]/ ? "%" ENVIRON["interface"] : "")
+        }
+        exit
+    }
     if (mode == "" || mode == "compile") {
         compile()
         exit
@@ -690,6 +756,10 @@ FILENAME == ARGV[1] {
         wanted_address[column[2], column[3], column[4]] = column[5]
     else if (column[1] == "H")
         wanted_dhcp[column[2]] = 1
+    else if (column[1] == "H6") {
+        wanted_dhcp6[column[2]] = 1
+        if (column[6] == "yes") wanted_dynamic_default["inet6"] = column[2]
+    }
     else if (column[1] == "T")
         wanted_mtu[column[2]] = column[3]
     else if (column[1] == "V")
@@ -904,10 +974,13 @@ END {
         for (key in observed_route_nic) {
             split(key, parts, SUBSEP)
             if (parts[2] != "default" && observed_route_nic[key] in wanted_interface &&
-                !wanted_dhcp[observed_route_nic[key]] && !owned_route[key])
+                !(parts[1] == "inet" ? wanted_dhcp[observed_route_nic[key]] : wanted_dhcp6[observed_route_nic[key]]) && !owned_route[key])
                 fail("Unmanaged route uses a configured interface")
         }
     } else if (mode == "routes") {
+        for (family in wanted_dynamic_default)
+            if (observed_route_nic[family, "default"] != wanted_dynamic_default[family])
+                fail("A DHCP default route is missing or uses another interface")
         for (key in wanted_gateway)
             if (observed_gateway[key] != wanted_gateway[key] ||
                 (wanted_route_nic[key] != "" && observed_route_nic[key] != wanted_route_nic[key]))
@@ -923,7 +996,8 @@ END {
                 fail("Interface MTU differs: " key)
         for (key in wanted_address) {
             split(key, parts, SUBSEP)
-            if (!(key in observed_address) && mode == "verify-prior" && parts[2] == "inet" && wanted_dhcp[parts[1]])
+            if (!(key in observed_address) && mode == "verify-prior" &&
+                (parts[2] == "inet" ? wanted_dhcp[parts[1]] : wanted_dhcp6[parts[1]]))
                 continue
             if (!(key in observed_address) || observed_address[key] != wanted_address[key])
                 fail("A configured address or prefix is missing")

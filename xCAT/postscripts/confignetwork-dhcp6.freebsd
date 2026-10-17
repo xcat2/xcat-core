@@ -1,0 +1,80 @@
+#!/bin/sh
+# PROVIDE: xcat_dhcp6
+# REQUIRE: netif
+# BEFORE: NETWORKING
+# KEYWORD: shutdown
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
+LC_ALL=C
+export PATH LC_ALL
+umask 077
+
+if [ -z "${reason:-}" ]; then
+    . /etc/rc.subr
+    name=xcat_dhcp6
+    rcvar=xcat_dhcp6_enable
+    command=/usr/local/sbin/dhcpcd
+    command_args='-6 -b -f /var/db/xcat/network/dhcp6.conf'
+    pidfile=$($command -6 -P) || exit 1
+    required_files=/var/db/xcat/network/dhcp6.conf
+    load_rc_config "$name"
+    : "${xcat_dhcp6_enable:=NO}"
+    run_rc_command "$1"
+    exit $?
+fi
+
+set -efu
+[ "$(id -u)" = 0 ] || exit 1
+case ${interface:-} in ''|*[!a-z0-9]*) exit 1 ;; esac
+[ "${#interface}" -le 15 ] || exit 1
+if [ "${1:-}" != --locked ]; then
+    exec lockf -k -t 30 "/var/run/xcat-dhcp6-$interface.lock" /bin/sh "$0" --locked
+fi
+state=/var/db/xcat/network/dhcp6
+private_file()
+{
+    [ -f "$1" ] && [ ! -L "$1" ] && [ "$(stat -f '%u:%g:%Lp:%l' "$1")" = 0:0:600:1 ]
+}
+for directory in /var/db/xcat /var/db/xcat/network "$state"; do
+    [ -d "$directory" ] && [ ! -L "$directory" ] &&
+        [ "$(stat -f '%u:%g:%Lp' "$directory")" = 0:0:700 ] || exit 1
+done
+policy=$state/$interface.policy
+lease=$state/$interface.lease
+private_file "$policy" && private_file "$state/planner" || exit 1
+IFS="$(printf '\t')" read -r expected peerdns < "$policy"
+case "$peerdns" in yes|no) ;; *) exit 1 ;; esac
+stage=
+trap '[ -z "$stage" ] || rm -f "$stage"' EXIT
+
+expire()
+{
+    resolvconf -f -d "$interface:dhcp6" || return 1
+    [ ! -e "$lease" ] || private_file "$lease" || return 1
+    rm -f "$lease"
+    fsync "$state"
+}
+
+case "$reason" in
+BOUND6|RENEW6|REBIND6|REBOOT6)
+    stage=$(mktemp "$state/.lease.XXXXXXXX")
+    if ! awk -v mode=dhcp6-options -v expected="$expected" -v peerdns="$peerdns" \
+        -f "$state/planner" > "$stage"; then
+        expire
+        # The client installs addresses before invoking its event script.
+        awk 'BEGIN {for (k in ENVIRON) if(k ~ /^new_dhcp6_ia_na[0-9]+_ia_addr[0-9]+$/ &&
+            ENVIRON[k] ~ /^[0-9a-fA-F:]+$/) print ENVIRON[k]}' |
+        while IFS= read -r address; do ifconfig "$interface" inet6 "$address" delete || exit 1; done
+        exit 1
+    fi
+    if [ "$peerdns" = yes ]; then resolvconf -a "$interface:dhcp6" < "$stage"; fi
+    printf '%s\t%s\t%s\n' "$expected" "$reason" "$(date +%s)" > "$stage"
+    [ ! -e "$lease" ] || private_file "$lease" || exit 1
+    fsync "$stage"
+    mv "$stage" "$lease"
+    fsync "$state"
+    ;;
+EXPIRE6|RELEASE6|STOP6|STOPPED|NOCARRIER|DEPARTED|FAIL) expire ;;
+PREINIT|CARRIER|ROUTERADVERT|RECONFIGURE|NOCARRIER_ROAMING) ;;
+*) printf 'confignetwork: unexpected DHCPv6 event %s\n' "$reason" >&2; exit 1 ;;
+esac
