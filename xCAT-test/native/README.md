@@ -273,14 +273,17 @@ dependencies plus the `pyte` Python package, bubblewrap,
 systemd-journal-remote and journalctl. It runs the linked console in a
 pseudo-terminal and checks help and diagnostics navigation, scrolling,
 return to the main screen, and F3 journal filtering, order and history limits.
+Rollover cases check paused selection, expired entries, duplicate messages,
+wrapped lines and returning to follow mode.
 It checks termination from the main screen, not from inside a dialog.
 
 The journal cases need working Linux user and mount namespaces. On Ubuntu
 24.04, the CI job enables them with
 `sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0`.
-They import private journal files and verify their contents with journalctl
-before opening F3. They do not start a journal service or read the host
-journal. Missing tools or namespace support fail the tests; they do not skip.
+They import private journal files, including appends while F3 is open, and
+verify each import with journalctl. They do not start a journal service or
+read the host journal. Missing tools or namespace support fail the tests;
+they do not skip.
 
 The Genesis runtime BATS cases need Bash, Perl, OpenSSL, coreutils, diffutils
 and bubblewrap. The credential-file cases use a private `/etc` in a Linux
