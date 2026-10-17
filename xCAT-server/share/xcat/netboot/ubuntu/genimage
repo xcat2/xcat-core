@@ -985,6 +985,10 @@ sub mkinitrd_dracut {
     }
     mkpath($dracutmpath);
 
+    # Only a stateless initial ramdisk that checks the root image receives it over UFTP.
+    my $uftp_receiver = eval { imgutils::add_uftp_receiver($rootimg_dir, $arch, $dracutmpath, $mode eq 'stateless') };
+    xdie($@) if $@;
+
     my $perm = (stat("$fullpath/$dracutdir/check"))[2];
     cp("$fullpath/$dracutdir/check", $dracutmpath);
     chmod($perm & 07777, "$dracutmpath/check");
@@ -1059,8 +1063,12 @@ sub mkinitrd_dracut {
 
     !system("chroot $rootimg_dir dracut -f /tmp/initrd.$$.gz $kernelver")
       or die("Error: failed to generate the initial ramdisk for $mode.\n");
+    eval { imgutils::check_uftp_initrd($rootimg_dir, "/tmp/initrd.$$.gz", $mode) } or xdie($@) if $uftp_receiver;
     print "the initial ramdisk for $mode is generated successfully.\n";
-    move("$rootimg_dir/tmp/initrd.$$.gz", "$destdir/initrd-$mode.gz") and mark_rootimg_check($mode);
+    if (move("$rootimg_dir/tmp/initrd.$$.gz", "$destdir/initrd-$mode.gz")) {
+        mark_rootimg_check($mode);
+        imgutils::mark_uftp_receiver("$destdir/initrd-$mode.gz", $uftp_receiver) if $mode eq 'stateless';
+    }
 }
 
 # nodeset warns unless this marker says that the stateless initial ramdisk checks the root image checksum.
