@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use Cwd qw(abs_path);
 use Digest::SHA qw(sha256_hex);
+use Errno qw(EEXIST);
 use Fcntl qw(O_RDONLY O_WRONLY O_RDWR O_CREAT O_EXCL O_NOFOLLOW O_NONBLOCK
     LOCK_EX LOCK_NB S_ISDIR S_ISREG);
 use File::Path qw(remove_tree);
@@ -56,18 +57,31 @@ sub _installroot {
     return $root;
 }
 
-sub _parent {
-    my $root = _installroot(shift);
+sub publication_directory {
+    my ($installroot, $collection, $create) = @_;
+    _fail('Publication directory requires a root, collection and create flag') unless @_ == 3;
+    _fail('Unknown publication collection') if !defined($collection) || ref($collection)
+      || $collection !~ /\A(?:repositories|plans)\z/x;
+    _fail('Invalid publication create flag') if !defined($create) || ref($create)
+      || $create !~ /\A[01]\z/x;
+    my $root = _installroot($installroot);
     my $path = $root;
-    for my $part (qw(freebsd15.1 x86_64 repositories)) {
+    for my $part ('freebsd15.1', 'x86_64', $collection) {
         $path .= "/$part";
-        if (!lstat($path)) {
-            mkdir($path, oct('0755')) or _fail("Cannot create publication directory $path: $!");
-            chmod(oct('0755'), $path) or _fail("Cannot set publication directory permissions: $!");
+        if ($create && !lstat($path)) {
+            if (mkdir($path, oct('0755'))) {
+                chmod(oct('0755'), $path) or _fail("Cannot set publication directory permissions: $!");
+            } else {
+                _fail("Cannot create publication directory $path: $!") unless $! == EEXIST;
+            }
         }
         _controlled_directory($path, 0);
     }
     return $path;
+}
+
+sub _parent {
+    return publication_directory(shift, 'repositories', 1);
 }
 
 sub _lock {
@@ -159,6 +173,18 @@ sub _copy_file {
     utime($before->[9], $before->[9], $target) == 1
       or _fail("Cannot preserve repository file timestamp: $!");
     chmod(oct('0444'), $target) or _fail("Cannot protect repository file: $!");
+    return;
+}
+
+sub copy_verified_file {
+    my ($source, $target, $size, $digest) = @_;
+    _fail('Verified copying requires source, destination, size and SHA256') unless @_ == 4
+      && defined($source) && !ref($source) && defined($target) && !ref($target)
+      && $source =~ m{\A/[^\x00\r\n]+\z}x && $target =~ m{\A/[^\x00\r\n]+\z}x
+      && defined($size) && !ref($size) && $size =~ /\A[1-9][0-9]*\z/x
+      && $size <= 17179869184 && defined($digest) && !ref($digest)
+      && $digest =~ /\A[0-9a-f]{64}\z/x;
+    _copy_file($source, $target, { size => $size, sha256 => $digest });
     return;
 }
 
@@ -585,10 +611,15 @@ sub _policy_repository {
 
 sub _validate_import_policy {
     my $policy = shift;
-    _policy_fields($policy, 'FreeBSD import policy', qw(format tool releases repositories));
+    _policy_fields($policy, 'FreeBSD import policy', qw(format tool solver releases repositories));
     _fail('Unsupported FreeBSD import policy format') if !defined($policy->{format})
       || ref($policy->{format}) || $policy->{format} ne 'xcat-freebsd-import-policy-1';
     _policy_tool($policy->{tool});
+    if (exists($policy->{solver})) {
+        _policy_fields($policy->{solver}, 'package solver', qw(path sha256));
+        _policy_path($policy->{solver}{path}, 'package solver');
+        _policy_digest($policy->{solver}{sha256}, 'package solver');
+    }
     _fail('Invalid import policy release approvals') unless ref($policy->{releases}) eq 'HASH';
     for my $digest (sort keys %{$policy->{releases}}) {
         _policy_digest($digest, 'approved release');
@@ -653,6 +684,14 @@ sub load_import_policy {
     _fail('Invalid FreeBSD import policy JSON') if $@;
     _validate_import_policy($policy);
     return $policy;
+}
+
+sub package_plan_options {
+    _fail('Package plan options require one policy') unless @_ == 1;
+    my $policy = shift;
+    _validate_import_policy($policy);
+    _fail('Package planning requires a pinned native solver') unless exists($policy->{solver});
+    return { tool => { %{$policy->{tool}} }, solver => { %{$policy->{solver}} } };
 }
 
 sub release_import_options {

@@ -509,6 +509,8 @@ my %usage = (
         [attr=val [attr=val...]]
     or
     updatenode <noderange> [-V|--verbose] [script1,script2,...]
+    or
+    updatenode <node> --freebsd-run <run> [--freebsd-release] [-t <timeout>]
 
 Options:
     <noderange> A list of nodes or groups.
@@ -537,6 +539,12 @@ Options:
     [-P|--scripts] Execute postscripts listed in the postscripts table or
         parameters.
 
+    [--freebsd-run <run>] Resume the retained FreeBSD postscript run.
+        Completed scripts are not executed again.
+
+    [--freebsd-release] Collect an interrupted FreeBSD run after reboot.
+        Requires --freebsd-run. Unfinished scripts remain uncertain.
+
     [-c|--cmdlineonly] Only use AIX software maintenance information
         provided on the command line. (AIX only)
 
@@ -544,6 +552,8 @@ Options:
 
     [-t|--timeout] Time out in seconds to allow the command to run. Default is no timeout,
         except for updatenode -k which has a 10 second default timeout.
+        FreeBSD script updates default to 3600 seconds, with a range of 1-7200.
+        Use --freebsd-run to observe a FreeBSD run after the timeout expires.
 
     [-A|--updateallsw] Install or update all software contained in the source
         directory. (AIX only)

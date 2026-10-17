@@ -197,7 +197,7 @@ sub publish_config {
 
 sub publish {
     my ($node, %options) = @_;
-    my %allowed = map { $_ => 1 } qw(generation pkgdir media tftpdir config_url config_sha256 mac);
+    my %allowed = map { $_ => 1 } qw(generation pkgdir media tftpdir config_url config_sha256 mac settings network);
     _fail('Unknown publication option') if grep { !$allowed{$_} } keys %options;
     my $generation = $options{generation};
     _identity($node, $generation);
@@ -211,22 +211,32 @@ sub publish {
       $url !~ m{/\.\.?(?:/|\z)};
     my $media = $options{media};
     _fail('Validated FreeBSD 15.1 media is required') unless ref($media) eq 'HASH' &&
-      ($media->{format} || '') eq 'xcat-mfsbsd-1' && ($media->{release} || '') eq '15.1-RELEASE' &&
+      ($media->{format} || '') =~ /\Axcat-mfsbsd-[12]\z/x && ($media->{release} || '') eq '15.1-RELEASE' &&
       ($media->{arch} || '') eq 'x86_64' && ($media->{distname} || '') eq 'freebsd15.1' &&
       defined($media->{digest}) && !ref($media->{digest}) && $media->{digest} =~ /\A[0-9a-f]{64}\z/ &&
       ref($media->{files}) eq 'HASH' && keys(%{$media->{files}}) <= 8192;
     my %payload;
+    my $boot_settings = '';
+    if (exists($options{settings}) || exists($options{network})) {
+        require xCAT::FreeBSDConfig;
+        $boot_settings = xCAT::FreeBSDConfig::render_loader_settings($options{settings}, $options{network});
+        _fail('Boot settings require xcat-freebsd-install-3 or later media') if length($boot_settings) &&
+            ($media->{install_contract} || '') !~ /\Axcat-freebsd-install-[34]\z/x;
+    }
+    my $pkgbase = $media->{format} eq 'xcat-mfsbsd-2';
     for my $payload_path (keys %{$media->{files}}) {
-        next if $payload_path =~ m{\Ausr/freebsd-dist/(?:MANIFEST|base\.txz|kernel\.txz)\z};
+        next if !$pkgbase && $payload_path =~ m{\Ausr/freebsd-dist/(?:MANIFEST|base\.txz|kernel\.txz)\z}x;
         _fail("Invalid boot payload path: $payload_path") unless
-          $payload_path =~ m{\A(?:boot/[A-Za-z0-9_.+/-]+|mfsroot\.gz)\z} &&
+          ($payload_path =~ m{\A(?:boot/[A-Za-z0-9_.+/-]+|mfsroot\.gz)\z}x ||
+           ($pkgbase && $payload_path eq 'xcat/runtime.tsv')) &&
           $payload_path !~ m{(?:\A|/)\.\.?(?:/|\z)|//|/\z};
         my $hash = $media->{files}{$payload_path};
         _fail("Invalid boot checksum: $payload_path") unless defined($hash) && !ref($hash) && $hash =~ /\A[0-9a-f]{64}\z/;
         $payload{$payload_path} = $hash;
     }
     _fail("Missing required boot payload: $_") for grep { !exists($payload{$_}) }
-      qw(boot/pxeboot boot/loader.efi boot/loader.conf boot/defaults/loader.conf boot/lua/loader.lua boot/kernel/kernel.gz mfsroot.gz);
+      (qw(boot/pxeboot boot/loader.efi boot/loader.conf boot/defaults/loader.conf boot/lua/loader.lua boot/kernel/kernel.gz mfsroot.gz),
+       $pkgbase ? 'xcat/runtime.tsv' : ());
     my $source = _absolute_directory($options{pkgdir});
     my $tftp = _absolute_directory($options{tftpdir});
     _directory("$tftp/xcat", 1);
@@ -259,7 +269,7 @@ sub publish {
     _fail('Loader configuration exceeds 1 MiB') if (stat($loader))[7] > 1048576;
     my $loader_text = do { local $/; <$loader> };
     close($loader) or _fail("Cannot close loader configuration: $!");
-    $loader_text .= "\nxcat_config_url=\"$url\"\nxcat_config_sha256=\"$options{config_sha256}\"\nboot.netif.hwaddr=\"$options{mac}\"\n";
+    $loader_text .= "\n$boot_settings" . "xcat_config_url=\"$url\"\nxcat_config_sha256=\"$options{config_sha256}\"\nboot.netif.hwaddr=\"$options{mac}\"\n";
     my %node_payload = (%payload, 'boot/loader.conf' => sha256_hex($loader_text));
     my $destination = "$root/.nodes/$node/$generation";
     _stage("$root/.nodes/$node", $destination, sub {

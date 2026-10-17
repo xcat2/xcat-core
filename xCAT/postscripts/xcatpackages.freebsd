@@ -1,0 +1,8 @@
+#!/bin/sh
+
+if [ "$#" -ne 0 ]; then
+    printf '%s\n' 'FreeBSD package postscripts do not accept repository options.' >&2
+    exit 1
+fi
+exec /usr/local/libexec/xcat-postscript package-status \
+    "${XCAT_FREEBSD_POSTSCRIPT_RUN:-}" "${XCAT_FREEBSD_POSTSCRIPT_ENTRY:-}"

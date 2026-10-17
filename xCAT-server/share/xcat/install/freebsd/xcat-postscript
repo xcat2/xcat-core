@@ -1,0 +1,1772 @@
+#!/bin/sh
+
+script_path=${PATH-/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin}
+script_locale=${LC_ALL-C}
+PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
+LC_ALL=C
+export PATH LC_ALL
+umask 077
+
+base=/var/db/xcat/postscripts
+self=/usr/local/libexec/xcat-postscript
+time_helper=/usr/local/libexec/xcat-postscript-time
+tab=$(printf '\t')
+
+fail()
+{
+    printf 'xCAT FreeBSD postscript: %s\n' "$*" >&2
+    if [ -n "${supervisor_diagnostic-}" ] && [ -f "$supervisor_diagnostic" ] && [ ! -L "$supervisor_diagnostic" ]; then
+        fsync "$supervisor_diagnostic" "$state" >/dev/null 2>&1 || :
+    fi
+    exit 125
+}
+
+hex()
+{
+    [ "${#1}" -eq "$2" ] || return 1
+    case "$1" in *[!0-9a-f]*) return 1 ;; esac
+}
+
+number()
+{
+    case "$1" in ''|*[!0-9]*|0[0-9]*) return 1 ;; esac
+    [ "${#1}" -le 8 ] && [ "$1" -ge "$2" ] && [ "$1" -le "$3" ]
+}
+
+epoch()
+{
+    case "$1" in ''|*[!0-9]*|0[0-9]*) return 1 ;; esac
+    [ "${#1}" -le 12 ] && [ "$1" -gt 0 ]
+}
+
+now()
+{
+    current_epoch=$(date -u +%s) || fail 'Cannot read entry time'
+    epoch "$current_epoch" || fail 'Invalid entry time'
+    printf '%s\n' "$current_epoch"
+}
+
+uptime_value()
+{
+    case "$1" in ''|*[!0-9]*|0[0-9]*) return 1 ;; esac
+    [ "${#1}" -le 12 ]
+}
+
+monotonic_now()
+{
+    current_uptime=$("$time_helper" uptime) || fail 'Cannot read monotonic time'
+    uptime_value "$current_uptime" || fail 'Invalid monotonic time'
+    printf '%s\n' "$current_uptime"
+}
+
+directory()
+{
+    [ -d "$1" ] && [ ! -L "$1" ] || fail 'Invalid state directory'
+    [ "$(stat -f '%u:%g:%Lp' "$1")" = 0:0:700 ] || fail 'State directory is not private'
+}
+
+private_file()
+{
+    [ -f "$1" ] && [ ! -L "$1" ] || fail 'Invalid state file'
+    file_state=$(stat -f '%u:%g:%l:%Lp' "$1") || fail 'Cannot inspect state file'
+    case "$file_state" in 0:0:1:400|0:0:1:600) ;; *) fail 'State file is not private' ;; esac
+    [ "$(stat -f %z "$1")" -le "$2" ] || fail 'State file exceeds its bound'
+}
+
+absent()
+{
+    [ ! -e "$1" ] && [ ! -L "$1" ] || fail 'State already exists'
+}
+
+field()
+{
+    awk -F '\t' -v key="$2" '$1 == key { if (NF != 2) exit 1; value=$2; n++ }
+        END { if (n != 1) exit 1; print value }' "$1"
+}
+
+shape()
+{
+    awk -F '\t' -v keys="$2" 'BEGIN { n=split(keys, names, " ") }
+        NF != 2 || $1 != names[NR] { bad=1 }
+        END { if (bad || NR != n) exit 1 }' "$1" || fail 'Invalid record structure'
+}
+
+digest_file()
+{
+    digest_value=$(sha256 -q "$1") || fail 'Cannot hash file'
+    hex "$digest_value" 64 || fail 'Invalid file digest'
+    printf '%s\n' "$digest_value"
+}
+
+write_record()
+{
+    record_path=$1
+    absent "$record_path"
+    absent "$record_path.tmp"
+    (set -C; cat > "$record_path.tmp") || fail 'Cannot create state record'
+    private_file "$record_path.tmp" 4194304
+    fsync "$record_path.tmp" || fail 'Cannot sync state record'
+    ln "$record_path.tmp" "$record_path" || fail 'Cannot publish state record'
+    fsync "$(dirname "$record_path")" || fail 'Cannot sync record publication'
+    rm "$record_path.tmp" || fail 'Cannot finish state record'
+    fsync "$(dirname "$record_path")" || fail 'Cannot sync completed record'
+}
+
+supervision_record()
+{
+    private_file "$state/supervision" 1024
+    shape "$state/supervision" 'format run snapshot started-sha256 helper-sha256 capture-version'
+    [ "$(field "$state/supervision" format)" = xcat-freebsd-postscript-supervision-1 ] \
+        && [ "$(field "$state/supervision" run)" = "$run" ] \
+        && [ "$(field "$state/supervision" snapshot)" = "$snapshot" ] \
+        && [ "$(field "$state/supervision" started-sha256)" = "$(digest_file "$state/started")" ] \
+        && [ "$(field "$state/supervision" capture-version)" = 1 ] \
+        && hex "$(field "$state/supervision" helper-sha256)" 64 || fail 'Invalid run supervision'
+    directory "$state/captures"
+}
+
+capture_path()
+{
+    capture_relative=${1#"$state/"}
+    [ "$1" = "$state/$capture_relative" ] || fail 'Capture is outside its run'
+    case "$capture_relative" in
+    ''|/*|*[!A-Za-z0-9_./-]*|..|../*|*/../*|*/..) fail 'Invalid capture path' ;;
+    esac
+    printf '%s\n' "$capture_relative"
+}
+
+capture_begin()
+{
+    capture_journal=
+    [ "$capture_lock" != close ] || return 0
+    [ -e "$state/supervision" ] || [ -L "$state/supervision" ] || return 0
+    supervision_record
+    capture_out=$(capture_path "$capture_stdout") || fail 'Invalid capture output'
+    capture_err=$(capture_path "$capture_stderr") || fail 'Invalid capture diagnostic'
+    capture_id=$(printf '%s\n' "$capture_out" | sha256 -q) || fail 'Cannot identify capture'
+    hex "$capture_id" 64 || fail 'Invalid capture identity'
+    capture_journal=$state/captures/$capture_id
+    mkdir -m 0700 "$capture_journal" || fail 'Capture has already started'
+    fsync "$state/captures" || fail 'Cannot sync capture directory'
+    printf 'format\txcat-freebsd-postscript-capture-start-1\nrun\t%s\nsnapshot\t%s\nstdout\t%s\nstderr\t%s\nmode\t%s\nseconds\t%s\nlimit\t%s\n' \
+        "$run" "$snapshot" "$capture_out" "$capture_err" "$capture_lock" "$capture_timeout" "$capture_limit" \
+        | write_record "$capture_journal/started" || fail 'Cannot record capture start'
+}
+
+capture_finish()
+{
+    [ -n "$capture_journal" ] || return 0
+    printf '%s\n' "$capture_report" | write_record "$capture_journal/capture" || fail 'Cannot retain capture observation'
+    printf 'format\txcat-freebsd-postscript-capture-finish-1\nstarted-sha256\t%s\ncapture-sha256\t%s\nstdout-sha256\t%s\nstderr-sha256\t%s\ncomplete\tyes\n' \
+        "$(digest_file "$capture_journal/started")" "$(digest_file "$capture_journal/capture")" \
+        "$(digest_file "$capture_stdout")" "$(digest_file "$capture_stderr")" \
+        | write_record "$capture_journal/finished" || fail 'Cannot record capture completion'
+}
+
+capture_result()
+{
+    capture_values=$(printf '%s\n' "$capture_report" | awk -F '\t' -v limit="$capture_limit" '
+        BEGIN { split("format status stdout-bytes stderr-bytes stdout-truncated stderr-truncated stdout-open stderr-open", names, " ") }
+        NF != 2 || $1 != names[NR] { bad=1 }
+        { value[NR]=$2 }
+        END {
+            if (bad || NR != 8 || value[1] != "xcat-freebsd-postscript-capture-1" ||
+                value[2] !~ /^(0|[1-9][0-9]*)$/ || value[2] > 255) exit 1
+            for (i=3; i<=4; i++) if (value[i] !~ /^(0|[1-9][0-9]*)$/ || value[i] > limit) exit 1
+            for (i=5; i<=8; i++) if (value[i] !~ /^(yes|no)$/) exit 1
+            if ((value[5] == "yes" && value[3] != limit) || (value[6] == "yes" && value[4] != limit)) exit 1
+            for (i=2; i<=8; i++) printf "%s%s", value[i], (i == 8 ? "\n" : "\t")
+        }') || fail 'Invalid command capture result'
+    IFS="$tab" read -r capture_status capture_stdout_bytes capture_stderr_bytes \
+        capture_stdout_truncated capture_stderr_truncated capture_stdout_open capture_stderr_open <<EOF
+$capture_values
+EOF
+    private_file "$capture_stdout" "$capture_limit"
+    private_file "$capture_stderr" "$capture_limit"
+    [ "$(stat -f %z "$capture_stdout")" = "$capture_stdout_bytes" ] \
+        && [ "$(stat -f %z "$capture_stderr")" = "$capture_stderr_bytes" ] || fail 'Command log size differs'
+}
+
+capture_logs()
+{
+    # Limit the streams, not the files an administrator script may create.
+    capture_stdout=$1
+    capture_stderr=$2
+    capture_timeout=$3
+    capture_lock=$4
+    capture_limit=$5
+    shift 5
+    capture_mode=capture
+    case "$capture_lock" in
+    guard) capture_mode=capture-guard ;;
+    inherit|close) ;;
+    *) fail 'Invalid capture lock policy' ;;
+    esac
+    if [ "$capture_timeout" -eq 0 ]; then
+        [ "$capture_lock" = inherit ] || fail 'Observer requires an inherited lock'
+        capture_mode=capture-watch
+    fi
+    capture_begin
+    capture_report=$(
+        [ "$capture_lock" != close ] || exec 9>&-
+        exec "$time_helper" "$capture_mode" "$capture_timeout" "$capture_limit" "$capture_stdout" "$capture_stderr" "$@" < /dev/null
+    ) || fail 'Cannot capture command execution'
+    capture_result
+    capture_finish
+}
+
+framework_phase()
+{
+    printf 'format\txcat-freebsd-postscript-phase-1\nrun\t%s\nsnapshot\t%s\nphase\t%s\n' \
+        "$run" "$snapshot" "$1" | write_record "$state/framework.$1" || fail 'Cannot record framework phase'
+}
+
+capture_inventory()
+(
+    supervision_record
+    observed_count=0
+    observed_framework=no
+    for capture_journal in "$state/captures"/* "$state/captures"/.[!.]* "$state/captures"/..?*; do
+        [ -e "$capture_journal" ] || [ -L "$capture_journal" ] || continue
+        observed_count=$((observed_count+1))
+        [ "$observed_count" -le "$((count+1028))" ] || fail 'Capture inventory exceeds its bound'
+        capture_id=${capture_journal##*/}
+        hex "$capture_id" 64 || fail 'Invalid capture journal identity'
+        directory "$capture_journal"
+        for capture_member in "$capture_journal"/* "$capture_journal"/.[!.]* "$capture_journal"/..?*; do
+            [ -e "$capture_member" ] || [ -L "$capture_member" ] || continue
+            case "${capture_member##*/}" in started|capture|finished) ;; *) fail 'Unfinished capture publication' ;; esac
+        done
+        private_file "$capture_journal/started" 1024
+        private_file "$capture_journal/capture" 1024
+        private_file "$capture_journal/finished" 1024
+        shape "$capture_journal/started" 'format run snapshot stdout stderr mode seconds limit'
+        [ "$(field "$capture_journal/started" format)" = xcat-freebsd-postscript-capture-start-1 ] \
+            && [ "$(field "$capture_journal/started" run)" = "$run" ] \
+            && [ "$(field "$capture_journal/started" snapshot)" = "$snapshot" ] || fail 'Capture context differs'
+        capture_out=$(field "$capture_journal/started" stdout) || fail 'Missing capture output'
+        capture_err=$(field "$capture_journal/started" stderr) || fail 'Missing capture diagnostic'
+        [ "$capture_id" = "$(printf '%s\n' "$capture_out" | sha256 -q)" ] || fail 'Capture path identity differs'
+        [ "$capture_err" = "${capture_out%stdout}stderr" ] || fail 'Capture streams differ'
+        capture_lock=$(field "$capture_journal/started" mode) || fail 'Missing capture mode'
+        capture_timeout=$(field "$capture_journal/started" seconds) || fail 'Missing capture deadline'
+        capture_limit=$(field "$capture_journal/started" limit) || fail 'Missing capture bound'
+        expected_lock=guard expected_timeout=$run_timeout expected_limit=$log_limit
+        case "$capture_out" in
+        framework.stdout) expected_lock=inherit expected_timeout=0 observed_framework=yes ;;
+        prerequisite.stdout|driver.stdout) expected_lock=inherit ;;
+        packages/stdout) ;;
+        packages/recovery.????????.stdout)
+            case "${capture_out#packages/recovery.}" in *[!A-Za-z0-9.]* ) fail 'Invalid recovery capture path' ;; esac
+            ;;
+        entries/*/stdout)
+            capture_ordinal=${capture_out#entries/}
+            capture_ordinal=${capture_ordinal%/stdout}
+            number "$capture_ordinal" 1 "$count" || fail 'Invalid entry capture ordinal'
+            expected_timeout=$entry_timeout expected_limit=$entry_log_limit
+            ;;
+        *) fail 'Unexpected capture path' ;;
+        esac
+        [ "$capture_lock:$capture_timeout:$capture_limit" = "$expected_lock:$expected_timeout:$expected_limit" ] \
+            || fail 'Capture execution limits differ'
+        capture_stdout=$state/$capture_out capture_stderr=$state/$capture_err
+        # Recovery logs start outside the native workspace, which must be
+        # empty. Retain either location if publication was interrupted.
+        case "$capture_out" in
+        packages/recovery.????????.stdout)
+            if [ ! -e "$capture_stdout" ] && [ ! -L "$capture_stdout" ]; then
+                capture_stdout=${capture_stdout%.stdout}/stdout
+            fi
+            if [ ! -e "$capture_stderr" ] && [ ! -L "$capture_stderr" ]; then
+                capture_stderr=${capture_stderr%.stderr}/stderr
+            fi
+            ;;
+        esac
+        capture_report=$(cat "$capture_journal/capture") || fail 'Cannot read capture observation'
+        capture_result
+        case "$capture_out" in
+        packages/*)
+            [ "$capture_stdout_open:$capture_stderr_open" = no:no ] || fail 'Package descendants were not observed closed'
+            ;;
+        esac
+        shape "$capture_journal/finished" 'format started-sha256 capture-sha256 stdout-sha256 stderr-sha256 complete'
+        [ "$(field "$capture_journal/finished" format)" = xcat-freebsd-postscript-capture-finish-1 ] \
+            && [ "$(field "$capture_journal/finished" complete)" = yes ] \
+            && [ "$(field "$capture_journal/finished" started-sha256)" = "$(digest_file "$capture_journal/started")" ] \
+            && [ "$(field "$capture_journal/finished" capture-sha256)" = "$(digest_file "$capture_journal/capture")" ] \
+            && [ "$(field "$capture_journal/finished" stdout-sha256)" = "$(digest_file "$capture_stdout")" ] \
+            && [ "$(field "$capture_journal/finished" stderr-sha256)" = "$(digest_file "$capture_stderr")" ] \
+            || fail 'Capture completion differs'
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$capture_id" "$capture_out" \
+            "$(digest_file "$capture_journal/started")" "$(digest_file "$capture_journal/capture")" \
+            "$(digest_file "$capture_journal/finished")" "$capture_lock" "$capture_status" \
+            "$capture_stdout_open" "$capture_stderr_open" || fail 'Cannot inventory capture observation'
+    done
+    [ "$observed_framework" = yes ] || fail 'Framework completion was not observed'
+)
+
+release_process()
+{
+    private_file "$1" 1024
+    shape "$1" 'format pid state identity'
+    [ "$(field "$1" format)" = xcat-freebsd-process-state-1 ] \
+        && [ "$(field "$1" pid)" = "$pid" ] || fail 'Process observation differs'
+    observed_identity=$(field "$1" identity) || fail 'Missing observed process identity'
+    observed_state=$(field "$1" state) || fail 'Missing observed process state'
+    case "$observed_state" in
+    absent) [ "$observed_identity" = - ] || fail 'Absent process claims an identity' ;;
+    zombie|running)
+        printf '%s\n' "$observed_identity" | grep -Eq "^$pid:[0-9]+[.][0-9]{6}$" || fail 'Invalid observed process identity'
+        if [ "$observed_state" = running ]; then
+            [ "$(sha256 -q -s "$observed_identity")" != "$started_process" ] || fail 'Original worker is still running'
+        fi
+        ;;
+    *) fail 'Invalid observed process state' ;;
+    esac
+}
+
+state_ancestors()
+{
+    [ "$(id -u):$(uname -s)" = 0:FreeBSD ] || fail 'Native root execution is required'
+    for ancestor in /var /var/db /var/db/xcat; do
+        [ -d "$ancestor" ] && [ ! -L "$ancestor" ] || fail 'Invalid state ancestor'
+        [ "$(stat -f %u "$ancestor")" = 0 ] || fail 'State ancestor is not root-owned'
+        ancestor_mode=$(stat -f %Lp "$ancestor") || fail 'Cannot inspect state ancestor'
+        [ "$((0$ancestor_mode & 0022))" -eq 0 ] || fail 'Writable state ancestor'
+    done
+}
+
+initialize()
+{
+    state_ancestors
+    for path in "$base" "$base/incoming" "$base/runs"; do
+        if [ ! -e "$path" ]; then
+            mkdir -m 0700 "$path" || fail 'Cannot create state directory'
+            fsync "$(dirname "$path")" || fail 'Cannot sync state directory'
+        fi
+        directory "$path"
+    done
+    if [ ! -e "$base/lock" ]; then
+        (set -C; : > "$base/lock") || fail 'Cannot create node lock'
+        fsync "$base/lock" "$base" || fail 'Cannot sync node lock'
+    fi
+    private_file "$base/lock" 0
+}
+
+lock_node()
+{
+    exec 9<> "$base/lock" || fail 'Cannot open node lock'
+    if lockf -s -k -t 0 /dev/fd/9; then return 0; else lock_status=$?; fi
+    [ "$lock_status" -eq 75 ] || fail 'Cannot acquire node lock'
+    case "$operation" in
+    delivery|receive) busy_snapshot=$delivery_snapshot ;;
+    start) busy_snapshot=$snapshot ;;
+    *)
+        printf 'xCAT FreeBSD postscript: Node is busy; retry run %s.\n' "$run" >&2
+        if [ -n "${supervisor_diagnostic-}" ]; then
+            fsync "$supervisor_diagnostic" "$state" >/dev/null 2>&1 || :
+        fi
+        exit 75
+        ;;
+    esac
+    printf 'format\txcat-freebsd-postscript-status-3\nrun\t%s\nsnapshot\t%s\noutcome\tbusy\ncomplete\tno\n' \
+        "$run" "$busy_snapshot" || fail 'Cannot return busy status'
+    exit 0
+}
+
+boot_identity()
+{
+    boot_value=$("$time_helper" boot) || fail 'Cannot read boot identity'
+    hex "$boot_value" 64 || fail 'Invalid boot identity'
+    printf '%s\n' "$boot_value"
+}
+
+boot_matches()
+{
+    current_boot=$(boot_identity) || fail 'Cannot observe current boot'
+    [ "$1" = "$current_boot" ]
+}
+
+process_identity()
+{
+    process_start=$("$time_helper" process "$1" 2>/dev/null) || return 1
+    [ -n "$process_start" ] || return 1
+    sha256 -q -s "$process_start"
+}
+
+load_bundle()
+{
+    directory "$bundle"
+    for path in "$bundle"/* "$bundle"/.[!.]* "$bundle"/..?*; do
+        [ -e "$path" ] || [ -L "$path" ] || continue
+        case "${path##*/}" in manifest|driver|entries|tree.mtree|tree|package.plan|request|archives) ;; *) fail 'Unexpected bundle member' ;; esac
+    done
+    private_file "$bundle/manifest" 8192
+    [ "$(digest_file "$bundle/manifest")" = "$snapshot" ] || fail 'Bundle identity differs'
+    manifest_fields='format run node generation attempt kind preparation source plan request package-mode driver entries tree scripts entry-timeout run-timeout log-limit'
+    bundle_boot=
+    case "$(field "$bundle/manifest" format)" in
+    xcat-freebsd-postscript-bundle-2)
+        shape "$bundle/manifest" "$manifest_fields"
+        ;;
+    xcat-freebsd-postscript-bundle-3)
+        shape "$bundle/manifest" "$manifest_fields boot"
+        bundle_boot=$(field "$bundle/manifest" boot) || fail 'Missing boot identity'
+        hex "$bundle_boot" 64 || fail 'Invalid boot identity'
+        ;;
+    *) fail 'Unsupported bundle format' ;;
+    esac
+    [ "$(field "$bundle/manifest" run)" = "$run" ] || fail 'Bundle run differs'
+    node=$(field "$bundle/manifest" node) || fail 'Missing bundle node'
+    case "$node" in ''|*[!A-Za-z0-9_.-]*) fail 'Invalid bundle node' ;; esac
+    [ "${#node}" -le 255 ] || fail 'Bundle node exceeds its bound'
+    generation=$(field "$bundle/manifest" generation) || fail 'Missing generation'
+    attempt=$(field "$bundle/manifest" attempt) || fail 'Missing attempt'
+    hex "$generation" 32 && hex "$attempt" 32 || fail 'Invalid deployment identity'
+    kind=$(field "$bundle/manifest" kind) || fail 'Missing run kind'
+    case "$kind" in firstboot|repeat|update) ;; *) fail 'Invalid run kind' ;; esac
+    for key in preparation source plan request driver entries tree; do
+        digest=$(field "$bundle/manifest" "$key") || fail 'Missing bundle digest'
+        hex "$digest" 64 || fail 'Invalid bundle digest'
+    done
+    plan=$(field "$bundle/manifest" plan) || fail 'Missing package plan'
+    package_mode=$(field "$bundle/manifest" package-mode) || fail 'Missing package mode'
+    case "$package_mode:$kind" in verify:*|update:update) ;; *) fail 'Invalid package operation' ;; esac
+    if [ -n "$bundle_boot" ]; then
+        case "$package_mode:$kind" in verify:firstboot|verify:repeat) ;; *) fail 'Invalid boot operation' ;; esac
+    fi
+    count=$(field "$bundle/manifest" scripts) || fail 'Missing script count'
+    entry_timeout=$(field "$bundle/manifest" entry-timeout) || fail 'Missing entry timeout'
+    run_timeout=$(field "$bundle/manifest" run-timeout) || fail 'Missing run timeout'
+    log_limit=$(field "$bundle/manifest" log-limit) || fail 'Missing log limit'
+    number "$count" 0 4096 && number "$entry_timeout" 1 1800 \
+        && number "$run_timeout" 1 7200 && number "$log_limit" 4096 1048576 || fail 'Invalid execution limit'
+    [ "$((log_limit % 512))" -eq 0 ] || fail 'Invalid log block limit'
+    entry_log_limit=$log_limit
+    if [ "$count" -gt 0 ] && [ "$((67108864 / (2 * count)))" -lt "$entry_log_limit" ]; then
+        entry_log_limit=$((67108864 / (2 * count)))
+    fi
+    for specification in driver:8388608 entries:1048576 tree.mtree:4194304 package.plan:8388608 request:8388608; do
+        member=${specification%:*}
+        private_file "$bundle/$member" "${specification#*:}"
+        key=$member
+        [ "$member" != tree.mtree ] || key=tree
+        [ "$member" != package.plan ] || key=plan
+        [ "$(digest_file "$bundle/$member")" = "$(field "$bundle/manifest" "$key")" ] || fail 'Bundle content differs'
+    done
+    awk -F '\t' -v count="$count" 'NF != 5 || $1 != NR || $2 !~ /^(postscripts|postbootscripts)$/ ||
+        $3 !~ /^[0-9a-f]{64}$/ || $4 !~ /^[0-9a-f]{64}$/ || $5 !~ /^[A-Za-z0-9_.+\/-]+$/ { bad=1 }
+        END { if (bad || NR != count) exit 1 }' "$bundle/entries" || fail 'Invalid entry roster'
+    [ -d "$bundle/tree" ] && [ ! -L "$bundle/tree" ] || fail 'Missing source tree'
+}
+
+entry_row()
+{
+    number "$ordinal" 1 "$count" || fail 'Invalid entry ordinal'
+    entry=$(awk -F '\t' -v ordinal="$ordinal" '$1 == ordinal { print; n++ }
+        END { if (n != 1) exit 1 }' "$bundle/entries") || fail 'Missing entry'
+    IFS="$tab" read -r entry_number entry_phase raw_digest script_digest script_name <<EOF
+$entry
+EOF
+    case "/$script_name/" in *//*|*/../*|*/./*) fail 'Invalid script path' ;; esac
+    case "$script_name" in /*) fail 'Absolute script path' ;; esac
+    script=$(realpath "$bundle/tree/$script_name") || fail 'Missing selected script'
+    case "$script" in "$bundle/tree/"*) ;; *) fail 'Selected script escapes its snapshot' ;; esac
+    [ -f "$script" ] && [ -x "$script" ] || fail 'Selected script is not executable'
+    [ "$(digest_file "$script")" = "$script_digest" ] || fail 'Selected script content differs'
+}
+
+verify_tree()
+{
+    mtree -f "$bundle/tree.mtree" -p "$bundle/tree" >/dev/null 2>&1 || fail 'Source tree differs'
+    tree_metadata=$(find "$bundle/tree" -exec stat -f '%HT:%u:%g:%Lp:%z' {} +) \
+        || fail 'Cannot inspect source tree'
+    printf '%s\n' "$tree_metadata" | awk -F : '
+        NF != 5 || $1 !~ /^(Directory|Regular File|Symbolic Link)$/ || $2 != 0 || $3 != 0 { bad=1 }
+        $1 != "Symbolic Link" && (length($4) > 3 || substr($4, length($4)-1, 1) ~ /[2367]/ ||
+            substr($4, length($4), 1) ~ /[2367]/) { bad=1 }
+        $1 == "Regular File" { bytes += $5; if ($5 > 16777216) bad=1 }
+        { n++ } END { if (bad || bytes > 67108864 || n > 4096) exit 1 }' \
+        || fail 'Unsafe source metadata'
+    find "$bundle/tree" -type l -exec /bin/sh -c '
+        tree=$1; shift
+        for link do
+            [ "$(stat -f %u "$link")" = 0 ] || exit 1
+            resolved=$(realpath "$link") || exit 1
+            case "$resolved" in "$tree"|"$tree/"*) ;; *) exit 1 ;; esac
+        done
+    ' xcat "$bundle/tree" {} + || fail 'Source link escapes its snapshot'
+    ordinal=1
+    while [ "$ordinal" -le "$count" ]; do
+        entry_row
+        prefix=$(dd if="$script" bs=256 count=1 2>/dev/null) || fail 'Cannot read selected executable'
+        case "$prefix" in
+        '#!'*)
+            interpreter=$(printf '%s\n' "${prefix#\#!}" | awk 'NR == 1 { print $1; exit }')
+            case "$interpreter" in /*) ;; *) fail 'Invalid script interpreter' ;; esac
+            [ -f "$interpreter" ] && [ -x "$interpreter" ] || fail 'Missing script interpreter'
+            ;;
+        esac
+        ordinal=$((ordinal+1))
+    done
+    /bin/sh -n "$bundle/driver" || fail 'Driver syntax is unsupported'
+    package_inputs || fail 'Package inputs are invalid'
+}
+
+load_run()
+{
+    directory "$state"
+    private_file "$state/snapshot" 65
+    snapshot=$(cat "$state/snapshot") || fail 'Cannot read snapshot identity'
+    hex "$snapshot" 64 || fail 'Invalid snapshot identity'
+    bundle=$state/bundle
+    load_bundle
+}
+
+running()
+{
+    active_run
+    inherited_node_lock
+}
+
+inherited_node_lock()
+{
+    # Children share the worker's open file description. A fresh descriptor
+    # cannot enter this interface while the node lock is held.
+    [ "$(stat -f '%d:%i' <&9)" = "$(stat -f '%d:%i' "$base/lock")" ] \
+        && lockf -s -k -t 0 /dev/fd/9 || fail 'Worker lock is not inherited'
+}
+
+active_run()
+{
+    load_run
+    private_file "$state/started" 1024
+    private_file "$base/active" 33
+    [ "$(cat "$base/active")" = "$run" ] || fail 'Run is not active'
+    absent "$state/result"
+    absent "$state/driver.complete"
+    started_record
+    boot_matches "$started_boot" \
+        && [ "$started_process" = "$(process_identity "$pid")" ] || fail 'Worker is no longer running'
+}
+
+sync_record()
+{
+    sync_path=$state/entries/$ordinal/sync.$1
+    private_file "$sync_path" 1024
+    sync_fields='format run snapshot ordinal'
+    [ "$1" = request ] || sync_fields="$sync_fields status evidence"
+    shape "$sync_path" "$sync_fields"
+    [ "$(field "$sync_path" format)" = "xcat-freebsd-postscript-sync-$1-1" ] \
+        && [ "$(field "$sync_path" run)" = "$run" ] \
+        && [ "$(field "$sync_path" snapshot)" = "$snapshot" ] \
+        && [ "$(field "$sync_path" ordinal)" = "$ordinal" ] || fail 'Synchronization identity differs'
+    if [ "$1" = result ]; then
+        sync_status=$(field "$sync_path" status) || fail 'Missing synchronization status'
+        sync_evidence=$(field "$sync_path" evidence) || fail 'Missing synchronization evidence'
+        number "$sync_status" 0 1 && hex "$sync_evidence" 64 || fail 'Invalid synchronization result'
+    fi
+}
+
+entry_lock()
+{
+    entry_lock_path=$state/entries/$ordinal/lock
+    if [ ! -e "$entry_lock_path" ]; then
+        (set -C; : > "$entry_lock_path") || [ -f "$entry_lock_path" ] || fail 'Cannot create entry lock'
+    fi
+    private_file "$entry_lock_path" 0
+    exec 8<> "$entry_lock_path" || fail 'Cannot open entry lock'
+    [ "$(stat -f '%d:%i' <&8)" = "$(stat -f '%d:%i' "$entry_lock_path")" ] || fail 'Entry lock changed'
+    lockf -k -t 5 /dev/fd/8 || fail 'Entry is busy'
+}
+
+sync_receipt()
+{
+    [ "$outcome" = pending ] || return 0
+    ordinal=1
+    while [ "$ordinal" -le "$count" ]; do
+        sync_entry=$state/entries/$ordinal
+        if [ -e "$sync_entry/sync.request" ] && [ ! -e "$sync_entry/sync.result" ] && [ ! -e "$sync_entry/result" ]; then
+            entry_lock
+            if [ -e "$sync_entry/sync.result" ] || [ -e "$sync_entry/result" ]; then
+                exec 8>&-
+                ordinal=$((ordinal+1))
+                continue
+            fi
+            entry_row
+            entry_started
+            sync_record request
+            [ "$entry_started_uptime" != - ] || fail 'Synchronization requires a monotonic entry time'
+            remaining=$((entry_started_uptime+entry_timeout-$(monotonic_now)))
+            if [ "$remaining" -gt 0 ] && [ "$remaining" -le "$entry_timeout" ]; then
+                printf 'format\txcat-freebsd-postscript-status-2\nrun\t%s\nsnapshot\t%s\noutcome\tpending\ncomplete\tno\nsync-ordinal\t%s\nsync-timeout\t%s\n' \
+                    "$run" "$snapshot" "$ordinal" "$remaining"
+                exit 0
+            fi
+            exec 8>&-
+        fi
+        ordinal=$((ordinal+1))
+    done
+}
+
+started_record()
+{
+    private_file "$state/started" 1024
+    shape "$state/started" 'format run snapshot boot pid process'
+    [ "$(field "$state/started" format)" = xcat-freebsd-postscript-start-1 ] \
+        && [ "$(field "$state/started" run)" = "$run" ] \
+        && [ "$(field "$state/started" snapshot)" = "$snapshot" ] || fail 'Started identity differs'
+    started_boot=$(field "$state/started" boot) || fail 'Missing boot identity'
+    pid=$(field "$state/started" pid) || fail 'Missing worker PID'
+    started_process=$(field "$state/started" process) || fail 'Missing process identity'
+    hex "$started_boot" 64 && number "$pid" 1 99999999 && hex "$started_process" 64 \
+        || fail 'Invalid worker identity'
+}
+
+entry_started()
+{
+    directory "$state/entries/$ordinal"
+    private_file "$state/entries/$ordinal/started" 1024
+    entry_start_format=$(field "$state/entries/$ordinal/started" format) || fail 'Missing entry start format'
+    entry_started_epoch=-
+    entry_started_uptime=-
+    case "$entry_start_format" in
+    xcat-freebsd-postscript-entry-start-1)
+        shape "$state/entries/$ordinal/started" 'format ordinal raw-sha256 script-sha256'
+        ;;
+    xcat-freebsd-postscript-entry-start-2|xcat-freebsd-postscript-entry-start-3|xcat-freebsd-postscript-entry-start-4)
+        start_fields='format ordinal raw-sha256 script-sha256 started-epoch'
+        if [ "${entry_start_format##*-}" -ge 3 ]; then
+            start_fields="$start_fields started-uptime"
+            entry_started_uptime=$(field "$state/entries/$ordinal/started" started-uptime) || fail 'Missing monotonic entry start'
+            uptime_value "$entry_started_uptime" || fail 'Invalid monotonic entry start'
+        fi
+        shape "$state/entries/$ordinal/started" "$start_fields"
+        entry_started_epoch=$(field "$state/entries/$ordinal/started" started-epoch) || fail 'Missing entry start time'
+        epoch "$entry_started_epoch" || fail 'Invalid entry start time'
+        ;;
+    *) fail 'Invalid entry start format' ;;
+    esac
+    [ "$(field "$state/entries/$ordinal/started" ordinal)" = "$ordinal" ] \
+        && [ "$(field "$state/entries/$ordinal/started" raw-sha256)" = "$raw_digest" ] \
+        && [ "$(field "$state/entries/$ordinal/started" script-sha256)" = "$script_digest" ] \
+        || fail 'Started entry differs'
+}
+
+entry_result()
+{
+    entry_row
+    entry_started
+    private_file "$state/entries/$ordinal/result" 1024
+    entry_result_format=$(field "$state/entries/$ordinal/result" format) || fail 'Missing entry result format'
+    entry_finished_epoch=-
+    entry_finished_uptime=-
+    case "$entry_result_format" in
+    xcat-freebsd-postscript-entry-result-1)
+        [ "$entry_start_format" = xcat-freebsd-postscript-entry-start-1 ] || fail 'Legacy entry start differs'
+        shape "$state/entries/$ordinal/result" 'format ordinal status argv-sha256 stdout-sha256 stderr-sha256 complete'
+        ;;
+    xcat-freebsd-postscript-entry-result-2|xcat-freebsd-postscript-entry-result-3|xcat-freebsd-postscript-entry-result-4)
+        [ "${entry_start_format##*-}" = "${entry_result_format##*-}" ] || fail 'Timed entry start differs'
+        result_fields='format ordinal status started-sha256 finished-epoch'
+        if [ "${entry_result_format##*-}" -ge 3 ]; then
+            result_fields="$result_fields finished-uptime"
+            entry_finished_uptime=$(field "$state/entries/$ordinal/result" finished-uptime) || fail 'Missing monotonic entry finish'
+            uptime_value "$entry_finished_uptime" && [ "$entry_finished_uptime" -ge "$entry_started_uptime" ] \
+                || fail 'Invalid monotonic entry finish'
+        fi
+        result_fields="$result_fields argv-sha256 stdout-sha256 stderr-sha256"
+        if [ "$entry_result_format" = xcat-freebsd-postscript-entry-result-4 ]; then
+            result_fields="$result_fields log-limit stdout-bytes stderr-bytes stdout-truncated stderr-truncated stdout-open stderr-open"
+            [ "$(field "$state/entries/$ordinal/result" log-limit)" = "$entry_log_limit" ] || fail 'Entry log limit differs'
+        fi
+        shape "$state/entries/$ordinal/result" "$result_fields complete"
+        [ "$(field "$state/entries/$ordinal/result" started-sha256)" = "$(digest_file "$state/entries/$ordinal/started")" ] \
+            || fail 'Entry start evidence differs'
+        entry_finished_epoch=$(field "$state/entries/$ordinal/result" finished-epoch) || fail 'Missing entry finish time'
+        epoch "$entry_finished_epoch" || fail 'Invalid entry finish time'
+        ;;
+    *) fail 'Invalid entry result format' ;;
+    esac
+    [ "$(field "$state/entries/$ordinal/result" ordinal)" = "$ordinal" ] || fail 'Result ordinal differs'
+    [ "$(field "$state/entries/$ordinal/result" complete)" = yes ] || fail 'Incomplete entry result'
+    entry_status=$(field "$state/entries/$ordinal/result" status) || fail 'Missing child status'
+    number "$entry_status" 0 255 || fail 'Invalid child status'
+    for entry_member in argv stdout stderr; do
+        entry_bound=$log_limit
+        [ "$entry_member" != argv ] || entry_bound=65536
+        private_file "$state/entries/$ordinal/$entry_member" "$entry_bound"
+        [ "$(digest_file "$state/entries/$ordinal/$entry_member")" = "$(field "$state/entries/$ordinal/result" "$entry_member-sha256")" ] \
+            || fail 'Entry evidence differs'
+    done
+    if [ "$entry_result_format" = xcat-freebsd-postscript-entry-result-4 ]; then
+        for entry_member in stdout stderr; do
+            private_file "$state/entries/$ordinal/$entry_member" "$entry_log_limit"
+            entry_bytes=$(stat -f %z "$state/entries/$ordinal/$entry_member") || fail 'Cannot measure entry output'
+            [ "$entry_bytes" = "$(field "$state/entries/$ordinal/result" "$entry_member-bytes")" ] || fail 'Entry log size differs'
+            entry_truncated=$(field "$state/entries/$ordinal/result" "$entry_member-truncated") || fail 'Missing entry truncation flag'
+            entry_open=$(field "$state/entries/$ordinal/result" "$entry_member-open") || fail 'Missing entry open flag'
+            case "$entry_truncated:$entry_open" in yes:yes|yes:no|no:yes|no:no) ;; *) fail 'Invalid entry output flag' ;; esac
+            [ "$entry_truncated" = no ] || [ "$entry_bytes" = "$entry_log_limit" ] || fail 'Truncated entry log is short'
+        done
+    fi
+}
+
+terminal()
+{
+    started_record
+    private_file "$state/result" 4096
+    terminal_format=$(field "$state/result" format) || fail 'Missing run result format'
+    terminal_fields='format run node generation attempt snapshot plan entries results-sha256 packages-sha256 stdout-sha256 stderr-sha256'
+    case "$terminal_format" in
+    xcat-freebsd-postscript-result-1|xcat-freebsd-postscript-result-2) ;;
+    xcat-freebsd-postscript-result-3) terminal_fields="$terminal_fields inventory-sha256" ;;
+    *) fail 'Invalid run result format' ;;
+    esac
+    shape "$state/result" "$terminal_fields outcome complete"
+    [ "$(field "$state/result" run)" = "$run" ] || fail 'Result run differs'
+    [ "$(field "$state/result" snapshot)" = "$snapshot" ] || fail 'Result snapshot differs'
+    [ "$(field "$state/result" node)" = "$node" ] \
+        && [ "$(field "$state/result" generation)" = "$generation" ] \
+        && [ "$(field "$state/result" attempt)" = "$attempt" ] \
+        && [ "$(field "$state/result" plan)" = "$plan" ] \
+        && [ "$(field "$state/result" entries)" = "$count" ] || fail 'Result context differs'
+    [ "$(field "$state/result" complete)" = yes ] || fail 'Incomplete run result'
+    if [ "$terminal_format" = xcat-freebsd-postscript-result-3 ]; then
+        failure_terminal || fail 'Framework failure snapshot is invalid'
+        outcome=failed
+        return 0
+    fi
+    private_file "$state/results" 4194304
+    [ "$(digest_file "$state/results")" = "$(field "$state/result" results-sha256)" ] || fail 'Result inventory differs'
+    if [ "$terminal_format" = xcat-freebsd-postscript-result-2 ]; then
+        package_rejection || fail 'Package rejection is invalid'
+        [ "$(digest_file "$state/packages.rejected")" = "$(field "$state/result" packages-sha256)" ] \
+            || fail 'Package rejection evidence differs'
+        directory "$state/entries"
+        for path in "$state/entries"/* "$state/entries"/.[!.]* "$state/entries"/..?*; do absent "$path"; done
+        for member in driver.complete driver.stdout driver.stderr; do absent "$state/$member"; done
+        awk -F '\t' -v count="$count" 'NF != 5 || $1 != NR || $2 != "not-run" ||
+            $3 != "-" || $4 != "-" || $5 != "-" { bad=1 }
+            END { if (bad || NR != count) exit 1 }' "$state/results" || fail 'Unstarted entry inventory differs'
+        for stream in stdout stderr; do
+            private_file "$state/prerequisite.$stream" "$log_limit"
+            [ "$(digest_file "$state/prerequisite.$stream")" = "$(field "$state/result" "$stream-sha256")" ] \
+                || fail 'Package prerequisite diagnostic differs'
+        done
+        [ "$(field "$state/result" outcome)" = failed ] || fail 'Invalid package failure outcome'
+        outcome=failed
+        return 0
+    fi
+    private_file "$state/driver.complete" 64
+    [ "$(cat "$state/driver.complete")" = "$count" ] || fail 'Driver completion differs'
+    private_file "$state/packages.result" 4096
+    [ "$(digest_file "$state/packages.result")" = "$(field "$state/result" packages-sha256)" ] || fail 'Package evidence differs'
+    package_receipt || fail 'Package receipt is invalid'
+    for stream in stdout stderr; do
+        private_file "$state/driver.$stream" "$log_limit"
+        [ "$(digest_file "$state/driver.$stream")" = "$(field "$state/result" "$stream-sha256")" ] || fail 'Driver evidence differs'
+    done
+    outcome=success
+    ordinal=1
+    while [ "$ordinal" -le "$count" ]; do
+        entry_result
+        [ "$entry_status" -eq 0 ] || outcome=failed
+        expected_row=$(printf '%s\t%s\t%s' "$ordinal" "$entry_status" "$(digest_file "$state/entries/$ordinal/result")")
+        [ "$(sed -n "${ordinal}p" "$state/results")" = "$expected_row" ] || fail 'Entry inventory differs'
+        ordinal=$((ordinal+1))
+    done
+    [ "$(wc -l < "$state/results" | tr -d ' ')" = "$count" ] \
+        && [ "$(field "$state/result" outcome)" = "$outcome" ] || fail 'Aggregate outcome differs'
+}
+
+failure_terminal()
+(
+    failure_source=$state/failure/content
+    directory "$state/failure"
+    directory "$failure_source"
+    private_file "$failure_source/result" 4096
+    cmp -s "$state/result" "$failure_source/result" || fail 'Framework failure receipt differs'
+    [ "$(field "$state/result" outcome)" = failed ] || fail 'Invalid framework failure outcome'
+    for failure_binding in failure.results:results failure.inventory:inventory packages.result:packages framework.stdout:stdout framework.stderr:stderr; do
+        failure_name=${failure_binding%:*}
+        private_file "$failure_source/$failure_name" 4194304
+        [ "$(digest_file "$failure_source/$failure_name")" = "$(field "$state/result" "${failure_binding#*:}-sha256")" ] \
+            || fail 'Framework failure evidence differs'
+    done
+    failure_rows=0
+    while IFS="$tab" read -r failure_name failure_bytes failure_digest failure_extra; do
+        [ -z "$failure_extra" ] && number "$failure_bytes" 0 8388608 && hex "$failure_digest" 64 \
+            || fail 'Invalid framework failure inventory'
+        case "/$failure_name/" in
+        *//*|*/../*|*/./*|*[!A-Za-z0-9_./-]*) fail 'Invalid framework failure member' ;;
+        esac
+        private_file "$failure_source/$failure_name" "$failure_bytes"
+        [ "$(stat -f %z "$failure_source/$failure_name")" = "$failure_bytes" ] \
+            && [ "$(digest_file "$failure_source/$failure_name")" = "$failure_digest" ] \
+            || fail 'Framework failure member differs'
+        failure_rows=$((failure_rows+1))
+    done < "$failure_source/failure.inventory"
+    [ "$failure_rows" -gt 0 ] && [ "$failure_rows" -le "$((count*7+32))" ] \
+        && [ "$(find "$failure_source" -type f | wc -l | tr -d ' ')" = "$((failure_rows+2))" ] \
+        || fail 'Framework failure inventory roster differs'
+    awk -F '\t' -v count="$count" 'NF != 5 || $1 != NR || $2 !~ /^(complete|uncertain|not-run)$/ { bad=1 }
+        $2 == "complete" && ($3 !~ /^(0|[1-9][0-9]*)$/ || $3 > 255) { bad=1 }
+        $2 != "complete" && $3 != "-" { bad=1 }
+        $4 !~ /^(-|[0-9a-f]{64})$/ || $5 !~ /^(-|[0-9a-f]{64})$/ { bad=1 }
+        END { if (bad || NR != count) exit 1 }' "$failure_source/failure.results" \
+        || fail 'Invalid framework failure entry disposition'
+)
+
+framework_failure()
+(
+    # The caller has released its inherited lock and acquired a fresh one.
+    # A free lock alone does not prove completion after supervisor death.
+    absent "$state/result"
+    absent "$state/failure"
+    private_file "$state/packages.result" 4096
+    package_receipt || fail 'Framework failure lacks completed package evidence'
+    evidence_stage=$(mktemp -d "$state/.failure.XXXXXXXX") || fail 'Cannot create framework failure stage'
+    capture_inventory > "$evidence_stage/captures" || fail 'Framework failure has unobserved commands'
+    fsync "$evidence_stage/captures" || fail 'Cannot sync framework completion observations'
+    package_commit || fail 'Cannot finish completed package provenance'
+    interrupted_snapshot failure
+    cp -p "$evidence_source/result" "$evidence_stage/terminal" || fail 'Cannot stage framework failure receipt'
+    fsync "$evidence_stage/terminal" "$evidence_stage" || fail 'Cannot sync framework failure stage'
+    mv "$evidence_stage" "$state/failure" && fsync "$state" || fail 'Cannot publish framework failure snapshot'
+    # Publish the terminal receipt only after its immutable content is durable.
+    absent "$state/result"
+    mv "$state/failure/terminal" "$state/result" && fsync "$state/failure" "$state" \
+        || fail 'Cannot publish framework failure receipt'
+)
+
+rejected_run()
+{
+    package_rejection || fail 'Package prerequisite failed without a rejection receipt'
+    package_rejection_head "$(field "$state/packages.rejected" previous-head-sha256)"
+    absent "$state/results.pending"
+    (set -C; awk -F '\t' '{ printf "%s\tnot-run\t-\t-\t-\n", $1 }' "$bundle/entries" > "$state/results.pending") \
+        || fail 'Cannot record unstarted entries'
+    write_record "$state/results" < "$state/results.pending" || fail 'Cannot publish unstarted entries'
+    printf 'format\txcat-freebsd-postscript-result-2\nrun\t%s\nnode\t%s\ngeneration\t%s\nattempt\t%s\nsnapshot\t%s\nplan\t%s\nentries\t%s\nresults-sha256\t%s\npackages-sha256\t%s\nstdout-sha256\t%s\nstderr-sha256\t%s\noutcome\tfailed\ncomplete\tyes\n' \
+        "$run" "$node" "$generation" "$attempt" "$snapshot" "$plan" "$count" "$(digest_file "$state/results")" \
+        "$(digest_file "$state/packages.rejected")" "$(digest_file "$state/prerequisite.stdout")" \
+        "$(digest_file "$state/prerequisite.stderr")" | write_record "$state/result" \
+        || fail 'Cannot record rejected run'
+}
+
+complete_run()
+{
+    terminal
+    rm "$base/active" || fail 'Cannot release completed run'
+    fsync "$base" || fail 'Cannot sync completed run release'
+    retire_completed
+    cat "$state/result" || fail 'Cannot return result'
+}
+
+retire_completed()
+{
+    case "$(field "$state/result" format)" in
+    xcat-freebsd-postscript-result-1|xcat-freebsd-postscript-result-3) ;;
+    *) return 0 ;;
+    esac
+    if ! (package_retire); then
+        printf 'xCAT FreeBSD postscript: Payload retirement is pending; retry retire %s.\n' "$run" >&2
+    fi
+}
+
+reconcile_active()
+{
+    [ -e "$base/active" ] || return 0
+    (
+        private_file "$base/active" 33
+        run=$(cat "$base/active") || fail 'Cannot read active run'
+        hex "$run" 32 || fail 'Invalid active run'
+        state=$base/runs/$run
+        load_run
+        terminal
+    ) || fail 'An unresolved run still owns the node'
+    rm "$base/active" || fail 'Cannot release completed run'
+    fsync "$base" || fail 'Cannot sync completed run release'
+}
+
+admit_snapshot()
+{
+    # Admission has no script side effects. A delivery retry may finish its
+    # interrupted snapshot publication after verifying the complete bundle.
+    if [ -e "$state/snapshot.tmp" ]; then
+        [ -f "$state/snapshot.tmp" ] && [ ! -L "$state/snapshot.tmp" ] \
+            && [ "$(stat -f '%u:%g:%Lp:%z' "$state/snapshot.tmp")" = 0:0:600:65 ] \
+            && [ "$(cat "$state/snapshot.tmp")" = "$snapshot" ] || fail 'Invalid partial admission'
+        if [ -e "$state/snapshot" ]; then
+            [ ! -L "$state/snapshot" ] \
+                && [ "$(stat -f '%d:%i:%l' "$state/snapshot.tmp")" = "$(stat -f '%d:%i:%l' "$state/snapshot")" ] \
+                && [ "$(stat -f %l "$state/snapshot")" = 2 ] || fail 'Partial admission differs'
+        else
+            private_file "$state/snapshot.tmp" 65
+        fi
+        rm "$state/snapshot.tmp" && fsync "$state" || fail 'Cannot finish partial admission'
+    fi
+    if [ -e "$state/snapshot" ]; then
+        private_file "$state/snapshot" 65
+        [ "$(cat "$state/snapshot")" = "$snapshot" ] || fail 'Admitted snapshot differs'
+    else
+        printf '%s\n' "$snapshot" | write_record "$state/snapshot" || fail 'Cannot record snapshot'
+    fi
+}
+
+admit_bundle()
+{
+    snapshot=$1
+    if [ -e "$state" ]; then
+        directory "$state"
+        if [ -e "$state/started" ]; then
+            load_run
+            [ "$snapshot" = "$1" ] || fail 'Run already has another snapshot'
+            verify_tree
+            return 0
+        fi
+    else
+        mkdir -m 0700 "$state" || fail 'Cannot create admitted run'
+        fsync "$base/runs" || fail 'Cannot sync run directory'
+    fi
+    bundle=$state/bundle
+    [ -e "$bundle" ] || bundle=$base/incoming/$run
+    load_bundle
+    verify_tree
+    find "$bundle" ! -type l -exec fsync {} + || fail 'Cannot sync bundle'
+    if [ "$bundle" != "$state/bundle" ]; then
+        mv "$bundle" "$state/bundle" || fail 'Cannot admit bundle'
+    fi
+    fsync "$base/incoming" "$state" "$base/runs" || fail 'Cannot sync bundle admission'
+    admit_snapshot
+}
+
+delivery_arguments()
+{
+    [ "$#" -eq 3 ] && hex "$1" 64 && hex "$2" 64 || fail 'Expected snapshot and archive identities'
+    delivery_snapshot=$1
+    archive_digest=$2
+    archive_bytes=$3
+    case "$archive_bytes" in ''|*[!0-9]*|0[0-9]*) fail 'Invalid archive size' ;; esac
+    [ "${#archive_bytes}" -le 11 ] && [ "$archive_bytes" -ge 1024 ] \
+        && [ "$archive_bytes" -le 68987912192 ] && [ "$((archive_bytes % 512))" -eq 0 ] \
+        || fail 'Invalid archive size'
+    delivery=$base/incoming/$run.delivery
+}
+
+delivery_request()
+{
+    printf 'format\txcat-freebsd-postscript-delivery-1\nrun\t%s\nsnapshot\t%s\narchive-sha256\t%s\narchive-bytes\t%s\n' \
+        "$run" "$delivery_snapshot" "$archive_digest" "$archive_bytes"
+}
+
+load_delivery()
+{
+    directory "$delivery"
+    private_file "$delivery/request" 1024
+    delivery_request | cmp -s - "$delivery/request" || fail 'Delivery already binds different inputs'
+}
+
+delivery_admitted()
+{
+    if [ -e "$state/snapshot" ] || [ -e "$state/bundle" ] || [ -e "$base/incoming/$run" ]; then
+        admit_bundle "$delivery_snapshot"
+        return 0
+    fi
+    return 1
+}
+
+delivery_status()
+{
+    delivery_path=$delivery/bundle.tar
+    [ "$1" != admitted ] || delivery_path=-
+    printf 'format\txcat-freebsd-postscript-delivery-status-1\nrun\t%s\nsnapshot\t%s\narchive-sha256\t%s\narchive-bytes\t%s\nstate\t%s\npath\t%s\n' \
+        "$run" "$delivery_snapshot" "$archive_digest" "$archive_bytes" "$1" "$delivery_path"
+}
+
+released_record()
+{
+    started_record
+    private_file "$state/released" 1024
+    release_format=$(field "$state/released" format) || fail 'Missing release format'
+    release_fields='format run snapshot boot'
+    case "$release_format" in
+    xcat-freebsd-postscript-release-1) ;;
+    xcat-freebsd-postscript-release-2)
+        release_fields="$release_fields proof started-sha256 supervision-sha256 process-sha256 captures-sha256"
+        ;;
+    *) fail 'Invalid release format' ;;
+    esac
+    shape "$state/released" "$release_fields"
+    [ "$(field "$state/released" snapshot)" = "$snapshot" ] \
+        && [ "$(field "$state/released" run)" = "$run" ] || fail 'Release identity differs'
+    release_boot=$(field "$state/released" boot) || fail 'Missing release boot'
+    hex "$release_boot" 64 || fail 'Invalid release boot'
+    if [ "$release_format" = xcat-freebsd-postscript-release-1 ]; then
+        [ "$release_boot" != "$started_boot" ] || fail 'Invalid release boot'
+        return 0
+    fi
+    [ "$release_boot" = "$started_boot" ] || fail 'Observed release boot differs'
+    supervision_record
+    release_proof=$(field "$state/released" proof) || fail 'Missing release proof'
+    printf '%s\n' "$release_proof" | grep -Eq '^release[.][A-Za-z0-9]{8}$' || fail 'Invalid release proof path'
+    directory "$state/$release_proof"
+    release_process "$state/$release_proof/process"
+    private_file "$state/$release_proof/captures" 4194304
+    [ -s "$state/$release_proof/captures" ] || fail 'Empty release observations'
+    [ "$(field "$state/released" started-sha256)" = "$(digest_file "$state/started")" ] \
+        && [ "$(field "$state/released" supervision-sha256)" = "$(digest_file "$state/supervision")" ] \
+        && [ "$(field "$state/released" process-sha256)" = "$(digest_file "$state/$release_proof/process")" ] \
+        && [ "$(field "$state/released" captures-sha256)" = "$(digest_file "$state/$release_proof/captures")" ] \
+        || fail 'Release observation binding differs'
+}
+
+interrupted_ready()
+{
+    released_record
+    absent "$state/result"
+    if [ -e "$base/active" ]; then
+        private_file "$base/active" 33
+        [ "$(cat "$base/active")" != "$run" ] || fail 'Interrupted run is not released'
+    fi
+}
+
+journal_file()
+{
+    [ -f "$1" ] && [ ! -L "$1" ] || fail 'Invalid interrupted journal file'
+    journal_state=$(stat -f '%u:%g:%l:%Lp' "$1") || fail 'Cannot inspect interrupted journal'
+    case "$journal_state" in
+    0:0:1:400|0:0:1:600) ;;
+    0:0:2:600)
+        [ -f "$1.tmp" ] && [ ! -L "$1.tmp" ] \
+            && [ "$(stat -f '%d:%i' "$1")" = "$(stat -f '%d:%i' "$1.tmp")" ] \
+            || fail 'Interrupted publication link differs'
+        ;;
+    *) fail 'Interrupted journal is not private' ;;
+    esac
+    [ "$(stat -f %z "$1")" -le "$2" ] || fail 'Interrupted journal exceeds its bound'
+}
+
+evidence_member()
+{
+    printf '%s\t%s\t%s\n' "$1" "$(stat -f %z "$evidence_source/$1")" \
+        "$(digest_file "$evidence_source/$1")" >> "$evidence_stage/inventory" \
+        || fail 'Cannot inventory interrupted evidence'
+    printf '%s\n' "$1" >> "$evidence_stage/files" || fail 'Cannot select interrupted evidence'
+}
+
+copy_journal()
+{
+    journal_target=${3:-$1}
+    journal_file "$state/$1" "$2"
+    journal_digest=$(digest_file "$state/$1") || fail 'Cannot hash interrupted journal'
+    (set -C; cat "$state/$1" > "$evidence_source/$journal_target") || fail 'Cannot copy interrupted journal'
+    private_file "$evidence_source/$journal_target" "$2"
+    journal_file "$state/$1" "$2"
+    [ "$(digest_file "$state/$1")" = "$journal_digest" ] \
+        && [ "$(digest_file "$evidence_source/$journal_target")" = "$journal_digest" ] || fail 'Interrupted journal changed'
+    fsync "$evidence_source/$journal_target" || fail 'Cannot sync interrupted journal'
+    evidence_member "$journal_target"
+}
+
+interrupted_snapshot()
+{
+    snapshot_kind=${1:-interrupted}
+    evidence_source=$evidence_stage/content
+    mkdir -m 0700 "$evidence_source" "$evidence_source/bundle" "$evidence_source/entries" "$evidence_source/packages" \
+        || fail 'Cannot create interrupted evidence stage'
+    (set -C; : > "$evidence_stage/inventory"; : > "$evidence_stage/files"; : > "$evidence_stage/results") \
+        || fail 'Cannot create interrupted inventories'
+    for specification in snapshot:65 started:1024 bundle/manifest:8192 bundle/entries:1048576; do
+        copy_journal "${specification%:*}" "${specification#*:}"
+    done
+    if [ "$snapshot_kind" = interrupted ]; then
+        copy_journal released 1024
+        if [ "$release_format" = xcat-freebsd-postscript-release-2 ]; then
+            copy_journal "$release_proof/process" 1024 release.process
+            copy_journal "$release_proof/captures" 4194304 release.captures
+        fi
+    else
+        [ "$snapshot_kind" = failure ] || fail 'Invalid execution snapshot kind'
+        cp -p "$evidence_stage/captures" "$evidence_source/failure.captures" || fail 'Cannot copy framework observations'
+        private_file "$evidence_source/failure.captures" 4194304
+        fsync "$evidence_source/failure.captures" || fail 'Cannot sync framework observations'
+        evidence_member failure.captures
+    fi
+    for specification in supervision:1024 framework.packages:1024 framework.driver:1024 framework.finalization:1024 \
+        "framework.stdout:$log_limit" "framework.stderr:$log_limit" supervisor.stderr:1048576; do
+        member=${specification%:*}
+        if [ -e "$state/$member" ] || [ -L "$state/$member" ]; then copy_journal "$member" "${specification#*:}"; fi
+    done
+    for specification in driver.complete:64 results:4194304 packages.result:4096 \
+        "prerequisite.stdout:$log_limit" "prerequisite.stderr:$log_limit" \
+        "driver.stdout:$log_limit" "driver.stderr:$log_limit" "packages/stdout:$log_limit" "packages/stderr:$log_limit"; do
+        member=${specification%:*}
+        if [ -e "$state/$member" ] || [ -L "$state/$member" ]; then copy_journal "$member" "${specification#*:}"; fi
+    done
+    if [ -e "$state/packages.recovered" ] || [ -L "$state/packages.recovered" ]; then
+        package_recovery_receipt || fail 'Invalid retained package recovery'
+        copy_journal packages.recovered 4096
+        recovery_name=$(field "$state/packages.recovered" attempt) || fail 'Missing retained package recovery'
+        for specification in local-recover.result:1536 capture:1024 "stdout:$log_limit" "stderr:$log_limit"; do
+            member=${specification%:*}
+            target=$member
+            [ "$member" != local-recover.result ] || target=result
+            copy_journal "packages/$recovery_name/$member" "${specification#*:}" "packages/recovery.$target"
+        done
+    fi
+    if [ -e "$state/packages.preserved" ] || [ -L "$state/packages.preserved" ]; then
+        package_preservation_receipt || fail 'Invalid retained package preservation'
+        copy_journal packages.preserved 1024
+        if [ "$(field "$state/packages.preserved" reason)" = native-rejected ]; then
+            copy_journal "packages/local-$package_mode.rejected" 1024
+        fi
+    fi
+    ordinal=1
+    while [ "$ordinal" -le "$count" ]; do
+        disposition=not-run
+        child_status=-
+        start_digest=-
+        result_digest=-
+        if [ -e "$state/entries/$ordinal" ] || [ -L "$state/entries/$ordinal" ]; then
+            directory "$state/entries/$ordinal"
+            mkdir -m 0700 "$evidence_source/entries/$ordinal" || fail 'Cannot create interrupted entry stage'
+            disposition=uncertain
+            for specification in started:1024 result:1024 argv:65536 "stdout:$log_limit" "stderr:$log_limit" \
+                sync.request:1024 sync.result:1024; do
+                member=entries/$ordinal/${specification%:*}
+                if [ -e "$state/$member" ] || [ -L "$state/$member" ]; then copy_journal "$member" "${specification#*:}"; fi
+            done
+            if [ -e "$evidence_source/entries/$ordinal/started" ]; then
+                start_digest=$(digest_file "$evidence_source/entries/$ordinal/started") || fail 'Cannot hash interrupted start'
+            fi
+            if [ -e "$evidence_source/entries/$ordinal/result" ]; then
+                result_digest=$(digest_file "$evidence_source/entries/$ordinal/result") || fail 'Cannot hash interrupted result'
+                if (entry_result) > "$evidence_stage/entry-$ordinal.stdout" 2> "$evidence_stage/entry-$ordinal.stderr"; then
+                    disposition=complete
+                    child_status=$(field "$evidence_source/entries/$ordinal/result" status) || fail 'Missing completed entry status'
+                fi
+            fi
+        fi
+        printf '%s\t%s\t%s\t%s\t%s\n' "$ordinal" "$disposition" "$child_status" "$start_digest" "$result_digest" \
+            >> "$evidence_stage/results" || fail 'Cannot record interrupted entry'
+        ordinal=$((ordinal+1))
+    done
+    write_record "$evidence_source/$snapshot_kind.results" < "$evidence_stage/results" || fail 'Cannot publish snapshot entries'
+    evidence_member "$snapshot_kind.results"
+    write_record "$evidence_source/$snapshot_kind.inventory" < "$evidence_stage/inventory" || fail 'Cannot publish snapshot inventory'
+    if [ "$snapshot_kind" = interrupted ]; then
+        printf 'format\txcat-freebsd-postscript-interrupted-1\nrun\t%s\nnode\t%s\ngeneration\t%s\nattempt\t%s\nsnapshot\t%s\nplan\t%s\nentries\t%s\nresults-sha256\t%s\ninventory-sha256\t%s\noutcome\tuncertain\ncomplete\tno\n' \
+            "$run" "$node" "$generation" "$attempt" "$snapshot" "$plan" "$count" \
+            "$(digest_file "$evidence_source/interrupted.results")" "$(digest_file "$evidence_source/interrupted.inventory")" \
+            | write_record "$evidence_source/interrupted.receipt" || fail 'Cannot publish interrupted receipt'
+        printf '%s\n' interrupted.inventory interrupted.receipt >> "$evidence_stage/files" || fail 'Cannot select interrupted receipts'
+    else
+        printf 'format\txcat-freebsd-postscript-result-3\nrun\t%s\nnode\t%s\ngeneration\t%s\nattempt\t%s\nsnapshot\t%s\nplan\t%s\nentries\t%s\nresults-sha256\t%s\npackages-sha256\t%s\nstdout-sha256\t%s\nstderr-sha256\t%s\ninventory-sha256\t%s\noutcome\tfailed\ncomplete\tyes\n' \
+            "$run" "$node" "$generation" "$attempt" "$snapshot" "$plan" "$count" \
+            "$(digest_file "$evidence_source/failure.results")" "$(digest_file "$evidence_source/packages.result")" \
+            "$(digest_file "$evidence_source/framework.stdout")" "$(digest_file "$evidence_source/framework.stderr")" \
+            "$(digest_file "$evidence_source/failure.inventory")" | write_record "$evidence_source/result" \
+            || fail 'Cannot record framework failure'
+    fi
+    find "$evidence_source" -type d -exec fsync {} + || fail 'Cannot sync interrupted directories'
+    [ "$snapshot_kind" != interrupted ] || interrupted_ready
+}
+
+execution_evidence()
+{
+    load_run
+    evidence_format=xcat-freebsd-postscript-evidence-1
+    if [ -e "$state/result" ]; then
+        terminal
+        if [ "$terminal_format" = xcat-freebsd-postscript-result-2 ]; then
+            evidence_format=xcat-freebsd-postscript-evidence-3
+        elif [ "$terminal_format" = xcat-freebsd-postscript-result-3 ]; then
+            evidence_format=xcat-freebsd-postscript-evidence-4
+        fi
+    else
+        interrupted_ready
+        evidence_format=xcat-freebsd-postscript-evidence-2
+    fi
+    evidence=$state/evidence
+    if [ ! -e "$state/evidence.lock" ]; then
+        (set -C; : > "$state/evidence.lock") || fail 'Cannot create evidence lock'
+    fi
+    private_file "$state/evidence.lock" 0
+    exec 8<> "$state/evidence.lock" || fail 'Cannot open evidence lock'
+    lockf -k -t 0 /dev/fd/8 || exit 75
+    if [ ! -e "$evidence" ]; then
+        absent "$evidence"
+        evidence_stage=$(mktemp -d "$state/.evidence.XXXXXX") || fail 'Cannot create evidence stage'
+        if [ "$evidence_format" = xcat-freebsd-postscript-evidence-2 ]; then
+            interrupted_snapshot
+            evidence_receipt=$evidence_source/interrupted.receipt
+        elif [ "$evidence_format" = xcat-freebsd-postscript-evidence-4 ]; then
+            evidence_source=$state/failure/content
+            evidence_receipt=$state/result
+            (set -C; awk -F '\t' '{print $1}' "$evidence_source/failure.inventory" > "$evidence_stage/files") \
+                || fail 'Cannot select framework failure evidence'
+            printf '%s\n' failure.inventory result >> "$evidence_stage/files" || fail 'Cannot select framework failure receipt'
+        else
+            evidence_source=$state
+            evidence_receipt=$state/result
+            (
+            set -C
+            exec > "$evidence_stage/files"
+            if [ "$evidence_format" = xcat-freebsd-postscript-evidence-3 ]; then
+                printf '%s\n' bundle/manifest bundle/entries snapshot started result results \
+                    packages.rejected prerequisite.stdout prerequisite.stderr
+                if [ "$(field "$state/packages.rejected" phase)" = native ]; then
+                    printf 'packages/local-%s.rejected\n' "$package_mode"
+                fi
+                exit 0
+            fi
+            printf '%s\n' bundle/manifest bundle/entries snapshot started driver.complete result results \
+                driver.stdout driver.stderr packages.result
+            ordinal=1
+            while [ "$ordinal" -le "$count" ]; do
+                for member in started result argv stdout stderr; do printf 'entries/%s/%s\n' "$ordinal" "$member"; done
+                for member in request result; do
+                    if [ -e "$state/entries/$ordinal/sync.$member" ]; then
+                        sync_record "$member"
+                        printf 'entries/%s/sync.%s\n' "$ordinal" "$member"
+                    fi
+                done
+                ordinal=$((ordinal+1))
+            done
+            ) || fail 'Cannot select entry evidence'
+        fi
+        capture_logs "$evidence_stage/tar.stdout" "$evidence_stage/tar.stderr" 600 close "$log_limit" \
+            /bin/sh -c 'exec 8>&-; exec tar --format=ustar -cpf "$1" -C "$2" -T "$3"' xcat \
+            "$evidence_stage/archive.tar" "$evidence_source" "$evidence_stage/files"
+        [ "$capture_status" -eq 0 ] || fail 'Cannot archive entry evidence'
+        chmod 0400 "$evidence_stage/archive.tar" || fail 'Cannot protect evidence archive'
+        private_file "$evidence_stage/archive.tar" 134217728
+        fsync "$evidence_stage/archive.tar" || fail 'Cannot sync evidence archive'
+        if [ "$evidence_format" = xcat-freebsd-postscript-evidence-2 ]; then interrupted_ready; else terminal; fi
+        printf 'format\t%s\nrun\t%s\nsnapshot\t%s\nreceipt-sha256\t%s\narchive-sha256\t%s\narchive-bytes\t%s\n' \
+            "$evidence_format" "$run" "$snapshot" "$(digest_file "$evidence_receipt")" "$(digest_file "$evidence_stage/archive.tar")" \
+            "$(stat -f %z "$evidence_stage/archive.tar")" | write_record "$evidence_stage/status" \
+            || fail 'Cannot record entry evidence'
+        fsync "$evidence_stage" || fail 'Cannot sync evidence publication'
+        mv "$evidence_stage" "$evidence" || fail 'Cannot publish entry evidence'
+        fsync "$state" || fail 'Cannot sync entry evidence'
+    fi
+    directory "$evidence"
+    private_file "$evidence/status" 4096
+    shape "$evidence/status" 'format run snapshot receipt-sha256 archive-sha256 archive-bytes'
+    evidence_receipt=$state/result
+    if [ "$evidence_format" = xcat-freebsd-postscript-evidence-2 ]; then
+        evidence_receipt=$evidence/content/interrupted.receipt
+        private_file "$evidence_receipt" 4096
+    fi
+    [ "$(field "$evidence/status" format)" = "$evidence_format" ] \
+        && [ "$(field "$evidence/status" run)" = "$run" ] \
+        && [ "$(field "$evidence/status" snapshot)" = "$snapshot" ] \
+        && [ "$(field "$evidence/status" receipt-sha256)" = "$(digest_file "$evidence_receipt")" ] \
+        || fail 'Entry evidence binding differs'
+    private_file "$evidence/archive.tar" 134217728
+    [ "$(field "$evidence/status" archive-sha256)" = "$(digest_file "$evidence/archive.tar")" ] \
+        && [ "$(field "$evidence/status" archive-bytes)" = "$(stat -f %z "$evidence/archive.tar")" ] \
+        || fail 'Entry evidence archive differs'
+    cat "$evidence/status" || fail 'Cannot return entry evidence'
+    printf 'path\t%s/archive.tar\n' "$evidence"
+}
+
+run_receipt()
+{
+    load_run
+    if [ -e "$state/result" ] || [ -L "$state/result" ]; then
+        terminal
+        cat "$state/result" || fail 'Cannot return result'
+        return 0
+    fi
+    outcome=admitted
+    if [ -e "$state/entries" ] || [ -L "$state/entries" ]; then outcome=uncertain; fi
+    if [ -e "$state/started" ] || [ -L "$state/started" ]; then
+        started_record
+        outcome=uncertain
+        if boot_matches "$started_boot" && [ "$started_process" = "$(process_identity "$pid")" ]; then
+            outcome=pending
+        fi
+    fi
+    if [ "$outcome" = uncertain ] && { [ -e "$state/result" ] || [ -L "$state/result" ]; }; then
+        terminal
+        cat "$state/result" || fail 'Cannot return result'
+        return 0
+    fi
+    [ "${1-}" = observation ] || sync_receipt
+    printf 'format\txcat-freebsd-postscript-status-1\nrun\t%s\nsnapshot\t%s\noutcome\t%s\ncomplete\tno\n' "$run" "$snapshot" "$outcome"
+}
+
+boot_context()
+{
+    context_generation=$run
+    [ "$#" -eq 2 ] && hex "$1" 32 || fail 'Expected installation attempt and optional run'
+    context_attempt=$1
+    context_run=$2
+    [ "$context_run" = - ] || hex "$context_run" 32 || fail 'Invalid observed run'
+    state_ancestors
+    directory /var/db/xcat
+    private_file /var/db/xcat/pkgbase-install/result 4096
+    context_node=$(field /var/db/xcat/pkgbase-install/result node) || fail 'Missing initial node'
+    case "$context_node" in ''|[!A-Za-z0-9]*|*[!A-Za-z0-9_.-]*) fail 'Invalid initial node' ;; esac
+    [ "${#context_node}" -le 255 ] || fail 'Initial node exceeds its bound'
+    node=$context_node generation=$context_generation attempt=$context_attempt
+    package_initial || fail 'Initial package evidence is invalid'
+    context_boot=$(boot_identity) || fail 'Cannot observe boot'
+    hex "$context_boot" 64 || fail 'Invalid observed boot'
+    context_snapshot=- context_run_boot=- context_outcome=absent context_complete=no context_released=no
+    if [ "$context_run" != - ]; then
+        run=$context_run
+        state=$base/runs/$run
+        if [ -e "$base" ] || [ -L "$base" ]; then
+            directory "$base"
+            for parent in "$base/runs" "$base/incoming"; do
+                if [ -e "$parent" ] || [ -L "$parent" ]; then
+                    directory "$parent"
+                else
+                    context_outcome=incomplete
+                fi
+            done
+        fi
+        if [ -e "$state" ] || [ -L "$state" ]; then
+            directory "$state"
+            if [ ! -e "$state/snapshot" ] && [ ! -L "$state/snapshot" ]; then
+                for member in started entries result released driver.complete; do absent "$state/$member"; done
+                context_outcome=incomplete
+            else
+                load_run
+                [ "$node" = "$context_node" ] && [ "$generation" = "$context_generation" ] \
+                    && [ "$attempt" = "$context_attempt" ] && [ -n "$bundle_boot" ] \
+                    || fail 'Observed run deployment differs'
+                context_snapshot=$snapshot context_run_boot=$bundle_boot
+                context_receipt=$(run_receipt observation) || fail 'Cannot observe run receipt'
+                context_outcome=$(printf '%s\n' "$context_receipt" | awk -F '\t' '$1 == "outcome" { print $2 }')
+                context_complete=$(printf '%s\n' "$context_receipt" | awk -F '\t' '$1 == "complete" { print $2 }')
+                if [ -e "$state/released" ] || [ -L "$state/released" ]; then
+                    [ "$context_outcome:$context_complete" = uncertain:no ] || fail 'Invalid released outcome'
+                    released_record
+                    context_released=yes
+                fi
+            fi
+        else
+            for pending in "$base/incoming/$run" "$base/incoming/$run.delivery"; do
+                if [ -e "$pending" ] || [ -L "$pending" ]; then
+                    directory "$pending"
+                    context_outcome=incomplete
+                fi
+            done
+        fi
+    fi
+    printf 'format\txcat-freebsd-boot-context-1\nnode\t%s\ngeneration\t%s\nattempt\t%s\nboot\t%s\nrun\t%s\nsnapshot\t%s\nrun-boot\t%s\noutcome\t%s\ncomplete\t%s\nreleased\t%s\n' \
+        "$context_node" "$context_generation" "$context_attempt" "$context_boot" "$context_run" \
+        "$context_snapshot" "$context_run_boot" "$context_outcome" "$context_complete" "$context_released"
+}
+
+if [ "$#" -eq 1 ] && [ "$1" = boot-identity ]; then
+    [ "$(uname -s)" = FreeBSD ] && [ "$(id -u)" -eq 0 ] || fail 'Boot identity requires native root'
+    boot_identity
+    exit 0
+fi
+[ "$#" -ge 2 ] || fail 'Expected operation and run identity'
+operation=$1
+run=$2
+shift 2
+hex "$run" 32 || fail 'Invalid run identity'
+if [ "$operation" = boot-context ]; then
+    [ "$(id -u):$(uname -s)" = 0:FreeBSD ] || fail 'Boot context requires native root'
+else
+    initialize
+fi
+state=$base/runs/$run
+[ -f "$self-packages" ] && [ ! -L "$self-packages" ] \
+    && [ "$(stat -f '%u:%g:%l:%Lp' "$self-packages")" = 0:0:1:444 ] || fail 'Invalid package backend'
+. "$self-packages"
+
+case "$operation" in
+retire)
+    [ "$#" -eq 0 ] || fail 'Unexpected retirement argument'
+    lock_node
+    load_run
+    package_retire || fail 'Package payload retirement is incomplete'
+    cat "$state/result" || fail 'Cannot return result'
+    ;;
+boot-context)
+    boot_context "$@"
+    ;;
+evidence)
+    [ "$#" -eq 0 ] || fail 'Unexpected evidence argument'
+    execution_evidence
+    ;;
+delivery)
+    delivery_arguments "$@"
+    lock_node
+    if [ ! -e "$delivery" ]; then
+        absent "$delivery"
+        delivery_stage=$(mktemp -d "$base/incoming/.delivery.$run.XXXXXX") || fail 'Cannot create delivery stage'
+        delivery_request | write_record "$delivery_stage/request" || fail 'Cannot record delivery request'
+        fsync "$delivery_stage" || fail 'Cannot sync delivery request'
+        mv "$delivery_stage" "$delivery" || fail 'Cannot publish delivery request'
+        fsync "$base/incoming" || fail 'Cannot sync delivery publication'
+    fi
+    load_delivery
+    if delivery_admitted; then delivery_status admitted; else delivery_status upload; fi
+    ;;
+receive)
+    delivery_arguments "$@"
+    lock_node
+    load_delivery
+    if delivery_admitted; then delivery_status admitted; exit 0; fi
+    private_file "$delivery/bundle.tar" "$archive_bytes"
+    [ "$(stat -f %z "$delivery/bundle.tar")" = "$archive_bytes" ] || fail 'Uploaded archive size differs'
+    receive_stage=$(mktemp -d "$base/incoming/.receive.$run.XXXXXX") || fail 'Cannot create reception stage'
+    # A transfer retry can still hold the upload inode open while reception copies it.
+    (exec 9>&-; set -C; exec timeout -k 5 600 head -c "$((archive_bytes+1))" "$delivery/bundle.tar" \
+        > "$receive_stage/archive") || fail 'Cannot copy uploaded archive'
+    private_file "$receive_stage/archive" "$archive_bytes"
+    [ "$(stat -f %z "$receive_stage/archive")" = "$archive_bytes" ] \
+        && [ "$(digest_file "$receive_stage/archive")" = "$archive_digest" ] || fail 'Uploaded archive differs'
+    fsync "$receive_stage/archive" || fail 'Cannot sync received archive'
+    mkdir -m 0700 "$receive_stage/bundle" || fail 'Cannot create extraction directory'
+    log_limit=1048576
+    capture_logs "$receive_stage/tar.stdout" "$receive_stage/tar.stderr" 600 close "$log_limit" \
+        tar -xpf "$receive_stage/archive" -C "$receive_stage/bundle"
+    [ "$capture_status" -eq 0 ] || fail 'Archive extraction failed'
+    bundle=$receive_stage/bundle
+    snapshot=$delivery_snapshot
+    load_bundle
+    verify_tree
+    find "$bundle" ! -type l -exec fsync {} + || fail 'Cannot sync extracted bundle'
+    absent "$base/incoming/$run"
+    mv "$bundle" "$base/incoming/$run" || fail 'Cannot publish extracted bundle'
+    fsync "$receive_stage" "$base/incoming" || fail 'Cannot sync extracted publication'
+    admit_bundle "$delivery_snapshot"
+    rm "$receive_stage/archive" "$delivery/bundle.tar" || fail 'Cannot remove completed transfer copies'
+    fsync "$receive_stage" "$delivery" || fail 'Cannot sync completed transfer'
+    delivery_status admitted
+    ;;
+admit)
+    [ "$#" -eq 1 ] && hex "$1" 64 || fail 'Expected snapshot identity'
+    lock_node
+    admit_bundle "$1"
+    ;;
+start)
+    [ "$#" -eq 0 ] || fail 'Unexpected start argument'
+    load_run
+    if [ -e "$state/result" ]; then
+        terminal
+        cat "$state/result" || fail 'Cannot return result'
+        exit 0
+    fi
+    if [ -e "$state/entries" ] || [ -e "$state/started" ]; then exec "$self" receipt "$run"; fi
+    [ -z "$bundle_boot" ] || boot_matches "$bundle_boot" || fail 'Run belongs to another boot'
+    lock_node
+    load_run
+    if [ -e "$state/result" ] || [ -e "$state/entries" ] || [ -e "$state/started" ]; then
+        exec 9>&-
+        exec "$self" receipt "$run"
+    fi
+    worker_ack=$(daemon -f "$self" run-locked "$run" 7>&2 8>&1) || fail 'Cannot launch worker'
+    [ "$worker_ack" = ready ] || fail 'Worker did not acknowledge its start'
+    ;;
+run|run-locked)
+    [ "$#" -eq 0 ] || fail 'Unexpected run argument'
+    if [ "$operation" = run-locked ]; then
+        exec 2>&7
+        inherited_node_lock
+    else
+        lock_node
+    fi
+    load_run
+    if [ -e "$state/result" ]; then
+        terminal
+        reconcile_active
+        retire_completed
+        cat "$state/result" || fail 'Cannot return result'
+        [ "$outcome" = success ] || exit 1
+        exit 0
+    fi
+    absent "$state/started"
+    absent "$state/entries"
+    reconcile_active
+    verify_tree
+    worker_boot=$(boot_identity) || fail 'Cannot identify current boot'
+    [ -z "$bundle_boot" ] || [ "$bundle_boot" = "$worker_boot" ] || fail 'Run belongs to another boot'
+    worker_process=$(process_identity "$$") || fail 'Cannot identify worker process'
+    worker_started=no
+    printf 'format\txcat-freebsd-postscript-start-1\nrun\t%s\nsnapshot\t%s\nboot\t%s\npid\t%s\nprocess\t%s\n' \
+        "$run" "$snapshot" "$worker_boot" "$$" "$worker_process" | write_record "$state/started" \
+        && worker_started=yes
+    mkdir -m 0700 "$state/entries" || fail 'Cannot create entry journal'
+    fsync "$state" || fail 'Cannot sync entry journal'
+    [ "$worker_started" = yes ] || fail 'Cannot record worker start'
+    printf '%s\n' "$run" | write_record "$base/active" || fail 'Cannot record active run'
+    mkdir -m 0700 "$state/captures" || fail 'Cannot create capture journal'
+    fsync "$state" || fail 'Cannot sync capture journal'
+    printf 'format\txcat-freebsd-postscript-supervision-1\nrun\t%s\nsnapshot\t%s\nstarted-sha256\t%s\nhelper-sha256\t%s\ncapture-version\t1\n' \
+        "$run" "$snapshot" "$(digest_file "$state/started")" "$(digest_file "$time_helper")" \
+        | write_record "$state/supervision" || fail 'Cannot record run supervision'
+    if [ "$operation" = run-locked ]; then
+        printf 'ready\n' >&8 || fail 'Cannot acknowledge worker start'
+        exec 7>&- 8>&- 2>/dev/null
+    fi
+    absent "$state/supervisor.stderr"
+    supervisor_diagnostic=$state/supervisor.stderr
+    capture_logs "$state/framework.stdout" "$state/framework.stderr" 0 inherit "$log_limit" \
+        "$self" run-body "$run" 2> "$state/supervisor.stderr"
+    framework_status=$capture_status
+    fsync "$state/supervisor.stderr" "$state" || fail 'Cannot sync supervisor diagnostic'
+    if [ -e "$state/result" ] || [ -L "$state/result" ]; then
+        terminal
+        reconcile_active
+        retire_completed
+        cat "$state/result" || fail 'Cannot return result'
+        [ "$outcome" = success ] || exit 1
+    else
+        exec 9>&-
+        lock_node 2>> "$state/supervisor.stderr"
+        if (framework_failure) 2>> "$state/supervisor.stderr"; then
+            terminal
+            reconcile_active
+            retire_completed
+            cat "$state/result" || fail 'Cannot return framework failure'
+            exit 1
+        fi
+        fsync "$state/supervisor.stderr" "$state" || fail 'Cannot sync framework failure diagnostic'
+        if [ "$operation" = run ]; then
+            cat "$state/framework.stderr" >&2 || fail 'Cannot return framework diagnostic'
+        fi
+        [ "$framework_status" -ne 0 ] || fail 'Worker body did not publish a result'
+        exit "$framework_status"
+    fi
+    ;;
+run-body)
+    [ "$#" -eq 0 ] || fail 'Unexpected worker body argument'
+    running
+    supervision_record
+    framework_phase packages
+    # Package readiness is checked before administrator template code runs.
+    capture_logs "$state/prerequisite.stdout" "$state/prerequisite.stderr" "$run_timeout" inherit "$log_limit" \
+        "$self" packages "$run"
+    if [ "$capture_status" -ne 0 ]; then
+        rejected_run
+        complete_run
+        exit 1
+    fi
+    private_file "$state/packages.result" 4096
+    [ "$(field "$state/packages.result" plan)" = "$plan" ] \
+        && [ "$(field "$state/packages.result" complete)" = yes ] || fail 'Incomplete package prerequisite'
+    framework_phase driver
+    capture_logs "$state/driver.stdout" "$state/driver.stderr" "$run_timeout" inherit "$log_limit" \
+        /bin/sh -c 'cd "$1" || exit 125; shift; exec "$@"' xcat "$bundle/tree" \
+        env -i PATH="$bundle/tree:$PATH" LC_ALL=C /bin/sh "$bundle/driver" "$run"
+    [ "$capture_status" -eq 0 ] || fail 'Driver execution is incomplete'
+    private_file "$state/driver.complete" 64
+    [ "$(cat "$state/driver.complete")" = "$count" ] || fail 'Driver completion differs'
+    framework_phase finalization
+    outcome=success
+    ordinal=1
+    absent "$state/results.pending"
+    (set -C; : > "$state/results.pending") || fail 'Cannot create result inventory'
+    while [ "$ordinal" -le "$count" ]; do
+        entry_result
+        [ "$entry_status" -eq 0 ] || outcome=failed
+        printf '%s\t%s\t%s\n' "$ordinal" "$entry_status" "$(digest_file "$state/entries/$ordinal/result")" \
+            >> "$state/results.pending" || fail 'Cannot append result inventory'
+        ordinal=$((ordinal+1))
+    done
+    write_record "$state/results" < "$state/results.pending" || fail 'Cannot record result inventory'
+    printf 'format\txcat-freebsd-postscript-result-1\nrun\t%s\nnode\t%s\ngeneration\t%s\nattempt\t%s\nsnapshot\t%s\nplan\t%s\nentries\t%s\nresults-sha256\t%s\npackages-sha256\t%s\nstdout-sha256\t%s\nstderr-sha256\t%s\noutcome\t%s\ncomplete\tyes\n' \
+        "$run" "$node" "$generation" "$attempt" "$snapshot" "$plan" "$count" "$(digest_file "$state/results")" \
+        "$(digest_file "$state/packages.result")" "$(digest_file "$state/driver.stdout")" \
+        "$(digest_file "$state/driver.stderr")" "$outcome" | write_record "$state/result" \
+        || fail 'Cannot record terminal result'
+    complete_run
+    [ "$outcome" = success ] || exit 1
+    ;;
+packages)
+    [ "$#" -eq 0 ] || fail 'Unexpected package argument'
+    running
+    package_execute || fail 'Package operation is incomplete'
+    package_commit || fail 'Package provenance is incomplete'
+    ;;
+package-status)
+    [ "$#" -eq 1 ] || fail 'Expected package status entry'
+    ordinal=$1
+    active_run
+    entry_row
+    entry_started
+    entry_lock
+    absent "$state/entries/$ordinal/result"
+    package_status || fail 'Package prerequisite is incomplete'
+    ;;
+begin)
+    [ "$#" -eq 1 ] || fail 'Expected entry ordinal'
+    running
+    ordinal=$1
+    entry_row
+    if [ "$ordinal" -gt 1 ]; then
+        ordinal=$((ordinal-1)); entry_result; ordinal=$1
+        entry_row
+    fi
+    mkdir -m 0700 "$state/entries/$ordinal" || fail 'Entry has already started'
+    fsync "$state/entries" || fail 'Cannot sync entry directory'
+    entry_started_epoch=$(now) || fail 'Cannot timestamp entry start'
+    entry_started_uptime=$(monotonic_now) || fail 'Cannot time entry start'
+    printf 'format\txcat-freebsd-postscript-entry-start-4\nordinal\t%s\nraw-sha256\t%s\nscript-sha256\t%s\nstarted-epoch\t%s\nstarted-uptime\t%s\n' \
+        "$ordinal" "$raw_digest" "$script_digest" "$entry_started_epoch" "$entry_started_uptime" | write_record "$state/entries/$ordinal/started" \
+        || fail 'Cannot record entry start'
+    ;;
+execute)
+    [ "$#" -ge 2 ] && [ "$#" -le 257 ] || fail 'Invalid entry argument count'
+    running
+    ordinal=$1
+    shift
+    entry_row
+    [ "${1#./}" = "$script_name" ] || fail 'Expanded script name differs'
+    entry_started
+    absent "$state/entries/$ordinal/result"
+    printf '%s\000' "$@" | write_record "$state/entries/$ordinal/argv" || fail 'Cannot record arguments'
+    private_file "$state/entries/$ordinal/argv" 65536
+    shift
+    capture_logs "$state/entries/$ordinal/stdout" "$state/entries/$ordinal/stderr" "$entry_timeout" guard "$entry_log_limit" \
+        env PATH="$script_path" LC_ALL="$script_locale" XCAT_FREEBSD_POSTSCRIPT_RUN="$run" \
+        XCAT_FREEBSD_POSTSCRIPT_ENTRY="$ordinal" "$script" "$@"
+    entry_status=$capture_status
+    entry_lock
+    entry_finished_epoch=$(now) || fail 'Cannot timestamp entry finish'
+    entry_finished_uptime=$(monotonic_now) || fail 'Cannot time entry finish'
+    printf 'format\txcat-freebsd-postscript-entry-result-4\nordinal\t%s\nstatus\t%s\nstarted-sha256\t%s\nfinished-epoch\t%s\nfinished-uptime\t%s\nargv-sha256\t%s\nstdout-sha256\t%s\nstderr-sha256\t%s\nlog-limit\t%s\nstdout-bytes\t%s\nstderr-bytes\t%s\nstdout-truncated\t%s\nstderr-truncated\t%s\nstdout-open\t%s\nstderr-open\t%s\ncomplete\tyes\n' \
+        "$ordinal" "$entry_status" "$(digest_file "$state/entries/$ordinal/started")" "$entry_finished_epoch" "$entry_finished_uptime" "$(digest_file "$state/entries/$ordinal/argv")" \
+        "$(digest_file "$state/entries/$ordinal/stdout")" "$(digest_file "$state/entries/$ordinal/stderr")" \
+        "$entry_log_limit" "$capture_stdout_bytes" "$capture_stderr_bytes" \
+        "$capture_stdout_truncated" "$capture_stderr_truncated" "$capture_stdout_open" "$capture_stderr_open" \
+        | write_record "$state/entries/$ordinal/result" || fail 'Cannot record entry result'
+    ;;
+sync-files)
+    [ "$#" -eq 1 ] || fail 'Expected synchronization entry'
+    ordinal=$1
+    active_run
+    entry_row
+    entry_started
+    entry_lock
+    absent "$state/entries/$ordinal/result"
+    [ "$entry_started_uptime" != - ] || fail 'Synchronization requires a monotonic entry time'
+    if [ ! -e "$state/entries/$ordinal/sync.request" ]; then
+        printf 'format\txcat-freebsd-postscript-sync-request-1\nrun\t%s\nsnapshot\t%s\nordinal\t%s\n' \
+            "$run" "$snapshot" "$ordinal" | write_record "$state/entries/$ordinal/sync.request" \
+            || fail 'Cannot record synchronization request'
+    fi
+    sync_record request
+    exec 8>&-
+    while [ ! -e "$state/entries/$ordinal/sync.result" ]; do
+        [ "$(monotonic_now)" -lt "$((entry_started_uptime+entry_timeout))" ] || fail 'Synchronization response timed out'
+        sleep 1
+        active_run
+        absent "$state/entries/$ordinal/result"
+    done
+    entry_lock
+    sync_record result
+    printf 'File synchronization status %s; controller evidence %s\n' "$sync_status" "$sync_evidence"
+    exit "$sync_status"
+    ;;
+sync-result)
+    [ "$#" -eq 4 ] && hex "$1" 64 && number "$3" 0 1 && hex "$4" 64 \
+        || fail 'Expected synchronization result identity'
+    ordinal=$2
+    load_run
+    [ "$snapshot" = "$1" ] || fail 'Synchronization snapshot differs'
+    entry_row
+    entry_started
+    entry_lock
+    sync_record request
+    if [ -e "$state/entries/$ordinal/sync.result" ]; then
+        sync_record result
+        [ "$sync_status" = "$3" ] && [ "$sync_evidence" = "$4" ] || fail 'Synchronization result differs'
+    else
+        active_run
+        absent "$state/entries/$ordinal/result"
+        printf 'format\txcat-freebsd-postscript-sync-result-1\nrun\t%s\nsnapshot\t%s\nordinal\t%s\nstatus\t%s\nevidence\t%s\n' \
+            "$run" "$snapshot" "$ordinal" "$3" "$4" | write_record "$state/entries/$ordinal/sync.result" \
+            || fail 'Cannot record synchronization result'
+    fi
+    ;;
+driver-complete)
+    [ "$#" -eq 1 ] || fail 'Expected final entry count'
+    running
+    [ "$1" = "$count" ] || fail 'Driver entry count differs'
+    ordinal=1
+    while [ "$ordinal" -le "$count" ]; do entry_result; ordinal=$((ordinal+1)); done
+    printf '%s\n' "$count" | write_record "$state/driver.complete" || fail 'Cannot record driver completion'
+    ;;
+receipt)
+    [ "$#" -eq 0 ] || fail 'Unexpected receipt argument'
+    run_receipt
+    ;;
+release-after-reboot)
+    [ "$#" -eq 1 ] && hex "$1" 64 || fail 'Expected snapshot identity'
+    lock_node
+    load_run
+    [ "$snapshot" = "$1" ] || fail 'Release snapshot differs'
+    started_record
+    absent "$state/result"
+    if [ ! -e "$state/released" ]; then
+        private_file "$base/active" 33
+        [ "$(cat "$base/active")" = "$run" ] || fail 'Release run is not active'
+        release_same_boot=no
+        if boot_matches "$started_boot"; then
+            # The original worker keeps host-root credentials. process-state
+            # is not an absence test for services with different visibility.
+            [ -e "$state/supervision" ] || [ -L "$state/supervision" ] \
+                || fail 'Interrupted worker requires a new boot before release'
+            supervision_record
+            [ "$(digest_file "$time_helper")" = "$(field "$state/supervision" helper-sha256)" ] \
+                || fail 'Run supervision helper differs; release requires a new boot'
+            release_stage=$(mktemp -d "$state/release.XXXXXXXX") || fail 'Cannot create release observation stage'
+            "$time_helper" process-state "$pid" | write_record "$release_stage/process" \
+                || fail 'Cannot observe original worker'
+            release_process "$release_stage/process"
+            capture_inventory > "$release_stage/captures.before" \
+                || fail 'Interrupted worker has unobserved commands; release requires a new boot'
+            fsync "$release_stage/captures.before" "$release_stage" "$state" || fail 'Cannot sync release observations'
+            release_same_boot=yes
+        else
+            release_stage=$(mktemp -d "$state/.release.XXXXXXXX") || fail 'Cannot create release stage'
+        fi
+        # A completed package phase survives an interrupted script run. Its
+        # receipt, including the observed native exit, authorizes only head repair.
+        if [ -e "$state/packages.recovered" ] || [ -L "$state/packages.recovered" ]; then
+            package_recover || fail 'Cannot resume recovered package provenance'
+        elif [ -e "$state/packages.result" ]; then
+            package_commit || fail 'Cannot recover completed package provenance'
+        else
+            package_recover || fail 'Cannot recover interrupted package provenance'
+        fi
+        if [ "$release_same_boot" = yes ]; then
+            capture_inventory > "$release_stage/captures" || fail 'Recovery has unobserved commands; release requires a new boot'
+            fsync "$release_stage/captures" "$release_stage" || fail 'Cannot sync recovery observations'
+            printf 'format\txcat-freebsd-postscript-release-2\nrun\t%s\nsnapshot\t%s\nboot\t%s\nproof\t%s\nstarted-sha256\t%s\nsupervision-sha256\t%s\nprocess-sha256\t%s\ncaptures-sha256\t%s\n' \
+                "$run" "$snapshot" "$current_boot" "${release_stage##*/}" "$(digest_file "$state/started")" \
+                "$(digest_file "$state/supervision")" "$(digest_file "$release_stage/process")" "$(digest_file "$release_stage/captures")" \
+                | write_record "$release_stage/released" || fail 'Cannot record observed release'
+        else
+            printf 'format\txcat-freebsd-postscript-release-1\nrun\t%s\nsnapshot\t%s\nboot\t%s\n' \
+                "$run" "$snapshot" "$current_boot" | write_record "$release_stage/released" || fail 'Cannot record release'
+        fi
+        absent "$state/released"
+        mv "$release_stage/released" "$state/released" && fsync "$release_stage" "$state" \
+            || fail 'Cannot publish release'
+    fi
+    released_record
+    if [ -e "$base/active" ]; then
+        private_file "$base/active" 33
+        if [ "$(cat "$base/active")" = "$run" ]; then
+            rm "$base/active" && fsync "$base" || fail 'Cannot release interrupted run'
+        fi
+    fi
+    exec "$self" receipt "$run"
+    ;;
+*) fail 'Unsupported operation' ;;
+esac

@@ -24,15 +24,142 @@ xcat_url()
         /\/\.\.?($|\/)/ {exit 1}'
 }
 
+xcat_netmask()
+{
+    xcat_ipv4 "$1" || return 1
+    printf '%s\n' "$1" | awk -F. '{for(i=1;i<=4;i++) {
+        if (partial && $i != 0) exit 1
+        if ($i !~ /^(255|254|252|248|240|224|192|128|0)$/) exit 1
+        if ($i != 255) partial=1
+    }}'
+}
+
+xcat_boot_options()
+{
+    [ -n "$1" ] || return 0
+    [ "${#1}" -le 21848 ] || return 1
+    case "$1" in *[!A-Za-z0-9+/=]*) return 1 ;; esac
+    xcat_options=$(printf '%s' "$1" | base64 -d) || return 1
+    [ "${#xcat_options}" -lt 16384 ] || return 1
+    [ "$(printf '%s\n' "$xcat_options" | base64 | tr -d '\n')" = "$1" ] || return 1
+    printf '%s\n' "$xcat_options" | LC_ALL=C awk '
+        BEGIN {
+            split("exec loader_conf_files loader_conf_dirs local_loader_conf_files product_vars nextboot_conf nextboot_enable kernel kernels kernels_autodetect kernel_options kernel_path kernelname xen_kernel bootfile module_path module_blacklist lua_path loader_path efi-version currdev loaddev root rootdev rootpath root_path rootflags rootfstype root_disk_unit num_ide_disks init initrd rdinit console boot_serial boot_multicons boot_multiple boot_mute boot_mutemsgs boot_askname boot_cdrom boot_dfltroot autoboot_delay beastie_disable hostname hostid hostuuid ip bootif netmask gateway nameserver nameservers kern.hostname kern.hostid kern.hostuuid kern.domainname kern.bootfile kern.maxphys", names, " ")
+            for (i in names) reserved[names[i]]=1
+        }
+        {
+            if (NR > 128 || $0 !~ /^[A-Za-z][A-Za-z0-9_.-]*="[A-Za-z0-9_.,:+\/@%=\-]*"$/) exit 1
+            key=substr($0,1,index($0,"=")-1)
+            value=substr($0,length(key)+3,length($0)-length(key)-3)
+            if (length(key)>128 || length(value)>128 || key<=previous) exit 1
+            previous=key; name=tolower(key)
+            if (reserved[name] || name ~ /^(xcat[_.]|mdroot[_.]|kernel_)/ ||
+                name ~ /^mfs(bsd|root)?([_.]|$)/ || name ~ /^(boot\.|dhcp\.|init_|hostuuid_|bootenv|zfs_be_)/ ||
+                name ~ /^(vfs\.root[._]|vfs\.zfs\.(boot|root))/ ||
+                name ~ /^(comconsole_|hw\.uart\.console(\.|$))/ || name ~ /^hint\.(uart|sio)\./ ||
+                name ~ /_(before|after|error|name|type)$/) exit 1
+            if ((key ~ /_load$/ || key ~ /^boot_(ddb|gdb|pause|single|verbose|safe)$/) && value !~ /^(YES|NO)$/) exit 1
+            print
+        }'
+}
+
+xcat_console_settings()
+{
+    case "$XCAT_CONSOLE_FLOW" in none|hard) ;; *) return 1 ;; esac
+    case "$XCAT_CONSOLE_PORT" in
+        none) [ "$XCAT_CONSOLE_SPEED" = 0 ] && [ "$XCAT_CONSOLE_FLOW" = none ]; return ;;
+        0) xcat_console_io=0x3f8 ;;
+        1) xcat_console_io=0x2f8 ;;
+        2) xcat_console_io=0x3e8 ;;
+        3) xcat_console_io=0x2e8 ;;
+        *) return 1 ;;
+    esac
+    case "$XCAT_CONSOLE_SPEED" in 9600|19200|38400|57600|115200) ;; *) return 1 ;; esac
+    printf 'comconsole_port="%s"\ncomconsole_speed="%s"\n' "$xcat_console_io" "$XCAT_CONSOLE_SPEED"
+    printf '%s\n' 'console="comconsole,${console}"' 'boot_serial="YES"' 'boot_multicons="YES"'
+    printf 'hw.uart.console="io:%s,br:%s"\n' "$xcat_console_io" "$XCAT_CONSOLE_SPEED"
+    printf 'hint.uart.%s.at="acpi"\nhint.uart.%s.port="%s"\n' \
+        "$XCAT_CONSOLE_PORT" "$XCAT_CONSOLE_PORT" "$xcat_console_io"
+}
+
+xcat_bootstrap_network()
+{
+    XCAT_BOOTSTRAP_MODE=$(kenv -q xcat_bootstrap || :)
+    XCAT_BOOTSTRAP_MODE=${XCAT_BOOTSTRAP_MODE:-dhcp}
+    case "$XCAT_BOOTSTRAP_MODE" in
+        dhcp) dhclient "$XCAT_PROVISIONING_IF" ;;
+        static)
+            XCAT_BOOTSTRAP_IPV4=$(kenv -q xcat_bootstrap_ipv4) &&
+                XCAT_BOOTSTRAP_NETMASK=$(kenv -q xcat_bootstrap_netmask) || return 1
+            XCAT_BOOTSTRAP_GATEWAY=$(kenv -q xcat_bootstrap_gateway || :)
+            xcat_ipv4 "$XCAT_BOOTSTRAP_IPV4" && xcat_netmask "$XCAT_BOOTSTRAP_NETMASK" || return 1
+            [ -z "$XCAT_BOOTSTRAP_GATEWAY" ] || xcat_ipv4 "$XCAT_BOOTSTRAP_GATEWAY" || return 1
+            ifconfig "$XCAT_PROVISIONING_IF" inet "$XCAT_BOOTSTRAP_IPV4" netmask "$XCAT_BOOTSTRAP_NETMASK" up || return 1
+            [ -z "$XCAT_BOOTSTRAP_GATEWAY" ] || route add default "$XCAT_BOOTSTRAP_GATEWAY"
+            ;;
+        *) xcat_error 'Invalid bootstrap network mode'; return 1 ;;
+    esac
+}
+
+xcat_check_bootstrap()
+{
+    case "$XCAT_FORMAT" in xcat-freebsd-install-3|xcat-freebsd-install-4) ;; *) return 0 ;; esac
+    [ "$XCAT_BOOTSTRAP" = "$XCAT_BOOTSTRAP_MODE" ] || return 1
+    [ "$XCAT_BOOTSTRAP" = static ] || return 0
+    [ "$XCAT_IPV4" = "$XCAT_BOOTSTRAP_IPV4" ] && [ "$XCAT_NETMASK" = "$XCAT_BOOTSTRAP_NETMASK" ] &&
+        [ "$XCAT_GATEWAY" = "$XCAT_BOOTSTRAP_GATEWAY" ]
+}
+
+xcat_zfs_members()
+{
+    [ "$XCAT_FILESYSTEM" = zfs ] && [ "$XCAT_SWAP_SIZE" = 0 ] &&
+        [ "$XCAT_SWAP_MODE" = none ] || return 1
+    case "$XCAT_ZFS_TOPOLOGY" in mirror|raid10|raidz1|raidz2|raidz3) ;; *) return 1 ;; esac
+    printf '%s\n' "$XCAT_ZFS_VDEVS" | LC_ALL=C awk -v topology="$XCAT_ZFS_TOPOLOGY" '
+        NR != 1 || length($0) > 4096 {bad=1; next}
+        {
+            groups=split($0, group, ";")
+            for (g=1; g<=groups; g++) {
+                members=split(group[g], member, ",")
+                if (!length(group[g]) || !members || (topology == "raid10" && members != 2)) bad=1
+                for (m=1; m<=members; m++) {
+                    if (split(member[m], pair, "@") != 2) {bad=1; continue}
+                    device=pair[1]; serial=pair[2]; number=device
+                    sub(/^[a-z]+/, "", number)
+                    if (device !~ /^(ada|da|nda|nvd|vtbd)(0|[1-9][0-9]*)$/ || length(number)>5 ||
+                        serial !~ /^[A-Za-z0-9_.:+-]+$/ || length(serial)>128) bad=1
+                    if (devices[device]++ || serials[serial]++) bad=1
+                    record[++count]=device "\t" serial "\t" g
+                }
+            }
+        }
+        END {
+            minimum=(topology == "mirror" ? 2 : topology == "raidz1" ? 3 : topology == "raidz3" ? 5 : 4)
+            if (NR != 1 || bad || count<minimum || count>16 ||
+                (topology == "raid10" ? groups<2 : groups!=1)) exit 1
+            for (i=1; i<=count; i++) print record[i]
+        }'
+}
+
 xcat_read_config()
 {
     XCAT_FORMAT= XCAT_RELEASE= XCAT_NODE= XCAT_GENERATION= XCAT_MASTER= XCAT_PORT=
     XCAT_MAC= XCAT_IPV4= XCAT_NETMASK= XCAT_GATEWAY= XCAT_HOSTNAME=
     XCAT_TARGET_DISK= XCAT_TARGET_DISK_IDENT= XCAT_FILESYSTEM= XCAT_SWAP_SIZE=
+    XCAT_ZFS_TOPOLOGY= XCAT_ZFS_VDEVS= XCAT_SWAP_MODE=
     XCAT_DIST_URL= XCAT_BASE_SHA256= XCAT_KERNEL_SHA256= XCAT_AUTHORIZED_KEY_BASE64=
+    XCAT_INSTALL_URL= XCAT_PACKAGE_PLAN_SHA256= XCAT_BOOT_MEDIA_SHA256= XCAT_RUNTIME_SHA256=
+    XCAT_BOOTSTRAP= XCAT_CONSOLE_PORT= XCAT_CONSOLE_SPEED= XCAT_CONSOLE_FLOW=
+    XCAT_INSTALL_BOOT_OPTIONS_BASE64= XCAT_TARGET_BOOT_OPTIONS_BASE64=
     XCAT_NAMESERVERS= xcat_seen=' '
-    while IFS= read -r xcat_line || [ -n "$xcat_line" ]; do
-        case "$xcat_line" in ''|'#'*) continue ;; *=*) ;; *) xcat_error 'Malformed configuration'; return 1 ;; esac
+    [ -f "$1" ] || return 1
+    xcat_config_size=$(wc -c < "$1") || return 1
+    [ "$xcat_config_size" -gt 0 ] && [ "$xcat_config_size" -le 32768 ] || return 1
+    xcat_read_bytes=0 xcat_unterminated=0 xcat_skipped=0
+    while IFS= read -r xcat_line || { [ -n "$xcat_line" ] && xcat_unterminated=1; }; do
+        xcat_read_bytes=$((xcat_read_bytes + ${#xcat_line} + 1 - xcat_unterminated))
+        [ "$xcat_read_bytes" -le 32768 ] || return 1
+        case "$xcat_line" in ''|'#'*) xcat_skipped=1; continue ;; *=*) ;; *) xcat_error 'Malformed configuration'; return 1 ;; esac
         xcat_key=${xcat_line%%=*}
         xcat_value=${xcat_line#*=}
         case "$xcat_seen" in *" $xcat_key "*) xcat_error "Duplicate field: $xcat_key"; return 1 ;; esac
@@ -53,34 +180,89 @@ xcat_read_config()
             target_disk_ident) XCAT_TARGET_DISK_IDENT=$xcat_value ;;
             filesystem) XCAT_FILESYSTEM=$xcat_value ;;
             swap_size) XCAT_SWAP_SIZE=$xcat_value ;;
+            zfs_topology) XCAT_ZFS_TOPOLOGY=$xcat_value ;;
+            zfs_vdevs) XCAT_ZFS_VDEVS=$xcat_value ;;
+            swap_mode) XCAT_SWAP_MODE=$xcat_value ;;
             dist_url) XCAT_DIST_URL=$xcat_value ;;
             base_sha256) XCAT_BASE_SHA256=$xcat_value ;;
             kernel_sha256) XCAT_KERNEL_SHA256=$xcat_value ;;
+            install_url) XCAT_INSTALL_URL=$xcat_value ;;
+            package_plan_sha256) XCAT_PACKAGE_PLAN_SHA256=$xcat_value ;;
+            boot_media_sha256) XCAT_BOOT_MEDIA_SHA256=$xcat_value ;;
+            runtime_sha256) XCAT_RUNTIME_SHA256=$xcat_value ;;
             authorized_key_base64) XCAT_AUTHORIZED_KEY_BASE64=$xcat_value ;;
             nameservers) XCAT_NAMESERVERS=$xcat_value ;;
+            bootstrap) XCAT_BOOTSTRAP=$xcat_value ;;
+            console_port) XCAT_CONSOLE_PORT=$xcat_value ;;
+            console_speed) XCAT_CONSOLE_SPEED=$xcat_value ;;
+            console_flow) XCAT_CONSOLE_FLOW=$xcat_value ;;
+            install_boot_options_base64) XCAT_INSTALL_BOOT_OPTIONS_BASE64=$xcat_value ;;
+            target_boot_options_base64) XCAT_TARGET_BOOT_OPTIONS_BASE64=$xcat_value ;;
             *) xcat_error "Unknown field: $xcat_key"; return 1 ;;
         esac
     done < "$1"
-    [ "$XCAT_FORMAT" = xcat-freebsd-install-1 ] && [ "$XCAT_RELEASE" = 15.1-RELEASE ] || return 1
+    [ "$XCAT_RELEASE" = 15.1-RELEASE ] || return 1
+    if [ "$XCAT_FORMAT" = xcat-freebsd-install-3 ] || [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ]; then
+        for xcat_required in bootstrap console_port console_speed console_flow install_boot_options_base64 target_boot_options_base64; do
+            case "$xcat_seen" in *" $xcat_required "*) ;; *) return 1 ;; esac
+        done
+        case "$XCAT_BOOTSTRAP" in dhcp|static) ;; *) return 1 ;; esac
+        xcat_console_settings >/dev/null && xcat_boot_options "$XCAT_INSTALL_BOOT_OPTIONS_BASE64" >/dev/null &&
+            xcat_boot_options "$XCAT_TARGET_BOOT_OPTIONS_BASE64" >/dev/null || return 1
+    else
+        case "$xcat_seen" in
+            *' bootstrap '*|*' console_port '*|*' console_speed '*|*' console_flow '*|*' install_boot_options_base64 '*|*' target_boot_options_base64 '*) return 1 ;;
+        esac
+    fi
+    case "$XCAT_FORMAT" in
+        xcat-freebsd-install-1)
+            case "$xcat_seen" in
+                *' install_url '*|*' package_plan_sha256 '*|*' boot_media_sha256 '*|*' runtime_sha256 '*) return 1 ;;
+            esac
+            xcat_hex "$XCAT_BASE_SHA256" 64 && xcat_hex "$XCAT_KERNEL_SHA256" 64 || return 1
+            xcat_url "$XCAT_DIST_URL" || return 1
+            ;;
+        xcat-freebsd-install-2|xcat-freebsd-install-3|xcat-freebsd-install-4)
+            [ "$xcat_read_bytes" -eq "$xcat_config_size" ] && [ "$xcat_unterminated" -eq 0 ] &&
+                [ "$xcat_skipped" -eq 0 ] || return 1
+            LC_ALL=C awk '/[^ -~]/ {exit 1}' "$1" || return 1
+            case "$xcat_seen" in *' dist_url '*|*' base_sha256 '*|*' kernel_sha256 '*) return 1 ;; esac
+            xcat_disk_fields='target_disk target_disk_ident'
+            if [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ]; then
+                xcat_disk_fields='zfs_topology zfs_vdevs swap_mode'
+                case "$xcat_seen" in *' target_disk '*|*' target_disk_ident '*) return 1 ;; esac
+            fi
+            for xcat_required in format release node generation master port mac ipv4 netmask gateway hostname \
+                $xcat_disk_fields filesystem swap_size install_url package_plan_sha256 \
+                boot_media_sha256 runtime_sha256 authorized_key_base64 nameservers; do
+                case "$xcat_seen" in *" $xcat_required "*) ;; *) return 1 ;; esac
+            done
+            xcat_hex "$XCAT_PACKAGE_PLAN_SHA256" 64 && xcat_hex "$XCAT_BOOT_MEDIA_SHA256" 64 &&
+                xcat_hex "$XCAT_RUNTIME_SHA256" 64 || return 1
+            xcat_url "$XCAT_INSTALL_URL" || return 1
+            [ "${#XCAT_NODE}" -le 247 ] && [ "${#XCAT_HOSTNAME}" -le 247 ] || return 1
+            ;;
+        *) return 1 ;;
+    esac
     for xcat_name in "$XCAT_NODE" "$XCAT_HOSTNAME"; do
         case "$xcat_name" in ''|[!A-Za-z0-9]*|*[!A-Za-z0-9._-]*) return 1 ;; esac
     done
-    xcat_hex "$XCAT_GENERATION" 32 && xcat_hex "$XCAT_BASE_SHA256" 64 && xcat_hex "$XCAT_KERNEL_SHA256" 64 || return 1
+    xcat_hex "$XCAT_GENERATION" 32 || return 1
     for xcat_address in "$XCAT_MASTER" "$XCAT_IPV4" "$XCAT_NETMASK"; do xcat_ipv4 "$xcat_address" || return 1; done
-    printf '%s\n' "$XCAT_NETMASK" | awk -F. '{for(i=1;i<=4;i++) {
-        if (partial && $i != 0) exit 1
-        if ($i !~ /^(255|254|252|248|240|224|192|128|0)$/) exit 1
-        if ($i != 255) partial=1
-    }}' || return 1
+    xcat_netmask "$XCAT_NETMASK" || return 1
     [ -z "$XCAT_GATEWAY" ] || xcat_ipv4 "$XCAT_GATEWAY" || return 1
     case "$XCAT_PORT" in ''|*[!0-9]*) return 1 ;; esac
     [ "${#XCAT_PORT}" -le 5 ] && [ "$XCAT_PORT" -gt 0 ] && [ "$XCAT_PORT" -le 65535 ] || return 1
     printf '%s\n' "$XCAT_MAC" | awk '!/^[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]$/ {exit 1}' || return 1
-    printf '%s\n' "$XCAT_TARGET_DISK" | awk '!/^(ada|da|nda|nvd|vtbd)[0-9]+$/ {exit 1}' || return 1
-    case "$XCAT_TARGET_DISK_IDENT" in ''|*[!A-Za-z0-9_.:+-]*) return 1 ;; esac
+    if [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ]; then
+        xcat_zfs_members >/dev/null || return 1
+    else
+        case "$xcat_seen" in *' zfs_topology '*|*' zfs_vdevs '*|*' swap_mode '*) return 1 ;; esac
+        printf '%s\n' "$XCAT_TARGET_DISK" | awk '!/^(ada|da|nda|nvd|vtbd)[0-9]+$/ {exit 1}' || return 1
+        case "$XCAT_TARGET_DISK_IDENT" in ''|*[!A-Za-z0-9_.:+-]*) return 1 ;; esac
+    fi
     case "$XCAT_FILESYSTEM" in ufs|zfs) ;; *) return 1 ;; esac
     printf '%s\n' "$XCAT_SWAP_SIZE" | awk '!/^(0|[1-9][0-9]*[mMgG])$/ || length($0)>6 {exit 1}' || return 1
-    xcat_url "$XCAT_DIST_URL" || return 1
     case "$XCAT_AUTHORIZED_KEY_BASE64" in ''|*[!A-Za-z0-9+/=]*) return 1 ;; esac
     case "$XCAT_NAMESERVERS" in ,*|*,|*,,*) return 1 ;; esac
     xcat_oldifs=$IFS
@@ -128,6 +310,151 @@ xcat_status()
     xcat_error "Controller did not acknowledge $xcat_phase"
 }
 
+xcat_zfs_disk_inventory()
+(
+    [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ] || exit 1
+    xcat_members=$(xcat_zfs_members) || exit 1
+    xcat_disks=$(sysctl -n kern.disks) || exit 1
+    xcat_disk_info=$(geom disk list) || exit 1
+    xcat_inventory=$(printf '%s\n' "$xcat_disk_info" |
+        XCAT_STORAGE_MEMBERS="$xcat_members" XCAT_STORAGE_DISKS="$xcat_disks" awk '
+        BEGIN {
+            members=ENVIRON["XCAT_STORAGE_MEMBERS"]; disks=ENVIRON["XCAT_STORAGE_DISKS"]
+            count=split(members, rows, "\n")
+            for (i=1; i<=count; i++) {
+                split(rows[i], fields, "\t")
+                device[i]=fields[1]; serial[fields[1]]=fields[2]
+            }
+            n=split(disks, names, " ")
+            for (i=1; i<=n; i++) present[names[i]]++
+        }
+        $1 == "Geom" && $2 == "name:" {name=$3; geoms[name]++}
+        $2 == "Name:" {providers[name]++; if ($3 != name) bad[name]=1}
+        $1 == "ident:" {
+            identities[$2]++; ident[name]=$2; id_count[name]++
+            if (NF != 2) bad[name]=1
+        }
+        $1 == "Mediasize:" {size[name]=$2; sizes[name]++}
+        $1 == "Sectorsize:" {sector[name]=$2; sectors[name]++}
+        $1 == "Mode:" {mode[name]=$2; modes[name]++}
+        END {
+            for (i=1; i<=count; i++) {
+                d=device[i]
+                if (present[d] != 1 || geoms[d] != 1 || providers[d] != 1 || bad[d] ||
+                    id_count[d] != 1 || ident[d] != serial[d] || identities[serial[d]] != 1 ||
+                    sizes[d] != 1 || sectors[d] != 1 || modes[d] != 1 ||
+                    size[d] !~ /^[1-9][0-9]*$/ || length(size[d]) > 16 ||
+                    size[d]+0 > 9007199254740991 || size[d]+0 < 4294967296 ||
+                    sector[d] !~ /^(512|4096)$/ || size[d] % sector[d] ||
+                    mode[d] !~ /^r[0-9]+w[0-9]+e[0-9]+$/) exit 1
+                output=output rows[i] "\t" size[d] "\t" sector[d] "\t" mode[d] "\n"
+            }
+            printf "%s", output
+        }') || { xcat_error 'Cannot identify the complete ZFS disk set'; exit 1; }
+    xcat_snapshot=
+    xcat_device_ids=' '
+    while IFS="$(printf '\t')" read -r xcat_disk xcat_serial xcat_group xcat_size xcat_sector xcat_mode; do
+        xcat_device_id=$(stat -f '%HT:%r' "/dev/$xcat_disk") || exit 1
+        case "$xcat_device_id" in 'Character Device:'*) ;; *) exit 1 ;; esac
+        xcat_device_id=${xcat_device_id#*:}
+        case "$xcat_device_id" in ''|*[!0-9]*) exit 1 ;; esac
+        case "$xcat_device_ids" in *" $xcat_device_id "*) xcat_error 'ZFS disk names resolve to one device'; exit 1 ;; esac
+        xcat_device_ids="$xcat_device_ids$xcat_device_id "
+        xcat_snapshot="$xcat_snapshot$(printf '%s\t%s\t%s\t%s\t%s\t%s\t%s' \
+            "$xcat_disk" "$xcat_serial" "$xcat_group" "$xcat_size" "$xcat_sector" "$xcat_mode" "$xcat_device_id")
+"
+    done <<XCAT_ZFS_INVENTORY
+$xcat_inventory
+XCAT_ZFS_INVENTORY
+    printf '%s' "$xcat_snapshot"
+)
+
+xcat_zfs_initial_graph()
+{
+    XCAT_STORAGE_SNAPSHOT="$1" awk '
+        BEGIN {
+            snapshot=ENVIRON["XCAT_STORAGE_SNAPSHOT"]
+            n=split(snapshot, rows, "\n")
+            for (i=1; i<=n; i++) {
+                if (!length(rows[i])) continue
+                split(rows[i], f, "\t")
+                wanted[f[1]]=1; serial[f[1]]=f[2]; size[f[1]]=f[4]; sector[f[1]]=f[5]
+            }
+        }
+        NF {
+            if (NF < 5 || $1 !~ /^[0-9]+$/ || $4 !~ /^[0-9]+$/ || $5 !~ /^[0-9]+$/ ||
+                $1 > depth+1 || (!records++ && $1 != 0)) {bad=1; next}
+            depth=$1
+            if ($1 == 0) {
+                root=$3
+                if (root in wanted) {
+                    seen[root]++
+                    if ($2 != "DISK" || $4 != size[root] || $5 != sector[root]) bad=1
+                }
+            } else if (root in wanted) {
+                if ($1 != 1 || $2 != "LABEL" || $3 != "diskid/DISK-" serial[root] ||
+                    $4 != size[root] || $5 != sector[root] || NF != 9 ||
+                    $6 != "i" || $7 != 0 || $8 != "o" || $9 != 0 || aliases[root]++) bad=1
+            }
+        }
+        END {
+            for (d in wanted) if (seen[d] != 1) bad=1
+            exit bad
+        }'
+}
+
+xcat_check_empty_disks()
+(
+    xcat_snapshot=$1
+    xcat_storage_tmp=$(mktemp -d "$XCAT_WORK/storage.XXXXXX") || exit 1
+    trap 'rm -rf "$xcat_storage_tmp"' 0
+    trap 'exit 1' HUP INT TERM
+    dd if=/dev/zero of="$xcat_storage_tmp/zero" bs=1048576 count=1 2>"$xcat_storage_tmp/dd.log" &&
+        [ "$(wc -c < "$xcat_storage_tmp/zero")" -eq 1048576 ] || exit 1
+    while IFS="$(printf '\t')" read -r xcat_disk xcat_serial xcat_group xcat_size xcat_sector xcat_mode xcat_device_id; do
+        case "$xcat_disk" in ''|*[!A-Za-z0-9]*) exit 1 ;; esac
+        case "$xcat_sector" in 512|4096) ;; *) exit 1 ;; esac
+        case "$xcat_size" in ''|*[!0-9]*) exit 1 ;; esac
+        [ "${#xcat_size}" -le 16 ] && [ "$xcat_size" -ge 1048576 ] &&
+            [ "$xcat_size" -le 9007199254740991 ] && [ "$((xcat_size % xcat_sector))" -eq 0 ] || exit 1
+        for xcat_offset in 0 "$(( (xcat_size - 1048576) / xcat_sector ))"; do
+            dd if="/dev/$xcat_disk" of="$xcat_storage_tmp/window" bs="$xcat_sector" \
+                skip="$xcat_offset" count="$((1048576 / xcat_sector))" 2>"$xcat_storage_tmp/dd.log" &&
+                cmp -s "$xcat_storage_tmp/window" "$xcat_storage_tmp/zero" || {
+                    xcat_error "Disk $xcat_disk has metadata or an unreadable boundary"; exit 1
+                }
+        done
+        xcat_fstype_status=0
+        xcat_fstype=$(LC_ALL=C fstyp -u "/dev/$xcat_disk" 2>&1) || xcat_fstype_status=$?
+        [ "$xcat_fstype_status" -eq 1 ] &&
+            [ "$xcat_fstype" = "fstyp: /dev/$xcat_disk: filesystem not recognized" ] || {
+                xcat_error "Disk $xcat_disk has a filesystem or cannot be inspected"; exit 1
+            }
+    done <<XCAT_ZFS_SNAPSHOT
+$xcat_snapshot
+XCAT_ZFS_SNAPSHOT
+)
+
+xcat_check_zfs_initial()
+(
+    xcat_snapshot=$(xcat_zfs_disk_inventory) || exit 1
+    printf '%s\n' "$xcat_snapshot" | awk -F '\t' 'NF != 7 || $6 != "r0w0e0" {exit 1}' || {
+        xcat_error 'A selected ZFS disk is in use'; exit 1
+    }
+    xcat_pools=$(zpool list -H -o name) || exit 1
+    [ -z "$xcat_pools" ] || { xcat_error 'Imported ZFS pools prevent installation'; exit 1; }
+    xcat_geli=$(geli status -s) || exit 1
+    [ -z "$xcat_geli" ] || { xcat_error 'Attached GELI providers prevent installation'; exit 1; }
+    xcat_graph=$(sysctl -n kern.geom.conftxt) || exit 1
+    printf '%s\n' "$xcat_graph" | xcat_zfs_initial_graph "$xcat_snapshot" || {
+        xcat_error 'A selected ZFS disk has an existing layout or provider'; exit 1
+    }
+    xcat_scan_labels && xcat_check_empty_disks "$xcat_snapshot" || exit 1
+    xcat_after=$(xcat_zfs_disk_inventory) || exit 1
+    [ "$xcat_after" = "$xcat_snapshot" ] || { xcat_error 'The ZFS disk set changed during preflight'; exit 1; }
+    printf '%s\n' "$xcat_snapshot"
+)
+
 xcat_check_disk()
 {
     xcat_disk_info=$(geom disk list "$XCAT_TARGET_DISK") || return 1
@@ -151,7 +478,16 @@ xcat_scan_labels()
 {
     XCAT_CLEAR_LABELS=
     xcat_disks=$(sysctl -n kern.disks) || return 1
-    case " $xcat_disks " in *" $XCAT_TARGET_DISK "*) ;; *) return 1 ;; esac
+    if [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ]; then
+        xcat_selected=$(xcat_zfs_members) || return 1
+        xcat_selected=$(printf '%s\n' "$xcat_selected" | awk '{print $1}') || return 1
+        [ -n "$xcat_selected" ] || return 1
+        for xcat_disk in $xcat_selected; do
+            case " $xcat_disks " in *" $xcat_disk "*) ;; *) return 1 ;; esac
+        done
+    else
+        case " $xcat_disks " in *" $XCAT_TARGET_DISK "*) ;; *) return 1 ;; esac
+    fi
     xcat_partition_list=$(gpart list) || { xcat_error 'Cannot enumerate disk partitions'; return 1; }
     for xcat_disk in $xcat_disks; do
         case "$xcat_disk" in [!A-Za-z]*|*[!A-Za-z0-9]*) return 1 ;; esac
@@ -189,7 +525,14 @@ xcat_scan_labels()
             esac
             printf '%s\n' "$xcat_labels" | awk '$1 == "pool_guid:" {found=1} END {exit !found}' ||
                 { xcat_error "Cannot identify ZFS labels on $xcat_provider"; return 1; }
-            if [ "$xcat_disk" != "$XCAT_TARGET_DISK" ]; then
+            if [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ]; then
+                for xcat_member in $xcat_selected; do
+                    [ "$xcat_member" != "$xcat_disk" ] || {
+                        xcat_error 'A selected disk already contains ZFS labels'; return 1
+                    }
+                done
+            fi
+            if [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ] || [ "$xcat_disk" != "$XCAT_TARGET_DISK" ]; then
                 if [ "$XCAT_FILESYSTEM" = zfs ] && printf '%s\n' "$xcat_labels" | awk '$1 == "name:" && $2 == "\047zroot\047" {found=1} END {exit !found}'; then
                     xcat_error 'An unselected disk contains a zroot pool'; return 1
                 fi
@@ -231,9 +574,19 @@ xcat_validate_key()
 
 xcat_write_installer()
 {
-    printf 'DISTRIBUTIONS="base.txz kernel.txz"\nBSDINSTALL_DISTDIR="%s/dist"\nexport nonInteractive="YES"\n' "$XCAT_WORK"
+    if [ "$XCAT_FORMAT" != xcat-freebsd-install-1 ]; then
+        printf 'DISTRIBUTIONS=""\nexport nonInteractive="YES"\n'
+    else
+        printf 'DISTRIBUTIONS="base.txz kernel.txz"\nBSDINSTALL_DISTDIR="%s/dist"\nexport nonInteractive="YES"\n' "$XCAT_WORK"
+    fi
     if [ "$XCAT_FILESYSTEM" = zfs ]; then
-        printf 'export ZFSBOOT_DISKS="%s"\nexport ZFSBOOT_VDEV_TYPE="stripe"\n' "$XCAT_TARGET_DISK"
+        if [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ]; then
+            xcat_members=$(xcat_zfs_members) || return 1
+            xcat_disks=$(printf '%s\n' "$xcat_members" | awk '{s=s (NR == 1 ? "" : " ") $1} END {print s}') || return 1
+            printf 'export ZFSBOOT_DISKS="%s"\nexport ZFSBOOT_VDEV_TYPE="%s"\n' "$xcat_disks" "$XCAT_ZFS_TOPOLOGY"
+        else
+            printf 'export ZFSBOOT_DISKS="%s"\nexport ZFSBOOT_VDEV_TYPE="stripe"\n' "$XCAT_TARGET_DISK"
+        fi
         printf 'export ZFSBOOT_POOL_NAME="zroot"\nexport ZFSBOOT_PARTITION_SCHEME="GPT"\nexport ZFSBOOT_SWAP_SIZE="%s"\n' "$XCAT_SWAP_SIZE"
     elif [ "$XCAT_SWAP_SIZE" = 0 ]; then
         printf 'PARTITIONS="%s GPT { auto freebsd-ufs / }"\n' "$XCAT_TARGET_DISK"
@@ -241,24 +594,110 @@ xcat_write_installer()
         printf 'PARTITIONS="%s GPT { %s freebsd-swap, auto freebsd-ufs / }"\n' "$XCAT_TARGET_DISK" "$XCAT_SWAP_SIZE"
     fi
     cat "$1" || return 1
+    if [ "$XCAT_FORMAT" = xcat-freebsd-install-3 ] || [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ]; then
+        printf '\ncat >> /boot/loader.conf <<\047XCAT_LOADER_SETTINGS\047\n'
+        xcat_boot_options "$XCAT_TARGET_BOOT_OPTIONS_BASE64" && xcat_console_settings || return 1
+        printf 'XCAT_LOADER_SETTINGS\n'
+        if [ "$XCAT_CONSOLE_PORT" != none ]; then
+            xcat_getty_flow='hw@'
+            [ "$XCAT_CONSOLE_FLOW" != hard ] || xcat_getty_flow=hw
+            printf 'printf '\''\\nxcatserial:np:nc:sp#%s:%s:\\n'\'' >> /etc/gettytab\n' "$XCAT_CONSOLE_SPEED" "$xcat_getty_flow"
+            printf 'awk '\''$1 != "ttyu%s"'\'' /etc/ttys > /etc/ttys.xcat\n' "$XCAT_CONSOLE_PORT"
+            printf 'printf '\''ttyu%s "/usr/libexec/getty xcatserial" vt100 on insecure\\n'\'' >> /etc/ttys.xcat\n' "$XCAT_CONSOLE_PORT"
+            printf 'chmod 0644 /etc/ttys.xcat\nmv /etc/ttys.xcat /etc/ttys\n'
+        fi
+    fi
     printf '\ninstall -d -m 0755 /usr/local/libexec\ncat > /usr/local/libexec/xcat-install-lib.sh <<\047XCAT_INSTALL_LIB\047\n'
     cat "${2:-${1%/*}/xcat-install-lib.sh}" || return 1
     printf '\nXCAT_INSTALL_LIB\nchmod 0444 /usr/local/libexec/xcat-install-lib.sh\n'
 }
 
+xcat_pkgbase_workspace()
+{
+    [ "$(sysctl -n vm.swap_total)" = 0 ] || {
+        xcat_error 'Pkgbase preparation requires RAM without active swap'
+        return 1
+    }
+    xcat_ram_bytes=$(sysctl -n hw.physmem) || return 1
+    case "$xcat_ram_bytes" in ''|*[!0-9]*) return 1 ;; esac
+    [ "${#xcat_ram_bytes}" -le 15 ] && [ "$xcat_ram_bytes" -gt 0 ] || return 1
+    xcat_pkgbase_work=$XCAT_WORK/pkgbase-work
+    mkdir -m 0700 "$xcat_pkgbase_work" || return 1
+    mount -t tmpfs -o "size=$xcat_ram_bytes,mode=0700" tmpfs "$xcat_pkgbase_work" || return 1
+    cp -p "$XCAT_WORK/config" "$xcat_pkgbase_work/config" &&
+        chmod 0400 "$xcat_pkgbase_work/config" &&
+        cmp "$XCAT_WORK/config" "$xcat_pkgbase_work/config" || return 1
+    XCAT_WORK=$xcat_pkgbase_work
+}
+
+xcat_prepare_pkgbase()
+{
+    case "$XCAT_FORMAT" in xcat-freebsd-install-2|xcat-freebsd-install-3|xcat-freebsd-install-4) ;; *) return 1 ;; esac
+    xcat_hex "$XCAT_ATTEMPT" 32 || return 1
+    # The caller owns begin and disk access. This entry only fills its RAM workspace.
+    env -i PATH=/sbin:/bin:/usr/sbin:/usr/bin LC_ALL=C XCAT_ATTEMPT="$XCAT_ATTEMPT" \
+        /bin/timeout -k 5 1810 /usr/libexec/bsdinstall/pkgbase \
+        --xcat-prepare-1 "$XCAT_WORK/config" "$XCAT_WORK"
+}
+
 xcat_install_system()
 {
+    xcat_install_parent=$XCAT_WORK
+    case "$XCAT_FORMAT" in
+        xcat-freebsd-install-1) ;;
+        xcat-freebsd-install-2|xcat-freebsd-install-3|xcat-freebsd-install-4)
+            [ -f /xcat/runtime.tsv ] && [ ! -L /xcat/runtime.tsv ] || {
+                xcat_error 'Pkgbase installation runtime is not available'
+                return 1
+            }
+            xcat_pkgbase_workspace || return 1
+            xcat_prepare_pkgbase > "$XCAT_WORK/prepare.log" 2>&1 || return 1
+            ;;
+        *) xcat_error 'Unsupported installation configuration'; return 1 ;;
+    esac
     kldload -n zfs && kldload -n geom_eli || return 1
-    xcat_check_disk && xcat_scan_labels && xcat_fetch_distributions || return 1
+    if [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ]; then
+        xcat_snapshot=$(xcat_check_zfs_initial) || return 1
+        printf '%s\n' "$xcat_snapshot" > "$XCAT_WORK/storage.snapshot" || return 1
+        for xcat_directory in target etc boot tmp; do
+            mkdir -m 0700 "$xcat_install_parent/$xcat_directory" || return 1
+        done
+    else
+        xcat_check_disk && xcat_scan_labels || return 1
+    fi
+    if [ "$XCAT_FORMAT" = xcat-freebsd-install-1 ]; then
+        xcat_fetch_distributions || return 1
+    fi
     xcat_write_installer "$1" "${2:-${1%/*}/xcat-install-lib.sh}" > "$XCAT_WORK/installerconfig" || return 1
-    xcat_status begin && xcat_check_disk || return 1
-    for xcat_provider in $XCAT_CLEAR_LABELS; do zpool labelclear -f "$xcat_provider" || return 1; done
+    xcat_status begin || return 1
+    set --
+    if [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ]; then
+        xcat_current_snapshot=$(xcat_check_zfs_initial) || return 1
+        [ "$xcat_current_snapshot" = "$xcat_snapshot" ] || {
+            xcat_error 'The ZFS disk set changed while awaiting the controller'
+            return 1
+        }
+        /usr/local/libexec/xcat-storage "$xcat_install_parent/job" arm \
+            "$XCAT_WORK/config" "$XCAT_WORK/storage.snapshot" || return 1
+        set -- "XCAT_STORAGE_WORK=$xcat_install_parent/job" \
+            "BSDINSTALL_CHROOT=$xcat_install_parent/target" "BSDINSTALL_TMPETC=$xcat_install_parent/etc" \
+            "BSDINSTALL_TMPBOOT=$xcat_install_parent/boot" "TMPDIR=$xcat_install_parent/tmp"
+    else
+        xcat_check_disk || return 1
+        for xcat_provider in $XCAT_CLEAR_LABELS; do zpool labelclear -f "$xcat_provider" || return 1; done
+    fi
     timeout 3600 env -i PATH="$PATH" LC_ALL=C TERM="${TERM:-vt100}" \
         XCAT_MASTER="$XCAT_MASTER" XCAT_PORT="$XCAT_PORT" XCAT_GENERATION="$XCAT_GENERATION" \
         XCAT_ATTEMPT="$XCAT_ATTEMPT" XCAT_HOSTNAME="$XCAT_HOSTNAME" \
         XCAT_PROVISIONING_IF="$XCAT_PROVISIONING_IF" XCAT_IPV4="$XCAT_IPV4" \
         XCAT_NETMASK="$XCAT_NETMASK" XCAT_GATEWAY="$XCAT_GATEWAY" XCAT_NAMESERVERS="$XCAT_NAMESERVERS" \
-        XCAT_AUTHORIZED_KEY_BASE64="$XCAT_AUTHORIZED_KEY_BASE64" \
-        bsdinstall script "$XCAT_WORK/installerconfig" > "$XCAT_WORK/bsdinstall.log" 2>&1 || return 1
+        XCAT_AUTHORIZED_KEY_BASE64="$XCAT_AUTHORIZED_KEY_BASE64" XCAT_WORK="$XCAT_WORK" \
+        "$@" bsdinstall script "$XCAT_WORK/installerconfig" > "$XCAT_WORK/bsdinstall.log" 2>&1 || return 1
+    if [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ]; then
+        xcat_storage_phase=$(cat "$xcat_install_parent/job/phase") || return 1
+        [ "$xcat_storage_phase" = complete ] &&
+            [ ! -e "$xcat_install_parent/job/failed" ] && [ ! -e "$xcat_install_parent/job/busy" ] &&
+            [ ! -e "$xcat_install_parent/job/ready" ] || return 1
+    fi
     xcat_status complete
 }

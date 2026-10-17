@@ -13,4 +13,5 @@ sed -f - "$1" <<'XCAT_UMOUNT'
 s/^cat \$PATH_FSTAB | awk /awk /
 s/^}' > \$TMP_FSTAB$/}' "$PATH_FSTAB" > "$TMP_FSTAB" || exit 1/
 s/^if \[ -n "\$TMP_FSTAB" \]; then$/if [ -s "$TMP_FSTAB" ]; then/
+s/^umount \$BSDINSTALL_CHROOT\/dev 2>\/dev\/null$/umount "$BSDINSTALL_CHROOT\/dev" 2>\/dev\/null || exit 1/
 XCAT_UMOUNT

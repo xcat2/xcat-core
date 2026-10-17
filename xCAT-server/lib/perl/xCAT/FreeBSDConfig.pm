@@ -3,7 +3,7 @@ package xCAT::FreeBSDConfig;
 use strict;
 use warnings;
 use Fcntl qw(O_RDONLY O_NOFOLLOW O_NONBLOCK);
-use MIME::Base64 qw(encode_base64);
+use MIME::Base64 qw(encode_base64 decode_base64);
 use Digest::SHA qw(sha256_hex);
 
 sub _fail { die "FreeBSD configuration: $_[0]\n"; }
@@ -83,6 +83,105 @@ sub render_boot_options {
     return $text;
 }
 
+sub _decoded_boot_options {
+    my $encoded = shift;
+    _fail('Invalid encoded boot options') if !defined($encoded) || ref($encoded) ||
+        length($encoded) > 21848 || $encoded !~ /\A[A-Za-z0-9+\/=]*\z/x;
+    my $text = decode_base64($encoded);
+    _fail('Noncanonical encoded boot options') unless encode_base64($text, '') eq $encoded;
+    my %options;
+    for my $line (split(/\n/x, $text)) {
+        my ($key, $value) = $line =~ /\A([^=]+)="([^"]*)"\z/x;
+        _fail('Invalid native boot assignment') if !defined($key) || exists($options{$key});
+        $options{$key} = $value;
+    }
+    _fail('Noncanonical native boot options') unless render_boot_options(\%options) eq $text;
+    return $text;
+}
+
+sub _boot_settings {
+    my $settings = shift;
+    for my $key (qw(bootstrap console_port console_speed console_flow)) {
+        _fail("Missing or invalid $key") if !defined($settings->{$key}) || ref($settings->{$key});
+    }
+    _fail('Invalid bootstrap mode') unless $settings->{bootstrap} =~ /\A(?:dhcp|static)\z/x;
+    _fail('Invalid console flow control') unless $settings->{console_flow} =~ /\A(?:none|hard)\z/x;
+    if ($settings->{console_port} eq 'none') {
+        _fail('Console speed or flow without a serial port') unless $settings->{console_speed} eq '0' &&
+            $settings->{console_flow} eq 'none';
+    } else {
+        _fail('Invalid serial console port') unless $settings->{console_port} =~ /\A[0-3]\z/x;
+        _fail('Invalid serial console speed') unless $settings->{console_speed} =~ /\A(?:9600|19200|38400|57600|115200)\z/x;
+    }
+    return map { _decoded_boot_options($settings->{$_}) }
+        qw(install_boot_options_base64 target_boot_options_base64);
+}
+
+sub _serial_settings {
+    my $console = shift;
+    my %boot = (console_port => 'none', console_speed => '0', console_flow => 'none');
+    for my $key (qw(serialport serialspeed serialflow)) {
+        _fail("Invalid nodehm.$key") if defined($console->{$key}) && ref($console->{$key});
+    }
+    if (defined($console->{serialport}) && length($console->{serialport})) {
+        $boot{console_port} = $console->{serialport};
+        $boot{console_speed} = $console->{serialspeed};
+        $boot{console_flow} = $console->{serialflow} if length($console->{serialflow} || '');
+    } else {
+        _fail('Console speed or flow without a serial port') if
+            length($console->{serialspeed} || '') || length($console->{serialflow} || '');
+    }
+    return %boot;
+}
+
+sub boot_settings {
+    my ($settings, $commandline, $console, $media) = @_;
+    _fail('Invalid boot settings inputs') unless ref($settings) eq 'HASH' &&
+        ref($console) eq 'HASH' && ref($media) eq 'HASH';
+    my $options = parse_boot_options($commandline);
+    my %boot = (bootstrap => (defined($settings->{bootstrap}) ? $settings->{bootstrap} : 'dhcp'),
+        _serial_settings($console),
+        install_boot_options_base64 => encode_base64(render_boot_options($options->{volatile}), ''),
+        target_boot_options_base64 => encode_base64(render_boot_options($options->{persistent}), ''));
+    _boot_settings(\%boot);
+    my %result = %$settings;
+    delete $result{bootstrap};
+    if (($media->{install_contract} || '') =~ /\Axcat-freebsd-install-[34]\z/x) {
+        return { %result, %boot };
+    }
+    _fail('Boot settings require a runtime with xcat-freebsd-install-3') if
+        $boot{bootstrap} ne 'dhcp' || $boot{console_port} ne 'none' ||
+        length($boot{install_boot_options_base64}) || length($boot{target_boot_options_base64});
+    return \%result;
+}
+
+sub render_loader_settings {
+    my ($settings, $network) = @_;
+    _fail('Invalid loader settings') unless ref($settings) eq 'HASH' && ref($network) eq 'HASH';
+    return '' unless exists($settings->{bootstrap});
+    my ($text) = _boot_settings($settings);
+    $text .= "xcat_bootstrap=\"$settings->{bootstrap}\"\n";
+    if ($settings->{bootstrap} eq 'static') {
+        for my $key (qw(ipv4 netmask gateway)) {
+            my $value = $network->{$key};
+            $value = '' if $key eq 'gateway' && !defined($value);
+            _fail("Invalid bootstrap $key") unless ($key eq 'gateway' && $value eq '') || _ipv4($value);
+            $text .= "xcat_bootstrap_$key=\"$value\"\n";
+        }
+    }
+    if ($settings->{console_port} ne 'none') {
+        my @ports = qw(0x3f8 0x2f8 0x3e8 0x2e8);
+        my $port = $ports[$settings->{console_port}];
+        my $speed = $settings->{console_speed};
+        $text .= "comconsole_port=\"$port\"\ncomconsole_speed=\"$speed\"\n"
+          . "console=\"comconsole,\${console}\"\nboot_serial=\"YES\"\nboot_multicons=\"YES\"\n"
+          . "hw.uart.console=\"io:$port,br:$speed\"\n"
+          . "hint.uart.$settings->{console_port}.at=\"acpi\"\n"
+          . "hint.uart.$settings->{console_port}.port=\"$port\"\n";
+    }
+    return $text;
+}
+
 sub _node {
     my $node = shift;
     _fail('Invalid node name') unless defined($node) && !ref($node) &&
@@ -139,10 +238,53 @@ sub _policy {
     return \%values;
 }
 
+sub _zfs_storage {
+    my $settings = shift;
+    return 0 unless grep { exists($settings->{$_}) } qw(zfs_topology zfs_vdevs swap_mode);
+    _fail('Scalar and multi-disk policies cannot be combined') if
+        exists($settings->{target_disk}) || exists($settings->{target_disk_ident});
+    for my $key (qw(filesystem swap_size zfs_topology zfs_vdevs swap_mode)) {
+        _fail("Missing or invalid storage setting $key") unless
+            defined($settings->{$key}) && !ref($settings->{$key});
+    }
+    _fail('Multi-disk storage requires ZFS') unless $settings->{filesystem} eq 'zfs';
+    _fail('Redundant storage requires swap_size=0 and swap_mode=none') unless
+        $settings->{swap_size} eq '0' && $settings->{swap_mode} eq 'none';
+    my %minimum = (mirror => 2, raid10 => 4, raidz1 => 3, raidz2 => 4, raidz3 => 5);
+    my $topology = $settings->{zfs_topology};
+    _fail('Unsupported ZFS topology') unless exists($minimum{$topology});
+    _fail('ZFS membership exceeds its size limit') if length($settings->{zfs_vdevs}) > 4096;
+    my @groups = split(/;/x, $settings->{zfs_vdevs}, -1);
+    my (%devices, %serials, @sizes);
+    my $count = 0;
+    for my $group (@groups) {
+        my @members = split(/,/x, $group, -1);
+        _fail('Empty ZFS member group') unless length($group) && @members;
+        push @sizes, scalar(@members);
+        for my $member (@members) {
+            my ($device, $serial) = $member =~
+                /\A((?:ada|da|nda|nvd|vtbd)(?:0|[1-9][0-9]{0,4}))@([A-Za-z0-9_.:+-]{1,128})\z/x;
+            _fail('Invalid ZFS device and serial pair') unless defined($device);
+            _fail('Duplicate ZFS device or serial') if $devices{$device}++ || $serials{$serial}++;
+            _fail('ZFS policy exceeds 16 members') if ++$count > 16;
+        }
+    }
+    _fail('Insufficient ZFS members') if $count < $minimum{$topology};
+    if ($topology eq 'raid10') {
+        _fail('Striped mirrors require at least two pairs') if @groups < 2 || grep { $_ != 2 } @sizes;
+    } else {
+        _fail('ZFS topology requires one member group') unless @groups == 1;
+    }
+    return 1;
+}
+
 sub load_settings {
     my ($node, $template, $partitionfile) = @_;
-    my $settings = _policy($template, $node, 'authorized_keys_file');
-    my $disk = _policy($partitionfile, $node, qw(target_disk target_disk_ident filesystem swap_size));
+    my $settings = _policy($template, $node, qw(authorized_keys_file bootstrap));
+    my $disk = _policy($partitionfile, $node,
+        qw(target_disk target_disk_ident filesystem swap_size zfs_topology zfs_vdevs swap_mode));
+    $disk->{swap_size} = '0' unless defined($disk->{swap_size});
+    _zfs_storage($disk);
     my ($keys, $keyfile) = _read_file($settings->{authorized_keys_file}, $node, 16384);
     my @keys = grep { /\S/ } split(/\n/, $keys);
     _fail('A plain SSH public key is required') unless @keys && !grep {
@@ -154,7 +296,8 @@ sub load_settings {
         while (<$check>) { }
         close($check) or _fail('SSH public key verification failed');
     }
-    return { %$disk, swap_size => (defined($disk->{swap_size}) ? $disk->{swap_size} : '0'),
+    return { %$disk, (exists($settings->{bootstrap}) ? (bootstrap => $settings->{bootstrap}) : ()),
+        swap_size => (defined($disk->{swap_size}) ? $disk->{swap_size} : '0'),
         authorized_key_base64 => encode_base64(join("\n", @keys) . "\n", '') };
 }
 
@@ -178,6 +321,47 @@ sub render {
     my @order = qw(format release node generation master port mac ipv4 netmask gateway hostname
         target_disk target_disk_ident filesystem swap_size dist_url base_sha256 kernel_sha256
         authorized_key_base64 nameservers);
+    return _render_config(\%config, \@order, [qw(generation base_sha256 kernel_sha256)],
+        'dist_url', 'distribution');
+}
+
+sub render_pkgbase {
+    my ($node, $settings, $network, $install, $generation) = @_;
+    _fail('Pkgbase rendering requires five arguments') unless @_ == 5;
+    _node($node);
+    _fail('Invalid pkgbase install inputs') unless ref($install) eq 'HASH' && keys(%$install) == 2
+      && exists($install->{media}) && exists($install->{package_plan_sha256});
+    my $media = $install->{media};
+    _fail('Invalid settings or media') unless ref($settings) eq 'HASH' && ref($network) eq 'HASH' &&
+        ref($media) eq 'HASH' && ref($media->{files}) eq 'HASH';
+    _fail('Unsupported pkgbase boot media') unless ($media->{format} || '') eq 'xcat-mfsbsd-2' &&
+        ($media->{release} || '') eq '15.1-RELEASE' && ($media->{arch} || '') eq 'x86_64';
+    my %config = (%$settings, %$network, format => 'xcat-freebsd-install-2', release => $media->{release},
+        node => $node, generation => $generation, package_plan_sha256 => $install->{package_plan_sha256},
+        boot_media_sha256 => $media->{digest}, runtime_sha256 => $media->{files}{'xcat/runtime.tsv'});
+    my $multi_disk = _zfs_storage(\%config);
+    my @storage = $multi_disk ? qw(zfs_topology zfs_vdevs swap_mode) : qw(target_disk target_disk_ident);
+    my @order = (qw(format release node generation master port mac ipv4 netmask gateway hostname),
+        @storage, qw(filesystem swap_size install_url package_plan_sha256
+        boot_media_sha256 runtime_sha256 authorized_key_base64 nameservers));
+    if ($multi_disk) {
+        _fail('Multi-disk storage requires a runtime with xcat-freebsd-install-4') unless
+            ($media->{install_contract} || '') eq 'xcat-freebsd-install-4';
+    }
+    if (($media->{install_contract} || '') =~ /\Axcat-freebsd-install-[34]\z/x) {
+        $config{format} = $multi_disk ? 'xcat-freebsd-install-4' : 'xcat-freebsd-install-3';
+        push @order, qw(bootstrap console_port console_speed console_flow
+            install_boot_options_base64 target_boot_options_base64);
+        _boot_settings(\%config);
+    }
+    return _render_config(\%config, \@order,
+        [qw(generation package_plan_sha256 boot_media_sha256 runtime_sha256)], 'install_url', 'installation');
+}
+
+sub _render_config {
+    my ($values, $order, $digests, $url_key, $url_description) = @_;
+    my %config = %$values;
+    my @order = @$order;
     my %allowed = map { $_ => 1 } @order;
     _fail('Unsupported generated setting') if grep { !$allowed{$_} } keys %config;
     for my $key (qw(gateway nameservers)) { $config{$key} = '' unless defined($config{$key}); }
@@ -185,7 +369,7 @@ sub render {
         _fail("Missing or invalid $key") unless defined($config{$key}) && !ref($config{$key}) &&
             $config{$key} !~ /[^\x20-\x7e]/;
     }
-    for my $key (qw(generation base_sha256 kernel_sha256)) {
+    for my $key (@$digests) {
         my $length = $key eq 'generation' ? 32 : 64;
         _fail("Invalid $key") unless $config{$key} =~ /\A[0-9a-f]{$length}\z/;
     }
@@ -196,12 +380,16 @@ sub render {
     _fail('Invalid status port') unless $config{port} =~ /\A[1-9][0-9]{0,4}\z/ && $config{port} <= 65535;
     _fail('Invalid provisioning MAC') unless $config{mac} =~ /\A(?:[0-9a-f]{2}:){5}[0-9a-f]{2}\z/;
     _node($config{hostname});
-    _fail('Invalid target disk') unless $config{target_disk} =~ /\A(?:ada|da|nda|nvd|vtbd)[0-9]+\z/;
-    _fail('A disk serial is required') unless $config{target_disk_ident} =~ /\A[A-Za-z0-9_.:+-]+\z/;
+    if ($config{format} eq 'xcat-freebsd-install-4') {
+        _fail('Missing multi-disk policy') unless _zfs_storage(\%config);
+    } else {
+        _fail('Invalid target disk') unless $config{target_disk} =~ /\A(?:ada|da|nda|nvd|vtbd)[0-9]+\z/;
+        _fail('A disk serial is required') unless $config{target_disk_ident} =~ /\A[A-Za-z0-9_.:+-]+\z/;
+    }
     _fail('Unsupported filesystem') unless $config{filesystem} =~ /\A(?:zfs|ufs)\z/;
     _fail('Invalid swap size') unless $config{swap_size} =~ /\A(?:0|[1-9][0-9]*[mMgG])\z/ && length($config{swap_size}) <= 6;
-    _fail('Invalid distribution URL') unless $config{dist_url} =~ m{\Ahttps?://[A-Za-z0-9.-]+(?::[0-9]+)?/[A-Za-z0-9_.+/\-]+\z} &&
-        $config{dist_url} !~ m{/\.\.?(?:/|\z)};
+    _fail("Invalid $url_description URL") unless $config{$url_key} =~ m{\Ahttps?://[A-Za-z0-9.-]+(?::[0-9]+)?/[A-Za-z0-9_.+/\-]+\z} &&
+        $config{$url_key} !~ m{/\.\.?(?:/|\z)};
     _fail('Invalid encoded SSH keys') unless $config{authorized_key_base64} =~ /\A[A-Za-z0-9+\/=]+\z/;
     if (length($config{nameservers})) {
         _fail('Invalid name server') if grep { !_ipv4($_) } split(/,/, $config{nameservers}, -1);
@@ -216,6 +404,12 @@ sub fingerprint {
     _fail('Invalid media digest') unless ref($media) eq 'HASH' && defined($media->{digest}) &&
         !ref($media->{digest}) && $media->{digest} =~ /\A[0-9a-f]{64}\z/;
     return sha256_hex($media->{digest} . "\n" . render($node, $settings, $network, $media, '0' x 32));
+}
+
+sub fingerprint_pkgbase {
+    my ($node, $settings, $network, $install) = @_;
+    _fail('Pkgbase fingerprinting requires four arguments') unless @_ == 4;
+    return sha256_hex(render_pkgbase($node, $settings, $network, $install, '0' x 32));
 }
 
 1;

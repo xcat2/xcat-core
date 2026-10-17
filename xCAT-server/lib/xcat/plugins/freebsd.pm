@@ -206,9 +206,13 @@ sub _copy_bundle {
     }
     my $media = xCAT::FreeBSDImage::import_media($mount,
         xCAT::TableUtils->getInstallDir(), nonoverwrite => $nonoverwrite);
-    my $image = _register_media($media, $noosimage);
-    $callback->({ data => ["Imported FreeBSD media to $media->{pkgdir}"] });
-    $callback->({ data => ["Created or verified osimage $image"] }) if defined($image);
+    if ($media->{format} eq 'xcat-mfsbsd-2') {
+        $callback->({ data => ["Imported FreeBSD boot media to $media->{bootdir}"] });
+    } else {
+        my $image = _register_media($media, $noosimage);
+        $callback->({ data => ["Imported FreeBSD media to $media->{pkgdir}"] });
+        $callback->({ data => ["Created or verified osimage $image"] }) if defined($image);
+    }
     return;
 }
 
@@ -386,16 +390,31 @@ sub _install_image {
     $error = xCAT::Utils->freebsd_image_definition_error($merged);
     die "Not a supported FreeBSD installation image\n" unless defined($error);
     die "$error\n" if length($error);
-    die "FreeBSD imageversion=2 installation requires a pkgbase runtime that is not yet available\n"
-      if ($merged->{imageversion} || '') eq '2';
-    my $pkgdir = defined($settings->{pkgdir}) ? abs_path($settings->{pkgdir}) : undef;
-    die "FreeBSD pkgdir must be an imported directory below installdir\n" unless defined($pkgdir) &&
+    my $pkgbase = ($merged->{imageversion} || '') eq '2';
+    my $role = $pkgbase ? 'bootdir' : 'pkgdir';
+    my $pkgdir = defined($settings->{$role}) ? abs_path($settings->{$role}) : undef;
+    die "FreeBSD $role must be an imported directory below installdir\n" unless defined($pkgdir) &&
       -d $pkgdir && index($pkgdir, "$installroot/") == 0;
     my $media = xCAT::FreeBSDImage::inspect_media($pkgdir)
-      or die "FreeBSD pkgdir has no xCAT mfsBSD manifest\n";
-    die "FreeBSD pkgdir does not match the imported media identity\n"
-      unless $pkgdir eq "$installroot/freebsd15.1/x86_64/$media->{digest}";
-    return { settings => $settings, pkgdir => $pkgdir, media => $media };
+      or die "FreeBSD $role has no xCAT mfsBSD manifest\n";
+    my $format = $pkgbase ? 'xcat-mfsbsd-2' : 'xcat-mfsbsd-1';
+    die "FreeBSD $role requires an $format bundle\n" unless $media->{format} eq $format;
+    my $parent = "$installroot/freebsd15.1/x86_64" . ($pkgbase ? '/boot' : '');
+    die "FreeBSD $role does not match the imported media identity\n"
+      unless $pkgdir eq "$parent/$media->{digest}";
+    my $result = { settings => $settings, pkgdir => $pkgdir, media => $media };
+    if ($pkgbase) {
+        require xCAT::FreeBSDRepoImport;
+        require xCAT::FreeBSDPackagePlan;
+        my ($policy_path) = xCAT::TableUtils->get_site_attribute('freebsdimportpolicy');
+        my $policy = xCAT::FreeBSDRepoImport::load_import_policy($policy_path);
+        my $options = xCAT::FreeBSDRepoImport::package_plan_options($policy);
+        my $plan = xCAT::FreeBSDPackagePlan::publish_image(installroot => $installroot,
+            image => $merged, %$options);
+        $result->{install} = { media => $media, package_plan_sha256 => $plan->{digest} };
+        $result->{package_plan} = $plan->{path};
+    }
+    return $result;
 }
 
 sub mkinstall {
@@ -411,8 +430,7 @@ sub mkinstall {
         my $ok = eval {
             die "Invalid FreeBSD node name\n" unless $node =~ /\A[A-Za-z0-9][A-Za-z0-9_.-]{0,246}\z/;
             my $prior = $bootparams->{$node};
-            die "FreeBSD installation does not accept bootparams.addkcmdline\n"
-              if $prior && @$prior && defined($prior->[0]{addkcmdline}) && length($prior->[0]{addkcmdline});
+            my $commandline = $prior && @$prior ? $prior->[0]{addkcmdline} : undef;
             my $installroot = abs_path(xCAT::TableUtils->getInstallDir());
             die "An existing installation directory is required\n" unless defined($installroot) && -d $installroot;
             my $type = _node_row('nodetype', $node, 0, qw(os arch provmethod profile));
@@ -431,18 +449,35 @@ sub mkinstall {
             my ($network, $url) = _provision_network($node, $resources);
             my $tftpdir = abs_path($resources->{tftpdir} || xCAT::TableUtils->getTftpDir());
             die "An existing TFTP directory is required\n" unless defined($tftpdir) && -d $tftpdir;
-            $network->{dist_url} = $url . substr($image->{pkgdir}, length($installroot)) . '/usr/freebsd-dist';
+            if ($image->{install}) {
+                $network->{install_url} = $url;
+            } else {
+                $network->{dist_url} = $url . substr($image->{pkgdir}, length($installroot)) . '/usr/freebsd-dist';
+            }
             my $settings = xCAT::FreeBSDConfig::load_settings($node,
                 $image->{settings}{template}, $image->{settings}{partitionfile});
-            my $fingerprint = xCAT::FreeBSDConfig::fingerprint($node, $settings, $network, $image->{media});
+            my $console = _node_row('nodehm', $node, 0, qw(serialport serialspeed serialflow));
+            $settings = xCAT::FreeBSDConfig::boot_settings($settings, $commandline, $console, $image->{media});
+            my @postscript_options;
+            if ($image->{media}{postscript_contract}) {
+                require xCAT::FreeBSDPostscript;
+                my $prepared = xCAT::FreeBSDPostscript::prepare_boot($node, $image->{package_plan});
+                @postscript_options = (postscript_preparations => $prepared);
+            }
+            my $fingerprint = $image->{install}
+              ? xCAT::FreeBSDConfig::fingerprint_pkgbase($node, $settings, $network, $image->{install})
+              : xCAT::FreeBSDConfig::fingerprint($node, $settings, $network, $image->{media});
             my $params;
-            xCAT::FreeBSDInstall::prepare($node, $fingerprint, publish => sub {
+            xCAT::FreeBSDInstall::prepare($node, $fingerprint, @postscript_options, publish => sub {
                 my $generation = shift;
-                my $content = xCAT::FreeBSDConfig::render($node, $settings, $network, $image->{media}, $generation);
+                my $content = $image->{install}
+                  ? xCAT::FreeBSDConfig::render_pkgbase($node, $settings, $network, $image->{install}, $generation)
+                  : xCAT::FreeBSDConfig::render($node, $settings, $network, $image->{media}, $generation);
                 my $relative = xCAT::FreeBSDBoot::publish_config($node, generation => $generation,
                     installroot => $installroot, content => $content);
                 $params = xCAT::FreeBSDBoot::publish($node, generation => $generation,
                     pkgdir => $image->{pkgdir}, media => $image->{media}, tftpdir => $tftpdir,
+                    settings => $settings, network => $network,
                     config_url => "$url/$relative", config_sha256 => sha256_hex($content), mac => $network->{mac});
             });
             $bootparams->{$node} = [$params];

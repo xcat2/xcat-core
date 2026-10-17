@@ -1,0 +1,152 @@
+#!/bin/sh
+# PROVIDE: xcatpostboot
+# REQUIRE: NETWORKING sshd
+# KEYWORD: shutdown
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
+LC_ALL=C
+export PATH LC_ALL
+umask 077
+
+. /etc/rc.subr
+. /usr/local/libexec/xcat-install-lib.sh
+
+name=xcatpostboot
+rcvar=xcatpostboot_enable
+self=/usr/local/libexec/xcat-postboot
+base=/var/db/xcat/boot-report
+config=/var/db/xcat/boot-controller
+command=/usr/sbin/daemon
+pidfile=/var/run/xcatpostboot.pid
+command_args="-f -S -T xcatpostboot -P $pidfile $self report"
+start_precmd=xcatpostboot_config
+extra_commands=report
+report_cmd=xcatpostboot_bounded
+
+xcatpostboot_private()
+{
+    [ -f "$1" ] && [ ! -L "$1" ] &&
+        [ "$(stat -f '%u:%g:%l:%Lp' "$1")" = 0:0:1:600 ] &&
+        [ "$(stat -f %z "$1")" -le "$2" ]
+}
+
+xcatpostboot_config()
+{
+    [ "$(id -u):$(uname -s)" = 0:FreeBSD ] || return 1
+    for ancestor in /var /var/db /var/db/xcat; do
+        [ -d "$ancestor" ] && [ ! -L "$ancestor" ] || return 1
+        [ "$(stat -f %u "$ancestor")" = 0 ] || return 1
+        mode=$(stat -f %Lp "$ancestor") || return 1
+        [ "$((0$mode & 0022))" -eq 0 ] || return 1
+    done
+    xcatpostboot_private "$config" 256 || return 1
+    {
+        read -r XCAT_MASTER && read -r XCAT_PORT &&
+            read -r XCAT_GENERATION && read -r XCAT_ATTEMPT &&
+            ! read -r extra
+    } < "$config" || return 1
+    [ -z "$extra" ] && xcat_ipv4 "$XCAT_MASTER" &&
+        xcat_hex "$XCAT_GENERATION" 32 && xcat_hex "$XCAT_ATTEMPT" 32 || return 1
+    case "$XCAT_PORT" in ''|0*|*[!0-9]*) return 1 ;; esac
+    [ "${#XCAT_PORT}" -le 5 ] && [ "$XCAT_PORT" -le 65535 ] || return 1
+    printf '%s\n%s\n%s\n%s\n' "$XCAT_MASTER" "$XCAT_PORT" "$XCAT_GENERATION" "$XCAT_ATTEMPT" |
+        cmp -s - "$config"
+}
+
+xcatpostboot_record()
+{
+    if [ -e "$record" ] || [ -L "$record" ]; then
+        xcatpostboot_private "$record" 1024 || return 1
+    fi
+    temporary=$(mktemp "$base/.record.XXXXXXXX") || return 1
+    printf 'format\txcat-freebsd-boot-report-1\ngeneration\t%s\nattempt\t%s\nboot\t%s\nbooted\t%s\nrun\t%s\noutcome\t%s\n' \
+        "$XCAT_GENERATION" "$XCAT_ATTEMPT" "$boot" "$booted" "$run" "$outcome" > "$temporary" &&
+        fsync "$temporary" && mv -f "$temporary" "$record" && fsync "$base"
+    status=$?
+    rm -f "$temporary"
+    return "$status"
+}
+
+xcatpostboot_reply()
+{
+    [ "$(wc -c < "$response" | tr -d ' ')" -le 1024 ] || return 1
+    fields=$(awk -v generation="$XCAT_GENERATION" -v boot="$boot" '
+        NR == 1 { if ($0 != "ready") exit 1; next }
+        NR == 2 {
+            if (NF != 5 || $1 != "freebsd-install-postscripts-v1" || $2 != generation || $3 != boot) exit 1
+            print $4, $5
+        }
+        END { if (NR != 2) exit 1 }
+    ' "$response") || return 1
+    run=${fields% *}
+    outcome=${fields#* }
+    case "$outcome" in
+        disabled) [ "$run" = - ] || return 1 ;;
+        pending|success|failed|uncertain) xcat_hex "$run" 32 || return 1 ;;
+        *) return 1 ;;
+    esac
+    printf 'ready\nfreebsd-install-postscripts-v1 %s %s %s %s\n' \
+        "$XCAT_GENERATION" "$boot" "$run" "$outcome" | cmp -s - "$response"
+}
+
+xcatpostboot_poll()
+{
+    xcatpostboot_config || { xcat_error 'Invalid boot reporter configuration'; return 1; }
+    if [ ! -e "$base" ] && [ ! -L "$base" ]; then
+        mkdir -m 0700 "$base" && fsync /var/db/xcat || return 1
+    fi
+    [ -d "$base" ] && [ ! -L "$base" ] &&
+        [ "$(stat -f '%u:%g:%Lp' "$base")" = 0:0:700 ] || return 1
+    if [ ! -e "$base/lock" ] && [ ! -L "$base/lock" ]; then
+        (set -C; : > "$base/lock") && fsync "$base/lock" "$base" || return 1
+    fi
+    xcatpostboot_private "$base/lock" 0 || return 1
+    exec 9<> "$base/lock" || return 1
+    lockf -k -t 0 /dev/fd/9 || return 75
+    boot=$(/usr/local/libexec/xcat-postscript boot-identity) && xcat_hex "$boot" 64 || return 1
+    record=$base/$boot
+    booted=no
+    run=-
+    outcome=pending
+    xcatpostboot_record || return 1
+    xcat_status booted || return 1
+    booted=yes
+    xcatpostboot_record || return 1
+    response=$(mktemp "$base/.response.XXXXXXXX") || return 1
+    trap 'rm -f "$response"' EXIT
+    trap 'exit 1' HUP INT TERM
+    started=$(/usr/local/libexec/xcat-postscript-time uptime) || return 1
+    retry=0
+    while [ "$retry" -lt 2700 ]; do
+        now=$(/usr/local/libexec/xcat-postscript-time uptime) || return 1
+        [ "$now" -ge "$started" ] && [ "$((now - started))" -lt 13500 ] || break
+        if printf 'freebsd-install-postscripts-v1 %s %s %s\n' "$XCAT_GENERATION" "$XCAT_ATTEMPT" "$boot" |
+            (ulimit -f 4; exec /bin/timeout -k 5 65 nc -w 60 "$XCAT_MASTER" "$XCAT_PORT") > "$response" &&
+            xcatpostboot_reply; then
+            xcatpostboot_record || return 1
+            case "$outcome" in
+                success|disabled) return 0 ;;
+                failed) xcat_error 'Boot postscripts failed'; return 1 ;;
+                uncertain) xcat_error 'Boot postscripts require interruption recovery'; return 2 ;;
+            esac
+        fi
+        retry=$((retry + 1))
+        sleep 5
+    done
+    xcat_error 'Boot postscript report remains pending'
+}
+
+xcatpostboot_bounded()
+{
+    exec /bin/timeout -k 5 14400 "$self" poll
+}
+
+if [ "$#" -eq 1 ]; then
+    case "$1" in
+        poll) xcatpostboot_poll; exit "$?" ;;
+        report) xcatpostboot_bounded ;;
+    esac
+fi
+load_rc_config "$name"
+: "${xcatpostboot_enable:=NO}"
+run_rc_command "$1"

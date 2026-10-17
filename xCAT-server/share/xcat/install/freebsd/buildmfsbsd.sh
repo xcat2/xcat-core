@@ -5,8 +5,15 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 LC_ALL=C
 export PATH LC_ALL
 
+pkgbase_archive=
+pkgbase_resolver=
+if [ "$#" -eq 8 ] && [ "$1" = --pkgbase ]; then
+    pkgbase_archive=$(realpath "$2")
+    pkgbase_resolver=$(realpath "$3")
+    shift 3
+fi
 if [ "$#" -ne 5 ]; then
-    printf 'Usage: %s mfsbsd-source dist-directory output.iso mfsbsd-commit manifest-sha256\n' "$0" >&2
+    printf 'Usage: %s [--pkgbase pkg-archive native-resolver] mfsbsd-source dist-directory output.iso mfsbsd-commit manifest-sha256\n' "$0" >&2
     exit 2
 fi
 [ "$(uname -s)" = FreeBSD ] && [ "$(uname -m)" = amd64 ] || {
@@ -24,7 +31,9 @@ output_dir=$(realpath "$(dirname "$3")")
 output_file=$output_dir/$(basename "$3")
 source_commit=$4
 manifest_sha256=$5
-for build_path in "$source_dir" "$dist_dir" "$output_file" "$script_dir"; do
+build_tmp=/tmp
+[ -z "$pkgbase_archive" ] || build_tmp=${TMPDIR:-/tmp}
+for build_path in "$source_dir" "$dist_dir" "$output_file" "$script_dir" "$build_tmp" "$pkgbase_archive" "$pkgbase_resolver"; do
     case "$build_path" in *[!A-Za-z0-9_./+-]*) xcat_error 'Build paths must not contain spaces or shell metacharacters' ;; esac
 done
 xcat_hex "$source_commit" 40 && xcat_hex "$manifest_sha256" 64 || xcat_error 'Invalid source or manifest checksum'
@@ -35,7 +44,11 @@ for dist_set in base.txz kernel.txz; do
     expected=$(awk -v name="$dist_set" '$1==name {value=$2; count++} END {if (count==1) print value; else exit 1}' "$dist_dir/MANIFEST")
     xcat_hex "$expected" 64 && [ "$(sha256 -q "$dist_dir/$dist_set")" = "$expected" ] || xcat_error "Checksum mismatch: $dist_set"
 done
-build_work=$(mktemp -d /tmp/xcat-mfsbsd.XXXXXX)
+if [ -n "$pkgbase_archive" ]; then
+    [ "$source_commit" = 6e48fa48ebbb25953a7764a8f3cfda443fb9a768 ] || xcat_error 'Unsupported pkgbase mfsBSD source'
+    [ -f "$pkgbase_archive" ] && [ -f "$pkgbase_resolver" ] || xcat_error 'Missing pkgbase build input'
+fi
+build_work=$(mktemp -d "$build_tmp/xcat-mfsbsd.XXXXXX")
 output_stage=
 build_cleanup()
 {
@@ -63,10 +76,13 @@ cp -R "$build_work/source/conf/." "$build_work/conf/"
 install -m 0555 "$script_dir/xcat-install" "$build_work/custom/usr/local/sbin/xcat-install"
 install -m 0444 "$script_dir/xcat-install-lib.sh" "$build_work/custom/usr/local/libexec/xcat-install-lib.sh"
 install -m 0444 "$script_dir/installerconfig.tmpl" "$build_work/custom/usr/local/share/xcat/installerconfig.tmpl"
-tar -xf "$dist_dir/base.txz" -C "$build_work/native" usr/libexec/bsdinstall/umount
-sh "$script_dir/patch-bsdinstall-umount.sh" "$build_work/native/usr/libexec/bsdinstall/umount" \
-    > "$build_work/custom/usr/libexec/bsdinstall/umount"
-chmod 0555 "$build_work/custom/usr/libexec/bsdinstall/umount"
+tar -xf "$dist_dir/base.txz" -C "$build_work/native" \
+    usr/libexec/bsdinstall/umount usr/libexec/bsdinstall/mount_aux
+for file in umount mount_aux; do
+    sh "$script_dir/patch-bsdinstall-$file.sh" "$build_work/native/usr/libexec/bsdinstall/$file" \
+        > "$build_work/custom/usr/libexec/bsdinstall/$file"
+    chmod 0555 "$build_work/custom/usr/libexec/bsdinstall/$file"
+done
 cat > "$build_work/conf/rc.conf" <<'XCAT_RC'
 hostname="xcat-installer"
 sshd_enable="NO"
@@ -95,7 +111,29 @@ set -eu
 [ -n "${DESTDIR:-}" ] && [ -d "$DESTDIR/etc/ssh" ]
 find "$DESTDIR/etc/ssh" -type f -name 'ssh_host_*' -delete
 XCAT_KEYS
-env -i PATH="$PATH" LC_ALL=C make -j 1 -C "$build_work/source" mfsroot \
+if [ -n "$pkgbase_archive" ]; then
+    mkdir -m 0700 "$build_work/tools"
+    for file in stage-pkgbase-runtime.sh stage-pkgbase-adapter.sh xcat-storage-hooks.sh patch-bsdinstall-script.sh \
+        patch-bsdinstall-pkgbase.sh patch-bsdinstall-zfsboot.sh patch-bsdinstall-bootconfig.sh \
+        xcat-storage xcat-storage-efi.sh xcat-pkgbase.lua xcat-package-plan.lua \
+        xcat-postscript xcat-postscript-packages xcat-postscript-time.c xcat-postboot; do
+        cp -p "$script_dir/$file" "$build_work/tools/$file"
+    done
+    cp -p "$pkgbase_archive" "$build_work/tools/pkg.pkg"
+    cp -p "$pkgbase_resolver" "$build_work/tools/freebsd-pkg-resolve"
+    /usr/bin/cc -std=c11 -O2 -Wall -Wextra -Werror -static \
+        "$build_work/tools/xcat-postscript-time.c" -o "$build_work/tools/xcat-postscript-time"
+    # Use one fail-fast hook; upstream does not check each script separately.
+    printf 'sh "%s/stage-pkgbase-adapter.sh" "$DESTDIR" "%s/pkg.pkg" "%s/freebsd-pkg-resolve"\n' \
+        "$build_work/tools" "$build_work/tools" "$build_work/tools" >> "$build_work/scripts/strip-hostkeys"
+    printf 'cp "$DESTDIR/xcat/runtime.tsv" "%s/runtime.tsv"\n' "$build_work/bundle/xcat" >> "$build_work/scripts/strip-hostkeys"
+    # Finalization retains descriptors while entering its target root. Boot the
+    # RAM filesystem directly so this is the process's first chroot.
+    set -- NO_ROOTHACK=1
+else
+    set --
+fi
+env -i PATH="$PATH" LC_ALL=C make -j 1 -C "$build_work/source" mfsroot "$@" \
     BASE="$dist_dir" VERSION=15.1-RELEASE RELEASE=15.1-RELEASE \
     TARGET=amd64 TARGET_ARCH=amd64 WRKDIR="$build_work/build" \
     CFGDIR="$build_work/conf" CUSTOMFILESDIR="$build_work/custom" \
@@ -107,15 +145,28 @@ tar -xf "$dist_dir/base.txz" -C "$build_work/native" boot
 cp -RL "$build_work/native/boot/." "$build_work/bundle/boot/"
 cp "$build_work/conf/loader.conf" "$build_work/bundle/boot/loader.conf"
 find "$build_work/bundle/boot" -type f -size 0 -delete
-for dist_set in MANIFEST base.txz kernel.txz; do cp "$dist_dir/$dist_set" "$build_work/bundle/usr/freebsd-dist/$dist_set"; done
+if [ -n "$pkgbase_archive" ]; then
+    bundle_format=xcat-mfsbsd-2
+    rmdir "$build_work/bundle/usr/freebsd-dist" "$build_work/bundle/usr"
+else
+    bundle_format=xcat-mfsbsd-1
+    for dist_set in MANIFEST base.txz kernel.txz; do cp "$dist_dir/$dist_set" "$build_work/bundle/usr/freebsd-dist/$dist_set"; done
+fi
 (
     cd "$build_work/bundle"
-    find boot usr/freebsd-dist -type f -print
+    find boot -type f -print
+    if [ "$bundle_format" = xcat-mfsbsd-2 ]; then
+        printf '%s\n' xcat/runtime.tsv
+    else
+        find usr/freebsd-dist -type f -print
+    fi
     printf '%s\n' mfsroot.gz
 ) | sort > "$build_work/payload-files"
 awk '!/^[A-Za-z0-9_.+-]+(\/[A-Za-z0-9_.+-]+)*$/ || /(^|\/)\.\.?($|\/)/ {exit 1}' "$build_work/payload-files" || xcat_error 'Unsupported boot payload filename'
 {
-    printf '{"format":"xcat-mfsbsd-1","release":"15.1-RELEASE","arch":"amd64","mfsbsd_commit":"%s","files":{' "$source_commit"
+    printf '{"format":"%s","release":"15.1-RELEASE","arch":"amd64","mfsbsd_commit":"%s",' "$bundle_format" "$source_commit"
+    [ "$bundle_format" != xcat-mfsbsd-2 ] || printf '"install_contract":"xcat-freebsd-install-4","postscript_contract":"xcat-freebsd-postscripts-1",'
+    printf '"files":{'
     separator=
     while IFS= read -r payload_file; do
         printf '%s"%s":"%s"' "$separator" "$payload_file" "$(sha256 -q "$build_work/bundle/$payload_file")"

@@ -495,7 +495,7 @@ sub do_installm_service {
                 if ($text =~ /^freebsd-install-/) {
                     require xCAT::FreeBSDInstall;
                     xCAT::FreeBSDInstall::start_status_worker($node, $conn_peer_addr, $text, $conn,
-                        sub { return plugin_command($_[0], undef, \&build_response); },
+                        \&do_request,
                         cleanup => sub { close($socket); close($rescanreadpipe); close($rescanwritepipe); },
                         log => sub { xCAT::MsgUtils->trace(0, "E", "xcatd: FreeBSD status for $node: $_[0]"); });
                     last;

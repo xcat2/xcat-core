@@ -14,10 +14,31 @@ use IO::Uncompress::Gunzip;
 use JSON;
 
 my $MARKER = 'xcat/mfsbsd.json';
-my @REQUIRED = qw(
+my @BOOT_FILES = qw(
   boot/pxeboot boot/loader.efi boot/loader.conf boot/defaults/loader.conf
   boot/lua/loader.lua boot/kernel/kernel.gz mfsroot.gz
+);
+my @DIST_FILES = qw(
   usr/freebsd-dist/MANIFEST usr/freebsd-dist/base.txz usr/freebsd-dist/kernel.txz
+);
+my @RUNTIME_FILES = qw(
+  usr/local/sbin/xcat-install usr/local/libexec/xcat-install-lib.sh
+  usr/local/share/xcat/installerconfig.tmpl usr/sbin/bsdinstall
+  usr/libexec/bsdinstall/script usr/libexec/bsdinstall/pkgbase
+  usr/libexec/bsdinstall/umount usr/libexec/flua usr/local/sbin/pkg-static
+);
+my @STORAGE_FILES = qw(
+  bin/rmdir boot/gptzfsboot boot/loader.efi boot/pmbr
+  sbin/mount_msdosfs sbin/newfs_msdos sbin/zfs usr/bin/basename usr/bin/cut usr/bin/od
+  usr/libexec/bsdconfig/040.password/include/messages.subr
+  usr/libexec/bsdconfig/include/messages.subr usr/libexec/bsdinstall/bootconfig
+  usr/libexec/bsdinstall/config usr/libexec/bsdinstall/entropy
+  usr/libexec/bsdinstall/mount usr/libexec/bsdinstall/mount_aux usr/libexec/bsdinstall/zfsboot
+  usr/local/libexec/xcat-storage usr/local/libexec/xcat-storage-efi.sh
+  usr/share/bsdconfig/common.subr usr/share/bsdconfig/device.subr usr/share/bsdconfig/dialog.subr
+  usr/share/bsdconfig/geom.subr usr/share/bsdconfig/password/password.subr
+  usr/share/bsdconfig/strings.subr usr/share/bsdconfig/struct.subr usr/share/bsdconfig/variable.subr
+  usr/sbin/chroot usr/sbin/efibootmgr usr/sbin/efivar usr/sbin/fstyp
 );
 
 sub _fail { die "$_[0]\n"; }
@@ -89,12 +110,92 @@ sub _directory {
       unless lstat($path) && -d _ && !-l _;
 }
 
-sub _payload_path {
+sub _relative_path {
     my $path = shift;
     return 0 unless defined($path) && $path =~ m{\A[A-Za-z0-9_.+-]+(?:/[A-Za-z0-9_.+-]+)*\z};
     return 0 if grep { $_ eq '.' || $_ eq '..' } split(m{/}, $path);
-    return $path eq 'mfsroot.gz' || $path =~ m{\Aboot/}
-      || $path =~ m{\Ausr/freebsd-dist/(?:MANIFEST|base\.txz|kernel\.txz)\z};
+    return 1;
+}
+
+sub _payload_path {
+    my ($path, $boot_only) = @_;
+    return 0 unless _relative_path($path);
+    return 1 if $path eq 'mfsroot.gz' || $path =~ m{\Aboot/};
+    return $boot_only ? $path eq 'xcat/runtime.tsv'
+      : $path =~ m{\Ausr/freebsd-dist/(?:MANIFEST|base\.txz|kernel\.txz)\z};
+}
+
+sub _validate_runtime {
+    my ($root, $postscripts, $storage) = @_;
+    my @records = split(/\n/x, _read_file("$root/xcat/runtime.tsv", 65536), -1);
+    _fail('Runtime descriptor must end with one LF') unless pop(@records) eq '';
+    my @prefix = (
+        "format\txcat-freebsd-runtime-2",
+        "target\t15.1-RELEASE\tFreeBSD:15:amd64\t1501000",
+        "pkg-version\t2.6.2",
+        "bsdinstall-contract\txcat-freebsd-pkgbase-1",
+    );
+    for my $expected (@prefix) {
+        _fail('Unsupported runtime descriptor contract') unless @records && shift(@records) eq $expected;
+    }
+    _fail('Runtime descriptor must contain 1 to 256 file records') if !@records || @records > 256;
+    my %files;
+    my $previous = '';
+    for my $line (@records) {
+        my @fields = split(/\t/x, $line, -1);
+        _fail('Invalid runtime file record') unless @fields == 3 && $fields[0] eq 'file';
+        my ($path, $digest) = @fields[1, 2];
+        _fail("Invalid runtime file path: $path") unless _relative_path($path);
+        _fail("Invalid runtime SHA256 for $path") unless $digest =~ /\A[0-9a-f]{64}\z/x;
+        _fail('Runtime file records must be unique and path-sorted') if $path le $previous;
+        $previous = $path;
+        $files{$path} = 1;
+    }
+    my @required = @RUNTIME_FILES;
+    push @required, qw(usr/local/libexec/xcat-postscript usr/local/libexec/xcat-postscript-packages
+        usr/local/libexec/freebsd-pkg-resolve usr/local/libexec/xcat-postboot) if $postscripts;
+    push @required, @STORAGE_FILES if $storage;
+    for my $path (@required) {
+        _fail("Required runtime file is not listed: $path") unless $files{$path};
+    }
+    return;
+}
+
+sub _validate_payload {
+    my ($root, $files, @trees) = @_;
+    my %found;
+    File::Find::find({
+        no_chdir => 1,
+        wanted => sub {
+            my $entry_path = $File::Find::name;
+            _fail("Cannot inspect bundle path $entry_path: $!") unless lstat($entry_path);
+            _fail("Unsupported bundle symlink or special file: $entry_path") if -l _ || !(-f _ || -d _);
+            return if -d _;
+            my $relative = substr($entry_path, length($root) + 1);
+            return if $relative eq $MARKER;
+            _fail("Bundle file is not listed in the manifest: $relative") unless exists($files->{$relative});
+            $found{$relative} = 1;
+        },
+    }, @trees);
+    $found{'mfsroot.gz'} = 1;
+    for my $path (sort keys %$files) {
+        _fail("Bundle file was not found: $path") unless $found{$path};
+        _fail("Bundle SHA256 mismatch: $path") unless _digest("$root/$path") eq $files->{$path};
+    }
+    return;
+}
+
+sub _validate_distributions {
+    my ($root, $files) = @_;
+    my $dist_manifest = _read_file("$root/usr/freebsd-dist/MANIFEST", 1048576);
+    for my $set (qw(base.txz kernel.txz)) {
+        my @entries = grep { /^\Q$set\E\t/ } split(/\n/, $dist_manifest);
+        _fail("Distribution MANIFEST must contain one $set entry") unless @entries == 1;
+        my @fields = split(/\t/, $entries[0]);
+        _fail("Distribution MANIFEST checksum differs for $set")
+          unless @fields >= 2 && $fields[1] eq $files->{"usr/freebsd-dist/$set"};
+    }
+    return;
 }
 
 sub inspect_media {
@@ -106,15 +207,26 @@ sub inspect_media {
     my $raw = _read_file("$root/$MARKER", 1048576);
     my $manifest = eval { JSON->new->utf8->decode($raw) };
     _fail('Invalid xCAT mfsBSD JSON manifest') unless ref($manifest) eq 'HASH';
-    my %allowed = map { $_ => 1 } qw(format release arch files mfsbsd_commit);
+    my %allowed = map { $_ => 1 } qw(format release arch files mfsbsd_commit install_contract postscript_contract);
     _fail('Unknown xCAT mfsBSD manifest field') if grep { !$allowed{$_} } keys %$manifest;
     for my $key (qw(format release arch)) {
         _fail("Missing or invalid mfsBSD manifest $key")
           unless defined($manifest->{$key}) && !ref($manifest->{$key});
     }
-    _fail('Unsupported mfsBSD bundle format') unless $manifest->{format} eq 'xcat-mfsbsd-1';
+    _fail('Unsupported mfsBSD bundle format')
+      unless $manifest->{format} eq 'xcat-mfsbsd-1' || $manifest->{format} eq 'xcat-mfsbsd-2';
+    my $boot_only = $manifest->{format} eq 'xcat-mfsbsd-2';
+    _fail('Unsupported installation contract') if exists($manifest->{install_contract}) &&
+        (!$boot_only || !defined($manifest->{install_contract}) || ref($manifest->{install_contract}) ||
+         $manifest->{install_contract} !~ /\Axcat-freebsd-install-[34]\z/x);
+    if (exists($manifest->{postscript_contract})) {
+        _fail('Unsupported boot postscript contract') unless $boot_only
+          && defined($manifest->{postscript_contract}) && ref($manifest->{postscript_contract}) eq ''
+          && $manifest->{postscript_contract} eq 'xcat-freebsd-postscripts-1';
+    }
     _fail('Only FreeBSD 15.1-RELEASE bundles are supported') unless $manifest->{release} eq '15.1-RELEASE';
     _fail('Only FreeBSD amd64 bundles are supported') unless $manifest->{arch} eq 'amd64';
+    _fail('A v2 bundle requires its mfsBSD source commit') if $boot_only && !exists($manifest->{mfsbsd_commit});
     _fail('Invalid mfsBSD source commit')
       if exists($manifest->{mfsbsd_commit})
       && (!defined($manifest->{mfsbsd_commit}) || ref($manifest->{mfsbsd_commit})
@@ -123,41 +235,30 @@ sub inspect_media {
     _fail('The bundle manifest must list its payload checksums')
       unless ref($files) eq 'HASH' && keys(%$files) && keys(%$files) <= 8192;
     for my $path (keys %$files) {
-        _fail("Invalid bundle payload path: $path") unless _payload_path($path);
+        _fail("Invalid bundle payload path: $path") unless _payload_path($path, $boot_only);
         _fail("Invalid SHA256 for $path") unless defined($files->{$path})
           && !ref($files->{$path}) && $files->{$path} =~ /\A[0-9a-f]{64}\z/;
     }
-    for my $path (@REQUIRED) {
+    for my $path (@BOOT_FILES, $boot_only ? 'xcat/runtime.tsv' : @DIST_FILES) {
         _fail("Required bundle file is not listed: $path") unless exists($files->{$path});
     }
     _directory("$root/boot");
-    _directory("$root/usr");
-    _directory("$root/usr/freebsd-dist");
-    my %found;
-    File::Find::find({
-        no_chdir => 1,
-        wanted => sub {
-            my $entry_path = $File::Find::name;
-            _fail("Cannot inspect bundle path $entry_path: $!") unless lstat($entry_path);
-            _fail("Unsupported bundle symlink or special file: $entry_path") if -l _ || !(-f _ || -d _);
-            return if -d _;
-            my $relative = substr($entry_path, length($root) + 1);
-            _fail("Bundle file is not listed in the manifest: $relative") unless exists($files->{$relative});
-            $found{$relative} = 1;
-        },
-    }, "$root/boot", "$root/usr/freebsd-dist");
-    $found{'mfsroot.gz'} = 1;
-    for my $path (sort keys %$files) {
-        _fail("Bundle file was not found: $path") unless $found{$path};
-        _fail("Bundle SHA256 mismatch: $path") unless _digest("$root/$path") eq $files->{$path};
+    my @trees = ("$root/boot");
+    if ($boot_only) {
+        _fail('A v2 boot bundle must not contain distribution sets')
+          if -e "$root/usr/freebsd-dist" || -l "$root/usr/freebsd-dist";
+        push @trees, "$root/xcat";
+    } else {
+        _directory("$root/usr");
+        _directory("$root/usr/freebsd-dist");
+        push @trees, "$root/usr/freebsd-dist";
     }
-    my $dist_manifest = _read_file("$root/usr/freebsd-dist/MANIFEST", 1048576);
-    for my $set (qw(base.txz kernel.txz)) {
-        my @entries = grep { /^\Q$set\E\t/ } split(/\n/, $dist_manifest);
-        _fail("Distribution MANIFEST must contain one $set entry") unless @entries == 1;
-        my @fields = split(/\t/, $entries[0]);
-        _fail("Distribution MANIFEST checksum differs for $set")
-          unless @fields >= 2 && $fields[1] eq $files->{"usr/freebsd-dist/$set"};
+    _validate_payload($root, $files, @trees);
+    if ($boot_only) {
+        _validate_runtime($root, exists($manifest->{postscript_contract}),
+            ($manifest->{install_contract} || '') eq 'xcat-freebsd-install-4');
+    } else {
+        _validate_distributions($root, $files);
     }
     _validate_boot_arch($root);
     return {
@@ -187,11 +288,16 @@ sub import_media {
       unless defined($installroot) && $installroot =~ m{\A/[^\x00\r\n]+\z} && -d $installroot;
     $installroot = abs_path($installroot);
     _fail('The installation root cannot be /') unless defined($installroot) && $installroot ne '/';
-    my $parent = "$installroot/$media->{distname}/$media->{arch}";
-    for my $dir ("$installroot/$media->{distname}", $parent) {
+    my $boot_only = $media->{format} eq 'xcat-mfsbsd-2';
+    my $archdir = "$installroot/$media->{distname}/$media->{arch}";
+    my @directories = ("$installroot/$media->{distname}", $archdir,
+        $boot_only ? "$archdir/boot" : ());
+    for my $dir (@directories) {
         mkdir($dir, 0755) or _fail("Cannot create $dir: $!") unless -e $dir || -l $dir;
         _directory($dir);
     }
+    my $parent = $directories[-1];
+    my $role = $boot_only ? 'bootdir' : 'pkgdir';
     my $lockpath = "$parent/.mfsbsd-import.lock";
     sysopen(my $lock, $lockpath, O_CREAT | O_RDWR | O_NOFOLLOW, 0600)
       or _fail("Cannot open import lock $lockpath: $!");
@@ -203,7 +309,7 @@ sub import_media {
         my $existing = inspect_media($destination);
         _fail("Existing bundle differs from its directory digest: $destination")
           unless $existing && $existing->{digest} eq $media->{digest};
-        return { %$media, pkgdir => $destination, reused => 1 };
+        return { %$media, $role => $destination, reused => 1 };
     }
     my $stage = tempdir('.mfsbsd-stage.XXXXXXXX', DIR => $parent, CLEANUP => 0);
     my $ok = eval {
@@ -224,7 +330,7 @@ sub import_media {
         eval { _remove_stage($stage); 1 } or $error .= $@;
         die $error;
     }
-    return { %$media, pkgdir => $destination, reused => 0 };
+    return { %$media, $role => $destination, reused => 0 };
 }
 
 1;

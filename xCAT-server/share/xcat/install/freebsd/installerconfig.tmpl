@@ -1,5 +1,6 @@
 #!/bin/sh
 set -eu
+export TMPDIR=/tmp
 
 pw usermod root -h -
 install -d -m 0700 /root/.ssh
@@ -67,3 +68,17 @@ load_rc_config "$name"
 run_rc_command "$1"
 XCAT_FIRSTBOOT
 chmod 0555 /usr/local/etc/rc.d/xcatfirstboot
+
+postscript_runtime=/var/db/xcat/pkgbase-install/postscript-runtime
+if [ -e "$postscript_runtime" ] || [ -L "$postscript_runtime" ]; then
+    [ -f "$postscript_runtime" ] && [ ! -L "$postscript_runtime" ] || exit 1
+    [ "$(stat -f '%u:%g:%l:%Lp' "$postscript_runtime")" = 0:0:1:400 ]
+    printf 'format\txcat-freebsd-postscripts-1\nruntime-sha256\t%s\n' \
+        "$(sha256 -q /var/db/xcat/pkgbase-install/runtime)" | cmp -s - "$postscript_runtime"
+    [ -f /usr/local/etc/rc.d/xcatpostboot ] && [ ! -L /usr/local/etc/rc.d/xcatpostboot ] || exit 1
+    [ "$(stat -f '%u:%g:%l:%Lp' /usr/local/etc/rc.d/xcatpostboot)" = 0:0:1:555 ]
+    [ ! -e /var/db/xcat/boot-controller ] && [ ! -L /var/db/xcat/boot-controller ] || exit 1
+    mv /var/db/xcat/firstboot /var/db/xcat/boot-controller
+    fsync /var/db/xcat/boot-controller /var/db/xcat
+    sysrc xcatfirstboot_enable=NO xcatpostboot_enable=YES
+fi

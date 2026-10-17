@@ -1,0 +1,775 @@
+#!/bin/sh
+
+set -eu
+umask 077
+export LC_ALL=C
+. "$(dirname "$0")/xcat-install-lib.sh"
+[ "$#" -ge 2 ] || exit 2
+storage_work=$1 storage_action=$2
+shift 2
+case "$storage_work" in /*) ;; *) exit 1 ;; esac
+case "$storage_work" in *[!A-Za-z0-9_./-]*|*/../*|*/./*|*/..|*/.) exit 1 ;; esac
+[ "$(id -u)" = 0 ]
+storage_checked=0
+trap 'storage_rc=$?; trap - EXIT; if [ "$storage_rc" -ne 0 ]; then [ "$storage_checked" -ne 1 ] || { : > "$storage_work/failed" || :; }; printf "xCAT storage: %s rejected; installation cannot continue.\n" "$storage_action" >&2; fi; exit "$storage_rc"' EXIT
+
+storage_acquire()
+{
+    if ! mkdir "$storage_work/busy"; then
+        : > "$storage_work/failed" || :
+        exit 1
+    fi
+    [ -f "$storage_work/ready" ] && [ ! -L "$storage_work/ready" ] || exit 1
+    [ "$(cat "$storage_work/ready")" = ready ]
+    rm "$storage_work/ready"
+    [ ! -e "$storage_work/failed" ]
+}
+
+storage_release()
+{
+    [ ! -e "$storage_work/failed" ]
+    rm "$storage_work/busy/operation"
+    rmdir "$storage_work/busy"
+    printf 'ready\n' > "$storage_work/ready"
+}
+
+storage_approve()
+{
+    [ ! -e "$storage_work/failed" ]
+    printf '%s\n' "$1" > "$storage_work/busy/completion"
+    printf '%s\n' "$storage_operation" > "$storage_work/busy/approved"
+}
+
+storage_load()
+{
+    for storage_file in config snapshot pins; do
+        [ -f "$storage_work/$storage_file" ] && [ ! -L "$storage_work/$storage_file" ] || exit 1
+    done
+    [ "$(sha256 -q "$storage_work/config" "$storage_work/snapshot")" = "$(cat "$storage_work/pins")" ]
+    xcat_read_config "$storage_work/config"
+    [ "$XCAT_FORMAT" = xcat-freebsd-install-4 ]
+    XCAT_WORK=$storage_work
+    storage_snapshot=$(cat "$storage_work/snapshot")
+    storage_members=$(xcat_zfs_members)
+    storage_count=$(printf '%s\n' "$storage_members" | awk 'END {print NR}')
+    storage_next=$(cat "$storage_work/next")
+    case "$storage_next" in ''|*[!0-9]*) exit 1 ;; esac
+    [ "$storage_next" -le "$storage_count" ]
+    storage_current=$(cat "$storage_work/current")
+    storage_phase=$(cat "$storage_work/phase")
+    storage_boot=$(cat "$storage_work/boot")
+    case "$storage_boot" in BIOS) storage_root_index=2 ;; BIOS+UEFI) storage_root_index=3 ;; *) exit 1 ;; esac
+    storage_prefix=xe$XCAT_GENERATION
+    storage_primary= storage_extra= storage_efi_mount=
+    if [ "$storage_boot" = BIOS+UEFI ]; then
+        . "$(dirname "$0")/xcat-storage-efi.sh"
+        storage_efi_load
+    fi
+}
+
+storage_identity()
+{
+    storage_now=$(xcat_zfs_disk_inventory)
+    storage_identity_now=$(printf '%s\n' "$storage_now" | cut -f1-5,7)
+    storage_identity_old=$(printf '%s\n' "$storage_snapshot" | cut -f1-5,7)
+    [ "$storage_identity_now" = "$storage_identity_old" ]
+    [ -z "$(geli status -s)" ]
+}
+
+storage_table()
+{
+    storage_active_esps=
+    [ "$storage_boot" != BIOS+UEFI ] || storage_active_esps=$(storage_efi_modes)
+    storage_raw=$(gpart list -a)
+    storage_rows=$(printf '%s\n' "$storage_raw" |
+        XCAT_STORAGE_MEMBERS="$storage_snapshot" XCAT_STORAGE_POOL="$1" XCAT_STORAGE_ROOT="$storage_root_index" XCAT_STORAGE_ESPS="$storage_active_esps" awk '
+        function finish( k, i, mode) {
+            if (!selected || !provider) return
+            i=value["index"]
+            k=d SUBSEP i
+            if (i !~ /^[1-3]$/ || (k in row) || provider != d "p" i ||
+                value["type"] !~ /^(efi|freebsd-boot|freebsd-zfs)$/ ||
+                value["label"] !~ /^[A-Za-z0-9_.+-]+$/ ||
+                value["rawuuid"] !~ /^[0-9a-f-]+$/ || length(value["rawuuid"]) != 36 ||
+                value["Mediasize"] !~ /^[1-9][0-9]*$/ || value["Mediasize"]+0 > capacity[d] ||
+                value["Sectorsize"] != sector[d] || value["offset"] !~ /^[1-9][0-9]*$/ ||
+                value["offset"]+value["Mediasize"] > capacity[d] ||
+                value["Mediasize"] % sector[d] || value["offset"] % sector[d]) bad=1
+            for (i in required) if (seen[i] != 1) bad=1
+            mode="r0w0e0"
+            if (pool && value["index"] == rootidx) mode="r1w1e1"
+            if (provider in esps) mode="r1w1e2"
+            if (value["Mode"] != mode) bad=1
+            row[k]="P\t" d "\t" value["index"] "\t" provider "\t" value["type"] "\t" value["label"] "\t" value["rawuuid"] "\t" value["Mediasize"] "\t" value["Sectorsize"] "\t" value["offset"]
+            count[d]++
+            provider=""
+        }
+        BEGIN {
+            n=split(ENVIRON["XCAT_STORAGE_MEMBERS"], rows, "\n")
+            for (i=1;i<=n;i++) {split(rows[i], f, "\t"); wanted[f[1]]=1; disk[i]=f[1]; capacity[f[1]]=f[4]; sector[f[1]]=f[5]}
+            split("index type label rawuuid Mediasize Sectorsize offset Mode", fields, " ")
+            for (i in fields) required[fields[i]]=1
+            pool=ENVIRON["XCAT_STORAGE_POOL"]+0; rootidx=ENVIRON["XCAT_STORAGE_ROOT"]
+            count_esps=split(ENVIRON["XCAT_STORAGE_ESPS"], active_esps, "\n")
+            for (i=1;i<=count_esps;i++) if (length(active_esps[i])) esps[active_esps[i]]=1
+        }
+        $1 == "Geom" && $2 == "name:" {
+            finish(); d=$3; selected=(d in wanted); section=""; provider=""
+            if (selected && geoms[d]++) bad=1
+        }
+        selected && $1 == "Providers:" {section="providers"; next}
+        selected && $1 == "Consumers:" {finish(); section="consumers"; next}
+        selected && section == "" {
+            if ($1 == "scheme:" && $2 != "GPT") bad=1
+            if ($1 == "state:" && $2 != "OK") bad=1
+            if ($1 == "modified:" && $2 != "false") bad=1
+            if ($1 ~ /^(scheme|state|modified|first|last|entries):$/) {
+                key=$1; sub(/:$/, "", key)
+                if (meta_seen[d,key]++) bad=1
+                meta[d,key]=$2
+            }
+        }
+        selected && section == "providers" && $2 == "Name:" {
+            finish(); provider=$3; delete value; delete seen; next
+        }
+        selected && section == "providers" && provider {
+            key=$1; sub(/:$/, "", key)
+            if (key in required) {value[key]=$2; seen[key]++}
+        }
+        END {
+            finish()
+            for (j=1;j<=n;j++) {
+                d=disk[j]; if (!(d in geoms)) continue
+                split("scheme state modified first last entries", keys, " ")
+                for (i in keys) if (meta_seen[d,keys[i]] != 1) bad=1
+                if (meta[d,"first"] !~ /^[1-9][0-9]*$/ || meta[d,"last"] !~ /^[1-9][0-9]*$/ ||
+                    meta[d,"entries"] !~ /^[1-9][0-9]*$/ || meta[d,"first"]+0 >= meta[d,"last"]+0 ||
+                    meta[d,"last"]+0 >= capacity[d]/sector[d]) bad=1
+                output=output "D\t" d "\t" meta[d,"first"] "\t" meta[d,"last"] "\t" meta[d,"entries"] "\n"
+                for (i=1;i<=count[d];i++) {
+                    k=d SUBSEP i
+                    if (!(k in row)) bad=1
+                    output=output row[k] "\n"
+                }
+            }
+            if (bad) exit 1
+            printf "%s", output
+        }')
+    while IFS= read -r storage_line; do
+        [ -n "$storage_line" ] || continue
+        case "$storage_line" in
+            P*)
+                storage_provider=$(printf '%s\n' "$storage_line" | cut -f4)
+                storage_id=$(stat -f '%HT:%r' "/dev/$storage_provider")
+                case "$storage_id" in 'Character Device:'*) ;; *) exit 1 ;; esac
+                printf '%s\t%s\n' "$storage_line" "$storage_id"
+                ;;
+            D*) printf '%s\n' "$storage_line" ;;
+            *) exit 1 ;;
+        esac
+    done <<XCAT_STORAGE_TABLE
+$storage_rows
+XCAT_STORAGE_TABLE
+}
+
+storage_graph()
+{
+    storage_graph_now=$(sysctl -n kern.geom.conftxt)
+    printf '%s\n' "$storage_graph_now" |
+        XCAT_STORAGE_MEMBERS="$storage_snapshot" XCAT_STORAGE_TABLE="$storage_table_now" awk '
+        BEGIN {
+            n=split(ENVIRON["XCAT_STORAGE_MEMBERS"], rows, "\n")
+            for (i=1;i<=n;i++) {split(rows[i], f, "\t"); wanted[f[1]]=1; serial[f[1]]=f[2]; size[f[1]]=f[4]; sector[f[1]]=f[5]}
+            n=split(ENVIRON["XCAT_STORAGE_TABLE"], rows, "\n")
+            for (i=1;i<=n;i++) {
+                split(rows[i], f, "\t"); if (f[1] != "P") continue
+                parent[f[4]]=f[2]; type[f[4]]=f[5]; label[f[4]]=f[6]; uuid[f[4]]=f[7]
+                size[f[4]]=f[8]; sector[f[4]]=f[9]; offset[f[4]]=f[10]; partidx[f[4]]=f[3]
+            }
+        }
+        NF {
+            if ($1 !~ /^[0-9]+$/ || NF < 5) {bad=1; next}
+            if ($1 == 0) {
+                root=$3; part=""; diskalias=""; partdepth=0
+                if (root in wanted) {
+                    roots[root]++
+                    if ($2 != "DISK" || $4 != size[root] || $5 != sector[root]) bad=1
+                }
+                next
+            }
+            if (!(root in wanted)) next
+            if ($2 == "PART" && ($1 == 1 || ($1 == 2 && diskalias != ""))) {
+                part=($1 == 1 ? $3 : root "p" $7)
+                partdepth=$1
+                if ($1 == 1) {diskalias=""; if (seen[part]++) bad=1}
+                else if ($3 != diskalias "p" $7 || aliasparts[part]++) bad=1
+                if (parent[part] != root || $4 != size[part] || $5 != sector[part] ||
+                    $6 != "i" || $7 != partidx[part] || $8 != "o" || $9 != offset[part] ||
+                    NF != 15 || $10 != "ty" || $11 != type[part] || $12 != "xs" || $13 != "GPT" || $14 != "xt") bad=1
+            } else if ($1 == 1 && $2 == "LABEL" && $3 == "diskid/DISK-" serial[root]) {
+                part=""; diskalias=$3; partdepth=0
+                if (NF != 9 || $4 != size[root] || $5 != sector[root] ||
+                    $6 != "i" || $7 != 0 || $8 != "o" || $9 != 0 || aliases[$3]++) bad=1
+            } else if ($1 == partdepth+1 && $2 == "LABEL" && part != "") {
+                if (NF != 9 || ($3 != "gpt/" label[part] && $3 != "gptid/" uuid[part]) ||
+                    $4 != size[part] || $5 != sector[part] || $6 != "i" || $7 != 0 ||
+                    $8 != "o" || $9 != 0 || aliases[$3]++) bad=1
+            } else bad=1
+        }
+        END {
+            for (d in wanted) if (roots[d] != 1) bad=1
+            for (p in parent) if (seen[p] != 1) bad=1
+            exit bad
+        }'
+}
+
+storage_pool()
+{
+    storage_pools=$(zpool list -H -o name,guid)
+    if [ ! -f "$storage_work/guid" ]; then
+        [ -z "$storage_pools" ]
+        return
+    fi
+    storage_guid=$(cat "$storage_work/guid")
+    case "$storage_guid" in ''|*[!0-9]*) exit 1 ;; esac
+    case "$storage_phase" in
+        exported|complete)
+            [ -z "$storage_pools" ]
+            [ "$(storage_labels 1)" = "$(cat "$storage_work/labels")" ]
+            return
+            ;;
+    esac
+    [ "$storage_pools" = "$(printf 'zroot\t%s' "$storage_guid")" ]
+    storage_status=$(zpool status -LP zroot)
+    storage_leaves=$(printf '%s\n' "$storage_status" | awk '
+        $1 == "NAME" && $2 == "STATE" {active=1; next}
+        /^errors:/ {active=0}
+        active && NF {
+            if (NF != 5 || $2 != "ONLINE" || $3 != 0 || $4 != 0 || $5 != 0) exit 1
+            print $1
+        }')
+    storage_expected=$(printf '%s\n' "$storage_members" | awk -F '\t' -v topology="$XCAT_ZFS_TOPOLOGY" -v partidx="$storage_root_index" '
+        BEGIN {print "zroot"}
+        $3 != group {group=$3; print (topology == "raid10" ? "mirror" : topology) "-" (group-1)}
+        {print "/dev/" $1 "p" partidx}')
+    [ "$storage_leaves" = "$storage_expected" ]
+}
+
+storage_labels()
+{
+    for storage_disk in $(printf '%s\n' "$storage_members" | cut -f1); do
+        zdb -lll "/dev/${storage_disk}p$storage_root_index" > "$storage_work/labels-$storage_disk.out" 2> "$storage_work/labels-$storage_disk.err" || return 1
+        [ ! -s "$storage_work/labels-$storage_disk.err" ] || return 1
+        XCAT_STORAGE_GUID="$storage_guid" awk -v disk="$storage_disk" -v state="$1" '
+            function guid(s) {
+                return s ~ /^[1-9][0-9]*$/ && length(s) <= 20 &&
+                    (length(s) < 20 || "g" s <= "g18446744073709551615")
+            }
+            function finish( k) {
+                if (!active) return
+                for (k in required) if (seen[k] != 1) bad=1
+                if (value["name"] != "\047zroot\047" || value["state"] != state ||
+                    !guid(value["pool_guid"]) || !guid(value["top_guid"]) || !guid(value["guid"]) ||
+                    "g" value["pool_guid"] != "g" ENVIRON["XCAT_STORAGE_GUID"]) bad=1
+                row=disk "\t" value["pool_guid"] "\t" value["top_guid"] "\t" value["guid"]
+                if (count++ && row != first) bad=1
+                first=row
+            }
+            BEGIN {split("name state pool_guid top_guid guid", keys, " "); for (k in keys) required[keys[k]]=1}
+            $1 == "LABEL" {
+                finish()
+                if (NF != 2 || $2 !~ /^[0-3]$/ || labels[$2]++) bad=1
+                active=1; delete seen; delete value; next
+            }
+            active && /^    [^ ]/ {
+                key=$1; sub(/:$/, "", key)
+                if (key in required) {if (NF != 2) bad=1; seen[key]++; value[key]=$2}
+            }
+            END {finish(); if (count != 4 || bad) exit 1; print first}
+        ' "$storage_work/labels-$storage_disk.out" || return 1
+    done
+}
+
+storage_check()
+{
+    storage_identity
+    storage_has_pool=0
+    [ ! -f "$storage_work/guid" ] || storage_has_pool=1
+    case "$storage_phase" in exported|complete) storage_has_pool=0 ;; esac
+    storage_table_now=$(storage_table "$storage_has_pool")
+    [ "$storage_table_now" = "$(cat "$storage_work/table")" ]
+    storage_graph
+    storage_pool
+}
+
+storage_target()
+{
+    storage_mounts=$(mount -p)
+    printf '%s\n' "$storage_mounts" | awk -v target="$(cat "$storage_work/root")" '
+        $2 == target {found++; if ($1 != "zroot/ROOT/default" || $3 != "zfs") bad=1}
+        END {exit found != 1 || bad}'
+}
+
+storage_paths()
+{
+    storage_root=$(cat "$storage_work/root")
+    storage_tmpetc=$(cat "$storage_work/tmpetc")
+    storage_tmpboot=$(cat "$storage_work/tmpboot")
+    storage_tmpdir=$(cat "$storage_work/tmpdir")
+    [ "${BSDINSTALL_CHROOT:-}" = "$storage_root" ] &&
+        [ "${BSDINSTALL_TMPETC:-}" = "$storage_tmpetc" ] &&
+        [ "${BSDINSTALL_TMPBOOT:-}" = "$storage_tmpboot" ] &&
+        [ "${TMPDIR:-}" = "$storage_tmpdir" ] &&
+        [ "${PATH_FSTAB:-}" = "$storage_tmpetc/fstab" ] || exit 1
+    for storage_dir in "$storage_tmpetc" "$storage_tmpboot" "$storage_tmpdir"; do
+        [ -d "$storage_dir" ] && [ "$(realpath "$storage_dir")" = "$storage_dir" ] || exit 1
+    done
+    storage_temp_fstab=$storage_tmpdir/bsdinstall-tmp-fstab
+    [ ! -L "$storage_temp_fstab" ]
+    [ ! -e "$storage_temp_fstab" ] || [ -f "$storage_temp_fstab" ]
+}
+
+storage_fstab()
+{
+    [ -f "$1" ] && [ ! -L "$1" ] && [ "$(realpath "$1")" = "$1" ] || exit 1
+    [ "$(wc -c < "$1")" -le 65536 ]
+    if [ "$storage_boot" = BIOS+UEFI ]; then
+        storage_efi_fstab "$1" "${2:-rw}"
+    else
+        awk 'NF && $1 !~ /^#/ {exit 1}' "$1"
+    fi
+}
+
+storage_mounts()
+{
+    storage_mounts_now=$(mount -p)
+    printf '%s\n' "$storage_mounts_now" | awk -v root="$(cat "$storage_work/root")" -v rooted="$1" -v devices="$2" -v primary="$storage_primary" '
+        {
+            owned=($1 == "zroot" || index($1, "zroot/") == 1)
+            inside=($2 == root || index($2, root "/") == 1)
+            if ($3 == "zfs" && owned && !inside) bad=1
+            if (!inside) next
+            mounts++
+            if ($2 == root) {roots++; if ($1 != "zroot/ROOT/default" || $3 != "zfs") bad=1}
+            if ($2 == root "/dev") {devs++; if ($1 != "devfs" || $3 != "devfs") bad=1}
+            else if (primary != "" && $2 == root "/boot/efi") {if ($1 != primary || $3 != "msdosfs") bad=1}
+            else if ($3 != "zfs" || !owned) bad=1
+        }
+        END {exit bad || roots != rooted || devs != devices || (!rooted && mounts)}'
+    [ "$storage_boot" != BIOS+UEFI ] || storage_efi_mounts
+}
+
+storage_step_before()
+{
+    storage_paths
+    storage_check
+    case "$*" in
+        'bsdinstall mount')
+            [ "$#" -eq 2 ] && [ "$storage_phase" = configured ] || exit 1
+            storage_mounts 1 0
+            storage_fstab "$storage_tmpetc/fstab"
+            [ ! -e /packages ] && [ ! -L /packages ] || exit 1
+            [ ! -L "$storage_root/dev" ]
+            [ ! -e "$storage_root/dev" ] || [ "$(realpath "$storage_root/dev")" = "$storage_root/dev" ]
+            if [ "$storage_boot" = BIOS+UEFI ]; then
+                [ "$(realpath "$storage_root/boot")" = "$storage_root/boot" ]
+                [ ! -L "$storage_root/boot/efi" ]
+            fi
+            storage_kind=mount
+            ;;
+        'bsdinstall umount')
+            [ "$#" -eq 2 ] && [ "$storage_phase" = boot-configured ] || exit 1
+            storage_mounts 1 1
+            storage_fstab "$storage_tmpetc/fstab"
+            storage_fstab "$storage_root/etc/fstab"
+            [ ! -e "$storage_root/dist" ]
+            [ "$storage_boot" != BIOS+UEFI ] || storage_efi_noauto
+            sha256 -q "$storage_root/etc/fstab" > "$storage_work/fstab"
+            storage_kind=umount
+            ;;
+        'zpool export zroot')
+            [ "$#" -eq 3 ] && [ "$storage_phase" = unmounted ] || exit 1
+            storage_mounts 1 0
+            [ "$(sha256 -q "$storage_root/etc/fstab")" = "$(cat "$storage_work/fstab")" ]
+            [ "$(storage_labels 0)" = "$(cat "$storage_work/labels")" ]
+            storage_kind=export
+            ;;
+        *) exit 1 ;;
+    esac
+    printf '%s\n' "$storage_kind" > "$storage_work/kind"
+    storage_approve step-after
+}
+
+storage_bootcode()
+{
+    storage_sector=$(printf '%s\n' "$storage_snapshot" | awk -F '\t' -v d="$storage_current" '$1 == d {print $5; found++} END {if (found != 1) exit 1}')
+    case "$storage_sector" in 512|4096) ;; *) exit 1 ;; esac
+    storage_bytes=$(wc -c < /boot/gptzfsboot)
+    [ "$storage_bytes" -gt 0 ] && [ "$storage_bytes" -le 524288 ] || exit 1
+    dd if="/dev/${storage_current}p$((storage_root_index-1))" of="$storage_work/boot-image" \
+        bs="$storage_sector" count="$(((storage_bytes+storage_sector-1)/storage_sector))" 2> "$storage_work/boot-read.log"
+    head -c "$storage_bytes" "$storage_work/boot-image" > "$storage_work/boot-code"
+    cmp /boot/gptzfsboot "$storage_work/boot-code"
+    dd if="/dev/$storage_current" of="$storage_work/pmbr-image" bs="$storage_sector" count=1 2> "$storage_work/pmbr-read.log"
+    head -c 440 "$storage_work/pmbr-image" > "$storage_work/pmbr-disk"
+    head -c 440 /boot/pmbr > "$storage_work/pmbr-source"
+    [ "$(wc -c < "$storage_work/pmbr-source")" -eq 440 ]
+    cmp "$storage_work/pmbr-source" "$storage_work/pmbr-disk"
+}
+
+storage_empty_part()
+{
+    storage_record=$(printf '%s\n' "$storage_table_now" | awk -F '\t' -v p="$1" '$1 == "P" && $4 == p {print $4 "\t-\t1\t" $8 "\t" $9 "\tr0w0e0\t0"; found++} END {if (found != 1) exit 1}')
+    storage_label_rc=0
+    zdb -l "/dev/$1" > "$storage_work/labels.log" 2>&1 || storage_label_rc=$?
+    [ "$storage_label_rc" -eq 2 ]
+    xcat_check_empty_disks "$storage_record"
+}
+
+storage_native_before()
+{
+    while [ "$#" -gt 0 ]; do
+        case "$1" in -d) shift ;; -k) [ "$#" -ge 2 ]; [ "$2" = justaddedpart ]; shift 2 ;; *) break ;; esac
+    done
+    [ "$#" -ge 3 ]
+    storage_function=$1 storage_program=$2 storage_template=$3
+    shift 3
+    storage_root=$(cat "$storage_work/root")
+    storage_tmpetc=$(cat "$storage_work/tmpetc")
+    storage_tmpboot=$(cat "$storage_work/tmpboot")
+    case "$storage_function" in zfs_create_diskpart|zfs_create_boot) ;; *) exit 1 ;; esac
+    storage_kind=other storage_decision=run
+    case "$storage_program:$storage_template" in
+        'gpart:gpart create -s %s "%s"')
+            [ "$#" -eq 2 ] && [ "$1" = gpt ] && [ -z "$storage_current" ] && [ "$storage_phase" = partition ] || exit 1
+            storage_disk=$(printf '%s\n' "$storage_members" | awk -v n="$storage_next" 'NR == n+1 {print $1}')
+            [ -n "$storage_disk" ] && [ "$2" = "$storage_disk" ] || exit 1
+            storage_row=$(printf '%s\n' "$storage_now" | awk -F '\t' -v d="$storage_disk" '$1 == d {if ($6 != "r0w0e0") exit 1; print}')
+            [ -n "$storage_row" ]
+            printf '%s\n' "$storage_graph_now" | xcat_zfs_initial_graph "$storage_row"
+            xcat_check_empty_disks "$storage_row"
+            storage_kind=create
+            ;;
+        'gpart:gpart add %s -l %s -t %s -s %s "%s"'|'gpart:gpart add %s -l %s -t %s "%s"')
+            [ "$storage_phase" = partition ] && [ -n "$storage_current" ] || exit 1
+            [ "$#" -ge 4 ] && [ "$#" -le 5 ] || exit 1
+            storage_disk=$storage_current
+            storage_index=$(printf '%s\n' "$storage_table_now" | awk -F '\t' -v d="$storage_disk" '$1 == "P" && $2 == d {n++} END {print n+1}')
+            storage_label=$2 storage_type=$3
+            if [ "$storage_index" -eq "$storage_root_index" ]; then
+                [ "$#" -eq 4 ] && [ "$1" = '-a 1m' ] && [ "$2" = "zfs$storage_next" ] && [ "$3" = freebsd-zfs ] && [ "$4" = "$storage_disk" ] || exit 1
+            elif [ "$storage_boot" = BIOS+UEFI ] && [ "$storage_index" -eq 1 ]; then
+                [ "$#" -eq 5 ] && [ "$1" = '-a 4k' ] && [ "$2" = "$storage_prefix$storage_next" ] && [ "$3" = efi ] && [ "$4" = 260M ] && [ "$5" = "$storage_disk" ] || exit 1
+            else
+                [ "$storage_index" -eq "$((storage_root_index-1))" ]
+                [ "$#" -eq 5 ] && [ "$1" = '-a 4k' ] && [ "$2" = "gptboot$storage_next" ] && [ "$3" = freebsd-boot ] && [ "$4" = 512k ] && [ "$5" = "$storage_disk" ] || exit 1
+            fi
+            storage_kind=add
+            printf '%s\t%s\t%s\n' "$storage_index" "$storage_type" "$storage_label" > "$storage_work/addition"
+            ;;
+        'gpart:gpart bootcode -b "%s" -p "%s" -i %s "%s"')
+            [ "$#" -eq 4 ] && [ "$1" = /boot/pmbr ] && [ "$2" = /boot/gptzfsboot ] && [ "$3" = "$((storage_root_index-1))" ] && [ "$4" = "$storage_current" ] || exit 1
+            [ -n "$storage_current" ] && [ ! -e "$storage_work/bios" ] && [ "$storage_phase" = partition ] || exit 1
+            storage_kind=bios
+            ;;
+        'newfs_msdos:newfs_msdos -F 32 -c 1 "%s"')
+            [ "$#" -eq 1 ] && [ "$storage_boot" = BIOS+UEFI ] && [ -n "$storage_current" ] && [ ! -e "$storage_work/efi" ] || exit 1
+            [ "$1" = "/dev/gpt/$storage_prefix$storage_next" ]
+            printf '%s\n' "$storage_graph_now" | awk -v p="$storage_current" -v label="gpt/$storage_prefix$storage_next" '
+                $1 == 0 {d=$3} $1 == 1 {part=$3}
+                $3 == label {found++; if (d != p || part != p "p1" || $1 != 2 || $2 != "LABEL") bad=1}
+                END {exit found != 1 || bad}'
+            storage_empty_part "${storage_current}p1"
+            storage_kind=efi
+            ;;
+        'zpool:zpool destroy "%s"')
+            [ "$#" -eq 1 ] && [ "$1" = zroot ] && [ "$storage_next" -eq 0 ] && [ -z "$storage_current" ] && [ -z "$storage_table_now" ] && [ "$storage_phase" = partition ] && [ ! -e "$storage_work/destroy-skipped" ] || exit 1
+            storage_kind=destroy-skipped storage_decision=skip
+            ;;
+        'zpool:zpool labelclear -f "%s"')
+            [ "$#" -eq 1 ] && [ -n "$storage_current" ] && [ "$1" = "/dev/${storage_current}p$storage_root_index" ] && [ "$storage_phase" = partition ] && [ ! -e "$storage_work/clean" ] || exit 1
+            storage_empty_part "${storage_current}p$storage_root_index"
+            storage_kind=clean storage_decision=skip
+            ;;
+        'zpool:zpool create %s "%s" %s %s')
+            [ "$#" -eq 4 ] && [ "$storage_next" -eq "$storage_count" ] && [ -z "$storage_current" ] && [ "$storage_phase" = partition ] || exit 1
+            storage_root=$(cat "$storage_work/root")
+            [ "$1" = "-o altroot=$storage_root -O compression=on -O atime=off -o cachefile=none -m none " ] && [ "$2" = zroot ] || exit 1
+            storage_vdevs=$(printf '%s\n' "$storage_members" | awk -F '\t' -v topology="$XCAT_ZFS_TOPOLOGY" -v partidx="$storage_root_index" '
+                $3 != group {group=$3; if (topology == "raid10") line=line " mirror"}
+                {line=line " " $1 "p" partidx} END {sub(/^ /,"",line); print line}')
+            storage_given=$(printf '%s\n' "$4" | awk '{$1=$1; print}')
+            [ "$storage_given" = "$storage_vdevs" ]
+            if [ "$XCAT_ZFS_TOPOLOGY" = raid10 ]; then [ -z "$3" ]; else [ "$3" = "$XCAT_ZFS_TOPOLOGY" ]; fi
+            for storage_disk in $(printf '%s\n' "$storage_members" | cut -f1); do storage_empty_part "${storage_disk}p$storage_root_index"; done
+            storage_kind=pool
+            ;;
+        'zpool:zpool set %s "%s"')
+            [ "$storage_phase" = pool ] && [ "$#" -eq 2 ] && [ "$2" = zroot ] || exit 1
+            case "$1" in
+                'bootfs="zroot/ROOT/default"') ;;
+                "cachefile=\"$storage_root/boot/zfs/zpool.cache\"") storage_target ;;
+                *) exit 1 ;;
+            esac
+            ;;
+        'zfs:zfs create %s "%s"')
+            [ "$storage_phase" = pool ] && [ "$#" -eq 2 ] || exit 1
+            case "$2" in zroot/ROOT|zroot/ROOT/default|zroot/home|zroot/tmp|zroot/usr|zroot/usr/ports|zroot/usr/src|zroot/var|zroot/var/audit|zroot/var/crash|zroot/var/log|zroot/var/mail|zroot/var/tmp) ;; *) exit 1 ;; esac
+            case "$1" in *[!A-Za-z0-9_=/.,\ -]*) exit 1 ;; esac
+            ;;
+        'zfs:zfs set "%s" "%s"')
+            [ "$storage_phase" = pool ] && [ "$#" -eq 2 ] || exit 1
+            case "$1:$2" in 'mountpoint=/zroot:zroot'|'canmount=noauto:zroot/ROOT/default') ;; *) exit 1 ;; esac
+            ;;
+        'sysctl:sysctl vfs.zfs.vdev.min_auto_ashift=12') [ "$#" -eq 0 ] && [ "$storage_phase" = partition ] || exit 1 ;;
+        'sh::> "%s"')
+            [ "$#" -eq 1 ] && [ "$1" = "$storage_tmpetc/fstab" ] && [ "$storage_phase" = partition ] || exit 1
+            [ ! -L "$1" ] && [ "$(realpath "$storage_tmpetc")" = "$storage_tmpetc" ] || exit 1
+            ;;
+        'printf:printf "$FSTAB_FMT" "%s" "%s" "%s" "%s" "%s" "%s" >> "%s"')
+            [ "$#" -eq 7 ] && [ "$7" = "$storage_tmpetc/fstab" ] && [ "$storage_phase" = partition ] || exit 1
+            [ -f "$7" ] && [ ! -L "$7" ] && [ "$(realpath "$storage_tmpetc")" = "$storage_tmpetc" ] || exit 1
+            if [ "$1" = '# Device' ]; then
+                [ "$2:$3:$4:$5:$6" = 'Mountpoint:FStype:Options:Dump:Pass#' ]
+            else
+                [ "$storage_boot" = BIOS+UEFI ] && [ "$storage_next" -eq 0 ] && [ "$1" = "/dev/gpt/${storage_prefix}0" ] && [ "$2:$3:$4:$5:$6" = '/boot/efi:msdosfs:rw:2:2' ] || exit 1
+            fi
+            ;;
+        'echo:echo "%s" >> "%s"')
+            [ "$#" -eq 2 ] && [ "$storage_phase" = pool ] && [ ! -L "$2" ] || exit 1
+            case "$1:$2" in
+                "zfs_enable=\\\"YES\\\":$storage_tmpetc/rc.conf.zfs"|"kern.geom.label.disk_ident.enable=\\\"0\\\":$storage_tmpboot/loader.conf.zfs"|"kern.geom.label.gptid.enable=\\\"0\\\":$storage_tmpboot/loader.conf.zfs"|"vfs.zfs.vdev.min_auto_ashift=12:$storage_tmpetc/sysctl.conf.zfs") ;;
+                *) exit 1 ;;
+            esac
+            [ "$(realpath "$(dirname "$2")")" = "$(dirname "$2")" ]
+            ;;
+        'mkdir:mkdir -p "%s"')
+            [ "$#" -eq 1 ] && [ "$storage_phase" = pool ] || exit 1
+            case "$1" in "$storage_root/tmp"|"$storage_root/var/tmp"|"$storage_root/boot/zfs") ;; *) exit 1 ;; esac
+            storage_target
+            ;;
+        'chmod:chmod %s "%s"')
+            [ "$#" -eq 2 ] && [ "$1" = 1777 ] && [ "$storage_phase" = pool ] || exit 1
+            case "$2" in "$storage_root/tmp"|"$storage_root/var/tmp") ;; *) exit 1 ;; esac
+            [ ! -L "$2" ] && [ "$(realpath "$2")" = "$2" ] || exit 1
+            storage_target
+            ;;
+        *) exit 1 ;;
+    esac
+    printf '%s\n' "$storage_kind" > "$storage_work/kind"
+    [ "$storage_kind" != create ] || printf '%s\n' "$storage_disk" > "$storage_work/new-disk"
+}
+
+if [ "$storage_action" = arm ]; then
+    [ "$#" -eq 2 ]
+    [ "$(realpath "$(dirname "$storage_work")")/$(basename "$storage_work")" = "$storage_work" ]
+    mkdir -m 0700 "$storage_work"
+    storage_checked=1
+    cp "$1" "$storage_work/config"
+    cp "$2" "$storage_work/snapshot"
+    chmod 0400 "$storage_work/config" "$storage_work/snapshot"
+    sha256 -q "$storage_work/config" "$storage_work/snapshot" > "$storage_work/pins"
+    printf '0\n' > "$storage_work/next"
+    : > "$storage_work/current"
+    : > "$storage_work/table"
+    printf 'armed\n' > "$storage_work/phase"
+    case "$(sysctl -n machdep.bootmethod)" in BIOS) printf 'BIOS\n' ;; UEFI) printf 'BIOS+UEFI\n' ;; *) exit 1 ;; esac > "$storage_work/boot"
+    storage_load
+    [ "$(xcat_check_zfs_initial)" = "$storage_snapshot" ]
+    printf 'ready\n' > "$storage_work/ready"
+    exit 0
+fi
+
+[ -d "$storage_work" ] && [ ! -L "$storage_work" ] && [ "$(realpath "$storage_work")" = "$storage_work" ] || exit 1
+[ "$(stat -f '%u:%Lp' "$storage_work")" = 0:700 ]
+storage_checked=1
+storage_operation=$(printf '%s\0' "$@" | sha256 -q)
+xcat_hex "$storage_operation" 64
+if [ "$storage_action" = after ] || [ "$storage_action" = step-after ] || [ "$storage_action" = boot-after ]; then
+    [ -d "$storage_work/busy" ] && [ ! -L "$storage_work/busy" ] && [ ! -e "$storage_work/ready" ] && [ ! -e "$storage_work/failed" ] || exit 1
+    [ -f "$storage_work/busy/approved" ] && [ ! -L "$storage_work/busy/approved" ] || exit 1
+    storage_approved=$(cat "$storage_work/busy/approved")
+    rm "$storage_work/busy/approved"
+    [ -f "$storage_work/busy/completion" ] && [ ! -L "$storage_work/busy/completion" ] || exit 1
+    [ "$(cat "$storage_work/busy/completion")" = "$storage_action" ]
+    rm "$storage_work/busy/completion"
+    [ "$storage_approved" = "$storage_operation" ]
+    [ "$(cat "$storage_work/busy/operation")" = "$storage_operation" ]
+else
+    storage_acquire
+    printf '%s\n' "$storage_operation" > "$storage_work/busy/operation"
+fi
+storage_load
+
+case "$storage_action" in
+    efi-prefix) [ "$#" -eq 0 ] && [ "$storage_phase" = armed ] || exit 1; storage_release; printf '%s\n' "$storage_prefix" ;;
+    start)
+        [ "$#" -eq 6 ] && [ "$storage_phase" = armed ] || exit 1
+        storage_disks=$(printf '%s\n' "$storage_members" | awk '{s=s (NR == 1 ? "" : " ") $1} END {print s}')
+        [ "$1" = "$storage_disks" ] && [ "$2" = "$XCAT_ZFS_TOPOLOGY" ] && [ "$3" = zroot ] && [ "$4" = 0 ] && [ -z "$5$6" ] || exit 1
+        [ "${ZFSBOOT_PARTITION_SCHEME:-}" = GPT ] && [ -z "${ZFSBOOT_POOL_SIZE:-}${ZFSBOOT_SWAP_ENCRYPTION:-}${ZFSBOOT_SWAP_MIRROR:-}" ] || exit 1
+        [ -z "${ZFSBOOT_BOOT_TYPE:-}" ] || [ "$ZFSBOOT_BOOT_TYPE" = "$storage_boot" ]
+        storage_parent=$(dirname "$storage_work")
+        [ "$(stat -f '%u:%Lp' "$storage_parent")" = 0:700 ]
+        for storage_dir in "$BSDINSTALL_CHROOT" "$BSDINSTALL_TMPETC" "$BSDINSTALL_TMPBOOT" "${TMPDIR:-}"; do
+            case "$storage_dir" in /*) ;; *) exit 1 ;; esac
+            case "$storage_dir" in *[!A-Za-z0-9_./-]*) exit 1 ;; esac
+            [ -d "$storage_dir" ] && [ "$(realpath "$storage_dir")" = "$storage_dir" ] && [ "$storage_dir" != / ] || exit 1
+            [ "$(dirname "$storage_dir")" = "$storage_parent" ] && [ "$storage_dir" != "$storage_work" ] || exit 1
+        done
+        [ "$(printf '%s\n' "$BSDINSTALL_CHROOT" "$BSDINSTALL_TMPETC" "$BSDINSTALL_TMPBOOT" "$TMPDIR" | sort -u | wc -l)" -eq 4 ]
+        printf '%s\n' "$BSDINSTALL_CHROOT" > "$storage_work/root"
+        printf '%s\n' "$BSDINSTALL_TMPETC" > "$storage_work/tmpetc"
+        printf '%s\n' "$BSDINSTALL_TMPBOOT" > "$storage_work/tmpboot"
+        printf '%s\n' "$TMPDIR" > "$storage_work/tmpdir"
+        [ "$(xcat_check_zfs_initial)" = "$storage_snapshot" ]
+        printf 'partition\n' > "$storage_work/phase"
+        storage_release
+        ;;
+    attempt)
+        [ "$#" -eq 0 ] && [ "$storage_phase" = partition ] && [ ! -e "$storage_work/attempt" ] || exit 1
+        storage_check
+        : > "$storage_work/attempt"
+        storage_release
+        ;;
+    before)
+        [ -f "$storage_work/attempt" ]
+        storage_check
+        storage_native_before "$@"
+        storage_approve after
+        printf '%s\n' "$storage_decision"
+        ;;
+    after)
+        storage_identity
+        storage_kind=$(cat "$storage_work/kind")
+        storage_has_pool=0
+        if [ "$storage_kind" = pool ] || [ -f "$storage_work/guid" ]; then storage_has_pool=1; fi
+        storage_table_now=$(storage_table "$storage_has_pool")
+        case "$storage_kind" in
+            create|add)
+                storage_old=$(cat "$storage_work/table")
+                storage_added=$(printf '%s\n' "$storage_table_now" | XCAT_STORAGE_OLD="$storage_old" awk '
+                    BEGIN {n=split(ENVIRON["XCAT_STORAGE_OLD"], rows, "\n"); for (i=1;i<=n;i++) if (length(rows[i])) old[rows[i]]=1}
+                    length {if ($0 in old) delete old[$0]; else {print; added++}}
+                    END {for (line in old) exit 1; if (added != 1) exit 1}')
+                if [ "$storage_kind" = create ]; then
+                    storage_current=$(cat "$storage_work/new-disk")
+                    printf '%s\n' "$storage_added" | awk -F '\t' -v d="$storage_current" '$1 != "D" || $2 != d {exit 1}'
+                    printf '%s\n' "$storage_current" > "$storage_work/current"
+                else
+                    storage_addition=$(cat "$storage_work/addition")
+                    printf '%s\n' "$storage_added" | XCAT_STORAGE_ADDITION="$storage_addition" awk -F '\t' -v d="$storage_current" '
+                        BEGIN {split(ENVIRON["XCAT_STORAGE_ADDITION"], a, "\t")}
+                        $1 != "P" || $2 != d || $3 != a[1] || $5 != a[2] || $6 != a[3] {exit 1}
+                        $5 == "efi" && $8 != 272629760 {exit 1}
+                        $5 == "freebsd-boot" && $8 != 524288 {exit 1}'
+                fi
+                printf '%s\n' "$storage_table_now" > "$storage_work/table"
+                ;;
+            pool)
+                [ "$storage_table_now" = "$(cat "$storage_work/table")" ]
+                storage_guid=$(zpool get -H -o value guid zroot)
+                case "$storage_guid" in ''|*[!0-9]*) exit 1 ;; esac
+                [ "$(zpool get -H -o value cachefile zroot)" = none ]
+                printf '%s\n' "$storage_guid" > "$storage_work/guid"
+                printf 'pool\n' > "$storage_work/phase"
+                ;;
+            bios|efi|clean|destroy-skipped)
+                [ "$storage_table_now" = "$(cat "$storage_work/table")" ]
+                [ "$storage_kind" != bios ] || storage_bootcode
+                [ "$storage_kind" != efi ] || [ "$(fstyp "/dev/${storage_current}p1")" = msdosfs ]
+                : > "$storage_work/$storage_kind"
+                ;;
+            other) [ "$storage_table_now" = "$(cat "$storage_work/table")" ] ;;
+            *) exit 1 ;;
+        esac
+        storage_graph
+        storage_pool
+        if [ "$storage_kind" = pool ]; then
+            storage_labels 0 > "$storage_work/labels"
+            awk -F '\t' 'seen[$4]++ {exit 1}' "$storage_work/labels"
+        fi
+        storage_release
+        ;;
+    partitioned)
+        [ "$#" -eq 2 ] && [ "$storage_phase" = partition ] && [ -n "$storage_current" ] && [ "$1" = "$storage_current" ] && [ "$2" = "p$storage_root_index" ] || exit 1
+        storage_check
+        [ -f "$storage_work/bios" ] && [ -f "$storage_work/clean" ] || exit 1
+        [ "$storage_boot" != BIOS+UEFI ] || [ -f "$storage_work/efi" ]
+        storage_parts=$(printf '%s\n' "$storage_table_now" | awk -F '\t' -v d="$storage_current" '$1 == "P" && $2 == d {n++} END {print n+0}')
+        [ "$storage_parts" -eq "$storage_root_index" ]
+        printf '%s\n' "$((storage_next+1))" > "$storage_work/next"
+        : > "$storage_work/current"
+        rm "$storage_work/bios" "$storage_work/clean"
+        [ "$storage_boot" != BIOS+UEFI ] || rm "$storage_work/efi"
+        storage_release
+        ;;
+    configured)
+        [ "$#" -eq 0 ] && [ "$storage_phase" = pool ] && [ "$storage_next" -eq "$storage_count" ] && [ -z "$storage_current" ] || exit 1
+        storage_check
+        storage_target
+        [ "$(zpool get -H -o value bootfs zroot)" = zroot/ROOT/default ]
+        printf 'configured\n' > "$storage_work/phase"
+        storage_release
+        ;;
+    step-before) storage_step_before "$@" ;;
+    step-after)
+        storage_paths
+        storage_kind=$(cat "$storage_work/kind")
+        case "$storage_kind:$*" in
+            'mount:bsdinstall mount')
+                [ "$#" -eq 2 ] && [ "$storage_phase" = configured ] || exit 1
+                storage_phase=mounted
+                storage_check
+                storage_mounts 1 1
+                printf 'mounted\n' > "$storage_work/phase"
+                ;;
+            'umount:bsdinstall umount')
+                [ "$#" -eq 2 ] && [ "$storage_phase" = boot-configured ] || exit 1
+                storage_phase=unmounted
+                storage_check
+                storage_mounts 1 0
+                [ "$(sha256 -q "$storage_root/etc/fstab")" = "$(cat "$storage_work/fstab")" ]
+                printf 'unmounted\n' > "$storage_work/phase"
+                ;;
+            'export:zpool export zroot')
+                [ "$#" -eq 3 ] && [ "$storage_phase" = unmounted ] || exit 1
+                storage_phase=exported
+                storage_check
+                storage_mounts 0 0
+                printf 'exported\n' > "$storage_work/phase"
+                ;;
+            *) exit 1 ;;
+        esac
+        storage_release
+        ;;
+    boot-primary) [ "$storage_boot" = BIOS+UEFI ]; storage_efi_primary "$@" ;;
+    boot-label)
+        [ "$#" -eq 0 ] && [ "$storage_boot" = BIOS+UEFI ] && [ "$storage_phase" = mounted ] && [ "$storage_efi_stage" = directories ] || exit 1
+        storage_release
+        printf '%s\n' "$storage_efi_label"
+        ;;
+    boot-before) [ "$storage_boot" = BIOS+UEFI ]; storage_efi_before "$@" ;;
+    boot-after) [ "$storage_boot" = BIOS+UEFI ]; storage_efi_after "$@" ;;
+    boot-finish)
+        [ "$#" -eq 0 ] && [ "$storage_phase" = mounted ] || exit 1
+        storage_paths
+        storage_check
+        storage_mounts 1 1
+        storage_fstab "$storage_tmpetc/fstab"
+        [ "$storage_boot" != BIOS+UEFI ] || storage_efi_finish
+        for storage_current in $(printf '%s\n' "$storage_members" | cut -f1); do storage_bootcode; done
+        printf 'boot-configured\n' > "$storage_work/phase"
+        storage_release
+        ;;
+    finish)
+        [ "$#" -eq 0 ] && [ "$storage_phase" = exported ] || exit 1
+        storage_paths
+        storage_check
+        storage_mounts 0 0
+        printf 'complete\n' > "$storage_work/phase"
+        rm "$storage_work/busy/operation"
+        rmdir "$storage_work/busy"
+        ;;
+    *) exit 1 ;;
+esac

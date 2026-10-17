@@ -397,11 +397,18 @@ sub _native_context {
 
 sub _native_config {
     my ($context, $name, $repository) = @_;
+    return _native_config_map($context, $name,
+        $repository ? { xcat_freebsd => $repository } : {});
+}
+
+sub _native_config_map {
+    my ($context, $name, $repositories) = @_;
     my $root = _mkdir_private("$context->{scratch}/$name");
     my $repos = _mkdir_private("$root/repos");
-    _write_private("$repos/native.conf", _json({ xcat_freebsd => $repository })) if $repository;
+    _write_private("$repos/native.conf", _json($repositories)) if keys %$repositories;
     my $config = { ABI => $ABI, OSVERSION => 1501000, PKG_DBDIR => "$root/db",
         PKG_CACHEDIR => "$root/cache", REPOS_DIR => [$repos], REPO_AUTOUPDATE => JSON::false,
+        CONSERVATIVE_UPGRADE => JSON::true,
         PKG_ENABLE_PLUGINS => JSON::false, PKG_TRIGGERS_ENABLE => JSON::false,
         HANDLE_RC_SCRIPTS => JSON::false, SYSLOG => JSON::false, IGNORE_OSVERSION => JSON::false,
         ASSUME_ALWAYS_YES => JSON::false, FETCH_RETRY => 1, FETCH_TIMEOUT => 3 };
@@ -418,10 +425,279 @@ sub _native_run {
 
 sub _native_output {
     my ($context, $config, $description, @arguments) = @_;
-    my $result = _native_run($context, $config, @arguments);
+    my $result;
+    if ($description eq 'dependency resolution' || $description eq 'resolver catalogue update'
+        || $description eq 'resolver catalogue query') {
+        my $ok = eval { $result = _native_run($context, $config, @arguments); 1; };
+        _fail("Native pkg $description failed")
+          if !$ok || $result->{exitcode} || $result->{signal} || length($result->{stderr});
+        return $result->{stdout};
+    }
+    $result = _native_run($context, $config, @arguments);
     _fail("Native pkg $description failed: " . substr($result->{stderr}, 0, 1024))
       if $result->{exitcode} || $result->{signal};
     return $result->{stdout};
+}
+
+sub _native_elf_magic {
+    my $path = shift;
+    sysopen(my $fh, $path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK)
+      or _fail("Cannot open native ELF file: $!");
+    binmode($fh) or _fail("Cannot read native ELF bytes: $!");
+    my $read = read($fh, my $magic, 4);
+    _fail("Cannot read native ELF header: $!") unless defined($read);
+    close($fh) or _fail("Cannot close native ELF file: $!");
+    return $read == 4 && $magic eq "\x7fELF";
+}
+
+sub _native_elf {
+    my ($path, $directory, $scratch, $readelf) = @_;
+    _fail('Native planning requires ELF executables and libraries') unless _native_elf_magic($path);
+    my $result = xCAT::FreeBSDPkg::run_command(
+        [$readelf, '--file-header', '--dynamic', '--wide', $path], cwd => "$scratch",
+        environment => { PATH => '/usr/bin:/bin', LC_ALL => 'C' }, timeout => 60,
+        stdout_limit => 1048576, stderr_limit => 65536);
+    _fail('Native ELF inspection failed') if $result->{exitcode} || $result->{signal};
+    my $output = $result->{stdout};
+    _fail('Unsupported native planning ELF format')
+      unless $output =~ /^\s*Class:\s+ELF(?:32|64)\s*$/mx
+      && $output =~ /^\s*Type:\s+(?:DYN|EXEC)\b/mx;
+    my @needed;
+    for my $line (split(/\n/x, $output)) {
+        next unless $line =~ /^\s*0x[0-9a-f]+\s+\((\w+)\)\s+(.*)$/ix;
+        my ($tag, $value) = ($1, $2);
+        _fail('Native ELF loader forwarding is not supported') if $tag =~ /\A(?:FILTER|AUXILIARY|AUDIT|DEPAUDIT)\z/x;
+        next unless $tag =~ /\A(?:NEEDED|RPATH|RUNPATH)\z/x;
+        my ($reference) = $value =~ /\[([^\[\]\x00-\x1f]+)\]\s*\z/x;
+        _fail('Invalid native ELF library reference') unless defined($reference);
+        if ($tag eq 'NEEDED') {
+            _fail('Native ELF dependencies must be library basenames') unless $reference =~ /\A[A-Za-z0-9_.+-]+\z/x;
+            push @needed, $reference;
+        } else {
+            _fail('Native ELF loader path differs from the pinned library directory') unless $reference eq $directory;
+        }
+    }
+    return \@needed;
+}
+
+sub _native_solver_libraries {
+    my ($tool, $context, $resolver) = @_;
+    _native_path('/usr/bin/readelf', 'program');
+    my $readelf = abs_path('/usr/bin/readelf');
+    _native_path($readelf, 'file');
+    _fail('Native ELF inspector is not executable') unless -x $readelf;
+    my $directory = $context->{environment}{LD_LIBRARY_PATH};
+    my $libraries = _native_libraries($directory);
+    _fail('Native pkg library checksum mismatch') if $libraries->{digest} ne $tool->{library_digest};
+    my @libpkg;
+    for my $client ($context, $resolver) {
+        my $needed = _native_elf($client->{executable}, $directory, $context->{scratch}, $readelf);
+        my @names = grep { /\Alibpkg[.]so[.][0-9]+\z/x } @$needed;
+        _fail('Native planning executable names multiple libpkg ABIs') if @names > 1;
+        push @libpkg, @names ? $names[0] : undef;
+    }
+    _fail('Native resolver must name one pinned libpkg ABI') unless defined($libpkg[1]);
+    _fail('Native planning executables require different libpkg ABIs')
+      if defined($libpkg[0]) && $libpkg[0] ne $libpkg[1];
+    my $target = _resolve_link($libpkg[1], $libraries->{entries});
+    _fail('Native libpkg dependency is absent from the pinned library directory')
+      unless defined($target) && $libraries->{entries}{$target}{type} eq 'file'
+      && _native_elf_magic("$directory/$target");
+    for my $path (sort keys %{$libraries->{entries}}) {
+        next unless $libraries->{entries}{$path}{type} eq 'file' && _native_elf_magic("$directory/$path");
+        my $needed = _native_elf("$directory/$path", $directory, $context->{scratch}, $readelf);
+        _fail('Native library requires a different libpkg ABI')
+          if grep { /\Alibpkg[.]so/x && $_ ne $libpkg[1] } @$needed;
+    }
+    return;
+}
+
+sub _solver_key {
+    my ($key, $destination) = @_;
+    _fail('Invalid resolver public-key pin') if ref($key) ne 'HASH'
+      || !_digest($key->{sha256}) || !defined($key->{path}) || ref($key->{path})
+      || $key->{path} !~ m{\A/[^\x00\r\n]+\z}x;
+    _fail('Unknown resolver public-key field') if grep { $_ ne 'path' && $_ ne 'sha256' } keys %$key;
+    my ($actual, $bytes) = _file($key->{path}, 1048576, 1);
+    _fail('Resolver public key differs from its verified import') if $actual->{sha256} ne $key->{sha256};
+    _write_private("$destination/repository.pub", $bytes) if defined($destination);
+    return defined($destination)
+      ? { signature_type => 'pubkey', pubkey => "$destination/repository.pub" } : {};
+}
+
+sub _solver_file {
+    my ($path, $expected, $destination) = @_;
+    _fail('Invalid resolver catalogue file pin') if ref($expected) ne 'HASH'
+      || !_digest($expected->{sha256}) || !defined($expected->{size})
+      || ref($expected->{size}) || $expected->{size} !~ /\A[1-9][0-9]{0,8}\z/x
+      || $expected->{size} > $CATALOGUE_LIMIT;
+    _fail('Unknown resolver catalogue file pin')
+      if grep { $_ ne 'size' && $_ ne 'sha256' } keys %$expected;
+    my ($actual, $bytes) = _file($path, $CATALOGUE_LIMIT, 1);
+    _fail('Resolver catalogue differs from its verified import')
+      if $actual->{size} != $expected->{size} || $actual->{sha256} ne $expected->{sha256};
+    _write_private($destination, $bytes) if defined($destination);
+    return;
+}
+
+sub _solver_catalogue {
+    my ($reference, $destination) = @_;
+    _fail('Invalid resolver catalogue reference') if ref($reference) ne 'HASH'
+      || !defined($reference->{directory}) || ref($reference->{directory})
+      || ref($reference->{files}) ne 'HASH';
+    _fail('Unknown resolver catalogue field')
+      if grep { $_ !~ /\A(?:directory|files|key)\z/x } keys %$reference;
+    my $directory = _root($reference->{directory});
+    my %required = map { $_ => 1 } qw(meta.conf data.pkg packagesite.pkg);
+    _fail('Invalid resolver catalogue file roster')
+      if keys(%{$reference->{files}}) != 3
+      || grep { !$required{$_} } keys %{$reference->{files}};
+    for my $name (sort keys %required) {
+        _solver_file("$directory/$name", $reference->{files}{$name},
+            defined($destination) ? "$destination/$name" : undef);
+    }
+    return exists($reference->{key}) ? _solver_key($reference->{key}, $destination)
+      : { signature_type => 'none' };
+}
+
+sub _solver_request {
+    my $names = shift;
+    _fail('Invalid native resolver root list') if ref($names) ne 'ARRAY' || @$names > 8192;
+    my %seen;
+    for my $name (@$names) {
+        _fail('Invalid native resolver package name') if !defined($name) || ref($name)
+          || !length($name) || length($name) > 1024 || $name =~ /[\x00-\x1f\x7f]/x || $seen{$name}++;
+    }
+    my $request = encode_utf8(join('', map { "$_\n" } @$names));
+    _fail('Native resolver request exceeds its size limit') if length($request) > 8388608;
+    return $request;
+}
+
+sub _solver_response {
+    my $bytes = shift;
+    my $result = _decode($bytes, 'native dependency resolution');
+    _fail('Invalid native resolver response') if ref($result) ne 'HASH'
+      || !defined($result->{format}) || ref($result->{format})
+      || $result->{format} ne 'xcat-freebsd-resolver-1'
+      || !defined($result->{version}) || ref($result->{version}) || $result->{version} ne '2.8.2'
+      || ref($result->{jobs}) ne 'ARRAY' || !@{$result->{jobs}} || @{$result->{jobs}} > 8192;
+    _fail('Unknown native resolver response field')
+      if grep { $_ !~ /\A(?:format|version|jobs)\z/x } keys %$result;
+    return $result->{jobs};
+}
+
+sub _solver_executable {
+    my $solver = shift;
+    _fail('A pinned native resolver is required') if ref($solver) ne 'HASH'
+      || !_digest($solver->{sha256}) || !defined($solver->{path}) || ref($solver->{path})
+      || $solver->{path} !~ m{\A/[^\x00\r\n]+\z}x;
+    _fail('Unknown native resolver executable option') if grep { $_ ne 'path' && $_ ne 'sha256' } keys %$solver;
+    return $solver;
+}
+
+sub _solver_dependencies {
+    my ($package, $providers) = @_;
+    return unless exists($package->{deps});
+    _fail('Native resolver catalogue differs from its verified import')
+      unless ref($package->{deps}) eq 'HASH';
+    my %dependencies;
+    for my $name (keys %{$package->{deps}}) {
+        _fail('Native resolver catalogue differs from its verified import')
+          unless ref($package->{deps}{$name}) eq 'HASH';
+        my %dependency = %{$package->{deps}{$name}};
+        my @versions = exists($providers->{$name}) ? values %{$providers->{$name}} : ();
+        _fail('Native resolver catalogue differs from its verified import') if @versions > 1;
+        # Native dependency readback uses the same repository's provider version.
+        delete($dependency{version});
+        $dependency{version} = $versions[0] if @versions;
+        $dependencies{$name} = \%dependency;
+    }
+    $package->{deps} = \%dependencies;
+    return;
+}
+
+sub _solver_readback {
+    my ($context, $config, $count) = @_;
+    for my $index (0 .. $count - 1) {
+        my $name = "r$index";
+        my $expected = _original_catalogues($context, "$context->{scratch}/$name");
+        my $bytes = _native_output($context, $config, 'resolver catalogue query',
+            'search', '-U', '-r', $name, '--raw', '--raw-format', 'json-compact', '-g', '*');
+        my $actual = _records(_decode($bytes, 'resolver catalogue query'),
+            'resolver catalogue query');
+        my (%planning, %native, %providers);
+        for my $package (values %$expected) {
+            $providers{$package->{name}}{_json($package->{version})} = $package->{version};
+        }
+        for my $identity (keys %$actual) {
+            my %package = %{$actual->{$identity}};
+            _fail('Native resolver catalogue differs from its verified import')
+              unless ref($package{licenses}) eq 'ARRAY' && @{$package{licenses}} == 1
+                && _json($package{licenses}[0]) =~ /\A"/x;
+            # The remote license aggregate does not preserve license identities.
+            delete($package{licenses});
+            $native{$identity} = \%package;
+        }
+        for my $identity (keys %$expected) {
+            my %package = %{$expected->{$identity}};
+            _solver_dependencies(\%package, \%providers);
+            delete($package{licenses});
+            if (exists($actual->{$identity})) {
+                # These fields do not constrain a fresh INSTALL selection.
+                delete @package{grep { !exists($actual->{$identity}{$_}) }
+                    qw(vital messages shlibs_required_ignore users groups shlibs_provided_ignore)};
+            }
+            $planning{$identity} = \%package;
+        }
+        _fail('Native resolver catalogue differs from its verified import')
+          if _json(\%native) ne _json(\%planning);
+    }
+    return;
+}
+
+sub solve_catalogues {
+    my ($references, $names, @arguments) = @_;
+    _fail('Native resolver options must be pairs') if @arguments % 2;
+    my %options = @arguments;
+    _fail('Unknown native resolver option') if grep { $_ ne 'tool' && $_ ne 'solver' } keys %options;
+    _fail('Invalid native resolver repository list') if ref($references) ne 'ARRAY'
+      || !@$references || @$references > 32;
+    my $request = _solver_request($names);
+    my $solver = _solver_executable($options{solver});
+    _fail('Native planning requires a pinned library directory') unless ref($options{tool}) eq 'HASH'
+      && exists($options{tool}{library_directory}) && _digest($options{tool}{library_digest});
+    my $scratch = File::Temp->newdir('xcat-freebsd-solver-XXXXXXXX', DIR => '/tmp');
+    my $empty_root = _mkdir_private("$scratch/empty-root");
+    _native_path($empty_root, 'directory');
+    my $context = _native_context($options{tool}, $scratch);
+    my %solver_tool = (%{$options{tool}}, %$solver);
+    my $resolver = _native_context(\%solver_tool, $scratch);
+    _native_solver_libraries($options{tool}, $context, $resolver);
+    my %repositories;
+    for my $index (0 .. $#$references) {
+        my $directory = _mkdir_private("$scratch/r$index");
+        my $signature = _solver_catalogue($references->[$index], $directory);
+        $repositories{"r$index"} = { %$signature, url => _file_url($directory),
+            enabled => JSON::true, priority => 1000 - $index };
+    }
+    my $config = _native_config_map($context, 'resolve', \%repositories);
+    for my $client ($context, $resolver) {
+        _fail('Native resolver requires pkg version 2.8.2')
+          if _native_output($client, $config, 'version check', '-v') ne "2.8.2\n";
+    }
+    _write_private("$scratch/request", $request);
+    _native_output($context, $config, 'resolver catalogue update', 'update', '-f');
+    _solver_readback($context, $config, scalar(@$references));
+    my $jobs = @$names ? _solver_response(_native_output($resolver, $config, 'dependency resolution',
+        'resolve', "$scratch/request", $empty_root)) : [];
+    _native_path($empty_root, 'directory');
+    my $root_entries = 0;
+    _fail('Native resolver root is not empty')
+      if _directory_names($empty_root, \$root_entries, 1);
+    _solver_catalogue($_, undef) for @$references;
+    _native_context($options{tool}, $scratch);
+    _native_context(\%solver_tool, $scratch);
+    return { resolver => $resolver->{identity}, jobs => $jobs };
 }
 
 sub _repository_trust {
