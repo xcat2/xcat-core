@@ -93,6 +93,7 @@ sub write_file {
 }
 
 sub fixture {
+    my $format = shift || 'xcat-mfsbsd-1';
     my $root = "$tmp/media-" . ++$sequence;
     my $efi = "\0" x 512;
     substr($efi, 0, 2) = 'MZ';
@@ -118,9 +119,22 @@ sub fixture {
     $payload{'usr/freebsd-dist/MANIFEST'} = join('', map {
         "$_\t" . sha256_hex($payload{"usr/freebsd-dist/$_"}) . "\t1\tbase\tfixture\ton\n";
     } qw(base.txz kernel.txz));
+    if ($format eq 'xcat-mfsbsd-2') {
+        delete @payload{map { "usr/freebsd-dist/$_" } qw(MANIFEST base.txz kernel.txz)};
+        $payload{'xcat/runtime.tsv'} = "format\txcat-freebsd-runtime-2\n"
+          . "target\t15.1-RELEASE\tFreeBSD:15:amd64\t1501000\n"
+          . "pkg-version\t2.6.2\nbsdinstall-contract\txcat-freebsd-pkgbase-1\n"
+          . join('', map { "file\t$_\t" . sha256_hex("runtime $_") . "\n" } sort qw(
+              usr/local/sbin/xcat-install usr/local/libexec/xcat-install-lib.sh
+              usr/local/share/xcat/installerconfig.tmpl usr/sbin/bsdinstall
+              usr/libexec/bsdinstall/script usr/libexec/bsdinstall/pkgbase
+              usr/libexec/bsdinstall/umount usr/libexec/flua usr/local/sbin/pkg-static
+          ));
+    }
     write_file("$root/$_", $payload{$_}) for keys %payload;
     my $manifest = JSON->new->canonical->encode({
-        format => 'xcat-mfsbsd-1', release => '15.1-RELEASE', arch => 'amd64',
+        format => $format, release => '15.1-RELEASE', arch => 'amd64',
+        ($format eq 'xcat-mfsbsd-2' ? (mfsbsd_commit => 'a' x 40) : ()),
         files => { map { $_ => sha256_hex($payload{$_}) } keys %payload },
     });
     write_file("$root/xcat/mfsbsd.json", $manifest);
@@ -360,12 +374,64 @@ subtest 'registration rejects a symlink lock without database writes' => sub {
     ok(!-e "$tmp/lock-target", 'lock target is not created');
 };
 
+sub boot_only_copycd {
+    fresh();
+    run_copy($source);
+    my $before = dclone(\%xCAT::Table::rows);
+    my ($boot_source, $boot_digest) = fixture('xcat-mfsbsd-2');
+    my $bootdir = "$xCAT::TableUtils::installroot/freebsd15.1/x86_64/boot/$boot_digest";
+    @xCAT::Table::operations = ();
+    my ($request, $responses) = run_copy($boot_source, '-i');
+    is_deeply($request, {}, 'boot-only inspection claims its bundle');
+    is(errors($responses), '', 'boot-only inspection succeeds');
+    like($responses->[0]{info}[0], qr/DISTNAME:freebsd15\.1\nARCH:x86_64\nDIGEST:$boot_digest/x,
+        'inspection reports the boot bundle identity');
+    ok(!-e $bootdir, 'inspection does not publish boot media');
+    is_deeply(\@xCAT::Table::operations, [], 'inspection does not open image tables');
+    for my $args ([], ['-o']) {
+        @xCAT::Table::operations = ();
+        ($request, $responses) = run_copy($boot_source, @$args);
+        is_deeply($request, {}, 'boot-only import claims its bundle');
+        is(errors($responses), '', 'boot-only import succeeds with or without noosimage');
+        ok(-f "$bootdir/boot/loader.efi" && -f "$bootdir/xcat/runtime.tsv", 'the real importer publishes the boot payload and descriptor');
+        ok(!-e "$bootdir/usr", 'the imported boot tree has no distribution payload');
+        like(join('', map { @{$_->{data} || []} } @$responses), qr/\Q$bootdir\E/x,
+            'the response identifies the boot directory');
+        unlike(join('', map { @{$_->{data} || []} } @$responses), qr/Created|osimage/x,
+            'the response does not claim image registration');
+        is_deeply(\@xCAT::Table::operations, [], 'boot-only import never opens registration tables');
+        is_deeply(\%xCAT::Table::rows, $before, 'existing legacy definitions remain unchanged');
+    }
+    (undef, $responses) = run_copy($boot_source, '-w');
+    like(errors($responses), qr/already[ ]exists/x, 'boot-only nonoverwrite rejects an existing bundle');
+    is_deeply(\@xCAT::Table::operations, [], 'nonoverwrite does not open registration tables');
+    is_deeply(\%xCAT::Table::rows, $before, 'nonoverwrite retains all prior definitions');
+    return;
+}
+
+subtest 'boot-only copycd never registers or changes image definitions' => \&boot_only_copycd;
+
+subtest 'an invalid boot-only marker never falls through to native release import' => sub {
+    fresh();
+    my ($boot_source) = fixture('xcat-mfsbsd-2');
+    write_file("$boot_source/bin/freebsd-version", '15.1-RELEASE');
+    write_file("$boot_source/xcat/mfsbsd.json", '{broken');
+    my ($request, $responses) = run_copy($boot_source);
+    is_deeply($request, {}, 'the invalid marker still claims the bundle');
+    like(errors($responses), qr/JSON/x, 'the marker failure crosses the public callback');
+    is_deeply($responses->[-1]{errorcode}, [1], 'the callback returns failure');
+    is_deeply(\@xCAT::Table::operations, [], 'native repository policy and image tables are not opened');
+    ok(!-e "$xCAT::TableUtils::installroot/freebsd15.1", 'no native or boot import is published');
+};
+
 require "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/copycds.pm";
-for my $dispatch_case (['import'], ['inspection', '-i'], ['noosimage', '-o'], ['failure']) {
+for my $dispatch_case (['import'], ['inspection', '-i'], ['noosimage', '-o'], ['failure'],
+    ['boot import'], ['boot inspection', '-i'], ['boot noosimage', '-o'], ['boot failure']) {
     subtest "copycds dispatch $dispatch_case->[0]" => sub {
         fresh();
-        my ($mounted) = fixture();
-        write_file("$mounted/boot/pxeboot", 'corrupt') if $dispatch_case->[0] eq 'failure';
+        my $boot_only = $dispatch_case->[0] =~ /\Aboot[ ]/x;
+        my ($mounted) = fixture($boot_only ? 'xcat-mfsbsd-2' : 'xcat-mfsbsd-1');
+        write_file("$mounted/boot/pxeboot", 'corrupt') if $dispatch_case->[0] =~ /failure\z/x;
         my $iso = "$tmp/install.iso";
         write_file($iso, 'ISO fixture');
         my (@commands, @responses, @dispatched);
@@ -386,13 +452,14 @@ for my $dispatch_case (['import'], ['inspection', '-i'], ['noosimage', '-o'], ['
         like($commands[-2], qr/^umount /, 'outer wrapper requests unmount after completion');
         like($commands[-1], qr/^rm -rf /, 'outer wrapper removes its mountpoint');
         unlike(errors(\@responses), qr/could not identify/, 'callback identifies the FreeBSD handler');
-        if ($dispatch_case->[0] eq 'failure') {
+        if ($dispatch_case->[0] =~ /failure\z/x) {
             like(errors(\@responses), qr/SHA256 mismatch/, 'validation error crosses both callback boundaries');
         } else {
             is(errors(\@responses), '', 'outer request succeeds');
         }
         my $expected = $dispatch_case->[0] eq 'import' ? 3 : $dispatch_case->[0] eq 'noosimage' ? 1 : 0;
         is(row_count(), $expected, 'forwarded option controls database registration');
+        is_deeply(\@xCAT::Table::operations, [], 'the boot-only wrapper never opens image tables') if $boot_only;
     };
 }
 

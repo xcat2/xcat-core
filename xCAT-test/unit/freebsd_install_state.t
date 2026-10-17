@@ -343,4 +343,43 @@ for my $operation (qw(prepare cancel begin)) {
     }
 }
 
+subtest 'boot selections belong to the installation generation' => sub {
+    my $root = "$temporary/boot-bindings";
+    my $bindings = { firstboot => '1' x 64, repeat => '2' x 64 };
+    my $token = xCAT::FreeBSDInstall::prepare('node1', $fingerprint, directory => $root,
+        postscript_preparations => $bindings, publish => sub {
+            is_deeply(disk_state($root)->{postscript_preparations}, $bindings,
+                'boot publication sees both durable preparation identities');
+        });
+    isnt(disk_state($root)->{fingerprint}, $fingerprint, 'boot selections contribute to the deployment fingerprint');
+    is(xCAT::FreeBSDInstall::prepare('node1', $fingerprint, directory => $root,
+        postscript_preparations => { repeat => $bindings->{repeat}, firstboot => $bindings->{firstboot} }), $token,
+        'identical boot selections reuse the prepared generation');
+    for my $kind (qw(firstboot repeat)) {
+        $bindings->{$kind} = '3' x 64;
+        my $boot_generation = xCAT::FreeBSDInstall::prepare('node1', $fingerprint, directory => $root,
+            postscript_preparations => $bindings);
+        isnt($boot_generation, $token, "changed $kind selection requires a new generation");
+        is_deeply(disk_state($root)->{postscript_preparations}, $bindings, "changed $kind binding is persisted");
+        $token = $boot_generation;
+    }
+    my $original = disk_state($root);
+    for my $bad (undef, [], {}, { firstboot => '1' x 64 },
+        { firstboot => '1' x 64, repeat => 'bad' }, { %$bindings, update => '4' x 64 }) {
+        rejects(sub { xCAT::FreeBSDInstall::prepare('node1', $fingerprint, directory => $root,
+                postscript_preparations => $bad); }, qr/boot[ ]postscript/x, 'malformed boot binding');
+        is_deeply(disk_state($root), $original, 'rejected binding preserves armed state');
+    }
+    my $legacy = xCAT::FreeBSDInstall::prepare('node1', $fingerprint, directory => $root);
+    isnt($legacy, $token, 'removing boot selections requires a new generation');
+    ok(!exists(disk_state($root)->{postscript_preparations}), 'legacy preparation has no stale boot binding');
+    is(disk_state($root)->{fingerprint}, $fingerprint, 'legacy configuration fingerprint is unchanged');
+    my $corrupt = disk_state($root);
+    $corrupt->{postscript_preparations} = { firstboot => 'invalid', repeat => '2' x 64 };
+    write_state($root, $corrupt);
+    rejects(sub { xCAT::FreeBSDInstall::state('node1', directory => $root); }, qr/boot[ ]postscript/x,
+        'malformed retained boot binding');
+    done_testing();
+};
+
 done_testing();

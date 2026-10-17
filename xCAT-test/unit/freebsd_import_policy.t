@@ -102,6 +102,57 @@ sub valid_cases {
     return;
 }
 
+sub planning_cases {
+    my $value = dclone($policy);
+    $value->{solver} = { path => '/missing/native/freebsd-pkg-resolve', sha256 => '1' x 64 };
+    my $path = policy_file($value);
+    my $before = inventory($root);
+    my $loaded = xCAT::FreeBSDRepoImport::load_import_policy($path);
+    is_deeply($loaded, $value, 'optional pinned solver survives policy loading');
+    my $options = xCAT::FreeBSDRepoImport::package_plan_options($loaded);
+    is_deeply($options, { tool => $value->{tool}, solver => $value->{solver} },
+        'planning selects only the native catalogue tool and solver pins');
+    $options->{tool}{path} = '/changed/pkg';
+    $options->{tool}{library_directory} = '/changed/lib';
+    $options->{solver}{sha256} = '2' x 64;
+    is_deeply($loaded, $value, 'planning options do not alias either policy record');
+    is_deeply(inventory($root), $before, 'planning option selection does not access native tools or change files');
+    like(error_from(sub { xCAT::FreeBSDRepoImport::package_plan_options($policy) }),
+        qr/solver/ix, 'planning requires a configured solver');
+    is(error_from(sub { xCAT::FreeBSDRepoImport::release_import_options($policy, $digest) }), '',
+        'release import remains usable without a solver');
+    is(error_from(sub { xCAT::FreeBSDRepoImport::repository_import_options($policy, 'signed') }), '',
+        'repository import remains usable without a solver');
+    $loaded->{solver}{sha256} = 'changed';
+    like(error_from(sub { xCAT::FreeBSDRepoImport::package_plan_options($loaded) }),
+        qr/digest/ix, 'planning revalidates a modified decoded solver pin');
+    return;
+}
+
+sub solver_cases {
+    for my $bad (undef, [], 'text', JSON::true) {
+        my $value = dclone($policy);
+        $value->{solver} = $bad;
+        reject_policy($value, qr/(?:Invalid|solver)/ix, 'a supplied solver must be an object');
+    }
+    for my $change (
+        sub { delete($_[0]{path}) },
+        sub { delete($_[0]{sha256}) },
+        sub { $_[0]{path} = 'relative/solver' },
+        sub { $_[0]{path} = '/one/../solver' },
+        sub { $_[0]{sha256} = 'A' x 64 },
+        sub { $_[0]{sha256} = 'a' x 63 },
+        sub { $_[0]{library_directory} = '/missing/lib' },
+        sub { $_[0]{arguments} = ['--unsafe'] },
+    ) {
+        my $value = dclone($policy);
+        $value->{solver} = { path => '/missing/native/solver', sha256 => '1' x 64 };
+        $change->($value->{solver});
+        reject_policy($value, qr/(?:Invalid|Unknown)/ix, 'solver accepts only a protected path reference and SHA256');
+    }
+    return;
+}
+
 sub schema_cases {
     for my $field (qw(format tool releases repositories)) {
         my $value = dclone($policy);
@@ -266,6 +317,8 @@ sub bytes_cases {
     no warnings 'redefine'; ## no critic (TestingAndDebugging::ProhibitNoWarnings)
     local *xCAT::FreeBSDPkg::run_command = sub { ++$commands; croak "Policy invoked a native command\n"; };
     subtest 'protected policy selects native options without execution' => \&valid_cases;
+    subtest 'planning has an independent copied solver selection' => \&planning_cases;
+    subtest 'optional solver references are constrained' => \&solver_cases;
     subtest 'policy shape is explicit' => \&schema_cases;
     subtest 'tool and repository references are constrained' => \&reference_cases;
     subtest 'only approved selections return options' => \&selection_cases;

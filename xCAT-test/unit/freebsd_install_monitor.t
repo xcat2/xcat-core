@@ -324,4 +324,35 @@ for my $signal (qw(ALRM KILL)) {
         'a failed fork leaves installation ownership unchanged');
 }
 
+subtest 'status worker deadlines' => sub {
+    for my $case (
+        ['legacy', 'freebsd-install-v1 ' . ('a' x 32) . " $attempt begin\n", 60],
+        ['boot delivery', 'freebsd-install-postscripts-v1 ' . ('a' x 32) . " $attempt " . ('c' x 64) . "\n", 7200],
+        ['malformed boot', "freebsd-install-postscripts-v1 malformed\n", 60],
+    ) {
+        my ($label, $message, $bound) = @$case;
+        socketpair(my $client, my $server, AF_UNIX, SOCK_STREAM, PF_UNSPEC) or die $!;
+        pipe(my $reader, my $writer) or die $!;
+        my $pid = xCAT::FreeBSDInstall::start_status_worker('deadline', '192.0.2.10',
+            $message, $server, \&dispatch,
+            cleanup => sub {
+                close($client);
+                close($reader);
+                print {$writer} alarm(0), "\n";
+                close($writer);
+                die "Deadline observed before dispatch\n";
+            }, log => sub {});
+        close($writer);
+        ok($pid > 0, "$label runs in the actual status worker");
+        my $remaining = <$reader>;
+        close($reader);
+        ok(defined($remaining) && $remaining >= $bound - 5 && $remaining <= $bound,
+            "$label installs its bounded alarm");
+        is(do { local $/; <$client> } || '', '', "$label observation does not acknowledge an action");
+        close($client);
+        waitpid($pid, 0);
+        is($? >> 8, 1, "$label observation ends before changing state");
+    }
+};
+
 done_testing();

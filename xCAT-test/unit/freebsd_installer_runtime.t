@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 
+use Carp qw(croak);
 use Digest::SHA qw(sha256_hex);
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
@@ -264,4 +265,143 @@ for my $failure (qw(checksum manifest begin installer complete)) {
     unlike($events, qr/phase complete/, 'failed installer does not report completion') if $failure eq 'installer';
 }
 
+sub pkgbase_configuration {
+    my $bytes = configuration();
+    $bytes =~ s/^format=xcat-freebsd-install-1$/format=xcat-freebsd-install-2/mx;
+    $bytes =~ s/^(?:dist_url|base_sha256|kernel_sha256)=[^\n]*\n//gmx;
+    return $bytes . "install_url=http://192.0.2.1/install\npackage_plan_sha256=" . ('3' x 64)
+      . "\nboot_media_sha256=" . ('4' x 64) . "\nruntime_sha256=" . ('5' x 64) . "\n";
+}
+
+sub config_value {
+    my ($bytes, $field, $value) = @_;
+    my $changed = $bytes =~ s/^\Q$field\E=[^\n]*\n/$field=$value\n/mx;
+    croak "Fixture field is absent: $field" unless $changed == 1;
+    return $bytes;
+}
+
+sub parse_bytes {
+    my $bytes = shift;
+    my $root = fixture();
+    write_file("$root/config", $bytes);
+    return run_runtime($root, 'xcat_read_config "$1"');
+}
+
+sub config_roster_cases {
+    my @common = qw(format release node generation master port mac ipv4 netmask gateway hostname
+        target_disk target_disk_ident filesystem swap_size authorized_key_base64 nameservers);
+    for my $case (
+        ['legacy', configuration(), [qw(dist_url base_sha256 kernel_sha256)]],
+        ['pkgbase', pkgbase_configuration(), [qw(install_url package_plan_sha256 boot_media_sha256 runtime_sha256)]],
+    ) {
+        my ($label, $bytes, $specific) = @$case;
+        is((parse_bytes($bytes))[0], 0, "$label complete roster is accepted");
+        for my $field (@common, @$specific) {
+            my $missing = $bytes;
+            $missing =~ s/^\Q$field\E=[^\n]*\n//mx;
+            my ($status) = parse_bytes($missing);
+            if ($label eq 'legacy' && ($field eq 'gateway' || $field eq 'nameservers')) {
+                is($status, 0, "legacy $field remains optional");
+            } else {
+                isnt($status, 0, "$label rejects absent $field");
+            }
+        }
+    }
+    for my $field (qw(dist_url base_sha256 kernel_sha256)) {
+        isnt((parse_bytes(pkgbase_configuration() . "$field=\n"))[0], 0,
+            "pkgbase rejects an empty legacy $field field");
+    }
+    for my $field (qw(install_url package_plan_sha256 boot_media_sha256 runtime_sha256)) {
+        isnt((parse_bytes(configuration() . "$field=\n"))[0], 0,
+            "legacy rejects an empty pkgbase $field field");
+    }
+    for my $field (qw(package_plan_sha256 boot_media_sha256 runtime_sha256)) {
+        for my $bad ('', 'a' x 63, 'A' x 64, 'a' x 65) {
+            isnt((parse_bytes(config_value(pkgbase_configuration(), $field, $bad)))[0], 0,
+                "pkgbase rejects a malformed $field");
+        }
+        isnt((parse_bytes(pkgbase_configuration() . "$field=" . ('3' x 64) . "\n"))[0], 0,
+            "pkgbase rejects duplicate $field");
+    }
+    isnt((parse_bytes(pkgbase_configuration() . "unknown=value\n"))[0], 0, 'pkgbase rejects an unknown field');
+    for my $url ('', 'file:///install', 'http://192.0.2.1/install/../private') {
+        isnt((parse_bytes(config_value(pkgbase_configuration(), 'install_url', $url)))[0], 0,
+            'pkgbase reader rejects an invalid installation URL');
+    }
+    for my $field (qw(node hostname)) {
+        is((parse_bytes(config_value(pkgbase_configuration(), $field, 'a' x 247)))[0], 0,
+            "pkgbase accepts a 247-character $field");
+        isnt((parse_bytes(config_value(pkgbase_configuration(), $field, 'a' x 248)))[0], 0,
+            "pkgbase rejects a 248-character $field");
+    }
+    return;
+}
+
+sub config_reset_cases {
+    my $root = fixture();
+    write_file("$root/pkgbase-config", pkgbase_configuration());
+    my ($status, $output) = run_runtime($root, <<'SEQUENCE', "$root/pkgbase-config");
+xcat_read_config "$1" || exit
+printf 'legacy|%s|%s|%s|%s\n' "$XCAT_INSTALL_URL" "$XCAT_PACKAGE_PLAN_SHA256" "$XCAT_BOOT_MEDIA_SHA256" "$XCAT_RUNTIME_SHA256"
+xcat_read_config "$2" || exit
+printf 'pkgbase|%s|%s|%s|%s\n' "$XCAT_PACKAGE_PLAN_SHA256" "$XCAT_DIST_URL" "$XCAT_BASE_SHA256" "$XCAT_KERNEL_SHA256"
+xcat_read_config "$1" || exit
+printf 'legacy-again|%s|%s|%s|%s\n' "$XCAT_INSTALL_URL" "$XCAT_PACKAGE_PLAN_SHA256" "$XCAT_BOOT_MEDIA_SHA256" "$XCAT_RUNTIME_SHA256"
+SEQUENCE
+    is($status, 0, 'one shell reads legacy, pkgbase and legacy configurations');
+    is($output, "legacy||||\npkgbase|" . ('3' x 64) . "|||\nlegacy-again||||\n",
+        'each read clears the fields owned by the other configuration version');
+    return;
+}
+
+sub config_byte_cases {
+    for my $case (['legacy', configuration()], ['pkgbase', pkgbase_configuration()]) {
+        my ($label, $bytes) = @$case;
+        my $small = config_value($bytes, 'authorized_key_base64', 'A');
+        my $key_size = 32768 - length($small) + 1;
+        my $exact = config_value($small, 'authorized_key_base64', 'A' x $key_size);
+        is(length($exact), 32768, "$label fixture is exactly 32768 bytes");
+        is((parse_bytes($exact))[0], 0, "$label accepts the exact byte limit");
+        my $large = config_value($small, 'authorized_key_base64', 'A' x ($key_size + 1));
+        isnt((parse_bytes($large))[0], 0, "$label rejects 32769 bytes");
+    }
+    my $legacy = configuration();
+    chop($legacy);
+    is((parse_bytes("\n# retained legacy comment\n" . $legacy))[0], 0,
+        'legacy accepts blank lines, comments and an unterminated final record');
+    my $v2 = pkgbase_configuration();
+    for my $case (
+        ['missing final LF', substr($v2, 0, -1)],
+        ['blank line', "\n$v2"],
+        ['comment line', "# not a v2 record\n$v2"],
+        ['NUL inside a valid node name', config_value($v2, 'node', "node\0" . '01')],
+        ['non-ASCII node name', config_value($v2, 'node', "node\xc3\xa9")],
+        ['control byte', config_value($v2, 'target_disk_ident', "XCAT\tTEST")],
+        ['carriage return', config_value($v2, 'target_disk_ident', "XCAT_TEST_DISK\r")],
+    ) {
+        isnt((parse_bytes($case->[1]))[0], 0, "pkgbase rejects $case->[0]");
+    }
+    return;
+}
+
+sub pkgbase_install_refusal {
+    my $root = fixture();
+    write_file("$root/config", pkgbase_configuration());
+    my ($status, $output) = run_runtime($root,
+        'xcat_read_config "$1" || exit 91; printf "parsed-pkgbase\n"; xcat_install_system "$2"',
+        "$directory/installerconfig.tmpl");
+    isnt($status, 0, 'pkgbase installation remains unavailable');
+    like($output, qr/^parsed-pkgbase\n/mx, 'a valid parsed configuration reaches the installation refusal');
+    like($output, qr/Pkgbase[ ]installation[ ]runtime[ ]is[ ]not[ ]available/x,
+        'the runtime reports the missing pkgbase adapter');
+    is(read_file("$root/events"), '', 'pkgbase refusal invokes no fixture command');
+    ok(!-e "$root/work/installerconfig", 'pkgbase refusal creates no installer script');
+    ok(!-e "$root/work/dist", 'pkgbase refusal stages no distribution payload');
+    return;
+}
+
+subtest 'configuration version rosters' => \&config_roster_cases;
+subtest 'configuration reads clear version-specific fields' => \&config_reset_cases;
+subtest 'configuration byte and line bounds' => \&config_byte_cases;
+subtest 'parsed pkgbase configuration cannot start installation' => \&pkgbase_install_refusal;
 done_testing;

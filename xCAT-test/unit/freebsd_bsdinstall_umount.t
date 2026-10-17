@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 
+use Carp qw(croak);
 use Digest::SHA qw(sha256_hex);
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
@@ -16,24 +17,25 @@ make_path("$root/bin");
 
 sub write_file {
     my ($path, $content) = @_;
-    open(my $fh, '>', $path) or die "$path: $!";
-    print {$fh} $content;
-    close($fh) or die "$path: $!";
+    open(my $fh, '>', $path) or croak "$path: $!";
+    print {$fh} $content or croak "$path: $!";
+    close($fh) or croak "$path: $!";
+    return;
 }
 
 sub read_file {
     my $path = shift;
-    open(my $fh, '<', $path) or die "$path: $!";
-    local $/;
+    open(my $fh, '<', $path) or croak "$path: $!";
+    local $/ = undef;
     my $content = <$fh>;
-    close($fh) or die "$path: $!";
+    close($fh) or croak "$path: $!";
     return $content;
 }
 
 sub run_shell {
     my ($code, @args) = @_;
-    open(my $pipe, '-|', 'sh', '-c', $code . ' 2>&1', 'sh', @args) or die $!;
-    local $/;
+    open(my $pipe, '-|', 'sh', '-c', $code . ' 2>&1', 'sh', @args) or croak $!;
+    local $/ = undef;
     my $output = <$pipe>;
     close($pipe);
     return ($? >> 8, $output // '');
@@ -51,7 +53,7 @@ if [ "$1" = -F ]; then
     [ -s "$2" ] || exit 1
     exit "${FSTAB_UMOUNT_STATUS:-0}"
 fi
-exit 0
+exit "${DEVFS_UMOUNT_STATUS:-0}"
 UMOUNT
 chmod 0755, "$root/bin/sha256", "$root/bin/umount";
 local $ENV{PATH} = "$root/bin:$ENV{PATH}";
@@ -67,7 +69,7 @@ is(system('sh', '-n', "$root/patched"), 0, 'generated cleanup helper has shell s
 write_file("$root/changed", read_file($native) . "\n");
 my ($drift_status, $drift_output) = run_shell('sh "$1" "$2"', $helper, "$root/changed");
 isnt($drift_status, 0, 'build helper rejects source drift');
-like($drift_output, qr/Unsupported FreeBSD 15\.1 bsdinstall umount checksum/, 'source drift explains the rejected input');
+like($drift_output, qr/\QUnsupported FreeBSD 15.1 bsdinstall umount checksum\E/x, 'source drift explains the rejected input');
 isnt((run_shell('sh "$1" "$2"', $helper, "$root/missing"))[0], 0, 'missing native helper fails');
 is((run_shell('sh "$1"', $helper))[0], 2, 'missing argument fails with usage status');
 
@@ -79,7 +81,8 @@ sub cleanup_case {
     write_file("$case/fstab", $fstab) unless $options{missing_input};
     local %ENV = (%ENV, FIXTURE_DIR => $case, BSDINSTALL_CHROOT => "$case/target",
         PATH_FSTAB => "$case/fstab", TMPDIR => $options{bad_output} ? "$case/missing" : "$case/tmp",
-        FSTAB_UMOUNT_STATUS => $error);
+        FSTAB_UMOUNT_STATUS => $error,
+        DEVFS_UMOUNT_STATUS => $options{devfs_status} || 0);
     my ($status, $output) = run_shell('sh "$1"', $script);
     return ($status, -e "$case/events" ? read_file("$case/events") : '', $case, $output);
 }
@@ -93,12 +96,19 @@ for my $fstab ('', "# Device Mountpoint FStype Options Dump Pass#\n", "/dev/ada0
 
 my ($old_status, $old_events) = cleanup_case($native, '', 0, 0);
 is($old_status, 1, 'exact unfixed native helper reproduces empty-fstab failure');
-like($old_events, qr/^-F .* -a$/m, 'negative control reaches the erroneous empty-fstab unmount');
+like($old_events, qr/^-F[ ].*[ ]-a$/mx, 'negative control reaches the erroneous empty-fstab unmount');
 
 for my $failure (qw(missing_input bad_output)) {
     my ($status, $events) = cleanup_case("$root/patched", '', 0, 0, $failure => 1);
     isnt($status, 0, "$failure is not treated as a valid empty mount list");
     is($events, '', "$failure fails before unmounting filesystems");
+}
+
+for my $failure_fstab ('', "/dev/ada0p1 /boot/efi msdosfs rw 2 2\n") {
+    my ($status, $events, $case) = cleanup_case("$root/patched", $failure_fstab, 0, 0,
+        devfs_status => 42);
+    isnt($status, 0, 'devfs failure is propagated for every mount-list shape');
+    is($events, "$case/target/dev\n", 'devfs failure stops before other filesystem unmounts');
 }
 
 for my $mount (
@@ -109,7 +119,7 @@ for my $mount (
         my ($status, $events, $case) = cleanup_case("$root/patched", $mount->[0], $error, 0);
         is($status, $error, 'nonempty fstab preserves the actual unmount result');
         is($events, "$case/target/dev\n-F $case/tmp/bsdinstall-tmp-fstab -a\n", 'devfs cleanup precedes filesystem unmount');
-        like(read_file("$case/unmount-fstab"), qr/\Q$case\/target$mount->[1]\E\t\Q$mount->[2]\E\t/,
+        like(read_file("$case/unmount-fstab"), qr/\Q$case\/target$mount->[1]\E\t\Q$mount->[2]\E\t/x,
             'native mount-list generation prefixes the target root');
     }
 }

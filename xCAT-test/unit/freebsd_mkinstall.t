@@ -2,12 +2,14 @@
 use strict;
 use warnings;
 use FindBin;
-use lib "$FindBin::Bin/../../perl-xCAT", "$FindBin::Bin/../../xCAT-server/lib/perl";
+use lib "$FindBin::Bin/../lib", "$FindBin::Bin/../../perl-xCAT", "$FindBin::Bin/../../xCAT-server/lib/perl";
+use Carp qw(croak);
 use Cwd qw(abs_path);
 use Digest::SHA qw(sha256_hex);
 use Errno qw(EIO);
 use Fcntl qw(:DEFAULT :flock);
 use File::Basename qw(dirname);
+use File::Find qw(find);
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
 use IO::Compress::Gzip qw(gzip);
@@ -18,16 +20,18 @@ use Storable qw(dclone);
 use Test::More;
 use xCAT::FreeBSDInstall;
 use xCAT::FreeBSDImage;
+our (%XCATSITEVALS, %GLOBAL_TAB_HASH, %GLOBAL_SN_HASH, %GLOBAL_TABDUMP_HASH, @exclude_nodes);
 
-BEGIN { $INC{"xCAT/$_.pm"} = 1 for qw(Table TableUtils); }
+BEGIN { $INC{'xCAT/Table.pm'} = 1; }
+use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 {
     package xCAT::Table;
     our (%rows, @networks, @writes);
     sub new {
         my ($class, $table, %options) = @_;
-        die 'Only the optional iscsi table may be initialized' unless defined($options{-create}) &&
-            (!$options{-create} || $table eq 'iscsi');
+        die 'Only the optional iscsi table may be initialized'
+          if $options{-create} && $table ne 'iscsi' && !exists($rows{$table});
         if ($table eq 'iscsi' && !exists($rows{$table})) {
             return unless $options{-create};
             $rows{$table} = {};
@@ -36,12 +40,34 @@ use xCAT::NetworkUtils;
     }
     sub getNodeAttribs { return Storable::dclone($rows{$_[0]{table}}{$_[1]} || {}); }
     sub getAllEntries { return Storable::dclone([values %{$rows{$_[0]{table}} || {}}]); }
-    sub getAllAttribs { return @{Storable::dclone(\@networks)}; }
+    sub getAllAttribs {
+        my ($self) = @_;
+        return @{Storable::dclone(\@networks)} if $self->{table} eq 'networks';
+        return @{getAllEntries($self)};
+    }
+    sub getAllNodeAttribs { return getAllAttribs(@_); }
+    sub getAttribs {
+        my ($self, $keys) = @_;
+        for my $row (@{getAllEntries($self)}) {
+            next if grep { !defined($row->{$_}) || !defined($keys->{$_}) || $row->{$_} ne $keys->{$_} } keys %$keys;
+            return $row;
+        }
+        return;
+    }
+    sub getNodesAttribs {
+        my ($self, $nodes) = @_;
+        return { map { $_ => [$self->getNodeAttribs($_)] } @$nodes };
+    }
+    sub getAllAttribsWhere {
+        die 'Only the empty management-node query is provided' unless $_[0]{table} eq 'nodelist';
+        return;
+    }
     sub setAttribs { push @writes, [@_]; die 'Unexpected database write'; }
     sub close { return; }
 }
 {
     package xCAT::TableUtils;
+    no warnings 'redefine';
     our (%site, $installroot, $tftpdir);
     sub getInstallDir { return $installroot; }
     sub getTftpDir { return $tftpdir; }
@@ -52,9 +78,7 @@ use xCAT::NetworkUtils;
     no warnings 'redefine';
     our (%addresses, @facing, $forwarding);
     sub getipaddr {
-        my ($class, $name, %options) = @_;
-        die 'IPv4-only name resolution is required' unless $options{OnlyV4} ||
-            $name =~ /\A(?:\d+\.){3}\d+\z/ || $name =~ /\A[0-9a-f]*:[0-9a-f:]+\z/;
+        my ($class, $name) = @_;
         return $addresses{$name} if exists($addresses{$name});
         return $name if $name =~ /\A(?:\d+\.){3}\d+\z/;
         return $name if $name =~ /\A[0-9a-f]*:[0-9a-f:]+\z/;
@@ -63,7 +87,9 @@ use xCAT::NetworkUtils;
     sub thishostisnot { return $_[1] ne '192.0.2.1' && $_[1] ne '198.51.100.1'; }
     sub my_ip_facing { return @facing; }
     sub ip_forwarding_enabled { return $forwarding; }
+    sub gethostnameandip () { return ('mn', '192.0.2.1'); }
 }
+{ package xCAT_monitoring::monitorctrl; sub getNodeConfData { return {}; } }
 require xCAT::Utils;
 my $plugin = $ENV{XCAT_FREEBSD_PLUGIN} || "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/freebsd.pm";
 require $plugin;
@@ -91,6 +117,9 @@ sub read_file {
     return do { local $/; <$file> };
 }
 sub fixture {
+    my $format = shift || 'xcat-mfsbsd-1';
+    my $install_contract = shift;
+    my $postscript_contract = shift;
     $root = "$temporary/case-" . ++$sequence;
     $xCAT::TableUtils::installroot = "$root/install-files";
     $xCAT::TableUtils::tftpdir = "$root/tftp";
@@ -115,9 +144,32 @@ sub fixture {
     $files{'usr/freebsd-dist/MANIFEST'} = join('', map {
         "$_\t" . sha256_hex($files{"usr/freebsd-dist/$_"}) . "\t1\tset\tSet\ton\n"
     } qw(base.txz kernel.txz));
+    if ($format eq 'xcat-mfsbsd-2') {
+        delete @files{map { "usr/freebsd-dist/$_" } qw(MANIFEST base.txz kernel.txz)};
+        my @postscript_runtime = $postscript_contract ? qw(usr/local/libexec/xcat-postscript
+            usr/local/libexec/xcat-postscript-packages usr/local/libexec/freebsd-pkg-resolve
+            usr/local/libexec/xcat-postboot) : ();
+        my @runtime_paths = qw(
+            usr/local/sbin/xcat-install usr/local/libexec/xcat-install-lib.sh
+            usr/local/share/xcat/installerconfig.tmpl usr/sbin/bsdinstall
+            usr/libexec/bsdinstall/script usr/libexec/bsdinstall/pkgbase
+            usr/libexec/bsdinstall/umount usr/libexec/flua usr/local/sbin/pkg-static
+        );
+        if (($install_contract || '') eq 'xcat-freebsd-install-4') {
+            @runtime_paths = map { (split(/\t/x, $_))[1] }
+                grep { /^file\t/x } split(/\n/x, read_file("$FindBin::Bin/../fixtures/freebsd-storage-runtime.tsv"));
+        }
+        $files{'xcat/runtime.tsv'} = "format\txcat-freebsd-runtime-2\n"
+          . "target\t15.1-RELEASE\tFreeBSD:15:amd64\t1501000\n"
+          . "pkg-version\t2.6.2\nbsdinstall-contract\txcat-freebsd-pkgbase-1\n"
+          . join('', map { "file\t$_\t" . sha256_hex("runtime $_") . "\n" } sort(@postscript_runtime, @runtime_paths));
+    }
     write_file("$root/media/$_", $files{$_}) for keys %files;
     write_file("$root/media/xcat/mfsbsd.json", JSON->new->canonical->encode({
-        format => 'xcat-mfsbsd-1', release => '15.1-RELEASE', arch => 'amd64',
+        format => $format, release => '15.1-RELEASE', arch => 'amd64',
+        ($format eq 'xcat-mfsbsd-2' ? (mfsbsd_commit => 'a' x 40) : ()),
+        (defined($install_contract) ? (install_contract => $install_contract) : ()),
+        (defined($postscript_contract) ? (postscript_contract => $postscript_contract) : ()),
         files => {map { $_ => sha256_hex($files{$_}) } keys %files} }));
     $media = xCAT::FreeBSDImage::import_media("$root/media", $xCAT::TableUtils::installroot);
     $image = "freebsd15.1-x86_64-install-compute-" . substr($media->{digest}, 0, 12);
@@ -127,7 +179,7 @@ sub fixture {
     %xCAT::Table::rows = (
         osimage => {$image => {imagename => $image, imagetype => 'freebsd', osname => 'FreeBSD',
             osvers => 'freebsd15.1', osarch => 'x86_64', provmethod => 'install', profile => 'compute'}},
-        freebsdimage => {$image => {imagename => $image, pkgdir => $media->{pkgdir},
+        freebsdimage => {$image => {imagename => $image, pkgdir => $media->{pkgdir} || $media->{bootdir},
             template => "$root/settings", partitionfile => "$root/#NODE#.disk"}},
         nodetype => {node1 => {os => 'freebsd15.1', arch => 'x86_64', provmethod => $image, profile => 'compute'}},
         noderes => {node1 => {netboot => 'xnba'}},
@@ -232,13 +284,13 @@ sub definition_versions {
         definition_rejection(sub { $xCAT::Table::rows{freebsdimage}{$image}{$field} = "$root/policy" },
             qr/\Q$field\E[ ]requires[ ]imageversion=2/x, "legacy image with $field");
     }
-    definition_rejection(sub {
+    rejection(sub {
         $xCAT::Table::rows{freebsdimage}{$image}{imageversion} = '2';
         $xCAT::Table::rows{freebsdimage}{$image}{bootdir} = $media->{pkgdir};
         $xCAT::Table::rows{freebsdimage}{$image}{pkglist} = "$root/base.pkglist";
         $xCAT::Table::rows{freebsdimage}{$image}{otherpkgdir} = "$root/applications";
         $xCAT::Table::rows{freebsdimage}{$image}{otherpkglist} = "$root/applications.pkglist";
-    }, qr/imageversion=2.*pkgbase[ ]runtime/x,
+    }, qr/bootdir[ ]requires[ ]an[ ]xcat-mfsbsd-2/x,
         'version two pointing at valid legacy media');
     definition_rejection(sub {
         $xCAT::Table::rows{freebsdimage}{$image}{imageversion} = '2';
@@ -247,10 +299,383 @@ sub definition_versions {
     return;
 }
 
-subtest 'image definition versions preserve legacy installation and gate pkgbase' => \&definition_versions;
+subtest 'image definition versions preserve legacy installation and validate pkgbase media' => \&definition_versions;
+
+sub boot_only_rejection {
+    for my $layout (qw(boot legacy)) {
+        fixture('xcat-mfsbsd-2');
+        my $pkgdir = $media->{bootdir};
+        if ($layout eq 'legacy') {
+            my $relocated = "$xCAT::TableUtils::installroot/freebsd15.1/x86_64/$media->{digest}";
+            rename($pkgdir, $relocated) or croak $!;
+            $pkgdir = $relocated;
+        }
+        $xCAT::Table::rows{freebsdimage}{$image}{pkgdir} = $pkgdir;
+        my ($boot, $errors) = install();
+        is(scalar(@$errors), 1, "$layout path returns one node error");
+        like($errors->[0]{node}[0]{error}[0], qr/xcat-mfsbsd-1|legacy.*bundle[ ]format/ix,
+            "$layout path identifies the incompatible media format");
+        ok(!exists($boot->{node1}), "$layout path removes stale boot parameters");
+        is($inspect_count, 1, "$layout path uses the real boot-bundle inspector");
+        is($prepare_count, 0, "$layout path is rejected before lifecycle preparation");
+        ok(!-e $state_directory, "$layout path creates no lifecycle state");
+        ok(!-e "$root/install-files/autoinst/freebsd/node1", "$layout path creates no installer configuration");
+        ok(!-e "$root/tftp/xcat/freebsd/node1", "$layout path creates no node boot tree");
+        is_deeply(\@xCAT::Table::writes, [], "$layout path performs no database writes");
+    }
+    fixture('xcat-mfsbsd-2');
+    $xCAT::Table::rows{freebsdimage}{$image}{imageversion} = '2';
+    $xCAT::Table::rows{freebsdimage}{$image}{bootdir} = $media->{bootdir};
+    my ($boot, $errors) = install();
+    like($errors->[0]{node}[0]{error}[0], qr/policy/ix,
+        'an imported boot-only artifact also requires the administrator package policy');
+    is($inspect_count, 1, 'version two inspects its boot media before planning');
+    is($prepare_count, 0, 'missing package policy is rejected before lifecycle preparation');
+    ok(!exists($boot->{node1}), 'missing package policy removes stale boot parameters');
+    ok(!-e $state_directory, 'missing package policy creates no lifecycle state');
+    return;
+}
+
+subtest 'boot-only media cannot arm a legacy installation' => \&boot_only_rejection;
+
+subtest 'pkgbase installation publishes a native source-bound package plan' => sub {
+    plan(skip_all => 'Native pkg, solver and Linux container root are required')
+      unless $^O eq 'linux' && $> == 0 && defined($ENV{XCAT_FREEBSD_NATIVE_PKG})
+      && defined($ENV{XCAT_FREEBSD_NATIVE_SOLVER});
+    require XCAT::Test::FreeBSDRepoFixture;
+    require xCAT::FreeBSDPkg;
+    require xCAT::FreeBSDRepo;
+    require xCAT::FreeBSDRepoImport;
+    require xCAT::FreeBSDPackagePlan;
+    my $native = "$temporary/native";
+    make_path("$native/empty", "$native/repos");
+    my $json = JSON->new->utf8->canonical;
+    my $tool = { path => abs_path($ENV{XCAT_FREEBSD_NATIVE_PKG}) };
+    my $solver = { path => abs_path($ENV{XCAT_FREEBSD_NATIVE_SOLVER}) };
+    $tool->{sha256} = sha256_hex(read_file($tool->{path}));
+    $solver->{sha256} = sha256_hex(read_file($solver->{path}));
+    my %environment = (PATH => '/usr/bin:/bin', LC_ALL => 'C');
+    if (defined($ENV{XCAT_FREEBSD_NATIVE_LIBDIR})) {
+        $tool->{library_directory} = abs_path($ENV{XCAT_FREEBSD_NATIVE_LIBDIR});
+        $tool->{library_digest} = xCAT::FreeBSDRepo::snapshot_tree($tool->{library_directory})->{digest};
+        $environment{LD_LIBRARY_PATH} = $tool->{library_directory};
+    }
+    write_file("$native/pkg.conf", $json->encode({ ABI => 'FreeBSD:15:amd64', OSVERSION => 1501000,
+        PKG_DBDIR => "$native/db", PKG_CACHEDIR => "$native/cache", REPOS_DIR => ["$native/repos"],
+        REPO_AUTOUPDATE => JSON::false, PKG_ENABLE_PLUGINS => JSON::false, SYSLOG => JSON::false }));
+    my $command = sub {
+        my $result = xCAT::FreeBSDPkg::run_command([@_], cwd => $native,
+            environment => \%environment, timeout => 60, stdout_limit => 67108864);
+        croak "Native fixture failed: $result->{stderr}" if $result->{exitcode} || $result->{signal};
+        return $result->{stdout};
+    };
+    my $run_pkg = sub { return $command->($tool->{path}, '-C', "$native/pkg.conf", @_); };
+    my $producer = XCAT::Test::FreeBSDRepoFixture->new(root => $native,
+        command => $command, run_pkg => $run_pkg, write_file => \&write_file);
+    my $source = $producer->release_tree(1);
+    for my $name (qw(FreeBSD-ssh FreeBSD-bsdconfig)) {
+        $producer->create_package("$source/usr/freebsd-packages/offline/All", $name,
+            version => '15.1', origin => "base/$name", annotations => { FreeBSD_version => '1501000' });
+    }
+    $run_pkg->('repo', "$source/usr/freebsd-packages/offline");
+    my $source_digest = xCAT::FreeBSDRepo::inspect_release_tree($source)->{digest};
+    my $policy = { format => 'xcat-freebsd-import-policy-1', tool => $tool, solver => $solver,
+        releases => {}, repositories => {} };
+    my $fresh = sub {
+        fixture('xcat-mfsbsd-2', @_);
+        my $publication = xCAT::FreeBSDRepoImport::import_release($source,
+            $xCAT::TableUtils::installroot, tool => $tool,
+            trust => { type => 'operator-trusted-release', digest => $source_digest });
+        my $definition = $xCAT::Table::rows{freebsdimage}{$image};
+        @{$definition}{qw(imageversion bootdir pkgdir pkglist otherpkgdir otherpkglist)} =
+          ('2', $media->{bootdir}, "$publication->{path}/base", "$root/base.pkglist",
+           "$publication->{path}/applications", "$root/apps.pkglist");
+        write_file("$root/base.pkglist", "minimal\nkernel\n");
+        write_file("$root/apps.pkglist", "application\n");
+        write_file("$root/policy.json", $json->encode($policy));
+        $xCAT::TableUtils::site{freebsdimportpolicy} = "$root/policy.json";
+        return;
+    };
+    my $published = sub {
+        my $current = xCAT::FreeBSDInstall::state('node1', directory => $state_directory);
+        return ($current, read_file("$root/install-files/autoinst/freebsd/node1/$current->{generation}.conf"));
+    };
+    subtest 'real public command, immutable configuration and retry' => sub {
+        $fresh->();
+        my ($boot, $errors) = install();
+        is_deeply($errors, [], 'pkgbase mkinstall succeeds through the real resolver');
+        diag(explain($errors)) if @$errors;
+        return if @$errors;
+        is($boot->{node1}[0]{kernel}, 'xcat/freebsd/node1/boot/pxeboot', 'native loader is published');
+        my ($current, $content) = $published->();
+        is($current->{phase}, 'prepared', 'pkgbase lifecycle is armed only after publication');
+        like($content, qr/^format=xcat-freebsd-install-2$/mx, 'the published configuration uses the pkgbase contract');
+        like($content, qr{^install_url=http://192\.0\.2\.1:80/install$}mx, 'the configured HTTP alias is retained');
+        unlike($content, qr/^dist_url=/mx, 'pkgbase configuration contains no legacy distribution URL');
+        my ($digest) = $content =~ /^package_plan_sha256=([0-9a-f]{64})$/mx;
+        ok(defined($digest), 'configuration pins the published package plan');
+        return unless defined($digest);
+        my $path = "$root/install-files/freebsd15.1/x86_64/plans/$digest.plan";
+        my $plan = xCAT::FreeBSDPackagePlan::inspect($path, $xCAT::TableUtils::installroot)->{plan};
+        my $plan_bytes = read_file($path);
+        like($plan_bytes, qr/\Aformat\txcat-freebsd-package-plan-1\n/x,
+            'installation publishes the format accepted by the native decoder');
+        ok(!exists($plan->{scope}), 'installation plan has no update scope');
+        is_deeply([sort map { $_->{name} } @{$plan->{packages}}], [sort qw(
+            FreeBSD-ssh FreeBSD-bsdconfig FreeBSD-set-minimal FreeBSD-kernel-generic pkg application)],
+            'the published plan includes requested base and DVD roots plus required target tools');
+        like($content, qr/^boot_media_sha256=\Q$media->{digest}\E$/mx, 'configuration binds imported boot media');
+        my $runtime = read_file("$root/tftp/xcat/freebsd/node1/xcat/runtime.tsv");
+        like($content, qr/^runtime_sha256=\Q@{[sha256_hex($runtime)]}\E$/mx, 'configuration binds the published runtime descriptor');
+        my $loader_text = read_file("$root/tftp/xcat/freebsd/node1/boot/loader.conf");
+        like($loader_text, qr/\Q@{[sha256_hex($content)]}\E/x, 'the loader pins exact installer configuration bytes');
+        ($boot, $errors) = install();
+        is_deeply($errors, [], 'identical pkgbase retry succeeds');
+        is(($published->())[0]{generation}, $current->{generation}, 'identical retry retains its generation');
+        is(read_file($path), $plan_bytes, 'identical retry preserves immutable plan bytes');
+        write_file("$root/base.pkglist", "base\nkernel\n");
+        ($boot, $errors) = install();
+        is_deeply($errors, [], 'changed base selection can prepare a new installation');
+        return if @$errors;
+        my ($next, $next_content) = $published->();
+        isnt($next->{generation}, $current->{generation}, 'changed plan creates a new generation');
+        unlike($next_content, qr/^package_plan_sha256=\Q$digest\E$/mx, 'changed selection changes the pinned plan');
+        my $attempt_id = 'c' x 32;
+        xCAT::FreeBSDInstall::transition('node1', "freebsd-install-v1 $next->{generation} $attempt_id begin\n",
+            sub {}, directory => $state_directory);
+        ($boot, $errors) = install();
+        like($errors->[0]{node}[0]{error}[0], qr/active|already|installation/ix, 'active pkgbase installation cannot be rearmed');
+        is(($published->())[1], $next_content, 'active installation keeps the original configuration');
+        is_deeply(\@xCAT::Table::writes, [], 'planning and publication leave image database policy unchanged');
+    };
+    subtest 'an image without applications still publishes an installation plan' => sub {
+        $fresh->();
+        delete @{$xCAT::Table::rows{freebsdimage}{$image}}{qw(otherpkgdir otherpkglist)};
+        my ($boot, $errors) = install();
+        is_deeply($errors, [], 'base-only image prepares through the public command');
+        return if @$errors;
+        ok(exists($boot->{node1}), 'base-only image receives native boot parameters');
+        my ($current, $content) = $published->();
+        is($current->{phase}, 'prepared', 'the base-only installation is armed');
+        my ($digest) = $content =~ /^package_plan_sha256=([0-9a-f]{64})$/mx;
+        ok(defined($digest), 'configuration pins the base-only plan');
+        return unless defined($digest);
+        my $path = "$root/install-files/freebsd15.1/x86_64/plans/$digest.plan";
+        my $plan = xCAT::FreeBSDPackagePlan::inspect($path, $xCAT::TableUtils::installroot)->{plan};
+        like(read_file($path), qr/\Aformat\txcat-freebsd-package-plan-1\n/x,
+            'base-only roots do not select the update-only plan format');
+        ok(!exists($plan->{scope}), 'base-only installation has no update scope');
+        is_deeply($plan->{applications}, [], 'the plan has no application roots');
+        is_deeply([sort map { $_->{name} } @{$plan->{packages}}], [sort qw(
+            FreeBSD-ssh FreeBSD-bsdconfig FreeBSD-set-minimal FreeBSD-kernel-generic pkg)],
+            'base-only plan retains the required installation tools');
+        done_testing();
+    };
+    for my $contract (qw(xcat-freebsd-install-3 xcat-freebsd-install-4)) {
+    subtest "enhanced boot settings reach the native loader and configuration with $contract" => sub {
+        $fresh->($contract);
+        $extra_cmdline = 'hint.example=install R::hint.example=target';
+        $xCAT::Table::rows{nodehm}{node1} = { serialport => '0', serialspeed => '115200', serialflow => 'none' };
+        write_file("$root/settings", "authorized_keys_file=$root/key.pub\nbootstrap=static\n");
+        my ($boot, $errors) = install();
+        is_deeply($errors, [], 'enhanced public mkinstall succeeds with the real resolver');
+        diag(explain($errors)) if @$errors;
+        return if @$errors;
+        my ($current, $content) = $published->();
+        like($content, qr/^format=xcat-freebsd-install-3$/mx, 'published configuration names the declared contract');
+        like($content, qr/^bootstrap=static$/mx, 'static bootstrap is bound to the generation');
+        like($content, qr/^console_port=0$/mx, 'nodehm console policy enters the configuration');
+        my $text = read_file("$root/tftp/xcat/freebsd/node1/boot/loader.conf");
+        like($text, qr/^hint\.example="install"$/mx, 'installation options reach the actual per-node loader');
+        unlike($text, qr/^hint\.example="target"$/mx, 'R:: options stay out of installation boot');
+        like($text, qr/^xcat_bootstrap_ipv4="192\.0\.2\.10"$/mx, 'loader has static bootstrap data before HTTP');
+        like($text, qr/^hw\.uart\.console="io:0x3f8,br:115200"$/mx, 'loader uses the selected native console');
+        like($text, qr/\Q@{[sha256_hex($content)]}\E/x, 'loader pins the enhanced configuration');
+        ($boot, $errors) = install();
+        is_deeply($errors, [], 'identical enhanced retry succeeds');
+        is(($published->())[0]{generation}, $current->{generation}, 'identical enhanced retry keeps its generation');
+        $extra_cmdline = 'hint.example=install R::hint.example=changed';
+        ($boot, $errors) = install();
+        is_deeply($errors, [], 'changed persistent option prepares a new generation');
+        isnt(($published->())[0]{generation}, $current->{generation}, 'persistent options participate in lifecycle identity');
+    };
+    }
+    subtest 'ordered multi-disk policy reaches public provisioning' => sub {
+        $fresh->('xcat-freebsd-install-4');
+        write_file("$root/node1.disk", "filesystem=zfs\nzfs_topology=raid10\n"
+            . "zfs_vdevs=vtbd3\@D,vtbd1\@B;vtbd2\@C,vtbd0\@A\nswap_mode=none\n");
+        my ($boot, $errors) = install();
+        is_deeply($errors, [], 'public mkinstall accepts a complete multi-disk runtime');
+        diag(explain($errors)) if @$errors;
+        return if @$errors;
+        my ($current, $content) = $published->();
+        like($content, qr/^format=xcat-freebsd-install-4$/mx, 'multi-disk configuration declares format4');
+        like($content, qr/^zfs_vdevs=vtbd3\@D,vtbd1\@B;vtbd2\@C,vtbd0\@A$/mx, 'published configuration retains declared mirror groups');
+        unlike($content, qr/^target_disk(?:_ident)?=/mx, 'multi-disk configuration has no legacy single-disk target');
+        my $text = read_file("$root/tftp/xcat/freebsd/node1/boot/loader.conf");
+        like($text, qr/\Q@{[sha256_hex($content)]}\E/x, 'loader pins the actual multi-disk configuration');
+        ($boot, $errors) = install();
+        is_deeply($errors, [], 'identical multi-disk preparation is reusable');
+        is(($published->())[0]{generation}, $current->{generation}, 'identical preparation retains its generation');
+    };
+    subtest 'public preparation freezes boot scripts before arming' => sub {
+        $fresh->('xcat-freebsd-install-3', 'xcat-freebsd-postscripts-1');
+        require xCAT::FreeBSDPostscript;
+        require xCAT::Postage;
+        local %XCATSITEVALS = (installdir => $xCAT::TableUtils::installroot,
+            master => 'mn', sshbetweennodes => 'NOGROUPS', runbootscripts => 'yes');
+        local %GLOBAL_TAB_HASH = ();
+        local %GLOBAL_SN_HASH = ();
+        local %GLOBAL_TABDUMP_HASH = ();
+        local @exclude_nodes = ();
+        $xCAT::TableUtils::site{installdir} = $xCAT::TableUtils::installroot;
+        $xCAT::TableUtils::site{runbootscripts} = 'yes';
+        $xCAT::Table::rows{$_} = {} for qw(linuximage nimimage);
+        $xCAT::Table::rows{nodelist}{node1} = { node => 'node1', groups => 'compute' };
+        $xCAT::Table::rows{postscripts} = {
+            xcatdefaults => { node => 'xcatdefaults', postscripts => 'configure "two words"', postbootscripts => 'boot-script' },
+            node1 => { node => 'node1', postscripts => 'node-script', postbootscripts => '' },
+        };
+        my $scripts = "$xCAT::TableUtils::installroot/postscripts";
+        write_file("$scripts/mypostscript.tmpl", <<'BOOT_TEMPLATE');
+#!/bin/sh
+UPDATENODE=0
+OSVER=#TABLE:nodetype:$NODE:os#
+ARCH=#TABLE:nodetype:$NODE:arch#
+PROFILE=#TABLE:nodetype:$NODE:profile#
+PROVMETHOD=#TABLE:nodetype:$NODE:provmethod#
+# postscripts-start-here
+#INCLUDE_POSTSCRIPTS_LIST#
+# postscripts-end-here
+# postbootscripts-start-here
+#INCLUDE_POSTBOOTSCRIPTS_LIST#
+# postbootscripts-end-here
+BOOT_TEMPLATE
+        write_file("$scripts/$_", "#!/bin/sh\nprintf '%s\\n' original\n") for qw(configure node-script boot-script);
+        my $prepare_boot = \&xCAT::FreeBSDPostscript::prepare_boot;
+        my $boot_store = "$root/postscript-state";
+        no warnings 'redefine';
+        local *xCAT::FreeBSDPostscript::prepare_boot = sub { return $prepare_boot->(@_, directory => $boot_store); };
+        my ($boot, $errors) = install();
+        is_deeply($errors, [], 'public mkinstall prepares real boot selections and imported package plans');
+        if (@$errors) {
+            diag(explain($errors));
+            find({ no_chdir => 1, wanted => sub {
+                my $path = $File::Find::name;
+                return unless $path =~ m{/(?:failure|stderr|setup|outcome[.]json|callbacks[.]jsonl)\z}x && -f $path && -s $path;
+                diag("$path\n" . read_file($path));
+            } }, $boot_store) if -d $boot_store;
+        }
+        return if @$errors;
+        my ($armed, $content) = $published->();
+        my $selections = $armed->{postscript_preparations};
+        is(ref($selections), 'HASH', 'published generation retains its boot preparation binding');
+        return unless ref($selections) eq 'HASH';
+        my $first = xCAT::FreeBSDPostscript::compile_execution($selections->{firstboot}, directory => $boot_store);
+        my $repeat = xCAT::FreeBSDPostscript::compile_execution($selections->{repeat}, directory => $boot_store);
+        is_deeply([map { pack('H*', $_->{name}) } @{$first->{entries}}],
+            [qw(configure node-script boot-script)], 'first boot preserves defaults and node ordering');
+        is_deeply([map { pack('H*', $_->{name}) } @{$repeat->{entries}}], ['boot-script'], 'repeat selection omits postscripts');
+        is($first->{manifest}{source_id}, $repeat->{manifest}{source_id}, 'public preparation shares one frozen source');
+        ($boot, $errors) = install();
+        is_deeply($errors, [], 'unchanged retry prepares successfully');
+        is(($published->())[0]{generation}, $armed->{generation}, 'unchanged script bytes reuse their generation');
+        write_file("$scripts/configure", "#!/bin/sh\nprintf '%s\\n' replacement\n");
+        ($boot, $errors) = install();
+        is_deeply($errors, [], 'changed script prepares a separate generation');
+        my ($changed) = $published->();
+        isnt($changed->{generation}, $armed->{generation}, 'script content changes the public installation generation');
+        isnt($changed->{postscript_preparations}{firstboot}, $selections->{firstboot}, 'changed content is bound to the new preparation');
+        is_deeply(xCAT::FreeBSDPostscript::compile_execution($selections->{firstboot}, directory => $boot_store),
+            $first, 'previous generation retains its original driver');
+        $xCAT::TableUtils::site{runbootscripts} = 'no';
+        $XCATSITEVALS{runbootscripts} = 'no';
+        ($boot, $errors) = install();
+        is_deeply($errors, [], 'disabled repeat policy prepares successfully');
+        my ($disabled) = $published->();
+        isnt($disabled->{generation}, $changed->{generation}, 'repeat policy changes the public generation');
+        is(xCAT::FreeBSDPostscript::compile_execution($disabled->{postscript_preparations}{repeat},
+            directory => $boot_store)->{enabled}, 0, 'new generation cannot repeat scripts when disabled');
+        my $published_loader = read_file("$root/tftp/xcat/freebsd/node1/boot/loader.conf");
+        write_file("$scripts/mypostscript.tmpl", 'invalid template');
+        my $armed_count = $prepare_count;
+        ($boot, $errors) = install();
+        is(scalar(@$errors), 1, 'unusable template fails public preparation');
+        ok(!exists($boot->{node1}), 'unusable template returns no launch parameters');
+        is($prepare_count, $armed_count, 'unusable template cannot arm an installation');
+        is_deeply(xCAT::FreeBSDInstall::state('node1', directory => $state_directory), $disabled,
+            'unusable replacement preserves the previous protected state');
+        is(read_file("$root/tftp/xcat/freebsd/node1/boot/loader.conf"), $published_loader,
+            'unusable replacement preserves the previous loader');
+    };
+    my $reject = sub {
+        my ($change, $pattern, $label) = @_;
+        $fresh->();
+        $change->();
+        my ($boot, $errors) = install();
+        is(scalar(@$errors), 1, "$label returns one node error");
+        like($errors->[0]{node}[0]{error}[0], $pattern, "$label identifies its cause");
+        ok(!exists($boot->{node1}), "$label removes stale boot parameters");
+        is($prepare_count, 0, "$label cannot arm installation");
+        ok(!-e $state_directory && !-e "$root/install-files/autoinst/freebsd/node1"
+            && !-e "$root/tftp/xcat/freebsd/node1", "$label publishes no lifecycle or boot state");
+        return;
+    };
+    subtest 'invalid package selections and policy fail before arming' => sub {
+        for my $scope (qw(base applications)) {
+            $reject->(sub {
+                my $bad = dclone($policy);
+                $bad->{scope} = $scope;
+                write_file("$root/policy.json", $json->encode($bad));
+            }, qr/Unknown[ ]FreeBSD[ ]import[ ]policy[ ]field/x, "policy injection of $scope scope");
+        }
+        $reject->(sub { $extra_cmdline = 'hint.example=install' },
+            qr/require.*runtime/x, 'old pkgbase runtime with enhanced boot options');
+        $reject->(sub { write_file("$root/settings", "authorized_keys_file=$root/key.pub\nbootstrap=static\n") },
+            qr/require.*runtime/x, 'old pkgbase runtime with static bootstrap');
+        $reject->(sub { write_file("$root/apps.pkglist", "missing-application\n") },
+            qr/missing|absent|application/ix, 'missing application');
+        $reject->(sub {
+            my $bad = dclone($policy);
+            $bad->{solver}{sha256} = '0' x 64;
+            write_file("$root/policy.json", $json->encode($bad));
+        }, qr/checksum|digest|sha256/ix, 'changed solver identity');
+        $reject->(sub {
+            chmod(oct('0644'), "$media->{bootdir}/xcat/runtime.tsv") or croak $!;
+            write_file("$media->{bootdir}/xcat/runtime.tsv", "invalid\n");
+        }, qr/checksum|runtime/ix, 'changed boot runtime');
+    };
+    subtest 'changed package-list bytes cannot bind a prepared generation' => sub {
+        $fresh->();
+        my $run = \&xCAT::FreeBSDPkg::run_command;
+        my $changed = 0;
+        my ($boot, $errors);
+        {
+            no warnings 'redefine';
+            local *xCAT::FreeBSDPkg::run_command = sub {
+                my ($argv, @options) = @_;
+                my $result = $run->($argv, @options);
+                if ($argv->[0] eq $solver->{path} && grep { $_ eq 'resolve' } @$argv) {
+                    write_file("$root/apps.pkglist", "# changed while resolving\napplication\n");
+                    ++$changed;
+                }
+                return $result;
+            };
+            ($boot, $errors) = install();
+        }
+        is($changed, 1, 'the actual native solver completed before the package list changed');
+        like($errors->[0]{node}[0]{error}[0], qr/request[ ]changed[ ]during[ ]resolution/x,
+            'equal package roots do not conceal changed request bytes');
+        is($prepare_count, 0, 'changed request never arms installation');
+        ok(!exists($boot->{node1}) && !-e $state_directory, 'changed request leaves no boot parameters or lifecycle state');
+    };
+    ok(!-e "$native/package-script-executed", 'planning never executes package installation scripts');
+    ok(!-e '/var/db/pkg' && !-l '/var/db/pkg', 'planning leaves the default package database absent');
+    is(xCAT::FreeBSDRepo::inspect_release_tree($source)->{digest}, $source_digest, 'native source fixture is unchanged');
+};
 
 rejection(sub {$xCAT::Table::rows{iscsi}{node1} = {server => 'san', target => 'iqn.test'}}, qr/iSCSI/, 'SAN conflict');
-rejection(sub {$extra_cmdline = 'console=ttyS0'}, qr/bootparams.addkcmdline/, 'unsupported extra kernel arguments');
+rejection(sub {$extra_cmdline = 'console=ttyS0'}, qr/Reserved boot option/, 'reserved extra kernel arguments');
 rejection(sub {$xCAT::Table::rows{noderes}{node1}{netboot} = 'pxe'}, qr/netboot=xnba/, 'other boot method');
 rejection(sub {$xCAT::Table::rows{noderes}{node1}{servicenode} = 'sn'}, qr/explicit xcatmaster/, 'unowned service-node assignment');
 rejection(sub {$xCAT::Table::rows{noderes}{node1}{xcatmaster} = '192.0.2.99'}, qr/selected xcatmaster/, 'remote installation owner');
