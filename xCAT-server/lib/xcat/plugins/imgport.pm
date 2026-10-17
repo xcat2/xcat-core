@@ -2000,7 +2000,7 @@ sub place_image {
     # genimage, packimage, liteimg and rmimage hold this lock while they change the image.
     # A statelite bundle has a rootimgtree instead of a rootimg.
     my ($imagefile) = grep { $_ } map { (split(',', $data->{$_} // ''))[0] } qw(rootimg rootimgtree kernel ramdisk);
-    my $lock;
+    my ($lock, $publication);
     if ($imagefile) {
         my $rootimgdir = dirname($imagefile);
         mkpath($rootimgdir) unless -d $rootimgdir;
@@ -2009,10 +2009,33 @@ sub place_image {
             $callback->({ error => [$lock], errorcode => [1] });
             return 0;
         }
+
+        # As in packimage, the stages that this host abandoned go also when another host holds the publication lock.
+        xCAT::SvrUtils->remove_abandoned_rootimg_stages($rootimgdir);
+
+        # The image lock is per host, so this lock keeps other hosts from publishing here until the definition is settled.
+        ($publication, my $error) = xCAT::SvrUtils->lock_rootimg_publication($rootimgdir);
+        if (!$publication) {
+            $callback->({ error => [$error], errorcode => [1] });
+            return 0;
+        }
     }
-    # A publication that another host refuses leaves the image definition as it was.
-    # A later failure leaves the definition that matches the published boot files.
-    return place_boot_files($data, $imgdir, $callback) && set_config($data, $callback) && make_files($data, $imgdir, $callback);
+    # A failure after the definition is written leaves the definition that matches the published boot files.
+    my (@placed, $rows_left);
+    my $configured = eval { place_boot_files($data, $imgdir, $callback, \@placed, $publication) && set_config($data, $callback, \$rows_left) };
+    if (!defined($configured)) {
+        my $error = $@ =~ s/\s+\z//r;
+        $callback->({ error => ["Cannot import the image: $error"], errorcode => [1] });
+    }
+
+    # A row that did not go back can refer to the imported boot files, so they stay then.
+    if (!$configured && $rows_left) {
+        $callback->({ error => ["The imported boot files stay, because the image definition has rows that did not go back."], errorcode => [1] });
+    } elsif (!$configured) {
+        restore_boot_files(\@placed, $callback, $publication);
+    }
+    xCAT::SvrUtils->unlock_rootimg_publication($publication) if $publication;
+    return $configured ? make_files($data, $imgdir, $callback) : 0;
 }
 
 #-------------------------------------------------------
@@ -2024,6 +2047,8 @@ sub place_image {
         data     -- the manifest of the bundle
         imgdir   -- the extracted bundle
         callback -- the request callback
+        placed   -- an array reference that gets each placed file, for restore_boot_files
+        held     -- the publication lock of the image directory, which the caller holds
     Returns:
         1 on success, 0 on failure
 
@@ -2031,7 +2056,7 @@ sub place_image {
 
 #-------------------------------------------------------
 sub place_boot_files {
-    my ($data, $imgdir, $callback) = @_;
+    my ($data, $imgdir, $callback, $placed, $held) = @_;
 
     # The root image goes first, so a failed publication leaves the kernel and ramdisk that match the published image.
     for my $a ("rootimg", "kernel", "ramdisk", "ramdiskcheck", "rootimgtree", "litefile") {
@@ -2045,11 +2070,15 @@ sub place_boot_files {
                 if (!-r $dirname) {
                     mkpath("$dirname", { verbose => 1, mode => 0755 });
                 }
+                my %file = (path => $fn, previous => -r $fn);
                 if ($a eq 'rootimg') {
-                    if (my $error = place_rootimg("$imgdir/$basename", $fn, $callback)) {
+                    # The publication drops the previous checksum and metainfo, and place_rootimg keeps only the archive.
+                    %file = (%file, rootimg => 1, map { ($_ => scalar(read_raw("$fn.$_"))) } qw(sha256 metainfo));
+                    if (my $error = place_rootimg("$imgdir/$basename", $fn, $callback, $held)) {
                         $callback->({ error => [$error], errorcode => [1] });
                         return 0;
                     }
+                    push @$placed, \%file;
                     next;
                 }
                 if (-r $fn) {
@@ -2057,6 +2086,7 @@ sub place_boot_files {
                     move("$fn", "$fn.ORIG");
                 }
                 move("$imgdir/$basename", $fn);
+                push @$placed, \%file;
             }
         }
     }
@@ -2373,6 +2403,7 @@ sub make_files {
         bundled  -- the root image in the extracted bundle
         fn       -- the published path
         callback -- the request callback
+        held     -- the publication lock of the image directory, which the caller holds
     Returns:
         an error message, or nothing on success
 
@@ -2380,7 +2411,7 @@ sub make_files {
 
 #-------------------------------------------------------
 sub place_rootimg {
-    my ($bundled, $fn, $callback) = @_;
+    my ($bundled, $fn, $callback, $held) = @_;
     my ($stage, $error) = xCAT::SvrUtils->rootimg_stage(dirname($fn));
     return $error unless $stage;
     my $staged = "$stage/" . basename($fn);
@@ -2392,7 +2423,72 @@ sub place_rootimg {
         unlink("$fn.ORIG");
         link($fn, "$fn.ORIG") or copy($fn, "$fn.ORIG");
     }
-    return xCAT::SvrUtils->publish_rootimg($staged, $fn);
+    return xCAT::SvrUtils->publish_rootimg($staged, $fn, undef, $held);
+}
+
+#-------------------------------------------------------
+
+=head3   restore_boot_files
+
+    Put back the files that place_boot_files replaced, and remove the ones that had no previous version.
+    Arguments:
+        placed   -- the files that place_boot_files placed
+        callback -- the request callback
+        held     -- the publication lock of the image directory, which the caller holds
+    Returns:
+        nothing
+
+=cut
+
+#-------------------------------------------------------
+sub restore_boot_files {
+    my ($placed, $callback, $held) = @_;
+    foreach my $file (reverse @$placed) {
+        my $fn = $file->{path};
+        my $error;
+        if ($file->{rootimg}) {
+            $error = $file->{previous} ? republish_rootimg($file, $held) : xCAT::SvrUtils->unpublish_rootimg($fn, $held);
+        } elsif ($file->{previous}) {
+            $error = "Cannot move $fn.ORIG to $fn: $!" if !move("$fn.ORIG", $fn);
+        } elsif (-e $fn && !unlink($fn)) {
+            $error = "Cannot remove $fn: $!";
+        }
+        if (defined($error)) {
+            $callback->({ error => ["The previous $fn is not back. $error"], errorcode => [1] });
+        } else {
+            $callback->({ data => [ $file->{previous} ? "  Put back the previous $fn." : "  Removed $fn." ] });
+        }
+    }
+    return;
+}
+
+# Publishes the archive that place_rootimg kept as .ORIG again, with the checksum and metainfo it had.
+sub republish_rootimg {
+    my ($file, $held) = @_;
+    my $fn = $file->{path};
+    my ($stage, $error) = xCAT::SvrUtils->rootimg_stage(dirname($fn));
+    return $error unless $stage;
+    my $staged = "$stage/" . basename($fn);
+    link("$fn.ORIG", $staged) or copy("$fn.ORIG", $staged) or return "Cannot stage $fn.ORIG: $!";
+    foreach my $suffix (qw(sha256 metainfo)) {
+        next if !defined($file->{$suffix});
+        write_raw("$staged.$suffix", $file->{$suffix}) or return "Cannot write $staged.$suffix: $!";
+    }
+    return xCAT::SvrUtils->publish_rootimg($staged, $fn, undef, $held);
+}
+
+# Returns the bytes of a file, or undef when it cannot be read.
+sub read_raw {
+    my ($path) = @_;
+    open(my $handle, '<:raw', $path) or return;
+    local $/;
+    return scalar(<$handle>);
+}
+
+sub write_raw {
+    my ($path, $content) = @_;
+    open(my $handle, '>:raw', $path) or return 0;
+    return (print {$handle} $content) && close($handle);
 }
 
 sub copyPostscripts {
