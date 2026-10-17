@@ -7,11 +7,11 @@ config:
 	  mirror-0                          ONLINE       0     0     0
 	    /dev/vtbd2  ONLINE       0     0     0
 	    /dev/vtbd3  ONLINE       0     0     0
-	special	
+	special
 	  mirror-1                          ONLINE       0     0     0
 	    /dev/vtbd9  ONLINE       0     0     0
 	    /dev/vtbd10  ONLINE       0     0     0
-	logs	
+	logs
 	  /dev/vtbd6    ONLINE       0     0     0
 	  mirror-3                          ONLINE       0     0     0
 	    /dev/vtbd4  ONLINE       0     0     0

@@ -93,7 +93,7 @@ subtest 'auxiliary devices and mixed log groups' => sub {
     is_deeply([map { substr($_, 2) } grep { /^C\t/x } split(/\n/x, $plan)],
         [qw(mirror /dev/vtbd2 /dev/vtbd3 special mirror /dev/vtbd9 /dev/vtbd10 log /dev/vtbd6 mirror /dev/vtbd4 /dev/vtbd5 cache /dev/vtbd7 /dev/vtbd8)],
         'native arguments retain separate data, special, log and cache roles');
-    # Native FreeBSD 15.1 output; only pool and device names are normalized.
+    # Native FreeBSD 15.1 output; only names and trailing whitespace are normalized.
     my $native;
     for my $fixture ('mixed', 'merged') {
         open(my $input, '<', "$FindBin::Bin/fixtures/freebsd15.1-zpool-$fixture-logs") or croak $!;
