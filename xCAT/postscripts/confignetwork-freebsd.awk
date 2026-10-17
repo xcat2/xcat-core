@@ -192,6 +192,20 @@ function options(nic,    text, count, parts, pair, i, key, value) {
         if (key == "MTU") {
             if (!number(value, 576, 9216))
                 fail("Invalid MTU for " nic)
+        } else if (key == "MACADDR" && type[nic] != "ethernet") {
+            value = tolower(value)
+            if (value !~ /^([0-9a-f][0-9a-f]:){5}[0-9a-f][0-9a-f]$/ ||
+                hex_number(substr(value, 1, 2)) % 2 || value == "00:00:00:00:00:00")
+                fail("Invalid unicast MAC address for " nic)
+        } else if (key == "BOOTPROTO") {
+            if (value != "dhcp" && value != "static" && value != "none")
+                fail("BOOTPROTO must be dhcp, static or none")
+        } else if (key == "dhcp4") {
+            if (value != "true" && value != "false")
+                fail("dhcp4 must be true or false")
+        } else if (key == "PEERDNS" || key == "DEFROUTE") {
+            if (value != "yes" && value != "no")
+                fail(key " must be yes or no")
         } else if (key == "LAGGPROTO" && type[nic] == "lagg") {
             if (value != "failover" && value != "lacp")
                 fail("LAGGPROTO must be failover or lacp")
@@ -205,6 +219,12 @@ function options(nic,    text, count, parts, pair, i, key, value) {
             fail("Unsupported FreeBSD option " key " for " nic)
         option[nic, key] = value
     }
+    if (option[nic, "BOOTPROTO"] != "" && option[nic, "dhcp4"] != "" &&
+        (option[nic, "BOOTPROTO"] == "dhcp") != (option[nic, "dhcp4"] == "true"))
+        fail("Conflicting DHCP options for " nic)
+    dhcp[nic] = option[nic, "BOOTPROTO"] == "dhcp" || option[nic, "dhcp4"] == "true"
+    if (!dhcp[nic] && (option[nic, "PEERDNS"] != "" || option[nic, "DEFROUTE"] != ""))
+        fail("PEERDNS and DEFROUTE require DHCP for " nic)
 }
 
 function visit(nic,    i, parent) {
@@ -236,6 +256,8 @@ function topology(    nic, count, i, j, parts, parent, tag, name) {
         if (attributes["NICCUSTOMSCRIPTS", nic] != "")
             fail("Use a separate postscript instead of niccustomscripts on FreeBSD")
         options(nic)
+        if (dhcp[nic] && type[nic] == "bridge" && option[nic, "MACADDR"] == "")
+            fail("Set MACADDR for a bridge DHCP reservation")
     }
     if (total > 64)
         fail("Too many interfaces")
@@ -379,6 +401,18 @@ function node_addresses(nic,    ips, nets, count, nc, i, name, ip, family, net, 
         }
     }
     address_count[nic] = count
+    if (dhcp[nic]) {
+        for (i = 1; i <= count; i++)
+            if (address_family[nic, i] == "inet") {
+                dhcp_address[nic] = address_value[nic, i]
+                dhcp_prefix[nic] = address_prefix[nic, i]
+                dhcp_count[nic]++
+            }
+        if (dhcp_count[nic] != 1)
+            fail("DHCP requires exactly one reserved IPv4 address in nicips for " nic)
+        if (nic == management)
+            delete default_gateway["inet"]
+    }
 }
 
 function descends(nic, ancestor,    i) {
@@ -521,6 +555,10 @@ function render(nic,    i, config, mtu, parent, family, ip, bits, alias, first4,
     }
     mtu = effective_mtu[nic]
     config = config (config == "" ? "" : " ") "mtu " mtu
+    if (option[nic, "MACADDR"] != "") {
+        records[++record_count] = "E\t" nic "\t" option[nic, "MACADDR"]
+        config = "ether " option[nic, "MACADDR"] " " config
+    }
     records[++record_count] = "X\t" nic "\t" config " up"
     records[++record_count] = "T\t" nic "\t" mtu
     for (i = 1; i <= address_count[nic]; i++)
@@ -540,6 +578,18 @@ function render(nic,    i, config, mtu, parent, family, ip, bits, alias, first4,
         else
             emit("ifconfig_" nic "_alias" alias++, family " " ip "/" bits)
         records[++record_count] = "A\t" nic "\t" family "\t" ip "\t" bits
+    }
+    if (dhcp[nic]) {
+        primary4 = "SYNCDHCP "
+        records[++record_count] = "H\t" nic "\t" dhcp_address[nic] "\t" dhcp_prefix[nic] "\t" \
+            (option[nic, "PEERDNS"] == "no" ? "no" : "yes") "\t" \
+            (option[nic, "DEFROUTE"] == "" ? (nic == management ? "yes" : "no") : option[nic, "DEFROUTE"])
+        emit("dhclient_flags_" nic, "-c /var/db/xcat/network/dhcp/" nic ".conf")
+        if (option[nic, "DEFROUTE"] == "yes" || (option[nic, "DEFROUTE"] == "" && nic == management)) {
+            if (++dhcp_defaults > 1 || default_gateway["inet"] != "")
+                fail("Select one IPv4 default route owner")
+            emit("defaultrouter", "NO")
+        }
     }
     emit("ifconfig_" nic, primary4 config " up")
     if (!ipv6_enabled[nic])
@@ -593,7 +643,8 @@ function static_options(value, ipv6_args,    count, words, i, item, parts, suffi
         item = words[i]
         if (item == "" || item ~ /^(inet|inet6|up|down|alias|ifdisabled|-ifdisabled)$/)
             continue
-        if (ipv6_args && toupper(item) ~ /^(DHCP|NOAUTO|NOSYNCDHCP|SYNCDHCP|WPA|HOSTAP)$/)
+        if ((!ipv6_args && item ~ /^(DHCP|SYNCDHCP)$/) ||
+            (ipv6_args && toupper(item) ~ /^(DHCP|NOAUTO|NOSYNCDHCP|SYNCDHCP|WPA|HOSTAP)$/))
             continue
         if (item == "mtu" || item == "prefixlen") {
             if (!number(words[++i], 0, item == "mtu" ? 65535 : 128))
@@ -618,7 +669,7 @@ BEGIN {
         compile()
         exit
     }
-    if (mode != "verify" && mode != "snapshot" && mode != "clear" && mode != "routes" &&
+    if (mode != "verify" && mode != "verify-prior" && mode != "snapshot" && mode != "clear" && mode != "routes" &&
         mode != "routeconflicts" && mode != "rcconflicts" && mode != "rcoptions" && mode != "rclists" && mode != "conflicts")
         fail("Unknown network planner operation")
 }
@@ -637,6 +688,8 @@ FILENAME == ARGV[1] {
         wanted_rc_route[column[2]] = 1
     else if (column[1] == "A")
         wanted_address[column[2], column[3], column[4]] = column[5]
+    else if (column[1] == "H")
+        wanted_dhcp[column[2]] = 1
     else if (column[1] == "T")
         wanted_mtu[column[2]] = column[3]
     else if (column[1] == "V")
@@ -850,7 +903,8 @@ END {
     } else if (mode == "routeconflicts") {
         for (key in observed_route_nic) {
             split(key, parts, SUBSEP)
-            if (parts[2] != "default" && observed_route_nic[key] in wanted_interface && !owned_route[key])
+            if (parts[2] != "default" && observed_route_nic[key] in wanted_interface &&
+                !wanted_dhcp[observed_route_nic[key]] && !owned_route[key])
                 fail("Unmanaged route uses a configured interface")
         }
     } else if (mode == "routes") {
@@ -858,7 +912,7 @@ END {
             if (observed_gateway[key] != wanted_gateway[key] ||
                 (wanted_route_nic[key] != "" && observed_route_nic[key] != wanted_route_nic[key]))
                 fail("A configured route or gateway is missing")
-    } else if (mode == "verify") {
+    } else if (mode == "verify" || mode == "verify-prior") {
         for (nic in wanted_interface) {
             if (!observed_interface[nic] || up[nic] != (wanted_up[nic] == "" ? "up" : wanted_up[nic]) || invalid_address[nic] ||
                 (invalid_link_local[nic] && observed_ipv6[nic] != "ifdisabled"))
@@ -867,9 +921,13 @@ END {
         for (key in wanted_mtu)
             if (observed_mtu[key] != wanted_mtu[key])
                 fail("Interface MTU differs: " key)
-        for (key in wanted_address)
+        for (key in wanted_address) {
+            split(key, parts, SUBSEP)
+            if (!(key in observed_address) && mode == "verify-prior" && parts[2] == "inet" && wanted_dhcp[parts[1]])
+                continue
             if (!(key in observed_address) || observed_address[key] != wanted_address[key])
                 fail("A configured address or prefix is missing")
+        }
         for (key in observed_address) {
             split(key, parts, SUBSEP)
             if (!(key in wanted_address) && !(parts[2] == "inet6" && parts[3] ~ /^fe[89ab]/))

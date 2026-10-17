@@ -22,12 +22,19 @@ case "$#:${1:-}" in 0:) ;; 1:-s) configure_boot=1 ;; *) fail 'Supported FreeBSD 
 case ${SETINSTALLNIC:-} in 1|yes) configure_boot=1 ;; esac
 planner=$(CDPATH= cd -P "$(dirname "$0")" && pwd)/confignetwork-freebsd.awk
 [ -f "$planner" ] && [ ! -L "$planner" ] || fail 'The FreeBSD network planner is missing'
+dhcp_helper=${planner%/*}/confignetwork-dhclient.freebsd
 
 protected_file()
 {
     [ -f "$1" ] && [ ! -L "$1" ] || return 1
     [ "$(stat -f '%u:%g:%l' "$1")" = 0:0:1 ] || return 1
     case $(stat -f '%Lp' "$1") in 400|444|600|644) ;; *) return 1 ;; esac
+}
+
+protected_script()
+{
+    [ -f "$1" ] && [ ! -L "$1" ] && [ "$(stat -f '%u:%g:%l' "$1")" = 0:0:1 ] || return 1
+    case $(stat -f '%Lp' "$1") in 600|644|700|755) ;; *) return 1 ;; esac
 }
 
 rc_setting()
@@ -63,6 +70,55 @@ mutating=0
 published=0
 staged_rc=
 
+dhcp_config()
+{
+    printf 'timeout 15;\nretry 5;\nselect-timeout 1;\nscript "/var/db/xcat/network/dhclient-script";\n'
+}
+
+dhcp_matches()
+{
+    while IFS="$tab" read -r kind nic address bits peerdns defroute; do
+        [ "$kind" = H ] || continue
+        protected_file "$state/dhcp/$nic.conf" && protected_file "$state/dhcp/$nic.policy" || return 1
+        [ "$(stat -f '%Lp' "$state/dhcp/$nic.policy")" = 600 ] || return 1
+        dhcp_config | cmp -s - "$state/dhcp/$nic.conf" || return 1
+        printf '%s\t%s\t%s\t%s\n' "$address" "$bits" "$peerdns" "$defroute" |
+            cmp -s - "$state/dhcp/$nic.policy" || return 1
+    done < "$1"
+}
+
+dhcp_stop()
+{
+    awk -F '\t' '$1 == "H" && !seen[$2]++ {print $2}' "$1" > "$pending/dhcp.stop" || return 1
+    while IFS= read -r nic; do
+        if /etc/rc.d/dhclient forcestatus "$nic" >/dev/null 2>&1; then
+            /etc/rc.d/dhclient forcestop "$nic" || return 1
+        fi
+        if [ -e "$state/dhcp/$nic.policy" ]; then
+            /bin/sh "$state/dhclient-script" --expire "$nic" || return 1
+        fi
+    done < "$pending/dhcp.stop"
+}
+
+dhcp_start()
+{
+    awk -F '\t' '$1 == "H" {print $2}' "$1" > "$pending/dhcp.start" || return 1
+    while IFS= read -r nic; do
+        if ! /etc/rc.d/dhclient forcestatus "$nic" >/dev/null 2>&1; then
+            /sbin/dhclient -b -c "$state/dhcp/$nic.conf" "$nic" || return 1
+        fi
+    done < "$pending/dhcp.start"
+}
+
+dhcp_ready()
+{
+    awk -F '\t' '$1 == "H" {print $2}' "$1" > "$pending/dhcp.ready" || return 1
+    while IFS= read -r nic; do
+        protected_file "$state/dhcp/$nic.lease" || return 1
+        /etc/rc.d/dhclient forcestatus "$nic" >/dev/null 2>&1 || return 1
+    done < "$pending/dhcp.ready"
+}
+
 verify_routes()
 {
     netstat -rnW > "$pending/routes.kernel" || return 1
@@ -72,14 +128,21 @@ verify_routes()
 wait_ready()
 {
     ready_plan=$1
+    ready_mode=${2:-complete}
     attempt=0
+    ready_limit=20
+    if awk -F '\t' '$1 == "I" && $3 == "bridge" {bridge[$2]=1}
+        $1 == "H" && $2 in bridge {found=1} END {exit !found}' "$ready_plan"; then ready_limit=45; fi
     while :; do
         ifconfig -a > "$pending/after.kernel" || return 1
         if awk -v mode=verify -f "$planner" "$ready_plan" "$pending/after.kernel" > "$pending/verify.log" 2>&1 &&
-            verify_routes "$ready_plan" >> "$pending/verify.log" 2>&1 &&
-            nc -z -w 2 -s "$node_address" "$controller" "$port"; then return 0; fi
+            dhcp_ready "$ready_plan" >> "$pending/verify.log" 2>&1; then
+            [ "$ready_mode" != addresses ] || return 0
+            if verify_routes "$ready_plan" >> "$pending/verify.log" 2>&1 &&
+                nc -z -w 2 -s "$node_address" "$controller" "$port"; then return 0; fi
+        fi
         attempt=$((attempt + 1))
-        [ "$attempt" -lt 20 ] || return 1
+        [ "$attempt" -lt "$ready_limit" ] || return 1
         sleep 1
     done
 }
@@ -115,6 +178,10 @@ apply_plan()
             ifconfig "$nic" "$@" || return 1
             ;;
         A)
+            if [ "$value" = inet ] && awk -F '\t' -v nic="$nic" \
+                '$1 == "H" && $2 == nic {found=1} END {exit !found}' "$apply_file"; then
+                continue
+            fi
             if [ "$value" = inet6 ]; then ifconfig "$nic" inet6 -ifdisabled || return 1; fi
             ifconfig "$nic" "$value" "$address/$bits" alias || return 1
             ;;
@@ -162,6 +229,10 @@ restore_physical()
 default_routes()
 {
     while IFS="$tab" read -r family gateway; do
+        if [ "$family" = inet ] && awk -F '\t' \
+            '$1 == "H" && $6 == "yes" {owned=1} END {exit !owned}' "$2"; then
+            continue
+        fi
         if [ -z "$gateway" ]; then
             if route -n get "-$family" default >/dev/null 2>&1; then
                 route -n delete "-$family" default || return 1
@@ -178,17 +249,32 @@ default_routes()
 rollback()
 {
     printf '%s\n' 'confignetwork: restoring the previous network configuration' >&2
+    dhcp_stop "$pending/union" > "$pending/rollback-dhcp.log" 2>&1 || return 1
+    if [ -f "$pending/before.dhclient-script" ]; then
+        cp -p "$pending/before.dhclient-script" "$state/dhclient-script" || return 1
+    fi
+    if [ -d "$pending/before.dhcp" ]; then
+        rm -rf "$state/dhcp" || return 1
+        cp -pR "$pending/before.dhcp" "$state/dhcp" || return 1
+    fi
     routes delete "$pending/added.routes" /dev/null > "$pending/rollback-routes.log" 2>&1 || return 1
     clear_interfaces "$pending/union" > "$pending/rollback-clear.log" 2>&1 || return 1
     restore_physical > "$pending/rollback-physical.log" 2>&1 || return 1
     if [ -s "$pending/before.plan" ]; then
         apply_plan "$pending/before.plan" > "$pending/rollback-apply.log" 2>&1 || return 1
     fi
-    routes add "$pending/removed.routes" /dev/null >> "$pending/rollback-routes.log" 2>&1 || return 1
-    default_routes "$pending/before.defaults" > "$pending/rollback-defaults.log" 2>&1 || return 1
+    if [ -d "$pending/before.dhcp" ]; then
+        dhcp_start "$pending/before.plan" >> "$pending/rollback-dhcp.log" 2>&1 || return 1
+    fi
+    if [ -f "$pending/before.resolv" ]; then
+        cp -p "$pending/before.resolv" /etc/resolv.conf || return 1
+    fi
     cat "$pending/before.plan" > "$pending/rollback.plan" || return 1
     awk -F '\t' '$1 == "I" && $3 == "ethernet" && !seen[$2]++' "$pending/union" >> "$pending/rollback.plan" || return 1
     cat "$pending/physical.snapshot" >> "$pending/rollback.plan" || return 1
+    wait_ready "$pending/rollback.plan" addresses || return 1
+    routes add "$pending/removed.routes" /dev/null >> "$pending/rollback-routes.log" 2>&1 || return 1
+    default_routes "$pending/before.defaults" "$pending/before.plan" > "$pending/rollback-defaults.log" 2>&1 || return 1
     wait_ready "$pending/rollback.plan" || return 1
     # A route command can be interrupted before its journal entry is written.
     awk -v mode=routeconflicts -f "$planner" "$pending/route-ownership" "$pending/routes.kernel" || return 1
@@ -216,6 +302,9 @@ finish()
     result=$?
     trap - EXIT HUP INT TERM
     if [ "$mutating" = 1 ]; then
+        for snapshot in verify.log after.kernel routes.kernel; do
+            if [ -f "$pending/$snapshot" ]; then cp "$pending/$snapshot" "$pending/failure-$snapshot"; fi
+        done
         if rollback; then
             printf '%s\n' rolled-back > "$pending/result"
             if [ -d "$state/last" ] && [ ! -L "$state/last" ]; then rm -rf "$state/last"; fi
@@ -276,10 +365,11 @@ ifconfig -a > "$pending/before.kernel"
 awk -v mode=conflicts -v configure_boot="$configure_boot" -f "$planner" "$pending/union" "$pending/before.kernel"
 awk -F '\t' '$1 == "I"' "$pending/union" > "$pending/route-ownership"
 awk -F '\t' 'BEGIN {OFS="\t"} $1 == "R" {$1="O"; print}' "$pending/before.plan" >> "$pending/route-ownership"
+awk -F '\t' '$1 == "H"' "$pending/before.plan" >> "$pending/route-ownership"
 netstat -rnW > "$pending/routes.kernel"
 awk -v mode=routeconflicts -f "$planner" "$pending/route-ownership" "$pending/routes.kernel"
 if [ -s "$pending/before.plan" ]; then
-    awk -v mode=verify -f "$planner" "$pending/before.plan" "$pending/before.kernel" ||
+    awk -v mode=verify-prior -f "$planner" "$pending/before.plan" "$pending/before.kernel" ||
         fail 'The previously managed network has drifted; reconcile it before updating'
     verify_routes "$pending/before.plan" || fail 'Previously managed routes have drifted; reconcile them before updating'
 fi
@@ -293,7 +383,12 @@ while IFS="$tab" read -r kind nic type rest; do
             if ! setting=$(sysrc -n "ifconfig_$nic$suffix" 2>/dev/null); then
                 setting=$(sysrc -n ifconfig_DEFAULT 2>/dev/null || :)
             fi
-            case "$suffix:$setting" in :*DHCP*) fail "Stop DHCP configuration before managing $nic" ;; esac
+            case "$suffix:$setting" in
+            :*DHCP*)
+                awk -F '\t' -v nic="$nic" '$1 == "H" && $2 == nic {found=1} END {exit !found}' \
+                    "$pending/before.plan" || fail "Stop unmanaged DHCP configuration before managing $nic"
+                ;;
+            esac
             rc_setting "ifconfig_$nic$suffix" "$setting" >> "$pending/physical.variables"
         done
     elif ifconfig "$nic" >/dev/null 2>&1; then
@@ -362,7 +457,12 @@ cat "$pending/base.rc" > "$pending/after.rc"
 /bin/sh -n "$pending/after.rc"
 rc_variables "$pending/after.rc" > "$pending/after.variables" || fail 'Cannot read proposed rc.conf settings'
 if [ -s "$pending/before.plan" ] && cmp -s "$pending/plan" "$pending/before.plan" &&
-    cmp -s "$pending/before.variables" "$pending/after.variables"; then
+    cmp -s "$pending/before.variables" "$pending/after.variables" &&
+    awk -v mode=verify -f "$planner" "$pending/plan" "$pending/before.kernel" >/dev/null 2>&1 &&
+    dhcp_ready "$pending/plan" &&
+    dhcp_matches "$pending/plan" &&
+    { ! awk -F '\t' '$1 == "H" {found=1} END {exit !found}' "$pending/plan" ||
+        cmp -s "$dhcp_helper" "$state/dhclient-script"; }; then
     printf '%s\n' 'confignetwork: configuration is unchanged'
     rm -rf "$pending"
     exit 0
@@ -384,10 +484,15 @@ for family in inet inet6; do
     variable=defaultrouter
     [ "$family" != inet6 ] || variable=ipv6_defaultrouter
     gateway=$(sysrc -f "$pending/after.rc" -n "$variable" 2>/dev/null || :)
+    if [ "$family" = inet ] && awk -F '\t' '$1 == "H" && $6 == "yes" {found=1} END {exit !found}' "$pending/plan"; then
+        printf 'inet\t\n' >> "$pending/after.defaults"
+        continue
+    fi
     case "$gateway" in
     ''|NO)
         gateway=
-        if ! awk -F '\t' -v family="$family" '$1 == "D" && $2 == family {found=1} END {exit !found}' "$pending/before.plan"; then
+        if ! awk -F '\t' -v family="$family" '$1 == "D" && $2 == family {found=1}
+            family == "inet" && $1 == "H" && $6 == "yes" {found=1} END {exit !found}' "$pending/before.plan"; then
             gateway=$current
         fi
         ;;
@@ -406,14 +511,60 @@ for family in inet inet6; do
 done
 : > "$pending/added.routes"
 : > "$pending/removed.routes"
+if awk -F '\t' '$1 == "H" {found=1} END {exit !found}' "$pending/union"; then
+    [ "$(sysrc -n dhclient_program)" = /sbin/dhclient ] && [ -z "$(sysrc -n dhclient_flags)" ] ||
+        fail 'Custom DHCP client programs or global flags require manual integration'
+    protected_script "$dhcp_helper" || fail 'The FreeBSD DHCP helper is missing or unsafe'
+    for hook in /etc/dhclient-enter-hooks /etc/dhclient-exit-hooks; do
+        [ ! -e "$hook" ] && [ ! -L "$hook" ] || fail "DHCP hooks require manual integration: $hook"
+    done
+    { [ ! -e "$state/dhclient-script" ] && [ ! -L "$state/dhclient-script" ]; } ||
+        protected_script "$state/dhclient-script" || fail 'Unsafe DHCP helper'
+    if [ -f "$state/dhclient-script" ]; then cp -p "$state/dhclient-script" "$pending/before.dhclient-script"; fi
+    install -m 0700 "$dhcp_helper" "$pending/dhclient-script"
+    if [ -e "$state/dhcp" ]; then
+        [ -d "$state/dhcp" ] && [ ! -L "$state/dhcp" ] &&
+            [ "$(stat -f '%u:%g:%Lp' "$state/dhcp")" = 0:0:700 ] || fail 'Unsafe DHCP state'
+        cp -pR "$state/dhcp" "$pending/before.dhcp"
+    else
+        mkdir -m 0700 "$pending/before.dhcp"
+    fi
+    protected_file /etc/resolv.conf || fail 'A regular root-owned resolver configuration is required for DHCP'
+    cp -p /etc/resolv.conf "$pending/before.resolv"
+    if ! awk -F '\t' '$1 == "H" {found=1} END {exit !found}' "$pending/before.plan"; then
+        { [ ! -e "$state/resolver-base" ] && [ ! -L "$state/resolver-base" ]; } ||
+            protected_file "$state/resolver-base" || fail 'Unsafe saved resolver configuration'
+        cp -p /etc/resolv.conf "$state/resolver-base"
+    fi
+    mkdir -m 0700 "$pending/after.dhcp"
+    while IFS="$tab" read -r kind nic address bits peerdns defroute; do
+        [ "$kind" = H ] || continue
+        printf '%s\t%s\t%s\t%s\n' "$address" "$bits" "$peerdns" "$defroute" > "$pending/after.dhcp/$nic.policy"
+        dhcp_config > "$pending/after.dhcp/$nic.conf"
+    done < "$pending/plan"
+fi
 cmp -s /etc/rc.conf "$pending/before.rc" || fail 'rc.conf changed during preparation'
 mutating=1
+dhcp_stop "$pending/before.plan" > "$pending/stop-dhcp.log" 2>&1 || fail 'Cannot stop previous DHCP clients'
+if [ -f "$pending/dhclient-script" ]; then mv "$pending/dhclient-script" "$state/dhclient-script"; fi
+if [ -f "$state/resolver-base" ] && [ -z "$(resolvconf -i)" ]; then
+    protected_file "$state/resolver-base" || fail 'Unsafe saved resolver configuration'
+    cp -p "$state/resolver-base" /etc/resolv.conf
+fi
+if [ -d "$pending/after.dhcp" ]; then
+    rm -rf "$state/dhcp"
+    cp -pR "$pending/after.dhcp" "$state/dhcp"
+fi
 routes delete "$pending/before.plan" "$pending/removed.routes" > "$pending/remove-routes.log" 2>&1 ||
     fail 'Cannot remove previously managed routes'
 clear_interfaces "$pending/union" > "$pending/clear.log" 2>&1 || fail 'Cannot clear the selected interfaces'
 apply_plan "$pending/plan" > "$pending/apply.log" 2>&1 || fail 'Cannot apply the selected interface configuration'
+if [ -d "$pending/after.dhcp" ]; then
+    dhcp_start "$pending/plan" > "$pending/start-dhcp.log" 2>&1 || fail 'Cannot start DHCP clients'
+fi
+wait_ready "$pending/plan" addresses || fail 'The configured addresses did not pass readback'
 routes add "$pending/plan" "$pending/added.routes" > "$pending/routes.log" 2>&1 || fail 'Cannot add the selected routes'
-default_routes "$pending/after.defaults" > "$pending/defaults.log" 2>&1 || fail 'Cannot configure default routes'
+default_routes "$pending/after.defaults" "$pending/plan" > "$pending/defaults.log" 2>&1 || fail 'Cannot configure default routes'
 wait_ready "$pending/plan" || fail 'The configured network did not pass readback and controller reachability'
 cmp -s /etc/rc.conf "$pending/before.rc" || fail 'rc.conf changed while applying networking'
 staged_rc=$(mktemp /etc/rc.conf.xcat.XXXXXXXX)
