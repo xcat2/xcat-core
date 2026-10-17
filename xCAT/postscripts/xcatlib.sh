@@ -1,5 +1,6 @@
 #!/bin/bash
 # Postscripts ship separately from xCAT-genesis-scripts/usr/lib/xcat/fips.sh but must use the same FIPS policy.
+# BEGIN generated FIPS policy: build-utils/sync-fips-policy --write
 xcat_fips_enabled()
 {
     grep -q '^1$' "${1:-/proc/sys/crypto/fips_enabled}" 2>/dev/null
@@ -33,6 +34,7 @@ xcat_discovery_public_key()
         openssl rsa -in "$2" -pubout 2>/dev/null ||
         openssl ec -in "$2" -pubout
 }
+# END generated FIPS policy
 
 xcat_prepare_discovery_key()
 {

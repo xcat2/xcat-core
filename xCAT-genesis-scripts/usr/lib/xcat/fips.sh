@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Genesis ships separately from xCAT/postscripts/xcatlib.sh but must use the same FIPS policy.
+# BEGIN generated FIPS policy: build-utils/sync-fips-policy --write
 xcat_fips_enabled()
 {
     grep -q '^1$' "${1:-/proc/sys/crypto/fips_enabled}" 2>/dev/null
@@ -13,11 +13,6 @@ xcat_fips_state()
     else
         printf '0'
     fi
-}
-
-xcat_dsa_allowed()
-{
-    [ "$1" = 0 ]
 }
 
 xcat_generate_discovery_private_key()
@@ -38,4 +33,10 @@ xcat_discovery_public_key()
     openssl pkey -in "$2" -pubout 2>/dev/null ||
         openssl rsa -in "$2" -pubout 2>/dev/null ||
         openssl ec -in "$2" -pubout
+}
+# END generated FIPS policy
+
+xcat_dsa_allowed()
+{
+    [ "$1" = 0 ]
 }
