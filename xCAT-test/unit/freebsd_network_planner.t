@@ -609,4 +609,96 @@ NETSTAT
 }
 observed_state_tests();
 
+sub dhcp_configuration_tests {
+    subtest 'DHCP uses reserved addresses and native persistent configuration' => sub {
+        for my $option ('BOOTPROTO=dhcp', 'dhcp4=true') {
+            my $environment = base();
+            $environment->{NICEXTRAPARAMS} = "vtnet1!$option";
+            my ($status, $plan, $error) = compile_plan($environment);
+            is($status, 0, "$option compiles") or diag($error);
+            is(value($plan, 'K', 'ifconfig_vtnet1'), 'SYNCDHCP mtu 1500 up', 'boot uses the native DHCP client');
+            is_deeply(rows($plan, 'H'), [['H', 'vtnet1', '192.0.2.10', '24', 'yes', 'no']],
+                'the lease is bound to the reserved address, prefix and DNS policy');
+            is(value($plan, 'K', 'dhclient_flags_vtnet1'), '-c /var/db/xcat/network/dhcp/vtnet1.conf',
+                'the client uses its protected configuration');
+            is(value($plan, 'K', 'ifconfig_vtnet1_ipv6'),
+                'inet6 2001:0db8:0001:0000:0000:0000:0000:0010 prefixlen 64', 'IPv6 remains configured');
+        }
+        my $environment = base();
+        $environment->{IPADDR} = '192.0.2.10';
+        $environment->{NICTYPES} =~ s/vtnet1/vtnet0/gx;
+        $environment->{NICIPS} =~ s/vtnet1/vtnet0/gx;
+        $environment->{NICNETWORKS} =~ s/vtnet1/vtnet0/gx;
+        $environment->{NETWORKS_LINE1} =~ s/gateway=/gateway=192.0.2.1/x;
+        $environment->{NICEXTRAPARAMS} = 'vtnet0!BOOTPROTO=dhcp PEERDNS=no';
+        my ($status, $plan, $error) = compile_plan($environment, 1);
+        is($status, 0, 'the management reservation can use DHCP') or diag($error);
+        is_deeply(rows($plan, 'H'), [['H', 'vtnet0', '192.0.2.10', '24', 'no', 'yes']],
+            'the management interface owns the DHCP gateway');
+        is(value($plan, 'K', 'defaultrouter'), 'NO', 'no static IPv4 gateway overrides DHCP at boot');
+        is_deeply(rows($plan, 'D'), [], 'DHCP supplies the default route');
+        done_testing();
+    };
+
+    for my $invalid ('BOOTPROTO=auto', 'dhcp4=yes', 'BOOTPROTO=dhcp dhcp4=false',
+        'BOOTPROTO=static dhcp4=true', 'PEERDNS=no', 'DEFROUTE=yes', 'BOOTPROTO=dhcp PEERDNS=maybe') {
+        rejected("invalid DHCP options: $invalid", sub {
+            $_[0]->{NICEXTRAPARAMS} = "vtnet1!$invalid";
+        }, qr/(BOOTPROTO|dhcp4|DHCP|PEERDNS|DEFROUTE)/x);
+    }
+    rejected('DHCP requires a reservation', sub {
+        $_[0]->{NICEXTRAPARAMS} = 'vtnet1!BOOTPROTO=dhcp';
+        $_[0]->{NICIPS} = 'vtnet1!2001:db8:1::10';
+        $_[0]->{NICNETWORKS} = 'vtnet1!data6';
+    }, qr/DHCP[ ]requires[ ]exactly[ ]one[ ]reserved/x);
+    rejected('DHCP cannot choose among several IPv4 reservations', sub {
+        $_[0]->{NICEXTRAPARAMS} = 'vtnet1!BOOTPROTO=dhcp';
+        $_[0]->{NICIPS} = 'vtnet1!192.0.2.10|192.0.2.11';
+        $_[0]->{NICNETWORKS} = 'vtnet1!data4';
+    }, qr/DHCP[ ]requires[ ]exactly[ ]one[ ]reserved/x);
+
+    subtest 'an expired DHCP address permits recovery without accepting a wrong lease' => sub {
+        my $environment = base();
+        $environment->{NICIPS} = 'vtnet1!192.0.2.10';
+        $environment->{NICNETWORKS} = 'vtnet1!data4';
+        $environment->{NICEXTRAPARAMS} = 'vtnet1!BOOTPROTO=dhcp';
+        my ($status, $plan, $error) = compile_plan($environment);
+        is($status, 0, 'the reserved DHCP interface compiles') or diag($error);
+        my $state = "vtnet1: flags=1008843<UP,BROADCAST,RUNNING> metric 0 mtu 1500\n"
+            . "        ether 52:54:00:12:34:56\n        nd6 options=29<PERFORMNUD,IFDISABLED,AUTO_LINKLOCAL>\n";
+        is((inspect_state('verify-prior', $plan, $state))[0], 0, 'an expired lease allows a new configuration');
+        isnt((inspect_state('verify', $plan, $state))[0], 0, 'completion still requires the reserved address');
+        $state .= "        inet 192.0.2.11 netmask 0xffffff00 broadcast 192.0.2.255\n";
+        isnt((inspect_state('verify-prior', $plan, $state))[0], 0, 'an unexpected IPv4 address remains a conflict');
+        done_testing();
+    };
+
+    subtest 'DHCP bridge uses an explicit persistent MAC' => sub {
+        my $environment = base();
+        $environment->{NICTYPES} = 'vtnet1!ethernet,bridge0!bridge';
+        $environment->{NICDEVICES} = 'bridge0!vtnet1';
+        $environment->{NICIPS} =~ s/vtnet1/bridge0/gx;
+        $environment->{NICNETWORKS} =~ s/vtnet1/bridge0/gx;
+        $environment->{NICEXTRAPARAMS} = 'bridge0!BOOTPROTO=dhcp';
+        my ($status, undef, $error) = compile_plan($environment);
+        isnt($status, 0, 'a random bridge MAC cannot identify a DHCP reservation');
+        like($error, qr/Set[ ]MACADDR[ ]for[ ]a[ ]bridge/x, 'the error identifies the missing reservation identity');
+        $environment->{NICEXTRAPARAMS} .= ' MACADDR=52:54:00:12:34:56';
+        my ($accepted, $plan, $diagnostic) = compile_plan($environment);
+        is($accepted, 0, 'an explicit bridge MAC compiles') or diag($diagnostic);
+        is(value($plan, 'K', 'ifconfig_bridge0'),
+            'SYNCDHCP ether 52:54:00:12:34:56 addm vtnet1 stp vtnet1 mtu 1500 up',
+            'the same bridge MAC is applied at boot');
+        is(value($plan, 'E', 'bridge0'), '52:54:00:12:34:56', 'runtime readback checks the configured MAC');
+        for my $bad ('ff:ff:ff:ff:ff:ff', '01:00:00:00:00:01', '00:00:00:00:00:00', 'invalid') {
+            $environment->{NICEXTRAPARAMS} = "bridge0!BOOTPROTO=dhcp MACADDR=$bad";
+            isnt((compile_plan($environment))[0], 0, 'invalid reservation MAC is rejected');
+        }
+        done_testing();
+    };
+
+    return;
+}
+dhcp_configuration_tests();
+
 done_testing();
