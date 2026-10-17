@@ -242,6 +242,9 @@ permissions and an init process that reaps orphaned children.
 evaluate machine and package policy, install local-file recipes into temporary
 directories, generate extension manifests and reject invalid extension
 metadata. It does not extract or evaluate recipe source fragments.
+The NetworkManager case supplies an installed-unit fixture and runs the
+recipe's install append to check the wait-online policy. It does not verify
+the unit format produced by an upstream NetworkManager build.
 The POWER patch case keeps BitBake's machine prepends and replaces only the
 upstream kernel task body with a no-op. It applies the real patch to a small
 metadata fixture, checks repeat runs and verifies that patch errors propagate.
@@ -272,18 +275,26 @@ Meson, Ninja, pkg-config, and development packages for Newt and systemd.
 dependencies plus the `pyte` Python package, bubblewrap,
 systemd-journal-remote and journalctl. It runs the linked console in a
 pseudo-terminal and checks help and diagnostics navigation, scrolling,
-return to the main screen, and F3 journal filtering, order and history limits.
-Rollover cases check paused selection, expired entries, duplicate messages,
-wrapped lines and returning to follow mode.
+live status updates, diagnostic snapshots, and return to the main screen.
+The F3 cases check journal filtering, order, history limits, follow mode,
+paused selection, navigation and reopening. Rollover cases check expired
+entries, duplicate messages and wrapped lines. The F12 cases check cancellation,
+confirmation, terminal input, successful and nonzero exits, repeated launches
+and executable errors.
 It checks termination from the main screen, not from inside a dialog.
 
-The journal cases need working Linux user and mount namespaces. On Ubuntu
-24.04, the CI job enables them with
+The journal and shell cases need working Linux user and mount namespaces.
+On Ubuntu 24.04, the CI job enables them with
 `sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0`.
-They import private journal files, including appends while F3 is open, and
-verify each import with journalctl. They do not start a journal service or
-read the host journal. Missing tools or namespace support fail the tests;
-they do not skip.
+The journal cases import private journal files, including appends while F3
+is open, and verify each import with journalctl. They do not start a journal
+service or read the host journal. Missing tools or namespace support fail
+the tests; they do not skip.
+The shell cases mount a fixture directory over `/usr/libexec` in a private
+namespace to replace the external shell launcher. The real console handles
+confirmation, child execution, waiting and terminal restoration.
+The fixture is the only writable host-backed directory. Other writable
+mounts are private; no host shell is opened.
 
 The Genesis runtime BATS cases need Bash, Perl, OpenSSL, coreutils, diffutils
 and bubblewrap. The credential-file cases use a private `/etc` in a Linux
