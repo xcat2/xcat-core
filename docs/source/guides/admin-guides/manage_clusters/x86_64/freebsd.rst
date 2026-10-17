@@ -796,7 +796,10 @@ that clone. The Linux ``-r`` option is not available on FreeBSD.
 Network configuration must use ``/etc/rc.conf`` with
 ``network_interfaces=auto``. Existing unmanaged clones, manual routes on selected
 interfaces, DHCP or SLAAC configuration, ``rc.conf.local`` and service-specific
-network override files require manual integration. Route and clone list entries
+network override files require manual integration. Selected physical interfaces
+must not have additional ``ifconfig`` options, such as offload flags, media,
+MAC overrides or FIB selection. These settings are rejected before adoption;
+the adapter replaces only static addresses, MTU and interface state. Route and clone list entries
 that the saved plan does not own are retained, including additions made with
 ``sysrc``. Selected routes use ``xcat_net_NAME`` names; collisions with existing
 route variables or list entries are rejected. Run custom network scripts as
