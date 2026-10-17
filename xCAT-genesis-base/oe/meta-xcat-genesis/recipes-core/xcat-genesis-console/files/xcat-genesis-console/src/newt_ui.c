@@ -113,7 +113,9 @@ static void draw_header(const struct status_view *view) {
 
     newtGetScreenSize(&columns, NULL);
     available = xcat_header_context_columns(columns);
-    xcat_set_text(context, sizeof(context), "%.*s", available, view->identity);
+    if (available > VALUE_SIZE - 1)
+        available = VALUE_SIZE - 1;
+    xcat_set_text(context, sizeof(context), "%*.*s", available, available, view->identity);
     newtDrawRootText(1, 0, "xCAT Genesis");
     if (context[0] != '\0')
         newtDrawRootText(-((int)strlen(context) + 1), 0, context);

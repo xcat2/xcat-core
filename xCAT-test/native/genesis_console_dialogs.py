@@ -22,6 +22,8 @@ SOURCE = ROOT / "xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/xcat-genesi
 
 
 class ConsoleDialogs(unittest.TestCase):
+    columns = 100
+
     @classmethod
     def setUpClass(cls):
         cls.build_root = tempfile.TemporaryDirectory(prefix="genesis-dialog-build-")
@@ -35,6 +37,7 @@ class ConsoleDialogs(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory(prefix="genesis-dialog-state-")
         self.addCleanup(temporary.cleanup)
         root = Path(temporary.name)
+        self.root = root
         environment = {"PATH": os.environ["PATH"], "LC_ALL": "C.UTF-8", "TERM": "xterm"}
         for name in ("CMDLINE_FILE", "UPTIME_FILE", "OS_RELEASE", "STATUS_DIR", "STATE_FILE",
                      "DESTINY_FILE", "RESPONSE_FILE", "SYS_ROOT", "PROC_ROOT", "EXTENSION_DIR", "PROVIDER_DIR"):
@@ -42,14 +45,14 @@ class ConsoleDialogs(unittest.TestCase):
         Path(environment["XCAT_RESPONSE_FILE"]).write_text("XCAT_NODE_NAME=dialog-test-node\n")
         self.master, slave = pty.openpty()
         self.addCleanup(os.close, self.master)
-        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 30, 100, 0, 0))
+        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 30, self.columns, 0, 0))
         try:
             self.process = subprocess.Popen([str(self.binary)], stdin=slave, stdout=slave,
                                             stderr=slave, env=environment, start_new_session=True)
         finally:
             os.close(slave)
         self.addCleanup(self.stop)
-        self.screen = pyte.Screen(100, 30)
+        self.screen = pyte.Screen(self.columns, 30)
         self.stream = pyte.ByteStream(self.screen)
         self.wait_text("Genesis status")
 
@@ -69,16 +72,54 @@ class ConsoleDialogs(unittest.TestCase):
         return "\n".join(self.screen.display)
 
     def wait_text(self, text):
+        return self.wait_screen(lambda display: text in display, repr(text))
+
+    def wait_screen(self, predicate, description):
         deadline = time.monotonic() + 5
         while time.monotonic() < deadline:
             display = self.read_screen(0.1)
-            if text in display:
+            if predicate(display):
                 return display
             self.assertIsNone(self.process.poll(), display)
-        self.fail(f"Terminal did not show {text!r}:\n{display}")
+        self.fail(f"Terminal did not show {description}:\n{display}")
 
     def key(self, sequence):
         os.write(self.master, sequence)
+
+    def publish(self, name, text):
+        target = self.root / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary = target.with_suffix(".tmp")
+        temporary.write_text(text)
+        temporary.replace(target)
+
+    def assert_header(self, identity):
+        expected = " xCAT Genesis".ljust(self.screen.columns - len(identity) - 1) + identity + " "
+        self.wait_screen(lambda display: self.screen.display[0] == expected,
+                         f"header {expected!r}")
+
+    def test_header_replaces_shorter_and_longer_node_names(self):
+        for name in ("node-with-a-long-name", "n", "replacement-node", "z"):
+            with self.subTest(name=name):
+                self.publish("response_file", f"XCAT_NODE_NAME={name}\n")
+                self.assert_header(name)
+
+    def test_header_removes_shortened_or_missing_serial(self):
+        name = "dialog-test-node"
+        self.assert_header(name)
+        for serial in ("SERIAL-WITH-A-LONG-VALUE", "S1", "", "SERIAL-RESTORED", ""):
+            with self.subTest(serial=serial):
+                self.publish("sys_root/class/dmi/id/product_serial", serial + "\n")
+                self.assert_header(name + " | " + serial if serial else name)
+
+    def test_header_truncates_long_identity_before_shortening(self):
+        name = "dialog-test-node"
+        serial = "0123456789" * 18
+        expected = (name + " | " + serial)[:min(self.columns - 20, 191)]
+        self.publish("sys_root/class/dmi/id/product_serial", serial + "\n")
+        self.assert_header(expected)
+        self.publish("sys_root/class/dmi/id/product_serial", "\n")
+        self.assert_header(name)
 
     def test_help_and_diagnostics_scroll_close_and_reopen(self):
         dialogs = [
@@ -103,6 +144,14 @@ class ConsoleDialogs(unittest.TestCase):
                     self.wait_text("F1 Help")
         self.process.send_signal(signal.SIGTERM)
         self.assertEqual(self.process.wait(timeout=5), 0)
+
+
+class ConsoleNarrowDialogs(ConsoleDialogs):
+    columns = 80
+
+
+class ConsoleWideDialogs(ConsoleDialogs):
+    columns = 240
 
 
 if __name__ == "__main__":

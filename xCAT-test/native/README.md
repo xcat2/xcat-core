@@ -276,8 +276,9 @@ Meson, Ninja, pkg-config, and development packages for Newt and systemd.
 `python3 xCAT-test/native/genesis_console_dialogs.py` needs the same build
 dependencies plus the `pyte` Python package. It runs the linked console in a
 pseudo-terminal and checks help and diagnostics navigation, scrolling and
-return to the main screen. It checks termination from the main screen, not
-from inside a dialog.
+return to the main screen, header identity changes and truncation. All cases
+run at 80, 100 and 240 columns. It checks termination from the main screen,
+not from inside a dialog.
 
 The Genesis runtime BATS cases need Bash, Perl, OpenSSL, coreutils, diffutils
 and bubblewrap. The credential-file cases use a private `/etc` in a Linux
