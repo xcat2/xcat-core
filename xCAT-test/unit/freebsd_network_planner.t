@@ -701,4 +701,130 @@ sub dhcp_configuration_tests {
 }
 dhcp_configuration_tests();
 
+sub dhcp6_configuration_tests {
+    subtest 'DHCPv6 uses the xCAT hardware UUID reservation identity' => sub {
+        my ($status, $duid, $error) = invoke({}, '-v', 'mode=dhcp6-duid', '-v',
+            'uuid=12345678-1234-ABCD-9876-1234567890AB');
+        is($status, 0, 'a canonical hardware UUID is accepted') or diag($error);
+        is($duid, "00:04:12:34:56:78:12:34:ab:cd:98:76:12:34:56:78:90:ab\n",
+            'the identifier matches the DUID-UUID used by xCAT DHCP backends');
+        for my $bad ('', '00000000-0000-0000-0000-000000000000',
+            'ffffffff-ffff-ffff-ffff-ffffffffffff', '1234', '$(command)') {
+            my ($rejected, $output) = invoke({}, '-v', 'mode=dhcp6-duid', '-v', "uuid=$bad");
+            isnt($rejected, 0, 'an invalid hardware UUID cannot create a reservation identity');
+            is($output, '', 'invalid identity emits no DUID');
+        }
+    };
+    subtest 'DHCPv6 reservations use a separate persistent client' => sub {
+        for my $option ('DHCPV6C=yes', 'dhcp6=true') {
+            my $environment = base();
+            $environment->{NICEXTRAPARAMS} = "vtnet1!$option PEERDNS=no IPV6_DEFROUTE=yes";
+            my ($status, $plan, $error) = compile_plan($environment);
+            is($status, 0, "$option compiles") or diag($error);
+            is(value($plan, 'K', 'ifconfig_vtnet1'), 'inet 192.0.2.10/24 mtu 1500 up',
+                'static IPv4 remains independent of DHCPv6');
+            is(value($plan, 'K', 'ifconfig_vtnet1_ipv6'), 'inet6 -ifdisabled',
+                'boot enables IPv6 without assigning the lease statically');
+            is(value($plan, 'K', 'xcat_dhcp6_enable'), 'YES', 'boot enables the managed client');
+            is(value($plan, 'K', 'ipv6_defaultrouter'), 'NO', 'router advertisements own the default');
+            is_deeply(rows($plan, 'H6'), [['H6', 'vtnet1',
+                '2001:0db8:0001:0000:0000:0000:0000:0010', '128', 'no', 'yes']],
+                'the client receives the reservation, DNS and router policy');
+            is_deeply(rows($plan, 'H'), [], 'DHCPv6 does not enable DHCPv4');
+            $environment->{NICEXTRAPARAMS} .= ' BOOTPROTO=dhcp';
+            ($status, $plan, $error) = compile_plan($environment);
+            is($status, 0, 'both DHCP families can use the same interface') or diag($error);
+            is(scalar(@{rows($plan, 'H')}), 1, 'IPv4 has its own lease policy');
+            is(scalar(@{rows($plan, 'H6')}), 1, 'IPv6 retains its lease policy');
+        }
+    };
+
+    for my $invalid ('dhcp6=yes', 'DHCPV6C=true', 'DHCPV6C=yes dhcp6=false',
+        'DHCPV6C=no dhcp6=true', 'IPV6_DEFROUTE=yes', 'dhcp6=true IPV6_DEFROUTE=auto') {
+        rejected("invalid DHCPv6 options: $invalid", sub {
+            $_[0]->{NICEXTRAPARAMS} = "vtnet1!$invalid";
+        }, qr/(dhcp6|DHCPV6C|DHCP|IPV6_DEFROUTE)/x);
+    }
+    rejected('DHCPv6 requires one reserved IPv6 address', sub {
+        $_[0]->{NICEXTRAPARAMS} = 'vtnet1!dhcp6=true';
+        $_[0]->{NICIPS} = 'vtnet1!192.0.2.10';
+        $_[0]->{NICNETWORKS} = 'vtnet1!data4';
+    }, qr/DHCPv6[ ]requires[ ]exactly[ ]one/x);
+    rejected('DHCPv6 rejects ambiguous reservations', sub {
+        $_[0]->{NICEXTRAPARAMS} = 'vtnet1!dhcp6=true';
+        $_[0]->{NICIPS} .= '|2001:db8:1::11';
+        $_[0]->{NICNETWORKS} .= '|data6';
+    }, qr/DHCPv6[ ]requires[ ]exactly[ ]one/x);
+    rejected('DHCPv6 and a static IPv6 default cannot compete', sub {
+        $_[0]->{NICEXTRAPARAMS} = 'vtnet1!dhcp6=true IPV6_DEFROUTE=yes';
+        $_[0]->{NETWORKS_LINE2} =~ s/gateway=/gateway=fe80::1/x;
+    }, qr/one[ ]IPv6[ ]default[ ]route[ ]owner/x);
+
+    subtest 'DHCPv6 lease validation precedes resolver output' => sub {
+        my $environment = {
+            interface => 'vtnet1', new_dhcp6_ia_na1_ia_addr1 => '2001:db8:1::10',
+            new_dhcp6_name_servers => '2001:db8:1::1 fe80::1',
+            new_dhcp6_domain_search => 'example.test storage.example.test',
+        };
+        my @args = ('-v', 'mode=dhcp6-options', '-v', 'expected=2001:db8:1::10', '-v', 'peerdns=yes');
+        my ($status, $output, $error) = invoke($environment, @args);
+        is($status, 0, 'a valid reserved lease compiles') or diag($error);
+        is($output, "search example.test storage.example.test\n"
+            . "nameserver 2001:0db8:0001:0000:0000:0000:0000:0001\n"
+            . "nameserver fe80:0000:0000:0000:0000:0000:0000:0001%vtnet1\n",
+            'DNS addresses are canonical and link-local servers have an interface scope');
+        for my $bad (
+            ['wrong address', {new_dhcp6_ia_na1_ia_addr1 => '2001:db8:1::11'}],
+            ['missing address', {new_dhcp6_ia_na1_ia_addr1 => ''}],
+            ['second address', {new_dhcp6_ia_na1_ia_addr2 => '2001:db8:1::11'}],
+            ['invalid DNS', {new_dhcp6_name_servers => "2001:db8::1\noptions debug"}],
+            ['invalid domain', {new_dhcp6_domain_search => 'example.test;command'}],
+            ['excess DNS', {new_dhcp6_name_servers => join(' ', ('2001:db8::1') x 17)}],
+        ) {
+            ($status, $output, $error) = invoke({%$environment, %{$bad->[1]}}, @args);
+            isnt($status, 0, "$bad->[0] is rejected");
+            is($output, '', 'a rejected lease emits no resolver settings');
+        }
+        ($status, $output, $error) = invoke($environment, @args, '-v', 'peerdns=no');
+        is($status, 0, 'DNS updates can be disabled') or diag($error);
+        is($output, '', 'PEERDNS=no emits no resolver settings');
+    };
+
+    subtest 'DHCPv6 completion requires its router advertisement default' => sub {
+        my $environment = base();
+        $environment->{NICEXTRAPARAMS} = 'vtnet1!dhcp6=true IPV6_DEFROUTE=yes';
+        my ($compiled, $plan) = compile_plan($environment);
+        is($compiled, 0, 'the default route owner compiles');
+        my $header = "Internet6:\nDestination Gateway Flags Netif Expire\n";
+        my $route = "default fe80::1%vtnet1 UG vtnet1\n";
+        is((inspect_state('routes', $plan, $header . $route))[0], 0,
+            'the assigned interface has an IPv6 default');
+        isnt((inspect_state('routes', $plan, $header))[0], 0,
+            'a lease without the requested default is incomplete');
+        $route =~ s/vtnet1/vtnet2/gx;
+        isnt((inspect_state('routes', $plan, $header . $route))[0], 0,
+            'a default through another interface is not accepted');
+    };
+
+    subtest 'expired DHCPv6 permits recovery while rejecting foreign addresses' => sub {
+        my $environment = base();
+        $environment->{NICEXTRAPARAMS} = 'vtnet1!dhcp6=true';
+        my ($compiled, $plan, $diagnostic) = compile_plan($environment);
+        is($compiled, 0, 'the reserved interface compiles') or diag($diagnostic);
+        my $state = "vtnet1: flags=1008843<UP,BROADCAST,RUNNING> metric 0 mtu 1500\n"
+            . "        ether 52:54:00:12:34:56\n"
+            . "        inet 192.0.2.10 netmask 0xffffff00 broadcast 192.0.2.255\n"
+            . "        inet6 fe80::5054:ff:fe12:3456%vtnet1 prefixlen 64 scopeid 0x2\n"
+            . "        nd6 options=21<PERFORMNUD,AUTO_LINKLOCAL>\n";
+        is((inspect_state('verify-prior', $plan, $state))[0], 0, 'an expired IPv6 lease permits repair');
+        isnt((inspect_state('verify', $plan, $state))[0], 0, 'completion still requires the reservation');
+        my $leased = $state . "        inet6 2001:db8:1::10 prefixlen 128\n";
+        is((inspect_state('verify', $plan, $leased))[0], 0, 'the reserved lease satisfies native readback');
+        $leased =~ s/::10/::11/x;
+        isnt((inspect_state('verify-prior', $plan, $leased))[0], 0, 'a foreign lease blocks replacement');
+    };
+    return;
+}
+dhcp6_configuration_tests();
+
 done_testing();
