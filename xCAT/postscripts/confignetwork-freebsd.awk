@@ -375,7 +375,7 @@ function node_addresses(nic,    ips, nets, count, nc, i, name, ip, family, net, 
         if (option[nic, "MTU"] == "" && mtu != "") {
             if (network_mtu[nic] != "" && network_mtu[nic] != mtu)
                 fail("Conflicting network MTUs for " nic)
-            network_mtu[nic] = mtu
+            network_mtu[nic] = mtu + 0
         }
     }
     address_count[nic] = count
@@ -587,13 +587,37 @@ function compile(    n) {
         print records[n]
 }
 
+function static_options(value,    count, words, i, item, parts, suffix) {
+    count = split(value, words, /[ \t]+/)
+    for (i = 1; i <= count; i++) {
+        item = words[i]
+        if (item == "" || item ~ /^(inet|inet6|up|down|alias|ifdisabled|-ifdisabled)$/)
+            continue
+        if (item == "mtu" || item == "prefixlen") {
+            if (!number(words[++i], 0, item == "mtu" ? 65535 : 128))
+                return 0
+        } else if (item == "netmask" || item == "broadcast") {
+            item = words[++i]
+            if (ipv4(item) == "" && item !~ /^0x[0-9a-fA-F]+$/)
+                return 0
+        } else {
+            suffix = split(item, parts, "/")
+            if (suffix > 2 || (suffix == 2 && !number(parts[2], 0, index(parts[1], ":") ? 128 : 32)))
+                return 0
+            if (ipv4(parts[1]) == "" && ipv6(parts[1]) == "")
+                return 0
+        }
+    }
+    return 1
+}
+
 BEGIN {
     if (mode == "" || mode == "compile") {
         compile()
         exit
     }
     if (mode != "verify" && mode != "snapshot" && mode != "clear" && mode != "routes" &&
-        mode != "routeconflicts" && mode != "rcconflicts" && mode != "rclists" && mode != "conflicts")
+        mode != "routeconflicts" && mode != "rcconflicts" && mode != "rcoptions" && mode != "rclists" && mode != "conflicts")
         fail("Unknown network planner operation")
 }
 
@@ -641,6 +665,21 @@ FILENAME == ARGV[1] {
             else if (words[i] == "vlandev")
                 wanted_parent[column[2]] = words[i + 1]
         }
+    }
+    next
+}
+
+mode == "rcoptions" {
+    position = index($0, ":")
+    key = substr($0, 1, position - 1)
+    value = substr($0, position + 1)
+    for (nic in wanted_interface) {
+        if (wanted_interface[nic] != "ethernet")
+            continue
+        if (key ~ ("^ifconfig_" nic "($|_(ipv6|aliases|alias[0-9]+)$)") && !static_options(value))
+            fail("Interface options require manual integration: " key)
+        if (value ~ /[^ \t]/ && (key == "ifconfig_" nic "_name" || key ~ ("^(create_args|vlans|ipv6_prefix)_" nic "$")))
+            fail("Interface options require manual integration: " key)
     }
     next
 }

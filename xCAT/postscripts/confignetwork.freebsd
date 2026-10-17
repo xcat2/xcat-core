@@ -45,11 +45,6 @@ mutating=0
 published=0
 staged_rc=
 
-interfaces()
-{
-    awk -F '\t' '$1 == "I" && !seen[$2]++ {print $2}' "$@"
-}
-
 verify_routes()
 {
     netstat -rnW > "$pending/routes.kernel" || return 1
@@ -177,6 +172,8 @@ rollback()
     awk -F '\t' '$1 == "I" && $3 == "ethernet" && !seen[$2]++' "$pending/union" >> "$pending/rollback.plan" || return 1
     cat "$pending/physical.snapshot" >> "$pending/rollback.plan" || return 1
     wait_ready "$pending/rollback.plan" || return 1
+    # A route command can be interrupted before its journal entry is written.
+    awk -v mode=routeconflicts -f "$planner" "$pending/route-ownership" "$pending/routes.kernel" || return 1
     if [ "$published" = 1 ]; then
         if cmp -s /etc/rc.conf "$pending/after.rc"; then
             staged_rc=$(mktemp /etc/rc.conf.xcat.XXXXXXXX) || return 1
@@ -200,7 +197,6 @@ finish()
 {
     result=$?
     trap - EXIT HUP INT TERM
-    [ -z "$staged_rc" ] || rm -f "$staged_rc"
     if [ "$mutating" = 1 ]; then
         if rollback; then
             printf '%s\n' rolled-back > "$pending/result"
@@ -214,6 +210,7 @@ finish()
     elif [ "$published" = 0 ] && [ -d "$pending" ] && [ ! -L "$pending" ]; then
         rm -rf "$pending"
     fi
+    [ -z "$staged_rc" ] || rm -f "$staged_rc"
     exit "$result"
 }
 
@@ -269,6 +266,7 @@ if [ -s "$pending/before.plan" ]; then
     verify_routes "$pending/before.plan" || fail 'Previously managed routes have drifted; reconcile them before updating'
 fi
 awk -v mode=snapshot -f "$planner" "$pending/union" "$pending/before.kernel" > "$pending/physical.snapshot"
+: > "$pending/physical.variables"
 while IFS="$tab" read -r kind nic type rest; do
     [ "$kind" = I ] || continue
     if [ "$type" = ethernet ]; then
@@ -276,6 +274,7 @@ while IFS="$tab" read -r kind nic type rest; do
         setting=$(sysrc -n "ifconfig_$nic" 2>/dev/null || :)
         [ -n "$setting" ] || setting=$(sysrc -n ifconfig_DEFAULT 2>/dev/null || :)
         case "$setting" in *DHCP*) fail "Stop DHCP configuration before managing $nic" ;; esac
+        printf 'ifconfig_%s: %s\n' "$nic" "$setting" >> "$pending/physical.variables"
     elif ifconfig "$nic" >/dev/null 2>&1; then
         awk -F '\t' -v nic="$nic" '$1 == "I" && $2 == nic && $3 != "ethernet" {found=1} END {exit !found}' \
             "$pending/before.plan" || fail "An unmanaged clone already exists: $nic"
@@ -296,6 +295,7 @@ awk '
 ' "$pending/before.rc" > "$pending/base.rc" || fail 'Malformed managed rc.conf block'
 sysrc -f "$pending/base.rc" -a > "$pending/base.variables" || fail 'Cannot read base rc.conf settings'
 sysrc -f "$pending/before.rc" -a > "$pending/before.variables" || fail 'Cannot read current rc.conf settings'
+awk -v mode=rcoptions -f "$planner" "$pending/plan" "$pending/physical.variables" "$pending/before.variables"
 awk -v mode=rclists -f "$planner" "$pending/before.plan" "$pending/before.variables" > "$pending/retained.lists"
 cat "$pending/base.variables" "$pending/retained.lists" > "$pending/unmanaged.variables"
 awk -v mode=rcconflicts -f "$planner" "$pending/plan" "$pending/unmanaged.variables"
