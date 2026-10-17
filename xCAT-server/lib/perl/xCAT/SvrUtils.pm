@@ -2691,6 +2691,28 @@ sub rootimg_checksum_enabled {
 }
 
 #--------------------------------------------------------------------------------------------------------
+#rootimg_transport:
+#description: tell how the nodes of an image get the compressed rootimage at boot
+#argument:
+#        $value: the rootimgtransport attribute of the image, or undef
+#return:
+#        'http' or 'uftp', from the image or, if the image does not set it, from site.rootimgtransport,
+#        or undef and the error message for another value. Call it in list context.
+#--------------------------------------------------------------------------------------------------------
+sub rootimg_transport {
+    my (undef, $value) = @_;
+    my $source = 'The rootimgtransport attribute of the image';
+    if (!defined($value) || $value !~ /\S/x) {
+        ($value) = xCAT::TableUtils->get_site_attribute('rootimgtransport');
+        $source = 'site.rootimgtransport';
+    }
+    return 'http' if !defined($value) || $value !~ /\S/x;
+    my $transport = lc($value =~ s/^\s+|\s+$//grx);
+    return $transport if $transport eq 'http' || $transport eq 'uftp';
+    return (undef, "$source is '$value', but only http and uftp are supported.");
+}
+
+#--------------------------------------------------------------------------------------------------------
 #upgrade_rootimg_checksum:
 #description: on an upgrade from a release without the root image check, keep the stateless and statelite
 #             ramdisk images of that release unchecked, and give new images the check. While
