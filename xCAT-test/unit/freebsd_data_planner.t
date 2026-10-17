@@ -194,4 +194,33 @@ subtest 'native topology and health must match exactly' => sub {
     }
 };
 
+subtest 'native startup-cache identities' => sub {
+    # Pool headers and GUIDs from native FreeBSD 15.1 zdb -C readback.
+    my $native = "createproof:\n    pool_guid: 12448067557558924659\n" .
+        "zroot:\n    pool_guid: 6329292263267649316\n" .
+        "tank:\n    pool_guid: 5556949434698476598\n";
+    my ($exit, $records, $error) = invoke('-v', 'mode=cache', write_file('cache', $native));
+    is($exit, 0, 'all native startup pool identities are read');
+    is($error, '', 'valid cache has no diagnostic');
+    is_deeply([sort split(/\n/x, $records)], [
+        "createproof\t12448067557558924659", "tank\t5556949434698476598", "zroot\t6329292263267649316"],
+        'every pool retains its full-width identity');
+    my ($duplicate, $deduplicated) = invoke('-v', 'mode=cache', write_file('cache', $native . $native));
+    is($duplicate, 0, 'matching identities from both native cache paths are accepted');
+    is_deeply([sort split(/\n/x, $deduplicated)], [sort split(/\n/x, $records)], 'duplicate caches do not duplicate pools');
+    for my $invalid (
+        $native . "tank:\n    pool_guid: 5556949434698476599\n",
+        $native . "other:\n    pool_guid: 5556949434698476598\n",
+        "tank:\n", "tank:\n    pool_guid: 0\n", "tank:\n    pool_guid: 18446744073709551616\n",
+        "tank:\n    pool_guid: 12\n    pool_guid: 12\n", "tank;reboot:\n    pool_guid: 12\n",
+    ) {
+        my ($bad, $partial) = invoke('-v', 'mode=cache', write_file('cache', $invalid));
+        isnt($bad, 0, 'ambiguous or incomplete cached identities are rejected');
+        is($partial, '', 'no partial startup inventory escapes');
+    }
+    my ($empty, $none) = invoke('-v', 'mode=cache', write_file('cache', ''));
+    is($empty, 0, 'a system without a cache has no existing cached pools');
+    is($none, '', 'an absent cache invents no startup membership');
+};
+
 done_testing();
