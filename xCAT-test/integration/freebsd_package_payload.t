@@ -74,13 +74,18 @@ like(capture('dpkg-deb', '--contents', $perl_deb),
 my $meta_rpm_files = capture('rpm', '-qp', '--queryformat',
     '[%{FILENAMES}\t%{FILEMODES:perms}\t%{FILEUSERNAME}/%{FILEGROUPNAME}\n]', $meta_rpm);
 my $meta_deb_files = capture('dpkg-deb', '--contents', $meta_deb);
-for my $script (qw(remoteshell.freebsd syncfiles.freebsd syslog.freebsd xcatpackages.freebsd)) {
+for my $script (qw(remoteshell.freebsd syncfiles.freebsd syslog.freebsd xcatpackages.freebsd confignetwork confignetwork.freebsd)) {
     my $postscript_path = "/install/postscripts/$script";
     like($meta_rpm_files, qr/^\Q$postscript_path\E\t-rwxr-xr-x\troot\/root$/mx,
         "RPM packages executable $script");
     like($meta_deb_files, qr/^-rwxr-xr-x\s+root\/root\s+.*\s\.\Q$postscript_path\E$/mx,
         "DEB packages executable $script");
 }
+my $network_planner_path = '/install/postscripts/confignetwork-freebsd.awk';
+like($meta_rpm_files, qr{^\Q$network_planner_path\E\t-rwxr-xr-x\troot/root$}mx,
+    'RPM packages the native network planner');
+like($meta_deb_files, qr{^-rw-r--r--\s+root/root\s+.*\s[.]\Q$network_planner_path\E$}mx,
+    'DEB packages the native network planner');
 
 my $rpm_tree = tempdir(CLEANUP => 1);
 my $deb_tree = tempdir(CLEANUP => 1);
@@ -88,12 +93,17 @@ capture('bsdtar', '-xf', $meta_rpm, '-C', $rpm_tree);
 capture('dpkg-deb', '--extract', $meta_deb, $deb_tree);
 for my $package_tree (['RPM', $rpm_tree], ['DEB', $deb_tree]) {
     for my $native_script (qw(syslog remoteshell syncfiles ospkgs otherpkgs
-        syslog.freebsd remoteshell.freebsd syncfiles.freebsd xcatpackages.freebsd)) {
+        syslog.freebsd remoteshell.freebsd syncfiles.freebsd xcatpackages.freebsd confignetwork confignetwork.freebsd)) {
         my $installed_path = "$package_tree->[1]/install/postscripts/$native_script";
         open(my $installed_script, '<', $installed_path) or BAIL_OUT("Cannot read $installed_path: $!");
         my $interpreter = <$installed_script>;
         close($installed_script) or BAIL_OUT("Cannot close $installed_path: $!");
         is($interpreter, "#!/bin/sh\n", "$package_tree->[0] preserves the native interpreter for $native_script");
     }
+    my $planner = "$package_tree->[1]/install/postscripts/confignetwork-freebsd.awk";
+    open(my $installed_planner, '<', $planner) or BAIL_OUT("Cannot read $planner: $!");
+    my $interpreter = <$installed_planner>;
+    close($installed_planner) or BAIL_OUT("Cannot close $planner: $!");
+    is($interpreter, "#!/usr/bin/awk -f\n", "$package_tree->[0] preserves the native AWK interpreter");
 }
 done_testing();

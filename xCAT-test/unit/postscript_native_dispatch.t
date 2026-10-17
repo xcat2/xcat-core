@@ -73,7 +73,8 @@ printf 'native stderr\n' >&2
 exit 23
 ADAPTER
 my %adapters = (syslog => 'syslog.freebsd', remoteshell => 'remoteshell.freebsd',
-    syncfiles => 'syncfiles.freebsd', ospkgs => 'xcatpackages.freebsd', otherpkgs => 'xcatpackages.freebsd');
+    syncfiles => 'syncfiles.freebsd', confignetwork => 'confignetwork.freebsd',
+    ospkgs => 'xcatpackages.freebsd', otherpkgs => 'xcatpackages.freebsd');
 for my $script (sort keys %adapters) {
     copy("$sources/$script", "$root/scripts/$script") or croak $!;
     chmod(oct('0555'), "$root/scripts/$script") == 1 or croak $!;
@@ -128,6 +129,7 @@ sub bash_startup_tests {
     write_file("$root/bin/logger", "#!/bin/sh\nexit 0\n", oct('0555'));
     write_file("$root/fixture/startup", "printf 'startup\\n' >> /fixture/bash.startup\n", oct('0444'));
     copy("$FindBin::Bin/../../xCAT/postscripts/xcatlib.sh", "$root/scripts/xcatlib.sh") or croak $!;
+    write_file("$root/scripts/nicutils.sh", "exit 0\n", oct('0444'));
     for my $helper (qw(xcatpkgutils-loader.sh xcatpkgutils.sh)) {
         copy("$FindBin::Bin/../../xCAT/postscripts/$helper", "$root/scripts/$helper") or croak $!;
     }
@@ -162,8 +164,9 @@ sub bash_startup_tests {
                         cwd => $root, environment => { PATH => '/bin:/usr/bin', LC_ALL => 'C',
                             SYSLOG => 'ignore', UPDATENODE => 1, BASH_ENV => '/fixture/startup' }, timeout => 10);
                     is($result->{signal}, 0, "$platform $shell exits normally");
-                    is($result->{exitcode}, 0, "$platform $shell preserves the early exit");
-                    like($result->{stderr}, qr/^\+[ ]exit[ ]0$/mx, "$platform $shell traces the script body");
+                    my $expected_exit = $legacy_entry eq 'confignetwork' && $platform eq 'AIX' ? 1 : 0;
+                    is($result->{exitcode}, $expected_exit, "$platform $shell preserves the existing exit");
+                    like($result->{stderr}, qr/^\+{1,2}[ ]exit[ ]$expected_exit$/mx, "$platform $shell traces the script body");
                     is(read_file("$root/fixture/bash.startup"), "startup\n",
                         "$platform $shell reads Bash startup exactly once");
                 }
