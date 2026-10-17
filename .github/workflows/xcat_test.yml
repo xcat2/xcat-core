@@ -55,6 +55,9 @@ jobs:
       - name: Exercise the liteimg ramdisk archive
         if: ${{ !cancelled() }}
         run: prove xCAT-test/native/liteimg_ramdisk_archive.t
+      - name: Exercise the UFTP listener
+        if: ${{ !cancelled() }}
+        run: prove xCAT-test/native/uftp_listener.t
       - name: Run tests
         if: ${{ !cancelled() }}
         run: perl github_action_xcat_test.pl
