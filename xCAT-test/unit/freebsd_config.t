@@ -353,6 +353,64 @@ sub pkgbase_codec_cases {
 subtest 'legacy configuration wire compatibility' => \&legacy_wire_cases;
 subtest 'pkgbase configuration codec and identity' => \&pkgbase_codec_cases;
 
+sub dedicated_os_policy_cases {
+    my ($selected_network, $install) = pkgbase_inputs();
+    my $media5 = { %{$install->{media}}, install_contract => 'xcat-freebsd-install-5' };
+    my %policy = (filesystem => 'zfs', swap_size => '0', swap_mode => 'none',
+        zfs_topology => 'mirror', zfs_vdevs => 'vtbd0@OS_A,vtbd1@OS_B',
+        zfs_compression => 'lz4', authorized_key_base64 => $settings->{authorized_key_base64});
+    my $render_policy = sub {
+        my ($selected, $chosen_media) = @_;
+        $chosen_media ||= $media5;
+        my $boot = xCAT::FreeBSDConfig::boot_settings($selected, '', {}, $chosen_media);
+        return xCAT::FreeBSDConfig::render_pkgbase('node1', $boot, $selected_network,
+            { %$install, media => $chosen_media }, $generation);
+    };
+    my $bytes = $render_policy->(\%policy);
+    like($bytes, qr/\Aformat=xcat-freebsd-install-5\n/x, 'new disk policies require their runtime contract');
+    my $default_properties = qr/zfs_compression=lz4\nzfs_ashift=12\n/x;
+    my $default_action = qr/disk_action=empty\npreserve_disks=-\n/x;
+    like($bytes, qr/$default_properties$default_action\z/x,
+        'defaults retain explicit compression, sector alignment and empty-disk safety');
+    my ($status, $output) = read_generated_config($bytes,
+        'printf "%s|%s|%s|%s\n" "$XCAT_ZFS_COMPRESSION" "$XCAT_ZFS_ASHIFT" "$XCAT_DISK_ACTION" "$XCAT_PRESERVE_DISKS"');
+    is($status, 0, 'the native reader accepts the generated policy');
+    is($output, "lz4|12|empty|-\n", 'the runtime receives exact defaults');
+    for my $compression (qw(off lz4 gzip gzip-9 zstd zstd-19)) {
+        for my $ashift (9, 12, 16) {
+            my $configured = $render_policy->({ %policy, zfs_compression => $compression, zfs_ashift => $ashift,
+                disk_action => 'erase', preserve_disks => 'vtbd2@DATA_A,vtbd3@DATA_B' });
+            my ($accepted, $members) = read_generated_config($configured, 'xcat_preserved_members');
+            is($accepted, 0, "$compression and ashift $ashift reach the native parser");
+            is($members, "vtbd2\tDATA_A\t1\nvtbd3\tDATA_B\t1\n", 'data identities remain separate from OS members');
+        }
+    }
+    my $single = $render_policy->({ %policy, zfs_topology => 'stripe', zfs_vdevs => 'vtbd0@OS_A' });
+    is((read_generated_config($single, 'xcat_zfs_members'))[1], "vtbd0\tOS_A\t1\n", 'one OS disk uses the same guarded policy');
+    for my $older (3, 4) {
+        rejected(sub { $render_policy->(\%policy, { %$media5, install_contract => "xcat-freebsd-install-$older" }) },
+            qr/requires?/x, 'an old runtime cannot silently drop the disk policy');
+    }
+    for my $bad ([zfs_compression => 'on'], [zfs_compression => 'zstd-20'], [zfs_ashift => 8],
+        [zfs_ashift => '012'], [zfs_ashift => 17], [disk_action => 'preserve-partitions'],
+        [preserve_disks => ''], [preserve_disks => 'vtbd0@DATA'], [preserve_disks => 'vtbd2@OS_A'],
+        [preserve_disks => 'vtbd2@DATA,vtbd3@DATA'], [preserve_disks => '/dev/vtbd2@DATA']) {
+        rejected(sub { $render_policy->({ %policy, @$bad }) }, qr/(compression|ashift|action|disk)/ix,
+            "invalid $bad->[0] is rejected by the controller");
+        my $mutant = $bytes;
+        $mutant =~ s/^\Q$bad->[0]\E=.*$/$bad->[0]=$bad->[1]/mx;
+        isnt((read_generated_config($mutant, 'printf unsafe'))[0], 0, 'the native reader independently rejects the invalid field');
+    }
+    for my $field (qw(zfs_compression zfs_ashift disk_action preserve_disks)) {
+        my $missing = $bytes;
+        $missing =~ s/^\Q$field\E=.*\n//mx;
+        isnt((read_generated_config($missing, 'printf unsafe'))[0], 0, "the native reader requires $field");
+    }
+    done_testing();
+    return;
+}
+subtest 'dedicated OS disk properties and reinstall policy' => \&dedicated_os_policy_cases;
+
 subtest 'ordered redundant ZFS policy and native codec' => sub {
     my ($selected_network, $install) = pkgbase_inputs();
     my $media3 = { %{$install->{media}}, install_contract => 'xcat-freebsd-install-3' };

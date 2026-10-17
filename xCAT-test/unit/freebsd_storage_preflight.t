@@ -74,6 +74,7 @@ sub fixture {
         zdb => 'test "$1" = -l || exit 90
             name=${2##*/}; test ! -f "$FIXTURE_DIR/zdb-status-$name" || exit "$(cat "$FIXTURE_DIR/zdb-status-$name")"
             test -f "$FIXTURE_DIR/labels/$name" || exit 2; cat "$FIXTURE_DIR/labels/$name"',
+        sha256 => 'test "$*" = -q || exit 90; openssl dgst -sha256 | awk \'{print $NF}\'',
         fstyp => 'test "$1" = -u || exit 90
             name=${2##*/}
             if [ -f "$FIXTURE_DIR/fstyp-$name" ]; then
@@ -106,13 +107,15 @@ sub fixture {
 }
 
 sub run_preflight {
-    my ($root) = @_;
+    my ($root, $overrides, $operation) = @_;
+    $overrides ||= {};
+    $operation ||= 'xcat_check_zfs_initial';
     local %ENV = (%ENV, PATH => "$root/bin:$ENV{PATH}", FIXTURE_DIR => $root,
         XCAT_WORK => "$root/work", XCAT_FORMAT => 'xcat-freebsd-install-4',
         XCAT_FILESYSTEM => 'zfs', XCAT_ZFS_TOPOLOGY => 'mirror',
-        XCAT_ZFS_VDEVS => read_file("$root/members"), XCAT_SWAP_SIZE => '0', XCAT_SWAP_MODE => 'none');
+        XCAT_ZFS_VDEVS => read_file("$root/members"), XCAT_SWAP_SIZE => '0', XCAT_SWAP_MODE => 'none', %$overrides);
     my %before = map { $_ => sha256_hex(read_file($_)) } glob("$root/ada*.head $root/ada*.tail");
-    open(my $pipe, '-|', 'sh', '-c', '. "$1"; xcat_check_zfs_initial 2>"$FIXTURE_DIR/stderr"', 'sh', $library) or die $!;
+    open(my $pipe, '-|', 'sh', '-c', '. "$1"; "$2" 2>"$FIXTURE_DIR/stderr"', 'sh', $library, $operation) or die $!;
     local $/;
     my $output = <$pipe> // '';
     close($pipe);
@@ -262,6 +265,37 @@ subtest 'failed observations and changing membership' => sub {
     $data =~ s/Mode: r0w0e0/Mode: r1w0e0/;
     write_file("$root/ada2.geom.changed", $data);
     reject($root, 'a change during preflight fails', qr/disk set changed during preflight/);
+};
+
+subtest 'whole OS disk reinstall preserves separate identities and rejects foreign storage' => sub {
+    my %policy = (XCAT_FORMAT => 'xcat-freebsd-install-5', XCAT_DISK_ACTION => 'erase',
+        XCAT_ZFS_COMPRESSION => 'lz4', XCAT_ZFS_ASHIFT => '12', XCAT_PRESERVE_DISKS => 'ada3@SERIAL3');
+    my $root = fixture();
+    write_file("$root/labels/ada0", "pool_guid: 123\nname: 'zroot'\n");
+    write_file("$root/labels/ada3", "pool_guid: 456\nname: 'tank'\n");
+    my ($status, $output, $error) = run_preflight($root, \%policy, 'xcat_check_zfs_reinstall');
+    is($status, 0, 'explicit OS erase accepts OS labels and separate exported data') or diag($error);
+    like($output, qr/preserved\nada3\tSERIAL3\t/x, 'the preserved identity is bound into the prewrite snapshot');
+    like($output, qr/labels\nada0[ ][0-9a-f]{64}\n/x, 'old OS metadata is bound before any write');
+    for my $bad ([XCAT_DISK_ACTION => 'empty'], [XCAT_PRESERVE_DISKS => 'ada0@SERIAL0'],
+        [XCAT_PRESERVE_DISKS => 'ada3@WRONG'], [XCAT_PRESERVE_DISKS => 'ada4@MISSING']) {
+        isnt((run_preflight($root, { %policy, @$bad }, 'xcat_check_zfs_reinstall'))[0], 0,
+            "invalid $bad->[0] prevents OS erase");
+    }
+    write_file("$root/labels/ada3", "pool_guid: 123\nname: 'zroot'\n");
+    isnt((run_preflight($root, \%policy, 'xcat_check_zfs_reinstall'))[0], 0,
+        'an OS pool member outside the selected disks prevents partial erase');
+    write_file("$root/labels/ada3", "pool_guid: 456\nname: 'tank'\n");
+    write_file("$root/labels/ada0", "pool_guid: 456\nname: 'tank'\n");
+    isnt((run_preflight($root, \%policy, 'xcat_check_zfs_reinstall'))[0], 0,
+        'a data pool on a selected disk is not mistaken for the OS');
+    write_file("$root/labels/ada0", "pool_guid: 123\nname: 'zroot'\n");
+    my $graph = read_file("$root/graph");
+    $graph =~ s{1[ ]LABEL[ ]diskid/DISK-SERIAL0[^\n]*}{1 ELI ada0.eli 8589934080 512}x;
+    write_file("$root/graph", $graph);
+    isnt((run_preflight($root, \%policy, 'xcat_check_zfs_reinstall'))[0], 0,
+        'an unsupported active provider cannot be erased as a plain OS disk');
+    done_testing();
 };
 
 done_testing();
