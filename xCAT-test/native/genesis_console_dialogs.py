@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import pty
 import select
+import shlex
 import signal
 import struct
 import subprocess
@@ -60,6 +61,16 @@ class ConsoleTerminal(unittest.TestCase):
 
     def console_command(self):
         return [str(self.binary)]
+
+    def isolated_prefix(self, mounts):
+        command = ["bwrap", "--unshare-all", "--die-with-parent", "--ro-bind", "/", "/",
+                   "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/run", "--tmpfs", "/var/log",
+                   *mounts]
+        result = subprocess.run(command + ["/bin/true"], text=True,
+                                capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 0,
+                         "Console tests require working Bubblewrap namespaces: " + result.stderr)
+        return command
 
     def stop(self):
         if self.process.poll() is None:
@@ -197,19 +208,12 @@ class ConsoleJournal(ConsoleTerminal):
         self.entries = []
         machine_id_file = self.root / "machine-id"
         machine_id_file.write_text(self.machine_id + "\n")
-        sandbox = [
-            "bwrap", "--unshare-all", "--die-with-parent", "--ro-bind", "/", "/",
-            "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/run", "--tmpfs", "/var/log",
+        self.sandbox = self.isolated_prefix([
             "--bind", str(self.root), str(self.root),
             "--ro-bind", str(machine_id_file), "/etc/machine-id",
             "--ro-bind", str(journal_root), "/var/log/journal",
-        ]
-        result = subprocess.run(sandbox + ["/bin/true"], text=True,
-                                capture_output=True, timeout=10)
-        self.assertEqual(result.returncode, 0,
-                         "Journal tests require working Bubblewrap namespaces: " + result.stderr)
-        self.sandbox = sandbox
-        return sandbox + [str(self.binary)]
+        ])
+        return self.sandbox + [str(self.binary)]
 
     def write_journal(self, entries, interval=1000000):
         records = []
@@ -469,6 +473,93 @@ class ConsoleJournal(ConsoleTerminal):
         self.assertNotIn("RECORD-0001", display)
         self.key(b"\x1b[F")
         self.wait_text("RECORD-0129")
+
+
+class ConsoleShell(ConsoleTerminal):
+    """Mount a fixture libexec directory containing the external shell launcher.
+
+    The linked console still owns confirmation, fork/exec, waiting and redraw.
+    The host filesystem is read-only except for the fixture directory.
+    /run and /var/log are private tmpfs mounts.
+    """
+
+    def console_command(self):
+        directory = self.root / "libexec"
+        (directory / "xcat").mkdir(parents=True)
+        self.launcher = directory / "xcat/genesis-maintenance-shell"
+        self.calls = self.root / "shell-calls"
+        self.input = self.root / "shell-input"
+        self.write_launcher(0)
+        return self.isolated_prefix([
+            "--bind", str(self.root), str(self.root),
+            "--ro-bind", str(directory), "/usr/libexec",
+        ]) + [str(self.binary)]
+
+    def write_launcher(self, exit_status):
+        self.launcher.write_text(
+            "#!/bin/sh\n"
+            f"printf '%s\\n' started >> {shlex.quote(str(self.calls))}\n"
+            "printf 'SHELL-RUNNING\\n'\n"
+            "IFS= read -r answer\n"
+            f"printf '%s\\n' \"$answer\" > {shlex.quote(str(self.input))}\n"
+            f"exit {exit_status}\n")
+        self.launcher.chmod(0o755)
+
+    def confirm_shell(self):
+        self.key(b"\x1b[24~")
+        display = self.wait_screen(
+            lambda text: "Open a root maintenance shell?" in self.visible_text(text),
+            "maintenance shell confirmation")
+        self.assertIn("Provisioning services continue", display)
+        self.assertIn("in the background.", display)
+
+    def wait_main(self):
+        return self.wait_screen(lambda display: "Maintenance shell" not in display
+                                and "SHELL-RUNNING" not in display
+                                and "Genesis diagnostics" not in display
+                                and "Genesis status" in display,
+                                "the restored status console")
+
+    def test_cancel_does_not_launch_shell(self):
+        self.confirm_shell()
+        self.assertFalse(self.calls.exists())
+        self.key(b"\t\r")
+        self.wait_main()
+        self.assertFalse(self.calls.exists())
+        self.key(b"\x1bOP")
+        self.wait_text("Genesis help")
+
+    def test_confirmed_shell_accepts_input_and_returns_to_console(self):
+        for count, exit_status in enumerate((0, 7), 1):
+            with self.subTest(launch=count, exit_status=exit_status):
+                self.write_launcher(exit_status)
+                self.confirm_shell()
+                self.assertEqual(self.calls.read_text() if self.calls.exists() else "",
+                                 "started\n" * (count - 1))
+                self.key(b"\r")
+                self.wait_text("SHELL-RUNNING")
+                self.assertEqual(self.calls.read_text(), "started\n" * count)
+                self.key(f"operator-input-{count}\r".encode())
+                self.wait_main()
+                self.assertEqual(self.input.read_text(), f"operator-input-{count}\n")
+                self.assertIsNone(self.process.poll())
+                self.key(b"\x1bOQ")
+                self.wait_text("Genesis diagnostics")
+                self.key(b"\x1bOQ")
+                self.wait_main()
+
+    def test_shell_exec_error_is_reported_and_console_recovers(self):
+        self.launcher.unlink()
+        self.confirm_shell()
+        self.key(b"\r")
+        display = self.wait_text("No such file or directory")
+        self.assertIn("The maintenance shell could not be", display)
+        self.assertIn("opened:", display)
+        self.assertFalse(self.calls.exists())
+        self.key(b"\r")
+        self.wait_main()
+        self.key(b"\x1bOP")
+        self.wait_text("Genesis help")
 
 
 if __name__ == "__main__":
