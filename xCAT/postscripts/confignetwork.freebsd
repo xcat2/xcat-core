@@ -191,7 +191,7 @@ verify_routes()
     awk -F '\t' -v prior="${2:-}" 'BEGIN {OFS="\t"}
         prior == "prior" && $1 == "H6" {$6="no"} {print}' "$1" > "$pending/routes.plan" || return 1
     while IFS="$tab" read -r kind nic address bits peerdns defroute; do
-        [ "$kind:$defroute:${2:-}" = H:yes: ] || continue
+        [ "$kind:$defroute" = H:yes ] && [ "${2:-}" != prior ] || continue
         protected_file "$state/dhcp/$nic.lease" || return 1
         awk -v mode=dhcp4-default -v nic="$nic" -f "$planner" "$state/dhcp/$nic.lease" \
             >> "$pending/routes.plan" || return 1
@@ -213,7 +213,7 @@ wait_ready()
         if awk -v mode=verify -f "$planner" "$ready_plan" "$pending/after.kernel" > "$pending/verify.log" 2>&1 &&
             dhcp_ready "$ready_plan" >> "$pending/verify.log" 2>&1; then
             [ "$ready_mode" != addresses ] || return 0
-            if verify_routes "$ready_plan" >> "$pending/verify.log" 2>&1 &&
+            if verify_routes "$ready_plan" "$ready_mode" >> "$pending/verify.log" 2>&1 &&
                 nc -z -w 2 -s "$node_address" "$controller" "$port"; then return 0; fi
         fi
         attempt=$((attempt + 1))
@@ -403,7 +403,7 @@ rollback()
     wait_ready "$pending/rollback.plan" addresses || return 1
     routes add "$pending/removed.routes" /dev/null >> "$pending/rollback-routes.log" 2>&1 || return 1
     default_routes "$pending/before.defaults" "$pending/before.plan" > "$pending/rollback-defaults.log" 2>&1 || return 1
-    wait_ready "$pending/rollback.plan" || return 1
+    wait_ready "$pending/rollback.plan" prior || return 1
     # A route command can be interrupted before its journal entry is written.
     awk -v mode=routeconflicts -f "$planner" "$pending/route-ownership" "$pending/routes.kernel" || return 1
     if [ "$published" = 1 ]; then
@@ -501,6 +501,11 @@ if [ -s "$pending/before.plan" ]; then
         fail 'The previously managed network has drifted; reconcile it before updating'
     verify_routes "$pending/before.plan" prior || fail 'Previously managed routes have drifted; reconcile them before updating'
 fi
+awk -F '\t' 'FILENAME==ARGV[1] {if ($1=="H6" && $6=="yes") prior[$2]=1; next}
+    $1=="H6" && $6=="yes" && $2 in prior {print}' \
+    "$pending/before.plan" "$pending/plan" > "$pending/retained-dhcp6-defaults"
+awk -v mode=routes -f "$planner" "$pending/retained-dhcp6-defaults" "$pending/routes.kernel" ||
+    fail 'An existing IPv6 router-advertisement default is missing; restore it or set IPV6_DEFROUTE=no'
 awk -v mode=snapshot -f "$planner" "$pending/union" "$pending/before.kernel" > "$pending/physical.snapshot"
 : > "$pending/physical.variables"
 while IFS="$tab" read -r kind nic type rest; do
