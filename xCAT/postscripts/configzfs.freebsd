@@ -57,10 +57,6 @@ check_key_selection()
 for file in "$policy" "$library" /etc/rc.conf; do
     safe_file "$file" && safe_parents "$file" || fail 'Unsafe data policy, helper or rc.conf'
 done
-if [ ! -e "$cachefile" ] && [ ! -L "$cachefile" ] &&
-    { [ -e /boot/zfs/zpool.cache ] || [ -L /boot/zfs/zpool.cache ]; }; then
-    cachefile=/boot/zfs/zpool.cache
-fi
 safe_parents "$cachefile" || fail 'Unsafe pool cache directory'
 if [ -e "$cachefile" ] || [ -L "$cachefile" ]; then
     safe_file "$cachefile" || fail 'Unsafe pool cache'
@@ -83,6 +79,26 @@ setting()
 {
     awk -F '\t' -v name="$1" '$1=="K" && $2==name {print $3}' "$attempt/plan"
 }
+
+cache_inventory()
+{
+    : > "$1.native"
+    for cache_path in /etc/zfs/zpool.cache /boot/zfs/zpool.cache; do
+        if [ -e "$cache_path" ] || [ -L "$cache_path" ]; then
+            safe_file "$cache_path" && safe_parents "$cache_path" || return 1
+            zdb -C -U "$cache_path" >> "$1.native" || return 1
+        fi
+    done
+    awk -v mode=cache -f "$planner" "$1.native" > "$1"
+}
+
+cache_members_match()
+{
+    awk -F '\t' '
+        FILENAME==ARGV[1] {expected[$1]="g" $2; next}
+        !($1 in expected) || expected[$1]!="g" $2 {exit 1}' "$1" "$2"
+}
+
 pool=$(setting pool)
 action=$(setting action)
 guid=$(setting guid)
@@ -133,6 +149,15 @@ if mount -p | awk -v pool="$pool" '$2=="/" && $3=="zfs" && ($1==pool || index($1
     fail 'The running OS pool cannot be managed as data'
 fi
 zpool list -H -o name,guid > "$attempt/pools"
+zpool get -H -o name,value cachefile > "$attempt/pool-caches"
+awk -F '\t' -v pool="$pool" '
+    $1==pool || $2=="-" || $2=="/etc/zfs/zpool.cache" || $2=="/boot/zfs/zpool.cache" {print $1}' \
+    "$attempt/pool-caches" > "$attempt/startup.names"
+awk -F '\t' 'FILENAME==ARGV[1] {wanted[$1]=1; next} $1 in wanted {print}' \
+    "$attempt/startup.names" "$attempt/pools" > "$attempt/startup.pools"
+cache_inventory "$attempt/cache.before" || fail 'Cannot inventory the startup pool caches'
+cache_members_match "$attempt/startup.pools" "$attempt/cache.before" ||
+    fail 'Import existing cached pools before configuring data storage'
 existing=$(awk -F '\t' -v pool="$pool" '$1==pool {print $2}' "$attempt/pools")
 if [ "$action" = create ] && [ -n "$existing" ]; then
     safe_file "$receipt" || fail 'An existing pool requires an explicit import policy and GUID'
@@ -247,6 +272,31 @@ while IFS="$(printf '\t')" read -r dataset canmount destination encryptionroot; 
     fi
 done < "$attempt/datasets"
 
+# Use the cache preferred by native startup, retaining every existing startup pool.
+printf '%s\t%s\n' "$pool" "$guid" >> "$attempt/startup.pools"
+sort -u "$attempt/startup.pools" > "$attempt/startup.expected"
+cache_inventory "$attempt/cache.current" || fail 'Cannot recheck the startup pool caches'
+cache_members_match "$attempt/startup.expected" "$attempt/cache.current" ||
+    fail 'The startup pool identities changed during configuration'
+while IFS="$(printf '\t')" read -r startup_pool startup_guid; do
+    [ "$(zpool get -H -o value guid "$startup_pool")" = "$startup_guid" ] ||
+        fail 'A startup pool identity changed'
+    if [ "$startup_pool" != "$pool" ]; then
+        case $(zpool get -H -o value cachefile "$startup_pool") in
+            -|/etc/zfs/zpool.cache|/boot/zfs/zpool.cache) ;;
+            *) fail 'Another startup pool changed its cache policy' ;;
+        esac
+    fi
+done < "$attempt/startup.expected"
+while IFS="$(printf '\t')" read -r startup_pool startup_guid; do
+    zpool set "cachefile=$cachefile" "$startup_pool"
+done < "$attempt/startup.expected"
+zdb -C -U "$cachefile" > "$attempt/boot.config" || fail 'The saved pool cache cannot be read'
+awk -v mode=cache -f "$planner" "$attempt/boot.config" > "$attempt/boot.pools"
+cache_members_match "$attempt/boot.pools" "$attempt/startup.expected" ||
+    fail 'A startup pool is missing from its boot cache'
+fsync "$cachefile" "${cachefile%/*}"
+
 safe_file /etc/rc.conf || fail 'Unsafe rc.conf'
 cp -p /etc/rc.conf "$attempt/before.rc"
 rc_stage=$(mktemp /etc/rc.conf.xcat-storage.XXXXXXXX)
@@ -266,17 +316,6 @@ if [ "$encryption" != off ]; then
     rc_enabled "$(sysrc -n zfskeys_enable)" || fail 'Another rc configuration disables automatic keys'
     case " $(sysrc -n zfskeys_datasets) " in *" $pool "*) ;; *) fail 'Another rc configuration overrides automatic keys' ;; esac
 fi
-zpool set "cachefile=$cachefile" "$pool"
-case $(zpool get -H -o value cachefile "$pool") in
-    -|"$cachefile") ;; *) fail 'The pool cache was not saved' ;;
-esac
-zdb -C -U "$cachefile" > "$attempt/boot.config" || fail 'The saved pool cache cannot be read'
-awk -v pool="$pool" -v guid="$guid" '
-    $0==pool ":" {selected=1; next}
-    /^[^ \t]/ {selected=0}
-    selected && $1=="pool_guid:" && "g" $2=="g" guid {found++}
-    END {exit found!=1}' "$attempt/boot.config" || fail 'The pool is missing from its boot cache'
-fsync "$cachefile" "${cachefile%/*}"
 printf '%s\t%s\n' "$guid" "$policy_hash" > "$attempt/receipt"
 fsync "$attempt/receipt"
 receipt_stage=$(mktemp /var/db/xcat/storage/receipt.XXXXXXXX)

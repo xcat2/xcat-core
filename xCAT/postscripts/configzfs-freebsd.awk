@@ -123,9 +123,37 @@ function compile(    allowed, keys, i, key, minimum, special_min, n) {
     for (i = 1; i <= commands; i++) print "C\t" command[i]
 }
 
+function cache_pool(    prior) {
+    if (cache_name == "") return
+    if (cache_guids != 1) fail("A cached pool lacks one GUID")
+    prior = cached[cache_name]
+    if ((prior != "" && "g" prior != "g" cache_guid) ||
+        (cache_guid in cache_names && cache_names[cache_guid] != cache_name))
+        fail("Conflicting cached pool identities")
+    cached[cache_name] = cache_guid
+    cache_names[cache_guid] = cache_name
+}
+
 BEGIN {
     if (mode == "") mode = "compile"
-    if (mode != "compile" && mode != "verify") fail("Unknown storage operation")
+    if (mode != "compile" && mode != "verify" && mode != "cache") fail("Unknown storage operation")
+}
+
+mode == "cache" {
+    if ($0 ~ /^[^ \t]/) {
+        cache_pool()
+        if ($0 !~ /^[A-Za-z][A-Za-z0-9_.:-]*:$/ || length($0) > 256)
+            fail("Invalid cached pool name")
+        cache_name = substr($0, 1, length($0) - 1)
+        cache_guids = 0
+    } else if ($1 == "pool_guid:") {
+        if (cache_name == "" || NF != 2 || $2 !~ /^[1-9][0-9]*$/ || length($2) > 20 ||
+            (length($2) == 20 && "g" $2 > "g18446744073709551615"))
+            fail("Invalid cached pool GUID")
+        cache_guid = $2
+        cache_guids++
+    }
+    next
 }
 
 mode == "compile" {
@@ -191,7 +219,10 @@ mode == "verify" {
 
 END {
     if (failed) exit 1
-    if (mode == "compile") compile()
+    if (mode == "cache") {
+        cache_pool()
+        for (cache_name in cached) print cache_name "\t" cached[cache_name]
+    } else if (mode == "compile") compile()
     else {
         if (!root_seen || !errors_seen || state_seen != 1) fail("No complete pool status was returned")
         for (device in expected_role) if (!seen[device]) fail("A required pool device is missing")
