@@ -2852,14 +2852,15 @@ sub _write_published_file {
 #        $staged:        the staged compressed rootimage, with <staged>.sha256 and <staged>.metainfo when they exist
 #        $target:        the published path
 #        $remove_others: true to remove the other rootimg.* files of the image directory
+#        $held:          the publication lock from lock_rootimg_publication, when the caller holds it
 #return:
 #        on success: nothing
 #        on fail:    the error message
 #--------------------------------------------------------------------------------------------------------
 sub publish_rootimg {
-    my ($class, $staged, $target, $remove_others) = @_;
+    my ($class, $staged, $target, $remove_others, $held) = @_;
     my $dir = dirname($target);
-    my ($lock, $lock_error) = _acquire_publish_lock($dir);
+    my ($lock, $lock_error) = $held ? ($held) : _acquire_publish_lock($dir);
     return $lock_error unless $lock;
     my %state = (staged => $staged, target => $target, previous => dirname($staged) . '/previous',
         sums => _read_published_file("$target.sha256"));
@@ -2879,9 +2880,49 @@ sub publish_rootimg {
 
     # Afterwards, only a staging directory that keeps previous files for a failed publication holds them.
     unlink(grep { -e $_ || -l $_ } map { "$state{previous}$_" } ('', '.metainfo', '.sha256')) if !$state{retained};
-    _release_publish_lock($lock);
+    _release_publish_lock($lock) if !$held;
     return if !defined($error);
     return "Cannot publish $target: $error";
+}
+
+#--------------------------------------------------------------------------------------------------------
+#unpublish_rootimg:
+#description: remove a published compressed rootimage with its checksum and metainfo
+#arguments:
+#        $target: the published path
+#        $held:   the publication lock from lock_rootimg_publication, when the caller holds it
+#return:
+#        on success: nothing
+#        on fail:    the error message
+#--------------------------------------------------------------------------------------------------------
+sub unpublish_rootimg {
+    my ($class, $target, $held) = @_;
+    my ($lock, $error) = $held ? ($held) : _acquire_publish_lock(dirname($target));
+    return $error unless $lock;
+    my @files = grep { -e $_ || -l $_ } ($target, "$target.sha256", "$target.metainfo");
+    $error = "Cannot remove $target: $!" if unlink(@files) != @files;
+    _release_publish_lock($lock) if !$held;
+    return $error;
+}
+
+#--------------------------------------------------------------------------------------------------------
+#lock_rootimg_publication:
+#description: take the publication lock of an image directory. packimage and imgimport on every host take
+#             it before they publish a compressed rootimage there.
+#argument:
+#        $dir: the image directory
+#return:
+#        on success: the lock, for publish_rootimg, unpublish_rootimg and unlock_rootimg_publication
+#        on fail:    undef and the error message
+#--------------------------------------------------------------------------------------------------------
+sub lock_rootimg_publication {
+    my (undef, $dir) = @_;
+    return _acquire_publish_lock($dir);
+}
+
+sub unlock_rootimg_publication {
+    my (undef, $lock) = @_;
+    return _release_publish_lock($lock);
 }
 
 # Keeps $from at $to through a hard link, or through a copy with the mode of $from, which nodes need to read it.

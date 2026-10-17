@@ -306,4 +306,40 @@ for my $failed ('rootimg.cpio.gz', 'rootimg.cpio.gz.metainfo') {
     ok(-e "$fixture/other", 'the file that the first word of the image directory names stays');
 }
 
+# A caller that holds the publication lock publishes and removes under it, and other hosts wait for it.
+for my $action (qw(publish unpublish)) {
+    my $dir = "$fixture/image-" . ++$sequence;
+    make_path("$dir/.stage");
+    write_text("$dir/rootimg.cpio.gz",          "published archive\n");
+    write_text("$dir/rootimg.cpio.gz.sha256",   "published checksum\n");
+    write_text("$dir/rootimg.cpio.gz.metainfo", "published metainfo\n");
+    write_text("$dir/.stage/rootimg.cpio.gz",   "new archive\n");
+    my ($lock, $lock_error) = xCAT::SvrUtils->lock_rootimg_publication($dir);
+    ok($lock, "$action: the caller takes the publication lock") or diag($lock_error);
+    ok(!mkdir("$dir/.packimage-publish"), "$action: another host cannot take the publication lock");
+    my $error = $action eq 'publish'
+      ? xCAT::SvrUtils->publish_rootimg("$dir/.stage/rootimg.cpio.gz", "$dir/rootimg.cpio.gz", undef, $lock)
+      : xCAT::SvrUtils->unpublish_rootimg("$dir/rootimg.cpio.gz", $lock);
+    is($error, undef, "$action: it succeeds under the lock of the caller");
+    if ($action eq 'publish') {
+        is(read_binary("$dir/rootimg.cpio.gz"), "new archive\n", "$action: the staged archive is published");
+    } else {
+        ok(!-e "$dir/$_", "$action: $_ is removed") for qw(rootimg.cpio.gz rootimg.cpio.gz.sha256 rootimg.cpio.gz.metainfo);
+    }
+    ok(-d "$dir/.packimage-publish", "$action: the lock of the caller stays held");
+    xCAT::SvrUtils->unlock_rootimg_publication($lock);
+    ok(!-e "$dir/.packimage-publish", "$action: the caller releases the lock");
+}
+
+{
+    # A lock that another host left past the wait is reported, not taken over.
+    my $dir = "$fixture/image-" . ++$sequence;
+    make_path("$dir/.packimage-publish");
+    write_text("$dir/.packimage-publish/owner", "other.host 4242\n");
+    utime(time() - 120, time() - 120, "$dir/.packimage-publish") or die $!;
+    my ($lock, $error) = xCAT::SvrUtils->lock_rootimg_publication($dir);
+    ok(!$lock, 'the publication lock of another host is not taken');
+    like($error // '', qr/is held by other\.host 4242\./, 'the holder of the publication lock is reported');
+}
+
 done_testing();
