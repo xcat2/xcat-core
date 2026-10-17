@@ -3,6 +3,18 @@
 load 'helpers/shell_source'
 
 URL=http://192.0.2.1:80//install/netboot/img/rootimg.cpio.gz
+FP=31:94:09:9D:B1:24:3F:32:C0:B9:1A:BB:AC:F4:74:2B:80:F9:77:B2
+
+ALL_SCRIPTS='xCAT-server/share/xcat/netboot/rh/dracut_033/xcatroot bash
+xCAT-server/share/xcat/netboot/rh/dracut_047/xcatroot bash
+xCAT-server/share/xcat/netboot/rh/dracut_105/stateless/xcatroot bash
+xCAT-server/share/xcat/netboot/sles/dracut_033/xcatroot bash
+xCAT-server/share/xcat/netboot/ubuntu/dracut/xcatroot dash'
+
+# The scripts that receive the root image over UFTP when nodeset asks for it.
+UFTP_SCRIPTS='xCAT-server/share/xcat/netboot/rh/dracut_033/xcatroot bash
+xCAT-server/share/xcat/netboot/rh/dracut_047/xcatroot bash
+xCAT-server/share/xcat/netboot/rh/dracut_105/stateless/xcatroot bash'
 
 setup()
 {
@@ -25,6 +37,12 @@ setup()
     printf 'packed image\n' >"$FX/tree/etc/marker"
     (cd "$FX/tree" && find . | cpio -H newc -o 2>/dev/null | gzip -c) >"$FX/served/rootimg.cpio.gz"
     (cd "$FX/served" && sha256sum rootimg.cpio.gz >rootimg.cpio.gz.sha256)
+    SHA=$(cat "$FX/served/rootimg.cpio.gz.sha256")
+    SHA=${SHA%% *}
+    TRANSFER=http://192.0.2.1:1045/xcat-uftp/v1/transfer/$SHA/install/netboot/img/rootimg.cpio.gz
+    cp "$FX/served/rootimg.cpio.gz" "$FX/payload"
+    printf '%s\n' status=queued job=0123456789abcdef file=rootimg.cpio.gz port=1044 mcast=230.4.4.1 \
+        server_id=0xC0000201 server_ip=192.0.2.1 client_ip=192.0.2.50 start_in=0 timeout=5 >"$FX/ack"
 
     cat >"$FX/lib/dracut-lib.sh" <<'SH'
 getarg() {
@@ -50,6 +68,10 @@ SH
 #!/bin/sh
 url=$1 out=$2
 printf '%s\n' "$url" >>/fx/downloads
+case "$url" in
+*/xcat-uftp/v1/transfer/*) [ -f /fx/ack ] && cp /fx/ack "$out" && echo 200 || echo 503; exit ;;
+*/xcat-uftp/v1/job/*) echo 404; exit ;;
+esac
 name=${url##*/}
 case "$name" in *.sha256) plan=/fx/checksum.plan ;; *) plan=/fx/image.plan ;; esac
 set -- $(cat "$plan" 2>/dev/null)
@@ -95,9 +117,37 @@ SH
     for tool in logger mount; do
         printf '#!/bin/sh\nprintf "%%s\\n" "$*" >>/fx/%s\n' "$tool" >"$FX/bin/$tool"
     done
+    # uftpd delivers /fx/payload in a session with the server that the listener named.
+    cat >"$FX/bin/uftpd" <<'SH'
+#!/bin/sh
+while [ $# -gt 0 ]; do
+    case "$1" in
+    -D) dest=$2; shift ;;
+    -T) temp=$2; shift ;;
+    -F) status=$2; shift ;;
+    -p|-M|-I|-x|-S) shift ;;
+    esac
+    shift
+done
+# uftpd takes only absolute directories.
+for dir in "$dest" "$temp"; do
+    case "$dir" in
+    /*) ;;
+    *) echo "ERROR: must specify absolute pathname for $dir" >&2; exit 1 ;;
+    esac
+done
+printf 'CONNECT;t;C0000201;1;192.0.2.1;mn\n' >>"$status"
+cp /fx/payload "$temp/rootimg.cpio.gz"
+printf 'RESULT;t;C0000201;1;rootimg.cpio.gz;1KB;copied\n' >>"$status"
+mv "$temp/rootimg.cpio.gz" "$dest/rootimg.cpio.gz"
+trap 'exit 0' TERM
+while :; do sleep 1 & wait $!; done
+SH
     # A node retries for ever, so the stub stops xcatroot after /fx/maxwaits waits.
+    # The UFTP receiver and its helper poll every second, which really waits.
     cat >"$FX/bin/sleep" <<'SH'
 #!/bin/sh
+[ "$*" != 1 ] || exec /usr/bin/sleep 1
 printf '%s\n' "$*" >>/fx/sleep
 [ "$(grep -c . /fx/sleep)" -lt "$(cat /fx/maxwaits)" ] || kill -TERM "$PPID"
 SH
@@ -115,12 +165,14 @@ run_xcatroot()
         --bind "$FX" /fx --ro-bind "$FX/lib/dracut-lib.sh" /lib/dracut-lib.sh
         --ro-bind "$(repo_path "$script")" /xcatroot --chdir /
         --setenv PATH /fx/bin:/usr/bin:/bin --setenv imgurl "$URL" --setenv XCAT 192.0.2.1:3001
-        --setenv rootimgchecksum "${CMDLINE#rootimgchecksum=}" "$@")
+        --setenv rootimgchecksum "${CMDLINE#rootimgchecksum=}" --setenv XCAT_UFTP_POLL 60 "$@")
     [ ! -e /usr/lib64 ] || sandbox+=(--symlink usr/lib64 /lib64)
     for multiarch in /usr/lib/*-linux-gnu; do
         [ ! -d "$multiarch" ] || sandbox+=(--ro-bind "$multiarch" "/lib/${multiarch##*/}")
     done
-    echo "imgurl=$URL XCAT=192.0.2.1:3001 nonodestatus $CMDLINE" >"$FX/cmdline"
+    # genimage puts the helper in every initial ramdisk that can receive the root image over UFTP.
+    [ -n "$NO_UFTP_HELPER" ] || sandbox+=(--ro-bind "$(repo_path xCAT-server/share/xcat/netboot/imgutils/xcat-rootimg-fetch.sh)" /lib/xcat-rootimg-fetch.sh)
+    echo "imgurl=$URL XCAT=192.0.2.1:3001 nonodestatus $CMDLINE $UFTP" >"$FX/cmdline"
     echo "$IMAGE_PLAN" >"$FX/image.plan"
     echo "$CHECKSUM_PLAN" >"$FX/checksum.plan"
     echo "${MAXWAITS:-100}" >"$FX/maxwaits"
@@ -144,13 +196,7 @@ check_each_script()
         [ "$(cat "$FX/sleep" 2>/dev/null | grep -c .)" = "$waits" ] || { echo "$script waited: $(cat "$FX/sleep" 2>/dev/null)"; return 1; }
         case "$script" in */ubuntu/*) log="$FX/console" ;; *) log="$FX/logger" ;; esac
         [ -z "$message" ] || grep -q -- "$message" "$log" || { echo "$script did not log: $message"; return 1; }
-    done <<SCRIPTS
-xCAT-server/share/xcat/netboot/rh/dracut_033/xcatroot bash
-xCAT-server/share/xcat/netboot/rh/dracut_047/xcatroot bash
-xCAT-server/share/xcat/netboot/rh/dracut_105/stateless/xcatroot bash
-xCAT-server/share/xcat/netboot/sles/dracut_033/xcatroot bash
-xCAT-server/share/xcat/netboot/ubuntu/dracut/xcatroot dash
-SCRIPTS
+    done <<<"${SCRIPTS:-$ALL_SCRIPTS}"
 }
 
 @test 'an image that matches its published checksum is extracted' {
@@ -220,4 +266,44 @@ SCRIPTS
     rm "$FX/served/rootimg.cpio.gz.sha256"
     CMDLINE=rootimgchecksum=no
     check_each_script 'packed image' "$URL " 0 'did not ask for a check of rootimg.cpio.gz, so it is not checked'
+}
+
+@test 'an image received over UFTP that matches its checksum is extracted without an HTTP download' {
+    SCRIPTS=$UFTP_SCRIPTS UFTP="xcat.uftp=1045 xcat.uftpfp=$FP"
+    check_each_script 'packed image' "$URL.sha256 $TRANSFER $URL.sha256 " 0 'Received rootimg.cpio.gz over UFTP'
+}
+
+@test 'an image received over UFTP that does not match its checksum is downloaded again over HTTP' {
+    head -c 100 "$FX/served/rootimg.cpio.gz" >"$FX/payload"
+    SCRIPTS=$UFTP_SCRIPTS UFTP="xcat.uftp=1045 xcat.uftpfp=$FP"
+    check_each_script 'packed image' "$URL.sha256 $TRANSFER $URL.sha256 $URL.sha256 $URL $URL.sha256 " 1 'rootimg.cpio.gz does not match'
+}
+
+@test 'an image received over UFTP while packimage replaces it matches the checksum file fetched before the request' {
+    CHECKSUM_PLAN='ok other'
+    SCRIPTS=$UFTP_SCRIPTS UFTP="xcat.uftp=1045 xcat.uftpfp=$FP"
+    check_each_script 'packed image' "$URL.sha256 $TRANSFER $URL.sha256 " 0 'Received rootimg.cpio.gz over UFTP'
+}
+
+@test 'an unavailable listener is followed by an HTTP download without a wait' {
+    rm "$FX/ack"
+    SCRIPTS=$UFTP_SCRIPTS UFTP="xcat.uftp=1045 xcat.uftpfp=$FP"
+    check_each_script 'packed image' "$URL.sha256 $TRANSFER $TRANSFER $URL $URL.sha256 " 0 'Cannot receive .*rootimg.cpio.gz over UFTP'
+}
+
+@test 'a checksum file that cannot be downloaded before the request is followed by an HTTP download' {
+    CHECKSUM_PLAN=503
+    SCRIPTS=$UFTP_SCRIPTS UFTP="xcat.uftp=1045 xcat.uftpfp=$FP"
+    check_each_script 'packed image' "$URL.sha256 $URL $URL.sha256 " 0 'lists no SHA-256 checksum for rootimg.cpio.gz'
+}
+
+@test 'an initial ramdisk without the UFTP helper downloads the image over HTTP' {
+    NO_UFTP_HELPER=1 SCRIPTS=$UFTP_SCRIPTS UFTP="xcat.uftp=1045 xcat.uftpfp=$FP"
+    check_each_script 'packed image' "$URL.sha256 $URL $URL.sha256 " 0 'Cannot receive .*rootimg.cpio.gz over UFTP'
+}
+
+@test 'UFTP is not used for an image that is not checked' {
+    rm "$FX/served/rootimg.cpio.gz.sha256"
+    CMDLINE= SCRIPTS=$UFTP_SCRIPTS UFTP="xcat.uftp=1045 xcat.uftpfp=$FP"
+    check_each_script 'packed image' "$URL " 0 'Cannot receive .*rootimg.cpio.gz over UFTP'
 }
