@@ -96,6 +96,26 @@ subtest 'multiple addresses and network MTU' => sub {
     done_testing();
 };
 
+subtest 'network MTUs use numeric ordering' => sub {
+    my $environment = base();
+    $environment->{NETWORKS_LINE2} =~ s/mtu=/mtu=900/x;
+    my ($status, $output, $error) = compile_plan($environment);
+    isnt($status, 0, 'a three-digit network MTU cannot carry IPv6');
+    is($output, '', 'no partial plan is emitted');
+    like($error, qr/IPv6[ ]requires[ ]an[ ]MTU/x, 'the IPv6 minimum rejects the network MTU');
+    $environment = base();
+    $environment->{NICTYPES} .= ',vlan100!vlan';
+    $environment->{NICDEVICES} = 'vlan100!vtnet1';
+    $environment->{NICIPS} = 'vlan100!192.0.2.10';
+    $environment->{NICNETWORKS} = 'vlan100!data4';
+    $environment->{NETWORKS_LINE1} =~ s/mtu=/mtu=900/x;
+    ($status, $output, $error) = compile_plan($environment);
+    is($status, 0, 'a smaller IPv4 VLAN MTU fits the default parent') or diag($error);
+    is(value($output, 'T', 'vlan100'), 900, 'the VLAN keeps the requested network MTU');
+    is(value($output, 'T', 'vtnet1'), 1500, 'the parent retains its default MTU');
+    done_testing();
+};
+
 subtest 'data gateways and xcatmaster preserve the installed IPv4 default' => sub {
     for my $gateway ('<xcatmaster>', '203.0.113.1') {
         my $environment = base();
@@ -382,6 +402,37 @@ VARIABLES
     return;
 }
 persistent_configuration_tests();
+
+subtest 'physical adoption protects existing interface options' => sub {
+    my ($compiled, $plan) = compile_plan(base());
+    is($compiled, 0, 'the desired physical interface compiles');
+    for my $setting (
+        'ifconfig_vtnet1: up -lro -tso',
+        'ifconfig_vtnet1: media 10Gbase-T',
+        'ifconfig_vtnet1: -vlanhwtag',
+        'ifconfig_vtnet1: ether 52:54:00:12:34:56',
+        'ifconfig_vtnet1: fib 1',
+        'ifconfig_vtnet1_ipv6: inet6 2001:db8:1::10 prefixlen 64 -auto_linklocal',
+        'ifconfig_vtnet1_alias0: inet 192.0.2.11/24 vhid 1',
+        'ifconfig_vtnet1_aliases: inet 192.0.2.11/24 fib 1',
+        'ifconfig_vtnet1_name: storage',
+        'create_args_vtnet1: ether 52:54:00:12:34:56',
+        'vlans_vtnet1: 100',
+        'ipv6_prefix_vtnet1: 2001:db8:1::',
+    ) {
+        my ($status, undef, $error) = inspect_state('rcoptions', $plan, "$setting\n");
+        isnt($status, 0, 'unsupported persistent options require integration');
+        like($error, qr/Interface[ ]options[ ]require[ ]manual[ ]integration/x, 'the diagnostic identifies the adoption boundary');
+    }
+    my ($status, undef, $error) = inspect_state('rcoptions', $plan,
+        "ifconfig_vtnet1: inet 192.0.2.10 netmask 255.255.255.0 broadcast 192.0.2.255 mtu 1500 up\n"
+        . "ifconfig_vtnet1_ipv6: inet6 2001:db8:1::10 prefixlen 64\n"
+        . "ifconfig_vtnet1_alias0: inet 192.0.2.11/24\n"
+        . "ifconfig_vtnet1_aliases: inet6 2001:db8:1::11/64 alias\n"
+        . "ifconfig_vtnet10: up -lro\nifconfig_vtnet0: up -tso\n");
+    is($status, 0, 'static settings and unrelated interface options allow adoption') or diag($error);
+    done_testing();
+};
 
 sub observed_state_tests {
     my $kernel = <<'IFCONFIG';

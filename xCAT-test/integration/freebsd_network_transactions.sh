@@ -55,6 +55,7 @@ original_routes=${NODEROUTENAMES:-}
 route4=0
 route6=0
 clone=0
+options=0
 cleanup()
 {
     status=$?
@@ -64,6 +65,7 @@ cleanup()
     NICDEVICES=$original_devices
     NODEROUTENAMES=$original_routes
     export NICEXTRAPARAMS NICTYPES NICDEVICES NODEROUTENAMES
+    if [ "$options" = 1 ]; then cp -p "$work/options.rc" /etc/rc.conf; fi
     if ! apply > "$work/restore.stdout" 2> "$work/restore.stderr"; then
         printf 'Bail out! Network restoration failed; retain %s\n' "$work"
         exit 1
@@ -82,7 +84,7 @@ cleanup()
 trap cleanup EXIT
 trap 'exit 1' HUP INT TERM
 
-printf '1..4\n'
+printf '1..5\n'
 sysrc -q xcat_network_fixture=YES
 fingerprint > "$work/appended.fingerprint"
 apply > "$work/appended.stdout" 2> "$work/appended.stderr"
@@ -134,3 +136,20 @@ sysrc -n static_routes | grep -wq xcat_network_fixture4
 sysrc -n ipv6_static_routes | grep -wq xcat_network_fixture6
 sysrc -n cloned_interfaces | grep -wq lo99
 printf 'ok 4 - reverting the managed plan preserves the manual additions\n'
+
+cp -p /etc/rc.conf "$work/options.rc"
+options=1
+for setting in "ifconfig_$nic=up -lro -tso" "ifconfig_${nic}_ipv6=inet6 ifdisabled -auto_linklocal" \
+    "ifconfig_${nic}_alias0=inet 198.19.0.2/24 fib 1"; do
+    sysrc -q "$setting"
+    fingerprint > "$work/options-before.fingerprint"
+    status=0
+    apply > "$work/options.stdout" 2> "$work/options.stderr" || status=$?
+    fingerprint > "$work/options-after.fingerprint"
+    cp -p "$work/options.rc" /etc/rc.conf
+    [ "$status" = 1 ]
+    grep -q 'Interface options require manual integration' "$work/options.stderr"
+    cmp -s "$work/options-before.fingerprint" "$work/options-after.fingerprint"
+    [ ! -e "$state/pending" ]
+done
+printf 'ok 5 - existing interface options reject adoption before mutation\n'
