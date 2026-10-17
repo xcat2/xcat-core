@@ -1,0 +1,873 @@
+#!/usr/bin/awk -f
+
+function fail(message) {
+    failed = 1
+    print "confignetwork: " message > "/dev/stderr"
+    exit 1
+}
+
+function number(value, minimum, maximum) {
+    return value ~ /^(0|[1-9][0-9]*)$/ && value + 0 >= minimum && value + 0 <= maximum
+}
+
+function interface_name(value) {
+    return length(value) <= 15 && value ~ /^[a-z][a-z0-9]*$/ && value != "lo0"
+}
+
+function attribute(name,    text, entries, count, i, position, nic, value) {
+    text = ENVIRON[name]
+    if (length(text) > 65536 || text ~ /[^ -~]/)
+        fail("Invalid " name)
+    if (text == "")
+        return
+    count = split(text, entries, ",")
+    for (i = 1; i <= count; i++) {
+        position = index(entries[i], "!")
+        nic = substr(entries[i], 1, position - 1)
+        value = substr(entries[i], position + 1)
+        if (!position || !interface_name(nic) || value == "" || index(value, "!"))
+            fail("Expected interface!value in " name)
+        if ((name SUBSEP nic) in attributes)
+            fail("Duplicate " name " entry for " nic)
+        attributes[name, nic] = value
+        interfaces[nic] = 1
+    }
+}
+
+function ipv4(value,    parts, count, i, result) {
+    count = split(value, parts, ".")
+    if (count != 4)
+        return ""
+    result = 0
+    for (i = 1; i <= 4; i++) {
+        if (!number(parts[i], 0, 255))
+            return ""
+        result = result * 256 + parts[i]
+    }
+    return sprintf("%.0f", result)
+}
+
+function hex_number(value,    i, result, digit) {
+    result = 0
+    for (i = 1; i <= length(value); i++) {
+        digit = index("0123456789abcdef", substr(value, i, 1)) - 1
+        if (digit < 0)
+            return -1
+        result = result * 16 + digit
+    }
+    return result
+}
+
+function ipv6(value,    sides, count, left, right, nl, nr, i, result, part) {
+    value = tolower(value)
+    if (value == "" || value ~ /[^0-9a-f:]/ || value ~ /:::/)
+        return ""
+    count = split(value, sides, "::")
+    if (count > 2)
+        return ""
+    nl = sides[1] == "" ? 0 : split(sides[1], left, ":")
+    nr = count == 1 || sides[2] == "" ? 0 : split(sides[2], right, ":")
+    if ((count == 1 && nl != 8) || (count == 2 && nl + nr >= 8))
+        return ""
+    result = ""
+    for (i = 1; i <= 8; i++) {
+        if (i <= nl)
+            part = left[i]
+        else if (i > 8 - nr)
+            part = right[i - (8 - nr)]
+        else
+            part = "0"
+        if (part == "" || length(part) > 4 || hex_number(part) < 0)
+            return ""
+        result = result (i == 1 ? "" : ":") sprintf("%04x", hex_number(part))
+    }
+    return result
+}
+
+function address(value, family,    expanded) {
+    if (family == "inet") {
+        if (ipv4(value) == "" || value ~ /^(0|127|22[4-9]|23[0-9]|24[0-9]|25[0-5])\./)
+            fail("Invalid unicast IPv4 address " value)
+        return value
+    }
+    expanded = ipv6(value)
+    if (expanded == "" || expanded ~ /^ff/ || expanded == "0000:0000:0000:0000:0000:0000:0000:0000" ||
+        expanded == "0000:0000:0000:0000:0000:0000:0000:0001" || expanded ~ /^0000:0000:0000:0000:0000:ffff:/)
+        fail("Invalid unicast IPv6 address " value)
+    return expanded
+}
+
+function prefix(mask, family,    value, bits, remainder) {
+    if (family == "inet6") {
+        sub(/^\//, "", mask)
+        if (!number(mask, 0, 128))
+            fail("Invalid IPv6 prefix " mask)
+        return mask + 0
+    }
+    value = ipv4(mask)
+    if (value == "")
+        fail("Invalid IPv4 netmask " mask)
+    bits = 0
+    remainder = 4294967295 - value
+    while (remainder > 0) {
+        if (remainder % 2 != 1)
+            fail("Noncontiguous IPv4 netmask " mask)
+        remainder = int(remainder / 2)
+        bits++
+    }
+    return 32 - bits
+}
+
+function subnet(value, net, bits, family,    a, b, i, take, scale) {
+    if (family == "inet")
+        return int(ipv4(value) / 2 ^ (32 - bits)) == int(ipv4(net) / 2 ^ (32 - bits))
+    split(ipv6(value), a, ":")
+    split(ipv6(net), b, ":")
+    for (i = 1; bits > 0; i++) {
+        take = bits < 16 ? bits : 16
+        scale = 2 ^ (16 - take)
+        if (int(hex_number(a[i]) / scale) != int(hex_number(b[i]) / scale))
+            return 0
+        bits -= take
+    }
+    return 1
+}
+
+function network_address(value, bits, family,    parts, i, take) {
+    if (family == "inet")
+        return ipv4(value) != "" && ipv4(value) % 2 ^ (32 - bits) == 0
+    if (ipv6(value) == "")
+        return 0
+    split(ipv6(value), parts, ":")
+    for (i = 1; i <= 8; i++) {
+        take = bits < 16 ? bits : 16
+        if (hex_number(parts[i]) % 2 ^ (16 - take) != 0)
+            return 0
+        bits -= take
+    }
+    return 1
+}
+
+function networks(    count, row, fields, n, i, j, position, key, name, bytes) {
+    count = ENVIRON["NETWORKS_LINES"]
+    if (!number(count, 0, 4096))
+        fail("Missing or invalid networks table export")
+    for (i = 1; i <= count; i++) {
+        row = ENVIRON["NETWORKS_LINE" i]
+        bytes += length(row)
+        if (row == "" || row ~ /[\r\n\t]/ || bytes > 1048576)
+            fail("Invalid networks table export")
+        n = split(row, fields, /\|\|/)
+        name = ""
+        for (j = 1; j <= n; j++) {
+            position = index(fields[j], "=")
+            key = substr(fields[j], 1, position - 1)
+            if (key == "netname")
+                name = substr(fields[j], position + 1)
+        }
+        if (name == "")
+            continue
+        network_count[name]++
+        for (j = 1; j <= n; j++) {
+            position = index(fields[j], "=")
+            key = substr(fields[j], 1, position - 1)
+            if (key ~ /^(net|mask|gateway|mtu|disable)$/)
+                network[name, key] = substr(fields[j], position + 1)
+        }
+    }
+}
+
+function options(nic,    text, count, parts, pair, i, key, value) {
+    text = attributes["NICEXTRAPARAMS", nic]
+    if (text == "")
+        return
+    count = split(text, parts, / +/)
+    for (i = 1; i <= count; i++) {
+        if (split(parts[i], pair, "=") != 2 || pair[2] == "")
+            fail("Expected key=value in nicextraparams for " nic)
+        key = pair[1]
+        value = pair[2]
+        if ((nic SUBSEP key) in option)
+            fail("Duplicate option " key " for " nic)
+        if (key == "MTU") {
+            if (!number(value, 576, 9216))
+                fail("Invalid MTU for " nic)
+        } else if (key == "LAGGPROTO" && type[nic] == "lagg") {
+            if (value != "failover" && value != "lacp")
+                fail("LAGGPROTO must be failover or lacp")
+        } else if (key == "VLAN_TAG" && type[nic] == "vlan") {
+            if (!number(value, 1, 4094))
+                fail("Invalid VLAN_TAG for " nic)
+        } else if (key == "STP" && type[nic] == "bridge") {
+            if (value != "yes" && value != "no")
+                fail("STP must be yes or no")
+        } else
+            fail("Unsupported FreeBSD option " key " for " nic)
+        option[nic, key] = value
+    }
+}
+
+function visit(nic,    i, parent) {
+    if (visited[nic] == 2)
+        return
+    if (visited[nic] == 1)
+        fail("Cyclic interface dependency at " nic)
+    visited[nic] = 1
+    for (i = 1; i <= member_count[nic]; i++) {
+        parent = member[nic, i]
+        visit(parent)
+    }
+    visited[nic] = 2
+    order[++ordered] = nic
+}
+
+function topology(    nic, count, i, j, parts, parent, tag, name) {
+    for (nic in interfaces) {
+        names[++total] = nic
+        type[nic] = tolower(attributes["NICTYPES", nic])
+        if (type[nic] == "bond")
+            type[nic] = "lagg"
+        if (type[nic] !~ /^(ethernet|lagg|vlan|bridge)$/)
+            fail("Missing or unsupported nictypes for " nic)
+        if (type[nic] != "ethernet" && nic !~ ("^" type[nic] "[0-9]+$"))
+            fail("Use a native " type[nic] " interface name for " nic)
+        if (type[nic] == "ethernet" && nic ~ /^(lagg|vlan|bridge)[0-9]+$/)
+            fail("A clone cannot be declared as Ethernet: " nic)
+        if (attributes["NICCUSTOMSCRIPTS", nic] != "")
+            fail("Use a separate postscript instead of niccustomscripts on FreeBSD")
+        options(nic)
+    }
+    if (total > 64)
+        fail("Too many interfaces")
+    for (i = 2; i <= total; i++) {
+        name = names[i]
+        for (j = i - 1; j > 0 && names[j] > name; j--)
+            names[j + 1] = names[j]
+        names[j + 1] = name
+    }
+    for (i = 1; i <= total; i++) {
+        nic = names[i]
+        count = attributes["NICDEVICES", nic] == "" ? 0 : split(attributes["NICDEVICES", nic], parts, /\|/)
+        if ((type[nic] == "ethernet" && count != 0) || (type[nic] == "vlan" && count != 1) ||
+            (type[nic] == "lagg" && (count < 2 || count > 16)) || (type[nic] == "bridge" && (count < 1 || count > 16)))
+            fail("Invalid nicdevices membership for " nic)
+        for (j = 1; j <= count; j++) {
+            parent = parts[j]
+            if (!(parent in interfaces) || parent == nic || (nic SUBSEP parent) in edge)
+                fail("Missing, duplicate or self-referencing member of " nic)
+            if (parent == bootnic && configure_boot != 1)
+                fail("Use confignetwork -s to include the installation interface")
+            if (type[parent] == "bridge" || (type[nic] == "lagg" && type[parent] != "ethernet") ||
+                (type[nic] == "vlan" && type[parent] != "ethernet" && type[parent] != "lagg"))
+                fail("Unsupported interface composition for " nic)
+            if (type[nic] != "vlan") {
+                if (parent in owner)
+                    fail("Interface belongs to multiple aggregates: " parent)
+                owner[parent] = nic
+            }
+            edge[nic, parent] = 1
+            member[nic, ++member_count[nic]] = parent
+        }
+        if (type[nic] == "lagg" && option[nic, "LAGGPROTO"] == "")
+            fail("Set LAGGPROTO explicitly for " nic)
+        if (type[nic] == "vlan") {
+            tag = option[nic, "VLAN_TAG"]
+            if (tag == "")
+                tag = substr(nic, 5)
+            if (!number(tag, 1, 4094))
+                fail("Set VLAN_TAG for " nic)
+            if ((parent SUBSEP tag) in vlan_tag)
+                fail("Duplicate VLAN tag on " parent)
+            vlan_tag[parent, tag] = 1
+            option[nic, "VLAN_TAG"] = tag
+        }
+    }
+    for (i = 1; i <= total; i++) {
+        nic = names[i]
+        if (nic == bootnic && configure_boot != 1)
+            continue
+        if (type[nic] == "vlan" && member[nic, 1] in owner)
+            fail("A VLAN parent is an aggregate member: " member[nic, 1])
+        visit(nic)
+    }
+}
+
+function node_addresses(nic,    ips, nets, count, nc, i, name, ip, family, net, bits, mtu, gateway, key, parts, other, smaller) {
+    count = attributes["NICIPS", nic] == "" ? 0 : split(attributes["NICIPS", nic], ips, /\|/)
+    nc = attributes["NICNETWORKS", nic] == "" ? 0 : split(attributes["NICNETWORKS", nic], nets, /\|/)
+    if (count > 32 || (count == 0 && nc != 0) || (count > 0 && nc != 1 && nc != count))
+        fail("nicips and nicnetworks must describe the same addresses for " nic)
+    if (count && nic in owner)
+        fail("Put addresses on the aggregate instead of its member " nic)
+    for (i = 1; i <= count; i++) {
+        name = nets[nc == 1 ? 1 : i]
+        if (network_count[name] != 1 || (network[name, "disable"] != "" && network[name, "disable"] !~ /^(0|no)$/))
+            fail("Missing, duplicate or disabled network " name)
+        family = index(ips[i], ":") ? "inet6" : "inet"
+        ip = address(ips[i], family)
+        if (family == "inet6" && ip ~ /^fe[89ab]/)
+            fail("Link-local node addresses are assigned by FreeBSD")
+        net = network[name, "net"]
+        bits = prefix(network[name, "mask"], family)
+        if (index(net, "/")) {
+            if (split(net, parts, "/") != 2 || !number(parts[2], 0, 128) || parts[2] != bits)
+                fail("Conflicting network prefix for " name)
+            net = parts[1]
+        }
+        if ((family == "inet" && ipv4(net) == "") || (family == "inet6" && ipv6(net) == "") ||
+            !subnet(ip, net, bits, family))
+            fail("Address is outside network " name ": " ips[i])
+        if (!network_address(net, bits, family))
+            fail("Network contains host bits: " name)
+        if (family == "inet" && bits < 31 &&
+            (ipv4(ip) % 2 ^ (32 - bits) == 0 || ipv4(ip) % 2 ^ (32 - bits) == 2 ^ (32 - bits) - 1))
+            fail("A node address cannot be a subnet or broadcast address")
+        key = family SUBSEP ip
+        if (key in assigned)
+            fail("Duplicate node address " ips[i])
+        assigned[key] = nic
+        for (other = 1; other <= subnet_count; other++) {
+            smaller = bits < subnet_bits[other] ? bits : subnet_bits[other]
+            if (subnet_nic[other] != nic && subnet_family[other] == family &&
+                subnet(ip, subnet_ip[other], smaller, family))
+                fail("Overlapping subnets on different interfaces")
+        }
+        subnet_nic[++subnet_count] = nic
+        subnet_family[subnet_count] = family
+        subnet_ip[subnet_count] = ip
+        subnet_bits[subnet_count] = bits
+        if (ip == ENVIRON["IPADDR"]) {
+            management = nic
+            management_count++
+        }
+        address_family[nic, i] = family
+        address_value[nic, i] = ip
+        address_prefix[nic, i] = bits
+        gateway = network[name, "gateway"]
+        if (family == "inet" && ip != ENVIRON["IPADDR"])
+            gateway = ""
+        else if (gateway == "<xcatmaster>")
+            gateway = ""
+        if (gateway != "") {
+            if (index(gateway, "%")) {
+                if (family != "inet6" || split(gateway, parts, "%") != 2 || parts[2] != nic)
+                    fail("Gateway scope differs from interface")
+                gateway = parts[1]
+                if (ipv6(gateway) !~ /^fe[89ab]/)
+                    fail("Only link-local gateways accept an interface scope")
+            }
+            gateway = address(gateway, family)
+            if (family == "inet6" && gateway ~ /^fe[89ab]/)
+                gateway = gateway "%" nic
+            else if (!subnet(gateway, net, bits, family))
+                fail("Gateway is outside network " name)
+        }
+        if (gateway == ip)
+            fail("A node address cannot be its own gateway")
+        if (gateway != "" && (family == "inet6" || ip == ENVIRON["IPADDR"])) {
+            if (default_gateway[family] != "" && default_gateway[family] != gateway)
+                fail("Ambiguous " family " default gateway")
+            default_gateway[family] = gateway
+        }
+        mtu = network[name, "mtu"]
+        if (mtu != "" && !number(mtu, 576, 9216))
+            fail("Invalid network MTU for " name)
+        if (option[nic, "MTU"] == "" && mtu != "") {
+            if (network_mtu[nic] != "" && network_mtu[nic] != mtu)
+                fail("Conflicting network MTUs for " nic)
+            network_mtu[nic] = mtu
+        }
+    }
+    address_count[nic] = count
+}
+
+function descends(nic, ancestor,    i) {
+    if (nic == ancestor)
+        return 1
+    for (i = 1; i <= member_count[nic]; i++)
+        if (descends(member[nic, i], ancestor))
+            return 1
+    return 0
+}
+
+function interface_mtu(nic,    mtu, i, parent_mtu) {
+    mtu = option[nic, "MTU"] != "" ? option[nic, "MTU"] : network_mtu[nic]
+    if (mtu == "") {
+        mtu = member_count[nic] ? effective_mtu[member[nic, 1]] : 1500
+        for (i = 2; i <= member_count[nic]; i++)
+            if (effective_mtu[member[nic, i]] < mtu)
+                mtu = effective_mtu[member[nic, i]]
+    }
+    for (i = 1; i <= member_count[nic]; i++) {
+        parent_mtu = effective_mtu[member[nic, i]]
+        if (mtu > parent_mtu || ((type[nic] == "lagg" || type[nic] == "bridge") && mtu != parent_mtu))
+            fail("Incompatible member MTU for " nic)
+    }
+    effective_mtu[nic] = mtu
+}
+
+function selected_routes(    names, count, i, name, values, net, bits, family, gateway, nic, j, reachable, parts, key, family_present) {
+    if (ENVIRON["NODEROUTENAMES"] == "")
+        return
+    count = split(ENVIRON["NODEROUTENAMES"], names, ",")
+    if (count > 64)
+        fail("Too many selected routes")
+    for (i = 1; i <= count; i++) {
+        name = names[i]
+        if (length(name) > 32 || name !~ /^[a-zA-Z][a-zA-Z0-9_]*$/ || name in route_seen)
+            fail("Invalid or duplicate route name")
+        route_seen[name] = 1
+        if (split(ENVIRON["ROUTE_" name], values, ",") != 4)
+            fail("Missing or invalid selected route " name)
+        net = values[1]
+        family = index(net, ":") ? "inet6" : "inet"
+        bits = prefix(values[2], family)
+        if (!bits)
+            fail("Configure default gateways through networks.gateway")
+        if (index(net, "/")) {
+            if (split(net, parts, "/") != 2 || !number(parts[2], 1, 128) || parts[2] != bits)
+                fail("Conflicting selected route prefix")
+            net = parts[1]
+        }
+        if (family == "inet") {
+            if (!network_address(net, bits, family))
+                fail("Invalid selected route network")
+        } else {
+            net = ipv6(net)
+            if (!network_address(net, bits, family) || net ~ /^ff/)
+                fail("Invalid selected IPv6 route network")
+        }
+        nic = values[4]
+        if (!visited[nic])
+            fail("Selected routes require a configured ifname")
+        gateway = values[3]
+        if (index(gateway, "%")) {
+            if (family != "inet6" || split(gateway, parts, "%") != 2 || parts[2] != nic)
+                fail("Route gateway scope differs from ifname")
+            gateway = parts[1]
+            if (ipv6(gateway) !~ /^fe[89ab]/)
+                fail("Only link-local gateways accept an interface scope")
+        }
+        gateway = address(gateway, family)
+        reachable = 0
+        family_present = 0
+        for (j = 1; j <= address_count[nic]; j++) {
+            if (address_family[nic, j] == family)
+                family_present = 1
+            if (address_family[nic, j] == family &&
+                subnet(gateway, address_value[nic, j], address_prefix[nic, j], family))
+                reachable = 1
+        }
+        if (family == "inet6" && gateway ~ /^fe[89ab]/ && family_present) {
+            gateway = gateway "%" nic
+            reachable = 1
+        }
+        if (!reachable)
+            fail("Route gateway is not reachable through " nic)
+        if ((family SUBSEP gateway) in assigned)
+            fail("A node address cannot be its own route gateway")
+        key = family SUBSEP net "/" bits
+        if (key in route_destination)
+            fail("Duplicate selected route destination")
+        route_destination[key] = 1
+        key = "xcat_net_" name
+        if (family == "inet")
+            routes4 = routes4 (routes4 == "" ? "" : " ") key
+        else
+            routes6 = routes6 (routes6 == "" ? "" : " ") key
+        emit((family == "inet" ? "route_" : "ipv6_route_") key, "-net " net "/" bits " " gateway)
+        records[++record_count] = "R\t" family "\t" net "/" bits "\t" gateway "\t" nic
+    }
+}
+
+function emit(key, value) {
+    if (key !~ /^[a-zA-Z][a-zA-Z0-9_]*$/ || value ~ /[^a-zA-Z0-9_ .:\/%-]/)
+        fail("Unsafe generated network setting")
+    records[++record_count] = "K\t" key "\t" value
+}
+
+function route_address(value, family,    parts, scope) {
+    if (family == "inet")
+        return value
+    split(value, parts, "%")
+    scope = parts[2] == "" ? "" : "%" parts[2]
+    return ipv6(parts[1]) scope
+}
+
+function route_network(value, family,    parts, bits) {
+    if (value == "default")
+        return value
+    split(value, parts, "/")
+    bits = parts[2] == "" ? (family == "inet" ? 32 : 128) : parts[2]
+    return route_address(parts[1], family) "/" bits
+}
+
+function render(nic,    i, config, mtu, parent, family, ip, bits, alias, first4, first6, primary4) {
+    records[++record_count] = "I\t" nic "\t" type[nic]
+    config = ""
+    if (type[nic] == "lagg") {
+        config = "laggproto " option[nic, "LAGGPROTO"]
+        for (i = 1; i <= member_count[nic]; i++)
+            config = config " laggport " member[nic, i]
+    } else if (type[nic] == "vlan") {
+        config = "vlan " option[nic, "VLAN_TAG"] " vlandev " member[nic, 1]
+    } else if (type[nic] == "bridge") {
+        for (i = 1; i <= member_count[nic]; i++) {
+            parent = member[nic, i]
+            config = config (config == "" ? "" : " ") "addm " parent
+            if (option[nic, "STP"] != "no")
+                config = config " stp " parent
+        }
+    }
+    mtu = effective_mtu[nic]
+    config = config (config == "" ? "" : " ") "mtu " mtu
+    records[++record_count] = "X\t" nic "\t" config " up"
+    records[++record_count] = "T\t" nic "\t" mtu
+    for (i = 1; i <= address_count[nic]; i++)
+        if (address_family[nic, i] == "inet6")
+            ipv6_enabled[nic] = 1
+    records[++record_count] = "V\t" nic "\t" (ipv6_enabled[nic] ? "-ifdisabled" : "ifdisabled")
+    for (i = 1; i <= address_count[nic]; i++) {
+        family = address_family[nic, i]
+        ip = address_value[nic, i]
+        bits = address_prefix[nic, i]
+        if (family == "inet6" && mtu != "" && mtu < 1280)
+            fail("IPv6 requires an MTU of at least 1280 on " nic)
+        if (family == "inet" && !first4++)
+            primary4 = "inet " ip "/" bits " "
+        else if (family == "inet6" && !first6++)
+            emit("ifconfig_" nic "_ipv6", "inet6 " ip " prefixlen " bits)
+        else
+            emit("ifconfig_" nic "_alias" alias++, family " " ip "/" bits)
+        records[++record_count] = "A\t" nic "\t" family "\t" ip "\t" bits
+    }
+    emit("ifconfig_" nic, primary4 config " up")
+    if (!ipv6_enabled[nic])
+        emit("ifconfig_" nic "_ipv6", "inet6 ifdisabled")
+    if (type[nic] != "ethernet")
+        clones = clones (clones == "" ? "" : " ") nic
+}
+
+function compile(    n) {
+    if (!interface_name(bootnic) || (configure_boot != 0 && configure_boot != 1))
+        fail("Missing installation interface selection")
+    attribute("NICTYPES")
+    attribute("NICDEVICES")
+    attribute("NICIPS")
+    attribute("NICNETWORKS")
+    attribute("NICEXTRAPARAMS")
+    attribute("NICCUSTOMSCRIPTS")
+    networks()
+    topology()
+    for (n = 1; n <= ordered; n++)
+        node_addresses(order[n])
+    if (configure_boot == 1 && visited[bootnic] &&
+        (management_count != 1 || !descends(management, bootnic)))
+        fail("The installation interface topology must retain the management IPv4 address")
+    if (configure_boot != 1 && management_count)
+        fail("Use confignetwork -s to configure the management address")
+    for (n = 1; n <= ordered; n++) {
+        interface_mtu(order[n])
+        render(order[n])
+    }
+    selected_routes()
+    if (default_gateway["inet"] != "") {
+        emit("defaultrouter", default_gateway["inet"])
+        records[++record_count] = "D\tinet\t" default_gateway["inet"]
+    }
+    if (default_gateway["inet6"] != "") {
+        emit("ipv6_defaultrouter", default_gateway["inet6"])
+        records[++record_count] = "D\tinet6\t" default_gateway["inet6"]
+    }
+    print "F\txcat-freebsd-network-1"
+    print "C\t" clones
+    print "S\tinet\t" routes4
+    print "S\tinet6\t" routes6
+    for (n = 1; n <= record_count; n++)
+        print records[n]
+}
+
+BEGIN {
+    if (mode == "" || mode == "compile") {
+        compile()
+        exit
+    }
+    if (mode != "verify" && mode != "snapshot" && mode != "clear" && mode != "routes" &&
+        mode != "routeconflicts" && mode != "rcconflicts" && mode != "rclists" && mode != "conflicts")
+        fail("Unknown network planner operation")
+}
+
+FILENAME == ARGV[1] {
+    fields = split($0, column, "\t")
+    if (column[1] == "I")
+        wanted_interface[column[2]] = column[3]
+    else if (mode == "rclists" && (column[1] == "C" || column[1] == "S")) {
+        key = column[1] == "C" ? "cloned_interfaces" : (column[2] == "inet" ? "static_routes" : "ipv6_static_routes")
+        count = split(column[column[1] == "C" ? 2 : 3], words, " ")
+        for (i = 1; i <= count; i++)
+            owned_rc_list[key, words[i]] = 1
+    }
+    else if (column[1] == "K" && column[2] ~ /^(ipv6_)?route_xcat_net_/)
+        wanted_rc_route[column[2]] = 1
+    else if (column[1] == "A")
+        wanted_address[column[2], column[3], column[4]] = column[5]
+    else if (column[1] == "T")
+        wanted_mtu[column[2]] = column[3]
+    else if (column[1] == "V")
+        wanted_ipv6[column[2]] = column[3]
+    else if (column[1] == "U")
+        wanted_up[column[2]] = column[3]
+    else if (column[1] == "E")
+        wanted_ether[column[2]] = column[3]
+    else if (column[1] == "O")
+        owned_route[column[2], route_network(column[3], column[2])] = 1
+    else if (column[1] == "R") {
+        key = column[2] SUBSEP route_network(column[3], column[2])
+        wanted_gateway[key] = route_address(column[4], column[2])
+        wanted_route_nic[key] = column[5]
+    } else if (column[1] == "D")
+        wanted_gateway[column[2], "default"] = route_address(column[3], column[2])
+    else if (column[1] == "X") {
+        count = split(column[3], words, " ")
+        for (i = 1; i <= count; i++) {
+            if (words[i] == "laggproto")
+                wanted_protocol[column[2]] = words[i + 1]
+            else if (words[i] == "laggport" || words[i] == "addm")
+                wanted_member[column[2], words[i + 1]] = 1
+            else if (words[i] == "stp")
+                wanted_stp[column[2], words[i + 1]] = 1
+            else if (words[i] == "vlan")
+                wanted_vlan[column[2]] = words[i + 1]
+            else if (words[i] == "vlandev")
+                wanted_parent[column[2]] = words[i + 1]
+        }
+    }
+    next
+}
+
+mode == "rcconflicts" {
+    position = index($0, ":")
+    key = substr($0, 1, position - 1)
+    if (key in wanted_rc_route)
+        fail("A requested route has configuration outside the managed block")
+    if (key == "static_routes" || key == "ipv6_static_routes" || key == "cloned_interfaces") {
+        value = substr($0, position + 1)
+        count = split(value, words, /[ \t]+/)
+        for (i = 1; i <= count; i++) {
+            if (key == "cloned_interfaces" && words[i] in wanted_interface && wanted_interface[words[i]] != "ethernet")
+                fail("A requested clone has configuration outside the managed block")
+            if (key != "cloned_interfaces" &&
+                (((key == "static_routes" ? "route_" : "ipv6_route_") words[i]) in wanted_rc_route))
+                fail("A requested route has configuration outside the managed block")
+        }
+    }
+    for (nic in wanted_interface)
+        if (wanted_interface[nic] != "ethernet" && key ~ ("^(ifconfig|create_args|vlans)_" nic "($|_)"))
+            fail("A requested clone has configuration outside the managed block")
+    next
+}
+
+mode == "rclists" {
+    position = index($0, ":")
+    key = substr($0, 1, position - 1)
+    if (key == "cloned_interfaces" || key == "static_routes" || key == "ipv6_static_routes") {
+        value = substr($0, position + 1)
+        if (value ~ /[^A-Za-z0-9_ .:\t-]/)
+            fail("Invalid names in " key)
+        count = split(value, words, /[ \t]+/)
+        for (i = 1; i <= count; i++)
+            if (words[i] != "" && !((key SUBSEP words[i]) in owned_rc_list))
+                retained_rc_list[key] = retained_rc_list[key] (retained_rc_list[key] == "" ? "" : " ") words[i]
+    }
+    next
+}
+
+mode == "routes" || mode == "routeconflicts" {
+    if ($0 == "Internet:")
+        family = "inet"
+    else if ($0 == "Internet6:")
+        family = "inet6"
+    else if ($1 == "Destination") {
+        for (i = 1; i <= NF; i++)
+            if ($i == "Netif")
+                route_nic_column = i
+    } else if (family != "" && $3 ~ /[GS]/ && route_nic_column) {
+        key = family SUBSEP route_network($1, family)
+        observed_gateway[key] = route_address($2, family)
+        observed_route_nic[key] = $route_nic_column
+    }
+    next
+}
+
+/^[^ \t:]+: flags=/ {
+    current = $1
+    sub(/:$/, "", current)
+    if (!(current in wanted_interface) && mode != "conflicts")
+        next
+    observed_interface[current] = 1
+    up[current] = $0 ~ /<UP[,>]/ ? "up" : "down"
+    for (i = 1; i <= NF; i++)
+        if ($i == "mtu")
+            observed_mtu[current] = $(i + 1)
+    next
+}
+
+current in wanted_interface || mode == "conflicts" {
+    if ($1 == "inet" || $1 == "inet6") {
+        family = $1
+        ip = $2
+        sub(/%.*/, "", ip)
+        if (family == "inet6")
+            ip = ipv6(ip)
+        bits = -1
+        for (i = 3; i <= NF; i++) {
+            if ($i == "netmask") {
+                mask = $(i + 1)
+                if (mask ~ /^0x[0-9a-f]+$/) {
+                    value = hex_number(substr(mask, 3))
+                    bits = 32
+                    remainder = 4294967295 - value
+                    while (remainder > 0) {
+                        if (remainder % 2 != 1)
+                            fail("Invalid observed network mask")
+                        remainder = int(remainder / 2)
+                        bits--
+                    }
+                } else
+                    bits = prefix(mask, "inet")
+            } else if ($i == "prefixlen")
+                bits = $(i + 1)
+        }
+        if (bits < 0 || ip == "")
+            invalid_address[current] = 1
+        else {
+            observed_address[current, family, ip] = bits
+            if (mode != "clear" && $0 ~ / (tentative|duplicated)( |$)/) {
+                if (family == "inet6" && ip ~ /^fe[89ab]/)
+                    invalid_link_local[current] = 1
+                else
+                    invalid_address[current] = 1
+            }
+        }
+    } else if ($1 == "ether")
+        ether[current] = $2
+    else if ($1 == "laggproto")
+        observed_protocol[current] = $2
+    else if ($1 == "laggport:" || $1 == "member:") {
+        observed_member[current, $2] = 1
+        observed_stp[current, $2] = $0 ~ /[,<]STP[,>]/
+    } else if ($1 == "nd6") {
+        observed_ipv6[current] = $0 ~ /[,<]IFDISABLED[,>]/ ? "ifdisabled" : "-ifdisabled"
+        observed_rtadv[current] = $0 ~ /[,<]ACCEPT_RTADV[,>]/
+    }
+    else if ($1 == "vlan:") {
+        observed_vlan[current] = $2
+        for (i = 1; i < NF; i++)
+            if ($i == "interface:")
+                observed_parent[current] = $(i + 1)
+    }
+}
+
+END {
+    if (failed)
+        exit 1
+    if (mode == "rclists") {
+        print "cloned_interfaces: " retained_rc_list["cloned_interfaces"]
+        print "static_routes: " retained_rc_list["static_routes"]
+        print "ipv6_static_routes: " retained_rc_list["ipv6_static_routes"]
+    } else if (mode == "conflicts") {
+        for (nic in wanted_interface)
+            if (observed_rtadv[nic])
+                fail("Stop SLAAC configuration before managing " nic)
+        for (key in observed_address) {
+            split(key, parts, SUBSEP)
+            if (configure_boot != 1 && parts[1] in wanted_interface &&
+                parts[2] == "inet" && parts[3] == ENVIRON["IPADDR"])
+                fail("Use confignetwork -s for the interface carrying the management address")
+        }
+        for (key in observed_member) {
+            split(key, parts, SUBSEP)
+            if (!(parts[1] in wanted_interface) && parts[2] in wanted_interface)
+                fail("Interface belongs to unmanaged aggregate " parts[1])
+        }
+        for (nic in observed_parent)
+            if (!(nic in wanted_interface) && observed_parent[nic] in wanted_interface)
+                fail("Interface has unmanaged VLAN " nic)
+        for (key in wanted_address) {
+            split(key, parts, SUBSEP)
+            for (other in observed_address) {
+                split(other, existing, SUBSEP)
+                if (existing[1] in wanted_interface || parts[2] != existing[2])
+                    continue
+                bits = wanted_address[key] < observed_address[other] ? wanted_address[key] : observed_address[other]
+                if (subnet(parts[3], existing[3], bits, parts[2]))
+                    fail("A configured subnet overlaps unmanaged interface " existing[1])
+            }
+        }
+    } else if (mode == "routeconflicts") {
+        for (key in observed_route_nic) {
+            split(key, parts, SUBSEP)
+            if (parts[2] != "default" && observed_route_nic[key] in wanted_interface && !owned_route[key])
+                fail("Unmanaged route uses a configured interface")
+        }
+    } else if (mode == "routes") {
+        for (key in wanted_gateway)
+            if (observed_gateway[key] != wanted_gateway[key] ||
+                (wanted_route_nic[key] != "" && observed_route_nic[key] != wanted_route_nic[key]))
+                fail("A configured route or gateway is missing")
+    } else if (mode == "verify") {
+        for (nic in wanted_interface) {
+            if (!observed_interface[nic] || up[nic] != (wanted_up[nic] == "" ? "up" : wanted_up[nic]) || invalid_address[nic] ||
+                (invalid_link_local[nic] && observed_ipv6[nic] != "ifdisabled"))
+                fail("Interface did not become ready: " nic)
+        }
+        for (key in wanted_mtu)
+            if (observed_mtu[key] != wanted_mtu[key])
+                fail("Interface MTU differs: " key)
+        for (key in wanted_address)
+            if (!(key in observed_address) || observed_address[key] != wanted_address[key])
+                fail("A configured address or prefix is missing")
+        for (key in observed_address) {
+            split(key, parts, SUBSEP)
+            if (!(key in wanted_address) && !(parts[2] == "inet6" && parts[3] ~ /^fe[89ab]/))
+                fail("An unexpected address is configured")
+        }
+        for (key in wanted_ipv6)
+            if (observed_ipv6[key] != wanted_ipv6[key])
+                fail("IPv6 interface state differs: " key)
+        for (key in wanted_ether)
+            if (ether[key] != wanted_ether[key])
+                fail("Physical Ethernet address differs: " key)
+        for (key in wanted_protocol)
+            if (observed_protocol[key] != wanted_protocol[key])
+                fail("LAGG protocol differs: " key)
+        for (key in wanted_member)
+            if (!observed_member[key])
+                fail("An aggregate member is missing")
+        for (key in observed_member) {
+            split(key, parts, SUBSEP)
+            if (!wanted_member[key] || (wanted_interface[parts[1]] == "bridge" && observed_stp[key] != (wanted_stp[key] + 0)))
+                fail("Aggregate membership or STP differs")
+        }
+        for (key in wanted_vlan)
+            if (observed_vlan[key] != wanted_vlan[key] || observed_parent[key] != wanted_parent[key])
+                fail("VLAN parent or tag differs: " key)
+    } else if (mode == "snapshot" || mode == "clear") {
+        for (nic in observed_interface) {
+            if (wanted_interface[nic] != "ethernet")
+                continue
+            print "E\t" nic "\t" ether[nic]
+            print "T\t" nic "\t" observed_mtu[nic]
+            if (invalid_address[nic] || (invalid_link_local[nic] && observed_ipv6[nic] != "ifdisabled"))
+                fail("Cannot save an interface with tentative or duplicate addresses")
+            for (key in observed_address) {
+                split(key, parts, SUBSEP)
+                if (parts[1] == nic && (mode == "clear" ||
+                    !(parts[2] == "inet6" && parts[3] ~ /^fe[89ab]/ && observed_ipv6[nic] == "ifdisabled")))
+                    print "A\t" nic "\t" parts[2] "\t" parts[3] "\t" observed_address[key]
+            }
+            print "V\t" nic "\t" observed_ipv6[nic]
+            print "U\t" nic "\t" up[nic]
+        }
+    }
+}

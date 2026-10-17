@@ -1,0 +1,417 @@
+#!/bin/sh
+set -efu
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+LC_ALL=C
+export PATH LC_ALL
+unset IFCONFIG_FORMAT
+umask 077
+
+fail()
+{
+    printf 'confignetwork: %s\n' "$1" >&2
+    exit 1
+}
+
+[ "$(uname -s)" = FreeBSD ] && [ "$(id -u)" = 0 ] || fail 'FreeBSD root is required'
+if [ "${1:-}" != --locked ]; then
+    exec lockf -k -t 0 /var/run/xcat-confignetwork.lock /bin/sh "$0" --locked "$@"
+fi
+shift
+configure_boot=0
+case "$#:${1:-}" in 0:) ;; 1:-s) configure_boot=1 ;; *) fail 'Supported FreeBSD argument: -s' ;; esac
+case ${SETINSTALLNIC:-} in 1|yes) configure_boot=1 ;; esac
+planner=$(CDPATH= cd -P "$(dirname "$0")" && pwd)/confignetwork-freebsd.awk
+[ -f "$planner" ] && [ ! -L "$planner" ] || fail 'The FreeBSD network planner is missing'
+
+protected_file()
+{
+    [ -f "$1" ] && [ ! -L "$1" ] || return 1
+    [ "$(stat -f '%u:%g:%l' "$1")" = 0:0:1 ] || return 1
+    case $(stat -f '%Lp' "$1") in 400|444|600|644) ;; *) return 1 ;; esac
+}
+
+state=/var/db/xcat/network
+if [ ! -e /var/db/xcat ]; then install -d -m 0700 /var/db/xcat; fi
+[ -d /var/db/xcat ] && [ ! -L /var/db/xcat ] || fail 'Unsafe xCAT state directory'
+[ "$(stat -f '%u:%g:%Lp' /var/db/xcat)" = 0:0:700 ] || fail 'Unsafe xCAT state permissions'
+if [ ! -e "$state" ]; then mkdir -m 0700 "$state"; fi
+[ -d "$state" ] && [ ! -L "$state" ] && [ "$(stat -f '%u:%g:%Lp' "$state")" = 0:0:700 ] ||
+    fail 'Unsafe network state directory'
+protected_file /etc/rc.conf || fail 'An owned regular rc.conf is required'
+
+tab=$(printf '\t')
+pending=$state/pending
+mutating=0
+published=0
+staged_rc=
+
+interfaces()
+{
+    awk -F '\t' '$1 == "I" && !seen[$2]++ {print $2}' "$@"
+}
+
+verify_routes()
+{
+    netstat -rnW > "$pending/routes.kernel" || return 1
+    awk -v mode=routes -f "$planner" "$1" "$pending/routes.kernel"
+}
+
+wait_ready()
+{
+    ready_plan=$1
+    attempt=0
+    while :; do
+        ifconfig -a > "$pending/after.kernel" || return 1
+        if awk -v mode=verify -f "$planner" "$ready_plan" "$pending/after.kernel" > "$pending/verify.log" 2>&1 &&
+            verify_routes "$ready_plan" >> "$pending/verify.log" 2>&1 &&
+            nc -z -w 2 -s "$node_address" "$controller" "$port"; then return 0; fi
+        attempt=$((attempt + 1))
+        [ "$attempt" -lt 20 ] || return 1
+        sleep 1
+    done
+}
+
+clear_interfaces()
+{
+    clear_plan=$1
+    awk -F '\t' '$1 == "I" && $3 != "ethernet" {a[++n]=$2} END {for (i=n;i>0;i--) print a[i]}' "$clear_plan" |
+    while IFS= read -r nic; do
+        if ifconfig "$nic" >/dev/null 2>&1; then ifconfig "$nic" destroy || exit 1; fi
+    done || return 1
+    ifconfig -a > "$pending/clearing.kernel" || return 1
+    awk -v mode=clear -f "$planner" "$clear_plan" "$pending/clearing.kernel" > "$pending/clearing.snapshot" || return 1
+    while IFS="$tab" read -r kind nic family address bits; do
+        case "$kind" in
+        A) ifconfig "$nic" "$family" "$address/$bits" delete || return 1 ;;
+        V) ifconfig "$nic" inet6 ifdisabled || return 1 ;;
+        esac
+    done < "$pending/clearing.snapshot"
+    return 0
+}
+
+apply_plan()
+{
+    apply_file=$1
+    while IFS="$tab" read -r kind nic value address bits; do
+        case "$kind" in
+        I)
+            if [ "$value" != ethernet ]; then ifconfig "$nic" create || return 1; fi
+            ;;
+        X)
+            set -- $value
+            ifconfig "$nic" "$@" || return 1
+            ;;
+        A)
+            if [ "$value" = inet6 ]; then ifconfig "$nic" inet6 -ifdisabled || return 1; fi
+            ifconfig "$nic" "$value" "$address/$bits" alias || return 1
+            ;;
+        V) ifconfig "$nic" inet6 "$value" || return 1 ;;
+        esac
+    done < "$apply_file"
+    return 0
+}
+
+routes()
+{
+    route_action=$1
+    route_file=$2
+    route_journal=$3
+    while IFS="$tab" read -r kind family destination gateway nic; do
+        case "$kind" in
+        R)
+            route -n "$route_action" "-$family" -net "$destination" "$gateway" || return 1
+            printf 'R\t%s\t%s\t%s\t%s\n' "$family" "$destination" "$gateway" "$nic" >> "$route_journal"
+            ;;
+        esac
+    done < "$route_file"
+    return 0
+}
+
+restore_physical()
+{
+    while IFS="$tab" read -r kind nic value address bits; do
+        if [ "$kind" != T ] &&
+            awk -F '\t' -v nic="$nic" '$1 == "I" && $2 == nic {found=1} END {exit !found}' "$pending/before.plan"; then
+            continue
+        fi
+        case "$kind" in
+        T) ifconfig "$nic" mtu "$value" || return 1 ;;
+        U) ifconfig "$nic" "$value" || return 1 ;;
+        V) ifconfig "$nic" inet6 "$value" || return 1 ;;
+        A)
+            if [ "$value" = inet6 ]; then ifconfig "$nic" inet6 -ifdisabled || return 1; fi
+            ifconfig "$nic" "$value" "$address/$bits" alias || return 1
+            ;;
+        esac
+    done < "$pending/physical.snapshot"
+}
+
+default_routes()
+{
+    while IFS="$tab" read -r family gateway; do
+        if [ -z "$gateway" ]; then
+            if route -n get "-$family" default >/dev/null 2>&1; then
+                route -n delete "-$family" default || return 1
+            fi
+        elif route -n get "-$family" default >/dev/null 2>&1; then
+            route -n change "-$family" default "$gateway" || return 1
+        else
+            route -n add "-$family" default "$gateway" || return 1
+        fi
+    done < "$1"
+    return 0
+}
+
+rollback()
+{
+    printf '%s\n' 'confignetwork: restoring the previous network configuration' >&2
+    routes delete "$pending/added.routes" /dev/null > "$pending/rollback-routes.log" 2>&1 || return 1
+    clear_interfaces "$pending/union" > "$pending/rollback-clear.log" 2>&1 || return 1
+    restore_physical > "$pending/rollback-physical.log" 2>&1 || return 1
+    if [ -s "$pending/before.plan" ]; then
+        apply_plan "$pending/before.plan" > "$pending/rollback-apply.log" 2>&1 || return 1
+    fi
+    routes add "$pending/removed.routes" /dev/null >> "$pending/rollback-routes.log" 2>&1 || return 1
+    default_routes "$pending/before.defaults" > "$pending/rollback-defaults.log" 2>&1 || return 1
+    cat "$pending/before.plan" > "$pending/rollback.plan" || return 1
+    awk -F '\t' '$1 == "I" && $3 == "ethernet" && !seen[$2]++' "$pending/union" >> "$pending/rollback.plan" || return 1
+    cat "$pending/physical.snapshot" >> "$pending/rollback.plan" || return 1
+    wait_ready "$pending/rollback.plan" || return 1
+    if [ "$published" = 1 ]; then
+        if cmp -s /etc/rc.conf "$pending/after.rc"; then
+            staged_rc=$(mktemp /etc/rc.conf.xcat.XXXXXXXX) || return 1
+            cp -p "$pending/before.rc" "$staged_rc" || return 1
+            fsync "$staged_rc" || return 1
+            mv "$staged_rc" /etc/rc.conf || return 1
+        else
+            cmp -s /etc/rc.conf "$pending/before.rc" || return 1
+        fi
+        if [ -s "$pending/before.plan" ]; then
+            cp "$pending/before.plan" "$state/current" || return 1
+        else
+            rm -f "$state/current" || return 1
+        fi
+        fsync /etc/rc.conf /etc "$state" || return 1
+    fi
+    return 0
+}
+
+finish()
+{
+    result=$?
+    trap - EXIT HUP INT TERM
+    [ -z "$staged_rc" ] || rm -f "$staged_rc"
+    if [ "$mutating" = 1 ]; then
+        if rollback; then
+            printf '%s\n' rolled-back > "$pending/result"
+            if [ -d "$state/last" ] && [ ! -L "$state/last" ]; then rm -rf "$state/last"; fi
+            if [ ! -e "$state/last" ] && [ ! -L "$state/last" ]; then mv "$pending" "$state/last"; fi
+        else
+            printf '%s\n' rollback-failed > "$pending/result"
+            printf 'confignetwork: rollback needs attention; saved configuration: %s/before.rc\n' "$pending" >&2
+        fi
+        result=1
+    elif [ "$published" = 0 ] && [ -d "$pending" ] && [ ! -L "$pending" ]; then
+        rm -rf "$pending"
+    fi
+    exit "$result"
+}
+
+# An interrupted live change keeps the prior boot configuration until commit.
+[ ! -e "$pending" ] && [ ! -L "$pending" ] || fail 'Inspect the retained pending network transaction before retrying'
+mkdir -m 0700 "$pending"
+trap finish EXIT
+trap 'exit 1' HUP INT TERM
+
+bootmac=${INSTALLNIC:-${PRIMARYNIC:-mac}}
+[ "$bootmac" != mac ] || bootmac=${MACADDRESS:-}
+bootmac=$(printf '%s' "$bootmac" | tr 'A-F' 'a-f')
+printf '%s\n' "$bootmac" | awk '!/^([0-9a-f][0-9a-f]:){5}[0-9a-f][0-9a-f]$/ {exit 1}' ||
+    fail 'The installation MAC is missing or invalid'
+bootnic=
+for nic in $(ifconfig -l); do
+    case "$nic" in lo0|lagg*|vlan*|bridge*|*[!a-z0-9]*) continue ;; esac
+    mac=$(ifconfig "$nic" | awk '$1 == "ether" {ether=$2} $1 == "hwaddr" {hardware=$2} END {print (hardware != "" ? hardware : ether)}')
+    if [ "$mac" = "$bootmac" ]; then
+        [ -z "$bootnic" ] || fail 'The installation MAC matches multiple physical interfaces'
+        bootnic=$nic
+    fi
+done
+[ -n "$bootnic" ] || fail 'Cannot find the physical installation interface'
+awk -v bootnic="$bootnic" -v configure_boot="$configure_boot" -f "$planner" > "$pending/plan"
+if [ -e "$state/current" ]; then
+    protected_file "$state/current" || fail 'Unsafe saved network plan'
+    cp "$state/current" "$pending/before.plan"
+else
+    : > "$pending/before.plan"
+fi
+if [ "$configure_boot" = 0 ] && awk -F '\t' -v nic="$bootnic" \
+    '$1 == "I" && $2 == nic {found=1} END {exit !found}' "$pending/before.plan"; then
+    fail 'Continue using confignetwork -s after adopting the installation interface'
+fi
+cat "$pending/before.plan" "$pending/plan" > "$pending/union"
+awk -F '\t' 'FNR == NR {if ($1 == "I") present[$2]=1; next}
+    $1 == "I" && $3 == "ethernet" && !present[$2] {exit 1}' "$pending/plan" "$pending/before.plan" ||
+    fail 'Keep previously managed physical interfaces in nictypes; omit their addresses to clear them'
+if ! awk -F '\t' '$1 == "I" {found=1} END {exit !found}' "$pending/union"; then
+    printf '%s\n' 'confignetwork: no additional network interfaces are defined'
+    exit 0
+fi
+ifconfig -a > "$pending/before.kernel"
+awk -v mode=conflicts -v configure_boot="$configure_boot" -f "$planner" "$pending/union" "$pending/before.kernel"
+awk -F '\t' '$1 == "I"' "$pending/union" > "$pending/route-ownership"
+awk -F '\t' 'BEGIN {OFS="\t"} $1 == "R" {$1="O"; print}' "$pending/before.plan" >> "$pending/route-ownership"
+netstat -rnW > "$pending/routes.kernel"
+awk -v mode=routeconflicts -f "$planner" "$pending/route-ownership" "$pending/routes.kernel"
+if [ -s "$pending/before.plan" ]; then
+    awk -v mode=verify -f "$planner" "$pending/before.plan" "$pending/before.kernel" ||
+        fail 'The previously managed network has drifted; reconcile it before updating'
+    verify_routes "$pending/before.plan" || fail 'Previously managed routes have drifted; reconcile them before updating'
+fi
+awk -v mode=snapshot -f "$planner" "$pending/union" "$pending/before.kernel" > "$pending/physical.snapshot"
+while IFS="$tab" read -r kind nic type rest; do
+    [ "$kind" = I ] || continue
+    if [ "$type" = ethernet ]; then
+        ifconfig "$nic" >/dev/null || fail "Physical interface is missing: $nic"
+        setting=$(sysrc -n "ifconfig_$nic" 2>/dev/null || :)
+        [ -n "$setting" ] || setting=$(sysrc -n ifconfig_DEFAULT 2>/dev/null || :)
+        case "$setting" in *DHCP*) fail "Stop DHCP configuration before managing $nic" ;; esac
+    elif ifconfig "$nic" >/dev/null 2>&1; then
+        awk -F '\t' -v nic="$nic" '$1 == "I" && $2 == nic && $3 != "ethernet" {found=1} END {exit !found}' \
+            "$pending/before.plan" || fail "An unmanaged clone already exists: $nic"
+    fi
+done < "$pending/plan"
+
+cp -p /etc/rc.conf "$pending/before.rc"
+for override in /etc/rc.conf.local /etc/rc.conf.d/netif /etc/rc.conf.d/network /etc/rc.conf.d/routing \
+    /usr/local/etc/rc.conf.d/netif /usr/local/etc/rc.conf.d/network /usr/local/etc/rc.conf.d/routing; do
+    [ ! -e "$override" ] || fail "Network overrides require manual integration: $override"
+done
+case $(sysrc -n network_interfaces) in auto|AUTO) ;; *) fail 'FreeBSD network_interfaces must be AUTO' ;; esac
+awk '
+    $0 == "# BEGIN xCAT FreeBSD network" {if (inside || ++blocks > 1) exit 1; inside=1; next}
+    $0 == "# END xCAT FreeBSD network" {if (!inside) exit 1; inside=0; next}
+    !inside {print}
+    END {if (inside) exit 1}
+' "$pending/before.rc" > "$pending/base.rc" || fail 'Malformed managed rc.conf block'
+sysrc -f "$pending/base.rc" -a > "$pending/base.variables" || fail 'Cannot read base rc.conf settings'
+sysrc -f "$pending/before.rc" -a > "$pending/before.variables" || fail 'Cannot read current rc.conf settings'
+awk -v mode=rclists -f "$planner" "$pending/before.plan" "$pending/before.variables" > "$pending/retained.lists"
+cat "$pending/base.variables" "$pending/retained.lists" > "$pending/unmanaged.variables"
+awk -v mode=rcconflicts -f "$planner" "$pending/plan" "$pending/unmanaged.variables"
+cp -p "$pending/before.rc" "$pending/after.rc"
+cat "$pending/base.rc" > "$pending/after.rc"
+{
+    printf '%s\n' '# BEGIN xCAT FreeBSD network'
+    awk -F '\t' '
+        FNR == NR {if ($1 == "I") nics[$2]=1; next}
+        {split($0, entry, ":"); key=entry[1]}
+        key ~ /^[a-zA-Z][a-zA-Z0-9_]*$/ {
+            for (nic in nics)
+                if (key ~ ("^ifconfig_" nic "($|_(ipv6|aliases|alias[0-9]+|name)$)") ||
+                    key ~ ("^(ipv4_addrs|ipv6_addrs|create_args|vlans|ipv6_prefix)_" nic "$")) {
+                    print "unset " key
+                    break
+                }
+        }
+    ' "$pending/plan" "$pending/base.variables"
+    for entry in 'C:cloned_interfaces' 'inet:static_routes' 'inet6:ipv6_static_routes'; do
+        selector=${entry%%:*}
+        variable=${entry#*:}
+        retained=$(awk -v key="$variable:" '$1 == key {sub(/^[^:]*: /, ""); print}' "$pending/retained.lists")
+        added=$(awk -F '\t' -v selector="$selector" \
+            'selector == "C" && $1 == "C" {print $2} $1 == "S" && $2 == selector {print $3}' "$pending/plan")
+        previous=$(awk -F '\t' -v selector="$selector" \
+            'selector == "C" && $1 == "C" {print $2} $1 == "S" && $2 == selector {print $3}' "$pending/before.plan")
+        current=$(sysrc -f "$pending/before.rc" -n "$variable" 2>/dev/null || :)
+        printf '%s\n' "$current" | awk '/[^A-Za-z0-9_ .:\t-]/ {exit 1}' || fail "Invalid names in $variable"
+        present=$(printf '%s\n' "$current" | awk -v wanted="$added" '
+            BEGIN {split(wanted, names, " "); for (i in names) owned[names[i]]=1}
+            {for (i=1;i<=NF;i++) if ($i in owned) {printf "%s%s", sep, $i; sep=" "}}
+        ')
+        if [ "$previous" = "$added" ] && [ "$present" = "$added" ]; then
+            printf '%s="%s"\n' "$variable" "$current"
+        else
+            printf '%s="%s%s%s"\n' "$variable" "$retained" "${retained:+${added:+ }}" "$added"
+        fi
+    done
+    awk -F '\t' '$1 == "K" {printf "%s=\"%s\"\n", $2, $3}' "$pending/plan"
+    printf '%s\n' '# END xCAT FreeBSD network'
+} >> "$pending/after.rc"
+/bin/sh -n "$pending/after.rc"
+sysrc -f "$pending/after.rc" -a > "$pending/after.variables" || fail 'Cannot read proposed rc.conf settings'
+if [ -s "$pending/before.plan" ] && cmp -s "$pending/plan" "$pending/before.plan" &&
+    cmp -s "$pending/before.variables" "$pending/after.variables"; then
+    printf '%s\n' 'confignetwork: configuration is unchanged'
+    rm -rf "$pending"
+    exit 0
+fi
+
+controller=${MASTER_IP:-}
+port=${XCATIPORT:-3002}
+printf '%s\n' "$controller" | awk -F . 'NF != 4 {exit 1} {for (i=1;i<=4;i++) if ($i !~ /^[0-9]+$/ || $i>255) exit 1}' ||
+    fail 'An IPv4 controller address is required'
+case "$port" in ''|*[!0-9]*) fail 'Invalid controller port' ;; esac
+[ "$port" -ge 1 ] && [ "$port" -le 65535 ] || fail 'Invalid controller port'
+node_address=${IPADDR:-}
+printf '%s\n' "$node_address" | awk -F . 'NF != 4 {exit 1} {for (i=1;i<=4;i++) if ($i !~ /^[0-9]+$/ || $i>255) exit 1}' ||
+    fail 'An IPv4 node address is required'
+nc -z -w 3 -s "$node_address" "$controller" "$port" || fail 'Cannot reach the controller before changing networking'
+for family in inet inet6; do
+    current=$(route -n get "-$family" default 2>/dev/null | awk '$1 == "gateway:" {print $2}')
+    printf '%s\t%s\n' "$family" "$current" >> "$pending/before.defaults"
+    variable=defaultrouter
+    [ "$family" != inet6 ] || variable=ipv6_defaultrouter
+    gateway=$(sysrc -f "$pending/after.rc" -n "$variable" 2>/dev/null || :)
+    case "$gateway" in
+    ''|NO)
+        gateway=
+        if ! awk -F '\t' -v family="$family" '$1 == "D" && $2 == family {found=1} END {exit !found}' "$pending/before.plan"; then
+            gateway=$current
+        fi
+        ;;
+    esac
+    if [ "$family" = inet6 ]; then
+        case "$gateway" in
+        *%*)
+            scope=${gateway##*%}
+            if awk -F '\t' -v nic="$scope" '$1 == "V" && $2 == nic && $3 == "ifdisabled" {found=1} END {exit !found}' "$pending/plan"; then
+                fail 'Set an IPv6 gateway for the new topology before removing its former interface'
+            fi
+            ;;
+        esac
+    fi
+    printf '%s\t%s\n' "$family" "$gateway" >> "$pending/after.defaults"
+done
+: > "$pending/added.routes"
+: > "$pending/removed.routes"
+cmp -s /etc/rc.conf "$pending/before.rc" || fail 'rc.conf changed during preparation'
+mutating=1
+routes delete "$pending/before.plan" "$pending/removed.routes" > "$pending/remove-routes.log" 2>&1 ||
+    fail 'Cannot remove previously managed routes'
+clear_interfaces "$pending/union" > "$pending/clear.log" 2>&1 || fail 'Cannot clear the selected interfaces'
+apply_plan "$pending/plan" > "$pending/apply.log" 2>&1 || fail 'Cannot apply the selected interface configuration'
+routes add "$pending/plan" "$pending/added.routes" > "$pending/routes.log" 2>&1 || fail 'Cannot add the selected routes'
+default_routes "$pending/after.defaults" > "$pending/defaults.log" 2>&1 || fail 'Cannot configure default routes'
+wait_ready "$pending/plan" || fail 'The configured network did not pass readback and controller reachability'
+cmp -s /etc/rc.conf "$pending/before.rc" || fail 'rc.conf changed while applying networking'
+staged_rc=$(mktemp /etc/rc.conf.xcat.XXXXXXXX)
+cp -p "$pending/after.rc" "$staged_rc"
+fsync "$staged_rc"
+published=1
+mv "$staged_rc" /etc/rc.conf
+fsync /etc/rc.conf /etc
+cp "$pending/plan" "$state/current.new"
+fsync "$state/current.new"
+mv "$state/current.new" "$state/current"
+fsync "$state"
+printf '%s\n' committed > "$pending/result"
+fsync "$pending/result" "$pending"
+mutating=0
+if [ -e "$state/last" ]; then
+    [ -d "$state/last" ] && [ ! -L "$state/last" ] || fail 'Unsafe previous transaction directory'
+    rm -rf "$state/last"
+fi
+mv "$pending" "$state/last"
+fsync "$state"
+printf '%s\n' 'confignetwork: FreeBSD network configuration applied and saved'
