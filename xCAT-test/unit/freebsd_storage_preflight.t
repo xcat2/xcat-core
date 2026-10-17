@@ -298,6 +298,37 @@ subtest 'whole OS disk reinstall preserves separate identities and rejects forei
     done_testing();
 };
 
+sub efi_label_guard_case {
+    subtest 'native FAT labels are confined to EFI partitions' => sub {
+        my %policy = (XCAT_FORMAT => 'xcat-freebsd-install-5', XCAT_DISK_ACTION => 'erase',
+            XCAT_ZFS_COMPRESSION => 'lz4', XCAT_ZFS_ASHIFT => '12', XCAT_PRESERVE_DISKS => 'ada3@SERIAL3');
+        my $root = fixture();
+        # Native FreeBSD 15.1 PART/LABEL rows, with the fixture provider renamed.
+        my $native = "0 DISK ada0 8589934592 512 hd 16 sc 63\n"
+            . "1 PART ada0p1 67108864 512 i 1 o 20480 ty efi xs GPT xt c12a7328-f81f-11d2-ba4b-00a0c93ec93b\n"
+            . "2 LABEL msdosfs/XCAT_EFI 67108864 512 i 0 o 0\n";
+        my $graph = read_file("$root/graph");
+        $graph =~ s/0[ ]DISK[ ]ada0[^\n]*\n1[ ]LABEL[^\n]*\n/$native/x;
+        write_file("$root/partitions", "Geom name: ada0\nscheme: GPT\nstate: OK\nmodified: false\nMode: r0w0e0\n");
+        write_file("$root/graph", $graph);
+        my ($status, $output, $error) = run_preflight($root, \%policy, 'xcat_check_zfs_reinstall');
+        is($status, 0, 'a native FAT label below an EFI partition permits whole-disk reinstall') or diag($error);
+        like($output, qr/preserved\nada3\tSERIAL3\t/x, 'the separate data drive remains pinned');
+        for my $change (
+            [qr/ty[ ]efi/x, 'ty freebsd-zfs'],
+            [qr{msdosfs/XCAT_EFI}x, 'mirror/userdata'],
+            [qr/2[ ]LABEL/x, '2 ELI'],
+        ) {
+            my $invalid = $graph;
+            $invalid =~ s/$change->[0]/$change->[1]/x;
+            write_file("$root/graph", $invalid);
+            isnt((run_preflight($root, \%policy, 'xcat_check_zfs_reinstall'))[0], 0,
+                'a FAT label under another type or an unsupported consumer cannot authorize erase');
+        }
+    };
+    return;
+}
+
 sub reinstall_guard_cases {
     subtest 'native GPT UFS labels are confined to their filesystem partition' => sub {
         my %policy = (XCAT_FORMAT => 'xcat-freebsd-install-5', XCAT_DISK_ACTION => 'erase',
@@ -362,5 +393,6 @@ sub reinstall_guard_cases {
     return;
 }
 reinstall_guard_cases();
+efi_label_guard_case();
 
 done_testing();
