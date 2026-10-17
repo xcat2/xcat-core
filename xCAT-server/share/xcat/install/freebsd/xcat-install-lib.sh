@@ -556,7 +556,8 @@ xcat_check_zfs_reinstall()
             if($2=="LABEL" && (($1==1 && $3=="diskid/DISK-" serial[root]) ||
                 (($1==2 || $1==3) && ancestor in part &&
                 ($3~/^(gpt|gptid)\/[A-Za-z0-9_.+-]+$/ ||
-                (part[ancestor]=="freebsd-ufs" && $3~/^(ufs|ufsid)\/[A-Za-z0-9_.+-]+$/))))) next
+                (part[ancestor]=="freebsd-ufs" && $3~/^(ufs|ufsid)\/[A-Za-z0-9_.+-]+$/) ||
+                (part[ancestor]=="efi" && $3~/^msdosfs\/[A-Za-z0-9_.+-]+$/))))) next
             bad=1
         }
         END {
