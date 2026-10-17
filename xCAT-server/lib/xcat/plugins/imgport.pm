@@ -1608,13 +1608,34 @@ sub set_config {
 
     $callback->({ data => ["Adding $osimage"] }) if $::VERBOSE;
 
+    # setAttribs returns nothing for a new row without values, 0 after a write, and undef with an optional error on failure.
+    my $write = sub {
+        my ($tab, $key, $values) = @_;
+        my @result = eval { $tab->setAttribs($key, $values) };
+        my $error = $@ =~ s/\s+\z//r;
+        $error = $result[1] // 'no reply from the database' if !$error && @result && !defined($result[0]);
+        if (!$error) {
+            return 1 if eval { $tab->commit; 1 };
+            $callback->({ error => ["Cannot commit the $tab->{tabname} table: " . ($@ =~ s/\s+\z//r)], errorcode => [1] });
+            return 0;
+        }
+
+        # The database worker shares the transaction of a table among requests, so a rollback would drop their writes.
+        eval { $tab->commit };
+        if (holds_row($tab, $key, $values)) {
+            $callback->({ warning => ["The $tab->{tabname} table holds the new row, but its write reported: $error"] });
+            return 1;
+        }
+        $callback->({ error => ["Cannot write the $tab->{tabname} table: $error"], errorcode => [1] });
+        return 0;
+    };
+
     # now we make a quick hash of what we want to put into this
     my $hash_tmp = $data->{osimage};
     foreach my $key (keys %$hash_tmp) {
         $keyhash{$key} = $hash_tmp->{$key};
     }
-    $ostab->setAttribs({ imagename => $osimage }, \%keyhash);
-    $ostab->commit;
+    $write->($ostab, { imagename => $osimage }, \%keyhash) or return 0;
 
     %keyhash = ();
     my $hash_tmp1 = $data->{linuximage};
@@ -1622,8 +1643,7 @@ sub set_config {
         $keyhash{$key} = $hash_tmp1->{$key};
     }
 
-    $linuxtab->setAttribs({ imagename => $osimage }, \%keyhash);
-    $linuxtab->commit;
+    $write->($linuxtab, { imagename => $osimage }, \%keyhash) or return 0;
 
     my $kit = $data->{kit};
     foreach my $k (keys %$kit) {
@@ -1632,8 +1652,7 @@ sub set_config {
         foreach my $key (keys %$kithash) {
             $keyhash{$key} = $kithash->{$key};
         }
-        $kittab->setAttribs({ kitname => $k }, \%keyhash);
-        $kittab->commit;
+        $write->($kittab, { kitname => $k }, \%keyhash) or return 0;
     }
 
     my $kitrepo = $data->{kitrepo};
@@ -1643,8 +1662,7 @@ sub set_config {
         foreach my $key (keys %$kitrepohash) {
             $keyhash{$key} = $kitrepohash->{$key};
         }
-        $kitrepotab->setAttribs({ kitreponame => $k }, \%keyhash);
-        $kitrepotab->commit;
+        $write->($kitrepotab, { kitreponame => $k }, \%keyhash) or return 0;
     }
 
     my $kitcomp = $data->{kitcomp};
@@ -1654,11 +1672,33 @@ sub set_config {
         foreach my $key (keys %$kitcomphash) {
             $keyhash{$key} = $kitcomphash->{$key};
         }
-        $kitcomptab->setAttribs({ kitcompname => $k }, \%keyhash);
-        $kitcomptab->commit;
+        $write->($kitcomptab, { kitcompname => $k }, \%keyhash) or return 0;
     }
 
     return 1;
+}
+
+# Returns the row of a table with the key, 0 when there is none, or undef when the table cannot be read.
+sub table_row {
+    my ($tab, $key) = @_;
+
+    # getAttribs leaves out a disabled row, which the import still changes.
+    my $rows = eval { $tab->getAllEntries('all') };
+    return if ref($rows) ne 'ARRAY';
+    my ($row) = grep { has_values($_, $key) } @$rows;
+    return $row // 0;
+}
+
+# Tells whether a row holds the values, where an empty value matches a missing one.
+sub has_values {
+    my ($row, $values) = @_;
+    return !grep { ($row->{$_} // '') ne ($values->{$_} // '') } keys %$values;
+}
+
+sub holds_row {
+    my ($tab, $key, $values) = @_;
+    my $row = table_row($tab, $key);
+    return $row && has_values($row, $values);
 }
 
 #an adapter to convert the manifest structure from 2.7 to 2.8
