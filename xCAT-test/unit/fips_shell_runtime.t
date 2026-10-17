@@ -10,6 +10,7 @@ use File::Temp qw(tempdir);
 use Test::More;
 
 use XCAT::Test::File qw(repo_path);
+use XCAT::Test::Process qw(run_command);
 
 my $bash = qx(command -v bash 2>/dev/null);
 chomp($bash);
@@ -145,11 +146,11 @@ sub shell_output {
 
 sub shell_status {
     my ($shell, $library, $command, @arguments) = @_;
-    system(
+    my ($status, $output) = run_command(
         $shell, '-c', '. "$1"; ' . $command,
         'xcat-fips-test', $library, @arguments,
     );
-    return $? >> 8;
+    return $status;
 }
 
 sub run_key_cycle {
@@ -161,11 +162,11 @@ printf '%s\n' "$3" > "$2"
 xcat_generate_discovery_private_key "$fips_state" "$4" 2>/dev/null || exit
 xcat_discovery_public_key "$fips_state" "$4" > "$5" 2>/dev/null
 EOF
-    system(
+    my ($exit_status, $output) = run_command(
         $shell, '-c', $command,
         'xcat-fips-test', $library, $status, $next_state, $key, $public,
     );
-    return $? >> 8;
+    return $exit_status;
 }
 
 sub command_output {
