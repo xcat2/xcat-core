@@ -766,6 +766,11 @@ members, health, properties and encryption key. The postscript then imports it
 for use, mounts its datasets and saves boot configuration. It does not force
 an import, replace members, expand pools or change existing data properties.
 
+The postscript records startup pools in ``/etc/zfs/zpool.cache``, which native
+FreeBSD startup reads first. It retains the GUIDs of imported pools using either
+standard cache path. Existing cached pools must be imported before configuration;
+stale or conflicting cached identities cause rejection before pool operations.
+
 Automatic data encryption
 -------------------------
 
@@ -911,6 +916,10 @@ disabled. Keep its global service disabled. The adapter installs its own
 ``xcat_dhcp6`` service and protects its client policy under ``/var/db/xcat/network``.
 Do not run another DHCP client on managed interfaces. Explicit static defaults
 and DHCP defaults must not compete for the same address family.
+
+If an existing required IPv6 router-advertisement default disappears, restore
+the router or set ``IPV6_DEFROUTE=no`` before applying further changes on that
+interface. The postscript rejects the missing route before changing the network.
 
 For example, configure a physical interface with IPv4 and IPv6::
 
