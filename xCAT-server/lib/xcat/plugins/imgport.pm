@@ -1571,8 +1571,9 @@ sub create_symlink {
 }
 
 sub set_config {
-    my $data     = shift;
-    my $callback = shift;
+    my $data      = shift;
+    my $callback  = shift;
+    my $rows_left = shift;    # gets the number of rows that a failed write leaves changed
     my $ostab    = xCAT::Table->new('osimage', -create => 1, -autocommit => 0);
     my $linuxtab = xCAT::Table->new('linuximage', -create => 1, -autocommit => 0);
     my $kittab = xCAT::Table->new('kit', -create => 1, -autocommit => 0);
@@ -1608,12 +1609,24 @@ sub set_config {
 
     $callback->({ data => ["Adding $osimage"] }) if $::VERBOSE;
 
+    # The rows of the image that this import wrote, with the values they had, for restore_rows.
+    my @written;
+
     # setAttribs returns nothing for a new row without values, 0 after a write, and undef with an optional error on failure.
+    # Other images can use a kit row, so the kit rows of a failed import stay.
     my $write = sub {
-        my ($tab, $key, $values) = @_;
+        my ($tab, $key, $values, $shared) = @_;
+        $values = {%$values};    # The caller fills the same hash for the next table.
+        my $previous = $shared ? 0 : table_row($tab, $key);
+        if (!defined($previous)) {
+            $callback->({ error => ["Cannot read the $tab->{tabname} table."], errorcode => [1] });
+            return 0;
+        }
         my @result = eval { $tab->setAttribs($key, $values) };
         my $error = $@ =~ s/\s+\z//r;
         $error = $result[1] // 'no reply from the database' if !$error && @result && !defined($result[0]);
+        # A write or commit that fails can still change the row, so restore_rows checks each row that was tried.
+        push @written, [ $tab, $key, $values, $previous ] if !$shared;
         if (!$error) {
             return 1 if eval { $tab->commit; 1 };
             $callback->({ error => ["Cannot commit the $tab->{tabname} table: " . ($@ =~ s/\s+\z//r)], errorcode => [1] });
@@ -1630,52 +1643,60 @@ sub set_config {
         return 0;
     };
 
-    # now we make a quick hash of what we want to put into this
-    my $hash_tmp = $data->{osimage};
-    foreach my $key (keys %$hash_tmp) {
-        $keyhash{$key} = $hash_tmp->{$key};
-    }
-    $write->($ostab, { imagename => $osimage }, \%keyhash) or return 0;
-
-    %keyhash = ();
-    my $hash_tmp1 = $data->{linuximage};
-    foreach my $key (keys %$hash_tmp1) {
-        $keyhash{$key} = $hash_tmp1->{$key};
-    }
-
-    $write->($linuxtab, { imagename => $osimage }, \%keyhash) or return 0;
-
-    my $kit = $data->{kit};
-    foreach my $k (keys %$kit) {
-        my $kithash = $kit->{$k};
-        %keyhash = ();
-        foreach my $key (keys %$kithash) {
-            $keyhash{$key} = $kithash->{$key};
+    # Bundle data of an unexpected shape can die between the writes, and the rows written before go back then too.
+    my $done = eval {
+        # now we make a quick hash of what we want to put into this
+        my $hash_tmp = $data->{osimage};
+        foreach my $key (keys %$hash_tmp) {
+            $keyhash{$key} = $hash_tmp->{$key};
         }
-        $write->($kittab, { kitname => $k }, \%keyhash) or return 0;
-    }
+        $write->($ostab, { imagename => $osimage }, \%keyhash) or return 0;
 
-    my $kitrepo = $data->{kitrepo};
-    foreach my $k (keys %$kitrepo) {
-        my $kitrepohash = $kitrepo->{$k};
         %keyhash = ();
-        foreach my $key (keys %$kitrepohash) {
-            $keyhash{$key} = $kitrepohash->{$key};
+        my $hash_tmp1 = $data->{linuximage};
+        foreach my $key (keys %$hash_tmp1) {
+            $keyhash{$key} = $hash_tmp1->{$key};
         }
-        $write->($kitrepotab, { kitreponame => $k }, \%keyhash) or return 0;
-    }
 
-    my $kitcomp = $data->{kitcomp};
-    foreach my $k (keys %$kitcomp) {
-        my $kitcomphash = $kitcomp->{$k};
-        %keyhash = ();
-        foreach my $key (keys %$kitcomphash) {
-            $keyhash{$key} = $kitcomphash->{$key};
+        $write->($linuxtab, { imagename => $osimage }, \%keyhash) or return 0;
+
+        my $kit = $data->{kit};
+        foreach my $k (keys %$kit) {
+            my $kithash = $kit->{$k};
+            %keyhash = ();
+            foreach my $key (keys %$kithash) {
+                $keyhash{$key} = $kithash->{$key};
+            }
+            $write->($kittab, { kitname => $k }, \%keyhash, 1) or return 0;
         }
-        $write->($kitcomptab, { kitcompname => $k }, \%keyhash) or return 0;
-    }
 
-    return 1;
+        my $kitrepo = $data->{kitrepo};
+        foreach my $k (keys %$kitrepo) {
+            my $kitrepohash = $kitrepo->{$k};
+            %keyhash = ();
+            foreach my $key (keys %$kitrepohash) {
+                $keyhash{$key} = $kitrepohash->{$key};
+            }
+            $write->($kitrepotab, { kitreponame => $k }, \%keyhash, 1) or return 0;
+        }
+
+        my $kitcomp = $data->{kitcomp};
+        foreach my $k (keys %$kitcomp) {
+            my $kitcomphash = $kitcomp->{$k};
+            %keyhash = ();
+            foreach my $key (keys %$kitcomphash) {
+                $keyhash{$key} = $kitcomphash->{$key};
+            }
+            $write->($kitcomptab, { kitcompname => $k }, \%keyhash, 1) or return 0;
+        }
+
+        1;
+    };
+    return 1 if $done;
+    $callback->({ error => ["Cannot write the image definition: " . ($@ =~ s/\s+\z//r)], errorcode => [1] }) if !defined($done);
+    my $left = restore_rows(\@written, $callback);
+    $$rows_left = $left if $rows_left;
+    return 0;
 }
 
 # Returns the row of a table with the key, 0 when there is none, or undef when the table cannot be read.
@@ -1699,6 +1720,55 @@ sub holds_row {
     my ($tab, $key, $values) = @_;
     my $row = table_row($tab, $key);
     return $row && has_values($row, $values);
+}
+
+# Writes back the rows of a definition write that failed, newest first, and returns the number of rows left changed.
+sub restore_rows {
+    my ($written, $callback) = @_;
+    my $left = 0;
+    foreach my $change (reverse @$written) {
+        my ($tab, $key, $values, $previous) = @$change;
+        my $row     = join(', ', map { "$_=$key->{$_}" } sort keys %$key);
+        my $current = table_row($tab, $key);
+        if (!defined($current)) {
+            $callback->({ error => ["The previous $tab->{tabname} row of $row is not back: the table cannot be read."], errorcode => [1] });
+            $left++;
+            next;
+        }
+
+        # A write that did not take effect left the row as it was.
+        next if $previous ? $current && has_values($current, { map { ($_ => $previous->{$_}) } keys %$values }) : !$current;
+
+        # A row that another host changed, or that another writer filled more of after this import added it, stays.
+        my @filled = $previous ? () : grep { !exists($values->{$_}) && !exists($key->{$_}) && ($current->{$_} // '') ne '' } keys %{ $current || {} };
+        if (!$current || !has_values($current, $values) || @filled) {
+            $callback->({ warning => ["The $tab->{tabname} row of $row changed after this import wrote it, so the change stays."] });
+            $left++;
+            next;
+        }
+        my $back;
+        if ($previous) {
+            # An undefined value goes back as NULL, which a read of the disable column takes as enabled, unlike ''.
+            my %old = map { ($_ => $previous->{$_}) } keys %$values;
+
+            # setAttribs writes the values of its key into the SQL text, so the update matches only the key.
+            eval { $tab->setAttribs($key, \%old); $tab->commit };
+            $back = holds_row($tab, $key, \%old);
+        } else {
+            # delEntries binds its condition, so the written values in it keep a row that another writer changed.
+            my %ours = (%$key, map { ($_ => $values->{$_}) } grep { defined($values->{$_}) } keys %$values);
+            eval { $tab->delEntries(\%ours); $tab->commit };
+            $current = table_row($tab, $key);
+            $back    = defined($current) && !$current;
+        }
+        if ($back) {
+            $callback->({ data => [ $previous ? "  Put back the previous $tab->{tabname} row of $row." : "  Removed the new $tab->{tabname} row of $row." ] });
+        } else {
+            $callback->({ error => ["The previous $tab->{tabname} row of $row is not back."], errorcode => [1] });
+            $left++;
+        }
+    }
+    return $left;
 }
 
 #an adapter to convert the manifest structure from 2.7 to 2.8
