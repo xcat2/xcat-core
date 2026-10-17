@@ -385,6 +385,12 @@ sub dedicated_os_policy_cases {
             is($members, "vtbd2\tDATA_A\t1\nvtbd3\tDATA_B\t1\n", 'data identities remain separate from OS members');
         }
     }
+    my $gzip = $render_policy->({ %policy, zfs_compression => 'gzip-6' });
+    like($gzip, qr/^zfs_compression=gzip$/mx, 'the controller emits the native gzip-6 alias');
+    $gzip =~ s/^zfs_compression=gzip$/zfs_compression=gzip-6/mx;
+    my ($gzip_status, $gzip_value) = read_generated_config($gzip, 'printf "%s" "$XCAT_ZFS_COMPRESSION"');
+    is($gzip_status, 0, 'the native reader independently accepts gzip-6');
+    is($gzip_value, 'gzip', 'native readback compares the canonical compression name');
     my $single = $render_policy->({ %policy, zfs_topology => 'stripe', zfs_vdevs => 'vtbd0@OS_A' });
     is((read_generated_config($single, 'xcat_zfs_members'))[1], "vtbd0\tOS_A\t1\n", 'one OS disk uses the same guarded policy');
     for my $older (3, 4) {

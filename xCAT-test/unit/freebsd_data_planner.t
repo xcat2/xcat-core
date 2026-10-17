@@ -87,18 +87,26 @@ subtest 'dedicated pool defaults and native readback' => sub {
 subtest 'auxiliary devices and mixed log groups' => sub {
     my $policy = base();
     @$policy{qw(log_vdevs cache_vdevs special_vdevs special_small_blocks)} =
-        ('vtbd4@LOG4,vtbd5@LOG5', 'vtbd7@CACHE7,vtbd8@CACHE8', 'vtbd9@SPECIAL9,vtbd10@SPECIAL10', 65536);
+        ('vtbd4@LOG4,vtbd5@LOG5;vtbd6@LOG6', 'vtbd7@CACHE7,vtbd8@CACHE8', 'vtbd9@SPECIAL9,vtbd10@SPECIAL10', 65536);
     my ($exit, $plan) = compile($policy);
-    is($exit, 0, 'mirrored log, two caches and redundant special devices compile');
+    is($exit, 0, 'mirror, single log, two caches and redundant special devices compile');
     is_deeply([map { substr($_, 2) } grep { /^C\t/x } split(/\n/x, $plan)],
-        [qw(mirror /dev/vtbd2 /dev/vtbd3 special mirror /dev/vtbd9 /dev/vtbd10 log mirror /dev/vtbd4 /dev/vtbd5 cache /dev/vtbd7 /dev/vtbd8)],
+        [qw(mirror /dev/vtbd2 /dev/vtbd3 special mirror /dev/vtbd9 /dev/vtbd10 log /dev/vtbd6 mirror /dev/vtbd4 /dev/vtbd5 cache /dev/vtbd7 /dev/vtbd8)],
         'native arguments retain separate data, special, log and cache roles');
-    my $native = status();
-    $native =~ s/\nerrors:/\tspecial\n\t  mirror-1 ONLINE 0 0 0\n\t    \/dev\/vtbd9 ONLINE 0 0 0\n\t    \/dev\/vtbd10 ONLINE 0 0 0\n\tlogs\n\t  mirror-2 ONLINE 0 0 0\n\t    \/dev\/vtbd4 ONLINE 0 0 0\n\t    \/dev\/vtbd5 ONLINE 0 0 0\n\tcache\n\t  \/dev\/vtbd7 ONLINE 0 0 0\n\t  \/dev\/vtbd8 ONLINE 0 0 0\n\nerrors:/x;
-    is((verify($plan, $native))[0], 0, 'native readback accepts the mirrored log');
-    my $wrong = $native;
-    $wrong =~ s{\t[ ]{4}/dev/vtbd5}{\t  /dev/vtbd5}x or croak 'invalid log fixture';
-    isnt((verify($plan, $wrong))[0], 0, 'moving a mirrored log member outside its mirror is rejected');
+    # Native FreeBSD 15.1 output; only pool and device names are normalized.
+    my $native;
+    for my $fixture ('mixed', 'merged') {
+        open(my $input, '<', "$FindBin::Bin/fixtures/freebsd15.1-zpool-$fixture-logs") or croak $!;
+        my $bytes = do { local $/ = undef; <$input> };
+        close($input) or croak $!;
+        if ($fixture eq 'mixed') {
+            $native = $bytes;
+            is((verify($plan, $bytes))[0], 0, 'native creation retains a single log before a mirrored log');
+        } else {
+            isnt((verify($plan, $bytes))[0], 0, 'the former producer merges log groups and fails readback');
+        }
+    }
+    my $wrong;
     $wrong = $native;
     $wrong =~ s/\tcache\n/\tlogs\n/x;
     isnt((verify($plan, $wrong))[0], 0, 'cache devices cannot masquerade as logs');
@@ -147,19 +155,26 @@ subtest 'data topologies and special-device redundancy' => sub {
         my @special = map { 'vtbd' . (20 + $_) . '@SPECIAL' . $_ } 1 .. $case->[2];
         $policy->{special_vdevs} = join(',', @special);
         my ($exit, $plan) = compile($policy);
-        is($exit, 0, "$case->[0] accepts sufficient special-device redundancy");
+        is($exit, 0, "$case->[0] accepts matching special-device redundancy");
         is_deeply([map { substr($_, 2) } grep { /^C\t/x } split(/\n/x, $plan)],
             [@{$case->[3]}, 'special', 'mirror', map { '/dev/vtbd' . (20 + $_) } 1 .. $case->[2]],
             'native topology and all device roles are explicit');
+        $policy->{special_vdevs} = join(',', @special, 'vtbd30@SPECIAL30');
+        isnt((compile($policy))[0], 0, "$case->[0] rejects wider special groups that native creation refuses");
         pop @special;
         $policy->{special_vdevs} = join(',', @special);
         isnt((compile($policy))[0], 0, "$case->[0] rejects weaker special-device redundancy");
     }
-    for my $compression (qw(off lz4 gzip gzip-1 gzip-9 zstd zstd-1 zstd-19)) {
+    my $stripe = { %{base()}, topology => 'stripe', vdevs => 'vtbd2@DATA2' };
+    is((compile($stripe))[0], 0, 'a dedicated stripe without special devices compiles');
+    $stripe->{special_vdevs} = 'vtbd3@SPECIAL3,vtbd4@SPECIAL4';
+    isnt((compile($stripe))[0], 0, 'a stripe rejects a special mirror before native creation');
+    for my $compression (qw(off lz4 gzip gzip-1 gzip-6 gzip-9 zstd zstd-1 zstd-19)) {
         for my $ashift (9, 12, 16) {
             my ($exit, $plan) = compile({ %{base()}, compression => $compression, ashift => $ashift });
             is($exit, 0, "$compression and ashift $ashift compile");
-            is(settings($plan)->{compression}, $compression, 'compression is retained');
+            is(settings($plan)->{compression}, $compression eq 'gzip-6' ? 'gzip' : $compression,
+                'compression agrees with native property readback');
             is(settings($plan)->{ashift}, "$ashift", 'ashift is retained');
         }
     }

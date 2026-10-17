@@ -115,7 +115,7 @@ sub run_preflight {
         XCAT_FILESYSTEM => 'zfs', XCAT_ZFS_TOPOLOGY => 'mirror',
         XCAT_ZFS_VDEVS => read_file("$root/members"), XCAT_SWAP_SIZE => '0', XCAT_SWAP_MODE => 'none', %$overrides);
     my %before = map { $_ => sha256_hex(read_file($_)) } glob("$root/ada*.head $root/ada*.tail");
-    open(my $pipe, '-|', 'sh', '-c', '. "$1"; "$2" 2>"$FIXTURE_DIR/stderr"', 'sh', $library, $operation) or die $!;
+    open(my $pipe, '-|', 'sh', '-c', '. "$1"; if [ "$2" = xcat_erase_os_disks ]; then "$2" "$FIXTURE_DIR/before.snapshot"; else "$2"; fi 2>"$FIXTURE_DIR/stderr"', 'sh', $library, $operation) or die $!;
     local $/;
     my $output = <$pipe> // '';
     close($pipe);
@@ -297,5 +297,70 @@ subtest 'whole OS disk reinstall preserves separate identities and rejects forei
         'an unsupported active provider cannot be erased as a plain OS disk');
     done_testing();
 };
+
+sub reinstall_guard_cases {
+    subtest 'native GPT UFS labels are confined to their filesystem partition' => sub {
+        my %policy = (XCAT_FORMAT => 'xcat-freebsd-install-5', XCAT_DISK_ACTION => 'erase',
+            XCAT_ZFS_COMPRESSION => 'lz4', XCAT_ZFS_ASHIFT => '12', XCAT_PRESERVE_DISKS => 'ada3@SERIAL3');
+        my $root = fixture();
+        my $geometry = read_file("$root/ada0.geom");
+        $geometry =~ s/8589934592/17179869184/gx;
+        write_file("$root/ada0.geom", $geometry);
+        # FreeBSD 15 native conftxt, with only the disk and UFS label names replaced.
+        my $native = "0 DISK ada0 17179869184 512 hd 16 sc 63\n"
+            . "1 PART ada0p3 16642433024 512 i 3 o 537415680 ty freebsd-ufs xs GPT xt 516e7cb6-6ecf-11d6-8ff8-00022d09712b\n"
+            . "2 LABEL ufsid/0123456789abcdef 16642433024 512 i 0 o 0\n"
+            . "1 PART ada0p2 524288 512 i 2 o 536891392 ty freebsd-boot xs GPT xt 83bd6b9d-7f41-11dc-be0b-001560b84f0f\n"
+            . "1 PART ada0p1 536870912 512 i 1 o 20480 ty freebsd-swap xs GPT xt 516e7cb5-6ecf-11d6-8ff8-00022d09712b\n";
+        my $graph = read_file("$root/graph");
+        $graph =~ s/0[ ]DISK[ ]ada0[^\n]*\n1[ ]LABEL[^\n]*\n/$native/x;
+        write_file("$root/partitions", "Geom name: ada0\nscheme: GPT\nstate: OK\nmodified: false\nMode: r0w0e0\n");
+        for my $label ('ufsid/0123456789abcdef', 'ufs/oldroot') {
+            my $accepted = $graph;
+            $accepted =~ s{ufsid/0123456789abcdef}{$label}x;
+            write_file("$root/graph", $accepted);
+            my ($status, $output, $error) = run_preflight($root, \%policy, 'xcat_check_zfs_reinstall');
+            is($status, 0, "$label below a GPT UFS partition permits whole-disk reinstall") or diag($error);
+            like($output, qr/preserved\nada3\tSERIAL3\t/x, 'the separate disk remains pinned');
+        }
+        for my $change (
+            [qr/freebsd-ufs/x, 'freebsd-zfs'],
+            [qr{ufsid/0123456789abcdef}x, 'mirror/userdata'],
+            [qr/2[ ]LABEL/x, '2 ELI'],
+        ) {
+            my $invalid = $graph;
+            $invalid =~ s/$change->[0]/$change->[1]/x;
+            write_file("$root/graph", $invalid);
+            isnt((run_preflight($root, \%policy, 'xcat_check_zfs_reinstall'))[0], 0,
+                'a label on another partition type or an unsupported consumer prevents erase');
+        }
+    };
+
+    subtest 'erase rechecks the accepted snapshot before any destructive command' => sub {
+        my %policy = (XCAT_FORMAT => 'xcat-freebsd-install-5', XCAT_DISK_ACTION => 'erase',
+            XCAT_ZFS_COMPRESSION => 'lz4', XCAT_ZFS_ASHIFT => '12', XCAT_PRESERVE_DISKS => 'ada3@SERIAL3');
+        for my $change ('saved snapshot', 'preserved identity', 'OS labels') {
+            my $root = fixture();
+            my ($status, $snapshot, $error) = run_preflight($root, \%policy, 'xcat_check_zfs_reinstall');
+            is($status, 0, 'the controller can acknowledge the initial snapshot') or diag($error);
+            write_file("$root/before.snapshot", $snapshot);
+            if ($change eq 'saved snapshot') {
+                write_file("$root/before.snapshot", $snapshot . "changed\n");
+            } elsif ($change eq 'preserved identity') {
+                my $disk = read_file("$root/ada3.geom");
+                $disk =~ s/SERIAL3/REPLACED/x;
+                write_file("$root/ada3.geom", $disk);
+            } else {
+                write_file("$root/labels/ada0", "pool_guid: 123\nname: 'zroot'\n");
+            }
+            write_file("$root/events", '');
+            isnt((run_preflight($root, \%policy, 'xcat_erase_os_disks'))[0], 0, "$change invalidates erase");
+            unlike(read_file("$root/events"), qr/^(zpool[ ]labelclear|gpart[ ]destroy|dd[ ].*of=\/dev\/)/mx,
+                'the failed guard invokes no label clearing, partition destruction or disk write');
+        }
+    };
+    return;
+}
+reinstall_guard_cases();
 
 done_testing();
