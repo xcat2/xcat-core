@@ -144,8 +144,10 @@ Compressor and ctorrent fixtures record what nodes can download during the
 pack, or fail on request. The image lock and the ilitefile query are test
 doubles. This case does not boot the image.
 
-The disk, kdump and sudoer cases require bats-core 1.4 or newer, Bubblewrap,
-GNU timeout, diffutils, Capture::Tiny, File::Slurper and sudo's `visudo`.
+The disk, kdump, sudoer and remoteshell cases require bats-core 1.4 or newer,
+Bubblewrap, GNU timeout, diffutils, Capture::Tiny, File::Slurper and sudo's
+`visudo`. The remoteshell case also needs `/usr/bin/openssl` and `ssh-keygen`
+with DSA, RSA, ECDSA and Ed25519 support.
 Sandbox commands have a 45-second limit. Enable Linux user namespaces.
 Run the group as root because
 the disk-selection case creates dummy block-device entries:
@@ -154,7 +156,8 @@ the disk-selection case creates dummy block-device entries:
 sudo bats xCAT-test/native/getinstdisk_selection.bats
 sudo prove xCAT-test/native/getinstdisk_installer.t \
       xCAT-test/native/enablekdump_per_node.t \
-      xCAT-test/native/sudoer_password_source.t
+      xCAT-test/native/sudoer_password_source.t \
+      xCAT-test/native/remoteshell_credentials.t
 ```
 
 The BATS cases source the unchanged disk selector. Partition and udev fixtures
@@ -175,7 +178,9 @@ copy for this reason.
 These cases run the unchanged scripts with private filesystems and no network.
 Disk discovery, NFS mounts, credentials, account commands and service commands
 use fixtures. The disk case never opens its dummy devices. The sudoer case
-checks generated rules with the real `visudo` parser. These tests do not perform
+checks generated rules with the real `visudo` parser. The remoteshell case
+generates disposable SSH keys and checks their installation through the real script.
+These tests do not perform
 an installation, capture a kernel crash or modify host accounts.
 
 Check the TAP output for skipped prerequisites. A successful `prove` exit with

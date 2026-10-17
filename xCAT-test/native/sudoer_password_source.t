@@ -32,7 +32,8 @@ sub field_reply {
 XML
 }
 
-my $hash_reply   = field_reply('$6$saltsalt$hashhashhash');
+my $hash = '$6$saltsalt$hashhashhash';
+my $hash_reply   = field_reply($hash);
 my $locked_reply = field_reply('!');
 
 my $error_reply = <<'XML';
@@ -82,9 +83,13 @@ sub scratch_tree {
         "echo \"visudo \$*\" >> /fixture/calls\n"
         . ($opt{visudo_rejects} ? "exit 1\n" : 'exec /native-visudo "$@" >> /fixture/parser.log 2>&1'));
     write_stub("$root/bin/getcredentials.awk",
-        "echo \"getcredentials \$*\" >> /fixture/calls\ncat /fixture/reply.xml\n");
+        "echo \"getcredentials \$*\" >> /fixture/calls\n"
+        . "n=\$(grep -c '^getcredentials ' /fixture/calls)\n"
+        . "if [ -f /fixture/reply.\$n ]; then cat /fixture/reply.\$n; else cat /fixture/reply.xml; fi\n");
     write_stub("$root/bin/allowcred.awk", "exec /bin/sleep 30\n");
-    write_stub("$root/bin/sleep", "exit 0\n");
+    write_stub("$root/bin/sleep", "echo \"sleep \$*\" >> /fixture/calls\n");
+    write_stub("$root/xcatpost/xcatflowrequest",
+        "echo \"flow \$*\" >> /fixture/calls\nexit \${FLOW_STATUS:-0}\n");
     write_stub("$root/bin/logger", "echo \"\$*\" >> /fixture/messages\n");
     write_stub("$root/bin/chown", "exit 0\n");
     write_stub("$root/bin/systemctl", "echo \"systemctl \$*\" >> /fixture/calls\n");
@@ -110,20 +115,28 @@ sub run_sudoer {
     my $user = $opt{user} || 'xcat';
     my $args = defined $opt{args} ? $opt{args} : '';
 
+    for my $reply (glob "$root/reply.[0-9]*") {
+        unlink $reply or die "unlink $reply: $!";
+    }
     write_binary("$root/reply.xml", defined $opt{reply} ? $opt{reply} : '');
+    for my $index (0 .. $#{$opt{replies} || []}) {
+        write_binary("$root/reply." . ($index + 1), $opt{replies}[$index]);
+    }
     write_binary("$root/calls", '');
     write_binary("$root/messages", '');
     my ($rc, $output) = sandbox_run($root, {
         read_only => {$postscripts => '/postscripts', $visudo => '/native-visudo',
             "$root/bin" => '/usr/sbin', "$root/xcatpost" => '/xcatpost'},
         writable => {"$root/home" => '/home'},
-        env => {MASTER => '192.0.2.1', XCATSERVER => '192.0.2.1:3001'}},
+        env => {MASTER => '192.0.2.1', XCATSERVER => '192.0.2.1:3001',
+            USEFLOWCONTROL => $opt{flow} ? 'YES' : 'NO', FLOW_STATUS => $opt{flow_status} || 0}},
         '/bin/bash', '/postscripts/sudoer', shellwords($args));
     diag($output) if $output =~ /bwrap:/;
 
     return {
         root            => $root,
         rc              => $rc,
+        output          => $output,
         calls           => read_file("$root/calls"),
         log             => read_file("$root/messages"),
         sudoers         => read_file("$root/etc/sudoers"),
@@ -181,6 +194,42 @@ sub leftovers {
     like($r->{calls}, qr{^usermod -p \$6\$saltsalt\$hashhashhash xcat$}m,
         'the hash from the passwd table is applied to the account');
     like($r->{log}, qr{set the password of xcat}, 'the applied password is logged');
+}
+
+for my $flow (0, 1) {
+    my $r = run_sudoer(replies => ['', '', $hash_reply], flow => $flow, flow_status => 1);
+    is($r->{rc}, 0, "delayed password completes with flow control $flow");
+    is(scalar(() = $r->{calls} =~ /^getcredentials /mg), 3, 'third reply is used');
+    is_deeply([$r->{calls} =~ /^sleep (.*)$/mg], [1, 5, 10], 'retry delays stay with the caller');
+    is(scalar(() = $r->{calls} =~ /^flow 192\.0\.2\.1 3001$/mg), $flow ? 3 : 0,
+        'a failed flow request does not disable sudoer flow control');
+    like($r->{calls}, qr/^usermod -p \$6\$saltsalt\$hashhashhash xcat$/m, 'delayed hash is applied');
+    unlike($r->{log} . $r->{output}, qr/\Q$hash\E/, 'hash is not logged or printed');
+}
+
+{
+    my $r = run_sudoer(reply => field_reply('!'), replies => [field_reply('')]);
+    is($r->{rc}, 1, 'a nonempty reply without content is not retried');
+    is(scalar(() = $r->{calls} =~ /^getcredentials /mg), 1, 'missing content stops after one request');
+    is($r->{managed}, '', 'missing content grants no sudo rule');
+    is($r->{authorized_keys}, '', 'missing content grants no SSH key');
+}
+
+{
+    my $r = run_sudoer(reply => $hash_reply, replies => ['']);
+    is($r->{rc}, 0, 'a delayed reply can precede a second postscript run');
+    my $again = run_sudoer(root => $r->{root}, reply => $locked_reply);
+    is($again->{rc}, 0, 'the second postscript run succeeds');
+    is(scalar(() = $again->{calls} =~ /^getcredentials /mg), 1,
+        'the second run does not reuse the previous empty reply');
+}
+
+{
+    my $r = run_sudoer(reply => "<xcatresponse>\n<error>denied &lt;name&gt; &quot; &apos;</error>\n</xcatresponse>\n");
+    is($r->{rc}, 1, 'encoded server error fails');
+    like($r->{log}, qr/denied <name> "; '/, 'the server error uses the existing entity substitutions');
+    unlike($r->{calls}, qr/^usermod -p/m, 'an error is not used as a password');
+    is($r->{managed}, '', 'an error grants no sudo rule');
 }
 
 # --- another user name, then a rename revokes the previous account -----------
