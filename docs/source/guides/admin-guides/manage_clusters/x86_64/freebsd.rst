@@ -736,9 +736,9 @@ policy. Compression and ashift use the same values and defaults as the OS policy
 Comma-separated members form a mirror. Semicolons separate independent log groups.
 ``cache_vdevs`` is a comma-separated list of L2ARC devices.
 ``special_vdevs`` uses mirrored groups for metadata and optional small blocks.
-Each special group must have at least the data topology's redundancy: two members
-for a stripe, RAID-Z1 or striped mirrors, three for RAID-Z2, and four for RAID-Z3.
-For a data mirror, match its member count. Loss of a special group can lose the
+Each special group must match the data topology's redundancy exactly: two
+members for RAID-Z1 or striped mirrors, three for RAID-Z2, and four for RAID-Z3.
+For a data mirror, match its member count. Data stripes cannot use special devices. Loss of a special group can lose the
 pool. Select suitable devices and redundancy before creation.
 
 Auxiliary roles default to ``-``, meaning absent. ``special_small_blocks`` defaults
@@ -780,7 +780,15 @@ must be owned by root, mode ``0700``. Keep an independently recoverable copy on
 the installation owner or in the site's key backup system.
 
 Deliver keys through SSH file synchronization. Keep the source outside the HTTP
-installation tree. Do not put key bytes in image settings, disk policies,
+installation tree. Synchronize the whole private directory so that rsync also
+preserves its mode. For example, use this ``synclists`` entry, with the source
+directory owned by root and mode ``0700``, and every key file mode ``0600``::
+
+    /root/freebsd-keys/node01/ -> /etc/xcat/keys/
+
+A file-only entry does not set the destination directory's mode. Restore the
+private directory with the same mapping after reinstall. Do not put key bytes
+in image settings, disk policies,
 environment attributes, command arguments or postscripts. The postscript uses
 the native ``zfskeys`` service to unlock the data pool automatically at boot.
 It never prompts for a passphrase. Missing or incorrect keys cause failure.
@@ -869,13 +877,18 @@ The adapter accepts these attributes:
      - Use DHCPv6 through the ``dhcpcd`` package. Install that package first.
        ``DHCPV6C=no`` or ``dhcp6=false`` retain static IPv6 configuration.
    * - ``PEERDNS=yes`` or ``PEERDNS=no``
-     - Accept or ignore DHCP resolver settings. The default is ``yes``.
+     - Add or ignore DHCP resolver settings. The default is ``yes``. The
+       installed static resolver settings remain registered with openresolv;
+       leases without DNS options do not replace them.
    * - ``DEFROUTE=yes`` or ``DEFROUTE=no``
      - Accept or ignore DHCPv4 routes. The default is ``yes`` for the management
        interface and ``no`` for additional interfaces.
    * - ``IPV6_DEFROUTE=yes`` or ``IPV6_DEFROUTE=no``
-     - Accept or ignore IPv6 router-advertisement defaults for DHCPv6.
-       Additional interfaces default to ``no``.
+     - Require or ignore an IPv6 router-advertisement default for DHCPv6.
+       The management interface defaults to ``yes`` when it has no static IPv6
+       gateway. Additional interfaces default to ``no``. Use ``no`` on an
+       isolated link whose router advertisements have zero lifetime or which
+       has no router advertisements.
    * - ``MACADDR=ADDRESS``
      - Set a persistent unicast MAC on a clone. Required for a DHCP bridge.
 
