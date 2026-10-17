@@ -9,7 +9,8 @@ xCAT::UFTP - validation and request helpers for UFTP root image distribution
 genimage records which initial ramdisk carries the UFTP receiver. nodeset
 turns that record and the listener configuration into kernel arguments.
 xcat-uftp-listener sends a root image that packimage published with its
-SHA-256 checksum. All of them share the checks in this module.
+SHA-256 checksum, and keeps its transfer jobs with the subs in this module.
+All of them share the checks in this module.
 
 =cut
 
@@ -21,6 +22,7 @@ use Digest::SHA ();
 use Errno qw(ENOENT);
 use Fcntl qw(:mode O_RDONLY O_NOFOLLOW);
 use File::Basename ();
+use File::Path ();
 use IO::Handle ();
 use Socket ();
 
@@ -30,9 +32,12 @@ our $TARGET_PREFIX = '/xcat-uftp/v1';
 our @ARTIFACTS     = qw(rootimg.cpio.gz rootimg.cpio.xz rootimg.tar.gz rootimg.tar.xz rootimg.sfs);
 our @RECEIVERS     = qw(/usr/sbin/uftpd /usr/bin/uftpd);
 our @BOOT_KEYS     = qw(xcat.uftp xcat.uftpfp);
+our $KILL_GRACE    = 5;
 
 my $MAX_PATH     = 1024;
 my $MAX_SEGMENTS = 64;
+my $MAX_REQUEST  = 8192;
+my $MAX_FINISHED = 1024;
 my $SEGMENT      = qr/[A-Za-z0-9_+-][A-Za-z0-9._+-]{0,254}/;
 my $SHA256       = qr/[0-9a-f]{64}/;
 my $FINGERPRINT  = qr/(?:[0-9A-F]{2}:){19}[0-9A-F]{2}/;
@@ -468,6 +473,273 @@ sub uftp_command {
         '-D', $name,
         '/dev/fd/3',
     );
+}
+
+# Returns the fingerprint of the server key, or undef and why the listener cannot send.
+# $key_fingerprint returns the fingerprint that uftp_keymgt reports for the key, or undef and an error.
+sub check_listener_runtime {
+    my ($config, $key_fingerprint) = @_;
+    return (undef, "UFTP sender $config->{uftp} is not executable; install the uftp package")
+      unless -f $config->{uftp} && -x _;
+    if (my $version_error = uftp_version_error($config->{uftp})) {
+        return (undef, $version_error);
+    }
+    my @st = stat($config->{key_file});
+    return (undef, "UFTP server key $config->{key_file} is missing; run xcat-uftp-listener --init-key")
+      unless @st;
+    return (undef, "UFTP server key $config->{key_file} must not be accessible by other users")
+      if $st[2] & 077;
+    my ($fingerprint, $error) = $key_fingerprint->();
+    return (undef, $error) if $error;
+    my ($published, $read_error) = read_fingerprint($config->{fingerprint_file});
+    return (undef, "$read_error; run xcat-uftp-listener --init-key") if $read_error;
+    return (undef, "$config->{fingerprint_file} does not match $config->{key_file}; run xcat-uftp-listener --init-key")
+      unless $published eq $fingerprint;
+    unless (-d $config->{log_dir}) {
+        eval { File::Path::make_path($config->{log_dir}, { mode => 0750 }) };
+        return (undef, "Cannot create $config->{log_dir}") unless -d $config->{log_dir};
+    }
+
+    # The file test operators ignore read-only mounts, such as those of the service sandbox.
+    my $probe = "$config->{log_dir}/.write-check.$$";
+    unlink($probe);
+    sysopen(my $fh, $probe, Fcntl::O_WRONLY() | Fcntl::O_CREAT() | Fcntl::O_EXCL(), 0600)
+      or return (undef, "Cannot write to $config->{log_dir}: $!");
+    close($fh);
+    unlink($probe);
+    return ($fingerprint, undef);
+}
+
+# The listener keeps its transfer jobs in this state. spawn starts a sender for a job and returns its PID,
+# or undef and an error. signal sends a signal to a sender.
+sub listener_state {
+    my ($config, %args) = @_;
+    return {
+        config  => $config,
+        workdir => $args{workdir},
+        log     => $args{log} || sub { },
+        spawn   => $args{spawn},
+        signal  => $args{signal} || sub { kill($_[0], $_[1]) },
+        jobs    => {},
+        pending => {},
+        senders => {},
+    };
+}
+
+sub _job_id {
+    my ($state) = @_;
+    my $bytes = '';
+    if (open(my $random, '<:raw', '/dev/urandom')) {
+        read($random, $bytes, 8);
+        close($random);
+    }
+    $bytes = pack('N2', int(rand(2**32)), int(rand(2**32))) unless length($bytes) == 8;
+    my $id = unpack('H16', $bytes);
+    return exists($state->{jobs}{$id}) ? _job_id($state) : $id;
+}
+
+sub _jobs_in {
+    my ($state, @states) = @_;
+    my %want = map { $_ => 1 } @states;
+    return grep { $want{ $_->{state} } } values %{ $state->{jobs} };
+}
+
+sub _request_transfer {
+    my ($state, $peer, $target, $now) = @_;
+    my ($config, $log) = @$state{qw(config log)};
+    my ($digest, $path, $error) = parse_transfer_target($target);
+    if ($error) {
+        $log->('warning', "$peer: rejected request: $error");
+        return (400, "error=$error\n");
+    }
+    my ($image, $resolve_error) = resolve_artifact($config->{image_roots}, $path, $digest);
+    if ($resolve_error) {
+        $log->('warning', "$peer: rejected $path: $resolve_error");
+        return (403, "error=image is not published\n");
+    }
+    my $key = join(':', $image->{dev}, $image->{ino}, $digest, $config->{udp_port});
+    my $job = $state->{pending}{$key};
+    my $repeated;
+    if ($job) {
+        close($image->{fh});
+        $repeated = $job->{clients}{$peer};
+        unless ($repeated) {
+            if (keys(%{ $job->{clients} }) >= $config->{max_clients_per_job}) {
+                $log->('warning', "$peer: job $job->{id} is full");
+                return (503, "error=transfer is full\n");
+            }
+            $job->{clients}{$peer} = 1;
+        }
+    } else {
+        if (_jobs_in($state, 'pending', 'running') >= $config->{max_queued_jobs}) {
+            close($image->{fh});
+            $log->('warning', "$peer: too many queued transfers");
+            return (503, "error=too many queued transfers\n");
+        }
+        $job = {
+            %$image,
+            id       => _job_id($state),
+            key      => $key,
+            clients  => { $peer => 1 },
+            created  => $now,
+            start_at => $now + $config->{batch_delay},
+            state    => 'pending',
+        };
+        $state->{pending}{$key} = $job;
+        $state->{jobs}{ $job->{id} } = $job;
+        $log->('info', "job $job->{id}: queued $path ($digest) for $config->{batch_delay}s");
+    }
+    $log->('info', $repeated ? "job $job->{id}: $peer asked again" : "job $job->{id}: added $peer");
+    return (200, format_record(
+        status    => 'queued',
+        job       => $job->{id},
+        file      => $job->{name},
+        size      => $job->{size},
+        port      => $config->{udp_port},
+        mcast     => $config->{public_multicast},
+        server_id => $config->{server_id},
+        server_ip => $config->{multicast_interface},
+        client_ip => $peer,
+        start_in  => $job->{start_at} > $now ? $job->{start_at} - $now : 0,
+        timeout   => $config->{transfer_timeout},
+    ));
+}
+
+sub _job_status {
+    my ($state, $peer, $target, $now) = @_;
+    my ($id, $error) = parse_job_target($target);
+    return (400, "error=$error\n") if $error;
+    my $job = $state->{jobs}{$id};
+    return (404, "error=unknown job\n") unless $job && $job->{clients}{$peer};
+    my @fields = (state => $job->{state});
+    push @fields, (start_in => $job->{start_at} > $now ? $job->{start_at} - $now : 0)
+      if $job->{state} eq 'pending';
+    push @fields, (timeout => $state->{config}{transfer_timeout});
+    push @fields, (reason => $job->{reason}) if $job->{reason};
+    return (200, format_record(@fields));
+}
+
+# Returns the status and body of the reply to the request that $peer sent in $buffer, or an empty list
+# while the request is incomplete.
+sub listener_reply {
+    my ($state, $peer, $buffer, $now) = @_;
+    return (413, "error=request too large\n") if length($buffer) > $MAX_REQUEST;
+    my $request = parse_http_request($buffer);
+    return () if $request->{incomplete};
+    return ($request->{status}, "error=$request->{reason}\n") if $request->{status};
+    my $target = $request->{target};
+    return _request_transfer($state, $peer, $target, $now) if index($target, "$TARGET_PREFIX/transfer/") == 0;
+    return _job_status($state, $peer, $target, $now) if index($target, "$TARGET_PREFIX/job/") == 0;
+    return (404, "error=unknown request target\n");
+}
+
+# Returns the status and body that refuse a new connection from $peer while $open connections are open,
+# or an empty list to accept it.
+sub connection_refusal {
+    my ($state, $open, $peer) = @_;
+    my $config = $state->{config};
+    return (503, "error=too many connections\n") if $open >= $config->{max_connections};
+    unless (address_allowed($config->{allowed_networks}, $peer)) {
+        $state->{log}->('warning', "$peer: address is not in allowed_networks");
+        return (403, "error=client address is not allowed\n");
+    }
+    return ();
+}
+
+sub _finish_job {
+    my ($state, $job, $result, $reason, $now) = @_;
+    close($job->{fh}) if $job->{fh};
+    delete $job->{fh};
+    my $pending = $state->{pending};
+    delete $pending->{ $job->{key} } if $pending->{ $job->{key} } && $pending->{ $job->{key} } == $job;
+    unlink($job->{hostlist}) if $job->{hostlist};
+    $job->{state}    = $result;
+    $job->{reason}   = $reason if $reason;
+    $job->{finished} = $now;
+    $state->{log}->($result eq 'done' ? 'info' : 'error', "job $job->{id}: $result" . ($reason ? " ($reason)" : ''));
+}
+
+sub _start_job {
+    my ($state, $job, $now) = @_;
+    my $config = $state->{config};
+    delete $state->{pending}{ $job->{key} };
+    my $hostlist = "$state->{workdir}/$job->{id}.hosts";
+    my $hosts = join('', map { "$_\n" } sort keys %{ $job->{clients} });
+    if (my $error = _write_atomic($hostlist, $hosts, 0600)) {
+        return _finish_job($state, $job, 'failed', $error, $now);
+    }
+    $job->{hostlist} = $hostlist;
+    my $log = "$config->{log_dir}/job-$job->{id}.log";
+    my ($pid, $error) = $state->{spawn}->($job, $log, uftp_command($config, $job->{name}, $hostlist));
+    return _finish_job($state, $job, 'failed', $error, $now) unless $pid;
+    close($job->{fh});
+    delete $job->{fh};
+    $state->{senders}{$pid} = $job;
+    $job->{pid}      = $pid;
+    $job->{state}    = 'running';
+    $job->{started}  = $now;
+    $job->{deadline} = $now + $config->{transfer_timeout};
+    $state->{log}->('info', "job $job->{id}: sending $job->{name} to "
+          . scalar(keys %{ $job->{clients} }) . " client(s), pid $pid, log $log");
+}
+
+# Starts each pending job whose batch delay has passed while fewer than max_transfers senders run,
+# stops senders that exceed transfer_timeout, and forgets finished jobs after job_retention.
+sub run_jobs {
+    my ($state, $now) = @_;
+    my $config  = $state->{config};
+    my $running = _jobs_in($state, 'running');
+    for my $job (sort { $a->{start_at} <=> $b->{start_at} || $a->{created} <=> $b->{created} }
+        _jobs_in($state, 'pending')) {
+        if ($now > $job->{start_at} + $config->{transfer_timeout}) {
+            _finish_job($state, $job, 'failed', 'no transfer slot became free', $now);
+            next;
+        }
+        next if $job->{start_at} > $now || $running >= $config->{max_transfers};
+        _start_job($state, $job, $now);
+        $running++ if $job->{state} eq 'running';
+    }
+    for my $job (_jobs_in($state, 'running')) {
+        if (!$job->{timed_out} && $now >= $job->{deadline}) {
+            $job->{timed_out} = $now;
+            $state->{signal}->('TERM', $job->{pid});
+        } elsif ($job->{timed_out} && $now >= $job->{timed_out} + $KILL_GRACE) {
+            $state->{signal}->('KILL', $job->{pid});
+        }
+    }
+    my @finished = sort { $a->{finished} <=> $b->{finished} } _jobs_in($state, 'done', 'failed');
+    while (@finished && ($finished[0]{finished} + $config->{job_retention} <= $now
+            || @finished > $MAX_FINISHED)) {
+        delete $state->{jobs}{ shift(@finished)->{id} };
+    }
+}
+
+# Finishes the job of the sender $pid, which exited with the wait status $status. $reason replaces the
+# reason that the status gives.
+sub sender_exited {
+    my ($state, $pid, $status, $now, $reason) = @_;
+    my $job = delete $state->{senders}{$pid} or return;
+    unless ($reason) {
+        if ($job->{timed_out}) {
+            $reason = "transfer exceeded $state->{config}{transfer_timeout}s";
+        } elsif ($status & 127) {
+            $reason = 'uftp killed by signal ' . ($status & 127);
+        } elsif ($status >> 8) {
+            $reason = 'uftp exited with status ' . ($status >> 8);
+        }
+    }
+    _finish_job($state, $job, $reason ? 'failed' : 'done', $reason, $now);
+}
+
+sub sender_pids {
+    my ($state) = @_;
+    return keys %{ $state->{senders} };
+}
+
+# Fails the jobs that still wait for a sender when the listener stops.
+sub stop_jobs {
+    my ($state, $now) = @_;
+    _finish_job($state, $_, 'failed', 'listener stopped', $now) for _jobs_in($state, 'pending');
 }
 
 sub image_receiver {
