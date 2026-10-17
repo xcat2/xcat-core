@@ -15,7 +15,8 @@ xCAT-server/share/xcat/netboot/ubuntu/dracut/xcatroot dash'
 UFTP_SCRIPTS='xCAT-server/share/xcat/netboot/rh/dracut_033/xcatroot bash
 xCAT-server/share/xcat/netboot/rh/dracut_047/xcatroot bash
 xCAT-server/share/xcat/netboot/rh/dracut_105/stateless/xcatroot bash
-xCAT-server/share/xcat/netboot/sles/dracut_033/xcatroot bash'
+xCAT-server/share/xcat/netboot/sles/dracut_033/xcatroot bash
+xCAT-server/share/xcat/netboot/ubuntu/dracut/xcatroot dash'
 
 setup()
 {
