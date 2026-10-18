@@ -1168,11 +1168,19 @@ To move those addresses onto a bridge over a VLAN over LACP, use::
         'nicextraparams=lagg0!LAGGPROTO=lacp'
     updatenode node01 -P confignetwork
 
-Additional interfaces do not replace the IPv4 default route. A configured
+Additional interfaces replace the IPv4 default only with an explicit
+``DEFROUTE=yes`` DHCP policy. A configured
 IPv6 network can supply ``networks.gateway``. IPv6 default gateways must agree.
 A link-local IPv6 gateway receives the interface scope automatically.
-The ``<xcatmaster>`` gateway token preserves the default selected during
-installation. Set an explicit gateway to change it during management adoption.
+The ``<xcatmaster>`` gateway token retains the current managed IPv4 default.
+When returning from DHCP to static IPv4, it can retain a leased gateway that
+matches the current kernel route and belongs to the management network.
+An explicit ``DEFROUTE=yes`` DHCP interface takes precedence over this retained
+default. Gateways outside the managed configuration remain under administrator
+control. The token does not select a new gateway when the controller or its
+forwarding configuration changes. Set an explicit gateway to change it.
+If the previous DHCP default cannot be validated or is an interface route,
+set an explicit gateway before selecting static IPv4.
 When moving IPv6 management traffic, set the gateway on its new interface;
 a retained link-local gateway cannot use an interface whose IPv6 is disabled.
 
