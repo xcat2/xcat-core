@@ -180,6 +180,56 @@ subtest 'data topologies and special-device redundancy' => sub {
     }
 };
 
+subtest 'dRAID geometry and native distributed spares' => sub {
+    my $policy = { %{base()}, topology => 'draid2:4d:8c:2s',
+        vdevs => join(',', map { "vtbd$_\@DATA$_" } 2 .. 9),
+        special_vdevs => join(',', map { "vtbd$_\@SPECIAL$_" } 10 .. 12),
+        log_vdevs => 'vtbd13@LOG13,vtbd14@LOG14', cache_vdevs => 'vtbd15@CACHE15',
+        encryption => 'aes-256-gcm', keyfile => '/etc/xcat/keys/tank.key', special_small_blocks => 65536 };
+    my ($exit, $plan) = compile($policy);
+    is($exit, 0, 'explicit dRAID with matching special redundancy and automatic encryption compiles');
+    is_deeply([map { substr($_, 2) } grep { /^C\t/x } split(/\n/x, $plan)],
+        ['draid2:4d:8c:2s', map({ "/dev/vtbd$_" } 2 .. 9), 'special', 'mirror',
+        map({ "/dev/vtbd$_" } 10 .. 12), 'log', 'mirror', '/dev/vtbd13', '/dev/vtbd14', 'cache', '/dev/vtbd15'],
+        'native arguments retain geometry and every device role');
+    open(my $input, '<', "$FindBin::Bin/fixtures/freebsd15.1-zpool-draid") or croak $!;
+    my $native = do { local $/ = undef; <$input> };
+    close($input) or croak $!;
+    is((verify($plan, $native))[0], 0, 'native FreeBSD creation and its two distributed spares pass readback');
+    for my $change (
+        [qr/draid2:4d:8c:2s-0/x, 'draid1:4d:8c:2s-0'],
+        [qr/draid2:4d:8c:2s-0/x, 'draid2:3d:8c:2s-0'],
+        [qr/draid2:4d:8c:2s-0/x, 'draid2:4d:9c:2s-0'],
+        [qr/draid2:4d:8c:2s-0/x, 'draid2:4d:8c:1s-0'],
+        [qr/draid2-0-1/x, 'draid2-0-2'], [qr/draid2-0-1/x, 'draid2-0-0'],
+        [qr/AVAIL/x, 'INUSE'], [qr/\t\s+draid2-0-1[^\n]*\n/x, ''],
+        [qr{/dev/vtbd9}x, '/dev/vtbd1'],
+    ) {
+        my $wrong = $native;
+        $wrong =~ s/$change->[0]/$change->[1]/x or croak 'invalid dRAID fixture mutation';
+        isnt((verify($plan, $wrong))[0], 0, 'changed geometry, spare state or data membership fails');
+    }
+    for my $topology (qw(draid draid1 draid0:4d:8c:1s draid4:4d:8c:1s
+        draid2:04d:8c:2s draid2:0d:8c:2s draid2:4d:8c:3s draid2:4d:7c:1s draid2:4d:129c:1s)) {
+        my ($bad, $partial) = compile({ %$policy, topology => $topology });
+        isnt($bad, 0, "$topology cannot reach pool creation");
+        is($partial, '', 'invalid geometry emits no partial plan');
+    }
+    for my $parity (1 .. 3) {
+        my %simple = (%$policy, topology => "draid$parity:3d:8c:1s", special_vdevs => '-', special_small_blocks => 0);
+        is((compile(\%simple))[0], 0, "parity $parity compiles");
+        $simple{special_vdevs} = join(',', map { "vtbd$_\@SPECIAL$_" } 20 .. 20 + $parity);
+        is((compile(\%simple))[0], 0, "parity $parity requires the corresponding special mirror");
+        $simple{special_vdevs} =~ s/,[^,]+$//x;
+        isnt((compile(\%simple))[0], 0, 'weaker special redundancy is rejected');
+    }
+    my %multiple = (%$policy, special_vdevs => '-', special_small_blocks => 0, log_vdevs => '-', cache_vdevs => '-',
+        vdevs => $policy->{vdevs} . ';' . join(',', map { "vtbd$_\@DATA$_" } 16 .. 23));
+    is((compile(\%multiple))[0], 0, 'multiple explicit dRAID vdevs compile');
+    $multiple{vdevs} =~ s/,[^,]+$//x;
+    isnt((compile(\%multiple))[0], 0, 'each dRAID vdev must match the declared child count');
+};
+
 subtest 'native topology and health must match exactly' => sub {
     my (undef, $plan) = compile(base());
     for my $change (
