@@ -18,8 +18,8 @@ my $root = sandbox_root();
 make_path("$root/source", "$root/home");
 my ($rc, $output) = run_command('cp', '-a', repo_path('build-utils'), "$root/source/");
 die "copy build tools: $output" if $rc;
-for my $relative (qw(builddebs.pl buildrpms.pl Version Release),
-    'xCAT-genesis-scripts/usr/lib/xcat/fips.sh', 'xCAT/postscripts/xcatlib.sh') {
+my @libraries = ('xCAT-genesis-scripts/usr/lib/xcat/fips.sh', 'xCAT/postscripts/xcatlib.sh');
+for my $relative (qw(builddebs.pl buildrpms.pl Version Release), @libraries) {
     make_path(dirname("$root/source/$relative"));
     copy(repo_path($relative), "$root/source/$relative") or die "copy $relative: $!";
 }
@@ -37,6 +37,10 @@ for my $builder (qw(buildrpms.pl builddebs.pl)) {
         isnt($rc, 0, "$builder rejects stale policy for $package");
         like($output, qr/generated FIPS policy is not current/,
             'the builder reports policy drift before package work');
+        for my $relative (@libraries) {
+            like($output, qr/\Q$relative\E is out of date/,
+                "$builder identifies stale $relative for $package");
+        }
     }
 }
 
