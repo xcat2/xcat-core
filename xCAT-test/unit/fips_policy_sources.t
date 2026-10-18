@@ -25,6 +25,10 @@ for my $relative ($sync, $source, @libraries) {
     make_path(dirname("$root/$relative"));
     copy(repo_path($relative), "$root/$relative") or die "copy $relative: $!";
 }
+my %modes = ($libraries[0] => oct('0644'), $libraries[1] => oct('0755'));
+for my $relative (@libraries) {
+    chmod($modes{$relative}, "$root/$relative") or die "chmod $relative: $!";
+}
 my @original = map { scalar read_binary("$root/$_") } @libraries;
 my $policy = read_binary("$root/$source");
 write_binary("$root/$source", $policy . "\nxcat_policy_probe() { printf canonical; }\n");
@@ -38,6 +42,8 @@ is_deeply([map { scalar read_binary("$root/$_") } @libraries], \@original,
 ($rc, $output) = run_command($^X, "$root/$sync", '--write');
 is($rc, 0, 'write refreshes both artifacts') or diag($output);
 for my $relative (@libraries) {
+    is((stat("$root/$relative"))[2] & oct('0777'), $modes{$relative},
+        "generation preserves the mode of $relative");
     my $shell = $relative eq $libraries[0] ? 'sh' : 'bash';
     ($rc, $output) = run_command($shell, '-c', '. "$1"; xcat_policy_probe',
         'fips-artifact-test', "$root/$relative");
@@ -49,6 +55,10 @@ my @rendered = map { scalar read_binary("$root/$_") } @libraries;
 is($rc, 0, 'repeated generation succeeds');
 is_deeply([map { scalar read_binary("$root/$_") } @libraries], \@rendered,
     'generation is idempotent');
+for my $relative (@libraries) {
+    is((stat("$root/$relative"))[2] & oct('0777'), $modes{$relative},
+        "repeated generation preserves the mode of $relative");
+}
 ($rc, $output) = run_command($^X, "$root/$sync", '--check');
 is($rc, 0, 'refreshed artifacts pass the check');
 
