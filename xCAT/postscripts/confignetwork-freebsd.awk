@@ -387,7 +387,7 @@ function node_addresses(nic,    ips, nets, count, nc, i, name, ip, family, net, 
                 gateway = owned_ipv4_gateway
                 if (gateway == "" && unmanaged_ipv4_gateway == "") {
                     gateway = leased_ipv4_gateway
-                    if (gateway == "" && owned_dhcp_default != "")
+                    if (gateway == "" && owned_dhcp_default != "" && leased_ipv4_default_absent != "yes")
                         fail("Cannot retain the DHCP default; set an explicit gateway before selecting static IPv4")
                 }
             }
@@ -978,6 +978,8 @@ mode == "rclists" {
 }
 
 mode == "routes" || mode == "routeconflicts" {
+    if (expect_no_ipv4_default == "yes" && family == "inet" && $1 == "default")
+        fail("An unexpected IPv4 default route is configured")
     if ($0 == "Internet:")
         family = "inet"
     else if ($0 == "Internet6:")
@@ -1068,6 +1070,9 @@ END {
         exit 1
     if (mode == "dhcp4-default") {
         if (!interface_name(nic)) fail("Invalid DHCP interface")
+        if (require_saved_lease == "yes" &&
+            (ipv4(lease["old_ip_address"]) == "" || !("old_routers" in lease)))
+            fail("Incomplete saved DHCP lease")
         lease_default()
     } else if (mode == "rclists") {
         print "cloned_interfaces: " retained_rc_list["cloned_interfaces"]

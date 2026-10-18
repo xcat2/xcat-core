@@ -471,11 +471,6 @@ for nic in $(ifconfig -l); do
 done
 [ -n "$bootnic" ] || fail 'Cannot find the physical installation interface'
 cp -p /etc/rc.conf "$pending/before.rc"
-for override in /etc/rc.conf.local /etc/rc.conf.d/netif /etc/rc.conf.d/network /etc/rc.conf.d/routing \
-    /usr/local/etc/rc.conf.d/netif /usr/local/etc/rc.conf.d/network /usr/local/etc/rc.conf.d/routing; do
-    [ ! -e "$override" ] || fail "Network overrides require manual integration: $override"
-done
-case $(sysrc -n network_interfaces) in auto|AUTO) ;; *) fail 'FreeBSD network_interfaces must be AUTO' ;; esac
 awk '
     $0 == "# BEGIN xCAT FreeBSD network" {if (inside || ++blocks > 1) exit 1; inside=1; next}
     $0 == "# END xCAT FreeBSD network" {if (!inside) exit 1; inside=0; next}
@@ -493,18 +488,24 @@ fi
 owned_ipv4_gateway=$(awk -F '\t' '$1 == "D" && $2 == "inet" {print $3}' "$pending/before.plan")
 owned_dhcp_default=$(awk -F '\t' '$1 == "H" && $6 == "yes" {print $2}' "$pending/before.plan")
 leased_ipv4_gateway=
+leased_ipv4_default_absent=
 if [ -n "$owned_dhcp_default" ] && protected_file "$state/dhcp/$owned_dhcp_default.lease"; then
-    if awk -v mode=dhcp4-default -v nic="$owned_dhcp_default" -f "$planner" \
+    if awk -v mode=dhcp4-default -v require_saved_lease=yes -v nic="$owned_dhcp_default" -f "$planner" \
         "$state/dhcp/$owned_dhcp_default.lease" > "$pending/leased.default" 2> "$pending/leased.error" &&
-        netstat -rnW > "$pending/leased.kernel" &&
-        awk -v mode=routes -f "$planner" "$pending/leased.default" "$pending/leased.kernel" \
-            >> "$pending/leased.error" 2>&1; then
-        leased_ipv4_gateway=$(awk -F '\t' '$1 == "R" && $2 == "inet" && $3 == "default" {print $4}' "$pending/leased.default")
+        netstat -rnW > "$pending/leased.kernel"; then
+        expect_no_ipv4_default=
+        [ -s "$pending/leased.default" ] || expect_no_ipv4_default=yes
+        if awk -v mode=routes -v expect_no_ipv4_default="$expect_no_ipv4_default" -f "$planner" \
+            "$pending/leased.default" "$pending/leased.kernel" >> "$pending/leased.error" 2>&1; then
+            leased_ipv4_gateway=$(awk -F '\t' '$1 == "R" && $2 == "inet" && $3 == "default" {print $4}' "$pending/leased.default")
+            leased_ipv4_default_absent=$expect_no_ipv4_default
+        fi
     fi
 fi
 awk -v bootnic="$bootnic" -v bootmac="$bootmac" -v configure_boot="$configure_boot" \
     -v owned_ipv4_gateway="$owned_ipv4_gateway" -v owned_dhcp_default="$owned_dhcp_default" \
     -v leased_ipv4_gateway="$leased_ipv4_gateway" -v unmanaged_ipv4_gateway="$unmanaged_ipv4_gateway" \
+    -v leased_ipv4_default_absent="$leased_ipv4_default_absent" \
     -f "$planner" > "$pending/plan"
 if [ "$configure_boot" = 0 ] && awk -F '\t' -v nic="$bootnic" \
     '$1 == "I" && $2 == nic {found=1} END {exit !found}' "$pending/before.plan"; then
@@ -518,6 +519,11 @@ if ! awk -F '\t' '$1 == "I" {found=1} END {exit !found}' "$pending/union"; then
     printf '%s\n' 'confignetwork: no additional network interfaces are defined'
     exit 0
 fi
+for override in /etc/rc.conf.local /etc/rc.conf.d/netif /etc/rc.conf.d/network /etc/rc.conf.d/routing \
+    /usr/local/etc/rc.conf.d/netif /usr/local/etc/rc.conf.d/network /usr/local/etc/rc.conf.d/routing; do
+    [ ! -e "$override" ] || fail "Network overrides require manual integration: $override"
+done
+case $(sysrc -n network_interfaces) in auto|AUTO) ;; *) fail 'FreeBSD network_interfaces must be AUTO' ;; esac
 ifconfig -a > "$pending/before.kernel"
 awk -v mode=conflicts -v configure_boot="$configure_boot" -f "$planner" "$pending/union" "$pending/before.kernel"
 awk -F '\t' '$1 == "I"' "$pending/union" > "$pending/route-ownership"
