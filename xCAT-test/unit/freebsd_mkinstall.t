@@ -20,6 +20,7 @@ use Storable qw(dclone);
 use Test::More;
 use xCAT::FreeBSDInstall;
 use xCAT::FreeBSDImage;
+use xCAT::Schema;
 our (%XCATSITEVALS, %GLOBAL_TAB_HASH, %GLOBAL_SN_HASH, %GLOBAL_TABDUMP_HASH, @exclude_nodes);
 
 BEGIN { $INC{'xCAT/Table.pm'} = 1; }
@@ -38,7 +39,12 @@ use xCAT::NetworkUtils;
         }
         return bless { table => $table }, $class;
     }
-    sub getNodeAttribs { return Storable::dclone($rows{$_[0]{table}}{$_[1]} || {}); }
+    sub getNodeAttribs {
+        my ($self, $node, $columns) = @_;
+        my %valid = map { $_ => 1 } @{$xCAT::Schema::tabspec{$self->{table}}{cols}};
+        die 'Requested an unknown table column' if $columns && grep { !$valid{$_} } @$columns;
+        return Storable::dclone($rows{$self->{table}}{$node} || {});
+    }
     sub getAllEntries { return Storable::dclone([values %{$rows{$_[0]{table}} || {}}]); }
     sub getAllAttribs {
         my ($self) = @_;
@@ -155,7 +161,7 @@ sub fixture {
             usr/libexec/bsdinstall/script usr/libexec/bsdinstall/pkgbase
             usr/libexec/bsdinstall/umount usr/libexec/flua usr/local/sbin/pkg-static
         );
-        if (($install_contract || '') eq 'xcat-freebsd-install-4') {
+        if (($install_contract || '') =~ /\Axcat-freebsd-install-[34]\z/x) {
             @runtime_paths = map { (split(/\t/x, $_))[1] }
                 grep { /^file\t/x } split(/\n/x, read_file("$FindBin::Bin/../fixtures/freebsd-storage-runtime.tsv"));
         }
