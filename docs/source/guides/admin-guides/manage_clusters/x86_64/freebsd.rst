@@ -24,9 +24,12 @@ Scope and requirements
   Keep user data on separate, dedicated drives.
 * Select single-disk UFS or ZFS, a ZFS mirror, striped mirrors, or RAID-Z1/2/3.
   Multi-disk policies require a version 2 image with the current storage runtime.
-  Dedicated data pools can use log, cache and redundant special devices, with
-  optional automatic encryption. OS encryption, dRAID, separate boot pools,
-  GEOM/UFS mirrors and Linux ZFS provisioning are outside this implementation.
+  OS and dedicated data pools can use log, cache and redundant special devices.
+  Dedicated data pools support optional automatic encryption.
+  OS encryption, dRAID, separate ZFS pools for
+  ``/boot``, GELI encryption, GEOM/UFS mirrors and Linux ZFS provisioning are
+  outside this implementation. See :ref:`freebsd-future-root-encryption` for
+  the deferred encrypted-root work.
 * Use IPv4 and one provisioning interface selected by MAC address. After disk
   boot, ``confignetwork`` can configure additional interfaces, static addresses
   and reserved DHCPv4/DHCPv6 leases.
@@ -626,7 +629,7 @@ these values. Do not combine these fields with ``target_disk`` or
    * - ``raidz3``
      - One group of at least 5 members.
 
-Every policy has at most 16 members. Device names and serials must be unique.
+The primary OS layout has at most 16 members. Device names and serials must be unique.
 Serials accept letters, digits, underscores, periods, colons, plus signs and
 hyphens, with a maximum of 128 characters. Unsupported serial representations
 cause rejection. The installer does not guess an equivalent identity.
@@ -642,11 +645,25 @@ even when another pair remains intact. RAID-Z tolerates losses only within its
 parity limit. Its boot loader still needs enough surviving pool members.
 
 Redundant layouts require ``swap_mode=none`` and ``swap_size=0``. The runtime
-uses one root pool and installs boot support on every selected member. UEFI
+uses one root pool and installs boot support on every primary OS member. UEFI
 members receive both the FreeBSD loader and the standard fallback loader.
 The ESP entry in the installed ``fstab`` uses ``noauto`` and a zero check pass.
 Firmware disk selection and automatic fallback remain separate capabilities.
 Verify both on the intended hardware before deployment.
+
+The root pool, ``zroot``, contains the OS and its ``/boot`` files. In the current
+layout, ``/boot`` is a directory in ``zroot/ROOT/default``, the dataset mounted
+at ``/``. It is not a separate dataset. Dedicated data pools use separate
+drives. A separate ZFS boot pool would add another pool for the kernel, modules
+and boot configuration. It could occupy partitions on the OS drives without
+requiring additional physical disks. The UEFI System Partition is a FAT
+filesystem and is not a ZFS boot pool.
+
+This additional pool is outside the current installer policy and validation.
+It requires partitioning, pool creation and reinstall handling for both OS
+pools, with matching boot files across updates and boot environments. The
+current unencrypted root does not require it. A separate boot area is one
+candidate for :ref:`freebsd-future-root-encryption`.
 
 The UEFI check requires one new boot entry for the first member, prepended to
 the existing boot order. Existing boot entries and other captured boot variables
@@ -668,33 +685,86 @@ It sets the pool sector size exponent at creation. It must accommodate every
 selected device's logical sector size. Choose it for the actual drive geometry.
 Changing the policy does not change an existing pool's vdev sector size.
 
-Use an image built with the current ``xcat-freebsd-install-5`` runtime for
+Use an image built with ``xcat-freebsd-install-5`` or a newer runtime for
 these properties and reinstall controls. Preparation rejects an older image
 when the policy requests these fields. Existing contract 4 layouts remain valid.
 Disk replacement and pool expansion remain native administrative operations.
 xCAT does not perform ongoing pool management.
 
+OS-pool log, cache and special devices
+--------------------------------------
+
+An explicit OS policy can add dedicated whole devices to ``zroot``::
+
+    zfs_log_vdevs=da2@OS_LOG_A,da3@OS_LOG_B
+    zfs_cache_vdevs=da4@OS_CACHE_A
+    zfs_special_vdevs=da5@OS_SPECIAL_A,da6@OS_SPECIAL_B
+    zfs_special_small_blocks=0
+
+This example extends the two-way OS mirror. Each identity uses the same
+``device@serial`` syntax as ``zfs_vdevs``. A log group contains one device or
+a mirror; semicolons separate log groups. Cache devices form one comma-separated
+list. Special allocation groups must be mirrors. Each special group must match
+the OS layout's redundancy exactly: the primary mirror's width, two members for
+RAID10 or RAID-Z1, three for RAID-Z2, and four for RAID-Z3. Separate special
+groups with semicolons. A single-disk OS stripe cannot use special devices.
+
+Auxiliary roles default to ``-``, meaning absent. ``zfs_special_small_blocks``
+defaults to zero, which places metadata on special devices without selecting
+small file blocks. With a special group, it also accepts powers of two from
+512 through 16777216 bytes. Loss of a complete special group can make the OS
+pool unusable. Keep enough special members connected when testing degraded boot.
+
+Primary and auxiliary OS devices must have distinct device names and serials,
+with at most 128 devices in total. Primary members require at least 4 GiB each;
+auxiliary devices require at least 128 MiB each. The installer creates all roles
+in the initial pool command and applies the requested compression, sector
+alignment and special-block policy before installing the OS. Only primary
+members receive boot partitions and firmware entries. Auxiliary disks cannot
+boot the node by themselves.
+
+Each auxiliary device receives one GPT ``freebsd-zfs`` partition. This lets the
+native BIOS and UEFI loaders discover special devices. All OS-pool members use
+generation-specific GPT names so that a missing disk cannot redirect a saved
+pool path to a renumbered data disk. The ``kern.geom.label.gpt.enable`` loader
+setting is reserved. This layout does not preserve existing partitions on any
+selected OS or auxiliary drive.
+
+The firmware and loader must be able to read the special devices as well as
+the primary OS members. Check firmware disk visibility independently of the
+kernel's disk inventory. A BIOS boot-device allowlist can hide a special device
+from the loader even when the installer can access it.
+
+These fields require an image built with ``xcat-freebsd-install-6``. Preparation
+rejects an older image. Rebuild and import the boot image, update ``bootdir``, and
+regenerate the installation with ``nodeset`` before using this policy.
+
 Reinstall the OS and preserve data
 ----------------------------------
 
 Use dedicated OS disks and dedicated data disks. Reinstall erases every selected
-OS disk, including all its partitions. It does not preserve partitions or user
-datasets inside the OS pool. Data drives must not appear in ``zfs_vdevs``.
+OS disk, including all its partitions, and every selected OS auxiliary device.
+It does not preserve partitions or user datasets inside the OS pool. Data drives
+must not appear in any ``zfs_*_vdevs`` field.
 
 Add the following settings to the explicit OS policy::
 
     disk_action=erase
     preserve_disks=da2@DATA_A,da3@DATA_B,da4@LOG_A,da5@LOG_B,da6@SPECIAL_A,da7@SPECIAL_B,da8@CACHE_A
 
-List every data, log, special and cache device by its verified identity.
-The preserved list accepts at most 128 devices and cannot overlap the OS list.
+List every data-pool member, including its log, special and cache devices, by its
+verified identity. The preserved list accepts at most 128 devices and cannot
+overlap any primary or auxiliary OS role. With the auxiliary example above,
+use separate data drives, such as ``da7@DATA_A,da8@DATA_B``.
 The installer checks these identities before and during OS disk setup.
 It writes only the selected OS disks. It does not import the data pool.
 
 The OS disks must not be in use by the running installer. Supported existing
 layouts are whole disks or GPT with FreeBSD boot, EFI, UFS, swap or ZFS
 partitions. ZFS labels on selected
-disks must belong to ``zroot``. A remaining ``zroot`` member outside the OS list
+disks must belong to ``zroot``. OS L2ARC headers must identify that same pool's
+GUID; missing or ambiguous cache ownership causes rejection.
+A remaining ``zroot`` member outside the OS list
 causes rejection. Active pools, attached encryption providers, ambiguous
 identities and unsupported layouts also cause rejection.
 
@@ -814,6 +884,50 @@ data drives, but does not protect data if an attacker obtains that disk and the
 data drives together. After OS reinstall, restore the same protected key and
 use the recorded pool GUID with ``action=import``. Do not create a replacement
 key for an existing encrypted pool.
+
+.. _freebsd-future-root-encryption:
+
+Encrypted-root boot in a future release
+---------------------------------------
+
+Native ZFS encryption for the OS/root dataset is deferred to a future release.
+No release version is assigned. The current installation retains FreeBSD's
+native loader and an unencrypted OS pool. Automatic data-pool encryption
+remains available.
+
+The `FreeBSD handbook <https://docs.freebsd.org/en/books/handbook/zfs/#zfs-encryption>`_
+documents that the loader cannot boot from natively encrypted ZFS datasets.
+GRUB2 is not a selected workaround. Its existing ZFS encryption code handles
+an older format. The `GRUB 2.14 ZFS reader <https://git.savannah.gnu.org/cgit/grub.git/tree/grub-core/fs/zfs/zfs.c?h=grub-2.14>`_
+does not support OpenZFS's native encryption feature. Chainloading FreeBSD's
+loader retains its limitation. Recheck both loaders against future target
+versions before choosing a boot design.
+
+ZFS encryption applies to individual datasets. A future layout could store boot
+files in an unencrypted ``zroot/boot`` dataset and the OS root in encrypted
+``zroot/ROOT/default``. Their parent datasets would remain unencrypted. This
+layout does not inherently require a separate boot pool or additional physical
+disks. The design must also define encryption for the other OS datasets.
+
+The unencrypted boot files would load the kernel and a small startup
+environment. That environment must obtain the key automatically, unlock the
+root dataset and continue startup with that dataset mounted at ``/``. A
+separate boot dataset alone does not provide this startup mechanism. This is
+a future design candidate and has not been implemented or qualified. It does
+not inherently require GRUB2. GELI encryption and GEOM/UFS mirrors remain
+outside the current release.
+
+Acceptance requires:
+
+* Automatic key delivery before root mounts, without an interactive passphrase.
+  Define the key source, access controls, protected backup and recovery policy.
+  An unencrypted key on the OS drive does not protect against theft of that drive.
+* Defined failure and recovery behavior for missing or incorrect keys and an
+  unavailable key service, if the design uses one.
+* BIOS and UEFI cold boot, redundant and degraded boot, kernel updates, boot
+  environments and recovery with the selected bootloader.
+* OS reinstall with restored access to encrypted storage and verified
+  preservation of the separate data pools.
 
 Installed-node networking
 --------------------------
@@ -1343,6 +1457,14 @@ For each firmware mode in use, perform the following storage checks:
    * - Wider layouts
      - Check the intended width and grouping, including a wider RAID-Z group
        and six-disk striped mirrors when these are deployed.
+   * - OS auxiliary devices
+     - Install with the intended log, cache and special groups. Verify their
+       identities, group boundaries and properties. Boot with one missing special
+       mirror member, one missing log mirror member and a missing cache device.
+       Repeat with disk renumbering and verify that preserved disks receive no
+       writes and that all surviving members have zero read, write and checksum errors.
+       A complete special-group loss must prevent a usable root. Reinstall with
+       all members restored and verify that separate data disks are unchanged.
    * - Dedicated data pool and OS reinstall
      - Record pool and dataset GUIDs, a snapshot, file checksums and key backups.
        Export the data pool, replace only the OS disks, and compare the preserved
