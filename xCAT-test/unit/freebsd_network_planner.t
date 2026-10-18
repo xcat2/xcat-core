@@ -68,6 +68,19 @@ sub value {
     return @matching == 1 ? $matching[0][2] : undef;
 }
 
+subtest 'a smaller management VLAN preserves the provisioning member MTU' => sub {
+    my $environment = base();
+    @{$environment}{qw(NICTYPES NICDEVICES NICIPS NICNETWORKS NICEXTRAPARAMS IPADDR NETWORKS_LINES NETWORKS_LINE1)} = (
+        'vtnet0!ethernet,vlan100!vlan', 'vlan100!vtnet0', 'vlan100!192.0.2.10', 'vlan100!data4',
+        'vlan100!MTU=1500', '192.0.2.10', 1,
+        'netname=data4||net=192.0.2.0||mask=255.255.255.0||gateway=||mtu=9000||disable=');
+    my ($status, $plan, $error) = invoke($environment, '-v', 'bootnic=vtnet0', '-v',
+        'bootmac=52:54:00:00:00:01', '-v', 'configure_boot=1');
+    is($status, 0, 'the explicit VLAN MTU compiles') or diag($error);
+    is(value($plan, 'T', 'vtnet0'), 9000, 'the physical member retains the provisioning network MTU');
+    is(value($plan, 'T', 'vlan100'), 1500, 'the VLAN keeps its explicit smaller MTU');
+};
+
 subtest 'physical interface with IPv4 and IPv6' => sub {
     my ($status, $output, $error) = compile_plan(base());
     is($status, 0, 'the standard postscript exports compile');
@@ -705,6 +718,8 @@ sub dhcp_configuration_tests {
             'SYNCDHCP ether 52:54:00:12:34:56 addm vtnet1 stp vtnet1 mtu 1500 up',
             'the same bridge MAC is applied at boot');
         is(value($plan, 'E', 'bridge0'), '52:54:00:12:34:56', 'runtime readback checks the configured MAC');
+        is(value($plan, 'K', 'ifconfig_bridge0_alias0'), undef,
+            'a DHCP reservation is never persisted as a static alias');
         for my $bad ('ff:ff:ff:ff:ff:ff', '01:00:00:00:00:01', '00:00:00:00:00:00', 'invalid') {
             $environment->{NICEXTRAPARAMS} = "bridge0!BOOTPROTO=dhcp MACADDR=$bad";
             isnt((compile_plan($environment))[0], 0, 'invalid reservation MAC is rejected');
