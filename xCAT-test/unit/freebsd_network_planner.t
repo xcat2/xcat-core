@@ -147,6 +147,22 @@ subtest 'data gateways and xcatmaster preserve the installed IPv4 default' => su
     my ($status, $output, $error) = compile_plan($environment, 1);
     is($status, 0, 'management adoption accepts the stock gateway token') or diag($error);
     is(value($output, 'K', 'defaultrouter'), undef, 'the token retains the default chosen during installation');
+    ($status, $output, $error) = invoke($environment, '-v', 'bootnic=vtnet0', '-v', 'configure_boot=1',
+        '-v', 'owned_ipv4_gateway=192.0.2.1');
+    is($status, 0, 'a previously managed gateway remains valid with the token') or diag($error);
+    is(value($output, 'K', 'defaultrouter'), '192.0.2.1', 'the token retains the managed default');
+    for my $invalid ('198.51.100.1', 'invalid', "192.0.2.1\n192.0.2.2") {
+        ($status, $output, $error) = invoke($environment, '-v', 'bootnic=vtnet0', '-v', 'configure_boot=1',
+            '-v', "owned_ipv4_gateway=$invalid");
+        isnt($status, 0, 'an invalid previous default is rejected before application');
+        is($output, '', 'an invalid previous default produces no partial plan');
+    }
+    $environment->{NETWORKS_LINE1} =~ s/<xcatmaster>//x;
+    ($status, $output, $error) = invoke($environment, '-v', 'bootnic=vtnet0', '-v', 'configure_boot=1',
+        '-v', 'owned_ipv4_gateway=192.0.2.1');
+    is($status, 0, 'removing the configured gateway compiles') or diag($error);
+    is(value($output, 'K', 'defaultrouter'), undef, 'an empty gateway does not retain managed ownership');
+    $environment->{NETWORKS_LINE1} =~ s/gateway=/gateway=<xcatmaster>/x;
     $environment->{NETWORKS_LINE1} =~ s/<xcatmaster>/192.0.2.1/x;
     ($status, $output, $error) = compile_plan($environment, 1);
     is($status, 0, 'an explicit management gateway compiles') or diag($error);
