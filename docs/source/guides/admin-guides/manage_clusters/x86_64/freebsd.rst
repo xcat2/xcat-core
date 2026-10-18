@@ -577,6 +577,8 @@ It does not accept private keys.
 Include the SSH public key used by xCAT's ``xdsh`` transport. First-boot
 postscripts and ``updatenode`` require root SSH access from the management or
 service node.
+After reinstall, verify the node's new SSH host keys. Refresh its entries in
+``known_hosts`` on the management or service node.
 
 Create a disk policy for each node. For example,
 ``/etc/xcat/freebsd/node01.disk`` contains::
