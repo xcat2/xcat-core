@@ -25,13 +25,14 @@ Scope and requirements
 * Select single-disk UFS or ZFS, a ZFS mirror, striped mirrors, or RAID-Z1/2/3.
   Multi-disk policies require a version 2 image with the current storage runtime.
   OS and dedicated data pools can use log, cache and redundant special devices.
-  Dedicated data pools support optional automatic encryption.
-  OS encryption, dRAID, separate ZFS pools for
+  Dedicated data pools support dRAID and optional automatic encryption.
+  OS encryption, root-pool dRAID, separate ZFS pools for
   ``/boot``, GELI encryption, GEOM/UFS mirrors and Linux ZFS provisioning are
   outside this implementation. See :ref:`freebsd-future-root-encryption` for
   the deferred encrypted-root work.
-* Use IPv4 and one provisioning interface selected by MAC address. After disk
-  boot, ``confignetwork`` can configure additional interfaces, static addresses
+* Use IPv4 and one provisioning address anchored to the selected physical MAC.
+  The installer can use a VLAN, LAGG or bridge; see :ref:`freebsd-early-network`.
+  After disk boot, ``confignetwork`` can configure additional interfaces, static addresses
   and reserved DHCPv4/DHCPv6 leases.
   The node name must
   resolve to that interface's address, and reverse resolution must identify the
@@ -521,6 +522,13 @@ resolver executable::
 
     sh freebsd/buildmfsbsd.sh --pkgbase PKG_ARCHIVE NATIVE_RESOLVER MFSBSD_SOURCE DIST_DIRECTORY OUTPUT_ISO MFSBSD_COMMIT MANIFEST_SHA256
 
+For early installer VLAN, LAGG or bridge configuration, also supply
+``--network-planner PATH`` before the five positional arguments. Copy the
+matching ``xCAT/postscripts/confignetwork-freebsd.awk`` to that path on the
+FreeBSD build host. The image then advertises ``xcat-freebsd-bootstrap-1``
+and binds the shared planner, bootstrap helper and required kernel modules
+into its runtime manifest.
+
 The pkgbase build requires mfsBSD commit
 ``6e48fa48ebbb25953a7764a8f3cfda443fb9a768``. Supply the release
 ``pkg-2.6.2_1`` archive and the qualified FreeBSD native resolver. The resolver
@@ -825,16 +833,40 @@ installed node. For example, ``/etc/xcat/storage.conf`` contains::
 
 ``os_disks`` excludes the OS devices from data operations. Every device identity
 across all roles must be unique. The complete policy accepts at most 128 devices.
-Data topologies accept ``stripe``, ``mirror``, ``raid10`` and ``raidz1/2/3``.
+Data topologies accept ``stripe``, ``mirror``, ``raid10``, ``raidz1/2/3`` and
+explicit dRAID geometry.
 A data stripe can contain multiple disks. Other membership rules match the OS
 policy. Compression and ashift use the same values and defaults as the OS policy.
+
+For dRAID, specify ``draidP:Dd:Cc:Ss``. ``P`` is parity, from 1 through 3;
+``D`` is the data width of each redundancy group; ``C`` is the total child
+count; and ``S`` is the number of distributed spares. All four values are
+required, including ``0s`` when no distributed spare is selected.
+``D + P + S`` must not exceed ``C``. Each comma-separated device group must
+contain exactly ``C`` members. Semicolons separate independent dRAID vdevs
+with the same geometry. For example::
+
+    topology=draid2:4d:8c:2s
+    vdevs=da2@DATA_A,da3@DATA_B,da4@DATA_C,da5@DATA_D,da6@DATA_E,da7@DATA_F,da8@DATA_G,da9@DATA_H
+
+Distributed spares reserve capacity across those data drives; they are not
+additional physical devices. Readback checks the complete geometry and every
+available distributed spare. Import requires a healthy matching layout, as
+with the other data topologies. Repair or replacement operations remain
+administrator tasks. dRAID is supported for dedicated data pools only.
+
+dRAID uses fixed-width allocations. Small blocks and compression can consume
+more space than with mirrors or RAID-Z. Consider a redundant special vdev for
+small-block workloads; see the `OpenZFS dRAID guide
+<https://openzfs.github.io/openzfs-docs/Basic%20Concepts/Pool%20Structure/dRAID%20Howto.html>`_.
 
 ``log_vdevs`` selects separate intent log devices, commonly called SLOG devices.
 Comma-separated members form a mirror. Semicolons separate independent log groups.
 ``cache_vdevs`` is a comma-separated list of L2ARC devices.
 ``special_vdevs`` uses mirrored groups for metadata and optional small blocks.
 Each special group must match the data topology's redundancy exactly: two
-members for RAID-Z1 or striped mirrors, three for RAID-Z2, and four for RAID-Z3.
+members for RAID-Z1, dRAID1 or striped mirrors, three for RAID-Z2 or dRAID2,
+and four for RAID-Z3 or dRAID3.
 For a data mirror, match its member count. Data stripes cannot use special devices. Loss of a special group can lose the
 pool. Select suitable devices and redundancy before creation.
 
@@ -889,8 +921,30 @@ For a new encrypted data pool, add::
 
 Supply a cryptographically random 32-byte raw key before running the postscript.
 The key file must be owned by root, mode ``0600``, with one link. Its directory
-must be owned by root, mode ``0700``. Keep an independently recoverable copy on
-the installation owner or in the site's key backup system.
+must be owned by root, mode ``0700``. Before creating the encrypted pool, save
+its key on the management node using the existing xCAT credential table::
+
+    xcat-zfs-key save node01 tank /root/freebsd-keys/node01/tank.key
+
+The command stores the recoverable key in ``passwd.password``, with
+``key=freebsd-zfs`` and ``username=node01/tank``. Ordinary ``dumpxCATdb`` and
+``restorexCATdb`` include it. Excluding ``passwd`` through ``site.skiptables``
+or ``XCAT_SKIPTABLES`` also excludes these keys. The hexadecimal representation
+is not encryption; protect database access and backup files as credentials.
+The command refuses to replace a different saved key and does not print key
+bytes or take them as command arguments.
+The combined ``node/pool`` identity must fit the table's 128-character key limit.
+
+After restoring the tables, recreate the private directory and recover the
+original key::
+
+    install -d -m 0700 /root/freebsd-keys/node01
+    xcat-zfs-key restore node01 tank /root/freebsd-keys/node01/tank.key
+
+This also recovers a lost source key file before SSH synchronization. It does
+not provide a central vault, automatic key generation or rotation. Existing
+file-based key delivery remains supported, but its files enter database
+backups only after an explicit successful ``xcat-zfs-key save``.
 
 Deliver keys through SSH file synchronization. Keep the source outside the HTTP
 installation tree. Synchronize the whole private directory so that rsync also
@@ -964,8 +1018,10 @@ Use ``confignetwork`` to configure the installed FreeBSD node from the ``nics``,
 interfaces, VLANs, native LAGG failover or LACP, and bridges. These interfaces
 can carry static IPv4 and IPv6 addresses or reserved DHCP leases.
 
-Provisioning still uses one IPv4 interface selected by MAC address. VLANs,
-aggregation, bridges and IPv6 inside PXE or mfsBSD are outside this path.
+Provisioning uses IPv4. The mfsBSD installer can create a VLAN, LAGG or bridge
+before downloading its configuration; see :ref:`freebsd-early-network`.
+The firmware must first load the boot payload through its supported network.
+IPv6-only provisioning remains outside this path.
 SLAAC address assignment, tunnels and switch configuration are outside this
 adapter. IPv6 router advertisements can supply routes for a DHCPv6 interface.
 
@@ -1156,6 +1212,56 @@ attempt. Preserve that directory and inspect its logs before recovery. The
 saved ``before.rc`` records the prior boot configuration. Use the console to
 reconcile live and persistent settings before moving the retained transaction
 aside and retrying.
+
+.. _freebsd-early-network:
+
+Early installer networking
+--------------------------
+
+The installer can create a VLAN, a failover or LACP LAGG, a bridge, or a
+supported composition of those interfaces before its first configuration
+download. Build the boot image with ``--network-planner`` as described above.
+Preparation rejects this configuration on an image without the bootstrap
+network contract.
+
+Set ``bootstrap_interface`` in the image's protected settings file. For
+example::
+
+    authorized_keys_file=/etc/xcat/freebsd/administrators.pub
+    bootstrap=dhcp
+    bootstrap_interface=bridge0
+
+Describe its topology through the normal ``nics`` table. Include every
+physical member and its hardware MAC in the existing ``nicsadapter`` inventory,
+using native FreeBSD interface names::
+
+    chdef node01 \
+        'nictypes=vtnet0!Ethernet,vtnet1!Ethernet,lagg0!lagg,vlan100!vlan,bridge0!bridge' \
+        'nicdevices=lagg0!vtnet0|vtnet1,vlan100!lagg0,bridge0!vlan100' \
+        'nicsadapter=vtnet0!mac=52:54:00:00:00:01,vtnet1!mac=52:54:00:00:00:02' \
+        'nicextraparams=lagg0!LAGGPROTO=lacp'
+
+The selected provisioning MAC must identify a physical member of this graph.
+It must be the first port when included in a LAGG. Virtual interfaces on its
+path retain that MAC, so the DHCP reservation and installation identity stay
+the same. An explicit conflicting ``MACADDR`` is rejected. Physical members
+inherit the provisioning network's MTU unless ``MTU`` overrides it; virtual
+members follow the normal topology MTU rules.
+
+The loader carries a bounded data description. The installer validates the
+complete graph and physical MACs before creating interfaces, then applies
+``bootstrap=dhcp`` or ``bootstrap=static`` to the selected interface. The
+downloaded configuration must match the loader description. Native interface
+and IPv4 readback must pass before disk installation starts. The installed
+system retains this topology with the node's static management address and
+records it as xCAT-managed configuration. Use ``confignetwork -s`` to update
+this management topology, its addresses, DHCP policy and routes.
+
+The firmware and loader still need a working path to fetch the boot payload.
+This setting configures the FreeBSD kernel stage; it does not configure PXE
+firmware, switch VLANs, LACP fallback or switch port channels. Configure those
+prerequisites separately. IPv6-only provisioning and Linux-specific bond
+modes or initramfs command-line syntax are outside this adapter.
 
 Bootstrap, console and boot options
 -----------------------------------
