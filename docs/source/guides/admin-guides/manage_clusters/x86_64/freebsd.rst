@@ -933,11 +933,24 @@ its key on the management node using the existing xCAT credential table::
 
 The command stores the recoverable key in ``passwd.password``, with
 ``key=freebsd-zfs`` and ``username=node01/tank``. Ordinary ``dumpxCATdb`` and
-``restorexCATdb`` include it. Excluding ``passwd`` through ``site.skiptables``
-or ``XCAT_SKIPTABLES`` also excludes these keys. The hexadecimal representation
-is not encryption; protect database access and backup files as credentials.
-Create the backup directory with mode ``0700`` and run the backup with
-``umask 077`` so that table exports remain private.
+``restorexCATdb`` include it unless ``passwd`` is excluded. For ``dumpxCATdb``,
+``XCAT_SKIPTABLES`` overrides ``site.skiptables``. The hexadecimal representation
+is not encryption. Protect database access and backup files as credentials.
+Create a private directory before exporting, then restrict the CSV permissions::
+
+    install -d -m 0700 /root/xcat-backup
+    dumpxCATdb -p /root/xcat-backup
+    chmod 0600 /root/xcat-backup/*.csv
+
+The xCAT daemon creates the exports. The client's ``umask`` does not control
+their permissions. Keep the directory private throughout the backup.
+
+``xcatsnap`` supplies its own exclusion list and exports ``passwd`` regardless
+of ``site.skiptables``. Its support bundle therefore
+contains enrolled data-pool keys. Protect the bundle as a credential backup.
+It also collects ``/etc/xcat``, which can contain delivered key files.
+Review and redact credentials, including ``passwd.csv``, before sharing it.
+
 The command refuses to replace a different saved key and does not print key
 bytes or take them as command arguments.
 The combined ``node/pool`` identity must fit the table's 128-character key limit.
