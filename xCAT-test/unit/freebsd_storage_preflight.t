@@ -422,8 +422,31 @@ subtest 'OS auxiliary members and L2ARC ownership are checked before erase' => s
     is($rc, 0, 'matching native cache header ownership permits OS reinstall') or diag($error);
     like($snapshot, qr/^ada6\tSERIAL6\tcache:1\t/mx, 'cache identity joins the destructive snapshot');
     like($snapshot, qr/preserved\nada7\tSERIAL7\t/x, 'the data disk remains protected');
+    for my $member (1, 3, 5) {
+        my $root = $make->();
+        my $geometry = read_file("$root/ada$member.geom");
+        $geometry =~ s/8589934592/8623489024/gx;
+        write_file("$root/ada$member.geom", $geometry);
+        my ($size_rc, $size_output, $size_error) = run_preflight($root, \%policy, 'xcat_check_zfs_reinstall');
+        isnt($size_rc, 0, "a mismatched group containing ada$member prevents reinstall");
+        like($size_error, qr/must[ ]have[ ]equal[ ]capacities/x, 'preflight reports the capacity mismatch');
+        unlike(read_file("$root/events"), qr/^(zpool[ ]labelclear|gpart[ ]destroy|dd[ ].*of=\/dev\/)/mx,
+            'mismatched capacities cause no destructive operation');
+    }
+    {
+        my $root = $make->();
+        for my $member (2 .. 6) {
+            my $geometry = read_file("$root/ada$member.geom");
+            my $size = $member < 4 ? 2147483648 : $member < 6 ? 1073741824 : 536870912;
+            $geometry =~ s/8589934592/$size/gx;
+            write_file("$root/ada$member.geom", $geometry);
+        }
+        is((run_preflight($root, \%policy, 'xcat_zfs_disk_inventory'))[0], 0,
+            'independent primary, special, log and cache groups can have different capacities');
+    }
     for my $change ('foreign cache', 'missing cache owner', 'invalid cache magic', 'invalid cache version', 'bad label checksum', 'foreign log', 'missing special',
-        'preserved overlap', 'unselected root cache', 'different root GUID', 'cache changed before erase') {
+        'preserved overlap', 'unselected root cache', 'different root GUID', 'destroyed data pool',
+        'partly overwritten data labels', 'cache changed before erase') {
         my $root = $make->();
         my %changed = %policy;
         if ($change eq 'foreign cache' || $change eq 'cache changed before erase') {
@@ -433,8 +456,17 @@ subtest 'OS auxiliary members and L2ARC ownership are checked before erase' => s
                 write_file("$root/before.snapshot", $before);
             }
             my $foreign = $cache_label;
-            $foreign =~ s/$pool_guid/18446744073709551611/gx;
+            if ($change eq 'cache changed before erase') {
+                $foreign =~ s/ashift:[ ]12/ashift: 13/x;
+            } else {
+                $foreign =~ s/$pool_guid/18446744073709551611/gx;
+            }
             write_file("$root/labels/ada6", $foreign);
+            if ($change eq 'cache changed before erase') {
+                my ($changed_rc, $changed_snapshot) = run_preflight($root, \%changed, 'xcat_check_zfs_reinstall');
+                is($changed_rc, 0, 'the changed cache still belongs to the selected root pool');
+                isnt($changed_snapshot, read_file("$root/before.snapshot"), 'the valid changed cache alters the accepted snapshot');
+            }
         } elsif ($change eq 'missing cache owner') {
             my $missing = $cache_label; $missing =~ s/    pool_guid:[^\n]*\n//x;
             write_file("$root/labels/ada6", $missing);
@@ -455,12 +487,19 @@ subtest 'OS auxiliary members and L2ARC ownership are checked before erase' => s
             $changed{XCAT_PRESERVE_DISKS} = 'ada6@SERIAL6';
         } elsif ($change eq 'unselected root cache') {
             $changed{XCAT_ZFS_CACHE_VDEVS} = '-';
+        } elsif ($change eq 'destroyed data pool') {
+            write_file("$root/labels/ada7", "LABEL 0\n    state: 2\n    name: 'tank'\n    pool_guid: 18446744073709551611\n");
+        } elsif ($change eq 'partly overwritten data labels') {
+            write_file("$root/labels/ada7", "failed to unpack label 0\nLABEL 1\n    state: 1\n    name: 'tank'\n    pool_guid: 18446744073709551611\n");
         } else {
             write_file("$root/labels/ada1", "state: 1\nname: 'zroot'\npool_guid: 18446744073709551611\n");
         }
         write_file("$root/events", '');
         my $operation = $change eq 'cache changed before erase' ? 'xcat_erase_os_disks' : 'xcat_check_zfs_reinstall';
-        isnt((run_preflight($root, \%changed, $operation))[0], 0, "$change prevents erase");
+        my ($rejected_rc, $rejected_output, $rejected_error) = run_preflight($root, \%changed, $operation);
+        isnt($rejected_rc, 0, "$change prevents erase");
+        like($rejected_error, qr/OS[ ]or[ ]preserved[ ]disk[ ]state[ ]changed[ ]before[ ]reinstall/x,
+            'erase rejects the changed snapshot after ownership succeeds') if $change eq 'cache changed before erase';
         unlike(read_file("$root/events"), qr/^(zpool[ ]labelclear|gpart[ ]destroy|dd[ ].*of=\/dev\/)/mx,
             'rejection performs no destructive operation');
     }
