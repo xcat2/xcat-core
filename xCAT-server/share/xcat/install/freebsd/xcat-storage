@@ -51,6 +51,8 @@ storage_load()
     XCAT_WORK=$storage_work
     storage_snapshot=$(cat "$storage_work/snapshot")
     storage_members=$(xcat_zfs_members)
+    storage_auxiliary=$(xcat_zfs_auxiliary)
+    storage_all_members=$(xcat_zfs_all_members)
     storage_count=$(printf '%s\n' "$storage_members" | awk 'END {print NR}')
     storage_next=$(cat "$storage_work/next")
     case "$storage_next" in ''|*[!0-9]*) exit 1 ;; esac
@@ -60,6 +62,8 @@ storage_load()
     storage_boot=$(cat "$storage_work/boot")
     case "$storage_boot" in BIOS) storage_root_index=2 ;; BIOS+UEFI) storage_root_index=3 ;; *) exit 1 ;; esac
     storage_prefix=xe$XCAT_GENERATION
+    storage_zfs_prefix=zfs
+    [ "$XCAT_FORMAT" != xcat-freebsd-install-6 ] || storage_zfs_prefix=z$XCAT_GENERATION
     storage_primary= storage_extra= storage_efi_mount=
     if [ "$storage_boot" = BIOS+UEFI ]; then
         . "$(dirname "$0")/xcat-storage-efi.sh"
@@ -83,7 +87,7 @@ storage_table()
     [ "$storage_boot" != BIOS+UEFI ] || storage_active_esps=$(storage_efi_modes)
     storage_raw=$(gpart list -a)
     storage_rows=$(printf '%s\n' "$storage_raw" |
-        XCAT_STORAGE_MEMBERS="$storage_snapshot" XCAT_STORAGE_POOL="$1" XCAT_STORAGE_ROOT="$storage_root_index" XCAT_STORAGE_ESPS="$storage_active_esps" awk '
+        XCAT_STORAGE_MEMBERS="$storage_snapshot" XCAT_STORAGE_POOL="$1" XCAT_STORAGE_ROOT="$storage_root_index" XCAT_STORAGE_ESPS="$storage_active_esps" XCAT_STORAGE_FORMAT="$XCAT_FORMAT" awk '
         function finish( k, i, mode) {
             if (!selected || !provider) return
             i=value["index"]
@@ -96,9 +100,10 @@ storage_table()
                 value["Sectorsize"] != sector[d] || value["offset"] !~ /^[1-9][0-9]*$/ ||
                 value["offset"]+value["Mediasize"] > capacity[d] ||
                 value["Mediasize"] % sector[d] || value["offset"] % sector[d]) bad=1
+            if (auxiliary[d] && (i != 1 || value["type"] != "freebsd-zfs")) bad=1
             for (i in required) if (seen[i] != 1) bad=1
             mode="r0w0e0"
-            if (pool && value["index"] == rootidx) mode="r1w1e1"
+            if (pool && value["index"] == (auxiliary[d] ? 1 : rootidx)) mode=(stable ? "r1w1e2" : "r1w1e1")
             if (provider in esps) mode="r1w1e2"
             if (value["Mode"] != mode) bad=1
             row[k]="P\t" d "\t" value["index"] "\t" provider "\t" value["type"] "\t" value["label"] "\t" value["rawuuid"] "\t" value["Mediasize"] "\t" value["Sectorsize"] "\t" value["offset"]
@@ -107,10 +112,17 @@ storage_table()
         }
         BEGIN {
             n=split(ENVIRON["XCAT_STORAGE_MEMBERS"], rows, "\n")
-            for (i=1;i<=n;i++) {split(rows[i], f, "\t"); wanted[f[1]]=1; disk[i]=f[1]; capacity[f[1]]=f[4]; sector[f[1]]=f[5]}
+            count_disks=0
+            for (i=1;i<=n;i++) {
+                split(rows[i], f, "\t")
+                wanted[f[1]]=1; disk[++count_disks]=f[1]; capacity[f[1]]=f[4]; sector[f[1]]=f[5]
+                auxiliary[f[1]]=(f[3]!~/^[0-9]+$/)
+            }
+            n=count_disks
             split("index type label rawuuid Mediasize Sectorsize offset Mode", fields, " ")
             for (i in fields) required[fields[i]]=1
             pool=ENVIRON["XCAT_STORAGE_POOL"]+0; rootidx=ENVIRON["XCAT_STORAGE_ROOT"]
+            stable=(ENVIRON["XCAT_STORAGE_FORMAT"]=="xcat-freebsd-install-6")
             count_esps=split(ENVIRON["XCAT_STORAGE_ESPS"], active_esps, "\n")
             for (i=1;i<=count_esps;i++) if (length(active_esps[i])) esps[active_esps[i]]=1
         }
@@ -177,7 +189,7 @@ storage_graph()
 {
     storage_graph_now=$(sysctl -n kern.geom.conftxt)
     printf '%s\n' "$storage_graph_now" |
-        XCAT_STORAGE_MEMBERS="$storage_snapshot" XCAT_STORAGE_TABLE="$storage_table_now" awk '
+        XCAT_STORAGE_MEMBERS="$storage_snapshot" XCAT_STORAGE_TABLE="$storage_table_now" XCAT_STORAGE_FORMAT="$XCAT_FORMAT" awk '
         BEGIN {
             n=split(ENVIRON["XCAT_STORAGE_MEMBERS"], rows, "\n")
             for (i=1;i<=n;i++) {split(rows[i], f, "\t"); wanted[f[1]]=1; serial[f[1]]=f[2]; size[f[1]]=f[4]; sector[f[1]]=f[5]}
@@ -219,7 +231,10 @@ storage_graph()
         }
         END {
             for (d in wanted) if (roots[d] != 1) bad=1
-            for (p in parent) if (seen[p] != 1) bad=1
+            for (p in parent) {
+                if (seen[p] != 1) bad=1
+                if (ENVIRON["XCAT_STORAGE_FORMAT"]=="xcat-freebsd-install-6" && type[p]=="freebsd-zfs" && aliases["gpt/" label[p]]!=1) bad=1
+            }
             exit bad
         }'
 }
@@ -246,6 +261,7 @@ storage_pool()
         $1 == "NAME" && $2 == "STATE" {active=1; next}
         /^errors:/ {active=0}
         active && NF {
+            if (NF == 1 && $1 ~ /^(special|logs|cache)$/) {print $1; next}
             if (NF != 5 || $2 != "ONLINE" || $3 != 0 || $4 != 0 || $5 != 0) exit 1
             print $1
         }')
@@ -253,8 +269,16 @@ storage_pool()
         BEGIN {print "zroot"}
         $3 != group {group=$3; if (topology != "stripe") print (topology == "raid10" ? "mirror" : topology) "-" (group-1)}
         {print "/dev/" $1 "p" partidx}')
+    if [ "$XCAT_FORMAT" = xcat-freebsd-install-6 ]; then
+        storage_leaves=$(printf '%s\n' "$storage_leaves" | awk '{if($0~/^(mirror|raidz[123])-[0-9]+$/) sub(/-[0-9]+$/," "); sub(/ $/,""); print}')
+        storage_expected=$(xcat_zfs_primary status)
+        storage_aux_status=$(xcat_zfs_auxiliary status)
+        [ -z "$storage_aux_status" ] || storage_expected="$storage_expected
+$storage_aux_status"
+        [ "$(zfs get -Hp -o value special_small_blocks zroot)" = "$XCAT_ZFS_SPECIAL_SMALL_BLOCKS" ]
+    fi
     [ "$storage_leaves" = "$storage_expected" ]
-    if [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ]; then
+    if xcat_extended_storage; then
         [ "$(zfs get -H -o value compression zroot)" = "$XCAT_ZFS_COMPRESSION" ]
         storage_config=$(zdb -C zroot)
         printf '%s\n' "$storage_config" | awk -v ashift="$XCAT_ZFS_ASHIFT" \
@@ -264,9 +288,27 @@ storage_pool()
 
 storage_labels()
 {
-    for storage_disk in $(printf '%s\n' "$storage_members" | cut -f1); do
-        zdb -lll "/dev/${storage_disk}p$storage_root_index" > "$storage_work/labels-$storage_disk.out" 2> "$storage_work/labels-$storage_disk.err" || return 1
+    while IFS="$(printf '\t')" read -r storage_disk storage_serial storage_group; do
+        storage_provider=$storage_disk
+        case "$storage_group" in *:*) storage_provider=${storage_disk}p1 ;; *) storage_provider=${storage_disk}p$storage_root_index ;; esac
+        storage_label_option=-lll
+        # L2ARC verbosity also dumps cached blocks; its label map covers all copies.
+        case "$storage_group" in cache:*) storage_label_option=-l ;; esac
+        timeout -k 5 60 zdb "$storage_label_option" "/dev/$storage_provider" > "$storage_work/labels-$storage_disk.out" 2> "$storage_work/labels-$storage_disk.err" || return 1
         [ ! -s "$storage_work/labels-$storage_disk.err" ] || return 1
+        case "$storage_group" in
+            cache:*)
+                storage_owner=$(xcat_zfs_label_owner < "$storage_work/labels-$storage_disk.out") || return 1
+                [ "$storage_owner" = "$(printf 'cache\t%s' "$storage_guid")" ] || return 1
+                awk -v disk="$storage_disk" -v pool="$storage_guid" '
+                    $1=="LABEL" {if(NF!=2 || $2!~/^[0-3]$/ || headers[$2]++) bad=1; count++}
+                    $1=="labels" && $2=="=" {for(i=3;i<=NF;i++) {if($i!~/^[0-3]$/ || labels[$i]++) bad=1; copies++}}
+                    /^    guid:/ {if(NF!=2 || $2!~/^[1-9][0-9]*$/ || (seen++ && "g" id!="g" $2)) bad=1; id=$2}
+                    END {if(bad || count<1 || copies!=4 || seen!=count) exit 1; print disk "\t" pool "\t-\t" id}' \
+                    "$storage_work/labels-$storage_disk.out" || return 1
+                continue
+                ;;
+        esac
         XCAT_STORAGE_GUID="$storage_guid" awk -v disk="$storage_disk" -v state="$1" '
             function guid(s) {
                 return s ~ /^[1-9][0-9]*$/ && length(s) <= 20 &&
@@ -294,7 +336,9 @@ storage_labels()
             }
             END {finish(); if (count != 4 || bad) exit 1; print first}
         ' "$storage_work/labels-$storage_disk.out" || return 1
-    done
+    done <<XCAT_STORAGE_LABEL_MEMBERS
+$storage_all_members
+XCAT_STORAGE_LABEL_MEMBERS
 }
 
 storage_check()
@@ -435,7 +479,7 @@ storage_empty_part()
 
 storage_clear_new_part()
 {
-    [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ] && [ "$XCAT_DISK_ACTION" = erase ] || return 0
+    xcat_extended_storage && [ "$XCAT_DISK_ACTION" = erase ] || return 0
     storage_record=$(printf '%s\n' "$storage_table_now" | awk -F '\t' -v d="$storage_current" -v i="$storage_index" '
         $1=="P" && $2==d && $3==i && $5~/^(efi|freebsd-zfs)$/ {print $4 "\t" $8 "\t" $9; found++}
         END {if(found!=1) exit 1}')
@@ -448,6 +492,53 @@ XCAT_NEW_PART
             count="$((1048576/storage_sector))" conv=notrunc >> "$storage_work/clear-part.log" 2>&1
     done
     storage_empty_part "$storage_provider"
+}
+
+storage_table_addition()
+{
+    storage_old=$(cat "$storage_work/table")
+    printf '%s\n' "$storage_table_now" | XCAT_STORAGE_OLD="$storage_old" awk '
+        BEGIN {n=split(ENVIRON["XCAT_STORAGE_OLD"], rows, "\n"); for (i=1;i<=n;i++) if (length(rows[i])) old[rows[i]]=1}
+        length {if ($0 in old) delete old[$0]; else {print; added++}}
+        END {for (line in old) exit 1; if (added != 1) exit 1}'
+}
+
+storage_aux_partitions()
+{
+    [ "$XCAT_FORMAT" = xcat-freebsd-install-6 ] || return 0
+    [ ! -e "$storage_work/aux-complete" ]
+    storage_partition_rows=$(xcat_zfs_auxiliary partitions)
+    for storage_aux_disk in $(printf '%s\n' "$storage_auxiliary" | cut -f1); do
+        storage_check
+        storage_row=$(printf '%s\n' "$storage_now" | awk -F '\t' -v d="$storage_aux_disk" '$1==d {if($6!="r0w0e0") exit 1; print}')
+        [ -n "$storage_row" ]
+        printf '%s\n' "$storage_graph_now" | xcat_zfs_initial_graph "$storage_row"
+        xcat_check_empty_disks "$storage_row"
+        # GPT labels keep pool paths stable when the kernel renumbers disks.
+        gpart create -s gpt "$storage_aux_disk" >> "$storage_work/aux-partitions.log" 2>&1
+        storage_identity
+        storage_table_now=$(storage_table 0)
+        storage_added=$(storage_table_addition)
+        printf '%s\n' "$storage_added" | awk -F '\t' -v d="$storage_aux_disk" '$1!="D" || $2!=d {exit 1}'
+        storage_graph
+        printf '%s\n' "$storage_table_now" > "$storage_work/table"
+        storage_check
+        storage_aux_label=$(printf '%s\n' "$storage_partition_rows" | awk -F '\t' -v d="$storage_aux_disk" '$1==d {print $4; found++} END {exit found!=1}')
+        gpart add -a 1m -l "$storage_aux_label" -t freebsd-zfs "$storage_aux_disk" >> "$storage_work/aux-partitions.log" 2>&1
+        storage_identity
+        storage_table_now=$(storage_table 0)
+        storage_added=$(storage_table_addition)
+        printf '%s\n' "$storage_added" | awk -F '\t' -v d="$storage_aux_disk" -v label="$storage_aux_label" \
+            '$1!="P" || $2!=d || $3!=1 || $5!="freebsd-zfs" || $6!=label || $10!=1048576 {exit 1}'
+        storage_graph
+        printf '%s\n' "$storage_table_now" > "$storage_work/table"
+        storage_current=$storage_aux_disk storage_index=1
+        storage_clear_new_part
+        storage_empty_part "${storage_aux_disk}p1"
+        storage_current=
+        storage_check
+    done
+    printf 'ready\n' > "$storage_work/aux-complete"
 }
 
 storage_native_before()
@@ -481,7 +572,7 @@ storage_native_before()
             storage_index=$(printf '%s\n' "$storage_table_now" | awk -F '\t' -v d="$storage_disk" '$1 == "P" && $2 == d {n++} END {print n+1}')
             storage_label=$2 storage_type=$3
             if [ "$storage_index" -eq "$storage_root_index" ]; then
-                [ "$#" -eq 4 ] && [ "$1" = '-a 1m' ] && [ "$2" = "zfs$storage_next" ] && [ "$3" = freebsd-zfs ] && [ "$4" = "$storage_disk" ] || exit 1
+                [ "$#" -eq 4 ] && [ "$1" = '-a 1m' ] && [ "$2" = "$storage_zfs_prefix$storage_next" ] && [ "$3" = freebsd-zfs ] && [ "$4" = "$storage_disk" ] || exit 1
             elif [ "$storage_boot" = BIOS+UEFI ] && [ "$storage_index" -eq 1 ]; then
                 [ "$#" -eq 5 ] && [ "$1" = '-a 4k' ] && [ "$2" = "$storage_prefix$storage_next" ] && [ "$3" = efi ] && [ "$4" = 260M ] && [ "$5" = "$storage_disk" ] || exit 1
             else
@@ -517,19 +608,35 @@ storage_native_before()
             ;;
         'zpool:zpool create %s "%s" %s %s')
             [ "$#" -eq 4 ] && [ "$storage_next" -eq "$storage_count" ] && [ -z "$storage_current" ] && [ "$storage_phase" = partition ] || exit 1
+            [ "$XCAT_FORMAT" != xcat-freebsd-install-6 ] || [ "$(cat "$storage_work/aux-complete")" = ready ]
             storage_root=$(cat "$storage_work/root")
             storage_options='-O compression=on -O atime=off'
-            if [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ]; then
+            if xcat_extended_storage; then
                 storage_options="-o ashift=$XCAT_ZFS_ASHIFT -O compression=$XCAT_ZFS_COMPRESSION -O atime=off"
+            fi
+            if [ "$XCAT_FORMAT" = xcat-freebsd-install-6 ]; then
+                storage_options="$storage_options -O special_small_blocks=$XCAT_ZFS_SPECIAL_SMALL_BLOCKS"
             fi
             [ "$1" = "-o altroot=$storage_root $storage_options -o cachefile=none -m none " ] && [ "$2" = zroot ] || exit 1
             storage_vdevs=$(printf '%s\n' "$storage_members" | awk -F '\t' -v topology="$XCAT_ZFS_TOPOLOGY" -v partidx="$storage_root_index" '
                 $3 != group {group=$3; if (topology == "raid10") line=line " mirror"}
                 {line=line " " $1 "p" partidx} END {sub(/^ /,"",line); print line}')
+            if [ "$XCAT_FORMAT" = xcat-freebsd-install-6 ]; then
+                storage_vdevs=$(xcat_zfs_primary arguments)
+                storage_vdevs=$(printf '%s\n' "$storage_vdevs" | awk 'NF {s=s (length(s) ? " " : "") $0} END {print s}')
+            fi
+            storage_aux_args=$(xcat_zfs_auxiliary arguments)
+            storage_aux_args=$(printf '%s\n' "$storage_aux_args" | awk 'NF {s=s (length(s) ? " " : "") $0} END {print s}')
+            [ -z "$storage_aux_args" ] || storage_vdevs="$storage_vdevs $storage_aux_args"
             storage_given=$(printf '%s\n' "$4" | awk '{$1=$1; print}')
             [ "$storage_given" = "$storage_vdevs" ]
             case "$XCAT_ZFS_TOPOLOGY" in raid10|stripe) [ -z "$3" ] ;; *) [ "$3" = "$XCAT_ZFS_TOPOLOGY" ] ;; esac
             for storage_disk in $(printf '%s\n' "$storage_members" | cut -f1); do storage_empty_part "${storage_disk}p$storage_root_index"; done
+            if [ -n "$storage_auxiliary" ]; then
+                for storage_disk in $(printf '%s\n' "$storage_auxiliary" | cut -f1); do
+                    storage_empty_part "${storage_disk}p1"
+                done
+            fi
             storage_kind=pool
             ;;
         'zpool:zpool set %s "%s"')
@@ -550,7 +657,7 @@ storage_native_before()
             case "$1:$2" in 'mountpoint=/zroot:zroot'|'canmount=noauto:zroot/ROOT/default') ;; *) exit 1 ;; esac
             ;;
         'sysctl:sysctl vfs.zfs.vdev.min_auto_ashift=12')
-            [ "$#" -eq 0 ] && [ "$storage_phase" = partition ] && [ "$XCAT_FORMAT" != xcat-freebsd-install-5 ] || exit 1 ;;
+            [ "$#" -eq 0 ] && [ "$storage_phase" = partition ] && ! xcat_extended_storage || exit 1 ;;
         'sh::> "%s"')
             [ "$#" -eq 1 ] && [ "$1" = "$storage_tmpetc/fstab" ] && [ "$storage_phase" = partition ] || exit 1
             [ ! -L "$1" ] && [ "$(realpath "$storage_tmpetc")" = "$storage_tmpetc" ] || exit 1
@@ -634,12 +741,13 @@ storage_load
 
 case "$storage_action" in
     efi-prefix) [ "$#" -eq 0 ] && [ "$storage_phase" = armed ] || exit 1; storage_release; printf '%s\n' "$storage_prefix" ;;
+    zfs-prefix) [ "$#" -eq 0 ] && [ "$storage_phase" = armed ] || exit 1; storage_release; printf '%s\n' "$storage_zfs_prefix" ;;
     start)
         [ "$#" -eq 6 ] && [ "$storage_phase" = armed ] || exit 1
         storage_disks=$(printf '%s\n' "$storage_members" | awk '{s=s (NR == 1 ? "" : " ") $1} END {print s}')
         [ "$1" = "$storage_disks" ] && [ "$2" = "$XCAT_ZFS_TOPOLOGY" ] && [ "$3" = zroot ] && [ "$4" = 0 ] && [ -z "$5$6" ] || exit 1
         [ "${ZFSBOOT_PARTITION_SCHEME:-}" = GPT ] && [ -z "${ZFSBOOT_POOL_SIZE:-}${ZFSBOOT_SWAP_ENCRYPTION:-}${ZFSBOOT_SWAP_MIRROR:-}" ] || exit 1
-        [ "$XCAT_FORMAT" != xcat-freebsd-install-5 ] || [ -z "${ZFSBOOT_FORCE_4K_SECTORS:-}" ]
+        ! xcat_extended_storage || [ -z "${ZFSBOOT_FORCE_4K_SECTORS:-}" ]
         [ -z "${ZFSBOOT_BOOT_TYPE:-}" ] || [ "$ZFSBOOT_BOOT_TYPE" = "$storage_boot" ]
         storage_parent=$(dirname "$storage_work")
         [ "$(stat -f '%u:%Lp' "$storage_parent")" = 0:700 ]
@@ -679,11 +787,7 @@ case "$storage_action" in
         storage_table_now=$(storage_table "$storage_has_pool")
         case "$storage_kind" in
             create|add)
-                storage_old=$(cat "$storage_work/table")
-                storage_added=$(printf '%s\n' "$storage_table_now" | XCAT_STORAGE_OLD="$storage_old" awk '
-                    BEGIN {n=split(ENVIRON["XCAT_STORAGE_OLD"], rows, "\n"); for (i=1;i<=n;i++) if (length(rows[i])) old[rows[i]]=1}
-                    length {if ($0 in old) delete old[$0]; else {print; added++}}
-                    END {for (line in old) exit 1; if (added != 1) exit 1}')
+                storage_added=$(storage_table_addition)
                 if [ "$storage_kind" = create ]; then
                     storage_current=$(cat "$storage_work/new-disk")
                     printf '%s\n' "$storage_added" | awk -F '\t' -v d="$storage_current" '$1 != "D" || $2 != d {exit 1}'
@@ -734,10 +838,13 @@ case "$storage_action" in
         [ "$storage_boot" != BIOS+UEFI ] || [ -f "$storage_work/efi" ]
         storage_parts=$(printf '%s\n' "$storage_table_now" | awk -F '\t' -v d="$storage_current" '$1 == "P" && $2 == d {n++} END {print n+0}')
         [ "$storage_parts" -eq "$storage_root_index" ]
-        printf '%s\n' "$((storage_next+1))" > "$storage_work/next"
+        storage_next=$((storage_next+1))
+        printf '%s\n' "$storage_next" > "$storage_work/next"
         : > "$storage_work/current"
         rm "$storage_work/bios" "$storage_work/clean"
         [ "$storage_boot" != BIOS+UEFI ] || rm "$storage_work/efi"
+        storage_current=
+        [ "$storage_next" -ne "$storage_count" ] || storage_aux_partitions
         storage_release
         ;;
     configured)

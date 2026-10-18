@@ -53,7 +53,7 @@ xcat_boot_options()
             value=substr($0,length(key)+3,length($0)-length(key)-3)
             if (length(key)>128 || length(value)>128 || key<=previous) exit 1
             previous=key; name=tolower(key)
-            if (reserved[name] || name ~ /^(xcat[_.]|mdroot[_.]|kernel_)/ ||
+            if (reserved[name] || name=="kern.geom.label.gpt.enable" || name ~ /^(xcat[_.]|mdroot[_.]|kernel_)/ ||
                 name ~ /^mfs(bsd|root)?([_.]|$)/ || name ~ /^(boot\.|dhcp\.|init_|hostuuid_|bootenv|zfs_be_)/ ||
                 name ~ /^(vfs\.root[._]|vfs\.zfs\.(boot|root))/ ||
                 name ~ /^(comconsole_|hw\.uart\.console(\.|$))/ || name ~ /^hint\.(uart|sio)\./ ||
@@ -103,7 +103,7 @@ xcat_bootstrap_network()
 
 xcat_check_bootstrap()
 {
-    case "$XCAT_FORMAT" in xcat-freebsd-install-3|xcat-freebsd-install-4|xcat-freebsd-install-5) ;; *) return 0 ;; esac
+    case "$XCAT_FORMAT" in xcat-freebsd-install-3|xcat-freebsd-install-4|xcat-freebsd-install-5|xcat-freebsd-install-6) ;; *) return 0 ;; esac
     [ "$XCAT_BOOTSTRAP" = "$XCAT_BOOTSTRAP_MODE" ] || return 1
     [ "$XCAT_BOOTSTRAP" = static ] || return 0
     [ "$XCAT_IPV4" = "$XCAT_BOOTSTRAP_IPV4" ] && [ "$XCAT_NETMASK" = "$XCAT_BOOTSTRAP_NETMASK" ] &&
@@ -112,7 +112,12 @@ xcat_check_bootstrap()
 
 xcat_guarded_storage()
 {
-    case "$XCAT_FORMAT" in xcat-freebsd-install-4|xcat-freebsd-install-5) return 0 ;; *) return 1 ;; esac
+    case "$XCAT_FORMAT" in xcat-freebsd-install-4|xcat-freebsd-install-5|xcat-freebsd-install-6) return 0 ;; *) return 1 ;; esac
+}
+
+xcat_extended_storage()
+{
+    case "$XCAT_FORMAT" in xcat-freebsd-install-5|xcat-freebsd-install-6) return 0 ;; *) return 1 ;; esac
 }
 
 xcat_zfs_members()
@@ -120,7 +125,7 @@ xcat_zfs_members()
     [ "$XCAT_FILESYSTEM" = zfs ] && [ "$XCAT_SWAP_SIZE" = 0 ] &&
         [ "$XCAT_SWAP_MODE" = none ] || return 1
     case "$XCAT_ZFS_TOPOLOGY" in
-        stripe) [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ] || return 1 ;;
+        stripe) xcat_extended_storage || return 1 ;;
         mirror|raid10|raidz1|raidz2|raidz3) ;;
         *) return 1 ;;
     esac
@@ -151,6 +156,91 @@ xcat_zfs_members()
         }'
 }
 
+xcat_zfs_primary()
+(
+    [ "$XCAT_FORMAT" = xcat-freebsd-install-6 ] && xcat_hex "$XCAT_GENERATION" 32 || exit 1
+    xcat_primary=$(xcat_zfs_members) || exit 1
+    printf '%s\n' "$xcat_primary" | awk -F '\t' -v generation="$XCAT_GENERATION" \
+        -v topology="$XCAT_ZFS_TOPOLOGY" -v output="${1:-arguments}" '
+        BEGIN {if(output!="arguments" && output!="status") exit 1; if(output=="status") print "zroot"}
+        $3!=group {
+            group=$3
+            if(topology=="raid10" || (output=="status" && topology!="stripe"))
+                print (topology=="raid10" ? "mirror" : topology)
+        }
+        {print "/dev/gpt/z" generation (NR-1)}'
+)
+
+xcat_zfs_auxiliary()
+(
+    [ "$XCAT_FORMAT" = xcat-freebsd-install-6 ] || exit 0
+    xcat_hex "$XCAT_GENERATION" 32 || exit 1
+    xcat_primary=$(xcat_zfs_members) || exit 1
+    printf '%s\n' "$xcat_primary" | XCAT_AUX_SPECIAL="$XCAT_ZFS_SPECIAL_VDEVS" \
+        XCAT_AUX_LOG="$XCAT_ZFS_LOG_VDEVS" XCAT_AUX_CACHE="$XCAT_ZFS_CACHE_VDEVS" \
+        XCAT_AUX_SMALL="$XCAT_ZFS_SPECIAL_SMALL_BLOCKS" LC_ALL=C awk \
+        -v topology="$XCAT_ZFS_TOPOLOGY" -v generation="$XCAT_GENERATION" -v output="${1:-members}" '
+        function emit(role, group, kind, names,    n, list, i, p) {
+            n=split(names,list,",")
+            if (output=="arguments" && kind=="mirror") print "mirror"
+            if (output=="status" && kind=="mirror") print "mirror"
+            for(i=1;i<=n;i++) {
+                split(list[i],p,"@")
+                if(output=="members") print p[1] "\t" p[2] "\t" role ":" group
+                else if(output=="partitions") print p[1] "\t" p[2] "\t" role ":" group "\ta" generation ordinal
+                else print "/dev/gpt/a" generation ordinal
+                ordinal++
+            }
+        }
+        {devices[$1]=1; serials[$2]=1; primary++}
+        END {
+            size=ENVIRON["XCAT_AUX_SMALL"]
+            if(size !~ /^(0|[1-9][0-9]*)$/ || length(size)>8 || size+0>16777216 || (size+0>0 && size+0<512)) exit 1
+            n=size+0; while(n>1 && n%2==0) n/=2
+            if(n>1 || (size+0>0 && ENVIRON["XCAT_AUX_SPECIAL"]=="-")) exit 1
+            split("special log cache",roles," ")
+            total=primary
+            for(r=1;r<=3;r++) {
+                role=roles[r]; text=ENVIRON["XCAT_AUX_" toupper(role)]
+                if(text=="-") continue
+                if(!length(text) || length(text)>16384 || (role=="special" && topology=="stripe")) exit 1
+                groups[role]=split(text,lists,";")
+                if(role=="cache" && groups[role]!=1) exit 1
+                width=(topology=="mirror" ? primary : topology=="raidz2" ? 3 : topology=="raidz3" ? 4 : 2)
+                for(g=1;g<=groups[role];g++) {
+                    count=split(lists[g],members,",")
+                    if(!length(lists[g]) || count<1 || (role=="special" && count!=width)) exit 1
+                    kind[role,g]=(role=="special" || (role=="log" && count>1) ? "mirror" : "stripe")
+                    names[role,g]=lists[g]
+                    for(i=1;i<=count;i++) {
+                        if(split(members[i],p,"@")!=2 || p[1]!~/^(ada|da|nda|nvd|vtbd)(0|[1-9][0-9]{0,4})$/ ||
+                            p[2]!~/^[A-Za-z0-9_.:+-]+$/ || length(p[2])>128 || devices[p[1]]++ || serials[p[2]]++ || ++total>128) exit 1
+                    }
+                }
+            }
+            if(output!="members" && output!="arguments" && output!="status" && output!="partitions") exit 1
+            ordinal=0
+            for(r=1;r<=3;r++) {
+                role=roles[r]
+                if(!groups[role]) continue
+                if(output=="arguments") print role
+                if(output=="status") print (role=="log" ? "logs" : role)
+                if(role=="log")
+                    for(g=1;g<=groups[role];g++) if(kind[role,g]=="stripe") emit(role,g,kind[role,g],names[role,g])
+                for(g=1;g<=groups[role];g++)
+                    if(role!="log" || kind[role,g]!="stripe") emit(role,g,kind[role,g],names[role,g])
+            }
+        }'
+)
+
+xcat_zfs_all_members()
+(
+    xcat_primary=$(xcat_zfs_members) && xcat_auxiliary=$(xcat_zfs_auxiliary) || exit 1
+    printf '%s\n' "$xcat_primary"
+    [ -z "$xcat_auxiliary" ] || printf '%s\n' "$xcat_auxiliary"
+    exit 0
+)
+
 xcat_read_config()
 {
     XCAT_FORMAT= XCAT_RELEASE= XCAT_NODE= XCAT_GENERATION= XCAT_MASTER= XCAT_PORT=
@@ -158,6 +248,7 @@ xcat_read_config()
     XCAT_TARGET_DISK= XCAT_TARGET_DISK_IDENT= XCAT_FILESYSTEM= XCAT_SWAP_SIZE=
     XCAT_ZFS_TOPOLOGY= XCAT_ZFS_VDEVS= XCAT_SWAP_MODE=
     XCAT_ZFS_COMPRESSION= XCAT_ZFS_ASHIFT= XCAT_DISK_ACTION= XCAT_PRESERVE_DISKS=
+    XCAT_ZFS_LOG_VDEVS= XCAT_ZFS_CACHE_VDEVS= XCAT_ZFS_SPECIAL_VDEVS= XCAT_ZFS_SPECIAL_SMALL_BLOCKS=
     XCAT_DIST_URL= XCAT_BASE_SHA256= XCAT_KERNEL_SHA256= XCAT_AUTHORIZED_KEY_BASE64=
     XCAT_INSTALL_URL= XCAT_PACKAGE_PLAN_SHA256= XCAT_BOOT_MEDIA_SHA256= XCAT_RUNTIME_SHA256=
     XCAT_BOOTSTRAP= XCAT_CONSOLE_PORT= XCAT_CONSOLE_SPEED= XCAT_CONSOLE_FLOW=
@@ -198,6 +289,10 @@ xcat_read_config()
             zfs_ashift) XCAT_ZFS_ASHIFT=$xcat_value ;;
             disk_action) XCAT_DISK_ACTION=$xcat_value ;;
             preserve_disks) XCAT_PRESERVE_DISKS=$xcat_value ;;
+            zfs_log_vdevs) XCAT_ZFS_LOG_VDEVS=$xcat_value ;;
+            zfs_cache_vdevs) XCAT_ZFS_CACHE_VDEVS=$xcat_value ;;
+            zfs_special_vdevs) XCAT_ZFS_SPECIAL_VDEVS=$xcat_value ;;
+            zfs_special_small_blocks) XCAT_ZFS_SPECIAL_SMALL_BLOCKS=$xcat_value ;;
             dist_url) XCAT_DIST_URL=$xcat_value ;;
             base_sha256) XCAT_BASE_SHA256=$xcat_value ;;
             kernel_sha256) XCAT_KERNEL_SHA256=$xcat_value ;;
@@ -217,7 +312,17 @@ xcat_read_config()
         esac
     done < "$1"
     [ "$XCAT_RELEASE" = 15.1-RELEASE ] || return 1
-    if [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ]; then
+    if [ "$XCAT_FORMAT" = xcat-freebsd-install-6 ]; then
+        for xcat_required in zfs_log_vdevs zfs_cache_vdevs zfs_special_vdevs zfs_special_small_blocks; do
+            case "$xcat_seen" in *" $xcat_required "*) ;; *) return 1 ;; esac
+        done
+        xcat_zfs_auxiliary >/dev/null || return 1
+    else
+        case "$xcat_seen" in
+            *' zfs_log_vdevs '*|*' zfs_cache_vdevs '*|*' zfs_special_vdevs '*|*' zfs_special_small_blocks '*) return 1 ;;
+        esac
+    fi
+    if xcat_extended_storage; then
         for xcat_required in zfs_compression zfs_ashift disk_action preserve_disks; do
             case "$xcat_seen" in *" $xcat_required "*) ;; *) return 1 ;; esac
         done
@@ -249,7 +354,7 @@ xcat_read_config()
             xcat_hex "$XCAT_BASE_SHA256" 64 && xcat_hex "$XCAT_KERNEL_SHA256" 64 || return 1
             xcat_url "$XCAT_DIST_URL" || return 1
             ;;
-        xcat-freebsd-install-2|xcat-freebsd-install-3|xcat-freebsd-install-4|xcat-freebsd-install-5)
+        xcat-freebsd-install-2|xcat-freebsd-install-3|xcat-freebsd-install-4|xcat-freebsd-install-5|xcat-freebsd-install-6)
             [ "$xcat_read_bytes" -eq "$xcat_config_size" ] && [ "$xcat_unterminated" -eq 0 ] &&
                 [ "$xcat_skipped" -eq 0 ] || return 1
             LC_ALL=C awk '/[^ -~]/ {exit 1}' "$1" || return 1
@@ -339,10 +444,10 @@ xcat_status()
 
 xcat_preserved_members()
 {
-    printf '%s\n' "$XCAT_PRESERVE_DISKS" | LC_ALL=C awk -v os="$XCAT_ZFS_VDEVS" '
+    printf '%s\n' "$XCAT_PRESERVE_DISKS" | LC_ALL=C awk -v os="$XCAT_ZFS_VDEVS,${XCAT_ZFS_LOG_VDEVS:--},${XCAT_ZFS_CACHE_VDEVS:--},${XCAT_ZFS_SPECIAL_VDEVS:--}" '
         BEGIN {
             n=split(os,a,/[,;]/)
-            for(i=1;i<=n;i++) {split(a[i],p,"@"); devices[p[1]]=1; serials[p[2]]=1}
+            for(i=1;i<=n;i++) {if(a[i]=="-") continue; split(a[i],p,"@"); devices[p[1]]=1; serials[p[2]]=1}
         }
         $0 == "-" {next}
         {
@@ -360,9 +465,12 @@ xcat_preserved_members()
 xcat_zfs_disk_inventory()
 (
     xcat_guarded_storage || exit 1
-    xcat_members=$(xcat_zfs_members) || exit 1
-    xcat_inventory=$(xcat_disk_inventory "$xcat_members" 4294967296) || exit 1
-    if [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ]; then
+    xcat_members=$(xcat_zfs_all_members) || exit 1
+    xcat_minimum=4294967296
+    [ "$XCAT_FORMAT" != xcat-freebsd-install-6 ] || xcat_minimum=134217728
+    xcat_inventory=$(xcat_disk_inventory "$xcat_members" "$xcat_minimum") || exit 1
+    printf '%s\n' "$xcat_inventory" | awk -F '\t' '$3 ~ /^[0-9]+$/ && $4 < 4294967296 {exit 1}' || exit 1
+    if xcat_extended_storage; then
         printf '%s\n' "$xcat_inventory" | awk -F '\t' -v ashift="$XCAT_ZFS_ASHIFT" '2^ashift < $5 {exit 1}' || {
             xcat_error 'ZFS ashift is smaller than a selected disk sector'; exit 1
         }
@@ -372,7 +480,7 @@ xcat_zfs_disk_inventory()
 
 xcat_preserved_inventory()
 (
-    [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ] || exit 0
+    xcat_extended_storage || exit 0
     xcat_members=$(xcat_preserved_members) || exit 1
     [ -n "$xcat_members" ] || exit 0
     xcat_disk_inventory "$xcat_members"
@@ -526,7 +634,7 @@ xcat_check_zfs_initial()
 
 xcat_check_zfs_reinstall()
 (
-    [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ] && [ "$XCAT_DISK_ACTION" = erase ] || exit 1
+    xcat_extended_storage && [ "$XCAT_DISK_ACTION" = erase ] || exit 1
     xcat_snapshot=$(xcat_zfs_disk_inventory) || exit 1
     printf '%s\n' "$xcat_snapshot" | awk -F '\t' '$6 != "r0w0e0" {exit 1}' || {
         xcat_error 'An OS disk is in use'; exit 1
@@ -626,14 +734,81 @@ xcat_check_disk()
     [ -z "$xcat_geli" ] || { xcat_error 'Attached GELI providers prevent installation'; return 1; }
 }
 
+xcat_zfs_label_owner()
+{
+    awk '
+        function guid(s) {
+            return s~/^[1-9][0-9]*$/ && length(s)<=20 && (length(s)<20 || "g" s<="g18446744073709551615")
+        }
+        /Bad label cksum|failed to read label|failed to unpack label/ {bad=1}
+        $0=="L2ARC device header" {header=1; headers++; next}
+        $0=="L2ARC device log blocks" {header=0}
+        header && $1=="magic:" {if(NF!=2 || "m" $2!="m6504978260106102853") bad=1; magic++}
+        header && $1=="version:" {if(NF!=2 || $2!="1") bad=1; version++}
+        $1=="name:" {
+            if(NF!=2 || (names++ && name!=$2)) bad=1
+            name=$2
+        }
+        !header && $1=="state:" {
+            if(NF!=2 || $2!~/^(0|1|4)$/ || (states++ && state!=$2)) bad=1
+            state=$2
+        }
+        $1=="pool_guid:" {
+            if(NF!=2 || !guid($2) || (guids++ && "g" owner!="g" $2)) bad=1
+            owner=$2
+            if(header) cache_guids++
+        }
+        END {
+            if(bad || !states || !guids) exit 1
+            if(state==4) {
+                if(names || headers!=1 || cache_guids!=1 || magic!=1 || version!=1) exit 1
+                print "cache\t" owner
+            } else {
+                if(!names || headers) exit 1
+                print name "\t" owner
+            }
+        }'
+}
+
+xcat_scan_os_label()
+{
+    xcat_owner=$(printf '%s\n' "$xcat_labels" | xcat_zfs_label_owner) || {
+        xcat_error "Cannot establish ZFS ownership on $xcat_provider"; return 1
+    }
+    xcat_owner_name=$(printf '%s\n' "$xcat_owner" | cut -f1)
+    xcat_owner_guid=$(printf '%s\n' "$xcat_owner" | cut -f2)
+    case " $xcat_selected " in *" $xcat_disk "*) xcat_is_selected=1 ;; *) xcat_is_selected=0 ;; esac
+    if [ "$xcat_is_selected" = 1 ]; then
+        [ "$XCAT_DISK_ACTION" = erase ] || { xcat_error 'A selected disk already contains ZFS labels'; return 1; }
+        case "$xcat_owner_name" in
+            "'zroot'")
+                [ -z "$xcat_os_guid" ] || [ "$xcat_os_guid" = "$xcat_owner_guid" ] || {
+                    xcat_error 'Selected OS disks belong to different pools'; return 1
+                }
+                xcat_os_guid=$xcat_owner_guid
+                ;;
+            cache) xcat_os_cache_guids="$xcat_os_cache_guids $xcat_owner_guid" ;;
+            *) xcat_error 'An OS disk contains a data pool'; return 1 ;;
+        esac
+        XCAT_CLEAR_LABELS="$XCAT_CLEAR_LABELS /dev/$xcat_provider"
+        xcat_label_hash=$(printf '%s\n' "$xcat_labels" | sha256 -q) || return 1
+        XCAT_REINSTALL_LABELS="$XCAT_REINSTALL_LABELS$xcat_provider $xcat_label_hash
+"
+    else
+        [ "$xcat_owner_name" != "'zroot'" ] || { xcat_error 'An unselected disk contains a zroot pool'; return 1; }
+        xcat_other_guids="$xcat_other_guids $xcat_owner_guid"
+    fi
+}
+
 xcat_scan_labels()
 {
     XCAT_REINSTALL_LABELS=
     XCAT_CLEAR_LABELS=
+    xcat_os_guid= xcat_os_cache_guids= xcat_other_guids=
     xcat_disks=$(sysctl -n kern.disks) || return 1
     if xcat_guarded_storage; then
-        xcat_selected=$(xcat_zfs_members) || return 1
-        xcat_selected=$(printf '%s\n' "$xcat_selected" | awk '{print $1}') || return 1
+        xcat_selected=$(xcat_zfs_all_members) || return 1
+        xcat_selected=$(printf '%s\n' "$xcat_selected" | awk '{s=s (NR==1 ? "" : " ") $1} END {print s}') || return 1
         [ -n "$xcat_selected" ] || return 1
         for xcat_disk in $xcat_selected; do
             case " $xcat_disks " in *" $xcat_disk "*) ;; *) return 1 ;; esac
@@ -670,18 +845,26 @@ xcat_scan_labels()
             { xcat_error 'Cannot resolve disk partitions'; return 1; }
         for xcat_provider in "$xcat_disk" $xcat_parts; do
             xcat_label_status=0
-            xcat_labels=$(zdb -l "/dev/$xcat_provider" 2>/dev/null) || xcat_label_status=$?
+            if [ "$XCAT_FORMAT" = xcat-freebsd-install-6 ]; then
+                xcat_labels=$(timeout -k 5 60 zdb -l "/dev/$xcat_provider" 2>/dev/null) || xcat_label_status=$?
+            else
+                xcat_labels=$(zdb -l "/dev/$xcat_provider" 2>/dev/null) || xcat_label_status=$?
+            fi
             case "$xcat_label_status" in
                 0) ;;
                 2) continue ;;
                 *) xcat_error "Cannot inspect ZFS labels on $xcat_provider"; return 1 ;;
             esac
+            if [ "$XCAT_FORMAT" = xcat-freebsd-install-6 ]; then
+                xcat_scan_os_label || return 1
+                continue
+            fi
             printf '%s\n' "$xcat_labels" | awk '$1 == "pool_guid:" {found=1} END {exit !found}' ||
                 { xcat_error "Cannot identify ZFS labels on $xcat_provider"; return 1; }
             if xcat_guarded_storage; then
                 for xcat_member in $xcat_selected; do
                     [ "$xcat_member" != "$xcat_disk" ] || {
-                        if [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ] && [ "$XCAT_DISK_ACTION" = erase ]; then
+                        if xcat_extended_storage && [ "$XCAT_DISK_ACTION" = erase ]; then
                             printf '%s\n' "$xcat_labels" | awk '
                                 $1 == "name:" {found++; if ($2 != "\047zroot\047") bad=1}
                                 END {exit !found || bad}' || { xcat_error 'An OS disk contains a data pool'; return 1; }
@@ -709,6 +892,17 @@ xcat_scan_labels()
             XCAT_CLEAR_LABELS="$XCAT_CLEAR_LABELS /dev/$xcat_provider"
         done
     done
+    for xcat_cache_guid in $xcat_os_cache_guids; do
+        [ -n "$xcat_os_guid" ] && [ "$xcat_cache_guid" = "$xcat_os_guid" ] || {
+            xcat_error 'An OS cache device does not belong to the selected root pool'; return 1
+        }
+    done
+    for xcat_other_guid in $xcat_other_guids; do
+        [ "$xcat_other_guid" != "$xcat_os_guid" ] || {
+            xcat_error 'An unselected device belongs to the root pool'; return 1
+        }
+    done
+    return 0
 }
 
 xcat_fetch_distributions()
@@ -751,9 +945,18 @@ xcat_write_installer()
             printf 'export ZFSBOOT_DISKS="%s"\nexport ZFSBOOT_VDEV_TYPE="stripe"\n' "$XCAT_TARGET_DISK"
         fi
         printf 'export ZFSBOOT_POOL_NAME="zroot"\nexport ZFSBOOT_PARTITION_SCHEME="GPT"\nexport ZFSBOOT_SWAP_SIZE="%s"\n' "$XCAT_SWAP_SIZE"
-        if [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ]; then
-            printf 'export ZFSBOOT_FORCE_4K_SECTORS=""\nexport ZFSBOOT_POOL_CREATE_OPTIONS="-o ashift=%s -O compression=%s -O atime=off"\n' \
+        if xcat_extended_storage; then
+            printf 'export ZFSBOOT_FORCE_4K_SECTORS=""\nexport ZFSBOOT_POOL_CREATE_OPTIONS="-o ashift=%s -O compression=%s -O atime=off' \
                 "$XCAT_ZFS_ASHIFT" "$XCAT_ZFS_COMPRESSION"
+            if [ "$XCAT_FORMAT" = xcat-freebsd-install-6 ]; then
+                printf ' -O special_small_blocks=%s' "$XCAT_ZFS_SPECIAL_SMALL_BLOCKS"
+            fi
+            printf '"\n'
+        fi
+        if [ "$XCAT_FORMAT" = xcat-freebsd-install-6 ]; then
+            xcat_auxiliary=$(xcat_zfs_auxiliary arguments) || return 1
+            xcat_auxiliary=$(printf '%s\n' "$xcat_auxiliary" | awk 'NF {s=s (length(s) ? " " : "") $0} END {print s}') || return 1
+            printf 'export XCAT_ZFS_AUXILIARY="%s"\n' "$xcat_auxiliary"
         fi
     elif [ "$XCAT_SWAP_SIZE" = 0 ]; then
         printf 'PARTITIONS="%s GPT { auto freebsd-ufs / }"\n' "$XCAT_TARGET_DISK"
@@ -799,7 +1002,7 @@ xcat_pkgbase_workspace()
 
 xcat_prepare_pkgbase()
 {
-    case "$XCAT_FORMAT" in xcat-freebsd-install-2|xcat-freebsd-install-3|xcat-freebsd-install-4|xcat-freebsd-install-5) ;; *) return 1 ;; esac
+    case "$XCAT_FORMAT" in xcat-freebsd-install-2|xcat-freebsd-install-3|xcat-freebsd-install-4|xcat-freebsd-install-5|xcat-freebsd-install-6) ;; *) return 1 ;; esac
     xcat_hex "$XCAT_ATTEMPT" 32 || return 1
     # The caller owns begin and disk access. This entry only fills its RAM workspace.
     env -i PATH=/sbin:/bin:/usr/sbin:/usr/bin LC_ALL=C XCAT_ATTEMPT="$XCAT_ATTEMPT" \
@@ -812,7 +1015,7 @@ xcat_install_system()
     xcat_install_parent=$XCAT_WORK
     case "$XCAT_FORMAT" in
         xcat-freebsd-install-1) ;;
-        xcat-freebsd-install-2|xcat-freebsd-install-3|xcat-freebsd-install-4|xcat-freebsd-install-5)
+        xcat-freebsd-install-2|xcat-freebsd-install-3|xcat-freebsd-install-4|xcat-freebsd-install-5|xcat-freebsd-install-6)
             [ -f /xcat/runtime.tsv ] && [ ! -L /xcat/runtime.tsv ] || {
                 xcat_error 'Pkgbase installation runtime is not available'
                 return 1
@@ -824,7 +1027,7 @@ xcat_install_system()
     esac
     kldload -n zfs && kldload -n geom_eli || return 1
     if xcat_guarded_storage; then
-        if [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ] && [ "$XCAT_DISK_ACTION" = erase ]; then
+        if xcat_extended_storage && [ "$XCAT_DISK_ACTION" = erase ]; then
             xcat_check_zfs_reinstall > "$XCAT_WORK/reinstall.snapshot" || return 1
         else
             xcat_snapshot=$(xcat_check_zfs_initial) || return 1
@@ -843,7 +1046,7 @@ xcat_install_system()
     xcat_status begin || return 1
     set --
     if xcat_guarded_storage; then
-        if [ "$XCAT_FORMAT" = xcat-freebsd-install-5 ] && [ "$XCAT_DISK_ACTION" = erase ]; then
+        if xcat_extended_storage && [ "$XCAT_DISK_ACTION" = erase ]; then
             xcat_erase_os_disks "$XCAT_WORK/reinstall.snapshot" > "$XCAT_WORK/storage.snapshot" || return 1
         else
             xcat_current_snapshot=$(xcat_check_zfs_initial) || return 1

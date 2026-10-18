@@ -221,7 +221,7 @@ sub publish {
         require xCAT::FreeBSDConfig;
         $boot_settings = xCAT::FreeBSDConfig::render_loader_settings($options{settings}, $options{network});
         _fail('Boot settings require xcat-freebsd-install-3 or later media') if length($boot_settings) &&
-            ($media->{install_contract} || '') !~ /\Axcat-freebsd-install-[345]\z/x;
+            ($media->{install_contract} || '') !~ /\Axcat-freebsd-install-[3456]\z/x;
     }
     my $pkgbase = $media->{format} eq 'xcat-mfsbsd-2';
     for my $payload_path (keys %{$media->{files}}) {

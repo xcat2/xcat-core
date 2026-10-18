@@ -218,7 +218,7 @@ sub inspect_media {
     my $boot_only = $manifest->{format} eq 'xcat-mfsbsd-2';
     _fail('Unsupported installation contract') if exists($manifest->{install_contract}) &&
         (!$boot_only || !defined($manifest->{install_contract}) || ref($manifest->{install_contract}) ||
-         $manifest->{install_contract} !~ /\Axcat-freebsd-install-[345]\z/x);
+         $manifest->{install_contract} !~ /\Axcat-freebsd-install-[3456]\z/x);
     if (exists($manifest->{postscript_contract})) {
         _fail('Unsupported boot postscript contract') unless $boot_only
           && defined($manifest->{postscript_contract}) && ref($manifest->{postscript_contract}) eq ''
@@ -256,7 +256,7 @@ sub inspect_media {
     _validate_payload($root, $files, @trees);
     if ($boot_only) {
         _validate_runtime($root, exists($manifest->{postscript_contract}),
-            ($manifest->{install_contract} || '') =~ /\Axcat-freebsd-install-[45]\z/x);
+            ($manifest->{install_contract} || '') =~ /\Axcat-freebsd-install-[456]\z/x);
     } else {
         _validate_distributions($root, $files);
     }

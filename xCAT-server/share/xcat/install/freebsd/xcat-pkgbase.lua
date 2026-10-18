@@ -427,7 +427,7 @@ local function runtime(config)
         if files[name] then postscript_files = postscript_files + 1 end
     end
     if postscript_files ~= 0 and postscript_files ~= 4 then fail("Incomplete postscript runtime") end
-    if config.format == "xcat-freebsd-install-4" or config.format == "xcat-freebsd-install-5" then
+    if config.format == "xcat-freebsd-install-4" or config.format == "xcat-freebsd-install-5" or config.format == "xcat-freebsd-install-6" then
         for _, name in ipairs({
             "/bin/rmdir", "/boot/gptzfsboot", "/boot/loader.efi", "/boot/pmbr",
             "/sbin/mount_msdosfs", "/sbin/newfs_msdos", "/sbin/zfs",
@@ -685,7 +685,8 @@ local function configuration(config_path, workspace)
     if not ((config.format == "xcat-freebsd-install-2" and count == 21)
         or (config.format == "xcat-freebsd-install-3" and count == 27)
         or (config.format == "xcat-freebsd-install-4" and count == 28)
-        or (config.format == "xcat-freebsd-install-5" and count == 32)) then
+        or (config.format == "xcat-freebsd-install-5" and count == 32)
+        or (config.format == "xcat-freebsd-install-6" and count == 36)) then
         fail("Unsupported installer configuration")
     end
     local attempt = os.getenv("XCAT_ATTEMPT")
@@ -728,7 +729,7 @@ local function prepare(select_packages, config_path, workspace)
     mkdir(stage)
     write_file(stage .. "/install-config", config_bytes)
     write_file(stage .. "/runtime", runtime_bytes)
-    capture("/bin/sh", {"-c", '. "$1"; xcat_read_config "$2" && case "$XCAT_FORMAT" in xcat-freebsd-install-2|xcat-freebsd-install-3|xcat-freebsd-install-4|xcat-freebsd-install-5) ;; *) exit 1 ;; esac',
+    capture("/bin/sh", {"-c", '. "$1"; xcat_read_config "$2" && case "$XCAT_FORMAT" in xcat-freebsd-install-2|xcat-freebsd-install-3|xcat-freebsd-install-4|xcat-freebsd-install-5|xcat-freebsd-install-6) ;; *) exit 1 ;; esac',
         "xcat-config", INSTALL_LIBRARY, stage .. "/install-config"}, 4096)
     local base_url = config.install_url:gsub("/+$", "") .. "/freebsd15.1/x86_64/"
     fetch_file(base_url .. "plans/" .. config.package_plan_sha256 .. ".plan",
@@ -916,7 +917,7 @@ local function install()
         or read_file(stage .. "/runtime", 65536) ~= runtime_bytes then
         fail("Prepared configuration or runtime changed")
     end
-    capture("/bin/sh", {"-c", '. "$1"; xcat_read_config "$2" && case "$XCAT_FORMAT" in xcat-freebsd-install-2|xcat-freebsd-install-3|xcat-freebsd-install-4|xcat-freebsd-install-5) ;; *) exit 1 ;; esac',
+    capture("/bin/sh", {"-c", '. "$1"; xcat_read_config "$2" && case "$XCAT_FORMAT" in xcat-freebsd-install-2|xcat-freebsd-install-3|xcat-freebsd-install-4|xcat-freebsd-install-5|xcat-freebsd-install-6) ;; *) exit 1 ;; esac',
         "xcat-config", INSTALL_LIBRARY, stage .. "/install-config"}, 4096)
     checksum(stage .. "/plan", config.package_plan_sha256)
     local plan = dofile(DECODER).parse(read_file(stage .. "/plan", MAX_BYTES))
