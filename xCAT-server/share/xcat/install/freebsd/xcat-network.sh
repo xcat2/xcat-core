@@ -97,9 +97,9 @@ xcat_network_target_plan()
         $1=="B" {nic=$2; next}
         $1=="M" {next}
         $1=="C" {print; print "S", "inet", ""; print "S", "inet6", ""; next}
-        $1=="K" && $2=="ifconfig_" nic {$3="inet " ip "/" bits " " $3}
         {print}
         END {
+            print "K", "ifconfig_" nic "_alias0", "inet " ip "/" bits
             print "A", nic, "inet", ip, bits
             if (gateway!="") {print "D", "inet", gateway; print "K", "defaultrouter", gateway}
         }' "$XCAT_WORK/target-bootstrap.plan" > "$XCAT_WORK/target-network.plan"

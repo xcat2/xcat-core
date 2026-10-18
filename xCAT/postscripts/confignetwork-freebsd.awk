@@ -586,8 +586,12 @@ function render(nic,    i, config, mtu, parent, family, ip, bits, alias, first4,
         bits = address_prefix[nic, i]
         if (family == "inet6" && mtu != "" && mtu < 1280)
             fail("IPv6 requires an MTU of at least 1280 on " nic)
-        if (family == "inet" && !first4++)
-            primary4 = "inet " ip "/" bits " "
+        if (family == "inet" && !first4++) {
+            if (option[nic, "MACADDR"] != "")
+                emit("ifconfig_" nic "_alias" alias++, "inet " ip "/" bits)
+            else
+                primary4 = "inet " ip "/" bits " "
+        }
         else if (family == "inet6" && dhcp6[nic]) {
             bits = 128
             emit("ifconfig_" nic "_ipv6", "inet6 -ifdisabled")
