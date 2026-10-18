@@ -470,6 +470,20 @@ for nic in $(ifconfig -l); do
     fi
 done
 [ -n "$bootnic" ] || fail 'Cannot find the physical installation interface'
+cp -p /etc/rc.conf "$pending/before.rc"
+for override in /etc/rc.conf.local /etc/rc.conf.d/netif /etc/rc.conf.d/network /etc/rc.conf.d/routing \
+    /usr/local/etc/rc.conf.d/netif /usr/local/etc/rc.conf.d/network /usr/local/etc/rc.conf.d/routing; do
+    [ ! -e "$override" ] || fail "Network overrides require manual integration: $override"
+done
+case $(sysrc -n network_interfaces) in auto|AUTO) ;; *) fail 'FreeBSD network_interfaces must be AUTO' ;; esac
+awk '
+    $0 == "# BEGIN xCAT FreeBSD network" {if (inside || ++blocks > 1) exit 1; inside=1; next}
+    $0 == "# END xCAT FreeBSD network" {if (!inside) exit 1; inside=0; next}
+    !inside {print}
+    END {if (inside) exit 1}
+' "$pending/before.rc" > "$pending/base.rc" || fail 'Malformed managed rc.conf block'
+unmanaged_ipv4_gateway=$(sysrc -f "$pending/base.rc" -n defaultrouter 2>/dev/null || :)
+case "$unmanaged_ipv4_gateway" in ''|NO) unmanaged_ipv4_gateway= ;; esac
 if [ -e "$state/current" ]; then
     protected_file "$state/current" || fail 'Unsafe saved network plan'
     cp "$state/current" "$pending/before.plan"
@@ -477,8 +491,21 @@ else
     : > "$pending/before.plan"
 fi
 owned_ipv4_gateway=$(awk -F '\t' '$1 == "D" && $2 == "inet" {print $3}' "$pending/before.plan")
+owned_dhcp_default=$(awk -F '\t' '$1 == "H" && $6 == "yes" {print $2}' "$pending/before.plan")
+leased_ipv4_gateway=
+if [ -n "$owned_dhcp_default" ] && protected_file "$state/dhcp/$owned_dhcp_default.lease"; then
+    if awk -v mode=dhcp4-default -v nic="$owned_dhcp_default" -f "$planner" \
+        "$state/dhcp/$owned_dhcp_default.lease" > "$pending/leased.default" 2> "$pending/leased.error" &&
+        netstat -rnW > "$pending/leased.kernel" &&
+        awk -v mode=routes -f "$planner" "$pending/leased.default" "$pending/leased.kernel" \
+            >> "$pending/leased.error" 2>&1; then
+        leased_ipv4_gateway=$(awk -F '\t' '$1 == "R" && $2 == "inet" && $3 == "default" {print $4}' "$pending/leased.default")
+    fi
+fi
 awk -v bootnic="$bootnic" -v bootmac="$bootmac" -v configure_boot="$configure_boot" \
-    -v owned_ipv4_gateway="$owned_ipv4_gateway" -f "$planner" > "$pending/plan"
+    -v owned_ipv4_gateway="$owned_ipv4_gateway" -v owned_dhcp_default="$owned_dhcp_default" \
+    -v leased_ipv4_gateway="$leased_ipv4_gateway" -v unmanaged_ipv4_gateway="$unmanaged_ipv4_gateway" \
+    -f "$planner" > "$pending/plan"
 if [ "$configure_boot" = 0 ] && awk -F '\t' -v nic="$bootnic" \
     '$1 == "I" && $2 == nic {found=1} END {exit !found}' "$pending/before.plan"; then
     fail 'Continue using confignetwork -s after adopting the installation interface'
@@ -532,18 +559,6 @@ while IFS="$tab" read -r kind nic type rest; do
     fi
 done < "$pending/plan"
 
-cp -p /etc/rc.conf "$pending/before.rc"
-for override in /etc/rc.conf.local /etc/rc.conf.d/netif /etc/rc.conf.d/network /etc/rc.conf.d/routing \
-    /usr/local/etc/rc.conf.d/netif /usr/local/etc/rc.conf.d/network /usr/local/etc/rc.conf.d/routing; do
-    [ ! -e "$override" ] || fail "Network overrides require manual integration: $override"
-done
-case $(sysrc -n network_interfaces) in auto|AUTO) ;; *) fail 'FreeBSD network_interfaces must be AUTO' ;; esac
-awk '
-    $0 == "# BEGIN xCAT FreeBSD network" {if (inside || ++blocks > 1) exit 1; inside=1; next}
-    $0 == "# END xCAT FreeBSD network" {if (!inside) exit 1; inside=0; next}
-    !inside {print}
-    END {if (inside) exit 1}
-' "$pending/before.rc" > "$pending/base.rc" || fail 'Malformed managed rc.conf block'
 rc_variables "$pending/base.rc" > "$pending/base.variables" || fail 'Cannot read base rc.conf settings'
 rc_variables "$pending/before.rc" > "$pending/before.variables" || fail 'Cannot read current rc.conf settings'
 awk -v mode=rcoptions -f "$planner" "$pending/plan" "$pending/physical.variables" "$pending/before.variables"

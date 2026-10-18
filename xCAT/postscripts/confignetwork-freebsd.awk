@@ -381,8 +381,17 @@ function node_addresses(nic,    ips, nets, count, nc, i, name, ip, family, net, 
         gateway = network[name, "gateway"]
         if (family == "inet" && ip != ENVIRON["IPADDR"])
             gateway = ""
-        else if (gateway == "<xcatmaster>")
-            gateway = family == "inet" && !dhcp[nic] ? owned_ipv4_gateway : ""
+        else if (gateway == "<xcatmaster>") {
+            gateway = ""
+            if (family == "inet" && !dhcp[nic] && !explicit_dhcp_default) {
+                gateway = owned_ipv4_gateway
+                if (gateway == "" && unmanaged_ipv4_gateway == "") {
+                    gateway = leased_ipv4_gateway
+                    if (gateway == "" && owned_dhcp_default != "")
+                        fail("Cannot retain the DHCP default; set an explicit gateway before selecting static IPv4")
+                }
+            }
+        }
         if (gateway != "") {
             if (index(gateway, "%")) {
                 if (family != "inet6" || split(gateway, parts, "%") != 2 || parts[2] != nic)
@@ -665,6 +674,9 @@ function compile(    n) {
     attribute("NICCUSTOMSCRIPTS")
     networks()
     topology()
+    for (n = 1; n <= ordered; n++)
+        if (dhcp[order[n]] && option[order[n], "DEFROUTE"] == "yes")
+            explicit_dhcp_default++
     for (n = 1; n <= ordered; n++)
         node_addresses(order[n])
     if (configure_boot == 1 && visited[bootnic] &&
