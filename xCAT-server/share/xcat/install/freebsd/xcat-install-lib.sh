@@ -470,6 +470,17 @@ xcat_zfs_disk_inventory()
     [ "$XCAT_FORMAT" != xcat-freebsd-install-6 ] || xcat_minimum=134217728
     xcat_inventory=$(xcat_disk_inventory "$xcat_members" "$xcat_minimum") || exit 1
     printf '%s\n' "$xcat_inventory" | awk -F '\t' '$3 ~ /^[0-9]+$/ && $4 < 4294967296 {exit 1}' || exit 1
+    if [ "$XCAT_FORMAT" = xcat-freebsd-install-6 ]; then
+        # Pool creation does not force mismatched groups. Check before erase.
+        printf '%s\n' "$xcat_inventory" | awk -F '\t' '
+            $3 !~ /^cache:/ {
+                if (($3 in size) && size[$3] != $4) exit 1
+                size[$3]=$4
+            }' || {
+                xcat_error 'ZFS members in each primary, special or log group must have equal capacities'
+                exit 1
+            }
+    fi
     if xcat_extended_storage; then
         printf '%s\n' "$xcat_inventory" | awk -F '\t' -v ashift="$XCAT_ZFS_ASHIFT" '2^ashift < $5 {exit 1}' || {
             xcat_error 'ZFS ashift is smaller than a selected disk sector'; exit 1
