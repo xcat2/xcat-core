@@ -394,7 +394,7 @@ subtest 'install capability is explicit and bound to media identity' => sub {
     my $new = xCAT::FreeBSDImage::inspect_media($root);
     is($new->{install_contract}, 'xcat-freebsd-install-3', 'inspection exposes the declared install contract');
     isnt($new->{digest}, $old->{digest}, 'capability declaration changes immutable media identity');
-    for my $value ('', 'xcat-freebsd-install-5', undef, ['xcat-freebsd-install-3']) {
+    for my $value ('', 'xcat-freebsd-install-7', undef, ['xcat-freebsd-install-3']) {
         rejected(sub { $_[1]->{install_contract} = $value; write_manifest($_[0], $_[1]); },
             qr/installation[ ]contract/x, 'unsupported contract', 'xcat-mfsbsd-2');
     }
