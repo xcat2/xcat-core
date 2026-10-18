@@ -936,6 +936,8 @@ The command stores the recoverable key in ``passwd.password``, with
 ``restorexCATdb`` include it. Excluding ``passwd`` through ``site.skiptables``
 or ``XCAT_SKIPTABLES`` also excludes these keys. The hexadecimal representation
 is not encryption; protect database access and backup files as credentials.
+Create the backup directory with mode ``0700`` and run the backup with
+``umask 077`` so that table exports remain private.
 The command refuses to replace a different saved key and does not print key
 bytes or take them as command arguments.
 The combined ``node/pool`` identity must fit the table's 128-character key limit.
@@ -1261,6 +1263,10 @@ and IPv4 readback must pass before disk installation starts. The installed
 system retains this topology with the node's static management address and
 records it as xCAT-managed configuration. Use ``confignetwork -s`` to update
 this management topology, its addresses, DHCP policy and routes.
+When the installed-node policy matches this static management configuration,
+it retains the inherited MAC and member MTUs and treats it as unchanged.
+A management bridge can use that inherited MAC for DHCP; other DHCP bridges
+require ``MACADDR``.
 
 The firmware and loader still need a working path to fetch the boot payload.
 This setting configures the FreeBSD kernel stage; it does not configure PXE
