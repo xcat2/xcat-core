@@ -126,6 +126,7 @@ sub fixture {
     my $format = shift || 'xcat-mfsbsd-1';
     my $install_contract = shift;
     my $postscript_contract = shift;
+    my $network_contract = shift;
     $root = "$temporary/case-" . ++$sequence;
     $xCAT::TableUtils::installroot = "$root/install-files";
     $xCAT::TableUtils::tftpdir = "$root/tftp";
@@ -165,6 +166,10 @@ sub fixture {
             @runtime_paths = map { (split(/\t/x, $_))[1] }
                 grep { /^file\t/x } split(/\n/x, read_file("$FindBin::Bin/../fixtures/freebsd-storage-runtime.tsv"));
         }
+        push @runtime_paths, qw(usr/local/libexec/xcat-network.sh usr/local/libexec/confignetwork-freebsd.awk
+            boot/modules/if_infiniband.ko boot/modules/if_lagg.ko boot/modules/bridgestp.ko
+            boot/modules/if_bridge.ko boot/modules/if_vlan.ko)
+            if $network_contract;
         $files{'xcat/runtime.tsv'} = "format\txcat-freebsd-runtime-2\n"
           . "target\t15.1-RELEASE\tFreeBSD:15:amd64\t1501000\n"
           . "pkg-version\t2.6.2\nbsdinstall-contract\txcat-freebsd-pkgbase-1\n"
@@ -176,6 +181,7 @@ sub fixture {
         ($format eq 'xcat-mfsbsd-2' ? (mfsbsd_commit => 'a' x 40) : ()),
         (defined($install_contract) ? (install_contract => $install_contract) : ()),
         (defined($postscript_contract) ? (postscript_contract => $postscript_contract) : ()),
+        (defined($network_contract) ? (network_contract => $network_contract) : ()),
         files => {map { $_ => sha256_hex($files{$_}) } keys %files} }));
     $media = xCAT::FreeBSDImage::import_media("$root/media", $xCAT::TableUtils::installroot);
     $image = "freebsd15.1-x86_64-install-compute-" . substr($media->{digest}, 0, 12);
@@ -405,6 +411,35 @@ subtest 'pkgbase installation publishes a native source-bound package plan' => s
     my $published = sub {
         my $current = xCAT::FreeBSDInstall::state('node1', directory => $state_directory);
         return ($current, read_file("$root/install-files/autoinst/freebsd/node1/$current->{generation}.conf"));
+    };
+    subtest 'early virtual networking uses the existing adapter inventory' => sub {
+        $fresh->('xcat-freebsd-install-3', undef, 'xcat-freebsd-bootstrap-1');
+        write_file("$root/settings", "authorized_keys_file=$root/key.pub\nbootstrap_interface=bridge0\n");
+        write_file("$root/install-files/postscripts/confignetwork-freebsd.awk",
+            read_file("$FindBin::Bin/../../xCAT/postscripts/confignetwork-freebsd.awk"));
+        $xCAT::Table::rows{nics}{node1} = {
+            nictypes => 'vtnet0!ethernet,bridge0!bridge', nicdevices => 'bridge0!vtnet0',
+            nicextraparams => 'bridge0!STP=no', nicsadapter => 'vtnet0!mac=52:54:00:12:34:56 linkstate=UP',
+        };
+        $xCAT::Table::networks[0]{mtu} = '9000';
+        my ($boot, $errors) = install();
+        is_deeply($errors, [], 'the public producer accepts ordinary nics table fields');
+        diag(explain($errors)) if @$errors;
+        return if @$errors;
+        my ($current, $content) = $published->();
+        my ($description) = $content =~ /^bootstrap_network_base64=(.+)$/mx;
+        require xCAT::FreeBSDNetwork;
+        my $values = xCAT::FreeBSDNetwork::decode($description);
+        is($values->{interface}, 'bridge0', 'the published address owner is the bridge');
+        is($values->{NICMACS}, 'vtnet0!52:54:00:12:34:56', 'the physical MAC comes from nicsadapter');
+        is($values->{mtu}, '9000', 'the existing network MTU reaches the installer');
+        my $text = read_file("$root/tftp/xcat/freebsd/node1/boot/loader.conf");
+        my @chunks = $text =~ /^xcat_network_[0-9]+="([A-Za-z0-9+\/=]+)"$/mgx;
+        is(join('', @chunks), $description, 'loader and downloaded configuration carry the same topology');
+        $xCAT::Table::rows{nics}{node1}{nicsadapter} = '';
+        ($boot, $errors) = install();
+        like($errors->[0]{node}[0]{error}[0], qr/MAC|physical/x, 'missing adapter identity cannot prepare a new installation');
+        is(($published->())[0]{generation}, $current->{generation}, 'rejected inventory preserves the prepared generation');
     };
     subtest 'real public command, immutable configuration and retry' => sub {
         $fresh->();

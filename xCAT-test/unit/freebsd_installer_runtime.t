@@ -104,6 +104,28 @@ for my $file (qw(xcat-install xcat-install-lib.sh buildmfsbsd.sh installerconfig
     is(system('sh', '-n', "$directory/$file"), 0, "$file has shell syntax");
 }
 
+{
+    my $root = fixture();
+    write_file("$root/bin/fetch", <<'SH');
+#!/bin/sh
+now=0
+test ! -f "$FIXTURE_DIR/clock" || now=$(cat "$FIXTURE_DIR/clock")
+if test "$now" -lt 12; then printf partial > "$4"; exit 1; fi
+cp "$FIXTURE_DIR/config" "$4"
+SH
+    chmod 0755, "$root/bin/fetch";
+    is((run_runtime($root, 'XCAT_BOOT_NETWORK_BASE64=present; xcat_fetch_config http://192.0.2.1/config'))[0],
+        0, 'configuration download waits for a delayed virtual network');
+    is(read_file("$root/work/config"), read_file("$root/config"), 'retry returns the complete configuration');
+    unlink("$root/clock") or croak $!;
+    isnt((run_runtime($root, 'XCAT_BOOT_NETWORK_BASE64=; xcat_fetch_config http://192.0.2.1/config'))[0],
+        0, 'legacy physical networking retains its single download attempt');
+    write_file("$root/bin/fetch", "#!/bin/sh\nprintf partial > \"\$4\"\nexit 1\n");
+    isnt((run_runtime($root, 'XCAT_BOOT_NETWORK_BASE64=present; xcat_fetch_config http://192.0.2.1/config'))[0],
+        0, 'an unavailable virtual network reaches a bounded failure');
+    ok(!-e "$root/work/config", 'a failed download leaves no partial configuration');
+}
+
 for my $filesystem (qw(ufs zfs)) {
     my $root = fixture(config => {filesystem => $filesystem});
     my ($status, $output) = run_runtime($root, 'xcat_read_config "$1" && xcat_write_installer "$2"', "$directory/installerconfig.tmpl");

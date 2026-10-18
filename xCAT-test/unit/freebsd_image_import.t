@@ -125,6 +125,24 @@ sub runtime_rejected {
 }
 
 my ($source, $manifest) = fixture();
+subtest 'early networking requires its helpers and native kernel modules' => sub {
+    my ($boot_source, $boot_manifest) = fixture('xcat-mfsbsd-2');
+    my @network = qw(usr/local/libexec/xcat-network.sh usr/local/libexec/confignetwork-freebsd.awk
+        boot/modules/if_infiniband.ko boot/modules/if_lagg.ko boot/modules/bridgestp.ko
+        boot/modules/if_bridge.ko boot/modules/if_vlan.ko);
+    $boot_manifest->{install_contract} = 'xcat-freebsd-install-3';
+    $boot_manifest->{network_contract} = 'xcat-freebsd-bootstrap-1';
+    replace_runtime($boot_source, $boot_manifest, runtime_descriptor(@network));
+    my $boot_media = eval { xCAT::FreeBSDImage::inspect_media($boot_source); };
+    is($@, '', 'the complete early network runtime is accepted');
+    is($boot_media && $boot_media->{network_contract}, 'xcat-freebsd-bootstrap-1', 'verified capability reaches the caller');
+    for my $missing (@network) {
+        replace_runtime($boot_source, $boot_manifest, runtime_descriptor(grep { $_ ne $missing } @network));
+        my $incomplete = eval { xCAT::FreeBSDImage::inspect_media($boot_source); };
+        ok(!defined($incomplete), "missing $missing prevents capability acceptance");
+        like($@, qr/Required[ ]runtime[ ]file/x, 'missing runtime has an explicit diagnostic');
+    }
+};
 subtest 'boot postscript capability requires its complete runtime' => sub {
     my ($boot_source, $boot_manifest) = fixture('xcat-mfsbsd-2');
     my @workers = qw(usr/local/libexec/xcat-postscript usr/local/libexec/xcat-postscript-packages

@@ -872,4 +872,38 @@ sub dhcp4_default_route_tests {
 }
 dhcp4_default_route_tests();
 
+subtest 'early bootstrap graph uses the installed-node topology rules' => sub {
+    my $environment = {
+        NICTYPES => 'vtnet0!ethernet,vtnet1!ethernet,lagg0!bond,vlan100!vlan,bridge0!bridge,vtnet2!ethernet',
+        NICDEVICES => 'lagg0!vtnet0|vtnet1,vlan100!lagg0,bridge0!vlan100',
+        NICEXTRAPARAMS => 'lagg0!LAGGPROTO=lacp,bridge0!STP=no',
+        NICMACS => 'vtnet0!52:54:00:00:00:01,vtnet1!52:54:00:00:00:02',
+    };
+    my @options = ('-v', 'mode=bootstrap', '-v', 'bootstrapnic=bridge0', '-v', 'bootmac=52:54:00:00:00:01');
+    my ($status, $plan, $error) = invoke($environment, @options);
+    is($status, 0, 'LACP, VLAN and bridge compose before the configuration download') or diag($error);
+    is_deeply([map { $_->[1] } @{rows($plan, 'I')}], [qw(vtnet0 vtnet1 lagg0 vlan100 bridge0)],
+        'dependencies are ordered and an unrelated physical NIC is omitted');
+    is_deeply(rows($plan, 'M'), [['M', 'vtnet0', '52:54:00:00:00:01'], ['M', 'vtnet1', '52:54:00:00:00:02']],
+        'physical identities are checked before application');
+    like(value($plan, 'X', 'lagg0'), qr/laggproto[ ]lacp[ ]laggport[ ]vtnet0[ ]laggport[ ]vtnet1/x,
+        'native LACP retains the boot member order');
+    like(value($plan, 'X', 'bridge0'), qr/^ether[ ]52:54:00:00:00:01[ ]addm[ ]vlan100/x,
+        'the provisioning MAC follows the virtual management interface');
+    is_deeply(rows($plan, 'A'), [], 'bootstrap addressing is selected independently');
+    for my $change (
+        { NICMACS => 'vtnet0!52:54:00:00:00:01' },
+        { NICMACS => 'vtnet0!52:54:00:00:00:01,vtnet1!52:54:00:00:00:01' },
+        { NICMACS => 'vtnet0!52:54:00:00:00:01,vtnet1!ff:ff:ff:ff:ff:ff' },
+        { NICDEVICES => 'lagg0!vtnet1|vtnet0,vlan100!lagg0,bridge0!vlan100' },
+        { NICDEVICES => 'lagg0!vtnet0|bridge0,vlan100!lagg0,bridge0!vlan100' },
+        { NICEXTRAPARAMS => 'lagg0!LAGGPROTO=balance-xor' },
+        { NICEXTRAPARAMS => 'lagg0!LAGGPROTO=lacp,bridge0!MACADDR=52:54:00:00:00:99' },
+    ) {
+        my ($bad, $partial) = invoke({ %$environment, %$change }, @options);
+        isnt($bad, 0, 'ambiguous identity, unsafe composition or conflicting MAC is rejected');
+        is($partial, '', 'no partial bootstrap plan escapes');
+    }
+};
+
 done_testing();
