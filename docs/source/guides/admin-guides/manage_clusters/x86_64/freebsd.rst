@@ -709,6 +709,21 @@ the OS layout's redundancy exactly: the primary mirror's width, two members for
 RAID10 or RAID-Z1, three for RAID-Z2, and four for RAID-Z3. Separate special
 groups with semicolons. A single-disk OS stripe cannot use special devices.
 
+Use mirrored log groups when the OS must boot after a log-device failure.
+Loss of a complete log group, including a singleton, prevents automatic root
+import even when all primary and special members remain available. Recovery
+requires rescue media and an explicit decision to discard the missing log's
+recent transactions. With the installed system stopped, identify its pool GUID
+and missing log vdev from ``zpool import -d /dev/gpt``. Import only that pool
+with ``zpool import -N -R /mnt -d /dev/gpt -m <root-pool-guid>``, inspect
+``zpool status -gLP zroot``, remove only the missing log vdev with
+``zpool remove zroot <missing-log-vdev-guid>``, and export ``zroot`` before
+booting from disk. Add ``-f`` to the import only after confirming that no other
+system has the pool active. See the `zpool-import manual
+<https://openzfs.github.io/openzfs-docs/man/master/8/zpool-import.8.html>`_
+for the missing-log recovery option. This recovery is an administrator action;
+the installer does not discard a log automatically.
+
 Auxiliary roles default to ``-``, meaning absent. ``zfs_special_small_blocks``
 defaults to zero, which places metadata on special devices without selecting
 small file blocks. With a special group, it also accepts powers of two from
@@ -722,6 +737,11 @@ in the initial pool command and applies the requested compression, sector
 alignment and special-block policy before installing the OS. Only primary
 members receive boot partitions and firmware entries. Auxiliary disks cannot
 boot the node by themselves.
+
+Contract 6 requires equal device capacities within each primary, special or
+log group. It checks these capacities before erasing an existing OS. Separate
+groups and cache devices can have different capacities. Pool creation does not
+force acceptance of mismatched group members.
 
 Each auxiliary device receives one GPT ``freebsd-zfs`` partition. This lets the
 native BIOS and UEFI loaders discover special devices. All OS-pool members use
@@ -762,11 +782,18 @@ It writes only the selected OS disks. It does not import the data pool.
 The OS disks must not be in use by the running installer. Supported existing
 layouts are whole disks or GPT with FreeBSD boot, EFI, UFS, swap or ZFS
 partitions. ZFS labels on selected
-disks must belong to ``zroot``. OS L2ARC headers must identify that same pool's
-GUID; missing or ambiguous cache ownership causes rejection.
+disks must belong to ``zroot`` and identify one pool GUID. OS L2ARC headers must
+identify that same GUID; missing or ambiguous cache ownership causes rejection.
 A remaining ``zroot`` member outside the OS list
 causes rejection. Active pools, attached encryption providers, ambiguous
 identities and unsupported layouts also cause rejection.
+
+Contract 6 checks ZFS ownership on every attached disk and partition, including
+preserved devices. Damaged or partly overwritten labels, destroyed-pool labels
+and inconsistent ownership stop preflight even on unselected disks. This is
+stricter than earlier contracts. Inspect and resolve those conditions before
+reinstall; do not clear labels on a data disk to bypass the guard. The installer
+does not repair or write preserved devices.
 
 Record data-pool GUIDs, properties, member identities, snapshots and key backups
 before reinstall. Export data pools before shutting down the old OS. Prepare
@@ -1168,6 +1195,11 @@ path or executable loader directives are reserved. Configure those functions
 through the installation policy and node attributes. Preparation rejects an
 invalid option before arming the node.
 
+``kern.geom.label.gpt.enable`` is reserved for all accepted contracts, including
+3 through 5, so a stored override cannot disable the identities required after
+an image upgrade. Remove an existing override in either phase before preparing
+the node with this version.
+
 These settings require a boot runtime with ``xcat-freebsd-install-3`` or later.
 An older runtime accepts only the default DHCP mode without extra boot options
 or a configured serial console.
@@ -1465,6 +1497,9 @@ For each firmware mode in use, perform the following storage checks:
        writes and that all surviving members have zero read, write and checksum errors.
        A complete special-group loss must prevent a usable root. Reinstall with
        all members restored and verify that separate data disks are unchanged.
+       A complete log-group loss, including a singleton, must prevent automatic
+       root import. Verify the documented rescue procedure and a subsequent
+       disk-only boot on disposable copies before relying on that recovery.
    * - Dedicated data pool and OS reinstall
      - Record pool and dataset GUIDs, a snapshot, file checksums and key backups.
        Export the data pool, replace only the OS disks, and compare the preserved
