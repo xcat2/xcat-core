@@ -17,10 +17,13 @@ jobs:
       - name: Test Debian package lifecycle
         run: prove -v xCAT-test/native/xcatd_debian_lifecycle.t xCAT-test/native/xcatd_restart_callers.t xCAT-test/native/apache_package_lifecycle.t xCAT-test/native/package_upgrade_logging.t
       - name: Test optional statelite host keys
+        if: ${{ !cancelled() }}
         run: prove -v xCAT-test/native/statelite_optional_hostkey.t
       - name: Test Cumulus discovery key failure
+        if: ${{ !cancelled() }}
         run: prove -v xCAT-test/native/cumulus_discovery_key_failure.t
       - name: Test FIPS package artifacts
+        if: ${{ !cancelled() }}
         run: prove -v xCAT-test/native/fips_build_guard.t xCAT-test/native/fips_package_payload.t
 
       - name: Install image test dependencies
@@ -123,4 +126,5 @@ jobs:
       - name: Test RPM package lifecycle
         run: su -s /bin/sh nobody -c 'prove -v xCAT-test/native/xcatd_rpm_lifecycle.t xCAT-test/native/apache_rpm_configuration.t xCAT-test/native/apache_package_lifecycle.t xCAT-test/native/package_upgrade_logging.t'
       - name: Test FIPS package artifacts
+        if: ${{ !cancelled() }}
         run: su -s /bin/sh nobody -c 'prove -v xCAT-test/native/fips_package_payload.t'
