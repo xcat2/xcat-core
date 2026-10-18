@@ -65,9 +65,7 @@ xcat_network_bootstrap()
             I) [ "$value" = ethernet ] || ifconfig "$nic" create || return 1 ;;
             X)
                 # The shared planner emits only validated native arguments.
-                set -f
-                set -- $value
-                ifconfig "$nic" "$@" || return 1 ;;
+                (set -f; set -- $value; ifconfig "$nic" "$@") || return 1 ;;
             V) ifconfig "$nic" inet6 "$value" || return 1 ;;
         esac
     done < "$XCAT_BOOT_NETWORK_PLAN"
@@ -97,11 +95,15 @@ xcat_network_target_plan()
         $1=="B" {nic=$2; next}
         $1=="M" {next}
         $1=="C" {print; print "S", "inet", ""; print "S", "inet6", ""; next}
+        $1=="E" {mac[$2]=$3}
+        $1=="K" && $2=="ifconfig_" nic {
+            if (nic in mac) print "K", "ifconfig_" nic "_alias0", "inet " ip "/" bits
+            else $3="inet " ip "/" bits " " $3
+            print "A", nic, "inet", ip, bits
+        }
         {print}
         END {
-            print "K", "ifconfig_" nic "_alias0", "inet " ip "/" bits
-            print "A", nic, "inet", ip, bits
-            if (gateway!="") {print "D", "inet", gateway; print "K", "defaultrouter", gateway}
+            if (gateway!="") {print "K", "defaultrouter", gateway; print "D", "inet", gateway}
         }' "$XCAT_WORK/target-bootstrap.plan" > "$XCAT_WORK/target-network.plan"
 }
 
@@ -111,6 +113,7 @@ xcat_network_rc()
     awk -F '\t' '
         BEGIN {print "# BEGIN xCAT FreeBSD network"}
         $1=="C" {print "cloned_interfaces=\"" $2 "\""}
+        $1=="S" {print ($2=="inet" ? "static_routes" : "ipv6_static_routes") "=\"" $3 "\""}
         $1=="K" {print $2 "=\"" $3 "\""}
         END {print "# END xCAT FreeBSD network"}' "$XCAT_WORK/target-network.plan"
 }

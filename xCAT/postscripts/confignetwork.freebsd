@@ -470,7 +470,7 @@ for nic in $(ifconfig -l); do
     fi
 done
 [ -n "$bootnic" ] || fail 'Cannot find the physical installation interface'
-awk -v bootnic="$bootnic" -v configure_boot="$configure_boot" -f "$planner" > "$pending/plan"
+awk -v bootnic="$bootnic" -v bootmac="$bootmac" -v configure_boot="$configure_boot" -f "$planner" > "$pending/plan"
 if [ -e "$state/current" ]; then
     protected_file "$state/current" || fail 'Unsafe saved network plan'
     cp "$state/current" "$pending/before.plan"

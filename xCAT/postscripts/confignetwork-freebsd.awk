@@ -14,6 +14,15 @@ function interface_name(value) {
     return length(value) <= 15 && value ~ /^[a-z][a-z0-9]*$/ && value != "lo0"
 }
 
+function mac_address(value,    octets, i) {
+    if (split(value, octets, ":") != 6)
+        return 0
+    for (i = 1; i <= 6; i++)
+        if (octets[i] !~ /^[0-9a-f][0-9a-f]$/)
+            return 0
+    return 1
+}
+
 function attribute(name,    text, entries, count, i, position, nic, value) {
     text = ENVIRON[name]
     if (length(text) > 65536 || text ~ /[^ -~]/)
@@ -194,7 +203,7 @@ function options(nic,    text, count, parts, pair, i, key, value) {
                 fail("Invalid MTU for " nic)
         } else if (key == "MACADDR" && type[nic] != "ethernet") {
             value = tolower(value)
-            if (value !~ /^([0-9a-f][0-9a-f]:){5}[0-9a-f][0-9a-f]$/ ||
+            if (!mac_address(value) ||
                 hex_number(substr(value, 1, 2)) % 2 || value == "00:00:00:00:00:00")
                 fail("Invalid unicast MAC address for " nic)
         } else if (key == "BOOTPROTO") {
@@ -262,8 +271,6 @@ function topology(    nic, count, i, j, parts, parent, tag, name) {
         if (attributes["NICCUSTOMSCRIPTS", nic] != "")
             fail("Use a separate postscript instead of niccustomscripts on FreeBSD")
         options(nic)
-        if ((dhcp[nic] || dhcp6[nic]) && type[nic] == "bridge" && option[nic, "MACADDR"] == "")
-            fail("Set MACADDR for a bridge DHCP reservation")
     }
     if (total > 64)
         fail("Too many interfaces")
@@ -400,6 +407,8 @@ function node_addresses(nic,    ips, nets, count, nc, i, name, ip, family, net, 
         mtu = network[name, "mtu"]
         if (mtu != "" && !number(mtu, 576, 9216))
             fail("Invalid network MTU for " name)
+        if (ip == ENVIRON["IPADDR"])
+            management_mtu = mtu
         if (option[nic, "MTU"] == "" && mtu != "") {
             if (network_mtu[nic] != "" && network_mtu[nic] != mtu)
                 fail("Conflicting network MTUs for " nic)
@@ -453,6 +462,19 @@ function interface_mtu(nic,    mtu, i, parent_mtu) {
             fail("Incompatible member MTU for " nic)
     }
     effective_mtu[nic] = mtu
+}
+
+function boot_defaults(target, mtu,    n, nic) {
+    if (!mac_address(bootmac)) fail("Invalid installation MAC")
+    if (mtu == "") mtu = 1500
+    for (n = 1; n <= ordered; n++) {
+        nic = order[n]
+        if (!descends(target, nic)) continue
+        if (type[nic] == "ethernet") {
+            if (network_mtu[nic] == "") network_mtu[nic] = mtu
+        } else if (descends(nic, bootnic) && option[nic, "MACADDR"] == "")
+            option[nic, "MACADDR"] = bootmac
+    }
 }
 
 function selected_routes(    names, count, i, name, values, net, bits, family, gateway, nic, j, reachable, parts, key, family_present) {
@@ -587,7 +609,7 @@ function render(nic,    i, config, mtu, parent, family, ip, bits, alias, first4,
         if (family == "inet6" && mtu != "" && mtu < 1280)
             fail("IPv6 requires an MTU of at least 1280 on " nic)
         if (family == "inet" && !first4++) {
-            if (option[nic, "MACADDR"] != "")
+            if (!dhcp[nic] && option[nic, "MACADDR"] != "")
                 emit("ifconfig_" nic "_alias" alias++, "inet " ip "/" bits)
             else
                 primary4 = "inet " ip "/" bits " "
@@ -650,7 +672,11 @@ function compile(    n) {
         fail("The installation interface topology must retain the management IPv4 address")
     if (configure_boot != 1 && management_count)
         fail("Use confignetwork -s to configure the management address")
+    if (configure_boot == 1 && bootmac != "" && management != "" && descends(management, bootnic))
+        boot_defaults(management, management_mtu)
     for (n = 1; n <= ordered; n++) {
+        if ((dhcp[order[n]] || dhcp6[order[n]]) && type[order[n]] == "bridge" && option[order[n], "MACADDR"] == "")
+            fail("Set MACADDR for a bridge DHCP reservation")
         interface_mtu(order[n])
         render(order[n])
     }
@@ -681,7 +707,7 @@ function bootstrap(    n, nic, mac, first, selected_clones) {
     attribute("NICEXTRAPARAMS")
     attribute("NICMACS")
     if (!interface_name(bootstrapnic) || !(bootstrapnic in interfaces) ||
-        bootmac !~ /^([0-9a-f][0-9a-f]:){5}[0-9a-f][0-9a-f]$/)
+        !mac_address(bootmac))
         fail("Invalid bootstrap interface or MAC")
     for (nic in interfaces)
         if (tolower(attributes["NICMACS", nic]) == bootmac && tolower(attributes["NICTYPES", nic]) == "ethernet") {
@@ -691,13 +717,13 @@ function bootstrap(    n, nic, mac, first, selected_clones) {
     if (bootnic == "") fail("nicmacs must identify the physical boot interface")
     topology()
     if (!descends(bootstrapnic, bootnic)) fail("The bootstrap interface must contain the boot NIC")
+    boot_defaults(bootstrapnic, bootstrap_mtu)
     for (n = 1; n <= ordered; n++) {
         nic = order[n]
         if (!descends(bootstrapnic, nic)) continue
         if (type[nic] == "ethernet") {
-            network_mtu[nic] = bootstrap_mtu
             mac = tolower(attributes["NICMACS", nic])
-            if (mac !~ /^([0-9a-f][0-9a-f]:){5}[0-9a-f][0-9a-f]$/ ||
+            if (!mac_address(mac) ||
                 hex_number(substr(mac, 1, 2)) % 2 || mac == "00:00:00:00:00:00" || physical_mac[mac]++)
                 fail("Each bootstrap physical NIC requires a distinct unicast nicmacs entry")
             records[++record_count] = "M\t" nic "\t" mac
@@ -706,7 +732,6 @@ function bootstrap(    n, nic, mac, first, selected_clones) {
                 fail("Bootstrap clones must retain the provisioning MAC")
             if (type[nic] == "lagg" && member[nic, 1] != bootnic)
                 fail("The boot NIC must be the first LAGG port")
-            option[nic, "MACADDR"] = bootmac
         }
         # The installer selects DHCP or static IPv4 separately. Installed-node
         # DHCP, IPv6 and route settings remain in the normal network planner.
@@ -779,7 +804,9 @@ BEGIN {
     }
     if (mode == "dhcp6-duid") {
         uuid = tolower(uuid)
-        if (uuid !~ /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/ ||
+        if (uuid ~ /[^0-9a-f-]/ || split(uuid, uuid_parts, "-") != 5 ||
+            length(uuid_parts[1]) != 8 || length(uuid_parts[2]) != 4 || length(uuid_parts[3]) != 4 ||
+            length(uuid_parts[4]) != 4 || length(uuid_parts[5]) != 12 ||
             uuid == "00000000-0000-0000-0000-000000000000" || uuid == "ffffffff-ffff-ffff-ffff-ffffffffffff")
             fail("DHCPv6 requires a valid hardware UUID")
         gsub(/-/, "", uuid)
