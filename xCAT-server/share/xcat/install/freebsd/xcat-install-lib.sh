@@ -84,6 +84,10 @@ xcat_console_settings()
 
 xcat_bootstrap_network()
 {
+    if [ -n "$(kenv -q xcat_network_chunks || :)" ]; then
+        . /usr/local/libexec/xcat-network.sh
+        xcat_network_bootstrap || return 1
+    fi
     XCAT_BOOTSTRAP_MODE=$(kenv -q xcat_bootstrap || :)
     XCAT_BOOTSTRAP_MODE=${XCAT_BOOTSTRAP_MODE:-dhcp}
     case "$XCAT_BOOTSTRAP_MODE" in
@@ -103,11 +107,39 @@ xcat_bootstrap_network()
 
 xcat_check_bootstrap()
 {
+    if [ -n "${XCAT_BOOTSTRAP_NETWORK_BASE64:-}${XCAT_BOOT_NETWORK_BASE64:-}" ]; then
+        . /usr/local/libexec/xcat-network.sh
+        xcat_network_check || return 1
+    fi
     case "$XCAT_FORMAT" in xcat-freebsd-install-3|xcat-freebsd-install-4|xcat-freebsd-install-5|xcat-freebsd-install-6) ;; *) return 0 ;; esac
     [ "$XCAT_BOOTSTRAP" = "$XCAT_BOOTSTRAP_MODE" ] || return 1
     [ "$XCAT_BOOTSTRAP" = static ] || return 0
     [ "$XCAT_IPV4" = "$XCAT_BOOTSTRAP_IPV4" ] && [ "$XCAT_NETMASK" = "$XCAT_BOOTSTRAP_NETMASK" ] &&
         [ "$XCAT_GATEWAY" = "$XCAT_BOOTSTRAP_GATEWAY" ]
+}
+
+xcat_fetch_config()
+{
+    if [ -z "${XCAT_BOOT_NETWORK_BASE64:-}" ]; then
+        fetch -T 60 -o "$XCAT_WORK/config" "$1"
+        return
+    fi
+    # LACP negotiation and bridge forwarding can finish after address setup.
+    xcat_fetch_started=$(date +%s)
+    xcat_fetch_attempt=0
+    while [ "$xcat_fetch_attempt" -lt 120 ]; do
+        xcat_fetch_now=$(date +%s)
+        xcat_fetch_wait=$((120 - xcat_fetch_now + xcat_fetch_started))
+        [ "$xcat_fetch_wait" -gt 0 ] || break
+        [ "$xcat_fetch_wait" -le 10 ] || xcat_fetch_wait=10
+        if fetch -T "$xcat_fetch_wait" -o "$XCAT_WORK/config" "$1"; then
+            return 0
+        fi
+        rm -f "$XCAT_WORK/config" || return 1
+        xcat_fetch_attempt=$((xcat_fetch_attempt + 1))
+        sleep 1
+    done
+    xcat_error 'Cannot download the installation configuration after network setup'
 }
 
 xcat_guarded_storage()
@@ -252,6 +284,7 @@ xcat_read_config()
     XCAT_DIST_URL= XCAT_BASE_SHA256= XCAT_KERNEL_SHA256= XCAT_AUTHORIZED_KEY_BASE64=
     XCAT_INSTALL_URL= XCAT_PACKAGE_PLAN_SHA256= XCAT_BOOT_MEDIA_SHA256= XCAT_RUNTIME_SHA256=
     XCAT_BOOTSTRAP= XCAT_CONSOLE_PORT= XCAT_CONSOLE_SPEED= XCAT_CONSOLE_FLOW=
+    XCAT_BOOTSTRAP_NETWORK_BASE64=
     XCAT_INSTALL_BOOT_OPTIONS_BASE64= XCAT_TARGET_BOOT_OPTIONS_BASE64=
     XCAT_NAMESERVERS= xcat_seen=' '
     [ -f "$1" ] || return 1
@@ -303,6 +336,7 @@ xcat_read_config()
             authorized_key_base64) XCAT_AUTHORIZED_KEY_BASE64=$xcat_value ;;
             nameservers) XCAT_NAMESERVERS=$xcat_value ;;
             bootstrap) XCAT_BOOTSTRAP=$xcat_value ;;
+            bootstrap_network_base64) XCAT_BOOTSTRAP_NETWORK_BASE64=$xcat_value ;;
             console_port) XCAT_CONSOLE_PORT=$xcat_value ;;
             console_speed) XCAT_CONSOLE_SPEED=$xcat_value ;;
             console_flow) XCAT_CONSOLE_FLOW=$xcat_value ;;
@@ -312,6 +346,11 @@ xcat_read_config()
         esac
     done < "$1"
     [ "$XCAT_RELEASE" = 15.1-RELEASE ] || return 1
+    case "$xcat_seen" in *' bootstrap_network_base64 '*)
+        case "$XCAT_FORMAT" in xcat-freebsd-install-[3456]) ;; *) return 1 ;; esac
+        [ -n "$XCAT_BOOTSTRAP_NETWORK_BASE64" ] && [ "${#XCAT_BOOTSTRAP_NETWORK_BASE64}" -le 8192 ] || return 1
+        case "$XCAT_BOOTSTRAP_NETWORK_BASE64" in *[!A-Za-z0-9+/=]*) return 1 ;; esac ;;
+    esac
     if [ "$XCAT_FORMAT" = xcat-freebsd-install-6 ]; then
         for xcat_required in zfs_log_vdevs zfs_cache_vdevs zfs_special_vdevs zfs_special_small_blocks; do
             case "$xcat_seen" in *" $xcat_required "*) ;; *) return 1 ;; esac
@@ -975,6 +1014,17 @@ xcat_write_installer()
         printf 'PARTITIONS="%s GPT { %s freebsd-swap, auto freebsd-ufs / }"\n' "$XCAT_TARGET_DISK" "$XCAT_SWAP_SIZE"
     fi
     cat "$1" || return 1
+    if [ -n "${XCAT_BOOTSTRAP_NETWORK_BASE64:-}" ]; then
+        . /usr/local/libexec/xcat-network.sh
+        printf '\nsysrc -x ifconfig_%s\n' "$XCAT_PROVISIONING_IF"
+        [ -z "$XCAT_GATEWAY" ] || printf 'sysrc -x defaultrouter\n'
+        printf '\ncat >> /etc/rc.conf <<\047XCAT_BOOTSTRAP_RC\047\n'
+        xcat_network_rc || return 1
+        printf 'XCAT_BOOTSTRAP_RC\n'
+        printf 'install -d -m 0700 /var/db/xcat/network\ncat > /var/db/xcat/network/current <<\047XCAT_BOOTSTRAP_PLAN\047\n'
+        cat "$XCAT_WORK/target-network.plan" || return 1
+        printf 'XCAT_BOOTSTRAP_PLAN\nchmod 0600 /var/db/xcat/network/current\n'
+    fi
     if [ "$XCAT_FORMAT" = xcat-freebsd-install-3 ] || xcat_guarded_storage; then
         printf '\ncat >> /boot/loader.conf <<\047XCAT_LOADER_SETTINGS\047\n'
         xcat_boot_options "$XCAT_TARGET_BOOT_OPTIONS_BASE64" && xcat_console_settings || return 1

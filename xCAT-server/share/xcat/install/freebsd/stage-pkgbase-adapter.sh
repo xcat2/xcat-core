@@ -176,6 +176,12 @@ cat > "$work/paths" <<'PATHS'
 /usr/sbin/mtree
 /usr/sbin/zdb
 PATHS
+if [ -f "$root/usr/local/libexec/confignetwork-freebsd.awk" ]; then
+    printf '%s\n' /usr/local/libexec/confignetwork-freebsd.awk /usr/local/libexec/xcat-network.sh >> "$work/paths"
+    for module in if_infiniband if_lagg bridgestp if_bridge if_vlan; do
+        printf '/boot/modules/%s.ko\n' "$module" >> "$work/paths"
+    done
+fi
 # Installation runs as root; shutdown needs no setuid permission in this image.
 [ -f "$root/sbin/shutdown" ] && [ ! -L "$root/sbin/shutdown" ] || fail 'Invalid shutdown executable'
 chmod u-s "$root/sbin/shutdown"
@@ -186,7 +192,7 @@ while IFS= read -r path; do
     mode=$(stat -f %Lp "$root$path")
     [ "$((0$mode & 07022))" -eq 0 ] || fail "Runtime file has unsafe permissions: $path"
     case "$path" in
-        *.lua|*.sh|*.subr|*.tmpl|/boot/*|/etc/*|*/bsdinstall/*|*/bsdinstall|*/xcat-install|*/xcat-post*|*/xcat-storage|*/pkg-static) continue ;;
+        *.awk|*.lua|*.sh|*.subr|*.tmpl|/boot/*|/etc/*|*/bsdinstall/*|*/bsdinstall|*/xcat-install|*/xcat-post*|*/xcat-storage|*/pkg-static) continue ;;
     esac
     ldd "$root$path" >> "$work/loader.out" 2>> "$work/loader.err" || fail "Cannot inspect loader dependencies: $path"
 done < "$work/paths"

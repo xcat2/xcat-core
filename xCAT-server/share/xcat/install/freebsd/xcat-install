@@ -26,7 +26,7 @@ xcat_bootstrap_network || xcat_error 'Cannot configure bootstrap networking'
 xcat_config_url=$(kenv -q xcat_config_url)
 xcat_config_sha256=$(kenv -q xcat_config_sha256)
 xcat_url "$xcat_config_url" && xcat_hex "$xcat_config_sha256" 64 || xcat_error 'Invalid configuration location'
-fetch -T 60 -o "$XCAT_WORK/config" "$xcat_config_url"
+xcat_fetch_config "$xcat_config_url"
 [ "$(sha256 -q "$XCAT_WORK/config")" = "$xcat_config_sha256" ] || xcat_error 'Configuration checksum does not match'
 xcat_read_config "$XCAT_WORK/config" || xcat_error 'Invalid installation configuration'
 [ "$XCAT_BOOT_MAC" = "$XCAT_MAC" ] || xcat_error 'Configuration belongs to another provisioning interface'

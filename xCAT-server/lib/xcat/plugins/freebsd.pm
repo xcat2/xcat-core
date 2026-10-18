@@ -307,7 +307,7 @@ sub _provision_network {
     }
     my $ip = _ipv4($node, 'node');
     my $tab = xCAT::Table->new('networks', -create => 0) or die "Cannot open networks\n";
-    my @networks = eval { $tab->getAllAttribs(qw(netname net mask gateway nameservers domain tftpserver)) };
+    my @networks = eval { $tab->getAllAttribs(qw(netname net mask gateway nameservers domain tftpserver mtu)) };
     my $error = $@;
     $tab->close();
     die $error if $error;
@@ -371,7 +371,7 @@ sub _provision_network {
     die "Invalid HTTP port\n" unless $httpport =~ /\A[1-9][0-9]{0,4}\z/ && $httpport <= 65535;
     return ({ master => $master, port => _site('xcatiport', '3002'), mac => $mac, ipv4 => $ip,
         netmask => xCAT::NetworkUtils::formatNetmask($network->{mask}, 0, 0), gateway => $gateway,
-        hostname => $hostname, nameservers => join(',', @nameservers) }, "http://$httpserver:$httpport/install");
+        hostname => $hostname, nameservers => join(',', @nameservers) }, "http://$httpserver:$httpport/install", $network->{mtu} || 1500);
 }
 
 sub _install_image {
@@ -446,7 +446,7 @@ sub mkinstall {
             my $iscsi = _node_row('iscsi', $node, 1, qw(server target));
             die "An explicit iSCSI root conflicts with scripted FreeBSD installation\n"
               if length($iscsi->{server} || '') && length($iscsi->{target} || '');
-            my ($network, $url) = _provision_network($node, $resources);
+            my ($network, $url, $bootstrap_mtu) = _provision_network($node, $resources);
             my $tftpdir = abs_path($resources->{tftpdir} || xCAT::TableUtils->getTftpDir());
             die "An existing TFTP directory is required\n" unless defined($tftpdir) && -d $tftpdir;
             if ($image->{install}) {
@@ -456,6 +456,13 @@ sub mkinstall {
             }
             my $settings = xCAT::FreeBSDConfig::load_settings($node,
                 $image->{settings}{template}, $image->{settings}{partitionfile});
+            if (exists($settings->{bootstrap_interface})) {
+                require xCAT::FreeBSDNetwork;
+                my $interface = delete $settings->{bootstrap_interface};
+                my $nics = _node_row('nics', $node, 0, qw(nictypes nicdevices nicextraparams nicsadapter));
+                $settings->{bootstrap_network_base64} = xCAT::FreeBSDNetwork::encode(
+                    $interface, $network->{mac}, $nics, "$installroot/postscripts/confignetwork-freebsd.awk", $bootstrap_mtu);
+            }
             my $console = _node_row('nodehm', $node, 0, qw(serialport serialspeed serialflow));
             $settings = xCAT::FreeBSDConfig::boot_settings($settings, $commandline, $console, $image->{media});
             my @postscript_options;

@@ -147,6 +147,12 @@ sub boot_settings {
     _boot_settings(\%boot);
     my %result = %$settings;
     delete $result{bootstrap};
+    if (exists($settings->{bootstrap_network_base64})) {
+        require xCAT::FreeBSDNetwork;
+        xCAT::FreeBSDNetwork::decode($settings->{bootstrap_network_base64});
+        _fail('Early virtual networking requires xcat-freebsd-bootstrap-1 media') unless
+            ($media->{network_contract} || '') eq 'xcat-freebsd-bootstrap-1';
+    }
     if (($media->{install_contract} || '') =~ /\Axcat-freebsd-install-[3456]\z/x) {
         return { %result, %boot };
     }
@@ -162,6 +168,10 @@ sub render_loader_settings {
     return '' unless exists($settings->{bootstrap});
     my ($text) = _boot_settings($settings);
     $text .= "xcat_bootstrap=\"$settings->{bootstrap}\"\n";
+    if (exists($settings->{bootstrap_network_base64})) {
+        require xCAT::FreeBSDNetwork;
+        $text .= xCAT::FreeBSDNetwork::loader($settings->{bootstrap_network_base64});
+    }
     if ($settings->{bootstrap} eq 'static') {
         for my $key (qw(ipv4 netmask gateway)) {
             my $value = $network->{$key};
@@ -359,7 +369,7 @@ sub _zfs_auxiliary {
 
 sub load_settings {
     my ($node, $template, $partitionfile) = @_;
-    my $settings = _policy($template, $node, qw(authorized_keys_file bootstrap));
+    my $settings = _policy($template, $node, qw(authorized_keys_file bootstrap bootstrap_interface));
     my $disk = _policy($partitionfile, $node,
         qw(target_disk target_disk_ident filesystem swap_size zfs_topology zfs_vdevs swap_mode
         zfs_compression zfs_ashift disk_action preserve_disks
@@ -378,7 +388,7 @@ sub load_settings {
         while (<$check>) { }
         close($check) or _fail('SSH public key verification failed');
     }
-    return { %$disk, (exists($settings->{bootstrap}) ? (bootstrap => $settings->{bootstrap}) : ()),
+    return { %$disk, (map { exists($settings->{$_}) ? ($_ => $settings->{$_}) : () } qw(bootstrap bootstrap_interface)),
         swap_size => (defined($disk->{swap_size}) ? $disk->{swap_size} : '0'),
         authorized_key_base64 => encode_base64(join("\n", @keys) . "\n", '') };
 }
@@ -449,6 +459,14 @@ sub render_pkgbase {
             $install_contract eq 'xcat-freebsd-install-6';
         $config{format} = 'xcat-freebsd-install-6';
         push @order, qw(zfs_log_vdevs zfs_cache_vdevs zfs_special_vdevs zfs_special_small_blocks);
+    }
+    if (exists($config{bootstrap_network_base64})) {
+        require xCAT::FreeBSDNetwork;
+        _fail('Early virtual networking requires xcat-freebsd-bootstrap-1 media') unless
+            ($media->{network_contract} || '') eq 'xcat-freebsd-bootstrap-1';
+        my $bootstrap = xCAT::FreeBSDNetwork::decode($config{bootstrap_network_base64});
+        _fail('Bootstrap network belongs to another provisioning MAC') unless $bootstrap->{mac} eq $config{mac};
+        push @order, 'bootstrap_network_base64';
     }
     return _render_config(\%config, \@order,
         [qw(generation package_plan_sha256 boot_media_sha256 runtime_sha256)], 'install_url', 'installation');

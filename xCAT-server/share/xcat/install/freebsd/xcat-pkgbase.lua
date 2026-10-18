@@ -682,6 +682,10 @@ local function configuration(config_path, workspace)
         if not key or config[key] then fail("Invalid installer configuration field") end
         config[key], count = value, count + 1
     end
+    if config.bootstrap_network_base64 then
+        if config.format == "xcat-freebsd-install-2" then fail("Bootstrap graph requires boot settings") end
+        count = count - 1
+    end
     if not ((config.format == "xcat-freebsd-install-2" and count == 21)
         or (config.format == "xcat-freebsd-install-3" and count == 27)
         or (config.format == "xcat-freebsd-install-4" and count == 28)

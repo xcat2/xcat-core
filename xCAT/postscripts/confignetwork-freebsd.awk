@@ -668,6 +668,54 @@ function compile(    n) {
         print records[n]
 }
 
+function bootstrap(    n, nic, mac, first, selected_clones) {
+    configure_boot = 1
+    if (bootstrap_mtu == "") bootstrap_mtu = 1500
+    if (!number(bootstrap_mtu, 576, 9216)) fail("Invalid bootstrap network MTU")
+    attribute("NICTYPES")
+    attribute("NICDEVICES")
+    attribute("NICEXTRAPARAMS")
+    attribute("NICMACS")
+    if (!interface_name(bootstrapnic) || !(bootstrapnic in interfaces) ||
+        bootmac !~ /^([0-9a-f][0-9a-f]:){5}[0-9a-f][0-9a-f]$/)
+        fail("Invalid bootstrap interface or MAC")
+    for (nic in interfaces)
+        if (tolower(attributes["NICMACS", nic]) == bootmac && tolower(attributes["NICTYPES", nic]) == "ethernet") {
+            if (bootnic != "") fail("Ambiguous bootstrap MAC")
+            bootnic = nic
+        }
+    if (bootnic == "") fail("nicmacs must identify the physical boot interface")
+    topology()
+    if (!descends(bootstrapnic, bootnic)) fail("The bootstrap interface must contain the boot NIC")
+    for (n = 1; n <= ordered; n++) {
+        nic = order[n]
+        if (!descends(bootstrapnic, nic)) continue
+        if (type[nic] == "ethernet") {
+            network_mtu[nic] = bootstrap_mtu
+            mac = tolower(attributes["NICMACS", nic])
+            if (mac !~ /^([0-9a-f][0-9a-f]:){5}[0-9a-f][0-9a-f]$/ ||
+                hex_number(substr(mac, 1, 2)) % 2 || mac == "00:00:00:00:00:00" || physical_mac[mac]++)
+                fail("Each bootstrap physical NIC requires a distinct unicast nicmacs entry")
+            records[++record_count] = "M\t" nic "\t" mac
+        } else if (descends(nic, bootnic)) {
+            if (option[nic, "MACADDR"] != "" && option[nic, "MACADDR"] != bootmac)
+                fail("Bootstrap clones must retain the provisioning MAC")
+            if (type[nic] == "lagg" && member[nic, 1] != bootnic)
+                fail("The boot NIC must be the first LAGG port")
+            option[nic, "MACADDR"] = bootmac
+        }
+        # The installer selects DHCP or static IPv4 separately. Installed-node
+        # DHCP, IPv6 and route settings remain in the normal network planner.
+        dhcp[nic] = dhcp6[nic] = 0
+        interface_mtu(nic)
+        render(nic)
+    }
+    print "F\txcat-freebsd-bootstrap-1"
+    print "B\t" bootstrapnic
+    print "C\t" clones
+    for (n = 1; n <= record_count; n++) print records[n]
+}
+
 function static_options(value, ipv6_args,    count, words, i, item, parts, suffix) {
     count = split(value, words, /[ \t]+/)
     for (i = 1; i <= count; i++) {
@@ -721,6 +769,10 @@ function lease_default(    count, bytes, i, width, size, gateway, routers) {
 }
 
 BEGIN {
+    if (mode == "bootstrap") {
+        bootstrap()
+        exit
+    }
     if (mode == "dhcp6-duid") {
         uuid = tolower(uuid)
         if (uuid !~ /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/ ||

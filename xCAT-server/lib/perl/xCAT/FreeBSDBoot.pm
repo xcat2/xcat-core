@@ -220,6 +220,9 @@ sub publish {
     if (exists($options{settings}) || exists($options{network})) {
         require xCAT::FreeBSDConfig;
         $boot_settings = xCAT::FreeBSDConfig::render_loader_settings($options{settings}, $options{network});
+        _fail('Early virtual networking requires xcat-freebsd-bootstrap-1 media') if
+            exists($options{settings}{bootstrap_network_base64}) &&
+            ($media->{network_contract} || '') ne 'xcat-freebsd-bootstrap-1';
         _fail('Boot settings require xcat-freebsd-install-3 or later media') if length($boot_settings) &&
             ($media->{install_contract} || '') !~ /\Axcat-freebsd-install-[3456]\z/x;
     }
