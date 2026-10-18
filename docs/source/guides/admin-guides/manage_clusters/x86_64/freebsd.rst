@@ -1175,12 +1175,17 @@ A link-local IPv6 gateway receives the interface scope automatically.
 The ``<xcatmaster>`` gateway token retains the current managed IPv4 default.
 When returning from DHCP to static IPv4, it can retain a leased gateway that
 matches the current kernel route and belongs to the management network.
-An explicit ``DEFROUTE=yes`` DHCP interface takes precedence over this retained
-default. Gateways outside the managed configuration remain under administrator
+An explicit ``DEFROUTE=yes`` DHCP interface replaces this retained default.
+To restore the management default, first set its explicit gateway in the shared
+``networks`` row. The token can then retain that gateway again.
+Gateways outside the managed configuration remain under administrator
 control. The token does not select a new gateway when the controller or its
 forwarding configuration changes. Set an explicit gateway to change it.
 If the previous DHCP default cannot be validated or is an interface route,
 set an explicit gateway before selecting static IPv4.
+A verified lease without a router can return to static IPv4 without a default
+when the kernel also has no IPv4 default. This includes management networks
+whose controller does not forward IPv4.
 When moving IPv6 management traffic, set the gateway on its new interface;
 a retained link-local gateway cannot use an interface whose IPv6 is disabled.
 
