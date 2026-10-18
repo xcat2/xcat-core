@@ -918,6 +918,79 @@ sub dhcp4_default_route_tests {
 }
 dhcp4_default_route_tests();
 
+subtest 'the gateway token can return from DHCP to static IPv4' => sub {
+    my $environment = base();
+    for my $attribute (qw(NICTYPES NICIPS NICNETWORKS)) {
+        $environment->{$attribute} =~ s/vtnet1/vtnet0/gx;
+    }
+    $environment->{IPADDR} = '192.0.2.10';
+    $environment->{NETWORKS_LINE1} =~ s/gateway=/gateway=<xcatmaster>/x;
+    my $path = "$directory/return-static.lease";
+    open(my $lease, '>', $path) or croak $!;
+    print {$lease} "old_ip_address\t192.0.2.10\nold_routers\t192.0.2.1\n";
+    close($lease) or croak $!;
+    my ($status, $route, $error) = invoke({}, '-v', 'mode=dhcp4-default', '-v', 'nic=vtnet0', $path);
+    is($status, 0, 'the previous lease supplies a native default') or diag($error);
+    is((inspect_state('routes', $route,
+        "Internet:\nDestination Gateway Flags Netif Expire\ndefault 192.0.2.1 UGS vtnet0\n"))[0],
+        0, 'the leased default agrees with the kernel');
+    my ($gateway) = $route =~ /^R\tinet\tdefault\t([^\t]+)\tvtnet0$/mx;
+    my @arguments = ('-v', 'bootnic=vtnet0', '-v', 'configure_boot=1', '-v', 'owned_dhcp_default=vtnet0');
+    my $plan;
+    ($status, $plan, $error) = invoke($environment, @arguments, '-v', "leased_ipv4_gateway=$gateway");
+    is($status, 0, 'a validated DHCP gateway survives return to static addressing') or diag($error);
+    is(value($plan, 'K', 'defaultrouter'), '192.0.2.1', 'static boot retains the leased gateway');
+    is_deeply(rows($plan, 'D'), [['D', 'inet', '192.0.2.1']], 'the static plan takes ownership of that default');
+    ($status, $plan, $error) = invoke($environment, @arguments);
+    isnt($status, 0, 'a missing validated default cannot silently remove the route');
+    is($plan, '', 'missing DHCP evidence produces no application plan');
+    like($error, qr/set[ ]an[ ]explicit[ ]gateway/x, 'the rejection gives a recovery action');
+    ($status, $plan, $error) = invoke($environment, @arguments, '-v', 'unmanaged_ipv4_gateway=192.0.2.1');
+    is($status, 0, 'an existing administrator-owned gateway needs no lease fallback') or diag($error);
+    is_deeply(rows($plan, 'D'), [], 'the administrator-owned default remains outside managed ownership');
+    $environment->{NICEXTRAPARAMS} = 'vtnet0!BOOTPROTO=dhcp';
+    ($status, $plan, $error) = invoke($environment, @arguments);
+    is($status, 0, 'DHCP repair does not require a previous live default') or diag($error);
+    is(value($plan, 'K', 'defaultrouter'), 'NO', 'the new lease remains the route owner');
+    $environment->{NICEXTRAPARAMS} = '';
+    $environment->{NETWORKS_LINE1} =~ s/<xcatmaster>/192.0.2.1/x;
+    ($status, $plan, $error) = invoke($environment, @arguments);
+    is($status, 0, 'an explicit gateway permits recovery without a previous lease') or diag($error);
+    is(value($plan, 'K', 'defaultrouter'), '192.0.2.1', 'the explicit gateway is persisted');
+};
+
+subtest 'an explicit DHCP data default replaces a retained token default' => sub {
+    my $environment = {
+        NICTYPES => 'vtnet0!ethernet,vtnet1!ethernet',
+        NICIPS => 'vtnet0!192.0.2.10,vtnet1!198.51.100.10',
+        NICNETWORKS => 'vtnet0!provision,vtnet1!data',
+        NICEXTRAPARAMS => 'vtnet1!BOOTPROTO=dhcp DEFROUTE=yes',
+        IPADDR => '192.0.2.10', NETWORKS_LINES => 2,
+        NETWORKS_LINE1 => 'netname=provision||net=192.0.2.0||mask=255.255.255.0||gateway=<xcatmaster>||mtu=||disable=',
+        NETWORKS_LINE2 => 'netname=data||net=198.51.100.0||mask=255.255.255.0||gateway=||mtu=||disable=',
+    };
+    my @arguments = ('-v', 'bootnic=vtnet0', '-v', 'configure_boot=1', '-v', 'owned_ipv4_gateway=192.0.2.1');
+    my ($status, $plan, $error) = invoke($environment, @arguments);
+    is($status, 0, 'the data interface can take over the token default') or diag($error);
+    is_deeply(rows($plan, 'D'), [], 'the retained static default releases ownership');
+    is_deeply(rows($plan, 'H'), [['H', 'vtnet1', '198.51.100.10', '24', 'yes', 'yes']],
+        'the data lease is the selected default owner');
+    is(value($plan, 'K', 'defaultrouter'), 'NO', 'static routing does not override the data lease at boot');
+    $environment->{NETWORKS_LINE1} =~ s/<xcatmaster>/192.0.2.1/x;
+    ($status, $plan, $error) = invoke($environment, @arguments);
+    isnt($status, 0, 'an explicit static gateway still conflicts with a DHCP default');
+    is($plan, '', 'conflicting explicit owners produce no plan');
+    $environment->{NETWORKS_LINE1} =~ s/gateway=192[.]0[.]2[.]1/gateway=<xcatmaster>/x;
+    $environment->{NICEXTRAPARAMS} = 'vtnet1!BOOTPROTO=dhcp DEFROUTE=no';
+    ($status, $plan, $error) = invoke($environment, @arguments);
+    is($status, 0, 'a data lease without a default leaves the token route intact') or diag($error);
+    is(value($plan, 'K', 'defaultrouter'), '192.0.2.1', 'the management gateway remains selected');
+    $environment->{NICEXTRAPARAMS} = 'vtnet0!BOOTPROTO=dhcp DEFROUTE=yes,vtnet1!BOOTPROTO=dhcp DEFROUTE=yes';
+    ($status, $plan, $error) = invoke($environment, @arguments);
+    isnt($status, 0, 'two explicit DHCP default owners remain invalid');
+    is($plan, '', 'ambiguous DHCP ownership produces no plan');
+};
+
 subtest 'early bootstrap graph uses the installed-node topology rules' => sub {
     my $environment = {
         NICTYPES => 'vtnet0!ethernet,vtnet1!ethernet,lagg0!bond,vlan100!vlan,bridge0!bridge,vtnet2!ethernet',
