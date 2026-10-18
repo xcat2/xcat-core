@@ -71,7 +71,8 @@ subtest 'installer networking becomes managed installed-node configuration' => s
     close($pipe);
     is($? >> 8, 0, 'the native helper renders the installed configuration');
     like($rc, qr/\A[#][ ]BEGIN[ ]xCAT[ ]FreeBSD[ ]network\n/x, 'the regular network manager owns the block');
-    like($rc, qr/^ifconfig_bridge0="inet[ ]192\.0\.2\.10\/24[ ]/mx, 'the management address remains on the virtual leaf');
+    like($rc, qr/^ifconfig_bridge0_alias0="inet[ ]192\.0\.2\.10\/24"$/mx, 'the management address remains on the virtual leaf');
+    like($rc, qr/^ifconfig_bridge0="ether[ ]52:54:00:00:00:01[ ]/mx, 'the link address has its own native address-family command');
     like($rc, qr/^defaultrouter="192\.0\.2\.1"$/mx, 'the configured gateway is retained');
     open(my $saved, '<', "$directory/target-network.plan") or croak $!;
     my $state = do { local $/ = undef; <$saved> };

@@ -204,6 +204,21 @@ subtest 'selected native routes and IPv6 default gateway' => sub {
     done_testing();
 };
 
+subtest 'a static address and clone MAC use separate native address families' => sub {
+    my $environment = chain();
+    $environment->{NICEXTRAPARAMS} .= ',bridge0!MACADDR=52:54:00:12:34:56';
+    $environment->{NICIPS} = 'bridge0!192.0.2.10|192.0.2.11|2001:db8:1::10';
+    $environment->{NICNETWORKS} = 'bridge0!data4|data4|data6';
+    my ($status, $plan, $error) = compile_plan($environment);
+    is($status, 0, 'the static clone compiles') or diag($error);
+    is(value($plan, 'K', 'ifconfig_bridge0'),
+        'ether 52:54:00:12:34:56 addm vlan100 stp vlan100 mtu 1500 up',
+        'link configuration contains no IP address-family argument');
+    is(value($plan, 'K', 'ifconfig_bridge0_alias0'), 'inet 192.0.2.10/24', 'the first IPv4 address persists separately');
+    is(value($plan, 'K', 'ifconfig_bridge0_alias1'), 'inet 192.0.2.11/24', 'the second IPv4 address keeps a distinct alias');
+    like(value($plan, 'K', 'ifconfig_bridge0_ipv6'), qr/^inet6[ ]/x, 'IPv6 retains its separate native command');
+};
+
 subtest 'management migration requires the existing IPv4 identity' => sub {
     my $environment = chain();
     $environment->{NICTYPES} =~ s/vtnet1/vtnet0/gx;
