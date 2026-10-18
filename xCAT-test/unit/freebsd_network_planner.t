@@ -348,7 +348,7 @@ for my $case (
 
 my $fixture_number = 0;
 sub inspect_state {
-    my ($mode, $plan, $kernel, $environment, $configure_boot) = @_;
+    my ($mode, $plan, $kernel, $environment, $configure_boot, @arguments) = @_;
     my @paths;
     for my $contents ($plan, $kernel) {
         my $path = $directory . '/' . ++$fixture_number;
@@ -357,7 +357,7 @@ sub inspect_state {
         close($file) or croak $!;
         push @paths, $path;
     }
-    return invoke($environment || {}, '-v', "mode=$mode", '-v', 'configure_boot=' . ($configure_boot || 0), @paths);
+    return invoke($environment || {}, '-v', "mode=$mode", '-v', 'configure_boot=' . ($configure_boot || 0), @arguments, @paths);
 }
 
 sub persistent_configuration_tests {
@@ -957,6 +957,52 @@ subtest 'the gateway token can return from DHCP to static IPv4' => sub {
     ($status, $plan, $error) = invoke($environment, @arguments);
     is($status, 0, 'an explicit gateway permits recovery without a previous lease') or diag($error);
     is(value($plan, 'K', 'defaultrouter'), '192.0.2.1', 'the explicit gateway is persisted');
+};
+
+subtest 'the gateway token preserves a verified absence of a DHCP router' => sub {
+    my $path = "$directory/no-router.lease";
+    open(my $lease, '>', $path) or croak $!;
+    print {$lease} "old_ip_address\t192.0.2.10\nold_routers\t\n";
+    close($lease) or croak $!;
+    my @lease_arguments = ('-v', 'mode=dhcp4-default', '-v', 'nic=vtnet0', '-v', 'require_saved_lease=yes', $path);
+    my ($status, $route, $error) = invoke({}, @lease_arguments);
+    is($status, 0, 'a complete saved lease can have an empty routers option') or diag($error);
+    is($route, '', 'the lease requests no default route');
+    my $header = "Internet:\nDestination Gateway Flags Netif Expire\n";
+    my @absence = ('-v', 'expect_no_ipv4_default=yes');
+    is((inspect_state('routes', $route, $header, {}, 0, @absence))[0], 0,
+        'the kernel confirms the absence of an IPv4 default');
+    for my $flags ('UGS', 'U') {
+        isnt((inspect_state('routes', $route, $header . "default 192.0.2.1 $flags vtnet0\n", {}, 0, @absence))[0], 0,
+            'an unexpected default prevents absence validation regardless of route flags');
+    }
+    is((inspect_state('routes', $route, $header . "Internet6:\nDestination Gateway Flags Netif Expire\n"
+        . "default fe80::1%vtnet0 UG vtnet0\n", {}, 0, @absence))[0], 0,
+        'an unrelated IPv6 default does not prevent IPv4 absence validation');
+    my $environment = base();
+    for my $attribute (qw(NICTYPES NICIPS NICNETWORKS)) {
+        $environment->{$attribute} =~ s/vtnet1/vtnet0/gx;
+    }
+    $environment->{IPADDR} = '192.0.2.10';
+    $environment->{NETWORKS_LINE1} =~ s/gateway=/gateway=<xcatmaster>/x;
+    my @arguments = ('-v', 'bootnic=vtnet0', '-v', 'configure_boot=1', '-v', 'owned_dhcp_default=vtnet0');
+    my $plan;
+    ($status, $plan, $error) = invoke($environment, @arguments, '-v', 'leased_ipv4_default_absent=yes');
+    is($status, 0, 'a verified no-router lease can return to static with the token') or diag($error);
+    is_deeply(rows($plan, 'D'), [], 'the static plan has no default');
+    is(value($plan, 'K', 'defaultrouter'), undef, 'boot configuration does not invent a gateway');
+    ($status, $plan, $error) = invoke($environment, @arguments);
+    isnt($status, 0, 'missing validation still rejects the transition');
+    is($plan, '', 'unverified absence emits no plan');
+    for my $incomplete ('', "old_ip_address\t192.0.2.10\n", "old_routers\t\n", "old_ip_address\tinvalid\nold_routers\t\n") {
+        open($lease, '>', $path) or croak $!;
+        print {$lease} $incomplete;
+        close($lease) or croak $!;
+        ($status, $route, $error) = invoke({}, @lease_arguments);
+        isnt($status, 0, 'an incomplete saved lease is not evidence of an absent router');
+        is($route, '', 'an incomplete lease emits no expected route');
+        like($error, qr/Incomplete[ ]saved[ ]DHCP[ ]lease/x, 'the incomplete lease is diagnosed');
+    }
 };
 
 subtest 'an explicit DHCP data default replaces a retained token default' => sub {
