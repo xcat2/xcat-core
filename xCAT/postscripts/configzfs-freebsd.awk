@@ -4,6 +4,18 @@ function fail(message) {
     exit 1
 }
 
+function draid_geometry(text,    parts) {
+    if (text !~ /^draid[123]:[1-9][0-9]*d:[1-9][0-9]*c:(0|[1-9][0-9]*)s$/)
+        fail("dRAID requires explicit parity, data width, children and distributed spares")
+    split(text, parts, ":")
+    draid_parity = substr(parts[1], 6) + 0
+    draid_data = parts[2] + 0
+    draid_children = parts[3] + 0
+    draid_spares = parts[4] + 0
+    if (draid_children > 128 || draid_data + draid_parity + draid_spares > draid_children)
+        fail("Invalid dRAID geometry")
+}
+
 function members(role, text, minimum, grouping,    n, groups, g, count, list, i, pair, device, serial, kind, tokens, nt, singles, ns) {
     if (text == "-")
         return
@@ -14,6 +26,8 @@ function members(role, text, minimum, grouping,    n, groups, g, count, list, i,
         count = split(groups[g], list, ",")
         if (count < minimum)
             fail("Insufficient members for " role)
+        if (role == "data" && draid_children && count != draid_children)
+            fail("The dRAID child count differs from the listed devices")
         if (role == "special" && count != minimum)
             fail("Special devices must match the data replication level")
         kind = "stripe"
@@ -91,20 +105,24 @@ function compile(    allowed, keys, i, key, minimum, special_min, n) {
     if (!("mountpoint" in value)) value["mountpoint"] = "/data/" value["pool"]
     if (value["mountpoint"] !~ /^\/(data|srv)\/[A-Za-z0-9_-][A-Za-z0-9_.-]*$/)
         fail("The data mountpoint must be a direct child of /data or /srv")
-    if (value["topology"] !~ /^(stripe|mirror|raid10|raidz[123])$/)
+    if (value["topology"] ~ /^draid/)
+        draid_geometry(value["topology"])
+    else if (value["topology"] !~ /^(stripe|mirror|raid10|raidz[123])$/)
         fail("Unsupported data topology")
     minimum = 2
     if (value["topology"] == "stripe") minimum = 1
     if (value["topology"] == "raidz1") minimum = 3
     if (value["topology"] == "raidz2") minimum = 4
     if (value["topology"] == "raidz3") minimum = 5
+    if (draid_children) minimum = draid_children
     if (value["os_disks"] == "-" || value["vdevs"] == "-") fail("OS and data disks must be explicit")
     members("os", value["os_disks"], 1, "flat")
-    members("data", value["vdevs"], minimum, value["topology"] == "raid10" ? "groups" : "flat")
+    members("data", value["vdevs"], minimum, value["topology"] == "raid10" || draid_children ? "groups" : "flat")
     special_min = 2
     if (value["topology"] == "mirror") special_min = split(value["vdevs"], keys, ",")
     if (value["topology"] == "raidz2") special_min = 3
     if (value["topology"] == "raidz3") special_min = 4
+    if (draid_children) special_min = draid_parity + 1
     for (i = 1; i <= 3; i++) {
         key = i == 1 ? "special" : i == 2 ? "log" : "cache"
         if (!(key "_vdevs" in value)) value[key "_vdevs"] = "-"
@@ -190,18 +208,34 @@ mode == "verify" {
         active = 0; errors_seen = 1; next
     }
     if (!active || !NF) next
-    if (NF == 1 && $1 ~ /^(logs|cache|special)$/) {
+    if (NF == 1 && $1 ~ /^(logs|cache|special|spares)$/) {
         role = $1 == "logs" ? "log" : $1
         group = ""
+        next
+    }
+    if (role == "spares") {
+        if (NF != 2 || $2 != "AVAIL" || !($1 in expected_spare) || seen_spare[$1]++)
+            fail("Unexpected or unavailable distributed spare")
         next
     }
     if (NF != 5 || $2 != "ONLINE" || $3 != 0 || $4 != 0 || $5 != 0)
         fail("The pool has unavailable members or errors")
     if ($1 == pool && !root_seen++) next
-    if ($1 ~ /^(mirror|raidz[123])-[0-9]+$/) {
+    if ($1 ~ /^(mirror|raidz[123]|draid[123]:[1-9][0-9]*d:[1-9][0-9]*c:(0|[1-9][0-9]*)s)-[0-9]+$/) {
         group = role SUBSEP (++group_number)
         group_indent = match($0, /[^ \t]/)
         actual_type = $1; sub(/-[0-9]+$/, "", actual_type)
+        if (actual_type ~ /^draid/) {
+            if (role != "data") fail("dRAID is only supported for data vdevs")
+            draid_geometry(actual_type)
+            vdev_id = $1; sub(/^.*-/, "", vdev_id)
+            draid_groups[group] = 1
+            for (spare = 0; spare < draid_spares; spare++) {
+                name = "draid" draid_parity "-" vdev_id "-" spare
+                if (name in expected_spare) fail("Repeated dRAID vdev identity")
+                expected_spare[name] = 1
+            }
+        }
         next
     }
     if (group != "" && match($0, /[^ \t]/) <= group_indent)
@@ -226,5 +260,7 @@ END {
     else {
         if (!root_seen || !errors_seen || state_seen != 1) fail("No complete pool status was returned")
         for (device in expected_role) if (!seen[device]) fail("A required pool device is missing")
+        for (name in expected_spare) if (!seen_spare[name]) fail("A distributed spare is missing")
+        for (group in draid_groups) if (!(group in group_map)) fail("A dRAID vdev has no matching members")
     }
 }
