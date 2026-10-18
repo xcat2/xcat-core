@@ -382,7 +382,7 @@ function node_addresses(nic,    ips, nets, count, nc, i, name, ip, family, net, 
         if (family == "inet" && ip != ENVIRON["IPADDR"])
             gateway = ""
         else if (gateway == "<xcatmaster>")
-            gateway = ""
+            gateway = family == "inet" && !dhcp[nic] ? owned_ipv4_gateway : ""
         if (gateway != "") {
             if (index(gateway, "%")) {
                 if (family != "inet6" || split(gateway, parts, "%") != 2 || parts[2] != nic)

@@ -470,13 +470,15 @@ for nic in $(ifconfig -l); do
     fi
 done
 [ -n "$bootnic" ] || fail 'Cannot find the physical installation interface'
-awk -v bootnic="$bootnic" -v bootmac="$bootmac" -v configure_boot="$configure_boot" -f "$planner" > "$pending/plan"
 if [ -e "$state/current" ]; then
     protected_file "$state/current" || fail 'Unsafe saved network plan'
     cp "$state/current" "$pending/before.plan"
 else
     : > "$pending/before.plan"
 fi
+owned_ipv4_gateway=$(awk -F '\t' '$1 == "D" && $2 == "inet" {print $3}' "$pending/before.plan")
+awk -v bootnic="$bootnic" -v bootmac="$bootmac" -v configure_boot="$configure_boot" \
+    -v owned_ipv4_gateway="$owned_ipv4_gateway" -f "$planner" > "$pending/plan"
 if [ "$configure_boot" = 0 ] && awk -F '\t' -v nic="$bootnic" \
     '$1 == "I" && $2 == nic {found=1} END {exit !found}' "$pending/before.plan"; then
     fail 'Continue using confignetwork -s after adopting the installation interface'
