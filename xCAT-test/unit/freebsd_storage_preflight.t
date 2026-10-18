@@ -71,7 +71,7 @@ sub fixture {
         zpool => 'test "$*" = "list -H -o name" || exit 90; cat "$FIXTURE_DIR/pools"',
         geli => 'test "$*" = "status -s" || exit 90; cat "$FIXTURE_DIR/geli"',
         gpart => 'test "$*" = list || exit 90; cat "$FIXTURE_DIR/partitions"',
-        zdb => 'test "$1" = -l || exit 90
+        zdb => 'case "$1" in -l|-ll) ;; *) exit 90 ;; esac
             name=${2##*/}; test ! -f "$FIXTURE_DIR/zdb-status-$name" || exit "$(cat "$FIXTURE_DIR/zdb-status-$name")"
             test -f "$FIXTURE_DIR/labels/$name" || exit 2; cat "$FIXTURE_DIR/labels/$name"',
         sha256 => 'test "$*" = -q || exit 90; openssl dgst -sha256 | awk \'{print $NF}\'',
@@ -394,5 +394,76 @@ sub reinstall_guard_cases {
 }
 reinstall_guard_cases();
 efi_label_guard_case();
+
+subtest 'OS auxiliary members and L2ARC ownership are checked before erase' => sub {
+    my %policy = (XCAT_FORMAT => 'xcat-freebsd-install-6', XCAT_DISK_ACTION => 'erase',
+        XCAT_GENERATION => ('c' x 32),
+        XCAT_ZFS_COMPRESSION => 'lz4', XCAT_ZFS_ASHIFT => '12', XCAT_PRESERVE_DISKS => 'ada7@SERIAL7',
+        XCAT_ZFS_VDEVS => 'ada0@SERIAL0,ada1@SERIAL1',
+        XCAT_ZFS_SPECIAL_VDEVS => 'ada2@SERIAL2,ada3@SERIAL3',
+        XCAT_ZFS_LOG_VDEVS => 'ada4@SERIAL4,ada5@SERIAL5',
+        XCAT_ZFS_CACHE_VDEVS => 'ada6@SERIAL6', XCAT_ZFS_SPECIAL_SMALL_BLOCKS => '0');
+    my $pool_guid = '18446744073709551610';
+    my $cache_label = "LABEL 0\n    version: 5000\n    state: 4\n    guid: 18331623171503817866\n"
+        . "    ashift: 12\n    path: '/dev/ada6'\n    labels = 0 1 2 3\n"
+        . "L2ARC device header\n    magic: 6504978260106102853\n    version: 1\n"
+        . "    pool_guid: $pool_guid\n    flags: 1\n";
+    my $make = sub {
+        my $root = fixture(7);
+        for my $i (0 .. 5) {
+            write_file("$root/labels/ada$i", "LABEL 0\n    state: 1\n    name: 'zroot'\n    pool_guid: $pool_guid\n");
+        }
+        write_file("$root/labels/ada6", $cache_label);
+        write_file("$root/labels/ada7", "LABEL 0\n    state: 1\n    name: 'tank'\n    pool_guid: 18446744073709551611\n");
+        return $root;
+    };
+    my $root = $make->();
+    my ($rc, $snapshot, $error) = run_preflight($root, \%policy, 'xcat_check_zfs_reinstall');
+    is($rc, 0, 'matching native cache header ownership permits OS reinstall') or diag($error);
+    like($snapshot, qr/^ada6\tSERIAL6\tcache:1\t/mx, 'cache identity joins the destructive snapshot');
+    like($snapshot, qr/preserved\nada7\tSERIAL7\t/x, 'the data disk remains protected');
+    for my $change ('foreign cache', 'missing cache owner', 'invalid cache magic', 'invalid cache version', 'bad label checksum', 'foreign log', 'missing special',
+        'preserved overlap', 'unselected root cache', 'different root GUID', 'cache changed before erase') {
+        my $root = $make->();
+        my %changed = %policy;
+        if ($change eq 'foreign cache' || $change eq 'cache changed before erase') {
+            if ($change eq 'cache changed before erase') {
+                my ($before_rc, $before) = run_preflight($root, \%changed, 'xcat_check_zfs_reinstall');
+                is($before_rc, 0, 'the unchanged snapshot is initially accepted');
+                write_file("$root/before.snapshot", $before);
+            }
+            my $foreign = $cache_label;
+            $foreign =~ s/$pool_guid/18446744073709551611/gx;
+            write_file("$root/labels/ada6", $foreign);
+        } elsif ($change eq 'missing cache owner') {
+            my $missing = $cache_label; $missing =~ s/    pool_guid:[^\n]*\n//x;
+            write_file("$root/labels/ada6", $missing);
+        } elsif ($change eq 'invalid cache magic' || $change eq 'invalid cache version') {
+            my $invalid = $cache_label;
+            $invalid =~ s/magic:[ ]6504978260106102853/magic: 6504978260106102852/x if $change eq 'invalid cache magic';
+            $invalid =~ s/version:[ ]1/version: 2/x if $change eq 'invalid cache version';
+            write_file("$root/labels/ada6", $invalid);
+        } elsif ($change eq 'bad label checksum') {
+            my $invalid = $cache_label;
+            $invalid =~ s/LABEL[ ]0/LABEL 0 (Bad label cksum)/x;
+            write_file("$root/labels/ada6", $invalid);
+        } elsif ($change eq 'foreign log') {
+            write_file("$root/labels/ada4", "state: 1\nname: 'tank'\npool_guid: 123\n");
+        } elsif ($change eq 'missing special') {
+            write_file("$root/disks", "ada0 ada1 ada2 ada4 ada5 ada6 ada7\n");
+        } elsif ($change eq 'preserved overlap') {
+            $changed{XCAT_PRESERVE_DISKS} = 'ada6@SERIAL6';
+        } elsif ($change eq 'unselected root cache') {
+            $changed{XCAT_ZFS_CACHE_VDEVS} = '-';
+        } else {
+            write_file("$root/labels/ada1", "state: 1\nname: 'zroot'\npool_guid: 18446744073709551611\n");
+        }
+        write_file("$root/events", '');
+        my $operation = $change eq 'cache changed before erase' ? 'xcat_erase_os_disks' : 'xcat_check_zfs_reinstall';
+        isnt((run_preflight($root, \%changed, $operation))[0], 0, "$change prevents erase");
+        unlike(read_file("$root/events"), qr/^(zpool[ ]labelclear|gpart[ ]destroy|dd[ ].*of=\/dev\/)/mx,
+            'rejection performs no destructive operation');
+    }
+};
 
 done_testing();

@@ -68,6 +68,7 @@ my @reserved = qw(
     boot_mute boot_mutemsgs boot_askname boot_cdrom boot_dfltroot autoboot_delay beastie_disable
     hostname hostid hostuuid ip bootif netmask gateway nameserver nameservers
     kern.hostname kern.hostid kern.hostuuid kern.domainname kern.bootfile kern.maxphys
+    kern.geom.label.gpt.enable KERN.GEOM.LABEL.GPT.ENABLE
     xcat_config_url xcat_config_sha256 xcat.node mfs_load mfs_type mfs_name
     mfsbsd.autodhcp mfsroot_load mfsroot mdroot.retries boot.netif.hwaddr boot.netif.ip
     dhcp.host-name init_path hostuuid_load bootenv zfs_be_active vfs.root.mountfrom

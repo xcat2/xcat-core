@@ -411,6 +411,12 @@ subtest 'multi-disk capability requires its complete runtime roster' => sub {
     ok($media, 'complete storage runtime is admitted');
     diag($@) unless $media;
     is($media && $media->{install_contract}, 'xcat-freebsd-install-4', 'validated media advertises multi-disk installation');
+    for my $contract (5, 6) {
+        $manifest->{install_contract} = "xcat-freebsd-install-$contract";
+        write_manifest($root, $manifest);
+        is(xCAT::FreeBSDImage::inspect_media($root)->{install_contract}, "xcat-freebsd-install-$contract",
+            "contract $contract requires and accepts the complete storage runtime");
+    }
     for my $record (grep { /^file\t/mx } split(/\n/x, $runtime)) {
         my (undef, $path) = split(/\t/x, $record);
         my $incomplete = $runtime;

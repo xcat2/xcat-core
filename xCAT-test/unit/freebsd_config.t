@@ -9,7 +9,7 @@ use Cwd qw(abs_path);
 use Digest::SHA qw(sha256_hex);
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
-use MIME::Base64 qw(decode_base64);
+use MIME::Base64 qw(decode_base64 encode_base64);
 use POSIX ();
 use Test::More;
 use xCAT::FreeBSDConfig;
@@ -416,6 +416,121 @@ sub dedicated_os_policy_cases {
     return;
 }
 subtest 'dedicated OS disk properties and reinstall policy' => \&dedicated_os_policy_cases;
+
+subtest 'OS auxiliary policies reach the guarded runtime' => sub {
+    my ($selected_network, $install) = pkgbase_inputs();
+    my $media6 = { %{$install->{media}}, install_contract => 'xcat-freebsd-install-6' };
+    my %policy = (filesystem => 'zfs', swap_size => '0', swap_mode => 'none',
+        zfs_topology => 'mirror', zfs_vdevs => 'vtbd0@OS_A,vtbd1@OS_B',
+        zfs_special_vdevs => 'vtbd2@SPECIAL_A,vtbd3@SPECIAL_B',
+        zfs_log_vdevs => 'vtbd4@LOG_A,vtbd5@LOG_B;vtbd7@LOG_C',
+        zfs_cache_vdevs => 'vtbd6@CACHE_A', zfs_special_small_blocks => '4096',
+        preserve_disks => 'vtbd8@DATA_A', disk_action => 'erase',
+        authorized_key_base64 => $settings->{authorized_key_base64});
+    my $render_policy = sub {
+        my ($selected, $media) = @_;
+        $media ||= $media6;
+        my $boot = xCAT::FreeBSDConfig::boot_settings($selected, '', {}, $media);
+        return xCAT::FreeBSDConfig::render_pkgbase('node1', $boot, $selected_network,
+            { %$install, media => $media }, $generation);
+    };
+    my $bytes = eval { $render_policy->(\%policy) };
+    ok(defined($bytes), 'the controller renders the complete auxiliary policy') or diag($@);
+    return unless defined($bytes);
+    like($bytes, qr/\Aformat=xcat-freebsd-install-6\n/x, 'auxiliary fields select contract 6');
+    for my $phase (qw(install target)) {
+        my $mutant = $bytes;
+        my $option = encode_base64("kern.geom.label.gpt.enable=\"0\"\n", '');
+        $mutant =~ s/^${phase}_boot_options_base64=.*$/${phase}_boot_options_base64=$option/mx;
+        isnt((read_generated_config($mutant, 'printf unsafe'))[0], 0,
+            "$phase boot options cannot disable stable GPT names at the runtime");
+    }
+    my ($status, $members) = read_generated_config($bytes, 'xcat_zfs_all_members');
+    is($status, 0, 'the runtime accepts the rendered policy');
+    is($members, "vtbd0\tOS_A\t1\nvtbd1\tOS_B\t1\nvtbd2\tSPECIAL_A\tspecial:1\n"
+        . "vtbd3\tSPECIAL_B\tspecial:1\nvtbd7\tLOG_C\tlog:2\nvtbd4\tLOG_A\tlog:1\n"
+        . "vtbd5\tLOG_B\tlog:1\nvtbd6\tCACHE_A\tcache:1\n", 'inventory includes every OS role and no preserved disk');
+    is((read_generated_config($bytes, 'xcat_zfs_members'))[1], "vtbd0\tOS_A\t1\nvtbd1\tOS_B\t1\n",
+        'only primary OS members receive boot partitions');
+    is((read_generated_config($bytes, 'xcat_zfs_auxiliary arguments'))[1],
+        "special\nmirror\n/dev/gpt/a${generation}0\n/dev/gpt/a${generation}1\nlog\n/dev/gpt/a${generation}2\nmirror\n/dev/gpt/a${generation}3\n/dev/gpt/a${generation}4\ncache\n/dev/gpt/a${generation}5\n",
+        'pool arguments preserve mixed singleton and mirrored log groups');
+    is((read_generated_config($bytes, 'xcat_zfs_primary arguments'))[1],
+        "/dev/gpt/z${generation}0\n/dev/gpt/z${generation}1\n", 'primary members use generation-specific GPT names');
+    is((read_generated_config($bytes, 'xcat_zfs_auxiliary partitions'))[1],
+        "vtbd2\tSPECIAL_A\tspecial:1\ta${generation}0\nvtbd3\tSPECIAL_B\tspecial:1\ta${generation}1\n"
+        . "vtbd7\tLOG_C\tlog:2\ta${generation}2\nvtbd4\tLOG_A\tlog:1\ta${generation}3\n"
+        . "vtbd5\tLOG_B\tlog:1\ta${generation}4\nvtbd6\tCACHE_A\tcache:1\ta${generation}5\n",
+        'partition labels bind each reordered auxiliary member to its intended role');
+    is((read_generated_config($bytes, 'xcat_preserved_members'))[1], "vtbd8\tDATA_A\t1\n", 'preserved data remains separate');
+    my ($rendered_status, $rendered) = read_generated_config($bytes,
+        'xcat_write_installer "${1%/*}/installerconfig.tmpl"');
+    is($rendered_status, 0, 'the auxiliary policy renders a native installer script');
+    my ($installer_header) = split(/^[#]!\/bin\/sh/mx, $rendered, 2);
+    like($installer_header, qr/^export[ ]ZFSBOOT_DISKS="vtbd0[ ]vtbd1"$/mx,
+        'the native partitioner receives only primary OS disks');
+    like($installer_header, qr/^export[ ]ZFSBOOT_POOL_CREATE_OPTIONS="-o[ ]ashift=12[ ]-O[ ]compression=lz4[ ]-O[ ]atime=off[ ]-O[ ]special_small_blocks=4096"$/mx,
+        'the special-block property applies before OS datasets are created');
+    like($installer_header, qr/^export[ ]XCAT_ZFS_AUXILIARY="special[ ]mirror[ ]\/dev\/gpt\/a${generation}0[ ]\/dev\/gpt\/a${generation}1[ ]log[ ]\/dev\/gpt\/a${generation}2[ ]mirror[ ]\/dev\/gpt\/a${generation}3[ ]\/dev\/gpt\/a${generation}4[ ]cache[ ]\/dev\/gpt\/a${generation}5"$/mx,
+        'the native create command receives the complete role and grouping policy');
+    for my $older (3 .. 5) {
+        rejected(sub { $render_policy->(\%policy, { %$media6, install_contract => "xcat-freebsd-install-$older" }) },
+            qr/requires?/x, 'an older image cannot receive auxiliary devices');
+        my $old_wire = $bytes;
+        $old_wire =~ s/install-6/install-$older/x;
+        isnt((read_generated_config($old_wire, 'printf unsafe'))[0], 0, 'older wire formats reject auxiliary fields');
+    }
+    for my $bad (
+        [zfs_special_vdevs => 'vtbd2@SPECIAL_A'],
+        [zfs_special_vdevs => 'vtbd2@SPECIAL_A,vtbd3@SPECIAL_B,vtbd9@SPECIAL_C'],
+        [zfs_special_vdevs => '-'], [zfs_special_vdevs => ''],
+        [zfs_log_vdevs => 'vtbd0@LOG_A'], [zfs_log_vdevs => 'vtbd9@OS_A'],
+        [zfs_log_vdevs => 'vtbd2@LOG_A'], [zfs_log_vdevs => 'vtbd9@CACHE_A'],
+        [zfs_log_vdevs => 'vtbd4@LOG_A;'], [zfs_cache_vdevs => 'vtbd6@CACHE_A;vtbd9@CACHE_B'],
+        [zfs_cache_vdevs => '/dev/vtbd6@CACHE_A'], [zfs_cache_vdevs => 'vtbd06@CACHE_A'],
+        [zfs_special_small_blocks => '1'], [zfs_special_small_blocks => '513'],
+        [zfs_special_small_blocks => '16777217'], [zfs_special_small_blocks => '0512'],
+        [preserve_disks => 'vtbd6@DATA_A'], [preserve_disks => 'vtbd8@SPECIAL_A'],
+    ) {
+        rejected(sub { $render_policy->({ %policy, @$bad }) }, qr/device|disk|group|blocks|identit/ix, "invalid $bad->[0] fails at the controller");
+        my $mutant = $bytes;
+        $mutant =~ s/^\Q$bad->[0]\E=.*$/$bad->[0]=$bad->[1]/mx;
+        my ($rc, $text) = read_generated_config($mutant, 'printf unsafe');
+        isnt($rc, 0, 'the runtime independently rejects the invalid policy');
+        is($text, '', 'rejection publishes no selected members');
+    }
+    for my $field (qw(zfs_log_vdevs zfs_cache_vdevs zfs_special_vdevs zfs_special_small_blocks)) {
+        my $missing = $bytes;
+        $missing =~ s/^\Q$field\E=.*\n//mx;
+        isnt((read_generated_config($missing, 'printf unsafe'))[0], 0, "the runtime requires $field");
+    }
+    for my $case (
+        ['mirror', 'vtbd0@A,vtbd1@B,vtbd9@C', 'vtbd2@D,vtbd3@E,vtbd10@F'],
+        ['raid10', 'vtbd0@A,vtbd1@B;vtbd9@C,vtbd10@D', 'vtbd2@E,vtbd3@F'],
+        ['raidz1', 'vtbd0@A,vtbd1@B,vtbd9@C', 'vtbd2@D,vtbd3@E'],
+        ['raidz2', 'vtbd0@A,vtbd1@B,vtbd9@C,vtbd10@D', 'vtbd2@E,vtbd3@F,vtbd11@G'],
+        ['raidz3', 'vtbd0@A,vtbd1@B,vtbd9@C,vtbd10@D,vtbd11@E', 'vtbd2@F,vtbd3@G,vtbd12@H,vtbd13@I'],
+    ) {
+        my $wire = $render_policy->({ %policy, zfs_topology => $case->[0], zfs_vdevs => $case->[1], zfs_special_vdevs => $case->[2] });
+        is((read_generated_config($wire, 'xcat_zfs_all_members'))[0], 0, "$case->[0] accepts matching special redundancy");
+        my @groups = split(/;/x, $case->[1]);
+        my $index = 0;
+        my @paths;
+        for my $group (@groups) {
+            push @paths, 'mirror' if $case->[0] eq 'raid10';
+            push @paths, map { '/dev/gpt/z' . $generation . $index++ } split(/,/x, $group);
+        }
+        is((read_generated_config($wire, 'xcat_zfs_primary arguments'))[1], join("\n", @paths) . "\n",
+            "$case->[0] retains primary group boundaries with stable paths");
+    }
+    my %single = (%policy, zfs_topology => 'stripe', zfs_vdevs => 'vtbd0@OS_A');
+    rejected(sub { $render_policy->(\%single) }, qr/stripe/ix, 'a stripe cannot use special mirrors');
+    my $single = $render_policy->({ %single, zfs_special_vdevs => '-', zfs_special_small_blocks => 0 });
+    is((read_generated_config($single, 'xcat_zfs_all_members'))[0], 0, 'a single OS disk can use log and cache devices');
+    write_file("$root/auxiliary.disk", join('', map { "$_=$policy{$_}\n" } grep { $_ ne 'authorized_key_base64' } sort keys %policy));
+    my $loaded = xCAT::FreeBSDConfig::load_settings('node1', "$root/settings", "$root/auxiliary.disk");
+    is($render_policy->($loaded), $bytes, 'the public policy loader preserves auxiliary identities');
+};
 
 subtest 'ordered redundant ZFS policy and native codec' => sub {
     my ($selected_network, $install) = pkgbase_inputs();
