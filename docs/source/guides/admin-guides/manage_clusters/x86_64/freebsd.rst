@@ -600,6 +600,9 @@ Set the policy paths on the imported image::
 
 ``#NODE#`` expands to the xCAT node name. These files are not shell scripts and
 do not use the Linux installation-template syntax.
+The path names a file on the management node; ``/etc/xcat/freebsd`` is a
+convention, not a required directory. Use the same ``partitionfile`` to declare
+the OS layout and any dedicated data pools, as described below.
 
 Multi-disk ZFS policy
 ---------------------
@@ -785,8 +788,9 @@ Add the following settings to the explicit OS policy::
     disk_action=erase
     preserve_disks=da2@DATA_A,da3@DATA_B,da4@LOG_A,da5@LOG_B,da6@SPECIAL_A,da7@SPECIAL_B,da8@CACHE_A
 
-List every data-pool member, including its log, special and cache devices, by its
-verified identity. The preserved list accepts at most 128 devices and cannot
+For pools declared in ``partitionfile``, xCAT adds every data, log, special and
+cache member to ``preserve_disks`` automatically. List other disks that must be
+protected explicitly. The resulting list accepts at most 128 devices and cannot
 overlap any primary or auxiliary OS role. With the auxiliary example above,
 use separate data drives, such as ``da7@DATA_A,da8@DATA_B``.
 The installer checks these identities before and during OS disk setup.
@@ -811,20 +815,28 @@ does not repair or write preserved devices.
 Record data-pool GUIDs, properties, member identities, snapshots and key backups
 before reinstall. Export data pools before shutting down the old OS. Prepare
 the new installation with the normal ``nodeset`` and ``makedhcp`` commands.
-After disk boot, restore the protected data policy and keys, then import the
-existing pool as described below. Reinstallation never implies data-pool creation.
+For each declared data pool, set ``action=import`` and its recorded ``guid``
+before ``nodeset``. First boot restores the generated policies and enrolled keys,
+then imports those pools. Reinstallation never implies data-pool creation.
 
 Dedicated data pools
 --------------------
 
-``configzfs.freebsd`` creates or imports one dedicated data pool. It accepts a
-root-owned policy under ``/etc/xcat``. It requires the contract 5 runtime on the
-installed node. For example, ``/etc/xcat/storage.conf`` contains::
+Declare the OS and each dedicated data pool in the image's ``partitionfile``.
+Use ``[os]`` followed by the existing OS settings, then one ``[pool NAME]``
+section per data pool. For example::
 
-    format=xcat-freebsd-data-1
+    [os]
+    filesystem=zfs
+    zfs_topology=mirror
+    zfs_vdevs=da0@OS_A,da1@OS_B
+    swap_mode=none
+    swap_size=0
+    zfs_compression=lz4
+    zfs_ashift=12
+
+    [pool tank]
     action=create
-    pool=tank
-    os_disks=da0@OS_A,da1@OS_B
     topology=mirror
     vdevs=da2@DATA_A,da3@DATA_B
     log_vdevs=da4@LOG_A,da5@LOG_B
@@ -836,8 +848,36 @@ installed node. For example, ``/etc/xcat/storage.conf`` contains::
     encryption=off
     mountpoint=/data/tank
 
-``os_disks`` excludes the OS devices from data operations. Every device identity
-across all roles must be unique. The complete policy accepts at most 128 devices.
+    [pool archive]
+    action=create
+    topology=mirror
+    vdevs=da9@ARCHIVE_A,da10@ARCHIVE_B
+    compression=zstd-3
+    ashift=12
+    mountpoint=/srv/archive
+
+The ``[os]`` heading is optional when OS settings precede all pool sections.
+Existing files without pool sections keep their previous behavior. UFS and the
+legacy single-disk ZFS policy can also precede data sections; their selected OS
+disk remains separate from all data members.
+
+Each data section requires ``action``, ``topology`` and ``vdevs``. Names must be
+unique, start with a lowercase letter, and contain only lowercase letters,
+digits, underscores or hyphens, up to 63 characters. Reserved ZFS names,
+including ``zroot``, are rejected. Mountpoints must be distinct across pools.
+Every device name and serial across OS and data roles must be unique. Each
+compiled pool policy accepts at most 128 devices, including the OS devices.
+The explicit ZFS OS policy also limits the combined preservation list to 128.
+
+At ``nodeset``, xCAT validates the complete declaration and derives each pool's
+OS exclusions. It seals generated policies and enrolled keys in the private
+first-boot preparation. The existing SSH delivery carries them to the node;
+keys do not enter the public installation configuration or postscripts tree.
+``configstorage.freebsd`` installs policies under ``/etc/xcat/storage`` and
+applies pools in name order before administrator postscripts. No ``synclists``
+entry or explicit storage postscript selection is required. Data sections
+require pkgbase media with native postscripts and storage contract 5 or 6.
+
 Data topologies accept ``stripe``, ``mirror``, ``raid10``, ``raidz1/2/3`` and
 explicit dRAID geometry.
 A data stripe can contain multiple disks. Other membership rules match the OS
@@ -880,21 +920,22 @@ to zero. With special devices, it also accepts powers of two from 512 through
 16777216 bytes. The mountpoint must be a direct child of ``/data`` or ``/srv``.
 Descendants must remain under that directory and inherit the pool's encryption key.
 
-Deliver the policy through the image's protected ``synclists`` and run::
-
-    updatenode node01 -F -P configzfs.freebsd
-
 New pools require empty, dedicated data devices. The postscript does not force
 creation over existing layouts. A repeated completed creation policy verifies
 the same pool. A partial failure requires inspection and an explicit import
 policy before continuing. Attempt records remain under ``/var/db/xcat/storage``.
+If a later pool fails, earlier successful pools remain intact and the first-boot
+storage entry reports failure. Pool operations are not rolled back. Repeated
+boots use the saved native boot configuration and do not rerun pool creation.
+Editing ``partitionfile`` takes effect at the next ``nodeset``; it does not
+reconfigure an already installed node.
 
 For a preserved pool, change ``action`` and add its recorded GUID::
 
     action=import
     guid=REPLACE_WITH_RECORDED_DECIMAL_POOL_GUID
 
-Retain the recorded topology, identities, properties and key path. Import first
+Retain the recorded topology, identities, properties and key selection. Import first
 checks the pool read-only without mounting it. The policy must match its actual
 members, health, properties and encryption key. The postscript then imports it
 for use, mounts its datasets and saves boot configuration. It does not force
@@ -916,18 +957,30 @@ GUIDs before rerunning the postscript or rebooting. Do not discard an identity
 merely because its disks are temporarily unavailable. This is an administrator
 recovery operation; the postscript does not remove stale entries automatically.
 
+The standalone ``configzfs.freebsd`` interface remains available for explicit
+administrator operations. Its root-owned policy under ``/etc/xcat`` contains
+one pool's settings plus ``format=xcat-freebsd-data-1``, ``pool=NAME`` and
+``os_disks=device@serial,...``. Deliver that policy through protected file
+synchronization, then select its path explicitly::
+
+    updatenode node01 -F -P 'configzfs.freebsd /etc/xcat/storage/tank.conf'
+
+With no argument, the helper still uses ``/etc/xcat/storage.conf``. These files
+are generated outputs for the unified installation path; administrators do not
+need to maintain a second copy of the declaration.
+
 Automatic data encryption
 -------------------------
 
-For a new encrypted data pool, add::
+For an encrypted pool, add these settings to its ``[pool NAME]`` section::
 
     encryption=aes-256-gcm
-    keyfile=/etc/xcat/keys/tank.key
+    key_source=passwd
 
-Supply a cryptographically random 32-byte raw key before running the postscript.
+Supply a cryptographically random 32-byte raw key and enroll it before ``nodeset``.
 The key file must be owned by root, mode ``0600``, with one link. Its directory
-must be owned by root, mode ``0700``. Before creating the encrypted pool, save
-its key on the management node using the existing xCAT credential table::
+must be owned by root, mode ``0700``. Save its key on the management node using
+the existing xCAT credential table::
 
     xcat-zfs-key save node01 tank /root/freebsd-keys/node01/tank.key
 
@@ -955,18 +1008,24 @@ The command refuses to replace a different saved key and does not print key
 bytes or take them as command arguments.
 The combined ``node/pool`` identity must fit the table's 128-character key limit.
 
-After restoring the tables, recreate the private directory and recover the
-original key::
+With ``key_source=passwd``, ``nodeset`` reads the enrolled row for that node and
+pool. First boot installs the raw key at ``/etc/xcat/keys/NAME.key`` with mode
+``0600`` inside a mode ``0700`` directory. Missing or invalid rows stop boot
+preparation. A different key already present on the node is never overwritten.
+After restoring the tables, the same declaration can recover the pool during
+OS reinstall without a separate key-copy operation.
+
+To recover a standalone source key file, recreate its private directory and run::
 
     install -d -m 0700 /root/freebsd-keys/node01
     xcat-zfs-key restore node01 tank /root/freebsd-keys/node01/tank.key
 
-This also recovers a lost source key file before SSH synchronization. It does
-not provide a central vault, automatic key generation or rotation. Existing
+This does not provide a central vault, automatic key generation or rotation. Existing
 file-based key delivery remains supported, but its files enter database
 backups only after an explicit successful ``xcat-zfs-key save``.
 
-Deliver keys through SSH file synchronization. Keep the source outside the HTTP
+For the standalone helper, use ``keyfile=/etc/xcat/keys/NAME.key`` in its native
+policy and deliver keys through SSH file synchronization. Keep the source outside the HTTP
 installation tree. Synchronize the whole private directory so that rsync also
 preserves its mode. For example, use this ``synclists`` entry, with the source
 directory owned by root and mode ``0700``, and every key file mode ``0600``::
@@ -974,7 +1033,9 @@ directory owned by root and mode ``0700``, and every key file mode ``0600``::
     /root/freebsd-keys/node01/ -> /etc/xcat/keys/
 
 A file-only entry does not set the destination directory's mode. Restore the
-private directory with the same mapping after reinstall. Do not put key bytes
+private directory with the same mapping after reinstall when using that interface.
+The unified ``partitionfile`` path delivers this directory automatically.
+Do not put key bytes
 in image settings, disk policies,
 environment attributes, command arguments or postscripts. The postscript uses
 the native ``zfskeys`` service to unlock the data pool automatically at boot.
