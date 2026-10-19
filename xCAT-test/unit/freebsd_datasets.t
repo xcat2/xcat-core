@@ -83,6 +83,11 @@ is($reordered->{data_storage}{pools}[0]{datasets}, $data, 'declaration order doe
 my $mounts = settings($os . $pool . "[dataset tank/projects]\nmountpoint=/data/tank/work\n[dataset tank/projects/team]\n");
 like(compile_plan($mounts->{data_storage}{pools}[0]{datasets})->{stdout}, qr{tank/projects/team\tmountpoint=/data/tank/work/team,}x,
     'child default mountpoint follows the declared parent mountpoint');
+my $dotted = settings($os . $pool . "mountpoint=/srv/archive.v2\n[dataset tank/projects]\n[dataset tank/projects/team]\n");
+is(compile_plan($dotted->{data_storage}{pools}[0]{datasets})->{stdout},
+    "tank/projects\tmountpoint=/srv/archive.v2/projects,canmount=on\n"
+      . "tank/projects/team\tmountpoint=/srv/archive.v2/projects/team,canmount=on\n",
+    'dataset paths retain the pool planner dotted mountpoint');
 for my $case (
     ["[dataset other/home]\n", qr/declared[ ]pool/x, 'unknown pool'],
     ["[dataset tank]\n", qr/another[ ]pool/x, 'pool root'],
