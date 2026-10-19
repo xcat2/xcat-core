@@ -2,10 +2,12 @@ package xCAT::FreeBSDPostscript;
 
 use strict;
 use warnings;
+use Carp qw(croak);
 use Cwd qw(realpath);
 use Digest::SHA qw(sha256_hex);
 use Encode qw(encode FB_CROAK);
 use File::Basename qw(dirname);
+use File::Path qw(remove_tree);
 use Fcntl qw(O_RDONLY O_WRONLY O_RDWR O_CREAT O_EXCL O_NOFOLLOW O_NONBLOCK
     LOCK_EX LOCK_NB S_ISDIR S_ISREG S_ISLNK);
 use File::Temp qw(tempdir);
@@ -150,6 +152,16 @@ sub _discard_attempt {
         unlink("$path/$name") or _fail('Cannot remove completed attempt file');
     }
     rmdir($path) or _fail('Cannot remove completed attempt directory');
+    _sync_directory(dirname($path));
+    return;
+}
+
+sub _discard_stage {
+    my $path = shift;
+    _directory($path, 0);
+    my $errors;
+    remove_tree($path, { error => \$errors });
+    _fail('Cannot remove private postscript stage') if @$errors || lstat($path);
     _sync_directory(dirname($path));
     return;
 }
@@ -1201,6 +1213,20 @@ sub prepare_boot {
 
 sub _storage_source {
     my ($root, $source, $storage) = @_;
+    my $attempt = tempdir('.storage-source.XXXXXXXX', DIR => $root, CLEANUP => 0);
+    my $result;
+    my $ok = eval {
+        $result = _storage_source_stage($root, $source, $storage, $attempt);
+        1;
+    };
+    my $error = $@;
+    _discard_stage($attempt);
+    croak $error unless $ok;
+    return $result;
+}
+
+sub _storage_source_stage {
+    my ($root, $source, $storage, $attempt) = @_;
     require xCAT::FreeBSDStorage;
     my $path = $source->{directory};
     my $manifest_bytes = _read("$path/manifest.json", $source_limits{max_manifest_bytes});
@@ -1217,7 +1243,6 @@ sub _storage_source {
           && ($name =~ /[.]awk\z/x || ($entry->{mode} & oct('0111')));
     }
     my $files = xCAT::FreeBSDStorage::files($source->{node}, $storage);
-    my $attempt = tempdir('.storage-source.XXXXXXXX', DIR => $root, CLEANUP => 0);
     my $stage = "$attempt/content";
     mkdir($stage, oct('0700')) or _fail('Cannot create storage source stage');
     my %blobs = map { $_->{type} eq 'file' ? ($_->{sha256} => 1) : () } values %$entries;
@@ -1768,6 +1793,10 @@ sub export_execution {
         close($lock) or _fail('Cannot close export run lock');
         1;
     };
+    if (defined($attempt)) {
+        _discard_stage("$attempt/$_") for grep { lstat("$attempt/$_") } qw(content output);
+        _discard_attempt($attempt) if $ok;
+    }
     unless ($ok) {
         eval { _write("$attempt/failure", "$phase\n", 128); } if defined($attempt);
         _fail("FreeBSD postscript export failed during $phase");
