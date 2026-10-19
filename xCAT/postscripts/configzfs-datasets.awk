@@ -136,6 +136,8 @@ END {
             value[name,key]=setting
         }
         destination=value[name,"mountpoint"]
+        # Leave room for the terminator within FreeBSD's PATH_MAX.
+        if (length(destination)>1023) fail("Dataset mountpoint is too long")
         if (destination!="none" && destination!="/") {
             for (other in mounted) {
                 if (destination==other || (index(destination,other "/")==1 && index(name,mounted[other] "/")!=1) ||
