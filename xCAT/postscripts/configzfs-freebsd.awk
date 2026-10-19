@@ -119,7 +119,8 @@ function compile(    allowed, keys, i, key, minimum, special_min, n) {
     if (value["topology"] == "raidz3") minimum = 5
     if (draid_children) minimum = draid_children
     if (value["os_disks"] == "-" || value["vdevs"] == "-") fail("OS and data disks must be explicit")
-    members("os", value["os_disks"], 1, "flat")
+    if (mode != "compile-auto" || value["os_disks"] != "auto")
+        members("os", value["os_disks"], 1, "flat")
     members("data", value["vdevs"], minimum, value["topology"] == "raid10" || draid_children ? "groups" : "flat")
     special_min = 2
     if (value["topology"] == "mirror") special_min = split(value["vdevs"], keys, ",")
@@ -157,7 +158,7 @@ function cache_pool(    prior) {
 
 BEGIN {
     if (mode == "") mode = "compile"
-    if (mode != "compile" && mode != "verify" && mode != "cache") fail("Unknown storage operation")
+    if (mode != "compile" && mode != "compile-auto" && mode != "verify" && mode != "cache") fail("Unknown storage operation")
 }
 
 mode == "cache" {
@@ -177,7 +178,7 @@ mode == "cache" {
     next
 }
 
-mode == "compile" {
+mode == "compile" || mode == "compile-auto" {
     bytes += length($0) + 1
     if (bytes > 32768 || $0 ~ /[^ -~]/) fail("Invalid policy size or characters")
     if ($0 ~ /^([ ]*|#.*)$/) next
@@ -259,7 +260,7 @@ END {
     if (mode == "cache") {
         cache_pool()
         for (cache_name in cached) print cache_name "\t" cached[cache_name]
-    } else if (mode == "compile") compile()
+    } else if (mode == "compile" || mode == "compile-auto") compile()
     else {
         if (!root_seen || !errors_seen || state_seen != 1) fail("No complete pool status was returned")
         for (device in expected_role) if (!seen[device]) fail("A required pool device is missing")

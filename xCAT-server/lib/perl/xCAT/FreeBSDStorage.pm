@@ -54,11 +54,12 @@ sub sections {
 }
 
 sub _plan {
-    my ($policy, $planner) = @_;
+    my ($policy, $planner, $automatic) = @_;
     my ($file, $path) = tempfile('xcat-data-policy-XXXXXXXX', TMPDIR => 1, UNLINK => 1);
     print {$file} $policy or _fail('Cannot stage data pool policy');
     close($file) or _fail('Cannot close staged data pool policy');
-    my $result = xCAT::FreeBSDPkg::run_command(['/usr/bin/awk', '-f', $planner, $path],
+    my $result = xCAT::FreeBSDPkg::run_command(['/usr/bin/awk',
+        ($automatic ? ('-v', 'mode=compile-auto') : ()), '-f', $planner, $path],
         environment => { LC_ALL => 'C' }, timeout => 15, stdout_limit => 131072, stderr_limit => 4096);
     _fail($result->{stderr} || 'Storage planner failed') if $result->{exitcode} || $result->{signal};
     return $result->{stdout};
@@ -66,7 +67,8 @@ sub _plan {
 
 sub _compile_pool {
     my ($values, $planner) = @_;
-    my $plan = _plan(join('', map { "$_=$values->{$_}\n" } sort keys %$values), $planner);
+    my $plan = _plan(join('', map { "$_=$values->{$_}\n" } sort keys %$values), $planner,
+        $values->{os_disks} eq 'auto');
     _fail('Data pool planner returned no policy') unless $plan =~ /\AK\tformat\txcat-freebsd-data-1\n/x;
     my @members;
     for my $line (split(/\n/x, $plan)) {
@@ -79,6 +81,7 @@ sub _compile_pool {
 
 sub _os_members {
     my $os = shift;
+    return ['auto'] if ($os->{disk_selection} || '') eq 'empty';
     my @os = exists($os->{zfs_vdevs}) ? split(/[,;]/x, $os->{zfs_vdevs})
       : (($os->{target_disk} || '') . '@' . ($os->{target_disk_ident} || ''));
     for my $role (qw(log cache special)) {
@@ -119,6 +122,7 @@ sub compile {
     my $os_members = _os_members($os);
     my (%devices, %serials, %mountpoints, %preserved);
     for my $os_member (@$os_members) {
+        next if $os_member eq 'auto';
         my ($device, $serial) = split(/@/x, $os_member);
         $devices{$device} = $serials{$serial} = 1;
     }
@@ -133,7 +137,7 @@ sub compile {
         }
         push @pools, $pool;
     }
-    if (exists($os->{zfs_vdevs})) {
+    if (exists($os->{zfs_vdevs}) || ($os->{disk_selection} || '') eq 'empty') {
         for my $member (split(/,/x, $os->{preserve_disks} || '-')) {
             $preserved{$member} = 1 if $member ne '-';
         }

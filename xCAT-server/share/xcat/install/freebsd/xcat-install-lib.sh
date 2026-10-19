@@ -152,6 +152,123 @@ xcat_extended_storage()
     case "$XCAT_FORMAT" in xcat-freebsd-install-5|xcat-freebsd-install-6) return 0 ;; *) return 1 ;; esac
 }
 
+xcat_auto_groups()
+{
+    [ "${XCAT_DISK_SELECTION:-}" = empty ] || return 1
+    if [ "$XCAT_FORMAT" = xcat-freebsd-install-3 ]; then
+        [ "$XCAT_TARGET_DISK" = auto ] && [ -z "$XCAT_TARGET_DISK_IDENT$XCAT_ZFS_VDEVS$XCAT_ZFS_TOPOLOGY$XCAT_SWAP_MODE" ] || return 1
+        printf '1\n'
+        return
+    fi
+    xcat_extended_storage && [ "$XCAT_DISK_ACTION" = empty ] &&
+        [ "$XCAT_FILESYSTEM" = zfs ] && [ "$XCAT_SWAP_MODE" = none ] && [ "$XCAT_SWAP_SIZE" = 0 ] || return 1
+    printf '%s\n' "$XCAT_ZFS_VDEVS" | awk -v topology="$XCAT_ZFS_TOPOLOGY" '
+        NR != 1 || length($0)>128 {bad=1; next}
+        {
+            n=split($0,groups,";")
+            for(i=1;i<=n;i++) {
+                if(groups[i]!~/^auto:[1-9][0-9]?$/) {bad=1; continue}
+                size[i]=substr(groups[i],6)+0; total+=size[i]
+                if(topology=="raid10" && size[i]!=2) bad=1
+            }
+        }
+        END {
+            minimum=(topology=="stripe" ? 1 : topology=="mirror" ? 2 : topology=="raidz1" ? 3 : topology=="raidz2" || topology=="raid10" ? 4 : topology=="raidz3" ? 5 : 0)
+            if(NR!=1 || bad || !minimum || total<minimum || total>16 ||
+                (topology=="stripe" && total!=1) || (topology=="raid10" ? n<2 : n!=1)) exit 1
+            for(i=1;i<=n;i++) print size[i]
+        }'
+}
+
+xcat_os_disk_minimum()
+{
+    printf '%s\n' "$XCAT_SWAP_SIZE" | awk '
+        /[gG]$/ {swap=($0+0)*1073741824}
+        /[mM]$/ {swap=($0+0)*1048576}
+        END {minimum=swap+2147483648; printf "%.0f\n", (minimum>4294967296 ? minimum : 4294967296)}'
+}
+
+xcat_auto_candidates()
+(
+    xcat_minimum=$(xcat_os_disk_minimum) || exit 1
+    xcat_excluded=$(xcat_preserved_members) || exit 1
+    [ -z "$xcat_excluded" ] || xcat_disk_inventory "$xcat_excluded" >/dev/null || exit 1
+    xcat_auxiliary=$(xcat_zfs_auxiliary) || exit 1
+    xcat_graph=$(sysctl -n kern.geom.conftxt) || exit 1
+    xcat_geometry=$(geom disk list) || exit 1
+    xcat_candidates=$(printf '%s\n' "$xcat_geometry" | XCAT_EXCLUDED="$xcat_excluded
+$xcat_auxiliary" awk -v minimum="$xcat_minimum" '
+        BEGIN {
+            n=split(ENVIRON["XCAT_EXCLUDED"],rows,"\n")
+            for(i=1;i<=n;i++) {split(rows[i],f,"\t"); devices[f[1]]=1; serials[f[2]]=1}
+        }
+        $1=="Geom" && $2=="name:" {name=$3}
+        $1=="ident:" {ident[name]=$2}
+        $1=="Mediasize:" {size[name]=$2}
+        END {
+            for(d in ident) {
+                if(d!~/^(ada|da|nda|nvd|vtbd)(0|[1-9][0-9]*)$/ || length(d)>9 ||
+                    ident[d]!~/^[A-Za-z0-9_.:+-]+$/ || length(ident[d])>128 ||
+                    size[d]!~/^[1-9][0-9]*$/ || length(size[d])>16 || size[d]+0>9007199254740991 ||
+                    size[d]+0<minimum || d in devices || ident[d] in serials) continue
+                if(++count>128) exit 1
+                print size[d] "\t" ident[d] "\t" d
+            }
+        }') || exit 1
+    printf '%s\n' "$xcat_candidates" | LC_ALL=C sort -t "$(printf '\t')" -k1,1n -k2,2 -k3,3 |
+    while IFS="$(printf '\t')" read -r xcat_size xcat_serial xcat_disk; do
+        [ -n "$xcat_disk" ] || continue
+        xcat_member=$(printf '%s\t%s\t1' "$xcat_disk" "$xcat_serial")
+        xcat_snapshot=$(xcat_disk_inventory "$xcat_member" "$xcat_minimum") || continue
+        printf '%s\n' "$xcat_snapshot" | awk -F '\t' 'NF!=7 || $6!="r0w0e0" {exit 1}' || continue
+        if xcat_extended_storage; then
+            printf '%s\n' "$xcat_snapshot" | awk -F '\t' -v ashift="$XCAT_ZFS_ASHIFT" \
+                '2^ashift < $5 {exit 1}' || continue
+        fi
+        printf '%s\n' "$xcat_graph" | xcat_zfs_initial_graph "$xcat_snapshot" || continue
+        xcat_check_empty_disks "$xcat_snapshot" || continue
+        printf '%s\n' "$xcat_snapshot"
+    done
+)
+
+xcat_resolve_disks()
+{
+    [ -n "${XCAT_DISK_SELECTION:-}" ] || return 0
+    xcat_groups=$(xcat_auto_groups) || return 1
+    xcat_candidates=$(xcat_auto_candidates) || return 1
+    XCAT_SELECTED_SNAPSHOT=$(printf '%s\n' "$xcat_candidates" | XCAT_GROUPS="$xcat_groups" awk -F '\t' '
+        NF==7 {row[++n]=$0; size[n]=$4; available[$4]++}
+        END {
+            groups=split(ENVIRON["XCAT_GROUPS"],width,"\n")
+            for(g=1;g<=groups;g++) {
+                chosen=""
+                for(i=1;i<=n;i++) if(!used[i] && available[size[i]]>=width[g]) {chosen=size[i]; break}
+                if(chosen=="") exit 1
+                count=0
+                for(i=1;i<=n && count<width[g];i++) if(!used[i] && size[i]==chosen) {
+                    used[i]=1; available[chosen]--; count++
+                    split(row[i],f,"\t"); f[3]=g
+                    for(k=1;k<=7;k++) printf "%s%s",f[k],(k==7 ? "\n" : "\t")
+                }
+            }
+        }') || { xcat_error 'Not enough blank disks of matching capacity for the requested OS layout'; return 1; }
+    xcat_resolved=$(printf '%s\n' "$XCAT_SELECTED_SNAPSHOT" | awk -F '\t' '
+        {text=text (NR==1 ? "" : ($3==group ? "," : ";")) $1 "@" $2; group=$3} END {print text}') || return 1
+    cp "$XCAT_WORK/config" "$XCAT_WORK/automatic.conf" || return 1
+    printf '%s\n' "$XCAT_SELECTED_SNAPSHOT" > "$XCAT_WORK/automatic.snapshot" || return 1
+    awk -v members="$xcat_resolved" -v scalar="$XCAT_TARGET_DISK" '
+        /^disk_selection=/ {next}
+        /^preserve_disks=/ && scalar=="auto" {next}
+        /^target_disk=/ {split(members,p,"@"); print "target_disk=" p[1]; print "target_disk_ident=" p[2]; next}
+        /^zfs_vdevs=/ {print "zfs_vdevs=" members; next}
+        {print}
+    ' "$XCAT_WORK/config" > "$XCAT_WORK/resolved.conf" || return 1
+    xcat_read_config "$XCAT_WORK/resolved.conf" || return 1
+    chmod 0400 "$XCAT_WORK/resolved.conf" "$XCAT_WORK/automatic.conf" "$XCAT_WORK/automatic.snapshot" &&
+        mv "$XCAT_WORK/resolved.conf" "$XCAT_WORK/config" || return 1
+    printf 'xCAT FreeBSD: selected OS disks %s\n' "$xcat_resolved" >&2
+}
+
 xcat_zfs_members()
 {
     [ "$XCAT_FILESYSTEM" = zfs ] && [ "$XCAT_SWAP_SIZE" = 0 ] &&
@@ -207,11 +324,18 @@ xcat_zfs_auxiliary()
 (
     [ "$XCAT_FORMAT" = xcat-freebsd-install-6 ] || exit 0
     xcat_hex "$XCAT_GENERATION" 32 || exit 1
-    xcat_primary=$(xcat_zfs_members) || exit 1
+    xcat_primary_count=0
+    if [ "${XCAT_DISK_SELECTION:-}" = empty ]; then
+        xcat_groups=$(xcat_auto_groups) || exit 1
+        xcat_primary_count=$(printf '%s\n' "$xcat_groups" | awk '{n+=$1} END {print n}')
+        xcat_primary=
+    else
+        xcat_primary=$(xcat_zfs_members) || exit 1
+    fi
     printf '%s\n' "$xcat_primary" | XCAT_AUX_SPECIAL="$XCAT_ZFS_SPECIAL_VDEVS" \
         XCAT_AUX_LOG="$XCAT_ZFS_LOG_VDEVS" XCAT_AUX_CACHE="$XCAT_ZFS_CACHE_VDEVS" \
         XCAT_AUX_SMALL="$XCAT_ZFS_SPECIAL_SMALL_BLOCKS" LC_ALL=C awk \
-        -v topology="$XCAT_ZFS_TOPOLOGY" -v generation="$XCAT_GENERATION" -v output="${1:-members}" '
+        -v primary="$xcat_primary_count" -v topology="$XCAT_ZFS_TOPOLOGY" -v generation="$XCAT_GENERATION" -v output="${1:-members}" '
         function emit(role, group, kind, names,    n, list, i, p) {
             n=split(names,list,",")
             if (output=="arguments" && kind=="mirror") print "mirror"
@@ -224,7 +348,7 @@ xcat_zfs_auxiliary()
                 ordinal++
             }
         }
-        {devices[$1]=1; serials[$2]=1; primary++}
+        NF {devices[$1]=1; serials[$2]=1; primary++}
         END {
             size=ENVIRON["XCAT_AUX_SMALL"]
             if(size !~ /^(0|[1-9][0-9]*)$/ || length(size)>8 || size+0>16777216 || (size+0>0 && size+0<512)) exit 1
@@ -325,6 +449,7 @@ xcat_read_config()
     XCAT_TARGET_DISK= XCAT_TARGET_DISK_IDENT= XCAT_FILESYSTEM= XCAT_SWAP_SIZE=
     XCAT_ZFS_TOPOLOGY= XCAT_ZFS_VDEVS= XCAT_SWAP_MODE=
     XCAT_ZFS_COMPRESSION= XCAT_ZFS_ASHIFT= XCAT_DISK_ACTION= XCAT_PRESERVE_DISKS=
+    XCAT_DISK_SELECTION=
     XCAT_ZFS_LOG_VDEVS= XCAT_ZFS_CACHE_VDEVS= XCAT_ZFS_SPECIAL_VDEVS= XCAT_ZFS_SPECIAL_SMALL_BLOCKS=
     XCAT_DIST_URL= XCAT_BASE_SHA256= XCAT_KERNEL_SHA256= XCAT_AUTHORIZED_KEY_BASE64=
     XCAT_INSTALL_URL= XCAT_PACKAGE_PLAN_SHA256= XCAT_BOOT_MEDIA_SHA256= XCAT_RUNTIME_SHA256=
@@ -367,6 +492,7 @@ xcat_read_config()
             zfs_ashift) XCAT_ZFS_ASHIFT=$xcat_value ;;
             disk_action) XCAT_DISK_ACTION=$xcat_value ;;
             preserve_disks) XCAT_PRESERVE_DISKS=$xcat_value ;;
+            disk_selection) XCAT_DISK_SELECTION=$xcat_value ;;
             zfs_log_vdevs) XCAT_ZFS_LOG_VDEVS=$xcat_value ;;
             zfs_cache_vdevs) XCAT_ZFS_CACHE_VDEVS=$xcat_value ;;
             zfs_special_vdevs) XCAT_ZFS_SPECIAL_VDEVS=$xcat_value ;;
@@ -392,6 +518,10 @@ xcat_read_config()
         esac
     done < "$1"
     [ "$XCAT_RELEASE" = 15.1-RELEASE ] || return 1
+    case "$xcat_seen" in *' disk_selection '*)
+        xcat_auto_groups >/dev/null && xcat_preserved_members >/dev/null || return 1
+        case "$xcat_seen" in *' target_disk_ident '*) return 1 ;; esac ;;
+    esac
     case "$xcat_seen" in *' zfs_datasets_base64 '*)
         xcat_guarded_storage && [ "$XCAT_FILESYSTEM" = zfs ] || return 1
         XCAT_ZFS_DATASET_PLAN=$(xcat_zfs_dataset_plan) || return 1 ;;
@@ -420,6 +550,8 @@ xcat_read_config()
         case "$XCAT_ZFS_ASHIFT" in 9|10|11|12|13|14|15|16) ;; *) return 1 ;; esac
         case "$XCAT_DISK_ACTION" in empty|erase) ;; *) return 1 ;; esac
         xcat_preserved_members >/dev/null || return 1
+    elif [ "$XCAT_DISK_SELECTION" = empty ]; then
+        case "$xcat_seen" in *' zfs_compression '*|*' zfs_ashift '*|*' disk_action '*) return 1 ;; esac
     else
         case "$xcat_seen" in *' zfs_compression '*|*' zfs_ashift '*|*' disk_action '*|*' preserve_disks '*) return 1 ;; esac
     fi
@@ -449,6 +581,7 @@ xcat_read_config()
             LC_ALL=C awk '/[^ -~]/ {exit 1}' "$1" || return 1
             case "$xcat_seen" in *' dist_url '*|*' base_sha256 '*|*' kernel_sha256 '*) return 1 ;; esac
             xcat_disk_fields='target_disk target_disk_ident'
+            [ "$XCAT_DISK_SELECTION" != empty ] || xcat_disk_fields='target_disk preserve_disks'
             if xcat_guarded_storage; then
                 xcat_disk_fields='zfs_topology zfs_vdevs swap_mode'
                 case "$xcat_seen" in *' target_disk '*|*' target_disk_ident '*) return 1 ;; esac
@@ -475,7 +608,9 @@ xcat_read_config()
     case "$XCAT_PORT" in ''|*[!0-9]*) return 1 ;; esac
     [ "${#XCAT_PORT}" -le 5 ] && [ "$XCAT_PORT" -gt 0 ] && [ "$XCAT_PORT" -le 65535 ] || return 1
     printf '%s\n' "$XCAT_MAC" | awk '!/^[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]$/ {exit 1}' || return 1
-    if xcat_guarded_storage; then
+    if [ "$XCAT_DISK_SELECTION" = empty ]; then
+        xcat_auto_groups >/dev/null || return 1
+    elif xcat_guarded_storage; then
         xcat_zfs_members >/dev/null || return 1
     else
         case "$xcat_seen" in *' zfs_topology '*|*' zfs_vdevs '*|*' swap_mode '*) return 1 ;; esac
@@ -824,9 +959,8 @@ xcat_check_disk()
     [ "$xcat_mode" = r0w0e0 ] || { xcat_error 'Target disk is in use'; return 1; }
     xcat_capacity=$(printf '%s\n' "$xcat_disk_info" | awk '$1 == "Mediasize:" {print $2}')
     case "$xcat_capacity" in ''|*[!0-9]*) return 1 ;; esac
-    xcat_swap_bytes=$(printf '%s\n' "$XCAT_SWAP_SIZE" | awk '/[gG]$/ {print ($0+0)*1073741824; next} /[mM]$/ {print ($0+0)*1048576; next} {print 0}')
-    [ "$xcat_capacity" -ge 4294967296 ] &&
-        awk -v capacity="$xcat_capacity" -v swap="$xcat_swap_bytes" 'BEGIN {exit capacity < swap+2147483648}' ||
+    xcat_minimum=$(xcat_os_disk_minimum) || return 1
+    [ "$xcat_capacity" -ge "$xcat_minimum" ] ||
         { xcat_error 'Target disk has insufficient capacity'; return 1; }
     xcat_pools=$(zpool list -H -o name) || return 1
     [ -z "$xcat_pools" ] || { xcat_error 'Imported ZFS pools prevent installation'; return 1; }
@@ -1070,6 +1204,14 @@ xcat_write_installer()
         printf 'PARTITIONS="%s GPT { %s freebsd-swap, auto freebsd-ufs / }"\n' "$XCAT_TARGET_DISK" "$XCAT_SWAP_SIZE"
     fi
     cat "$1" || return 1
+    if xcat_guarded_storage; then
+        xcat_os_members=$(xcat_zfs_all_members) || return 1
+    else
+        xcat_os_members=$(printf '%s\t%s\t1' "$XCAT_TARGET_DISK" "$XCAT_TARGET_DISK_IDENT")
+    fi
+    printf '\ninstall -d -m 0700 /etc/xcat\ncat > /etc/xcat/os-disks <<\047XCAT_OS_DISKS\047\n'
+    printf '%s\n' "$xcat_os_members" | awk -F '\t' '{text=text (NR==1 ? "" : ",") $1 "@" $2} END {print text}'
+    printf 'XCAT_OS_DISKS\nchmod 0600 /etc/xcat/os-disks\nfsync /etc/xcat/os-disks /etc/xcat\n'
     if [ -n "${XCAT_BOOTSTRAP_NETWORK_BASE64:-}" ]; then
         . /usr/local/libexec/xcat-network.sh
         printf '\nsysrc -x ifconfig_%s\n' "$XCAT_PROVISIONING_IF"
@@ -1137,6 +1279,9 @@ xcat_install_system()
                 xcat_error 'Pkgbase installation runtime is not available'
                 return 1
             }
+            if [ -n "${XCAT_DISK_SELECTION:-}" ]; then
+                kldload -n zfs && kldload -n geom_eli && xcat_resolve_disks || return 1
+            fi
             xcat_pkgbase_workspace || return 1
             xcat_prepare_pkgbase > "$XCAT_WORK/prepare.log" 2>&1 || return 1
             ;;
@@ -1179,6 +1324,13 @@ xcat_install_system()
             "BSDINSTALL_TMPBOOT=$xcat_install_parent/boot" "TMPDIR=$xcat_install_parent/tmp"
     else
         xcat_check_disk || return 1
+        if [ -n "${XCAT_SELECTED_SNAPSHOT:-}" ]; then
+            xcat_selected_members=$(printf '%s\n' "$XCAT_SELECTED_SNAPSHOT" | cut -f1-3) || return 1
+            [ "$(xcat_disk_inventory "$xcat_selected_members" 4294967296)" = "$XCAT_SELECTED_SNAPSHOT" ] &&
+                xcat_check_empty_disks "$XCAT_SELECTED_SNAPSHOT" || return 1
+            xcat_graph=$(sysctl -n kern.geom.conftxt) || return 1
+            printf '%s\n' "$xcat_graph" | xcat_zfs_initial_graph "$XCAT_SELECTED_SNAPSHOT" || return 1
+        fi
         for xcat_provider in $XCAT_CLEAR_LABELS; do zpool labelclear -f "$xcat_provider" || return 1; done
     fi
     timeout 3600 env -i PATH="$PATH" LC_ALL=C TERM="${TERM:-vt100}" \

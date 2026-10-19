@@ -278,8 +278,14 @@ sub _zfs_storage {
     _fail('ZFS membership exceeds its size limit') if length($settings->{zfs_vdevs}) > 4096;
     my @groups = split(/;/x, $settings->{zfs_vdevs}, -1);
     my (%devices, %serials, @sizes);
-    my $count = 0;
+    my ($count, $automatic) = (0, 0);
     for my $group (@groups) {
+        if ($group =~ /\Aauto:([1-9][0-9]?)\z/x) {
+            push @sizes, 0 + $1;
+            $count += $1;
+            ++$automatic;
+            next;
+        }
         my @members = split(/,/x, $group, -1);
         _fail('Empty ZFS member group') unless length($group) && @members;
         push @sizes, scalar(@members);
@@ -290,6 +296,8 @@ sub _zfs_storage {
             _fail('ZFS policy exceeds 16 members') if ++$count > 16;
         }
     }
+    _fail('Automatic and explicit ZFS groups cannot be combined') if $automatic && $automatic != @groups;
+    _fail('ZFS policy exceeds 16 members') if $count > 16;
     _fail('Insufficient ZFS members') if $count < $minimum{$topology};
     _fail('The OS stripe policy requires one disk') if $topology eq 'stripe' && $count != 1;
     if ($topology eq 'raid10') {
@@ -300,8 +308,35 @@ sub _zfs_storage {
     return 1;
 }
 
+sub _automatic_storage {
+    my $settings = shift;
+    my $scalar = ($settings->{target_disk} || '') eq 'auto';
+    my $multi = ($settings->{zfs_vdevs} || '') =~ /\Aauto:/x;
+    return 0 unless $scalar || $multi;
+    _fail('Automatic selection cannot specify a target serial') if exists($settings->{target_disk_ident});
+    _fail('Automatic selection requires blank disks') if
+        exists($settings->{disk_action}) && $settings->{disk_action} ne 'empty';
+    $settings->{disk_selection} = 'empty';
+    $settings->{preserve_disks} //= '-';
+    return 1;
+}
+
 sub _zfs_disk_policy {
     my $settings = shift;
+    if (($settings->{target_disk} || '') eq 'auto') {
+        _fail('Scalar automatic selection does not accept ZFS member properties') if
+            grep { /\Azfs_/x || $_ eq 'disk_action' } keys %$settings;
+        my %devices;
+        my %serials;
+        for my $member (split(/,/x, $settings->{preserve_disks} || '-')) {
+            next if $member eq '-';
+            my ($device, $serial) = _disk_member($member);
+            _fail('Invalid or repeated preserved disk identity') unless defined($device)
+                && !$devices{$device}++ && !$serials{$serial}++;
+        }
+        _fail('Too many preserved disks') if keys(%devices) > 128;
+        return 0;
+    }
     my $extended = ($settings->{zfs_topology} || '') eq 'stripe' ||
         grep { exists($settings->{$_}) } qw(zfs_compression zfs_ashift disk_action preserve_disks
         zfs_log_vdevs zfs_cache_vdevs zfs_special_vdevs zfs_special_small_blocks);
@@ -318,6 +353,7 @@ sub _zfs_disk_policy {
     _fail('Preserved disk policy exceeds its size limit') if length($settings->{preserve_disks}) > 32768;
     my (%devices, %serials);
     for my $member (split(/[,;]/x, $settings->{zfs_vdevs})) {
+        next if $member =~ /\Aauto:/x;
         my ($device, $serial) = split(/@/x, $member);
         $devices{$device} = $serials{$serial} = 1;
     }
@@ -340,7 +376,9 @@ sub _zfs_auxiliary {
     return unless grep { exists($settings->{$_}) }
         qw(zfs_log_vdevs zfs_cache_vdevs zfs_special_vdevs zfs_special_small_blocks);
     my $topology = $settings->{zfs_topology};
-    my $special_width = $topology eq 'mirror' ? scalar(split(/,/x, $settings->{zfs_vdevs})) :
+    my $primary_width = $settings->{zfs_vdevs} =~ /\Aauto:([1-9][0-9]?)\z/x
+        ? 0 + $1 : scalar(split(/,/x, $settings->{zfs_vdevs}));
+    my $special_width = $topology eq 'mirror' ? $primary_width :
         $topology eq 'raidz2' ? 3 : $topology eq 'raidz3' ? 4 : 2;
     for my $role (qw(special log cache)) {
         my $key = "zfs_${role}_vdevs";
@@ -383,6 +421,7 @@ sub load_settings {
         zfs_compression zfs_ashift disk_action preserve_disks
         zfs_log_vdevs zfs_cache_vdevs zfs_special_vdevs zfs_special_small_blocks));
     $disk->{swap_size} = '0' unless defined($disk->{swap_size});
+    _automatic_storage($disk);
     _zfs_storage($disk);
     _zfs_disk_policy($disk);
     my $storage;
@@ -453,6 +492,7 @@ sub render_pkgbase {
     my %config = (%$settings, %$network, format => 'xcat-freebsd-install-2', release => $media->{release},
         node => $node, generation => $generation, package_plan_sha256 => $install->{package_plan_sha256},
         boot_media_sha256 => $media->{digest}, runtime_sha256 => $media->{files}{'xcat/runtime.tsv'});
+    my $automatic = _automatic_storage(\%config);
     my $multi_disk = _zfs_storage(\%config);
     my $disk_policy = _zfs_disk_policy(\%config);
     my $install_contract = $media->{install_contract} || '';
@@ -497,6 +537,14 @@ sub render_pkgbase {
             && length($config{zfs_datasets_base64}) <= 16384;
         push @order, 'zfs_datasets_base64';
     }
+    if ($automatic) {
+        _fail('Automatic disk selection requires xcat-freebsd-disk-selection-1 media') unless
+            ($media->{disk_selection_contract} || '') eq 'xcat-freebsd-disk-selection-1'
+            && $install_contract =~ /\Axcat-freebsd-install-[3456]\z/x;
+        @order = grep { $_ ne 'target_disk_ident' } @order;
+        push @order, 'disk_selection';
+        push @order, 'preserve_disks' unless $multi_disk;
+    }
     return _render_config(\%config, \@order,
         [qw(generation package_plan_sha256 boot_media_sha256 runtime_sha256)], 'install_url', 'installation');
 }
@@ -525,6 +573,8 @@ sub _render_config {
     _node($config{hostname});
     if ($config{format} =~ /\Axcat-freebsd-install-[456]\z/x) {
         _fail('Missing multi-disk policy') unless _zfs_storage(\%config);
+    } elsif (($config{disk_selection} || '') eq 'empty') {
+        _fail('Invalid automatic target disk') unless $config{target_disk} eq 'auto';
     } else {
         _fail('Invalid target disk') unless $config{target_disk} =~ /\A(?:ada|da|nda|nvd|vtbd)[0-9]+\z/;
         _fail('A disk serial is required') unless $config{target_disk_ident} =~ /\A[A-Za-z0-9_.:+-]+\z/;

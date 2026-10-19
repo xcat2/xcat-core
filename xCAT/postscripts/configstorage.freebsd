@@ -78,7 +78,25 @@ trap 'exit 1' HUP INT TERM
 publish()
 {
     temporary=$(mktemp "$2.XXXXXXXX")
-    cat "$1" > "$temporary"
+    if [ "$3" = policy ] && awk '$0=="os_disks=auto" {found=1} END {exit !found}' "$1"; then
+        private_file /etc/xcat/os-disks
+        [ "$(stat -f %z /etc/xcat/os-disks)" -le 32768 ] || fail 'OS disk identities exceed their size limit'
+        os_disks=$(cat /etc/xcat/os-disks)
+        printf '%s\n' "$os_disks" | awk '
+            NR!=1 {bad=1}
+            {
+                n=split($0,items,",")
+                if(n<1 || n>128) bad=1
+                for(i=1;i<=n;i++) {
+                    if(split(items[i],p,"@")!=2 || p[1]!~/^(ada|da|nda|nvd|vtbd)(0|[1-9][0-9]*)$/ ||
+                        p[2]!~/^[A-Za-z0-9_.:+-]+$/ || length(p[2])>128 || devices[p[1]]++ || serials[p[2]]++) bad=1
+                }
+            }
+            END {exit (bad || NR!=1)}' || fail 'Invalid installed OS disk identities'
+        awk -v members="$os_disks" '$0=="os_disks=auto" {print "os_disks=" members; next} {print}' "$1" > "$temporary"
+    else
+        cat "$1" > "$temporary"
+    fi
     chmod 0600 "$temporary"
     fsync "$temporary"
     if [ "$3" = key ]; then

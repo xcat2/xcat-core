@@ -202,6 +202,7 @@ awk '!/^[A-Za-z0-9_.+-]+(\/[A-Za-z0-9_.+-]+)*$/ || /(^|\/)\.\.?($|\/)/ {exit 1}'
 {
     printf '{"format":"%s","release":"15.1-RELEASE","arch":"amd64","mfsbsd_commit":"%s",' "$bundle_format" "$source_commit"
     [ "$bundle_format" != xcat-mfsbsd-2 ] || printf '"install_contract":"xcat-freebsd-install-6","postscript_contract":"xcat-freebsd-postscripts-1",'
+    [ "$bundle_format" != xcat-mfsbsd-2 ] || printf '"disk_selection_contract":"xcat-freebsd-disk-selection-1",'
     [ -z "$network_planner" ] || printf '"network_contract":"xcat-freebsd-bootstrap-1",'
     [ -z "$dataset_planner" ] || printf '"dataset_contract":"xcat-freebsd-datasets-1",'
     printf '"files":{'
