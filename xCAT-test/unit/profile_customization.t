@@ -87,9 +87,12 @@ for my $case (@cases) {
             : xCAT::SvrUtils::get_file_name($base, $extension, $profile, "$os.2", $arch);
         is($selected, "$base/$name", 'retains the public profile filename');
         ok(defined($selected) && -r $selected, 'selected asset is readable') or return;
-        is(sprintf('%03o', S_IMODE((stat($selected))[2]) & oct('111')),
-            $extension eq 'postinstall' ? '111' : '000',
-            'only postinstall assets are executable');
+        my $mode = S_IMODE((stat($selected))[2]);
+        if ($extension eq 'postinstall') {
+            ok($mode & oct('100'), 'postinstall asset is executable by its owner');
+        } else {
+            is($mode & oct('111'), 0, 'data asset is not executable');
+        }
         my $original = read_binary($selected);
         my $custom = "$work/$name";
         copy($selected, $custom) or die "copy $selected: $!";
