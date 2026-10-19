@@ -36,8 +36,8 @@ for my $source (@assets) {
     my $delivered = "$root/opt/xcat/share/xcat/$relative";
     ok(-r $delivered, "$relative is readable after extraction") or next;
     is(read_binary($delivered), read_binary($source), "$relative retains its complete contents");
-    is(S_IMODE((stat($delivered))[2]), S_IMODE((stat($source))[2]),
-        "$relative retains its permissions");
+    is(sprintf('%04o', S_IMODE((stat($delivered))[2])), $source =~ /\.postinstall$/ ? '0755' : '0644',
+        "$relative has the packaged permissions");
 }
 my ($status, $output) = run_command($^X,
     repo_path('xCAT-test/unit/profile_customization.t'), "$root/opt/xcat");
@@ -57,8 +57,8 @@ if (!-f '/etc/debian_version') {
         ok(-r $delivered, "reduced RPM: $relative still resolves") or next;
         is(read_binary($delivered), read_binary($source),
             "reduced RPM: $relative retains its complete contents");
-        is(S_IMODE((stat($delivered))[2]), S_IMODE((stat($source))[2]),
-            "reduced RPM: $relative retains its permissions");
+        is(sprintf('%04o', S_IMODE((stat($delivered))[2])), $source =~ /\.postinstall$/ ? '0755' : '0644',
+            "reduced RPM: $relative has the packaged permissions");
     }
 }
 
