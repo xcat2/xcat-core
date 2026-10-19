@@ -157,7 +157,10 @@ for my $missed (qw(nodeset updatenodestat)) {
 {
     my ($root, $token) = fixture();
     local $xCAT::Table::unavailable = 1;
-    rejected(sub { status($root, $token, 'begin'); }, qr/Cannot (?:read nodelist|open node resources)/, 'database unavailable');
+    rejected(sub { status($root, $token, 'begin', sub { die 'must not dispatch'; }); },
+        qr/Cannot open node resources/, 'database unavailable');
+    is(xCAT::FreeBSDInstall::state('node1', directory => $root)->{phase}, 'prepared',
+        'database failure cannot claim installation ownership');
 }
 {
     my ($root, $token) = fixture();

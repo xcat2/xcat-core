@@ -104,10 +104,12 @@ my $temporary = abs_path(tempdir(CLEANUP => 1));
 my ($root, $media, $image, $state_directory, $prepare_count, $inspect_count, $extra_cmdline);
 my $sequence = 0;
 my $prepare = \&xCAT::FreeBSDInstall::prepare;
+my $read_state = \&xCAT::FreeBSDInstall::state;
 my $inspect = \&xCAT::FreeBSDImage::inspect_media;
 {
     no warnings 'redefine';
     *xCAT::FreeBSDInstall::prepare = sub { ++$prepare_count; return $prepare->(@_, directory => $state_directory); };
+    *xCAT::FreeBSDInstall::state = sub { return $read_state->(@_, directory => $state_directory); };
     *xCAT::FreeBSDImage::inspect_media = sub { ++$inspect_count; return $inspect->(@_); };
 }
 sub write_file {
@@ -637,6 +639,38 @@ BOOT_TEMPLATE
         isnt($disabled->{generation}, $changed->{generation}, 'repeat policy changes the public generation');
         is(xCAT::FreeBSDPostscript::compile_execution($disabled->{postscript_preparations}{repeat},
             directory => $boot_store)->{enabled}, 0, 'new generation cannot repeat scripts when disabled');
+        $xCAT::Table::rows{noderes}{node1}{servicenode} = 'sn';
+        my $metadata = {epoch => 'a' x 32, coordinator => '198.51.100.1', server => '192.0.2.1'};
+        my $pool_install = sub {
+            my $params = {};
+            my @errors;
+            xCAT_plugin::freebsd::process_request({command => ['mkinstall'], node => ['node1'],
+                bootparams => \$params, _freebsd_pool => [encode_json({node1 => $metadata})]},
+                sub { push @errors, shift; }, sub {
+                    return {data => [encode_json({format => 'xcat-freebsd-pool-1', node => 'node1',
+                        operation => 'register', result => {epoch => $metadata->{epoch}, phase => 'prepared'}})]};
+                });
+            return ($params, \@errors);
+        };
+        ($boot, $errors) = $pool_install->();
+        is_deeply($errors, [], 'new pool epoch seals actual boot scripts');
+        my ($pooled) = $published->();
+        my $pool_driver = xCAT::FreeBSDPostscript::compile_execution(
+            $pooled->{postscript_preparations}{firstboot}, directory => $boot_store);
+        write_file("$scripts/configure", "#!/bin/sh\nprintf '%s\\n' next-epoch\n");
+        ($boot, $errors) = $pool_install->();
+        is_deeply($errors, [], 'server recovery reuses the existing sealed preparation');
+        is_deeply(($published->())[0], $pooled, 'same epoch retains the registered generation and script binding');
+        is_deeply(xCAT::FreeBSDPostscript::compile_execution(
+            $pooled->{postscript_preparations}{firstboot}, directory => $boot_store),
+            $pool_driver, 'server recovery cannot change the sealed script bytes');
+        $metadata->{epoch} = 'b' x 32;
+        ($boot, $errors) = $pool_install->();
+        is_deeply($errors, [], 'new pool epoch prepares changed scripts');
+        ($disabled) = $published->();
+        isnt($disabled->{postscript_preparations}{firstboot}, $pooled->{postscript_preparations}{firstboot},
+            'explicit pool preparation captures the changed scripts');
+        delete $xCAT::Table::rows{noderes}{node1}{servicenode};
         my $published_loader = read_file("$root/tftp/xcat/freebsd/node1/boot/loader.conf");
         write_file("$scripts/mypostscript.tmpl", 'invalid template');
         my $armed_count = $prepare_count;
@@ -962,4 +996,43 @@ delete $xCAT::Table::rows{iscsi};
 is_deeply($responses, [], 'a fresh database without an iscsi table can prepare local-disk installation');
 is_deeply($xCAT::Table::rows{iscsi}, {}, 'preparation initializes only an empty optional iscsi table');
 is($prepare_count, 1, 'optional table initialization does not suppress installation preparation');
+for my $acknowledged (0, 1) {
+    fixture();
+    my (undef, $previous_errors) = install();
+    is_deeply($previous_errors, [], 'an existing preparation is available before pool registration');
+    my $before = read_file("$state_directory/node1.json");
+    my $previous_loader = read_file("$root/tftp/xcat/freebsd/node1/boot/loader.conf");
+    $xCAT::Table::rows{noderes}{node1}{servicenode} = 'sn';
+    my $metadata = {epoch => 'a' x 32, coordinator => '198.51.100.1', server => '192.0.2.1'};
+    my $pool_params = {node1 => [{kernel => 'stale'}]};
+    my (@responses, @registrations);
+    xCAT_plugin::freebsd::process_request({command => ['mkinstall'], node => ['node1'],
+        bootparams => \$pool_params, _freebsd_pool => [JSON->new->encode({node1 => $metadata})]},
+        sub { push @responses, shift; }, sub {
+            my $request = shift;
+            push @registrations, $request;
+            is(read_file("$state_directory/node1.json"), $before, 'registration precedes local state replacement');
+            is(read_file("$root/tftp/xcat/freebsd/node1/boot/loader.conf"), $previous_loader,
+                'registration precedes boot publication');
+            return {} unless $acknowledged;
+            return {data => [JSON->new->encode({format => 'xcat-freebsd-pool-1', node => 'node1',
+                operation => 'register', result => {epoch => $metadata->{epoch}, phase => 'prepared'}})]};
+        });
+    is(scalar(@registrations), 1, 'prepared server registers one local generation') or next;
+    my $registration = JSON->new->decode($registrations[0]{arg}[1]);
+    my $retained = xCAT::FreeBSDInstall::state('node1', directory => $state_directory);
+    is($registration->{master}, '192.0.2.1', 'registration names the node-facing server');
+    if ($acknowledged) {
+        is($registration->{generation}, $retained->{generation}, 'registration identifies the durable local generation');
+        is_deeply($retained->{service_pool}, $metadata, 'local state binds callbacks to the coordinator epoch');
+        is_deeply(\@responses, [], 'acknowledged pool preparation succeeds');
+        ok(exists($pool_params->{node1}), 'acknowledged generation supplies native boot parameters');
+    } else {
+        ok(@responses, 'missing registration acknowledgement is reported');
+        ok(!exists($pool_params->{node1}), 'unregistered generation supplies no boot parameters');
+        is(read_file("$state_directory/node1.json"), $before, 'rejected registration preserves local state');
+        is(read_file("$root/tftp/xcat/freebsd/node1/boot/loader.conf"), $previous_loader,
+            'rejected registration preserves the working boot entry');
+    }
+}
 done_testing();

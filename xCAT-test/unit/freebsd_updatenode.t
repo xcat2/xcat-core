@@ -539,4 +539,53 @@ sub report_locations {
 
 subtest 'public output locates every collected report' => \&report_locations;
 
+subtest 'pool updates follow the selected owner and require completed installation' => sub {
+    reset_fixture();
+    delete $xCAT::Table::rows{noderes}[0]{xcatmaster};
+    $xCAT::Table::rows{noderes}[0]{servicenode} = '192.0.2.11,192.0.2.12';
+    local $::XCATSITEVALS{master} = '192.0.2.1';
+    for my $case ([prepared => 0], [installing => 1], [failed => 1], [cancelled => 0],
+        [cancelled => 1], [installed => 1], [booted => 1]) {
+        my ($phase, $has_owner) = @$case;
+        @responses = ();
+        my @queries;
+        my $routed = xCAT_plugin::updatenode::preprocess_request(request(['node1'], '-P'), $callback, sub {
+            my $request = shift;
+            push @queries, dclone($request);
+            return {data => [JSON->new->encode({format => 'xcat-freebsd-pool-1', node => 'node1',
+                operation => 'inspect', result => {phase => $phase, $has_owner ? (owner => '192.0.2.12') : ()}})]};
+        });
+        is($queries[0]{arg}[0], 'inspect', 'routing reads the installation owner');
+        if ($phase eq 'installed' || $phase eq 'booted') {
+            is_deeply(errors(), [], 'installed pool node has an update owner');
+            is($routed->[0]{_xcatdest}, '192.0.2.12', 'update targets the server that owns its receipts');
+        } else {
+            ok(!defined($routed), 'incomplete pool installation receives no update dispatch');
+            like(join('', @{errors()}), qr/no[ ]installed[ ]owner/x, 'unavailable owner is explained');
+        }
+    }
+    return;
+};
+
+subtest 'pool and fixed owners retain separate maintenance destinations' => sub {
+    reset_fixture();
+    delete $xCAT::Table::rows{noderes}[0]{xcatmaster};
+    $xCAT::Table::rows{noderes}[0]{servicenode} = '192.0.2.11,192.0.2.12';
+    local $::XCATSITEVALS{master} = '192.0.2.1';
+    my @queries;
+    my $routed = xCAT_plugin::updatenode::preprocess_request(request(['node1', 'node2', 'linux1'], '-P'),
+        $callback, sub {
+            my $query = shift;
+            push @queries, dclone($query);
+            return {data => [JSON->new->encode({format => 'xcat-freebsd-pool-1', node => 'node1',
+                operation => 'inspect', result => {phase => 'booted', owner => '192.0.2.12'}})]};
+        });
+    is_deeply(errors(), [], 'mixed fixed and pool routing succeeds');
+    is_deeply([map { $_->{node} } @queries], [['node1']], 'only the pool node queries its coordinator');
+    is_deeply([map { [$_->{_xcatdest}, $_->{node}] } grep { $_->{command}[0] eq 'updatenode' } @$routed],
+        [['192.0.2.12', ['node1']], ['198.51.100.1', ['node2']]], 'each native node keeps its actual owner');
+    is_deeply($legacy[0]{node}, ['linux1'], 'Linux maintenance retains the legacy handler');
+    return;
+};
+
 done_testing();

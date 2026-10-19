@@ -6,6 +6,7 @@ use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT", "$FindBin::Bin/../../xCAT-server/lib/perl";
 use Storable qw(dclone);
 use Test::More;
+use XML::Simple;
 use Cwd qw(abs_path);
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
@@ -78,6 +79,7 @@ my $is_mn = 1;
 my $temporary = abs_path(tempdir(CLEANUP => 1));
 $xCAT::TableUtils::tftpdir = "$temporary/tftp";
 my $sequence = 0;
+my $pool_dispatch;
 {
     no warnings 'redefine';
     *xCAT::Utils::isMN = sub { return $is_mn; };
@@ -87,6 +89,7 @@ my $plugin = $ENV{XCAT_XNBA_SCOPE_FILE} || "$FindBin::Bin/../../xCAT-server/lib/
 require $plugin;
 
 sub fixture {
+    $pool_dispatch = undef;
     %xCAT::Table::rows = (
         osimage => {
             freebsd => {imagetype => 'freebsd', osname => 'FreeBSD', osvers => 'freebsd15.1', osarch => 'x86_64', provmethod => 'install'},
@@ -114,7 +117,7 @@ sub scope {
     my $request = {command => ['nodeset'], arg => [$action], node => \@nodes};
     my $before = dclone($request);
     my $requests = xCAT_plugin::xnba::preprocess_request($request,
-        sub { push @errors, @{ $_[0]{error} || [] }; }, sub { die 'Unexpected execution during preprocessing'; });
+        sub { push @errors, @{ $_[0]{error} || [] }; }, $pool_dispatch || sub { die 'Unexpected execution during preprocessing'; });
     return ($requests, \@errors, $request, $before);
 }
 
@@ -205,18 +208,27 @@ for my $shared ('yes', 'no') {
     };
 }
 
-for my $bad_owner (undef, '', 'sn1,sn2', 'sn1 sn2', '2001:db8::1', '../sn1', [], 'unresolved') {
+for my $bad_owner ('sn1,sn2', 'sn1 sn2', '2001:db8::1', '../sn1', [], 'unresolved') {
     subtest 'invalid or ambiguous service-node owner fails closed' => sub {
         fixture();
         $xCAT::Table::rows{noderes}{node2}{xcatmaster} = $bad_owner;
-        $xCAT::Table::rows{noderes}{node2}{servicenode} = 'sn1,sn1'
-            if !defined($bad_owner) || $bad_owner eq '';
         my ($requests, $errors) = scope('osimage', 'node1', 'node2');
         is_deeply($requests, [], 'no selected request is dispatched');
         ok(@$errors, 'invalid owner produces an error');
         is_deeply(\@xCAT::Scope::calls, [], 'owner validation precedes all scope execution');
     };
 }
+
+subtest 'a pool coordinator failure preserves fixed-owner work' => sub {
+    for my $unset (undef, '') {
+        fixture();
+        $xCAT::Table::rows{noderes}{node2}{xcatmaster} = $unset;
+        my ($requests, $errors) = scope('osimage', 'node1', 'node2');
+        is(scalar(@$requests), 1, 'fixed owner retains one scoped request');
+        is_deeply($requests->[0]{node}, ['node1'], 'unavailable pool is excluded from the fixed owner request');
+        like(join('', @$errors), qr/node2:.*Unexpected[ ]execution/sx, 'coordinator failure names the pool node');
+    }
+};
 
 subtest 'mixed Linux requests retain the existing broadcast path' => sub {
     fixture();
@@ -363,6 +375,176 @@ subtest 'mixed OS preprocessing never grants native routing to legacy nodes' => 
     my ($responses, $commands, $tftp) = process_scoped($legacy);
     is_deeply($commands, [], 'legacy off-subnet node still does not run any stage');
     ok(!-e "$tftp/xcat/xnba/nodes/node1", 'mixed batch does not publish a legacy off-subnet script');
+};
+
+subtest 'pool prepares both servers with one shared epoch' => sub {
+    fixture();
+    delete $xCAT::Table::rows{noderes}{node1}{xcatmaster};
+    my @coordinator;
+    $pool_dispatch = sub {
+        my $request = shift;
+        push @coordinator, dclone($request);
+        return {data => [JSON->new->encode({format => 'xcat-freebsd-pool-1', node => 'node1',
+            operation => $request->{arg}[0], result => {epoch => 'd' x 32, phase => 'prepared'}})]};
+    };
+    my ($requests, $errors) = scope('osimage=freebsd', 'node1');
+    is_deeply($errors, [], 'pool preprocessing succeeds');
+    is(scalar(@coordinator), 1, 'one coordinator preparation covers both service nodes');
+    is($coordinator[0]{arg}[0], 'prepare', 'preprocessing arms the coordinator');
+    is_deeply([map { $_->{_xcatdest} } @$requests], ['192.0.2.2', '192.0.2.3'], 'each eligible server gets a scoped request');
+    for my $request (@$requests) {
+        my $wire = XML::Simple::XMLout($request, RootName => 'xcatrequest', NoAttr => 1);
+        $request = XML::Simple::XMLin($wire, SuppressEmpty => undef, ForceArray => qr/.*/x);
+        ok(ref($request->{_freebsd_pool}) eq 'ARRAY' && @{$request->{_freebsd_pool}} == 1
+            && !ref($request->{_freebsd_pool}[0]), 'pool metadata survives XML as one scalar field') or next;
+        my $metadata = JSON->new->decode($request->{_freebsd_pool}[0])->{node1};
+        my $destination = $request->{_xcatdest}[0];
+        is_deeply($metadata, {epoch => 'd' x 32, coordinator => '192.0.2.1', server => $destination},
+            'metadata binds the shared epoch to the receiving server');
+        $xCAT::NetworkUtils::local = $destination;
+        is_deeply(xCAT::FreeBSDPool::local_preparation('node1', $request->{_freebsd_pool},
+            {coordinator => '192.0.2.1', servers => ['192.0.2.2', '192.0.2.3']}), $metadata,
+            'the production consumer accepts metadata after the daemon XML round trip');
+        my ($responses, $commands) = process_scoped($request);
+        is_deeply($responses, [], 'each owner can publish its local loader');
+        my ($destiny) = grep { $_->{command}[0] eq 'setdestiny' } @$commands;
+        is_deeply($destiny->{_freebsd_pool}, $request->{_freebsd_pool}, 'setdestiny receives unchanged pool metadata');
+    }
+};
+
+subtest 'service-node startup refreshes only local FreeBSD entries without parallel dispatch' => sub {
+    fixture();
+    delete $xCAT::Table::rows{noderes}{node1}{xcatmaster};
+    $xCAT::Table::rows{noderes}{node2}{xcatmaster} = 'sn2';
+    $xCAT::Table::rows{nodetype}{$_}{os} = 'freebsd15.1' for qw(node1 node2);
+    for my $local ('192.0.2.2', '192.0.2.1') {
+        $xCAT::NetworkUtils::local = $local;
+        $is_mn = 0;
+        my (@errors, @operations);
+        @xCAT::Scope::calls = ();
+        my $requests = xCAT_plugin::xnba::preprocess_request(
+            {command => ['nodeset'], arg => ['enact'], node => [qw(node1 node2)], inittime => [1]},
+            sub { push @errors, @{ $_[0]{error} || [] }; }, sub {
+                my $request = shift;
+                push @operations, $request->{arg}[0];
+                return {data => [JSON->new->encode({format => 'xcat-freebsd-pool-1', node => 'node1',
+                    operation => $request->{arg}[0], result => {epoch => 'd' x 32, phase => 'prepared'}})]};
+            });
+        is_deeply(\@errors, [], 'startup scope succeeds');
+        is_deeply(\@xCAT::Scope::calls, [], 'startup does not fork parallel or broadcast requests');
+        if ($local eq '192.0.2.1') {
+            is_deeply($requests, [], 'nonmember startup does not contact another installation owner');
+            is_deeply(\@operations, [], 'nonmember startup does not query another pool');
+            next;
+        }
+        is(scalar(@$requests), 1, 'only the local pool member is refreshed');
+        is_deeply($requests->[0]{node}, ['node1'], 'remote explicit owner is excluded');
+        ok(!exists($requests->[0]{_xcatdest}), 'startup work stays local');
+        is_deeply(\@operations, ['inspect'], 'startup reuses the prepared epoch without rearming');
+        my $metadata = eval { JSON->new->decode($requests->[0]{_freebsd_pool}[0]); };
+        is($metadata && $metadata->{node1}{server}, $local, 'local preparation retains its server identity');
+    }
+};
+
+subtest 'invalid owner in a mixed batch cannot rearm an earlier pool node' => sub {
+    fixture();
+    delete $xCAT::Table::rows{noderes}{node1}{xcatmaster};
+    $xCAT::Table::rows{noderes}{node2}{xcatmaster} = 'sn1,sn2';
+    my $operations = 0;
+    $pool_dispatch = sub { ++$operations; return {}; };
+    my ($requests, $errors) = scope('osimage=freebsd', 'node1', 'node2');
+    is_deeply($requests, [], 'invalid batch creates no worker requests');
+    ok(@$errors, 'invalid owner is reported');
+    is($operations, 0, 'static validation precedes coordinator mutations');
+};
+
+subtest 'one coordinator error does not suppress other pools or Linux work' => sub {
+    for my $startup (0, 1) {
+        fixture();
+        for my $node (qw(node1 node2)) {
+            delete $xCAT::Table::rows{noderes}{$node}{xcatmaster};
+            $xCAT::Table::rows{nodetype}{$node}{os} = 'freebsd15.1';
+        }
+        $xCAT::Table::rows{nodetype}{node3} = {os => 'rhels9', provmethod => 'linux'};
+        $xCAT::NetworkUtils::local = '192.0.2.2' if $startup;
+        $is_mn = !$startup;
+        my (@errors, @operations);
+        my $action = $startup ? 'enact' : 'osimage';
+        my $request = {command => ['nodeset'], arg => [$action], node => [qw(node1 node2 node3)],
+            $startup ? (inittime => [1]) : ()};
+        my $legacy = xCAT_plugin::xnba::preprocess_request({%$request, node => ['node3']}, sub { die 'Legacy control failed'; });
+        @xCAT::Scope::calls = ();
+        my $requests = xCAT_plugin::xnba::preprocess_request($request,
+            sub { push @errors, @{$_[0]{error} || []}; }, sub {
+                my $operation = shift;
+                push @operations, dclone($operation);
+                return {error => ['Coordinator cannot prepare this node']} if $operation->{node}[0] eq 'node2';
+                return {data => [JSON->new->encode({format => 'xcat-freebsd-pool-1', node => 'node1',
+                    operation => $operation->{arg}[0], result => {epoch => 'd' x 32, phase => 'prepared'}})]};
+            });
+        like(join('', @errors), qr/node2:.*Coordinator/sx, 'failure identifies only the rejected pool node');
+        is_deeply([map { $_->{node}[0] } @operations], [qw(node1 node2)], 'both coordinator operations were attempted');
+        my @native = grep { $_->{_freebsd_owner} } @$requests;
+        is(scalar(@native), $startup ? 1 : 2, 'the earlier prepared pool still receives its worker requests');
+        is_deeply($_->{node}, ['node1'], 'failed pool node is excluded from each worker') for @native;
+        is_deeply([grep { !$_->{_freebsd_owner} } @$requests], $legacy,
+            'Linux requests retain their independently computed scope');
+        ok(!grep($_->[0] eq 'parallel' || $_->[0] eq 'broadcast', @xCAT::Scope::calls),
+            'startup remains local and serial') if $startup;
+    }
+    return;
+};
+
+subtest 'a rejected Linux scope preserves prepared pool and fixed-owner work' => sub {
+    fixture();
+    delete $xCAT::Table::rows{noderes}{node1}{xcatmaster};
+    $xCAT::Table::rows{nodetype}{$_}{os} = 'freebsd15.1' for qw(node1 node2);
+    $xCAT::Table::rows{nodetype}{$_} = {os => 'rhels9', provmethod => 'linux'} for qw(node3 sn3);
+    no warnings 'redefine';
+    local *xCAT::ServiceNodeUtils::getSNandCPnodes = sub {
+        my (undef, $nodes, $servers, $computes) = @_;
+        push @{$_ eq 'sn3' ? $servers : $computes}, $_ for @$nodes;
+        return;
+    };
+    my ($legacy, $legacy_errors) = scope('osimage', qw(node3 sn3));
+    ok(!$legacy, 'Linux-only mixed server and compute scope remains rejected');
+    like(join('', @$legacy_errors), qr/both[ ]service[ ]nodes[ ]and[ ]compute[ ]nodes/x,
+        'the legacy error identifies its invalid range');
+    my @operations;
+    $pool_dispatch = sub {
+        my $request = shift;
+        push @operations, dclone($request);
+        return {data => [JSON->new->encode({format => 'xcat-freebsd-pool-1', node => 'node1',
+            operation => $request->{arg}[0], result => {epoch => 'e' x 32, phase => 'prepared'}})]};
+    };
+    my ($requests, $errors) = scope('osimage', qw(node1 node2 node3 sn3));
+    is_deeply($errors, $legacy_errors, 'mixed processing retains the Linux scope error');
+    is_deeply([map { $_->{node}[0] } @operations], ['node1'], 'the pool epoch was prepared');
+    my %destinations;
+    for my $request (@$requests) {
+        push @{$destinations{$_}}, $request->{_freebsd_owner}[0] for @{$request->{node}};
+    }
+    is_deeply(\%destinations, {node1 => ['192.0.2.2', '192.0.2.3'], node2 => ['192.0.2.2']},
+        'both pool members and the fixed owner retain their worker requests');
+    return;
+};
+
+subtest 'offline fences the pool before contacting either server' => sub {
+    fixture();
+    delete $xCAT::Table::rows{noderes}{node1}{xcatmaster};
+    $xCAT::Table::rows{nodetype}{node1}{os} = 'freebsd15.1';
+    my @operations;
+    $pool_dispatch = sub {
+        my $request = shift;
+        push @operations, $request->{arg}[0];
+        is_deeply(\@xCAT::Scope::calls, [], 'coordinator cancellation precedes worker dispatch');
+        return {data => [JSON->new->encode({format => 'xcat-freebsd-pool-1', node => 'node1',
+            operation => 'cancel', result => {phase => 'cancelled'}})]};
+    };
+    my ($requests, $errors) = scope('offline', 'node1');
+    is_deeply($errors, [], 'offline cancellation is acknowledged');
+    is_deeply(\@operations, ['cancel'], 'one cancellation covers all stale generations');
+    is(scalar(@$requests), 2, 'offline publication is sent to both servers');
 };
 
 done_testing();
