@@ -39,7 +39,7 @@ sub compile_plan {
     my $policy = shift;
     my $result = xCAT::FreeBSDPkg::run_command(['/usr/bin/awk', '-f', "$scripts/configzfs-datasets.awk",
         write_file("$root/datasets", $policy)], environment => { LC_ALL => 'C' }, timeout => 15,
-        stdout_limit => 65536, stderr_limit => 4096);
+        stdout_limit => 131072, stderr_limit => 4096);
     return $result;
 }
 sub rejected {
@@ -121,6 +121,24 @@ for my $invalid_case (
     isnt($invalid->{exitcode}, 0, "$invalid_case->[2] fails in the delivered planner");
     is($invalid->{stdout}, '', "$invalid_case->[2] emits no partial creation plan");
 }
+my $wide_mount = substr($mount_limit, 0, 1021);
+my @wide_children = ('A' .. 'Z', 'a' .. 'z', 0 .. 9);
+my $wide_sections = $length_prefix . "mountpoint=$wide_mount\n"
+  . join('', map { "[dataset tank/a/b/$_]\n" } @wide_children);
+subtest 'prepare the full dataset count with long inherited mountpoints' => sub {
+    my $wide = eval { settings($os . $pool . $wide_sections); };
+    ok($wide, 'all 64 datasets pass controller preparation');
+    if (!$wide) { diag($@); return; }
+    my $wide_plan = compile_plan($wide->{data_storage}{pools}[0]{datasets});
+    is($wide_plan->{exitcode}, 0, 'delivered declaration compiles');
+    cmp_ok(length($wide_plan->{stdout}), '>', 65536, 'fixture exercises plans larger than 64 KiB');
+    my %wide_rows = map { split(/\t/x, $_, 2) } split(/\n/x, $wide_plan->{stdout});
+    is(scalar(keys %wide_rows), 64, 'the complete plan contains every declared dataset');
+    for my $leaf (@wide_children) {
+        is($wide_rows{"tank/a/b/$leaf"}, "mountpoint=$wide_mount/$leaf,canmount=on", "child $leaf retains its complete mountpoint");
+    }
+};
+rejected($os . $pool . $wide_sections . "[dataset tank/a/b/_]\n", qr/Invalid.*dataset[ ]name/x, 'dataset count above 64');
 for my $case (
     ["[dataset other/home]\n", qr/declared[ ]pool/x, 'unknown pool'],
     ["[dataset tank]\n", qr/another[ ]pool/x, 'pool root'],
