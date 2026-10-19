@@ -51,10 +51,36 @@ for my $family (['rh', 'rhels10'], ['rocky', 'rocky10']) {
         qw(install netboot);
 }
 
+my $ubuntu_compute = [qw(openssh-server chrony gawk nfs-common snmpd)];
+my $ubuntu_kvm = [qw(openssh-server ntp gawk nfs-common snmpd qemu-kvm
+    libvirt-bin bridge-utils libcap2-bin vlan tmux)];
+for my $release (qw(20.04 22.04 24.04 26.04)) {
+    push @cases, ['install', 'ubuntu', 'compute', "ubuntu$release", 'aarch64',
+        'pkglist', "compute.ubuntu$release.pkglist", $ubuntu_compute];
+}
+for my $release (qw(12.04 14.04 16.04)) {
+    push @cases, ['install', 'ubuntu', 'kvm', "ubuntu$release", 'x86_64',
+        'pkglist', "kvm.ubuntu$release.pkglist", $ubuntu_kvm];
+}
+push @cases, ['install', 'ubuntu', 'compute', 'ubuntu26.04', 'riscv64',
+    'pkglist', 'compute.ubuntu26.04.riscv64.pkglist',
+    [qw(bash nfs-common openssl isc-dhcp-client libc-bin openssh-server
+        openssh-client wget vim rsync busybox-static gawk bind9-dnsutils chrony gpg)]];
+for my $release (qw(24.04 26.04)) {
+    my @expected = qw(bash nfs-common openssl isc-dhcp-client libc-bin
+        linux-image-generic openssh-server openssh-client wget rsync
+        busybox-static gawk bind9-dnsutils tar gzip xz-utils cpio chrony);
+    push @expected, qw(util-linux-extra iproute2 dracut dracut-network)
+        if $release eq '24.04';
+    push @cases, ['netboot', 'ubuntu', 'compute', "ubuntu$release", 'riscv64',
+        'pkglist', "compute.ubuntu$release.riscv64.pkglist", \@expected];
+}
+
 for my $case (@cases) {
-    my ($kind, $directory, $profile, $os, $arch, $extension) = @$case;
+    my ($kind, $directory, $profile, $os, $arch, $extension, $name, $expected_packages) = @$case;
     my $base = "$prefix/share/xcat/$kind/$directory";
-    my $name = "$profile.$os.$arch.$extension";
+    $name //= "$profile.$os.$arch.$extension";
+    $expected_packages //= $packages{"$kind/$profile"};
     subtest "$kind/$directory/$name" => sub {
         my $selected = $extension eq 'postinstall'
             ? xCAT::SvrUtils->get_postinstall_file_name($base, $profile, "$os.2", $arch)
@@ -73,9 +99,9 @@ for my $case (@cases) {
                 ['xcat/xcat-core/xCATsn', 'xcat/xcat-dep/rh10/riscv64/goconserver'],
                 'the service node retains its architecture-specific packages');
         }
-        if ($extension eq 'pkglist' && $packages{"$kind/$profile"}) {
+        if ($extension eq 'pkglist' && $expected_packages) {
             is_deeply([xCAT::Postage::get_pkglist_records($selected)],
-                $packages{"$kind/$profile"}, 'retains package order and repeated entries');
+                $expected_packages, 'retains package order and repeated entries');
         }
     };
 }

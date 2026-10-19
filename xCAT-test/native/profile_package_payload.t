@@ -28,6 +28,9 @@ my $share = repo_path('xCAT-server/share/xcat');
 my @assets = grep { /riscv64\./ }
     glob "$share/{install,netboot}/{rh,rocky}/*";
 ok(@assets, 'finds the RISC-V profile assets');
+my @ubuntu = glob "$share/{install,netboot}/ubuntu/*.pkglist";
+ok(@ubuntu, 'finds the Ubuntu package lists');
+push @assets, @ubuntu;
 for my $source (@assets) {
     my $relative = substr($source, length($share) + 1);
     my $delivered = "$root/opt/xcat/share/xcat/$relative";
