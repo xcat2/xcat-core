@@ -84,7 +84,7 @@ END {
         if (pool!="zroot" || root!="/") fail("Invalid OS dataset root")
         defaults()
     } else if (pool!~/^[a-z][a-z0-9_-]*$/ || length(pool)>63 || pool=="zroot" ||
-        root!~/^\/(data|srv)\/[A-Za-z0-9_-]+$/) fail("Invalid data dataset root")
+        root!~/^\/(data|srv)\/[A-Za-z0-9_-][A-Za-z0-9_.-]*$/) fail("Invalid data dataset root")
     for (name in declared) {
         if (index(name,pool "/")!=1) fail("Dataset belongs to another pool")
         relative=substr(name,length(pool)+2)
