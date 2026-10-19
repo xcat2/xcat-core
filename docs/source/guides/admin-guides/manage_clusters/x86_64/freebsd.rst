@@ -1015,6 +1015,14 @@ preparation. A different key already present on the node is never overwritten.
 After restoring the tables, the same declaration can recover the pool during
 OS reinstall without a separate key-copy operation.
 
+The controller's private ``/var/lib/xcat/freebsd-postscripts`` store also keeps
+sealed raw keys for preparation retries. Nodes retain delivered copies under
+``/var/db/xcat/postscripts`` as frozen execution inputs. Protect these stores
+and their backups as credential material. Removing a row from ``passwd`` does
+not revoke a key in an existing preparation or on an installed node. Temporary
+preparation and export copies are removed when each operation completes or
+fails.
+
 To recover a standalone source key file, recreate its private directory and run::
 
     install -d -m 0700 /root/freebsd-keys/node01
