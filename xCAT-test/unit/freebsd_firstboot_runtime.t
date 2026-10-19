@@ -71,6 +71,17 @@ run_rc_command()
 }
 RC
     write_file("$root/bin/pw", "#!/bin/sh\nexit 0\n");
+    write_file("$root/bin/fsync", "#!$^X\n" . <<'FSYNC');
+use strict;
+use warnings;
+use Fcntl qw(O_RDONLY);
+use IO::Handle;
+for my $path (@ARGV) {
+    sysopen(my $file, $path, O_RDONLY) or die $!;
+    $file->sync() or die $!;
+    close($file) or die $!;
+}
+FSYNC
     write_file("$root/bin/sysrc", <<'SYSRC');
 #!/bin/sh
 for value in "$@"; do
@@ -138,9 +149,10 @@ unlink($pidfile) or die $!;
 close($lock);
 exit $status;
 DAEMON
-    chmod 0755, map { "$root/$_" } qw(bin/pw bin/sysrc bin/date bin/sleep bin/nc usr/sbin/daemon);
+    chmod 0755, map { "$root/$_" } qw(bin/pw bin/fsync bin/sysrc bin/date bin/sleep bin/nc usr/sbin/daemon);
     local %ENV = (%ENV, FIXTURE_DIR => $root, PATH => "$root/bin:$ENV{PATH}",
-        XCAT_WORK => "$root/work", XCAT_FILESYSTEM => 'zfs', XCAT_TARGET_DISK => 'vtbd0', XCAT_SWAP_SIZE => 0,
+        XCAT_WORK => "$root/work", XCAT_FILESYSTEM => 'zfs', XCAT_TARGET_DISK => 'vtbd0',
+        XCAT_TARGET_DISK_IDENT => 'OS0', XCAT_SWAP_SIZE => 0,
         XCAT_MASTER => '127.0.0.1', XCAT_PORT => 3002, XCAT_GENERATION => 'a' x 32, XCAT_ATTEMPT => 'b' x 32,
         XCAT_HOSTNAME => 'node01.example.test', XCAT_PROVISIONING_IF => 'em0', XCAT_IPV4 => '192.0.2.20',
         XCAT_NETMASK => '255.255.255.0', XCAT_GATEWAY => '', XCAT_NAMESERVERS => '',
