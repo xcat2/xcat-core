@@ -1017,8 +1017,8 @@ character cannot be a dot or hyphen. A component is limited to 63 characters.
      - Reserve space for the dataset and descendants, or the dataset alone.
        Omission keeps native defaults; ``none`` or ``0`` reserves no space.
 
-Sizes accept integer bytes or integer binary suffixes ``K``, ``M``, ``G``, ``T``,
-``P`` and ``E``, case-insensitively, with a maximum of 4 PiB. Record size has the
+Sizes accept integer bytes or integer binary suffixes ``K``, ``M``, ``G``, ``T``
+and ``P``, case-insensitively, with a maximum of 4 PiB. Record size has the
 smaller limit above. Quotas and reservations must also fit the actual pool;
 native ZFS rejects an allocation it cannot satisfy. See the
 `OpenZFS property reference <https://openzfs.github.io/openzfs-docs/man/master/7/zfsprops.7.html>`_
@@ -1034,6 +1034,10 @@ overridden, as shown for ``var/log``. Custom OS datasets must be below ``home``,
 OS mountpoints cannot be relocated. Reinstall recreates all OS datasets on the
 selected OS disks.
 
+These datasets are shared across boot environments. A boot-environment rollback
+does not restore their contents. Account for package files in shared datasets,
+such as ``/usr/local``, when restoring the package database in ``/var/db/pkg``.
+
 New data pools create their declared datasets at first boot. Children inherit
 the pool's encryption key. Independent child encryption, zvols and boot/root
 encryption are outside this interface. A UFS OS can use dataset sections for
@@ -1046,6 +1050,15 @@ destroying or changing preserved datasets. Keep the original declarations when
 reinstalling. Undeclared data datasets and snapshots remain intact. Editing
 these sections does not perform ongoing storage administration.
 
+If dataset creation fails after a new pool was created, inspect the pool and the
+attempt record before retrying. A reservation larger than the available space
+can cause this partial state. Record the pool GUID and use ``action=import`` for
+recovery. Remove missing datasets from that recovery policy and ensure that the
+remaining declarations match the existing datasets. To retain the full original
+declaration, create the missing datasets under administrator control with valid
+properties first. Correcting a reservation alone does not make import create a
+missing dataset. Completed pools and preserved data are not rolled back.
+
 The standalone ``configzfs.freebsd`` interface remains available for explicit
 administrator operations. Its root-owned policy under ``/etc/xcat`` contains
 one pool's settings plus ``format=xcat-freebsd-data-1``, ``pool=NAME`` and
@@ -1053,6 +1066,15 @@ one pool's settings plus ``format=xcat-freebsd-data-1``, ``pool=NAME`` and
 synchronization, then select its path explicitly::
 
     updatenode node01 -F -P 'configzfs.freebsd /etc/xcat/storage/tank.conf'
+
+For a pool with dataset declarations, also deliver the matching private dataset
+policy and pass its path as the second argument::
+
+    updatenode node01 -F -P 'configzfs.freebsd /etc/xcat/storage/tank.conf /etc/xcat/storage/tank.datasets'
+
+The dataset plan is part of the completed creation receipt. Repeating that
+creation policy requires both arguments; omitting the dataset policy does not
+match the recorded operation.
 
 With no argument, the helper still uses ``/etc/xcat/storage.conf``. These files
 are generated outputs for the unified installation path; administrators do not
