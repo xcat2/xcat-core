@@ -449,6 +449,34 @@ subtest 'multi-disk capability requires its complete runtime roster' => sub {
     ok(!$accepted, 'legacy runtime cannot acquire multi-disk capability by changing the manifest');
 };
 
+subtest 'dataset capability requires the shared native planner' => sub {
+    my ($root, $manifest) = fixture('xcat-mfsbsd-2');
+    my $runtime = read_file("$FindBin::Bin/../fixtures/freebsd-storage-runtime.tsv");
+    my @rows = split(/\n/x, $runtime);
+    my @prefix = splice(@rows, 0, 4);
+    my $path = 'usr/local/libexec/configzfs-datasets.awk';
+    push @rows, "file\t$path\t" . sha256_hex('dataset planner');
+    my $complete = join("\n", @prefix, sort(@rows)) . "\n";
+    $manifest->{install_contract} = 'xcat-freebsd-install-6';
+    $manifest->{dataset_contract} = 'xcat-freebsd-datasets-1';
+    replace_runtime($root, $manifest, $complete);
+    my $media = eval { xCAT::FreeBSDImage::inspect_media($root); };
+    ok($media, 'complete dataset runtime is accepted');
+    is($media && $media->{dataset_contract}, 'xcat-freebsd-datasets-1', 'verified capability reaches nodeset');
+    replace_runtime($root, $manifest, $runtime);
+    my $missing = eval { xCAT::FreeBSDImage::inspect_media($root); };
+    ok(!$missing, 'an unbundled planner cannot claim dataset support');
+    like($@, qr/Required[ ]runtime[ ]file.*\Q$path\E/x, 'missing planner is identified');
+    replace_runtime($root, $manifest, $complete);
+    for my $unsupported ('', undef, [], 'xcat-freebsd-datasets-2') {
+        $manifest->{dataset_contract} = $unsupported;
+        write_manifest($root, $manifest);
+        my $invalid = eval { xCAT::FreeBSDImage::inspect_media($root); };
+        ok(!$invalid, 'invalid capability is rejected');
+        like($@, qr/dataset[ ]contract/x, 'invalid capability has a dataset diagnostic');
+    }
+};
+
 sub runtime_framing {
     for my $case (
         ['xcat-freebsd-runtime-2', 'xcat-freebsd-runtime-3', 'format'],

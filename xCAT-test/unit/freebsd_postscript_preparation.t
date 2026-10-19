@@ -514,7 +514,7 @@ subtest 'partitionfile pools become a private firstboot operation' => sub {
     $xCAT::Table::rows{osimage}[0]{postbootscripts} = '';
     my $syslog_mode = (stat("$source_root/syslog"))[2] & oct('7777');
     chmod(oct('0755'), "$source_root/syslog") or croak $!;
-    my @helpers = qw(configstorage.freebsd configzfs.freebsd configzfs-freebsd.awk);
+    my @helpers = qw(configstorage.freebsd configzfs.freebsd configzfs-freebsd.awk configzfs-datasets.awk);
     for my $helper (@helpers) {
         write_file("$source_root/$helper", read_file("$FindBin::Bin/../../xCAT/postscripts/$helper"));
         chmod($helper =~ /[.]awk\z/x ? oct('0644') : oct('0755'), "$source_root/$helper") or croak $!;
@@ -527,6 +527,9 @@ subtest 'partitionfile pools become a private firstboot operation' => sub {
     my $storage = xCAT::FreeBSDStorage::compile('node1',
         { zfs_vdevs => 'vtbd0@OS0,vtbd1@OS1' }, $sections,
         abs_path("$FindBin::Bin/../../xCAT/postscripts/configzfs-freebsd.awk"));
+    my $datasets = "format=xcat-freebsd-datasets-1\nkind=data\npool=tank\nmountpoint=/data/tank\n"
+      . "[dataset tank/projects]\ncompression=lz4\n";
+    $storage->{pools}[1]{datasets} = $datasets;
     my $raw_key = pack('C*', 0 .. 31);
     $xCAT::Table::rows{passwd} = [{ key => 'freebsd-zfs', username => 'node1/tank',
         password => unpack('H*', $raw_key), disable => 'no' }];
@@ -571,9 +574,12 @@ subtest 'partitionfile pools become a private firstboot operation' => sub {
         if ($kind eq 'firstboot') {
             is(read_file("$payload/pools"), "archive\ntank\n", 'real export carries the complete ordered pool roster');
             is(read_file("$payload/tank.key"), $raw_key, 'private SSH export carries the exact enrolled key bytes');
+            is(-f "$payload/tank.datasets" ? read_file("$payload/tank.datasets") : undef,
+                $datasets, 'private SSH export carries the exact dataset declaration');
             is((stat($payload))[2] & oct('7777'), oct('0700'), 'payload directory is private');
-            for my $name (qw(pools archive.conf tank.conf tank.key)) {
-                is((stat("$payload/$name"))[2] & oct('7777'), oct('0600'), "$name is private in the delivered tree");
+            for my $name (qw(pools archive.conf tank.conf tank.key tank.datasets)) {
+                my $mode = -f "$payload/$name" ? (stat("$payload/$name"))[2] & oct('7777') : undef;
+                is($mode, oct('0600'), "$name is private in the delivered tree");
             }
             like(read_file("$payload/archive.conf"), qr/^pool=archive$/mx, 'second pool policy is included');
             unlike(read_file("$target/driver"), qr/\Q$raw_key\E/x, 'key bytes are absent from the command driver');
