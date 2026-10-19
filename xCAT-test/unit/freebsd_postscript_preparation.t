@@ -494,6 +494,96 @@ my $native_calls = 0;
 }
 is($native_calls, 0, 'preparation and readback invoke no native command or solver');
 
+subtest 'partitionfile pools become a private firstboot operation' => sub {
+    my $directory = store();
+    local %xCAT::Table::rows = %{dclone(\%xCAT::Table::rows)};
+    local $::XCATSITEVALS{runbootscripts} = 'yes';
+    $xCAT::Table::rows{postscripts} = [{node => 'xcatdefaults', postscripts => 'syslog', postbootscripts => 'syslog'}];
+    $xCAT::Table::rows{osimage}[0]{postscripts} = '';
+    $xCAT::Table::rows{osimage}[0]{postbootscripts} = '';
+    my $syslog_mode = (stat("$source_root/syslog"))[2] & oct('7777');
+    chmod(oct('0755'), "$source_root/syslog") or croak $!;
+    my @helpers = qw(configstorage.freebsd configzfs.freebsd configzfs-freebsd.awk);
+    for my $helper (@helpers) {
+        write_file("$source_root/$helper", read_file("$FindBin::Bin/../../xCAT/postscripts/$helper"));
+        chmod($helper =~ /[.]awk\z/x ? oct('0644') : oct('0755'), "$source_root/$helper") or croak $!;
+    }
+    require xCAT::FreeBSDStorage;
+    my ($os_text, $sections) = xCAT::FreeBSDStorage::sections(
+        "filesystem=zfs\n[pool tank]\naction=create\ntopology=mirror\nvdevs=vtbd2\@DATA2,vtbd3\@DATA3\n"
+        . "encryption=aes-256-gcm\nkey_source=passwd\n"
+        . "[pool archive]\naction=create\ntopology=stripe\nvdevs=vtbd4\@DATA4\n");
+    my $storage = xCAT::FreeBSDStorage::compile('node1',
+        { zfs_vdevs => 'vtbd0@OS0,vtbd1@OS1' }, $sections,
+        abs_path("$FindBin::Bin/../../xCAT/postscripts/configzfs-freebsd.awk"));
+    my $raw_key = pack('C*', 0 .. 31);
+    $xCAT::Table::rows{passwd} = [{ key => 'freebsd-zfs', username => 'node1/tank',
+        password => unpack('H*', $raw_key), disable => 'no' }];
+    my $before = source_observation();
+    my $tables = dclone(\%xCAT::Table::rows);
+    my $bindings = eval { xCAT::FreeBSDPostscript::prepare_boot('node1', $plan->{path},
+        directory => $directory, data_storage => $storage); };
+    ok($bindings, 'boot preparation accepts the compiled partitionfile storage');
+    if (!$bindings) {
+        diag($@);
+        unlink(map { "$source_root/$_" } @helpers) == @helpers or croak $!;
+        chmod($syslog_mode, "$source_root/syslog") or croak $!;
+        done_testing();
+        return;
+    }
+    is_deeply(source_observation(), $before, 'preparation does not put generated policies or keys in the public tree');
+    is_deeply(\%xCAT::Table::rows, $tables, 'preparation does not change administrator tables');
+    is_deeply(xCAT::FreeBSDPostscript::prepare_boot('node1', $plan->{path},
+        directory => $directory, data_storage => $storage), $bindings, 'same declaration and key reuse the exact snapshot');
+    my %prepared = map { $_ => xCAT::FreeBSDPostscript::read_execution($bindings->{$_}, directory => $directory) }
+      qw(firstboot repeat);
+    isnt($prepared{firstboot}{source_id}, $prepared{repeat}{source_id}, 'only firstboot binds the private storage payload');
+    for my $kind (qw(firstboot repeat)) {
+        my $compiled = xCAT::FreeBSDPostscript::compile_execution($bindings->{$kind}, directory => $directory);
+        my @names = map { pack('H*', $_->{name}) } @{$compiled->{entries}};
+        if ($kind eq 'firstboot') {
+            is($names[0], 'configstorage.freebsd', 'storage precedes all administrator postscripts');
+            is(scalar(grep { $_ eq 'configstorage.freebsd' } @names), 1, 'exactly one automatic storage entry');
+        } else {
+            ok(!grep({ $_ eq 'configstorage.freebsd' } @names), 'repeated boot does not replay storage creation');
+        }
+        my $run = ($kind eq 'firstboot' ? 'b' : 'c') x 32;
+        my $export = xCAT::FreeBSDPostscript::export_execution($bindings->{$kind}, directory => $directory,
+            run => $run, generation => '2' x 32, attempt => '3' x 32, boot => '4' x 64);
+        my $target = "$tmp/storage-$kind";
+        mkdir($target, oct('0700')) or croak $!;
+        command('/bin/tar', '-xpf', $export->{archive}{path}, '-C', $target);
+        my $payload = "$target/tree/xcat-storage.d";
+        if ($kind eq 'firstboot') {
+            is(read_file("$payload/pools"), "archive\ntank\n", 'real export carries the complete ordered pool roster');
+            is(read_file("$payload/tank.key"), $raw_key, 'private SSH export carries the exact enrolled key bytes');
+            is((stat($payload))[2] & oct('7777'), oct('0700'), 'payload directory is private');
+            for my $name (qw(pools archive.conf tank.conf tank.key)) {
+                is((stat("$payload/$name"))[2] & oct('7777'), oct('0600'), "$name is private in the delivered tree");
+            }
+            like(read_file("$payload/archive.conf"), qr/^pool=archive$/mx, 'second pool policy is included');
+            unlike(read_file("$target/driver"), qr/\Q$raw_key\E/x, 'key bytes are absent from the command driver');
+        } else {
+            ok(!-e $payload, 'repeated boot exports neither generated policies nor keys');
+        }
+    }
+    $xCAT::Table::rows{passwd}[0]{password} = unpack('H*', reverse($raw_key));
+    my $changed = xCAT::FreeBSDPostscript::prepare_boot('node1', $plan->{path},
+        directory => $directory, data_storage => $storage);
+    isnt($changed->{firstboot}, $bindings->{firstboot}, 'credential changes alter the firstboot preparation identity');
+    is($changed->{repeat}, $bindings->{repeat}, 'credential changes do not alter repeated boot');
+    is_deeply(xCAT::FreeBSDPostscript::read_execution($bindings->{firstboot}, directory => $directory),
+        $prepared{firstboot}, 'earlier preparation remains immutable');
+    $xCAT::Table::rows{passwd} = [];
+    my $missing = eval { xCAT::FreeBSDPostscript::prepare_boot('node1', $plan->{path},
+        directory => store(), data_storage => $storage); };
+    ok(!$missing && $@, 'missing enrolled key prevents boot preparation');
+    is_deeply(source_observation(), $before, 'failure also leaves public sources unchanged');
+    unlink(map { "$source_root/$_" } @helpers) == @helpers or croak $!;
+    chmod($syslog_mode, "$source_root/syslog") or croak $!;
+    done_testing();
+};
+
 subtest 'export the frozen tree, driver and full native verification manifests' => sub {
     my $directory = store();
     my $unexecutable = prepare($directory, { kind => 'update', raw => 'syslog' });
