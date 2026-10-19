@@ -2,15 +2,15 @@
 use strict;
 use warnings;
 use FindBin;
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
+use lib "$FindBin::Bin/../lib", "$FindBin::Bin/../../xCAT-server/lib/perl";
 use Carp qw(croak);
 use Cwd qw(abs_path);
-use File::Basename qw(dirname);
 use File::Copy qw(copy);
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
 use Test::More;
 use xCAT::FreeBSDPkg;
+use XCAT::Test::Chroot qw(stage_binary);
 
 plan(skip_all => 'Dispatch fixtures require a Linux lab root') unless $^O eq 'linux' && $> == 0;
 my $sources = $ENV{XCAT_POSTSCRIPT_DISPATCH_DIR} || "$FindBin::Bin/../../xCAT/postscripts";
@@ -35,25 +35,8 @@ sub read_file {
     return $bytes;
 }
 
-sub stage_binary {
-    my $program = shift;
-    copy($program, "$root$program") or croak $!;
-    chmod(oct('0555'), "$root$program") == 1 or croak $!;
-    my $loader = xCAT::FreeBSDPkg::run_command(['/usr/bin/ldd', $program], cwd => $root,
-        environment => { PATH => '/usr/bin:/bin', LC_ALL => 'C' }, timeout => 10);
-    BAIL_OUT('Cannot inspect fixture dependencies') if $loader->{exitcode} || $loader->{signal};
-    for my $library ($loader->{stdout} =~ m{(/[^\s()]+)}gx) {
-        next unless -f $library;
-        next if -f "$root$library";
-        make_path(dirname("$root$library"));
-        copy($library, "$root$library") or croak $!;
-        chmod((stat($library))[2] & oct('0777'), "$root$library") == 1 or croak $!;
-    }
-    return;
-}
-
 for my $binary ('/bin/sh', '/bin/bash', '/bin/cat', '/usr/bin/dirname', '/usr/bin/basename', '/usr/bin/tr') {
-    stage_binary($binary);
+    stage_binary($root, $binary);
 }
 copy("$root/bin/sh", "$root/fixture/sh.real") or croak $!;
 copy("$root/bin/bash", "$root/fixture/bash.real") or croak $!;
@@ -178,5 +161,60 @@ sub bash_startup_tests {
 }
 
 bash_startup_tests();
+
+subtest 'FreeBSD syslog accepts numeric servers without reverse DNS' => sub {
+    make_path("$root/etc/syslog.d");
+    chmod(oct('0755'), "$root/etc/syslog.d") == 1 or croak $!;
+    for my $utility (qw(/usr/bin/awk /usr/bin/id /usr/bin/stat /usr/bin/mktemp
+        /usr/bin/chmod /usr/bin/chown /usr/bin/cmp /usr/bin/mv /usr/bin/rm /usr/bin/sync)) {
+        stage_binary($root, $utility);
+    }
+    rename("$root/usr/bin/stat", "$root/usr/bin/stat.real") or croak $!;
+    write_file("$root/usr/bin/stat", <<'STAT', oct('0555'));
+#!/bin/sh
+case "$2" in
+    %u:%Lp) exec /usr/bin/stat.real -c '%u:%a' "$3" ;;
+    %u:%Lp:%l) exec /usr/bin/stat.real -c '%u:%a:%h' "$3" ;;
+    *) exit 1 ;;
+esac
+STAT
+    write_file("$root/usr/bin/fsync", "#!/bin/sh\nexec /usr/bin/sync -f \"\$@\"\n", oct('0555'));
+    write_file("$root/usr/bin/getent", <<'GETENT', oct('0555'));
+#!/bin/sh
+printf '%s\n' "$2" >> /fixture/lookups
+[ "$1:$2" = hosts:logger.example.test ] || exit 2
+printf '192.0.2.1 logger.example.test\n'
+GETENT
+    write_file("$root/usr/bin/sysrc", <<'SYSRC', oct('0555'));
+#!/bin/sh
+if [ "$1" = -n ]; then printf '%s\n' -s; else printf '%s\n' "$*" >> /fixture/sysrc; fi
+SYSRC
+    write_file("$root/usr/bin/service", "#!/bin/sh\nprintf '%s\\n' \"\$*\" >> /fixture/services\n", oct('0555'));
+    write_file("$root/fixture/os", "FreeBSD\n", oct('0444'));
+    write_file("$root/etc/syslog.conf", "include /etc/syslog.d\n", oct('0644'));
+    copy("$sources/syslog.freebsd", "$root/scripts/syslog.freebsd") or croak $!;
+    chmod(oct('0555'), "$root/scripts/syslog.freebsd") == 1 or croak $!;
+    my $configure = sub {
+        return xCAT::FreeBSDPkg::run_command(['/usr/sbin/chroot', $root, '/scripts/syslog'],
+            cwd => $root, environment => {PATH => '/bin:/usr/bin', LC_ALL => 'C', MASTER => $_[0]}, timeout => 10);
+    };
+    my $result = $configure->('192.0.2.1');
+    is($result->{exitcode}, 0, 'public script configures an IPv4 literal with no PTR record');
+    is($result->{signal}, 0, 'native adapter exits normally');
+    like(read_file("$root/etc/syslog.d/90-xcat.conf"), qr/\@192[.]0[.]2[.]1\n\z/x,
+        'published forwarding configuration retains the numeric server');
+    ok(!-e "$root/fixture/lookups", 'a numeric server requires no resolver query');
+    like(read_file("$root/fixture/services"), qr/^syslogd[ ]reload$/mx, 'successful configuration reloads syslogd');
+    $result = $configure->('logger.example.test');
+    is($result->{exitcode}, 0, 'resolvable hostname remains supported');
+    is(read_file("$root/fixture/lookups"), "logger.example.test\n", 'hostname uses the resolver');
+    my $configured = read_file("$root/etc/syslog.d/90-xcat.conf");
+    for my $bad ('missing.example.test', '999.0.2.1') {
+        $result = $configure->($bad);
+        isnt($result->{exitcode}, 0, 'unresolvable hostname or invalid numeric address is rejected');
+        is(read_file("$root/etc/syslog.d/90-xcat.conf"), $configured, 'rejection preserves the previous forwarding policy');
+    }
+    return;
+};
 
 done_testing();
