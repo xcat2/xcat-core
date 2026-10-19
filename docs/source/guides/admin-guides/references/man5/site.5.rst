@@ -327,6 +327,15 @@ site Attributes:
                   It is a comma separated list of route names that are defined in the
                   routes table.
   
+   rootimgchecksum:  (yes/1 or no/0). Default is yes. If yes, nodeset tells the
+                     nodes of a stateless or statelite ramdisk image to boot the
+                     compressed root image only after it matches its SHA-256
+                     checksum. If no, nodes boot the image unchecked. packimage,
+                     liteimg and imgimport always write the checksum. The
+                     rootimgchecksum attribute of an osimage overrides this value.
+                     The first upgrade to a release with the check sets that
+                     attribute to no for the images that exist then.
+  
    runbootscripts:  If set to 'yes' the scripts listed in the postbootscripts
                     attribute in the osimage and postscripts tables will be run during
                     each reboot of stateful (diskful) nodes. This attribute has no

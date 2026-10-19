@@ -1,27 +1,39 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+no warnings 'once';
 
 use File::Path qw(make_path remove_tree);
 use File::Temp qw(tempdir);
 use FindBin;
+use lib "$FindBin::Bin/../lib";
+use lib "$FindBin::Bin/../../perl-xCAT";
+use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use Test::More;
+use XCAT::Test::File qw(repo_path);
 
-my $source = "$FindBin::Bin/../../xCAT-server/sbin/xcatconfig";
-open(my $source_fh, '<', $source) or die "open $source: $!";
-my $content = do { local $/; <$source_fh> };
-close($source_fh) or die "close $source: $!";
-
-my @routines;
-for my $name (qw(_installed_genesis_architectures _genesis_architectures_to_build)) {
-    my ($routine) = $content =~ /^(sub \Q$name\E\s*\{.*?^\})/ms;
-    BAIL_OUT("could not extract $name from xcatconfig") unless $routine;
-    push(@routines, $routine);
+BEGIN {
+    *CORE::GLOBAL::exit = sub { die bless { status => $_[0] || 0 }, 'XcatconfigTestExit'; };
 }
-eval join("\n", @routines); ## no critic (BuiltinFunctions::ProhibitStringyEval)
-BAIL_OUT("could not load Genesis architecture helpers: $@") if $@;
 
 my $tmpdir = tempdir(CLEANUP => 1);
+$ENV{XCATROOT} = repo_path('xCAT-server');
+$ENV{XCATCFG} = "$tmpdir/config";
+make_path($ENV{XCATCFG});
+my ($help, $error);
+{
+    local @ARGV = ('--help');
+    open(my $out, '>', \$help) or die $!;
+    local *STDOUT = $out;
+    do(repo_path('xCAT-server/sbin/xcatconfig'));
+    $error = $@;
+}
+is(ref($error), 'XcatconfigTestExit', 'the complete CLI reaches its help exit');
+is(ref($error) ? $error->{status} : undef, 0, 'help exits successfully');
+like($help, qr/xcatconfig/, 'the complete CLI prints usage');
+die "Cannot load xcatconfig: $error" unless ref($error) eq 'XcatconfigTestExit' && !$error->{status};
+$::osname = 'Linux';
+
 make_path(
     "$tmpdir/share/xcat/netboot/genesis/ppc64/fs",
     "$tmpdir/share/xcat/netboot/genesis/x86_64/fs",

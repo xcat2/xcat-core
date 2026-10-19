@@ -12,6 +12,7 @@ use Thread qw(yield);
 use POSIX qw(WNOHANG nice);
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::BootUtils qw(find_genesis_boot_files);
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
@@ -163,31 +164,6 @@ sub handled_commands
         mkstatelite => "nodetype:os=(esx[34].*)|(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)",
 
     };
-}
-
-sub _find_genesis_boot_files
-{
-    my ($tftpdir, $arch) = @_;
-    return unless defined($arch) && $arch =~ /\A[A-Za-z0-9_]+\z/;
-
-    my $directory = "$tftpdir/xcat";
-    my $kernel = "genesis.kernel.$arch";
-    return unless -r "$directory/$kernel";
-
-    my $lzma = "genesis.fs.$arch.lzma";
-    my $gzip = "genesis.fs.$arch.gz";
-    my $initrd;
-    if (-r "$directory/$lzma" && -r "$directory/$gzip") {
-        $initrd = -C "$directory/$lzma" > -C "$directory/$gzip"
-          ? $gzip
-          : $lzma;
-    } elsif (-r "$directory/$lzma") {
-        $initrd = $lzma;
-    } elsif (-r "$directory/$gzip") {
-        $initrd = $gzip;
-    }
-    return unless defined($initrd);
-    return ($kernel, $initrd);
 }
 
 sub _install_media_pxeboot_paths
@@ -394,6 +370,7 @@ sub mknetboot
     }
 
     my %donetftp = ();
+    my %rootimg_warned;
     my $ostab           = xCAT::Table->new('nodetype');
     my %oents = %{ $ostab->getNodesAttribs(\@nodes, [qw(os arch profile provmethod)]) };
     my $restab = xCAT::Table->new('noderes');
@@ -426,6 +403,7 @@ sub mknetboot
         my $nfsrootopts;
         my $tftpdir;
         my $cfgpart;
+        my $rootimgchecksum;
         my $imagename;    # set it if running of 'nodeset osimage=xxx'
 
         if ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{tftpdir}) {
@@ -457,10 +435,11 @@ sub mknetboot
                     if (!$linuximagetab) {
                         $linuximagetab = xCAT::Table->new('linuximage', -create => 1);
                     }
-                    (my $ref1) = $linuximagetab->getAttribs({ imagename => $imagename }, 'rootimgdir', 'nodebootif', 'dump', 'crashkernelsize', 'partitionfile');
+                    (my $ref1) = $linuximagetab->getAttribs({ imagename => $imagename }, 'rootimgdir', 'nodebootif', 'dump', 'crashkernelsize', 'partitionfile', 'rootimgchecksum');
                     if (($ref1) && ($ref1->{'rootimgdir'})) {
                         $img_hash{$imagename}->{rootimgdir} = $ref1->{'rootimgdir'};
                     }
+                    $img_hash{$imagename}->{rootimgchecksum} = $ref1->{'rootimgchecksum'} if $ref1;
                     if (($ref1) && ($ref1->{'nodebootif'})) {
                         $img_hash{$imagename}->{nodebootif} = $ref1->{'nodebootif'};
                     }
@@ -517,6 +496,7 @@ sub mknetboot
             $crashkernelsize = $ph->{crashkernelsize};
             $dump            = $ph->{dump};
             $cfgpart         = $ph->{'cfgpart'};
+            $rootimgchecksum = $ph->{rootimgchecksum};
         }
         else {
             my @ents = xCAT::TableUtils->get_site_attribute("disablenodesetwarning");
@@ -563,10 +543,11 @@ sub mknetboot
                 $linuximagetab = xCAT::Table->new('linuximage');
             }
             if ($linuximagetab) {
-                (my $ref1) = $linuximagetab->getAttribs({ imagename => $imgname }, 'dump', 'crashkernelsize', 'partitionfile');
+                (my $ref1) = $linuximagetab->getAttribs({ imagename => $imgname }, 'dump', 'crashkernelsize', 'partitionfile', 'rootimgchecksum');
                 if ($ref1 and $ref1->{'dump'}) {
                     $dump = $ref1->{'dump'};
                 }
+                $rootimgchecksum = $ref1->{'rootimgchecksum'} if $ref1;
                 if ($ref1 and $ref1->{'crashkernelsize'}) {
                     $crashkernelsize = $ref1->{'crashkernelsize'};
                 }
@@ -664,42 +645,53 @@ sub mknetboot
         #mkpath "/install/postscripts/";
 
         # Copy the boot resource to /tftpboot and check to only copy once
-        my $docopy = 0;
         my $tftppath;
         my $rtftppath;    # the relative tftp path without /tftpboot/
+        my $copykey;
         if ($imagename) {
             $tftppath  = "$tftpdir/xcat/osimage/$imagename";
             $rtftppath = "xcat/osimage/$imagename";
-            unless ($donetftp{$imagename}) {
-                $docopy = 1;
-                $donetftp{$imagename} = 1;
-            }
+            $copykey   = $imagename;
         } else {
             $tftppath  = "/$tftpdir/xcat/netboot/$osver/$arch/$profile/";
             $rtftppath = "xcat/netboot/$osver/$arch/$profile/";
-            unless ($donetftp{ $osver, $arch, $profile }) {
-                $docopy = 1;
-                $donetftp{ $osver, $arch, $profile } = 1;
+            $copykey   = join($;, $osver, $arch, $profile);
+        }
+        my $docopy = !$donetftp{$copykey};
+
+        # This runs before the boot files are copied, so a failure keeps the boot files that the node uses now.
+        if (!$statelite || $rootfstype eq "ramdisk") {
+            my $error = xCAT::SvrUtils->prepare_rootimg_checksum(value => $rootimgchecksum, rootimgdir => $rootimgdir,
+                imagename => $imagename, warned => \%rootimg_warned, callback => $callback);
+            if ($error) {
+                xCAT::MsgUtils->report_node_error($callback, $node, $error);
+                next;
             }
         }
 
+        my $copied = 1;
         if ($docopy && !$noupdateinitrd) {
             mkpath("$tftppath");
             if (-f "$rootimgdir/hypervisor") {
-                copy("$rootimgdir/hypervisor", "$tftppath");
+                $copied &&= copy("$rootimgdir/hypervisor", "$tftppath");
                 $xenstyle = 1;
             }
-            copy("$rootimgdir/kernel", "$tftppath");
+            $copied &&= copy("$rootimgdir/kernel", "$tftppath");
             if ($statelite) {
                 if ($rootfstype eq "ramdisk") {
-                    copy("$rootimgdir/initrd-stateless.gz", "$tftppath");
+                    $copied &&= copy("$rootimgdir/initrd-stateless.gz", "$tftppath");
                 } else {
-                    copy("$rootimgdir/initrd-statelite.gz", "$tftppath");
+                    $copied &&= copy("$rootimgdir/initrd-statelite.gz", "$tftppath");
                 }
             } else {
-                copy("$rootimgdir/initrd-stateless.gz", "$tftppath");
+                $copied &&= copy("$rootimgdir/initrd-stateless.gz", "$tftppath");
             }
         }
+        unless ($copied) {
+            xCAT::MsgUtils->report_node_error($callback, $node, qq{Copying to $tftppath failed: $!});
+            next;
+        }
+        $donetftp{$copykey} = 1;
 
         if ($statelite) {
             my $initrdloc = "$tftppath";
@@ -717,6 +709,13 @@ sub mknetboot
                 xCAT::MsgUtils->report_node_error($callback, $node, qq{Copying to $tftppath failed.});
                 next;
             }
+        }
+
+        # Nodes boot the initial ramdisk that is in TFTP now, so that copy decides the check.
+        my $checksum_arg = '';
+        if (!$statelite || $rootfstype eq "ramdisk") {
+            $checksum_arg = xCAT::SvrUtils->rootimg_checksum_boot(value => $rootimgchecksum, rootimgdir => $rootimgdir,
+                initrd => "$tftppath/initrd-stateless.gz", imagename => $imagename, warned => \%rootimg_warned, callback => $callback);
         }
 
         $ent = $reshash->{$node}->[0]; #$restab->getNodeAttribs($node, ['primarynic']);
@@ -815,6 +814,7 @@ sub mknetboot
                 } else {
                     $kcmdline = "imgurl=$httpmethod://$imgsrvip:$httpport/$rootimgdir/rootimg-statelite.gz STATEMNT=";
                 }
+                $kcmdline = $checksum_arg . $kcmdline;
             }
 
             # add support for subVars in the value of "statemnt"
@@ -872,6 +872,7 @@ sub mknetboot
             } else {
                 $kcmdline = "imgurl=$httpmethod://$imgsrvip:$httpport/$rootimgdir/$compressedrootimg ";
             }
+            $kcmdline .= $checksum_arg;
             $kcmdline .= "XCAT=$xcatmasterip:$xcatdport ";
             $kcmdline .= "NODE=$node ";
 
@@ -2011,7 +2012,7 @@ sub mksysclone
 =cut
 
         my $ramdisk_size = 200000;
-        my ($kernpath, $initrdpath) = _find_genesis_boot_files($tftpdir, $arch);
+        my ($kernpath, $initrdpath) = find_genesis_boot_files($tftpdir, $arch);
 
         if (defined($kernpath) && defined($initrdpath))
         {
@@ -3672,5 +3673,6 @@ EOMS
 
     return @inserted_dd;
 }
+
 
 1;

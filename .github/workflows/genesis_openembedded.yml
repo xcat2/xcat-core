@@ -21,7 +21,9 @@ jobs:
           sudo apt-get update
           sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
             build-essential meson ninja-build pkg-config libnewt-dev \
-            libsystemd-dev python3-pyte
+            libsystemd-dev python3-pyte bubblewrap systemd-journal-remote
+      - name: Enable isolated journal test namespaces
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Exercise the newt dialogs
         run: /usr/bin/python3 xCAT-test/native/genesis_console_dialogs.py
   genesis_openembedded:

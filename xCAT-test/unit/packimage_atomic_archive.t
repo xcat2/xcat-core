@@ -6,13 +6,40 @@ use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../../perl-xCAT";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use Cwd qw(getcwd realpath);
+use Digest::SHA qw(sha256_hex);
+use File::Basename qw(basename);
 use File::Path qw(make_path);
 use File::Slurper qw(read_binary write_text);
 use File::Temp qw(tempdir);
 use POSIX ();
 use Sys::Hostname qw(hostname);
+use Errno qw(EIO);
 use Test::More;
 use XCAT::Test::File qw(repo_path);
+
+# A rename or unlink of a path in %FAIL_FROM fails, as when the file system refuses it.
+our %FAIL_FROM;
+BEGIN {
+    *CORE::GLOBAL::rename = sub {
+        my ($from, $to) = @_;
+        if ($FAIL_FROM{$from}) {
+            $! = EIO;
+            return 0;
+        }
+        return CORE::rename($from, $to);
+    };
+    *CORE::GLOBAL::unlink = sub {
+        my $removed = 0;
+        foreach my $path (@_ ? @_ : ($_)) {
+            if ($FAIL_FROM{$path}) {
+                $! = EIO;
+                next;
+            }
+            $removed += CORE::unlink($path);
+        }
+        return $removed;
+    };
+}
 
 plan skip_all => 'packimage packs real archives with Linux tools' unless $^O eq 'linux';
 local $ENV{PATH} = "$ENV{PATH}:/usr/sbin:/sbin";
@@ -74,6 +101,8 @@ sub image {
     my $archive = "$dest/rootimg.$suffix";
     write_text($archive, "previous archive\n");
     write_text("$archive.metainfo", "previous metainfo\n");
+    write_text("$archive.sha256", "previous checksum\n");
+    write_text("$dest/rootimg.previous.sha256", "checksum of the previous format\n");
     write_text("$dest/rootimg.previous", "previous format\n");
     write_text("$dest/.packimage-$host+INTERRUP", "partial archive of an interrupted pack on this host\n");
     make_path("$dest/.packimage-$host+INTERDIR");
@@ -139,8 +168,8 @@ for my $case ([ 'cpio', 'gzip' ], [ 'cpio', 'xz' ], [ 'cpio', 'pigz' ], [ 'tar',
     my ($method, $compress) = @$case;
     my $wrapped = $method eq 'squashfs' ? 'mksquashfs' : $compress;
     SKIP: {
-        skip "$wrapped is not installed", 18 unless tool($wrapped);
-        skip 'unsquashfs is not installed', 18 if $method eq 'squashfs' && !$unsquashfs;
+        skip "$wrapped is not installed", 22 unless tool($wrapped);
+        skip 'unsquashfs is not installed', 22 if $method eq 'squashfs' && !$unsquashfs;
         my @args = $method eq 'squashfs' ? ('-m', 'squashfs') : ('-m', $method, '-c', $compress);
         my $label = $method eq 'squashfs' ? 'squashfs' : "$method $compress";
 
@@ -152,8 +181,13 @@ for my $case ([ 'cpio', 'gzip' ], [ 'cpio', 'xz' ], [ 'cpio', 'pigz' ], [ 'tar',
         like(listing($method, $compress, $archive) // '', qr{(?:^|/)usr/bin/payload$}m,
             "$label: the new archive holds the image");
         is((stat($archive))[2] & 07777, 0644, "$label: the new archive is world readable");
+        is(content("$archive.sha256"), sha256_hex(read_binary($archive)) . '  ' . basename($archive) . "\n",
+            "$label: the checksum of the new archive is published next to it");
+        is((stat("$archive.sha256"))[2] & 07777, 0644, "$label: the checksum is world readable");
         ok(!-e "$archive.metainfo", "$label: the metainfo of the previous archive is removed");
         ok(!-e "$dest/rootimg.previous", "$label: other formats are removed after the replacement");
+        is(content("$dest/rootimg.previous.sha256"), "checksum of the previous format\n",
+            "$label: the checksums of other formats stay for nodes that already download them");
         is_deeply([ glob("$dest/.packimage-$host+*") ], [], "$label: no partial archive is left, including an interrupted one");
         ok(-e "$dest/.packimage-other.host+ACTIVE00", "$label: the archive that another host is writing stays");
         ok(-e "$dest/.packimage-$host-backup+ACTIVE00", "$label: the archive of a host whose name starts with this one stays");
@@ -165,6 +199,7 @@ for my $case ([ 'cpio', 'gzip' ], [ 'cpio', 'xz' ], [ 'cpio', 'pigz' ], [ 'tar',
         is(content("$dest/seen"), "previous archive\n", "$label: nodes get the previous archive while the failing pack runs");
         is(content($archive), "previous archive\n", "$label: a failed pack keeps the previous archive");
         is(content("$archive.metainfo"), "previous metainfo\n", "$label: a failed pack keeps the previous metainfo");
+        is(content("$archive.sha256"), "previous checksum\n", "$label: a failed pack keeps the previous checksum");
         is(content("$dest/rootimg.previous"), "previous format\n", "$label: a failed pack keeps other formats");
         is_deeply([ glob("$dest/.packimage-$host+*") ], [], "$label: a failed pack leaves no partial archive");
         my ($row) = $linuximage->getAttribs({ imagename => $name }, 'rootimgdir');
@@ -179,7 +214,7 @@ for my $case ([ 'cpio', 'cpio', 'fail', qr/packimage failed while running/ ],
     [ 'squashfs', 'find', 'fail-listing', qr/Cannot enumerate/ ]) {
     my ($method, $wrapped, $mode, $error) = @$case;
     SKIP: {
-        skip 'mksquashfs or unsquashfs is not installed', 5 if $method eq 'squashfs' && (!$mksquashfs || !$unsquashfs);
+        skip 'mksquashfs or unsquashfs is not installed', 6 if $method eq 'squashfs' && (!$mksquashfs || !$unsquashfs);
         my @args = $method eq 'squashfs' ? ('-m', 'squashfs') : ('-m', $method, '-c', 'gzip');
         my $label = "$method, $wrapped failure";
         my ($name, $dest, $archive) = image($method, 'gzip', $wrapped, $mode);
@@ -187,6 +222,7 @@ for my $case ([ 'cpio', 'cpio', 'fail', qr/packimage failed while running/ ],
         like($errors, $error, "$label: the failure is reported");
         is(content($archive), "previous archive\n", "$label: the previous archive stays");
         is(content("$archive.metainfo"), "previous metainfo\n", "$label: the previous metainfo stays");
+        is(content("$archive.sha256"), "previous checksum\n", "$label: the previous checksum stays");
         is(content("$dest/rootimg.previous"), "previous format\n", "$label: other formats stay");
         is_deeply([ glob("$dest/.packimage-$host+*") ], [], "$label: no partial archive is left");
     }
@@ -303,12 +339,26 @@ SKIP: {
     write_text("$dest/.packimage-publish/owner", "other.host 4242\n");
     utime(time() - 120, time() - 120, "$dest/.packimage-publish") or die $!;
     my ($result, $errors) = packimage($dest, '-m', 'cpio', '-c', 'gzip', $name);
-    like($errors, qr/\Q$dest\E\/\.packimage-publish is held by other\.host 4242\. If no packimage of this image runs on any host, remove it/,
+    like($errors, qr/\Q$dest\E\/\.packimage-publish is held by other\.host 4242\. If no .+ of this image runs on any host, remove it/,
         "$label: the failure names the holder and the recovery");
     is(content($archive), "previous archive\n", "$label: the previous archive stays");
     is(content("$dest/rootimg.previous"), "previous format\n", "$label: other formats stay");
     ok(-d "$dest/.packimage-publish", "$label: the lock of the other pack is not taken over");
     is_deeply([ glob("$dest/.packimage-$host+*") ], [], "$label: no partial archive is left");
+}
+
+{
+    my ($name, $dest, $archive) = image('cpio', 'gzip', 'gzip', 'pass');
+    my $label = 'check turned off';
+    my $site = xCAT::Table->new('site');
+    $site->setAttribs({ key => 'rootimgchecksum' }, { value => '0' });
+    $linuximage->setAttribs({ imagename => $name }, { rootimgchecksum => 'no' });
+    my (undef, $errors) = packimage($dest, '-m', 'cpio', '-c', 'gzip', $name);
+    is($errors, '', "$label: the pack reports no error");
+    isnt(content($archive), "previous archive\n", "$label: the new archive is published");
+    is(content("$archive.sha256"), sha256_hex(read_binary($archive)) . "  rootimg.cpio.gz\n",
+        "$label: the checksum is published for nodes whose older boot entries still check");
+    $site->delEntries({ key => 'rootimgchecksum' });
 }
 
 {
@@ -348,19 +398,19 @@ SCRIPT
 
 {
     my ($name, $dest, $archive) = image('cpio', 'gzip', 'gzip', 'pass');
-    my $label = 'previous metainfo that cannot be removed';
+    my $label = 'previous metainfo that cannot be replaced';
     write_text("$dest/bin/ctorrent", <<"SCRIPT");
 #!/bin/sh
 while [ \$# -gt 1 ]; do [ "\$1" = -s ] && out=\$2; shift; done
 echo new metainfo > "\$out"
 SCRIPT
     chmod 0755, "$dest/bin/ctorrent";
-    unlink("$archive.metainfo") or die $!;
-    make_path("$archive.metainfo/held");
+    local %FAIL_FROM = ("$archive.metainfo" => 1);
     my (undef, $errors) = packimage($dest, '-m', 'cpio', '-c', 'gzip', '--tracker', 'http://tracker.example:6969/announce', $name);
     like($errors, qr/Cannot publish \Q$archive\E: /, "$label: the failure is reported");
     is(content($archive), "previous archive\n", "$label: the previous archive stays");
-    ok(-d "$archive.metainfo/held", "$label: the previous metainfo stays");
+    is(content("$archive.sha256"), "previous checksum\n", "$label: the previous checksum comes back");
+    is(content("$archive.metainfo"), "previous metainfo\n", "$label: the previous metainfo stays");
     is(content("$dest/rootimg.previous"), "previous format\n", "$label: other formats stay");
     is_deeply([ glob("$dest/.packimage-$host+*") ], [], "$label: no temporary file is left");
 }

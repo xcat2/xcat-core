@@ -9,10 +9,12 @@ use xCAT::Scope;
 use xCAT::MsgUtils;
 use Getopt::Long;
 use xCAT::Utils;
+use xCAT::HTTPUtils qw(httpport_suffix);
 require xCAT::BootUtils;
 use xCAT::TableUtils;
 use xCAT::ServiceNodeUtils;
 use xCAT::Usage;
+use xCAT::SecureBoot;
 
 my $dhcpconf = "/etc/dhcpd.conf";
 
@@ -21,6 +23,9 @@ my $globaltftpdir = xCAT::TableUtils->getTftpDir();
 
 # The directory of the boot scripts under the TFTP root. The ipxe method sets it to xcat/ipxe.
 our $SCRIPTS = 'xcat/xnba';
+
+# Only the loader of the ipxe method is signed, so only its nodes reach a kernel with Secure Boot on.
+our $METHOD = 'xnba';
 
 #my $dhcpver = 3;
 
@@ -154,6 +159,7 @@ sub setstate {
     my %iscsihash       = %{ shift() };
     my $tftpdir         = shift;
     my $linuximghashref = shift;
+    my $nodetyperef     = shift || {};
 
     my $kern = $bphash{$node}->[0];
     my $imgaddkcmdline = $linuximghashref->{'addkcmdline'};
@@ -164,7 +170,7 @@ sub setstate {
      if ($hports[0]){
          $httpport=$hports[0];
      }
-    my $portsuffix = ( $httpport eq "80" ) ? "" : ":$httpport";
+    my $portsuffix = httpport_suffix($httpport);
 
     # get kernel and initrd from boottarget table
     my $bttab;
@@ -357,6 +363,14 @@ sub setstate {
                         print $ucfg "#!gpxe\n";
                         print $ucfg "imgfetch -n kernel http://" . '${next-server}' . $portsuffix.'/tftpboot/' . $kern->{kernel} . "\n";
                         print $ucfg "imgload kernel\n";
+                        # The shim command reads the selected image, so it comes after imgload.
+                        my $shim = ($METHOD eq 'ipxe') ? xCAT::SecureBoot->shim_url_path(
+                            arch        => $nodetyperef->{arch},
+                            os          => $nodetyperef->{os},
+                            kernel      => $kern->{kernel},
+                            installroot => xCAT::TableUtils->getInstallDir(),
+                            tftpdir     => $tftpdir) : undef;
+                        print $ucfg "shim http://" . '${next-server}' . $portsuffix . $shim . "\n" if ($shim);
                         if ($kern->{kcmdline}) {
                              print $ucfg "imgargs kernel " . $kern->{kcmdline} . ' BOOTIF=01-${netX/mac:hexhyp} initrd=initrd' . "\n";
                         } else {
@@ -799,7 +813,7 @@ sub process_request {
         %iscsihash = %{ $iscsitab->getNodesAttribs(\@nodes, [qw(server target)]) };
     }
     my $typetab = xCAT::Table->new('nodetype', -create => 1);
-    my $typehash = $typetab->getNodesAttribs(\@nodes, ['provmethod']);
+    my $typehash = $typetab->getNodesAttribs(\@nodes, [ 'provmethod', 'os', 'arch' ]);
     my $linuximgtab = xCAT::Table->new('linuximage', -create => 1);
 
     my @normalnodeset = ();
@@ -822,7 +836,7 @@ sub process_request {
             unless ($osimgname =~ /^(install|netboot|statelite)$/) {
                 $linuximghash = $linuximgtab->getAttribs({ imagename => $osimgname }, 'boottarget', 'addkcmdline');
             }
-            ($rc, $errstr) = setstate($_, \%bphash, \%chainhash, \%machash, \%iscsihash, $tftpdir, $linuximghash);
+            ($rc, $errstr) = setstate($_, \%bphash, \%chainhash, \%machash, \%iscsihash, $tftpdir, $linuximghash, $ent);
             if ($rc) {
                 $response{node}->[0]->{errorcode}->[0] = $rc;
                 $response{node}->[0]->{error}->[0]    = $errstr;

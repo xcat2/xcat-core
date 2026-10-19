@@ -1,6 +1,6 @@
 #!/bin/sh
 echo $drivers
-dracut_install wget tar cpio gzip modprobe touch echo cut wc xz
+dracut_install wget tar cpio gzip modprobe touch echo cut wc xz sha256sum
 dracut_install grep ip hostname awk egrep grep dirname expr
 dracut_install mount.nfs
 dracut_install parted mke2fs bc mkswap swapon chmod mkfs mkfs.ext4 mkfs.xfs xfs_db

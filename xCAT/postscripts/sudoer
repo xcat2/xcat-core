@@ -180,7 +180,7 @@ for attempt in 1 2 3; do
     log info "sending xcatflowrequest $master 3001"
     /xcatpost/xcatflowrequest $master 3001
   fi
-  response=$(getcredentials.awk xcat_secure_pw:$SUDOER | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>' | sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/")
+  response=$(getcredentials.awk xcat_secure_pw:$SUDOER | xcat_filter_credentials)
   [ -n "$response" ] && break
   [ $attempt -lt 3 ] && sleep $((attempt * 5))
 done

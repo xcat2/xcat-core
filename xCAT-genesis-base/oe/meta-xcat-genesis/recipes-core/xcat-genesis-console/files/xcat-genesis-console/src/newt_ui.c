@@ -283,8 +283,8 @@ static void format_logs(char *text, size_t size) {
     }
 
     sd_journal_seek_tail(journal);
-    sd_journal_previous_skip(journal, 2048);
-    while (sd_journal_next(journal) > 0) {
+    for (result = sd_journal_previous_skip(journal, 2048); result > 0;
+         result = sd_journal_next(journal)) {
         char message[256] = "";
         char source[96] = "";
         char timestamp[16] = "--:--:--";

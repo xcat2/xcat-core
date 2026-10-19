@@ -111,7 +111,7 @@ if [ $useflowcontrol = "1" ]; then
 
 
 fi
-getcredentials.awk ssh_dsa_hostkey | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>' | sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_dsa_hostkey
+getcredentials.awk ssh_dsa_hostkey | xcat_filter_credentials > /tmp/ssh_dsa_hostkey
 
 #check the message is an error or not
 grep -E '<error>' /tmp/ssh_dsa_hostkey > /dev/null 2>&1
@@ -146,7 +146,7 @@ if [ $? -ne 0 ]; then
                      useflowcontrol=0
                   fi
                 fi
-                getcredentials.awk ssh_dsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_dsa_key
+                getcredentials.awk ssh_dsa_hostkey | grep -v '<'|xcat_decode_credentials > /etc/ssh/ssh_host_dsa_key
                 MYCONT=`cat /etc/ssh/ssh_host_dsa_key`
    done
    set_hostkey_permissions /etc/ssh/ssh_host_dsa_key
@@ -181,7 +181,7 @@ if [ $useflowcontrol = "1" ]; then
   fi
 fi
 
-getcredentials.awk ssh_rsa_hostkey | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>' | sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_rsa_hostkey
+getcredentials.awk ssh_rsa_hostkey | xcat_filter_credentials > /tmp/ssh_rsa_hostkey
 
 #check whether the message is an error or not
 grep -E '<error>' /tmp/ssh_rsa_hostkey > /dev/null 2>&1
@@ -216,7 +216,7 @@ if [ $? -ne 0 ]; then
                   fi
                 fi
 
-    		getcredentials.awk ssh_rsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_rsa_key
+		getcredentials.awk ssh_rsa_hostkey | grep -v '<' | xcat_decode_credentials > /etc/ssh/ssh_host_rsa_key
     		MYCONT=`cat /etc/ssh/ssh_host_rsa_key`
 	done
         set_hostkey_permissions /etc/ssh/ssh_host_rsa_key
@@ -252,7 +252,7 @@ if ssh-keygen -t ecdsa -f /tmp/ecdsa_key -P "" &>/dev/null ; then
     fi
   fi
 
-  getcredentials.awk ssh_ecdsa_hostkey | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>' | sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_ecdsa_hostkey
+  getcredentials.awk ssh_ecdsa_hostkey | xcat_filter_credentials > /tmp/ssh_ecdsa_hostkey
 
   #check whether the message is an error or not
   grep -E '<error>' /tmp/ssh_ecdsa_hostkey > /dev/null 2>&1
@@ -287,7 +287,7 @@ if ssh-keygen -t ecdsa -f /tmp/ecdsa_key -P "" &>/dev/null ; then
                   fi
                 fi
 
-    		getcredentials.awk ssh_ecdsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_ecdsa_key
+		getcredentials.awk ssh_ecdsa_hostkey | grep -v '<' | xcat_decode_credentials > /etc/ssh/ssh_host_ecdsa_key
     		MYCONT=`cat /etc/ssh/ssh_host_ecdsa_key`
 	done
 	set_hostkey_permissions /etc/ssh/ssh_host_ecdsa_key
@@ -332,7 +332,7 @@ if ssh-keygen -t ed25519 -f /tmp/ed25519_key -P "" &>/dev/null ; then
     fi
   fi
 
-  getcredentials.awk ssh_ed25519_hostkey | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>' | sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_ed25519_hostkey
+  getcredentials.awk ssh_ed25519_hostkey | xcat_filter_credentials > /tmp/ssh_ed25519_hostkey
 
   #check whether the message is an error or not
   grep -E '<error>' /tmp/ssh_ed25519_hostkey > /dev/null 2>&1
@@ -367,7 +367,7 @@ if ssh-keygen -t ed25519 -f /tmp/ed25519_key -P "" &>/dev/null ; then
                   fi
                 fi
 
-    		getcredentials.awk ssh_ed25519_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_ed25519_key
+		getcredentials.awk ssh_ed25519_hostkey | grep -v '<' | xcat_decode_credentials > /etc/ssh/ssh_host_ed25519_key
     		MYCONT=`cat /etc/ssh/ssh_host_ed25519_key`
 	done
 	set_hostkey_permissions /etc/ssh/ssh_host_ed25519_key
@@ -431,7 +431,7 @@ if [ $useflowcontrol = "1" ]; then
   fi
 fi
 
-  getcredentials.awk $rootsshpubkey  | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_root_pub_key
+  getcredentials.awk $rootsshpubkey | xcat_filter_credentials > /tmp/ssh_root_pub_key
 
   logger -t $log_label -p local4.info "remoteshell: gathering $rootsshpubkey "
   #check whether the message is an error or not
@@ -467,8 +467,8 @@ if [ $? -ne 0 ]; then
                      useflowcontrol=0
                   fi
                 fi
-		          getcredentials.awk $rootsshpubkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.ssh/id_rsa.pub
-		          getcredentials.awk $rootsshpubkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" >> /root/.ssh/authorized_keys
+		          getcredentials.awk $rootsshpubkey | grep -v '<'|xcat_decode_credentials > /root/.ssh/id_rsa.pub
+		          getcredentials.awk $rootsshpubkey | grep -v '<'|xcat_decode_credentials >> /root/.ssh/authorized_keys
 		          MYCONT=`cat /root/.ssh/id_rsa.pub`
 	done
 else
@@ -493,7 +493,7 @@ then
     useflowcontrol=0
   fi
  fi
-  getcredentials.awk $rootsshpvtkey | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_root_key
+  getcredentials.awk $rootsshpvtkey | xcat_filter_credentials > /tmp/ssh_root_key
 
   logger -t $log_label -p local4.info "remoteshell: gathering $rootsshpvtkey "
   #check whether the message is an error or not
@@ -527,7 +527,7 @@ then
                      useflowcontrol=0
                   fi
                 fi
-		          getcredentials.awk $rootsshpvtkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.ssh/id_rsa
+		          getcredentials.awk $rootsshpvtkey | grep -v '<'|xcat_decode_credentials > /root/.ssh/id_rsa
 		          MYCONT=`cat /root/.ssh/id_rsa`
 	done
   else
@@ -561,7 +561,7 @@ if [ "x$SECUREROOT" = "x1" ] && [ "x$UPDATENODE" != "x1" ]; then
       useflowcontrol=0
     fi
   fi
-  getcredentials.awk xcat_secure_pw:root | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/secure_root_hash
+  getcredentials.awk xcat_secure_pw:root | xcat_filter_credentials > /tmp/secure_root_hash
 
   logger -t $log_label -p local4.info "remoteshell: gathering password hash for root"
   #check whether the message is an error or not
@@ -593,7 +593,7 @@ if [ "x$SECUREROOT" = "x1" ] && [ "x$UPDATENODE" != "x1" ]; then
           useflowcontrol=0
         fi
       fi
-      getcredentials.awk xcat_secure_pw:root | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/secure_root_hash
+      getcredentials.awk xcat_secure_pw:root | xcat_filter_credentials > /tmp/secure_root_hash
       grep -E '<error>' /tmp/secure_root_hash > /dev/null
       if [ $? -ne 0 ]; then
         rootpwhash=`cat /tmp/secure_root_hash | grep -E '</{0,1}content>' | sed -n 's%.*<content>\(.*\)</content>.*%\1%p'`

@@ -38,7 +38,7 @@ my (@where, $result, @messages);
         litefile => "$root/install/litefile.csv",
     };
     my ($out, $err);
-    ($out, $err, $result) = capture { xCAT_plugin::imgport::make_files($data, "$root/import", sub { push @messages, $_[0] }) };
+    ($out, $err, $result) = capture { xCAT_plugin::imgport::place_image($data, "$root/import", sub { push @messages, $_[0] }) };
 }
 is($result, 1, 'a statelite import with a litefile succeeds');
 is_deeply([ map { @{ $_->{error} || [] } } @messages ], [], 'no error is reported');

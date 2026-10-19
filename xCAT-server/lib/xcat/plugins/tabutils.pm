@@ -430,6 +430,7 @@ sub tabrestore
         my $origline = $line;                  #save for error reporting
         my %record;
         my $col;
+        my $separated;    #a comma after the field of the last column starts one more field
         foreach $col (@colns)
         {
             if ($line =~ /^,/ or $line eq "")
@@ -438,7 +439,7 @@ sub tabrestore
                 if (!exists($auto_cols{$col})) {
                     $record{$col} = undef;
                 }
-                $line =~ s/^,//;
+                $separated = ($line =~ s/^,//);
             }
             elsif ($line =~ /^[^,]*"/)
             {    # We have stuff in quotes... pain...
@@ -501,7 +502,7 @@ sub tabrestore
                         elsif ($offset eq length($line) or $nextchar eq ',')
                         { #hit the end of the line or at least the end of the column
                             $ent = substr($line, 0, $offset, '');
-                            $line =~ s/^,//;
+                            $separated = ($line =~ s/^,//);
                             chop $ent;
                             $ent = substr($ent, 1);
                             $ent =~ s/""/"/g;
@@ -531,10 +532,10 @@ sub tabrestore
                 {
                     $record{$col} = $1;
                 }
-                $line =~ s/^([^,]+)(,|$)//;
+                $separated = ($line =~ s/^([^,]+)(,|$)//) && $2 eq ',';
             }
         }
-        if ($line)
+        if ($line ne '' or $separated)
         {
             $rollback = 1;
             $cb->({ error => "Too many fields on line $linenumber: $origline | $line", errorcode => 4 });

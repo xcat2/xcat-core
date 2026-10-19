@@ -9,7 +9,7 @@ jobs:
       - name: Refresh package indexes
         run: sudo apt-get update
       - name: Install dependencies
-        run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests bats bubblewrap cpio gawk mawk rpm rsyslog build-essential fakeroot reprepro devscripts debhelper libcapture-tiny-perl libfile-slurper-perl libjson-perl libyaml-pp-perl libparallel-forkmanager-perl libsoap-lite-perl libdbi-perl libdbd-sqlite3-perl libcgi-pm-perl quilt openssh-server dpkg looptools genometools software-properties-common grub-common grub-efi-amd64-bin squashfs-tools pigz
+        run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests bats bubblewrap cpio xz-utils gzip gawk mawk rpm rsyslog build-essential fakeroot reprepro devscripts debhelper libcapture-tiny-perl libfile-slurper-perl libjson-perl libyaml-pp-perl libparallel-forkmanager-perl libsoap-lite-perl libdbi-perl libdbd-sqlite3-perl libcgi-pm-perl quilt openssh-server dpkg looptools genometools software-properties-common grub-common grub-efi-amd64-bin squashfs-tools pigz python3-yaml
       - name: Enable postscript test namespaces
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Install lifecycle test dependencies
@@ -26,6 +26,22 @@ jobs:
       - name: Exercise image package policy
         if: ${{ !cancelled() }}
         run: prove xCAT-test/native/el10_image_package_policy.t
+      - name: Exercise image chroot mounts
+        if: ${{ !cancelled() }}
+        run: prove xCAT-test/native/rh_genimage_chroot_mounts.t
+      - name: Check Debian probe payload permissions
+        if: ${{ !cancelled() }}
+        run: bats xCAT-test/native/probe_debian_permissions.bats
+      - name: Test isolated system scripts
+        if: ${{ !cancelled() }}
+        run: |
+          workdir=$(sudo mktemp -d /tmp/xcat-script-tests.XXXXXX)
+          trap 'sudo rm -rf -- "$workdir"' EXIT
+          sudo cp -R xCAT-test xCAT-server perl-xCAT xCAT "$workdir/"
+          status=0
+          sudo sh -c 'cd "$1" && bats xCAT-test/native/getinstdisk_selection.bats' sh "$workdir" || status=1
+          sudo sh -c 'cd "$1" && prove -v xCAT-test/native/getinstdisk_installer.t xCAT-test/native/enablekdump_per_node.t xCAT-test/native/sudoer_password_source.t xCAT-test/native/remoteshell_credentials.t' sh "$workdir" || status=1
+          exit "$status"
       - name: Prepare xCAT syslog directory
         if: ${{ !cancelled() }}
         run: sudo install -d -o syslog -g adm -m 0750 /var/log/xcat
@@ -36,6 +52,9 @@ jobs:
           xCAT-test/native/ubuntu_genimage_debootstrap_arch.t
           xCAT-test/native/ubuntu_genimage_apt_mirror.t
           xCAT-test/native/ubuntu_genimage_resolver_libs.t
+      - name: Exercise the liteimg ramdisk archive
+        if: ${{ !cancelled() }}
+        run: prove xCAT-test/native/liteimg_ramdisk_archive.t
       - name: Run tests
         if: ${{ !cancelled() }}
         run: perl github_action_xcat_test.pl
@@ -52,6 +71,27 @@ jobs:
       - name: Check parsed package relations
         if: ${{ !cancelled() && steps.package-deps.outcome == 'success' }}
         run: prove xCAT-test/native/package_relations.t
+      # Ubuntu ships no mock, so the mock result directory test runs as root on Fedora.
+      - name: Run mock result directory test
+        run: |
+          set -o pipefail
+          docker run --rm -v "$PWD:/src:ro" -w /src fedora:42 bash -ec '
+            dnf -y -q install mock perl perl-File-Slurper >/dev/null
+            prove -v xCAT-test/native/mock_resultdir_owner.t \
+              xCAT-test/native/build_sources_other_uid.t' 2>&1 | tee mock.tap
+          if grep -iE '# skip' mock.tap; then
+            echo 'a mock result directory test was skipped' >&2
+            exit 1
+          fi
+      - name: Run profile artifact tests
+        if: ${{ !cancelled() }}
+        working-directory: ${{ runner.temp }}/xcat-core-unitsrc
+        shell: bash
+        run: |
+          log=$(mktemp)
+          trap 'rm -f -- "$log"' EXIT
+          prove -v xCAT-test/native/install_profile_riscv64.t xCAT-test/native/netboot_profile_riscv64.t xCAT-test/native/builddebs_riscv64.t xCAT-test/native/ubuntu_subiquity_template.t | tee "$log"
+          ! grep -qi skipped "$log"
   rpm_lifecycle_test:
     runs-on: ubuntu-24.04
     timeout-minutes: 30

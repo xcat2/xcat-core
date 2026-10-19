@@ -472,6 +472,10 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL || $::genCredentials)
 
 if ($::UPDATEINSTALL) {
     upgrade_conserver();
+
+    # The images of a release without the root image check keep booting unchecked.
+    my $error = xCAT::SvrUtils->upgrade_rootimg_checksum();
+    xCAT::MsgUtils->message('E', $error) if $error;
 }
 
 # more  config needed after xcatd start
@@ -1231,6 +1235,9 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=vsftp site.value=n;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=cleanupxcatpost site.value=no;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=cleanupdiskfullxcatpost site.value=no;";
+
+        # New images get the root image check, and a later upgrade keeps it.
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=rootimgchecksum site.value=yes;";
         my $omapi_algorithm =
           xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
             is_new_install => $initializing_new_site,

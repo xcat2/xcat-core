@@ -638,6 +638,9 @@ sub get_files {
                     $errors++;
                 } else {
                     $attrs->{ramdisk} = $ramdisk;
+
+                    # nodeset reads this marker to tell whether the ramdisk checks the root image checksum.
+                    $attrs->{ramdiskcheck} = "$ramdisk.rootimgcheck" if -r "$ramdisk.rootimgcheck";
                 }
 
                 unless ($kernel) {
@@ -928,7 +931,7 @@ sub make_bundle {
 
 
     # these are the only files we copy in.  (unless you have extras)
-    for my $a ("kernel", "ramdisk", "rootimg") {
+    for my $a ("kernel", "ramdisk", "ramdiskcheck", "rootimg") {
         my $filenames = $attribs->{$a};
         if ($filenames) {
             my @file_array = split(',', $filenames);
@@ -1266,14 +1269,8 @@ sub extract_bundle {
             $data = change_profile($data, $callback, $new_profile, $imgdir);
         }
 
-        #import manifest.xml into xCAT database
-        unless (set_config($data, $callback)) {
-            $error++;
-            next;
-        }
-
-        # now place files in appropriate directories.
-        unless (make_files($data, $imgdir, $callback)) {
+        # place the boot files, import manifest.xml into xCAT database, then place the other files
+        unless (place_image($data, $imgdir, $callback, $nodes)) {
             $error++;
             next;
         }
@@ -1335,7 +1332,7 @@ sub change_profile {
             $data->{linuximage}->{rootimgdir} = "$installdir/netboot/" . $data->{osimage}->{osvers} . "/" . $data->{osimage}->{osarch} . "/$new_profile";
         }
 
-        for my $a ("kernel", "ramdisk", "rootimg", "rootimgtree", "litefile") {
+        for my $a ("kernel", "ramdisk", "ramdiskcheck", "rootimg", "rootimgtree", "litefile") {
             if ($data->{$a}) {
                 my $fn = basename($data->{$a});
                 $data->{$a} = $data->{linuximage}->{rootimgdir} . "/$fn";
@@ -1574,8 +1571,9 @@ sub create_symlink {
 }
 
 sub set_config {
-    my $data     = shift;
-    my $callback = shift;
+    my $data      = shift;
+    my $callback  = shift;
+    my $rows_left = shift;    # gets the number of rows that a failed write leaves changed
     my $ostab    = xCAT::Table->new('osimage', -create => 1, -autocommit => 0);
     my $linuxtab = xCAT::Table->new('linuximage', -create => 1, -autocommit => 0);
     my $kittab = xCAT::Table->new('kit', -create => 1, -autocommit => 0);
@@ -1611,57 +1609,166 @@ sub set_config {
 
     $callback->({ data => ["Adding $osimage"] }) if $::VERBOSE;
 
-    # now we make a quick hash of what we want to put into this
-    my $hash_tmp = $data->{osimage};
-    foreach my $key (keys %$hash_tmp) {
-        $keyhash{$key} = $hash_tmp->{$key};
-    }
-    $ostab->setAttribs({ imagename => $osimage }, \%keyhash);
-    $ostab->commit;
+    # The rows of the image that this import wrote, with the values they had, for restore_rows.
+    my @written;
 
-    %keyhash = ();
-    my $hash_tmp1 = $data->{linuximage};
-    foreach my $key (keys %$hash_tmp1) {
-        $keyhash{$key} = $hash_tmp1->{$key};
-    }
-
-    $linuxtab->setAttribs({ imagename => $osimage }, \%keyhash);
-    $linuxtab->commit;
-
-    my $kit = $data->{kit};
-    foreach my $k (keys %$kit) {
-        my $kithash = $kit->{$k};
-        %keyhash = ();
-        foreach my $key (keys %$kithash) {
-            $keyhash{$key} = $kithash->{$key};
+    # setAttribs returns nothing for a new row without values, 0 after a write, and undef with an optional error on failure.
+    # Other images can use a kit row, so the kit rows of a failed import stay.
+    my $write = sub {
+        my ($tab, $key, $values, $shared) = @_;
+        $values = {%$values};    # The caller fills the same hash for the next table.
+        my $previous = $shared ? 0 : table_row($tab, $key);
+        if (!defined($previous)) {
+            $callback->({ error => ["Cannot read the $tab->{tabname} table."], errorcode => [1] });
+            return 0;
         }
-        $kittab->setAttribs({ kitname => $k }, \%keyhash);
-        $kittab->commit;
-    }
-
-    my $kitrepo = $data->{kitrepo};
-    foreach my $k (keys %$kitrepo) {
-        my $kitrepohash = $kitrepo->{$k};
-        %keyhash = ();
-        foreach my $key (keys %$kitrepohash) {
-            $keyhash{$key} = $kitrepohash->{$key};
+        my @result = eval { $tab->setAttribs($key, $values) };
+        my $error = $@ =~ s/\s+\z//r;
+        $error = $result[1] // 'no reply from the database' if !$error && @result && !defined($result[0]);
+        # A write or commit that fails can still change the row, so restore_rows checks each row that was tried.
+        push @written, [ $tab, $key, $values, $previous ] if !$shared;
+        if (!$error) {
+            return 1 if eval { $tab->commit; 1 };
+            $callback->({ error => ["Cannot commit the $tab->{tabname} table: " . ($@ =~ s/\s+\z//r)], errorcode => [1] });
+            return 0;
         }
-        $kitrepotab->setAttribs({ kitreponame => $k }, \%keyhash);
-        $kitrepotab->commit;
-    }
 
-    my $kitcomp = $data->{kitcomp};
-    foreach my $k (keys %$kitcomp) {
-        my $kitcomphash = $kitcomp->{$k};
-        %keyhash = ();
-        foreach my $key (keys %$kitcomphash) {
-            $keyhash{$key} = $kitcomphash->{$key};
+        # The database worker shares the transaction of a table among requests, so a rollback would drop their writes.
+        eval { $tab->commit };
+        if (holds_row($tab, $key, $values)) {
+            $callback->({ warning => ["The $tab->{tabname} table holds the new row, but its write reported: $error"] });
+            return 1;
         }
-        $kitcomptab->setAttribs({ kitcompname => $k }, \%keyhash);
-        $kitcomptab->commit;
-    }
+        $callback->({ error => ["Cannot write the $tab->{tabname} table: $error"], errorcode => [1] });
+        return 0;
+    };
 
-    return 1;
+    # Bundle data of an unexpected shape can die between the writes, and the rows written before go back then too.
+    my $done = eval {
+        # now we make a quick hash of what we want to put into this
+        my $hash_tmp = $data->{osimage};
+        foreach my $key (keys %$hash_tmp) {
+            $keyhash{$key} = $hash_tmp->{$key};
+        }
+        $write->($ostab, { imagename => $osimage }, \%keyhash) or return 0;
+
+        %keyhash = ();
+        my $hash_tmp1 = $data->{linuximage};
+        foreach my $key (keys %$hash_tmp1) {
+            $keyhash{$key} = $hash_tmp1->{$key};
+        }
+
+        $write->($linuxtab, { imagename => $osimage }, \%keyhash) or return 0;
+
+        my $kit = $data->{kit};
+        foreach my $k (keys %$kit) {
+            my $kithash = $kit->{$k};
+            %keyhash = ();
+            foreach my $key (keys %$kithash) {
+                $keyhash{$key} = $kithash->{$key};
+            }
+            $write->($kittab, { kitname => $k }, \%keyhash, 1) or return 0;
+        }
+
+        my $kitrepo = $data->{kitrepo};
+        foreach my $k (keys %$kitrepo) {
+            my $kitrepohash = $kitrepo->{$k};
+            %keyhash = ();
+            foreach my $key (keys %$kitrepohash) {
+                $keyhash{$key} = $kitrepohash->{$key};
+            }
+            $write->($kitrepotab, { kitreponame => $k }, \%keyhash, 1) or return 0;
+        }
+
+        my $kitcomp = $data->{kitcomp};
+        foreach my $k (keys %$kitcomp) {
+            my $kitcomphash = $kitcomp->{$k};
+            %keyhash = ();
+            foreach my $key (keys %$kitcomphash) {
+                $keyhash{$key} = $kitcomphash->{$key};
+            }
+            $write->($kitcomptab, { kitcompname => $k }, \%keyhash, 1) or return 0;
+        }
+
+        1;
+    };
+    return 1 if $done;
+    $callback->({ error => ["Cannot write the image definition: " . ($@ =~ s/\s+\z//r)], errorcode => [1] }) if !defined($done);
+    my $left = restore_rows(\@written, $callback);
+    $$rows_left = $left if $rows_left;
+    return 0;
+}
+
+# Returns the row of a table with the key, 0 when there is none, or undef when the table cannot be read.
+sub table_row {
+    my ($tab, $key) = @_;
+
+    # getAttribs leaves out a disabled row, which the import still changes.
+    my $rows = eval { $tab->getAllEntries('all') };
+    return if ref($rows) ne 'ARRAY';
+    my ($row) = grep { has_values($_, $key) } @$rows;
+    return $row // 0;
+}
+
+# Tells whether a row holds the values, where an empty value matches a missing one.
+sub has_values {
+    my ($row, $values) = @_;
+    return !grep { ($row->{$_} // '') ne ($values->{$_} // '') } keys %$values;
+}
+
+sub holds_row {
+    my ($tab, $key, $values) = @_;
+    my $row = table_row($tab, $key);
+    return $row && has_values($row, $values);
+}
+
+# Writes back the rows of a definition write that failed, newest first, and returns the number of rows left changed.
+sub restore_rows {
+    my ($written, $callback) = @_;
+    my $left = 0;
+    foreach my $change (reverse @$written) {
+        my ($tab, $key, $values, $previous) = @$change;
+        my $row     = join(', ', map { "$_=$key->{$_}" } sort keys %$key);
+        my $current = table_row($tab, $key);
+        if (!defined($current)) {
+            $callback->({ error => ["The previous $tab->{tabname} row of $row is not back: the table cannot be read."], errorcode => [1] });
+            $left++;
+            next;
+        }
+
+        # A write that did not take effect left the row as it was.
+        next if $previous ? $current && has_values($current, { map { ($_ => $previous->{$_}) } keys %$values }) : !$current;
+
+        # A row that another host changed, or that another writer filled more of after this import added it, stays.
+        my @filled = $previous ? () : grep { !exists($values->{$_}) && !exists($key->{$_}) && ($current->{$_} // '') ne '' } keys %{ $current || {} };
+        if (!$current || !has_values($current, $values) || @filled) {
+            $callback->({ warning => ["The $tab->{tabname} row of $row changed after this import wrote it, so the change stays."] });
+            $left++;
+            next;
+        }
+        my $back;
+        if ($previous) {
+            # An undefined value goes back as NULL, which a read of the disable column takes as enabled, unlike ''.
+            my %old = map { ($_ => $previous->{$_}) } keys %$values;
+
+            # setAttribs writes the values of its key into the SQL text, so the update matches only the key.
+            eval { $tab->setAttribs($key, \%old); $tab->commit };
+            $back = holds_row($tab, $key, \%old);
+        } else {
+            # delEntries binds its condition, so the written values in it keep a row that another writer changed.
+            my %ours = (%$key, map { ($_ => $values->{$_}) } grep { defined($values->{$_}) } keys %$values);
+            eval { $tab->delEntries(\%ours); $tab->commit };
+            $current = table_row($tab, $key);
+            $back    = defined($current) && !$current;
+        }
+        if ($back) {
+            $callback->({ data => [ $previous ? "  Put back the previous $tab->{tabname} row of $row." : "  Removed the new $tab->{tabname} row of $row." ] });
+        } else {
+            $callback->({ error => ["The previous $tab->{tabname} row of $row is not back."], errorcode => [1] });
+            $left++;
+        }
+    }
+    return $left;
 }
 
 #an adapter to convert the manifest structure from 2.7 to 2.8
@@ -1820,6 +1927,172 @@ sub verify_manifest {
     return 1;
 }
 
+#-------------------------------------------------------
+
+=head3   check_import
+
+    Check what an import needs before it writes anything, so that a request that cannot succeed changes nothing:
+    the nodes, the tables of the image definition, and the boot files, kits, extra files and raw image files in the
+    bundle.
+    Arguments:
+        data     -- the manifest of the bundle
+        imgdir   -- the extracted bundle
+        nodes    -- the noderange that gets the postscripts of the image, or undef
+        callback -- the request callback
+    Returns:
+        1 when the import can go on, 0 after it reported why not
+
+=cut
+
+#-------------------------------------------------------
+sub check_import {
+    my ($data, $imgdir, $nodes, $callback) = @_;
+    if ($nodes && !(my @defined = noderange($nodes))) {
+        $callback->({ error => ["The nodes $nodes are not defined in xCAT DB."], errorcode => [1] });
+        return 0;
+    }
+
+    # set_config opens these tables the same way after the boot files.
+    foreach my $table (qw(osimage linuximage kit kitrepo kitcomponent)) {
+        next if xCAT::Table->new($table, -create => 1, -autocommit => 0);
+        $callback->({ error => ["Unable to open table '$table'"], errorcode => [1] });
+        return 0;
+    }
+    my @missing = grep { !-e "$imgdir/$_" && !-l "$imgdir/$_" } map { basename($_) } map { split(',', $data->{$_} // '') } qw(rootimg kernel ramdisk rootimgtree);
+    push @missing, grep { $data->{kit}{$_}{kitdir} && !-d "$imgdir/$_" } sort keys %{ $data->{kit} || {} };
+
+    # imgexport keeps an extra directory under its path and an extra file under its name.
+    my $extra = $data->{extra};
+    foreach my $src (map { $_->{src} } ref($extra) eq 'HASH' ? ($extra) : @{ $extra || [] }) {
+        my $file = basename($src);
+        push @missing, "extra/$file" if !-d "$imgdir/extra/$src" && !-e "$imgdir/extra/$file";
+    }
+    if ($data->{osimage}{osarch} =~ /s390x/x && $data->{rawimagefiles}) {
+        my $files = $data->{rawimagefiles}{files};
+        push @missing, grep { !-e "$imgdir/$_" } map { basename($_) } ref($files) eq 'ARRAY' ? @$files : ($files // ());
+    }
+    return 1 if !@missing;
+    $callback->({ error => [ "The image bundle lacks " . join(', ', @missing) . '.' ], errorcode => [1] });
+    return 0;
+}
+
+#-------------------------------------------------------
+
+=head3   place_image
+
+    Place the boot files of an extracted bundle, import its image definition, then place its other files, under the
+    image lock.
+    Arguments:
+        data     -- the manifest of the bundle
+        imgdir   -- the extracted bundle
+        callback -- the request callback
+        nodes    -- the noderange that gets the postscripts of the image, or undef
+    Returns:
+        1 on success, 0 on failure
+
+=cut
+
+#-------------------------------------------------------
+sub place_image {
+    my ($data, $imgdir, $callback, $nodes) = @_;
+    return 0 if !check_import($data, $imgdir, $nodes, $callback);
+
+    # genimage, packimage, liteimg and rmimage hold this lock while they change the image.
+    # A statelite bundle has a rootimgtree instead of a rootimg.
+    my ($imagefile) = grep { $_ } map { (split(',', $data->{$_} // ''))[0] } qw(rootimg rootimgtree kernel ramdisk);
+    my ($lock, $publication);
+    if ($imagefile) {
+        my $rootimgdir = dirname($imagefile);
+        mkpath($rootimgdir) unless -d $rootimgdir;
+        (my $retcode, $lock) = xCAT::Utils->acquire_lock_imageop("$rootimgdir/rootimg");
+        if ($retcode) {
+            $callback->({ error => [$lock], errorcode => [1] });
+            return 0;
+        }
+
+        # As in packimage, the stages that this host abandoned go also when another host holds the publication lock.
+        xCAT::SvrUtils->remove_abandoned_rootimg_stages($rootimgdir);
+
+        # The image lock is per host, so this lock keeps other hosts from publishing here until the definition is settled.
+        ($publication, my $error) = xCAT::SvrUtils->lock_rootimg_publication($rootimgdir);
+        if (!$publication) {
+            $callback->({ error => [$error], errorcode => [1] });
+            return 0;
+        }
+    }
+    # A failure after the definition is written leaves the definition that matches the published boot files.
+    my (@placed, $rows_left);
+    my $configured = eval { place_boot_files($data, $imgdir, $callback, \@placed, $publication) && set_config($data, $callback, \$rows_left) };
+    if (!defined($configured)) {
+        my $error = $@ =~ s/\s+\z//r;
+        $callback->({ error => ["Cannot import the image: $error"], errorcode => [1] });
+    }
+
+    # A row that did not go back can refer to the imported boot files, so they stay then.
+    if (!$configured && $rows_left) {
+        $callback->({ error => ["The imported boot files stay, because the image definition has rows that did not go back."], errorcode => [1] });
+    } elsif (!$configured) {
+        restore_boot_files(\@placed, $callback, $publication);
+    }
+    xCAT::SvrUtils->unlock_rootimg_publication($publication) if $publication;
+    return $configured ? make_files($data, $imgdir, $callback) : 0;
+}
+
+#-------------------------------------------------------
+
+=head3   place_boot_files
+
+    Place the root image, kernel, ramdisk and statelite files of an extracted bundle.
+    Arguments:
+        data     -- the manifest of the bundle
+        imgdir   -- the extracted bundle
+        callback -- the request callback
+        placed   -- an array reference that gets each placed file, for restore_boot_files
+        held     -- the publication lock of the image directory, which the caller holds
+    Returns:
+        1 on success, 0 on failure
+
+=cut
+
+#-------------------------------------------------------
+sub place_boot_files {
+    my ($data, $imgdir, $callback, $placed, $held) = @_;
+
+    # The root image goes first, so a failed publication leaves the kernel and ramdisk that match the published image.
+    for my $a ("rootimg", "kernel", "ramdisk", "ramdiskcheck", "rootimgtree", "litefile") {
+        my $filenames = $data->{$a};
+        if ($filenames) {
+            my @file_array = split(',', $filenames);
+            foreach my $fn (@file_array) {
+                $callback->({ data => ["$fn"] });
+                my $basename = basename($fn);
+                my $dirname  = dirname($fn);
+                if (!-r $dirname) {
+                    mkpath("$dirname", { verbose => 1, mode => 0755 });
+                }
+                my %file = (path => $fn, previous => -r $fn);
+                if ($a eq 'rootimg') {
+                    # The publication drops the previous checksum and metainfo, and place_rootimg keeps only the archive.
+                    %file = (%file, rootimg => 1, map { ($_ => scalar(read_raw("$fn.$_"))) } qw(sha256 metainfo));
+                    if (my $error = place_rootimg("$imgdir/$basename", $fn, $callback, $held)) {
+                        $callback->({ error => [$error], errorcode => [1] });
+                        return 0;
+                    }
+                    push @$placed, \%file;
+                    next;
+                }
+                if (-r $fn) {
+                    $callback->({ data => ["  Moving old $fn to $fn.ORIG."] });
+                    move("$fn", "$fn.ORIG");
+                }
+                move("$imgdir/$basename", $fn);
+                push @$placed, \%file;
+            }
+        }
+    }
+    return 1;
+}
+
 sub make_files {
     my $data        = shift;
     my $imgdir      = shift;
@@ -1914,26 +2187,6 @@ sub make_files {
     #                     }
     #                   ],
     #        };
-
-    for my $a ("kernel", "ramdisk", "rootimg", "rootimgtree", "litefile") {
-        my $filenames = $data->{$a};
-        if ($filenames) {
-            my @file_array = split(',', $filenames);
-            foreach my $fn (@file_array) {
-                $callback->({ data => ["$fn"] });
-                my $basename = basename($fn);
-                my $dirname  = dirname($fn);
-                if (!-r $dirname) {
-                    mkpath("$dirname", { verbose => 1, mode => 0755 });
-                }
-                if (-r $fn) {
-                    $callback->({ data => ["  Moving old $fn to $fn.ORIG."] });
-                    move("$fn", "$fn.ORIG");
-                }
-                move("$imgdir/$basename", $fn);
-            }
-        }
-    }
 
     for my $a ("template", "pkglist", "synclists", "otherpkglist", "postinstall", "exlist") {
         my $filenames;
@@ -2139,6 +2392,103 @@ sub make_files {
 
     # return 1 meant everything was successful!
     return 1;
+}
+
+#-------------------------------------------------------
+
+=head3   place_rootimg
+
+    Replace a published root image with the one from a bundle, the way packimage publishes it.
+    Arguments:
+        bundled  -- the root image in the extracted bundle
+        fn       -- the published path
+        callback -- the request callback
+        held     -- the publication lock of the image directory, which the caller holds
+    Returns:
+        an error message, or nothing on success
+
+=cut
+
+#-------------------------------------------------------
+sub place_rootimg {
+    my ($bundled, $fn, $callback, $held) = @_;
+    my ($stage, $error) = xCAT::SvrUtils->rootimg_stage(dirname($fn));
+    return $error unless $stage;
+    my $staged = "$stage/" . basename($fn);
+    move($bundled, $staged) or return "Cannot move $bundled to $staged: $!";
+    $error = xCAT::SvrUtils->write_rootimg_checksum($staged);
+    return $error if $error;
+    if (-r $fn) {
+        $callback->({ data => ["  Keeping old $fn as $fn.ORIG."] });
+        unlink("$fn.ORIG");
+        link($fn, "$fn.ORIG") or copy($fn, "$fn.ORIG");
+    }
+    return xCAT::SvrUtils->publish_rootimg($staged, $fn, undef, $held);
+}
+
+#-------------------------------------------------------
+
+=head3   restore_boot_files
+
+    Put back the files that place_boot_files replaced, and remove the ones that had no previous version.
+    Arguments:
+        placed   -- the files that place_boot_files placed
+        callback -- the request callback
+        held     -- the publication lock of the image directory, which the caller holds
+    Returns:
+        nothing
+
+=cut
+
+#-------------------------------------------------------
+sub restore_boot_files {
+    my ($placed, $callback, $held) = @_;
+    foreach my $file (reverse @$placed) {
+        my $fn = $file->{path};
+        my $error;
+        if ($file->{rootimg}) {
+            $error = $file->{previous} ? republish_rootimg($file, $held) : xCAT::SvrUtils->unpublish_rootimg($fn, $held);
+        } elsif ($file->{previous}) {
+            $error = "Cannot move $fn.ORIG to $fn: $!" if !move("$fn.ORIG", $fn);
+        } elsif (-e $fn && !unlink($fn)) {
+            $error = "Cannot remove $fn: $!";
+        }
+        if (defined($error)) {
+            $callback->({ error => ["The previous $fn is not back. $error"], errorcode => [1] });
+        } else {
+            $callback->({ data => [ $file->{previous} ? "  Put back the previous $fn." : "  Removed $fn." ] });
+        }
+    }
+    return;
+}
+
+# Publishes the archive that place_rootimg kept as .ORIG again, with the checksum and metainfo it had.
+sub republish_rootimg {
+    my ($file, $held) = @_;
+    my $fn = $file->{path};
+    my ($stage, $error) = xCAT::SvrUtils->rootimg_stage(dirname($fn));
+    return $error unless $stage;
+    my $staged = "$stage/" . basename($fn);
+    link("$fn.ORIG", $staged) or copy("$fn.ORIG", $staged) or return "Cannot stage $fn.ORIG: $!";
+    foreach my $suffix (qw(sha256 metainfo)) {
+        next if !defined($file->{$suffix});
+        write_raw("$staged.$suffix", $file->{$suffix}) or return "Cannot write $staged.$suffix: $!";
+    }
+    return xCAT::SvrUtils->publish_rootimg($staged, $fn, undef, $held);
+}
+
+# Returns the bytes of a file, or undef when it cannot be read.
+sub read_raw {
+    my ($path) = @_;
+    open(my $handle, '<:raw', $path) or return;
+    local $/;
+    return scalar(<$handle>);
+}
+
+sub write_raw {
+    my ($path, $content) = @_;
+    open(my $handle, '>:raw', $path) or return 0;
+    return (print {$handle} $content) && close($handle);
 }
 
 sub copyPostscripts {

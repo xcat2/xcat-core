@@ -74,3 +74,18 @@ utilities, awk, grep, sed, and user namespace support. The adapter tests also
 require `cmp` from diffutils. The CI environment provides these dependencies.
 Missing prerequisites fail on Linux; non-Linux hosts report a skip.
 The temporary filesystem must allow executable files.
+
+The BMC cases check LAN values, device and channel selection, write retries,
+configuration defaults, user selection, and vendor port commands. They assert
+the commands issued by the complete script. They do not verify that physical
+BMC firmware accepts those commands.
+
+## Boot artifact and repository checks
+
+`mknb_genesis_compression.bats`, `dhcp_http_port.bats` and
+`go_xcat_common_repository.bats` require Linux, Bubblewrap and user namespaces.
+They execute checkout code in isolated filesystems without contacting services.
+Non-Linux hosts skip these cases; missing Linux prerequisites fail them.
+The compression cases also need xz, gzip and cpio. They run as an ordinary
+user so directory-permission failures can be exercised. Both lzma and xz
+selection paths build real images, and the decoder checks the LZMA format.

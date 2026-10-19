@@ -14,6 +14,7 @@ use Cwd qw(realpath);
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::DBobjUtils;
+use xCAT::SvrUtils;
 use Digest::MD5 qw(md5_hex);
 
 Getopt::Long::Configure("bundling");
@@ -196,9 +197,11 @@ sub process_request {
         return;
     }
 
-    my @filestoremove = ("$imagedir/kernel", "$imagedir/initrd-stateless.gz", "$imagedir/initrd-statelite.gz");
-    my @rootimgtars=glob "$imagedir/rootimg.*";
+    my @filestoremove = ("$imagedir/kernel", "$imagedir/initrd-stateless.gz", "$imagedir/initrd-stateless.gz.rootimgcheck", "$imagedir/initrd-statelite.gz");
+    my @rootimgtars = xCAT::SvrUtils->image_dir_entries($imagedir, qr/\Arootimg(?:\.|-statelite\.gz)/x);
     push @filestoremove,@rootimgtars;
+    xCAT::SvrUtils->remove_abandoned_rootimg_stages($imagedir, 1);
+    rmtree([ xCAT::SvrUtils->image_dir_entries($imagedir, qr/\A\.rootimg-previous-.{8}\z/sx) ]);
     #unmount all the mount points under rootimg directory
     #to avoid removing the directory/files on management node by mistake
     $realimagedir=realpath("$imagedir/rootimg");

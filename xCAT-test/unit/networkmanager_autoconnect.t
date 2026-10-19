@@ -3,6 +3,7 @@ use strict;
 use warnings;
 
 use File::Path qw(make_path);
+use File::Slurper qw(read_binary write_binary);
 use File::Spec;
 use File::Temp qw(tempdir);
 use FindBin;
@@ -29,7 +30,7 @@ make_path( $test_bin, $empty_bin );
 my $nmcli_log = File::Spec->catfile( $tmpdir, 'nmcli.log' );
 my $message_log = File::Spec->catfile( $tmpdir, 'messages.log' );
 my $fake_nmcli = File::Spec->catfile( $test_bin, 'nmcli' );
-write_file( $fake_nmcli, <<'SH' );
+write_binary( $fake_nmcli, <<'SH' );
 #!/bin/sh
 {
     printf 'nmcli'
@@ -47,7 +48,7 @@ SH
 chmod 0755, $fake_nmcli or die "Unable to make $fake_nmcli executable: $!";
 
 my $driver = File::Spec->catfile( $tmpdir, 'run-helper' );
-write_file( $driver, <<'SH' );
+write_binary( $driver, <<'SH' );
 #!/bin/bash
 msgutil_r() {
     {
@@ -71,7 +72,7 @@ my $connections = join( "\n",
 is( run_program( $driver, connections => $connections ), 0,
     'the helper updates active non-loopback connections' );
 is(
-    read_file($nmcli_log),
+    scalar read_binary($nmcli_log),
     command_line( '-g', 'NAME,STATE', 'con', 'show' )
       . command_line( 'con', 'mod', 'primary uplink',
         'connection.autoconnect', 'yes' )
@@ -79,7 +80,7 @@ is(
         'connection.autoconnect', 'yes' ),
     'inactive, loopback, and blank connections are skipped without splitting names'
 );
-is( read_file($message_log), '',
+is( scalar read_binary($message_log), '',
     'logging stays disabled when the caller does not request it' );
 
 is(
@@ -93,7 +94,7 @@ is(
     'the helper accepts the legacy logging mode'
 );
 is(
-    read_file($message_log),
+    scalar read_binary($message_log),
     message_line(
         '192.0.2.10', 'info',
         'set connection primary uplink to be activated on system boot',
@@ -113,7 +114,7 @@ is(
     'the helper preserves extended debug logging'
 );
 is(
-    read_file($message_log),
+    scalar read_binary($message_log),
     message_line(
         '192.0.2.10', 'info',
         'set connection primary uplink to be activated on system boot',
@@ -132,7 +133,7 @@ is(
     0,
     'the legacy logging mode also supports non-debug operation'
 );
-is( read_file($message_log), '',
+is( scalar read_binary($message_log), '',
     'non-debug operation does not emit the optional message' );
 
 is(
@@ -146,8 +147,9 @@ is(
     0,
     'the helper is a successful no-op without nmcli'
 );
-is( read_file($nmcli_log), '', 'nmcli is not invoked when it is unavailable' );
-is( read_file($message_log), '',
+is( scalar read_binary($nmcli_log), '',
+    'nmcli is not invoked when it is unavailable' );
+is( scalar read_binary($message_log), '',
     'missing nmcli does not produce a connection activation message' );
 
 done_testing();
@@ -165,8 +167,8 @@ sub run_program {
     my $arguments = $options{arguments} // [];
     my $has_nmcli = exists( $options{nmcli} ) ? $options{nmcli} : 1;
 
-    write_file( $nmcli_log, '' );
-    write_file( $message_log, '' );
+    write_binary( $nmcli_log, '' );
+    write_binary( $message_log, '' );
 
     local %ENV = %ENV;
     $ENV{PATH} = $has_nmcli ? "$test_bin:$ENV{PATH}" : $empty_bin;
@@ -179,19 +181,4 @@ sub run_program {
 
     my $status = system( '/bin/bash', $program, @{$arguments} );
     return $status == -1 ? 255 : $status >> 8;
-}
-
-sub write_file {
-    my ( $path, $contents ) = @_;
-    open( my $fh, '>:raw', $path ) or die "Unable to write $path: $!";
-    print {$fh} $contents;
-    close($fh) or die "Unable to close $path: $!";
-}
-
-sub read_file {
-    my ($path) = @_;
-    open( my $fh, '<:raw', $path ) or die "Unable to read $path: $!";
-    my $contents = do { local $/; <$fh> };
-    close($fh) or die "Unable to close $path: $!";
-    return $contents;
 }

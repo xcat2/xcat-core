@@ -12,8 +12,14 @@ require xCAT::NodeRange;
 require xCAT::Utils;
 require xCAT::TableUtils;
 require xCAT::NetworkUtils;
+use Digest::SHA ();
+use Errno qw(EEXIST);
 use File::Basename;
+use File::Copy ();
 use File::Path;
+use File::Temp;
+use Scalar::Util ();
+use Sys::Hostname ();
 use strict;
 use Exporter;
 our @ISA       = qw/Exporter/;
@@ -2570,6 +2576,542 @@ sub searchcompressedrootimg{
     }
 
     return $cpsdrootimg;
+}
+
+# Publication holds its lock briefly, so a writer that waits this long fails instead of taking the lock over.
+my $publish_lock_wait = 60;
+
+sub _rootimg_stage_prefix {
+    (my $host = Sys::Hostname::hostname()) =~ s/[^A-Za-z0-9.-]/_/gx;
+    return ".packimage-$host+";
+}
+
+#--------------------------------------------------------------------------------------------------------
+#remove_abandoned_rootimg_stages:
+#description: remove the private directories that writers on this host abandoned in an image directory.
+#             A directory that keeps the previous files of a failed publication stays.
+#             Hold the image lock while you call it.
+#argument:
+#        $dir: the image directory
+#        $all: true to remove also the directories that keep previous files, as rmimage does
+#--------------------------------------------------------------------------------------------------------
+sub remove_abandoned_rootimg_stages {
+    my (undef, $dir, $all) = @_;
+
+    # The image lock is per host, so only this host's directories are known to be abandoned.
+    my $prefix = _rootimg_stage_prefix();
+    my @abandoned = grep { $all || !_holds_previous($_) } __PACKAGE__->image_dir_entries($dir, qr/\A\Q$prefix\E.{8}\z/sx);
+    rmtree(\@abandoned) if @abandoned;
+    return;
+}
+
+#--------------------------------------------------------------------------------------------------------
+#image_dir_entries:
+#description: list the entries of an image directory whose names match a pattern. Unlike glob, it takes the
+#             directory literally, also when its path has a space or a wildcard character.
+#arguments:
+#        $dir:     the image directory
+#        $pattern: a regular expression for the names of the entries
+#return:
+#        the paths of the matching entries, sorted
+#--------------------------------------------------------------------------------------------------------
+sub image_dir_entries {
+    my (undef, $dir, $pattern) = @_;
+    opendir(my $handle, $dir) or return;
+    my @names = sort grep { $_ =~ $pattern } readdir($handle);
+    closedir($handle);
+    return map { "$dir/$_" } @names;
+}
+
+# Returns whether the staging directory $stage keeps previous files of a failed publication.
+sub _holds_previous {
+    my ($stage) = @_;
+    return grep { -e "$stage/$_" || -l "$stage/$_" } qw(previous previous.metainfo);
+}
+
+# The staging directories that rootimg_stage created in this process, so that a publication can keep one.
+my %rootimg_stages;
+
+#--------------------------------------------------------------------------------------------------------
+#rootimg_stage:
+#description: create a private directory in an image directory for a new compressed rootimage, and remove
+#             the directories that writers on this host abandoned. Hold the image lock while you call it.
+#argument:
+#        $dir: the image directory
+#return:
+#        on success: a File::Temp directory object, which removes the directory when it goes out of scope
+#        on fail:    undef and the error message
+#--------------------------------------------------------------------------------------------------------
+sub rootimg_stage {
+    my ($class, $dir) = @_;
+    $class->remove_abandoned_rootimg_stages($dir);
+    my $stage = eval { File::Temp->newdir(_rootimg_stage_prefix() . 'XXXXXXXX', DIR => $dir) };
+    return (undef, "Cannot create a temporary directory in $dir: $@") if !$stage;
+    $rootimg_stages{ $stage->dirname } = $stage;
+    Scalar::Util::weaken($rootimg_stages{ $stage->dirname });
+    return ($stage);
+}
+
+#--------------------------------------------------------------------------------------------------------
+#write_rootimg_checksum:
+#description: write the SHA-256 checksum of a compressed rootimage to <rootimage>.sha256 in sha256sum format
+#argument:
+#        $rootimg: the path of the compressed rootimage
+#return:
+#        on success: nothing
+#        on fail:    the error message
+#--------------------------------------------------------------------------------------------------------
+sub write_rootimg_checksum {
+    my (undef, $rootimg) = @_;
+    my ($line, $error) = _rootimg_checksum_line($rootimg);
+    return $error if $error;
+    return _write_published_file("$rootimg.sha256", $line);
+}
+
+# Returns the sha256sum line of a compressed rootimage, or undef and the error message.
+sub _rootimg_checksum_line {
+    my ($rootimg) = @_;
+    my $digest = eval { Digest::SHA->new(256)->addfile($rootimg)->hexdigest }
+      or return (undef, "Cannot compute the SHA-256 checksum of $rootimg: $@");
+    return ("$digest  " . basename($rootimg) . "\n");
+}
+
+#--------------------------------------------------------------------------------------------------------
+#rootimg_checksum_enabled:
+#description: tell whether nodes must check the compressed rootimage of an image against its checksum
+#argument:
+#        $value: the rootimgchecksum attribute of the image, or undef
+#return:
+#        false when the image, or site.rootimgchecksum if the image does not set it, is 'no' or '0'
+#--------------------------------------------------------------------------------------------------------
+sub rootimg_checksum_enabled {
+    my (undef, $value) = @_;
+    ($value) = xCAT::TableUtils->get_site_attribute('rootimgchecksum') if !defined($value) || $value eq '';
+    return !(defined($value) && $value =~ /^\s*(?:no|0)\s*$/ix);
+}
+
+#--------------------------------------------------------------------------------------------------------
+#upgrade_rootimg_checksum:
+#description: on an upgrade from a release without the root image check, keep the stateless and statelite
+#             ramdisk images of that release unchecked, and give new images the check. While
+#             site.rootimgchecksum is not set, set the rootimgchecksum attribute to no for each such image
+#             that does not set it, then set site.rootimgchecksum to yes. A later upgrade changes nothing.
+#return:
+#        nothing, or the error message
+#--------------------------------------------------------------------------------------------------------
+sub upgrade_rootimg_checksum {
+    my ($class) = @_;
+    my $sitetab = xCAT::Table->new('site', -create => 1) or return 'Cannot open the site table';
+    my ($site) = $sitetab->getAttribs({ key => 'rootimgchecksum' }, 'value');
+    return if $site && defined($site->{value}) && $site->{value} ne '';
+    my $osimagetab    = xCAT::Table->new('osimage',    -create => 1) or return 'Cannot open the osimage table';
+    my $linuximagetab = xCAT::Table->new('linuximage', -create => 1) or return 'Cannot open the linuximage table';
+    my %decided = map { ($_->{imagename} => 1) } grep { defined($_->{rootimgchecksum}) && $_->{rootimgchecksum} ne '' }
+      $linuximagetab->getAllAttribs('imagename', 'rootimgchecksum');
+    foreach my $image ($osimagetab->getAllAttribs('imagename', 'provmethod')) {
+        next if $decided{ $image->{imagename} } || ($image->{provmethod} // '') !~ /^(?:netboot|statelite)$/x;
+        my (undef, $image_error) = $linuximagetab->setAttribs({ imagename => $image->{imagename} }, { rootimgchecksum => 'no' });
+        return "Cannot turn the root image check off for $image->{imagename}: $image_error" if $image_error;
+    }
+    my (undef, $site_error) = $sitetab->setAttribs({ key => 'rootimgchecksum' }, { value => 'yes' });
+    return $site_error ? "Cannot set site.rootimgchecksum: $site_error" : undef;
+}
+
+#--------------------------------------------------------------------------------------------------------
+#write_initrd_check_marker:
+#description: record that an initial ramdisk checks the compressed rootimage against its checksum.
+#             The marker holds the SHA-256 of the initial ramdisk, so a replaced ramdisk does not match it.
+#argument:
+#        $initrd: the path of the initial ramdisk
+#return:
+#        on success: nothing
+#        on fail:    the error message
+#--------------------------------------------------------------------------------------------------------
+sub write_initrd_check_marker {
+    my (undef, $initrd) = @_;
+    my $digest = eval { Digest::SHA->new(256)->addfile($initrd)->hexdigest }
+      or return "Cannot compute the SHA-256 checksum of $initrd: $@";
+    return _write_published_file("$initrd.rootimgcheck", "sha256=$digest\n");
+}
+
+#--------------------------------------------------------------------------------------------------------
+#initrd_checks_rootimg:
+#description: tell whether genimage built an initial ramdisk that checks the compressed rootimage
+#arguments:
+#        $initrd: the path of the initial ramdisk, or of a copy of it
+#        $marker: the marker that genimage wrote, by default <initrd>.rootimgcheck
+#return:
+#        true when the marker holds the SHA-256 of the initial ramdisk
+#--------------------------------------------------------------------------------------------------------
+sub initrd_checks_rootimg {
+    my (undef, $initrd, $marker_path) = @_;
+    open(my $marker, '<', $marker_path // "$initrd.rootimgcheck") or return 0;
+    my $line = <$marker> // '';
+    close($marker);
+    my ($recorded) = $line =~ /^sha256=([0-9a-f]{64})$/x or return 0;
+    my $digest = eval { Digest::SHA->new(256)->addfile($initrd)->hexdigest } or return 0;
+    return $digest eq $recorded;
+}
+
+#--------------------------------------------------------------------------------------------------------
+#prepare_rootimg_checksum:
+#description: write the missing checksums of an image before nodeset copies its boot files. With the check
+#             turned off, a checksum that cannot be written is a warning instead of an error.
+#arguments (by name):
+#        value:      the rootimgchecksum attribute of the image, or undef
+#        rootimgdir: the image directory
+#        imagename:  the image name, for the messages
+#        warned:     a hash of the image directories that already got a warning
+#        callback:   the request callback
+#return:
+#        nothing, or the error that keeps nodeset from setting up the node
+#--------------------------------------------------------------------------------------------------------
+sub prepare_rootimg_checksum {
+    my ($class, %args) = @_;
+    my $rootimgdir = $args{rootimgdir};
+    my $imagename  = $args{imagename} || $rootimgdir;
+
+    # A node whose boot entry nodeset wrote while the check was on still checks, so every archive gets a checksum.
+    my $error = $class->publish_missing_rootimg_checksums($rootimgdir) or return;
+    $error =~ s/\.$//x;
+    if (!$class->rootimg_checksum_enabled($args{value})) {
+        $args{callback}->({ warning => [ "$error. Nodes of $imagename whose boot entries still ask for the check "
+                  . "download the root image again until nodeset runs for them." ] }) unless $args{warned}{$rootimgdir}++;
+        return;
+    }
+    return "The root image of $imagename has no checksum that its initial ramdisk can check: $error. "
+      . "Run packimage for the image, then nodeset.";
+}
+
+#--------------------------------------------------------------------------------------------------------
+#rootimg_checksum_boot:
+#description: decide how a node checks the compressed rootimage that it downloads at boot, and warn once
+#             for each image whose initial ramdisk has no matching marker
+#arguments (by name):
+#        value:      the rootimgchecksum attribute of the image, or undef
+#        rootimgdir: the image directory
+#        initrd:     the initial ramdisk that nodes boot, as nodeset left it in TFTP
+#        imagename:  the image name, for the messages
+#        warned:     a hash of the image directories that already got a warning
+#        callback:   the request callback
+#return:
+#        the kernel argument that asks the node to check, or an empty string when the check is off
+#--------------------------------------------------------------------------------------------------------
+my %initrd_checks;
+sub rootimg_checksum_boot {
+    my ($class, %args) = @_;
+    return '' unless $class->rootimg_checksum_enabled($args{value});
+    my ($rootimgdir, $initrd) = @args{qw(rootimgdir initrd)};
+    my $imagename = $args{imagename} || $rootimgdir;
+
+    # The copy in TFTP checks only when it matches the marker that genimage wrote in the image directory.
+    my $marker = "$rootimgdir/" . basename($initrd) . '.rootimgcheck';
+
+    # nodeset runs this for every node, so each version of the initial ramdisk and its marker is hashed once.
+    my @version = map { (stat($_))[ 0, 1, 7, 9 ] } ($initrd, $marker);
+    my $key = join(':', $initrd, map { $_ // '' } @version);
+    $initrd_checks{$key} //= $class->initrd_checks_rootimg($initrd, $marker) ? 1 : 0;
+    $args{callback}->({ warning => [ "Cannot tell whether the initial ramdisk $initrd checks the root image checksum, so "
+              . "nodes may boot the root image of $imagename unchecked. Run genimage for the image and then nodeset, or "
+              . "set its rootimgchecksum attribute to no." ] }) unless $initrd_checks{$key} || $args{warned}{$rootimgdir}++;
+    return 'rootimgchecksum=yes ';
+}
+
+# Returns the content of a file, or undef when it cannot be read.
+sub _read_published_file {
+    my ($path) = @_;
+    open(my $file, '<', $path) or return;
+    local $/ = undef;
+    my $content = <$file>;
+    close($file);
+    return $content;
+}
+
+# A rename publishes the file, so no reader sees it partial.
+sub _write_published_file {
+    my ($path, $content) = @_;
+    my $temp = "$path.$$";
+    my $written;
+    if (open(my $file, '>', $temp)) {
+        $written = print($file $content) && close($file);
+    }
+    unless ($written && chmod(0644, $temp) && rename($temp, $path)) {
+        my $error = $!;
+        unlink($temp);
+        return "Cannot write $path: $error";
+    }
+    return;
+}
+
+#--------------------------------------------------------------------------------------------------------
+#publish_rootimg:
+#description: replace a published compressed rootimage, its checksum and its metainfo with staged files.
+#             Nodes keep downloading the previous rootimage until the rename replaces it. When the
+#             publication fails, the previous files stay as they were.
+#argument:
+#        $staged:        the staged compressed rootimage, with <staged>.sha256 and <staged>.metainfo when they exist
+#        $target:        the published path
+#        $remove_others: true to remove the other rootimg.* files of the image directory
+#        $held:          the publication lock from lock_rootimg_publication, when the caller holds it
+#return:
+#        on success: nothing
+#        on fail:    the error message
+#--------------------------------------------------------------------------------------------------------
+sub publish_rootimg {
+    my ($class, $staged, $target, $remove_others, $held) = @_;
+    my $dir = dirname($target);
+    my ($lock, $lock_error) = $held ? ($held) : _acquire_publish_lock($dir);
+    return $lock_error unless $lock;
+    my %state = (staged => $staged, target => $target, previous => dirname($staged) . '/previous',
+        sums => _read_published_file("$target.sha256"));
+    my $error = _replace_rootimg(\%state);
+    if (defined($error)) {
+        my $restore_error = _restore_rootimg(\%state);
+        $error .= ", and $restore_error" if $restore_error;
+    } else {
+        # A checksum file that keeps the previous line still matches the new archive, so this rename may fail.
+        rename("$staged.sha256", "$target.sha256") if -e "$staged.sha256";
+        if ($remove_others) {
+            # A node that already downloads another format checks it after the download, so the checksums stay.
+            my %kept = map { ($_ => 1) } ($target, "$target.metainfo");
+            unlink grep { !$kept{$_} && !/\.sha256$/x } $class->image_dir_entries($dir, qr/\Arootimg\./x);
+        }
+    }
+
+    # Afterwards, only a staging directory that keeps previous files for a failed publication holds them.
+    unlink(grep { -e $_ || -l $_ } map { "$state{previous}$_" } ('', '.metainfo', '.sha256')) if !$state{retained};
+    _release_publish_lock($lock) if !$held;
+    return if !defined($error);
+    return "Cannot publish $target: $error";
+}
+
+#--------------------------------------------------------------------------------------------------------
+#unpublish_rootimg:
+#description: remove a published compressed rootimage with its checksum and metainfo
+#arguments:
+#        $target: the published path
+#        $held:   the publication lock from lock_rootimg_publication, when the caller holds it
+#return:
+#        on success: nothing
+#        on fail:    the error message
+#--------------------------------------------------------------------------------------------------------
+sub unpublish_rootimg {
+    my ($class, $target, $held) = @_;
+    my ($lock, $error) = $held ? ($held) : _acquire_publish_lock(dirname($target));
+    return $error unless $lock;
+    my @files = grep { -e $_ || -l $_ } ($target, "$target.sha256", "$target.metainfo");
+    $error = "Cannot remove $target: $!" if unlink(@files) != @files;
+    _release_publish_lock($lock) if !$held;
+    return $error;
+}
+
+#--------------------------------------------------------------------------------------------------------
+#lock_rootimg_publication:
+#description: take the publication lock of an image directory. packimage and imgimport on every host take
+#             it before they publish a compressed rootimage there.
+#argument:
+#        $dir: the image directory
+#return:
+#        on success: the lock, for publish_rootimg, unpublish_rootimg and unlock_rootimg_publication
+#        on fail:    undef and the error message
+#--------------------------------------------------------------------------------------------------------
+sub lock_rootimg_publication {
+    my (undef, $dir) = @_;
+    return _acquire_publish_lock($dir);
+}
+
+sub unlock_rootimg_publication {
+    my (undef, $lock) = @_;
+    return _release_publish_lock($lock);
+}
+
+# Keeps $from at $to through a hard link, or through a copy with the mode of $from, which nodes need to read it.
+sub _keep_copy {
+    my ($from, $to) = @_;
+    return 1 if link($from, $to);
+    my $mode = (stat($from))[2];
+    return File::Copy::copy($from, $to) && defined($mode) && chmod(Fcntl::S_IMODE($mode), $to);
+}
+
+# Replaces the published archive and its metainfo with the staged files, and records in $state what changed.
+sub _replace_rootimg {
+    my ($state) = @_;
+    my ($staged, $target, $previous) = @$state{qw(staged target previous)};
+    my @files = ($staged, grep { -e $_ } map { "$staged.$_" } qw(sha256 metainfo));
+    $state->{first} = !-e $target && !-l $target;
+
+    # A failed publication puts the previous archive back from a link, or from a copy without hard links.
+    return "$!" if -e $target && !_keep_copy($target, $previous);
+    return "$!" if !-s $staged || chmod(0644, @files) != @files;
+    my $error = _replace_sums($state);
+    return $error if $error;
+
+    # The previous metainfo leaves first, so it never describes the new archive.
+    if (-e "$target.metainfo") {
+        $state->{metainfo_moved} = rename("$target.metainfo", "$previous.metainfo") or return "$!";
+    }
+    $state->{replaced} = rename($staged, $target) or return "$!";
+    return "$!" if -e "$staged.metainfo" && !rename("$staged.metainfo", "$target.metainfo");
+    return;
+}
+
+# Writes the checksum file of the publication in $state for the time that the archive is replaced, and returns
+# why it cannot.
+sub _replace_sums {
+    my ($state) = @_;
+    my ($staged, $target, $previous) = @$state{qw(staged target previous)};
+
+    # A rollback renames the previous checksum entry back, so a symlink stays a symlink.
+    $state->{sums_entry} = (-e "$target.sha256" || -l "$target.sha256") && link("$target.sha256", "$previous.sha256");
+
+    # Until the archive is replaced, the checksum file lists the new and the previous archive, so the published
+    # archive matches a line of it, also when the publisher is killed.
+    if (-e "$staged.sha256") {
+        # An archive packed without a checksum stays published until the rename, so the list needs its line too.
+        my ($previous_line, $error) = ($state->{sums});
+        ($previous_line, $error) = _rootimg_checksum_line($target) if !defined($previous_line) && -e $target;
+        return $error if $error;
+        $state->{sums_changed} = 1;
+        return _write_published_file("$target.sha256", _read_published_file("$staged.sha256") . ($previous_line // ''));
+    }
+    if (defined($state->{sums})) {
+        $state->{sums_changed} = 1;
+        unlink("$target.sha256") or return "$!";
+    }
+    return;
+}
+
+# Moves the previous files that staging holds, the previous archive with each of @suffixes, to a new directory
+# next to the target, because staging cleanup would delete them. Staging that keeps a file that cannot move
+# stays. Returns the directories that keep the files.
+sub _keep_previous {
+    my ($state, @suffixes) = @_;
+    my ($target, $previous) = @$state{qw(target previous)};
+    my $kept = eval { File::Temp::tempdir('.rootimg-previous-XXXXXXXX', DIR => dirname($target)) };
+    my $name = basename($target);
+    my ($moved, $stuck) = (0, 0);
+    foreach my $suffix (grep { -e "$previous$_" || -l "$previous$_" } @suffixes) {
+        if ($kept && rename("$previous$suffix", "$kept/$name$suffix")) {
+            $moved++;
+        } else {
+            $stuck++;
+        }
+    }
+    rmdir($kept) if $kept && !$moved;
+    return (($moved ? $kept : ()), ($stuck ? _retain_stage($state) : ()));
+}
+
+# Keeps the staging directory of the publication in $state, also when its owner drops it, and returns it.
+sub _retain_stage {
+    my ($state) = @_;
+    my $stage = dirname($state->{previous});
+    $rootimg_stages{$stage}->unlink_on_destroy(0) if $rootimg_stages{$stage};
+    $state->{retained} = 1;
+    return $stage;
+}
+
+# Puts back the previous files that _replace_rootimg changed, or returns why it cannot.
+sub _restore_rootimg {
+    my ($state) = @_;
+    my ($target, $previous) = @$state{qw(target previous)};
+    if ($state->{replaced} && $state->{first}) {
+
+        # No archive was published before, so the new one leaves again.
+        unlink($target) or return "the new archive cannot be removed: $!";
+    } elsif ($state->{replaced} && !rename($previous, $target)) {
+        my $error = "$!";
+        my @kept  = _keep_previous($state, '', '.metainfo');
+        return "the previous archive cannot be put back: $error, nor kept" if !@kept;
+        my $archive = "$kept[0]/" . basename($target);
+        _write_published_file("$archive.sha256", $state->{sums}) if defined($state->{sums}) && -e $archive;
+        return "the previous archive cannot be put back: $error. It is kept in " . join(' and ', @kept);
+    }
+    my @errors;
+    if ($state->{metainfo_moved} && !rename("$previous.metainfo", "$target.metainfo")) {
+        my $error = "$!";
+        my @kept  = _keep_previous($state, '.metainfo');
+        push @errors, "the previous metainfo cannot be put back: $error" . (@kept ? '. It is kept in ' . join(' and ', @kept) : ', nor kept');
+    }
+    if ($state->{sums_changed}) {
+        my $error = _restore_sums($state);
+        push @errors, "the previous checksum cannot be put back: $error" if $error;
+    }
+    return @errors ? join(', and ', @errors) : undef;
+}
+
+# Puts back the previous checksum file of the publication in $state, or returns why it cannot. The kept entry goes
+# back as it was, also a symlink. Otherwise the previous content goes back, so that nodes can check the archive.
+sub _restore_sums {
+    my ($state) = @_;
+    my ($target, $previous) = @$state{qw(target previous)};
+    return if $state->{sums_entry} && rename("$previous.sha256", "$target.sha256");
+    my $entry_error = $state->{sums_entry} ? "$!" : undef;
+    my $error = defined($state->{sums}) ? _write_published_file("$target.sha256", $state->{sums})
+      : (-e "$target.sha256" && !unlink("$target.sha256")) ? "Cannot remove $target.sha256: $!" : undef;
+    return $error if $error;
+    return defined($entry_error) ? "$entry_error. Its previous content went back instead" : undef;
+}
+
+#--------------------------------------------------------------------------------------------------------
+#publish_missing_rootimg_checksums:
+#description: write the checksum of each published compressed rootimage of an image directory that has
+#             none. An initial ramdisk that checks the rootimage refuses an image packed before the check.
+#argument:
+#        $dir: the image directory
+#return:
+#        on success: nothing
+#        on fail:    the error message
+#--------------------------------------------------------------------------------------------------------
+sub publish_missing_rootimg_checksums {
+    my ($class, $dir) = @_;
+    my @formats = qw(rootimg.gz rootimg.cpio.gz rootimg.cpio.xz rootimg.tar.gz rootimg.tar.xz rootimg.sfs rootimg-statelite.gz);
+    my $missing = sub { grep { -f "$dir/$_" && !-e "$dir/$_.sha256" } @formats };
+    my @missing = $missing->();
+    return if !@missing;
+
+    # The lock keeps packimage from replacing an archive while this checksum is computed.
+    my ($lock, $error) = _acquire_publish_lock($dir);
+    return $error unless $lock;
+    foreach my $file ($missing->()) {
+        $error = $class->write_rootimg_checksum("$dir/$file");
+        last if $error;
+    }
+    _release_publish_lock($lock);
+    return $error;
+}
+
+# The image lock is per host, and mkdir is atomic for every host, also on NFS without locks.
+sub _acquire_publish_lock {
+    my ($dir) = @_;
+    my $lock = "$dir/.packimage-publish";
+    for (my $waited = 0; !mkdir($lock); $waited++) {
+        return (undef, "Cannot create $lock: $!") unless $! == EEXIST;
+        my $age = time() - ((stat($lock))[9] // time());
+        if ($waited >= $publish_lock_wait || $age > $publish_lock_wait) {
+            my $holder = '';
+            if (open(my $owner, '<', "$lock/owner")) {
+                $holder = <$owner> // '';
+                close($owner);
+                chomp($holder);
+                $holder = " by $holder" if $holder;
+            }
+            return (undef, "$lock is held$holder. If no packimage or imgimport of this image runs on any host, "
+                  . "remove it and run the command again.");
+        }
+        sleep 1;
+    }
+    if (open(my $owner, '>', "$lock/owner")) {
+        print $owner Sys::Hostname::hostname() . " $$\n";
+        close($owner);
+    }
+    return ($lock);
+}
+
+sub _release_publish_lock {
+    my ($lock) = @_;
+    unlink("$lock/owner");
+    rmdir($lock);
+    return;
 }
 
 

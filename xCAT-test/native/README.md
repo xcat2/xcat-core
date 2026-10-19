@@ -2,7 +2,8 @@
 
 These tests use the source checkout with RPM tools, Linux namespaces or real
 service binaries. They are separate from `unit/` and are not discovered by the
-default pull-request unit run. Run them explicitly on a disposable Linux host.
+unit runner. CI selects specific cases explicitly; run the others on a
+disposable Linux host.
 
 The postinstall case requires bubblewrap and the Perl modules used by the xCAT
 template renderer. It runs complete rendered installer and postboot scripts in
@@ -61,6 +62,15 @@ agent. These checks inspect real packages and repository output; they do not
 qualify package installation on every target architecture. On EL8, install both
 `python36` and `python3-rpm` to provide the interpreter and its RPM bindings.
 
+The Debian probe permission test has a separate pull-request CI step. It needs
+Debian build tools, BATS, bubblewrap, fakeroot, reprepro and
+libfile-slurper-perl. Run it as an ordinary user on a Debian or Ubuntu host
+with unprivileged namespaces enabled:
+
+```
+bats xCAT-test/native/probe_debian_permissions.bats
+```
+
 Run the package and unprivileged namespace cases as an ordinary user:
 
 ```
@@ -77,15 +87,17 @@ Net::DNS:
 
 ```
 prove xCAT-test/native/genimage_network_drivers.t \
-      xCAT-test/native/el10_image_package_policy.t
+      xCAT-test/native/el10_image_package_policy.t \
+      xCAT-test/native/rh_genimage_chroot_mounts.t
 ```
 
 These cases run complete callers in private filesystems with no network.
 They check driver configuration after real driver-disk loading, media-import
-records and parsed RPM installation scriptlets.
+records, parsed RPM installation scriptlets and the mounts that a new RPM
+image has when its packages install.
 External package downloads, service management, disk mounts and initrd creation
 use command fixtures. These cases do not boot an image or qualify hardware.
-The two Perl image caller tests fail if run as root.
+The Perl image caller tests fail if run as root.
 
 The default BATS suite also runs `networkmanager_postscript.bats`. It renders
 installation postscripts and checks their network configuration in isolation.
@@ -103,6 +115,15 @@ sudo prove xCAT-test/native/ip_forwarding.t \
       xCAT-test/native/syslog_openeuler*.t
 ```
 
+The mock result directory case needs the mock Python library, and root for its
+ownership checks. The staged sources case needs root to read the sources as uid
+1000. The `xcat_test` workflow runs both as root in a Fedora container:
+
+```
+sudo prove xCAT-test/native/mock_resultdir_owner.t \
+      xCAT-test/native/build_sources_other_uid.t
+```
+
 The PostgreSQL case starts a private server with only a Unix socket. Run it as
 an ordinary user with `XCAT_TEST_PG_BINDIR` set to the directory containing
 `initdb`, `pg_ctl`, `postgres`, `psql` and `createdb`:
@@ -110,6 +131,57 @@ an ordinary user with `XCAT_TEST_PG_BINDIR` set to the directory containing
 ```
 XCAT_TEST_PG_BINDIR=/usr/bin prove xCAT-test/native/pgsqlsetup_native_schema.t
 ```
+
+The pull-request workflow runs the liteimg archive case explicitly. It runs the
+statelite plugin with real cpio, gzip and find, and needs the Perl modules of
+the unit suite, including DBD::SQLite:
+
+```
+prove xCAT-test/native/liteimg_ramdisk_archive.t
+```
+
+Compressor and ctorrent fixtures record what nodes can download during the
+pack, or fail on request. The image lock and the ilitefile query are test
+doubles. This case does not boot the image.
+
+The disk, kdump, sudoer and remoteshell cases require bats-core 1.4 or newer,
+Bubblewrap, GNU timeout, diffutils, Capture::Tiny, File::Slurper and sudo's
+`visudo`. The remoteshell case also needs `/usr/bin/openssl` and `ssh-keygen`
+with DSA, RSA, ECDSA and Ed25519 support.
+Sandbox commands have a 45-second limit. Enable Linux user namespaces.
+Run the group as root because
+the disk-selection case creates dummy block-device entries:
+
+```
+sudo bats xCAT-test/native/getinstdisk_selection.bats
+sudo prove xCAT-test/native/getinstdisk_installer.t \
+      xCAT-test/native/enablekdump_per_node.t \
+      xCAT-test/native/sudoer_password_source.t \
+      xCAT-test/native/remoteshell_credentials.t
+```
+
+The BATS cases source the unchanged disk selector. Partition and udev fixtures
+are the inputs; the selected disk file is the output. Each case runs twice
+with awk discovery and twice without it. Discovery searches a private fixture,
+not the host's `/usr` tree.
+
+The separate Perl case renders and runs the RHEL 10 installer fragment. It
+checks that the partition plan uses the selected disk. It needs the system
+Perl with xCAT's dependencies, XML::Simple and DBD::SQLite. The sandbox does
+not mount perlbrew or local::lib directories.
+
+When the checkout is inside another user's private home, copy it as root to a
+temporary directory under `/tmp` first. Root inside the test's user namespace
+cannot traverse a private directory owned by that user. CI uses a root-owned
+copy for this reason.
+
+These cases run the unchanged scripts with private filesystems and no network.
+Disk discovery, NFS mounts, credentials, account commands and service commands
+use fixtures. The disk case never opens its dummy devices. The sudoer case
+checks generated rules with the real `visudo` parser. The remoteshell case
+generates disposable SSH keys and checks their installation through the real script.
+These tests do not perform
+an installation, capture a kernel crash or modify host accounts.
 
 The SELinux policy case runs as root in a disposable EL10 container. It needs
 `make`, `selinux-policy-devel`, `selinux-policy-targeted`, `libselinux-utils`,
@@ -217,10 +289,18 @@ console with Meson, then runs the installed program. It requires a C compiler,
 Meson, Ninja, pkg-config, and development packages for Newt and systemd.
 
 `python3 xCAT-test/native/genesis_console_dialogs.py` needs the same build
-dependencies plus the `pyte` Python package. It runs the linked console in a
-pseudo-terminal and checks help and diagnostics navigation, scrolling and
-return to the main screen. It checks termination from the main screen, not
-from inside a dialog.
+dependencies plus the `pyte` Python package, bubblewrap,
+systemd-journal-remote and journalctl. It runs the linked console in a
+pseudo-terminal and checks help and diagnostics navigation, scrolling,
+return to the main screen, and F3 journal filtering, order and history limits.
+It checks termination from the main screen, not from inside a dialog.
+
+The journal cases need working Linux user and mount namespaces. On Ubuntu
+24.04, the CI job enables them with
+`sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0`.
+They import private journal files and verify their contents with journalctl
+before opening F3. They do not start a journal service or read the host
+journal. Missing tools or namespace support fail the tests; they do not skip.
 
 The Genesis runtime BATS cases need Bash, Perl, OpenSSL, coreutils, diffutils
 and bubblewrap. The credential-file cases use a private `/etc` in a Linux
@@ -231,3 +311,36 @@ The unit test retains checks of the vendored release key, requested kernel
 fragments and console service configuration. The BATS tests retain runtime,
 console, hardware and packet behavior. None of these checks replaces a full
 image build, inspection of its resolved kernel configuration or a boot test.
+
+## Profile artifacts
+
+These cases render install profiles, run netboot postscripts, build a Debian
+repository, and execute rendered Subiquity commands. Run them as an ordinary
+user with Bubblewrap and unprivileged user namespaces enabled:
+
+```
+prove xCAT-test/native/install_profile_riscv64.t \
+      xCAT-test/native/netboot_profile_riscv64.t \
+      xCAT-test/native/builddebs_riscv64.t \
+      xCAT-test/native/ubuntu_subiquity_template.t
+```
+
+The renderers need the system Perl with the xCAT dependencies, XML::Simple,
+DBD::SQLite, Capture::Tiny, and File::Slurper. The sandbox clears the environment
+and does not mount perlbrew or local::lib directories. The Subiquity case also
+needs /usr/bin/python3 with PyYAML; on EL8, install python36 for that path.
+The Debian case needs debhelper, devscripts, fakeroot, and reprepro, and skips
+on non-Debian hosts. Each case creates its own temporary files and database.
+The temporary directory must allow execution; set TMPDIR if /tmp is noexec.
+Sandbox commands require GNU timeout and have a 45-second limit.
+Pull-request CI runs these cases and rejects whole-file skips. The permissive
+SELinux case records an existing postinstall defect as TODO, without changing
+production behavior.
+
+The netboot case executes the selected postinstall file directly. Its private
+/bin/sh uses Bash, as on EL, including when the test host uses another shell.
+
+The Subiquity case replaces downloads and external commands, and uses a
+loopback install-monitor peer. It does not install an operating system.
+Architecture names in these fixtures do not qualify native firmware or boot
+behavior on those architectures.

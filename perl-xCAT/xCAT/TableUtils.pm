@@ -2171,4 +2171,37 @@ sub rmnodegroups {
     $tabhd->setNodeAttribs($node, { groups => join(",", @newgroups) });
 }
 
+#-----------------------------------------------------------------------------
+
+
+=head3 delete_rows
+    delete the rows that match the keys from each named table
+
+    Arguments:
+      keys: a hash reference of key column values
+      names: the table names
+    Returns:
+      undef, or the name of the first table that does not open
+    Example:
+         my $missing = xCAT::TableUtils->delete_rows({ node => 'n1' }, 'nodehm', 'noderes');
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub delete_rows {
+    my ($class, $keys, @names) = @_;
+
+    # Every table opens before the first delete, so a table that does not open leaves all of them unchanged.
+    my %tables;
+    foreach my $name (@names) {
+        $tables{$name} = xCAT::Table->new($name, -create => 1, -autocommit => 0) or return $name;
+    }
+    foreach my $name (@names) {
+        $tables{$name}->delEntries($keys);
+        $tables{$name}->commit;
+    }
+    return;
+}
+
 1;

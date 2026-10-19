@@ -451,6 +451,12 @@ sub process_request {
                 $installdir = $siteents[0];
             }
 
+            # The new initial ramdisk also checks for nodes with older boot entries, so an archive packed before the check gets a checksum.
+            if (my $error = xCAT::SvrUtils->publish_missing_rootimg_checksums($rootimg_dir)) {
+                $error =~ s/\.$//x;
+                $callback->({ error => ["$error. The new initial ramdisk is not copied to $tftppath. Run packimage $imagename, then nodeset."], errorcode => [1] });
+                return 1;
+            }
             unless (-d $tftppath) {
                 mkpath $tftppath;
             }

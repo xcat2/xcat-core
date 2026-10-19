@@ -3,8 +3,10 @@ use strict;
 use Digest::SHA ();
 use File::Temp qw(tempdir tempfile);
 use xCAT::Utils;
+use xCAT::HTTPUtils qw(httpport_suffix);
 use xCAT::TableUtils;
 use xCAT::NodeRange;
+use xCAT::SecureBoot;
 use File::Path;
 use File::Copy;
 use English qw(-no_match_vars);
@@ -208,7 +210,7 @@ sub _install_prebuilt_genesis {
     return (undef, "Unable to create Genesis destination: $destination_dir")
       unless -d $destination_dir;
 
-    my $suffix = xCAT::Utils::genpassword(24);
+    my $staging;
     my @artifacts = (
         [ 'kernel',             "$destination_dir/genesis.kernel.$arch" ],
         [ 'initramfs.cpio.gz', "$destination_dir/genesis.fs.$arch.gz" ],
@@ -229,7 +231,14 @@ sub _install_prebuilt_genesis {
             return (undef, "Missing Genesis checksum entry: $name");
         }
 
-        my $temporary = "$destination.$suffix.new";
+        unless ($staging) {
+            # Keep staging on the destination filesystem for atomic rename.
+            $staging = eval {
+                File::Temp->newdir('mknb.XXXXXX', DIR => $destination_dir, CLEANUP => 1);
+            };
+            return (undef, "Unable to stage Genesis artifact: $source_path") unless $staging;
+        }
+        my $temporary = "$staging/$name.new";
         unless (copy($source_path, $temporary) && chmod(0644, $temporary)) {
             unlink(@staged, $temporary);
             return (undef, "Unable to stage Genesis artifact: $source_path");
@@ -252,7 +261,7 @@ sub _install_prebuilt_genesis {
             return (undef, "Invalid Genesis destination: $destination");
         }
 
-        my $backup = "$destination.$suffix.old";
+        my $backup = "$staging/$artifact->[0].old";
         unless (copy($destination, $backup)) {
             unlink(@staged, values(%backups));
             return (undef, "Unable to preserve Genesis artifact: $destination");
@@ -449,7 +458,7 @@ sub process_request {
     if ($hports[0]){
         $httpport=$hports[0];
     }
-    my $portsuffix = ( $httpport eq "80" ) ? "" : ":$httpport";
+    my $portsuffix = httpport_suffix($httpport);
 
     @entries = xCAT::TableUtils->get_site_attribute("dhcpinterfaces");
     $t_entry = $entries[0];
@@ -682,29 +691,36 @@ sub process_request {
     my $lzma_exit_value = 1;
     if ($invisibletouch) {
         my $done = 0;
-        # Build each image under a unique suffix and atomically rename it into
-        # place, so concurrent mknb runs sharing $tftpdir cannot read or clobber
-        # a half-written genesis.fs.
-        my $suffix = xCAT::Utils::genpassword(24);
+        # Keep staging on the destination filesystem for atomic rename.
+        my $staging = eval {
+            File::Temp->newdir('mknb.XXXXXX', DIR => "$tftpdir/xcat", CLEANUP => 1);
+        };
+        unless ($staging) {
+            rmtree($tempdir);
+            $callback->({ error => ["Failed to create a temporary directory"], errorcode => [1] });
+            return;
+        }
+        my $lzma_temporary = "$staging/genesis.fs.$arch.lzma";
         my $lzma_command = genesis_lzma_command(-x "/usr/bin/lzma", -x "/usr/bin/xz");
         if ($lzma_command) {    #let's reclaim some of that size...
             $callback->({ data => ["Creating genesis.fs.$arch.lzma in $tftpdir/xcat"] });
-            system("cd $tempdir; find . | cpio -o -H newc | $lzma_command > $tftpdir/xcat/genesis.fs.$arch.lzma.$suffix");
+            system("cd $tempdir; find . | cpio -o -H newc | $lzma_command > $lzma_temporary");
             $lzma_exit_value = $? >> 8;
             if ($lzma_exit_value) {
                 $callback->({ data => ["Creating genesis.fs.$arch.lzma in $tftpdir/xcat failed, falling back to gzip"] });
-                unlink("$tftpdir/xcat/genesis.fs.$arch.lzma.$suffix");
+                unlink($lzma_temporary);
             } else {
-                move("$tftpdir/xcat/genesis.fs.$arch.lzma.$suffix", "$tftpdir/xcat/genesis.fs.$arch.lzma");
+                move($lzma_temporary, "$tftpdir/xcat/genesis.fs.$arch.lzma");
                 $done        = 1;
                 $initrd_file = "$tftpdir/xcat/genesis.fs.$arch.lzma";
             }
         }
 
         if (not $done) {
+            my $gzip_temporary = "$staging/genesis.fs.$arch.gz";
             $callback->({ data => ["Creating genesis.fs.$arch.gz in $tftpdir/xcat"] });
-            system("cd $tempdir; find . | cpio -o -H newc | gzip -9 > $tftpdir/xcat/genesis.fs.$arch.gz.$suffix");
-            move("$tftpdir/xcat/genesis.fs.$arch.gz.$suffix", "$tftpdir/xcat/genesis.fs.$arch.gz");
+            system("cd $tempdir; find . | cpio -o -H newc | gzip -9 > $gzip_temporary");
+            move($gzip_temporary, "$tftpdir/xcat/genesis.fs.$arch.gz");
             $initrd_file = "$tftpdir/xcat/genesis.fs.$arch.gz";
         }
     } else {
@@ -775,7 +791,7 @@ sub process_request {
     my $cfgfile;
     # The upstream iPXE loader of an unknown x86 client fetches the discovery scripts from xcat/ipxe.
     # xcat/xnba keeps them for a server whose DHCP configuration still names it.
-    my @x86_nets = map { "$tftpdir/xcat/$_/nets" } qw(ipxe xnba);
+    my @x86_nets = map { { method => $_, dir => "$tftpdir/xcat/$_/nets" } } qw(ipxe xnba);
     if ($arch =~ /x86/) {
         mkpath("$tftpdir/xcat/xnba/nets");
         chmod(0755, "$tftpdir/xcat/xnba");
@@ -830,7 +846,9 @@ sub process_request {
             next;
         }
         if ($arch =~ /x86/) {
-            foreach my $nets (@x86_nets) {
+            foreach my $netsent (@x86_nets) {
+                my $method = $netsent->{method};
+                my $nets   = $netsent->{dir};
                 $dopxe = 0;
                 if ($arch =~ /x86_64/ and not $invisibletouch) {    #only do pxe if just x86 or x86_64 and no x86
                     if (-r "$nets/$net") {
@@ -874,6 +892,12 @@ sub process_request {
                     open($cfg, ">", "$nets/$net.uefi");
                     print $cfg "#!gpxe\n";
                     print $cfg 'imgfetch -n kernel http://${next-server}'.$portsuffix.'/tftpboot/xcat/genesis.kernel.' . "$arch\nimgload kernel\n";
+                    # The shim command reads the selected image, so it comes after imgload.
+                    # The loader of xnba does not know the shim command, and no key signs xnba.efi.
+                    my $shim = ($method eq 'ipxe')
+                      ? xCAT::SecureBoot->shim_url_path(arch => $arch, tftpdir => $tftpdir)
+                      : undef;
+                    print $cfg 'shim http://${next-server}' . $portsuffix . $shim . "\n" if ($shim);
                     print $cfg "imgargs kernel xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/mac:hexhyp}' . " destiny=discover initrd=initrd\n";
                     print $cfg 'imgfetch -n initrd http://${next-server}'.$portsuffix . "$initrd_file\nimgexec kernel\n";
                     close($cfg);
@@ -1090,7 +1114,7 @@ sub _write_grub2_discovery_config {
     # loads it over HTTP like netboot=grub2-http; the TFTP entry is for a management
     # node that does not serve the TFTP root over HTTP.
     my $httpport = $args{httpport} || '80';
-    my $httproot = 'http,' . $args{xcatd_address} . ($httpport eq '80' ? '' : ":$httpport");
+    my $httproot = 'http,' . $args{xcatd_address} . httpport_suffix($httpport);
     my $http_tftp_root = '/tftpboot';
     my $tftproot = 'tftp,' . $args{xcatd_address};
     my $content = "# xCAT Genesis discovery for network $hexnet - generated by mknb, do not edit\n";

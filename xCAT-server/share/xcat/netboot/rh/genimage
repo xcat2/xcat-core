@@ -123,7 +123,8 @@ sub mount_chroot {
     }
 
     if (-d "/run") {
-        system("mount --bind /run $rootimg_dir/run");
+        system("mkdir -p $rootimage_dir/run");
+        system("mount --bind /run $rootimage_dir/run");
     }
 }
 
@@ -1304,11 +1305,21 @@ sub mkinitrd_dracut {
                 "$rootimg_dir/tmp/initrd.$$.gz", $mode);
         } or xdie($@);
         print "the initial ramdisk for $mode is generated successfully.\n";
+        mark_rootimg_check($mode);
         return;
     }
     print "the initial ramdisk for $mode is generated successfully.\n";
     print("Move $rootimg_dir/tmp/initrd.$$.gz -> $destdir/initrd-$mode.gz");
-    move("$rootimg_dir/tmp/initrd.$$.gz", "$destdir/initrd-$mode.gz");
+    move("$rootimg_dir/tmp/initrd.$$.gz", "$destdir/initrd-$mode.gz") and mark_rootimg_check($mode);
+}
+
+# nodeset warns unless this marker says that the stateless initial ramdisk checks the root image checksum.
+sub mark_rootimg_check {
+    my ($mode) = @_;
+    return unless $mode eq 'stateless' && $dracutdir =~ /^dracut_(?:033|047|105)$/x;
+    require xCAT::SvrUtils;
+    my $error = xCAT::SvrUtils->write_initrd_check_marker("$destdir/initrd-$mode.gz");
+    print "Warning: $error\n" if $error;
 }
 
 sub mkinitrd {

@@ -8,6 +8,7 @@ use warnings;
 
 use File::Temp qw(tempdir);
 use FindBin;
+use lib "$FindBin::Bin/../../perl-xCAT";
 use Test::More;
 
 my $repo = "$FindBin::Bin/../..";
@@ -48,7 +49,7 @@ BEGIN {
 # the plugin directory of this checkout.
 my $inc = tempdir( CLEANUP => 1 );
 symlink( "$repo/xCAT-server/lib/xcat/plugins", "$inc/xCAT_plugin" ) or die "symlink: $!";
-unshift @INC, $inc, "$repo/xCAT-server/lib/perl";
+unshift @INC, $inc, "$repo/xCAT-server/lib/perl", "$repo/perl-xCAT";
 require xCAT_plugin::ipxe;
 require xCAT::SvrUtils;
 
