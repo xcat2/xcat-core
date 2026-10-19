@@ -198,7 +198,7 @@ sub fixture {
         mac => {node1 => {mac => '525400123456'}}, iscsi => {},
     );
     @xCAT::Table::networks = ({net => '192.0.2.0', mask => '255.255.255.0', domain => 'example.test'});
-    %xCAT::TableUtils::site = (master => 'mn', nameservers => '192.0.2.1', xcatiport => '3002');
+    %xCAT::TableUtils::site = (master => 'mn', nameservers => '192.0.2.1', xcatiport => '3002', sharedtftp => 0);
     %xCAT::NetworkUtils::addresses = (mn => '198.51.100.1', node1 => '192.0.2.10', sn => '192.0.2.1');
     @xCAT::NetworkUtils::facing = (0, '192.0.2.1');
     $xCAT::NetworkUtils::forwarding = 0;

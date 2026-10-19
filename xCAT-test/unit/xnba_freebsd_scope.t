@@ -209,6 +209,8 @@ for my $bad_owner (undef, '', 'sn1,sn2', 'sn1 sn2', '2001:db8::1', '../sn1', [],
     subtest 'invalid or ambiguous service-node owner fails closed' => sub {
         fixture();
         $xCAT::Table::rows{noderes}{node2}{xcatmaster} = $bad_owner;
+        $xCAT::Table::rows{noderes}{node2}{servicenode} = 'sn1,sn1'
+            if !defined($bad_owner) || $bad_owner eq '';
         my ($requests, $errors) = scope('osimage', 'node1', 'node2');
         is_deeply($requests, [], 'no selected request is dispatched');
         ok(@$errors, 'invalid owner produces an error');

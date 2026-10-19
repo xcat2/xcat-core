@@ -157,7 +157,7 @@ for my $missed (qw(nodeset updatenodestat)) {
 {
     my ($root, $token) = fixture();
     local $xCAT::Table::unavailable = 1;
-    rejected(sub { status($root, $token, 'begin'); }, qr/Cannot read nodelist/, 'database unavailable');
+    rejected(sub { status($root, $token, 'begin'); }, qr/Cannot (?:read nodelist|open node resources)/, 'database unavailable');
 }
 {
     my ($root, $token) = fixture();
