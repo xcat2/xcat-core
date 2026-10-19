@@ -112,10 +112,14 @@ END {
             if (!(name SUBSEP key in input)) continue
             setting=input[name,key]
             if (key=="mountpoint") {
-                if (!path(setting,1)) fail("Invalid dataset mountpoint")
-                if (os && setting!=value[name,key]) fail("OS dataset mountpoints follow their dataset paths")
-                if (!os && index(setting,(parent==pool ? root : value[parent,key]) "/")!=1)
-                    fail("Data dataset mounts outside its parent")
+                if (os) {
+                    if (!path(setting,1)) fail("Invalid dataset mountpoint")
+                    if (setting!=value[name,key]) fail("OS dataset mountpoints follow their dataset paths")
+                } else {
+                    prefix=(parent==pool ? root : value[parent,key]) "/"
+                    if (index(setting,prefix)!=1) fail("Data dataset mounts outside its parent")
+                    if (!path(substr(setting,length(prefix)+1),0)) fail("Invalid dataset mountpoint")
+                }
             } else if (key=="compression") {
                 if (setting!~/^(off|lz4|gzip(-[1-9])?|zstd(-([1-9]|1[0-9]))?)$/) fail("Invalid dataset compression")
                 if (setting=="gzip-6") setting="gzip"
