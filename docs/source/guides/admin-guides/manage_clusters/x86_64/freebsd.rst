@@ -529,6 +529,12 @@ FreeBSD build host. The image then advertises ``xcat-freebsd-bootstrap-1``
 and binds the shared planner, bootstrap helper and required kernel modules
 into its runtime manifest.
 
+For dataset sections in ``partitionfile``, also supply ``--dataset-planner PATH``.
+Copy the matching ``xCAT/postscripts/configzfs-datasets.awk`` to that path on the
+FreeBSD build host. The image advertises ``xcat-freebsd-datasets-1`` and includes
+the planner in its runtime manifest. ``nodeset`` rejects dataset declarations
+when the selected image does not advertise this capability.
+
 The pkgbase build requires mfsBSD commit
 ``6e48fa48ebbb25953a7764a8f3cfda443fb9a768``. Supply the release
 ``pkg-2.6.2_1`` archive and the qualified FreeBSD native resolver. The resolver
@@ -856,8 +862,8 @@ section per data pool. For example::
     ashift=12
     mountpoint=/srv/archive
 
-The ``[os]`` heading is optional when OS settings precede all pool sections.
-Existing files without pool sections keep their previous behavior. UFS and the
+The ``[os]`` heading is optional when OS settings precede all other sections.
+Existing files without pool or dataset sections keep their previous behavior. UFS and the
 legacy single-disk ZFS policy can also precede data sections; their selected OS
 disk remains separate from all data members.
 
@@ -956,6 +962,89 @@ including the OS pool. Verify that the new cache contains all their recorded
 GUIDs before rerunning the postscript or rebooting. Do not discard an identity
 merely because its disks are temporarily unavailable. This is an administrator
 recovery operation; the postscript does not remove stale entries automatically.
+
+ZFS filesystem datasets
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Add ``[dataset POOL/PATH]`` sections to the same ``partitionfile``. The sections
+configure filesystem datasets in ``zroot`` and in declared dedicated data pools::
+
+    [dataset zroot/usr/local]
+    compression=lz4
+    recordsize=128K
+
+    [dataset zroot/var/log]
+    quota=2G
+
+    [dataset tank/projects]
+    compression=zstd-3
+    quota=1T
+
+    [dataset tank/projects/team]
+    recordsize=1M
+    refquota=100G
+    atime=off
+
+Place OS settings first. Pool and dataset sections can then appear in any order.
+Declare every custom parent dataset; the planner orders parents before children.
+Each pool accepts up to 64 declarations, within a 12 KiB dataset policy. Paths
+have at most eight components including the pool, and at most 255 characters.
+Components contain letters, digits, underscores, hyphens and dots; the first
+character cannot be a dot or hyphen. A component is limited to 63 characters.
+
+.. list-table:: Dataset properties
+   :header-rows: 1
+
+   * - Property
+     - Values and behavior
+   * - ``mountpoint``
+     - Absolute path. OS paths follow the dataset name, such as
+       ``zroot/usr/local`` at ``/usr/local``. Data paths default to the parent's
+       mountpoint plus the final dataset component. A custom data path must stay
+       below its parent's mountpoint. Sibling mountpoints cannot overlap.
+   * - ``compression``
+     - ``off``, ``lz4``, ``gzip``, ``gzip-1`` through ``gzip-9``, ``zstd``, or
+       ``zstd-1`` through ``zstd-19``. Inherits when omitted.
+   * - ``recordsize``
+     - A power of two from 512 bytes through 1 MiB. Inherits when omitted.
+   * - ``atime``
+     - ``on`` or ``off``. Inherits when omitted, except for native OS defaults.
+   * - ``quota``, ``refquota``
+     - Limit total dataset-and-descendant use or the dataset's own referenced
+       use. Omission keeps native defaults. ``none`` or ``0`` removes the limit
+       on creation; it does not modify a preserved dataset.
+   * - ``reservation``, ``refreservation``
+     - Reserve space for the dataset and descendants, or the dataset alone.
+       Omission keeps native defaults; ``none`` or ``0`` reserves no space.
+
+Sizes accept integer bytes or integer binary suffixes ``K``, ``M``, ``G``, ``T``,
+``P`` and ``E``, case-insensitively, with a maximum of 4 PiB. Record size has the
+smaller limit above. Quotas and reservations must also fit the actual pool;
+native ZFS rejects an allocation it cannot satisfy. See the
+`OpenZFS property reference <https://openzfs.github.io/openzfs-docs/man/master/7/zfsprops.7.html>`_
+for property semantics.
+
+OS datasets require the explicit ``zfs_vdevs`` policy; use ``zfs_topology=stripe``
+for one OS disk. The installer creates them before installing packages, so files
+are written into the intended filesystem. The native ``ROOT`` and
+``ROOT/default`` datasets are reserved. Standard datasets retain their mount
+behavior and ``exec``/``setuid`` settings. Their supported properties can be
+overridden, as shown for ``var/log``. Custom OS datasets must be below ``home``,
+``tmp``, ``usr``, ``var`` or ``opt``; declare ``zroot/opt`` before its children.
+OS mountpoints cannot be relocated. Reinstall recreates all OS datasets on the
+selected OS disks.
+
+New data pools create their declared datasets at first boot. Children inherit
+the pool's encryption key. Independent child encryption, zvols and boot/root
+encryption are outside this interface. A UFS OS can use dataset sections for
+dedicated ZFS data pools.
+
+For ``action=import`` or a repeated completed creation policy, each declared
+data dataset must already exist with the requested properties and inherited
+encryption. A missing dataset or mismatch fails without creating, renaming,
+destroying or changing preserved datasets. Keep the original declarations when
+reinstalling. Undeclared data datasets and snapshots remain intact. Editing
+these sections does not perform ongoing storage administration.
 
 The standalone ``configzfs.freebsd`` interface remains available for explicit
 administrator operations. Its root-owned policy under ``/etc/xcat`` contains
