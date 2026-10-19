@@ -16,7 +16,7 @@ function draid_geometry(text,    parts) {
         fail("Invalid dRAID geometry")
 }
 
-function members(role, text, minimum, grouping,    n, groups, g, count, list, i, pair, device, serial, kind, tokens, nt, singles, ns) {
+function members(role, text, minimum, grouping,    n, groups, g, count, list, i, pair, device, serial, unit, kind, tokens, nt, singles, ns) {
     if (text == "-")
         return
     n = split(text, groups, ";")
@@ -40,9 +40,12 @@ function members(role, text, minimum, grouping,    n, groups, g, count, list, i,
         group_type[role, g] = kind
         if (role != "os") group_row[++group_rows] = "G\t" role "\t" g "\t" kind
         for (i = 1; i <= count; i++) {
-            if (split(list[i], pair, "@") != 2 || pair[1] !~ /^(ada|da|nda|nvd|vtbd)(0|[1-9][0-9]{0,4})$/ ||
+            if (split(list[i], pair, "@") != 2 || pair[1] !~ /^(ada|da|nda|nvd|vtbd)(0|[1-9][0-9]*)$/ ||
                 pair[2] !~ /^[A-Za-z0-9_.:+-]+$/ || length(pair[2]) > 128)
                 fail("Invalid device and serial for " role)
+            unit = pair[1]
+            sub(/^[a-z]+/, "", unit)
+            if (length(unit) > 5) fail("Invalid device unit for " role)
             device = pair[1]; serial = pair[2]
             if (devices[device]++ || serials[serial]++)
                 fail("OS and data device identities overlap or repeat")

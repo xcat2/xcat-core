@@ -455,7 +455,12 @@ sub mkinstall {
                 $network->{dist_url} = $url . substr($image->{pkgdir}, length($installroot)) . '/usr/freebsd-dist';
             }
             my $settings = xCAT::FreeBSDConfig::load_settings($node,
-                $image->{settings}{template}, $image->{settings}{partitionfile});
+                $image->{settings}{template}, $image->{settings}{partitionfile},
+                "$installroot/postscripts/configzfs-freebsd.awk");
+            my $storage = delete $settings->{data_storage};
+            die "Data pool provisioning requires pkgbase media with native postscripts\n"
+              if defined($storage) && (!$image->{install} || !$image->{media}{postscript_contract}
+                || ($image->{media}{install_contract} || '') !~ /\Axcat-freebsd-install-[56]\z/x);
             if (exists($settings->{bootstrap_interface})) {
                 require xCAT::FreeBSDNetwork;
                 my $interface = delete $settings->{bootstrap_interface};
@@ -468,7 +473,8 @@ sub mkinstall {
             my @postscript_options;
             if ($image->{media}{postscript_contract}) {
                 require xCAT::FreeBSDPostscript;
-                my $prepared = xCAT::FreeBSDPostscript::prepare_boot($node, $image->{package_plan});
+                my $prepared = xCAT::FreeBSDPostscript::prepare_boot($node, $image->{package_plan},
+                    defined($storage) ? (data_storage => $storage) : ());
                 @postscript_options = (postscript_preparations => $prepared);
             }
             my $fingerprint = $image->{install}

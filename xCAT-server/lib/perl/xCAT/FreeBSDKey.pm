@@ -116,4 +116,11 @@ sub manage {
     return;
 }
 
+sub lookup {
+    my ($table, $node, $pool) = @_;
+    _fail('Root is required') unless $> == 0;
+    return _record_key($table->getAttribs(identity($node, $pool),
+        [qw(password cryptmethod authdomain disable)]));
+}
+
 1;

@@ -24,7 +24,7 @@ Source8: etc.tar.gz
 Source7: xcat.conf.apach24
 
 # These postscripts also execute on FreeBSD, which requires /bin/sh.
-%global __brp_mangle_shebangs_exclude_from ^/install/postscripts/((syslog|remoteshell|syncfiles|confignetwork)([.]freebsd)?|confignetwork-(dhclient|dhcp6)[.]freebsd|ospkgs|otherpkgs|xcatpackages[.]freebsd|configzfs[.]freebsd)$
+%global __brp_mangle_shebangs_exclude_from ^/install/postscripts/((syslog|remoteshell|syncfiles|confignetwork)([.]freebsd)?|confignetwork-(dhclient|dhcp6)[.]freebsd|ospkgs|otherpkgs|xcatpackages[.]freebsd|(configzfs|configstorage)[.]freebsd)$
 
 Provides: xCAT = %{version}
 Conflicts: xCATsn

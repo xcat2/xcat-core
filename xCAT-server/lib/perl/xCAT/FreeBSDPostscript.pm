@@ -1169,13 +1169,19 @@ sub read_execution {
 
 sub prepare_boot {
     my ($node, $plan, @arguments) = @_;
-    my $options = _options(@arguments);
+    _fail('Boot preparation options must be unique pairs') if @arguments % 2;
+    my %arguments = @arguments;
+    _fail('Duplicate boot preparation option') unless keys(%arguments) == @arguments / 2;
+    my $storage = delete $arguments{data_storage};
+    my $options = _options(%arguments);
     my $context = _json(_execution_context($node)) . "\n";
     my $source = seal_source($node, 'install', %$options);
     my $root = _root($options, 0);
+    my $firstboot = defined($storage) ? _storage_source($root, $source, $storage) : $source;
     my (%preparations, %package_bytes);
     for my $kind (qw(firstboot repeat)) {
-        my $prepared = _prepare_execution($node, 'install', $source->{id}, %$options,
+        my $selected = $kind eq 'firstboot' ? $firstboot : $source;
+        my $prepared = _prepare_execution($node, 'install', $selected->{id}, %$options,
             plan => $plan, selection => { kind => $kind });
         _fail('Boot context changed during preparation')
           unless _read("$root/$prepared->{id}/context.json", $execution_limits{max_context_bytes}) eq $context;
@@ -1191,6 +1197,59 @@ sub prepare_boot {
     }
     _fail('Boot context changed after preparation') unless _json(_execution_context($node)) . "\n" eq $context;
     return \%preparations;
+}
+
+sub _storage_source {
+    my ($root, $source, $storage) = @_;
+    require xCAT::FreeBSDStorage;
+    my $path = $source->{directory};
+    my $manifest_bytes = _read("$path/manifest.json", $source_limits{max_manifest_bytes});
+    _fail('Storage source identity changed') unless sha256_hex($manifest_bytes) eq $source->{id};
+    my $manifest = $json->decode($manifest_bytes);
+    my $entries = $manifest->{entries};
+    my $limits = $manifest->{limits};
+    my $prefix = 'xcat-storage.d';
+    _fail('The storage payload directory is reserved') if exists($entries->{_source_hex($prefix)});
+    for my $name (qw(configstorage.freebsd configzfs.freebsd configzfs-freebsd.awk)) {
+        my $resolved = _source_resolve($name, $entries, $limits);
+        my $entry = $entries->{$resolved};
+        _fail('Missing storage postscript or planner') unless $entry->{type} eq 'file'
+          && ($name =~ /[.]awk\z/x || ($entry->{mode} & oct('0111')));
+    }
+    my $files = xCAT::FreeBSDStorage::files($source->{node}, $storage);
+    my $attempt = tempdir('.storage-source.XXXXXXXX', DIR => $root, CLEANUP => 0);
+    my $stage = "$attempt/content";
+    mkdir($stage, oct('0700')) or _fail('Cannot create storage source stage');
+    my %blobs = map { $_->{type} eq 'file' ? ($_->{sha256} => 1) : () } values %$entries;
+    $blobs{$manifest->{template}{file}{sha256}} = 1 if $manifest->{template}{kind} eq 'stock';
+    for my $source_digest (sort keys %blobs) {
+        _write("$stage/blob-$source_digest", _read("$path/blob-$source_digest", $limits->{max_file_bytes}), $limits->{max_file_bytes});
+    }
+    $entries->{_source_hex($prefix)} = { type => 'directory', mode => oct('0700'), uid => 0, gid => 0 };
+    ++$manifest->{count};
+    for my $name (sort keys %$files) {
+        _fail('Invalid generated storage filename') unless $name eq 'pools'
+          || $name =~ /\A[a-z][a-z0-9_-]{0,62}[.](?:conf|key)\z/x;
+        my $bytes = $files->{$name};
+        my $digest = sha256_hex($bytes);
+        if (!$blobs{$digest}++) {
+            _write("$stage/blob-$digest", $bytes, $limits->{max_file_bytes});
+        }
+        my $key = _source_hex("$prefix/$name");
+        $entries->{$key} = { type => 'file', mode => oct('0600'), uid => 0, gid => 0,
+            links => 1, group => $key, bytes => length($bytes), sha256 => $digest };
+        ++$manifest->{count};
+        $manifest->{bytes} += length($bytes);
+    }
+    my $rendered = _read("$path/rendered", $render_limit);
+    _fail('Missing firstboot storage insertion point') unless
+      $rendered =~ s/^([#][ ]postscripts-start-here\n)/$1configstorage.freebsd\n/mx;
+    _write("$stage/rendered", $rendered, $render_limit);
+    $manifest->{capture} = _manifest($source->{node}, $source->{nodesetstate}, $rendered);
+    $manifest->{capture_id} = sha256_hex(_json($manifest->{capture}) . "\n");
+    _sync_directory($attempt);
+    _sync_directory($root);
+    return _source_publish($root, $attempt, $stage, $manifest, $limits);
 }
 
 sub prepare_update {

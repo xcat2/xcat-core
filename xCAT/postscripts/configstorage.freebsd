@@ -1,0 +1,97 @@
+#!/bin/sh
+set -efu
+PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
+LC_ALL=C
+export PATH LC_ALL
+umask 077
+
+fail()
+{
+    printf 'configstorage: %s\n' "$1" >&2
+    exit 1
+}
+
+[ "$(uname -s):$(id -u)" = FreeBSD:0 ] || fail 'FreeBSD root is required'
+if [ "${1:-}" != --locked ]; then
+    exec lockf -k -t 0 /var/run/xcat-configstorage.lock /bin/sh "$0" --locked "$@"
+fi
+shift
+[ "$#" -eq 0 ] || fail 'The storage declaration comes from partitionfile'
+source_dir=$(CDPATH= cd -P "$(dirname "$0")" && pwd)
+payload=$source_dir/xcat-storage.d
+
+private_directory()
+{
+    [ -d "$1" ] && [ ! -L "$1" ] && [ "$(stat -f '%u:%g:%Lp' "$1")" = 0:0:700 ] ||
+        fail 'A storage directory is not private'
+}
+
+private_file()
+{
+    [ -f "$1" ] && [ ! -L "$1" ] && [ "$(stat -f '%u:%g:%l:%Lp' "$1")" = 0:0:1:600 ] ||
+        fail 'A storage file is not private'
+}
+
+private_directory "$payload"
+private_file "$payload/pools"
+awk '
+    $0 !~ /^[a-z][a-z0-9_-]*$/ || length($0)>63 || seen[$0]++ {exit 1}
+    END {if (!NR || NR>128) exit 1}
+' "$payload/pools" || fail 'Invalid storage pool roster'
+
+[ -d /etc ] && [ ! -L /etc ] && [ "$(stat -f '%u' /etc)" = 0 ] || fail 'Unsafe system configuration directory'
+permissions=$(stat -f '%Lp' /etc)
+[ "$((0$permissions & 0022))" -eq 0 ] || fail 'Writable system configuration directory'
+if [ ! -e /etc/xcat ] && [ ! -L /etc/xcat ]; then mkdir -m 0700 /etc/xcat; fi
+[ -d /etc/xcat ] && [ ! -L /etc/xcat ] && [ "$(stat -f '%u:%g' /etc/xcat)" = 0:0 ] || fail 'Unsafe xCAT directory'
+permissions=$(stat -f '%Lp' /etc/xcat)
+[ "$((0$permissions & 0022))" -eq 0 ] || fail 'Writable xCAT directory'
+for directory in /etc/xcat/storage /etc/xcat/keys; do
+    if [ ! -e "$directory" ] && [ ! -L "$directory" ]; then mkdir -m 0700 "$directory"; fi
+    private_directory "$directory"
+done
+
+while IFS= read -r pool; do
+    private_file "$payload/$pool.conf"
+    if [ -e "$payload/$pool.key" ] || [ -L "$payload/$pool.key" ]; then
+        private_file "$payload/$pool.key"
+        [ "$(stat -f %z "$payload/$pool.key")" = 32 ] || fail 'Invalid stored data key'
+        if [ -e "/etc/xcat/keys/$pool.key" ] || [ -L "/etc/xcat/keys/$pool.key" ]; then
+            private_file "/etc/xcat/keys/$pool.key"
+            cmp -s "$payload/$pool.key" "/etc/xcat/keys/$pool.key" || fail 'Refusing to replace a different data key'
+        fi
+    fi
+    if [ -e "/etc/xcat/storage/$pool.conf" ] || [ -L "/etc/xcat/storage/$pool.conf" ]; then
+        private_file "/etc/xcat/storage/$pool.conf"
+    fi
+done < "$payload/pools"
+
+temporary=
+trap '[ -z "$temporary" ] || rm -f "$temporary"' EXIT
+trap 'exit 1' HUP INT TERM
+publish()
+{
+    temporary=$(mktemp "$2.XXXXXXXX")
+    cat "$1" > "$temporary"
+    chmod 0600 "$temporary"
+    fsync "$temporary"
+    if [ "$3" = key ]; then
+        if ! ln "$temporary" "$2"; then
+            private_file "$2"
+            cmp -s "$temporary" "$2" || fail 'Refusing to replace a different data key'
+        fi
+        rm -f "$temporary"
+    else
+        mv -f "$temporary" "$2"
+    fi
+    temporary=
+    fsync "$(dirname "$2")"
+}
+
+while IFS= read -r pool; do
+    if [ -f "$payload/$pool.key" ] && [ ! -e "/etc/xcat/keys/$pool.key" ]; then
+        publish "$payload/$pool.key" "/etc/xcat/keys/$pool.key" key
+    fi
+    publish "$payload/$pool.conf" "/etc/xcat/storage/$pool.conf" policy
+    "$source_dir/configzfs.freebsd" "/etc/xcat/storage/$pool.conf"
+done < "$payload/pools"

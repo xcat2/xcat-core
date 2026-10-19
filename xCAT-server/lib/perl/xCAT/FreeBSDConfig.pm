@@ -235,6 +235,11 @@ sub _read_file {
 sub _policy {
     my ($path, $node, @keys) = @_;
     my ($text) = _read_file($path, $node, 65536);
+    return _policy_values($text, @keys);
+}
+
+sub _policy_values {
+    my ($text, @keys) = @_;
     _fail('Configuration contains control characters') if $text =~ /[^\x09\x0a\x20-\x7e]/;
     my %allowed = map { $_ => 1 } @keys;
     my %values;
@@ -368,15 +373,24 @@ sub _zfs_auxiliary {
 }
 
 sub load_settings {
-    my ($node, $template, $partitionfile) = @_;
+    my ($node, $template, $partitionfile, $planner) = @_;
     my $settings = _policy($template, $node, qw(authorized_keys_file bootstrap bootstrap_interface));
-    my $disk = _policy($partitionfile, $node,
+    my ($text) = _read_file($partitionfile, $node, 65536);
+    require xCAT::FreeBSDStorage;
+    my ($os, $pools) = xCAT::FreeBSDStorage::sections($text);
+    my $disk = _policy_values($os,
         qw(target_disk target_disk_ident filesystem swap_size zfs_topology zfs_vdevs swap_mode
         zfs_compression zfs_ashift disk_action preserve_disks
         zfs_log_vdevs zfs_cache_vdevs zfs_special_vdevs zfs_special_small_blocks));
     $disk->{swap_size} = '0' unless defined($disk->{swap_size});
     _zfs_storage($disk);
     _zfs_disk_policy($disk);
+    my $storage;
+    if (keys %$pools) {
+        _read_file($planner, $node, 262144);
+        $storage = xCAT::FreeBSDStorage::compile($node, $disk, $pools, $planner);
+        _zfs_disk_policy($disk);
+    }
     my ($keys, $keyfile) = _read_file($settings->{authorized_keys_file}, $node, 16384);
     my @keys = grep { /\S/ } split(/\n/, $keys);
     _fail('A plain SSH public key is required') unless @keys && !grep {
@@ -388,7 +402,8 @@ sub load_settings {
         while (<$check>) { }
         close($check) or _fail('SSH public key verification failed');
     }
-    return { %$disk, (map { exists($settings->{$_}) ? ($_ => $settings->{$_}) : () } qw(bootstrap bootstrap_interface)),
+    return { %$disk, (defined($storage) ? (data_storage => $storage) : ()),
+        (map { exists($settings->{$_}) ? ($_ => $settings->{$_}) : () } qw(bootstrap bootstrap_interface)),
         swap_size => (defined($disk->{swap_size}) ? $disk->{swap_size} : '0'),
         authorized_key_base64 => encode_base64(join("\n", @keys) . "\n", '') };
 }
