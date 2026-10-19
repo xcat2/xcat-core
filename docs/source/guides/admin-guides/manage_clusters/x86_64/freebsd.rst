@@ -1002,6 +1002,7 @@ character cannot be a dot or hyphen. A component is limited to 63 characters.
        ``zroot/usr/local`` at ``/usr/local``. Data paths default to the parent's
        mountpoint plus the final dataset component. A custom data path must stay
        below its parent's mountpoint. Sibling mountpoints cannot overlap.
+       The complete path, including the pool mountpoint, is limited to 1023 bytes.
    * - ``compression``
      - ``off``, ``lz4``, ``gzip``, ``gzip-1`` through ``gzip-9``, ``zstd``, or
        ``zstd-1`` through ``zstd-19``. Inherits when omitted.
