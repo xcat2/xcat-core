@@ -8,18 +8,38 @@ setup()
     mkdir -p "$BATS_TEST_TMPDIR/bin"
     cat >"$BATS_TEST_TMPDIR/bin/openssl" <<'SH'
 #!/bin/sh
-printf '%s\n' "$1" >> "$CALLS"
-if [ "$1" = "$ACCEPT" ]; then
+exporter=$1
+shift
+printf '%s\n' "$exporter" >> "$CALLS"
+printf 'openssl' >> "$INVOCATIONS"
+printf ' <%s>' "$exporter" "$@" >> "$INVOCATIONS"
+printf '\n' >> "$INVOCATIONS"
+input=
+public=0
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -in) [ "$#" -ge 2 ] || exit 64; input=$2; shift 2 ;;
+        -pubout) public=1; shift ;;
+        *) exit 64 ;;
+    esac
+done
+if [ "$input" != "$KEY" ] || [ "$public" -ne 1 ]; then
+    printf 'rejected: expected -in with the requested key and -pubout\n' >> "$INVOCATIONS"
+    exit 64
+fi
+if [ "$exporter" = "$ACCEPT" ]; then
     printf 'public key\n'
     exit 0
 fi
-printf '%s failed\n' "$1" >&2
+printf '%s failed\n' "$exporter" >&2
 exit 73
 SH
     chmod 0755 "$BATS_TEST_TMPDIR/bin/openssl"
     export PATH="$BATS_TEST_TMPDIR/bin:$PATH"
     export CALLS="$BATS_TEST_TMPDIR/calls"
+    export INVOCATIONS="$BATS_TEST_TMPDIR/invocations"
     export RESULT="$BATS_TEST_TMPDIR/result"
+    export KEY="$BATS_TEST_TMPDIR/unused key.pem"
 }
 
 check_fallback()
@@ -37,15 +57,19 @@ check_fallback()
     for mode in 0 1; do
         printf '%s policy mode %s\n' "$library" "$mode"
         : >"$CALLS"
+        : >"$INVOCATIONS"
         run "$shell" -c '
             exec >"$RESULT" 2>&1
             . "$1"
-            xcat_discovery_public_key "$2" unused-key
-        ' fips-fallback-test "$(repo_path "$library")" "$mode"
+            xcat_discovery_public_key "$2" "$3"
+        ' fips-fallback-test "$(repo_path "$library")" "$mode" "$KEY"
         printf '%s\n' "$output"
         if [ -f "$RESULT" ]; then
             cat "$RESULT"
         fi
+        cat "$INVOCATIONS"
+        printf 'exporters:\n'
+        cat "$CALLS"
         [ "$status" -eq "$expected_status" ]
         cmp "$BATS_TEST_TMPDIR/expected-result" "$RESULT"
         cmp "$BATS_TEST_TMPDIR/expected-calls" "$CALLS"
