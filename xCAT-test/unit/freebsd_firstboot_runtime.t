@@ -167,6 +167,7 @@ DAEMON
     $postscript =~ s{(?<![A-Za-z0-9_.+-])/(usr/local|usr/sbin/daemon|etc|root|var)(?=/|[\s"'])}{$root/$1}g;
     write_file("$root/postscript", $postscript);
     is(system('sh', "$root/postscript"), 0, 'production-generated postscript installs a service in an isolated filesystem');
+    is(read_file("$root/etc/xcat/os-disks"), "vtbd0\@OS0\n", 'postscript records the concrete OS identity');
     return $root;
 }
 

@@ -670,4 +670,36 @@ subtest 'ordered redundant ZFS policy and native codec' => sub {
                 $selected_network, { %$install, media => $media4 }), 'topology changes generation input');
     }
 };
+subtest 'automatic disk selection has a capability-gated wire policy' => sub {
+    my ($selected_network, $install) = pkgbase_inputs();
+    my $boot = { %{$install->{media}}, install_contract => 'xcat-freebsd-install-6',
+        disk_selection_contract => 'xcat-freebsd-disk-selection-1' };
+    for my $case (
+        {target_disk => 'auto', filesystem => 'ufs'},
+        {target_disk => 'auto', filesystem => 'zfs'},
+        {zfs_topology => 'mirror', zfs_vdevs => 'auto:2', swap_mode => 'none', filesystem => 'zfs'},
+        {zfs_topology => 'raid10', zfs_vdevs => 'auto:2;auto:2', swap_mode => 'none', filesystem => 'zfs'},
+    ) {
+        my %policy = (%$settings, %$case, bootstrap => 'dhcp', console_port => 'none',
+            console_speed => '0', console_flow => 'none', install_boot_options_base64 => '', target_boot_options_base64 => '');
+        delete $policy{target_disk_ident};
+        delete $policy{target_disk} if exists($case->{zfs_vdevs});
+        my $bytes = eval { xCAT::FreeBSDConfig::render_pkgbase('node1', \%policy,
+            $selected_network, {%$install, media => $boot}, $generation); };
+        ok(defined($bytes), 'renderer accepts the automatic layout') or do { diag($@); next; };
+        my ($status, $parsed) = read_generated_config($bytes,
+            'printf "%s|%s|%s\\n" "$XCAT_DISK_SELECTION" "$XCAT_PRESERVE_DISKS" "$XCAT_ZFS_VDEVS"');
+        is($status, 0, 'actual runtime accepts the generated policy');
+        is($parsed, 'empty|-|' . ($case->{zfs_vdevs} || '') . "\n", 'runtime receives blank-only selection and group sizes');
+        my %old_boot = %$boot;
+        delete $old_boot{disk_selection_contract};
+        rejected(sub { xCAT::FreeBSDConfig::render_pkgbase('node1', \%policy,
+            $selected_network, {%$install, media => \%old_boot}, $generation); },
+            qr/disk-selection-1/x, 'older runtime selection');
+        my $bad = $bytes;
+        $bad =~ s/^disk_selection=empty$/disk_selection=erase/mx;
+        my ($bad_status) = read_generated_config($bad, 'true');
+        isnt($bad_status, 0, 'runtime rejects automatic erasure');
+    }
+};
 done_testing();

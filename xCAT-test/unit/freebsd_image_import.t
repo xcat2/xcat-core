@@ -107,6 +107,21 @@ sub rejected {
     like($@, $pattern, $description);
 }
 
+subtest 'automatic selection requires a known pkgbase media contract' => sub {
+    my ($boot_source, $manifest) = fixture('xcat-mfsbsd-2');
+    $manifest->{install_contract} = 'xcat-freebsd-install-3';
+    $manifest->{disk_selection_contract} = 'xcat-freebsd-disk-selection-1';
+    write_manifest($boot_source, $manifest);
+    my $media = eval { xCAT::FreeBSDImage::inspect_media($boot_source); };
+    ok($media, 'pkgbase media admits the automatic selection contract');
+    is($media && $media->{disk_selection_contract}, 'xcat-freebsd-disk-selection-1',
+        'the verified contract reaches image consumers');
+    $manifest->{disk_selection_contract} = 'xcat-freebsd-disk-selection-2';
+    write_manifest($boot_source, $manifest);
+    my $invalid = eval { xCAT::FreeBSDImage::inspect_media($boot_source); };
+    ok(!$invalid && $@, 'unknown selection capabilities are rejected');
+};
+
 sub replace_runtime {
     my ($root, $manifest, $content) = @_;
     write_file("$root/xcat/runtime.tsv", $content);

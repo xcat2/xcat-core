@@ -6,7 +6,10 @@ use Digest::SHA qw(sha256_hex);
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
 use FindBin;
+use lib "$FindBin::Bin/../lib", "$FindBin::Bin/../../xCAT-server/lib/perl";
+use File::Copy qw(copy);
 use Test::More;
+use XCAT::Test::Chroot qw(stage_binary);
 
 my $directory = $ENV{XCAT_FREEBSD_INSTALLER_DIR} || "$FindBin::Bin/../../xCAT-server/share/xcat/install/freebsd";
 my $library = "$directory/xcat-install-lib.sh";
@@ -42,6 +45,7 @@ sub fixture {
         write_file("$root/$name.geom", "Geom name: $name\nProviders:\n1. Name: $name\n" .
             "   Mediasize: 8589934592 (8G)\n   Sectorsize: 512\n   Mode: r0w0e0\n   ident: SERIAL$index\n\n");
         write_file("$root/$name.stat", 'Character Device:' . (100 + $index) . "\n");
+        write_file("$root/$name.size", "8589934592\n");
         write_file("$root/$name.head", "\0" x 1048576);
         write_file("$root/$name.tail", "\0" x 1048576);
         push @graph, "0 DISK $name 8589934592 512 hd 16 sc 63\n" .
@@ -55,15 +59,18 @@ sub fixture {
     write_file("$root/geli", '');
     write_file("$root/partitions", '');
     my %commands = (
-        geom => 'test "$*" = "disk list" || exit 90
+        geom => 'test "$1 $2" = "disk list" || exit 90
             count=0; test ! -f "$FIXTURE_DIR/geom-count" || count=$(cat "$FIXTURE_DIR/geom-count")
             count=$((count+1)); printf "%s\n" "$count" > "$FIXTURE_DIR/geom-count"
             for f in "$FIXTURE_DIR"/ada*.geom; do
+                test -z "${3:-}" || test "$f" = "$FIXTURE_DIR/$3.geom" || continue
                 if [ "$count" -gt 1 ] && [ -f "$f.changed" ]; then cat "$f.changed"; else cat "$f"; fi
             done',
         sysctl => 'case "$*" in
             "-n kern.disks") cat "$FIXTURE_DIR/disks" ;;
             "-n kern.geom.conftxt") cat "$FIXTURE_DIR/graph" ;;
+            "-n vm.swap_total") printf "0\n" ;;
+            "-n hw.physmem") printf "8589934592\n" ;;
             *) exit 90 ;;
             esac',
         stat => 'test "$1" = -f && test "$2" = "%HT:%r" || exit 90
@@ -86,14 +93,18 @@ sub fixture {
                 case "$arg" in if=*) src=${arg#if=} ;; of=*) dst=${arg#of=} ;; bs=*) block=${arg#bs=} ;;
                     skip=*) skip=${arg#skip=} ;; count=*) count=${arg#count=} ;; *) exit 90 ;; esac
             done
-            case "$dst" in "$FIXTURE_DIR"/work/storage.*/zero|"$FIXTURE_DIR"/work/storage.*/window) ;; *) exit 90 ;; esac
+            case "$dst" in "$FIXTURE_DIR"/work/storage.*/zero|"$FIXTURE_DIR"/work/storage.*/window|\
+                "$FIXTURE_DIR"/work/pkgbase-work/storage.*/zero|"$FIXTURE_DIR"/work/pkgbase-work/storage.*/window) ;; *) exit 90 ;; esac
             if [ "$src" = /dev/zero ]; then
                 test "$block" = 1048576 && test "$count" = 1 || exit 90
                 cp "$FIXTURE_DIR/ada0.head.zero" "$dst"; exit
             fi
             name=${src#/dev/}; region=tail; test "$skip" != 0 || region=head
             test "$((block*count))" -eq 1048576 || exit 90
-            if [ "$region" = tail ]; then test "$((block*skip))" -eq 8588886016 || exit 90; fi
+            if [ "$region" = tail ]; then
+                size=$(cat "$FIXTURE_DIR/$name.size") || exit 90
+                test "$((block*skip))" -eq "$((size-1048576))" || exit 90
+            fi
             test ! -f "$FIXTURE_DIR/dd-fail-$name-$region" || exit 1
             cp "$FIXTURE_DIR/$name.$region" "$dst"',
     );
@@ -115,7 +126,10 @@ sub run_preflight {
         XCAT_FILESYSTEM => 'zfs', XCAT_ZFS_TOPOLOGY => 'mirror',
         XCAT_ZFS_VDEVS => read_file("$root/members"), XCAT_SWAP_SIZE => '0', XCAT_SWAP_MODE => 'none', %$overrides);
     my %before = map { $_ => sha256_hex(read_file($_)) } glob("$root/ada*.head $root/ada*.tail");
-    open(my $pipe, '-|', 'sh', '-c', '. "$1"; if [ "$2" = xcat_erase_os_disks ]; then "$2" "$FIXTURE_DIR/before.snapshot"; else "$2"; fi 2>"$FIXTURE_DIR/stderr"', 'sh', $library, $operation) or die $!;
+    open(my $pipe, '-|', 'sh', '-c', '. "$1"; if [ "$2" = xcat_erase_os_disks ]; then "$2" "$FIXTURE_DIR/before.snapshot";
+        elif [ "$2" = xcat_resolve_disks ]; then
+            xcat_read_config "$XCAT_WORK/config" && "$2" && cat "$XCAT_WORK/config";
+        else "$2"; fi 2>"$FIXTURE_DIR/stderr"', 'sh', $library, $operation) or die $!;
     local $/;
     my $output = <$pipe> // '';
     close($pipe);
@@ -505,4 +519,178 @@ subtest 'OS auxiliary members and L2ARC ownership are checked before erase' => s
     }
 };
 
+sub automatic_config {
+    my ($root, %changes) = @_;
+    my %config = (format => 'xcat-freebsd-install-5', release => '15.1-RELEASE',
+        node => 'node1', hostname => 'node1', generation => 'a' x 32,
+        master => '192.0.2.1', port => 3002, ipv4 => '192.0.2.2', netmask => '255.255.255.0',
+        gateway => '', nameservers => '', mac => '52:54:00:12:34:56',
+        filesystem => 'zfs', swap_size => '0', swap_mode => 'none',
+        zfs_topology => 'mirror', zfs_vdevs => 'auto:2', zfs_compression => 'lz4', zfs_ashift => 12,
+        disk_action => 'empty', disk_selection => 'empty', preserve_disks => '-',
+        install_url => 'http://192.0.2.1/install', package_plan_sha256 => 'b' x 64,
+        boot_media_sha256 => 'c' x 64, runtime_sha256 => 'd' x 64, authorized_key_base64 => 'AAAA',
+        bootstrap => 'dhcp', console_port => 'none', console_speed => 0, console_flow => 'none',
+        install_boot_options_base64 => '', target_boot_options_base64 => '', %changes);
+    delete $config{$_} for grep { !defined($config{$_}) } keys %config;
+    write_file("$root/work/config", join('', map { "$_=$config{$_}\n" } sort keys %config));
+}
+
+subtest 'automatic selection excludes protected and occupied disks before resolving identities' => sub {
+    my $root = fixture(4);
+    automatic_config($root, preserve_disks => 'ada0@SERIAL0');
+    write_file("$root/ada1.head", 'USED' . ("\0" x (1048576 - 4)));
+    my ($status, $config, $error) = run_preflight($root, {}, 'xcat_resolve_disks');
+    is($status, 0, 'discovery succeeds with two eligible disks');
+    like($config, qr/^zfs_vdevs=ada2\@SERIAL2,ada3\@SERIAL3$/mx, 'stable order resolves actual identities');
+    unlike($config, qr/^disk_selection=/mx, 'the storage guard receives an explicit configuration');
+    like($config, qr/^preserve_disks=ada0\@SERIAL0$/mx, 'protected identities reach the concrete policy');
+    my $events = -e "$root/events" ? read_file("$root/events") : '';
+    unlike($events, qr/dd[ ]if=\/dev\/ada0/mx, 'a protected disk is excluded before content reads');
+    like($error, qr/selected[ ]OS[ ]disks[ ]ada2\@SERIAL2,ada3\@SERIAL3/x, 'the selected identities are reported');
+};
+
+subtest 'automatic group sizes and scalar filesystems resolve through the same inventory guards' => sub {
+    for my $case (
+        ['stripe', 'auto:1', 'ada0@SERIAL0'],
+        ['raid10', 'auto:2;auto:2', 'ada0@SERIAL0,ada1@SERIAL1;ada2@SERIAL2,ada3@SERIAL3'],
+        ['raidz2', 'auto:4', 'ada0@SERIAL0,ada1@SERIAL1,ada2@SERIAL2,ada3@SERIAL3'],
+    ) {
+        my $root = fixture(4);
+        automatic_config($root, zfs_topology => $case->[0], zfs_vdevs => $case->[1]);
+        my ($status, $config) = run_preflight($root, {}, 'xcat_resolve_disks');
+        is($status, 0, "$case->[0] automatic layout resolves");
+        like($config, qr/^zfs_vdevs=\Q$case->[2]\E$/mx, 'group boundaries are retained');
+    }
+    for my $filesystem (qw(ufs zfs)) {
+        my $root = fixture(1);
+        automatic_config($root, format => 'xcat-freebsd-install-3', filesystem => $filesystem,
+            target_disk => 'auto', map { $_ => undef } qw(zfs_topology zfs_vdevs swap_mode zfs_compression zfs_ashift disk_action));
+        my ($status, $config) = run_preflight($root, {}, 'xcat_resolve_disks');
+        is($status, 0, "$filesystem scalar automatic layout resolves");
+        like($config, qr/^target_disk=ada0$/mx, 'scalar target is concrete');
+        like($config, qr/^target_disk_ident=SERIAL0$/mx, 'scalar identity comes from GEOM');
+    }
+};
+
+subtest 'automatic selection fails closed without a complete safe disk set' => sub {
+    for my $case (qw(insufficient duplicate active malformed erase changed)) {
+        my $root = fixture(1);
+        automatic_config($root);
+        if ($case eq 'insufficient') { write_file("$root/ada1.tail", 'USED' . ("\0" x (1048576 - 4))); }
+        if ($case eq 'duplicate' || $case eq 'active' || $case eq 'changed') {
+            my $data = read_file("$root/ada1.geom");
+            $data =~ s/SERIAL1/SERIAL0/x if $case eq 'duplicate';
+            $data =~ s/r0w0e0/r1w0e0/x if $case eq 'active';
+            $data =~ s/SERIAL1/REPLACED/x if $case eq 'changed';
+            write_file("$root/ada1.geom" . ($case eq 'changed' ? '.changed' : ''), $data);
+        }
+        automatic_config($root, zfs_vdevs => 'auto:2;ada2@SERIAL2') if $case eq 'malformed';
+        automatic_config($root, disk_action => 'erase') if $case eq 'erase';
+        my $before = read_file("$root/work/config");
+        my ($status) = run_preflight($root, {}, 'xcat_resolve_disks');
+        isnt($status, 0, "$case cannot publish a disk selection");
+        is(read_file("$root/work/config"), $before, 'the original configuration remains unchanged');
+    }
+};
+
+subtest 'automatic candidates satisfy swap capacity and ZFS sector alignment' => sub {
+    my $root = fixture(2);
+    my $geometry = read_file("$root/ada0.geom");
+    $geometry =~ s/8589934592/5368709120/gx;
+    write_file("$root/ada0.geom", $geometry);
+    write_file("$root/ada0.size", "5368709120\n");
+    my $graph = read_file("$root/graph");
+    $graph =~ s/ada0[ ]8589934592/ada0 5368709120/gx or die 'Missing disk fixture';
+    $graph =~ s{diskid/DISK-SERIAL0[ ]8589934592}{diskid/DISK-SERIAL0 5368709120}gx or die 'Missing label fixture';
+    write_file("$root/graph", $graph);
+    automatic_config($root, format => 'xcat-freebsd-install-3', filesystem => 'ufs',
+        target_disk => 'auto', swap_size => '4G',
+        map { $_ => undef } qw(zfs_topology zfs_vdevs swap_mode zfs_compression zfs_ashift disk_action));
+    my ($status, $config, $error) = run_preflight($root, {}, 'xcat_resolve_disks');
+    is($status, 0, 'a disk with sufficient space for swap and root is available') or diag($error);
+    like($config, qr/^target_disk=ada1$/mx, 'smallest blank disk is skipped when swap would leave too little root space');
+
+    $root = fixture(2);
+    $geometry = read_file("$root/ada0.geom");
+    $geometry =~ s/Sectorsize:[ ]512/Sectorsize: 4096/gx or die 'Missing sector fixture';
+    write_file("$root/ada0.geom", $geometry);
+    $graph = read_file("$root/graph");
+    $graph =~ s/(?:ada0|diskid\/DISK-SERIAL0)[ ]8589934592[ ]\K512/4096/gx or die 'Missing graph fixture';
+    write_file("$root/graph", $graph);
+    automatic_config($root, zfs_ashift => 9);
+    ($status, $config, $error) = run_preflight($root, {}, 'xcat_resolve_disks');
+    is($status, 0, 'two disks compatible with the configured ashift are available') or diag($error);
+    like($config, qr/^zfs_vdevs=ada1\@SERIAL1,ada2\@SERIAL2$/mx,
+        'a larger-sector disk is excluded before choosing a complete mirror');
+};
+subtest 'scalar installation resolves before staging and rechecks after begin' => sub {
+    plan(skip_all => 'Installer command fixtures require a Linux lab root') unless $^O eq 'linux' && $> == 0;
+    my $jail = tempdir(CLEANUP => 1);
+    make_path(map { "$jail/$_" } qw(runtime xcat dev usr/libexec/bsdinstall));
+    stage_binary($jail, $_) for ('/bin/sh', '/bin/timeout', map { "/usr/bin/$_" }
+        qw(awk cat cut sort mktemp tr wc cmp rm cp mv chmod mkdir dirname basename openssl env grep base64 date sleep));
+    copy($library, "$jail/runtime/library") or die $!;
+    copy("$directory/installerconfig.tmpl", "$jail/runtime/template") or die $!;
+    write_file("$jail/xcat/runtime.tsv", "fixture runtime\n");
+    write_file("$jail/dev/null", '');
+    write_file("$jail/usr/libexec/bsdinstall/pkgbase", <<'PKGBASE');
+#!/bin/sh
+test "$1" = --xcat-prepare-1 || exit 90
+grep -q '^target_disk=ada0$' "$2" || exit 91
+root=${3%/work/pkgbase-work}
+printf 'prepared\n' >> "$root/events"
+PKGBASE
+    chmod(oct('0755'), "$jail/usr/libexec/bsdinstall/pkgbase") or die $!;
+    for my $case (qw(unchanged changed unavailable)) {
+        my $root = fixture(1);
+        write_file("$root/events", '');
+        automatic_config($root, format => 'xcat-freebsd-install-3', filesystem => 'ufs', target_disk => 'auto',
+            map { $_ => undef } qw(zfs_topology zfs_vdevs swap_mode zfs_compression zfs_ashift disk_action));
+        write_file("$root/change-on-begin", '') if $case eq 'changed';
+        if ($case eq 'unavailable') {
+            write_file("$root/ada0.head", 'USED');
+            write_file("$root/ada1.head", 'USED');
+        }
+        my %commands = (
+            kldload => 'exit 0',
+            mount => 'grep -q "^target_disk=ada0$" "$FIXTURE_DIR/work/config" || exit 91
+                printf "workspace\n" >> "$FIXTURE_DIR/events"',
+            nc => 'read -r protocol generation attempt phase
+                printf "phase %s\n" "$phase" >> "$FIXTURE_DIR/events"
+                if [ "$phase" = begin ] && [ -f "$FIXTURE_DIR/change-on-begin" ]; then
+                    printf USED > "$FIXTURE_DIR/ada0.head"
+                fi
+                printf "ready\nfreebsd-install-v1 %s %s ok\n" "$generation" "$phase"',
+            bsdinstall => "printf 'bsdinstall boundary\\n' >> '$root/events'\ncp \"\$2\" '$root/invoked-installer'\nexit 19",
+        );
+        for my $command (keys %commands) {
+            write_file("$root/bin/$command", "#!/bin/sh\n$commands{$command}\n");
+            chmod(oct('0755'), "$root/bin/$command") or die $!;
+        }
+        make_path("$jail$root");
+        system('cp', '-a', "$root/.", "$jail$root") == 0 or die 'Cannot stage installer fixture';
+        my $result = xCAT::FreeBSDPkg::run_command(['/usr/sbin/chroot', $jail, '/bin/sh', '-c',
+            '. "$1"; xcat_read_config "$XCAT_WORK/config" && xcat_install_system "$2" "$1"',
+            'sh', '/runtime/library', '/runtime/template'], cwd => $jail,
+            environment => {PATH => "$root/bin:/usr/bin:/bin", LC_ALL => 'C', FIXTURE_DIR => $root,
+                XCAT_WORK => "$root/work", XCAT_ATTEMPT => 'b' x 32, XCAT_PROVISIONING_IF => 'em0'}, timeout => 20);
+        is($result->{signal}, 0, "$case exits without a signal");
+        ok(!$result->{failure}, "$case finishes within the fixture deadline") or diag($result->{stderr});
+        my $events = read_file("$jail$root/events");
+        if ($case eq 'unchanged') {
+            like($events, qr/workspace.*prepared.*phase[ ]begin.*bsdinstall[ ]boundary/sx,
+                'a resolved unchanged disk reaches the installer after preparation and authorization') or diag($result->{stderr});
+            my $invoked = -f "$jail$root/invoked-installer" ? read_file("$jail$root/invoked-installer") : '';
+            like($invoked, qr/^PARTITIONS="ada0[ ]GPT/mx,
+                'the actual destructive caller receives the resolved disk');
+        } elsif ($case eq 'changed') {
+            like($events, qr/phase[ ]begin/x, 'disk content changes after the real begin handshake');
+            unlike($events, qr/bsdinstall[ ]boundary/x, 'changed disk content cannot reach the destructive caller');
+        } else {
+            unlike($events, qr/workspace|prepared|phase[ ]begin|bsdinstall[ ]boundary/x,
+                'failed selection cannot stage packages or request destructive authorization');
+        }
+    }
+};
 done_testing();

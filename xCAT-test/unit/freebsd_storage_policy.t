@@ -112,4 +112,21 @@ for my $reuse (['vtbd4@DATA4', 'vtbd2@DATA4'], ['vtbd4@DATA4', 'vtbd4@DATA2']) {
     $bad =~ s/\Q$reuse->[0]\E/$reuse->[1]/x;
     rejects($os . $tank . $bad, qr/distinct[ ]device[ ]names[ ]and[ ]serials/x, 'cross-pool identity reuse');
 }
+subtest 'automatic OS membership protects every declared data device' => sub {
+    for my $policy ("filesystem=ufs\ntarget_disk=auto\n",
+        "filesystem=zfs\nzfs_topology=mirror\nzfs_vdevs=auto:2\nswap_mode=none\n") {
+        my $automatic = eval { settings($policy . $tank . $archive); };
+        ok($automatic, 'automatic selection compiles through the data planner') or do { diag($@); next; };
+        is($automatic->{disk_selection}, 'empty', 'selection admits blank disks only');
+        is($automatic->{preserve_disks}, join(',', map { "vtbd$_\@DATA$_" } 2 .. 7),
+            'every data member is excluded from discovery');
+        like($automatic->{data_storage}{pools}[0]{policy}, qr/^os_disks=auto$/mx,
+            'the delivery policy requires installed OS identities');
+    }
+    my $automatic = "filesystem=zfs\nzfs_topology=mirror\nzfs_vdevs=auto:2\nswap_mode=none\n";
+    rejects($automatic . "disk_action=erase\n", qr/blank[ ]disks/x, 'automatic erasure');
+    rejects($automatic . "target_disk_ident=SERIAL\n", qr/target[ ]serial/x, 'automatic serial override');
+    rejects($automatic . "zfs_log_vdevs=vtbd2\@DATA2\n" . $tank, qr/overlap|repeat/x,
+        'automatic primary disks with overlapping auxiliary and data devices');
+};
 done_testing();
