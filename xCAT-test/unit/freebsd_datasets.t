@@ -88,6 +88,15 @@ is(compile_plan($dotted->{data_storage}{pools}[0]{datasets})->{stdout},
     "tank/projects\tmountpoint=/srv/archive.v2/projects,canmount=on\n"
       . "tank/projects/team\tmountpoint=/srv/archive.v2/projects/team,canmount=on\n",
     'dataset paths retain the pool planner dotted mountpoint');
+my $hyphen = settings($os . $pool . "mountpoint=/srv/-scratch\n[dataset tank/projects]\nmountpoint=/srv/-scratch/work\n");
+is(compile_plan($hyphen->{data_storage}{pools}[0]{datasets})->{stdout},
+    "tank/projects\tmountpoint=/srv/-scratch/work,canmount=on\n",
+    'custom child mountpoint retains the valid pool root prefix');
+my $deep_sections = join('', map { "[dataset tank/$_]\n" } qw(a a/b a/b/c a/b/c/d a/b/c/d/e a/b/c/d/e/f a/b/c/d/e/f/g));
+my $deep = settings($os . $pool . $deep_sections . "mountpoint=/data/tank/a/b/c/d/e/f/g\n");
+my %deep_rows = map { split(/\t/x, $_, 2) } split(/\n/x, compile_plan($deep->{data_storage}{pools}[0]{datasets})->{stdout});
+is($deep_rows{'tank/a/b/c/d/e/f/g'}, 'mountpoint=/data/tank/a/b/c/d/e/f/g,canmount=on',
+    'custom mountpoint accepts the full supported dataset depth');
 for my $case (
     ["[dataset other/home]\n", qr/declared[ ]pool/x, 'unknown pool'],
     ["[dataset tank]\n", qr/another[ ]pool/x, 'pool root'],
