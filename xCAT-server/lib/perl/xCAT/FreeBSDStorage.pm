@@ -59,7 +59,7 @@ sub _plan {
     print {$file} $policy or _fail('Cannot stage data pool policy');
     close($file) or _fail('Cannot close staged data pool policy');
     my $result = xCAT::FreeBSDPkg::run_command(['/usr/bin/awk', '-f', $planner, $path],
-        environment => { LC_ALL => 'C' }, timeout => 15, stdout_limit => 65536, stderr_limit => 4096);
+        environment => { LC_ALL => 'C' }, timeout => 15, stdout_limit => 131072, stderr_limit => 4096);
     _fail($result->{stderr} || 'Storage planner failed') if $result->{exitcode} || $result->{signal};
     return $result->{stdout};
 }
