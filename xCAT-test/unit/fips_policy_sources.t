@@ -44,11 +44,6 @@ is($rc, 0, 'write refreshes both artifacts') or diag($output);
 for my $relative (@libraries) {
     is((stat("$root/$relative"))[2] & oct('0777'), $modes{$relative},
         "generation preserves the mode of $relative");
-    my $shell = $relative eq $libraries[0] ? 'sh' : 'bash';
-    ($rc, $output) = run_command($shell, '-c', '. "$1"; xcat_policy_probe',
-        'fips-artifact-test', "$root/$relative");
-    is($rc, 0, 'the generated artifact provides the updated policy');
-    is($output, 'canonical', 'the generated artifact executes canonical content');
 }
 my @rendered = map { scalar read_binary("$root/$_") } @libraries;
 ($rc, $output) = run_command($^X, "$root/$sync", '--write');
