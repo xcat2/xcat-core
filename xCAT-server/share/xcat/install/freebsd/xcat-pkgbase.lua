@@ -423,6 +423,9 @@ local function runtime(config)
         if not files[required] then fail("Runtime roster lacks a required preparation file") end
     end
     local postscript_files = 0
+    if config.zfs_datasets_base64 and not files["/usr/local/libexec/configzfs-datasets.awk"] then
+        fail("Incomplete dataset runtime")
+    end
     for _, name in ipairs({POSTSCRIPT, POSTSCRIPT .. "-packages", POSTSCRIPT .. "-time", POSTBOOT}) do
         if files[name] then postscript_files = postscript_files + 1 end
     end
@@ -684,6 +687,11 @@ local function configuration(config_path, workspace)
     end
     if config.bootstrap_network_base64 then
         if config.format == "xcat-freebsd-install-2" then fail("Bootstrap graph requires boot settings") end
+        count = count - 1
+    end
+    if config.zfs_datasets_base64 then
+        if config.format ~= "xcat-freebsd-install-4" and config.format ~= "xcat-freebsd-install-5"
+            and config.format ~= "xcat-freebsd-install-6" then fail("Datasets require explicit ZFS disks") end
         count = count - 1
     end
     if not ((config.format == "xcat-freebsd-install-2" and count == 21)

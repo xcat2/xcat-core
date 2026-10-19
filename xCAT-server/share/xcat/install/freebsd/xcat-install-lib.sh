@@ -273,6 +273,51 @@ xcat_zfs_all_members()
     exit 0
 )
 
+xcat_zfs_dataset_plan()
+(
+    [ -n "${XCAT_ZFS_DATASETS_BASE64:-}" ] && [ "${#XCAT_ZFS_DATASETS_BASE64}" -le 16384 ] || exit 1
+    case "$XCAT_ZFS_DATASETS_BASE64" in *[!A-Za-z0-9+/=]*) exit 1 ;; esac
+    xcat_declaration=$(printf '%s' "$XCAT_ZFS_DATASETS_BASE64" | base64 -d) || exit 1
+    [ "$(printf '%s\n' "$xcat_declaration" | base64 | tr -d '\n')" = "$XCAT_ZFS_DATASETS_BASE64" ] || exit 1
+    printf '%s\n' "$xcat_declaration" | awk -v expected_kind=os -v expected_pool=zroot \
+        -f "${1:-/usr/local/libexec/configzfs-datasets.awk}"
+)
+
+xcat_verify_datasets()
+(
+    xcat_dataset_kind=$1 xcat_dataset_pool=$2 xcat_dataset_altroot=${3:-}
+    xcat_pool_encryption_root=-
+    if [ "$xcat_dataset_kind" = data ]; then
+        xcat_pool_encryption_root=$(zfs get -H -o value encryptionroot "$xcat_dataset_pool") || exit 1
+    fi
+    while IFS="$(printf '\t')" read -r xcat_dataset xcat_properties; do
+        [ "$(zfs get -H -o value type "$xcat_dataset")" = filesystem ] || exit 1
+        xcat_encryption_root=$(zfs get -H -o value encryptionroot "$xcat_dataset") || exit 1
+        [ "$xcat_encryption_root" = "$xcat_pool_encryption_root" ] || exit 1
+        xcat_old_ifs=$IFS IFS=,
+        set -f
+        set -- $xcat_properties
+        IFS=$xcat_old_ifs
+        for xcat_property do
+            xcat_key=${xcat_property%%=*} xcat_expected=${xcat_property#*=}
+            xcat_actual=$(zfs get -Hp -o value "$xcat_key" "$xcat_dataset") || exit 1
+            case "$xcat_key:$xcat_expected" in
+                mountpoint:/*) xcat_expected=$xcat_dataset_altroot$xcat_expected
+                    [ "$xcat_expected" = / ] || xcat_expected=${xcat_expected%/} ;;
+                quota:none|refquota:none|reservation:none|refreservation:none)
+                    [ "$xcat_actual" != 0 ] || xcat_actual=none ;;
+                compression:zstd|compression:zstd-3)
+                    [ "$xcat_actual" != zstd ] || xcat_actual=zstd-3
+                    xcat_expected=zstd-3 ;;
+            esac
+            if [ "$xcat_dataset_kind:$xcat_dataset:$xcat_key" = os:zroot/ROOT/default:canmount ]; then
+                xcat_expected=noauto
+            fi
+            [ "$xcat_actual" = "$xcat_expected" ] || exit 1
+        done
+    done
+)
+
 xcat_read_config()
 {
     XCAT_FORMAT= XCAT_RELEASE= XCAT_NODE= XCAT_GENERATION= XCAT_MASTER= XCAT_PORT=
@@ -284,7 +329,7 @@ xcat_read_config()
     XCAT_DIST_URL= XCAT_BASE_SHA256= XCAT_KERNEL_SHA256= XCAT_AUTHORIZED_KEY_BASE64=
     XCAT_INSTALL_URL= XCAT_PACKAGE_PLAN_SHA256= XCAT_BOOT_MEDIA_SHA256= XCAT_RUNTIME_SHA256=
     XCAT_BOOTSTRAP= XCAT_CONSOLE_PORT= XCAT_CONSOLE_SPEED= XCAT_CONSOLE_FLOW=
-    XCAT_BOOTSTRAP_NETWORK_BASE64=
+    XCAT_BOOTSTRAP_NETWORK_BASE64= XCAT_ZFS_DATASETS_BASE64= XCAT_ZFS_DATASET_PLAN=
     XCAT_INSTALL_BOOT_OPTIONS_BASE64= XCAT_TARGET_BOOT_OPTIONS_BASE64=
     XCAT_NAMESERVERS= xcat_seen=' '
     [ -f "$1" ] || return 1
@@ -337,6 +382,7 @@ xcat_read_config()
             nameservers) XCAT_NAMESERVERS=$xcat_value ;;
             bootstrap) XCAT_BOOTSTRAP=$xcat_value ;;
             bootstrap_network_base64) XCAT_BOOTSTRAP_NETWORK_BASE64=$xcat_value ;;
+            zfs_datasets_base64) XCAT_ZFS_DATASETS_BASE64=$xcat_value ;;
             console_port) XCAT_CONSOLE_PORT=$xcat_value ;;
             console_speed) XCAT_CONSOLE_SPEED=$xcat_value ;;
             console_flow) XCAT_CONSOLE_FLOW=$xcat_value ;;
@@ -346,6 +392,10 @@ xcat_read_config()
         esac
     done < "$1"
     [ "$XCAT_RELEASE" = 15.1-RELEASE ] || return 1
+    case "$xcat_seen" in *' zfs_datasets_base64 '*)
+        xcat_guarded_storage && [ "$XCAT_FILESYSTEM" = zfs ] || return 1
+        XCAT_ZFS_DATASET_PLAN=$(xcat_zfs_dataset_plan) || return 1 ;;
+    esac
     case "$xcat_seen" in *' bootstrap_network_base64 '*)
         case "$XCAT_FORMAT" in xcat-freebsd-install-[3456]) ;; *) return 1 ;; esac
         [ -n "$XCAT_BOOTSTRAP_NETWORK_BASE64" ] && [ "${#XCAT_BOOTSTRAP_NETWORK_BASE64}" -le 8192 ] || return 1
@@ -1007,6 +1057,12 @@ xcat_write_installer()
             xcat_auxiliary=$(xcat_zfs_auxiliary arguments) || return 1
             xcat_auxiliary=$(printf '%s\n' "$xcat_auxiliary" | awk 'NF {s=s (length(s) ? " " : "") $0} END {print s}') || return 1
             printf 'export XCAT_ZFS_AUXILIARY="%s"\n' "$xcat_auxiliary"
+        fi
+        if [ -n "${XCAT_ZFS_DATASETS_BASE64:-}" ]; then
+            xcat_datasets=$(xcat_zfs_dataset_plan) || return 1
+            printf 'export ZFSBOOT_DATASETS="\n'
+            printf '%s\n' "$xcat_datasets" | awk -F '\t' '{sub(/^zroot/,"",$1); print $1 " " $2}'
+            printf '"\n'
         fi
     elif [ "$XCAT_SWAP_SIZE" = 0 ]; then
         printf 'PARTITIONS="%s GPT { auto freebsd-ufs / }"\n' "$XCAT_TARGET_DISK"

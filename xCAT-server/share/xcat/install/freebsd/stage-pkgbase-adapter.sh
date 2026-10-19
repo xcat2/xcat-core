@@ -176,6 +176,9 @@ cat > "$work/paths" <<'PATHS'
 /usr/sbin/mtree
 /usr/sbin/zdb
 PATHS
+if [ -f "$root/usr/local/libexec/configzfs-datasets.awk" ]; then
+    printf '%s\n' /usr/local/libexec/configzfs-datasets.awk >> "$work/paths"
+fi
 if [ -f "$root/usr/local/libexec/confignetwork-freebsd.awk" ]; then
     printf '%s\n' /usr/local/libexec/confignetwork-freebsd.awk /usr/local/libexec/xcat-network.sh >> "$work/paths"
     for module in if_infiniband if_lagg bridgestp if_bridge if_vlan; do

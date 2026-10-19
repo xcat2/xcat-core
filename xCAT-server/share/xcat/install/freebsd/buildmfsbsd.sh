@@ -8,6 +8,7 @@ export PATH LC_ALL
 pkgbase_archive=
 pkgbase_resolver=
 network_planner=
+dataset_planner=
 while [ "$#" -gt 5 ]; do
     case "$1" in
         --pkgbase)
@@ -19,11 +20,15 @@ while [ "$#" -gt 5 ]; do
             [ -z "$network_planner" ] && [ "$#" -ge 7 ] || exit 2
             network_planner=$(realpath "$2")
             shift 2 ;;
+        --dataset-planner)
+            [ -z "$dataset_planner" ] && [ "$#" -ge 7 ] || exit 2
+            dataset_planner=$(realpath "$2")
+            shift 2 ;;
         *) break ;;
     esac
 done
 if [ "$#" -ne 5 ]; then
-    printf 'Usage: %s [--pkgbase pkg-archive native-resolver] [--network-planner confignetwork-freebsd.awk] mfsbsd-source dist-directory output.iso mfsbsd-commit manifest-sha256\n' "$0" >&2
+    printf 'Usage: %s [--pkgbase pkg-archive native-resolver] [--network-planner confignetwork-freebsd.awk] [--dataset-planner configzfs-datasets.awk] mfsbsd-source dist-directory output.iso mfsbsd-commit manifest-sha256\n' "$0" >&2
     exit 2
 fi
 [ "$(uname -s)" = FreeBSD ] && [ "$(uname -m)" = amd64 ] || {
@@ -43,7 +48,7 @@ source_commit=$4
 manifest_sha256=$5
 build_tmp=/tmp
 [ -z "$pkgbase_archive" ] || build_tmp=${TMPDIR:-/tmp}
-for build_path in "$source_dir" "$dist_dir" "$output_file" "$script_dir" "$build_tmp" "$pkgbase_archive" "$pkgbase_resolver" "$network_planner"; do
+for build_path in "$source_dir" "$dist_dir" "$output_file" "$script_dir" "$build_tmp" "$pkgbase_archive" "$pkgbase_resolver" "$network_planner" "$dataset_planner"; do
     case "$build_path" in *[!A-Za-z0-9_./+-]*) xcat_error 'Build paths must not contain spaces or shell metacharacters' ;; esac
 done
 xcat_hex "$source_commit" 40 && xcat_hex "$manifest_sha256" 64 || xcat_error 'Invalid source or manifest checksum'
@@ -60,6 +65,9 @@ if [ -n "$pkgbase_archive" ]; then
 fi
 if [ -n "$network_planner" ]; then
     [ -n "$pkgbase_archive" ] && [ -f "$network_planner" ] || xcat_error 'Bootstrap networking requires pkgbase and its shared network planner'
+fi
+if [ -n "$dataset_planner" ]; then
+    [ -n "$pkgbase_archive" ] && [ -f "$dataset_planner" ] || xcat_error 'Datasets require pkgbase and the shared dataset planner'
 fi
 build_work=$(mktemp -d "$build_tmp/xcat-mfsbsd.XXXXXX")
 output_stage=
@@ -89,6 +97,9 @@ cp -R "$build_work/source/conf/." "$build_work/conf/"
 install -m 0555 "$script_dir/xcat-install" "$build_work/custom/usr/local/sbin/xcat-install"
 install -m 0444 "$script_dir/xcat-install-lib.sh" "$build_work/custom/usr/local/libexec/xcat-install-lib.sh"
 install -m 0444 "$script_dir/installerconfig.tmpl" "$build_work/custom/usr/local/share/xcat/installerconfig.tmpl"
+if [ -n "$dataset_planner" ]; then
+    install -m 0444 "$dataset_planner" "$build_work/custom/usr/local/libexec/configzfs-datasets.awk"
+fi
 if [ -n "$network_planner" ]; then
     install -m 0444 "$network_planner" "$build_work/custom/usr/local/libexec/confignetwork-freebsd.awk"
     install -m 0444 "$script_dir/xcat-network.sh" "$build_work/custom/usr/local/libexec/xcat-network.sh"
@@ -192,6 +203,7 @@ awk '!/^[A-Za-z0-9_.+-]+(\/[A-Za-z0-9_.+-]+)*$/ || /(^|\/)\.\.?($|\/)/ {exit 1}'
     printf '{"format":"%s","release":"15.1-RELEASE","arch":"amd64","mfsbsd_commit":"%s",' "$bundle_format" "$source_commit"
     [ "$bundle_format" != xcat-mfsbsd-2 ] || printf '"install_contract":"xcat-freebsd-install-6","postscript_contract":"xcat-freebsd-postscripts-1",'
     [ -z "$network_planner" ] || printf '"network_contract":"xcat-freebsd-bootstrap-1",'
+    [ -z "$dataset_planner" ] || printf '"dataset_contract":"xcat-freebsd-datasets-1",'
     printf '"files":{'
     separator=
     while IFS= read -r payload_file; do

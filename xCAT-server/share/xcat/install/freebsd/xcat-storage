@@ -649,8 +649,14 @@ storage_native_before()
             ;;
         'zfs:zfs create %s "%s"')
             [ "$storage_phase" = pool ] && [ "$#" -eq 2 ] || exit 1
-            case "$2" in zroot/ROOT|zroot/ROOT/default|zroot/home|zroot/tmp|zroot/usr|zroot/usr/ports|zroot/usr/src|zroot/var|zroot/var/audit|zroot/var/crash|zroot/var/log|zroot/var/mail|zroot/var/tmp) ;; *) exit 1 ;; esac
-            case "$1" in *[!A-Za-z0-9_=/.,\ -]*) exit 1 ;; esac
+            if [ -n "${XCAT_ZFS_DATASETS_BASE64:-}" ]; then
+                storage_options=$(printf '%s\n' "$XCAT_ZFS_DATASET_PLAN" | awk -F '\t' -v name="$2" \
+                    '$1==name {gsub(/,/," -o ",$2); print "-o " $2; found++} END {if(found!=1) exit 1}')
+                [ "$1" = "$storage_options" ] || exit 1
+            else
+                case "$2" in zroot/ROOT|zroot/ROOT/default|zroot/home|zroot/tmp|zroot/usr|zroot/usr/ports|zroot/usr/src|zroot/var|zroot/var/audit|zroot/var/crash|zroot/var/log|zroot/var/mail|zroot/var/tmp) ;; *) exit 1 ;; esac
+                case "$1" in *[!A-Za-z0-9_=/.,\ -]*) exit 1 ;; esac
+            fi
             ;;
         'zfs:zfs set "%s" "%s"')
             [ "$storage_phase" = pool ] && [ "$#" -eq 2 ] || exit 1
@@ -852,6 +858,10 @@ case "$storage_action" in
         storage_check
         storage_target
         [ "$(zpool get -H -o value bootfs zroot)" = zroot/ROOT/default ]
+        if [ -n "${XCAT_ZFS_DATASETS_BASE64:-}" ]; then
+            storage_root=$(cat "$storage_work/root")
+            printf '%s\n' "$XCAT_ZFS_DATASET_PLAN" | xcat_verify_datasets os zroot "$storage_root"
+        fi
         printf 'configured\n' > "$storage_work/phase"
         storage_release
         ;;

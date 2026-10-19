@@ -126,7 +126,7 @@ sub _payload_path {
 }
 
 sub _validate_runtime {
-    my ($root, $postscripts, $storage, $network) = @_;
+    my ($root, $postscripts, $storage, $network, $datasets) = @_;
     my @records = split(/\n/x, _read_file("$root/xcat/runtime.tsv", 65536), -1);
     _fail('Runtime descriptor must end with one LF') unless pop(@records) eq '';
     my @prefix = (
@@ -155,6 +155,7 @@ sub _validate_runtime {
     push @required, qw(usr/local/libexec/xcat-postscript usr/local/libexec/xcat-postscript-packages
         usr/local/libexec/freebsd-pkg-resolve usr/local/libexec/xcat-postboot) if $postscripts;
     push @required, @STORAGE_FILES if $storage;
+    push @required, 'usr/local/libexec/configzfs-datasets.awk' if $datasets;
     push @required, qw(usr/local/libexec/xcat-network.sh usr/local/libexec/confignetwork-freebsd.awk
         boot/modules/if_infiniband.ko boot/modules/if_lagg.ko boot/modules/bridgestp.ko
         boot/modules/if_bridge.ko boot/modules/if_vlan.ko) if $network;
@@ -210,7 +211,7 @@ sub inspect_media {
     my $raw = _read_file("$root/$MARKER", 1048576);
     my $manifest = eval { JSON->new->utf8->decode($raw) };
     _fail('Invalid xCAT mfsBSD JSON manifest') unless ref($manifest) eq 'HASH';
-    my %allowed = map { $_ => 1 } qw(format release arch files mfsbsd_commit install_contract postscript_contract network_contract);
+    my %allowed = map { $_ => 1 } qw(format release arch files mfsbsd_commit install_contract postscript_contract network_contract dataset_contract);
     _fail('Unknown xCAT mfsBSD manifest field') if grep { !$allowed{$_} } keys %$manifest;
     for my $key (qw(format release arch)) {
         _fail("Missing or invalid mfsBSD manifest $key")
@@ -232,6 +233,12 @@ sub inspect_media {
             ($manifest->{install_contract} || '') =~ /\Axcat-freebsd-install-[3456]\z/x &&
             defined($manifest->{network_contract}) && !ref($manifest->{network_contract}) &&
             $manifest->{network_contract} eq 'xcat-freebsd-bootstrap-1';
+    }
+    if (exists($manifest->{dataset_contract})) {
+        _fail('Unsupported dataset contract') unless $boot_only &&
+            ($manifest->{install_contract} || '') =~ /\Axcat-freebsd-install-[456]\z/x &&
+            defined($manifest->{dataset_contract}) && !ref($manifest->{dataset_contract}) &&
+            $manifest->{dataset_contract} eq 'xcat-freebsd-datasets-1';
     }
     _fail('Only FreeBSD 15.1-RELEASE bundles are supported') unless $manifest->{release} eq '15.1-RELEASE';
     _fail('Only FreeBSD amd64 bundles are supported') unless $manifest->{arch} eq 'amd64';
@@ -266,7 +273,7 @@ sub inspect_media {
     if ($boot_only) {
         _validate_runtime($root, exists($manifest->{postscript_contract}),
             scalar(($manifest->{install_contract} || '') =~ /\Axcat-freebsd-install-[456]\z/x),
-            exists($manifest->{network_contract}));
+            exists($manifest->{network_contract}), exists($manifest->{dataset_contract}));
     } else {
         _validate_distributions($root, $files);
     }

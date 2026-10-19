@@ -377,7 +377,7 @@ sub load_settings {
     my $settings = _policy($template, $node, qw(authorized_keys_file bootstrap bootstrap_interface));
     my ($text) = _read_file($partitionfile, $node, 65536);
     require xCAT::FreeBSDStorage;
-    my ($os, $pools) = xCAT::FreeBSDStorage::sections($text);
+    my ($os, $pools, $datasets) = xCAT::FreeBSDStorage::sections($text);
     my $disk = _policy_values($os,
         qw(target_disk target_disk_ident filesystem swap_size zfs_topology zfs_vdevs swap_mode
         zfs_compression zfs_ashift disk_action preserve_disks
@@ -390,6 +390,13 @@ sub load_settings {
         _read_file($planner, $node, 262144);
         $storage = xCAT::FreeBSDStorage::compile($node, $disk, $pools, $planner);
         _zfs_disk_policy($disk);
+    }
+    if (keys %$datasets) {
+        _fail('A shared dataset planner is required') unless defined($planner) && !ref($planner);
+        my $dataset_planner = $planner;
+        $dataset_planner =~ s{[^/]+\z}{configzfs-datasets.awk}x;
+        _read_file($dataset_planner, $node, 262144);
+        xCAT::FreeBSDStorage::datasets($disk, $storage, $datasets, $dataset_planner);
     }
     my ($keys, $keyfile) = _read_file($settings->{authorized_keys_file}, $node, 16384);
     my @keys = grep { /\S/ } split(/\n/, $keys);
@@ -482,6 +489,13 @@ sub render_pkgbase {
         my $bootstrap = xCAT::FreeBSDNetwork::decode($config{bootstrap_network_base64});
         _fail('Bootstrap network belongs to another provisioning MAC') unless $bootstrap->{mac} eq $config{mac};
         push @order, 'bootstrap_network_base64';
+    }
+    if (exists($config{zfs_datasets_base64})) {
+        _fail('OS datasets require xcat-freebsd-datasets-1 media and explicit ZFS disks') unless
+            $multi_disk && ($media->{dataset_contract} || '') eq 'xcat-freebsd-datasets-1';
+        _fail('Invalid encoded OS datasets') unless $config{zfs_datasets_base64} =~ /\A[A-Za-z0-9+\/=]+\z/x
+            && length($config{zfs_datasets_base64}) <= 16384;
+        push @order, 'zfs_datasets_base64';
     }
     return _render_config(\%config, \@order,
         [qw(generation package_plan_sha256 boot_media_sha256 runtime_sha256)], 'install_url', 'installation');

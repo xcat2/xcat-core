@@ -16,8 +16,12 @@ if [ "${1:-}" != --locked ]; then
     exec lockf -k -t 0 /var/run/xcat-configzfs.lock /bin/sh "$0" --locked "$@"
 fi
 shift
-[ "$#" -le 1 ] || fail 'Usage: configzfs.freebsd [/etc/xcat/storage.conf]'
+[ "$#" -le 2 ] || fail 'Usage: configzfs.freebsd [/etc/xcat/storage.conf [dataset-policy]]'
 policy=${1:-/etc/xcat/storage.conf}
+dataset_policy=${2:-}
+if [ -n "$dataset_policy" ]; then
+    [ "$dataset_policy" = "${policy%.conf}.datasets" ] || fail 'Dataset policy must accompany its pool policy'
+fi
 case "$policy" in /etc/xcat/*.conf) ;; *) fail 'The data policy must be under /etc/xcat' ;; esac
 case "$policy" in *[!A-Za-z0-9_./-]*|*/../*|*/./*|*//*) fail 'Invalid policy path' ;; esac
 planner=$(CDPATH= cd -P "$(dirname "$0")" && pwd)/configzfs-freebsd.awk
@@ -41,6 +45,13 @@ safe_parents()
     done
 )
 
+safe_planner()
+{
+    [ -f "$1" ] && [ ! -L "$1" ] && [ "$(stat -f '%u:%g:%l' "$1")" = 0:0:1 ] &&
+        safe_parents "$1" || return 1
+    case $(stat -f '%Lp' "$1") in 444|644|555|755) return 0 ;; *) return 1 ;; esac
+}
+
 rc_enabled()
 {
     case "$1" in [Yy][Ee][Ss]|[Tt][Rr][Uu][Ee]|[Oo][Nn]|1) return 0 ;; *) return 1 ;; esac
@@ -61,9 +72,7 @@ safe_parents "$cachefile" || fail 'Unsafe pool cache directory'
 if [ -e "$cachefile" ] || [ -L "$cachefile" ]; then
     safe_file "$cachefile" || fail 'Unsafe pool cache'
 fi
-[ -f "$planner" ] && [ ! -L "$planner" ] &&
-    [ "$(stat -f '%u:%g:%l' "$planner")" = 0:0:1 ] && safe_parents "$planner" || fail 'Unsafe data planner'
-case $(stat -f '%Lp' "$planner") in 444|644|555|755) ;; *) fail 'Unsafe data planner mode' ;; esac
+safe_planner "$planner" || fail 'Unsafe data planner'
 . "$library"
 command -v xcat_disk_inventory >/dev/null 2>&1 || fail 'The installed runtime requires storage contract 5'
 [ "$(stat -f %z "$policy")" -le 32768 ] || fail 'The policy exceeds its size limit'
@@ -109,6 +118,18 @@ encryption=$(setting encryption)
 keyfile=$(setting keyfile)
 mountpoint=$(setting mountpoint)
 policy_hash=$(sha256 -q "$attempt/plan")
+created=0
+if [ -n "$dataset_policy" ]; then
+    dataset_planner=${planner%/*}/configzfs-datasets.awk
+    safe_file "$dataset_policy" && safe_parents "$dataset_policy" || fail 'Unsafe dataset declaration'
+    safe_planner "$dataset_planner" || fail 'Unsafe dataset planner'
+    command -v xcat_verify_datasets >/dev/null 2>&1 || fail 'The installed runtime requires dataset support'
+    [ "$(stat -f %z "$dataset_policy")" -le 12288 ] || fail 'Dataset declaration exceeds its size limit'
+    cp "$dataset_policy" "$attempt/dataset-policy"
+    awk -v expected_kind=data -v expected_pool="$pool" -v expected_mountpoint="$mountpoint" \
+        -f "$dataset_planner" "$attempt/dataset-policy" > "$attempt/dataset-plan"
+    policy_hash=$(cat "$attempt/plan" "$attempt/dataset-plan" | sha256 -q)
+fi
 receipt=/var/db/xcat/storage/$pool.current
 imported_readonly=0
 rc_stage=
@@ -188,6 +209,9 @@ verify_pool()
             [ "$(zfs get -H -o value keylocation "$pool")" = "file://$keyfile" ] || return 1
         zfs load-key -n -L "file://$keyfile" "$pool" </dev/null || return 1
     fi
+    if [ -n "$dataset_policy" ] && [ "$created" = 0 ]; then
+        xcat_verify_datasets data "$pool" < "$attempt/dataset-plan" || return 1
+    fi
 }
 
 check_identities()
@@ -228,6 +252,7 @@ if [ -z "$existing" ]; then
         zpool create -o cachefile=none -o "ashift=$ashift" -O "compression=$compression" \
             -O "special_small_blocks=$small_blocks" -m "$mountpoint" "$@" </dev/null
         guid=$(zpool get -H -o value guid "$pool")
+        created=1
     else
         while IFS="$(printf '\t')" read -r kind role device serial group; do
             [ "$kind" = D ] && [ "$role" != os ] || continue
@@ -257,6 +282,20 @@ parent=${mountpoint%/*}
 safe_parents "$mountpoint" || fail 'Unsafe data mountpoint parent'
 if [ "$encryption" != off ] && [ "$(zfs get -H -o value keystatus "$pool")" != available ]; then
     zfs load-key -L "file://$keyfile" "$pool" </dev/null
+fi
+if [ -n "$dataset_policy" ]; then
+    if [ "$created" = 1 ]; then
+        while IFS="$(printf '\t')" read -r dataset properties; do
+            old_ifs=$IFS IFS=,
+            set -- $properties
+            IFS=$old_ifs
+            arguments=$#
+            for property do set -- "$@" -o "$property"; done
+            shift "$arguments"
+            zfs create "$@" "$dataset" </dev/null
+        done < "$attempt/dataset-plan"
+    fi
+    xcat_verify_datasets data "$pool" < "$attempt/dataset-plan" || fail 'Declared datasets do not match native readback'
 fi
 zfs list -H -r -t filesystem -o name,canmount,mountpoint,encryptionroot "$pool" > "$attempt/datasets"
 while IFS="$(printf '\t')" read -r dataset canmount destination encryptionroot; do

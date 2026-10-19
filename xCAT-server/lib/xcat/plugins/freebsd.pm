@@ -458,6 +458,10 @@ sub mkinstall {
                 $image->{settings}{template}, $image->{settings}{partitionfile},
                 "$installroot/postscripts/configzfs-freebsd.awk");
             my $storage = delete $settings->{data_storage};
+            die "Dataset provisioning requires xcat-freebsd-datasets-1 media\n"
+              if (exists($settings->{zfs_datasets_base64}) || (defined($storage) &&
+                  grep { exists($_->{datasets}) } @{$storage->{pools}})) &&
+                ($image->{media}{dataset_contract} || '') ne 'xcat-freebsd-datasets-1';
             die "Data pool provisioning requires pkgbase media with native postscripts\n"
               if defined($storage) && (!$image->{install} || !$image->{media}{postscript_contract}
                 || ($image->{media}{install_contract} || '') !~ /\Axcat-freebsd-install-[56]\z/x);

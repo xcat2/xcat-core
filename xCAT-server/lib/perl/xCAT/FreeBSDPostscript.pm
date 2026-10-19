@@ -1242,6 +1242,10 @@ sub _storage_source_stage {
         _fail('Missing storage postscript or planner') unless $entry->{type} eq 'file'
           && ($name =~ /[.]awk\z/x || ($entry->{mode} & oct('0111')));
     }
+    if (grep { exists($_->{datasets}) } @{$storage->{pools}}) {
+        my $resolved = _source_resolve('configzfs-datasets.awk', $entries, $limits);
+        _fail('Missing dataset planner') unless $entries->{$resolved}{type} eq 'file';
+    }
     my $files = xCAT::FreeBSDStorage::files($source->{node}, $storage);
     my $stage = "$attempt/content";
     mkdir($stage, oct('0700')) or _fail('Cannot create storage source stage');
@@ -1254,7 +1258,7 @@ sub _storage_source_stage {
     ++$manifest->{count};
     for my $name (sort keys %$files) {
         _fail('Invalid generated storage filename') unless $name eq 'pools'
-          || $name =~ /\A[a-z][a-z0-9_-]{0,62}[.](?:conf|key)\z/x;
+          || $name =~ /\A[a-z][a-z0-9_-]{0,62}[.](?:conf|key|datasets)\z/x;
         my $bytes = $files->{$name};
         my $digest = sha256_hex($bytes);
         if (!$blobs{$digest}++) {

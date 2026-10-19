@@ -53,6 +53,12 @@ done
 
 while IFS= read -r pool; do
     private_file "$payload/$pool.conf"
+    if [ -e "$payload/$pool.datasets" ] || [ -L "$payload/$pool.datasets" ]; then
+        private_file "$payload/$pool.datasets"
+        if [ -e "/etc/xcat/storage/$pool.datasets" ] || [ -L "/etc/xcat/storage/$pool.datasets" ]; then
+            private_file "/etc/xcat/storage/$pool.datasets"
+        fi
+    fi
     if [ -e "$payload/$pool.key" ] || [ -L "$payload/$pool.key" ]; then
         private_file "$payload/$pool.key"
         [ "$(stat -f %z "$payload/$pool.key")" = 32 ] || fail 'Invalid stored data key'
@@ -93,5 +99,10 @@ while IFS= read -r pool; do
         publish "$payload/$pool.key" "/etc/xcat/keys/$pool.key" key
     fi
     publish "$payload/$pool.conf" "/etc/xcat/storage/$pool.conf" policy
-    "$source_dir/configzfs.freebsd" "/etc/xcat/storage/$pool.conf"
+    set -- "/etc/xcat/storage/$pool.conf"
+    if [ -f "$payload/$pool.datasets" ]; then
+        publish "$payload/$pool.datasets" "/etc/xcat/storage/$pool.datasets" policy
+        set -- "$@" "/etc/xcat/storage/$pool.datasets"
+    fi
+    "$source_dir/configzfs.freebsd" "$@"
 done < "$payload/pools"
