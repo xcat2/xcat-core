@@ -547,7 +547,8 @@ sub setdestiny {
                     node            => $samestatenodes,
                     noupdateinitrd  => $noupdateinitrd,
                     ignorekernelchk => $ignorekernelchk,
-                    bootparams => \$bphash}, \&relay_response);
+                    bootparams => \$bphash,
+                    exists($req->{_freebsd_pool}) ? (_freebsd_pool => $req->{_freebsd_pool}) : ()}, \&relay_response);
             if ($errored) {
                 # The error messeage for mkinstall/mknetboot/mkstatelite had been output within relay_response function above, don't need to output more
                 xCAT::MsgUtils->trace($verbose_on_off, "d", "destiny->setdestiny: Failed in processing mk$tempstate.");

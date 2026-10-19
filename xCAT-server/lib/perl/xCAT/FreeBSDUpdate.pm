@@ -114,11 +114,26 @@ sub _informational {
 }
 
 sub _route {
-    my ($request, $callback) = @_;
+    my ($request, $callback, $dispatch) = @_;
     require xCAT::InstUtils;
     require xCAT::NetworkUtils;
-    my $owners = xCAT::InstUtils->get_server_nodes($callback, $request->{node}, 0);
+    require xCAT::FreeBSDPool;
+    my (@fixed, %pool_owners);
+    for my $pool_node (@{$request->{node}}) {
+        my $pool = xCAT::FreeBSDPool::node_topology($pool_node);
+        if ($pool) {
+            my $state = xCAT::FreeBSDPool::request($pool_node, 'inspect', {}, $dispatch, $pool);
+            _fail('Service-node pool has no installed owner') if ($state->{phase} || '') !~ /\A(?:installed|booted)\z/x
+              || !defined($state->{owner}) || ref($state->{owner})
+              || !grep { $_ eq $state->{owner} } @{$pool->{servers}};
+            push @{$pool_owners{$state->{owner}}}, $pool_node;
+        } else {
+            push @fixed, $pool_node;
+        }
+    }
+    my $owners = @fixed ? xCAT::InstUtils->get_server_nodes($callback, \@fixed, 0) : {};
     _fail('Cannot determine management-node owners') unless ref($owners) eq 'HASH';
+    push @{$owners->{$_}}, @{$pool_owners{$_}} for keys %pool_owners;
     my %expected = map { $_ => 1 } @{$request->{node}};
     my (@requests, %seen);
     for my $owner (sort keys %$owners) {
@@ -150,7 +165,7 @@ sub preprocess {
             if (_informational($options, $callback)) {
                 $result = [];
             } else {
-                $result = _route($native, $callback);
+                $result = _route($native, $callback, $subrequest);
                 if ($legacy) {
                     my $requests = $legacy_handler->($legacy, $callback, $subrequest);
                     push @$result, @$requests if $requests;

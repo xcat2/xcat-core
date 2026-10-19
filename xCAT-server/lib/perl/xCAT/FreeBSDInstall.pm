@@ -93,6 +93,7 @@ sub _read_state {
         $state->{phase} =~ /\A(?:installing|completing|installed|booted|failed)\z/ && !exists($state->{attempt});
     _postscript_preparations($state->{postscript_preparations}) if exists($state->{postscript_preparations});
     _postscript_state($state);
+    _service_pool($state->{service_pool}) if exists($state->{service_pool});
     return $state;
 }
 
@@ -184,6 +185,11 @@ sub prepare {
     my ($node, $fingerprint, %options) = @_;
     _fail('Invalid installation fingerprint') unless _identifier($fingerprint, 64);
     _fail('Invalid publication callback') if exists($options{publish}) && ref($options{publish}) ne 'CODE';
+    _fail('Invalid registration callback') if exists($options{register}) && ref($options{register}) ne 'CODE';
+    if (exists($options{service_pool})) {
+        _service_pool($options{service_pool});
+        $fingerprint = sha256_hex("xcat-freebsd-service-pool-1\n$fingerprint\n" . $json->encode($options{service_pool}));
+    }
     my $preparations;
     if (exists($options{postscript_preparations})) {
         _postscript_preparations($options{postscript_preparations});
@@ -195,13 +201,21 @@ sub prepare {
         if ($state) {
             _fail('Stop the node and run nodeset offline before rearming this installation')
                 if $state->{phase} =~ /\A(?:installing|completing|failed)\z/;
+            if ($state->{service_pool} && $options{service_pool}
+                && $state->{service_pool}{epoch} eq $options{service_pool}{epoch}) {
+                _fail('Pool preparation changed; run nodeset osimage to prepare a new pool epoch')
+                    unless $state->{phase} eq 'prepared' && $state->{fingerprint} eq $fingerprint;
+            }
         }
-        unless ($state && $state->{phase} eq 'prepared' && $state->{fingerprint} eq $fingerprint) {
+        my $changed = !$state || $state->{phase} ne 'prepared' || $state->{fingerprint} ne $fingerprint;
+        if ($changed) {
             $state = { version => 1, node => $node, fingerprint => $fingerprint,
                 generation => _generation(), phase => 'prepared' };
             $state->{postscript_preparations} = $preparations if defined($preparations);
-            $save->($state);
+            $state->{service_pool} = {%{$options{service_pool}}} if exists($options{service_pool});
         }
+        $options{register}->($state->{generation}) if $options{register};
+        $save->($state) if $changed;
         $options{publish}->($state->{generation}) if $options{publish};
         return $state->{generation};
     });
@@ -210,6 +224,171 @@ sub prepare {
 sub state {
     my ($node, %options) = @_;
     return _locked($node, \%options, sub { return $_[0]; });
+}
+
+sub _pool_ip {
+    my $ip = shift;
+    return 0 if !defined($ip) || ref($ip) || $ip !~ /\A(?:[0-9]{1,3}[.]){3}[0-9]{1,3}\z/x;
+    return 0 if grep { $_ > 255 || (length($_) > 1 && /^0/x) } split(/[.]/x, $ip);
+    return 1;
+}
+
+sub _service_pool {
+    my $metadata = shift;
+    _fail('Invalid service-node preparation') unless ref($metadata) eq 'HASH'
+      && keys(%$metadata) == 3 && _identifier($metadata->{epoch}, 32)
+      && _pool_ip($metadata->{coordinator}) && _pool_ip($metadata->{server});
+    return;
+}
+
+sub _pool_authorize {
+    my ($node, $state, $attempt, $phase, $dispatch) = @_;
+    return unless exists($state->{service_pool});
+    require xCAT::FreeBSDPool;
+    xCAT::FreeBSDPool::event($node, $state, $attempt, $phase, $dispatch);
+    return;
+}
+
+sub _pool_registration {
+    my $entry = shift;
+    _fail('Invalid pool registration') unless ref($entry) eq 'HASH' && keys(%$entry) == 3
+      && _identifier($entry->{generation}, 32) && _identifier($entry->{fingerprint}, 64)
+      && _pool_ip($entry->{master});
+    return;
+}
+
+sub _pool_state {
+    my $state = shift;
+    my $pool = $state->{pool};
+    _fail('Invalid service-node pool state') unless ref($pool) eq 'HASH'
+      && ref($pool->{servers}) eq 'ARRAY' && ref($pool->{registrations}) eq 'HASH';
+    _fail('Invalid service-node pool fields') if grep { $_ !~ /\A(?:servers|registrations|owner)\z/x } keys %$pool;
+    _fail('Invalid service-node pool size') if !@{$pool->{servers}} || @{$pool->{servers}} > 32;
+    my %servers;
+    for my $server (@{$pool->{servers}}) {
+        _fail('Invalid pool server') unless _pool_ip($server);
+        _fail('Repeated pool server') if $servers{$server}++;
+    }
+    for my $server (keys %{$pool->{registrations}}) {
+        _fail('Registered server is not a pool member') unless $servers{$server};
+        _pool_registration($pool->{registrations}{$server});
+    }
+    _fail('Invalid pool installation owner') if exists($pool->{owner})
+      && (!defined($pool->{owner}) || ref($pool->{owner}) || !$pool->{registrations}{$pool->{owner}});
+    _fail('Pool attempt and owner differ') if exists($state->{attempt}) != exists($pool->{owner});
+    return $pool;
+}
+
+sub _pool_prepare {
+    my ($node, $current, $input) = @_;
+    _fail('Invalid pool preparation fingerprint') unless _identifier($input->{fingerprint}, 64);
+    _fail('Stop the node and run nodeset offline before rearming this pool installation')
+      if $current && $current->{phase} =~ /\A(?:installing|completing|failed)\z/x;
+    my $next = {version => 1, node => $node, generation => _generation(),
+        fingerprint => $input->{fingerprint}, phase => 'prepared',
+        pool => {servers => $input->{servers}, registrations => {}}};
+    _pool_state($next);
+    return $next;
+}
+
+sub _pool_match {
+    my ($current, $input) = @_;
+    _fail('Pool installation is not armed') if !$current || $current->{phase} eq 'cancelled';
+    _fail('Stale pool installation generation') unless _identifier($input->{epoch}, 32)
+      && $input->{epoch} eq $current->{generation};
+    _fail('Invalid pool server address') unless _pool_ip($input->{server});
+    _fail('Server is not in this installation pool') unless
+      grep { $_ eq $input->{server} } @{$current->{pool}{servers}};
+    _fail('Invalid prepared server generation') unless _identifier($input->{generation}, 32);
+    return;
+}
+
+sub _pool_register {
+    my ($current, $input) = @_;
+    _fail('Pool registration requires an unclaimed installation') unless $current->{phase} eq 'prepared';
+    my $pool = $current->{pool};
+    my $server = $input->{server};
+    my $entry = {map { $_ => $input->{$_} } qw(generation fingerprint master)};
+    _pool_registration($entry);
+    _fail('Prepared server changed within this pool generation') if exists($pool->{registrations}{$server})
+      && $json->encode($pool->{registrations}{$server}) ne $json->encode($entry);
+    $pool->{registrations}{$server} = $entry;
+    return;
+}
+
+sub _pool_event {
+    my ($current, $input) = @_;
+    my $pool = $current->{pool};
+    my $server = $input->{server};
+    my $registered = $pool->{registrations}{$server};
+    _fail('Server installation was not registered') unless $registered
+      && $registered->{generation} eq $input->{generation};
+    _fail('Invalid pool installation attempt') unless _identifier($input->{attempt}, 32);
+    my $phase = $input->{phase};
+    _fail('Invalid pool installation phase') if !defined($phase) || ref($phase)
+      || $phase !~ /\A(?:begin|completing|complete|booted|failed)\z/x;
+    if (exists($pool->{owner})) {
+        _fail('Another service node or attempt owns this installation') unless
+          $pool->{owner} eq $server && $current->{attempt} eq $input->{attempt};
+    } elsif ($phase eq 'begin') {
+        _fail('Pool installation cannot begin in this state') unless $current->{phase} eq 'prepared';
+        $pool->{owner} = $server;
+        $current->{attempt} = $input->{attempt};
+    } elsif ($phase ne 'failed') {
+        _fail('Pool installation has no owner');
+    }
+    return unless exists($pool->{owner});
+    my %previous = (begin => qr/\A(?:prepared|installing)\z/x,
+        completing => qr/\A(?:installing|completing|installed|booted)\z/x,
+        complete => qr/\A(?:completing|installed|booted)\z/x,
+        booted => qr/\A(?:installed|booted)\z/x, failed => qr/\A(?:installing|completing|failed)\z/x);
+    _fail('Invalid pool installation transition') unless $current->{phase} =~ $previous{$phase};
+    my %next = (begin => 'installing', completing => 'completing', complete => 'installed', booted => 'booted', failed => 'failed');
+    $current->{phase} = $next{$phase} unless $current->{phase} eq 'booted'
+      || ($phase eq 'completing' && $current->{phase} eq 'installed');
+    return;
+}
+
+sub pool_request {
+    my ($node, $operation, $input, %options) = @_;
+    _fail('Invalid pool operation') if !defined($operation) || ref($operation)
+      || $operation !~ /\A(?:prepare|register|event|inspect|cancel)\z/x;
+    _fail('Invalid pool request') unless ref($input) eq 'HASH';
+    my %fields = (
+        prepare => [qw(fingerprint servers)], register => [qw(epoch server generation fingerprint master)],
+        event => [qw(epoch server generation attempt phase)], inspect => [], cancel => [],
+    );
+    my %allowed = map { $_ => 1 } @{$fields{$operation}};
+    _fail('Unexpected pool request fields') if keys(%$input) != keys(%allowed)
+      || grep { !$allowed{$_} } keys %$input;
+    $options{directory} ||= '/var/lib/xcat/freebsd-pools';
+    return _locked($node, \%options, sub {
+        my ($current, $save) = @_;
+        _pool_state($current) if $current;
+        if ($operation eq 'prepare') {
+            $current = _pool_prepare($node, $current, $input);
+            $save->($current);
+        } elsif ($operation eq 'cancel') {
+            if ($current) {
+                $current->{phase} = 'cancelled';
+                $save->($current);
+            }
+        } elsif ($operation ne 'inspect') {
+            _pool_match($current, $input);
+            if ($operation eq 'register') {
+                _pool_register($current, $input);
+            } else {
+                _pool_event($current, $input);
+            }
+            $save->($current);
+        }
+        return {phase => 'absent'} unless $current;
+        my $pool = $current->{pool};
+        return {epoch => $current->{generation}, phase => $current->{phase},
+            servers => [@{$pool->{servers}}],
+            exists($pool->{owner}) ? (owner => $pool->{owner},
+                master => $pool->{registrations}{$pool->{owner}}{master}) : ()};
+    });
 }
 
 sub cancel {
@@ -232,46 +411,55 @@ sub transition {
     return _locked($node, \%options, sub {
         my ($state, $save) = @_;
         _fail('Installation is not armed') unless $state && $state->{phase} ne 'cancelled';
+        _fail('Service-node pool requires a registered local preparation')
+          if $options{require_pool} && !$state->{service_pool};
         _fail('Stale installation generation') unless $state->{generation} eq $generation;
         _fail('Another installation attempt owns this generation')
             if exists($state->{attempt}) && $state->{attempt} ne $attempt;
         if ($phase eq 'begin') {
             _fail('Installation cannot begin in this state') unless $state->{phase} =~ /\A(?:prepared|installing)\z/;
+            _pool_authorize($node, $state, $attempt, $phase, $options{dispatch});
             $state->{attempt} = $attempt;
             $state->{phase} = 'installing';
             $save->($state);
-            $action->('begin');
+            $action->('begin', $state);
         } elsif ($phase eq 'complete') {
             _fail('Installation cannot complete in this state') unless
                 $state->{phase} =~ /\A(?:installing|completing|installed|booted)\z/;
+            my $pending = $state->{phase} ne 'installed' && $state->{phase} ne 'booted';
+            _pool_authorize($node, $state, $attempt, $pending ? 'completing' : 'complete', $options{dispatch});
             if ($state->{phase} ne 'installed' && $state->{phase} ne 'booted') {
                 $state->{phase} = 'completing';
                 $save->($state);
-                $action->('complete');
+                $action->('complete', $state);
                 $state->{phase} = 'installed';
                 $save->($state);
+                _pool_authorize($node, $state, $attempt, 'complete', $options{dispatch});
             }
         } elsif ($phase eq 'booted') {
             _fail('Installation is not complete') unless $state->{phase} =~ /\A(?:installed|booted)\z/;
+            _pool_authorize($node, $state, $attempt, 'complete', $options{dispatch}) if $state->{phase} eq 'installed';
+            _pool_authorize($node, $state, $attempt, $phase, $options{dispatch});
             if ($state->{phase} ne 'booted') {
-                $action->('booted');
+                $action->('booted', $state);
                 $state->{phase} = 'booted';
                 $save->($state);
             }
         } else {
             _fail('Installation cannot fail in this state') unless $state->{phase} =~ /\A(?:prepared|installing|completing|failed)\z/;
+            _pool_authorize($node, $state, $attempt, $phase, $options{dispatch});
             $state->{attempt} = $attempt;
             $state->{phase} = 'failed';
             $save->($state);
-            $action->('failed');
+            $action->('failed', $state);
         }
         return "freebsd-install-v1 $generation $phase ok\n";
     });
 }
 
 sub _command {
-    my ($node, $command, $argument, $dispatch) = @_;
-    my $response = $dispatch->({ command => [$command], node => [$node], arg => [$argument] });
+    my ($node, $command, $argument, $dispatch, %fields) = @_;
+    my $response = $dispatch->({ %fields, command => [$command], node => [$node], arg => [$argument] });
     _fail("No response from $command") unless ref($response) eq 'HASH';
     my @pending = ($response);
     while (@pending) {
@@ -303,6 +491,27 @@ sub _attribute {
     return;
 }
 
+sub pool_boot {
+    my ($node, $input, $dispatch, %options) = @_;
+    _fail('Invalid pool boot request') unless ref($input) eq 'HASH' && keys(%$input) == 2
+        && _identifier($input->{epoch}, 32) && _pool_ip($input->{server});
+    require xCAT::FreeBSDPool;
+    return _locked($node, \%options, sub {
+        my $state = shift;
+        _fail('Stale standby boot request') unless $state && $state->{service_pool}
+            && $state->{service_pool}{epoch} eq $input->{epoch}
+            && $state->{service_pool}{server} eq $input->{server}
+            && !xCAT::NetworkUtils->thishostisnot($input->{server});
+        my $pool = xCAT::FreeBSDPool::request($node, 'inspect', {}, $dispatch);
+        _fail('Pool installation has not completed') unless ($pool->{epoch} || '') eq $input->{epoch}
+            && ($pool->{phase} || '') =~ /\A(?:installed|booted)\z/x;
+        _command($node, 'nodeset', 'boot', $dispatch, _xcatpreprocessed => [1],
+            _disparatetftp => [1], _disjointmode => [1], _freebsd_owner => [$input->{server}]);
+        _attribute($node, 'chain', 'currstate', 'boot');
+        return {epoch => $input->{epoch}, phase => 'boot'};
+    });
+}
+
 sub handle_status {
     my ($node, $peer, $message, $dispatch, %options) = @_;
     _fail('Missing command dispatcher') unless ref($dispatch) eq 'CODE';
@@ -312,18 +521,28 @@ sub handle_status {
     $peer =~ s/\A::ffff:// if defined($peer) && !ref($peer);
     _fail('Unexpected installation client') unless defined($peer) && !ref($peer) &&
         defined($address) && $address ne '0' && $peer eq $address;
+    require xCAT::FreeBSDPool;
+    $options{require_pool} = xCAT::FreeBSDPool::node_topology($node) ? 1 : 0;
     return _boot_status($node, $message, $dispatch, %options)
         if defined($message) && !ref($message) && $message =~ /\Afreebsd-install-postscripts-/;
-    return transition($node, $message, sub {
-        my ($phase) = @_;
+    my $reply = transition($node, $message, sub {
+        my ($phase, $state) = @_;
         if ($phase eq 'complete') {
-            _command($node, 'nodeset', 'boot', $dispatch);
+            my %fields = exists($state->{service_pool}) ? (_xcatpreprocessed => [1],
+                _disparatetftp => [1], _disjointmode => [1],
+                _freebsd_owner => [$state->{service_pool}{server}]) : ();
+            _command($node, 'nodeset', 'boot', $dispatch, %fields);
             _attribute($node, 'chain', 'currstate', 'boot');
         }
         my $status = { begin => 'installing', complete => 'installed', failed => 'failed', booted => 'booted' }->{$phase};
         _command($node, 'updatenodestat', $status, $dispatch);
         _attribute($node, 'nodelist', 'status', $status);
-    }, %options);
+    }, %options, dispatch => $dispatch);
+    if ($message =~ /[ ]complete\n?\z/x) {
+        my $state = state($node, %options);
+        xCAT::FreeBSDPool::refresh_boot($node, $state->{service_pool}, $dispatch) if $state->{service_pool};
+    }
+    return $reply;
 }
 
 sub _boot_report {
@@ -354,7 +573,10 @@ sub _boot_status {
         my ($state, $save, $transport_dispatch) = @_;
         _fail('Boot postscripts require a completed installation') unless $state && $state->{phase} eq 'booted'
           && exists($state->{postscript_preparations});
+        _fail('Service-node pool requires a registered local preparation')
+          if $options{require_pool} && !$state->{service_pool};
         _fail('Boot postscript deployment differs') unless $state->{generation} eq $generation && $state->{attempt} eq $attempt;
+        _pool_authorize($node, $state, $attempt, 'booted', $dispatch);
         my $decision = $state->{postscript_boot};
         my $observed = xCAT::FreeBSDPostscript::observe_boot($node, $generation, $attempt,
             $decision ? $decision->{run} : '-', $transport_dispatch, @transport);

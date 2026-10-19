@@ -19,7 +19,7 @@ sub process_request {
     my ($request, $callback, $doreq) = @_;
     return copycd($request, $callback, $doreq)
       if $request->{command}->[0] eq 'copycd';
-    return mkinstall($request, $callback)
+    return mkinstall($request, $callback, $doreq)
       if $request->{command}->[0] eq 'mkinstall';
     return;
 }
@@ -289,11 +289,9 @@ sub _local_server {
 }
 
 sub _provision_network {
-    my ($node, $resources) = @_;
+    my ($node, $resources, $pool) = @_;
     die "FreeBSD installation requires netboot=xnba\n" unless ($resources->{netboot} || '') eq 'xnba';
-    die "A node assigned to a service node requires one explicit xcatmaster\n"
-      if length($resources->{servicenode} || '') && !length($resources->{xcatmaster} || '');
-    my $owner = $resources->{xcatmaster} || _site('master', '');
+    my $owner = $pool ? $pool->{server} : ($resources->{xcatmaster} || _site('master', ''));
     if (length($owner)) {
         $owner = _ipv4($owner, 'installation owner');
         die "FreeBSD installation must run on its selected xcatmaster\n"
@@ -418,10 +416,11 @@ sub _install_image {
 }
 
 sub mkinstall {
-    my ($request, $callback) = @_;
+    my ($request, $callback, $dispatch) = @_;
     require xCAT::FreeBSDBoot;
     require xCAT::FreeBSDConfig;
     require xCAT::FreeBSDInstall;
+    require xCAT::FreeBSDPool;
     require xCAT::NetworkUtils;
     require xCAT::Utils;
     my $bootparams = ${ $request->{bootparams} };
@@ -443,10 +442,13 @@ sub mkinstall {
             my $image = $images{$name};
             my $resources = _node_row('noderes', $node, 0,
                 qw(netboot xcatmaster servicenode tftpserver tftpdir nfsserver installnic primarynic nameservers));
+            my $topology = xCAT::FreeBSDPool::topology($resources);
+            my $pool = $topology ? xCAT::FreeBSDPool::local_preparation($node,
+                $request->{_freebsd_pool}, $topology) : undef;
             my $iscsi = _node_row('iscsi', $node, 1, qw(server target));
             die "An explicit iSCSI root conflicts with scripted FreeBSD installation\n"
               if length($iscsi->{server} || '') && length($iscsi->{target} || '');
-            my ($network, $url, $bootstrap_mtu) = _provision_network($node, $resources);
+            my ($network, $url, $bootstrap_mtu) = _provision_network($node, $resources, $pool);
             my $tftpdir = abs_path($resources->{tftpdir} || xCAT::TableUtils->getTftpDir());
             die "An existing TFTP directory is required\n" unless defined($tftpdir) && -d $tftpdir;
             if ($image->{install}) {
@@ -477,15 +479,31 @@ sub mkinstall {
             my @postscript_options;
             if ($image->{media}{postscript_contract}) {
                 require xCAT::FreeBSDPostscript;
-                my $prepared = xCAT::FreeBSDPostscript::prepare_boot($node, $image->{package_plan},
-                    defined($storage) ? (data_storage => $storage) : ());
+                my $current = $pool ? xCAT::FreeBSDInstall::state($node) : undef;
+                my $prepared;
+                if ($current && $current->{phase} eq 'prepared' && $current->{service_pool}
+                    && !grep { $current->{service_pool}{$_} ne $pool->{$_} } qw(epoch coordinator server)) {
+                    $prepared = $current->{postscript_preparations}
+                        or die "Pool preparation has no sealed postscripts; run nodeset osimage again\n";
+                } else {
+                    $prepared = xCAT::FreeBSDPostscript::prepare_boot($node, $image->{package_plan},
+                        defined($storage) ? (data_storage => $storage) : ());
+                }
                 @postscript_options = (postscript_preparations => $prepared);
             }
             my $fingerprint = $image->{install}
               ? xCAT::FreeBSDConfig::fingerprint_pkgbase($node, $settings, $network, $image->{install})
               : xCAT::FreeBSDConfig::fingerprint($node, $settings, $network, $image->{media});
             my $params;
-            xCAT::FreeBSDInstall::prepare($node, $fingerprint, @postscript_options, publish => sub {
+            xCAT::FreeBSDInstall::prepare($node, $fingerprint, @postscript_options,
+                $pool ? (service_pool => $pool, register => sub {
+                    my $generation = shift;
+                    my $registered = xCAT::FreeBSDPool::request($node, 'register',
+                        {epoch => $pool->{epoch}, server => $pool->{server}, generation => $generation,
+                            fingerprint => $fingerprint, master => $network->{master}}, $dispatch, $topology);
+                    die "Pool registration was not acknowledged\n" unless
+                      ($registered->{epoch} || '') eq $pool->{epoch} && ($registered->{phase} || '') eq 'prepared';
+                }) : (), publish => sub {
                 my $generation = shift;
                 my $content = $image->{install}
                   ? xCAT::FreeBSDConfig::render_pkgbase($node, $settings, $network, $image->{install}, $generation)

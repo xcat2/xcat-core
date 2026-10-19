@@ -498,7 +498,8 @@ sub pass_along {
 
 
 sub _freebsd_owner_scope {
-    my ($req, $action) = @_;
+    my ($req, $action, $dispatch, $callback) = @_;
+    my $inittime = $req->{inittime} && $req->{inittime}[0];
     ($action) = split(',', $action || '', 2);
     return unless $action =~ /\A(?:osimage(?:[=:]|\z)|boot\z|offline\z|enact\z)/;
     my $types = xCAT::Table->new('nodetype');
@@ -530,15 +531,25 @@ sub _freebsd_owner_scope {
     my @native = sort keys %selected;
     my $resources = xCAT::Table->new('noderes')->getNodesAttribs(\@native,
         [qw(xcatmaster servicenode netboot)]);
-    my %owners;
+    my (%owners, %pools, %pool_preparations);
+    require xCAT::FreeBSDPool;
+    require JSON;
     for my $native_node (@native) {
         my $resource = $resources->{$native_node}->[0] || {};
         my $error = xCAT::Utils->freebsd_image_error($selected{$native_node}, $resource->{netboot});
         die "$native_node: $error\n" if defined($error) && length($error);
+        my $pool = xCAT::FreeBSDPool::topology($resource);
+        if ($pool) {
+            my @servers = grep { !$inittime || !xCAT::NetworkUtils->thishostisnot($_) } @{$pool->{servers}};
+            next unless @servers;
+            $pools{$native_node} = $pool;
+            for my $server (@servers) {
+                push @{$owners{$server}}, $native_node;
+            }
+            next;
+        }
         my $owner = $resource->{xcatmaster};
         unless (defined($owner) && length($owner)) {
-            die "$native_node: FreeBSD nodes assigned a service node require an explicit xcatmaster\n"
-              if $resource->{servicenode};
             ($owner) = xCAT::TableUtils->get_site_attribute('master');
             unless ($owner) {
                 die "$native_node: Cannot determine the FreeBSD management-node owner\n" unless xCAT::Utils->isMN();
@@ -552,15 +563,38 @@ sub _freebsd_owner_scope {
         my $address = xCAT::NetworkUtils->getipaddr($owner, OnlyV4 => 1);
         die "$native_node: Cannot resolve FreeBSD xcatmaster to IPv4\n"
           unless defined($address) && $address =~ /\A(?:[0-9]{1,3}\.){3}[0-9]{1,3}\z/;
+        next if $inittime && xCAT::NetworkUtils->thishostisnot($address);
         push @{ $owners{$address} }, $native_node;
+    }
+    for my $pool_node (sort keys %pools) {
+        my $metadata;
+        my $ok = eval {
+            $metadata = xCAT::FreeBSDPool::preparation($pool_node, $action, $dispatch, $pools{$pool_node});
+            1;
+        };
+        unless ($ok) {
+            $callback->({error => ["$pool_node: " . ($@ || 'Pool preparation failed')], errorcode => [1]});
+            for my $server (keys %owners) {
+                @{$owners{$server}} = grep { $_ ne $pool_node } @{$owners{$server}};
+                delete $owners{$server} unless @{$owners{$server}};
+            }
+            next;
+        }
+        next unless $metadata;
+        for my $server (@{$pools{$pool_node}{servers}}) {
+            $pool_preparations{$server}{$pool_node} = {%$metadata, server => $server};
+        }
     }
     my @requests;
     for my $address (sort keys %owners) {
         my $scoped = {%$req, node => $owners{$address}, _xcatpreprocessed => [1],
             _disparatetftp => [1], _disjointmode => [1], _freebsd_owner => [$address]};
         delete $scoped->{_xcatdest};
+        delete $scoped->{_freebsd_pool};
+        $scoped->{_freebsd_pool} = [JSON->new->canonical->encode($pool_preparations{$address})]
+            if $pool_preparations{$address};
         $scoped->{_xcatdest} = $address if xCAT::NetworkUtils->thishostisnot($address);
-        push @requests, @{ xCAT::Scope->get_parallel_scope($scoped) };
+        push @requests, $inittime ? $scoped : @{ xCAT::Scope->get_parallel_scope($scoped) };
     }
     return {requests => \@requests, legacy => \@legacy};
 }
@@ -644,7 +678,7 @@ sub preprocess_request {
         return;
     }
 
-    my $native_scope = eval { _freebsd_owner_scope($req, $ARGV[0]); };
+    my $native_scope = eval { _freebsd_owner_scope($req, $ARGV[0], $sub_req, $callback1); };
     if ($@) {
         $callback1->({error => [$@], errorcode => [1]});
         return [];
@@ -654,8 +688,7 @@ sub preprocess_request {
         if (@{ $native_scope->{legacy} }) {
             my $legacy_request = {%$req, node => $native_scope->{legacy}};
             my $legacy_scope = preprocess_request($legacy_request, $callback1, $sub_req);
-            return [] unless $legacy_scope;
-            push @requests, @$legacy_scope;
+            push @requests, @$legacy_scope if $legacy_scope;
         }
         return \@requests;
     }
@@ -929,7 +962,8 @@ sub process_request {
                 node     => \@nodes,
                 inittime => [$inittime],
                 arg      => \@args ,
-                bootparams => \%bphash},
+                bootparams => \%bphash,
+                exists($::XNBA_request->{_freebsd_pool}) ? (_freebsd_pool => $::XNBA_request->{_freebsd_pool}) : ()},
                 \&pass_along);
         if ($errored) {
             xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: Failed in processing setdestiny.");
