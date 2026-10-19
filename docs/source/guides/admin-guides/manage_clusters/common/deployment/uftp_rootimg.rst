@@ -22,13 +22,14 @@ Supported configurations
 * Stateless images built by ``genimage`` for:
 
   * the Red Hat family (RHEL, AlmaLinux, Rocky Linux, Oracle Linux, CentOS) with dracut 033 or later,
+  * openEuler 20.03, 22.03 and 24.03 LTS,
   * SLES 15 and openSUSE Leap 15 with dracut 033 or later,
   * Ubuntu with dracut.
 
 * All ``packimage`` formats: ``cpio`` and ``tar`` with ``gzip``, ``pigz`` or ``xz``, and ``squashfs``.
 * An IPv4 provisioning network that carries multicast between the image server and the nodes.
 * ``site.httpmethod=http``.
-* The ``uftp`` package of xcat-dep on the image server and in the image. It provides UFTP 5.0.4 with fixes to the sender and the receiver for Enterprise Linux, SLES 15 SP6 or later, openSUSE Leap 15.6, and Ubuntu. Its SLES build needs glibc 2.34, which SLES 15 SP5 and older do not have.
+* The ``uftp`` package of xcat-dep on the image server and in the image. It provides UFTP 5.0.4 with fixes to the sender and the receiver for Enterprise Linux, openEuler, SLES 15 SP6 or later, openSUSE Leap 15.6, and Ubuntu. Its SLES build needs glibc 2.34, which SLES 15 SP5 and older do not have.
 
 ``nodeset`` refuses a node of a ``uftp`` image, and keeps its current boot entry, in these cases:
 
