@@ -43,4 +43,23 @@ my ($status, $output) = run_command($^X,
     repo_path('xCAT-test/unit/profile_customization.t'), "$root/opt/xcat");
 is($status, 0, 'packaged profiles resolve and remain independently customizable') or diag($output);
 
+if (!-f '/etc/debian_version') {
+    local $ENV{fsm} = 1;
+    my $reduced = tempdir(CLEANUP => 1);
+    my $rpm = XCAT::Test::RPM->build('xCAT-server', 1);
+    XCAT::Test::Lifecycle::checked('bash', '-o', 'pipefail', '-c',
+        'cd "$1" && rpm2cpio "$2" | cpio -idm --quiet', 'bash', $reduced, $rpm);
+    ok(!-e "$reduced/opt/xcat/share/xcat/install", 'the reduced RPM omits install profiles');
+    ok(!-e "$reduced/opt/xcat/share/xcat/netboot/rh", 'the reduced RPM omits RHEL netboot profiles');
+    for my $source (glob "$share/netboot/rocky/*.riscv64.*") {
+        my $relative = substr($source, length($share) + 1);
+        my $delivered = "$reduced/opt/xcat/share/xcat/$relative";
+        ok(-r $delivered, "reduced RPM: $relative still resolves") or next;
+        is(read_binary($delivered), read_binary($source),
+            "reduced RPM: $relative retains its complete contents");
+        is(S_IMODE((stat($delivered))[2]), S_IMODE((stat($source))[2]),
+            "reduced RPM: $relative retains its permissions");
+    }
+}
+
 done_testing();
