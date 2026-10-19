@@ -1,11 +1,1 @@
-openssh-server
-ntp
-gawk
-nfs-common
-snmpd
-qemu-kvm
-libvirt-bin
-bridge-utils
-libcap2-bin
-vlan
-tmux
+kvm.ubuntu12.04.pkglist
