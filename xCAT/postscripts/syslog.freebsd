@@ -33,7 +33,9 @@ printf '%s\n' "$master" | awk '
     }
     END { exit bad || NR != 1 }
 ' || fail 'Invalid logging master'
-getent hosts "$master" >/dev/null || fail 'Cannot resolve the logging master'
+case "$master" in
+    *[!0-9.]*) getent hosts "$master" >/dev/null || fail 'Cannot resolve the logging master' ;;
+esac
 
 flags=$(sysrc -n syslogd_flags) || fail 'Cannot read syslogd flags'
 set -f
