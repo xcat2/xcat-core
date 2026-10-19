@@ -18,8 +18,8 @@ Scope and requirements
 ----------------------
 
 * Use ``netboot=xnba`` and an imported ``imagetype=freebsd`` installation image.
-* Select each disk by its FreeBSD device name and hardware serial. Automatic
-  disk selection is not available. A single-disk policy replaces that disk's
+* Select disks by FreeBSD device name and hardware serial, or use automatic
+  selection of blank OS disks. An explicit single-disk policy replaces that disk's
   contents. An explicit ZFS policy selects empty disks or whole OS-disk erase.
   Keep user data on separate, dedicated drives.
 * Select single-disk UFS or ZFS, a ZFS mirror, striped mirrors, or RAID-Z1/2/3.
@@ -37,10 +37,11 @@ Scope and requirements
   The node name must
   resolve to that interface's address, and reverse resolution must identify the
   same xCAT node. Status callbacks must retain that source address without NAT.
-* Use one installation owner per node. Nodes assigned to a service node require
-  an explicit, single ``xcatmaster``. State and boot publication must run there.
-* Serve DHCP, TFTP, and HTTP from that same host. Remote file-service offload and
-  automatic controller failover are not available.
+* Use a fixed ``xcatmaster`` or a service-node pool. A pool selects one owner
+  when the installer begins; see :ref:`service-node pools <freebsd-service-pools>`.
+* Each eligible owner must serve DHCP, TFTP and HTTP. Remote file-service
+  offload and management-node high availability are outside this path.
+  Service-node pools require ``site.sharedtftp=0`` and independent TFTP directories.
 * Use an isolated, trusted provisioning network. Configuration and release sets
   use HTTP; the loader pins the configuration checksum and the installer checks
   the release-set checksums. These checks do not authenticate the provisioning
@@ -713,10 +714,65 @@ when the policy requests these fields. Existing contract 4 layouts remain valid.
 Disk replacement and pool expansion remain native administrative operations.
 xCAT does not perform ongoing pool management.
 
+Automatic OS-disk selection
+---------------------------
+
+Use ``target_disk=auto`` to select one blank OS disk for UFS or ZFS. Omit
+``target_disk_ident``. For example, the OS section of a partition file can be::
+
+    [os]
+    filesystem=ufs
+    target_disk=auto
+    swap_size=0
+    preserve_disks=da2@DATA_SERIAL
+
+For a ZFS mirror, use::
+
+    [os]
+    filesystem=zfs
+    zfs_topology=mirror
+    zfs_vdevs=auto:2
+    swap_mode=none
+    swap_size=0
+
+``auto:N`` selects N primary members for one group. The topology membership
+rules and 16-member limit still apply. For striped mirrors, use
+``zfs_topology=raid10`` and ``zfs_vdevs=auto:2;auto:2``. Do not mix automatic
+and explicit primary membership. Auxiliary devices and data-pool members
+remain explicit.
+
+Selection accepts only unused disks of at least 4 GiB with supported device
+names and serials. It rejects known filesystems, partition layouts, active
+providers, ambiguous identities, and nonzero disk boundaries. Disks named in
+``preserve_disks``, dedicated data-pool sections, or OS auxiliary-device fields
+are excluded by both device name and serial. Declare every disk that must be
+preserved, including unused disks reserved for later use. Every declared
+preserved disk must be present with its matching identity. Selection stops if
+more than 128 candidate disks pass the initial identity and capacity filter.
+
+The installer selects the smallest eligible disks first, then orders equal
+capacities by serial and device name. Scalar layouts require space for the
+configured swap plus at least 2 GiB for the OS. ZFS candidates must also satisfy
+the configured ``zfs_ashift`` sector limit.
+Each ZFS group requires members of equal capacity. Insufficient eligible
+members stop installation before partitioning. Selection resolves concrete
+identities before the normal storage checks and installation authorization.
+The installer checks those identities again before destructive operations.
+
+Automatic selection supports ``disk_action=empty`` only. After installation,
+``/etc/xcat/os-disks`` records the selected primary and auxiliary identities.
+Retain these identities in the node's explicit partition policy for a later
+whole-OS-disk reinstall. Repeating an automatic policy does not authorize
+erasing the previously selected disks; it can select other blank disks.
+
+This policy requires newly built pkgbase media that advertise
+``xcat-freebsd-disk-selection-1``. Import a new bundle after updating the
+builder. Preparation rejects automatic selection with older media.
+
 OS-pool log, cache and special devices
 --------------------------------------
 
-An explicit OS policy can add dedicated whole devices to ``zroot``::
+An OS policy with ``zfs_vdevs`` can add dedicated whole devices to ``zroot``::
 
     zfs_log_vdevs=da2@OS_LOG_A,da3@OS_LOG_B
     zfs_cache_vdevs=da4@OS_CACHE_A
@@ -1025,7 +1081,7 @@ native ZFS rejects an allocation it cannot satisfy. See the
 `OpenZFS property reference <https://openzfs.github.io/openzfs-docs/man/master/7/zfsprops.7.html>`_
 for property semantics.
 
-OS datasets require the explicit ``zfs_vdevs`` policy; use ``zfs_topology=stripe``
+OS datasets require the ``zfs_vdevs`` policy; use ``zfs_topology=stripe``
 for one OS disk. The installer creates them before installing packages, so files
 are written into the intended filesystem. The native ``ROOT`` and
 ``ROOT/default`` datasets are reserved. Standard datasets retain their mount
@@ -1558,7 +1614,7 @@ The MAC table must identify one unambiguous provisioning MAC. If the node has
 several eligible MAC addresses, set ``installnic`` to the desired colon-separated
 MAC explicitly. Interface names such as ``em0`` are not accepted here.
 
-For a service-node owner, set both attributes explicitly::
+For a fixed service-node owner, set both attributes explicitly::
 
     chdef node01 servicenode=sn01 xcatmaster=sn01
 
@@ -1566,6 +1622,60 @@ The owner must have the imported bundle, policy files, and local DHCP/HTTP/TFTP
 services. Retain the normal xCAT ``/install`` HTTP alias, including when
 ``site.installdir`` points to a different filesystem directory. HTTPS-only
 distribution service is not supported by the initial runtime.
+
+.. _freebsd-service-pools:
+
+For provisioning-service failover, assign a service-node pool and leave
+``xcatmaster`` unset::
+
+    chdef node01 servicenode=sn01,sn02 xcatmaster=
+
+Use the normal xCAT service-node configuration and shared database. Every
+member must run this FreeBSD implementation and have the same imported media,
+repositories, policy files, public keys, scripts, and HTTP/TFTP services.
+Set ``site.sharedtftp=0`` and use a separate local TFTP directory on each
+member. Shared TFTP lets one member overwrite another member's installation
+entry, so pool preparation rejects it. A single ``servicenode`` with an unset
+``xcatmaster`` also uses the pool protocol and requires the management node.
+Configure DHCP on the pool members with the normal xCAT pool setup. Each
+server must advertise its own reachable provisioning address. If only service
+nodes run DHCP, set ``site.disjointdhcps=1`` so node reservation updates target
+those servers. Remove an
+obsolete fixed ``tftpserver`` or ``nfsserver`` override if it pins the node to
+one server. The management node identified by ``site.master`` coordinates
+installation ownership and must remain reachable by the service nodes.
+``site.master`` and service-node names must resolve to the same IPv4 addresses
+on every member. Retain the normal authenticated xCAT service-node trust. If
+command policy is restricted, permit authenticated service-node requests for
+``freebsdpool`` to the management node and between service nodes, together with
+the existing ``nodeset`` and ``updatenodestat`` requests.
+
+``nodeset`` prepares and registers a generation on every pool member. Check
+the result from every member before booting. If a server fails before the
+installer starts, another prepared server can supply the boot files and
+installation payload. The first installer authorized to begin owns that
+attempt. Conflicting or stale generations cannot obtain permission to write
+disks. Loss of the management-node acknowledgement also prevents installation
+from starting.
+An unavailable coordinator or an active installation is reported for the
+affected node. Other prepared pool nodes, fixed owners, and Linux nodes in the
+same request retain their own dispatch. Check each node's result before booting.
+
+Failover does not migrate an installation that has already begun. Its selected
+server owns status, postscript receipts, and subsequent ``updatenode`` requests.
+After completion, the selected server switches its own entry to disk boot and
+requests the same update on reachable standbys. An unavailable standby does
+not prevent completion. Before returning a recovered standby to provisioning,
+run ``nodeset node01 enact`` and verify its disk-boot entry. A stale install
+entry cannot authorize a second installation, but can interrupt unattended
+boot until it is refreshed.
+If the management node misses the final completion acknowledgement after the
+owner has switched to disk boot, a later disk-boot report reconciles completion
+before starting boot scripts. If the installer exhausts its retry window,
+restore management-node access, run ``nodeset node01 enact``, and verify the
+disk-boot entry on every service node before rebooting the installed node.
+The failed completion does not refresh standby entries automatically.
+This recovery does not repeat disk installation.
 
 Prepare the installation, update DHCP, and boot the node::
 
@@ -1718,8 +1828,11 @@ Failure and retry
 Inspect the node console and xCAT status after a failed installation. Do not
 assume that a failure after installation started left the target disk unchanged.
 
-A repeated preparation with unchanged inputs reuses a prepared generation. An
-installation that has started, is completing, or has failed cannot be rearmed
+For a fixed owner, preparation with unchanged inputs reuses a prepared
+generation. For a pool, ``nodeset osimage=IMAGE_NAME`` creates a new pool epoch;
+``nodeset enact`` and service restarts reuse the sealed scripts and registered
+generation. Changed configuration requires a new pool epoch. An installation
+that has started, is completing, or has failed cannot be rearmed
 while it may still be running. Stop the node first, cancel the attempt, correct
 the cause, and prepare a new installation. For a multi-disk policy, first
 resolve any partial layout through an explicit administrative procedure.
@@ -1734,6 +1847,12 @@ Canceling the attempt does not erase disks or authorize reinstall::
 Installation ownership records reside in ``/var/lib/xcat/freebsd-install`` on
 the selected owner. Do not remove these records to bypass an active attempt.
 Stop the node before changing its installation owner.
+For a service-node pool, also retain ``/var/lib/xcat/freebsd-pools`` on the
+management node and the local installation and postscript stores on every
+member. Ordinary table backups do not include these files. Back them up with
+the corresponding installation artifacts while the affected nodes and retry
+clients are stopped. Do not restore only an older coordinator record while
+newer service-node attempts can still run.
 Configuration and boot generations are retained for retry and diagnosis; they
 are not automatically deleted after installation.
 
