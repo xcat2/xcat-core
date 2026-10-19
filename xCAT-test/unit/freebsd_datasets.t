@@ -97,6 +97,30 @@ my $deep = settings($os . $pool . $deep_sections . "mountpoint=/data/tank/a/b/c/
 my %deep_rows = map { split(/\t/x, $_, 2) } split(/\n/x, compile_plan($deep->{data_storage}{pools}[0]{datasets})->{stdout});
 is($deep_rows{'tank/a/b/c/d/e/f/g'}, 'mountpoint=/data/tank/a/b/c/d/e/f/g,canmount=on',
     'custom mountpoint accepts the full supported dataset depth');
+my $mount_parent = '/data/tank/' . join('/', ('a' x 63) x 8);
+my $mount_limit = $mount_parent . '/' . join('/', (('b' x 63) x 7), 'c' x 52);
+my $length_prefix = "[dataset tank/a]\nmountpoint=$mount_parent\n[dataset tank/a/b]\n";
+my $long = settings($os . $pool . $length_prefix . "mountpoint=$mount_limit\n");
+my %long_rows = map { split(/\t/x, $_, 2) } split(/\n/x, compile_plan($long->{data_storage}{pools}[0]{datasets})->{stdout});
+is(length($mount_limit), 1023, 'boundary fixture leaves room for the native path terminator');
+is($long_rows{'tank/a/b'}, "mountpoint=$mount_limit,canmount=on", 'maximum mountable path is accepted');
+for my $invalid_case (
+    [$length_prefix . "mountpoint=${mount_limit}x\n", qr/mountpoint[ ]is[ ]too[ ]long/x, '1024-byte mountpoint'],
+    [$length_prefix . 'mountpoint=' . $mount_parent . '/' . join('/', ('b' x 63) x 8) . "\n",
+        qr/mountpoint[ ]is[ ]too[ ]long/x, 'accumulated mountpoint length'],
+    [$length_prefix . "mountpoint=$mount_limit\n[dataset tank/a/b/c]\n",
+        qr/mountpoint[ ]is[ ]too[ ]long/x, 'derived mountpoint length'],
+    (map { ["[dataset tank/a]\nmountpoint=/data/tank/$_->[0]\n", qr/Invalid[ ]dataset[ ]mountpoint/x, $_->[1]] }
+        ['a/../../etc', 'mountpoint traversal'], ['/a', 'empty mountpoint component'],
+        ['a/', 'trailing mountpoint slash'], ['-a', 'hyphenated mountpoint component'],
+        [join('/', qw(a b c d e f g h i)), 'excess mountpoint suffix depth'],
+        ['a' x 64, 'oversized mountpoint component']),
+) {
+    rejected($os . $pool . $invalid_case->[0], $invalid_case->[1], $invalid_case->[2]);
+    my $invalid = compile_plan("format=xcat-freebsd-datasets-1\nkind=data\npool=tank\nmountpoint=/data/tank\n" . $invalid_case->[0]);
+    isnt($invalid->{exitcode}, 0, "$invalid_case->[2] fails in the delivered planner");
+    is($invalid->{stdout}, '', "$invalid_case->[2] emits no partial creation plan");
+}
 for my $case (
     ["[dataset other/home]\n", qr/declared[ ]pool/x, 'unknown pool'],
     ["[dataset tank]\n", qr/another[ ]pool/x, 'pool root'],
