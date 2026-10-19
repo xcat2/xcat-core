@@ -4,6 +4,7 @@ load 'helpers/shell_source'
 
 setup()
 {
+    : "${BATS_TEST_TMPDIR:?Bats 1.4 or newer is required}"
     ROOT="$BATS_TEST_TMPDIR/source"
     local relative
     for relative in build-utils/sync-fips-policy build-utils/fips-policy.sh \
@@ -19,12 +20,17 @@ check_generated_policy()
 {
     local shell="$1" library="$2"
     run perl "$ROOT/build-utils/sync-fips-policy" --write
+    printf '%s\n' "$output"
     [ "$status" -eq 0 ]
     run "$shell" -c '
         exec >"$RESULT" 2>&1
         . "$1"
         xcat_policy_probe
     ' fips-artifact-test "$ROOT/$library"
+    printf '%s\n' "$output"
+    if [ -f "$RESULT" ]; then
+        cat "$RESULT"
+    fi
     [ "$status" -eq 0 ]
     printf canonical >"$BATS_TEST_TMPDIR/expected-result"
     cmp "$BATS_TEST_TMPDIR/expected-result" "$RESULT"

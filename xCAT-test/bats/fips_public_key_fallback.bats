@@ -4,6 +4,7 @@ load 'helpers/shell_source'
 
 setup()
 {
+    : "${BATS_TEST_TMPDIR:?Bats 1.4 or newer is required}"
     mkdir -p "$BATS_TEST_TMPDIR/bin"
     cat >"$BATS_TEST_TMPDIR/bin/openssl" <<'SH'
 #!/bin/sh
@@ -34,13 +35,17 @@ check_fallback()
         printf 'public key\n' >"$BATS_TEST_TMPDIR/expected-result"
     fi
     for mode in 0 1; do
-        printf '# %s policy mode %s\n' "$library" "$mode" >&3
+        printf '%s policy mode %s\n' "$library" "$mode"
         : >"$CALLS"
         run "$shell" -c '
             exec >"$RESULT" 2>&1
             . "$1"
             xcat_discovery_public_key "$2" unused-key
         ' fips-fallback-test "$(repo_path "$library")" "$mode"
+        printf '%s\n' "$output"
+        if [ -f "$RESULT" ]; then
+            cat "$RESULT"
+        fi
         [ "$status" -eq "$expected_status" ]
         cmp "$BATS_TEST_TMPDIR/expected-result" "$RESULT"
         cmp "$BATS_TEST_TMPDIR/expected-calls" "$CALLS"
