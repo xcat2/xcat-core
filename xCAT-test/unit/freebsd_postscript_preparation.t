@@ -114,6 +114,17 @@ sub source_observation {
     } }, $source_root);
     return \%entries;
 }
+sub staged_key_paths {
+    my ($directory, $key) = @_;
+    my @copies;
+    for my $stage (glob("$directory/.storage-source.*"), glob("$directory/.export-attempt.*")) {
+        find({ no_chdir => 1, wanted => sub {
+            my $path = $File::Find::name;
+            push @copies, $path if -f $path && !-l $path && index(read_file($path), $key) >= 0;
+        } }, $stage);
+    }
+    return [sort @copies];
+}
 sub reject {
     my ($operation, $description) = @_;
     my $result;
@@ -535,6 +546,7 @@ subtest 'partitionfile pools become a private firstboot operation' => sub {
     is_deeply(\%xCAT::Table::rows, $tables, 'preparation does not change administrator tables');
     is_deeply(xCAT::FreeBSDPostscript::prepare_boot('node1', $plan->{path},
         directory => $directory, data_storage => $storage), $bindings, 'same declaration and key reuse the exact snapshot');
+    is_deeply(staged_key_paths($directory, $raw_key), [], 'preparation reuse leaves no staged key copies');
     my %prepared = map { $_ => xCAT::FreeBSDPostscript::read_execution($bindings->{$_}, directory => $directory) }
       qw(firstboot repeat);
     isnt($prepared{firstboot}{source_id}, $prepared{repeat}{source_id}, 'only firstboot binds the private storage payload');
@@ -548,8 +560,10 @@ subtest 'partitionfile pools become a private firstboot operation' => sub {
             ok(!grep({ $_ eq 'configstorage.freebsd' } @names), 'repeated boot does not replay storage creation');
         }
         my $run = ($kind eq 'firstboot' ? 'b' : 'c') x 32;
+        my $staged_before = staged_key_paths($directory, $raw_key);
         my $export = xCAT::FreeBSDPostscript::export_execution($bindings->{$kind}, directory => $directory,
             run => $run, generation => '2' x 32, attempt => '3' x 32, boot => '4' x 64);
+        is_deeply(staged_key_paths($directory, $raw_key), $staged_before, "$kind export leaves no staged key copies");
         my $target = "$tmp/storage-$kind";
         mkdir($target, oct('0700')) or croak $!;
         command('/bin/tar', '-xpf', $export->{archive}{path}, '-C', $target);
@@ -567,6 +581,50 @@ subtest 'partitionfile pools become a private firstboot operation' => sub {
             ok(!-e $payload, 'repeated boot exports neither generated policies nor keys');
         }
     }
+    {
+        my $staged_before = staged_key_paths($directory, $raw_key);
+        my $write = \&xCAT::FreeBSDPostscript::_write;
+        my $injected = 0;
+        local *xCAT::FreeBSDPostscript::_write = sub {
+            my ($path, $bytes) = @_;
+            $write->(@_);
+            if ($path =~ m{/[.]storage-source[.][^/]+/content/blob-[0-9a-f]{64}\z}x && $bytes eq $raw_key) {
+                ++$injected;
+                croak 'Injected storage write failure';
+            }
+        };
+        my $failed = eval { xCAT::FreeBSDPostscript::prepare_boot('node1', $plan->{path},
+            directory => $directory, data_storage => $storage); };
+        my $error = $@;
+        ok(!$failed, 'a failure after writing the key rejects preparation');
+        like($error, qr/Injected[ ]storage[ ]write[ ]failure/x, 'preparation propagates the injected I/O failure');
+        is($injected, 1, 'failure follows an actual key write');
+        is_deeply(staged_key_paths($directory, $raw_key), $staged_before, 'failed preparation removes staged key bytes');
+    }
+    {
+        my $staged_before = staged_key_paths($directory, $raw_key);
+        my $run_command = \&xCAT::FreeBSDPkg::run_command;
+        my $injected = 0;
+        local *xCAT::FreeBSDPkg::run_command = sub {
+            my $result = $run_command->(@_);
+            if ($_[0][0] eq '/bin/tar') {
+                ++$injected;
+                is($result->{exitcode}, 0, 'failure follows creation of the real export archive');
+                croak 'Injected archive failure';
+            }
+            return $result;
+        };
+        my $failed = eval { xCAT::FreeBSDPostscript::export_execution($bindings->{firstboot},
+            directory => $directory, run => 'd' x 32, generation => '2' x 32,
+            attempt => '3' x 32, boot => '4' x 64); };
+        my $error = $@;
+        ok(!$failed, 'archive failure rejects the export');
+        like($error, qr/export[ ]failed[ ]during[ ]archive/x, 'export reports the failing phase');
+        is($injected, 1, 'archive failure is injected once');
+        is_deeply(staged_key_paths($directory, $raw_key), $staged_before, 'failed export removes unpacked and archived key copies');
+        my $failed_export = "$directory/export-" . ('d' x 32);
+        ok(!-e $failed_export, 'failed export publishes no archive');
+    }
     $xCAT::Table::rows{passwd}[0]{password} = unpack('H*', reverse($raw_key));
     my $changed = xCAT::FreeBSDPostscript::prepare_boot('node1', $plan->{path},
         directory => $directory, data_storage => $storage);
@@ -577,7 +635,10 @@ subtest 'partitionfile pools become a private firstboot operation' => sub {
     $xCAT::Table::rows{passwd} = [];
     my $missing = eval { xCAT::FreeBSDPostscript::prepare_boot('node1', $plan->{path},
         directory => store(), data_storage => $storage); };
-    ok(!$missing && $@, 'missing enrolled key prevents boot preparation');
+    my $error = $@;
+    ok(!$missing && $error, 'missing enrolled key prevents boot preparation');
+    like($error, qr/No[ ]saved[ ]key[ ]exists[ ]for[ ]this[ ]node[ ]and[ ]pool/x,
+        'missing key failure identifies the absent enrollment');
     is_deeply(source_observation(), $before, 'failure also leaves public sources unchanged');
     unlink(map { "$source_root/$_" } @helpers) == @helpers or croak $!;
     chmod($syslog_mode, "$source_root/syslog") or croak $!;
