@@ -320,8 +320,6 @@ function visit(nic,    i, parent) {
             fail("InfiniBand partitions require a physical ibN parent")
         if (option[nic, "MACADDR"] != "")
             fail("InfiniBand link addresses cannot be set with MACADDR")
-        if (dhcp[nic])
-            fail("FreeBSD DHCPv4 clients do not support IPoIB; use static IPv4 on " nic)
     } else if (option[nic, "PKEY"] != "" || ib_bond[nic])
         fail("InfiniBand options require InfiniBand members: " nic)
     visited[nic] = 2
@@ -728,11 +726,14 @@ function render(nic,    i, config, mtu, parent, family, ip, bits, alias, first4,
         records[++record_count] = "A\t" nic "\t" family "\t" ip "\t" bits
     }
     if (dhcp[nic]) {
-        primary4 = "SYNCDHCP "
+        primary4 = ib[nic] ? "" : "SYNCDHCP "
         records[++record_count] = "H\t" nic "\t" dhcp_address[nic] "\t" dhcp_prefix[nic] "\t" \
             (option[nic, "PEERDNS"] == "no" ? "no" : "yes") "\t" \
             (option[nic, "DEFROUTE"] == "" ? (nic == management ? "yes" : "no") : option[nic, "DEFROUTE"])
-        emit("dhclient_flags_" nic, "-c /var/db/xcat/network/dhcp/" nic ".conf")
+        if (ib[nic])
+            ipoib_dhcp4_interfaces++
+        else
+            emit("dhclient_flags_" nic, "-c /var/db/xcat/network/dhcp/" nic ".conf")
         if (option[nic, "DEFROUTE"] == "yes" || (option[nic, "DEFROUTE"] == "" && nic == management)) {
             if (++dhcp_defaults > 1 || default_gateway["inet"] != "")
                 fail("Select one IPv4 default route owner")
@@ -788,6 +789,7 @@ function compile(    n) {
         render(order[n])
     }
     selected_routes()
+    if (ipoib_dhcp4_interfaces) emit("xcat_ipoib_dhcp4_enable", "YES")
     if (dhcp6_interfaces) emit("xcat_dhcp6_enable", "YES")
     if (default_gateway["inet"] != "") {
         emit("defaultrouter", default_gateway["inet"])
@@ -905,17 +907,39 @@ function lease_default(    count, bytes, i, width, size, gateway, routers) {
 }
 
 BEGIN {
+    if (mode == "dhcp4-routes") {
+        if (lease_side !~ /^(old|new)$/) fail("Invalid DHCP lease side")
+        route_text = ENVIRON[lease_side "_classless_static_routes"]
+        if (route_text == "") route_text = ENVIRON[lease_side "_ms_classless_static_routes"]
+        if (length(route_text) > 4096 || route_text ~ /[\r\n\t]/) fail("Invalid DHCP route option")
+        route_count = split(route_text, route_words, " ")
+        if (route_count % 2) fail("Incomplete DHCP route option")
+        for (i = 1; i <= route_count; i += 2) {
+            if (split(route_words[i], route_parts, "/") != 2 ||
+                ipv4(route_parts[1]) == "" || !number(route_parts[2], 0, 32) ||
+                !network_address(route_parts[1], route_parts[2], "inet") ||
+                ipv4(route_words[i + 1]) == "") fail("Invalid DHCP route option")
+            route_bytes = route_bytes (route_bytes == "" ? "" : " ") route_parts[2]
+            split(route_parts[1], route_octets, ".")
+            for (j = 1; j <= int((route_parts[2] + 7) / 8); j++)
+                route_bytes = route_bytes " " route_octets[j]
+            split(route_words[i + 1], route_octets, ".")
+            for (j = 1; j <= 4; j++) route_bytes = route_bytes " " route_octets[j]
+        }
+        print route_bytes
+        exit
+    }
     if (mode == "bootstrap") {
         bootstrap()
         exit
     }
-    if (mode == "dhcp6-duid") {
+    if (mode == "dhcp6-duid" || mode == "dhcp4-duid") {
         uuid = tolower(uuid)
         if (uuid ~ /[^0-9a-f-]/ || split(uuid, uuid_parts, "-") != 5 ||
             length(uuid_parts[1]) != 8 || length(uuid_parts[2]) != 4 || length(uuid_parts[3]) != 4 ||
             length(uuid_parts[4]) != 4 || length(uuid_parts[5]) != 12 ||
             uuid == "00000000-0000-0000-0000-000000000000" || uuid == "ffffffff-ffff-ffff-ffff-ffffffffffff")
-            fail("DHCPv6 requires a valid hardware UUID")
+            fail("DHCP requires a valid hardware UUID")
         gsub(/-/, "", uuid)
         duid = "00:04"
         for (i = 1; i <= 32; i += 2) duid = duid ":" substr(uuid, i, 2)

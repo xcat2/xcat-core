@@ -42,18 +42,22 @@ fi
 tab=$(printf '\t')
 IFS="$tab" read -r expected bits peerdns defroute < "$policy"
 case "$peerdns:$defroute" in yes:yes|yes:no|no:yes|no:no) ;; *) fail 'Invalid DHCP policy' ;; esac
-if [ "${1:-}" = --expire ]; then
-    [ -e "$lease" ] || exit 0
-    private_file "$lease" || fail 'Unsafe DHCP lease record'
-    while IFS="$tab" read -r key value; do
-        case "$key" in
-        old_ip_address|old_subnet_mask|old_broadcast_address|old_routers|old_static_routes|old_classless_routes|old_domain_name|old_domain_name_servers|old_domain_search)
-            export "$key=$value" ;;
-        *) fail 'Invalid DHCP lease record' ;;
-        esac
-    done < "$lease"
-    reason=EXPIRE
-    export reason
+if [ "${1:-}" = --expire ] || [ "${1:-}" = --saved-lease ]; then
+    unset old_ip_address old_subnet_mask old_broadcast_address old_routers
+    unset old_static_routes old_classless_routes old_domain_name old_domain_name_servers old_domain_search
+    if [ -e "$lease" ] || [ -L "$lease" ]; then
+        private_file "$lease" || fail 'Unsafe DHCP lease record'
+        while IFS="$tab" read -r key value; do
+            case "$key" in
+            old_ip_address|old_subnet_mask|old_broadcast_address|old_routers|old_static_routes|old_classless_routes|old_domain_name|old_domain_name_servers|old_domain_search)
+                export "$key=$value" ;;
+            *) fail 'Invalid DHCP lease record' ;;
+            esac
+        done < "$lease"
+    elif [ "${1:-}" = --expire ]; then
+        exit 0
+    fi
+    if [ "${1:-}" = --expire ]; then reason=EXPIRE; export reason; fi
 fi
 case ${reason:-} in
 PREINIT|ARPCHECK|ARPSEND|MEDIUM|BOUND|RENEW|REBIND|REBOOT|TIMEOUT|EXPIRE|FAIL|STOP|RELEASE) ;;

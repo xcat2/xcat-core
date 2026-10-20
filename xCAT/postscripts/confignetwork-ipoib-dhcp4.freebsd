@@ -1,0 +1,101 @@
+#!/bin/sh
+# PROVIDE: xcat_ipoib_dhcp4
+# REQUIRE: netif
+# BEFORE: NETWORKING
+# KEYWORD: shutdown
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
+LC_ALL=C
+export PATH LC_ALL
+unset IFCONFIG_FORMAT
+umask 077
+
+if [ -z "${reason:-}" ]; then
+    . /etc/rc.subr
+    name=xcat_ipoib_dhcp4
+    rcvar=xcat_ipoib_dhcp4_enable
+    command=/usr/local/libexec/xcat/dhcpcd-ipoib
+    command_args='-4 -b -f /var/db/xcat/network/dhcp/ipoib.conf </dev/null >/dev/null 2>&1'
+    pidfile=$($command -4 -P -f /var/db/xcat/network/dhcp/ipoib.conf) || exit 1
+    required_files=/var/db/xcat/network/dhcp/ipoib.conf
+    start_precmd=ipoib_check_config
+    start_postcmd=ipoib_wait_lease
+    ipoib_check_config()
+    {
+        [ -f "$required_files" ] && [ ! -L "$required_files" ] &&
+            [ "$(stat -f '%u:%g:%l' "$required_files")" = 0:0:1 ] || exit 1
+        case $(stat -f '%Lp' "$required_files") in 400|444|600|644) ;; *) exit 1 ;; esac
+        awk '$1=="allowinterfaces" {
+            if (++count!=1 || NF<2) bad=1
+            for (i=2;i<=NF;i++) if ($i !~ /^[a-z][a-z0-9]*$/ || length($i)>15) bad=1
+        } END {exit (count!=1 || bad)}' "$required_files" || exit 1
+    }
+    ipoib_wait_lease()
+    {
+        nics=$(awk '$1=="allowinterfaces" {for(i=2;i<=NF;i++) print $i}' "$required_files") || return 1
+        count=0
+        while [ "$count" -lt 30 ]; do
+            ready=yes
+            for nic in $nics; do
+                lease=/var/db/xcat/network/dhcp/$nic.lease
+                policy=/var/db/xcat/network/dhcp/$nic.policy
+                for file in "$lease" "$policy"; do
+                    if [ ! -f "$file" ] || [ -L "$file" ] ||
+                        [ "$(stat -f '%u:%g:%Lp:%l' "$file")" != 0:0:600:1 ]; then
+                        ready=no
+                        break
+                    fi
+                done
+                [ "$ready" = yes ] || break
+                address=$(awk -F '\t' 'NR==1 {print $1}' "$policy")
+                if ! awk -F '\t' -v ip="$address" '$1=="old_ip_address" && $2==ip {found=1}
+                    END {exit !found}' "$lease" ||
+                    ! ifconfig "$nic" 2>/dev/null | awk -v ip="$address" '$1=="inet" && $2==ip {found=1}
+                        END {exit !found}'; then
+                    ready=no
+                    break
+                fi
+            done
+            [ "$ready" != yes ] || return 0
+            count=$((count+1))
+            sleep 1
+        done
+        warn 'IPoIB DHCPv4 leases are not ready; the client continues retrying.'
+        return 0
+    }
+    load_rc_config "$name"
+    : "${xcat_ipoib_dhcp4_enable:=NO}"
+    run_rc_command "$1"
+    exit $?
+fi
+
+set -efu
+[ "$(id -u)" = 0 ] || exit 1
+case ${interface:-} in ''|*[!a-z0-9]*) exit 1 ;; esac
+[ "${#interface}" -le 15 ] || exit 1
+helper=/var/db/xcat/network/dhclient-script
+planner=/var/db/xcat/network/dhcp/planner
+for directory in /var/db/xcat /var/db/xcat/network /var/db/xcat/network/dhcp; do
+    [ -d "$directory" ] && [ ! -L "$directory" ] &&
+        [ "$(stat -f '%u:%g:%Lp' "$directory")" = 0:0:700 ] || exit 1
+done
+[ -f "$planner" ] && [ ! -L "$planner" ] &&
+    [ "$(stat -f '%u:%g:%Lp:%l' "$planner")" = 0:0:600:1 ] || exit 1
+case "$reason" in
+PREINIT|CARRIER|NOCARRIER_ROAMING|RECONFIGURE) exit 0 ;;
+STOPPED|NOCARRIER|DEPARTED|EXPIRE|FAIL|STOP|RELEASE|NAK)
+    exec env -i /bin/sh "$helper" --expire "$interface" ;;
+BOUND|RENEW|REBIND|REBOOT) ;;
+*) printf 'confignetwork: unexpected IPoIB DHCPv4 event %s\n' "$reason" >&2; exit 1 ;;
+esac
+if new_classless_routes=$(awk -v mode=dhcp4-routes -v lease_side=new -f "$planner"); then
+    if env -i interface="$interface" reason="$reason" \
+        new_ip_address="${new_ip_address:-}" new_subnet_mask="${new_subnet_mask:-}" \
+        new_broadcast_address="${new_broadcast_address:-}" new_routers="${new_routers:-}" \
+        new_static_routes="${new_static_routes:-}" new_classless_routes="$new_classless_routes" \
+        new_domain_name="${new_domain_name:-}" new_domain_name_servers="${new_domain_name_servers:-}" \
+        new_domain_search="${new_domain_search:-}" \
+        /bin/sh "$helper" --saved-lease; then exit 0; fi
+fi
+env -i /bin/sh "$helper" --expire "$interface"
+exit 1

@@ -29,6 +29,9 @@ case ${SETINSTALLNIC:-} in 1|yes) configure_boot=1 ;; esac
 planner=$(CDPATH= cd -P "$(dirname "$0")" && pwd)/confignetwork-freebsd.awk
 [ -f "$planner" ] && [ ! -L "$planner" ] || fail 'The FreeBSD network planner is missing'
 dhcp_helper=${planner%/*}/confignetwork-dhclient.freebsd
+ipoib_dhcp_source=${planner%/*}/confignetwork-ipoib-dhcp4.freebsd
+ipoib_dhcp_service=/usr/local/etc/rc.d/xcat_ipoib_dhcp4
+ipoib_dhcp_client=/usr/local/libexec/xcat/dhcpcd-ipoib
 dhcp6_source=${planner%/*}/confignetwork-dhcp6.freebsd
 dhcp6_service=/usr/local/etc/rc.d/xcat_dhcp6
 
@@ -83,20 +86,75 @@ dhcp_config()
     printf 'timeout 15;\nretry 5;\nselect-timeout 1;\nscript "/var/db/xcat/network/dhclient-script";\n'
 }
 
+dhcp_interfaces()
+{
+    awk -F '\t' -v client="$2" '$1 == "G" {ib[$2]=1}
+        $1 == "H" && !seen[$2]++ {list[++n]=$2}
+        END {for(i=1;i<=n;i++) if ((list[i] in ib) == (client == "ipoib")) print list[i]}' "$1"
+}
+
+ipoib_dhcp_plan()
+{
+    dhcp_interfaces "$1" ipoib | awk 'END {exit NR == 0}'
+}
+
+ipoib_dhcp_available()
+{
+    protected_script "$ipoib_dhcp_client" && [ -x "$ipoib_dhcp_client" ] &&
+        "$ipoib_dhcp_client" --version | grep -q '^dhcpcd 10.5.2-xcat1$'
+}
+
+ipoib_dhcp_config()
+{
+    ipoib_dhcp_plan "$1" || return 0
+    ipoib_uuid=$(kenv -q smbios.system.uuid) || return 1
+    ipoib_duid=$(awk -v mode=dhcp4-duid -v uuid="$ipoib_uuid" -f "$planner") || return 1
+    printf 'ipv4only\nnoconfigure\nnoarp\nnoipv4ll\nduid %s\n' "$ipoib_duid"
+    printf 'script "%s"\n' "$ipoib_dhcp_service"
+    printf 'option subnet_mask,routers,domain_name_servers,domain_name,domain_search,classless_static_routes\n'
+    ipoib_nics=$(dhcp_interfaces "$1" ipoib) || return 1
+    printf 'allowinterfaces'
+    for ipoib_nic in $ipoib_nics; do printf ' %s' "$ipoib_nic"; done
+    printf '\n'
+    ipoib_ids=
+    for ipoib_nic in $ipoib_nics; do
+        ipoib_id=$(printf '%s' "$ipoib_nic" | cksum | awk '{print $1}') || return 1
+        case " $ipoib_ids " in *" $ipoib_id "*) return 1 ;; esac
+        ipoib_ids="$ipoib_ids $ipoib_id"
+        printf 'interface %s\n  iaid %s\n' "$ipoib_nic" "$ipoib_id"
+    done
+}
+
 dhcp_matches()
 {
+    dhcp_interfaces "$1" native > "$pending/dhcp.native" || return 1
+    while IFS= read -r nic; do
+        protected_file "$state/dhcp/$nic.conf" || return 1
+        dhcp_config | cmp -s - "$state/dhcp/$nic.conf" || return 1
+    done < "$pending/dhcp.native"
     while IFS="$tab" read -r kind nic address bits peerdns defroute; do
         [ "$kind" = H ] || continue
-        protected_file "$state/dhcp/$nic.conf" && protected_file "$state/dhcp/$nic.policy" || return 1
+        protected_file "$state/dhcp/$nic.policy" || return 1
         [ "$(stat -f '%Lp' "$state/dhcp/$nic.policy")" = 600 ] || return 1
-        dhcp_config | cmp -s - "$state/dhcp/$nic.conf" || return 1
         printf '%s\t%s\t%s\t%s\n' "$address" "$bits" "$peerdns" "$defroute" |
             cmp -s - "$state/dhcp/$nic.policy" || return 1
     done < "$1"
+    if ipoib_dhcp_plan "$1"; then
+        ipoib_dhcp_available || return 1
+        protected_file "$state/dhcp/ipoib.conf" && protected_file "$state/dhcp/planner" &&
+            protected_script "$ipoib_dhcp_service" || return 1
+        ipoib_dhcp_config "$1" | cmp -s - "$state/dhcp/ipoib.conf" || return 1
+        cmp -s "$planner" "$state/dhcp/planner" &&
+            cmp -s "$ipoib_dhcp_source" "$ipoib_dhcp_service" || return 1
+    fi
 }
 
 dhcp_stop()
 {
+    if ipoib_dhcp_plan "$1" && [ -f "$ipoib_dhcp_service" ] &&
+        "$ipoib_dhcp_service" forcestatus >/dev/null 2>&1; then
+        "$ipoib_dhcp_service" forcestop || return 1
+    fi
     awk -F '\t' '$1 == "H" && !seen[$2]++ {print $2}' "$1" > "$pending/dhcp.stop" || return 1
     while IFS= read -r nic; do
         if /etc/rc.d/dhclient forcestatus "$nic" >/dev/null 2>&1; then
@@ -110,20 +168,27 @@ dhcp_stop()
 
 dhcp_start()
 {
-    awk -F '\t' '$1 == "H" {print $2}' "$1" > "$pending/dhcp.start" || return 1
+    dhcp_interfaces "$1" native > "$pending/dhcp.start" || return 1
     while IFS= read -r nic; do
         if ! /etc/rc.d/dhclient forcestatus "$nic" >/dev/null 2>&1; then
             /sbin/dhclient -b -c "$state/dhcp/$nic.conf" "$nic" || return 1
         fi
     done < "$pending/dhcp.start"
+    if ipoib_dhcp_plan "$1"; then "$ipoib_dhcp_service" forcestart || return 1; fi
 }
 
 dhcp_ready()
 {
+    if ipoib_dhcp_plan "$1"; then
+        "$ipoib_dhcp_service" forcestatus >/dev/null 2>&1 || return 1
+    fi
+    dhcp_interfaces "$1" native > "$pending/dhcp.ready" || return 1
+    while IFS= read -r nic; do
+        /etc/rc.d/dhclient forcestatus "$nic" >/dev/null 2>&1 || return 1
+    done < "$pending/dhcp.ready"
     awk -F '\t' '$1 == "H" {print $2}' "$1" > "$pending/dhcp.ready" || return 1
     while IFS= read -r nic; do
         protected_file "$state/dhcp/$nic.lease" || return 1
-        /etc/rc.d/dhclient forcestatus "$nic" >/dev/null 2>&1 || return 1
     done < "$pending/dhcp.ready"
     dhcp6_ready "$1"
 }
@@ -382,6 +447,11 @@ rollback()
     if [ -d "$pending/before.dhcp" ]; then
         rm -rf "$state/dhcp" || return 1
         cp -pR "$pending/before.dhcp" "$state/dhcp" || return 1
+    fi
+    if [ -f "$pending/ipoib-service-managed" ]; then
+        if [ -f "$pending/before.ipoib-service" ]; then
+            cp -p "$pending/before.ipoib-service" "$ipoib_dhcp_service" || return 1
+        else rm -f "$ipoib_dhcp_service" || return 1; fi
     fi
     if [ -d "$pending/before.dhcp6" ]; then
         rm -rf "$state/dhcp6" || return 1
@@ -745,8 +815,36 @@ if awk -F '\t' '$1 == "H" {found=1} END {exit !found}' "$pending/union"; then
     while IFS="$tab" read -r kind nic address bits peerdns defroute; do
         [ "$kind" = H ] || continue
         printf '%s\t%s\t%s\t%s\n' "$address" "$bits" "$peerdns" "$defroute" > "$pending/after.dhcp/$nic.policy"
-        dhcp_config > "$pending/after.dhcp/$nic.conf"
     done < "$pending/plan"
+    dhcp_interfaces "$pending/plan" native > "$pending/dhcp.native"
+    while IFS= read -r nic; do
+        dhcp_config > "$pending/after.dhcp/$nic.conf"
+    done < "$pending/dhcp.native"
+fi
+if ipoib_dhcp_plan "$pending/union"; then
+    ipoib_dhcp_available || fail 'IPoIB DHCPv4 requires the xcat-dhcpcd package'
+    protected_script "$ipoib_dhcp_source" || fail 'The IPoIB DHCPv4 service is missing or unsafe'
+    if ipoib_dhcp_plan "$pending/before.plan"; then
+        protected_file "$state/dhcp/ipoib.conf" ||
+            fail 'The saved IPoIB DHCPv4 client configuration is missing or unsafe'
+    fi
+    for override in /etc/rc.conf.d/xcat_ipoib_dhcp4 /usr/local/etc/rc.conf.d/xcat_ipoib_dhcp4; do
+        [ ! -e "$override" ] && [ ! -L "$override" ] || fail 'IPoIB DHCPv4 service overrides require manual integration'
+    done
+    if pgrep -x dhcpcd-ipoib >/dev/null; then
+        ipoib_dhcp_plan "$pending/before.plan" && protected_script "$ipoib_dhcp_service" &&
+            "$ipoib_dhcp_service" forcestatus >/dev/null 2>&1 || fail 'Stop unmanaged IPoIB DHCPv4 clients first'
+    fi
+    if [ -e "$ipoib_dhcp_service" ] || [ -L "$ipoib_dhcp_service" ]; then
+        protected_script "$ipoib_dhcp_service" && ipoib_dhcp_plan "$pending/before.plan" ||
+            fail 'Unmanaged IPoIB DHCPv4 service exists'
+        cp -p "$ipoib_dhcp_service" "$pending/before.ipoib-service"
+    fi
+    : > "$pending/ipoib-service-managed"
+    if ipoib_dhcp_plan "$pending/plan"; then
+        ipoib_dhcp_config "$pending/plan" > "$pending/after.dhcp/ipoib.conf"
+        install -m 0600 "$planner" "$pending/after.dhcp/planner"
+    fi
 fi
 if dhcp6_plan "$pending/union"; then
     [ -x /usr/local/sbin/dhcpcd ] || fail 'DHCPv6 requires the dhcpcd package'
@@ -786,6 +884,9 @@ cmp -s /etc/rc.conf "$pending/before.rc" || fail 'rc.conf changed during prepara
 mutating=1
 dhcp_stop "$pending/before.plan" > "$pending/stop-dhcp.log" 2>&1 || fail 'Cannot stop previous DHCP clients'
 dhcp6_stop "$pending/before.plan" >> "$pending/stop-dhcp.log" 2>&1 || fail 'Cannot stop previous DHCPv6 clients'
+if [ -f "$pending/ipoib-service-managed" ]; then
+    install -m 0700 "$ipoib_dhcp_source" "$ipoib_dhcp_service"
+fi
 if [ -d "$pending/after.dhcp6" ]; then
     install -m 0700 "$dhcp6_source" "$dhcp6_service"
     rm -rf "$state/dhcp6"
@@ -827,6 +928,9 @@ mv "$state/current.new" "$state/current"
 fsync "$state"
 if [ -d "$pending/after.dhcp6" ] && ! dhcp6_plan "$pending/plan"; then
     rm -f "$dhcp6_service" "$state/dhcp6.conf"
+fi
+if [ -f "$pending/ipoib-service-managed" ] && ! ipoib_dhcp_plan "$pending/plan"; then
+    rm -f "$ipoib_dhcp_service"
 fi
 printf '%s\n' committed > "$pending/result"
 fsync "$pending/result" "$pending"
