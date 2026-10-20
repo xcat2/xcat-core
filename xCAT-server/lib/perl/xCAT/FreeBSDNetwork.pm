@@ -106,4 +106,58 @@ sub loader {
     return $text;
 }
 
+sub _dhcp4_environment {
+    my ($nics, $networks) = @_;
+    _fail('Invalid DHCP network tables') unless ref($nics) eq 'HASH' && ref($networks) eq 'ARRAY';
+    my %environment = (LC_ALL => 'C', NETWORKS_LINES => scalar(@{$networks}));
+    for my $field (qw(nictypes nicdevices nicips nicnetworks nicextraparams niccustomscripts)) {
+        _fail("Invalid $field") if ref($nics->{$field});
+        $environment{uc($field)} = $nics->{$field} || '';
+    }
+    my $index = 0;
+    for my $network (@{$networks}) {
+        my @fields;
+        for my $name (qw(netname net mask gateway mtu disable)) {
+            my $value = $network->{$name} // '';
+            _fail("Invalid network $name") if ref($value) || $value =~ /[^\x20-\x7e]|\|/x;
+            push @fields, "$name=$value";
+        }
+        $environment{'NETWORKS_LINE' . ++$index} = join('||', @fields);
+    }
+    return \%environment;
+}
+
+sub dhcp4_reservations {
+    my ($nics, $networks, $uuid, $planner) = @_;
+    _fail('Missing shared network planner') if !defined($planner) || ref($planner) ||
+        $planner !~ m{\A/}x || !-f $planner || -l $planner;
+    my $result = xCAT::FreeBSDPkg::run_command(
+        ['/usr/bin/awk', '-v', 'mode=dhcp4-reservations', '-f', $planner],
+        environment => _dhcp4_environment($nics, $networks), timeout => 15,
+        stdout_limit => 8192, stderr_limit => 4096);
+    _fail($result->{stderr} || 'DHCP network planner failed') if $result->{exitcode} || $result->{signal};
+    return [] if $result->{stdout} eq '';
+    _fail('DHCP requires a valid vpd.uuid') if !defined($uuid) || ref($uuid) ||
+        $uuid !~ /\A[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\z/ix ||
+        $uuid eq '00000000-0000-0000-0000-000000000000' ||
+        lc($uuid) eq 'ffffffff-ffff-ffff-ffff-ffffffffffff';
+    (my $hex = lc($uuid)) =~ s/-//gx;
+    my (@reservations, %identifiers);
+    for my $line (split(/\n/x, $result->{stdout})) {
+        my ($interface, $address) = $line =~ /\A([a-z][a-z0-9]{0,14})\t([0-9.]+)\z/x;
+        _fail('Invalid DHCP reservation plan') unless defined($interface);
+        my $checksum = xCAT::FreeBSDPkg::run_command(
+            ['/bin/sh', '-c', 'printf %s "$1" | cksum', 'xcat', $interface],
+            environment => { LC_ALL => 'C', PATH => '/usr/bin:/bin' },
+            timeout => 5, stdout_limit => 128, stderr_limit => 1024);
+        my ($iaid) = $checksum->{stdout} =~ /\A([0-9]+)\s+[0-9]+\s*\z/x;
+        _fail('Cannot compute DHCP interface identity') if $checksum->{exitcode} || $checksum->{signal} || !defined($iaid);
+        my $identifier = sprintf('ff%08x0004%s', $iaid, $hex);
+        _fail('Duplicate DHCP interface identity') if $identifiers{$identifier}++;
+        $identifier = join(':', $identifier =~ /(..)/gx);
+        push @reservations, { interface => $interface, address => $address, client_id => $identifier };
+    }
+    return \@reservations;
+}
+
 1;

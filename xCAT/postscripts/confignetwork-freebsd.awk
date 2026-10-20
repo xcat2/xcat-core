@@ -250,7 +250,7 @@ function options(nic,    text, count, parts, pair, i, key, value) {
                 fail("IB_DRIVER must be mlx5ib or mlx4ib")
         } else if (key == "PORT_GUID" && type[nic] == "infiniband") {
             value = tolower(value)
-            if (value !~ /^([0-9a-f][0-9a-f]:){7}[0-9a-f][0-9a-f]$/ ||
+            if (length(value) != 23 || value !~ /^([0-9a-f][0-9a-f]:)*[0-9a-f][0-9a-f]$/ ||
                 value == "00:00:00:00:00:00:00:00")
                 fail("Invalid InfiniBand port GUID for " nic)
         } else if (key == "CONNECTED_MODE" && type[nic] == "infiniband") {
@@ -759,9 +759,7 @@ function render(nic,    i, config, mtu, parent, family, ip, bits, alias, first4,
         clones = clones (clones == "" ? "" : " ") nic
 }
 
-function compile(    n) {
-    if (!interface_name(bootnic) || (configure_boot != 0 && configure_boot != 1))
-        fail("Missing installation interface selection")
+function read_policy() {
     attribute("NICTYPES")
     attribute("NICDEVICES")
     attribute("NICIPS")
@@ -770,6 +768,25 @@ function compile(    n) {
     attribute("NICCUSTOMSCRIPTS")
     networks()
     topology()
+}
+
+function dhcp4_reservations(    n, nic) {
+    read_policy()
+    for (n = 1; n <= ordered; n++) node_addresses(order[n])
+    for (n = 1; n <= ordered; n++) {
+        nic = order[n]
+        if (!ib[nic]) continue
+        interface_mtu(nic)
+        if (dhcp[nic])
+            records[++record_count] = nic "\t" dhcp_address[nic]
+    }
+    for (n = 1; n <= record_count; n++) print records[n]
+}
+
+function compile(    n) {
+    if (!interface_name(bootnic) || (configure_boot != 0 && configure_boot != 1))
+        fail("Missing installation interface selection")
+    read_policy()
     for (n = 1; n <= ordered; n++)
         if (dhcp[order[n]] && option[order[n], "DEFROUTE"] == "yes")
             explicit_dhcp_default++
@@ -931,6 +948,10 @@ BEGIN {
     }
     if (mode == "bootstrap") {
         bootstrap()
+        exit
+    }
+    if (mode == "dhcp4-reservations") {
+        dhcp4_reservations()
         exit
     }
     if (mode == "dhcp6-duid" || mode == "dhcp4-duid") {

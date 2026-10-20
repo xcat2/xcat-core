@@ -68,6 +68,10 @@ my $vpdhash;
 my $iscsients;
 my $nodetypeents;
 my $chainents;
+my $ipoib_external_hosts;
+my $ipoib_isc_index;
+my $ipoib_mac_addresses;
+my $ipoib_nodes;
 my $tftpdir = xCAT::TableUtils->getTftpDir();
 our $dhcpconffile = $^O eq 'aix' ? '/etc/dhcpsd.cnf' : '/etc/dhcpd.conf';
 my %dynamicranges; #track dynamic ranges defined to see if a host that resolves is actually a dynamic address
@@ -264,6 +268,8 @@ sub _delete_isc_static_host
     my $skip = 0;
     foreach my $line (@{$config}) {
         if ($line =~ $start_marker) {
+            _isc_ipoib_index_set($node, []) if $config == \@dhcpconf && $ipoib_isc_index &&
+                $line =~ /^#xCAT host declaration for \Q$node\E aka host \Q$node\E-xcat-ipoib start\s*$/;
             $skip = 1;
             next;
         }
@@ -380,6 +386,7 @@ sub _query_isc_static_host
         return (undef, undef, undef, $error) if $error;
         @lines = @{$read};
     }
+    _delete_isc_static_host($node, \@lines, "$node-xcat-ipoib");
 
     my $start_re = _isc_host_start_re($node);
     my $end_re   = _isc_host_end_re($node);
@@ -406,6 +413,487 @@ sub _query_isc_static_host
     }
 
     return ($nname, $ipaddr, $hwaddr, undef);
+}
+
+sub _freebsd_ipoib_reservations
+{
+    my ($node, $ntent) = @_;
+    return [] unless $ntent;
+    my $os = $ntent->{os} || '';
+    if (!$os && $ntent->{provmethod}) {
+        my $tab = xCAT::Table->new('osimage', -create => 0);
+        my $image = $tab ? $tab->getAttribs({ imagename => $ntent->{provmethod} }, 'osvers') : undef;
+        $os = $image->{osvers} if $image;
+    }
+    return [] unless $os =~ /^freebsd/i;
+    die "Invalid FreeBSD DHCP node name\n" unless $node =~ /\A[A-Za-z0-9_.-]{1,128}\z/ && $node !~ /\A\.{1,2}\z/;
+    my $nictab = xCAT::Table->new('nics', -create => 0);
+    my $nics = $nictab ? $nictab->getNodeAttribs($node,
+        [qw(nictypes nicdevices nicips nicnetworks nicextraparams niccustomscripts)]) : undef;
+    return [] unless $nics && $nics->{nictypes};
+    return [] unless $nics->{nictypes} =~ /!(?:infiniband|bond-infiniband)(?:,|\z)/i;
+    return [] unless ($nics->{nicextraparams} || '') =~ /\b(?:BOOTPROTO=dhcp|dhcp4=true)\b/i;
+    require xCAT::Postage;
+    $nics->{nicips} = xCAT::Postage::get_nics_nicips($node, $nics->{nicips});
+    my $nettab = xCAT::Table->new('networks', -create => 0);
+    die "Unable to read networks for FreeBSD DHCP\n" unless $nettab;
+    my @networks = $nettab->getAllAttribs(qw(netname net mask gateway mtu disable));
+    my $vpdtab = xCAT::Table->new('vpd', -create => 0);
+    my $vpd = $vpdtab ? $vpdtab->getNodeAttribs($node, ['uuid']) : undef;
+    require xCAT::FreeBSDNetwork;
+    my $reservations = xCAT::FreeBSDNetwork::dhcp4_reservations($nics, \@networks,
+        $vpd ? $vpd->{uuid} : undef,
+        xCAT::TableUtils->getInstallDir() . '/postscripts/confignetwork-freebsd.awk');
+    for my $entry (@$reservations) {
+        die "Reserved IPoIB address is in a dynamic range\n" if
+            _reject_dynamic_node_ip($node, $entry->{address}, 'IPv4', $callback);
+        $entry->{hostname} = "$node-xcat-ipoib-$entry->{interface}";
+    }
+    _freebsd_ipoib_mac_conflicts($reservations);
+    return $reservations;
+}
+
+sub _freebsd_ipoib_mac_conflicts
+{
+    my $reservations = shift;
+    return unless @$reservations;
+    unless (defined($ipoib_mac_addresses)) {
+        my $table = xCAT::Table->new('mac', -create => 0);
+        die "Unable to read MAC reservations for FreeBSD DHCP\n" unless $table;
+        my %addresses;
+        for my $row ($table->getAllNodeAttribs([qw(node mac)])) {
+            die "Unable to read MAC reservations for FreeBSD DHCP\n" unless ref($row) eq 'HASH';
+            for my $value (split(/\|/, $row->{mac} || '')) {
+                my ($mac, $hostname) = split(/!/, $value);
+                next unless $mac;
+                $hostname ||= $row->{node};
+                next if !$hostname || $hostname eq '*NOIP*';
+                my $address = getipaddr($hostname, OnlyV4 => 1);
+                $addresses{$address} = $hostname if $address;
+            }
+        }
+        $ipoib_mac_addresses = \%addresses;
+    }
+    for my $entry (@$reservations) {
+        my $hostname = $ipoib_mac_addresses->{$entry->{address}};
+        die "IPoIB address $entry->{address} conflicts with MAC reservation $hostname\n" if $hostname;
+    }
+}
+
+sub _freebsd_ipoib_reset
+{
+    $ipoib_external_hosts = undef;
+    $ipoib_isc_index = undef;
+    $ipoib_mac_addresses = undef;
+    $ipoib_nodes = undef;
+}
+
+sub _isc_ipoib_index
+{
+    my $config = shift;
+    return $ipoib_isc_index if $config == \@dhcpconf && $ipoib_isc_index;
+    my ($owner, $host, %owners, %addresses);
+    for my $line (@$config) {
+        if ($line =~ /^#xCAT host declaration for (\S+) aka host \1-xcat-ipoib start\s*$/) {
+            $owner = $1;
+            $owners{$owner} = [];
+            $host = undef;
+            next;
+        }
+        next unless defined($owner);
+        if ($line =~ /^#xCAT host declaration for \Q$owner\E aka host \Q$owner\E-xcat-ipoib end\s*$/) {
+            $owner = undef;
+            next;
+        }
+        if ($line =~ /^host (\S+) \{/) {
+            $host = { hostname => $1 };
+            push @{ $owners{$owner} }, $host;
+        } elsif ($host && $line =~ /^\s*fixed-address ([0-9.]+);/) {
+            $host->{address} = $1;
+            $addresses{$1}{$host->{hostname}} = 1;
+        } elsif ($host && $line =~ /^\s*host-identifier option dhcp-client-identifier ([0-9a-f:]+);/) {
+            $host->{client_id} = $1;
+        }
+    }
+    my $index = { owners => \%owners, addresses => \%addresses };
+    $ipoib_isc_index = $index if $config == \@dhcpconf;
+    return $index;
+}
+
+sub _isc_ipoib_index_set
+{
+    my ($node, $entries) = @_;
+    for my $old (@{ $ipoib_isc_index->{owners}{$node} || [] }) {
+        delete $ipoib_isc_index->{addresses}{$old->{address}}{$old->{hostname}};
+        delete $ipoib_isc_index->{addresses}{$old->{address}} unless
+            keys %{ $ipoib_isc_index->{addresses}{$old->{address}} };
+    }
+    delete $ipoib_isc_index->{owners}{$node};
+    if (@$entries) {
+        $ipoib_isc_index->{owners}{$node} = $entries;
+        $ipoib_isc_index->{addresses}{$_->{address}}{$_->{hostname}} = 1 for @$entries;
+    }
+}
+
+sub _isc_ipoib_hosts
+{
+    my ($node, $config) = @_;
+    return _isc_ipoib_index($config)->{owners}{$node} || [];
+}
+
+sub _freebsd_ipoib_node_exists
+{
+    unless (defined($ipoib_nodes)) {
+        my $table = xCAT::Table->new('nodelist', -create => 0);
+        die "Unable to read IPoIB reservation owners\n" unless $table;
+        my $rows = $table->getAllEntries(1);
+        die "Unable to read IPoIB reservation owners\n" unless ref($rows) eq 'ARRAY';
+        my %nodes;
+        for my $row (@$rows) {
+            die "Invalid IPoIB reservation owner inventory\n" unless ref($row) eq 'HASH' && $row->{node};
+            $nodes{$row->{node}} = 1;
+        }
+        $ipoib_nodes = \%nodes;
+    }
+    return $ipoib_nodes->{$_[0]};
+}
+
+sub _isc_ipoib_owners
+{
+    my $config = shift;
+    return map { /^#xCAT host declaration for (\S+) aka host \1-xcat-ipoib start\s*$/ ? $1 : () } @$config;
+}
+
+sub _isc_ipoib_prune
+{
+    my $config = shift;
+    for my $owner (_isc_ipoib_owners($config)) {
+        _isc_ipoib_update($owner, [], $config) unless _freebsd_ipoib_node_exists($owner);
+    }
+}
+
+sub _isc_ipoib_restore
+{
+    my ($previous, $config) = @_;
+    my $index = _isc_ipoib_index($previous);
+    for my $owner (_isc_ipoib_owners($previous)) {
+        next unless _freebsd_ipoib_node_exists($owner);
+        my $entries = $index->{owners}{$owner};
+        $_->{interface} = $_->{hostname} for @$entries;
+        _isc_ipoib_update($owner, _isc_ipoib_validate($owner, $entries, $config), $config);
+    }
+}
+
+sub _isc_ipoib_update
+{
+    my ($node, $reservations, $config) = @_;
+    $config ||= \@dhcpconf;
+    my $previous = _isc_ipoib_hosts($node, $config);
+    my $json = JSON->new->canonical;
+    my @desired = map { my $entry = $_; +{ map { $_ => $entry->{$_} } qw(hostname address client_id) } } @$reservations;
+    return if $json->encode($previous) eq $json->encode(\@desired);
+    my @before = @$config;
+    _delete_isc_static_host($node, $config, "$node-xcat-ipoib");
+    if (@$reservations) {
+        push @$config, "#xCAT host declaration for $node aka host $node-xcat-ipoib start\n";
+        for my $entry (@$reservations) {
+            push @$config, "host $entry->{hostname} {\n",
+                "    host-identifier option dhcp-client-identifier $entry->{client_id};\n",
+                "    fixed-address $entry->{address};\n", "}\n";
+        }
+        push @$config, "#xCAT host declaration for $node aka host $node-xcat-ipoib end\n";
+    }
+    _isc_ipoib_index_set($node, \@desired) if $config == \@dhcpconf && $ipoib_isc_index;
+    $restartdhcp = 1 if join('', @before) ne join('', @$config);
+}
+
+sub _isc_ipoib_validate
+{
+    my ($node, $reservations, $config) = @_;
+    return [] unless @$reservations;
+    $config ||= \@dhcpconf;
+    my @other = @$config;
+    _delete_isc_static_host($node, \@other, "$node-xcat-ipoib");
+    my @served;
+    for my $entry (@$reservations) {
+        my $served = 0;
+        for my $line (@other) {
+            die "IPoIB reservation conflicts with another ISC host\n" if
+                $line =~ /^\s*fixed-address\s+\Q$entry->{address}\E\s*;/ ||
+                $line =~ /^\s*host-identifier option dhcp-client-identifier \Q$entry->{client_id}\E;/;
+            if ($line =~ /^\s*subnet\s+([0-9.]+)\s+netmask\s+([0-9.]+)/) {
+                $served = 1 if xCAT::NetworkUtils::isInSameSubnet($entry->{address}, $1, $2, 0);
+            }
+        }
+        if ($served) { push @served, $entry; }
+        elsif ($callback) { $callback->({ warning => ["No configured ISC subnet for $entry->{interface} ($entry->{address}); skipping IPoIB reservation"] }); }
+    }
+    return \@served;
+}
+
+sub _isc_ipoib_state_directory { return '/var/lib/xcat/dhcp'; }
+
+sub _isc_ipoib_state_path
+{
+    my $node = shift;
+    die "Invalid DHCP node name\n" unless $node =~ /\A[A-Za-z0-9_.-]{1,128}\z/ && $node !~ /\A\.{1,2}\z/;
+    require Digest::SHA;
+    my $server = Digest::SHA::sha256_hex($::XCATSITEVALS{externaldhcpservers});
+    return _isc_ipoib_state_directory() . "/freebsd-ipoib-$server-$node.json";
+}
+
+sub _isc_ipoib_inventory
+{
+    my $node = shift;
+    my $path = _isc_ipoib_state_path($node);
+    return { names => [], hosts => [] } unless -e $path;
+    die "Invalid IPoIB reservation inventory $path\n" if -l $path || !-f $path || -s $path > 1048576;
+    open(my $fh, '<', $path) or die "Cannot read $path: $!\n";
+    my $text = do { local $/; <$fh> };
+    close($fh) or die "Cannot close $path: $!\n";
+    my $state = JSON::decode_json($text);
+    $state = { names => $state } if ref($state) eq 'ARRAY';
+    die "Invalid IPoIB reservation inventory $path\n" unless ref($state) eq 'HASH';
+    my $names = $state->{names};
+    die "Invalid IPoIB reservation inventory $path\n" unless ref($names) eq 'ARRAY';
+    for my $name (@$names) {
+        die "Invalid IPoIB reservation name in $path\n" if ref($name) ||
+            $name !~ /\A\Q$node\E-xcat-ipoib-[a-z][a-z0-9]{0,14}\z/;
+    }
+    if (exists($state->{hosts})) {
+        die "Invalid IPoIB reservation inventory $path\n" unless ref($state->{hosts}) eq 'ARRAY';
+        my %names = map { $_ => 1 } @$names;
+        for my $host (@{ $state->{hosts} }) {
+            die "Invalid IPoIB reservation host in $path\n" unless ref($host) eq 'HASH' &&
+                $names{$host->{hostname} || ''} && xCAT::NetworkUtils->isIpv4addr($host->{address} || '') &&
+                ($host->{client_id} || '') =~ /\Aff(?::[0-9a-f]{2}){22}\z/;
+        }
+    }
+    return $state;
+}
+
+sub _isc_ipoib_external_names
+{
+    return _isc_ipoib_inventory($_[0])->{names};
+}
+
+sub _isc_ipoib_save_names
+{
+    my ($node, $names, $hosts) = @_;
+    my $path = _isc_ipoib_state_path($node);
+    unless (@$names) {
+        unlink($path) or die "Cannot remove IPoIB reservation inventory: $!\n" if -e $path;
+        return;
+    }
+    require File::Path;
+    require File::Temp;
+    my $directory = _isc_ipoib_state_directory();
+    die "Invalid IPoIB reservation directory\n" if -l $directory;
+    File::Path::make_path($directory, { mode => oct('700') }) unless -d $directory;
+    my ($fh, $temporary) = File::Temp::tempfile('ipoib.XXXXXX', DIR => $directory, UNLINK => 0);
+    my $ok = eval {
+        my $state = { names => $names };
+        my %seen;
+        $state->{hosts} = [grep { !$seen{join('|', @{$_}{qw(hostname address client_id)})}++ } @$hosts]
+            if defined($hosts);
+        print {$fh} JSON::encode_json($state) or die "Cannot write IPoIB reservation inventory: $!\n";
+        close($fh) or die "Cannot close IPoIB reservation inventory: $!\n";
+        rename($temporary, $path) or die "Cannot save IPoIB reservation inventory: $!\n";
+        1;
+    };
+    my $error = $@;
+    unlink($temporary) if -e $temporary;
+    die $error unless $ok;
+}
+
+sub _isc_ipoib_external_preamble
+{
+    my $settings = shift;
+    my $password = _omapi_passwd_entry($settings);
+    die "Missing OMAPI key for FreeBSD IPoIB reservations\n" unless $password && $password->{password};
+    return xCAT::DHCP::OmapiPolicy->omshell_preamble($settings,
+        secret => $password->{password}, server => $::XCATSITEVALS{externaldhcpservers}) . "connect\n";
+}
+
+sub _isc_ipoib_external_query
+{
+    my ($name, $settings, $preamble, $field) = @_;
+    my $lookup = $field ? "set $field = $name" : "set name = \"$name\"";
+    my @output = _run_omshell($preamble . "new host\n$lookup\nopen\nclose\n", $settings);
+    return if grep { /can't open object: not found/ } @output;
+    my (undef, $ip) = _parse_omshell_host_output($name, @output);
+    my ($hostname) = map { /^\s*name = "([^"]+)"\s*$/ ? $1 : () } @output;
+    my ($identifier) = map { /^\s*dhcp-client-identifier = ([0-9a-f:]+)\s*$/i ? lc($1) : () } @output;
+    return { hostname => $hostname || $name, address => substr($ip, length('ip-address = ')), client_id => $identifier }
+        if $ip && ($identifier || $field);
+    die "Cannot verify external ISC reservation $name\n";
+}
+
+sub _isc_ipoib_external_update
+{
+    my ($node, $reservations) = @_;
+    my $old = _isc_ipoib_external_names($node);
+    return unless @$old || @$reservations;
+    my $settings = _omapi_settings($callback);
+    die "Invalid OMAPI settings\n" unless $settings;
+    my $preamble = _isc_ipoib_external_preamble($settings);
+    my %desired = map { $_->{hostname} => $_ } @$reservations;
+    my %names = map { $_ => 1 } (@$old, keys %desired);
+    my $hosts = _isc_ipoib_external_hosts($settings, $preamble);
+    for my $entry (@$reservations) {
+        for my $host (@$hosts) {
+            next if $names{$host->{hostname}};
+            die "IPoIB reservation conflicts with another ISC host\n" if
+                $host->{address} eq $entry->{address} || $host->{client_id} eq $entry->{client_id};
+        }
+        for my $field (['ip-address', 'address'], ['dhcp-client-identifier', 'client_id']) {
+            my $host = _isc_ipoib_external_query($entry->{$field->[1]}, $settings, $preamble, $field->[0]);
+            die "IPoIB reservation conflicts with another ISC host\n" if $host && !$names{$host->{hostname}};
+        }
+    }
+    # Reserve old and new identities until readback confirms which hosts remain.
+    _isc_ipoib_save_names($node, [sort keys %names],
+        [(grep { $names{$_->{hostname}} } @$hosts), @$reservations]);
+    my $commands = $preamble;
+    for my $name (sort keys %names) {
+        $commands .= "new host\nset name = \"$name\"\nopen\nremove\nclose\n";
+    }
+    for my $entry (@$reservations) {
+        $commands .= "new host\nset name = \"$entry->{hostname}\"\n" .
+            "set dhcp-client-identifier = $entry->{client_id}\nset ip-address = $entry->{address}\ncreate\nclose\n";
+    }
+    my $cache = $ipoib_external_hosts;
+    $ipoib_external_hosts = undef;
+    _run_omshell($commands, $settings);
+    for my $name (sort keys %names) {
+        my $actual = _isc_ipoib_external_query($name, $settings, $preamble);
+        my $expected = $desired{$name};
+        die "External ISC reservation update failed for $name\n" if
+            ($expected && (!$actual || $actual->{address} ne $expected->{address} ||
+             $actual->{client_id} ne $expected->{client_id})) || (!$expected && $actual);
+    }
+    _isc_ipoib_save_names($node, [sort keys %desired], $reservations);
+    $ipoib_external_hosts = [(grep { !$names{$_->{hostname}} } @$cache), @$reservations] if defined($cache);
+}
+
+sub _isc_ipoib_external_owners
+{
+    my $directory = _isc_ipoib_state_directory();
+    return unless -d $directory;
+    my $prefix = _isc_ipoib_state_path('node');
+    $prefix =~ s{.*/}{};
+    $prefix =~ s/node[.]json\z//;
+    opendir(my $dh, $directory) or die "Cannot read IPoIB reservation inventory: $!\n";
+    my @owners = map { /\A\Q$prefix\E(.+)[.]json\z/ ? $1 : () } readdir($dh);
+    closedir($dh);
+    return @owners;
+}
+
+sub _isc_ipoib_external_prune
+{
+    for my $owner (_isc_ipoib_external_owners()) {
+        _isc_ipoib_external_update($owner, []) unless _freebsd_ipoib_node_exists($owner);
+    }
+}
+
+sub _isc_ipoib_external_hosts
+{
+    my ($settings, $preamble) = @_;
+    return $ipoib_external_hosts if defined($ipoib_external_hosts);
+    my @hosts;
+    for my $owner (_isc_ipoib_external_owners()) {
+        my $state = _isc_ipoib_inventory($owner);
+        if (!exists($state->{hosts})) {
+            $settings ||= _omapi_settings($callback);
+            die "Invalid OMAPI settings\n" unless $settings;
+            $preamble ||= _isc_ipoib_external_preamble($settings);
+            my @verified;
+            for my $name (@{ $state->{names} }) {
+                my $host = _isc_ipoib_external_query($name, $settings, $preamble);
+                push @verified, $host if $host;
+            }
+            _isc_ipoib_save_names($owner, $state->{names}, \@verified);
+            $state->{hosts} = \@verified;
+        }
+        push @hosts, @{ $state->{hosts} };
+    }
+    $ipoib_external_hosts = \@hosts;
+    return $ipoib_external_hosts;
+}
+
+sub _isc_ipoib_boot_allowed
+{
+    my ($node, $config) = @_;
+    $config ||= \@dhcpconf;
+    my $mac = $machash && $machash->{$node} ? $machash->{$node}[0]{mac} : undef;
+    return 1 unless $mac;
+    my $addresses = _isc_ipoib_index($config)->{addresses};
+    my %external;
+    if ($::XCATSITEVALS{externaldhcpservers} && -d _isc_ipoib_state_directory()) {
+        %external = map { $_->{address} => 1 } @{ _isc_ipoib_external_hosts() };
+    }
+    for my $value (split(/\|/, $mac)) {
+        my ($address, $name) = split(/!/, $value);
+        next unless $address;
+        $name ||= $node;
+        next if $name eq '*NOIP*';
+        my $ip = getipaddr($name, OnlyV4 => 1);
+        next unless $ip;
+        die "MAC reservation $name conflicts with an IPoIB host\n" if $addresses->{$ip} || $external{$ip};
+    }
+    return 1;
+}
+
+sub _kea_ipoib_owner
+{
+    return { 'xcat-node' => $_[0], 'xcat-purpose' => 'freebsd-ipoib' };
+}
+
+sub _kea_ipoib_reservations
+{
+    my ($backend, $config, $node, $entries, $pending) = @_;
+    my @reservations;
+    for my $entry (@$entries) {
+        my $subnet = $backend->subnet_id_for_ip($config, $entry->{address});
+        unless ($subnet) {
+            $callback->({ warning => ["No configured Kea subnet for $entry->{interface} ($entry->{address}); skipping IPoIB reservation"] }) if $callback;
+            next;
+        }
+        my @existing = (@{ $pending || [] },
+            @{ $backend->query_reservations($config, { 'client-id' => $entry->{client_id} }) },
+            @{ $backend->query_reservations($config, { 'ip-address' => $entry->{address} }) });
+        for my $other (@existing) {
+            next unless ($other->{'client-id'} || '') eq $entry->{client_id} ||
+                ($other->{'ip-address'} || '') eq $entry->{address};
+            my $owner = $other->{'user-context'} || {};
+            die "IPoIB reservation conflicts with another Kea host\n" unless
+                ($owner->{'xcat-node'} || '') eq $node && ($owner->{'xcat-purpose'} || '') eq 'freebsd-ipoib';
+        }
+        push @reservations, { 'subnet-id' => $subnet, 'client-id' => $entry->{client_id},
+            'ip-address' => $entry->{address},
+            'user-context' => { %{ _kea_ipoib_owner($node) }, 'xcat-interface' => $entry->{interface} } };
+    }
+    return \@reservations;
+}
+
+sub _kea_ipoib_matching
+{
+    my ($config, $reservations) = @_;
+    my %subnets = map { $_->{'subnet-id'} => 1 } grep { $_->{'client-id'} } @$reservations;
+    my $changed = 0;
+    for my $subnet (@{ $config->{Dhcp4} ? $config->{Dhcp4}{subnet4} || [] : [] }) {
+        next unless $subnets{$subnet->{id}};
+        unless ($subnet->{'match-client-id'}) {
+            $subnet->{'match-client-id'} = JSON::true;
+            $changed = 1;
+        }
+    }
+    my $identifiers = $config->{Dhcp4}{'host-reservation-identifiers'};
+    if (keys(%subnets) && $identifiers && !grep { $_ eq 'client-id' } @$identifiers) {
+        push @$identifiers, 'client-id';
+        $changed = 1;
+    }
+    return $changed;
 }
 
 sub _open_omshell_writer
@@ -517,6 +1005,8 @@ sub _parse_omshell_host_output
             if ($ip =~ /^(?:[[:xdigit:]]{1,2}:){3}[[:xdigit:]]{1,2}$/) {
                 my @parts = split(/\:/, $ip);
                 $ipaddr = "ip-address = " . join(".", map { hex($_) } @parts);
+            } elsif ($ip =~ /^"([\x20-\x7e]{4})"$/) {
+                $ipaddr = 'ip-address = ' . join('.', unpack('C4', $1));
             } else {
                 $ipaddr = "ip-address = $ip";
             }
@@ -535,6 +1025,30 @@ sub listnode
     my $node     = shift;
     my $callback = shift;
     my $rsp;
+
+    if ($::XCATSITEVALS{externaldhcpservers}) {
+        eval {
+            my $names = _isc_ipoib_external_names($node);
+            if (@$names) {
+                my $settings = _omapi_settings($callback);
+                die "Invalid OMAPI settings\n" unless $settings;
+                my $preamble = _isc_ipoib_external_preamble($settings);
+                for my $name (@$names) {
+                    my $host = _isc_ipoib_external_query($name, $settings, $preamble);
+                    next unless $host;
+                    $callback->({ data => ["$node: ip-address = $host->{address}, client-id = $host->{client_id}, hostname = $name"] });
+                }
+            }
+        };
+        $callback->({ error => ["$node: $@"], errorcode => [1] }) if $@;
+    } else {
+        my ($lines, $error) = _read_isc_conf_lines($dhcpconffile);
+        if (!$error) {
+            for my $host (@{ _isc_ipoib_hosts($node, $lines) }) {
+                $callback->({ data => ["$node: ip-address = $host->{address}, client-id = $host->{client_id}, hostname = $host->{hostname}"] });
+            }
+        }
+    }
 
     # On Ubuntu's ISC-limited releases the omshell host query can wedge at 100% CPU and never
     # be reaped, so answer from the static host block xCAT already wrote into dhcpd.conf and
@@ -593,6 +1107,18 @@ sub delnode
 {
     my $node  = shift;
     my $inetn = inet_aton($node);
+
+    if ($::XCATSITEVALS{externaldhcpservers}) {
+        eval { _isc_ipoib_external_update($node, []); };
+        $callback->({ error => ["$node: $@"], errorcode => [1] }) if $@;
+    } else {
+        _isc_ipoib_update($node, []);
+    }
+    eval { _isc_ipoib_boot_allowed($node); };
+    if ($@) {
+        $callback->({ error => ["$node: $@"], errorcode => [1] });
+        return;
+    }
 
     if (_isc_static_host_fallback()) {
         _delete_isc_static_host($node);
@@ -1822,6 +2348,7 @@ sub process_request
     $callback = shift;
     my $oldmask = umask 0077;
     $restartdhcp = 0;
+    _freebsd_ipoib_reset();
     my $rsp;
 
     #print Dumper($req);
@@ -2082,6 +2609,7 @@ sub process_request
 
     @dhcpconf  = ();
     @dhcp6conf = ();
+    my $previous_ipoib = [];
 
     my $dhcplockfd;
     open($dhcplockfd, ">", "/tmp/xcat/dhcplock");
@@ -2092,6 +2620,14 @@ sub process_request
         xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: remote dhcpservers at this point, do nothing");
     } elsif ($opt{n}) {
         if (-e $dhcpconffile) {
+            if ($^O ne 'aix') {
+                my $error;
+                ($previous_ipoib, $error) = _read_isc_conf_lines($dhcpconffile);
+                if ($error) {
+                    $callback->({ error => [$error], errorcode => [1] });
+                    return;
+                }
+            }
             if ($^O eq 'aix') {
 
                 # save NIM aix entries - to be restored later
@@ -2501,6 +3037,21 @@ sub process_request
         addnet6($_);     #already did all the filtering before putting into nrn6
     }
 
+    if ($^O ne 'aix' && !$::XCATSITEVALS{externaldhcpservers}) {
+        eval {
+            _isc_ipoib_prune(\@dhcpconf);
+            _isc_ipoib_restore($previous_ipoib, \@dhcpconf) if @$previous_ipoib;
+        };
+        if ($@) {
+            $callback->({ error => [$@], errorcode => [1] });
+            if ($opt{n} && @$previous_ipoib) {
+                rename("$dhcpconffile.xcatbak", $dhcpconffile) or
+                    $callback->({ error => ["Cannot restore $dhcpconffile: $!"], errorcode => [1] });
+            }
+            return;
+        }
+    }
+
     if ($req->{node})
     {
         my $ip_hash;
@@ -2598,6 +3149,10 @@ sub process_request
         }
         my $vpdtab = xCAT::Table->new('vpd');
         $vpdhash = $vpdtab->getNodesAttribs($req->{node}, ['uuid']);
+        if ($^O ne 'aix' && $::XCATSITEVALS{externaldhcpservers}) {
+            eval { _isc_ipoib_external_prune(); };
+            $callback->({ error => [$@], errorcode => [1] }) if $@;
+        }
         foreach (@{ $req->{node} })
         {
             if ($opt{d})
@@ -2613,12 +3168,38 @@ sub process_request
             }
             else
             {
-                if (xCAT::NetworkUtils->getipaddr($_) and not xCAT::NetworkUtils->nodeonmynet($_))
-                {
-                    next;
+                my $boot_local = !xCAT::NetworkUtils->getipaddr($_) || xCAT::NetworkUtils->nodeonmynet($_);
+                my $ipoib;
+                if ($^O ne 'aix') {
+                    eval {
+                        $ipoib = _freebsd_ipoib_reservations($_,
+                            $nodetypeents && $nodetypeents->{$_} ? $nodetypeents->{$_}[0] : undef);
+                        $ipoib = _isc_ipoib_validate($_, $ipoib) unless $::XCATSITEVALS{externaldhcpservers};
+                    };
+                    if ($@) {
+                        $callback->({ error => ["$_: $@"], errorcode => [1] });
+                        $ipoib = undef;
+                    }
                 }
-                addnode $_;
-                if ($usingipv6) {
+                my $previous = $^O ne 'aix' && !$::XCATSITEVALS{externaldhcpservers}
+                    ? _isc_ipoib_hosts($_, \@dhcpconf) : [];
+                if ($boot_local) {
+                    my $allowed = eval { $^O eq 'aix' || _isc_ipoib_boot_allowed($_); };
+                    $callback->({ error => ["$_: $@"], errorcode => [1] }) if $@;
+                    addnode $_ if $allowed;
+                }
+                _isc_ipoib_update($_, $previous) if !defined($ipoib) && @$previous;
+                if ($ipoib) {
+                    eval {
+                        if ($::XCATSITEVALS{externaldhcpservers}) {
+                            _isc_ipoib_external_update($_, $ipoib);
+                        } else {
+                            _isc_ipoib_update($_, $ipoib);
+                        }
+                    };
+                    $callback->({ error => ["$_: $@"], errorcode => [1] }) if $@;
+                }
+                if ($usingipv6 && $boot_local) {
                     addnode6 $_;
                 }
             }
@@ -2813,6 +3394,12 @@ sub kea_process_request
     my $reservations4 = [];
     my $reservations6 = [];
     my $client_classes_changed = 0;
+    eval { _kea_ipoib_prune($backend, $loaded4, \@deleted4); };
+    if ($@) {
+        $callback->({ error => [$@], errorcode => [1] });
+        flock($dhcplockfd, LOCK_UN);
+        return;
+    }
     if ($opt->{d}) {
         foreach my $match (@{ kea_reservation_matches_for_nodes($nodes) }) {
             push @deleted4, @{ $backend->delete_reservations($loaded4, $match) };
@@ -2820,11 +3407,13 @@ sub kea_process_request
         }
         $client_classes_changed = kea_remove_xnba_client_classes($loaded4, $nodes);
     } else {
-        $reservations4 = kea_build_node_reservations($backend, $loaded4, $nodes);
+        my @accepted;
+        $reservations4 = kea_build_node_reservations($backend, $loaded4, $nodes, \@deleted4, \@accepted);
         $backend->upsert_reservations($loaded4, $reservations4);
-        $client_classes_changed = kea_sync_xnba_client_classes($loaded4, $nodes);
+        $client_classes_changed = kea_sync_xnba_client_classes($loaded4, \@accepted);
+        $client_classes_changed = 1 if _kea_ipoib_matching($loaded4, $reservations4);
         if ($loaded6) {
-            $reservations6 = kea_build_node_reservations6($backend, $loaded6, $nodes);
+            $reservations6 = kea_build_node_reservations6($backend, $loaded6, \@accepted);
             $backend->upsert_reservations($loaded6, $reservations6);
         }
     }
@@ -2846,9 +3435,9 @@ sub kea_process_request
 
     my $live_ok = 0;
     if (kea_control_agent_live_enabled($backend)) {
-        my $live4 = $opt->{d}
-          ? $backend->live_delete_reservations(\@deleted4, service => ['dhcp4'])
-          : $backend->live_upsert_reservations($reservations4, service => ['dhcp4']);
+        my $live4 = $backend->live_delete_reservations(\@deleted4, service => ['dhcp4']);
+        $live4 = $backend->live_upsert_reservations($reservations4, service => ['dhcp4'])
+            unless $opt->{d} || $live4->{error};
         my $live6 = { ok => 1 };
         if ($loaded6) {
             $live6 = $opt->{d}
@@ -3448,9 +4037,26 @@ sub kea_expand_request_nodes
     return \@nodes;
 }
 
+sub _kea_ipoib_prune
+{
+    my ($backend, $config, $deleted) = @_;
+    my %owners;
+    for my $subnet (@{ $config->{Dhcp4} ? $config->{Dhcp4}{subnet4} || [] : [] }) {
+        for my $host (@{ $subnet->{reservations} || [] }) {
+            my $owner = $host->{'user-context'} || {};
+            $owners{$owner->{'xcat-node'}} = 1 if ($owner->{'xcat-purpose'} || '') eq 'freebsd-ipoib';
+        }
+    }
+    for my $owner (keys %owners) {
+        next if _freebsd_ipoib_node_exists($owner);
+        my $removed = $backend->delete_reservations($config, _kea_ipoib_owner($owner));
+        push @$deleted, @$removed if $deleted;
+    }
+}
+
 sub kea_build_node_reservations
 {
-    my ( $backend, $config, $nodes ) = @_;
+    my ( $backend, $config, $nodes, $deleted, $accepted ) = @_;
 
     my $nrtab    = xCAT::Table->new('noderes');
     my $chaintab = xCAT::Table->new('chain');
@@ -3467,7 +4073,34 @@ sub kea_build_node_reservations
     my @reservations;
     foreach my $node (@$nodes) {
         my $node_reservations = kea_node_reservations($backend, $config, $node);
-        push @reservations, @$node_reservations;
+        my @boot;
+        for my $entry (@$node_reservations) {
+            my @conflicts = grep { (($_->{'user-context'} || {})->{'xcat-purpose'} || '') eq 'freebsd-ipoib' }
+                ($config->{Dhcp4} ? @{ $backend->query_reservations($config, { 'ip-address' => $entry->{'ip-address'} }) } : (),
+                 grep { ($_->{'ip-address'} || '') eq $entry->{'ip-address'} } @reservations);
+            if (@conflicts) {
+                $callback->({ error => ["$node: MAC reservation conflicts with an IPoIB host"], errorcode => [1] });
+                next;
+            }
+            push @boot, $entry;
+        }
+        push @reservations, @boot;
+        push @$accepted, $node if $accepted;
+        my $ipoib;
+        eval {
+            my $entries = _freebsd_ipoib_reservations($node,
+                $nodetypeents && $nodetypeents->{$node} ? $nodetypeents->{$node}[0] : undef);
+            $ipoib = _kea_ipoib_reservations($backend, $config, $node, $entries, \@reservations);
+        };
+        if ($@) {
+            $callback->({ error => ["$node: $@"], errorcode => [1] });
+            next;
+        }
+        my $removed = $config->{Dhcp4}
+            ? $backend->delete_reservations($config, _kea_ipoib_owner($node)) : [];
+        my %updating = map { $_->{'subnet-id'} . ':' . $_->{'client-id'} => 1 } @$ipoib;
+        push @$deleted, grep { !$updating{$_->{'subnet-id'} . ':' . $_->{'client-id'}} } @$removed if $deleted;
+        push @reservations, @$ipoib;
     }
 
     return \@reservations;
@@ -3766,6 +4399,7 @@ sub kea_reservation_matches_for_nodes
     my @matches;
 
     foreach my $node (@$nodes) {
+        push @matches, _kea_ipoib_owner($node);
         push @matches, { hostname => $node };
         my $ip = getipaddr($node, OnlyV4 => 1);
         push @matches, { 'ip-address' => $ip } if $ip;
@@ -3807,12 +4441,16 @@ sub kea_query_node
 
     my %seen;
     foreach my $reservation (@found) {
-        my $key = join('|', map { $reservation->{$_} || '' } qw(subnet-id hw-address ip-address hostname));
+        my $owner = $reservation->{'user-context'} || {};
+        next if ($owner->{'xcat-purpose'} || '') eq 'freebsd-ipoib' && ($owner->{'xcat-node'} || '') ne $node;
+        my $key = join('|', map { $reservation->{$_} || '' } qw(subnet-id hw-address client-id ip-address hostname));
         next if $seen{$key}++;
         my $msg = "$node:";
         $msg .= " ip-address = $reservation->{'ip-address'}" if $reservation->{'ip-address'};
         $msg .= " hardware-address = $reservation->{'hw-address'}" if $reservation->{'hw-address'};
+        $msg .= " client-id = $reservation->{'client-id'}" if $reservation->{'client-id'};
         $msg .= " hostname = $reservation->{hostname}" if $reservation->{hostname};
+        $msg .= " interface = $owner->{'xcat-interface'}" if ($owner->{'xcat-purpose'} || '') eq 'freebsd-ipoib';
         $callback->({ data => [$msg] });
     }
 }

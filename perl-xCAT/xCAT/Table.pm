@@ -3222,7 +3222,11 @@ sub getAllEntries
         $self->trace_db(START_SQL_TYPE, $qstring);
     }
 
-    $query->execute();
+    unless ($query && defined($query->execute())) {
+        $self->trace_db(END_SQL_TYPE);
+        $self->trace_db(END_TYPE, 'Unable to read complete table');
+        return;
+    }
     $self->trace_db(END_SQL_TYPE);
     while (my $data = $query->fetchrow_hashref())
     {
@@ -3235,8 +3239,10 @@ sub getAllEntries
         }
         push @rets, $data;
     }
+    my $read_error = $query->err;
     $query->finish();
     $self->trace_db(END_TYPE);
+    return if $read_error;
     return \@rets;
 }
 
