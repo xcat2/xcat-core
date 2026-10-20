@@ -1224,4 +1224,58 @@ subtest 'InfiniBand partition and failover topology' => sub {
     }
 };
 
+subtest 'IPoIB DHCPv4 uses a separate client and the common lease contract' => sub {
+    for my $topology (
+        ['ib0', 'ib0!infiniband', '', ''],
+        ['lagg0', 'ib0!infiniband,ib1!infiniband,lagg0!bond-infiniband',
+            'lagg0!ib0|ib1', 'LAGGPROTO=failover '],
+        ['vlan10', 'ib0!infiniband,vlan10!vlan', 'vlan10!ib0', 'PKEY=0x800a '],
+    ) {
+        my ($nic, $types, $members, $options) = @$topology;
+        my $env = base();
+        $env->{NICTYPES} = $types;
+        $env->{NICDEVICES} = $members;
+        $env->{NICIPS} = "$nic!192.0.2.10";
+        $env->{NICNETWORKS} = "$nic!data4";
+        $env->{NICEXTRAPARAMS} = "$nic!${options}BOOTPROTO=dhcp PEERDNS=no DEFROUTE=yes";
+        my ($status, $plan, $error) = compile_plan($env);
+        is($status, 0, "$nic accepts DHCPv4") or diag($error);
+        is_deeply(rows($plan, 'H'), [['H', $nic, '192.0.2.10', '24', 'no', 'yes']],
+            'reservation, prefix, DNS and route ownership use the existing contract');
+        is(value($plan, 'K', 'xcat_ipoib_dhcp4_enable'), 'YES', 'the IPoIB client persists across reboot');
+        unlike(value($plan, 'K', "ifconfig_$nic") // '', qr/SYNCDHCP|inet[ ]/x,
+            'netif neither starts dhclient nor assigns the reserved address statically');
+        is(scalar(grep { $_->[1] eq "dhclient_flags_$nic" } @{rows($plan, 'K')}), 0,
+            'the Ethernet DHCP client does not own the IPoIB interface');
+        $env->{NICIPS} .= '|192.0.2.11';
+        ($status, undef, $error) = compile_plan($env);
+        isnt($status, 0, 'IPoIB still requires exactly one reserved IPv4 address');
+    }
+};
+
+subtest 'dhcpcd routes translate to the native DHCP event format' => sub {
+    for my $case (
+        ['', '', 0, "\n"],
+        ['0.0.0.0/0 192.0.2.1', '', 0, "0 192 0 2 1\n"],
+        ['198.51.100.0/24 192.0.2.2 0.0.0.0/0 192.0.2.1', '', 0,
+            "24 198 51 100 192 0 2 2 0 192 0 2 1\n"],
+        ['', '203.0.113.7/32 0.0.0.0', 0, "32 203 0 113 7 0 0 0 0\n"],
+        ['0.0.0.0/0 192.0.2.1', '0.0.0.0/0 192.0.2.2', 0, "0 192 0 2 1\n"],
+        ['198.51.100.1/24 192.0.2.1', '', 1, ''],
+        ['198.51.100.0/33 192.0.2.1', '', 1, ''],
+        ['0.0.0.0/0', '', 1, ''],
+        ['0.0.0.0/0 256.0.0.1', '', 1, ''],
+        ["0.0.0.0/0 192.0.2.1\n", '', 1, ''],
+    ) {
+        for my $side (qw(old new)) {
+            my ($status, $output) = invoke({
+                "${side}_classless_static_routes" => $case->[0],
+                "${side}_ms_classless_static_routes" => $case->[1],
+            }, '-v', 'mode=dhcp4-routes', '-v', "lease_side=$side");
+            is($status != 0 ? 1 : 0, $case->[2], "$side option validation");
+            is($output, $case->[3], "$side byte encoding or atomic rejection");
+        }
+    }
+};
+
 done_testing();

@@ -26,6 +26,8 @@ my %payload = (
     '/opt/xcat/lib/perl/xCAT_plugin/freebsd.pm' => '-rw-r--r--',
     '/opt/xcat/lib/perl/xCAT_plugin/freebsdrepo.pm' => '-rw-r--r--',
     '/opt/xcat/share/xcat/install/freebsd/buildmfsbsd.sh' => '-rwxr-xr-x',
+    '/opt/xcat/share/xcat/install/freebsd/build-dhcpcd.sh' => '-rwxr-xr-x',
+    '/opt/xcat/share/xcat/install/freebsd/patches/dhcpcd-10.5.2-ipoib.patch' => '-rw-r--r--',
     '/opt/xcat/share/xcat/install/freebsd/xcat-install' => '-rwxr-xr-x',
     '/opt/xcat/share/xcat/install/freebsd/stage-pkgbase-adapter.sh' => '-rwxr-xr-x',
     '/opt/xcat/share/xcat/install/freebsd/xcat-postscript' => '-rwxr-xr-x',
@@ -74,7 +76,7 @@ like(capture('dpkg-deb', '--contents', $perl_deb),
 my $meta_rpm_files = capture('rpm', '-qp', '--queryformat',
     '[%{FILENAMES}\t%{FILEMODES:perms}\t%{FILEUSERNAME}/%{FILEGROUPNAME}\n]', $meta_rpm);
 my $meta_deb_files = capture('dpkg-deb', '--contents', $meta_deb);
-for my $script (qw(remoteshell.freebsd syncfiles.freebsd syslog.freebsd xcatpackages.freebsd confignetwork confignetwork.freebsd)) {
+for my $script (qw(remoteshell.freebsd syncfiles.freebsd syslog.freebsd xcatpackages.freebsd confignetwork confignetwork.freebsd confignetwork-ipoib-dhcp4.freebsd)) {
     my $postscript_path = "/install/postscripts/$script";
     like($meta_rpm_files, qr/^\Q$postscript_path\E\t-rwxr-xr-x\troot\/root$/mx,
         "RPM packages executable $script");
@@ -93,7 +95,7 @@ capture('bsdtar', '-xf', $meta_rpm, '-C', $rpm_tree);
 capture('dpkg-deb', '--extract', $meta_deb, $deb_tree);
 for my $package_tree (['RPM', $rpm_tree], ['DEB', $deb_tree]) {
     for my $native_script (qw(syslog remoteshell syncfiles ospkgs otherpkgs
-        syslog.freebsd remoteshell.freebsd syncfiles.freebsd xcatpackages.freebsd confignetwork confignetwork.freebsd)) {
+        syslog.freebsd remoteshell.freebsd syncfiles.freebsd xcatpackages.freebsd confignetwork confignetwork.freebsd confignetwork-ipoib-dhcp4.freebsd)) {
         my $installed_path = "$package_tree->[1]/install/postscripts/$native_script";
         open(my $installed_script, '<', $installed_path) or BAIL_OUT("Cannot read $installed_path: $!");
         my $interpreter = <$installed_script>;
