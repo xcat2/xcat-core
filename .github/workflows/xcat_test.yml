@@ -21,7 +21,7 @@ jobs:
         run: prove -v xCAT-test/native/statelite_optional_hostkey.t
       - name: Test Cumulus discovery key failure
         if: ${{ !cancelled() }}
-        run: prove -v xCAT-test/native/cumulus_discovery_key_failure.t
+        run: bats xCAT-test/native/cumulus_discovery_key_failure.bats
       - name: Test FIPS package artifacts
         if: ${{ !cancelled() }}
         run: prove -v xCAT-test/native/fips_build_guard.t xCAT-test/native/fips_package_payload.t
