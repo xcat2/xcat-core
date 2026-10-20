@@ -23,7 +23,10 @@ printf 'started\n' >/run/fixture/listener-started
 exit 0
 SH
     chmod 0755 "$fixture/bin/openssl" "$fixture/bin/logger" "$fixture/bin/socat"
-    sandbox+=(--ro-bind "$(repo_path xCAT/postscripts)" /tmp/postscripts)
+    # Wait for command doubles before namespace teardown can kill them.
+    printf '%s\n' "trap 'wait' EXIT" >"$fixture/wait-for-listeners.bash"
+    sandbox+=(--ro-bind "$(repo_path xCAT/postscripts)" /tmp/postscripts
+        --setenv BASH_ENV /run/fixture/wait-for-listeners.bash)
 }
 
 @test "Cumulus discovery stops before starting a listener when key generation fails" {
