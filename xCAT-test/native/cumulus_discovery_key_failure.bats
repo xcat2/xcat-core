@@ -6,7 +6,8 @@ setup()
 {
     setup_script_sandbox dirname cat grep tail awk mkdir
     mkdir -p "$fixture/etc/xcat" "$fixture/etc/pki/tls" "$fixture/var/lib/dhcp"
-    : >"$fixture/var/lib/dhcp/dhclient.eth0.leases"
+    printf '%s\n' 'option cumulus-provision-url "http://192.0.2.1/install/postscripts/cumulusztp";' \
+        >"$fixture/var/lib/dhcp/dhclient.eth0.leases"
     cat >"$fixture/bin/openssl" <<'SH'
 #!/bin/sh
 printf 'attempted\n' >/run/fixture/key-attempt
