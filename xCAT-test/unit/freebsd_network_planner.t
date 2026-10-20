@@ -1071,4 +1071,157 @@ subtest 'early bootstrap graph uses the installed-node topology rules' => sub {
     }
 };
 
+subtest 'InfiniBand ports use native identity and persistent configuration' => sub {
+    my $env = base();
+    for my $key (qw(NICTYPES NICIPS NICNETWORKS)) {
+        $env->{$key} =~ s/vtnet1/ib0/g;
+    }
+    $env->{NICTYPES} = 'ib0!Infiniband';
+    $env->{NICEXTRAPARAMS} = 'ib0!PORT_GUID=02:00:00:00:00:00:00:01';
+    my ($status, $plan, $error) = compile_plan($env);
+    is($status, 0, 'a physical IB port compiles') or diag($error);
+    is(value($plan, 'I', 'ib0'), 'infiniband', 'IB is a physical interface');
+    is(value($plan, 'T', 'ib0'), 2044, 'the default fits a 2048-byte fabric MTU');
+    is_deeply(rows($plan, 'C'), [['C', '']], 'a physical IB port is never created as a clone');
+    is_deeply(rows($plan, 'L'), [['L', 'mlx5ib'], ['L', 'ipoib']], 'the native driver and IPoIB module are prerequisites');
+    is(value($plan, 'K', 'ifconfig_ib0'), 'inet 192.0.2.10/24 mtu 2044 up', 'IPv4 persists through netif');
+    is(value($plan, 'K', 'ifconfig_ib0_ipv6'), 'inet6 2001:0db8:0001:0000:0000:0000:0000:0010 prefixlen 64',
+        'IPv6 persists through netif');
+    my $kernel = <<'IB';
+ib0: flags=1008043<UP,BROADCAST,RUNNING,MULTICAST,LOWER_UP> metric 0 mtu 2044
+        lladdr 0.0.0.46.fe.80.0.0.0.0.0.0.2.0.0.0.0.0.0.1
+        inet 192.0.2.10 netmask 0xffffff00 broadcast 192.0.2.255
+        inet6 2001:db8:1::10 prefixlen 64
+        nd6 options=21<PERFORMNUD,AUTO_LINKLOCAL>
+IB
+    ($status, undef, $error) = inspect_state('verify', $plan, $kernel);
+    is($status, 0, 'native dotted hexadecimal IB link addresses verify') or diag($error);
+    my ($saved, $snapshot) = inspect_state('snapshot', $plan, $kernel);
+    is($saved, 0, 'the physical IB state can be saved for rollback');
+    is(value($snapshot, 'G', 'ib0'), '02:00:00:00:00:00:00:01', 'rollback records the stable port GUID');
+    is(scalar @{ rows($snapshot, 'E') }, 0, 'rollback never assigns an Ethernet address to IB');
+    is(scalar @{ rows($snapshot, 'A') }, 2, 'rollback records both address families');
+    my $changed_qpn = $kernel;
+    $changed_qpn =~ s/0[.]0[.]0[.]46/0.0.0.77/x;
+    ($status, undef, $error) = inspect_state('links', $plan, $changed_qpn);
+    is($status, 0, 'a changed queue-pair number does not change port identity') or diag($error);
+    my $other_port = $kernel;
+    $other_port =~ s/0[.]1\n/0.2\n/x;
+    ($status, undef, $error) = inspect_state('links', $plan, $other_port);
+    isnt($status, 0, 'the wrong physical port is rejected before mutation');
+    like($error, qr/port GUID differs/, 'the identity mismatch is explicit');
+    ($status, undef, $error) = inspect_state('verify-prior', $plan, $other_port);
+    is($status, 0, 'an old GUID does not prevent an explicitly updated replacement policy') or diag($error);
+    my $inactive = $kernel;
+    $inactive =~ s/,LOWER_UP//x;
+    ($status, undef, $error) = inspect_state('verify', $plan, $inactive);
+    isnt($status, 0, 'an addressed IB interface without fabric connectivity is not ready');
+    like($error, qr/InfiniBand link is not active/, 'the inactive fabric is diagnosed');
+    ($status, undef, $error) = inspect_state('verify-prior', $plan, $inactive);
+    is($status, 0, 'lost carrier does not prevent an update of the previous policy') or diag($error);
+    ($status, undef, $error) = inspect_state('carrier', $plan, $inactive);
+    isnt($status, 0, 'a changed policy fails before mutation when its existing IB link is inactive');
+    ($status, undef, $error) = inspect_state('carrier', $plan, $kernel);
+    is($status, 0, 'an existing active IB interface can be updated') or diag($error);
+    my $unconfigured = $inactive;
+    $unconfigured =~ s/flags=\S+/flags=8002<BROADCAST,MULTICAST>/x;
+    ($status, undef, $error) = inspect_state('carrier', $plan, $unconfigured);
+    is($status, 0, 'a newly loaded down interface can be initialized') or diag($error);
+    ($status, undef, $error) = inspect_state('verify', $plan, $inactive, undef, 0, '-v', 'check_carrier=no');
+    is($status, 0, 'rollback can verify restored addresses during a fabric outage') or diag($error);
+    my $missing_address = $inactive;
+    $missing_address =~ s/^.*inet[ ]192[.]0[.]2[.]10.*\n//mx;
+    ($status, undef, $error) = inspect_state('verify', $plan, $missing_address, undef, 0, '-v', 'check_carrier=no');
+    isnt($status, 0, 'rollback still requires every previous address');
+    ($status, undef, $error) = inspect_state('rcoptions', $plan, "ifconfig_ib0: inet 192.0.2.10/24 mtu 2044 up\n");
+    is($status, 0, 'ordinary static IB configuration can be adopted') or diag($error);
+    my %boot_environment = (%$env, NICTYPES => 'vtnet0!ethernet,ib0!infiniband',
+        NICMACS => 'vtnet0!52:54:00:00:00:01');
+    ($status, my $boot_plan, $error) = invoke(\%boot_environment, '-v', 'mode=bootstrap',
+        '-v', 'bootstrapnic=vtnet0', '-v', 'bootmac=52:54:00:00:00:01');
+    is($status, 0, 'an additional IB port does not prevent Ethernet provisioning') or diag($error);
+    is_deeply(rows($boot_plan, 'I'), [['I', 'vtnet0', 'ethernet']],
+        'the early installer configures only the selected Ethernet graph');
+    ($status, $boot_plan, $error) = invoke(\%boot_environment, '-v', 'mode=bootstrap',
+        '-v', 'bootstrapnic=ib0', '-v', 'bootmac=52:54:00:00:00:01');
+    isnt($status, 0, 'the data port cannot replace the Ethernet provisioning interface');
+    is($boot_plan, '', 'an invalid bootstrap policy produces no partial plan');
+    like($error, qr/bootstrap[ ]interface[ ]must[ ]contain[ ]the[ ]boot[ ]NIC/x,
+        'the selected graph must retain the Ethernet provisioning identity');
+    for my $ib_option_case (
+        ['CONNECTED_MODE=yes', qr/GENERIC IPoIB module supports datagram/],
+        ['MTU=4093', qr/MTU cannot exceed 4092/],
+        ['MACADDR=02:00:00:00:00:01', qr/cannot be set with MACADDR/],
+        ['IB_DRIVER=arbitrary', qr/IB_DRIVER must be/],
+        ['PORT_GUID=not-a-guid', qr/Invalid InfiniBand port GUID/],
+        ['BOOTPROTO=dhcp', qr/DHCPv4 clients do not support IPoIB/],
+    ) {
+        my %invalid = (%$env, NICEXTRAPARAMS => 'ib0!' . $ib_option_case->[0]);
+        ($status, my $output, $error) = compile_plan(\%invalid);
+        isnt($status, 0, "$ib_option_case->[0] is rejected");
+        is($output, '', 'an invalid plan produces no partial commands');
+        like($error, $ib_option_case->[1], 'the native constraint is diagnosed');
+    }
+};
+
+subtest 'InfiniBand partition and failover topology' => sub {
+    my $env = base();
+    $env->{NICTYPES} = 'ib0!infiniband,ib1!infiniband,lagg0!bond-infiniband';
+    $env->{NICDEVICES} = 'lagg0!ib0|ib1';
+    $env->{NICEXTRAPARAMS} = 'lagg0!LAGGPROTO=failover';
+    $env->{NICIPS} =~ s/vtnet1/lagg0/g;
+    $env->{NICNETWORKS} =~ s/vtnet1/lagg0/g;
+    my ($status, $plan, $error) = compile_plan($env);
+    is($status, 0, 'two physical ports and failover compile') or diag($error);
+    is_deeply([map { $_->[1] } @{ rows($plan, 'I') }], [qw(ib0 ib1 lagg0)], 'members precede their aggregate');
+    is(value($plan, 'J', 'lagg0'), 'laggtype infiniband', 'live creation selects the native IB LAGG type');
+    is(value($plan, 'K', 'create_args_lagg0'), 'laggtype infiniband', 'cold boot creates the same IB LAGG type');
+    is_deeply(rows($plan, 'C'), [['C', 'lagg0']], 'only the aggregate is cloned');
+    my %replacement = (%$env,
+        NICTYPES => 'ib0!infiniband,ib1!infiniband,ib2!infiniband,ib3!infiniband,lagg0!bond-infiniband',
+        NICDEVICES => 'lagg0!ib2|ib3');
+    ($status, my $replacement_plan, $error) = compile_plan(\%replacement);
+    is($status, 0, 'an aggregate can select replacement ports') or diag($error);
+    my $inactive_lagg = "lagg0: flags=8043<UP,BROADCAST,RUNNING,MULTICAST> metric 0 mtu 2044\n";
+    ($status, undef, $error) = inspect_state('carrier', $replacement_plan, $inactive_lagg);
+    is($status, 0, 'the old aggregate carrier does not block reconstruction on replacement ports') or diag($error);
+    $env->{NICTYPES} = 'ib0!infiniband,vlan10!vlan';
+    $env->{NICDEVICES} = 'vlan10!ib0';
+    $env->{NICEXTRAPARAMS} = 'vlan10!PKEY=0x800a';
+    $env->{NICIPS} =~ s/lagg0/vlan10/g;
+    $env->{NICNETWORKS} =~ s/lagg0/vlan10/g;
+    ($status, $plan, $error) = compile_plan($env);
+    is($status, 0, 'a partition on a physical IB port compiles') or diag($error);
+    is(value($plan, 'X', 'vlan10'), 'vlan 10 vlandev ib0 mtu 2044 up', 'full-member P_Key maps to the native partition tag');
+    is_deeply(rows($plan, 'C'), [['C', 'vlan10']], 'only the partition is cloned');
+    my $inactive_partition = "vlan10: flags=8003<UP,BROADCAST,MULTICAST> metric 0 mtu 2044\n";
+    ($status, undef, $error) = inspect_state('carrier', $plan, $inactive_partition);
+    is($status, 0, 'an inactive partition can be reconstructed before final carrier verification') or diag($error);
+    for my $ib_topology_case (
+        ['LACP', {NICTYPES => 'ib0!infiniband,ib1!infiniband,lagg0!lagg',
+            NICDEVICES => 'lagg0!ib0|ib1', NICIPS => '', NICNETWORKS => '',
+            NICEXTRAPARAMS => 'lagg0!LAGGPROTO=lacp'}, qr/failover only/],
+        ['mixed link layers', {NICTYPES => 'vtnet1!ethernet,ib0!infiniband,lagg0!lagg',
+            NICDEVICES => 'lagg0!vtnet1|ib0', NICIPS => '', NICNETWORKS => '',
+            NICEXTRAPARAMS => 'lagg0!LAGGPROTO=failover'}, qr/Ethernet and InfiniBand/],
+        ['partition on IB LAGG', {NICTYPES => 'ib0!infiniband,ib1!infiniband,lagg0!lagg,vlan10!vlan',
+            NICDEVICES => 'lagg0!ib0|ib1,vlan10!lagg0',
+            NICEXTRAPARAMS => 'lagg0!LAGGPROTO=failover,vlan10!PKEY=0x800a'}, qr/partitions require a physical ibN parent/],
+        ['partition on a LAGG member', {NICTYPES => 'ib0!infiniband,ib1!infiniband,lagg0!lagg,vlan10!vlan',
+            NICDEVICES => 'lagg0!ib0|ib1,vlan10!ib0',
+            NICEXTRAPARAMS => 'lagg0!LAGGPROTO=failover,vlan10!PKEY=0x800a'}, qr/VLAN parent is an aggregate member/],
+        ['limited membership', {NICEXTRAPARAMS => 'vlan10!PKEY=0x000a'}, qr/full-member[ ]PKEY/x],
+        ['out-of-range partition', {NICEXTRAPARAMS => 'vlan10!PKEY=0x900a'}, qr/full-member[ ]PKEY/x],
+        ['inconsistent partition', {NICEXTRAPARAMS => 'vlan10!PKEY=0x800a VLAN_TAG=11'}, qr/PKEY and VLAN_TAG differ/],
+        ['Ethernet bridge', {NICTYPES => 'ib0!infiniband,bridge0!bridge', NICDEVICES => 'bridge0!ib0',
+            NICIPS => '', NICNETWORKS => '', NICEXTRAPARAMS => ''}, qr/bridges require Ethernet/],
+    ) {
+        my %invalid = (%$env, %{$ib_topology_case->[1]});
+        ($status, my $output, $error) = compile_plan(\%invalid);
+        isnt($status, 0, "$ib_topology_case->[0] is rejected");
+        is($output, '', 'invalid topology produces no partial plan');
+        like($error, $ib_topology_case->[2], 'the topology constraint is diagnosed');
+    }
+};
+
 done_testing();

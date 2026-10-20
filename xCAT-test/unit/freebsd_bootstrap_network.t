@@ -54,6 +54,19 @@ my $changed = xCAT::FreeBSDNetwork::encode('bridge0', $mac,
     { %$nics, nicextraparams => 'lagg0!LAGGPROTO=lacp,bridge0!STP=no' }, $planner, 9000);
 isnt($changed, $encoded, 'a topology change changes the generation-bound configuration bytes');
 
+subtest 'installed IB policy does not change the boot-image input' => sub {
+    my $with_data = xCAT::FreeBSDNetwork::encode('bridge0', $mac, {
+        %$nics,
+        nictypes => $nics->{nictypes} . ',ib0!Infiniband,ib1!Infiniband,lagg1!bond-infiniband,vtnet2!ethernet',
+        nicdevices => $nics->{nicdevices} . ',lagg1!ib0|ib1',
+        nicextraparams => $nics->{nicextraparams} . ',lagg1!LAGGPROTO=failover,ib0!IB_DRIVER=mlx5ib,vtnet2!MTU=1500',
+        nicsadapter => $nics->{nicsadapter} . ',vtnet2!mac=52:54:00:00:00:03',
+    }, $planner, 9000);
+    is($with_data, $encoded, 'an older boot planner receives the identical supported Ethernet policy');
+    is(xCAT::FreeBSDNetwork::compile($with_data, $planner), $plan,
+        'the filtered description reproduces the validated bootstrap plan');
+};
+
 subtest 'installer networking becomes managed installed-node configuration' => sub {
     my $directory = tempdir(CLEANUP => 1);
     open(my $input, '>', "$directory/bootstrap.plan") or croak $!;
