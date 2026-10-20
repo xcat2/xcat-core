@@ -8,7 +8,7 @@ use File::Path qw(make_path);
 use File::Slurper qw(read_binary read_text write_text);
 use File::Temp qw(tempdir);
 use FindBin;
-use JSON::PP qw(decode_json);
+use JSON::PP qw(decode_json encode_json);
 use Text::ParseWords qw(shellwords);
 use Test::More;
 use YAML::PP;
@@ -29,7 +29,8 @@ chmod(0755, "$repository/mklocalrepo.sh") or die "chmod repository fixture: $!";
 sub run_driver {
     my ($failure, $failed_case) = @_;
     local $ENV{XCAT_TEST_CI_COMMANDS} = "$runner/commands.jsonl";
-    local $ENV{XCAT_TEST_CI_FAIL_COMMAND} = defined($failure) ? $failure : '';
+    my $failures = ref($failure) eq 'ARRAY' ? $failure : defined($failure) ? [$failure] : [];
+    local $ENV{XCAT_TEST_CI_FAIL_COMMANDS} = encode_json($failures);
     local $ENV{XCAT_TEST_CI_FAIL_CASE} = $failed_case || 0;
     local $ENV{RUNNER_WORKSPACE} = $workspace;
     local $ENV{RUNNER_TEMP} = $runner_temp;
@@ -50,7 +51,7 @@ sub run_driver {
     my $error = $@;
     chdir($cwd) or die "restore working directory: $!";
     die $error unless $captured;
-    my @commands = map { decode_json($_) }
+    my @commands = map { decode_json($_)->[0] }
       split /\n/, read_binary($ENV{XCAT_TEST_CI_COMMANDS});
     is($stderr, '', 'driver emits no warnings') or diag($stdout);
     return ($status, \@commands, $stdout);
@@ -109,7 +110,6 @@ is_deeply([grep { $_ eq $preserve || $_ eq $build || $_ eq $unit || $_ eq $bats 
 for my $stage (
     ['apt update', $apt[0]], ['xcat install', $apt[1]], ['xcat-test install', $apt[3]],
     ['source preservation', $preserve], ['package build', $build],
-    ['unit tests', $unit], ['BATS tests', $bats],
 ) {
     my ($name, $failure) = @$stage;
     subtest "stop after failed $name" => sub {
@@ -119,6 +119,37 @@ for my $stage (
         is($failed_status, 256, 'the driver reports failure');
         is_deeply($failed_commands, [@$commands[0 .. $index]],
             'no later command runs after the failed operation');
+    };
+}
+
+for my $case (
+    ['both suites pass', 0, 0],
+    ['Perl fails and BATS passes', 1, 0],
+    ['Perl passes and BATS fails', 0, 1],
+    ['both suites fail', 1, 1],
+) {
+    my ($name, $perl_fails, $bats_fails) = @$case;
+    subtest $name => sub {
+        my @failures;
+        push @failures, $unit if $perl_fails;
+        push @failures, $bats if $bats_fails;
+        my ($suite_status, $suite_commands, $suite_output) = run_driver(\@failures);
+        is_deeply([grep { $_ eq $unit || $_ eq $bats } @$suite_commands], [$unit, $bats],
+            'both suites run once, in order');
+        is($suite_status, ($perl_fails || $bats_fails) ? 256 : 0,
+            'either suite failure fails the driver');
+        for my $suite (['UNIT', $perl_fails], ['BATS', $bats_fails]) {
+            my ($label, $fails) = @$suite;
+            my $result = $fails ? 'Failed' : 'Successful';
+            like($suite_output, qr/\*\*\Q$label TESTS $result\E\*\*/,
+                "$label result remains visible");
+        }
+        my ($bats_index) = grep { $commands->[$_] eq $bats } 0 .. $#$commands;
+        ok(defined($bats_index), 'BATS ran in the successful reference run') or return;
+        my $expected = ($perl_fails || $bats_fails)
+          ? [@$commands[0 .. $bats_index]] : $commands;
+        is_deeply($suite_commands, $expected,
+            'later phases run only when both suites pass');
     };
 }
 
