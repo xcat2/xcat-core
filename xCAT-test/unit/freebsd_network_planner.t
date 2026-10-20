@@ -1154,7 +1154,7 @@ IB
         ['MACADDR=02:00:00:00:00:01', qr/cannot be set with MACADDR/],
         ['IB_DRIVER=arbitrary', qr/IB_DRIVER must be/],
         ['PORT_GUID=not-a-guid', qr/Invalid InfiniBand port GUID/],
-        ['BOOTPROTO=dhcp', qr/DHCPv4 clients do not support IPoIB/],
+        ['BOOTPROTO=auto', qr/BOOTPROTO must be/],
     ) {
         my %invalid = (%$env, NICEXTRAPARAMS => 'ib0!' . $ib_option_case->[0]);
         ($status, my $output, $error) = compile_plan(\%invalid);
