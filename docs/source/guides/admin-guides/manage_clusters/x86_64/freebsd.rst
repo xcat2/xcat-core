@@ -1344,8 +1344,9 @@ The adapter accepts these attributes:
      - Enable or disable spanning tree on bridge members. The default is
        ``yes``. Allow forwarding convergence before checking data traffic.
    * - ``BOOTPROTO=dhcp`` or ``dhcp4=true``
-     - Use the native DHCPv4 client on Ethernet. ``BOOTPROTO=static`` or ``none``, and
-       ``dhcp4=false``, retain static IPv4 configuration.
+     - Use the native DHCPv4 client on Ethernet. IPoIB requires the
+       ``xcat-dhcpcd`` package described below. ``BOOTPROTO=static`` or ``none``,
+       and ``dhcp4=false``, retain static IPv4 configuration.
    * - ``DHCPV6C=yes`` or ``dhcp6=true``
      - Use DHCPv6 through the ``dhcpcd`` package. Install that package first.
        ``DHCPV6C=no`` or ``dhcp6=false`` retain static IPv6 configuration.
@@ -1489,7 +1490,7 @@ aside and retrying.
 .. _freebsd-infiniband:
 
 InfiniBand interfaces
-~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^
 
 Use ``nictypes.ibN=Infiniband`` for each physical IPoIB port. The postscript
 loads ``mlx5ib`` and ``ipoib`` and adds them to ``kld_list`` without removing
@@ -1575,10 +1576,71 @@ accepts ``0x8001`` through ``0x8ffe``; these map to native tags 1 through 4094.
 P_Keys and larger partition numbers are not exposed by this FreeBSD interface.
 
 DHCPv6 uses the existing managed ``dhcpcd`` path and DUID-UUID reservation.
-DHCPv4 over IPoIB is rejected before network changes: the FreeBSD base DHCP
-client assumes Ethernet hardware, and dhcpcd 10.5.2 rejects the native IPoIB
-BPF device. Use static IPv4 on InfiniBand. This restriction does not affect
-Ethernet DHCP or IPv4 provisioning.
+
+DHCPv4 over IPoIB
+~~~~~~~~~~~~~~~~~
+
+Install ``xcat-dhcpcd`` before selecting DHCPv4 on an IB port, partition or
+failover LAGG. This package provides dhcpcd 10.5.2 with a FreeBSD BPF correction.
+It installs a separate IPv4 client at
+``/usr/local/libexec/xcat/dhcpcd-ipoib``. Ethernet continues to use the base
+system's ``dhclient``. DHCPv6 continues to use its existing client.
+
+Copy the xCAT source tree to a FreeBSD 15.1-RELEASE amd64 build host with the
+native compiler, headers, ``make`` and ``pkg`` installed. Keep ``build-dhcpcd.sh``
+and its ``patches`` directory together. Set ``xcat_source`` to that checkout::
+
+    xcat_source=/path/to/xcat-core
+    fetch -o dhcpcd-10.5.2.tar.gz \
+        https://codeload.github.com/NetworkConfiguration/dhcpcd/tar.gz/refs/tags/v10.5.2
+    mkdir packages
+    sh "$xcat_source/xCAT-server/share/xcat/install/freebsd/build-dhcpcd.sh" \
+        dhcpcd-10.5.2.tar.gz packages
+    pkg add packages/xcat-dhcpcd-10.5.2_1.pkg
+
+The builder checks the source archive's SHA-256 before applying the supplied
+patch. The package retains privilege separation and disables IPv4 link-local
+fallback. Publish the archive in your approved FreeBSD application repository
+and select ``xcat-dhcpcd`` in ``otherpkglist`` for managed package delivery.
+
+Configure the reserved address and network through ``nicips`` and
+``nicnetworks``, then select DHCP::
+
+    chdef node01 'nicextraparams.ib0=BOOTPROTO=dhcp PEERDNS=yes DEFROUTE=no'
+    updatenode node01 -P confignetwork
+
+The postscript installs the ``xcat_ipoib_dhcp4`` startup service. The service
+starts the client in the background and waits up to 30 seconds for an accepted
+lease and IPv4 address on each selected IB interface. A timeout leaves the
+client retrying; dependent services still need their normal network-failure
+handling. It verifies
+each lease before applying its address, prefix, DNS or routes. A missing or
+incorrect lease prevents transaction completion. Expiry removes the managed
+lease, as does a server NAK. IPv4 link-local fallback does not satisfy the
+reservation.
+
+IPoIB DHCP uses the client identifier required by :rfc:`4390`. Configure the
+server reservation by DHCP option 61, rather than the Ethernet ``chaddr``
+field. The identifier contains ``ff``, a four-byte IAID, and DUID-UUID.
+The IAID is the POSIX ``cksum`` of the native interface name without a newline.
+Keep that name and the hardware UUID stable across OS replacement.
+
+For example, calculate the identifier for ``ib0`` on the installed node::
+
+    nic=ib0
+    uuid=$(kenv -q smbios.system.uuid | tr -d '-')
+    iaid=$(printf '%s' "$nic" | cksum | awk '{print $1}')
+    printf 'ff%08x0004%s' "$iaid" "$uuid" |
+        sed 's/../&:/g; s/:$//'
+
+Use that value as a Kea ``client-id`` reservation, or as an ISC DHCP
+``host-identifier option dhcp-client-identifier``. Configure the reservation
+before applying the node policy. A port GUID alone is not this client
+identifier. Rename an interface only after updating its reservation.
+
+The client manages only the IB interfaces selected by ``confignetwork``.
+Do not start another IPv4 DHCP client on those interfaces. An IB fabric must
+provide a subnet manager and a DHCP server or relay for the selected partition.
 
 IPoIB configuration does not configure applications that use verbs. The native
 driver provides that separate interface; applications need their FreeBSD
@@ -1592,7 +1654,7 @@ Check traffic, the selected MTU, aliases and routes after configuration and
 after a cold boot. Repeat an unchanged update, reject an incorrect port GUID,
 and verify restoration after a failed partition change. For a two-port LAGG,
 interrupt each port separately and verify traffic through the survivor.
-Retain separate results for DHCPv6 leases, nondefault P_Key traffic and
+Retain separate results for DHCPv4 and DHCPv6 leases, nondefault P_Key traffic and
 application verbs operations; static IPoIB traffic does not establish those
 results.
 
