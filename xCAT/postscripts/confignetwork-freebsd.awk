@@ -14,6 +14,45 @@ function interface_name(value) {
     return length(value) <= 15 && value ~ /^[a-z][a-z0-9]*$/ && value != "lo0"
 }
 
+function physical(kind) {
+    return kind == "ethernet" || kind == "infiniband"
+}
+
+function verify_links(all,    nic) {
+    for (nic in wanted_interface) {
+        if (!all && !physical(wanted_interface[nic]))
+            continue
+        if (wanted_ib[nic]) {
+            if (observed_ib[nic] == "")
+                fail("An InfiniBand link address is missing: " nic)
+            if (mode != "verify-prior" && wanted_guid[nic] != "" && substr(observed_ib[nic], 37) != wanted_guid[nic])
+                fail("InfiniBand port GUID differs: " nic)
+            if (all && mode == "verify" && check_carrier != "no" && wanted_addressed[nic] && !observed_carrier[nic])
+                fail("InfiniBand link is not active: " nic)
+        } else if (physical(wanted_interface[nic]) && !mac_address(ether[nic]))
+            fail("An Ethernet link address is missing: " nic)
+    }
+}
+
+function verify_existing_carrier(    nic) {
+    for (nic in wanted_addressed)
+        if (wanted_interface[nic] == "infiniband" && observed_interface[nic] && up[nic] == "up" && !observed_carrier[nic])
+            fail("InfiniBand link is not active: " nic)
+}
+
+function ib_address(value,    octets, count, i, result) {
+    value = tolower(value)
+    count = split(value, octets, /[.:]/)
+    if (count != 20)
+        return ""
+    for (i = 1; i <= count; i++) {
+        if (octets[i] !~ /^[0-9a-f][0-9a-f]?$/)
+            return ""
+        result = result (i == 1 ? "" : ":") sprintf("%02x", hex_number(octets[i]))
+    }
+    return result
+}
+
 function mac_address(value,    octets, i) {
     if (split(value, octets, ":") != 6)
         return 0
@@ -206,6 +245,22 @@ function options(nic,    text, count, parts, pair, i, key, value) {
             if (!mac_address(value) ||
                 hex_number(substr(value, 1, 2)) % 2 || value == "00:00:00:00:00:00")
                 fail("Invalid unicast MAC address for " nic)
+        } else if (key == "IB_DRIVER" && type[nic] == "infiniband") {
+            if (value != "mlx5ib" && value != "mlx4ib")
+                fail("IB_DRIVER must be mlx5ib or mlx4ib")
+        } else if (key == "PORT_GUID" && type[nic] == "infiniband") {
+            value = tolower(value)
+            if (value !~ /^([0-9a-f][0-9a-f]:){7}[0-9a-f][0-9a-f]$/ ||
+                value == "00:00:00:00:00:00:00:00")
+                fail("Invalid InfiniBand port GUID for " nic)
+        } else if (key == "CONNECTED_MODE" && type[nic] == "infiniband") {
+            if (value != "no")
+                fail("The FreeBSD GENERIC IPoIB module supports datagram mode; use CONNECTED_MODE=no")
+        } else if (key == "PKEY" && type[nic] == "vlan") {
+            value = tolower(value)
+            if (value !~ /^0x[89abcdef][0-9a-f][0-9a-f][0-9a-f]$/ ||
+                !number(hex_number(substr(value, 3)) - 32768 "", 1, 4094))
+                fail("FreeBSD IPoIB partitions require a full-member PKEY from 0x8001 to 0x8ffe")
         } else if (key == "BOOTPROTO") {
             if (value != "dhcp" && value != "static" && value != "none")
                 fail("BOOTPROTO must be dhcp, static or none")
@@ -252,6 +307,23 @@ function visit(nic,    i, parent) {
         parent = member[nic, i]
         visit(parent)
     }
+    ib[nic] = type[nic] == "infiniband" || (member_count[nic] && ib[member[nic, 1]])
+    for (i = 1; i <= member_count[nic]; i++)
+        if (ib[nic] != ib[member[nic, i]])
+            fail("Ethernet and InfiniBand cannot share an aggregate: " nic)
+    if (ib[nic]) {
+        if (type[nic] == "bridge")
+            fail("FreeBSD bridges require Ethernet members")
+        if (type[nic] == "lagg" && option[nic, "LAGGPROTO"] != "failover")
+            fail("InfiniBand LAGG supports failover only")
+        if (type[nic] == "vlan" && type[member[nic, 1]] != "infiniband")
+            fail("InfiniBand partitions require a physical ibN parent")
+        if (option[nic, "MACADDR"] != "")
+            fail("InfiniBand link addresses cannot be set with MACADDR")
+        if (dhcp[nic])
+            fail("FreeBSD DHCPv4 clients do not support IPoIB; use static IPv4 on " nic)
+    } else if (option[nic, "PKEY"] != "" || ib_bond[nic])
+        fail("InfiniBand options require InfiniBand members: " nic)
     visited[nic] = 2
     order[++ordered] = nic
 }
@@ -260,14 +332,20 @@ function topology(    nic, count, i, j, parts, parent, tag, name) {
     for (nic in interfaces) {
         names[++total] = nic
         type[nic] = tolower(attributes["NICTYPES", nic])
+        if (type[nic] == "bond-infiniband") {
+            ib_bond[nic] = 1
+            type[nic] = "lagg"
+        }
         if (type[nic] == "bond")
             type[nic] = "lagg"
-        if (type[nic] !~ /^(ethernet|lagg|vlan|bridge)$/)
+        if (type[nic] !~ /^(ethernet|infiniband|lagg|vlan|bridge)$/)
             fail("Missing or unsupported nictypes for " nic)
-        if (type[nic] != "ethernet" && nic !~ ("^" type[nic] "[0-9]+$"))
+        if (!physical(type[nic]) && nic !~ ("^" type[nic] "[0-9]+$"))
             fail("Use a native " type[nic] " interface name for " nic)
-        if (type[nic] == "ethernet" && nic ~ /^(lagg|vlan|bridge)[0-9]+$/)
-            fail("A clone cannot be declared as Ethernet: " nic)
+        if (type[nic] == "infiniband" && nic !~ /^ib[0-9]+$/)
+            fail("Use a native ibN InfiniBand interface name for " nic)
+        if (type[nic] == "ethernet" && nic ~ /^(ib|lagg|vlan|bridge)[0-9]+$/)
+            fail("A native IB interface or clone cannot be declared as Ethernet: " nic)
         if (attributes["NICCUSTOMSCRIPTS", nic] != "")
             fail("Use a separate postscript instead of niccustomscripts on FreeBSD")
         options(nic)
@@ -283,7 +361,7 @@ function topology(    nic, count, i, j, parts, parent, tag, name) {
     for (i = 1; i <= total; i++) {
         nic = names[i]
         count = attributes["NICDEVICES", nic] == "" ? 0 : split(attributes["NICDEVICES", nic], parts, /\|/)
-        if ((type[nic] == "ethernet" && count != 0) || (type[nic] == "vlan" && count != 1) ||
+        if ((physical(type[nic]) && count != 0) || (type[nic] == "vlan" && count != 1) ||
             (type[nic] == "lagg" && (count < 2 || count > 16)) || (type[nic] == "bridge" && (count < 1 || count > 16)))
             fail("Invalid nicdevices membership for " nic)
         for (j = 1; j <= count; j++) {
@@ -292,8 +370,8 @@ function topology(    nic, count, i, j, parts, parent, tag, name) {
                 fail("Missing, duplicate or self-referencing member of " nic)
             if (parent == bootnic && configure_boot != 1)
                 fail("Use confignetwork -s to include the installation interface")
-            if (type[parent] == "bridge" || (type[nic] == "lagg" && type[parent] != "ethernet") ||
-                (type[nic] == "vlan" && type[parent] != "ethernet" && type[parent] != "lagg"))
+            if (type[parent] == "bridge" || (type[nic] == "lagg" && !physical(type[parent])) ||
+                (type[nic] == "vlan" && !physical(type[parent]) && type[parent] != "lagg"))
                 fail("Unsupported interface composition for " nic)
             if (type[nic] != "vlan") {
                 if (parent in owner)
@@ -307,6 +385,11 @@ function topology(    nic, count, i, j, parts, parent, tag, name) {
             fail("Set LAGGPROTO explicitly for " nic)
         if (type[nic] == "vlan") {
             tag = option[nic, "VLAN_TAG"]
+            if (option[nic, "PKEY"] != "") {
+                if (tag != "" && tag != hex_number(substr(option[nic, "PKEY"], 3)) - 32768)
+                    fail("PKEY and VLAN_TAG differ for " nic)
+                tag = hex_number(substr(option[nic, "PKEY"], 3)) - 32768
+            }
             if (tag == "")
                 tag = substr(nic, 5)
             if (!number(tag, 1, 4094))
@@ -460,11 +543,13 @@ function descends(nic, ancestor,    i) {
 function interface_mtu(nic,    mtu, i, parent_mtu) {
     mtu = option[nic, "MTU"] != "" ? option[nic, "MTU"] : network_mtu[nic]
     if (mtu == "") {
-        mtu = member_count[nic] ? effective_mtu[member[nic, 1]] : 1500
+        mtu = member_count[nic] ? effective_mtu[member[nic, 1]] : (ib[nic] ? 2044 : 1500)
         for (i = 2; i <= member_count[nic]; i++)
             if (effective_mtu[member[nic, i]] < mtu)
                 mtu = effective_mtu[member[nic, i]]
     }
+    if (ib[nic] && mtu > 4092)
+        fail("FreeBSD datagram IPoIB MTU cannot exceed 4092 on " nic)
     for (i = 1; i <= member_count[nic]; i++) {
         parent_mtu = effective_mtu[member[nic, i]]
         if (mtu > parent_mtu || ((type[nic] == "lagg" || type[nic] == "bridge") && mtu != parent_mtu))
@@ -584,8 +669,18 @@ function route_network(value, family,    parts, bits) {
 
 function render(nic,    i, config, mtu, parent, family, ip, bits, alias, first4, first6, primary4) {
     records[++record_count] = "I\t" nic "\t" type[nic]
+    if (ib[nic])
+        records[++record_count] = "G\t" nic "\t" option[nic, "PORT_GUID"]
+    if (type[nic] == "infiniband") {
+        records[++record_count] = "L\t" (option[nic, "IB_DRIVER"] == "" ? "mlx5ib" : option[nic, "IB_DRIVER"])
+        records[++record_count] = "L\tipoib"
+    }
     config = ""
     if (type[nic] == "lagg") {
+        if (ib[nic]) {
+            records[++record_count] = "J\t" nic "\tlaggtype infiniband"
+            emit("create_args_" nic, "laggtype infiniband")
+        }
         config = "laggproto " option[nic, "LAGGPROTO"]
         for (i = 1; i <= member_count[nic]; i++)
             config = config " laggport " member[nic, i]
@@ -659,7 +754,7 @@ function render(nic,    i, config, mtu, parent, family, ip, bits, alias, first4,
     emit("ifconfig_" nic, primary4 config " up")
     if (!ipv6_enabled[nic])
         emit("ifconfig_" nic "_ipv6", "inet6 ifdisabled")
-    if (type[nic] != "ethernet")
+    if (!physical(type[nic]))
         clones = clones (clones == "" ? "" : " ") nic
 }
 
@@ -855,7 +950,7 @@ BEGIN {
         compile()
         exit
     }
-    if (mode != "dhcp4-default" && mode != "verify" && mode != "verify-prior" && mode != "snapshot" && mode != "clear" && mode != "routes" &&
+    if (mode != "links" && mode != "carrier" && mode != "dhcp4-default" && mode != "verify" && mode != "verify-prior" && mode != "snapshot" && mode != "clear" && mode != "routes" &&
         mode != "routeconflicts" && mode != "rcconflicts" && mode != "rcoptions" && mode != "rclists" && mode != "conflicts")
         fail("Unknown network planner operation")
 }
@@ -879,8 +974,10 @@ FILENAME == ARGV[1] {
     }
     else if (column[1] == "K" && column[2] ~ /^(ipv6_)?route_xcat_net_/)
         wanted_rc_route[column[2]] = 1
-    else if (column[1] == "A")
+    else if (column[1] == "A") {
         wanted_address[column[2], column[3], column[4]] = column[5]
+        wanted_addressed[column[2]] = 1
+    }
     else if (column[1] == "H")
         wanted_dhcp[column[2]] = 1
     else if (column[1] == "Q")
@@ -897,6 +994,10 @@ FILENAME == ARGV[1] {
         wanted_up[column[2]] = column[3]
     else if (column[1] == "E")
         wanted_ether[column[2]] = column[3]
+    else if (column[1] == "G") {
+        wanted_ib[column[2]] = 1
+        wanted_guid[column[2]] = column[3]
+    }
     else if (column[1] == "O")
         owned_route[column[2], route_network(column[3], column[2])] = 1
     else if (column[1] == "R") {
@@ -930,7 +1031,7 @@ mode == "rcoptions" {
     for (nic in wanted_interface) {
         if (value ~ /[^ \t]/ && key ~ ("^ipv6_ifconfig_" nic "($|_alias[0-9]+$)"))
             fail("Interface options require manual integration: " key)
-        if (wanted_interface[nic] != "ethernet")
+        if (!physical(wanted_interface[nic]))
             continue
         if (key ~ ("^ifconfig_" nic "($|_(ipv6|aliases|alias[0-9]+)$)") && !static_options(value, key ~ /_ipv6$/))
             fail("Interface options require manual integration: " key)
@@ -949,7 +1050,7 @@ mode == "rcconflicts" {
         value = substr($0, position + 1)
         count = split(value, words, /[ \t]+/)
         for (i = 1; i <= count; i++) {
-            if (key == "cloned_interfaces" && words[i] in wanted_interface && wanted_interface[words[i]] != "ethernet")
+            if (key == "cloned_interfaces" && words[i] in wanted_interface && !physical(wanted_interface[words[i]]))
                 fail("A requested clone has configuration outside the managed block")
             if (key != "cloned_interfaces" &&
                 (((key == "static_routes" ? "route_" : "ipv6_route_") words[i]) in wanted_rc_route))
@@ -957,7 +1058,7 @@ mode == "rcconflicts" {
         }
     }
     for (nic in wanted_interface)
-        if (wanted_interface[nic] != "ethernet" && key ~ ("^(ifconfig|create_args|vlans)_" nic "($|_)"))
+        if (!physical(wanted_interface[nic]) && key ~ ("^(ifconfig|create_args|vlans)_" nic "($|_)"))
             fail("A requested clone has configuration outside the managed block")
     next
 }
@@ -1003,6 +1104,7 @@ mode == "routes" || mode == "routeconflicts" {
         next
     observed_interface[current] = 1
     up[current] = $0 ~ /<UP[,>]/ ? "up" : "down"
+    observed_carrier[current] = $0 ~ /[,<]LOWER_UP[,>]/ && $0 ~ /[,<]RUNNING[,>]/
     for (i = 1; i <= NF; i++)
         if ($i == "mtu")
             observed_mtu[current] = $(i + 1)
@@ -1048,6 +1150,8 @@ current in wanted_interface || mode == "conflicts" {
         }
     } else if ($1 == "ether")
         ether[current] = $2
+    else if ($1 == "lladdr")
+        observed_ib[current] = ib_address($2)
     else if ($1 == "laggproto")
         observed_protocol[current] = $2
     else if ($1 == "laggport:" || $1 == "member:") {
@@ -1122,12 +1226,17 @@ END {
             if (observed_gateway[key] != wanted_gateway[key] ||
                 (wanted_route_nic[key] != "" && observed_route_nic[key] != wanted_route_nic[key]))
                 fail("A configured route or gateway is missing")
+    } else if (mode == "links") {
+        verify_links(0)
+    } else if (mode == "carrier") {
+        verify_existing_carrier()
     } else if (mode == "verify" || mode == "verify-prior") {
         for (nic in wanted_interface) {
             if (!observed_interface[nic] || up[nic] != (wanted_up[nic] == "" ? "up" : wanted_up[nic]) || invalid_address[nic] ||
                 (invalid_link_local[nic] && observed_ipv6[nic] != "ifdisabled"))
                 fail("Interface did not become ready: " nic)
         }
+        verify_links(1)
         for (key in wanted_mtu)
             if (observed_mtu[key] != wanted_mtu[key])
                 fail("Interface MTU differs: " key)
@@ -1166,9 +1275,15 @@ END {
                 fail("VLAN parent or tag differs: " key)
     } else if (mode == "snapshot" || mode == "clear") {
         for (nic in observed_interface) {
-            if (wanted_interface[nic] != "ethernet")
+            if (!physical(wanted_interface[nic]))
                 continue
-            print "E\t" nic "\t" ether[nic]
+            if (wanted_interface[nic] == "ethernet")
+                print "E\t" nic "\t" ether[nic]
+            else {
+                if (observed_ib[nic] == "")
+                    fail("Cannot save an InfiniBand interface without its link address")
+                print "G\t" nic "\t" substr(observed_ib[nic], 37)
+            }
             print "T\t" nic "\t" observed_mtu[nic]
             if (invalid_address[nic] || (invalid_link_local[nic] && observed_ipv6[nic] != "ifdisabled"))
                 fail("Cannot save an interface with tentative or duplicate addresses")

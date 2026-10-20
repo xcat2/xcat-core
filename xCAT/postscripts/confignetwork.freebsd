@@ -18,7 +18,13 @@ if [ "${1:-}" != --locked ]; then
 fi
 shift
 configure_boot=0
-case "$#:${1:-}" in 0:) ;; 1:-s) configure_boot=1 ;; *) fail 'Supported FreeBSD argument: -s' ;; esac
+for argument do
+    case "$argument" in
+    -s) configure_boot=1 ;;
+    --ibaports=1|--ibaports=2) ;;
+    *) fail 'Supported FreeBSD arguments: -s and --ibaports=1|2' ;;
+    esac
+done
 case ${SETINSTALLNIC:-} in 1|yes) configure_boot=1 ;; esac
 planner=$(CDPATH= cd -P "$(dirname "$0")" && pwd)/confignetwork-freebsd.awk
 [ -f "$planner" ] && [ ! -L "$planner" ] || fail 'The FreeBSD network planner is missing'
@@ -204,13 +210,15 @@ wait_ready()
 {
     ready_plan=$1
     ready_mode=${2:-complete}
+    ready_carrier=${3:-yes}
     attempt=0
     ready_limit=20
     if awk -F '\t' '$1 == "I" && $3 == "bridge" {bridge[$2]=1}
         ($1 == "H" || $1 == "H6") && $2 in bridge {found=1} END {exit !found}' "$ready_plan"; then ready_limit=45; fi
     while :; do
         ifconfig -a > "$pending/after.kernel" || return 1
-        if awk -v mode=verify -f "$planner" "$ready_plan" "$pending/after.kernel" > "$pending/verify.log" 2>&1 &&
+        if awk -v mode=verify -v check_carrier="$ready_carrier" -f "$planner" \
+            "$ready_plan" "$pending/after.kernel" > "$pending/verify.log" 2>&1 &&
             dhcp_ready "$ready_plan" >> "$pending/verify.log" 2>&1; then
             [ "$ready_mode" != addresses ] || return 0
             if verify_routes "$ready_plan" "$ready_mode" >> "$pending/verify.log" 2>&1 &&
@@ -225,7 +233,8 @@ wait_ready()
 clear_interfaces()
 {
     clear_plan=$1
-    awk -F '\t' '$1 == "I" && $3 != "ethernet" {a[++n]=$2} END {for (i=n;i>0;i--) print a[i]}' "$clear_plan" |
+    awk -F '\t' '$1 == "I" && $3 != "ethernet" && $3 != "infiniband" {a[++n]=$2}
+        END {for (i=n;i>0;i--) print a[i]}' "$clear_plan" |
     while IFS= read -r nic; do
         if ifconfig "$nic" >/dev/null 2>&1; then ifconfig "$nic" destroy || exit 1; fi
     done || return 1
@@ -246,7 +255,14 @@ apply_plan()
     while IFS="$tab" read -r kind nic value address bits; do
         case "$kind" in
         I)
-            if [ "$value" != ethernet ]; then ifconfig "$nic" create || return 1; fi
+            case "$value" in
+            ethernet|infiniband) ;;
+            *)
+                create_args=$(awk -F '\t' -v nic="$nic" '$1 == "J" && $2 == nic {print $3}' "$apply_file")
+                set -- $create_args
+                ifconfig "$nic" create "$@" || return 1
+                ;;
+            esac
             ;;
         X)
             set -- $value
@@ -398,12 +414,14 @@ rollback()
         cp -p "$pending/before.resolv" /etc/resolv.conf || return 1
     fi
     cat "$pending/before.plan" > "$pending/rollback.plan" || return 1
-    awk -F '\t' '$1 == "I" && $3 == "ethernet" && !seen[$2]++' "$pending/union" >> "$pending/rollback.plan" || return 1
+    awk -F '\t' '$1 == "I" && ($3 == "ethernet" || $3 == "infiniband") && !seen[$2]++' \
+        "$pending/union" >> "$pending/rollback.plan" || return 1
     cat "$pending/physical.snapshot" >> "$pending/rollback.plan" || return 1
-    wait_ready "$pending/rollback.plan" addresses || return 1
+    # Restoring the previous configuration must also work during a fabric outage.
+    wait_ready "$pending/rollback.plan" addresses no || return 1
     routes add "$pending/removed.routes" /dev/null >> "$pending/rollback-routes.log" 2>&1 || return 1
     default_routes "$pending/before.defaults" "$pending/before.plan" > "$pending/rollback-defaults.log" 2>&1 || return 1
-    wait_ready "$pending/rollback.plan" prior || return 1
+    wait_ready "$pending/rollback.plan" prior no || return 1
     # A route command can be interrupted before its journal entry is written.
     awk -v mode=routeconflicts -f "$planner" "$pending/route-ownership" "$pending/routes.kernel" || return 1
     if [ "$published" = 1 ]; then
@@ -513,7 +531,7 @@ if [ "$configure_boot" = 0 ] && awk -F '\t' -v nic="$bootnic" \
 fi
 cat "$pending/before.plan" "$pending/plan" > "$pending/union"
 awk -F '\t' 'FNR == NR {if ($1 == "I") present[$2]=1; next}
-    $1 == "I" && $3 == "ethernet" && !present[$2] {exit 1}' "$pending/plan" "$pending/before.plan" ||
+    $1 == "I" && ($3 == "ethernet" || $3 == "infiniband") && !present[$2] {exit 1}' "$pending/plan" "$pending/before.plan" ||
     fail 'Keep previously managed physical interfaces in nictypes; omit their addresses to clear them'
 if ! awk -F '\t' '$1 == "I" {found=1} END {exit !found}' "$pending/union"; then
     printf '%s\n' 'confignetwork: no additional network interfaces are defined'
@@ -524,7 +542,17 @@ for override in /etc/rc.conf.local /etc/rc.conf.d/netif /etc/rc.conf.d/network /
     [ ! -e "$override" ] || fail "Network overrides require manual integration: $override"
 done
 case $(sysrc -n network_interfaces) in auto|AUTO) ;; *) fail 'FreeBSD network_interfaces must be AUTO' ;; esac
+awk -F '\t' '$1 == "L" && !seen[$2]++ {print $2}' "$pending/plan" > "$pending/modules"
+if [ -s "$pending/modules" ]; then
+    for override in /etc/rc.conf.d/kld /usr/local/etc/rc.conf.d/kld; do
+        [ ! -e "$override" ] && [ ! -L "$override" ] || fail "Module overrides require manual integration: $override"
+    done
+fi
+while IFS= read -r module; do
+    kldload -n "$module" || fail "Cannot load required InfiniBand module: $module"
+done < "$pending/modules"
 ifconfig -a > "$pending/before.kernel"
+awk -v mode=links -f "$planner" "$pending/plan" "$pending/before.kernel"
 awk -v mode=conflicts -v configure_boot="$configure_boot" -f "$planner" "$pending/union" "$pending/before.kernel"
 awk -F '\t' '$1 == "I"' "$pending/union" > "$pending/route-ownership"
 awk -F '\t' 'BEGIN {OFS="\t"} $1 == "R" {$1="O"; print}' "$pending/before.plan" >> "$pending/route-ownership"
@@ -545,7 +573,7 @@ awk -v mode=snapshot -f "$planner" "$pending/union" "$pending/before.kernel" > "
 : > "$pending/physical.variables"
 while IFS="$tab" read -r kind nic type rest; do
     [ "$kind" = I ] || continue
-    if [ "$type" = ethernet ]; then
+    if [ "$type" = ethernet ] || [ "$type" = infiniband ]; then
         ifconfig "$nic" >/dev/null || fail "Physical interface is missing: $nic"
         for suffix in '' _ipv6; do
             if ! setting=$(sysrc -n "ifconfig_$nic$suffix" 2>/dev/null); then
@@ -560,7 +588,7 @@ while IFS="$tab" read -r kind nic type rest; do
             rc_setting "ifconfig_$nic$suffix" "$setting" >> "$pending/physical.variables"
         done
     elif ifconfig "$nic" >/dev/null 2>&1; then
-        awk -F '\t' -v nic="$nic" '$1 == "I" && $2 == nic && $3 != "ethernet" {found=1} END {exit !found}' \
+        awk -F '\t' -v nic="$nic" '$1 == "I" && $2 == nic && $3 != "ethernet" && $3 != "infiniband" {found=1} END {exit !found}' \
             "$pending/before.plan" || fail "An unmanaged clone already exists: $nic"
     fi
 done < "$pending/plan"
@@ -607,6 +635,13 @@ cat "$pending/base.rc" > "$pending/after.rc"
             printf '%s="%s%s%s"\n' "$variable" "$retained" "${retained:+${added:+ }}" "$added"
         fi
     done
+    if [ -s "$pending/modules" ]; then
+        modules=$(sysrc -f "$pending/before.rc" -n kld_list 2>/dev/null || :)
+        printf '%s\n' "$modules" | awk '/[^A-Za-z0-9_ .\/-]/ {exit 1}' || fail 'Invalid module names in kld_list'
+        modules=$(printf '%s\n' "$modules" | awk 'NR == FNR {for (i=1;i<=NF;i++) if (!seen[$i]++) list=list (list=="" ? "" : " ") $i; next}
+            !seen[$1]++ {list=list (list=="" ? "" : " ") $1} END {print list}' - "$pending/modules")
+        printf 'kld_list="%s"\n' "$modules"
+    fi
     awk -F '\t' '$1 == "K" {printf "%s=\"%s\"\n", $2, $3}' "$pending/plan"
     printf '%s\n' '# END xCAT FreeBSD network'
 } >> "$pending/after.rc"
@@ -614,7 +649,7 @@ cat "$pending/base.rc" > "$pending/after.rc"
 rc_variables "$pending/after.rc" > "$pending/after.variables" || fail 'Cannot read proposed rc.conf settings'
 if [ -s "$pending/before.plan" ] && cmp -s "$pending/plan" "$pending/before.plan" &&
     cmp -s "$pending/before.variables" "$pending/after.variables" &&
-    awk -v mode=verify -f "$planner" "$pending/plan" "$pending/before.kernel" >/dev/null 2>&1 &&
+    awk -v mode=verify -v check_carrier=no -f "$planner" "$pending/plan" "$pending/before.kernel" >/dev/null 2>&1 &&
     dhcp_ready "$pending/plan" &&
     verify_routes "$pending/plan" >/dev/null 2>&1 &&
     dhcp_matches "$pending/plan" &&
@@ -626,6 +661,7 @@ if [ -s "$pending/before.plan" ] && cmp -s "$pending/plan" "$pending/before.plan
     exit 0
 fi
 
+awk -v mode=carrier -f "$planner" "$pending/plan" "$pending/before.kernel"
 controller=${MASTER_IP:-}
 port=${XCATIPORT:-3002}
 printf '%s\n' "$controller" | awk -F . 'NF != 4 {exit 1} {for (i=1;i<=4;i++) if ($i !~ /^[0-9]+$/ || $i>255) exit 1}' ||

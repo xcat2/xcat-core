@@ -45,6 +45,17 @@ sub compile {
     return $result->{stdout};
 }
 
+sub _encode_values {
+    my $values = shift;
+    my $text = '';
+    for my $key (qw(interface mac mtu NICTYPES NICDEVICES NICEXTRAPARAMS NICMACS)) {
+        _fail("Invalid $key") unless defined($values->{$key}) && !ref($values->{$key}) &&
+            $values->{$key} !~ /[^\x20-\x7e]/x;
+        $text .= "$key=$values->{$key}\n";
+    }
+    return encode_base64($text, '');
+}
+
 sub encode {
     my ($interface, $mac, $nics, $planner, $mtu) = @_;
     _fail('Missing nics table row') unless ref($nics) eq 'HASH';
@@ -72,15 +83,16 @@ sub encode {
         $macs{$nic} = lc($macs[0]);
     }
     $values{NICMACS} = join(',', map { "$_!$macs{$_}" } sort keys %macs);
-    my $text = '';
-    for my $key (qw(interface mac mtu NICTYPES NICDEVICES NICEXTRAPARAMS NICMACS)) {
-        _fail("Invalid $key") unless defined($values{$key}) && !ref($values{$key}) &&
-            $values{$key} !~ /[^\x20-\x7e]/x;
-        $text .= "$key=$values{$key}\n";
+    my $plan = compile(_encode_values(\%values), $planner);
+    my %selected = map { $_ => 1 } $plan =~ /^I\t([a-z][a-z0-9]{0,14})\t/gmx;
+    # Older boot images must not receive installed-node interface types.
+    for my $field (qw(NICTYPES NICDEVICES NICEXTRAPARAMS NICMACS)) {
+        $values{$field} = join(',', grep {
+            my ($nic) = split(/!/x, $_, 2);
+            $selected{$nic};
+        } split(/,/x, $values{$field}));
     }
-    my $encoded = encode_base64($text, '');
-    compile($encoded, $planner);
-    return $encoded;
+    return _encode_values(\%values);
 }
 
 sub loader {
