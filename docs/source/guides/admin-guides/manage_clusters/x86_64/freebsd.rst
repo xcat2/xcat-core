@@ -33,7 +33,8 @@ Scope and requirements
 * Use IPv4 and one provisioning address anchored to the selected physical MAC.
   The installer can use a VLAN, LAGG or bridge; see :ref:`freebsd-early-network`.
   After disk boot, ``confignetwork`` can configure additional interfaces, static addresses
-  and reserved DHCPv4/DHCPv6 leases.
+  and reserved DHCPv4/DHCPv6 leases. Native IPoIB data interfaces are described
+  in :ref:`freebsd-infiniband`, including their DHCP and transport limits.
   The node name must
   resolve to that interface's address, and reverse resolution must identify the
   same xCAT node. Status callbacks must retain that source address without NAT.
@@ -1271,9 +1272,10 @@ Installed-node networking
 --------------------------
 
 Use ``confignetwork`` to configure the installed FreeBSD node from the ``nics``,
-``networks`` and selected ``routes`` tables. It supports physical Ethernet
-interfaces, VLANs, native LAGG failover or LACP, and bridges. These interfaces
-can carry static IPv4 and IPv6 addresses or reserved DHCP leases.
+``networks`` and selected ``routes`` tables. It supports physical Ethernet and
+InfiniBand interfaces, VLANs, native LAGG failover or LACP, and Ethernet bridges.
+Ethernet interfaces can carry static IPv4 and IPv6 addresses or reserved DHCP
+leases. InfiniBand uses the native IPoIB stack; see :ref:`freebsd-infiniband`.
 
 Provisioning uses IPv4. The mfsBSD installer can create a VLAN, LAGG or bridge
 before downloading its configuration; see :ref:`freebsd-early-network`.
@@ -1305,8 +1307,9 @@ The adapter accepts these attributes:
      - Values
    * - ``nictypes``
      - ``Ethernet``, ``lagg`` or ``bond``, ``vlan``, and ``bridge``.
-       Type names are case insensitive. Clones require ``laggN``, ``vlanN``
-       or ``bridgeN`` names.
+       Also accepts ``Infiniband`` and ``bond-infiniband``. Type names are case
+       insensitive. InfiniBand ports require ``ibN`` names. Clones require
+       ``laggN``, ``vlanN`` or ``bridgeN`` names.
    * - ``nicdevices``
      - Pipe-separated member names. LAGG requires 2 to 16 physical members.
        A VLAN requires one parent. A bridge accepts 1 to 16 members.
@@ -1330,8 +1333,8 @@ The adapter accepts these attributes:
    * - ``MTU=NUMBER``
      - 576 through 9216, subject to the driver limit. IPv6 requires at least
        1280. Otherwise, use ``networks.mtu`` or inherit the parent MTU.
-       Physical interfaces default to 1500. LAGG and bridge members require
-       equal MTUs.
+       Ethernet ports default to 1500. InfiniBand defaults to 2044 and accepts
+       at most 4092. LAGG and bridge members require equal MTUs.
    * - ``LAGGPROTO=failover`` or ``LAGGPROTO=lacp``
      - Required for LAGG. Member order selects the failover primary.
        LACP requires a compatible peer or switch port channel.
@@ -1341,7 +1344,7 @@ The adapter accepts these attributes:
      - Enable or disable spanning tree on bridge members. The default is
        ``yes``. Allow forwarding convergence before checking data traffic.
    * - ``BOOTPROTO=dhcp`` or ``dhcp4=true``
-     - Use the native DHCPv4 client. ``BOOTPROTO=static`` or ``none``, and
+     - Use the native DHCPv4 client on Ethernet. ``BOOTPROTO=static`` or ``none``, and
        ``dhcp4=false``, retain static IPv4 configuration.
    * - ``DHCPV6C=yes`` or ``dhcp6=true``
      - Use DHCPv6 through the ``dhcpcd`` package. Install that package first.
@@ -1482,6 +1485,116 @@ attempt. Preserve that directory and inspect its logs before recovery. The
 saved ``before.rc`` records the prior boot configuration. Use the console to
 reconcile live and persistent settings before moving the retained transaction
 aside and retrying.
+
+.. _freebsd-infiniband:
+
+InfiniBand interfaces
+~~~~~~~~~~~~~~~~~~~~~
+
+Use ``nictypes.ibN=Infiniband`` for each physical IPoIB port. The postscript
+loads ``mlx5ib`` and ``ipoib`` and adds them to ``kld_list`` without removing
+other modules. The selected kernel must provide those modules. For an adapter
+that uses ``mlx4ib``, select ``IB_DRIVER=mlx4ib`` in that port's
+``nicextraparams``. Driver support depends on the adapter and FreeBSD release;
+loading a module does not qualify every adapter that it recognizes.
+
+The fabric needs a subnet manager and the appropriate partition membership.
+Use ``ibstat`` to inspect the adapter and port GUIDs. Use ``ifconfig -a`` after
+loading the modules to identify the native ``ibN`` names. These are physical
+interfaces, so do not add them to ``cloned_interfaces``.
+
+For example, configure a data port with static IPv4 and IPv6::
+
+    mkdef -t network -o ib4 net=192.0.2.0 mask=255.255.255.0
+    mkdef -t network -o ib6 net=2001:db8:1::/64 mask=/64
+    chdef node01 nictypes.ib0=Infiniband \
+        'nicips.ib0=192.0.2.10|2001:db8:1::10' \
+        'nicnetworks.ib0=ib4|ib6' \
+        'nicextraparams.ib0=MTU=2044 PORT_GUID=02:00:00:00:00:00:00:01'
+    updatenode node01 -P confignetwork
+
+Replace the example GUID with the actual port GUID. ``PORT_GUID`` is optional;
+when present, xCAT checks it before changing addresses. The check uses the
+stable final eight bytes of the 20-byte IPoIB link address. It does not bind the
+configuration to a queue-pair number, which can change after reboot. ``MACADDR``
+is not valid for InfiniBand. After replacing an adapter, update or remove
+``PORT_GUID`` in the node definition before running ``confignetwork``.
+
+Addresses, aliases, routes, persistent configuration and rollback use the same
+planner as Ethernet. Addressed IB interfaces must report active carrier before
+the postscript commits the change. Repeat the attributes for additional ports.
+FreeBSD enumerates those ports itself; the legacy ``--ibaports=1`` and ``--ibaports=2``
+arguments are accepted for postscript compatibility and do not rename or limit
+FreeBSD ports. An unchanged update preserves the configuration during a fabric
+outage. It does not report the fabric's health. A changed policy rejects an
+already enabled, addressed physical IB port without carrier before changing
+networking. LAGGs and partitions are rebuilt from the requested policy and
+must pass carrier verification afterward.
+
+Keep module settings in ``/etc/rc.conf``. After xCAT manages ``kld_list``, use
+``sysrc kld_list+=MODULE`` to add modules. This updates the effective assignment;
+editing an earlier assignment by hand has no effect because the managed block
+comes later. The postscript preserves that effective list. Separate
+``rc.conf.d/kld`` overrides require manual integration.
+
+IPoIB defaults to MTU 2044. ``MTU`` can select a value up to 4092, subject to the
+adapter and fabric MTU. IPv6 needs at least 1280. The FreeBSD GENERIC IPoIB
+module uses datagram transport. ``CONNECTED_MODE=no`` is accepted;
+``CONNECTED_MODE=yes`` is rejected. Linux connected-mode MTUs such as 65520 do
+not apply to this kernel.
+
+For failover, declare each physical port and use a native LAGG::
+
+    chdef node01 \
+        'nictypes=ib0!Infiniband,ib1!Infiniband,lagg0!bond-infiniband' \
+        'nicdevices=lagg0!ib0|ib1' \
+        'nicips=lagg0!192.0.2.10' \
+        'nicnetworks=lagg0!ib4' \
+        'nicextraparams=lagg0!LAGGPROTO=failover'
+
+``lagg`` with InfiniBand members also selects the native InfiniBand LAGG type.
+The first member is preferred. All members must use InfiniBand and the same
+MTU. FreeBSD supports failover for this LAGG type, not LACP. An InfiniBand
+interface cannot be a member of an Ethernet bridge.
+
+FreeBSD exposes IPoIB partitions through its VLAN interface mechanism. Use a
+physical ``ibN`` parent. Partitions over an IB LAGG or one of its members are
+rejected before interface changes::
+
+    chdef node01 \
+        'nictypes=ib0!Infiniband,vlan10!vlan' \
+        'nicdevices=vlan10!ib0' \
+        'nicips=vlan10!192.0.2.10' \
+        'nicnetworks=vlan10!ib4' \
+        'nicextraparams=vlan10!PKEY=0x800a'
+
+The subnet manager must grant that full-member P_Key to the port. ``PKEY``
+accepts ``0x8001`` through ``0x8ffe``; these map to native tags 1 through 4094.
+``VLAN_TAG=10`` on an InfiniBand parent selects the same partition as
+``PKEY=0x800a``. These are IB partitions, not Ethernet VLANs. Limited-member
+P_Keys and larger partition numbers are not exposed by this FreeBSD interface.
+
+DHCPv6 uses the existing managed ``dhcpcd`` path and DUID-UUID reservation.
+DHCPv4 over IPoIB is rejected before network changes: the FreeBSD base DHCP
+client assumes Ethernet hardware, and dhcpcd 10.5.2 rejects the native IPoIB
+BPF device. Use static IPv4 on InfiniBand. This restriction does not affect
+Ethernet DHCP or IPv4 provisioning.
+
+IPoIB configuration does not configure applications that use verbs. The native
+driver provides that separate interface; applications need their FreeBSD
+libraries and hardware support. Firmware and early installer networking
+continue to use the Ethernet provisioning path. Boot-image descriptions carry
+only the selected Ethernet topology, so unrelated IB attributes do not require
+an older Ethernet boot planner to understand IPoIB.
+
+Qualify each adapter, firmware and fabric combination before deployment.
+Check traffic, the selected MTU, aliases and routes after configuration and
+after a cold boot. Repeat an unchanged update, reject an incorrect port GUID,
+and verify restoration after a failed partition change. For a two-port LAGG,
+interrupt each port separately and verify traffic through the survivor.
+Retain separate results for DHCPv6 leases, nondefault P_Key traffic and
+application verbs operations; static IPoIB traffic does not establish those
+results.
 
 .. _freebsd-early-network:
 
