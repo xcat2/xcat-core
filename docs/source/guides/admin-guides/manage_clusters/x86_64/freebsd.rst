@@ -1604,10 +1604,22 @@ fallback. Publish the archive in your approved FreeBSD application repository
 and select ``xcat-dhcpcd`` in ``otherpkglist`` for managed package delivery.
 
 Configure the reserved address and network through ``nicips`` and
-``nicnetworks``, then select DHCP::
+``nicnetworks``, then select DHCP. Set ``vpd.uuid`` to the value returned by
+``kenv -q smbios.system.uuid`` on the node::
 
+    chdef node01 uuid=01234567-89ab-cdef-0123-456789abcdef
     chdef node01 'nicextraparams.ib0=BOOTPROTO=dhcp PEERDNS=yes DEFROUTE=no'
+    makedhcp node01
+    makedhcp -q node01
     updatenode node01 -P confignetwork
+
+Replace the example UUID with the node's hardware UUID. The DHCP server reads
+``uuid`` from ``vpd.uuid``. The node attribute also lets ``chdef`` retain that
+inventory when renaming a node. The DHCP server must serve the selected
+network and belong to the node's normal management/service-node assignment.
+After adding a network, regenerate
+the server configuration with ``makedhcp -n`` and its reservations with
+``makedhcp -a`` before applying the node policy.
 
 The postscript installs the ``xcat_ipoib_dhcp4`` startup service. The service
 starts the client in the background and waits up to 30 seconds for an accepted
@@ -1619,24 +1631,48 @@ incorrect lease prevents transaction completion. Expiry removes the managed
 lease, as does a server NAK. IPv4 link-local fallback does not satisfy the
 reservation.
 
-IPoIB DHCP uses the client identifier required by :rfc:`4390`. Configure the
-server reservation by DHCP option 61, rather than the Ethernet ``chaddr``
-field. The identifier contains ``ff``, a four-byte IAID, and DUID-UUID.
+IPoIB DHCP uses the client identifier required by :rfc:`4390`. ``makedhcp``
+generates DHCP option 61 reservations for the selected physical IB ports,
+P_Key interfaces and failover LAGGs. The identifier contains ``ff``, a
+four-byte IAID, and DUID-UUID.
 The IAID is the POSIX ``cksum`` of the native interface name without a newline.
 Keep that name and the hardware UUID stable across OS replacement.
 
-For example, calculate the identifier for ``ib0`` on the installed node::
+Kea uses ``client-id`` reservations and enables client-ID lease matching on
+the selected subnets. Local ISC servers use owned static host declarations;
+external ISC servers use OMAPI. Ethernet boot reservations retain their
+existing handling. A missing local subnet skips that IPoIB reservation with a
+warning; the DHCP server responsible for the network must serve it. An invalid
+IPoIB policy reports an error and retains its previous reservations while
+Ethernet boot reservations continue to update. A port GUID alone is not the
+IPoIB client identifier.
 
-    nic=ib0
-    uuid=$(kenv -q smbios.system.uuid | tr -d '-')
-    iaid=$(printf '%s' "$nic" | cksum | awk '{print $1}')
-    printf 'ff%08x0004%s' "$iaid" "$uuid" |
-        sed 's/../&:/g; s/:$//'
+After changing a reserved address, interface name or hardware UUID, rerun
+``makedhcp node01`` before applying the node policy. It replaces the node's
+previous IPoIB reservations, including interfaces removed from ``nics``.
+``makedhcp -q node01`` shows their addresses and client identifiers.
+``makedhcp -d node01`` removes them with the node's other reservations.
+Invalid UUIDs or unsupported NIC policies produce errors before replacing
+the node's IPoIB reservations. Address expressions in ``nicips`` use the same
+expansion as postscripts. Reservations cannot reuse a configured MAC
+reservation's address, including addresses selected through MAC hostname
+aliases. Kea does not assign an extra DNS hostname to the IPoIB reservation;
+manage interface names through the normal ``makedns`` configuration.
 
-Use that value as a Kea ``client-id`` reservation, or as an ISC DHCP
-``host-identifier option dhcp-client-identifier``. Configure the reservation
-before applying the node policy. A port GUID alone is not this client
-identifier. Rename an interface only after updating its reservation.
+Local ISC network regeneration retains IPoIB reservations for subnets still
+served by the daemon. Updates remove IPoIB entries whose owning node no longer
+exists, including entries left by a node rename. Regenerate the renamed node's
+reservations after updating its host-name resolution.
+
+For external ISC servers, xCAT retains an ownership inventory under
+``/var/lib/xcat/dhcp`` with host names, addresses and client identifiers.
+An incomplete update reserves both the previous and requested identities until
+OMAPI confirms the result. Retain this directory when moving the management
+service to another host. It identifies old interfaces for cleanup and prevents
+address conflicts without querying every host on the external server.
+The tables remain the source of the desired configuration. Use xCAT to manage
+these reservations. OMAPI cannot enumerate foreign fixed-address hosts; keep
+their addresses separate from the addresses assigned by xCAT.
 
 The client manages only the IB interfaces selected by ``confignetwork``.
 Do not start another IPv4 DHCP client on those interfaces. An IB fabric must
