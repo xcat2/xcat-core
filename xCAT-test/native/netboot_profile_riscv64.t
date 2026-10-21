@@ -4,6 +4,8 @@ use warnings;
 ## no critic (Modules::RequireFilenameMatchesPackage)
 
 use FindBin;
+use Cwd qw(abs_path);
+use File::Basename qw(basename);
 use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../../perl-xCAT";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
@@ -80,7 +82,7 @@ for my $family (@families) {
                 for my $pass (1, 2) {
                     # EL uses Bash as /bin/sh for these postinstall scripts.
                     my ($status, $output) = sandbox_run($root,
-                        {read_only => {repo_path('.') => repo_path('.'), '/bin/bash' => '/bin/sh'}},
+                        {read_only => {repo_path('.') => repo_path('.'), '/bin/bash' => '/bin/' . basename(abs_path('/bin/sh'))}},
                         $postinstall, '/target', $osver, 'riscv64', $profile);
                     is($status, 0, "pass $pass executes the selected script") or diag($output);
                     is(read_text("$root/etc/fstab"), "host fstab\n", "pass $pass leaves the host fstab unchanged");
