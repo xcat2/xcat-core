@@ -519,6 +519,15 @@ ln -sf $RPM_INSTALL_PREFIX0/share/xcat/netboot/centos $RPM_INSTALL_PREFIX0/share
 xcatd_init_compat=$RPM_INSTALL_PREFIX0/share/xcat/scripts/xcatd-init-compat
 export XCATROOT="$RPM_INSTALL_PREFIX0"
 
+# xcatd.service carries the default prefix. Record the prefix of this install,
+# so a relocated package starts the daemon of its own tree.
+mkdir -p /etc/xcat
+cat > /etc/xcat/xcatroot.env <<EOF
+XCATROOT=$RPM_INSTALL_PREFIX0
+PATH=$RPM_INSTALL_PREFIX0/bin:$RPM_INSTALL_PREFIX0/sbin:$RPM_INSTALL_PREFIX0/share/xcat/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+EOF
+chmod 644 /etc/xcat/xcatroot.env
+
 if [ "$1" = "1" ]; then #Only if installing for the first time..
    if "$xcatd_init_compat" uses-systemd --explicit-target; then
        "$xcatd_init_compat" configure --explicit-target || exit 1
@@ -646,6 +655,7 @@ if [ $1 == 0 ]; then  #This means only on -e
   "$xcatd_init_compat" unregister-all || true
   "$xcatd_init_compat" remove-managed || true
   rm -f /usr/sbin/xcatd  #remove the symbolic
+  rm -f /etc/xcat/xcatroot.env  #%post wrote it, so %preun takes it away
 
 fi
 %endif

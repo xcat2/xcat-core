@@ -56,7 +56,11 @@ foreach my $dir (qw(/opt/xcat/bin /opt/xcat/sbin /opt/xcat/share/xcat/tools
     ok((grep { $_ eq $dir } @path), "the unit PATH has $dir");
 }
 
-is_deeply($service->{EnvironmentFile}, ['-/etc/sysconfig/xcat'],
-    '/etc/sysconfig/xcat can still override the environment');
+# A later setting replaces an earlier one, so the order decides who wins: the
+# prefix %post recorded beats the default in the unit, and the site file beats
+# both.
+is_deeply($service->{EnvironmentFile},
+    [ '-/etc/xcat/xcatroot.env', '-/etc/sysconfig/xcat' ],
+    'the install prefix is read before the site file, and both are optional');
 
 done_testing();

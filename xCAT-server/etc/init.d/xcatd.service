@@ -7,6 +7,11 @@ After=network.target syslog.service
 # kernel enters xcat_t on the xcatd script.
 Environment=XCATROOT=/opt/xcat PERL_BADLANG=0
 Environment=PATH=/opt/xcat/bin:/opt/xcat/sbin:/opt/xcat/share/xcat/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# The two lines above hold the default prefix. %post writes xcatroot.env with
+# the prefix rpm relocated the package to, and a later setting replaces an
+# earlier one, so a relocated install reaches its own modules. The site file
+# comes last and keeps the last word.
+EnvironmentFile=-/etc/xcat/xcatroot.env
 EnvironmentFile=-/etc/sysconfig/xcat
 Type=forking
 PIDFile=/run/xcatd.pid
