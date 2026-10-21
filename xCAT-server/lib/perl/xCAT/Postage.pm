@@ -598,7 +598,9 @@ sub makescript {
         #print "nodesetstate:$nodesetstate\n";
         ## OSPKGDIR export
         #  for #OSIMAGE_VARS_EXPORT#
-        if (!$nodesetstate || (defined($nodes_setstate_hash) && $nodes_setstate_hash->{$node})) { $nodesetstate = $nodes_setstate_hash->{$node}; }
+        if (!$nodesetstate || (!$memory && defined($nodes_setstate_hash) && $nodes_setstate_hash->{$node})) {
+            $nodesetstate = $nodes_setstate_hash->{$node};
+        }
 
         #print "nodesetstate:$nodesetstate\n";
 
