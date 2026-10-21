@@ -1027,10 +1027,9 @@ mark_time("install_xcat");
 #Run the xCAT-test unit tests. They need the perl dependencies xCAT pulls in
 #(Net::DNS, XML::Simple) and a usable xCAT database, so they run after install.
 print GREEN "\n------Running xCAT-test unit tests ------\n";
-$rst = run_unit_tests();
-if($rst){
+my $unit_rst = run_unit_tests();
+if($unit_rst){
     print RED "Run of xCAT-test unit tests failed\n";
-    exit $rst;
 }
 mark_time("run_unit_tests");
 
@@ -1039,9 +1038,9 @@ print GREEN "\n------Running xCAT-test BATS tests ------\n";
 $rst = run_bats_tests();
 if($rst){
     print RED "Run of xCAT-test BATS tests failed\n";
-    exit $rst;
 }
 mark_time("run_bats_tests");
+exit 1 if $unit_rst || $rst;
 
 print GREEN "\n------Running xCAT-test source integration tests ------\n";
 $rst = run_source_integration_tests();
