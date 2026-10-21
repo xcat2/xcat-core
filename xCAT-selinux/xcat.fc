@@ -20,3 +20,21 @@
 # depth under /install.
 /install(/.*)?/rootimg(/.*)?		<<none>>
 /install(/.*)?/rootimg-statelite(/.*)?	<<none>>
+
+# A profile may be called rootimg or rootimg-statelite. The image root is then
+# itself called rootimg, the guest tree is <...>/rootimg/rootimg, and the files
+# genimage and packimage publish in the image root sit one component below a
+# name the two rules above match. Each published name is listed here, so the
+# published file keeps public_content_t while the tree beside it stays excluded.
+# A guest file matches none of these: the name must be the one directly below
+# the rootimg component.
+/install(/.*)?/rootimg(-statelite)?/kernel		--	gen_context(system_u:object_r:public_content_t,s0)
+/install(/.*)?/rootimg(-statelite)?/hypervisor		--	gen_context(system_u:object_r:public_content_t,s0)
+/install(/.*)?/rootimg(-statelite)?/initrd[^/]*		--	gen_context(system_u:object_r:public_content_t,s0)
+/install(/.*)?/rootimg(-statelite)?/rootimg\.[^/]*	--	gen_context(system_u:object_r:public_content_t,s0)
+/install(/.*)?/rootimg(-statelite)?/rootimg-statelite\.[^/]*	--	gen_context(system_u:object_r:public_content_t,s0)
+/install(/.*)?/rootimg(-statelite)?/rootimgtree\.[^/]*	--	gen_context(system_u:object_r:public_content_t,s0)
+/install(/.*)?/rootimg(-statelite)?/litefile\.csv	--	gen_context(system_u:object_r:public_content_t,s0)
+/install(/.*)?/rootimg(-statelite)?/common\.filelist	--	gen_context(system_u:object_r:public_content_t,s0)
+/install(/.*)?/rootimg(-statelite)?/common(/.*)?		gen_context(system_u:object_r:public_content_t,s0)
+/install(/.*)?/rootimg(-statelite)?/overlay(/.*)?		gen_context(system_u:object_r:public_content_t,s0)
