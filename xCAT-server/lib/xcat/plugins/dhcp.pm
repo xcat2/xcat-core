@@ -4582,6 +4582,9 @@ sub next_server_for_node
     #check the value of inet_ntoa(inet_aton("")),if the hostname cannot be resolved,
     #the value of inet_ntoa() will be "undef", which will cause fatal error
     if ( $nrent and $nrent->{tftpserver} and $nrent->{tftpserver} ne '<xcatmaster>' ) {
+        # An IPv6 boot server is named in the DHCPv6 reservation, not in a
+        # DHCPv4 next-server, so there is no answer to give and nothing wrong.
+        return if xCAT::NetworkUtils->isIpv6addr( $nrent->{tftpserver} );
         my $tmp_name = inet_aton( $nrent->{tftpserver} );
         unless ($tmp_name) {
 
@@ -4594,6 +4597,7 @@ sub next_server_for_node
     }
 
     if ( $nrent and $nrent->{xcatmaster} ) {
+        return if xCAT::NetworkUtils->isIpv6addr( $nrent->{xcatmaster} );
         my $tmp_server = inet_aton( $nrent->{xcatmaster} );
         unless ($tmp_server) {
             $callback->({ error => ["Unable to resolve the tftpserver for $node, verify \"xcatmaster\" is set correctly"], errorcode => [1] });
