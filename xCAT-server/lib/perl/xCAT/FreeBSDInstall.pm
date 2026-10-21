@@ -3,17 +3,15 @@ package xCAT::FreeBSDInstall;
 use strict;
 use warnings;
 use Digest::SHA qw(sha256_hex);
-use Errno qw(ECHILD);
 use Fcntl qw(:DEFAULT :flock);
 use File::Path qw(make_path);
 use File::Temp qw(tempfile);
 use IO::Handle;
 use JSON;
-use POSIX qw(WNOHANG);
+use POSIX ();
 
 my $json = JSON->new->canonical->allow_nonref;
 my %phases = map { $_ => 1 } qw(prepared installing completing installed booted failed cancelled);
-my %status_workers;
 
 sub _fail { die "FreeBSD installation: $_[0]\n"; }
 
@@ -793,18 +791,9 @@ sub _status_transport {
 
 sub start_status_worker {
     my ($node, $peer, $message, $connection, $dispatch, %options) = @_;
-    my $limit = $options{limit} || 64;
-    _fail('Invalid status worker limit') unless $limit =~ /\A[1-9][0-9]*\z/ && $limit <= 64;
+    # The install monitor owns per-node ordering and the shared handler limit.
     _fail('Missing status worker cleanup') unless ref($options{cleanup}) eq 'CODE';
     _fail('Missing status worker logger') unless ref($options{log}) eq 'CODE';
-    for my $pid (keys %status_workers) {
-        my $reaped = waitpid($pid, WNOHANG);
-        delete $status_workers{$pid} if $reaped == $pid || ($reaped == -1 && $! == ECHILD);
-    }
-    if (keys(%status_workers) >= $limit || grep { $_ eq $node } values %status_workers) {
-        close($connection);
-        return 0;
-    }
     require xCAT::Utils;
     my $pid = xCAT::Utils->xfork();
     unless (defined($pid)) {
@@ -813,7 +802,6 @@ sub start_status_worker {
         return 0;
     }
     if ($pid) {
-        $status_workers{$pid} = $node;
         close($connection);
         return $pid;
     }
