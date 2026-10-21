@@ -676,9 +676,10 @@ sub setup_local_repos {
 #
 # Nothing this project ships reads the sqlite metadata. dnf on el8+ and zypper both read the XML.
 sub createrepo_dir {
-    my ($dir, $extra) = @_;
+    my ($dir, $extra, $fresh) = @_;
     $extra //= '';
-    sh_or_die(qq(createrepo_c --update )
+    my $update = $fresh ? '' : '--update';
+    sh_or_die(qq(createrepo_c $update )
        . qq(--revision "$SOURCE_DATE_EPOCH" --set-timestamp-to-revision $extra "$dir"),
         "Failed to createrepo_c $dir\n");
 }
@@ -689,7 +690,7 @@ sub createrepo_dir {
 # top-level strays; then index the binaries EXCLUDING the SRPMS/ subdir so no
 # src.rpm enters the binary repomd, and index the SRPMS repo separately.
 sub index_repo {
-    my ($repodir) = @_;
+    my ($repodir, $fresh) = @_;
     my $alias = "$repodir/xCAT-release-latest.noarch.rpm";
 
     # The stable bootstrap filename is a direct-download convenience, not a
@@ -705,9 +706,9 @@ sub index_repo {
     # replace good metadata with metadata for an empty repo -- publishing a repo that
     # resolves nothing. Leave it exactly as the last binary build left it and index
     # only the srpms.
-    createrepo_dir($repodir, "--excludes 'SRPMS/*' --excludes '*.src.rpm'")
+    createrepo_dir($repodir, "--excludes 'SRPMS/*' --excludes '*.src.rpm'", $fresh)
         unless $opts{source_only};
-    createrepo_dir("$repodir/SRPMS") if -d "$repodir/SRPMS";
+    createrepo_dir("$repodir/SRPMS", '', $fresh) if -d "$repodir/SRPMS";
 }
 
 sub update_repo {
@@ -755,8 +756,8 @@ sub sign_repo_dir {
         "Failed to sign SRPMs in $repodir/SRPMS");
     }
 
-    # Regenerate both indexes (binary + SRPMS) after signing, before signing repomd.
-    index_repo($repodir);
+    # Signing can change RPM bytes without changing the size or timestamp used by the metadata cache.
+    index_repo($repodir, 1);
 
     for my $rd ("$repodir/repodata",
                 (-d "$repodir/SRPMS/repodata" ? ("$repodir/SRPMS/repodata") : ())) {
