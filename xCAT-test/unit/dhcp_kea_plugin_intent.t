@@ -37,6 +37,29 @@ BEGIN {
     sub getipaddr { return '10.0.0.1'; }
     sub my_ip_facing { return ( 0, '10.0.0.1' ); }
     sub my_ip_facing_family { return ( 0, '2001:db8::1' ); }
+    sub node_is_ipv6_only {
+        my $node = $_[-1];
+        return 0 if getipaddr($node, OnlyV4 => 1);
+        return getipaddr($node, OnlyV6 => 1) ? 1 : 0;
+    }
+    sub ipv6_server_for_node {
+        my ( $class, $node, $server ) = @_;
+        ( $node, $server ) = ( $class, $node ) if $class ne __PACKAGE__;
+        if (!defined($server) || $server eq '!myipfn!' || $server eq '<xcatmaster>') {
+            my @facing = my_ip_facing_family(__PACKAGE__, $node, 6);
+            return unless @facing && !$facing[0];
+            return $facing[1];
+        }
+        return $server if $server =~ /:/ && isValidIPAddress(__PACKAGE__, $server);
+        return getipaddr($server, OnlyV6 => 1);
+    }
+    sub isValidIPAddress {
+        my $addr = $_[-1];
+        return 0 unless defined($addr) && length($addr);
+        return 1 if $addr =~ /^\d{1,3}(?:\.\d{1,3}){3}$/;
+        return 1 if $addr =~ /^[0-9a-fA-F:]+$/ && $addr =~ /:/;
+        return 0;
+    }
     sub getIPv6PrefixLength {
         my ( $class, $network, $mask ) = @_;
         ( $network, $mask ) = ( $class, $network ) if $class ne __PACKAGE__;
@@ -135,6 +158,16 @@ require xCAT::DHCP::Backend::Kea;
         return { %{ $self->{entry} } };
     }
     sub close { return; }
+
+    package DHCPKeaIntentFilteredNetTable;
+    our @ISA = ('DHCPKeaIntentNetTable');
+    sub getAllAttribs {
+        my ( $self, @attrs ) = @_;
+        return {
+            map { $_ => $self->{entry}{$_} }
+              grep { exists $self->{entry}{$_} } @attrs
+        };
+    }
 }
 
 {
@@ -654,6 +687,76 @@ foreach my $case (@sysconfig_policy_cases) {
 
     my $subnet = xCAT_plugin::dhcp::kea_subnet4_intent( $nettab, '10.0.0.0', '255.255.255.0', 'eth0', 0, 1, 80 );
     is( $subnet->{dynamicrange}, $network_entry{dynamicrange}, 'owning Kea server renders dynamic pool' );
+}
+
+{
+    no warnings 'redefine';
+    local *xCAT_plugin::dhcp::kea_dhcp_lease_time = sub { return 43200; };
+    local *xCAT_plugin::dhcp::kea_control_agent_enabled = sub { return 0; };
+
+    my %network6_entry = (
+        net          => '2001:db8:7309::',
+        mask         => '64',
+        mgtifname    => 'eth0',
+        dynamicrange => '2001:db8:7309::100/120',
+        domain       => 'cluster.test',
+        dhcpserver   => 'service-node-a',
+    );
+    my $backend = bless {}, 'DHCPKeaIntentBackend';
+
+    {
+        local *xCAT::NetworkUtils::thishostisnot = sub { return 1; };
+        local $xCAT::Table::networks = DHCPKeaIntentFilteredNetTable->new( \%network6_entry );
+
+        my $intent = xCAT_plugin::dhcp::kea_build_dhcp6_intent( $backend, { eth0 => 1 } );
+        ok( !defined( $intent->{subnets}[0]{dynamicrange} ), 'non-owning Kea DHCPv6 server does not render dynamic pool' );
+    }
+
+    {
+        local *xCAT::NetworkUtils::thishostisnot = sub { return 0; };
+        local $xCAT::Table::networks = DHCPKeaIntentFilteredNetTable->new( \%network6_entry );
+
+        my $intent = xCAT_plugin::dhcp::kea_build_dhcp6_intent( $backend, { eth0 => 1 } );
+        is( $intent->{subnets}[0]{dynamicrange}, $network6_entry{dynamicrange}, 'owning Kea DHCPv6 server renders dynamic pool' );
+    }
+
+    {
+        local *xCAT::NetworkUtils::my_ip_facing_family = sub {
+            return ( 0, '2001:db8:7309::1' );
+        };
+        my $v6_getipaddr = sub {
+            my ( $host, %options ) = @_;
+            return unless $options{OnlyV6};
+            return '2001:db8::53' if $host eq 'dns6.example.test';
+            return;
+        };
+        local *xCAT::NetworkUtils::getipaddr = $v6_getipaddr;
+        local *xCAT_plugin::dhcp::getipaddr = $v6_getipaddr;
+
+        is(
+            xCAT_plugin::dhcp::kea_ipv6_nameservers(
+                '2001:db8:7309::/64',
+                '<xcatmaster>, 192.0.2.53, dns6.example.test'
+            ),
+            '2001:db8:7309::1, 2001:db8::53',
+            'DHCPv6 resolves the local xCAT server and filters IPv4 DNS fallbacks'
+        );
+
+        my %dns_network6 = (
+            %network6_entry,
+            nameservers => '<xcatmaster>, 192.0.2.53',
+        );
+        my $subnet = xCAT_plugin::dhcp::kea_subnet6_intent(
+            \%dns_network6, 'eth0', 0, 10001
+        );
+        my ($dns_option) = grep { $_->{name} eq 'dns-servers' }
+          @{ $subnet->{option_data} || [] };
+        is(
+            $dns_option->{data},
+            '2001:db8:7309::1',
+            'service-node DHCPv6 advertises its compute-facing IPv6 DNS address'
+        );
+    }
 }
 
 {
