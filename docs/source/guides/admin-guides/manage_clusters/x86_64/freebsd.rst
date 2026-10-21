@@ -421,9 +421,9 @@ from that same run and snapshot, then retry release. Do not fabricate action or 
 delete the active run to bypass recovery. If no valid copy exists, restore a
 consistent system backup that includes installed files, the package database
 and xCAT records from the same checkpoint, or provision a fresh target disk set.
-The new multi-disk policies still reject existing layouts; recovery does not
-grant permission to erase them. Preserve the interrupted installation's evidence
-before replacing it.
+Recovery does not grant permission to erase an existing layout. Use the OS
+reinstall policy below when whole-disk replacement is intended. Preserve the
+interrupted installation's evidence before replacing it.
 
 Import a version 2 boot artifact
 --------------------------------
@@ -760,15 +760,66 @@ members stop installation before partitioning. Selection resolves concrete
 identities before the normal storage checks and installation authorization.
 The installer checks those identities again before destructive operations.
 
-Automatic selection supports ``disk_action=empty`` only. After installation,
-``/etc/xcat/os-disks`` records the selected primary and auxiliary identities.
-Retain these identities in the node's explicit partition policy for a later
-whole-OS-disk reinstall. Repeating an automatic policy does not authorize
-erasing the previously selected disks; it can select other blank disks.
+The first automatic installation uses ``disk_action=empty``, which is the
+default. Before authorizing disk writes, the controller retains the selected
+device names, serials, filesystem, primary grouping and auxiliary roles.
+``/etc/xcat/os-disks`` also records the installed identities on the node.
+
+To reinstall the same OS disks, keep the automatic policy and add::
+
+    disk_action=erase
+
+This applies to scalar UFS and ZFS policies and grouped ZFS policies. xCAT
+resolves the automatic fields to the retained identities during preparation.
+The old OS does not need to boot. Within the same installation owner or
+service-node pool, reinstall cannot select other blank disks. Repeating a
+blank-only policy when a retained record exists stops with an error instead
+of selecting a second disk set. A known earlier authorized attempt without a
+disk record also requires explicit assignments, including after cancellation
+and rearming.
+Failures before authorization can retry automatic selection after cancellation.
+
+The requested filesystem, topology, group widths and explicit auxiliary
+members must match the retained layout. Missing records, changed layouts,
+overlap with protected or data disks, missing disks and serial mismatches
+stop preparation or native preflight. Device renumbering also requires an
+explicit policy with the current names and verified serials. Disk replacement
+requires explicit assignments; automatic reinstall does not choose replacement
+members. Grouped policies retain their whole-disk layout and ``zroot``
+ownership checks. Scalar reinstalls retain the existing target-serial,
+capacity and in-use checks. They do not classify existing target contents or
+check the presence of other preserved drives. The compiler still rejects
+overlap with declared preserved or data-pool identities. Scalar reinstall
+therefore requires a disk that remains dedicated to the OS.
+
+A record belongs to one fixed installation owner or one pool coordinator.
+It is not a cluster-wide disk inventory. After moving to another fixed owner,
+including returning to an earlier owner,
+changing between fixed-owner and pool provisioning, changing pool coordinator,
+restoring a store backup, or repurposing disks, verify the current disk roles
+and use an explicit policy for the next installation. That installation
+refreshes the record. Do not use an older record to authorize erasure. A new
+owner with no local history cannot distinguish a migrated node from a first
+installation; a blank-only automatic policy there can select other disks.
+xCAT rejects scope changes that it can identify from the local history. The
+restriction remains until the explicit installation reports its disks at
+authorization; preparation alone does not refresh a record. In a pool, any
+member can refresh the coordinator record for the other members. If some pool
+members refuse preparation, stop the node and run ``nodeset <node> offline``
+before correcting the policy and preparing the pool again.
 
 This policy requires newly built pkgbase media that advertise
-``xcat-freebsd-disk-selection-1``. Import a new bundle after updating the
-builder. Preparation rejects automatic selection with older media.
+``xcat-freebsd-disk-selection-1``. Retaining identities additionally requires
+the media manifest field ``disk_record_contract=xcat-freebsd-os-disks-1``.
+Import a new bundle after updating the builder. Installations made with older
+media require an explicit disk policy for their first reinstall with the new media. An installation
+started with media that cannot report disk identities invalidates a previous
+retained record. Recorded policies accept device unit numbers of at most five
+digits and serial tokens of at most 128 characters. Do not downgrade media
+when relying on automatic reinstall.
+After upgrading a server that did not retain disk history, use explicit
+assignments for previously provisioned nodes whose earlier attempt has already
+been rearmed; the old store no longer identifies that attempt.
 
 OS-pool log, cache and special devices
 --------------------------------------
@@ -846,7 +897,8 @@ OS disk, including all its partitions, and every selected OS auxiliary device.
 It does not preserve partitions or user datasets inside the OS pool. Data drives
 must not appear in any ``zfs_*_vdevs`` field.
 
-Add the following settings to the explicit OS policy::
+Add the following settings to a grouped OS policy, or to an automatic policy
+with a retained OS-disk record::
 
     disk_action=erase
     preserve_disks=da2@DATA_A,da3@DATA_B,da4@LOG_A,da5@LOG_B,da6@SPECIAL_A,da7@SPECIAL_B,da8@CACHE_A
@@ -2057,6 +2109,10 @@ Canceling the attempt does not erase disks or authorize reinstall::
 
 Installation ownership records reside in ``/var/lib/xcat/freebsd-install`` on
 the selected owner. Do not remove these records to bypass an active attempt.
+They include the retained OS-disk identities. Cancellation, a failed attempt
+and a new preparation preserve those identities. A service-node pool also
+stores them at its management-node coordinator before acknowledging disk
+authorization, so a later preparation can use a different member of that pool.
 Stop the node before changing its installation owner.
 For a service-node pool, also retain ``/var/lib/xcat/freebsd-pools`` on the
 management node and the local installation and postscript stores on every
@@ -2064,6 +2120,11 @@ member. Ordinary table backups do not include these files. Back them up with
 the corresponding installation artifacts while the affected nodes and retry
 clients are stopped. Do not restore only an older coordinator record while
 newer service-node attempts can still run.
+After any store restore, use verified explicit disk assignments for the next
+installation. Servers predating disk-record support cannot read the extended
+pool state. Downgrading those servers requires a consistent pre-upgrade backup
+of the controller stores, with nodes and retry clients stopped, followed by
+explicit disk assignments. Keep the newer records for diagnosis.
 Configuration and boot generations are retained for retry and diagnosis; they
 are not automatically deleted after installation.
 
