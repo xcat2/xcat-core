@@ -192,14 +192,17 @@ Run the unchanged statelite and Cumulus callers in private filesystems:
 
 ```
 prove xCAT-test/native/statelite_optional_hostkey.t \
-      xCAT-test/native/cumulus_discovery_key_failure.t \
       xCAT-test/native/fips_build_guard.t
+bats xCAT-test/native/cumulus_discovery_key_failure.bats
 ```
 
-These cases require Bubblewrap, GNU timeout, Bash, File::Slurper,
-Capture::Tiny and Parallel::ForkManager. Enable Linux user namespaces.
-The Cumulus case replaces OpenSSL with a failing command to test error handling.
-It does not exercise a switch or its discovery network.
+These cases require Bubblewrap, GNU timeout, Bash and Linux user namespaces.
+The Perl cases also require File::Slurper, Capture::Tiny and Parallel::ForkManager.
+The Cumulus case requires bats-core 1.4 or newer, GNU core utilities, grep and awk.
+It uses the shared shell sandbox and replaces OpenSSL with a failing command.
+It checks the exit status and key-generation attempt. It also checks that
+no listener helper remains and no listener starts. It does not exercise a
+switch or its discovery network.
 
 Run the package case as an ordinary user:
 
