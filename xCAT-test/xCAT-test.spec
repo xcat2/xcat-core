@@ -63,7 +63,9 @@ cp xcattest $RPM_BUILD_ROOT/%{prefix}/bin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
 
 cp lib/xCAT/Test/OS.pm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/Test
+cp lib/xCAT/Test/Conf.pm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/Test
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/Test/OS.pm
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/Test/Conf.pm
 
 cp restapitest $RPM_BUILD_ROOT/%{prefix}/sbin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/sbin/*
