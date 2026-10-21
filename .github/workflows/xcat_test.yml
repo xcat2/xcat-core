@@ -115,7 +115,7 @@ jobs:
       - name: Enable lifecycle test namespaces
         run: sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Test RPM package lifecycle
-        run: su -s /bin/sh nobody -c 'prove -v xCAT-test/native/xcatd_rpm_lifecycle.t xCAT-test/native/apache_rpm_configuration.t xCAT-test/native/apache_package_lifecycle.t xCAT-test/native/package_upgrade_logging.t xCAT-test/native/profile_package_payload.t'
+        run: su -s /bin/sh nobody -c 'prove -v xCAT-test/native/xcatd_rpm_lifecycle.t xCAT-test/native/xcatd_relocated_startup.t xCAT-test/native/apache_rpm_configuration.t xCAT-test/native/apache_package_lifecycle.t xCAT-test/native/package_upgrade_logging.t xCAT-test/native/profile_package_payload.t'
   selinux_policy_test:
     runs-on: ubuntu-24.04
     timeout-minutes: 20

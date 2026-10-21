@@ -223,6 +223,7 @@ On EL8 or EL10, install `bubblewrap`, `rpm-build`, `systemd`, `chkconfig`,
 
 ```
 prove xCAT-test/native/xcatd_rpm_lifecycle.t \
+      xCAT-test/native/xcatd_relocated_startup.t \
       xCAT-test/native/apache_rpm_configuration.t \
       xCAT-test/native/apache_package_lifecycle.t \
       xCAT-test/native/package_upgrade_logging.t
