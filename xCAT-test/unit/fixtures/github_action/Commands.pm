@@ -2,12 +2,14 @@ package Commands;
 
 use strict;
 use warnings;
-use JSON::PP qw(encode_json);
+use JSON::PP qw(decode_json encode_json);
+
+my @failed_commands = @{ decode_json($ENV{XCAT_TEST_CI_FAIL_COMMANDS} || '[]') };
 
 sub record_command {
     my ($command) = @_;
     open(my $log, '>>', $ENV{XCAT_TEST_CI_COMMANDS}) or die "open command log: $!";
-    print {$log} encode_json($command), "\n";
+    print {$log} encode_json([$command]), "\n";
     close($log) or die "close command log: $!";
     return;
 }
@@ -18,7 +20,7 @@ BEGIN {
         record_command($command);
         my @output = ("ok\n");
         my $status = 0;
-        if ($command eq $ENV{XCAT_TEST_CI_FAIL_COMMAND}) {
+        if (grep { $command eq $_ } @failed_commands) {
             @output = ("command failed\n");
             $status = 1;
         } elsif ($command =~ /^ip -o link /) {
