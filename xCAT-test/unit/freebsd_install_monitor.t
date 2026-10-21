@@ -196,7 +196,7 @@ for my $missed (qw(nodeset updatenodestat)) {
         print {$server} "ready\n";
         my $pid = xCAT::FreeBSDInstall::start_status_worker($node, '192.0.2.10',
             $message || "freebsd-install-v1 $tokens{$node} $attempt complete\n", $server, $action,
-            directory => $root, limit => 2,
+            directory => $root,
             cleanup => sub { close($client); close($listener); close($rescan_read); close($rescan_write); },
             log => sub {
                 open(my $log, '>>', "$root/worker-errors") or die $!;
@@ -216,10 +216,6 @@ for my $missed (qw(nodeset updatenodestat)) {
     my ($first, $first_client) = $launch->('node1', $slow);
     ok($first > 0, 'slow status action runs in a child');
     is(scalar(<$entered>), "entered\n", 'the child entered the actual status action');
-    my ($duplicate, $duplicate_client) = $launch->('node1', \&dispatch);
-    is($duplicate, 0, 'one node cannot consume multiple workers');
-    is(do { local $/; <$duplicate_client> }, "ready\n", 'busy responses never acknowledge an unperformed transition');
-    close($duplicate_client);
     my ($second, $second_client) = $launch->('node2', $slow);
     ok($second > 0, 'another node starts while the first is blocked');
     my @ready = IO::Select->new($entered)->can_read(2);
@@ -235,10 +231,6 @@ for my $missed (qw(nodeset updatenodestat)) {
     ok(@eof && sysread($rescan_read, my $byte, 1) == 0,
         'active workers release inherited rescan writers');
     close($rescan_read);
-    my ($full, $full_client) = $launch->('node3', \&dispatch);
-    is($full, 0, 'the configured worker limit bounds concurrency');
-    is(do { local $/; <$full_client> }, "ready\n", 'pool saturation does not send a success acknowledgment');
-    close($full_client);
     print {$resume} 'RR';
     for my $entry (['node1', $first, $first_client], ['node2', $second, $second_client]) {
         my ($node, $pid, $client) = @$entry;
@@ -250,9 +242,9 @@ for my $missed (qw(nodeset updatenodestat)) {
         is($? >> 8, 0, 'the status worker exits successfully');
     }
     my ($third, $third_client) = $launch->('node3', \&dispatch);
-    ok($third > 0, 'reaped worker slots are reusable');
+    ok($third > 0, 'a later status worker starts after prior workers finish');
     is(do { local $/; <$third_client> }, "ready\nfreebsd-install-v1 $tokens{node3} complete ok\n",
-        'a retried status is acknowledged after saturation clears');
+        'the later status is acknowledged after its transition completes');
     close($third_client);
     waitpid($third, 0);
     my ($bad, $bad_client) = $launch->('node3', \&dispatch, "freebsd-install-v1 malformed\n");
@@ -277,7 +269,7 @@ for my $signal (qw(ALRM KILL)) {
     my $pid = xCAT::FreeBSDInstall::start_status_worker('node1', '192.0.2.10',
         "freebsd-install-v1 $token $attempt complete\n", $server,
         sub { print {$enter} "entered\n"; sysread($blocked, my $byte, 1); return dispatch($_[0]); },
-        directory => $root, limit => 1, cleanup => sub { close($client); }, log => sub {});
+        directory => $root, cleanup => sub { close($client); }, log => sub {});
     local $SIG{ALRM} = sub { kill 'KILL', $pid; die "Interrupted worker test timed out\n"; };
     alarm(10);
     is(scalar(<$entered>), "entered\n", "$signal fixture reaches the real completion action");
@@ -293,8 +285,8 @@ for my $signal (qw(ALRM KILL)) {
     $retry_server->autoflush(1);
     my $retry = xCAT::FreeBSDInstall::start_status_worker('node1', '192.0.2.10',
         "freebsd-install-v1 $token $attempt complete\n", $retry_server, \&dispatch,
-        directory => $root, limit => 1, cleanup => sub { close($retry_client); }, log => sub {});
-    ok($retry > 0, "$signal does not leak the node or worker slot");
+        directory => $root, cleanup => sub { close($retry_client); }, log => sub {});
+    ok($retry > 0, "$signal permits a new worker to retry the transition");
     is(do { local $/; <$retry_client> }, "freebsd-install-v1 $token complete ok\n",
         "$signal retry acknowledges the completed action");
     close($retry_client);

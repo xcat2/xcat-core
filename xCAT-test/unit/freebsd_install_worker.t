@@ -91,7 +91,7 @@ sub launch {
         };
         $pid = xCAT::FreeBSDInstall::start_status_worker('node1', '192.0.2.10',
             "freebsd-install-postscripts-v1 $case->{generation} $attempt $boot\n",
-            $server, $dispatch, directory => $case->{directory}, limit => 1,
+            $server, $dispatch, directory => $case->{directory},
             cleanup => sub { close($client) or croak $!; },
             log => sub { write_file("$case->{root}/error", $_[0]); });
     }
