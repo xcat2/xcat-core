@@ -83,6 +83,7 @@ BEGIN {
         return $host;
     }
     sub thishostisnot { return 0; }
+    sub ishostinsubnet { return 0; }
     sub ip_forwarding_enabled { return 0; }
     sub nodeonmynet { return 1; }
     sub formatNetmask {
@@ -116,7 +117,14 @@ BEGIN {
     $INC{'xCAT/NetworkUtils.pm'} = __FILE__;
 
     package xCAT::ServiceNodeUtils;
-    sub getSNList { return; }
+    our $service_nodes = {};
+    our $dhcp_servers = [];
+    sub getSNList {
+        return @{ $dhcp_servers || [] } if $_[-1] eq 'dhcpserver';
+        return;
+    }
+    sub get_ServiceNode { return $service_nodes; }
+    sub getSNformattedhash { return $service_nodes; }
     $INC{'xCAT/ServiceNodeUtils.pm'} = __FILE__;
 
     package xCAT::NodeRange;
@@ -2324,7 +2332,7 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
     my %res_tables = (
         noderes => DHCPKeaResTable->new(
             {
-                'nodev6'     => { netboot => 'grub2',      tftpserver => '<xcatmaster>' },
+                'nodev6'     => { netboot => 'grub2',      tftpserver => '<xcatmaster>', servicenode => 'sn01' },
                 'nodev6http' => { netboot => 'grub2-http', tftpserver => 'boot6.example.test' },
                 'nodev6tftp' => { netboot => 'grub2-tftp', tftpserver => 'boot6.example.test' },
                 'nodev6xnba' => { netboot => 'xnba',       tftpserver => 'boot6.example.test' },
@@ -2475,6 +2483,49 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
         );
     }
 
+    {
+        local *xCAT::TableUtils::get_site_attribute = sub {
+            return $_[-1] eq 'disjointdhcps' ? ('1') : ();
+        };
+        local $xCAT::ServiceNodeUtils::dhcp_servers = ['configured-dhcp-service'];
+        local $xCAT::ServiceNodeUtils::service_nodes = {
+            'sn01' => ['nodev6'],
+        };
+        local *xCAT::NetworkUtils::thishostisnot = sub { return 1; };
+        @errors = ();
+        my $remote = xCAT_plugin::dhcp::kea_build_node_reservations6(
+            $backend, {}, ['nodev6']
+        );
+        is( scalar(@$remote), 0, 'disjoint DHCPv6 omits a node owned by another service node' );
+        is( scalar(@errors), 0, 'non-owning DHCPv6 server skips the node without an error' );
+    }
+
+    {
+        local *xCAT::TableUtils::get_site_attribute = sub {
+            return $_[-1] eq 'disjointdhcps' ? ('1') : ();
+        };
+        local $xCAT::ServiceNodeUtils::dhcp_servers = ['configured-dhcp-service'];
+        local $xCAT::ServiceNodeUtils::service_nodes = {
+            'remote-service-node' => ['nodev6'],
+        };
+        local *xCAT::NetworkUtils::thishostisnot = sub {
+            return $_[-1] eq 'dynamic-dhcp6-owner' ? 0 : 1;
+        };
+        $res_tables{networks} = DHCPKeaIntentNetTable->new(
+            {
+                net          => '2001:db8:99::/64',
+                dynamicrange => '2001:db8:99::100/120',
+                dhcpserver   => 'dynamic-dhcp6-owner',
+            }
+        );
+
+        my $owned = xCAT_plugin::dhcp::kea_build_node_reservations6(
+            $backend, {}, ['nodev6']
+        );
+        delete $res_tables{networks};
+
+        is( scalar(@$owned), 1, 'global dynamic-range DHCP owner retains an unrelated IPv6 reservation like legacy dispatch' );
+    }
 }
 
 done_testing();
