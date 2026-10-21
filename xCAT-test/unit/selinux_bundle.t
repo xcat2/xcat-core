@@ -30,8 +30,9 @@ is_deeply(\@orphans, [], 'every selinux case is named by a bundle');
 my @mn = grep { /\S/ } read_lines("$root/xCAT-test/autotest/bundle/selinux_mn.bundle");
 my %mn = map { $_ => 1 } @mn;
 foreach my $case (@cases) {
-    next unless $case =~ /_cn_/;
-    ok(!$mn{$case}, "$case needs a compute node, so the management node bundle leaves it out");
+    next unless $case =~ /_(cn|sn)_/;
+    my $needs = $1 eq 'cn' ? 'a compute node' : 'a service node';
+    ok(!$mn{$case}, "$case needs $needs, so the management node bundle leaves it out");
 }
 
 done_testing();

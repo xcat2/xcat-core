@@ -104,3 +104,95 @@ cmd:sh -c 'chtab key=selinux site.value="$(cat /tmp/selinux_site.orig)"'
 check:rc==0
 cmd:rm -f /tmp/selinux_site.orig
 end
+
+start:selinux_sn_enforcing
+description:in a hierarchical cluster, the service node runs SELinux enforcing with the xCAT labels in place and no xCAT denial since boot
+label:selinux,sn_diskful
+os:rhels
+cmd:getenforce
+check:rc==0
+check:output=~^Enforcing$
+cmd:xdsh $$SN getenforce
+check:rc==0
+check:output=~Enforcing
+cmd:xdsh $$SN cat /proc/cmdline
+check:rc==0
+check:output!~selinux=0
+cmd:xdsh $$SN "rpm -q xCAT-selinux"
+check:rc==0
+cmd:xdsh $$SN "semodule -l | grep -x -E 'xcat([[:space:]].*)?'"
+check:rc==0
+cmd:xdsh $$SN "ls -dZ /install /tftpboot /opt/xcat /xcatpost"
+check:rc==0
+check:output!~unlabeled_t
+check:output!~default_t
+cmd:xdsh $$SN "restorecon -Rnv /xcatpost /opt/xcat /etc/xcat /var/log/xcat"
+check:rc==0
+check:output!~Would relabel
+cmd:xdsh $$SN "systemctl is-active xcatd"
+check:rc==0
+check:output=~active
+cmd:xdcp $$SN /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/selinux_avc_check.sh /tmp/
+check:rc==0
+cmd:xdsh $$SN "sh /tmp/selinux_avc_check.sh boot"
+check:rc==0
+check:output=~XCAT_AVC=0
+cmd:xdsh $$SN "rm -f /tmp/selinux_avc_check.sh"
+check:rc==0
+end
+
+start:selinux_sn_per_node_switch
+description:noderes.selinux on one service node decides the SELinux mode its installer configures, without touching the rest of the cluster
+label:selinux,sn_diskful
+os:rhels
+cmd:sh -c 'lsdef -t node -o $$SN -i selinux -c > /tmp/selinux_sn_switch.orig'
+check:rc==0
+cmd:chdef -t node -o $$SN selinux=disabled
+check:rc==0
+cmd:nodeset $$SN osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
+check:rc==0
+cmd:grep -E "^selinux --" /install/autoinst/$$SN
+check:rc==0
+check:output=~disabled
+cmd:chdef -t node -o $$SN selinux=enforcing
+check:rc==0
+cmd:nodeset $$SN osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
+check:rc==0
+cmd:grep -E "^selinux --" /install/autoinst/$$SN
+check:rc==0
+check:output=~enforcing
+cmd:grep -c restorecon /install/autoinst/$$SN
+check:rc==0
+check:output!~^0$
+cmd:chdef -t node -o $$CN selinux=permissive
+check:rc==0
+cmd:nodeset $$SN osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
+check:rc==0
+cmd:grep -E "^selinux --" /install/autoinst/$$SN
+check:rc==0
+check:output=~enforcing
+cmd:chdef -t node -o $$CN selinux=
+check:rc==0
+cmd:sh -c 'chdef -z < /tmp/selinux_sn_switch.orig'
+check:rc==0
+cmd:rm -f /tmp/selinux_sn_switch.orig
+end
+
+start:selinux_cn_statelite_disabled_by_design
+description:a statelite compute node asked for SELinux enforcing gets selinux=0, because its root is assembled from read-only mounts, and nodeset says so
+label:selinux,provision
+os:rhels
+cmd:getenforce
+check:rc==0
+check:output=~^Enforcing$
+cmd:chdef -t node -o $$CN selinux=enforcing
+check:rc==0
+cmd:nodeset $$CN osimage=$$STATELITE
+check:rc==0
+check:output=~SELinux is disabled
+cmd:sh -c 'grep -rh "selinux=0" /tftpboot/xcat/xnba/nodes/$$CN /tftpboot/pxelinux.cfg/$$CN /tftpboot/petitboot/$$CN 2>/dev/null | wc -l'
+check:rc==0
+check:output!~^0$
+cmd:chdef -t node -o $$CN selinux=
+check:rc==0
+end
