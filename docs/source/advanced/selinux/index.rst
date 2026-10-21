@@ -72,21 +72,27 @@ file it points to. ``/usr/sbin/xcatd`` is a symlink, and ``execve`` resolves it,
 so the context belongs to the file in ``/opt/xcat``.
 
 A rootimg component in the middle of an image root is ambiguous, because
-``rootimgdir`` is any path under ``/install``. The file contexts keep the guest
-labels there, so an osimage whose ``rootimgdir`` has a directory called
-``rootimg`` above the tree leaves its published kernel and initrd unlabeled,
-and ``httpd`` cannot serve them. Give such an osimage a ``rootimgdir`` with no
-``rootimg`` component, or run ``restorecon`` over the image root after the
-package is installed. A published ``common`` or ``overlay`` directory of an
-image root called ``rootimg`` is left out for the same reason: its path is also
-the path of a ``common`` or ``overlay`` directory at the root of a guest tree.
+``rootimgdir`` is any path under ``/install``. The file contexts leave the
+published kernel and initrd of such an image root out of the relabel, so that
+they cannot take the guest labels with them. A published ``common`` or
+``overlay`` directory of an image root called ``rootimg`` is left out for the
+same reason: its path is also the path of a ``common`` or ``overlay``
+directory at the root of a guest tree.
 
 A path the file contexts leave out keeps the label it has. ``restorecon`` does
-not change it and does not clear it. A tree that ``genimage`` creates under an
-image root that is already ``public_content_t`` inherits that type, so the two
-directories above cost nothing in that case. A tree that is older than the
-package keeps ``default_t``, and ``restorecon -RF`` over the image root sets
-it.
+not change it and does not clear it. ``genimage`` writes into an image root
+that ``restorecon`` already made ``public_content_t``, and a new file inherits
+the type of its directory, so the kernel is ``public_content_t`` and ``httpd``
+serves it. Netboot works.
+
+The cost is a path that already carries another type, from before the package
+was installed or from a ``chcon``. It keeps that type, and ``restorecon`` over
+``/install`` cannot repair it, with or without ``-F``: there is no context to
+apply. Set it directly::
+
+    chcon -R -t public_content_t /install/netboot/rootimg/rhels9/x86_64/compute
+
+A later ``restorecon`` leaves that value alone, so the repair holds.
 
 The unit holds ``/opt/xcat`` as the default prefix, and ``%post`` writes
 ``/etc/xcat/xcatroot.env`` with the prefix of the installation, which the unit

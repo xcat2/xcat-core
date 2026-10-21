@@ -132,14 +132,23 @@ my @published = map {
     map { "$dir/$_" } @published_names;
 } @images;
 
-# A published file of a custom root keeps the label it had. That costs the
-# netboot of that one osimage and is recoverable with restorecon.
-my @unlabelled = map {
-    my $dir = $_;
-    map { "$dir/$_" } @published_names;
-} @custom_roots;
+# A published file of a custom root keeps the label it had, whichever it is.
+# genimage writes into an image root that restorecon already made
+# public_content_t, so the file inherits that type and httpd serves it. A file
+# that carries another type keeps it, and no relabel pass repairs that.
+# Half the roots start public_content_t, which is what genimage produces, and
+# half start default_t, which is a tree older than the package.
+my (@custom_published, %custom_before);
+foreach my $i (0 .. $#custom_roots) {
+    my $type = $i % 2 ? 'default_t' : 'public_content_t';
+    foreach my $name (@published_names) {
+        my $path = "$custom_roots[$i]/$name";
+        push @custom_published, $path;
+        $custom_before{$path} = $type;
+    }
+}
 
-foreach my $path (@guest, @guest_dirs, @unlabelled) {
+foreach my $path (@guest, @guest_dirs, @custom_published) {
     is(lookup($path), '<<none>>', "restorecon leaves $path alone");
 }
 foreach my $path (@published, '/install', '/install/postscripts/xcatdsklspost') {
@@ -161,7 +170,8 @@ my $mn = "$work/mn";
 my %before;
 $before{$_} = 'shadow_t'  foreach @guest;
 $before{$_} = 'etc_t'     foreach @guest_dirs;
-$before{$_} = 'default_t' foreach @published, @unlabelled;
+$before{$_} = 'default_t' foreach @published;
+$before{$_} = $custom_before{$_} foreach @custom_published;
 my %is_dir = map { $_ => 1 } @guest_dirs;
 foreach my $path (sort keys %before) {
     my $file = "$mn$path";
@@ -198,7 +208,7 @@ sub label_of {
 foreach my $step ('install', 'upgrade') {
     install_module() if $step eq 'upgrade';
     run('setfiles', '-F', '-r', $mn, $fc, "$mn/install");
-    foreach my $path (@guest, @guest_dirs, @unlabelled) {
+    foreach my $path (@guest, @guest_dirs, @custom_published) {
         is(label_of($path), $before{$path}, "after the $step relabel $path keeps $before{$path}");
     }
     foreach my $path (@published) {
