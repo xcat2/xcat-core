@@ -1,0 +1,14 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+use FindBin;
+use lib "$FindBin::Bin/lib";
+use XCAT::BuildUtils qw(sync_fips_policy);
+
+my $mode = shift // '';
+die "Usage: $0 --check|--write\n"
+    unless !@ARGV && ($mode eq '--check' || $mode eq '--write');
+my $result = sync_fips_policy(root => "$FindBin::Bin/..", mode => substr($mode, 2));
+warn "$_\n" for @{$result->{messages}};
+exit(@{$result->{stale}} && $result->{mode} eq 'check' ? 1 : 0);

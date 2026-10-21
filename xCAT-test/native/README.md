@@ -186,6 +186,38 @@ an installation, capture a kernel crash or modify host accounts.
 Check the TAP output for skipped prerequisites. A successful `prove` exit with
 skipped cases does not qualify those cases.
 
+## FIPS policy and discovery keys
+
+Run the unchanged statelite and Cumulus callers in private filesystems:
+
+```
+prove xCAT-test/native/statelite_optional_hostkey.t \
+      xCAT-test/native/cumulus_discovery_key_failure.t \
+      xCAT-test/native/fips_build_guard.t
+```
+
+These cases require Bubblewrap, GNU timeout, Bash, File::Slurper,
+Capture::Tiny and Parallel::ForkManager. Enable Linux user namespaces.
+The Cumulus case replaces OpenSSL with a failing command to test error handling.
+It does not exercise a switch or its discovery network.
+
+Run the package case as an ordinary user:
+
+```
+prove xCAT-test/native/fips_package_payload.t
+```
+
+It builds xCAT and Genesis scripts with the host's package tools, extracts the
+packages, and runs `unit/fips_shell_runtime.t` against their libraries. Use
+Debian build tools on Debian or Ubuntu, and RPM build tools with cpio and bzip2
+on EL. Both routes need OpenSSL, File::Slurper and Capture::Tiny.
+The check bypasses build dependencies and does not install either package.
+It does not build or boot a Genesis image.
+
+Run the crypto cases on both FIPS-enabled and non-FIPS hosts. A status-file
+fixture selects the policy but does not enable FIPS in OpenSSL. Legacy RSA-1024
+signing is skipped on FIPS hosts and must pass on the non-FIPS host.
+
 ## Package lifecycle
 
 Run these cases as an ordinary user with unprivileged Linux namespaces enabled.
