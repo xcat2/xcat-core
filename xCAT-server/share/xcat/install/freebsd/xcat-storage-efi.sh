@@ -179,6 +179,11 @@ storage_efi_primary()
     [ "$storage_efi_arch" = amd64 ]
     [ -f "$storage_root/boot/loader.efi" ] && [ ! -L "$storage_root/boot/loader.efi" ] || exit 1
     sha256 -q "$storage_root/boot/loader.efi" > "$storage_work/efi-loader"
+    # Native zfsboot omits the extra-ESP list for a single-disk install.
+    if [ "$storage_count" -eq 1 ] && [ ! -e "$storage_tmpdir/bsdinstall-esps" ] &&
+        [ ! -L "$storage_tmpdir/bsdinstall-esps" ]; then
+        : > "$storage_tmpdir/bsdinstall-esps"
+    fi
     [ -f "$storage_tmpdir/bsdinstall-esps" ] && [ ! -L "$storage_tmpdir/bsdinstall-esps" ] || exit 1
     storage_esps=$(awk -v prefix="$storage_prefix" -v count="$storage_count" 'BEGIN {
         for (i=1;i<count;i++) print "/dev/gpt/" prefix i}')
