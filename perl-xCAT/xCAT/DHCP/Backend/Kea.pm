@@ -660,10 +660,17 @@ sub check_services {
 }
 
 sub upsert_reservations {
-    my ( $self, $config, $reservations ) = @_;
+    my ( $self, $config, $reservations, $deleted ) = @_;
+
+    # Remove stale matches before adding the complete requested set.  A DHCPv6
+    # client DUID is valid in more than one subnet, so deleting while adding
+    # would otherwise remove an earlier reservation from the same batch.
+    foreach my $reservation (@$reservations) {
+        my $removed = $self->delete_reservations($config, $reservation);
+        push @$deleted, @$removed if $deleted;
+    }
 
     foreach my $reservation (@$reservations) {
-        $self->delete_reservations($config, $reservation);
         my $subnet = _find_subnet_by_id( $config, $reservation->{'subnet-id'} );
         next unless $subnet;
         $subnet->{reservations} ||= [];
@@ -781,10 +788,32 @@ sub live_upsert_reservations {
     my ( $self, $reservations, %opts ) = @_;
 
     my $service = $opts{service} || ['dhcp4'];
-    foreach my $reservation (@$reservations) {
+    my @delete = (
+        @{ $opts{stale_reservations} || [] },
+        @$reservations,
+    );
+    my %seen;
+    foreach my $reservation (@delete) {
+        my ( $identifier_type, $identifier );
+        if ($reservation->{'hw-address'}) {
+            ( $identifier_type, $identifier ) = ( 'hw-address', $reservation->{'hw-address'} );
+        } elsif ($reservation->{duid}) {
+            ( $identifier_type, $identifier ) = ( 'duid', $reservation->{duid} );
+        } elsif ($reservation->{'ip-address'}) {
+            ( $identifier_type, $identifier ) = ( 'ip-address', $reservation->{'ip-address'} );
+        } elsif (ref($reservation->{'ip-addresses'}) eq 'ARRAY' && @{ $reservation->{'ip-addresses'} }) {
+            ( $identifier_type, $identifier ) = ( 'ip-address', $reservation->{'ip-addresses'}[0] );
+        }
+        my $key = join('|',
+            map { defined($_) ? lc($_) : '' }
+              $reservation->{'subnet-id'}, $identifier_type, $identifier,
+        );
+        next if $seen{$key}++;
         my $delete = $self->_live_delete_reservation($reservation, service => $service, ignore_not_found => 1);
         return $delete if $delete->{error};
+    }
 
+    foreach my $reservation (@$reservations) {
         my ($stored) = @{ _render_entry_option_data( [$reservation] ) };
         my $result = $self->control_agent_command(
             'reservation-add',

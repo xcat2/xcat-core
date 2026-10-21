@@ -510,6 +510,54 @@ is( $dhcp6_bootfile->{name}, 'bootfile-url', 'DHCPv6 reservation bootfile option
 is( $dhcp6_bootfile->{data}, 'tftp://[2001:db8:1::1]/boot/grub2/grub2-nodev6', 'DHCPv6 reservation bootfile URL is preserved' );
 ok( $dhcp6_bootfile->{'always-send'}, 'DHCPv6 reservation bootfile option preserves always-send' );
 
+my $multi_subnet_duid = '00:04:00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff';
+my $multi_subnet_config = decode_json(
+    $backend->render_dhcp6_config(
+        {
+            subnets => [
+                { id => 21, subnet => '2001:db8:21::/64' },
+                { id => 22, subnet => '2001:db8:22::/64' },
+                {
+                    id           => 23,
+                    subnet       => '2001:db8:23::/64',
+                    reservations => [
+                        {
+                            duid           => $multi_subnet_duid,
+                            'ip-addresses' => ['2001:db8:23::50'],
+                            hostname       => 'stale-interface',
+                        },
+                    ],
+                },
+            ],
+        }
+    )
+);
+my $multi_subnet_reservations = [
+    {
+        'subnet-id'    => 21,
+        duid           => $multi_subnet_duid,
+        'ip-addresses' => ['2001:db8:21::50'],
+        hostname       => 'node-interface-1',
+    },
+    {
+        'subnet-id'    => 22,
+        duid           => $multi_subnet_duid,
+        'ip-addresses' => ['2001:db8:22::50'],
+        hostname       => 'node-interface-2',
+    },
+];
+my @multi_subnet_stale;
+$backend->upsert_reservations(
+    $multi_subnet_config,
+    $multi_subnet_reservations,
+    \@multi_subnet_stale,
+);
+is( scalar(@{ $multi_subnet_config->{Dhcp6}{subnet6}[0]{reservations} }), 1, 'first DHCPv6 subnet retains its shared-DUID reservation' );
+is( scalar(@{ $multi_subnet_config->{Dhcp6}{subnet6}[1]{reservations} }), 1, 'second DHCPv6 subnet retains its shared-DUID reservation' );
+is( scalar(@{ $multi_subnet_config->{Dhcp6}{subnet6}[2]{reservations} }), 0, 'shared-DUID upsert removes a stale reservation from the old subnet' );
+is( scalar(@multi_subnet_stale), 1, 'shared-DUID upsert reports the stale reservation for live cleanup' );
+is( $multi_subnet_stale[0]{'subnet-id'}, 23, 'reported stale reservation retains its old subnet id' );
+
 my $ddns_json = $backend->render_ddns_config(
     {
         port => '53001',
@@ -709,5 +757,26 @@ is( $commands[0]{arguments}{'operation-target'}, 'memory', 'live delete targets 
 is( $commands[1]{command}, 'reservation-add', 'live upsert adds reservation through host-commands' );
 is( $commands[1]{arguments}{reservation}{'subnet-id'}, 10, 'live add includes subnet id in reservation body' );
 is_deeply( $commands[1]{service}, ['dhcp4'], 'live add targets dhcp4 service by default' );
+
+@commands = ();
+$live_result = $ca_backend->live_upsert_reservations(
+    $multi_subnet_reservations,
+    service            => ['dhcp6'],
+    stale_reservations => \@multi_subnet_stale,
+);
+ok( !$live_result->{error}, 'live multi-subnet DUID upsert succeeds through the Control Agent' );
+my @live_deletes = grep { $_->{command} eq 'reservation-del' } @commands;
+my @live_adds = grep { $_->{command} eq 'reservation-add' } @commands;
+is_deeply(
+    [ sort { $a <=> $b } map { $_->{arguments}{'subnet-id'} } @live_deletes ],
+    [ 21, 22, 23 ],
+    'live multi-subnet DUID upsert deletes the stale and target subnet reservations'
+);
+is_deeply(
+    [ sort { $a <=> $b } map { $_->{arguments}{reservation}{'subnet-id'} } @live_adds ],
+    [ 21, 22 ],
+    'live multi-subnet DUID upsert adds the complete requested reservation set'
+);
+is_deeply( $live_adds[0]{service}, ['dhcp6'], 'live multi-subnet DUID upsert targets DHCPv6' );
 
 done_testing();
