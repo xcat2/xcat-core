@@ -845,7 +845,10 @@ sub nextdestiny {
         unless ($ref->{currchain}) {    #If no current chain, copy the default
             $ref->{currchain} = $ref->{chain};
         } elsif ($ref->{currchain} !~ /[,;]/){
-            if ($ref->{currstate} and ($ref->{currchain} =~ /$ref->{currstate}/)) {
+            my $completed_state = $ref->{currchain};
+            # setdestiny records ondiscover without its command arguments.
+            $completed_state = 'ondiscover' if $completed_state =~ /^ondiscover=/;
+            if ($ref->{currstate} and $completed_state eq $ref->{currstate}) {
                 # 'boot' is the steady state a completed provision leaves behind,
                 # set by setdestiny once the install or netboot destiny is applied.
                 # Some installers advance the destiny more than once, so it has to
