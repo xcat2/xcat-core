@@ -8,6 +8,7 @@ setup()
     ROOT="$BATS_TEST_TMPDIR/source"
     local relative
     for relative in build-utils/sync-fips-policy build-utils/fips-policy.sh \
+        build-utils/lib/XCAT/BuildUtils.pm \
         xCAT-genesis-scripts/usr/lib/xcat/fips.sh xCAT/postscripts/xcatlib.sh; do
         mkdir -p "$ROOT/$(dirname "$relative")"
         cp "$(repo_path "$relative")" "$ROOT/$relative"

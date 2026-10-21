@@ -990,8 +990,11 @@ sub main {
         if defined($native_subdir) && !$opts{source_only} && !$opts{gpg_sign};
 
     if (grep { $_ eq 'xCAT' || $_ eq 'xCAT-genesis-scripts' } $opts{packages}->@*) {
-        system($^X, "$Bin/build-utils/sync-fips-policy", '--check') == 0
-            or die "FATAL: generated FIPS policy is not current\n";
+        my $fips = XCAT::BuildUtils::sync_fips_policy(root => $Bin, mode => 'check');
+        if (@{$fips->{stale}}) {
+            warn "$_\n" for @{$fips->{messages}};
+            die "FATAL: generated FIPS policy is not current\n";
+        }
     }
 
     # ---- concurrency guard (mirrors cluster-test.pl's per-cluster lock) --------------------------

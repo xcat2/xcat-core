@@ -113,8 +113,11 @@ for my $pkg ($opts{packages}->@*) {
 }
 
 if (grep { $_ eq 'xCAT' || $_ eq 'xCAT-genesis-scripts' } $opts{packages}->@*) {
-    system($^X, "$FindBin::Bin/build-utils/sync-fips-policy", '--check') == 0
-        or die "FATAL: generated FIPS policy is not current\n";
+    my $fips = XCAT::BuildUtils::sync_fips_policy(root => $FindBin::Bin, mode => 'check');
+    if (@{$fips->{stale}}) {
+        warn "$_\n" for @{$fips->{messages}};
+        die "FATAL: generated FIPS policy is not current\n";
+    }
 }
 
 my $ROOT    = abs_path($FindBin::Bin);
