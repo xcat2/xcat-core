@@ -205,12 +205,8 @@ sub fping_pping {
     @output = <$fping_output>;
     close($fping_output);
 
-    my %alive;
-    foreach my $line (@output) {
-        chomp($line);
-        my $target = xCAT::DSHCore->match_ping_target($line, $nodes);
-        $alive{$target} = 1 if defined($target);
-    }
+    my %alive = map { $_ => 1 }
+      xCAT::NetworkUtils->match_ping_targets(\@output, $nodes);
     foreach my $node (@{$nodes}) {
         print "$node: " . ($alive{$node} ? 'ping' : 'noping') . "\n";
     }
@@ -252,7 +248,7 @@ sub nmap_pping {
     close($nmap_output);
 
     my %alive = map { $_ => 1 }
-      xCAT::DSHCore->nmap_alive_targets($nodes, \@output);
+      xCAT::NetworkUtils->nmap_alive_targets($nodes, \@output);
     foreach my $node (@{$nodes}) {
         print "$node: " . ($alive{$node} ? 'ping' : 'noping') . "\n";
     }

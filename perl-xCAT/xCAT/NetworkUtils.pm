@@ -3151,6 +3151,198 @@ sub get_hdwr_ip
 
 #--------------------------------------------------------------------------------
 
+=head3    match_ping_target
+
+      Maps a name or numeric address reported by a ping backend to the
+      original target supplied by xCAT.
+
+=cut
+
+#--------------------------------------------------------------------------------
+
+sub match_ping_target
+{
+    my ($class, $candidate, $targets) = @_;
+    return unless defined($candidate) && ref($targets) eq 'ARRAY';
+
+    my @matches = $class->match_ping_targets([$candidate], $targets);
+    return $matches[0];
+}
+
+#--------------------------------------------------------------------------------
+
+=head3    match_ping_targets
+
+      Maps a batch of names or numeric addresses reported by a ping backend to
+      the original xCAT targets, reusing one address-resolution index.
+
+=cut
+
+#--------------------------------------------------------------------------------
+
+sub match_ping_targets
+{
+    my ($class, $candidates, $targets) = @_;
+    return unless ref($candidates) eq 'ARRAY' && ref($targets) eq 'ARRAY';
+
+    my %state;
+    my @matches;
+    foreach my $candidate (@{$candidates})
+    {
+        my $target = _match_ping_target($candidate, $targets, \%state);
+        push @matches, $target if defined($target);
+    }
+    return @matches;
+}
+
+sub _ping_address_key
+{
+    my ($address) = @_;
+    return unless xCAT::NetworkUtils->isValidIPAddress($address);
+
+    my $family = $address =~ /:/ ? 6 : 4;
+    my $packed = _pack_ip_address($address, $family);
+    return defined($packed) ? "$family:" . unpack('H*', $packed) : undef;
+}
+
+sub _ping_address_targets
+{
+    my ($targets) = @_;
+    my %addresses;
+
+    foreach my $target (@{$targets})
+    {
+        next unless defined($target);
+        my $literal_key = _ping_address_key($target);
+        if (defined($literal_key))
+        {
+            $addresses{$literal_key} = $target
+              unless exists($addresses{$literal_key});
+            next;
+        }
+
+        foreach my $family (qw(OnlyV4 OnlyV6))
+        {
+            my $address = xCAT::NetworkUtils->getipaddr(
+                $target, $family => 1
+            );
+            my $key = _ping_address_key($address);
+            next unless defined($key);
+            $addresses{$key} = $target unless exists($addresses{$key});
+        }
+    }
+
+    return \%addresses;
+}
+
+sub _match_ping_target
+{
+    my ($candidate, $targets, $state) = @_;
+    return unless defined($candidate);
+
+    $candidate =~ s/^\s+|\s+$//g;
+    foreach my $target (@{$targets})
+    {
+        return $target if lc($candidate) eq lc($target);
+        return $target if $candidate =~ /^\Q$target\E\./i;
+    }
+
+    my $key = _ping_address_key($candidate);
+    return unless defined($key);
+    $state->{addresses} = _ping_address_targets($targets)
+      unless exists($state->{addresses});
+    return $state->{addresses}{$key};
+}
+
+
+#--------------------------------------------------------------------------------
+
+=head3    nmap_alive_targets
+
+      Parses old and current nmap ping-scan output and returns the original
+      xCAT targets that nmap reported as reachable.
+
+=cut
+
+#--------------------------------------------------------------------------------
+
+sub nmap_alive_targets
+{
+    my ($class, $targets, $output) = @_;
+    return unless ref($targets) eq 'ARRAY' && ref($output) eq 'ARRAY';
+
+    my %match_state;
+    my (%alive, @alive);
+    my $current_target;
+    foreach my $line (@{$output})
+    {
+        if ($line =~ /^Host\s+(.+?)(?:\s+\(([^)]*)\))?\s+appears to be up\b/)
+        {
+            my $target = _match_ping_target($1, $targets, \%match_state);
+            if (!defined($target) && defined($2))
+            {
+                $target = _match_ping_target($2, $targets, \%match_state);
+            }
+            if (defined($target) && !$alive{$target}++)
+            {
+                push @alive, $target;
+            }
+            next;
+        }
+
+        if ($line =~ /^Nmap scan report for\s+(.+?)\s*$/)
+        {
+            my $reported = $1;
+            my $reported_address;
+            if ($reported =~ s/\s+\(([^()]*)\)\s*$//)
+            {
+                $reported_address = $1;
+            }
+            $current_target = _match_ping_target(
+                $reported, $targets, \%match_state
+            );
+            if (!defined($current_target) && defined($reported_address))
+            {
+                $current_target = _match_ping_target(
+                    $reported_address, $targets, \%match_state
+                );
+            }
+            next;
+        }
+
+        if ($line =~ /^Host is up\b/ && defined($current_target))
+        {
+            if (!$alive{$current_target}++)
+            {
+                push @alive, $current_target;
+            }
+        }
+    }
+
+    return @alive;
+}
+
+
+sub _nmap_ping_available
+{
+    return -x '/usr/bin/nmap' || -x '/usr/local/bin/nmap';
+}
+
+sub _nmap_ping_output
+{
+    my ($class, $nodes, $more_options) = @_;
+    my $targets = join(' ', @{$nodes});
+    $more_options ||= '';
+    open(my $nmap, "nmap -PE --system-dns --send-ip -sP $more_options $targets 2> /dev/null|") ## no critic (InputOutput::ProhibitTwoArgOpen)
+      or die("Cannot open nmap pipe: $!");
+    my @output = <$nmap>;
+    close($nmap);
+    return @output;
+}
+
+
+#--------------------------------------------------------------------------------
+
 =head3    pingNodeStatus
       This function takes an array of nodes and returns their status using nmap or fping.
     Arguments:
@@ -3172,51 +3364,22 @@ sub pingNodeStatus {
 
         #get all the active nodes
         my $nodes = join(' ', @mon_nodes);
-        if (-x '/usr/bin/nmap' or -x '/usr/local/bin/nmap') {    #use nmap
+        if ($class->_nmap_ping_available()) {    #use nmap
                 #print "use nmap\n";
-            my %deadnodes;
-            foreach (@mon_nodes) {
-                $deadnodes{$_} = 1;
-            }
-
             # get additional options from site table
             my @nmap_options = xCAT::TableUtils->get_site_attribute("nmapoptions");
             my $more_options = $nmap_options[0];
 
-            #call namp
-            open(NMAP, "nmap -PE --system-dns --send-ip -sP $more_options " . $nodes . " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
-            my $node;
-            while (<NMAP>) {
-                if (/Host (.*) \(.*\) appears to be up/) {
-                    $node = $1;
-                    unless ($deadnodes{$node}) {
-                        foreach (keys %deadnodes) {
-                            if ($node =~ /^$_\./) {
-                                $node = $_;
-                                last;
-                            }
-                        }
-                    }
-                    delete $deadnodes{$node};
-                    push(@active_nodes, $node);
-                } elsif (/Nmap scan report for ([^ ]*) /) {
-                    $node = $1;
-                } elsif (/Host is up./) {
-                    unless ($deadnodes{$node}) {
-                        foreach (keys %deadnodes) {
-                            if ($node =~ /^$_\./) {
-                                $node = $_;
-                                last;
-                            }
-                        }
-                    }
-                    delete $deadnodes{$node};
-                    push(@active_nodes, $node);
-                }
-            }
-            foreach (sort keys %deadnodes) {
-                push(@inactive_nodes, $_);
-            }
+            #call nmap
+            my @nmap_output = $class->_nmap_ping_output(
+                \@mon_nodes, $more_options
+            );
+
+            @active_nodes = xCAT::NetworkUtils->nmap_alive_targets(
+                \@mon_nodes, \@nmap_output
+            );
+            my %active_nodes = map { $_ => 1 } @active_nodes;
+            @inactive_nodes = sort grep { !$active_nodes{$_} } @mon_nodes;
         } else {    #use fping
                     #print "use fping\n";
 
