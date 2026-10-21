@@ -1,4 +1,3 @@
-
 #########
 osimage.5
 #########
@@ -19,7 +18,7 @@ SYNOPSIS
 ********
 
 
-\ **osimage Attributes:**\   \ *imagename*\ , \ *groups*\ , \ *profile*\ , \ *imagetype*\ , \ *description*\ , \ *provmethod*\ , \ *rootfstype*\ , \ *nfsrootopts*\ , \ *osdistroname*\ , \ *osupdatename*\ , \ *cfmdir*\ , \ *osname*\ , \ *osvers*\ , \ *osarch*\ , \ *synclists*\ , \ *postscripts*\ , \ *postbootscripts*\ , \ *serverrole*\ , \ *isdeletable*\ , \ *kitcomponents*\ , \ *environvar*\ , \ *comments*\ , \ *disable*
+\ **osimage Attributes:**\   \ *imagename*\ , \ *groups*\ , \ *profile*\ , \ *imagetype*\ , \ *description*\ , \ *provmethod*\ , \ *rootfstype*\ , \ *nfsrootopts*\ , \ *osdistroname*\ , \ *osupdatename*\ , \ *cfmdir*\ , \ *osname*\ , \ *osvers*\ , \ *osarch*\ , \ *synclists*\ , \ *postscripts*\ , \ *postbootscripts*\ , \ *serverrole*\ , \ *isdeletable*\ , \ *kitcomponents*\ , \ *environvar*\ , \ *comments*\ , \ *disable*\
 
 
 ***********
@@ -56,7 +55,7 @@ osimage Attributes:
 
 \ **imagetype**\ 
  
- The type of operating system image this definition represents (linux,AIX).
+ The type of operating system image this definition represents (linux,freebsd,windows,NIM).
  
 
 
@@ -78,9 +77,10 @@ osimage Attributes:
  
 
 
-\ **nfsrootopts**
+\ **nfsrootopts**\
 
  A comma-separated list of additional NFS mount options for the root filesystem of a dracut-based statelite image. The root filesystem is always mounted read-only; rw and defaults are not allowed.
+
 
 
 \ **osdistroname**\ 
@@ -103,19 +103,19 @@ osimage Attributes:
 
 \ **osname**\ 
  
- Operating system name- AIX or Linux.
+ Operating system family name, such as AIX, FreeBSD, Linux, or Windows.
  
 
 
 \ **osvers**\ 
  
- The Linux operating system deployed on this node.  Valid values:  rhels\*,rhelc\*, rhas\*,centos\*,alma\*, rocky\*,SL\*, fedora\*, sles\* (where \* is the version #).
+ The operating system release deployed on this node. Valid values include freebsd15.1, rhels\*,rhelc\*, rhas\*,centos\*,alma\*, rocky\*,SL\*, fedora\*, sles\* (where \* is the version #).
  
 
 
 \ **osarch**\ 
  
- The hardware architecture of this node. For netboot/statelite images, QEMU emulation for non-native architectures is used if qemu-user-static is installed and configured via systemd-binfmt.  Valid values: x86_64, ppc64, x86, ia64, aarch64, riscv64.
+ The hardware architecture of this node. For netboot/statelite images, QEMU emulation for non-native architectures is used if qemu-user-static is installed and configured via systemd-binfmt.  Valid values: x86_64, ppc64, x86, ia64, aarch64, riscv64, s390x.
  
 
 

@@ -1,4 +1,3 @@
-
 #########
 osimage.7
 #########
@@ -19,7 +18,7 @@ SYNOPSIS
 ********
 
 
-\ **osimage Attributes:**\   \ *addkcmdline*\ , \ *boottarget*\ , \ *bosinst_data*\ , \ *cfmdir*\ , \ *configdump*\ , \ *crashkernelsize*\ , \ *description*\ , \ *driverupdatesrc*\ , \ *dump*\ , \ *environvar*\ , \ *exlist*\ , \ *fb_script*\ , \ *gpgcheck*\ , \ *groups*\ , \ *home*\ , \ *image_data*\ , \ *imagename*\ , \ *imagetype*\ , \ *installp_bundle*\ , \ *installto*\ , \ *isdeletable*\ , \ *kerneldir*\ , \ *kernelver*\ , \ *kitcomponents*\ , \ *krpmver*\ , \ *lpp_source*\ , \ *mksysb*\ , \ *netdrivers*\ , \ *nfsrootopts*\ , \ *nimmethod*\ , \ *nimtype*\ , \ *nodebootif*\ , \ *osarch*\ , \ *osdistroname*\ , \ *osname*\ , \ *osupdatename*\ , \ *osvers*\ , \ *otherifce*\ , \ *otherpkgdir*\ , \ *otherpkglist*\ , \ *otherpkgs*\ , \ *paging*\ , \ *partitionfile*\ , \ *permission*\ , \ *pkgdir*\ , \ *pkglist*\ , \ *postbootscripts*\ , \ *postinstall*\ , \ *postscripts*\ , \ *profile*\ , \ *provmethod*\ , \ *resolv_conf*\ , \ *root*\ , \ *rootfstype*\ , \ *rootimgchecksum*\ , \ *rootimgdir*\ , \ *script*\ , \ *serverrole*\ , \ *shared_home*\ , \ *shared_root*\ , \ *spot*\ , \ *synclists*\ , \ *template*\ , \ *tmp*\ , \ *usercomment*\ , \ *winpepath*
+\ **osimage Attributes:**\   \ *addkcmdline*\ , \ *bootdir*\ , \ *boottarget*\ , \ *bosinst_data*\ , \ *cfmdir*\ , \ *configdump*\ , \ *crashkernelsize*\ , \ *description*\ , \ *driverupdatesrc*\ , \ *dump*\ , \ *environvar*\ , \ *exlist*\ , \ *fb_script*\ , \ *gpgcheck*\ , \ *groups*\ , \ *home*\ , \ *image_data*\ , \ *imagename*\ , \ *imagetype*\ , \ *imageversion*\ , \ *installp_bundle*\ , \ *installto*\ , \ *isdeletable*\ , \ *kerneldir*\ , \ *kernelver*\ , \ *kitcomponents*\ , \ *krpmver*\ , \ *lpp_source*\ , \ *mksysb*\ , \ *netdrivers*\ , \ *nfsrootopts*\ , \ *nimmethod*\ , \ *nimtype*\ , \ *nodebootif*\ , \ *osarch*\ , \ *osdistroname*\ , \ *osname*\ , \ *osupdatename*\ , \ *osvers*\ , \ *otherifce*\ , \ *otherpkgdir*\ , \ *otherpkglist*\ , \ *otherpkgs*\ , \ *paging*\ , \ *partitionfile*\ , \ *permission*\ , \ *pkgdir*\ , \ *pkglist*\ , \ *postbootscripts*\ , \ *postinstall*\ , \ *postscripts*\ , \ *profile*\ , \ *provmethod*\ , \ *resolv_conf*\ , \ *root*\ , \ *rootfstype*\ , \ *rootimgchecksum*\ , \ *rootimgdir*\ , \ *script*\ , \ *serverrole*\ , \ *shared_home*\ , \ *shared_root*\ , \ *spot*\ , \ *synclists*\ , \ *template*\ , \ *tmp*\ , \ *usercomment*\ , \ *winpepath*\
 
 
 ***********
@@ -42,6 +41,12 @@ osimage Attributes:
 \ **addkcmdline**\  (linuximage.addkcmdline)
  
  User specified kernel options for os provision process(no prefix) or the provisioned os(with prefix "R::"). The options should be delimited with spaces(" "). This attribute is ignored if linuximage.boottarget is set.
+
+
+
+\ **bootdir**\  (freebsdimage.bootdir)
+
+ For imageversion=2, the absolute path of the imported xCAT mfsBSD boot artifact. Version 2 installation requires a compatible pkgbase runtime.
  
 
 
@@ -147,7 +152,13 @@ osimage Attributes:
 
 \ **imagetype**\  (osimage.imagetype)
  
- The type of operating system image this definition represents (linux,AIX).
+ The type of operating system image this definition represents (linux,freebsd,windows,NIM).
+
+
+
+\ **imageversion**\  (freebsdimage.imageversion)
+
+ The FreeBSD image definition version. An unset value or 1 uses the legacy mfsBSD bundle. Version 2 separates the boot artifact and repositories.
  
 
 
@@ -210,6 +221,7 @@ osimage Attributes:
  The ethernet device drivers of the nodes which will use this linux image, at least the device driver for the nodes' installnic should be included
  
 
+
 \ **nfsrootopts**\  (osimage.nfsrootopts)
 
  A comma-separated list of additional NFS mount options for the root filesystem of a dracut-based statelite image. The root filesystem is always mounted read-only; rw and defaults are not allowed.
@@ -236,7 +248,7 @@ osimage Attributes:
 
 \ **osarch**\  (osimage.osarch)
  
- The hardware architecture of this node. For netboot/statelite images, QEMU emulation for non-native architectures is used if qemu-user-static is installed and configured via systemd-binfmt.  Valid values: x86_64, ppc64, x86, ia64, aarch64, riscv64.
+ The hardware architecture of this node. For netboot/statelite images, QEMU emulation for non-native architectures is used if qemu-user-static is installed and configured via systemd-binfmt.  Valid values: x86_64, ppc64, x86, ia64, aarch64, riscv64, s390x.
  
 
 
@@ -248,7 +260,7 @@ osimage Attributes:
 
 \ **osname**\  (osimage.osname)
  
- Operating system name- AIX or Linux.
+ Operating system family name, such as AIX, FreeBSD, Linux, or Windows.
  
 
 
@@ -260,7 +272,7 @@ osimage Attributes:
 
 \ **osvers**\  (osimage.osvers)
  
- The Linux operating system deployed on this node.  Valid values:  rhels\*,rhelc\*, rhas\*,centos\*,alma\*, rocky\*,SL\*, fedora\*, sles\* (where \* is the version #).
+ The operating system release deployed on this node. Valid values include freebsd15.1, rhels\*,rhelc\*, rhas\*,centos\*,alma\*, rocky\*,SL\*, fedora\*, sles\* (where \* is the version #).
  
 
 
@@ -270,15 +282,23 @@ osimage Attributes:
  
 
 
-\ **otherpkgdir**\  (linuximage.otherpkgdir)
+\ **otherpkgdir**\  (linuximage.otherpkgdir, freebsdimage.otherpkgdir)
  
  The base directory and urls of internet repos from which the non-distro packages are retrived. Only 1 local directory is supported at present. The entries should be delimited with comma ",". Currently, the internet repos are only supported on Ubuntu and Redhat.
  
+ or
+
+ For imageversion=2, comma-separated absolute paths of imported DVD application or supplemental repository roles, in native resolver priority order.
 
 
-\ **otherpkglist**\  (linuximage.otherpkglist)
+
+\ **otherpkglist**\  (linuximage.otherpkglist, freebsdimage.otherpkglist)
  
  The fully qualified name of the file that stores non-distro package lists that will be included in the image. It could be set to multiple paths. The multiple paths must be separated by ",".
+
+ or
+
+ For imageversion=2, comma-separated absolute paths of application package list files. Importing a repository does not select packages.
  
 
 
@@ -294,7 +314,7 @@ osimage Attributes:
  
 
 
-\ **partitionfile**\  (linuximage.partitionfile, winimage.partitionfile)
+\ **partitionfile**\  (linuximage.partitionfile, freebsdimage.partitionfile, winimage.partitionfile)
  
  Only available for diskful osimages and statelite osimages(localdisk enabled). The full path of the partition file or the script to generate the partition file. The valid value includes:
                  "<the absolute path of the parititon file>": For diskful osimages, the partition file contains the partition definition that will be inserted directly into the template file for os installation. The syntax and format of the partition file should confirm to the corresponding OS installer of the Linux distributions(e.g. kickstart for RedHat, autoyast for SLES, pressed for Ubuntu). For statelite osimages, when the localdisk is enabled, the partition file with specific syntax and format includes the partition scheme of the local disk, please refer to the statelite documentation for details.
@@ -303,6 +323,10 @@ osimage Attributes:
                  "s:d:<the absolute path of the disk script>": only available for ubuntu osimages, a script to generate the disk name file "/tmp/xcat.install_disk" inside the debian installer. This script is run in the "pressed/early_command" section.
                  "c:<the absolute path of the additional pressed config file>": only availbe for ubuntu osimages, contains the additional pressed entries in "d-i ..." form. This can be used to specify some additional preseed options to support RAID or LVM in Ubuntu.
                  "s:c:<the absolute path of the additional pressed config script>": only available for ubuntu osimages, runs in pressed/early_command and set the preseed values with "debconf-set". The multiple values should be delimited with comma ","
+
+ or
+
+ The absolute path of the FreeBSD storage policy. It selects the OS disks explicitly and can contain [pool NAME] sections for dedicated data pools and [dataset POOL/PATH] sections for OS and data filesystems. #NODE# expands to the node name.
  
  or
  
@@ -316,15 +340,23 @@ osimage Attributes:
  
 
 
-\ **pkgdir**\  (linuximage.pkgdir)
+\ **pkgdir**\  (linuximage.pkgdir, freebsdimage.pkgdir)
  
  The name of the directory where the distro packages are stored. It could be set to multiple paths. The multiple paths must be separated by ",". The first path in the value of osimage.pkgdir must be the OS base pkg dir path, such as pkgdir=/install/rhels6.2/x86_64,/install/updates . In the os base pkg path, there are default repository data. And in the other pkg path(s), the users should make sure there are repository data. If not, use "createrepo" command to create them. For ubuntu, multiple mirrors can be specified in the pkgdir attribute, the mirrors must be prefixed by the protocol(http/ssh) and delimited with "," between each other. Ubuntu live-server media copied by copycds is not a complete apt package mirror; Ubuntu netboot or statelite image generation may require a complete local Ubuntu apt mirror or an explicitly configured HTTP/HTTPS Ubuntu apt repository.
+
+ or
+
+ For an unset imageversion or version 1, the absolute path of the imported xCAT mfsBSD bundle. For imageversion=2, the absolute path of one imported base repository role. FreeBSD amd64 media uses the xCAT architecture x86_64.
  
 
 
-\ **pkglist**\  (linuximage.pkglist)
+\ **pkglist**\  (linuximage.pkglist, freebsdimage.pkglist)
  
  The fully qualified name of the file that stores the distro  packages list that will be included in the image. Make sure that if the pkgs in the pkglist have dependency pkgs, the dependency pkgs should be found in one of the pkgdir
+
+ or
+
+ For imageversion=2, comma-separated absolute paths of files that select base components. Importing a repository does not select packages.
  
 
 
@@ -439,9 +471,13 @@ osimage Attributes:
  
 
 
-\ **template**\  (linuximage.template, winimage.template)
+\ **template**\  (linuximage.template, freebsdimage.template, winimage.template)
  
  The fully qualified name of the template file that will be used to create the OS installer configuration file for stateful installations (e.g.  kickstart for RedHat, autoyast for SLES).
+
+ or
+
+ The absolute path of the FreeBSD installation configuration template. The template contains key=value settings.
  
  or
  
@@ -455,7 +491,11 @@ osimage Attributes:
  
 
 
-\ **usercomment**\  (linuximage.comments, nimimage.comments)
+\ **usercomment**\  (linuximage.comments, freebsdimage.comments, nimimage.comments)
+
+ Any user-written notes.
+
+ or
  
  Any user-written notes.
  

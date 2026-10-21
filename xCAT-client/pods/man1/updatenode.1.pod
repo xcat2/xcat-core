@@ -14,6 +14,8 @@ B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-t> I<timeout>] [I<script1,sc
 
 B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-f>|B<--snsync>]
 
+B<updatenode> I<node> B<--freebsd-run> I<run> [B<--freebsd-release>] [B<-t> I<timeout>]
+
 B<updatenode> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
 =head1 DESCRIPTION
@@ -306,6 +308,9 @@ The function is not supported for NFS-based statelite installations.
 For NFS-based statelite installations to sync files, you should use the
 read-only option for files/directories listed in
 B<litefile> table with source location specified in the B<litetree> table.
+
+File synchronization reports failure if any directory creation or copy fails,
+even when a later copy succeeds. This applies to Linux, AIX and FreeBSD nodes.
 
 For installed FreeBSD nodes, this option uses the selected image's
 B<synclists> and requires B</usr/local/bin/rsync> on the node.

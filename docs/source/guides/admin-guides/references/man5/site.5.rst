@@ -1,4 +1,3 @@
-
 ######
 site.5
 ######
@@ -92,6 +91,19 @@ site Attributes:
    -------------
   DHCP ATTRIBUTES
    -------------
+   dhcpbackend:  The DHCP implementation used by makedhcp. Valid values are auto,
+                 isc, and kea. The default is auto. In auto mode, xCAT uses ISC
+                 DHCP on existing supported platforms and Kea DHCP on platforms
+                 where ISC DHCP is no longer available, such as EL10 and Ubuntu
+                 24.04.
+
+   keacontrolagent:  Whether makedhcp should generate Kea Control Agent socket
+                    configuration. Valid values are 1/yes/true/enabled or
+                    0/no/false/disabled. The default is disabled; host
+                    reservations use JSON render and reload unless Control
+                    Agent operations are explicitly enabled and the Kea
+                    host-commands hook is installed.
+
    dhcpomapialgorithm:  The TSIG algorithm used by BIND DDNS and, for legacy
                         ISC DHCP, OMAPI. Valid values are hmac-md5,
                         hmac-sha1, hmac-sha224, hmac-sha256, hmac-sha384,
@@ -316,6 +328,10 @@ site Attributes:
   
    installdir:  The local directory name used to hold the node deployment packages(obsoleted).
   
+   freebsdimportpolicy:  Absolute path of the protected administrator JSON policy
+                for FreeBSD repository imports. It pins the native pkg tool,
+                approved release trees and supplemental repository trust.
+
    installloc:  The location from which the service nodes should mount the 
                 deployment packages in the format hostname:/path.  If hostname is
                 omitted, it defaults to the management node. The path must
@@ -414,6 +430,12 @@ site Attributes:
                 give stable output. You can increase the timeout value by specifying 
                 '--min-rtt-timeout 1s'. xCAT will append the options defined here to 
                 the nmap command.
+
+   ntpbackend:  The NTP daemon used by makentp and the setupntp postscript. Valid
+                values are auto, chrony, and ntpd. The default is auto. In auto
+                mode, xCAT uses chrony on distributions that ship it and ntpd on
+                older ones such as EL6 and SLES 12. If the selected daemon is not
+                installed, xCAT uses the other one and reports the change.
   
    ntpservers:  A comma delimited list of NTP servers for the service node and
                 the compute node to sync with. The keyword <xcatmaster> means that
@@ -523,7 +545,8 @@ site Attributes:
    xcatsslversion:  Administrator override for the SSL_version option xcatd
                     passes to IO::Socket::SSL->start_SSL(). By default, this
                     value is empty and xcatd uses xcattlspolicy. For more
-                    detail, see https://metacpan.org/pod/IO::Socket::SSL
+                    detail, see
+                    https://metacpan.org/pod/IO::Socket::SSL
 
    xcatsslciphers:  Administrator override for the TLS cipher list used by
                     xcatd. By default, this value is empty and xcatd uses the

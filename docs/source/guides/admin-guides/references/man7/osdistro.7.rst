@@ -1,4 +1,3 @@
-
 ##########
 osdistro.7
 ##########
@@ -77,7 +76,7 @@ osdistro Attributes:
 
 \ **type**\  (osdistro.type)
  
- Linux or AIX
+ Operating system family, such as Linux, FreeBSD, Windows, or AIX.
  
 
 
@@ -88,4 +87,3 @@ SEE ALSO
 
 
 \ **mkdef(1)**\ , \ **chdef(1)**\ , \ **lsdef(1)**\ , \ **rmdef(1)**\ 
-

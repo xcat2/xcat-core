@@ -1699,6 +1699,11 @@ IPoIB policy reports an error and retains its previous reservations while
 Ethernet boot reservations continue to update. A port GUID alone is not the
 IPoIB client identifier.
 
+Ubuntu 20.04 and 22.04 management or service nodes cannot manage external ISC
+IPoIB reservations. Their OMAPI client cannot reliably verify absent hosts.
+``makedhcp`` rejects these updates before changing reservations. Use local ISC
+or Kea on those systems. Ethernet reservations keep their existing handling.
+
 After changing a reserved address, interface name or hardware UUID, rerun
 ``makedhcp node01`` before applying the node policy. It replaces the node's
 previous IPoIB reservations, including interfaces removed from ``nics``.
@@ -1967,8 +1972,9 @@ partitioning. Completion requires xCAT to select disk boot and acknowledge the
 status update. A first-boot service reports that the installed system started.
 It runs in the background, logs errors through syslog, and leaves reporting
 pending after a timeout so that the next boot can retry.
-The controller handles up to 64 FreeBSD status requests concurrently, with one
-worker per node. The installer retries acknowledgments for about 15 minutes.
+The install monitor shares its 64-handler limit across all nodes. It handles
+one request per node at a time and queues later connections from that node.
+The installer retries acknowledgments for about 15 minutes.
 It does not reboot after installation without a completion acknowledgment.
 
 Postscripts and boot reporting
@@ -1980,6 +1986,10 @@ selected ``postscripts`` and ``postbootscripts``. Later boots run only
 ``postbootscripts``, when the sealed ``site.runbootscripts`` policy enables
 them. Changing a source script does not change a retained run. Use
 ``updatenode`` to select a new operation on an installed node.
+
+With the stock ``NODESETSTATE=$NSETSTATE`` template line, first-boot scripts
+receive ``NODESETSTATE=install``. Later boots and ``updatenode`` operations
+receive ``NODESETSTATE=boot``.
 
 Sealing includes the entire ``<installdir>/postscripts`` tree, including files
 that the current selection does not execute. The sealed source has these

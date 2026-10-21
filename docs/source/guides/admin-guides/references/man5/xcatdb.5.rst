@@ -1,4 +1,3 @@
-
 ########
 xcatdb.5
 ########
@@ -435,6 +434,12 @@ firmware(5)|firmware.5
  
 
 
+freebsdimage(5)|freebsdimage.5
+
+ Information about a FreeBSD image for scripted stateful installation.
+
+
+
 hosts(5)|hosts.5
  
  IP addresses and hostnames of nodes.  This info is optional and is only used to populate /etc/hosts and DNS via makehosts and makedns.  Using regular expressions in this table can be a quick way to populate /etc/hosts.
@@ -821,4 +826,3 @@ SEE ALSO
 
 
 \ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ , \ **lsdef(1)**\ , \ **mkdef(1)**\ , \ **chdef(1)**\ , \ **rmdef(1)**\ 
-

@@ -105,6 +105,9 @@ The format of the input file is described here: <https://xcat-docs.readthedocs.i
 
 On Linux B<rsync> always uses ssh remoteshell. On AIX, B<ssh> or B<rsh> is used depending on the B<site.useSSHonAIX> table attribute.
 
+File synchronization reports failure if any directory creation or copy fails,
+even when a later copy succeeds. This applies to Linux, AIX and FreeBSD nodes.
+
 =item B<-h>|B<--help>
 
 Displays usage information.
