@@ -5,7 +5,7 @@ os:Linux
 cmd:getenforce
 check:rc==0
 check:output=~^Enforcing$
-cmd:sh -c 'date "+%x %T" > /tmp/selinux_cn_diskful.start'
+cmd:sh -c 'date "+%H:%M:%S" > /tmp/selinux_cn_diskful.start'
 check:rc==0
 cmd:chdef -t node -o $$CN selinux=enforcing
 check:rc==0

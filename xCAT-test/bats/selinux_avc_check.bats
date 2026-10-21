@@ -76,3 +76,10 @@ SSH_RECORD='type=AVC msg=audit(1759000002.333:444): avc:  denied  { siginh } for
     run "$(repo_path 'xCAT-test/autotest/testcase/commoncmd/selinux_avc_check.sh')"
     [ "$status" -eq 2 ]
 }
+
+@test "a window with no audit record is a usage error, not a clean answer" {
+    run selinux_avc_report "01/01/1970 00:00:00"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"SEARCHED=0"* ]]
+    [[ "$output" == *"bare HH:MM:SS"* ]]
+}

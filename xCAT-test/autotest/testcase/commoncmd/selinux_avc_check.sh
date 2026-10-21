@@ -14,6 +14,12 @@
 # no audit records, so --input-logs is not optional: without it the search returns 0
 # records and every answer is "clean".
 #
+# audit 4.0.3 takes a bare HH:MM:SS and rejects the output of date "+%x %T". It prints
+# nothing and exits 0, so a window that holds records reads as empty. Measured on an
+# enforcing el10 node: "-ts 10/21/2026 20:59:08" returned 0 records, "-ts 20:59:08"
+# returned 22 and "-ts today" returned 4006. A window with no audit record at all is not a
+# credible answer on a running node, so SEARCHED=0 is a usage error and not a clean result.
+#
 # Usage:
 #   selinux_avc_check.sh <ausearch -ts value>   search and report
 #   selinux_avc_check.sh --classify             read raw records on stdin
@@ -37,6 +43,11 @@ selinux_avc_report()
     [ -n "$since" ] || return 2
 
     searched=$(ausearch --input-logs -ts "$since" --raw 2>/dev/null | grep -c '^type=')
+    if [ "$searched" -eq 0 ]; then
+        echo "SEARCHED=0 AVC=0 XCAT_AVC=0"
+        echo "no audit record since '$since'. ausearch takes a bare HH:MM:SS." >&2
+        return 2
+    fi
     denials=$(ausearch --input-logs -m AVC,USER_AVC -ts "$since" --raw 2>/dev/null)
     all=$(printf '%s\n' "$denials" | grep -c '^type=')
     kept=$(printf '%s\n' "$denials" | selinux_avc_classify)
