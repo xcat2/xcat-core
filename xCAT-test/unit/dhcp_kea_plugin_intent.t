@@ -765,6 +765,28 @@ foreach my $case (@sysconfig_policy_cases) {
             '2001:db8:7309::1',
             'service-node DHCPv6 advertises its compute-facing IPv6 DNS address'
         );
+
+        # The networks table carries an IPv6 mask as a prefix length, and
+        # makenetworks and the osimage templates write it with the leading
+        # slash. Both forms name the same prefix and both have to be accepted,
+        # or makedhcp refuses the network it was given.
+        foreach my $mask ( '64', '/64' ) {
+            my %network6_mask = ( %network6_entry, mask => $mask );
+            my $masked = xCAT_plugin::dhcp::kea_subnet6_intent(
+                \%network6_mask, 'eth0', 0, 10002
+            );
+            ok( !$masked->{error}, "mask '$mask' is accepted" )
+              or diag( $masked->{error} );
+            is( $masked->{subnet}, '2001:db8:7309::/64',
+                "mask '$mask' yields the /64 subnet" );
+        }
+
+        my %network6_noprefix = ( %network6_entry, mask => '' );
+        my $noprefix = xCAT_plugin::dhcp::kea_subnet6_intent(
+            \%network6_noprefix, 'eth0', 0, 10003
+        );
+        like( ( $noprefix->{error} || '' ), qr/must include a prefix length/,
+            'a network with no prefix length is refused by name' );
     }
 }
 
