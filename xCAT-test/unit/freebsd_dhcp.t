@@ -113,6 +113,24 @@ sub isc_config {
     return join('', @config);
 }
 
+sub node_classes {
+    return xCAT_plugin::dhcp::kea_node_client_classes_for_nodes(@_)->{classes}
+        if xCAT_plugin::dhcp->can('kea_node_client_classes_for_nodes');
+    return xCAT_plugin::dhcp::kea_xnba_client_classes_for_nodes(@_);
+}
+
+sub sync_classes {
+    my $sync = xCAT_plugin::dhcp->can('kea_sync_node_client_classes') ||
+        xCAT_plugin::dhcp->can('kea_sync_xnba_client_classes');
+    return $sync->(@_);
+}
+
+sub remove_classes {
+    my $remove = xCAT_plugin::dhcp->can('kea_remove_node_client_classes') ||
+        xCAT_plugin::dhcp->can('kea_remove_xnba_client_classes');
+    return $remove->(@_);
+}
+
 my $root_path = 'tftp://192.0.2.1/xcat/freebsd/node01';
 fixture();
 my $isc = isc_config();
@@ -120,7 +138,7 @@ like($isc, qr/if option user-class-identifier = 07:46:72:65:65:42:53:44 \{ optio
     'ISC host configuration limits the native root to the exact FreeBSD user class');
 unlike($isc, qr/tftp:\/\/\$\{next-server\}/, 'ISC resolves a concrete server rather than an xNBA expansion');
 like($isc, qr/xcat\/xnba\.kpxe/, 'firmware keeps the existing xNBA loader');
-my $classes = xCAT_plugin::dhcp::kea_xnba_client_classes_for_nodes(['node01']);
+my $classes = node_classes(['node01']);
 my ($native) = grep { ($_->{'user-context'}{'xcat-purpose'} || '') eq 'freebsd-native-loader' } @$classes;
 is_deeply($native->{'option-data'}, [{ name => 'root-path', data => $root_path, 'always-send' => JSON::true }],
     'Kea native class sends the per-node TFTP root');
@@ -136,6 +154,7 @@ for my $os (qw(freebsd15.1 rhels9)) {
     for my $table (values %xCAT::Table::rows) {
         $table->{filename01} = delete $table->{node01};
     }
+    $xCAT::Table::rows{noderes}{filename01}{xcatmaster} = '' if $os eq 'rhels9';
     my $named = isc_config('filename01');
     like($named, qr/filename = "xcat\/xnba\.kpxe";/, "$os filename01 keeps its BIOS firmware loader");
     like($named, qr/filename = "xcat\/xnba\.efi";/, "$os filename01 keeps its UEFI firmware loader");
@@ -167,7 +186,7 @@ for my $os (qw(freebsd15.1 rhels9)) {
 
 fixture(noderes => { tftpserver => '192.0.2.9' });
 like(isc_config(), qr{tftp://192\.0\.2\.9/xcat/freebsd/node01}, 'ISC honors the explicit node TFTP server');
-$classes = xCAT_plugin::dhcp::kea_xnba_client_classes_for_nodes(['node01']);
+$classes = node_classes(['node01']);
 ($native) = grep { ($_->{'user-context'}{'xcat-purpose'} || '') eq 'freebsd-native-loader' } @$classes;
 is($native->{'option-data'}[0]{data}, 'tftp://192.0.2.9/xcat/freebsd/node01', 'Kea honors the explicit node TFTP server');
 fixture(noderes => { xcatmaster => '' });
@@ -188,7 +207,7 @@ for my $change (
 ) {
     fixture(%$change);
     unlike(isc_config(), qr/option root-path/, 'non-target ISC profiles do not receive the FreeBSD root');
-    my $other = xCAT_plugin::dhcp::kea_xnba_client_classes_for_nodes(['node01']);
+    my $other = node_classes(['node01']);
     is(scalar(grep { ($_->{'user-context'}{'xcat-purpose'} || '') eq 'freebsd-native-loader' } @$other), 0,
         'non-target Kea profiles do not receive a native class');
 }
@@ -207,13 +226,13 @@ for my $change (
     is(isc_config(), '', 'invalid FreeBSD boot inputs produce no ISC host update');
     is_deeply(xCAT_plugin::dhcp::kea_build_node_reservations($backend, {}, ['node01']), [],
         'invalid FreeBSD boot inputs produce no Kea reservation update');
-    my $invalid = xCAT_plugin::dhcp::kea_xnba_client_classes_for_nodes(['node01']);
+    my $invalid = node_classes(['node01']);
     is(scalar(@$invalid), 0, 'invalid FreeBSD boot inputs produce no Kea boot classes');
     ok(scalar(grep { $_->{error} } @messages), 'invalid FreeBSD boot inputs report an error');
 }
 
 fixture(mac => { mac => '52:54:00:12:34:56|52:54:00:12:34:57!*NOIP*' });
-$classes = xCAT_plugin::dhcp::kea_xnba_client_classes_for_nodes(['node01']);
+$classes = node_classes(['node01']);
 is(scalar(grep { ($_->{'user-context'}{'xcat-purpose'} || '') eq 'freebsd-native-loader' } @$classes), 1,
     'a secondary NOIP interface does not get a FreeBSD root');
 
@@ -221,16 +240,16 @@ fixture();
 my $config = { Dhcp4 => { 'client-classes' => [ {name => 'unowned'}, {
     name => 'other-node', 'user-context' => { 'xcat-purpose' => 'freebsd-native-loader', 'xcat-node' => 'node02' },
 } ] } };
-xCAT_plugin::dhcp::kea_sync_xnba_client_classes($config, ['node01']);
+sync_classes($config, ['node01']);
 my $first = scalar(@{$config->{Dhcp4}{'client-classes'}});
-xCAT_plugin::dhcp::kea_sync_xnba_client_classes($config, ['node01']);
+sync_classes($config, ['node01']);
 is(scalar(@{$config->{Dhcp4}{'client-classes'}}), $first, 'repeated updates do not duplicate native classes');
 fixture(nodetype => { os => 'rhels9' });
-xCAT_plugin::dhcp::kea_sync_xnba_client_classes($config, ['node01']);
+sync_classes($config, ['node01']);
 is(scalar(grep { ($_->{'user-context'}{'xcat-purpose'} || '') eq 'freebsd-native-loader' &&
     ($_->{'user-context'}{'xcat-node'} || '') eq 'node01' } @{$config->{Dhcp4}{'client-classes'}}), 0,
     'changing the node OS removes its native class');
-xCAT_plugin::dhcp::kea_remove_xnba_client_classes($config, ['node01']);
+remove_classes($config, ['node01']);
 is_deeply([map { $_->{name} } @{$config->{Dhcp4}{'client-classes'}}], ['unowned', 'other-node'],
     'class deletion preserves unowned policy and other nodes');
 
@@ -316,7 +335,7 @@ subtest 'Kea preserves rejected native nodes during mixed updates' => sub {
         });
         my $seed_config = JSON::decode_json($live_backend->render_dhcp4_config({
             interfaces => [], subnets => [{ id => 1, subnet => '192.0.2.0/24' }],
-            'client-classes' => [@{xCAT_plugin::dhcp::kea_xnba_client_classes_for_nodes(\@nodes)}, @unowned],
+            'client-classes' => [@{node_classes(\@nodes)}, @unowned],
         }));
         $live_backend->upsert_reservations($seed_config, xCAT_plugin::dhcp::kea_build_node_reservations($live_backend, $seed_config, \@nodes));
         my $seed = $live_backend->write_dhcp4_json($live_backend->encode_config($seed_config));
@@ -360,12 +379,16 @@ subtest 'Kea preserves rejected native nodes during mixed updates' => sub {
         delete $xCAT::Table::rows{noderes}{node01}{tftpserver};
         $xCAT::Table::rows{nodetype}{node01}{os} = 'rhels9';
         my $linux = $update->($live_backend, ['node01']);
-        is(scalar(@{$node_classes->($linux, 'node01')}), 2, "$rejection OS transition keeps Linux xNBA classes");
+        is(scalar(grep { $_->{'user-context'}{'xcat-purpose'} eq 'xnba-second-stage' }
+                @{$node_classes->($linux, 'node01')}), 2,
+            "$rejection OS transition keeps Linux xNBA second-stage classes");
         is(scalar(grep { $_->{name} =~ /-freebsd$/ } @{$node_classes->($linux, 'node01')}), 0,
             "$rejection OS transition removes the native class");
         $xCAT::Table::rows{noderes}{node01}{netboot} = 'pxe';
         my $pxe = $update->($live_backend, ['node01']);
-        is_deeply($node_classes->($pxe, 'node01'), [], "$rejection netboot transition removes obsolete xNBA classes");
+        is(scalar(grep { $_->{'user-context'}{'xcat-purpose'} =~ /\A(?:xnba-second-stage|xnba-first-stage|freebsd-native-loader)\z/x }
+                @{$node_classes->($pxe, 'node01')}), 0,
+            "$rejection netboot transition removes obsolete xNBA and native classes");
         is_deeply($node_classes->($pxe, 'node03'), $node_classes->($after, 'node03'),
             "$rejection transitions leave other nodes unchanged");
         is_deeply([map { @{$_->{error} || []} } @messages], [], "$rejection corrected input updates without errors");

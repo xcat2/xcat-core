@@ -105,10 +105,11 @@ export ENABLESSHBETWEENNODES
 cat <<'PAYLOAD'
 private fixture value
 
-  indented payload  
+  indented payload
 PAYLOAD
 
 TEMPLATE
+$template =~ s/^  indented payload$/  indented payload\x20\x20/m;
 
 our $expected = <<'EXPECTED';
 #!/bin/sh
@@ -154,10 +155,11 @@ bootlast
 cat <<'PAYLOAD'
 private fixture value
 
-  indented payload  
+  indented payload
 PAYLOAD
 
 EXPECTED
+$expected =~ s/^  indented payload$/  indented payload\x20\x20/m;
 
 sub write_file {
     my ($path, $contents) = @_;
@@ -189,7 +191,8 @@ sub inventory {
 sub fixture {
     my ($use_custom) = @_;
     $root = "$temporary/case-" . ++$sequence;
-    make_path("$root/install/postscripts", "$root/tftp", "$root/stock/share/xcat/mypostscript");
+    make_path("$root/install/postscripts", "$root/tftp/xcat/xnba/nodes", "$root/stock/share/xcat/mypostscript");
+    write_file("$root/tftp/xcat/xnba/nodes/node1", "#!gpxe\n#install\n");
     $custom = "$root/install/postscripts/mypostscript.tmpl";
     $stock = "$root/stock/share/xcat/mypostscript/mypostscript.tmpl";
     my $stock_template = $template;
@@ -198,6 +201,7 @@ sub fixture {
     write_file($custom, $template) if $use_custom;
     {
         no warnings 'once';
+        $ENV{XCATROOT} = "$root/stock";
         $::XCATROOT = "$root/stock";
         %::XCATSITEVALS = (installdir => "$root/install", tftpdir => "$root/tftp",
             master => 'master', sshbetweennodes => 'NOGROUPS');
@@ -208,7 +212,7 @@ sub fixture {
     }
     %xCAT::Table::rows = (map { $_ => [] } qw(site networks routes linuximage servicenode cfgmgt zone kit kitcomponent));
     $xCAT::Table::rows{nodelist} = [{node => 'node1', groups => 'compute'}];
-    $xCAT::Table::rows{noderes} = [{node => 'node1', netboot => 'ipxe', xcatmaster => 'master'}];
+    $xCAT::Table::rows{noderes} = [{node => 'node1', netboot => 'xnba', xcatmaster => 'master', tftpdir => "$root/tftp"}];
     $xCAT::Table::rows{nodetype} = [{node => 'node1', os => 'freebsd15.1', arch => 'x86_64',
         profile => 'compute', provmethod => 'image1'}];
     $xCAT::Table::rows{osimage} = [{imagename => 'image1', provmethod => 'install',

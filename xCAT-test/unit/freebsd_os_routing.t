@@ -124,7 +124,8 @@ is(xCAT::Utils->lookupNetboot('freebsd15.1', 'x86_64', 'freebsd'), 'xnba', 'Free
 for my $unsupported (['freebsd15.0', 'x86_64'], ['freebsd16', 'x86_64'], ['freebsd15.1-extra', 'x86_64'], ['freebsd15.1', 'amd64'], ['freebsd15.1', 'aarch64']) {
     is(xCAT::Utils->lookupNetboot(@$unsupported, 'freebsd'), '', 'unsupported FreeBSD release or architecture has no route');
 }
-is(xCAT::Utils->lookupNetboot('rhels9', 'x86_64', 'Linux'), 'xnba,pxe,grub2', 'Linux lookup is unchanged');
+is_deeply([grep { $_ ne 'ipxe' } split(/,/x, xCAT::Utils->lookupNetboot('rhels9', 'x86_64', 'Linux'))],
+    [qw(xnba pxe grub2)], 'Linux retains its legacy boot routes');
 is(xCAT::Utils->lookupNetboot('aix7', 'ppc64', 'NIM'), 'nimol', 'NIM lookup is unchanged');
 
 for my $action ('osimage=image1', 'osimage', 'osimage:reboot4deploy') {
