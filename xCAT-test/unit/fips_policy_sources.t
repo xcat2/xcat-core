@@ -112,6 +112,17 @@ for my $case (
     ['a library with two policy blocks', sub {
             write_binary("$root/$libraries[0]", $generated[0] . $generated[0]) },
         qr/\Q$libraries[0]\E must contain one FIPS policy block/],
+    ['a library with an extra begin marker', sub {
+            write_binary("$root/$libraries[0]",
+                "# BEGIN generated FIPS policy: build-utils/sync-fips-policy --write\n" . $generated[0]) },
+        qr/\Q$libraries[0]\E must contain one FIPS policy block/],
+    ['a library with an extra end marker', sub {
+            write_binary("$root/$libraries[0]", $generated[0] . "# END generated FIPS policy\n") },
+        qr/\Q$libraries[0]\E must contain one FIPS policy block/],
+    ['a library with reversed policy markers', sub {
+            write_binary("$root/$libraries[0]", "# END generated FIPS policy\n"
+                . "# BEGIN generated FIPS policy: build-utils/sync-fips-policy --write\n") },
+        qr/\Q$libraries[0]\E must contain one FIPS policy block/],
     ['a library that is a symbolic link', sub {
             write_binary("$root/$libraries[0]", $generated[0]);
             rename("$root/$libraries[0]", "$root/$libraries[0]-real") or die "rename: $!";
@@ -132,6 +143,20 @@ for my $case (
 
 unlink "$root/$libraries[0]" or die "unlink link: $!";
 rename("$root/$libraries[0]-real", "$root/$libraries[0]") or die "restore: $!";
+
+for my $mode (qw(check write)) {
+    write_binary("$root/$source", $policy);
+    write_binary("$root/$libraries[0]", $generated[0]);
+    write_binary("$root/$libraries[1]", "#!/bin/sh\n");
+    my @before = map { scalar read_binary("$root/$_") } @libraries;
+    my $answer = eval { sync_fips_policy(root => $root, mode => $mode) };
+    is($answer, undef, "$mode rejects an invalid second library");
+    like($@, qr/\Q$libraries[1]\E must contain one FIPS policy block/,
+        "the $mode error identifies the second library");
+    is_deeply([map { scalar read_binary("$root/$_") } @libraries], \@before,
+        "$mode leaves the stale first library untouched when the second is invalid");
+}
+
 for my $mode ('', 'Write', 'check ', 'rewrite') {
     my $answer = eval { sync_fips_policy(root => $root, mode => $mode) };
     is($answer, undef, "mode '$mode' is rejected");
