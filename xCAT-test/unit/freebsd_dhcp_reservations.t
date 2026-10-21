@@ -177,6 +177,7 @@ is(scalar @{ $backend->delete_reservations($config, $owner) }, 1, 'Kea deletes b
         'live Kea deletion uses the complete client identifier');
 }
 
+
 {
     no warnings qw(once redefine);
     my $directory = tempdir(CLEANUP => 1);
@@ -316,6 +317,35 @@ is(scalar @{ $backend->delete_reservations($config, $owner) }, 1, 'Kea deletes b
     $hosts = xCAT_plugin::dhcp::kea_build_node_reservations($backend, $cfg, ['compute'], \@deleted);
     is(scalar(@deleted), 0, 'Kea upsert does not pre-delete identities that it will replace itself');
     $backend->upsert_reservations($cfg, $hosts);
+
+    subtest 'node updates retain numeric subnet IDs in live Kea payloads' => sub {
+        plan skip_all => 'JSON::XS is not installed' unless eval { require JSON::XS; 1; };
+        my $json = JSON::XS->new->canonical;
+        my @payloads;
+        my $live = xCAT::DHCP::Backend::Kea->new(kea_version => '2.4.1',
+            control_agent_handler => sub {
+                push @payloads, $json->encode($_[0]);
+                return { ok => 1 };
+            });
+        my $current = $json->decode('{"Dhcp4":{"subnet4":[' .
+            '{"id":17,"subnet":"192.0.2.0/24"},{"id":18,"subnet":"198.51.100.0/24"}]}}');
+        my $old = xCAT_plugin::dhcp::_kea_ipoib_reservations($live, $current, 'compute',
+            [{ %$entry, client_id => 'ff:00:00:00:09:' . $duid, address => '192.0.2.11' }]);
+        $live->upsert_reservations($current, $old);
+        $current = $json->decode($json->encode($current));
+        my @removed;
+        my $planned = xCAT_plugin::dhcp::kea_build_node_reservations($live, $current, ['compute'], \@removed);
+        is(scalar(@removed), 1, 'the replaced client identifier has a live deletion');
+        is(scalar(@$planned), 2, 'the node plan includes Ethernet and IPoIB reservations');
+        ok($live->live_delete_reservations(\@removed)->{ok}, 'live deletion succeeds');
+        ok($live->live_upsert_reservations($planned)->{ok}, 'live replacement succeeds');
+        is(scalar(@payloads), 5, 'deletion and both replacements reach the control-agent boundary');
+        for my $payload (@payloads) {
+            like($payload, qr/"subnet-id":(?:17|18)(?=[,}])/,
+                'the live wire payload encodes an integer subnet identifier');
+        }
+    };
+
     my @previous;
     xCAT_plugin::dhcp::_isc_ipoib_update('compute', [$entry], \@previous);
     xCAT_plugin::dhcp::_isc_ipoib_update('old-name', [{ %$entry, hostname => 'old-name-xcat-ipoib-ib0' }], \@previous);
