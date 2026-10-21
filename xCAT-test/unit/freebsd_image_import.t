@@ -122,6 +122,23 @@ subtest 'automatic selection requires a known pkgbase media contract' => sub {
     ok(!$invalid && $@, 'unknown selection capabilities are rejected');
 };
 
+subtest 'OS disk reporting is a verified media capability' => sub {
+    my ($source, $manifest) = fixture('xcat-mfsbsd-2');
+    $manifest->{install_contract} = 'xcat-freebsd-install-3';
+    $manifest->{disk_record_contract} = 'xcat-freebsd-os-disks-1';
+    write_manifest($source, $manifest);
+    my $media = eval { xCAT::FreeBSDImage::inspect_media($source); };
+    ok($media, 'pkgbase media advertises disk identity reporting');
+    is($media && $media->{disk_record_contract}, 'xcat-freebsd-os-disks-1',
+        'verified disk record capability reaches preparation');
+    for my $unsupported ('unknown', undef, [], {}) {
+        $manifest->{disk_record_contract} = $unsupported;
+        write_manifest($source, $manifest);
+        my $invalid = eval { xCAT::FreeBSDImage::inspect_media($source); };
+        ok(!$invalid && $@, 'invalid disk record capability is rejected');
+    }
+};
+
 sub replace_runtime {
     my ($root, $manifest, $content) = @_;
     write_file("$root/xcat/runtime.tsv", $content);

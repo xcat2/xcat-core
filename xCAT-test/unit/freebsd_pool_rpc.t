@@ -65,6 +65,7 @@ sub dispatch {
 }
 
 sub reset_fixture {
+    my $os_policy = shift;
     fixture(1);
     $shared_tftp = 0;
     $xCAT::Table::rows{noderes} = [{node => 'node1', servicenode => 'sn1,sn2'}];
@@ -76,9 +77,11 @@ sub reset_fixture {
     my %generations;
     for my $server (@{$topology->{servers}}) {
         my $generation = xCAT::FreeBSDInstall::prepare('node1', 'a' x 64,
-            directory => "$directory/$server", service_pool => {%$metadata, server => $server});
+            directory => "$directory/$server", service_pool => {%$metadata, server => $server},
+            $os_policy ? (os_policy => $os_policy) : ());
         xCAT::FreeBSDPool::request('node1', 'register', {epoch => $metadata->{epoch}, server => $server,
-            generation => $generation, fingerprint => 'b' x 64, master => $server}, \&dispatch, $topology);
+            generation => $generation, fingerprint => 'b' x 64, master => $server,
+            $os_policy ? (os_policy => $os_policy) : ()}, \&dispatch, $topology);
         $generations{$server} = $generation;
     }
     return ($metadata, \%generations, $topology);
@@ -118,6 +121,103 @@ subtest 'public RPC and local transition bind the same winner' => sub {
     is(xCAT::FreeBSDPool::request('node1', 'inspect', {}, \&dispatch)->{phase},
         'booted', 'enact leaves the installed ownership record unchanged');
     return;
+};
+
+subtest 'disk records cross the RPC boundary before authorization and survive a new owner' => sub {
+    my $policy = {filesystem => 'ufs', target_disk => 'auto'};
+    my ($metadata, $generations, $topology);
+    my $ok = eval { ($metadata, $generations, $topology) = reset_fixture($policy); 1; };
+    ok($ok, 'disk-aware service nodes register through the plugin') or do { diag($@); return; };
+    my $server = '192.0.2.11';
+    $host = $server;
+    my $message = 'freebsd-install-v2 ' . $generations->{$server} . ' ' . ('c' x 32) . " begin vtbd0\@OS_SERIAL\n";
+    my $actions = 0;
+    my $action = sub {
+        ++$actions;
+        my $central = xCAT::FreeBSDPool::request('node1', 'inspect', {}, \&dispatch);
+        is_deeply($central->{os_disks}, $_[1]{os_disks}, 'coordinator and owner saved the same record before the action');
+        return;
+    };
+    rejected(sub { xCAT::FreeBSDInstall::transition('node1', $message, $action,
+        directory => "$directory/$server", dispatch => sub { dispatch(shift); return {}; }); },
+        qr/Missing[ ]or[ ]ambiguous/x, 'lost reply after the coordinator saved disk identities');
+    is($actions, 0, 'lost acknowledgement cannot authorize writes');
+    my $record = xCAT::FreeBSDPool::request('node1', 'inspect', {}, \&dispatch)->{os_disks};
+    is($record->{layout}{target_disk_ident}, 'OS_SERIAL', 'coordinator retained the serial despite the lost reply');
+    like(xCAT::FreeBSDInstall::transition('node1', $message, $action,
+        directory => "$directory/$server", dispatch => \&dispatch), qr/begin[ ]ok/x, 'same claim recovers');
+    is($actions, 1, 'recovery authorizes once');
+    status($server, $generations->{$server}, 'complete');
+    xCAT::FreeBSDPool::preparation('node1', 'offline', \&dispatch, $topology);
+    my $next = xCAT::FreeBSDPool::preparation('node1', 'osimage=freebsd', \&dispatch, $topology);
+    my $retained = xCAT::FreeBSDPool::request('node1', 'inspect', {}, \&dispatch)->{os_disks};
+    is_deeply($retained, $record, 'cancellation and new epoch retain the record');
+    $server = '192.0.2.12';
+    $host = $server;
+    my $generation = xCAT::FreeBSDInstall::prepare('node1', 'd' x 64,
+        directory => "$directory/$server", service_pool => {%$next, server => $server},
+        previous_os_disks => $retained, os_policy => $retained->{layout});
+    xCAT::FreeBSDPool::request('node1', 'register', {epoch => $next->{epoch}, server => $server,
+        generation => $generation, fingerprint => 'e' x 64, master => $server,
+        os_policy => $retained->{layout}}, \&dispatch, $topology);
+    my $reply = xCAT::FreeBSDInstall::transition('node1',
+        'freebsd-install-v2 ' . $generation . ' ' . ('f' x 32) . " begin vtbd0\@OS_SERIAL\n",
+        $action, directory => "$directory/$server", dispatch => \&dispatch);
+    like($reply, qr/begin[ ]ok/x, 'new service node can reinstall the retained member');
+    is(xCAT::FreeBSDPool::request('node1', 'inspect', {}, \&dispatch)->{owner}, $server,
+        'coordinator records the new owner');
+};
+
+subtest 'one explicit pool installation refreshes every member after a scope change' => sub {
+    my $policy = {filesystem => 'ufs', target_disk => 'auto'};
+    my ($metadata, $generations, $topology);
+    my $ok = eval { ($metadata, $generations, $topology) = reset_fixture($policy); 1; };
+    ok($ok, 'disk-aware pool can prepare') or return;
+    my $first = '192.0.2.11';
+    $host = $first;
+    xCAT::FreeBSDInstall::transition('node1',
+        'freebsd-install-v2 ' . $generations->{$first} . ' ' . ('c' x 32) . " begin vtbd0\@OS_SERIAL\n",
+        sub { return; }, directory => "$directory/$first", dispatch => \&dispatch);
+    status($first, $generations->{$first}, 'complete');
+    my $old = xCAT::FreeBSDPool::request('node1', 'inspect', {}, \&dispatch)->{os_disks};
+    xCAT::FreeBSDPool::preparation('node1', 'offline', \&dispatch, $topology);
+    my $explicit = xCAT::FreeBSDPool::preparation('node1', 'osimage=freebsd', \&dispatch, $topology);
+    for my $server (@{$topology->{servers}}) {
+        xCAT::FreeBSDInstall::cancel('node1', directory => "$directory/$server");
+        my $generation = xCAT::FreeBSDInstall::prepare('node1', 'd' x 64,
+            directory => "$directory/$server", service_pool => {%$explicit, server => $server},
+            previous_os_disks => $old, os_policy => $old->{layout}, os_disk_rebind => 1);
+        xCAT::FreeBSDPool::request('node1', 'register', {epoch => $explicit->{epoch}, server => $server,
+            generation => $generation, fingerprint => 'e' x 64, master => $server,
+            os_policy => $old->{layout}}, \&dispatch, $topology);
+        $generations->{$server} = $generation;
+        ok(!exists(xCAT::FreeBSDInstall::state('node1', directory => "$directory/$server")->{os_disks}),
+            'explicit migration preparation discards each local stale record');
+    }
+    $host = $first;
+    xCAT::FreeBSDInstall::transition('node1',
+        'freebsd-install-v2 ' . $generations->{$first} . ' ' . ('c' x 32) . " begin vtbd0\@OS_SERIAL\n",
+        sub { return; }, directory => "$directory/$first", dispatch => \&dispatch);
+    my $fresh = xCAT::FreeBSDPool::request('node1', 'inspect', {}, \&dispatch)->{os_disks};
+    isnt($fresh->{generation}, $old->{generation}, 'coordinator has a new authorized record');
+    status($first, $generations->{$first}, 'complete');
+    xCAT::FreeBSDPool::preparation('node1', 'offline', \&dispatch, $topology);
+    my $next = xCAT::FreeBSDPool::preparation('node1', 'osimage=freebsd', \&dispatch, $topology);
+    my $standby = '192.0.2.12';
+    $host = $standby;
+    my $generation = xCAT::FreeBSDInstall::prepare('node1', 'f' x 64,
+        directory => "$directory/$standby", service_pool => {%$next, server => $standby},
+        previous_os_disks => $fresh, os_policy => $fresh->{layout});
+    my $current = xCAT::FreeBSDInstall::state('node1', directory => "$directory/$standby");
+    ok(!exists($current->{os_disk_rebind}), 'standby accepts the record refreshed by the other member');
+    is_deeply($current->{os_disks}, $fresh, 'standby retains the refreshed identities');
+    xCAT::FreeBSDPool::request('node1', 'register', {epoch => $next->{epoch}, server => $standby,
+        generation => $generation, fingerprint => 'f' x 64, master => $standby,
+        os_policy => $fresh->{layout}}, \&dispatch, $topology);
+    like(xCAT::FreeBSDInstall::transition('node1',
+        'freebsd-install-v2 ' . $generation . ' ' . ('c' x 32) . " begin vtbd0\@OS_SERIAL\n",
+        sub { return; }, directory => "$directory/$standby", dispatch => \&dispatch),
+        qr/begin[ ]ok/x, 'standby can own the next installation without a manual store edit');
 };
 
 subtest 'a pool epoch retains its registered local generation' => sub {

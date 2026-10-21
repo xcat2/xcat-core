@@ -129,6 +129,8 @@ sub fixture {
     my $install_contract = shift;
     my $postscript_contract = shift;
     my $network_contract = shift;
+    my $disk_record_contract = shift;
+    my $disk_selection_contract = shift;
     $root = "$temporary/case-" . ++$sequence;
     $xCAT::TableUtils::installroot = "$root/install-files";
     $xCAT::TableUtils::tftpdir = "$root/tftp";
@@ -164,7 +166,7 @@ sub fixture {
             usr/libexec/bsdinstall/script usr/libexec/bsdinstall/pkgbase
             usr/libexec/bsdinstall/umount usr/libexec/flua usr/local/sbin/pkg-static
         );
-        if (($install_contract || '') =~ /\Axcat-freebsd-install-[34]\z/x) {
+        if (($install_contract || '') =~ /\Axcat-freebsd-install-[3456]\z/x) {
             @runtime_paths = map { (split(/\t/x, $_))[1] }
                 grep { /^file\t/x } split(/\n/x, read_file("$FindBin::Bin/../fixtures/freebsd-storage-runtime.tsv"));
         }
@@ -184,6 +186,9 @@ sub fixture {
         (defined($install_contract) ? (install_contract => $install_contract) : ()),
         (defined($postscript_contract) ? (postscript_contract => $postscript_contract) : ()),
         (defined($network_contract) ? (network_contract => $network_contract) : ()),
+        (defined($disk_record_contract) ? (disk_record_contract => $disk_record_contract) : ()),
+        (defined($disk_record_contract) || defined($disk_selection_contract)
+            ? (disk_selection_contract => 'xcat-freebsd-disk-selection-1') : ()),
         files => {map { $_ => sha256_hex($files{$_}) } keys %files} }));
     $media = xCAT::FreeBSDImage::import_media("$root/media", $xCAT::TableUtils::installroot);
     $image = "freebsd15.1-x86_64-install-compute-" . substr($media->{digest}, 0, 12);
@@ -413,6 +418,187 @@ subtest 'pkgbase installation publishes a native source-bound package plan' => s
     my $published = sub {
         my $current = xCAT::FreeBSDInstall::state('node1', directory => $state_directory);
         return ($current, read_file("$root/install-files/autoinst/freebsd/node1/$current->{generation}.conf"));
+    };
+    subtest 'public preparation reuses the retained OS identities' => sub {
+        $fresh->('xcat-freebsd-install-3', undef, undef, 'xcat-freebsd-os-disks-1');
+        write_file("$root/node1.disk", "filesystem=ufs\ntarget_disk=auto\nswap_size=0\n");
+        my ($boot, $errors) = install();
+        is_deeply($errors, [], 'automatic installation is prepared');
+        return if @$errors;
+        my ($current) = $published->();
+        is_deeply($current->{os_policy}, {filesystem => 'ufs', target_disk => 'auto'},
+            'media capability binds the automatic policy to the prepared generation');
+        my $ok = eval { xCAT::FreeBSDInstall::transition('node1',
+            'freebsd-install-v2 ' . $current->{generation} . ' ' . ('c' x 32) . " begin vtbd4\@OS_SERIAL\n",
+            sub { return; }, directory => $state_directory); 1; };
+        ok($ok, 'the prepared policy accepts the native selection') or do { diag($@); return; };
+        my $record = ($published->())[0]{os_disks};
+        xCAT::FreeBSDInstall::cancel('node1', directory => $state_directory);
+        write_file("$root/node1.disk", "filesystem=ufs\ntarget_disk=auto\nswap_size=0\ndisk_action=erase\n");
+        ($boot, $errors) = install();
+        is_deeply($errors, [], 'automatic erase compiles with the controller record');
+        return if @$errors;
+        my ($reinstall, $content) = $published->();
+        like($content, qr/^target_disk=vtbd4$/mx, 'published policy names the previous OS disk');
+        like($content, qr/^target_disk_ident=OS_SERIAL$/mx, 'published policy pins the previous serial');
+        is_deeply($reinstall->{os_policy}, $record->{layout}, 'new authorization requires the recorded identity');
+        xCAT::FreeBSDInstall::cancel('node1', directory => $state_directory);
+        $xCAT::Table::rows{noderes}{node1}{servicenode} = 'sn';
+        $state_directory = "$root/new-standby-state";
+        my $metadata = {epoch => 'a' x 32, coordinator => '198.51.100.1', server => '192.0.2.1'};
+        my @operations;
+        my $pool_params = {};
+        my @responses;
+        my $pool_prepare = sub {
+            @responses = (); $pool_params = {};
+            xCAT_plugin::freebsd::process_request({command => ['mkinstall'], node => ['node1'],
+            bootparams => \$pool_params, _freebsd_pool => [encode_json({node1 => $metadata})]},
+            sub { push @responses, shift; }, sub {
+                my $request = shift;
+                push @operations, [$request->{arg}[0], decode_json($request->{arg}[1])];
+                return {data => [encode_json({format => 'xcat-freebsd-pool-1', node => 'node1',
+                    operation => $request->{arg}[0], result => {epoch => $metadata->{epoch},
+                        phase => 'prepared', os_disks => $record}})]};
+            });
+            return;
+        };
+        $pool_prepare->();
+        is_deeply(\@responses, [], 'service-node preparation reads the coordinator record');
+        is_deeply([map { $_->[0] } @operations], [qw(inspect register)],
+            'inspection precedes registration through the public producer');
+        is_deeply($operations[-1][1]{os_policy}, $record->{layout}, 'registration binds the concrete disk policy');
+        is_deeply(($published->())[0]{os_disks}, $record, 'local state retains the coordinator record');
+        delete $xCAT::Table::rows{noderes}{node1}{servicenode};
+        ($boot, $errors) = install();
+        like($errors->[0]{node}[0]{error}[0], qr/retained[ ]OS[ ]disk[ ]record/x,
+            'moving from a pool to a fixed owner cannot reuse an automatic erase policy');
+        ok(!exists($boot->{node1}), 'changed scope publishes no automatic boot parameters');
+        write_file("$root/node1.disk", "filesystem=ufs\ntarget_disk=vtbd4\ntarget_disk_ident=OS_SERIAL\nswap_size=0\n");
+        ($boot, $errors) = install();
+        is_deeply($errors, [], 'explicit verified identities permit the owner-scope change');
+        ok(!exists(($published->())[0]{service_pool}), 'explicit preparation adopts the fixed owner scope');
+        ok(!exists(($published->())[0]{os_disks}), 'scope change discards the old local record');
+        my $explicit_generation = ($published->())[0]{generation};
+        (undef, $errors) = install();
+        is_deeply($errors, [], 'identical explicit migration preparation can be repeated');
+        is(($published->())[0]{generation}, $explicit_generation, 'identical migration preparation retains its generation');
+        for my $cancelled (0, 1) {
+            xCAT::FreeBSDInstall::cancel('node1', directory => $state_directory) if $cancelled;
+            for my $erase ('', "disk_action=erase\n") {
+                write_file("$root/node1.disk", "filesystem=ufs\ntarget_disk=auto\nswap_size=0\n" . $erase);
+                ($boot, $errors) = install();
+                like($errors->[0]{node}[0]{error}[0], qr/(?:explicit[ ]OS[ ]disks|retained[ ]OS[ ]disk[ ]record)/x,
+                    'preparation or cancellation alone does not refresh a migrated record');
+                ok(!exists($boot->{node1}), 'unrefreshed migration cannot arm automatic installation');
+            }
+        }
+        write_file("$root/node1.disk", "filesystem=ufs\ntarget_disk=vtbd4\ntarget_disk_ident=OS_SERIAL\nswap_size=0\n");
+        (undef, $errors) = install();
+        is_deeply($errors, [], 'explicit migration can be retried');
+        my $migrated = ($published->())[0];
+        xCAT::FreeBSDInstall::transition('node1',
+            'freebsd-install-v2 ' . $migrated->{generation} . ' ' . ('d' x 32) . " begin vtbd4\@OS_SERIAL\n",
+            sub { return; }, directory => $state_directory);
+        ok(!exists(($published->())[0]{os_disk_rebind}), 'authorization clears the migration restriction');
+        $record = ($published->())[0]{os_disks};
+        xCAT::FreeBSDInstall::cancel('node1', directory => $state_directory);
+        write_file("$root/node1.disk", "filesystem=ufs\ntarget_disk=auto\nswap_size=0\ndisk_action=erase\n");
+        (undef, $errors) = install();
+        is_deeply($errors, [], 'automatic reinstall resumes with the refreshed record');
+        $xCAT::Table::rows{noderes}{node1}{servicenode} = 'sn';
+        for my $old_pool (0, 1) {
+            if ($old_pool) {
+                xCAT::FreeBSDInstall::cancel('node1', directory => $state_directory);
+                xCAT::FreeBSDInstall::prepare('node1', 'b' x 64, directory => $state_directory,
+                    previous_os_disks => $record, os_policy => $record->{layout},
+                    service_pool => {%$metadata, coordinator => '198.51.100.2'});
+            }
+            $pool_prepare->();
+            like($responses[0]{node}[0]{error}[0], qr/retained[ ]OS[ ]disk[ ]record/x,
+                $old_pool ? 'coordinator change rejects automatic record reuse' : 'fixed-to-pool change rejects automatic record reuse');
+            ok(!exists($pool_params->{node1}), 'changed pool scope publishes no automatic boot parameters');
+        }
+        write_file("$root/node1.disk", "filesystem=ufs\ntarget_disk=vtbd4\ntarget_disk_ident=OS_SERIAL\nswap_size=0\n");
+        $metadata->{epoch} = 'b' x 32;
+        $pool_prepare->();
+        is_deeply(\@responses, [], 'explicit pool migration prepares the member');
+        if (@responses) { diag(explain(\@responses)); return; }
+        ok(($published->())[0]{os_disk_rebind}, 'member waits for a fresh coordinator record');
+        write_file("$root/node1.disk", "filesystem=ufs\ntarget_disk=auto\nswap_size=0\ndisk_action=erase\n");
+        $pool_prepare->();
+        like($responses[0]{node}[0]{error}[0], qr/retained[ ]OS[ ]disk[ ]record/x,
+            'unchanged coordinator record cannot clear the pending migration');
+        $record = {%$record, generation => 'f' x 32, attempt => 'e' x 32};
+        $metadata->{epoch} = 'e' x 32;
+        $pool_prepare->();
+        is_deeply(\@responses, [], 'automatic policy accepts the record refreshed by another member');
+        if (@responses) { diag(explain(\@responses)); return; }
+        ok(!exists(($published->())[0]{os_disk_rebind}), 'public preparation clears the standby restriction');
+    };
+    subtest 'failure before authorization permits automatic selection to retry' => sub {
+        for my $capability (undef, 'xcat-freebsd-os-disks-1') {
+            $fresh->('xcat-freebsd-install-3', undef, undef, $capability, 'xcat-freebsd-disk-selection-1');
+            write_file("$root/node1.disk", "filesystem=ufs\ntarget_disk=auto\nswap_size=0\n");
+            my (undef, $errors) = install();
+            is_deeply($errors, [], 'automatic selection is initially prepared');
+            if (@$errors) { diag(explain($errors)); next; }
+            my $generation = ($published->())[0]{generation};
+            xCAT::FreeBSDInstall::transition('node1',
+                'freebsd-install-v1 ' . $generation . ' ' . ('c' x 32) . " failed\n",
+                sub { return; }, directory => $state_directory);
+            xCAT::FreeBSDInstall::cancel('node1', directory => $state_directory);
+            (undef, $errors) = install();
+            is_deeply($errors, [], 'unstarted attempt does not require manual serial assignments');
+            if (@$errors) { diag(explain($errors)); next; }
+            my (undef, $content) = $published->();
+            like($content, qr/^disk_selection=empty$/mx, 'retry retains automatic blank-disk selection');
+        }
+    };
+    subtest 'unrecorded attempts cannot silently start another automatic selection' => sub {
+        $fresh->('xcat-freebsd-install-3', undef, undef, 'xcat-freebsd-os-disks-1');
+        my $generation = xCAT::FreeBSDInstall::prepare('node1', 'a' x 64, directory => $state_directory);
+        xCAT::FreeBSDInstall::transition('node1',
+            'freebsd-install-v1 ' . $generation . ' ' . ('c' x 32) . " begin\n",
+            sub { return; }, directory => $state_directory);
+        xCAT::FreeBSDInstall::cancel('node1', directory => $state_directory);
+        my $explicit = read_file("$root/node1.disk");
+        for my $rearmed (0, 1) {
+            if ($rearmed) {
+                write_file("$root/node1.disk", $explicit);
+                my (undef, $errors) = install();
+                is_deeply($errors, [], 'explicit migration can prepare the verified disks');
+            }
+            write_file("$root/node1.disk", "filesystem=ufs\ntarget_disk=auto\nswap_size=0\n");
+            my ($boot, $errors) = install();
+            like($errors->[0]{node}[0]{error}[0], qr/unrecorded[ ]attempt/x,
+                'known prior installation without a record requires explicit disks');
+            ok(!exists($boot->{node1}), 'no automatic boot parameters are published');
+        }
+    };
+    subtest 'grouped reinstall renders recorded primary and auxiliary roles' => sub {
+        $fresh->('xcat-freebsd-install-6', undef, undef, 'xcat-freebsd-os-disks-1');
+        my $grouped_policy = "filesystem=zfs\nzfs_topology=mirror\nzfs_vdevs=auto:2\nswap_mode=none\nswap_size=0\n"
+            . "zfs_log_vdevs=vtbd2\@LOG\nzfs_cache_vdevs=vtbd3\@CACHE\nzfs_special_vdevs=vtbd4\@SPECIAL0,vtbd5\@SPECIAL1\n";
+        write_file("$root/node1.disk", $grouped_policy);
+        my (undef, $errors) = install();
+        is_deeply($errors, [], 'automatic grouped policy prepares with auxiliary devices');
+        return if @$errors;
+        my ($current) = $published->();
+        my $ok = eval { xCAT::FreeBSDInstall::transition('node1',
+            'freebsd-install-v2 ' . $current->{generation} . ' ' . ('c' x 32) . " begin vtbd0\@OS0,vtbd1\@OS1\n",
+            sub { return; }, directory => $state_directory); 1; };
+        ok($ok, 'grouped selection is retained') or return;
+        xCAT::FreeBSDInstall::cancel('node1', directory => $state_directory);
+        write_file("$root/node1.disk", $grouped_policy . "disk_action=erase\n");
+        (undef, $errors) = install();
+        is_deeply($errors, [], 'grouped automatic reinstall prepares');
+        return if @$errors;
+        my (undef, $content) = $published->();
+        for my $line ('zfs_vdevs=vtbd0@OS0,vtbd1@OS1', 'zfs_log_vdevs=vtbd2@LOG',
+            'zfs_cache_vdevs=vtbd3@CACHE', 'zfs_special_vdevs=vtbd4@SPECIAL0,vtbd5@SPECIAL1', 'disk_action=erase') {
+            like($content, qr/^\Q$line\E$/mx, 'published policy retains its recorded role');
+        }
+        unlike($content, qr/^disk_selection=/mx, 'native reinstall cannot choose another blank disk');
     };
     subtest 'early virtual networking uses the existing adapter inventory' => sub {
         $fresh->('xcat-freebsd-install-3', undef, 'xcat-freebsd-bootstrap-1');

@@ -426,4 +426,26 @@ subtest 'configuration version rosters' => \&config_roster_cases;
 subtest 'configuration reads clear version-specific fields' => \&config_reset_cases;
 subtest 'configuration byte and line bounds' => \&config_byte_cases;
 subtest 'parsed pkgbase configuration cannot start installation' => \&pkgbase_install_refusal;
+subtest 'pkgbase begin reports its resolved primary members' => sub {
+    my $root = fixture();
+    write_file("$root/config", pkgbase_configuration());
+    write_file("$root/bin/nc", <<'SHELL');
+#!/bin/sh
+read -r protocol generation attempt phase members
+printf '%s|%s|%s\n' "$protocol" "$phase" "$members" >> "$FIXTURE_DIR/status-wire"
+printf 'ready\n%s %s %s ok\n' "$protocol" "$generation" "$phase"
+SHELL
+    chmod 0755, "$root/bin/nc";
+    my ($status) = run_runtime($root, 'xcat_read_config "$1" && xcat_status begin && xcat_status complete');
+    is($status, 0, 'native status exchange accepts disk-aware authorization');
+    is(read_file("$root/status-wire"), "freebsd-install-v2|begin|ada0\@XCAT_TEST_DISK\nfreebsd-install-v1|complete|\n",
+        'only begin carries the concrete selected OS identity');
+    write_file("$root/status-wire", '');
+    ($status) = run_runtime($root, 'xcat_read_config "$1" || exit; XCAT_FORMAT=xcat-freebsd-install-5; '
+        . 'XCAT_FILESYSTEM=zfs; XCAT_SWAP_MODE=none; XCAT_SWAP_SIZE=0; XCAT_ZFS_TOPOLOGY=raid10; '
+        . 'XCAT_ZFS_VDEVS="ada0@OS0,ada1@OS1;ada2@OS2,ada3@OS3"; xcat_status begin');
+    is($status, 0, 'grouped native membership reaches authorization');
+    is(read_file("$root/status-wire"), "freebsd-install-v2|begin|ada0\@OS0,ada1\@OS1;ada2\@OS2,ada3\@OS3\n",
+        'wire preserves the original mirror groups');
+};
 done_testing;
