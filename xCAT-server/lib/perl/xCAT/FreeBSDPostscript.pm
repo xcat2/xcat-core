@@ -1456,6 +1456,8 @@ DRIVER
         }
         if (!defined($phase)) {
             $line =~ s/\AUPDATENODE=0(?=\n|\z)/UPDATENODE=1/x if $kind eq 'update';
+            $line =~ s/\ANODESETSTATE=install(?=\n|\z)/NODESETSTATE=boot/x
+              if $kind eq 'update' || $kind eq 'repeat';
             $driver .= $line;
             next;
         }
