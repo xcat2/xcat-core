@@ -17,11 +17,12 @@ BEGIN {
     package xCAT::Table;
     sub new {
         my ( $class, $table ) = @_;
-        die "Unexpected table $table" unless $table eq 'chain';
-        return bless {}, $class;
+        die "Unexpected table $table" unless $table eq 'chain' || $table eq 'bootparams';
+        return bless { table => $table }, $class;
     }
     sub getNodesAttribs {
         my ( $self, $nodes, @attributes ) = @_;
+        return {} if $self->{table} eq 'bootparams';
         @attributes = @{ $attributes[0] } if ref($attributes[0]) eq 'ARRAY';
         my %result;
         for my $node (@$nodes) {
@@ -37,6 +38,14 @@ BEGIN {
         @{$rows{$node}}{keys %$copy} = values %$copy;
         return 0;
     }
+    sub setNodesAttribs {
+        my ( $self, $updates ) = @_;
+        for my $node (keys %$updates) {
+            $self->setNodeAttribs($node, $updates->{$node});
+        }
+        return 0;
+    }
+    sub close { return; }
     $INC{'xCAT/Table.pm'} = __FILE__;
 
     package xCAT::NodeRange;
@@ -99,6 +108,38 @@ sub capture_chain_handoffs {
 
 my $image = 'osimage=rhels9-x86_64-install-compute';
 my @cases = (
+    {
+        name => 'boot does not complete a new iSCSI boot step',
+        rows => { node1 => { currstate => 'boot', currchain => 'iscsiboot', chain => 'iscsiboot' } },
+        steps => [ { transitions => [ [ 'node1', 'iscsiboot', 'iscsiboot' ] ], enact => ['node1'] } ],
+    },
+    {
+        name => 'iSCSI boot does not complete a new local boot step',
+        rows => { node1 => { currstate => 'iscsiboot', currchain => 'boot', chain => 'boot' } },
+        steps => [ { transitions => [ [ 'node1', 'boot', 'boot' ] ], enact => ['node1'] } ],
+    },
+    {
+        name => 'an exactly completed iSCSI boot step retains the standby policy',
+        rows => { node1 => { currstate => 'iscsiboot', currchain => 'iscsiboot', chain => 'iscsiboot' } },
+        steps => [ { transitions => [ [ 'node1', 'standby', 'standby' ] ] } ],
+    },
+    {
+        name => 'an image-name prefix does not complete a different image',
+        rows => { node1 => { currstate => $image, currchain => "$image-extra", chain => "$image-extra" } },
+        steps => [ { transitions => [ [ 'node1', "$image-extra", "$image-extra" ] ], enact => ['node1'] } ],
+    },
+    {
+        name => 'dots in image names are literal',
+        rows => { node1 => { currstate => 'osimage=rhels9.6-compute',
+                            currchain => 'osimage=rhels9x6-compute', chain => 'osimage=rhels9x6-compute' } },
+        steps => [ { transitions => [ [ 'node1', 'osimage=rhels9x6-compute', 'osimage=rhels9x6-compute' ] ], enact => ['node1'] } ],
+    },
+    {
+        name => 'an exactly completed dotted image retains the standby policy',
+        rows => { node1 => { currstate => 'osimage=rhels9.6-compute',
+                            currchain => 'osimage=rhels9.6-compute', chain => 'osimage=rhels9.6-compute' } },
+        steps => [ { transitions => [ [ 'node1', 'standby', 'standby' ] ] } ],
+    },
     {
         name => 'repeated advances from boot preserve the state without enacting again',
         rows => { node1 => { currstate => 'boot', currchain => 'boot', chain => $image } },
@@ -244,5 +285,42 @@ for my $case (@cases) {
         }
     };
 }
+
+subtest 'a final discovery step completes using the state recorded by setdestiny' => sub {
+    my $discovery = 'ondiscover=makegocons|rspconfig:sshcfg';
+    %rows = (node1 => {currstate => 'boot', currchain => $discovery, chain => $discovery});
+    my (@commands, @errors);
+    {
+        no warnings qw(once redefine);
+        local *xCAT::Utils::runcmd = sub {
+            push @commands, [@_];
+            return;
+        };
+        local *xCAT_plugin::destiny::getdestiny = sub { return; };
+        xCAT_plugin::destiny::process_request(
+            {command => ['setdestiny'], node => ['node1'], arg => [$discovery]},
+            sub { push @errors, dclone($_[0]); },
+            sub { die 'Unexpected subrequest while applying discovery'; },
+        );
+    }
+    is_deeply(\@commands, [
+        ['xCAT::Utils', 'makegocons node1 ', 0],
+        ['xCAT::Utils', 'rspconfig node1 sshcfg', 0],
+    ], 'the real applicator runs both discovery commands once');
+    is_deeply(\@errors, [], 'applying discovery emits no errors');
+    is($rows{node1}->{currstate}, 'ondiscover', 'the real applicator records the bare discovery state');
+    is($rows{node1}->{currchain}, $discovery, 'the chain retains its command arguments');
+
+    my $result = capture_chain_handoffs({command => ['nextdestiny'], node => ['node1']});
+    is_deeply($rows{node1}, {currstate => 'standby', currchain => 'standby', chain => $discovery},
+        'the recorded state completes the final discovery step');
+    is_deeply($result->{handoffs}, [{
+        request => {node => ['node1'], arg => ['standby']}, flag => 1,
+        chain_at_handoff => dclone($rows{node1}),
+    }], 'completion hands off standby instead of repeating discovery');
+    is_deeply($result->{subrequests}, [], 'completed discovery does not enact again');
+    is_deeply($result->{errors}, [], 'completion emits no callback error');
+    is_deeply($result->{logs}, [], 'completion emits no syslog error');
+};
 
 done_testing();
