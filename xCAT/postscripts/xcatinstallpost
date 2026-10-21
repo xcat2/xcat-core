@@ -7,6 +7,45 @@
 
 . /xcatpost/xcatlib.sh
 log_label="xcat.deployment"
+
+xcat_endpoint_host()
+{
+    local endpoint="$1"
+    local remainder
+
+    endpoint=${endpoint#\'}
+    endpoint=${endpoint%\'}
+    endpoint=${endpoint#\"}
+    endpoint=${endpoint%\"}
+    case "$endpoint" in
+    \[*\]:*)
+        endpoint=${endpoint#\[}
+        printf '%s\n' "${endpoint%%\]*}"
+        ;;
+    *:*)
+        remainder=${endpoint#*:}
+        if [[ "$remainder" == *:* ]]; then
+            printf '%s\n' "$endpoint"
+        else
+            printf '%s\n' "${endpoint%%:*}"
+        fi
+        ;;
+    *)
+        printf '%s\n' "$endpoint"
+        ;;
+    esac
+}
+
+format_host_port()
+{
+    local host
+    host=$(xcat_endpoint_host "$1") || return 1
+    if [[ "$host" == *:* ]]; then
+        printf '[%s]:%s\n' "$host" "$2"
+    else
+        printf '%s:%s\n' "$host" "$2"
+    fi
+}
 if [ -f /xcatpost/mypostscript.post ]; then
     XCATDEBUGMODE=`grep 'XCATDEBUGMODE=' /xcatpost/mypostscript.post |cut -d= -f2 | tr -d \'\" | tr A-Z a-z `
     MASTER_IP=`grep '^MASTER_IP=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
@@ -26,7 +65,8 @@ sleep $SLI
 
 XCATINFOFILE=/opt/xcat/xcatinfo
 if [ -z "$MASTER_IP" ] && [ -f "$XCATINFOFILE" ]; then
-    MASTER_IP=`grep '^XCATSERVER=' "$XCATINFOFILE" | head -n 1 | cut -d= -f2 | cut -d: -f1 | tr -d \'\"`
+    XCATINFOENDPOINT=`grep '^XCATSERVER=' "$XCATINFOFILE" | head -n 1 | cut -d= -f2-`
+    MASTER_IP=$(xcat_endpoint_host "$XCATINFOENDPOINT")
 fi
 
 if [ -z "$MASTER_IP" ]; then
@@ -43,7 +83,7 @@ INSTALLNIC=`ip -o link | grep -i "$MACADDR" | awk '{ print $2 }' | sed "s/://"`
 RETRY=0
 while true; do
     #check whether the network access between MN/CN and the node is ready
-    ping -c 1 $MASTER_IP >/dev/null && break
+    ping -c 1 "$MASTER_IP" >/dev/null && break
 
     RETRY=$[ $RETRY + 1 ]
 
@@ -68,8 +108,8 @@ chmod -R +x `find /xcatpost/ -maxdepth 1 -print | grep -E -v '^(/xcatpost/|/xcat
 POST_IN_DIR="/xcatpost"
 
 if [ -x /usr/bin/openssl ]; then
-     SIP=`grep "^MASTER=" ${POST_IN_DIR}/mypostscript.post  |cut -d= -f2`
-     XCATSERVER="$SIP:3001"
+     SIP=`grep "^MASTER=" ${POST_IN_DIR}/mypostscript.post | cut -d= -f2-`
+     XCATSERVER=$(format_host_port "$SIP" 3001)
      export XCATSERVER
      USEOPENSSLFORXCAT=1 #Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
      export USEOPENSSLFORXCAT
@@ -137,13 +177,13 @@ if [ \"\$return_value\" -eq \"0\" ]; then
     if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
         msgutil_r \"\$MASTER_IP\" \"debug\" \"node booted, reporting status...\" \"/var/log/xcat/xcat.log\" \"\$log_label\"
     fi
-    updateflag.awk \$MASTER 3002 \"installstatus booted\"
+    updateflag.awk \"\$MASTER_IP\" 3002 \"installstatus booted\"
     msgutil_r \$MASTER_IP \"info\" \"provision completed.(\$NODE)\" \"/var/log/xcat/xcat.log\" \"\$log_label\"
 else
     if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
         msgutil_r \"\$MASTER_IP\" \"debug\" \"node boot failed, reporting status...\" \"/var/log/xcat/xcat.log\" \"\$log_label\"
     fi
-    updateflag.awk \$MASTER 3002 \"installstatus failed\"
+    updateflag.awk \"\$MASTER_IP\" 3002 \"installstatus failed\"
     msgutil_r \$MASTER_IP \"error\" \"provision completed with error.(\$NODE)\" \"/var/log/xcat/xcat.log\" \"\$log_label\"
 fi
 " >> /xcatpost/mypostscript.post

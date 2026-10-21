@@ -12,7 +12,16 @@ use strict;
 use Socket;
 
 use xCAT::MsgUtils;
+use xCAT::NetworkUtils;
 use xCAT::Utils;
+
+=head1 NAME
+
+xCAT::DSHCore - distributed command execution and reachability helpers
+
+=head1 FUNCTIONS
+
+=head2 Process and ping helpers
 
 #---------------------------------------------------------------------------
 
@@ -679,6 +688,169 @@ sub ping_hostnames
 #---------------------------------------------------------------------------
 
 =head3
+        partition_ping_targets
+
+        Resolves ping targets and separates them into the address family that
+        should be probed.  IPv4 remains preferred for dual-stack targets so
+        existing behavior is preserved.
+
+        Arguments:
+                @targets - hostnames or address literals
+
+        Returns:
+                references to the IPv4, IPv6, and unresolved target arrays
+
+=cut
+
+#---------------------------------------------------------------------------
+
+sub partition_ping_targets
+{
+    my ($class, @targets) = @_;
+    my (@ipv4, @ipv6, @unresolved);
+
+    foreach my $target (@targets)
+    {
+        my $family = xCAT::NetworkUtils->node_address_family($target);
+        if (defined($family) && $family == 4)
+        {
+            push @ipv4, $target;
+        }
+        elsif (defined($family) && $family == 6)
+        {
+            push @ipv6, $target;
+        }
+        else
+        {
+            push @unresolved, $target;
+        }
+    }
+
+    return (\@ipv4, \@ipv6, \@unresolved);
+}
+
+
+#---------------------------------------------------------------------------
+
+=head3
+        match_ping_target
+
+        Maps a name or numeric address reported by a ping backend to the
+        original target supplied by xCAT.
+
+=cut
+
+#---------------------------------------------------------------------------
+
+sub match_ping_target
+{
+    my ($class, $candidate, $targets) = @_;
+    return unless defined($candidate) && ref($targets) eq 'ARRAY';
+
+    $candidate =~ s/^\s+|\s+$//g;
+    foreach my $target (@{$targets})
+    {
+        return $target if lc($candidate) eq lc($target);
+        return $target if $candidate =~ /^\Q$target\E\./i;
+    }
+
+    foreach my $target (@{$targets})
+    {
+        foreach my $family (qw(OnlyV4 OnlyV6))
+        {
+            my $address = xCAT::NetworkUtils->getipaddr($target, $family => 1);
+            return $target
+              if defined($address) && lc($candidate) eq lc($address);
+        }
+    }
+    return;
+}
+
+
+#---------------------------------------------------------------------------
+
+=head3
+        nmap_alive_targets
+
+        Parses old and current nmap ping-scan output and returns the original
+        xCAT targets that nmap reported as reachable.
+
+=cut
+
+#---------------------------------------------------------------------------
+
+sub nmap_alive_targets
+{
+    my ($class, $targets, $output) = @_;
+    return unless ref($targets) eq 'ARRAY' && ref($output) eq 'ARRAY';
+
+    my %alive;
+    my $current_target;
+    foreach my $line (@{$output})
+    {
+        if ($line =~ /^Host\s+(.+?)(?:\s+\(([^)]*)\))?\s+appears to be up\b/)
+        {
+            my $target = $class->match_ping_target($1, $targets);
+            if (!defined($target) && defined($2))
+            {
+                $target = $class->match_ping_target($2, $targets);
+            }
+            $alive{$target} = 1 if defined($target);
+            next;
+        }
+
+        if ($line =~ /^Nmap scan report for\s+(.+?)\s*$/)
+        {
+            my $reported = $1;
+            my $reported_address;
+            if ($reported =~ s/\s+\(([^()]*)\)\s*$//)
+            {
+                $reported_address = $1;
+            }
+            $current_target = $class->match_ping_target($reported, $targets);
+            if (!defined($current_target) && defined($reported_address))
+            {
+                $current_target =
+                  $class->match_ping_target($reported_address, $targets);
+            }
+            next;
+        }
+
+        if ($line =~ /^Host is up\b/ && defined($current_target))
+        {
+            $alive{$current_target} = 1;
+        }
+    }
+
+    return grep { $alive{$_} } @{$targets};
+}
+
+
+#---------------------------------------------------------------------------
+
+=head3
+        parse_pping_result_line
+
+        Parses the stable C<target: ping|noping> output contract.  The greedy
+        target match intentionally accepts IPv6 address literals containing
+        colons.
+
+=cut
+
+#---------------------------------------------------------------------------
+
+sub parse_pping_result_line
+{
+    my ($class, $line) = @_;
+    return unless defined($line);
+    return ($1, $2) if $line =~ /^(.+):\s+(ping|noping)\s*$/;
+    return;
+}
+
+
+#---------------------------------------------------------------------------
+
+=head3
         pping_hostnames
 
         Executes pping on a given list of hostnames and returns a list of those
@@ -735,9 +907,8 @@ sub pping_hostnames
     my @no_response = ();
     foreach my $line (@output)
     {
-        my ($hostname, $result) = split ':', $line;
-        my ($token,    $status) = split ' ', $result;
-        chomp($token);
+        my ($hostname, $token) = $class->parse_pping_result_line($line);
+        next unless defined($hostname);
         if ($token ne 'ping') {
             push @no_response, $hostname;
         }

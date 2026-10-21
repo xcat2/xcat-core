@@ -12,6 +12,8 @@ use strict;
 use lib "$::XCATROOT/lib/perl";
 
 use xCAT::Utils;
+use xCAT::DSHCore;
+use xCAT::NetworkUtils;
 use xCAT::TableUtils;
 use POSIX qw(:signal_h :errno_h :sys_wait_h);
 use IO::Socket::SSL;
@@ -22,6 +24,7 @@ $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
 use IO::Handle;
 use IO::Select;
 use Getopt::Long;
+use Text::ParseWords qw(shellwords);
 
 my $USAGE = "Usage: pping [-i|--interface interfaces][-f|--use_fping] noderange
        pping -h|--help
@@ -143,53 +146,83 @@ foreach my $interf (@interfaces) {
         $noderef = \@nodes;    # use the original node list
     }
 
-    if   ($usenmap) { nmap_pping($noderef); }
-    else            { fping_pping($noderef); }
+    my ($ipv4_nodes, $ipv6_nodes, $unresolved_nodes) =
+      xCAT::DSHCore->partition_ping_targets(@{$noderef});
+
+    foreach my $node (@{$unresolved_nodes}) {
+        print "$node: noping\n";
+    }
+
+    if ($usenmap) {
+        nmap_pping($ipv4_nodes, 4);
+        nmap_pping($ipv6_nodes, 6);
+    } else {
+        fping_pping($ipv4_nodes, 4);
+        fping_pping($ipv6_nodes, 6);
+    }
 }
 
 sub fping_pping {
-    my $nodes    = shift;
-    my $master   = xCAT::TableUtils->get_site_Master();
-    my $masterip = xCAT::NetworkUtils->getipaddr($master);
-    if ($masterip =~ /:/)      #IPv6, needs fping6 support
-    {
-        if (!-x '/usr/bin/fping6')
-        {
-            print "fping6 is not availabe for IPv6 ping.\n";
-            exit 1;
+    my ($nodes, $family) = @_;
+    return unless @{$nodes};
+
+    my $fping = -x '/usr/bin/fping'  ? '/usr/bin/fping'
+      : -x '/usr/sbin/fping'         ? '/usr/sbin/fping'
+      :                                undef;
+    my @command;
+    if ($family == 6) {
+        my $fping6 = -x '/usr/bin/fping6' ? '/usr/bin/fping6'
+          : -x '/usr/sbin/fping6'         ? '/usr/sbin/fping6'
+          :                                 undef;
+        if ($fping6) {
+            @command = ($fping6);
+        } elsif ($fping) {
+            @command = ($fping, '-6');
         }
-        open(FPING, "fping6 " . join(' ', @$nodes) . " 2>&1 |") or die("Cannot open fping pipe: $!");
+    } elsif ($fping) {
+        @command = ($fping);
     }
-    else
-    {
-        if (!-x '/usr/bin/fping' and !-x '/usr/sbin/fping')
-        {
-            print "fping is not available, please install missing package fping.\n";
-            exit 1;
-        }
-        open(FPING, "fping " . join(' ', @$nodes) . " 2>&1 |") or die("Cannot open fping pipe: $!");
+
+    unless (@command) {
+        warn "fping is not available for IPv$family ping.\n";
+        print "$_: noping\n" foreach @{$nodes};
+        return;
     }
-    while (<FPING>) {
-        if ($_ =~ /is unreachable/) {
-            s/ is unreachable/: noping/;
-        } elsif ($_ =~ /is alive/) {
-            s/ is alive/: ping/;
-        } elsif ($_ =~ /address not found/) {
-            s/ address not found/: noping/;
-        }
-        print $_;
+
+    push @command, '-a', @{$nodes};
+    my @output;
+    my $pid = open(my $fping_output, '-|');
+    if (!defined($pid)) {
+        warn "Cannot open fping pipe: $!\n";
+        print "$_: noping\n" foreach @{$nodes};
+        return;
+    }
+    if ($pid == 0) {
+        open(STDERR, '>', '/dev/null');
+        exec { $command[0] } @command;
+        exit 127;
+    }
+    @output = <$fping_output>;
+    close($fping_output);
+
+    my %alive;
+    foreach my $line (@output) {
+        chomp($line);
+        my $target = xCAT::DSHCore->match_ping_target($line, $nodes);
+        $alive{$target} = 1 if defined($target);
+    }
+    foreach my $node (@{$nodes}) {
+        print "$node: " . ($alive{$node} ? 'ping' : 'noping') . "\n";
     }
 }
 
 sub nmap_pping {
-    my $nodes = shift;
-    my %deadnodes;
+    my ($nodes, $family) = @_;
+    return unless @{$nodes};
+
     my @nmap_options;
     my $more_options;
     my $tcmd;
-    foreach (@$nodes) {
-        $deadnodes{$_} = 1;
-    }
     if ($userid != 0) {
         $tcmd = "tabdump site|grep nmapoptions|awk -F, '{print $2}'|sed -e 's/\"//g'|awk -F, '{print $1}'";
         $more_options = xCAT::Utils->runcmd($tcmd, -1);
@@ -199,38 +232,28 @@ sub nmap_pping {
         @nmap_options = xCAT::TableUtils->get_site_attribute("nmapoptions");
         $more_options = $nmap_options[0];
     }
+    $more_options = '' unless defined($more_options);
+
     # Added port 22 for unprivileged case (#4324)
-    open(NMAP, "nmap -PE --system-dns --send-ip -sP --unprivileged -PA80,443,22 $more_options " . join(' ', @$nodes) . " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
-    my $node;
-    while (<NMAP>) {
-        if (/Host (.*) \(.*\) appears to be up/) {
-            $node = $1;
-            unless ($deadnodes{$node}) {
-                foreach (keys %deadnodes) {
-                    if ($node =~ /^$_\./) {
-                        $node = $_;
-                        last;
-                    }
-                }
-            }
-            delete $deadnodes{$node};
-            print "$node: ping\n" if ($node);
-        } elsif (/Nmap scan report for ([^ ]*) /) {
-            $node = $1;
-        } elsif (/Host is up./) {
-            unless ($deadnodes{$node}) {
-                foreach (keys %deadnodes) {
-                    if ($node =~ /^$_\./) {
-                        $node = $_;
-                        last;
-                    }
-                }
-            }
-            delete $deadnodes{$node};
-            print "$node: ping\n" if ($node);
-        }
+    my @command = ('nmap');
+    push @command, '-6' if $family == 6;
+    push @command, qw(-PE --system-dns --send-ip -sP --unprivileged -PA80,443,22);
+    push @command, shellwords($more_options) if length($more_options);
+    push @command, @{$nodes};
+
+    my $pid = open(my $nmap_output, '-|');
+    die("Cannot open nmap pipe: $!") unless defined($pid);
+    if ($pid == 0) {
+        open(STDERR, '>', '/dev/null');
+        exec { $command[0] } @command;
+        exit 127;
     }
-    foreach (sort keys %deadnodes) {
-        print "$_: noping\n";
+    my @output = <$nmap_output>;
+    close($nmap_output);
+
+    my %alive = map { $_ => 1 }
+      xCAT::DSHCore->nmap_alive_targets($nodes, \@output);
+    foreach my $node (@{$nodes}) {
+        print "$node: " . ($alive{$node} ? 'ping' : 'noping') . "\n";
     }
 }

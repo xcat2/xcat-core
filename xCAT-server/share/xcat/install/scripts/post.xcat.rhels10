@@ -13,6 +13,20 @@ export HTTPPORT="#TABLEBLANKOKAY:site:key=httpport:value#"
 
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
 
+format_uri_host()
+{
+    case "$1" in
+    \[*\]) printf '%s' "$1" ;;
+    *:*) printf '[%s]' "$1" ;;
+    *) printf '%s' "$1" ;;
+    esac
+}
+
+format_host_port()
+{
+    printf '%s:%s' "$(format_uri_host "$1")" "$2"
+}
+
 umask 0022
 
 case "$XCATDEBUGMODE" in
@@ -36,6 +50,7 @@ fi
 if [ -z "$HTTPPORT" ]; then
     HTTPPORT="80"
 fi
+MASTER_HTTP_HOST="$(format_uri_host "$MASTER_IP")"
 
 NODESTATUS="$(echo "$NODESTATUS"| tr -d \'\" | tr A-Z a-z)"
 
@@ -63,7 +78,7 @@ sleep "$RAND"
 if ! type openssl >/dev/null 2>&1
 then
     msgutil_r "$MASTER_IP" "error" "/usr/bin/openssl does not exist, halt ..." "/var/log/xcat/xcat.log" "$log_label"
-    /tmp/updateflag "$MASTER" "$XCATIPORT" "installstatus failed"
+    /tmp/updateflag "$MASTER_IP" "$XCATIPORT" "installstatus failed"
     sleep infinity
 fi
 
@@ -107,7 +122,7 @@ msgutil_r "$MASTER_IP" "info" "trying to download postscripts from $MASTER_IP...
 if ! type curl >/dev/null 2>&1
 then
     msgutil_r "$MASTER_IP" "error" "Command curl not found, halt ..." "/var/log/xcat/xcat.log" "$log_label"
-    /tmp/updateflag "$MASTER" "$XCATIPORT" "installstatus failed"
+    /tmp/updateflag "$MASTER_IP" "$XCATIPORT" "installstatus failed"
     sleep infinity
 fi
 
@@ -139,11 +154,11 @@ function download_recursive()
     return 0
 }
 
-download_recursive "http://$MASTER_IP:${HTTPPORT}$INSTALLDIR/postscripts/" "/xcatpost" 2>/tmp/download.log
+download_recursive "http://${MASTER_HTTP_HOST}:${HTTPPORT}$INSTALLDIR/postscripts/" "/xcatpost" 2>/tmp/download.log
 if [ "$?" -ne "0" ]
 then
-    msgutil_r "$MASTER_IP" "error" "failed to download postscripts from http://$MASTER_IP$INSTALLDIR/postscripts/, check /tmp/download.log on the node,  halt ..." "/var/log/xcat/xcat.log" "$log_label"
-    /tmp/updateflag "$MASTER" "$XCATIPORT" "installstatus failed"
+    msgutil_r "$MASTER_IP" "error" "failed to download postscripts from http://${MASTER_HTTP_HOST}:${HTTPPORT}$INSTALLDIR/postscripts/, check /tmp/download.log on the node,  halt ..." "/var/log/xcat/xcat.log" "$log_label"
+    /tmp/updateflag "$MASTER_IP" "$XCATIPORT" "installstatus failed"
     sleep infinity
 fi
 
@@ -158,7 +173,7 @@ export NODE="#TABLE:nodelist:THISNODE:node#"
 
 msgutil_r "$MASTER_IP" "info" "trying to get mypostscript from $MASTER_IP..." "/var/log/xcat/xcat.log" "$log_label"
 
-curl --fail --retry 20 --max-time 60 "http://$MASTER_IP:${HTTPPORT}$TFTPDIR/mypostscripts/mypostscript.$NODE" -o "/xcatpost/mypostscript.$NODE" 2> /tmp/download.log
+curl --fail --retry 20 --max-time 60 "http://${MASTER_HTTP_HOST}:${HTTPPORT}$TFTPDIR/mypostscripts/mypostscript.$NODE" -o "/xcatpost/mypostscript.$NODE" 2> /tmp/download.log
 if [ "$?" = "0" ]
 then
     case "$XCATDEBUGMODE" in
@@ -173,7 +188,7 @@ fi
 # Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
 USEOPENSSLFORXCAT=1
 export USEOPENSSLFORXCAT
-XCATSERVER=$MASTER_IP:3001
+XCATSERVER="$(format_host_port "$MASTER_IP" 3001)"
 export XCATSERVER
 
 # If mypostscript doesn't exist, we will get it through getpostscript.awk
@@ -189,7 +204,7 @@ if [ ! -x /xcatpost/mypostscript ]; then
     # Stop if no getpostscript.awk to help the next bit
     if [ ! -x /xcatpost/getpostscript.awk ]; then
         msgutil_r "$MASTER_IP" "error" "/xcatpost/getpostscript.awk does not exist, halt ..." "/var/log/xcat/xcat.log" "$log_label"
-        /tmp/updateflag "$MASTER" "$XCATIPORT" "installstatus failed"
+        /tmp/updateflag "$MASTER_IP" "$XCATIPORT" "installstatus failed"
         sleep infinity
     fi
     /xcatpost/getpostscript.awk | egrep '<data>' | sed -e 's/<[^>]*>//g' | egrep -v '^ *$' | sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" >/xcatpost/mypostscript
@@ -301,7 +316,7 @@ esac
 chmod 0755 /xcatpost/mypostscript
 if [ ! -x /xcatpost/mypostscript ]; then
     msgutil_r "$MASTER_IP" "error" "failed to generate mypostscript file, halt ..." "/var/log/xcat/xcat.log" "$log_label"
-    /tmp/updateflag "$MASTER" "$XCATIPORT" "installstatus failed"
+    /tmp/updateflag "$MASTER_IP" "$XCATIPORT" "installstatus failed"
     sleep infinity
 else
     case "$XCATDEBUGMODE" in
@@ -434,7 +449,7 @@ esac
 
 msgutil_r "$MASTER_IP" "info" "finished firstboot preparation, sending request to $MASTER:3002 for changing status..." "/var/log/xcat/xcat.log" "$log_label"
 # The following command should always be run to prevent infinite installation loops
-updateflag.awk "$MASTER" 3002
+updateflag.awk "$MASTER_IP" 3002
 
 cd /
 

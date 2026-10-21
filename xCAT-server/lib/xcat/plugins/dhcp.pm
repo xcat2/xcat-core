@@ -3163,7 +3163,11 @@ sub kea_build_ddns_intent
         # same way kea_subnet4_intent does for DHCP options.  Skip the network's
         # DDNS domains if we can't resolve a real IP rather than emit an invalid one.
         if ($dns =~ /<xcatmaster>/) {
-            my @myipd = xCAT::NetworkUtils->my_ip_facing($entry->{net});
+            my $peer = $entry->{net};
+            $peer =~ s{/.*$}{};
+            my @myipd = $peer =~ /:/
+              ? xCAT::NetworkUtils->my_ip_facing_family($peer, 6)
+              : xCAT::NetworkUtils->my_ip_facing($peer);
             my $myip = $myipd[0] ? undef : $myipd[1];
             $dns =~ s/<xcatmaster>/$myip/g if $myip;
         }
@@ -3177,8 +3181,7 @@ sub kea_build_ddns_intent
             }
         }
 
-        my $zone_mask = $entry->{net} =~ /:/ ? undef : $entry->{mask};
-        foreach my $zone (getzonesfornet($entry->{net}, $zone_mask)) {
+        foreach my $zone (getzonesfornet($entry->{net}, $entry->{mask})) {
             $zone .= '.' unless $zone =~ /\.$/;
             if (!$reverse_seen{$zone}++) {
                 push @reverse, kea_ddns_domain($zone, $dns);
@@ -3730,7 +3733,7 @@ sub kea_build_node_reservations6
     my $mactab = xCAT::Table->new('mac');
     my $vpdtab = xCAT::Table->new('vpd', -create => 0);
 
-    $nrhash = $nrtab ? $nrtab->getNodesAttribs($nodes, [ 'tftpserver', 'xcatmaster', 'servicenode' ]) : undef;
+    $nrhash = $nrtab ? $nrtab->getNodesAttribs($nodes, [ 'tftpserver', 'netboot', 'xcatmaster', 'servicenode' ]) : undef;
     $machash = $mactab ? $mactab->getNodesAttribs($nodes, ['mac']) : undef;
     $vpdhash = $vpdtab ? $vpdtab->getNodesAttribs($nodes, ['uuid']) : undef;
 
@@ -4169,6 +4172,7 @@ sub kea_node_reservations6
 {
     my ( $backend, $config, $node ) = @_;
 
+    my $nrent = $nrhash && $nrhash->{$node} ? $nrhash->{$node}->[0] : undef;
     my $macent = $machash && $machash->{$node} ? $machash->{$node}->[0] : undef;
     my $vpdent = $vpdhash && $vpdhash->{$node} ? $vpdhash->{$node}->[0] : undef;
     unless ($macent and $macent->{mac}) {
@@ -4217,11 +4221,69 @@ sub kea_node_reservations6
         } else {
             $reservation{'hw-address'} = $mac;
         }
+        my $bootfile_url = kea_bootfile_url6_for_node($node, $hname, $nrent);
+        if ($bootfile_url) {
+            $reservation{'option-data'} = [
+                {
+                    name          => 'bootfile-url',
+                    data          => $bootfile_url,
+                    'always-send' => JSON::true,
+                },
+            ];
+        }
 
         push @reservations, \%reservation;
     }
 
     return \@reservations;
+}
+
+sub kea_bootfile_url6_for_node
+{
+    my ( $node, $peer, $nrent ) = @_;
+
+    my $netboot = $nrent ? $nrent->{netboot} : undef;
+    return unless $netboot
+      && ($netboot eq 'grub2'
+        || $netboot eq 'grub2-http'
+        || $netboot eq 'grub2-tftp');
+
+    my $server = kea_boot_server6_for_node($node, $peer, $nrent);
+    return unless $server;
+
+    my $uri_host = xCAT::NetworkUtils->format_uri_host($server);
+    return unless $uri_host;
+    return "tftp://$uri_host/boot/grub2/grub2-$node";
+}
+
+sub kea_boot_server6_for_node
+{
+    my ( $node, $peer, $nrent ) = @_;
+
+    my $configured_server;
+    if ($nrent && $nrent->{tftpserver} && $nrent->{tftpserver} ne '<xcatmaster>') {
+        $configured_server = $nrent->{tftpserver};
+    } elsif ($nrent && $nrent->{xcatmaster} && $nrent->{xcatmaster} ne '<xcatmaster>') {
+        $configured_server = $nrent->{xcatmaster};
+    }
+
+    if ($configured_server) {
+        my $server = getipaddr($configured_server, OnlyV6 => 1);
+        unless ($server) {
+            $callback->({ error => ["Unable to resolve an IPv6 boot server for $node from $configured_server"], errorcode => [1] });
+            return;
+        }
+        return $server;
+    }
+
+    my @facing = xCAT::NetworkUtils->my_ip_facing_family($peer, 6);
+    if (!@facing || $facing[0]) {
+        my $reason = @facing > 1 ? $facing[1] : 'no IPv6-facing address was found';
+        $callback->({ error => ["Unable to determine the IPv6 boot server for $node: $reason"], errorcode => [1] });
+        return;
+    }
+
+    return $facing[1];
 }
 
 sub kea_duid_from_uuid
@@ -4558,35 +4620,13 @@ sub getzonesfornet {
     my $mask  = shift;
     my @zones = ();
     if ($net =~ /:/) { #ipv6, for now do the simple stuff under the assumption we won't have a mask indivisible by 4
-        $net =~ s/\/(.*)//;
-        my $maskbits = $1;
-        if ($mask) {
-            die "Not supporting having a mask like $mask on an ipv6 network like $net";
+        my $maskbits = xCAT::NetworkUtils->getIPv6PrefixLength($net, $mask);
+        return () unless defined($maskbits);
+        if ($maskbits % 4) {
+            die "Not supporting an IPv6 prefix length that is not divisible by 4 on network $net";
         }
-        my $netnum = getipaddr($net, GetNumber => 1);
-        unless ($netnum) { return (); }
-        $netnum->brsft(128 - $maskbits);
-        my $prefix = $netnum->as_hex();
-        my $nibbs  = $maskbits / 4;
-        $prefix =~ s/^0x//;
-        my $rev;
-
-        foreach (reverse(split //, $prefix)) {
-            $rev .= $_ . ".";
-            $nibbs--;
-        }
-        if ($nibbs < 0) {
-            # a sub-nibble (not 4-bit-aligned) IPv6 mask leaves $nibbs negative;
-            # bail rather than spin forever in the loop below. $nibbs == 0 is the
-            # normal nibble-aligned case (e.g. a /64) and must still emit a zone.
-            return ();
-        }
-        while ($nibbs > 0) {
-            $rev .= "0.";
-            $nibbs--;
-        }
-        $rev .= "ip6.arpa.";
-        return ($rev);
+        my $zone = xCAT::NetworkUtils->getIPv6ReverseZone($net, $mask);
+        return defined($zone) ? ($zone) : ();
     }
 
     #return all in-addr reverse zones for a given mask and net

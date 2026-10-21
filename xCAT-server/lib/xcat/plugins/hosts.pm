@@ -21,6 +21,26 @@ my $ADDNAMES;
 my $MACTOLINKLOCAL;
 
 
+sub _host_entry_matches
+{
+    my ($line, $node, $ip) = @_;
+    return 0 unless defined($line) && defined($node);
+
+    $line =~ s/^\s+//;
+    my ($line_ip, $primary_name) = split(/\s+/, $line, 3);
+    return 0 unless defined($line_ip) && length($line_ip);
+    return 1 if defined($ip)
+      && xCAT::NetworkUtils->isSameIPAddress($line_ip, $ip);
+    my $legacy_ipv4 = $line_ip =~ /^\d+\.\d+\.\d+\.\d+\z/;
+    return 0 unless $legacy_ipv4
+      || xCAT::NetworkUtils->isValidIp($line_ip);
+    return 0 unless defined($primary_name);
+
+    return 1 if $primary_name eq $node;
+    return $primary_name =~ /^\Q$node\E\./ ? 1 : 0;
+}
+
+
 #############   TODO - add return code checking !!!!!
 
 
@@ -297,7 +317,7 @@ sub addotherinterfaces
         } else {
             ($itf, $ip) = split(/:/, $_);
         }
-        if ($ip && xCAT::NetworkUtils->isIpv4addr($ip))
+        if ($ip && xCAT::NetworkUtils->isValidIp($ip))
         {
             if ($itf =~ /^-/)
             {
@@ -330,7 +350,7 @@ sub delotherinterfaces
         } else {
             ($itf, $ip) = split(/:/, $_);
         }
-        if ($ip && xCAT::NetworkUtils->isIpv4addr($ip))
+        if ($ip && xCAT::NetworkUtils->isValidIp($ip))
         {
             if ($itf =~ /^-/)
             {
@@ -393,7 +413,7 @@ sub add_hosts_content {
         }
         else
         {
-            if (xCAT::NetworkUtils->isIpv4addr($ip))
+            if (xCAT::NetworkUtils->isValidIp($ip))
             {
                 addnode $callback, $nodename, $ip, $ref->{hostnames}, $domain;
             }
@@ -632,7 +652,7 @@ sub process_request
                 $domain = $::XCATSITEVALS{domain};
             }
 
-            if (xCAT::NetworkUtils->isIpv4addr($_->{ip}))
+            if (xCAT::NetworkUtils->isValidIp($_->{ip}))
             {
                 addnode $callback, $_->{node}, $_->{ip}, $_->{hostnames}, $domain;
             }

@@ -31,9 +31,11 @@ use Data::Dumper;
 use xCAT::NodeRange;
 use xCAT::Zone;
 use File::Temp qw(tempfile);
+use IO::Select;
 use IO::Socket::INET;
 use Time::HiRes qw(sleep);
 
+use xCAT::NetworkUtils;
 use xCAT::Utils;
 use xCAT::NetworkUtils;
 use xCAT::PasswordUtils;
@@ -44,6 +46,14 @@ use xCAT::MsgUtils;
 use Getopt::Long;
 
 use constant DELEGATED_SIGNING_TIMEOUT => 30;
+
+# IO::Socket::INET6 and Socket6 are optional on an older management node. A
+# node reached over IPv6 needs them; without them the callback stays on IPv4.
+my $inet6support = eval {
+    require Socket6;
+    require IO::Socket::INET6;
+    1;
+};
 
 #-------------------------------------------------------
 
@@ -619,6 +629,34 @@ sub configured_sudoers {
     return \%sudoers;
 }
 
+sub _open_callback_socket {
+    my $node = shift;
+    my $port = shift;
+    my %socket_args = (
+        PeerAddr => $node,
+        PeerPort => $port,
+        Proto    => 'tcp',
+    );
+
+    my $sock;
+    if ($inet6support) {
+        $sock = IO::Socket::INET6->new(%socket_args);
+    }
+    return $sock if $sock;
+
+    # Preserve the original IPv4 path on systems without the IPv6 modules and
+    # as a fallback if the family-neutral socket attempt fails.
+    return IO::Socket::INET->new(%socket_args);
+}
+
+sub _callback_https_uri {
+    my $node = shift;
+    my $port = shift;
+    my $authority = xCAT::NetworkUtils->format_host_port($node, $port);
+    return unless defined($authority);
+    return "https://$authority/";
+}
+
 sub ok_with_node {
     my $node = shift;
 
@@ -639,9 +677,7 @@ sub ok_with_node {
     my $method = $parms->[0];
     my $port   = $parms->[1];
     if ($method == 0) {    #PLAIN
-        my $sock = new IO::Socket::INET(PeerAddr => $node,
-            Proto    => "tcp",
-            PeerPort => $port);
+        my $sock = _open_callback_socket($node, $port);
         my $rsp;
         unless ($sock) { return 0 }
         $select->add($sock);
@@ -657,11 +693,13 @@ sub ok_with_node {
     } elsif ($method == 1) {    #HTTPS
         use LWP;
         use HTTP::Request::Common;
+        my $uri = _callback_https_uri($node, $port);
+        return 0 unless defined($uri);
         my $browser = LWP::UserAgent->new();
         $browser->timeout(10);
         $SIG{ALRM} = sub { };    #just need to interrupt the system call
         alarm(10);
-        my $response = $browser->request(GET "https://$node:$port/");
+        my $response = $browser->request(GET $uri);
         alarm(0);
 
         if ($response->is_success and $response->{'_content'} =~ /Ciphers supported in s_server binary/) {
