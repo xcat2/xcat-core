@@ -14,7 +14,8 @@ Remote Branches
 ---------------
 
 Reference articles:
-* http://www.gitguys.com/topics/adding-and-removing-remote-branches/
+* https://coddy.tech/git-commands/git-push
+* https://coddy.tech/git-commands/git-delete-remote-branch
 
 
 From GitHub

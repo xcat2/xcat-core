@@ -266,29 +266,47 @@ static bool genesis_journal_entry(sd_journal *journal, char *source, size_t sour
     return true;
 }
 
-static void format_logs(char *text, size_t size) {
+struct log_record {
+    char text[LOG_LINE_SIZE];
+    char *cursor;
+    unsigned int first_row;
+    unsigned int row_count;
+    bool selected;
+};
+
+struct log_view {
+    struct log_record records[LOG_LINE_COUNT];
+    unsigned int count;
+    unsigned int start;
+};
+
+static void free_log_view(struct log_view *view) {
+    for (unsigned int index = 0; index < LOG_LINE_COUNT; index++)
+        free(view->records[index].cursor);
+}
+
+static void load_logs(struct log_view *view, const char *selected_cursor) {
     sd_journal *journal = NULL;
-    char lines[LOG_LINE_COUNT][LOG_LINE_SIZE] = {{0}};
     unsigned int count = 0;
     unsigned int next = 0;
     int result;
 
-    if (size == 0)
-        return;
-    text[0] = '\0';
     result = sd_journal_open(&journal, SD_JOURNAL_LOCAL_ONLY | SD_JOURNAL_SYSTEM);
     if (result < 0) {
-        xcat_set_text(text, size, "Genesis journal is unavailable: %s", strerror(-result));
+        xcat_set_text(view->records[0].text, LOG_LINE_SIZE, "Genesis journal is unavailable: %s",
+                      strerror(-result));
+        view->count = 1;
         return;
     }
 
     sd_journal_seek_tail(journal);
-    sd_journal_previous_skip(journal, 2048);
-    while (sd_journal_next(journal) > 0) {
+    for (result = sd_journal_previous_skip(journal, 2048); result > 0;
+         result = sd_journal_next(journal)) {
         char message[256] = "";
         char source[96] = "";
         char timestamp[16] = "--:--:--";
         uint64_t realtime;
+        struct log_record *record = &view->records[next];
 
         if (!genesis_journal_entry(journal, source, sizeof(source)) ||
             !journal_value(journal, "MESSAGE", message, sizeof(message)))
@@ -300,32 +318,25 @@ static void format_logs(char *text, size_t size) {
             if (localtime_r(&seconds, &local_time) != NULL)
                 strftime(timestamp, sizeof(timestamp), "%H:%M:%S", &local_time);
         }
-        snprintf(lines[next], sizeof(lines[next]), "%s %-24.24s %s", timestamp, source, message);
+        free(record->cursor);
+        record->cursor = NULL;
+        sd_journal_get_cursor(journal, &record->cursor);
+        record->selected =
+            selected_cursor != NULL && sd_journal_test_cursor(journal, selected_cursor) > 0;
+        snprintf(record->text, sizeof(record->text), "%s %-24.24s %s", timestamp, source, message);
         next = (next + 1) % LOG_LINE_COUNT;
         count++;
     }
     sd_journal_close(journal);
 
     if (count == 0) {
-        xcat_set_text(text, size, "No Genesis journal entries are available.");
+        xcat_set_text(view->records[0].text, LOG_LINE_SIZE,
+                      "No Genesis journal entries are available.");
+        view->count = 1;
         return;
     }
-    {
-        unsigned int available = count < LOG_LINE_COUNT ? count : LOG_LINE_COUNT;
-        unsigned int start = count < LOG_LINE_COUNT ? 0 : next;
-        unsigned int index;
-        size_t used = 0;
-
-        for (index = 0; index < available && used + 1 < size; index++) {
-            unsigned int line = (start + index) % LOG_LINE_COUNT;
-            int written =
-                snprintf(text + used, size - used, "%s%s", index > 0 ? "\n" : "", lines[line]);
-
-            if (written < 0 || (size_t)written >= size - used)
-                break;
-            used += (size_t)written;
-        }
-    }
+    view->count = count < LOG_LINE_COUNT ? count : LOG_LINE_COUNT;
+    view->start = count < LOG_LINE_COUNT ? 0 : next;
 }
 
 static unsigned int append_wrapped_log_record(newtComponent list_box, const char *record,
@@ -365,30 +376,48 @@ static unsigned int append_wrapped_log_record(newtComponent list_box, const char
     return count;
 }
 
-static unsigned int populate_log_listbox(newtComponent list_box, const char *text) {
-    const char *record = text;
+static unsigned int populate_log_listbox(newtComponent list_box, struct log_view *view) {
     unsigned int count = 0;
 
-    while (*record != '\0') {
-        const char *end = strchr(record, '\n');
-        size_t length = end != NULL ? (size_t)(end - record) : strlen(record);
+    for (unsigned int index = 0; index < view->count; index++) {
+        struct log_record *record = &view->records[(view->start + index) % LOG_LINE_COUNT];
 
-        count = append_wrapped_log_record(list_box, record, length, count);
-        if (end == NULL)
-            break;
-        record = end + 1;
+        record->first_row = count + 1;
+        count = append_wrapped_log_record(list_box, record->text, strlen(record->text), count);
+        record->row_count = count + 1 - record->first_row;
     }
-    if (count == 0)
-        count = append_wrapped_log_record(list_box, "", 0, count);
     return count;
+}
+
+static const struct log_record *selected_log_record(const struct log_view *view,
+                                                    unsigned int selected) {
+    for (unsigned int index = 0; index < view->count; index++) {
+        const struct log_record *record = &view->records[(view->start + index) % LOG_LINE_COUNT];
+
+        if (selected >= record->first_row && selected - record->first_row < record->row_count)
+            return record;
+    }
+    return NULL;
+}
+
+static unsigned int retained_log_row(const struct log_view *view, unsigned int offset) {
+    for (unsigned int index = 0; index < view->count; index++) {
+        const struct log_record *record = &view->records[(view->start + index) % LOG_LINE_COUNT];
+
+        if (record->selected) {
+            if (offset >= record->row_count)
+                offset = record->row_count - 1;
+            return record->first_row + offset;
+        }
+    }
+    return 1;
 }
 
 static void show_logs(void) {
     struct newtExitStruct event;
     newtComponent form;
     newtComponent list_box;
-    char text[LOG_LINE_COUNT * LOG_LINE_SIZE];
-    char previous[LOG_LINE_COUNT * LOG_LINE_SIZE] = "";
+    struct log_view previous = {0};
     unsigned int item_count = 0;
     unsigned int selected = 0;
     bool follow = true;
@@ -410,15 +439,17 @@ static void show_logs(void) {
     newtPushHelpLine(" F3 Back   Esc Back   Up/Down Scroll   End Follow");
 
     while (!xcat_console_stop_requested) {
-        format_logs(text, sizeof(text));
-        if (previous[0] == '\0' || strcmp(previous, text) != 0) {
-            newtListboxClear(list_box);
-            item_count = populate_log_listbox(list_box, text);
-            if (follow || selected == 0 || selected > item_count)
-                selected = item_count;
-            newtListboxSetCurrentByKey(list_box, (void *)(uintptr_t)selected);
-            xcat_copy_printable(previous, sizeof(previous), text);
-        }
+        struct log_view current = {0};
+        const struct log_record *record = selected_log_record(&previous, selected);
+        unsigned int offset = record != NULL ? selected - record->first_row : 0;
+
+        load_logs(&current, !follow && record != NULL ? record->cursor : NULL);
+        newtListboxClear(list_box);
+        item_count = populate_log_listbox(list_box, &current);
+        selected = follow ? item_count : retained_log_row(&current, offset);
+        newtListboxSetCurrentByKey(list_box, (void *)(uintptr_t)selected);
+        free_log_view(&previous);
+        previous = current;
         newtRefresh();
         newtFormRun(form, &event);
         if (event.reason == NEWT_EXIT_ERROR ||
@@ -452,6 +483,7 @@ static void show_logs(void) {
             newtListboxSetCurrentByKey(list_box, (void *)(uintptr_t)selected);
     }
 
+    free_log_view(&previous);
     newtFormDestroy(form);
     newtPopHelpLine();
     newtPopWindow();

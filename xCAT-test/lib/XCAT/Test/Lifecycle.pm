@@ -27,10 +27,11 @@ sub checked {
 }
 
 sub build_deb {
-    my ($package) = @_;
+    my ($package, $source) = @_;
+    $source //= repo_path('.');
     my $work = tempdir(CLEANUP => 1);
-    checked('tar', '-cf', "$work/source.tar", '-C', repo_path('.'), $package);
-    checked('tar', '-xf', "$work/source.tar", '-C', $work);
+    checked('tar', '-cf', "$work/source.tar", '-C', $source, $package);
+    checked('tar', '-xpf', "$work/source.tar", '-C', $work);
     if ($package eq 'xCAT-genesis-scripts') {
         my $arch = checked('dpkg-architecture', '-qDEB_HOST_ARCH');
         chomp $arch;
