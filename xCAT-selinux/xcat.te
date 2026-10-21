@@ -4,7 +4,7 @@ gen_require(`
     type httpd_t, httpd_sys_script_t, tftpdir_t, ntop_port_t;
     type rsync_t, shadow_t;
     type useradd_t, groupadd_t, public_content_t;
-    type named_zone_t, named_unit_file_t, systemd_unit_file_t;
+    type named_zone_t, named_unit_file_t, systemd_unit_file_t, dhcpd_unit_file_t;
     type auditd_etc_t, selinux_config_t, ldconfig_cache_t, setfiles_t, tmp_t;
     type device_t;
     attribute file_type;
@@ -259,6 +259,18 @@ allow xcat_t named_unit_file_t:service { start status stop reload enable disable
 # denial was recorded for either: the audit window was empty while makedhcp
 # still reported "Failed to enable kea-dhcp-ddns".
 allow xcat_t systemd_unit_file_t:service { start status stop reload enable disable };
+# EL9 and earlier run ISC dhcpd, so makedhcp asks systemd for dhcpd.service.
+# EL10 runs Kea, whose units carry systemd_unit_file_t, which is why the EL10
+# measurement showed no denial for this one.
+allow xcat_t dhcpd_unit_file_t:service { start status stop reload enable disable };
+
+# omshell reads /proc/sys/net/ipv4/ip_local_port_range before it opens the OMAPI
+# socket. makedhcp runs it on every ISC backend.
+kernel_read_net_sysctls(xcat_t)
+
+# copycds loop-mounts the install DVD, and mount asks the kernel for the
+# iso9660 and loop modules.
+kernel_request_load_module(xcat_t)
 
 # xcatd keeps its credentials under /etc/xcat and its socket under /run/xcat.
 manage_dirs_pattern(xcat_t, cert_t, cert_t)
