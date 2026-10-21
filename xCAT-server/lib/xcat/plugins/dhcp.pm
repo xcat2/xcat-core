@@ -4356,8 +4356,14 @@ sub kea_build_node_reservations
         }
         my $removed = $config->{Dhcp4}
             ? $backend->delete_reservations($config, _kea_ipoib_owner($node)) : [];
-        my %updating = map { $_->{'subnet-id'} . ':' . $_->{'client-id'} => 1 } @$ipoib;
-        push @$deleted, grep { !$updating{$_->{'subnet-id'} . ':' . $_->{'client-id'}} } @$removed if $deleted;
+        my %updating = map {
+            my ($subnet, $client) = @{$_}{qw(subnet-id client-id)};
+            ("$subnet:$client" => 1)
+        } @$ipoib;
+        push @$deleted, grep {
+            my ($subnet, $client) = @{$_}{qw(subnet-id client-id)};
+            !$updating{"$subnet:$client"}
+        } @$removed if $deleted;
         push @reservations, @$ipoib;
     }
 
