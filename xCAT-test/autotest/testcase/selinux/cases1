@@ -187,6 +187,10 @@ check:rc==0
 check:output=~^Enforcing$
 cmd:chdef -t node -o $$CN selinux=enforcing
 check:rc==0
+cmd:genimage $$STATELITE
+check:rc==0
+cmd:liteimg $$STATELITE
+check:rc==0
 cmd:nodeset $$CN osimage=$$STATELITE
 check:rc==0
 check:output=~SELinux is disabled
