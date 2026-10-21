@@ -53,6 +53,13 @@ BEGIN {
         return $server if $server =~ /:/ && isValidIp(__PACKAGE__, $server);
         return getipaddr($server, OnlyV6 => 1);
     }
+    sub isIpv6addr {
+        my $addr = $_[-1];
+        return 0 unless defined($addr) && length($addr);
+        return 0 if $addr =~ /%/;
+        return 0 unless $addr =~ /:/;
+        return $addr =~ /^[0-9a-fA-F:.]+$/ ? 1 : 0;
+    }
     sub isValidIp {
         my $addr = $_[-1];
         return 0 unless defined($addr) && length($addr);
@@ -1147,6 +1154,32 @@ foreach my $case (@sysconfig_policy_cases) {
     my @unresolvable = xCAT_plugin::dhcp::next_server_for_node( 'n1', { xcatmaster => 'no.such.host.invalid' } );
     is( scalar(@unresolvable), 0, 'an unresolvable xcatmaster yields no address' );
     like( ( $errors[0] || '' ), qr/xcatmaster/, 'and says which attribute to look at' );
+
+    # An IPv6 tftpserver or xcatmaster is not a DHCPv4 next-server. inet_aton
+    # cannot read it, and reporting that as an error makes makedhcp fail for a
+    # node whose boot server is named in the DHCPv6 reservation instead.
+    @errors = ();
+    my @v6_tftp = xCAT_plugin::dhcp::next_server_for_node(
+        'n1', { tftpserver => '2001:db8:7309::1' } );
+    is( scalar(@v6_tftp), 0, 'an IPv6 tftpserver yields no DHCPv4 next-server' );
+    is_deeply( \@errors, [],
+        'and reports no error, because a DHCPv4 answer was never due' );
+
+    @errors = ();
+    my @v6_master = xCAT_plugin::dhcp::next_server_for_node(
+        'n1', { xcatmaster => '2001:db8:7309::1' } );
+    is( scalar(@v6_master), 0, 'an IPv6 xcatmaster yields no DHCPv4 next-server' );
+    is_deeply( \@errors, [], 'and reports no error either' );
+
+    # A name that genuinely does not resolve still has to be reported, or the
+    # check above would be satisfied by removing the error path altogether.
+    @errors = ();
+    my @broken = xCAT_plugin::dhcp::next_server_for_node(
+        'n1', { tftpserver => 'no.such.host.invalid' } );
+    is( scalar(@broken), 0, 'an unresolvable tftpserver yields no next-server' );
+    like( ( $errors[0] || '' ), qr/tftpserver/,
+        'and says which attribute to look at' );
+
 }
 
 my @normalized_mac_cases = (
