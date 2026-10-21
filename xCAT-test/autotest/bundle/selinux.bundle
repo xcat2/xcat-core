@@ -1,4 +1,5 @@
 selinux_xcatd_domain
+selinux_client_domain
 selinux_mn_labels
 selinux_restapi_avc
 selinux_cn_diskful_enforcing
