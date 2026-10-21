@@ -4,6 +4,7 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT";
 
+use File::Path qw/make_path/;
 use File::Temp qw/tempdir/;
 use JSON;
 use Test::More;
@@ -484,6 +485,13 @@ my $dhcp6_json = $backend->render_dhcp6_config(
                         duid           => '00:04:52:54:00:12:34:56',
                         'ip-addresses' => ['2001:db8:1::50'],
                         hostname       => 'nodev6',
+                        'option-data'  => [
+                            {
+                                name          => 'bootfile-url',
+                                data          => 'tftp://[2001:db8:1::1]/boot/grub2/grub2-nodev6',
+                                'always-send' => JSON::true,
+                            },
+                        ],
                     },
                 ],
             },
@@ -497,6 +505,10 @@ is( $dhcp6_config->{Dhcp6}{'valid-lifetime'}, 700, 'DHCPv6 valid lifetime is num
 is( $dhcp6_config->{Dhcp6}{'preferred-lifetime'}, 500, 'DHCPv6 preferred lifetime is numeric' );
 is( $dhcp6_config->{Dhcp6}{subnet6}[0]{id}, 11, 'DHCPv6 subnet id is numeric' );
 is( $dhcp6_config->{Dhcp6}{subnet6}[0]{reservations}[0]{duid}, '00:04:52:54:00:12:34:56', 'DHCPv6 DUID reservation is rendered' );
+my $dhcp6_bootfile = $dhcp6_config->{Dhcp6}{subnet6}[0]{reservations}[0]{'option-data'}[0];
+is( $dhcp6_bootfile->{name}, 'bootfile-url', 'DHCPv6 reservation bootfile option is rendered' );
+is( $dhcp6_bootfile->{data}, 'tftp://[2001:db8:1::1]/boot/grub2/grub2-nodev6', 'DHCPv6 reservation bootfile URL is preserved' );
+ok( $dhcp6_bootfile->{'always-send'}, 'DHCPv6 reservation bootfile option preserves always-send' );
 
 my $ddns_json = $backend->render_ddns_config(
     {
@@ -532,14 +544,20 @@ my $ctrl_agent_config = decode_json($ctrl_agent_backend->render_ctrl_agent_confi
 is( $ctrl_agent_config->{'Control-agent'}{'http-port'}, 8000, 'Control Agent HTTP port is numeric' );
 
 my $runtime_socket_dir = "$unit_dir/run/kea";
-mkdir "$unit_dir/run" or die "Unable to create $unit_dir/run: $!";
-mkdir $runtime_socket_dir or die "Unable to create $runtime_socket_dir: $!";
+my $legacy_runtime_socket_dir = "$unit_dir/var/run/kea";
+make_path($runtime_socket_dir, $legacy_runtime_socket_dir);
 
-my $runtime_socket_backend = xCAT::DHCP::Backend::Kea->new( kea_socket_dirs => [ $runtime_socket_dir, "$unit_dir/var/run/kea" ] );
+my $runtime_socket_backend = xCAT::DHCP::Backend::Kea->new(
+    kea_version     => '2.4.1',
+    kea_socket_dirs => [ $runtime_socket_dir, $legacy_runtime_socket_dir ],
+);
 my $runtime_socket_config = decode_json($runtime_socket_backend->render_ctrl_agent_config({}));
-is( $runtime_socket_config->{'Control-agent'}{'control-sockets'}{dhcp4}{'socket-name'}, "$runtime_socket_dir/kea4-ctrl-socket", 'Control Agent socket uses the detected runtime directory' );
+is( $runtime_socket_config->{'Control-agent'}{'control-sockets'}{dhcp4}{'socket-name'}, "$runtime_socket_dir/kea4-ctrl-socket", 'Control Agent prefers the canonical runtime directory when both paths exist' );
 
-my $legacy_socket_backend = xCAT::DHCP::Backend::Kea->new( kea_socket_dirs => [] );
+my $legacy_socket_backend = xCAT::DHCP::Backend::Kea->new(
+    kea_version     => '2.4.1',
+    kea_socket_dirs => [],
+);
 my $legacy_socket_config = decode_json($legacy_socket_backend->render_ctrl_agent_config({}));
 is( $legacy_socket_config->{'Control-agent'}{'control-sockets'}{dhcp4}{'socket-name'}, '/var/run/kea/kea4-ctrl-socket', 'Control Agent socket falls back to the legacy runtime path when no runtime directory exists' );
 
@@ -639,6 +657,29 @@ my $ctrl_agent_socket_config = decode_json($socket_backend->render_ctrl_agent_co
 is( $ctrl_agent_socket_config->{'Control-agent'}{'control-sockets'}{dhcp4}{'socket-name'}, '/run/kea/kea4-ctrl-socket', 'Control Agent DHCPv4 socket uses the detected Kea socket directory' );
 is( $ctrl_agent_socket_config->{'Control-agent'}{'control-sockets'}{dhcp6}{'socket-name'}, '/run/kea/kea6-ctrl-socket', 'Control Agent DHCPv6 socket uses the detected Kea socket directory' );
 is( $ctrl_agent_socket_config->{'Control-agent'}{'control-sockets'}{d2}{'socket-name'}, '/run/kea/kea-ddns-ctrl-socket', 'Control Agent DDNS socket uses the detected Kea socket directory' );
+
+my $restricted_socket_backend = xCAT::DHCP::Backend::Kea->new( kea_version => '3.0.1' );
+my $restricted_socket_config = decode_json($restricted_socket_backend->render_ctrl_agent_config({ dhcp6 => 1, ddns => 1 }));
+is( $restricted_socket_config->{'Control-agent'}{'control-sockets'}{dhcp4}{'socket-name'}, 'kea4-ctrl-socket', 'path-restricted Kea uses a DHCPv4 socket basename' );
+is( $restricted_socket_config->{'Control-agent'}{'control-sockets'}{dhcp6}{'socket-name'}, 'kea6-ctrl-socket', 'path-restricted Kea uses a DHCPv6 socket basename' );
+is( $restricted_socket_config->{'Control-agent'}{'control-sockets'}{d2}{'socket-name'}, 'kea-ddns-ctrl-socket', 'path-restricted Kea uses a DDNS socket basename' );
+
+foreach my $case (
+    [ '2.4.1', 0 ],
+    [ '2.4.2', 1 ],
+    [ '2.6.2', 0 ],
+    [ '2.6.3', 1 ],
+    [ '2.7.8', 0 ],
+    [ '2.7.9', 1 ],
+) {
+    my ( $version, $uses_basename ) = @$case;
+    my $versioned_backend = xCAT::DHCP::Backend::Kea->new(
+        kea_version     => $version,
+        kea_socket_dirs => [],
+    );
+    my $expected = $uses_basename ? 'kea4-ctrl-socket' : '/var/run/kea/kea4-ctrl-socket';
+    is( $versioned_backend->control_socket_name('kea4-ctrl-socket'), $expected, "Kea $version selects the compatible control-socket form" );
+}
 
 my $explicit_socket_config = decode_json($socket_backend->render_ctrl_agent_config({ 'dhcp4-socket' => '/tmp/kea4.sock' }));
 is( $explicit_socket_config->{'Control-agent'}{'control-sockets'}{dhcp4}{'socket-name'}, '/tmp/kea4.sock', 'explicit Control Agent socket path overrides the default' );

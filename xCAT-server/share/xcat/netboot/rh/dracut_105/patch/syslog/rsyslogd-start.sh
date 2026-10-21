@@ -6,8 +6,17 @@
 
 type getarg >/dev/null 2>&1 || . /lib/dracut-lib.sh
 
+format_syslog_server() {
+    case "$1" in
+        \[*\]) printf '%s\n' "$1" ;;
+        *:*)   printf '[%s]\n' "$1" ;;
+        *)     printf '%s\n' "$1" ;;
+    esac
+}
+
 rsyslog_config() {
-    local server=$1
+    local server
+    server=$(format_syslog_server "$1")
     shift
     local syslog_template=$1
     shift

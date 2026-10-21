@@ -8,7 +8,12 @@ BEGIN {
 
     if (!flag) flag = "next"
 
-    ns = "/inet/tcp/0/" xcatdhost "/" xcatdport
+    if (xcatdhost ~ /^\[.*\]$/) {
+        sub(/^\[/, "", xcatdhost)
+        sub(/\]$/, "", xcatdhost)
+    }
+    netfamily = index(xcatdhost, ":") ? "inet6" : "inet"
+    ns = "/" netfamily "/tcp/0/" xcatdhost "/" xcatdport
 
     loop = 0
     while(1) {
@@ -37,4 +42,3 @@ BEGIN {
 
     exit 0
 }
-

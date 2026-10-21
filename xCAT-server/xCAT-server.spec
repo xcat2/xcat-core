@@ -88,8 +88,14 @@ Requires: chkconfig
 # openssl is present on all EL; require it uniformly (not just el10) so a single
 # flat xcat-core build is correct everywhere. Excluded on SLES, where the package
 # name differs and it was never required before.
+#
+# IO::Socket::INET6 and Socket6 carry the AF_INET6 constants the dual-stack
+# listener and the discovery callbacks need. They are not in core perl, so a
+# management node without them falls back to IPv4 and an IPv6-only node cannot
+# reach xcatd.
 %if !0%{?suse_version}
 Requires: openssl
+Requires: perl-IO-Socket-INET6 perl-Socket6
 %endif
 
 %if %fsm
