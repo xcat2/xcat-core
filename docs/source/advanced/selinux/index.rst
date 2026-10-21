@@ -64,6 +64,14 @@ unit must name ``xcatd`` and not a shell. 115 command names are symlinks to
 file it points to. ``/usr/sbin/xcatd`` is a symlink, and ``execve`` resolves it,
 so the context belongs to the file in ``/opt/xcat``.
 
+A rootimg component in the middle of an image root is ambiguous, because
+``rootimgdir`` is any path under ``/install``. The file contexts keep the guest
+labels there, so an osimage whose ``rootimgdir`` has a directory called
+``rootimg`` above the tree leaves its published kernel and initrd unlabeled,
+and ``httpd`` cannot serve them. Give such an osimage a ``rootimgdir`` with no
+``rootimg`` component, or run ``restorecon`` over the image root after the
+package is installed.
+
 The unit holds ``/opt/xcat`` as the default prefix, and ``%post`` writes
 ``/etc/xcat/xcatroot.env`` with the prefix of the installation, which the unit
 reads after that default. The file contexts name ``/opt/xcat``, so a package

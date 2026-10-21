@@ -135,4 +135,46 @@ foreach my $prefix ('/opt/xcat', '/srv/xcat') {
     };
 }
 
+# %post writes the environment file and %preun takes it away, so it is absent
+# on rpm --justdb, before %post runs, and after an interrupted install. The
+# unit must still start: each EnvironmentFile carries a leading -, which makes
+# a missing file not an error, and the unit keeps a default XCATROOT.
+subtest 'the unit starts when the recorded prefix file is absent' => sub {
+    my $root = XCAT::Test::RPM->new;
+    $root->write('/etc/os-release', "ID=rhel\nVERSION_ID=\"10.0\"\n");
+    my ($status, $out, $err) = $root->install($rpm, '--prefix', '/srv/xcat');
+    is($status, 0, 'install under /srv/xcat') or diag "$out$err";
+
+    foreach my $setting (service_settings($root->read($unit))) {
+        next unless $setting->[0] eq 'EnvironmentFile';
+        like($setting->[1], qr{^-},
+            "a missing $setting->[1] does not stop the unit");
+    }
+
+    unlink($root->path('/etc/xcat/xcatroot.env'))
+        or die 'removing the recorded prefix: ' . $!;
+    # The default in the unit is the only source left, so name it. An empty
+    # value would satisfy a check that only compared the composed value with
+    # itself.
+    my $env = unit_environment($root, $unit);
+    is($env->{XCATROOT}, '/opt/xcat', 'XCATROOT is the default of the unit');
+    like($env->{PATH} // '', qr{\Q/opt/xcat/sbin\E},
+        'PATH is the default of the unit');
+
+    # The daemon symlink still names /srv/xcat, and XCATROOT falls back to the
+    # default in the unit, so the daemon starts and reads the modules of the
+    # other prefix. That is the state before this change, and it is what the
+    # recorded prefix file removes. Record at the path the symlink names, so
+    # the test writes nothing outside its scratch tree.
+    my @start = exec_start($root, $unit);
+    my $target = readlink($root->path('/usr/sbin/xcatd'));
+    $root->write($target,
+        "#!/bin/sh\nprintf 'xcatd XCATROOT=%s\\n' \"\$XCATROOT\" >> /calls\n", 0755);
+    ($status, $out, $err) = $root->run('env', "XCATROOT=$env->{XCATROOT}",
+        "PATH=$env->{PATH}", @start);
+    is($status, 0, 'the start command runs without the recorded prefix') or diag "$out$err";
+    is($root->read('/calls'), "xcatd XCATROOT=/opt/xcat\n",
+        'the daemon starts with the default prefix, not the installed one');
+};
+
 done_testing();
