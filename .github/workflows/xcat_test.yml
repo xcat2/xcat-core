@@ -102,7 +102,7 @@ jobs:
         run: |
           log=$(mktemp)
           trap 'rm -f -- "$log"' EXIT
-          prove -v xCAT-test/native/install_profile_riscv64.t xCAT-test/native/netboot_profile_riscv64.t xCAT-test/native/builddebs_riscv64.t xCAT-test/native/ubuntu_subiquity_template.t | tee "$log"
+          prove -v xCAT-test/native/install_profile_riscv64.t xCAT-test/native/netboot_profile_riscv64.t xCAT-test/native/netboot_profile_postinstall.t xCAT-test/native/builddebs_riscv64.t xCAT-test/native/ubuntu_subiquity_template.t | tee "$log"
           ! grep -qi skipped "$log"
   rpm_lifecycle_test:
     runs-on: ubuntu-24.04
@@ -131,3 +131,6 @@ jobs:
       - name: Test FIPS package artifacts
         if: ${{ !cancelled() }}
         run: su -s /bin/sh nobody -c 'prove -v xCAT-test/native/fips_package_payload.t'
+      - name: Test netboot postinstall profiles
+        if: ${{ !cancelled() }}
+        run: su -s /bin/sh nobody -c 'prove -v xCAT-test/native/netboot_profile_postinstall.t'

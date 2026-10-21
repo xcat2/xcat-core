@@ -90,8 +90,6 @@ for my $family (@families) {
                     if ($mode eq 'absent') {
                         ok(!-e "$image/etc/selinux/config", "pass $pass leaves absent SELinux configuration absent");
                     } else {
-                        local $TODO = 'The existing postinstall duplicates SELINUX= for permissive mode'
-                            if $mode eq 'permissive';
                         is(read_text("$image/etc/selinux/config"), "SELINUX=disabled\nSELINUXTYPE=targeted\n",
                             "pass $pass disables SELinux without changing the policy type");
                     }
