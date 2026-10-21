@@ -1067,7 +1067,11 @@ sub _execution_ssh_policy {
     _fail('SSH policy source changed') unless sha256_hex($bytes) eq $source->{id};
     my $manifest = $json->decode($bytes);
     my $native = '5261a51fe998d40c2f9fff02b18b75fa729706057cd8e5d256e9c589f8025531';
-    my $launcher = '5b0b35feae45a3e9fc0f1bbc1d3f5b8217cca5d1ec198bef980efcdabe2c2e86';
+    # Retained launchers and the current script require the same native SSH policy.
+    my %launchers = map { $_ => 1 } qw(
+        5b0b35feae45a3e9fc0f1bbc1d3f5b8217cca5d1ec198bef980efcdabe2c2e86
+        9b8e9e27ca50ce875454afd6e568dbb3569c7253eef56fc8edfa9ad14c7bae1d
+    );
     return 1 unless grep { $_->{type} eq 'file' && $_->{sha256} eq $native } values %{$manifest->{entries}};
     my $rendered = _read("$source->{directory}/rendered", $render_limit);
     _fail('SSH policy render changed') unless sha256_hex($rendered) eq $manifest->{capture}{rendered}{sha256};
@@ -1082,7 +1086,7 @@ sub _execution_ssh_policy {
         my $key = _source_resolve($name, $manifest->{entries}, \%source_limits);
         my $file = $manifest->{entries}{$key};
         next unless $file->{type} eq 'file';
-        if ($file->{sha256} eq $launcher) {
+        if ($launchers{$file->{sha256}}) {
             my $directory = dirname($name);
             my $adapter = ($directory eq '.' ? '' : "$directory/") . 'remoteshell.freebsd';
             $key = _source_resolve($adapter, $manifest->{entries}, \%source_limits);
