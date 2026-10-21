@@ -1,3 +1,5 @@
+#!/usr/bin/awk -f
+
 # Validate dataset declarations before emitting any native creation options.
 function fail(message) {
     print "ZFS datasets: " message > "/dev/stderr"

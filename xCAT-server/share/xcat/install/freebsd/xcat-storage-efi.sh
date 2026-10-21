@@ -1,3 +1,5 @@
+#!/bin/sh
+
 # UEFI operations for the initial-install storage guard.
 
 storage_efi_load()
