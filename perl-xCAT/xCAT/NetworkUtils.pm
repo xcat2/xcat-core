@@ -1758,7 +1758,7 @@ sub ipv6_server_for_node
     }
 
     return $server
-      if $server =~ /:/ && xCAT::NetworkUtils->isValidIPAddress($server);
+      if $server =~ /:/ && xCAT::NetworkUtils->isValidIp($server);
     return xCAT::NetworkUtils->getipaddr($server, OnlyV6 => 1);
 }
 
@@ -3198,7 +3198,7 @@ sub match_ping_targets
 sub _ping_address_key
 {
     my ($address) = @_;
-    return unless xCAT::NetworkUtils->isValidIPAddress($address);
+    return unless xCAT::NetworkUtils->isValidIp($address);
 
     my $family = $address =~ /:/ ? 6 : 4;
     my $packed = _pack_ip_address($address, $family);

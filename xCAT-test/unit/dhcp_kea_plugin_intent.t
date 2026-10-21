@@ -50,10 +50,10 @@ BEGIN {
             return unless @facing && !$facing[0];
             return $facing[1];
         }
-        return $server if $server =~ /:/ && isValidIPAddress(__PACKAGE__, $server);
+        return $server if $server =~ /:/ && isValidIp(__PACKAGE__, $server);
         return getipaddr($server, OnlyV6 => 1);
     }
-    sub isValidIPAddress {
+    sub isValidIp {
         my $addr = $_[-1];
         return 0 unless defined($addr) && length($addr);
         return 1 if $addr =~ /^\d{1,3}(?:\.\d{1,3}){3}$/;
@@ -460,11 +460,12 @@ foreach my $case (@sysconfig_policy_cases) {
 
 {
     package DHCPKeaControlSocketBackend;
-    sub control_socket_name {
+    sub control_socket_path {
         my ( $self, $name ) = @_;
         return "shared-$name";
     }
     sub host_cmds_hook_path { return '/usr/lib64/kea/hooks/libdhcp_host_cmds.so'; }
+    sub bootp_hook_path     { return '/usr/lib64/kea/hooks/libdhcp_bootp.so'; }
 
     package main;
     no warnings 'redefine';
@@ -2451,7 +2452,7 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
             { 'nodev6xnba' => { mac => '02:00:00:00:00:63!*NOIP*' } }
         );
 
-        xCAT_plugin::dhcp::kea_sync_xnba_client_classes(
+        xCAT_plugin::dhcp::kea_sync_node_client_classes(
             $config, ['nodev6xnba']
         );
         $res_tables{mac} = $saved_mac;
@@ -2466,7 +2467,7 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
         };
         my $config = { Dhcp4 => { 'client-classes' => [] } };
 
-        xCAT_plugin::dhcp::kea_sync_xnba_client_classes(
+        xCAT_plugin::dhcp::kea_sync_node_client_classes(
             $config, [qw(nodev6aliasv4 nodev4aliasv6)]
         );
 

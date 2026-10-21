@@ -3164,7 +3164,7 @@ sub kea_ipv6_nameservers
         my $ip = xCAT::NetworkUtils->ipv6_server_for_node($peer, $server);
         next unless $ip
           && $ip =~ /:/
-          && xCAT::NetworkUtils->isValidIPAddress($ip)
+          && xCAT::NetworkUtils->isValidIp($ip)
           && !$seen{$ip}++;
         push @resolved, $ip;
     }
@@ -3177,10 +3177,10 @@ sub kea_resolve_ddns_target
     my ($target) = @_;
     return unless $target && $target ne '<xcatmaster>';
 
-    my $ip = xCAT::NetworkUtils->isValidIPAddress($target)
+    my $ip = xCAT::NetworkUtils->isValidIp($target)
       ? $target
       : getipaddr($target);
-    return $ip && xCAT::NetworkUtils->isValidIPAddress($ip) ? $ip : undef;
+    return $ip && xCAT::NetworkUtils->isValidIp($ip) ? $ip : undef;
 }
 
 sub kea_ddns_update_target
@@ -3912,7 +3912,9 @@ sub kea_node_reservations
         return [];
     }
 
-    my ( $nxtsrv, $tftpserver ) = next_server_for_node($node, $nrent);
+    # Resolved on first use. next_server_for_node reports an unresolvable
+    # tftpserver, and an IPv6-only node leaves this loop before it needs one.
+    my ( $nxtsrv, $tftpserver, $next_server_resolved );
     my @reservations;
     my @macs = split(/\|/, $macent->{mac});
     foreach my $mace (@macs) {
@@ -3924,6 +3926,12 @@ sub kea_node_reservations
         # address to reserve, and trying to resolve "*NOIP*" would otherwise be
         # treated as an unresolved reservation. This mirrors the ISC path.
         next if $hname eq '*NOIP*';
+
+        # An IPv6-only node has no DHCPv4 reservation to write. Skip it before
+        # the mac column is read: a DHCPv6 client is identified by DUID, so its
+        # mac entry would be reported as an invalid address.
+        next if xCAT::NetworkUtils->node_is_ipv6_only($hname);
+
         my $normalized_mac = kea_normalize_mac($mac);
         unless ($normalized_mac) {
             $callback->({ error => ["Invalid mac address $mac for $node"], errorcode => [1] });
@@ -3931,9 +3939,10 @@ sub kea_node_reservations
         }
         $mac = $normalized_mac;
 
-        # An IPv6-only node has no DHCPv4 reservation to write, and resolving
-        # it here would report it as an unresolved name.
-        next if xCAT::NetworkUtils->node_is_ipv6_only($hname);
+        unless ($next_server_resolved) {
+            ( $nxtsrv, $tftpserver ) = next_server_for_node($node, $nrent);
+            $next_server_resolved = 1;
+        }
 
         my $ip = getipaddr($hname, OnlyV4 => 1);
         unless ($ip) {
@@ -4216,10 +4225,12 @@ sub kea_node_client_classes_for_nodes
 
         foreach my $mace (split(/\|/, $macent->{mac})) {
             my ( $mac, $hname ) = split(/!/, $mace);
-            # The *NOIP* sentinel still reaches the DROP class below, so only
-            # an IPv6-only node leaves the DHCPv4 boot classes here.
-            next if defined($hname) and $hname ne '*NOIP*'
-              and xCAT::NetworkUtils->node_is_ipv6_only($hname);
+            # An IPv6-only node gets no DHCPv4 class, not even the DROP class
+            # a *NOIP* alias would otherwise produce. *NOIP* is a sentinel and
+            # not a name, so the node's own name answers the family question.
+            my $family_name =
+              ( defined($hname) and $hname ne '*NOIP*' ) ? $hname : $node;
+            next if xCAT::NetworkUtils->node_is_ipv6_only($family_name);
             next unless kea_reservation_is_local($node);
             $mac = kea_normalize_mac($mac);
             next unless $mac;

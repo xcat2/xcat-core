@@ -321,17 +321,20 @@ SKIP: {
 }
 
 {
-    local %::hostiphash = (
-        'cached.example.com' => {
-            hostip    => '2001:db8::50',
-            hostip_v4 => '192.0.2.50',
-        },
-    );
-    is(
-        xCAT::NetworkUtils->getipaddr('cached.example.com', OnlyV4 => 1),
-        '192.0.2.50',
-        'OnlyV4 reads only the IPv4-specific cache entry'
-    );
+    # getipaddr caches one address per host, and on a dual-stack host that is
+    # the AAAA record. An OnlyV4 caller renders the result into nfsroot= and a
+    # kernel command line, where an IPv6 literal does not parse, so the cache
+    # must not answer an OnlyV4 request with its IPv6 entry.
+    local %::hostiphash = ( 'cached.example.com' => { hostip => '2001:db8::50' } );
+    my $v4 = xCAT::NetworkUtils->getipaddr('cached.example.com', OnlyV4 => 1);
+    ok( !defined($v4) || $v4 !~ /:/,
+        'an IPv6 cache entry is not served to an OnlyV4 caller' );
+
+    local %::hostiphash = ( 'cached.example.com' => { hostip => '192.0.2.50' } );
+    is( xCAT::NetworkUtils->getipaddr('cached.example.com', OnlyV4 => 1),
+        '192.0.2.50', 'an IPv4 cache entry is served to an OnlyV4 caller' );
+    is( xCAT::NetworkUtils->getipaddr('cached.example.com'),
+        '192.0.2.50', 'and to a caller that asks for no family' );
 }
 
 {
@@ -448,7 +451,7 @@ BEGIN {
 }
 use xCAT::NetworkUtils;
 die "core IPv6 validation failed\n"
-  unless xCAT::NetworkUtils->isValidIPAddress('2001:db8::10');
+  unless xCAT::NetworkUtils->isValidIp('2001:db8::10');
 my $v6 = xCAT::NetworkUtils->getipaddr('2001:db8::10', OnlyV6 => 1);
 die "core IPv6 lookup failed\n" unless defined($v6) && $v6 eq '2001:db8::10';
 my $number = xCAT::NetworkUtils->getipaddr(

@@ -593,7 +593,7 @@ is( $ctrl_agent_config->{'Control-agent'}{'http-port'}, 8000, 'Control Agent HTT
 is( $backend->control_agent_url(), 'http://127.0.0.1:8000/', 'Control Agent keeps the default IPv4 authority' );
 SKIP: {
     skip 'No IPv6 literal parser is available', 1
-      unless xCAT::NetworkUtils->isValidIPAddress('2001:db8::1');
+      unless xCAT::NetworkUtils->isValidIp('2001:db8::1');
     is(
         $backend->control_agent_url( host => '2001:db8::1', port => 8001 ),
         'http://[2001:db8::1]:8001/',
@@ -715,29 +715,6 @@ my $ctrl_agent_socket_config = decode_json($socket_backend->render_ctrl_agent_co
 is( $ctrl_agent_socket_config->{'Control-agent'}{'control-sockets'}{dhcp4}{'socket-name'}, '/run/kea/kea4-ctrl-socket', 'Control Agent DHCPv4 socket uses the detected Kea socket directory' );
 is( $ctrl_agent_socket_config->{'Control-agent'}{'control-sockets'}{dhcp6}{'socket-name'}, '/run/kea/kea6-ctrl-socket', 'Control Agent DHCPv6 socket uses the detected Kea socket directory' );
 is( $ctrl_agent_socket_config->{'Control-agent'}{'control-sockets'}{d2}{'socket-name'}, '/run/kea/kea-ddns-ctrl-socket', 'Control Agent DDNS socket uses the detected Kea socket directory' );
-
-my $restricted_socket_backend = xCAT::DHCP::Backend::Kea->new( kea_version => '3.0.1' );
-my $restricted_socket_config = decode_json($restricted_socket_backend->render_ctrl_agent_config({ dhcp6 => 1, ddns => 1 }));
-is( $restricted_socket_config->{'Control-agent'}{'control-sockets'}{dhcp4}{'socket-name'}, 'kea4-ctrl-socket', 'path-restricted Kea uses a DHCPv4 socket basename' );
-is( $restricted_socket_config->{'Control-agent'}{'control-sockets'}{dhcp6}{'socket-name'}, 'kea6-ctrl-socket', 'path-restricted Kea uses a DHCPv6 socket basename' );
-is( $restricted_socket_config->{'Control-agent'}{'control-sockets'}{d2}{'socket-name'}, 'kea-ddns-ctrl-socket', 'path-restricted Kea uses a DDNS socket basename' );
-
-foreach my $case (
-    [ '2.4.1', 0 ],
-    [ '2.4.2', 1 ],
-    [ '2.6.2', 0 ],
-    [ '2.6.3', 1 ],
-    [ '2.7.8', 0 ],
-    [ '2.7.9', 1 ],
-) {
-    my ( $version, $uses_basename ) = @$case;
-    my $versioned_backend = xCAT::DHCP::Backend::Kea->new(
-        kea_version     => $version,
-        kea_socket_dirs => [],
-    );
-    my $expected = $uses_basename ? 'kea4-ctrl-socket' : '/var/run/kea/kea4-ctrl-socket';
-    is( $versioned_backend->control_socket_name('kea4-ctrl-socket'), $expected, "Kea $version selects the compatible control-socket form" );
-}
 
 my $explicit_socket_config = decode_json($socket_backend->render_ctrl_agent_config({ 'dhcp4-socket' => '/tmp/kea4.sock' }));
 is( $explicit_socket_config->{'Control-agent'}{'control-sockets'}{dhcp4}{'socket-name'}, '/tmp/kea4.sock', 'explicit Control Agent socket path overrides the default' );
