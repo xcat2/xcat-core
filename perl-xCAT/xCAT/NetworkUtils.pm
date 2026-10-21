@@ -438,6 +438,11 @@ sub getipaddr
             return;
         }
 
+        # getaddrinfo returns every address of the host, link-local included,
+        # and a caller that asked for no family takes the first one. Order the
+        # entries the way prefer_routable_addresses orders their literals.
+        @addrinfo = _addrinfo_routable_first(@addrinfo);
+
         my @returns;
         foreach my $address (@addrinfo)
         {
@@ -2666,6 +2671,88 @@ sub isIpv6addr
         $packed_address = eval { Socket6::inet_pton(Socket6::AF_INET6(), $value) };
     }
     return defined($packed_address) ? 1 : 0;
+}
+
+#-------------------------------------------------------------------------------
+# A link-local address reaches one link only, so it cannot serve as a cluster
+# address: fe80::/10 for IPv6, 169.254.0.0/16 for IPv4.
+sub _is_link_local
+{
+    my $address = shift;
+    return 0 unless defined($address) && length($address);
+    return 1 if $address =~ /^fe[89ab][0-9a-f]:/i;
+    return 1 if $address =~ /^169\.254\./;
+    return 0;
+}
+
+#-------------------------------------------------------------------------------
+# Order getaddrinfo entries by the same rule prefer_routable_addresses applies
+# to literals. An entry whose address cannot be read keeps its place at the end.
+sub _addrinfo_routable_first
+{
+    my @addrinfo = @_;
+    my (@routable, @linklocal, @unreadable);
+    foreach my $address (@addrinfo)
+    {
+        my ($name_error, $numeric_ip) =
+          Socket::getnameinfo($address->{addr}, Socket::NI_NUMERICHOST());
+        if ($name_error || !defined($numeric_ip))
+        {
+            push @unreadable, $address;
+        }
+        elsif (_is_link_local($numeric_ip))
+        {
+            push @linklocal, $address;
+        }
+        else
+        {
+            push @routable, $address;
+        }
+    }
+    return (@routable, @linklocal, @unreadable);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    prefer_routable_addresses
+
+    Orders resolved addresses so a routable one comes before a link-local one,
+    and removes the IPv6 zone identifier.
+
+    Arguments:
+        list of address literals, in resolver order
+    Returns:
+        the same addresses, routable ones first, order kept inside each group
+    Comments:
+        A host resolves its own name to every address on it, and a link-local
+        address is often first. site.master takes that answer and reaches every
+        node, which cannot use fe80::/10 across a link or parse the %zone form.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub prefer_routable_addresses
+{
+    my @addresses = @_;
+    shift @addresses
+      if @addresses && defined($addresses[0]) && $addresses[0] eq __PACKAGE__;
+
+    my (@routable, @linklocal);
+    foreach my $address (@addresses)
+    {
+        next unless defined($address) && length($address);
+        $address =~ s/%.*$//;
+        next unless length($address);
+        if (_is_link_local($address))
+        {
+            push @linklocal, $address;
+        }
+        else
+        {
+            push @routable, $address;
+        }
+    }
+    return (@routable, @linklocal);
 }
 
 #-------------------------------------------------------------------------------
