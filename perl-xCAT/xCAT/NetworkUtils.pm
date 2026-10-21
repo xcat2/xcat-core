@@ -366,6 +366,9 @@ sub getipaddr
         }else{
             @addrinfo=Socket6::getaddrinfo($iporhost, 0, $reqfamily, SOCK_STREAM, 6);
         }
+        # The resolver lists every address of the host, link-local included,
+        # and the first one is what a caller that asked for no family gets.
+        @addrinfo = _socket6_addrinfo_routable_first(@addrinfo);
         my ($family, $socket, $protocol, $ip, $name) = splice(@addrinfo, 0, 5);
         unless($reqfamily == AF_INET6){
             if($isip){
@@ -2683,6 +2686,34 @@ sub _is_link_local
     return 1 if $address =~ /^fe[89ab][0-9a-f]:/i;
     return 1 if $address =~ /^169\.254\./;
     return 0;
+}
+
+#-------------------------------------------------------------------------------
+# Socket6::getaddrinfo answers a flat list of five-element records. Reorder the
+# records, not the elements, by the rule prefer_routable_addresses applies.
+sub _socket6_addrinfo_routable_first
+{
+    my @addrinfo = @_;
+    return @addrinfo if scalar(@addrinfo) % 5;
+
+    my (@routable, @linklocal, @unreadable);
+    while (my @record = splice(@addrinfo, 0, 5))
+    {
+        my $numeric_ip = (Socket6::getnameinfo($record[3], Socket6::NI_NUMERICHOST()))[0];
+        if (!defined($numeric_ip))
+        {
+            push @unreadable, @record;
+        }
+        elsif (_is_link_local($numeric_ip))
+        {
+            push @linklocal, @record;
+        }
+        else
+        {
+            push @routable, @record;
+        }
+    }
+    return (@routable, @linklocal, @unreadable);
 }
 
 #-------------------------------------------------------------------------------
