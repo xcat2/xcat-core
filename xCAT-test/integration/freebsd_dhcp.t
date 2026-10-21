@@ -5,6 +5,8 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT";
 use lib grep { defined($_) } $ENV{XCAT_FREEBSD_DHCP_POLICY_DIR};
+use File::Basename qw(basename);
+use File::Copy qw(copy);
 use File::Temp qw(tempdir);
 use IO::Select;
 use IO::Socket::INET;
@@ -22,6 +24,16 @@ plan skip_all => 'ISC and Kea parsers are required' unless $kea && $isc;
 plan skip_all => 'isolated DHCP checks require Linux and root' unless $^O eq 'linux' && $> == 0;
 
 my $temporary = tempdir(CLEANUP => 1);
+# Private copies keep host AppArmor profiles from restricting the fixture files.
+for my $binary (\$isc, \$kea) {
+    my $copy = "$temporary/" . basename($$binary);
+    copy($$binary, $copy) or die "Cannot copy $$binary: $!";
+    chmod(0755, $copy) or die "Cannot make $copy executable: $!";
+    my $status = system($copy, basename($$binary) eq 'dhcpd' ? '--version' : '-v');
+    $$binary = $copy unless $status == -1;
+}
+local $ENV{KEA_PIDFILE_DIR} = $temporary;
+local $ENV{KEA_LOCKFILE_DIR} = $temporary;
 sub write_file {
     my ($name, $text) = @_;
     open(my $file, '>', $name) or die "$name: $!";
@@ -58,8 +70,6 @@ my $client_port = $client->sockport;
 my $pid = fork();
 die "fork: $!" unless defined($pid);
 if (!$pid) {
-    $ENV{KEA_PIDFILE_DIR} = $temporary;
-    $ENV{KEA_LOCKFILE_DIR} = $temporary;
     open(STDOUT, '>', "$temporary/server.log") or die $!;
     open(STDERR, '>&', \*STDOUT) or die $!;
     exec($kea, '-c', "$temporary/kea.conf", '-p', $server_port, '-P', $client_port);

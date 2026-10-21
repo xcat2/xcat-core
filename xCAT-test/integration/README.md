@@ -27,8 +27,8 @@ against it.
 Note the `-I` flags: unlike the unit tests these run from the installed location, so
 they pick up xCAT modules from `/opt/xcat/lib/perl` rather than from a source tree.
 
-The case checks `rc==0` and `output=~Files=10,`. The file count checks that `prove`
-found all ten files, which catches a packaging regression or a test renamed away from
+The case checks `rc==0` and `output=~Files=12,`. The file count checks that `prove`
+found all twelve files, which catches a packaging regression or a test renamed away from
 `.t` without updating the count. It does not prove that environment-gated cases ran;
 inspect the TAP output for skips. **Add to that number when you add a test.** A missing
 directory is already caught by `rc==0` -- `prove -r` on a path that does not exist exits
@@ -52,6 +52,8 @@ A test belongs in `integration/` when it needs something the checkout cannot pro
 | `dhcp_ipxe_dispatch.t` | `dhcpd` with `omshell`, or `kea-dhcp4`, root, and `ip netns` for two private network namespaces |
 | `dhcp_kea_config_validation.t` | a `kea-dhcp4` binary that can read the generated config |
 | `dhcp_kea_control_agent_smoke.t` | live `kea-dhcp4` and `kea-ctrl-agent`, root, and the Kea host-commands hook |
+| `freebsd_dhcp.t` | ISC and Kea binaries, Linux root, and loopback UDP sockets on temporary ports |
+| `freebsd_package_payload.t` | built FreeBSD server, Perl and metadata RPM or DEB packages supplied through environment variables |
 | `html_form_runtime_dependency.t` | the installed `HTML::Form` module |
 | `openeuler_package_postscripts.t` | Linux root, private mount namespaces and DNF; tests complete package postscripts with command doubles and an isolated repository directory |
 | `openeuler_postscript_repositories.t` | Linux root, private mount namespaces, DNF and RPM signing tools; tests actual signed repository transactions in isolated install roots |
