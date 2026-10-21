@@ -136,6 +136,19 @@ subtest 'explicit package scripts select their own dependency closures' => sub {
     done_testing();
 };
 
+subtest 'installed-node updates export boot state after sealing' => sub {
+    write_file("$root/tftp/xcat/xnba/nodes/node1", "#!gpxe\n#boot\n");
+    write_file($custom, "NODESETSTATE=\$NSETSTATE\nexport NODESETSTATE\nUPDATENODE=0\n" . $template);
+    my ($export, $directory) = prepare('custom');
+    my $compiled = xCAT::FreeBSDPostscript::compile_execution(
+        $export->{binding}{preparation}, directory => $directory);
+    like($compiled->{driver}, qr/^NODESETSTATE=boot$/m, 'the delivered update exports the installed-node state');
+    like($compiled->{driver}, qr/^UPDATENODE=1$/m, 'the update flag remains consistent with that state');
+    write_file($custom, $template);
+    write_file("$root/tftp/xcat/xnba/nodes/node1", "#!gpxe\n#install\n");
+    done_testing();
+};
+
 subtest 'default and section selections use the rendered entries' => sub {
     check_scope('', 'all', ['ospkgs', 'custom', 'otherpkgs']);
     check_scope('defaults-postscripts-start-here', 'base', ['ospkgs']);

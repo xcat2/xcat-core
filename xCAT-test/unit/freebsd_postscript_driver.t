@@ -3,6 +3,7 @@ use strict;
 use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
+use lib grep { defined($_) } $ENV{XCAT_FREEBSD_REPO_MODULE_DIR};
 use Carp qw(croak);
 use Cwd qw(abs_path);
 use File::Basename qw(dirname);
@@ -69,6 +70,7 @@ for my $name (qw(def img node bootdef bootimg bootnode extra)) {
     write_file("$root/tree/$name", <<'SCRIPT', oct('0555'));
 #!/bin/sh
 printf '%s<%s>' "$0" "$UPDATENODE" >> /effects
+printf '%s<%s>\n' "$0" "$NODESETSTATE" >> /states
 for argument do printf '<%s>' "$argument" >> /effects; done
 printf '\n' >> /effects
 SCRIPT
@@ -76,6 +78,8 @@ SCRIPT
 my $rendered = <<'RENDERED';
 UPDATENODE=0
 export UPDATENODE
+NODESETSTATE=install
+export NODESETSTATE
 ARG='expanded words'
 printf 'before\n' >> /custom
 # postscripts-start-here
@@ -110,7 +114,7 @@ sub exercise {
     is($compiled->{enabled}, $enabled, "$label execution policy");
     is_deeply([map { pack('H*', $_->{name}) } @{$compiled->{entries}}], $expected, "$label selected entries");
     write_file("$root/driver", $compiled->{driver});
-    write_file("$root/$_", '') for qw(events effects custom);
+    write_file("$root/$_", '') for qw(events effects custom states);
     my $outcome = xCAT::FreeBSDPkg::run_command([$chroot, $root, '/bin/sh', '/driver', 'run'],
         cwd => $root, environment => { PATH => '/bin', LC_ALL => 'C' }, timeout => 10);
     is($outcome->{exitcode}, 0, "$label driver exits normally");
@@ -118,6 +122,9 @@ sub exercise {
     is($outcome->{stderr}, '', "$label has no shell errors");
     my @effects = read_file("$root/effects") =~ m{^/tree/([^<]+)}mgx;
     is_deeply(\@effects, $expected, "$label executes the selected scripts in order");
+    my $state = $selection->{kind} eq 'firstboot' ? 'install' : 'boot';
+    is(read_file("$root/states"), join('', map { "/tree/$_<$state>\n" } @$expected),
+        "$label passes the execution state to each script");
     my @events = split(/\n/x, read_file("$root/events"));
     my $ordinal = 0;
     while (@events > 1) {
