@@ -485,6 +485,39 @@ sub firmware_error {
 
 #-------------------------------------------------------
 
+=head3 firmware_machine_error
+
+    Descriptions:
+        The refusal of a machine type that cannot carry the firmware the node asks for.
+
+        Every x86_64 OVMF descriptor targets pc-q35-* only, and guest_os writes a machine:
+        setting of vm.othersettings over the machine type guest_arch_profile chose. Without
+        this refusal libvirt answers "Unable to find 'efi' firmware that is compatible with
+        the current configuration", which names neither the node nor either setting.
+
+        Only x86_64 is judged. Another architecture has one machine type for its firmware.
+    Arguments:
+        $firmware - the result of requested_firmware, or undef
+        $machine - the machine: setting of vm.othersettings, or undef
+        $arch - nodetype.arch of the node, or undef
+        $node - the node name
+    Returns:
+        the error message, or undef when the pair can boot
+
+=cut
+
+#-------------------------------------------------------
+sub firmware_machine_error {
+    my ($firmware, $machine, $arch, $node) = @_;
+    return undef unless defined($firmware) and defined($machine);
+    return undef unless defined($arch) and $arch eq 'x86_64';
+    return undef if $machine =~ /q35/;
+    return "vm.othersettings firmware:$firmware needs a q35 machine type, and $node names"
+      . " machine:$machine. Use machine:q35, or leave the machine type out.";
+}
+
+#-------------------------------------------------------
+
 =head3 guest_os
 
     Descriptions:

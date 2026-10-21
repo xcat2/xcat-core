@@ -674,6 +674,10 @@ sub build_xmldesc {
         }
     }
 
+    my $machine_error = xCAT::KVMUtils::firmware_machine_error($firmware, $machine_type,
+        $confdata->{nodetype}->{$node}->[0]->{arch}, $node);
+    return (-1, $machine_error) if $machine_error;
+
     # Support VM machine types specified through vm.othersettings, e.g., q35, pseries-rhel7.4.0.
     $xtree{os} = xCAT::KVMUtils::guest_os($profile,
         hyp_cpumodel => $hypcpumodel,

@@ -70,4 +70,27 @@ like( $error, qr/firmware:efi-secure\b/, 'a value that is not a firmware is refu
 like( $error, qr/firmware:efi-secureboot/,
     'and the refusal names firmware:efi-secureboot, so the typo can be corrected from it' );
 
+# vm.othersettings can name a machine type, and guest_os writes it over the one the profile
+# chose. An x86_64 node that asks for efi is moved to q35 by guest_arch_profile, because every
+# x86_64 OVMF descriptor targets pc-q35-* only, so a machine: setting naming i440fx takes the
+# node to a machine type no UEFI firmware fits. libvirt then answers "Unable to find 'efi'
+# firmware that is compatible with the current configuration", which names neither the node nor
+# either setting.
+my $conflict = xCAT::KVMUtils::firmware_machine_error( 'efi-secureboot', 'pc', 'x86_64', 'cn1' );
+like( $conflict, qr/\bcn1\b/, 'the refusal names the node' );
+like( $conflict, qr/firmware:efi-secureboot/, 'and the firmware the node asked for' );
+like( $conflict, qr/machine:pc\b/,           'and the machine type that cannot carry it' );
+like( $conflict, qr/q35/, 'and the machine type that can, so the conf can be corrected from it' );
+
+is( xCAT::KVMUtils::firmware_machine_error( 'efi-secureboot', 'q35', 'x86_64', 'cn1' ),
+    undef, 'q35 is not refused' );
+is( xCAT::KVMUtils::firmware_machine_error( 'efi', 'pc-q35-rhel9.4.0', 'x86_64', 'cn1' ),
+    undef, 'a versioned q35 is not refused' );
+is( xCAT::KVMUtils::firmware_machine_error( 'efi-secureboot', undef, 'x86_64', 'cn1' ),
+    undef, 'a node that names no machine type is not refused' );
+is( xCAT::KVMUtils::firmware_machine_error( undef, 'pc', 'x86_64', 'cn1' ),
+    undef, 'a node that asks for no firmware keeps i440fx' );
+is( xCAT::KVMUtils::firmware_machine_error( 'efi', 'virt', 'riscv64', 'cn1' ),
+    undef, 'the machine types of another architecture are not judged here' );
+
 done_testing();
