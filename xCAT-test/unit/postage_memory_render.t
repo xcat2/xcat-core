@@ -61,6 +61,23 @@ subtest 'stock template and legacy return and publication modes' => sub {
     done_testing();
 };
 
+subtest 'memory rendering retains the caller state before nodeset publishes it' => sub {
+    for my $prior (qw(boot offline discover)) {
+        fixture(0);
+        write_file("$root/tftp/xcat/xnba/nodes/node1", "#!gpxe\n#$prior\n");
+        write_file($stock, $template . "NODESETSTATE=\$NSETSTATE\n");
+        like(render(), qr/^NODESETSTATE=install$/m,
+            "sealed installation ignores prior $prior state");
+        my $fallback = xCAT::Postage::makescript(['node1'], undef, $callback, 0, 0, 'memory');
+        like($fallback, qr/^NODESETSTATE=\Q$prior\E$/m,
+            "memory rendering without a supplied state uses published $prior state");
+        my @legacy = xCAT::Postage::makescript(['node1'], 'install', $callback, 1, 1);
+        like(join('', @legacy), qr/^NODESETSTATE=\Q$prior\E$/m,
+            "legacy rendering still reads published $prior state");
+    }
+    done_testing();
+};
+
 subtest 'existing Ubuntu phase selection remains in the real renderer' => sub {
     fixture(0);
     $xCAT::Table::rows{nodetype}[0]{os} = 'ubuntu24.04';
