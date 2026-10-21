@@ -410,8 +410,100 @@ sub _zfs_auxiliary {
     return;
 }
 
+sub os_disk_policy {
+    my $settings = shift;
+    _fail('Invalid OS disk policy') unless ref($settings) eq 'HASH';
+    my $filesystem = $settings->{filesystem};
+    _fail('Unsupported recorded filesystem') unless defined($filesystem) && !ref($filesystem)
+        && $filesystem =~ /\A(?:ufs|zfs)\z/x;
+    my %policy = (filesystem => $filesystem);
+    if (exists($settings->{zfs_vdevs})) {
+        _fail('Scalar and grouped OS disks cannot be combined') if
+            exists($settings->{target_disk}) || exists($settings->{target_disk_ident});
+        @policy{qw(zfs_topology zfs_vdevs)} = @{$settings}{qw(zfs_topology zfs_vdevs)};
+        for my $role (qw(log cache special)) {
+            my $key = "zfs_${role}_vdevs";
+            $policy{$key} = exists($settings->{$key}) ? $settings->{$key} : '-';
+        }
+        my %check = (%policy, swap_size => '0', swap_mode => 'none');
+        _zfs_storage(\%check);
+        _zfs_disk_policy(\%check);
+    } else {
+        _fail('Scalar OS disks cannot have grouped properties') if
+            grep { /\Azfs_/x } keys %$settings;
+        $policy{target_disk} = $settings->{target_disk};
+        if (defined($policy{target_disk}) && $policy{target_disk} eq 'auto') {
+            _fail('Automatic selection cannot specify a target serial') if exists($settings->{target_disk_ident});
+        } else {
+            my ($device) = _disk_member(($settings->{target_disk} || '') . '@' . ($settings->{target_disk_ident} || ''));
+            _fail('Invalid recorded scalar disk') unless defined($device);
+            $policy{target_disk_ident} = $settings->{target_disk_ident};
+        }
+    }
+    return \%policy;
+}
+
+sub resolve_os_disks {
+    my ($policy, $members) = @_;
+    $policy = os_disk_policy($policy);
+    _fail('Invalid resolved OS members') if !defined($members) || ref($members) || length($members) > 4096;
+    my %resolved = %$policy;
+    if (exists($policy->{zfs_vdevs})) {
+        my @wanted = split(/;/x, $policy->{zfs_vdevs}, -1);
+        my @actual = split(/;/x, $members, -1);
+        _fail('Resolved OS disk grouping differs') unless @wanted == @actual;
+        for my $index (0 .. $#wanted) {
+            if ($wanted[$index] =~ /\Aauto:([1-9][0-9]?)\z/x) {
+                _fail('Resolved OS group width differs') unless scalar(split(/,/x, $actual[$index], -1)) == $1;
+            } else {
+                _fail('Resolved OS identities differ') unless $wanted[$index] eq $actual[$index];
+            }
+        }
+        $resolved{zfs_vdevs} = $members;
+    } else {
+        my ($device, $serial) = _disk_member($members);
+        _fail('Invalid resolved scalar disk') unless defined($device);
+        _fail('Resolved OS identity differs') unless $policy->{target_disk} eq 'auto'
+            || $members eq "$policy->{target_disk}\@$policy->{target_disk_ident}";
+        @resolved{qw(target_disk target_disk_ident)} = ($device, $serial);
+    }
+    _fail('OS members remain automatic') if $members =~ /(?:\A|;)auto:/x;
+    return os_disk_policy(\%resolved);
+}
+
+sub _recorded_storage {
+    my ($disk, $record) = @_;
+    return unless ($disk->{target_disk} || '') eq 'auto' || ($disk->{zfs_vdevs} || '') =~ /\Aauto:/x;
+    my $erase = ($disk->{disk_action} || 'empty') eq 'erase';
+    _fail('Recorded OS disks exist; use disk_action=erase or assign disks explicitly') if $record && !$erase;
+    return unless $erase;
+    _fail('Automatic reinstall requires a retained OS disk record; assign disks explicitly') unless ref($record) eq 'HASH'
+        && ref($record->{layout}) eq 'HASH';
+    my $old = os_disk_policy($record->{layout});
+    my $members = exists($old->{zfs_vdevs}) ? $old->{zfs_vdevs}
+        : "$old->{target_disk}\@$old->{target_disk_ident}";
+    my $resolved = resolve_os_disks($disk, $members);
+    _fail('Recorded OS layout differs; assign disks explicitly to change it') unless
+        join("\n", map { "$_=$resolved->{$_}" } sort keys %$resolved) eq
+        join("\n", map { "$_=$old->{$_}" } sort keys %$old);
+    if (exists($resolved->{target_disk})) {
+        for my $member (split(/,/x, $disk->{preserve_disks} || '-', -1)) {
+            next if $member eq '-';
+            my ($device, $serial) = _disk_member($member);
+            _fail('Invalid preserved disk identity') unless defined($device);
+            _fail('Recorded OS and preserved disks overlap') if $device eq $resolved->{target_disk}
+                || $serial eq $resolved->{target_disk_ident};
+        }
+        delete @{$disk}{qw(disk_action preserve_disks)};
+        @{$disk}{qw(target_disk target_disk_ident)} = @{$resolved}{qw(target_disk target_disk_ident)};
+    } else {
+        $disk->{zfs_vdevs} = $resolved->{zfs_vdevs};
+    }
+    return;
+}
+
 sub load_settings {
-    my ($node, $template, $partitionfile, $planner) = @_;
+    my ($node, $template, $partitionfile, $planner, $record) = @_;
     my $settings = _policy($template, $node, qw(authorized_keys_file bootstrap bootstrap_interface));
     my ($text) = _read_file($partitionfile, $node, 65536);
     require xCAT::FreeBSDStorage;
@@ -421,6 +513,7 @@ sub load_settings {
         zfs_compression zfs_ashift disk_action preserve_disks
         zfs_log_vdevs zfs_cache_vdevs zfs_special_vdevs zfs_special_small_blocks));
     $disk->{swap_size} = '0' unless defined($disk->{swap_size});
+    _recorded_storage($disk, $record);
     _automatic_storage($disk);
     _zfs_storage($disk);
     _zfs_disk_policy($disk);

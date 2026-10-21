@@ -82,14 +82,14 @@ sub request {
     $topology ||= node_topology($node);
     _fail('Node is not assigned to a service-node pool') unless $topology;
     my $wire = $json->encode($input);
-    _fail('Pool request exceeds its size limit') if length($wire) > 8192;
+    _fail('Pool request exceeds its size limit') if length($wire) > 65536;
     my $request = {command => ['freebsdpool'], node => [$node], arg => [$operation, $wire],
         _xcatpreprocessed => [1]};
     $request->{_xcatdest} = $topology->{coordinator}
       if xCAT::NetworkUtils->thishostisnot($topology->{coordinator});
     my $records = _records($dispatch->($request));
     _fail('Missing or ambiguous coordinator acknowledgement') if @$records != 1
-      || !defined($records->[0]) || ref($records->[0]) || length($records->[0]) > 8192;
+      || !defined($records->[0]) || ref($records->[0]) || length($records->[0]) > 65536;
     my $result = eval { $json->decode($records->[0]); };
     _fail('Invalid coordinator acknowledgement') unless ref($result) eq 'HASH'
       && ($result->{format} || '') eq 'xcat-freebsd-pool-1' && ($result->{node} || '') eq $node
@@ -143,14 +143,15 @@ sub local_preparation {
 }
 
 sub event {
-    my ($node, $state, $attempt, $phase, $dispatch) = @_;
+    my ($node, $state, $attempt, $phase, $dispatch, $members) = @_;
     my $metadata = $state->{service_pool};
     my $topology = node_topology($node);
     _fail('Service-node pool configuration changed') if !$topology
       || $metadata->{coordinator} ne $topology->{coordinator}
       || xCAT::NetworkUtils->thishostisnot($metadata->{server});
     my $result = request($node, 'event', {epoch => $metadata->{epoch}, server => $metadata->{server},
-        generation => $state->{generation}, attempt => $attempt, phase => $phase}, $dispatch, $topology);
+        generation => $state->{generation}, attempt => $attempt, phase => $phase,
+        defined($members) ? (members => $members) : ()}, $dispatch, $topology);
     _fail('Pool acknowledgement has a different generation') unless ($result->{epoch} || '') eq $metadata->{epoch};
     return if $phase eq 'failed' && ($result->{phase} || '') eq 'prepared' && !exists($result->{owner});
     my %expected = (begin => qr/\Ainstalling\z/x, complete => qr/\A(?:installed|booted)\z/x,

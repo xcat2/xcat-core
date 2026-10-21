@@ -11,7 +11,7 @@ use IO::Handle;
 use JSON;
 use POSIX qw(WNOHANG);
 
-my $json = JSON->new->canonical;
+my $json = JSON->new->canonical->allow_nonref;
 my %phases = map { $_ => 1 } qw(prepared installing completing installed booted failed cancelled);
 my %status_workers;
 
@@ -20,6 +20,51 @@ sub _fail { die "FreeBSD installation: $_[0]\n"; }
 sub _identifier {
     my ($value, $length) = @_;
     return defined($value) && !ref($value) && $value =~ /\A[0-9a-f]{$length}\z/;
+}
+
+sub _os_policy {
+    my $value = shift;
+    require xCAT::FreeBSDConfig;
+    my $canonical = xCAT::FreeBSDConfig::os_disk_policy($value);
+    _fail('Invalid retained OS disk policy') unless $json->encode($canonical) eq $json->encode($value)
+        && length($json->encode($value)) <= 24576;
+    return;
+}
+
+sub _os_record {
+    my $value = shift;
+    _fail('Invalid retained OS disk record') unless ref($value) eq 'HASH' && keys(%$value) == 3
+        && _identifier($value->{generation}, 32) && _identifier($value->{attempt}, 32);
+    _os_policy($value->{layout});
+    my $layout = $value->{layout};
+    _fail('Retained OS disk record is unresolved') if ($layout->{target_disk} || '') eq 'auto'
+        || ($layout->{zfs_vdevs} || '') =~ /\Aauto:/x;
+    return;
+}
+
+sub _resolved_record {
+    my ($policy, $generation, $attempt, $members) = @_;
+    require xCAT::FreeBSDConfig;
+    my $record = { generation => $generation, attempt => $attempt,
+        layout => xCAT::FreeBSDConfig::resolve_os_disks($policy, $members) };
+    _os_record($record);
+    return $record;
+}
+
+sub disk_history {
+    my $state = shift;
+    return 0 unless $state;
+    return 1 if exists($state->{os_disks}) || $state->{os_disk_rebind};
+    return $state->{os_disk_history} if exists($state->{os_disk_history});
+    return exists($state->{attempt}) ? 1 : 0;
+}
+
+sub disk_rebind_pending {
+    my ($state, $pool, $record) = @_;
+    return 0 unless $state && $state->{os_disk_rebind};
+    return 1 unless $pool && $state->{service_pool} && $record
+        && $pool->{coordinator} eq $state->{service_pool}{coordinator};
+    return $state->{os_disk_rebind} eq sha256_hex($json->encode($record)) ? 1 : 0;
 }
 
 sub _postscript_preparations {
@@ -94,6 +139,14 @@ sub _read_state {
     _postscript_preparations($state->{postscript_preparations}) if exists($state->{postscript_preparations});
     _postscript_state($state);
     _service_pool($state->{service_pool}) if exists($state->{service_pool});
+    _os_policy($state->{os_policy}) if exists($state->{os_policy});
+    _os_record($state->{os_disks}) if exists($state->{os_disks});
+    _fail('Invalid OS disk history marker') if exists($state->{os_disk_history})
+        && (!defined($state->{os_disk_history}) || ref($state->{os_disk_history})
+            || $state->{os_disk_history} !~ /\A[01]\z/x
+            || (!$state->{os_disk_history} && exists($state->{os_disks})));
+    _fail('Invalid OS disk rebind marker') if exists($state->{os_disk_rebind})
+        && (!_identifier($state->{os_disk_rebind}, 64) || exists($state->{os_disks}));
     return $state;
 }
 
@@ -102,7 +155,9 @@ sub _save_state {
     my ($handle, $temporary) = tempfile(".$node.XXXXXX", DIR => $directory, UNLINK => 0);
     my $ok = eval {
         chmod(0600, $temporary) == 1 or _fail("Cannot protect state: $!");
-        print {$handle} $json->encode($state), "\n" or _fail("Cannot write state: $!");
+        my $bytes = $json->encode($state) . "\n";
+        _fail('Installation state exceeds its size limit') if length($bytes) > 65536;
+        print {$handle} $bytes or _fail("Cannot write state: $!");
         $handle->flush or _fail("Cannot flush state: $!");
         $handle->sync or _fail("Cannot sync state: $!");
         close($handle) or _fail("Cannot close state: $!");
@@ -186,6 +241,12 @@ sub prepare {
     _fail('Invalid installation fingerprint') unless _identifier($fingerprint, 64);
     _fail('Invalid publication callback') if exists($options{publish}) && ref($options{publish}) ne 'CODE';
     _fail('Invalid registration callback') if exists($options{register}) && ref($options{register}) ne 'CODE';
+    _os_policy($options{os_policy}) if exists($options{os_policy});
+    _os_record($options{previous_os_disks}) if defined($options{previous_os_disks});
+    _fail('Invalid OS disk rebind option') if exists($options{os_disk_rebind})
+        && (!defined($options{os_disk_rebind}) || ref($options{os_disk_rebind}) || $options{os_disk_rebind} ne '1');
+    $fingerprint = sha256_hex("xcat-freebsd-os-disks-1\n$fingerprint\n" . $json->encode($options{os_policy}))
+        if exists($options{os_policy});
     if (exists($options{service_pool})) {
         _service_pool($options{service_pool});
         $fingerprint = sha256_hex("xcat-freebsd-service-pool-1\n$fingerprint\n" . $json->encode($options{service_pool}));
@@ -207,12 +268,30 @@ sub prepare {
                     unless $state->{phase} eq 'prepared' && $state->{fingerprint} eq $fingerprint;
             }
         }
-        my $changed = !$state || $state->{phase} ne 'prepared' || $state->{fingerprint} ne $fingerprint;
+        _fail('OS disk record changed during preparation') if exists($options{previous_os_disks})
+            && !$options{service_pool} && $json->encode($options{previous_os_disks}) ne
+                $json->encode($state ? $state->{os_disks} : undef);
+        my $record = exists($options{previous_os_disks}) ? $options{previous_os_disks}
+            : $state ? $state->{os_disks} : undef;
+        my $rebind = $options{os_disk_rebind} ? sha256_hex($json->encode($record))
+            : disk_rebind_pending($state, $options{service_pool}, $record) ? $state->{os_disk_rebind} : undef;
+        my $changed = !$state || $state->{phase} ne 'prepared' || $state->{fingerprint} ne $fingerprint
+            || ($rebind || '') ne ($state->{os_disk_rebind} || '');
         if ($changed) {
+            my $history = disk_history($state);
+            $record = undef if $rebind;
             $state = { version => 1, node => $node, fingerprint => $fingerprint,
                 generation => _generation(), phase => 'prepared' };
+            $state->{os_disks} = $record if defined($record);
+            $state->{os_disk_history} = $history || defined($record) || $rebind ? 1 : 0;
+            $state->{os_disk_rebind} = $rebind if $rebind;
+            $state->{os_policy} = $options{os_policy} if exists($options{os_policy});
             $state->{postscript_preparations} = $preparations if defined($preparations);
             $state->{service_pool} = {%{$options{service_pool}}} if exists($options{service_pool});
+        }
+        if (!exists($state->{os_disk_history})) {
+            $state->{os_disk_history} = disk_history($state);
+            $changed = 1;
         }
         $options{register}->($state->{generation}) if $options{register};
         $save->($state) if $changed;
@@ -223,6 +302,10 @@ sub prepare {
 
 sub state {
     my ($node, %options) = @_;
+    _fail('Invalid node name') unless defined($node) && !ref($node)
+        && $node =~ /\A[A-Za-z0-9][A-Za-z0-9_.-]{0,254}\z/;
+    my $directory = $options{directory} || '/var/lib/xcat/freebsd-install';
+    return unless -e $directory || -l $directory;
     return _locked($node, \%options, sub { return $_[0]; });
 }
 
@@ -242,10 +325,10 @@ sub _service_pool {
 }
 
 sub _pool_authorize {
-    my ($node, $state, $attempt, $phase, $dispatch) = @_;
+    my ($node, $state, $attempt, $phase, $dispatch, $members) = @_;
     return unless exists($state->{service_pool});
     require xCAT::FreeBSDPool;
-    xCAT::FreeBSDPool::event($node, $state, $attempt, $phase, $dispatch);
+    xCAT::FreeBSDPool::event($node, $state, $attempt, $phase, $dispatch, $members);
     return;
 }
 
@@ -262,7 +345,8 @@ sub _pool_state {
     my $pool = $state->{pool};
     _fail('Invalid service-node pool state') unless ref($pool) eq 'HASH'
       && ref($pool->{servers}) eq 'ARRAY' && ref($pool->{registrations}) eq 'HASH';
-    _fail('Invalid service-node pool fields') if grep { $_ !~ /\A(?:servers|registrations|owner)\z/x } keys %$pool;
+    _fail('Invalid service-node pool fields') if grep { $_ !~ /\A(?:servers|registrations|owner|os_policy)\z/x } keys %$pool;
+    _os_policy($pool->{os_policy}) if exists($pool->{os_policy});
     _fail('Invalid service-node pool size') if !@{$pool->{servers}} || @{$pool->{servers}} > 32;
     my %servers;
     for my $server (@{$pool->{servers}}) {
@@ -287,6 +371,8 @@ sub _pool_prepare {
     my $next = {version => 1, node => $node, generation => _generation(),
         fingerprint => $input->{fingerprint}, phase => 'prepared',
         pool => {servers => $input->{servers}, registrations => {}}};
+    $next->{os_disks} = $current->{os_disks} if $current && exists($current->{os_disks});
+    $next->{os_disk_history} = disk_history($current);
     _pool_state($next);
     return $next;
 }
@@ -310,6 +396,10 @@ sub _pool_register {
     my $server = $input->{server};
     my $entry = {map { $_ => $input->{$_} } qw(generation fingerprint master)};
     _pool_registration($entry);
+    _os_policy($input->{os_policy}) if exists($input->{os_policy});
+    _fail('Service nodes prepared different OS disk policies') if keys(%{$pool->{registrations}})
+        && $json->encode($pool->{os_policy}) ne $json->encode($input->{os_policy});
+    $pool->{os_policy} = $input->{os_policy} if exists($input->{os_policy});
     _fail('Prepared server changed within this pool generation') if exists($pool->{registrations}{$server})
       && $json->encode($pool->{registrations}{$server}) ne $json->encode($entry);
     $pool->{registrations}{$server} = $entry;
@@ -327,9 +417,19 @@ sub _pool_event {
     my $phase = $input->{phase};
     _fail('Invalid pool installation phase') if !defined($phase) || ref($phase)
       || $phase !~ /\A(?:begin|completing|complete|booted|failed)\z/x;
+    _fail('OS disk members are only accepted at installation begin') if exists($input->{members}) && $phase ne 'begin';
+    my $record;
+    if ($phase eq 'begin') {
+        _fail('OS disk reporting differs from the pool preparation') unless
+            exists($pool->{os_policy}) == exists($input->{members});
+        $record = _resolved_record($pool->{os_policy}, $input->{generation}, $input->{attempt}, $input->{members})
+            if exists($input->{members});
+    }
     if (exists($pool->{owner})) {
         _fail('Another service node or attempt owns this installation') unless
           $pool->{owner} eq $server && $current->{attempt} eq $input->{attempt};
+        _fail('Claimed OS disk record changed') if $phase eq 'begin'
+            && $json->encode($current->{os_disks}) ne $json->encode($record);
     } elsif ($phase eq 'begin') {
         _fail('Pool installation cannot begin in this state') unless $current->{phase} eq 'prepared';
         $pool->{owner} = $server;
@@ -346,6 +446,11 @@ sub _pool_event {
     my %next = (begin => 'installing', completing => 'completing', complete => 'installed', booted => 'booted', failed => 'failed');
     $current->{phase} = $next{$phase} unless $current->{phase} eq 'booted'
       || ($phase eq 'completing' && $current->{phase} eq 'installed');
+    if ($phase eq 'begin') {
+        $current->{os_disk_history} = 1;
+        if ($record) { $current->{os_disks} = $record; }
+        else { delete $current->{os_disks}; }
+    }
     return;
 }
 
@@ -359,6 +464,8 @@ sub pool_request {
         event => [qw(epoch server generation attempt phase)], inspect => [], cancel => [],
     );
     my %allowed = map { $_ => 1 } @{$fields{$operation}};
+    $allowed{os_policy} = 1 if $operation eq 'register' && exists($input->{os_policy});
+    $allowed{members} = 1 if $operation eq 'event' && exists($input->{members});
     _fail('Unexpected pool request fields') if keys(%$input) != keys(%allowed)
       || grep { !$allowed{$_} } keys %$input;
     $options{directory} ||= '/var/lib/xcat/freebsd-pools';
@@ -386,6 +493,8 @@ sub pool_request {
         my $pool = $current->{pool};
         return {epoch => $current->{generation}, phase => $current->{phase},
             servers => [@{$pool->{servers}}],
+            os_disk_history => disk_history($current),
+            exists($current->{os_disks}) ? (os_disks => $current->{os_disks}) : (),
             exists($pool->{owner}) ? (owner => $pool->{owner},
                 master => $pool->{registrations}{$pool->{owner}}{master}) : ()};
     });
@@ -404,9 +513,11 @@ sub cancel {
 
 sub transition {
     my ($node, $message, $action, %options) = @_;
-    _fail('Invalid installation status') unless defined($message) && !ref($message) &&
-        $message =~ /\Afreebsd-install-v1 ([0-9a-f]{32}) ([0-9a-f]{32}) (begin|complete|failed|booted)\n?\z/;
-    my ($generation, $attempt, $phase) = ($1, $2, $3);
+    _fail('Invalid installation status') unless defined($message) && !ref($message) && length($message) <= 4300 &&
+        $message =~ /\Afreebsd-install-v([12]) ([0-9a-f]{32}) ([0-9a-f]{32}) (begin|complete|failed|booted)(?: ([A-Za-z0-9_.:+@,;-]+))?\n?\z/;
+    my ($version, $generation, $attempt, $phase, $members) = ($1, $2, $3, $4, $5);
+    _fail('Invalid OS disk status fields') unless $version eq '2'
+        ? ($phase eq 'begin' && defined($members)) : !defined($members);
     _fail('Missing installation action') unless ref($action) eq 'CODE';
     return _locked($node, \%options, sub {
         my ($state, $save) = @_;
@@ -418,7 +529,15 @@ sub transition {
             if exists($state->{attempt}) && $state->{attempt} ne $attempt;
         if ($phase eq 'begin') {
             _fail('Installation cannot begin in this state') unless $state->{phase} =~ /\A(?:prepared|installing)\z/;
-            _pool_authorize($node, $state, $attempt, $phase, $options{dispatch});
+            _fail('OS disk reporting differs from the installation preparation') unless
+                exists($state->{os_policy}) == defined($members);
+            my $record = defined($members) ? _resolved_record($state->{os_policy}, $generation, $attempt, $members) : undef;
+            _fail('Claimed OS disk record changed') if $state->{phase} eq 'installing'
+                && $json->encode($state->{os_disks}) ne $json->encode($record);
+            _pool_authorize($node, $state, $attempt, $phase, $options{dispatch}, $members);
+            if ($record) { $state->{os_disks} = $record; delete $state->{os_disk_rebind}; }
+            else { delete $state->{os_disks}; }
+            $state->{os_disk_history} = 1;
             $state->{attempt} = $attempt;
             $state->{phase} = 'installing';
             $save->($state);
@@ -453,7 +572,7 @@ sub transition {
             $save->($state);
             $action->('failed', $state);
         }
-        return "freebsd-install-v1 $generation $phase ok\n";
+        return "freebsd-install-v$version $generation $phase ok\n";
     });
 }
 

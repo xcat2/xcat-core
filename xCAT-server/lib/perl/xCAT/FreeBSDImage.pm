@@ -212,7 +212,7 @@ sub inspect_media {
     my $manifest = eval { JSON->new->utf8->decode($raw) };
     _fail('Invalid xCAT mfsBSD JSON manifest') unless ref($manifest) eq 'HASH';
     my %allowed = map { $_ => 1 } qw(format release arch files mfsbsd_commit postscript_contract
-        install_contract network_contract dataset_contract disk_selection_contract);
+        install_contract network_contract dataset_contract disk_selection_contract disk_record_contract);
     _fail('Unknown xCAT mfsBSD manifest field') if grep { !$allowed{$_} } keys %$manifest;
     for my $key (qw(format release arch)) {
         _fail("Missing or invalid mfsBSD manifest $key")
@@ -246,6 +246,12 @@ sub inspect_media {
             ($manifest->{install_contract} || '') =~ /\Axcat-freebsd-install-[3456]\z/x &&
             defined($manifest->{disk_selection_contract}) && !ref($manifest->{disk_selection_contract}) &&
             $manifest->{disk_selection_contract} eq 'xcat-freebsd-disk-selection-1';
+    }
+    if (exists($manifest->{disk_record_contract})) {
+        _fail('Unsupported OS disk record contract') unless $boot_only &&
+            ($manifest->{install_contract} || '') =~ /\Axcat-freebsd-install-[3456]\z/x &&
+            defined($manifest->{disk_record_contract}) && !ref($manifest->{disk_record_contract}) &&
+            $manifest->{disk_record_contract} eq 'xcat-freebsd-os-disks-1';
     }
     _fail('Only FreeBSD 15.1-RELEASE bundles are supported') unless $manifest->{release} eq '15.1-RELEASE';
     _fail('Only FreeBSD amd64 bundles are supported') unless $manifest->{arch} eq 'amd64';

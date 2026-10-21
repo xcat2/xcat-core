@@ -456,9 +456,23 @@ sub mkinstall {
             } else {
                 $network->{dist_url} = $url . substr($image->{pkgdir}, length($installroot)) . '/usr/freebsd-dist';
             }
+            my $local = xCAT::FreeBSDInstall::state($node);
+            my $previous = $pool ? xCAT::FreeBSDPool::request($node, 'inspect', {}, $dispatch, $topology) : $local;
+            die "Pool generation changed during disk preparation\n" if $pool
+                && ($previous->{epoch} || '') ne $pool->{epoch};
+            my $record = $previous ? $previous->{os_disks} : undef;
+            my $scope_changed = $local && xCAT::FreeBSDInstall::disk_history($local)
+                && (!!$local->{service_pool} != !!$pool || ($pool && $local->{service_pool}
+                    && $local->{service_pool}{coordinator} ne $pool->{coordinator}));
+            my $rebind = $scope_changed || xCAT::FreeBSDInstall::disk_rebind_pending($local, $pool, $record);
             my $settings = xCAT::FreeBSDConfig::load_settings($node,
                 $image->{settings}{template}, $image->{settings}{partitionfile},
-                "$installroot/postscripts/configzfs-freebsd.awk");
+                "$installroot/postscripts/configzfs-freebsd.awk", $rebind ? undef : $record);
+            die "Automatic installation after an unrecorded attempt or owner-scope change requires explicit OS disks\n"
+                if exists($settings->{disk_selection}) && ($rebind
+                    || (xCAT::FreeBSDInstall::disk_history($previous) && !$record));
+            my $os_policy = ($image->{media}{disk_record_contract} || '') eq 'xcat-freebsd-os-disks-1'
+                ? xCAT::FreeBSDConfig::os_disk_policy($settings) : undef;
             my $storage = delete $settings->{data_storage};
             die "Dataset provisioning requires xcat-freebsd-datasets-1 media\n"
               if (exists($settings->{zfs_datasets_base64}) || (defined($storage) &&
@@ -479,7 +493,7 @@ sub mkinstall {
             my @postscript_options;
             if ($image->{media}{postscript_contract}) {
                 require xCAT::FreeBSDPostscript;
-                my $current = $pool ? xCAT::FreeBSDInstall::state($node) : undef;
+                my $current = $pool ? $local : undef;
                 my $prepared;
                 if ($current && $current->{phase} eq 'prepared' && $current->{service_pool}
                     && !grep { $current->{service_pool}{$_} ne $pool->{$_} } qw(epoch coordinator server)) {
@@ -496,11 +510,14 @@ sub mkinstall {
               : xCAT::FreeBSDConfig::fingerprint($node, $settings, $network, $image->{media});
             my $params;
             xCAT::FreeBSDInstall::prepare($node, $fingerprint, @postscript_options,
+                previous_os_disks => $record, defined($os_policy) ? (os_policy => $os_policy) : (),
+                $scope_changed ? (os_disk_rebind => 1) : (),
                 $pool ? (service_pool => $pool, register => sub {
                     my $generation = shift;
                     my $registered = xCAT::FreeBSDPool::request($node, 'register',
                         {epoch => $pool->{epoch}, server => $pool->{server}, generation => $generation,
-                            fingerprint => $fingerprint, master => $network->{master}}, $dispatch, $topology);
+                            fingerprint => $fingerprint, master => $network->{master},
+                            defined($os_policy) ? (os_policy => $os_policy) : ()}, $dispatch, $topology);
                     die "Pool registration was not acknowledged\n" unless
                       ($registered->{epoch} || '') eq $pool->{epoch} && ($registered->{phase} || '') eq 'prepared';
                 }) : (), publish => sub {

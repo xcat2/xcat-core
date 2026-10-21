@@ -18,7 +18,7 @@ sub _request {
     croak 'Invalid pool node or operation' if !defined($node) || ref($node)
       || $node !~ /\A[A-Za-z0-9][A-Za-z0-9_.-]{0,254}\z/x || !defined($operation) || ref($operation)
       || $operation !~ /\A(?:prepare|register|event|inspect|cancel|refresh|boot)\z/x;
-    croak 'Invalid pool operation payload' if !defined($wire) || ref($wire) || length($wire) > 8192;
+    croak 'Invalid pool operation payload' if !defined($wire) || ref($wire) || length($wire) > 65536;
     return ($node, $operation, $wire);
 }
 

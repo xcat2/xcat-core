@@ -650,6 +650,17 @@ xcat_status()
     xcat_phase=$1
     case "$xcat_phase" in begin|complete|failed|booted) ;; *) return 1 ;; esac
     xcat_hex "$XCAT_GENERATION" 32 && xcat_hex "$XCAT_ATTEMPT" 32 || return 1
+    xcat_status_version=1
+    xcat_status_members=
+    if [ "$xcat_phase" = begin ] && [ "$XCAT_FORMAT" != xcat-freebsd-install-1 ]; then
+        xcat_status_version=2
+        if xcat_guarded_storage; then
+            xcat_zfs_members >/dev/null || return 1
+            xcat_status_members=" $XCAT_ZFS_VDEVS"
+        else
+            xcat_status_members=" $XCAT_TARGET_DISK@$XCAT_TARGET_DISK_IDENT"
+        fi
+    fi
     xcat_started=$(date +%s) || return 1
     xcat_retry=0
     while [ "$xcat_retry" -lt 180 ]; do
@@ -657,9 +668,9 @@ xcat_status()
         [ "$xcat_now" -ge "$xcat_started" ] && [ "$((xcat_now - xcat_started))" -lt 900 ] || break
         xcat_wait=$((900 - xcat_now + xcat_started))
         [ "$xcat_wait" -le 65 ] || xcat_wait=65
-        xcat_response=$(printf 'freebsd-install-v1 %s %s %s\n' "$XCAT_GENERATION" "$XCAT_ATTEMPT" "$xcat_phase" |
+        xcat_response=$(printf 'freebsd-install-v%s %s %s %s%s\n' "$xcat_status_version" "$XCAT_GENERATION" "$XCAT_ATTEMPT" "$xcat_phase" "$xcat_status_members" |
             nc -w "$xcat_wait" "$XCAT_MASTER" "$XCAT_PORT") &&
-            [ "$xcat_response" = "$(printf 'ready\nfreebsd-install-v1 %s %s ok' "$XCAT_GENERATION" "$xcat_phase")" ] && return 0
+            [ "$xcat_response" = "$(printf 'ready\nfreebsd-install-v%s %s %s ok' "$xcat_status_version" "$XCAT_GENERATION" "$xcat_phase")" ] && return 0
         xcat_retry=$((xcat_retry + 1))
         sleep 5
     done
