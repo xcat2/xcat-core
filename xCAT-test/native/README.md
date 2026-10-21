@@ -312,7 +312,9 @@ Meson, Ninja, pkg-config, and development packages for Newt and systemd.
 dependencies plus the `pyte` Python package, bubblewrap,
 systemd-journal-remote and journalctl. It runs the linked console in a
 pseudo-terminal and checks help and diagnostics navigation, scrolling,
-live status updates, diagnostic snapshots, and return to the main screen.
+live status updates, diagnostic snapshots, return to the main screen, and
+header identity changes and truncation. These cases run at 80, 100 and 240
+columns. Journal and shell cases run at 100 columns.
 The F3 cases check journal filtering, order, history limits, follow mode,
 paused selection, navigation and reopening. Rollover cases check expired
 entries, duplicate messages and wrapped lines. The F12 cases check cancellation,

@@ -25,6 +25,8 @@ SOURCE = ROOT / "xCAT-genesis-base/oe/meta-xcat-genesis/recipes-core/xcat-genesi
 
 
 class ConsoleTerminal(unittest.TestCase):
+    columns = 100
+
     @classmethod
     def setUpClass(cls):
         cls.build_root = tempfile.TemporaryDirectory(prefix="genesis-dialog-build-")
@@ -48,14 +50,14 @@ class ConsoleTerminal(unittest.TestCase):
         Path(environment["XCAT_RESPONSE_FILE"]).write_text("XCAT_NODE_NAME=dialog-test-node\n")
         self.master, slave = pty.openpty()
         self.addCleanup(os.close, self.master)
-        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 30, 100, 0, 0))
+        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 30, self.columns, 0, 0))
         try:
             self.process = subprocess.Popen(self.console_command(), stdin=slave, stdout=slave,
                                             stderr=slave, env=environment, start_new_session=True)
         finally:
             os.close(slave)
         self.addCleanup(self.stop)
-        self.screen = pyte.Screen(100, 30)
+        self.screen = pyte.Screen(self.columns, 30)
         self.stream = pyte.ByteStream(self.screen)
         self.wait_text("Genesis status")
 
@@ -115,6 +117,34 @@ class ConsoleTerminal(unittest.TestCase):
 
 
 class ConsoleDialogs(ConsoleTerminal):
+    def assert_header(self, identity):
+        expected = " xCAT Genesis".ljust(self.screen.columns - len(identity) - 1) + identity + " "
+        self.wait_screen(lambda display: self.screen.display[0] == expected,
+                         f"header {expected!r}")
+
+    def test_header_replaces_shorter_and_longer_node_names(self):
+        for name in ("node-with-a-long-name", "n", "replacement-node", "z"):
+            with self.subTest(name=name):
+                self.publish("response_file", f"XCAT_NODE_NAME={name}\n")
+                self.assert_header(name)
+
+    def test_header_removes_shortened_or_missing_serial(self):
+        name = "dialog-test-node"
+        self.assert_header(name)
+        for serial in ("SERIAL-WITH-A-LONG-VALUE", "S1", "", "SERIAL-RESTORED", ""):
+            with self.subTest(serial=serial):
+                self.publish("sys_root/class/dmi/id/product_serial", serial + "\n")
+                self.assert_header(name + " | " + serial if serial else name)
+
+    def test_header_truncates_long_identity_before_shortening(self):
+        name = "dialog-test-node"
+        serial = "0123456789" * 18
+        expected = (name + " | " + serial)[:min(self.columns - 20, 191)]
+        self.publish("sys_root/class/dmi/id/product_serial", serial + "\n")
+        self.assert_header(expected)
+        self.publish("sys_root/class/dmi/id/product_serial", "\n")
+        self.assert_header(name)
+
     def test_help_and_diagnostics_scroll_close_and_reopen(self):
         dialogs = [
             (b"\x1bOP", "Genesis help", "This console reports Genesis status.",
@@ -584,6 +614,14 @@ class ConsoleShell(ConsoleTerminal):
         self.wait_main()
         self.key(b"\x1bOP")
         self.wait_text("Genesis help")
+
+
+class ConsoleNarrowDialogs(ConsoleDialogs):
+    columns = 80
+
+
+class ConsoleWideDialogs(ConsoleDialogs):
+    columns = 240
 
 
 if __name__ == "__main__":
