@@ -495,7 +495,9 @@ sub firmware_error {
         this refusal libvirt answers "Unable to find 'efi' firmware that is compatible with
         the current configuration", which names neither the node nor either setting.
 
-        Only x86_64 is judged. Another architecture has one machine type for its firmware.
+        Only the i440fx family is judged, and only on x86_64. xCAT does not know which
+        machine types a hypervisor offers, so any other value goes to libvirt, which reports
+        a machine type it cannot use.
     Arguments:
         $firmware - the result of requested_firmware, or undef
         $machine - the machine: setting of vm.othersettings, or undef
@@ -511,7 +513,7 @@ sub firmware_machine_error {
     my ($firmware, $machine, $arch, $node) = @_;
     return undef unless defined($firmware) and defined($machine);
     return undef unless defined($arch) and $arch eq 'x86_64';
-    return undef if $machine =~ /q35/;
+    return undef unless $machine eq 'pc' or $machine =~ /^(?:pc-)?i440fx/;
     return "vm.othersettings firmware:$firmware needs a q35 machine type, and $node names"
       . " machine:$machine. Use machine:q35, or leave the machine type out.";
 }

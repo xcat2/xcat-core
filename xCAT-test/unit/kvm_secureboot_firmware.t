@@ -82,8 +82,20 @@ like( $conflict, qr/firmware:efi-secureboot/, 'and the firmware the node asked f
 like( $conflict, qr/machine:pc\b/,           'and the machine type that cannot carry it' );
 like( $conflict, qr/q35/, 'and the machine type that can, so the conf can be corrected from it' );
 
+like( xCAT::KVMUtils::firmware_machine_error( 'efi', 'pc-i440fx-rhel10.0.0', 'x86_64', 'cn1' ),
+    qr/machine:pc-i440fx-rhel10\.0\.0/, 'a versioned i440fx is refused by name' );
+
 is( xCAT::KVMUtils::firmware_machine_error( 'efi-secureboot', 'q35', 'x86_64', 'cn1' ),
     undef, 'q35 is not refused' );
+
+# xCAT does not know which machine types a hypervisor offers, so it judges only the i440fx
+# family, whose descriptors carry no UEFI firmware. libvirt reports any other machine type it
+# cannot use, and reg_linux_diskless_installation_flat relies on mkvm accepting machine:invalid
+# so that it can measure the provisioning failure that follows.
+is( xCAT::KVMUtils::firmware_machine_error( 'efi-secureboot', 'invalid', 'x86_64', 'cn1' ),
+    undef, 'a machine type xCAT does not know is left to libvirt' );
+is( xCAT::KVMUtils::firmware_machine_error( 'efi', 'pc-q35-rhel10.2.0', 'x86_64', 'cn1' ),
+    undef, 'and so is a machine type that carries a UEFI firmware' );
 is( xCAT::KVMUtils::firmware_machine_error( 'efi', 'pc-q35-rhel9.4.0', 'x86_64', 'cn1' ),
     undef, 'a versioned q35 is not refused' );
 is( xCAT::KVMUtils::firmware_machine_error( 'efi-secureboot', undef, 'x86_64', 'cn1' ),
