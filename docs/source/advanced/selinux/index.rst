@@ -64,6 +64,12 @@ unit must name ``xcatd`` and not a shell. 115 command names are symlinks to
 file it points to. ``/usr/sbin/xcatd`` is a symlink, and ``execve`` resolves it,
 so the context belongs to the file in ``/opt/xcat``.
 
+The unit holds ``/opt/xcat`` as the default prefix, and ``%post`` writes
+``/etc/xcat/xcatroot.env`` with the prefix of the installation, which the unit
+reads after that default. The file contexts name ``/opt/xcat``, so a package
+relocated with ``rpm --prefix`` starts in its own tree but needs its own file
+context entries before the entrypoints reach ``xcat_t``.
+
 Read the domain of the running daemon with::
 
     ps -o label= -p "$(cat /run/xcatd.pid)"
