@@ -144,6 +144,22 @@ Compressor and ctorrent fixtures record what nodes can download during the
 pack, or fail on request. The image lock and the ilitefile query are test
 doubles. This case does not boot the image.
 
+The pull-request workflow runs the UFTP listener case explicitly. It starts the
+checkout's `xcat-uftp-listener` on loopback addresses and sends it requests
+over TCP. It needs Bubblewrap with unprivileged user namespaces, GNU timeout,
+the loopback address 127.0.0.2, and the Perl modules of the unit suite,
+including DBD::SQLite and Capture::Tiny. Run it as an ordinary user:
+
+```
+prove xCAT-test/native/uftp_listener.t
+```
+
+Fixtures replace `uftp` and `uftp_keymgt`. The `uftp` fixture records its
+arguments, its host list and the bytes it reads from descriptor 3, or exits
+or blocks on request. The case checks key creation, the runtime check on a
+read-only log directory, sender processes, timeouts, shutdown and connection
+limits. It does not send multicast or boot a node.
+
 The disk, kdump, sudoer and remoteshell cases require bats-core 1.4 or newer,
 Bubblewrap, GNU timeout, diffutils, Capture::Tiny, File::Slurper and sudo's
 `visudo`. The remoteshell case also needs `/usr/bin/openssl` and `ssh-keygen`

@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **linuximage Attributes:**\   \ *imagename*\ , \ *template*\ , \ *boottarget*\ , \ *addkcmdline*\ , \ *pkglist*\ , \ *pkgdir*\ , \ *otherpkglist*\ , \ *otherpkgdir*\ , \ *exlist*\ , \ *postinstall*\ , \ *rootimgdir*\ , \ *kerneldir*\ , \ *nodebootif*\ , \ *otherifce*\ , \ *netdrivers*\ , \ *kernelver*\ , \ *krpmver*\ , \ *permission*\ , \ *dump*\ , \ *crashkernelsize*\ , \ *partitionfile*\ , \ *driverupdatesrc*\ , \ *gpgcheck*\ , \ *rootimgchecksum*\ , \ *comments*\ , \ *disable*\ 
+\ **linuximage Attributes:**\   \ *imagename*\ , \ *template*\ , \ *boottarget*\ , \ *addkcmdline*\ , \ *pkglist*\ , \ *pkgdir*\ , \ *otherpkglist*\ , \ *otherpkgdir*\ , \ *exlist*\ , \ *postinstall*\ , \ *rootimgdir*\ , \ *kerneldir*\ , \ *nodebootif*\ , \ *otherifce*\ , \ *netdrivers*\ , \ *kernelver*\ , \ *krpmver*\ , \ *permission*\ , \ *dump*\ , \ *crashkernelsize*\ , \ *partitionfile*\ , \ *driverupdatesrc*\ , \ *gpgcheck*\ , \ *rootimgchecksum*\ , \ *rootimgtransport*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -198,6 +198,12 @@ linuximage Attributes:
 \ **rootimgchecksum**\ 
  
  Stateless images and statelite ramdisk images only. Set to 'yes' or '1' to have nodeset tell nodes to boot the compressed root image only after it matches its SHA-256 checksum. Set to 'no' or '0' to have nodes boot it unchecked. packimage, liteimg and imgimport always write the checksum. If not set, the default is the value of site.rootimgchecksum, which defaults to 'yes'. The first upgrade to a release with the check sets this attribute to 'no' for the images that exist then.
+ 
+
+
+\ **rootimgtransport**\ 
+ 
+ Stateless images only. How nodes get the compressed root image at boot. 'http' downloads it from the image server. 'uftp' receives it over UFTP multicast from xcat-uftp-listener, and downloads it over HTTP when that fails. If not set, the default is the value of site.rootimgtransport, which defaults to 'http'. 'uftp' needs the root image checksum (rootimgchecksum), an initial ramdisk that genimage built with the UFTP receiver, and site.httpmethod 'http'.
  
 
 

@@ -141,6 +141,52 @@ sub publish_boot_files {
     return 1;
 }
 
+# Puts the UFTP fetch helper in the xCAT dracut module of an initial ramdisk when $wanted is true and the image has the
+# UFTP 5 receiver of xcat-dep for its architecture, and removes an older copy otherwise. Returns the receiver or undef.
+sub add_uftp_receiver {
+    my ($rootimg_dir, $arch, $moduledir, $wanted) = @_;
+    require xCAT::UFTP;
+    my $copy = "$moduledir/$xCAT::UFTP::HELPER";
+    if (-e $copy || -l $copy) {
+        unlink($copy) or die("Error: cannot remove $copy: $!\n");
+    }
+    return unless $wanted;
+    my ($receiver, $warning) = xCAT::UFTP::usable_receiver($rootimg_dir, $arch);
+    print "Warning: $warning\n" if $warning;
+    return unless $receiver;
+    my $helper = dirname(__FILE__) . "/$xCAT::UFTP::HELPER";
+    File::Copy::copy($helper, $copy) && chmod(0644, $copy) or die("Error: cannot copy $helper to $copy: $!\n");
+    print "Adding the UFTP receiver $receiver to the initial ramdisk.\n";
+    return $receiver;
+}
+
+# Returns the lsinitrd lines of the initial ramdisk $initrd, a path inside the image, or undef when the image cannot list it.
+sub initrd_listing {
+    my ($rootimg_dir, $initrd) = @_;
+    my @listing = `chroot $rootimg_dir lsinitrd $initrd 2>&1`;
+    return $? ? undef : \@listing;
+}
+
+# Dies unless the initial ramdisk $initrd, a path inside the image, holds the UFTP receiver files.
+sub check_uftp_initrd {
+    my ($rootimg_dir, $initrd, $mode) = @_;
+    require xCAT::UFTP;
+    my $listing = initrd_listing($rootimg_dir, $initrd);
+    my @missing = $listing ? xCAT::UFTP::initrd_missing_files($listing) : ('a readable file list');
+    die("Error: the initial ramdisk for $mode lacks the UFTP receiver files: @missing\n") if @missing;
+    return 1;
+}
+
+# Records next to a published initial ramdisk whether it can receive the root image over UFTP.
+sub mark_uftp_receiver {
+    my ($initrd, $receiver) = @_;
+    require xCAT::UFTP;
+    my $error = $receiver ? xCAT::UFTP::write_initrd_marker($initrd) : xCAT::UFTP::remove_initrd_marker($initrd);
+    print "Warning: $error\n" if $error;
+    print "The initial ramdisk $initrd can receive the root image over UFTP.\n" if $receiver && !$error;
+    return !$error;
+}
+
 sub varsubinline{
     my $line=shift;
     my $refvardict=shift;

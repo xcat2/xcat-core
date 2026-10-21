@@ -808,7 +808,7 @@ passed as argument rather than by table value',
         },
     },
     linuximage => {
-        cols => [qw(imagename template boottarget addkcmdline pkglist pkgdir otherpkglist otherpkgdir exlist postinstall rootimgdir kerneldir nodebootif otherifce netdrivers kernelver krpmver permission dump crashkernelsize partitionfile driverupdatesrc gpgcheck rootimgchecksum comments disable)],
+        cols => [qw(imagename template boottarget addkcmdline pkglist pkgdir otherpkglist otherpkgdir exlist postinstall rootimgdir kerneldir nodebootif otherifce netdrivers kernelver krpmver permission dump crashkernelsize partitionfile driverupdatesrc gpgcheck rootimgchecksum rootimgtransport comments disable)],
         keys       => [qw(imagename)],
         tablespace => 'XCATTBS32K',
         table_desc => 'Information about a Linux operating system image that can be used to deploy cluster nodes.',
@@ -855,6 +855,7 @@ passed as argument rather than by table value',
             driverupdatesrc => 'The source of the drivers which need to be loaded during the boot. Two types of driver update source are supported: Driver update disk and Driver rpm package. The value for this attribute should be comma separated sources. Each source should be the format tab:full_path_of_source_file. The tab keyword can be: dud (for Driver update disk) and rpm (for driver rpm). If missing the tab, the rpm format is the default. e.g. dud:/install/dud/dd.img,rpm:/install/rpm/d.rpm',
             gpgcheck => "Diskless Red Hat family images only. Set to 'yes' or '1' to have genimage verify the signature of every package it installs from the pkgdir, kerneldir and otherpkgdir repositories, as it always does for openEuler images. The trusted keys are the RPM signing keys imported on the node that runs genimage (rpm -q gpg-pubkey), so import the key of every repository first, for example rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-9. The default is no verification.",
             rootimgchecksum => "Stateless images and statelite ramdisk images only. Set to 'yes' or '1' to have nodeset tell nodes to boot the compressed root image only after it matches its SHA-256 checksum. Set to 'no' or '0' to have nodes boot it unchecked. packimage, liteimg and imgimport always write the checksum. If not set, the default is the value of site.rootimgchecksum, which defaults to 'yes'. The first upgrade to a release with the check sets this attribute to 'no' for the images that exist then.",
+            rootimgtransport => "Stateless images only. How nodes get the compressed root image at boot. 'http' downloads it from the image server. 'uftp' receives it over UFTP multicast from xcat-uftp-listener, and downloads it over HTTP when that fails. If not set, the default is the value of site.rootimgtransport, which defaults to 'http'. 'uftp' needs the root image checksum (rootimgchecksum), an initial ramdisk that genimage built with the UFTP receiver, and site.httpmethod 'http'.",
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -1235,6 +1236,11 @@ passed as argument rather than by table value',
 "                   rootimgchecksum attribute of an osimage overrides this value.\n" .
 "                   The first upgrade to a release with the check sets that\n" .
 "                   attribute to no for the images that exist then.\n\n" .
+" rootimgtransport:  (http or uftp). Default is http. How the nodes of a stateless\n" .
+"                    image get the compressed root image at boot. uftp receives it\n" .
+"                    over UFTP multicast from xcat-uftp-listener, with HTTP as the\n" .
+"                    fallback. The rootimgtransport attribute of an osimage\n" .
+"                    overrides this value.\n\n" .
 " runbootscripts:  If set to 'yes' the scripts listed in the postbootscripts\n" .
 "                  attribute in the osimage and postscripts tables will be run during\n" .
 "                  each reboot of stateful (diskful) nodes. This attribute has no\n" .
@@ -3331,6 +3337,11 @@ push(@{ $defspec{node}->{'attrs'} }, @nodeattrs);
     { attr_name => 'rootimgchecksum',
         only_if         => 'imagetype=linux',
         tabentry        => 'linuximage.rootimgchecksum',
+        access_tabentry => 'linuximage.imagename=attr:imagename',
+    },
+    { attr_name => 'rootimgtransport',
+        only_if         => 'imagetype=linux',
+        tabentry        => 'linuximage.rootimgtransport',
         access_tabentry => 'linuximage.imagename=attr:imagename',
     },
     { attr_name => 'exlist',
