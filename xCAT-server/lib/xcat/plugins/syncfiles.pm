@@ -73,14 +73,15 @@ sub process_request
          $::RCP=$options{'node-rcp'};
     }
 
-    if ($client) { ($client) = noderange($client) }
-    unless ($client) {    #Not able to do identify the host in question
+    my $node;
+    if ($client) { ($node) = noderange($client) }
+    unless ($node) {    #Not able to do identify the host in question
         xCAT::MsgUtils->message("S", "Received syncfiles from $client, which couldn't be correlated to a node (domain mismatch?)");
         return;
     }
 
     require xCAT::Postage;
-    &syncfiles($client, $callback, $subreq);
+    &syncfiles($node, $callback, $subreq);
 }
 
 
