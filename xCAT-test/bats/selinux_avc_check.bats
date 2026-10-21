@@ -77,9 +77,61 @@ SSH_RECORD='type=AVC msg=audit(1759000002.333:444): avc:  denied  { siginh } for
     [ "$status" -eq 2 ]
 }
 
-@test "a window with no audit record is a usage error, not a clean answer" {
+@test "the report refuses a checkpoint call with no file" {
+    run selinux_avc_since ""
+    [ "$status" -eq 2 ]
+    run selinux_avc_init ""
+    [ "$status" -eq 2 ]
+}
+
+@test "an empty window with nothing today is a usage error, not a clean answer" {
     run selinux_avc_report "01/01/1970 00:00:00"
     [ "$status" -eq 2 ]
     [[ "$output" == *"SEARCHED=0"* ]]
-    [[ "$output" == *"bare HH:MM:SS"* ]]
+    [[ "$output" == *"none today"* ]]
+}
+
+# The guard the checkpoint form needs. ausearch answers with records, with
+# '<no matches>', or with nothing once it has read to the end of the log. An
+# error message is none of those, and counting it reports a clean window.
+@test "an ausearch error message is not a clean window" {
+    run selinux_avc_count "Invalid start time (10/21/2026 20:59:08). Hour, Minute, and Second are required."
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"neither a record nor"* ]]
+}
+
+@test "a log read to its end is a clean window" {
+    run selinux_avc_count "<no matches>"
+    [ "$status" -eq 0 ]
+    [ "$output" = "AVC=0 XCAT_AVC=0" ]
+    run selinux_avc_count ""
+    [ "$status" -eq 0 ]
+    [ "$output" = "AVC=0 XCAT_AVC=0" ]
+}
+
+@test "an xCAT denial after the checkpoint is kept" {
+    ausearch() { printf '%s\n' "$XCAT_RECORD"; }
+    run selinux_avc_since /tmp/selinux_avc_check_bats.ck
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"AVC=1 XCAT_AVC=1"* ]]
+    [[ "$output" == *'/tftpboot/xcat/xnba.kpxe'* ]]
+}
+
+@test "noise after the checkpoint is counted and not kept" {
+    ausearch() { printf '%s\n' "$TIMER_RECORD"; }
+    run selinux_avc_since /tmp/selinux_avc_check_bats.ck
+    [ "$status" -eq 0 ]
+    [ "$output" = "AVC=1 XCAT_AVC=0" ]
+}
+
+# A checkpoint that reads no record is not a quiet node: ausearch writes no
+# checkpoint file, so the next call reads the whole log.
+@test "the baseline counts the records the checkpoint consumed" {
+    ausearch() { printf '%s\n' "$TIMER_RECORD" "$SSH_RECORD"; }
+    run selinux_avc_init /tmp/selinux_avc_check_bats.ck
+    [ "$status" -eq 0 ]
+    [ "$output" = "BASELINE=2" ]
+    ausearch() { printf '%s\n' "<no matches>"; }
+    run selinux_avc_init /tmp/selinux_avc_check_bats.ck
+    [ "$output" = "BASELINE=0" ]
 }
