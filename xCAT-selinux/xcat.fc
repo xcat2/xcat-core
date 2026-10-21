@@ -45,5 +45,9 @@
 /install(/.*)?/rootimg(-statelite)?/rootimgtree\.[^/]*	--	gen_context(system_u:object_r:public_content_t,s0)
 /install(/.*)?/rootimg(-statelite)?/litefile\.csv	--	gen_context(system_u:object_r:public_content_t,s0)
 /install(/.*)?/rootimg(-statelite)?/common\.filelist	--	gen_context(system_u:object_r:public_content_t,s0)
-/install(/.*)?/rootimg(-statelite)?/common(/.*)?		gen_context(system_u:object_r:public_content_t,s0)
-/install(/.*)?/rootimg(-statelite)?/overlay(/.*)?		gen_context(system_u:object_r:public_content_t,s0)
+
+# There is no rule for a common or an overlay directory below the rootimg
+# component. Such a rule must match a subtree, and a subtree under that name is
+# the same path as a guest tree that has a directory called common or overlay at
+# its own root, so the rule relabels the guest. Each entry above names one file
+# and cannot take a tree with it.
