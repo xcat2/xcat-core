@@ -845,6 +845,129 @@ foreach my $case (@sysconfig_policy_cases) {
 }
 
 {
+    # Kea D2 on a service node must update the authoritative management-node
+    # DNS server, not the service node's local forwarding cache or slave.
+    no warnings 'redefine';
+    local *xCAT::Utils::isServiceNode = sub { return 1; };
+
+    is(
+        xCAT_plugin::dhcp::kea_ddns_update_target(
+            '10.0.0.0', '<xcatmaster>, 192.0.2.53'
+        ),
+        '192.0.2.53',
+        'service-node D2 uses the documented IPv4 management-node fallback'
+    );
+    is(
+        xCAT_plugin::dhcp::kea_ddns_update_target(
+            '2001:db8:7309::', '<xcatmaster>, 2001:db8::53'
+        ),
+        '2001:db8::53',
+        'service-node D2 uses the documented IPv6 management-node fallback'
+    );
+    is(
+        xCAT_plugin::dhcp::kea_ddns_update_target(
+            '10.0.0.0', '192.0.2.54, 192.0.2.53'
+        ),
+        '192.0.2.54',
+        'service-node D2 preserves an explicit first IPv4 DNS target'
+    );
+    is(
+        xCAT_plugin::dhcp::kea_ddns_update_target(
+            '2001:db8:7309::', '2001:db8::54, 2001:db8::53'
+        ),
+        '2001:db8::54',
+        'service-node D2 preserves an explicit first IPv6 DNS target'
+    );
+
+    {
+        local *xCAT::TableUtils::get_site_attribute = sub {
+            return $_[-1] eq 'master' ? ('mn.example.test') : ();
+        };
+        local *xCAT_plugin::dhcp::getipaddr = sub {
+            return '192.0.2.55' if $_[0] eq 'mn.example.test';
+            return '2001:db8::56' if $_[0] eq 'dns.example.test';
+            return;
+        };
+        is(
+            xCAT_plugin::dhcp::kea_ddns_update_target(
+                '2001:db8:7309::', '<xcatmaster>'
+            ),
+            '192.0.2.55',
+            'service-node D2 resolves site.master when no explicit fallback is configured'
+        );
+        is(
+            xCAT_plugin::dhcp::kea_ddns_update_target(
+                '2001:db8:7309::', 'dns.example.test'
+            ),
+            '2001:db8::56',
+            'service-node D2 resolves an explicit DNS hostname to an address literal'
+        );
+        is(
+            xCAT_plugin::dhcp::kea_ddns_update_target(
+                '2001:db8:7309::', '<xcatmaster>, <xcatmaster>'
+            ),
+            '192.0.2.55',
+            'duplicate placeholders fall back to the resolvable site.master address'
+        );
+    }
+
+    {
+        local *xCAT_plugin::dhcp::getipaddr = sub { return; };
+        is(
+            xCAT_plugin::dhcp::kea_ddns_update_target(
+                '10.0.0.0', 'not-an-address.invalid'
+            ),
+            undef,
+            'unresolvable explicit D2 targets are omitted instead of breaking Kea validation'
+        );
+    }
+
+    local *xCAT_plugin::dhcp::kea_ddns_enabled = sub { 1 };
+    local *xCAT_plugin::dhcp::kea_ddns_key = sub {
+        return ( 'HMAC-SHA256', 'YWJjMTIz' );
+    };
+    local $xCAT::Table::networks = DHCPKeaIntentNetTable->new(
+        {
+            %network_entry,
+            nameservers => '<xcatmaster>, 192.0.2.53',
+        }
+    );
+
+    my $ddns_intent = xCAT_plugin::dhcp::kea_build_ddns_intent();
+    my @dns_ips =
+      map { $_->{'ip-address'} }
+      map { @{ $_->{'dns-servers'} || [] } }
+      ( @{ $ddns_intent->{forward_domains} || [] }, @{ $ddns_intent->{reverse_domains} || [] } );
+
+    ok( scalar(@dns_ips), 'service-node DDNS intent renders forward and reverse DNS targets' );
+    is_deeply(
+        [ grep { $_ ne '192.0.2.53' } @dns_ips ],
+        [],
+        'service-node DDNS intent sends every update to the authoritative management node'
+    );
+}
+
+{
+    no warnings 'redefine';
+    local *xCAT::Utils::isServiceNode = sub { return 0; };
+
+    is(
+        xCAT_plugin::dhcp::kea_ddns_update_target(
+            '10.0.0.0', '<xcatmaster>, 192.0.2.53'
+        ),
+        '10.0.0.1',
+        'management-node D2 keeps the local IPv4-facing target when a fallback is present'
+    );
+    is(
+        xCAT_plugin::dhcp::kea_ddns_update_target(
+            '2001:db8:7309::', '<xcatmaster>, 2001:db8::53'
+        ),
+        '2001:db8::1',
+        'management-node D2 keeps the local IPv6-facing target when a fallback is present'
+    );
+}
+
+{
     # Regression: a service node (noderes.servicenode set, groups=service) must
     # get a Kea host reservation exactly like a regular compute node.  The Kea
     # reservation builder loops over every requested node without filtering on

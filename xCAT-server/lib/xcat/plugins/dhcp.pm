@@ -3170,6 +3170,54 @@ sub kea_ipv6_nameservers
     return @resolved ? join(', ', @resolved) : undef;
 }
 
+sub kea_resolve_ddns_target
+{
+    my ($target) = @_;
+    return unless $target && $target ne '<xcatmaster>';
+
+    my $ip = xCAT::NetworkUtils->isValidIPAddress($target)
+      ? $target
+      : getipaddr($target);
+    return $ip && xCAT::NetworkUtils->isValidIPAddress($ip) ? $ip : undef;
+}
+
+sub kea_ddns_update_target
+{
+    my ( $network, $nameservers ) = @_;
+
+    my @servers = grep { length($_) }
+      map {
+        my $server = $_;
+        $server =~ s/^\s+|\s+$//g;
+        $server;
+      } split /,/, ( $nameservers || '' );
+    return unless @servers;
+
+    return kea_resolve_ddns_target($servers[0])
+      unless $servers[0] eq '<xcatmaster>';
+
+    if (xCAT::Utils->isServiceNode()) {
+        my $fallback = kea_resolve_ddns_target($servers[1]);
+        return $fallback if $fallback;
+
+        my @masters = xCAT::TableUtils->get_site_attribute('master');
+        return unless $masters[0];
+        return kea_resolve_ddns_target($masters[0]);
+    }
+
+    my $peer = $network || '';
+    $peer =~ s{/.*$}{};
+    if ($peer =~ /:/) {
+        my $target = xCAT::NetworkUtils->ipv6_server_for_node(
+            $peer, '<xcatmaster>'
+        );
+        return kea_resolve_ddns_target($target);
+    }
+
+    my @myipd = xCAT::NetworkUtils->my_ip_facing($peer);
+    return $myipd[0] ? undef : kea_resolve_ddns_target($myipd[1]);
+}
+
 sub kea_build_ddns_intent
 {
     return unless kea_ddns_enabled();
@@ -3196,25 +3244,11 @@ sub kea_build_ddns_intent
 
     my ( %forward_seen, %reverse_seen, @forward, @reverse );
     foreach my $entry (@vnets) {
-        my $dns = $entry->{nameservers} || $sitenameservers || '';
-        $dns =~ s/,.*//;
+        my $dns = kea_ddns_update_target(
+            $entry->{net},
+            $entry->{nameservers} || $sitenameservers || ''
+        );
         next unless $dns;
-
-        # networks.nameservers / site.nameservers default to the <xcatmaster>
-        # placeholder.  Kea D2 validates dns-servers[].ip-address as a real IP,
-        # so resolve <xcatmaster> to the management IP facing this network the
-        # same way kea_subnet4_intent does for DHCP options.  Skip the network's
-        # DDNS domains if we can't resolve a real IP rather than emit an invalid one.
-        if ($dns =~ /<xcatmaster>/) {
-            my $peer = $entry->{net};
-            $peer =~ s{/.*$}{};
-            my @myipd = $peer =~ /:/
-              ? xCAT::NetworkUtils->my_ip_facing_family($peer, 6)
-              : xCAT::NetworkUtils->my_ip_facing($peer);
-            my $myip = $myipd[0] ? undef : $myipd[1];
-            $dns =~ s/<xcatmaster>/$myip/g if $myip;
-        }
-        next if (!$dns || $dns =~ /<xcatmaster>/);
 
         my $domain = $entry->{ddnsdomain} || $entry->{domain} || $site_domain;
         if ($domain) {
