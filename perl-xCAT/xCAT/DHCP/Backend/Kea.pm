@@ -747,7 +747,9 @@ sub control_agent_url {
 
     my $host = $opts{host} || $self->{control_agent_host} || '127.0.0.1';
     my $port = $opts{port} || $self->{control_agent_port} || 8000;
-    return "http://$host:$port/";
+    my $authority = xCAT::NetworkUtils->format_host_port($host, $port);
+    return unless $authority;
+    return "http://$authority/";
 }
 
 sub control_agent_command {
