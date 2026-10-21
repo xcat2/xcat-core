@@ -7,8 +7,15 @@ installation does not change the SELinux mode of the machine.
 Scope
 -----
 
-This version covers the management node. A service node and a compute node are
-out of scope: no run measures them, and xCAT does not select their mode.
+The policy module covers the management node. It defines the domain of ``xcatd``,
+of the client commands and of the image build, and it labels the files xCAT
+owns. A service node and a compute node get no xCAT domain.
+
+They get a mode. ``noderes.selinux`` on the node, then the ``noderes.selinux``
+of its groups, then ``site.selinux`` decides the mode that the installer of a
+diskful compute or service node configures. A stateless or statelite node gets
+``selinux=0``, because its root carries no label. See
+:doc:`SELinux </advanced/security/selinux>` for the table and for the switches.
 
 The two domains
 ---------------
@@ -70,7 +77,10 @@ labels there, so an osimage whose ``rootimgdir`` has a directory called
 ``rootimg`` above the tree leaves its published kernel and initrd unlabeled,
 and ``httpd`` cannot serve them. Give such an osimage a ``rootimgdir`` with no
 ``rootimg`` component, or run ``restorecon`` over the image root after the
-package is installed.
+package is installed. A published ``common`` or ``overlay`` directory of an
+image root called ``rootimg`` is unlabeled for the same reason: its path is
+also the path of a ``common`` or ``overlay`` directory at the root of a guest
+tree.
 
 The unit holds ``/opt/xcat`` as the default prefix, and ``%post`` writes
 ``/etc/xcat/xcatroot.env`` with the prefix of the installation, which the unit

@@ -45,16 +45,22 @@ So ``mknetboot`` writes ``selinux=0`` for every stateless node, whatever
 
 ``xCAT::SELinux->netboot_supported`` is the one place that answers this question.
 
-xCAT itself is not confined
----------------------------
+xCAT runs in two permissive domains
+-----------------------------------
 
-``xcatd``, ``in.tftpd``, ``kea-dhcp4`` and ``goconserver`` run in
-``unconfined_service_t``. The ``xCAT-selinux`` package defines no type and confines
-nothing. It carries the rules that let the CONFINED services of the OS reach the files
-xCAT owns, for example ``httpd`` reading ``/tftpboot``.
+``xCAT-selinux`` defines ``xcat_t`` for ``xcatd`` and the xCAT client commands, and
+``xcat_image_t`` for the image build. The module declares both domains permissive, so
+the kernel records an access that is outside the rules instead of refusing it. The host
+policy stays enforcing.
 
-So SELinux on an xCAT cluster constrains the OS services, not xCAT. Running xCAT with
-SELinux enforcing is the goal; confining xCAT is not part of it.
+The module also transitions the services xCAT starts itself to the stock domains:
+``in.tftpd`` to ``tftpd_t`` and ``chronyd`` to ``chronyd_t``. And it grants the confined
+services of the OS the access they need to the files xCAT owns, for example ``httpd``
+reading ``/tftpboot``.
+
+Running xCAT on an enforcing management node is the goal. A later release removes the
+permissive declaration. See :doc:`SELinux </advanced/selinux/index>` for what each
+domain holds, how a command enters it, and how to read the records the kernel writes.
 
 Setting the mode of a node
 --------------------------
