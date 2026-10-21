@@ -20,6 +20,10 @@ sub build {
     chomp $version;
     XCAT::Test::Lifecycle::checked('tar', '-czf', "$top/SOURCES/$package-$version.tar.gz",
         '-C', repo_path('.'), $package);
+    if ($package eq 'xCAT-genesis-scripts') {
+        XCAT::Test::Lifecycle::checked('tar', '-cjf', "$top/SOURCES/$package.tar.bz2",
+            '-C', repo_path('.'), $package);
+    }
     if ($package eq 'xCAT' || $package eq 'xCATsn') {
         for my $source (glob(repo_path('xCAT/*.lua')), glob(repo_path('xCAT/*.sh'))) {
             copy($source, "$top/SOURCES/" . basename($source)) or croak "copy $source: $!";

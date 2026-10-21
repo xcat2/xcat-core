@@ -17,6 +17,7 @@ use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
 use xCAT::SvrUtils;
+use xCAT::UFTP;
 use xCAT::Yum;
 use xCAT::SELinux;
 
@@ -408,6 +409,8 @@ sub mknetboot
         my $tftpdir;
         my $cfgpart;
         my $rootimgchecksum;
+        my $rootimgtransport;
+        my $addkcmdline;
         my $imagename;    # set it if running of 'nodeset osimage=xxx'
 
         if ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{tftpdir}) {
@@ -439,11 +442,12 @@ sub mknetboot
                     if (!$linuximagetab) {
                         $linuximagetab = xCAT::Table->new('linuximage', -create => 1);
                     }
-                    (my $ref1) = $linuximagetab->getAttribs({ imagename => $imagename }, 'rootimgdir', 'nodebootif', 'dump', 'crashkernelsize', 'partitionfile', 'rootimgchecksum');
+                    (my $ref1) = $linuximagetab->getAttribs({ imagename => $imagename }, 'rootimgdir', 'nodebootif', 'dump', 'crashkernelsize', 'partitionfile', 'rootimgchecksum', 'rootimgtransport', 'addkcmdline');
                     if (($ref1) && ($ref1->{'rootimgdir'})) {
                         $img_hash{$imagename}->{rootimgdir} = $ref1->{'rootimgdir'};
                     }
                     $img_hash{$imagename}->{rootimgchecksum} = $ref1->{'rootimgchecksum'} if $ref1;
+                    @{ $img_hash{$imagename} }{qw(rootimgtransport addkcmdline)} = @$ref1{qw(rootimgtransport addkcmdline)} if $ref1;
                     if (($ref1) && ($ref1->{'nodebootif'})) {
                         $img_hash{$imagename}->{nodebootif} = $ref1->{'nodebootif'};
                     }
@@ -501,6 +505,8 @@ sub mknetboot
             $dump            = $ph->{dump};
             $cfgpart         = $ph->{'cfgpart'};
             $rootimgchecksum = $ph->{rootimgchecksum};
+            $rootimgtransport = $ph->{rootimgtransport};
+            $addkcmdline     = $ph->{addkcmdline};
         }
         else {
             my @ents = xCAT::TableUtils->get_site_attribute("disablenodesetwarning");
@@ -547,11 +553,12 @@ sub mknetboot
                 $linuximagetab = xCAT::Table->new('linuximage');
             }
             if ($linuximagetab) {
-                (my $ref1) = $linuximagetab->getAttribs({ imagename => $imgname }, 'dump', 'crashkernelsize', 'partitionfile', 'rootimgchecksum');
+                (my $ref1) = $linuximagetab->getAttribs({ imagename => $imgname }, 'dump', 'crashkernelsize', 'partitionfile', 'rootimgchecksum', 'rootimgtransport', 'addkcmdline');
                 if ($ref1 and $ref1->{'dump'}) {
                     $dump = $ref1->{'dump'};
                 }
                 $rootimgchecksum = $ref1->{'rootimgchecksum'} if $ref1;
+                ($rootimgtransport, $addkcmdline) = @$ref1{qw(rootimgtransport addkcmdline)} if $ref1;
                 if ($ref1 and $ref1->{'crashkernelsize'}) {
                     $crashkernelsize = $ref1->{'crashkernelsize'};
                 }
@@ -669,6 +676,21 @@ sub mknetboot
                 imagename => $imagename, warned => \%rootimg_warned, callback => $callback);
             if ($error) {
                 xCAT::MsgUtils->report_node_error($callback, $node, $error);
+                next;
+            }
+        }
+        # Nodes boot the initial ramdisk of the image once the copy below runs, or the TFTP copy with --noupdateinitrd.
+        my $uftp_args = '';
+        unless ($statelite) {
+            my ($transport, $uftp_error) = xCAT::SvrUtils->rootimg_transport($rootimgtransport);
+            ($uftp_args, $uftp_error) = xCAT::UFTP::boot_arguments(rootimgdir => $rootimgdir, artifact => $compressedrootimg,
+                checksum => xCAT::SvrUtils->rootimg_checksum_enabled($rootimgchecksum), httpmethod => $httpmethod,
+                addkcmdline => $addkcmdline, node_addkcmdline => $bootparams->{$node}->[0]->{addkcmdline},
+                initrd => ($noupdateinitrd ? $tftppath : $rootimgdir) . "/initrd-stateless.gz",
+                marker => "$rootimgdir/initrd-stateless.gz.uftp")
+              if $transport && $transport eq 'uftp';
+            if ($uftp_error) {
+                xCAT::MsgUtils->report_node_error($callback, $node, $uftp_error);
                 next;
             }
         }
@@ -877,6 +899,7 @@ sub mknetboot
                 $kcmdline = "imgurl=$httpmethod://$imgsrvip:$httpport/$rootimgdir/$compressedrootimg ";
             }
             $kcmdline .= $checksum_arg;
+            $kcmdline .= $uftp_args;
             $kcmdline .= "XCAT=$xcatmasterip:$xcatdport ";
             $kcmdline .= "NODE=$node ";
 

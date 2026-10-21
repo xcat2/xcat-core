@@ -144,6 +144,22 @@ Compressor and ctorrent fixtures record what nodes can download during the
 pack, or fail on request. The image lock and the ilitefile query are test
 doubles. This case does not boot the image.
 
+The pull-request workflow runs the UFTP listener case explicitly. It starts the
+checkout's `xcat-uftp-listener` on loopback addresses and sends it requests
+over TCP. It needs Bubblewrap with unprivileged user namespaces, GNU timeout,
+the loopback address 127.0.0.2, and the Perl modules of the unit suite,
+including DBD::SQLite and Capture::Tiny. Run it as an ordinary user:
+
+```
+prove xCAT-test/native/uftp_listener.t
+```
+
+Fixtures replace `uftp` and `uftp_keymgt`. The `uftp` fixture records its
+arguments, its host list and the bytes it reads from descriptor 3, or exits
+or blocks on request. The case checks key creation, the runtime check on a
+read-only log directory, sender processes, timeouts, shutdown and connection
+limits. It does not send multicast or boot a node.
+
 The disk, kdump, sudoer and remoteshell cases require bats-core 1.4 or newer,
 Bubblewrap, GNU timeout, diffutils, Capture::Tiny, File::Slurper and sudo's
 `visudo`. The remoteshell case also needs `/usr/bin/openssl` and `ssh-keygen`
@@ -200,6 +216,41 @@ run the rpm scriptlets.
 
 Check the TAP output for skipped prerequisites. A successful `prove` exit with
 skipped cases does not qualify those cases.
+
+## FIPS policy and discovery keys
+
+Run the unchanged statelite and Cumulus callers in private filesystems:
+
+```
+prove xCAT-test/native/statelite_optional_hostkey.t \
+      xCAT-test/native/fips_build_guard.t
+bats xCAT-test/native/cumulus_discovery_key_failure.bats
+```
+
+These cases require Bubblewrap, GNU timeout, Bash and Linux user namespaces.
+The Perl cases also require File::Slurper, Capture::Tiny and Parallel::ForkManager.
+The Cumulus case requires bats-core 1.4 or newer, GNU core utilities, grep and awk.
+It uses the shared shell sandbox and replaces OpenSSL with a failing command.
+It checks the exit status and key-generation attempt. It also checks that
+no listener helper remains and no listener starts. It does not exercise a
+switch or its discovery network.
+
+Run the package case as an ordinary user:
+
+```
+prove xCAT-test/native/fips_package_payload.t
+```
+
+It builds xCAT and Genesis scripts with the host's package tools, extracts the
+packages, and runs `unit/fips_shell_runtime.t` against their libraries. Use
+Debian build tools on Debian or Ubuntu, and RPM build tools with cpio and bzip2
+on EL. Both routes need OpenSSL, File::Slurper and Capture::Tiny.
+The check bypasses build dependencies and does not install either package.
+It does not build or boot a Genesis image.
+
+Run the crypto cases on both FIPS-enabled and non-FIPS hosts. A status-file
+fixture selects the policy but does not enable FIPS in OpenSSL. Legacy RSA-1024
+signing is skipped on FIPS hosts and must pass on the non-FIPS host.
 
 ## Package lifecycle
 
@@ -296,7 +347,9 @@ Meson, Ninja, pkg-config, and development packages for Newt and systemd.
 dependencies plus the `pyte` Python package, bubblewrap,
 systemd-journal-remote and journalctl. It runs the linked console in a
 pseudo-terminal and checks help and diagnostics navigation, scrolling,
-live status updates, diagnostic snapshots, and return to the main screen.
+live status updates, diagnostic snapshots, return to the main screen, and
+header identity changes and truncation. These cases run at 80, 100 and 240
+columns. Journal and shell cases run at 100 columns.
 The F3 cases check journal filtering, order, history limits, follow mode,
 paused selection, navigation and reopening. Rollover cases check expired
 entries, duplicate messages and wrapped lines. The F12 cases check cancellation,

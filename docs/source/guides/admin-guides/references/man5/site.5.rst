@@ -336,6 +336,12 @@ site Attributes:
                      The first upgrade to a release with the check sets that
                      attribute to no for the images that exist then.
   
+   rootimgtransport:  (http or uftp). Default is http. How the nodes of a stateless
+                      image get the compressed root image at boot. uftp receives it
+                      over UFTP multicast from xcat-uftp-listener, with HTTP as the
+                      fallback. The rootimgtransport attribute of an osimage
+                      overrides this value.
+  
    runbootscripts:  If set to 'yes' the scripts listed in the postbootscripts
                     attribute in the osimage and postscripts tables will be run during
                     each reboot of stateful (diskful) nodes. This attribute has no

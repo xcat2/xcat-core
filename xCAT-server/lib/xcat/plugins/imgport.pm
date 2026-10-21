@@ -641,6 +641,9 @@ sub get_files {
 
                     # nodeset reads this marker to tell whether the ramdisk checks the root image checksum.
                     $attrs->{ramdiskcheck} = "$ramdisk.rootimgcheck" if -r "$ramdisk.rootimgcheck";
+
+                    # nodeset tells nodes to receive the root image over UFTP only when this marker matches the ramdisk.
+                    $attrs->{ramdiskuftp} = "$ramdisk.uftp" if -r "$ramdisk.uftp";
                 }
 
                 unless ($kernel) {
@@ -931,7 +934,7 @@ sub make_bundle {
 
 
     # these are the only files we copy in.  (unless you have extras)
-    for my $a ("kernel", "ramdisk", "ramdiskcheck", "rootimg") {
+    for my $a ("kernel", "ramdisk", "ramdiskcheck", "ramdiskuftp", "rootimg") {
         my $filenames = $attribs->{$a};
         if ($filenames) {
             my @file_array = split(',', $filenames);
@@ -1332,7 +1335,7 @@ sub change_profile {
             $data->{linuximage}->{rootimgdir} = "$installdir/netboot/" . $data->{osimage}->{osvers} . "/" . $data->{osimage}->{osarch} . "/$new_profile";
         }
 
-        for my $a ("kernel", "ramdisk", "ramdiskcheck", "rootimg", "rootimgtree", "litefile") {
+        for my $a ("kernel", "ramdisk", "ramdiskcheck", "ramdiskuftp", "rootimg", "rootimgtree", "litefile") {
             if ($data->{$a}) {
                 my $fn = basename($data->{$a});
                 $data->{$a} = $data->{linuximage}->{rootimgdir} . "/$fn";
@@ -1958,7 +1961,7 @@ sub check_import {
         $callback->({ error => ["Unable to open table '$table'"], errorcode => [1] });
         return 0;
     }
-    my @missing = grep { !-e "$imgdir/$_" && !-l "$imgdir/$_" } map { basename($_) } map { split(',', $data->{$_} // '') } qw(rootimg kernel ramdisk rootimgtree);
+    my @missing = grep { !-e "$imgdir/$_" && !-l "$imgdir/$_" } map { basename($_) } map { split(',', $data->{$_} // '') } qw(rootimg kernel ramdisk ramdiskuftp rootimgtree);
     push @missing, grep { $data->{kit}{$_}{kitdir} && !-d "$imgdir/$_" } sort keys %{ $data->{kit} || {} };
 
     # imgexport keeps an extra directory under its path and an extra file under its name.
@@ -2059,7 +2062,7 @@ sub place_boot_files {
     my ($data, $imgdir, $callback, $placed, $held) = @_;
 
     # The root image goes first, so a failed publication leaves the kernel and ramdisk that match the published image.
-    for my $a ("rootimg", "kernel", "ramdisk", "ramdiskcheck", "rootimgtree", "litefile") {
+    for my $a ("rootimg", "kernel", "ramdisk", "ramdiskcheck", "ramdiskuftp", "rootimgtree", "litefile") {
         my $filenames = $data->{$a};
         if ($filenames) {
             my @file_array = split(',', $filenames);

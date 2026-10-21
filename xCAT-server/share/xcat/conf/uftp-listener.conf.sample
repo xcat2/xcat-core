@@ -1,0 +1,72 @@
+# Configuration for xcat-uftp-listener.  Copy this file to
+# /etc/xcat/uftp/listener.conf, set listen_address, and run
+# "xcat-uftp-listener --init-key" once before starting the service.
+# Every value is owned by the server; booting nodes cannot override them.
+
+# IPv4 address of this server on the provisioning network.  Nodes reach the
+# listener on the same host as their imgurl.  Required.
+listen_address = 192.0.2.1
+
+# TCP port for transfer requests.  nodeset passes it to the nodes.
+#listen_port = 1045
+
+# Comma-separated IPv4 networks allowed to request transfers, for example
+# 192.0.2.0/24.  Empty allows any address that can reach listen_address.
+#allowed_networks =
+
+# Local IPv4 address that sends the multicast data.  Defaults to
+# listen_address.  It is also the UFTP server ID that nodes accept.
+#multicast_interface =
+
+# Comma-separated directories that may hold published images.  An image
+# outside these directories is refused even if packimage published it.
+#image_roots = /install/netboot
+
+# UDP port, public announcement address, private data address pattern and
+# TTL for the multicast session.
+#udp_port = 1044
+#public_multicast = 230.4.4.1
+#private_multicast = 230.5.5.x
+#ttl = 1
+
+# Transmission rate in kilobits per second.  Use no more than the link speed of
+# the slowest node.
+#rate_kbps = 100000
+
+# Data bytes in each multicast packet, from 512 to 8800.  The default fits an
+# MTU of 1500.  Use a larger value only when the listener, the switches and
+# every node in the initramfs use an MTU of 9000 or more.  A node with a
+# smaller MTU receives no data, leaves the transfer and falls back to HTTP.
+#block_size = 1300
+
+# Seconds to collect requests for the same image before sending.  Zero sends
+# at once.
+#batch_delay = 30
+
+# Seconds a transfer may run before it is stopped.  Nodes wait for the batch
+# delay plus this value before they fall back to HTTP.
+#transfer_timeout = 1800
+
+# Limits on simultaneous senders, queued transfers, receivers in one
+# transfer, open request connections, and seconds to receive a request.
+#max_transfers = 4
+#max_queued_jobs = 32
+#max_clients_per_job = 1000
+#max_connections = 64
+#request_timeout = 10
+
+# Seconds to keep the result of a finished transfer for status queries.
+#job_retention = 600
+
+# UFTP session encryption.  Nodes accept only encrypted sessions signed by
+# the key below.
+#encryption = aes256-gcm
+#key_file = /etc/xcat/uftp/server.key
+#fingerprint_file = /etc/xcat/uftp/server.fingerprint
+
+# UFTP programs and the directory for one log file per transfer.  The
+# xcat-uftp-listener service can write only to /var/log/xcat-uftp.  For another
+# log_dir, add it with ReadWritePaths= in a drop-in for the service.
+#uftp = /usr/bin/uftp
+#uftp_keymgt = /usr/bin/uftp_keymgt
+#log_dir = /var/log/xcat-uftp

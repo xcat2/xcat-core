@@ -1,0 +1,283 @@
+#!/usr/bin/env perl
+# Accept UFTP transfer requests from booting stateless nodes and multicast
+# published root images to them with uftp(1).
+
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+
+use strict;
+use warnings;
+
+use Errno qw(EAGAIN EINTR EWOULDBLOCK);
+use Fcntl qw(F_GETFD F_SETFD FD_CLOEXEC SEEK_SET);
+use File::Basename qw(dirname);
+use File::Path qw(make_path);
+use File::Temp ();
+use Getopt::Long qw(GetOptions);
+use IO::Select;
+use IO::Socket::INET;
+use POSIX qw(WNOHANG);
+use xCAT::UFTP;
+
+my $config_path = $xCAT::UFTP::CONFIG_FILE;
+my ($init_key, $check_only, $help);
+GetOptions(
+    'config=s' => \$config_path,
+    'init-key' => \$init_key,
+    'check'    => \$check_only,
+    'help|h'   => \$help,
+) or usage(1);
+usage(0) if $help;
+usage(1) if @ARGV;
+
+sub usage {
+    my ($rc) = @_;
+    print STDERR "Usage: xcat-uftp-listener [--config FILE] [--init-key | --check]\n";
+    exit $rc;
+}
+
+sub logmsg {
+    my ($level, $message) = @_;
+    my @t = localtime();
+    printf STDERR "%04d-%02d-%02d %02d:%02d:%02d %s: %s\n",
+      $t[5] + 1900, $t[4] + 1, $t[3], $t[2], $t[1], $t[0], $level, $message;
+}
+
+sub fatal {
+    my ($message) = @_;
+    logmsg('error', $message);
+    exit 1;
+}
+
+my ($config, $config_error) = xCAT::UFTP::load_listener_config($config_path);
+fatal($config_error) if $config_error;
+
+sub key_fingerprint {
+    # uftp_keymgt prints the key description on standard error.
+    my $pid = open(my $pipe, '-|');
+    return (undef, "Cannot run $config->{uftp_keymgt}: $!") unless defined($pid);
+    if ($pid == 0) {
+        open(STDERR, '>&', \*STDOUT);
+        { exec { $config->{uftp_keymgt} } $config->{uftp_keymgt}, $config->{key_file}; }
+        POSIX::_exit(127);
+    }
+    my $output = do { local $/; <$pipe> } // '';
+    close($pipe);
+    return (undef, "$config->{uftp_keymgt} failed for $config->{key_file}") if $?;
+    my $fingerprint = xCAT::UFTP::parse_fingerprint($output);
+    return (undef, "Cannot parse the fingerprint of $config->{key_file}") unless $fingerprint;
+    return ($fingerprint, undef);
+}
+
+sub init_key {
+    my $key = $config->{key_file};
+    fatal("$config->{uftp_keymgt} is not executable; install the uftp package")
+      unless -x $config->{uftp_keymgt};
+    make_path(dirname($key), { mode => 0755 }) unless -d dirname($key);
+    unless (-e $key) {
+        my $old = umask(077);
+        my $rc = system { $config->{uftp_keymgt} } $config->{uftp_keymgt}, '-g', 'ec:secp256r1', $key;
+        umask($old);
+        fatal("Cannot create the UFTP server key $key") if $rc;
+    }
+    fatal("Cannot restrict $key: $!") unless chmod(0600, $key);
+    my ($fingerprint, $error) = key_fingerprint();
+    fatal($error) if $error;
+    if ($error = xCAT::UFTP::write_file_atomic($config->{fingerprint_file}, "$fingerprint\n", 0644)) {
+        fatal($error);
+    }
+    print "UFTP server key: $key\nUFTP server key fingerprint: $fingerprint\n";
+    exit 0;
+}
+
+init_key() if $init_key;
+my ($fingerprint, $runtime_error) = xCAT::UFTP::check_listener_runtime($config, \&key_fingerprint);
+fatal($runtime_error) if $runtime_error;
+if ($check_only) {
+    print "UFTP listener configuration is valid; server key fingerprint $fingerprint\n";
+    exit 0;
+}
+
+my $server = IO::Socket::INET->new(
+    LocalAddr => $config->{listen_address},
+    LocalPort => $config->{listen_port},
+    Proto     => 'tcp',
+    Listen    => 128,
+    ReuseAddr => 1,
+) or fatal("Cannot listen on $config->{listen_address}:$config->{listen_port}: $!");
+$server->blocking(0);
+
+my $workdir = File::Temp::tempdir('xcat-uftp-XXXXXXXX', TMPDIR => 1, CLEANUP => 1);
+chmod(0700, $workdir);
+
+my %connections;
+my $stopping = 0;
+$SIG{TERM} = $SIG{INT} = sub { $stopping = 1 };
+$SIG{PIPE} = 'IGNORE';
+$SIG{HUP}  = 'IGNORE';
+my $state = xCAT::UFTP::listener_state($config, workdir => $workdir, log => \&logmsg, spawn => \&spawn_sender);
+
+logmsg('info', "listening on $config->{listen_address}:$config->{listen_port}, "
+      . "multicast from $config->{multicast_interface} to $config->{public_multicast} port $config->{udp_port}, "
+      . 'image roots ' . join(',', @{ $config->{image_roots} }));
+
+sub respond {
+    my ($conn, $status, $body) = @_;
+    $conn->{out} = xCAT::UFTP::http_response($status, $body);
+    $conn->{deadline} = time() + $config->{request_timeout};
+}
+
+sub close_connection {
+    my ($conn) = @_;
+    delete $connections{ fileno($conn->{sock}) };
+    close($conn->{sock});
+}
+
+sub refuse_connection {
+    my ($sock, $status, $body) = @_;
+    $sock->blocking(0);
+    syswrite($sock, xCAT::UFTP::http_response($status, $body));
+    close($sock);
+}
+
+sub accept_connections {
+    my ($now) = @_;
+    for (1 .. $config->{max_connections}) {
+        my $sock = $server->accept() or last;
+        my $peer = $sock->peerhost() // '';
+        if (my ($status, $body) = xCAT::UFTP::connection_refusal($state, scalar(keys %connections), $peer)) {
+            refuse_connection($sock, $status, $body);
+            next;
+        }
+        $sock->blocking(0);
+        $connections{ fileno($sock) } = {
+            sock     => $sock,
+            peer     => $peer,
+            buffer   => '',
+            deadline => $now + $config->{request_timeout},
+        };
+    }
+}
+
+sub read_request {
+    my ($conn, $now) = @_;
+    my $count = sysread($conn->{sock}, my $data, 4096);
+    if (!defined($count)) {
+        return if $! == EAGAIN || $! == EWOULDBLOCK || $! == EINTR;
+        return close_connection($conn);
+    }
+    if ($count == 0) {
+        return close_connection($conn);
+    }
+    $conn->{buffer} .= $data;
+    my ($status, $body) = xCAT::UFTP::listener_reply($state, $conn->{peer}, $conn->{buffer}, $now);
+    respond($conn, $status, $body) if defined($status);
+}
+
+sub write_response {
+    my ($conn) = @_;
+    my $count = syswrite($conn->{sock}, $conn->{out});
+    if (!defined($count)) {
+        return if $! == EAGAIN || $! == EWOULDBLOCK || $! == EINTR;
+        return close_connection($conn);
+    }
+    substr($conn->{out}, 0, $count) = '';
+    close_connection($conn) unless length($conn->{out});
+}
+
+sub child_main {
+    my ($job, $log, @command) = @_;
+    $SIG{$_} = 'DEFAULT' for qw(TERM INT PIPE HUP);
+    open(STDIN, '<', '/dev/null');
+    open(STDOUT, '>>', $log) or POSIX::_exit(126);
+    open(STDERR, '>&', \*STDOUT) or POSIX::_exit(126);
+    my $fh = $job->{fh};
+    sysseek($fh, 0, SEEK_SET) or POSIX::_exit(91);
+    if (fileno($fh) != 3) {
+        POSIX::dup2(fileno($fh), 3) or POSIX::_exit(92);
+    }
+    open(my $image, '<&=', 3) or POSIX::_exit(92);
+    my $flags = fcntl($image, F_GETFD, 0);
+    fcntl($image, F_SETFD, $flags & ~FD_CLOEXEC) or POSIX::_exit(92);
+    print STDERR "starting: @command\n";
+    { exec { $command[0] } @command; }
+    print STDERR "cannot execute $command[0]: $!\n";
+    POSIX::_exit(127);
+}
+
+sub spawn_sender {
+    my ($job, $log, @command) = @_;
+    my $pid = fork();
+    return (undef, "fork failed: $!") unless defined($pid);
+    child_main($job, $log, @command) if $pid == 0;
+    return ($pid, undef);
+}
+
+sub reap_senders {
+    my ($now) = @_;
+    while ((my $pid = waitpid(-1, WNOHANG)) > 0) {
+        xCAT::UFTP::sender_exited($state, $pid, $?, $now);
+    }
+}
+
+sub close_idle_connections {
+    my ($now) = @_;
+    for my $conn (values %connections) {
+        close_connection($conn) if $now >= $conn->{deadline};
+    }
+}
+
+sub shutdown_listener {
+    close($server);
+    close_connection($_) for values %connections;
+    my @pids = xCAT::UFTP::sender_pids($state);
+    kill('TERM', @pids) if @pids;
+    my $deadline = time() + $xCAT::UFTP::KILL_GRACE;
+    while (xCAT::UFTP::sender_pids($state) && time() < $deadline) {
+        reap_senders(time());
+        select(undef, undef, undef, 0.1);
+    }
+    @pids = xCAT::UFTP::sender_pids($state);
+    kill('KILL', @pids) if @pids;
+    while (xCAT::UFTP::sender_pids($state)) {
+        my $pid = waitpid(-1, 0);
+        last if $pid <= 0;
+        xCAT::UFTP::sender_exited($state, $pid, $?, time(), 'listener stopped');
+    }
+    xCAT::UFTP::stop_jobs($state, time());
+    logmsg('info', 'stopped');
+}
+
+while (!$stopping) {
+    my $now = time();
+    reap_senders($now);
+    xCAT::UFTP::run_jobs($state, $now);
+    close_idle_connections($now);
+    my $readers = IO::Select->new($server);
+    my $writers = IO::Select->new();
+    for my $conn (values %connections) {
+        if (defined($conn->{out})) {
+            $writers->add($conn->{sock});
+        } else {
+            $readers->add($conn->{sock});
+        }
+    }
+    my ($readable, $writable) = IO::Select->select($readers, $writers, undef, 1);
+    $now = time();
+    for my $sock (@{ $readable || [] }) {
+        if ($sock == $server) {
+            accept_connections($now);
+        } elsif (my $conn = $connections{ fileno($sock) }) {
+            read_request($conn, $now);
+        }
+    }
+    for my $sock (@{ $writable || [] }) {
+        my $conn = $connections{ fileno($sock) // -1 } or next;
+        write_response($conn) if defined($conn->{out});
+    }
+}
+shutdown_listener();
+exit 0;

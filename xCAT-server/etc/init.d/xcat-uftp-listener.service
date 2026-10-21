@@ -1,0 +1,28 @@
+[Unit]
+Description=xCAT UFTP multicast image listener
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/xcat/uftp/listener.conf
+
+[Service]
+Type=simple
+ExecStartPre=/opt/xcat/sbin/xcat-uftp-listener --check
+ExecStart=/opt/xcat/sbin/xcat-uftp-listener
+Restart=on-failure
+RestartSec=10s
+KillMode=mixed
+TimeoutStopSec=15
+LimitNOFILE=4096
+CapabilityBoundingSet=
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+LogsDirectory=xcat-uftp
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target

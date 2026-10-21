@@ -1085,6 +1085,10 @@ sub mkinitrd_dracut {
     my $dracutmpath = $dracutmoduledir . "98xcat/";
     mkpath($dracutmpath);
 
+    # Only a stateless initial ramdisk that checks the root image receives it over UFTP.
+    my $uftp_receiver = eval { imgutils::add_uftp_receiver($rootimg_dir, $arch, $dracutmpath, $mode eq 'stateless' && $dracutver >= "033") };
+    xdie($@) if $@;
+
     if ($dracutver >= "105") {
         # Copy xcat module to the image depending on the mode
         my %files = (
@@ -1299,6 +1303,7 @@ sub mkinitrd_dracut {
     !system("chroot $rootimg_dir dracut $additional_options -f /tmp/initrd.$$.gz $kernelver")
       or xdie("Error: failed to generate the initial ramdisk for $mode.\n");
     umount_chroot($rootimg_dir);
+    eval { imgutils::check_uftp_initrd($rootimg_dir, "/tmp/initrd.$$.gz", $mode) } or xdie($@) if $uftp_receiver;
     if ($native_bootdir) {
         eval {
             imgutils::publish_boot_files($native_bootdir, $destdir,
@@ -1306,11 +1311,15 @@ sub mkinitrd_dracut {
         } or xdie($@);
         print "the initial ramdisk for $mode is generated successfully.\n";
         mark_rootimg_check($mode);
+        mark_uftp_receiver($mode, $uftp_receiver);
         return;
     }
     print "the initial ramdisk for $mode is generated successfully.\n";
-    print("Move $rootimg_dir/tmp/initrd.$$.gz -> $destdir/initrd-$mode.gz");
-    move("$rootimg_dir/tmp/initrd.$$.gz", "$destdir/initrd-$mode.gz") and mark_rootimg_check($mode);
+    print("Move $rootimg_dir/tmp/initrd.$$.gz -> $destdir/initrd-$mode.gz\n");
+    if (move("$rootimg_dir/tmp/initrd.$$.gz", "$destdir/initrd-$mode.gz")) {
+        mark_rootimg_check($mode);
+        mark_uftp_receiver($mode, $uftp_receiver);
+    }
 }
 
 # nodeset warns unless this marker says that the stateless initial ramdisk checks the root image checksum.
@@ -1320,6 +1329,13 @@ sub mark_rootimg_check {
     require xCAT::SvrUtils;
     my $error = xCAT::SvrUtils->write_initrd_check_marker("$destdir/initrd-$mode.gz");
     print "Warning: $error\n" if $error;
+}
+
+# nodeset tells a node to receive the root image over UFTP only when this marker matches its initial ramdisk.
+sub mark_uftp_receiver {
+    my ($mode, $receiver) = @_;
+    return unless $mode eq 'stateless';
+    imgutils::mark_uftp_receiver("$destdir/initrd-$mode.gz", $receiver);
 }
 
 sub mkinitrd {

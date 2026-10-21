@@ -16,6 +16,15 @@ jobs:
         run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests ucf debconf-utils systemd libxml-simple-perl apache2 curl
       - name: Test Debian package lifecycle
         run: prove -v xCAT-test/native/xcatd_debian_lifecycle.t xCAT-test/native/xcatd_restart_callers.t xCAT-test/native/apache_package_lifecycle.t xCAT-test/native/package_upgrade_logging.t xCAT-test/native/profile_package_payload.t
+      - name: Test optional statelite host keys
+        if: ${{ !cancelled() }}
+        run: prove -v xCAT-test/native/statelite_optional_hostkey.t
+      - name: Test Cumulus discovery key failure
+        if: ${{ !cancelled() }}
+        run: bats xCAT-test/native/cumulus_discovery_key_failure.bats
+      - name: Test FIPS package artifacts
+        if: ${{ !cancelled() }}
+        run: prove -v xCAT-test/native/fips_build_guard.t xCAT-test/native/fips_package_payload.t
 
       - name: Install image test dependencies
         if: ${{ !cancelled() }}
@@ -55,6 +64,9 @@ jobs:
       - name: Exercise the liteimg ramdisk archive
         if: ${{ !cancelled() }}
         run: prove xCAT-test/native/liteimg_ramdisk_archive.t
+      - name: Exercise the UFTP listener
+        if: ${{ !cancelled() }}
+        run: prove xCAT-test/native/uftp_listener.t
       - name: Run tests
         if: ${{ !cancelled() }}
         run: perl github_action_xcat_test.pl
@@ -111,11 +123,14 @@ jobs:
       - name: Install lifecycle test dependencies
         run: |
           dnf install -y epel-release
-          dnf --enablerepo=${{ matrix.repository }} install -y perl perl-Capture-Tiny perl-File-Slurper perl-Test-Simple perl-Test-Harness perl-DBI perl-DBD-SQLite perl-JSON perl-XML-Simple rpm-build bubblewrap systemd chkconfig initscripts tar gzip which diffutils httpd curl procps-ng
+          dnf --enablerepo=${{ matrix.repository }} install -y perl perl-Capture-Tiny perl-File-Slurper perl-Test-Simple perl-DBI perl-DBD-SQLite perl-JSON perl-XML-Simple rpm-build bubblewrap systemd chkconfig initscripts tar gzip bzip2 which diffutils httpd curl procps-ng openssl
       - name: Enable lifecycle test namespaces
         run: sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Test RPM package lifecycle
         run: su -s /bin/sh nobody -c 'prove -v xCAT-test/native/xcatd_rpm_lifecycle.t xCAT-test/native/xcatd_relocated_startup.t xCAT-test/native/apache_rpm_configuration.t xCAT-test/native/apache_package_lifecycle.t xCAT-test/native/package_upgrade_logging.t xCAT-test/native/profile_package_payload.t'
+      - name: Test FIPS package artifacts
+        if: ${{ !cancelled() }}
+        run: su -s /bin/sh nobody -c 'prove -v xCAT-test/native/fips_package_payload.t'
   selinux_policy_test:
     runs-on: ubuntu-24.04
     timeout-minutes: 20

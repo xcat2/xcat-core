@@ -53,7 +53,23 @@ rootimg_matches_checksum() {
     return 1
 }
 
+# Downloads the image at $1 to the file $2, over UFTP the first time when nodeset asks for it.
+rootimg_download() {
+    if [ -n "$rootimg_uftp" ]; then
+        rootimg_uftp_port=$rootimg_uftp
+        rootimg_uftp=
+        # nodeset asks for UFTP only with the checksum, which the caller checks on the received file.
+        if [ "$rootimgchecksum" = yes ] && [ -r /lib/xcat-rootimg-fetch.sh ] && . /lib/xcat-rootimg-fetch.sh &&
+            xcat_uftp_rootimg "$1" "$2" /tmp/rootimg.sha256.before "$rootimg_uftp_port" "$(getarg xcat.uftpfp=)"; then
+            return 0
+        fi
+        logger $SYSLOGHOST -t $log_label -p local4.warning "Cannot receive $1 over UFTP, downloading it over HTTP..."
+    fi
+    curl --fail "$1" -o "$2"
+}
+
 rootimgchecksum="$(getarg rootimgchecksum=)"
+rootimg_uftp="$(getarg xcat.uftp=)"
 
 imgurl="$(getarg imgurl=)";
 if [ ! -z "$imgurl" ]; then
@@ -70,7 +86,7 @@ if [ ! -z "$imgurl" ]; then
             [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Downloading $imgurl..."
             echo Getting $imgurl...
             [ "$rootimgchecksum" != yes ] || rootimg_fetch_checksum "$imgurl" /tmp/rootimg.sha256.before || rm -f /tmp/rootimg.sha256.before
-            if ! curl --fail $imgurl -o $FILENAME; then
+            if ! rootimg_download "$imgurl" "$FILENAME"; then
                 logger $SYSLOGHOST -t $log_label -p local4.error "Downloading $imgurl FAILED, retrying..."
                 rm -f $FILENAME
                 echo Failed to get the image, waiting for next retrying...

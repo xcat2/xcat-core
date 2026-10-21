@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use File::Basename qw(dirname);
 use File::Copy qw(copy);
 use File::Path qw(make_path);
 use File::Slurper qw(read_binary write_text);
@@ -40,9 +41,12 @@ my $files = command($root, 'rpm', '-qp', '--qf', '[%{FILENAMES}\t%{FILEFLAGS}\n]
 for my $repo (qw(xcat-core xcat-dep xcat-dep-common)) {
     like($files, qr{^/etc/yum\.repos\.d/\Q$repo\E\.repo\t17$}m, "$repo remains config(noreplace)");
 }
-make_path("$root/work/build-utils/lib/XCAT");
-copy(repo_path('buildrpms.pl'), "$root/work/buildrpms.pl") or die $!;
-copy(repo_path('build-utils/lib/XCAT/BuildUtils.pm'), "$root/work/build-utils/lib/XCAT/BuildUtils.pm") or die $!;
+for my $relative (qw(buildrpms.pl build-utils/lib/XCAT/BuildUtils.pm
+    build-utils/sync-fips-policy build-utils/fips-policy.sh
+    xCAT-genesis-scripts/usr/lib/xcat/fips.sh xCAT/postscripts/xcatlib.sh)) {
+    make_path(dirname("$root/work/$relative"));
+    copy(repo_path($relative), "$root/work/$relative") or die "copy $relative: $!";
+}
 write_text("$root/work/Version", "9.9.9\n");
 write_text("$root/work/Gitepoch", "1600000000\n");
 write_text("$root/work/Gitinfo", ('a' x 40) . "\n");
