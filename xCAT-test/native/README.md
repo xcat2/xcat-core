@@ -56,11 +56,12 @@ prove xCAT-test/native/probe_package_payload.t \
 
 They need RPM build/query tools, cpio, createrepo_c, zstd, rsync, GnuPG, Python 3
 with RPM bindings, user/mount namespaces, and the Perl modules Capture::Tiny,
-File::Slurper, Parallel::ForkManager and XML::LibXML. The probe command also
-needs `which`. The release test uses an ephemeral signing key and removes its
-agent. These checks inspect real packages and repository output; they do not
-qualify package installation on every target architecture. On EL8, install both
-`python36` and `python3-rpm` to provide the interpreter and its RPM bindings.
+Digest::SHA, File::Slurper, Parallel::ForkManager and XML::LibXML. The probe
+command also needs `which`. The release test uses an ephemeral signing key and
+removes its agent. These checks inspect real packages and repository output;
+they do not qualify package installation on every target architecture. On EL8,
+install both `python36` and `python3-rpm` to provide the interpreter and its RPM
+bindings.
 
 The Debian probe permission test has a separate pull-request CI step. It needs
 Debian build tools, BATS, bubblewrap, fakeroot, reprepro and
