@@ -1,15 +1,1 @@
-bash
-nfs-common
-openssl
-isc-dhcp-client
-libc-bin
-openssh-server
-openssh-client
-wget
-vim
-rsync
-busybox-static
-gawk
-bind9-dnsutils
-chrony
-gpg
+compute.ubuntu26.04.x86_64.pkglist

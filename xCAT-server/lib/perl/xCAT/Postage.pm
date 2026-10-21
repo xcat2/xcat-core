@@ -1871,6 +1871,21 @@ sub get_envlist
     return ($envlist, $pkgtext);
 }
 
+sub _pkglist_line
+{
+    my ($line, $trim_leading) = @_;
+    chomp($line);
+    $line =~ s/\s+$//;
+    $line =~ s/^\s*// if $trim_leading;
+    return if $line =~ /^\s*$/;
+    return
+      if ($line =~ /^\s*#/
+        && $line !~ /^\s*#INCLUDE:[^#^\n]+#/
+        && $line !~ /^\s*#NEW_INSTALL_LIST#/
+        && $line !~ /^\s*#ENV:[^#^\n]+#/);
+    return $line;
+}
+
 #----------------------------------------------------------------------------
 
 =head3   get_pkglist_text
@@ -1898,15 +1913,8 @@ sub get_pkglist_tex
         {
             while (readline(FILE1))
             {
-                chomp($_);    #remove newline
-                s/\s+$//;     #remove trailing spaces
-                s/^\s*//;     #remove leading blanks
-                next if /^\s*$/;    #-- skip empty lines
-                next
-                  if (/^\s*#/
-                    && !/^\s*#INCLUDE:[^#^\n]+#/
-                    && !/^\s*#NEW_INSTALL_LIST#/
-                    && !/^\s*#ENV:[^#^\n]+#/);    #-- skip comments
+                $_ = _pkglist_line($_, 1);
+                next unless defined $_;
                 if (/^@(.*)/)
                 {    #for groups that has space in name
                     my $save = $1;
@@ -1977,15 +1985,8 @@ sub pkglist_file_records
     open(my $fh, '<', $file) or return ("#INCLUDEBAD:cannot open pkglist file $file#");
     while (my $line = <$fh>)
     {
-        chomp($line);
-        $line =~ s/\s+$//;
-        $line =~ s/^\s*//;
-        next if $line eq '';
-        next
-          if ($line =~ /^#/
-            && $line !~ /^#INCLUDE:[^#^\n]+#/
-            && $line !~ /^#NEW_INSTALL_LIST#/
-            && $line !~ /^#ENV:[^#^\n]+#/);
+        $line = _pkglist_line($line, 1);
+        next unless defined $line;
         if ($line =~ /^#INCLUDE:([^#^\n]+)#(.*)$/ && $depth < 20)
         {
             my ($name, $note) = ($1, $2);
@@ -2026,14 +2027,9 @@ sub includefile
 
     while (<INCLUDE>)
     {
-        chomp($_);    #remove newline
-        s/\s+$//;     #remove trailing spaces
-        next if /^\s*$/;    #-- skip empty lines
-        next
-          if (/^\s*#/
-            && !/^\s*#INCLUDE:[^#^\n]+#/
-            && !/^\s*#NEW_INSTALL_LIST#/
-            && !/^\s*#ENV:[^#^\n]+#/);    #-- skip comments
+        # Legacy includes preserve leading whitespace, unlike root package lists.
+        $_ = _pkglist_line($_, 0);
+        next unless defined $_;
         if (/^@(.*)/)
         {                                 #for groups that has space in name
             my $save = $1;

@@ -209,6 +209,38 @@ for my $failed (qw(rootimg.cpio.gz.sha256 rootimg.cpio.gz)) {
         'the marker of the bundled initial ramdisk is placed next to it');
 }
 
+{
+    # nodeset sends a UFTP image only to an initial ramdisk with a matching marker, so an exported image keeps it.
+    my $dir = "$fixture/install/netboot/rhels9.6/x86_64/uftp";
+    make_path($dir);
+    write_text("$dir/$_", "$_\n") for qw(kernel initrd-stateless.gz rootimg.cpio.gz compute.pkglist);
+    write_text("$dir/initrd-stateless.gz.uftp", "sha256=marker of the ramdisk with the receiver\n");
+    my $attrs = { osimage => { provmethod => 'netboot', osvers => 'rhels9.6', osarch => 'x86_64', profile => 'uftp' },
+        linuximage => { rootimgdir => $dir, pkglist => "$dir/compute.pkglist" } };
+    my @errors;
+    xCAT_plugin::imgport::get_files('uftp', sub { push @errors, @{ $_[0]{error} || [] } }, $attrs);
+    is(join("\n", @errors), '', 'the files of an image with the UFTP marker are found');
+    is($attrs->{ramdiskuftp}, "$dir/initrd-stateless.gz.uftp", 'the export carries the UFTP marker of the initial ramdisk');
+
+    my ($placed, $errors, $dest) = import_image('rootimg.cpio.gz', sub {
+        write_text("$fixture/bundle-$sequence/initrd-stateless.gz.uftp", "sha256=marker of the bundled ramdisk\n");
+    }, ramdiskuftp => 'DEST/initrd-stateless.gz.uftp');
+    is($errors, '', 'a bundle with the UFTP marker is placed');
+    is(read_binary("$dest/initrd-stateless.gz.uftp"), "sha256=marker of the bundled ramdisk\n",
+        'the UFTP marker of the bundled initial ramdisk is placed next to it');
+
+    # A bundle that names the UFTP marker but lacks it changes nothing.
+    ($placed, $errors, $dest) = import_image('rootimg.cpio.gz', sub {
+        write_text("$_[0]/initrd-stateless.gz.uftp", "sha256=marker of the published ramdisk\n");
+    }, ramdiskuftp => 'DEST/initrd-stateless.gz.uftp');
+    ok(!$placed, 'an import fails when the bundle lacks the UFTP marker that it names');
+    like($errors, qr/The image bundle lacks initrd-stateless\.gz\.uftp\./, 'the missing UFTP marker is reported');
+    is(read_binary("$dest/rootimg.cpio.gz"), $published, 'the published image stays when the bundle lacks the UFTP marker');
+    is(read_binary("$dest/initrd-stateless.gz"), "published ramdisk\n", 'the published ramdisk stays when the bundle lacks the UFTP marker');
+    is(read_binary("$dest/initrd-stateless.gz.uftp"), "sha256=marker of the published ramdisk\n",
+        'the UFTP marker of the published ramdisk stays');
+}
+
 for my $nodes (qw(psnode undefined-node)) {
     # The nodes that get the postscripts of the image exist, or not.
     my ($placed, $errors, $dest, $archive) = import_image('rootimg.cpio.gz', undef, nodes => $nodes);

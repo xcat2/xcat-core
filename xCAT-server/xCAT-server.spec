@@ -389,6 +389,7 @@ cp etc/init.d/xcatd $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts/xcatd
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts/xcatd
 mkdir -p $RPM_BUILD_ROOT/usr/lib/systemd/system
 cp etc/init.d/xcatd.service $RPM_BUILD_ROOT/usr/lib/systemd/system
+cp etc/init.d/xcat-uftp-listener.service $RPM_BUILD_ROOT/usr/lib/systemd/system
 %else
 mkdir -p $RPM_BUILD_ROOT/etc/init.d
 cp etc/init.d/xcatd $RPM_BUILD_ROOT/etc/init.d
@@ -458,6 +459,7 @@ rm -rf $RPM_BUILD_ROOT
 # The compatibility helper owns runtime cleanup.  Listing this path as %ghost
 # would let RPM unlink preserved administrator content after %preun.
 /usr/lib/systemd/system/xcatd.service
+/usr/lib/systemd/system/xcat-uftp-listener.service
 %else
 /etc/init.d/xcatd
 %endif
@@ -637,6 +639,7 @@ if [ $1 == 0 ]; then  #This means only on -e
 	if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
       if "$xcatd_init_compat" can-use-systemctl; then
           systemctl stop xcatd.service
+          systemctl disable --now xcat-uftp-listener.service >/dev/null 2>&1 || true
       elif ! "$xcatd_init_compat" uses-systemd --explicit-target && [ -x /etc/init.d/xcatd ]; then
           /etc/init.d/xcatd stop
       fi

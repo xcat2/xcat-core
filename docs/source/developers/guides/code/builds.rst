@@ -85,6 +85,38 @@ Helpers shared by both builders live in ``build-utils/lib/XCAT/BuildUtils.pm``.
 architecture and the ``Recommends:`` tag (EL8 or later); an older host fails the riscv64
 builds and, as the script only publishes when every architecture built, produces no rpms.
 
+Shared provisioning profiles
+----------------------------
+
+Profiles under ``xCAT-server/share/xcat/install`` and ``netboot`` can share
+package lists, templates, exclusion lists and postinstall scripts through
+relative symbolic links. A target can serve several distributions, releases
+or architectures. Editing that target changes every profile that resolves to
+it, including links through other aliases.
+
+For example, the Ubuntu 24.04 netboot compute package list for ``riscv64``
+links to the ``x86_64`` list. A package added for either architecture must be
+available in the repositories used by both.
+
+Before editing a shared profile, trace its symbolic links, package-list
+``#INCLUDE:`` references and filename fallback consumers. These can share a
+file across releases and architectures without a direct symbolic link.
+Check the change against every affected distribution, release and
+architecture.
+
+If requirements differ, preserve the unchanged content for consumers that
+must keep it before editing the shared target. Use separate files where
+needed. After replacing an alias, recheck all links and includes that refer
+to it, including indirect references.
+
+``xCAT-test/unit/profile_customization.t`` covers profile selection and
+package-list contents for selected RHEL/Rocky 10 RISC-V and Ubuntu profiles.
+``xCAT-test/native/profile_package_payload.t`` checks their packaged links
+and file modes on Debian and RPM systems. Add cases for affected profiles
+outside that coverage. Update expected package lists only after checking
+all consumers. These tests do not prove package availability in target
+repositories.
+
 xcat-deps
 ---------
 

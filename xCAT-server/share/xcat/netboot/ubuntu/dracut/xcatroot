@@ -24,6 +24,25 @@ rootimg_matches_checksum() {
 	return 1
 }
 
+# Downloads the image at $1 to the file $2, over UFTP the first time when nodeset asks for it.
+rootimg_download() {
+	if [ -n "$rootimg_uftp" ]; then
+		rootimg_uftp_port=$rootimg_uftp
+		rootimg_uftp=
+		# nodeset asks for UFTP only with the checksum, which the caller checks on the received file.
+		if [ "$rootimgchecksum" = yes ] && [ -r /lib/xcat-rootimg-fetch.sh ] && . /lib/xcat-rootimg-fetch.sh &&
+			xcat_uftp_rootimg "$1" "$2" /tmp/rootimg.sha256.before "$rootimg_uftp_port" "$rootimg_uftp_fp"; then
+			return 0
+		fi
+		echo "Cannot receive $1 over UFTP, downloading it over HTTP..."
+	fi
+	wget "$1"
+}
+
+# The kernel does not pass arguments with a dot to init as variables, so getarg reads them.
+rootimg_uftp=$(. /lib/dracut-lib.sh && getarg xcat.uftp=)
+rootimg_uftp_fp=$(. /lib/dracut-lib.sh && getarg xcat.uftpfp=)
+
 if [ ! -z "$imgurl" ]; then
 	if [ xhttp = x${imgurl%%:*} ] || [ xhttps = x${imgurl%%:*} ]; then
 		NFS=0
@@ -36,7 +55,7 @@ if [ ! -z "$imgurl" ]; then
 		while [ ! -r "$FILENAME" ]; do
 			echo Getting $imgurl...
 			[ "$rootimgchecksum" != yes ] || rootimg_fetch_checksum "$imgurl" /tmp/rootimg.sha256.before || rm -f /tmp/rootimg.sha256.before
-			if ! wget $imgurl; then
+			if ! rootimg_download "$imgurl" "$FILENAME"; then
 				rm -f $FILENAME
 				sleep 27
 			elif [ "$rootimgchecksum" = yes ] && ! rootimg_check=$(rootimg_matches_checksum "$imgurl" "$FILENAME"); then

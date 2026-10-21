@@ -32,6 +32,7 @@ etc/init.d/xcatd opt/xcat/share/xcat/scripts
 debian/xcatd.md5sum opt/xcat/share/xcat/scripts
 debian/xcatd-init-state opt/xcat/share/xcat/scripts
 etc/init.d/xcatd.service lib/systemd/system/
+etc/init.d/xcat-uftp-listener.service lib/systemd/system/
 xCAT-wsapi/* opt/xcat/ws/
 
 LICENSE.html opt/xcat/share/doc/packages/xCAT-server

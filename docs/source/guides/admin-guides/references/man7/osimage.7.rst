@@ -18,7 +18,7 @@ SYNOPSIS
 ********
 
 
-\ **osimage Attributes:**\   \ *addkcmdline*\ , \ *bootdir*\ , \ *boottarget*\ , \ *bosinst_data*\ , \ *cfmdir*\ , \ *configdump*\ , \ *crashkernelsize*\ , \ *description*\ , \ *driverupdatesrc*\ , \ *dump*\ , \ *environvar*\ , \ *exlist*\ , \ *fb_script*\ , \ *gpgcheck*\ , \ *groups*\ , \ *home*\ , \ *image_data*\ , \ *imagename*\ , \ *imagetype*\ , \ *imageversion*\ , \ *installp_bundle*\ , \ *installto*\ , \ *isdeletable*\ , \ *kerneldir*\ , \ *kernelver*\ , \ *kitcomponents*\ , \ *krpmver*\ , \ *lpp_source*\ , \ *mksysb*\ , \ *netdrivers*\ , \ *nfsrootopts*\ , \ *nimmethod*\ , \ *nimtype*\ , \ *nodebootif*\ , \ *osarch*\ , \ *osdistroname*\ , \ *osname*\ , \ *osupdatename*\ , \ *osvers*\ , \ *otherifce*\ , \ *otherpkgdir*\ , \ *otherpkglist*\ , \ *otherpkgs*\ , \ *paging*\ , \ *partitionfile*\ , \ *permission*\ , \ *pkgdir*\ , \ *pkglist*\ , \ *postbootscripts*\ , \ *postinstall*\ , \ *postscripts*\ , \ *profile*\ , \ *provmethod*\ , \ *resolv_conf*\ , \ *root*\ , \ *rootfstype*\ , \ *rootimgchecksum*\ , \ *rootimgdir*\ , \ *script*\ , \ *serverrole*\ , \ *shared_home*\ , \ *shared_root*\ , \ *spot*\ , \ *synclists*\ , \ *template*\ , \ *tmp*\ , \ *usercomment*\ , \ *winpepath*\
+\ **osimage Attributes:**\   \ *addkcmdline*\ , \ *bootdir*\ , \ *boottarget*\ , \ *bosinst_data*\ , \ *cfmdir*\ , \ *configdump*\ , \ *crashkernelsize*\ , \ *description*\ , \ *driverupdatesrc*\ , \ *dump*\ , \ *environvar*\ , \ *exlist*\ , \ *fb_script*\ , \ *gpgcheck*\ , \ *groups*\ , \ *home*\ , \ *image_data*\ , \ *imagename*\ , \ *imagetype*\ , \ *imageversion*\ , \ *installp_bundle*\ , \ *installto*\ , \ *isdeletable*\ , \ *kerneldir*\ , \ *kernelver*\ , \ *kitcomponents*\ , \ *krpmver*\ , \ *lpp_source*\ , \ *mksysb*\ , \ *netdrivers*\ , \ *nfsrootopts*\ , \ *nimmethod*\ , \ *nimtype*\ , \ *nodebootif*\ , \ *osarch*\ , \ *osdistroname*\ , \ *osname*\ , \ *osupdatename*\ , \ *osvers*\ , \ *otherifce*\ , \ *otherpkgdir*\ , \ *otherpkglist*\ , \ *otherpkgs*\ , \ *paging*\ , \ *partitionfile*\ , \ *permission*\ , \ *pkgdir*\ , \ *pkglist*\ , \ *postbootscripts*\ , \ *postinstall*\ , \ *postscripts*\ , \ *profile*\ , \ *provmethod*\ , \ *resolv_conf*\ , \ *root*\ , \ *rootfstype*\ , \ *rootimgchecksum*\ , \ *rootimgdir*\ , \ *rootimgtransport*\ , \ *script*\ , \ *serverrole*\ , \ *shared_home*\ , \ *shared_root*\ , \ *spot*\ , \ *synclists*\ , \ *template*\ , \ *tmp*\ , \ *usercomment*\ , \ *winpepath*\
 
 
 ***********
@@ -432,6 +432,12 @@ osimage Attributes:
 \ **rootimgdir**\  (linuximage.rootimgdir)
  
  The directory name where the image is stored.  It is generally used for diskless image. it also can be used in sysclone environment to specify where the image captured from golden client is stored. in sysclone environment, rootimgdir is generally assigned to some default value by xcat, but you can specify your own store directory. just one thing need to be noticed, wherever you save the image, the name of last level directory must be the name of image. for example, if your image name is testimage and you want to save this image under home directoy, rootimgdir should be assigned to value /home/testimage/
+ 
+
+
+\ **rootimgtransport**\  (linuximage.rootimgtransport)
+ 
+ Stateless images only. How nodes get the compressed root image at boot. 'http' downloads it from the image server. 'uftp' receives it over UFTP multicast from xcat-uftp-listener, and downloads it over HTTP when that fails. If not set, the default is the value of site.rootimgtransport, which defaults to 'http'. 'uftp' needs the root image checksum (rootimgchecksum), an initial ramdisk that genimage built with the UFTP receiver, and site.httpmethod 'http'.
  
 
 

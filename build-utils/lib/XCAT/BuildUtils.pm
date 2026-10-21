@@ -17,10 +17,10 @@ use Exporter 'import';
 use Cwd ();
 use File::Copy qw(copy move);
 use File::Find qw(find);
-use File::Basename qw(basename);
+use File::Basename qw(basename dirname);
 use File::Path qw(make_path remove_tree);
 use File::Temp qw(tempdir tempfile);
-use File::Slurper qw(read_text write_text);
+use File::Slurper qw(read_binary read_text write_binary write_text);
 use POSIX qw(strftime);
 use Sys::Hostname ();
 use Pod::Usage qw(pod2usage);
@@ -48,6 +48,7 @@ our @EXPORT_OK = qw(
     genesis_chroot_name genesis_target_arch genesis_build_plan
     genesis_log_errors genesis_log_deny_rules deb_belongs_to_dist
     genesis_dists genesis_dist_reason
+    fips_policy_artifacts fips_policy_plan sync_fips_policy
 );
 
 # Both builders echo the commands they run under --verbose.  Set once, after
@@ -1275,3 +1276,136 @@ sub prepare_mock_resultdirs {
     }
 }
 
+
+#-------------------------------------------------------------------------------
+
+=head3 fips_policy_artifacts
+
+    Descriptions: Report the runtime libraries that carry a generated copy of
+                  the FIPS shell policy, relative to the repository root.
+
+    Arguments: none.
+
+    Returns: the list of relative paths, in generation order.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub fips_policy_artifacts {
+    return ('xCAT-genesis-scripts/usr/lib/xcat/fips.sh',
+        'xCAT/postscripts/xcatlib.sh');
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 fips_policy_plan
+
+    Descriptions: Read the canonical FIPS shell policy and each runtime
+                  library, and report what generation would write. Reads
+                  only; it writes nothing.
+
+    Arguments:
+        root - the repository root
+
+    Returns: a hash reference.
+             block     - the delimited policy block generation inserts
+             artifacts - one hash reference per runtime library, in
+                         generation order, with: relative, path, mode,
+                         current, rendered and stale
+
+             Dies when the policy is empty, does not end with a newline, or
+             when a library is not a regular file or does not hold exactly
+             one policy block.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub fips_policy_plan {
+    my (%args) = @_;
+    my $root = $args{root} // die "fips_policy_plan needs a root\n";
+    my $policy = read_binary("$root/build-utils/fips-policy.sh");
+    die "FIPS policy is empty\n" unless length $policy;
+    die "FIPS policy must end with a newline\n" unless $policy =~ /\n\z/;
+    my $begin = "# BEGIN generated FIPS policy: build-utils/sync-fips-policy --write\n";
+    my $end   = "# END generated FIPS policy\n";
+    my $block = $begin . $policy . $end;
+
+    my @artifacts;
+    for my $relative (fips_policy_artifacts()) {
+        my $path = "$root/$relative";
+        die "$relative must be a regular file\n" unless -f $path && !-l $path;
+        my $current = read_binary($path);
+        my $rendered = $current;
+        my $count = $rendered =~ s/\Q$begin\E.*?\Q$end\E/$block/sg;
+        die "$relative must contain one FIPS policy block\n"
+            unless $count == 1
+                && (() = $current =~ /\Q$begin\E/g) == 1
+                && (() = $current =~ /\Q$end\E/g) == 1;
+        push @artifacts, {
+            relative => $relative,
+            path     => $path,
+            mode     => (stat($path))[2] & oct('0777'),
+            current  => $current,
+            rendered => $rendered,
+            stale    => ($rendered eq $current ? 0 : 1),
+        };
+    }
+    return {block => $block, artifacts => \@artifacts};
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 sync_fips_policy
+
+    Descriptions: Compare each runtime library with the canonical FIPS shell
+                  policy, and in write mode replace a stale block. Both
+                  builders call this before they package xCAT or
+                  xCAT-genesis-scripts, so a stale library never reaches a
+                  package.
+
+    Arguments:
+        root - the repository root
+        mode - 'check' to report only, 'write' to regenerate
+
+    Returns: a hash reference.
+             mode     - the mode that ran
+             stale    - the relative paths that did not match the policy
+             written  - the relative paths this call rewrote; empty in check
+                        mode
+             messages - one diagnostic per stale path in check mode; the
+                        caller prints them
+
+             Dies on every condition fips_policy_plan dies on. A stale path is
+             a result, not a failure, so the caller decides what it means.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub sync_fips_policy {
+    my (%args) = @_;
+    my $mode = $args{mode} // 'check';
+    die "FIPS policy mode must be check or write, not '$mode'\n"
+        unless $mode eq 'check' || $mode eq 'write';
+    my $plan = fips_policy_plan(root => $args{root});
+    my (@stale, @written, @messages);
+    for my $artifact (grep { $_->{stale} } @{$plan->{artifacts}}) {
+        push @stale, $artifact->{relative};
+        if ($mode eq 'check') {
+            push @messages, "$artifact->{relative} is out of date;"
+                . ' run build-utils/sync-fips-policy --write';
+            next;
+        }
+        # Rename over the library so a reader never sees a partial block, and
+        # carry the mode across: the Genesis copy is 0644 and xcatlib.sh 0755.
+        my ($fh, $temporary) = tempfile('.fips-policy-XXXXXX',
+            DIR => dirname($artifact->{path}), UNLINK => 1);
+        close $fh or die "close $temporary: $!\n";
+        write_binary($temporary, $artifact->{rendered});
+        chmod($artifact->{mode}, $temporary) or die "chmod $temporary: $!\n";
+        rename($temporary, $artifact->{path})
+            or die "replace $artifact->{path}: $!\n";
+        push @written, $artifact->{relative};
+    }
+    return {mode => $mode, stale => \@stale, written => \@written,
+        messages => \@messages};
+}

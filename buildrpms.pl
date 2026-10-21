@@ -989,6 +989,14 @@ sub main {
     usage(message => "openEuler binary repository builds require --gpg-sign")
         if defined($native_subdir) && !$opts{source_only} && !$opts{gpg_sign};
 
+    if (grep { $_ eq 'xCAT' || $_ eq 'xCAT-genesis-scripts' } $opts{packages}->@*) {
+        my $fips = XCAT::BuildUtils::sync_fips_policy(root => $Bin, mode => 'check');
+        if (@{$fips->{stale}}) {
+            warn "$_\n" for @{$fips->{messages}};
+            die "FATAL: generated FIPS policy is not current\n";
+        }
+    }
+
     # ---- concurrency guard (mirrors cluster-test.pl's per-cluster lock) --------------------------
     # Every per-package mock chroot/config for this run shares the "<pkg>-<target><ext>" namespace:
     # /etc/mock/<cfg>.cfg, /var/lib/mock/<cfg>/ and its buildroot.lock. Two builds of the SAME
