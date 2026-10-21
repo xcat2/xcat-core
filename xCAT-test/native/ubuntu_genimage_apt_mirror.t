@@ -18,12 +18,16 @@ my $explicit = 'https://image.example.invalid/ubuntu';
 for my $case (
     ['amd64 default', {arch => 'x86_64'}, 'amd64', $archive, 'noble'],
     ['i386 default', {arch => 'x86'}, 'i386', $archive, 'noble'],
+    ['Debian amd64 spelling', {arch => 'amd64'}, 'amd64', $archive, 'noble'],
+    ['Debian i386 spelling', {arch => 'i386'}, 'i386', $archive, 'noble'],
     ['POWER default', {arch => 'ppc64el'}, 'ppc64el', $ports, 'noble'],
+    ['POWER alternate spelling', {arch => 'ppc64le'}, 'ppc64le', $ports, 'noble'],
     ['RISC-V default', {arch => 'riscv64'}, 'riscv64', $ports, 'noble'],
     ['s390x default', {arch => 's390x'}, 's390x', $ports, 'noble'],
     ['site overrides archive', {mirror => $site}, 'amd64', $site, 'noble'],
     ['site overrides ports', {arch => 'riscv64', mirror => $site}, 'riscv64', $site, 'noble'],
     ['cleared site keeps default', {arch => 'riscv64', mirror => ''}, 'riscv64', $ports, 'noble'],
+    ['cleared site keeps archive', {mirror => ''}, 'amd64', $archive, 'noble'],
     ['pkgdir overrides site', {mirror => $site,
         pkgdir => "/work/packages,$explicit jammy main"}, 'amd64', $explicit, 'jammy'],
     ['first pkgdir mirror wins', {pkgdir =>
