@@ -590,6 +590,16 @@ is( $ddns_config->{DhcpDdns}{'forward-ddns'}{'ddns-domains'}[0]{name}, 'cluster.
 my $ctrl_agent_backend = xCAT::DHCP::Backend::Kea->new( kea_socket_dirs => [] );
 my $ctrl_agent_config = decode_json($ctrl_agent_backend->render_ctrl_agent_config({ 'http-port' => '8000' }));
 is( $ctrl_agent_config->{'Control-agent'}{'http-port'}, 8000, 'Control Agent HTTP port is numeric' );
+is( $backend->control_agent_url(), 'http://127.0.0.1:8000/', 'Control Agent keeps the default IPv4 authority' );
+SKIP: {
+    skip 'No IPv6 literal parser is available', 1
+      unless xCAT::NetworkUtils->isValidIPAddress('2001:db8::1');
+    is(
+        $backend->control_agent_url( host => '2001:db8::1', port => 8001 ),
+        'http://[2001:db8::1]:8001/',
+        'Control Agent brackets an IPv6 literal before appending the port'
+    );
+}
 
 my $runtime_socket_dir = "$unit_dir/run/kea";
 my $legacy_runtime_socket_dir = "$unit_dir/var/run/kea";
