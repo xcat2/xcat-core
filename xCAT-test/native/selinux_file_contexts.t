@@ -93,33 +93,57 @@ my @images = (
     '/install/netboot/custom-image',
     '/install/custom/images/rhels9-compute',
 );
-my @guest = map { ("$_/rootimg/etc/shadow", "$_/rootimg/etc/passwd",
-        "$_/rootimg-statelite/etc/shadow") } @images;
+
+# rootimgdir is any path under /install, so an image root can carry a rootimg
+# component in the MIDDLE. /install/netboot/rootimg/a/b/kernel is either a
+# published kernel of the image root /install/netboot/rootimg/a/b, or a file
+# inside a guest tree rooted at /install/netboot/rootimg. The two readings are
+# the same path, so the rules keep the guest labels and leave everything in
+# such a root alone, published files included. Hold that choice down, so a
+# change of direction fails here instead of silently relabelling a guest.
+my @custom_roots = (
+    '/install/netboot/rootimg/rhels9/x86_64/compute',
+    '/install/rootimg/common/compute',
+    '/install/rootimg/overlay/compute',
+    '/install/rootimg-statelite/common/compute',
+    '/install/rootimg-statelite/overlay/compute',
+);
+
+# A guest operating system can carry a directory called common or overlay at
+# its own root. The path is the same as a published common or overlay of an
+# image root called rootimg, so neither name has a rule and the guest keeps its
+# labels.
+my @guest_dirs = map { ("$_/rootimg/common", "$_/rootimg/overlay",
+        "$_/rootimg-statelite/common", "$_/rootimg-statelite/overlay") } @images;
+
+my @guest = (
+    (map { ("$_/rootimg/etc/shadow", "$_/rootimg/etc/passwd",
+            "$_/rootimg-statelite/etc/shadow") } @images),
+    (map { ("$_/etc/shadow", "$_/usr/bin/sh") } @guest_dirs),
+    (map { ("$_/rootimg/etc/shadow", "$_/rootimg/etc/passwd",
+            "$_/rootimg-statelite/etc/shadow") } @custom_roots),
+);
+
+my @published_names = qw(kernel initrd-stateless.gz initrd-statelite.gz
+    rootimg.cpio.gz rootimg.cpio.gz.sha256 rootimg.cpio.gz.metainfo
+    rootimg.tar.xz rootimg.sfs rootimg-statelite.gz);
 my @published = map {
     my $dir = $_;
-    map { "$dir/$_" } qw(kernel initrd-stateless.gz initrd-statelite.gz rootimg.cpio.gz
-        rootimg.cpio.gz.sha256 rootimg.cpio.gz.metainfo rootimg.tar.xz rootimg.sfs
-        rootimg-statelite.gz)
+    map { "$dir/$_" } @published_names;
 } @images;
 
-foreach my $path (@guest) {
+# A published file of a custom root keeps the label it had. That costs the
+# netboot of that one osimage and is recoverable with restorecon.
+my @unlabelled = map {
+    my $dir = $_;
+    map { "$dir/$_" } @published_names;
+} @custom_roots;
+
+foreach my $path (@guest, @guest_dirs, @unlabelled) {
     is(lookup($path), '<<none>>', "restorecon leaves $path alone");
 }
 foreach my $path (@published, '/install', '/install/postscripts/xcatdsklspost') {
     is(lookup($path), 'public_content_t', "$path is public_content_t");
-}
-
-# rootimgdir is any path under /install, so a component called rootimg in the
-# MIDDLE of an image root cannot be told from a guest tree rooted there:
-# /install/netboot/rootimg/a/b/kernel is either a published kernel below an
-# image root called .../rootimg/a/b, or a file inside a guest tree rooted at
-# /install/netboot/rootimg. The rules keep the guest labels, which leaves the
-# first reading unlabelled. Hold that choice down, so a change of direction
-# fails here instead of silently relabelling a guest.
-foreach my $path ('/install/netboot/rootimg/rhels9/x86_64/compute/kernel',
-    '/install/netboot/rootimg/rhels9/x86_64/compute/rootimg/etc/shadow') {
-    is(lookup($path), '<<none>>',
-        "a rootimg component inside an image root keeps $path out of the relabel");
 }
 
 # A guest file whose own name is a published name keeps its label: the rules
@@ -136,13 +160,19 @@ foreach my $path (map { "/install/netboot/rhels9/x86_64/$_" }
 my $mn = "$work/mn";
 my %before;
 $before{$_} = 'shadow_t'  foreach @guest;
-$before{$_} = 'default_t' foreach @published;
+$before{$_} = 'etc_t'     foreach @guest_dirs;
+$before{$_} = 'default_t' foreach @published, @unlabelled;
+my %is_dir = map { $_ => 1 } @guest_dirs;
 foreach my $path (sort keys %before) {
     my $file = "$mn$path";
-    (my $dir = $file) =~ s{/[^/]+$}{};
-    make_path($dir);
-    open(my $fh, '>', $file) or die "$file: $!";
-    close($fh);
+    if ($is_dir{$path}) {
+        make_path($file);
+    } else {
+        (my $dir = $file) =~ s{/[^/]+$}{};
+        make_path($dir);
+        open(my $fh, '>', $file) or die "$file: $!";
+        close($fh);
+    }
     run('setfattr', '-n', 'security.selinux', '-v', "system_u:object_r:$before{$path}:s0", $file);
 }
 
@@ -168,7 +198,7 @@ sub label_of {
 foreach my $step ('install', 'upgrade') {
     install_module() if $step eq 'upgrade';
     run('setfiles', '-F', '-r', $mn, $fc, "$mn/install");
-    foreach my $path (@guest) {
+    foreach my $path (@guest, @guest_dirs, @unlabelled) {
         is(label_of($path), $before{$path}, "after the $step relabel $path keeps $before{$path}");
     }
     foreach my $path (@published) {
