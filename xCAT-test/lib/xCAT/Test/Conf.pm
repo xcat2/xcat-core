@@ -24,6 +24,9 @@ reader and the command can be measured without a database.
 
     Descriptions:
         The attribute and value of one line of an [Object_*] block.
+
+        The semicolon is in the value, because vm.othersettings separates its settings with
+        one. chdef_command quotes what this routine returns.
     Arguments:
         $line - the line, with or without leading whitespace
     Returns:
@@ -35,7 +38,7 @@ reader and the command can be measured without a database.
 sub object_attr {
     my ($line) = @_;
     return () unless defined $line;
-    return ($1, $2) if $line =~ /(\w+)\s*=\s*([:,\w\.\-\/]+)/;
+    return ($1, $2) if $line =~ /(\w+)\s*=\s*([:,;\w\.\-\/]+)/;
     return ();
 }
 
@@ -87,6 +90,11 @@ sub var_attr {
 
     Descriptions:
         The chdef command that applies one object of an [Object_*] block.
+
+        xcattest runs every command through /bin/bash -c, so each word is quoted. A
+        vm.othersettings value carries a semicolon, which bash reads as a command separator.
+
+        The assignments are sorted, so one conf builds one command.
     Arguments:
         $type - the object type, as the section name spells it
         $name - the object name
@@ -99,11 +107,35 @@ sub var_attr {
 #-------------------------------------------------------------------------------
 sub chdef_command {
     my ($type, $name, $attrs) = @_;
-    my $cmd = "chdef -t $type -o $name";
-    foreach my $attr (keys %$attrs) {
-        $cmd .= " $attr=$attrs->{$attr}";
+    my @words = ($type, $name);
+    foreach my $attr (sort keys %$attrs) {
+        my $value = defined $attrs->{$attr} ? $attrs->{$attr} : '';
+        push @words, "$attr=$value";
     }
-    return $cmd;
+    my ($qtype, $qname, @qattrs) = map { _quote($_) } @words;
+    return join ' ', 'chdef', '-t', $qtype, '-o', $qname, @qattrs;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 _quote
+
+    Descriptions:
+        One word of a command for /bin/bash -c. Single quotes stop the shell from reading any
+        character of the word, and a single quote inside the word closes and reopens them.
+    Arguments:
+        $word - the word
+    Returns:
+        the quoted word
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub _quote {
+    my ($word) = @_;
+    $word = '' unless defined $word;
+    $word =~ s/'/'\\''/g;
+    return "'$word'";
 }
 
 1;
