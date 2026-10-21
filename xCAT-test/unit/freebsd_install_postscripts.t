@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use FindBin;
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
+use lib "$FindBin::Bin/../../xCAT-server/lib/perl", "$FindBin::Bin/../../perl-xCAT";
 use lib grep { defined($_) } $ENV{XCAT_FREEBSD_STATE_MODULE_DIR};
 use Carp qw(croak);
 use Digest::SHA qw(sha256_hex);
@@ -13,8 +13,21 @@ use Test::More;
 use xCAT::FreeBSDInstall;
 
 BEGIN {
+    $INC{'xCAT/Table.pm'} = __FILE__;
     $INC{'xCAT/NetworkUtils.pm'} = __FILE__;
     $INC{'xCAT/FreeBSDPostscript.pm'} = __FILE__;
+}
+{
+    package xCAT::Table;
+    sub new {
+        die 'Unexpected table' unless $_[1] eq 'noderes';
+        return bless {}, $_[0];
+    }
+    sub getNodeAttribs {
+        die 'Unexpected node' unless $_[1] eq 'node1';
+        return { xcatmaster => '192.0.2.1' };
+    }
+    sub close { return; }
 }
 {
     package xCAT::NetworkUtils;
@@ -32,6 +45,7 @@ BEGIN {
 
 umask 0077;
 my $temporary = tempdir(CLEANUP => 1);
+local $ENV{XCATROOT} = $temporary;
 my ($directory, $generation, $boot, %exports, %remote, %fault, @observations, @deliveries, @reports);
 my $sequence = 0;
 my $attempt = 'b' x 32;

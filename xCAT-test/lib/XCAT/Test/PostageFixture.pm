@@ -65,6 +65,8 @@ BEGIN { $INC{'xCAT/Table.pm'} = __FILE__; }
 }
 
 my $temporary = tempdir(CLEANUP => 1);
+symlink("$FindBin::Bin/../../xCAT-server/lib/xcat/plugins", "$temporary/xCAT_plugin") or croak $!;
+unshift @INC, $temporary;
 $ENV{XCATCFG} = "$temporary/database";
 $ENV{XCATROOT} = "$FindBin::Bin/../..";
 make_path($ENV{XCATCFG});

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 no warnings 'once';
 use FindBin;
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
+use lib "$FindBin::Bin/../../xCAT-server/lib/perl", "$FindBin::Bin/../../perl-xCAT";
 use Cwd qw(abs_path);
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);

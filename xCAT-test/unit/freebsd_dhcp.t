@@ -6,10 +6,13 @@ use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT";
 use lib grep { defined($_) } $ENV{XCAT_FREEBSD_DHCP_POLICY_DIR};
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
+use Capture::Tiny qw(capture);
+use File::Copy qw(copy);
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
 use JSON ();
 use Test::More;
+use xCAT::CommandUtils;
 
 BEGIN {
     package xCAT::Table;
@@ -49,6 +52,21 @@ BEGIN {
 }
 
 my $temporary = tempdir(CLEANUP => 1);
+local $ENV{XCATROOT} = $temporary;
+my $parsers = "$temporary/parsers";
+make_path($parsers);
+# Copy the installed parsers so host AppArmor profiles do not restrict fixture paths.
+for my $command (qw(dhcpd kea-dhcp4)) {
+    my $installed = xCAT::CommandUtils::find_executable($command) || next;
+    my $copy = "$parsers/$command";
+    copy($installed, $copy) or die $!;
+    chmod(0755, $copy) or die $!;
+    my (undef, undef, $status) = capture { system($copy, '--version') };
+    if ($status == -1) {
+        unlink($copy) or die $!;
+    }
+}
+local $ENV{PATH} = "$parsers:$ENV{PATH}";
 $xCAT::TableUtils::tftpdir = "$temporary/tftp";
 make_path("$temporary/tftp/xcat");
 for my $loader (qw(xnba.kpxe xnba.efi)) {

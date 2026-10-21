@@ -258,7 +258,8 @@ my $error = $@;
 alarm 0;
 print $error;
 PERL
-    open(my $child, '-|', $^X, '-e', $program, $root, abs_path($INC{'xCAT/FreeBSDRepo.pm'})) or croak $!;
+    open(my $child, '-|', $^X, (map { ('-I', $_) } @INC), '-e', $program,
+        $root, abs_path($INC{'xCAT/FreeBSDRepo.pm'})) or croak $!;
     my $output = do { local $/ = undef; <$child> };
     close($child);
     is($?, 0, 'replacement FIFO does not block the regular-file open');

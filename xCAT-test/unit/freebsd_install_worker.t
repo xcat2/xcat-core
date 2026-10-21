@@ -15,7 +15,22 @@ use Time::HiRes qw(time sleep);
 use xCAT::FreeBSDInstall;
 use xCAT::FreeBSDPostscript;
 
-BEGIN { $INC{'xCAT/NetworkUtils.pm'} = __FILE__; }
+BEGIN {
+    $INC{'xCAT/Table.pm'} = __FILE__;
+    $INC{'xCAT/NetworkUtils.pm'} = __FILE__;
+}
+{
+    package xCAT::Table;
+    sub new {
+        die 'Unexpected table' unless $_[1] eq 'noderes';
+        return bless {}, $_[0];
+    }
+    sub getNodeAttribs {
+        die 'Unexpected node' unless $_[1] eq 'node1';
+        return { xcatmaster => '192.0.2.1' };
+    }
+    sub close { return; }
+}
 {
     package xCAT::NetworkUtils;
     sub clearcache { return; }
@@ -24,6 +39,7 @@ BEGIN { $INC{'xCAT/NetworkUtils.pm'} = __FILE__; }
 
 umask oct('0077');
 my $temporary = tempdir(CLEANUP => 1);
+local $ENV{XCATROOT} = $temporary;
 my $json = JSON->new->canonical;
 my ($attempt, $run) = map { $_ x 32 } qw(b c);
 my ($boot, $snapshot, $preparation) = map { $_ x 64 } qw(d e f);

@@ -6,7 +6,7 @@ use File::Temp qw(tempdir);
 use FindBin;
 use MIME::Base64 qw(encode_base64);
 use Test::More;
-use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
+use lib "$FindBin::Bin/../../xCAT-server/lib/perl", "$FindBin::Bin/../../perl-xCAT";
 use xCAT::FreeBSDNetwork;
 use xCAT::FreeBSDConfig;
 
