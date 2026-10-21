@@ -55,7 +55,11 @@ complain()
     [[ "$output" == *"xCAT-server/share/xcat/netboot/rh/compute.rhels10.x86_64.postinstall"* ]]
     [[ "$output" == *"xCAT-server/share/xcat/netboot/rh/service.postinstall"* ]]
     [[ "$output" == *"xCAT-server/share/xcat/netboot/rocky/compute.rocky10.riscv64.postinstall"* ]]
-    [ "$(printf '%s\n' "$output" | wc -l)" -ge 13 ]
+    [[ "$output" == *"xCAT-server/share/xcat/netboot/rh/compute.rhels10.aarch64.postinstall"* ]]
+    # Three riscv64 scripts are symlinks to the rocky one, and -type f counts a shared file
+    # once, so the twelve entries cover fifteen names. The bound catches a find that stops
+    # matching; a new script needs no new bound, because every test loops over this list.
+    [ "$(printf '%s\n' "$output" | wc -l)" -ge 12 ]
 }
 
 @test "an enforcing config becomes SELINUX=disabled" {
