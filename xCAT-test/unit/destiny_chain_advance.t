@@ -249,6 +249,49 @@ my @cases = (
     },
 );
 
+for my $order ([qw(node1 node2)], [qw(node2 node1)]) {
+    for my $option (0, 1) {
+        my $state = $option ? "$image:--noupdateinitrd" : 'shutdown';
+        my %transitions = (
+            node1 => ['node1', 'boot', 'boot'],
+            node2 => ['node2', $state, 'boot', $option ? [$image, '--noupdateinitrd'] : ['shutdown']],
+        );
+        push @cases, {
+            name => "completed and active nodes in order @$order, initrd option=$option",
+            request => {command => ['nextdestiny'], node => $order},
+            rows => {
+                node1 => {currstate => 'boot', currchain => 'boot', chain => 'boot'},
+                node2 => {currstate => 'boot', currchain => "$state,boot", chain => "$state,boot"},
+            },
+            steps => [{
+                transitions => [map { $transitions{$_} } @$order],
+                enact => ['node2'], enact_args => $option ? ['enact', '--noupdateinitrd'] : ['enact'],
+            }],
+        };
+    }
+}
+push @cases, {
+    name => 'a completed middle node does not suppress either active neighbor',
+    request => {command => ['nextdestiny'], node => [qw(node3 node2 node1)]},
+    rows => {
+        node1 => {currstate => 'offline', currchain => 'boot', chain => 'boot'},
+        node2 => {currstate => 'boot', currchain => 'boot', chain => 'boot'},
+        node3 => {currstate => 'boot', currchain => 'shutdown,boot', chain => 'shutdown,boot'},
+    },
+    steps => [{
+        transitions => [['node3', 'shutdown', 'boot'], ['node2', 'boot', 'boot'], ['node1', 'boot', 'boot']],
+        enact => [qw(node3 node1)],
+    }],
+}, {
+    name => 'a request containing only completed nodes does not enact',
+    request => {command => ['nextdestiny'], node => [qw(node1 node2)]},
+    rows => {
+        node1 => {currstate => 'boot', currchain => 'boot', chain => 'boot'},
+        node2 => {currstate => $image, currchain => $image, chain => $image},
+    },
+    steps => [{transitions => [['node1', 'boot', 'boot'], ['node2', 'standby', 'standby']]}],
+};
+
 for my $case (@cases) {
     subtest $case->{name} => sub {
         %rows = %{ dclone($case->{rows}) };
