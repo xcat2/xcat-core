@@ -879,10 +879,12 @@ sub _kea_ipoib_reservations
 sub _kea_ipoib_matching
 {
     my ($config, $reservations) = @_;
-    my %subnets = map { $_->{'subnet-id'} => 1 } grep { $_->{'client-id'} } @$reservations;
+    my %subnets = map { my $id = $_->{'subnet-id'}; ($id => 1) }
+        grep { $_->{'client-id'} } @$reservations;
     my $changed = 0;
     for my $subnet (@{ $config->{Dhcp4} ? $config->{Dhcp4}{subnet4} || [] : [] }) {
-        next unless $subnets{$subnet->{id}};
+        my $id = $subnet->{id};
+        next unless $subnets{$id};
         unless ($subnet->{'match-client-id'}) {
             $subnet->{'match-client-id'} = JSON::true;
             $changed = 1;

@@ -1532,7 +1532,7 @@ sub _export_tree {
     my $entries = $manifest->{entries};
     my $specification = '';
     for my $key (sort keys %$entries) {
-        my $entry = $entries->{$key};
+        my $entry = { %{$entries->{$key}} };
         my $relative = _source_unhex($key);
         my $path = length($relative) ? "$destination/$relative" : $destination;
         my $type = $entry->{type};

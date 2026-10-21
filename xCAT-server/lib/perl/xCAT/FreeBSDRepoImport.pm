@@ -448,13 +448,15 @@ sub _checked_trust {
 sub _checked_native {
     my $repository = shift;
     _checked_digest($repository, 'xcat-freebsd-repository-1');
-    _fail('Invalid stored native repository identity') unless ($repository->{abi} || '') eq 'FreeBSD:15:amd64'
-      && ($repository->{osversion} || '') eq '1501000'
-      && ($repository->{native_validated} || '') eq '1'
-      && defined($repository->{selection_validated}) && $repository->{selection_validated} eq '0';
+    my %identity = %$repository;
+    _fail('Invalid stored native repository identity') unless ($identity{abi} || '') eq 'FreeBSD:15:amd64'
+      && ($identity{osversion} || '') eq '1501000'
+      && ($identity{native_validated} || '') eq '1'
+      && defined($identity{selection_validated}) && $identity{selection_validated} eq '0';
     _checked_digest($repository->{tree}, 'xcat-freebsd-repo-tree-1');
-    _fail('Invalid stored repository tree evidence') unless defined($repository->{tree}{native_validated})
-      && $repository->{tree}{native_validated} eq '0';
+    my $tree_validated = $repository->{tree}{native_validated};
+    _fail('Invalid stored repository tree evidence') unless defined($tree_validated)
+      && $tree_validated eq '0';
     _checked_tool($repository->{tool});
     _checked_trust($repository);
     xCAT::FreeBSDRepo::validate_repository_inventory($repository);
@@ -462,14 +464,14 @@ sub _checked_native {
 }
 
 sub _checked_release_header {
-    my $value = shift;
+    my %value = %{shift()};
     my %identity = (release => '15.1-RELEASE', arch => 'x86_64', media_arch => 'amd64',
         abi => 'FreeBSD:15:amd64', osversion => '1501000', distname => 'freebsd15.1');
     for my $key (keys %identity) {
-        _fail('Invalid stored release identity') if !defined($value->{$key})
-          || ref($value->{$key}) || $value->{$key} ne $identity{$key};
+        _fail('Invalid stored release identity') if !defined($value{$key})
+          || ref($value{$key}) || $value{$key} ne $identity{$key};
     }
-    my $repositories = $value->{repositories};
+    my $repositories = $value{repositories};
     _fail('Invalid stored release repositories') if ref($repositories) ne 'HASH'
       || !exists($repositories->{base})
       || grep { $_ ne 'base' && $_ ne 'applications' } keys %$repositories;
@@ -509,10 +511,12 @@ sub _checked_source {
     _checked_digest($media, 'xcat-freebsd-release-tree-1');
     _checked_release_header($source);
     _checked_release_header($media);
+    my ($native_validated, $selection_validated) = @{$source}{qw(native_validated selection_validated)};
+    my $media_validated = $media->{native_validated};
     _fail('Invalid stored release trust or validation evidence')
-      unless ($source->{native_validated} || '') eq '1'
-      && defined($source->{selection_validated}) && $source->{selection_validated} eq '0'
-      && defined($media->{native_validated}) && $media->{native_validated} eq '0'
+      unless ($native_validated || '') eq '1'
+      && defined($selection_validated) && $selection_validated eq '0'
+      && defined($media_validated) && $media_validated eq '0'
       && ref($source->{trust}) eq 'HASH' && ($source->{trust}{type} || '') eq 'operator-trusted-release'
       && ($source->{trust}{digest} || '') eq $media->{digest}
       && _json([sort keys %{$source->{repositories}}]) eq _json([sort keys %{$media->{repositories}}]);
