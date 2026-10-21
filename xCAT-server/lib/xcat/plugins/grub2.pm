@@ -70,20 +70,38 @@ sub grub2_server_for_node {
     # not resolve in either family.
     $family = 4 unless defined($family);
 
+    if ($family == 6) {
+        my $cachekey = "6:$tftpserver";
+        return (0, $tftpserverip{$cachekey})
+          if $tftpserver ne '<xcatmaster>'
+          && defined($tftpserverip{$cachekey});
+
+        my $serverip = xCAT::NetworkUtils->ipv6_server_for_node(
+            $node, $tftpserver
+        );
+        if ($serverip) {
+            $tftpserverip{$cachekey} = $serverip
+              if $tftpserver ne '<xcatmaster>';
+            return (0, $serverip);
+        }
+
+        if ($tftpserver eq '<xcatmaster>') {
+            my @facing = xCAT::NetworkUtils->my_ip_facing_family($node, 6);
+            return (1, $facing[1]) if @facing > 1;
+        }
+        return (1, "xCAT unable to resolve $tftpserver");
+    }
+
     if ($tftpserver eq '<xcatmaster>') {
-        my @facing = $family == 6
-          ? xCAT::NetworkUtils->my_ip_facing_family($node, 6)
-          : xCAT::NetworkUtils->my_ip_facing($node);
+        my @facing = xCAT::NetworkUtils->my_ip_facing($node);
         return (0, $facing[1]) unless $facing[0];
         return (1, $facing[1]);
     }
 
-    my $cachekey = $family == 6 ? "6:$tftpserver" : $tftpserver;
+    my $cachekey = $tftpserver;
     return (0, $tftpserverip{$cachekey}) if defined($tftpserverip{$cachekey});
 
-    my $serverip = $family == 6
-      ? xCAT::NetworkUtils->getipaddr($tftpserver, OnlyV6 => 1)
-      : xCAT::NetworkUtils->getipaddr($tftpserver);
+    my $serverip = xCAT::NetworkUtils->getipaddr($tftpserver);
     return (1, "xCAT unable to resolve $tftpserver") unless $serverip;
 
     $tftpserverip{$cachekey} = $serverip;
