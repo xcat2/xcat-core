@@ -37,7 +37,7 @@ sub _resolve_server_for_node
 {
     my ($node, $server) = @_;
     my $family = xCAT::NetworkUtils->node_address_family($node);
-    return xCAT::NetworkUtils->getipaddr($server, OnlyV6 => 1)
+    return xCAT::NetworkUtils->ipv6_server_for_node($node, $server)
       if defined($family) && $family == 6;
     return xCAT::NetworkUtils->getipaddr($server, OnlyV4 => 1)
       if defined($family) && $family == 4;

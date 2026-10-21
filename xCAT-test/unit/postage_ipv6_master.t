@@ -39,7 +39,6 @@ my @facing_calls;
         push @facing_calls, [$node, $family];
         return (0, '2001:db8:1::1');
     };
-
     is_deeply(
         [ xCAT::Postage::_facing_addresses_for_node('nodev6') ],
         [0, '2001:db8:1::1'],

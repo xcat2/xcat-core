@@ -79,6 +79,18 @@ BEGIN {
         return (0, '2001:db8::1');
     }
 
+    sub ipv6_server_for_node {
+        my $node = shift;
+        $node = shift if defined($node) && $node eq __PACKAGE__;
+        my $server = shift;
+        if (!defined($server) || $server eq '!myipfn!' || $server eq '<xcatmaster>') {
+            my @facing = my_ip_facing_family(__PACKAGE__, $node, 6);
+            return unless @facing && !$facing[0];
+            return $facing[1];
+        }
+        return getipaddr(__PACKAGE__, $server, OnlyV6 => 1);
+    }
+
     sub format_uri_host {
         my $host = shift;
         $host = shift if defined($host) && $host eq __PACKAGE__;
