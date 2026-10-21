@@ -3055,7 +3055,7 @@ sub kea_build_dhcp6_intent
     my $nettab = xCAT::Table->new("networks");
     return { error => "Unable to open networks table, please run makenetworks" } unless $nettab;
 
-    my @vnets = $nettab->getAllAttribs('net', 'mgtifname', 'mask', 'dynamicrange', 'nameservers', 'ddnsdomain', 'domain');
+    my @vnets = $nettab->getAllAttribs('net', 'mgtifname', 'mask', 'dynamicrange', 'nameservers', 'ddnsdomain', 'domain', 'dhcpserver');
     my @subnets;
     my $id = 10001;
     foreach my $entry (@vnets) {
@@ -3121,20 +3121,51 @@ sub kea_subnet6_intent
     if ($domain) {
         push @option_data, { name => 'domain-search', data => $domain };
     }
-    my $nameservers = $entry->{nameservers} || $sitenameservers;
-    if ($nameservers && $nameservers =~ /:/) {
+    my $nameservers = kea_ipv6_nameservers(
+        $net,
+        $entry->{nameservers} || $sitenameservers
+    );
+    if ($nameservers) {
         push @option_data, { name => 'dns-servers', data => $nameservers };
+    }
+
+    my $dynamicrange = $entry->{dynamicrange};
+    if ( $dynamicrange && $entry->{dhcpserver} && xCAT::NetworkUtils->thishostisnot( $entry->{dhcpserver} ) ) {
+        $dynamicrange = undef;
     }
 
     my %subnet = (
         id           => $id,
         subnet       => $net,
-        dynamicrange => $entry->{dynamicrange},
+        dynamicrange => $dynamicrange,
         option_data  => \@option_data,
     );
     $subnet{interface} = $interface unless $remote || $interface eq '*';
 
     return \%subnet;
+}
+
+sub kea_ipv6_nameservers
+{
+    my ( $network, $nameservers ) = @_;
+    return unless $nameservers;
+
+    my $peer = $network || '';
+    $peer =~ s{/.*$}{};
+    my ( @resolved, %seen );
+    foreach my $server (split /,/, $nameservers) {
+        $server =~ s/^\s+|\s+$//g;
+        next unless length($server);
+
+        my $ip = xCAT::NetworkUtils->ipv6_server_for_node($peer, $server);
+        next unless $ip
+          && $ip =~ /:/
+          && xCAT::NetworkUtils->isValidIPAddress($ip)
+          && !$seen{$ip}++;
+        push @resolved, $ip;
+    }
+
+    return @resolved ? join(', ', @resolved) : undef;
 }
 
 sub kea_build_ddns_intent
@@ -4278,13 +4309,20 @@ sub kea_boot_server6_for_node
     }
 
     if ($configured_server) {
-        my $server = getipaddr($configured_server, OnlyV6 => 1);
+        my $server = xCAT::NetworkUtils->ipv6_server_for_node(
+            $peer, $configured_server
+        );
         unless ($server) {
             $callback->({ error => ["Unable to resolve an IPv6 boot server for $node from $configured_server"], errorcode => [1] });
             return;
         }
         return $server;
     }
+
+    my $server = xCAT::NetworkUtils->ipv6_server_for_node(
+        $peer, '<xcatmaster>'
+    );
+    return $server if $server;
 
     my @facing = xCAT::NetworkUtils->my_ip_facing_family($peer, 6);
     if (!@facing || $facing[0]) {
