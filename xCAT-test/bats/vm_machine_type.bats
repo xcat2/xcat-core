@@ -79,6 +79,27 @@ assert_arch()
     assert_arch x86_64 pc 'cpumode:host-passthrough'
 }
 
+# An x86_64 node that asks for UEFI needs q35: every x86_64 OVMF descriptor targets pc-q35-*,
+# and libvirt refuses a domain that asks for firmware efi on i440fx with "Unable to find 'efi'
+# firmware that is compatible with the current configuration".
+@test "x86_64 with firmware:efi: the case sets and clears q35" {
+    assert_arch x86_64 q35 'firmware:efi'
+    assert_arch x86_64 q35 'cpumode:host-passthrough;firmware:efi'
+}
+
+@test "x86_64 with firmware:efi-secureboot: the case sets and clears q35" {
+    assert_arch x86_64 q35 'firmware:efi-secureboot'
+    assert_arch x86_64 q35 'cpumode:host-passthrough;firmware:efi-secureboot'
+}
+
+@test "x86_64 without a firmware: the case still sets pc" {
+    assert_arch x86_64 pc 'cpumode:host-passthrough'
+}
+
+@test "round trip: x86_64 with firmware:efi-secureboot" {
+    assert_round_trip x86_64 'cpumode:host-passthrough;firmware:efi-secureboot'
+}
+
 @test "riscv64: the case sets and clears virt" {
     assert_arch riscv64 virt ''
     assert_arch riscv64 virt 'cpumode:host-passthrough'
