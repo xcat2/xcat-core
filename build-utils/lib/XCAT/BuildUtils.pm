@@ -1336,9 +1336,6 @@ sub fips_policy_plan {
         die "$relative must be a regular file\n" unless -f $path && !-l $path;
         my $current = read_binary($path);
         my $rendered = $current;
-        # A second block, or none, makes the insertion point ambiguous. Count
-        # before substituting: s///g on no match leaves the file unchanged and
-        # reads as current.
         my $count = $rendered =~ s/\Q$begin\E.*?\Q$end\E/$block/sg;
         die "$relative must contain one FIPS policy block\n"
             unless $count == 1
