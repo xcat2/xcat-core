@@ -78,9 +78,15 @@ labels there, so an osimage whose ``rootimgdir`` has a directory called
 and ``httpd`` cannot serve them. Give such an osimage a ``rootimgdir`` with no
 ``rootimg`` component, or run ``restorecon`` over the image root after the
 package is installed. A published ``common`` or ``overlay`` directory of an
-image root called ``rootimg`` is unlabeled for the same reason: its path is
-also the path of a ``common`` or ``overlay`` directory at the root of a guest
-tree.
+image root called ``rootimg`` is left out for the same reason: its path is also
+the path of a ``common`` or ``overlay`` directory at the root of a guest tree.
+
+A path the file contexts leave out keeps the label it has. ``restorecon`` does
+not change it and does not clear it. A tree that ``genimage`` creates under an
+image root that is already ``public_content_t`` inherits that type, so the two
+directories above cost nothing in that case. A tree that is older than the
+package keeps ``default_t``, and ``restorecon -RF`` over the image root sets
+it.
 
 The unit holds ``/opt/xcat`` as the default prefix, and ``%post`` writes
 ``/etc/xcat/xcatroot.env`` with the prefix of the installation, which the unit
