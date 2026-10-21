@@ -81,12 +81,20 @@ sub lookup {
 
 install_module();
 
+# The last component of an image root is the profile, and a profile may be
+# called rootimg. The guest tree is then <...>/rootimg/rootimg and the
+# published kernel is <...>/rootimg/kernel, so a rule that matches the name
+# rootimg anywhere in the path takes the kernel with it.
 my @images = (
     '/install/netboot/rhels9/x86_64/compute',
+    '/install/netboot/rhels9/x86_64/rootimg',
+    '/install/netboot/rhels9/x86_64/rootimg-statelite',
+    '/install/netboot/rhels9/x86_64/rootimg-custom',
     '/install/netboot/custom-image',
     '/install/custom/images/rhels9-compute',
 );
-my @guest = map { ("$_/rootimg/etc/shadow", "$_/rootimg-statelite/etc/shadow") } @images;
+my @guest = map { ("$_/rootimg/etc/shadow", "$_/rootimg/etc/passwd",
+        "$_/rootimg-statelite/etc/shadow") } @images;
 my @published = map {
     my $dir = $_;
     map { "$dir/$_" } qw(kernel initrd-stateless.gz initrd-statelite.gz rootimg.cpio.gz
@@ -99,6 +107,27 @@ foreach my $path (@guest) {
 }
 foreach my $path (@published, '/install', '/install/postscripts/xcatdsklspost') {
     is(lookup($path), 'public_content_t', "$path is public_content_t");
+}
+
+# rootimgdir is any path under /install, so a component called rootimg in the
+# MIDDLE of an image root cannot be told from a guest tree rooted there:
+# /install/netboot/rootimg/a/b/kernel is either a published kernel below an
+# image root called .../rootimg/a/b, or a file inside a guest tree rooted at
+# /install/netboot/rootimg. The rules keep the guest labels, which leaves the
+# first reading unlabelled. Hold that choice down, so a change of direction
+# fails here instead of silently relabelling a guest.
+foreach my $path ('/install/netboot/rootimg/rhels9/x86_64/compute/kernel',
+    '/install/netboot/rootimg/rhels9/x86_64/compute/rootimg/etc/shadow') {
+    is(lookup($path), '<<none>>',
+        "a rootimg component inside an image root keeps $path out of the relabel");
+}
+
+# A guest file whose own name is a published name keeps its label: the rules
+# name the component directly below rootimg, not a name at any depth.
+foreach my $path (map { "/install/netboot/rhels9/x86_64/$_" }
+    qw(compute/rootimg/usr/src/kernel rootimg/rootimg/usr/src/kernel
+       rootimg/rootimg/boot/initrd.img rootimg/rootimg/var/lib/rootimg.sfs)) {
+    is(lookup($path), '<<none>>', "a guest file at $path keeps its own label");
 }
 
 # A management node: each guest file keeps the label of its own operating
