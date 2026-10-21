@@ -72,9 +72,9 @@ sub fixture {
         zpool => 'case "$1" in list) cat "$FIXTURE_DIR/pools" ;; labelclear) ;; *) exit 1 ;; esac',
         fetch => 'cp "$FIXTURE_DIR/${5##*/}" "$4"',
         sha256 => 'openssl dgst -sha256 -r "$2" | awk "{print \\$1}"',
-        nc => 'read -r protocol generation attempt phase; printf "phase %s\\n" "$phase" >> "$FIXTURE_DIR/events";' .
+        nc => 'read -r protocol generation attempt phase members; printf "phase %s\\n" "$phase" >> "$FIXTURE_DIR/events";' .
             'count=0; test ! -f "$FIXTURE_DIR/nc-count" || count=$(cat "$FIXTURE_DIR/nc-count"); count=$((count+1)); printf "%s\\n" "$count" > "$FIXTURE_DIR/nc-count";' .
-            'if [ -f "$FIXTURE_DIR/reject-$phase" ] || { test -f "$FIXTURE_DIR/nc-busy" && test "$count" -le "$(cat "$FIXTURE_DIR/nc-busy")"; }; then printf "ready\\n"; else printf "ready\\nfreebsd-install-v1 %s %s ok\\n" "$generation" "$phase"; fi',
+            'if [ -f "$FIXTURE_DIR/reject-$phase" ] || { test -f "$FIXTURE_DIR/nc-busy" && test "$count" -le "$(cat "$FIXTURE_DIR/nc-busy")"; }; then printf "ready\\n"; else printf "ready\\n%s %s %s ok\\n" "$protocol" "$generation" "$phase"; fi',
         date => 'if test -f "$FIXTURE_DIR/clock"; then cat "$FIXTURE_DIR/clock"; else printf "0\\n"; fi',
         sleep => 'now=0; test ! -f "$FIXTURE_DIR/clock" || now=$(cat "$FIXTURE_DIR/clock"); printf "%s\\n" "$((now+$1))" > "$FIXTURE_DIR/clock"',
         timeout => 'shift; exec "$@"',

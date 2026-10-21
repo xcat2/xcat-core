@@ -656,12 +656,12 @@ PKGBASE
             kldload => 'exit 0',
             mount => 'grep -q "^target_disk=ada0$" "$FIXTURE_DIR/work/config" || exit 91
                 printf "workspace\n" >> "$FIXTURE_DIR/events"',
-            nc => 'read -r protocol generation attempt phase
+            nc => 'read -r protocol generation attempt phase members
                 printf "phase %s\n" "$phase" >> "$FIXTURE_DIR/events"
                 if [ "$phase" = begin ] && [ -f "$FIXTURE_DIR/change-on-begin" ]; then
                     printf USED > "$FIXTURE_DIR/ada0.head"
                 fi
-                printf "ready\nfreebsd-install-v1 %s %s ok\n" "$generation" "$phase"',
+                printf "ready\n%s %s %s ok\n" "$protocol" "$generation" "$phase"',
             bsdinstall => "printf 'bsdinstall boundary\\n' >> '$root/events'\ncp \"\$2\" '$root/invoked-installer'\nexit 19",
         );
         for my $command (keys %commands) {

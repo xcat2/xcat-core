@@ -647,8 +647,9 @@ BOOT_TEMPLATE
             xCAT_plugin::freebsd::process_request({command => ['mkinstall'], node => ['node1'],
                 bootparams => \$params, _freebsd_pool => [encode_json({node1 => $metadata})]},
                 sub { push @errors, shift; }, sub {
+                    my $request = shift;
                     return {data => [encode_json({format => 'xcat-freebsd-pool-1', node => 'node1',
-                        operation => 'register', result => {epoch => $metadata->{epoch}, phase => 'prepared'}})]};
+                        operation => $request->{arg}[0], result => {epoch => $metadata->{epoch}, phase => 'prepared'}})]};
                 });
             return ($params, \@errors);
         };
@@ -935,9 +936,18 @@ if (!$second) {
     my $token;
     my $ok = eval {
         no warnings 'redefine';
-        local *xCAT::FreeBSDInstall::prepare = sub {
+        my $announced = 0;
+        my $announce = sub {
+            return if $announced++;
             print {$second_ready_writer} "preparing\n" or die $!;
             close($second_ready_writer);
+        };
+        local *xCAT::FreeBSDInstall::state = sub {
+            $announce->();
+            return $read_state->(@_, directory => $state_directory);
+        };
+        local *xCAT::FreeBSDInstall::prepare = sub {
+            $announce->();
             return $prepare_request->(@_);
         };
         local *xCAT::FreeBSDBoot::publish = sub {
@@ -1010,6 +1020,9 @@ for my $acknowledged (0, 1) {
         bootparams => \$pool_params, _freebsd_pool => [JSON->new->encode({node1 => $metadata})]},
         sub { push @responses, shift; }, sub {
             my $request = shift;
+            return {data => [JSON->new->encode({format => 'xcat-freebsd-pool-1', node => 'node1',
+                operation => 'inspect', result => {epoch => $metadata->{epoch}, phase => 'prepared'}})]}
+                if $request->{arg}[0] eq 'inspect';
             push @registrations, $request;
             is(read_file("$state_directory/node1.json"), $before, 'registration precedes local state replacement');
             is(read_file("$root/tftp/xcat/freebsd/node1/boot/loader.conf"), $previous_loader,

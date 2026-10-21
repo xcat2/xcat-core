@@ -124,7 +124,7 @@ subtest 'automatic OS membership protects every declared data device' => sub {
             'the delivery policy requires installed OS identities');
     }
     my $automatic = "filesystem=zfs\nzfs_topology=mirror\nzfs_vdevs=auto:2\nswap_mode=none\n";
-    rejects($automatic . "disk_action=erase\n", qr/blank[ ]disks/x, 'automatic erasure');
+    rejects($automatic . "disk_action=erase\n", qr/(?:blank[ ]disks|retained[ ]OS[ ]disk[ ]record)/x, 'automatic erasure without a record');
     rejects($automatic . "target_disk_ident=SERIAL\n", qr/target[ ]serial/x, 'automatic serial override');
     rejects($automatic . "zfs_log_vdevs=vtbd2\@DATA2\n" . $tank, qr/overlap|repeat/x,
         'automatic primary disks with overlapping auxiliary and data devices');
