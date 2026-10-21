@@ -1,5 +1,1 @@
-openssh-server
-chrony
-gawk
-nfs-common
-snmpd
+compute.ubuntu20.04.pkglist
