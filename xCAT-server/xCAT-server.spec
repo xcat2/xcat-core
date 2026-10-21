@@ -35,6 +35,8 @@ AutoReqProv: no
 # also need to fix Requires for AIX
 %ifos linux
 BuildArch: noarch
+Requires: /usr/bin/ssh-keygen
+Requires: perl(Archive::Tar)
 # Note: ifarch/ifnarch does not work for noarch package, use environment variable instead
 
 %if %s390x
@@ -381,6 +383,8 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/shfunctions
 %if %fsm
 %else
 %ifos linux
+mkdir -p $RPM_BUILD_ROOT/var/lib/xcat
+chmod 755 $RPM_BUILD_ROOT/var/lib/xcat
 cp etc/init.d/xcatd $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts/xcatd
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts/xcatd
 mkdir -p $RPM_BUILD_ROOT/usr/lib/systemd/system
@@ -451,6 +455,7 @@ rm -rf $RPM_BUILD_ROOT
 %if %fsm
 %else
 %ifos linux
+%dir %attr(0755,root,root) /var/lib/xcat
 # The compatibility helper owns runtime cleanup.  Listing this path as %ghost
 # would let RPM unlink preserved administrator content after %preun.
 /usr/lib/systemd/system/xcatd.service

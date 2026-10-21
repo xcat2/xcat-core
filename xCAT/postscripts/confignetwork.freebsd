@@ -1,0 +1,944 @@
+#!/bin/sh
+set -efu
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+LC_ALL=C
+export PATH LC_ALL
+unset IFCONFIG_FORMAT
+umask 077
+
+fail()
+{
+    printf 'confignetwork: %s\n' "$1" >&2
+    exit 1
+}
+
+[ "$(uname -s)" = FreeBSD ] && [ "$(id -u)" = 0 ] || fail 'FreeBSD root is required'
+if [ "${1:-}" != --locked ]; then
+    exec lockf -k -t 0 /var/run/xcat-confignetwork.lock /bin/sh "$0" --locked "$@"
+fi
+shift
+configure_boot=0
+for argument do
+    case "$argument" in
+    -s) configure_boot=1 ;;
+    --ibaports=1|--ibaports=2) ;;
+    *) fail 'Supported FreeBSD arguments: -s and --ibaports=1|2' ;;
+    esac
+done
+case ${SETINSTALLNIC:-} in 1|yes) configure_boot=1 ;; esac
+planner=$(CDPATH= cd -P "$(dirname "$0")" && pwd)/confignetwork-freebsd.awk
+[ -f "$planner" ] && [ ! -L "$planner" ] || fail 'The FreeBSD network planner is missing'
+dhcp_helper=${planner%/*}/confignetwork-dhclient.freebsd
+ipoib_dhcp_source=${planner%/*}/confignetwork-ipoib-dhcp4.freebsd
+ipoib_dhcp_service=/usr/local/etc/rc.d/xcat_ipoib_dhcp4
+ipoib_dhcp_client=/usr/local/libexec/xcat/dhcpcd-ipoib
+dhcp6_source=${planner%/*}/confignetwork-dhcp6.freebsd
+dhcp6_service=/usr/local/etc/rc.d/xcat_dhcp6
+
+protected_file()
+{
+    [ -f "$1" ] && [ ! -L "$1" ] || return 1
+    [ "$(stat -f '%u:%g:%l' "$1")" = 0:0:1 ] || return 1
+    case $(stat -f '%Lp' "$1") in 400|444|600|644) ;; *) return 1 ;; esac
+}
+
+protected_script()
+{
+    [ -f "$1" ] && [ ! -L "$1" ] && [ "$(stat -f '%u:%g:%l' "$1")" = 0:0:1 ] || return 1
+    case $(stat -f '%Lp' "$1") in 600|644|700|755) ;; *) return 1 ;; esac
+}
+
+rc_setting()
+{
+    printf '%s: ' "$1"
+    printf '%s' "$2" | tr '\n' ' '
+    printf '\n'
+}
+
+rc_variables()
+{
+    rc_source=$1
+    sysrc -f "$rc_source" -a -N > "$pending/variable.names" || return 1
+    while IFS= read -r rc_key; do
+        case "$rc_key" in ''|*[!a-zA-Z0-9_]*) return 1 ;; esac
+        rc_value=$(sysrc -f "$rc_source" -n "$rc_key") || return 1
+        rc_setting "$rc_key" "$rc_value" || return 1
+    done < "$pending/variable.names"
+}
+
+state=/var/db/xcat/network
+if [ ! -e /var/db/xcat ]; then install -d -m 0700 /var/db/xcat; fi
+[ -d /var/db/xcat ] && [ ! -L /var/db/xcat ] || fail 'Unsafe xCAT state directory'
+[ "$(stat -f '%u:%g:%Lp' /var/db/xcat)" = 0:0:700 ] || fail 'Unsafe xCAT state permissions'
+if [ ! -e "$state" ]; then mkdir -m 0700 "$state"; fi
+[ -d "$state" ] && [ ! -L "$state" ] && [ "$(stat -f '%u:%g:%Lp' "$state")" = 0:0:700 ] ||
+    fail 'Unsafe network state directory'
+protected_file /etc/rc.conf || fail 'An owned regular rc.conf is required'
+
+tab=$(printf '\t')
+pending=$state/pending
+mutating=0
+published=0
+staged_rc=
+
+dhcp_config()
+{
+    printf 'timeout 15;\nretry 5;\nselect-timeout 1;\nscript "/var/db/xcat/network/dhclient-script";\n'
+}
+
+dhcp_interfaces()
+{
+    awk -F '\t' -v client="$2" '$1 == "G" {ib[$2]=1}
+        $1 == "H" && !seen[$2]++ {list[++n]=$2}
+        END {for(i=1;i<=n;i++) if ((list[i] in ib) == (client == "ipoib")) print list[i]}' "$1"
+}
+
+ipoib_dhcp_plan()
+{
+    dhcp_interfaces "$1" ipoib | awk 'END {exit NR == 0}'
+}
+
+ipoib_dhcp_available()
+{
+    protected_script "$ipoib_dhcp_client" && [ -x "$ipoib_dhcp_client" ] &&
+        "$ipoib_dhcp_client" --version | grep -q '^dhcpcd 10.5.2-xcat1$'
+}
+
+ipoib_dhcp_config()
+{
+    ipoib_dhcp_plan "$1" || return 0
+    ipoib_uuid=$(kenv -q smbios.system.uuid) || return 1
+    ipoib_duid=$(awk -v mode=dhcp4-duid -v uuid="$ipoib_uuid" -f "$planner") || return 1
+    printf 'ipv4only\nnoconfigure\nnoarp\nnoipv4ll\nduid %s\n' "$ipoib_duid"
+    printf 'script "%s"\n' "$ipoib_dhcp_service"
+    printf 'option subnet_mask,routers,domain_name_servers,domain_name,domain_search,classless_static_routes\n'
+    ipoib_nics=$(dhcp_interfaces "$1" ipoib) || return 1
+    printf 'allowinterfaces'
+    for ipoib_nic in $ipoib_nics; do printf ' %s' "$ipoib_nic"; done
+    printf '\n'
+    ipoib_ids=
+    for ipoib_nic in $ipoib_nics; do
+        ipoib_id=$(printf '%s' "$ipoib_nic" | cksum | awk '{print $1}') || return 1
+        case " $ipoib_ids " in *" $ipoib_id "*) return 1 ;; esac
+        ipoib_ids="$ipoib_ids $ipoib_id"
+        printf 'interface %s\n  iaid %s\n' "$ipoib_nic" "$ipoib_id"
+    done
+}
+
+dhcp_matches()
+{
+    dhcp_interfaces "$1" native > "$pending/dhcp.native" || return 1
+    while IFS= read -r nic; do
+        protected_file "$state/dhcp/$nic.conf" || return 1
+        dhcp_config | cmp -s - "$state/dhcp/$nic.conf" || return 1
+    done < "$pending/dhcp.native"
+    while IFS="$tab" read -r kind nic address bits peerdns defroute; do
+        [ "$kind" = H ] || continue
+        protected_file "$state/dhcp/$nic.policy" || return 1
+        [ "$(stat -f '%Lp' "$state/dhcp/$nic.policy")" = 600 ] || return 1
+        printf '%s\t%s\t%s\t%s\n' "$address" "$bits" "$peerdns" "$defroute" |
+            cmp -s - "$state/dhcp/$nic.policy" || return 1
+    done < "$1"
+    if ipoib_dhcp_plan "$1"; then
+        ipoib_dhcp_available || return 1
+        protected_file "$state/dhcp/ipoib.conf" && protected_file "$state/dhcp/planner" &&
+            protected_script "$ipoib_dhcp_service" || return 1
+        ipoib_dhcp_config "$1" | cmp -s - "$state/dhcp/ipoib.conf" || return 1
+        cmp -s "$planner" "$state/dhcp/planner" &&
+            cmp -s "$ipoib_dhcp_source" "$ipoib_dhcp_service" || return 1
+    fi
+}
+
+dhcp_stop()
+{
+    if ipoib_dhcp_plan "$1" && [ -f "$ipoib_dhcp_service" ] &&
+        "$ipoib_dhcp_service" forcestatus >/dev/null 2>&1; then
+        "$ipoib_dhcp_service" forcestop || return 1
+    fi
+    awk -F '\t' '$1 == "H" && !seen[$2]++ {print $2}' "$1" > "$pending/dhcp.stop" || return 1
+    while IFS= read -r nic; do
+        if /etc/rc.d/dhclient forcestatus "$nic" >/dev/null 2>&1; then
+            /etc/rc.d/dhclient forcestop "$nic" || return 1
+        fi
+        if [ -e "$state/dhcp/$nic.policy" ]; then
+            /bin/sh "$state/dhclient-script" --expire "$nic" || return 1
+        fi
+    done < "$pending/dhcp.stop"
+}
+
+dhcp_start()
+{
+    dhcp_interfaces "$1" native > "$pending/dhcp.start" || return 1
+    while IFS= read -r nic; do
+        if ! /etc/rc.d/dhclient forcestatus "$nic" >/dev/null 2>&1; then
+            /sbin/dhclient -b -c "$state/dhcp/$nic.conf" "$nic" || return 1
+        fi
+    done < "$pending/dhcp.start"
+    if ipoib_dhcp_plan "$1"; then "$ipoib_dhcp_service" forcestart || return 1; fi
+}
+
+dhcp_ready()
+{
+    if ipoib_dhcp_plan "$1"; then
+        "$ipoib_dhcp_service" forcestatus >/dev/null 2>&1 || return 1
+    fi
+    dhcp_interfaces "$1" native > "$pending/dhcp.ready" || return 1
+    while IFS= read -r nic; do
+        /etc/rc.d/dhclient forcestatus "$nic" >/dev/null 2>&1 || return 1
+    done < "$pending/dhcp.ready"
+    awk -F '\t' '$1 == "H" {print $2}' "$1" > "$pending/dhcp.ready" || return 1
+    while IFS= read -r nic; do
+        protected_file "$state/dhcp/$nic.lease" || return 1
+    done < "$pending/dhcp.ready"
+    dhcp6_ready "$1"
+}
+
+dhcp6_plan()
+{
+    awk -F '\t' '$1 == "H6" {found=1} END {exit !found}' "$1"
+}
+
+dhcp6_config()
+{
+    dhcp6_plan "$1" || return 0
+    dhcp6_uuid=$(kenv -q smbios.system.uuid) || return 1
+    dhcp6_duid=$(awk -v mode=dhcp6-duid -v uuid="$dhcp6_uuid" -f "$planner") || return 1
+    printf 'ipv6only\nduid %s\nipv6ra_noautoconf\nscript "%s"\n' "$dhcp6_duid" "$dhcp6_service"
+    printf 'option dhcp6_name_servers, dhcp6_domain_search\n'
+    awk -F '\t' '$1=="H6" {list=list " " $2} END {print "allowinterfaces" list}' "$1"
+    while IFS="$tab" read -r kind nic address bits peerdns defroute; do
+        [ "$kind" = H6 ] || continue
+        printf 'interface %s\n  ia_na\n' "$nic"
+        [ "$defroute" = yes ] || printf '  nogateway\n'
+    done < "$1"
+}
+
+dhcp6_matches()
+{
+    dhcp6_plan "$1" || return 0
+    protected_file "$state/dhcp6.conf" && protected_script "$dhcp6_service" || return 1
+    dhcp6_config "$1" | cmp -s - "$state/dhcp6.conf" || return 1
+    protected_file "$state/dhcp6/planner" &&
+        [ "$(stat -f '%Lp' "$state/dhcp6/planner")" = 600 ] &&
+        cmp -s "$dhcp6_source" "$dhcp6_service" && cmp -s "$planner" "$state/dhcp6/planner" || return 1
+    while IFS="$tab" read -r kind nic address bits peerdns defroute; do
+        [ "$kind" = H6 ] || continue
+        protected_file "$state/dhcp6/$nic.policy" &&
+            [ "$(stat -f '%Lp' "$state/dhcp6/$nic.policy")" = 600 ] || return 1
+        printf '%s\t%s\n' "$address" "$peerdns" | cmp -s - "$state/dhcp6/$nic.policy" || return 1
+    done < "$1"
+}
+
+dhcp6_ready()
+{
+    dhcp6_plan "$1" || return 0
+    "$dhcp6_service" forcestatus >/dev/null 2>&1 || return 1
+    while IFS="$tab" read -r kind nic rest; do
+        [ "$kind" != H6 ] || protected_file "$state/dhcp6/$nic.lease" || return 1
+    done < "$1"
+}
+
+dhcp6_stop()
+{
+    dhcp6_plan "$1" || return 0
+    if [ -f "$dhcp6_service" ] && "$dhcp6_service" forcestatus >/dev/null 2>&1; then
+        "$dhcp6_service" forcestop || return 1
+    fi
+    while IFS="$tab" read -r kind nic rest; do
+        [ "$kind" = H6 ] || continue
+        resolvconf -f -d "$nic:dhcp6" || return 1
+        rm -f "$state/dhcp6/$nic.lease" || return 1
+    done < "$1"
+}
+
+dhcp6_start()
+{
+    dhcp6_plan "$1" || return 0
+    "$dhcp6_service" forcestart
+}
+
+verify_routes()
+{
+    awk -F '\t' -v prior="${2:-}" 'BEGIN {OFS="\t"}
+        prior == "prior" && $1 == "H6" {$6="no"} {print}' "$1" > "$pending/routes.plan" || return 1
+    while IFS="$tab" read -r kind nic address bits peerdns defroute; do
+        [ "$kind:$defroute" = H:yes ] && [ "${2:-}" != prior ] || continue
+        protected_file "$state/dhcp/$nic.lease" || return 1
+        awk -v mode=dhcp4-default -v nic="$nic" -f "$planner" "$state/dhcp/$nic.lease" \
+            >> "$pending/routes.plan" || return 1
+    done < "$1"
+    netstat -rnW > "$pending/routes.kernel" || return 1
+    awk -v mode=routes -f "$planner" "$pending/routes.plan" "$pending/routes.kernel"
+}
+
+wait_ready()
+{
+    ready_plan=$1
+    ready_mode=${2:-complete}
+    ready_carrier=${3:-yes}
+    attempt=0
+    ready_limit=20
+    if awk -F '\t' '$1 == "I" && $3 == "bridge" {bridge[$2]=1}
+        ($1 == "H" || $1 == "H6") && $2 in bridge {found=1} END {exit !found}' "$ready_plan"; then ready_limit=45; fi
+    while :; do
+        ifconfig -a > "$pending/after.kernel" || return 1
+        if awk -v mode=verify -v check_carrier="$ready_carrier" -f "$planner" \
+            "$ready_plan" "$pending/after.kernel" > "$pending/verify.log" 2>&1 &&
+            dhcp_ready "$ready_plan" >> "$pending/verify.log" 2>&1; then
+            [ "$ready_mode" != addresses ] || return 0
+            if verify_routes "$ready_plan" "$ready_mode" >> "$pending/verify.log" 2>&1 &&
+                nc -z -w 2 -s "$node_address" "$controller" "$port"; then return 0; fi
+        fi
+        attempt=$((attempt + 1))
+        [ "$attempt" -lt "$ready_limit" ] || return 1
+        sleep 1
+    done
+}
+
+clear_interfaces()
+{
+    clear_plan=$1
+    awk -F '\t' '$1 == "I" && $3 != "ethernet" && $3 != "infiniband" {a[++n]=$2}
+        END {for (i=n;i>0;i--) print a[i]}' "$clear_plan" |
+    while IFS= read -r nic; do
+        if ifconfig "$nic" >/dev/null 2>&1; then ifconfig "$nic" destroy || exit 1; fi
+    done || return 1
+    ifconfig -a > "$pending/clearing.kernel" || return 1
+    awk -v mode=clear -f "$planner" "$clear_plan" "$pending/clearing.kernel" > "$pending/clearing.snapshot" || return 1
+    while IFS="$tab" read -r kind nic family address bits; do
+        case "$kind" in
+        A) ifconfig "$nic" "$family" "$address/$bits" delete || return 1 ;;
+        V) ifconfig "$nic" inet6 ifdisabled || return 1 ;;
+        esac
+    done < "$pending/clearing.snapshot"
+    return 0
+}
+
+apply_plan()
+{
+    apply_file=$1
+    while IFS="$tab" read -r kind nic value address bits; do
+        case "$kind" in
+        I)
+            case "$value" in
+            ethernet|infiniband) ;;
+            *)
+                create_args=$(awk -F '\t' -v nic="$nic" '$1 == "J" && $2 == nic {print $3}' "$apply_file")
+                set -- $create_args
+                ifconfig "$nic" create "$@" || return 1
+                ;;
+            esac
+            ;;
+        X)
+            set -- $value
+            ifconfig "$nic" "$@" || return 1
+            ;;
+        A)
+            if [ "$value" = inet ] && awk -F '\t' -v nic="$nic" \
+                '$1 == "H" && $2 == nic {found=1} END {exit !found}' "$apply_file"; then
+                continue
+            fi
+            if [ "$value" = inet6 ] && awk -F '\t' -v nic="$nic" \
+                '$1 == "H6" && $2 == nic {found=1} END {exit !found}' "$apply_file"; then
+                continue
+            fi
+            if [ "$value" = inet6 ]; then ifconfig "$nic" inet6 -ifdisabled || return 1; fi
+            ifconfig "$nic" "$value" "$address/$bits" alias || return 1
+            ;;
+        V) ifconfig "$nic" inet6 "$value" || return 1 ;;
+        esac
+    done < "$apply_file"
+    return 0
+}
+
+routes()
+{
+    route_action=$1
+    route_file=$2
+    route_journal=$3
+    while IFS="$tab" read -r kind family destination gateway nic; do
+        case "$kind" in
+        R)
+            route -n "$route_action" "-$family" -net "$destination" "$gateway" || return 1
+            printf 'R\t%s\t%s\t%s\t%s\n' "$family" "$destination" "$gateway" "$nic" >> "$route_journal"
+            ;;
+        esac
+    done < "$route_file"
+    return 0
+}
+
+restore_physical()
+{
+    while IFS="$tab" read -r kind nic value address bits; do
+        if [ "$kind" != T ] &&
+            awk -F '\t' -v nic="$nic" '$1 == "I" && $2 == nic {found=1} END {exit !found}' "$pending/before.plan"; then
+            continue
+        fi
+        case "$kind" in
+        T) ifconfig "$nic" mtu "$value" || return 1 ;;
+        U) ifconfig "$nic" "$value" || return 1 ;;
+        V) ifconfig "$nic" inet6 "$value" || return 1 ;;
+        A)
+            if [ "$value" = inet6 ]; then ifconfig "$nic" inet6 -ifdisabled || return 1; fi
+            ifconfig "$nic" "$value" "$address/$bits" alias || return 1
+            ;;
+        esac
+    done < "$pending/physical.snapshot"
+}
+
+default_routes()
+{
+    while IFS="$tab" read -r family gateway; do
+        if [ "$family" = inet ] && awk -F '\t' \
+            '$1 == "H" && $6 == "yes" {owned=1} END {exit !owned}' "$2"; then
+            continue
+        fi
+        if [ "$family" = inet6 ] && awk -F '\t' \
+            '$1 == "H6" && $6 == "yes" {owned=1} END {exit !owned}' "$2"; then
+            continue
+        fi
+        if [ -z "$gateway" ]; then
+            if route -n get "-$family" default >/dev/null 2>&1; then
+                route -n delete "-$family" default || return 1
+            fi
+        elif route -n get "-$family" default >/dev/null 2>&1; then
+            route -n change "-$family" default "$gateway" || return 1
+        else
+            route -n add "-$family" default "$gateway" || return 1
+        fi
+    done < "$1"
+    return 0
+}
+
+dhcp_default_routes()
+{
+    awk -F '\t' '$1 == "H" && $6 == "yes" {print "inet"}
+        $1 == "H6" && $6 == "yes" {print "inet6"}' "$1" > "$pending/dhcp.defaults" || return 1
+    while IFS= read -r family; do
+        if route -n get "-$family" default >/dev/null 2>&1; then
+            route -n delete "-$family" default || return 1
+        fi
+    done < "$pending/dhcp.defaults"
+}
+
+resolver_apply()
+{
+    if awk -F '\t' '$1 == "H" || $1 == "H6" {found=1} END {exit !found}' "$1" &&
+        [ -s "$state/resolver-base" ]; then
+        protected_file "$state/resolver-base" || return 1
+        resolvconf -a lo0:xcat < "$state/resolver-base" || return 1
+    else
+        resolvconf -f -d lo0:xcat || return 1
+        if [ -f "$state/resolver-base" ] && [ -z "$(resolvconf -i)" ]; then
+            protected_file "$state/resolver-base" || return 1
+            cp -p "$state/resolver-base" /etc/resolv.conf || return 1
+        fi
+    fi
+}
+
+rollback()
+{
+    printf '%s\n' 'confignetwork: restoring the previous network configuration' >&2
+    dhcp_stop "$pending/union" > "$pending/rollback-dhcp.log" 2>&1 || return 1
+    dhcp6_stop "$pending/union" >> "$pending/rollback-dhcp.log" 2>&1 || return 1
+    if [ -f "$pending/before.dhclient-script" ]; then
+        cp -p "$pending/before.dhclient-script" "$state/dhclient-script" || return 1
+    fi
+    if [ -d "$pending/before.dhcp" ]; then
+        rm -rf "$state/dhcp" || return 1
+        cp -pR "$pending/before.dhcp" "$state/dhcp" || return 1
+    fi
+    if [ -f "$pending/ipoib-service-managed" ]; then
+        if [ -f "$pending/before.ipoib-service" ]; then
+            cp -p "$pending/before.ipoib-service" "$ipoib_dhcp_service" || return 1
+        else rm -f "$ipoib_dhcp_service" || return 1; fi
+    fi
+    if [ -d "$pending/before.dhcp6" ]; then
+        rm -rf "$state/dhcp6" || return 1
+        cp -pR "$pending/before.dhcp6" "$state/dhcp6" || return 1
+        if [ -f "$pending/before.dhcp6.conf" ]; then
+            cp -p "$pending/before.dhcp6.conf" "$state/dhcp6.conf" || return 1
+        else rm -f "$state/dhcp6.conf" || return 1; fi
+        if [ -f "$pending/before.dhcp6-service" ]; then
+            cp -p "$pending/before.dhcp6-service" "$dhcp6_service" || return 1
+        else rm -f "$dhcp6_service" || return 1; fi
+    fi
+    routes delete "$pending/added.routes" /dev/null > "$pending/rollback-routes.log" 2>&1 || return 1
+    clear_interfaces "$pending/union" > "$pending/rollback-clear.log" 2>&1 || return 1
+    restore_physical > "$pending/rollback-physical.log" 2>&1 || return 1
+    if [ -s "$pending/before.plan" ]; then
+        apply_plan "$pending/before.plan" > "$pending/rollback-apply.log" 2>&1 || return 1
+    fi
+    if [ -f "$pending/before.resolv" ]; then
+        if [ -f "$pending/before.resolver-base" ]; then
+            cp -p "$pending/before.resolver-base" "$state/resolver-base" || return 1
+        else rm -f "$state/resolver-base" || return 1; fi
+        resolver_apply "$pending/before.plan" || return 1
+    fi
+    dhcp_default_routes "$pending/before.plan" >> "$pending/rollback-routes.log" 2>&1 || return 1
+    if [ -d "$pending/before.dhcp" ]; then
+        dhcp_start "$pending/before.plan" >> "$pending/rollback-dhcp.log" 2>&1 || return 1
+    fi
+    dhcp6_start "$pending/before.plan" >> "$pending/rollback-dhcp.log" 2>&1 || return 1
+    if [ -f "$pending/before.resolv" ]; then
+        cp -p "$pending/before.resolv" /etc/resolv.conf || return 1
+    fi
+    cat "$pending/before.plan" > "$pending/rollback.plan" || return 1
+    awk -F '\t' '$1 == "I" && ($3 == "ethernet" || $3 == "infiniband") && !seen[$2]++' \
+        "$pending/union" >> "$pending/rollback.plan" || return 1
+    cat "$pending/physical.snapshot" >> "$pending/rollback.plan" || return 1
+    # Restoring the previous configuration must also work during a fabric outage.
+    wait_ready "$pending/rollback.plan" addresses no || return 1
+    routes add "$pending/removed.routes" /dev/null >> "$pending/rollback-routes.log" 2>&1 || return 1
+    default_routes "$pending/before.defaults" "$pending/before.plan" > "$pending/rollback-defaults.log" 2>&1 || return 1
+    wait_ready "$pending/rollback.plan" prior no || return 1
+    # A route command can be interrupted before its journal entry is written.
+    awk -v mode=routeconflicts -f "$planner" "$pending/route-ownership" "$pending/routes.kernel" || return 1
+    if [ "$published" = 1 ]; then
+        if cmp -s /etc/rc.conf "$pending/after.rc"; then
+            staged_rc=$(mktemp /etc/rc.conf.xcat.XXXXXXXX) || return 1
+            cp -p "$pending/before.rc" "$staged_rc" || return 1
+            fsync "$staged_rc" || return 1
+            mv "$staged_rc" /etc/rc.conf || return 1
+        else
+            cmp -s /etc/rc.conf "$pending/before.rc" || return 1
+        fi
+        if [ -s "$pending/before.plan" ]; then
+            cp "$pending/before.plan" "$state/current" || return 1
+        else
+            rm -f "$state/current" || return 1
+        fi
+        fsync /etc/rc.conf /etc "$state" || return 1
+    fi
+    return 0
+}
+
+finish()
+{
+    result=$?
+    trap - EXIT HUP INT TERM
+    if [ "$mutating" = 1 ]; then
+        for snapshot in verify.log after.kernel routes.kernel; do
+            if [ -f "$pending/$snapshot" ]; then cp "$pending/$snapshot" "$pending/failure-$snapshot"; fi
+        done
+        if rollback; then
+            printf '%s\n' rolled-back > "$pending/result"
+            if [ -d "$state/last" ] && [ ! -L "$state/last" ]; then rm -rf "$state/last"; fi
+            if [ ! -e "$state/last" ] && [ ! -L "$state/last" ]; then mv "$pending" "$state/last"; fi
+        else
+            printf '%s\n' rollback-failed > "$pending/result"
+            printf 'confignetwork: rollback needs attention; saved configuration: %s/before.rc\n' "$pending" >&2
+        fi
+        result=1
+    elif [ "$published" = 0 ] && [ -d "$pending" ] && [ ! -L "$pending" ]; then
+        rm -rf "$pending"
+    fi
+    [ -z "$staged_rc" ] || rm -f "$staged_rc"
+    exit "$result"
+}
+
+# An interrupted live change keeps the prior boot configuration until commit.
+[ ! -e "$pending" ] && [ ! -L "$pending" ] || fail 'Inspect the retained pending network transaction before retrying'
+mkdir -m 0700 "$pending"
+trap finish EXIT
+trap 'exit 1' HUP INT TERM
+
+bootmac=${INSTALLNIC:-${PRIMARYNIC:-mac}}
+[ "$bootmac" != mac ] || bootmac=${MACADDRESS:-}
+bootmac=$(printf '%s' "$bootmac" | tr 'A-F' 'a-f')
+printf '%s\n' "$bootmac" | awk '!/^([0-9a-f][0-9a-f]:){5}[0-9a-f][0-9a-f]$/ {exit 1}' ||
+    fail 'The installation MAC is missing or invalid'
+bootnic=
+for nic in $(ifconfig -l); do
+    case "$nic" in lo0|lagg*|vlan*|bridge*|*[!a-z0-9]*) continue ;; esac
+    mac=$(ifconfig "$nic" | awk '$1 == "ether" {ether=$2} $1 == "hwaddr" {hardware=$2} END {print (hardware != "" ? hardware : ether)}')
+    if [ "$mac" = "$bootmac" ]; then
+        [ -z "$bootnic" ] || fail 'The installation MAC matches multiple physical interfaces'
+        bootnic=$nic
+    fi
+done
+[ -n "$bootnic" ] || fail 'Cannot find the physical installation interface'
+cp -p /etc/rc.conf "$pending/before.rc"
+awk '
+    $0 == "# BEGIN xCAT FreeBSD network" {if (inside || ++blocks > 1) exit 1; inside=1; next}
+    $0 == "# END xCAT FreeBSD network" {if (!inside) exit 1; inside=0; next}
+    !inside {print}
+    END {if (inside) exit 1}
+' "$pending/before.rc" > "$pending/base.rc" || fail 'Malformed managed rc.conf block'
+unmanaged_ipv4_gateway=$(sysrc -f "$pending/base.rc" -n defaultrouter 2>/dev/null || :)
+case "$unmanaged_ipv4_gateway" in ''|NO) unmanaged_ipv4_gateway= ;; esac
+if [ -e "$state/current" ]; then
+    protected_file "$state/current" || fail 'Unsafe saved network plan'
+    cp "$state/current" "$pending/before.plan"
+else
+    : > "$pending/before.plan"
+fi
+owned_ipv4_gateway=$(awk -F '\t' '$1 == "D" && $2 == "inet" {print $3}' "$pending/before.plan")
+owned_dhcp_default=$(awk -F '\t' '$1 == "H" && $6 == "yes" {print $2}' "$pending/before.plan")
+leased_ipv4_gateway=
+leased_ipv4_default_absent=
+if [ -n "$owned_dhcp_default" ] && protected_file "$state/dhcp/$owned_dhcp_default.lease"; then
+    if awk -v mode=dhcp4-default -v require_saved_lease=yes -v nic="$owned_dhcp_default" -f "$planner" \
+        "$state/dhcp/$owned_dhcp_default.lease" > "$pending/leased.default" 2> "$pending/leased.error" &&
+        netstat -rnW > "$pending/leased.kernel"; then
+        expect_no_ipv4_default=
+        [ -s "$pending/leased.default" ] || expect_no_ipv4_default=yes
+        if awk -v mode=routes -v expect_no_ipv4_default="$expect_no_ipv4_default" -f "$planner" \
+            "$pending/leased.default" "$pending/leased.kernel" >> "$pending/leased.error" 2>&1; then
+            leased_ipv4_gateway=$(awk -F '\t' '$1 == "R" && $2 == "inet" && $3 == "default" {print $4}' "$pending/leased.default")
+            leased_ipv4_default_absent=$expect_no_ipv4_default
+        fi
+    fi
+fi
+awk -v bootnic="$bootnic" -v bootmac="$bootmac" -v configure_boot="$configure_boot" \
+    -v owned_ipv4_gateway="$owned_ipv4_gateway" -v owned_dhcp_default="$owned_dhcp_default" \
+    -v leased_ipv4_gateway="$leased_ipv4_gateway" -v unmanaged_ipv4_gateway="$unmanaged_ipv4_gateway" \
+    -v leased_ipv4_default_absent="$leased_ipv4_default_absent" \
+    -f "$planner" > "$pending/plan"
+if [ "$configure_boot" = 0 ] && awk -F '\t' -v nic="$bootnic" \
+    '$1 == "I" && $2 == nic {found=1} END {exit !found}' "$pending/before.plan"; then
+    fail 'Continue using confignetwork -s after adopting the installation interface'
+fi
+cat "$pending/before.plan" "$pending/plan" > "$pending/union"
+awk -F '\t' 'FNR == NR {if ($1 == "I") present[$2]=1; next}
+    $1 == "I" && ($3 == "ethernet" || $3 == "infiniband") && !present[$2] {exit 1}' "$pending/plan" "$pending/before.plan" ||
+    fail 'Keep previously managed physical interfaces in nictypes; omit their addresses to clear them'
+if ! awk -F '\t' '$1 == "I" {found=1} END {exit !found}' "$pending/union"; then
+    printf '%s\n' 'confignetwork: no additional network interfaces are defined'
+    exit 0
+fi
+for override in /etc/rc.conf.local /etc/rc.conf.d/netif /etc/rc.conf.d/network /etc/rc.conf.d/routing \
+    /usr/local/etc/rc.conf.d/netif /usr/local/etc/rc.conf.d/network /usr/local/etc/rc.conf.d/routing; do
+    [ ! -e "$override" ] || fail "Network overrides require manual integration: $override"
+done
+case $(sysrc -n network_interfaces) in auto|AUTO) ;; *) fail 'FreeBSD network_interfaces must be AUTO' ;; esac
+awk -F '\t' '$1 == "L" && !seen[$2]++ {print $2}' "$pending/plan" > "$pending/modules"
+if [ -s "$pending/modules" ]; then
+    for override in /etc/rc.conf.d/kld /usr/local/etc/rc.conf.d/kld; do
+        [ ! -e "$override" ] && [ ! -L "$override" ] || fail "Module overrides require manual integration: $override"
+    done
+fi
+while IFS= read -r module; do
+    kldload -n "$module" || fail "Cannot load required InfiniBand module: $module"
+done < "$pending/modules"
+ifconfig -a > "$pending/before.kernel"
+awk -v mode=links -f "$planner" "$pending/plan" "$pending/before.kernel"
+awk -v mode=conflicts -v configure_boot="$configure_boot" -f "$planner" "$pending/union" "$pending/before.kernel"
+awk -F '\t' '$1 == "I"' "$pending/union" > "$pending/route-ownership"
+awk -F '\t' 'BEGIN {OFS="\t"} $1 == "R" {$1="O"; print}' "$pending/before.plan" >> "$pending/route-ownership"
+awk -F '\t' '$1 == "H" || $1 == "H6"' "$pending/before.plan" >> "$pending/route-ownership"
+netstat -rnW > "$pending/routes.kernel"
+awk -v mode=routeconflicts -f "$planner" "$pending/route-ownership" "$pending/routes.kernel"
+if [ -s "$pending/before.plan" ]; then
+    awk -v mode=verify-prior -f "$planner" "$pending/before.plan" "$pending/before.kernel" ||
+        fail 'The previously managed network has drifted; reconcile it before updating'
+    verify_routes "$pending/before.plan" prior || fail 'Previously managed routes have drifted; reconcile them before updating'
+fi
+awk -F '\t' 'FILENAME==ARGV[1] {if ($1=="H6" && $6=="yes") prior[$2]=1; next}
+    $1=="H6" && $6=="yes" && $2 in prior {print}' \
+    "$pending/before.plan" "$pending/plan" > "$pending/retained-dhcp6-defaults"
+awk -v mode=routes -f "$planner" "$pending/retained-dhcp6-defaults" "$pending/routes.kernel" ||
+    fail 'An existing IPv6 router-advertisement default is missing; restore it or set IPV6_DEFROUTE=no'
+awk -v mode=snapshot -f "$planner" "$pending/union" "$pending/before.kernel" > "$pending/physical.snapshot"
+: > "$pending/physical.variables"
+while IFS="$tab" read -r kind nic type rest; do
+    [ "$kind" = I ] || continue
+    if [ "$type" = ethernet ] || [ "$type" = infiniband ]; then
+        ifconfig "$nic" >/dev/null || fail "Physical interface is missing: $nic"
+        for suffix in '' _ipv6; do
+            if ! setting=$(sysrc -n "ifconfig_$nic$suffix" 2>/dev/null); then
+                setting=$(sysrc -n ifconfig_DEFAULT 2>/dev/null || :)
+            fi
+            case "$suffix:$setting" in
+            :*DHCP*)
+                awk -F '\t' -v nic="$nic" '$1 == "H" && $2 == nic {found=1} END {exit !found}' \
+                    "$pending/before.plan" || fail "Stop unmanaged DHCP configuration before managing $nic"
+                ;;
+            esac
+            rc_setting "ifconfig_$nic$suffix" "$setting" >> "$pending/physical.variables"
+        done
+    elif ifconfig "$nic" >/dev/null 2>&1; then
+        awk -F '\t' -v nic="$nic" '$1 == "I" && $2 == nic && $3 != "ethernet" && $3 != "infiniband" {found=1} END {exit !found}' \
+            "$pending/before.plan" || fail "An unmanaged clone already exists: $nic"
+    fi
+done < "$pending/plan"
+
+rc_variables "$pending/base.rc" > "$pending/base.variables" || fail 'Cannot read base rc.conf settings'
+rc_variables "$pending/before.rc" > "$pending/before.variables" || fail 'Cannot read current rc.conf settings'
+awk -v mode=rcoptions -f "$planner" "$pending/plan" "$pending/physical.variables" "$pending/before.variables"
+awk -v mode=rclists -f "$planner" "$pending/before.plan" "$pending/before.variables" > "$pending/retained.lists"
+cat "$pending/base.variables" "$pending/retained.lists" > "$pending/unmanaged.variables"
+awk -v mode=rcconflicts -f "$planner" "$pending/plan" "$pending/unmanaged.variables"
+cp -p "$pending/before.rc" "$pending/after.rc"
+cat "$pending/base.rc" > "$pending/after.rc"
+{
+    printf '%s\n' '# BEGIN xCAT FreeBSD network'
+    awk -F '\t' '
+        FNR == NR {if ($1 == "I") nics[$2]=1; next}
+        {split($0, entry, ":"); key=entry[1]}
+        key ~ /^[a-zA-Z][a-zA-Z0-9_]*$/ {
+            for (nic in nics)
+                if (key ~ ("^ifconfig_" nic "($|_(ipv6|aliases|alias[0-9]+|name)$)") ||
+                    key ~ ("^(ipv4_addrs|ipv6_addrs|create_args|vlans|ipv6_prefix)_" nic "$")) {
+                    print "unset " key
+                    break
+                }
+        }
+    ' "$pending/plan" "$pending/base.variables"
+    for entry in 'C:cloned_interfaces' 'inet:static_routes' 'inet6:ipv6_static_routes'; do
+        selector=${entry%%:*}
+        variable=${entry#*:}
+        retained=$(awk -v key="$variable:" '$1 == key {sub(/^[^:]*: /, ""); print}' "$pending/retained.lists")
+        added=$(awk -F '\t' -v selector="$selector" \
+            'selector == "C" && $1 == "C" {print $2} $1 == "S" && $2 == selector {print $3}' "$pending/plan")
+        previous=$(awk -F '\t' -v selector="$selector" \
+            'selector == "C" && $1 == "C" {print $2} $1 == "S" && $2 == selector {print $3}' "$pending/before.plan")
+        current=$(sysrc -f "$pending/before.rc" -n "$variable" 2>/dev/null || :)
+        printf '%s\n' "$current" | awk '/[^A-Za-z0-9_ .:\t-]/ {exit 1}' || fail "Invalid names in $variable"
+        present=$(printf '%s\n' "$current" | awk -v wanted="$added" '
+            BEGIN {split(wanted, names, " "); for (i in names) owned[names[i]]=1}
+            {for (i=1;i<=NF;i++) if ($i in owned) {printf "%s%s", sep, $i; sep=" "}}
+        ')
+        if [ "$previous" = "$added" ] && [ "$present" = "$added" ]; then
+            printf '%s="%s"\n' "$variable" "$current"
+        else
+            printf '%s="%s%s%s"\n' "$variable" "$retained" "${retained:+${added:+ }}" "$added"
+        fi
+    done
+    if [ -s "$pending/modules" ]; then
+        modules=$(sysrc -f "$pending/before.rc" -n kld_list 2>/dev/null || :)
+        printf '%s\n' "$modules" | awk '/[^A-Za-z0-9_ .\/-]/ {exit 1}' || fail 'Invalid module names in kld_list'
+        modules=$(printf '%s\n' "$modules" | awk 'NR == FNR {for (i=1;i<=NF;i++) if (!seen[$i]++) list=list (list=="" ? "" : " ") $i; next}
+            !seen[$1]++ {list=list (list=="" ? "" : " ") $1} END {print list}' - "$pending/modules")
+        printf 'kld_list="%s"\n' "$modules"
+    fi
+    awk -F '\t' '$1 == "K" {printf "%s=\"%s\"\n", $2, $3}' "$pending/plan"
+    printf '%s\n' '# END xCAT FreeBSD network'
+} >> "$pending/after.rc"
+/bin/sh -n "$pending/after.rc"
+rc_variables "$pending/after.rc" > "$pending/after.variables" || fail 'Cannot read proposed rc.conf settings'
+if [ -s "$pending/before.plan" ] && cmp -s "$pending/plan" "$pending/before.plan" &&
+    cmp -s "$pending/before.variables" "$pending/after.variables" &&
+    awk -v mode=verify -v check_carrier=no -f "$planner" "$pending/plan" "$pending/before.kernel" >/dev/null 2>&1 &&
+    dhcp_ready "$pending/plan" &&
+    verify_routes "$pending/plan" >/dev/null 2>&1 &&
+    dhcp_matches "$pending/plan" &&
+    dhcp6_matches "$pending/plan" &&
+    { ! awk -F '\t' '$1 == "H" {found=1} END {exit !found}' "$pending/plan" ||
+        cmp -s "$dhcp_helper" "$state/dhclient-script"; }; then
+    printf '%s\n' 'confignetwork: configuration is unchanged'
+    rm -rf "$pending"
+    exit 0
+fi
+
+awk -v mode=carrier -f "$planner" "$pending/plan" "$pending/before.kernel"
+controller=${MASTER_IP:-}
+port=${XCATIPORT:-3002}
+printf '%s\n' "$controller" | awk -F . 'NF != 4 {exit 1} {for (i=1;i<=4;i++) if ($i !~ /^[0-9]+$/ || $i>255) exit 1}' ||
+    fail 'An IPv4 controller address is required'
+case "$port" in ''|*[!0-9]*) fail 'Invalid controller port' ;; esac
+[ "$port" -ge 1 ] && [ "$port" -le 65535 ] || fail 'Invalid controller port'
+node_address=${IPADDR:-}
+printf '%s\n' "$node_address" | awk -F . 'NF != 4 {exit 1} {for (i=1;i<=4;i++) if ($i !~ /^[0-9]+$/ || $i>255) exit 1}' ||
+    fail 'An IPv4 node address is required'
+nc -z -w 3 -s "$node_address" "$controller" "$port" || fail 'Cannot reach the controller before changing networking'
+for family in inet inet6; do
+    current=$(route -n get "-$family" default 2>/dev/null | awk '$1 == "gateway:" {print $2}')
+    printf '%s\t%s\n' "$family" "$current" >> "$pending/before.defaults"
+    variable=defaultrouter
+    [ "$family" != inet6 ] || variable=ipv6_defaultrouter
+    gateway=$(sysrc -f "$pending/after.rc" -n "$variable" 2>/dev/null || :)
+    if awk -F '\t' -v family="$family" \
+        '(family == "inet" && $1 == "H" || family == "inet6" && $1 == "H6") && $6 == "yes" {found=1}
+        END {exit !found}' "$pending/plan"; then
+        printf '%s\t\n' "$family" >> "$pending/after.defaults"
+        continue
+    fi
+    case "$gateway" in
+    ''|NO)
+        gateway=
+        if ! awk -F '\t' -v family="$family" '$1 == "D" && $2 == family {found=1}
+            family == "inet" && $1 == "H" && $6 == "yes" {found=1}
+            family == "inet6" && $1 == "H6" && $6 == "yes" {found=1} END {exit !found}' "$pending/before.plan"; then
+            gateway=$current
+        fi
+        ;;
+    esac
+    if [ "$family" = inet6 ]; then
+        case "$gateway" in
+        *%*)
+            scope=${gateway##*%}
+            if awk -F '\t' -v nic="$scope" '$1 == "V" && $2 == nic && $3 == "ifdisabled" {found=1} END {exit !found}' "$pending/plan"; then
+                fail 'Set an IPv6 gateway for the new topology before removing its former interface'
+            fi
+            ;;
+        esac
+    fi
+    printf '%s\t%s\n' "$family" "$gateway" >> "$pending/after.defaults"
+done
+: > "$pending/added.routes"
+: > "$pending/removed.routes"
+if awk -F '\t' '$1 == "H" || $1 == "H6" {found=1} END {exit !found}' "$pending/union"; then
+    protected_file /etc/resolv.conf || fail 'A regular root-owned resolver configuration is required for DHCP'
+    cp -p /etc/resolv.conf "$pending/before.resolv"
+    if [ -e "$state/resolver-base" ] || [ -L "$state/resolver-base" ]; then
+        protected_file "$state/resolver-base" || fail 'Unsafe saved resolver configuration'
+        cp -p "$state/resolver-base" "$pending/before.resolver-base"
+        cp -p "$state/resolver-base" "$pending/after.resolver-base"
+    fi
+    if ! awk -F '\t' '$1 == "H" || $1 == "H6" {found=1} END {exit !found}' "$pending/before.plan"; then
+        # Existing resolver sources already own their DNS; do not freeze their leases.
+        if [ -z "$(resolvconf -i)" ]; then
+            cp -p /etc/resolv.conf "$pending/after.resolver-base"
+        else : > "$pending/after.resolver-base"; fi
+    fi
+fi
+if awk -F '\t' '$1 == "H" {found=1} END {exit !found}' "$pending/union"; then
+    [ "$(sysrc -n dhclient_program)" = /sbin/dhclient ] && [ -z "$(sysrc -n dhclient_flags)" ] ||
+        fail 'Custom DHCP client programs or global flags require manual integration'
+    protected_script "$dhcp_helper" || fail 'The FreeBSD DHCP helper is missing or unsafe'
+    for hook in /etc/dhclient-enter-hooks /etc/dhclient-exit-hooks; do
+        [ ! -e "$hook" ] && [ ! -L "$hook" ] || fail "DHCP hooks require manual integration: $hook"
+    done
+    { [ ! -e "$state/dhclient-script" ] && [ ! -L "$state/dhclient-script" ]; } ||
+        protected_script "$state/dhclient-script" || fail 'Unsafe DHCP helper'
+    if [ -f "$state/dhclient-script" ]; then cp -p "$state/dhclient-script" "$pending/before.dhclient-script"; fi
+    install -m 0700 "$dhcp_helper" "$pending/dhclient-script"
+    if [ -e "$state/dhcp" ]; then
+        [ -d "$state/dhcp" ] && [ ! -L "$state/dhcp" ] &&
+            [ "$(stat -f '%u:%g:%Lp' "$state/dhcp")" = 0:0:700 ] || fail 'Unsafe DHCP state'
+        cp -pR "$state/dhcp" "$pending/before.dhcp"
+    else
+        mkdir -m 0700 "$pending/before.dhcp"
+    fi
+    mkdir -m 0700 "$pending/after.dhcp"
+    while IFS="$tab" read -r kind nic address bits peerdns defroute; do
+        [ "$kind" = H ] || continue
+        printf '%s\t%s\t%s\t%s\n' "$address" "$bits" "$peerdns" "$defroute" > "$pending/after.dhcp/$nic.policy"
+    done < "$pending/plan"
+    dhcp_interfaces "$pending/plan" native > "$pending/dhcp.native"
+    while IFS= read -r nic; do
+        dhcp_config > "$pending/after.dhcp/$nic.conf"
+    done < "$pending/dhcp.native"
+fi
+if ipoib_dhcp_plan "$pending/union"; then
+    ipoib_dhcp_available || fail 'IPoIB DHCPv4 requires the xcat-dhcpcd package'
+    protected_script "$ipoib_dhcp_source" || fail 'The IPoIB DHCPv4 service is missing or unsafe'
+    if ipoib_dhcp_plan "$pending/before.plan"; then
+        protected_file "$state/dhcp/ipoib.conf" ||
+            fail 'The saved IPoIB DHCPv4 client configuration is missing or unsafe'
+    fi
+    for override in /etc/rc.conf.d/xcat_ipoib_dhcp4 /usr/local/etc/rc.conf.d/xcat_ipoib_dhcp4; do
+        [ ! -e "$override" ] && [ ! -L "$override" ] || fail 'IPoIB DHCPv4 service overrides require manual integration'
+    done
+    if pgrep -x dhcpcd-ipoib >/dev/null; then
+        ipoib_dhcp_plan "$pending/before.plan" && protected_script "$ipoib_dhcp_service" &&
+            "$ipoib_dhcp_service" forcestatus >/dev/null 2>&1 || fail 'Stop unmanaged IPoIB DHCPv4 clients first'
+    fi
+    if [ -e "$ipoib_dhcp_service" ] || [ -L "$ipoib_dhcp_service" ]; then
+        protected_script "$ipoib_dhcp_service" && ipoib_dhcp_plan "$pending/before.plan" ||
+            fail 'Unmanaged IPoIB DHCPv4 service exists'
+        cp -p "$ipoib_dhcp_service" "$pending/before.ipoib-service"
+    fi
+    : > "$pending/ipoib-service-managed"
+    if ipoib_dhcp_plan "$pending/plan"; then
+        ipoib_dhcp_config "$pending/plan" > "$pending/after.dhcp/ipoib.conf"
+        install -m 0600 "$planner" "$pending/after.dhcp/planner"
+    fi
+fi
+if dhcp6_plan "$pending/union"; then
+    [ -x /usr/local/sbin/dhcpcd ] || fail 'DHCPv6 requires the dhcpcd package'
+    protected_script "$dhcp6_source" || fail 'The DHCPv6 service is missing or unsafe'
+    for override in /etc/rc.conf.d/xcat_dhcp6 /usr/local/etc/rc.conf.d/xcat_dhcp6; do
+        [ ! -e "$override" ] && [ ! -L "$override" ] || fail 'DHCPv6 service overrides require manual integration'
+    done
+    case $(sysrc -n dhcpcd_enable 2>/dev/null || :) in ''|NO|no) ;; *) fail 'Stop unmanaged dhcpcd configuration first' ;; esac
+    if pgrep -x dhcpcd >/dev/null; then
+        dhcp6_plan "$pending/before.plan" && protected_script "$dhcp6_service" &&
+            "$dhcp6_service" forcestatus >/dev/null 2>&1 || fail 'Stop unmanaged dhcpcd clients first'
+    fi
+    if [ -e "$dhcp6_service" ] || [ -L "$dhcp6_service" ]; then
+        protected_script "$dhcp6_service" && dhcp6_plan "$pending/before.plan" || fail 'Unmanaged DHCPv6 service exists'
+        cp -p "$dhcp6_service" "$pending/before.dhcp6-service"
+    fi
+    for file in "$state/dhcp6.conf"; do
+        if [ -e "$file" ] || [ -L "$file" ]; then
+            protected_file "$file" || fail 'Unsafe DHCPv6 configuration'
+            cp -p "$file" "$pending/before.dhcp6.conf"
+        fi
+    done
+    if [ -e "$state/dhcp6" ]; then
+        [ -d "$state/dhcp6" ] && [ ! -L "$state/dhcp6" ] &&
+            [ "$(stat -f '%u:%g:%Lp' "$state/dhcp6")" = 0:0:700 ] || fail 'Unsafe DHCPv6 state'
+        cp -pR "$state/dhcp6" "$pending/before.dhcp6"
+    else mkdir -m 0700 "$pending/before.dhcp6"; fi
+    mkdir -m 0700 "$pending/after.dhcp6"
+    cp "$planner" "$pending/after.dhcp6/planner"
+    chmod 0600 "$pending/after.dhcp6/planner"
+    dhcp6_config "$pending/plan" > "$pending/after.dhcp6.conf"
+    while IFS="$tab" read -r kind nic address bits peerdns defroute; do
+        [ "$kind" != H6 ] || printf '%s\t%s\n' "$address" "$peerdns" > "$pending/after.dhcp6/$nic.policy"
+    done < "$pending/plan"
+fi
+cmp -s /etc/rc.conf "$pending/before.rc" || fail 'rc.conf changed during preparation'
+mutating=1
+dhcp_stop "$pending/before.plan" > "$pending/stop-dhcp.log" 2>&1 || fail 'Cannot stop previous DHCP clients'
+dhcp6_stop "$pending/before.plan" >> "$pending/stop-dhcp.log" 2>&1 || fail 'Cannot stop previous DHCPv6 clients'
+if [ -f "$pending/ipoib-service-managed" ]; then
+    install -m 0700 "$ipoib_dhcp_source" "$ipoib_dhcp_service"
+fi
+if [ -d "$pending/after.dhcp6" ]; then
+    install -m 0700 "$dhcp6_source" "$dhcp6_service"
+    rm -rf "$state/dhcp6"
+    cp -pR "$pending/after.dhcp6" "$state/dhcp6"
+    cp -p "$pending/after.dhcp6.conf" "$state/dhcp6.conf"
+fi
+if [ -f "$pending/dhclient-script" ]; then mv "$pending/dhclient-script" "$state/dhclient-script"; fi
+if [ -f "$pending/after.resolver-base" ]; then
+    cp -p "$pending/after.resolver-base" "$state/resolver-base"
+    resolver_apply "$pending/plan" || fail 'Cannot preserve the installed resolver settings'
+fi
+if [ -d "$pending/after.dhcp" ]; then
+    rm -rf "$state/dhcp"
+    cp -pR "$pending/after.dhcp" "$state/dhcp"
+fi
+routes delete "$pending/before.plan" "$pending/removed.routes" > "$pending/remove-routes.log" 2>&1 ||
+    fail 'Cannot remove previously managed routes'
+clear_interfaces "$pending/union" > "$pending/clear.log" 2>&1 || fail 'Cannot clear the selected interfaces'
+apply_plan "$pending/plan" > "$pending/apply.log" 2>&1 || fail 'Cannot apply the selected interface configuration'
+dhcp_default_routes "$pending/plan" > "$pending/dhcp-defaults.log" 2>&1 || fail 'Cannot transfer default routes to DHCP'
+if [ -d "$pending/after.dhcp" ]; then
+    dhcp_start "$pending/plan" > "$pending/start-dhcp.log" 2>&1 || fail 'Cannot start DHCP clients'
+fi
+dhcp6_start "$pending/plan" >> "$pending/start-dhcp.log" 2>&1 || fail 'Cannot start DHCPv6 clients'
+wait_ready "$pending/plan" addresses || fail 'The configured addresses did not pass readback'
+routes add "$pending/plan" "$pending/added.routes" > "$pending/routes.log" 2>&1 || fail 'Cannot add the selected routes'
+default_routes "$pending/after.defaults" "$pending/plan" > "$pending/defaults.log" 2>&1 || fail 'Cannot configure default routes'
+wait_ready "$pending/plan" || fail 'The configured network did not pass readback and controller reachability'
+cmp -s /etc/rc.conf "$pending/before.rc" || fail 'rc.conf changed while applying networking'
+staged_rc=$(mktemp /etc/rc.conf.xcat.XXXXXXXX)
+cp -p "$pending/after.rc" "$staged_rc"
+fsync "$staged_rc"
+published=1
+mv "$staged_rc" /etc/rc.conf
+fsync /etc/rc.conf /etc
+cp "$pending/plan" "$state/current.new"
+fsync "$state/current.new"
+mv "$state/current.new" "$state/current"
+fsync "$state"
+if [ -d "$pending/after.dhcp6" ] && ! dhcp6_plan "$pending/plan"; then
+    rm -f "$dhcp6_service" "$state/dhcp6.conf"
+fi
+if [ -f "$pending/ipoib-service-managed" ] && ! ipoib_dhcp_plan "$pending/plan"; then
+    rm -f "$ipoib_dhcp_service"
+fi
+printf '%s\n' committed > "$pending/result"
+fsync "$pending/result" "$pending"
+mutating=0
+if [ -e "$state/last" ]; then
+    [ -d "$state/last" ] && [ ! -L "$state/last" ] || fail 'Unsafe previous transaction directory'
+    rm -rf "$state/last"
+fi
+mv "$pending" "$state/last"
+fsync "$state"
+printf '%s\n' 'confignetwork: FreeBSD network configuration applied and saved'

@@ -1,4 +1,3 @@
-
 ############
 updatenode.1
 ############
@@ -28,6 +27,8 @@ SYNOPSIS
 \ **updatenode**\  \ **noderange**\  [\ **-V | -**\ **-verbose**\ ] [\ **-t**\  \ *timeout*\ ] [\ *script1,script2...*\ ]
 
 \ **updatenode**\  \ **noderange**\  [\ **-V | -**\ **-verbose**\ ] [\ **-f | -**\ **-snsync**\ ]
+
+\ **updatenode**\  \ *node*\  \ **-**\ **-freebsd-run**\  \ *run*\  [\ **-**\ **-freebsd-release**\ ] [\ **-t**\  \ *timeout*\ ]
 
 \ **updatenode**\  [\ **-h | -**\ **-help**\ ] [\ **-v | -**\ **-version**\ ]
 
@@ -85,15 +86,15 @@ To distribute and synchronize files
 The basic process for distributing and synchronizing nodes is:
 
 
-\* Create a synclist file.
+* Create a synclist file.
 
 
 
-\* Indicate the location of the synclist file.
+* Indicate the location of the synclist file.
 
 
 
-\* Run the \ **updatenode**\  command to update the nodes.
+* Run the \ **updatenode**\  command to update the nodes.
 
 
 
@@ -162,6 +163,19 @@ To preserve the existing repositories, you can run the following command instead
 
    updatenode noderange -P "ospkgs --keeprepo,otherpkgs"
 
+
+\ **For installed FreeBSD systems:**\
+
+\ **-S**\  runs \ **ospkgs,otherpkgs**\ . The stock \ **ospkgs**\  selects the image's base
+packages; \ **otherpkgs**\  selects its application packages and their dependencies.
+Selecting both updates their union. An empty application list selects no
+packages. Repository options on these stock scripts are rejected before the
+package operation. Configure repositories and lists on the FreeBSD image.
+
+Default and section selections use the scripts in the rendered postscript
+template. Administrator replacements retain their custom behavior. When
+\ **-S**\  and \ **-P**\  are combined, the software pass runs first, followed by the
+separate postscript selection. A failed software pass stops that selection.
 
 \ **For AIX systems:**\ 
 
@@ -245,22 +259,22 @@ Update security
 The basic functions of update security for nodes:
 
 
-\* Setup the ssh keys for the target nodes. It enables the management
-node and service nodes to ssh to the target nodes without password.
+* Setup the ssh keys for the target nodes. It enables the management
+  node and service nodes to ssh to the target nodes without password.
 
 
 
-\* Redeliver the host keys to the target nodes.
+* Redeliver the host keys to the target nodes.
 
 
 
-\* Redeliver the ca and certificates files to the service node.
-These files are used to authenticate the ssl connection between
-xcatd's of management node and service node.
+* Redeliver the ca and certificates files to the service node.
+  These files are used to authenticate the ssl connection between
+  xcatd's of management node and service node.
 
 
 
-\* Remove the entries of target nodes from known_hosts file.
+* Remove the entries of target nodes from known_hosts file.
 
 
 
@@ -387,6 +401,17 @@ OPTIONS
  read-only option for files/directories listed in
  \ **litefile**\  table with source location specified in the \ **litetree**\  table.
  
+ File synchronization reports failure if any directory creation or copy fails,
+ even when a later copy succeeds. This applies to Linux, AIX and FreeBSD nodes.
+
+ For installed FreeBSD nodes, this option uses the selected image's
+ \ **synclists**\  and requires \ **/usr/local/bin/rsync**\  on the node.
+ The controller checks all selected list files before copying.
+ List files must be root-owned regular files without group or other write access.
+ Symbolic links in list paths are rejected.
+ With \ **-F -P**\ , file synchronization completes before the selected scripts run.
+ A failed copy prevents script execution and sets \ **updatestatus=failed**\ .
+
 
 
 \ **-f|-**\ **-snsync**\ 
@@ -470,6 +495,24 @@ OPTIONS
  
 
 
+\ **-**\ **-freebsd-run**\  \ *run*\
+
+ Resume delivery or observation of a retained FreeBSD postscript run. Use the run
+ identity printed by the initial command. Completed or uncertain scripts are not
+ executed again. The command uses the retained scripts even if their source files
+ have changed. Select one FreeBSD node and omit \ **-F**\ , \ **-S**\  and \ **-P**\  when using this option.
+
+
+
+\ **-**\ **-freebsd-release**\
+
+ Release an interrupted FreeBSD postscript run for reporting after the node has
+ rebooted. Requires \ **-**\ **-freebsd-run**\ . Completed entries retain their exit status;
+ unfinished entries remain uncertain. This operation does not restart scripts.
+ An incomplete or failed run returns a nonzero command status.
+
+
+
 \ **-n|-**\ **-noverify**\ 
  
  Specifies that node network availability verification will be skipped.
@@ -486,6 +529,10 @@ OPTIONS
  
  Specifies a timeout in seconds the command will wait for the remote targets to complete. If timeout is not specified
  it will wait indefinitely. updatenode -k is the exception that has a timeout of 10 seconds, unless overridden by this flag.
+
+ FreeBSD script updates have a default observation timeout of 3600 seconds and
+ accept values from 1 to 7200. Expiration does not stop the scripts. Use
+ \ **-**\ **-freebsd-run**\  to resume observation of the retained run.
  
 
 
@@ -796,4 +843,3 @@ FILES
 
 
 /opt/xcat/bin/updatenode
-

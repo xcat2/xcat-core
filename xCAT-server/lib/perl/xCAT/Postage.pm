@@ -135,6 +135,11 @@ sub create_mypostscript_or_not {
                    extension
        nofiles -  do not create mypostscript.<nodename> files, return the file
                   contents in an array.
+       mode -     memory returns one node's rendered text without rewriting the
+                  template or creating public script files or directories.
+                  It requires a callback. Errors return undef; exceptions from
+                  template hooks propagate. Existing table and hook semantics
+                  are unchanged.
     Returns:
     Globals:
         %::GLOBAL_TAB_HASH: in subvars_for_mypostscript(),
@@ -232,6 +237,48 @@ sub makescript {
     my $callback     = shift;
     my $notmpfiles   = shift;
     my $nofiles      = shift;
+    my $mode         = shift;
+    if (defined($mode) && ref($callback) ne 'CODE') {
+        xCAT::MsgUtils->message('E', 'Memory rendering requires a callback', undef, 1);
+        return;
+    }
+    if (defined($mode) && (ref($mode) || $mode ne 'memory')) {
+        my $response = { error => ['Invalid postscript rendering mode'] };
+        xCAT::MsgUtils->message('E', $response, $callback, 1);
+        return;
+    }
+    my $memory = defined($mode);
+    my $render_failed = 0;
+    if ($memory) {
+        unless (ref($nodes) eq 'ARRAY' && @$nodes == 1 &&
+            defined($nodes->[0]) && !ref($nodes->[0]) && $nodes->[0] =~ /\S/) {
+            my $response = { error => ['Memory rendering requires exactly one node'] };
+            xCAT::MsgUtils->message('E', $response, $callback, 1);
+            return;
+        }
+        my $report = $callback;
+        $callback = sub {
+            my ($response) = @_;
+            for my $field (qw(error errorcode)) {
+                next unless exists($response->{$field});
+                my @values = ref($response->{$field}) eq 'ARRAY'
+                    ? @{$response->{$field}} : ($response->{$field});
+                $render_failed = 1 if grep {
+                    defined($_) && (ref($_) || ($_ ne '' && $_ ne '0'))
+                } @values;
+            }
+            $report->($response);
+        };
+        my $nodelist = xCAT::Table->new('nodelist', -create => 0);
+        my $entry = $nodelist ? $nodelist->getNodeAttribs($nodes->[0], ['node']) : undef;
+        $nodelist->close() if $nodelist;
+        unless ($entry && defined($entry->{node}) && $entry->{node} eq $nodes->[0]) {
+            my $response = { error => ['Unknown postscript node'] };
+            xCAT::MsgUtils->message('E', $response, $callback, 1);
+            return;
+        }
+        $notmpfiles = $nofiles = 1;
+    }
     $tmplerr = undef;    #clear tmplerr since we are starting fresh
 
     #
@@ -258,7 +305,7 @@ sub makescript {
         $tmpl = "$::XCATROOT/share/xcat/mypostscript/mypostscript.tmpl"; #the default xcat mypostscript template
     } else {    # using customized template
                 # need to update with new added exports for this release
-        addexports($tmpl, $callback);
+        addexports($tmpl, $callback) unless $memory;
     }
 
     unless (-r "$tmpl") {
@@ -285,7 +332,7 @@ sub makescript {
     my $cfgflag   = 0;
     my $cloudflag = 0;
     my $inc;
-    my $t_inc;
+    my $t_inc = $memory ? '' : undef;
     my %table;
     my @tabs;
     my %dump_results;
@@ -336,6 +383,7 @@ sub makescript {
 
     # Collect all node attributes and save a list of nodes which have some missing node definition attributes
     @::exclude_nodes = collect_all_attribs_for_tables_in_template(\%table, $nodes, $callback);
+    return if $memory && ($render_failed || @::exclude_nodes);
 
     #print Dumper(\%::GLOBAL_TAB_HASH);
 
@@ -385,7 +433,7 @@ sub makescript {
     #print Dumper(\%::GLOBAL_SN_HASH);
     #
     my $scriptdir = "$tftpdir/mypostscripts/";
-    if (!(-d $scriptdir)) {
+    if (!$memory && !(-d $scriptdir)) {
         mkdir($scriptdir, 0777);
     }
 
@@ -550,7 +598,9 @@ sub makescript {
         #print "nodesetstate:$nodesetstate\n";
         ## OSPKGDIR export
         #  for #OSIMAGE_VARS_EXPORT#
-        if (!$nodesetstate || (defined($nodes_setstate_hash) && $nodes_setstate_hash->{$node})) { $nodesetstate = $nodes_setstate_hash->{$node}; }
+        if (!$nodesetstate || (!$memory && defined($nodes_setstate_hash) && $nodes_setstate_hash->{$node})) {
+            $nodesetstate = $nodes_setstate_hash->{$node};
+        }
 
         #print "nodesetstate:$nodesetstate\n";
 
@@ -744,6 +794,8 @@ sub makescript {
     undef(%::GLOBAL_TAB_HASH);
     undef(%::GLOBAL_SN_HASH);
     undef(%::GLOBAL_TABDUMP_HASH);
+
+    return $render_failed || @::exclude_nodes ? undef : $inc if $memory;
 
     # if the request is for an array not a created file
     if ((defined($nofiles)) && ($nofiles == 1)) {    # return array

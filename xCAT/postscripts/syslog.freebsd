@@ -1,0 +1,89 @@
+#!/bin/sh
+set -eu
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+LC_ALL=C
+export PATH LC_ALL
+umask 022
+
+fail()
+{
+    printf 'syslog: %s\n' "$1" >&2
+    exit 1
+}
+
+[ "$(uname -s)" = FreeBSD ] && [ "$(id -u)" = 0 ] || fail 'FreeBSD root is required'
+[ "$#" -eq 0 ] || fail 'Arguments are unsupported on FreeBSD'
+case ${SYSLOG:-} in
+    ignore) exit 0 ;;
+    '') ;;
+    *) fail 'Only an empty syslog policy or ignore is supported' ;;
+esac
+master=${MASTER:-}
+printf '%s\n' "$master" | awk '
+    NR != 1 || length($0) < 1 || length($0) > 253 { bad=1 }
+    {
+        count=split($0, labels, ".")
+        for (i=1; i<=count; i++) {
+            if (length(labels[i]) > 63 || labels[i] !~ /^[[:alnum:]]([[:alnum:]-]*[[:alnum:]])?$/) bad=1
+        }
+        if ($0 ~ /^[0-9.]+$/) {
+            if (count != 4) bad=1
+            for (i=1; i<=count; i++) if (labels[i]+0 > 255) bad=1
+        }
+    }
+    END { exit bad || NR != 1 }
+' || fail 'Invalid logging master'
+case "$master" in
+    *[!0-9.]*) getent hosts "$master" >/dev/null || fail 'Cannot resolve the logging master' ;;
+esac
+
+flags=$(sysrc -n syslogd_flags) || fail 'Cannot read syslogd flags'
+set -f
+set -- $flags
+secure=0
+OPTIND=1
+while getopts '468ACcdFHkNnosTuva:b:f:l:M:m:O:P:p:S:' option; do
+    case $option in
+        s) secure=$((secure+1)) ;;
+        N) [ "$secure" -ne 0 ] || secure=1 ;;
+        f) [ "$OPTARG" = /etc/syslog.conf ] || fail 'The syslogd configuration must be /etc/syslog.conf' ;;
+        '?') fail 'Cannot interpret syslogd flags' ;;
+    esac
+done
+[ "$secure" -lt 2 ] || fail 'syslogd flags disable remote logging'
+shift $((OPTIND-1))
+[ "$#" -eq 0 ] || fail 'Unexpected syslogd flag operands'
+
+directory=/etc/syslog.d
+config=$directory/90-xcat.conf
+[ -f /etc/syslog.conf ] && [ ! -L /etc/syslog.conf ] || fail 'Missing regular syslog.conf'
+awk '$1 == "include" && $2 == "/etc/syslog.d" && (NF == 2 || $3 ~ /^#/) { found++ }
+     END { exit found != 1 }' /etc/syslog.conf || fail 'syslog.conf must include /etc/syslog.d once'
+[ -d "$directory" ] && [ ! -L "$directory" ] || fail 'Missing regular syslog.d directory'
+owner=$(stat -f '%u:%Lp' "$directory") || fail 'Cannot inspect syslog.d'
+case $owner in 0:755|0:750|0:700) ;; *) fail 'Unsafe syslog.d ownership or permissions' ;; esac
+marker='# Written by the xCAT FreeBSD syslog postscript.'
+if [ -e "$config" ] || [ -L "$config" ]; then
+    [ -f "$config" ] && [ ! -L "$config" ] || fail 'The forwarding file is not regular'
+    owner=$(stat -f '%u:%Lp:%l' "$config") || fail 'Cannot inspect the forwarding file'
+    case $owner in 0:644:1|0:640:1|0:600:1) ;; *) fail 'Unsafe forwarding file ownership or permissions' ;; esac
+    IFS= read -r first < "$config" || fail 'Cannot read the forwarding file'
+    [ "$first" = "$marker" ] || fail 'The forwarding file belongs to the administrator'
+fi
+
+temporary=$(mktemp "$directory/.xcat.XXXXXX") || fail 'Cannot create the forwarding file'
+trap 'rm -f "$temporary"' EXIT
+trap 'exit 1' HUP INT TERM
+printf '%s\n!*\n+*\n:*\n*.*\t@%s\n' "$marker" "$master" > "$temporary" || fail 'Cannot write forwarding policy'
+chmod 0644 "$temporary" && chown 0:0 "$temporary" || fail 'Cannot protect forwarding policy'
+fsync "$temporary" || fail 'Cannot sync forwarding policy'
+if ! cmp -s "$temporary" "$config"; then
+    mv -f "$temporary" "$config" || fail 'Cannot publish forwarding policy'
+    fsync "$directory" || fail 'Cannot sync forwarding directory'
+fi
+sysrc syslogd_enable=YES >/dev/null || fail 'Cannot enable syslogd'
+if service syslogd onestatus >/dev/null 2>&1; then
+    service syslogd reload || fail 'Cannot reload syslogd'
+else
+    service syslogd start || fail 'Cannot start syslogd'
+fi

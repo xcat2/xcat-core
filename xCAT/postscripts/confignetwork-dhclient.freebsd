@@ -1,0 +1,134 @@
+#!/bin/sh
+set -efu
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+LC_ALL=C
+export PATH LC_ALL
+umask 077
+
+fail()
+{
+    printf 'confignetwork DHCP: %s\n' "$1" >&2
+    exit 1
+}
+
+case ${1:-} in
+--expire) interface=${2:-} ;;
+esac
+case ${interface:-} in ''|*[!a-z0-9]*) fail 'Invalid interface' ;; esac
+export interface
+[ "${#interface}" -le 15 ] && [ "$(id -u)" = 0 ] || fail 'FreeBSD root is required'
+if [ "${1:-}" != --locked ]; then
+    exec lockf -k -t 30 "/var/run/xcat-dhclient-$interface.lock" /bin/sh "$0" --locked "$@"
+fi
+shift
+state=/var/db/xcat/network/dhcp
+for directory in /var/db/xcat /var/db/xcat/network "$state"; do
+    [ -d "$directory" ] && [ ! -L "$directory" ] &&
+        [ "$(stat -f '%u:%g:%Lp' "$directory")" = 0:0:700 ] || fail 'Unsafe DHCP state directory'
+done
+policy=$state/$interface.policy
+lease=$state/$interface.lease
+private_file()
+{
+    [ -f "$1" ] && [ ! -L "$1" ] && [ "$(stat -f '%u:%g:%Lp:%l' "$1")" = 0:0:600:1 ]
+}
+private_file "$policy" || fail 'Unsafe DHCP policy'
+base=${state%/*}/resolver-base
+if [ -e "$base" ] || [ -L "$base" ]; then
+    [ -f "$base" ] && [ ! -L "$base" ] && [ "$(stat -f '%u:%g:%l' "$base")" = 0:0:1 ] || exit 1
+    case $(stat -f '%Lp' "$base") in 400|444|600|644) ;; *) exit 1 ;; esac
+    if [ -s "$base" ]; then resolvconf -a lo0:xcat < "$base" || exit 1; fi
+fi
+tab=$(printf '\t')
+IFS="$tab" read -r expected bits peerdns defroute < "$policy"
+case "$peerdns:$defroute" in yes:yes|yes:no|no:yes|no:no) ;; *) fail 'Invalid DHCP policy' ;; esac
+if [ "${1:-}" = --expire ] || [ "${1:-}" = --saved-lease ]; then
+    unset old_ip_address old_subnet_mask old_broadcast_address old_routers
+    unset old_static_routes old_classless_routes old_domain_name old_domain_name_servers old_domain_search
+    if [ -e "$lease" ] || [ -L "$lease" ]; then
+        private_file "$lease" || fail 'Unsafe DHCP lease record'
+        while IFS="$tab" read -r key value; do
+            case "$key" in
+            old_ip_address|old_subnet_mask|old_broadcast_address|old_routers|old_static_routes|old_classless_routes|old_domain_name|old_domain_name_servers|old_domain_search)
+                export "$key=$value" ;;
+            *) fail 'Invalid DHCP lease record' ;;
+            esac
+        done < "$lease"
+    elif [ "${1:-}" = --expire ]; then
+        exit 0
+    fi
+    if [ "${1:-}" = --expire ]; then reason=EXPIRE; export reason; fi
+fi
+case ${reason:-} in
+PREINIT|ARPCHECK|ARPSEND|MEDIUM|BOUND|RENEW|REBIND|REBOOT|TIMEOUT|EXPIRE|FAIL|STOP|RELEASE) ;;
+*) fail 'Unsupported DHCP event' ;;
+esac
+
+awk -v expected="$expected" -v bits="$bits" '
+    function ip(s, a, n, i, v) {
+        n=split(s,a,"."); if(n!=4) return -1
+        for(i=1;i<=4;i++) {
+            if(a[i]!~/^(0|[1-9][0-9]*)$/ || a[i]>255) return -1
+            v=v*256+a[i]
+        }
+        return v
+    }
+    BEGIN {
+        if(ip(expected)<0 || bits!~/^[0-9]+$/ || bits>32) exit 1
+        for(k in ENVIRON) {
+            if(k!~/^(old|new)_/) continue
+            v=ENVIRON[k]
+            if(v~/[\r\n\t]/ || length(v)>4096) exit 1
+            if(k~/_(ip_address|subnet_mask|broadcast_address)$/ && v!="" && ip(v)<0) exit 1
+            if(k~/_(routers|static_routes|domain_name_servers)$/ && v!="") {
+                n=split(v,a," "); for(i=1;i<=n;i++) if(ip(a[i])<0) exit 1
+            }
+            if(k~/_classless_routes$/ && v!="") {
+                n=split(v,a," "); for(i=1;i<=n;i++) if(a[i]!~/^[0-9]+$/ || a[i]>255) exit 1
+            }
+            if(k~/_(domain_name|domain_search)$/ && v~/[^A-Za-z0-9_. -]/) exit 1
+        }
+        r=ENVIRON["reason"]
+        if(r~/^(BOUND|RENEW|REBIND|REBOOT|TIMEOUT)$/ &&
+            (ENVIRON["new_ip_address"]!=expected || ip(ENVIRON["new_subnet_mask"])!=4294967296-2^(32-bits))) exit 1
+    }' || fail 'The DHCP lease differs from the reserved address or contains invalid options'
+
+unset new_host_name old_host_name medium
+if [ "$peerdns" = no ]; then
+    unset new_domain_name new_domain_name_servers new_domain_search
+    unset old_domain_name old_domain_name_servers old_domain_search
+fi
+if [ "$defroute" = no ]; then
+    unset new_routers old_routers new_static_routes old_static_routes new_classless_routes old_classless_routes
+fi
+/sbin/dhclient-script || fail 'The native DHCP script failed'
+case "$reason" in
+BOUND|RENEW|REBIND|REBOOT|TIMEOUT)
+    if [ "$peerdns" = yes ] &&
+        [ -n "${new_domain_search:-${new_domain_name:-}}${new_domain_name_servers:-}" ]; then
+        {
+            if [ -n "${new_domain_search:-${new_domain_name:-}}" ]; then
+                printf 'search %s\n' "${new_domain_search:-$new_domain_name}"
+            fi
+            for server in ${new_domain_name_servers:-}; do printf 'nameserver %s\n' "$server"; done
+        } | resolvconf -a "$interface" || fail 'Cannot register DHCP resolver settings'
+    else
+        resolvconf -f -d "$interface" || fail 'Cannot remove empty DHCP resolver settings'
+    fi
+    [ ! -e "$lease" ] || private_file "$lease" || fail 'Unsafe DHCP lease record'
+    stage=$(mktemp "$state/.lease.XXXXXXXX")
+    trap 'rm -f "$stage"' EXIT
+    awk 'BEGIN {
+        n=split("ip_address subnet_mask broadcast_address routers static_routes classless_routes domain_name domain_name_servers domain_search",keys," ")
+        for(i=1;i<=n;i++) printf "old_%s\t%s\n", keys[i], ENVIRON["new_" keys[i]]
+    }' > "$stage"
+    fsync "$stage"
+    mv "$stage" "$lease"
+    fsync "$state"
+    ;;
+EXPIRE|FAIL|STOP|RELEASE)
+    if [ "$peerdns" = yes ]; then resolvconf -f -d "$interface" || fail 'Cannot remove DHCP resolver settings'; fi
+    rm -f "$lease"
+    fsync "$state"
+    ;;
+esac

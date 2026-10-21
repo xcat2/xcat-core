@@ -1,0 +1,26 @@
+#!/bin/sh
+set -eu
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+LC_ALL=C
+export PATH LC_ALL
+
+fail()
+{
+    printf 'remoteshell: %s\n' "$1" >&2
+    exit 1
+}
+
+[ "$(uname -s)" = FreeBSD ] && [ "$(id -u)" = 0 ] || fail 'FreeBSD root is required'
+[ "$#" -eq 0 ] || fail 'Arguments are unsupported on FreeBSD'
+case ${ENABLESSHBETWEENNODES:-} in
+    ''|no|NO|No|n|N|0) ;;
+    *) fail 'FreeBSD remoteshell does not distribute private keys between nodes' ;;
+esac
+
+service sshd configtest || fail 'The existing SSH configuration is invalid'
+sysrc sshd_enable=YES >/dev/null || fail 'Cannot enable sshd'
+if service sshd onestatus >/dev/null 2>&1; then
+    service sshd reload || fail 'Cannot reload sshd'
+else
+    service sshd start || fail 'Cannot start sshd'
+fi

@@ -2,7 +2,34 @@ package xCAT::DHCP::BootPolicy;
 
 use strict;
 use warnings;
+use JSON ();
 use xCAT::HTTPUtils qw(httpport_suffix);
+
+sub freebsd_native_node {
+    my ($class, $noderes, $nodetype) = @_;
+    return $noderes && $nodetype &&
+      ($noderes->{netboot} || '') eq 'xnba' &&
+      ($nodetype->{os} || '') eq 'freebsd15.1' &&
+      ($nodetype->{arch} || '') eq 'x86_64';
+}
+
+sub freebsd_native_root_path {
+    my ($class, $node, $server, $iscsi) = @_;
+    die "FreeBSD DHCP: an explicit iSCSI root conflicts with scripted installation\n"
+      if $iscsi && $iscsi->{server} && $iscsi->{target};
+    die "FreeBSD DHCP: invalid node name\n" unless defined($node) &&
+      $node =~ /\A[A-Za-z0-9][A-Za-z0-9_.-]{0,254}\z/;
+    die "FreeBSD DHCP: a concrete IPv4 TFTP server is required\n" unless
+      defined($server) && $server =~ /\A(?:[0-9]{1,3}\.){3}[0-9]{1,3}\z/ &&
+      !grep { $_ > 255 || (length($_) > 1 && /^0/) } split(/\./, $server);
+    return "tftp://$server/xcat/freebsd/$node";
+}
+
+sub isc_freebsd_native_statement {
+    my ($class, $root_path) = @_;
+    return 'if option user-class-identifier = 07:46:72:65:65:42:53:44 { option root-path "' .
+      $root_path . '"; }';
+}
 
 sub kea_client_classes {
     my ( $class, %opts ) = @_;
@@ -477,6 +504,18 @@ sub kea_xnba_node_classes {
                 test             => "$loader->{kea_second_stage_uefi} and ($uefi_x64_arch_match) and $mac_test",
                 'boot-file-name' => "$base_url.uefi",
                 'user-context'   => $context,
+            };
+        }
+        if ($node->{freebsd_root_path}) {
+            push @classes, {
+                name => "$class_base-freebsd",
+                test => "option[77].exists and option[77].hex == 0x0746726565425344 and $mac_test",
+                'option-data' => [ { name => 'root-path', data => $node->{freebsd_root_path}, 'always-send' => JSON::true } ],
+                'user-context' => {
+                    'xcat-purpose' => 'freebsd-native-loader',
+                    'xcat-node' => $node->{node},
+                    'xcat-mac' => lc($node->{mac}),
+                },
             };
         }
 

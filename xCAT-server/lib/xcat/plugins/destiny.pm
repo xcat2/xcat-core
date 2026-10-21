@@ -141,6 +141,46 @@ sub relay_response {
     }
 }
 
+sub _freebsd_preflight {
+    my ($state, $nodes) = @_;
+    return unless $state =~ /\Aosimage(?:[=:]|\z)/;
+    my (undef, $target) = split('=', $state, 2);
+    ($target) = split(':', $target, 2) if defined($target);
+    my $assigned = {};
+    unless ($target) {
+        my $types = xCAT::Table->new('nodetype', -create => 0);
+        return unless $types;
+        $assigned = $types->getNodesAttribs($nodes, ['provmethod']);
+        return 'Cannot read OS image routing attributes' unless ref($assigned) eq 'HASH';
+    }
+    my $images = xCAT::Table->new('osimage', -create => 0);
+    return unless $images;
+    my (%cache, %native);
+    for my $node (@$nodes) {
+        my $name = $target || $assigned->{$node}->[0]->{provmethod};
+        next unless $name;
+        unless (exists($cache{$name})) {
+            $cache{$name} = $images->getAttribs({imagename => $name},
+                [qw(provmethod osvers osname profile osarch imagetype)]);
+        }
+        my $error = xCAT::Utils->freebsd_image_error($cache{$name});
+        next unless defined($error);
+        return "$node: $error" if length($error);
+        $native{$node} = $cache{$name};
+    }
+    return unless %native;
+    my $resources = xCAT::Table->new('noderes', -create => 0);
+    return 'Cannot read FreeBSD noderes routing table' unless $resources;
+    my @native_nodes = grep { exists($native{$_}) } @$nodes;
+    my $netboots = $resources->getNodesAttribs(\@native_nodes, ['netboot']);
+    return 'Cannot read FreeBSD noderes routing attributes' unless ref($netboots) eq 'HASH';
+    for my $node (@native_nodes) {
+        my $error = xCAT::Utils->freebsd_image_error($native{$node}, $netboots->{$node}->[0]->{netboot});
+        return "$node: $error" if defined($error) && length($error);
+    }
+    return;
+}
+
 sub setdestiny {
     my $req      = shift;
     my $flag     = shift;
@@ -169,6 +209,16 @@ sub setdestiny {
         return;
     }
     my @nodes = @{ $req->{node} };
+    my $state = $ARGV[0];
+    my $reststates;
+    my %nstates;
+    ($state, $reststates) = split(/,/, $state, 2);
+    chomp($state);
+    my $routing_error = _freebsd_preflight($state, \@nodes);
+    if ($routing_error) {
+        $callback->({error => [$routing_error], errorcode => [1], errorabort => [1]});
+        return;
+    }
     my $bptab = xCAT::Table->new('bootparams', -create => 1);
     my %tempbh = %{ $bptab->getNodesAttribs(\@nodes, [qw(addkcmdline)]) };
     while(my ($key, $value) = each(%tempbh)) {
@@ -179,13 +229,6 @@ sub setdestiny {
         }
     }
     $bptab->close();
-
-    my $state = $ARGV[0];
-    my $reststates;
-    my %nstates;
-    # to support the case that the state could be runimage=xxx,runimage=yyy,osimage=xxx
-    ($state, $reststates) = split(/,/, $state, 2);
-    chomp($state);
 
     if ($state eq "enact") {
         my $nodetypetab = xCAT::Table->new('nodetype', -create => 1);
@@ -509,7 +552,8 @@ sub setdestiny {
                     node            => $samestatenodes,
                     noupdateinitrd  => $noupdateinitrd,
                     ignorekernelchk => $ignorekernelchk,
-                    bootparams => \$bphash}, \&relay_response);
+                    bootparams => \$bphash,
+                    exists($req->{_freebsd_pool}) ? (_freebsd_pool => $req->{_freebsd_pool}) : ()}, \&relay_response);
             if ($errored) {
                 # The error messeage for mkinstall/mknetboot/mkstatelite had been output within relay_response function above, don't need to output more
                 xCAT::MsgUtils->trace($verbose_on_off, "d", "destiny->setdestiny: Failed in processing mk$tempstate.");

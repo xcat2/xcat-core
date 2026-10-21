@@ -1,4 +1,10 @@
-#!/bin/bash
+#!/bin/sh
+if [ "$(uname -s)" = FreeBSD ]; then
+    exec "$(dirname "$0")/confignetwork.freebsd" "$@"
+fi
+if [ -z "${BASH_VERSION:-}" ] || { [ "${BASH##*/}" = sh ] && shopt -oq posix; }; then
+    exec /bin/bash "$0" "$@"
+fi
 #-------------------------------------------------------------------------------
 #  confignetwork
 #      Configure Ethernet nic/bond/vlan/bridge/ on the nodes

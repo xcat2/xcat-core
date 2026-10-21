@@ -5,6 +5,7 @@ use Sys::Syslog;
 use Socket;
 use File::Copy;
 use File::Path;
+use File::Temp qw(tempfile);
 use xCAT::Scope;
 use xCAT::MsgUtils;
 use Getopt::Long;
@@ -144,6 +145,50 @@ sub _use_efistub_for_uefi {
 
     return 1;
 }
+
+sub _set_freebsd_install {
+    my ($node, $kern, $state, $tftpdir, $type) = @_;
+    return (1, 'Native FreeBSD installation requires freebsd15.1 and x86_64')
+      unless $type->{os} eq 'freebsd15.1' && ($type->{arch} || '') eq 'x86_64';
+    return (1, 'Invalid FreeBSD node name') unless $node =~ /\A[A-Za-z0-9][A-Za-z0-9_.-]{0,254}\z/;
+    return (1, 'Invalid FreeBSD installation state') if $state =~ /[\r\n]/;
+    my $prefix = "xcat/freebsd/$node/boot";
+    return (1, 'FreeBSD bootparams must select the node native loader')
+      unless defined($kern->{kernel}) && !ref($kern->{kernel}) && $kern->{kernel} eq "$prefix/pxeboot";
+    for my $attribute (qw(initrd kcmdline addkcmdline)) {
+        return (1, "FreeBSD bootparams.$attribute must be empty")
+          if defined($kern->{$attribute}) && (ref($kern->{$attribute}) || length($kern->{$attribute}));
+    }
+    for my $loader (qw(pxeboot loader.efi)) {
+        return (1, "Cannot read FreeBSD loader $prefix/$loader")
+          unless -f "$tftpdir/$prefix/$loader" && -r "$tftpdir/$prefix/$loader";
+    }
+    my $directory = "$tftpdir/xcat/xnba/nodes";
+    my @staged;
+    my $ok = eval {
+        mkpath($directory) unless -d $directory;
+        for my $variant (['', 'pxeboot'], ['.uefi', 'loader.efi']) {
+            my ($handle, $temporary) = tempfile('.freebsd.XXXXXXXX', DIR => $directory, UNLINK => 0);
+            push @staged, [$temporary, "$directory/$node$variant->[0]"];
+            chmod(0644, $temporary) == 1 or die "Cannot set FreeBSD script permissions: $!\n";
+            print {$handle} "#!gpxe\n#$state\n", 'chain tftp://${next-server}/', "$prefix/$variant->[1]\n"
+              or die "Cannot write FreeBSD loader script: $!\n";
+            close($handle) or die "Cannot close FreeBSD loader script: $!\n";
+        }
+        for my $script (@staged) {
+            rename($script->[0], $script->[1]) or die "Cannot publish FreeBSD loader script: $!\n";
+        }
+        for my $extension (qw(pxelinux elilo)) {
+            my $obsolete = "$directory/$node.$extension";
+            unlink($obsolete) or die "Cannot remove obsolete boot script: $!\n" if -e $obsolete || -l $obsolete;
+        }
+        1;
+    };
+    my $error = $@;
+    unlink($_->[0]) for grep { -e $_->[0] } @staged;
+    return $ok ? (0, '') : (1, $error || 'Cannot publish FreeBSD loader scripts');
+}
+
 sub setstate {
 
 =pod
@@ -162,6 +207,20 @@ sub setstate {
     my $nodetyperef     = shift || {};
 
     my $kern = $bphash{$node}->[0];
+    my $cref = $chainhash{$node}->[0];
+    if (($nodetyperef->{os} || '') =~ /\Afreebsd/) {
+        if (($cref->{currstate} || '') eq 'offline') {
+            # Completion calls nodeset boot while holding the installation lock.
+            my $cancelled = eval {
+                require xCAT::FreeBSDInstall;
+                xCAT::FreeBSDInstall::cancel($node);
+                1;
+            };
+            return (1, $@ || 'Cannot cancel FreeBSD installation') unless $cancelled;
+        } elsif (($cref->{currstate} || '') =~ /\Ainstall(?: |\z)/) {
+            return _set_freebsd_install($node, $kern, $cref->{currstate}, $tftpdir, $nodetyperef);
+        }
+    }
     my $imgaddkcmdline = $linuximghashref->{'addkcmdline'};
     my $imgboottarget = $linuximghashref->{'boottarget'};
 
@@ -265,7 +324,6 @@ sub setstate {
         mkpath("$bootloader_root");
     }
 
-    my $cref = $chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
     unless ($cref->{currstate}) { # the currstate should be set during 'setdestiny'
         return (1, "Cannot determine current state for this node");
     }
@@ -455,6 +513,108 @@ sub pass_along {
 }
 
 
+sub _freebsd_owner_scope {
+    my ($req, $action, $dispatch, $callback) = @_;
+    my $inittime = $req->{inittime} && $req->{inittime}[0];
+    ($action) = split(',', $action || '', 2);
+    return unless $action =~ /\A(?:osimage(?:[=:]|\z)|boot\z|offline\z|enact\z)/;
+    my $types = xCAT::Table->new('nodetype');
+    my $entries = $types->getNodesAttribs($req->{node}, [qw(os provmethod)]);
+    my (undef, $target) = split('=', $action, 2);
+    ($target) = split(':', $target, 2) if defined($target);
+    my ($images, %image_cache, %selected, @legacy);
+    for my $node (@{ $req->{node} }) {
+        my $type = $entries->{$node}->[0] || {};
+        if ($action =~ /\Aosimage/) {
+            my $name = $target || $type->{provmethod};
+            if ($name && !exists($image_cache{$name})) {
+                $images ||= xCAT::Table->new('osimage');
+                $image_cache{$name} = $images->getAttribs({imagename => $name},
+                    [qw(imagetype osname osvers osarch provmethod)]);
+            }
+            my $image = $name ? $image_cache{$name} : undef;
+            if (defined(xCAT::Utils->freebsd_image_error($image))) {
+                $selected{$node} = $image;
+                next;
+            }
+        } elsif (($type->{os} || '') =~ /\Afreebsd/i) {
+            $selected{$node} = undef;
+            next;
+        }
+        push @legacy, $node;
+    }
+    return unless keys %selected;
+    my @native = sort keys %selected;
+    my $resources = xCAT::Table->new('noderes')->getNodesAttribs(\@native,
+        [qw(xcatmaster servicenode netboot)]);
+    my (%owners, %pools, %pool_preparations);
+    require xCAT::FreeBSDPool;
+    require JSON;
+    for my $native_node (@native) {
+        my $resource = $resources->{$native_node}->[0] || {};
+        my $error = xCAT::Utils->freebsd_image_error($selected{$native_node}, $resource->{netboot});
+        die "$native_node: $error\n" if defined($error) && length($error);
+        my $pool = xCAT::FreeBSDPool::topology($resource);
+        if ($pool) {
+            my @servers = grep { !$inittime || !xCAT::NetworkUtils->thishostisnot($_) } @{$pool->{servers}};
+            next unless @servers;
+            $pools{$native_node} = $pool;
+            for my $server (@servers) {
+                push @{$owners{$server}}, $native_node;
+            }
+            next;
+        }
+        my $owner = $resource->{xcatmaster};
+        unless (defined($owner) && length($owner)) {
+            ($owner) = xCAT::TableUtils->get_site_attribute('master');
+            unless ($owner) {
+                die "$native_node: Cannot determine the FreeBSD management-node owner\n" unless xCAT::Utils->isMN();
+                my ($rc, @addresses) = xCAT::NetworkUtils->my_ip_facing($native_node);
+                die "$native_node: Cannot determine one FreeBSD management-node address\n" if $rc || @addresses != 1;
+                $owner = $addresses[0];
+            }
+        }
+        die "$native_node: FreeBSD xcatmaster must name one hostname or IPv4 address\n"
+          unless defined($owner) && !ref($owner) && $owner =~ /\A[A-Za-z0-9][A-Za-z0-9_.-]{0,254}\z/;
+        my $address = xCAT::NetworkUtils->getipaddr($owner, OnlyV4 => 1);
+        die "$native_node: Cannot resolve FreeBSD xcatmaster to IPv4\n"
+          unless defined($address) && $address =~ /\A(?:[0-9]{1,3}\.){3}[0-9]{1,3}\z/;
+        next if $inittime && xCAT::NetworkUtils->thishostisnot($address);
+        push @{ $owners{$address} }, $native_node;
+    }
+    for my $pool_node (sort keys %pools) {
+        my $metadata;
+        my $ok = eval {
+            $metadata = xCAT::FreeBSDPool::preparation($pool_node, $action, $dispatch, $pools{$pool_node});
+            1;
+        };
+        unless ($ok) {
+            $callback->({error => ["$pool_node: " . ($@ || 'Pool preparation failed')], errorcode => [1]});
+            for my $server (keys %owners) {
+                @{$owners{$server}} = grep { $_ ne $pool_node } @{$owners{$server}};
+                delete $owners{$server} unless @{$owners{$server}};
+            }
+            next;
+        }
+        next unless $metadata;
+        for my $server (@{$pools{$pool_node}{servers}}) {
+            $pool_preparations{$server}{$pool_node} = {%$metadata, server => $server};
+        }
+    }
+    my @requests;
+    for my $address (sort keys %owners) {
+        my $scoped = {%$req, node => $owners{$address}, _xcatpreprocessed => [1],
+            _disparatetftp => [1], _disjointmode => [1], _freebsd_owner => [$address]};
+        delete $scoped->{_xcatdest};
+        delete $scoped->{_freebsd_pool};
+        $scoped->{_freebsd_pool} = [JSON->new->canonical->encode($pool_preparations{$address})]
+            if $pool_preparations{$address};
+        $scoped->{_xcatdest} = $address if xCAT::NetworkUtils->thishostisnot($address);
+        push @requests, $inittime ? $scoped : @{ xCAT::Scope->get_parallel_scope($scoped) };
+    }
+    return {requests => \@requests, legacy => \@legacy};
+}
+
 sub preprocess_request {
     my $req = shift;
     if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
@@ -532,6 +692,21 @@ sub preprocess_request {
         $rsp{errorcode}->[0] = 1;
         $callback1->(\%rsp);
         return;
+    }
+
+    my $native_scope = eval { _freebsd_owner_scope($req, $ARGV[0], $sub_req, $callback1); };
+    if ($@) {
+        $callback1->({error => [$@], errorcode => [1]});
+        return [];
+    }
+    if ($native_scope) {
+        my @requests = @{ $native_scope->{requests} };
+        if (@{ $native_scope->{legacy} }) {
+            my $legacy_request = {%$req, node => $native_scope->{legacy}};
+            my $legacy_scope = preprocess_request($legacy_request, $callback1, $sub_req);
+            push @requests, @$legacy_scope if $legacy_scope;
+        }
+        return \@requests;
     }
 
     # inittime flag in request will only be set in AAsn.pm (it is only used when xcatd starting on service node)
@@ -681,6 +856,17 @@ sub process_request {
         return;
     }
 
+    my $native_owner = $::XNBA_request->{_freebsd_owner};
+    if ($native_owner) {
+        unless (ref($native_owner) eq 'ARRAY' && @$native_owner == 1 &&
+            defined($native_owner->[0]) && !ref($native_owner->[0]) &&
+            $native_owner->[0] =~ /\A(?:[0-9]{1,3}\.){3}[0-9]{1,3}\z/ &&
+            !xCAT::NetworkUtils->thishostisnot($native_owner->[0])) {
+            $::XNBA_callback->({error => ['FreeBSD request must run on its selected owner'], errorcode => [1]});
+            return;
+        }
+    }
+
     my @nodes = ();
     # Filter those nodes which have bad DNS: not resolvable or inconsistent IP
     my %preparednodes = ();
@@ -700,7 +886,7 @@ sub process_request {
     }
 
     #if not shared tftpdir, then filter, otherwise, set up everything
-    if ($::XNBA_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+    if ($::XNBA_request->{'_disparatetftp'}->[0] && !$native_owner) { #reading hint from preprocess_command
         # Filter those nodes not in the same subnet, and print error message in log file.
         foreach (keys %preparednodes) {
             # Only handle its boot configuration files if the node in same subnet
@@ -791,7 +977,8 @@ sub process_request {
                 node     => \@nodes,
                 inittime => [$inittime],
                 arg      => \@args ,
-                bootparams => \%bphash},
+                bootparams => \%bphash,
+                exists($::XNBA_request->{_freebsd_pool}) ? (_freebsd_pool => $::XNBA_request->{_freebsd_pool}) : ()},
                 \&pass_along);
         if ($errored) {
             xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: Failed in processing setdestiny.");
@@ -833,7 +1020,7 @@ sub process_request {
             my $ent          = $typehash->{$_}->[0];
             my $osimgname    = $ent->{'provmethod'};
             my $linuximghash = undef;
-            unless ($osimgname =~ /^(install|netboot|statelite)$/) {
+            unless ($osimgname =~ /^(install|netboot|statelite)$/ || ($ent->{os} || '') =~ /\Afreebsd/) {
                 $linuximghash = $linuximgtab->getAttribs({ imagename => $osimgname }, 'boottarget', 'addkcmdline');
             }
             ($rc, $errstr) = setstate($_, \%bphash, \%chainhash, \%machash, \%iscsihash, $tftpdir, $linuximghash, $ent);

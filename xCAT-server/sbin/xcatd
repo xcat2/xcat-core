@@ -637,6 +637,14 @@ sub do_installm_service {
             print $conn "ready\n";
             while (my $text = <$conn>) {
                 alarm(0);
+                if ($text =~ /^freebsd-install-/) {
+                    require xCAT::FreeBSDInstall;
+                    xCAT::FreeBSDInstall::start_status_worker($node, $conn_peer_addr, $text, $conn,
+                        \&do_request,
+                        cleanup => sub { close($socket); close($rescanreadpipe); close($rescanwritepipe); },
+                        log => sub { xCAT::MsgUtils->trace(0, "E", "xcatd: FreeBSD status for $node: $_[0]"); });
+                    last;
+                }
                 $text =~ s/\r//g;
 
                 # "done" releases the node. Every request but a destiny advance is answered

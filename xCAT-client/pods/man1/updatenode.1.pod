@@ -14,6 +14,8 @@ B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-t> I<timeout>] [I<script1,sc
 
 B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-f>|B<--snsync>]
 
+B<updatenode> I<node> B<--freebsd-run> I<run> [B<--freebsd-release>] [B<-t> I<timeout>]
+
 B<updatenode> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
 =head1 DESCRIPTION
@@ -118,6 +120,19 @@ repositories before adding server:/install/<os>/<arch/ as the new repository.
 To preserve the existing repositories, you can run the following command instead:
 
   updatenode noderange -P "ospkgs --keeprepo,otherpkgs"
+
+B<For installed FreeBSD systems:>
+
+B<-S> runs B<ospkgs,otherpkgs>. The stock B<ospkgs> selects the image's base
+packages; B<otherpkgs> selects its application packages and their dependencies.
+Selecting both updates their union. An empty application list selects no
+packages. Repository options on these stock scripts are rejected before the
+package operation. Configure repositories and lists on the FreeBSD image.
+
+Default and section selections use the scripts in the rendered postscript
+template. Administrator replacements retain their custom behavior. When
+B<-S> and B<-P> are combined, the software pass runs first, followed by the
+separate postscript selection. A failed software pass stops that selection.
 
 B<For AIX systems:>
 
@@ -294,6 +309,17 @@ For NFS-based statelite installations to sync files, you should use the
 read-only option for files/directories listed in
 B<litefile> table with source location specified in the B<litetree> table.
 
+File synchronization reports failure if any directory creation or copy fails,
+even when a later copy succeeds. This applies to Linux, AIX and FreeBSD nodes.
+
+For installed FreeBSD nodes, this option uses the selected image's
+B<synclists> and requires B</usr/local/bin/rsync> on the node.
+The controller checks all selected list files before copying.
+List files must be root-owned regular files without group or other write access.
+Symbolic links in list paths are rejected.
+With B<-F -P>, file synchronization completes before the selected scripts run.
+A failed copy prevents script execution and sets B<updatestatus=failed>.
+
 
 =item B<-f|--snsync>
 
@@ -364,6 +390,20 @@ be run during install.  You should use B<updatenode -F> instead.
 
 Specifies that node software should be updated.  In Sysclone environment, specifies pushing the delta changes to target nodes.
 
+=item B<--freebsd-run> I<run>
+
+Resume delivery or observation of a retained FreeBSD postscript run. Use the run
+identity printed by the initial command. Completed or uncertain scripts are not
+executed again. The command uses the retained scripts even if their source files
+have changed. Select one FreeBSD node and omit B<-F>, B<-S> and B<-P> when using this option.
+
+=item B<--freebsd-release>
+
+Release an interrupted FreeBSD postscript run for reporting after the node has
+rebooted. Requires B<--freebsd-run>. Completed entries retain their exit status;
+unfinished entries remain uncertain. This operation does not restart scripts.
+An incomplete or failed run returns a nonzero command status.
+
 =item B<-n|--noverify>
 
 Specifies that node network availability verification will be skipped.
@@ -376,6 +416,10 @@ Set the server information stored on the nodes in /opt/xcat/xcatinfo on Linux.
 
 Specifies a timeout in seconds the command will wait for the remote targets to complete. If timeout is not specified
 it will wait indefinitely. updatenode -k is the exception that has a timeout of 10 seconds, unless overridden by this flag.
+
+FreeBSD script updates have a default observation timeout of 3600 seconds and
+accept values from 1 to 7200. Expiration does not stop the scripts. Use
+B<--freebsd-run> to resume observation of the retained run.
 
 =item B<-v|--version>
 

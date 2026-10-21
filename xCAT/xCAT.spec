@@ -25,6 +25,9 @@ Source9: xcat-apache-pretrans.lua
 Source7: xcat.conf.apach24
 Source10: xcat-upgrade-functions.sh
 
+# These postscripts also execute on FreeBSD, which requires /bin/sh.
+%global __brp_mangle_shebangs_exclude_from ^/install/postscripts/((syslog|remoteshell|syncfiles|confignetwork)([.]freebsd)?|confignetwork-(dhclient|dhcp6|ipoib-dhcp4)[.]freebsd|ospkgs|otherpkgs|xcatpackages[.]freebsd|(configzfs|configstorage)[.]freebsd)$
+
 Provides: xCAT = %{version}
 Conflicts: xCATsn
 Requires: perl-DBD-SQLite

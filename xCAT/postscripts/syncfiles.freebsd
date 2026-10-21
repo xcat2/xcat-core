@@ -1,0 +1,14 @@
+#!/bin/sh
+
+case "${UPDATENODE:-0}" in
+1)
+    printf '%s\n' 'Did not sync any files. Use updatenode -F to sync the files.'
+    exit 0
+    ;;
+esac
+if [ "${NOSYNCFILES:-0}" = 1 ]; then
+    printf '%s\n' 'Did not sync any files: no synchronization list is selected.'
+    exit 0
+fi
+exec /usr/local/libexec/xcat-postscript sync-files \
+    "${XCAT_FREEBSD_POSTSCRIPT_RUN:-}" "${XCAT_FREEBSD_POSTSCRIPT_ENTRY:-}"

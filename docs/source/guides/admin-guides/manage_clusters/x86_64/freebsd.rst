@@ -1,0 +1,2256 @@
+FreeBSD stateful installation
+=============================
+
+This installation path targets FreeBSD 15.1-RELEASE on amd64 nodes. The xCAT
+architecture name is ``x86_64``. The management node and service nodes remain
+Linux systems.
+
+xCAT starts a scripted installation in mfsBSD. The installed system boots from
+its own disk. The boot sequence is::
+
+    PXE firmware -> xNBA -> FreeBSD loader -> mfsBSD -> bsdinstall -> local disk
+
+This is not SAN boot. No remote block device supplies the installed root
+filesystem. The DHCP ``root-path`` option supplies a TFTP directory to the
+FreeBSD loader; it does not select an NFS root or an iSCSI disk.
+
+Scope and requirements
+----------------------
+
+* Use ``netboot=xnba`` and an imported ``imagetype=freebsd`` installation image.
+* Select disks by FreeBSD device name and hardware serial, or use automatic
+  selection of blank OS disks. An explicit single-disk policy replaces that disk's
+  contents. An explicit ZFS policy selects empty disks or whole OS-disk erase.
+  Keep user data on separate, dedicated drives.
+* Select single-disk UFS or ZFS, a ZFS mirror, striped mirrors, or RAID-Z1/2/3.
+  Multi-disk policies require a version 2 image with the current storage runtime.
+  OS and dedicated data pools can use log, cache and redundant special devices.
+  Dedicated data pools support dRAID and optional automatic encryption.
+  OS encryption, root-pool dRAID, separate ZFS pools for
+  ``/boot``, GELI encryption, GEOM/UFS mirrors and Linux ZFS provisioning are
+  outside this implementation. See :ref:`freebsd-future-root-encryption` for
+  the deferred encrypted-root work.
+* Use IPv4 and one provisioning address anchored to the selected physical MAC.
+  The installer can use a VLAN, LAGG or bridge; see :ref:`freebsd-early-network`.
+  After disk boot, ``confignetwork`` can configure additional interfaces, static addresses
+  and reserved DHCPv4/DHCPv6 leases. Native IPoIB data interfaces are described
+  in :ref:`freebsd-infiniband`, including their DHCP and transport limits.
+  The node name must
+  resolve to that interface's address, and reverse resolution must identify the
+  same xCAT node. Status callbacks must retain that source address without NAT.
+* Use a fixed ``xcatmaster`` or a service-node pool. A pool selects one owner
+  when the installer begins; see :ref:`service-node pools <freebsd-service-pools>`.
+* Each eligible owner must serve DHCP, TFTP and HTTP. Remote file-service
+  offload and management-node high availability are outside this path.
+  Service-node pools require ``site.sharedtftp=0`` and independent TFTP directories.
+* Use an isolated, trusted provisioning network. Configuration and release sets
+  use HTTP; the loader pins the configuration checksum and the installer checks
+  the release-set checksums. These checks do not authenticate the provisioning
+  network itself.
+* Supply plain SSH public keys. Password login is disabled on the installed
+  system. Use native FreeBSD scripts and the package lists described below.
+  Diskless images and FreeBSD service-node installation are outside this path.
+
+Image definition versions
+-------------------------
+
+An unset or empty ``imageversion``, or the value ``1``, selects the legacy
+definition. Its ``pkgdir`` is the combined mfsBSD boot and release-set bundle.
+The installation steps below describe this version.
+
+``imageversion=2`` separates the boot artifact and package repositories:
+
+.. list-table:: Version 2 image attributes
+   :header-rows: 1
+
+   * - Attribute
+     - Meaning
+   * - ``bootdir``
+     - One imported mfsBSD boot artifact.
+   * - ``pkgdir``
+     - One imported pkgbase repository role.
+   * - ``pkglist``
+     - Ordered base-component list files.
+   * - ``otherpkgdir``
+     - Ordered DVD application and supplemental repository roles.
+   * - ``otherpkglist``
+     - Ordered application-package list files.
+
+All nonempty values use absolute paths. List attributes use commas between
+paths. Paths cannot contain empty, dot, or dot-dot components or control
+characters. Each path is limited to 4096 characters. Duplicate list entries
+are rejected when setting a definition. Appending and removing entries use
+the existing xCAT list operations, then validate the resulting definition.
+
+Version 2 installation requires a compatible boot runtime and imported,
+verified repositories. Preparation resolves the package selection and binds
+the resulting plan to the installation generation. Importing an application
+repository does not select all its packages.
+
+Version 2 fields may be empty while preparing a definition. Legacy definitions
+must leave ``bootdir``, ``pkglist``, ``otherpkgdir`` and ``otherpkglist`` empty.
+A downgrade to version 1 must clear those fields in the same request. Changing
+the version does not convert the object named by ``pkgdir`` into another type
+of artifact. ``template``, ``partitionfile`` and ``osimage.environvar`` retain
+their existing storage locations.
+
+FreeBSD definitions require the exact value ``imagetype=freebsd``. Do not
+change image families in place with ``chdef`` when either family is FreeBSD.
+Use an explicitly replaced definition instead. ``mkdef -f`` checks the new
+FreeBSD definition before removing the previous one. This check does not make
+the database replacement transactional.
+
+Import native release repositories
+----------------------------------
+
+``copycds`` accepts FreeBSD 15.1-RELEASE amd64 release media independently of
+the mfsBSD installer. Base-only media supplies the pkgbase repository. DVD
+media also supplies the complete application repository. Neither import
+selects a boot artifact or packages to install.
+
+Prepare a Linux-native ``pkg`` 2.8.2 executable and its required libraries on
+the management node. ``copycds`` does not install this preparation tool.
+Record the executable SHA256. When using a separate library directory, record
+its ``xCAT::FreeBSDRepo::snapshot_tree`` digest, not one library's SHA256.
+Native import checks these pins and uses private package databases and caches.
+It does not install FreeBSD packages into the management node.
+
+Authenticate the ISO checksum before approving its contents. Inspect that
+same protected media::
+
+    copycds -i /srv/iso/FreeBSD-15.1-RELEASE-amd64-disc1.iso
+
+The output identifies the release, architecture, repository roles and
+``TREE_DIGEST``. This digest covers the selected release files and repository
+trees. It is not an ISO checksum. Inspection does not approve media, execute
+the native tool or register an image.
+
+Create a protected JSON policy. Replace the digest placeholders with the
+verified values. Replace the tool paths with the prepared native tool::
+
+    {
+      "format": "xcat-freebsd-import-policy-1",
+      "tool": {
+        "path": "/opt/freebsd-pkg/sbin/pkg",
+        "sha256": "<executable-sha256>",
+        "library_directory": "/opt/freebsd-pkg/lib",
+        "library_digest": "<library-tree-digest>"
+      },
+      "releases": {
+        "<selected-tree-digest>": { "iso_sha256": "<authenticated-iso-sha256>" }
+      },
+      "repositories": {}
+    }
+
+All digests use 64 lowercase hexadecimal characters. Import-only policies can
+omit both library fields when a separate library directory is not required.
+Package planning requires both library fields. Empty approval maps are
+valid. Unknown fields and unapproved release trees are rejected.
+
+The policy must be a nonsymlink regular file with one link, at most 1 MiB,
+and no group or other write permission. Its owner must be root or the importing
+user. Ancestors must also be protected and nonsymlinked. Configure its location
+and import the approved media::
+
+    chtab key=freebsdimportpolicy site.value=/etc/xcat/freebsd-import.json
+    copycds /srv/iso/FreeBSD-15.1-RELEASE-amd64-disc1.iso
+
+The policy's ISO checksum is operator-recorded provenance. ``copycds`` checks
+the approved selected-tree identity but does not authenticate that recorded
+ISO checksum. It validates native catalogues and archives before publishing
+the repositories below the configured installation directory.
+
+The generated version 2 image names its base role in ``pkgdir``. A DVD import
+also sets ``otherpkgdir`` to its application role. ``bootdir``, ``pkglist`` and
+``otherpkglist`` remain unset. The version 2 installation restriction above
+still applies.
+
+``-o`` registers only the distribution. A later ordinary import can add the
+image definition. ``-w`` rejects an existing publication. An ordinary repeat
+import verifies existing content and preserves administrator-selected lists,
+repository order and other mutable image settings. A registration failure
+retains the verified publication and reports any failed database cleanup.
+
+A later DVD import creates a separate image and reports its application role.
+It does not change an earlier base-only image. Use the existing ``chdef -p``
+list operation to add that role to the desired image's ``otherpkgdir``.
+Storing this reference does not install packages or verify their dependencies.
+The native import path does not support ``-n``, ``-a``, ``-p`` or ``-s``.
+
+Plan an image's packages
+------------------------
+
+``freebsdrepo plan <osimage>`` resolves the package selection of an existing
+version 2 installation image. It reads the image without changing its rows.
+The image must target FreeBSD 15.1-RELEASE amd64 and must not be disabled.
+The command does not require boot media, a template or a disk policy.
+
+Build the Linux-native ``freebsd-pkg-resolve`` executable from
+``src/freebsd-pkg-resolve.c`` in this xCAT source tree. Use the ``pkg`` 2.8.2
+source at commit ``aec0cdcbdaba1f9511dabad38f1097b0a373c0f2``. Its Linux build
+requires a C compiler, make, m4, pkg-config, and development files for libbsd,
+libarchive, zlib, bzip2, liblzma and OpenSSL. Planning also requires binutils
+``/usr/bin/readelf``.
+
+Build ``pkg`` in a separate directory. Install its prefix with administrator
+privileges. Keep the build directory for its static libelf archive::
+
+    /path/to/pkg-source/configure --prefix=/opt/freebsd-pkg --with-libarchive.pc --with-openssl.pc
+    make
+    make install
+
+From the xCAT source directory, build the resolver::
+
+    cc -std=c11 -Wall -Wextra -Werror -I/opt/freebsd-pkg/include \
+      src/freebsd-pkg-resolve.c -L/opt/freebsd-pkg/lib \
+      -Wl,-rpath,/opt/freebsd-pkg/lib -Wl,--export-dynamic \
+      -lpkg /path/to/pkg-build/external/libelf/libelf.a -lbsd \
+      -o freebsd-pkg-resolve
+
+Install the result with administrator privileges::
+
+    install -d -m 0755 /opt/freebsd-pkg/bin
+    install -m 0755 freebsd-pkg-resolve /opt/freebsd-pkg/bin/freebsd-pkg-resolve
+
+The executables, library tree and their ancestors must be owned by root or
+the server-side user and protected from group or other writes. Executables
+must be nonsymlink regular files with one link. Library links must stay within
+the protected tree. Do not execute tools from a user's build directory.
+Planning rejects library search paths outside the pinned directory, including
+``$ORIGIN`` paths. The Linux host's program loader and system libraries remain
+trusted dependencies. The library-tree digest does not pin host libraries,
+including libarchive, OpenSSL, libbsd and libc.
+
+Record executable SHA256 values after installation. Obtain the library-tree
+digest with ``freebsdrepo inspect /opt/freebsd-pkg/lib``. Set the policy's
+``tool.path`` to the installed ``pkg`` executable, normally
+``/opt/freebsd-pkg/sbin/pkg``. Add the resolver as a top-level policy member::
+
+    "solver": {
+      "path": "/opt/freebsd-pkg/bin/freebsd-pkg-resolve",
+      "sha256": "<solver-executable-sha256>"
+    }
+
+Import operations do not require this member. Planning checks both native
+executable pins and the required library-tree pin. It does not download
+tools, consult public repositories or install packages on the management node.
+
+Set ``pkgdir`` to the imported ``base`` role. Set ``otherpkgdir`` to any imported
+DVD ``applications`` and supplemental ``repository`` roles, in the required
+order. At most 32 roles are accepted, including the base role. Repositories
+must contain all archives needed by the selected dependency closure.
+Earlier repositories take priority for explicit application roots. Native
+dependency resolution can select a dependency from its parent's repository,
+even when an earlier repository contains that dependency. The plan records
+the selected provider for every package.
+
+Create protected list files on the management node. ``pkglist`` contains base
+component names, such as ``base``. An empty file requests only the mandatory
+minimal-system, kernel and package-manager roots and their dependencies.
+``otherpkglist`` is optional and contains application package names, such as
+``bash``. For example::
+
+    chdef -t osimage freebsd-compute pkglist=/etc/xcat/freebsd/base.pkglist otherpkglist=/etc/xcat/freebsd/apps.pkglist
+    freebsdrepo plan freebsd-compute
+
+List files must be nonsymlink regular files with one link, owned by root or
+the command's server-side user, with no group or other write permission.
+Their ancestors must be protected and nonsymlinked. Limits are 64 files per
+list attribute, 1 MiB per file, 8 MiB across both attributes and 8192 explicit
+roots. The expanded native request also has an 8192-package limit, including
+mandatory roots and component expansion. Repeated paths and duplicate roots
+are rejected. The resolved dependency closure is limited to 8192 packages.
+The serialized plan is limited to 16384 records and 8 MiB. Exceeding these
+limits stops resolution or plan publication.
+
+Use UTF-8 and LF line endings, including a final LF in every nonempty file.
+Blank lines and comments beginning with ``#``, optionally preceded by spaces
+or tabs, are ignored. Data lines are literal names: spaces are not trimmed
+and commas do not split names. ``#INCLUDE``, ``#INCLUDE_*``, ``#ENV`` and
+``#NEW_INSTALL_LIST`` directives are not supported. These reserved comment
+prefixes are checked without regard to case. Selection order follows file
+order, then line order within each file. Diagnostics identify invalid list
+positions without copying their contents.
+
+``kernel-dbg`` requires an available kernel debug package. The ``debug``
+modifier adds available debug packages for selected base sets. Sets such as
+``src`` and ``tests`` need no debug counterpart.
+
+The command reports ``Package plan:`` and ``SHA256:``. The immutable plan is
+published at ``<installdir>/freebsd15.1/x86_64/plans/<sha256>.plan``. It pins the
+resolved package identities, source repositories and archive checksums. An
+unchanged repeat selection verifies and reuses that plan. Missing packages,
+unsatisfied dependencies and altered repository content stop publication.
+
+To request failure details, authenticate to xCAT as root and add
+``--diagnostics``::
+
+    freebsdrepo plan freebsd-compute --diagnostics
+
+A failure may add a ``DIAGNOSTICS:`` JSON report to standard output. The
+original standard error and nonzero exit status remain unchanged.
+The report can name unavailable selections or missing imported catalogue
+name references, including references from unselected packages. It does not
+explain the native solver's decision. Protect captured output because these
+names come from protected inputs. See ``freebsdrepo(8)`` for report status
+and size limits.
+
+A successful plan does not arm a node or write a target disk. Use ``nodeset``
+to prepare the node's installation.
+
+Update packages on an installed node
+------------------------------------
+
+Set the installed node's image to the intended protected repositories and
+package lists. Update base packages, application packages, or both::
+
+    updatenode node01 -P ospkgs
+    updatenode node01 -P otherpkgs
+    updatenode node01 -S
+
+The stock ``ospkgs`` selects base packages. The stock ``otherpkgs`` selects
+application packages and their dependencies. ``-S`` selects both scripts and
+updates the union of their package selections. An empty application list
+produces a completed operation with zero package changes. Repository flags
+on these scripts, such as ``--keeprepo``, are rejected before the package
+operation. Configure repositories through the image attributes instead.
+
+The package operation completes before the selected scripts run. Each stock
+package script reports the bound result, including installed package, change
+and action counts. The installed count covers the full node roster; the
+update may select only part of that roster. An unchanged selection performs
+no package actions.
+
+An empty ``-P`` selection and section selectors use the rendered template's
+entries. xCAT seals that selection and the script files before resolving the
+package operation. Administrator replacements for the package scripts or
+their native adapter retain their custom behavior. A selection without a
+stock package script verifies the image's package prerequisite before running
+its scripts.
+
+When ``-S`` and ``-P`` are combined, xCAT prepares both passes, runs the
+software pass, then runs the separate postscript selection. A failed software
+pass stops the later pass. ``-F`` performs file synchronization after
+preparation and before either pass.
+
+Within each owner's request, FreeBSD nodes are processed sequentially. A
+pending node delays later nodes until its run finishes or observation times
+out. ``-t SECONDS`` sets the observation timeout for each run; the default is
+3,600 seconds. Individual transport operations have separate deadlines and
+can extend the elapsed time. Use separate commands on disjoint node sets
+when the nodes must proceed independently.
+
+If another worker holds the node lock, the command reports that the node is
+busy and retries delivery within the observation timeout. This includes a
+pending boot run. The waiting request keeps its run identity and does not
+start scripts until the node lock is available. On timeout, use the printed
+``--freebsd-run`` command to continue observing the same request.
+
+The command prints each run identity. To resume observation of a retained
+run without selecting another package operation or replaying completed
+scripts, use one node and omit ``-F``, ``-S`` and ``-P``::
+
+    updatenode node01 --freebsd-run RUN_ID
+
+If a run was interrupted, inspect its retained results before releasing it
+for reporting::
+
+    updatenode node01 --freebsd-run RUN_ID --freebsd-release
+
+Release normally requires a different boot from the one that started the run.
+A supervised run can also be released on the same boot when the worker can
+acquire a fresh node lock, verify that the original worker has stopped, and
+validate completion observations for every command. A process-query error or
+missing completion observation refuses this path. Older runs without those
+observations still require a reboot.
+
+Completed entries keep their recorded exit status. Unfinished entries remain
+uncertain, and the command returns a nonzero status. Release does not restart
+scripts. Resolve the uncertain effects before selecting a new update operation.
+The command prints the retained run's diagnostic directory and recovery command
+before it attempts to collect uncertain evidence. Collected reports include
+available framework and supervisor diagnostics.
+
+When package work has completed and all command completion observations are
+available, a driver failure or an error while completing the run produces a
+terminal failed result.
+It does not require explicit release. The report preserves completed script
+statuses and leaves unfinished scripts uncertain or not run. A missing
+completion observation instead leaves the run uncertain and requires the
+recovery command above.
+
+When retained records prove that package application never started, release
+keeps the previous package provenance and records that decision in the report.
+This permits release after an early crash or a lost rejection response. It does
+not change the interrupted run to a successful run.
+
+If the package operation was interrupted, release also reconciles package
+provenance against the retained request and the previous managed state. Changed
+identities require matching archives and a complete action plan from that
+operation. Recovery does not adopt unchanged packages that xCAT did not manage.
+The report identifies recovered provenance separately from uncertain execution.
+For a nonempty operation, previously managed packages that were already removed or
+changed before that operation are excluded from its recovered ownership record.
+The recovery log identifies those exclusions. Empty requests still require their
+previous managed identities. Operations rejected before application retain the
+previous ownership record.
+
+Recovery does not repeat package scripts or certify their effects. Inspect and
+repair those effects before requesting another operation. A partial upgrade
+can leave some packages at their previous versions. Repeat-boot verification
+checks the recovered managed identities. It does not complete the pending
+upgrade. A new ``updatenode -S`` request can install the remaining packages.
+Packages already at the requested identity do not repeat their package scripts.
+Later successful operations do not change the interrupted run's outcome.
+
+Release refuses recovery when its retained inputs cannot establish provenance
+or deferred package triggers remain pending. Inspect the release diagnostic and
+the attempt records below ``/var/db/xcat/postscripts/runs/RUN_ID/packages``.
+Preserve failed ``recovery.*`` directories and their logs before resolving the
+reported condition. A retry creates a fresh attempt or finishes publication of
+the validated recovery record. Keep the original run records and payloads.
+
+If damaged records continue to prevent release, stop retry clients and preserve
+the node's ``/var/db/xcat/postscripts``, ``/var/db/xcat/pkgbase-install`` and
+``/var/db/pkg`` directories with ownership and permissions intact. Use rescue
+media to copy them from a read-only filesystem when the node cannot provide a
+stable copy. Retain a verified copy outside the node before making repairs.
+
+Restore a damaged record only from a verified copy taken before the damage,
+from that same run and snapshot, then retry release. Do not fabricate action or rejection records or
+delete the active run to bypass recovery. If no valid copy exists, restore a
+consistent system backup that includes installed files, the package database
+and xCAT records from the same checkpoint, or provision a fresh target disk set.
+Recovery does not grant permission to erase an existing layout. Use the OS
+reinstall policy below when whole-disk replacement is intended. Preserve the
+interrupted installation's evidence before replacing it.
+
+Import a version 2 boot artifact
+--------------------------------
+
+``copycds`` also accepts boot-only media with an ``xcat-mfsbsd-2`` manifest.
+It validates the FreeBSD 15.1-RELEASE amd64 boot files, the required mfsBSD
+source commit and the checksummed ``xcat/runtime.tsv`` descriptor. This format
+does not contain release sets or package repositories.
+
+The import reports a ``bootdir`` below
+``<installdir>/freebsd15.1/x86_64/boot/<full-digest>``. It does not register a
+distribution or image, replace ``pkgdir``, or attach itself to an existing
+image. ``-o`` does not change this behavior. ``-i`` inspects without importing;
+``-w`` rejects an existing destination. An ordinary repeat import verifies the
+published files before reusing the destination.
+
+Descriptor validation checks the declared runtime contract, required file
+entries and checksum syntax.
+It does not inspect those files inside the compressed RAM root. Build the
+artifact with ``--pkgbase`` as described below. Changing a legacy manifest's
+version does not convert its runtime into a version 2 boot artifact.
+
+Build the native package resolver
+---------------------------------
+
+Version 2 boot media requires a FreeBSD-native resolver built from this source
+tree. Build it as root on FreeBSD 15.1-RELEASE amd64, inside a separate release
+root. Use a verified ``base.txz`` and its unmodified release compiler.
+
+The build uses pkg 2.6.2 and the pkg port at commit
+``40e2a735d862a58c16471bae506a4ff683cd0daf``. The script checks the source,
+compiler, library and output checksums. An input or output mismatch stops the
+build. Keep its fixed internal paths, which affect the binary checksum.
+
+Prepare the release root and copy the xCAT sources::
+
+    xcat_source=/path/to/xcat-core
+    release_sets=/path/to/verified/FreeBSD-15.1-RELEASE
+    resolver_root=$(mktemp -d /var/tmp/xcat-freebsd-resolver.XXXXXX)
+    tar -xpf "$release_sets/base.txz" -C "$resolver_root"
+    resolver_inputs=$resolver_root/work/recipe-inputs
+    mkdir -p "$resolver_inputs/ports-mgmt/pkg/files"
+    cp "$xcat_source/src/build-freebsd-pkg-resolve.sh" \
+      "$xcat_source/src/freebsd-pkg-resolve.c" \
+      "$xcat_source/src/freebsd-pkg-native.c" "$resolver_inputs/"
+    cp "$xcat_source/xCAT-server/share/xcat/install/freebsd/patches/pkg-2.6.2-apply.patch" \
+      "$resolver_inputs/"
+
+Download the pinned public inputs::
+
+    fetch -o "$resolver_inputs/freebsd-pkg-2.6.2_GH0.tar.gz" \
+      https://codeload.github.com/freebsd/pkg/tar.gz/2.6.2
+    ports_source=https://raw.githubusercontent.com/freebsd/freebsd-ports/40e2a735d862a58c16471bae506a4ff683cd0daf/ports-mgmt/pkg
+    for name in Makefile distinfo files/patch-libpkg_libpkg.ver files/patch-src_Makefile.autosetup; do
+        fetch -o "$resolver_inputs/ports-mgmt/pkg/$name" "$ports_source/$name"
+    done
+
+Run the build in the release root. The device filesystem exposes only the four
+devices needed by the compiler. The subshell unmounts it when the build ends::
+
+    (
+        set -eu
+        mount -t devfs devfs "$resolver_root/dev"
+        trap 'status=$?; trap - EXIT; umount "$resolver_root/dev" || status=1; exit "$status"' EXIT
+        trap 'exit 1' HUP INT TERM
+        devfs -m "$resolver_root/dev" rule apply hide
+        for device in null zero random urandom; do
+            devfs -m "$resolver_root/dev" rule apply path "$device" unhide
+        done
+        env -i PATH=/sbin:/bin:/usr/sbin:/usr/bin LC_ALL=C TMPDIR=/work/tmp \
+          chroot "$resolver_root" /bin/sh /work/recipe-inputs/build-freebsd-pkg-resolve.sh
+    )
+
+Use ``$resolver_root/work/freebsd-pkg-resolve`` as ``NATIVE_RESOLVER`` below.
+Its required SHA256 is
+``ad1be19a9491ac9b34c5a203c6c90d70907949c6ddb548a168034b64f8e87be9``.
+The build preserves its sources and diagnostics. It does not install packages
+or modify the host package database.
+
+Prepare the mfsBSD image
+------------------------
+
+Build on a FreeBSD 15.1-RELEASE amd64 host as root. Install the build dependencies
+required by the selected mfsBSD source revision. Copy the complete
+``/opt/xcat/share/xcat/install/freebsd`` directory to the build host.
+
+Obtain matching ``MANIFEST``, ``base.txz``, and ``kernel.txz`` files from the
+FreeBSD release. Verify the release source and record the trusted SHA256 of
+``MANIFEST`` before building. Select an exact mfsBSD Git commit, not a moving
+branch name.
+
+The legacy builder takes five arguments::
+
+    sh freebsd/buildmfsbsd.sh MFSBSD_SOURCE DIST_DIRECTORY OUTPUT_ISO MFSBSD_COMMIT MANIFEST_SHA256
+
+For a version 2 boot artifact, supply the native FreeBSD package archive and
+resolver executable::
+
+    sh freebsd/buildmfsbsd.sh --pkgbase PKG_ARCHIVE NATIVE_RESOLVER MFSBSD_SOURCE DIST_DIRECTORY OUTPUT_ISO MFSBSD_COMMIT MANIFEST_SHA256
+
+For early installer VLAN, LAGG or bridge configuration, also supply
+``--network-planner PATH`` before the five positional arguments. Copy the
+matching ``xCAT/postscripts/confignetwork-freebsd.awk`` to that path on the
+FreeBSD build host. The image then advertises ``xcat-freebsd-bootstrap-1``
+and binds the shared planner, bootstrap helper and required kernel modules
+into its runtime manifest.
+
+For dataset sections in ``partitionfile``, also supply ``--dataset-planner PATH``.
+Copy the matching ``xCAT/postscripts/configzfs-datasets.awk`` to that path on the
+FreeBSD build host. The image advertises ``xcat-freebsd-datasets-1`` and includes
+the planner in its runtime manifest. ``nodeset`` rejects dataset declarations
+when the selected image does not advertise this capability.
+
+The pkgbase build requires mfsBSD commit
+``6e48fa48ebbb25953a7764a8f3cfda443fb9a768``. Supply the release
+``pkg-2.6.2_1`` archive and the qualified FreeBSD native resolver. The resolver
+links pkg 2.6.2 with the supplied ``patches/pkg-2.6.2-apply.patch`` corrections.
+Staging verifies fixed checksums for both inputs. These FreeBSD build inputs
+are separate from the Linux-native repository preparation tool.
+The build stages them inside the RAM filesystem and emits the runtime manifest.
+It does not include the operating-system package repositories in the boot artifact.
+
+``MFSBSD_COMMIT`` is the full 40-character commit ID. ``MANIFEST_SHA256`` is the
+64-character checksum. ``OUTPUT_ISO`` must not already exist. Build paths must
+not contain spaces or shell metacharacters.
+
+The builder verifies the release sets, adds the installation runtime, and
+produces BIOS and UEFI boot media. It applies a checksum-pinned FreeBSD 15.1
+installer cleanup correction for empty mount lists. An unexpected installer
+source stops the build.
+
+Copy the ISO to the installation owner and import it::
+
+    copycds /path/to/xcat-mfsbsd.iso
+    lsdef -t osimage
+
+For legacy media, use the image name reported by ``copycds``. The default name
+includes a media digest suffix. Imported legacy media resides below
+``<installdir>/freebsd15.1/x86_64/<full-digest>``. Do not modify that directory.
+Import a new bundle when the runtime or release payload changes.
+For version 2 media, use the reported ``bootdir`` in a version 2 image
+definition with the intended repositories and package lists.
+
+Define installation policy
+--------------------------
+
+Import does not select a disk or an SSH key. Create a protected policy directory
+on the installation owner, such as ``/etc/xcat/freebsd``. Policy files, public
+key files, and their parent directories must be owned by root and must not be
+writable by other users. Symlink paths are not accepted.
+
+The image ``template`` attribute selects a key=value settings file. For example,
+``/etc/xcat/freebsd/settings`` contains::
+
+    authorized_keys_file=/etc/xcat/freebsd/administrators.pub
+
+The public key file accepts plain OpenSSH keys, without authorized_keys options.
+It does not accept private keys.
+Include the SSH public key used by xCAT's ``xdsh`` transport. First-boot
+postscripts and ``updatenode`` require root SSH access from the management or
+service node.
+After reinstall, verify the node's new SSH host keys. Refresh its entries in
+``known_hosts`` on the management or service node.
+
+Create a disk policy for each node. For example,
+``/etc/xcat/freebsd/node01.disk`` contains::
+
+    target_disk=da0
+    target_disk_ident=REPLACE_WITH_VERIFIED_DISK_SERIAL
+    filesystem=zfs
+    swap_size=0
+
+Confirm the device name and serial on that node before using this policy. Do not
+copy another node's disk identity. Valid device names use ``ada``, ``da``,
+``nda``, ``nvd``, or ``vtbd`` followed by a number. ``filesystem`` accepts ``zfs``
+or ``ufs``. ``swap_size`` accepts ``0`` or an integer followed by ``M`` or ``G``;
+the default is ``0``.
+
+Set the policy paths on the imported image::
+
+    chdef -t osimage -o IMAGE_NAME template=/etc/xcat/freebsd/settings 'partitionfile=/etc/xcat/freebsd/#NODE#.disk'
+
+``#NODE#`` expands to the xCAT node name. These files are not shell scripts and
+do not use the Linux installation-template syntax.
+The path names a file on the management node; ``/etc/xcat/freebsd`` is a
+convention, not a required directory. Use the same ``partitionfile`` to declare
+the OS layout and any dedicated data pools, as described below.
+
+Multi-disk ZFS policy
+---------------------
+
+The default ``disk_action=empty`` accepts blank disks only. Existing layouts
+require the explicit reinstall policy below. There is no automatic destructive
+retry. The single-disk policy above retains its existing reinstall behavior.
+
+For a two-way mirror, use a disk policy such as::
+
+    filesystem=zfs
+    zfs_topology=mirror
+    zfs_vdevs=da0@SERIAL_A,da1@SERIAL_B
+    swap_mode=none
+    swap_size=0
+    zfs_compression=lz4
+    zfs_ashift=12
+
+Replace each example serial with the verified hardware serial. Each member is
+``device@serial``. Commas separate members within a group. Semicolons separate
+mirror pairs for ``raid10``. Do not add whitespace or shell quoting inside
+these values. Do not combine these fields with ``target_disk`` or
+``target_disk_ident``.
+
+.. list-table:: ZFS membership rules
+   :header-rows: 1
+
+   * - ``zfs_topology``
+     - Required membership
+   * - ``mirror``
+     - One group of at least 2 members.
+   * - ``stripe``
+     - Exactly 1 OS disk, using the same explicit storage policy.
+   * - ``raid10``
+     - At least 2 groups, each containing exactly 2 members.
+   * - ``raidz1``
+     - One group of at least 3 members.
+   * - ``raidz2``
+     - One group of at least 4 members.
+   * - ``raidz3``
+     - One group of at least 5 members.
+
+The primary OS layout has at most 16 members. Device names and serials must be unique.
+Serials accept letters, digits, underscores, periods, colons, plus signs and
+hyphens, with a maximum of 128 characters. Unsupported serial representations
+cause rejection. The installer does not guess an equivalent identity.
+
+For four-disk striped mirrors, the membership can be::
+
+    zfs_topology=raid10
+    zfs_vdevs=da0@SERIAL_A,da1@SERIAL_B;da2@SERIAL_C,da3@SERIAL_D
+
+Keep the other fields from the mirror example. The pair boundaries are
+part of the policy. Losing both members of one pair prevents root-pool access,
+even when another pair remains intact. RAID-Z tolerates losses only within its
+parity limit. Its boot loader still needs enough surviving pool members.
+
+Redundant layouts require ``swap_mode=none`` and ``swap_size=0``. The runtime
+uses one root pool and installs boot support on every primary OS member. UEFI
+members receive both the FreeBSD loader and the standard fallback loader.
+The ESP entry in the installed ``fstab`` uses ``noauto`` and a zero check pass.
+Firmware disk selection and automatic fallback remain separate capabilities.
+Verify both on the intended hardware before deployment.
+
+The root pool, ``zroot``, contains the OS and its ``/boot`` files. In the current
+layout, ``/boot`` is a directory in ``zroot/ROOT/default``, the dataset mounted
+at ``/``. It is not a separate dataset. Dedicated data pools use separate
+drives. A separate ZFS boot pool would add another pool for the kernel, modules
+and boot configuration. It could occupy partitions on the OS drives without
+requiring additional physical disks. The UEFI System Partition is a FAT
+filesystem and is not a ZFS boot pool.
+
+This additional pool is outside the current installer policy and validation.
+It requires partitioning, pool creation and reinstall handling for both OS
+pools, with matching boot files across updates and boot environments. The
+current unencrypted root does not require it. A separate boot area is one
+candidate for :ref:`freebsd-future-root-encryption`.
+
+The UEFI check requires one new boot entry for the first member, prepended to
+the existing boot order. Existing boot entries and other captured boot variables
+must remain unchanged. Firmware that rewrites them causes installation to fail,
+even if the new entry appears usable. This can happen after the pool exists.
+Retain the before/after firmware records and qualify this behavior on the target
+hardware before deployment.
+
+The installer checks identities and ownership before partitioning and at
+later destructive boundaries. Keep selected hardware stable throughout
+installation. A failure after partitioning starts can leave partial layouts.
+It has no automatic rollback. Preserve the failure report and resolve the
+disk contents explicitly before requesting another initial installation.
+
+``zfs_compression`` defaults to ``lz4``. It also accepts ``off``, ``gzip``,
+``gzip-1`` through ``gzip-9``, ``zstd``, and ``zstd-1`` through ``zstd-19``.
+``zfs_ashift`` defaults to ``12`` and accepts integers from 9 through 16.
+It sets the pool sector size exponent at creation. It must accommodate every
+selected device's logical sector size. Choose it for the actual drive geometry.
+Changing the policy does not change an existing pool's vdev sector size.
+
+Use an image built with ``xcat-freebsd-install-5`` or a newer runtime for
+these properties and reinstall controls. Preparation rejects an older image
+when the policy requests these fields. Existing contract 4 layouts remain valid.
+Disk replacement and pool expansion remain native administrative operations.
+xCAT does not perform ongoing pool management.
+
+Automatic OS-disk selection
+---------------------------
+
+Use ``target_disk=auto`` to select one blank OS disk for UFS or ZFS. Omit
+``target_disk_ident``. For example, the OS section of a partition file can be::
+
+    [os]
+    filesystem=ufs
+    target_disk=auto
+    swap_size=0
+    preserve_disks=da2@DATA_SERIAL
+
+For a ZFS mirror, use::
+
+    [os]
+    filesystem=zfs
+    zfs_topology=mirror
+    zfs_vdevs=auto:2
+    swap_mode=none
+    swap_size=0
+
+``auto:N`` selects N primary members for one group. The topology membership
+rules and 16-member limit still apply. For striped mirrors, use
+``zfs_topology=raid10`` and ``zfs_vdevs=auto:2;auto:2``. Do not mix automatic
+and explicit primary membership. Auxiliary devices and data-pool members
+remain explicit.
+
+Selection accepts only unused disks of at least 4 GiB with supported device
+names and serials. It rejects known filesystems, partition layouts, active
+providers, ambiguous identities, and nonzero disk boundaries. Disks named in
+``preserve_disks``, dedicated data-pool sections, or OS auxiliary-device fields
+are excluded by both device name and serial. Declare every disk that must be
+preserved, including unused disks reserved for later use. Every declared
+preserved disk must be present with its matching identity. Selection stops if
+more than 128 candidate disks pass the initial identity and capacity filter.
+
+The installer selects the smallest eligible disks first, then orders equal
+capacities by serial and device name. Scalar layouts require space for the
+configured swap plus at least 2 GiB for the OS. ZFS candidates must also satisfy
+the configured ``zfs_ashift`` sector limit.
+Each ZFS group requires members of equal capacity. Insufficient eligible
+members stop installation before partitioning. Selection resolves concrete
+identities before the normal storage checks and installation authorization.
+The installer checks those identities again before destructive operations.
+
+The first automatic installation uses ``disk_action=empty``, which is the
+default. Before authorizing disk writes, the controller retains the selected
+device names, serials, filesystem, primary grouping and auxiliary roles.
+``/etc/xcat/os-disks`` also records the installed identities on the node.
+
+To reinstall the same OS disks, keep the automatic policy and add::
+
+    disk_action=erase
+
+This applies to scalar UFS and ZFS policies and grouped ZFS policies. xCAT
+resolves the automatic fields to the retained identities during preparation.
+The old OS does not need to boot. Within the same installation owner or
+service-node pool, reinstall cannot select other blank disks. Repeating a
+blank-only policy when a retained record exists stops with an error instead
+of selecting a second disk set. A known earlier authorized attempt without a
+disk record also requires explicit assignments, including after cancellation
+and rearming.
+Failures before authorization can retry automatic selection after cancellation.
+
+The requested filesystem, topology, group widths and explicit auxiliary
+members must match the retained layout. Missing records, changed layouts,
+overlap with protected or data disks, missing disks and serial mismatches
+stop preparation or native preflight. Device renumbering also requires an
+explicit policy with the current names and verified serials. Disk replacement
+requires explicit assignments; automatic reinstall does not choose replacement
+members. Grouped policies retain their whole-disk layout and ``zroot``
+ownership checks. Scalar reinstalls retain the existing target-serial,
+capacity and in-use checks. They do not classify existing target contents or
+check the presence of other preserved drives. The compiler still rejects
+overlap with declared preserved or data-pool identities. Scalar reinstall
+therefore requires a disk that remains dedicated to the OS.
+
+A record belongs to one fixed installation owner or one pool coordinator.
+It is not a cluster-wide disk inventory. After moving to another fixed owner,
+including returning to an earlier owner,
+changing between fixed-owner and pool provisioning, changing pool coordinator,
+restoring a store backup, or repurposing disks, verify the current disk roles
+and use an explicit policy for the next installation. That installation
+refreshes the record. Do not use an older record to authorize erasure. A new
+owner with no local history cannot distinguish a migrated node from a first
+installation; a blank-only automatic policy there can select other disks.
+xCAT rejects scope changes that it can identify from the local history. The
+restriction remains until the explicit installation reports its disks at
+authorization; preparation alone does not refresh a record. In a pool, any
+member can refresh the coordinator record for the other members. If some pool
+members refuse preparation, stop the node and run ``nodeset <node> offline``
+before correcting the policy and preparing the pool again.
+
+This policy requires newly built pkgbase media that advertise
+``xcat-freebsd-disk-selection-1``. Retaining identities additionally requires
+the media manifest field ``disk_record_contract=xcat-freebsd-os-disks-1``.
+Import a new bundle after updating the builder. Installations made with older
+media require an explicit disk policy for their first reinstall with the new media. An installation
+started with media that cannot report disk identities invalidates a previous
+retained record. Recorded policies accept device unit numbers of at most five
+digits and serial tokens of at most 128 characters. Do not downgrade media
+when relying on automatic reinstall.
+After upgrading a server that did not retain disk history, use explicit
+assignments for previously provisioned nodes whose earlier attempt has already
+been rearmed; the old store no longer identifies that attempt.
+
+OS-pool log, cache and special devices
+--------------------------------------
+
+An OS policy with ``zfs_vdevs`` can add dedicated whole devices to ``zroot``::
+
+    zfs_log_vdevs=da2@OS_LOG_A,da3@OS_LOG_B
+    zfs_cache_vdevs=da4@OS_CACHE_A
+    zfs_special_vdevs=da5@OS_SPECIAL_A,da6@OS_SPECIAL_B
+    zfs_special_small_blocks=0
+
+This example extends the two-way OS mirror. Each identity uses the same
+``device@serial`` syntax as ``zfs_vdevs``. A log group contains one device or
+a mirror; semicolons separate log groups. Cache devices form one comma-separated
+list. Special allocation groups must be mirrors. Each special group must match
+the OS layout's redundancy exactly: the primary mirror's width, two members for
+RAID10 or RAID-Z1, three for RAID-Z2, and four for RAID-Z3. Separate special
+groups with semicolons. A single-disk OS stripe cannot use special devices.
+
+Use mirrored log groups when the OS must boot after a log-device failure.
+Loss of a complete log group, including a singleton, prevents automatic root
+import even when all primary and special members remain available. Recovery
+requires rescue media and an explicit decision to discard the missing log's
+recent transactions. With the installed system stopped, identify its pool GUID
+and missing log vdev from ``zpool import -d /dev/gpt``. Import only that pool
+with ``zpool import -N -R /mnt -d /dev/gpt -m <root-pool-guid>``, inspect
+``zpool status -gLP zroot``, remove only the missing log vdev with
+``zpool remove zroot <missing-log-vdev-guid>``, and export ``zroot`` before
+booting from disk. Add ``-f`` to the import only after confirming that no other
+system has the pool active. See the `zpool-import manual
+<https://openzfs.github.io/openzfs-docs/man/master/8/zpool-import.8.html>`_
+for the missing-log recovery option. This recovery is an administrator action;
+the installer does not discard a log automatically.
+
+Auxiliary roles default to ``-``, meaning absent. ``zfs_special_small_blocks``
+defaults to zero, which places metadata on special devices without selecting
+small file blocks. With a special group, it also accepts powers of two from
+512 through 16777216 bytes. Loss of a complete special group can make the OS
+pool unusable. Keep enough special members connected when testing degraded boot.
+
+Primary and auxiliary OS devices must have distinct device names and serials,
+with at most 128 devices in total. Primary members require at least 4 GiB each;
+auxiliary devices require at least 128 MiB each. The installer creates all roles
+in the initial pool command and applies the requested compression, sector
+alignment and special-block policy before installing the OS. Only primary
+members receive boot partitions and firmware entries. Auxiliary disks cannot
+boot the node by themselves.
+
+Contract 6 requires equal device capacities within each primary, special or
+log group. It checks these capacities before erasing an existing OS. Separate
+groups and cache devices can have different capacities. Pool creation does not
+force acceptance of mismatched group members.
+
+Each auxiliary device receives one GPT ``freebsd-zfs`` partition. This lets the
+native BIOS and UEFI loaders discover special devices. All OS-pool members use
+generation-specific GPT names so that a missing disk cannot redirect a saved
+pool path to a renumbered data disk. The ``kern.geom.label.gpt.enable`` loader
+setting is reserved. This layout does not preserve existing partitions on any
+selected OS or auxiliary drive.
+
+The firmware and loader must be able to read the special devices as well as
+the primary OS members. Check firmware disk visibility independently of the
+kernel's disk inventory. A BIOS boot-device allowlist can hide a special device
+from the loader even when the installer can access it.
+
+These fields require an image built with ``xcat-freebsd-install-6``. Preparation
+rejects an older image. Rebuild and import the boot image, update ``bootdir``, and
+regenerate the installation with ``nodeset`` before using this policy.
+
+Reinstall the OS and preserve data
+----------------------------------
+
+Use dedicated OS disks and dedicated data disks. Reinstall erases every selected
+OS disk, including all its partitions, and every selected OS auxiliary device.
+It does not preserve partitions or user datasets inside the OS pool. Data drives
+must not appear in any ``zfs_*_vdevs`` field.
+
+Add the following settings to a grouped OS policy, or to an automatic policy
+with a retained OS-disk record::
+
+    disk_action=erase
+    preserve_disks=da2@DATA_A,da3@DATA_B,da4@LOG_A,da5@LOG_B,da6@SPECIAL_A,da7@SPECIAL_B,da8@CACHE_A
+
+For pools declared in ``partitionfile``, xCAT adds every data, log, special and
+cache member to ``preserve_disks`` automatically. List other disks that must be
+protected explicitly. The resulting list accepts at most 128 devices and cannot
+overlap any primary or auxiliary OS role. With the auxiliary example above,
+use separate data drives, such as ``da7@DATA_A,da8@DATA_B``.
+The installer checks these identities before and during OS disk setup.
+It writes only the selected OS disks. It does not import the data pool.
+
+The OS disks must not be in use by the running installer. Supported existing
+layouts are whole disks or GPT with FreeBSD boot, EFI, UFS, swap or ZFS
+partitions. ZFS labels on selected
+disks must belong to ``zroot`` and identify one pool GUID. OS L2ARC headers must
+identify that same GUID; missing or ambiguous cache ownership causes rejection.
+A remaining ``zroot`` member outside the OS list
+causes rejection. Active pools, attached encryption providers, ambiguous
+identities and unsupported layouts also cause rejection.
+
+Contract 6 checks ZFS ownership on every attached disk and partition, including
+preserved devices. Damaged or partly overwritten labels, destroyed-pool labels
+and inconsistent ownership stop preflight even on unselected disks. This is
+stricter than earlier contracts. Inspect and resolve those conditions before
+reinstall; do not clear labels on a data disk to bypass the guard. The installer
+does not repair or write preserved devices.
+
+Record data-pool GUIDs, properties, member identities, snapshots and key backups
+before reinstall. Export data pools before shutting down the old OS. Prepare
+the new installation with the normal ``nodeset`` and ``makedhcp`` commands.
+For each declared data pool, set ``action=import`` and its recorded ``guid``
+before ``nodeset``. First boot restores the generated policies and enrolled keys,
+then imports those pools. Reinstallation never implies data-pool creation.
+
+Dedicated data pools
+--------------------
+
+Declare the OS and each dedicated data pool in the image's ``partitionfile``.
+Use ``[os]`` followed by the existing OS settings, then one ``[pool NAME]``
+section per data pool. For example::
+
+    [os]
+    filesystem=zfs
+    zfs_topology=mirror
+    zfs_vdevs=da0@OS_A,da1@OS_B
+    swap_mode=none
+    swap_size=0
+    zfs_compression=lz4
+    zfs_ashift=12
+
+    [pool tank]
+    action=create
+    topology=mirror
+    vdevs=da2@DATA_A,da3@DATA_B
+    log_vdevs=da4@LOG_A,da5@LOG_B
+    special_vdevs=da6@SPECIAL_A,da7@SPECIAL_B
+    cache_vdevs=da8@CACHE_A
+    compression=lz4
+    ashift=12
+    special_small_blocks=0
+    encryption=off
+    mountpoint=/data/tank
+
+    [pool archive]
+    action=create
+    topology=mirror
+    vdevs=da9@ARCHIVE_A,da10@ARCHIVE_B
+    compression=zstd-3
+    ashift=12
+    mountpoint=/srv/archive
+
+The ``[os]`` heading is optional when OS settings precede all other sections.
+Existing files without pool or dataset sections keep their previous behavior. UFS and the
+legacy single-disk ZFS policy can also precede data sections; their selected OS
+disk remains separate from all data members.
+
+Each data section requires ``action``, ``topology`` and ``vdevs``. Names must be
+unique, start with a lowercase letter, and contain only lowercase letters,
+digits, underscores or hyphens, up to 63 characters. Reserved ZFS names,
+including ``zroot``, are rejected. Mountpoints must be distinct across pools.
+Every device name and serial across OS and data roles must be unique. Each
+compiled pool policy accepts at most 128 devices, including the OS devices.
+The explicit ZFS OS policy also limits the combined preservation list to 128.
+
+At ``nodeset``, xCAT validates the complete declaration and derives each pool's
+OS exclusions. It seals generated policies and enrolled keys in the private
+first-boot preparation. The existing SSH delivery carries them to the node;
+keys do not enter the public installation configuration or postscripts tree.
+``configstorage.freebsd`` installs policies under ``/etc/xcat/storage`` and
+applies pools in name order before administrator postscripts. No ``synclists``
+entry or explicit storage postscript selection is required. Data sections
+require pkgbase media with native postscripts and storage contract 5 or 6.
+
+Data topologies accept ``stripe``, ``mirror``, ``raid10``, ``raidz1/2/3`` and
+explicit dRAID geometry.
+A data stripe can contain multiple disks. Other membership rules match the OS
+policy. Compression and ashift use the same values and defaults as the OS policy.
+
+For dRAID, specify ``draidP:Dd:Cc:Ss``. ``P`` is parity, from 1 through 3;
+``D`` is the data width of each redundancy group; ``C`` is the total child
+count; and ``S`` is the number of distributed spares. All four values are
+required, including ``0s`` when no distributed spare is selected.
+``D + P + S`` must not exceed ``C``. Each comma-separated device group must
+contain exactly ``C`` members. Semicolons separate independent dRAID vdevs
+with the same geometry. For example::
+
+    topology=draid2:4d:8c:2s
+    vdevs=da2@DATA_A,da3@DATA_B,da4@DATA_C,da5@DATA_D,da6@DATA_E,da7@DATA_F,da8@DATA_G,da9@DATA_H
+
+Distributed spares reserve capacity across those data drives; they are not
+additional physical devices. Readback checks the complete geometry and every
+available distributed spare. Import requires a healthy matching layout, as
+with the other data topologies. Repair or replacement operations remain
+administrator tasks. dRAID is supported for dedicated data pools only.
+
+dRAID uses fixed-width allocations. Small blocks and compression can consume
+more space than with mirrors or RAID-Z. Consider a redundant special vdev for
+small-block workloads; see the `OpenZFS dRAID guide
+<https://openzfs.github.io/openzfs-docs/Basic%20Concepts/Pool%20Structure/dRAID%20Howto.html>`_.
+
+``log_vdevs`` selects separate intent log devices, commonly called SLOG devices.
+Comma-separated members form a mirror. Semicolons separate independent log groups.
+``cache_vdevs`` is a comma-separated list of L2ARC devices.
+``special_vdevs`` uses mirrored groups for metadata and optional small blocks.
+Each special group must match the data topology's redundancy exactly: two
+members for RAID-Z1, dRAID1 or striped mirrors, three for RAID-Z2 or dRAID2,
+and four for RAID-Z3 or dRAID3.
+For a data mirror, match its member count. Data stripes cannot use special devices. Loss of a special group can lose the
+pool. Select suitable devices and redundancy before creation.
+
+Auxiliary roles default to ``-``, meaning absent. ``special_small_blocks`` defaults
+to zero. With special devices, it also accepts powers of two from 512 through
+16777216 bytes. The mountpoint must be a direct child of ``/data`` or ``/srv``.
+Descendants must remain under that directory and inherit the pool's encryption key.
+
+New pools require empty, dedicated data devices. The postscript does not force
+creation over existing layouts. A repeated completed creation policy verifies
+the same pool. A partial failure requires inspection and an explicit import
+policy before continuing. Attempt records remain under ``/var/db/xcat/storage``.
+If a later pool fails, earlier successful pools remain intact and the first-boot
+storage entry reports failure. Pool operations are not rolled back. Repeated
+boots use the saved native boot configuration and do not rerun pool creation.
+Editing ``partitionfile`` takes effect at the next ``nodeset``; it does not
+reconfigure an already installed node.
+
+For a preserved pool, change ``action`` and add its recorded GUID::
+
+    action=import
+    guid=REPLACE_WITH_RECORDED_DECIMAL_POOL_GUID
+
+Retain the recorded topology, identities, properties and key selection. Import first
+checks the pool read-only without mounting it. The policy must match its actual
+members, health, properties and encryption key. The postscript then imports it
+for use, mounts its datasets and saves boot configuration. It does not force
+an import, replace members, expand pools or change existing data properties.
+
+The postscript records startup pools in ``/etc/zfs/zpool.cache``, which native
+FreeBSD startup reads first. It retains the GUIDs of imported pools using either
+standard cache path. Existing cached pools must be imported before configuration;
+stale or conflicting cached identities cause rejection before pool operations.
+
+Import temporarily offline cached pools before running the postscript again.
+For a permanently retired pool, first save both standard cache files and
+inventory their names and GUIDs with ``zdb -C -U cache-file``. Import every pool
+that must still start at boot. After confirming which cached identity is retired,
+move the old cache files aside and run
+``zpool set cachefile=/etc/zfs/zpool.cache pool`` for each intended startup pool,
+including the OS pool. Verify that the new cache contains all their recorded
+GUIDs before rerunning the postscript or rebooting. Do not discard an identity
+merely because its disks are temporarily unavailable. This is an administrator
+recovery operation; the postscript does not remove stale entries automatically.
+
+ZFS filesystem datasets
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Add ``[dataset POOL/PATH]`` sections to the same ``partitionfile``. The sections
+configure filesystem datasets in ``zroot`` and in declared dedicated data pools::
+
+    [dataset zroot/usr/local]
+    compression=lz4
+    recordsize=128K
+
+    [dataset zroot/var/log]
+    quota=2G
+
+    [dataset tank/projects]
+    compression=zstd-3
+    quota=1T
+
+    [dataset tank/projects/team]
+    recordsize=1M
+    refquota=100G
+    atime=off
+
+Place OS settings first. Pool and dataset sections can then appear in any order.
+Declare every custom parent dataset; the planner orders parents before children.
+Each pool accepts up to 64 declarations, within a 12 KiB dataset policy. Paths
+have at most eight components including the pool, and at most 255 characters.
+Components contain letters, digits, underscores, hyphens and dots; the first
+character cannot be a dot or hyphen. A component is limited to 63 characters.
+
+.. list-table:: Dataset properties
+   :header-rows: 1
+
+   * - Property
+     - Values and behavior
+   * - ``mountpoint``
+     - Absolute path. OS paths follow the dataset name, such as
+       ``zroot/usr/local`` at ``/usr/local``. Data paths default to the parent's
+       mountpoint plus the final dataset component. A custom data path must stay
+       below its parent's mountpoint. Sibling mountpoints cannot overlap.
+       The complete path, including the pool mountpoint, is limited to 1023 bytes.
+   * - ``compression``
+     - ``off``, ``lz4``, ``gzip``, ``gzip-1`` through ``gzip-9``, ``zstd``, or
+       ``zstd-1`` through ``zstd-19``. Inherits when omitted.
+   * - ``recordsize``
+     - A power of two from 512 bytes through 1 MiB. Inherits when omitted.
+   * - ``atime``
+     - ``on`` or ``off``. Inherits when omitted, except for native OS defaults.
+   * - ``quota``, ``refquota``
+     - Limit total dataset-and-descendant use or the dataset's own referenced
+       use. Omission keeps native defaults. ``none`` or ``0`` removes the limit
+       on creation; it does not modify a preserved dataset.
+   * - ``reservation``, ``refreservation``
+     - Reserve space for the dataset and descendants, or the dataset alone.
+       Omission keeps native defaults; ``none`` or ``0`` reserves no space.
+
+Sizes accept integer bytes or integer binary suffixes ``K``, ``M``, ``G``, ``T``
+and ``P``, case-insensitively, with a maximum of 4 PiB. Record size has the
+smaller limit above. Quotas and reservations must also fit the actual pool;
+native ZFS rejects an allocation it cannot satisfy. See the
+`OpenZFS property reference <https://openzfs.github.io/openzfs-docs/man/master/7/zfsprops.7.html>`_
+for property semantics.
+
+OS datasets require the ``zfs_vdevs`` policy; use ``zfs_topology=stripe``
+for one OS disk. The installer creates them before installing packages, so files
+are written into the intended filesystem. The native ``ROOT`` and
+``ROOT/default`` datasets are reserved. Standard datasets retain their mount
+behavior and ``exec``/``setuid`` settings. Their supported properties can be
+overridden, as shown for ``var/log``. Custom OS datasets must be below ``home``,
+``tmp``, ``usr``, ``var`` or ``opt``; declare ``zroot/opt`` before its children.
+OS mountpoints cannot be relocated. Reinstall recreates all OS datasets on the
+selected OS disks.
+
+These datasets are shared across boot environments. A boot-environment rollback
+does not restore their contents. Account for package files in shared datasets,
+such as ``/usr/local``, when restoring the package database in ``/var/db/pkg``.
+
+New data pools create their declared datasets at first boot. Children inherit
+the pool's encryption key. Independent child encryption, zvols and boot/root
+encryption are outside this interface. A UFS OS can use dataset sections for
+dedicated ZFS data pools.
+
+For ``action=import`` or a repeated completed creation policy, each declared
+data dataset must already exist with the requested properties and inherited
+encryption. A missing dataset or mismatch fails without creating, renaming,
+destroying or changing preserved datasets. Keep the original declarations when
+reinstalling. Undeclared data datasets and snapshots remain intact. Editing
+these sections does not perform ongoing storage administration.
+
+If dataset creation fails after a new pool was created, inspect the pool and the
+attempt record before retrying. A reservation larger than the available space
+can cause this partial state. Record the pool GUID and use ``action=import`` for
+recovery. Remove missing datasets from that recovery policy and ensure that the
+remaining declarations match the existing datasets. To retain the full original
+declaration, create the missing datasets under administrator control with valid
+properties first. Correcting a reservation alone does not make import create a
+missing dataset. Completed pools and preserved data are not rolled back.
+
+The standalone ``configzfs.freebsd`` interface remains available for explicit
+administrator operations. Its root-owned policy under ``/etc/xcat`` contains
+one pool's settings plus ``format=xcat-freebsd-data-1``, ``pool=NAME`` and
+``os_disks=device@serial,...``. Deliver that policy through protected file
+synchronization, then select its path explicitly::
+
+    updatenode node01 -F -P 'configzfs.freebsd /etc/xcat/storage/tank.conf'
+
+For a pool with dataset declarations, also deliver the matching private dataset
+policy and pass its path as the second argument::
+
+    updatenode node01 -F -P 'configzfs.freebsd /etc/xcat/storage/tank.conf /etc/xcat/storage/tank.datasets'
+
+The dataset plan is part of the completed creation receipt. Repeating that
+creation policy requires both arguments; omitting the dataset policy does not
+match the recorded operation.
+
+With no argument, the helper still uses ``/etc/xcat/storage.conf``. These files
+are generated outputs for the unified installation path; administrators do not
+need to maintain a second copy of the declaration.
+
+Automatic data encryption
+-------------------------
+
+For an encrypted pool, add these settings to its ``[pool NAME]`` section::
+
+    encryption=aes-256-gcm
+    key_source=passwd
+
+Supply a cryptographically random 32-byte raw key and enroll it before ``nodeset``.
+The key file must be owned by root, mode ``0600``, with one link. Its directory
+must be owned by root, mode ``0700``. Save its key on the management node using
+the existing xCAT credential table::
+
+    xcat-zfs-key save node01 tank /root/freebsd-keys/node01/tank.key
+
+The command stores the recoverable key in ``passwd.password``, with
+``key=freebsd-zfs`` and ``username=node01/tank``. Ordinary ``dumpxCATdb`` and
+``restorexCATdb`` include it unless ``passwd`` is excluded. For ``dumpxCATdb``,
+``XCAT_SKIPTABLES`` overrides ``site.skiptables``. The hexadecimal representation
+is not encryption. Protect database access and backup files as credentials.
+Create a private directory before exporting, then restrict the CSV permissions::
+
+    install -d -m 0700 /root/xcat-backup
+    dumpxCATdb -p /root/xcat-backup
+    chmod 0600 /root/xcat-backup/*.csv
+
+The xCAT daemon creates the exports. The client's ``umask`` does not control
+their permissions. Keep the directory private throughout the backup.
+
+``xcatsnap`` supplies its own exclusion list and exports ``passwd`` regardless
+of ``site.skiptables``. Its support bundle therefore
+contains enrolled data-pool keys. Protect the bundle as a credential backup.
+It also collects ``/etc/xcat``, which can contain delivered key files.
+Review and redact credentials, including ``passwd.csv``, before sharing it.
+
+The command refuses to replace a different saved key and does not print key
+bytes or take them as command arguments.
+The combined ``node/pool`` identity must fit the table's 128-character key limit.
+
+With ``key_source=passwd``, ``nodeset`` reads the enrolled row for that node and
+pool. First boot installs the raw key at ``/etc/xcat/keys/NAME.key`` with mode
+``0600`` inside a mode ``0700`` directory. Missing or invalid rows stop boot
+preparation. A different key already present on the node is never overwritten.
+After restoring the tables, the same declaration can recover the pool during
+OS reinstall without a separate key-copy operation.
+
+The controller's private ``/var/lib/xcat/freebsd-postscripts`` store also keeps
+sealed raw keys for preparation retries. Nodes retain delivered copies under
+``/var/db/xcat/postscripts`` as frozen execution inputs. Protect these stores
+and their backups as credential material. Removing a row from ``passwd`` does
+not revoke a key in an existing preparation or on an installed node. Temporary
+preparation and export copies are removed when each operation completes or
+fails.
+
+To recover a standalone source key file, recreate its private directory and run::
+
+    install -d -m 0700 /root/freebsd-keys/node01
+    xcat-zfs-key restore node01 tank /root/freebsd-keys/node01/tank.key
+
+This does not provide a central vault, automatic key generation or rotation. Existing
+file-based key delivery remains supported, but its files enter database
+backups only after an explicit successful ``xcat-zfs-key save``.
+
+For the standalone helper, use ``keyfile=/etc/xcat/keys/NAME.key`` in its native
+policy and deliver keys through SSH file synchronization. Keep the source outside the HTTP
+installation tree. Synchronize the whole private directory so that rsync also
+preserves its mode. For example, use this ``synclists`` entry, with the source
+directory owned by root and mode ``0700``, and every key file mode ``0600``::
+
+    /root/freebsd-keys/node01/ -> /etc/xcat/keys/
+
+A file-only entry does not set the destination directory's mode. Restore the
+private directory with the same mapping after reinstall when using that interface.
+The unified ``partitionfile`` path delivers this directory automatically.
+Do not put key bytes
+in image settings, disk policies,
+environment attributes, command arguments or postscripts. The postscript uses
+the native ``zfskeys`` service to unlock the data pool automatically at boot.
+It never prompts for a passphrase. Missing or incorrect keys cause failure.
+
+The OS pool remains unencrypted. A key stored on the OS disk protects detached
+data drives, but does not protect data if an attacker obtains that disk and the
+data drives together. After OS reinstall, restore the same protected key and
+use the recorded pool GUID with ``action=import``. Do not create a replacement
+key for an existing encrypted pool.
+
+.. _freebsd-future-root-encryption:
+
+Encrypted-root boot in a future release
+---------------------------------------
+
+Native ZFS encryption for the OS/root dataset is deferred to a future release.
+No release version is assigned. The current installation retains FreeBSD's
+native loader and an unencrypted OS pool. Automatic data-pool encryption
+remains available.
+
+The `FreeBSD handbook <https://docs.freebsd.org/en/books/handbook/zfs/#zfs-encryption>`_
+documents that the loader cannot boot from natively encrypted ZFS datasets.
+GRUB2 is not a selected workaround. Its existing ZFS encryption code handles
+an older format. The `GRUB 2.14 ZFS reader <https://git.savannah.gnu.org/cgit/grub.git/tree/grub-core/fs/zfs/zfs.c?h=grub-2.14>`_
+does not support OpenZFS's native encryption feature. Chainloading FreeBSD's
+loader retains its limitation. Recheck both loaders against future target
+versions before choosing a boot design.
+
+ZFS encryption applies to individual datasets. A future layout could store boot
+files in an unencrypted ``zroot/boot`` dataset and the OS root in encrypted
+``zroot/ROOT/default``. Their parent datasets would remain unencrypted. This
+layout does not inherently require a separate boot pool or additional physical
+disks. The design must also define encryption for the other OS datasets.
+
+The unencrypted boot files would load the kernel and a small startup
+environment. That environment must obtain the key automatically, unlock the
+root dataset and continue startup with that dataset mounted at ``/``. A
+separate boot dataset alone does not provide this startup mechanism. This is
+a future design candidate and has not been implemented or qualified. It does
+not inherently require GRUB2. GELI encryption and GEOM/UFS mirrors remain
+outside the current release.
+
+Acceptance requires:
+
+* Automatic key delivery before root mounts, without an interactive passphrase.
+  Define the key source, access controls, protected backup and recovery policy.
+  An unencrypted key on the OS drive does not protect against theft of that drive.
+* Defined failure and recovery behavior for missing or incorrect keys and an
+  unavailable key service, if the design uses one.
+* BIOS and UEFI cold boot, redundant and degraded boot, kernel updates, boot
+  environments and recovery with the selected bootloader.
+* OS reinstall with restored access to encrypted storage and verified
+  preservation of the separate data pools.
+
+Installed-node networking
+--------------------------
+
+Use ``confignetwork`` to configure the installed FreeBSD node from the ``nics``,
+``networks`` and selected ``routes`` tables. It supports physical Ethernet and
+InfiniBand interfaces, VLANs, native LAGG failover or LACP, and Ethernet bridges.
+Ethernet interfaces can carry static IPv4 and IPv6 addresses or reserved DHCP
+leases. InfiniBand uses the native IPoIB stack; see :ref:`freebsd-infiniband`.
+
+Provisioning uses IPv4. The mfsBSD installer can create a VLAN, LAGG or bridge
+before downloading its configuration; see :ref:`freebsd-early-network`.
+The firmware must first load the boot payload through its supported network.
+IPv6-only provisioning remains outside this path.
+SLAAC address assignment, tunnels and switch configuration are outside this
+adapter. IPv6 router advertisements can supply routes for a DHCPv6 interface.
+
+Select the postscript before ``nodeset`` to configure networking after the
+first disk boot::
+
+    chdef node01 -p postscripts=confignetwork
+
+For an installed node, apply the current table values with::
+
+    updatenode node01 -P confignetwork
+
+Use native FreeBSD interface names. Include every physical member in
+``nictypes``. Put addresses on the LAGG or bridge, not its members. A VLAN
+can use a physical interface or LAGG as its parent. A bridge can contain
+physical interfaces, LAGGs or VLANs.
+
+The adapter accepts these attributes:
+
+.. list-table:: FreeBSD NIC attributes
+   :header-rows: 1
+
+   * - Attribute
+     - Values
+   * - ``nictypes``
+     - ``Ethernet``, ``lagg`` or ``bond``, ``vlan``, and ``bridge``.
+       Also accepts ``Infiniband`` and ``bond-infiniband``. Type names are case
+       insensitive. InfiniBand ports require ``ibN`` names. Clones require
+       ``laggN``, ``vlanN`` or ``bridgeN`` names.
+   * - ``nicdevices``
+     - Pipe-separated member names. LAGG requires 2 to 16 physical members.
+       A VLAN requires one parent. A bridge accepts 1 to 16 members.
+   * - ``nicips``
+     - Pipe-separated static or reserved DHCP addresses. Each address requires a matching
+       ``nicnetworks`` entry. One network name can cover several addresses
+       from the same subnet.
+   * - ``nicnetworks``
+     - Network names in address order. Use dotted IPv4 masks. For IPv6, use
+       CIDR network notation and the matching prefix length in ``mask``.
+       A leading slash in the mask is accepted.
+   * - ``nicextraparams``
+     - Space-separated options from the table below. Linux interface-file
+       options and arbitrary ``ifconfig`` arguments are rejected.
+
+.. list-table:: FreeBSD NIC options
+   :header-rows: 1
+
+   * - Option
+     - Meaning
+   * - ``MTU=NUMBER``
+     - 576 through 9216, subject to the driver limit. IPv6 requires at least
+       1280. Otherwise, use ``networks.mtu`` or inherit the parent MTU.
+       Ethernet ports default to 1500. InfiniBand defaults to 2044 and accepts
+       at most 4092. LAGG and bridge members require equal MTUs.
+   * - ``LAGGPROTO=failover`` or ``LAGGPROTO=lacp``
+     - Required for LAGG. Member order selects the failover primary.
+       LACP requires a compatible peer or switch port channel.
+   * - ``VLAN_TAG=NUMBER``
+     - 1 through 4094. The default is the numeric suffix of the VLAN name.
+   * - ``STP=yes`` or ``STP=no``
+     - Enable or disable spanning tree on bridge members. The default is
+       ``yes``. Allow forwarding convergence before checking data traffic.
+   * - ``BOOTPROTO=dhcp`` or ``dhcp4=true``
+     - Use the native DHCPv4 client on Ethernet. IPoIB requires the
+       ``xcat-dhcpcd`` package described below. ``BOOTPROTO=static`` or ``none``,
+       and ``dhcp4=false``, retain static IPv4 configuration.
+   * - ``DHCPV6C=yes`` or ``dhcp6=true``
+     - Use DHCPv6 through the ``dhcpcd`` package. Install that package first.
+       ``DHCPV6C=no`` or ``dhcp6=false`` retain static IPv6 configuration.
+   * - ``PEERDNS=yes`` or ``PEERDNS=no``
+     - Add or ignore DHCP resolver settings. The default is ``yes``. The
+       installed static resolver settings remain registered with openresolv;
+       leases without DNS options do not replace them.
+   * - ``DEFROUTE=yes`` or ``DEFROUTE=no``
+     - Accept or ignore DHCPv4 routes. The default is ``yes`` for the management
+       interface and ``no`` for additional interfaces.
+   * - ``IPV6_DEFROUTE=yes`` or ``IPV6_DEFROUTE=no``
+     - Require or ignore an IPv6 router-advertisement default for DHCPv6.
+       The management interface defaults to ``yes`` when it has no static IPv6
+       gateway. Additional interfaces default to ``no``. Use ``no`` on an
+       isolated link whose router advertisements have zero lifetime or which
+       has no router advertisements.
+   * - ``MACADDR=ADDRESS``
+     - Set a persistent unicast MAC on a clone. Required for a DHCP bridge.
+
+Each DHCP family requires exactly one matching reserved address in ``nicips``.
+The adapter verifies the acquired address against that reservation. DHCPv4 also
+checks the network prefix. A wrong or missing lease prevents completion.
+Configure reservations on the DHCP server before applying the node policy.
+DHCPv6 uses DUID-UUID from the node's hardware UUID, matching the xCAT DHCP
+backends. Keep ``vpd.uuid`` consistent with that UUID and retain it across OS
+replacement. A missing or invalid hardware UUID causes rejection. IPv4
+provisioning remains unchanged.
+
+For both DHCP families on the example data interface, set::
+
+    chdef node01 'nicextraparams.vtnet1=BOOTPROTO=dhcp DHCPV6C=yes PEERDNS=yes'
+    updatenode node01 -P confignetwork
+
+DHCPv6 uses one managed ``dhcpcd`` process with IPv4 and SLAAC address assignment
+disabled. Keep its global service disabled. The adapter installs its own
+``xcat_dhcp6`` service and protects its client policy under ``/var/db/xcat/network``.
+Do not run another DHCP client on managed interfaces. Explicit static defaults
+and DHCP defaults must not compete for the same address family.
+
+If an existing required IPv6 router-advertisement default disappears, restore
+the router or set ``IPV6_DEFROUTE=no`` before running ``confignetwork`` again.
+The postscript rejects the missing route before changing the network.
+
+For example, configure a physical interface with IPv4 and IPv6::
+
+    mkdef -t network -o data4 net=192.0.2.0 mask=255.255.255.0
+    mkdef -t network -o data6 net=2001:db8:1::/64 mask=/64
+    chdef node01 nictypes.vtnet1=Ethernet \
+        'nicips.vtnet1=192.0.2.10|2001:db8:1::10' \
+        'nicnetworks.vtnet1=data4|data6'
+    updatenode node01 -P confignetwork
+
+To move those addresses onto a bridge over a VLAN over LACP, use::
+
+    chdef node01 \
+        'nictypes=vtnet1!Ethernet,vtnet2!Ethernet,lagg0!lagg,vlan100!vlan,bridge0!bridge' \
+        'nicdevices=lagg0!vtnet1|vtnet2,vlan100!lagg0,bridge0!vlan100' \
+        'nicips=bridge0!192.0.2.10|2001:db8:1::10' \
+        'nicnetworks=bridge0!data4|data6' \
+        'nicextraparams=lagg0!LAGGPROTO=lacp'
+    updatenode node01 -P confignetwork
+
+Additional interfaces replace the IPv4 default only with an explicit
+``DEFROUTE=yes`` DHCP policy. A configured
+IPv6 network can supply ``networks.gateway``. IPv6 default gateways must agree.
+A link-local IPv6 gateway receives the interface scope automatically.
+The ``<xcatmaster>`` gateway token retains the current managed IPv4 default.
+When returning from DHCP to static IPv4, it can retain a leased gateway that
+matches the current kernel route and belongs to the management network.
+An explicit ``DEFROUTE=yes`` DHCP interface replaces this retained default.
+To restore the management default, first set its explicit gateway in the shared
+``networks`` row. The token can then retain that gateway again.
+Gateways outside the managed configuration remain under administrator
+control. The token does not select a new gateway when the controller or its
+forwarding configuration changes. Set an explicit gateway to change it.
+If the previous DHCP default cannot be validated or is an interface route,
+set an explicit gateway before selecting static IPv4.
+A verified lease without a router can return to static IPv4 without a default
+when the kernel also has no IPv4 default. This includes management networks
+whose controller does not forward IPv4.
+When moving IPv6 management traffic, set the gateway on its new interface;
+a retained link-local gateway cannot use an interface whose IPv6 is disabled.
+
+Select static routes through ``noderes.routenames``. Each selected route needs
+``net``, ``mask``, ``gateway`` and an explicitly configured ``ifname``. For
+example::
+
+    mkdef -t route -o storage4 net=203.0.113.0 mask=255.255.255.0 \
+        gateway=192.0.2.1 ifname=bridge0
+    mkdef -t route -o storage6 net=2001:db8:2::/64 mask=/64 \
+        gateway=2001:db8:1::1 ifname=bridge0
+    chdef node01 routenames=storage4,storage6
+
+By default, the postscript preserves the installation interface. Use
+``confignetwork -s`` to include it in the declared topology::
+
+    updatenode node01 -P 'confignetwork -s'
+
+The topology must retain the node's existing IPv4 address on the installation
+interface or one of its descendants. Configure the corresponding switch ports
+before migrating management traffic. Retain console access during the change.
+Continue using ``-s`` for subsequent updates after adopting that interface.
+The existing ``site.setinstallnic=1`` or ``yes`` setting also enables this mode.
+
+The adapter validates the full plan before changing interfaces. It rejects
+overlapping subnets, conflicting membership, unmanaged dependencies and missing
+devices. It applies the plan in dependency order, reads back addresses and
+routes, and checks the controller connection from the node's IPv4 address.
+Only then does it save the managed block in ``/etc/rc.conf``. Verify traffic
+on each data network separately.
+
+An identical effective configuration is a no-op, including when unrelated
+settings follow the managed block. Keep previously managed physical
+interfaces in ``nictypes`` when updating. Clear their addresses to remove
+Layer 3 configuration. Removing a managed clone from the definition destroys
+that clone. The Linux ``-r`` option is not available on FreeBSD.
+
+Network configuration must use ``/etc/rc.conf`` with
+``network_interfaces=auto``. Existing unmanaged clones, manual routes on selected
+interfaces, unmanaged DHCP or SLAAC configuration, ``rc.conf.local`` and service-specific
+network override files require manual integration. Selected physical interfaces
+must not have additional ``ifconfig`` options, such as offload flags, media,
+MAC overrides or FIB selection. These settings are rejected before adoption;
+the adapter replaces only static addresses, MTU and interface state. Obsolete
+``ipv6_ifconfig_INTERFACE`` and alias settings also require manual integration.
+Route and clone list entries that the saved plan does not own are retained,
+including multiline values and additions made with ``sysrc``.
+Selected routes use ``xcat_net_NAME`` names; collisions with existing
+route variables or list entries are rejected. Run custom network scripts as
+separate postscripts.
+
+A failed live change attempts to restore the prior configuration. The adapter
+retains its last transaction under ``/var/db/xcat/network/last``. Execution
+timeouts can interrupt rollback and require console recovery. An interrupted
+or failed rollback leaves ``/var/db/xcat/network/pending`` and blocks another
+attempt. Preserve that directory and inspect its logs before recovery. The
+saved ``before.rc`` records the prior boot configuration. Use the console to
+reconcile live and persistent settings before moving the retained transaction
+aside and retrying.
+
+.. _freebsd-infiniband:
+
+InfiniBand interfaces
+^^^^^^^^^^^^^^^^^^^^^
+
+Use ``nictypes.ibN=Infiniband`` for each physical IPoIB port. The postscript
+loads ``mlx5ib`` and ``ipoib`` and adds them to ``kld_list`` without removing
+other modules. The selected kernel must provide those modules. For an adapter
+that uses ``mlx4ib``, select ``IB_DRIVER=mlx4ib`` in that port's
+``nicextraparams``. Driver support depends on the adapter and FreeBSD release;
+loading a module does not qualify every adapter that it recognizes.
+
+The fabric needs a subnet manager and the appropriate partition membership.
+Use ``ibstat`` to inspect the adapter and port GUIDs. Use ``ifconfig -a`` after
+loading the modules to identify the native ``ibN`` names. These are physical
+interfaces, so do not add them to ``cloned_interfaces``.
+
+For example, configure a data port with static IPv4 and IPv6::
+
+    mkdef -t network -o ib4 net=192.0.2.0 mask=255.255.255.0
+    mkdef -t network -o ib6 net=2001:db8:1::/64 mask=/64
+    chdef node01 nictypes.ib0=Infiniband \
+        'nicips.ib0=192.0.2.10|2001:db8:1::10' \
+        'nicnetworks.ib0=ib4|ib6' \
+        'nicextraparams.ib0=MTU=2044 PORT_GUID=02:00:00:00:00:00:00:01'
+    updatenode node01 -P confignetwork
+
+Replace the example GUID with the actual port GUID. ``PORT_GUID`` is optional;
+when present, xCAT checks it before changing addresses. The check uses the
+stable final eight bytes of the 20-byte IPoIB link address. It does not bind the
+configuration to a queue-pair number, which can change after reboot. ``MACADDR``
+is not valid for InfiniBand. After replacing an adapter, update or remove
+``PORT_GUID`` in the node definition before running ``confignetwork``.
+
+Addresses, aliases, routes, persistent configuration and rollback use the same
+planner as Ethernet. Addressed IB interfaces must report active carrier before
+the postscript commits the change. Repeat the attributes for additional ports.
+FreeBSD enumerates those ports itself; the legacy ``--ibaports=1`` and ``--ibaports=2``
+arguments are accepted for postscript compatibility and do not rename or limit
+FreeBSD ports. An unchanged update preserves the configuration during a fabric
+outage. It does not report the fabric's health. A changed policy rejects an
+already enabled, addressed physical IB port without carrier before changing
+networking. LAGGs and partitions are rebuilt from the requested policy and
+must pass carrier verification afterward.
+
+Keep module settings in ``/etc/rc.conf``. After xCAT manages ``kld_list``, use
+``sysrc kld_list+=MODULE`` to add modules. This updates the effective assignment;
+editing an earlier assignment by hand has no effect because the managed block
+comes later. The postscript preserves that effective list. Separate
+``rc.conf.d/kld`` overrides require manual integration.
+
+IPoIB defaults to MTU 2044. ``MTU`` can select a value up to 4092, subject to the
+adapter and fabric MTU. IPv6 needs at least 1280. The FreeBSD GENERIC IPoIB
+module uses datagram transport. ``CONNECTED_MODE=no`` is accepted;
+``CONNECTED_MODE=yes`` is rejected. Linux connected-mode MTUs such as 65520 do
+not apply to this kernel.
+
+For failover, declare each physical port and use a native LAGG::
+
+    chdef node01 \
+        'nictypes=ib0!Infiniband,ib1!Infiniband,lagg0!bond-infiniband' \
+        'nicdevices=lagg0!ib0|ib1' \
+        'nicips=lagg0!192.0.2.10' \
+        'nicnetworks=lagg0!ib4' \
+        'nicextraparams=lagg0!LAGGPROTO=failover'
+
+``lagg`` with InfiniBand members also selects the native InfiniBand LAGG type.
+The first member is preferred. All members must use InfiniBand and the same
+MTU. FreeBSD supports failover for this LAGG type, not LACP. An InfiniBand
+interface cannot be a member of an Ethernet bridge.
+
+FreeBSD exposes IPoIB partitions through its VLAN interface mechanism. Use a
+physical ``ibN`` parent. Partitions over an IB LAGG or one of its members are
+rejected before interface changes::
+
+    chdef node01 \
+        'nictypes=ib0!Infiniband,vlan10!vlan' \
+        'nicdevices=vlan10!ib0' \
+        'nicips=vlan10!192.0.2.10' \
+        'nicnetworks=vlan10!ib4' \
+        'nicextraparams=vlan10!PKEY=0x800a'
+
+The subnet manager must grant that full-member P_Key to the port. ``PKEY``
+accepts ``0x8001`` through ``0x8ffe``; these map to native tags 1 through 4094.
+``VLAN_TAG=10`` on an InfiniBand parent selects the same partition as
+``PKEY=0x800a``. These are IB partitions, not Ethernet VLANs. Limited-member
+P_Keys and larger partition numbers are not exposed by this FreeBSD interface.
+
+DHCPv6 uses the existing managed ``dhcpcd`` path and DUID-UUID reservation.
+
+DHCPv4 over IPoIB
+~~~~~~~~~~~~~~~~~
+
+Install ``xcat-dhcpcd`` before selecting DHCPv4 on an IB port, partition or
+failover LAGG. This package provides dhcpcd 10.5.2 with a FreeBSD BPF correction.
+It installs a separate IPv4 client at
+``/usr/local/libexec/xcat/dhcpcd-ipoib``. Ethernet continues to use the base
+system's ``dhclient``. DHCPv6 continues to use its existing client.
+
+Copy the xCAT source tree to a FreeBSD 15.1-RELEASE amd64 build host with the
+native compiler, headers, ``make`` and ``pkg`` installed. Keep ``build-dhcpcd.sh``
+and its ``patches`` directory together. Set ``xcat_source`` to that checkout::
+
+    xcat_source=/path/to/xcat-core
+    fetch -o dhcpcd-10.5.2.tar.gz \
+        https://codeload.github.com/NetworkConfiguration/dhcpcd/tar.gz/refs/tags/v10.5.2
+    mkdir packages
+    sh "$xcat_source/xCAT-server/share/xcat/install/freebsd/build-dhcpcd.sh" \
+        dhcpcd-10.5.2.tar.gz packages
+    pkg add packages/xcat-dhcpcd-10.5.2_1.pkg
+
+The builder checks the source archive's SHA-256 before applying the supplied
+patch. The package retains privilege separation and disables IPv4 link-local
+fallback. Publish the archive in your approved FreeBSD application repository
+and select ``xcat-dhcpcd`` in ``otherpkglist`` for managed package delivery.
+
+Configure the reserved address and network through ``nicips`` and
+``nicnetworks``, then select DHCP. Set ``vpd.uuid`` to the value returned by
+``kenv -q smbios.system.uuid`` on the node::
+
+    chdef node01 uuid=01234567-89ab-cdef-0123-456789abcdef
+    chdef node01 'nicextraparams.ib0=BOOTPROTO=dhcp PEERDNS=yes DEFROUTE=no'
+    makedhcp node01
+    makedhcp -q node01
+    updatenode node01 -P confignetwork
+
+Replace the example UUID with the node's hardware UUID. The DHCP server reads
+``uuid`` from ``vpd.uuid``. The node attribute also lets ``chdef`` retain that
+inventory when renaming a node. The DHCP server must serve the selected
+network and belong to the node's normal management/service-node assignment.
+After adding a network, regenerate
+the server configuration with ``makedhcp -n`` and its reservations with
+``makedhcp -a`` before applying the node policy.
+
+The postscript installs the ``xcat_ipoib_dhcp4`` startup service. The service
+starts the client in the background and waits up to 30 seconds for an accepted
+lease and IPv4 address on each selected IB interface. A timeout leaves the
+client retrying; dependent services still need their normal network-failure
+handling. It verifies
+each lease before applying its address, prefix, DNS or routes. A missing or
+incorrect lease prevents transaction completion. Expiry removes the managed
+lease, as does a server NAK. IPv4 link-local fallback does not satisfy the
+reservation.
+
+IPoIB DHCP uses the client identifier required by :rfc:`4390`. ``makedhcp``
+generates DHCP option 61 reservations for the selected physical IB ports,
+P_Key interfaces and failover LAGGs. The identifier contains ``ff``, a
+four-byte IAID, and DUID-UUID.
+The IAID is the POSIX ``cksum`` of the native interface name without a newline.
+Keep that name and the hardware UUID stable across OS replacement.
+
+Kea uses ``client-id`` reservations and enables client-ID lease matching on
+the selected subnets. Local ISC servers use owned static host declarations;
+external ISC servers use OMAPI. Ethernet boot reservations retain their
+existing handling. A missing local subnet skips that IPoIB reservation with a
+warning; the DHCP server responsible for the network must serve it. An invalid
+IPoIB policy reports an error and retains its previous reservations while
+Ethernet boot reservations continue to update. A port GUID alone is not the
+IPoIB client identifier.
+
+Ubuntu 20.04 and 22.04 management or service nodes cannot manage external ISC
+IPoIB reservations. Their OMAPI client cannot reliably verify absent hosts.
+``makedhcp`` rejects these updates before changing reservations. Use local ISC
+or Kea on those systems. Ethernet reservations keep their existing handling.
+
+After changing a reserved address, interface name or hardware UUID, rerun
+``makedhcp node01`` before applying the node policy. It replaces the node's
+previous IPoIB reservations, including interfaces removed from ``nics``.
+``makedhcp -q node01`` shows their addresses and client identifiers.
+``makedhcp -d node01`` removes them with the node's other reservations.
+Invalid UUIDs or unsupported NIC policies produce errors before replacing
+the node's IPoIB reservations. Address expressions in ``nicips`` use the same
+expansion as postscripts. Reservations cannot reuse a configured MAC
+reservation's address, including addresses selected through MAC hostname
+aliases. Kea does not assign an extra DNS hostname to the IPoIB reservation;
+manage interface names through the normal ``makedns`` configuration.
+
+Local ISC network regeneration retains IPoIB reservations for subnets still
+served by the daemon. Updates remove IPoIB entries whose owning node no longer
+exists, including entries left by a node rename. Regenerate the renamed node's
+reservations after updating its host-name resolution.
+
+For external ISC servers, xCAT retains an ownership inventory under
+``/var/lib/xcat/dhcp`` with host names, addresses and client identifiers.
+An incomplete update reserves both the previous and requested identities until
+OMAPI confirms the result. Retain this directory when moving the management
+service to another host. It identifies old interfaces for cleanup and prevents
+address conflicts without querying every host on the external server.
+The tables remain the source of the desired configuration. Use xCAT to manage
+these reservations. OMAPI cannot enumerate foreign fixed-address hosts; keep
+their addresses separate from the addresses assigned by xCAT.
+
+The client manages only the IB interfaces selected by ``confignetwork``.
+Do not start another IPv4 DHCP client on those interfaces. An IB fabric must
+provide a subnet manager and a DHCP server or relay for the selected partition.
+
+IPoIB configuration does not configure applications that use verbs. The native
+driver provides that separate interface; applications need their FreeBSD
+libraries and hardware support. Firmware and early installer networking
+continue to use the Ethernet provisioning path. Boot-image descriptions carry
+only the selected Ethernet topology, so unrelated IB attributes do not require
+an older Ethernet boot planner to understand IPoIB.
+
+Qualify each adapter, firmware and fabric combination before deployment.
+Check traffic, the selected MTU, aliases and routes after configuration and
+after a cold boot. Repeat an unchanged update, reject an incorrect port GUID,
+and verify restoration after a failed partition change. For a two-port LAGG,
+interrupt each port separately and verify traffic through the survivor.
+Retain separate results for DHCPv4 and DHCPv6 leases, nondefault P_Key traffic and
+application verbs operations; static IPoIB traffic does not establish those
+results.
+
+.. _freebsd-early-network:
+
+Early installer networking
+--------------------------
+
+The installer can create a VLAN, a failover or LACP LAGG, a bridge, or a
+supported composition of those interfaces before its first configuration
+download. Build the boot image with ``--network-planner`` as described above.
+Preparation rejects this configuration on an image without the bootstrap
+network contract.
+
+Set ``bootstrap_interface`` in the image's protected settings file. For
+example::
+
+    authorized_keys_file=/etc/xcat/freebsd/administrators.pub
+    bootstrap=dhcp
+    bootstrap_interface=bridge0
+
+Describe its topology through the normal ``nics`` table. Include every
+physical member and its hardware MAC in the existing ``nicsadapter`` inventory,
+using native FreeBSD interface names::
+
+    chdef node01 \
+        'nictypes=vtnet0!Ethernet,vtnet1!Ethernet,lagg0!lagg,vlan100!vlan,bridge0!bridge' \
+        'nicdevices=lagg0!vtnet0|vtnet1,vlan100!lagg0,bridge0!vlan100' \
+        'nicsadapter=vtnet0!mac=52:54:00:00:00:01,vtnet1!mac=52:54:00:00:00:02' \
+        'nicextraparams=lagg0!LAGGPROTO=lacp'
+
+The selected provisioning MAC must identify a physical member of this graph.
+It must be the first port when included in a LAGG. Virtual interfaces on its
+path retain that MAC, so the DHCP reservation and installation identity stay
+the same. An explicit conflicting ``MACADDR`` is rejected. Physical members
+inherit the provisioning network's MTU unless ``MTU`` overrides it; virtual
+members follow the normal topology MTU rules.
+
+The loader carries a bounded data description. The installer validates the
+complete graph and physical MACs before creating interfaces, then applies
+``bootstrap=dhcp`` or ``bootstrap=static`` to the selected interface. The
+downloaded configuration must match the loader description. Native interface
+and IPv4 readback must pass before disk installation starts. The installed
+system retains this topology with the node's static management address and
+records it as xCAT-managed configuration. Use ``confignetwork -s`` to update
+this management topology, its addresses, DHCP policy and routes.
+When the installed-node policy matches this static management configuration,
+it retains the inherited MAC and member MTUs and treats it as unchanged.
+A management bridge can use that inherited MAC for DHCP; other DHCP bridges
+require ``MACADDR``.
+
+The firmware and loader still need a working path to fetch the boot payload.
+This setting configures the FreeBSD kernel stage; it does not configure PXE
+firmware, switch VLANs, LACP fallback or switch port channels. Configure those
+prerequisites separately. IPv6-only provisioning and Linux-specific bond
+modes or initramfs command-line syntax are outside this adapter.
+
+Bootstrap, console and boot options
+-----------------------------------
+
+The settings file accepts ``bootstrap=dhcp`` or ``bootstrap=static``. DHCP is
+the default. Static mode passes the node's address, netmask and gateway through
+the loader handoff, so the installer can fetch its configuration without DHCP.
+The preceding PXE/xNBA boot still needs the normal network-boot services.
+Both modes configure the installed target with static network settings from
+the xCAT database.
+
+Set the serial console through the node's ``nodehm`` attributes::
+
+    chdef node01 serialport=0 serialspeed=115200 serialflow=none
+
+Ports ``0`` through ``3`` select COM1 through COM4. Supported speeds are
+9600, 19200, 38400, 57600 and 115200. ``serialflow`` accepts ``none`` or ``hard``
+for the installed login terminal.
+Leave all three attributes empty when no serial console is required.
+The runtime configures the loader, kernel UART and installed login terminal.
+Server firmware and a remote-console service must use compatible settings.
+
+Use native FreeBSD loader assignments in ``bootparams.addkcmdline``. Separate
+assignments with spaces. An unprefixed assignment applies to the installer.
+An ``R::`` assignment applies to the installed target's ``/boot/loader.conf``::
+
+    chdef node01 addkcmdline='boot_verbose=YES kern.msgbufsize=1048576 R::kern.msgbufsize=262144'
+
+This example gives the installer a 1 MiB message buffer and the target a
+256 KiB buffer. Repeat an assignment in both forms when both phases need it.
+Duplicate keys within one phase cause rejection. A boolean ``*_load`` or
+supported ``boot_*`` option requires ``YES`` or ``NO``.
+
+Values cannot contain spaces, quotes, shell substitutions or control characters.
+Options that change the installer, root device, networking, console, kernel
+path or executable loader directives are reserved. Configure those functions
+through the installation policy and node attributes. Preparation rejects an
+invalid option before arming the node.
+
+``kern.geom.label.gpt.enable`` is reserved for all accepted contracts, including
+3 through 5, so a stored override cannot disable the identities required after
+an image upgrade. Remove an existing override in either phase before preparing
+the node with this version.
+
+These settings require a boot runtime with ``xcat-freebsd-install-3`` or later.
+An older runtime accepts only the default DHCP mode without extra boot options
+or a configured serial console.
+
+Configure and install a node
+----------------------------
+
+Define the node address, MAC, and matching ``networks`` entry through the normal
+xCAT configuration commands. Every enabled IPv4 ``networks`` entry must have a
+valid, contiguous dotted-decimal mask, including entries for other subnets.
+Exactly one network entry must match the node.
+Configure a gateway in the node subnet if an installation endpoint is outside
+that subnet.
+
+Install ``xnba-undi`` on the provisioning owner, then run ``mknb x86_64``.
+Debian installations that omit recommended packages can omit this bootloader.
+Check that ``/tftpboot/xcat/xnba.kpxe`` and ``/tftpboot/xcat/xnba.efi`` exist before
+booting a node.
+
+Bind DHCP to the provisioning interface through ``site.dhcpinterfaces`` and
+the DHCP service configuration. For Debian or Ubuntu ISC services, also check
+``INTERFACESv4`` and leave ``INTERFACESv6`` empty when IPv6 DHCP is unused.
+``makedhcp`` can rewrite ``/etc/default/isc-dhcp-server`` with the older
+``INTERFACES`` setting. Keep required service overrides in a separate systemd
+``EnvironmentFile``, then check the running DHCP process after regeneration.
+
+Select xNBA and the provisioning MAC::
+
+    chdef node01 netboot=xnba installnic=mac
+
+The MAC table must identify one unambiguous provisioning MAC. If the node has
+several eligible MAC addresses, set ``installnic`` to the desired colon-separated
+MAC explicitly. Interface names such as ``em0`` are not accepted here.
+
+For a fixed service-node owner, set both attributes explicitly::
+
+    chdef node01 servicenode=sn01 xcatmaster=sn01
+
+The owner must have the imported bundle, policy files, and local DHCP/HTTP/TFTP
+services. Retain the normal xCAT ``/install`` HTTP alias, including when
+``site.installdir`` points to a different filesystem directory. HTTPS-only
+distribution service is not supported by the initial runtime.
+
+.. _freebsd-service-pools:
+
+For provisioning-service failover, assign a service-node pool and leave
+``xcatmaster`` unset::
+
+    chdef node01 servicenode=sn01,sn02 xcatmaster=
+
+Use the normal xCAT service-node configuration and shared database. Every
+member must run this FreeBSD implementation and have the same imported media,
+repositories, policy files, public keys, scripts, and HTTP/TFTP services.
+Set ``site.sharedtftp=0`` and use a separate local TFTP directory on each
+member. Shared TFTP lets one member overwrite another member's installation
+entry, so pool preparation rejects it. A single ``servicenode`` with an unset
+``xcatmaster`` also uses the pool protocol and requires the management node.
+Configure DHCP on the pool members with the normal xCAT pool setup. Each
+server must advertise its own reachable provisioning address. If only service
+nodes run DHCP, set ``site.disjointdhcps=1`` so node reservation updates target
+those servers. Remove an
+obsolete fixed ``tftpserver`` or ``nfsserver`` override if it pins the node to
+one server. The management node identified by ``site.master`` coordinates
+installation ownership and must remain reachable by the service nodes.
+``site.master`` and service-node names must resolve to the same IPv4 addresses
+on every member. Retain the normal authenticated xCAT service-node trust. If
+command policy is restricted, permit authenticated service-node requests for
+``freebsdpool`` to the management node and between service nodes, together with
+the existing ``nodeset`` and ``updatenodestat`` requests.
+
+``nodeset`` prepares and registers a generation on every pool member. Check
+the result from every member before booting. If a server fails before the
+installer starts, another prepared server can supply the boot files and
+installation payload. The first installer authorized to begin owns that
+attempt. Conflicting or stale generations cannot obtain permission to write
+disks. Loss of the management-node acknowledgement also prevents installation
+from starting.
+An unavailable coordinator or an active installation is reported for the
+affected node. Other prepared pool nodes, fixed owners, and Linux nodes in the
+same request retain their own dispatch. Check each node's result before booting.
+
+Failover does not migrate an installation that has already begun. Its selected
+server owns status, postscript receipts, and subsequent ``updatenode`` requests.
+After completion, the selected server switches its own entry to disk boot and
+requests the same update on reachable standbys. An unavailable standby does
+not prevent completion. Before returning a recovered standby to provisioning,
+run ``nodeset node01 enact`` and verify its disk-boot entry. A stale install
+entry cannot authorize a second installation, but can interrupt unattended
+boot until it is refreshed.
+If the management node misses the final completion acknowledgement after the
+owner has switched to disk boot, a later disk-boot report reconciles completion
+before starting boot scripts. If the installer exhausts its retry window,
+restore management-node access, run ``nodeset node01 enact``, and verify the
+disk-boot entry on every service node before rebooting the installed node.
+The failed completion does not refresh standby entries automatically.
+This recovery does not repeat disk installation.
+
+Prepare the installation, update DHCP, and boot the node::
+
+    nodeset node01 osimage=IMAGE_NAME
+    makedhcp node01
+    rpower node01 boot
+
+Do not boot the node if preparation or DHCP configuration reports an error.
+On Kea, a rejected FreeBSD node retains its previous reservation and native
+loader classes. Valid nodes in the same request can still be updated. A failed
+``makedhcp`` update does not disable the old boot configuration. Correct the
+reported input error and repeat the update before booting the node.
+``bootparams.addkcmdline`` accepts supported FreeBSD loader assignments with
+the current boot runtime. Linux kernel arguments are not valid FreeBSD options.
+An invalid FreeBSD image detected during preflight stops a mixed-node request
+before any installation image is prepared.
+
+An explicit iSCSI server and target conflict with this installation path and
+cause preparation to fail. Remove an obsolete SAN configuration only after
+confirming that the node no longer uses it.
+
+The installer verifies configuration, release sets, the provisioning interface,
+and disk ownership before requesting permission to start. Imported ZFS pools,
+attached GELI providers, and ambiguous existing storage cause a failure before
+partitioning. Completion requires xCAT to select disk boot and acknowledge the
+status update. A first-boot service reports that the installed system started.
+It runs in the background, logs errors through syslog, and leaves reporting
+pending after a timeout so that the next boot can retry.
+The install monitor shares its 64-handler limit across all nodes. It handles
+one request per node at a time and queues later connections from that node.
+The installer retries acknowledgments for about 15 minutes.
+It does not reboot after installation without a completion acknowledgment.
+
+Postscripts and boot reporting
+------------------------------
+
+During ``nodeset``, xCAT seals the selected scripts and their arguments for
+the installation's first boot and later boots. The first boot runs the
+selected ``postscripts`` and ``postbootscripts``. Later boots run only
+``postbootscripts``, when the sealed ``site.runbootscripts`` policy enables
+them. Changing a source script does not change a retained run. Use
+``updatenode`` to select a new operation on an installed node.
+
+With the stock ``NODESETSTATE=$NSETSTATE`` template line, first-boot scripts
+receive ``NODESETSTATE=install``. Later boots and ``updatenode`` operations
+receive ``NODESETSTATE=boot``.
+
+Sealing includes the entire ``<installdir>/postscripts`` tree, including files
+that the current selection does not execute. The sealed source has these
+limits:
+
+* 4,096 entries, including the root directory and selected template.
+* 64 MiB of file contents in total, with at most 16 MiB per file.
+* A 4 MiB manifest, paths of at most 4,096 bytes, and components of at most
+  255 bytes. Directory depth and symbolic-link traversal are limited to 64.
+* Owners must be root or the xCAT service account. Files and directories must
+  not be writable by group or other users. Links must remain inside the tree;
+  external hard-link aliases and link cycles are rejected.
+
+Any violation prevents preparation, even when it affects an unselected file.
+Keep unrelated archives and generated output outside the postscripts tree.
+
+The ``xcatpostboot`` service reports the current boot in the background.
+Its boot identity belongs to one kernel lifetime. A ``reboot -r`` reroot keeps
+that identity and does not start a new boot-script cycle. Use a full reboot for
+a new cycle. Run the worker and boot service in the installed system's root,
+with a shared ``/var/run``; separate chroots or jails do not share its identity
+lock. Reserve ``xcat.postscript.boot-id`` for xCAT. Do not set it in loader
+configuration or change it with ``kenv`` while the system is running.
+The controller binds its response to the installation generation, attempt,
+boot and script run. A node's ``booted`` status alone does not establish
+successful script execution. Check the run outcome and per-script results.
+Results retain the arguments, exit status, standard output and standard error.
+Each entry has a default execution timeout of 300 seconds. The package
+prerequisite and script driver each have a 3,600-second execution timeout.
+These execution deadlines are separate from the command's observation timeout.
+On expiry, the supervisor sends TERM and CONT to its descendants, waits five
+seconds, then sends KILL if needed. Cancelling the whole run, or a failure of
+its outer capture supervisor, can also stop services started by earlier phases
+of that run. Cancelling an individual phase can stop services that it started.
+
+Each output stream retains at most 1 MiB. For a selection of more than 32
+entries, each stream's limit is reduced to the integer part of 64 MiB divided
+by twice the entry count. This bounds all retained entry output to 64 MiB.
+Excess output is drained and discarded; it does not change the script's exit
+status or prevent later entries from running. The report and command output
+identify truncated streams and give their effective limit. These limits do
+not restrict files that an administrator script creates.
+
+A script may start a persistent service and return. The worker does not wait
+for that service on normal completion. Services must detach or redirect their
+standard output and error to their own files or the system logger. The worker
+drains inherited output pipes for up to 100 milliseconds after the command
+exits, then closes them. A later write to such a pipe can receive SIGPIPE or
+EPIPE. The report flags streams that remained open when capture ended.
+
+The node keeps run records under ``/var/db/xcat/postscripts`` and boot reports
+under ``/var/db/xcat/boot-report``. The controller retains the collected report
+at the location printed by ``updatenode``.
+
+A delivery or reporting retry reuses the run identity. It does not execute
+completed or uncertain scripts again. If reporting times out, its record
+remains pending for a later retry. An interrupted run requires the explicit
+recovery command described above. Do not remove run records to force a retry:
+the controller checks that previously completed receipts remain on the node.
+
+The controller stores postscript evidence under
+``/var/lib/xcat/freebsd-postscripts``. Successful delivery polls remove their
+temporary diagnostics after the transport returns. Boot polls retain one
+observation per distinct state. Repeated observations reuse that evidence.
+Terminal receipts, synchronization results and frozen script inputs remain
+available for retries and diagnosis.
+
+Package verification transfers full package manifests from verified archives.
+It compares installed metadata, dependencies and archive provenance without
+transferring the package file payload. Updates still transfer full archives.
+After package work commits and script execution reaches a validated terminal
+result, the node removes its package payload copies. The controller removes
+its transfer archive after retaining that terminal receipt. This also applies
+when a script fails or the framework records a terminal failure after successful
+package work. Status, reports and retries remain available through the retained
+records.
+
+Active, uncertain and package-rejected runs retain their payloads. Missing
+payload files alone cannot authorize cleanup. If the node reports that payload
+retirement is pending, retry cleanup as root on that node::
+
+    /usr/local/libexec/xcat-postscript retire RUN
+
+Use the recorded 32-character run identity. This operation retries deletion
+without repeating package work or scripts. A controller delivery retry also
+finishes interrupted controller payload cleanup.
+
+Successful release and report collection remove their temporary transport
+directories after validating the response or publishing the report. Failed
+transport attempts retain private ``.delivery-<RUN>.*``, ``.boot-<NODE>.*``,
+``.release-<RUN>.*`` or ``.report-<RUN>.*`` directories. After resolving the failure, stop retry clients
+and confirm that no status worker or transport uses the node. Archive the
+failed attempt directories, verify the archive, then remove those directories
+individually. Keep exports, synchronization directories and run records while
+the installation or its retained reports depend on them.
+
+Sealed sources and preparations can be shared by several nodes and runs.
+There is no command to prune those shared records or the node's execution
+history during an active installation. For decommissioning, stop the node and
+its retry clients, then archive and verify its controller and node records.
+Retire a complete controller store only after all installations that use it
+are retired. Preserve the corresponding installation ownership records with
+the archive. Removing a run record from an active installation can prevent
+later observation and recovery.
+
+Failure and retry
+-----------------
+
+Inspect the node console and xCAT status after a failed installation. Do not
+assume that a failure after installation started left the target disk unchanged.
+
+For a fixed owner, preparation with unchanged inputs reuses a prepared
+generation. For a pool, ``nodeset osimage=IMAGE_NAME`` creates a new pool epoch;
+``nodeset enact`` and service restarts reuse the sealed scripts and registered
+generation. Changed configuration requires a new pool epoch. An installation
+that has started, is completing, or has failed cannot be rearmed
+while it may still be running. Stop the node first, cancel the attempt, correct
+the cause, and prepare a new installation. For a multi-disk policy, first
+resolve any partial layout through an explicit administrative procedure.
+Canceling the attempt does not erase disks or authorize reinstall::
+
+    rpower node01 off
+    nodeset node01 offline
+    nodeset node01 osimage=IMAGE_NAME
+    makedhcp node01
+    rpower node01 boot
+
+Installation ownership records reside in ``/var/lib/xcat/freebsd-install`` on
+the selected owner. Do not remove these records to bypass an active attempt.
+They include the retained OS-disk identities. Cancellation, a failed attempt
+and a new preparation preserve those identities. A service-node pool also
+stores them at its management-node coordinator before acknowledging disk
+authorization, so a later preparation can use a different member of that pool.
+Stop the node before changing its installation owner.
+For a service-node pool, also retain ``/var/lib/xcat/freebsd-pools`` on the
+management node and the local installation and postscript stores on every
+member. Ordinary table backups do not include these files. Back them up with
+the corresponding installation artifacts while the affected nodes and retry
+clients are stopped. Do not restore only an older coordinator record while
+newer service-node attempts can still run.
+After any store restore, use verified explicit disk assignments for the next
+installation. Servers predating disk-record support cannot read the extended
+pool state. Downgrading those servers requires a consistent pre-upgrade backup
+of the controller stores, with nodes and retry clients stopped, followed by
+explicit disk assignments. Keep the newer records for diagnosis.
+Configuration and boot generations are retained for retry and diagnosis; they
+are not automatically deleted after installation.
+
+Physical hardware acceptance
+----------------------------
+
+Virtual-machine results do not qualify a physical server's firmware, storage
+controller, disk identities, or removal behavior. Run this procedure on
+authorized disposable disks before deploying a new hardware combination.
+Keep physical acceptance marked ``NOT RUN`` until the observations are retained.
+
+Record the server model, firmware revision, controller model and firmware,
+disk models and serials, boot mode, xCAT candidate, and imported artifact hashes.
+Record the selected policy and the identity of an unrelated sentinel disk.
+Keep that disk outside every installation policy. Record its checksum before
+and after the campaign.
+
+Before installation, compare the physical disk inventory with the policy::
+
+    geom disk list
+    gpart list -a
+    sysctl -n machdep.bootmethod
+
+Select only the disposable disks. Do not erase an existing layout to make a
+failed initial-install check pass. Resolve disk ownership and contents before
+starting the campaign. Follow the server's removal procedure and controller
+requirements when disconnecting members.
+
+Use the normal ``nodeset``, DHCP preparation, and network-boot path. Retain the
+complete firmware and installation console. After installation, detach its
+media and make network boot unavailable. Boot from the installed disks.
+Observe the running system directly::
+
+    freebsd-version -k -u
+    kenv -q smbios.system.uuid
+    mount -p
+    geom disk list
+    gpart list -a
+    swapinfo -h
+    pkg-static -C /dev/null query -a '%n %v %a %k'
+
+For ZFS, also capture the pool's current topology and errors::
+
+    zpool status -g
+    zpool status -LP
+    zpool get guid,bootfs zroot
+
+Check the current boot's postscript results and their controller receipts.
+A retained ``booted`` status from a previous boot does not prove this boot.
+Write test data, synchronize it, and retain its checksum outside the node.
+Read and compare that data after every fault and recovery step.
+
+For each firmware mode in use, perform the following storage checks:
+
+.. list-table:: Physical storage campaign
+   :header-rows: 1
+
+   * - Layout
+     - Required checks
+   * - Single-disk UFS or ZFS
+     - Initial installation, disk-only boot, and intentional single-disk reinstall.
+       Check both zero swap and the intended nonzero swap configuration.
+   * - Two-way mirror
+     - Remove each member separately and boot from its survivor.
+   * - Three-way mirror
+     - Exercise all 3 single-member and all 3 two-member loss sets.
+   * - Four-disk striped mirrors
+     - Exercise all 4 single losses and all 4 losses of one member from each pair.
+       Losing both members of one pair must prevent a usable root.
+   * - RAID-Z1, 3 members
+     - Exercise all 3 single losses and a loss beyond parity.
+   * - RAID-Z2, 4 members
+     - Exercise all 4 single losses, all 6 two-member losses, and a loss beyond parity.
+   * - RAID-Z3, 5 members
+     - Exercise all 5 single, 10 two-member, and 10 three-member loss sets.
+       Also exercise a loss beyond parity.
+   * - Wider layouts
+     - Check the intended width and grouping, including a wider RAID-Z group
+       and six-disk striped mirrors when these are deployed.
+   * - OS auxiliary devices
+     - Install with the intended log, cache and special groups. Verify their
+       identities, group boundaries and properties. Boot with one missing special
+       mirror member, one missing log mirror member and a missing cache device.
+       Repeat with disk renumbering and verify that preserved disks receive no
+       writes and that all surviving members have zero read, write and checksum errors.
+       A complete special-group loss must prevent a usable root. Reinstall with
+       all members restored and verify that separate data disks are unchanged.
+       A complete log-group loss, including a singleton, must prevent automatic
+       root import. Verify the documented rescue procedure and a subsequent
+       disk-only boot on disposable copies before relying on that recovery.
+   * - Dedicated data pool and OS reinstall
+     - Record pool and dataset GUIDs, a snapshot, file checksums and key backups.
+       Export the data pool, replace only the OS disks, and compare the preserved
+       devices before import. Restore the key through SSH, import the recorded
+       pool, and verify its data, auxiliary devices and properties. Cold boot
+       again and confirm automatic key loading and dataset mounting.
+
+Start each independent fault case from a healthy restored baseline. For every
+recoverable loss set, select each surviving boot-capable member in turn.
+Keep the other members needed by the root pool connected. Record the disk
+actually selected by firmware and verify the mounted root and data.
+
+Test automatic fallback separately by removing the preferred boot member
+without selecting another member manually. For UEFI, retain the original
+NVRAM state and also test the standard fallback loader with fresh firmware state.
+Capture ``efibootmgr -v`` and the actual loader device. Do not infer automatic
+fallback from a successful manual selection.
+
+Test live member loss during synchronized, acknowledged writes separately
+from cold degraded boot. Check every acknowledged record after recovery.
+Replace a failed member through the native administrative procedure, wait
+for resilvering to finish, and restore its bootcode or ESP contents.
+Check the recovered data and boot from the replacement disk. For a topology
+that needs other members, keep the required surviving members connected.
+
+Retain the console, current boot identity, disk and pool inventory, data hashes,
+package roster, per-script results, and outcome for each case. Record a missing
+case as ``NOT RUN``. After the campaign, remove temporary resources and restore
+the intended firmware boot order.

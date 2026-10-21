@@ -5103,6 +5103,8 @@ sub lookupNetboot {
 
     if ($imgtype =~ /^NIM$/i) {
         $ret = "nimol";
+    } elsif ($imgtype =~ /^freebsd$/i) {
+        $ret = 'xnba' if $osvers eq 'freebsd15.1' && $osarch eq 'x86_64';
     } elsif ($imgtype =~ /^Linux$/i) {
         if ($osarch =~ /^x86_64$/i) {
             $ret = "ipxe,xnba,pxe,grub2";
@@ -5123,6 +5125,75 @@ sub lookupNetboot {
         }
     }
     return $ret;
+}
+
+sub freebsd_image_error {
+    my ($class, $image, $netboot) = @_;
+    return undef unless ref($image) eq 'HASH' &&
+      (($image->{imagetype} || '') =~ /\Afreebsd\z/i ||
+       ($image->{osvers} || '') =~ /\Afreebsd/i || ($image->{osname} || '') =~ /\AFreeBSD\z/i);
+    return 'FreeBSD requires imagetype=freebsd, osvers=freebsd15.1, and osarch=x86_64'
+      if grep { !defined($image->{$_}) || ref($image->{$_}) } qw(imagetype osvers osarch);
+    return 'FreeBSD requires imagetype=freebsd, osvers=freebsd15.1, and osarch=x86_64'
+      unless $image->{imagetype} eq 'freebsd' &&
+      $class->lookupNetboot($image->{osvers}, $image->{osarch}, $image->{imagetype}) eq 'xnba';
+    return 'FreeBSD supports only provmethod=install'
+      unless defined($image->{provmethod}) && !ref($image->{provmethod}) && $image->{provmethod} eq 'install';
+    return 'FreeBSD requires noderes.netboot=xnba'
+      if defined($netboot) && (ref($netboot) || (length($netboot) && $netboot ne 'xnba'));
+    return '';
+}
+
+sub _freebsd_image_paths_error {
+    my ($field, $value, $multiple) = @_;
+    return "FreeBSD $field must be a path string" if ref($value);
+    return '' unless defined($value) && length($value);
+    my @paths = split(/,/x, $value, -1);
+    return "FreeBSD $field requires one absolute path" if !$multiple && @paths != 1;
+    my %seen;
+    for my $path (@paths) {
+        return "FreeBSD $field requires canonical absolute paths"
+          if length($path) > 4096 || $path !~ m{\A/[^\x00-\x1f\x7f]+\z}x
+          || grep { !length($_) || $_ eq '.' || $_ eq '..' } split(m{/}x, substr($path, 1), -1);
+        return "FreeBSD $field contains a duplicate path" if $seen{$path}++;
+    }
+    return '';
+}
+
+sub _freebsd_image_family_error {
+    my ($class, $image, $previous) = @_;
+    return if ref($image) ne 'HASH';
+    return 'Invalid previous FreeBSD image definition' if defined($previous) && ref($previous) ne 'HASH';
+    $previous ||= {};
+    my @types = ($image->{imagetype}, $previous->{imagetype});
+    my $related = grep { defined($_) && !ref($_) && $class->comma_list_contains(lc($_), 'freebsd') } @types;
+    return unless $related;
+    return 'FreeBSD image definitions require imagetype=freebsd'
+      if !defined($image->{imagetype}) || ref($image->{imagetype}) || $image->{imagetype} ne 'freebsd';
+    return 'FreeBSD image family changes require replacing the image definition'
+      if defined($previous->{imagetype}) && length($previous->{imagetype}) && $previous->{imagetype} ne 'freebsd';
+    return '';
+}
+
+sub freebsd_image_definition_error {
+    my ($class, $image, $previous) = @_;
+    my $family_error = _freebsd_image_family_error($class, $image, $previous);
+    return $family_error if !defined($family_error) || length($family_error);
+    return 'FreeBSD imageversion must be 1 or 2' if ref($image->{imageversion});
+    my $version = defined($image->{imageversion}) && length($image->{imageversion}) ? $image->{imageversion} : '1';
+    return 'FreeBSD imageversion must be 1 or 2' unless $version eq '1' || $version eq '2';
+    if ($version eq '1') {
+        for my $field (qw(bootdir pkglist otherpkgdir otherpkglist)) {
+            return "FreeBSD $field requires imageversion=2"
+              if ref($image->{$field}) || (defined($image->{$field}) && length($image->{$field}));
+        }
+        return '';
+    }
+    for my $field (qw(bootdir pkgdir pkglist otherpkgdir otherpkglist)) {
+        my $error = _freebsd_image_paths_error($field, $image->{$field}, $field ne 'bootdir' && $field ne 'pkgdir');
+        return $error if length($error);
+    }
+    return '';
 }
 
 #--------------------------------------------------------------------------------

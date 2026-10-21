@@ -1,0 +1,365 @@
+#!/bin/sh
+set -efu
+PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
+LC_ALL=C
+export PATH LC_ALL
+umask 077
+
+fail()
+{
+    printf 'configzfs: %s\n' "$1" >&2
+    exit 1
+}
+
+[ "$(uname -s):$(id -u)" = FreeBSD:0 ] || fail 'FreeBSD root is required'
+if [ "${1:-}" != --locked ]; then
+    exec lockf -k -t 0 /var/run/xcat-configzfs.lock /bin/sh "$0" --locked "$@"
+fi
+shift
+[ "$#" -le 2 ] || fail 'Usage: configzfs.freebsd [/etc/xcat/storage.conf [dataset-policy]]'
+policy=${1:-/etc/xcat/storage.conf}
+dataset_policy=${2:-}
+if [ -n "$dataset_policy" ]; then
+    [ "$dataset_policy" = "${policy%.conf}.datasets" ] || fail 'Dataset policy must accompany its pool policy'
+fi
+case "$policy" in /etc/xcat/*.conf) ;; *) fail 'The data policy must be under /etc/xcat' ;; esac
+case "$policy" in *[!A-Za-z0-9_./-]*|*/../*|*/./*|*//*) fail 'Invalid policy path' ;; esac
+planner=$(CDPATH= cd -P "$(dirname "$0")" && pwd)/configzfs-freebsd.awk
+library=/usr/local/libexec/xcat-install-lib.sh
+cachefile=/etc/zfs/zpool.cache
+
+safe_file()
+{
+    [ -f "$1" ] && [ ! -L "$1" ] && [ "$(stat -f '%u:%g:%l' "$1")" = 0:0:1 ] || return 1
+    case $(stat -f '%Lp' "$1") in 400|444|600|644) ;; *) return 1 ;; esac
+}
+
+safe_parents()
+(
+    directory=$(dirname "$1")
+    while [ "$directory" != / ]; do
+        [ -d "$directory" ] && [ ! -L "$directory" ] && [ "$(stat -f '%u' "$directory")" = 0 ] || exit 1
+        permissions=$(stat -f '%Lp' "$directory") || exit 1
+        [ "$((0$permissions & 0022))" -eq 0 ] || exit 1
+        directory=$(dirname "$directory")
+    done
+)
+
+safe_planner()
+{
+    [ -f "$1" ] && [ ! -L "$1" ] && [ "$(stat -f '%u:%g:%l' "$1")" = 0:0:1 ] &&
+        safe_parents "$1" || return 1
+    case $(stat -f '%Lp' "$1") in 444|644|555|755) return 0 ;; *) return 1 ;; esac
+}
+
+rc_enabled()
+{
+    case "$1" in [Yy][Ee][Ss]|[Tt][Rr][Uu][Ee]|[Oo][Nn]|1) return 0 ;; *) return 1 ;; esac
+}
+
+check_key_selection()
+{
+    old_keys=$(sysrc -n zfskeys_datasets 2>/dev/null || :)
+    if rc_enabled "$(sysrc -n zfskeys_enable)" && [ -z "$old_keys" ]; then
+        fail 'List existing automatic key datasets explicitly before adding this pool'
+    fi
+}
+
+for file in "$policy" "$library" /etc/rc.conf; do
+    safe_file "$file" && safe_parents "$file" || fail 'Unsafe data policy, helper or rc.conf'
+done
+safe_parents "$cachefile" || fail 'Unsafe pool cache directory'
+if [ -e "$cachefile" ] || [ -L "$cachefile" ]; then
+    safe_file "$cachefile" || fail 'Unsafe pool cache'
+fi
+safe_planner "$planner" || fail 'Unsafe data planner'
+. "$library"
+command -v xcat_disk_inventory >/dev/null 2>&1 || fail 'The installed runtime requires storage contract 5'
+[ "$(stat -f %z "$policy")" -le 32768 ] || fail 'The policy exceeds its size limit'
+for directory in /var/db/xcat /var/db/xcat/storage; do
+    [ -e "$directory" ] || mkdir -m 0700 "$directory"
+    [ -d "$directory" ] && [ ! -L "$directory" ] && [ "$(stat -f '%u:%g:%Lp' "$directory")" = 0:0:700 ] ||
+        fail 'Unsafe storage state directory'
+done
+attempt=$(mktemp -d /var/db/xcat/storage/attempt.XXXXXXXX)
+cp "$policy" "$attempt/policy"
+awk -f "$planner" "$attempt/policy" > "$attempt/plan"
+setting()
+{
+    awk -F '\t' -v name="$1" '$1=="K" && $2==name {print $3}' "$attempt/plan"
+}
+
+cache_inventory()
+{
+    : > "$1.native"
+    for cache_path in /etc/zfs/zpool.cache /boot/zfs/zpool.cache; do
+        if [ -e "$cache_path" ] || [ -L "$cache_path" ]; then
+            safe_file "$cache_path" && safe_parents "$cache_path" || return 1
+            zdb -C -U "$cache_path" >> "$1.native" || return 1
+        fi
+    done
+    awk -v mode=cache -f "$planner" "$1.native" > "$1"
+}
+
+cache_members_match()
+{
+    awk -F '\t' '
+        FILENAME==ARGV[1] {expected[$1]="g" $2; next}
+        !($1 in expected) || expected[$1]!="g" $2 {exit 1}' "$1" "$2"
+}
+
+pool=$(setting pool)
+action=$(setting action)
+guid=$(setting guid)
+compression=$(setting compression)
+ashift=$(setting ashift)
+small_blocks=$(setting special_small_blocks)
+encryption=$(setting encryption)
+keyfile=$(setting keyfile)
+mountpoint=$(setting mountpoint)
+policy_hash=$(sha256 -q "$attempt/plan")
+created=0
+if [ -n "$dataset_policy" ]; then
+    dataset_planner=${planner%/*}/configzfs-datasets.awk
+    safe_file "$dataset_policy" && safe_parents "$dataset_policy" || fail 'Unsafe dataset declaration'
+    safe_planner "$dataset_planner" || fail 'Unsafe dataset planner'
+    command -v xcat_verify_datasets >/dev/null 2>&1 || fail 'The installed runtime requires dataset support'
+    [ "$(stat -f %z "$dataset_policy")" -le 12288 ] || fail 'Dataset declaration exceeds its size limit'
+    cp "$dataset_policy" "$attempt/dataset-policy"
+    awk -v expected_kind=data -v expected_pool="$pool" -v expected_mountpoint="$mountpoint" \
+        -f "$dataset_planner" "$attempt/dataset-policy" > "$attempt/dataset-plan"
+    policy_hash=$(cat "$attempt/plan" "$attempt/dataset-plan" | sha256 -q)
+fi
+receipt=/var/db/xcat/storage/$pool.current
+imported_readonly=0
+rc_stage=
+
+finish()
+{
+    result=$?
+    trap - EXIT HUP INT TERM
+    if [ "$imported_readonly" = 1 ]; then zpool export "$pool" || result=1; fi
+    [ -z "$rc_stage" ] || rm -f "$rc_stage"
+    printf '%s\n' "$result" > "$attempt/status"
+    fsync "$attempt/status" "$attempt"
+    [ "$result" = 0 ] || printf 'configzfs: retained attempt %s\n' "$attempt" >&2
+    exit "$result"
+}
+trap finish EXIT
+trap 'exit 1' HUP INT TERM
+
+if [ "$encryption" != off ]; then
+    [ -f /etc/rc.d/zfskeys ] && [ -x /etc/rc.d/zfskeys ] &&
+        [ ! -L /etc/rc.d/zfskeys ] &&
+        [ "$(stat -f '%u:%g' /etc/rc.d/zfskeys)" = 0:0 ] &&
+        safe_parents /etc/rc.d/zfskeys || fail 'Automatic ZFS key loading is unavailable'
+    case $(stat -f '%Lp' /etc/rc.d/zfskeys) in 555|755) ;; *) fail 'Unsafe automatic key service' ;; esac
+    safe_file "$keyfile" && safe_parents "$keyfile" &&
+        [ "$(stat -f '%Lp:%z' "$keyfile")" = 600:32 ] &&
+        [ "$(stat -f '%Lp' /etc/xcat/keys)" = 700 ] || fail 'A private 32-byte raw key is required'
+    check_key_selection
+fi
+kldload -n zfs
+os_members=$(awk -F '\t' '$1=="D" && $2=="os" {print $3 "\t" $4 "\t" $5}' "$attempt/plan")
+data_members=$(awk -F '\t' '$1=="D" && $2!="os" {print $3 "\t" $4 "\t" $5}' "$attempt/plan")
+xcat_disk_inventory "$os_members" > "$attempt/os.inventory"
+xcat_disk_inventory "$data_members" > "$attempt/data.inventory"
+awk -F '\t' -v ashift="$ashift" '2^ashift < $5 {exit 1}' "$attempt/data.inventory" ||
+    fail 'Ashift is smaller than a data device sector'
+if mount -p | awk -v pool="$pool" '$2=="/" && $3=="zfs" && ($1==pool || index($1,pool "/")==1) {found=1} END {exit !found}'; then
+    fail 'The running OS pool cannot be managed as data'
+fi
+zpool list -H -o name,guid > "$attempt/pools"
+zpool get -H -o name,value cachefile > "$attempt/pool-caches"
+awk -F '\t' -v pool="$pool" '
+    $1==pool || $2=="-" || $2=="/etc/zfs/zpool.cache" || $2=="/boot/zfs/zpool.cache" {print $1}' \
+    "$attempt/pool-caches" > "$attempt/startup.names"
+awk -F '\t' 'FILENAME==ARGV[1] {wanted[$1]=1; next} $1 in wanted {print}' \
+    "$attempt/startup.names" "$attempt/pools" > "$attempt/startup.pools"
+cache_inventory "$attempt/cache.before" || fail 'Cannot inventory the startup pool caches'
+cache_members_match "$attempt/startup.pools" "$attempt/cache.before" ||
+    fail 'Import existing cached pools before configuring data storage'
+existing=$(awk -F '\t' -v pool="$pool" '$1==pool {print $2}' "$attempt/pools")
+if [ "$action" = create ] && [ -n "$existing" ]; then
+    safe_file "$receipt" || fail 'An existing pool requires an explicit import policy and GUID'
+    [ "$(cat "$receipt")" = "$(printf '%s\t%s' "$existing" "$policy_hash")" ] ||
+        fail 'The existing pool does not match this completed creation policy'
+    guid=$existing
+elif [ "$action" = import ] && [ -n "$existing" ]; then
+    [ "$existing" = "$guid" ] || fail 'The imported pool has a different GUID'
+fi
+
+verify_pool()
+{
+    [ "$(zpool get -H -o value guid "$pool")" = "$guid" ] || return 1
+    [ "$(zpool get -H -o value altroot "$pool")" = - ] &&
+        [ "$(zpool get -H -o value readonly "$pool")" = "${1:-off}" ] || return 1
+    zpool status -LP "$pool" > "$attempt/pool.status" || return 1
+    awk -v mode=verify -f "$planner" "$attempt/plan" "$attempt/pool.status" || return 1
+    [ "$(zfs get -H -o value compression "$pool")" = "$compression" ] &&
+        [ "$(zfs get -H -o value encryption "$pool")" = "$encryption" ] &&
+        [ "$(zfs get -Hp -o value special_small_blocks "$pool")" = "$small_blocks" ] &&
+        [ "$(zfs get -H -o value mountpoint "$pool")" = "$mountpoint" ] &&
+        [ "$(zfs get -H -o value canmount "$pool")" = on ] || return 1
+    zdb -C "$pool" > "$attempt/pool.config" || return 1
+    awk -v ashift="$ashift" '$1=="ashift:" {found++; if($2!=ashift) bad=1} END {exit !found || bad}' "$attempt/pool.config" || return 1
+    if [ "$encryption" != off ]; then
+        [ "$(zfs get -H -o value encryptionroot "$pool")" = "$pool" ] &&
+            [ "$(zfs get -H -o value keyformat "$pool")" = raw ] &&
+            [ "$(zfs get -H -o value keylocation "$pool")" = "file://$keyfile" ] || return 1
+        zfs load-key -n -L "file://$keyfile" "$pool" </dev/null || return 1
+    fi
+    if [ -n "$dataset_policy" ] && [ "$created" = 0 ]; then
+        xcat_verify_datasets data "$pool" < "$attempt/dataset-plan" || return 1
+    fi
+}
+
+check_identities()
+{
+    xcat_disk_inventory "$os_members" > "$attempt/os.now" || return 1
+    xcat_disk_inventory "$data_members" > "$attempt/data.now" || return 1
+    for role in os data; do
+        cut -f1-5,7 "$attempt/$role.inventory" > "$attempt/$role.expected" || return 1
+        cut -f1-5,7 "$attempt/$role.now" > "$attempt/$role.observed" || return 1
+        cmp -s "$attempt/$role.expected" "$attempt/$role.observed" || return 1
+    done
+}
+
+if [ -z "$existing" ]; then
+    awk -F '\t' '$6!="r0w0e0" {exit 1}' "$attempt/data.inventory" || fail 'A data device is in use'
+    set --
+    if [ "$action" = create ]; then
+        sysctl -n kern.geom.conftxt > "$attempt/graph"
+        xcat_zfs_initial_graph "$(cat "$attempt/data.inventory")" < "$attempt/graph" || fail 'A data disk already has a layout'
+        XCAT_WORK=$attempt
+        xcat_check_empty_disks "$(cat "$attempt/data.inventory")" || fail 'Creation requires empty dedicated data disks'
+        while IFS="$(printf '\t')" read -r kind token rest; do
+            [ "$kind" != C ] || set -- "$@" "$token"
+        done < "$attempt/plan"
+        check_identities || fail 'A disk identity changed before creation'
+        if [ "$encryption" != off ]; then
+            set -- -O "encryption=$encryption" -O keyformat=raw -O "keylocation=file://$keyfile" "$pool" "$@"
+        else
+            set -- "$pool" "$@"
+        fi
+        parent=${mountpoint%/*}
+        [ -e "$parent" ] || mkdir -m 0755 "$parent"
+        safe_parents "$mountpoint" || fail 'Unsafe data mountpoint parent'
+        if [ -e "$mountpoint" ] || [ -L "$mountpoint" ]; then
+            [ -d "$mountpoint" ] && [ ! -L "$mountpoint" ] &&
+                [ -z "$(find "$mountpoint" -mindepth 1 -maxdepth 1 -print)" ] || fail 'The data mountpoint is not empty'
+        fi
+        zpool create -o cachefile=none -o "ashift=$ashift" -O "compression=$compression" \
+            -O "special_small_blocks=$small_blocks" -m "$mountpoint" "$@" </dev/null
+        guid=$(zpool get -H -o value guid "$pool")
+        created=1
+    else
+        while IFS="$(printf '\t')" read -r kind role device serial group; do
+            [ "$kind" = D ] && [ "$role" != os ] || continue
+            set -- "$@" -d "/dev/$device"
+            [ "$role" != cache ] || continue
+            zdb -l "/dev/$device" > "$attempt/label-$device" 2> "$attempt/label-$device.err" ||
+                fail 'Cannot read a preserved data device label'
+            awk -v guid="$guid" -v name="'$pool'" '
+                $1=="pool_guid:" {found++; if("g" $2!="g" guid) bad=1}
+                $1=="name:" {names++; if($2!=name) bad=1}
+                END {exit !found || !names || bad}' "$attempt/label-$device" || fail 'A preserved device belongs to another pool'
+        done < "$attempt/plan"
+        check_identities || fail 'A disk identity changed before import'
+        zpool import -N -o readonly=on -o cachefile=none "$@" "$guid" </dev/null
+        imported_readonly=1
+        verify_pool on || fail 'The preserved pool does not match its policy or key'
+        zpool export "$pool"
+        imported_readonly=0
+        check_identities || fail 'A disk identity changed during import validation'
+        zpool import -N -o cachefile=none "$@" "$guid" </dev/null
+    fi
+fi
+verify_pool || fail 'The data pool did not pass native readback'
+check_identities || fail 'A disk identity changed after configuration'
+parent=${mountpoint%/*}
+[ -e "$parent" ] || mkdir -m 0755 "$parent"
+safe_parents "$mountpoint" || fail 'Unsafe data mountpoint parent'
+if [ "$encryption" != off ] && [ "$(zfs get -H -o value keystatus "$pool")" != available ]; then
+    zfs load-key -L "file://$keyfile" "$pool" </dev/null
+fi
+if [ -n "$dataset_policy" ]; then
+    if [ "$created" = 1 ]; then
+        while IFS="$(printf '\t')" read -r dataset properties; do
+            old_ifs=$IFS IFS=,
+            set -- $properties
+            IFS=$old_ifs
+            arguments=$#
+            for property do set -- "$@" -o "$property"; done
+            shift "$arguments"
+            zfs create "$@" "$dataset" </dev/null
+        done < "$attempt/dataset-plan"
+    fi
+    xcat_verify_datasets data "$pool" < "$attempt/dataset-plan" || fail 'Declared datasets do not match native readback'
+fi
+zfs list -H -r -t filesystem -o name,canmount,mountpoint,encryptionroot "$pool" > "$attempt/datasets"
+while IFS="$(printf '\t')" read -r dataset canmount destination encryptionroot; do
+    case "$encryptionroot" in -|"$pool") ;; *) fail 'A descendant has an independent encryption key' ;; esac
+    case "$destination" in none|legacy) continue ;; "$mountpoint"|"$mountpoint"/*) ;; *) fail 'A descendant mounts outside the data directory' ;; esac
+    case "$destination" in */../*|*/./*|*//*) fail 'Unsafe descendant mountpoint' ;; esac
+    [ "$canmount" = on ] || continue
+    if [ "$(zfs get -H -o value mounted "$dataset")" != yes ]; then
+        ancestor=$destination
+        while [ ! -e "$ancestor" ] && [ ! -L "$ancestor" ]; do ancestor=$(dirname "$ancestor"); done
+        [ "$(realpath "$ancestor")" = "$ancestor" ] || fail 'A data mountpoint resolves through a symlink'
+        zfs mount "$dataset"
+    fi
+done < "$attempt/datasets"
+
+# Use the cache preferred by native startup, retaining every existing startup pool.
+printf '%s\t%s\n' "$pool" "$guid" >> "$attempt/startup.pools"
+sort -u "$attempt/startup.pools" > "$attempt/startup.expected"
+cache_inventory "$attempt/cache.current" || fail 'Cannot recheck the startup pool caches'
+cache_members_match "$attempt/startup.expected" "$attempt/cache.current" ||
+    fail 'The startup pool identities changed during configuration'
+while IFS="$(printf '\t')" read -r startup_pool startup_guid; do
+    [ "$(zpool get -H -o value guid "$startup_pool")" = "$startup_guid" ] ||
+        fail 'A startup pool identity changed'
+    if [ "$startup_pool" != "$pool" ]; then
+        case $(zpool get -H -o value cachefile "$startup_pool") in
+            -|/etc/zfs/zpool.cache|/boot/zfs/zpool.cache) ;;
+            *) fail 'Another startup pool changed its cache policy' ;;
+        esac
+    fi
+done < "$attempt/startup.expected"
+while IFS="$(printf '\t')" read -r startup_pool startup_guid; do
+    zpool set "cachefile=$cachefile" "$startup_pool"
+done < "$attempt/startup.expected"
+zdb -C -U "$cachefile" > "$attempt/boot.config" || fail 'The saved pool cache cannot be read'
+awk -v mode=cache -f "$planner" "$attempt/boot.config" > "$attempt/boot.pools"
+cache_members_match "$attempt/boot.pools" "$attempt/startup.expected" ||
+    fail 'A startup pool is missing from its boot cache'
+fsync "$cachefile" "${cachefile%/*}"
+
+safe_file /etc/rc.conf || fail 'Unsafe rc.conf'
+cp -p /etc/rc.conf "$attempt/before.rc"
+rc_stage=$(mktemp /etc/rc.conf.xcat-storage.XXXXXXXX)
+cp -p /etc/rc.conf "$rc_stage"
+sysrc -f "$rc_stage" zfs_enable=YES >/dev/null
+if [ "$encryption" != off ]; then
+    check_key_selection
+    sysrc -f "$rc_stage" zfskeys_enable=YES "zfskeys_datasets+=$pool" >/dev/null
+fi
+/bin/sh -n "$rc_stage"
+cmp -s /etc/rc.conf "$attempt/before.rc" || fail 'rc.conf changed while configuring storage'
+fsync "$rc_stage"
+mv "$rc_stage" /etc/rc.conf
+fsync /etc/rc.conf /etc
+rc_enabled "$(sysrc -n zfs_enable)" || fail 'Another rc configuration overrides ZFS startup'
+if [ "$encryption" != off ]; then
+    rc_enabled "$(sysrc -n zfskeys_enable)" || fail 'Another rc configuration disables automatic keys'
+    case " $(sysrc -n zfskeys_datasets) " in *" $pool "*) ;; *) fail 'Another rc configuration overrides automatic keys' ;; esac
+fi
+printf '%s\t%s\n' "$guid" "$policy_hash" > "$attempt/receipt"
+fsync "$attempt/receipt"
+receipt_stage=$(mktemp /var/db/xcat/storage/receipt.XXXXXXXX)
+cp "$attempt/receipt" "$receipt_stage"
+fsync "$receipt_stage"
+mv "$receipt_stage" "$receipt"
+fsync /var/db/xcat/storage
+printf 'configzfs: pool %s GUID %s is configured and mounted\n' "$pool" "$guid"
