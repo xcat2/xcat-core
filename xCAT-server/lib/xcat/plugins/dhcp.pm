@@ -3110,15 +3110,13 @@ sub kea_subnet6_intent
     my ( $entry, $interface, $remote, $id ) = @_;
 
     my $net = $entry->{net};
-    my $prefix;
-    if ($net =~ m{^(.+)/(\d+)$}) {
-        $prefix = $2;
-    } elsif (defined $entry->{mask} && $entry->{mask} =~ /^(\d+)$/) {
-        $prefix = $1;
-        $net = "$net/$prefix";
-    } else {
+    # getIPv6PrefixLength reads the prefix from the net value or from the mask
+    # column, in either the "64" or the "/64" spelling the networks table uses.
+    my $prefix = xCAT::NetworkUtils->getIPv6PrefixLength($net, $entry->{mask});
+    unless (defined $prefix) {
         return { error => "IPv6 network $net must include a prefix length for Kea DHCPv6." };
     }
+    $net = "$net/$prefix" unless $net =~ m{/\d+$};
 
     my $domain = $entry->{domain} || $site_domain;
     my @option_data;
