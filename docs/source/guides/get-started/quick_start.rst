@@ -101,7 +101,7 @@ Stage 2 Provision a node and manage it with parallel shell
     [mn]: Checking provision network is configured...                                   [ OK ]
     [mn]: Checking 'passwd' table is configured...                                      [ OK ]
     [mn]: Checking important directories(installdir,tftpdir) are configured...          [ OK ]
-    [mn]: Checking SELinux is disabled...                                               [ OK ]
+    [mn]: Checking SELinux policy for xCAT...                                           [ OK ]
     [mn]: Checking HTTP service is configured...                                        [ OK ]
     [mn]: Checking TFTP service is configured...                                        [ OK ]
     [mn]: Checking DNS service is configured...                                         [ OK ]
