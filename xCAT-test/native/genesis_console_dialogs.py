@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import pty
 import select
+import shlex
 import signal
 import struct
 import subprocess
@@ -61,6 +62,16 @@ class ConsoleTerminal(unittest.TestCase):
     def console_command(self):
         return [str(self.binary)]
 
+    def isolated_prefix(self, mounts):
+        command = ["bwrap", "--unshare-all", "--die-with-parent", "--ro-bind", "/", "/",
+                   "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/run", "--tmpfs", "/var/log",
+                   *mounts]
+        result = subprocess.run(command + ["/bin/true"], text=True,
+                                capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 0,
+                         "Console tests require working Bubblewrap namespaces: " + result.stderr)
+        return command
+
     def stop(self):
         if self.process.poll() is None:
             self.process.terminate()
@@ -88,8 +99,19 @@ class ConsoleTerminal(unittest.TestCase):
             self.assertIsNone(self.process.poll(), display)
         self.fail(f"Terminal did not show {description}:\n{display}")
 
+    def assert_screen_stays(self, predicate, description, duration):
+        deadline = time.monotonic() + duration
+        while time.monotonic() < deadline:
+            display = self.read_screen(0.1)
+            self.assertTrue(predicate(display), f"{description}:\n{display}")
+            self.assertIsNone(self.process.poll(), display)
+
     def key(self, sequence):
         os.write(self.master, sequence)
+
+    def visible_text(self, display):
+        return " ".join("".join(character if character.isascii() else " "
+                                for character in display).split())
 
 
 class ConsoleDialogs(ConsoleTerminal):
@@ -108,14 +130,62 @@ class ConsoleDialogs(ConsoleTerminal):
                     self.wait_text(first)
                     self.wait_text(help_line)
                     self.key(other_key)
-                    self.assertIn(title, self.read_screen(0.2))
                     self.key(b"\x1b[6~" * 20)
-                    self.wait_text(last)
+                    self.assertIn(title, self.wait_text(last))
                     self.key(close_key)
                     self.wait_text("Genesis status")
                     self.wait_text("F1 Help")
         self.process.send_signal(signal.SIGTERM)
         self.assertEqual(self.process.wait(timeout=5), 0)
+
+    def publish(self, name, text):
+        target = self.root / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary = target.with_suffix(".tmp")
+        temporary.write_text(text)
+        temporary.replace(target)
+
+    def test_status_refresh_and_diagnostic_snapshot(self):
+        self.publish("response_file", "XCAT_NODE_NAME=updated-node\n")
+        self.assertRegex(self.wait_text("updated-node"), r"Node +updated-node")
+        self.publish("status_dir/action.env", "SCHEMA=1\nSTATE=RUNNING\n"
+                     "DETAIL=Preparing test action\nUPDATED_SECONDS=100\n")
+        self.assertIn("RUNNING", self.wait_text("Preparing test action"))
+        self.key(b"\x1bOQ")
+        self.wait_text("Node: updated-node")
+        self.publish("response_file", "XCAT_NODE_NAME=short-node\n")
+        self.publish("status_dir/action.env", "SCHEMA=1\nSTATE=FAILED\n"
+                     "DETAIL=Test action failed\nRECOVERY=Check test input\nUPDATED_SECONDS=101\n")
+        self.key(b"\x1b[6~" * 20)
+        self.wait_text("Provider names:")
+        self.key(b"\x1b[5~" * 20)
+        display = self.wait_text("Node: updated-node")
+        self.assertNotIn("short-node", display)
+        self.assert_screen_stays(lambda display: "Node: updated-node" in display
+                                 and "short-node" not in display,
+                                 "Diagnostics changed before reopening", 2)
+        self.key(b"\x1bOQ")
+        display = self.wait_text("Check test input")
+        self.assertRegex(display, r"Node +short-node +")
+        self.assertIn("FAILED", display)
+        self.assertIn("Test action failed", display)
+        self.assertNotIn("updated-node", display)
+        self.key(b"\x1bOQ")
+        self.wait_text("Node: short-node")
+
+    def test_rendered_help_explains_read_only_pages_logs_and_shell(self):
+        self.key(b"\x1bOP")
+        display = self.wait_text("Screen fields")
+        text = self.visible_text(display)
+        self.assertIn("Status pages are read-only.", text)
+        self.assertIn("confirmed root maintenance shell", text)
+        self.key(b"\x1b[6~" * 20)
+        display = self.wait_text("Up and Down scroll this page.")
+        text = self.visible_text(display)
+        self.assertIn("F3 opens recent Genesis logs", text)
+        self.assertIn("press End to resume.", text)
+        self.assertIn("F12 asks before opening", text)
+        self.assertIn("Exit returns here.", text)
 
 
 class ConsoleJournal(ConsoleTerminal):
@@ -137,19 +207,12 @@ class ConsoleJournal(ConsoleTerminal):
         self.entries = []
         machine_id_file = self.root / "machine-id"
         machine_id_file.write_text(self.machine_id + "\n")
-        sandbox = [
-            "bwrap", "--unshare-all", "--die-with-parent", "--ro-bind", "/", "/",
-            "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/run", "--tmpfs", "/var/log",
+        self.sandbox = self.isolated_prefix([
             "--bind", str(self.root), str(self.root),
             "--ro-bind", str(machine_id_file), "/etc/machine-id",
             "--ro-bind", str(journal_root), "/var/log/journal",
-        ]
-        result = subprocess.run(sandbox + ["/bin/true"], text=True,
-                                capture_output=True, timeout=10)
-        self.assertEqual(result.returncode, 0,
-                         "Journal tests require working Bubblewrap namespaces: " + result.stderr)
-        self.sandbox = sandbox
-        return sandbox + [str(self.binary)]
+        ])
+        return self.sandbox + [str(self.binary)]
 
     def write_journal(self, entries, interval=1000000):
         records = []
@@ -178,22 +241,22 @@ class ConsoleJournal(ConsoleTerminal):
         self.wait_text("Genesis logs")
         self.wait_text("F3 Back")
 
+    def selected_rows(self):
+        return ["".join(self.screen.buffer[row][column].data
+                        for column in range(self.screen.columns)
+                        if self.screen.buffer[row][column].bg == "red").strip()
+                for row in range(self.screen.lines)]
+
     def selected_text(self):
-        return "\n".join("".join(self.screen.buffer[row][column].data
-                                  for column in range(self.screen.columns)
-                                  if self.screen.buffer[row][column].bg == "red").strip()
-                         for row in range(self.screen.lines)).strip()
+        return "\n".join(self.selected_rows()).strip()
 
     def wait_selected(self, text):
         return self.wait_screen(lambda display: self.selected_text().endswith(text),
                                 f"selected log entry {text!r}")
 
     def assert_selection_stays(self, text):
-        deadline = time.monotonic() + 3
-        while time.monotonic() < deadline:
-            self.read_screen(0.1)
-            self.assertEqual(self.selected_text(), text)
-            self.assertIsNone(self.process.poll())
+        self.assert_screen_stays(lambda display: self.selected_text() == text,
+                                 "Selected journal entry changed", 3)
 
     def test_paused_entry_survives_history_rollover(self):
         self.write_journal([(f"RECORD-{number:04d}", "other.service", "xcat-genesis-register")
@@ -287,6 +350,77 @@ class ConsoleJournal(ConsoleTerminal):
         self.key(b"\x1b[B")
         self.wait_selected("RECORD-0003")
 
+    def visible_entries(self):
+        return [message for message, unit, identifier in self.entries
+                if any(message in line for line in self.screen.display)]
+
+    def assert_paused(self, text):
+        before = self.selected_rows()
+        self.assertIn(text, self.selected_text())
+        self.assert_screen_stays(lambda display: self.selected_rows() == before,
+                                 "Paused journal selection moved", 5)
+
+    def test_logs_follow_pause_and_reopen(self):
+        self.write_journal([
+            ("FIRST", "xcat-genesis-register.service", "unit-fixture"),
+            ("TAIL", "other.service", "xcat-genesis-discovery"),
+        ])
+        self.open_logs()
+        self.wait_selected("TAIL")
+        self.write_journal([("FOLLOWED", "other.service", "xcat-genesis-register")])
+        self.wait_selected("FOLLOWED")
+        self.key(b"\x1b[H")
+        self.wait_selected("FIRST")
+        self.write_journal([("PAUSED", "other.service", "xcat-genesis-register")])
+        self.wait_text("PAUSED")
+        self.assert_paused("FIRST")
+        self.key(b"\x1b[F")
+        self.wait_selected("PAUSED")
+        self.write_journal([("END-FOLLOWED", "other.service", "xcat-genesis-register")])
+        self.wait_selected("END-FOLLOWED")
+        for index, close_key in enumerate((b"\x1bOR", b"\x1b")):
+            with self.subTest(close_key=close_key):
+                self.key(b"\x1b[H")
+                self.wait_selected("FIRST")
+                self.key(close_key)
+                self.wait_text("Genesis status")
+                self.open_logs()
+                self.wait_selected("END-FOLLOWED" if index == 0 else "REOPENED-0")
+                message = f"REOPENED-{index}"
+                self.write_journal([(message, "other.service", "xcat-genesis-register")])
+                self.wait_selected(message)
+
+    def test_logs_arrow_and_page_keys_pause_and_resume(self):
+        self.write_journal([(f"HISTORY-{number:03d}", "other.service", "xcat-genesis-register")
+                            for number in range(40)])
+        self.open_logs()
+        self.wait_selected("HISTORY-039")
+        for up, down in ((b"\x1b[A", b"\x1b[B"), (b"\x1b[5~", b"\x1b[6~")):
+            with self.subTest(up=up):
+                previous_tail = f"HISTORY-{len(self.entries) - 1:03d}"
+                if up == b"\x1b[A":
+                    paused = f"HISTORY-{len(self.entries) - 2:03d}"
+                else:
+                    visible = self.visible_entries()
+                    self.assertGreater(len(visible), 2)
+                    paused = visible[0]
+                self.key(up)
+                self.wait_selected(paused)
+                message = f"HISTORY-{len(self.entries):03d}"
+                self.write_journal([(message, "other.service", "xcat-genesis-register")])
+                self.assert_paused(paused)
+                self.key(down)
+                self.wait_selected(previous_tail)
+                message = f"HISTORY-{len(self.entries):03d}"
+                self.write_journal([(message, "other.service", "xcat-genesis-register")])
+                self.assert_paused(previous_tail)
+                self.key(down)
+                self.key(down)
+                self.wait_selected(message)
+                following = f"HISTORY-{len(self.entries):03d}"
+                self.write_journal([(following, "other.service", "xcat-genesis-register")])
+                self.wait_selected(following)
+
     def test_empty_journal(self):
         self.open_logs()
         self.wait_text("No Genesis journal entries are available.")
@@ -342,6 +476,114 @@ class ConsoleJournal(ConsoleTerminal):
         self.assertNotIn("RECORD-0001", display)
         self.key(b"\x1b[F")
         self.wait_text("RECORD-0129")
+
+
+class ConsoleShell(ConsoleTerminal):
+    """Mount a fixture libexec directory containing the external shell launcher.
+
+    The linked console still owns confirmation, fork/exec, waiting and redraw.
+    The per-test temporary root is the only writable host-backed directory.
+    The libexec mount is read-only.
+    /run and /var/log are private tmpfs mounts.
+    """
+
+    def console_command(self):
+        directory = self.root / "libexec"
+        (directory / "xcat").mkdir(parents=True)
+        self.launcher = directory / "xcat/genesis-maintenance-shell"
+        self.calls = self.root / "shell-calls"
+        self.input = self.root / "shell-input"
+        self.write_launcher(0)
+        return self.isolated_prefix([
+            "--bind", str(self.root), str(self.root),
+            "--ro-bind", str(directory), "/usr/libexec",
+        ]) + [str(self.binary)]
+
+    def write_launcher(self, exit_status):
+        self.launcher.write_text(
+            "#!/bin/sh\n"
+            f"printf '%s\\n' started >> {shlex.quote(str(self.calls))}\n"
+            "printf 'SHELL-RUNNING\\n'\n"
+            "IFS= read -r answer\n"
+            f"printf '%s\\n' \"$answer\" > {shlex.quote(str(self.input))}\n"
+            f"exit {exit_status}\n")
+        self.launcher.chmod(0o755)
+
+    def shell_dialog_text(self, display):
+        lines = display.splitlines()
+        for row, line in enumerate(lines):
+            if "Maintenance shell" not in line:
+                continue
+            left, right = line.rfind("┌"), line.find("┐")
+            if left < 0 or right <= left:
+                continue
+            content = []
+            for line in lines[row + 1:]:
+                if line[left:right + 1].startswith("└") and line[right] == "┘":
+                    return self.visible_text("\n".join(content))
+                content.append(line[left + 1:right])
+        return ""
+
+    def confirm_shell(self):
+        self.key(b"\x1b[24~")
+        display = self.wait_screen(
+            lambda text: "Open a root maintenance shell?" in self.shell_dialog_text(text),
+            "maintenance shell confirmation")
+        self.assertIn("Provisioning services continue in the background.",
+                      self.shell_dialog_text(display))
+
+    def wait_main(self):
+        def is_main(display):
+            return ("Maintenance shell" not in display
+                    and "SHELL-RUNNING" not in display
+                    and "Genesis diagnostics" not in display
+                    and "Genesis status" in display)
+
+        self.wait_screen(is_main, "the restored status console")
+        self.assert_screen_stays(is_main, "The restored status console changed", 1)
+
+    def test_cancel_does_not_launch_shell(self):
+        self.confirm_shell()
+        self.assertFalse(self.calls.exists())
+        self.key(b"\t\r")
+        self.wait_main()
+        self.assertFalse(self.calls.exists())
+        self.key(b"\x1bOP")
+        self.wait_text("Genesis help")
+
+    def test_confirmed_shell_accepts_input_and_returns_to_console(self):
+        for count, exit_status in enumerate((0, 7), 1):
+            with self.subTest(launch=count, exit_status=exit_status):
+                self.write_launcher(exit_status)
+                self.confirm_shell()
+                self.assertEqual(self.calls.read_text() if self.calls.exists() else "",
+                                 "started\n" * (count - 1))
+                self.key(b"\r")
+                self.wait_text("SHELL-RUNNING")
+                self.assertEqual(self.calls.read_text(), "started\n" * count)
+                self.key(f"operator-input-{count}\r".encode())
+                self.wait_main()
+                self.assertEqual(self.input.read_text(), f"operator-input-{count}\n")
+                self.assertIsNone(self.process.poll())
+                self.key(b"\x1bOQ")
+                self.wait_text("Genesis diagnostics")
+                self.key(b"\x1bOQ")
+                self.wait_main()
+
+    def test_shell_exec_error_is_reported_and_console_recovers(self):
+        self.launcher.unlink()
+        self.confirm_shell()
+        self.key(b"\r")
+        display = self.wait_screen(
+            lambda text: "No such file or directory" in self.shell_dialog_text(text),
+            "the maintenance shell executable error")
+        self.assertIn("The maintenance shell could not be opened: No such file or directory",
+                      self.shell_dialog_text(display))
+        self.assertFalse(self.calls.exists())
+        self.key(b"\r")
+        self.wait_main()
+        self.key(b"\x1bOP")
+        self.wait_text("Genesis help")
 
 
 if __name__ == "__main__":

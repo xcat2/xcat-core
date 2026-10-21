@@ -308,6 +308,58 @@ class GenesisMetadata(unittest.TestCase):
             with self.assertRaises(bb.process.ExecutionError):
                 bb.build.exec_func("do_kernel_metadata", data, dirs=[data.getVar("WORKDIR")])
 
+    def test_networkmanager_does_not_enable_wait_online(self):
+        def entries(file):
+            result = []
+            section = None
+            for line in file.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith(("#", ";")):
+                    continue
+                if line.startswith("[") and line.endswith("]"):
+                    section = line[1:-1]
+                else:
+                    self.assertIsNotNone(section)
+                    key, value = line.split("=", 1)
+                    result.append((section, key.strip(), value.strip()))
+            return result
+
+        data = self.task_data("networkmanager")
+        # Preserve the recipe appends while replacing the external Meson installation.
+        data.setVar("do_install", 'cp -a "${WORKDIR}/meson-install/." "${D}/"\n', parsing=True)
+        root = Path(data.getVar("D"))
+        fixture = Path(data.getVar("WORKDIR")) / "meson-install"
+        sources = Path(data.getVar("UNPACKDIR"))
+        (sources / "networkmanager.initd").write_text("#!/bin/sh\nexit 0\n")
+        units = fixture / data.getVar("systemd_system_unitdir").lstrip("/")
+        units.mkdir(parents=True)
+        unit = units / "NetworkManager.service"
+        installed_unit = root / unit.relative_to(fixture)
+        rule = fixture / data.getVar("nonarch_base_libdir").lstrip("/") / "udev/rules.d/84-nm-drivers.rules"
+        rule.parent.mkdir(parents=True)
+        rule.touch()
+        expected = ("[Unit]\nDescription=NetworkManager fixture\n"
+                    "[Service]\nExecStart=/usr/sbin/NetworkManager --no-daemon\n"
+                    "[Install]\nWantedBy=multi-user.target\n"
+                    "Alias=dbus-org.freedesktop.NetworkManager.service\n"
+                    "Also=fixture-auxiliary.service\nAlso=fixture-second.service\n")
+        unit.write_text(expected)
+        expected_entries = entries(unit)
+        directive = "Also=NetworkManager-wait-online.service\n"
+        fixtures = {
+            "absent": expected,
+            "first": expected.replace("[Install]\n", "[Install]\n" + directive),
+            "last": expected + directive,
+            "repeated": expected + directive * 2,
+        }
+        for name, fixture_text in fixtures.items():
+            with self.subTest(directive=name):
+                unit.write_text(fixture_text)
+                for unused in range(2):
+                    bb.build.exec_func("do_install", data, dirs=[data.getVar("WORKDIR")])
+                    self.assertEqual(entries(installed_unit), expected_entries)
+                    unit.write_bytes(installed_unit.read_bytes())
+
     def test_installed_network(self):
         data, root = self.install("xcat-genesis-network")
         file = self.installed(data, root, "sysconfdir", "NetworkManager/conf.d/10-xcat-genesis.conf", 0o644)
