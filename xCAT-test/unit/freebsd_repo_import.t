@@ -504,6 +504,36 @@ sub readback_cases {
     return;
 }
 
+sub readback_json_backends {
+    my $reader = <<'PERL';
+use JSON;
+use xCAT::FreeBSDRepoImport;
+my ($publication, $root) = @ARGV;
+my $value = xCAT::FreeBSDRepoImport::inspect_import($publication, $root);
+delete $value->{path};
+print JSON->new->utf8->canonical->encode($value), "\n";
+PERL
+    for my $backend ('JSON::PP', 'JSON::XS') {
+        subtest $backend => sub {
+            plan skip_all => 'JSON::XS is not installed'
+              if $backend eq 'JSON::XS' && !eval { require JSON::XS; 1; };
+            for my $case (@readback) {
+                my ($name, $result, $root) = @$case;
+                my $actual = xCAT::FreeBSDPkg::run_command(
+                    [$^X, (map { ('-I', $_) } @INC), '-e', $reader, $result->{path}, $root],
+                    cwd => $tmp, environment => { %environment, PERL_JSON_BACKEND => $backend },
+                    timeout => 60, stdout_limit => 67108864);
+                is($actual->{exitcode}, 0, "$name passes readback with $backend")
+                  or diag($actual->{stderr});
+                is($actual->{signal}, 0, "$name readback exits normally");
+                is($actual->{stdout}, read_file("$result->{path}/manifest.json"),
+                    "$name retains the canonical manifest after validation with $backend");
+            }
+        };
+    }
+    return;
+}
+
 sub readback_destination_cases {
     for my $case (destination_mutations()) {
         my $root = clone_tree($installroot);
@@ -688,6 +718,7 @@ subtest 'publication paths and lock objects are protected' => \&lock_cases;
 subtest 'preflight errors expose no imported tree' => \&preflight_cases;
 subtest 'filesystem failures and mutation clean only the private stage' => \&filesystem_cases;
 subtest 'readback verifies imports without source media or native commands' => \&readback_cases;
+subtest 'readback preserves manifest types with either JSON backend' => \&readback_json_backends;
 subtest 'readback rejects byte and operational tampering' => \&readback_destination_cases;
 subtest 'readback protects its publication and manifest paths' => \&readback_path_cases;
 subtest 'readback validates manifest encoding and nested provenance' => \&readback_manifest_cases;

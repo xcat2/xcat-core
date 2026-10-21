@@ -12,7 +12,7 @@ use xCAT::Table;
 use xCAT::FreeBSDNetwork;
 use xCAT::DHCP::Backend::Kea;
 
-my $dhcp_plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/dhcp.pm";
+my $dhcp_plugin = $ENV{XCAT_FREEBSD_DHCP_PLUGIN} || "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/dhcp.pm";
 require $dhcp_plugin;
 our %XCATSITEVALS;
 
@@ -125,6 +125,20 @@ is(scalar @{ xCAT_plugin::dhcp::_isc_ipoib_hosts('compute-01', \@config) }, 1,
 like(join('', @config), qr/\Q@{[join('', @ethernet)]}\E/, 'ISC update and deletion preserve the Ethernet boot host');
 
 my $backend = xCAT::DHCP::Backend::Kea->new(kea_version => '2.4.1');
+subtest 'Kea matching retains numeric JSON subnet identifiers' => sub {
+    plan skip_all => 'JSON::XS is not installed' unless eval { require JSON::XS; 1; };
+    my $json = JSON::XS->new->canonical;
+    for my $has_ipoib (0, 1) {
+        my $config = $json->decode('{"Dhcp4":{"subnet4":[{"id":17},{"id":18}]}}');
+        my $reservations = $json->decode($has_ipoib ? '[{"subnet-id":17,"client-id":"01:02"}]' : '[]');
+        xCAT_plugin::dhcp::_kea_ipoib_matching($config, $reservations);
+        is($json->encode([map { $_->{id} } @{$config->{Dhcp4}{subnet4}}]), '[17,18]',
+            "subnet IDs retain their numeric encoding with IPoIB=$has_ipoib");
+        is($json->encode($reservations),
+            $has_ipoib ? '[{"client-id":"01:02","subnet-id":17}]' : '[]',
+            "reservation IDs retain their numeric encoding with IPoIB=$has_ipoib");
+    }
+};
 my $config = { Dhcp4 => { 'match-client-id' => JSON::false, 'host-reservation-identifiers' => ['hw-address'],
     subnet4 => [{ id => 1, subnet => '192.0.2.0/24' }, { id => 2, subnet => '198.51.100.0/24' }] } };
 my $reservations = xCAT_plugin::dhcp::_kea_ipoib_reservations($backend, $config, 'compute', [$entry]);
